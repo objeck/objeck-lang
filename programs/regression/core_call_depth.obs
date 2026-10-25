@@ -1,0 +1,221 @@
+#~
+Ordinary deep recursion runs: thousands of frames, not 256.
+
+The call stack was a fixed array of 256 frames per thread (CALL_STACK_SIZE), so
+the shipped Rosetta "Man or boy" example (programs/examples/man_or_boy.obs, 647
+frames at k=10) ended with ">>> call stack bounds have been exceeded! <<<", and
+so did a recursive-descent parser given input nested 300 deep. The maximum is
+16384 frames by default now (obr --call-depth), reserved per thread and
+committed as a stack deepens (core/vm/call_stack.h).
+
+Each shape below goes 2,000 to 10,000 frames deep and checks its answer: plain
+non-tail recursion (which also keeps a word per frame on the operand stack when
+interpreted), a recursive-descent parser over 10,000 nested parentheses, mutual
+recursion, a virtual call through an interface, a call through a function
+value, Ackermann and Man or boy itself. The parser and the plain recursion run
+again in a spawned thread, whose call stack and native stack are its own.
+Compiled, the frames are on the native stack, so this also covers the native
+stack's size: the old 1 MB Windows thread stack held about 1,800 of them.
+~#
+use System.Concurrency;
+
+interface Step {
+	method : virtual : public : Down(n : Int) ~ Int;
+}
+
+class Stepper implements Step {
+	New() {}
+
+	method : public : Down(n : Int) ~ Int {
+		if(n <= 0) {
+			return 0;
+		};
+		# non-tail: the addition after the call keeps the frame
+		return Down(n - 1) + 1;
+	}
+}
+
+class Parser {
+	@text : String;
+	@pos : Int;
+
+	New(text : String) {
+		@text := text;
+		@pos := 0;
+	}
+
+	# expr := '(' expr ')' | 'x'; the nesting depth of the expression
+	method : public : Expr() ~ Int {
+		c := @text->Get(@pos);
+		if(c = '(') {
+			@pos += 1;
+			inner := Expr();
+			if(@text->Get(@pos) <> ')') {
+				return -1;
+			};
+			@pos += 1;
+			return inner + 1;
+		};
+
+		@pos += 1;
+		return 0;
+	}
+
+	function : Nested(depth : Int) ~ String {
+		text := String->New();
+		for(i := 0; i < depth; i += 1;) {
+			text->Append('(');
+		};
+		text->Append('x');
+		for(i := 0; i < depth; i += 1;) {
+			text->Append(')');
+		};
+		return text;
+	}
+}
+
+interface Arg {
+	method : virtual : public : Run() ~ Int;
+}
+
+class ManOrBoy {
+	New() {}
+
+	function : A(mb : ManOrBoy, k : Int, x1 : Arg, x2 : Arg, x3 : Arg, x4 : Arg, x5 : Arg) ~ Int {
+		if(k <= 0) {
+			return x4->Run() + x5->Run();
+		};
+
+		return Base->New(mb, k, x1, x2, x3, x4) implements Arg {
+			@mb : ManOrBoy; @k : Int; @x1 : Arg; @x2 : Arg; @x3 : Arg; @x4 : Arg; @m : Int;
+
+			New(mb : ManOrBoy, k : Int, x1 : Arg, x2 : Arg, x3 : Arg, x4 : Arg) {
+				@mb := mb; @k := k; @x1 := x1; @x2 := x2; @x3 := x3; @x4 := x4; @m := @k;
+			}
+
+			method : public : Run() ~ Int {
+				@m -= 1;
+				return @mb->A(@mb, @m, @self, @x1, @x2, @x3, @x4);
+			}
+		}->Run();
+	}
+
+	function : C(i : Int) ~ Arg {
+		return Base->New(i) implements Arg {
+			@i : Int;
+			New(i : Int) {
+				@i := i;
+			}
+
+			method : public : Run() ~ Int {
+				return @i;
+			}
+		};
+	}
+}
+
+class DeepWorker from Thread {
+	@sum : Int;
+	@nested : Int;
+
+	New() {
+		Parent("deep-worker");
+		@sum := -1;
+		@nested := -1;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		@sum := CoreCallDepth->Sum(5000);
+		@nested := Parser->New(Parser->Nested(10000))->Expr();
+	}
+
+	method : public : GetSum() ~ Int {
+		return @sum;
+	}
+
+	method : public : GetNested() ~ Int {
+		return @nested;
+	}
+}
+
+class CoreCallDepth {
+	function : Sum(n : Int) ~ Int {
+		if(n <= 0) {
+			return 0;
+		};
+		return Sum(n - 1) + n;
+	}
+
+	function : IsEven(n : Int) ~ Bool {
+		if(n = 0) {
+			return true;
+		};
+		return IsOdd(n - 1) & true;
+	}
+
+	function : IsOdd(n : Int) ~ Bool {
+		if(n = 0) {
+			return false;
+		};
+		return IsEven(n - 1) & true;
+	}
+
+	# each level calls through a function value (DYN_MTHD_CALL)
+	function : ViaRef(n : Int) ~ Int {
+		if(n <= 0) {
+			return 0;
+		};
+		f := ViaRef(Int) ~ Int;
+		return f(n - 1) + 1;
+	}
+
+	function : Ack(m : Int, n : Int) ~ Int {
+		if(m = 0) {
+			return n + 1;
+		};
+		if(n = 0) {
+			return Ack(m - 1, 1);
+		};
+		return Ack(m - 1, Ack(m, n - 1));
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		ok := Check("Sum(5000), 5,000 frames", Sum(5000) = 12502500) & ok;
+		ok := Check("a parser over 10,000 nested parentheses", Parser->New(Parser->Nested(10000))->Expr() = 10000) & ok;
+		ok := Check("mutual recursion, 6,000 frames", IsEven(6000)) & ok;
+
+		step : Step := Stepper->New();
+		ok := Check("a virtual call, 5,000 frames", step->Down(5000) = 5000) & ok;
+		ok := Check("a call through a function value, 5,000 frames", ViaRef(5000) = 5000) & ok;
+		# depth 2n + 3
+		ok := Check("Ackermann(2, 1000)", Ack(2, 1000) = 2003) & ok;
+
+		mb := ManOrBoy->New();
+		ok := Check("Man or boy, k = 10", mb->A(mb, 10, ManOrBoy->C(1), ManOrBoy->C(-1), ManOrBoy->C(-1), ManOrBoy->C(1), ManOrBoy->C(0)) = -67) & ok;
+
+		worker := DeepWorker->New();
+		worker->Execute(Nil);
+		worker->Join();
+		ok := Check("Sum(5000) in a spawned thread", worker->GetSum() = 12502500) & ok;
+		ok := Check("the 10,000-deep parser in a spawned thread", worker->GetNested() = 10000) & ok;
+
+		max := Runtime->GetProperty("runtime.call.depth_max");
+		ok := Check("runtime.call.depth_max is the default, 16384 (got {$max})", max->Equals("16384")) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Check(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}

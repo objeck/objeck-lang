@@ -145,6 +145,27 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     reads the screen buffer of a console it creates, so it needs a session
     that can create one; it reports a skip when it cannot.
 
+ 16. The call depth. --call-depth (and OBJECK_CALL_DEPTH) sets how deep calls
+    may nest, from 256 to 1048576 (default 16384); 255, 1048577, 0 and 'deep'
+    are refused with a message naming the range, and the flag wins over a bad
+    variable. With --call-depth=300, vm_call_depth_limit.obs recursing 290
+    frames deep prints "reached 290 of 300" and 310 frames ends with exactly
+    ">>> call stack bounds have been exceeded! <<<" and exit status 1 -- not a
+    signal -- under --jit=off, the default and --jit=1. The default maximum
+    holds 10,000 frames on a spawned thread in all three modes, and 16,000
+    interpreted (a POSIX thread's 8 MB native stack ends compiled recursion
+    near 12,000 small frames, with the same error), and ends a runaway
+    (20,000) with the same line and status 1; the listing names the innermost
+    and outermost frames and counts the rest rather than printing 20,000
+    lines. --call-depth=100000 lets a spawned thread recurse 60,000 frames,
+    compiled or not: its native stack is sized for the larger maximum. And
+    the collector works through a deep stack: with --nursery=256k and the
+    heap verifier on, 10,000 frames each hold an object across dozens of
+    minor collections and every object is intact afterwards, in all three
+    modes. A
+    v2026.10.1 obr fails all of this: its call stack was a fixed 256 frames,
+    and it does not know the flag.
+
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only]
 
 --unicode-only runs sections 14, 15 and 16 alone: how a MinGW (MSYS2) build of the
@@ -283,7 +304,11 @@ def main():
                          ("--jit=9223372036854775808", b"expected 'off' or a positive call count"),
                          ("--jit=99999999999999999999", b"expected 'off' or a positive call count"),
                          ("--gc-threshold=18446744073709551617", b"expected <number>(k|m|g)"),
-                         ("--gc-threshold=99999999999g", b"expected <number>(k|m|g)")):
+                         ("--gc-threshold=99999999999g", b"expected <number>(k|m|g)"),
+                         ("--call-depth=255", b"--call-depth: expected a number of frames from 256 to 1048576"),
+                         ("--call-depth=1048577", b"--call-depth: expected a number of frames from 256 to 1048576"),
+                         ("--call-depth=0", b"--call-depth: expected a number of frames from 256 to 1048576"),
+                         ("--call-depth=deep", b"--call-depth: expected a number of frames from 256 to 1048576")):
         rc, out, err = run([obr, flag, obe], env=env, cwd=bin_dir)
         check(f"{flag} is refused with a message naming what was expected",
               rc != 0 and expect in err, f"rc={rc} stderr={err.decode(errors='replace')[-200:]!r}")
@@ -297,7 +322,7 @@ def main():
     rc, out, err = run([obr], env=env, cwd=bin_dir)
     usage = (out + err).decode(errors="replace")
     check("no-argument usage exits non-zero", rc != 0, f"rc={rc}")
-    for needle in ("--gc-threshold=<size>", "<number>(k|m|g)", "--nursery=<size>", "--jit=off|<calls>",
+    for needle in ("--gc-threshold=<size>", "<number>(k|m|g)", "--nursery=<size>", "--call-depth=<frames>", "--jit=off|<calls>",
                    "--lib-path=<dir>", "--objeck-stdio=binary|utf16|utf8"):
         check(f"usage states valid values: {needle}", needle in usage, usage[:400])
 
@@ -435,6 +460,8 @@ def main():
     check_trace_signatures(obc, obr, env, bin_dir)
 
     check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base)
+
+    check_call_depth(obc, obr, env, bin_dir)
 
     # ---- 11. the heap verifier (OBJECK_GC_VERIFY) ----------------------------------
     verify_section(obc, obr, env, bin_dir)
@@ -954,6 +981,85 @@ def check_trace_signatures(obc, obr, env, bin_dir):
                   rc != 0 and b"after" not in out and "Unwinding local stack" in text
                   and names == TRACE_EXPECTED_NAMES,
                   f"rc={rc} names={names!r}")
+
+
+CALL_DEPTH_LINE = ">>> call stack bounds have been exceeded! <<<"
+
+
+def check_call_depth(obc, obr, env, bin_dir):
+    # ---- 16. the call depth ---------------------------------------------------------
+    src = os.path.join(SCRIPT_DIR, "vm_call_depth_limit.obs")
+    dest = os.path.join(SCRIPT_DIR, "vm_call_depth_limit.obe")
+    rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+    check("call-depth fixture compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+    if rc != 0:
+        return
+
+    modes = (("jit=off", ["--jit=off"]), ("default", []), ("jit=1", ["--jit=1"]))
+
+    def exceeded(rc, out, err, label, what):
+        text = err.decode(errors="replace")
+        lines = [l.strip() for l in text.splitlines() if "call stack bounds" in l]
+        detail = f"rc={rc} lines={lines!r} out={out[-120:]!r} stderr={text[-300:]!r}"
+        check(f"{what} ends with the call-stack line ({label})", lines == [CALL_DEPTH_LINE] and b"reached" not in out, detail)
+        check(f"{what} exits 1, not by a signal ({label})", rc == 1, detail)
+        return text
+
+    # the flag, and the variable, set the maximum
+    bad_env = dict(env)
+    bad_env["OBJECK_CALL_DEPTH"] = "deep"
+    set_env = dict(env)
+    set_env["OBJECK_CALL_DEPTH"] = "300"
+    for label, flags in modes:
+        rc, out, err = run([obr, "--call-depth=300"] + flags + [dest, "290"], env=env, cwd=bin_dir)
+        check(f"--call-depth=300 runs a 290-frame recursion ({label})",
+              rc == 0 and b"reached 290 of 300" in out, f"rc={rc} out={out[-120:]!r} stderr={err[-300:]!r}")
+        rc, out, err = run([obr, "--call-depth=300"] + flags + [dest, "310"], env=env, cwd=bin_dir)
+        exceeded(rc, out, err, label, "--call-depth=300: a 310-frame recursion")
+        rc, out, err = run([obr] + flags + [dest, "290"], env=set_env, cwd=bin_dir)
+        check(f"OBJECK_CALL_DEPTH=300 sets the maximum ({label})",
+              rc == 0 and b"reached 290 of 300" in out, f"rc={rc} out={out[-120:]!r} stderr={err[-300:]!r}")
+        rc, out, err = run([obr] + flags + [dest, "310"], env=set_env, cwd=bin_dir)
+        exceeded(rc, out, err, label, "OBJECK_CALL_DEPTH=300: a 310-frame recursion")
+
+    rc, out, err = run([obr, dest, "10"], env=bad_env, cwd=bin_dir)
+    check("OBJECK_CALL_DEPTH=deep is refused with a message naming the range",
+          rc != 0 and b"OBJECK_CALL_DEPTH: expected a number of frames from 256 to 1048576" in err,
+          f"rc={rc} stderr={err[-200:]!r}")
+    rc, out, err = run([obr, "--call-depth=300", dest, "10"], env=bad_env, cwd=bin_dir)
+    check("--call-depth wins over OBJECK_CALL_DEPTH (a bad variable is not read when the flag is given)",
+          rc == 0 and b"reached 10 of 300" in out, f"rc={rc} stderr={err[-200:]!r}")
+
+    # the default maximum: deep enough for real recursion, and enforced
+    for label, flags in modes:
+        rc, out, err = run([obr] + flags + [dest, "10000", "thread"], env=env, cwd=bin_dir)
+        check(f"the default maximum holds a 10,000-frame recursion in a spawned thread ({label})",
+              rc == 0 and b"reached 10000 of 16384" in out, f"rc={rc} out={out[-120:]!r} stderr={err[-300:]!r}")
+        rc, out, err = run([obr] + flags + [dest, "20000"], env=env, cwd=bin_dir)
+        text = exceeded(rc, out, err, label, "a 20,000-frame recursion at the default maximum")
+        unwind = [l for l in text.splitlines() if "method: pos=" in l]
+        check(f"its listing shows the ends of the stack and counts the rest ({label})",
+              0 < len(unwind) <= 50 and "frame(s) not shown" in text, f"{len(unwind)} frame lines: {text[-400:]!r}")
+
+    rc, out, err = run([obr, "--jit=off", dest, "16000"], env=env, cwd=bin_dir)
+    check("the default maximum holds a 16,000-frame interpreted recursion",
+          rc == 0 and b"reached 16000 of 16384" in out, f"rc={rc} out={out[-120:]!r} stderr={err[-300:]!r}")
+
+    # the collector marks and relocates what 10,000 frames hold
+    verify_env = dict(env)
+    verify_env["OBJECK_GC_VERIFY"] = "1"
+    for label, flags in modes:
+        rc, out, err = run([obr, "--nursery=256k"] + flags + [dest, "hold", "10000"], env=verify_env, cwd=bin_dir)
+        m = re.search(rb"held (\d+) of 10000 intact after (\d+) minor", out)
+        check(f"10,000 frames holding objects survive minor collections under the heap verifier ({label})",
+              rc == 0 and m is not None and m.group(1) == b"10001" and int(m.group(2)) > 0,
+              f"rc={rc} out={out[-160:]!r} stderr={err[-300:]!r}")
+
+    # a larger maximum: a spawned thread's native stack is sized for it
+    for label, flags in modes:
+        rc, out, err = run([obr, "--call-depth=100000"] + flags + [dest, "60000", "thread"], env=env, cwd=bin_dir)
+        check(f"--call-depth=100000 runs a 60,000-frame recursion in a spawned thread ({label})",
+              rc == 0 and b"reached 60000 of 100000" in out, f"rc={rc} out={out[-120:]!r} stderr={err[-300:]!r}")
 
 
 def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):

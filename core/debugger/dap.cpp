@@ -748,10 +748,37 @@ void DapAdapter::HandleStackTrace(int request_seq, const json& args)
 
   json frames = json::array();
 
+  // The request may ask for a window of the stack: startFrame frames from the
+  // top are skipped and at most levels returned (0 or absent: all of them).
+  // A call stack is up to --call-depth frames deep (16384 by default, 256
+  // before), and a client asks for the top 20 first and pages on demand.
+  // totalFrames always counts every frame, so the client knows there is more.
+  long start_frame = 0;
+  long levels = 0;
+  if(args.is_object()) {
+    if(args.contains("startFrame") && args["startFrame"].is_number_integer()) {
+      start_frame = (long)args["startFrame"].get<int64_t>();
+    }
+    if(args.contains("levels") && args["levels"].is_number_integer()) {
+      levels = (long)args["levels"].get<int64_t>();
+    }
+  }
+  if(start_frame < 0) {
+    start_frame = 0;
+  }
+  if(levels < 0) {
+    levels = 0;
+  }
+  long total_frames = 0;
+  // whether the frame at this index (0 = the top) is in the requested window
+  auto in_window = [&](long index) {
+    return index >= start_frame && (levels == 0 || index < start_frame + levels);
+  };
+
   if(is_stopped && stopped_frame) {
     // Current frame
     StackMethod* method = stopped_frame->method;
-    if(method && method->GetClass()) {
+    if(method && method->GetClass() && in_window(total_frames++)) {
       json frame;
       frame["id"] = (int)stopped_call_stack_pos;
       frame["name"] = UnicodeToBytes(debugger->PrintMethodPublic(method));
@@ -775,7 +802,7 @@ void DapAdapter::HandleStackTrace(int request_seq, const json& args)
     long pos = stopped_call_stack_pos;
     while(pos--) {
       StackMethod* method = stopped_call_stack[pos]->method;
-      if(method && method->GetClass()) {
+      if(method && method->GetClass() && in_window(total_frames++)) {
         json frame;
         frame["id"] = (int)pos;
         frame["name"] = UnicodeToBytes(debugger->PrintMethodPublic(method));
@@ -806,7 +833,7 @@ void DapAdapter::HandleStackTrace(int request_seq, const json& args)
 
   json body;
   body["stackFrames"] = frames;
-  body["totalFrames"] = (int)frames.size();
+  body["totalFrames"] = (int)total_frames;
   SendResponse(request_seq, "stackTrace", body);
 }
 

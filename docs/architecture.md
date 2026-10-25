@@ -375,8 +375,44 @@ graph TB
 - **Platform-Specific JIT:** Separate compilers for ARM64/x64
 - **Efficient Memory:** O(1) object lookups, generational GC
 
+### Call Depth
+
+Each VM thread has its own call stack: an array of frame pointers, with the operand stack
+beside it (`core/vm/call_stack.h`). Calls may nest **16,384 frames** deep by default;
+`obr --call-depth=<frames>` (or `OBJECK_CALL_DEPTH`) sets it, from 256 to 1,048,576. Until
+2026-10 the limit was a fixed 256 frames, which the Rosetta "Man or boy" test (647 frames at
+k=10) and a recursive-descent parser on input nested a few hundred deep both exceeded.
+
+- **Reserved, then committed as it deepens.** A thread reserves address space for the maximum
+  -- 8 bytes a frame, and 8 operand-stack words a frame -- and commits it as the stack grows,
+  so an idle thread holds a page of frame array and 32 KB of operand stack, not the maximum.
+  Measured on Windows x64 with 1,000 threads: the working set per thread is unchanged (94 KB
+  idle). Frames themselves come from a per-thread pool, as before.
+- **The operand stack is checked.** An interpreted frame can leave values on it across a call
+  (`Sum(n - 1) + n` keeps `n`), one word a frame for plain recursion. Nothing checked it when
+  it was 768 words; each interpreted call now checks that 1,024 words are left.
+- **The native stack is checked.** A compiled frame is on the machine stack (about 520 bytes
+  for a small method on x64), and so is each interpreter a JIT bridge starts. The compiled call
+  site compares the stack pointer with the thread's floor -- its stack's lowest address plus
+  1 MB -- as well as the depth with the committed limit; the bridge and the interpreter's call
+  into compiled code test the floor too. So running out of native stack is the same
+  `call stack bounds have been exceeded` error, and recovers the same way. On Windows a thread
+  the VM starts reserves 16 MB of native stack (1 KB a frame plus 2 MB for a larger
+  `--call-depth`), and `obr.exe` and `obi.exe` reserve 32 MB for the main thread, so compiled
+  code reaches the maximum. On Linux and macOS a thread gets 8 MB (macOS's default was 512 KB),
+  more only for a `--call-depth` above the default, and the main thread has what `ulimit -s`
+  gives it, typically 8 MB: about 12,000 small compiled frames, so there a compiled recursion
+  stops before the maximum -- with the same error. Bigger POSIX stacks are not free: where
+  transparent huge pages are on for every mapping, 2 MB pages back thread stacks, and 100 idle
+  threads measured 48 MB resident with 8 MB stacks and 86 MB with 18 MB ones.
+- **Full is a recoverable error.** At the maximum, the error is a `RuntimeError` that `try`/`on`
+  and `?->` recover from, compiled or interpreted (`core_call_depth_max.obs`). Unhandled, the
+  listing shows the innermost 40 and outermost 10 frames and counts the rest.
+- `Runtime->GetProperty("runtime.call.depth_max")` reports the maximum.
+
 **Source Files:**
 - `core/vm/interpreter.h/cpp` - Bytecode interpreter
+- `core/vm/call_stack.h` - A thread's call and operand stacks, and the depth limits
 - `core/vm/arch/jit/jit_common.h/cpp` - JIT infrastructure
 - `core/vm/arch/memory.h/cpp` - Memory management
 
@@ -1308,11 +1344,11 @@ flowchart TB
   the bridge callback that raises the cast can see it, and the callback reports a status (-5)
   that compiled code tests and carries out through its epilogue, where the interpreter already
   recovers a guard stub's status. The diagnostic is printed only when no handler is active, so
-  a recovered cast is as silent as it is in interpreted code. **Compiled recursion is still
-  fatal** and is not reachable this way: compiled frames consume the real C stack, so the
-  process dies in the OS with no frame left to return a status from -- recovering it needs a
-  stack-limit test emitted into every compiled prologue, which carries a per-call cost
-  (`docs/TRY_IN_JIT_DESIGN.md`).
+  a recovered cast is as silent as it is in interpreted code. **A full call stack is recovered
+  in compiled code too** (since 2026-10): compiled frames consume the real C stack, which used
+  to run out first and end the process in the OS. The compiled call site now tests the native
+  stack as well as the depth (two compares a call; see Call Depth in section 3), so the call
+  that would overrun it fails as a full call stack does, with no compiled frame left mid-way.
 - **`Try()` and `?->`.** `a?->b()` is `a->Try()->b()`. The compiler brackets the rest of the
   chain with `TRY_START` and `TRY_END` (`EmitTryIntrinsic`); `TRY_START` pushes a handler, with the
   operand-stack position and call-stack depth to return to, on the thread's handler stack

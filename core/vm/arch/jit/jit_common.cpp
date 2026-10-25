@@ -191,18 +191,26 @@ bool JitCompiler::CallCompiled(StackMethod* callee, const bool is_dynamic, const
     return false;
   }
 
+  // Room for the call, before anything is popped. This direct path bypasses
+  // PushFrame, so it checks what PushFrame checks -- the frame slot, committing
+  // more of the call stack below the maximum -- and the native stack the
+  // compiled callee runs on (call_stack.h). It used to print and exit on a full
+  // call stack. Now it declines, and the interpreter the bridge starts for a
+  // declined call re-executes the call: its PushFrame fails at the maximum, or
+  // its call into compiled code finds the native stack low, and either one
+  // reports the full call stack or recovers into a Try() as every other
+  // runtime error does (#900).
+  Runtime::CallStack* stack = Runtime::CallStack::FromPos(call_stack_pos);
+  if((*call_stack_pos) >= stack->depth_limit && !stack->Grow(*stack_pos)) {
+    return false;
+  }
+  if(stack->NativeStackLow()) {
+    return false;
+  }
+
   if(is_dynamic) { --(*stack_pos); }   // discard func-ref word; instance below
   // Pop instance from op_stack (same as ProcessMethodCall)
   size_t* callee_inst = (size_t*)op_stack[--(*stack_pos)];
-
-  // Bounds-check the call stack before writing the slot. This direct path
-  // bypasses PushFrame, which is the only place the interpreter enforces the
-  // CALL_STACK_SIZE limit -- without this, recursion deeper than 256 frames
-  // through JIT-compiled methods overruns the fixed call_stack[] buffer.
-  if((*call_stack_pos) >= CALL_STACK_SIZE) {
-    std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
-    VmExit(1);
-  }
 
   // Get a stack frame for the callee and register it on the call stack
   // so the GC can find and fixup pointers during young-gen promotion.

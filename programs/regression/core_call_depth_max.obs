@@ -1,0 +1,168 @@
+#~
+The maximum call depth is enforced: a runaway recursion reaches it and stops
+with "call stack bounds have been exceeded", a RuntimeError a try block or a
+'?->' chain recovers from -- compiled or interpreted -- and never a crash.
+
+Compiled frames live on the native stack, which can end before the maximum (a
+POSIX main thread has what `ulimit -s` gives it). The compiled call site tests
+the native stack too, so that end is the same error. It was not: under the JIT
+a recursion this deep overran the native stack and the process died in the OS
+(0xC00000FD, SIGSEGV), and a compiled call that found the frame array full
+printed the message and exited even inside a try block. try_recovers_depth.obs
+and bad_runtime_stack.obs ran interpreted only because of it.
+
+After each recovery the call stack is usable again at full depth. The same runs
+in a spawned thread. The guarded method itself holds the try region, so it stays
+interpreted while the recursion below it is compiled -- the shape that crosses
+the JIT's bridge on the way back out.
+~#
+use System.Concurrency;
+
+class Runaway {
+	@deepest : Int;
+
+	New() {
+		@deepest := 0;
+	}
+
+	method : public : GetDeepest() ~ Int {
+		return @deepest;
+	}
+
+	# The work after the call keeps the compiler's tail-call pass from turning
+	# this into a loop, which would spin forever instead of filling the stack.
+	method : public : Down(n : Int) ~ Int {
+		if(n > @deepest) {
+			@deepest := n;
+		};
+		return Down(n + 1) + 1;
+	}
+
+	# the same runaway, returning an object, for a '?->' chain to yield Nil
+	method : public : Chain(n : Int) ~ Runaway {
+		deeper := Chain(n + 1);
+		if(deeper = Nil) {
+			return Nil;
+		};
+		return deeper;
+	}
+
+	# a bounded recursion, to show the stack works again
+	method : public : Bounded(n : Int) ~ Int {
+		if(n <= 0) {
+			return 0;
+		};
+		return Bounded(n - 1) + 1;
+	}
+}
+
+class Prober {
+	@failures : Int;
+	@where : String;
+
+	New(where : String) {
+		@failures := 0;
+		@where := where;
+	}
+
+	method : public : GetFailures() ~ Int {
+		return @failures;
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		Check(name, ok, "");
+	}
+
+	# the detail only on failure: how deep a runaway gets differs between
+	# compiled and interpreted runs, and the output must not
+	method : Check(name : String, ok : Bool, detail : String) ~ Nil {
+		where := @where;
+		if(ok) {
+			"PASS: {$name} ({$where})"->PrintLine();
+		}
+		else {
+			"FAIL: {$name} ({$where}) {$detail}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : public : Probe() ~ Nil {
+		max := Runtime->GetProperty("runtime.call.depth_max")->ToInt();
+
+		# a try block takes it as a RuntimeError
+		r := Runaway->New();
+		message := "";
+		kind_other := false;
+		try {
+			r->Down(0);
+		}
+		on(e : RuntimeError) {
+			message := e->GetMessage();
+			kind_other := Runtime->GetErrorKind() = Runtime->ErrorKind->OTHER;
+		};
+		deepest := r->GetDeepest();
+		Check("a runaway recursion ends in a RuntimeError", message->Has("call stack bounds have been exceeded"));
+		Check("its kind is OTHER", kind_other);
+		reached := "reached {$deepest} of {$max}";
+		Check("it went past 5,000 frames before it stopped", deepest > 5000, reached);
+		Check("it stopped at or before the maximum", deepest <= max, reached);
+
+		# a ?-> chain yields Nil
+		r2 := Runaway->New();
+		value := r2?->Chain(0);
+		Check("a ?-> chain over a runaway recursion yields Nil", value = Nil);
+
+		# the call stack is whole again
+		Check("after recovery a 5,000-frame recursion runs", r->Bounded(5000) = 5000);
+
+		# and it recovers more than once
+		r3 := Runaway->New();
+		again := false;
+		try {
+			r3->Down(0);
+		}
+		on(e2 : RuntimeError) {
+			again := e2->GetMessage()->Has("call stack bounds have been exceeded");
+		};
+		Check("a second runaway recursion recovers too", again);
+	}
+}
+
+class ProbeThread from Thread {
+	@failures : Int;
+
+	New() {
+		Parent("depth-probe");
+		@failures := -1;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		p := Prober->New("spawned thread");
+		p->Probe();
+		@failures := p->GetFailures();
+	}
+
+	method : public : GetFailures() ~ Int {
+		return @failures;
+	}
+}
+
+class CoreCallDepthMax {
+	function : Main(args : String[]) ~ Nil {
+		p := Prober->New("main thread");
+		p->Probe();
+		failures := p->GetFailures();
+
+		t := ProbeThread->New();
+		t->Execute(Nil);
+		t->Join();
+		if(t->GetFailures() <> 0) {
+			"FAIL: the spawned thread's probe did not pass"->PrintLine();
+			failures += 1;
+		};
+
+		if(failures > 0) {
+			Runtime->Exit(1);
+		};
+	}
+}

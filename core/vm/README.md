@@ -38,6 +38,9 @@ obr myprogram.obe arg1 arg2 arg3
 # Run with library path
 obr -lib /path/to/libs myprogram.obe
 
+# Allow deeper recursion (default 16384 frames; `obr` with no arguments lists every option)
+obr --call-depth=100000 myprogram.obe
+
 # Display version
 obr --version
 ```

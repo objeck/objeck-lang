@@ -130,12 +130,12 @@ void ObjeckLang::Execute(const std::wstring cmd_args)
   loader.Load();
 
   // initialize execution
-  size_t* op_stack = new size_t[OP_STACK_SIZE];
   size_t* stack_pos = new size_t;
   (*stack_pos) = 0;
 
-  // execute
+  // execute: the operand stack is the interpreter's (vm/call_stack.h)
   Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter(Loader::GetProgram(), 0);
+  size_t* op_stack = intpr->GetOpStack();
   Runtime::StackInterpreter::AddThread(intpr);
   intpr->Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), nullptr, false);
 
@@ -160,8 +160,7 @@ void ObjeckLang::Execute(const std::wstring cmd_args)
   delete intpr;
   intpr = nullptr;
 
-  // clean up
-  delete[] op_stack;
+  // clean up (the operand stack went with the interpreter)
   op_stack = nullptr;
 
   delete stack_pos;

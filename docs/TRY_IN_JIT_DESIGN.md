@@ -221,6 +221,17 @@ measured before being proposed. **This design covers the cast and the JIT-to-JIT
 status; it leaves compiled recursion explicitly out, and the test's opt-out note
 should keep saying so rather than being quietly reworded.**
 
+**Since done (2026-10, with the deeper call stack).** The guard went into the native
+call site rather than the prologue: `EmitNativeCall` compares the stack pointer with
+the thread's native floor (`CallStack::native_floor`, `core/vm/call_stack.h`) next to
+the depth compare it already made, and takes the slow path below it. `CallCompiled`
+and the interpreter's call into compiled code test the same floor, and decline or
+report rather than exit, so the bridge's interpreter recovers it into a `Try()` like
+any full call stack. It is two compares a call; the CLBG set and a call-bound
+Ackermann loop measured within noise. `bad_runtime_stack.obs` and
+`try_recovers_depth.obs` dropped their opt-outs, and `core_call_depth_max.obs`
+recovers from the maximum in both modes.
+
 ## Verification plan
 
 The acceptance test is flipping `try_recovers_cast_and_depth.obs`'s JIT opt-out —

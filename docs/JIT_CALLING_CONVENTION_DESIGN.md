@@ -180,6 +180,9 @@ test rax, rax                        ; a plain load is an acquire on x86, ldar o
 jz   bridge                          ; not compiled (yet): today's path, which counts
 cmp  dword [rbp+CALL_STACK_POS], CALL_STACK_SIZE
 jge  bridge                          ; the depth check the bridge does today
+                                     ; (since 2026-10: pos against the thread's committed
+                                     ; depth_limit, then rsp against its native_floor;
+                                     ; core/vm/call_stack.h)
 <args>                               ; self in RCX/RDI/X0, then the ABI's integer and
                                      ; float registers, overflow on the stack
 lea  r10, [rbp]                      ; the caller's frame as context
@@ -744,7 +747,8 @@ a callback left on the operand stack into `D0`, the AMD64 lesson. The bridge exi
 area and pops them. The entry comes from the callee's word with `ldar`, the acquire a plain x86
 load gives for free, or from the site's inline cache: the shared `JitVirtualSite` records, keyed
 by the receiver's class word (after a `Nil` and object-header check) or the func-ref word, and
-filled by the shared resolvers on a miss. Then the depth check against `CALL_STACK_SIZE`, `X0`-`X2`,
+filled by the shared resolvers on a miss. Then the depth check (since 2026-10: against the thread's
+committed `depth_limit`, then `cmp sp, x12` against its `native_floor`; `core/vm/call_stack.h`), `X0`-`X2`,
 `blr` with `LR` kept by `call_reg`, and `tbnz x0, #63` to a `b.al` that leaves through the
 teardown with the status in `X0` (#925 gap 3). `tbnz` tests the sign bit, so it is immune to
 the 32-bit `long` trap that bit the bridge test. The slow path copies the area onto
