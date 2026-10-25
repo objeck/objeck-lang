@@ -402,6 +402,16 @@ extern "C" {
       APITools_Parked parked(context);
       status = SQLExecDirect(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
     }
+    // An UPDATE or DELETE that matches no row comes back as SQL_NO_DATA, which
+    // is a count of zero, not a failure; this used to report it as -1. Nor may
+    // SQLRowCount follow it: iODBC leaves the statement in its prepared state
+    // after SQL_NO_DATA and refuses SQLRowCount with HY010.
+    if(status == SQL_NO_DATA) {
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
       SQLFreeStmt(stmt, SQL_UNBIND);
@@ -868,7 +878,16 @@ extern "C" {
       status = SQL_NEED_DATA;
     }
 
-    if(SQL_FAIL && status != SQL_NO_DATA) {
+    // No row matched: a count of zero. Not followed by SQLRowCount, which iODBC
+    // refuses (HY010) once SQL_NO_DATA has put the statement back in its
+    // prepared state; the Windows and unixODBC driver managers allowed it,
+    // which is why this only ever failed on macOS.
+    if(status == SQL_NO_DATA) {
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    if(SQL_FAIL) {
       APITools_SetIntValue(context, 0, -1);
       return;
     }

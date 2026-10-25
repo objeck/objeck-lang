@@ -1,6 +1,8 @@
 #~
 # ODBC SQLite Integration Test
-# Tests live database operations against an in-memory SQLite database.
+# Tests live database operations against an in-memory SQLite database:
+# DDL, SELECT, parameterized INSERT, NULLs, transactions, GetColumns, and
+# an UPDATE/DELETE that matches no row reporting 0 rather than -1.
 # Requires the SQLite3 ODBC Driver to be installed.
 # EXTRA_LIBS: odbc
 ~#
@@ -181,6 +183,21 @@ class OdbcSqliteTest {
             passed := false;
         };
         rs4->Close();
+
+        # --- An UPDATE or DELETE that matches no row ---
+        # The driver answers SQL_NO_DATA, which is a count of zero, not a
+        # failure. Connection->Update reported it as -1 on every platform, and
+        # ParameterStatement->Update asked SQLRowCount afterwards, which iODBC
+        # (macOS) refuses with HY010.
+        none := conn->Update("UPDATE people SET note = 'nobody' WHERE id = 999");
+        none_deleted := conn->Update("DELETE FROM people WHERE id = 999");
+        if(none = 0 & none_deleted = 0) {
+            "PASS: zero-row UPDATE and DELETE report 0"->PrintLine();
+        }
+        else {
+            "FAIL: zero-row UPDATE/DELETE reported {$none}/{$none_deleted}, expected 0"->PrintLine();
+            passed := false;
+        };
 
         # --- GetColumns ---
         cols := conn->GetColumns("people");

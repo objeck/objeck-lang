@@ -208,16 +208,16 @@ IODBC_SRC="$WORK/libiodbc-$IODBC_VERSION"
   run iodbc.configure env "${AUTOTOOLS_ENV[@]}" libltdl_cv_need_uscore=no \
 	./configure --prefix="$STAGE/iodbc" \
 	--disable-shared --enable-static --disable-gui --disable-libodbc
+  # configure writes its verdict to include/config.h; refuse to build a driver
+  # manager that would look drivers' entry points up with the underscore.
+  if grep -q '^#define NEED_USCORE' include/config.h; then
+	echo "ERROR: libiodbc's configure defined NEED_USCORE; the driver manager could load no ODBC driver" >&2
+	exit 1
+  fi
+  grep -q 'HAVE_LIBDL 1' include/config.h || { echo "ERROR: libiodbc's configure did not find dlopen (HAVE_LIBDL)" >&2; exit 1; }
   run iodbc.build make -j"$JOBS"
   run iodbc.install make install )
 rm -rf "$STAGE/iodbc/bin" "$STAGE/iodbc/share"
-# The symbol table the driver manager resolves drivers through must hold the
-# plain names; an underscored one means the configure test above went wrong again.
-if strings "$STAGE/iodbc/lib/libiodbc.a" | grep -q '^_SQLAllocHandle$'; then
-	echo "ERROR: libiodbc.a looks driver entry points up with a leading underscore (NEED_USCORE); no ODBC driver could load" >&2
-	exit 1
-fi
-strings "$STAGE/iodbc/lib/libiodbc.a" | grep -q '^SQLAllocHandle$' || { echo "ERROR: libiodbc.a has no driver entry-point table" >&2; exit 1; }
 licenses iodbc "$IODBC_SRC" LICENSE LICENSE.BSD LICENSE.LGPL
 
 # ---- LAME -------------------------------------------------------------------------
