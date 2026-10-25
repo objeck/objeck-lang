@@ -1,0 +1,311 @@
+#~
+# A client socket that fails says why, and keeps saying it
+#
+# TCPSocket->GetLastError() read the live OS error (WSAGetLastError(), errno)
+# when it was called, not the error of the connect that failed. A connect
+# tries each address a name resolves to and closes the socket after each
+# failed attempt; on Windows a successful closesocket() resets the error to
+# 0, so a refused connect reported Nil. A read, a write or a UDP socket that
+# failed was no better, and nothing cleared the error when a later call
+# worked. The TLS client said "the connection failed" without the reason,
+# and reading from a TLS or DTLS socket whose connect had failed crashed.
+#
+# Now each socket call records its own failure as it happens, per thread:
+# cleared when the next call on that thread starts, Nil when it worked, and
+# kept past the cleanup that follows a failure (closing the socket included).
+#
+# Ports: a server takes a random port and closes it again, so the port is
+# known to be free a moment later (nothing listens on it: refused).
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO.Net;
+
+class FailingClient from Thread {
+	@address : String;
+	@port : Int;
+	@error : String;
+
+	New(name : String, address : String, port : Int) {
+		Parent(name);
+		@address := address;
+		@port := port;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		socket := TCPSocket->New(@address, @port);
+		socket->Close();
+		# long enough for the other thread to fail in the meantime
+		Thread->Sleep(1500);
+		@error := TCPSocket->GetLastError();
+	}
+
+	method : public : GetError() ~ String {
+		return @error;
+	}
+}
+
+class ClientSocketErrors {
+	@failed : static : Int;
+	@server_port : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+
+		free_port := FreePort();
+		if(free_port = 0) {
+			"FAIL: no free port to test with"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"stage: tcp connect"->ErrorLine();
+		CheckConnect(free_port);
+		"stage: tcp read"->ErrorLine();
+		CheckRead();
+		"stage: threads"->ErrorLine();
+		CheckThreads(free_port);
+		"stage: udp"->ErrorLine();
+		CheckUdp(free_port);
+		"stage: tls"->ErrorLine();
+		CheckTls(free_port);
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} client socket error check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: client socket failures are reported and kept"->PrintLine();
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : Has(text : String, part : String) ~ Bool {
+		if(text = Nil) {
+			return false;
+		};
+		return text->ToLower()->Has(part->ToLower());
+	}
+
+	# a reason, not a report of success
+	function : IsReason(text : String) ~ Bool {
+		return text <> Nil & text->Size() > 0 & <>Has(text, "success");
+	}
+
+	# a port that was just bound, listened on and released
+	function : FreePort() ~ Int {
+		for(tries := 0; tries < 20; tries += 1;) {
+			port := Int->Random(20000, 31998);
+			server := TCPSocketServer->New(port);
+			listening := server->Listen(4);
+			server->Close();
+			if(listening) {
+				return port;
+			};
+		};
+		return 0;
+	}
+
+	# a server bound to 127.0.0.1 only, listening, on a random port
+	function : StartServer() ~ TCPSocketServer {
+		for(tries := 0; tries < 20; tries += 1;) {
+			port := Int->Random(20000, 31998);
+			server := TCPSocketServer->New("127.0.0.1", port);
+			if(server->Listen(4)) {
+				@server_port := port;
+				return server;
+			};
+			server->Close();
+		};
+		return Nil;
+	}
+
+	function : CheckConnect(port : Int) ~ Nil {
+		# refused, over IPv4
+		socket := TCPSocket->New("127.0.0.1", port);
+		Check("refused: the connect fails", <>socket->IsOpen());
+		reason := TCPSocket->GetLastError();
+		Check("refused: GetLastError names the refusal ('{$reason}')", Has(reason, "refused"));
+		socket->Close();
+		after := TCPSocket->GetLastError();
+		Check("refused: the reason survives Close() ('{$after}')", after <> Nil & reason <> Nil & after->Equals(reason));
+
+		# "localhost" is tried at each address it resolves to (::1 and
+		# 127.0.0.1 where both exist), and each attempt is closed before the
+		# next; the reason is still the refusal
+		socket := TCPSocket->New("localhost", port);
+		Check("localhost refused: the connect fails", <>socket->IsOpen());
+		reason := TCPSocket->GetLastError();
+		Check("localhost refused: GetLastError names the refusal ('{$reason}')", Has(reason, "refused"));
+		socket->Close();
+
+		# the same through the connect timeout path, with time to spare
+		socket := TCPSocket->New("127.0.0.1", port, 10000);
+		Check("refused with a timeout: the connect fails", <>socket->IsOpen());
+		reason := TCPSocket->GetLastError();
+		Check("refused with a timeout: GetLastError names the refusal ('{$reason}')", Has(reason, "refused"));
+		socket->Close();
+
+		# TEST-NET-1 (RFC 5737) is nobody's address: the attempt times out, or
+		# the network says it cannot get there -- either way, a reason
+		socket := TCPSocket->New("192.0.2.1", port, 300);
+		Check("TEST-NET with a timeout: the connect fails", <>socket->IsOpen());
+		reason := TCPSocket->GetLastError();
+		Check("TEST-NET with a timeout: GetLastError says why ('{$reason}')", IsReason(reason));
+		socket->Close();
+
+		# a name that cannot resolve (RFC 6761 reserves .invalid)
+		socket := TCPSocket->New("no-such-host.invalid", port);
+		Check("unresolvable: the connect fails", <>socket->IsOpen());
+		reason := TCPSocket->GetLastError();
+		Check("unresolvable: GetLastError says why ('{$reason}')", IsReason(reason) & <>Has(reason, "refused"));
+		socket->Close();
+
+		socket := TCPSocket->New("no-such-host.invalid", port, 2000);
+		reason := TCPSocket->GetLastError();
+		Check("unresolvable with a timeout: GetLastError says why ('{$reason}')", <>socket->IsOpen() & IsReason(reason));
+		socket->Close();
+
+		# no address at all
+		socket := TCPSocket->New(Nil, port);
+		Check("Nil address: the socket is not open", <>socket->IsOpen());
+		reason := TCPSocket->GetLastError();
+		Check("Nil address: GetLastError says why ('{$reason}')", IsReason(reason));
+		socket->Close();
+
+		# a connect that works clears the last failure -- including one that
+		# reaches its server at a later address than the first ("localhost"
+		# lists ::1 first on some systems; this server is on 127.0.0.1 only)
+		server := StartServer();
+		Check("a server listens on 127.0.0.1", server <> Nil);
+		if(server <> Nil) {
+			socket := TCPSocket->New("localhost", @server_port);
+			Check("a later address connects", socket->IsOpen());
+			reason := TCPSocket->GetLastError();
+			Check("a connect that works clears the error ('{$reason}')", reason = Nil);
+			socket->Close();
+			server->Close();
+		};
+	}
+
+	function : CheckRead() ~ Nil {
+		server := StartServer();
+		Check("read: a server listens", server <> Nil);
+		if(server = Nil) {
+			return;
+		};
+
+		client := TCPSocket->New("127.0.0.1", @server_port);
+		connection := server->Accept();
+		Check("read: the client connects", client->IsOpen() & connection <> Nil);
+		if(connection = Nil) {
+			client->Close();
+			server->Close();
+			return;
+		};
+
+		# nothing is sent: the read times out, and says so
+		client->SetRecvTimeout(300);
+		buffer := Byte->New[16];
+		read := client->ReadBuffer(0, buffer->Size(), buffer);
+		Check("read: a read that times out fails ({$read})", read < 0);
+		reason := TCPSocket->GetLastError();
+		Check("read: GetLastError says why the read failed ('{$reason}')", IsReason(reason));
+
+		# a read that works clears it
+		connection->WriteString("hello\n");
+		line := client->ReadLine();
+		Check("read: the next read works ('{$line}')", line <> Nil & line->Equals("hello"));
+		reason := TCPSocket->GetLastError();
+		Check("read: a read that works clears the error ('{$reason}')", reason = Nil);
+
+		# and so does a write
+		Check("read: a write works", client->WriteBuffer("bye\n"->ToByteArray()) = 4);
+		reason := TCPSocket->GetLastError();
+		Check("read: a write that works leaves no error ('{$reason}')", reason = Nil);
+
+		connection->Close();
+		client->Close();
+		server->Close();
+	}
+
+	function : CheckThreads(port : Int) ~ Nil {
+		# this thread's last call worked
+		server := StartServer();
+		if(server <> Nil) {
+			socket := TCPSocket->New("127.0.0.1", @server_port);
+			socket->Close();
+			server->Close();
+		};
+		Check("threads: this thread starts with no error", TCPSocket->GetLastError() = Nil);
+
+		refused := FailingClient->New("refused-client", "127.0.0.1", port);
+		unresolved := FailingClient->New("unresolved-client", "no-such-host.invalid", port);
+		refused->Execute(Nil);
+		unresolved->Execute(Nil);
+		refused->Join();
+		unresolved->Join();
+
+		reason := refused->GetError();
+		Check("threads: the refused thread sees its refusal ('{$reason}')", Has(reason, "refused"));
+		reason := unresolved->GetError();
+		Check("threads: the unresolved thread sees its own failure ('{$reason}')", IsReason(reason) & <>Has(reason, "refused"));
+		reason := TCPSocket->GetLastError();
+		Check("threads: neither failure reached this thread ('{$reason}')", reason = Nil);
+	}
+
+	function : CheckUdp(port : Int) ~ Nil {
+		socket := UDPSocket->New("not-an-address", port);
+		reason := UDPSocket->GetLastError();
+		Check("udp: an address that is not one is reported ('{$reason}')", IsReason(reason));
+		socket->Close();
+		socket->Close();
+
+		socket := UDPSocket->New("127.0.0.1", port);
+		reason := UDPSocket->GetLastError();
+		Check("udp: a socket that opens clears the error ('{$reason}')", reason = Nil);
+		Check("udp: a datagram is sent", socket->WriteBuffer("ping"->ToByteArray()) = 4);
+		reason := UDPSocket->GetLastError();
+		Check("udp: a send that works leaves no error ('{$reason}')", reason = Nil);
+		socket->Close();
+		socket->Close();
+	}
+
+	function : CheckTls(port : Int) ~ Nil {
+		socket := TCPSecureSocket->New("127.0.0.1", port);
+		Check("tls refused: the connect fails", <>socket->IsOpen());
+		reason := TCPSecureSocket->GetLastError();
+		Check("tls refused: GetLastError says the connect failed, and why ('{$reason}')", Has(reason, "NET - ") & Has(reason, "refused"));
+		# a socket that never opened reads and writes nothing, and keeps its reason
+		Check("tls refused: a read of the unopened socket is empty", socket->ReadByte() = 0);
+		buffer := Byte->New[4];
+		Check("tls refused: a buffer read of the unopened socket fails", socket->ReadBuffer(0, 4, buffer) < 0);
+		Check("tls refused: a write to the unopened socket fails", socket->WriteBuffer(buffer) < 0);
+		after := TCPSecureSocket->GetLastError();
+		Check("tls refused: the reason is kept ('{$after}')", after <> Nil & reason <> Nil & after->Equals(reason));
+		socket->Close();
+
+		socket := TCPSecureSocket->New("no-such-host.invalid", port);
+		reason := TCPSecureSocket->GetLastError();
+		Check("tls unresolvable: GetLastError says why ('{$reason}')", <>socket->IsOpen() & Has(reason, "NET - "));
+		socket->Close();
+
+		socket := TCPSecureSocket->New("", port);
+		reason := TCPSecureSocket->GetLastError();
+		Check("tls empty address: GetLastError says why ('{$reason}')", <>socket->IsOpen() & Has(reason, "NET - "));
+		socket->Close();
+
+		dtls := DTLSSocket->New("no-such-host.invalid", port);
+		reason := DTLSSocket->GetLastError();
+		Check("dtls unresolvable: GetLastError says why ('{$reason}')", <>dtls->IsOpen() & Has(reason, "NET - "));
+		Check("dtls unresolvable: a read of the unopened socket is empty", dtls->ReadByte() = 0);
+		Check("dtls unresolvable: a buffer read of the unopened socket fails", dtls->ReadBuffer(0, 4, buffer) < 0);
+		dtls->Close();
+	}
+}

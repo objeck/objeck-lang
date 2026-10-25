@@ -47,6 +47,7 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <netdb.h>
+#include <poll.h>
 #include <fcntl.h>
 #include <sys/un.h>
 #include <pwd.h>
@@ -381,34 +382,70 @@ public:
     return addresses;
   }
   
-  static SOCKET Open(const char* address, int port) {
-    SOCKET sock = -1;
-    struct addrinfo* result = nullptr, *ptr = nullptr, hints;
-    
-    bzero(&hints, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = IPPROTO_TCP;
+  //
+  // A connected client socket: each address the name resolves to is tried in
+  // turn (IPv6 and IPv4 alike), and the first that connects is returned. A
+  // timeout_ms above 0 bounds each attempt; 0 blocks. On failure returns -1
+  // with the reason in error, captured as each attempt failed: errno means
+  // nothing once the cleanup close() and the next attempt have run. When every
+  // address failed the reason is the most informative one: an attempt the
+  // network answered (refused, reset, timed out) over one that never left this
+  // host (no route, an address family it lacks), and among answers of a kind
+  // the first, the address the resolver preferred. A name that does not
+  // resolve is a resolver error. type is SOCK_STREAM or SOCK_DGRAM.
+  //
+  static SOCKET Connect(const char* address, int port, int type, int timeout_ms, SocketError& error) {
+    error = { 0, false };
 
-    std::string port_str = std::to_string(port);
-    if(getaddrinfo(address, port_str.c_str(), &hints, &result) != 0) {
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = type;
+    hints.ai_protocol = type == SOCK_DGRAM ? IPPROTO_UDP : IPPROTO_TCP;
+
+    struct addrinfo* result = nullptr;
+    const std::string port_str = std::to_string(port);
+    const int status = getaddrinfo(address, port_str.c_str(), &hints, &result);
+    if(status != 0) {
+      // the EAI_* codes are not errno values; EAI_SYSTEM means errno says why
+      if(status == EAI_SYSTEM && errno != 0) {
+        error = { errno, false };
+      }
+      else {
+        error = { status, true };
+      }
       return -1;
     }
 
-    for(ptr = result; ptr != nullptr; ptr = ptr->ai_next) {
-      sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+    SOCKET sock = -1;
+    int kept_rank = 0;
+    for(struct addrinfo* ptr = result; ptr != nullptr && sock < 0; ptr = ptr->ai_next) {
+      int attempt_error = 0;
+      sock = ConnectAttempt(ptr, timeout_ms, attempt_error);
       if(sock < 0) {
-        continue;
+        const int rank = ConnectErrorRank(attempt_error);
+        if(rank > kept_rank) {
+          kept_rank = rank;
+          error = { attempt_error, false };
+        }
       }
-      
-      if(connect(sock, ptr->ai_addr, (int)ptr->ai_addrlen) < 0) {
-        close(sock);
-        sock = -1;
-        continue;
-      }
-      break;
     }
     freeaddrinfo(result);
+
+    if(sock >= 0) {
+      // an earlier address that failed is not this connect's failure
+      error = { 0, false };
+    }
+    else if(error.code == 0) {
+      error = { EADDRNOTAVAIL, false };
+    }
+
+    return sock;
+  }
+
+  // A TCP client socket (Connect), with the default 30 second receive timeout
+  static SOCKET Open(const char* address, int port, int timeout_ms, SocketError& error) {
+    const SOCKET sock = Connect(address, port, SOCK_STREAM, timeout_ms, error);
 
     // Set default receive timeout (30 seconds)
     if(sock >= 0) {
@@ -427,7 +464,7 @@ public:
 
     return sock;
   }
-  
+
   // Closes a socket that failed to bind or listen without losing why: errno
   // is only meaningful straight after the failing call, and the caller reads
   // it after this cleanup.
@@ -509,12 +546,19 @@ public:
   // binds, else the first IPv6 one: "localhost" is 127.0.0.1 on every
   // platform, whatever order the resolver lists its addresses in. An IPv6
   // address is bound IPv6-only, so "::1" takes ::1 clients and nothing else.
-  // On failure returns -1 with the reason in errno (EADDRNOTAVAIL when the
-  // name does not resolve). A name lookup can block: the caller parks around it.
+  // On failure returns -1 with the reason in error (a name that does not
+  // resolve is a resolver error). A name lookup can block: the caller parks
+  // around it.
   //
-  static SOCKET BindAddress(const char* host, int port, int type) {
+  static SOCKET BindAddress(const char* host, int port, int type, SocketError& error) {
+    error = { 0, false };
     if(!host || !*host) {
-      return BindAny(port, type);
+      // BindAny keeps its failure in errno across its cleanup
+      const SOCKET server = BindAny(port, type);
+      if(server < 0) {
+        error = { errno, false };
+      }
+      return server;
     }
 
     struct addrinfo hints;
@@ -528,9 +572,12 @@ public:
     const std::string port_str = std::to_string(port);
     const int status = getaddrinfo(host, port_str.c_str(), &hints, &result);
     if(status != 0) {
-      // the EAI_* codes are not errno values; keep errno only for EAI_SYSTEM
-      if(status != EAI_SYSTEM || errno == 0) {
-        errno = EADDRNOTAVAIL;
+      // the EAI_* codes are not errno values; EAI_SYSTEM means errno says why
+      if(status == EAI_SYSTEM && errno != 0) {
+        error = { errno, false };
+      }
+      else {
+        error = { status, true };
       }
       return -1;
     }
@@ -577,7 +624,7 @@ public:
     freeaddrinfo(result);
 
     if(server < 0) {
-      errno = last_error;
+      error = { last_error, false };
     }
 
     return server;
@@ -648,11 +695,14 @@ public:
     return client;
   }
   
-  static int WriteByte(const char value, SOCKET sock) {
-    return static_cast<int>(send(sock, &value, 1, 0));
+  // Writes, reads: error is the call's errno, or 0 when it worked
+  static int WriteByte(const char value, SOCKET sock, int& error) {
+    const int status = static_cast<int>(send(sock, &value, 1, 0));
+    error = status < 0 ? errno : 0;
+    return status;
   }
   
-  static int WriteBytes(const char* values, int len, SOCKET sock) {
+  static int WriteBytes(const char* values, int len, SOCKET sock, int& error) {
     // send() on a blocking socket is only obliged to accept SOME of the buffer.
     // Once the kernel send buffer fills it returns a short count, and a single
     // unlooped send() drops the remainder on the floor -- no error, no retry,
@@ -664,10 +714,14 @@ public:
     // normal case for an Objeck client and an Objeck server sharing a process:
     // the reader is not scheduled while the writer runs. That is why this showed
     // up as a large in-process transfer arriving short or not at all.
+    //
+    // A failure part way still returns what was sent, with the reason in error.
+    error = 0;
     int total = 0;
     while(total < len) {
       const int status = static_cast<int>(send(sock, values + total, len - total, 0));
       if(status < 0) {
+        error = errno;
         return total > 0 ? total : -1;
       }
       if(status == 0) {
@@ -679,21 +733,26 @@ public:
     return total;
   }
   
-  static char ReadByte(SOCKET sock, int &status) {
+  static char ReadByte(SOCKET sock, int &status, int& error) {
     char value;
     status = static_cast<int>(recv(sock, &value, 1, 0));
     if(status < 0) {
+      error = errno;
       return '\0';
     }
 
+    error = 0;
     return value;
   }
-  
-  static int ReadBytes(char* values, int len, SOCKET sock) {
+
+  // a failure part way still returns what was read, with the reason in error
+  static int ReadBytes(char* values, int len, SOCKET sock, int& error) {
+    error = 0;
     int total = 0;
     while(total < len) {
       int status = static_cast<int>(recv(sock, values + total, len - total, 0));
       if(status < 0) {
+        error = errno;
         return total > 0 ? total : -1;
       }
       if(status == 0) {
@@ -747,103 +806,104 @@ public:
     return setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &bytes, sizeof(bytes)) == 0;
   }
 
-  static SOCKET OpenWithTimeout(const char* address, int port, int timeout_ms) {
-    SOCKET sock = -1;
-    struct addrinfo* result = nullptr, *ptr = nullptr, hints;
-
-    bzero(&hints, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = IPPROTO_TCP;
-
-    std::string port_str = std::to_string(port);
-    if(getaddrinfo(address, port_str.c_str(), &hints, &result) != 0) {
+private:
+  // One connect attempt to one resolved address; -1 with the reason in error
+  // when it fails, taken before the close() that cleans up.
+  static SOCKET ConnectAttempt(const struct addrinfo* addr, int timeout_ms, int& error) {
+    SOCKET sock = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
+    if(sock < 0) {
+      error = errno;
       return -1;
     }
 
-    for(ptr = result; ptr != nullptr; ptr = ptr->ai_next) {
-      sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
-      if(sock < 0) continue;
-
-      // set non-blocking. F_GETFL has to be checked as well: -1 | O_NONBLOCK is
-      // still -1, which would request every flag bit here and then be "restored"
-      // onto the socket after connect, leaving it in a state neither this function
-      // nor the caller intended.
-      const int flags = fcntl(sock, F_GETFL, 0);
-      if(flags < 0 || fcntl(sock, F_SETFL, flags | O_NONBLOCK) < 0) {
+    if(timeout_ms <= 0) {
+      if(connect(sock, addr->ai_addr, addr->ai_addrlen) < 0) {
+        error = errno;
         close(sock);
-        sock = -1;
-        continue;
+        return -1;
       }
-
-      int ret = connect(sock, ptr->ai_addr, (int)ptr->ai_addrlen);
-      if(ret == 0) {
-        // connected immediately. A failed restore leaves the socket non-blocking,
-        // so a caller expecting a blocking read gets spurious EAGAIN instead of
-        // data -- fail the attempt rather than hand back that socket.
-        if(fcntl(sock, F_SETFL, flags) < 0) {
-          close(sock);
-          sock = -1;
-          continue;
-        }
-        break;
-      }
-      if(errno != EINPROGRESS) {
-        close(sock);
-        sock = -1;
-        continue;
-      }
-
-      // wait with select
-      fd_set wset;
-      FD_ZERO(&wset);
-      FD_SET(sock, &wset);
-      struct timeval tv;
-      tv.tv_sec = timeout_ms / 1000;
-      tv.tv_usec = (timeout_ms % 1000) * 1000;
-
-      ret = select(sock + 1, nullptr, &wset, nullptr, &tv);
-      if(ret <= 0) {
-        close(sock);
-        sock = -1;
-        continue;
-      }
-
-      // check SO_ERROR. This call was unchecked too, which mattered: on failure
-      // err stays 0 and a connect that never completed reads as successful.
-      int err = 0;
-      socklen_t len = sizeof(err);
-      if(getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &len) < 0 || err != 0) {
-        close(sock);
-        sock = -1;
-        continue;
-      }
-
-      // restore blocking -- same reasoning as the immediate-connect path above
-      if(fcntl(sock, F_SETFL, flags) < 0) {
-        close(sock);
-        sock = -1;
-        continue;
-      }
-      break;
+      return sock;
     }
-    freeaddrinfo(result);
 
-    if(sock >= 0) {
-      struct timeval tv;
-      tv.tv_sec = 30;
-      tv.tv_usec = 0;
-      // Best-effort default, left non-fatal: SO_RCVTIMEO is not honored on every
-      // platform and the connection is otherwise usable. The consequence is worth
-      // knowing though -- without it a recv here can block indefinitely, so a
-      // caller that needs the guarantee should use SetReceiveTimeout, which
-      // reports failure.
-      if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
-        errno = 0;
+    // Bounded: connect without blocking, then wait up to timeout_ms. F_GETFL
+    // is checked as well: -1 | O_NONBLOCK is still -1, which would request
+    // every flag bit here and then be "restored" onto the socket after.
+    const int flags = fcntl(sock, F_GETFL, 0);
+    if(flags < 0 || fcntl(sock, F_SETFL, flags | O_NONBLOCK) < 0) {
+      error = errno;
+      close(sock);
+      return -1;
+    }
+
+    if(connect(sock, addr->ai_addr, addr->ai_addrlen) < 0) {
+      if(errno != EINPROGRESS) {
+        error = errno;
+        close(sock);
+        return -1;
       }
+
+      // poll, not select: select cannot take a descriptor at or above FD_SETSIZE
+      struct pollfd pfd;
+      pfd.fd = sock;
+      pfd.events = POLLOUT;
+      pfd.revents = 0;
+      int ready;
+      do {
+        ready = poll(&pfd, 1, timeout_ms);
+      }
+      while(ready < 0 && errno == EINTR);
+
+      if(ready == 0) {
+        error = ETIMEDOUT;
+        close(sock);
+        return -1;
+      }
+      if(ready < 0) {
+        error = errno;
+        close(sock);
+        return -1;
+      }
+
+      // SO_ERROR is the connect's outcome. Unchecked, a failing getsockopt
+      // leaves so_error at 0 and a connect that never completed reads as
+      // successful.
+      int so_error = 0;
+      socklen_t len = sizeof(so_error);
+      if(getsockopt(sock, SOL_SOCKET, SO_ERROR, &so_error, &len) < 0) {
+        error = errno;
+        close(sock);
+        return -1;
+      }
+      if(so_error != 0) {
+        error = so_error;
+        close(sock);
+        return -1;
+      }
+    }
+
+    // Back to blocking. A failed restore leaves the socket non-blocking, so a
+    // caller expecting a blocking read gets spurious EAGAIN instead of data --
+    // fail the attempt rather than hand back that socket.
+    if(fcntl(sock, F_SETFL, flags) < 0) {
+      error = errno;
+      close(sock);
+      return -1;
     }
 
     return sock;
+  }
+
+  // how much a failed attempt's reason says (see Connect)
+  static int ConnectErrorRank(int error) {
+    switch(error) {
+    case ECONNREFUSED:
+    case ECONNRESET:
+    case ETIMEDOUT:
+      return 2;
+
+    default:
+      return 1;
+    }
   }
 };
 
@@ -902,6 +962,23 @@ class IPSecureSocket {
     return cached == 1;
   }
 
+  //
+  // Connects net for mbedTLS as mbedtls_net_connect does -- each address the
+  // name resolves to, in turn -- returning 0 or the error it would return, with
+  // the OS reason in reason. mbedtls_net_connect closes each failed attempt
+  // before trying the next, and the reason does not survive it: a refused TLS
+  // connect could only say "the connection failed".
+  //
+  static int ConnectNet(mbedtls_net_context& net, const char* address, int port, int type, SocketError& reason) {
+    const SOCKET sock = IPSocket::Connect(address, port, type, 0, reason);
+    if(sock < 0) {
+      return reason.resolver ? MBEDTLS_ERR_NET_UNKNOWN_HOST : MBEDTLS_ERR_NET_CONNECT_FAILED;
+    }
+
+    net.fd = (int)sock;
+    return 0;
+  }
+
   static bool OpenH2(const char* address, int port, std::string& pem_file, SecureSocketCtx*& sctx) {
     sctx = new SecureSocketCtx();
 
@@ -915,9 +992,9 @@ class IPSecureSocket {
     ret = mbedtls_x509_crt_parse_file(&sctx->cacert, cert_path.c_str());
     if(ret < 0) { sctx->SetError(ret); delete sctx; sctx = nullptr; return false; }
 
-    std::string port_str = std::to_string(port);
-    ret = mbedtls_net_connect(&sctx->net, address, port_str.c_str(), MBEDTLS_NET_PROTO_TCP);
-    if(ret != 0) { sctx->SetError(ret); delete sctx; sctx = nullptr; return false; }
+    SocketError reason;
+    ret = ConnectNet(sctx->net, address, port, SOCK_STREAM, reason);
+    if(ret != 0) { sctx->SetError(ret, reason); delete sctx; sctx = nullptr; return false; }
 
     ret = mbedtls_ssl_config_defaults(&sctx->conf, MBEDTLS_SSL_IS_CLIENT,
                                        MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
@@ -956,6 +1033,12 @@ class IPSecureSocket {
     // Verify h2 was negotiated
     const char* alpn = mbedtls_ssl_get_alpn_protocol(&sctx->ssl);
     if(!alpn || strcmp(alpn, "h2") != 0) {
+      // the server does not speak HTTP/2; this failure was the only one unrecorded
+#ifdef MBEDTLS_ERR_SSL_NO_APPLICATION_PROTOCOL
+      sctx->SetError(MBEDTLS_ERR_SSL_NO_APPLICATION_PROTOCOL);
+#else
+      sctx->SetError(MBEDTLS_ERR_SSL_FEATURE_UNAVAILABLE);
+#endif
       delete sctx; sctx = nullptr; return false;
     }
 
@@ -996,15 +1079,17 @@ class IPSecureSocket {
     // Connect to server
     std::string addr_str = address;
     if(addr_str.size() < 1 || port < 0) {
+      // recorded: this failure alone left GetLastError() at Nil
+      sctx->SetError(MBEDTLS_ERR_NET_BAD_INPUT_DATA);
       delete sctx;
       sctx = nullptr;
       return false;
     }
 
-    std::string port_str = std::to_string(port);
-    ret = mbedtls_net_connect(&sctx->net, address, port_str.c_str(), MBEDTLS_NET_PROTO_TCP);
+    SocketError reason;
+    ret = ConnectNet(sctx->net, address, port, SOCK_STREAM, reason);
     if(ret != 0) {
-      sctx->SetError(ret);
+      sctx->SetError(ret, reason);
       delete sctx;
       sctx = nullptr;
       return false;
@@ -1260,15 +1345,17 @@ class IPDtlsSocket {
 
     std::string addr_str = address;
     if(addr_str.size() < 1 || port < 0) {
+      // recorded: this failure alone left GetLastError() at Nil
+      sctx->SetError(MBEDTLS_ERR_NET_BAD_INPUT_DATA);
       delete sctx;
       sctx = nullptr;
       return false;
     }
 
-    std::string port_str = std::to_string(port);
-    ret = mbedtls_net_connect(&sctx->net, address, port_str.c_str(), MBEDTLS_NET_PROTO_UDP);
+    SocketError reason;
+    ret = IPSecureSocket::ConnectNet(sctx->net, address, port, SOCK_DGRAM, reason);
     if(ret != 0) {
-      sctx->SetError(ret);
+      sctx->SetError(ret, reason);
       delete sctx;
       sctx = nullptr;
       return false;

@@ -374,17 +374,31 @@ inline int TlsParseKeyFile(mbedtls_pk_context* pk, const std::string& name, cons
 #endif
 }
 
-// The calling thread's last socket failure from a server bind, listen or
-// accept: WSAGetLastError() on Windows, errno elsewhere, captured as the call
-// failed. Read later, as TCPSocketServer->GetLastError() is, the live value
-// had been reset by the cleanup closesocket() ("The operation completed
-// successfully.") or replaced by whatever ran in between.
-// (defined in common.cpp; see dtls_last_error below for why not inline)
-extern thread_local int socket_last_error;
+//
+// Why a socket call failed, captured as it failed. code is WSAGetLastError()
+// on Windows and errno elsewhere -- or, when resolver is set, the EAI_* code
+// getaddrinfo returned: WSA codes on Windows too, but on POSIX not errno
+// values, so they are described with gai_strerror. A code of 0 is no failure.
+//
+struct SocketError {
+  int code;
+  bool resolver;
+};
 
-// the OS error behind an MBEDTLS_ERR_NET_BIND_FAILED / _LISTEN_FAILED in
+// The calling thread's last plain socket failure, for the GetLastError() of
+// TCPSocket, TCPSocketServer, UDPSocket and UDPSocketServer. Each call that
+// reaches the system -- connect, bind, listen, accept, read, write, select, a
+// socket option -- replaces it with its own outcome: the failure, or none.
+// Read when GetLastError ran, the live value had been reset by the cleanup
+// after the failure (a successful closesocket() sets WSAGetLastError() to 0)
+// or replaced by whatever ran in between; Close() leaves it alone.
+// (defined in common.cpp; see dtls_last_error below for why not inline)
+extern thread_local SocketError socket_last_error;
+
+// the OS reason behind an mbedTLS NET_* failure (connect, bind, listen) in
 // tls_last_error or dtls_last_error, for the text of GetLastError()
-extern thread_local int tls_socket_error;
+extern thread_local SocketError tls_socket_error;
+extern thread_local SocketError dtls_socket_error;
 
 //
 // mbedTLS context wrappers for SSL/TLS connections
@@ -401,9 +415,15 @@ struct SecureSocketCtx {
   int last_error;
 
   void SetError(int error) {
+    SetError(error, SocketError{ 0, false });
+  }
+
+  // a failure with the OS reason behind it (a connect that failed)
+  void SetError(int error, const SocketError& reason) {
     last_error = error;
     tls_last_error = error;
     tls_last_verify_flags = TlsVerifyFlags(error, &ssl);
+    tls_socket_error = reason;
   }
 
   SecureSocketCtx() : last_error(0) {
@@ -448,9 +468,15 @@ struct DtlsSocketCtx {
   int last_error;
 
   void SetError(int error) {
+    SetError(error, SocketError{ 0, false });
+  }
+
+  // a failure with the OS reason behind it (a connect that failed)
+  void SetError(int error, const SocketError& reason) {
     last_error = error;
     dtls_last_error = error;
     dtls_last_verify_flags = TlsVerifyFlags(error, &ssl);
+    dtls_socket_error = reason;
   }
 
   DtlsSocketCtx() : last_error(0) {

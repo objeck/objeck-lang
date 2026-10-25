@@ -12208,7 +12208,9 @@ bundle System.IO.Net {
 		@connect_timeout : Int;
 
 		#~
-		Default constructor
+		Connects to an address, trying each one the name resolves to (IPv6 and
+		IPv4) until one connects. If none does, IsOpen() is false and
+		GetLastError() says why.
 		@param address network address
 		@param port network port
 		~#
@@ -12220,7 +12222,9 @@ bundle System.IO.Net {
 		}
 
 		#~
-		Constructor with connect timeout
+		Connects as New(address, port) does, giving each address tried at most
+		connect_timeout milliseconds. If none connects, IsOpen() is false and
+		GetLastError() says why ("timed out" when the time ran out).
 		@param address network address
 		@param port network port
 		@param connect_timeout connect timeout in milliseconds (0 = blocking)
@@ -12521,8 +12525,14 @@ bundle System.IO.Net {
 		}
 
 		#~
-		Get the last error
-		@return last error message, or Nil of no error
+		Gets the calling thread's last socket failure: why its latest call on a
+		socket -- connect, read, write, bind, listen, accept, a socket option --
+		failed, captured as it failed. Each such call replaces it, one that works
+		leaves none, and closing the socket keeps it. A connect that tried several
+		addresses gives the most informative reason: one the network answered
+		(refused, reset, timed out) over one that never left this host. A name that
+		does not resolve gives the resolver's reason.
+		@return last error message, or Nil if the calling thread's latest socket call worked
 		~#
 		function : GetLastError() ~ String {
 			SOCK_IP_ERROR;
@@ -12816,7 +12826,9 @@ bundle System.IO.Net {
 
 		#~
 		Gets the calling thread's last TLS failure, from a connect, listen,
-		accept, read or write; reset by each connect, listen and accept. A
+		accept, read or write; each of those replaces it, and one that works leaves
+		none. A connect that failed says why the system refused it, e.g. "NET - The
+		connection to the given server / port failed: Connection refused". A
 		certificate that failed verification is described with each reason
 		mbedTLS gives, e.g. "X509 - Certificate verification failed, e.g. CRL, CA
 		or signature check failed: The certificate is not correctly signed by the
@@ -13025,8 +13037,14 @@ bundle System.IO.Net {
 		}
 
 		#~
-		Get the last error
-		@return last error message, or Nil of no error
+		Gets the calling thread's last socket failure: why its latest call on a
+		socket -- connect, read, write, bind, listen, accept, a socket option --
+		failed, captured as it failed. Each such call replaces it, one that works
+		leaves none, and closing the socket keeps it. A connect that tried several
+		addresses gives the most informative reason: one the network answered
+		(refused, reset, timed out) over one that never left this host. A name that
+		does not resolve gives the resolver's reason.
+		@return last error message, or Nil if the calling thread's latest socket call worked
 		~#
 		function : GetLastError() ~ String {
 			SOCK_IP_ERROR;
@@ -13094,8 +13112,14 @@ bundle System.IO.Net {
 		}
 
 		#~
-		Get the last error
-		@return last error message, or Nil of no error
+		Gets the calling thread's last socket failure: why its latest call on a
+		socket -- connect, read, write, bind, listen, accept, a socket option --
+		failed, captured as it failed. Each such call replaces it, one that works
+		leaves none, and closing the socket keeps it. A connect that tried several
+		addresses gives the most informative reason: one the network answered
+		(refused, reset, timed out) over one that never left this host. A name that
+		does not resolve gives the resolver's reason.
+		@return last error message, or Nil if the calling thread's latest socket call worked
 		~#
 		function : GetLastError() ~ String {
 			SOCK_IP_ERROR;
@@ -13197,7 +13221,9 @@ bundle System.IO.Net {
 
 		#~
 		Gets the calling thread's last TLS failure, from a connect, listen,
-		accept, read or write; reset by each connect, listen and accept. A
+		accept, read or write; each of those replaces it, and one that works leaves
+		none. A connect that failed says why the system refused it, e.g. "NET - The
+		connection to the given server / port failed: Connection refused". A
 		certificate that failed verification is described with each reason
 		mbedTLS gives, e.g. "X509 - Certificate verification failed, e.g. CRL, CA
 		or signature check failed: The certificate is not correctly signed by the
@@ -13378,8 +13404,14 @@ bundle System.IO.Net {
 		}
 
 		#~
-		Get the last error
-		@return last error message, or Nil of no error
+		Gets the calling thread's last socket failure: why its latest call on a
+		socket -- connect, read, write, bind, listen, accept, a socket option --
+		failed, captured as it failed. Each such call replaces it, one that works
+		leaves none, and closing the socket keeps it. A connect that tried several
+		addresses gives the most informative reason: one the network answered
+		(refused, reset, timed out) over one that never left this host. A name that
+		does not resolve gives the resolver's reason.
+		@return last error message, or Nil if the calling thread's latest socket call worked
 		~#
 		function : GetLastError() ~ String {
 			SOCK_IP_ERROR;
@@ -13591,8 +13623,12 @@ bundle System.IO.Net {
 		method : public : Flush() ~ Nil {}
 
 		#~
-		Get the last error
-		@return last error message, or Nil of no error
+		Gets the calling thread's last DTLS failure, from a connect, listen,
+		accept, read or write; each of those replaces it, and one that works leaves
+		none. A connect that failed says why the system refused it, and a
+		certificate that failed verification is described with each reason
+		mbedTLS gives.
+		@return last error message, or Nil if there was none
 		~#
 		function : GetLastError() ~ String {
 			SOCK_DTLS_ERROR;
@@ -13701,8 +13737,12 @@ bundle System.IO.Net {
 		}
 
 		#~
-		Get the last error
-		@return last error message, or Nil of no error
+		Gets the calling thread's last DTLS failure, from a connect, listen,
+		accept, read or write; each of those replaces it, and one that works leaves
+		none. A connect that failed says why the system refused it, and a
+		certificate that failed verification is described with each reason
+		mbedTLS gives.
+		@return last error message, or Nil if there was none
 		~#
 		function : GetLastError() ~ String {
 			SOCK_DTLS_ERROR;

@@ -13022,7 +13022,7 @@
 					"descriptions": ["**Gets the X.509 certificate issuer name**\n\n```method : public : GetIssuer() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetLastError": {
-					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+					"descriptions": ["**Gets the calling thread's last DTLS failure, from a connect, listen, accept, read or write; each of those replaces it, and one that works leaves none. A connect that failed says why the system refused it, and a certificate that failed verification is described with each reason mbedTLS gives.**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetPort": {
 					"descriptions": ["**Returns the connected network port**\n\n```method : public : GetPort() ~ Int```\n\n\n\nreturn: Int"]
@@ -13072,7 +13072,7 @@
 					"descriptions": ["**Gets the X.509 certificate's issuer name**\n\n```method : public : GetIssuer() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetLastError": {
-					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+					"descriptions": ["**Gets the calling thread's last DTLS failure, from a connect, listen, accept, read or write; each of those replaces it, and one that works leaves none. A connect that failed says why the system refused it, and a certificate that failed verification is described with each reason mbedTLS gives.**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetSubject": {
 					"descriptions": ["**Gets the X.509 certificate subject name**\n\n```method : public : GetSubject() ~ String```\n\n\n\nreturn: String"]
@@ -13159,7 +13159,7 @@
 					"descriptions": ["**Gets the X.509 certificate issuer name**\n\n```method : public : GetIssuer() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetLastError": {
-					"descriptions": ["**Gets the calling thread's last TLS failure, from a connect, listen, accept, read or write; reset by each connect, listen and accept. A certificate that failed verification is described with each reason mbedTLS gives, e.g. \"X509 - Certificate verification failed, e.g. CRL, CA or signature check failed: The certificate is not correctly signed by the trusted CA\".**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+					"descriptions": ["**Gets the calling thread's last TLS failure, from a connect, listen, accept, read or write; each of those replaces it, and one that works leaves none. A connect that failed says why the system refused it, e.g. \"NET - The connection to the given server \/ port failed: Connection refused\". A certificate that failed verification is described with each reason mbedTLS gives, e.g. \"X509 - Certificate verification failed, e.g. CRL, CA or signature check failed: The certificate is not correctly signed by the trusted CA\".**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetPort": {
 					"descriptions": ["**Returns the connected network port**\n\n```method : public : GetPort() ~ Int```\n\n\n\nreturn: Int"]
@@ -13233,7 +13233,7 @@
 					"descriptions": ["**Gets the X.509 certificate's issuer name**\n\n```method : public : GetIssuer() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetLastError": {
-					"descriptions": ["**Gets the calling thread's last TLS failure, from a connect, listen, accept, read or write; reset by each connect, listen and accept. A certificate that failed verification is described with each reason mbedTLS gives, e.g. \"X509 - Certificate verification failed, e.g. CRL, CA or signature check failed: The certificate is not correctly signed by the trusted CA\".**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+					"descriptions": ["**Gets the calling thread's last TLS failure, from a connect, listen, accept, read or write; each of those replaces it, and one that works leaves none. A connect that failed says why the system refused it, e.g. \"NET - The connection to the given server \/ port failed: Connection refused\". A certificate that failed verification is described with each reason mbedTLS gives, e.g. \"X509 - Certificate verification failed, e.g. CRL, CA or signature check failed: The certificate is not correctly signed by the trusted CA\".**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetSubject": {
 					"descriptions": ["**Gets the X.509 certificate subject name**\n\n```method : public : GetSubject() ~ String```\n\n\n\nreturn: String"]
@@ -13262,7 +13262,7 @@
 					"descriptions": ["**Returns the connected network address**\n\n```method : public : GetAddress() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetLastError": {
-					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+					"descriptions": ["**Gets the calling thread's last socket failure: why its latest call on a socket -- connect, read, write, bind, listen, accept, a socket option -- failed, captured as it failed. Each such call replaces it, one that works leaves none, and closing the socket keeps it. A connect that tried several addresses gives the most informative reason: one the network answered (refused, reset, timed out) over one that never left this host. A name that does not resolve gives the resolver's reason.**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetPort": {
 					"descriptions": ["**Returns the connected network port**\n\n```method : public : GetPort() ~ Int```\n\n\n\nreturn: Int"]
@@ -13274,7 +13274,7 @@
 					"descriptions": ["**Returns rather the socket is open**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
-					"descriptions": ["**Default constructor**\n\n```New(address:System.String, port:Int)```\n\n\n\naddress: System.String\n\nport: Int", "**Constructor with connect timeout**\n\n```New(address:System.String, port:Int, connect_timeout:Int)```\n\n\n\naddress: System.String\n\nport: Int\n\nconnect_timeout: Int"]
+					"descriptions": ["**Connects to an address, trying each one the name resolves to (IPv6 and IPv4) until one connects. If none does, IsOpen() is false and GetLastError() says why.**\n\n```New(address:System.String, port:Int)```\n\n\n\naddress: System.String\n\nport: Int", "**Connects as New(address, port) does, giving each address tried at most connect_timeout milliseconds. If none connects, IsOpen() is false and GetLastError() says why (\"timed out\" when the time ran out).**\n\n```New(address:System.String, port:Int, connect_timeout:Int)```\n\n\n\naddress: System.String\n\nport: Int\n\nconnect_timeout: Int"]
 				},
 				"ReadBuffer": {
 					"descriptions": ["**Reads bytes into a byte buffer**\n\n```method : public : ReadBuffer(offset:Int, num:Int, buffer:Byte[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Byte[]\n\nreturn: Int", "**Reads bytes into a character buffer**\n\n```method : public : ReadBuffer(offset:Int, num:Int, buffer:Char[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Char[]\n\nreturn: Int"]
@@ -13333,7 +13333,7 @@
 					"descriptions": ["**Closes the server socket**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"GetLastError": {
-					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+					"descriptions": ["**Gets the calling thread's last socket failure: why its latest call on a socket -- connect, read, write, bind, listen, accept, a socket option -- failed, captured as it failed. Each such call replaces it, one that works leaves none, and closing the socket keeps it. A connect that tried several addresses gives the most informative reason: one the network answered (refused, reset, timed out) over one that never left this host. A name that does not resolve gives the resolver's reason.**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
 				},
 				"Listen": {
 					"descriptions": ["**Listens for incoming client connections**\n\n```method : public : Listen(backlog:Int) ~ Bool```\n\n\n\nbacklog: Int\n\nreturn: Bool"]
@@ -13356,7 +13356,7 @@
 					"descriptions": ["**Returns the connected network address**\n\n```method : public : GetAddress() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetLastError": {
-					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+					"descriptions": ["**Gets the calling thread's last socket failure: why its latest call on a socket -- connect, read, write, bind, listen, accept, a socket option -- failed, captured as it failed. Each such call replaces it, one that works leaves none, and closing the socket keeps it. A connect that tried several addresses gives the most informative reason: one the network answered (refused, reset, timed out) over one that never left this host. A name that does not resolve gives the resolver's reason.**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetPort": {
 					"descriptions": ["**Returns the connected network port**\n\n```method : public : GetPort() ~ Int```\n\n\n\nreturn: Int"]
@@ -13397,7 +13397,7 @@
 					"descriptions": ["**Flushes the output buffer. This is a no-opt given this socket is not backed by an output buffer.**\n\n```method : public : Flush() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"GetLastError": {
-					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+					"descriptions": ["**Gets the calling thread's last socket failure: why its latest call on a socket -- connect, read, write, bind, listen, accept, a socket option -- failed, captured as it failed. Each such call replaces it, one that works leaves none, and closing the socket keeps it. A connect that tried several addresses gives the most informative reason: one the network answered (refused, reset, timed out) over one that never left this host. A name that does not resolve gives the resolver's reason.**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
 				},
 				"IsBound": {
 					"descriptions": ["**Checks if the UDP server socket is bound**\n\n```method : public : IsBound() ~ Bool```\n\n\n\nreturn: Bool"]
