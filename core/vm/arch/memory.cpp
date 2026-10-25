@@ -103,6 +103,7 @@ bool MemoryManager::initialized;
 std::atomic<size_t> MemoryManager::allocation_size;
 size_t MemoryManager::mem_max_size;
 bool MemoryManager::mem_fixed_size;
+size_t MemoryManager::mem_fixed_threshold;
 std::atomic<long> MemoryManager::minor_gc_count(0);
 std::atomic<long> MemoryManager::major_gc_count(0);
 std::atomic<long> MemoryManager::gc_pause_last_us(0);
@@ -190,6 +191,7 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   std::sort(class_ptrs.begin(), class_ptrs.end());
 
   mem_fixed_size = m > 0;
+  mem_fixed_threshold = m;
   mem_max_size = mem_fixed_size ? m : MEM_START_MAX;
   allocation_size = 0;
   free_memory_cache_size.store(0, std::memory_order_relaxed);
@@ -1462,9 +1464,7 @@ void* MemoryManager::CollectMemory(void* arg)
   // The next major collection runs once the heap has grown by as much again as
   // survived this one: the threshold is GC_HEAP_GROWTH times the live heap, and
   // never below MEM_START_MAX. Only a major GC sets it, since only a major GC
-  // measures the old generation. A threshold given with --gc-threshold is fixed:
-  // that is how stress runs force frequent collections, and how a program that
-  // knows its working set asks for exactly that.
+  // measures the old generation.
   //
   // The old policy grew the threshold only after eight majors in a row freed
   // NOTHING, and shrank it after 24 that freed anything. A program that keeps a
@@ -1473,9 +1473,37 @@ void* MemoryManager::CollectMemory(void* arg)
   // every array allocation ran a full collection: saving and loading a 70,000-row
   // table ran 137 majors, each scanning hundreds of megabytes. Sized to the live
   // heap, collection work stays proportional to allocation.
-  if(!minor_gc_mode.load(std::memory_order_acquire) && !mem_fixed_size) {
+  //
+  // A threshold given with --gc-threshold is how stress runs force frequent
+  // collections, so it holds exactly as given while a major leaves at least a
+  // quarter of it free. Once more than three quarters of it survive, the next
+  // major waits for the heap to grow GC_HEAP_GROWTH times the live size -- what
+  // it would do with no flag, without the MEM_START_MAX floor -- and the given
+  // value returns as soon as the live heap fits under it again. Held fixed
+  // whatever survived, a threshold below the live heap ran a full collection on
+  // EVERY old-generation allocation, each scanning everything kept: 800 objects
+  // kept under --gc-threshold=64k cost 200,240 majors and 127 s. Either way the
+  // collector does at most GC_FIXED_HEADROOM_DIV times the work per byte
+  // allocated that the default policy does.
+  if(!minor_gc_mode.load(std::memory_order_acquire)) {
     const size_t live = allocation_size.load(std::memory_order_relaxed);
-    mem_max_size = live > MEM_START_MAX / GC_HEAP_GROWTH ? live * GC_HEAP_GROWTH : MEM_START_MAX;
+    if(!mem_fixed_size) {
+      mem_max_size = live > MEM_START_MAX / GC_HEAP_GROWTH ? live * GC_HEAP_GROWTH : MEM_START_MAX;
+    }
+    else if(live <= mem_fixed_threshold - mem_fixed_threshold / GC_FIXED_HEADROOM_DIV) {
+      mem_max_size = mem_fixed_threshold;
+    }
+    else {
+      mem_max_size = live * GC_HEAP_GROWTH;
+      // once per run: say why collections have become less frequent than asked
+      static bool reported = false;
+      if(!reported && GcTraceEnabled()) {
+        reported = true;
+        std::wcerr << L"[gc-trace] live heap " << live << L" bytes is over three quarters of --gc-threshold="
+                   << mem_fixed_threshold << L"; the next major waits until the heap reaches " << mem_max_size
+                   << L" bytes, and the threshold returns once the live heap fits under it" << std::endl;
+      }
+    }
   }
 
   // clear free memory cache if oversized. Read unlocked on purpose -- see the
