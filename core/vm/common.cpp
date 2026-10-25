@@ -6829,13 +6829,16 @@ bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op
       host = UnicodeToBytes((wchar_t*)((size_t*)str_obj[0] + 3));
     }
 
-    // a name lookup can block: park, and re-read the instance from the frame
-    // after (a collection may have moved it)
+    // A name lookup can block: park, with the instance re-rooted on the
+    // op_stack so a collection that moves it fixes the reference, and re-read
+    // after. Not from frame->mem: JIT-compiled code calls traps without a
+    // frame to read (see HasFrameDependentTrap).
     SocketError error;
+    PushInt((size_t)inst, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
     UdpEndpoint* ep = UdpBind(host, static_cast<int>(port), error);
     MemoryManager::EndBlocking();
-    inst = (size_t*)frame->mem[0];
+    inst = (size_t*)PopInt(op_stack, stack_pos);
 
     socket_last_error = error;
     if(ep) {
