@@ -39,7 +39,7 @@ jobs:
 
     - name: PROBE UDP failover syscalls (do not merge)
       run: |
-        timeout 120 python3 .github/probe_udp.py || true
+        python3 .github/probe_udp.py || true
         exit 1
 
     # ============================================
