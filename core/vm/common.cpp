@@ -6355,7 +6355,14 @@ bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op
       const int bound_port = BoundPort(sock);
       if(bound_port > 0) {
         inst[2] = bound_port;
-        addr->sin_port = htons((unsigned short)bound_port);
+        // the kept peer address is a sockaddr_storage: IPv6 (the dual-stack
+        // wildcard) or IPv4
+        if(addr->ss_family == AF_INET6) {
+          ((struct sockaddr_in6*)addr)->sin6_port = htons((unsigned short)bound_port);
+        }
+        else if(addr->ss_family == AF_INET) {
+          ((struct sockaddr_in*)addr)->sin_port = htons((unsigned short)bound_port);
+        }
       }
     }
     else {
