@@ -166,7 +166,7 @@ static inline void WinWriteWide(HANDLE h, std::wostream& fallback, const wchar_t
 #include <version>
 
 // a TLS or DTLS failure as text (defined with the DTLS traps)
-static std::wstring TlsErrorMessage(int error, uint32_t verify_flags);
+static std::wstring TlsErrorMessage(int error, uint32_t verify_flags, const SocketError& reason);
 
 // floating-point std::to_chars (shortest round trip): MSVC 19.24+, libstdc++
 // 11+. libc++ has it from 14 but announces the macro only much later, so
@@ -4954,9 +4954,10 @@ bool TrapProcessor::SockTcpHostName(StackProgram* program, size_t* inst, size_t*
   return true;
 }
 
-// the calling thread's last server socket and TLS failures (see common.h)
-thread_local int socket_last_error = 0;
-thread_local int tls_socket_error = 0;
+// the calling thread's last socket failures (see common.h)
+thread_local SocketError socket_last_error = { 0, false };
+thread_local SocketError tls_socket_error = { 0, false };
+thread_local SocketError dtls_socket_error = { 0, false };
 
 // the socket error of the call that just failed
 static int CurrentSocketError()
@@ -4966,6 +4967,39 @@ static int CurrentSocketError()
 #else
   return errno;
 #endif
+}
+
+// "Invalid argument": an address that is not one
+#ifdef _WIN32
+static const int SOCKET_INVALID_ARGUMENT = WSAEINVAL;
+#else
+static const int SOCKET_INVALID_ARGUMENT = EINVAL;
+#endif
+
+//
+// Records a plain socket call's outcome for GetLastError (socket_last_error):
+// its failure, 0 when it worked. Every trap that reaches the system records
+// one, so the error always belongs to the thread's latest socket call; a trap
+// on a socket that is not open does nothing, and leaves the reason it is not.
+//
+static inline void RecordSocketError(int error)
+{
+  socket_last_error = { error, false };
+}
+
+// a new TLS or DTLS operation on this thread: nothing has failed yet
+static inline void ClearTlsError()
+{
+  tls_last_error = 0;
+  tls_last_verify_flags = 0;
+  tls_socket_error = { 0, false };
+}
+
+static inline void ClearDtlsError()
+{
+  dtls_last_error = 0;
+  dtls_last_verify_flags = 0;
+  dtls_socket_error = { 0, false };
 }
 
 // the system's text for a socket error code
@@ -4988,6 +5022,18 @@ static std::wstring SocketErrorText(int error)
 #endif
 }
 
+// ... and for a recorded failure, which may be the resolver's
+static std::wstring SocketErrorText(const SocketError& error)
+{
+#ifndef _WIN32
+  // getaddrinfo's EAI_* codes are not errno values (on Windows they are WSA codes)
+  if(error.resolver) {
+    return BytesToUnicode(gai_strerror(error.code));
+  }
+#endif
+  return SocketErrorText(error.code);
+}
+
 bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   const long port = (long)PopInt(op_stack, stack_pos);
@@ -4996,8 +5042,6 @@ bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* 
   if(array && instance) {
     array = (size_t*)array[0];
     const std::string addr = UnicodeToBytes((wchar_t*)(array + 3));
-    // a connect reports through the live error, as before (see SockTcpError)
-    socket_last_error = 0;
     // instance[3] holds connect timeout in ms (0 = blocking)
     const long timeout_ms = (long)instance[3];
     // connect() can block for a long time; park for the duration. The instance
@@ -5005,17 +5049,26 @@ bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* 
     // re-read after the wait (a raw pointer held across a park can go stale).
     PushInt((size_t)instance, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
-    SOCKET sock = (timeout_ms > 0)
-      ? IPSocket::OpenWithTimeout(addr.c_str(), static_cast<int>(port), static_cast<int>(timeout_ms))
-      : IPSocket::Open(addr.c_str(), static_cast<int>(port));
+    // The reason comes back with the socket. It used to be read when
+    // GetLastError ran, from the live WSAGetLastError()/errno -- after each
+    // failed address's closesocket() had reset it (Nil on Windows) and the park
+    // and anything else since had had their turn.
+    SocketError error;
+    const SOCKET sock = IPSocket::Open(addr.c_str(), static_cast<int>(port), static_cast<int>(timeout_ms), error);
     MemoryManager::EndBlocking();
     instance = (size_t*)PopInt(op_stack, stack_pos);
+    socket_last_error = error;
 #ifdef _DEBUG
     std::wcout << L"# socket connect: addr='" << BytesToUnicode(addr) << "'; instance="
 	       << instance << L"(" << (size_t)instance << L")" << L"; addr=" << sock << L"("
 	       << (long)sock << L") #" << std::endl;
 #endif
     instance[0] = sock;
+  }
+  else if(instance) {
+    // no address: not open (the handle was left at 0, which read as open)
+    instance[0] = (size_t)-1;
+    RecordSocketError(SOCKET_INVALID_ARGUMENT);
   }
 
   return true;
@@ -5029,9 +5082,9 @@ bool TrapProcessor::SockTcpBind(StackProgram* program, size_t* inst, size_t* &op
     SOCKET server = IPSocket::Bind(static_cast<int>(port));
     // captured now: by the time GetLastError runs, the live value is gone
 #ifdef _WIN32
-    socket_last_error = server == INVALID_SOCKET ? CurrentSocketError() : 0;
+    RecordSocketError(server == INVALID_SOCKET ? CurrentSocketError() : 0);
 #else
-    socket_last_error = server < 0 ? CurrentSocketError() : 0;
+    RecordSocketError(server < 0 ? CurrentSocketError() : 0);
 #endif
 #ifdef _DEBUG
     std::wcout << L"# socket bind: port=" << port << L"; instance=" << instance << L"("
@@ -5066,23 +5119,14 @@ bool TrapProcessor::SockTcpBindAddress(StackProgram* program, size_t* inst, size
     // fixes the reference, and is re-read after (#874).
     PushInt((size_t)instance, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
-    const SOCKET server = IPSocket::BindAddress(host.c_str(), static_cast<int>(port), SOCK_STREAM);
-#ifdef _WIN32
-    const int bind_error = WSAGetLastError();
-#else
-    const int bind_error = errno;
-#endif
+    SocketError error;
+    const SOCKET server = IPSocket::BindAddress(host.c_str(), static_cast<int>(port), SOCK_STREAM, error);
     MemoryManager::EndBlocking();
     instance = (size_t*)PopInt(op_stack, stack_pos);
 
-    // GetLastError() reports the bind's failure, not whatever the park did
-#ifdef _WIN32
-    WSASetLastError(bind_error);
-#else
-    errno = bind_error;
-#endif
-    // recorded as TCPSocketServer->New(port) does: GetLastError() says why
-    socket_last_error = (long)server < 0 ? bind_error : 0;
+    // recorded as TCPSocketServer->New(port) does: GetLastError() says why --
+    // for a name that does not resolve, the resolver's reason
+    socket_last_error = error;
 
 #ifdef _DEBUG
     std::wcout << L"# socket bind: address='" << BytesToUnicode(host) << L"'; port=" << port
@@ -5107,11 +5151,11 @@ bool TrapProcessor::SockTcpListen(StackProgram* program, size_t* inst, size_t* &
       << (long)server << L") #" << std::endl;
 #endif
     if(IPSocket::Listen(server, static_cast<int>(backlog))) {
-      socket_last_error = 0;
+      RecordSocketError(0);
       PushInt(1, op_stack, stack_pos);
     }
     else {
-      socket_last_error = CurrentSocketError();
+      RecordSocketError(CurrentSocketError());
       PushInt(0, op_stack, stack_pos);
     }
   }
@@ -5130,7 +5174,9 @@ bool TrapProcessor::SockTcpSelect(StackProgram* program, size_t* inst, size_t*& 
 
    if(instance && (long)instance[0] > -1) {
       SOCKET sock = (SOCKET)instance[0];
-      PushInt(socket_ready_for_io(sock, is_write), op_stack, stack_pos);
+      const int ready = socket_ready_for_io(sock, is_write);
+      RecordSocketError(ready < 0 ? CurrentSocketError() : 0);
+      PushInt(ready, op_stack, stack_pos);
       return true;
    }
    
@@ -5154,7 +5200,7 @@ bool TrapProcessor::SockTcpAccept(StackProgram* program, size_t* inst, size_t* &
     // on the op_stack first and re-read it after, as SockTcpConnect does.
     MemoryManager::BeginBlocking();
     SOCKET client = IPSocket::Accept(server, client_address, client_port);
-    socket_last_error = (long)client < 0 ? CurrentSocketError() : 0;
+    RecordSocketError((long)client < 0 ? CurrentSocketError() : 0);
     MemoryManager::EndBlocking();
 #ifdef _DEBUG
     std::wcout << L"# socket accept: instance=" << instance << L"(" << (size_t)instance << L")" << L"; ip="
@@ -5207,9 +5253,11 @@ bool TrapProcessor::SockTcpOutString(StackProgram* program, size_t* inst, size_t
 #endif        
     const std::string data = UnicodeToBytes((wchar_t*)(array + 3));
     // send() can block on a full buffer; park (data is C heap, safe across a park)
+    int error;
     MemoryManager::BeginBlocking();
-    IPSocket::WriteBytes(data.c_str(), (int)data.size(), sock);
+    IPSocket::WriteBytes(data.c_str(), (int)data.size(), sock, error);
     MemoryManager::EndBlocking();
+    RecordSocketError(error);
   }
 
   return true;
@@ -5232,10 +5280,16 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
       // the read loop blocks on the socket; park for its duration. Only C locals
       // are touched while parked; the array ref is re-rooted on the op_stack so
       // GC promotion fixup relocates it, then re-read after the wait.
+      // the first failure is the line's
+      int error = 0;
+      int read_error;
       PushInt((size_t)array, op_stack, stack_pos);
       MemoryManager::BeginBlocking();
       do {
-        value = IPSocket::ReadByte(sock, status);
+        value = IPSocket::ReadByte(sock, status, read_error);
+        if(status < 0 && error == 0) {
+          error = read_error;
+        }
         if(value != '\0' && value != '\r' && value != '\n' && index < MID_BUFFER_MAX - 1 && status > 0) {
           buffer[index++] = value;
         }
@@ -5248,10 +5302,14 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
 
       // assume LF
       if(value == '\r') {
-        IPSocket::ReadByte(sock, status);
+        IPSocket::ReadByte(sock, status, read_error);
+        if(status < 0 && error == 0) {
+          error = read_error;
+        }
       }
       MemoryManager::EndBlocking();
       array = (size_t*)PopInt(op_stack, stack_pos);
+      RecordSocketError(error);
 
       // copy content
       const std::wstring in = BytesToUnicode(buffer);
@@ -5293,8 +5351,7 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
     SecureSocketCtx* old_sctx = (SecureSocketCtx*)instance[0];
     SecureSocketCtx* sctx = nullptr;
     // GetLastError() reports this connect, not an earlier failure
-    tls_last_error = 0;
-    tls_last_verify_flags = 0;
+    ClearTlsError();
     PushInt((size_t)instance, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
     // Close existing connection if any
@@ -5414,6 +5471,7 @@ bool TrapProcessor::SockTcpSslOutString(StackProgram* program, size_t* inst, siz
   if(array && instance) {
     SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
     if(instance[3] && sctx) {
+      ClearTlsError();
       const std::string out = UnicodeToBytes((wchar_t*)(array + 3));
       // a TLS write can block on a full send buffer; park (out is C heap)
       MemoryManager::BeginBlocking();
@@ -5434,6 +5492,7 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
     SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
     int status;
     if(instance[3] && sctx) {
+      ClearTlsError();
       const size_t capacity = array[0];
       size_t index = 0;
       char value;
@@ -5490,22 +5549,23 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
 //
 // A non-empty host binds that one address instead (IPSocket::BindAddress).
 //
-static int BindServerSocket(mbedtls_net_context& ctx, int port, int type, const char* host = nullptr)
+// reason is the OS reason behind a failure, for GetLastError:
+// MBEDTLS_ERR_NET_BIND_FAILED alone does not say why (tls_socket_error for a
+// TLS server, dtls_socket_error for a DTLS one).
+//
+static int BindServerSocket(mbedtls_net_context& ctx, int port, int type, SocketError& reason, const char* host = nullptr)
 {
-  tls_socket_error = 0;
-  const SOCKET sock = IPSocket::BindAddress(host, port, type);
+  const SOCKET sock = IPSocket::BindAddress(host, port, type, reason);
 #ifdef _WIN32
   if(sock == INVALID_SOCKET) {
 #else
   if(sock < 0) {
 #endif
-    // why, for GetLastError: MBEDTLS_ERR_NET_BIND_FAILED alone does not say
-    tls_socket_error = CurrentSocketError();
     return MBEDTLS_ERR_NET_BIND_FAILED;
   }
 
   if(type == SOCK_STREAM && listen(sock, MBEDTLS_NET_LISTEN_BACKLOG) != 0) {
-    tls_socket_error = CurrentSocketError();
+    reason = { CurrentSocketError(), false };
 #ifdef _WIN32
     closesocket(sock);
 #else
@@ -5726,8 +5786,7 @@ void TrapProcessor::SecureServerListen(size_t* instance, const std::string& host
     const long port = (long)instance[6];
 
     if(cert_obj && key_obj) {
-      tls_last_error = 0;
-      tls_last_verify_flags = 0;
+      ClearTlsError();
       SecureServerCtx* srv = new SecureServerCtx();
 
       // Seed the random number generator
@@ -5780,7 +5839,7 @@ void TrapProcessor::SecureServerListen(size_t* instance, const std::string& host
       // Bind to port: IPv4 and IPv6 alike (see BindServerSocket), or the
       // one address asked for
       if(host.empty()) {
-        ret = BindServerSocket(srv->listen_fd, (int)port, SOCK_STREAM);
+        ret = BindServerSocket(srv->listen_fd, (int)port, SOCK_STREAM, tls_socket_error);
       }
       else {
         // a name lookup can block: park, touching only C locals and srv (C
@@ -5788,7 +5847,7 @@ void TrapProcessor::SecureServerListen(size_t* instance, const std::string& host
         // that moves it fixes the reference, and is re-read after (#874).
         PushInt((size_t)instance, op_stack, stack_pos);
         MemoryManager::BeginBlocking();
-        ret = BindServerSocket(srv->listen_fd, (int)port, SOCK_STREAM, host.c_str());
+        ret = BindServerSocket(srv->listen_fd, (int)port, SOCK_STREAM, tls_socket_error, host.c_str());
         MemoryManager::EndBlocking();
         instance = (size_t*)PopInt(op_stack, stack_pos);
       }
@@ -5852,8 +5911,7 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
 
     if(srv) {
       SecureSocketCtx* client = new SecureSocketCtx();
-      tls_last_error = 0;
-      tls_last_verify_flags = 0;
+      ClearTlsError();
 
       // Accept raw TCP connection. accept() blocks indefinitely; park so STW GC
       // elsewhere can proceed. The instance ref is re-rooted on the op_stack so
@@ -5942,16 +6000,13 @@ bool TrapProcessor::SockTcpSslCertSrv(StackProgram* program, size_t* inst, size_
 
 bool TrapProcessor::SockTcpError(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
-  // A server's bind, listen or accept failure was captured as it happened
-  // (see socket_last_error). Anything else reports the live error, as before,
-  // and no error at all is Nil, as documented -- not "The operation completed
-  // successfully.", which is what a failed Listen used to report on Windows.
-  int error = socket_last_error;
-  if(error == 0) {
-    error = CurrentSocketError();
-  }
-
-  if(error != 0) {
+  // The calling thread's last socket call's failure, captured as it happened
+  // (see socket_last_error), and no error at all is Nil, as documented. The
+  // live WSAGetLastError()/errno read here before said "The operation
+  // completed successfully." or Nil for a refused connect, and whatever an
+  // unrelated call had left for one that worked.
+  const SocketError error = socket_last_error;
+  if(error.code != 0) {
     PushInt((size_t)CreateStringObject(SocketErrorText(error), program, op_stack, stack_pos), op_stack, stack_pos);
   }
   else {
@@ -5971,7 +6026,7 @@ bool TrapProcessor::SockTcpError(StackProgram* program, size_t* inst, size_t*& o
 bool TrapProcessor::SockTcpSslError(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   if(tls_last_error != 0) {
-    const std::wstring error_msg = TlsErrorMessage(tls_last_error, tls_last_verify_flags);
+    const std::wstring error_msg = TlsErrorMessage(tls_last_error, tls_last_verify_flags, tls_socket_error);
     PushInt((size_t)CreateStringObject(error_msg, program, op_stack, stack_pos), op_stack, stack_pos);
     return true;
   }
@@ -5996,12 +6051,21 @@ bool TrapProcessor::SockTcpSslCloseSrv(StackProgram* program, size_t* inst, size
 
 // --- TCP socket option implementations ---
 
+// A socket option call's result, recorded as any other socket call's. The
+// guards are the open-socket test every other trap uses: "(SOCKET)handle > 0"
+// was true for a closed socket's -1 on Windows, where SOCKET is unsigned.
+static size_t SocketOptionResult(bool ok)
+{
+  RecordSocketError(ok ? 0 : CurrentSocketError());
+  return ok ? 1 : 0;
+}
+
 bool TrapProcessor::SockTcpSetKeepAlive(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   const bool enable = (bool)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (SOCKET)instance[0] > 0) {
-    PushInt(IPSocket::SetKeepAlive((SOCKET)instance[0], enable) ? 1 : 0, op_stack, stack_pos);
+  if(instance && (long)instance[0] > -1) {
+    PushInt(SocketOptionResult(IPSocket::SetKeepAlive((SOCKET)instance[0], enable)), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -6013,8 +6077,8 @@ bool TrapProcessor::SockTcpSetNoDelay(StackProgram* program, size_t* inst, size_
 {
   const bool enable = (bool)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (SOCKET)instance[0] > 0) {
-    PushInt(IPSocket::SetNoDelay((SOCKET)instance[0], enable) ? 1 : 0, op_stack, stack_pos);
+  if(instance && (long)instance[0] > -1) {
+    PushInt(SocketOptionResult(IPSocket::SetNoDelay((SOCKET)instance[0], enable)), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -6026,8 +6090,8 @@ bool TrapProcessor::SockTcpSetRecvTimeout(StackProgram* program, size_t* inst, s
 {
   const int ms = (int)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (SOCKET)instance[0] > 0) {
-    PushInt(IPSocket::SetRecvTimeout((SOCKET)instance[0], ms) ? 1 : 0, op_stack, stack_pos);
+  if(instance && (long)instance[0] > -1) {
+    PushInt(SocketOptionResult(IPSocket::SetRecvTimeout((SOCKET)instance[0], ms)), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -6039,8 +6103,8 @@ bool TrapProcessor::SockTcpSetSendTimeout(StackProgram* program, size_t* inst, s
 {
   const int ms = (int)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (SOCKET)instance[0] > 0) {
-    PushInt(IPSocket::SetSendTimeout((SOCKET)instance[0], ms) ? 1 : 0, op_stack, stack_pos);
+  if(instance && (long)instance[0] > -1) {
+    PushInt(SocketOptionResult(IPSocket::SetSendTimeout((SOCKET)instance[0], ms)), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -6063,8 +6127,8 @@ bool TrapProcessor::SockTcpSetRcvBuf(StackProgram* program, size_t* inst, size_t
 {
   const int bytes = (int)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (SOCKET)instance[0] > 0) {
-    PushInt(IPSocket::SetRecvBufSize((SOCKET)instance[0], bytes) ? 1 : 0, op_stack, stack_pos);
+  if(instance && (long)instance[0] > -1) {
+    PushInt(SocketOptionResult(IPSocket::SetRecvBufSize((SOCKET)instance[0], bytes)), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -6076,8 +6140,8 @@ bool TrapProcessor::SockTcpSetSndBuf(StackProgram* program, size_t* inst, size_t
 {
   const int bytes = (int)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (SOCKET)instance[0] > 0) {
-    PushInt(IPSocket::SetSendBufSize((SOCKET)instance[0], bytes) ? 1 : 0, op_stack, stack_pos);
+  if(instance && (long)instance[0] > -1) {
+    PushInt(SocketOptionResult(IPSocket::SetSendBufSize((SOCKET)instance[0], bytes)), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -6183,20 +6247,23 @@ bool TrapProcessor::SockUdpCreate(StackProgram* program, size_t* inst, size_t*& 
     array = (size_t*)array[0];
     const std::wstring waddr = (wchar_t*)(array + 3);
     const std::string addr_str = UnicodeToBytes(waddr);
-    
+
+    IPSocket::Startup();
     SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-#ifdef _WIN32      
+#ifdef _WIN32
     if(sock != INVALID_SOCKET) {
 #else
     if(sock > -1) {
 #endif
       struct sockaddr_in bin_addr;
       if(inet_pton(AF_INET, addr_str.c_str(), &(bin_addr.sin_addr)) != 1) {
-#ifdef _WIN32      
+        // not an IPv4 address: inet_pton sets no error of its own
+#ifdef _WIN32
         closesocket(sock);
 #else
 	close(sock);
-#endif	        
+#endif
+        RecordSocketError(SOCKET_INVALID_ARGUMENT);
       }
       else {
         struct sockaddr_in* addr_in = new struct sockaddr_in;
@@ -6206,11 +6273,30 @@ bool TrapProcessor::SockUdpCreate(StackProgram* program, size_t* inst, size_t*& 
 
         inst[0] = sock;
         inst[1] = (size_t)addr_in;
+        RecordSocketError(0);
       }
     }
+    else {
+      RecordSocketError(CurrentSocketError());
+    }
+  }
+  else if(instance) {
+    // no address
+    RecordSocketError(SOCKET_INVALID_ARGUMENT);
   }
 
   return true;
+}
+
+//
+// An open UDP socket: one that New or Bind opened, which set its address too,
+// and that Close has not closed. The traps tested the handle instead, three
+// ways -- non-zero, above -1, above 0 -- and a socket whose New failed kept
+// handle 0, so some reads and writes went to handle 0: stdin on POSIX.
+//
+static bool UdpSocketOpen(const size_t* instance)
+{
+  return instance && instance[1];
 }
 
 bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
@@ -6218,12 +6304,12 @@ bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op
     const long port = (long)inst[2];
     SOCKET sock; struct sockaddr_in* addr;
     if(UDPSocket::Bind(static_cast<int>(port), sock, addr)) {
-      socket_last_error = 0;
+      RecordSocketError(0);
       inst[0] = sock;
       inst[1] = (size_t)addr;
     }
     else {
-      socket_last_error = CurrentSocketError();
+      RecordSocketError(CurrentSocketError());
     }
   }
 
@@ -6231,9 +6317,15 @@ bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op
 }
 
 bool TrapProcessor::SockUdpClose(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
-  if(inst) {
+  if(UdpSocketOpen(inst)) {
     SOCKET sock = static_cast<int>(inst[0]);
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
+    // Forgotten once closed. The handle and the freed address were left in
+    // place, so a second Close() deleted the address again (heap corruption),
+    // and a read or write after Close() used a handle the system may have
+    // given to something else.
+    inst[0] = 0;
+    inst[1] = 0;
     UDPSocket::Close(sock, addr_in);
   }
 
@@ -6252,7 +6344,7 @@ bool TrapProcessor::SockUdpClose(StackProgram* program, size_t* inst, size_t*& o
 //
 bool TrapProcessor::SockUdpInByte(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && instance[0]) {
+  if(UdpSocketOpen(instance)) {
     SOCKET sock = static_cast<int>(inst[0]);
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
 
@@ -6260,7 +6352,9 @@ bool TrapProcessor::SockUdpInByte(StackProgram* program, size_t* inst, size_t*& 
     socklen_t addr_in_size = sizeof(struct sockaddr_in);
     MemoryManager::BeginBlocking();
     const int read = static_cast<int>(recvfrom(sock, &value, 1, 0, (struct sockaddr*)addr_in, &addr_in_size));
+    const int error = read < 0 ? CurrentSocketError() : 0;
     MemoryManager::EndBlocking();
+    RecordSocketError(error);
     // the byte read, or 0 when nothing was (this was inverted: it pushed an
     // uninitialised byte on failure and 0 on success)
     PushInt(read > 0 ? (unsigned char)value : 0, op_stack, stack_pos);
@@ -6278,7 +6372,7 @@ bool TrapProcessor::SockUdpInByteAry(StackProgram* program, size_t* inst, size_t
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
+  if(array && UdpSocketOpen(instance) && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     SOCKET sock = static_cast<int>(inst[0]);
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
 
@@ -6287,8 +6381,10 @@ bool TrapProcessor::SockUdpInByteAry(StackProgram* program, size_t* inst, size_t
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
     const int read = static_cast<int>(recvfrom(sock, temp, num, 0, (struct sockaddr*)addr_in, &addr_in_size));
+    const int error = read < 0 ? CurrentSocketError() : 0;
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
+    RecordSocketError(error);
     if(read > 0) {
       memcpy((char*)(array + 3) + offset, temp, read);
     }
@@ -6310,7 +6406,7 @@ bool TrapProcessor::SockUdpInCharAry(StackProgram* program, size_t* inst, size_t
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && (long)instance[0] > -1 && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
+  if(array && UdpSocketOpen(instance) && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     SOCKET sock = static_cast<int>(inst[0]);
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
 
@@ -6320,8 +6416,10 @@ bool TrapProcessor::SockUdpInCharAry(StackProgram* program, size_t* inst, size_t
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
     const int read = static_cast<int>(recvfrom(sock, byte_buffer, num, 0, (struct sockaddr*)addr_in, &addr_in_size));
+    const int error = read < 0 ? CurrentSocketError() : 0;
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
+    RecordSocketError(error);
     wchar_t* buffer = (wchar_t*)(array + 3);
     // recvfrom returns -1 on error; only terminate/decode when bytes were read
     if(read > -1) {
@@ -6360,7 +6458,7 @@ bool TrapProcessor::SockUdpOutCharAry(StackProgram* program, size_t* inst, size_
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && (long)instance[0] > -1 && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
+  if(array && UdpSocketOpen(instance) && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     SOCKET sock = static_cast<int>(inst[0]);
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
     socklen_t addr_in_size = sizeof(struct sockaddr_in);
@@ -6371,7 +6469,9 @@ bool TrapProcessor::SockUdpOutCharAry(StackProgram* program, size_t* inst, size_
     // buffer_out is C heap
     MemoryManager::BeginBlocking();
     const int sent = static_cast<int>(sendto(sock, buffer_out.c_str(), (int)buffer_out.size(), 0, (struct sockaddr*)addr_in, addr_in_size));
+    const int error = sent < 0 ? CurrentSocketError() : 0;
     MemoryManager::EndBlocking();
+    RecordSocketError(error);
     PushInt(sent, op_stack, stack_pos);
   }
   else {
@@ -6384,14 +6484,16 @@ bool TrapProcessor::SockUdpOutCharAry(StackProgram* program, size_t* inst, size_
 bool TrapProcessor::SockUdpOutByte(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
   char value = (char)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && instance[0]) {
+  if(UdpSocketOpen(instance)) {
     SOCKET sock = static_cast<int>(inst[0]);
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
 
     const socklen_t addr_in_size = sizeof(struct sockaddr_in);
     MemoryManager::BeginBlocking();
     const int sent = static_cast<int>(sendto(sock, &value, 1, 0, (struct sockaddr*)addr_in, addr_in_size));
+    const int error = sent < 0 ? CurrentSocketError() : 0;
     MemoryManager::EndBlocking();
+    RecordSocketError(error);
     // true when the byte was sent (this pushed false whatever happened)
     PushInt(sent > 0, op_stack, stack_pos);
   }
@@ -6408,7 +6510,7 @@ bool TrapProcessor::SockUdpOutByteAry(StackProgram* program, size_t* inst, size_
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
+  if(array && UdpSocketOpen(instance) && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
 
     SOCKET sock = static_cast<int>(inst[0]);
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
@@ -6420,7 +6522,9 @@ bool TrapProcessor::SockUdpOutByteAry(StackProgram* program, size_t* inst, size_
     const socklen_t addr_in_size = sizeof(struct sockaddr_in);
     MemoryManager::BeginBlocking();
     const int sent = static_cast<int>(sendto(sock, temp, num, 0, (struct sockaddr*)addr_in, addr_in_size));
+    const int error = sent < 0 ? CurrentSocketError() : 0;
     MemoryManager::EndBlocking();
+    RecordSocketError(error);
     delete[] temp;
     // the number of bytes sent, or -1 on error (this pushed 0 for every
     // successful send, and sent from the start of the buffer, ignoring offset)
@@ -6436,7 +6540,7 @@ bool TrapProcessor::SockUdpOutByteAry(StackProgram* program, size_t* inst, size_
 bool TrapProcessor::SockUdpInString(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(array && instance && (long)instance[0] > -1) {
+  if(array && UdpSocketOpen(instance)) {
     char buffer[MID_BUFFER_MAX] = {0};
 
     SOCKET sock = static_cast<int>(inst[0]);
@@ -6448,8 +6552,10 @@ bool TrapProcessor::SockUdpInString(StackProgram* program, size_t* inst, size_t*
       PushInt((size_t)array, op_stack, stack_pos);
       MemoryManager::BeginBlocking();
       const int read = static_cast<int>(recvfrom(sock, buffer, MID_BUFFER_MAX - 1, 0, (struct sockaddr*)addr_in, &addr_in_size));
+      const int error = read < 0 ? CurrentSocketError() : 0;
       MemoryManager::EndBlocking();
       array = (size_t*)PopInt(op_stack, stack_pos);
+      RecordSocketError(error);
       if(read > -1) {
         buffer[read] = '\0';
 
@@ -6474,7 +6580,7 @@ bool TrapProcessor::SockUdpInString(StackProgram* program, size_t* inst, size_t*
 bool TrapProcessor::SockUdpOutString(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(array && instance && (long)instance[0] > -1) {
+  if(array && UdpSocketOpen(instance)) {
     SOCKET sock = (SOCKET)instance[0];
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
 
@@ -6486,8 +6592,10 @@ bool TrapProcessor::SockUdpOutString(StackProgram* program, size_t* inst, size_t
     // data is C heap. WriteString returns Nil, so nothing is pushed, as in
     // SockTcpOutString: this pushed a result the caller never pops.
     MemoryManager::BeginBlocking();
-    sendto(sock, data.c_str(), (int)data.size(), 0, (struct sockaddr*)addr_in, addr_in_size);
+    const int sent = static_cast<int>(sendto(sock, data.c_str(), (int)data.size(), 0, (struct sockaddr*)addr_in, addr_in_size));
+    const int error = sent < 0 ? CurrentSocketError() : 0;
     MemoryManager::EndBlocking();
+    RecordSocketError(error);
   }
 
   return true;
@@ -8275,10 +8383,12 @@ bool TrapProcessor::SockTcpInByte(StackProgram* program, size_t* inst, size_t* &
   if(instance && (long)instance[0] > -1) {
     SOCKET sock = (SOCKET)instance[0];
     int status;
+    int error;
     // blocking read; park so a stop-the-world collection elsewhere can proceed
     MemoryManager::BeginBlocking();
-    const char value = IPSocket::ReadByte(sock, status);
+    const char value = IPSocket::ReadByte(sock, status, error);
     MemoryManager::EndBlocking();
+    RecordSocketError(error);
     PushInt(value, op_stack, stack_pos);
   }
   else {
@@ -8301,11 +8411,13 @@ bool TrapProcessor::SockTcpInByteAry(StackProgram* program, size_t* inst, size_t
     // parked thread's GC array can be moved by promotion mid-read), and the
     // array ref is re-rooted on the op_stack so fixup relocates it.
     char* temp = new char[num > 0 ? num : 1];
+    int error;
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
-    const int read = IPSocket::ReadBytes(temp, (int)num, sock);
+    const int read = IPSocket::ReadBytes(temp, (int)num, sock, error);
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
+    RecordSocketError(error);
     if(read > 0) {
       memcpy((char*)(array + 3) + offset, temp, read);
     }
@@ -8333,11 +8445,13 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
     // Read into the temp buffer at 0, not +offset (see FileInCharAry heap-overflow fix).
     // Blocking read: park for the duration, with the array ref re-rooted on the
     // op_stack so GC promotion fixup relocates it while we wait.
+    int error;
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
-    int read = IPSocket::ReadBytes(byte_buffer, static_cast<int>(num), sock);
+    int read = IPSocket::ReadBytes(byte_buffer, static_cast<int>(num), sock, error);
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
+    RecordSocketError(error);
     wchar_t* buffer = (wchar_t*)(array + 3);
     if(read > -1) {
       byte_buffer[read] = '\0';
@@ -8370,10 +8484,13 @@ bool TrapProcessor::SockTcpOutByte(StackProgram* program, size_t* inst, size_t* 
   if(instance && (long)instance[0] > -1) {
     SOCKET sock = (SOCKET)instance[0];
     // send() can block on a full buffer; park so STW GC elsewhere can proceed
+    int error;
     MemoryManager::BeginBlocking();
-    IPSocket::WriteByte((char)value, sock);
+    const int sent = IPSocket::WriteByte((char)value, sock, error);
     MemoryManager::EndBlocking();
-    PushInt(1, op_stack, stack_pos);
+    RecordSocketError(error);
+    // true when the byte was sent, as documented (this pushed true whatever happened)
+    PushInt(sent > 0 ? 1 : 0, op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -8396,9 +8513,11 @@ bool TrapProcessor::SockTcpOutByteAry(StackProgram* program, size_t* inst, size_
     // its young-gen slot reused) by promotion mid-send.
     char* temp = new char[num > 0 ? num : 1];
     memcpy(temp, (char*)(array + 3) + offset, num);
+    int error;
     MemoryManager::BeginBlocking();
-    const int sent = IPSocket::WriteBytes(temp, (int)num, sock);
+    const int sent = IPSocket::WriteBytes(temp, (int)num, sock, error);
     MemoryManager::EndBlocking();
+    RecordSocketError(error);
     delete[] temp;
     PushInt(sent, op_stack, stack_pos);
   }
@@ -8422,9 +8541,11 @@ bool TrapProcessor::SockTcpOutCharAry(StackProgram* program, size_t* inst, size_
     
     // convert to bytes and write out (buffer_out is C heap, safe across a park)
     std::string buffer_out = UnicodeToBytes(buffer);
+    int error;
     MemoryManager::BeginBlocking();
-    const int sent = IPSocket::WriteBytes(buffer_out.c_str(), (int)buffer_out.size(), sock);
+    const int sent = IPSocket::WriteBytes(buffer_out.c_str(), (int)buffer_out.size(), sock, error);
     MemoryManager::EndBlocking();
+    RecordSocketError(error);
     PushInt(sent, op_stack, stack_pos);
   }
   else {
@@ -8437,8 +8558,11 @@ bool TrapProcessor::SockTcpOutCharAry(StackProgram* program, size_t* inst, size_
 bool TrapProcessor::SockTcpSslInByte(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance) {
+  // a socket whose connect failed has no context: there is nothing to read
+  // or write (this used it, and crashed), and its reason stays reported
+  if(instance && instance[0]) {
     SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+    ClearTlsError();
     int status;
     // blocking read; park so a stop-the-world collection elsewhere can proceed
     MemoryManager::BeginBlocking();
@@ -8460,8 +8584,10 @@ bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, size_t* inst, siz
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
+  // no context: the connect failed (see SockTcpSslInByte)
+  if(array && instance && instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+    ClearTlsError();
 
     // blocking read; park for the duration. Bytes land in a temp C buffer (a
     // parked thread's GC array can be moved by promotion mid-read), and the
@@ -8508,8 +8634,10 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
   const INT64_VALUE offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
+  // no context: the connect failed (see SockTcpSslInByte)
+  if(array && instance && instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+    ClearTlsError();
     char* byte_buffer = new char[num * 2 + 1];
     // Read into the temp buffer at 0, not +offset (see FileInCharAry heap-overflow fix).
     // Blocking read: park for the duration, with the array ref re-rooted on the
@@ -8548,8 +8676,11 @@ bool TrapProcessor::SockTcpSslOutByte(StackProgram* program, size_t* inst, size_
 {
   INT64_VALUE value = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance) {
+  // a socket whose connect failed has no context: there is nothing to read
+  // or write (this used it, and crashed), and its reason stays reported
+  if(instance && instance[0]) {
     SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+    ClearTlsError();
     // a TLS write can block on a full send buffer; park so STW GC can proceed
     MemoryManager::BeginBlocking();
     IPSecureSocket::WriteByte((char)value, sctx);
@@ -8570,8 +8701,10 @@ bool TrapProcessor::SockTcpSslOutByteAry(StackProgram* program, size_t* inst, si
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
+  // no context: the connect failed (see SockTcpSslInByte)
+  if(array && instance && instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+    ClearTlsError();
     // a TLS write can block on a full send buffer; park for the duration. Data
     // is staged in a temp C buffer first -- a parked thread's GC array can be
     // moved (and its young-gen slot reused) by promotion mid-send.
@@ -8597,8 +8730,10 @@ bool TrapProcessor::SockTcpSslOutCharAry(StackProgram* program, size_t* inst, si
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
+  // no context: the connect failed (see SockTcpSslInByte)
+  if(array && instance && instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+    ClearTlsError();
     const wchar_t* buffer = (wchar_t*)(array + 3);
     // copy sub buffer
     const std::wstring sub_buffer(buffer + offset, num);
@@ -9805,16 +9940,20 @@ thread_local uint32_t tls_last_verify_flags = 0;
 // certificate is not correctly signed by the trusted CA; ..."), so a caller can
 // tell an untrusted issuer from a name mismatch or an expired certificate.
 //
-static std::wstring TlsErrorMessage(int error, uint32_t verify_flags)
+static std::wstring TlsErrorMessage(int error, uint32_t verify_flags, const SocketError& reason)
 {
   char error_buf[256] = {0};
   mbedtls_strerror(error, error_buf, sizeof(error_buf) - 1);
   std::string message = error_buf;
 
-  // a bind or listen failure also says why the system refused it ("Only one
-  // usage of each socket address ...", "Address already in use")
-  if((error == MBEDTLS_ERR_NET_BIND_FAILED || error == MBEDTLS_ERR_NET_LISTEN_FAILED) && tls_socket_error != 0) {
-    message += ": " + UnicodeToBytes(SocketErrorText(tls_socket_error));
+  // a connect, bind or listen failure also says why the system refused it
+  // ("No connection could be made because the target machine actively refused
+  // it.", "Connection refused", "Address already in use", "No such host is
+  // known.")
+  const bool net_failure = error == MBEDTLS_ERR_NET_CONNECT_FAILED || error == MBEDTLS_ERR_NET_UNKNOWN_HOST ||
+    error == MBEDTLS_ERR_NET_SOCKET_FAILED || error == MBEDTLS_ERR_NET_BIND_FAILED || error == MBEDTLS_ERR_NET_LISTEN_FAILED;
+  if(net_failure && reason.code != 0) {
+    message += ": " + UnicodeToBytes(SocketErrorText(reason));
   }
 
   if(verify_flags != 0) {
@@ -9872,8 +10011,7 @@ bool TrapProcessor::SockDtlsConnect(StackProgram* program, size_t* inst, size_t*
     // re-rooted on the op_stack so GC promotion fixup relocates it, then re-read.
     DtlsSocketCtx* old_sctx = (DtlsSocketCtx*)instance[0];
     DtlsSocketCtx* sctx = nullptr;
-    dtls_last_error = 0;
-    dtls_last_verify_flags = 0;
+    ClearDtlsError();
     PushInt((size_t)instance, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
     // Close existing connection if any
@@ -9994,6 +10132,7 @@ bool TrapProcessor::SockDtlsOutString(StackProgram* program, size_t* inst, size_
   if(array && instance) {
     DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
     if(instance[3] && sctx) {
+      ClearDtlsError();
       const std::string out = UnicodeToBytes((wchar_t*)(array + 3));
       // a DTLS write can block; park (out is C heap)
       MemoryManager::BeginBlocking();
@@ -10014,6 +10153,7 @@ bool TrapProcessor::SockDtlsInString(StackProgram* program, size_t* inst, size_t
     DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
     int status;
     if(instance[3] && sctx) {
+      ClearDtlsError();
       const size_t capacity = array[0];
       size_t index = 0;
       char value;
@@ -10096,9 +10236,7 @@ void TrapProcessor::DtlsServerListen(size_t* instance, const std::string& host, 
     const long port = (long)instance[6];
 
     if(cert_obj && key_obj) {
-      dtls_last_error = 0;
-      dtls_last_verify_flags = 0;
-    dtls_last_verify_flags = 0;
+      ClearDtlsError();
       DtlsServerCtx* srv = new DtlsServerCtx();
 
       // Seed the random number generator
@@ -10149,7 +10287,7 @@ void TrapProcessor::DtlsServerListen(size_t* instance, const std::string& host, 
       // DtlsAccept), or the one address asked for
       srv->port = (int)port;
       if(host.empty()) {
-        ret = BindServerSocket(srv->listen_fd, (int)port, SOCK_DGRAM);
+        ret = BindServerSocket(srv->listen_fd, (int)port, SOCK_DGRAM, dtls_socket_error);
       }
       else {
         // a name lookup can block: park, touching only C locals and srv (C
@@ -10157,7 +10295,7 @@ void TrapProcessor::DtlsServerListen(size_t* instance, const std::string& host, 
         // that moves it fixes the reference, and is re-read after (#874).
         PushInt((size_t)instance, op_stack, stack_pos);
         MemoryManager::BeginBlocking();
-        ret = BindServerSocket(srv->listen_fd, (int)port, SOCK_DGRAM, host.c_str());
+        ret = BindServerSocket(srv->listen_fd, (int)port, SOCK_DGRAM, dtls_socket_error, host.c_str());
         MemoryManager::EndBlocking();
         instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -10244,9 +10382,7 @@ bool TrapProcessor::SockDtlsAccept(StackProgram* program, size_t* inst, size_t*&
       // cookie check failed, so no client could ever complete a handshake.
       unsigned char client_ip[16] = {0};
       size_t client_ip_len = 0;
-      dtls_last_error = 0;
-      dtls_last_verify_flags = 0;
-    dtls_last_verify_flags = 0;
+      ClearDtlsError();
 
       PushInt((size_t)instance, op_stack, stack_pos);
       MemoryManager::BeginBlocking();
@@ -10374,7 +10510,7 @@ bool TrapProcessor::SockDtlsError(StackProgram* program, size_t* inst, size_t*& 
   // last DTLS failure, which also covers a connect or accept that failed and
   // freed its context.
   if(dtls_last_error != 0) {
-    const std::wstring error_msg = TlsErrorMessage(dtls_last_error, dtls_last_verify_flags);
+    const std::wstring error_msg = TlsErrorMessage(dtls_last_error, dtls_last_verify_flags, dtls_socket_error);
     PushInt((size_t)CreateStringObject(error_msg, program, op_stack, stack_pos), op_stack, stack_pos);
     return true;
   }
@@ -10400,8 +10536,11 @@ bool TrapProcessor::SockDtlsCloseSrv(StackProgram* program, size_t* inst, size_t
 bool TrapProcessor::SockDtlsInByte(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance) {
+  // a socket whose connect failed has no context: there is nothing to read
+  // or write (this used it, and crashed), and its reason stays reported
+  if(instance && instance[0]) {
     DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+    ClearDtlsError();
     int status;
     // blocking read; park so a stop-the-world collection elsewhere can proceed
     MemoryManager::BeginBlocking();
@@ -10423,8 +10562,10 @@ bool TrapProcessor::SockDtlsInByteAry(StackProgram* program, size_t* inst, size_
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
+  // no context: the connect failed (see SockDtlsInByte)
+  if(array && instance && instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+    ClearDtlsError();
     // blocking read; park for the duration. Bytes land in a temp C buffer (a
     // parked thread's GC array can be moved by promotion mid-read), and the
     // array ref is re-rooted on the op_stack so fixup relocates it.
@@ -10454,8 +10595,10 @@ bool TrapProcessor::SockDtlsInCharAry(StackProgram* program, size_t* inst, size_
   const INT64_VALUE offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
+  // no context: the connect failed (see SockDtlsInByte)
+  if(array && instance && instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+    ClearDtlsError();
     char* byte_buffer = new char[num * 2 + 1];
     // Read into the temp buffer at 0, not +offset (see FileInCharAry heap-overflow fix).
     // Blocking read: park for the duration, with the array ref re-rooted on the
@@ -10494,8 +10637,11 @@ bool TrapProcessor::SockDtlsOutByte(StackProgram* program, size_t* inst, size_t*
 {
   INT64_VALUE value = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance) {
+  // a socket whose connect failed has no context: there is nothing to read
+  // or write (this used it, and crashed), and its reason stays reported
+  if(instance && instance[0]) {
     DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+    ClearDtlsError();
     // a DTLS write can block; park so a stop-the-world collection can proceed
     MemoryManager::BeginBlocking();
     IPDtlsSocket::WriteByte((char)value, sctx);
@@ -10516,8 +10662,10 @@ bool TrapProcessor::SockDtlsOutByteAry(StackProgram* program, size_t* inst, size
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
+  // no context: the connect failed (see SockDtlsInByte)
+  if(array && instance && instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+    ClearDtlsError();
     // a DTLS write can block; park for the duration. Data is staged in a temp C
     // buffer first -- a parked thread's GC array can be moved (and its young-gen
     // slot reused) by promotion mid-send.
@@ -10546,8 +10694,10 @@ bool TrapProcessor::SockDtlsOutCharAry(StackProgram* program, size_t* inst, size
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
+  // no context: the connect failed (see SockDtlsInByte)
+  if(array && instance && instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+    ClearDtlsError();
     const wchar_t* buffer = (wchar_t*)(array + 3);
     // copy sub buffer
     const std::wstring sub_buffer(buffer + offset, num);

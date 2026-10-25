@@ -500,28 +500,55 @@ class IPSocket {
  public:
    static std::vector<std::string> Resolve(const char* address);
 
-   static SOCKET Open(const char* address, const int port);
-  
-  static int WriteByte(char value, SOCKET sock) {
-    int status = send(sock, &value, 1, 0);
-    if(status == SOCKET_ERROR) {
-      return '\0';
-    }
+  //
+  // Readies the process for sockets (Winsock 2.2), once; called before each
+  // socket the VM opens. obr and obd start Winsock in main, but a VM run
+  // in-process through the module -- obi, an embedding host -- never did:
+  // mbedtls_net_connect's net_prepare started it for a TLS client, and a plain
+  // socket there failed with WSANOTINITIALISED. Like mbedtls, and like
+  // win_main, it never calls WSACleanup (see win_main.cpp).
+  //
+  static void Startup();
 
-    return status;
+  //
+  // A connected client socket: each address the name resolves to is tried in
+  // turn (IPv6 and IPv4 alike), and the first that connects is returned. A
+  // timeout_ms above 0 bounds each attempt; 0 blocks. On failure returns
+  // INVALID_SOCKET with the reason in error -- captured as each attempt failed,
+  // since the closesocket() after it resets WSAGetLastError() to 0. When every
+  // address failed the reason is the most informative one: an attempt the
+  // network answered (refused, reset, timed out) over one that never left this
+  // host (no route, an address family it lacks), and among answers of a kind
+  // the first, the address the resolver preferred. A name that does not
+  // resolve is a resolver error. type is SOCK_STREAM or SOCK_DGRAM.
+  //
+  static SOCKET Connect(const char* address, int port, int type, int timeout_ms, SocketError& error);
+
+  // A TCP client socket (Connect), with the default 30 second receive timeout
+  static SOCKET Open(const char* address, int port, int timeout_ms, SocketError& error);
+
+  // Writes, reads: error is the call's WSAGetLastError(), or 0 when it worked
+  static int WriteByte(char value, SOCKET sock, int& error) {
+    const int status = send(sock, &value, 1, 0);
+    error = status == SOCKET_ERROR ? WSAGetLastError() : 0;
+    return status == SOCKET_ERROR ? -1 : status;
   }
 
-  static int WriteBytes(const char* values, int len, SOCKET sock) {
+  static int WriteBytes(const char* values, int len, SOCKET sock, int& error) {
     // send() on a blocking socket is only obliged to accept SOME of the buffer.
     // Once the kernel send buffer fills it returns a short count, and a single
     // unlooped send() drops the remainder on the floor -- no error, no retry,
     // and callers here either push that partial count into Objeck or discard it
     // entirely (SockTcpOutString ignores the return). ReadBytes below has always
     // looped, and so has the TLS WriteBytes; only plain TCP did not.
+    //
+    // A failure part way still returns what was sent, with the reason in error.
+    error = 0;
     int total = 0;
     while(total < len) {
       const int status = send(sock, values + total, len - total, 0);
       if(status == SOCKET_ERROR) {
+        error = WSAGetLastError();
         return total > 0 ? total : -1;
       }
       if(status == 0) {
@@ -533,21 +560,26 @@ class IPSocket {
     return total;
   }
 
-  static char ReadByte(SOCKET sock, int &status) {
+  static char ReadByte(SOCKET sock, int &status, int& error) {
     char value;
     status = recv(sock, &value, 1, 0);
     if(status == SOCKET_ERROR) {
+      error = WSAGetLastError();
       return '\0';
     }
-    
+
+    error = 0;
     return value;
   }
 
-  static int ReadBytes(char* values, int len, SOCKET sock) {
+  // a failure part way still returns what was read, with the reason in error
+  static int ReadBytes(char* values, int len, SOCKET sock, int& error) {
+    error = 0;
     int total = 0;
     while(total < len) {
       int status = recv(sock, values + total, len - total, 0);
       if(status == SOCKET_ERROR) {
+        error = WSAGetLastError();
         return total > 0 ? total : -1;
       }
       if(status == 0) {
@@ -598,8 +630,6 @@ class IPSocket {
     return setsockopt(sock, SOL_SOCKET, SO_SNDBUF, (const char*)&bytes, sizeof(bytes)) == 0;
   }
 
-  static SOCKET OpenWithTimeout(const char* address, int port, int timeout_ms);
-
   //
   // A wildcard server socket that takes IPv4 and IPv6 clients alike: an IPv6
   // socket on [::] with IPV6_V6ONLY off, so IPv4 clients arrive as mapped
@@ -620,10 +650,11 @@ class IPSocket {
   // binds, else the first IPv6 one: "localhost" is 127.0.0.1 on every
   // platform, whatever order the resolver lists its addresses in. An IPv6
   // address is bound IPv6-only, so "::1" takes ::1 clients and nothing else.
-  // On failure returns INVALID_SOCKET with the reason in WSAGetLastError(). A
-  // name lookup can block: the caller parks around it.
+  // On failure returns INVALID_SOCKET with the reason in error (a name that
+  // does not resolve is a resolver error). A name lookup can block: the
+  // caller parks around it.
   //
-  static SOCKET BindAddress(const char* host, int port, int type);
+  static SOCKET BindAddress(const char* host, int port, int type, SocketError& error);
 
   //
   // A peer's numeric address and port. An IPv4 client of a dual-stack server
@@ -652,6 +683,7 @@ class IPSocket {
 class UDPSocket {
 public:
   static bool Bind(int port, SOCKET &sock, SOCKADDR_IN* & addr_in) {
+    IPSocket::Startup();
     sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if(sock != INVALID_SOCKET) {
       addr_in = new SOCKADDR_IN;
@@ -705,6 +737,24 @@ class IPSecureSocket {
     return cached == 1;
   }
 
+  //
+  // Connects net for mbedTLS as mbedtls_net_connect does -- each address the
+  // name resolves to, in turn -- returning 0 or the error it would return, with
+  // the OS reason in reason. mbedtls_net_connect closes each failed attempt
+  // before trying the next, and on Windows that close resets WSAGetLastError()
+  // to 0: a refused TLS connect could only say "the connection failed".
+  //
+  static int ConnectNet(mbedtls_net_context& net, const char* address, int port, int type, SocketError& reason) {
+    const SOCKET sock = IPSocket::Connect(address, port, type, 0, reason);
+    if(sock == INVALID_SOCKET) {
+      return reason.resolver ? MBEDTLS_ERR_NET_UNKNOWN_HOST : MBEDTLS_ERR_NET_CONNECT_FAILED;
+    }
+
+    // mbedtls keeps a Winsock handle as an int, as mbedtls_net_connect does
+    net.fd = (int)sock;
+    return 0;
+  }
+
   static bool OpenH2(const char* address, int port, const std::string& pem_file, SecureSocketCtx*& sctx) {
     sctx = new SecureSocketCtx();
 
@@ -718,9 +768,9 @@ class IPSecureSocket {
     ret = TlsParseCertFile(&sctx->cacert, cert_path);
     if(ret < 0) { sctx->SetError(ret); delete sctx; sctx = nullptr; return false; }
 
-    std::string port_str = std::to_string(port);
-    ret = mbedtls_net_connect(&sctx->net, address, port_str.c_str(), MBEDTLS_NET_PROTO_TCP);
-    if(ret != 0) { sctx->SetError(ret); delete sctx; sctx = nullptr; return false; }
+    SocketError reason;
+    ret = ConnectNet(sctx->net, address, port, SOCK_STREAM, reason);
+    if(ret != 0) { sctx->SetError(ret, reason); delete sctx; sctx = nullptr; return false; }
 
     ret = mbedtls_ssl_config_defaults(&sctx->conf, MBEDTLS_SSL_IS_CLIENT,
                                        MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
@@ -757,6 +807,12 @@ class IPSecureSocket {
 
     const char* alpn = mbedtls_ssl_get_alpn_protocol(&sctx->ssl);
     if(!alpn || strcmp(alpn, "h2") != 0) {
+      // the server does not speak HTTP/2; this failure was the only one unrecorded
+#ifdef MBEDTLS_ERR_SSL_NO_APPLICATION_PROTOCOL
+      sctx->SetError(MBEDTLS_ERR_SSL_NO_APPLICATION_PROTOCOL);
+#else
+      sctx->SetError(MBEDTLS_ERR_SSL_FEATURE_UNAVAILABLE);
+#endif
       delete sctx; sctx = nullptr; return false;
     }
 
@@ -798,15 +854,17 @@ class IPSecureSocket {
     // Connect to server
     std::string addr_str = address;
     if(addr_str.size() < 1 || port < 0) {
+      // recorded: this failure alone left GetLastError() at Nil
+      sctx->SetError(MBEDTLS_ERR_NET_BAD_INPUT_DATA);
       delete sctx;
       sctx = nullptr;
       return false;
     }
 
-    std::string port_str = std::to_string(port);
-    ret = mbedtls_net_connect(&sctx->net, address, port_str.c_str(), MBEDTLS_NET_PROTO_TCP);
+    SocketError reason;
+    ret = ConnectNet(sctx->net, address, port, SOCK_STREAM, reason);
     if(ret != 0) {
-      sctx->SetError(ret);
+      sctx->SetError(ret, reason);
       delete sctx;
       sctx = nullptr;
       return false;
@@ -1039,15 +1097,17 @@ class IPDtlsSocket {
 
     std::string addr_str = address;
     if(addr_str.size() < 1 || port < 0) {
+      // recorded: this failure alone left GetLastError() at Nil
+      sctx->SetError(MBEDTLS_ERR_NET_BAD_INPUT_DATA);
       delete sctx;
       sctx = nullptr;
       return false;
     }
 
-    std::string port_str = std::to_string(port);
-    ret = mbedtls_net_connect(&sctx->net, address, port_str.c_str(), MBEDTLS_NET_PROTO_UDP);
+    SocketError reason;
+    ret = IPSecureSocket::ConnectNet(sctx->net, address, port, SOCK_DGRAM, reason);
     if(ret != 0) {
-      sctx->SetError(ret);
+      sctx->SetError(ret, reason);
       delete sctx;
       sctx = nullptr;
       return false;

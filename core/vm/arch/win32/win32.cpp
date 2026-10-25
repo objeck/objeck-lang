@@ -35,57 +35,185 @@
 
 #include "win32.h"
 
-SOCKET IPSocket::Open(const char* address, const int port) {
-  SOCKET sock = INVALID_SOCKET;
-  struct addrinfo* result = nullptr, *ptr = nullptr, hints;
+// see the declaration in win32.h
+void IPSocket::Startup() {
+  static const bool started = [] {
+    WSADATA data;
+    return WSAStartup(MAKEWORD(2, 2), &data) == 0;
+  }();
+  (void)started;
+}
 
-  ZeroMemory(&hints, sizeof(hints));
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_protocol = IPPROTO_TCP;
-
-  std::string port_str = std::to_string(port);
-  if(getaddrinfo(address, port_str.c_str(), &hints, &result) != 0) {
-    // No WSACleanup() here. WSAStartup runs once, in win_main, so a WSACleanup on
-    // this path drops the refcount to zero and shuts Winsock down for the WHOLE
-    // PROCESS -- every open socket on every other thread included, over one failed
-    // name lookup on one connection. OpenWithTimeout below has always just
-    // returned; this matches it. (Dormant in practice: getaddrinfo on a literal
-    // address does not fail, which is why it survived.)
-    return -1;
+// One connect attempt to one resolved address; INVALID_SOCKET with the reason
+// in error when it fails. The reason is taken before the closesocket() that
+// cleans up, which resets WSAGetLastError() to 0.
+static SOCKET ConnectAttempt(const struct addrinfo* addr, int timeout_ms, int& error) {
+  SOCKET sock = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
+  if(sock == INVALID_SOCKET) {
+    error = WSAGetLastError();
+    return INVALID_SOCKET;
   }
 
-  for(ptr = result; ptr != nullptr; ptr = ptr->ai_next) {
-		sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
-    if(sock == INVALID_SOCKET) {
-      continue;
+  if(timeout_ms <= 0) {
+    if(connect(sock, addr->ai_addr, (int)addr->ai_addrlen) == SOCKET_ERROR) {
+      error = WSAGetLastError();
+      closesocket(sock);
+      return INVALID_SOCKET;
+    }
+    return sock;
+  }
+
+  // bounded: connect without blocking, then wait up to timeout_ms
+  u_long mode = 1;
+  if(ioctlsocket(sock, FIONBIO, &mode) == SOCKET_ERROR) {
+    error = WSAGetLastError();
+    closesocket(sock);
+    return INVALID_SOCKET;
+  }
+
+  if(connect(sock, addr->ai_addr, (int)addr->ai_addrlen) == SOCKET_ERROR) {
+    const int connect_error = WSAGetLastError();
+    if(connect_error != WSAEWOULDBLOCK) {
+      error = connect_error;
+      closesocket(sock);
+      return INVALID_SOCKET;
     }
 
-    if(connect(sock, ptr->ai_addr, (int)ptr->ai_addrlen) == SOCKET_ERROR) {
+    // Winsock reports a connect that failed in the except set, not the write
+    // set: waiting on the write set alone sat out the whole timeout after a
+    // refusal, and then called it a timeout.
+    fd_set wset, eset;
+    FD_ZERO(&wset);
+    FD_ZERO(&eset);
+    FD_SET(sock, &wset);
+    FD_SET(sock, &eset);
+    struct timeval tv;
+    tv.tv_sec = timeout_ms / 1000;
+    tv.tv_usec = (timeout_ms % 1000) * 1000;
+
+    const int ready = select(0, nullptr, &wset, &eset, &tv);
+    if(ready == 0) {
+      error = WSAETIMEDOUT;
       closesocket(sock);
-      sock = INVALID_SOCKET;
-      continue;
+      return INVALID_SOCKET;
     }
-    break;
+    if(ready == SOCKET_ERROR) {
+      error = WSAGetLastError();
+      closesocket(sock);
+      return INVALID_SOCKET;
+    }
+
+    // SO_ERROR is the connect's outcome. Unchecked, a failing getsockopt leaves
+    // so_error at 0 and the pending connect would be treated as successful.
+    int so_error = 0;
+    int len = sizeof(so_error);
+    if(getsockopt(sock, SOL_SOCKET, SO_ERROR, (char*)&so_error, &len) == SOCKET_ERROR) {
+      error = WSAGetLastError();
+      closesocket(sock);
+      return INVALID_SOCKET;
+    }
+    if(so_error != 0) {
+      error = so_error;
+      closesocket(sock);
+      return INVALID_SOCKET;
+    }
+  }
+
+  // Back to blocking. A failed restore leaves the socket non-blocking, so a
+  // caller expecting a blocking read gets spurious WSAEWOULDBLOCK instead of
+  // data -- fail the attempt rather than hand back that socket.
+  mode = 0;
+  if(ioctlsocket(sock, FIONBIO, &mode) == SOCKET_ERROR) {
+    error = WSAGetLastError();
+    closesocket(sock);
+    return INVALID_SOCKET;
+  }
+
+  return sock;
+}
+
+// how much a failed attempt's reason says (see IPSocket::Connect in win32.h)
+static int ConnectErrorRank(int error) {
+  switch(error) {
+  case WSAECONNREFUSED:
+  case WSAECONNRESET:
+  case WSAETIMEDOUT:
+    return 2;
+
+  default:
+    return 1;
+  }
+}
+
+// see the declaration in win32.h
+SOCKET IPSocket::Connect(const char* address, int port, int type, int timeout_ms, SocketError& error) {
+  Startup();
+  error = { 0, false };
+
+  struct addrinfo hints;
+  ZeroMemory(&hints, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = type;
+  hints.ai_protocol = type == SOCK_DGRAM ? IPPROTO_UDP : IPPROTO_TCP;
+
+  struct addrinfo* result = nullptr;
+  const std::string port_str = std::to_string(port);
+  const int status = getaddrinfo(address, port_str.c_str(), &hints, &result);
+  if(status != 0) {
+    // the EAI_* codes are WSA error codes on Windows ("No such host is known.").
+    // No WSACleanup() here: WSAStartup runs once, in win_main, so a WSACleanup on
+    // this path shut Winsock down for the WHOLE PROCESS over one failed lookup.
+    error = { status, true };
+    return INVALID_SOCKET;
+  }
+
+  SOCKET sock = INVALID_SOCKET;
+  int kept_rank = 0;
+  for(struct addrinfo* ptr = result; ptr != nullptr && sock == INVALID_SOCKET; ptr = ptr->ai_next) {
+    int attempt_error = 0;
+    sock = ConnectAttempt(ptr, timeout_ms, attempt_error);
+    if(sock == INVALID_SOCKET) {
+      const int rank = ConnectErrorRank(attempt_error);
+      if(rank > kept_rank) {
+        kept_rank = rank;
+        error = { attempt_error, false };
+      }
+    }
   }
   freeaddrinfo(result);
 
+  if(sock != INVALID_SOCKET) {
+    // an earlier address that failed is not this connect's failure
+    error = { 0, false };
+  }
+  else if(error.code == 0) {
+    error = { WSAEADDRNOTAVAIL, false };
+  }
+
+  return sock;
+}
+
+// see the declaration in win32.h
+SOCKET IPSocket::Open(const char* address, int port, int timeout_ms, SocketError& error) {
+  const SOCKET sock = Connect(address, port, SOCK_STREAM, timeout_ms, error);
+
   // Set default receive timeout (30 seconds)
   if(sock != INVALID_SOCKET) {
-    DWORD timeout_ms = 30000;
+    DWORD recv_timeout_ms = 30000;
     // Best-effort default, left non-fatal: the connection is otherwise usable. The
     // consequence is worth knowing though -- without it a recv here can block
     // indefinitely, so a caller needing the guarantee should use
     // SetReceiveTimeout, which reports failure.
-    if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout_ms, sizeof(timeout_ms)) == SOCKET_ERROR) {
+    if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&recv_timeout_ms, sizeof(recv_timeout_ms)) == SOCKET_ERROR) {
       WSASetLastError(0);
     }
   }
 
-	return sock == INVALID_SOCKET ? -1 : sock;
+  return sock;
 }
 
 std::vector<std::string> IPSocket::Resolve(const char* address) {
+ Startup();
  std::vector<std::string> addresses;
 
 	// getaddrinfo does not assign result unless it succeeds, so freeing it on the
@@ -112,97 +240,6 @@ std::vector<std::string> IPSocket::Resolve(const char* address) {
 	return addresses;
 }
 
-SOCKET IPSocket::OpenWithTimeout(const char* address, int port, int timeout_ms) {
-  SOCKET sock = INVALID_SOCKET;
-  struct addrinfo* result = nullptr, *ptr = nullptr, hints;
-
-  ZeroMemory(&hints, sizeof(hints));
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_protocol = IPPROTO_TCP;
-
-  std::string port_str = std::to_string(port);
-  if(getaddrinfo(address, port_str.c_str(), &hints, &result) != 0) {
-    return -1;
-  }
-
-  for(ptr = result; ptr != nullptr; ptr = ptr->ai_next) {
-    sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
-    if(sock == INVALID_SOCKET) continue;
-
-    // set non-blocking
-    u_long mode = 1;
-    if(ioctlsocket(sock, FIONBIO, &mode) == SOCKET_ERROR) {
-      closesocket(sock);
-      sock = INVALID_SOCKET;
-      continue;
-    }
-
-    int ret = connect(sock, ptr->ai_addr, (int)ptr->ai_addrlen);
-    if(ret == 0) {
-      // connected immediately. A failed restore leaves the socket non-blocking, so
-      // a caller expecting a blocking read gets spurious WSAEWOULDBLOCK instead of
-      // data -- fail the attempt rather than hand back that socket.
-      mode = 0;
-      if(ioctlsocket(sock, FIONBIO, &mode) == SOCKET_ERROR) {
-        closesocket(sock);
-        sock = INVALID_SOCKET;
-        continue;
-      }
-      break;
-    }
-    if(WSAGetLastError() != WSAEWOULDBLOCK) {
-      closesocket(sock);
-      sock = INVALID_SOCKET;
-      continue;
-    }
-
-    fd_set wset;
-    FD_ZERO(&wset);
-    FD_SET(sock, &wset);
-    struct timeval tv;
-    tv.tv_sec = timeout_ms / 1000;
-    tv.tv_usec = (timeout_ms % 1000) * 1000;
-
-    ret = select(0, nullptr, &wset, nullptr, &tv);
-    if(ret <= 0) {
-      closesocket(sock);
-      sock = INVALID_SOCKET;
-      continue;
-    }
-
-    // check SO_ERROR. Unchecked, a failing getsockopt leaves err at 0 and the
-    // pending connect would be treated as successful.
-    int err = 0;
-    int len = sizeof(err);
-    if(getsockopt(sock, SOL_SOCKET, SO_ERROR, (char*)&err, &len) == SOCKET_ERROR || err != 0) {
-      closesocket(sock);
-      sock = INVALID_SOCKET;
-      continue;
-    }
-
-    // restore blocking -- same reasoning as the immediate-connect path above
-    mode = 0;
-    if(ioctlsocket(sock, FIONBIO, &mode) == SOCKET_ERROR) {
-      closesocket(sock);
-      sock = INVALID_SOCKET;
-      continue;
-    }
-    break;
-  }
-  freeaddrinfo(result);
-
-  if(sock != INVALID_SOCKET) {
-    DWORD timeout = 30000;
-    // Best-effort default; see the note in Open() above.
-    if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout)) == SOCKET_ERROR) {
-      WSASetLastError(0);
-    }
-  }
-
-  return sock == INVALID_SOCKET ? -1 : sock;
-}
-
 // Closes a socket that failed to bind or listen without losing why: a
 // successful closesocket() resets WSAGetLastError() to 0, so the caller read
 // "The operation completed successfully." for a port that was already in use.
@@ -214,6 +251,7 @@ static void CloseKeepingError(SOCKET sock) {
 
 // see the declarations in win32.h
 SOCKET IPSocket::BindAny(int port, int type) {
+  Startup();
   const int protocol = type == SOCK_DGRAM ? IPPROTO_UDP : IPPROTO_TCP;
   int reuse = 1;
 
@@ -276,9 +314,16 @@ SOCKET IPSocket::BindAny(int port, int type) {
 }
 
 // see the declarations in win32.h
-SOCKET IPSocket::BindAddress(const char* host, int port, int type) {
+SOCKET IPSocket::BindAddress(const char* host, int port, int type, SocketError& error) {
+  Startup();
+  error = { 0, false };
   if(!host || !*host) {
-    return BindAny(port, type);
+    // BindAny keeps its failure in WSAGetLastError() across its cleanup
+    const SOCKET server = BindAny(port, type);
+    if(server == INVALID_SOCKET) {
+      error = { WSAGetLastError(), false };
+    }
+    return server;
   }
 
   struct addrinfo hints;
@@ -293,7 +338,7 @@ SOCKET IPSocket::BindAddress(const char* host, int port, int type) {
   const int status = getaddrinfo(host, port_str.c_str(), &hints, &result);
   if(status != 0) {
     // the EAI_* codes are WSA error codes on Windows
-    WSASetLastError(status);
+    error = { status, true };
     return INVALID_SOCKET;
   }
 
@@ -340,7 +385,7 @@ SOCKET IPSocket::BindAddress(const char* host, int port, int type) {
   freeaddrinfo(result);
 
   if(server == INVALID_SOCKET) {
-    WSASetLastError(last_error);
+    error = { last_error, false };
   }
 
   return server;
