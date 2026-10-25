@@ -575,14 +575,14 @@ public:
   // address is bound IPv6-only, so "::1" takes ::1 clients and nothing else.
   // On failure returns -1 with the reason in error (a name that does not
   // resolve is a resolver error). A name lookup can block: the caller parks
-  // around it.
+  // around it. reuse_address is as for BindAny.
   //
-  static SOCKET BindAddress(const char* host, int port, int type, SocketError& error) {
+  static SOCKET BindAddress(const char* host, int port, int type, SocketError& error, bool reuse_address = true) {
     Startup();
     error = { 0, false };
     if(!host || !*host) {
       // BindAny keeps its failure in errno across its cleanup
-      const SOCKET server = BindAny(port, type);
+      const SOCKET server = BindAny(port, type, reuse_address);
       if(server < 0) {
         error = { errno, false };
       }
@@ -633,9 +633,9 @@ public:
           }
         }
 
-        // non-fatal, as in BindAny
+        // non-fatal, as in BindAny; reuse_address false leaves it off (a UDP server)
         int reuse = 1;
-        if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
+        if(reuse_address && setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
           errno = 0;
         }
 
@@ -935,109 +935,6 @@ private:
   }
 };
 
-/****************************
- * UDP socket support class
- ****************************/
-//
-// UDP sockets. A client's peer and a server's last sender are kept in a
-// sockaddr_storage, so either can be IPv4 or IPv6: datagrams go to it, and a
-// read replaces it with the sender's address, so a reply goes back to whoever
-// wrote last.
-//
-class UDPSocket {
-public:
-  //
-  // A client socket for one peer. The address is resolved as a TCP client's
-  // is (getaddrinfo: IPv6 and IPv4, names and literals), and the first
-  // address a socket can be made for is the peer. inet_pton took IPv4
-  // literals only, so "localhost", any host name and every IPv6 address left
-  // a socket that sent nothing. On failure returns false with the reason in
-  // error (a name that does not resolve is a resolver error). A name lookup
-  // can block: the caller parks around it.
-  //
-  static bool Open(const char* address, int port, SOCKET& sock, struct sockaddr_storage*& addr, SocketError& error) {
-    IPSocket::Startup();
-    sock = -1;
-    addr = nullptr;
-    error = { 0, false };
-
-    struct addrinfo hints;
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_DGRAM;
-    hints.ai_protocol = IPPROTO_UDP;
-
-    struct addrinfo* result = nullptr;
-    const std::string port_str = std::to_string(port);
-    const int status = getaddrinfo(address, port_str.c_str(), &hints, &result);
-    if(status != 0) {
-      // the EAI_* codes are not errno values; EAI_SYSTEM means errno says why
-      if(status == EAI_SYSTEM && errno != 0) {
-        error = { errno, false };
-      }
-      else {
-        error = { status, true };
-      }
-      return false;
-    }
-
-    for(struct addrinfo* ptr = result; ptr != nullptr; ptr = ptr->ai_next) {
-      sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
-      if(sock < 0) {
-        error = { errno, false };
-        continue;
-      }
-
-      addr = new struct sockaddr_storage;
-      memset(addr, 0, sizeof(struct sockaddr_storage));
-      memcpy(addr, ptr->ai_addr, ptr->ai_addrlen);
-      error = { 0, false };
-      break;
-    }
-    freeaddrinfo(result);
-
-    if(sock < 0 && error.code == 0) {
-      error = { EADDRNOTAVAIL, false };
-    }
-
-    return sock >= 0;
-  }
-
-  //
-  // A server socket on the dual-stack wildcard (IPSocket::BindAny), so IPv4
-  // and IPv6 clients reach it as they reach the TCP, TLS and DTLS servers
-  // (#1322); it bound 0.0.0.0, IPv4 only. No SO_REUSEADDR: for UDP it would
-  // let a second server bind the same port. On failure returns false with the
-  // reason in errno.
-  //
-  static bool Bind(int port, SOCKET& sock, struct sockaddr_storage*& addr) {
-    addr = nullptr;
-    sock = IPSocket::BindAny(port, SOCK_DGRAM, false);
-    if(sock < 0) {
-      return false;
-    }
-
-    // the bound address, until a read replaces it with a sender's
-    addr = new struct sockaddr_storage;
-    memset(addr, 0, sizeof(struct sockaddr_storage));
-    socklen_t len = sizeof(struct sockaddr_storage);
-    if(getsockname(sock, (struct sockaddr*)addr, &len) < 0) {
-      addr->ss_family = AF_INET6;
-    }
-
-    return true;
-  }
-
-  // the length of the address kept in addr, for sendto
-  static socklen_t AddressSize(const struct sockaddr_storage* addr) {
-    return addr->ss_family == AF_INET6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
-  }
-
-  static void Close(SOCKET sock, struct sockaddr_storage* addr) {
-    close(sock);
-    delete addr;
-  }
-};
 
 /****************************
  * IP socket support class
@@ -1501,7 +1398,8 @@ class IPDtlsSocket {
       return false;
     }
 
-    mbedtls_ssl_set_bio(&sctx->ssl, &sctx->net, mbedtls_net_send, mbedtls_net_recv, mbedtls_net_recv_timeout);
+    // record I/O that notices a peer the network has refused (see DtlsBioSend)
+    mbedtls_ssl_set_bio(&sctx->ssl, sctx, DtlsBioSend, DtlsBioRecv, DtlsBioRecvTimeout);
     mbedtls_ssl_set_timer_cb(&sctx->ssl, &sctx->timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
 
     while((ret = mbedtls_ssl_handshake(&sctx->ssl)) != 0) {

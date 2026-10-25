@@ -452,6 +452,20 @@ struct SecureSocketCtx {
 // built as C++14 cannot compile)
 extern thread_local int dtls_last_error;
 
+//
+// DTLS record I/O for mbedtls_ssl_set_bio, whose context is the
+// DtlsSocketCtx: mbedtls_net_send, _recv and _recv_timeout on its descriptor,
+// except that a send first asks whether the network has already refused the
+// peer (an ICMP port unreachable for an earlier datagram), and a failure keeps
+// its OS reason for GetLastError. Windows never fails a UDP send for that
+// refusal -- only a later receive reports it -- so a DTLS client whose server
+// had gone wrote into the void, answering true, for ever. (defined in
+// common.cpp)
+//
+int DtlsBioSend(void* ctx, const unsigned char* buf, size_t len);
+int DtlsBioRecv(void* ctx, unsigned char* buf, size_t len);
+int DtlsBioRecvTimeout(void* ctx, unsigned char* buf, size_t len, uint32_t timeout);
+
 struct DtlsSocketCtx {
   mbedtls_ssl_context ssl;
   mbedtls_ssl_config conf;
@@ -466,9 +480,14 @@ struct DtlsSocketCtx {
   // the address connected to, when it is one (see TlsVerifyIpSan)
   TlsIpName ip_name;
   int last_error;
+  // the OS reason behind the last failed record send or receive (DtlsBioSend,
+  // DtlsBioRecv), taken by the next SetError
+  SocketError net_reason;
 
   void SetError(int error) {
-    SetError(error, SocketError{ 0, false });
+    const SocketError reason = net_reason;
+    net_reason = SocketError{ 0, false };
+    SetError(error, reason);
   }
 
   // a failure with the OS reason behind it (a connect that failed)
@@ -479,7 +498,7 @@ struct DtlsSocketCtx {
     dtls_socket_error = reason;
   }
 
-  DtlsSocketCtx() : last_error(0) {
+  DtlsSocketCtx() : last_error(0), net_reason{ 0, false } {
     mbedtls_ssl_init(&ssl);
     mbedtls_ssl_config_init(&conf);
     mbedtls_net_init(&net);

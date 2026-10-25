@@ -7,7 +7,10 @@
 # failed write is recorded for GetLastError like any other TLS failure.
 #
 # Each server reads one byte and hangs up (the DTLS one closes its port as
-# well), so the client's first write works and a later one fails.
+# well), so the client's first write works and a later one fails: the TLS one
+# on the reset, the DTLS one on the server's close_notify (or, if that was
+# lost, the network's refusal of a datagram to the closed port), which
+# GetLastError names.
 # EXTRA_LIBS: net
 ~#
 
@@ -89,15 +92,25 @@ class TlsWriteByteResult {
 		};
 	}
 
+	# the session is over: the server's close_notify is waiting to be read
+	# ("SSL - The peer notified us that the connection is going to be closed"),
+	# or, when that datagram was lost, the network refused one sent to the
+	# closed port ("NET - Connection was reset by peer: Connection refused")
+	function : PeerGone(reason : String) ~ Bool {
+		if(reason = Nil) {
+			return false;
+		};
+		lower := reason->ToLower();
+		return lower->Has("connection is going to be closed") |
+			(lower->Has("net - ") & (lower->Has("refused") | lower->Has("forcibly closed")));
+	}
+
 	function : CheckTls() ~ Nil {
+		# port 0: the system picks a free one, and GetPort() says which
 		port := 0;
-		server : TCPSecureSocketServer;
-		for(tries := 0; port = 0 & tries < 10; tries += 1;) {
-			candidate := Int->Random(20000, 31998);
-			server := TCPSecureSocketServer->New("tls-write-cert.pem", "tls-write-key.pem", "", candidate);
-			if(server->Listen()) {
-				port := candidate;
-			};
+		server := TCPSecureSocketServer->New("tls-write-cert.pem", "tls-write-key.pem", "", 0);
+		if(server->Listen()) {
+			port := server->GetPort();
 		};
 		Check("tls: the server listens", port > 0);
 		if(port = 0) {
@@ -130,13 +143,9 @@ class TlsWriteByteResult {
 
 	function : CheckDtls() ~ Nil {
 		port := 0;
-		server : DTLSSocketServer;
-		for(tries := 0; port = 0 & tries < 10; tries += 1;) {
-			candidate := Int->Random(20000, 31998);
-			server := DTLSSocketServer->New("tls-write-cert.pem", "tls-write-key.pem", "", candidate);
-			if(server->Listen()) {
-				port := candidate;
-			};
+		server := DTLSSocketServer->New("tls-write-cert.pem", "tls-write-key.pem", "", 0);
+		if(server->Listen()) {
+			port := server->GetPort();
 		};
 		Check("dtls: the server listens", port > 0);
 		if(port = 0) {
@@ -153,6 +162,31 @@ class TlsWriteByteResult {
 		Check("dtls: a write that works answers true", socket->WriteByte('a'));
 		reason := DTLSSocket->GetLastError();
 		Check("dtls: and leaves no error ('{$reason}')", reason = Nil);
+
+		# The server reads that byte, then closes its session (close_notify) and
+		# its port. The next write finds the session over and fails; if the
+		# close_notify was lost, a datagram to the closed port draws a refusal,
+		# and the write after it fails. On Windows a DTLS write answered true for
+		# ever: a send never fails there, and the refusal waits behind the
+		# close_notify for a read.
+		written := true;
+		for(i := 0; written & i < 300; i += 1;) {
+			Thread->Sleep(10);
+			written := socket->WriteByte('b');
+		};
+		Check("dtls: a write after the server closed its port answers false", <>written);
+		reason := DTLSSocket->GetLastError();
+		Check("dtls: and GetLastError says the session is over ('{$reason}')", PeerGone(reason));
+
+		sent := 0;
+		buffer := "more"->ToByteArray();
+		for(i := 0; sent >= 0 & i < 300; i += 1;) {
+			Thread->Sleep(10);
+			sent := socket->WriteBuffer(0, buffer->Size(), buffer);
+		};
+		Check("dtls: a buffer write after it answers -1 ({$sent})", sent < 0);
+		reason := DTLSSocket->GetLastError();
+		Check("dtls: and GetLastError says why ('{$reason}')", PeerGone(reason));
 		socket->Close();
 
 		Check("dtls: a closed socket's write answers false", <>socket->WriteByte('c'));

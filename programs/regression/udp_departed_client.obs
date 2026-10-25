@@ -1,0 +1,226 @@
+#~
+# A UDP server outlives a departed client; a client hears its peer's refusal
+#
+# A reply to a client that has gone draws an ICMP port unreachable. On Windows
+# that failed the server's NEXT read ("An existing connection was forcibly
+# closed by the remote host."), so one departed client broke a server serving
+# many; Linux never reports it to an unconnected socket. The server now turns
+# the report off (SIO_UDP_CONNRESET), and its next read gets the next client's
+# datagram.
+#
+# A client is connected to its one peer, so the refusal is that peer's answer:
+# a read after it fails with "Connection refused" on every platform. An
+# unconnected client on Linux heard nothing and its read waited for ever.
+#
+# UDP may drop a datagram (on some hosts the first one sent to a new socket),
+# so reads run on threads while the writer resends, as net_io_gc_park does.
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO.Net;
+
+class ServerReader from Thread {
+	@server : UDPSocketServer;
+	@bytes : Byte[];
+	@read : Int;
+	@error : String;
+	@finished : Bool;
+
+	New(server : UDPSocketServer) {
+		Parent("udp-server-reader");
+		@server := server;
+		@bytes := Byte->New[64];
+		@read := -2;
+		@finished := false;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		@read := @server->ReadBuffer(0, @bytes->Size(), @bytes);
+		@error := UDPSocketServer->GetLastError();
+		@finished := true;
+	}
+
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetRead() ~ Int { return @read; }
+	method : public : GetBytes() ~ Byte[] { return @bytes; }
+	method : public : GetError() ~ String { return @error; }
+}
+
+class ClientReader from Thread {
+	@client : UDPSocket;
+	@bytes : Byte[];
+	@read : Int;
+	@error : String;
+	@finished : Bool;
+
+	New(client : UDPSocket) {
+		Parent("udp-client-reader");
+		@client := client;
+		@bytes := Byte->New[64];
+		@read := -2;
+		@finished := false;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		@read := @client->ReadBuffer(0, @bytes->Size(), @bytes);
+		@error := UDPSocket->GetLastError();
+		@finished := true;
+	}
+
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetRead() ~ Int { return @read; }
+	method : public : GetBytes() ~ Byte[] { return @bytes; }
+	method : public : GetError() ~ String { return @error; }
+}
+
+class UdpDepartedClient {
+	@failed : static : Int;
+	@port : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+
+		"stage: server"->ErrorLine();
+		CheckServer();
+		"stage: client refused"->ErrorLine();
+		CheckClientRefused();
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} UDP refusal check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: a UDP server outlives a departed client, and a client hears its refusal"->PrintLine();
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : Same(buffer : Byte[], read : Int, text : String) ~ Bool {
+		bytes := text->ToByteArray();
+		if(buffer = Nil | read <> bytes->Size()) {
+			return false;
+		};
+		for(i := 0; i < read; i += 1;) {
+			if(buffer[i] <> bytes[i]) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	# a server on a port the system picks (0), remembered in @port; Nil if none
+	function : Bind() ~ UDPSocketServer {
+		server := UDPSocketServer->New(0);
+		if(server->IsBound()) {
+			@port := server->GetPort();
+			return server;
+		};
+		return Nil;
+	}
+
+	# the server reads one datagram while the client resends it
+	function : Deliver(server : UDPSocketServer, client : UDPSocket, text : String) ~ ServerReader {
+		reader := ServerReader->New(server);
+		reader->Execute(Nil);
+		for(waited := 0; <>reader->IsFinished() & waited < 5000; waited += 50;) {
+			client->WriteBuffer(text->ToByteArray());
+			Thread->Sleep(50);
+		};
+		return reader;
+	}
+
+	# a reader still waiting for a datagram gets one, so the VM can end
+	function : Release(reader : ServerReader, port : Int) ~ Nil {
+		wake := UDPSocket->New("127.0.0.1", port);
+		for(i := 0; <>reader->IsFinished() & i < 100; i += 1;) {
+			wake->WriteByte(0);
+			Thread->Sleep(50);
+		};
+		wake->Close();
+		reader->Join();
+	}
+
+	function : CheckServer() ~ Nil {
+		server := Bind();
+		Check("server: binds", server <> Nil);
+		if(server = Nil) {
+			return;
+		};
+		port := @port;
+
+		# a client writes, is read, and goes away
+		gone := UDPSocket->New("127.0.0.1", port);
+		reader := Deliver(server, gone, "first");
+		Check("server: hears the first client", reader->IsFinished());
+		if(<>reader->IsFinished()) {
+			Release(reader, port);
+			gone->Close();
+			server->Close();
+			return;
+		};
+		reader->Join();
+		gone->Close();
+
+		# the reply goes to the departed client's closed port
+		replied := server->WriteBuffer("reply"->ToByteArray());
+		Check("server: the reply is sent ({$replied})", replied = 5);
+		Thread->Sleep(200);
+
+		# and the next read is the next client's datagram, not a failure
+		next := UDPSocket->New("127.0.0.1", port);
+		reader := Deliver(server, next, "second");
+		finished := reader->IsFinished();
+		Check("server: the next read finishes", finished);
+		if(<>finished) {
+			Release(reader, port);
+		}
+		else {
+			reader->Join();
+			error := reader->GetError();
+			Check("server: the next read is the next client's datagram ({$reader->GetRead()}, '{$error}')",
+				Same(reader->GetBytes(), reader->GetRead(), "second"));
+		};
+		next->Close();
+		server->Close();
+	}
+
+	function : CheckClientRefused() ~ Nil {
+		# a port with nobody on it: bound and closed again
+		server := Bind();
+		Check("client: a port to free", server <> Nil);
+		if(server = Nil) {
+			return;
+		};
+		port := @port;
+		server->Close();
+
+		client := UDPSocket->New("127.0.0.1", port);
+		Check("client: the datagram is sent", client->WriteBuffer("anyone"->ToByteArray()) = 6);
+
+		# the network refuses it; a read finds out rather than waiting for ever
+		reader := ClientReader->New(client);
+		reader->Execute(Nil);
+		for(waited := 0; <>reader->IsFinished() & waited < 5000; waited += 50;) {
+			Thread->Sleep(50);
+		};
+		finished := reader->IsFinished();
+		Check("client: a read after the refusal returns", finished);
+		if(<>finished) {
+			"FAIL: a UDP client read waited for ever on a refused peer"->PrintLine();
+			Runtime->Exit(1);
+		};
+		reader->Join();
+		error := reader->GetError();
+		Check("client: it fails with the refusal ({$reader->GetRead()}, '{$error}')",
+			reader->GetRead() < 0 & error <> Nil & (error->ToLower()->Has("refused") | error->ToLower()->Has("forcibly closed")));
+		client->Close();
+	}
+
+}
