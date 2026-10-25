@@ -20,7 +20,10 @@ gating regression suite. Two reasons, both learned the hard way:
 
 What it asserts: a host that does NOT speak HTTP/3 must FAIL rather than
 quietly succeed over HTTP/2 or HTTP/1.1. That is a real bug on any platform
-and cannot be caused by network conditions. It matters most on Windows, where
+and cannot be caused by network conditions -- provided the host really does
+not speak HTTP/3, which the test now verifies over HTTPS (Alt-Svc) before
+asserting, because example.com grew HTTP/3 and turned a correct client into
+a reported bug. It matters most on Windows, where
 WinHTTP treats HTTP/3 as a *preference* and falls back transparently -- so the
 backend asserts WINHTTP_OPTION_HTTP_PROTOCOL_USED. An Http3Client that quietly
 spoke HTTP/2 would be the same false promise this feature was fixing.
@@ -63,25 +66,51 @@ class Http3DowngradeTest {
 		client->Close();
 
 		# --- negative: no silent downgrade (the real assertion) ------------
-		# example.com serves HTTP/1.1 only. Reaching it and reporting success
-		# means the client accepted a non-HTTP/3 connection -- a genuine bug,
-		# not a network condition, so this one IS fatal.
-		plain := Http3Client->New("example.com");
-		if(plain->IsConnected()) {
-			down := plain->Get("/");
-			if(down <> Nil) {
-				dc := down->GetCode();
-				pass := false;
-				"  FAIL: non-HTTP/3 host silently succeeded (status={$dc})"->PrintLine();
+		# A host that speaks HTTP/1.1 and HTTP/2 but not HTTP/3. Reaching it and
+		# reporting success means the client accepted a non-HTTP/3 connection
+		# -- a genuine bug, not a network condition, so this one IS fatal.
+		#
+		# The host used to be example.com, and the assertion was written as if
+		# "does not speak HTTP/3" were a fixed property of a host. It is not:
+		# on 2026-10-24 example.com was found serving from Cloudflare with
+		# "alt-svc: h3=\":443\"", so the client reached it over QUIC, legitimately,
+		# and the test reported a downgrade that never happened. So the host's
+		# protocol support is checked here, at run time, over HTTPS: a host that
+		# advertises HTTP/3 in Alt-Svc (RFC 7838) cannot serve as the negative
+		# case, and the check is skipped rather than failed. httpbin.org is the
+		# host today because the HTTP/2 test already depends on it and it does
+		# not advertise h3; when it starts to, this prints SKIP and the host
+		# needs replacing, instead of the step reporting a client bug.
+		plain_host := "httpbin.org";
+		advertises_h3 := false;
+		probe := HttpsClient->New();
+		probe_resp := probe->Get(Url->New("https://{$plain_host}/"));
+		if(probe_resp <> Nil) {
+			alt_svc := probe->GetResponseHeaders()->Find("alt-svc");
+			if(alt_svc <> Nil & alt_svc->Has("h3")) {
+				advertises_h3 := true;
+				"  SKIP: {$plain_host} now advertises HTTP/3 (alt-svc: {$alt_svc}); no non-HTTP/3 host for the downgrade check"->PrintLine();
+			};
+		};
+
+		if(<>advertises_h3) {
+			plain := Http3Client->New(plain_host);
+			if(plain->IsConnected()) {
+				down := plain->Get("/");
+				if(down <> Nil) {
+					dc := down->GetCode();
+					pass := false;
+					"  FAIL: non-HTTP/3 host {$plain_host} silently succeeded (status={$dc})"->PrintLine();
+				}
+				else {
+					"  info: non-HTTP/3 host correctly refused"->PrintLine();
+				};
 			}
 			else {
-				"  info: non-HTTP/3 host correctly refused"->PrintLine();
+				"  info: non-HTTP/3 host refused at connect"->PrintLine();
 			};
-		}
-		else {
-			"  info: non-HTTP/3 host refused at connect"->PrintLine();
+			plain->Close();
 		};
-		plain->Close();
 
 		# --- header injection: CR/LF in a caller-supplied content type ----
 		# WinHttpAddRequestHeaders takes a CRLF-SEPARATED BLOCK, so a CR/LF in
