@@ -521,11 +521,15 @@ sys.stdout.buffer.write(("%d\n" % cp).encode() + buf.value[:got.value].encode("u
 CONSOLE_DONE = "OBJK_CONSOLE_DONE"
 
 
-def console_screen(command, env, timeout=60):
+def console_screen(command, env, expect=(), timeout=60):
     """Runs 'command' in a new console whose code page is 437 and returns
     (code page, screen text), or None when no console could be read. The
     command is a cmd line: name its non-ASCII parts with %VARIABLES% from env,
-    which cmd expands in UTF-16 (a batch file would be read in code page 437)."""
+    which cmd expands in UTF-16 (a batch file would be read in code page 437).
+    The screen is read until it holds the done marker and every text in
+    'expect' (compared as on_screen does), up to the timeout, rather than
+    once after a fixed delay: a read can land between the process's output and
+    the console host showing it."""
     import time
     proc = subprocess.Popen(f'cmd.exe /d /k "chcp 437 >nul & {command} & echo {CONSOLE_DONE}"',
                             env=env, creationflags=subprocess.CREATE_NEW_CONSOLE)
@@ -541,7 +545,7 @@ def console_screen(command, env, timeout=60):
             screen = (int(cp), text)
             # cmd /k does not echo its command, so the marker appears once
             # the command is done
-            if CONSOLE_DONE in text:
+            if CONSOLE_DONE in text and all(on_screen(e) in on_screen(text) for e in expect):
                 break
     finally:
         proc.kill()
@@ -613,14 +617,15 @@ def check_unicode_text_out(obc, bin_dir, lib_dir):
 
         if os.path.exists(obu):
             console_env["OBJK_T_OBU"] = obu
+            expected_line = "against " + console_env["OBJK_T_SUMS"]
             screen = console_screen('"%OBJK_T_OBU%" verify "%OBJK_T_ARCHIVE%" "%OBJK_T_SUMS%" & echo OBU_EXIT=%ERRORLEVEL%',
-                                    console_env)
+                                    console_env, expect=[expected_line], timeout=30)
             if screen is None:
                 print("  [SKIP] console checks: no console could be created and read here")
                 return
             cp, text = screen
             check("obu's message reads back from a code page 437 console as written",
-                  cp == 437 and on_screen("against " + console_env["OBJK_T_SUMS"]) in on_screen(text),
+                  cp == 437 and on_screen(expected_line) in on_screen(text),
                   f"cp={cp} screen={text.strip()[-300:]!r}")
 
         if os.path.exists(obd) and os.path.exists(obe):
@@ -628,7 +633,7 @@ def check_unicode_text_out(obc, bin_dir, lib_dir):
             console_env["OBJK_T_OBE"] = obe
             console_env["OBJK_T_COMMANDS"] = commands
             screen = console_screen('"%OBJK_T_OBD%" -bin "%OBJK_T_OBE%" -src_dir "%OBJK_T_ROOT%" < "%OBJK_T_COMMANDS%"',
-                                    console_env)
+                                    console_env, expect=[obe, UNI_TEXT], timeout=30)
             if screen is None:
                 print("  [SKIP] console checks: no console could be created and read here")
                 return
