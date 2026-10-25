@@ -143,9 +143,15 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     messages and obd's banner read back from the screen as written (obu wrote
     UTF-8 bytes, which the console decoded as code page 437). The console half
     reads the screen buffer of a console it creates, so it needs a session
-    that can create one; it reports a skip when it cannot.
+    that can create one; it reports a skip when it cannot. It reads the
+    screen cell by cell and rejoins the lines the console wrapped: a
+    double-width character that does not fit at the end of a row moves to
+    the next row and leaves a blank cell behind, where the path's length and
+    the console's width put it, so read as plain rows the same path held a
+    space on the windows-arm64 runner (a 120-cell console) and not on
+    windows-x64 (110 cells, the same temp directory).
 
- 16. The call depth. --call-depth (and OBJECK_CALL_DEPTH) sets how deep calls
+ 17. The call depth. --call-depth (and OBJECK_CALL_DEPTH) sets how deep calls
     may nest, from 256 to 1048576 (default 16384); 255, 1048577, 0 and 'deep'
     are refused with a message naming the range, and the flag wins over a bad
     variable. With --call-depth=300, vm_call_depth_limit.obs recursing 290
@@ -521,8 +527,24 @@ DEBUG_FIXTURE = (
 )
 
 # Reads back the screen buffer of the console owned by process argv[1] and
-# writes it, with that console's output code page, to stdout as UTF-8. Run as
-# its own process: it must leave its own console to attach to that one.
+# writes its lines, with that console's output code page, to stdout as UTF-8.
+# Run as its own process: it must leave its own console to attach to that one.
+#
+# The screen is read as CHAR_INFO cells (ReadConsoleOutputW), not as the
+# fixed-width rows of characters ReadConsoleOutputCharacterW gives, and the
+# lines are put back together the way the console host broke them: a
+# double-width (CJK) character fills two cells, marked leading and trailing,
+# and is kept once; a row whose text reaches its last cell continues on the
+# next row; and a row whose last cell is blank while the next row begins with
+# a leading cell continues too -- that blank is the cell the double-width
+# character could not fit in before it moved down, not a space anyone wrote.
+# (The host writes that padding with the current attributes, so the cells
+# alone cannot tell it from a space; a space a program wrote right before a
+# double-width character that lands there is dropped the same way, which no
+# text this script expects contains.) Any other row ends a line. With the
+# plain character read, a long path wrapped at a column that depended on the
+# temp directory's length and the console's width, and a padding space
+# appeared inside the path on one runner and not another.
 CONSOLE_READER = r'''
 import ctypes, sys
 from ctypes import wintypes as W
@@ -530,20 +552,40 @@ k = ctypes.WinDLL("kernel32", use_last_error=True)
 class COORD(ctypes.Structure): _fields_ = [("X", ctypes.c_short), ("Y", ctypes.c_short)]
 class RECT(ctypes.Structure): _fields_ = [("L", ctypes.c_short), ("T", ctypes.c_short), ("R", ctypes.c_short), ("B", ctypes.c_short)]
 class INFO(ctypes.Structure): _fields_ = [("size", COORD), ("cursor", COORD), ("attr", W.WORD), ("win", RECT), ("max", COORD)]
+class CELL(ctypes.Structure): _fields_ = [("ch", ctypes.c_wchar), ("attr", W.WORD)]
+LEADING, TRAILING = 0x0100, 0x0200
 k.CreateFileW.restype = W.HANDLE
 k.FreeConsole()
 if not k.AttachConsole(int(sys.argv[1])):
     sys.exit(2)
-h = k.CreateFileW("CONOUT$", 0xC0000000, 3, None, 3, 0, None)
+h = W.HANDLE(k.CreateFileW("CONOUT$", 0xC0000000, 3, None, 3, 0, None))
 info = INFO()
-k.GetConsoleScreenBufferInfo(W.HANDLE(h), ctypes.byref(info))
-n = info.size.X * (info.cursor.Y + 1)
-buf = ctypes.create_unicode_buffer(n + 1)
-got = W.DWORD()
-k.ReadConsoleOutputCharacterW(W.HANDLE(h), buf, n, COORD(0, 0), ctypes.byref(got))
+k.GetConsoleScreenBufferInfo(h, ctypes.byref(info))
+width, rows = info.size.X, info.cursor.Y + 1
+cells = []
+y = 0
+while y < rows:
+    count = min(16, rows - y)
+    chunk = (CELL * (width * count))()
+    region = RECT(0, y, width - 1, y + count - 1)
+    if not k.ReadConsoleOutputW(h, chunk, COORD(width, count), COORD(0, 0), ctypes.byref(region)):
+        sys.exit(3)
+    cells.extend(chunk[r * width:(r + 1) * width] for r in range(count))
+    y += count
 cp = k.GetConsoleOutputCP()
 k.FreeConsole()
-sys.stdout.buffer.write(("%d\n" % cp).encode() + buf.value[:got.value].encode("utf-8", "surrogatepass"))
+out = []
+for y, row in enumerate(cells):
+    text = "".join(c.ch for c in row if not c.attr & TRAILING)
+    last = row[-1]
+    following = cells[y + 1][0] if y + 1 < len(cells) else None
+    if last.attr & TRAILING or last.ch != " ":
+        out.append(text)
+    elif following is not None and following.attr & LEADING:
+        out.append(text[:-1])
+    else:
+        out.append(text.rstrip(" ") + "\n")
+sys.stdout.buffer.write(("%d\n" % cp).encode() + "".join(out).encode("utf-8", "surrogatepass"))
 '''
 CONSOLE_DONE = "OBJK_CONSOLE_DONE"
 
@@ -553,10 +595,12 @@ def console_screen(command, env, expect=(), timeout=60):
     (code page, screen text), or None when no console could be read. The
     command is a cmd line: name its non-ASCII parts with %VARIABLES% from env,
     which cmd expands in UTF-16 (a batch file would be read in code page 437).
-    The screen is read until it holds the done marker and every text in
-    'expect' (compared as on_screen does), up to the timeout, rather than
-    once after a fixed delay: a read can land between the process's output and
-    the console host showing it."""
+    The screen text is the console's lines, each ending in a newline, with a
+    line the console wrapped put back together (see CONSOLE_READER). It is
+    read until it holds the done marker and every text in 'expect' (compared
+    as on_screen does), up to the timeout, rather than once after a fixed
+    delay: a read can land between the process's output and the console host
+    showing it."""
     import time
     proc = subprocess.Popen(f'cmd.exe /d /k "chcp 437 >nul & {command} & echo {CONSOLE_DONE}"',
                             env=env, creationflags=subprocess.CREATE_NEW_CONSOLE)
@@ -583,18 +627,13 @@ def on_screen(text):
     """'text' compared as a console screen can hold it. A character outside
     the BMP reads back from the screen buffer either whole or as U+FFFD,
     depending on how it was written (cmd's own echo gives U+FFFD), so both
-    sides of a comparison drop those and compare the rest. Whitespace goes
-    too: the screen is read as fixed-width rows, so a long path wraps, and a
-    wide (CJK) character that does not fit at a row's end leaves a blank cell
-    inside the text -- where depends on the length of the temp directory,
-    which differs from one runner to the next."""
-    return "".join(c for c in text if ord(c) <= 0xFFFF and c != "\ufffd" and not c.isspace() and c != "\0")
+    sides of a comparison drop those and compare the rest, spaces included."""
+    return "".join(c for c in text if ord(c) <= 0xFFFF and c != "\ufffd")
 
 
 def screen_tail(text, size=700):
-    """The end of a screen for a failure message, runs of blanks collapsed so
-    the lines above the done marker are not cut off by the padding."""
-    return re.sub(r"\s{2,}", " | ", text.strip())[-size:]
+    """The end of a screen for a failure message."""
+    return text.strip()[-size:]
 
 
 def check_unicode_text_out(obc, bin_dir, lib_dir):
