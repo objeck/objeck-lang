@@ -326,6 +326,7 @@ class ServerBindAddress {
 		# returns, reporting the error on standard error
 		WebServer->Serve(HelloHandler->New()->GetClass(), "no-such-host.invalid", 0);
 		Check("WebServer no-such-host.invalid: Serve() returns", true);
+		"web: the bad-address Serve() returned"->ErrorLine();
 
 		# Serve on port 0: the system picks a free port, known once the server
 		# listens (WebServer->GetBoundPort), so no two runs collide
@@ -348,9 +349,11 @@ class ServerBindAddress {
 		@web_port := WebServer->GetBoundPort();
 		started := @web_port > 0;
 		Check("WebServer 127.0.0.1: the server listens", started);
+		"web: listening on port {$@web_port}"->ErrorLine();
 		if(started) {
 			port := @web_port;
 			response := Web.HTTP.HttpClient->New()->Get(Web.HTTP.Url->New("http://127.0.0.1:{$port}/hello"));
+			"web: the request was answered"->ErrorLine();
 			if(response <> Nil) {
 				content := response->GetContent();
 				if(content <> Nil) {
@@ -359,7 +362,9 @@ class ServerBindAddress {
 			};
 			Check("WebServer 127.0.0.1: a request is answered (body '{$body}')", body <> Nil & body->Equals("bound-hello"));
 			Check("WebServer 127.0.0.1: a ::1 client is refused", <>Reaches("::1", port));
+			"web: the ::1 client was refused"->ErrorLine();
 		};
 		WebServer->Stop();
+		"web: stopped"->ErrorLine();
 	}
 }
