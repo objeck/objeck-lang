@@ -1,0 +1,149 @@
+# EXTRA_LIBS: net,net_server,cipher
+#
+# McpServer->Serve with an "http_port" of 0: the system chooses the port and
+# McpServer->GetBoundPort answers it once the server listens. Before this
+# McpServer refused port 0 ("Unable to initialize"), so a test that wanted a
+# free port had to bind port 0 itself, read the number, close the socket and
+# hand that number to Serve -- a window in which another process could take
+# it. A negative port is still refused, and a refused Serve leaves the server
+# uninitialized, so a later Serve is not turned away as "already initialized".
+#
+use Collection, Data.JSON, System.IO.Net, Web.HTTP, Web.HTTP.Server, Web.HTTP.Server.MCP;
+
+class BoundPortMcpHandler from McpRequestHandler {
+	New() { Parent(); }
+
+	method : ListResources() ~ Vector<ResourceItem> {
+		return Vector->New()<ResourceItem>;
+	}
+
+	method : ListTemplates() ~ Vector<ResourceTemplate> {
+		return Vector->New()<ResourceTemplate>;
+	}
+
+	method : GetResource(uri : Url) ~ Vector<ResourceContent> {
+		return Vector->New()<ResourceContent>;
+	}
+
+	method : ListTools() ~ Vector<ToolItem> {
+		return Vector->New()<ToolItem>;
+	}
+
+	method : CallTool(name : String, arguments : JsonElement) ~ Vector<ToolContent> {
+		return Vector->New()<ToolContent>;
+	}
+
+	method : ListPrompts() ~ Vector<PromptItem> {
+		return Vector->New()<PromptItem>;
+	}
+
+	method : CallPrompt(name : String, arguments : JsonElement) ~ Vector<PromptMessage> {
+		return Vector->New()<PromptMessage>;
+	}
+}
+
+class McpServerBoundPortTest {
+	function : Config(http_port : Int) ~ JsonElement {
+		config_builder := JsonBuilder->New();
+		elem_json := config_builder->PushObject();
+		elem_json->Insert("name", "Bound port MCP Server");
+		elem_json->Insert("instructions", "Regression test server");
+		elem_json->Insert("version", "0.0.1");
+		elem_json->Insert("http_port", http_port);
+		elem_json->Insert("http_session_timeout", 30);
+		elem_json->Insert("debug", false);
+		return config_builder->Pop();
+	}
+
+	#
+	# Sends a ping, retrying on a transient failure (#669's loopback teardown
+	# race drops a response outright on Windows); a 200 is only accepted once
+	# its body is a JSON-RPC reply with a "result" member.
+	#
+	function : Ping(port : Int) ~ Bool {
+		url := Url->New("http://localhost:{$port}/");
+		payload := "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":1}"->ToByteArray();
+		for(i := 0; i < 5; i += 1;) {
+			client := HttpClient->New();
+			client->AddHeader("Content-Type", "application/json");
+			resp := client->Post(url, payload, "application/json");
+			if(resp <> Nil & resp->GetCode() = 200) {
+				content := resp->GetContent();
+				if(content <> Nil & content->Size() > 0) {
+					root := JsonParser->TextToElement(content->ToString());
+					if(root <> Nil & root->Get("result") <> Nil) {
+						return true;
+					};
+				};
+			};
+			System.Concurrency.Thread->Sleep(200);
+		};
+		return false;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+
+		# a negative port is refused before anything listens, and leaves the
+		# server free to be started again
+		McpServer->Serve(Config(-1), BoundPortMcpHandler->New());
+		if(McpServer->GetBoundPort() <> 0) {
+			port := McpServer->GetBoundPort();
+			"  FAIL: a refused Serve(-1) reports bound port {$port}"->PrintLine();
+			pass := false;
+		};
+
+		# port 0: the system chooses, GetBoundPort tells once listening
+		server_thread := System.Concurrency.Thread->New() {
+			New() { Parent() }
+			method : public : Run(arg : System.Base) ~ Nil {
+				McpServer->Serve(McpServerBoundPortTest->Config(0), BoundPortMcpHandler->New());
+			}
+		};
+		server_thread->Execute(Nil);
+
+		waited := 0;
+		while(McpServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		port := McpServer->GetBoundPort();
+
+		if(port <= 0 | port > 65535) {
+			"  FAIL: Serve(0) never listened, bound port {$port}"->PrintLine();
+			pass := false;
+		}
+		else {
+			# the port is the one the web server underneath has
+			web_port := WebServer->GetBoundPort();
+			if(web_port <> port) {
+				"  FAIL: McpServer->GetBoundPort {$port} differs from WebServer->GetBoundPort {$web_port}"->PrintLine();
+				pass := false;
+			};
+
+			# and an MCP request on it is answered
+			if(<>Ping(port)) {
+				"  FAIL: ping on bound port {$port} was not answered"->PrintLine();
+				pass := false;
+			};
+
+			# a second Serve while serving is refused and leaves the first alone
+			McpServer->Serve(Config(0), BoundPortMcpHandler->New());
+			if(McpServer->GetBoundPort() <> port) {
+				again := McpServer->GetBoundPort();
+				"  FAIL: a second Serve changed the bound port {$port} to {$again}"->PrintLine();
+				pass := false;
+			};
+		};
+
+		WebServer->Stop();
+
+		if(pass) {
+			"PASS: McpServer serves on a system-chosen port and reports it"->PrintLine();
+		}
+		else {
+			"FAIL: McpServer bound port"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

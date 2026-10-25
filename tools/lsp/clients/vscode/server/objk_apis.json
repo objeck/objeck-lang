@@ -16355,16 +16355,19 @@
 			}
 		},
 		"Web.HTTP.Server.MCP.McpServer": {
-			"description": "MCP server",
+			"description": "MCP server. Serve listens on the HTTP port the configuration's \"http_port\" names; an \"http_port\" of 0 asks the system for a free port, which GetBoundPort answers once the server is listening, so a program that starts the server in a thread can poll for the port instead of picking a number.",
 			"functions": {
 				"Foo": {
 					"descriptions": ["**Virtual placeholder method**\n\n```function : virutal : Foo() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetBoundPort": {
+					"descriptions": ["**Gets the port the MCP server is bound to. An \"http_port\" of 0 is bound to a port the system chose; once Serve has the server listening this answers that port, so a program that starts the server in a thread can poll here instead of picking a port number.**\n\n```function : GetBoundPort() ~ Int```\n\n\n\nreturn: Int\n\n```\n# serve on a port the system chooses, then find out which\nthread := System.Concurrency.Thread->New() {\nNew() { Parent(); }\nmethod : public : Run(arg : System.Base) ~ Nil {\nbuilder := Data.JSON.JsonBuilder->New();\nconfig := builder->PushObject();\nconfig->Insert(\"http_port\", 0);\nconfig->Insert(\"http_session_timeout\", 30);\nconfig->Insert(\"debug\", false);\nWeb.HTTP.Server.MCP.McpServer->Serve(builder->Pop(), MyMcpHandler->New());\n}\n};\nthread->Execute(Nil);\nwhile(Web.HTTP.Server.MCP.McpServer->GetBoundPort() = 0) {\nSystem.Concurrency.Thread->Sleep(10);\n};\nport := Web.HTTP.Server.MCP.McpServer->GetBoundPort();\n```"]
 				},
 				"IsDebug": {
 					"descriptions": ["**Returns rather the server is in debug mode**\n\n```function : IsDebug() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"Serve": {
-					"descriptions": ["**Initializes the MCP server**\n\n```function : Serve(config:JsonElement, ) ~ Nil```\n\n\n\nconfig: JsonElement\n\nhandler: McpRequestHandler\n\nreturn: Nil"]
+					"descriptions": ["**Initializes the MCP server and serves until the web server is stopped. The configuration's \"http_port\" is the port to listen on; 0 takes a port the system chooses (see GetBoundPort), a negative port is refused.**\n\n```function : Serve(config:JsonElement, handler:McpRequestHandler) ~ Nil```\n\n\n\nconfig: JsonElement\n\nhandler: McpRequestHandler\n\nreturn: Nil"]
 				}
 			}
 		},
