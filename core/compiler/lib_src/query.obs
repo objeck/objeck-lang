@@ -12740,6 +12740,11 @@ if(file->IsOpen()) {
 
 			name := @statement->GetTableName();
 			if(@statement->GetKind() = SqlStatement->Kind->CREATE) {
+				if(catalog->Has(name)) {
+					error->Set("a table named '{$name}' already exists");
+					return -1;
+				};
+
 				columns := @statement->GetColumns();
 				type_names := @statement->GetTypes();
 				names := String->New[columns->Size()];

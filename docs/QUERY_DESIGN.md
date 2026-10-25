@@ -1163,7 +1163,8 @@ made by the first table or catalog, before there is one to share):
   a table lookup, a plan cache lookup or insert, a file cache lookup or insert, the read count.
   Parsing a statement and running a query happen outside it: two threads that miss the plan
   cache for one statement both parse it and the later insert wins, as in a table's cache.
-  `CREATE TABLE` adds through `AddNew`, a check and an add in one step, so of threads creating
+  `CREATE TABLE` still refuses a name it finds, and then adds through `AddNew`, a check and an add
+  in one step, so of threads creating
   one name at once exactly one succeeds and the others are refused, where before both passed
   the check and the second silently replaced the first.
 - *Sixteen file locks*, chosen by a hash of the file's cache key (or of a URL), for single-flight
