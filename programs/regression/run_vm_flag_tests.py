@@ -180,6 +180,15 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     gc_heap_sizing.obs pass under --gc-threshold=64k and 1m, interpreted, by
     default and with every method compiled; the regression runner passes no VM
     flags, so under it the fixture checks only its data.
+ 19. Transparent huge pages stay off the stacks of the threads the VM starts
+    (Linux only). While vm_thread_stack_pages.obs holds 100 idle threads, every
+    thread's 8 MB native stack carries the kernel's no-huge-page flag ("nh" in
+    /proc/<pid>/smaps) and holds no huge page, under --jit=off, the default and
+    --jit=1. glibc allocated those stacks, and where THP is on for every mapping
+    the kernel backed each with a 2 MB page at its first touch: in WSL, 100
+    idle threads held 37 MB more (30 MB of it AnonHugePages), 130 MB more with
+    --call-depth=100000. The check reads flags, not sizes, so it holds whatever
+    the host's THP setting is.
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only]
 
@@ -479,6 +488,8 @@ def main():
     check_call_depth(obc, obr, env, bin_dir)
 
     check_gc_threshold_scales(obc, obr, env, bin_dir)
+
+    check_thread_stack_pages(obc, obr, env, bin_dir)
 
     # ---- 11. the heap verifier (OBJECK_GC_VERIFY) ----------------------------------
     verify_section(obc, obr, env, bin_dir)
@@ -1057,6 +1068,67 @@ def check_gc_threshold_scales(obc, obr, env, bin_dir):
                     m = re.search(r"majors=(\d+)", text)
                     check(f"{name} reports a bounded major count under --gc-threshold={threshold} ({label})",
                           m is not None and int(m.group(1)) <= 200, f"stderr={text[-240:]!r}")
+
+
+def smaps_entries(pid):
+    """The process's mappings: (size_kb, anon_huge_kb, vmflags, path) each."""
+    entries = []
+    current = None
+    with open(f"/proc/{pid}/smaps") as f:
+        for line in f:
+            if re.match(r"^[0-9a-f]+-[0-9a-f]+ ", line):
+                parts = line.split()
+                current = {"path": parts[5] if len(parts) > 5 else "", "size": 0, "huge": 0, "flags": ""}
+                entries.append(current)
+            elif current is not None:
+                key, _, value = line.partition(":")
+                if key == "Size":
+                    current["size"] = int(value.split()[0])
+                elif key == "AnonHugePages":
+                    current["huge"] = int(value.split()[0])
+                elif key == "VmFlags":
+                    current["flags"] = value.split()
+    return entries
+
+
+def check_thread_stack_pages(obc, obr, env, bin_dir):
+    # ---- 19. no transparent huge pages on VM thread stacks (Linux) ---------------------
+    if not sys.platform.startswith("linux"):
+        return
+    src = os.path.join(SCRIPT_DIR, "vm_thread_stack_pages.obs")
+    dest = os.path.join(SCRIPT_DIR, "vm_thread_stack_pages.obe")
+    rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+    check("thread stack fixture compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+    if rc != 0:
+        return
+
+    threads = 100
+    stack_kb = 8192    # NativeThreadStackBytes() at the default call depth
+    for label, flags in (("jit=off", ["--jit=off"]), ("default", []), ("jit=1", ["--jit=1"])):
+        p = subprocess.Popen([obr] + flags + [dest, str(threads), "4000"], cwd=bin_dir, env=env,
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            started = p.stdout.readline()
+            entries = smaps_entries(p.pid) if started.startswith(b"started") else []
+            rest, err = p.communicate(timeout=120)
+        except Exception as e:
+            p.kill()
+            p.communicate()
+            check(f"thread stacks inspected ({label})", False, repr(e))
+            continue
+        # A stack's mapping is its size, or a little more where the kernel merged
+        # it with an adjacent mapping carrying the same flags -- a thread's
+        # committed call stack, which is marked the same way (measured: 95 of
+        # 100 at 8,192 kB and 5 at 8,224 kB). A guard page sits between stacks.
+        stacks = [e for e in entries
+                  if not e["path"] and "wr" in e["flags"] and stack_kb <= e["size"] < stack_kb + 2048]
+        flagged = [e for e in stacks if "nh" in e["flags"]]
+        huge = sum(e["huge"] for e in stacks)
+        detail = (f"rc={p.returncode} started={started!r} {stack_kb} kB anonymous mappings={len(stacks)} "
+                  f"with nh={len(flagged)} AnonHugePages={huge} kB stderr={err[-200:]!r}")
+        check(f"each of {threads} thread stacks is marked no-huge-page ({label})",
+              p.returncode == 0 and len(flagged) >= threads, detail)
+        check(f"the thread stacks hold no huge page ({label})", len(stacks) >= threads and huge == 0, detail)
 
 
 def check_call_depth(obc, obr, env, bin_dir):

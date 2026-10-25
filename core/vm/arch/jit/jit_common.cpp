@@ -871,6 +871,10 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
                  << std::hex << (size_t)vm_thread << L", thread object=0x" << (size_t)instance << std::dec << std::endl;
       VmExit(-1);
     }
+#ifdef __linux__
+    // the stack the VM allocated for it (ProcessAsyncMethodCall)
+    Runtime::ThreadStacks::Release(vm_thread);
+#endif
 #endif
     MemoryManager::EndBlocking();
   }
