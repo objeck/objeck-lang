@@ -3091,6 +3091,12 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case PROCESS_ALIVE:
     return ProcessAlive(program, inst, op_stack, stack_pos, frame);
 
+  case THREAD_CURRENT_ID:
+    return ThreadCurrentId(program, inst, op_stack, stack_pos, frame);
+
+  case THREAD_IS_ALIVE:
+    return ThreadIsAlive(program, inst, op_stack, stack_pos, frame);
+
   case UNCOMPRESS_DEFLATE_LIMIT:
     return UncompressLimit(-MAX_WBITS, program, inst, op_stack, stack_pos, frame);
 
@@ -11235,6 +11241,71 @@ bool TrapProcessor::ProcessAlive(StackProgram* program, size_t* inst, size_t*& o
   PushInt(alive ? 1 : 0, op_stack, stack_pos);
 #endif
 
+  return true;
+}
+
+//
+// Thread->GetCurrentId() and Thread->IsAlive(id): each thread gets a number the first time it
+// asks, counted up from 1 and never given again, so a number cannot come to name another
+// thread after its own ends (an operating system's thread ids are reused). The numbers of
+// running threads are kept in a set; a thread's leaves it when the thread ends, through the
+// destructor of a thread_local. The set and its lock are never freed, so a thread still
+// ending while the process exits finds them intact.
+//
+namespace {
+  std::mutex& LiveThreadLock() {
+    static std::mutex* lock = new std::mutex;
+    return *lock;
+  }
+
+  std::unordered_set<INT64_VALUE>& LiveThreads() {
+    static std::unordered_set<INT64_VALUE>* live = new std::unordered_set<INT64_VALUE>;
+    return *live;
+  }
+
+  struct ThreadNumber {
+    INT64_VALUE id = 0;
+
+    ~ThreadNumber() {
+      if(id > 0) {
+        std::lock_guard<std::mutex> guard(LiveThreadLock());
+        LiveThreads().erase(id);
+      }
+    }
+  };
+
+  INT64_VALUE CurrentThreadNumber() {
+    static std::atomic<INT64_VALUE> next_id(1);
+    static thread_local ThreadNumber number;
+    if(number.id == 0) {
+      const INT64_VALUE id = next_id.fetch_add(1);
+      std::lock_guard<std::mutex> guard(LiveThreadLock());
+      LiveThreads().insert(id);
+      number.id = id;
+    }
+
+    return number.id;
+  }
+}
+
+// function : GetCurrentId() ~ Int
+bool TrapProcessor::ThreadCurrentId(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  PushInt((size_t)CurrentThreadNumber(), op_stack, stack_pos);
+  return true;
+}
+
+// function : IsAlive(id : Int) ~ Bool: whether the thread GetCurrentId gave that number to is
+// still running; false once it has ended, and for a number never given
+bool TrapProcessor::ThreadIsAlive(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const INT64_VALUE id = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  bool alive = false;
+  if(id > 0) {
+    std::lock_guard<std::mutex> guard(LiveThreadLock());
+    alive = LiveThreads().count(id) > 0;
+  }
+  PushInt(alive ? 1 : 0, op_stack, stack_pos);
   return true;
 }
 

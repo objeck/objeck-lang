@@ -3688,6 +3688,18 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case THREAD_CURRENT_ID:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::THREAD_CURRENT_ID);
+      NextToken();
+      break;
+
+    case THREAD_IS_ALIVE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::THREAD_IS_ALIVE);
+      NextToken();
+      break;
+
     case HTTP3_CLOSE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::HTTP3_CLOSE);
@@ -6193,6 +6205,18 @@ Statement* Parser::ParseSystemStatement(int line_num, int line_pos, const std::w
   case SOCK_DTLS_LISTEN_ADDR:
      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                               instructions::SOCK_DTLS_LISTEN_ADDR);
+     NextToken();
+     break;
+
+  case THREAD_CURRENT_ID:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::THREAD_CURRENT_ID);
+     NextToken();
+     break;
+
+  case THREAD_IS_ALIVE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::THREAD_IS_ALIVE);
      NextToken();
      break;
 

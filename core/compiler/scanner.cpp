@@ -454,6 +454,8 @@ void Scanner::LoadKeywords()
   ident_map[L"SOCK_TCP_BIND_ADDR"] = SOCK_TCP_BIND_ADDR;
   ident_map[L"SOCK_TCP_SSL_LISTEN_ADDR"] = SOCK_TCP_SSL_LISTEN_ADDR;
   ident_map[L"SOCK_DTLS_LISTEN_ADDR"] = SOCK_DTLS_LISTEN_ADDR;
+  ident_map[L"THREAD_CURRENT_ID"] = THREAD_CURRENT_ID;
+  ident_map[L"THREAD_IS_ALIVE"] = THREAD_IS_ALIVE;
   ident_map[L"SERL_INT"] = SERL_INT;
   ident_map[L"SERL_FLOAT"] = SERL_FLOAT;
   ident_map[L"SERL_OBJ_INST"] = SERL_OBJ_INST;
