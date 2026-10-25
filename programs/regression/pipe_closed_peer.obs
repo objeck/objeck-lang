@@ -1,0 +1,96 @@
+#~
+# A write to a pipe whose other end has closed fails; it does not end the VM
+#
+# On POSIX a Pipe is a UNIX socket, and a write to one whose peer has gone
+# raised SIGPIPE, which ends the process. The VM ignored the signal only as a
+# side effect of opening an IP socket (mbedTLS's connect did it, and since
+# #1371 IPSocket::Startup), so a program that used pipes and no network was
+# killed. The VM now ignores SIGPIPE when it starts, whatever it runs, so the
+# write fails and returns a short count.
+#
+# A Char[] read also kept a first U+BBBF: the byte-order-mark test matched
+# (wchar_t)0xEFBBBF, which a 16-bit Windows wchar_t truncates to U+BBBF.
+#
+# This test must not open an IP socket: that would ignore the signal first.
+~#
+
+use System.Concurrency, System.IO;
+
+class PipeOwner from Thread {
+	@name : String;
+	@pipe : Pipe;
+
+	New(name : String) {
+		Parent("pipe-owner");
+		@name := name;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		# waits for the client to open the pipe
+		@pipe := Pipe->New(@name, Pipe->Mode->CREATE);
+	}
+
+	method : public : GetPipe() ~ Pipe {
+		return @pipe;
+	}
+}
+
+class PipeClosedPeer {
+	function : Main(args : String[]) ~ Nil {
+		name := "objeck-pipe-peer-{$Int->Random(100000, 999999)}";
+		owner := PipeOwner->New(name);
+		owner->Execute(Nil);
+
+		client : Pipe;
+		opened := false;
+		for(tries := 0; <>opened & tries < 250; tries += 1;) {
+			Thread->Sleep(20);
+			client := Pipe->New(name, Pipe->Mode->OPEN);
+			opened := client->IsOpen();
+		};
+		owner->Join();
+		server := owner->GetPipe();
+
+		if(<>opened | <>server->IsOpen()) {
+			"FAIL: the pipe did not connect"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		# Text read into a Char[] drops a byte-order mark and nothing else: a
+		# first U+BBBF (Hangul) matched (wchar_t)0xEFBBBF on Windows, and was lost
+		text := "뮿ok"->ToByteArray();
+		client->WriteBuffer(0, text->Size(), text);
+		chars := Char->New[16];
+		server->ReadBuffer(0, chars->Size(), chars);
+		if(chars[0] <> '뮿' | chars[1] <> 'o') {
+			"FAIL: a pipe's text read dropped its first character"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		chunk := Byte->New[1024];
+		first := client->WriteBuffer(0, chunk->Size(), chunk);
+		if(first <> chunk->Size()) {
+			"FAIL: a write to an open pipe wrote {$first} of {$chunk->Size()} bytes"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		# the other end hangs up; the writer keeps writing
+		server->Close();
+		failed := false;
+		for(i := 0; <>failed & i < 200; i += 1;) {
+			if(client->WriteBuffer(0, chunk->Size(), chunk) <> chunk->Size()) {
+				failed := true;
+			}
+			else {
+				Thread->Sleep(10);
+			};
+		};
+		client->Close();
+
+		if(<>failed) {
+			"FAIL: writes to a pipe whose peer closed kept succeeding"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: a write to a pipe whose peer closed fails, and the VM lives"->PrintLine();
+	}
+}

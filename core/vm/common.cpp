@@ -6238,46 +6238,44 @@ bool TrapProcessor::SockTcpSslGetFingerprint(StackProgram* program, size_t* inst
   return true;
 }
 
+//
+// A decoded byte-order mark: U+FEFF, or U+FFFE when its bytes were swapped.
+// The text reads dropped a first character equal to any of 0xFEFF, 0xFFFE,
+// 0xFFFE0000 and 0xEFBBBF. The last two are not characters -- the UTF-32
+// mark's bytes in the wrong order, and the UTF-8 mark's three bytes -- and a
+// 16-bit Windows wchar_t truncates them to U+0000 and U+BBBF, so text that
+// began with the Hangul syllable U+BBBF lost it. FileInCharAry compared
+// through size_t, which on POSIX could never equal 0xFFFE0000 (-Wtype-limits).
+//
+static inline bool IsByteOrderMark(wchar_t c)
+{
+  return c == (wchar_t)0xFEFF || c == (wchar_t)0xFFFE;
+}
+
 bool TrapProcessor::SockUdpCreate(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
-  const u_short port = (u_short)PopInt(op_stack, stack_pos);
+  const long port = (long)PopInt(op_stack, stack_pos);
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  
+
   if(array && instance) {
     array = (size_t*)array[0];
-    const std::wstring waddr = (wchar_t*)(array + 3);
-    const std::string addr_str = UnicodeToBytes(waddr);
+    const std::string addr_str = UnicodeToBytes((wchar_t*)(array + 3));
 
-    IPSocket::Startup();
-    SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-#ifdef _WIN32
-    if(sock != INVALID_SOCKET) {
-#else
-    if(sock > -1) {
-#endif
-      struct sockaddr_in bin_addr;
-      if(inet_pton(AF_INET, addr_str.c_str(), &(bin_addr.sin_addr)) != 1) {
-        // not an IPv4 address: inet_pton sets no error of its own
-#ifdef _WIN32
-        closesocket(sock);
-#else
-	close(sock);
-#endif
-        RecordSocketError(SOCKET_INVALID_ARGUMENT);
-      }
-      else {
-        struct sockaddr_in* addr_in = new struct sockaddr_in;
-        addr_in->sin_family = AF_INET;
-        addr_in->sin_port = htons(port);
-        addr_in->sin_addr = bin_addr.sin_addr;
+    // the address is resolved (UDPSocket::Open), which can block: park, with
+    // the instance re-rooted on the op_stack and re-read after
+    SOCKET sock;
+    struct sockaddr_storage* addr;
+    SocketError error;
+    PushInt((size_t)instance, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
+    const bool opened = UDPSocket::Open(addr_str.c_str(), static_cast<int>(port), sock, addr, error);
+    MemoryManager::EndBlocking();
+    instance = (size_t*)PopInt(op_stack, stack_pos);
 
-        inst[0] = sock;
-        inst[1] = (size_t)addr_in;
-        RecordSocketError(0);
-      }
-    }
-    else {
-      RecordSocketError(CurrentSocketError());
+    socket_last_error = error;
+    if(opened) {
+      instance[0] = sock;
+      instance[1] = (size_t)addr;
     }
   }
   else if(instance) {
@@ -6302,7 +6300,7 @@ static bool UdpSocketOpen(const size_t* instance)
 bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
   if(inst) {
     const long port = (long)inst[2];
-    SOCKET sock; struct sockaddr_in* addr;
+    SOCKET sock; struct sockaddr_storage* addr;
     if(UDPSocket::Bind(static_cast<int>(port), sock, addr)) {
       RecordSocketError(0);
       inst[0] = sock;
@@ -6319,7 +6317,7 @@ bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op
 bool TrapProcessor::SockUdpClose(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
   if(UdpSocketOpen(inst)) {
     SOCKET sock = static_cast<int>(inst[0]);
-    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
+    struct sockaddr_storage* addr_in = (struct sockaddr_storage*)inst[1];
     // Forgotten once closed. The handle and the freed address were left in
     // place, so a second Close() deleted the address again (heap corruption),
     // and a read or write after Close() used a handle the system may have
@@ -6346,10 +6344,10 @@ bool TrapProcessor::SockUdpInByte(StackProgram* program, size_t* inst, size_t*& 
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(UdpSocketOpen(instance)) {
     SOCKET sock = static_cast<int>(inst[0]);
-    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
+    struct sockaddr_storage* addr_in = (struct sockaddr_storage*)inst[1];
 
     char value = '\0';
-    socklen_t addr_in_size = sizeof(struct sockaddr_in);
+    socklen_t addr_in_size = sizeof(struct sockaddr_storage);
     MemoryManager::BeginBlocking();
     const int read = static_cast<int>(recvfrom(sock, &value, 1, 0, (struct sockaddr*)addr_in, &addr_in_size));
     const int error = read < 0 ? CurrentSocketError() : 0;
@@ -6374,10 +6372,10 @@ bool TrapProcessor::SockUdpInByteAry(StackProgram* program, size_t* inst, size_t
 
   if(array && UdpSocketOpen(instance) && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     SOCKET sock = static_cast<int>(inst[0]);
-    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
+    struct sockaddr_storage* addr_in = (struct sockaddr_storage*)inst[1];
 
     char* temp = new char[num > 0 ? num : 1];
-    socklen_t addr_in_size = sizeof(struct sockaddr_in);
+    socklen_t addr_in_size = sizeof(struct sockaddr_storage);
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
     const int read = static_cast<int>(recvfrom(sock, temp, num, 0, (struct sockaddr*)addr_in, &addr_in_size));
@@ -6408,11 +6406,11 @@ bool TrapProcessor::SockUdpInCharAry(StackProgram* program, size_t* inst, size_t
 
   if(array && UdpSocketOpen(instance) && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     SOCKET sock = static_cast<int>(inst[0]);
-    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
+    struct sockaddr_storage* addr_in = (struct sockaddr_storage*)inst[1];
 
     char* byte_buffer = new char[num * 2 + 1];
 
-    socklen_t addr_in_size = sizeof(struct sockaddr_in);
+    socklen_t addr_in_size = sizeof(struct sockaddr_storage);
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
     const int read = static_cast<int>(recvfrom(sock, byte_buffer, num, 0, (struct sockaddr*)addr_in, &addr_in_size));
@@ -6427,7 +6425,7 @@ bool TrapProcessor::SockUdpInCharAry(StackProgram* program, size_t* inst, size_t
       std::wstring in(BytesToUnicode(byte_buffer));
 
       // copy and remove file BOM UTF (8, 16, 32)
-      if(in.size() > 0 && (in[0] == (wchar_t)0xFEFF || in[0] == (wchar_t)0xFFFE || in[0] == (wchar_t)0xFFFE0000 || in[0] == (wchar_t)0xEFBBBF)) {
+      if(in.size() > 0 && IsByteOrderMark(in[0])) {
         in.erase(in.begin(), in.begin() + 1);
       }
 
@@ -6460,8 +6458,8 @@ bool TrapProcessor::SockUdpOutCharAry(StackProgram* program, size_t* inst, size_
 
   if(array && UdpSocketOpen(instance) && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     SOCKET sock = static_cast<int>(inst[0]);
-    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
-    socklen_t addr_in_size = sizeof(struct sockaddr_in);
+    struct sockaddr_storage* addr_in = (struct sockaddr_storage*)inst[1];
+    const socklen_t addr_in_size = (socklen_t)UDPSocket::AddressSize(addr_in);
 
     const wchar_t* buffer = (wchar_t*)(array + 3);
     std::string buffer_out = UnicodeToBytes(buffer);
@@ -6486,9 +6484,9 @@ bool TrapProcessor::SockUdpOutByte(StackProgram* program, size_t* inst, size_t*&
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(UdpSocketOpen(instance)) {
     SOCKET sock = static_cast<int>(inst[0]);
-    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
+    struct sockaddr_storage* addr_in = (struct sockaddr_storage*)inst[1];
 
-    const socklen_t addr_in_size = sizeof(struct sockaddr_in);
+    const socklen_t addr_in_size = (socklen_t)UDPSocket::AddressSize(addr_in);
     MemoryManager::BeginBlocking();
     const int sent = static_cast<int>(sendto(sock, &value, 1, 0, (struct sockaddr*)addr_in, addr_in_size));
     const int error = sent < 0 ? CurrentSocketError() : 0;
@@ -6513,13 +6511,13 @@ bool TrapProcessor::SockUdpOutByteAry(StackProgram* program, size_t* inst, size_
   if(array && UdpSocketOpen(instance) && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
 
     SOCKET sock = static_cast<int>(inst[0]);
-    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
+    struct sockaddr_storage* addr_in = (struct sockaddr_storage*)inst[1];
 
     // staged in a C buffer: the GC array can move while this thread is parked
     char* temp = new char[num > 0 ? num : 1];
     memcpy(temp, (const char*)(array + 3) + offset, num);
 
-    const socklen_t addr_in_size = sizeof(struct sockaddr_in);
+    const socklen_t addr_in_size = (socklen_t)UDPSocket::AddressSize(addr_in);
     MemoryManager::BeginBlocking();
     const int sent = static_cast<int>(sendto(sock, temp, num, 0, (struct sockaddr*)addr_in, addr_in_size));
     const int error = sent < 0 ? CurrentSocketError() : 0;
@@ -6545,8 +6543,8 @@ bool TrapProcessor::SockUdpInString(StackProgram* program, size_t* inst, size_t*
 
     SOCKET sock = static_cast<int>(inst[0]);
 
-    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
-    socklen_t addr_in_size = sizeof(struct sockaddr_in);
+    struct sockaddr_storage* addr_in = (struct sockaddr_storage*)inst[1];
+    socklen_t addr_in_size = sizeof(struct sockaddr_storage);
 
     if((long)sock > -1) {
       PushInt((size_t)array, op_stack, stack_pos);
@@ -6582,13 +6580,13 @@ bool TrapProcessor::SockUdpOutString(StackProgram* program, size_t* inst, size_t
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && UdpSocketOpen(instance)) {
     SOCKET sock = (SOCKET)instance[0];
-    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
+    struct sockaddr_storage* addr_in = (struct sockaddr_storage*)inst[1];
 
 #ifdef _DEBUG
     std::wcout << L"# udp write std::string: instance=" << instance << L"(" << (size_t)instance << L")" << L"; array=" << array << L"(" << (size_t)array << L")" << std::endl;
 #endif
     const std::string data = UnicodeToBytes((wchar_t*)(array + 3));
-    const socklen_t addr_in_size = sizeof(struct sockaddr_in);
+    const socklen_t addr_in_size = (socklen_t)UDPSocket::AddressSize(addr_in);
     // data is C heap. WriteString returns Nil, so nothing is pushed, as in
     // SockTcpOutString: this pushed a result the caller never pops.
     MemoryManager::BeginBlocking();
@@ -7240,7 +7238,7 @@ bool TrapProcessor::FileInString(StackProgram* program, size_t* inst, size_t* &o
       
       // copy and remove file BOM UTF (8, 16, 32)
       std::wstring in = BytesToUnicode(buffer);
-      if(in.size() > 0 && (in[0] == (wchar_t)0xFEFF || in[0] == (wchar_t)0xFFFE || in[0] == (wchar_t)0xFFFE0000 || in[0] == (wchar_t)0xEFBBBF)) {
+      if(in.size() > 0 && IsByteOrderMark(in[0])) {
         in.erase(in.begin(), in.begin() + 1);
       }
 
@@ -8221,7 +8219,7 @@ bool TrapProcessor::PipeInCharAry(StackProgram* program, size_t* inst, size_t*& 
     std::wstring in(BytesToUnicode(byte_buffer));
 
     // copy and remove file BOM UTF (8, 16, 32)
-    if(in.size() > 0 && (in[0] == (wchar_t)0xFEFF || in[0] == (wchar_t)0xFFFE || in[0] == (wchar_t)0xFFFE0000 || in[0] == (wchar_t)0xEFBBBF)) {
+    if(in.size() > 0 && IsByteOrderMark(in[0])) {
       in.erase(in.begin(), in.begin() + 1);
     }
 
@@ -8683,9 +8681,9 @@ bool TrapProcessor::SockTcpSslOutByte(StackProgram* program, size_t* inst, size_
     ClearTlsError();
     // a TLS write can block on a full send buffer; park so STW GC can proceed
     MemoryManager::BeginBlocking();
-    IPSecureSocket::WriteByte((char)value, sctx);
+    const bool written = IPSecureSocket::WriteByte((char)value, sctx);
     MemoryManager::EndBlocking();
-    PushInt(1, op_stack, stack_pos);
+    PushInt(written ? 1 : 0, op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -10644,9 +10642,9 @@ bool TrapProcessor::SockDtlsOutByte(StackProgram* program, size_t* inst, size_t*
     ClearDtlsError();
     // a DTLS write can block; park so a stop-the-world collection can proceed
     MemoryManager::BeginBlocking();
-    IPDtlsSocket::WriteByte((char)value, sctx);
+    const bool written = IPDtlsSocket::WriteByte((char)value, sctx);
     MemoryManager::EndBlocking();
-    PushInt(1, op_stack, stack_pos);
+    PushInt(written ? 1 : 0, op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -10752,7 +10750,7 @@ bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &
     std::wstring in(BytesToUnicode(byte_buffer));
     
     // remove file BOM UTF (8, 16, 32)
-    if(in.size() > 0 && ((size_t)in[0] == 0xFEFF || (size_t)in[0] == 0xFFFE || (size_t)in[0] == 0xFFFE0000 || (size_t)in[0] == 0xEFBBBF)) {
+    if(in.size() > 0 && IsByteOrderMark(in[0])) {
       in.erase(in.begin(), in.begin() + 1);
     }
 

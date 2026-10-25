@@ -385,14 +385,19 @@ public:
   }
   
   //
-  // Readies the process for sockets; called before each socket the VM opens.
-  // A write to a peer that has gone away raises SIGPIPE, which ends the
-  // process, rather than failing with EPIPE. mbedtls_net_connect ignores the
-  // signal, process-wide, the first time it runs (its net_prepare), and the VM
-  // had relied on that without knowing: only a process that had made a TLS
-  // client connect survived a write to a closed peer. It is ignored here, once,
-  // for every socket -- a client's connect, a server's bind, UDP -- so the
-  // write fails and GetLastError says "Broken pipe".
+  // Readies the process for sockets and pipes, once: when the VM starts
+  // (StackInterpreter::Initialize, which obr, obd, obi and an embedding host
+  // all reach), and again, harmlessly, before each socket the VM opens.
+  // A write to a peer that has gone away -- a socket's, or a Pipe's, which is a
+  // UNIX socket -- raises SIGPIPE, which ends the process, rather than failing
+  // with EPIPE. mbedtls_net_connect ignores the signal, process-wide, the first
+  // time it runs (its net_prepare), and the VM had relied on that without
+  // knowing: only a process that had made a TLS client connect survived a
+  // write to a closed peer. Ignored only when sockets were first opened (#1371),
+  // a program using pipes alone was still killed. It is ignored from the start
+  // now, so the write fails and returns a short count, and GetLastError says
+  // "Broken pipe". Native libraries' writes get the same protection, which a
+  // per-call MSG_NOSIGNAL could not give.
   //
   static void Startup() {
     static const bool ignored = (signal(SIGPIPE, SIG_IGN), true);
@@ -502,7 +507,10 @@ public:
   // IPv6 only, on Windows, and 0.0.0.0 on Linux -- so which clients could
   // reach a server depended on its kind and the platform.
   //
-  static SOCKET BindAny(int port, int type) {
+  // reuse_address false leaves SO_REUSEADDR off: for a UDP server it would
+  // let a second server bind the same port.
+  //
+  static SOCKET BindAny(int port, int type, bool reuse_address = true) {
     Startup();
     const int protocol = type == SOCK_DGRAM ? IPPROTO_UDP : IPPROTO_TCP;
     int reuse = 1;
@@ -518,7 +526,7 @@ public:
 
     if(server >= 0) {
       // non-fatal, as in Bind: a restart inside TIME_WAIT then fails at bind()
-      if(setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
+      if(reuse_address && setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
         errno = 0;
       }
 
@@ -540,7 +548,7 @@ public:
     if(server < 0) {
       return -1;
     }
-    if(setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
+    if(reuse_address && setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
       errno = 0;
     }
 
@@ -930,38 +938,104 @@ private:
 /****************************
  * UDP socket support class
  ****************************/
+//
+// UDP sockets. A client's peer and a server's last sender are kept in a
+// sockaddr_storage, so either can be IPv4 or IPv6: datagrams go to it, and a
+// read replaces it with the sender's address, so a reply goes back to whoever
+// wrote last.
+//
 class UDPSocket {
 public:
-  static bool Bind(int port, SOCKET& sock, struct sockaddr_in*& addr_in) {
+  //
+  // A client socket for one peer. The address is resolved as a TCP client's
+  // is (getaddrinfo: IPv6 and IPv4, names and literals), and the first
+  // address a socket can be made for is the peer. inet_pton took IPv4
+  // literals only, so "localhost", any host name and every IPv6 address left
+  // a socket that sent nothing. On failure returns false with the reason in
+  // error (a name that does not resolve is a resolver error). A name lookup
+  // can block: the caller parks around it.
+  //
+  static bool Open(const char* address, int port, SOCKET& sock, struct sockaddr_storage*& addr, SocketError& error) {
     IPSocket::Startup();
-    sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if(sock > -1) {
-      addr_in = new struct sockaddr_in;
-      addr_in->sin_family = AF_INET;
-      addr_in->sin_port = htons(port);
-      addr_in->sin_addr.s_addr = htonl(INADDR_ANY);
+    sock = -1;
+    addr = nullptr;
+    error = { 0, false };
 
-      if(bind(sock, (struct sockaddr*)addr_in, sizeof(struct sockaddr_in)) < 0) {
-        IPSocket::CloseKeepingError(sock);
-        sock = -1;
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_protocol = IPPROTO_UDP;
 
-        delete addr_in;
-        addr_in = nullptr;
-
-        return false;
+    struct addrinfo* result = nullptr;
+    const std::string port_str = std::to_string(port);
+    const int status = getaddrinfo(address, port_str.c_str(), &hints, &result);
+    if(status != 0) {
+      // the EAI_* codes are not errno values; EAI_SYSTEM means errno says why
+      if(status == EAI_SYSTEM && errno != 0) {
+        error = { errno, false };
       }
-
-      return true;
+      else {
+        error = { status, true };
+      }
+      return false;
     }
 
-    return false;
+    for(struct addrinfo* ptr = result; ptr != nullptr; ptr = ptr->ai_next) {
+      sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+      if(sock < 0) {
+        error = { errno, false };
+        continue;
+      }
+
+      addr = new struct sockaddr_storage;
+      memset(addr, 0, sizeof(struct sockaddr_storage));
+      memcpy(addr, ptr->ai_addr, ptr->ai_addrlen);
+      error = { 0, false };
+      break;
+    }
+    freeaddrinfo(result);
+
+    if(sock < 0 && error.code == 0) {
+      error = { EADDRNOTAVAIL, false };
+    }
+
+    return sock >= 0;
   }
 
-  static void Close(SOCKET sock, struct sockaddr_in* addr_in) {
-    close(sock);
+  //
+  // A server socket on the dual-stack wildcard (IPSocket::BindAny), so IPv4
+  // and IPv6 clients reach it as they reach the TCP, TLS and DTLS servers
+  // (#1322); it bound 0.0.0.0, IPv4 only. No SO_REUSEADDR: for UDP it would
+  // let a second server bind the same port. On failure returns false with the
+  // reason in errno.
+  //
+  static bool Bind(int port, SOCKET& sock, struct sockaddr_storage*& addr) {
+    addr = nullptr;
+    sock = IPSocket::BindAny(port, SOCK_DGRAM, false);
+    if(sock < 0) {
+      return false;
+    }
 
-    delete addr_in;
-    addr_in = nullptr;
+    // the bound address, until a read replaces it with a sender's
+    addr = new struct sockaddr_storage;
+    memset(addr, 0, sizeof(struct sockaddr_storage));
+    socklen_t len = sizeof(struct sockaddr_storage);
+    if(getsockname(sock, (struct sockaddr*)addr, &len) < 0) {
+      addr->ss_family = AF_INET6;
+    }
+
+    return true;
+  }
+
+  // the length of the address kept in addr, for sendto
+  static socklen_t AddressSize(const struct sockaddr_storage* addr) {
+    return addr->ss_family == AF_INET6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
+  }
+
+  static void Close(SOCKET sock, struct sockaddr_storage* addr) {
+    close(sock);
+    delete addr;
   }
 };
 
@@ -1182,11 +1256,21 @@ class IPSecureSocket {
     return true;
   }
 
-  static void WriteByte(char value, SecureSocketCtx* sctx) {
-    int ret = mbedtls_ssl_write(&sctx->ssl, (const unsigned char*)&value, 1);
+  // true when the byte was written; it returned nothing, and the trap answered
+  // true whatever happened. A failure is recorded for GetLastError.
+  static bool WriteByte(char value, SecureSocketCtx* sctx) {
+    int ret;
+    do {
+      ret = mbedtls_ssl_write(&sctx->ssl, (const unsigned char*)&value, 1);
+    }
+    while(ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE);
+
     if(ret < 0) {
       sctx->SetError(ret);
+      return false;
     }
+
+    return ret > 0;
   }
 
   static int WriteBytes(const char* values, int len, SecureSocketCtx* sctx) {
@@ -1440,11 +1524,21 @@ class IPDtlsSocket {
     return true;
   }
 
-  static void WriteByte(char value, DtlsSocketCtx* sctx) {
-    int ret = mbedtls_ssl_write(&sctx->ssl, (const unsigned char*)&value, 1);
+  // true when the byte was written; it returned nothing, and the trap answered
+  // true whatever happened. A failure is recorded for GetLastError.
+  static bool WriteByte(char value, DtlsSocketCtx* sctx) {
+    int ret;
+    do {
+      ret = mbedtls_ssl_write(&sctx->ssl, (const unsigned char*)&value, 1);
+    }
+    while(ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE);
+
     if(ret < 0) {
       sctx->SetError(ret);
+      return false;
     }
+
+    return ret > 0;
   }
 
   static int WriteBytes(const char* values, int len, DtlsSocketCtx* sctx) {

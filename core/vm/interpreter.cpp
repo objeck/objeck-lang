@@ -124,6 +124,11 @@ namespace {
 void StackInterpreter::Initialize(StackProgram* p, size_t m)
 {
   program = p;
+
+  // Every VM start readies the process for sockets and pipes (SIGPIPE ignored
+  // on POSIX, Winsock started on Windows), whichever host started it: obr,
+  // obd, obi or an embedding program. See IPSocket::Startup.
+  IPSocket::Startup();
     
 #ifdef _WIN32
   InitializeCriticalSection(&intpr_threads_cs);
