@@ -1,0 +1,231 @@
+#~
+# A UDP socket takes a host name or an IPv6 address, and a UDP server hears both
+#
+# UDPSocket->New(address, port) parsed the address with inet_pton for IPv4
+# only: "localhost", any host name and every IPv6 address left a socket that
+# sent nothing. UDPSocketServer bound 0.0.0.0, so it heard IPv4 clients only.
+# The address is now resolved as a TCPSocket's is (getaddrinfo, IPv6 and IPv4),
+# and the server binds the dual-stack wildcard, as the TCP, TLS and DTLS
+# servers do since #1322. A name that does not resolve says why.
+#
+# A Char[] read also dropped a first U+BBBF: the byte-order-mark test matched
+# (wchar_t)0xEFBBBF, which a 16-bit Windows wchar_t truncates to U+BBBF.
+#
+# UDP may drop a datagram (some hosts drop the first one a new socket is sent),
+# so each read runs on its own thread while the writer resends, as
+# net_io_gc_park does, rather than waiting forever on one datagram.
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO.Net;
+
+class ServerReader from Thread {
+	@server : UDPSocketServer;
+	@bytes : Byte[];
+	@chars : Char[];
+	@read : Int;
+	@finished : Bool;
+
+	New(server : UDPSocketServer, as_chars : Bool) {
+		Parent("udp-server-reader");
+		@server := server;
+		@read := -2;
+		@finished := false;
+		if(as_chars) {
+			@chars := Char->New[16];
+		}
+		else {
+			@bytes := Byte->New[64];
+		};
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		if(@chars <> Nil) {
+			@read := @server->ReadBuffer(0, @chars->Size(), @chars);
+		}
+		else {
+			@read := @server->ReadBuffer(0, @bytes->Size(), @bytes);
+		};
+		@finished := true;
+	}
+
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetRead() ~ Int { return @read; }
+	method : public : GetBytes() ~ Byte[] { return @bytes; }
+	method : public : GetChars() ~ Char[] { return @chars; }
+}
+
+class ClientReader from Thread {
+	@client : UDPSocket;
+	@bytes : Byte[];
+	@read : Int;
+	@finished : Bool;
+
+	New(client : UDPSocket) {
+		Parent("udp-client-reader");
+		@client := client;
+		@bytes := Byte->New[64];
+		@read := -2;
+		@finished := false;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		@read := @client->ReadBuffer(0, @bytes->Size(), @bytes);
+		@finished := true;
+	}
+
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetRead() ~ Int { return @read; }
+	method : public : GetBytes() ~ Byte[] { return @bytes; }
+}
+
+class UdpHostNames {
+	@failed : static : Int;
+	@port : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+
+		RoundTrip("127.0.0.1");
+		RoundTrip("localhost");
+		RoundTrip("::1");
+		CharRead();
+
+		socket := UDPSocket->New("no-such-host.invalid", 9);
+		reason := UDPSocket->GetLastError();
+		Check("a name that does not resolve says why ('{$reason}')", reason <> Nil & reason->Size() > 0 & <>reason->ToLower()->Has("invalid argument"));
+		Check("and its socket sends nothing", socket->WriteBuffer("x"->ToByteArray()) < 0);
+		socket->Close();
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} UDP check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: UDP sockets resolve names and reach the server over IPv4 and IPv6"->PrintLine();
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : Same(buffer : Byte[], read : Int, text : String) ~ Bool {
+		bytes := text->ToByteArray();
+		if(buffer = Nil | read <> bytes->Size()) {
+			return false;
+		};
+		for(i := 0; i < read; i += 1;) {
+			if(buffer[i] <> bytes[i]) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	# a server on a fresh random port, remembered in @port; Nil if none
+	function : Bind() ~ UDPSocketServer {
+		for(tries := 0; tries < 10; tries += 1;) {
+			@port := Int->Random(20000, 31998);
+			server := UDPSocketServer->New(@port);
+			if(server->IsBound()) {
+				return server;
+			};
+			server->Close();
+		};
+		return Nil;
+	}
+
+	# a reader still waiting for a datagram gets one, so the VM can end
+	function : Release(reader : ServerReader) ~ Nil {
+		wake := UDPSocket->New("127.0.0.1", @port);
+		for(i := 0; <>reader->IsFinished() & i < 100; i += 1;) {
+			wake->WriteByte(0);
+			Thread->Sleep(50);
+		};
+		wake->Close();
+		reader->Join();
+	}
+
+	# a datagram to the server, and its reply back to the sender
+	function : RoundTrip(address : String) ~ Nil {
+		server := Bind();
+		Check("{$address}: a server binds", server <> Nil);
+		if(server = Nil) {
+			return;
+		};
+
+		client := UDPSocket->New(address, @port);
+		reason := UDPSocket->GetLastError();
+		Check("{$address}: the socket opens ('{$reason}')", reason = Nil);
+
+		ping := "ping {$address}";
+		server_reader := ServerReader->New(server, false);
+		server_reader->Execute(Nil);
+		sent := 0;
+		for(waited := 0; <>server_reader->IsFinished() & waited < 5000; waited += 50;) {
+			sent := client->WriteBuffer(ping->ToByteArray());
+			Thread->Sleep(50);
+		};
+		Check("{$address}: the datagram is sent ({$sent})", sent = ping->ToByteArray()->Size());
+		heard := server_reader->IsFinished();
+		Check("{$address}: the server hears it", heard);
+		if(<>heard) {
+			Release(server_reader);
+			client->Close();
+			server->Close();
+			return;
+		};
+		server_reader->Join();
+		Check("{$address}: the server reads what was sent ({$server_reader->GetRead()})", Same(server_reader->GetBytes(), server_reader->GetRead(), ping));
+
+		client_reader := ClientReader->New(client);
+		client_reader->Execute(Nil);
+		replied := 0;
+		for(waited := 0; <>client_reader->IsFinished() & waited < 5000; waited += 50;) {
+			replied := server->WriteBuffer("pong"->ToByteArray());
+			Thread->Sleep(50);
+		};
+		Check("{$address}: the server answers the sender ({$replied})", replied = 4);
+		answered := client_reader->IsFinished();
+		Check("{$address}: the client hears the answer", answered);
+		if(answered) {
+			client_reader->Join();
+			Check("{$address}: the answer is the server's ({$client_reader->GetRead()})", Same(client_reader->GetBytes(), client_reader->GetRead(), "pong"));
+		};
+		client->Close();
+		server->Close();
+	}
+
+	# text read into a Char[] keeps a first U+BBBF (Hangul)
+	function : CharRead() ~ Nil {
+		server := Bind();
+		if(server = Nil) {
+			Check("char read: a server binds", false);
+			return;
+		};
+		client := UDPSocket->New("127.0.0.1", @port);
+		reader := ServerReader->New(server, true);
+		reader->Execute(Nil);
+		for(waited := 0; <>reader->IsFinished() & waited < 5000; waited += 50;) {
+			client->WriteBuffer("뮿ok"->ToByteArray());
+			Thread->Sleep(50);
+		};
+		heard := reader->IsFinished();
+		Check("char read: the server hears it", heard);
+		if(<>heard) {
+			Release(reader);
+		}
+		else {
+			reader->Join();
+			chars := reader->GetChars();
+			Check("char read: a first U+BBBF is kept", chars[0] = '뮿' & chars[1] = 'o');
+		};
+		client->Close();
+		server->Close();
+	}
+}

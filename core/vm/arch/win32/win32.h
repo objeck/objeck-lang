@@ -501,9 +501,10 @@ class IPSocket {
    static std::vector<std::string> Resolve(const char* address);
 
   //
-  // Readies the process for sockets (Winsock 2.2), once; called before each
-  // socket the VM opens. obr and obd start Winsock in main, but a VM run
-  // in-process through the module -- obi, an embedding host -- never did:
+  // Readies the process for sockets (Winsock 2.2), once: when the VM starts
+  // (StackInterpreter::Initialize) and before each socket the VM opens. obr
+  // and obd start Winsock in main, but a VM run in-process through the module
+  // -- obi, an embedding host -- never did:
   // mbedtls_net_connect's net_prepare started it for a TLS client, and a plain
   // socket there failed with WSANOTINITIALISED. Like mbedtls, and like
   // win_main, it never calls WSACleanup (see win_main.cpp).
@@ -640,7 +641,10 @@ class IPSocket {
   // IPv6 only, on Windows, and 0.0.0.0 on Linux -- so which clients could
   // reach a server depended on its kind and the platform.
   //
-  static SOCKET BindAny(int port, int type);
+  // reuse_address false leaves SO_REUSEADDR off for a datagram server too (a
+  // UDP server; DTLS needs it on, see BindAny in win32.cpp).
+  //
+  static SOCKET BindAny(int port, int type, bool reuse_address = true);
 
   //
   // A server socket bound to one local address: a literal ("127.0.0.1",
@@ -680,41 +684,38 @@ class IPSocket {
 /****************************
  * UDP socket support class
  ****************************/
+//
+// UDP sockets. A client's peer and a server's last sender are kept in a
+// sockaddr_storage, so either can be IPv4 or IPv6: datagrams go to it, and a
+// read replaces it with the sender's address, so a reply goes back to whoever
+// wrote last.
+//
 class UDPSocket {
 public:
-  static bool Bind(int port, SOCKET &sock, SOCKADDR_IN* & addr_in) {
-    IPSocket::Startup();
-    sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if(sock != INVALID_SOCKET) {
-      addr_in = new SOCKADDR_IN;
-      addr_in->sin_family = AF_INET;
-      addr_in->sin_port = htons(port);
-      addr_in->sin_addr.s_addr = htonl(INADDR_ANY);
+  //
+  // A client socket for one peer. The address is resolved as a TCP client's
+  // is (getaddrinfo: IPv6 and IPv4, names and literals), and the first
+  // address a socket can be made for is the peer. inet_pton took IPv4
+  // literals only, so "localhost", any host name and every IPv6 address left
+  // a socket that sent nothing. On failure returns false with the reason in
+  // error (a name that does not resolve is a resolver error). A name lookup
+  // can block: the caller parks around it.
+  //
+  static bool Open(const char* address, int port, SOCKET& sock, struct sockaddr_storage*& addr, SocketError& error);
 
-      if(bind(sock, (SOCKADDR*)addr_in, sizeof(SOCKADDR_IN)) == SOCKET_ERROR) {
-        const int error = WSAGetLastError();
-        closesocket(sock);
-        WSASetLastError(error);
-        sock = INVALID_SOCKET;
+  //
+  // A server socket on the dual-stack wildcard (IPSocket::BindAny), so IPv4
+  // and IPv6 clients reach it as they reach the TCP, TLS and DTLS servers
+  // (#1322); it bound 0.0.0.0, IPv4 only. No SO_REUSEADDR: on Windows it would
+  // let a second server bind the same port. On failure returns false with the
+  // reason in WSAGetLastError().
+  //
+  static bool Bind(int port, SOCKET& sock, struct sockaddr_storage*& addr);
 
-        delete addr_in;
-        addr_in = nullptr;
+  // the length of the address kept in addr, for sendto
+  static int AddressSize(const struct sockaddr_storage* addr);
 
-        return false;
-      }
-
-      return true;
-    }
-
-    return false;
-  }
-
-  static void Close(SOCKET sock, SOCKADDR_IN* addr_in) {
-    closesocket(sock);
-
-    delete addr_in;
-    addr_in = nullptr;
-  }
+  static void Close(SOCKET sock, struct sockaddr_storage* addr);
 };
 
 /****************************
@@ -936,11 +937,21 @@ class IPSecureSocket {
     return true;
   }
 
-  static void WriteByte(char value, SecureSocketCtx* sctx) {
-    int ret = mbedtls_ssl_write(&sctx->ssl, (const unsigned char*)&value, 1);
+  // true when the byte was written; it returned nothing, and the trap answered
+  // true whatever happened. A failure is recorded for GetLastError.
+  static bool WriteByte(char value, SecureSocketCtx* sctx) {
+    int ret;
+    do {
+      ret = mbedtls_ssl_write(&sctx->ssl, (const unsigned char*)&value, 1);
+    }
+    while(ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE);
+
     if(ret < 0) {
       sctx->SetError(ret);
+      return false;
     }
+
+    return ret > 0;
   }
 
   static int WriteBytes(const char* values, int len, SecureSocketCtx* sctx) {
@@ -1171,11 +1182,21 @@ class IPDtlsSocket {
     return true;
   }
 
-  static void WriteByte(char value, DtlsSocketCtx* sctx) {
-    int ret = mbedtls_ssl_write(&sctx->ssl, (const unsigned char*)&value, 1);
+  // true when the byte was written; it returned nothing, and the trap answered
+  // true whatever happened. A failure is recorded for GetLastError.
+  static bool WriteByte(char value, DtlsSocketCtx* sctx) {
+    int ret;
+    do {
+      ret = mbedtls_ssl_write(&sctx->ssl, (const unsigned char*)&value, 1);
+    }
+    while(ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE);
+
     if(ret < 0) {
       sctx->SetError(ret);
+      return false;
     }
+
+    return ret > 0;
   }
 
   static int WriteBytes(const char* values, int len, DtlsSocketCtx* sctx) {

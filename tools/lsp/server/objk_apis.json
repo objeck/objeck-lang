@@ -13368,7 +13368,7 @@
 					"descriptions": ["**Returns the connected network port**\n\n```method : public : GetPort() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"New": {
-					"descriptions": ["**Default constructor**\n\n```New(address:System.String, port:Int)```\n\n\n\naddress: System.String\n\nport: Int"]
+					"descriptions": ["**A socket for sending datagrams to one peer. The address is a host name or an IPv4 or IPv6 literal, resolved as TCPSocket->New resolves it; the first address it resolves to is the peer. If it cannot be resolved, GetLastError() says why and the socket sends nothing. A read replaces the peer with the sender of the datagram read, so a reply goes back to it.**\n\n```New(address:System.String, port:Int)```\n\n\n\naddress: System.String\n\nport: Int"]
 				},
 				"ReadBuffer": {
 					"descriptions": ["**Reads bytes into a byte buffer**\n\n```method : public : ReadBuffer(offset:Int, num:Int, buffer:Byte[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Byte[]\n\nreturn: Int", "**Reads bytes into a character buffer**\n\n```method : public : ReadBuffer(offset:Int, num:Int, buffer:Char[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Char[]\n\nreturn: Int"]
@@ -13409,7 +13409,7 @@
 					"descriptions": ["**Checks if the UDP server socket is bound**\n\n```method : public : IsBound() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
-					"descriptions": ["**Default constructor**\n\n```New(port:Int, bind:Bool)```\n\n\n\nport: Int\n\nbind: Bool"]
+					"descriptions": ["**A UDP server on a port of every interface, IPv4 and IPv6 alike, as the TCP, TLS and DTLS servers bind. A read takes a datagram from any client, and a write goes to the sender of the last datagram read.**\n\n```New(port:Int, bind:Bool)```\n\n\n\nport: Int\n\nbind: Bool"]
 				},
 				"ReadBuffer": {
 					"descriptions": ["**Reads bytes into a byte buffer**\n\n```method : public : ReadBuffer(offset:Int, num:Int, buffer:Byte[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Byte[]\n\nreturn: Int", "**Reads bytes into a character buffer**\n\n```method : public : ReadBuffer(offset:Int, num:Int, buffer:Char[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Char[]\n\nreturn: Int"]

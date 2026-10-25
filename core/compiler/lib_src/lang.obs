@@ -12891,7 +12891,11 @@ bundle System.IO.Net {
 		@port : Int;
 		
 		#~
-		Default constructor
+		A socket for sending datagrams to one peer. The address is a host name or
+		an IPv4 or IPv6 literal, resolved as TCPSocket->New resolves it; the first
+		address it resolves to is the peer. If it cannot be resolved,
+		GetLastError() says why and the socket sends nothing. A read replaces the
+		peer with the sender of the datagram read, so a reply goes back to it.
 		@param address network address
 		@param port network port
 		~#
@@ -13251,7 +13255,9 @@ bundle System.IO.Net {
 		@port : Int;
 
 		#~
-		Default constructor
+		A UDP server on a port of every interface, IPv4 and IPv6 alike, as the
+		TCP, TLS and DTLS servers bind. A read takes a datagram from any client,
+		and a write goes to the sender of the last datagram read.
 		@param port server port
 		@param bind bind to port on creation, default is true
 		~#

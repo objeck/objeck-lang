@@ -1,0 +1,160 @@
+#~
+# TCPSecureSocket->WriteByte and DTLSSocket->WriteByte say whether they wrote
+#
+# Both are documented "@return true if byte was written, false otherwise" but
+# answered true whatever happened: the platform write helpers returned
+# nothing, and the traps pushed 1. They now return the write's outcome, and a
+# failed write is recorded for GetLastError like any other TLS failure.
+#
+# Each server reads one byte and hangs up (the DTLS one closes its port as
+# well), so the client's first write works and a later one fails.
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO.Filesystem, System.IO.Net;
+
+class TlsHangUp from Thread {
+	@server : TCPSecureSocketServer;
+
+	New(server : TCPSecureSocketServer) {
+		Parent("tls-hang-up");
+		@server := server;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		client := @server->Accept();
+		if(client <> Nil) {
+			client->ReadByte();
+			client->Close();
+		};
+		@server->Close();
+	}
+}
+
+class DtlsHangUp from Thread {
+	@server : DTLSSocketServer;
+
+	New(server : DTLSSocketServer) {
+		Parent("dtls-hang-up");
+		@server := server;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		client := @server->Accept();
+		if(client <> Nil) {
+			client->ReadByte();
+			client->Close();
+		};
+		@server->Close();
+	}
+}
+
+class TlsWriteByteResult {
+	@failed : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+
+		File->Delete("tls-write-cert.pem");
+		File->Delete("tls-write-key.pem");
+		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
+		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1\" -keyout tls-write-key.pem -out tls-write-cert.pem";
+		if(Runtime->Command(command) <> 0) {
+			"FAIL: openssl could not create the certificate -- is openssl on PATH?"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"stage: tls"->ErrorLine();
+		CheckTls();
+		"stage: dtls"->ErrorLine();
+		CheckDtls();
+
+		File->Delete("tls-write-cert.pem");
+		File->Delete("tls-write-key.pem");
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} WriteByte check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: TLS and DTLS WriteByte report whether the byte was written"->PrintLine();
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : CheckTls() ~ Nil {
+		port := 0;
+		server : TCPSecureSocketServer;
+		for(tries := 0; port = 0 & tries < 10; tries += 1;) {
+			candidate := Int->Random(20000, 31998);
+			server := TCPSecureSocketServer->New("tls-write-cert.pem", "tls-write-key.pem", "", candidate);
+			if(server->Listen()) {
+				port := candidate;
+			};
+		};
+		Check("tls: the server listens", port > 0);
+		if(port = 0) {
+			return;
+		};
+		TlsHangUp->New(server)->Execute(Nil);
+
+		socket := TCPSecureSocket->New("127.0.0.1", port, "tls-write-cert.pem");
+		Check("tls: the client connects", socket->IsOpen());
+		if(<>socket->IsOpen()) {
+			return;
+		};
+
+		Check("tls: a write that works answers true", socket->WriteByte('a'));
+		reason := TCPSecureSocket->GetLastError();
+		Check("tls: and leaves no error ('{$reason}')", reason = Nil);
+
+		written := true;
+		for(i := 0; written & i < 300; i += 1;) {
+			Thread->Sleep(10);
+			written := socket->WriteByte('b');
+		};
+		Check("tls: a write after the peer hung up answers false", <>written);
+		reason := TCPSecureSocket->GetLastError();
+		Check("tls: and GetLastError says why ('{$reason}')", reason <> Nil & reason->Size() > 0);
+		socket->Close();
+
+		Check("tls: a closed socket's write answers false", <>socket->WriteByte('c'));
+	}
+
+	function : CheckDtls() ~ Nil {
+		port := 0;
+		server : DTLSSocketServer;
+		for(tries := 0; port = 0 & tries < 10; tries += 1;) {
+			candidate := Int->Random(20000, 31998);
+			server := DTLSSocketServer->New("tls-write-cert.pem", "tls-write-key.pem", "", candidate);
+			if(server->Listen()) {
+				port := candidate;
+			};
+		};
+		Check("dtls: the server listens", port > 0);
+		if(port = 0) {
+			return;
+		};
+		DtlsHangUp->New(server)->Execute(Nil);
+
+		socket := DTLSSocket->New("127.0.0.1", port, "tls-write-cert.pem");
+		Check("dtls: the client connects", socket->IsOpen());
+		if(<>socket->IsOpen()) {
+			return;
+		};
+
+		Check("dtls: a write that works answers true", socket->WriteByte('a'));
+		reason := DTLSSocket->GetLastError();
+		Check("dtls: and leaves no error ('{$reason}')", reason = Nil);
+		socket->Close();
+
+		Check("dtls: a closed socket's write answers false", <>socket->WriteByte('c'));
+	}
+}
