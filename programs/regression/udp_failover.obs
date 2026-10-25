@@ -1,0 +1,228 @@
+#~
+# A UDP client tries each address its name resolves to
+#
+# UDPSocket->New used the first address a name resolved to. A client is now
+# connected to its peer, so the network's refusal reaches it, and it moves on
+# to the next address: "localhost" (::1 and 127.0.0.1) reaches a server
+# listening on either family alone (UDPSocketServer->New(address, port), new
+# here, binds one).
+#
+# UDP may drop a datagram (on some hosts the first one sent to a new socket),
+# so reads run on threads while the writer resends, as net_io_gc_park does.
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO.Net;
+
+class ServerReader from Thread {
+	@server : UDPSocketServer;
+	@bytes : Byte[];
+	@read : Int;
+	@error : String;
+	@finished : Bool;
+
+	New(server : UDPSocketServer) {
+		Parent("udp-server-reader");
+		@server := server;
+		@bytes := Byte->New[64];
+		@read := -2;
+		@finished := false;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		@read := @server->ReadBuffer(0, @bytes->Size(), @bytes);
+		@error := UDPSocketServer->GetLastError();
+		@finished := true;
+	}
+
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetRead() ~ Int { return @read; }
+	method : public : GetBytes() ~ Byte[] { return @bytes; }
+	method : public : GetError() ~ String { return @error; }
+}
+
+class ClientReader from Thread {
+	@client : UDPSocket;
+	@bytes : Byte[];
+	@read : Int;
+	@error : String;
+	@finished : Bool;
+
+	New(client : UDPSocket) {
+		Parent("udp-client-reader");
+		@client := client;
+		@bytes := Byte->New[64];
+		@read := -2;
+		@finished := false;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		@read := @client->ReadBuffer(0, @bytes->Size(), @bytes);
+		@error := UDPSocket->GetLastError();
+		@finished := true;
+	}
+
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetRead() ~ Int { return @read; }
+	method : public : GetBytes() ~ Byte[] { return @bytes; }
+	method : public : GetError() ~ String { return @error; }
+}
+
+class UdpFailover {
+	@failed : static : Int;
+	@port : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+
+		# "localhost" is ::1 and 127.0.0.1 on most hosts, so one of the two
+		# servers below is on the second address the client tries; where it is
+		# one address only (some /etc/hosts list ::1 as ip6-localhost alone),
+		# the server on the other family is out of its reach and not tried
+		v4 := LocalhostReaches("127.0.0.1");
+		v6 := LocalhostReaches("::1");
+		"  localhost reaches 127.0.0.1: {$v4}, ::1: {$v6}"->PrintLine();
+		Check("localhost reaches a loopback address", v4 | v6);
+		if(v4) {
+			CheckFailover("127.0.0.1");
+		};
+		if(v6) {
+			CheckFailover("::1");
+		};
+		if(<>(v4 & v6)) {
+			"  note: localhost is one address here, so no failover was needed"->PrintLine();
+		};
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} UDP failover check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: a UDP client tries each address its name resolves to"->PrintLine();
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : Same(buffer : Byte[], read : Int, text : String) ~ Bool {
+		bytes := text->ToByteArray();
+		if(buffer = Nil | read <> bytes->Size()) {
+			return false;
+		};
+		for(i := 0; i < read; i += 1;) {
+			if(buffer[i] <> bytes[i]) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	# a server on a port the system picks (0), remembered in @port; Nil if none
+	function : Bind(address : String) ~ UDPSocketServer {
+		server : UDPSocketServer;
+		if(address = Nil) {
+			server := UDPSocketServer->New(0);
+		}
+		else {
+			server := UDPSocketServer->New(address, 0);
+		};
+		if(server->IsBound()) {
+			@port := server->GetPort();
+			return server;
+		};
+		return Nil;
+	}
+
+	# the server reads one datagram while the client resends it
+	function : Deliver(server : UDPSocketServer, client : UDPSocket, text : String) ~ ServerReader {
+		reader := ServerReader->New(server);
+		reader->Execute(Nil);
+		for(waited := 0; <>reader->IsFinished() & waited < 5000; waited += 50;) {
+			client->WriteBuffer(text->ToByteArray());
+			Thread->Sleep(50);
+		};
+		return reader;
+	}
+
+	# a reader still waiting for a datagram gets one, so the VM can end
+	function : Release(reader : ServerReader, port : Int) ~ Nil {
+		wake := UDPSocket->New("127.0.0.1", port);
+		for(i := 0; <>reader->IsFinished() & i < 100; i += 1;) {
+			wake->WriteByte(0);
+			Thread->Sleep(50);
+		};
+		wake->Close();
+		reader->Join();
+	}
+
+	# whether "localhost" includes address: a TCP client of it (which tries
+	# each address) reaches a TCP server bound to that address alone
+	function : LocalhostReaches(address : String) ~ Bool {
+		server := TCPSocketServer->New(address, 0);
+		if(<>server->Listen(4)) {
+			return false;
+		};
+		client := TCPSocket->New("localhost", server->GetPort());
+		reached := client->IsOpen();
+		client->Close();
+		server->Close();
+		return reached;
+	}
+
+	# a server on one family only; a "localhost" client reaches it either way
+	function : CheckFailover(address : String) ~ Nil {
+		server := Bind(address);
+		Check("failover {$address}: a server binds {$address} alone", server <> Nil);
+		if(server = Nil) {
+			return;
+		};
+		port := @port;
+
+		client := UDPSocket->New("localhost", port);
+		reason := UDPSocket->GetLastError();
+		Check("failover {$address}: the localhost socket opens ('{$reason}')", reason = Nil);
+
+		ping := "ping {$address}";
+		reader := Deliver(server, client, ping);
+		heard := reader->IsFinished();
+		Check("failover {$address}: the server hears the localhost client", heard);
+		if(<>heard) {
+			# release the reader over the server's own family
+			wake := UDPSocket->New(address, port);
+			for(i := 0; <>reader->IsFinished() & i < 100; i += 1;) {
+				wake->WriteByte(0);
+				Thread->Sleep(50);
+			};
+			wake->Close();
+			reader->Join();
+			client->Close();
+			server->Close();
+			return;
+		};
+		reader->Join();
+		Check("failover {$address}: and reads what it sent", Same(reader->GetBytes(), reader->GetRead(), ping));
+
+		# the reply reaches the client, on the address it moved to
+		answer := ClientReader->New(client);
+		answer->Execute(Nil);
+		for(waited := 0; <>answer->IsFinished() & waited < 5000; waited += 50;) {
+			server->WriteBuffer("pong"->ToByteArray());
+			Thread->Sleep(50);
+		};
+		answered := answer->IsFinished();
+		Check("failover {$address}: the client hears the reply", answered);
+		if(answered) {
+			answer->Join();
+			Check("failover {$address}: the reply is the server's", Same(answer->GetBytes(), answer->GetRead(), "pong"));
+		};
+		client->Close();
+		server->Close();
+	}
+
+}

@@ -656,9 +656,9 @@ class IPSocket {
   // address is bound IPv6-only, so "::1" takes ::1 clients and nothing else.
   // On failure returns INVALID_SOCKET with the reason in error (a name that
   // does not resolve is a resolver error). A name lookup can block: the
-  // caller parks around it.
+  // caller parks around it. reuse_address is as for BindAny.
   //
-  static SOCKET BindAddress(const char* host, int port, int type, SocketError& error);
+  static SOCKET BindAddress(const char* host, int port, int type, SocketError& error, bool reuse_address = true);
 
   //
   // A peer's numeric address and port. An IPv4 client of a dual-stack server
@@ -681,42 +681,6 @@ class IPSocket {
   static SOCKET Accept(SOCKET server, char* client_address, int& client_port);
 };
 
-/****************************
- * UDP socket support class
- ****************************/
-//
-// UDP sockets. A client's peer and a server's last sender are kept in a
-// sockaddr_storage, so either can be IPv4 or IPv6: datagrams go to it, and a
-// read replaces it with the sender's address, so a reply goes back to whoever
-// wrote last.
-//
-class UDPSocket {
-public:
-  //
-  // A client socket for one peer. The address is resolved as a TCP client's
-  // is (getaddrinfo: IPv6 and IPv4, names and literals), and the first
-  // address a socket can be made for is the peer. inet_pton took IPv4
-  // literals only, so "localhost", any host name and every IPv6 address left
-  // a socket that sent nothing. On failure returns false with the reason in
-  // error (a name that does not resolve is a resolver error). A name lookup
-  // can block: the caller parks around it.
-  //
-  static bool Open(const char* address, int port, SOCKET& sock, struct sockaddr_storage*& addr, SocketError& error);
-
-  //
-  // A server socket on the dual-stack wildcard (IPSocket::BindAny), so IPv4
-  // and IPv6 clients reach it as they reach the TCP, TLS and DTLS servers
-  // (#1322); it bound 0.0.0.0, IPv4 only. No SO_REUSEADDR: on Windows it would
-  // let a second server bind the same port. On failure returns false with the
-  // reason in WSAGetLastError().
-  //
-  static bool Bind(int port, SOCKET& sock, struct sockaddr_storage*& addr);
-
-  // the length of the address kept in addr, for sendto
-  static int AddressSize(const struct sockaddr_storage* addr);
-
-  static void Close(SOCKET sock, struct sockaddr_storage* addr);
-};
 
 /****************************
  * IP socket support class
@@ -1159,7 +1123,8 @@ class IPDtlsSocket {
       return false;
     }
 
-    mbedtls_ssl_set_bio(&sctx->ssl, &sctx->net, mbedtls_net_send, mbedtls_net_recv, mbedtls_net_recv_timeout);
+    // record I/O that notices a peer the network has refused (see DtlsBioSend)
+    mbedtls_ssl_set_bio(&sctx->ssl, sctx, DtlsBioSend, DtlsBioRecv, DtlsBioRecvTimeout);
     mbedtls_ssl_set_timer_cb(&sctx->ssl, &sctx->timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
 
     while((ret = mbedtls_ssl_handshake(&sctx->ssl)) != 0) {

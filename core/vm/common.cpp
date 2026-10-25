@@ -6298,6 +6298,481 @@ static inline bool IsByteOrderMark(wchar_t c)
   return c == (wchar_t)0xFEFF || c == (wchar_t)0xFFFE;
 }
 
+//
+// UDP endpoints. A UDPSocket is a client of one peer; a UDPSocketServer
+// answers whoever wrote to it last. Both keep a UdpEndpoint (C heap, in the
+// instance's second field) and their handle in the first.
+//
+// A client's socket is connected to its peer, so it hears that peer only and
+// the network's answers about it reach the socket: an ICMP port unreachable
+// for a datagram is reported on a later call as a refusal (ECONNREFUSED;
+// WSAECONNRESET on Windows, which reports it only on a receive). The name
+// can resolve to several addresses -- "localhost" is ::1 and 127.0.0.1 -- and
+// the socket moves on to the next address when the current one is refused,
+// as a TCP connect tries each address in turn: a client of a server that
+// listens on one family reaches it. The socket is dual-stack (IPv4 addresses
+// are reached as IPv4-mapped IPv6 ones) where the host has IPv6, so moving on
+// re-connects the same socket: a thread blocked reading it is not left on a
+// closed one. When every address has refused, the call that found out fails
+// and GetLastError says "Connection refused".
+//
+// A server is not connected: one peer that has gone must not fail the next
+// read of a server that serves many. Linux never reports it to an
+// unconnected socket; Windows did, failing that read with "An existing
+// connection was forcibly closed by the remote host.", and SIO_UDP_CONNRESET
+// turns that off.
+//
+#ifndef SIO_UDP_CONNRESET
+#define SIO_UDP_CONNRESET _WSAIOW(IOC_VENDOR, 12)
+#endif
+
+struct UdpEndpoint {
+  SOCKET sock;
+  bool client;
+  // a server's last sender, the address a write goes to
+  struct sockaddr_storage peer;
+  socklen_t peer_len;
+  // a client's addresses, in the resolver's order, as the socket's family
+  // reaches them, and the one it is connected to
+  std::vector<struct sockaddr_storage> candidates;
+  std::vector<socklen_t> candidate_lens;
+  size_t current;
+};
+
+static inline bool UdpValid(SOCKET sock)
+{
+#ifdef _WIN32
+  return sock != INVALID_SOCKET;
+#else
+  return (long)sock > -1;
+#endif
+}
+
+static inline void UdpCloseHandle(SOCKET sock)
+{
+#ifdef _WIN32
+  closesocket(sock);
+#else
+  close(sock);
+#endif
+}
+
+// the network's answer that nobody listens at the peer
+static inline bool IsRefusal(int error)
+{
+#ifdef _WIN32
+  return error == WSAECONNRESET || error == WSAECONNREFUSED;
+#else
+  return error == ECONNREFUSED;
+#endif
+}
+
+// a refusal as the error a program sees: Windows reports a refused datagram
+// as WSAECONNRESET ("An existing connection was forcibly closed ..."), which
+// says nothing of a datagram nobody was there to take
+static inline int Refused(int error)
+{
+#ifdef _WIN32
+  return IsRefusal(error) ? WSAECONNREFUSED : error;
+#else
+  return error;
+#endif
+}
+
+//
+// A refusal the network has already reported to a connected UDP socket, taken
+// without blocking and without consuming a datagram; 0 when there is none.
+// POSIX keeps it as the socket's pending error. Windows hands it to the next
+// receive only, so a sender that never reads learned nothing: a readable socket
+// is peeked, and a refusal comes back from the peek (a datagram waiting there
+// answers WSAEMSGSIZE to a one-byte peek, and stays).
+//
+static int PendingRefusal(SOCKET sock)
+{
+#ifdef _WIN32
+  fd_set readable;
+  FD_ZERO(&readable);
+  FD_SET(sock, &readable);
+  struct timeval now = { 0, 0 };
+  if(select(0, &readable, nullptr, nullptr, &now) <= 0) {
+    return 0;
+  }
+
+  char value;
+  if(recv(sock, &value, 1, MSG_PEEK) == SOCKET_ERROR) {
+    const int error = WSAGetLastError();
+    if(!IsRefusal(error)) {
+      return 0;
+    }
+    // A peek leaves the report in place, so it would be found again after
+    // moving on to the next address; a receive takes it (and returns at once:
+    // the report is first in line).
+    recv(sock, &value, 1, 0);
+    return Refused(error);
+  }
+  return 0;
+#else
+  int error = 0;
+  socklen_t len = sizeof(error);
+  if(getsockopt(sock, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
+    return 0;
+  }
+  return IsRefusal(error) ? error : 0;
+#endif
+}
+
+// connects the client to its next address that connects; false, and nothing
+// changed, when none is left
+static bool UdpAdvance(UdpEndpoint* ep, SocketError& error)
+{
+  const size_t start = ep->current == (size_t)-1 ? 0 : ep->current + 1;
+#ifndef _WIN32
+  // The first connect fixed the socket's local address as well as its peer
+  // (::1 for a peer of ::1), and connecting again keeps it: datagrams then go
+  // out to the next address, but its replies, sent back to 127.0.0.1, never
+  // match the socket. Dissolving the association first lets the next connect
+  // choose the local address to suit the peer.
+  if(ep->current != (size_t)-1) {
+    struct sockaddr unspecified;
+    memset(&unspecified, 0, sizeof(unspecified));
+    unspecified.sa_family = AF_UNSPEC;
+    connect(ep->sock, &unspecified, sizeof(unspecified));
+  }
+#endif
+  for(size_t i = start; i < ep->candidates.size(); ++i) {
+    if(connect(ep->sock, (const struct sockaddr*)&ep->candidates[i], ep->candidate_lens[i]) == 0) {
+      ep->current = i;
+      error = { 0, false };
+      return true;
+    }
+    // the first reason is the preferred address's
+    if(error.code == 0) {
+      error = { CurrentSocketError(), false };
+    }
+  }
+  return false;
+}
+
+//
+// A client endpoint for address and port: every address the name resolves to,
+// connected to the first that connects. A name lookup can block: the caller
+// parks around it.
+//
+static UdpEndpoint* UdpOpen(const char* address, int port, SocketError& error)
+{
+  IPSocket::Startup();
+  error = { 0, false };
+
+  struct addrinfo hints;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_DGRAM;
+  hints.ai_protocol = IPPROTO_UDP;
+
+  struct addrinfo* result = nullptr;
+  const std::string port_str = std::to_string(port);
+  const int status = getaddrinfo(address, port_str.c_str(), &hints, &result);
+  if(status != 0) {
+#ifndef _WIN32
+    // the EAI_* codes are not errno values; EAI_SYSTEM means errno says why
+    if(status == EAI_SYSTEM && errno != 0) {
+      error = { errno, false };
+      return nullptr;
+    }
+#endif
+    error = { status, true };
+    return nullptr;
+  }
+
+  // dual-stack where the host has IPv6, else IPv4 only
+  bool dual_stack = false;
+  SOCKET sock = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+  if(UdpValid(sock)) {
+    int v6_only = 0;
+    if(setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, (const char*)&v6_only, sizeof(v6_only)) == 0) {
+      dual_stack = true;
+    }
+    else {
+      UdpCloseHandle(sock);
+      sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    }
+  }
+  else {
+    sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+  }
+  if(!UdpValid(sock)) {
+    error = { CurrentSocketError(), false };
+    freeaddrinfo(result);
+    return nullptr;
+  }
+
+  UdpEndpoint* ep = new UdpEndpoint();
+  ep->sock = sock;
+  ep->client = true;
+  ep->current = (size_t)-1;
+  memset(&ep->peer, 0, sizeof(ep->peer));
+  ep->peer_len = 0;
+
+  for(struct addrinfo* ptr = result; ptr != nullptr; ptr = ptr->ai_next) {
+    struct sockaddr_storage addr;
+    memset(&addr, 0, sizeof(addr));
+    socklen_t len = 0;
+    if(ptr->ai_family == AF_INET6) {
+      if(!dual_stack) {
+        continue;
+      }
+      memcpy(&addr, ptr->ai_addr, ptr->ai_addrlen);
+      len = (socklen_t)ptr->ai_addrlen;
+    }
+    else if(ptr->ai_family == AF_INET) {
+      if(dual_stack) {
+        // ::ffff:a.b.c.d
+        const struct sockaddr_in* in4 = (const struct sockaddr_in*)ptr->ai_addr;
+        struct sockaddr_in6* in6 = (struct sockaddr_in6*)&addr;
+        in6->sin6_family = AF_INET6;
+        in6->sin6_port = in4->sin_port;
+        unsigned char* bytes = (unsigned char*)&in6->sin6_addr;
+        bytes[10] = 0xff;
+        bytes[11] = 0xff;
+        memcpy(bytes + 12, &in4->sin_addr, 4);
+        len = sizeof(struct sockaddr_in6);
+      }
+      else {
+        memcpy(&addr, ptr->ai_addr, ptr->ai_addrlen);
+        len = (socklen_t)ptr->ai_addrlen;
+      }
+    }
+    else {
+      continue;
+    }
+    ep->candidates.push_back(addr);
+    ep->candidate_lens.push_back(len);
+  }
+  freeaddrinfo(result);
+
+  if(!UdpAdvance(ep, error)) {
+    if(error.code == 0) {
+#ifdef _WIN32
+      error = { WSAEAFNOSUPPORT, false };
+#else
+      error = { EAFNOSUPPORT, false };
+#endif
+    }
+    UdpCloseHandle(ep->sock);
+    delete ep;
+    return nullptr;
+  }
+
+  return ep;
+}
+
+//
+// A server endpoint: the dual-stack wildcard (IPSocket::BindAny, as the TCP,
+// TLS and DTLS servers bind), or one address. No SO_REUSEADDR: it would let a
+// second server bind the same port. A name lookup can block: the caller
+// parks around it.
+//
+static UdpEndpoint* UdpBind(const std::string& host, int port, SocketError& error)
+{
+  const SOCKET sock = IPSocket::BindAddress(host.c_str(), port, SOCK_DGRAM, error, false);
+  if(!UdpValid(sock)) {
+    return nullptr;
+  }
+
+#ifdef _WIN32
+  // a reply to a client that has gone must not fail the next read (see above)
+  BOOL report = FALSE;
+  DWORD returned = 0;
+  WSAIoctl(sock, SIO_UDP_CONNRESET, &report, sizeof(report), nullptr, 0, &returned, nullptr, nullptr);
+#endif
+
+  UdpEndpoint* ep = new UdpEndpoint();
+  ep->sock = sock;
+  ep->client = false;
+  ep->current = (size_t)-1;
+  // the bound address, until a read replaces it with a sender's
+  memset(&ep->peer, 0, sizeof(ep->peer));
+  ep->peer_len = sizeof(ep->peer);
+  if(getsockname(sock, (struct sockaddr*)&ep->peer, &ep->peer_len) != 0) {
+    ep->peer.ss_family = AF_INET6;
+    ep->peer_len = sizeof(struct sockaddr_in6);
+  }
+
+  return ep;
+}
+
+//
+// Sends one datagram: a client to its peer, moving on to its next address
+// while the current one has been refused, a server to its last sender. The
+// number of bytes sent, or -1 with the reason in error.
+//
+static int UdpSend(UdpEndpoint* ep, const char* buffer, int len, int& error)
+{
+  error = 0;
+  if(!ep->client) {
+    const int sent = static_cast<int>(sendto(ep->sock, buffer, len, 0, (const struct sockaddr*)&ep->peer, ep->peer_len));
+    if(sent < 0) {
+      error = CurrentSocketError();
+    }
+    return sent;
+  }
+
+  while(true) {
+    SocketError advance;
+    advance = { 0, false };
+    const int refused = PendingRefusal(ep->sock);
+    if(refused) {
+      if(UdpAdvance(ep, advance)) {
+        continue;
+      }
+      // every address has refused; nothing is sent
+      error = refused;
+      return -1;
+    }
+
+    const int sent = static_cast<int>(send(ep->sock, buffer, len, 0));
+    if(sent < 0) {
+      const int send_error = CurrentSocketError();
+      if(IsRefusal(send_error) && UdpAdvance(ep, advance)) {
+        continue;
+      }
+      error = Refused(send_error);
+      return -1;
+    }
+    return sent;
+  }
+}
+
+//
+// Receives one datagram: a client from its peer, a server from anyone (who
+// becomes its peer). A client's refusal moves it on to its next address, for
+// the calls that follow; this one fails with it.
+//
+static int UdpReceive(UdpEndpoint* ep, char* buffer, int len, int& error)
+{
+  error = 0;
+  if(ep->client) {
+    const int read = static_cast<int>(recv(ep->sock, buffer, len, 0));
+    if(read < 0) {
+      error = Refused(CurrentSocketError());
+      if(IsRefusal(error)) {
+        SocketError advance;
+        advance = { 0, false };
+        UdpAdvance(ep, advance);
+      }
+    }
+    return read;
+  }
+
+  struct sockaddr_storage sender;
+  socklen_t sender_len = sizeof(sender);
+  const int read = static_cast<int>(recvfrom(ep->sock, buffer, len, 0, (struct sockaddr*)&sender, &sender_len));
+  if(read < 0) {
+    error = CurrentSocketError();
+  }
+  else {
+    ep->peer = sender;
+    ep->peer_len = sender_len;
+  }
+  return read;
+}
+
+static void UdpClose(UdpEndpoint* ep)
+{
+  UdpCloseHandle(ep->sock);
+  delete ep;
+}
+
+// the handshake is done (ssl.state is private from mbedTLS 3)
+static inline bool DtlsHandshakeOver(const mbedtls_ssl_context* ssl)
+{
+#if MBEDTLS_VERSION_NUMBER >= 0x03020000
+  return mbedtls_ssl_is_handshake_over((mbedtls_ssl_context*)ssl) != 0;
+#else
+  return ssl->state == MBEDTLS_SSL_HANDSHAKE_OVER;
+#endif
+}
+
+//
+// A DTLS alert record waiting to be read: the first datagram queued is one
+// whose record header says content type 21. Peeked, not consumed, without
+// blocking. (A peek shorter than the datagram fails with WSAEMSGSIZE on
+// Windows, with the buffer filled.)
+//
+static bool PendingAlert(SOCKET sock)
+{
+  unsigned char head[1] = { 0 };
+#ifdef _WIN32
+  fd_set readable;
+  FD_ZERO(&readable);
+  FD_SET(sock, &readable);
+  struct timeval now = { 0, 0 };
+  if(select(0, &readable, nullptr, nullptr, &now) <= 0) {
+    return false;
+  }
+  const int peeked = recv(sock, (char*)head, sizeof(head), MSG_PEEK);
+  if(peeked == SOCKET_ERROR && WSAGetLastError() != WSAEMSGSIZE) {
+    return false;
+  }
+#else
+  const ssize_t peeked = recv(sock, head, sizeof(head), MSG_PEEK | MSG_DONTWAIT);
+  if(peeked < 1) {
+    return false;
+  }
+#endif
+  return head[0] == 21;
+}
+
+//
+// DTLS record I/O (see common.h). The context is the DtlsSocketCtx.
+//
+int DtlsBioSend(void* ctx, const unsigned char* buf, size_t len)
+{
+  DtlsSocketCtx* sctx = (DtlsSocketCtx*)ctx;
+  // An established session whose peer has sent an alert -- a close_notify, or
+  // a fatal one -- is over: the write fails, and the alert stays queued for the
+  // next read to report in full. On Windows this is also the only way a write
+  // can learn the peer has gone: the network's refusal of a later datagram
+  // waits behind that alert in the queue. (Not during the handshake, where
+  // mbedTLS reads the peer's alerts itself.)
+  if(DtlsHandshakeOver(&sctx->ssl) && PendingAlert((SOCKET)sctx->net.fd)) {
+    sctx->net_reason = { 0, false };
+    return MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY;
+  }
+
+  const int refused = PendingRefusal((SOCKET)sctx->net.fd);
+  if(refused) {
+    sctx->net_reason = { refused, false };
+    return MBEDTLS_ERR_NET_CONN_RESET;
+  }
+
+  const int ret = mbedtls_net_send(&sctx->net, buf, len);
+  if(ret < 0 && ret != MBEDTLS_ERR_SSL_WANT_WRITE && ret != MBEDTLS_ERR_SSL_WANT_READ) {
+    sctx->net_reason = { CurrentSocketError(), false };
+  }
+  return ret;
+}
+
+int DtlsBioRecv(void* ctx, unsigned char* buf, size_t len)
+{
+  DtlsSocketCtx* sctx = (DtlsSocketCtx*)ctx;
+  const int ret = mbedtls_net_recv(&sctx->net, buf, len);
+  if(ret < 0 && ret != MBEDTLS_ERR_SSL_WANT_WRITE && ret != MBEDTLS_ERR_SSL_WANT_READ) {
+    sctx->net_reason = { CurrentSocketError(), false };
+  }
+  return ret;
+}
+
+int DtlsBioRecvTimeout(void* ctx, unsigned char* buf, size_t len, uint32_t timeout)
+{
+  DtlsSocketCtx* sctx = (DtlsSocketCtx*)ctx;
+  const int ret = mbedtls_net_recv_timeout(&sctx->net, buf, len, timeout);
+  if(ret < 0 && ret != MBEDTLS_ERR_SSL_WANT_WRITE && ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_TIMEOUT) {
+    sctx->net_reason = { CurrentSocketError(), false };
+  }
+  return ret;
+}
+
 bool TrapProcessor::SockUdpCreate(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
   const long port = (long)PopInt(op_stack, stack_pos);
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
@@ -6307,21 +6782,19 @@ bool TrapProcessor::SockUdpCreate(StackProgram* program, size_t* inst, size_t*& 
     array = (size_t*)array[0];
     const std::string addr_str = UnicodeToBytes((wchar_t*)(array + 3));
 
-    // the address is resolved (UDPSocket::Open), which can block: park, with
-    // the instance re-rooted on the op_stack and re-read after
-    SOCKET sock;
-    struct sockaddr_storage* addr;
+    // the address is resolved, which can block: park, with the instance
+    // re-rooted on the op_stack and re-read after
     SocketError error;
     PushInt((size_t)instance, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
-    const bool opened = UDPSocket::Open(addr_str.c_str(), static_cast<int>(port), sock, addr, error);
+    UdpEndpoint* ep = UdpOpen(addr_str.c_str(), static_cast<int>(port), error);
     MemoryManager::EndBlocking();
     instance = (size_t*)PopInt(op_stack, stack_pos);
 
     socket_last_error = error;
-    if(opened) {
-      instance[0] = sock;
-      instance[1] = (size_t)addr;
+    if(ep) {
+      instance[0] = (size_t)ep->sock;
+      instance[1] = (size_t)ep;
     }
   }
   else if(instance) {
@@ -6333,7 +6806,7 @@ bool TrapProcessor::SockUdpCreate(StackProgram* program, size_t* inst, size_t*& 
 }
 
 //
-// An open UDP socket: one that New or Bind opened, which set its address too,
+// An open UDP socket: one that New or Bind opened, which set its endpoint too,
 // and that Close has not closed. The traps tested the handle instead, three
 // ways -- non-zero, above -1, above 0 -- and a socket whose New failed kept
 // handle 0, so some reads and writes went to handle 0: stdin on POSIX.
@@ -6343,30 +6816,36 @@ static bool UdpSocketOpen(const size_t* instance)
   return instance && instance[1];
 }
 
+//
+// UDPSocketServer->Bind(): the port in the third field, the address (Nil for
+// every interface) in the fourth.
+//
 bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
   if(inst) {
     const long port = (long)inst[2];
-    SOCKET sock; struct sockaddr_storage* addr;
-    if(UDPSocket::Bind(static_cast<int>(port), sock, addr)) {
-      RecordSocketError(0);
-      inst[0] = sock;
-      inst[1] = (size_t)addr;
+    std::string host;
+    const size_t* str_obj = (size_t*)inst[3];
+    if(str_obj && str_obj[0]) {
+      host = UnicodeToBytes((wchar_t*)((size_t*)str_obj[0] + 3));
+    }
+
+    // a name lookup can block: park, and re-read the instance from the frame
+    // after (a collection may have moved it)
+    SocketError error;
+    MemoryManager::BeginBlocking();
+    UdpEndpoint* ep = UdpBind(host, static_cast<int>(port), error);
+    MemoryManager::EndBlocking();
+    inst = (size_t*)frame->mem[0];
+
+    socket_last_error = error;
+    if(ep) {
+      inst[0] = (size_t)ep->sock;
+      inst[1] = (size_t)ep;
       // @port: the port bound, which for a port of 0 the system chose
-      const int bound_port = BoundPort(sock);
+      const int bound_port = BoundPort(ep->sock);
       if(bound_port > 0) {
         inst[2] = bound_port;
-        // the kept peer address is a sockaddr_storage: IPv6 (the dual-stack
-        // wildcard) or IPv4
-        if(addr->ss_family == AF_INET6) {
-          ((struct sockaddr_in6*)addr)->sin6_port = htons((unsigned short)bound_port);
-        }
-        else if(addr->ss_family == AF_INET) {
-          ((struct sockaddr_in*)addr)->sin_port = htons((unsigned short)bound_port);
-        }
       }
-    }
-    else {
-      RecordSocketError(CurrentSocketError());
     }
   }
 
@@ -6375,45 +6854,40 @@ bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op
 
 bool TrapProcessor::SockUdpClose(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
   if(UdpSocketOpen(inst)) {
-    SOCKET sock = static_cast<int>(inst[0]);
-    struct sockaddr_storage* addr_in = (struct sockaddr_storage*)inst[1];
+    UdpEndpoint* ep = (UdpEndpoint*)inst[1];
     // Forgotten once closed. The handle and the freed address were left in
     // place, so a second Close() deleted the address again (heap corruption),
     // and a read or write after Close() used a handle the system may have
     // given to something else.
     inst[0] = 0;
     inst[1] = 0;
-    UDPSocket::Close(sock, addr_in);
+    UdpClose(ep);
   }
 
   return true;
 }
 
 //
-// UDP traps. recvfrom() blocks until a datagram arrives and sendto() can block
-// on a full send buffer, so each call is parked: unparked, a thread waiting here
+// UDP traps. A receive blocks until a datagram arrives and a send can block on
+// a full send buffer, so each call is parked: unparked, a thread waiting here
 // stalls every stop-the-world collection, and when the sender is a thread of
-// this VM that needs a collection first, neither moves again. The socket and
-// its address are C values read from the instance before parking; a GC array
-// is never handed to the kernel while parked (the collector can move a parked
-// thread's young objects) -- reads land in a C buffer and are copied in after,
-// with the array ref re-rooted on the op_stack so promotion fixup relocates it.
+// this VM that needs a collection first, neither moves again. The endpoint is
+// C heap, read from the instance before parking; a GC array is never handed
+// to the kernel while parked (the collector can move a parked thread's young
+// objects) -- reads land in a C buffer and are copied in after, with the array
+// ref re-rooted on the op_stack so promotion fixup relocates it.
 //
 bool TrapProcessor::SockUdpInByte(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(UdpSocketOpen(instance)) {
-    SOCKET sock = static_cast<int>(inst[0]);
-    struct sockaddr_storage* addr_in = (struct sockaddr_storage*)inst[1];
-
+    UdpEndpoint* ep = (UdpEndpoint*)instance[1];
     char value = '\0';
-    socklen_t addr_in_size = sizeof(struct sockaddr_storage);
+    int error;
     MemoryManager::BeginBlocking();
-    const int read = static_cast<int>(recvfrom(sock, &value, 1, 0, (struct sockaddr*)addr_in, &addr_in_size));
-    const int error = read < 0 ? CurrentSocketError() : 0;
+    const int read = UdpReceive(ep, &value, 1, error);
     MemoryManager::EndBlocking();
     RecordSocketError(error);
-    // the byte read, or 0 when nothing was (this was inverted: it pushed an
-    // uninitialised byte on failure and 0 on success)
+    // the byte read, or 0 when nothing was
     PushInt(read > 0 ? (unsigned char)value : 0, op_stack, stack_pos);
   }
   else {
@@ -6430,15 +6904,12 @@ bool TrapProcessor::SockUdpInByteAry(StackProgram* program, size_t* inst, size_t
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && UdpSocketOpen(instance) && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
-    SOCKET sock = static_cast<int>(inst[0]);
-    struct sockaddr_storage* addr_in = (struct sockaddr_storage*)inst[1];
-
+    UdpEndpoint* ep = (UdpEndpoint*)instance[1];
     char* temp = new char[num > 0 ? num : 1];
-    socklen_t addr_in_size = sizeof(struct sockaddr_storage);
+    int error;
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
-    const int read = static_cast<int>(recvfrom(sock, temp, num, 0, (struct sockaddr*)addr_in, &addr_in_size));
-    const int error = read < 0 ? CurrentSocketError() : 0;
+    const int read = UdpReceive(ep, temp, num, error);
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
     RecordSocketError(error);
@@ -6446,8 +6917,7 @@ bool TrapProcessor::SockUdpInByteAry(StackProgram* program, size_t* inst, size_t
       memcpy((char*)(array + 3) + offset, temp, read);
     }
     delete[] temp;
-    // the number of bytes read, or -1 on error (this was inverted: it pushed 0
-    // for every successful read and the error code for a failed one)
+    // the number of bytes read, or -1 on error
     PushInt(read < 0 ? -1 : read, op_stack, stack_pos);
   }
   else {
@@ -6464,21 +6934,17 @@ bool TrapProcessor::SockUdpInCharAry(StackProgram* program, size_t* inst, size_t
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && UdpSocketOpen(instance) && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
-    SOCKET sock = static_cast<int>(inst[0]);
-    struct sockaddr_storage* addr_in = (struct sockaddr_storage*)inst[1];
-
+    UdpEndpoint* ep = (UdpEndpoint*)instance[1];
     char* byte_buffer = new char[num * 2 + 1];
-
-    socklen_t addr_in_size = sizeof(struct sockaddr_storage);
+    int error;
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
-    const int read = static_cast<int>(recvfrom(sock, byte_buffer, num, 0, (struct sockaddr*)addr_in, &addr_in_size));
-    const int error = read < 0 ? CurrentSocketError() : 0;
+    const int read = UdpReceive(ep, byte_buffer, static_cast<int>(num), error);
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
     RecordSocketError(error);
     wchar_t* buffer = (wchar_t*)(array + 3);
-    // recvfrom returns -1 on error; only terminate/decode when bytes were read
+    // only terminate/decode when bytes were read
     if(read > -1) {
       byte_buffer[read] = '\0';
       std::wstring in(BytesToUnicode(byte_buffer));
@@ -6516,17 +6982,14 @@ bool TrapProcessor::SockUdpOutCharAry(StackProgram* program, size_t* inst, size_
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && UdpSocketOpen(instance) && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
-    SOCKET sock = static_cast<int>(inst[0]);
-    struct sockaddr_storage* addr_in = (struct sockaddr_storage*)inst[1];
-    const socklen_t addr_in_size = (socklen_t)UDPSocket::AddressSize(addr_in);
-
+    UdpEndpoint* ep = (UdpEndpoint*)instance[1];
     const wchar_t* buffer = (wchar_t*)(array + 3);
-    std::string buffer_out = UnicodeToBytes(buffer);
+    const std::string buffer_out = UnicodeToBytes(buffer);
 
     // buffer_out is C heap
+    int error;
     MemoryManager::BeginBlocking();
-    const int sent = static_cast<int>(sendto(sock, buffer_out.c_str(), (int)buffer_out.size(), 0, (struct sockaddr*)addr_in, addr_in_size));
-    const int error = sent < 0 ? CurrentSocketError() : 0;
+    const int sent = UdpSend(ep, buffer_out.c_str(), (int)buffer_out.size(), error);
     MemoryManager::EndBlocking();
     RecordSocketError(error);
     PushInt(sent, op_stack, stack_pos);
@@ -6542,16 +7005,13 @@ bool TrapProcessor::SockUdpOutByte(StackProgram* program, size_t* inst, size_t*&
   char value = (char)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(UdpSocketOpen(instance)) {
-    SOCKET sock = static_cast<int>(inst[0]);
-    struct sockaddr_storage* addr_in = (struct sockaddr_storage*)inst[1];
-
-    const socklen_t addr_in_size = (socklen_t)UDPSocket::AddressSize(addr_in);
+    UdpEndpoint* ep = (UdpEndpoint*)instance[1];
+    int error;
     MemoryManager::BeginBlocking();
-    const int sent = static_cast<int>(sendto(sock, &value, 1, 0, (struct sockaddr*)addr_in, addr_in_size));
-    const int error = sent < 0 ? CurrentSocketError() : 0;
+    const int sent = UdpSend(ep, &value, 1, error);
     MemoryManager::EndBlocking();
     RecordSocketError(error);
-    // true when the byte was sent (this pushed false whatever happened)
+    // true when the byte was sent
     PushInt(sent > 0, op_stack, stack_pos);
   }
   else {
@@ -6568,23 +7028,18 @@ bool TrapProcessor::SockUdpOutByteAry(StackProgram* program, size_t* inst, size_
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && UdpSocketOpen(instance) && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
-
-    SOCKET sock = static_cast<int>(inst[0]);
-    struct sockaddr_storage* addr_in = (struct sockaddr_storage*)inst[1];
-
+    UdpEndpoint* ep = (UdpEndpoint*)instance[1];
     // staged in a C buffer: the GC array can move while this thread is parked
     char* temp = new char[num > 0 ? num : 1];
     memcpy(temp, (const char*)(array + 3) + offset, num);
 
-    const socklen_t addr_in_size = (socklen_t)UDPSocket::AddressSize(addr_in);
+    int error;
     MemoryManager::BeginBlocking();
-    const int sent = static_cast<int>(sendto(sock, temp, num, 0, (struct sockaddr*)addr_in, addr_in_size));
-    const int error = sent < 0 ? CurrentSocketError() : 0;
+    const int sent = UdpSend(ep, temp, num, error);
     MemoryManager::EndBlocking();
     RecordSocketError(error);
     delete[] temp;
-    // the number of bytes sent, or -1 on error (this pushed 0 for every
-    // successful send, and sent from the start of the buffer, ignoring offset)
+    // the number of bytes sent, or -1 on error
     PushInt(sent < 0 ? -1 : sent, op_stack, stack_pos);
   }
   else {
@@ -6598,36 +7053,29 @@ bool TrapProcessor::SockUdpInString(StackProgram* program, size_t* inst, size_t*
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && UdpSocketOpen(instance)) {
+    UdpEndpoint* ep = (UdpEndpoint*)instance[1];
     char buffer[MID_BUFFER_MAX] = {0};
+    int error;
+    PushInt((size_t)array, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
+    const int read = UdpReceive(ep, buffer, MID_BUFFER_MAX - 1, error);
+    MemoryManager::EndBlocking();
+    array = (size_t*)PopInt(op_stack, stack_pos);
+    RecordSocketError(error);
+    if(read > -1) {
+      buffer[read] = '\0';
 
-    SOCKET sock = static_cast<int>(inst[0]);
-
-    struct sockaddr_storage* addr_in = (struct sockaddr_storage*)inst[1];
-    socklen_t addr_in_size = sizeof(struct sockaddr_storage);
-
-    if((long)sock > -1) {
-      PushInt((size_t)array, op_stack, stack_pos);
-      MemoryManager::BeginBlocking();
-      const int read = static_cast<int>(recvfrom(sock, buffer, MID_BUFFER_MAX - 1, 0, (struct sockaddr*)addr_in, &addr_in_size));
-      const int error = read < 0 ? CurrentSocketError() : 0;
-      MemoryManager::EndBlocking();
-      array = (size_t*)PopInt(op_stack, stack_pos);
-      RecordSocketError(error);
-      if(read > -1) {
-        buffer[read] = '\0';
-
-        // copy content
-        std::wstring in = BytesToUnicode(buffer);
-        while(!in.empty() && (in.back() == L'\r' || in.back() == L'\n')) {
-          in.pop_back();
-        }
-        wchar_t* out = (wchar_t*)(array + 3);
-#ifdef _WIN32
-        wcsncpy_s(out, array[0] + 1, in.c_str(), in.size());
-#else
-        wcsncpy(out, in.c_str(), in.size());
-#endif
+      // copy content
+      std::wstring in = BytesToUnicode(buffer);
+      while(!in.empty() && (in.back() == L'\r' || in.back() == L'\n')) {
+        in.pop_back();
       }
+      wchar_t* out = (wchar_t*)(array + 3);
+#ifdef _WIN32
+      wcsncpy_s(out, array[0] + 1, in.c_str(), in.size());
+#else
+      wcsncpy(out, in.c_str(), in.size());
+#endif
     }
   }
 
@@ -6638,19 +7086,16 @@ bool TrapProcessor::SockUdpOutString(StackProgram* program, size_t* inst, size_t
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && UdpSocketOpen(instance)) {
-    SOCKET sock = (SOCKET)instance[0];
-    struct sockaddr_storage* addr_in = (struct sockaddr_storage*)inst[1];
-
+    UdpEndpoint* ep = (UdpEndpoint*)instance[1];
 #ifdef _DEBUG
     std::wcout << L"# udp write std::string: instance=" << instance << L"(" << (size_t)instance << L")" << L"; array=" << array << L"(" << (size_t)array << L")" << std::endl;
 #endif
     const std::string data = UnicodeToBytes((wchar_t*)(array + 3));
-    const socklen_t addr_in_size = (socklen_t)UDPSocket::AddressSize(addr_in);
     // data is C heap. WriteString returns Nil, so nothing is pushed, as in
-    // SockTcpOutString: this pushed a result the caller never pops.
+    // SockTcpOutString.
+    int error;
     MemoryManager::BeginBlocking();
-    const int sent = static_cast<int>(sendto(sock, data.c_str(), (int)data.size(), 0, (struct sockaddr*)addr_in, addr_in_size));
-    const int error = sent < 0 ? CurrentSocketError() : 0;
+    UdpSend(ep, data.c_str(), (int)data.size(), error);
     MemoryManager::EndBlocking();
     RecordSocketError(error);
   }
@@ -10008,7 +10453,8 @@ static std::wstring TlsErrorMessage(int error, uint32_t verify_flags, const Sock
   // it.", "Connection refused", "Address already in use", "No such host is
   // known.")
   const bool net_failure = error == MBEDTLS_ERR_NET_CONNECT_FAILED || error == MBEDTLS_ERR_NET_UNKNOWN_HOST ||
-    error == MBEDTLS_ERR_NET_SOCKET_FAILED || error == MBEDTLS_ERR_NET_BIND_FAILED || error == MBEDTLS_ERR_NET_LISTEN_FAILED;
+    error == MBEDTLS_ERR_NET_SOCKET_FAILED || error == MBEDTLS_ERR_NET_BIND_FAILED || error == MBEDTLS_ERR_NET_LISTEN_FAILED ||
+    error == MBEDTLS_ERR_NET_CONN_RESET || error == MBEDTLS_ERR_NET_SEND_FAILED || error == MBEDTLS_ERR_NET_RECV_FAILED;
   if(net_failure && reason.code != 0) {
     message += ": " + UnicodeToBytes(SocketErrorText(reason));
   }
@@ -10460,7 +10906,7 @@ bool TrapProcessor::SockDtlsAccept(StackProgram* program, size_t* inst, size_t*&
           ret = mbedtls_ssl_set_client_transport_id(&client_sctx->ssl, client_ip, client_ip_len);
         }
         if(ret == 0) {
-          mbedtls_ssl_set_bio(&client_sctx->ssl, &client_sctx->net, mbedtls_net_send, mbedtls_net_recv, mbedtls_net_recv_timeout);
+          mbedtls_ssl_set_bio(&client_sctx->ssl, client_sctx, DtlsBioSend, DtlsBioRecv, DtlsBioRecvTimeout);
           mbedtls_ssl_set_timer_cb(&client_sctx->ssl, &client_sctx->timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
 
           // Perform DTLS handshake with cookie verification
@@ -10475,7 +10921,7 @@ bool TrapProcessor::SockDtlsAccept(StackProgram* program, size_t* inst, size_t*&
               // ClientHello carrying the cookie; a reset clears the transport id
               mbedtls_ssl_session_reset(&client_sctx->ssl);
               mbedtls_ssl_set_client_transport_id(&client_sctx->ssl, client_ip, client_ip_len);
-              mbedtls_ssl_set_bio(&client_sctx->ssl, &client_sctx->net, mbedtls_net_send, mbedtls_net_recv, mbedtls_net_recv_timeout);
+              mbedtls_ssl_set_bio(&client_sctx->ssl, client_sctx, DtlsBioSend, DtlsBioRecv, DtlsBioRecvTimeout);
               mbedtls_ssl_set_timer_cb(&client_sctx->ssl, &client_sctx->timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
               continue;
             }
