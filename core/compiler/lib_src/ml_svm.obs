@@ -1909,9 +1909,19 @@ if(svm->Fit(x_train, y_train)) {
 	size, max_iter) and LIBSVM's formulation, solved by the same SMO solver as
 	KernelSVM: minimise 1/2 a'Ka subject to 0 <= a_i <= 1 and sum(a) = nu * n.
 
-	nu is an upper bound on the fraction of training rows left outside the
-	boundary (DecisionFunction below 0) and a lower bound on the fraction that are
-	support vectors.
+	nu is an upper bound on the fraction of training rows STRICTLY outside the
+	boundary and a lower bound on the fraction that are support vectors.
+
+	The flagged training fraction can exceed nu, as with LIBSVM and
+	scikit-learn. At the optimum the free support vectors lie exactly on the
+	boundary, decision 0, and those that round just below 0 are flagged by
+	IsOutlier and Predict (scikit-learn's predict is decision >= 0 too). At a
+	finite tolerance the optimality conditions place rows only within tol of the
+	boundary, so at the default 1e-3 rows down to about -tol are flagged: 230 rows
+	at nu = 0.01 (nu * n = 2.3) flag 20, all within 4e-4 of 0 and none at its
+	bound. Rows below -tol never exceed nu * n. When the flagged fraction should
+	track nu -- a nu sweep, say -- tighten the tolerance (SetTolerance(1e-6) costs
+	little) or count rows whose decision is below -GetTolerance().
 
 	Signs follow scikit-learn: DecisionFunction is positive inside the boundary
 	(an inlier) and negative outside, and Predict returns +1 / -1. Because the
@@ -2324,7 +2334,8 @@ if(detector->Fit(x_normal)) {
 
 		#~
 		True for an outlier (decision value below 0), the label Metrics takes when
-		the attack is the positive class.
+		the attack is the positive class. Training rows on the boundary sit within
+		the tolerance of 0 and can land on either side; see the class notes on nu.
 		@param X rows x features
 		@return one flag per row, or Nil when unfitted
 		~#
