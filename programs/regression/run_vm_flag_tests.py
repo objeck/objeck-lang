@@ -200,6 +200,14 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     idle threads held 37 MB more (30 MB of it AnonHugePages), 130 MB more with
     --call-depth=100000. The check reads flags, not sizes, so it holds whatever
     the host's THP setting is.
+ 20. A method holding a Float or function-reference conditional is compiled.
+    The compiler passed every conditional's value through an Int store, so the
+    JIT gave up on any method with a Float one ("compile failed" under
+    OBJECK_JIT_REPORT=1) and it ran interpreted, about 40 times slower in a
+    loop, with every answer right -- which only the report can see. With
+    OBJECK_JIT_REPORT=1 and --jit=1, jit_conditional_value_types.obs passes and
+    its Float conditional methods (SumTernary, Pick, Fill) and function-reference
+    ones (ChooseFunc, ApplyChosen) report "compiled".
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only]
 
@@ -503,6 +511,8 @@ def main():
     check_native_callback_depth(obc, obr, env, bin_dir)
 
     check_thread_stack_pages(obc, obr, env, bin_dir)
+
+    check_conditionals_compiled(obc, obr, env, bin_dir)
 
     # ---- 11. the heap verifier (OBJECK_GC_VERIFY) ----------------------------------
     verify_section(obc, obr, env, bin_dir)
@@ -1247,6 +1257,31 @@ def check_thread_stack_pages(obc, obr, env, bin_dir):
         check(f"each of {threads} thread stacks is marked no-huge-page ({label})",
               p.returncode == 0 and len(flagged) >= threads, detail)
         check(f"the thread stacks hold no huge page ({label})", len(stacks) >= threads and huge == 0, detail)
+
+
+def check_conditionals_compiled(obc, obr, env, bin_dir):
+    # ---- 20. Float and function-reference conditionals are compiled ------------------
+    src = os.path.join(SCRIPT_DIR, "jit_conditional_value_types.obs")
+    dest = os.path.join(SCRIPT_DIR, "jit_conditional_value_types.obe")
+    rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+    check("conditional fixture compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+    if rc != 0:
+        return
+
+    report_env = dict(env)
+    report_env["OBJECK_JIT_REPORT"] = "1"
+    rc, out, err = run([obr, "--jit=1", dest], env=report_env, cwd=bin_dir, timeout=300)
+    text = err.decode(errors="replace")
+    check("the conditional fixture passes with every method compiled",
+          rc == 0 and b"PASS: all Float and function-reference conditionals" in out,
+          f"rc={rc} out={out[-200:]!r} stderr={text[-300:]!r}")
+    # not Apply, PickFunc or PickNested: they build capturing lambdas, and ARM64
+    # leaves any method with NEW_FUNC_INST to the interpreter
+    for method in ("SumTernary:f*,l*,", "Pick:l,f,f,", "Fill:l*,f**,", "ChooseFunc:l,m.(i,)~i,m.(i,)~i,",
+                   "ApplyChosen:l,l,m.(i,)~i,m.(i,)~i,i,"):
+        line = f"[jit] JitConditionalValueTypes:{method}: compiled"
+        report = [l for l in text.splitlines() if f"JitConditionalValueTypes:{method}:" in l]
+        check(f"JitConditionalValueTypes:{method} is compiled", line in text, f"report={report!r}")
 
 
 def check_call_depth(obc, obr, env, bin_dir):

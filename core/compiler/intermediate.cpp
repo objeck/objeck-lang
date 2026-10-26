@@ -5500,7 +5500,27 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
 void IntermediateEmitter::EmitConditional(Cond* conditional)
 {
   cur_line_num = static_cast<Expression*>(conditional)->GetLineNumber();
-  
+
+  // The branches' value meets at the join in a local -- the JIT needs an empty
+  // working stack at a label -- and it is stored and loaded as what it is. A
+  // Float went through the and/or temporary as an Int: the interpreter moved
+  // the 64 bits unchanged, but the JIT will not store a float register with an
+  // integer store, so every method holding a Float conditional silently stayed
+  // interpreted. A function reference (two words) has a hidden local of its
+  // own (AnalyzeConditional).
+  InstructionType stor_type = STOR_INT_VAR;
+  InstructionType load_type = LOAD_INT_VAR;
+  long temp_id = 0;
+  if(conditional->GetFuncTemp()) {
+    stor_type = STOR_FUNC_VAR;
+    load_type = LOAD_FUNC_VAR;
+    temp_id = conditional->GetFuncTemp()->GetId();
+  }
+  else if(IsFloatConditional(conditional)) {
+    stor_type = STOR_FLOAT_VAR;
+    load_type = LOAD_FLOAT_VAR;
+  }
+
   // conditional
   long end_label = ++unconditional_label;
   // if-expression
@@ -5508,18 +5528,54 @@ void IntermediateEmitter::EmitConditional(Cond* conditional)
   EmitBranch(conditional->GetCondExpression(), cond, false);
   EmitExpression(conditional->GetExpression());
   EmitCast(conditional);
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, STOR_INT_VAR, 0, LOCL));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, stor_type, temp_id, LOCL));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, JMP, end_label, -1));
   new_char_str_count = 0;
   // else-expression
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, LBL, cond));
   EmitExpression(conditional->GetElseExpression());
   EmitCast(conditional);
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, STOR_INT_VAR, 0, LOCL));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, stor_type, temp_id, LOCL));
   new_char_str_count = 0;
   // expression end
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, LBL, end_label));
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, load_type, temp_id, LOCL));
+}
+
+/****************************
+ * Whether a conditional's
+ * branches leave a Float word:
+ * its type as EmitCast leaves
+ * it, after any I2F or F2I
+ ****************************/
+bool IntermediateEmitter::IsFloatConditional(Cond* conditional)
+{
+  Type* base_type = conditional->GetBaseType();
+  if(!base_type) {
+    return false;
+  }
+
+  Type* cast_type = conditional->GetCastType();
+  switch(base_type->GetType()) {
+  case frontend::BYTE_TYPE:
+  case frontend::CHAR_TYPE:
+  case frontend::INT_TYPE:
+    // 'f : Float := c ? 1 : 2' -- EmitCast converts each branch with I2F
+    return cast_type && cast_type->GetType() == frontend::FLOAT_TYPE;
+
+  case frontend::FLOAT_TYPE:
+    // 'i : Int := c ? 1.5 : 2.5' -- EmitCast converts each branch with F2I
+    if(cast_type && cast_type->GetType() != frontend::CLASS_TYPE && cast_type->GetType() != frontend::FLOAT_TYPE) {
+      return false;
+    }
+    // A Float[] is a reference, an Int word. The base type's dimension, not
+    // the eval type's: assigning to an element ('m[i, 0] := c ? 1.0 : 0.0')
+    // replaces the eval type with the variable's, dimension and all.
+    return base_type->GetDimension() == 0;
+
+  default:
+    return false;
+  }
 }
 
 /****************************
