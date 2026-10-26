@@ -345,14 +345,17 @@ guard structure and determinism, not pixels.
 ## Stage 4: the end-to-end example
 
 `programs/examples/ml/lab_sweeps.obs` builds a documented **synthetic**
-two-feature dataset from a fixed seed (two overlapping classes, 1,000 rows, 20 %
+two-feature dataset from a fixed seed (two overlapping classes, 500 rows, 20 %
 positive -- the generator and its parameters are in the file header so the
 hand-in can cite them), splits it 70/30 stratified, fits a `FeatureScaler` on
 the training half, and runs two sweeps:
 
 1. `RandomForestClassifier` over `n_estimators` 10, 50, 100, 200, 500 with the
    existing constructor (`max_depth`, `min_samples`, `seed` fixed and footnoted),
-   three seeds, so the table shows `mean ± std` and the chart error bars;
+   two seeds, so the table shows `mean ± std` and the chart error bars. The
+   500-tree fits dominate: about 16 s each on a laptop, 50 s for the whole
+   program (1,000 rows and three seeds took five and a half minutes, which is
+   too long for an example; the `fit_ms` column is the point of the sweep);
 2. the linear `SVM` over `lambda` (L2 strength, the inverse role of `C`) on a
    log axis, 1e-3 .. 10.
 
@@ -389,9 +392,21 @@ hand-ins listed); per-epoch loss from models that do not expose it
 ## Release note
 
 > **`System.ML.Lab` (`ml_lab.obl`)**: the plumbing a parameter sweep needs --
-> `Split->TrainTest` (stratified, seeded, exact), `Resample->ToPositiveRatio`
+> `Partition->TrainTest` (stratified, seeded, exact), `Resample->ToPositiveRatio`
 > for class-imbalance runs against a fixed test set, `Stopwatch`, `Labels`,
 > `Experiment` over any model through a `Trial`, a `ResultTable` with text,
 > Markdown, CSV and JSON output, and `Chart` writing standalone SVG line, bar
 > and loss-curve charts. `System.Time.Timer` now measures wall-clock time on
-> every platform (it was process CPU time on Linux and macOS).
+> every platform (it was process CPU time on Linux and macOS). The compiler no
+> longer crashes on a subscript applied to a later link of a call chain
+> (`v->Get(r)->Get()[c]`).
+
+## What landed where
+
+| Stage | PR | Contents |
+|---|---|---|
+| 0 | #1402 | this document |
+| 1 | #1405 | `ml_lab.obl`: `Partition`, `Resample`, `Stopwatch`, `Labels`, `LabError`; the `Timer` clock fix; lists, alias group, LSP index, playground policy |
+| 2 | stage-2 PR | `Experiment`, `Trial`, `TrialResult`, `ResultTable`; the chained-subscript compiler fix; merges after #1403 |
+| 3 | stage-3 PR | `Chart`, `ChartSeries`, `ResultTable->ToChart` |
+| 4 | stage-4 PR | `programs/examples/ml/lab_sweeps.obs`; `docs/AI.md` and `docs/cli_options.md` |
