@@ -71,6 +71,7 @@ for _libs, _reason in (
       "query_server"), "the sandbox has no network access"),
     (("openai", "gemini", "ollama", "inference"), "it needs network access to a hosted model"),
     (("models", "onnx", "opencv", "query_vision"), "it needs model files and native vision libraries"),
+    (("nlp_onnx",), "it needs a model file and the ONNX runtime"),
     (("odbc", "query_odbc"), "it needs a database driver and network access"),
     (("sdl2", "sdl_game", "sdl_gl", "lame"), "it needs a display or audio device"),
     (("json_stream",), "it streams from files"),
