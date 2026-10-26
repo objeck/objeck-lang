@@ -41,7 +41,22 @@
 #include "../../common.h"
 #include "../../interpreter.h"
 #include <climits>
+#include <limits>
 #include "../../vm_options.h"
+
+// The value NAN_FLOAT, INF_FLOAT and NEG_INF_FLOAT push: the very
+// expressions the interpreter's handlers use (dispatch.cpp), so a compiled
+// method sees the same bits -- the same quiet NaN, not merely "a NaN".
+inline double JitFloatLimit(instructions::InstructionType type) {
+  switch(type) {
+  case instructions::NAN_FLOAT:
+    return std::numeric_limits<double>::quiet_NaN();
+  case instructions::INF_FLOAT:
+    return std::numeric_limits<double>::infinity();
+  default: // NEG_INF_FLOAT
+    return -1.0 * std::numeric_limits<double>::infinity();
+  }
+}
 
 // Auto-JIT: methods called more than threshold times are JIT compiled.
 // Pre-scan validation (CanJitInstruction) runs before resource allocation,
