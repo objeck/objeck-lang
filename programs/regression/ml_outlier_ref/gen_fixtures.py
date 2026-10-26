@@ -167,7 +167,32 @@ def envelope():
     rewrite("ml_outlier_envelope.obs", blocks)
 
 
+def autoencoder():
+    blocks = []
+    # network A: ReLU hidden, linear output, partial last batch
+    X, _ = ref.make_data(41, 40, 0, 3)
+    net = ref.DenseRef([3, 5, 2, 3], "relu", "linear", 7, lr=0.01, batch=7)
+    loss = net.fit(X, X, 5)
+    blocks += [scalar("NetALoss", loss), floats("NetAPredict", net.predict(X))]
+    for l in range(3):
+        blocks += [floats(f"NetAWeights{l}", net.W[l]), floats(f"NetABiases{l}", net.b[l])]
+    # network B: tanh hidden, sigmoid output
+    X, _ = ref.make_data(42, 30, 0, 3)
+    Y = (X[:, :2] + 4.0) / 8.0
+    net = ref.DenseRef([3, 4, 2], "tanh", "sigmoid", 9, lr=0.05, batch=16)
+    loss = net.fit(X, Y, 8)
+    blocks += [scalar("NetBLoss", loss), floats("NetBPredict", net.predict(X))]
+    for l in range(2):
+        blocks += [floats(f"NetBWeights{l}", net.W[l]), floats(f"NetBBiases{l}", net.b[l])]
+    # the autoencoder detector end to end
+    X, _ = ref.make_data(61, 120, 6, 4)
+    _, loss, errors = ref.autoencoder_ref(X, [3, 2, 3], 15, 42)
+    blocks += [scalar("AeLoss", loss), floats("AeErrors", errors),
+               scalar("AeThreshold95", np.percentile(errors, 95.0))]
+    rewrite("ml_outlier_autoencoder.obs", blocks)
+
+
 if __name__ == "__main__":
-    which = sys.argv[1:] or ["zscore", "lof", "iforest", "envelope"]
+    which = sys.argv[1:] or ["zscore", "lof", "iforest", "envelope", "autoencoder"]
     for name in which:
         globals()[name]()

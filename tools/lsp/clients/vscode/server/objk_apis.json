@@ -13590,6 +13590,68 @@
 
 			}
 		},
+		"System.ML.AutoencoderDetector": {
+			"description": "Autoencoder anomaly detection: a DenseNetwork trained to reproduce its input through a bottleneck, so rows unlike the training data reconstruct badly.\n\nFeatures are standardized with the training mean and population standard deviation (a constant feature scales to 0), the network maps p features through the hidden sizes back to p (ReLU hidden layers, linear output), trained by Adam on mean squared error. A row's score is its mean squared reconstruction error in the standardized space. The threshold is the given percentile (default 95.0) of the TRAINING reconstruction errors, numpy's linear interpolation; 99.5 flags about 0.5% of the training rows. The percentile only moves the threshold, so SetSensitivity keeps the trained network.\n\nHidden sizes default to [ceil(p\/2), ceil(p\/4), ceil(p\/2)]. Training: 50 epochs, batches of 32, learning rate 0.001, seed 42.",
+			"functions": {
+				"DecisionFunction": {
+					"descriptions": ["**Score minus the threshold; positive means outlier.**\n\n```method : public : DecisionFunction(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"Fit": {
+					"descriptions": ["**Standardizes, trains the network and sets the threshold.**\n\n```method : public : Fit(X:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\nreturn: Bool"]
+				},
+				"FitPredict": {
+					"descriptions": ["**Fits, then labels the training rows.**\n\n```method : public : FitPredict(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetNetwork": {
+					"descriptions": ["**The trained network.**\n\n```method : public : GetNetwork() ~ DenseNetwork```\n\n\n\nreturn: DenseNetwork"]
+				},
+				"GetSensitivity": {
+					"descriptions": ["**The percentile.**\n\n```method : public : GetSensitivity() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetSensitivityName": {
+					"descriptions": ["**The setting's name.**\n\n```method : public : GetSensitivityName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetThreshold": {
+					"descriptions": ["**The reconstruction-error threshold: the percentile of the training errors.**\n\n```method : public : GetThreshold() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetTrainingLoss": {
+					"descriptions": ["**The last training epoch's mean squared error.**\n\n```method : public : GetTrainingLoss() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetTrainingScores": {
+					"descriptions": ["**The training rows' reconstruction errors.**\n\n```method : public : GetTrainingScores() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether the detector is fitted.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor with the defaults: hidden sizes from the data, percentile 95.0, 50 epochs, seed 42.**\n\n```New()```\n\n", "**Constructor.**\n\n```New(hidden:Int[], percentile:Float, epochs:Int, seed:Int)```\n\n\n\nhidden: Int[]\n\npercentile: Float\n\nepochs: Int\n\nseed: Int"]
+				},
+				"Predict": {
+					"descriptions": ["**Labels rows: true where the reconstruction error exceeds the threshold.**\n\n```method : public : Predict(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"Reconstruct": {
+					"descriptions": ["**Reconstructions of each row, in the original feature units.**\n\n```method : public : Reconstruct(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]"]
+				},
+				"Score": {
+					"descriptions": ["**Per-row mean squared reconstruction error (standardized space).**\n\n```method : public : Score(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"SetBatchSize": {
+					"descriptions": ["**Sets the minibatch size for the next Fit (default 32).**\n\n```method : public : SetBatchSize(size:Int) ~ Bool```\n\n\n\nsize: Int\n\nreturn: Bool"]
+				},
+				"SetLearningRate": {
+					"descriptions": ["**Sets the Adam learning rate for the next Fit (default 0.001).**\n\n```method : public : SetLearningRate(rate:Float) ~ Bool```\n\n\n\nrate: Float\n\nreturn: Bool"]
+				},
+				"SetSensitivity": {
+					"descriptions": ["**Sets the percentile; a fitted detector keeps its network and re-derives the threshold from the training errors.**\n\n```method : public : SetSensitivity(value:Float) ~ Bool```\n\n\n\nvalue: Float\n\nreturn: Bool"]
+				},
+				"SetStandardize": {
+					"descriptions": ["**Whether the next Fit standardizes the features first (default true).**\n\n```method : public : SetStandardize(standardize:Bool) ~ Nil```\n\n\n\nstandardize: Bool\n\nreturn: Nil"]
+				}
+			}
+		},
 		"System.ML.AveragePrecisionMetric": {
 			"description": "Average precision, as a resampleable metric.",
 			"functions": {
@@ -13825,6 +13887,53 @@
 				},
 				"PredictScore": {
 					"descriptions": ["**The fraction of training rows at each row's leaf that were positive. This is the score to threshold, and what the fixed-false-positive-rate metrics consume.**\n\n```method : public : PredictScore(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				}
+			}
+		},
+		"System.ML.DenseNetwork": {
+			"description": "A multi-layer dense (fully connected) network trained by minibatch Adam on mean squared error.\n\nNeuralNetwork above has one hidden layer of sigmoid units and answers Bool; this is the general case: any number of layers of any size, a hidden activation and an output activation (LINEAR, RELU, SIGMOID, TANH), real-valued outputs. Each layer computes act(A W + b). Weights start Glorot-uniform from the seed, biases at 0. Every epoch visits the rows in a seeded shuffle, in minibatches (default 32; the last may be shorter). The loss is the mean over rows and outputs of the squared error, as Keras's and PyTorch's MSE. Adam follows PyTorch: lr 0.001, beta1 0.9, beta2 0.999, eps 1e-8, w -= (lr \/ (1 - beta1^t)) m \/ (sqrt(v) \/ sqrt(1 - beta2^t) + eps).\n\nDeterministic: the same seed and data train the same weights.",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Trains on X -> Y.**\n\n```method : public : Fit(X:Float[,], Y:Float[,], epochs:Int) ~ Float```\n\n\n\nX: Float[,]\n\nY: Float[,]\n\nepochs: Int\n\nreturn: Float"]
+				},
+				"GetBiases": {
+					"descriptions": ["**A layer's biases (1 x outputs); the live matrix, not a copy.**\n\n```method : public : GetBiases(layer:Int) ~ Float[,]```\n\n\n\nlayer: Int\n\nreturn: Float[,]"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetLayerSizes": {
+					"descriptions": ["**Units per layer, input first.**\n\n```method : public : GetLayerSizes() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetWeights": {
+					"descriptions": ["**A layer's weights (inputs x outputs); the live matrix, not a copy.**\n\n```method : public : GetWeights(layer:Int) ~ Float[,]```\n\n\n\nlayer: Int\n\nreturn: Float[,]"]
+				},
+				"Loss": {
+					"descriptions": ["**Mean squared error over rows and outputs.**\n\n```method : public : Loss(X:Float[,], Y:Float[,]) ~ Float```\n\n\n\nX: Float[,]\n\nY: Float[,]\n\nreturn: Float"]
+				},
+				"New": {
+					"descriptions": ["**Constructor.**\n\n```New(sizes:Int[], hidden:DenseNetwork-&gt;Activation, output:DenseNetwork-&gt;Activation, seed:Int)```\n\n\n\nsizes: Int[]\n\nhidden: DenseNetwork-&gt;Activation\n\noutput: DenseNetwork-&gt;Activation\n\nseed: Int"]
+				},
+				"Predict": {
+					"descriptions": ["**Network outputs for each row.**\n\n```method : public : Predict(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]"]
+				},
+				"SetAdam": {
+					"descriptions": ["**Sets Adam's moment decay rates and epsilon (defaults 0.9, 0.999, 1e-8).**\n\n```method : public : SetAdam(beta1:Float, beta2:Float, epsilon:Float) ~ Bool```\n\n\n\nbeta1: Float\n\nbeta2: Float\n\nepsilon: Float\n\nreturn: Bool"]
+				},
+				"SetBatchSize": {
+					"descriptions": ["**Sets the minibatch size (default 32).**\n\n```method : public : SetBatchSize(size:Int) ~ Bool```\n\n\n\nsize: Int\n\nreturn: Bool"]
+				},
+				"SetBiases": {
+					"descriptions": ["**Replaces a layer's biases (copied).**\n\n```method : public : SetBiases(layer:Int, biases:Float[,]) ~ Bool```\n\n\n\nlayer: Int\n\nbiases: Float[,]\n\nreturn: Bool"]
+				},
+				"SetLearningRate": {
+					"descriptions": ["**Sets the Adam learning rate (default 0.001).**\n\n```method : public : SetLearningRate(rate:Float) ~ Bool```\n\n\n\nrate: Float\n\nreturn: Bool"]
+				},
+				"SetWeights": {
+					"descriptions": ["**Replaces a layer's weights (copied), e.g. to start from known values.**\n\n```method : public : SetWeights(layer:Int, weights:Float[,]) ~ Bool```\n\n\n\nlayer: Int\n\nweights: Float[,]\n\nreturn: Bool"]
+				},
+				"TrainBatch": {
+					"descriptions": ["**One Adam step on one minibatch.**\n\n```method : public : TrainBatch(Xb:Float[,], Yb:Float[,]) ~ Float```\n\n\n\nXb: Float[,]\n\nYb: Float[,]\n\nreturn: Float"]
 				}
 			}
 		},
@@ -19350,6 +19459,12 @@
 				"file": ""
 			}
 		],
+		"AutoencoderDetector": [
+			{
+				"bundle": "System.ML",
+				"file": ""
+			}
+		],
 		"AveragePrecisionMetric": [
 			{
 				"bundle": "System.ML",
@@ -19399,6 +19514,12 @@
 			}
 		],
 		"DecisionTreeClassifier": [
+			{
+				"bundle": "System.ML",
+				"file": ""
+			}
+		],
+		"DenseNetwork": [
 			{
 				"bundle": "System.ML",
 				"file": ""
@@ -21773,6 +21894,19 @@
 				{ "name": "FLOAT", "value": "-56", "description": "" },
 				{ "name": "CLASS", "value": "-55", "description": "" },
 				{ "name": "FUNC", "value": "-54", "description": "" }
+			]
+		},
+		"System.ML.DenseNetwork#Activation": {
+			"name": "Activation",
+			"bundle": "System.ML",
+			"class": "System.ML.DenseNetwork",
+			"kind": "enum",
+			"description": "Unit activations.",
+			"items": [
+				{ "name": "LINEAR", "value": "0", "description": "" },
+				{ "name": "RELU", "value": "1", "description": "" },
+				{ "name": "SIGMOID", "value": "2", "description": "" },
+				{ "name": "TANH", "value": "3", "description": "" }
 			]
 		},
 		"System.ML.ZScoreDetector#Rule": {

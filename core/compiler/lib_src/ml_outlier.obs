@@ -6,7 +6,7 @@
 use Collection;
 
 #~
-Anomaly detection: the OutlierDetector interface and ZScoreDetector, IsolationForest, LocalOutlierFactor, EllipticEnvelope and DbscanDetector, with scikit-learn's defaults and threshold rules. Compile with -lib ml.
+Anomaly detection: the OutlierDetector interface and ZScoreDetector, IsolationForest, LocalOutlierFactor, EllipticEnvelope, DbscanDetector and AutoencoderDetector, with scikit-learn's defaults and threshold rules. Compile with -lib ml.
 ~#
 bundle System.ML {
 	#~
@@ -3084,6 +3084,424 @@ noise := scan->FitPredict(X);
 		~#
 		method : public : GetSensitivityName() ~ String {
 			return "eps";
+		}
+
+		#~
+		Why the last call failed.
+		@return the reason, or an empty string
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+	}
+
+	#~
+	Autoencoder anomaly detection: a DenseNetwork trained to reproduce its input
+	through a bottleneck, so rows unlike the training data reconstruct badly.
+
+	Features are standardized with the training mean and population standard
+	deviation (a constant feature scales to 0), the network maps p features through
+	the hidden sizes back to p (ReLU hidden layers, linear output), trained by Adam on
+	mean squared error. A row's score is its mean squared reconstruction error in the
+	standardized space. The threshold is the given percentile (default 95.0) of the
+	TRAINING reconstruction errors, numpy's linear interpolation; 99.5 flags about
+	0.5% of the training rows. The percentile only moves the threshold, so
+	SetSensitivity keeps the trained network.
+
+	Hidden sizes default to [ceil(p/2), ceil(p/4), ceil(p/2)]. Training: 50 epochs,
+	batches of 32, learning rate 0.001, seed 42.
+
+```
+ae := AutoencoderDetector->New([8, 3, 8], 97.5, 50, 42);
+flags := ae->FitPredict(X);
+errors := ae->Score(X_test);
+```
+	~#
+	class AutoencoderDetector implements OutlierDetector {
+		@hidden : Int[];
+		@percentile : Float;
+		@epochs : Int;
+		@seed : Int;
+		@rate : Float;
+		@batch : Int;
+		@standardize : Bool;
+		@network : DenseNetwork;
+		@means : Float[];
+		@scales : Float[];
+		@cols : Int;
+		@threshold : Float;
+		@train_scores : Float[];
+		@final_loss : Float;
+		@fitted : Bool;
+		@error : String;
+
+		#~
+		Constructor with the defaults: hidden sizes from the data, percentile 95.0,
+		50 epochs, seed 42.
+		~#
+		New() {
+			Init(Nil, 95.0, 50, 42);
+		}
+
+		#~
+		Constructor.
+		@param hidden hidden layer sizes, e.g. [8, 3, 8]; Nil for [ceil(p/2), ceil(p/4), ceil(p/2)]
+		@param percentile training-error percentile used as the threshold, in (0, 100]
+		@param epochs training passes (>= 1)
+		@param seed seeds the weights and the minibatch order
+		~#
+		New(hidden : Int[], percentile : Float, epochs : Int, seed : Int) {
+			Init(hidden, percentile, epochs, seed);
+		}
+
+		method : Init(hidden : Int[], percentile : Float, epochs : Int, seed : Int) ~ Nil {
+			@hidden := hidden;
+			@percentile := percentile;
+			@epochs := epochs;
+			@seed := seed;
+			@rate := 0.001;
+			@batch := 32;
+			@standardize := true;
+			@fitted := false;
+			@error := "";
+		}
+
+		#~
+		Sets the Adam learning rate for the next Fit (default 0.001).
+		@param rate learning rate (> 0)
+		@return false when out of range
+		~#
+		method : public : SetLearningRate(rate : Float) ~ Bool {
+			if(rate <= 0.0 | rate <> rate) {
+				return false;
+			};
+
+			@rate := rate;
+			return true;
+		}
+
+		#~
+		Sets the minibatch size for the next Fit (default 32).
+		@param size rows per batch (>= 1)
+		@return false when out of range
+		~#
+		method : public : SetBatchSize(size : Int) ~ Bool {
+			if(size < 1) {
+				return false;
+			};
+
+			@batch := size;
+			return true;
+		}
+
+		#~
+		Whether the next Fit standardizes the features first (default true).
+		@param standardize false to feed the raw features to the network
+		~#
+		method : public : SetStandardize(standardize : Bool) ~ Nil {
+			@standardize := standardize;
+		}
+
+		#~
+		Standardizes, trains the network and sets the threshold.
+		@param X rows x features
+		@return true on success
+		~#
+		method : public : Fit(X : Float[,]) ~ Bool {
+			@fitted := false;
+			if(<>ValidPercentile(@percentile)) {
+				@error := "percentile must be in (0, 100]";
+				return false;
+			};
+
+			if(@epochs < 1) {
+				@error := "epochs must be >= 1";
+				return false;
+			};
+
+			@error := OutlierKit->CheckTrain(X);
+			if(@error <> Nil) {
+				return false;
+			};
+			@error := "";
+
+			dims := X->Size();
+			rows := dims[0];
+			@cols := dims[1];
+
+			@means := Float->New[@cols];
+			@scales := Float->New[@cols];
+			each(j : @cols) {
+				@scales[j] := 1.0;
+			};
+
+			if(@standardize) {
+				each(j : @cols) {
+					sum := 0.0;
+					each(i : rows) {
+						sum += X[i, j];
+					};
+					mean := sum / rows->As(Float);
+
+					ss := 0.0;
+					each(i : rows) {
+						d := X[i, j] - mean;
+						ss += d * d;
+					};
+
+					sd := Float->Sqrt(ss / rows->As(Float));
+					@means[j] := mean;
+					if(sd > 0.0) {
+						@scales[j] := sd;
+					};
+				};
+			};
+
+			sizes := LayerSizes();
+			if(sizes = Nil) {
+				@error := "hidden layer sizes must each be >= 1";
+				return false;
+			};
+
+			@network := DenseNetwork->New(sizes, DenseNetwork->Activation->RELU, DenseNetwork->Activation->LINEAR, @seed);
+			@network->SetLearningRate(@rate);
+			@network->SetBatchSize(@batch);
+
+			Z := Standardize(X);
+			@final_loss := @network->Fit(Z, Z, @epochs);
+			if(@final_loss < 0.0) {
+				@error := @network->GetError();
+				return false;
+			};
+
+			@train_scores := Errors(Z);
+			@threshold := OutlierKit->Percentile(@train_scores, @percentile);
+			@fitted := true;
+
+			return true;
+		}
+
+		method : ValidPercentile(value : Float) ~ Bool {
+			return value > 0.0 & value <= 100.0;
+		}
+
+		method : LayerSizes() ~ Int[] {
+			hidden := @hidden;
+			if(hidden = Nil) {
+				half := (@cols + 1) / 2;
+				quarter := (@cols + 3) / 4;
+				hidden := Int->New[3];
+				hidden[0] := half;
+				hidden[1] := quarter;
+				hidden[2] := half;
+			};
+
+			sizes := Int->New[hidden->Size() + 2];
+			sizes[0] := @cols;
+			each(i : hidden) {
+				if(hidden[i] < 1) {
+					return Nil;
+				};
+				sizes[i + 1] := hidden[i];
+			};
+			sizes[hidden->Size() + 1] := @cols;
+
+			return sizes;
+		}
+
+		method : Standardize(X : Float[,]) ~ Float[,] {
+			dims := X->Size();
+			rows := dims[0];
+			Z := Float->New[rows, @cols];
+			each(i : rows) {
+				each(j : @cols) {
+					Z[i, j] := (X[i, j] - @means[j]) / @scales[j];
+				};
+			};
+
+			return Z;
+		}
+
+		# per-row mean squared reconstruction error of standardized rows
+		method : Errors(Z : Float[,]) ~ Float[] {
+			R := @network->Predict(Z);
+			dims := Z->Size();
+			rows := dims[0];
+			errors := Float->New[rows];
+			each(i : rows) {
+				total := 0.0;
+				each(j : @cols) {
+					d := R[i, j] - Z[i, j];
+					total += d * d;
+				};
+				errors[i] := total / @cols->As(Float);
+			};
+
+			return errors;
+		}
+
+		#~
+		Fits, then labels the training rows.
+		@param X rows x features
+		@return labels (true = outlier), or Nil when the fit failed
+		~#
+		method : public : FitPredict(X : Float[,]) ~ Bool[] {
+			if(<>Fit(X)) {
+				return Nil;
+			};
+
+			return OutlierKit->Flags(@train_scores, @threshold);
+		}
+
+		#~
+		Labels rows: true where the reconstruction error exceeds the threshold.
+		@param X rows x features
+		@return labels, or Nil when unfitted or the input is refused
+		~#
+		method : public : Predict(X : Float[,]) ~ Bool[] {
+			return OutlierKit->Flags(Score(X), @threshold);
+		}
+
+		#~
+		Per-row mean squared reconstruction error (standardized space).
+		@param X rows x features
+		@return errors, or Nil when unfitted or the input is refused
+		~#
+		method : public : Score(X : Float[,]) ~ Float[] {
+			if(<>@fitted) {
+				@error := "not fitted";
+				return Nil;
+			};
+
+			error := OutlierKit->CheckScore(X, @cols);
+			if(error <> Nil) {
+				@error := error;
+				return Nil;
+			};
+
+			return Errors(Standardize(X));
+		}
+
+		#~
+		Reconstructions of each row, in the original feature units.
+		@param X rows x features
+		@return reconstructions, or Nil when unfitted or the input is refused
+		~#
+		method : public : Reconstruct(X : Float[,]) ~ Float[,] {
+			if(<>@fitted) {
+				@error := "not fitted";
+				return Nil;
+			};
+
+			error := OutlierKit->CheckScore(X, @cols);
+			if(error <> Nil) {
+				@error := error;
+				return Nil;
+			};
+
+			R := @network->Predict(Standardize(X));
+			dims := R->Size();
+			rows := dims[0];
+			each(i : rows) {
+				each(j : @cols) {
+					R[i, j] := R[i, j] * @scales[j] + @means[j];
+				};
+			};
+
+			return R;
+		}
+
+		#~
+		Score minus the threshold; positive means outlier.
+		@param X rows x features
+		@return values, or Nil when unfitted or the input is refused
+		~#
+		method : public : DecisionFunction(X : Float[,]) ~ Float[] {
+			return OutlierKit->Decision(Score(X), @threshold);
+		}
+
+		#~
+		The training rows' reconstruction errors.
+		@return errors, or Nil when unfitted
+		~#
+		method : public : GetTrainingScores() ~ Float[] {
+			return @train_scores;
+		}
+
+		#~
+		The reconstruction-error threshold: the percentile of the training errors.
+		@return threshold
+		~#
+		method : public : GetThreshold() ~ Float {
+			return @threshold;
+		}
+
+		#~
+		The trained network.
+		@return the network, or Nil when unfitted
+		~#
+		method : public : GetNetwork() ~ DenseNetwork {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			return @network;
+		}
+
+		#~
+		The last training epoch's mean squared error.
+		@return loss, or 0.0 when unfitted
+		~#
+		method : public : GetTrainingLoss() ~ Float {
+			if(<>@fitted) {
+				return 0.0;
+			};
+
+			return @final_loss;
+		}
+
+		#~
+		Whether the detector is fitted.
+		@return true when fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @fitted;
+		}
+
+		#~
+		Sets the percentile; a fitted detector keeps its network and re-derives the
+		threshold from the training errors.
+		@param value percentile in (0, 100]
+		@return false when out of range
+		~#
+		method : public : SetSensitivity(value : Float) ~ Bool {
+			if(<>ValidPercentile(value) | value <> value) {
+				@error := "percentile must be in (0, 100]";
+				return false;
+			};
+
+			@percentile := value;
+			if(@fitted) {
+				@threshold := OutlierKit->Percentile(@train_scores, @percentile);
+			};
+
+			return true;
+		}
+
+		#~
+		The percentile.
+		@return percentile
+		~#
+		method : public : GetSensitivity() ~ Float {
+			return @percentile;
+		}
+
+		#~
+		The setting's name.
+		@return "percentile"
+		~#
+		method : public : GetSensitivityName() ~ String {
+			return "percentile";
 		}
 
 		#~

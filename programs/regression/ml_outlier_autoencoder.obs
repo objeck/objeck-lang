@@ -1,0 +1,430 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+System.ML DenseNetwork and AutoencoderDetector against an independent numpy
+reference.
+
+The reference (ml_outlier_ref/outlier_ref.py, DenseRef) is written from the
+textbook forward/backward equations with numpy matrix products and PyTorch's Adam.
+It draws the Glorot-uniform weights and the epoch shuffles from the same Lehmer
+generator, so a whole training run replays step for step and the trained weights,
+the loss and the predictions must agree to 1e-9:
+  network A: 3-5-2-3, ReLU hidden, linear output, batches of 7 over 40 rows (the
+    last batch short), lr 0.01, 5 epochs;
+  network B: 3-4-2, tanh hidden, sigmoid output, batches of 16, lr 0.05, 8 epochs;
+  the autoencoder detector: 126 rows x 4 (6 uniform outliers), hidden 3-2-3,
+    15 epochs, seed 42 -- per-row reconstruction errors and the 95th-percentile
+    threshold.
+Data is built by both sides from System.ML.Random with arithmetic only.
+
+Also: detection of injected outliers, the percentile sweep (99.5 / 97.5 / 95),
+SetSensitivity equal to a fresh fit, determinism, default hidden sizes, a constant
+feature, and refusals.
+~#
+use System.ML;
+
+class MlOutlierAutoencoder {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		ok := NetworkA() & ok;
+		ok := NetworkB() & ok;
+		ok := Detector() & ok;
+		ok := Behaviour() & ok;
+
+		if(ok) {
+			"PASS: ml_outlier_autoencoder"->PrintLine();
+		}
+		else {
+			"FAIL: ml_outlier_autoencoder"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : NetworkA() ~ Bool {
+		X := MakeData(41, 40, 0, 3, 8.0);
+		net := DenseNetwork->New([3, 5, 2, 3], DenseNetwork->Activation->RELU, DenseNetwork->Activation->LINEAR, 7);
+		net->SetLearningRate(0.01);
+		net->SetBatchSize(7);
+		loss := net->Fit(X, X, 5);
+		passed := Report("network A: loss {$loss} matches the reference", Near(loss, NetALoss(), 1.0e-9));
+		passed := Report("network A: layer 0 weights", Close(Flat(net->GetWeights(0)), NetAWeights0(), 1.0e-9)) & passed;
+		passed := Report("network A: layer 0 biases", Close(Flat(net->GetBiases(0)), NetABiases0(), 1.0e-9)) & passed;
+		passed := Report("network A: layer 1 weights", Close(Flat(net->GetWeights(1)), NetAWeights1(), 1.0e-9)) & passed;
+		passed := Report("network A: layer 1 biases", Close(Flat(net->GetBiases(1)), NetABiases1(), 1.0e-9)) & passed;
+		passed := Report("network A: layer 2 weights", Close(Flat(net->GetWeights(2)), NetAWeights2(), 1.0e-9)) & passed;
+		passed := Report("network A: layer 2 biases", Close(Flat(net->GetBiases(2)), NetABiases2(), 1.0e-9)) & passed;
+		passed := Report("network A: predictions", Close(Flat(net->Predict(X)), NetAPredict(), 1.0e-9)) & passed;
+		mse := net->Loss(X, X);
+		passed := Report("network A: Loss is the mean squared error of Predict", mse > 0.0 & mse < 10.0) & passed;
+		return passed;
+	}
+
+	function : NetworkB() ~ Bool {
+		X := MakeData(42, 30, 0, 3, 8.0);
+		Y := Float->New[30, 2];
+		each(i : 30) {
+			each(j : 2) {
+				Y[i, j] := (X[i, j] + 4.0) / 8.0;
+			};
+		};
+
+		net := DenseNetwork->New([3, 4, 2], DenseNetwork->Activation->TANH, DenseNetwork->Activation->SIGMOID, 9);
+		net->SetLearningRate(0.05);
+		net->SetBatchSize(16);
+		loss := net->Fit(X, Y, 8);
+		passed := Report("network B: loss {$loss} matches the reference", Near(loss, NetBLoss(), 1.0e-9));
+		passed := Report("network B: layer 0 weights", Close(Flat(net->GetWeights(0)), NetBWeights0(), 1.0e-9)) & passed;
+		passed := Report("network B: layer 0 biases", Close(Flat(net->GetBiases(0)), NetBBiases0(), 1.0e-9)) & passed;
+		passed := Report("network B: layer 1 weights", Close(Flat(net->GetWeights(1)), NetBWeights1(), 1.0e-9)) & passed;
+		passed := Report("network B: layer 1 biases", Close(Flat(net->GetBiases(1)), NetBBiases1(), 1.0e-9)) & passed;
+		passed := Report("network B: predictions", Close(Flat(net->Predict(X)), NetBPredict(), 1.0e-9)) & passed;
+
+		bad := DenseNetwork->New([3, 0, 2], DenseNetwork->Activation->RELU, DenseNetwork->Activation->LINEAR, 1);
+		passed := Report("a zero-unit layer is refused", bad->Fit(X, Y, 1) = -1.0 & bad->GetError()->Size() > 0) & passed;
+		passed := Report("a shape mismatch is refused", net->Fit(X, X, 1) = -1.0 & net->GetError()->Has("columns")) & passed;
+		return passed;
+	}
+
+	function : Detector() ~ Bool {
+		X := MakeData(61, 120, 6, 4, 8.0);
+		ae := AutoencoderDetector->New([3, 2, 3], 95.0, 15, 42);
+		passed := Report("the detector fits", ae->Fit(X));
+		if(<>ae->IsFitted()) {
+			return false;
+		};
+
+		loss := ae->GetTrainingLoss();
+		passed := Report("training loss {$loss} matches the reference", Near(loss, AeLoss(), 1.0e-9)) & passed;
+		passed := Report("per-row reconstruction errors match the reference",
+			Close(ae->GetTrainingScores(), AeErrors(), 1.0e-9)) & passed;
+		t := ae->GetThreshold();
+		passed := Report("the 95th-percentile threshold matches ({$t})", Near(t, AeThreshold95(), 1.0e-9)) & passed;
+		scores := ae->Score(X);
+		passed := Report("Score on the training rows equals the training errors", Close(scores, ae->GetTrainingScores(), 1.0e-12)) & passed;
+
+		fp := Fingerprint(ae->GetTrainingScores());
+		"  fingerprint: {$fp}"->PrintLine();
+		return passed;
+	}
+
+	function : Behaviour() ~ Bool {
+		X := MakeData(51, 400, 20, 6, 8.0);
+		y := Labels(400, 20);
+
+		detector : OutlierDetector := AutoencoderDetector->New();
+		flags := detector->FitPredict(X);
+		passed := Report("defaults fit", flags <> Nil);
+		if(flags = Nil) {
+			"  {$detector->GetError()}"->PrintLine();
+			return false;
+		};
+
+		net := detector->As(AutoencoderDetector)->GetNetwork();
+		sizes := net->GetLayerSizes();
+		passed := Report("default layers are 6-3-2-3-6", sizes->Size() = 5 & sizes[1] = 3 & sizes[2] = 2 & sizes[3] = 3 & sizes[4] = 6) & passed;
+
+		auc := Metrics->AucRoc(detector->GetTrainingScores(), y);
+		passed := Report("reconstruction error ranks the outliers (AUC {$auc} > 0.95)", auc > 0.95) & passed;
+		n := Count(flags);
+		passed := Report("percentile 95 flags 21 of 420 training rows ({$n})", n = 21) & passed;
+
+		settings := [99.5, 97.5, 95.0];
+		counts := Int->New[3];
+		each(s : settings) {
+			detector->SetSensitivity(settings[s]);
+			counts[s] := Count(detector->Predict(X));
+		};
+		passed := Report("99.5 < 97.5 < 95.0 in flags ({$counts[0]}, {$counts[1]}, {$counts[2]})",
+			counts[0] < counts[1] & counts[1] < counts[2]) & passed;
+		passed := Report("the percentile keeps the network", detector->IsFitted()) & passed;
+
+		fresh := AutoencoderDetector->New(Nil, 97.5, 50, 42);
+		fresh->Fit(X);
+		detector->SetSensitivity(97.5);
+		passed := Report("SetSensitivity equals a fresh fit", fresh->GetThreshold() = detector->GetThreshold()) & passed;
+		passed := Report("same seed, identical errors", Same(fresh->GetTrainingScores(), detector->GetTrainingScores())) & passed;
+		reseeded := AutoencoderDetector->New(Nil, 97.5, 50, 43);
+		reseeded->Fit(X);
+		passed := Report("another seed, different errors", <>Same(reseeded->GetTrainingScores(), detector->GetTrainingScores())) & passed;
+		passed := Report("percentile 0 is rejected", <>detector->SetSensitivity(0.0)) & passed;
+
+		recon := detector->As(AutoencoderDetector)->Reconstruct(X);
+		dims := recon->Size();
+		passed := Report("Reconstruct returns rows x features", dims[0] = 420 & dims[1] = 6) & passed;
+
+		# a constant feature: fits, and a new value off the constant reconstructs worse
+		C := MakeData(52, 200, 0, 3, 1.0);
+		each(i : 200) {
+			C[i, 2] := 5.0;
+		};
+		constant := AutoencoderDetector->New([2, 1, 2], 95.0, 20, 1);
+		passed := Report("a constant feature fits", constant->Fit(C)) & passed;
+		probe := [[0.0, 0.0, 5.0], [0.0, 0.0, 9.0]];
+		ps := constant->Score(probe);
+		passed := Report("a value off the constant scores higher", ps <> Nil & ps[1] > ps[0]) & passed;
+
+		bad := MakeData(5, 30, 0, 3, 1.0);
+		bad[7, 2] := Float->NaN();
+		r := AutoencoderDetector->New();
+		passed := Report("NaN is refused", <>r->Fit(bad) & r->GetError()->Has("row 7, column 2")) & passed;
+		passed := Report("a zero hidden size is refused", <>AutoencoderDetector->New([2, 0], 95.0, 5, 1)->Fit(C)) & passed;
+		passed := Report("unfitted Score is Nil", AutoencoderDetector->New()->Score(X) = Nil) & passed;
+		passed := Report("a column mismatch is refused", detector->Score(C) = Nil) & passed;
+		return passed;
+	}
+
+	function : Flat(m : Float[,]) ~ Float[] {
+		if(m = Nil) {
+			return Nil;
+		};
+		dims := m->Size();
+		rows := dims[0];
+		cols := dims[1];
+		out := Float->New[rows * cols];
+		each(i : rows) {
+			each(j : cols) {
+				out[i * cols + j] := m[i, j];
+			};
+		};
+		return out;
+	}
+
+	function : Same(a : Float[], b : Float[]) ~ Bool {
+		if(a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	function : Count(flags : Bool[]) ~ Int {
+		n := 0;
+		each(i : flags) {
+			if(flags[i]) {
+				n += 1;
+			};
+		};
+		return n;
+	}
+
+	function : Labels(n_in : Int, n_out : Int) ~ Bool[] {
+		y := Bool->New[n_in + n_out];
+		for(i := n_in; i < n_in + n_out; i += 1;) {
+			y[i] := true;
+		};
+		return y;
+	}
+
+	function : Gauss(rng : System.ML.Random) ~ Float {
+		acc := 0.0;
+		each(k : 12) {
+			acc += rng->NextReal();
+		};
+		return acc - 6.0;
+	}
+
+	function : MakeData(seed : Int, n_in : Int, n_out : Int, p : Int, spread : Float) ~ Float[,] {
+		rng := System.ML.Random->New(seed);
+		X := Float->New[n_in + n_out, p];
+		z := Float->New[p];
+		each(i : n_in) {
+			each(j : p) {
+				z[j] := Gauss(rng);
+			};
+			each(j : p) {
+				v := z[j];
+				if(j > 0) {
+					v := v + 0.5 * z[j - 1];
+				};
+				X[i, j] := v;
+			};
+		};
+		for(i := n_in; i < n_in + n_out; i += 1;) {
+			each(j : p) {
+				X[i, j] := rng->NextReal() * (2.0 * spread) - spread;
+			};
+		};
+		return X;
+	}
+
+	function : Near(a : Float, b : Float, tol : Float) ~ Bool {
+		scale := b->Abs();
+		if(scale < 1.0) {
+			scale := 1.0;
+		};
+		return (a - b)->Abs() <= tol * scale;
+	}
+
+	function : Close(a : Float[], b : Float[], tol : Float) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(<>Near(a[i], b[i], tol)) {
+				"  mismatch at {$i}: {$a[i]} vs {$b[i]}"->PrintLine();
+				return false;
+			};
+		};
+		return true;
+	}
+
+	# printed so runs under different -opt levels and JIT modes can be diffed: the
+	# scores to 1e-12, folded into one integer
+	function : Fingerprint(v : Float[]) ~ Int {
+		total := 0;
+		each(i : v) {
+			total += (v[i] * 1000000000000.0)->As(Int) * (i % 7 + 1);
+		};
+		return total;
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+		return passed;
+	}
+
+	# BEGIN GENERATED FIXTURE
+	# by ml_outlier_ref/gen_fixtures.py; do not edit by hand
+	function : NetALoss() ~ Float {
+		return 0.9326384467281797;
+	}
+
+	function : NetAPredict() ~ Float[] {
+		return [
+			0.937749939556218, 0.8013635960328163, -0.16705174642656911, 1.470437113208143, 1.2686195880898987, -0.21750191553785495,
+			-0.21045136044066193, -0.2112105576747987, -0.05913396717166043, 0.06907247740690456, 0.039387769636382436, -0.08478033642030507,
+			-0.0071015227678048465, -0.0307394866228482, -0.07807204327681763, -0.09757271165824491, -0.10678801042671447, -0.0689975686238111,
+			0.7708746053478633, 0.6549859400798452, -0.1512471818570925, 0.7357301498545384, 0.6241583582849628, -0.14791869224693932,
+			0.35673693754118774, 0.29171774743201695, -0.11202469554685768, -0.23203528134310888, -0.224734235716719, -0.05626277845938316,
+			1.2056836995166094, 1.036386440599527, -0.19242743438983334, -0.23203528134310888, -0.224734235716719, -0.05626277845938316,
+			-0.2238741485539695, -0.21962077496987353, -0.05734840847301597, -0.23203528134310888, -0.224734235716719, -0.05626277845938316,
+			0.4978527988149225, 0.4155000253164365, -0.12538961105014831, 0.2129581119644576, 0.16559960322913844, -0.09840757385939634,
+			0.7039069930772726, 0.596244112502755, -0.1449047588907795, -0.19007788025715633, -0.1984452965417329, -0.061844137700781225,
+			-0.23203528134310888, -0.224734235716719, -0.05626277845938316, -0.23203528134310888, -0.224734235716719, -0.05626277845938316,
+			1.5143379271287416, 1.3071279648168113, -0.22165970944761504, -0.17770232577483885, -0.19069123669479698, -0.06349038874563999,
+			0.14504666289149273, 0.10602987247876564, -0.0919757612312922, -0.20300204349271145, -0.20654309412674238, -0.06012490829082968,
+			-0.23203528134310888, -0.224734235716719, -0.05626277845938316, 1.1648613276761706, 1.0005783738843874, -0.18856119607071875,
+			-0.12337760468895248, -0.15665339709173598, -0.0707169036445954, -0.21253155847900054, -0.21251393200891872, -0.0588572500193889,
+			-0.23203528134310888, -0.224734235716719, -0.05626277845938316, -0.18031411889584656, -0.19232768863697428, -0.06314295646205566,
+			1.75266742491026, 1.5161829063107406, -0.24423161292494966, -0.14055411210398608, -0.14448990733478723, -0.06492685127152047,
+			0.0406788875039619, 0.014481829200071933, -0.08209121326672982, -0.21908660381180742, -0.2166210783903263, -0.05798526886948174,
+			0.1959135557869273, 0.1506486687973876, -0.09679330420148807, -0.2086562474791958, -0.21008580699351756, -0.059372761044910766,
+			-0.23203528134310888, -0.224734235716719, -0.05626277845938316, 1.448151913781296, 1.249071730582848, -0.21539131078637316,
+			0.9100459306144836, 0.7770625337540256, -0.16442793266625438, -0.1784084272889143, -0.177694490569098, -0.06134171407067726];
+	}
+
+	function : NetAWeights0() ~ Float[] {
+		return [
+			-0.6966897938662632, 0.8100510594996956, -0.2255676488940876, -0.6421142995962673, 0.5321861517710549, 0.14626269940327424,
+			-0.07769950755361363, 0.5678993262763962, 0.3316210853807239, 0.28860728763639193, 0.21313363749072758, 0.19770175568809242,
+			0.3900550752620893, -0.28258701383530177, -0.15239834805931302];
+	}
+
+	function : NetABiases0() ~ Float[] {
+		return [
+			-0.19344441475622667, 0.015350160465951442, -0.1127650603797161, -0.0003749075899814611, 0.13488320603126489];
+	}
+
+	function : NetAWeights1() ~ Float[] {
+		return [
+			0.18091418045664004, 0.20918839076296014, -0.8260402024075406, 0.31698797243397303, -0.22003517438844436, 0.6480464369226486,
+			0.33652034747143533, -0.7693082243130678, 0.07663388225646664, 0.9471487114614368];
+	}
+
+	function : NetABiases1() ~ Float[] {
+		return [
+			-0.2312656425956901, -0.12956068710783142];
+	}
+
+	function : NetAWeights2() ~ Float[] {
+		return [
+			0.20319231392489726, 0.12731270868406383, -0.027029541147758962, 0.8846929846299176, 0.7760241256894014, -0.08378822110575569];
+	}
+
+	function : NetABiases2() ~ Float[] {
+		return [
+			-0.23203528134310888, -0.224734235716719, -0.05626277845938316];
+	}
+
+	function : NetBLoss() ~ Float {
+		return 0.001971800321291242;
+	}
+
+	function : NetBPredict() ~ Float[] {
+		return [
+			0.3886187416925475, 0.3137485606149012, 0.35187435491767527, 0.3002121620520142, 0.5359290773344385, 0.6792804199490793,
+			0.44105536445898247, 0.2600426148641826, 0.4377454278510111, 0.4152759926322682, 0.42753978451244257, 0.4969357532552039,
+			0.48487923848673536, 0.5680003520430349, 0.668126520745166, 0.7041580691404058, 0.5061331995167202, 0.2648858322551727,
+			0.6134123489473524, 0.5064760796038942, 0.3602385205257681, 0.6069911093912219, 0.5424728355568645, 0.5626468310283683,
+			0.41874712549728654, 0.5059426219213955, 0.6341191957127436, 0.4440873400366018, 0.4412809834469044, 0.6304311666810767,
+			0.5621456737950943, 0.4121651386158766, 0.6800909928170352, 0.5690675213417449, 0.6746387529127125, 0.7562841921916632,
+			0.7017203373144912, 0.7424261406874898, 0.6157301484945984, 0.3151881825839152, 0.3625344976023244, 0.4801869494196674,
+			0.2952410824696725, 0.42948940522394485, 0.48323712677619146, 0.41523659213360414, 0.6747621538668923, 0.44469507358628335,
+			0.2569918790696223, 0.19183067414513433, 0.19929557259551192, 0.1762298208179139, 0.4836221835544252, 0.2976912092194304,
+			0.4853042711529146, 0.5861951772770906, 0.21325772119694703, 0.3073237460131531, 0.22544575985586468, 0.2199010906592091];
+	}
+
+	function : NetBWeights0() ~ Float[] {
+		return [
+			-1.1766134781302362, -0.4461295468048097, 0.11849551540546494, -0.8429581572683951, 0.39399790917731786, 1.078596435766563,
+			-0.4990062207752164, 0.01668295886417777, -0.5131890574487307, -0.20134507892162065, 0.08034431953185538, 0.6228330365519995];
+	}
+
+	function : NetBBiases0() ~ Float[] {
+		return [
+			-0.20038270458450733, -0.03841005508513879, 0.06650063752441819, -0.41531461762834676];
+	}
+
+	function : NetBWeights1() ~ Float[] {
+		return [
+			-0.5574897856950599, -0.45599968546952974, -0.13537205944408734, 0.6862862418499688, -0.36665186944763367, -0.3897028453310755,
+			-0.5495982221395163, -0.028996364670703496];
+	}
+
+	function : NetBBiases1() ~ Float[] {
+		return [
+			-0.18255352879143008, -0.06380357526261293];
+	}
+
+	function : AeLoss() ~ Float {
+		return 1.0196599047246369;
+	}
+
+	function : AeErrors() ~ Float[] {
+		return [
+			0.3044737205776593, 0.2619957449201037, 0.19746674242728324, 0.21277241106770584, 0.534620264750887, 0.15375089828679606,
+			0.3333765386209865, 0.01125617361565338, 0.39793865971137865, 1.2224997810861122, 0.7840792963013362, 0.14892666849189665,
+			0.22676343755318257, 0.015112191943189971, 0.44119738932113606, 0.653075187978954, 1.7498895873679376, 0.504791986543738,
+			0.7771802045450098, 0.2363023286373731, 0.42731027215460843, 1.0375418994273775, 0.3686380369169475, 0.625031138925921,
+			0.582453481453468, 0.926619539671753, 0.2936980477277, 0.01407716926151084, 0.871070999406401, 0.7672772798142041,
+			0.10931374744703085, 0.3924523754186181, 0.40433182866498835, 0.32208464205437937, 0.25965525824549945, 0.09330899139041546,
+			1.0925658865000036, 0.6922264367857073, 1.3831681697634615, 0.3943589619719115, 0.3381770152784998, 0.4025139450723303,
+			0.9147426815373585, 0.895947592990743, 0.785169714783808, 0.3347796720121453, 0.5688497914517259, 0.473834492867302,
+			1.1649372449239217, 0.8322559386150855, 0.34115660523044455, 0.4346099205901906, 0.5343460677342898, 0.17901859835953549,
+			0.5137139411771151, 1.6604770929078203, 0.8969270606153645, 0.40138951140028933, 0.9149887566061677, 0.568306348828093,
+			0.13169970697839334, 0.6171356918681059, 0.22033125823553362, 0.34210419125651065, 1.2598694510592294, 1.448319214999493,
+			0.29393767534260046, 0.5368347118969747, 1.020693580088793, 0.5480715600480235, 0.16654434792303563, 0.1191919803433914,
+			0.5026938610256675, 1.1425330441351598, 0.0463048700675088, 0.6465543783813726, 0.8026384239210077, 1.0044782416619642,
+			0.5756799857786419, 0.9145356370852312, 0.8353347043944145, 0.327315668913182, 0.3134764842557515, 0.7713625220082669,
+			0.4581916368607727, 0.1593495761830045, 0.3726426751157276, 0.2831460434776978, 0.1352110779576166, 0.2511064040243915,
+			0.1562254773091534, 0.3122116945131694, 0.7405035119842467, 0.4381816214171523, 0.8277039702963908, 2.0609863550458165,
+			0.6533617859560762, 2.036382346376743, 0.5523142578303523, 0.5623565361532176, 0.5548439476240622, 0.11450009391822957,
+			1.1835483096128558, 0.28178023405107633, 0.16532417022046217, 0.9781117510924515, 0.3005705359828378, 1.7740619787350038,
+			2.2092629198824394, 0.24021604436801805, 0.2445207973195346, 0.41798803240623406, 1.0432892845761792, 0.6606958215120322,
+			0.9496599211351036, 1.2341590884435065, 0.3428009138959099, 0.4877557949382579, 0.12324058782936963, 0.05049056817408275,
+			11.385964447079331, 10.975903669596294, 9.985811898923037, 4.155869108415672, 15.527166930740522, 4.81811288104352];
+	}
+
+	function : AeThreshold95() ~ Float {
+		return 2.1721937786732837;
+	}
+	# END GENERATED FIXTURE
+}
