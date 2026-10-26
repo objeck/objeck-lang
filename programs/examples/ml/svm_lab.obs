@@ -1,0 +1,110 @@
+#~
+The SVM part of an intrusion-detection lab, on System.ML's KernelSVM:
+
+  1. change the kernel among linear, rbf, poly and sigmoid, everything else at
+     scikit-learn's defaults (C = 1, gamma = 'scale', degree 3, coef0 0);
+  2. change C among 0.01, 0.1, 1, 10 and 100 (rbf, gamma 'scale') and compare
+     training with testing performance;
+  3. fix kernel = rbf, C = 1 and vary gamma among 0.001, 0.01, 0.1 and 1.
+
+Each sweep prints accuracy, precision, recall, F1, false-positive rate and
+training seconds on the test rows, with attack as the positive class.
+
+Build and run (from this directory):
+
+  obc -src svm_lab.obs,lab_data.obs -lib ml,gen_collect,csv -dest svm_lab.obe
+  obr svm_lab.obe                         # synthetic NSL-KDD-shaped data
+  obr svm_lab.obe 5000 5000 KDDTrain+.txt KDDTest+.txt
+
+The first two arguments are the training and test rows to use. An exact kernel
+SVM costs between n^2 and n^3 in the training rows -- scikit-learn's SVC as much
+as this one -- so on NSL-KDD the training file is subsampled (stratified,
+seeded) rather than used whole: an RBF fit takes about 3 s at 5,000 rows,
+30 s at 20,000 and 2-3 minutes at 50,000 on a laptop (tools/ml/svm_reference/
+svm_bench.obs measures it). Large C, large gamma and the linear kernel take
+longer. The whole program runs in about 2 minutes at its default 5,000 / 5,000
+rows.
+~#
+use System.ML;
+
+class SvmLab {
+	function : Main(args : String[]) ~ Nil {
+		train_rows := 5000;
+		test_rows := 5000;
+		if(args->Size() > 0) {
+			train_rows := args[0]->ToInt();
+		};
+		if(args->Size() > 1) {
+			test_rows := args[1]->ToInt();
+		};
+
+		split := LabData->Load(args, 2, train_rows, test_rows);
+		if(split = Nil) {
+			Runtime->Exit(1);
+		};
+		split->SubsampleTrain(train_rows, 7);
+		split->SubsampleTest(test_rows, 7);
+		split->Standardize();
+
+		x := split->GetTrainX();
+		y := split->GetTrainY();
+		tx := split->GetTestX();
+		ty := split->GetTestY();
+		dims := x->Size();
+		rows := dims[0];
+		cols := dims[1];
+		source := split->GetSource();
+		test_dims := tx->Size();
+		test_count := test_dims[0];
+		"data: {$source}"->PrintLine();
+		"train {$rows} x {$cols}, test {$test_count} rows, features standardised on the training split"->PrintLine();
+
+		# 1. Kernels, everything else at scikit-learn's defaults.
+		""->PrintLine();
+		"1. kernel (C = 1, gamma = 'scale')"->PrintLine();
+		LabData->PrintHeader("kernel");
+		Run("linear", KernelSVM->New(SvmKernel->LINEAR), x, y, tx, ty);
+		Run("rbf", KernelSVM->New(SvmKernel->RBF), x, y, tx, ty);
+		Run("poly", KernelSVM->New(SvmKernel->POLY), x, y, tx, ty);
+		Run("sigmoid", KernelSVM->New(SvmKernel->SIGMOID), x, y, tx, ty);
+
+		# 2. C, with training performance next to testing performance.
+		""->PrintLine();
+		"2. C (rbf, gamma = 'scale'); extra column: training accuracy and F1"->PrintLine();
+		LabData->PrintHeader("C");
+		cs := [0.01, 0.1, 1.0, 10.0, 100.0];
+		each(i : cs) {
+			c := cs[i];
+			Run("C={$c}", KernelSVM->New(SvmKernel->RBF, c), x, y, tx, ty);
+		};
+
+		# 3. gamma, rbf at C = 1.
+		""->PrintLine();
+		"3. gamma (rbf, C = 1)"->PrintLine();
+		LabData->PrintHeader("gamma");
+		gammas := [0.001, 0.01, 0.1, 1.0];
+		each(i : gammas) {
+			g := gammas[i];
+			Run("gamma={$g}", KernelSVM->New(SvmKernel->RBF, 1.0, g), x, y, tx, ty);
+		};
+	}
+
+	function : Run(setting : String, svm : KernelSVM, x : Float[,], y : Bool[], tx : Float[,], ty : Bool[]) ~ Nil {
+		if(<>svm->Fit(x, y)) {
+			error := svm->GetLastError();
+			"{$setting}: fit failed: {$error}"->PrintLine();
+			return;
+		};
+
+		train_pred := svm->PredictClass(x);
+		train_acc := Metrics->Accuracy(train_pred, y);
+		train_f1 := Metrics->F1Score(train_pred, y);
+		svs := svm->GetSupportVectorCount();
+		extra := "sv={$svs} train_acc={$train_acc} train_F1={$train_f1}";
+		if(<>svm->IsConverged()) {
+			extra += " (iteration cap reached)";
+		};
+
+		LabData->PrintRow(setting, svm->PredictClass(tx), ty, svm->GetFitSeconds(), extra);
+	}
+}

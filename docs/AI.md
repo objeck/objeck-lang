@@ -978,6 +978,19 @@ booster->Fit(data);
 ```
 
 ```ruby
+# continuous-feature forest: Float[,] rows, Bool[] labels, scores to threshold
+forest := RandomForestClassifier->New(100, -1, 1, 42);   # trees, max_depth (-1 = None), min_samples, seed
+forest->SetMinSamplesLeaf(5);          # scikit-learn's min_samples_leaf
+forest->Fit(X, labels);
+scores := forest->PredictScore(X_test);
+importances := forest->GetFeatureImportances();   # mean decrease in Gini, sums to 1
+seconds := forest->GetFitSeconds();
+```
+
+Runnable lab sweeps (SVM kernel / C / gamma, forest trees / depth / leaf size, on
+NSL-KDD or synthetic data of its shape) are in `programs/examples/ml/`.
+
+```ruby
 # k-nearest neighbors with an exact KDTree index
 tree := KDTree->New(matrix);
 nearest := tree->Nearest(3, [57.0, 170.0]);   # row indexes, closest first
