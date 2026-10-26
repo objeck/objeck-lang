@@ -38,7 +38,7 @@ Libraries are classified in `backend/app/config.py`:
 
 | set | meaning | now |
 |---|---|---|
-| `allowed_libs` | a program may use them | gen_collect (default), json, xml, regex, cipher, csv, query, query_ml, ml, nlp, ai, math, misc, diags, concurrent |
+| `allowed_libs` | a program may use them | gen_collect (default), json, xml, regex, cipher, csv, query, query_ml, ml, ml_lab, nlp, ai, math, misc, diags, concurrent |
 | `dependency_libs` | linked only because an allowed library needs them | net (query and misc are built against it) |
 | `blocked_libs` | refused, with a reason | net_h2, net_quic, net_server, web_server, json_rpc, json_stream, rss, odbc, query_odbc, query_server, query_vision, sdl*, lame, openai, gemini, ollama, inference, models, onnx, opencv |
 

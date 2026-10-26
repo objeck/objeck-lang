@@ -267,6 +267,7 @@ LIB_INFO: dict[str, tuple[str, str]] = {
     "query": ("Query", "In-memory tables queried with SQL"),
     "query_ml": ("Query ML", "Models as query sources"),
     "ml": ("ML", "Machine learning and matrix math"),
+    "ml_lab": ("ML Lab", "Stratified splits, imbalance resampling, parameter sweeps, result tables and SVG charts"),
     "nlp": ("NLP", "Tokenizing, stemming and sentiment"),
     "ai": ("AI", "Search, games, optimization and reinforcement learning"),
     "math": ("Math", "Exact arithmetic"),
