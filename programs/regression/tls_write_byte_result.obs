@@ -11,6 +11,16 @@
 # on the reset, the DTLS one on the server's close_notify (or, if that was
 # lost, the network's refusal of a datagram to the closed port), which
 # GetLastError names.
+#
+# The client waits for the hang-up thread to finish before it expects a write
+# to fail: a write can only fail once the peer HAS closed, and the three
+# seconds of writes that follow are for the network to tell the client so (on
+# Windows loopback the second or third send after the peer's close fails).
+# Without the join the test assumed the server thread had accepted, read and
+# closed within those three seconds, which it had not on a Windows ARM64 box
+# in a full regression pass (every one of the 300 writes succeeded, no error;
+# 10 of 10 alone), nor once on x64 Windows under load. How long the hang-up
+# took is printed, so a slow server thread is visible rather than hidden.
 # EXTRA_LIBS: net
 ~#
 
@@ -54,14 +64,20 @@ class DtlsHangUp from Thread {
 
 class TlsWriteByteResult {
 	@failed : static : Int;
+	# the certificate and key carry the process id, as the other TLS tests' fixtures do, so
+	# two copies of this test in one directory do not delete each other's (#1372)
+	@cert : static : String;
+	@key : static : String;
 
 	function : Main(args : String[]) ~ Nil {
 		@failed := 0;
+		@cert := "tls-write-cert-{$(Runtime->GetProcessId())}.pem";
+		@key := "tls-write-key-{$(Runtime->GetProcessId())}.pem";
 
-		File->Delete("tls-write-cert.pem");
-		File->Delete("tls-write-key.pem");
+		File->Delete(@cert);
+		File->Delete(@key);
 		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
-		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1\" -keyout tls-write-key.pem -out tls-write-cert.pem";
+		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1\" -keyout {$@key} -out {$@cert}";
 		if(Runtime->Command(command) <> 0) {
 			"FAIL: openssl could not create the certificate -- is openssl on PATH?"->PrintLine();
 			Runtime->Exit(1);
@@ -72,14 +88,23 @@ class TlsWriteByteResult {
 		"stage: dtls"->ErrorLine();
 		CheckDtls();
 
-		File->Delete("tls-write-cert.pem");
-		File->Delete("tls-write-key.pem");
+		File->Delete(@cert);
+		File->Delete(@key);
 
 		if(@failed > 0) {
 			"FAIL: {$@failed} WriteByte check(s) failed"->PrintLine();
 			Runtime->Exit(1);
 		};
 		"PASS: TLS and DTLS WriteByte report whether the byte was written"->PrintLine();
+	}
+
+	# waits for a hang-up thread to end, and says how long that took
+	function : HangUp(thread : Thread) ~ Int {
+		timer := System.Time.Timer->New();
+		timer->Start();
+		thread->Join();
+		timer->End();
+		return (timer->GetElapsedTime() * 1000.0)->As(Int);
 	}
 
 	function : Check(name : String, ok : Bool) ~ Nil {
@@ -108,7 +133,7 @@ class TlsWriteByteResult {
 	function : CheckTls() ~ Nil {
 		# port 0: the system picks a free one, and GetPort() says which
 		port := 0;
-		server := TCPSecureSocketServer->New("tls-write-cert.pem", "tls-write-key.pem", "", 0);
+		server := TCPSecureSocketServer->New(@cert, @key, "", 0);
 		if(server->Listen()) {
 			port := server->GetPort();
 		};
@@ -116,17 +141,22 @@ class TlsWriteByteResult {
 		if(port = 0) {
 			return;
 		};
-		TlsHangUp->New(server)->Execute(Nil);
+		hang_up := TlsHangUp->New(server);
+		hang_up->Execute(Nil);
 
-		socket := TCPSecureSocket->New("127.0.0.1", port, "tls-write-cert.pem");
+		socket := TCPSecureSocket->New("127.0.0.1", port, @cert);
 		Check("tls: the client connects", socket->IsOpen());
 		if(<>socket->IsOpen()) {
+			"  reason: '{$(TCPSecureSocket->GetLastError())}'"->PrintLine();
 			return;
 		};
 
 		Check("tls: a write that works answers true", socket->WriteByte('a'));
 		reason := TCPSecureSocket->GetLastError();
 		Check("tls: and leaves no error ('{$reason}')", reason = Nil);
+
+		# the peer has read the byte and closed before a write is expected to fail
+		"tls: the server hung up after {$(HangUp(hang_up))} ms"->PrintLine();
 
 		written := true;
 		for(i := 0; written & i < 300; i += 1;) {
@@ -143,7 +173,7 @@ class TlsWriteByteResult {
 
 	function : CheckDtls() ~ Nil {
 		port := 0;
-		server := DTLSSocketServer->New("tls-write-cert.pem", "tls-write-key.pem", "", 0);
+		server := DTLSSocketServer->New(@cert, @key, "", 0);
 		if(server->Listen()) {
 			port := server->GetPort();
 		};
@@ -151,17 +181,23 @@ class TlsWriteByteResult {
 		if(port = 0) {
 			return;
 		};
-		DtlsHangUp->New(server)->Execute(Nil);
+		hang_up := DtlsHangUp->New(server);
+		hang_up->Execute(Nil);
 
-		socket := DTLSSocket->New("127.0.0.1", port, "tls-write-cert.pem");
+		socket := DTLSSocket->New("127.0.0.1", port, @cert);
 		Check("dtls: the client connects", socket->IsOpen());
 		if(<>socket->IsOpen()) {
+			"  reason: '{$(DTLSSocket->GetLastError())}'"->PrintLine();
 			return;
 		};
 
 		Check("dtls: a write that works answers true", socket->WriteByte('a'));
 		reason := DTLSSocket->GetLastError();
 		Check("dtls: and leaves no error ('{$reason}')", reason = Nil);
+
+		# the peer has read the byte and closed its session and port before a
+		# write is expected to fail
+		"dtls: the server hung up after {$(HangUp(hang_up))} ms"->PrintLine();
 
 		# The server reads that byte, then closes its session (close_notify) and
 		# its port. The next write finds the session over and fails; if the
