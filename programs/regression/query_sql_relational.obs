@@ -303,7 +303,10 @@ class QuerySqlRelational {
 		Check("SELECT * with GROUP BY", catalog->Query("select * from emp group by dept") = Nil);
 		Check("an ambiguous column in a join", catalog->Query("select floor from dept d join site s on s.floor = d.floor") = Nil & catalog->GetError()->Has("more than one table"));
 		Check("a table joined to itself needs aliases", catalog->Query("select * from emp join emp on id = id") = Nil);
-		Check("an ON condition must link the new table", catalog->Query("select * from emp e join dept d on e.dept = e.name") = Nil);
+		# an ON condition that does not link the new table was refused before ON took expressions;
+		# it is now a test on every pair (no employee's department is their name)
+		unlinked := catalog->Query("select * from emp e join dept d on e.dept = e.name");
+		Check("an ON condition that does not link the new table tests every pair", unlinked <> Nil & unlinked->Size() = 0);
 		Check("CREATE of an existing table", catalog->Execute("create table emp (x int)") = -1);
 		Check("an unknown type in CREATE", catalog->Execute("create table u (x blob)") = -1);
 		Check("SUM(*) is refused", catalog->Query("select sum(*) from emp") = Nil);

@@ -192,7 +192,7 @@ rs := table->Where(Col("value")->Gt(0.5)->And(Col("grp")->Eq("g7")))
 
 ```
 SELECT [DISTINCT] (* | expr [AS name], ...)
-FROM table [[INNER | LEFT] JOIN table ON a.col = b.col ...]
+FROM table [[INNER | LEFT] JOIN table ON condition ...]
 [WHERE predicate]
 [GROUP BY col, ... [HAVING predicate]]
 [ORDER BY col [ASC | DESC], ...]
@@ -220,8 +220,8 @@ of reading numbers only:
 - `n -1` (a name, then a number with its sign) is a subtraction, as it reads.
 
 Expressions are computed after WHERE, over the rows that pass, before DISTINCT, ORDER BY and
-LIMIT. WHERE, ORDER BY, GROUP BY, HAVING and a grouped query's select list take expressions too
-("Expressions in every clause" below). Not yet: expressions in ON, which still takes `a.col = b.col`.
+LIMIT. WHERE, ON, ORDER BY, GROUP BY, HAVING and a grouped query's select list take expressions
+too ("Expressions in every clause" below).
 Every statement that fails returns Nil with `GetError` set; a program that calls a
 method on that Nil gets the language's ordinary `NilError`, which a `?->` region recovers from.
 
@@ -1687,12 +1687,12 @@ expression terms as part of a scan (`where runs: scan`).
   Ints is computed in Int arithmetic and wraps on overflow, as it does today; making it empty
   instead, like expression arithmetic, is left for a separate change.)
 - **JOIN ... ON** a condition over the tables joined so far and the new one:
-  - *Keys.* An equality in ON whose one side reads only earlier tables and the other only the new
-    table is a **key equality**. Keys match as the join has always matched them ("Phase 4"): as
+  - *Keys.* An AND-term of ON that is an equality whose one side reads only earlier tables and the
+    other only the new table is a **key equality**. Keys match as the join has always matched them ("Phase 4"): as
     whole numbers when both sides are whole (INT, BOOL, DATE), as numbers when both are numbers
     (NaN matches nothing), otherwise by their text; empty keys never match. This applies to every
-    key equality in ON, so the order of the terms never matters; other tests in ON follow the
-    comparison table above.
+    key equality, so the order of the terms never matters; other tests in ON, an equality inside
+    an OR or a NOT included, follow the comparison table above.
   - *The fast path.* When the AND-terms of ON include a key equality, the first one is matched
     with the existing sorted key matcher: a side that is a column is used as it is, and a side
     that is an expression is computed once per row of its side (the new table's rows, or the
@@ -1879,6 +1879,23 @@ and `OBJECK_JIT_THRESHOLD=1`, on Windows and on Linux.
   `sum(price)` 397 ms; `group by qty % 10` 462 ms; `sum(price * qty) / count(*)` by `grp` 888 ms
   (two aggregates: each of the engine's aggregates costs about 200-350 ms here, as before).
 
+**Stage 3 (joins).**
+- ON is parsed as WHERE is, aggregates refused (`aggregates are not allowed in ON: 'sum(t.n)'`);
+  `SqlJoin` keeps the condition. `a.col = b.col` alone is the key equality of two columns, read
+  through `SqlKeyMatcher` exactly as before, with the same plan.
+- `Join` splits each ON into its AND-terms: terms on the joined table alone join its WHERE filter
+  (so they can read its indexes); the first key equality is matched, an expression side computed
+  into a column indexed by row (the joined table's side over its rows, the earlier tables' side
+  over the positions joined so far); with no key equality every pair is a candidate. The other
+  terms are tested on a table of the candidate pairs (`TestPairs`) and the other key equalities
+  with `SqlKeyMatcher->KeyEquals`. A LEFT JOIN keeps a left row none of whose pairs passed, once,
+  with empty cells on the right. ON naming a table joined later is refused.
+- Plans add `join u: every pair` and `join u: key computed from <expression>`; a join of two
+  columns plans as it always did.
+- Candidate pairs are kept in `Int[]` arrays, never boxed. Measured (Windows x64, `-opt s3`,
+  best of three): 200,000 × 1,000 rows on `t.n = u.w` 29 ms (31 ms on master); on
+  `t.n + 1 = u.w + 1` 62 ms; on `t.n = u.w and t.v > u.lo` 41 ms; 2,000 × 1,000 rows on
+  `s.n between u.lo and u.hi` (every pair, 2,000,000 pairs) 346 ms.
 ## Open questions
 
 - Whether `Date` should be a first-class column type in phase 1 or start as an `ObjectColumn`; the
