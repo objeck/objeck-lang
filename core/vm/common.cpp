@@ -1494,9 +1494,15 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
   size_t* mthd_obj = MemoryManager::AllocateObject(program->GetMethodObjectId(),
                                                    op_stack, *stack_pos,
                                                    false);
-  // method and class object
+  // method and class object. AllocateObject with collect=false falls back to the
+  // old generation when the nursery is full, so this Method may be old while the
+  // Class object, the name and the return type it holds are young: every such
+  // store needs the write barrier, or a minor collection moves the young object
+  // and leaves this field pointing at the old copy (gc-verify A2 in
+  // query_differential and query_storage under OBJECK_NURSERY=256k).
   mthd_obj[0] = (size_t)mthd;
   mthd_obj[1] = (size_t)cls_obj;
+  MemoryManager::WriteBarrier(mthd_obj);
 
   // set method name
   const std::wstring &qual_mthd_name = mthd->GetName();
@@ -1514,6 +1520,7 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
   }
   const std::wstring &mthd_string = semi_qual_mthd_string.substr(0, mthd_index);
   mthd_obj[2] = (size_t)CreateStringObject(mthd_string, program, op_stack, stack_pos);
+  MemoryManager::WriteBarrier(mthd_obj);
 
   // One encoded type, from 'index' up to the next ',' or the end: a DataType
   // with the DataType->TypeId code, the class name and the dimension (#1175).
@@ -1564,6 +1571,8 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
         index++;
       }
       data_type_obj[1] = (size_t)CreateStringObject(sig.substr(name_start, index - name_start), program, op_stack, stack_pos);
+      // the DataType may be old (see CreateMethodObject), the name is young
+      MemoryManager::WriteBarrier(data_type_obj);
     }
       break;
 
@@ -1625,6 +1634,7 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
   // return type: Nil for a method that returns nothing
   size_t rtrn_index = 0;
   mthd_obj[4] = (size_t)parse_data_type(mthd->GetReturnName(), rtrn_index);
+  MemoryManager::WriteBarrier(mthd_obj);
 
   return mthd_obj;
 }
@@ -3222,6 +3232,9 @@ bool TrapProcessor::LoadClsByInst(StackProgram* program, size_t* inst, size_t* &
   // set name and create 'Class' instance
   size_t* cls_obj = MemoryManager::AllocateObject(program->GetClassObjectId(), op_stack, *stack_pos, false);
   cls_obj[0] = (size_t)CreateStringObject(cls->GetName(), program, op_stack, stack_pos);
+  // the Class object may be old (collect=false falls back to the old generation
+  // when the nursery is full), its name is young: see CreateMethodObject
+  MemoryManager::WriteBarrier(cls_obj);
   frame->mem[1] = (size_t)cls_obj;
   CreateClassObject(cls, cls_obj, op_stack, stack_pos, program);
 
@@ -4302,6 +4315,9 @@ bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_s
     command_output_obj[0] = (size_t)command_obj;
     command_output_obj[1] = status;
     command_output_obj[2] = (size_t)str_obj_array;
+    // the CommandOutput may be old while the command string is young: see
+    // CreateMethodObject
+    MemoryManager::WriteBarrier(command_output_obj);
 
     PushInt((size_t)command_output_obj, op_stack, stack_pos);
   }
@@ -5253,6 +5269,8 @@ bool TrapProcessor::SockTcpAccept(StackProgram* program, size_t* inst, size_t* &
     sock_obj[0] = client;
     sock_obj[1] = (size_t)CreateStringObject(wclient_address, program, op_stack, stack_pos);
     sock_obj[2] = client_port;
+    // the socket may be old while its address string is young: see CreateMethodObject
+    MemoryManager::WriteBarrier(sock_obj);
 
     PushInt((size_t)sock_obj, op_stack, stack_pos);
   }
@@ -6016,6 +6034,8 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
       sock_obj[3] = 1;
       sock_obj[4] = (size_t)CreateStringObject(BytesToUnicode(host_name), program, op_stack, stack_pos);
       sock_obj[5] = instance[6];
+      // the socket may be old while its address string is young: see CreateMethodObject
+      MemoryManager::WriteBarrier(sock_obj);
 
       PushInt((size_t)sock_obj, op_stack, stack_pos);
       return true;
@@ -8187,8 +8207,10 @@ bool TrapProcessor::RuntimeGetLastError(StackProgram* program, size_t* inst, siz
       PushInt(0, op_stack, stack_pos);
       return true;
     }
-    // Error's one field, @message
+    // Error's one field, @message. The Error may be old while the message is
+    // young: see CreateMethodObject
     error[0] = (size_t)CreateStringObject(state.message, program, op_stack, stack_pos);
+    MemoryManager::WriteBarrier(error);
     Runtime::StackInterpreter::SetRaisedErrorObject(error);
   }
 
@@ -11007,6 +11029,8 @@ bool TrapProcessor::SockDtlsAccept(StackProgram* program, size_t* inst, size_t*&
       sock_obj[3] = 1;
       sock_obj[4] = (size_t)CreateStringObject(BytesToUnicode(host_name), program, op_stack, stack_pos);
       sock_obj[5] = instance[6];
+      // the socket may be old while its address string is young: see CreateMethodObject
+      MemoryManager::WriteBarrier(sock_obj);
 
       PushInt((size_t)sock_obj, op_stack, stack_pos);
       return true;

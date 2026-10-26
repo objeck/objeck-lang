@@ -1,0 +1,122 @@
+#~
+Reflection objects the VM builds while the nursery is full.
+
+The VM allocates the Class, Method and DataType objects of a reflection call (and the
+CommandOutput, socket and Error objects of other traps) with collection disabled, and such
+an allocation falls back to the old generation whenever the nursery is full. The C++ code
+then stored the young objects those hold (the Class object, the method's name, its return
+type, a socket's address, an error's message) without the write barrier, so a minor
+collection moved the young object and left the old one pointing at its old copy. The heap
+verifier reported it on query_differential and query_storage under OBJECK_NURSERY=256k
+(gc-verify A2: "old object holds a nursery reference but GC_RSET_BIT is clear", on
+System.Introspection.Method field 1, the Class object), in every run on Windows and Linux.
+
+The test runs itself again as a child under the heap verifier with a 256 KB nursery; the
+child reads a class's methods three thousand times while allocating enough to fill the
+nursery over and over, and compares every method's name and class with the first reading.
+The parent needs its .obe beside it, as the regression runner compiles it.
+~#
+use System.IO.Filesystem;
+
+class GcVerifyReflection {
+	function : Child() ~ Nil {
+		pad := "";
+		each(k : 20) {
+			pad += "0123456789";
+		};
+
+		names : String[] := Nil;
+		class_name : String := Nil;
+		each(i : 3000) {
+			# garbage that fills a 256 KB nursery every few rounds
+			junk := String->New[64];
+			each(j : 64) {
+				junk[j] := "{$pad} {$i} {$j}";
+			};
+
+			methods := "a string"->GetClass()->GetMethods();
+			if(names = Nil) {
+				names := String->New[methods->Size()];
+				each(m : methods) {
+					names[m] := methods[m]->GetName();
+				};
+				class_name := methods[0]->GetClass()->GetName();
+			}
+			else {
+				each(m : methods) {
+					name := methods[m]->GetName();
+					if(name = Nil | <>name->Equals(names[m])) {
+						"FAIL: round {$i}, method {$m} is named '{$name}', expected '{$(names[m])}'"->PrintLine();
+						Runtime->Exit(1);
+					};
+					owner := methods[m]->GetClass();
+					if(owner = Nil | <>owner->GetName()->Equals(class_name)) {
+						"FAIL: round {$i}, method {$m} belongs to another class than '{$class_name}'"->PrintLine();
+						Runtime->Exit(1);
+					};
+				};
+			};
+
+			if(junk[63]->Size() < pad->Size()) {
+				"FAIL: padding lost"->PrintLine();
+				Runtime->Exit(1);
+			};
+		};
+
+		"child done: {$(names->Size())} methods read 3000 times"->PrintLine();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1 & args[0]->Equals("child")) {
+			Child();
+			return;
+		};
+
+		if(<>File->Exists("gc_verify_reflection.obe")) {
+			"FAIL: run this test from the folder that holds gc_verify_reflection.obe"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		windows := Directory->GetSlash() = '\\';
+		vm := Runtime->GetInstallDir();
+		vm += windows ? "\\bin\\obr.exe" : "/bin/obr";
+		output := "{$(Runtime->GetTempDir())}/gc_verify_reflection_{$(Runtime->GetProcessId())}.txt";
+
+		# the child runs under the heap verifier, with a nursery small enough to fill often,
+		# once with the JIT and once without
+		Runtime->SetEnvironmentVariable("OBJECK_GC_VERIFY", "1");
+		Runtime->SetEnvironmentVariable("OBJECK_NURSERY", "256k");
+		modes := ["", "--jit=off "];
+		each(m : modes) {
+			command := "\"{$vm}\" {$(modes[m])}gc_verify_reflection.obe child > \"{$output}\" 2>&1";
+			if(windows) {
+				# cmd /c strips the first and last quote of a line that starts with one
+				command := "\"{$command}\"";
+			};
+			status := Runtime->Command(command);
+			text := FileReader->ReadFile(output);
+			if(text = Nil) {
+				text := "";
+			};
+			File->Delete(output);
+
+			# the verifier reports a violation as ">>> gc-verify: ... violation ..." and aborts;
+			# its "[gc-verify] verification took ..." note is not one
+			if(status <> 0 | <>text->Has("child done") | text->Has("violation")) {
+				first := "no output";
+				lines := text->Split("\n");
+				each(i : lines) {
+					line := lines[i]->Trim();
+					if(line->Size() > 0 & (line->Has("violation") | line->StartsWith("FAIL"))) {
+						first := line;
+						break;
+					};
+				};
+				"FAIL: gc_verify_reflection: the child (obr {$(modes[m])}) exited {$status}; {$first}"->PrintLine();
+				Runtime->Exit(1);
+			};
+		};
+
+		"PASS: gc_verify_reflection (the child read a class's methods 3000 times under the heap verifier, with and without the JIT)"->PrintLine();
+	}
+}
