@@ -5,11 +5,12 @@ use Collection, Data.JSON, API.Google.Gemini;
 # Gemini error messages are JSON-unescaped.
 #
 # The tuning, corpus and document endpoints read an error response's message
-# with FindElements("error/message")->GetString(). The parser keeps a JSON
+# with FindElements("error/message")->GetString(). The parser kept a JSON
 # string's escapes, so GetLastError returned '\"', '\\', '\n' and '\u00e9' as
 # escape text, and an error without a message dereferenced Nil. They now all
 # go through OAuthEndPoint->ParseErrorMessage, which a canned response can test
-# without the network.
+# without the network. The parser now decodes, so the message must not be
+# decoded again: the real backslash in C:\data would be lost.
 ~#
 class GeminiErrorMessage {
 	@passed : static : Bool;

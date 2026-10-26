@@ -79,36 +79,47 @@ bundle Data.JSON.RPC {
 											client->WriteString("null\r\n");
 									 	}
 									 	else {
-									 		buffer := "{\"jsonrpc\": \"2.0\", \"result\": ";
-									 		buffer += result_params_json->ToString()
-									 		buffer += ", \"id\": ";
-									 		buffer += result_id_json->GetInt() + 1;
-									 		buffer += "}\r\n";
+											# The id is echoed as it was sent, a string id included
+											# (JSON-RPC 2.0 section 5). This wrote the id read as an
+											# Int, plus one: a string id came back as 1.
+											reply_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+											reply_json->Insert("jsonrpc", "2.0");
+											reply_json->Insert("result", result_params_json);
+											reply_json->Insert("id", result_id_json);
 
+											buffer := reply_json->ToString();
+									 		buffer += "\r\n";
 											client->WriteString(buffer);
 										};
 
 									 }
 									 else {
 										err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32601, \"message\": \"Method not found\"}, \"id\": null}";
-										client->WriteString(err_msg);
+										client->WriteString(err_msg + "\r\n");
 									 };
 								}
 								else {
 									err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32600, \"message\": \"Invalid Request\"}, \"id\": null}";
-									client->WriteString(err_msg);
+									client->WriteString(err_msg + "\r\n");
 								};
 							}
 							else {
 								err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32700, \"message\": \"Parse error\"}, \"id\": null}";
-								client->WriteString(err_msg);
+								client->WriteString(err_msg + "\r\n");
 							};
 						}
 						else {
 							err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32600, \"message\": \"Invalid Request\"}, \"id\": null}";
-							client->WriteString(err_msg);
+							client->WriteString(err_msg + "\r\n");
 						};
 
+						# Hold the connection until the client has read the reply and
+						# closed its end, then close. Closing first lost the reply on
+						# Windows loopback, where the peer that tears down first has
+						# the unread bytes discarded (#669); Accept's receive timeout
+						# bounds the wait. Every reply above ends its line, so the
+						# client's ReadLine returns without waiting for the close.
+						client->ReadLine();
 						client->Close();
 					}
 				};
@@ -165,13 +176,15 @@ bundle Data.JSON.RPC {
 			# socket and left it open (#1184 now rejects the undeclared field).
 			socket := TCPSocket->New(@address, @port);
 			if(socket->IsOpen()) {
-				buffer := "{\"jsonrpc\": \"2.0\", \"method\": \"";
-				buffer += func_name;
-				buffer += "\", \"params\": ";
-				buffer += func_params->ToString();
-				buffer += ", \"id\": ";
-				buffer += @id;
-				buffer += "}\r\n";
+				# built by the serializer: the method name was pasted in unescaped
+				request_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				request_json->Insert("jsonrpc", "2.0");
+				request_json->Insert("method", func_name);
+				request_json->Insert("params", func_params);
+				request_json->Insert("id", @id);
+
+				buffer := request_json->ToString();
+				buffer += "\r\n";
 				socket->WriteString(buffer);
 
 				if(@id > 512) {

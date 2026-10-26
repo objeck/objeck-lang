@@ -74,6 +74,21 @@ class QuerySourceJson {
 		packed := JsonSource->New("query_json_tmp.json.gz")->Read();
 		Check("a gzipped document reads the same", packed <> Nil & packed->GetName()->Equals("query_json_tmp") & packed->Size() = 3 & packed->Get(0)->Get("meta.seed")->As(IntRef)->Get() = 7);
 
+		# keys and strings arrive decoded (an escaped quote in a key, a real
+		# backslash, an escaped slash), and ToJson writes them back escaped once
+		esc := JsonSource->FromText("esc", "[{\"a\\\"b\": \"C:\\\\new\\\\x\", \"u\": \"http:\\/\\/h\\/p\"}]");
+		esc_table := esc->Read();
+		Check("a document with escapes reads", esc_table <> Nil);
+		if(esc_table <> Nil) {
+			Check("an escaped key is the decoded column name", esc_table->GetColumn("a\"b") <> Nil);
+			esc_path := esc_table->Get(0)->Get("a\"b");
+			Check("a backslash in a value survives", esc_path <> Nil & esc_path->As(String)->Equals("C:\\new\\x"));
+			esc_url := esc_table->Get(0)->Get("u");
+			Check("an escaped slash is a slash", esc_url <> Nil & esc_url->As(String)->Equals("http://h/p"));
+			esc_json := esc_table->ToJson();
+			Check("ToJson writes the text back escaped once: " + esc_json, esc_json <> Nil & esc_json->Equals("[{\"a\\\"b\":\"C:\\\\new\\\\x\",\"u\":\"http://h/p\"}]"));
+		};
+
 		bad := JsonSource->FromText("bad", "[{\"a\": 1}, 5]");
 		Check("an element that is not an object names its position", bad->Read() = Nil & bad->GetError()->Has("element 2"));
 		broken := JsonSource->FromText("broken", "[{\"a\": 1},");

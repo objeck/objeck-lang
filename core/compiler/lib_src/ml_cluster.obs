@@ -1039,8 +1039,10 @@ resp := gmm->Predict(X);                # soft responsibilities
 				group_name := @group_names[i];
 				group := @groups->Find(group_name);
 
+				# the name is escaped: a label holding a quote or a backslash
+				# produced text that was not JSON
 				buffer->Append("{\"name\": \"");
-				buffer->Append(group_name);
+				AppendJsonText(group_name, buffer);
 				buffer->Append("\",\"values\":[");
 				buffer->Append(group->ToString());
 				buffer->Append("]}");
@@ -1052,6 +1054,41 @@ resp := gmm->Predict(X);                # soft responsibilities
 			buffer->Append(']');
 
 			return buffer;
+		}
+
+		#
+		# Appends the text of a JSON string (RFC 8259 section 7), without the
+		# quotes: the quote, the backslash and the control characters escaped, as
+		# Data.JSON's serializer does. This library does not link the JSON one.
+		#
+		function : AppendJsonText(str : String, buffer : String) ~ Nil {
+			hex := "0123456789abcdef";
+			each(i : str) {
+				c := str->Get(i);
+				if(c = '"') {
+					buffer->Append("\\\"");
+				}
+				else if(c = '\\') {
+					buffer->Append("\\\\");
+				}
+				else if(c = '\n') {
+					buffer->Append("\\n");
+				}
+				else if(c = '\r') {
+					buffer->Append("\\r");
+				}
+				else if(c = '\t') {
+					buffer->Append("\\t");
+				}
+				else if(c < 0x20) {
+					buffer->Append("\\u00");
+					buffer->Append(hex->Get(c->As(Int) >> 4));
+					buffer->Append(hex->Get(c->As(Int) and 0xF));
+				}
+				else {
+					buffer->Append(c);
+				};
+			};
 		}
 	}
 

@@ -136,6 +136,11 @@ class InferenceClientTest {
 		Report("and the server's own message is passed through",
 			EndPoint->GetLastError()->Equals("model not found"));
 
+		# the message is the text, not its escapes: Data.JSON kept them as sent
+		Wire->ParseResponse("{\"error\": \"no model \\\"m\\\" in C:\\\\models\\nretry\"}");
+		Report("an escaped error message is decoded",
+			EndPoint->GetLastError()->Equals("no model \"m\" in C:\\models\nretry"));
+
 		good := Wire->ParseResponse("{\"outputs\": []}");
 		Report("a well-formed body parses", good <> Nil);
 	}
