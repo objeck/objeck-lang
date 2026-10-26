@@ -60,11 +60,28 @@ void Loader::LoadConfiguration()
 
 void Loader::Load()
 {
+  // An .obe is tied to the toolchain that compiled it: the VM's traps, call
+  // stack and bytecode change between versions with no versioned format of
+  // their own, so a program compiled by another version is refused here,
+  // before a byte of it is interpreted. The message names both versions and
+  // says which side to act on, as the linker's library check does; the old
+  // text ("appears to be invalid or compiled with an incompatible version")
+  // told the reader neither.
   const int ver_num = static_cast<int>(ReadInt());
   if(ver_num != VER_NUM) {
-    std::wcerr << L"This executable appears to be invalid or compiled with an incompatible version of the tool chain." << std::endl;
+    std::wcerr << L"Toolchain version mismatch reading " << filename << std::endl
+               << L"\tthe program was compiled by toolchain " << ver_num << std::endl
+               << L"\tthis runtime is                       " << VER_NUM << std::endl;
+    if(ver_num > VER_NUM) {
+      std::wcerr << L"\t-> this runtime is older than the program. Upgrade the runtime, or recompile" << std::endl
+                 << L"\t   the program's source with this toolchain's obc." << std::endl;
+    }
+    else {
+      std::wcerr << L"\t-> the program is older than this runtime. Recompile its source with this" << std::endl
+                 << L"\t   toolchain's obc (an .obe does not run across toolchain versions)." << std::endl;
+    }
     exit(1);
-  } 
+  }
 
   const int magic_num = static_cast<int>(ReadInt());
   switch(magic_num) {
@@ -72,7 +89,8 @@ void Loader::Load()
   case MAGIC_NUM_LIB_UNQUALIFIED_ENUMS:
   case MAGIC_NUM_LIB_NO_GENERIC_MARKS:
   case MAGIC_NUM_LIB_NO_PARAM_NAMES:
-    std::wcerr << L"Unable to use execute shared library '" << filename << L"'." << std::endl;
+    std::wcerr << L"Cannot run '" << filename << L"': it is a library (.obl), not a program (.obe)." << std::endl
+               << L"\tLink it into a program with 'obc -lib' and run that program's .obe." << std::endl;
     exit(1);
 
   case MAGIC_NUM_EXE:
