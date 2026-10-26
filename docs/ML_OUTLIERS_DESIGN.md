@@ -138,7 +138,7 @@ refit:
 Fit stores each feature's mean and **population** standard deviation (ddof = 0, as
 `scipy.stats.zscore`). `z_ij = (x_ij - mean_j) / sd_j`.
 
-* Multi-feature rule, `SetRule(ZScoreRule->...)`: **`MAX` (default)** — a row's score is
+* Multi-feature rule, the constructor's `ZScoreDetector->Rule->...`: **`MAX` (default)** — a row's score is
   `max_j |z_ij|`, i.e. "any feature beyond the threshold" (the usual lab formulation
   `(np.abs(z) > t).any(axis=1)`). `MEAN` — mean |z|. `RMS` — `sqrt(mean_j z_ij²)`, a
   diagonal-covariance Mahalanobis distance scaled by `1/sqrt(p)`.
@@ -191,11 +191,18 @@ Rousseeuw & Van Driessen's FastMCD, following `sklearn.covariance.fast_mcd`/`Min
   rows (else `h = floor(fraction * n)`), `seed` 42.
 * `p = 1`: the exact univariate MCD — the shortest contiguous window of `h` sorted values, location
   the mean of the midpoints, support the `h` rows closest to it.
-* `p > 1`, `n <= 500`: 30 random `h`-subsets, two C-steps each, keep the best 10 by
-  log-determinant, then C-steps to convergence (≤ 30) and take the lowest determinant.
-* `n > 500`: sklearn's nested scheme — split a permutation into `n / 300` subsets, 10 best of
-  `max(10, 500 / subsets)` trials on each, pool on a merged sample of `min(1500, n)` rows, then (if
-  `n > 1500`) finish the best 10 on the full data.
+* Starts are the **paper's random `(p + 1)`-subsets** (grown a row at a time while singular),
+  extended to the `h` rows nearest their estimate. scikit-learn starts from random `h`-subsets
+  instead; in a numpy experiment on 30 contaminated datasets (200 × 3), sklearn's 30 `h`-subset
+  starts reached the lowest determinant on 11, 500 `(p + 1)`-subset starts on 24 to 28. On
+  Gaussian inliers many `h`-subsets are near-ties, so the search is a heuristic either way.
+* `p > 1`, `n <= 500`: 500 starts, two C-steps each, keep the best 50 by log-determinant, then
+  C-steps to convergence (≤ 30) and take the lowest determinant.
+* `n > 500`: sklearn's nested scheme with the paper's cap — split a permutation into
+  `min(5, n / 300)` subsets (300 rows each once there are 5), 10 best of `max(10, 500 / subsets)`
+  trials on each, pool on a merged sample of `min(1500, n)` rows (best 10 if `n > 1500`, else 1),
+  then finish on the full data. (sklearn does not cap the subset count, so above 1,800 rows it
+  runs `n / 300` subsets; at 100k rows that is 333.)
 * A C-step: Mahalanobis distances under the current estimate, keep the `h` smallest, recompute mean
   and MLE covariance; stop when the determinant stops falling.
 * Then the two corrections `MinCovDet.fit` applies: **consistency** — scale the raw covariance by
@@ -203,24 +210,30 @@ Rousseeuw & Van Driessen's FastMCD, following `sklearn.covariance.fast_mcd`/`Min
   and recompute mean and MLE covariance from them.
 * `Score` = squared Mahalanobis distance under the reweighted estimate; threshold the
   `(1 - contamination)` quantile of the training distances.
-* χ² quantiles come from a regularised lower incomplete gamma (series / continued fraction) with
-  a bracketed Newton inversion, checked against tabled values.
+* χ² quantiles come from a regularised lower incomplete gamma (series / continued fraction),
+  inverted by bisection, checked against the closed-form CDFs; exposed as
+  `EllipticEnvelope->ChiSquareQuantile(dof, prob)`. The degrees of freedom are the *varying*
+  features (sklearn passes all of them, constants included).
+* At `q >= 6` varying features and 128+ rows the quadratic forms and covariances go through
+  `Matrix2D->DotProduct` (native); smaller problems stay in Objeck.
 * **Singular covariance:** a feature constant over the training data is excluded from the
   Mahalanobis form (exactly what sklearn's `pinvh` does for an exactly constant column); if the
   support covariance is still singular — collinear features, or `h` rows in a lower-dimensional
   subspace, e.g. many duplicates — `Fit` **refuses** with an error naming the cause, rather than
   regularising silently and returning distances in a metric nobody chose. `n <= p` is refused.
-* Tests: Mahalanobis exactly against numpy; MCD location/covariance on contaminated Gaussians
-  against an independent numpy FastMCD run with many more starts (the global optimum), within
-  tolerance, and the same rows flagged, on 30+ seeds.
+* Tests: Mahalanobis against an independent inverse; the univariate MCD exactly against sklearn's
+  algorithm; on 30 contaminated datasets against a numpy MCD run from 600 starts to convergence:
+  within 0.005 of its log-determinant everywhere, exactly on it on ≥ 24 (26 measured), reweighted
+  location/covariance within 0.05/0.10, identical flagged rows on ≥ 28 (29 measured) and never more
+  than 2 rows apart; plus the `n > 500`, `n > 1500` and native paths.
 
 ### 2.5 `AutoencoderDetector` and `DenseNetwork` (Stage 2)
 
 The existing `NeuralNetwork` cannot be reused: it has one hidden layer, sigmoid units and a
 `Bool` query, and is kept unchanged. A new general `DenseNetwork` goes in `ml_core.obs`:
 
-* Layers of any sizes; activation per layer from `DenseActivation`: `LINEAR`, `RELU`, `SIGMOID`,
-  `TANH`. Glorot-uniform weights from the seed, zero biases.
+* Layers of any sizes; a hidden and an output activation from `DenseNetwork->Activation`:
+  `LINEAR`, `RELU`, `SIGMOID`, `TANH`. Glorot-uniform weights from the seed, zero biases.
 * Loss: mean squared error. Optimiser: **Adam** (`lr` 1e-3, β₁ 0.9, β₂ 0.999, ε 1e-8, as
   Keras/PyTorch), minibatches (default 32) over a seeded shuffle each epoch.
 * `Fit(X, Y, epochs) ~ Float` (final epoch loss), `Predict(X) ~ Float[,]`, weight get/set for
@@ -320,7 +333,7 @@ each run at `-opt s3` and `s0`, under `obr`, `obr --jit=off`, and with `OBJECK_J
 |---|---|
 | 0 | `docs/ML_OUTLIERS_DESIGN.md` |
 | 1 | `core/compiler/lib_src/ml_outlier.obs` (new: interface, Z-score, IF, LOF, EE, DBSCAN adapter); library lists (`build_libs.sh`, `ci-build.yml`, `release-build.yml`, `code_doc64.*`, `gen_json.*`, `test.cmd`, `frameworks/ml/build.cmd`, `core/lib/README.md`); `core/lib/ml.obl`; LSP index; tests |
-| 2 | `ml_core.obs` (`DenseNetwork`, `DenseActivation`), `ml_outlier.obs` (`AutoencoderDetector`); tests |
+| 2 | `ml_core.obs` (`DenseNetwork`), `ml_outlier.obs` (`AutoencoderDetector`); tests |
 | 3 | `ml_data.obs` (`ConfusionMatrix`, `Metrics->FalsePositiveRate`), `ml_outlier.obs` (`SensitivitySweep`, `SweepResult`); `programs/examples/ml/`; tests; docs |
 
 Every stage rebuilds all libraries; `ml.obl` changes for real, and libraries compiled against
