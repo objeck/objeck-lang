@@ -12072,14 +12072,24 @@ if(file->IsOpen()) {
 		}
 	}
 
-	# a file table a catalog has read, and the files' state when it read them
+	# a file table a catalog has read, and the files' state when it read them. The stamp
+	# tells a modification time in whole seconds, so a file rewritten within the second of
+	# its last read, to the same size, keeps its stamp: an entry read while its files were
+	# that recent (read_at within a second of the newest file: racy, as git calls it) also
+	# keeps a digest of the files' bytes, and is served only while the files still digest
+	# the same. An entry whose files were older when it was read needs none: a later write
+	# lands in a later second and changes the stamp.
 	class : private : FileEntry {
 		@stamp : String;
 		@table : Table;
+		@read_at : Int;
+		@digest : String;
 
-		New(stamp : String, table : Table) {
+		New(stamp : String, table : Table, read_at : Int, digest : String) {
 			@stamp := stamp;
 			@table := table;
+			@read_at := read_at;
+			@digest := digest;
 		}
 
 		method : public : GetStamp() ~ String {
@@ -12088,6 +12098,22 @@ if(file->IsOpen()) {
 
 		method : public : GetTable() ~ Table {
 			return @table;
+		}
+
+		# whether a write after this read could have kept the stamp: the newest file was
+		# modified within a second of the read (a second either way for the clock the file
+		# system stamps with, which may run a little behind)
+		method : public : IsRacy(newest : Int) ~ Bool {
+			return @read_at - newest <= 1;
+		}
+
+		method : public : GetDigest() ~ String {
+			return @digest;
+		}
+
+		# the files digested the same at 'when': the entry is as good as read then
+		method : public : SetReadAt(when : Int) ~ Nil {
+			@read_at := when;
 		}
 	}
 
@@ -12190,7 +12216,8 @@ if(file->IsOpen()) {
 			};
 		}
 
-		# what a set of files looked like: names, sizes and modification times
+		# what a set of files looked like: names, sizes and modification times (in whole
+		# seconds: see FileEntry for the write a stamp cannot tell)
 		function : Stamp(files : Vector<String>) ~ String {
 			stamp := "";
 			each(i : files) {
@@ -12202,6 +12229,43 @@ if(file->IsOpen()) {
 			};
 
 			return stamp;
+		}
+
+		# when the newest of the files was modified, in seconds since the Unix epoch
+		function : Newest(files : Vector<String>) ~ Int {
+			newest := 0;
+			each(i : files) {
+				modified := File->ModifiedTime(files->Get(i), true);
+				if(modified <> Nil) {
+					when := modified->GetUnixTime();
+					if(when > newest) {
+						newest := when;
+					};
+				};
+			};
+
+			return newest;
+		}
+
+		# the current time in seconds since the Unix epoch, on the clock file stamps use
+		function : Now() ~ Int {
+			return Date->New(true)->GetUnixTime();
+		}
+
+		# the files' bytes, digested: each file's size and CRC-32. Nil when one cannot be
+		# read. Only a racy entry (FileEntry) is held to it, and only until its files are a
+		# second old.
+		function : Digest(files : Vector<String>) ~ String {
+			digest := "";
+			each(i : files) {
+				data := FileReader->ReadBinaryFile(files->Get(i));
+				if(data = Nil) {
+					return Nil;
+				};
+				digest += "{$(data->Size())}:{$(Byte->CRC32(data))};";
+			};
+
+			return digest;
 		}
 
 		# the format of a file: the function form's, or its extension's (after any '.gz')
@@ -15858,7 +15922,8 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 			};
 
 			stamp := FileTables->Stamp(files);
-			known := CachedFile(key, stamp);
+			newest := FileTables->Newest(files);
+			known := CachedLocal(key, stamp, files, newest);
 			if(known <> Nil) {
 				return known;
 			};
@@ -15867,16 +15932,63 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 			lock := CatalogLocks->ForFile(key);
 			critical(lock) {
 				# another thread may have read it while this one waited
-				table := CachedFile(key, stamp);
+				table := CachedLocal(key, stamp, files, newest);
 				if(table = Nil) {
+					# a file this recent may be rewritten within its stamp's second: digest it
+					# before the read, so a write between the two is seen by the next query
+					read_at := FileTables->Now();
+					digest : String := Nil;
+					if(read_at - newest <= 1) {
+						digest := FileTables->Digest(files);
+					};
 					table := ReadFiles(file, files, name, error);
 					if(table <> Nil) {
-						StoreFile(key, stamp, table);
+						StoreFile(key, stamp, table, read_at, digest);
 					};
 				};
 			};
 
 			return table;
+		}
+
+		# the cached table for local files, if it was read when they had this stamp and, for a
+		# racy entry, if they still digest the same (FileEntry). The digest is taken with no
+		# lock held: it only reads the files.
+		method : CachedLocal(key : String, stamp : String, files : Vector<String>, newest : Int) ~ Table {
+			entry := CachedEntry(key, stamp);
+			if(entry = Nil) {
+				return Nil;
+			};
+
+			if(entry->IsRacy(newest)) {
+				if(entry->GetDigest() = Nil) {
+					return Nil;
+				};
+
+				now := FileTables->Now();
+				digest := FileTables->Digest(files);
+				if(digest = Nil | <>digest->Equals(entry->GetDigest())) {
+					return Nil;
+				};
+				entry->SetReadAt(now);
+			};
+
+			return entry->GetTable();
+		}
+
+		method : CachedEntry(key : String, stamp : String) ~ FileEntry {
+			entry : FileEntry := Nil;
+			lock := CatalogLocks->Maps();
+			critical(lock) {
+				if(@files <> Nil) {
+					found := @files->Find(key);
+					if(found <> Nil & found->GetStamp()->Equals(stamp)) {
+						entry := found;
+					};
+				};
+			};
+
+			return entry;
 		}
 
 		# the files a path matched, read as one table; Nil with the error set
@@ -15898,29 +16010,24 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 			return FileTables->ReadOne(file, files->Get(0), name, MemberLimit(), TotalLimit(), error);
 		}
 
-		# the cached table for a key, if it was read when its files had this stamp
+		# the cached table for a URL's copy, if it was read when the copy had this stamp (a
+		# copy's stamp is its server's validators or its own bytes, never a second)
 		method : CachedFile(key : String, stamp : String) ~ Table {
-			table : Table := Nil;
-			lock := CatalogLocks->Maps();
-			critical(lock) {
-				if(@files <> Nil) {
-					entry := @files->Find(key);
-					if(entry <> Nil & entry->GetStamp()->Equals(stamp)) {
-						table := entry->GetTable();
-					};
-				};
-			};
-
-			return table;
+			entry := CachedEntry(key, stamp);
+			return entry <> Nil ? entry->GetTable() : Nil;
 		}
 
 		method : StoreFile(key : String, stamp : String, table : Table) ~ Nil {
+			StoreFile(key, stamp, table, FileTables->Now(), Nil);
+		}
+
+		method : StoreFile(key : String, stamp : String, table : Table, read_at : Int, digest : String) ~ Nil {
 			lock := CatalogLocks->Maps();
 			critical(lock) {
 				if(@files = Nil | @files->Size() >= 32) {
 					@files := Map->New()<String, FileEntry>;
 				};
-				@files->Insert(key, FileEntry->New(stamp, table));
+				@files->Insert(key, FileEntry->New(stamp, table, read_at, digest));
 			};
 		}
 

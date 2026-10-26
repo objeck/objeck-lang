@@ -1172,7 +1172,12 @@ made by the first table or catalog, before there is one to share):
   loading. A query checks the file's stamp (its names, sizes and modification times) against
   the cache without a file lock; on a miss it takes the file's lock, checks the cache again, and
   only then reads, so threads that miss together read the file once and the rest find it
-  cached when the lock comes free. Files that share a lock by their hash wait for each other's
+  cached when the lock comes free. A stamp tells the modification time in whole seconds, so a
+  file rewritten within the second of its last read, to the same size, keeps its stamp; an
+  entry read while its files were that recent (within a second: racy, as git calls its index
+  entries) also keeps a digest of the files' bytes (size and CRC-32), taken before the read,
+  and is served only while the files still digest the same. Once the files are a second
+  older than the read, a later write lands in a later second and the stamp alone tells. Files that share a lock by their hash wait for each other's
   reads, which only costs time, and only when both are being read.
 - *URLs.* The revalidating request (`If-None-Match`, `If-Modified-Since`) goes out with no lock
   held, so concurrent queries of one URL revalidate concurrently. Before, two threads
