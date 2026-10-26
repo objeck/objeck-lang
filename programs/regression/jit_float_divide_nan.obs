@@ -1,0 +1,290 @@
+#~
+Float division by NaN, and division guarded by a Float compare against 0.0,
+interpreted and JIT-compiled.
+
+The interpreter raises "Divide by zero" only for a divisor that compares equal
+to 0.0 (+0.0 or -0.0); `x / NaN` is NaN. The x64 JIT guarded every compiled
+Float division with `ucomisd divisor, 0.0; je <divide-by-zero>`, and ucomisd
+sets ZF for an UNORDERED compare too, so a compiled method stopped the program
+with ">>> Divide by zero <<<" on a NaN divisor. It surfaced once #1397 let
+methods holding a Float conditional compile: an evaluator that picks its
+operands with `?:` and guards its division with an `if(y = 0.0)` chain died on
+the NaN row while the zero rows were handled correctly.
+
+Every property is evaluated inside Probe(), called REPS times, and holds only
+if it holds on EVERY call: a count that is neither 0 nor REPS means the
+interpreted and compiled answers disagree. The special values arrive as
+parameters so that nothing is folded at compile time. Exits 1 on a failure.
+~#
+class Evaluator {
+  @tags : Int[];
+  @floats : Float[];
+  @op : Char;
+
+  New(op : Char) {
+    @op := op;
+    @tags := Int->New[8];
+    @floats := Float->New[8];
+  }
+
+  method : public : GetTags() ~ Int[] { return @tags; }
+  method : public : GetFloats() ~ Float[] { return @floats; }
+
+  # the shape that found the defect: Float conditionals pick the operands, an
+  # else-if chain on a Char guards the division with a compare against 0.0
+  method : public : Run(lt : Int[], li : Int[], lf : Float[], rt : Int[], ri : Int[], rf : Float[], count : Int) ~ Nil {
+    op := @op;
+    each(i : count) {
+      a := lt[i];
+      b := rt[i];
+      if((a = 1 | a = 2) & (b = 1 | b = 2)) {
+        x := a = 1 ? li[i]->As(Float) : lf[i];
+        y := b = 1 ? ri[i]->As(Float) : rf[i];
+        @tags[i] := 2;
+        if(op = '+') {
+          @floats[i] := x + y;
+        }
+        else if(op = '-') {
+          @floats[i] := x - y;
+        }
+        else if(op = '*') {
+          @floats[i] := x * y;
+        }
+        else if(y = 0.0) {
+          @tags[i] := 0;
+        }
+        else if(op = '/') {
+          @floats[i] := x / y;
+        }
+        else {
+          quotient := x / y;
+          whole := quotient < 0.0 ? (0.0 - quotient)->Floor() * -1.0 : quotient->Floor();
+          @floats[i] := x - whole * y;
+        };
+      }
+      else {
+        @tags[i] := 0;
+      };
+    };
+  }
+}
+
+class JitFloatDivideNaN {
+  @fails : static : Int;
+  @reps : static : Int;
+
+  function : Main(args : String[]) ~ Nil {
+    @fails := 0;
+    @reps := 20000;
+
+    Check(0, "x / NaN is NaN (two parameters)");
+    Check(1, "NaN / x is NaN");
+    Check(2, "a literal divided by NaN is NaN");
+    Check(3, "x / NaN with the divisor read from an array element");
+    Check(4, "x / NaN with the divisor in a local");
+    Check(5, "x / NaN inside a loop, summed");
+    Check(6, "x /= NaN");
+    Check(7, "Inf / NaN and NaN / NaN are NaN");
+    Check(8, "ordinary divisions are unchanged");
+    Check(9, "a Float conditional picks a NaN divisor");
+    Check(10, "a 0.0 guard sends +0.0 and -0.0 away and lets NaN divide");
+    Check(11, "the guard as a <> compare");
+    Check(12, "the evaluator: + - * / and remainder over 0.0, -0.0, 2.0, NaN");
+    Check(13, "values computed in the branches are used after them");
+
+    if(@fails > 0) {
+      Runtime->Exit(1);
+    };
+    "PASS: all Float divisions by NaN and zero-guarded divisions"->PrintLine();
+  }
+
+  function : Check(id : Int, name : String) ~ Nil {
+    hits := 0;
+    for(r := 0; r < @reps; r += 1;) {
+      if(Probe(id, true, false, 1.0, 2.0, Float->NaN(), Float->Inf(), 0.0 * (0.0 - 1.0), 0.0)) {
+        hits += 1;
+      };
+    };
+
+    if(hits = @reps) {
+      "PASS: {$name}"->PrintLine();
+    }
+    else if(hits = 0) {
+      "FAIL: {$name} -- consistently wrong"->PrintLine();
+      @fails += 1;
+    }
+    else {
+      reps := @reps;
+      "FAIL: {$name} -- interpreter and JIT disagree ({$hits} of {$reps})"->PrintLine();
+      @fails += 1;
+    };
+  }
+
+  function : IsNaN(v : Float) ~ Bool {
+    return v <> v;
+  }
+
+  # -0.0 and +0.0 compare equal; only the sign tells them apart
+  function : IsNegZero(v : Float) ~ Bool {
+    return v = 0.0 & Float->ArcTan2(v, -1.0) < 0.0;
+  }
+
+  function : Div(x : Float, y : Float) ~ Float {
+    return x / y;
+  }
+
+  function : Reciprocal(y : Float) ~ Float {
+    return 1.0 / y;
+  }
+
+  function : DivElement(x : Float, ys : Float[], i : Int) ~ Float {
+    return x / ys[i];
+  }
+
+  function : DivLocal(x : Float, y : Float) ~ Float {
+    d := y + 0.0;
+    q := x / d;
+    return q;
+  }
+
+  function : SumQuotients(xs : Float[], y : Float) ~ Float {
+    total := 0.0;
+    each(i : xs) {
+      total += xs[i] / y;
+    };
+    return total;
+  }
+
+  function : DivAssign(x : Float, y : Float) ~ Float {
+    v := x;
+    v /= y;
+    return v;
+  }
+
+  function : PickDiv(c : Bool, x : Float, a : Float, b : Float) ~ Float {
+    y := c ? a : b;
+    return x / y;
+  }
+
+  # 0 for a zero divisor (either sign), else the quotient
+  function : Guarded(x : Float, y : Float) ~ Float {
+    if(y = 0.0) {
+      return 0.0;
+    }
+    else {
+      return x / y;
+    };
+  }
+
+  function : GuardedNeq(x : Float, y : Float) ~ Float {
+    if(y <> 0.0) {
+      return x / y;
+    };
+    return -1.0;
+  }
+
+  # quotient and a flag set in the branches, both read after them
+  function : GuardedAfter(c : Bool, x : Float, a : Float, b : Float) ~ Float {
+    y := c ? a : b;
+    q := 0.0;
+    zero := false;
+    if(y = 0.0) {
+      zero := true;
+    }
+    else {
+      q := x / y;
+    };
+    if(zero) {
+      return -100.0;
+    };
+    return q + 1.0;
+  }
+
+  function : Evaluate(op : Char, nan : Float, nzero : Float, zero : Float, two : Float) ~ Bool {
+    e := Evaluator->New(op);
+    lt := [1, 1, 1, 1];
+    li := [3, -2, 5, 7];
+    lf := [0.0, 0.0, 0.0, 0.0];
+    rt := [2, 2, 2, 2];
+    ri := [0, 0, 0, 0];
+    rf := Float->New[4];
+    rf[0] := zero;
+    rf[1] := nzero;
+    rf[2] := two;
+    rf[3] := nan;
+    e->Run(lt, li, lf, rt, ri, rf, 4);
+    tags := e->GetTags();
+    floats := e->GetFloats();
+
+    if(op = '+') {
+      return tags[0] = 2 & floats[0] = 3.0 & tags[1] = 2 & floats[1] = -2.0 &
+        tags[2] = 2 & floats[2] = 7.0 & tags[3] = 2 & IsNaN(floats[3]);
+    }
+    else if(op = '-') {
+      return tags[0] = 2 & floats[0] = 3.0 & tags[1] = 2 & floats[1] = -2.0 &
+        tags[2] = 2 & floats[2] = 3.0 & tags[3] = 2 & IsNaN(floats[3]);
+    }
+    else if(op = '*') {
+      return tags[0] = 2 & floats[0] = 0.0 & tags[1] = 2 & floats[1] = 0.0 &
+        tags[2] = 2 & floats[2] = 10.0 & tags[3] = 2 & IsNaN(floats[3]);
+    }
+    else if(op = '/') {
+      # rows 0 and 1 are zero divisors: tag 0, the float slot untouched
+      return tags[0] = 0 & floats[0] = 0.0 & tags[1] = 0 & floats[1] = 0.0 &
+        tags[2] = 2 & floats[2] = 2.5 & tags[3] = 2 & IsNaN(floats[3]);
+    };
+
+    # remainder: 5 - floor(2.5) * 2 = 1
+    return tags[0] = 0 & tags[1] = 0 & tags[2] = 2 & floats[2] = 1.0 & tags[3] = 2 & IsNaN(floats[3]);
+  }
+
+  function : Probe(id : Int, t : Bool, f : Bool, one : Float, two : Float, nan : Float, inf : Float, nzero : Float, zero : Float) ~ Bool {
+    if(id = 0) { return IsNaN(Div(two, nan)) & IsNaN(Div(zero, nan)); };
+    if(id = 1) { return IsNaN(Div(nan, two)) & IsNaN(Div(nan, one)); };
+    if(id = 2) { return IsNaN(Reciprocal(nan)) & Reciprocal(two) = 0.5; };
+    if(id = 3) {
+      ys := Float->New[3];
+      ys[0] := two;
+      ys[1] := nan;
+      ys[2] := nzero;
+      return DivElement(one, ys, 0) = 0.5 & IsNaN(DivElement(one, ys, 1));
+    };
+    if(id = 4) { return IsNaN(DivLocal(two, nan)) & DivLocal(one, two) = 0.5; };
+    if(id = 5) {
+      xs := Float->New[4];
+      each(i : xs) {
+        xs[i] := i + 1.0;
+      };
+      return IsNaN(SumQuotients(xs, nan)) & SumQuotients(xs, two) = 5.0;
+    };
+    if(id = 6) { return IsNaN(DivAssign(two, nan)) & DivAssign(one, two) = 0.5; };
+    if(id = 7) { return IsNaN(Div(inf, nan)) & IsNaN(Div(nan, nan)) & IsNaN(Div(nan, inf)); };
+    if(id = 8) {
+      return Div(one, two) = 0.5 & Div(two, inf) = 0.0 & Div(inf, two) = inf &
+        IsNegZero(Div(nzero, two)) & Div(0.0 - two, two) = -1.0;
+    };
+    if(id = 9) {
+      return IsNaN(PickDiv(t, two, nan, one)) & IsNaN(PickDiv(f, two, one, nan)) &
+        PickDiv(t, two, one, nan) = 2.0 & PickDiv(f, two, nan, two) = 1.0;
+    };
+    if(id = 10) {
+      return Guarded(two, zero) = 0.0 & Guarded(two, nzero) = 0.0 &
+        IsNaN(Guarded(two, nan)) & Guarded(one, two) = 0.5;
+    };
+    if(id = 11) {
+      return GuardedNeq(two, zero) = -1.0 & GuardedNeq(two, nzero) = -1.0 &
+        IsNaN(GuardedNeq(two, nan)) & GuardedNeq(one, two) = 0.5;
+    };
+    if(id = 12) {
+      return Evaluate('+', nan, nzero, zero, two) & Evaluate('-', nan, nzero, zero, two) &
+        Evaluate('*', nan, nzero, zero, two) & Evaluate('/', nan, nzero, zero, two) &
+        Evaluate('%', nan, nzero, zero, two);
+    };
+    if(id = 13) {
+      return GuardedAfter(t, two, zero, one) = -100.0 & GuardedAfter(f, two, one, nzero) = -100.0 &
+        IsNaN(GuardedAfter(t, two, nan, one)) & GuardedAfter(f, one, nan, two) = 1.5;
+    };
+
+    return false;
+  }
+}
