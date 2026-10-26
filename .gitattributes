@@ -52,3 +52,4 @@ tools/cicd/fixtures/obu_verify/** -text
 *.zip binary
 *.gz binary
 *.tar binary
+*.onnx binary
