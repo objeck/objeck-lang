@@ -320,7 +320,9 @@ class QueryAggregates {
 		Check("unterminated string is an error", t->Query("select * from p where col_2 = 'x") = Nil);
 		Check("trailing operator is an error", t->Query("select * from p where col1 <") = Nil);
 		Check("trailing junk is an error", t->Query("select * from p where col1 = 1 junk") = Nil);
-		Check("literal on the left is an error", t->Query("select * from p where 1 = col1") = Nil);
+		# a literal on the left was an error until expressions came to conditions; it now compares
+		# as the same test the other way round
+		Check("literal on the left compares", Size(t->Query("select * from p where 1 = col1")) = Size(t->Query("select * from p where col1 = 1")));
 		Check("unclosed parenthesis is an error", t->Query("select * from p where (col1 = 1") = Nil);
 		Check("GetError after a failed query", t->GetError() <> Nil);
 

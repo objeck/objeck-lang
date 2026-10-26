@@ -1,0 +1,269 @@
+# EXTRA_LIBS: net,regex,csv,misc,query,concurrent
+#~
+Query.Structured: expressions under one Catalog shared by several threads (docs/QUERY_DESIGN.md,
+"Expressions in every clause", "Thread safety"). A parsed statement's expression trees sit in
+the catalog's and the tables' plan caches and are shared by every thread that runs them; a run
+binds them to its own evaluators and scratch arrays. Each round changes the tables a little on
+this thread (so the sorted indexes the planner reads are stale and the first queries rebuild
+them at once), works out every answer alone with an oracle catalog over equal tables, then six
+threads meet at a barrier before each statement and run it through the shared catalog:
+expressions in WHERE (reduced to index reads and not), in the select list and in ORDER BY, with
+placeholders; a join with an expression over both tables; statements new to the plan cache
+every round; a statement that fails; and a prepared statement each thread binds to values of
+its own. Every answer must equal the oracle's.
+~#
+use Query.Structured, System.Concurrency, Collection;
+
+class Round {
+	@number : Int;
+	@sqls : String[];
+	@answers : String[];
+	@prepared : String;
+	@values : Int[];
+	@prepared_answers : String[];
+
+	New(number : Int, sqls : String[], answers : String[], prepared : String, values : Int[], prepared_answers : String[]) {
+		@number := number;
+		@sqls := sqls;
+		@answers := answers;
+		@prepared := prepared;
+		@values := values;
+		@prepared_answers := prepared_answers;
+	}
+
+	method : public : GetNumber() ~ Int { return @number; }
+	method : public : GetSqls() ~ String[] { return @sqls; }
+	method : public : GetAnswers() ~ String[] { return @answers; }
+	method : public : GetPrepared() ~ String { return @prepared; }
+	method : public : GetValues() ~ Int[] { return @values; }
+	method : public : GetPreparedAnswers() ~ String[] { return @prepared_answers; }
+}
+
+class Worker from Thread {
+	@catalog : Catalog;
+	@round : Round;
+	@id : Int;
+	@barrier : Barrier;
+	@failures : Int;
+	@checks : Int;
+	@first : String;
+
+	New(catalog : Catalog, round : Round, id : Int, barrier : Barrier) {
+		Parent("worker");
+		@catalog := catalog;
+		@round := round;
+		@id := id;
+		@barrier := barrier;
+	}
+
+	method : public : GetFailures() ~ Int { return @failures; }
+	method : public : GetChecks() ~ Int { return @checks; }
+	method : public : GetFirst() ~ String { return @first; }
+
+	method : Check(what : String, got : String, expected : String) ~ Nil {
+		@checks += 1;
+		if(got = Nil | <>got->Equals(expected)) {
+			@failures += 1;
+			if(@first = Nil) {
+				shown := got <> Nil ? got->ReplaceAll("\n", "|") : "Nil";
+				wanted := expected->ReplaceAll("\n", "|");
+				@first := "thread {$@id}, {$what}: got '{$shown}', expected '{$wanted}'";
+			};
+		};
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		number := @round->GetNumber();
+		sqls := @round->GetSqls();
+		answers := @round->GetAnswers();
+		count := sqls->Size();
+
+		# every thread runs the statements in the same order, so they miss the caches and
+		# rebuild the stale indexes together; the order turns with the round
+		each(n : count) {
+			q := (n + number) % count;
+			@barrier->Await();
+			Check("query {$q} '{$(sqls[q])}'", QueryExprConcurrent->Answer(@catalog, sqls[q]), answers[q]);
+		};
+
+		# a prepared statement each, from the shared plan cache, bound to values of its own
+		@barrier->Await();
+		statement := @catalog->Prepare(@round->GetPrepared());
+		if(statement = Nil) {
+			Check("prepare", "ERROR: {$(@catalog->GetError())}", "a statement");
+			return;
+		};
+
+		values := @round->GetValues();
+		each(k : values) {
+			v := (@id + k) % values->Size();
+			statement->Bind(1, values[v]);
+			statement->Bind(2, values[v] * 3);
+			rs := statement->Execute();
+			got := rs <> Nil ? QueryExprConcurrent->Text(rs) : "ERROR: {$(statement->GetError())}";
+			Check("prepared, value {$(values[v])}", got, @round->GetPreparedAnswers()[v]);
+		};
+	}
+}
+
+class QueryExprConcurrent {
+	function : Answer(catalog : Catalog, sql : String) ~ String {
+		rs := catalog->Query(sql);
+		if(rs = Nil) {
+			return "ERROR: {$(catalog->GetError())}";
+		};
+		return Text(rs);
+	}
+
+	function : Text(rs : Table) ~ String {
+		return rs->ToCsv()->ReplaceAll("\r\n", "\n");
+	}
+
+	function : Lcg(seed : IntRef) ~ Int {
+		seed->Set((seed->Get() * 6364136223846793005 + 1442695040888963407) and 0x7fffffffffffffff);
+		return (seed->Get() >> 17) % 1000000;
+	}
+
+	# a measurement row: id, price (with NaN and empty cells), qty (with whole numbers past
+	# 2^53), grp
+	function : AddRow(m : Table, id : Int, seed : IntRef) ~ Nil {
+		row := m->Insert();
+		row->Set("id", IntRef->New(id));
+		pick := Lcg(seed) % 40;
+		if(pick = 0) {
+			row->Set("price", FloatRef->New(Float->NaN()));
+		}
+		else if(pick > 1) {
+			row->Set("price", FloatRef->New((Lcg(seed) % 2000)->As(Float) / 8.0));
+		};
+		if(Lcg(seed) % 30 = 0) {
+			row->Set("qty", IntRef->New(9007199254740993 + Lcg(seed) % 3));
+		}
+		else {
+			row->Set("qty", IntRef->New(Lcg(seed) % 50 - 5));
+		};
+		groups := ["a", "b", "c", "d"];
+		row->Set("grp", groups[Lcg(seed) % groups->Size()]);
+	}
+
+	# the same tables in a catalog: m, indexed, and g, a small table to join
+	function : Fill(catalog : Catalog, rows : Int) ~ Table {
+		m := Table->New("m", ["id", "price", "qty", "grp"]);
+		seed := IntRef->New(41);
+		each(i : rows) {
+			AddRow(m, i, seed);
+		};
+		m->CreateIndex("price", IndexKind->SORTED);
+		m->CreateIndex("qty", IndexKind->HASH);
+		catalog->Add(m);
+
+		catalog->Execute("create table g (grp string, w int)");
+		catalog->Execute("insert into g values ('a', 1), ('b', 10), ('c', 100), ('e', 1000)");
+		return m;
+	}
+
+	# the same change to both: a few rows added and cells rewritten, so the sorted index is
+	# stale when the threads start
+	function : Change(m : Table, round : Int) ~ Nil {
+		seed := IntRef->New(1000 + round);
+		each(k : 5) {
+			AddRow(m, 100000 + round * 10 + k, seed);
+		};
+		live := m->LiveRows();
+		each(k : 5) {
+			row := m->RowAt(live[Lcg(seed) % live->Size()]);
+			row->Set("price", FloatRef->New((Lcg(seed) % 2000)->As(Float) / 8.0));
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		rounds := 20;
+		threads := 6;
+		if(args->Size() > 0) {
+			rounds := args[0]->ToInt();
+		};
+
+		shared := Catalog->New();
+		oracle := Catalog->New();
+		shared_m := Fill(shared, 3000);
+		oracle_m := Fill(oracle, 3000);
+
+		failures := 0;
+		checks := 0;
+		first : String := Nil;
+		each(round : rounds) {
+			Change(shared_m, round);
+			Change(oracle_m, round);
+
+			sqls := String->New[12];
+			sqls[0] := "select id, price * qty as total from m where price * qty > 4000 order by total desc, id limit 20";
+			sqls[1] := "select id from m where 200 < price and qty % 7 = 3 order by id";
+			sqls[2] := "select id, -qty as nq from m where qty + 1 > 9007199254740990 order by nq, id";
+			sqls[3] := "select count(*) as n from m where not (price / (qty - 10) > 1) or price is null";
+			sqls[4] := "select id, price from m where price between qty * 2 and qty * 4 order by price * -1, id limit 15";
+			sqls[5] := "select m.id, m.qty * g.w as weighted from m join g on m.grp = g.grp where m.qty * g.w > 3000 order by weighted desc, m.id limit 10";
+			sqls[6] := "select id from m where qty in (id % 10, id % 10 + 1) and price > 100 order by id";
+			sqls[7] := "select grp, count(*) as n from m where price * 2 >= qty * 10 group by grp order by grp";
+			# new to the plan cache: every thread misses it at once
+			sqls[8] := "select id from m where price * {$(round + 2)} < qty and id > {$round} order by id";
+			sqls[9] := "select id, (price + {$round}) / 2 as half from m where id < {$(30 + round)} order by half, id";
+			# failures, each refused with its reason
+			sqls[10] := "select id from m where nope_{$round} * 2 > 1";
+			sqls[11] := "select id from m order by zz + {$round}";
+
+			answers := String->New[sqls->Size()];
+			each(q : sqls) {
+				answers[q] := Answer(oracle, sqls[q]);
+			};
+
+			prepared := "select id, qty * ? as scaled from m where qty * ? > 100 and price is not null order by scaled desc, id limit 12";
+			values := [1, 2, 5, 9];
+			prepared_answers := String->New[values->Size()];
+			statement := oracle->Prepare(prepared);
+			each(v : values) {
+				statement->Bind(1, values[v]);
+				statement->Bind(2, values[v] * 3);
+				prepared_answers[v] := Text(statement->Execute());
+			};
+
+			work := Round->New(round, sqls, answers, prepared, values, prepared_answers);
+			barrier := Barrier->New(threads);
+			workers := Worker->New[threads];
+			each(t : threads) {
+				workers[t] := Worker->New(shared, work, t, barrier);
+			};
+			each(t : threads) {
+				workers[t]->Execute(Nil);
+			};
+			each(t : threads) {
+				workers[t]->Join();
+			};
+			each(t : threads) {
+				checks += workers[t]->GetChecks();
+				failures += workers[t]->GetFailures();
+				if(first = Nil & workers[t]->GetFirst() <> Nil) {
+					first := workers[t]->GetFirst();
+				};
+			};
+		};
+
+		# the answers were real ones, not all errors
+		sample := Answer(oracle, "select count(*) as n from m where price * qty > 4000");
+		if(sample->StartsWith("ERROR")) {
+			failures += 1;
+			first := "the oracle could not answer: {$sample}";
+		};
+		refusal := Answer(oracle, "select id from m where nope_1 * 2 > 1");
+		if(<>refusal->Equals("ERROR: unknown column 'nope_1'")) {
+			failures += 1;
+			first := "a refusal reads '{$refusal}'";
+		};
+
+		if(failures > 0) {
+			"FAIL: query_expr_concurrent, {$failures} of {$checks} checks; first: {$first}"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: query_expr_concurrent ({$checks} checks, {$rounds} rounds of {$threads} threads)"->PrintLine();
+	}
+}

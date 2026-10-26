@@ -212,16 +212,17 @@ of reading numbers only:
 
 - whole numbers stay whole under `+ - *` and `%`; `/` always gives a Float (`7 / 2` is 3.5), and
   a Float anywhere gives a Float (`%` of Floats keeps the dividend's sign);
-- an empty cell, a cell that is not a number, and a zero divisor give an empty cell rather than
-  an error (a Float division by zero would otherwise stop the program);
+- an empty cell, a cell that is not a number, a zero divisor, and an Int result that does not
+  fit in 64 bits give an empty cell rather than an error or a wrapped number (a Float division
+  by zero would otherwise stop the program);
 - the default label is the expression as written (`n + 1`); `AS` names it, and `ORDER BY` can
   use that name or the position;
 - `n -1` (a name, then a number with its sign) is a subtraction, as it reads.
 
 Expressions are computed after WHERE, over the rows that pass, before DISTINCT, ORDER BY and
-LIMIT. Not yet: expressions in WHERE, ON, GROUP BY or HAVING, or in a grouped or aggregate
-query's select list (`sum(x) / count(*)`): each is refused with an error that says so, never a
-silent Nil. "Expressions in every clause" below designs them, in three stages. Every statement that fails returns Nil with `GetError` set; a program that calls a
+LIMIT. WHERE and ORDER BY take expressions too ("Expressions in every clause" below). Not yet:
+expressions in ON, GROUP BY or HAVING, or in a grouped or aggregate query's select list
+(`sum(x) / count(*)`): each is refused with an error that says so, never a silent Nil. Every statement that fails returns Nil with `GetError` set; a program that calls a
 method on that Nil gets the language's ordinary `NilError`, which a `?->` region recovers from.
 
 Aggregates: `COUNT(*)`, `COUNT(col)`, `SUM`, `AVG`, `MIN`, `MAX`, plus `MEDIAN` and `STDDEV`
@@ -1573,10 +1574,9 @@ value      := text | '?' | word                          -- a LIKE or MATCHES pa
 An expression produces, for each row, one of: a whole number (Int), a number (Float), text, a
 date, a Bool, another object (a cell of an OBJECT column that is none of these), or an empty
 value. Columns give their cells by their storage type; an OBJECT column's cell is classified by
-its class (`IntRef`, `FloatRef`, `String`, `Date`, `BoolRef`; any other class is an object, and
-a `BoolRef` there is a Bool that compares as an object, rule 6 below).
+its class (`IntRef`, `FloatRef`, `String`, `Date`, `BoolRef`; any other class is an object).
 Literals: a number as written (a whole number is an Int, anything with a `.` or an exponent a
-Float), text, a date, `TRUE`/`FALSE` as 1 and 0, `NULL` as empty. A placeholder has its bound
+Float, and so is a whole number of more than 18 digits, as a CSV cell is typed), text, a date, `TRUE`/`FALSE` as 1 and 0, `NULL` as empty. A placeholder has its bound
 value's kind.
 
 **Arithmetic reads numbers only** (#1367's rule, kept): an operand that is empty, text, a date,
@@ -1610,19 +1610,17 @@ always been compared with a constant (section 3, "Phase 2" and "Phase 6" in "As 
 2. Two Ints compare exactly (so `2^53 + 1 > 2^53`).
 3. Two numbers otherwise compare as Floats; if either is NaN they cannot be ordered.
 4. Two texts compare as text; two dates in time order.
-5. A Bool read from a BOOL column compares, false before true, with another such Bool, with any
-   other Bool (an OBJECT cell's or a placeholder's), and with the whole numbers 0 and 1 (which
-   is what `TRUE` and `FALSE` are).
-6. Two other values of the same class (cells of OBJECT columns and placeholders' values that are
-   none of the kinds above, and Bools that are not from a BOOL column) compare by that class's
-   `Compare`, called on the left one, as `Cell->Compare` does.
+5. Two Bools compare false before true; a Bool read from a BOOL column also compares with the
+   whole numbers 0 and 1 (which is what `TRUE` and `FALSE` are), as those numbers.
+6. Two other objects of the same class (cells of OBJECT columns and placeholders' values that
+   are none of the kinds above) compare by that class's `Compare`, called on the left one, as
+   `Cell->Compare` does.
 7. Anything else cannot be ordered.
 
-Rules 5 and 6 are the engine's today, kept on purpose though they are uneven: `flag = true`
-matches a BOOL column, while a `BoolRef` in an OBJECT column compared with the number 1 does
-not, and `BoolRef->Compare` tells only equal from unequal. With them, every pair of a column type
-and a constant compares exactly as the existing `Filter` compares them, which is what makes
-reduction (below) safe.
+Rule 5's asymmetry is the engine's today, kept on purpose: `flag = true` matches a BOOL column,
+while a `BoolRef` in an OBJECT column compared with the number 1 does not (`Cell->Compare`). With
+it, every pair of a column type and a constant compares exactly as the existing `Filter` compares
+them, which is what makes reduction (below) safe.
 
 Values that cannot be ordered satisfy only `<>`. So NaN satisfies only `<>`, as it does today,
 and sorts after every number. `NOT` is the complement of a condition's rows, empty cells
@@ -1810,6 +1808,50 @@ and `OBJECK_JIT_THRESHOLD=1`, on Windows and on Linux.
 - **Explain**: reduced terms name their index, expression terms scan, joins without a key say
   they test every pair.
 - The existing query tests, the full suite, and the libraries' decompressed comparison.
+
+### As built
+
+**Stage 1 (expression core, WHERE, ORDER BY).**
+- `SqlExpr` is the parsed tree (column, number, other literal, placeholder, bare word, `+ - * /
+  %`, unary minus); `SqlEval` is a tree bound for one run, with a batch `Eval` into a kind array
+  and typed arrays; `ExprPredicate`, a private subclass of `Predicate`, is the test the parser
+  makes when a condition is not column-against-a-value. Conditions that were column-against-a-
+  value still parse to exactly the `Predicate` they always did. #1367's per-row `SqlExpr->Eval`
+  and its parse-time column numbering are gone; the select list uses `SqlEval` and fills its
+  columns with `FillNumbers`.
+- `Filter->BindExpr` does the reduction. One case is not flipped: a constant of a class other
+  than a number, text, a date or a Bool, against an OBJECT column on the right, because such a
+  class's `Compare` need not order both ways alike; it is tested as an expression.
+- Found by the differential test and fixed at the source: `Cell->Compare` ordered two Bools of an
+  OBJECT column with `BoolRef->Compare`, which answers 1 for any two unequal values, so ORDER BY
+  over such a column depended on the sort's steps and `<`/`>` against a Bool were wrong both
+  ways. Two Bools now compare false before true, which is also rule 5's order, so rules 5 and 6
+  above need no Bool exception.
+- A whole number of more than 18 digits reads as a Float (`Cell->NumberKind`, unchanged), so
+  `9223372036854775807` in a statement is a Float literal; the test's evaluator follows that.
+- Found while measuring: a method holding a Float `?:` was never JIT-compiled (the compiler
+  stored the value through an Int temporary), which kept `SqlEval`'s arithmetic and
+  `Filter->EvalExpr` interpreted; fixed in the compiler by #1397. Measured at 1,000,000 rows
+  (Windows x64, `-opt s3`, best of three, `ExecuteView`), both with #1397's compiler:
+
+  | Query | Before (master) | Stage 1 |
+  |---|---|---|
+  | `select price * qty` | 585 ms (#1367, row at a time) | 146 ms |
+  | `where price * qty > 100` (773k rows) | refused | 29 ms |
+  | `where price * qty > 1500` (28k rows) | refused | 23 ms |
+  | the same filter over plain arrays | 9 ms | 9 ms |
+  | `where price > 50`, a scanned `Filter`, for scale | 29 ms | 28 ms |
+
+  So an expression term costs what a scanned column test does, about 3× a hand-written loop.
+  Without #1397 the expression terms took 530-650 ms (interpreted). Once they were compiled, the
+  differential test found the x64 JIT raising "Divide by zero" for a NaN divisor (its guard
+  took an unordered compare as equal), fixed in the JIT by #1399.
+- Tests: `query_expr_where` (59 checks), `query_expr_differential` (540 queries over 6 seeds by
+  default, sized for the suite's time cap; 9,672 queries over 60 seeds, every seventh seed
+  on a table of two 64K-row groups, checked once), `query_expr_zone_maps` (70,000 rows: group and
+  batch boundaries, deletes next to them, a dictionary turned into plain strings, NaN, against a
+  loop and an indexed twin), `query_expr_concurrent` (6 threads, 20 rounds, 1,920 checks).
+  `query_aggregates`' check that a literal on the left is an error now checks that it compares.
 
 ## Open questions
 
