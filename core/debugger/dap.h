@@ -122,6 +122,11 @@ namespace Runtime {
     int prog_stderr_pipe[2];
     std::thread stdout_reader_thread;
     std::thread stderr_reader_thread;
+    // how many reader threads still run, so the end of a run can wait for
+    // the program's last output to go out before `terminated` does
+    std::mutex reader_mtx;
+    std::condition_variable reader_cv;
+    int readers_running = 0;
 
     // The VM execution thread spawned in HandleConfigurationDone. Stored
     // as a member (not detached) so Run() can join it on disconnect and
@@ -137,6 +142,7 @@ namespace Runtime {
 
     void RedirectProgramStdio();
     void StartOutputReaders();
+    void DrainProgramOutput();
     void OutputReaderLoop(int fd, const std::string& category);
 
     // JSON-RPC transport
