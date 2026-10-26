@@ -797,9 +797,9 @@ design above. Each phase adds its notes here.
 - Only a SELECT is answered (403 otherwise). Its catalog has file access turned off
   (`Catalog->SetFileAccess(false)`), so a query naming a file or a URL is refused (403): it
   would otherwise read the server's disk or make the server fetch an address for the client.
-  A result over the row limit is refused (413) rather than cut short. Queries run one at a time
-  under a mutex (it predates catalogs that threads may share, below, and published tables may
-  be written by the program that publishes them). There is no time
+  A result over the row limit is refused (413) rather than cut short. Requests are answered at
+  once, each on its own thread; the program changes a published table only between
+  `BeginWrite` and `EndWrite` ("A server that answers at once" below). There is no time
   limit yet: the engine has no cancellation point to stop a running query at.
 - `Web.HTTP.Server` runs one server per process, so one `TableServer` serves at a time.
   Binding to localhost only needs a listen address, which the server does not take yet.
@@ -1054,7 +1054,7 @@ in a linked library method, so adding classes to `query.obl` made a query loop f
 
 **The contract.** One thread writes a table, or several threads read it, never both at once:
 writes are not locked, and a program that mixes them must order them itself (as `TableServer`
-does with its mutex). Within that contract, any number of threads may query one table at the
+does with its readers-writer lock). Within that contract, any number of threads may query one table at the
 same time, including the first queries after a write, and every answer is the answer a scan
 gives on one thread. `Table->GetError` reports the calling thread's own last error ("Errors
 per thread" below), and a `Catalog` may be shared too ("One catalog, many threads").
@@ -1193,8 +1193,8 @@ with another table under that name, the same statement kept inserting into the o
 (now each run takes the table's columns as they are; `query_sql_relational` covers it); and the
 `CREATE TABLE` race above.
 
-Not changed: `TableServer` still answers one request at a time under its mutex, since the
-program that publishes tables may write them while it serves.
+`TableServer` answered one request at a time under its mutex until it, too, was made to answer
+at once ("A server that answers at once" below).
 
 **The test.** `query_catalog_concurrent`: six threads share one catalog over 30 rounds. Each
 round rewrites a CSV and a zip a little longer (so every thread misses the file cache for them
@@ -1369,6 +1369,66 @@ or empty member.
 sheet, a named sheet, a sheet pattern, `header => false`, `first_row`), joins across all
 three, the catalog cache, and every refusal above, each archive and workbook written by the
 test. Before the change every query fails at the lexer (`unexpected character '.'`).
+
+## A server that answers at once
+
+**The gap.** `TableServer` answered one request at a time: every request took its mutex, from
+parsing the statement to writing the answer, because a catalog could not be queried by two
+threads at once. Once it could ("One catalog, many threads"), the mutex served only to keep a
+request from reading a table while it was written, and the server could not even do that: the
+program that publishes the tables writes them from its own threads, which never took the server's
+mutex, so a request could read a table half changed while every other request waited in line.
+
+**What can write.** Nothing over the wire: the server answers only `SELECT` (a statement that
+would change data, `INSERT`, `UPDATE`, `DELETE`, `CREATE` and `DROP INDEX`, `CREATE TABLE`, is
+refused with 403, before it runs) and has file access off. Every request only reads. The writer
+is the program, through the `Table` objects it published.
+
+**The design: a readers-writer lock, and an API for the program's writes.**
+
+- Each request takes a read share for as long as it reads: from parsing to the last byte of
+  its answer (a table sent as CSV, JSON or `.otab` is read while it is written out). Any number
+  of requests hold read shares at once, each on the thread the web server gave its connection.
+- `TableServer->BeginWrite()` waits until no request is being answered and holds new ones off
+  until `EndWrite()`. A program changes a published table only between the two: `INSERT`,
+  `UPDATE`, `DELETE`, an index, a column, `Compact`, or anything else that writes a `Table`.
+  The server's guarantee is exactly that: it keeps its own requests from overlapping the program's
+  writes made inside `BeginWrite`/`EndWrite`, and nothing else; a write made outside them, or a
+  table also read by other threads of the program, is the program's to order, as the table
+  contract says ("Concurrent readers").
+- A waiting writer holds new readers off, so a steady stream of requests cannot keep a change
+  waiting for ever; the requests already in finish first. The lock is not reentrant: a thread
+  calls `EndWrite` before it calls `BeginWrite` again, and calls neither while answering a request.
+- `Publish` and `Unpublish` need no lock: they are a catalog's `Add` and `Remove`, which are safe
+  while threads query, and a request already being answered keeps the tables it found. The table
+  list skips a table unpublished while it was being written.
+- The lock is a `ThreadMutex` and a `Condition` in the server (a waiting thread is parked for
+  the collector). The count of answered requests has its own small lock.
+
+A callback form (`Write(change)`) was weighed and left out: the pair is the smallest API that
+lets a program hold the write across several statements, and Objeck has no exceptions that
+could skip the `EndWrite`.
+
+**The test.** `query_server_concurrent`: eight client threads meet at a barrier before each of
+nine requests (grouped and joined SELECTs, an ordered limit, `DISTINCT`, tables as JSON and
+`.otab`, and bad SQL), in CSV, JSON and `.otab`, over six rounds, and every answer must equal the
+one a catalog of the same tables gives on one thread. Then the program changes a published table
+sixty times between `BeginWrite` and `EndWrite`, cell by cell (every `a` is its row's id plus the
+changes so far and every `b` minus that, so a read during a change sees a sum or a range that is
+off), while four clients read it and another sends statements that would write, each of which
+must be refused with 403. On master the test does not compile (there is no `BeginWrite`); with
+the program's writes left unguarded, which is all master offered, 18 to 136 reads per run saw a
+change half done, in every mode. It passes at `-opt s3` and `s0`, with and without the JIT, and
+with `OBJECK_JIT_THRESHOLD=1`.
+
+**Throughput.** One SELECT (a `GROUP BY` over 20,000 rows) sent as fast as each client thread
+can, for six seconds, on this machine (Windows, 24 logical processors):
+
+| clients | before (mutex) | after |
+|---|---|---|
+| 1 | 37.8 req/s | 34.2 req/s |
+| 4 | 49.1 req/s | 86.7 req/s |
+| 8 | 48.2 req/s | 112.4 req/s |
 
 ## Indexes in .otab files
 

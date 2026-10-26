@@ -10389,8 +10389,14 @@
 			}
 		},
 		"Query.Structured.Server.TableServer": {
-			"description": "Publishes tables over HTTP, read-only:\n\n- 'GET \/tables' lists the tables, their columns and row counts, as JSON.\n- 'GET \/tables\/NAME' returns a table.\n- 'GET \/query?sql=...' or 'POST \/query' (the statement as the UTF-8 body) runs a SELECT over the published tables and returns the result.\n\nResults are CSV, JSON or .otab by the request's Accept header ('text\/csv', 'application\/json', 'application\/x-otab'), or a 'format=csv|json|otab' parameter; CSV is the default. Only SELECT is answered: a statement that would change data is refused (403), and so is a query that names a file or a URL, which would let a client read the server's disk or make it fetch an address. A result larger than the row limit is refused (413) rather than cut short. Queries run one at a time, since tables are not shared between threads. RemoteSource reads a published table from another program.\n\nWeb.HTTP.Server runs one server per process, so one TableServer serves at a time.",
+			"description": "Publishes tables over HTTP, read-only:\n\n- 'GET \/tables' lists the tables, their columns and row counts, as JSON.\n- 'GET \/tables\/NAME' returns a table.\n- 'GET \/query?sql=...' or 'POST \/query' (the statement as the UTF-8 body) runs a SELECT over the published tables and returns the result.\n\nResults are CSV, JSON or .otab by the request's Accept header ('text\/csv', 'application\/json', 'application\/x-otab'), or a 'format=csv|json|otab' parameter; CSV is the default. Only SELECT is answered: a statement that would change data is refused (403), and so is a query that names a file or a URL, which would let a client read the server's disk or make it fetch an address. A result larger than the row limit is refused (413) rather than cut short. RemoteSource reads a published table from another program.\n\nRequests are answered at once, each on its own thread, since they only read. The program that published the tables may change them while the server runs, but only between BeginWrite and EndWrite, which wait for the requests being answered to finish and hold new ones until the change is done; a table may not be written while another thread reads it.\n\nWeb.HTTP.Server runs one server per process, so one TableServer serves at a time.",
 			"functions": {
+				"BeginWrite": {
+					"descriptions": ["**Waits until no request is being answered, then holds new requests until EndWrite, so the program may change its published tables: INSERT, UPDATE, DELETE, an index, a column, Compact, or anything else that writes a table. Requests read the published tables at once, and a table may not be written while another thread reads it. Call EndWrite when done; a thread that called BeginWrite may not call it again before then.**\n\n```method : public : BeginWrite() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nserver->BeginWrite();\nruns->Execute(\"delete from runs where score < 0\");\nserver->EndWrite();\n```"]
+				},
+				"EndWrite": {
+					"descriptions": ["**Ends a change BeginWrite began: requests are answered again**\n\n```method : public : EndWrite() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
 				"GetAnswered": {
 					"descriptions": ["**Gets the number of requests answered, successfully or not**\n\n```method : public : GetAnswered() ~ Int```\n\n\n\nreturn: Int"]
 				},
@@ -10398,7 +10404,7 @@
 					"descriptions": ["**Constructor; publishes nothing until Publish**\n\n```New()```\n\n"]
 				},
 				"Publish": {
-					"descriptions": ["**Publishes a table under its name, replacing one of the same name**\n\n```method : public : Publish(table:Table) ~ Nil```\n\n\n\ntable: Table\n\nreturn: Nil"]
+					"descriptions": ["**Publishes a table under its name, replacing one of the same name. A request already being answered keeps the tables it found.**\n\n```method : public : Publish(table:Table) ~ Nil```\n\n\n\ntable: Table\n\nreturn: Nil"]
 				},
 				"Serve": {
 					"descriptions": ["**Serves on a port until Stop; this call blocks**\n\n```method : public : Serve(port:Int) ~ Nil```\n\n\n\nport: Int\n\nreturn: Nil"]
@@ -10410,7 +10416,7 @@
 					"descriptions": ["**Stops serving**\n\n```method : public : Stop() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"Unpublish": {
-					"descriptions": ["**Stops publishing a table**\n\n```method : public : Unpublish(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool"]
+					"descriptions": ["**Stops publishing a table. A request already being answered keeps the tables it found.**\n\n```method : public : Unpublish(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool"]
 				}
 			}
 		},
