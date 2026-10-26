@@ -1024,6 +1024,62 @@ loaded := LinearRegression->Load("model.dat");
 loaded->Predict(X);
 ```
 
+### Lab support (System.ML.Lab)
+
+The plumbing around a parameter sweep, in `ml_lab.obl` (`-lib ml,ml_lab,csv,json` or `-lib @ai`): a deterministic stratified hold-out split, class-ratio resampling of the training set against a fixed test set, a wall-clock stopwatch, a sweep runner that collects accuracy, precision, recall, F1, FPR, false negatives and fit time per value (mean and standard deviation over seeds), a result table that renders as text, Markdown, CSV and JSON, and standalone SVG charts. Bad input raises `LabError` with a message naming the problem. Design: [ML_LAB_SUPPORT_DESIGN.md](ML_LAB_SUPPORT_DESIGN.md); a complete run is [`programs/examples/ml/lab_sweeps.obs`](../programs/examples/ml/lab_sweeps.obs).
+
+```ruby
+use System.ML, System.ML.Lab;
+
+# 70/30 stratified split from a seed; every stratum lands in both halves
+split := Partition->TrainTest(X, y, 0.3, 42, true);
+scaler := FeatureScaler->New();
+scaler->Fit(split->GetTrainX());            # training half only
+train_z := scaler->Transform(split->GetTrainX());
+test_z := scaler->Transform(split->GetTestX());
+
+# the class-imbalance experiment: resample the TRAINING half, the test set is untouched
+train := Resample->ToPositiveRatio(train_z, split->GetTrainY(), 0.05, 42);
+```
+
+```ruby
+# a sweep: the Trial builds, fits under a Stopwatch and predicts for one value
+class ForestTrial implements Trial {
+  @s : DataSplit;
+  New(s : DataSplit) { @s := s; }
+  method : public : Run(value : Float, name : String, seed : Int) ~ TrialResult {
+    forest := RandomForestClassifier->New(value->As(Int), 6, 2, seed);
+    sw := Stopwatch->New();
+    sw->Start();
+    forest->Fit(@s->GetTrainX(), @s->GetTrainY());
+    ms := sw->Stop();
+    return TrialResult->New(forest->Predict(@s->GetTrainX()), @s->GetTrainY(),
+      forest->Predict(@s->GetTestX()), @s->GetTestY(), ms);
+  }
+}
+
+exp := Experiment->New("Random forest: number of trees", "n_estimators");
+exp->SetValues([10.0, 50.0, 100.0, 200.0, 500.0]);
+exp->SetSeeds([1, 2, 3]);                        # mean ± std per cell
+exp->AddSetting("max_depth", "6");               # the footnote
+table := exp->Run(ForestTrial->New(split));
+
+table->ToText()->PrintLine();
+table->Save("rf_trees.md");                      # .md, .csv, .json or text by extension
+table->ToChart(["test_accuracy", "precision", "recall", "f1"])->Save("rf_trees.svg");
+table->ToChart(["train_accuracy", "test_accuracy"])->Save("overfitting.svg");
+```
+
+```ruby
+# charts on their own: lines with error bars, a log x axis, grouped bars, a loss curve
+c := Chart->New("Recall vs C", "C", "recall");
+c->SetLogX(true);
+c->AddLine("rbf", cs, recall_rbf, recall_std);
+c->Save("recall_vs_c.svg");
+
+loss := Chart->LossCurve("Training loss", ["lr=0.1", "lr=0.01"], losses);  # rows = series, columns = epochs
+```
+
 ---
 
 ## Classic AI (System.AI)
@@ -1140,7 +1196,7 @@ obc -src program.obs -lib @ai -dest program.obe
 | `@web` | `net_h2`, `net_quic`, `web_server`, `json_rpc`, `net_server`, `net`, `json`, `cipher` | HTTP/2, HTTP/3, the embedded server, JSON-RPC |
 | `@data` | `xml`, `regex`, `csv`, `query`, `rss`, `misc`, `net`, `json`, `cipher` | parsing and querying structured data |
 | `@ml` | `gemini`, `openai`, `ollama`, `net_server`, `misc`, `net`, `json`, `cipher` | LLM clients: OpenAI, Gemini, Ollama |
-| `@ai` | `ai`, `ml`, `nlp`, `csv` | local System.ML / System.AI / System.NLP work |
+| `@ai` | `ai`, `ml`, `ml_lab`, `nlp`, `csv`, `json` | local System.ML / System.ML.Lab / System.AI / System.NLP work |
 | `@vision` | `opencv`, `onnx`, `json`, `cipher` | OpenCV and ONNX inference |
 | `@game` | `sdl2`, `sdl_game`, `sdl_gl`, `json`, `gen_collect` | SDL games, 2D and OpenGL |
 
@@ -1231,3 +1287,5 @@ ollama/   test_0.obs (generate)   test_1.obs (vision)
 opencv_onnx/  demo_face.obs    demo_yolo.obs    demo_resnet.obs
               demo_phi3_*.obs  demo_phi3v_*.obs
 ```
+
+A complete `System.ML.Lab` run -- two parameter sweeps with tables, CSVs and SVG charts -- is [`programs/examples/ml/lab_sweeps.obs`](../programs/examples/ml/lab_sweeps.obs).

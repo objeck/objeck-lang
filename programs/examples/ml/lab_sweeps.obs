@@ -1,0 +1,205 @@
+#~
+Two parameter sweeps of the kind a cybersecurity-ML lab hands in, end to end
+with System.ML.Lab: a table, a CSV and SVG charts per sweep, written to a
+directory of your choice.
+
+  obc -src lab_sweeps.obs -lib ml,ml_lab,csv,json -dest lab_sweeps.obe
+  obr lab_sweeps.obe [output_dir]          # default: lab_output
+
+Dataset ("synthetic-2d v1"): 500 rows, two features, 20% positive (the
+"attack" class), built from System.ML.Random with seed 7 so every run and
+every machine gets the same rows. Each class is a cloud around its own centre
+-- negatives around (0, 0), positives around (2.0, 1.5) -- with unit-ish
+spread (each coordinate is a sum of four uniforms, so roughly normal with
+standard deviation 0.58, scaled by 1.3). The clouds overlap, which is what
+makes the sweeps show something: a perfectly separable set would read 1.0
+everywhere.
+
+Sweep 1: RandomForestClassifier over n_estimators 10, 50, 100, 200, 500, two
+seeds, max_depth 6, min_samples 2. The 500-tree fits dominate the run time
+(about a minute in all on a laptop); the fit_ms column is the point. Outputs rf_trees.md, rf_trees.csv,
+rf_trees.svg (test accuracy, precision, recall, F1 with error bars) and
+rf_train_vs_test.svg (the overfitting curve).
+
+Sweep 2: the linear SVM over lambda, its L2 strength, which plays the inverse
+role of C (a large lambda is a small C). Values 0.001 .. 10 on a log axis, one
+seed, learning rate 0.1, 300 epochs. Outputs svm_lambda.md, svm_lambda.csv and
+svm_lambda.svg.
+
+Both sweeps measure on the SAME held-out 30%, split stratified with seed 42,
+with a FeatureScaler fitted on the training 70% only. The kernel SVMs and the
+outlier detectors plug into the same Trial interface when they are present.
+~#
+use System.IO.Filesystem;
+use System.ML;
+use System.ML.Lab;
+
+class ForestTrial implements Trial {
+	@train_x : Float[,];
+	@train_y : Bool[];
+	@test_x : Float[,];
+	@test_y : Bool[];
+
+	New(train_x : Float[,], train_y : Bool[], test_x : Float[,], test_y : Bool[]) {
+		@train_x := train_x;
+		@train_y := train_y;
+		@test_x := test_x;
+		@test_y := test_y;
+	}
+
+	method : public : Run(value : Float, name : String, seed : Int) ~ TrialResult {
+		forest := RandomForestClassifier->New(value->As(Int), 6, 2, seed);
+
+		sw := Stopwatch->New();
+		sw->Start();
+		forest->Fit(@train_x, @train_y);
+		ms := sw->Stop();
+
+		return TrialResult->New(forest->Predict(@train_x), @train_y, forest->Predict(@test_x), @test_y, ms);
+	}
+}
+
+class SvmTrial implements Trial {
+	@train_x : Float[,];
+	@train_y : Bool[];
+	@train_col : Float[,];
+	@test_x : Float[,];
+	@test_y : Bool[];
+
+	New(train_x : Float[,], train_y : Bool[], test_x : Float[,], test_y : Bool[]) {
+		@train_x := train_x;
+		@train_y := train_y;
+		@test_x := test_x;
+		@test_y := test_y;
+
+		# SVM->Fit takes the labels as a rows x 1 matrix of 0.0 / 1.0
+		@train_col := Float->New[train_y->Size(), 1];
+		each(i : train_y) {
+			if(train_y[i]) {
+				@train_col[i, 0] := 1.0;
+			};
+		};
+	}
+
+	method : public : Run(value : Float, name : String, seed : Int) ~ TrialResult {
+		svm := SVM->New(value, 0.1, 300);
+
+		sw := Stopwatch->New();
+		sw->Start();
+		svm->Fit(@train_x, @train_col);
+		ms := sw->Stop();
+
+		return TrialResult->New(svm->PredictClass(@train_x), @train_y, svm->PredictClass(@test_x), @test_y, ms);
+	}
+}
+
+class LabSweeps {
+	function : Main(args : String[]) ~ Nil {
+		out_dir := "lab_output";
+		if(args->Size() > 0) {
+			out_dir := args[0];
+		};
+		if(<>Directory->Exists(out_dir)) {
+			if(<>Directory->Create(out_dir)) {
+				"cannot create {$out_dir}"->ErrorLine();
+				Runtime->Exit(1);
+			};
+		};
+
+		# --- the dataset, the split, the scaler (training half only) ---
+		rows := 500;
+		x := Float->New[rows, 2];
+		y := Bool->New[rows];
+		rnd := Random->New(7);
+		each(i : rows) {
+			y[i] := i < 100;        # 20% positive; the split shuffles, so order is harmless
+			if(y[i]) {
+				x[i, 0] := 2.0 + 1.3 * Spread(rnd);
+				x[i, 1] := 1.5 + 1.3 * Spread(rnd);
+			}
+			else {
+				x[i, 0] := 1.3 * Spread(rnd);
+				x[i, 1] := 1.3 * Spread(rnd);
+			};
+		};
+
+		split := Partition->TrainTest(x, y, 0.3, 42, true);
+		scaler := FeatureScaler->New();
+		scaler->Fit(split->GetTrainX());
+		train_z := scaler->Transform(split->GetTrainX());
+		test_z := scaler->Transform(split->GetTestX());
+		train_y := split->GetTrainY();
+		test_y := split->GetTestY();
+
+		n_train := split->GetTrainSize();
+		n_test := split->GetTestSize();
+		pos_test := Resample->CountPositives(test_y);
+		"dataset: {$rows} rows, train {$n_train}, test {$n_test} ({$pos_test} positive)"->PrintLine();
+
+		dataset_note := "synthetic-2d v1 (500 rows, 20% positive, seed 7); 70/30 stratified split, seed 42; FeatureScaler fitted on train";
+
+		# --- sweep 1: forest size, three seeds ---
+		trees := Float->New[5];
+		trees[0] := 10.0; trees[1] := 50.0; trees[2] := 100.0; trees[3] := 200.0; trees[4] := 500.0;
+		seeds := Int->New[2];
+		seeds[0] := 1; seeds[1] := 2;
+
+		rf := Experiment->New("Random forest: number of trees", "n_estimators");
+		rf->SetValues(trees);
+		rf->SetSeeds(seeds);
+		rf->AddSetting("max_depth", "6");
+		rf->AddSetting("min_samples", "2");
+		rf->AddSetting("dataset", dataset_note);
+
+		"running the forest sweep (5 sizes x 2 seeds; the 500-tree fits take longest)..."->PrintLine();
+		rf_table := rf->Run(ForestTrial->New(train_z, train_y, test_z, test_y));
+		rf_table->ToText()->PrintLine();
+
+		rf_metrics := String->New[4];
+		rf_metrics[0] := "test_accuracy"; rf_metrics[1] := "precision"; rf_metrics[2] := "recall"; rf_metrics[3] := "f1";
+		overfit := String->New[2];
+		overfit[0] := "train_accuracy"; overfit[1] := "test_accuracy";
+
+		Write(rf_table->Save(out_dir + "/rf_trees.md"), out_dir + "/rf_trees.md");
+		Write(rf_table->Save(out_dir + "/rf_trees.csv"), out_dir + "/rf_trees.csv");
+		Write(rf_table->ToChart(rf_metrics)->Save(out_dir + "/rf_trees.svg"), out_dir + "/rf_trees.svg");
+		Write(rf_table->ToChart(overfit)->Save(out_dir + "/rf_train_vs_test.svg"), out_dir + "/rf_train_vs_test.svg");
+
+		# --- sweep 2: linear SVM lambda on a log axis ---
+		lambdas := Float->New[5];
+		lambdas[0] := 0.001; lambdas[1] := 0.01; lambdas[2] := 0.1; lambdas[3] := 1.0; lambdas[4] := 10.0;
+
+		svm := Experiment->New("Linear SVM: L2 strength lambda (the inverse role of C)", "lambda");
+		svm->SetValues(lambdas);
+		svm->AddSetting("learning_rate", "0.1");
+		svm->AddSetting("epochs", "300");
+		svm->AddSetting("dataset", dataset_note);
+
+		"running the SVM sweep (5 lambdas)..."->PrintLine();
+		svm_table := svm->Run(SvmTrial->New(train_z, train_y, test_z, test_y));
+		svm_table->ToText()->PrintLine();
+
+		svm_metrics := String->New[3];
+		svm_metrics[0] := "test_accuracy"; svm_metrics[1] := "recall"; svm_metrics[2] := "fpr";
+
+		Write(svm_table->Save(out_dir + "/svm_lambda.md"), out_dir + "/svm_lambda.md");
+		Write(svm_table->Save(out_dir + "/svm_lambda.csv"), out_dir + "/svm_lambda.csv");
+		Write(svm_table->ToChart(svm_metrics, true)->Save(out_dir + "/svm_lambda.svg"), out_dir + "/svm_lambda.svg");
+
+		"done: open the .svg files in a browser or paste them into a document"->PrintLine();
+	}
+
+	# roughly normal, mean 0, standard deviation about 0.58
+	function : Spread(rnd : Random) ~ Float {
+		return rnd->NextReal() + rnd->NextReal() + rnd->NextReal() + rnd->NextReal() - 2.0;
+	}
+
+	function : Write(written : Bool, path : String) ~ Nil {
+		if(written) {
+			"wrote {$path}"->PrintLine();
+		}
+		else {
+			"could not write {$path}"->ErrorLine();
+		};
+	}
+}
