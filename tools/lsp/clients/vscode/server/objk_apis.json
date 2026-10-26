@@ -16311,7 +16311,7 @@
 			}
 		},
 		"Web.HTTP.Server.MCP.McpRequestHandler": {
-			"description": "MCP request handler",
+			"description": "MCP request handler. Each POST body is one JSON-RPC 2.0 message from the client and nothing in it is trusted: a body that is not JSON, is not a request object, or carries \"jsonrpc\", \"method\", \"id\" or \"params\" of the wrong type is answered with the JSON-RPC error the MCP specification mandates (see ErrorCode) instead of being dereferenced, a body over MAX_BODY_SIZE bytes is refused with HTTP 413, a notification (no \"id\") is accepted with a bodyless HTTP 202, and a handler callback (ListTools, CallTool, ...) that raises, dereferences Nil or returns Nil is answered with an internal error rather than ending the server.",
 			"functions": {
 				"CallPrompt": {
 					"descriptions": ["**Calls a prompt**\n\n```method : private : virutal : CallPrompt(name:String, arguments:JsonElement) ~ Vector&lt;PromptMessage&gt;```\n\n\n\nname: String\n\narguments: JsonElement\n\nreturn: Vector&lt;PromptMessage&gt;"]
@@ -16347,7 +16347,7 @@
 					"descriptions": ["**Processes GET requests**\n\n```method : private : ProcessGet(request:Web.HTTP.Server.Request, response:Web.HTTP.Server.Response) ~ Bool```\n\n\n\nrequest: Web.HTTP.Server.Request\n\nresponse: Web.HTTP.Server.Response\n\nreturn: Bool"]
 				},
 				"ProcessPost": {
-					"descriptions": ["**Processes POST requests**\n\n```method : private : ProcessPost(request:Web.HTTP.Server.Request, response:Web.HTTP.Server.Response) ~ Bool```\n\n\n\nrequest: Web.HTTP.Server.Request\n\nresponse: Web.HTTP.Server.Response\n\nreturn: Bool"]
+					"descriptions": ["**Processes POST requests. The body is one JSON-RPC 2.0 message. A body that is empty, not JSON, over MAX_BODY_SIZE bytes or nested deeper than the parser allows is answered with PARSE_ERROR (INVALID_REQUEST and HTTP 413 for the size); JSON that is not an object, or whose \"jsonrpc\" is not \"2.0\", \"method\" is not a non-empty string, \"id\" is present but neither a string nor a number, or \"params\" is not an object, with INVALID_REQUEST (HTTP 400); a message without an \"id\", or whose method starts with \"notifications\/\", is a notification and gets a bodyless HTTP 202. A request for a method the server lacks, with params it cannot use, or whose handler callback raised, dereferenced Nil or returned Nil is answered with METHOD_NOT_FOUND, INVALID_PARAMS or INTERNAL_ERROR in a JSON-RPC error reply (HTTP 200). The request id is echoed in every reply, null when it was unusable.**\n\n```method : private : ProcessPost(request:Web.HTTP.Server.Request, response:Web.HTTP.Server.Response) ~ Bool```\n\n\n\nrequest: Web.HTTP.Server.Request\n\nresponse: Web.HTTP.Server.Response\n\nreturn: Bool"]
 				},
 				"ShowPayload": {
 					"descriptions": ["**Displays payload for debugging**\n\n```function : ShowPayload(payload:String) ~ Nil```\n\n\n\npayload: String\n\nreturn: Nil"]
@@ -16355,8 +16355,11 @@
 				"StopCacheTimer": {
 					"descriptions": ["**Stops the session cache timer**\n\n```function : StopCacheTimer() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
+				"WriteError": {
+					"descriptions": ["**Writes a JSON-RPC error response**\n\n```method : private : WriteError(code:Int, message:String, id:JsonElement, response:Web.HTTP.Server.Response, http_code:Int) ~ Nil```\n\n\n\ncode: Int\n\nmessage: String\n\nid: JsonElement\n\nresponse: Web.HTTP.Server.Response\n\nhttp_code: Int\n\nreturn: Nil"]
+				},
 				"WriteResponse": {
-					"descriptions": ["**Writes a JSON-RPC response**\n\n```method : private : WriteResponse(message:JsonElement, id:Int, response:Web.HTTP.Server.Response, code:Int) ~ Nil```\n\n\n\nmessage: JsonElement\n\nid: Int\n\nresponse: Web.HTTP.Server.Response\n\ncode: Int\n\nreturn: Nil"]
+					"descriptions": ["**Writes a JSON-RPC response**\n\n```method : private : WriteResponse(message:JsonElement, id:Int, response:Web.HTTP.Server.Response, code:Int) ~ Nil```\n\n\n\nmessage: JsonElement\n\nid: Int\n\nresponse: Web.HTTP.Server.Response\n\ncode: Int\n\nreturn: Nil", "**Writes a JSON-RPC response whose id is echoed as the request sent it (a string or a number; Nil writes null)**\n\n```method : private : WriteResponse(message:JsonElement, id:JsonElement, response:Web.HTTP.Server.Response, code:Int) ~ Nil```\n\n\n\nmessage: JsonElement\n\nid: JsonElement\n\nresponse: Web.HTTP.Server.Response\n\ncode: Int\n\nreturn: Nil"]
 				}
 			}
 		},
@@ -21462,6 +21465,30 @@
 				{ "name": "NONE", "value": "100", "description": "Not compressed." },
 				{ "name": "GZIP", "value": "101", "description": "gzip (RFC 1952), sent as Content-Encoding: gzip." },
 				{ "name": "DEFLATE", "value": "102", "description": "The zlib format (RFC 1950), which is what HTTP calls deflate." }
+			]
+		},
+		"Web.HTTP.Server.MCP.McpRequestHandler#ErrorCode": {
+			"name": "ErrorCode",
+			"bundle": "Web.HTTP.Server.MCP",
+			"class": "Web.HTTP.Server.MCP.McpRequestHandler",
+			"kind": "consts",
+			"description": "JSON-RPC 2.0 error codes the handler answers with: PARSE_ERROR for a body that is not JSON (HTTP 400), INVALID_REQUEST for JSON that is not a request object or has a member of the wrong type (HTTP 400, or 413 for a body over MAX_BODY_SIZE), METHOD_NOT_FOUND, INVALID_PARAMS and INTERNAL_ERROR for a well-formed request (HTTP 200, the error in the JSON-RPC reply)",
+			"items": [
+				{ "name": "PARSE_ERROR", "value": "-32700", "description": "" },
+				{ "name": "INVALID_REQUEST", "value": "-32600", "description": "" },
+				{ "name": "METHOD_NOT_FOUND", "value": "-32601", "description": "" },
+				{ "name": "INVALID_PARAMS", "value": "-32602", "description": "" },
+				{ "name": "INTERNAL_ERROR", "value": "-32603", "description": "" }
+			]
+		},
+		"Web.HTTP.Server.MCP.McpRequestHandler#Limit": {
+			"name": "Limit",
+			"bundle": "Web.HTTP.Server.MCP",
+			"class": "Web.HTTP.Server.MCP.McpRequestHandler",
+			"kind": "consts",
+			"description": "Limits on a request: MAX_BODY_SIZE is the largest POST body in bytes (4 MiB, the default of the reference MCP servers); a larger one is refused with HTTP 413 before it is parsed. Nesting is bounded by the JSON parser (64 levels; deeper is a parse error).",
+			"items": [
+				{ "name": "MAX_BODY_SIZE", "value": "4194304", "description": "" }
 			]
 		},
 		"Web.Server.Request#Method": {

@@ -3257,9 +3257,43 @@ bundle Web.HTTP.Server.MCP {
 	}
 
 	#~
-	MCP request handler
+	MCP request handler. Each POST body is one JSON-RPC 2.0 message from the
+	client and nothing in it is trusted: a body that is not JSON, is not a
+	request object, or carries "jsonrpc", "method", "id" or "params" of the
+	wrong type is answered with the JSON-RPC error the MCP specification
+	mandates (see ErrorCode) instead of being dereferenced, a body over
+	MAX_BODY_SIZE bytes is refused with HTTP 413, a notification (no "id") is
+	accepted with a bodyless HTTP 202, and a handler callback (ListTools,
+	CallTool, ...) that raises, dereferences Nil or returns Nil is answered
+	with an internal error rather than ending the server.
 	~#
 	class McpRequestHandler from HttpRequestHandler {
+		#~
+		JSON-RPC 2.0 error codes the handler answers with: PARSE_ERROR for a body
+		that is not JSON (HTTP 400), INVALID_REQUEST for JSON that is not a
+		request object or has a member of the wrong type (HTTP 400, or 413 for
+		a body over MAX_BODY_SIZE), METHOD_NOT_FOUND, INVALID_PARAMS and
+		INTERNAL_ERROR for a well-formed request (HTTP 200, the error in the
+		JSON-RPC reply)
+		~#
+		consts ErrorCode {
+			PARSE_ERROR := -32700,
+			INVALID_REQUEST := -32600,
+			METHOD_NOT_FOUND := -32601,
+			INVALID_PARAMS := -32602,
+			INTERNAL_ERROR := -32603
+		}
+
+		#~
+		Limits on a request: MAX_BODY_SIZE is the largest POST body in bytes
+		(4 MiB, the default of the reference MCP servers); a larger one is
+		refused with HTTP 413 before it is parsed. Nesting is bounded by the
+		JSON parser (64 levels; deeper is a parse error).
+		~#
+		consts Limit {
+			MAX_BODY_SIZE := 4194304
+		}
+
 		@config : static : JsonElement;
 
 		@session_cache : static : Hash<String, Hash<String, String>>;
@@ -3428,7 +3462,19 @@ bundle Web.HTTP.Server.MCP {
 		}
 
 		#~
-		Processes POST requests
+		Processes POST requests. The body is one JSON-RPC 2.0 message. A body
+		that is empty, not JSON, over MAX_BODY_SIZE bytes or nested deeper than
+		the parser allows is answered with PARSE_ERROR (INVALID_REQUEST and HTTP
+		413 for the size); JSON that is not an object, or whose "jsonrpc" is not
+		"2.0", "method" is not a non-empty string, "id" is present but neither a
+		string nor a number, or "params" is not an object, with INVALID_REQUEST
+		(HTTP 400); a message without an "id", or whose method starts with
+		"notifications/", is a notification and gets a bodyless HTTP 202. A
+		request for a method the server lacks, with params it cannot use, or
+		whose handler callback raised, dereferenced Nil or returned Nil is
+		answered with METHOD_NOT_FOUND, INVALID_PARAMS or INTERNAL_ERROR in a
+		JSON-RPC error reply (HTTP 200). The request id is echoed in every
+		reply, null when it was unusable.
 		@param request HTTP request
 		@param response HTTP response
 		@return true to continue processing, false otherwise
@@ -3458,262 +3504,395 @@ bundle Web.HTTP.Server.MCP {
 				return false;
 			};
 
+			# the body is client-supplied; every member is checked before it is
+			# read, because a dereference of a missing one ended the server thread
+			content : Byte[];
 			if(request->HasContent()) {
-				content := request->GetContent();
-
-				if(McpServer->IsDebug()) {
-					ShowPayload(content);
-				};
-
-				parser := JsonParser->New(content);
-				if(parser->Parse()) {
-					root_json := parser->GetRoot();
-
-					# process method
-					method_name := root_json->Get("method")->GetValue();
-					if(method_name <> Nil) {
-						if(McpServer->IsDebug()) {
-							"[Post: method_name='{$method_name}']"->PrintLine();
-						};
-
-						# execute method
-						select(method_name) {
-							# ping
-							label "ping": {
-								id := root_json->Get("id")->GetInt();
-								WriteResponse(Nil, id, response, 200);
-								return false;
-							}
-
-							# initialize
-							label "initialize": {
-								name := @config->Get("name")->GetValue();
-								instructions := @config->Get("instructions")->GetValue();
-								version := @config->Get("version")->GetValue();
-
-								# TODO: better error checking
-								id := root_json->Get("id")->GetInt();
-
-								result := JsonElement->New(JsonElement->JsonType->OBJECT);
-								result->Insert("protocolVersion", "2025-06-18");
-								result->Insert("instructions", instructions);
-
-								# add capabilities
-								capabilities_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-
-								prompts_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
-								prompts_json->Insert("listChanged", true);
-								capabilities_json->Insert("prompts", prompts_json);
-
-								tools_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
-								tools_json->Insert("listChanged", true);
-								capabilities_json->Insert("tools", tools_json);
-								
-								resources_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
-								resources_json->Insert("listChanged", true);
-								capabilities_json->Insert("resources", resources_json);
-
-								result->Insert("capabilities", capabilities_json);
-
-								# server information
-								server_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
-								server_json->Insert("name", name);
-								server_json->Insert("version", version);
-
-								result->Insert("serverInfo", server_json);
-
-								session_id := Runtime->GetUuid();
-								
-								session := Hash->New()<String, String>;
-								session->Insert("_timestamp_", System.Time.Date->New()->GetUnixTime()->ToString())
-								
-								critical(@session_cache_mutex) {
-									@session_cache->Insert(session_id, session);
-								};
-
-								response->SetHeader("mcp-session-id", session_id);
-								WriteResponse(result, id, response, 200);
-
-								return false;
-							}
-							
-							# notifications/initialized
-							label "notifications/initialized": {
-								if(McpServer->IsDebug()) {
-									"### notifications/initialized ###"->PrintLine();
-								};
-
-								response->SetCode(202);
-								return false;
-							}
-							
-							# logging/setLevel
-							label "logging/setLevel": {
-								id := root_json->Get("id")->GetInt();
-								WriteResponse(Nil, id, response, 200);
-								return false;
-							}
-
-							# resources/templates/list
-							label "resources/templates/list": {
-								id := root_json->Get("id")->GetInt();
-
-								templates_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-
-								templates := ListTemplates();
-								each(template in templates) {
-									templates_array_json->Add(template->ToJson());
-								};
-
-								result := JsonElement->New(JsonElement->JsonType->OBJECT);
-								result->Insert("resourceTemplates", templates_array_json);
-
-								WriteResponse(result, id, response, 200);
-								return false;
-							}
-							
-							# resources/list
-							label "resources/list": {
-								id := root_json->Get("id")->GetInt();
-
-								resources_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-
-								resources := ListResources();
-								each(resource in resources) {
-									resources_array_json->Add(resource->ToJson());
-								};
-
-								result := JsonElement->New(JsonElement->JsonType->OBJECT);
-								result->Insert("resources", resources_array_json);
-								
-								WriteResponse(result, id, response, 200);
-								return false;
-							}
-							
-							# resources/read
-							label "resources/read": {
-								id := root_json->Get("id")->GetInt();
-								uri_str := root_json->Get("params")->Get("uri")->GetValue();
-
-								resources_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-
-								resource_details := GetResource(Url->New(uri_str));
-								each(resource_detail in resource_details) {
-									resources_array_json->Add(resource_detail->ToJson());
-								};
-
-								result := JsonElement->New(JsonElement->JsonType->OBJECT);
-								result->Insert("contents", resources_array_json);
-								
-								WriteResponse(result, id, response, 200);
-								return false;
-							}
-							
-							# tools/list
-							label "tools/list": {
-								id := root_json->Get("id")->GetInt();
-
-								tools := ListTools();
-
-								tools_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-								each(tool in tools) {
-									tools_array_json->Add(tool->ToJson());
-								};
-
-								result := JsonElement->New(JsonElement->JsonType->OBJECT);
-								result->Insert("tools", tools_array_json);
-								
-								WriteResponse(result, id, response, 200);
-								return false;
-							}
-
-							# tools/call
-							label "tools/call": {
-								call_name : String; text : String;
-								call_params_json := root_json->Get("params");								
-								if(call_params_json <> Nil) {
-									name_json := call_params_json->Get("name");
-									if(name_json <> Nil) {
-										call_name := name_json->GetValue();
-									};
-
-									call_params_json := call_params_json->Get("arguments");
-									if(call_params_json <> Nil & call_name <> Nil) {
-										id := root_json->Get("id")->GetInt();
-
-										contents := CallTool(call_name, call_params_json);
-
-										content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-										each(content in contents) {
-											content_array_json->Add(content->ToJson());
-										};
-
-										result := JsonElement->New(JsonElement->JsonType->OBJECT);
-										result->Insert("content", content_array_json);
-										
-										WriteResponse(result, id, response, 200);
-										return false;
-									};
-								};
-							}
-
-							# prompts/list
-							label "prompts/list": {
-								id := root_json->Get("id")->GetInt();
-
-								prompts := ListPrompts();
-
-								prompts_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-								each(tool in prompts) {
-									prompts_array_json->Add(tool->ToJson());
-								};
-
-								result := JsonElement->New(JsonElement->JsonType->OBJECT);
-								result->Insert("prompts", prompts_array_json);
-								
-								WriteResponse(result, id, response, 200);
-								return false;
-							}
-
-							# prompts/get
-							label "prompts/get": {
-								call_name : String; text : String;
-								call_params_json := root_json->Get("params");								
-								if(call_params_json <> Nil) {
-									name_json := call_params_json->Get("name");
-									if(name_json <> Nil) {
-										call_name := name_json->GetValue();
-									};
-
-									call_params_json := call_params_json->Get("arguments");
-									if(call_params_json <> Nil & call_name <> Nil) {
-										id := root_json->Get("id")->GetInt();
-
-										contents := CallPrompt(call_name, call_params_json);
-
-										content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-										each(content in contents) {
-											content_array_json->Add(content->ToJson());
-										};
-
-										result := JsonElement->New(JsonElement->JsonType->OBJECT);
-										result->Insert("messages", content_array_json);
-										
-										WriteResponse(result, id, response, 200);
-										return false;
-									};
-								};
-							}
-						};
-					};
-				};
+				content := request->GetContentBytes();
 			};
 
-			response->SetCode(204);
+			if(content = Nil | content->Size() = 0) {
+				WriteError(McpRequestHandler->ErrorCode->PARSE_ERROR->As(Int), "Parse error: empty body", Nil, response, 400);
+				return false;
+			};
+
+			max_body_size := McpRequestHandler->Limit->MAX_BODY_SIZE->As(Int);
+			if(content->Size() > max_body_size) {
+				body_size := content->Size();
+				WriteError(McpRequestHandler->ErrorCode->INVALID_REQUEST->As(Int), "Invalid Request: body of {$body_size} bytes exceeds the limit of {$max_body_size} bytes", Nil, response, 413);
+				return false;
+			};
+
 			if(McpServer->IsDebug()) {
-				">>>  Unknown Message <<<"->ErrorLine();
+				ShowPayload(content->ToString());
 			};
+
+			# the parser bounds nesting itself (64 levels), so a deeply nested
+			# body is a parse error rather than a stack overflow
+			parser := JsonParser->New(content);
+			if(<>parser->Parse()) {
+				reason := parser->GetError();
+				if(reason = Nil) {
+					reason := "invalid JSON";
+				};
+				WriteError(McpRequestHandler->ErrorCode->PARSE_ERROR->As(Int), "Parse error: {$reason}", Nil, response, 400);
+				return false;
+			};
+
+			# one request object; a batch (array) is not supported by MCP
+			root_json := parser->GetRoot();
+			if(root_json = Nil | root_json->GetType() <> JsonElement->JsonType->OBJECT) {
+				WriteError(McpRequestHandler->ErrorCode->INVALID_REQUEST->As(Int), "Invalid Request: the body must be a single JSON-RPC request object", Nil, response, 400);
+				return false;
+			};
+
+			# the id is echoed in every reply once it is known to be usable: a
+			# string or a number; MCP does not allow null
+			id_json := root_json->Get("id");
+			if(id_json <> Nil & id_json->GetType() <> JsonElement->JsonType->STRING & id_json->GetType() <> JsonElement->JsonType->NUMBER) {
+				WriteError(McpRequestHandler->ErrorCode->INVALID_REQUEST->As(Int), "Invalid Request: \"id\" must be a string or a number", Nil, response, 400);
+				return false;
+			};
+			# the parser keeps a string's escapes raw and the serializer escapes
+			# again on the way out, so a string id is echoed from its decoded value
+			if(id_json <> Nil & id_json->GetType() = JsonElement->JsonType->STRING) {
+				id_json := JsonElement->New(JsonElement->Decode(id_json->GetValue()));
+			};
+
+			version_json := root_json->Get("jsonrpc");
+			if(version_json = Nil | version_json->GetType() <> JsonElement->JsonType->STRING | <>version_json->GetValue()->Equals("2.0")) {
+				WriteError(McpRequestHandler->ErrorCode->INVALID_REQUEST->As(Int), "Invalid Request: \"jsonrpc\" must be \"2.0\"", id_json, response, 400);
+				return false;
+			};
+
+			method_json := root_json->Get("method");
+			if(method_json = Nil | method_json->GetType() <> JsonElement->JsonType->STRING | method_json->GetValue()->IsEmpty()) {
+				WriteError(McpRequestHandler->ErrorCode->INVALID_REQUEST->As(Int), "Invalid Request: \"method\" must be a non-empty string", id_json, response, 400);
+				return false;
+			};
+			method_name := method_json->GetValue();
+
+			# params, when present, is an object (a JSON null counts as absent)
+			params_json := root_json->Get("params");
+			if(params_json <> Nil & params_json->GetType() = JsonElement->JsonType->NULL) {
+				params_json := Nil;
+			};
+			if(params_json <> Nil & params_json->GetType() <> JsonElement->JsonType->OBJECT) {
+				WriteError(McpRequestHandler->ErrorCode->INVALID_REQUEST->As(Int), "Invalid Request: \"params\" must be an object", id_json, response, 400);
+				return false;
+			};
+
+			if(McpServer->IsDebug()) {
+				"[Post: method_name='{$method_name}']"->PrintLine();
+			};
+
+			# a notification is accepted and gets no reply
+			if(id_json = Nil | method_name->StartsWith("notifications/")) {
+				if(McpServer->IsDebug()) {
+					"### notification: {$method_name} ###"->PrintLine();
+				};
+				response->SetCode(202);
+				return false;
+			};
+
+			# a request is answered with a result or an in-band error; a handler
+			# callback that raises or dereferences Nil is an internal error for
+			# this request, not the end of the server
+			try {
+				Dispatch(method_name, params_json, id_json, response);
+			}
+			on(e : Error) {
+				reason := e->GetMessage();
+				if(reason = Nil) {
+					reason := "unknown";
+				};
+				if(McpServer->IsDebug()) {
+					">>> {$method_name} failed: {$reason} <<<"->ErrorLine();
+				};
+				WriteError(McpRequestHandler->ErrorCode->INTERNAL_ERROR->As(Int), "Internal error: {$reason}", id_json, response, 200);
+			};
+
 			return false;
+		}
+
+		# Answers one well-formed request. The params have been checked to be an
+		# object or Nil; each method checks the members it needs and answers
+		# INVALID_PARAMS when one is missing or of the wrong type. A callback
+		# that returns Nil is an INTERNAL_ERROR, since the handler has no list
+		# or content to answer with.
+		method : Dispatch(method_name : String, params_json : JsonElement, id_json : JsonElement, response : Web.HTTP.Server.Response) ~ Nil {
+			select(method_name) {
+				# ping
+				label "ping": {
+					WriteResponse(Nil, id_json, response, 200);
+				}
+
+				# initialize
+				label "initialize": {
+					name := @config->Get("name")->GetValue();
+					instructions := @config->Get("instructions")->GetValue();
+					version := @config->Get("version")->GetValue();
+
+					result := JsonElement->New(JsonElement->JsonType->OBJECT);
+					result->Insert("protocolVersion", "2025-06-18");
+					result->Insert("instructions", instructions);
+
+					# add capabilities
+					capabilities_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+					prompts_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
+					prompts_json->Insert("listChanged", true);
+					capabilities_json->Insert("prompts", prompts_json);
+
+					tools_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
+					tools_json->Insert("listChanged", true);
+					capabilities_json->Insert("tools", tools_json);
+
+					resources_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
+					resources_json->Insert("listChanged", true);
+					capabilities_json->Insert("resources", resources_json);
+
+					result->Insert("capabilities", capabilities_json);
+
+					# server information
+					server_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
+					server_json->Insert("name", name);
+					server_json->Insert("version", version);
+
+					result->Insert("serverInfo", server_json);
+
+					session_id := Runtime->GetUuid();
+
+					session := Hash->New()<String, String>;
+					session->Insert("_timestamp_", System.Time.Date->New()->GetUnixTime()->ToString())
+
+					critical(@session_cache_mutex) {
+						@session_cache->Insert(session_id, session);
+					};
+
+					response->SetHeader("mcp-session-id", session_id);
+					WriteResponse(result, id_json, response, 200);
+				}
+
+				# logging/setLevel
+				label "logging/setLevel": {
+					WriteResponse(Nil, id_json, response, 200);
+				}
+
+				# resources/templates/list
+				label "resources/templates/list": {
+					templates := ListTemplates();
+					if(templates = Nil) {
+						WriteCallbackNil("ListTemplates", id_json, response);
+						return;
+					};
+
+					templates_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+					each(template in templates) {
+						templates_array_json->Add(template->ToJson());
+					};
+
+					result := JsonElement->New(JsonElement->JsonType->OBJECT);
+					result->Insert("resourceTemplates", templates_array_json);
+
+					WriteResponse(result, id_json, response, 200);
+				}
+
+				# resources/list
+				label "resources/list": {
+					resources := ListResources();
+					if(resources = Nil) {
+						WriteCallbackNil("ListResources", id_json, response);
+						return;
+					};
+
+					resources_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+					each(resource in resources) {
+						resources_array_json->Add(resource->ToJson());
+					};
+
+					result := JsonElement->New(JsonElement->JsonType->OBJECT);
+					result->Insert("resources", resources_array_json);
+
+					WriteResponse(result, id_json, response, 200);
+				}
+
+				# resources/read
+				label "resources/read": {
+					uri_str := ParamString(params_json, "uri");
+					if(uri_str = Nil) {
+						WriteInvalidParams("\"uri\" must be a non-empty string", id_json, response);
+						return;
+					};
+
+					resource_details := GetResource(Url->New(uri_str));
+					if(resource_details = Nil) {
+						WriteCallbackNil("GetResource", id_json, response);
+						return;
+					};
+
+					resources_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+					each(resource_detail in resource_details) {
+						resources_array_json->Add(resource_detail->ToJson());
+					};
+
+					result := JsonElement->New(JsonElement->JsonType->OBJECT);
+					result->Insert("contents", resources_array_json);
+
+					WriteResponse(result, id_json, response, 200);
+				}
+
+				# tools/list
+				label "tools/list": {
+					tools := ListTools();
+					if(tools = Nil) {
+						WriteCallbackNil("ListTools", id_json, response);
+						return;
+					};
+
+					tools_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+					each(tool in tools) {
+						tools_array_json->Add(tool->ToJson());
+					};
+
+					result := JsonElement->New(JsonElement->JsonType->OBJECT);
+					result->Insert("tools", tools_array_json);
+
+					WriteResponse(result, id_json, response, 200);
+				}
+
+				# tools/call
+				label "tools/call": {
+					call_name := ParamString(params_json, "name");
+					if(call_name = Nil) {
+						WriteInvalidParams("\"name\" must be a non-empty string", id_json, response);
+						return;
+					};
+
+					# the arguments are optional; a tool sees an empty object then
+					arguments_json := ParamObject(params_json, "arguments");
+					if(arguments_json = Nil) {
+						WriteInvalidParams("\"arguments\" must be an object", id_json, response);
+						return;
+					};
+
+					contents := CallTool(call_name, arguments_json);
+					if(contents = Nil) {
+						WriteCallbackNil("CallTool", id_json, response);
+						return;
+					};
+
+					content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+					each(content in contents) {
+						content_array_json->Add(content->ToJson());
+					};
+
+					result := JsonElement->New(JsonElement->JsonType->OBJECT);
+					result->Insert("content", content_array_json);
+
+					WriteResponse(result, id_json, response, 200);
+				}
+
+				# prompts/list
+				label "prompts/list": {
+					prompts := ListPrompts();
+					if(prompts = Nil) {
+						WriteCallbackNil("ListPrompts", id_json, response);
+						return;
+					};
+
+					prompts_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+					each(prompt in prompts) {
+						prompts_array_json->Add(prompt->ToJson());
+					};
+
+					result := JsonElement->New(JsonElement->JsonType->OBJECT);
+					result->Insert("prompts", prompts_array_json);
+
+					WriteResponse(result, id_json, response, 200);
+				}
+
+				# prompts/get
+				label "prompts/get": {
+					call_name := ParamString(params_json, "name");
+					if(call_name = Nil) {
+						WriteInvalidParams("\"name\" must be a non-empty string", id_json, response);
+						return;
+					};
+
+					arguments_json := ParamObject(params_json, "arguments");
+					if(arguments_json = Nil) {
+						WriteInvalidParams("\"arguments\" must be an object", id_json, response);
+						return;
+					};
+
+					messages := CallPrompt(call_name, arguments_json);
+					if(messages = Nil) {
+						WriteCallbackNil("CallPrompt", id_json, response);
+						return;
+					};
+
+					messages_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+					each(message in messages) {
+						messages_array_json->Add(message->ToJson());
+					};
+
+					result := JsonElement->New(JsonElement->JsonType->OBJECT);
+					result->Insert("messages", messages_array_json);
+
+					WriteResponse(result, id_json, response, 200);
+				}
+
+				other: {
+					if(McpServer->IsDebug()) {
+						">>> Unknown method: {$method_name} <<<"->ErrorLine();
+					};
+					WriteError(McpRequestHandler->ErrorCode->METHOD_NOT_FOUND->As(Int), "Method not found: {$method_name}", id_json, response, 200);
+				}
+			};
+		}
+
+		# A required string parameter: Nil when the params or the member are
+		# missing, or the member is not a non-empty string
+		method : ParamString(params_json : JsonElement, name : String) ~ String {
+			if(params_json = Nil) {
+				return Nil;
+			};
+
+			value_json := params_json->Get(name);
+			if(value_json = Nil | value_json->GetType() <> JsonElement->JsonType->STRING | value_json->GetValue()->IsEmpty()) {
+				return Nil;
+			};
+
+			return value_json->GetValue();
+		}
+
+		# An optional object parameter: an empty object when the params or the
+		# member are missing or the member is null, Nil when it is present but
+		# not an object
+		method : ParamObject(params_json : JsonElement, name : String) ~ JsonElement {
+			if(params_json = Nil) {
+				return JsonElement->New(JsonElement->JsonType->OBJECT);
+			};
+
+			value_json := params_json->Get(name);
+			if(value_json = Nil | value_json->GetType() = JsonElement->JsonType->NULL) {
+				return JsonElement->New(JsonElement->JsonType->OBJECT);
+			};
+
+			if(value_json->GetType() <> JsonElement->JsonType->OBJECT) {
+				return Nil;
+			};
+
+			return value_json;
+		}
+
+		method : WriteInvalidParams(reason : String, id_json : JsonElement, response : Web.HTTP.Server.Response) ~ Nil {
+			WriteError(McpRequestHandler->ErrorCode->INVALID_PARAMS->As(Int), "Invalid params: {$reason}", id_json, response, 200);
+		}
+
+		method : WriteCallbackNil(callback : String, id_json : JsonElement, response : Web.HTTP.Server.Response) ~ Nil {
+			WriteError(McpRequestHandler->ErrorCode->INTERNAL_ERROR->As(Int), "Internal error: the handler's {$callback} returned Nil", id_json, response, 200);
 		}
 
 		#~
@@ -3724,6 +3903,18 @@ bundle Web.HTTP.Server.MCP {
 		@param code HTTP status code
 		~#
 		method : WriteResponse(message : JsonElement, id : Int, response : Web.HTTP.Server.Response, code : Int) ~ Nil {
+			WriteResponse(message, JsonElement->New(id), response, code);
+		}
+
+		#~
+		Writes a JSON-RPC response whose id is echoed as the request sent it
+		(a string or a number; Nil writes null)
+		@param message response message, Nil for an empty result object
+		@param id request ID element
+		@param response HTTP response
+		@param code HTTP status code
+		~#
+		method : WriteResponse(message : JsonElement, id : JsonElement, response : Web.HTTP.Server.Response, code : Int) ~ Nil {
 			packet := JsonElement->New(JsonElement->JsonType->OBJECT);
 			packet->Insert("jsonrpc", "2.0");
 			packet->Insert("id", id);
@@ -3740,6 +3931,31 @@ bundle Web.HTTP.Server.MCP {
 			};
 
 			response->SetCodeTypeContent(code, "application/json", packet->ToString());
+		}
+
+		#~
+		Writes a JSON-RPC error response
+		@param code JSON-RPC error code (see ErrorCode)
+		@param message what was wrong
+		@param id request ID element, Nil for null when the request's id was unusable
+		@param response HTTP response
+		@param http_code HTTP status code: 200 for an error in a well-formed request, 400 or 413 for a body that is not one
+		~#
+		method : WriteError(code : Int, message : String, id : JsonElement, response : Web.HTTP.Server.Response, http_code : Int) ~ Nil {
+			error_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			error_json->Insert("code", code);
+			error_json->Insert("message", message);
+
+			packet := JsonElement->New(JsonElement->JsonType->OBJECT);
+			packet->Insert("jsonrpc", "2.0");
+			packet->Insert("error", error_json);
+			packet->Insert("id", id);
+
+			if(McpServer->IsDebug()) {
+				packet->ToFormattedString()->PrintLine();
+			};
+
+			response->SetCodeTypeContent(http_code, "application/json", packet->ToString());
 		}
 
 		#~
