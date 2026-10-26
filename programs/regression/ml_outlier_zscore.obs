@@ -1,0 +1,279 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+System.ML ZScoreDetector against an independent reference.
+
+The expected scores are numpy's (scipy.stats.zscore semantics: population
+standard deviation) for the same 66 rows -- 60 correlated near-Gaussian inliers
+and 6 uniform outliers in [-8, 8]^4 -- built by both sides from System.ML.Random
+with arithmetic only, so the data is bit-identical. Regenerate the fixture with
+ml_outlier_ref/gen_fixtures.py.
+
+Also: the three combination rules, threshold semantics (strict >), the
+sensitivity sweep is monotone, a constant feature, NaN and shape refusal.
+~#
+use System.ML;
+
+class MlOutlierZScore {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		X := MakeData(7, 60, 6, 4, 8.0);
+		y := Labels(60, 6);
+
+		detector : OutlierDetector := ZScoreDetector->New();
+		ok := Report("unfitted before Fit", <>detector->IsFitted()) & ok;
+		ok := Report("default threshold is 3.0", detector->GetThreshold() = 3.0) & ok;
+		ok := Report("sensitivity is named threshold", detector->GetSensitivityName()->Equals("threshold")) & ok;
+
+		flags := detector->FitPredict(X);
+		ok := Report("FitPredict returns a label per row", flags <> Nil & flags->Size() = 66) & ok;
+
+		scores := detector->GetTrainingScores();
+		ok := Report("max-|z| scores match numpy to 1e-12", Close(scores, ExpectedMax(), 1.0e-12)) & ok;
+
+		z := detector->As(ZScoreDetector);
+		ok := Report("means match numpy", Close(z->GetMeans(), ExpectedMeans(), 1.0e-12)) & ok;
+		ok := Report("population sds match numpy", Close(z->GetStdDevs(), ExpectedSds(), 1.0e-12)) & ok;
+
+		# labels are strictly above the threshold
+		agree := true;
+		each(i : scores) {
+			if(flags[i] <> (scores[i] > 3.0)) {
+				agree := false;
+			};
+		};
+		ok := Report("labels are score > threshold", agree) & ok;
+
+		# Predict on the training rows equals FitPredict
+		again := detector->Predict(X);
+		same := again <> Nil;
+		if(same) {
+			each(i : flags) {
+				if(again[i] <> flags[i]) {
+					same := false;
+				};
+			};
+		};
+		ok := Report("Predict on the training rows equals FitPredict", same) & ok;
+
+		decision := detector->DecisionFunction(X);
+		dec_ok := decision <> Nil;
+		if(dec_ok) {
+			each(i : decision) {
+				if((decision[i] - (scores[i] - 3.0))->Abs() > 1.0e-15) {
+					dec_ok := false;
+				};
+			};
+		};
+		ok := Report("DecisionFunction is score - threshold", dec_ok) & ok;
+
+		auc := Metrics->AucRoc(scores, y);
+		ok := Report("scores feed AucRoc directly (AUC {$auc} > 0.95)", auc > 0.95) & ok;
+
+		# the other two rules
+		mean_rule := ZScoreDetector->New(1.0, ZScoreDetector->Rule->MEAN);
+		mean_rule->Fit(X);
+		ok := Report("mean-|z| scores match numpy", Close(mean_rule->GetTrainingScores(), ExpectedMean(), 1.0e-12)) & ok;
+		rms_rule := ZScoreDetector->New(1.0, ZScoreDetector->Rule->RMS);
+		rms_rule->Fit(X);
+		ok := Report("rms-z scores match numpy", Close(rms_rule->GetTrainingScores(), ExpectedRms(), 1.0e-12)) & ok;
+
+		# the lab's sweep on 630 rows: 3.0, 2.5, 2.0 flags more each time, without
+		# refitting (on any data the count cannot fall; here it strictly grows)
+		big := MakeData(8, 600, 30, 4, 8.0);
+		sweep := ZScoreDetector->New();
+		sweep->Fit(big);
+		counts := Int->New[3];
+		settings := [3.0, 2.5, 2.0];
+		each(s : settings) {
+			sweep->SetSensitivity(settings[s]);
+			counts[s] := Count(sweep->Predict(big));
+		};
+		ok := Report("sensitivity stays fitted", sweep->IsFitted()) & ok;
+		ok := Report("flags grow as the threshold falls ({$counts[0]}, {$counts[1]}, {$counts[2]})",
+			counts[0] < counts[1] & counts[1] < counts[2]) & ok;
+		ok := Report("a zero threshold is rejected", <>sweep->SetSensitivity(0.0)) & ok;
+		ok := Report("a rejected setting changes nothing", sweep->GetSensitivity() = 2.0) & ok;
+
+		# outliers are caught at the default threshold
+		detector->SetSensitivity(3.0);
+		caught := 0;
+		flags := detector->Predict(X);
+		for(i := 60; i < 66; i += 1;) {
+			if(flags[i]) {
+				caught += 1;
+			};
+		};
+		ok := Report("at least 5 of 6 injected outliers flagged ({$caught})", caught >= 5) & ok;
+
+		# a constant feature: |z| 0 at the constant, +Inf off it
+		C := [[1.0, 5.0], [2.0, 5.0], [3.0, 5.0], [4.0, 5.0]];
+		constant := ZScoreDetector->New();
+		ok := Report("a constant feature fits", constant->Fit(C)) & ok;
+		cs := constant->GetTrainingScores();
+		ok := Report("the constant feature adds nothing in training", Near(cs[0], 1.3416407864998738, 1.0e-12)) & ok;
+		off := constant->Score([[2.5, 6.0]]);
+		ok := Report("a value off the constant scores +Inf", off <> Nil & off[0] = Float->Inf()) & ok;
+		ok := Report("and is flagged", constant->Predict([[2.5, 6.0]])[0]) & ok;
+
+		# refusals
+		bad := [[1.0, 2.0], [3.0, 0.0], [4.0, 5.0]];
+		bad[1, 1] := Float->NaN();
+		nan_row := Float->New[1, 4];
+		nan_row[0, 1] := Float->NaN();
+		fresh := ZScoreDetector->New();
+		ok := Report("NaN refuses Fit", <>fresh->Fit(bad)) & ok;
+		ok := Report("the error names row 1, column 1", fresh->GetError()->Has("row 1, column 1")) & ok;
+		ok := Report("NaN refuses Score", detector->Score(nan_row) = Nil) & ok;
+		ok := Report("a column mismatch refuses Predict", detector->Predict([[0.0, 1.0]]) = Nil) & ok;
+		ok := Report("and says why", detector->GetError()->Has("columns")) & ok;
+		ok := Report("Nil refuses Fit", <>fresh->Fit(Nil)) & ok;
+		ok := Report("unfitted Score is Nil", ZScoreDetector->New()->Score(X) = Nil) & ok;
+
+		if(ok) {
+			"PASS: ml_outlier_zscore"->PrintLine();
+		}
+		else {
+			"FAIL: ml_outlier_zscore"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Count(flags : Bool[]) ~ Int {
+		n := 0;
+		each(i : flags) {
+			if(flags[i]) {
+				n += 1;
+			};
+		};
+		return n;
+	}
+
+	function : Labels(n_in : Int, n_out : Int) ~ Bool[] {
+		y := Bool->New[n_in + n_out];
+		for(i := n_in; i < n_in + n_out; i += 1;) {
+			y[i] := true;
+		};
+		return y;
+	}
+
+	function : Gauss(rng : System.ML.Random) ~ Float {
+		acc := 0.0;
+		each(k : 12) {
+			acc += rng->NextReal();
+		};
+		return acc - 6.0;
+	}
+
+	function : MakeData(seed : Int, n_in : Int, n_out : Int, p : Int, spread : Float) ~ Float[,] {
+		rng := System.ML.Random->New(seed);
+		X := Float->New[n_in + n_out, p];
+		z := Float->New[p];
+		each(i : n_in) {
+			each(j : p) {
+				z[j] := Gauss(rng);
+			};
+			each(j : p) {
+				v := z[j];
+				if(j > 0) {
+					v := v + 0.5 * z[j - 1];
+				};
+				X[i, j] := v;
+			};
+		};
+		for(i := n_in; i < n_in + n_out; i += 1;) {
+			each(j : p) {
+				X[i, j] := rng->NextReal() * (2.0 * spread) - spread;
+			};
+		};
+		return X;
+	}
+
+	function : Near(a : Float, b : Float, tol : Float) ~ Bool {
+		scale := b->Abs();
+		if(scale < 1.0) {
+			scale := 1.0;
+		};
+		return (a - b)->Abs() <= tol * scale;
+	}
+
+	function : Close(a : Float[], b : Float[], tol : Float) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(<>Near(a[i], b[i], tol)) {
+				"  mismatch at {$i}: {$a[i]} vs {$b[i]}"->PrintLine();
+				return false;
+			};
+		};
+		return true;
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+		return passed;
+	}
+
+	# BEGIN GENERATED FIXTURE
+	# by ml_outlier_ref/gen_fixtures.py; do not edit by hand
+	function : ExpectedMax() ~ Float[] {
+		return [
+			0.7726185202153776, 0.6747788588543324, 0.25793132986476003, 0.9748627226820558, 0.6114436120243794, 1.5509897699026047,
+			0.521365057231138, 1.2793668188581915, 1.5978723513877473, 1.494383981538669, 1.2862715110332457, 0.6719359121587395,
+			0.6108345899402442, 0.28730637513723006, 0.6749658220218775, 1.1624500664405426, 0.9572047869998096, 1.089256793166345,
+			0.6658979761904987, 0.7887641643111066, 0.8840562452687559, 0.6198353474667941, 1.1867779410872576, 0.6715049308027687,
+			0.6927804563716867, 0.7848416095619957, 0.529458068550388, 0.34089809199848087, 1.3255543034640143, 1.4333036160559043,
+			0.4625974514428762, 0.7376076195960791, 1.0207259581486907, 0.5634387710699494, 1.3693040048033982, 0.59816628668638,
+			0.3817892780795962, 0.6792982683890968, 0.9977007131481893, 0.5296596452070446, 1.029711934874519, 1.1957253448443692,
+			0.8531281295230422, 0.8848617283707562, 1.0608931584592614, 1.1050997296720684, 0.6371561789375537, 0.41683245007257747,
+			1.287493571898254, 1.0723804559344197, 0.987531068163455, 0.7382599855082976, 1.2798014144663483, 0.5981586087131404,
+			0.7479928611369018, 0.8147990660663232, 1.0588225931797015, 0.3732875433637599, 0.5185274358101762, 0.4883612250162362,
+			4.204856192789044, 3.7178791199639045, 3.7698808075761128, 3.7294417519745773, 2.591199127244211, 3.1278027878889803];
+	}
+
+	function : ExpectedMean() ~ Float[] {
+		return [
+			0.31239540094135226, 0.4783455547206437, 0.1761440289691637, 0.6942814375613445, 0.33980293484313584, 1.0516164256882021,
+			0.4176021635261352, 0.5617492037317995, 0.8197195772847519, 0.6556333993062162, 0.5287764410887215, 0.5286417532256857,
+			0.315649007890966, 0.15338487894263225, 0.5124903424542167, 0.6434464984124989, 0.7903718766759001, 0.5624958142615561,
+			0.3838738112663803, 0.3412106347928844, 0.5521471195963061, 0.2889548093204875, 0.6613837520113216, 0.3339054302664332,
+			0.3880632458707851, 0.4292325221415798, 0.42067192202655546, 0.1920602602163347, 0.7497324105305075, 0.8818763337840836,
+			0.3322750016351, 0.47555035876091034, 0.3710735156383752, 0.5303403713345975, 0.7197241949006735, 0.4459831155935512,
+			0.24394313586422026, 0.5417943981210731, 0.5683888351157423, 0.2866236521957783, 0.43705304610676754, 0.8997499121350505,
+			0.7516231885178277, 0.6962860596415419, 0.5507404448251939, 0.586062405576579, 0.3811459570769349, 0.22495200733303208,
+			0.8858215642216478, 0.7333341728817728, 0.6337772601531863, 0.4975840478224099, 0.7570406176748495, 0.269758879000966,
+			0.40584402038658784, 0.5331473072639245, 0.5375053838810293, 0.2748039776783675, 0.3009471107010512, 0.34428191652103923,
+			2.5899253391028463, 2.469825258582661, 2.3887414340947903, 3.0031599138412095, 1.9951749645305623, 2.517397158928806];
+	}
+
+	function : ExpectedRms() ~ Float[] {
+		return [
+			0.4169201675689107, 0.49800022701825786, 0.19595183892183848, 0.7879183083718909, 0.3761704179398313, 1.1617295064262663,
+			0.42309485814334336, 0.7173347067673826, 1.0090611942749836, 0.8384176610438396, 0.705466881939436, 0.5643108418863879,
+			0.3617115283320212, 0.19835932042161328, 0.52711232213556, 0.7582794127844255, 0.8067689992013596, 0.6868700617445315,
+			0.4579271171126036, 0.4443253410087827, 0.5887468816904226, 0.35015572410472656, 0.7616024675537219, 0.42405725975571174,
+			0.4533997580620269, 0.5025454951326355, 0.4348127272733218, 0.2247216171995419, 0.8277082103701612, 0.9640566824139609,
+			0.3505441393003422, 0.5280638538508029, 0.530552821372839, 0.5329498293805158, 0.848029067439629, 0.49616310460664176,
+			0.27838599058949337, 0.549970495287974, 0.6514421816801469, 0.34802898408387983, 0.5683046577211356, 1.01482770437383,
+			0.7631670802648771, 0.7068912432996451, 0.6446776923552269, 0.7019282699137073, 0.44607834197555746, 0.26487548842036895,
+			0.9568838819976708, 0.8206446805771515, 0.6737455660757081, 0.5297224795982608, 0.8437049650513025, 0.33924381757115857,
+			0.48284473579009984, 0.5805573394820344, 0.647453394227122, 0.2950104241335201, 0.3299470431331984, 0.35918883770907534,
+			2.886699608788761, 2.6910833094624587, 2.6376580528865867, 3.0343606435901966, 2.174975017633871, 2.5879547349806757];
+	}
+
+	function : ExpectedMeans() ~ Float[] {
+		return [
+			0.20593834974317562, 0.028716315175937764, -0.14653947738924655, 0.13182601282359313];
+	}
+
+	function : ExpectedSds() ~ Float[] {
+		return [
+			1.848738398275332, 2.0350080029893816, 1.7242159687380962, 1.993965483684345];
+	}
+	# END GENERATED FIXTURE
+}
