@@ -1,0 +1,369 @@
+#~
+Multi-dimensional array accesses in JIT-compiled loops: the register that
+holds a later index is given back.
+
+ArrayIndex folds the indices of `a[i, j]` into one register, and the register
+that held `j` when it was already in a register -- a computed index, a cached
+local, the copy of a loop local pinned in R13-R15 -- was never returned to the
+pool. Each such access leaked one; a method with eight of them ran the pool dry
+and the JIT gave up on the WHOLE method ("compile failed at instruction 231"),
+so it ran interpreted, 10 to 20 times slower. The outlier detectors' elliptic
+envelope (a Cholesky inverse and a product, below as Mahalanobis) and the BERT
+classifier head's Adam step (Adam below) were found that way, and their
+authors had split loops to work around it.
+
+run_vm_flag_tests.py section 22 requires, under --jit=1 with
+OBJECK_JIT_REPORT=1, that these methods report "compiled", that no method here
+reports its register pool out of balance, and that stdout -- the raw bits of
+every result -- is byte for byte what --jit=off prints. The checks below hold
+under either engine: each 2-D computation is repeated over a flattened 1-D
+copy, in the same order of operations, so the two agree exactly. Exits 1 on
+a failure.
+~#
+class JitArrayIndexRegisters {
+  @fails : static : Int;
+
+  function : Main(args : String[]) ~ Nil {
+    @fails := 0;
+    n := 40; q := 6;
+
+    # data: a well-conditioned lower-triangular factor and a sample
+    L := Float->New[q, q];
+    each(i : q) {
+      each(j : q) {
+        if(j < i) {
+          L[i, j] := ((i * 7 + j * 3) % 5)->As(Float) * 0.125 - 0.25;
+        }
+        else if(j = i) {
+          L[i, j] := 1.5 + i->As(Float) * 0.25;
+        };
+      };
+    };
+    Z := Float->New[n, q];
+    mu := Float->New[q];
+    each(i : n) {
+      each(a : q) {
+        Z[i, a] := ((i * 13 + a * 29) % 17)->As(Float) * 0.375 - 3.0;
+      };
+    };
+    each(a : q) {
+      mu[a] := a->As(Float) * 0.5 - 1.0;
+    };
+
+    dist : Float[];
+    each(r : 20) {
+      dist := Mahalanobis(Z, n, q, mu, L);
+    };
+    flat := MahalanobisFlat(Flatten(Z, n, q), n, q, mu, Flatten(L, q, q));
+    Expect(SameBits(dist, flat), "Cholesky-inverse distances agree with the flattened computation");
+
+    # Adam steps on 2-D weights, every moment kept
+    rows := 24; cols := 8;
+    w := Float->New[rows, cols]; g := Float->New[rows, cols];
+    mw := Float->New[rows, cols]; vw := Float->New[rows, cols];
+    b := Float->New[cols]; gb := Float->New[cols]; mb := Float->New[cols]; vb := Float->New[cols];
+    wf := Float->New[rows * cols]; gf := Float->New[rows * cols];
+    mwf := Float->New[rows * cols]; vwf := Float->New[rows * cols];
+    bf := Float->New[cols]; mbf := Float->New[cols]; vbf := Float->New[cols];
+    each(i : rows) {
+      each(j : cols) {
+        v := ((i * 5 + j * 11) % 13)->As(Float) * 0.01 - 0.06;
+        g[i, j] := v; gf[i * cols + j] := v;
+        w[i, j] := v * 2.0; wf[i * cols + j] := v * 2.0;
+      };
+    };
+    each(j : cols) {
+      gb[j] := j->As(Float) * 0.003;
+    };
+    for(step := 1; step <= 12; step += 1;) {
+      Adam(w, g, b, gb, step, mw, vw, mb, vb, 0.01, false);
+      AdamFlat(wf, gf, bf, gb, step, mwf, vwf, mbf, vbf, 0.01, rows, cols, false);
+    };
+    # and the plain SGD branch, on the Adam-trained weights
+    for(step := 1; step <= 3; step += 1;) {
+      Adam(w, g, b, gb, step, mw, vw, mb, vb, 0.05, true);
+      AdamFlat(wf, gf, bf, gb, step, mwf, vwf, mbf, vbf, 0.05, rows, cols, true);
+    };
+    Expect(SameBits(Flatten(w, rows, cols), wf), "Adam weights agree with the flattened computation");
+    Expect(SameBits(Flatten(mw, rows, cols), mwf) & SameBits(Flatten(vw, rows, cols), vwf),
+      "Adam moments agree with the flattened computation");
+    Expect(SameBits(b, bf) & SameBits(mb, mbf) & SameBits(vb, vbf), "Adam bias terms agree");
+
+    # 3-D accesses whose later indices are computed in registers
+    cube := Float->New[5, 6, 7];
+    total := 0.0;
+    each(r : 20) {
+      total := Cube(cube);
+    };
+    Expect(total = Cube(cube), "3-D accesses with computed indices are stable");
+
+    "BITS: {$Hex(dist)}"->PrintLine();
+    "BITS: {$Hex(Flatten(w, rows, cols))} {$Hex(b)}"->PrintLine();
+    "TOTAL: {$total}"->PrintLine();
+
+    if(@fails > 0) {
+      "FAIL: {$@fails} array index check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: multi-dimensional array accesses in compiled loops"->PrintLine();
+  }
+
+  function : Expect(ok : Bool, name : String) ~ Nil {
+    if(<>ok) {
+      "FAIL: {$name}"->PrintLine();
+      @fails += 1;
+    };
+  }
+
+  function : Hex(values : Float[]) ~ String {
+    return Float->ToBytes(values)->ToHexString();
+  }
+
+  function : SameBits(a : Float[], b : Float[]) ~ Bool {
+    return Hex(a)->Equals(Hex(b));
+  }
+
+  function : Flatten(m : Float[,], rows : Int, cols : Int) ~ Float[] {
+    out := Float->New[rows * cols];
+    each(i : rows) {
+      each(j : cols) {
+        out[i * cols + j] := m[i, j];
+      };
+    };
+    return out;
+  }
+
+  # the outlier detectors' elliptic envelope: invert the Cholesky factor, form
+  # P = M'M, then each sample's squared distance from the mean
+  function : Mahalanobis(Z : Float[,], n : Int, q : Int, mu : Float[], L : Float[,]) ~ Float[] {
+    M := Float->New[q, q];
+    each(j : q) {
+      M[j, j] := 1.0 / L[j, j];
+      for(i := j + 1; i < q; i += 1;) {
+        s := 0.0;
+        for(k := j; k < i; k += 1;) {
+          s -= L[i, k] * M[k, j];
+        };
+        M[i, j] := s / L[i, i];
+      };
+    };
+
+    P := Float->New[q, q];
+    each(a : q) {
+      each(b : q) {
+        s := 0.0;
+        start := a;
+        if(b > start) {
+          start := b;
+        };
+        for(k := start; k < q; k += 1;) {
+          s += M[k, a] * M[k, b];
+        };
+        P[a, b] := s;
+      };
+    };
+
+    centered := Float->New[n, q];
+    each(i : n) {
+      each(a : q) {
+        centered[i, a] := Z[i, a] - mu[a];
+      };
+    };
+
+    dist := Float->New[n];
+    each(i : n) {
+      total := 0.0;
+      each(a : q) {
+        row := 0.0;
+        each(b : q) {
+          row += P[a, b] * centered[i, b];
+        };
+        total += row * centered[i, a];
+      };
+      dist[i] := total;
+    };
+    return dist;
+  }
+
+  function : MahalanobisFlat(Z : Float[], n : Int, q : Int, mu : Float[], L : Float[]) ~ Float[] {
+    M := Float->New[q * q];
+    each(j : q) {
+      M[j * q + j] := 1.0 / L[j * q + j];
+      for(i := j + 1; i < q; i += 1;) {
+        s := 0.0;
+        for(k := j; k < i; k += 1;) {
+          s -= L[i * q + k] * M[k * q + j];
+        };
+        M[i * q + j] := s / L[i * q + i];
+      };
+    };
+
+    P := Float->New[q * q];
+    each(a : q) {
+      each(b : q) {
+        s := 0.0;
+        start := a;
+        if(b > start) {
+          start := b;
+        };
+        for(k := start; k < q; k += 1;) {
+          s += M[k * q + a] * M[k * q + b];
+        };
+        P[a * q + b] := s;
+      };
+    };
+
+    centered := Float->New[n * q];
+    each(i : n) {
+      each(a : q) {
+        centered[i * q + a] := Z[i * q + a] - mu[a];
+      };
+    };
+
+    dist := Float->New[n];
+    each(i : n) {
+      total := 0.0;
+      each(a : q) {
+        row := 0.0;
+        each(b : q) {
+          row += P[a * q + b] * centered[i * q + b];
+        };
+        total += row * centered[i * q + a];
+      };
+      dist[i] := total;
+    };
+    return dist;
+  }
+
+  # the BERT classifier head's Adam step, gradients and moments flushed to zero
+  # below the subnormal range as there
+  function : Adam(w : Float[,], grad_w : Float[,], b : Float[], grad_b : Float[], step : Int,
+      mw : Float[,], vw : Float[,], mb : Float[], vb : Float[], rate : Float, sgd : Bool) ~ Nil {
+    dims := w->Size();
+    if(sgd) {
+      for(i := 0; i < dims[0]; i += 1;) {
+        for(j := 0; j < dims[1]; j += 1;) {
+          g := grad_w[i, j];
+          if(g > 1.0e-150 | g < -1.0e-150) {
+            w[i, j] -= rate * g;
+          };
+        };
+      };
+      each(j : b) {
+        b[j] -= rate * grad_b[j];
+      };
+      return;
+    };
+
+    beta1 := 0.9;
+    beta2 := 0.999;
+    keep1 := 1.0 - beta1;
+    keep2 := 1.0 - beta2;
+    epsilon := 0.00000001;
+    correct1 := 1.0 - beta1->Pow(step->As(Float));
+    correct2 := 1.0 - beta2->Pow(step->As(Float));
+    alpha := rate / correct1;
+    for(i := 0; i < dims[0]; i += 1;) {
+      for(j := 0; j < dims[1]; j += 1;) {
+        g := grad_w[i, j];
+        if(g < 1.0e-150 & g > -1.0e-150) {
+          g := 0.0;
+        };
+        m := beta1 * mw[i, j] + keep1 * g;
+        if(m < 1.0e-200 & m > -1.0e-200) {
+          m := 0.0;
+        };
+        v := beta2 * vw[i, j] + keep2 * g * g;
+        if(v < 1.0e-290) {
+          v := 0.0;
+        };
+        mw[i, j] := m;
+        vw[i, j] := v;
+        w[i, j] -= alpha * m / ((v / correct2)->Sqrt() + epsilon);
+      };
+    };
+    each(j : b) {
+      g := grad_b[j];
+      m := beta1 * mb[j] + keep1 * g;
+      v := beta2 * vb[j] + keep2 * g * g;
+      mb[j] := m;
+      vb[j] := v;
+      b[j] -= alpha * m / ((v / correct2)->Sqrt() + epsilon);
+    };
+  }
+
+  function : AdamFlat(w : Float[], grad_w : Float[], b : Float[], grad_b : Float[], step : Int,
+      mw : Float[], vw : Float[], mb : Float[], vb : Float[], rate : Float, rows : Int, cols : Int, sgd : Bool) ~ Nil {
+    if(sgd) {
+      for(i := 0; i < rows; i += 1;) {
+        for(j := 0; j < cols; j += 1;) {
+          g := grad_w[i * cols + j];
+          if(g > 1.0e-150 | g < -1.0e-150) {
+            w[i * cols + j] -= rate * g;
+          };
+        };
+      };
+      each(j : b) {
+        b[j] -= rate * grad_b[j];
+      };
+      return;
+    };
+
+    beta1 := 0.9;
+    beta2 := 0.999;
+    keep1 := 1.0 - beta1;
+    keep2 := 1.0 - beta2;
+    epsilon := 0.00000001;
+    correct1 := 1.0 - beta1->Pow(step->As(Float));
+    correct2 := 1.0 - beta2->Pow(step->As(Float));
+    alpha := rate / correct1;
+    for(i := 0; i < rows; i += 1;) {
+      for(j := 0; j < cols; j += 1;) {
+        k := i * cols + j;
+        g := grad_w[k];
+        if(g < 1.0e-150 & g > -1.0e-150) {
+          g := 0.0;
+        };
+        m := beta1 * mw[k] + keep1 * g;
+        if(m < 1.0e-200 & m > -1.0e-200) {
+          m := 0.0;
+        };
+        v := beta2 * vw[k] + keep2 * g * g;
+        if(v < 1.0e-290) {
+          v := 0.0;
+        };
+        mw[k] := m;
+        vw[k] := v;
+        w[k] -= alpha * m / ((v / correct2)->Sqrt() + epsilon);
+      };
+    };
+    each(j : b) {
+      g := grad_b[j];
+      m := beta1 * mb[j] + keep1 * g;
+      v := beta2 * vb[j] + keep2 * g * g;
+      mb[j] := m;
+      vb[j] := v;
+      b[j] -= alpha * m / ((v / correct2)->Sqrt() + epsilon);
+    };
+  }
+
+  # every later index is an expression, so it is in a register at the access
+  function : Cube(c : Float[,,]) ~ Float {
+    total := 0.0;
+    for(i := 0; i < 5; i += 1;) {
+      for(j := 0; j < 6; j += 1;) {
+        for(k := 0; k < 7; k += 1;) {
+          c[i, (j + 1) % 6, (k + 2) % 7] := (i * 100 + j * 10 + k)->As(Float);
+        };
+      };
+    };
+    for(i := 0; i < 5; i += 1;) {
+      for(j := 0; j < 6; j += 1;) {
+        for(k := 0; k < 7; k += 1;) {
+          total += c[i, (j + 5) % 6, (k + 6) % 7] * c[(i + 1) % 5, j, 6 - k] - c[4 - i, 5 - j, k];
+        };
+      };
+    };
+    return total;
+  }
+}
