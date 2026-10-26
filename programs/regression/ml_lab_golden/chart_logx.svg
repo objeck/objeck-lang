@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="800" height="480" viewBox="0 0 800 480" font-family="sans-serif" font-size="12">
+<title>SVM: recall vs C</title>
+<rect x="0" y="0" width="800" height="480" fill="white"/>
+<text x="400" y="26" text-anchor="middle" font-size="16" font-weight="bold">SVM: recall vs C</text>
+<g stroke="#dddddd" stroke-width="1">
+<line x1="72.0" y1="416.0" x2="776.0" y2="416.0"/>
+<line x1="72.0" y1="342.4" x2="776.0" y2="342.4"/>
+<line x1="72.0" y1="268.8" x2="776.0" y2="268.8"/>
+<line x1="72.0" y1="195.2" x2="776.0" y2="195.2"/>
+<line x1="72.0" y1="121.6" x2="776.0" y2="121.6"/>
+<line x1="72.0" y1="48.0" x2="776.0" y2="48.0"/>
+</g>
+<g fill="#333333" text-anchor="end">
+<text x="64.0" y="420.0">0</text>
+<text x="64.0" y="346.4">0.2</text>
+<text x="64.0" y="272.8">0.4</text>
+<text x="64.0" y="199.2">0.6</text>
+<text x="64.0" y="125.6">0.8</text>
+<text x="64.0" y="52.0">1</text>
+</g>
+<g fill="#333333" text-anchor="middle">
+<text x="72.0" y="434.0">0.001</text>
+<text x="248.0" y="434.0">0.01</text>
+<text x="424.0" y="434.0">0.1</text>
+<text x="600.0" y="434.0">1</text>
+<text x="776.0" y="434.0">10</text>
+</g>
+<g stroke="#333333" stroke-width="1.5" fill="none">
+<line x1="72.0" y1="48.0" x2="72.0" y2="416.0"/>
+<line x1="72.0" y1="416.0" x2="776.0" y2="416.0"/>
+</g>
+<text x="424.0" y="464" text-anchor="middle" font-size="13">C</text>
+<text x="18" y="232.0" text-anchor="middle" font-size="13" transform="rotate(-90 18 232.0)">recall</text>
+<polyline fill="none" stroke="#1f77b4" stroke-width="2" points="72.0,305.6 248.0,213.6 424.0,121.6 600.0,84.8 776.0,81.1"/>
+<g fill="#1f77b4" class="markers">
+<circle cx="72.0" cy="305.6" r="3.5"/>
+<circle cx="248.0" cy="213.6" r="3.5"/>
+<circle cx="424.0" cy="121.6" r="3.5"/>
+<circle cx="600.0" cy="84.8" r="3.5"/>
+<circle cx="776.0" cy="81.1" r="3.5"/>
+</g>
+<g class="legend">
+<rect x="618.0" y="52.0" width="150" height="30.0" fill="white" fill-opacity="0.85" stroke="#cccccc"/>
+<rect x="626.0" y="58.0" width="12" height="12" fill="#1f77b4"/>
+<text x="644.0" y="68.0" fill="#333333">rbf</text>
+</g>
+</svg>

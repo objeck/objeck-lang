@@ -14855,6 +14855,76 @@
 				}
 			}
 		},
+		"System.ML.Lab.Chart": {
+			"description": "A chart written as standalone SVG 1.1: a line chart (x numeric, linear or log, or categorical) with markers and error bars, or a grouped bar chart, with a title, axis titles, a 1-2-5 tick grid and a legend. No script, no external font, no dependency: it opens in a browser, pastes into Word, and converts with any SVG tool. Coordinates are written with one decimal, so the same data gives the same bytes on every platform.",
+			"functions": {
+				"AddBars": {
+					"descriptions": ["**Adds a bar series over the categories: one bar per category, grouped with the other bar series. SetCategories must have been called.**\n\n```method : public : AddBars(name:String, ys:Float[]) ~ Nil```\n\n\n\nname: String\n\nys: Float[]\n\nreturn: Nil", "**Adds a bar series with error bars.**\n\n```method : public : AddBars(name:String, ys:Float[], errs:Float[]) ~ Nil```\n\n\n\nname: String\n\nys: Float[]\n\nerrs: Float[]\n\nreturn: Nil"]
+				},
+				"AddLine": {
+					"descriptions": ["**Adds a line with markers.**\n\n```method : public : AddLine(name:String, xs:Float[], ys:Float[]) ~ Nil```\n\n\n\nname: String\n\nxs: Float[]\n\nys: Float[]\n\nreturn: Nil", "**Adds a line with markers and symmetric error bars.**\n\n```method : public : AddLine(name:String, xs:Float[], ys:Float[], errs:Float[]) ~ Nil```\n\n\n\nname: String\n\nxs: Float[]\n\nys: Float[]\n\nerrs: Float[]\n\nreturn: Nil"]
+				},
+				"Escape": {
+					"descriptions": ["**XML-escapes text for an SVG element or attribute.**\n\n```function : Escape(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String"]
+				},
+				"LossCurve": {
+					"descriptions": ["**A training-loss chart: one line per series (one per learning rate, say), x is the epoch starting at 1.**\n\n```function : LossCurve(title:String, names:String[], losses:Float[,]) ~ Chart```\n\n\n\ntitle: String\n\nnames: String[]\n\nlosses: Float[,]\n\nreturn: Chart"]
+				},
+				"New": {
+					"descriptions": ["**Constructor; the default size is 800 x 480.**\n\n```New(title:String, x_label:String, y_label:String)```\n\n\n\ntitle: String\n\nx_label: String\n\ny_label: String"]
+				},
+				"NiceStep": {
+					"descriptions": ["**A 1-2-5 tick step for a range.**\n\n```function : NiceStep(range:Float, target:Int) ~ Float```\n\n\n\nrange: Float\n\ntarget: Int\n\nreturn: Float"]
+				},
+				"Save": {
+					"descriptions": ["**Writes the SVG to a file.**\n\n```method : public : Save(path:String) ~ Bool```\n\n\n\npath: String\n\nreturn: Bool"]
+				},
+				"SetCategories": {
+					"descriptions": ["**Makes x categorical: ticks are these names at positions 0, 1, 2, ..., and bar series are grouped by them.**\n\n```method : public : SetCategories(names:String[]) ~ Nil```\n\n\n\nnames: String[]\n\nreturn: Nil"]
+				},
+				"SetLogX": {
+					"descriptions": ["**Draws x on a base-10 log scale, for C, gamma or a learning rate. Every x must then be positive.**\n\n```method : public : SetLogX(on:Bool) ~ Nil```\n\n\n\non: Bool\n\nreturn: Nil"]
+				},
+				"SetSize": {
+					"descriptions": ["**Sets the image size in pixels.**\n\n```method : public : SetSize(width:Int, height:Int) ~ Nil```\n\n\n\nwidth: Int\n\nheight: Int\n\nreturn: Nil"]
+				},
+				"SetYRange": {
+					"descriptions": ["**Fixes the y range instead of deriving it from the data.**\n\n```method : public : SetYRange(min:Float, max:Float) ~ Nil```\n\n\n\nmin: Float\n\nmax: Float\n\nreturn: Nil"]
+				},
+				"Size": {
+					"descriptions": ["**Series added so far.**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"ToSvg": {
+					"descriptions": ["**Renders the chart.**\n\n```method : public : ToSvg() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"System.ML.Lab.ChartSeries": {
+			"description": "One series of a Chart: a name, x and y values, optional symmetric error bars, drawn as a line with markers or as bars.",
+			"functions": {
+				"GetErrors": {
+					"descriptions": ["**Error bars.**\n\n```method : public : GetErrors() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetName": {
+					"descriptions": ["**Legend entry.**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetXs": {
+					"descriptions": ["**x values.**\n\n```method : public : GetXs() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetYs": {
+					"descriptions": ["**y values.**\n\n```method : public : GetYs() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"IsBars": {
+					"descriptions": ["**Whether the series draws as bars.**\n\n```method : public : IsBars() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(name:String, xs:Float[], ys:Float[], errs:Float[], bars:Bool)```\n\n\n\nname: String\n\nxs: Float[]\n\nys: Float[]\n\nerrs: Float[]\n\nbars: Bool"]
+				},
+				"Size": {
+					"descriptions": ["**Points in the series.**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				}
+			}
+		},
 		"System.ML.Lab.DataSplit": {
 			"description": "The matrices and labels of a train\/test split, plus the source row of every row in each half so predictions can be joined back to the original table.",
 			"functions": {
@@ -15048,6 +15118,9 @@
 				},
 				"Size": {
 					"descriptions": ["**Rows in the table.**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"ToChart": {
+					"descriptions": ["**A line chart of named columns against the parameter: x is the parameter value (or the row names as categories when a row name is not its number), one series per metric, error bars from the deviations when the table holds them.**\n\n```method : public : ToChart(metrics:String[]) ~ Chart```\n\n\n\nmetrics: String[]\n\nreturn: Chart", "**A line chart of named columns, optionally on a log x axis (for C, gamma or a learning rate).**\n\n```method : public : ToChart(metrics:String[], log_x:Bool) ~ Chart```\n\n\n\nmetrics: String[]\n\nlog_x: Bool\n\nreturn: Chart"]
 				},
 				"ToCsv": {
 					"descriptions": ["**RFC 4180 CSV: a header of the parameter name, \"<parameter>_value\", the columns and, when the table holds deviations, \"<column>_std\" for each; then one record per row. Fields are quoted only when they must be. The title and footnote are not written: a CSV is data, the Markdown and JSON forms carry the prose.**\n\n```method : public : ToCsv() ~ String```\n\n\n\nreturn: String"]
@@ -19614,6 +19687,18 @@
 		"TreeNode": [
 			{
 				"bundle": "System.ML",
+				"file": ""
+			}
+		],
+		"Chart": [
+			{
+				"bundle": "System.ML.Lab",
+				"file": ""
+			}
+		],
+		"ChartSeries": [
+			{
+				"bundle": "System.ML.Lab",
 				"file": ""
 			}
 		],
