@@ -24,8 +24,8 @@ Each library typically consists of:
 - **ml_bayes.obs** - Bayesian classifiers: NaiveBayes, GaussianNaiveBayes
 - **ml_neighbors.obs** - Nearest neighbors: KNearestNeighbors, KDTree
 - **ml_cluster.obs** - Clustering: KMeans, DBSCAN, GaussianMixture
-- **ml_data.obs** - Data utilities: FeatureScaler, Metrics, CrossValidation, PCA
-- **ml_outlier.obs** - Anomaly detection: OutlierDetector, ZScoreDetector, IsolationForest, LocalOutlierFactor, EllipticEnvelope, DbscanDetector, AutoencoderDetector
+- **ml_data.obs** - Data utilities: FeatureScaler, Metrics, ConfusionMatrix, CrossValidation, PCA
+- **ml_outlier.obs** - Anomaly detection: OutlierDetector, ZScoreDetector, IsolationForest, LocalOutlierFactor, EllipticEnvelope, DbscanDetector, AutoencoderDetector, SensitivitySweep
 - **ai_search.obs** - Graph search: Dijkstra, A*, BFS, DFS
 - **ai_game.obs** - Adversarial game search: Minimax, Monte Carlo Tree Search
 - **ai_optimize.obs** - Optimization: GeneticAlgorithm, SimulatedAnnealing, HillClimbing

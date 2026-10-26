@@ -1171,6 +1171,41 @@ if(test_x = Nil) {
 		}
 
 		#~
+		Calculates the false-positive rate: FP / (FP + TN)
+		@param predictions predicted boolean values
+		@param actuals actual boolean values
+		@return false-positive rate between 0.0 and 1.0; 0.0 when there are no actual negatives or the inputs do not line up
+		~#
+		function : FalsePositiveRate(predictions : Bool[], actuals : Bool[]) ~ Float {
+			if(predictions = Nil | actuals = Nil) {
+				return 0.0;
+			};
+
+			if(predictions->Size() <> actuals->Size() | predictions->Size() = 0) {
+				return 0.0;
+			};
+
+			fp := 0;
+			tn := 0;
+			each(i : predictions) {
+				if(<>actuals[i]) {
+					if(predictions[i]) {
+						fp += 1;
+					}
+					else {
+						tn += 1;
+					};
+				};
+			};
+
+			if(fp + tn = 0) {
+				return 0.0;
+			};
+
+			return fp->As(Float) / (fp + tn)->As(Float);
+		}
+
+		#~
 		Creates a confusion matrix
 		@param predictions predicted boolean values
 		@param actuals actual boolean values
@@ -2616,6 +2651,222 @@ each(f : folds) {
 	single-fold AUC of 0.68 by chance alone. The spread is given alongside the
 	mean so that noise is visible rather than implied.
 	~#
+
+	#~
+	The four counts of a binary decision -- true positives, false positives, true
+	negatives, false negatives -- and every rate read off them.
+
+	For outlier detection the anomaly is the positive class: a prediction of true
+	(flagged) on a row that really is an anomaly is a true positive. Metrics'
+	Precision, Recall and F1Score compute the same rates one at a time; this keeps
+	them together with the counts they rest on, which is what a sweep table needs.
+
+	Every rate guards its denominator and returns 0.0 when it is zero, as
+	scikit-learn does with zero_division=0: precision when nothing was flagged,
+	recall when there are no real positives, the false-positive rate when there are
+	no real negatives, F1 when there are no true positives, false positives or false
+	negatives, accuracy on an empty sample.
+
+```
+cm := ConfusionMatrix->New(flags, labels);
+"precision={$cm->GetPrecision()} recall={$cm->GetRecall()} f1={$cm->GetF1()} fpr={$cm->GetFalsePositiveRate()}"->PrintLine();
+```
+	~#
+	class ConfusionMatrix {
+		@tp : Int;
+		@fp : Int;
+		@tn : Int;
+		@fn : Int;
+		@valid : Bool;
+
+		#~
+		Counts predictions against actuals.
+		@param predictions predicted labels, true = positive (flagged)
+		@param actuals true labels, true = positive (anomaly)
+		~#
+		New(predictions : Bool[], actuals : Bool[]) {
+			@valid := predictions <> Nil & actuals <> Nil;
+			if(@valid) {
+				@valid := predictions->Size() = actuals->Size();
+			};
+
+			if(@valid) {
+				each(i : predictions) {
+					if(predictions[i]) {
+						if(actuals[i]) {
+							@tp += 1;
+						}
+						else {
+							@fp += 1;
+						};
+					}
+					else {
+						if(actuals[i]) {
+							@fn += 1;
+						}
+						else {
+							@tn += 1;
+						};
+					};
+				};
+			};
+		}
+
+		#~
+		From counts.
+		@param tp true positives
+		@param fp false positives
+		@param tn true negatives
+		@param fn false negatives
+		~#
+		New(tp : Int, fp : Int, tn : Int, fn : Int) {
+			@tp := tp;
+			@fp := fp;
+			@tn := tn;
+			@fn := fn;
+			@valid := tp >= 0 & fp >= 0 & tn >= 0 & fn >= 0;
+		}
+
+		#~
+		False when the inputs were Nil, of different lengths, or the counts negative;
+		every count is then 0.
+		@return true when the counts are meaningful
+		~#
+		method : public : IsValid() ~ Bool {
+			return @valid;
+		}
+
+		#~
+		Flagged rows that really are positive.
+		@return true positives
+		~#
+		method : public : GetTruePositives() ~ Int {
+			return @tp;
+		}
+
+		#~
+		Flagged rows that are really negative.
+		@return false positives
+		~#
+		method : public : GetFalsePositives() ~ Int {
+			return @fp;
+		}
+
+		#~
+		Unflagged rows that are really negative.
+		@return true negatives
+		~#
+		method : public : GetTrueNegatives() ~ Int {
+			return @tn;
+		}
+
+		#~
+		Unflagged rows that really are positive.
+		@return false negatives
+		~#
+		method : public : GetFalseNegatives() ~ Int {
+			return @fn;
+		}
+
+		#~
+		Rows counted.
+		@return TP + FP + TN + FN
+		~#
+		method : public : GetTotal() ~ Int {
+			return @tp + @fp + @tn + @fn;
+		}
+
+		#~
+		Rows flagged positive.
+		@return TP + FP
+		~#
+		method : public : GetFlagged() ~ Int {
+			return @tp + @fp;
+		}
+
+		#~
+		(TP + TN) / total.
+		@return accuracy, or 0.0 for an empty sample
+		~#
+		method : public : GetAccuracy() ~ Float {
+			return Ratio(@tp + @tn, @tp + @fp + @tn + @fn);
+		}
+
+		#~
+		TP / (TP + FP): of the rows flagged, the share that were real.
+		@return precision, or 0.0 when nothing was flagged
+		~#
+		method : public : GetPrecision() ~ Float {
+			return Ratio(@tp, @tp + @fp);
+		}
+
+		#~
+		TP / (TP + FN): of the real positives, the share flagged (true-positive rate,
+		sensitivity, detection rate).
+		@return recall, or 0.0 when there are no real positives
+		~#
+		method : public : GetRecall() ~ Float {
+			return Ratio(@tp, @tp + @fn);
+		}
+
+		#~
+		2 TP / (2 TP + FP + FN), the harmonic mean of precision and recall.
+		@return F1, or 0.0 when TP, FP and FN are all zero
+		~#
+		method : public : GetF1() ~ Float {
+			return Ratio(2 * @tp, 2 * @tp + @fp + @fn);
+		}
+
+		#~
+		FP / (FP + TN): of the real negatives, the share wrongly flagged (false-alarm
+		rate).
+		@return the false-positive rate, or 0.0 when there are no real negatives
+		~#
+		method : public : GetFalsePositiveRate() ~ Float {
+			return Ratio(@fp, @fp + @tn);
+		}
+
+		#~
+		TN / (TN + FP), the true-negative rate: 1 minus the false-positive rate.
+		@return specificity, or 0.0 when there are no real negatives
+		~#
+		method : public : GetSpecificity() ~ Float {
+			return Ratio(@tn, @fp + @tn);
+		}
+
+		#~
+		The counts in Metrics->ConfusionMatrix's layout: [[TN, FP], [FN, TP]].
+		@return 2 x 2 counts
+		~#
+		method : public : ToMatrix() ~ Int[,] {
+			matrix := Int->New[2, 2];
+			matrix[0, 0] := @tn;
+			matrix[0, 1] := @fp;
+			matrix[1, 0] := @fn;
+			matrix[1, 1] := @tp;
+			return matrix;
+		}
+
+		function : Ratio(num : Int, den : Int) ~ Float {
+			if(den = 0) {
+				return 0.0;
+			};
+
+			return num->As(Float) / den->As(Float);
+		}
+
+		#~
+		The counts and rates on one line.
+		@return summary
+		~#
+		method : public : ToString() ~ String {
+			p := GetPrecision();
+			r := GetRecall();
+			f := GetF1();
+			fpr := GetFalsePositiveRate();
+			return "tp={$@tp} fp={$@fp} tn={$@tn} fn={$@fn} precision={$p} recall={$r} f1={$f} fpr={$fpr}";
+		}
+	}
 
 	#~
 	What a threshold actually did: the four confusion counts and the rates read
