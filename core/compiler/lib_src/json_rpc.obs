@@ -95,24 +95,31 @@ bundle Data.JSON.RPC {
 									 }
 									 else {
 										err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32601, \"message\": \"Method not found\"}, \"id\": null}";
-										client->WriteString(err_msg);
+										client->WriteString(err_msg + "\r\n");
 									 };
 								}
 								else {
 									err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32600, \"message\": \"Invalid Request\"}, \"id\": null}";
-									client->WriteString(err_msg);
+									client->WriteString(err_msg + "\r\n");
 								};
 							}
 							else {
 								err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32700, \"message\": \"Parse error\"}, \"id\": null}";
-								client->WriteString(err_msg);
+								client->WriteString(err_msg + "\r\n");
 							};
 						}
 						else {
 							err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32600, \"message\": \"Invalid Request\"}, \"id\": null}";
-							client->WriteString(err_msg);
+							client->WriteString(err_msg + "\r\n");
 						};
 
+						# Hold the connection until the client has read the reply and
+						# closed its end, then close. Closing first lost the reply on
+						# Windows loopback, where the peer that tears down first has
+						# the unread bytes discarded (#669); Accept's receive timeout
+						# bounds the wait. Every reply above ends its line, so the
+						# client's ReadLine returns without waiting for the close.
+						client->ReadLine();
 						client->Close();
 					}
 				};
