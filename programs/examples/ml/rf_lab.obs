@@ -1,0 +1,142 @@
+#~
+The random-forest part of an intrusion-detection lab, on System.ML's
+RandomForestClassifier (continuous-feature trees, bootstrapped, sqrt(features)
+sampled per node):
+
+  1. n_estimators among 10, 50, 100, 200 and 500;
+  2. max_depth among 4, 8, 16, 32 and None (unlimited);
+  3. min_samples_leaf among 1, 2, 5 and 10.
+
+Every sweep holds the other parameters at scikit-learn's defaults where the
+library has them -- max_depth None, min_samples_leaf 1, max_features sqrt -- and
+at 100 trees. min_samples, this library's "a node with this many rows or fewer
+becomes a leaf", is 1, which matches scikit-learn's min_samples_split = 2. Each
+row reports accuracy, precision, recall, F1, false-positive rate and training
+seconds on the test rows (attack is positive); the extra column is the deepest
+tree and, for the first sweep, the three most important features.
+
+Build and run (from this directory):
+
+  obc -src rf_lab.obs,lab_data.obs -lib ml,gen_collect,csv -dest rf_lab.obe
+  obr rf_lab.obe                          # synthetic NSL-KDD-shaped data
+  obr rf_lab.obe 20000 10000 KDDTrain+.txt KDDTest+.txt
+
+The first two arguments are the training and test rows (a stratified, seeded
+subsample of the files when they are larger). The forest's cost is roughly
+linear in trees x rows x log(rows): at the default 20,000 rows 100 trees take
+about 20 s and 500 about 100 s, and the whole program about 5.5 minutes. All
+125,973 NSL-KDD rows cost about six times as much per tree.
+~#
+use System.ML;
+
+class RfLab {
+	function : Main(args : String[]) ~ Nil {
+		train_rows := 20000;
+		test_rows := 10000;
+		if(args->Size() > 0) {
+			train_rows := args[0]->ToInt();
+		};
+		if(args->Size() > 1) {
+			test_rows := args[1]->ToInt();
+		};
+
+		split := LabData->Load(args, 2, train_rows, test_rows);
+		if(split = Nil) {
+			Runtime->Exit(1);
+		};
+		split->SubsampleTrain(train_rows, 7);
+		split->SubsampleTest(test_rows, 7);
+
+		x := split->GetTrainX();
+		y := split->GetTrainY();
+		tx := split->GetTestX();
+		ty := split->GetTestY();
+		dims := x->Size();
+		rows := dims[0];
+		cols := dims[1];
+		source := split->GetSource();
+		test_dims := tx->Size();
+		test_count := test_dims[0];
+		"data: {$source}"->PrintLine();
+		"train {$rows} x {$cols}, test {$test_count} rows (trees need no scaling)"->PrintLine();
+
+		unlimited := DecisionTreeClassifier->UnlimitedDepth();
+
+		# 1. Number of trees.
+		""->PrintLine();
+		"1. n_estimators (max_depth None, min_samples_leaf 1)"->PrintLine();
+		LabData->PrintHeader("n_estimators");
+		counts := [10, 50, 100, 200, 500];
+		each(i : counts) {
+			n := counts[i];
+			Run("trees={$n}", RandomForestClassifier->New(n, unlimited, 1, 42), 1, x, y, tx, ty, true);
+		};
+
+		# 2. Depth.
+		""->PrintLine();
+		"2. max_depth (100 trees, min_samples_leaf 1)"->PrintLine();
+		LabData->PrintHeader("max_depth");
+		depths := [4, 8, 16, 32];
+		each(i : depths) {
+			depth := depths[i];
+			Run("depth={$depth}", RandomForestClassifier->New(100, depth, 1, 42), 1, x, y, tx, ty, false);
+		};
+		Run("depth=None", RandomForestClassifier->New(100, unlimited, 1, 42), 1, x, y, tx, ty, false);
+
+		# 3. Leaf size.
+		""->PrintLine();
+		"3. min_samples_leaf (100 trees, max_depth None)"->PrintLine();
+		LabData->PrintHeader("min_samples_leaf");
+		leaves := [1, 2, 5, 10];
+		each(i : leaves) {
+			leaf := leaves[i];
+			Run("leaf={$leaf}", RandomForestClassifier->New(100, unlimited, 1, 42), leaf, x, y, tx, ty, false);
+		};
+	}
+
+	function : Run(setting : String, forest : RandomForestClassifier, min_samples_leaf : Int,
+			x : Float[,], y : Bool[], tx : Float[,], ty : Bool[], importances : Bool) ~ Nil {
+		forest->SetMinSamplesLeaf(min_samples_leaf);
+		if(<>forest->Fit(x, y)) {
+			"{$setting}: fit failed"->PrintLine();
+			return;
+		};
+
+		depth := forest->GetMaxTreeDepth();
+		extra := "deepest={$depth}";
+		if(importances) {
+			extra += " top=" + TopFeatures(forest->GetFeatureImportances(), 3);
+		};
+
+		LabData->PrintRow(setting, forest->Predict(tx), ty, forest->GetFitSeconds(), extra);
+	}
+
+	# The indexes of the k most important features, most important first.
+	function : TopFeatures(importance : Float[], k : Int) ~ String {
+		taken := Bool->New[importance->Size()];
+		out := "";
+		best := -1;
+		each(r : k) {
+			best := -1;
+			each(f : importance) {
+				if(<>taken[f]) {
+					if(best < 0) {
+						best := f;
+					}
+					else if(importance[f] > importance[best]) {
+						best := f;
+					};
+				};
+			};
+			if(best >= 0) {
+				taken[best] := true;
+				if(r > 0) {
+					out += ",";
+				};
+				out += best->ToString();
+			};
+		};
+
+		return out;
+	}
+}

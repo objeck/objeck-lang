@@ -546,6 +546,7 @@ preds := booster->Predict(data);
 		@threshold : Float;
 		@left : RegressionTreeNode;
 		@right : RegressionTreeNode;
+		@id : Int;
 
 		New : private (is_leaf : Bool, value : Float, feature : Int, threshold : Float) {
 			@is_leaf := is_leaf;
@@ -581,6 +582,19 @@ preds := booster->Predict(data);
 		method : public : GetRight() ~ RegressionTreeNode { return @right; }
 		method : public : SetLeft(n : RegressionTreeNode) ~ Nil { @left := n; }
 		method : public : SetRight(n : RegressionTreeNode) ~ Nil { @right := n; }
+
+		#~
+		Sets a leaf's index within its tree (DecisionTreeClassifier numbers its
+		leaves in the order it creates them).
+		@param id leaf index
+		~#
+		method : public : SetId(id : Int) ~ Nil { @id := id; }
+
+		#~
+		A leaf's index within its tree.
+		@return leaf index; 0 for a node never numbered
+		~#
+		method : public : GetId() ~ Int { return @id; }
 	}
 
 	#~
@@ -977,6 +991,11 @@ pred := tree->Predict([2.5]);
 	false-positive budget needs a score to threshold. A Bool prediction fixes one
 	operating point and cannot answer what the recall would be at another.
 
+	scikit-learn's knobs map as: max_depth (-1, UnlimitedDepth, for None),
+	min_samples_leaf (SetMinSamplesLeaf), feature_importances_
+	(GetFeatureImportances) and apply (Apply). min_samples is this class's own
+	"stop splitting at this size"; 1 matches sklearn's min_samples_split = 2.
+
 ```
 tree := DecisionTreeClassifier->New(8, 5);
 tree->Fit(x_train, y_train);
@@ -988,21 +1007,117 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 		@root : RegressionTreeNode;
 		@max_depth : Int;
 		@min_samples : Int;
+		@min_samples_leaf : Int;
 		@max_features : Int;
 		@rng_state : Int;
+		@importance : Float[];
+		@depth_reached : Int;
+		@leaves : Int;
+		@fit_seconds : Float;
 		@fitted : Bool;
 
 		#~
 		Constructor. Every feature is considered at every node.
-		@param max_depth deepest the tree may grow
+		@param max_depth deepest the tree may grow; -1 (UnlimitedDepth) for no limit, 0 for a single leaf
 		@param min_samples a node with this many rows or fewer becomes a leaf
 		~#
 		New(max_depth : Int, min_samples : Int) {
 			@max_depth := max_depth;
 			@min_samples := min_samples;
+			@min_samples_leaf := 1;
 			@max_features := 0;
 			@rng_state := 1;
 			@fitted := false;
+		}
+
+		#~
+		The max_depth that means no limit, scikit-learn's max_depth=None: -1. Any
+		negative depth works the same way; 0 keeps its meaning of a single leaf.
+		@return -1
+		~#
+		function : UnlimitedDepth() ~ Int {
+			return -1;
+		}
+
+		#~
+		Sets scikit-learn's min_samples_leaf: a split is only considered when both
+		children keep at least this many rows, so every leaf holds at least that
+		many. This is separate from min_samples, which stops splitting a node that
+		is already small. When a forest fits a tree to a bootstrap sample, a row
+		drawn twice counts twice (scikit-learn counts it once and weights it).
+		@param min_samples_leaf rows each leaf must keep; values below 1 mean 1
+		~#
+		method : public : SetMinSamplesLeaf(min_samples_leaf : Int) ~ Nil {
+			@min_samples_leaf := min_samples_leaf;
+			if(@min_samples_leaf < 1) {
+				@min_samples_leaf := 1;
+			};
+		}
+
+		#~
+		The rows every leaf must keep.
+		@return min_samples_leaf
+		~#
+		method : public : GetMinSamplesLeaf() ~ Int {
+			return @min_samples_leaf;
+		}
+
+		#~
+		The depth limit as set; negative means unlimited.
+		@return max_depth
+		~#
+		method : public : GetMaxDepth() ~ Int {
+			return @max_depth;
+		}
+
+		#~
+		The node size at or below which a node becomes a leaf.
+		@return min_samples
+		~#
+		method : public : GetMinSamples() ~ Int {
+			return @min_samples;
+		}
+
+		#~
+		The deepest leaf of the fitted tree (the root alone is depth 0).
+		@return depth, or 0 when unfitted
+		~#
+		method : public : GetDepth() ~ Int {
+			return @depth_reached;
+		}
+
+		#~
+		Leaves in the fitted tree.
+		@return leaf count, or 0 when unfitted
+		~#
+		method : public : GetLeafCount() ~ Int {
+			if(<>@fitted) {
+				return 0;
+			};
+
+			return @leaves;
+		}
+
+		#~
+		Seconds the last Fit or FitRows took.
+		@return elapsed seconds
+		~#
+		method : public : GetFitSeconds() ~ Float {
+			return @fit_seconds;
+		}
+
+		#~
+		Mean decrease in Gini impurity per feature, normalised to sum to 1:
+		scikit-learn's feature_importances_. Each split credits its feature with
+		the rows it saw times the impurity it removed.
+		@return one importance per feature, all zero for a tree with no split, or Nil when unfitted
+		~#
+		method : public : GetFeatureImportances() ~ Float[] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			return @importance;
 		}
 
 		#~
@@ -1018,6 +1133,7 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 		New(max_depth : Int, min_samples : Int, max_features : Int, seed : Int) {
 			@max_depth := max_depth;
 			@min_samples := min_samples;
+			@min_samples_leaf := 1;
 			@max_features := max_features;
 			@rng_state := seed;
 			@fitted := false;
@@ -1046,10 +1162,35 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 				indexes[i] := i;
 			};
 
-			@root := BuildNode(X, y, indexes, rows, 0);
-			@fitted := true;
+			Build(X, y, indexes, rows, cols);
 
 			return true;
+		}
+
+		# Grows the tree over indexes[0..count-1] and records the timing, depth,
+		# leaf count and normalised importances.
+		method : Build(X : Float[,], y : Bool[], indexes : Int[], count : Int, cols : Int) ~ Nil {
+			timer := System.Time.Timer->New();
+			timer->Start();
+
+			@importance := Float->New[cols];
+			@depth_reached := 0;
+			@leaves := 0;
+			@root := BuildNode(X, y, indexes, count, 0);
+
+			total := 0.0;
+			each(f : cols) {
+				total += @importance[f];
+			};
+			if(total > 0.0) {
+				each(f : cols) {
+					@importance[f] := @importance[f] / total;
+				};
+			};
+
+			timer->End();
+			@fit_seconds := timer->GetElapsedTime();
+			@fitted := true;
 		}
 
 		#~
@@ -1088,8 +1229,7 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 				indexes[i] := rows_idx[i];
 			};
 
-			@root := BuildNode(X, y, indexes, count, 0);
-			@fitted := true;
+			Build(X, y, indexes, count, cols);
 
 			return true;
 		}
@@ -1104,9 +1244,12 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 			};
 			proportion := positives->As(Float) / count->As(Float);
 
-			# Pure, too small, or too deep: the proportion is the answer.
-			if(positives = 0 | positives = count | count <= @min_samples | depth >= @max_depth) {
-				return RegressionTreeNode->NewLeaf(proportion);
+			# Pure, too small, too deep, or unable to give both children
+			# min_samples_leaf rows: the proportion is the answer. A negative
+			# max_depth is unlimited.
+			if(positives = 0 | positives = count | count <= @min_samples | count < 2 * @min_samples_leaf |
+					(@max_depth >= 0 & depth >= @max_depth)) {
+				return Leaf(proportion, depth);
 			};
 
 			node_gini := Gini(positives, count);
@@ -1148,22 +1291,52 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 				};
 			};
 
+			# One sorted sweep per feature. Each candidate threshold is the midpoint
+			# of two consecutive distinct values, and "left" is every row at or below
+			# it -- found by advancing a pointer through the sorted values instead of
+			# rescanning every row, which made a node O(rows^2) per feature. The
+			# counts, and so the Gini values, are the ones a rescan produces, so the
+			# chosen splits do not change.
 			values := Float->New[count];
+			labels := Bool->New[count];
+			n := count->As(Float);
+			msl := @min_samples_leaf;
+			threshold := 0.0;
+			g := 0.0;
+			left_n := 0;
+			left_pos := 0;
+			right_n := 0;
+			row_id := 0;
 			each(fi : try_count) {
 				f := feature_list[fi];
 				each(i : count) {
-					values[i] := X[indexes[i], f];
+					row_id := indexes[i];
+					values[i] := X[row_id, f];
+					labels[i] := y[row_id];
 				};
-				SortValues(values, 0, count - 1);
+				SortPairs(values, labels, 0, count - 1);
 
+				left_n := 0;
+				left_pos := 0;
 				for(v := 0; v < count - 1; v += 1;) {
 					if(values[v] <> values[v + 1]) {
 						threshold := (values[v] + values[v + 1]) / 2.0;
-						g := SplitGini(X, y, indexes, count, f, threshold);
-						if(g < best_gini) {
-							best_gini := g;
-							best_feature := f;
-							best_threshold := threshold;
+						while(left_n < count & values[left_n] <= threshold) {
+							if(labels[left_n]) {
+								left_pos += 1;
+							};
+							left_n += 1;
+						};
+						right_n := count - left_n;
+
+						if(left_n >= msl & right_n >= msl & left_n > 0 & right_n > 0) {
+							g := (left_n->As(Float) * Gini(left_pos, left_n)
+								+ right_n->As(Float) * Gini(positives - left_pos, right_n)) / n;
+							if(g < best_gini) {
+								best_gini := g;
+								best_feature := f;
+								best_threshold := threshold;
+							};
 						};
 					};
 				};
@@ -1171,7 +1344,7 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 
 			# No split improves on the node itself.
 			if(best_feature < 0) {
-				return RegressionTreeNode->NewLeaf(proportion);
+				return Leaf(proportion, depth);
 			};
 
 			left_indexes := Int->New[count];
@@ -1191,8 +1364,11 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 			};
 
 			if(left_count = 0 | right_count = 0) {
-				return RegressionTreeNode->NewLeaf(proportion);
+				return Leaf(proportion, depth);
 			};
+
+			# Mean decrease in impurity: the rows here times the Gini removed.
+			@importance[best_feature] := @importance[best_feature] + n * (node_gini - best_gini);
 
 			node := RegressionTreeNode->NewInternal(best_feature, best_threshold);
 			node->SetLeft(BuildNode(X, y, left_indexes, left_count, depth + 1));
@@ -1201,51 +1377,55 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 			return node;
 		}
 
-		# Binary Gini impurity: 2p(1-p), zero when the node holds one class only.
-		method : Gini(positives : Int, count : Int) ~ Float {
-			if(count = 0) {
-				return 0.0;
+		method : Leaf(proportion : Float, depth : Int) ~ RegressionTreeNode {
+			leaf := RegressionTreeNode->NewLeaf(proportion);
+			leaf->SetId(@leaves);
+			@leaves += 1;
+			if(depth > @depth_reached) {
+				@depth_reached := depth;
 			};
 
-			p := positives->As(Float) / count->As(Float);
-
-			return 2.0 * p * (1.0 - p);
+			return leaf;
 		}
 
-		# Gini of the two children, weighted by how many rows each receives.
-		method : SplitGini(X : Float[,], y : Bool[], indexes : Int[], count : Int, feature : Int, threshold : Float) ~ Float {
-			left_pos := 0;
-			left_count := 0;
-			right_pos := 0;
-			right_count := 0;
+		#~
+		The leaf each row lands in, scikit-learn's apply: leaves are numbered 0 to
+		GetLeafCount() - 1. Rows that share a leaf share a score, so this is how to
+		see what a min_samples_leaf or max_depth setting did to the partition.
+		@param X rows x features, with the same feature count used at Fit
+		@return one leaf index per row, or Nil when unfitted
+		~#
+		method : public : Apply(X : Float[,]) ~ Int[] {
+			if(<>@fitted | X = Nil) {
+				return Nil;
+			};
 
-			each(i : count) {
-				row := indexes[i];
-				if(X[row, feature] <= threshold) {
-					left_count += 1;
-					if(y[row]) {
-						left_pos += 1;
+			dims := X->Size();
+			rows := dims[0];
+			result := Int->New[rows];
+			node : RegressionTreeNode;
+			each(i : rows) {
+				node := @root;
+				while(node <> Nil & <>node->IsLeaf()) {
+					if(X[i, node->GetFeature()] <= node->GetThreshold()) {
+						node := node->GetLeft();
+					}
+					else {
+						node := node->GetRight();
 					};
-				}
-				else {
-					right_count += 1;
-					if(y[row]) {
-						right_pos += 1;
-					};
+				};
+
+				if(node <> Nil) {
+					result[i] := node->GetId();
 				};
 			};
 
-			if(left_count = 0 | right_count = 0) {
-				return Float->Inf();
-			};
-
-			n := count->As(Float);
-
-			return (left_count->As(Float) * Gini(left_pos, left_count)
-				+ right_count->As(Float) * Gini(right_pos, right_count)) / n;
+			return result;
 		}
 
-		method : SortValues(values : Float[], lo : Int, hi : Int) ~ Nil {
+		# Sorts values ascending and carries each value's label with it. The same
+		# quicksort, and so the same order of values, as SortValues.
+		method : SortPairs(values : Float[], labels : Bool[], lo : Int, hi : Int) ~ Nil {
 			if(lo >= hi) {
 				return;
 			};
@@ -1253,6 +1433,8 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 			pivot := values[(lo + hi) / 2];
 			i := lo;
 			j := hi;
+			t := 0.0;
+			b := false;
 
 			while(i <= j) {
 				while(values[i] < pivot) {
@@ -1266,13 +1448,27 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 					t := values[i];
 					values[i] := values[j];
 					values[j] := t;
+					b := labels[i];
+					labels[i] := labels[j];
+					labels[j] := b;
 					i += 1;
 					j -= 1;
 				};
 			};
 
-			SortValues(values, lo, j);
-			SortValues(values, i, hi);
+			SortPairs(values, labels, lo, j);
+			SortPairs(values, labels, i, hi);
+		}
+
+		# Binary Gini impurity: 2p(1-p), zero when the node holds one class only.
+		method : Gini(positives : Int, count : Int) ~ Float {
+			if(count = 0) {
+				return 0.0;
+			};
+
+			p := positives->As(Float) / count->As(Float);
+
+			return 2.0 * p * (1.0 - p);
 		}
 
 		#~
@@ -1358,6 +1554,11 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 	Deterministic: the same seed rebuilds the same forest, so a result can be
 	reproduced rather than merely repeated.
 
+	scikit-learn's RandomForestClassifier maps as: n_estimators (num_trees),
+	max_depth (-1 for None), min_samples_leaf (SetMinSamplesLeaf), max_features
+	(0 for 'sqrt'), random_state (seed), feature_importances_
+	(GetFeatureImportances); GetFitSeconds times the fit.
+
 ```
 forest := RandomForestClassifier->New(100, 8, 5, 42);
 forest->Fit(x_train, y_train);
@@ -1370,14 +1571,17 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 		@num_trees : Int;
 		@max_depth : Int;
 		@min_samples : Int;
+		@min_samples_leaf : Int;
 		@max_features : Int;
 		@seed : Int;
+		@importance : Float[];
+		@fit_seconds : Float;
 		@fitted : Bool;
 
 		#~
 		Constructor using the usual sqrt(features) sample at each node.
 		@param num_trees trees in the forest
-		@param max_depth deepest any tree may grow
+		@param max_depth deepest any tree may grow; -1 (DecisionTreeClassifier->UnlimitedDepth) for no limit
 		@param min_samples a node with this many rows or fewer becomes a leaf
 		@param seed seeds bootstrapping and feature sampling
 		~#
@@ -1385,6 +1589,7 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 			@num_trees := num_trees;
 			@max_depth := max_depth;
 			@min_samples := min_samples;
+			@min_samples_leaf := 1;
 			@max_features := 0;
 			@seed := seed;
 			@fitted := false;
@@ -1393,7 +1598,7 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 		#~
 		Constructor with an explicit feature sample size.
 		@param num_trees trees in the forest
-		@param max_depth deepest any tree may grow
+		@param max_depth deepest any tree may grow; -1 (DecisionTreeClassifier->UnlimitedDepth) for no limit
 		@param min_samples a node with this many rows or fewer becomes a leaf
 		@param max_features features to sample per node; 0 means sqrt(features)
 		@param seed seeds bootstrapping and feature sampling
@@ -1402,9 +1607,96 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 			@num_trees := num_trees;
 			@max_depth := max_depth;
 			@min_samples := min_samples;
+			@min_samples_leaf := 1;
 			@max_features := max_features;
 			@seed := seed;
 			@fitted := false;
+		}
+
+		#~
+		Sets scikit-learn's min_samples_leaf for every tree: a split is only
+		considered when both children keep at least this many rows. Rows drawn more
+		than once into a tree's bootstrap sample count once per draw.
+		@param min_samples_leaf rows each leaf must keep; values below 1 mean 1
+		~#
+		method : public : SetMinSamplesLeaf(min_samples_leaf : Int) ~ Nil {
+			@min_samples_leaf := min_samples_leaf;
+			if(@min_samples_leaf < 1) {
+				@min_samples_leaf := 1;
+			};
+		}
+
+		#~
+		The rows every leaf must keep.
+		@return min_samples_leaf
+		~#
+		method : public : GetMinSamplesLeaf() ~ Int {
+			return @min_samples_leaf;
+		}
+
+		#~
+		The depth limit as set; negative means unlimited.
+		@return max_depth
+		~#
+		method : public : GetMaxDepth() ~ Int {
+			return @max_depth;
+		}
+
+		#~
+		The node size at or below which a node becomes a leaf.
+		@return min_samples
+		~#
+		method : public : GetMinSamples() ~ Int {
+			return @min_samples;
+		}
+
+		#~
+		The features sampled per node as set; 0 means sqrt(features).
+		@return max_features
+		~#
+		method : public : GetMaxFeatures() ~ Int {
+			return @max_features;
+		}
+
+		#~
+		Seconds the last Fit took, bootstrapping included.
+		@return elapsed seconds
+		~#
+		method : public : GetFitSeconds() ~ Float {
+			return @fit_seconds;
+		}
+
+		#~
+		Mean decrease in Gini impurity per feature: each tree's importances
+		(normalised to sum to 1) averaged over the trees and normalised again,
+		as scikit-learn's feature_importances_.
+		@return one importance per feature, or Nil when unfitted
+		~#
+		method : public : GetFeatureImportances() ~ Float[] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			return @importance;
+		}
+
+		#~
+		The deepest leaf over all trees.
+		@return depth, or 0 when unfitted
+		~#
+		method : public : GetMaxTreeDepth() ~ Int {
+			if(<>@fitted | @trees = Nil) {
+				return 0;
+			};
+
+			deepest := 0;
+			each(t : @trees) {
+				if(@trees->Get(t)->GetDepth() > deepest) {
+					deepest := @trees->Get(t)->GetDepth();
+				};
+			};
+
+			return deepest;
 		}
 
 		#~
@@ -1433,6 +1725,9 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 				};
 			};
 
+			timer := System.Time.Timer->New();
+			timer->Start();
+
 			@trees := Vector->New()<DecisionTreeClassifier>;
 			state := @seed;
 			sample := Int->New[rows];
@@ -1450,6 +1745,7 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 				# would be one tree repeated.
 				state := (state * 1103515245 + 12345) and 2147483647;
 				tree := DecisionTreeClassifier->New(@max_depth, @min_samples, mf, state);
+				tree->SetMinSamplesLeaf(@min_samples_leaf);
 				if(<>tree->FitRows(X, y, sample)) {
 					return false;
 				};
@@ -1457,6 +1753,27 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 				@trees->AddBack(tree);
 			};
 
+			# Importances: the mean of the trees' normalised importances, normalised.
+			@importance := Float->New[cols];
+			ti : Float[];
+			each(t : @trees) {
+				ti := @trees->Get(t)->GetFeatureImportances();
+				each(f : cols) {
+					@importance[f] := @importance[f] + ti[f];
+				};
+			};
+			total := 0.0;
+			each(f : cols) {
+				total += @importance[f];
+			};
+			if(total > 0.0) {
+				each(f : cols) {
+					@importance[f] := @importance[f] / total;
+				};
+			};
+
+			timer->End();
+			@fit_seconds := timer->GetElapsedTime();
 			@fitted := true;
 
 			return true;
