@@ -184,6 +184,14 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
     bridge_call_pos = *call_stack_pos;
     bridge_deferred = false;
   }
+  else if(is_callback) {
+    // runs above the thread's frames: returns when the entry method returns to
+    // this depth, and leaves an error a Try() beneath it would take to the C++
+    // that called back (see CallBack), as a bridge does to compiled code
+    base_call_pos = *call_stack_pos;
+    bridge_call_pos = base_call_pos;
+    bridge_deferred = false;
+  }
 
 #if !defined(_DEBUGGER) && !defined(_NO_JIT)
   // An entry method -- Main, a thread's Run -- is called once, so the auto-JIT's
@@ -3277,6 +3285,104 @@ void StackInterpreter::SharedLibraryUnload([[maybe_unused]] StackInstr* instr)
 
 typedef void (*lib_func_def) (VMContext& callbacks);
 
+// A failed call back leaves a zero in place of each word of its result, so the
+// native code that made it reads a 0 or a Nil rather than popping what lies
+// beneath; recovery then unwinds the operand stack below all of it. Whatever
+// the failed call left above its entry position goes first: a runaway fails
+// once per nested call back on the way out, and without that the leftovers
+// of thousands of them ran past the operand stack's committed end.
+static void PushCallbackPlaceholder(StackMethod* method, size_t* op_stack, size_t* stack_pos, const size_t entry_pos)
+{
+  if(*stack_pos > entry_pos) {
+    *stack_pos = entry_pos;
+  }
+  switch(method->GetReturn()) {
+  case NIL_TYPE:
+    break;
+
+  case FUNC_TYPE:
+    op_stack[(*stack_pos)++] = 0;
+    op_stack[(*stack_pos)++] = 0;
+    break;
+
+  default:
+    op_stack[(*stack_pos)++] = 0;
+    break;
+  }
+}
+
+//
+// A call back into Objeck from C++ (see the header).
+//
+// Each call back used to build an interpreter with a call stack of its own, so
+// the calls nested in it were counted from zero again, and its operand-stack
+// limit was SIZE_MAX, since the operand stack it ran on was not that call
+// stack's. A recursion through a callback was bounded by nothing: native code
+// calling back into Objeck that called the native code again, or a constructor
+// that made another of its class through Class->Instance, recursed until the
+// native stack ran out and the process died in the OS (0xC00000FD, SIGSEGV).
+//
+// It runs on the thread's own call stack now (CallStack::Current), above the
+// frames already there, like the bridge compiled code starts. Every call it
+// makes is checked against the thread's depth, operand stack and native stack,
+// and the entry is checked too, since each nested callback also costs native
+// stack for the C++ between it and the last.
+//
+bool StackInterpreter::CallBack(size_t* op_stack, size_t* stack_pos, StackMethod* method, size_t* instance)
+{
+  CallStack* stack = CallStack::Current();
+  if(!stack || op_stack != stack->op_stack) {
+    // a thread the VM did not start: it has no call stack to share, so the
+    // call runs as it always did
+    StackInterpreter intpr;
+    intpr.Execute(op_stack, stack_pos, 0, method, instance, false);
+    return true;
+  }
+
+  const size_t entry_pos = *stack_pos;
+
+  // a call back on this thread already failed and its caller has not taken
+  // the error yet: native code is unwinding to the VM, so do not run more
+  bool& failed = CallbackFailed();
+  if(failed) {
+    PushCallbackPlaceholder(method, op_stack, stack_pos, entry_pos);
+    return false;
+  }
+
+  StackInterpreter intpr(stack->frames, &stack->pos);
+  intpr.is_callback = true;
+
+  // room for the entry: a frame slot, OP_HEADROOM operand words and the
+  // native stack the nested interpreter runs on
+  const bool room = (stack->pos < stack->depth_limit && *stack_pos <= stack->op_limit) || stack->Grow(*stack_pos);
+  if(!room || stack->NativeStackLow()) {
+    if(ThreadHasTryHandler()) {
+      RecordRecoveredError(RECOVERED_OTHER, L"call stack bounds have been exceeded!");
+      failed = true;
+      PushCallbackPlaceholder(method, op_stack, stack_pos, entry_pos);
+      return false;
+    }
+    std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
+    intpr.StackErrorUnwind(method);
+    VmExit(1);
+  }
+
+  intpr.Execute(op_stack, stack_pos, 0, method, instance, false);
+  if(intpr.bridge_deferred) {
+    // Execute released its entry frame, except where a method compiled on
+    // entry returned early with the error
+    if(*intpr.stack_frame) {
+      ReleaseStackFrame(*intpr.stack_frame);
+      *intpr.stack_frame = nullptr;
+    }
+    failed = true;
+    PushCallbackPlaceholder(method, op_stack, stack_pos, entry_pos);
+    return false;
+  }
+
+  return true;
+}
+
 //
 // Resolved native entry points, cached.
 //
@@ -3398,6 +3504,7 @@ void StackInterpreter::SharedLibraryCall([[maybe_unused]] StackInstr* instr, siz
     context.begin_blocking = MemoryManager::BeginBlocking;
     context.end_blocking = MemoryManager::EndBlocking;
     (*ext_func)(context);
+    SharedLibraryCallbackFailure(stack_pos);
   }
 #else
   // load function
@@ -3428,7 +3535,38 @@ void StackInterpreter::SharedLibraryCall([[maybe_unused]] StackInstr* instr, siz
     context.begin_blocking = MemoryManager::BeginBlocking;
     context.end_blocking = MemoryManager::EndBlocking;
     (*ext_func)(context);
-  }  
+    SharedLibraryCallbackFailure(stack_pos);
+  }
+#endif
+}
+
+//
+// After a native call returns: a call back into Objeck that it made failed
+// under a Try() beneath this native call (see CallBack). The native frames are
+// gone now, so the error is this call's, recovered here -- or left further out,
+// when this interpreter is itself a call back from native code.
+//
+void StackInterpreter::SharedLibraryCallbackFailure(size_t* &stack_pos)
+{
+  bool& failed = CallbackFailed();
+  if(!failed) {
+    return;
+  }
+  failed = false;
+
+  // the error was recorded where it happened
+  if(TryErrorRecovery(stack_pos, RECOVERED_NONE)) {
+    return;
+  }
+
+  // a call back fails this way only while a handler exists, so this is not
+  // reached; report rather than run on if it ever is
+  std::wcerr << L">>> " << RecoveredError().message << L" <<<" << std::endl;
+  StackErrorUnwind();
+#ifdef _NO_HALT
+  halt = true;
+#else
+  VmExit(1);
 #endif
 }
 

@@ -1,0 +1,135 @@
+#~
+Fixture for run_vm_flag_tests.py section 18: a native library calling back into
+Objeck (callback_lib.cpp, built by the script as libobjk_callback_test).
+
+Bounce calls the library's callback_bounce, which calls Bounce again through
+APITools_CallMethod, one level deeper each time, until Bounce reaches its limit.
+
+'<limit>' with a positive limit: recurse that deep through the native boundary
+and print "reached <n>". With 0, no limit, unguarded: the VM must end it with
+">>> call stack bounds have been exceeded! <<<" and exit status 1. 'guarded':
+runaways inside try blocks, which must recover with a RuntimeError, after which
+a bounded recursion through the library works again, on the main thread and in
+a spawned one.
+~#
+use System.API, System.Concurrency;
+
+class VmNativeCallbackDepth {
+	@lib : static : DllProxy;
+	@limit : static : Int;
+	@deepest : static : Int;
+
+	function : Bounce(depth : Int) ~ Int {
+		if(depth > @deepest) {
+			@deepest := depth;
+		};
+		if(@limit > 0 & depth >= @limit) {
+			return depth;
+		};
+		args := Base->New[1];
+		args[0] := IntRef->New(depth);
+		@lib->CallFunction("callback_bounce", args);
+		ref := args[0]->As(IntRef);
+		return ref->Get();
+	}
+
+	function : Run(limit : Int) ~ Int {
+		@limit := limit;
+		@deepest := 0;
+		return Bounce(0);
+	}
+
+	function : Deepest() ~ Int {
+		return @deepest;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@lib := DllProxy->New("libobjk_callback_test");
+		if(args->Size() < 1) {
+			"usage: vm_native_callback_depth <limit>|guarded"->ErrorLine();
+			Runtime->Exit(2);
+		};
+
+		if(args[0]->Equals("guarded")) {
+			failures := Prober->New("main thread")->Probe();
+			t := ProbeThread->New();
+			t->Execute(Nil);
+			t->Join();
+			failures += t->GetFailures();
+			if(failures > 0) {
+				Runtime->Exit(1);
+			};
+			"guarded: done"->PrintLine();
+		}
+		else {
+			reached := Run(args[0]->ToInt());
+			"reached {$reached}"->PrintLine();
+		};
+	}
+}
+
+class Prober {
+	@where : String;
+	@failures : Int;
+
+	New(where : String) {
+		@where := where;
+		@failures := 0;
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		where := @where;
+		if(ok) {
+			"PASS: {$name} ({$where})"->PrintLine();
+		}
+		else {
+			"FAIL: {$name} ({$where})"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : public : Probe() ~ Int {
+		Check("a bounded recursion through the native library runs", VmNativeCallbackDepth->Run(300) = 300);
+
+		message := "";
+		try {
+			VmNativeCallbackDepth->Run(0);
+		}
+		on(e : RuntimeError) {
+			message := e->GetMessage();
+		};
+		Check("a runaway recursion through the native library ends in a RuntimeError",
+			message->Has("call stack bounds have been exceeded"));
+		Check("it went past 300 levels first", VmNativeCallbackDepth->Deepest() > 300);
+
+		Check("after recovery the bounded recursion runs again", VmNativeCallbackDepth->Run(300) = 300);
+
+		again := false;
+		try {
+			VmNativeCallbackDepth->Run(0);
+		}
+		on(e2 : RuntimeError) {
+			again := e2->GetMessage()->Has("call stack bounds have been exceeded");
+		};
+		Check("a second runaway recovers too", again);
+
+		return @failures;
+	}
+}
+
+class ProbeThread from Thread {
+	@failures : Int;
+
+	New() {
+		Parent("native-callback-probe");
+		@failures := -1;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		@failures := Prober->New("spawned thread")->Probe();
+	}
+
+	method : public : GetFailures() ~ Int {
+		return @failures;
+	}
+}

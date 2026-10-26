@@ -180,6 +180,17 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     gc_heap_sizing.obs pass under --gc-threshold=64k and 1m, interpreted, by
     default and with every method compiled; the regression runner passes no VM
     flags, so under it the fixture checks only its data.
+ 18. A native library's call back into Objeck is bounded. No library in the
+    repository calls back, so this builds one with the platform's C++
+    compiler (native_callback/callback_lib.cpp; skipped where there is none)
+    whose function calls an Objeck method that calls it again. Through it
+    (native_callback/vm_native_callback_depth.obs), a 300-deep recursion runs;
+    runaways in try blocks recover with "call stack bounds have been exceeded",
+    twice, on the main thread and a spawned one; and an unguarded runaway ends
+    with exactly the call-stack line and exit status 1 -- under --jit=off, the
+    default and --jit=1. Each call back used to get a call stack of its own, so
+    nothing bounded the recursion and it died in the OS (0xC00000FD, SIGSEGV)
+    with no output.
  19. Transparent huge pages stay off the stacks of the threads the VM starts
     (Linux only). While vm_thread_stack_pages.obs holds 100 idle threads, every
     thread's 8 MB native stack carries the kernel's no-huge-page flag ("nh" in
@@ -488,6 +499,8 @@ def main():
     check_call_depth(obc, obr, env, bin_dir)
 
     check_gc_threshold_scales(obc, obr, env, bin_dir)
+
+    check_native_callback_depth(obc, obr, env, bin_dir)
 
     check_thread_stack_pages(obc, obr, env, bin_dir)
 
@@ -1068,6 +1081,111 @@ def check_gc_threshold_scales(obc, obr, env, bin_dir):
                     m = re.search(r"majors=(\d+)", text)
                     check(f"{name} reports a bounded major count under --gc-threshold={threshold} ({label})",
                           m is not None and int(m.group(1)) <= 200, f"stderr={text[-240:]!r}")
+
+
+def build_callback_library(out_dir):
+    """Builds native_callback/callback_lib.cpp as <out_dir>/libobjk_callback_test.
+
+    Returns (path, None) on success, (None, reason) when no C++ compiler is
+    available (a skip), and raises RuntimeError when one is and the build fails.
+    """
+    repo = os.path.dirname(os.path.dirname(SCRIPT_DIR))
+    src = os.path.join(SCRIPT_DIR, "native_callback", "callback_lib.cpp")
+    if os.name == "nt":
+        import platform
+        vswhere = os.path.join(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"),
+                               "Microsoft Visual Studio", "Installer", "vswhere.exe")
+        if not os.path.exists(vswhere):
+            return None, "no vswhere.exe"
+        p = subprocess.run([vswhere, "-latest", "-products", "*", "-property", "installationPath"],
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        install = p.stdout.decode(errors="replace").strip().splitlines()
+        vcvarsall = os.path.join(install[0], "VC", "Auxiliary", "Build", "vcvarsall.bat") if install else ""
+        if not vcvarsall or not os.path.exists(vcvarsall):
+            return None, "no Visual C++ toolset"
+        target = "arm64" if platform.machine().upper() in ("ARM64", "AARCH64") else "x64"
+        out = os.path.join(out_dir, "libobjk_callback_test.dll")
+        script = os.path.join(out_dir, "build_callback.cmd")
+        with open(script, "w") as f:
+            f.write("@echo off\r\n")
+            f.write(f'call "{vcvarsall}" {target} >nul\r\n')
+            f.write(f'cd /d "{out_dir}"\r\n')
+            f.write(f'cl /nologo /LD /EHsc /O2 /std:c++17 /DWIN32 /DNDEBUG /D_CONSOLE '
+                    f'/I "{os.path.join(repo, "core", "lib", "zlib", "win")}" '
+                    f'/I "{os.path.join(repo, "core", "lib", "crypto", "win", "include")}" '
+                    f'"{src}" /Fe:libobjk_callback_test.dll\r\n')
+        p = subprocess.run(["cmd", "/c", script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    else:
+        cxx = shutil.which("c++") or shutil.which("g++") or shutil.which("clang++")
+        if not cxx:
+            return None, "no C++ compiler"
+        ext = ".dylib" if sys.platform == "darwin" else ".so"
+        out = os.path.join(out_dir, "libobjk_callback_test" + ext)
+        cmd = [cxx, "-std=c++17", "-O2", "-fPIC", "-shared", "-o", out, src]
+        if sys.platform == "darwin":
+            cmd[1:1] = ["-undefined", "dynamic_lookup"]
+            # lib_api.h includes the VM's headers, which include mbedtls's
+            includes = []
+            if os.environ.get("OBJECK_DEPS"):
+                includes.append(os.path.join(os.environ["OBJECK_DEPS"], "macos-bundle", "mbedtls", "include"))
+            brew = shutil.which("brew")
+            if brew:
+                b = subprocess.run([brew, "--prefix"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                includes.append(os.path.join(b.stdout.decode().strip(), "include"))
+            includes += ["/opt/homebrew/include", "/usr/local/include"]
+            for inc in includes:
+                if os.path.isdir(inc):
+                    cmd.insert(1, "-I" + inc)
+        p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if p.returncode != 0 or not os.path.exists(out):
+        raise RuntimeError(p.stdout.decode(errors="replace")[-1500:])
+    return out, None
+
+
+def check_native_callback_depth(obc, obr, env, bin_dir):
+    # ---- 18. a native library's call back into Objeck is bounded ---------------------
+    scratch = tempfile.mkdtemp(prefix="objeck-callback-")
+    try:
+        native_dir = os.path.join(scratch, "lib", "native")
+        os.makedirs(native_dir)
+        try:
+            lib, reason = build_callback_library(native_dir)
+        except RuntimeError as e:
+            check("the callback test library builds", False, str(e))
+            return
+        if not lib:
+            print(f"  [SKIP] native callback depth: {reason}")
+            return
+        check("the callback test library builds", True)
+
+        src = os.path.join(SCRIPT_DIR, "native_callback", "vm_native_callback_depth.obs")
+        dest = os.path.join(scratch, "vm_native_callback_depth.obe")
+        rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+        check("native callback fixture compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+        if rc != 0:
+            return
+
+        lib_flag = "--lib-path=" + os.path.join(scratch, "lib")
+        for label, flags in (("jit=off", ["--jit=off"]), ("default", []), ("jit=1", ["--jit=1"])):
+            rc, out, err = run([obr, lib_flag] + flags + [dest, "300"], env=env, cwd=bin_dir)
+            check(f"a bounded recursion through a native callback runs 300 deep ({label})",
+                  rc == 0 and out.strip().endswith(b"reached 300"),
+                  f"rc={rc} out={out[-160:]!r} stderr={err[-300:]!r}")
+
+            rc, out, err = run([obr, lib_flag] + flags + [dest, "guarded"], env=env, cwd=bin_dir, timeout=300)
+            check(f"runaways through a native callback recover in a try block, on two threads ({label})",
+                  rc == 0 and b"FAIL" not in out and out.count(b"PASS:") == 10 and b"guarded: done" in out,
+                  f"rc={rc} out={out[-400:]!r} stderr={err[-300:]!r}")
+
+            rc, out, err = run([obr, lib_flag] + flags + [dest, "0"], env=env, cwd=bin_dir, timeout=300)
+            text = err.decode(errors="replace")
+            lines = [l.strip() for l in text.splitlines() if "call stack bounds" in l]
+            detail = f"rc={rc} lines={lines!r} out={out[-160:]!r} stderr={text[-300:]!r}"
+            check(f"an unguarded runaway through a native callback ends with the call-stack line ({label})",
+                  lines == [CALL_DEPTH_LINE] and b"reached" not in out, detail)
+            check(f"it exits 1, not by a signal ({label})", rc == 1, detail)
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
 
 
 def smaps_entries(pid):
