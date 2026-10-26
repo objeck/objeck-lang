@@ -1280,3 +1280,9 @@ ollama/   test_0.obs (generate)   test_1.obs (vision)
 opencv_onnx/  demo_face.obs    demo_yolo.obs    demo_resnet.obs
               demo_phi3_*.obs  demo_phi3v_*.obs
 ```
+
+[`programs/examples/ml/bert_malware_lab.obs`](../programs/examples/ml/bert_malware_lab.obs) runs a
+BERT malware-classification lab's three experiments — class imbalance with a fixed test set,
+MAX_SEQ_LENGTH, and learning rate with per-epoch loss curves — on a frozen BERT encoder and a
+trained `EmbeddingClassifier` head, from a CSV of API-call traces or a synthetic corpus
+(`--synthetic`). Its header says how this differs from the lab's end-to-end fine-tuning.
