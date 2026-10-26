@@ -13590,6 +13590,68 @@
 
 			}
 		},
+		"System.ML.AutoencoderDetector": {
+			"description": "Autoencoder anomaly detection: a DenseNetwork trained to reproduce its input through a bottleneck, so rows unlike the training data reconstruct badly.\n\nFeatures are standardized with the training mean and population standard deviation (a constant feature scales to 0), the network maps p features through the hidden sizes back to p (ReLU hidden layers, linear output), trained by Adam on mean squared error. A row's score is its mean squared reconstruction error in the standardized space. The threshold is the given percentile (default 95.0) of the TRAINING reconstruction errors, numpy's linear interpolation; 99.5 flags about 0.5% of the training rows. The percentile only moves the threshold, so SetSensitivity keeps the trained network.\n\nHidden sizes default to [ceil(p\/2), ceil(p\/4), ceil(p\/2)]. Training: 50 epochs, batches of 32, learning rate 0.001, seed 42.",
+			"functions": {
+				"DecisionFunction": {
+					"descriptions": ["**Score minus the threshold; positive means outlier.**\n\n```method : public : DecisionFunction(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"Fit": {
+					"descriptions": ["**Standardizes, trains the network and sets the threshold.**\n\n```method : public : Fit(X:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\nreturn: Bool"]
+				},
+				"FitPredict": {
+					"descriptions": ["**Fits, then labels the training rows.**\n\n```method : public : FitPredict(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetNetwork": {
+					"descriptions": ["**The trained network.**\n\n```method : public : GetNetwork() ~ DenseNetwork```\n\n\n\nreturn: DenseNetwork"]
+				},
+				"GetSensitivity": {
+					"descriptions": ["**The percentile.**\n\n```method : public : GetSensitivity() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetSensitivityName": {
+					"descriptions": ["**The setting's name.**\n\n```method : public : GetSensitivityName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetThreshold": {
+					"descriptions": ["**The reconstruction-error threshold: the percentile of the training errors.**\n\n```method : public : GetThreshold() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetTrainingLoss": {
+					"descriptions": ["**The last training epoch's mean squared error.**\n\n```method : public : GetTrainingLoss() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetTrainingScores": {
+					"descriptions": ["**The training rows' reconstruction errors.**\n\n```method : public : GetTrainingScores() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether the detector is fitted.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor with the defaults: hidden sizes from the data, percentile 95.0, 50 epochs, seed 42.**\n\n```New()```\n\n", "**Constructor.**\n\n```New(hidden:Int[], percentile:Float, epochs:Int, seed:Int)```\n\n\n\nhidden: Int[]\n\npercentile: Float\n\nepochs: Int\n\nseed: Int"]
+				},
+				"Predict": {
+					"descriptions": ["**Labels rows: true where the reconstruction error exceeds the threshold.**\n\n```method : public : Predict(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"Reconstruct": {
+					"descriptions": ["**Reconstructions of each row, in the original feature units.**\n\n```method : public : Reconstruct(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]"]
+				},
+				"Score": {
+					"descriptions": ["**Per-row mean squared reconstruction error (standardized space).**\n\n```method : public : Score(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"SetBatchSize": {
+					"descriptions": ["**Sets the minibatch size for the next Fit (default 32).**\n\n```method : public : SetBatchSize(size:Int) ~ Bool```\n\n\n\nsize: Int\n\nreturn: Bool"]
+				},
+				"SetLearningRate": {
+					"descriptions": ["**Sets the Adam learning rate for the next Fit (default 0.001).**\n\n```method : public : SetLearningRate(rate:Float) ~ Bool```\n\n\n\nrate: Float\n\nreturn: Bool"]
+				},
+				"SetSensitivity": {
+					"descriptions": ["**Sets the percentile; a fitted detector keeps its network and re-derives the threshold from the training errors.**\n\n```method : public : SetSensitivity(value:Float) ~ Bool```\n\n\n\nvalue: Float\n\nreturn: Bool"]
+				},
+				"SetStandardize": {
+					"descriptions": ["**Whether the next Fit standardizes the features first (default true).**\n\n```method : public : SetStandardize(standardize:Bool) ~ Nil```\n\n\n\nstandardize: Bool\n\nreturn: Nil"]
+				}
+			}
+		},
 		"System.ML.AveragePrecisionMetric": {
 			"description": "Average precision, as a resampleable metric.",
 			"functions": {
@@ -13755,6 +13817,53 @@
 				}
 			}
 		},
+		"System.ML.DbscanDetector": {
+			"description": "DBSCAN as an outlier detector, so its eps can be swept like any other detector's setting. The outliers are exactly DBSCAN's noise: rows that are not core (fewer than min_points rows, itself included, within eps) and have no core row within eps. The existing DBSCAN class gives the same noise; this adds a score and the OutlierDetector interface.\n\nThe score is the distance to the nearest core training row (0 for a core row), the threshold is eps, and Predict applies the same rule to new rows. With no core rows at all every score is +Inf. Distances are computed by brute force, O(n^2). Changing eps changes the model, so SetSensitivity unfits it.",
+			"functions": {
+				"DecisionFunction": {
+					"descriptions": ["**Score minus eps; positive means outlier.**\n\n```method : public : DecisionFunction(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"Fit": {
+					"descriptions": ["**Finds the core rows and scores the training rows.**\n\n```method : public : Fit(X:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\nreturn: Bool"]
+				},
+				"FitPredict": {
+					"descriptions": ["**Fits, then labels the training rows: true for DBSCAN noise.**\n\n```method : public : FitPredict(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"GetCoreMask": {
+					"descriptions": ["**Which training rows are core rows.**\n\n```method : public : GetCoreMask() ~ Bool[]```\n\n\n\nreturn: Bool[]"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetSensitivity": {
+					"descriptions": ["**eps.**\n\n```method : public : GetSensitivity() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetSensitivityName": {
+					"descriptions": ["**The setting's name.**\n\n```method : public : GetSensitivityName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetThreshold": {
+					"descriptions": ["**The threshold, which is eps.**\n\n```method : public : GetThreshold() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetTrainingScores": {
+					"descriptions": ["**The training rows' distances to the nearest core row.**\n\n```method : public : GetTrainingScores() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether the detector is fitted.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor with scikit-learn's defaults: eps 0.5, min_points 5.**\n\n```New()```\n\n", "**Constructor.**\n\n```New(eps:Float, min_points:Int)```\n\n\n\neps: Float\n\nmin_points: Int"]
+				},
+				"Predict": {
+					"descriptions": ["**Labels new rows: true where no core training row lies within eps.**\n\n```method : public : Predict(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"Score": {
+					"descriptions": ["**Distance from each row to the nearest core training row.**\n\n```method : public : Score(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"SetSensitivity": {
+					"descriptions": ["**Sets eps; the detector becomes unfitted, since the core rows change.**\n\n```method : public : SetSensitivity(value:Float) ~ Bool```\n\n\n\nvalue: Float\n\nreturn: Bool"]
+				}
+			}
+		},
 		"System.ML.DecisionTree": {
 			"description": "Binary decision tree classifier over boolean features.\n\nTrain with Fit on a matrix whose last column holds the class label, then classify single rows with Predict or whole matrices with PredictAll. Score reports accuracy against a labelled matrix, and a fitted tree can be written out with Store and read back with Load.",
 			"functions": {
@@ -13864,6 +13973,53 @@
 				}
 			}
 		},
+		"System.ML.DenseNetwork": {
+			"description": "A multi-layer dense (fully connected) network trained by minibatch Adam on mean squared error.\n\nNeuralNetwork above has one hidden layer of sigmoid units and answers Bool; this is the general case: any number of layers of any size, a hidden activation and an output activation (LINEAR, RELU, SIGMOID, TANH), real-valued outputs. Each layer computes act(A W + b). Weights start Glorot-uniform from the seed, biases at 0. Every epoch visits the rows in a seeded shuffle, in minibatches (default 32; the last may be shorter). The loss is the mean over rows and outputs of the squared error, as Keras's and PyTorch's MSE. Adam follows PyTorch: lr 0.001, beta1 0.9, beta2 0.999, eps 1e-8, w -= (lr \/ (1 - beta1^t)) m \/ (sqrt(v) \/ sqrt(1 - beta2^t) + eps).\n\nDeterministic: the same seed and data train the same weights.",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Trains on X -> Y.**\n\n```method : public : Fit(X:Float[,], Y:Float[,], epochs:Int) ~ Float```\n\n\n\nX: Float[,]\n\nY: Float[,]\n\nepochs: Int\n\nreturn: Float"]
+				},
+				"GetBiases": {
+					"descriptions": ["**A layer's biases (1 x outputs); the live matrix, not a copy.**\n\n```method : public : GetBiases(layer:Int) ~ Float[,]```\n\n\n\nlayer: Int\n\nreturn: Float[,]"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetLayerSizes": {
+					"descriptions": ["**Units per layer, input first.**\n\n```method : public : GetLayerSizes() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetWeights": {
+					"descriptions": ["**A layer's weights (inputs x outputs); the live matrix, not a copy.**\n\n```method : public : GetWeights(layer:Int) ~ Float[,]```\n\n\n\nlayer: Int\n\nreturn: Float[,]"]
+				},
+				"Loss": {
+					"descriptions": ["**Mean squared error over rows and outputs.**\n\n```method : public : Loss(X:Float[,], Y:Float[,]) ~ Float```\n\n\n\nX: Float[,]\n\nY: Float[,]\n\nreturn: Float"]
+				},
+				"New": {
+					"descriptions": ["**Constructor.**\n\n```New(sizes:Int[], hidden:DenseNetwork-&gt;Activation, output:DenseNetwork-&gt;Activation, seed:Int)```\n\n\n\nsizes: Int[]\n\nhidden: DenseNetwork-&gt;Activation\n\noutput: DenseNetwork-&gt;Activation\n\nseed: Int"]
+				},
+				"Predict": {
+					"descriptions": ["**Network outputs for each row.**\n\n```method : public : Predict(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]"]
+				},
+				"SetAdam": {
+					"descriptions": ["**Sets Adam's moment decay rates and epsilon (defaults 0.9, 0.999, 1e-8).**\n\n```method : public : SetAdam(beta1:Float, beta2:Float, epsilon:Float) ~ Bool```\n\n\n\nbeta1: Float\n\nbeta2: Float\n\nepsilon: Float\n\nreturn: Bool"]
+				},
+				"SetBatchSize": {
+					"descriptions": ["**Sets the minibatch size (default 32).**\n\n```method : public : SetBatchSize(size:Int) ~ Bool```\n\n\n\nsize: Int\n\nreturn: Bool"]
+				},
+				"SetBiases": {
+					"descriptions": ["**Replaces a layer's biases (copied).**\n\n```method : public : SetBiases(layer:Int, biases:Float[,]) ~ Bool```\n\n\n\nlayer: Int\n\nbiases: Float[,]\n\nreturn: Bool"]
+				},
+				"SetLearningRate": {
+					"descriptions": ["**Sets the Adam learning rate (default 0.001).**\n\n```method : public : SetLearningRate(rate:Float) ~ Bool```\n\n\n\nrate: Float\n\nreturn: Bool"]
+				},
+				"SetWeights": {
+					"descriptions": ["**Replaces a layer's weights (copied), e.g. to start from known values.**\n\n```method : public : SetWeights(layer:Int, weights:Float[,]) ~ Bool```\n\n\n\nlayer: Int\n\nweights: Float[,]\n\nreturn: Bool"]
+				},
+				"TrainBatch": {
+					"descriptions": ["**One Adam step on one minibatch.**\n\n```method : public : TrainBatch(Xb:Float[,], Yb:Float[,]) ~ Float```\n\n\n\nXb: Float[,]\n\nYb: Float[,]\n\nreturn: Float"]
+				}
+			}
+		},
 		"System.ML.ElasticNet": {
 			"description": "Elastic-net regularized linear regression fitted by cyclic coordinate descent on mean-centered data with an unpenalized intercept. Minimizes (1\/2n)||y - Xw - b||^2 + alpha*(l1_ratio*|w|_1 + (1-l1_ratio)\/2*|w|_2^2). l1_ratio = 1.0 is the lasso; l1_ratio = 0.0 is ridge (use RidgeRegression for the closed-form solution). The L1 term drives uninformative feature coefficients exactly to zero.",
 			"functions": {
@@ -13902,6 +14058,130 @@
 				},
 				"Store": {
 					"descriptions": ["**Saves the fitted model to a file.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.ML.EllipticEnvelope": {
+			"description": "Robust covariance outlier detection: the Minimum Covariance Determinant by FastMCD (Rousseeuw and Van Driessen 1999), following scikit-learn's EllipticEnvelope \/ MinCovDet.\n\nThe MCD estimate is the mean and covariance of the h rows whose covariance has the smallest determinant; h defaults to ceil((n + p + 1) \/ 2), so up to almost half the rows can be outliers without moving it. FastMCD searches by C-steps from random (p + 1)-subsets, as the paper does: 500 of them for n <= 500, the best 50 run to convergence; above that the nested scheme (at most 5 subsets of 300, pooled on 1500 rows, finished on the full data). scikit-learn starts from 30 random h-subsets instead, which reach the lowest determinant less often. The search is a heuristic either way: on Gaussian data many h-subsets have nearly the same determinant. The raw estimate is then made consistent at the normal model (covariance scaled by median(d^2) \/ chi2_p median) and reweighted (mean and covariance of the rows with corrected d^2 below the chi2_p 0.975 quantile), as MinCovDet does.\n\nThe score is the squared Mahalanobis distance under the reweighted estimate (sklearn's score_samples negated); the threshold is the (1 - contamination) quantile of the training distances. Contamination does not change the estimate.\n\nA feature constant over the training rows is left out of the distance (what sklearn's pseudo-inverse does for it). If the covariance of the support is still singular -- collinear features, or h rows in a lower-dimensional subspace such as many duplicates -- Fit refuses and says so rather than regularising silently.",
+			"functions": {
+				"ChiSquareQuantile": {
+					"descriptions": ["**The chi-square quantile: the x with P(X <= x) = prob for dof degrees of freedom (scipy.stats.chi2(dof).ppf(prob)). The consistency correction uses the median and the reweighting the 0.975 quantile; a caller can use it to turn a squared Mahalanobis distance into a tail probability cut.**\n\n```function : ChiSquareQuantile(dof:Int, prob:Float) ~ Float```\n\n\n\ndof: Int\n\nprob: Float\n\nreturn: Float"]
+				},
+				"DecisionFunction": {
+					"descriptions": ["**Score minus the threshold; positive means outlier.**\n\n```method : public : DecisionFunction(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"Fit": {
+					"descriptions": ["**Fits the robust location and covariance.**\n\n```method : public : Fit(X:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\nreturn: Bool"]
+				},
+				"FitPredict": {
+					"descriptions": ["**Fits, then labels the training rows.**\n\n```method : public : FitPredict(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"GetCovariance": {
+					"descriptions": ["**The robust (reweighted) covariance, features x features; rows and columns of constant features are zero.**\n\n```method : public : GetCovariance() ~ Float[,]```\n\n\n\nreturn: Float[,]"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetLocation": {
+					"descriptions": ["**The robust (reweighted) location, one value per feature; a constant feature reports its constant.**\n\n```method : public : GetLocation() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetRawCovariance": {
+					"descriptions": ["**The raw MCD covariance, before the consistency correction and reweighting.**\n\n```method : public : GetRawCovariance() ~ Float[,]```\n\n\n\nreturn: Float[,]"]
+				},
+				"GetRawLocation": {
+					"descriptions": ["**The raw MCD location, before reweighting.**\n\n```method : public : GetRawLocation() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetRawSupport": {
+					"descriptions": ["**Which training rows formed the raw MCD support (the h rows).**\n\n```method : public : GetRawSupport() ~ Bool[]```\n\n\n\nreturn: Bool[]"]
+				},
+				"GetSensitivity": {
+					"descriptions": ["**The contamination.**\n\n```method : public : GetSensitivity() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetSensitivityName": {
+					"descriptions": ["**The setting's name.**\n\n```method : public : GetSensitivityName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetSupport": {
+					"descriptions": ["**Which training rows formed the reweighted support.**\n\n```method : public : GetSupport() ~ Bool[]```\n\n\n\nreturn: Bool[]"]
+				},
+				"GetThreshold": {
+					"descriptions": ["**The distance threshold (sklearn's -offset_).**\n\n```method : public : GetThreshold() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetTrainingScores": {
+					"descriptions": ["**The training rows' squared Mahalanobis distances.**\n\n```method : public : GetTrainingScores() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether the detector is fitted.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor with scikit-learn's defaults: contamination 0.1, support fraction auto, seed 42.**\n\n```New()```\n\n", "**Constructor.**\n\n```New(contamination:Float, support_fraction:Float, seed:Int)```\n\n\n\ncontamination: Float\n\nsupport_fraction: Float\n\nseed: Int"]
+				},
+				"Predict": {
+					"descriptions": ["**Labels rows: true where the squared Mahalanobis distance exceeds the threshold.**\n\n```method : public : Predict(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"Score": {
+					"descriptions": ["**Squared Mahalanobis distances under the robust estimate (sklearn's mahalanobis, the negation of score_samples).**\n\n```method : public : Score(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"SetSensitivity": {
+					"descriptions": ["**Sets the contamination; a fitted detector keeps its estimate and re-derives the threshold from the training distances.**\n\n```method : public : SetSensitivity(value:Float) ~ Bool```\n\n\n\nvalue: Float\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.ML.EmbeddingClassifier": {
+			"description": "A binary classifier trained on fixed-size feature vectors -- sentence embeddings from a frozen encoder above all: logistic regression (no hidden layer) or a small multi-layer network with ReLU hidden layers, a sigmoid output and binary cross-entropy loss, trained by minibatch Adam or SGD at a configurable learning rate.\n\nFor class imbalance, SetClassWeights (or SetBalancedWeights) weights each row's loss by its class. GetLossHistory gives the training loss after every epoch, for a loss curve.\n\nInputs are standardised with the training set's mean and deviation, which are kept with the model: embedding dimensions differ widely in scale, and an unscaled head trains far slower. Weights start from System.ML.Random with the given seed, and minibatches are shuffled by the same generator: the same seed and data give the same model, bit for bit.\n\nThis is the head of a frozen-encoder classifier (docs\/ML_BERT_DESIGN.md); nothing here trains the encoder.",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Trains the head.**\n\n```method : public : Fit(X:Float[,], y:Bool[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Bool[]\n\nreturn: Bool"]
+				},
+				"GetBias": {
+					"descriptions": ["**A layer's biases, for inspection. A copy.**\n\n```method : public : GetBias(layer:Int) ~ Float[]```\n\n\n\nlayer: Int\n\nreturn: Float[]"]
+				},
+				"GetClassWeights": {
+					"descriptions": ["**The class weights in use: those set, or after a balanced Fit, those computed.**\n\n```method : public : GetClassWeights() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last Fit returned false or the last prediction Nil.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetLossHistory": {
+					"descriptions": ["**The training loss after each epoch: the class-weighted binary cross-entropy over the whole training set, averaged over its rows, with L2 left out.**\n\n```method : public : GetLossHistory() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetParameterCount": {
+					"descriptions": ["**Number of trainable parameters, weights and biases.**\n\n```method : public : GetParameterCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetWeights": {
+					"descriptions": ["**A layer's weights, inputs by outputs, for inspection: layer 0 takes the (standardised) input, the last gives the logit. A copy.**\n\n```method : public : GetWeights(layer:Int) ~ Float[,]```\n\n\n\nlayer: Int\n\nreturn: Float[,]"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether Fit has succeeded.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Loss": {
+					"descriptions": ["**The class-weighted binary cross-entropy of the model on labelled rows, averaged over the rows: the measure GetLossHistory records, for a validation curve.**\n\n```method : public : Loss(X:Float[,], y:Bool[]) ~ Float```\n\n\n\nX: Float[,]\n\ny: Bool[]\n\nreturn: Float"]
+				},
+				"New": {
+					"descriptions": ["**A head with one hidden layer of 64, learning rate 0.001, 20 epochs, batch 32, seed 42.**\n\n```New()```\n\n", "**A head.**\n\n```New(hidden:Int[], learning_rate:Float, epochs:Int, batch_size:Int, seed:Int)```\n\n\n\nhidden: Int[]\n\nlearning_rate: Float\n\nepochs: Int\n\nbatch_size: Int\n\nseed: Int"]
+				},
+				"PredictClass": {
+					"descriptions": ["**Predicts each row's class: positive when its probability is at least threshold.**\n\n```method : public : PredictClass(X:Float[,], threshold:Float) ~ Bool[]```\n\n\n\nX: Float[,]\n\nthreshold: Float\n\nreturn: Bool[]", "**Predicts each row's class at a threshold of 0.5.**\n\n```method : public : PredictClass(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"PredictProba": {
+					"descriptions": ["**The probability of the positive class for each row.**\n\n```method : public : PredictProba(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"PredictScore": {
+					"descriptions": ["**Scores each row, higher meaning more positive: the positive-class probability, for CrossValidation and the threshold tools in Metrics.**\n\n```method : public : PredictScore(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"SetBalancedWeights": {
+					"descriptions": ["**Weights each class by n \/ (2 x its count) at Fit, so both classes carry equal total weight -- scikit-learn's class_weight=\"balanced\".**\n\n```method : public : SetBalancedWeights() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"SetClassWeights": {
+					"descriptions": ["**Weights each training row's loss by its class, for imbalanced data: a positive weight of 99 makes one missed positive cost as much as 99 false alarms. Both 1.0 by default.**\n\n```method : public : SetClassWeights(negative:Float, positive:Float) ~ Nil```\n\n\n\nnegative: Float\n\npositive: Float\n\nreturn: Nil"]
+				},
+				"SetL2": {
+					"descriptions": ["**Sets L2 regularisation of the weights (not the biases); 0.0 by default.**\n\n```method : public : SetL2(l2:Float) ~ Nil```\n\n\n\nl2: Float\n\nreturn: Nil"]
+				},
+				"SetOptimizer": {
+					"descriptions": ["**Sets the optimizer; Adam by default.**\n\n```method : public : SetOptimizer(optimizer:EmbeddingClassifier-&gt;Optimizer) ~ Nil```\n\n\n\noptimizer: EmbeddingClassifier-&gt;Optimizer\n\nreturn: Nil"]
+				},
+				"SetStandardize": {
+					"descriptions": ["**Whether inputs are standardised with the training mean and deviation; true by default.**\n\n```method : public : SetStandardize(standardize:Bool) ~ Nil```\n\n\n\nstandardize: Bool\n\nreturn: Nil"]
 				}
 			}
 		},
@@ -14140,6 +14420,62 @@
 				},
 				"ToString": {
 					"descriptions": ["**A one-line summary in the form the write-up wants.**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"System.ML.IsolationForest": {
+			"description": "Isolation Forest (Liu, Ting and Zhou 2008), as scikit-learn implements it.\n\nEach tree isolates a random subsample of max_samples rows (default min(256, n), drawn without replacement) by recursive random splits: a feature drawn among those that vary in the node, a split point uniform between its min and max. Trees stop at depth ceil(log2(max_samples)). An anomaly isolates quickly, so its average path length E[h(x)] is short. The score is 2^(-E[h(x)] \/ c(max_samples)), in (0, 1], where c(n) is the average path length of an unsuccessful binary-search\n-tree search; h adds c(leaf size) at a leaf. That is the negation of sklearn's score_samples.\n\nContamination 0.0 is sklearn's \"auto\": threshold 0.5 (offset_ -0.5). Otherwise the threshold is the (1 - contamination) quantile of the training scores. Contamination does not change the trees, so SetSensitivity keeps the forest.",
+			"functions": {
+				"AveragePathLength": {
+					"descriptions": ["**The average path length of an unsuccessful search in a binary search tree of n nodes: c(n) = 2 H(n-1) - 2(n-1)\/n with H(i) = ln(i) + 0.5772156649, c(1) = 0 (and c(0) = 0), c(2) = 1. scikit-learn's _average_path_length.**\n\n```function : AveragePathLength(n:Int) ~ Float```\n\n\n\nn: Int\n\nreturn: Float"]
+				},
+				"DecisionFunction": {
+					"descriptions": ["**Score minus the threshold; positive means outlier.**\n\n```method : public : DecisionFunction(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"Fit": {
+					"descriptions": ["**Grows the forest and sets the threshold from the training scores.**\n\n```method : public : Fit(X:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\nreturn: Bool"]
+				},
+				"FitPredict": {
+					"descriptions": ["**Fits, then labels the training rows.**\n\n```method : public : FitPredict(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetSampleSize": {
+					"descriptions": ["**Rows each tree was grown on (max_samples after the default and the cap).**\n\n```method : public : GetSampleSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetSensitivity": {
+					"descriptions": ["**The contamination (0.0 = auto).**\n\n```method : public : GetSensitivity() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetSensitivityName": {
+					"descriptions": ["**The setting's name.**\n\n```method : public : GetSensitivityName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetThreshold": {
+					"descriptions": ["**The score threshold (sklearn's -offset_).**\n\n```method : public : GetThreshold() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetTrainingScores": {
+					"descriptions": ["**The training rows' scores.**\n\n```method : public : GetTrainingScores() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetTreeCount": {
+					"descriptions": ["**Trees in the forest.**\n\n```method : public : GetTreeCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether the forest is grown.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor with scikit-learn's defaults: 100 trees, max_samples min(256, n), contamination auto, seed 42.**\n\n```New()```\n\n", "**Constructor.**\n\n```New(num_trees:Int, max_samples:Int, contamination:Float, seed:Int)```\n\n\n\nnum_trees: Int\n\nmax_samples: Int\n\ncontamination: Float\n\nseed: Int"]
+				},
+				"PathLengths": {
+					"descriptions": ["**Mean path length E[h(x)] of each row over the trees.**\n\n```method : public : PathLengths(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"Predict": {
+					"descriptions": ["**Labels rows: true where the score exceeds the threshold.**\n\n```method : public : Predict(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"Score": {
+					"descriptions": ["**Anomaly scores 2^(-E[h(x)]\/c(max_samples)), in (0, 1].**\n\n```method : public : Score(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"SetSensitivity": {
+					"descriptions": ["**Sets the contamination; a fitted forest keeps its trees and re-derives the threshold from its training scores.**\n\n```method : public : SetSensitivity(value:Float) ~ Bool```\n\n\n\nvalue: Float\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -14453,6 +14789,56 @@
 				},
 				"New": {
 					"descriptions": ["**Constructor**\n\n```New(m1:Float[,], m2:Float[,])```\n\n\n\nm1: Float[,]\n\nm2: Float[,]"]
+				}
+			}
+		},
+		"System.ML.LocalOutlierFactor": {
+			"description": "Local Outlier Factor (Breunig et al. 2000), as scikit-learn implements it.\n\nA row's local reachability density is the inverse of its mean reachability distance to its k nearest neighbours, reach(a, o) = max(k-distance(o), d(a, o)); its LOF is the mean density of those neighbours over its own. About 1 inside a cluster, well above 1 for a row in a sparser region than its neighbours. The score is the LOF (sklearn's score_samples is -LOF).\n\nk defaults to 20 and is capped at n - 1. Neighbours come from the exact KDTree; a training row's neighbours exclude itself. Contamination 0.0 is sklearn's \"auto\": threshold 1.5. Otherwise the threshold is the (1 - contamination) quantile of the training LOFs.\n\nWithout novelty (the default) the detector labels its training rows only, through FitPredict and GetTrainingScores; Predict and Score refuse, as sklearn raises, because scoring a training row as new would count it as its own neighbour. With novelty, new rows are scored against the training graph.",
+			"functions": {
+				"DecisionFunction": {
+					"descriptions": ["**Score minus the threshold; positive means outlier (novelty mode only).**\n\n```method : public : DecisionFunction(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"Fit": {
+					"descriptions": ["**Builds the neighbour graph and the training LOFs.**\n\n```method : public : Fit(X:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\nreturn: Bool"]
+				},
+				"FitPredict": {
+					"descriptions": ["**Fits, then labels the training rows by their LOF.**\n\n```method : public : FitPredict(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"GetDensities": {
+					"descriptions": ["**The training rows' local reachability densities.**\n\n```method : public : GetDensities() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetNeighbors": {
+					"descriptions": ["**The neighbour count in use: k, capped at n - 1.**\n\n```method : public : GetNeighbors() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetSensitivity": {
+					"descriptions": ["**The contamination (0.0 = auto).**\n\n```method : public : GetSensitivity() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetSensitivityName": {
+					"descriptions": ["**The setting's name.**\n\n```method : public : GetSensitivityName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetThreshold": {
+					"descriptions": ["**The LOF threshold (sklearn's -offset_).**\n\n```method : public : GetThreshold() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetTrainingScores": {
+					"descriptions": ["**The training rows' LOFs (sklearn's -negative_outlier_factor_).**\n\n```method : public : GetTrainingScores() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether the detector is fitted.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor with scikit-learn's defaults: k 20, contamination auto, no novelty.**\n\n```New()```\n\n", "**Constructor.**\n\n```New(k:Int, contamination:Float, novelty:Bool)```\n\n\n\nk: Int\n\ncontamination: Float\n\nnovelty: Bool"]
+				},
+				"Predict": {
+					"descriptions": ["**Labels new rows (novelty mode only).**\n\n```method : public : Predict(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"Score": {
+					"descriptions": ["**LOF of new rows against the training data (novelty mode only).**\n\n```method : public : Score(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"SetSensitivity": {
+					"descriptions": ["**Sets the contamination; a fitted detector keeps its neighbour graph and re-derives the threshold from the training LOFs.**\n\n```method : public : SetSensitivity(value:Float) ~ Bool```\n\n\n\nvalue: Float\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -14833,6 +15219,94 @@
 				},
 				"SetTolerance": {
 					"descriptions": ["**Sets the stopping tolerance (LIBSVM's eps, scikit-learn's tol).**\n\n```method : public : SetTolerance(tol:Float) ~ Nil```\n\n\n\ntol: Float\n\nreturn: Nil"]
+				}
+			}
+		},
+		"System.ML.OneClassSvmDetector": {
+			"description": "One-Class SVM as an OutlierDetector, so nu can be swept like any other detector's setting. A thin adapter over OneClassSVM (ml_svm.obs), which keeps scikit-learn's signs: its DecisionFunction is positive inside the boundary and its Predict answers +1 \/ -1. Here, as for every OutlierDetector, Predict is Bool with true = outlier and Score is higher-is-more-anomalous: Score is OneClassSVM's PredictScore, the negated decision value, the threshold is 0.0, and a row is an outlier when its decision value is below 0 -- exactly OneClassSVM->IsOutlier and scikit-learn's predict.\n\nnu is the sensitivity setting: an upper bound on the training fraction left outside and a lower bound on the support-vector fraction. It changes the model, so SetSensitivity unfits the detector. Defaults are scikit-learn's: RBF kernel, nu 0.5, gamma 'scale'.",
+			"functions": {
+				"DecisionFunction": {
+					"descriptions": ["**Score minus the threshold 0.0, i.e. the negated decision value; positive means outlier.**\n\n```method : public : DecisionFunction(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"Fit": {
+					"descriptions": ["**Fits the boundary.**\n\n```method : public : Fit(X:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\nreturn: Bool"]
+				},
+				"FitPredict": {
+					"descriptions": ["**Fits, then labels the training rows.**\n\n```method : public : FitPredict(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetModel": {
+					"descriptions": ["**The wrapped OneClassSVM.**\n\n```method : public : GetModel() ~ OneClassSVM```\n\n\n\nreturn: OneClassSVM"]
+				},
+				"GetSensitivity": {
+					"descriptions": ["**nu.**\n\n```method : public : GetSensitivity() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetSensitivityName": {
+					"descriptions": ["**The setting's name.**\n\n```method : public : GetSensitivityName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetThreshold": {
+					"descriptions": ["**The threshold on Score, which is 0.0: the boundary itself.**\n\n```method : public : GetThreshold() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetTrainingScores": {
+					"descriptions": ["**The training rows' scores.**\n\n```method : public : GetTrainingScores() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether the detector is fitted.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor with scikit-learn's defaults: RBF kernel, nu 0.5, gamma 'scale'.**\n\n```New()```\n\n", "**Constructor; gamma is 'scale'.**\n\n```New(kernel:SvmKernel, nu:Float)```\n\n\n\nkernel: SvmKernel\n\nnu: Float", "**Wraps a configured OneClassSVM (kernel, gamma, tolerance and so on are kept; SetSensitivity changes its nu).**\n\n```New(model:OneClassSVM)```\n\n\n\nmodel: OneClassSVM"]
+				},
+				"Predict": {
+					"descriptions": ["**Labels rows: true where the decision value is below 0 (outside the boundary).**\n\n```method : public : Predict(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"Score": {
+					"descriptions": ["**The negated decision value: higher means more anomalous.**\n\n```method : public : Score(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"SetSensitivity": {
+					"descriptions": ["**Sets nu; the detector becomes unfitted, since nu changes the boundary.**\n\n```method : public : SetSensitivity(value:Float) ~ Bool```\n\n\n\nvalue: Float\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.ML.OutlierDetector": {
+			"description": "An unsupervised anomaly detector: fitted on rows, it labels and scores rows.\n\nConventions, shared by every detector so they are interchangeable (see docs\/ML_OUTLIERS_DESIGN.md):\n\n- Labels are Bool and **true means outlier**. scikit-learn uses +1 for inliers and -1 for outliers, so sklearn's -1 is our true. The anomaly is the positive class, so a prediction feeds Metrics and ConfusionMatrix directly.\n- Scores: **higher means more anomalous**, so they go straight into Metrics->AucRoc and RecallAtFpr. Where scikit-learn has score_samples (higher means more normal), Score is exactly its negation.\n- GetThreshold is the cut on Score, sklearn's -offset_. DecisionFunction is Score minus the threshold, so positive means outlier (sklearn's\n-decision_function). A row is an outlier when its score is strictly greater than the threshold, as in sklearn's predict.\n- Where a detector takes a contamination, the threshold is that quantile of the training scores (numpy's linear interpolation), as in scikit-learn.\n- NaN input is refused: Fit returns false and GetError says where; Predict and Score return Nil.",
+			"functions": {
+				"DecisionFunction": {
+					"descriptions": ["**Score minus the threshold: positive means outlier, the negation of scikit-learn's decision_function.**\n\n```method : public : virutal : DecisionFunction(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"Fit": {
+					"descriptions": ["**Fits the detector to training rows.**\n\n```method : public : virutal : Fit(X:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\nreturn: Bool"]
+				},
+				"FitPredict": {
+					"descriptions": ["**Fits, then labels the training rows themselves. For LocalOutlierFactor without novelty this is the only way to label (each training row is scored without counting itself as a neighbour); for DbscanDetector it is DBSCAN's noise.**\n\n```method : public : virutal : FitPredict(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last Fit, Predict or Score failed.**\n\n```method : public : virutal : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetSensitivity": {
+					"descriptions": ["**The current sensitivity setting.**\n\n```method : public : virutal : GetSensitivity() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetSensitivityName": {
+					"descriptions": ["**The name of the sensitivity setting, e.g. \"contamination\".**\n\n```method : public : virutal : GetSensitivityName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetThreshold": {
+					"descriptions": ["**The cut on Score above which a row is an outlier (scikit-learn's -offset_).**\n\n```method : public : virutal : GetThreshold() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetTrainingScores": {
+					"descriptions": ["**The scores of the training rows the threshold was taken from.**\n\n```method : public : virutal : GetTrainingScores() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether the detector is fitted and ready to label.**\n\n```method : public : virutal : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Predict": {
+					"descriptions": ["**Labels new rows: true where the score is strictly above the threshold.**\n\n```method : public : virutal : Predict(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"Score": {
+					"descriptions": ["**Anomaly scores for new rows; higher means more anomalous.**\n\n```method : public : virutal : Score(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"SetSensitivity": {
+					"descriptions": ["**Sets the detector's sensitivity setting (GetSensitivityName names it). When the setting only moves the threshold (a z-score threshold, a contamination, a percentile), a fitted detector re-derives its threshold from its training scores and stays fitted; when it changes the model (DBSCAN's eps) the detector becomes unfitted and must be fitted again.**\n\n```method : public : virutal : SetSensitivity(value:Float) ~ Bool```\n\n\n\nvalue: Float\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -15252,6 +15726,59 @@
 				}
 			}
 		},
+		"System.ML.ZScoreDetector": {
+			"description": "Flags rows whose standardized value on some feature is extreme.\n\nFit stores each feature's mean and population standard deviation (ddof 0, as scipy.stats.zscore). A row's score combines its per-feature |z| by the rule: MAX (default) is max |z|, i.e. \"any feature beyond the threshold\"; MEAN is the mean |z|; RMS is sqrt(mean z^2), a diagonal Mahalanobis distance over sqrt(p).\n\nThe threshold is the absolute value itself (default 3.0); a lower threshold flags more. A feature constant in training contributes |z| = 0 when a value equals the constant and +Inf otherwise.",
+			"functions": {
+				"DecisionFunction": {
+					"descriptions": ["**Score minus the threshold; positive means outlier.**\n\n```method : public : DecisionFunction(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"Fit": {
+					"descriptions": ["**Fits per-feature means and standard deviations.**\n\n```method : public : Fit(X:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\nreturn: Bool"]
+				},
+				"FitPredict": {
+					"descriptions": ["**Fits, then labels the training rows.**\n\n```method : public : FitPredict(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetMeans": {
+					"descriptions": ["**Per-feature training means.**\n\n```method : public : GetMeans() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetSensitivity": {
+					"descriptions": ["**The z threshold.**\n\n```method : public : GetSensitivity() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetSensitivityName": {
+					"descriptions": ["**The setting's name.**\n\n```method : public : GetSensitivityName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetStdDevs": {
+					"descriptions": ["**Per-feature training population standard deviations.**\n\n```method : public : GetStdDevs() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetThreshold": {
+					"descriptions": ["**The z threshold.**\n\n```method : public : GetThreshold() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetTrainingScores": {
+					"descriptions": ["**The training rows' scores.**\n\n```method : public : GetTrainingScores() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether the detector is fitted.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor: threshold 3.0, MAX rule.**\n\n```New()```\n\n", "**Constructor.**\n\n```New(threshold:Float)```\n\n\n\nthreshold: Float", "**Constructor.**\n\n```New(threshold:Float, rule:ZScoreDetector-&gt;Rule)```\n\n\n\nthreshold: Float\n\nrule: ZScoreDetector-&gt;Rule"]
+				},
+				"Predict": {
+					"descriptions": ["**Labels rows: true where the combined |z| exceeds the threshold.**\n\n```method : public : Predict(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"Score": {
+					"descriptions": ["**The combined |z| of each row.**\n\n```method : public : Score(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"SetSensitivity": {
+					"descriptions": ["**Sets the z threshold; a fitted detector stays fitted.**\n\n```method : public : SetSensitivity(value:Float) ~ Bool```\n\n\n\nvalue: Float\n\nreturn: Bool"]
+				},
+				"ZScores": {
+					"descriptions": ["**Per-feature z values (signed) for each row.**\n\n```method : public : ZScores(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]"]
+				}
+			}
+		},
 		"System.ML.Lab.Chart": {
 			"description": "A chart written as standalone SVG 1.1: a line chart (x numeric, linear or log, or categorical) with markers and error bars, or a grouped bar chart, with a title, axis titles, a 1-2-5 tick grid and a legend. No script, no external font, no dependency: it opens in a browser, pastes into Word, and converts with any SVG tool. Coordinates are written with one decimal, so the same data gives the same bytes on every platform.",
 			"functions": {
@@ -15355,7 +15882,7 @@
 			}
 		},
 		"System.ML.Lab.Experiment": {
-			"description": "A sweep over one named parameter: for every value (and every seed, when repeats are asked for) it runs the Trial, scores the predictions, and collects a ResultTable with train_accuracy, test_accuracy, precision, recall, f1, fpr, false_negatives and fit_ms per value -- mean and sample standard deviation over the seeds when there is more than one.\n\nTest-set metrics come from the test predictions; train_accuracy is the only training-set number, there for the overfitting curve. The confusion counts come from the trial's Bool predictions and the rates from ThresholdResult, every ratio guarded (a value that predicts nothing positive has no precision and reports 0.0).",
+			"description": "A sweep over one named parameter: for every value (and every seed, when repeats are asked for) it runs the Trial, scores the predictions, and collects a ResultTable with train_accuracy, test_accuracy, precision, recall, f1, fpr, false_negatives and fit_ms per value -- mean and sample standard deviation over the seeds when there is more than one.\n\nTest-set metrics come from the test predictions; train_accuracy is the only training-set number, there for the overfitting curve. The confusion counts and rates come from System.ML's ConfusionMatrix over the trial's Bool predictions, every ratio guarded (a value that predicts nothing positive has no precision and reports 0.0).",
 			"functions": {
 				"AddSetting": {
 					"descriptions": ["**Records a fixed setting for the footnote, e.g. (\"max_depth\", \"8\").**\n\n```method : public : AddSetting(name:String, value:String) ~ Nil```\n\n\n\nname: String\n\nvalue: String\n\nreturn: Nil"]
@@ -16120,6 +16647,68 @@
 				},
 				"TokenizeToIds": {
 					"descriptions": ["**Splits text into WordPiece token ids, without [CLS], [SEP] or padding.**\n\n```method : public : TokenizeToIds(text:String) ~ Int[]```\n\n\n\ntext: String\n\nreturn: Int[]"]
+				}
+			}
+		},
+		"System.NLP.Onnx.BertEmbedder": {
+			"description": "Sentence embeddings from a BERT-family ONNX model: Embed(texts) gives one row of hidden-size numbers per text.\n\nThe model is a Hugging Face export (optimum-cli export onnx, or torch.onnx.export) taking input_ids, and usually attention_mask and token_type_ids, as INT64[batch, sequence], and giving last_hidden_state FP32[batch, sequence, hidden] and, for BERT though not for DistilBERT, pooler_output FP32[batch, hidden]. The model's own signature decides what is sent: an input it does not declare is not built, and the one output the pooling needs is the only one asked for.\n\nWith no session options, the build's default provider runs the model, and the CPU when that provider cannot open it (DirectML needs a display adapter): see IsCpuFallback.\n\nPooling: CLS takes the hidden state of the first token; MEAN averages the hidden states of the real tokens, padding excluded, as sentence-transformers does; POOLER is the model's pooler_output, when it has one.\n\nEvery text is padded to max_len, not to the longest text in its batch, so a text's embedding does not depend on which texts share its batch.\n\nThe encoder is frozen: this computes embeddings, it does not train the model. A classifier trained on them (System.ML's EmbeddingClassifier) is the frozen-encoder alternative to fine-tuning.",
+			"functions": {
+				"Close": {
+					"descriptions": ["**Releases the model. Safe to call more than once.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"ClsPool": {
+					"descriptions": ["**CLS pooling: for each row, the vector of the first token.**\n\n```function : ClsPool(hidden:Float[], batch:Int, sequence:Int, dim:Int) ~ Float[,]```\n\n\n\nhidden: Float[]\n\nbatch: Int\n\nsequence: Int\n\ndim: Int\n\nreturn: Float[,]"]
+				},
+				"Embed": {
+					"descriptions": ["**Embeds texts with the configured pooling.**\n\n```method : public : Embed(texts:String[]) ~ Float[,]```\n\n\n\ntexts: String[]\n\nreturn: Float[,]", "**Embeds texts with a given pooling.**\n\n```method : public : Embed(texts:String[], pooling:BertEmbedder-&gt;Pooling) ~ Float[,]```\n\n\n\ntexts: String[]\n\npooling: BertEmbedder-&gt;Pooling\n\nreturn: Float[,]"]
+				},
+				"EmbedEncoded": {
+					"descriptions": ["**Embeds texts already encoded, with the configured pooling: for a caller with its own tokenizer or cached encodings. Every encoding must be max_len long.**\n\n```method : public : EmbedEncoded(encodings:TokenEncoding[]) ~ Float[,]```\n\n\n\nencodings: TokenEncoding[]\n\nreturn: Float[,]", "**Embeds texts already encoded, with a given pooling.**\n\n```method : public : EmbedEncoded(encodings:TokenEncoding[], pooling:BertEmbedder-&gt;Pooling) ~ Float[,]```\n\n\n\nencodings: TokenEncoding[]\n\npooling: BertEmbedder-&gt;Pooling\n\nreturn: Float[,]"]
+				},
+				"GetBatchSize": {
+					"descriptions": ["**Texts run through the model at once.**\n\n```method : public : GetBatchSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the embedder did not open, or why the last Embed returned Nil.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetHiddenSize": {
+					"descriptions": ["**The length of each embedding: the model's hidden size. A model whose hidden axis is symbolic reports it after the first Embed.**\n\n```method : public : GetHiddenSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetMaxLength": {
+					"descriptions": ["**The sequence length every text is truncated and padded to.**\n\n```method : public : GetMaxLength() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetPooling": {
+					"descriptions": ["**The pooling Embed uses.**\n\n```method : public : GetPooling() ~ BertEmbedder-&gt;Pooling```\n\n\n\nreturn: BertEmbedder-&gt;Pooling"]
+				},
+				"GetSession": {
+					"descriptions": ["**The ONNX session, for what this class does not cover.**\n\n```method : public : GetSession() ~ Session```\n\n\n\nreturn: Session"]
+				},
+				"GetTokenizer": {
+					"descriptions": ["**The tokenizer, e.g. to inspect what a text becomes.**\n\n```method : public : GetTokenizer() ~ WordPieceTokenizer```\n\n\n\nreturn: WordPieceTokenizer"]
+				},
+				"HasPooler": {
+					"descriptions": ["**Whether the model has a pooler_output, so POOLER pooling is available.**\n\n```method : public : HasPooler() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsCpuFallback": {
+					"descriptions": ["**Whether the build's default provider failed to open the model and the CPU provider was used instead. Only when no session options were given.**\n\n```method : public : IsCpuFallback() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsOpen": {
+					"descriptions": ["**Whether the model and vocabulary loaded and the model has the inputs and outputs of a BERT-family encoder.**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Load": {
+					"descriptions": ["**Opens a model with the vocabulary of an uncased model.**\n\n```function : Load(model_path:String, vocab_path:String, max_len:Int) ~ BertEmbedder```\n\n\n\nmodel_path: String\n\nvocab_path: String\n\nmax_len: Int\n\nreturn: BertEmbedder"]
+				},
+				"MeanPool": {
+					"descriptions": ["**Mean pooling: for each row, the mean of the token vectors whose mask is 1. A row with no real token pools to zeros.**\n\n```function : MeanPool(hidden:Float[], batch:Int, sequence:Int, dim:Int, mask:Int[]) ~ Float[,]```\n\n\n\nhidden: Float[]\n\nbatch: Int\n\nsequence: Int\n\ndim: Int\n\nmask: Int[]\n\nreturn: Float[,]\n\n```\npooled := BertEmbedder->MeanPool(values, 2, 128, 768, mask);\n```"]
+				},
+				"New": {
+					"descriptions": ["**Opens a model with the vocabulary of an uncased model: lowercase, strip accents.**\n\n```New(model_path:String, vocab_path:String, max_len:Int)```\n\n\n\nmodel_path: String\n\nvocab_path: String\n\nmax_len: Int", "**Opens a model with a tokenizer configured by the caller, and session options.**\n\n```New(model_path:String, tokenizer:WordPieceTokenizer, max_len:Int, config:Map&lt;String,String&gt;)```\n\n\n\nmodel_path: String\n\ntokenizer: WordPieceTokenizer\n\nmax_len: Int\n\nconfig: Map&lt;String,String&gt;"]
+				},
+				"SetBatchSize": {
+					"descriptions": ["**Sets how many texts run through the model at once. Larger batches are faster per text and hold more memory: a batch's hidden states are batch x max_len x hidden numbers. A model with a fixed batch axis caps it.**\n\n```method : public : SetBatchSize(batch_size:Int) ~ Nil```\n\n\n\nbatch_size: Int\n\nreturn: Nil"]
+				},
+				"SetPooling": {
+					"descriptions": ["**Sets the pooling Embed uses; CLS by default.**\n\n```method : public : SetPooling(pooling:BertEmbedder-&gt;Pooling) ~ Nil```\n\n\n\npooling: BertEmbedder-&gt;Pooling\n\nreturn: Nil"]
 				}
 			}
 		},
@@ -19937,6 +20526,12 @@
 				"file": ""
 			}
 		],
+		"AutoencoderDetector": [
+			{
+				"bundle": "System.ML",
+				"file": ""
+			}
+		],
 		"AveragePrecisionMetric": [
 			{
 				"bundle": "System.ML",
@@ -19979,6 +20574,12 @@
 				"file": ""
 			}
 		],
+		"DbscanDetector": [
+			{
+				"bundle": "System.ML",
+				"file": ""
+			}
+		],
 		"DecisionTree": [
 			{
 				"bundle": "System.ML",
@@ -19991,7 +20592,25 @@
 				"file": ""
 			}
 		],
+		"DenseNetwork": [
+			{
+				"bundle": "System.ML",
+				"file": ""
+			}
+		],
 		"ElasticNet": [
+			{
+				"bundle": "System.ML",
+				"file": ""
+			}
+		],
+		"EllipticEnvelope": [
+			{
+				"bundle": "System.ML",
+				"file": ""
+			}
+		],
+		"EmbeddingClassifier": [
 			{
 				"bundle": "System.ML",
 				"file": ""
@@ -20040,6 +20659,12 @@
 			}
 		],
 		"GroupRecall": [
+			{
+				"bundle": "System.ML",
+				"file": ""
+			}
+		],
+		"IsolationForest": [
 			{
 				"bundle": "System.ML",
 				"file": ""
@@ -20111,6 +20736,12 @@
 				"file": ""
 			}
 		],
+		"LocalOutlierFactor": [
+			{
+				"bundle": "System.ML",
+				"file": ""
+			}
+		],
 		"LogisticRegression": [
 			{
 				"bundle": "System.ML",
@@ -20148,6 +20779,18 @@
 			}
 		],
 		"OneClassSVM": [
+			{
+				"bundle": "System.ML",
+				"file": ""
+			}
+		],
+		"OneClassSvmDetector": [
+			{
+				"bundle": "System.ML",
+				"file": ""
+			}
+		],
+		"OutlierDetector": [
 			{
 				"bundle": "System.ML",
 				"file": ""
@@ -20250,6 +20893,12 @@
 			}
 		],
 		"TreeNode": [
+			{
+				"bundle": "System.ML",
+				"file": ""
+			}
+		],
+		"ZScoreDetector": [
 			{
 				"bundle": "System.ML",
 				"file": ""
@@ -20408,6 +21057,12 @@
 		"WordPieceTokenizer": [
 			{
 				"bundle": "System.NLP",
+				"file": ""
+			}
+		],
+		"BertEmbedder": [
+			{
+				"bundle": "System.NLP.Onnx",
 				"file": ""
 			}
 		],
@@ -22458,6 +23113,30 @@
 				{ "name": "FUNC", "value": "-54", "description": "" }
 			]
 		},
+		"System.ML.DenseNetwork#Activation": {
+			"name": "Activation",
+			"bundle": "System.ML",
+			"class": "System.ML.DenseNetwork",
+			"kind": "enum",
+			"description": "Unit activations.",
+			"items": [
+				{ "name": "LINEAR", "value": "0", "description": "" },
+				{ "name": "RELU", "value": "1", "description": "" },
+				{ "name": "SIGMOID", "value": "2", "description": "" },
+				{ "name": "TANH", "value": "3", "description": "" }
+			]
+		},
+		"System.ML.EmbeddingClassifier#Optimizer": {
+			"name": "Optimizer",
+			"bundle": "System.ML",
+			"class": "System.ML.EmbeddingClassifier",
+			"kind": "enum",
+			"description": "How the weights are updated.",
+			"items": [
+				{ "name": "ADAM", "value": "0", "description": "Adam: beta1 0.9, beta2 0.999, epsilon 1e-8, with bias correction." },
+				{ "name": "SGD", "value": "1", "description": "Plain minibatch stochastic gradient descent." }
+			]
+		},
 		"System.ML.SvmKernel": {
 			"name": "SvmKernel",
 			"bundle": "System.ML",
@@ -22469,6 +23148,30 @@
 				{ "name": "RBF", "value": "1", "description": "" },
 				{ "name": "POLY", "value": "2", "description": "" },
 				{ "name": "SIGMOID", "value": "3", "description": "" }
+			]
+		},
+		"System.ML.ZScoreDetector#Rule": {
+			"name": "Rule",
+			"bundle": "System.ML",
+			"class": "System.ML.ZScoreDetector",
+			"kind": "enum",
+			"description": "How per-feature |z| values combine into one score.",
+			"items": [
+				{ "name": "MAX", "value": "0", "description": "" },
+				{ "name": "MEAN", "value": "1", "description": "" },
+				{ "name": "RMS", "value": "2", "description": "" }
+			]
+		},
+		"System.NLP.Onnx.BertEmbedder#Pooling": {
+			"name": "Pooling",
+			"bundle": "System.NLP.Onnx",
+			"class": "System.NLP.Onnx.BertEmbedder",
+			"kind": "enum",
+			"description": "How a text's token vectors become one vector.",
+			"items": [
+				{ "name": "CLS", "value": "0", "description": "The hidden state of the first token, [CLS]." },
+				{ "name": "MEAN", "value": "1", "description": "The mean of the hidden states of the real tokens, padding excluded." },
+				{ "name": "POOLER", "value": "2", "description": "The model's pooler_output: tanh of a dense layer over [CLS], as BERT was pretrained." }
 			]
 		},
 		"Web.HTTP.HttpClient#Task": {
