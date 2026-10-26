@@ -23,7 +23,7 @@
 #   - the DistilBERT-shaped model takes two inputs and returns one output.
 #
 # The models are found relative to the working directory, which every runner
-# sets to this directory.
+# sets to this directory. Sessions use the CPU provider (see Cpu below).
 ~#
 
 use API.Onnx;
@@ -50,6 +50,16 @@ class OnnxTinyBertModel {
 			"FAIL: {$name}"->PrintLine();
 			@ok := false;
 		};
+	}
+
+	# The CPU provider, whatever the build's default. The default on Windows is DirectML, which
+	# needs a display adapter that a CI runner does not have ("Specified display adapter handle
+	# is invalid"), and exact comparisons are a property of the arithmetic, so they are checked
+	# where the arithmetic is the same everywhere.
+	function : Cpu() ~ Map<String, String> {
+		config := Map->New()<String, String>;
+		config->Insert("ep", "cpu");
+		return config;
 	}
 
 	method : LibraryPresent() ~ Bool {
@@ -135,7 +145,7 @@ class OnnxTinyBertModel {
 	}
 
 	method : FullModel() ~ Nil {
-		session := Session->New("data/bert/tiny_bert.onnx");
+		session := Session->New("data/bert/tiny_bert.onnx", Cpu());
 		Report("tiny_bert.onnx opens", session->IsOpen());
 		if(<>session->IsOpen()) {
 			return;
@@ -211,7 +221,7 @@ class OnnxTinyBertModel {
 	}
 
 	method : NoPoolerModel() ~ Nil {
-		session := Session->New("data/bert/tiny_bert_nopool.onnx");
+		session := Session->New("data/bert/tiny_bert_nopool.onnx", Cpu());
 		Report("tiny_bert_nopool.onnx opens", session->IsOpen());
 		if(<>session->IsOpen()) {
 			return;
@@ -248,7 +258,7 @@ class OnnxTinyBertModel {
 	}
 
 	method : FixedModel() ~ Nil {
-		session := Session->New("data/bert/tiny_bert_fixed.onnx");
+		session := Session->New("data/bert/tiny_bert_fixed.onnx", Cpu());
 		Report("tiny_bert_fixed.onnx opens", session->IsOpen());
 		if(<>session->IsOpen()) {
 			return;
