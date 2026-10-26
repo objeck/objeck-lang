@@ -309,19 +309,33 @@ c->Save("recall_vs_c.svg");
 - `AddLine(name : String, xs : Float[], ys : Float[])`, `AddLine(name, xs, ys, errs : Float[])` -- a polyline with markers; `errs` draws symmetric error bars
 - `AddBars(name : String, ys : Float[])`, `AddBars(name, ys, errs)` -- grouped bars over the categories (one group per category, one bar per series)
 - `function : LossCurve(title : String, names : String[], losses : Float[,]) ~ Chart` -- rows are series (one per learning rate), columns are epochs, x = epoch
-- `ToSvg() ~ String`, `Save(path : String) ~ Bool`
+- `ToSvg() ~ String`, `Save(path : String) ~ Bool`, `Size()` (series added)
+- `ResultTable->ToChart(metrics : String[])` and `ToChart(metrics, log_x : Bool)`: x is the parameter value, or the row names as categories when a row's name is not its number; one line per named column (an empty array means every column); error bars from the deviations when the table holds them; y labelled with the metric names
 
-Layout: a title, axis titles, a legend in the top-right of the plot area, a light
-grid, tick labels from a 1-2-5 "nice step" rule (log x: powers of ten in range,
-labelled `0.001`, `0.01`, ...), `font-family="sans-serif"`, a fixed eight-colour
-palette, coordinates emitted with one decimal so the text is stable. Every text
-node is XML-escaped. Log x with a non-positive value is refused with a message.
+Layout: a title, axis titles, a legend in the top-right of the plot area on a
+translucent box (so it reads where it sits over a line), a light grid, tick
+labels from a 1-2-5 "nice step" rule (log x: powers of ten in range, labelled
+`0.001`, `0.01`, ...), `font-family="sans-serif"`, a fixed eight-colour
+palette, coordinates emitted with one decimal so the text is stable. A y range
+inside `[0, 1]` is drawn as the whole unit interval, so rate charts compare; any
+other range starts at 0 (bars, counts, milliseconds) and ends on a nice bound.
+Every text node is XML-escaped. An error bar is one `line` plus one `path` for
+its two caps. A series is held in a `ChartSeries` (name, xs, ys, errors, bars or
+line). Log x with a non-positive value is refused with a message.
+
+The renderer is split into small methods (`Ranges`, `Grid`, `XTicks`, `Axes`,
+`LineSeries`, `BarSeries`, `Legend`): written as one method it exceeded the
+VM's local-variable frame ("Local space has been exceeded"), which is a limit
+worth knowing when writing a long formatter in Objeck.
 
 Verification: the tests parse the SVG with `Data.XML` (well-formed, the root is
-`svg` with `xmlns` and `viewBox`), count the elements a chart must have (one
-`polyline` per line series, one `rect` per bar, `2 * n` error-bar `line`s),
-check that every emitted coordinate lies inside the viewport, and compare to
-golden files under `programs/regression/ml_lab_golden/`. **There is no SVG
+`svg` with `xmlns`, `version` and `viewBox`; attribute values are read with
+`GetDecodedValue`, since the parser keeps a space as `&#x20;`), count the
+elements a chart must have (one `polyline` per line series, one `circle` per
+point, one `rect` per bar, one error-bar `line` per point with a non-zero
+error, plus the grid and axis lines), check that every emitted coordinate lies
+inside the viewport, check that log-axis decades are equally spaced, and
+compare to golden files under `programs/regression/ml_lab_golden/`. **There is no SVG
 rasterizer in the tree** -- OpenCV's `Image->Load` does not read SVG and SDL
 has no SVG path -- so no PNG is produced here and none is added: a student opens
 the SVG in a browser or pastes it into Word. Where a rasterizer exists on the

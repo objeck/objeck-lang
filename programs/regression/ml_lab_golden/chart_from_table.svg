@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="800" height="480" viewBox="0 0 800 480" font-family="sans-serif" font-size="12">
+<title>Forest: trees</title>
+<rect x="0" y="0" width="800" height="480" fill="white"/>
+<text x="400" y="26" text-anchor="middle" font-size="16" font-weight="bold">Forest: trees</text>
+<g stroke="#dddddd" stroke-width="1">
+<line x1="72.0" y1="416.0" x2="776.0" y2="416.0"/>
+<line x1="72.0" y1="342.4" x2="776.0" y2="342.4"/>
+<line x1="72.0" y1="268.8" x2="776.0" y2="268.8"/>
+<line x1="72.0" y1="195.2" x2="776.0" y2="195.2"/>
+<line x1="72.0" y1="121.6" x2="776.0" y2="121.6"/>
+<line x1="72.0" y1="48.0" x2="776.0" y2="48.0"/>
+</g>
+<g fill="#333333" text-anchor="end">
+<text x="64.0" y="420.0">0</text>
+<text x="64.0" y="346.4">0.2</text>
+<text x="64.0" y="272.8">0.4</text>
+<text x="64.0" y="199.2">0.6</text>
+<text x="64.0" y="125.6">0.8</text>
+<text x="64.0" y="52.0">1</text>
+</g>
+<g fill="#333333" text-anchor="middle">
+<text x="72.0" y="434.0">0</text>
+<text x="212.8" y="434.0">100</text>
+<text x="353.6" y="434.0">200</text>
+<text x="494.4" y="434.0">300</text>
+<text x="635.2" y="434.0">400</text>
+<text x="776.0" y="434.0">500</text>
+</g>
+<g stroke="#333333" stroke-width="1.5" fill="none">
+<line x1="72.0" y1="48.0" x2="72.0" y2="416.0"/>
+<line x1="72.0" y1="416.0" x2="776.0" y2="416.0"/>
+</g>
+<text x="424.0" y="464" text-anchor="middle" font-size="13">n_estimators</text>
+<text x="18" y="232.0" text-anchor="middle" font-size="13" transform="rotate(-90 18 232.0)">train_accuracy, test_accuracy</text>
+<polyline fill="none" stroke="#1f77b4" stroke-width="2" points="86.1,81.1 142.4,59.0 212.8,51.7 353.6,49.8 776.0,48.0"/>
+<g fill="#1f77b4" class="markers">
+<circle cx="86.1" cy="81.1" r="3.5"/>
+<circle cx="142.4" cy="59.0" r="3.5"/>
+<circle cx="212.8" cy="51.7" r="3.5"/>
+<circle cx="353.6" cy="49.8" r="3.5"/>
+<circle cx="776.0" cy="48.0" r="3.5"/>
+</g>
+<g stroke="#1f77b4" stroke-width="1" class="errorbars">
+</g>
+<polyline fill="none" stroke="#ff7f0e" stroke-width="2" points="86.1,92.2 142.4,77.4 212.8,73.8 353.6,75.6 776.0,73.8"/>
+<g fill="#ff7f0e" class="markers">
+<circle cx="86.1" cy="92.2" r="3.5"/>
+<circle cx="142.4" cy="77.4" r="3.5"/>
+<circle cx="212.8" cy="73.8" r="3.5"/>
+<circle cx="353.6" cy="75.6" r="3.5"/>
+<circle cx="776.0" cy="73.8" r="3.5"/>
+</g>
+<g stroke="#ff7f0e" stroke-width="1" class="errorbars">
+<line x1="86.1" y1="99.5" x2="86.1" y2="84.8"/>
+<path d="M 82.1 99.5 L 90.1 99.5 M 82.1 84.8 L 90.1 84.8"/>
+<line x1="142.4" y1="83.0" x2="142.4" y2="71.9"/>
+<path d="M 138.4 83.0 L 146.4 83.0 M 138.4 71.9 L 146.4 71.9"/>
+<line x1="353.6" y1="79.3" x2="353.6" y2="71.9"/>
+<path d="M 349.6 79.3 L 357.6 79.3 M 349.6 71.9 L 357.6 71.9"/>
+<line x1="776.0" y1="78.2" x2="776.0" y2="69.3"/>
+<path d="M 772.0 78.2 L 780.0 78.2 M 772.0 69.3 L 780.0 69.3"/>
+</g>
+<g class="legend">
+<rect x="618.0" y="52.0" width="150" height="48.0" fill="white" fill-opacity="0.85" stroke="#cccccc"/>
+<rect x="626.0" y="58.0" width="12" height="12" fill="#1f77b4"/>
+<text x="644.0" y="68.0" fill="#333333">train_accuracy</text>
+<rect x="626.0" y="76.0" width="12" height="12" fill="#ff7f0e"/>
+<text x="644.0" y="86.0" fill="#333333">test_accuracy</text>
+</g>
+</svg>
