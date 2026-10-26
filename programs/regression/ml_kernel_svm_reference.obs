@@ -7,7 +7,7 @@ four per kernel, each solved by the exact KKT enumeration (n <= 7) or by a
 plain first-order SMO run to 1e-10 -- neither shares code with the solver in
 ml_svm.obs. KernelSVM, fitted at tol 1e-9, must reach the reference's dual
 objective to 1e-6 (relative, floor 1) and its decision values on six unseen
-rows to 1e-5. The full comparison (272 problems, support sets, KKT) is
+rows to 1e-5. The full comparison (hundreds of problems, support sets, KKT) is
 svm_reference.py; this is the part CI can run.
 
 Labels are Int literals converted to Bool, because Bool array literals are
