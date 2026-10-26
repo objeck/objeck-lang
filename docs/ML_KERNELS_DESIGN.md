@@ -221,6 +221,11 @@ a documented, stratified, seeded draw, and the docs say so plainly. Interpreted
 * For `OneClassSVM`, `DecisionFunction` keeps sklearn's sign (positive = inlier);
   `PredictScore` is its negation so that "higher = more anomalous" holds for the
   metric functions, whose positive class is the attack.
+* One deliberate difference from LIBSVM (found while testing stage 2): when no
+  alpha is free, every rho in `[lb, ub]` is optimal and LIBSVM takes the
+  midpoint. A one-class fit at `nu = 1` puts every alpha at its bound, `ub` is
+  infinite, and so is LIBSVM's rho and every decision value. The solver takes the
+  finite end of the interval instead. A C-SVC fit cannot reach this case.
 
 ## Probability outputs
 
@@ -240,16 +245,23 @@ classes in `ml_tree.obs`; the `Bool[,]` `RandomForest` is untouched):
   meaning, so no existing call changes behaviour. In a forest the count is of
   bootstrap draws, repeats included (sklearn counts distinct rows and uses the
   repeats as weights); this is documented on the parameter.
-* `max_depth <= 0` means unlimited (sklearn's `None`). Today `0` builds a single
-  leaf, which no caller can want.
-* `GetFitSeconds()` and `GetFeatureImportances()` (mean decrease in Gini impurity,
-  normalised per tree, averaged, normalised -- sklearn's `feature_importances_`).
+* A negative `max_depth` means unlimited (sklearn's `None`), named by
+  `DecisionTreeClassifier->UnlimitedDepth()` (-1). `0` keeps its meaning of a
+  single leaf: `ml_decision_tree_classifier` relies on it, so changing it would
+  break an existing caller.
+* `GetFitSeconds()`, `GetFeatureImportances()` (mean decrease in Gini impurity,
+  normalised per tree, averaged, normalised -- sklearn's `feature_importances_`),
+  depth and leaf counts, and `Apply` (sklearn's `apply`, the leaf each row lands
+  in -- also how the tests check min_samples_leaf).
 * The split search is rewritten as a single sorted sweep per feature. Today each
   candidate threshold rescans every row (`SplitGini`), so a node costs
   `O(rows^2)` per feature; that makes a 500-tree sweep at NSL-KDD scale
   impractical. The sweep evaluates the same candidates in the same order with the
-  same arithmetic, so it picks the same splits; tests assert identical scores
-  against the old implementation's outputs.
+  same arithmetic, so it picks the same splits; old and new libraries give
+  bit-identical scores, and one depth-12 tree on 2,000 x 41 rows went from 52 s to
+  0.04 s. `RegressionTree` (under the gradient-boosted models) has the same
+  quadratic search; it is left alone here because a prefix-sum rewrite would
+  change its floating-point sums and so, at near ties, its splits.
 
 ## Test plan
 
@@ -265,10 +277,15 @@ no code with the Objeck solver:
    second-order selection) run to `tol = 1e-10` on n = 10..60.
 3. On **50+ random problems per kernel** (both references, varied C, gamma, degree,
    coef0, class balance, and some duplicate rows), the Objeck fit at a tight
-   tolerance must give the same dual objective to 1e-6 (relative), the same support
-   set (excluding alphas within 1e-8 of a bound in the reference, which a
-   degenerate problem may legitimately place either way), and the same predictions
-   (sign of the decision value; values within 1e-5 except where |f| < 1e-6).
+   tolerance must give the same dual objective to 1e-6 (relative), the same
+   predictions (sign of the decision value; values within 1e-5 except where
+   |f| < 1e-6), and the same support set. The support set is unique only when the
+   dual optimum is (K positive definite, no repeated rows); there it must match
+   exactly. Otherwise -- a linear kernel with more rows than features, a low-degree
+   polynomial, duplicates -- the optimal alphas form a face, and what every
+   optimum shares is checked instead: a row strictly outside the margin has
+   alpha 0, a row strictly inside it alpha C; rows on the margin may take any
+   value in between.
    The harness lives in `tools/ml/svm_reference/` with the problem
    generator, both references and the comparison, and its counts are reported in
    the PR; a fixed subset of the problems, with their expected objectives, is baked
@@ -293,7 +310,9 @@ no code with the Objeck solver:
 8. **Determinism:** two fits in one process compare bit-identical; the harness runs
    every new test at `-opt s3` and `-opt s0`, under `obr` and `obr --jit=off`, and
    with `OBJECK_JIT_THRESHOLD=1`, and diffs their outputs (which include a checksum
-   of the decision values).
+   of the decision values). Bit-identity holds within a platform; across
+   platforms the C library's `exp` and `tanh` differ in the last bits, so Linux
+   and Windows checksums agree only to about 1e-9 (seen in the stage 1 runs).
 9. **Scale:** a benchmark program (not a regression test) fits 5k, 20k and 50k
    synthetic NSL-KDD-shaped rows and reports time, iterations, support vectors and
    peak memory at two cache sizes.
