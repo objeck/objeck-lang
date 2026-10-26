@@ -265,6 +265,11 @@ private helper that takes the four counts, so once that lands the helper
 delegates to it and nothing public changes. Neither `ConfusionMatrix` nor a
 sensitivity sweep is defined here.
 
+As built (integration of the lab and outlier branches): the helper now returns
+`System.ML.ConfusionMatrix`, which counts the cells and supplies every rate,
+F1 included (`2TP / (2TP + FP + FN)`, equal to the harmonic mean of precision
+and recall); the lab library no longer counts or divides on its own.
+
 Refused: no values; `names` of a different length; a trial that returns `Nil`
 or arrays of unequal length (the message names the value and seed).
 

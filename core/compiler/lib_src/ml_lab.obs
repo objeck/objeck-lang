@@ -2022,9 +2022,9 @@ t->Save("rf_trees.csv");
 
 	Test-set metrics come from the test predictions; train_accuracy is the only
 	training-set number, there for the overfitting curve. The confusion counts
-	come from the trial's Bool predictions and the rates from ThresholdResult,
-	every ratio guarded (a value that predicts nothing positive has no precision
-	and reports 0.0).
+	and rates come from System.ML's ConfusionMatrix over the trial's Bool
+	predictions, every ratio guarded (a value that predicts nothing positive has
+	no precision and reports 0.0).
 
 ```
 exp := Experiment->New("Random forest: trees", "n_estimators");
@@ -2205,20 +2205,17 @@ table->ToMarkdown()->PrintLine();
 			m[1] := test->GetAccuracy();
 			m[2] := test->GetPrecision();
 			m[3] := test->GetRecall();
-			m[4] := 0.0;
-			if(m[2] + m[3] > 0.0) {
-				m[4] := 2.0 * m[2] * m[3] / (m[2] + m[3]);
-			};
-			m[5] := test->GetFpr();
+			m[4] := test->GetF1();
+			m[5] := test->GetFalsePositiveRate();
 			m[6] := test->GetFalseNegatives()->As(Float);
 			m[7] := result->GetFitMs();
 
 			return m;
 		}
 
-		# The four confusion cells, handed to ThresholdResult for the rates. One
-		# place to change when a shared ConfusionMatrix class exists.
-		function : Counts(pred : Bool[], actual : Bool[], which : String, name : String, seed : Int) ~ ThresholdResult {
+		# The four confusion cells and their rates, from System.ML's ConfusionMatrix
+		# (every ratio 0.0 on a zero denominator); this only refuses what it cannot count.
+		function : Counts(pred : Bool[], actual : Bool[], which : String, name : String, seed : Int) ~ ConfusionMatrix {
 			if(pred = Nil | actual = Nil) {
 				Refuse("the {$which} predictions or labels are Nil for {$name} (seed {$seed})");
 			};
@@ -2228,30 +2225,7 @@ table->ToMarkdown()->PrintLine();
 				Refuse("{$ps} {$which} predictions against {$as} labels for {$name} (seed {$seed})");
 			};
 
-			tp := 0;
-			fp := 0;
-			fn := 0;
-			tn := 0;
-			each(i : pred) {
-				if(pred[i]) {
-					if(actual[i]) {
-						tp += 1;
-					}
-					else {
-						fp += 1;
-					};
-				}
-				else {
-					if(actual[i]) {
-						fn += 1;
-					}
-					else {
-						tn += 1;
-					};
-				};
-			};
-
-			return ThresholdResult->New(0.5, tp, fp, fn, tn);
+			return ConfusionMatrix->New(pred, actual);
 		}
 
 		method : Footnote() ~ String {
