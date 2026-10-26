@@ -331,6 +331,26 @@ obr bert_malware_lab.obe --synthetic            # no external data
 - **Experiment 3.** One length, the head retrained per learning rate; the per-epoch loss
   histories printed as columns (CSV-ready for plotting), with the final table.
 
+**As built (stage 4).**
+
+- The CSV `api_sequence` field may separate calls with commas as well as spaces and
+  semicolons (quoted), and CRLF files read as LF ones. A 300-row file mixing all three, with
+  `1`/`malware`/`true` labels, loads with the right counts.
+- POSRATIO keeps every training negative and adds the positives the ratio calls for; when the
+  pool has too few positives (0.50 usually), it keeps them all and drops negatives instead, and
+  the table prints the training size and its positives so the reader sees which happened. At
+  0.001 the training set holds a single positive.
+- Experiments 2 and 3 train with balanced class weights; experiment 1 shows both.
+- **Measured** with `--synthetic` and the tiny test model, 2,000 traces of 40–300 calls
+  (Windows, `obr`): 22 s for all three experiments, most of it encoding (2,000 traces at four
+  lengths). The tables show the effects in kind — recall collapsing at POSRATIO 0.001 and
+  0.01 without class weights; F1 rising with MAX_SEQ_LENGTH (0.27 at 32 to 0.77 at 256), since
+  the synthetic malicious calls sometimes start late; the lab's three rates barely moving the
+  loss in 20 epochs (0.85 → 0.79 at 1e-5) where 1e-3 and 1e-2 converge — but the tiny model is
+  an embedding lookup, so the numbers say nothing about BERT.
+- The six VM modes (`-opt s3`/`s0` × JIT, `--jit=off`, `OBJECK_JIT_THRESHOLD=1`) print
+  identical tables (`--samples 400 --epochs 6`).
+
 ## Test plan
 
 Correctness is the point. Every test is in `programs/regression`, exits non-zero on failure,
