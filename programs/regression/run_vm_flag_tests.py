@@ -207,7 +207,7 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     loop, with every answer right -- which only the report can see. With
     OBJECK_JIT_REPORT=1 and --jit=1, jit_conditional_value_types.obs passes and
     its Float conditional methods (SumTernary, Pick, Fill) and function-reference
-    ones (Apply, PickFunc, PickNested) report "compiled".
+    ones (ChooseFunc, ApplyChosen) report "compiled".
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only]
 
@@ -1275,7 +1275,10 @@ def check_conditionals_compiled(obc, obr, env, bin_dir):
     check("the conditional fixture passes with every method compiled",
           rc == 0 and b"PASS: all Float and function-reference conditionals" in out,
           f"rc={rc} out={out[-200:]!r} stderr={text[-300:]!r}")
-    for method in ("SumTernary:f*,l*,", "Pick:l,f,f,", "Fill:l*,f**,", "Apply:l,i,i,i,", "PickFunc:l,i,i,", "PickNested:l,l,i,i,"):
+    # not Apply, PickFunc or PickNested: they build capturing lambdas, and ARM64
+    # leaves any method with NEW_FUNC_INST to the interpreter
+    for method in ("SumTernary:f*,l*,", "Pick:l,f,f,", "Fill:l*,f**,", "ChooseFunc:l,m.(i,)~i,m.(i,)~i,",
+                   "ApplyChosen:l,l,m.(i,)~i,m.(i,)~i,i,"):
         line = f"[jit] JitConditionalValueTypes:{method}: compiled"
         report = [l for l in text.splitlines() if f"JitConditionalValueTypes:{method}:" in l]
         check(f"JitConditionalValueTypes:{method} is compiled", line in text, f"report={report!r}")

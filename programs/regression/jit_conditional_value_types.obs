@@ -55,6 +55,7 @@ class JitConditionalValueTypes {
     Check(22, "Float conditionals over a 2-D accumulation");
     Check(23, "Float conditionals stored into array elements");
     Check(24, "a function-reference conditional inside a lambda");
+    Check(25, "function-reference conditionals over closures passed in");
 
     if(@fails > 0) {
       Runtime->Exit(1);
@@ -153,6 +154,18 @@ class JitConditionalValueTypes {
     plus := \(Int) ~ Int : (x) => x + k;
     times := \(Int) ~ Int : (x) => x * m;
     return c ? plus : times;
+  }
+
+  # The closures arrive as parameters: a method that builds a capturing
+  # lambda (NEW_FUNC_INST) is not compiled on ARM64, so these are the
+  # function-reference methods run_vm_flag_tests.py requires compiled.
+  function : ChooseFunc(c : Bool, a : (Int) ~ Int, b : (Int) ~ Int) ~ (Int) ~ Int {
+    return c ? a : b;
+  }
+
+  function : ApplyChosen(c : Bool, d : Bool, a : (Int) ~ Int, b : (Int) ~ Int, v : Int) ~ Int {
+    g := c ? (d ? a : b) : b;
+    return g(v);
   }
 
   # the conditional is in the lambda's body, a method of its own
@@ -274,6 +287,14 @@ class JitConditionalValueTypes {
       a := chooser(t);
       b := chooser(f);
       return a(10) = 110 & b(10) = 30;
+    };
+    if(id = 25) {
+      plus := \(Int) ~ Int : (x) => x + k;
+      times := \(Int) ~ Int : (x) => x * m;
+      g := ChooseFunc(t, plus, times);
+      h := ChooseFunc(f, plus, times);
+      return g(10) = 110 & h(10) = 30 & ApplyChosen(t, t, plus, times, 10) = 110 &
+        ApplyChosen(t, f, plus, times, 10) = 30 & ApplyChosen(f, t, plus, times, 10) = 30;
     };
 
     return false;
