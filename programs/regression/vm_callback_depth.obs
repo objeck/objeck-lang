@@ -81,7 +81,11 @@ class Prober {
 		};
 		Check("a runaway recursion through Class->Instance ends in a RuntimeError",
 			message->Has("call stack bounds have been exceeded"));
-		Check("it went past 1,000 constructors first", Nest->Made() > 1000);
+		# Each level nests the interpreter in C++, about 7.5 KB of native stack
+		# compiled (measured on Windows x64), more under a sanitizer, so an 8 MB
+		# POSIX thread stack ends it near 1,000 levels; the bound only shows that
+		# the recursion ran before the limit stopped it
+		Check("it went past 250 constructors first", Nest->Made() > 250);
 
 		# the call stack is whole again
 		Nest->Reset(500);
