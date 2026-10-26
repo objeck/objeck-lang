@@ -1,0 +1,145 @@
+#~
+Dates and file times read from several threads at once.
+
+Eight threads each move the same date (1 January 2000, local time) by their own number of
+days and hours, read the current time, and read a file's modification time, ten thousand
+times each, and compare every answer with the one the main thread worked out alone before
+they started. Every thread's shifted date has another day, month or year, and the current
+time is years away from 2000, so a time torn between two threads shows as a wrong answer.
+
+Before the fix the VM read the calendar fields of every date it computed (Date->New(),
+AddDays/AddHours/AddMinutes/AddSeconds, File->ModifiedTime/CreateTime/AccessedTime,
+Date->New(unix_time, false)) from the one static buffer localtime() and gmtime() share on
+POSIX, so a thread could read the fields another thread had just written: the shared
+catalog of query_catalog_concurrent stamped a file with a torn modification time and read
+it again (CI run 40242475477, linux-x64). On Windows the VM returned a pointer to a stack
+variable that had gone out of scope. Now every caller owns its own struct tm, filled by
+localtime_r/gmtime_r (localtime_s/gmtime_s on Windows).
+~#
+use System.Concurrency, System.IO.Filesystem;
+
+class TimeWorker from Thread {
+	@id : Int;
+	@iters : Int;
+	@path : String;
+	@expected_date : String;
+	@expected_file : String;
+	@errors : Int;
+	@first : String;
+
+	New(id : Int, iters : Int, path : String, expected_date : String, expected_file : String) {
+		Parent("time-{$id}");
+		@id := id;
+		@iters := iters;
+		@path := path;
+		@expected_date := expected_date;
+		@expected_file := expected_file;
+	}
+
+	method : public : GetErrors() ~ Int { return @errors; }
+	method : public : GetFirst() ~ String { return @first; }
+
+	method : Note(what : String, got : String, expected : String) ~ Nil {
+		@errors += 1;
+		if(@first = Nil) {
+			@first := "thread {$@id}, {$what}: got '{$got}', expected '{$expected}'";
+		};
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		each(i : @iters) {
+			got := TimeThreadSafe->Shifted(@id)->ToString();
+			if(<>got->Equals(@expected_date)) {
+				Note("shifted date", got, @expected_date);
+			};
+
+			# the current time, years from 2000: what a torn read of another thread's date shows
+			now := System.Time.Date->New();
+			if(now->GetYear() < 2026) {
+				Note("current year", now->GetYear()->ToString(), "2026 or later");
+			};
+
+			got := File->ModifiedTime(@path)->ToString();
+			if(<>got->Equals(@expected_file)) {
+				Note("file time", got, @expected_file);
+			};
+		};
+	}
+}
+
+class TimeThreadSafe {
+	# 1 January 2000, local time, moved by a thread's own days and hours
+	function : Shifted(id : Int) ~ System.Time.Date {
+		d := System.Time.Date->New(1, 1, 2000, 0, 0, 0, false);
+		d->AddDays(id * 37 + 1);
+		d->AddHours(id);
+		return d;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		threads := 8;
+		iters := 10000;
+
+		dir := Runtime->GetTempDir()->ReplaceAll("\\", "/");
+		if(<>dir->EndsWith('/')) {
+			dir += "/";
+		};
+		path := "{$dir}time_thread_safe_{$(Runtime->GetProcessId())}.txt";
+		if(<>FileWriter->WriteFile(path, "stamp\n")) {
+			"FAIL: time_thread_safe: cannot write {$path}"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		expected_file := File->ModifiedTime(path)->ToString();
+		expected := String->New[threads];
+		each(t : threads) {
+			expected[t] := Shifted(t)->ToString();
+		};
+
+		workers := TimeWorker->New[threads];
+		each(t : threads) {
+			workers[t] := TimeWorker->New(t, iters, path, expected[t], expected_file);
+		};
+		each(t : threads) {
+			workers[t]->Execute(Nil);
+		};
+		each(t : threads) {
+			workers[t]->Join();
+		};
+
+		errors := 0;
+		first : String := Nil;
+		each(t : threads) {
+			errors += workers[t]->GetErrors();
+			if(first = Nil & workers[t]->GetFirst() <> Nil) {
+				first := workers[t]->GetFirst();
+			};
+		};
+
+		# alone again, the answers are the ones the threads were held to
+		each(t : threads) {
+			if(<>Shifted(t)->ToString()->Equals(expected[t])) {
+				errors += 1;
+				if(first = Nil) {
+					first := "alone, shifted date {$t} changed";
+				};
+			};
+		};
+		if(<>File->ModifiedTime(path)->ToString()->Equals(expected_file)) {
+			errors += 1;
+			if(first = Nil) {
+				first := "alone, the file time changed";
+			};
+		};
+		File->Delete(path);
+
+		checks := threads * iters * 3 + threads + 1;
+		if(errors = 0) {
+			"PASS: time_thread_safe ({$checks} checks, {$threads} threads)"->PrintLine();
+		}
+		else {
+			"FAIL: time_thread_safe: {$errors} of {$checks} checks failed; first: {$first}"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
