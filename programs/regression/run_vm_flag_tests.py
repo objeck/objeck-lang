@@ -208,6 +208,23 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     OBJECK_JIT_REPORT=1 and --jit=1, jit_conditional_value_types.obs passes and
     its Float conditional methods (SumTernary, Pick, Fill) and function-reference
     ones (ChooseFunc, ApplyChosen) report "compiled".
+ 21. Float->NaN(), Float->Inf() and Float->NegInf() are compiled. Their opcodes
+    (NAN_FLOAT, INF_FLOAT, NEG_INF_FLOAT) were unknown to both JIT backends, so
+    one `best := Float->Inf()` left the whole method to the interpreter
+    ("unsupported opcode 33") -- every kNN, clustering and min/max loop in
+    System.ML and System.AI. With OBJECK_JIT_REPORT=1 and --jit=1,
+    jit_float_limits.obs passes, every one of its methods reports "compiled",
+    and its stdout, which carries the raw bits of every result, is byte for byte
+    what --jit=off prints.
+ 22. Multi-dimensional array accesses give their index registers back. ArrayIndex
+    leaked the register of every later index already in a register (a computed
+    index, a cached local, a pinned loop local's copy), so a method with several
+    2-D accesses in loops ran the pool dry and was left to the interpreter
+    ("compile failed"). With OBJECK_JIT_REPORT=1 and --jit=1,
+    jit_array_index_registers.obs passes, its Mahalanobis, Adam and Cube
+    methods report "compiled", no method in it reports its register pool out
+    of balance, and its stdout (the raw bits of every result) is byte for byte
+    what --jit=off prints.
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only]
 
@@ -513,6 +530,10 @@ def main():
     check_thread_stack_pages(obc, obr, env, bin_dir)
 
     check_conditionals_compiled(obc, obr, env, bin_dir)
+
+    check_float_limits_compiled(obc, obr, env, bin_dir)
+
+    check_array_index_registers(obc, obr, env, bin_dir)
 
     # ---- 11. the heap verifier (OBJECK_GC_VERIFY) ----------------------------------
     verify_section(obc, obr, env, bin_dir)
@@ -1282,6 +1303,61 @@ def check_conditionals_compiled(obc, obr, env, bin_dir):
         line = f"[jit] JitConditionalValueTypes:{method}: compiled"
         report = [l for l in text.splitlines() if f"JitConditionalValueTypes:{method}:" in l]
         check(f"JitConditionalValueTypes:{method} is compiled", line in text, f"report={report!r}")
+
+
+def check_float_limits_compiled(obc, obr, env, bin_dir):
+    # ---- 21. Float->NaN/Inf/NegInf are compiled ---------------------------------------
+    src = os.path.join(SCRIPT_DIR, "jit_float_limits.obs")
+    dest = os.path.join(SCRIPT_DIR, "jit_float_limits.obe")
+    rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+    check("float limits fixture compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+    if rc != 0:
+        return
+
+    report_env = dict(env)
+    report_env["OBJECK_JIT_REPORT"] = "1"
+    rc, jit_out, err = run([obr, "--jit=1", dest], env=report_env, cwd=bin_dir, timeout=300)
+    text = err.decode(errors="replace")
+    check("the float limits fixture passes compiled",
+          rc == 0 and b"PASS: Float->NaN/Inf/NegInf in compiled methods" in jit_out,
+          f"rc={rc} out={jit_out[-300:]!r} stderr={text[-300:]!r}")
+    rc, off_out, err = run([obr, "--jit=off", dest], env=env, cwd=bin_dir, timeout=300)
+    check("the float limits fixture passes interpreted", rc == 0, f"rc={rc} out={off_out[-300:]!r}")
+    check("the float limits fixture prints the same bits compiled and interpreted",
+          jit_out == off_out, f"jit={jit_out[-400:]!r} off={off_out[-400:]!r}")
+    for method in ("Limits:i,", "Nearest:f*,f,", "MinMax:f*,f,", "Compares:f,f,",
+                   "Arith:f,f,f,f,", "Pressure:f*,f,"):
+        line = f"[jit] JitFloatLimits:{method}: compiled"
+        report = [l for l in text.splitlines() if f"JitFloatLimits:{method}:" in l]
+        check(f"JitFloatLimits:{method} is compiled", line in text, f"report={report!r}")
+
+
+def check_array_index_registers(obc, obr, env, bin_dir):
+    # ---- 22. multi-dimensional array accesses give their index registers back --------
+    src = os.path.join(SCRIPT_DIR, "jit_array_index_registers.obs")
+    dest = os.path.join(SCRIPT_DIR, "jit_array_index_registers.obe")
+    rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+    check("array index fixture compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+    if rc != 0:
+        return
+
+    report_env = dict(env)
+    report_env["OBJECK_JIT_REPORT"] = "1"
+    rc, jit_out, err = run([obr, "--jit=1", dest], env=report_env, cwd=bin_dir, timeout=300)
+    text = err.decode(errors="replace")
+    check("the array index fixture passes compiled",
+          rc == 0 and b"PASS: multi-dimensional array accesses in compiled loops" in jit_out,
+          f"rc={rc} out={jit_out[-300:]!r} stderr={text[-300:]!r}")
+    rc, off_out, err = run([obr, "--jit=off", dest], env=env, cwd=bin_dir, timeout=300)
+    check("the array index fixture passes interpreted", rc == 0, f"rc={rc} out={off_out[-300:]!r}")
+    check("the array index fixture prints the same bits compiled and interpreted",
+          jit_out == off_out, f"jit={jit_out[-400:]!r} off={off_out[-400:]!r}")
+    for method in ("Mahalanobis:f**,i,i,f*,f**,", "Adam:f**,f**,f*,f*,i,f**,f**,f*,f*,f,l,", "Cube:f***,"):
+        line = f"[jit] JitArrayIndexRegisters:{method}: compiled"
+        report = [l for l in text.splitlines() if f"JitArrayIndexRegisters:{method}:" in l]
+        check(f"JitArrayIndexRegisters:{method} is compiled", line in text, f"report={report!r}")
+    leaks = [l for l in text.splitlines() if "JitArrayIndexRegisters:" in l and "out of balance" in l]
+    check("no JitArrayIndexRegisters method leaks a register", not leaks, f"report={leaks!r}")
 
 
 def check_call_depth(obc, obr, env, bin_dir):

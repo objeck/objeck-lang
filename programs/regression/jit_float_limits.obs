@@ -1,0 +1,252 @@
+#~
+Float->NaN(), Float->Inf() and Float->NegInf() in JIT-compiled methods.
+
+The three are the opcodes NAN_FLOAT, INF_FLOAT and NEG_INF_FLOAT, and neither
+JIT backend knew them: one `best := Float->Inf()` sent the WHOLE method back to
+the interpreter (OBJECK_JIT_REPORT=1 said "unsupported opcode 33"), so every
+nearest-neighbour search, clustering step and min/max scan in System.ML and
+System.AI ran interpreted -- a brute-force kNN loop took 165 s where compiled
+code takes about 10. Every answer was right, which only the report could see:
+run_vm_flag_tests.py checks that the methods below report "compiled", and that
+this file prints the same bytes under --jit=off and --jit=1 (the BITS line is
+the raw bit pattern of every result, so a NaN with a different sign or payload
+is a difference too).
+
+The properties below hold under IEEE 754 whichever engine runs them: NaN is
+unordered (every comparison but <> is false, in a branch and as a value), Inf
+dominates min/max, Inf - Inf and Inf * 0 are NaN, and NaN propagates through
+arithmetic. The constants themselves have fixed bits: the interpreter pushes
+std::numeric_limits<double>::quiet_NaN() and +/-infinity(). Operands arrive as
+parameters so nothing is folded at compile time. Exits 1 on a failure.
+~#
+class JitFloatLimits {
+  @fails : static : Int;
+
+  function : Main(args : String[]) ~ Nil {
+    @fails := 0;
+    reps := 200;
+
+    # the constants' own bits
+    limits : Float[];
+    each(r : reps) {
+      limits := Limits(r);
+    };
+    Expect(Hex(limits, 0)->Equals("000000000000f87f"), "Float->NaN() is the quiet NaN 0x7ff8000000000000");
+    Expect(Hex(limits, 1)->Equals("000000000000f07f"), "Float->Inf() is 0x7ff0000000000000");
+    Expect(Hex(limits, 2)->Equals("000000000000f0ff"), "Float->NegInf() is 0xfff0000000000000");
+
+    # nearest neighbour: best starts at Inf, as in System.ML's KDTree
+    points := Float->New[64];
+    each(i : points) {
+      points[i] := (i * 37 % 64)->As(Float) * 0.5;
+    };
+    nearest := -1;
+    each(r : reps) {
+      nearest := Nearest(points, 7.3);
+    };
+    Expect(points[nearest] = 7.5, "nearest neighbour from an Inf start");
+    Expect(Nearest(Float->New[0], 1.0) = -1, "nearest of nothing stays at Inf");
+
+    # min/max from Inf/NegInf starts, with a NaN in the data
+    bounds : Float[];
+    each(r : reps) {
+      bounds := MinMax(points, Float->NaN());
+    };
+    Expect(bounds[0] = 0.0 & bounds[1] = 31.5, "min/max from Inf/NegInf starts skip a NaN");
+    empty := MinMax(Float->New[0], Float->NaN());
+    Expect(empty[0] = Float->Inf() & empty[1] = Float->NegInf(), "min/max of nothing are Inf and NegInf");
+
+    # comparisons: in a branch and as a value, every operator, NaN and Inf on either side
+    nan := Float->NaN(); inf := Float->Inf(); ninf := Float->NegInf();
+    masks := Int->New[8];
+    each(r : reps) {
+      masks[0] := Compares(nan, 1.0);
+      masks[1] := Compares(1.0, nan);
+      masks[2] := Compares(nan, nan);
+      masks[3] := Compares(inf, inf);
+      masks[4] := Compares(ninf, inf);
+      masks[5] := Compares(inf, 1.0e308);
+      masks[6] := Compares(nan, inf);
+      masks[7] := Compares(ninf, ninf);
+    };
+    # bit order, branch then value: < > <= >= = <>
+    Expect(masks[0] = 2080, "NaN < > <= >= = <> 1.0: only <> holds");
+    Expect(masks[1] = 2080, "1.0 against NaN: only <> holds");
+    Expect(masks[2] = 2080, "NaN against NaN: only <> holds");
+    Expect(masks[3] = 1820, "Inf against Inf: <= >= = hold");
+    Expect(masks[4] = 2405, "NegInf against Inf: < <= <> hold");
+    Expect(masks[5] = 2730, "Inf against 1e308: > >= <> hold");
+    Expect(masks[6] = 2080, "NaN against Inf: only <> holds");
+    Expect(masks[7] = 1820, "NegInf against NegInf: <= >= = hold");
+
+    # arithmetic
+    arith : Float[];
+    each(r : reps) {
+      arith := Arith(inf, ninf, nan, 2.0);
+    };
+    Expect(IsNaN(arith[0]), "Inf - Inf is NaN");
+    Expect(IsNaN(arith[1]), "Inf * 0 is NaN");
+    Expect(IsNaN(arith[2]), "NaN + 2 is NaN");
+    Expect(IsNaN(arith[3]), "NegInf + Inf is NaN");
+    Expect(arith[4] = inf, "Inf + Inf is Inf");
+    Expect(arith[5] = inf, "NegInf * -2 is Inf");
+    Expect(IsNaN(arith[6]), "Inf / Inf is NaN");
+    Expect(arith[7] = 0.0, "2 / Inf is 0");
+    Expect(arith[8] = ninf, "NegInf - 2 is NegInf");
+    Expect(IsNaN(arith[9]), "NaN * 0 is NaN");
+    Expect(arith[10] = inf, "Float->Max(NegInf, Inf) is Inf");
+    Expect(arith[11] = ninf, "Float->Min(Inf, NegInf) is NegInf");
+    Expect(arith[12] = 2.0, "Float->Min(Inf, 2) is 2");
+    Expect(arith[13] = 2.0, "Float->Max(NegInf, 2) is 2");
+    Expect(arith[14] = inf, "the Inf constant itself, stored and read back");
+    Expect(IsNaN(arith[15]), "the NaN constant itself, stored and read back");
+
+    # the constants mixed with live values under register pressure
+    pressure := 0.0;
+    each(r : reps) {
+      pressure := Pressure(points, 1.25);
+    };
+    Expect(pressure = Pressure(points, 1.25), "constants beside many live float values");
+    Expect(pressure > 0.0 & pressure < Float->Inf(), "the pressure sum is finite");
+
+    # the raw bits of everything, for the --jit=off / --jit=1 comparison
+    all := Float->New[limits->Size() + bounds->Size() + arith->Size() + 1];
+    k := 0;
+    each(i : limits) { all[k] := limits[i]; k += 1; };
+    each(i : bounds) { all[k] := bounds[i]; k += 1; };
+    each(i : arith) { all[k] := arith[i]; k += 1; };
+    all[k] := pressure;
+    bits := Float->ToBytes(all)->ToHexString();
+    "BITS: {$bits}"->PrintLine();
+    "MASKS: {$masks[0]} {$masks[1]} {$masks[2]} {$masks[3]} {$masks[4]} {$masks[5]} {$masks[6]} {$masks[7]}"->PrintLine();
+
+    if(@fails > 0) {
+      "FAIL: {$@fails} Float limit check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: Float->NaN/Inf/NegInf in compiled methods"->PrintLine();
+  }
+
+  function : Expect(ok : Bool, name : String) ~ Nil {
+    if(<>ok) {
+      "FAIL: {$name}"->PrintLine();
+      @fails += 1;
+    };
+  }
+
+  function : IsNaN(v : Float) ~ Bool {
+    return v <> v;
+  }
+
+  function : Hex(values : Float[], i : Int) ~ String {
+    return Float->ToBytes(values, i, 1)->ToHexString();
+  }
+
+  # the three constants, written from a loop so the method compiles
+  function : Limits(seed : Int) ~ Float[] {
+    out := Float->New[3];
+    for(i := 0; i < 3; i += 1;) {
+      if(i = 0) {
+        out[i] := Float->NaN();
+      }
+      else if(i = 1) {
+        out[i] := Float->Inf();
+      }
+      else {
+        out[i] := Float->NegInf();
+      };
+    };
+    return out;
+  }
+
+  function : Nearest(points : Float[], q : Float) ~ Int {
+    best := Float->Inf();
+    index := -1;
+    each(i : points) {
+      d := points[i] - q;
+      d := d * d;
+      if(d < best) {
+        best := d;
+        index := i;
+      };
+    };
+    return index;
+  }
+
+  function : MinMax(values : Float[], skip : Float) ~ Float[] {
+    lo := Float->Inf();
+    hi := Float->NegInf();
+    # a NaN never compares, so it never becomes the minimum or the maximum
+    if(skip < lo) { lo := skip; };
+    if(skip > hi) { hi := skip; };
+    each(i : values) {
+      v := values[i];
+      if(v < lo) { lo := v; };
+      if(v > hi) { hi := v; };
+    };
+    out := Float->New[2];
+    out[0] := lo;
+    out[1] := hi;
+    return out;
+  }
+
+  # bits 0-5: the operators in a branch, 6-11: the same as values
+  function : Compares(a : Float, b : Float) ~ Int {
+    mask := 0;
+    for(i := 0; i < 1; i += 1;) {
+      if(a < b) { mask += 1; };
+      if(a > b) { mask += 2; };
+      if(a <= b) { mask += 4; };
+      if(a >= b) { mask += 8; };
+      if(a = b) { mask += 16; };
+      if(a <> b) { mask += 32; };
+      lt := a < b; gt := a > b; le := a <= b; ge := a >= b; eq := a = b; ne := a <> b;
+      if(lt) { mask += 64; };
+      if(gt) { mask += 128; };
+      if(le) { mask += 256; };
+      if(ge) { mask += 512; };
+      if(eq) { mask += 1024; };
+      if(ne) { mask += 2048; };
+    };
+    return mask;
+  }
+
+  function : Arith(inf : Float, ninf : Float, nan : Float, two : Float) ~ Float[] {
+    out := Float->New[16];
+    for(i := 0; i < 1; i += 1;) {
+      out[0] := inf - Float->Inf();
+      out[1] := Float->Inf() * (two - two);
+      out[2] := Float->NaN() + two;
+      out[3] := Float->NegInf() + inf;
+      out[4] := Float->Inf() + inf;
+      out[5] := Float->NegInf() * (0.0 - two);
+      out[6] := Float->Inf() / inf;
+      out[7] := two / Float->Inf();
+      out[8] := Float->NegInf() - two;
+      out[9] := nan * (two - two);
+      out[10] := Float->Max(Float->NegInf(), Float->Inf());
+      out[11] := Float->Min(Float->Inf(), ninf);
+      out[12] := Float->Min(Float->Inf(), two);
+      out[13] := Float->Max(Float->NegInf(), two);
+      out[14] := Float->Inf();
+      out[15] := Float->NaN();
+    };
+    return out;
+  }
+
+  # more live float values than the pool holds, the constants among them
+  function : Pressure(values : Float[], s : Float) ~ Float {
+    total := 0.0;
+    each(i : values) {
+      a := values[i] * s;
+      b := a + s;
+      c := b * a;
+      lo := Float->Inf();
+      hi := Float->NegInf();
+      if(a < lo) { lo := a; };
+      if(b > hi) { hi := b; };
+      total += (a + b) * (c - a) + (b * c - (a - s)) * (lo + hi) + Float->Min(c, Float->Inf()) * (s + Float->Max(a, Float->NegInf()));
+    };
+    return total;
+  }
+}

@@ -590,13 +590,28 @@ void JitArm64::ProcessInstructions() {
       // end and trashes an adjacent heap block, corrupting the heap and crashing
       // late and non-deterministically. Bail to the interpreter instead.
       if(floats_index >= MAX_DBLS) {
-        compile_success = false;
+        CompileFailed(L"the float-constant pool is full");
         break;
       }
       float_consts[floats_index] = instr->GetFloatOperand();
       working_stack.push_front(new RegInstr(&float_consts[floats_index++]));
       break;
-      
+
+      // Float->NaN(), Float->Inf(), Float->NegInf(): float literals by
+      // another name, through the same constant pool and so the same
+      // IMM_FLOAT loads as LOAD_FLOAT_LIT -- nothing is emitted here. The
+      // slot holds exactly the value the interpreter pushes (dispatch.cpp).
+    case NAN_FLOAT:
+    case INF_FLOAT:
+    case NEG_INF_FLOAT:
+      if(floats_index >= MAX_DBLS) {
+        compile_success = false;
+        break;
+      }
+      float_consts[floats_index] = JitFloatLimit(instr->GetType());
+      working_stack.push_front(new RegInstr(&float_consts[floats_index++]));
+      break;
+
       // load self
     case LOAD_INST_MEM: {
 #ifdef _DEBUG_JIT_JIT
@@ -1181,7 +1196,7 @@ void JitArm64::ProcessInstructions() {
         break;
 
       default:
-        compile_success = false;
+        CompileFailed(L"LOAD_ARY_SIZE on an operand that is not a reference");
         break;
       }
       delete left;
@@ -1249,6 +1264,7 @@ void JitArm64::ProcessInstructions() {
       FlushLocalCache();
       // falling into a label ends a block too (#1256)
       MaterializeWorkingStack();
+      AuditRegisterPool();
       // The safepoint poll is emitted at the jump TARGET, the instruction after
       // this label (see the top of ProcessInstructions): the compiler resolves
       // a label to the index of the next instruction, so keying on the LBL's
@@ -1408,7 +1424,7 @@ void JitArm64::ProcessJumpTable(StackInstr* instr) {
   FlushLocalCache();
   // the selector is an integer expression, never a pending fused compare
   if(skip_jump || working_stack.empty()) {
-    compile_success = false;
+    CompileFailed(L"a select with no selector on the working stack");
     skip_jump = false;
     return;
   }
@@ -1417,12 +1433,12 @@ void JitArm64::ProcessJumpTable(StackInstr* instr) {
   const long default_index = instr->GetOperand3();
   // instr_index already points at the first slot
   if(range <= 0 || instr_index + range > method->GetInstructionCount()) {
-    compile_success = false;
+    CompileFailed(L"a select table that runs past the method");
     return;
   }
   for(long i = 0; i < range; ++i) {
     if(method->GetInstruction(instr_index + i)->GetType() != JMP_TABLE_SLOT) {
-      compile_success = false;
+      CompileFailed(L"a select table with a missing slot");
       return;
     }
   }
@@ -1450,7 +1466,7 @@ void JitArm64::ProcessJumpTable(StackInstr* instr) {
   default:
     delete left;
     left = nullptr;
-    compile_success = false;
+    CompileFailed(L"a select selector of an unexpected kind");
     return;
   }
   delete left;
@@ -1504,7 +1520,7 @@ void JitArm64::ProcessJump(StackInstr* instr) {
   // operand kinds to an earlier instruction), fail the compile cleanly so
   // the method falls back to the interpreter instead of crashing.
   if(working_stack.empty() && (instr->GetOperand2() >= 0 || skip_jump)) {
-    compile_success = false;
+    CompileFailed(L"a conditional jump with an empty working stack");
     skip_jump = false;
     return;
   }
@@ -2030,7 +2046,7 @@ void JitArm64::ProcessStore(StackInstr* instr) {
         break;
 
       default:
-        compile_success = false;
+        CompileFailed(L"a function-reference word of an unexpected kind");
         break;
       }
     }
@@ -2271,7 +2287,7 @@ void JitArm64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
 #endif
 
   if(dirty_regs.size() > 6 || dirty_fp_regs.size() > 4 ) {
-    compile_success = false;
+    CompileFailed(L"more live values across a call than spill slots (6 integer, 4 float)");
   }
 
   // A bound or cached callee is called straight into its native entry with
@@ -2424,7 +2440,7 @@ void JitArm64::EmitReturnValue() {
  */
 void JitArm64::MarshalOutArgs(long params) {
   if(params < 1 || params > (long)working_stack.size()) {
-    compile_success = false;
+    CompileFailed(L"a call with fewer values on the working stack than arguments");
     return;
   }
   const long non_params = (long)working_stack.size() - params;
@@ -3090,7 +3106,7 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
       // unexpected operand kind (e.g. a float fed to an integer compare by a
       // front-end type bug): fail the compile cleanly so the method falls
       // back to the interpreter instead of corrupting the stack model
-      compile_success = false;
+      CompileFailed(L"an integer operation on an operand of an unexpected kind");
       break;
     }
     break;
@@ -3125,7 +3141,7 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
       // unexpected operand kind (e.g. a float fed to an integer compare by a
       // front-end type bug): fail the compile cleanly so the method falls
       // back to the interpreter instead of corrupting the stack model
-      compile_success = false;
+      CompileFailed(L"an integer operation on an operand of an unexpected kind");
       break;
     }
     break;
@@ -3161,13 +3177,13 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
       // unexpected operand kind (e.g. a float fed to an integer compare by a
       // front-end type bug): fail the compile cleanly so the method falls
       // back to the interpreter instead of corrupting the stack model
-      compile_success = false;
+      CompileFailed(L"an integer operation on an operand of an unexpected kind");
       break;
     }
     break;
 
   default:
-    compile_success = false;
+    CompileFailed(L"an integer operation on an operand of an unexpected kind");
     break;
   }
 
@@ -3231,7 +3247,7 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
       // unexpected operand kind (e.g. a float fed to an integer compare by a
       // front-end type bug): fail the compile cleanly so the method falls
       // back to the interpreter instead of corrupting the stack model
-      compile_success = false;
+      CompileFailed(L"a float operation on an operand of an unexpected kind");
       break;
     }
     break;
@@ -3271,7 +3287,7 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
       // unexpected operand kind (e.g. a float fed to an integer compare by a
       // front-end type bug): fail the compile cleanly so the method falls
       // back to the interpreter instead of corrupting the stack model
-      compile_success = false;
+      CompileFailed(L"a float operation on an operand of an unexpected kind");
       break;
     }
     break;
@@ -3318,13 +3334,13 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
       // unexpected operand kind (e.g. a float fed to an integer compare by a
       // front-end type bug): fail the compile cleanly so the method falls
       // back to the interpreter instead of corrupting the stack model
-      compile_success = false;
+      CompileFailed(L"a float operation on an operand of an unexpected kind");
       break;
     }
     break;
 
   default:
-    compile_success = false;
+    CompileFailed(L"a float operation on an operand of an unexpected kind");
     break;
   }
 
@@ -5309,7 +5325,7 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
   vector<pair<Register, RegisterHolder*> > parked_fp;
   for(RegInstr* pending : working_stack) {
     if(pending->GetType() == REG_INT) {
-      if(ws_off > TMP_X5) { compile_success = false; break; }
+      if(ws_off > TMP_X5) { CompileFailed(L"more live integer values across a math call than spill slots"); break; }
       const Register r = pending->GetRegister()->GetRegister();
       move_reg_mem(r, ws_off, SP);
       spilled_ws.push_back(make_pair(r, ws_off));
@@ -5317,7 +5333,7 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
     }
     else if(pending->GetType() == REG_FLOAT && pending->GetRegister()->GetRegister() <= D7) {
       RegisterHolder* park = GetCalleeSavedFpRegister();
-      if(!park) { compile_success = false; break; }
+      if(!park) { CompileFailed(L"a float value across a math call and no callee-saved float register free"); break; }
       const Register r = pending->GetRegister()->GetRegister();
       fmov_freg_freg(r, park->GetRegister());
       parked_fp.push_back(make_pair(r, park));
@@ -5566,7 +5582,7 @@ void JitArm64::ProcessFloatOperation2(StackInstr* instruction)
   vector<pair<Register, RegisterHolder*> > parked_fp;
   for(RegInstr* pending : working_stack) {
     if(pending->GetType() == REG_INT) {
-      if(ws_off > TMP_X5) { compile_success = false; break; }
+      if(ws_off > TMP_X5) { CompileFailed(L"more live integer values across a math call than spill slots"); break; }
       const Register r = pending->GetRegister()->GetRegister();
       move_reg_mem(r, ws_off, SP);
       spilled_ws.push_back(make_pair(r, ws_off));
@@ -5574,7 +5590,7 @@ void JitArm64::ProcessFloatOperation2(StackInstr* instruction)
     }
     else if(pending->GetType() == REG_FLOAT && pending->GetRegister()->GetRegister() <= D7) {
       RegisterHolder* park = GetCalleeSavedFpRegister();
-      if(!park) { compile_success = false; break; }
+      if(!park) { CompileFailed(L"a float value across a math call and no callee-saved float register free"); break; }
       const Register r = pending->GetRegister()->GetRegister();
       fmov_freg_freg(r, park->GetRegister());
       parked_fp.push_back(make_pair(r, park));
@@ -5878,6 +5894,9 @@ RegisterHolder* JitArm64::ArrayIndex(StackInstr* instr, MemoryType type)
       case REG_INT:
         add_reg_reg(holder->GetRegister()->GetRegister(),
                     index_holder->GetRegister());
+        // the index's register is spent: back to the pool, or every 2-D
+        // access with a computed or cached index leaked one (see AMD64)
+        ReleaseRegister(holder->GetRegister());
         break;
 
       case MEM_INT:
@@ -6067,6 +6086,9 @@ static bool CanJitInstruction(InstructionType type) {
   case LOAD_CHAR_LIT:
   case LOAD_INT_LIT:
   case LOAD_FLOAT_LIT:
+  case NAN_FLOAT:
+  case INF_FLOAT:
+  case NEG_INF_FLOAT:
   case LOAD_INST_MEM:
   case LOAD_CLS_MEM:
   case LOAD_LOCL_INT_VAR:
@@ -6223,9 +6245,41 @@ static bool JitReportEnabled() {
   return enabled;
 }
 
+// OBJECK_JIT_REPORT=1: at a label every pool register is free, caching a
+// local, or holding a value on the working stack. One that is none of these
+// was taken and never given back: a leak, which costs nothing until the pool
+// runs dry and a later instruction fails the whole compile ("no free integer
+// register") far from the instruction that leaked. More than the pool is a
+// double release. Report-only: it reads the allocator's lists, emits nothing.
+void JitArm64::AuditRegisterPool() {
+  if(!JitReportEnabled() || pool_audit_reported || !compile_success) {
+    return;
+  }
+  size_t gp_held = 0, fp_held = 0;
+  for(RegInstr* entry : working_stack) {
+    if(entry->GetType() == REG_INT) {
+      ++gp_held;
+    }
+    else if(entry->GetType() == REG_FLOAT) {
+      ++fp_held;
+    }
+  }
+  const size_t gp = aval_regs.size() + local_reg_cache.size() + gp_held;
+  const size_t fp = aval_fregs.size() + local_freg_cache.size() + fp_held;
+  if(gp != gp_pool_size || fp != fp_pool_size) {
+    std::wcerr << L"[jit] " << method->GetName() << L": register pool out of balance at instruction "
+               << (instr_index - 1) << L": " << gp << L" of " << gp_pool_size << L" integer, "
+               << fp << L" of " << fp_pool_size << L" float accounted for" << std::endl;
+    pool_audit_reported = true;
+  }
+}
+
 bool JitArm64::Compile(StackMethod* cm)
 {
   compile_success = true;
+  compile_fail_reason.clear();
+  compile_fail_instr = -1;
+  pool_audit_reported = false;
 
   if(!cm->GetNativeCode()) {
     skip_jump = false;
@@ -6272,6 +6326,10 @@ bool JitArm64::Compile(StackMethod* cm)
       // the AMD64 guard.
       if((scan_instr->GetType() == DYN_MTHD_CALL || scan_instr->GetType() == DYN_MTHD_CALL_JIT) &&
          scan_instr->GetOperand2() == instructions::MemoryType::NIL_TYPE) {
+        if(JitReportEnabled()) {
+          std::wcerr << L"[jit] " << method->GetName() << L": not compiled -- function-reference call with an "
+                     << L"untyped (generic) result at instruction " << i << std::endl;
+        }
         return false;
       }
       // detect loops via backward jumps. On ARM64 a JMP operand is the target
@@ -6289,6 +6347,10 @@ bool JitArm64::Compile(StackMethod* cm)
     // frame->mem-dependent traps can't run from JIT code (null frame in the
     // trap callback; locals live in native stack slots)
     if(HasFrameDependentTrap(method)) {
+      if(JitReportEnabled()) {
+        std::wcerr << L"[jit] " << method->GetName() << L": not compiled -- a trap that reads the "
+                   << L"interpreter frame" << std::endl;
+      }
       return false;
     }
 
@@ -6353,6 +6415,8 @@ bool JitArm64::Compile(StackMethod* cm)
     aval_fregs.push_back(new RegisterHolder(D2, true));
     aval_fregs.push_back(new RegisterHolder(D1, true));
     aval_fregs.push_back(new RegisterHolder(D0, true));
+    gp_pool_size = aval_regs.size();
+    fp_pool_size = aval_fregs.size();
 #ifdef _DEBUG_JIT_JIT
     std::wcout << L"Compiling code for AArch64 architecture..." << std::endl;
 #endif
@@ -6397,7 +6461,7 @@ bool JitArm64::Compile(StackMethod* cm)
       if(JitReportEnabled()) {
         std::wcerr << L"[jit] " << method->GetName() << L": not compiled -- a frame of " << frame_size << L" bytes" << std::endl;
       }
-      compile_success = false;
+      CompileFailed(L"a frame of " + std::to_wstring(frame_size) + L" bytes, past the 12-bit SP offsets");
     }
 
     // The two entries (EmitNativePrologue): the bridge entry at offset 0,
@@ -6425,7 +6489,13 @@ bool JitArm64::Compile(StackMethod* cm)
     
     if(!compile_success) {
       if(JitReportEnabled()) {
-        std::wcerr << L"[jit] " << method->GetName() << L": compile failed at instruction " << instr_index << std::endl;
+        // the instruction that failed, its opcode (as `obc -asm` numbers it) and why
+        std::wcerr << L"[jit] " << method->GetName() << L": compile failed at instruction " << compile_fail_instr;
+        if(compile_fail_instr >= 0 && compile_fail_instr < method->GetInstructionCount()) {
+          std::wcerr << L" (opcode " << method->GetInstruction(compile_fail_instr)->GetType() << L")";
+        }
+        std::wcerr << L" -- " << (compile_fail_reason.empty() ? std::wstring(L"no reason recorded") : compile_fail_reason)
+                   << std::endl;
       }
       free(code);
       code = nullptr;

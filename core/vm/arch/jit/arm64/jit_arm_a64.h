@@ -391,6 +391,15 @@ namespace Runtime {
     long instr_index;
     long code_buf_max;
     bool compile_success;
+    // Why the compile failed, for OBJECK_JIT_REPORT=1: the first reason given
+    // to CompileFailed and the instruction being translated then
+    std::wstring compile_fail_reason;
+    long compile_fail_instr;
+    // The register pool's size once set up, so AuditRegisterPool can find a
+    // holder that was taken and never given back (a leak) or given back twice
+    size_t gp_pool_size;
+    size_t fp_pool_size;
+    bool pool_audit_reported;
     // set around ProcessStackCallback for a MTHD_CALL whose callee is bound at
     // compile time: the callback goes to JitCompiler::JitDirectCall with this
     // StackMethod* in place of the opcode
@@ -616,6 +625,36 @@ namespace Runtime {
       // ...
     }
     
+    // Fails the compile. The first reason, with the instruction being
+    // translated, is what OBJECK_JIT_REPORT=1 prints for the method: a bare
+    // "compile failed" said nothing about which resource or shape gave out.
+    void CompileFailed(const std::wstring& reason) {
+      if(compile_success) {
+        compile_fail_reason = reason;
+        compile_fail_instr = instr_index - 1;
+      }
+      compile_success = false;
+    }
+
+    // What holds the pool's registers, for an exhaustion report
+    std::wstring PoolPressure() {
+      size_t gp_stack = 0, fp_stack = 0;
+      for(RegInstr* entry : working_stack) {
+        if(entry->GetType() == REG_INT) {
+          ++gp_stack;
+        }
+        else if(entry->GetType() == REG_FLOAT) {
+          ++fp_stack;
+        }
+      }
+      return L"the working stack holds " + std::to_wstring(gp_stack) + L" integer and " +
+        std::to_wstring(fp_stack) + L" float register(s) in " + std::to_wstring(working_stack.size()) +
+        L" entries, of a pool of " + std::to_wstring(gp_pool_size) + L" integer and " +
+        std::to_wstring(fp_pool_size) + L" float";
+    }
+
+    void AuditRegisterPool();
+
     /**
      * Gets an avaiable register from
      */
@@ -636,7 +675,7 @@ namespace Runtime {
 #ifdef _DEBUG_JIT_JIT
         wcout << L">>> No general registers avaiable! <<<" << endl;
 #endif
-        compile_success = false;
+        CompileFailed(L"no free integer register: " + PoolPressure());
         holder = new RegisterHolder(X0, false);
         used_regs.push_back(holder);
       }
@@ -688,7 +727,7 @@ namespace Runtime {
           }
           return holder;
         }
-        compile_success = false;
+        CompileFailed(L"no free float register: " + PoolPressure());
 #ifdef _DEBUG_JIT_JIT
         wcout << L">>> No D registers avaiable! <<<" << endl;
 #endif
