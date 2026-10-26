@@ -341,7 +341,8 @@ class NlpOnnxEmbedder {
 		cpu_config->Insert("ep", "cpu");
 		cpu := BertEmbedder->New("data/bert/tiny_bert.onnx", @tokenizer, 8, cpu_config);
 		cpu->SetPooling(BertEmbedder->Pooling->MEAN);
-		Check("the CPU provider gives the same rows", Identical(cpu->Embed(many), base));
+		Check("the CPU provider gives the same rows as the default (or its CPU fallback)", Identical(cpu->Embed(many), base));
+		Check("asking for the CPU is not a fallback", <>cpu->IsCpuFallback());
 		cpu->Close();
 
 		empty := embedder->Embed(String->New[0]);

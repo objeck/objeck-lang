@@ -29,6 +29,9 @@ bundle System.NLP.Onnx {
 	sent: an input it does not declare is not built, and the one output the pooling needs is
 	the only one asked for.
 
+	With no session options, the build's default provider runs the model, and the CPU when
+	that provider cannot open it (DirectML needs a display adapter): see IsCpuFallback.
+
 	Pooling: CLS takes the hidden state of the first token; MEAN averages the hidden states of
 	the real tokens, padding excluded, as sentence-transformers does; POOLER is the model's
 	pooler_output, when it has one.
@@ -82,6 +85,7 @@ embedder->Close();
 		@hidden_name : String;
 		@pooler_name : String;
 		@hidden_size : Int;
+		@cpu_fallback : Bool;
 		@open_error : String;
 		@error : String;
 
@@ -140,6 +144,15 @@ embedder->Close();
 
 			if(config = Nil) {
 				@session := Session->New(model_path);
+				# The build's own provider -- DirectML on Windows, CoreML on macOS -- can fail
+				# where the CPU would not: a machine with no display adapter has no DirectML.
+				# With no provider asked for, any provider will do, so try the CPU.
+				if(<>@session->IsOpen() & System.IO.Filesystem.File->Exists(model_path)) {
+					cpu := Map->New()<String, String>;
+					cpu->Insert("ep", "cpu");
+					@session := Session->New(model_path, cpu);
+					@cpu_fallback := @session->IsOpen();
+				};
 			}
 			else {
 				@session := Session->New(model_path, config);
@@ -283,6 +296,15 @@ embedder->Close();
 			if(@session <> Nil) {
 				@session->Close();
 			};
+		}
+
+		#~
+		Whether the build's default provider failed to open the model and the CPU provider
+		was used instead. Only when no session options were given.
+		@return true when running on the CPU as a fallback
+		~#
+		method : public : IsCpuFallback() ~ Bool {
+			return @cpu_fallback;
 		}
 
 		#~

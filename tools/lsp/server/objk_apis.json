@@ -15363,7 +15363,7 @@
 			}
 		},
 		"System.NLP.Onnx.BertEmbedder": {
-			"description": "Sentence embeddings from a BERT-family ONNX model: Embed(texts) gives one row of hidden-size numbers per text.\n\nThe model is a Hugging Face export (optimum-cli export onnx, or torch.onnx.export) taking input_ids, and usually attention_mask and token_type_ids, as INT64[batch, sequence], and giving last_hidden_state FP32[batch, sequence, hidden] and, for BERT though not for DistilBERT, pooler_output FP32[batch, hidden]. The model's own signature decides what is sent: an input it does not declare is not built, and the one output the pooling needs is the only one asked for.\n\nPooling: CLS takes the hidden state of the first token; MEAN averages the hidden states of the real tokens, padding excluded, as sentence-transformers does; POOLER is the model's pooler_output, when it has one.\n\nEvery text is padded to max_len, not to the longest text in its batch, so a text's embedding does not depend on which texts share its batch.\n\nThe encoder is frozen: this computes embeddings, it does not train the model. A classifier trained on them (System.ML's EmbeddingClassifier) is the frozen-encoder alternative to fine-tuning.",
+			"description": "Sentence embeddings from a BERT-family ONNX model: Embed(texts) gives one row of hidden-size numbers per text.\n\nThe model is a Hugging Face export (optimum-cli export onnx, or torch.onnx.export) taking input_ids, and usually attention_mask and token_type_ids, as INT64[batch, sequence], and giving last_hidden_state FP32[batch, sequence, hidden] and, for BERT though not for DistilBERT, pooler_output FP32[batch, hidden]. The model's own signature decides what is sent: an input it does not declare is not built, and the one output the pooling needs is the only one asked for.\n\nWith no session options, the build's default provider runs the model, and the CPU when that provider cannot open it (DirectML needs a display adapter): see IsCpuFallback.\n\nPooling: CLS takes the hidden state of the first token; MEAN averages the hidden states of the real tokens, padding excluded, as sentence-transformers does; POOLER is the model's pooler_output, when it has one.\n\nEvery text is padded to max_len, not to the longest text in its batch, so a text's embedding does not depend on which texts share its batch.\n\nThe encoder is frozen: this computes embeddings, it does not train the model. A classifier trained on them (System.ML's EmbeddingClassifier) is the frozen-encoder alternative to fine-tuning.",
 			"functions": {
 				"Close": {
 					"descriptions": ["**Releases the model. Safe to call more than once.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
@@ -15400,6 +15400,9 @@
 				},
 				"HasPooler": {
 					"descriptions": ["**Whether the model has a pooler_output, so POOLER pooling is available.**\n\n```method : public : HasPooler() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsCpuFallback": {
+					"descriptions": ["**Whether the build's default provider failed to open the model and the CPU provider was used instead. Only when no session options were given.**\n\n```method : public : IsCpuFallback() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"IsOpen": {
 					"descriptions": ["**Whether the model and vocabulary loaded and the model has the inputs and outputs of a BERT-family encoder.**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
