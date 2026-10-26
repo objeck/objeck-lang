@@ -7,7 +7,9 @@ test). Not a regression test; svm_reference.py drives it.
 Usage: obr svm_driver.obe <problems.txt>
 
 Problem file, one problem after another:
-  P id n m d kernel C gamma degree coef0 tol cache_mb shrinking
+  P id n m d kernel C gamma degree coef0 tol cache_mb shrinking [mode]
+  (mode 0 or absent: KernelSVM; mode 1: OneClassSVM with nu in the C field,
+  and the training labels are ignored)
   then n training rows "label x1 .. xd" (label 1 or 0) and m test rows "x1 .. xd".
 ~#
 use System.IO.Filesystem;
@@ -48,6 +50,10 @@ class SvmDriver {
 		tol := parts[10]->ToFloat();
 		cache_mb := parts[11]->ToInt();
 		shrinking := parts[12]->ToInt() = 1;
+		mode := 0;
+		if(parts->Size() > 13) {
+			mode := parts[13]->ToInt();
+		};
 
 		x := Float->New[n, d];
 		y := Bool->New[n];
@@ -79,6 +85,11 @@ class SvmDriver {
 			kernel := SvmKernel->SIGMOID;
 		};
 
+		if(mode = 1) {
+			OneClass(id, x, t, kernel, c, gamma, degree, coef0, tol, cache_mb, shrinking);
+			return;
+		};
+
 		svm := KernelSVM->New(kernel, c, gamma, degree, coef0);
 		svm->SetTolerance(tol);
 		svm->SetCacheSize(cache_mb);
@@ -105,6 +116,37 @@ class SvmDriver {
 				v := -1.0 * v;
 			};
 			alpha[idx[s]] := v;
+		};
+		PrintArray("A", alpha);
+		PrintArray("F", svm->DecisionFunction(x));
+		PrintArray("T", svm->DecisionFunction(t));
+	}
+
+	# One-class: the C field carries nu, and alpha is the dual coefficient itself.
+	function : OneClass(id : Int, x : Float[,], t : Float[,], kernel : SvmKernel, nu : Float, gamma : Float,
+			degree : Int, coef0 : Float, tol : Float, cache_mb : Int, shrinking : Bool) ~ Nil {
+		svm := OneClassSVM->New(kernel, nu, gamma, degree, coef0);
+		svm->SetTolerance(tol);
+		svm->SetCacheSize(cache_mb);
+		svm->SetShrinking(shrinking);
+		if(<>svm->Fit(x)) {
+			error := svm->GetLastError();
+			"E {$id} {$error}"->PrintLine();
+			return;
+		};
+
+		obj := svm->GetObjective();
+		b := svm->GetIntercept();
+		iters := svm->GetIterations();
+		conv := svm->IsConverged() ? 1 : 0;
+		"R {$id} {$obj} {$b} {$iters} {$conv}"->PrintLine();
+
+		dims := x->Size();
+		alpha := Float->New[dims[0]];
+		idx := svm->GetSupportIndices();
+		coef := svm->GetDualCoefficients();
+		each(s : idx) {
+			alpha[idx[s]] := coef[s];
 		};
 		PrintArray("A", alpha);
 		PrintArray("F", svm->DecisionFunction(x));

@@ -25,7 +25,7 @@ Each library typically consists of:
 - **ml_neighbors.obs** - Nearest neighbors: KNearestNeighbors, KDTree
 - **ml_cluster.obs** - Clustering: KMeans, DBSCAN, GaussianMixture
 - **ml_data.obs** - Data utilities: FeatureScaler, Metrics, ConfusionMatrix, CrossValidation, PCA
-- **ml_svm.obs** - Kernel support vector machines: KernelSVM (linear, RBF, polynomial, sigmoid) on a LIBSVM-style SMO solver
+- **ml_svm.obs** - Kernel support vector machines: KernelSVM (linear, RBF, polynomial, sigmoid) and OneClassSVM on a LIBSVM-style SMO solver
 - **ml_outlier.obs** - Anomaly detection: OutlierDetector, ZScoreDetector, IsolationForest, LocalOutlierFactor, EllipticEnvelope, DbscanDetector, AutoencoderDetector, SensitivitySweep
 - **ai_search.obs** - Graph search: Dijkstra, A*, BFS, DFS
 - **ai_game.obs** - Adversarial game search: Minimax, Monte Carlo Tree Search

@@ -945,6 +945,12 @@ recall := Metrics->RecallAtFpr(scores, labels_test, 0.001);
 # LINEAR, RBF, POLY, SIGMOID; gamma 'scale' (default) or SetGammaAuto();
 # SetClassWeightBalanced(), SetCacheSize(mb), GetSupportVectorCount()
 
+# one-class SVM: fit on normal rows, flag what falls outside
+detector := OneClassSVM->New(SvmKernel->RBF, 0.05);       # kernel, nu
+detector->Fit(Xs_normal);
+anomaly := detector->PredictScore(Xs_test);   # -decision: higher = stranger
+flags := detector->IsOutlier(Xs_test);        # Bool[]; Predict gives +1/-1
+
 # multiclass Gaussian naive Bayes over integer labels 0..C-1
 gnb := GaussianNaiveBayes->New();
 gnb->Fit(X, y);
@@ -1200,7 +1206,7 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 | Sentiment / TF-IDF | `SentimentAnalyzer`, `TF_IDF` | `nlp` | None |
 | Linear / regularized regression | `LinearRegression`, `RidgeRegression`, `LassoRegression`, `ElasticNet` | `ml` | None |
 | Linear classifiers | `LogisticRegression`, `SVM`, `Perceptron` | `ml` | None |
-| Kernel SVMs | `KernelSVM` (linear, RBF, poly, sigmoid) | `ml` | None |
+| Kernel SVMs | `KernelSVM` (linear, RBF, poly, sigmoid), `OneClassSVM` | `ml` | None |
 | Probabilistic classifiers | `GaussianNaiveBayes`, `NaiveBayes` | `ml` | None |
 | Trees & ensembles | `DecisionTree`, `RandomForest`, `AdaBoost` | `ml` | None |
 | Nearest neighbors | `KNearestNeighbors`, `KDTree` | `ml` | None |

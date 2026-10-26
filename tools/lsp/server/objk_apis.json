@@ -14684,6 +14684,128 @@
 				}
 			}
 		},
+		"System.ML.OneClassSVM": {
+			"description": "One-class SVM for outlier and novelty detection, with scikit-learn's OneClassSVM parameters (kernel, nu, gamma, degree, coef0, tol, shrinking, cache size, max_iter) and LIBSVM's formulation, solved by the same SMO solver as KernelSVM: minimise 1\/2 a'Ka subject to 0 <= a_i <= 1 and sum(a) = nu * n.\n\nnu is an upper bound on the fraction of training rows left outside the boundary (DecisionFunction below 0) and a lower bound on the fraction that are support vectors.\n\nSigns follow scikit-learn: DecisionFunction is positive inside the boundary (an inlier) and negative outside, and Predict returns +1 \/ -1. Because the fixed-false-positive-rate metrics treat higher scores as more positive and the positive class in intrusion detection is the attack, PredictScore is the NEGATED decision value -- higher means more anomalous -- and IsOutlier is true for an outlier. Train on normal rows only for novelty detection; Fit(X, y), the ScoreModel form, ignores y as scikit-learn does.",
+			"functions": {
+				"DecisionFunction": {
+					"descriptions": ["**The signed decision value sum(alpha_i K(x_i, x)) - rho: positive inside the boundary (an inlier), negative outside (an outlier), scikit-learn's decision_function.**\n\n```method : public : DecisionFunction(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"Fit": {
+					"descriptions": ["**Fits the boundary around the rows of X.**\n\n```method : public : Fit(X:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\nreturn: Bool", "**The ScoreModel form of Fit. y is ignored, as in scikit-learn; pass only the normal rows to Fit(X) for novelty detection.**\n\n```method : public : Fit(X:Float[,], y:Bool[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Bool[]\n\nreturn: Bool"]
+				},
+				"GetBoundedSupportVectorCount": {
+					"descriptions": ["**Number of support vectors at the bound alpha = 1; every training outlier is one.**\n\n```method : public : GetBoundedSupportVectorCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetCacheSize": {
+					"descriptions": ["**The kernel-row cache size.**\n\n```method : public : GetCacheSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetCoef0": {
+					"descriptions": ["**The POLY\/SIGMOID independent term.**\n\n```method : public : GetCoef0() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetDegree": {
+					"descriptions": ["**The POLY degree.**\n\n```method : public : GetDegree() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetDualCoefficients": {
+					"descriptions": ["**alpha per support vector, scikit-learn's dual_coef_; they sum to nu * n.**\n\n```method : public : GetDualCoefficients() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetFitSeconds": {
+					"descriptions": ["**Seconds the last Fit took.**\n\n```method : public : GetFitSeconds() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetGamma": {
+					"descriptions": ["**The gamma in use: after Fit the value the kernel used; before Fit the explicit value, or -1.0 for 'scale' and -2.0 for 'auto'.**\n\n```method : public : GetGamma() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetIntercept": {
+					"descriptions": ["**The intercept of the decision function (-rho, scikit-learn's intercept_).**\n\n```method : public : GetIntercept() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetIterations": {
+					"descriptions": ["**Solver iterations used by the last Fit.**\n\n```method : public : GetIterations() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetKernel": {
+					"descriptions": ["**The kernel.**\n\n```method : public : GetKernel() ~ SvmKernel```\n\n\n\nreturn: SvmKernel"]
+				},
+				"GetLastError": {
+					"descriptions": ["**Why the last Fit returned false.**\n\n```method : public : GetLastError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetMaxIterations": {
+					"descriptions": ["**The iteration cap as set; 0 or less means LIBSVM's own.**\n\n```method : public : GetMaxIterations() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetNu": {
+					"descriptions": ["**nu.**\n\n```method : public : GetNu() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetObjective": {
+					"descriptions": ["**The dual objective 1\/2 a'Ka at the solution.**\n\n```method : public : GetObjective() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetOffset": {
+					"descriptions": ["**rho, scikit-learn's offset_: ScoreSamples minus DecisionFunction.**\n\n```method : public : GetOffset() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetSupportIndices": {
+					"descriptions": ["**Training-row indexes of the support vectors, ascending.**\n\n```method : public : GetSupportIndices() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetSupportVectorCount": {
+					"descriptions": ["**Number of support vectors (training rows with alpha > 0).**\n\n```method : public : GetSupportVectorCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetSupportVectors": {
+					"descriptions": ["**The support vectors, one row each, in GetSupportIndices order.**\n\n```method : public : GetSupportVectors() ~ Float[,]```\n\n\n\nreturn: Float[,]"]
+				},
+				"GetTolerance": {
+					"descriptions": ["**The stopping tolerance.**\n\n```method : public : GetTolerance() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"IsConverged": {
+					"descriptions": ["**Whether the last Fit met the tolerance before the iteration cap.**\n\n```method : public : IsConverged() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether Fit has succeeded.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsOutlier": {
+					"descriptions": ["**True for an outlier (decision value below 0), the label Metrics takes when the attack is the positive class.**\n\n```method : public : IsOutlier(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"IsShrinking": {
+					"descriptions": ["**Whether shrinking is on.**\n\n```method : public : IsShrinking() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor with scikit-learn's defaults: nu = 0.5, gamma = 'scale', degree = 3, coef0 = 0.0, tol = 0.001, shrinking on, a 200 MB cache.**\n\n```New(kernel:SvmKernel)```\n\n\n\nkernel: SvmKernel", "**Constructor with nu; gamma is 'scale'.**\n\n```New(kernel:SvmKernel, nu:Float)```\n\n\n\nkernel: SvmKernel\n\nnu: Float", "**Constructor with nu and an explicit gamma.**\n\n```New(kernel:SvmKernel, nu:Float, gamma:Float)```\n\n\n\nkernel: SvmKernel\n\nnu: Float\n\ngamma: Float", "**Constructor with every kernel parameter.**\n\n```New(kernel:SvmKernel, nu:Float, gamma:Float, degree:Int, coef0:Float)```\n\n\n\nkernel: SvmKernel\n\nnu: Float\n\ngamma: Float\n\ndegree: Int\n\ncoef0: Float"]
+				},
+				"Predict": {
+					"descriptions": ["**scikit-learn's predict: +1 for an inlier (decision >= 0), -1 for an outlier.**\n\n```method : public : Predict(X:Float[,]) ~ Int[]```\n\n\n\nX: Float[,]\n\nreturn: Int[]"]
+				},
+				"PredictScore": {
+					"descriptions": ["**The anomaly score for the metric functions: the negated decision value, so higher means more anomalous and Metrics->AucRoc \/ RecallAtFpr can take the attack as the positive class. Satisfies ScoreModel.**\n\n```method : public : PredictScore(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"ScoreSamples": {
+					"descriptions": ["**The unshifted score sum(alpha_i K(x_i, x)), scikit-learn's score_samples: DecisionFunction plus GetOffset. Higher means more normal.**\n\n```method : public : ScoreSamples(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"SetCacheSize": {
+					"descriptions": ["**Sets the kernel-row cache size; the result does not depend on it.**\n\n```method : public : SetCacheSize(megabytes:Int) ~ Nil```\n\n\n\nmegabytes: Int\n\nreturn: Nil"]
+				},
+				"SetCoef0": {
+					"descriptions": ["**Sets the independent term of the POLY and SIGMOID kernels.**\n\n```method : public : SetCoef0(coef0:Float) ~ Nil```\n\n\n\ncoef0: Float\n\nreturn: Nil"]
+				},
+				"SetDegree": {
+					"descriptions": ["**Sets the POLY degree.**\n\n```method : public : SetDegree(degree:Int) ~ Nil```\n\n\n\ndegree: Int\n\nreturn: Nil"]
+				},
+				"SetGamma": {
+					"descriptions": ["**Sets an explicit gamma.**\n\n```method : public : SetGamma(gamma:Float) ~ Nil```\n\n\n\ngamma: Float\n\nreturn: Nil"]
+				},
+				"SetGammaAuto": {
+					"descriptions": ["**Uses gamma = 1 \/ features at Fit, scikit-learn's 'auto'.**\n\n```method : public : SetGammaAuto() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"SetGammaScale": {
+					"descriptions": ["**Uses gamma = 1 \/ (features * X.var()) at Fit, scikit-learn's 'scale' and the default; 1.0 when the variance is zero.**\n\n```method : public : SetGammaScale() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"SetMaxIterations": {
+					"descriptions": ["**Caps the solver's iterations; when reached, Fit still returns true and IsConverged is false.**\n\n```method : public : SetMaxIterations(max_iter:Int) ~ Nil```\n\n\n\nmax_iter: Int\n\nreturn: Nil"]
+				},
+				"SetNu": {
+					"descriptions": ["**Sets nu: an upper bound on the fraction of training rows outside the boundary and a lower bound on the fraction of support vectors.**\n\n```method : public : SetNu(nu:Float) ~ Nil```\n\n\n\nnu: Float\n\nreturn: Nil"]
+				},
+				"SetShrinking": {
+					"descriptions": ["**Turns LIBSVM's shrinking heuristic on or off.**\n\n```method : public : SetShrinking(on:Bool) ~ Nil```\n\n\n\non: Bool\n\nreturn: Nil"]
+				},
+				"SetTolerance": {
+					"descriptions": ["**Sets the stopping tolerance (LIBSVM's eps, scikit-learn's tol).**\n\n```method : public : SetTolerance(tol:Float) ~ Nil```\n\n\n\ntol: Float\n\nreturn: Nil"]
+				}
+			}
+		},
 		"System.ML.PCA": {
 			"description": "Principal component analysis via power iteration with deflation on the sample covariance matrix. Deterministic (fixed initialization vector). Components are unit-length rows of a k x d matrix; sign is arbitrary.",
 			"functions": {
@@ -19609,6 +19731,12 @@
 			}
 		],
 		"NeuralNetwork": [
+			{
+				"bundle": "System.ML",
+				"file": ""
+			}
+		],
+		"OneClassSVM": [
 			{
 				"bundle": "System.ML",
 				"file": ""
