@@ -279,6 +279,34 @@ yhat := head->PredictClass(X_test, 0.5);                      # Bool[]
   not, the head carries its own forward/backward pass and the duplication is noted for a later
   merge.
 
+**As built (stage 3).**
+
+- **No reuse yet.** The outlier work's `DenseNetwork` (docs/ML_OUTLIERS_DESIGN.md §2.5) is its
+  stage 2 and had not reached master, so `EmbeddingClassifier` (`ml_embed.obs`) has its own
+  dense forward and backward pass. The two overlap in the layer arithmetic and Adam, and
+  differ where their jobs do: that network is trained on mean squared error with Glorot
+  initialisation throughout; this head on class-weighted binary cross-entropy from the logit
+  (a numerically stable `log(1 + e^-|z|)` form), He-uniform before each ReLU and Glorot before
+  the sigmoid. Once `DenseNetwork` lands, the head's layers should become one with a sigmoid
+  output and a BCE loss option; the public API here does not change.
+- Matrix products go through `Matrix2D->DotProduct` (Eigen, in `libobjk_ml`); the elementwise
+  work and the optimizer are Objeck. `GetWeights(layer)` / `GetBias(layer)` return copies, for
+  inspection and for the gradient test.
+- **The loss history** is measured after each epoch on the whole training set with that
+  epoch's final weights, class-weighted and without L2 — so it is a curve of the objective,
+  not an average of minibatch losses taken while the weights moved. `Loss(X, y)` measures the
+  same on any rows, for a validation curve.
+- **Found on the way: the AMD64 JIT refused the update method.** With the SGD loops, the Adam
+  loops and the bias loops in one method, `OBJECK_JIT_REPORT=1` showed "compile failed at
+  instruction 231", and every update ran in the interpreter: 30 s to train a 768→64→1 head
+  for 20 epochs on 2,000 rows. With one loop per method the same training takes 1.8 s, with
+  identical results. The refusal is a JIT defect (a legal method should compile or spill, not
+  fall back silently); a standalone reproduction is reported with this stage rather than
+  fixed in it.
+- **Measured** (Windows build box, `obr`, JIT on), 20 epochs, batch 32, Adam, balanced
+  weights: 2,000 × 768 logistic 0.36 s; 2,000 × 768 → 64 → 1 1.8 s; 500 × 768 → 64 → 1 0.47 s
+  (0.31 s with SGD).
+
 ### The lab example: `programs/examples/ml/bert_malware_lab.obs`
 
 ```
