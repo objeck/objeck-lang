@@ -63,6 +63,7 @@ Measurements and analyses, and the work they left open.
 - [JIT_CODEGEN_ASSESSMENT_2026_09.md](JIT_CODEGEN_ASSESSMENT_2026_09.md) — how efficient the emitted AMD64/ARM64 code is, measured, with the ranked fixes; the AMD64 ones are done, ARM64's loop and float pins are still open
 - [JIT_ARM64_HANDOFF_2026_09.md](JIT_ARM64_HANDOFF_2026_09.md) — the open ARM64 JIT track (loop locals and `D8`-`D15` float pins, `HasAndOr` narrowing) and the macOS build-and-test loop
 - [ML_TABULAR_GAPS.md](ML_TABULAR_GAPS.md) — what `System.ML` lacks for an ordinary tabular classification study, checked against the library source
+- [ML_LAB_SUPPORT_DESIGN.md](ML_LAB_SUPPORT_DESIGN.md) — `System.ML.Lab` (`ml_lab.obl`): stratified splits, imbalance resampling, a stopwatch, a sweep runner with a result table (text, Markdown, CSV, JSON) and standalone SVG charts, for the parameter-sweep hand-ins of a cybersecurity-ML lab
 
 ## What is not documentation
 
