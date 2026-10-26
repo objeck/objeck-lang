@@ -1,0 +1,340 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+The random-forest parameters a lab sweeps, on DecisionTreeClassifier and
+RandomForestClassifier: min_samples_leaf, an unlimited max_depth, feature
+importances and the training-time accessors -- and the split search they all
+run through, which became a sorted sweep.
+
+min_samples_leaf is checked as scikit-learn defines it: Apply routes the
+training rows to their leaves and every leaf must hold at least that many. The
+old min_samples parameter keeps its meaning, and leaving min_samples_leaf at 1
+must not change a single score.
+
+The sweep is checked against a brute force written here: for a one-split tree
+(depth 1) the best split is found by trying every feature and every midpoint
+between distinct values and counting Gini directly, honouring min_samples_leaf
+as well, and the stump's two leaf proportions must match it exactly. Columns
+with few distinct values make ties and repeated values common.
+
+Importances: a label decided by one feature gives that feature the largest
+share, the shares sum to 1, and a tree with no split has none.
+~#
+use System.ML;
+
+class MlForestLabParams {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		rand := System.ML.Random->New(23);
+
+		n := 240;
+		cols := 5;
+		x := Float->New[n, cols];
+		y := Bool->New[n];
+		each(i : n) {
+			x[i, 0] := rand->NextReal();
+			x[i, 1] := (rand->NextInt(4))->As(Float);
+			x[i, 2] := rand->NextReal();
+			x[i, 3] := (rand->NextInt(3))->As(Float);
+			x[i, 4] := rand->NextReal();
+			y[i] := x[i, 0] + 0.3 * x[i, 1] + 0.2 * rand->NextReal() > 0.9;
+		};
+
+		# min_samples_leaf: every leaf keeps at least k training rows.
+		leaves := [1, 2, 5, 10, 25];
+		every := true;
+		monotone := true;
+		previous := 1000000;
+		each(k : leaves) {
+			leaf := leaves[k];
+			tree := DecisionTreeClassifier->New(DecisionTreeClassifier->UnlimitedDepth(), 1);
+			tree->SetMinSamplesLeaf(leaf);
+			tree->Fit(x, y);
+			smallest := SmallestLeaf(tree, x);
+			count := tree->GetLeafCount();
+			depth := tree->GetDepth();
+			"  min_samples_leaf={$leaf}: leaves={$count} smallest={$smallest} depth={$depth}"->PrintLine();
+			if(smallest < leaf) {
+				every := false;
+			};
+			if(count > previous) {
+				monotone := false;
+			};
+			previous := count;
+		};
+		ok := Report("every leaf keeps at least min_samples_leaf training rows", every) & ok;
+		ok := Report("a larger min_samples_leaf never grows more leaves here", monotone) & ok;
+
+		# min_samples_leaf = 1 is the old behaviour, score for score.
+		plain := DecisionTreeClassifier->New(6, 3);
+		one := DecisionTreeClassifier->New(6, 3);
+		one->SetMinSamplesLeaf(1);
+		plain->Fit(x, y);
+		one->Fit(x, y);
+		ok := Report("min_samples_leaf 1 changes nothing", Identical(plain->PredictScore(x), one->PredictScore(x))) & ok;
+		zero := DecisionTreeClassifier->New(6, 3);
+		zero->SetMinSamplesLeaf(0);
+		ok := Report("values below 1 mean 1", zero->GetMinSamplesLeaf() = 1) & ok;
+
+		# Depth: -1 is unlimited, 0 is still a single leaf.
+		deep := DecisionTreeClassifier->New(-1, 1);
+		deep->Fit(x, y);
+		ok := Report("an unlimited tree grows until its leaves are pure",
+			Metrics->Accuracy(deep->Predict(x), y) = 1.0 & deep->GetDepth() > 3) & ok;
+		capped := DecisionTreeClassifier->New(3, 1);
+		capped->Fit(x, y);
+		ok := Report("a depth-3 tree stops at 3", capped->GetDepth() <= 3) & ok;
+		stump0 := DecisionTreeClassifier->New(0, 1);
+		stump0->Fit(x, y);
+		ok := Report("max_depth 0 is still one leaf", stump0->GetLeafCount() = 1 & stump0->GetDepth() = 0) & ok;
+		ok := Report("UnlimitedDepth is -1", DecisionTreeClassifier->UnlimitedDepth() = -1) & ok;
+
+		# The sweep against a brute force, at the root, with and without a leaf floor.
+		brute := true;
+		floors := [1, 7, 40];
+		each(k : floors) {
+			floor := floors[k];
+			stump := DecisionTreeClassifier->New(1, 1);
+			stump->SetMinSamplesLeaf(floor);
+			stump->Fit(x, y);
+			if(<>MatchesBruteForce(stump, x, y, floor)) {
+				brute := false;
+			};
+		};
+		ok := Report("the root split is the brute-force best, with min_samples_leaf 1, 7 and 40", brute) & ok;
+
+		# Importances.
+		imp := deep->GetFeatureImportances();
+		sum := 0.0;
+		top := 0;
+		each(f : imp) {
+			sum += imp[f];
+			if(imp[f] > imp[top]) {
+				top := f;
+			};
+		};
+		ok := Report("tree importances sum to 1", (sum - 1.0)->Abs() < 0.000000001) & ok;
+		ok := Report("the deciding feature is the most important", top = 0) & ok;
+		pure := Bool->New[n];
+		flat := DecisionTreeClassifier->New(5, 1);
+		flat->Fit(x, pure);
+		fimp := flat->GetFeatureImportances();
+		none := fimp <> Nil;
+		if(none) {
+			each(f : fimp) {
+				if(fimp[f] <> 0.0) {
+					none := false;
+				};
+			};
+		};
+		ok := Report("a tree with no split has no importances", none) & ok;
+
+		forest := RandomForestClassifier->New(25, -1, 1, 11);
+		forest->SetMinSamplesLeaf(3);
+		ok := Report("a forest with min_samples_leaf 3 and unlimited depth fits", forest->Fit(x, y)) & ok;
+		ok := Report("and keeps its settings",
+			forest->GetMinSamplesLeaf() = 3 & forest->GetMaxDepth() = -1 & forest->GetMinSamples() = 1 &
+			forest->GetMaxFeatures() = 0) & ok;
+		fi := forest->GetFeatureImportances();
+		fsum := 0.0;
+		ftop := 0;
+		each(f : fi) {
+			fsum += fi[f];
+			if(fi[f] > fi[ftop]) {
+				ftop := f;
+			};
+		};
+		ok := Report("forest importances sum to 1 and rank the deciding feature first",
+			(fsum - 1.0)->Abs() < 0.000000001 & ftop = 0) & ok;
+		ok := Report("the deepest tree is reported", forest->GetMaxTreeDepth() > 0) & ok;
+		ok := Report("fit times are reported", forest->GetFitSeconds() >= 0.0 & deep->GetFitSeconds() >= 0.0) & ok;
+		twin := RandomForestClassifier->New(25, -1, 1, 11);
+		twin->SetMinSamplesLeaf(3);
+		twin->Fit(x, y);
+		ok := Report("the same seed rebuilds the same forest",
+			Identical(forest->PredictScore(x), twin->PredictScore(x))) & ok;
+		loose := RandomForestClassifier->New(25, -1, 1, 11);
+		loose->Fit(x, y);
+		ok := Report("and min_samples_leaf 3 changes it",
+			<>Identical(forest->PredictScore(x), loose->PredictScore(x))) & ok;
+
+		unfitted := DecisionTreeClassifier->New(3, 1);
+		ok := Report("unfitted Apply and importances are Nil",
+			unfitted->Apply(x) = Nil & unfitted->GetFeatureImportances() = Nil) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	# The fewest training rows in any leaf.
+	function : SmallestLeaf(tree : DecisionTreeClassifier, x : Float[,]) ~ Int {
+		ids := tree->Apply(x);
+		counts := Int->New[tree->GetLeafCount()];
+		each(i : ids) {
+			counts[ids[i]] += 1;
+		};
+
+		smallest := ids->Size();
+		each(l : counts) {
+			if(counts[l] < smallest) {
+				smallest := counts[l];
+			};
+		};
+
+		return smallest;
+	}
+
+	# Brute-force root split: every feature, every midpoint between distinct
+	# values, children counted by a full scan, ties going to the first found in
+	# feature order then ascending threshold. Compares the stump's leaf
+	# proportions with that split's.
+	function : MatchesBruteForce(stump : DecisionTreeClassifier, x : Float[,], y : Bool[], floor : Int) ~ Bool {
+		dims := x->Size();
+		n := dims[0];
+		cols := dims[1];
+
+		positives := 0;
+		each(i : n) {
+			if(y[i]) {
+				positives += 1;
+			};
+		};
+		best := Gini(positives, n);
+		best_f := -1;
+		best_t := 0.0;
+
+		values := Float->New[n];
+		t := 0.0;
+		lc := 0;
+		lp := 0;
+		rc := 0;
+		rp := 0;
+		g := 0.0;
+		each(f : cols) {
+			each(i : n) {
+				values[i] := x[i, f];
+			};
+			Sort(values);
+			for(v := 0; v < n - 1; v += 1;) {
+				if(values[v] <> values[v + 1]) {
+					t := (values[v] + values[v + 1]) / 2.0;
+					lc := 0;
+					lp := 0;
+					rc := 0;
+					rp := 0;
+					each(i : n) {
+						if(x[i, f] <= t) {
+							lc += 1;
+							if(y[i]) {
+								lp += 1;
+							};
+						}
+						else {
+							rc += 1;
+							if(y[i]) {
+								rp += 1;
+							};
+						};
+					};
+					if(lc >= floor & rc >= floor) {
+						g := (lc->As(Float) * Gini(lp, lc) + rc->As(Float) * Gini(rp, rc)) / n->As(Float);
+						if(g < best) {
+							best := g;
+							best_f := f;
+							best_t := t;
+						};
+					};
+				};
+			};
+		};
+
+		scores := stump->PredictScore(x);
+		if(best_f < 0) {
+			return stump->GetLeafCount() = 1;
+		};
+
+		lc := 0;
+		lp := 0;
+		rc := 0;
+		rp := 0;
+		each(i : n) {
+			if(x[i, best_f] <= best_t) {
+				lc += 1;
+				if(y[i]) {
+					lp += 1;
+				};
+			}
+			else {
+				rc += 1;
+				if(y[i]) {
+					rp += 1;
+				};
+			};
+		};
+		left := lp->As(Float) / lc->As(Float);
+		right := rp->As(Float) / rc->As(Float);
+		each(i : n) {
+			if(x[i, best_f] <= best_t) {
+				if(scores[i] <> left) {
+					return false;
+				};
+			}
+			else {
+				if(scores[i] <> right) {
+					return false;
+				};
+			};
+		};
+
+		return stump->GetLeafCount() = 2;
+	}
+
+	function : Gini(positives : Int, count : Int) ~ Float {
+		if(count = 0) {
+			return 0.0;
+		};
+		p := positives->As(Float) / count->As(Float);
+		return 2.0 * p * (1.0 - p);
+	}
+
+	function : Sort(values : Float[]) ~ Nil {
+		# insertion sort: small inputs, and independent of the library's sort
+		v := 0.0;
+		j := 0;
+		for(i := 1; i < values->Size(); i += 1;) {
+			v := values[i];
+			j := i - 1;
+			while(j >= 0 & values[j] > v) {
+				values[j + 1] := values[j];
+				j -= 1;
+			};
+			values[j + 1] := v;
+		};
+	}
+
+	function : Identical(a : Float[], b : Float[]) ~ Bool {
+		if(a = Nil | b = Nil) {
+			return false;
+		};
+		if(a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}

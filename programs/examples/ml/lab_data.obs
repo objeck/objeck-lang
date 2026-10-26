@@ -1,0 +1,461 @@
+#~
+Shared data and reporting for the System.ML lab experiments (svm_lab.obs,
+rf_lab.obs). Compile it alongside the experiment:
+
+  obc -src svm_lab.obs,lab_data.obs -lib ml,gen_collect,csv -dest svm_lab.obe
+
+Data comes from one of two places:
+
+* NSL-KDD itself, when you pass the paths of KDDTrain+.txt and KDDTest+.txt
+  (https://www.unb.ca/cic/datasets/nsl.html; the files are not in this
+  repository). Each line has 41 features, the attack name and a difficulty
+  score. The difficulty column is dropped -- it is not a feature -- the three
+  string columns (protocol_type, service, flag) are one-hot encoded by
+  TableEncoder with the vocabulary fixed on the training file, and the label is
+  binary: "normal" is false, every attack name is true.
+
+* Otherwise a synthetic generator of NSL-KDD's shape, documented on NslKddLike
+  below, so every experiment runs with nothing to download.
+
+Results print as one table row per setting: accuracy, precision, recall, F1,
+false-positive rate (false alarms over all normal rows) and training seconds,
+with attack as the positive class.
+~#
+use Collection;
+use Data.CSV;
+use System.IO.Filesystem;
+use System.ML;
+
+class LabSplit {
+	@train_x : Float[,];
+	@train_y : Bool[];
+	@test_x : Float[,];
+	@test_y : Bool[];
+	@source : String;
+
+	New(train_x : Float[,], train_y : Bool[], test_x : Float[,], test_y : Bool[], source : String) {
+		@train_x := train_x;
+		@train_y := train_y;
+		@test_x := test_x;
+		@test_y := test_y;
+		@source := source;
+	}
+
+	method : public : GetTrainX() ~ Float[,] {
+		return @train_x;
+	}
+
+	method : public : GetTrainY() ~ Bool[] {
+		return @train_y;
+	}
+
+	method : public : GetTestX() ~ Float[,] {
+		return @test_x;
+	}
+
+	method : public : GetTestY() ~ Bool[] {
+		return @test_y;
+	}
+
+	method : public : GetSource() ~ String {
+		return @source;
+	}
+
+	#~
+	Standardises both splits with statistics learned on the training split only.
+	SVM kernels are distances and dot products, so an unscaled column (bytes run
+	to millions, rates stay in [0, 1]) would decide every result on its own.
+	~#
+	method : public : Standardize() ~ Nil {
+		scaler := FeatureScaler->New();
+		scaler->Fit(@train_x);
+		@train_x := scaler->Transform(@train_x);
+		@test_x := scaler->Transform(@test_x);
+	}
+
+	#~
+	A stratified, seeded subsample of the training split: the same attack share as
+	the whole, drawn without replacement. An exact kernel SVM costs between n^2
+	and n^3 in the training rows, so SVM sweeps on NSL-KDD's 126k rows subsample.
+	@param rows rows to keep
+	@param seed seeds the draw
+	~#
+	method : public : SubsampleTrain(rows : Int, seed : Int) ~ Nil {
+		@train_x := LabData->Subsample(@train_x, @train_y, rows, seed);
+		@train_y := LabData->SubsampleLabels(@train_y, rows, seed);
+	}
+
+	#~
+	The same for the test split, to bound prediction time.
+	@param rows rows to keep
+	@param seed seeds the draw
+	~#
+	method : public : SubsampleTest(rows : Int, seed : Int) ~ Nil {
+		@test_x := LabData->Subsample(@test_x, @test_y, rows, seed);
+		@test_y := LabData->SubsampleLabels(@test_y, rows, seed);
+	}
+}
+
+class LabData {
+	#~
+	Training and test data: NSL-KDD when two paths are given, synthetic otherwise.
+	@param args program arguments; args[first] and args[first + 1] are the NSL-KDD paths when present
+	@param first index of the first path argument
+	@param train_rows synthetic training rows
+	@param test_rows synthetic test rows
+	@return the split, or Nil when the files could not be read
+	~#
+	function : Load(args : String[], first : Int, train_rows : Int, test_rows : Int) ~ LabSplit {
+		if(args->Size() > first + 1) {
+			return LoadNslKdd(args[first], args[first + 1]);
+		};
+
+		gen := NslKddLike->New(42, 1.0);
+		train := gen->Rows(train_rows);
+		test := gen->Rows(test_rows);
+		return LabSplit->New(train->GetX(), train->GetY(), test->GetX(), test->GetY(),
+			"synthetic NSL-KDD-shaped data (lab_data.obs, seed 42)");
+	}
+
+	#~
+	Reads KDDTrain+.txt / KDDTest+.txt and encodes them with one vocabulary.
+	@param train_path path of the training file
+	@param test_path path of the test file
+	@return the encoded split, or Nil when a file cannot be read or parsed
+	~#
+	function : LoadNslKdd(train_path : String, test_path : String) ~ LabSplit {
+		train := ReadTable(train_path);
+		test := ReadTable(test_path);
+		if(train = Nil | test = Nil) {
+			"cannot read or parse the NSL-KDD files"->ErrorLine();
+			return Nil;
+		};
+
+		enc := TableEncoder->New("label");
+		train_x := enc->FitTransform(train);
+		test_x := enc->Transform(test);
+		train_y := ToBool(enc->TransformLabelsBinary(train, "normal"));
+		test_y := ToBool(enc->TransformLabelsBinary(test, "normal"));
+		if(train_x = Nil | test_x = Nil | train_y = Nil | test_y = Nil) {
+			"cannot encode the NSL-KDD files"->ErrorLine();
+			return Nil;
+		};
+
+		return LabSplit->New(train_x, train_y, test_x, test_y, "NSL-KDD (" + train_path + ", " + test_path + ")");
+	}
+
+	# The files have no header and a 43rd difficulty column; give them the
+	# standard column names and drop the difficulty score.
+	function : ReadTable(path : String) ~ CsvTable {
+		reader := FileReader->New(path);
+		if(<>reader->IsOpen()) {
+			return Nil;
+		};
+
+		text := String->New();
+		text->Append("duration,protocol_type,service,flag,src_bytes,dst_bytes,land,wrong_fragment,urgent,hot,");
+		text->Append("num_failed_logins,logged_in,num_compromised,root_shell,su_attempted,num_root,num_file_creations,");
+		text->Append("num_shells,num_access_files,num_outbound_cmds,is_host_login,is_guest_login,count,srv_count,");
+		text->Append("serror_rate,srv_serror_rate,rerror_rate,srv_rerror_rate,same_srv_rate,diff_srv_rate,");
+		text->Append("srv_diff_host_rate,dst_host_count,dst_host_srv_count,dst_host_same_srv_rate,");
+		text->Append("dst_host_diff_srv_rate,dst_host_same_src_port_rate,dst_host_srv_diff_host_rate,");
+		text->Append("dst_host_serror_rate,dst_host_srv_serror_rate,dst_host_rerror_rate,dst_host_srv_rerror_rate,label\n");
+
+		line := reader->ReadLine();
+		cut := 0;
+		while(line <> Nil) {
+			cut := line->FindLast(',');
+			if(cut > 0) {
+				text->Append(line->SubString(cut));
+				text->Append('\n');
+			};
+			line := reader->ReadLine();
+		};
+		reader->Close();
+
+		table := CsvTable->New(text);
+		if(<>table->IsParsed()) {
+			return Nil;
+		};
+
+		return table;
+	}
+
+	function : ToBool(values : Float[]) ~ Bool[] {
+		if(values = Nil) {
+			return Nil;
+		};
+
+		result := Bool->New[values->Size()];
+		each(i : values) {
+			result[i] := values[i] > 0.5;
+		};
+
+		return result;
+	}
+
+	# Row indexes of a stratified draw without replacement: positives and
+	# negatives are each shuffled (Fisher-Yates, seeded) and the first
+	# rows * share of each kept, in their original order.
+	function : SubsampleRows(y : Bool[], rows : Int, seed : Int) ~ Int[] {
+		n := y->Size();
+		if(rows >= n) {
+			all := Int->New[n];
+			each(i : n) {
+				all[i] := i;
+			};
+			return all;
+		};
+
+		positives := 0;
+		each(i : n) {
+			if(y[i]) {
+				positives += 1;
+			};
+		};
+		keep_pos := (rows->As(Float) * positives->As(Float) / n->As(Float) + 0.5)->As(Int);
+		keep_neg := rows - keep_pos;
+
+		pos := Int->New[positives];
+		neg := Int->New[n - positives];
+		p := 0;
+		q := 0;
+		each(i : n) {
+			if(y[i]) {
+				pos[p] := i;
+				p += 1;
+			}
+			else {
+				neg[q] := i;
+				q += 1;
+			};
+		};
+
+		rand := System.ML.Random->New(seed);
+		Shuffle(pos, rand);
+		Shuffle(neg, rand);
+
+		chosen := Bool->New[n];
+		each(i : keep_pos) {
+			chosen[pos[i]] := true;
+		};
+		each(i : keep_neg) {
+			chosen[neg[i]] := true;
+		};
+
+		result := Int->New[rows];
+		r := 0;
+		each(i : n) {
+			if(chosen[i]) {
+				result[r] := i;
+				r += 1;
+			};
+		};
+
+		return result;
+	}
+
+	function : Shuffle(values : Int[], rand : System.ML.Random) ~ Nil {
+		j := 0;
+		t := 0;
+		for(i := values->Size() - 1; i > 0; i -= 1;) {
+			j := rand->NextInt(i + 1);
+			t := values[i];
+			values[i] := values[j];
+			values[j] := t;
+		};
+	}
+
+	function : Subsample(x : Float[,], y : Bool[], rows : Int, seed : Int) ~ Float[,] {
+		idx := SubsampleRows(y, rows, seed);
+		dims := x->Size();
+		cols := dims[1];
+		result := Float->New[idx->Size(), cols];
+		each(r : idx) {
+			each(c : cols) {
+				result[r, c] := x[idx[r], c];
+			};
+		};
+
+		return result;
+	}
+
+	function : SubsampleLabels(y : Bool[], rows : Int, seed : Int) ~ Bool[] {
+		idx := SubsampleRows(y, rows, seed);
+		result := Bool->New[idx->Size()];
+		each(r : idx) {
+			result[r] := y[idx[r]];
+		};
+
+		return result;
+	}
+
+	#~
+	Prints the column headings of a results table.
+	@param setting heading of the first column
+	~#
+	function : PrintHeader(setting : String) ~ Nil {
+		String->SetFloatFormat(Number->Format->FIXED);
+		String->SetFloatPrecision(4);
+		line := Pad(setting, 18) + "accuracy   precision  recall     F1         FPR        train_s    extra";
+		line->PrintLine();
+		"-"->Repeat(line->Size())->PrintLine();
+	}
+
+	#~
+	Prints one row: the point metrics with attack as the positive class, and the
+	false-positive rate, FP / (FP + TN).
+	@param setting what was varied, e.g. "C=10"
+	@param predicted predicted labels for the test rows
+	@param actual true labels of the test rows
+	@param seconds training time
+	@param extra anything else worth a column (support vectors, tree depth ...)
+	~#
+	function : PrintRow(setting : String, predicted : Bool[], actual : Bool[], seconds : Float, extra : String) ~ Nil {
+		acc := Metrics->Accuracy(predicted, actual);
+		prec := Metrics->Precision(predicted, actual);
+		rec := Metrics->Recall(predicted, actual);
+		f1 := Metrics->F1Score(predicted, actual);
+		cm := Metrics->ConfusionMatrix(predicted, actual);
+		tn := cm[0, 0];
+		fp := cm[0, 1];
+		fpr := 0.0;
+		if(tn + fp > 0) {
+			fpr := fp->As(Float) / (tn + fp)->As(Float);
+		};
+
+		line := Pad(setting, 18);
+		line += Cell(acc);
+		line += Cell(prec);
+		line += Cell(rec);
+		line += Cell(f1);
+		line += Cell(fpr);
+		line += Cell(seconds);
+		line += extra;
+		line->PrintLine();
+	}
+
+	function : Cell(v : Float) ~ String {
+		return Pad(v->ToString(), 10);
+	}
+
+	function : Pad(s : String, width : Int) ~ String {
+		result := String->New(s);
+		while(result->Size() < width) {
+			result->Append(' ');
+		};
+		result->Append(' ');
+
+		return result;
+	}
+}
+
+#~
+Synthetic rows of NSL-KDD's shape: 41 features and a normal/attack label.
+
+Each row is drawn from one of five traffic profiles -- normal, and four attack
+families standing in for DoS, probe, R2L and U2R -- with shares close to
+NSL-KDD's training set (normal 53.5%, DoS 36.5%, probe 9.3%; the two rare
+families are raised to 1.2% and 0.6% so a few thousand rows still see them). A
+profile fixes each feature's centre, drawn once from the seed; a row adds
+bell-shaped noise (a sum of three uniforms, scaled by noise) around it. The
+feature kinds follow the real columns: 3 categorical codes (protocol 3 values,
+service 70, flag 11), 6 heavy-tailed counts (durations, bytes), 11 binary flags
+and 21 rates clipped to [0, 1].
+
+At noise 1.0 the classes overlap enough that a kernel SVM keeps about a quarter
+of the rows as support vectors and reaches about 95% held-out accuracy -- harder
+than NSL-KDD itself, so timings err on the slow side. At 0.6 accuracy is near
+99.9%, closer to what models reach on the real data.
+
+Deterministic per seed (System.ML.Random).
+~#
+class NslKddLike {
+	@rand : System.ML.Random;
+	@centres : Float[,];
+	@noise : Float;
+
+	New(seed : Int, noise : Float) {
+		@rand := System.ML.Random->New(seed);
+		@noise := noise;
+
+		@centres := Float->New[5, 41];
+		each(p : 5) {
+			each(f : 41) {
+				@centres[p, f] := @rand->NextReal();
+			};
+		};
+	}
+
+	method : public : Rows(count : Int) ~ LabeledRows {
+		x := Float->New[count, 41];
+		y := Bool->New[count];
+		profile := 0;
+		u := 0.0;
+		centre := 0.0;
+		v := 0.0;
+
+		each(i : count) {
+			u := @rand->NextReal();
+			if(u < 0.535) {
+				profile := 0;
+			}
+			else if(u < 0.892) {
+				profile := 1;
+			}
+			else if(u < 0.982) {
+				profile := 2;
+			}
+			else if(u < 0.994) {
+				profile := 3;
+			}
+			else {
+				profile := 4;
+			};
+			y[i] := profile > 0;
+
+			each(f : 41) {
+				centre := @centres[profile, f];
+				v := centre + @noise * (@rand->NextReal() + @rand->NextReal() + @rand->NextReal() - 1.5);
+				if(f < 3) {
+					v := Float->Round(v * (f = 0 ? 3.0 : (f = 1 ? 70.0 : 11.0)));
+				}
+				else if(f < 9) {
+					v := Float->Exp(4.0 * v);
+				}
+				else if(f < 20) {
+					v := v > 0.5 ? 1.0 : 0.0;
+				}
+				else {
+					if(v < 0.0) {
+						v := 0.0;
+					};
+					if(v > 1.0) {
+						v := 1.0;
+					};
+				};
+				x[i, f] := v;
+			};
+		};
+
+		return LabeledRows->New(x, y);
+	}
+}
+
+class LabeledRows {
+	@x : Float[,];
+	@y : Bool[];
+
+	New(x : Float[,], y : Bool[]) {
+		@x := x;
+		@y := y;
+	}
+
+	method : public : GetX() ~ Float[,] {
+		return @x;
+	}
+
+	method : public : GetY() ~ Bool[] {
+		return @y;
+	}
+}
