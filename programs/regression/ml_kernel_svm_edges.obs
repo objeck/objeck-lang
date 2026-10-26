@@ -1,0 +1,386 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+KernelSVM edge cases, parameter semantics and determinism.
+
+Bad input is refused with a reason (one class only is the lab's likeliest
+mistake: a small subsample that drew no attacks). Constant features, identical
+rows with opposite labels and fewer rows than features must still fit. Hitting
+the iteration cap leaves a usable model that says it did not converge.
+
+gamma 'scale' and 'auto' are checked against their definitions (scikit-learn's:
+1 / (features * variance of every entry of X), 1.0 when that variance is zero;
+and 1 / features). Class weights scale each row's bound.
+
+Determinism is checked exactly, not approximately: two fits agree bit for bit,
+and so do a 1 MB cache that must evict and swap rows during shrinking and a
+cache big enough to hold every row, because the cache changes what is
+recomputed, never a value. Shrinking changes the path, so on/off is compared on
+the objective and the predictions. The checksum line lets runs at different
+optimisation levels and JIT settings be compared too.
+~#
+use System.ML;
+
+class MlKernelSvmEdges {
+	@checksum : static : Float;
+
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		@checksum := 0.0;
+		rand := System.ML.Random->New(5);
+
+		n := 60;
+		x := Float->New[n, 3];
+		y := Bool->New[n];
+		each(i : n) {
+			y[i] := i % 3 = 0;
+			x[i, 0] := rand->NextReal(0.0, 1.0) + (y[i] ? 0.5 : 0.0);
+			x[i, 1] := rand->NextReal(0.0, 1.0);
+			x[i, 2] := rand->NextReal(-1.0, 1.0);
+		};
+
+		# Unfitted.
+		fresh := KernelSVM->New(SvmKernel->RBF);
+		ok := Report("unfitted DecisionFunction is Nil", fresh->DecisionFunction(x) = Nil) & ok;
+		unfitted := fresh->PredictClass(x);
+		ok := Report("unfitted PredictClass is Nil", unfitted = Nil) & ok;
+		ok := Report("unfitted support-vector count is 0", fresh->GetSupportVectorCount() = 0) & ok;
+		ok := Report("defaults are scikit-learn's",
+			fresh->GetC() = 1.0 & fresh->GetGamma() = -1.0 & fresh->GetDegree() = 3 &
+			fresh->GetCoef0() = 0.0 & fresh->GetTolerance() = 0.001 & fresh->GetCacheSize() = 200 &
+			fresh->IsShrinking() & fresh->GetMaxIterations() = -1 &
+			fresh->GetKernel() = SvmKernel->RBF) & ok;
+
+		# Refusals, each with a reason.
+		ones := Bool->New[n];
+		each(i : n) {
+			ones[i] := true;
+		};
+		svm := KernelSVM->New(SvmKernel->RBF);
+		ok := Report("one class only is refused", <>svm->Fit(x, ones)) & ok;
+		ok := Report("and GetLastError says so", svm->GetLastError()->Has("one class")) & ok;
+		ok := Report("and the model stays unfitted", <>svm->IsFitted()) & ok;
+
+		nothing : Float[,];
+		ok := Report("Nil X is refused", <>KernelSVM->New(SvmKernel->RBF)->Fit(nothing, y)) & ok;
+		short := Bool->New[n - 1];
+		short[0] := true;
+		ok := Report("a label count that does not match is refused",
+			<>KernelSVM->New(SvmKernel->RBF)->Fit(x, short)) & ok;
+
+		bad := Float->New[n, 3];
+		each(i : n) {
+			each(k : 3) {
+				bad[i, k] := x[i, k];
+			};
+		};
+		bad[7, 1] := Float->NaN();
+		ok := Report("NaN in X is refused", <>KernelSVM->New(SvmKernel->RBF)->Fit(bad, y)) & ok;
+		bad[7, 1] := Float->Inf();
+		ok := Report("infinity in X is refused", <>KernelSVM->New(SvmKernel->RBF)->Fit(bad, y)) & ok;
+		ok := Report("C = 0 is refused", <>KernelSVM->New(SvmKernel->RBF, 0.0)->Fit(x, y)) & ok;
+		ok := Report("negative gamma is refused", <>KernelSVM->New(SvmKernel->RBF, 1.0, -0.5)->Fit(x, y)) & ok;
+		negdeg := KernelSVM->New(SvmKernel->POLY, 1.0, 0.5, -1, 0.0);
+		ok := Report("negative degree is refused", <>negdeg->Fit(x, y)) & ok;
+		zerotol := KernelSVM->New(SvmKernel->RBF);
+		zerotol->SetTolerance(0.0);
+		ok := Report("tolerance 0 is refused", <>zerotol->Fit(x, y)) & ok;
+
+		# gamma 'scale' and 'auto' against their definitions.
+		total := 0.0;
+		each(i : n) {
+			each(k : 3) {
+				total += x[i, k];
+			};
+		};
+		mean := total / (3 * n)->As(Float);
+		var := 0.0;
+		dv := 0.0;
+		each(i : n) {
+			each(k : 3) {
+				dv := x[i, k] - mean;
+				var += dv * dv;
+			};
+		};
+		var := var / (3 * n)->As(Float);
+		scale := KernelSVM->New(SvmKernel->RBF);
+		ok := Report("gamma 'scale' fits", scale->Fit(x, y) & Kkt(scale, x, y, 1.0, 1.0)) & ok;
+		ok := Report("gamma 'scale' is 1 / (features * X.var())",
+			Near(scale->GetGamma(), 1.0 / (3.0 * var), 0.000000000001)) & ok;
+		auto := KernelSVM->New(SvmKernel->RBF);
+		auto->SetGammaAuto();
+		ok := Report("gamma 'auto' is 1 / features before Fit is reported as -2",
+			auto->GetGamma() = -2.0) & ok;
+		ok := Report("gamma 'auto' fits", auto->Fit(x, y)) & ok;
+		ok := Report("gamma 'auto' is 1 / features", Near(auto->GetGamma(), 1.0 / 3.0, 0.000000000001)) & ok;
+
+		# Constant features: X.var() = 0, so 'scale' falls back to 1.0.
+		flat := Float->New[n, 2];
+		each(i : n) {
+			flat[i, 0] := 3.0;
+			flat[i, 1] := 3.0;
+		};
+		constant := KernelSVM->New(SvmKernel->RBF);
+		ok := Report("all-constant features fit", constant->Fit(flat, y) & Kkt(constant, flat, y, 1.0, 1.0)) & ok;
+		ok := Report("and 'scale' falls back to gamma 1.0", constant->GetGamma() = 1.0) & ok;
+		cs := constant->DecisionFunction(flat);
+		same := true;
+		each(i : cs) {
+			if(cs[i] <> cs[0]) {
+				same := false;
+			};
+		};
+		ok := Report("identical rows get one decision value", same) & ok;
+
+		# A constant column among informative ones changes nothing for RBF.
+		wide := Float->New[n, 4];
+		each(i : n) {
+			each(k : 3) {
+				wide[i, k] := x[i, k];
+			};
+			wide[i, 3] := 7.0;
+		};
+		pad := KernelSVM->New(SvmKernel->RBF, 1.0, 0.5);
+		base := KernelSVM->New(SvmKernel->RBF, 1.0, 0.5);
+		ok := Report("a constant column fits", pad->Fit(wide, y) & base->Fit(x, y)) & ok;
+		ok := Report("and an RBF model ignores it", Near(pad->GetObjective(), base->GetObjective(), 0.000000001)) & ok;
+
+		# Duplicated rows, including a pair with opposite labels.
+		dx := Float->New[n, 3];
+		dy := Bool->New[n];
+		each(i : n) {
+			each(k : 3) {
+				dx[i, k] := x[i % 20, k];
+			};
+			dy[i] := y[i % 20];
+		};
+		dy[45] := <>dy[5];
+		dup := KernelSVM->New(SvmKernel->RBF, 10.0, 1.0);
+		ok := Report("duplicate rows, one pair contradictory, fit and meet KKT",
+			dup->Fit(dx, dy) & Kkt(dup, dx, dy, 10.0, 10.0)) & ok;
+		Accumulate(dup->DecisionFunction(dx));
+
+		# Fewer rows than features: separable, so zero training error at large C.
+		nx := Float->New[6, 20];
+		ny := Bool->New[6];
+		each(i : 6) {
+			each(k : 20) {
+				nx[i, k] := rand->NextReal(-1.0, 1.0);
+			};
+			ny[i] := i < 3;
+		};
+		narrow := KernelSVM->New(SvmKernel->LINEAR, 1000.0);
+		ok := Report("n < d fits", narrow->Fit(nx, ny) & Kkt(narrow, nx, ny, 1000.0, 1000.0)) & ok;
+		ok := Report("n < d is separable", narrow->Score(nx, ny) = 1.0) & ok;
+
+		# The iteration cap.
+		capped := KernelSVM->New(SvmKernel->RBF, 100.0, 5.0);
+		capped->SetMaxIterations(5);
+		ok := Report("a capped fit still returns true", capped->Fit(x, y)) & ok;
+		ok := Report("and reports it did not converge", <>capped->IsConverged()) & ok;
+		ok := Report("after exactly the cap", capped->GetIterations() = 5) & ok;
+		cp := capped->PredictClass(x);
+		ok := Report("and still predicts", cp <> Nil) & ok;
+		full := KernelSVM->New(SvmKernel->RBF, 100.0, 5.0);
+		ok := Report("uncapped, the same problem converges", full->Fit(x, y) & full->IsConverged()) & ok;
+		ok := Report("in more than 5 iterations", full->GetIterations() > 5) & ok;
+
+		# Wrong column count at prediction.
+		ok := Report("a different column count gives Nil", full->DecisionFunction(wide) = Nil) & ok;
+
+		# Determinism: two fits, bit for bit.
+		a := KernelSVM->New(SvmKernel->POLY, 3.0, 0.7, 3, 1.0);
+		b := KernelSVM->New(SvmKernel->POLY, 3.0, 0.7, 3, 1.0);
+		ok := Report("two identical fits", a->Fit(x, y) & b->Fit(x, y)) & ok;
+		ok := Report("give bit-identical decision values",
+			Identical(a->DecisionFunction(x), b->DecisionFunction(x))) & ok;
+		Accumulate(a->DecisionFunction(x));
+
+		# The cache: 400 rows is more than a 1 MB cache holds (1 MB / (8 * 400)
+		# = 327 rows), so rows are evicted and, under shrinking, cached columns
+		# are swapped and partial rows dropped. Values must not change.
+		m := 400;
+		bx := Float->New[m, 4];
+		by := Bool->New[m];
+		each(i : m) {
+			by[i] := rand->NextReal() < 0.4;
+			each(k : 4) {
+				bx[i, k] := rand->NextReal(-1.0, 1.0);
+			};
+			bx[i, 0] := bx[i, 0] + (by[i] ? 0.6 : 0.0);
+		};
+		small := KernelSVM->New(SvmKernel->RBF, 10.0, 2.0);
+		small->SetCacheSize(1);
+		big := KernelSVM->New(SvmKernel->RBF, 10.0, 2.0);
+		big->SetCacheSize(500);
+		ok := Report("a 1 MB cache and a 500 MB cache both fit",
+			small->Fit(bx, by) & big->Fit(bx, by) & Kkt(small, bx, by, 10.0, 10.0)) & ok;
+		ok := Report("with bit-identical results",
+			Identical(small->DecisionFunction(bx), big->DecisionFunction(bx)) &
+			small->GetIterations() = big->GetIterations()) & ok;
+		Accumulate(small->DecisionFunction(bx));
+
+		# Shrinking off takes another path to the same optimum.
+		on := KernelSVM->New(SvmKernel->RBF, 10.0, 2.0);
+		on->SetTolerance(0.00000001);
+		off := KernelSVM->New(SvmKernel->RBF, 10.0, 2.0);
+		off->SetTolerance(0.00000001);
+		off->SetShrinking(false);
+		ok := Report("shrinking on and off both fit", on->Fit(bx, by) & off->Fit(bx, by)) & ok;
+		ok := Report("to the same objective",
+			Near(on->GetObjective(), off->GetObjective(), 0.000001 * (1.0 + on->GetObjective()->Abs()))) & ok;
+		ok := Report("and the same predictions", SameLabels(on->PredictClass(bx), off->PredictClass(bx))) & ok;
+
+		# Class weights: each row's bound is C times its class weight.
+		weighted := KernelSVM->New(SvmKernel->RBF, 1.0, 2.0);
+		weighted->SetClassWeight(0.5, 4.0);
+		ok := Report("class-weighted fit meets KKT with per-class bounds",
+			weighted->Fit(bx, by) & Kkt(weighted, bx, by, 0.5, 4.0)) & ok;
+		plain := KernelSVM->New(SvmKernel->RBF, 1.0, 2.0);
+		balanced := KernelSVM->New(SvmKernel->RBF, 1.0, 2.0);
+		balanced->SetClassWeightBalanced();
+		positives := 0;
+		each(i : m) {
+			if(by[i]) {
+				positives += 1;
+			};
+		};
+		wpos := m->As(Float) / (2.0 * positives->As(Float));
+		wneg := m->As(Float) / (2.0 * (m - positives)->As(Float));
+		ok := Report("balanced weights fit with bounds n / (2 * class rows)",
+			plain->Fit(bx, by) & balanced->Fit(bx, by) & Kkt(balanced, bx, by, wneg, wpos)) & ok;
+		ok := Report("and do not lower the minority class's recall",
+			Metrics->Recall(balanced->PredictClass(bx), by) >= Metrics->Recall(plain->PredictClass(bx), by)) & ok;
+
+		# ScoreModel: cross-validation takes it with no adapter.
+		result := CrossValidation->Evaluate(KernelSVM->New(SvmKernel->RBF, 1.0, 2.0), bx, by, 3, 9, 0.1);
+		ok := Report("CrossValidation->Evaluate takes a KernelSVM", result <> Nil) & ok;
+
+		String->SetFloatFormat(Number->Format->SCIENTIFIC);
+		String->SetFloatPrecision(17);
+		sum := @checksum;
+		"checksum {$sum}"->PrintLine();
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Identical(a : Float[], b : Float[]) ~ Bool {
+		if(a = Nil | b = Nil) {
+			return false;
+		};
+		if(a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : SameLabels(a : Bool[], b : Bool[]) ~ Bool {
+		if(a = Nil | b = Nil) {
+			return false;
+		};
+		if(a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Near(a : Float, b : Float, eps : Float) ~ Bool {
+		return (a - b)->Abs() <= eps;
+	}
+
+	function : Accumulate(values : Float[]) ~ Nil {
+		if(values = Nil) {
+			return;
+		};
+
+		v := 0.0;
+		each(i : values) {
+			v := values[i];
+			@checksum := @checksum + v * (i + 1)->As(Float);
+		};
+	}
+
+	# The KKT conditions of the dual, with per-class bounds c_neg and c_pos.
+	function : Kkt(model : KernelSVM, x : Float[,], y : Bool[], c_neg : Float, c_pos : Float) ~ Bool {
+		if(<>model->IsFitted()) {
+			return false;
+		};
+
+		dims := x->Size();
+		n := dims[0];
+		alpha := Float->New[n];
+		idx := model->GetSupportIndices();
+		coef := model->GetDualCoefficients();
+		balance := 0.0;
+		total := 0.0;
+		a := 0.0;
+		each(s : idx) {
+			a := coef[s]->Abs();
+			alpha[idx[s]] := a;
+			balance += coef[s];
+			total += a;
+		};
+
+		if(balance->Abs() > 0.000000001 * (1.0 + total)) {
+			"  KKT: sum(alpha y) = {$balance}"->PrintLine();
+			return false;
+		};
+
+		tol := model->GetTolerance() + 0.0000001;
+		f := model->DecisionFunction(x);
+		margin := 0.0;
+		c := 0.0;
+		each(i : n) {
+			margin := y[i] ? f[i] : -1.0 * f[i];
+			c := y[i] ? c_pos : c_neg;
+			a := alpha[i];
+			if(a < 0.0 | a > c * (1.0 + 0.000000000001)) {
+				"  KKT: alpha {$a} outside [0, C] at row {$i}"->PrintLine();
+				return false;
+			};
+			if(a = 0.0) {
+				if(margin < 1.0 - tol) {
+					"  KKT: row {$i} has alpha 0 and y f = {$margin}"->PrintLine();
+					return false;
+				};
+			}
+			else if(a < c) {
+				if((margin - 1.0)->Abs() > tol) {
+					"  KKT: free row {$i} has y f = {$margin}"->PrintLine();
+					return false;
+				};
+			}
+			else {
+				if(margin > 1.0 + tol) {
+					"  KKT: bounded row {$i} has y f = {$margin}"->PrintLine();
+					return false;
+				};
+			};
+		};
+
+		return true;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}

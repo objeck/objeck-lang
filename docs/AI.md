@@ -937,6 +937,14 @@ svm := SVM->New(0.01, 0.1, 500);       # lambda, learning rate, epochs
 svm->Fit(X, y);
 margins := svm->Predict(X);            # signed distances from the plane
 
+# kernel SVM (C-SVC): scikit-learn's SVC parameters, LIBSVM's solver
+kernel_svm := KernelSVM->New(SvmKernel->RBF, 10.0, 0.1);   # kernel, C, gamma
+kernel_svm->Fit(Xs, labels);           # Bool[] labels; scale features first
+scores := kernel_svm->DecisionFunction(Xs_test);           # signed margins
+recall := Metrics->RecallAtFpr(scores, labels_test, 0.001);
+# LINEAR, RBF, POLY, SIGMOID; gamma 'scale' (default) or SetGammaAuto();
+# SetClassWeightBalanced(), SetCacheSize(mb), GetSupportVectorCount()
+
 # multiclass Gaussian naive Bayes over integer labels 0..C-1
 gnb := GaussianNaiveBayes->New();
 gnb->Fit(X, y);
@@ -1192,6 +1200,7 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 | Sentiment / TF-IDF | `SentimentAnalyzer`, `TF_IDF` | `nlp` | None |
 | Linear / regularized regression | `LinearRegression`, `RidgeRegression`, `LassoRegression`, `ElasticNet` | `ml` | None |
 | Linear classifiers | `LogisticRegression`, `SVM`, `Perceptron` | `ml` | None |
+| Kernel SVMs | `KernelSVM` (linear, RBF, poly, sigmoid) | `ml` | None |
 | Probabilistic classifiers | `GaussianNaiveBayes`, `NaiveBayes` | `ml` | None |
 | Trees & ensembles | `DecisionTree`, `RandomForest`, `AdaBoost` | `ml` | None |
 | Nearest neighbors | `KNearestNeighbors`, `KDTree` | `ml` | None |

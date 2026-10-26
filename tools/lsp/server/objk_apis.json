@@ -14174,6 +14174,128 @@
 				}
 			}
 		},
+		"System.ML.KernelSVM": {
+			"description": "A kernel support vector machine for binary classification (C-SVC), with scikit-learn's SVC parameters: kernel, C, gamma ('scale', 'auto' or a value), degree, coef0, tol, shrinking, cache size, max_iter and class weights.\n\nIt is trained by LIBSVM's SMO solver -- second-order working-set selection, shrinking, and an LRU cache of kernel rows sized in megabytes -- so it finds the exact dual optimum to the tolerance, deterministically: there is no randomness in fitting and no seed. The linear SVM class is a different model (a primal subgradient method parameterised by lambda); use this one for kernels or for scikit-learn's C.\n\nCost grows between n^2 and n^3 in the training rows, as for LIBSVM: tens of thousands of rows is practical, the full 126k-row NSL-KDD training set is not. Subsample for parameter sweeps. Scale the features first (FeatureScaler): RBF, polynomial and sigmoid kernels are distances and dot products, and an unscaled column dominates them.\n\nDecisionFunction returns a signed margin, higher meaning more positive, which is the score Metrics->AucRoc, RecallAtFpr and ThresholdAtFpr take.",
+			"functions": {
+				"DecisionFunction": {
+					"descriptions": ["**The signed distance-like margin of each row: sum of alpha_i y_i K(x_i, x) over the support vectors, plus the intercept. Positive means the true class; the magnitude grows with confidence but is not a probability. This is the score for Metrics->AucRoc, RecallAtFpr and ThresholdAtFpr.**\n\n```method : public : DecisionFunction(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"Fit": {
+					"descriptions": ["**Fits the model.**\n\n```method : public : Fit(X:Float[,], y:Bool[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Bool[]\n\nreturn: Bool"]
+				},
+				"GetBoundedSupportVectorCount": {
+					"descriptions": ["**Number of support vectors at their upper bound C (margin violators).**\n\n```method : public : GetBoundedSupportVectorCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetC": {
+					"descriptions": ["**C.**\n\n```method : public : GetC() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetCacheSize": {
+					"descriptions": ["**The kernel-row cache size.**\n\n```method : public : GetCacheSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetCoef0": {
+					"descriptions": ["**The POLY\/SIGMOID independent term.**\n\n```method : public : GetCoef0() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetDegree": {
+					"descriptions": ["**The POLY degree.**\n\n```method : public : GetDegree() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetDualCoefficients": {
+					"descriptions": ["**alpha_i * y_i per support vector (y as +1\/-1), scikit-learn's dual_coef_.**\n\n```method : public : GetDualCoefficients() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetFitSeconds": {
+					"descriptions": ["**Seconds the last Fit took.**\n\n```method : public : GetFitSeconds() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetGamma": {
+					"descriptions": ["**The gamma in use: after Fit the value the kernel used, including the one 'scale' or 'auto' resolved to; before Fit the explicit value, or -1.0 for 'scale' and -2.0 for 'auto'.**\n\n```method : public : GetGamma() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetIntercept": {
+					"descriptions": ["**The intercept b of the decision function (-rho in LIBSVM's terms).**\n\n```method : public : GetIntercept() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetIterations": {
+					"descriptions": ["**Solver iterations used by the last Fit.**\n\n```method : public : GetIterations() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetKernel": {
+					"descriptions": ["**The kernel.**\n\n```method : public : GetKernel() ~ SvmKernel```\n\n\n\nreturn: SvmKernel"]
+				},
+				"GetLastError": {
+					"descriptions": ["**Why the last Fit returned false.**\n\n```method : public : GetLastError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetMaxIterations": {
+					"descriptions": ["**The iteration cap as set; 0 or less means LIBSVM's own.**\n\n```method : public : GetMaxIterations() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetObjective": {
+					"descriptions": ["**The dual objective 1\/2 a'Qa - sum(a) at the solution.**\n\n```method : public : GetObjective() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetSupportIndices": {
+					"descriptions": ["**Training-row indexes of the support vectors, ascending (scikit-learn's support_, which groups them by class instead).**\n\n```method : public : GetSupportIndices() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetSupportVectorCount": {
+					"descriptions": ["**Number of support vectors (training rows with a non-zero dual coefficient).**\n\n```method : public : GetSupportVectorCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetSupportVectors": {
+					"descriptions": ["**The support vectors, one row each, in GetSupportIndices order.**\n\n```method : public : GetSupportVectors() ~ Float[,]```\n\n\n\nreturn: Float[,]"]
+				},
+				"GetTolerance": {
+					"descriptions": ["**The stopping tolerance.**\n\n```method : public : GetTolerance() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"IsConverged": {
+					"descriptions": ["**Whether the last Fit met the tolerance; false when the iteration cap stopped it first.**\n\n```method : public : IsConverged() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether Fit has succeeded.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsShrinking": {
+					"descriptions": ["**Whether shrinking is on.**\n\n```method : public : IsShrinking() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor with scikit-learn's defaults: C = 1.0, gamma = 'scale', degree = 3, coef0 = 0.0, tol = 0.001, shrinking on, a 200 MB cache and no iteration cap beyond LIBSVM's own.**\n\n```New(kernel:SvmKernel)```\n\n\n\nkernel: SvmKernel", "**Constructor with a regularisation strength; gamma is 'scale'.**\n\n```New(kernel:SvmKernel, c:Float)```\n\n\n\nkernel: SvmKernel\n\nc: Float", "**Constructor with C and an explicit gamma.**\n\n```New(kernel:SvmKernel, c:Float, gamma:Float)```\n\n\n\nkernel: SvmKernel\n\nc: Float\n\ngamma: Float", "**Constructor with every kernel parameter.**\n\n```New(kernel:SvmKernel, c:Float, gamma:Float, degree:Int, coef0:Float)```\n\n\n\nkernel: SvmKernel\n\nc: Float\n\ngamma: Float\n\ndegree: Int\n\ncoef0: Float"]
+				},
+				"PredictClass": {
+					"descriptions": ["**Class labels: true where the decision value is above zero. Prefer DecisionFunction with Metrics->ThresholdAtFpr when false alarms are budgeted.**\n\n```method : public : PredictClass(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"PredictScore": {
+					"descriptions": ["**The ScoreModel score: the same values as DecisionFunction.**\n\n```method : public : PredictScore(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"Score": {
+					"descriptions": ["**Accuracy of PredictClass against labels.**\n\n```method : public : Score(X:Float[,], y:Bool[]) ~ Float```\n\n\n\nX: Float[,]\n\ny: Bool[]\n\nreturn: Float"]
+				},
+				"SetC": {
+					"descriptions": ["**Sets C, the penalty on margin violations.**\n\n```method : public : SetC(c:Float) ~ Nil```\n\n\n\nc: Float\n\nreturn: Nil"]
+				},
+				"SetCacheSize": {
+					"descriptions": ["**Sets the kernel-row cache size. Larger caches recompute fewer kernel rows; the result does not depend on it.**\n\n```method : public : SetCacheSize(megabytes:Int) ~ Nil```\n\n\n\nmegabytes: Int\n\nreturn: Nil"]
+				},
+				"SetClassWeight": {
+					"descriptions": ["**Weights C per class: a row's bound is C times its class's weight, so a weight above 1 makes errors on that class costlier.**\n\n```method : public : SetClassWeight(negative:Float, positive:Float) ~ Nil```\n\n\n\nnegative: Float\n\npositive: Float\n\nreturn: Nil"]
+				},
+				"SetClassWeightBalanced": {
+					"descriptions": ["**Weights C per class by n \/ (2 * rows in the class) at Fit, scikit-learn's class_weight='balanced', so a rare class is not traded away.**\n\n```method : public : SetClassWeightBalanced() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"SetCoef0": {
+					"descriptions": ["**Sets the independent term of the POLY and SIGMOID kernels.**\n\n```method : public : SetCoef0(coef0:Float) ~ Nil```\n\n\n\ncoef0: Float\n\nreturn: Nil"]
+				},
+				"SetDegree": {
+					"descriptions": ["**Sets the POLY degree.**\n\n```method : public : SetDegree(degree:Int) ~ Nil```\n\n\n\ndegree: Int\n\nreturn: Nil"]
+				},
+				"SetGamma": {
+					"descriptions": ["**Sets an explicit gamma.**\n\n```method : public : SetGamma(gamma:Float) ~ Nil```\n\n\n\ngamma: Float\n\nreturn: Nil"]
+				},
+				"SetGammaAuto": {
+					"descriptions": ["**Uses gamma = 1 \/ features at Fit, scikit-learn's 'auto'.**\n\n```method : public : SetGammaAuto() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"SetGammaScale": {
+					"descriptions": ["**Uses gamma = 1 \/ (features * X.var()) at Fit, scikit-learn's 'scale' and the default. X.var() is the population variance of every entry of X; when it is zero gamma is 1.0.**\n\n```method : public : SetGammaScale() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"SetMaxIterations": {
+					"descriptions": ["**Caps the solver's iterations. When the cap is reached Fit still returns true and the model is usable, but IsConverged is false.**\n\n```method : public : SetMaxIterations(max_iter:Int) ~ Nil```\n\n\n\nmax_iter: Int\n\nreturn: Nil"]
+				},
+				"SetShrinking": {
+					"descriptions": ["**Turns LIBSVM's shrinking heuristic on or off. It changes speed, and the path to the optimum, not the optimum.**\n\n```method : public : SetShrinking(on:Bool) ~ Nil```\n\n\n\non: Bool\n\nreturn: Nil"]
+				},
+				"SetTolerance": {
+					"descriptions": ["**Sets the stopping tolerance: training stops when the largest violation of the optimality conditions is below it (LIBSVM's eps, scikit-learn's tol).**\n\n```method : public : SetTolerance(tol:Float) ~ Nil```\n\n\n\ntol: Float\n\nreturn: Nil"]
+				}
+			}
+		},
 		"System.ML.LassoRegression": {
 			"description": "Lasso (L1-regularized) linear regression: an ElasticNet with l1_ratio fixed at 1.0. The L1 penalty drives uninformative feature coefficients exactly to zero, performing feature selection. Store\/Load round-trip via the ElasticNet format (Load returns an ElasticNet).",
 			"functions": {
@@ -14739,7 +14861,7 @@
 			}
 		},
 		"System.ML.SVM": {
-			"description": "Linear support vector machine trained by deterministic full-batch subgradient descent on the L2-regularized hinge loss: lambda\/2*||w||^2 + (1\/n)*sum(max(0, 1 - y*(w*x + b))), with labels mapped internally from {0,1} to {-1,+1}. The bias is not regularized.",
+			"description": "Linear support vector machine trained by deterministic full-batch subgradient descent on the L2-regularized hinge loss: lambda\/2*||w||^2 + (1\/n)*sum(max(0, 1 - y*(w*x + b))), with labels mapped internally from {0,1} to {-1,+1}. The bias is not regularized.\n\nFor kernels (RBF, polynomial, sigmoid) or scikit-learn's SVC parameters (C, gamma, degree, coef0) use KernelSVM, which solves the dual exactly with LIBSVM's SMO; this class is kept unchanged for existing programs.",
 			"functions": {
 				"Fit": {
 					"descriptions": ["**Fits the SVM by full-batch subgradient descent on the hinge loss.**\n\n```method : public : Fit(X:Float[,], y:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Float[,]\n\nreturn: Bool"]
@@ -19176,6 +19298,12 @@
 				"file": ""
 			}
 		],
+		"KernelSVM": [
+			{
+				"bundle": "System.ML",
+				"file": ""
+			}
+		],
 		"LassoRegression": [
 			{
 				"bundle": "System.ML",
@@ -21425,6 +21553,19 @@
 				{ "name": "FLOAT", "value": "-56", "description": "" },
 				{ "name": "CLASS", "value": "-55", "description": "" },
 				{ "name": "FUNC", "value": "-54", "description": "" }
+			]
+		},
+		"System.ML.SvmKernel": {
+			"name": "SvmKernel",
+			"bundle": "System.ML",
+			"class": "",
+			"kind": "enum",
+			"description": "Kernel functions for KernelSVM, with LIBSVM's and scikit-learn's definitions: LINEAR is x.z, RBF is exp(-gamma*|x-z|^2), POLY is (gamma*x.z + coef0)^degree and SIGMOID is tanh(gamma*x.z + coef0).",
+			"items": [
+				{ "name": "LINEAR", "value": "0", "description": "" },
+				{ "name": "RBF", "value": "1", "description": "" },
+				{ "name": "POLY", "value": "2", "description": "" },
+				{ "name": "SIGMOID", "value": "3", "description": "" }
 			]
 		},
 		"Web.HTTP.HttpClient#Task": {

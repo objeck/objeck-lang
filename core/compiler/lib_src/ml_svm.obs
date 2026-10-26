@@ -1,0 +1,1872 @@
+#~~
+# Objeck machine learning library: kernel support vector machines
+# Copyright (c) 2026 Randy Hollines
+#
+# Credits:
+# The solver follows LIBSVM (Chih-Chung Chang and Chih-Jen Lin) and
+# R.-E. Fan, P.-H. Chen and C.-J. Lin, "Working Set Selection Using Second
+# Order Information for Training SVM", JMLR 6 (2005).
+~~#
+
+use Collection;
+use Data.CSV;
+
+#~
+Kernel support vector machines: KernelSVM (C-SVC with linear, RBF, polynomial and sigmoid kernels) on a LIBSVM-style SMO solver. Compile with -lib ml.
+~#
+bundle System.ML {
+	#~
+	Kernel functions for KernelSVM, with LIBSVM's and scikit-learn's definitions:
+	LINEAR is x.z, RBF is exp(-gamma*|x-z|^2), POLY is (gamma*x.z + coef0)^degree
+	and SIGMOID is tanh(gamma*x.z + coef0).
+	~#
+	enum SvmKernel {
+		LINEAR,
+		RBF,
+		POLY,
+		SIGMOID
+	}
+
+	#~
+	Kernel evaluation shared by training and prediction.
+	~#
+	class : private : SvmKernelMath {
+		#~
+		Integer power by squaring, as LIBSVM's powi, so a polynomial kernel costs
+		log(degree) multiplies and a negative base keeps its sign for odd degrees.
+		@param base base
+		@param times non-negative exponent
+		@return base^times
+		~#
+		function : Powi(base : Float, times : Int) ~ Float {
+			tmp := base;
+			ret := 1.0;
+			t := times;
+			while(t > 0) {
+				if(t % 2 = 1) {
+					ret := ret * tmp;
+				};
+				tmp := tmp * tmp;
+				t := t / 2;
+			};
+
+			return ret;
+		}
+
+		#~
+		One kernel value between a row of one matrix and a row of another.
+		@param kernel kernel code: 0 linear, 1 rbf, 2 poly, 3 sigmoid
+		@param gamma kernel gamma
+		@param degree poly degree
+		@param coef0 poly/sigmoid offset
+		@param a first matrix
+		@param ai row of the first matrix
+		@param b second matrix
+		@param bi row of the second matrix
+		@param d feature count
+		@return K(a[ai], b[bi])
+		~#
+		function : Value(kernel : Int, gamma : Float, degree : Int, coef0 : Float,
+				a : Float[,], ai : Int, b : Float[,], bi : Int, d : Int) ~ Float {
+			sum := 0.0;
+			diff := 0.0;
+
+			if(kernel = 1) {
+				each(k : d) {
+					diff := a[ai, k] - b[bi, k];
+					sum += diff * diff;
+				};
+				return Float->Exp(-1.0 * gamma * sum);
+			};
+
+			each(k : d) {
+				sum += a[ai, k] * b[bi, k];
+			};
+
+			if(kernel = 0) {
+				return sum;
+			}
+			else if(kernel = 2) {
+				return Powi(gamma * sum + coef0, degree);
+			};
+
+			return Float->Tanh(gamma * sum + coef0);
+		}
+
+		#~
+		Maps the enum to the kernel code the inner loops branch on.
+		@param kernel kernel
+		@return 0 linear, 1 rbf, 2 poly, 3 sigmoid
+		~#
+		function : Code(kernel : SvmKernel) ~ Int {
+			if(kernel = SvmKernel->RBF) {
+				return 1;
+			}
+			else if(kernel = SvmKernel->POLY) {
+				return 2;
+			}
+			else if(kernel = SvmKernel->SIGMOID) {
+				return 3;
+			};
+
+			return 0;
+		}
+
+		#~
+		Whether every value in the matrix is finite.
+		@param x matrix
+		@return true when no value is NaN or infinite
+		~#
+		function : AllFinite(x : Float[,]) ~ Bool {
+			dims := x->Size();
+			rows := dims[0];
+			cols := dims[1];
+			v := 0.0;
+			each(i : rows) {
+				each(j : cols) {
+					v := x[i, j];
+					# NaN is the only value unequal to itself; v - v is NaN for
+					# an infinity and 0.0 for anything finite.
+					if(v <> v) {
+						return false;
+					};
+					if(v - v <> 0.0) {
+						return false;
+					};
+				};
+			};
+
+			return true;
+		}
+
+		#~
+		scikit-learn's gamma='scale': 1 / (features * variance of every entry of X),
+		population variance, and 1.0 when that variance is zero.
+		@param x training matrix
+		@return gamma
+		~#
+		function : ScaleGamma(x : Float[,]) ~ Float {
+			dims := x->Size();
+			rows := dims[0];
+			cols := dims[1];
+			count := (rows * cols)->As(Float);
+
+			sum := 0.0;
+			each(i : rows) {
+				each(j : cols) {
+					sum += x[i, j];
+				};
+			};
+			mean := sum / count;
+
+			diff := 0.0;
+			var := 0.0;
+			each(i : rows) {
+				each(j : cols) {
+					diff := x[i, j] - mean;
+					var += diff * diff;
+				};
+			};
+			var := var / count;
+
+			if(var = 0.0) {
+				return 1.0;
+			};
+
+			return 1.0 / (cols->As(Float) * var);
+		}
+	}
+
+	#~
+	The Q matrix of the dual (Q_ij = y_i y_j K(x_i, x_j), or K(x_i, x_j) unsigned)
+	with LIBSVM's LRU cache of rows. A row may be filled only up to the solver's
+	active size and is extended on demand; swaps made by shrinking swap the cached
+	columns, and drop a row filled between the two indexes, as LIBSVM's
+	Cache::swap_index does. The cache changes speed, never values.
+	~#
+	class : private : SvmKernelRows {
+		@x : Float[,];
+		@y : Float[];
+		@qd : Float[];
+		@n : Int;
+		@d : Int;
+		@signed : Bool;
+		@kernel : Int;
+		@gamma : Float;
+		@degree : Int;
+		@coef0 : Float;
+
+		@rows : FloatArrayRef[];
+		@slots : Int;
+		@used : Int;
+		@slot_of : Int[];
+		@row_of : Int[];
+		@len : Int[];
+		@prev : Int[];
+		@next : Int[];
+		@computed : Int;
+
+		#~
+		Constructor; takes ownership of x and y, which it permutes with the solver.
+		@param x working copy of the training rows
+		@param y +1.0/-1.0 per row
+		@param signed true for C-SVC (Q = yyK), false for one-class (Q = K)
+		@param kernel kernel code
+		@param gamma gamma
+		@param degree degree
+		@param coef0 coef0
+		@param cache_mb cache size in megabytes
+		~#
+		New(x : Float[,], y : Float[], signed : Bool, kernel : Int, gamma : Float, degree : Int, coef0 : Float, cache_mb : Int) {
+			@x := x;
+			@y := y;
+			@signed := signed;
+			@kernel := kernel;
+			@gamma := gamma;
+			@degree := degree;
+			@coef0 := coef0;
+
+			dims := x->Size();
+			@n := dims[0];
+			@d := dims[1];
+
+			# Rows the budget holds: MB / (8 bytes * n), at least two (the solver
+			# holds rows i and j at once) and at most n.
+			budget := cache_mb * 1048576 / (8 * @n);
+			if(budget < 2) {
+				budget := 2;
+			};
+			if(budget > @n) {
+				budget := @n;
+			};
+			@slots := budget;
+			@used := 0;
+			@computed := 0;
+
+			@rows := FloatArrayRef->New[@slots];
+			@slot_of := Int->New[@n];
+			@row_of := Int->New[@slots];
+			@len := Int->New[@n];
+			each(i : @n) {
+				@slot_of[i] := -1;
+			};
+			each(s : @slots) {
+				@row_of[s] := -1;
+			};
+
+			# Doubly linked LRU over slots; index @slots is the sentinel, its next
+			# the least recently used slot and its prev the most recent.
+			@prev := Int->New[@slots + 1];
+			@next := Int->New[@slots + 1];
+			@prev[@slots] := @slots;
+			@next[@slots] := @slots;
+
+			@qd := Float->New[@n];
+			each(i : @n) {
+				@qd[i] := SvmKernelMath->Value(@kernel, @gamma, @degree, @coef0, @x, i, @x, i, @d);
+			};
+		}
+
+		#~
+		The diagonal Q_ii (K_ii, since y_i^2 = 1).
+		@return diagonal, permuted with the rows
+		~#
+		method : public : GetQD() ~ Float[] {
+			return @qd;
+		}
+
+		#~
+		Kernel values computed so far, a measure of the cache's effect.
+		@return count of Q entries computed
+		~#
+		method : public : GetComputed() ~ Int {
+			return @computed;
+		}
+
+		method : LruDelete(s : Int) ~ Nil {
+			@next[@prev[s]] := @next[s];
+			@prev[@next[s]] := @prev[s];
+		}
+
+		method : LruInsert(s : Int) ~ Nil {
+			sentinel := @slots;
+			@next[s] := sentinel;
+			@prev[s] := @prev[sentinel];
+			@next[@prev[s]] := s;
+			@prev[sentinel] := s;
+		}
+
+		method : LruInsertHead(s : Int) ~ Nil {
+			sentinel := @slots;
+			@prev[s] := sentinel;
+			@next[s] := @next[sentinel];
+			@prev[@next[s]] := s;
+			@next[sentinel] := s;
+		}
+
+		#~
+		Row i of Q, valid in [0, length).
+		@param i row
+		@param length entries needed
+		@return the cached row
+		~#
+		method : public : GetQ(i : Int, length : Int) ~ Float[] {
+			s := @slot_of[i];
+			old := 0;
+
+			if(s < 0) {
+				if(@used < @slots) {
+					s := @used;
+					@used += 1;
+					@rows[s] := FloatArrayRef->New(Float->New[@n]);
+				}
+				else {
+					s := @next[@slots];
+					LruDelete(s);
+					old := @row_of[s];
+					if(old >= 0) {
+						@slot_of[old] := -1;
+						@len[old] := 0;
+					};
+				};
+				@slot_of[i] := s;
+				@row_of[s] := i;
+				@len[i] := 0;
+			}
+			else {
+				LruDelete(s);
+			};
+			LruInsert(s);
+
+			row := @rows[s]->Get();
+			start := @len[i];
+			if(start < length) {
+				FillRow(i, row, start, length);
+				@len[i] := length;
+			};
+
+			return row;
+		}
+
+		method : FillRow(i : Int, row : Float[], start : Int, end : Int) ~ Nil {
+			x := @x;
+			y := @y;
+			d := @d;
+			gamma := @gamma;
+			coef0 := @coef0;
+			degree := @degree;
+			kernel := @kernel;
+			yi := y[i];
+			sum := 0.0;
+			diff := 0.0;
+			v := 0.0;
+			k := 0;
+
+			@computed += end - start;
+
+			if(kernel = 1) {
+				for(j := start; j < end; j += 1;) {
+					sum := 0.0;
+					for(k := 0; k < d; k += 1;) {
+						diff := x[i, k] - x[j, k];
+						sum += diff * diff;
+					};
+					v := Float->Exp(-1.0 * gamma * sum);
+					if(@signed) {
+						v := v * yi * y[j];
+					};
+					row[j] := v;
+				};
+			}
+			else {
+				for(j := start; j < end; j += 1;) {
+					sum := 0.0;
+					for(k := 0; k < d; k += 1;) {
+						sum += x[i, k] * x[j, k];
+					};
+
+					if(kernel = 0) {
+						v := sum;
+					}
+					else if(kernel = 2) {
+						v := SvmKernelMath->Powi(gamma * sum + coef0, degree);
+					}
+					else {
+						v := Float->Tanh(gamma * sum + coef0);
+					};
+
+					if(@signed) {
+						v := v * yi * y[j];
+					};
+					row[j] := v;
+				};
+			};
+		}
+
+		#~
+		Swaps rows/columns i and j of Q: the data rows, labels, diagonal and cache.
+		@param i first index
+		@param j second index
+		~#
+		method : public : SwapIndex(i : Int, j : Int) ~ Nil {
+			if(i = j) {
+				return;
+			};
+
+			tf := 0.0;
+			each(k : @d) {
+				tf := @x[i, k];
+				@x[i, k] := @x[j, k];
+				@x[j, k] := tf;
+			};
+
+			tf := @y[i];
+			@y[i] := @y[j];
+			@y[j] := tf;
+
+			tf := @qd[i];
+			@qd[i] := @qd[j];
+			@qd[j] := tf;
+
+			# The cached rows follow their data rows.
+			si := @slot_of[i];
+			sj := @slot_of[j];
+			@slot_of[i] := sj;
+			@slot_of[j] := si;
+			if(si >= 0) {
+				@row_of[si] := j;
+			};
+			if(sj >= 0) {
+				@row_of[sj] := i;
+			};
+
+			ti := @len[i];
+			@len[i] := @len[j];
+			@len[j] := ti;
+
+			# And the columns: swap them in every row filled past both; a row
+			# filled past one but not the other cannot be kept consistent and is
+			# dropped, to be recomputed when next asked for.
+			lo := i;
+			hi := j;
+			if(lo > hi) {
+				lo := j;
+				hi := i;
+			};
+
+			r := 0;
+			length := 0;
+			data : Float[];
+			each(s : @used) {
+				r := @row_of[s];
+				if(r >= 0) {
+					length := @len[r];
+					if(length > lo) {
+						if(length > hi) {
+							data := @rows[s]->Get();
+							tf := data[lo];
+							data[lo] := data[hi];
+							data[hi] := tf;
+						}
+						else {
+							@slot_of[r] := -1;
+							@len[r] := 0;
+							@row_of[s] := -1;
+							LruDelete(s);
+							LruInsertHead(s);
+						};
+					};
+				};
+			};
+		}
+	}
+
+	#~
+	LIBSVM's SMO solver for min 1/2 a'Qa + p'a subject to y'a = constant and
+	0 <= a_i <= C_i, with second-order working-set selection (WSS3), shrinking and
+	gradient reconstruction. Private: KernelSVM and OneClassSVM set it up.
+	~#
+	class : private : SvmSolver {
+		@q : SvmKernelRows;
+		@l : Int;
+		@y : Float[];
+		@alpha : Float[];
+		@g : Float[];
+		@g_bar : Float[];
+		@p : Float[];
+		@cs : Float[];
+		@status : Int[];
+		@active_set : Int[];
+		@active_size : Int;
+		@eps : Float;
+		@shrinking : Bool;
+		@unshrink : Bool;
+		@max_iter : Int;
+		@iter : Int;
+		@converged : Bool;
+		@wi : Int;
+		@wj : Int;
+		@rho : Float;
+		@obj : Float;
+
+		#~
+		Constructor. y, alpha, p and cs are permuted in place during the solve.
+		@param q the Q matrix (which shares y)
+		@param p linear term
+		@param y +1.0/-1.0 per variable
+		@param alpha feasible starting point
+		@param cs upper bound per variable
+		@param eps stopping tolerance
+		@param shrinking whether to shrink
+		@param max_iter iteration cap
+		~#
+		New(q : SvmKernelRows, p : Float[], y : Float[], alpha : Float[], cs : Float[], eps : Float, shrinking : Bool, max_iter : Int) {
+			@q := q;
+			@p := p;
+			@y := y;
+			@alpha := alpha;
+			@cs := cs;
+			@eps := eps;
+			@shrinking := shrinking;
+			@max_iter := max_iter;
+			@l := y->Size();
+			@unshrink := false;
+			@converged := false;
+			@iter := 0;
+		}
+
+		# 0 lower bound, 1 upper bound, 2 free
+		method : UpdateStatus(i : Int) ~ Nil {
+			if(@alpha[i] >= @cs[i]) {
+				@status[i] := 1;
+			}
+			else if(@alpha[i] <= 0.0) {
+				@status[i] := 0;
+			}
+			else {
+				@status[i] := 2;
+			};
+		}
+
+		#~
+		Runs SMO to the tolerance or the iteration cap.
+		~#
+		method : public : Solve() ~ Nil {
+			l := @l;
+			@status := Int->New[l];
+			@active_set := Int->New[l];
+			@g := Float->New[l];
+			@g_bar := Float->New[l];
+
+			each(i : l) {
+				UpdateStatus(i);
+				@active_set[i] := i;
+			};
+			@active_size := l;
+
+			# Gradient at the starting point, and G_bar, the part contributed by
+			# variables at their upper bound (kept for un-shrinking).
+			each(i : l) {
+				@g[i] := @p[i];
+				@g_bar[i] := 0.0;
+			};
+
+			qi : Float[];
+			ai := 0.0;
+			ci := 0.0;
+			each(i : l) {
+				if(@status[i] <> 0) {
+					qi := @q->GetQ(i, l);
+					ai := @alpha[i];
+					each(j : l) {
+						@g[j] += ai * qi[j];
+					};
+					if(@status[i] = 1) {
+						ci := @cs[i];
+						each(j : l) {
+							@g_bar[j] += ci * qi[j];
+						};
+					};
+				};
+			};
+
+			counter := l;
+			if(counter > 1000) {
+				counter := 1000;
+			};
+			counter += 1;
+
+			i := 0;
+			j := 0;
+			qj : Float[];
+			cj := 0.0;
+			old_ai := 0.0;
+			old_aj := 0.0;
+			quad := 0.0;
+			delta := 0.0;
+			diff := 0.0;
+			sum := 0.0;
+			dai := 0.0;
+			daj := 0.0;
+			ui := false;
+			uj := false;
+			active := 0;
+			tau := 0.000000000001;
+			g := @g;
+			alpha := @alpha;
+			y := @y;
+			qd := @q->GetQD();
+			done := false;
+
+			while(<>done & @iter < @max_iter) {
+				counter -= 1;
+				if(counter = 0) {
+					counter := l;
+					if(counter > 1000) {
+						counter := 1000;
+					};
+					if(@shrinking) {
+						DoShrinking();
+					};
+				};
+
+				if(SelectWorkingSet()) {
+					# Optimal on the active set: check the whole set before stopping.
+					ReconstructGradient();
+					@active_size := l;
+					if(SelectWorkingSet()) {
+						@converged := true;
+						done := true;
+					}
+					else {
+						counter := 1;
+					};
+				};
+
+				if(<>done) {
+					@iter += 1;
+					i := @wi;
+					j := @wj;
+					active := @active_size;
+
+					qi := @q->GetQ(i, active);
+					qj := @q->GetQ(j, active);
+					ci := @cs[i];
+					cj := @cs[j];
+					old_ai := alpha[i];
+					old_aj := alpha[j];
+
+					if(y[i] <> y[j]) {
+						quad := qd[i] + qd[j] + 2.0 * qi[j];
+						if(quad <= 0.0) {
+							quad := tau;
+						};
+						delta := (-1.0 * g[i] - g[j]) / quad;
+						diff := alpha[i] - alpha[j];
+						alpha[i] := alpha[i] + delta;
+						alpha[j] := alpha[j] + delta;
+
+						if(diff > 0.0) {
+							if(alpha[j] < 0.0) {
+								alpha[j] := 0.0;
+								alpha[i] := diff;
+							};
+						}
+						else {
+							if(alpha[i] < 0.0) {
+								alpha[i] := 0.0;
+								alpha[j] := -1.0 * diff;
+							};
+						};
+
+						if(diff > ci - cj) {
+							if(alpha[i] > ci) {
+								alpha[i] := ci;
+								alpha[j] := ci - diff;
+							};
+						}
+						else {
+							if(alpha[j] > cj) {
+								alpha[j] := cj;
+								alpha[i] := cj + diff;
+							};
+						};
+					}
+					else {
+						quad := qd[i] + qd[j] - 2.0 * qi[j];
+						if(quad <= 0.0) {
+							quad := tau;
+						};
+						delta := (g[i] - g[j]) / quad;
+						sum := alpha[i] + alpha[j];
+						alpha[i] := alpha[i] - delta;
+						alpha[j] := alpha[j] + delta;
+
+						if(sum > ci) {
+							if(alpha[i] > ci) {
+								alpha[i] := ci;
+								alpha[j] := sum - ci;
+							};
+						}
+						else {
+							if(alpha[j] < 0.0) {
+								alpha[j] := 0.0;
+								alpha[i] := sum;
+							};
+						};
+
+						if(sum > cj) {
+							if(alpha[j] > cj) {
+								alpha[j] := cj;
+								alpha[i] := sum - cj;
+							};
+						}
+						else {
+							if(alpha[i] < 0.0) {
+								alpha[i] := 0.0;
+								alpha[j] := sum;
+							};
+						};
+					};
+
+					# Gradient over the active set.
+					dai := alpha[i] - old_ai;
+					daj := alpha[j] - old_aj;
+					for(k := 0; k < active; k += 1;) {
+						g[k] += qi[k] * dai + qj[k] * daj;
+					};
+
+					# G_bar when a variable reaches or leaves its upper bound.
+					ui := @status[i] = 1;
+					uj := @status[j] = 1;
+					UpdateStatus(i);
+					UpdateStatus(j);
+
+					if(ui <> (@status[i] = 1)) {
+						qi := @q->GetQ(i, l);
+						if(ui) {
+							each(k : l) {
+								@g_bar[k] -= ci * qi[k];
+							};
+						}
+						else {
+							each(k : l) {
+								@g_bar[k] += ci * qi[k];
+							};
+						};
+					};
+
+					if(uj <> (@status[j] = 1)) {
+						qj := @q->GetQ(j, l);
+						if(uj) {
+							each(k : l) {
+								@g_bar[k] -= cj * qj[k];
+							};
+						}
+						else {
+							each(k : l) {
+								@g_bar[k] += cj * qj[k];
+							};
+						};
+					};
+				};
+			};
+
+			if(<>@converged) {
+				# The cap was reached: restore the full gradient so rho and the
+				# objective are computed over every variable.
+				if(@active_size < l) {
+					ReconstructGradient();
+					@active_size := l;
+				};
+			};
+
+			@rho := CalculateRho();
+
+			v := 0.0;
+			each(t : l) {
+				v += alpha[t] * (g[t] + @p[t]);
+			};
+			@obj := v / 2.0;
+		}
+
+		#~
+		WSS3. Sets @wi and @wj.
+		@return true when the active set is optimal to the tolerance
+		~#
+		method : SelectWorkingSet() ~ Bool {
+			inf := Float->Inf();
+			gmax := -1.0 * inf;
+			gmax2 := -1.0 * inf;
+			gmax_idx := -1;
+			gmin_idx := -1;
+			obj_diff_min := inf;
+
+			g := @g;
+			y := @y;
+			status := @status;
+			active := @active_size;
+			qd := @q->GetQD();
+
+			for(t := 0; t < active; t += 1;) {
+				if(y[t] > 0.0) {
+					if(status[t] <> 1) {
+						if(-1.0 * g[t] >= gmax) {
+							gmax := -1.0 * g[t];
+							gmax_idx := t;
+						};
+					};
+				}
+				else {
+					if(status[t] <> 0) {
+						if(g[t] >= gmax) {
+							gmax := g[t];
+							gmax_idx := t;
+						};
+					};
+				};
+			};
+
+			i := gmax_idx;
+			qi : Float[];
+			yi := 0.0;
+			qdi := 0.0;
+			if(i <> -1) {
+				qi := @q->GetQ(i, active);
+				yi := y[i];
+				qdi := qd[i];
+			};
+
+			grad_diff := 0.0;
+			quad := 0.0;
+			obj_diff := 0.0;
+			tau := 0.000000000001;
+
+			for(j := 0; j < active; j += 1;) {
+				if(y[j] > 0.0) {
+					if(status[j] <> 0) {
+						grad_diff := gmax + g[j];
+						if(g[j] >= gmax2) {
+							gmax2 := g[j];
+						};
+						if(grad_diff > 0.0) {
+							quad := qdi + qd[j] - 2.0 * yi * qi[j];
+							if(quad > 0.0) {
+								obj_diff := -1.0 * (grad_diff * grad_diff) / quad;
+							}
+							else {
+								obj_diff := -1.0 * (grad_diff * grad_diff) / tau;
+							};
+							if(obj_diff <= obj_diff_min) {
+								gmin_idx := j;
+								obj_diff_min := obj_diff;
+							};
+						};
+					};
+				}
+				else {
+					if(status[j] <> 1) {
+						grad_diff := gmax - g[j];
+						if(-1.0 * g[j] >= gmax2) {
+							gmax2 := -1.0 * g[j];
+						};
+						if(grad_diff > 0.0) {
+							quad := qdi + qd[j] + 2.0 * yi * qi[j];
+							if(quad > 0.0) {
+								obj_diff := -1.0 * (grad_diff * grad_diff) / quad;
+							}
+							else {
+								obj_diff := -1.0 * (grad_diff * grad_diff) / tau;
+							};
+							if(obj_diff <= obj_diff_min) {
+								gmin_idx := j;
+								obj_diff_min := obj_diff;
+							};
+						};
+					};
+				};
+			};
+
+			if(gmax + gmax2 < @eps | gmin_idx = -1) {
+				return true;
+			};
+
+			@wi := gmax_idx;
+			@wj := gmin_idx;
+
+			return false;
+		}
+
+		method : BeShrunk(i : Int, gmax1 : Float, gmax2 : Float) ~ Bool {
+			if(@status[i] = 1) {
+				if(@y[i] > 0.0) {
+					return -1.0 * @g[i] > gmax1;
+				};
+				return -1.0 * @g[i] > gmax2;
+			}
+			else if(@status[i] = 0) {
+				if(@y[i] > 0.0) {
+					return @g[i] > gmax2;
+				};
+				return @g[i] > gmax1;
+			};
+
+			return false;
+		}
+
+		method : DoShrinking() ~ Nil {
+			inf := Float->Inf();
+			gmax1 := -1.0 * inf;
+			gmax2 := -1.0 * inf;
+
+			for(i := 0; i < @active_size; i += 1;) {
+				if(@y[i] > 0.0) {
+					if(@status[i] <> 1) {
+						if(-1.0 * @g[i] >= gmax1) {
+							gmax1 := -1.0 * @g[i];
+						};
+					};
+					if(@status[i] <> 0) {
+						if(@g[i] >= gmax2) {
+							gmax2 := @g[i];
+						};
+					};
+				}
+				else {
+					if(@status[i] <> 1) {
+						if(-1.0 * @g[i] >= gmax2) {
+							gmax2 := -1.0 * @g[i];
+						};
+					};
+					if(@status[i] <> 0) {
+						if(@g[i] >= gmax1) {
+							gmax1 := @g[i];
+						};
+					};
+				};
+			};
+
+			if(<>@unshrink & gmax1 + gmax2 <= @eps * 10.0) {
+				@unshrink := true;
+				ReconstructGradient();
+				@active_size := @l;
+			};
+
+			for(i := 0; i < @active_size; i += 1;) {
+				if(BeShrunk(i, gmax1, gmax2)) {
+					@active_size -= 1;
+					while(@active_size > i) {
+						if(<>BeShrunk(@active_size, gmax1, gmax2)) {
+							SwapIndex(i, @active_size);
+							break;
+						};
+						@active_size -= 1;
+					};
+				};
+			};
+		}
+
+		method : SwapIndex(i : Int, j : Int) ~ Nil {
+			# y is shared with the Q matrix, which swaps it.
+			@q->SwapIndex(i, j);
+
+			tf := @g[i];
+			@g[i] := @g[j];
+			@g[j] := tf;
+
+			tf := @alpha[i];
+			@alpha[i] := @alpha[j];
+			@alpha[j] := tf;
+
+			tf := @p[i];
+			@p[i] := @p[j];
+			@p[j] := tf;
+
+			tf := @g_bar[i];
+			@g_bar[i] := @g_bar[j];
+			@g_bar[j] := tf;
+
+			tf := @cs[i];
+			@cs[i] := @cs[j];
+			@cs[j] := tf;
+
+			ti := @status[i];
+			@status[i] := @status[j];
+			@status[j] := ti;
+
+			ti := @active_set[i];
+			@active_set[i] := @active_set[j];
+			@active_set[j] := ti;
+		}
+
+		method : ReconstructGradient() ~ Nil {
+			l := @l;
+			active := @active_size;
+			if(active = l) {
+				return;
+			};
+
+			g := @g;
+			for(j := active; j < l; j += 1;) {
+				g[j] := @g_bar[j] + @p[j];
+			};
+
+			nr_free := 0;
+			for(j := 0; j < active; j += 1;) {
+				if(@status[j] = 2) {
+					nr_free += 1;
+				};
+			};
+
+			qi : Float[];
+			ai := 0.0;
+			acc := 0.0;
+			if(nr_free * l > 2 * active * (l - active)) {
+				for(i := active; i < l; i += 1;) {
+					qi := @q->GetQ(i, active);
+					acc := g[i];
+					for(j := 0; j < active; j += 1;) {
+						if(@status[j] = 2) {
+							acc += @alpha[j] * qi[j];
+						};
+					};
+					g[i] := acc;
+				};
+			}
+			else {
+				for(i := 0; i < active; i += 1;) {
+					if(@status[i] = 2) {
+						qi := @q->GetQ(i, l);
+						ai := @alpha[i];
+						for(j := active; j < l; j += 1;) {
+							g[j] += ai * qi[j];
+						};
+					};
+				};
+			};
+		}
+
+		method : CalculateRho() ~ Float {
+			inf := Float->Inf();
+			nr_free := 0;
+			ub := inf;
+			lb := -1.0 * inf;
+			sum_free := 0.0;
+			yg := 0.0;
+
+			for(i := 0; i < @active_size; i += 1;) {
+				yg := @y[i] * @g[i];
+				if(@status[i] = 1) {
+					if(@y[i] < 0.0) {
+						if(yg < ub) {
+							ub := yg;
+						};
+					}
+					else {
+						if(yg > lb) {
+							lb := yg;
+						};
+					};
+				}
+				else if(@status[i] = 0) {
+					if(@y[i] > 0.0) {
+						if(yg < ub) {
+							ub := yg;
+						};
+					}
+					else {
+						if(yg > lb) {
+							lb := yg;
+						};
+					};
+				}
+				else {
+					nr_free += 1;
+					sum_free += yg;
+				};
+			};
+
+			if(nr_free > 0) {
+				return sum_free / nr_free->As(Float);
+			};
+
+			return (ub + lb) / 2.0;
+		}
+
+		#~
+		The solution in the caller's original variable order.
+		@return alpha per original index
+		~#
+		method : public : GetAlpha() ~ Float[] {
+			result := Float->New[@l];
+			each(i : @l) {
+				result[@active_set[i]] := @alpha[i];
+			};
+
+			return result;
+		}
+
+		#~
+		The threshold rho; the decision function is sum(coef K) - rho.
+		@return rho
+		~#
+		method : public : GetRho() ~ Float {
+			return @rho;
+		}
+
+		#~
+		The dual objective at the solution.
+		@return 1/2 a'Qa + p'a
+		~#
+		method : public : GetObjective() ~ Float {
+			return @obj;
+		}
+
+		#~
+		Iterations run.
+		@return iteration count
+		~#
+		method : public : GetIterations() ~ Int {
+			return @iter;
+		}
+
+		#~
+		Whether the tolerance was met before the cap.
+		@return true when converged
+		~#
+		method : public : IsConverged() ~ Bool {
+			return @converged;
+		}
+	}
+
+	#~
+	A kernel support vector machine for binary classification (C-SVC), with
+	scikit-learn's SVC parameters: kernel, C, gamma ('scale', 'auto' or a value),
+	degree, coef0, tol, shrinking, cache size, max_iter and class weights.
+
+	It is trained by LIBSVM's SMO solver -- second-order working-set selection,
+	shrinking, and an LRU cache of kernel rows sized in megabytes -- so it finds the
+	exact dual optimum to the tolerance, deterministically: there is no randomness in
+	fitting and no seed. The linear SVM class is a different model (a primal
+	subgradient method parameterised by lambda); use this one for kernels or for
+	scikit-learn's C.
+
+	Cost grows between n^2 and n^3 in the training rows, as for LIBSVM: tens of
+	thousands of rows is practical, the full 126k-row NSL-KDD training set is not.
+	Subsample for parameter sweeps. Scale the features first (FeatureScaler): RBF,
+	polynomial and sigmoid kernels are distances and dot products, and an unscaled
+	column dominates them.
+
+	DecisionFunction returns a signed margin, higher meaning more positive, which is
+	the score Metrics->AucRoc, RecallAtFpr and ThresholdAtFpr take.
+
+```
+svm := KernelSVM->New(SvmKernel->RBF, 10.0, 0.1);
+if(svm->Fit(x_train, y_train)) {
+  scores := svm->DecisionFunction(x_test);
+  auc := Metrics->AucRoc(scores, y_test);
+  labels := svm->PredictClass(x_test);
+};
+```
+	~#
+	class KernelSVM implements ScoreModel {
+		@kernel : SvmKernel;
+		@c : Float;
+		@gamma : Float;
+		@gamma_mode : Int;
+		@degree : Int;
+		@coef0 : Float;
+		@tol : Float;
+		@max_iter : Int;
+		@cache_mb : Int;
+		@shrinking : Bool;
+		@weight_mode : Int;
+		@weight_neg : Float;
+		@weight_pos : Float;
+
+		@d : Int;
+		@fit_gamma : Float;
+		@sv : Float[,];
+		@sv_index : Int[];
+		@coef : Float[];
+		@linear_w : Float[];
+		@rho : Float;
+		@obj : Float;
+		@iterations : Int;
+		@converged : Bool;
+		@bounded : Int;
+		@fit_seconds : Float;
+		@last_error : String;
+		@fitted : Bool;
+
+		#~
+		Constructor with scikit-learn's defaults: C = 1.0, gamma = 'scale',
+		degree = 3, coef0 = 0.0, tol = 0.001, shrinking on, a 200 MB cache and no
+		iteration cap beyond LIBSVM's own.
+		@param kernel kernel function
+		~#
+		New(kernel : SvmKernel) {
+			Init(kernel, 1.0);
+		}
+
+		#~
+		Constructor with a regularisation strength; gamma is 'scale'.
+		@param kernel kernel function
+		@param c C, the penalty on margin violations; must be > 0
+		~#
+		New(kernel : SvmKernel, c : Float) {
+			Init(kernel, c);
+		}
+
+		#~
+		Constructor with C and an explicit gamma.
+		@param kernel kernel function
+		@param c C, the penalty on margin violations; must be > 0
+		@param gamma kernel coefficient for RBF, POLY and SIGMOID; must be >= 0
+		~#
+		New(kernel : SvmKernel, c : Float, gamma : Float) {
+			Init(kernel, c);
+			SetGamma(gamma);
+		}
+
+		#~
+		Constructor with every kernel parameter.
+		@param kernel kernel function
+		@param c C, the penalty on margin violations; must be > 0
+		@param gamma kernel coefficient for RBF, POLY and SIGMOID; must be >= 0
+		@param degree POLY degree; must be >= 0
+		@param coef0 independent term of POLY and SIGMOID
+		~#
+		New(kernel : SvmKernel, c : Float, gamma : Float, degree : Int, coef0 : Float) {
+			Init(kernel, c);
+			SetGamma(gamma);
+			@degree := degree;
+			@coef0 := coef0;
+		}
+
+		method : Init(kernel : SvmKernel, c : Float) ~ Nil {
+			@kernel := kernel;
+			@c := c;
+			@gamma := 0.0;
+			@gamma_mode := 0;
+			@degree := 3;
+			@coef0 := 0.0;
+			@tol := 0.001;
+			@max_iter := -1;
+			@cache_mb := 200;
+			@shrinking := true;
+			@weight_mode := 0;
+			@weight_neg := 1.0;
+			@weight_pos := 1.0;
+			@last_error := "";
+			@fitted := false;
+		}
+
+		#~
+		Sets C, the penalty on margin violations.
+		@param c C; must be > 0
+		~#
+		method : public : SetC(c : Float) ~ Nil {
+			@c := c;
+		}
+
+		#~
+		Sets an explicit gamma.
+		@param gamma kernel coefficient; must be >= 0
+		~#
+		method : public : SetGamma(gamma : Float) ~ Nil {
+			@gamma := gamma;
+			@gamma_mode := 2;
+		}
+
+		#~
+		Uses gamma = 1 / (features * X.var()) at Fit, scikit-learn's 'scale' and
+		the default. X.var() is the population variance of every entry of X; when
+		it is zero gamma is 1.0.
+		~#
+		method : public : SetGammaScale() ~ Nil {
+			@gamma_mode := 0;
+		}
+
+		#~
+		Uses gamma = 1 / features at Fit, scikit-learn's 'auto'.
+		~#
+		method : public : SetGammaAuto() ~ Nil {
+			@gamma_mode := 1;
+		}
+
+		#~
+		Sets the POLY degree.
+		@param degree degree; must be >= 0
+		~#
+		method : public : SetDegree(degree : Int) ~ Nil {
+			@degree := degree;
+		}
+
+		#~
+		Sets the independent term of the POLY and SIGMOID kernels.
+		@param coef0 offset
+		~#
+		method : public : SetCoef0(coef0 : Float) ~ Nil {
+			@coef0 := coef0;
+		}
+
+		#~
+		Sets the stopping tolerance: training stops when the largest violation of
+		the optimality conditions is below it (LIBSVM's eps, scikit-learn's tol).
+		@param tol tolerance; must be > 0
+		~#
+		method : public : SetTolerance(tol : Float) ~ Nil {
+			@tol := tol;
+		}
+
+		#~
+		Caps the solver's iterations. When the cap is reached Fit still returns
+		true and the model is usable, but IsConverged is false.
+		@param max_iter iteration cap; 0 or less means LIBSVM's own cap, max(10,000,000, 100 * rows)
+		~#
+		method : public : SetMaxIterations(max_iter : Int) ~ Nil {
+			@max_iter := max_iter;
+		}
+
+		#~
+		Sets the kernel-row cache size. Larger caches recompute fewer kernel rows;
+		the result does not depend on it.
+		@param megabytes cache size in MB; must be >= 1
+		~#
+		method : public : SetCacheSize(megabytes : Int) ~ Nil {
+			@cache_mb := megabytes;
+		}
+
+		#~
+		Turns LIBSVM's shrinking heuristic on or off. It changes speed, and the path
+		to the optimum, not the optimum.
+		@param on true to shrink
+		~#
+		method : public : SetShrinking(on : Bool) ~ Nil {
+			@shrinking := on;
+		}
+
+		#~
+		Weights C per class: a row's bound is C times its class's weight, so a
+		weight above 1 makes errors on that class costlier.
+		@param negative weight for false labels; must be > 0
+		@param positive weight for true labels; must be > 0
+		~#
+		method : public : SetClassWeight(negative : Float, positive : Float) ~ Nil {
+			@weight_mode := 1;
+			@weight_neg := negative;
+			@weight_pos := positive;
+		}
+
+		#~
+		Weights C per class by n / (2 * rows in the class) at Fit, scikit-learn's
+		class_weight='balanced', so a rare class is not traded away.
+		~#
+		method : public : SetClassWeightBalanced() ~ Nil {
+			@weight_mode := 2;
+		}
+
+		#~
+		Fits the model.
+		@param X rows x features
+		@param y one label per row, true for the positive class
+		@return true when fitted; false on bad input or parameters, with GetLastError saying why
+		~#
+		method : public : Fit(X : Float[,], y : Bool[]) ~ Bool {
+			@fitted := false;
+			@last_error := "";
+
+			if(X = Nil | y = Nil) {
+				@last_error := "X or y is Nil";
+				return false;
+			};
+
+			dims := X->Size();
+			n := dims[0];
+			d := dims[1];
+			if(n < 1 | d < 1) {
+				@last_error := "X has no rows or no columns";
+				return false;
+			};
+			if(y->Size() <> n) {
+				@last_error := "X and y row counts differ";
+				return false;
+			};
+
+			positives := 0;
+			each(i : n) {
+				if(y[i]) {
+					positives += 1;
+				};
+			};
+			negatives := n - positives;
+			if(positives = 0 | negatives = 0) {
+				@last_error := "y holds one class only; both true and false rows are needed";
+				return false;
+			};
+
+			if(<>ValidParameters()) {
+				return false;
+			};
+
+			if(<>SvmKernelMath->AllFinite(X)) {
+				@last_error := "X holds NaN or infinity";
+				return false;
+			};
+
+			timer := System.Time.Timer->New();
+			timer->Start();
+
+			gamma := @gamma;
+			if(@gamma_mode = 0) {
+				gamma := SvmKernelMath->ScaleGamma(X);
+			}
+			else if(@gamma_mode = 1) {
+				gamma := 1.0 / d->As(Float);
+			};
+
+			w_neg := 1.0;
+			w_pos := 1.0;
+			if(@weight_mode = 1) {
+				w_neg := @weight_neg;
+				w_pos := @weight_pos;
+			}
+			else if(@weight_mode = 2) {
+				w_neg := n->As(Float) / (2.0 * negatives->As(Float));
+				w_pos := n->As(Float) / (2.0 * positives->As(Float));
+			};
+
+			# The solver permutes its copies; X and y stay as the caller gave them.
+			xw := Float->New[n, d];
+			signs := Float->New[n];
+			cs := Float->New[n];
+			p := Float->New[n];
+			alpha := Float->New[n];
+			each(i : n) {
+				each(k : d) {
+					xw[i, k] := X[i, k];
+				};
+				if(y[i]) {
+					signs[i] := 1.0;
+					cs[i] := @c * w_pos;
+				}
+				else {
+					signs[i] := -1.0;
+					cs[i] := @c * w_neg;
+				};
+				p[i] := -1.0;
+			};
+
+			code := SvmKernelMath->Code(@kernel);
+			q := SvmKernelRows->New(xw, signs, true, code, gamma, @degree, @coef0, @cache_mb);
+			solver := SvmSolver->New(q, p, signs, alpha, cs, @tol, @shrinking, IterationCap(n));
+			solver->Solve();
+
+			alpha := solver->GetAlpha();
+			count := 0;
+			bounded := 0;
+			each(i : n) {
+				if(alpha[i] > 0.0) {
+					count += 1;
+					if(y[i]) {
+						if(alpha[i] >= @c * w_pos) {
+							bounded += 1;
+						};
+					}
+					else {
+						if(alpha[i] >= @c * w_neg) {
+							bounded += 1;
+						};
+					};
+				};
+			};
+
+			@sv := Float->New[count, d];
+			@sv_index := Int->New[count];
+			@coef := Float->New[count];
+			s := 0;
+			each(i : n) {
+				if(alpha[i] > 0.0) {
+					each(k : d) {
+						@sv[s, k] := X[i, k];
+					};
+					@sv_index[s] := i;
+					@coef[s] := y[i] ? alpha[i] : -1.0 * alpha[i];
+					s += 1;
+				};
+			};
+
+			# A linear model collapses to one weight vector, so prediction costs d
+			# per row instead of support vectors x d.
+			@linear_w := Nil;
+			if(code = 0) {
+				@linear_w := Float->New[d];
+				each(t : count) {
+					each(k : d) {
+						@linear_w[k] += @coef[t] * @sv[t, k];
+					};
+				};
+			};
+
+			@d := d;
+			@fit_gamma := gamma;
+			@rho := solver->GetRho();
+			@obj := solver->GetObjective();
+			@iterations := solver->GetIterations();
+			@converged := solver->IsConverged();
+			@bounded := bounded;
+
+			timer->End();
+			@fit_seconds := timer->GetElapsedTime();
+			@fitted := true;
+
+			return true;
+		}
+
+		method : ValidParameters() ~ Bool {
+			if(<>(@c > 0.0)) {
+				@last_error := "C must be > 0";
+				return false;
+			};
+			if(@gamma_mode = 2 & <>(@gamma >= 0.0)) {
+				@last_error := "gamma must be >= 0";
+				return false;
+			};
+			if(@degree < 0) {
+				@last_error := "degree must be >= 0";
+				return false;
+			};
+			if(<>(@tol > 0.0)) {
+				@last_error := "tol must be > 0";
+				return false;
+			};
+			if(@cache_mb < 1) {
+				@last_error := "cache size must be at least 1 MB";
+				return false;
+			};
+			if(@weight_mode = 1 & (<>(@weight_neg > 0.0) | <>(@weight_pos > 0.0))) {
+				@last_error := "class weights must be > 0";
+				return false;
+			};
+
+			return true;
+		}
+
+		method : IterationCap(n : Int) ~ Int {
+			if(@max_iter > 0) {
+				return @max_iter;
+			};
+
+			cap := 100 * n;
+			if(cap < 10000000) {
+				cap := 10000000;
+			};
+
+			return cap;
+		}
+
+		#~
+		The signed distance-like margin of each row: sum of alpha_i y_i K(x_i, x)
+		over the support vectors, plus the intercept. Positive means the true class;
+		the magnitude grows with confidence but is not a probability. This is the
+		score for Metrics->AucRoc, RecallAtFpr and ThresholdAtFpr.
+		@param X rows x features, with the column count used at Fit
+		@return one value per row, or Nil when unfitted or the shape differs
+		~#
+		method : public : DecisionFunction(X : Float[,]) ~ Float[] {
+			if(<>@fitted | X = Nil) {
+				return Nil;
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			if(dims[1] <> @d) {
+				return Nil;
+			};
+
+			result := Float->New[rows];
+			count := @coef->Size();
+			code := SvmKernelMath->Code(@kernel);
+			sum := 0.0;
+
+			if(@linear_w <> Nil) {
+				each(r : rows) {
+					sum := 0.0;
+					each(k : @d) {
+						sum += @linear_w[k] * X[r, k];
+					};
+					result[r] := sum - @rho;
+				};
+
+				return result;
+			};
+
+			each(r : rows) {
+				sum := 0.0;
+				each(t : count) {
+					sum += @coef[t] * SvmKernelMath->Value(code, @fit_gamma, @degree, @coef0, @sv, t, X, r, @d);
+				};
+				result[r] := sum - @rho;
+			};
+
+			return result;
+		}
+
+		#~
+		The ScoreModel score: the same values as DecisionFunction.
+		@param X rows x features
+		@return one score per row, or Nil when unfitted
+		~#
+		method : public : PredictScore(X : Float[,]) ~ Float[] {
+			return DecisionFunction(X);
+		}
+
+		#~
+		Class labels: true where the decision value is above zero. Prefer
+		DecisionFunction with Metrics->ThresholdAtFpr when false alarms are budgeted.
+		@param X rows x features
+		@return one label per row, or Nil when unfitted
+		~#
+		method : public : PredictClass(X : Float[,]) ~ Bool[] {
+			scores := DecisionFunction(X);
+			if(scores = Nil) {
+				return Nil;
+			};
+
+			result := Bool->New[scores->Size()];
+			each(i : scores) {
+				result[i] := scores[i] > 0.0;
+			};
+
+			return result;
+		}
+
+		#~
+		Accuracy of PredictClass against labels.
+		@param X rows x features
+		@param y one label per row
+		@return fraction correct, or 0.0 when unfitted or the sizes differ
+		~#
+		method : public : Score(X : Float[,], y : Bool[]) ~ Float {
+			labels := PredictClass(X);
+			if(labels = Nil | y = Nil) {
+				return 0.0;
+			};
+			if(labels->Size() <> y->Size() | labels->Size() = 0) {
+				return 0.0;
+			};
+
+			correct := 0;
+			each(i : labels) {
+				if(labels[i] = y[i]) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / labels->Size()->As(Float);
+		}
+
+		#~
+		Number of support vectors (training rows with a non-zero dual coefficient).
+		@return count, or 0 when unfitted
+		~#
+		method : public : GetSupportVectorCount() ~ Int {
+			if(<>@fitted) {
+				return 0;
+			};
+
+			return @coef->Size();
+		}
+
+		#~
+		Number of support vectors at their upper bound C (margin violators).
+		@return count, or 0 when unfitted
+		~#
+		method : public : GetBoundedSupportVectorCount() ~ Int {
+			if(<>@fitted) {
+				return 0;
+			};
+
+			return @bounded;
+		}
+
+		#~
+		Training-row indexes of the support vectors, ascending (scikit-learn's
+		support_, which groups them by class instead).
+		@return indexes, or Nil when unfitted
+		~#
+		method : public : GetSupportIndices() ~ Int[] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			return @sv_index;
+		}
+
+		#~
+		The support vectors, one row each, in GetSupportIndices order.
+		@return support vectors x features, or Nil when unfitted
+		~#
+		method : public : GetSupportVectors() ~ Float[,] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			return @sv;
+		}
+
+		#~
+		alpha_i * y_i per support vector (y as +1/-1), scikit-learn's dual_coef_.
+		@return coefficients, or Nil when unfitted
+		~#
+		method : public : GetDualCoefficients() ~ Float[] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			return @coef;
+		}
+
+		#~
+		The intercept b of the decision function (-rho in LIBSVM's terms).
+		@return intercept
+		~#
+		method : public : GetIntercept() ~ Float {
+			return -1.0 * @rho;
+		}
+
+		#~
+		The dual objective 1/2 a'Qa - sum(a) at the solution.
+		@return objective
+		~#
+		method : public : GetObjective() ~ Float {
+			return @obj;
+		}
+
+		#~
+		Solver iterations used by the last Fit.
+		@return iterations
+		~#
+		method : public : GetIterations() ~ Int {
+			return @iterations;
+		}
+
+		#~
+		Whether the last Fit met the tolerance; false when the iteration cap
+		stopped it first.
+		@return true when converged
+		~#
+		method : public : IsConverged() ~ Bool {
+			return @fitted & @converged;
+		}
+
+		#~
+		Seconds the last Fit took.
+		@return elapsed seconds
+		~#
+		method : public : GetFitSeconds() ~ Float {
+			return @fit_seconds;
+		}
+
+		#~
+		Why the last Fit returned false.
+		@return a reason, or an empty string after a successful Fit
+		~#
+		method : public : GetLastError() ~ String {
+			return @last_error;
+		}
+
+		#~
+		Whether Fit has succeeded.
+		@return true when fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @fitted;
+		}
+
+		#~
+		The kernel.
+		@return kernel
+		~#
+		method : public : GetKernel() ~ SvmKernel {
+			return @kernel;
+		}
+
+		#~
+		C.
+		@return C
+		~#
+		method : public : GetC() ~ Float {
+			return @c;
+		}
+
+		#~
+		The gamma in use: after Fit the value the kernel used, including the one
+		'scale' or 'auto' resolved to; before Fit the explicit value, or -1.0 for
+		'scale' and -2.0 for 'auto'.
+		@return gamma
+		~#
+		method : public : GetGamma() ~ Float {
+			if(@fitted) {
+				return @fit_gamma;
+			};
+			if(@gamma_mode = 0) {
+				return -1.0;
+			}
+			else if(@gamma_mode = 1) {
+				return -2.0;
+			};
+
+			return @gamma;
+		}
+
+		#~
+		The POLY degree.
+		@return degree
+		~#
+		method : public : GetDegree() ~ Int {
+			return @degree;
+		}
+
+		#~
+		The POLY/SIGMOID independent term.
+		@return coef0
+		~#
+		method : public : GetCoef0() ~ Float {
+			return @coef0;
+		}
+
+		#~
+		The stopping tolerance.
+		@return tol
+		~#
+		method : public : GetTolerance() ~ Float {
+			return @tol;
+		}
+
+		#~
+		The iteration cap as set; 0 or less means LIBSVM's own.
+		@return cap
+		~#
+		method : public : GetMaxIterations() ~ Int {
+			return @max_iter;
+		}
+
+		#~
+		The kernel-row cache size.
+		@return megabytes
+		~#
+		method : public : GetCacheSize() ~ Int {
+			return @cache_mb;
+		}
+
+		#~
+		Whether shrinking is on.
+		@return true when shrinking
+		~#
+		method : public : IsShrinking() ~ Bool {
+			return @shrinking;
+		}
+	}
+}

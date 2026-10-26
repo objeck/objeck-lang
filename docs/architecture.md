@@ -541,7 +541,7 @@ mindmap
         Machine Learning
             ml_core · ml_data
             ml_linear · ml_tree · ml_bayes
-            ml_neighbors · ml_cluster
+            ml_neighbors · ml_cluster · ml_svm
             nlp
         AI
             onnx: in-process inference, face detection and recognition
