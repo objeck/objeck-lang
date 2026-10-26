@@ -82,7 +82,7 @@ class Test {
 			return;
 		};
 
-		Data.JSON.JsonElement->Decode(response->GetText())->PrintLine();
+		response->GetText()->PrintLine();
 	}
 
 	function : Test3(token : String) ~ Nil {
@@ -114,7 +114,7 @@ class Test {
 			return;
 		};
 
-		Data.JSON.JsonElement->Decode(response->GetText())->PrintLine();
+		response->GetText()->PrintLine();
 	}
 
 	function : GetApiKey(filename : String) ~ String {

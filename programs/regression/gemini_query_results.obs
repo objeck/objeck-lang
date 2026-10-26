@@ -8,9 +8,10 @@ use Collection, Data.JSON, API.Google.Gemini.Corpus;
 # Url->Decode(element->ToString()). ToString serializes the element, so the
 # text came back wrapped in quotes with its JSON escapes doubled, and
 # Url->Decode then turned every '+' into a space. The text is JSON, not
-# URL-encoded: JsonElement->Decode of the parsed string is all it needs. The
-# parsing now lives in Corpus->ParseQueryResults, so a canned response can test
-# it without the network.
+# URL-encoded, and the parser decodes it: the parsed string is all it needs
+# (decoding it again would corrupt a real backslash). The parsing lives in
+# Corpus->ParseQueryResults, so a canned response can test it without the
+# network.
 ~#
 class GeminiQueryResults {
 	@passed : static : Bool;
@@ -27,7 +28,9 @@ class GeminiQueryResults {
 			+ "{\"chunkRelevanceScore\":0.75,\"chunk\":{\"data\":{\"stringValue\":\"50% off: a+b = c, \\\"quoted\\\"\\nnext line caf\\u00e9 %41\"},"
 			+ "\"customMetadata\":[{\"key\":\"source+id\",\"stringValue\":\"100% a+b\"}]}},"
 			+ "{\"chunkRelevanceScore\":0.25,\"chunk\":{\"data\":{\"stringValue\":\"plain\"}}},"
-			+ "{\"chunkRelevanceScore\":0.1,\"chunk\":{}}"
+			+ "{\"chunkRelevanceScore\":0.1,\"chunk\":{}},"
+			+ "{\"chunkRelevanceScore\":0.5,\"chunk\":{\"data\":{\"stringValue\":\"C:\\\\new\\\\table\"},"
+			+ "\"customMetadata\":[{\"key\":\"k\\\\ey\",\"stringValue\":\"v\\\\n\"}]}}"
 			+ "]}";
 
 		json := JsonParser->TextToElement(response);
@@ -37,8 +40,8 @@ class GeminiQueryResults {
 		};
 
 		results := Corpus->ParseQueryResults(json);
-		if(results = Nil | results->Size() <> 3) {
-			Fail("expected 3 results");
+		if(results = Nil | results->Size() <> 4) {
+			Fail("expected 4 results");
 			Runtime->Exit(1);
 		};
 
@@ -68,6 +71,18 @@ class GeminiQueryResults {
 		missing := results->Get(2)->GetSecond();
 		if(missing = Nil | missing->Size() <> 0) {
 			Fail("a chunk without text should give an empty string, got '{$missing}'");
+		};
+
+		# a real backslash survives: the parser decodes once, and decoding the
+		# text again would turn the path's backslash-n into a line break
+		path := results->Get(3)->GetSecond();
+		if(path = Nil | <>path->Equals("C:\\new\\table")) {
+			Fail("chunk text with backslashes was '{$path}', expected 'C:\\new\\table'");
+		};
+
+		slash_value := results->Get(3)->GetThird()->Find("k\\ey");
+		if(slash_value = Nil | <>slash_value->Equals("v\\n")) {
+			Fail("metadata with backslashes: key 'k\\ey' gave '{$slash_value}', expected 'v\\n'");
 		};
 
 		empty := Corpus->ParseQueryResults(JsonParser->TextToElement("{}"));

@@ -111,15 +111,12 @@ class ParserTests {
 	function : TestJsonUnicode() ~ Nil {
 		"JSON Unicode..."->PrintLine();
 
-		# Test unicode escape parsing (stored as raw escape, Decode() available for conversion)
+		# a unicode escape is decoded by the parser
 		p := JsonParser->New("{\"key\":\"\\u0041\"}");
 		Assert("unicode escape parses", p->Parse() & p->GetRoot() <> Nil);
 		if(p->GetRoot() <> Nil) {
 			val := p->GetRoot()->Get("key")->GetString();
-			Assert("unicode escape stored", val <> Nil & val->Size() > 0);
-			# Test the Decode function works correctly
-			decoded := JsonElement->Decode(val);
-			Assert("unicode decode A", decoded <> Nil & decoded->Size() > 0 & decoded->Get(0) = 'A');
+			Assert("unicode decode A", val <> Nil & val->Size() = 1 & val->Get(0) = 'A');
 		};
 
 		# Test multi-escape decode
@@ -127,8 +124,7 @@ class ParserTests {
 		Assert("unicode multi-escape parses", p2->Parse() & p2->GetRoot() <> Nil);
 		if(p2->GetRoot() <> Nil) {
 			val2 := p2->GetRoot()->Get("key")->GetString();
-			decoded2 := JsonElement->Decode(val2);
-			Assert("unicode decode HI", decoded2 <> Nil & decoded2->Equals("HI"));
+			Assert("unicode decode HI", val2 <> Nil & val2->Equals("HI"));
 		};
 	}
 

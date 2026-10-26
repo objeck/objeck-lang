@@ -10,7 +10,7 @@ JSON, so the serializer escapes. Callers must NOT pre-encode any more; the
 in-tree examples that did have been updated.
 
 Assertions: the escaped forms appear in the output, the output parses, and the
-value survives a round trip through the library's own decoder.
+value survives a round trip through the parser, which decodes.
 ~#
 
 use Data.JSON;
@@ -59,11 +59,11 @@ class JsonEscapeTest {
       text := back->Get("text");
       Check("text element present", text <> Nil);
       if(text <> Nil) {
-        decoded := JsonElement->Decode(text->GetString());
-        Check("value round-trips through the decoder", decoded->Equals(raw));
+        decoded := text->GetString();
+        Check("value round-trips, decoded by the parser", decoded->Equals(raw));
       };
       plain := back->Get("plain");
-      Check("a plain value is unchanged", plain <> Nil & JsonElement->Decode(plain->GetString())->Equals("no escapes here"));
+      Check("a plain value is unchanged", plain <> Nil & plain->GetString()->Equals("no escapes here"));
     };
 
     # a backslash on its own

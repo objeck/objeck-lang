@@ -1869,11 +1869,11 @@ session->Close();
 				if(run->IsFunctionCall()) {
 					func_call := run->GetFunctionCall()<String, String, String>;
 
-					func_call_name := Data.JSON.JsonElement->Decode(func_call->GetFirst());
-					func_call_params := Data.JSON.JsonElement->Decode(func_call->GetSecond());
+					func_call_name := func_call->GetFirst();
+					func_call_params := func_call->GetSecond();
 					response_json := CallFunction(func_call_name, JsonParser->TextToElement(func_call_params));
 					if(response_json <> Nil) {
-						func_callback_id := Data.JSON.JsonElement->Decode(func_call->GetThird());
+						func_callback_id := func_call->GetThird();
 						if(<>run->SubmitToolOutputs(response_json, func_callback_id, @token)) {
 							Run->GetLastError()->ErrorLine();
 						};
@@ -2642,11 +2642,13 @@ bundle API.OpenAI {
 				return false;
 			};
 
-			# update message with playback settings
+			# update message with playback settings; the voice is escaped, as the
+			# serializer would
+			voice_text := JsonElement->Encode(voice);
 			update_msg := "{
   				\"type\": \"session.update\",
   				\"session\": {
-    				\"voice\": \"{$voice}\",
+    				\"voice\": \"{$voice_text}\",
 	       			\"output_audio_format\": \"pcm16\",
     				\"input_audio_transcription\": {
 						\"model\": \"whisper-1\"
@@ -2761,11 +2763,13 @@ bundle API.OpenAI {
 				return false;
 			};
 
-			# update message with playback settings
+			# update message with playback settings; the voice is escaped, as the
+			# serializer would
+			voice_text := JsonElement->Encode(voice);
 			update_msg := "{
   				\"type\": \"session.update\",
   				\"session\": {
-    				\"voice\": \"{$voice}\",
+    				\"voice\": \"{$voice_text}\",
 	       			\"output_audio_format\": \"pcm16\",
     				\"input_audio_transcription\": {
 						\"model\": \"whisper-1\"
@@ -4398,8 +4402,7 @@ session->Close();
 			
 			files := API.OpenAI.File->ListFiles(token);
 			each(file in files) {
-				decoded_filename := JsonElement->Decode(file->GetFilename());
-				if(decoded_filename->Equals(filename)) {
+				if(file->GetFilename()->Equals(filename)) {
 					found := file;
 					break;
 				};
@@ -6374,10 +6377,10 @@ job = Batch->Get(job->GetId(), token);
 			if(error_json <> Nil & <>error_json->IsNull()) {
 				message_json := error_json->Get("message");
 				if(message_json <> Nil) {
-					SetLastError(JsonElement->Decode(message_json->GetString()));
+					SetLastError(message_json->GetString());
 				}
 				else if(error_json->GetType() = JsonElement->JsonType->STRING) {
-					SetLastError(JsonElement->Decode(error_json->GetString()));
+					SetLastError(error_json->GetString());
 				}
 				else {
 					SetLastError(error_json->ToString());

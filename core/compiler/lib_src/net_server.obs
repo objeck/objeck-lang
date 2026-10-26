@@ -3553,11 +3553,8 @@ bundle Web.HTTP.Server.MCP {
 				WriteError(McpRequestHandler->ErrorCode->INVALID_REQUEST->As(Int), "Invalid Request: \"id\" must be a string or a number", Nil, response, 400);
 				return false;
 			};
-			# the parser keeps a string's escapes raw and the serializer escapes
-			# again on the way out, so a string id is echoed from its decoded value
-			if(id_json <> Nil & id_json->GetType() = JsonElement->JsonType->STRING) {
-				id_json := JsonElement->New(JsonElement->Decode(id_json->GetValue()));
-			};
+			# a string id is echoed as the element itself: the parser decodes it and
+			# the serializer escapes it again on the way out, so it comes back as sent
 
 			version_json := root_json->Get("jsonrpc");
 			if(version_json = Nil | version_json->GetType() <> JsonElement->JsonType->STRING | <>version_json->GetValue()->Equals("2.0")) {

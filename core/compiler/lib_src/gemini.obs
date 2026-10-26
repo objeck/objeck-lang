@@ -68,7 +68,7 @@ bundle API.Google.Gemini {
 				return error_json->ToString();
 			};
 
-			return JsonElement->Decode(message_json->GetString());
+			return message_json->GetString();
 		}
 
 		#~
@@ -2015,7 +2015,13 @@ candidate->GetAllText()->PrintLine();
 		~#
 		function : Upload(display_name : String, data : Byte[], mime_type : String, key : String) ~ GeminiFile {
 			boundary := "gemini_boundary_objeck";
-			meta_json_str := "{\"file\":{\"display_name\":\"{$display_name}\"}}";
+			# built by the serializer: a display name holding a quote or a
+			# backslash was pasted into the JSON as it was
+			display_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			display_json->Insert("display_name", display_name);
+			meta_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			meta_json->Insert("file", display_json);
+			meta_json_str := meta_json->ToString();
 
 			part1_str := "--{$boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{$meta_json_str}\r\n";
 			part2_header_str := "--{$boundary}\r\nContent-Type: {$mime_type}\r\n\r\n";
@@ -2409,7 +2415,7 @@ candidate->GetAllText()->PrintLine();
 				error_message : String;
 				message_json := error_json->Get("message");
 				if(message_json <> Nil) {
-					error_message := JsonElement->Decode(message_json->GetString());
+					error_message := message_json->GetString();
 				}
 				else {
 					error_message := error_json->ToString();
@@ -3755,14 +3761,14 @@ each(result in results) {
 					relevance_score := score_json->GetFloat();
 				};
 
-				# The parser keeps a string's JSON escapes, so JsonElement->Decode is
-				# the only decoding the text needs; it is not URL-encoded. This used to
-				# run Url->Decode over the element's serialized form, which kept the
-				# surrounding quotes and the escapes and turned every '+' into a space.
+				# The parser decodes a string's JSON escapes, so GetString() is the
+				# text; it is not URL-encoded. This used to run Url->Decode over the
+				# element's serialized form, which kept the surrounding quotes and the
+				# escapes and turned every '+' into a space.
 				relevance_data := "";
 				data_json := chunk_json->FindElements("chunk/data/stringValue");
 				if(data_json <> Nil) {
-					relevance_data := JsonElement->Decode(data_json->GetString());
+					relevance_data := data_json->GetString();
 				};
 
 				relevance_metadata := Map->New()<String, String>;
@@ -3772,7 +3778,7 @@ each(result in results) {
 						key_json := metadata_obj_json->Get("key");
 						value_json := metadata_obj_json->Get("stringValue");
 						if(key_json <> Nil & value_json <> Nil) {
-							relevance_metadata->Insert(JsonElement->Decode(key_json->GetString()), JsonElement->Decode(value_json->GetString()));
+							relevance_metadata->Insert(key_json->GetString(), value_json->GetString());
 						};
 					};
 				};

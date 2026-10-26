@@ -47,7 +47,7 @@ class RosettaCount {
 					if(members <> Nil) {
 						each(member in members) {
 							if(limit < 0 | tasks->Size() < limit) {
-								tasks->AddBack(JsonElement->Decode(member->Get("title")->GetString()));
+								tasks->AddBack(member->Get("title")->GetString());
 							};
 						};
 					};

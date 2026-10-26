@@ -1,0 +1,80 @@
+# EXTRA_LIBS: csv,gen_collect,ml
+#~
+JSON that a library builds by hand is valid JSON whatever the text holds.
+
+CsvRow->ToJson pasted each header and cell between quotes as it was, so a cell
+holding a quote, a backslash or a line break produced text no JSON parser
+accepts. KMeansGrouping->ToString did the same with the group labels. Each now
+escapes the text as Data.JSON's serializer does (neither library links the
+JSON library). Checked by parsing what they write and reading the text back.
+~#
+
+use Collection;
+use Data.CSV;
+use Data.JSON;
+use System.ML;
+
+class JsonHandBuiltEscapes {
+	@failures : static : Int;
+
+	function : Check(ok : Bool, name : String) ~ Nil {
+		if(<>ok) {
+			"  [FAIL] {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		# a CSV row: a doubled quote, a backslash, a tab and a quoted line break
+		table := CsvTable->New("na\"\"me,note,n\r\n\"say \"\"hi\"\"\",\"C:\\new\ttab\r\nnext\",42\r\n");
+		Check(table->IsParsed(), "the CSV parses");
+		if(table->IsParsed()) {
+			text := table->Get(1)->ToJson();
+			row := JsonParser->TextToElement(text);
+			Check(row <> Nil, "CsvRow->ToJson is JSON: {$text}");
+			if(row <> Nil) {
+				header := table->GetHeaders()->Get(0);
+				name := row->Get(header);
+				Check(name <> Nil & name->GetString()->Equals("say \"hi\""), "a cell with quotes reads back");
+				note := row->Get("note");
+				Check(note <> Nil & note->GetString()->Equals("C:\\new\ttab\r\nnext"), "a cell with a backslash, a tab and a line break reads back");
+				number := row->Get("n");
+				Check(number <> Nil & number->GetType() = JsonElement->JsonType->NUMBER & number->GetInt() = 42, "a number is still a number");
+			};
+		};
+
+		# KMeans group labels
+		records := Vector->New()<FloatArrayRef>;
+		records->AddBack(FloatArrayRef->New([1.0, 1.0]));
+		records->AddBack(FloatArrayRef->New([1.2, 1.1]));
+		records->AddBack(FloatArrayRef->New([8.0, 8.0]));
+		records->AddBack(FloatArrayRef->New([8.2, 8.1]));
+		grouping := KMeans->Group(["low \"a\"", "high\\b"], records, 2, 0.0, 10.0);
+		groups_text := grouping->ToString();
+		groups := JsonParser->TextToElement(groups_text);
+		Check(groups <> Nil & groups->Size() = 2, "KMeansGrouping->ToString is JSON: {$groups_text}");
+		if(groups <> Nil & groups->Size() = 2) {
+			found_low := false;
+			found_high := false;
+			each(i : groups) {
+				label_text := groups->Get(i)->Get("name")->GetString();
+				if(label_text->Equals("low \"a\"")) {
+					found_low := true;
+				}
+				else if(label_text->Equals("high\\b")) {
+					found_high := true;
+				};
+			};
+			Check(found_low & found_high, "the labels read back");
+		};
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} hand-built JSON check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: hand-built JSON escapes its text"->PrintLine();
+	}
+}

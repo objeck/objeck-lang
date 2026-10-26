@@ -41,6 +41,13 @@ class OllamaParseTest {
     text := Completion->ParseGenerateResponse(good);
     Check("a response body yields its text", text <> Nil & text->Equals("hello"));
 
+    # escapes are decoded once: a quote, a real backslash, a u-escape (decoding
+    # twice would turn the path's backslash-n into a line break)
+    escaped := Completion->ParseGenerateResponse("{\"response\":\"a\\\"b C:\\\\new \\u00e9\"}");
+    want := "a\"b C:\\new ";
+    want->Append(0xE9->As(Char));
+    Check("a response with escapes yields the decoded text", escaped <> Nil & escaped->Equals(want));
+
     # the error shape Ollama actually sends
     EndPoint->SetLastError(Nil);
     bad := "{";

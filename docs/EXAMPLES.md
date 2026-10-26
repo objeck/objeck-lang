@@ -182,7 +182,7 @@ resp_schema := Pair->New("application/json", schema_def)<String, ParameterType>;
 # make query
 candidates := Model->GenerateContent("models/gemini-2.5-flash-preview-05-20", content, resp_schema, EndPoint->GetApiKey());
 if(candidates <> Nil & <>candidates->IsEmpty()) {
-  Data.JSON.JsonElement->Decode(candidates->First()->GetAllText()->Trim())->PrintLine();
+  candidates->First()->GetAllText()->Trim()->PrintLine();
 };
 ```
 
@@ -201,7 +201,7 @@ if(response = Nil) {
   return;
 };
 
-Data.JSON.JsonElement->Decode(response->GetText())->PrintLine();
+response->GetText()->PrintLine();
 ```
 
 ### OpenAI Content Moderation

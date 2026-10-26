@@ -36,8 +36,8 @@ class UnimplTasks {
 		each(i : unimpl_tasks) {
 			unimpl_task := unimpl_tasks->Get(i);
 
-			task_desc := unimpl_task->GetString()->ReplaceAll(",", "-")->ReplaceAll("\\\"", "\"");
-			task_str := task_desc->ReplaceAll(' ', '_')->ReplaceAll(",", "%2C")->ReplaceAll("\\\"", "\"");
+			task_desc := unimpl_task->GetString()->ReplaceAll(",", "-");
+			task_str := task_desc->ReplaceAll(' ', '_')->ReplaceAll(",", "%2C");
 			task_url_str := task_base_url_str + task_str;
 			task_count := GetCount(task_url_str);
 			file_out->WriteString("{$task_desc},{$task_url_str},{$task_count}\r\n");

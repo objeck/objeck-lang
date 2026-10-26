@@ -20093,7 +20093,7 @@ runs := source->Read();
 				if(@next_path <> Nil) {
 					link := Navigate(root, @next_path);
 					if(link <> Nil & link->GetType() = Data.JSON.JsonElement->JsonType->STRING) {
-						next_url := Data.JSON.JsonElement->Decode(link->GetString());
+						next_url := link->GetString();
 					};
 				}
 				else if(@offset_param <> Nil & count >= @page_size & @page_size > 0) {
@@ -20863,7 +20863,7 @@ runs->Describe()->ToString()->PrintLine();
 		function : ToCell(element : Data.JSON.JsonElement) ~ JsonCell {
 			type := element->GetType();
 			if(type = Data.JSON.JsonElement->JsonType->STRING) {
-				return JsonCell->New(JsonCell->Kind->TEXT, Data.JSON.JsonElement->Decode(element->GetString()));
+				return JsonCell->New(JsonCell->Kind->TEXT, element->GetString());
 			}
 			else if(type = Data.JSON.JsonElement->JsonType->NUMBER) {
 				return JsonCell->New(JsonCell->Kind->NUMBER, element->GetValue());

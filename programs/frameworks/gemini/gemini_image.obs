@@ -16,7 +16,7 @@ class IdentifyImage {
       # make query
       candidates := Model->GenerateContent("models/gemini-2.5-flash-preview-05-20", content, resp_schema, EndPoint->GetApiKey());
       if(candidates <> Nil & candidates->Size() > 0) {
-        Data.JSON.JsonElement->Decode(candidates->First()->GetAllText()->Trim())->PrintLine();
+        candidates->First()->GetAllText()->Trim()->PrintLine();
       };
     };
   }
