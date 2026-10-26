@@ -1,0 +1,148 @@
+#~
+# ApiSequenceTokenizer: a vocabulary of API names built from training traces,
+# and the encodings of API-call sequences, against ids worked out by hand.
+#
+# EXTRA_LIBS: nlp
+#
+# The malware-analysis use case (docs/ML_BERT_DESIGN.md): a trace is API names
+# separated by commas, semicolons or whitespace. Fit numbers [PAD] [UNK] [CLS]
+# [SEP] 0..3, then names by descending frequency, ties by name -- so the ids
+# depend on the data and not on the order it arrives in. Covered: splitting
+# (mixed separators, runs of them, empty names), Fit's numbering and its
+# tie-break, refitting from scratch, min_count, case folding, Encode's
+# [CLS]/[SEP]/[UNK]/padding and truncation, EncodeBatch, ToText for a
+# WordPiece tokenizer, Decode, and a Save/Load round trip.
+~#
+
+use System.NLP;
+use Collection;
+
+class NlpApiSequence {
+	@ok : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		t := NlpApiSequence->New();
+		t->Run();
+	}
+
+	New() {
+		@ok := true;
+	}
+
+	method : Check(name : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	function : Same(a : Int[], b : Int[]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	function : SameText(a : String[], b : String[]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(<>a[i]->Equals(b[i])) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	method : Run() ~ Nil {
+		training := ["CreateFileW,ReadFile,CloseHandle", "CreateFileW ReadFile", "RegOpenKeyExA;CreateFileW"];
+
+		apis := ApiSequenceTokenizer->New();
+		Check("a new tokenizer holds the four specials", apis->GetVocabSize() = 4 &
+			apis->TokenToId("[PAD]") = 0 & apis->TokenToId("[UNK]") = 1 &
+			apis->TokenToId("[CLS]") = 2 & apis->TokenToId("[SEP]") = 3);
+
+		Check("Split on commas, semicolons, spaces, tabs and newlines",
+			SameText(apis->Split(" CreateFileW,,ReadFile; \tCloseHandle\nSleep "), ["CreateFileW", "ReadFile", "CloseHandle", "Sleep"]));
+		Check("Split of an empty or separator-only sequence is empty",
+			apis->Split("")->Size() = 0 & apis->Split(" ,; ")->Size() = 0 & apis->Split(Nil)->Size() = 0);
+
+		size := apis->Fit(training);
+		Check("Fit: 4 specials + 4 names", size = 8);
+		# CreateFileW 3, ReadFile 2, then CloseHandle and RegOpenKeyExA once each, by name
+		Check("most frequent first", apis->TokenToId("CreateFileW") = 4 & apis->TokenToId("ReadFile") = 5);
+		Check("a tie goes by name", apis->TokenToId("CloseHandle") = 6 & apis->TokenToId("RegOpenKeyExA") = 7);
+		Check("IdToToken is the inverse", apis->IdToToken(7)->Equals("RegOpenKeyExA") & apis->IdToToken(8) = Nil);
+		Check("names are case-sensitive by default", apis->TokenToId("createfilew") = -1);
+
+		reordered := ApiSequenceTokenizer->New();
+		reordered->Fit(["RegOpenKeyExA;CreateFileW", "CreateFileW ReadFile", "CreateFileW,ReadFile,CloseHandle"]);
+		same := true;
+		for(i := 0; i < 8; i += 1;) {
+			if(<>reordered->IdToToken(i)->Equals(apis->IdToToken(i))) {
+				same := false;
+			};
+		};
+		Check("the order of the training data does not change the ids", same);
+
+		e := apis->Encode("CreateFileW, WriteFile ,CloseHandle", 6);
+		Check("Encode: [CLS] names [SEP] [PAD], an unseen name is [UNK]", Same(e->GetIds(), [2, 4, 1, 6, 3, 0]));
+		Check("its mask and types", Same(e->GetAttentionMask(), [1, 1, 1, 1, 1, 0]) & Same(e->GetTokenTypeIds(), Int->New[6]));
+		Check("its tokens", e->GetTokens()[2]->Equals("[UNK]") & e->GetTokens()[1]->Equals("CreateFileW") & e->GetLength() = 5);
+		Check("not truncated", <>e->IsTruncated());
+
+		e := apis->Encode("CreateFileW,ReadFile,CloseHandle,RegOpenKeyExA", 4);
+		Check("truncation keeps the first max_len - 2 calls", Same(e->GetIds(), [2, 4, 5, 3]) & e->IsTruncated());
+		e := apis->Encode("", 4);
+		Check("an empty sequence", Same(e->GetIds(), [2, 3, 0, 0]) & e->GetLength() = 2);
+		Check("max_len below 2 is refused", apis->Encode("CreateFileW", 1) = Nil);
+
+		batch := apis->EncodeBatch(["ReadFile", "CloseHandle ReadFile"], 4);
+		Check("EncodeBatch", batch->Size() = 2 & Same(batch[0]->GetIds(), [2, 5, 3, 0]) & Same(batch[1]->GetIds(), [2, 6, 5, 3]));
+
+		Check("ToText joins the names with single spaces",
+			apis->ToText("CreateFileW,,ReadFile;  CloseHandle", 0)->Equals("CreateFileW ReadFile CloseHandle"));
+		Check("ToText keeps the first max_calls", apis->ToText("CreateFileW,ReadFile,CloseHandle", 2)->Equals("CreateFileW ReadFile"));
+		Check("Decode skips the specials", apis->Decode([2, 4, 1, 6, 3, 0])->Equals("CreateFileW CloseHandle"));
+
+		rare := ApiSequenceTokenizer->New(false, 2);
+		Check("min_count 2 keeps only names seen twice", rare->Fit(training) = 6 &
+			rare->TokenToId("ReadFile") = 5 & rare->TokenToId("CloseHandle") = -1);
+
+		folded := ApiSequenceTokenizer->New(true, 1);
+		folded->Fit(["CreateFileW,createfilew,CREATEFILEW", "ReadFile"]);
+		Check("lower_case folds names together", folded->GetVocabSize() = 6 & folded->TokenToId("createfilew") = 4 &
+			folded->TokenToId("CreateFileW") = 4);
+		e := folded->Encode("CREATEFILEW readfile", 4);
+		Check("and encodes any case", Same(e->GetIds(), [2, 4, 5, 3]));
+
+		refit := apis->Fit(["Sleep"]);
+		Check("a second Fit starts over", refit = 5 & apis->TokenToId("Sleep") = 4 & apis->TokenToId("CreateFileW") = -1);
+
+		# Save and Load
+		apis->Fit(training);
+		path := System.IO.Filesystem.File->GetTempName();
+		Check("Save writes the vocabulary", apis->Save(path));
+		loaded := ApiSequenceTokenizer->Load(path, false);
+		Check("Load reads it back", loaded <> Nil);
+		if(loaded <> Nil) {
+			Check("with the same ids", loaded->GetVocabSize() = 8 & loaded->TokenToId("RegOpenKeyExA") = 7 &
+				Same(loaded->Encode("CreateFileW,Sleep", 5)->GetIds(), [2, 4, 1, 3, 0]));
+		};
+		System.IO.Filesystem.File->Delete(path);
+		Check("Load of a missing file is Nil", ApiSequenceTokenizer->Load(path, false) = Nil);
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+	}
+}

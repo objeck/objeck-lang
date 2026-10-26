@@ -99,12 +99,9 @@ text := tokenizer->Decode(enc->GetIds());                     # "he ' s unaffabl
 - Special-token ids are read from the vocabulary by name, never assumed: `[PAD]` is 0 and
   `[CLS]` 101 in Google's vocabularies, but not in every vocabulary.
 - **Unicode without a Unicode database.** Objeck's `ToLower` is ASCII-only and there is no NFD
-  table in the runtime, so the tokenizer carries its own: lowercase for Latin-1, Latin
-  Extended-A, Greek and Cyrillic; decomposition for the accented letters of Latin-1, Latin
-  Extended-A, Greek tonos and Cyrillic й/ё, plus dropping every combining mark
-  (U+0300–U+036F); Hangul syllables decompose algorithmically into jamo, as NFD does. Text
-  outside those ranges passes through unchanged, which differs from Hugging Face only for
-  characters that have case or decompose and are outside them. Documented in the class.
+  table in the runtime, so the tokenizer carries its own tables, generated from Python's
+  `unicodedata` (see "As built" below); Hangul syllables decompose algorithmically into jamo,
+  as NFD does.
 
 ```objeck
 apis := ApiSequenceTokenizer->New();
@@ -129,6 +126,39 @@ text := apis->ToText("CreateFileW,ReadFile", 62); # "CreateFileW ReadFile" -- fo
   bag-of-API baseline.
 - `Save(path)` / `Load(path)` write and read the vocabulary one token per line, the
   `vocab.txt` layout.
+
+**As built (stage 1).**
+
+- The Unicode tables (punctuation, control, nonspacing-mark ranges, lowercase runs, and the
+  NFD-minus-marks decomposition of 2,061 characters) are generated from Python's
+  `unicodedata` by `tools/nlp/gen_wordpiece_tables.py` into a marked block of `nlp.obs`, so
+  coverage is every plane, not the Latin/Greek/Cyrillic subset planned above. Text is decoded
+  to code points first (a surrogate pair is one code point where `Char` is UTF-16), so the
+  same text tokenizes the same on Windows and elsewhere.
+- **Parity.** `gen_wordpiece_parity.py` transcribes Hugging Face's slow `BertTokenizer`
+  (BasicTokenizer, WordpieceTokenizer, and the special-token split `PreTrainedTokenizer`
+  does first) against `unicodedata` and `str.lower()`, builds a 2,163-token vocabulary from
+  the corpus, and records ids for three modes (uncased; cased; lowercase keeping accents).
+  On every line of `docs/*.md` plus 28 multilingual and edge-case lines — 13,052 texts,
+  39,154 cases — the Objeck tokenizer gives identical ids. The committed fixture is a
+  234-text sample of the same (`nlp_wordpiece_parity.obs`); `--all` writes the full corpus
+  for a local run. Two cases are left out of the fixture: no-strip modes on decomposed text,
+  where Hugging Face's NFC step changes the answer and this tokenizer has none.
+- **Found on the way:** `String->SubString` and `String->New(Char[])` end a string at U+0000
+  (both go through `New(array, false)`, which scans for a NUL), while `Append(Char)` keeps it.
+  BERT drops NUL as text, not as an end, so the tokenizer works on code points throughout
+  and never cuts the input with `SubString`; the inconsistency in `lang.obs` is reported,
+  not changed here.
+- **Strings past U+FFFF.** A `Char` value holds any code point on every platform; only
+  `String` storage is UTF-16 on Windows, and `String->Append(Char)` writes a surrogate pair
+  there (#1185). The tokenizer asks `String->IsUtf16Storage()` rather than probing a `Char`,
+  which answers the wrong question.
+- `Encode` stops splitting once it has more pieces than `max_len` can hold: truncation keeps
+  the beginning, and an API trace of hundreds of calls was otherwise split in full to keep its
+  first 126 pieces. The ids are the same; the time halves for long traces.
+- Throughput (Windows build box, `obr`, JIT on): the full parity corpus — 39,154
+  tokenizations of lines averaging ~60 characters, plus reading and comparing — in 5–7 s;
+  `Encode` of a 200-call API trace in 1.4 ms at `max_len` 128 and 2.2 ms at 256.
 
 ### `System.NLP.Onnx` (new `nlp_onnx.obl`): the embedder
 
