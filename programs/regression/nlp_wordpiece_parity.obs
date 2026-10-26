@@ -1,0 +1,152 @@
+#~
+# WordPieceTokenizer gives the same ids as BERT's own tokenizer on a corpus:
+# 234 texts, each in three modes (uncased, cased, lowercase keeping accents).
+#
+# EXTRA_LIBS: nlp
+#
+# The reference is data/bert/gen_wordpiece_parity.py: a transcription of Hugging
+# Face's slow BertTokenizer (BasicTokenizer, WordpieceTokenizer, the
+# special-token split) written against Python's unicodedata and str.lower(),
+# not against this library. It wrote wordpiece_parity.txt -- each text as hex
+# code points, then the ids per mode -- over parity_vocab.txt, a 2,163-token
+# vocabulary built so most words split into several pieces. The texts are a
+# fixed sample of the repository's docs plus multilingual and edge-case lines:
+# accents, Greek final sigma, Cyrillic, CJK, kana, Hangul, Arabic, Vietnamese,
+# Turkish dotted I, emoji (surrogate pairs where Char is UTF-16), zero-width
+# and control characters, every kind of Unicode space, fullwidth and
+# typographic punctuation, special tokens inside text, and words of 99, 100
+# and 101 characters.
+#
+# Hugging Face composes text to NFC first; this tokenizer does not. That can
+# change only a no-strip mode given decomposed text, so the generator left
+# those cases out (2) and says so.
+#
+# A path argument runs another fixture of the same format instead, e.g. the
+# full 13,052-text corpus the generator writes with --all.
+~#
+
+use System.NLP;
+use Collection;
+
+class NlpWordPieceParity {
+	function : Main(args : String[]) ~ Nil {
+		path := "data/bert/wordpiece_parity.txt";
+		if(args->Size() > 0) {
+			path := args[0];
+		};
+
+		vocab := "data/bert/parity_vocab.txt";
+		uncased := WordPieceTokenizer->New(vocab, true, true);
+		cased := WordPieceTokenizer->New(vocab, false, false);
+		lower := WordPieceTokenizer->New(vocab, true, false);
+		if(<>uncased->IsLoaded() | <>cased->IsLoaded() | <>lower->IsLoaded()) {
+			"FAIL: cannot load {$vocab}; run from programs/regression"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		reader := System.IO.Filesystem.FileReader->New(path);
+		if(<>reader->IsOpen()) {
+			"FAIL: cannot read {$path}"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		texts := 0;
+		cases := 0;
+		wrong := 0;
+		text : String := Nil;
+		line := reader->ReadLine();
+		while(line <> Nil) {
+			if(line->StartsWith("T")) {
+				text := Text(line);
+				texts += 1;
+			}
+			else if(line->StartsWith("U") | line->StartsWith("C") | line->StartsWith("L")) {
+				tokenizer := uncased;
+				if(line->StartsWith("C")) {
+					tokenizer := cased;
+				}
+				else if(line->StartsWith("L")) {
+					tokenizer := lower;
+				};
+
+				want := Ids(line);
+				got := tokenizer->TokenizeToIds(text);
+				cases += 1;
+				if(<>Same(want, got)) {
+					wrong += 1;
+					if(wrong <= 10) {
+						mode := line->Get(0);
+						shown := Show(got);
+						"  mismatch ({$mode}) on text {$texts}: want '{$line}', got '{$shown}'"->PrintLine();
+					};
+				};
+			};
+			line := reader->ReadLine();
+		};
+		reader->Close();
+
+		if(cases < 3) {
+			"FAIL: the fixture held only {$cases} case(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		if(wrong > 0) {
+			"FAIL: {$wrong} of {$cases} cases differ from BERT's tokenizer ({$texts} texts)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: all {$cases} cases over {$texts} texts give BERT's ids"->PrintLine();
+	}
+
+	# "T 48 65 ..." -> the text, a code point at a time
+	function : Text(line : String) ~ String {
+		text := String->New();
+		fields := line->Split(' ');
+		for(i := 1; i < fields->Size(); i += 1;) {
+			if(<>fields[i]->IsEmpty()) {
+				AppendCodePoint(text, fields[i]->ToInt(16));
+			};
+		};
+		return text;
+	}
+
+	function : Ids(line : String) ~ Int[] {
+		ids := IntVector->New();
+		fields := line->Split(' ');
+		for(i := 1; i < fields->Size(); i += 1;) {
+			if(<>fields[i]->IsEmpty()) {
+				ids->AddBack(fields[i]->ToInt());
+			};
+		};
+		return ids->ToArray();
+	}
+
+	function : Same(a : Int[], b : Int[]) ~ Bool {
+		if(a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	function : Show(ids : Int[]) ~ String {
+		text := "";
+		each(i : ids) {
+			if(i > 0) {
+				text += " ";
+			};
+			id := ids[i];
+			text += "{$id}";
+		};
+		return text;
+	}
+
+	# String->Append(Char) stores a code point past U+FFFF as a surrogate pair where strings
+	# are UTF-16, so this is the same text on every platform
+	function : AppendCodePoint(text : String, cp : Int) ~ Nil {
+		text->Append(cp->As(Char));
+	}
+}

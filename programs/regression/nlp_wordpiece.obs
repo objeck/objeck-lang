@@ -1,0 +1,332 @@
+#~
+# WordPieceTokenizer: BERT's BasicTokenizer and WordPiece, and the encodings a
+# BERT-family model takes, against ids worked out by hand.
+#
+# EXTRA_LIBS: nlp
+#
+# The vocabulary is data/bert/vocab.txt (64 tokens, the rows of the tiny test
+# models): the five specials, a little punctuation, the BERT paper's
+# "un ##aff ##able", and pieces that split Windows API names. Every expected id
+# below was derived from that file by hand, following the BERT reference
+# tokenizer's rules; nlp_wordpiece_parity.obs checks the same code against a
+# transcription of Hugging Face's tokenizer on a 2,163-token vocabulary.
+#
+# Covered: greedy longest match and "##" continuations; a word with an
+# unmatched remainder becoming ONE [UNK]; the 100-character word limit (100
+# splits, 101 is [UNK]); lowercasing and accent stripping, with precomposed
+# and decomposed accents, and the cased setting that keeps them; CJK split
+# per character; punctuation split, ASCII and Unicode; NUL, zero-width and
+# control characters dropped; special tokens inside text kept whole, but
+# only in their exact case; empty, whitespace-only and punctuation-only text;
+# an emoji (a surrogate pair where Char is UTF-16); Encode's [CLS]/[SEP]/
+# padding and truncation; EncodePair's types and longest-first truncation,
+# ties included; EncodeBatch; Decode with and without special tokens; a
+# vocabulary in memory; a missing vocabulary file.
+~#
+
+use System.NLP;
+use Collection;
+
+class NlpWordPiece {
+	@ok : Bool;
+	@tok : WordPieceTokenizer;
+
+	function : Main(args : String[]) ~ Nil {
+		t := NlpWordPiece->New();
+		t->Run();
+	}
+
+	New() {
+		@ok := true;
+	}
+
+	method : Check(name : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	function : Show(ids : Int[]) ~ String {
+		if(ids = Nil) {
+			return "Nil";
+		};
+		text := "[";
+		each(i : ids) {
+			if(i > 0) {
+				text += ",";
+			};
+			id := ids[i];
+			text += "{$id}";
+		};
+		return text + "]";
+	}
+
+	function : Same(a : Int[], b : Int[]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	method : Ids(text : String, want : Int[]) ~ Nil {
+		got := @tok->TokenizeToIds(text);
+		shown := Show(got);
+		seen := Printable(text);
+		Check("'{$seen}' -> {$shown}", Same(got, want));
+	}
+
+	# the text with anything outside printable ASCII shown as <0xXXXX>, so a label stays on one line
+	function : Printable(text : String) ~ String {
+		out := String->New();
+		for(i := 0; i < text->Size(); i += 1;) {
+			c := text->Get(i);
+			code := c->As(Int);
+			if(code < 32 | code > 126) {
+				out->Append("<");
+				out->Append(code->ToHexString());
+				out->Append(">");
+			}
+			else {
+				out->Append(c);
+			};
+		};
+		return out;
+	}
+
+	method : Run() ~ Nil {
+		@tok := WordPieceTokenizer->New("data/bert/vocab.txt");
+		if(<>@tok->IsLoaded()) {
+			"FAIL: data/bert/vocab.txt did not load; run from programs/regression"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		Vocabulary();
+		Pieces();
+		Normalising();
+		Cleaning();
+		Specials();
+		Edges();
+		Encoding();
+		Pairs();
+		Decoding();
+		Construction();
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	method : Vocabulary() ~ Nil {
+		Check("64 tokens", @tok->GetVocabSize() = 64);
+		Check("[PAD] [UNK] [CLS] [SEP] [MASK] are 0..4", @tok->GetPadId() = 0 & @tok->GetUnkId() = 1 &
+			@tok->GetClsId() = 2 & @tok->GetSepId() = 3 & @tok->GetMaskId() = 4);
+		Check("##able is 23", @tok->TokenToId("##able") = 23);
+		Check("an absent token is -1", @tok->TokenToId("zebra") = -1);
+		Check("id 30 is the CJK character U+4E2D", @tok->IdToToken(30)->Get(0) = 0x4E2D->As(Char));
+		Check("an id out of range is Nil", @tok->IdToToken(64) = Nil & @tok->IdToToken(-1) = Nil);
+		Check("uncased by default", @tok->IsLowerCase() & @tok->IsStripAccents());
+	}
+
+	method : Pieces() ~ Nil {
+		# the BERT paper's example
+		Ids("unaffable", [21, 22, 23]);
+		pieces := @tok->Tokenize("unaffable");
+		Check("its pieces are un ##aff ##able", pieces->Size() = 3 & pieces[0]->Equals("un") &
+			pieces[1]->Equals("##aff") & pieces[2]->Equals("##able"));
+		Ids("He's unaffable.", [24, 6, 25, 21, 22, 23, 9]);
+		Ids("The quick brown fox jumped over the lazy dog!", [11, 12, 13, 14, 15, 17, 18, 11, 19, 20, 5]);
+		Ids("Jumps", [15, 16]);
+		# longest match first: "a" then "##b" then "##c"
+		Ids("abc", [32, 33, 34]);
+		# an unmatched remainder makes the WHOLE word one [UNK], not a, ##b, [UNK]
+		Ids("abd", [1]);
+		Ids("abcx abc", [1, 32, 33, 34]);
+		# API names, as the malware lab feeds them
+		Ids("CreateFileW,ReadFile;CloseHandle", [35, 36, 37, 7, 38, 36, 1, 47, 48]);
+		Ids("RegSetValueExA VirtualAlloc GetProcAddress", [40, 58, 59, 43, 44, 45, 46, 49, 50, 51]);
+		Ids("LoadLibraryA CreateThread Sleep OpenProcess", [52, 53, 44, 35, 57, 54, 55, 56]);
+	}
+
+	method : Normalising() ~ Nil {
+		Ids("HELLO World", [26, 27]);
+		# precomposed accents
+		Ids("Café NAÏVE", [28, 29]);
+		# a decomposed accent: e followed by U+0301
+		decomposed := "cafe";
+		decomposed->Append(0x301->As(Char));
+		Ids(decomposed, [28]);
+
+		cased := WordPieceTokenizer->New("data/bert/vocab.txt", false, false);
+		got := cased->TokenizeToIds("Hello hello café");
+		Check("cased: 'Hello' and 'café' are not in the vocabulary", Same(got, [1, 26, 1]));
+
+		keep := WordPieceTokenizer->New("data/bert/vocab.txt", true, false);
+		got := keep->TokenizeToIds("CAFE CAFÉ");
+		Check("lowercase keeping accents: 'café' is not 'cafe'", Same(got, [28, 1]));
+
+		words := @tok->BasicTokenize("Hello, World!");
+		Check("BasicTokenize: hello , world !", words->Size() = 4 & words[0]->Equals("hello") &
+			words[1]->Equals(",") & words[2]->Equals("world") & words[3]->Equals("!"));
+
+		# Python's str.lower(): a capital sigma ending a Greek word is the final sigma
+		words := @tok->BasicTokenize("ΟΔΟΣ ΣΑ");
+		first := words[0];
+		second := words[1];
+		Check("final sigma at the end of a word only", words->Size() = 2 &
+			first->Get(3) = 0x3C2->As(Char) & second->Get(0) = 0x3C3->As(Char));
+
+		# CJK ideographs are split one per word, with or without spaces around them
+		Ids("中文", [30, 31]);
+		Ids("hello中文world", [26, 30, 31, 27]);
+
+		# Unicode punctuation splits a word; U+2014 and U+00BF are not in the vocabulary
+		dash := "hello";
+		dash->Append(0x2014->As(Char));
+		dash->Append("world");
+		Ids(dash, [26, 1, 27]);
+		question := "";
+		question->Append(0xBF->As(Char));
+		question->Append("hello?");
+		Ids(question, [1, 26, 10]);
+	}
+
+	method : Cleaning() ~ Nil {
+		# NUL is dropped, and does not end the text
+		nul := "hel";
+		nul->Append(0->As(Char));
+		nul->Append("lo world");
+		Ids(nul, [26, 27]);
+
+		# a zero-width space (U+200B, a format character) is dropped: helloworld is one word
+		zero := "hello";
+		zero->Append(0x200B->As(Char));
+		zero->Append("world");
+		Ids(zero, [1]);
+
+		# tabs, newlines, NBSP and the ideographic space separate words
+		spaced := "hello\tworld\nhello";
+		spaced->Append(0xA0->As(Char));
+		spaced->Append("world");
+		spaced->Append(0x3000->As(Char));
+		spaced->Append("hello");
+		Ids(spaced, [26, 27, 26, 27, 26]);
+
+		# U+2028 is not a space to BERT's cleaner, but it does split words
+		line := "hello";
+		line->Append(0x2028->As(Char));
+		line->Append("world");
+		Ids(line, [26, 27]);
+	}
+
+	method : Specials() ~ Nil {
+		Ids("hello [SEP] world", [26, 3, 27]);
+		Ids("hello[SEP]world[MASK]", [26, 3, 27, 4]);
+		# only the exact token: "[sep]" is punctuation and a word
+		Ids("[sep]", [1, 1, 1]);
+		Ids("[CLS][CLS]", [2, 2]);
+	}
+
+	method : Edges() ~ Nil {
+		Ids("", Int->New[0]);
+		Ids(" \t\n  ", Int->New[0]);
+		Ids("!?.,", [5, 10, 9, 7]);
+		Ids("'''", [6, 6, 6]);
+
+		hundred := "a";
+		for(i := 0; i < 99; i += 1;) {
+			hundred->Append('b');
+		};
+		got := @tok->TokenizeToIds(hundred);
+		Check("a 100-character word still splits (100 pieces)", got->Size() = 100 & got[0] = 32 & got[99] = 33);
+		hundred->Append('b');
+		Ids(hundred, [1]);
+
+		# an emoji is not punctuation: it stays in its word, which is then [UNK]
+		Ids("hello😀 world", [1, 27]);
+		Ids("😀", [1]);
+	}
+
+	method : Encoding() ~ Nil {
+		e := @tok->Encode("He's unaffable.", 12);
+		Check("Encode: [CLS] ... [SEP] then [PAD]", Same(e->GetIds(), [2, 24, 6, 25, 21, 22, 23, 9, 3, 0, 0, 0]));
+		Check("mask is 1 for the 9 real tokens", Same(e->GetAttentionMask(), [1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0]));
+		Check("types are all 0", Same(e->GetTokenTypeIds(), Int->New[12]));
+		Check("length 9, size 12, not truncated", e->GetLength() = 9 & e->GetSize() = 12 & <>e->IsTruncated());
+		tokens := e->GetTokens();
+		Check("tokens carry the strings", tokens[0]->Equals("[CLS]") & tokens[5]->Equals("##aff") & tokens[11]->Equals("[PAD]"));
+		Check("ToString shows the unpadded tokens", e->ToString()->Equals("[CLS] he ' s un ##aff ##able . [SEP]"));
+
+		e := @tok->Encode("the quick brown fox", 4);
+		Check("truncation keeps the beginning", Same(e->GetIds(), [2, 11, 12, 3]) & e->IsTruncated() & e->GetLength() = 4);
+
+		e := @tok->Encode("the quick brown fox", 6);
+		Check("an exact fit is not truncated", Same(e->GetIds(), [2, 11, 12, 13, 14, 3]) & <>e->IsTruncated());
+
+		e := @tok->Encode("", 4);
+		Check("empty text is [CLS] [SEP] and padding", Same(e->GetIds(), [2, 3, 0, 0]) & e->GetLength() = 2);
+
+		e := @tok->Encode("hello", 2);
+		Check("max_len 2 is [CLS] [SEP]", Same(e->GetIds(), [2, 3]) & e->IsTruncated());
+		Check("max_len 1 is refused", @tok->Encode("hello", 1) = Nil & @tok->GetError() <> Nil);
+
+		batch := @tok->EncodeBatch(["hello", "the dog", ""], 5);
+		Check("EncodeBatch: one encoding per text", batch->Size() = 3 & Same(batch[0]->GetIds(), [2, 26, 3, 0, 0]) &
+			Same(batch[1]->GetIds(), [2, 11, 20, 3, 0]) & Same(batch[2]->GetIds(), [2, 3, 0, 0, 0]));
+	}
+
+	method : Pairs() ~ Nil {
+		e := @tok->EncodePair("hello", "the dog", 8);
+		Check("pair: [CLS] a [SEP] b [SEP] [PAD]", Same(e->GetIds(), [2, 26, 3, 11, 20, 3, 0, 0]));
+		Check("pair types: 0 through the first [SEP], then 1, padding 0", Same(e->GetTokenTypeIds(), [0, 0, 0, 1, 1, 1, 0, 0]));
+		Check("pair mask", Same(e->GetAttentionMask(), [1, 1, 1, 1, 1, 1, 0, 0]));
+
+		# 3 + 1 tokens into 6 - 3 = 3: the longer first loses one
+		e := @tok->EncodePair("the quick brown", "fox", 6);
+		Check("longest_first trims the longer text", Same(e->GetIds(), [2, 11, 12, 3, 14, 3]) & e->IsTruncated());
+
+		# 2 + 2 into 2: a tie takes from the second, then the first is longer
+		e := @tok->EncodePair("the quick", "lazy dog", 5);
+		Check("longest_first on a tie trims the second first", Same(e->GetIds(), [2, 11, 3, 19, 3]) &
+			Same(e->GetTokenTypeIds(), [0, 0, 0, 1, 1]));
+
+		e := @tok->EncodePair("", "hello", 6);
+		Check("an empty first text", Same(e->GetIds(), [2, 3, 26, 3, 0, 0]) & Same(e->GetTokenTypeIds(), [0, 0, 1, 1, 0, 0]));
+		e := @tok->EncodePair("hello", "", 5);
+		Check("an empty second text", Same(e->GetIds(), [2, 26, 3, 3, 0]) & Same(e->GetTokenTypeIds(), [0, 0, 0, 1, 0]));
+		Check("pair max_len 2 is refused", @tok->EncodePair("a", "b", 2) = Nil);
+	}
+
+	method : Decoding() ~ Nil {
+		ids := [2, 24, 6, 25, 21, 22, 23, 9, 3, 0, 0];
+		Check("Decode joins ## pieces and drops specials", @tok->Decode(ids)->Equals("he ' s unaffable ."));
+		Check("Decode can keep specials", @tok->Decode(ids, false)->Equals("[CLS] he ' s unaffable . [SEP] [PAD] [PAD]"));
+		Check("Decode of an empty array", @tok->Decode(Int->New[0])->Equals(""));
+		Check("an out-of-range id decodes as [UNK]", @tok->Decode([26, 999], false)->Equals("hello [UNK]"));
+		Check("a leading ## piece keeps its marker", @tok->Decode([22, 23])->Equals("##affable"));
+	}
+
+	method : Construction() ~ Nil {
+		memory := WordPieceTokenizer->New(["[PAD]", "[UNK]", "[CLS]", "[SEP]", "low", "##er", "##est"], true, true);
+		Check("a vocabulary in memory loads", memory->IsLoaded() & memory->GetVocabSize() = 7);
+		got := memory->TokenizeToIds("Lower LOWEST lows");
+		Check("and tokenizes (lowest -> low ##est; lows -> [UNK])", Same(got, [4, 5, 4, 6, 1]));
+		Check("it has no [MASK]", memory->GetMaskId() = -1);
+
+		missing := WordPieceTokenizer->New("data/bert/no_such_vocab.txt");
+		Check("a missing file does not load, and says why", <>missing->IsLoaded() & missing->GetError() <> Nil);
+		Check("and cannot encode", missing->Encode("hello", 8) = Nil);
+		Check("but tokenizing is empty, not a crash", missing->Tokenize("hello")->Size() = 0);
+
+		incomplete := WordPieceTokenizer->New(["[PAD]", "hello"], true, true);
+		Check("a vocabulary without [UNK]/[CLS]/[SEP] does not load", <>incomplete->IsLoaded());
+	}
+}

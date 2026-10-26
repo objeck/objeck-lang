@@ -15092,6 +15092,47 @@
 				}
 			}
 		},
+		"System.NLP.ApiSequenceTokenizer": {
+			"description": "A tokenizer for sequences of API calls, as malware-analysis datasets record them: CreateFileW,ReadFile,CloseHandle or the same separated by spaces or semicolons.\n\nFit builds a vocabulary from training data: [PAD]=0, [UNK]=1, [CLS]=2, [SEP]=3, then each API name by descending frequency, ties by name, so the same data always gives the same ids. Encode gives a TokenEncoding like WordPieceTokenizer's: [CLS], the first max_len - 2 calls, [SEP], then [PAD]. Names are case-sensitive unless asked otherwise.\n\nIts ids are for a model trained on them. A pretrained BERT knows only its own WordPiece vocabulary, so for BERT pass the calls as text instead: ToText normalises the separators and truncates by call count, and WordPieceTokenizer splits \"CreateFileW\" into its pieces.",
+			"functions": {
+				"Decode": {
+					"descriptions": ["**Turns ids back into API names separated by spaces, leaving out the special tokens.**\n\n```method : public : Decode(ids:Int[]) ~ String```\n\n\n\nids: Int[]\n\nreturn: String"]
+				},
+				"Encode": {
+					"descriptions": ["**Encodes a sequence: [CLS], the first max_len - 2 calls, [SEP], then [PAD] to exactly max_len. A name not in the vocabulary is [UNK].**\n\n```method : public : Encode(sequence:String, max_len:Int) ~ TokenEncoding```\n\n\n\nsequence: String\n\nmax_len: Int\n\nreturn: TokenEncoding"]
+				},
+				"EncodeBatch": {
+					"descriptions": ["**Encodes several sequences, each with Encode.**\n\n```method : public : EncodeBatch(sequences:String[], max_len:Int) ~ TokenEncoding[]```\n\n\n\nsequences: String[]\n\nmax_len: Int\n\nreturn: TokenEncoding[]"]
+				},
+				"Fit": {
+					"descriptions": ["**Builds the vocabulary from training sequences, replacing any earlier one.**\n\n```method : public : Fit(sequences:String[]) ~ Int```\n\n\n\nsequences: String[]\n\nreturn: Int"]
+				},
+				"GetVocabSize": {
+					"descriptions": ["**Number of tokens in the vocabulary, special tokens included.**\n\n```method : public : GetVocabSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IdToToken": {
+					"descriptions": ["**The name with an id.**\n\n```method : public : IdToToken(id:Int) ~ String```\n\n\n\nid: Int\n\nreturn: String"]
+				},
+				"Load": {
+					"descriptions": ["**Reads a vocabulary Save wrote.**\n\n```function : Load(path:String, lower_case:Bool) ~ ApiSequenceTokenizer```\n\n\n\npath: String\n\nlower_case: Bool\n\nreturn: ApiSequenceTokenizer"]
+				},
+				"New": {
+					"descriptions": ["**An empty tokenizer, case-sensitive, keeping every name seen at least once.**\n\n```New()```\n\n", "**An empty tokenizer.**\n\n```New(lower_case:Bool, min_count:Int)```\n\n\n\nlower_case: Bool\n\nmin_count: Int"]
+				},
+				"Save": {
+					"descriptions": ["**Writes the vocabulary, one token per line, the line number its id: the vocab.txt layout.**\n\n```method : public : Save(path:String) ~ Bool```\n\n\n\npath: String\n\nreturn: Bool"]
+				},
+				"Split": {
+					"descriptions": ["**Splits a sequence into API names at commas, semicolons and whitespace, dropping empty names, and lowercasing them if configured.**\n\n```method : public : Split(sequence:String) ~ String[]```\n\n\n\nsequence: String\n\nreturn: String[]"]
+				},
+				"ToText": {
+					"descriptions": ["**The calls as text for a WordPiece tokenizer: names separated by single spaces.**\n\n```method : public : ToText(sequence:String, max_calls:Int) ~ String```\n\n\n\nsequence: String\n\nmax_calls: Int\n\nreturn: String"]
+				},
+				"TokenToId": {
+					"descriptions": ["**A name's id.**\n\n```method : public : TokenToId(token:String) ~ Int```\n\n\n\ntoken: String\n\nreturn: Int"]
+				}
+			}
+		},
 		"System.NLP.SentimentAnalyzer": {
 			"description": "Rule-based sentiment analysis in the manner of VADER (Hutto and Gilbert, 2014), with its own English lexicon of valences on a -4..+4 scale. Negators (\"not\", \"never\", \"don't\") within three words flip and damp a word's valence, boosters (\"very\", \"extremely\") and dampeners (\"slightly\", \"kind of\") scale it, a word in capitals in mixed-case text and each '!' add emphasis, and \"but\" shifts weight to the clause after it. Unknown inflections fall back to their base form (\"loved\" finds \"love\", \"terribly\" finds \"terrible\").",
 			"functions": {
@@ -15207,6 +15248,35 @@
 				}
 			}
 		},
+		"System.NLP.TokenEncoding": {
+			"description": "One text encoded for a BERT-family model: the token ids, the attention mask and the token type (segment) ids, all the same length, ready to become a model's input_ids, attention_mask and token_type_ids. Produced by WordPieceTokenizer and ApiSequenceTokenizer.",
+			"functions": {
+				"GetAttentionMask": {
+					"descriptions": ["**Attention mask: 1 for a real token, 0 for padding.**\n\n```method : public : GetAttentionMask() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetIds": {
+					"descriptions": ["**Token ids, padding included.**\n\n```method : public : GetIds() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetLength": {
+					"descriptions": ["**Tokens before the padding, [CLS] and [SEP] included.**\n\n```method : public : GetLength() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetSize": {
+					"descriptions": ["**Total length, padding included: the max_len it was encoded to.**\n\n```method : public : GetSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetTokenTypeIds": {
+					"descriptions": ["**Token type (segment) ids: 0 for the first text, 1 for the second of a pair.**\n\n```method : public : GetTokenTypeIds() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetTokens": {
+					"descriptions": ["**The token strings, one per id.**\n\n```method : public : GetTokens() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"IsTruncated": {
+					"descriptions": ["**Whether text was dropped to fit max_len.**\n\n```method : public : IsTruncated() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor, for a tokenizer of the program's own.**\n\n```New(ids:Int[], attention_mask:Int[], token_type_ids:Int[], tokens:String[], length:Int, truncated:Bool)```\n\n\n\nids: Int[]\n\nattention_mask: Int[]\n\ntoken_type_ids: Int[]\n\ntokens: String[]\n\nlength: Int\n\ntruncated: Bool"]
+				}
+			}
+		},
 		"System.NLP.Tokenizer": {
 			"description": "Text tokenization utilities for breaking text into words, sentences, and n-grams",
 			"functions": {
@@ -15221,6 +15291,74 @@
 				},
 				"WordTokenize": {
 					"descriptions": ["**Tokenizes text into words. A word is a run of letters and digits, including non-Latin letters; an apostrophe between letters (don't, O'Brien), a hyphen between letters or digits (state-of-the-art, COVID-19) and a '.' or ',' between digits (3.14, 5,000) stay inside it. Whitespace and punctuation separate words and are dropped. Case is kept.**\n\n```function : WordTokenize(text:String) ~ String[]```\n\n\n\ntext: String\n\nreturn: String[]\n\n```\nwords := Tokenizer->WordTokenize(\"I don't think 3.14 is state-of-the-art.\");\neach(w in words) {\n  w->PrintLine();\n};\n```"]
+				}
+			}
+		},
+		"System.NLP.WordPieceTokenizer": {
+			"description": "BERT's tokenizer: a BasicTokenizer followed by WordPiece, reading a model's vocab.txt, and the encoding a BERT-family model takes as input.\n\nThe BasicTokenizer drops control characters, puts spaces around CJK ideographs, splits on whitespace, then per word lowercases (an option), strips accents (an option: decompose, then drop combining marks) and splits off every punctuation character. WordPiece then splits each word greedily, longest match first, into vocabulary pieces, continuations prefixed \"##\"; a word with a remainder no piece matches, or longer than 100 characters, becomes one [UNK]. The special tokens [CLS], [SEP], [PAD], [MASK] and [UNK] are never split when they appear in the text.\n\nThis is Hugging Face's BertTokenizer (the Python one), checked against a transcription of it on a corpus (programs\/regression\/nlp_wordpiece_parity.obs). Its Unicode tables are generated from Python's unicodedata (tools\/nlp\/gen_wordpiece_tables.py). Two differences: Hugging Face composes the text to NFC first, which matters only to a model that does not strip accents given decomposed text; and it drops code points Unicode has not assigned, which this keeps.\n\nDefaults are bert-base-uncased's: lowercase and strip accents. A cased model needs both off.",
+			"functions": {
+				"BasicTokenize": {
+					"descriptions": ["**Splits text into words and punctuation, BERT's BasicTokenizer: no vocabulary is used.**\n\n```method : public : BasicTokenize(text:String) ~ String[]```\n\n\n\ntext: String\n\nreturn: String[]\n\n```\nwords := tokenizer->BasicTokenize(\"Hello, World!\");   # hello , world !\n```"]
+				},
+				"Decode": {
+					"descriptions": ["**Turns ids back into text: pieces joined with spaces, a \"##\" continuation joined to the piece before it, special tokens left out. Lowercasing and stripped accents do not come back.**\n\n```method : public : Decode(ids:Int[]) ~ String```\n\n\n\nids: Int[]\n\nreturn: String", "**Turns ids back into text.**\n\n```method : public : Decode(ids:Int[], skip_special:Bool) ~ String```\n\n\n\nids: Int[]\n\nskip_special: Bool\n\nreturn: String"]
+				},
+				"Encode": {
+					"descriptions": ["**Encodes one text: [CLS], its pieces, [SEP], then [PAD] to exactly max_len. A text too long keeps its beginning.**\n\n```method : public : Encode(text:String, max_len:Int) ~ TokenEncoding```\n\n\n\ntext: String\n\nmax_len: Int\n\nreturn: TokenEncoding\n\n```\nencoding := tokenizer->Encode(\"the quick brown fox\", 128);\n```"]
+				},
+				"EncodeBatch": {
+					"descriptions": ["**Encodes several texts, each with Encode.**\n\n```method : public : EncodeBatch(texts:String[], max_len:Int) ~ TokenEncoding[]```\n\n\n\ntexts: String[]\n\nmax_len: Int\n\nreturn: TokenEncoding[]"]
+				},
+				"EncodePair": {
+					"descriptions": ["**Encodes a pair: [CLS] a [SEP] b [SEP], token types 0 through the first [SEP] and 1 after, then [PAD] to max_len. When the pair is too long, a token at a time is dropped from the end of whichever text is longer (the second on a tie), Hugging Face's longest_first truncation.**\n\n```method : public : EncodePair(text_a:String, text_b:String, max_len:Int) ~ TokenEncoding```\n\n\n\ntext_a: String\n\ntext_b: String\n\nmax_len: Int\n\nreturn: TokenEncoding"]
+				},
+				"GetClsId": {
+					"descriptions": ["**Id of [CLS].**\n\n```method : public : GetClsId() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the tokenizer is not loaded, or why the last Encode returned Nil.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetMaskId": {
+					"descriptions": ["**Id of [MASK].**\n\n```method : public : GetMaskId() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetPadId": {
+					"descriptions": ["**Id of [PAD].**\n\n```method : public : GetPadId() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetSepId": {
+					"descriptions": ["**Id of [SEP].**\n\n```method : public : GetSepId() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetUnkId": {
+					"descriptions": ["**Id of [UNK].**\n\n```method : public : GetUnkId() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetVocabSize": {
+					"descriptions": ["**Number of tokens in the vocabulary.**\n\n```method : public : GetVocabSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IdToToken": {
+					"descriptions": ["**The token with an id.**\n\n```method : public : IdToToken(id:Int) ~ String```\n\n\n\nid: Int\n\nreturn: String"]
+				},
+				"IsLoaded": {
+					"descriptions": ["**Whether the vocabulary loaded and names [UNK], [CLS], [SEP] and [PAD].**\n\n```method : public : IsLoaded() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsLowerCase": {
+					"descriptions": ["**Whether text is lowercased.**\n\n```method : public : IsLowerCase() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsStripAccents": {
+					"descriptions": ["**Whether accents are stripped.**\n\n```method : public : IsStripAccents() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Loads a vocabulary for an uncased model: lowercase and strip accents.**\n\n```New(vocab_path:String)```\n\n\n\nvocab_path: String", "**Loads a vocabulary.**\n\n```New(vocab_path:String, lower_case:Bool, strip_accents:Bool)```\n\n\n\nvocab_path: String\n\nlower_case: Bool\n\nstrip_accents: Bool", "**Builds a tokenizer from a vocabulary held in memory.**\n\n```New(tokens:String[], lower_case:Bool, strip_accents:Bool)```\n\n\n\ntokens: String[]\n\nlower_case: Bool\n\nstrip_accents: Bool"]
+				},
+				"SetMaxWordChars": {
+					"descriptions": ["**Sets the longest word, in characters, WordPiece will split; a longer one becomes [UNK]. BERT's value is 100.**\n\n```method : public : SetMaxWordChars(max_word_chars:Int) ~ Nil```\n\n\n\nmax_word_chars: Int\n\nreturn: Nil"]
+				},
+				"TokenToId": {
+					"descriptions": ["**A token's id.**\n\n```method : public : TokenToId(token:String) ~ Int```\n\n\n\ntoken: String\n\nreturn: Int"]
+				},
+				"Tokenize": {
+					"descriptions": ["**Splits text into WordPiece tokens, without [CLS], [SEP] or padding.**\n\n```method : public : Tokenize(text:String) ~ String[]```\n\n\n\ntext: String\n\nreturn: String[]\n\n```\ntokenizer->Tokenize(\"unaffable\");   # un ##aff ##able\n```"]
+				},
+				"TokenizeToIds": {
+					"descriptions": ["**Splits text into WordPiece token ids, without [CLS], [SEP] or padding.**\n\n```method : public : TokenizeToIds(text:String) ~ Int[]```\n\n\n\ntext: String\n\nreturn: Int[]"]
 				}
 			}
 		},
@@ -19344,6 +19482,12 @@
 				"file": ""
 			}
 		],
+		"ApiSequenceTokenizer": [
+			{
+				"bundle": "System.NLP",
+				"file": ""
+			}
+		],
 		"SentimentAnalyzer": [
 			{
 				"bundle": "System.NLP",
@@ -19374,7 +19518,19 @@
 				"file": ""
 			}
 		],
+		"TokenEncoding": [
+			{
+				"bundle": "System.NLP",
+				"file": ""
+			}
+		],
 		"Tokenizer": [
+			{
+				"bundle": "System.NLP",
+				"file": ""
+			}
+		],
+		"WordPieceTokenizer": [
 			{
 				"bundle": "System.NLP",
 				"file": ""
