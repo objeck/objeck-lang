@@ -74,7 +74,7 @@ class Settings(BaseSettings):
         "net_h2", "net_quic", "net_server", "web_server", "odbc", "query_odbc",
         "query_server", "query_vision", "sdl2", "sdl_game", "sdl_gl", "lame",
         "json_rpc", "json_stream", "rss", "gemini", "ollama", "openai",
-        "inference", "models", "onnx", "opencv",
+        "inference", "models", "onnx", "opencv", "nlp_onnx",
     }
 
     model_config = {"env_prefix": "PLAYGROUND_"}
