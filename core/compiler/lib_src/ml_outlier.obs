@@ -6,7 +6,7 @@
 use Collection;
 
 #~
-Anomaly detection: the OutlierDetector interface and ZScoreDetector, IsolationForest, LocalOutlierFactor, EllipticEnvelope, DbscanDetector and AutoencoderDetector, with scikit-learn's defaults and threshold rules, and SensitivitySweep for precision/recall/F1/FPR tables. Compile with -lib ml.
+Anomaly detection: the OutlierDetector interface and ZScoreDetector, IsolationForest, LocalOutlierFactor, EllipticEnvelope, DbscanDetector, AutoencoderDetector and OneClassSvmDetector, with scikit-learn's defaults and threshold rules, and SensitivitySweep for precision/recall/F1/FPR tables. Compile with -lib ml.
 ~#
 bundle System.ML {
 	#~
@@ -3502,6 +3502,235 @@ errors := ae->Score(X_test);
 		~#
 		method : public : GetSensitivityName() ~ String {
 			return "percentile";
+		}
+
+		#~
+		Why the last call failed.
+		@return the reason, or an empty string
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+	}
+
+	#~
+	One-Class SVM as an OutlierDetector, so nu can be swept like any other
+	detector's setting. A thin adapter over OneClassSVM (ml_svm.obs), which keeps
+	scikit-learn's signs: its DecisionFunction is positive inside the boundary and
+	its Predict answers +1 / -1. Here, as for every OutlierDetector, Predict is Bool
+	with true = outlier and Score is higher-is-more-anomalous: Score is
+	OneClassSVM's PredictScore, the negated decision value, the threshold is 0.0, and
+	a row is an outlier when its decision value is below 0 -- exactly
+	OneClassSVM->IsOutlier and scikit-learn's predict.
+
+	nu is the sensitivity setting: an upper bound on the training fraction left
+	outside and a lower bound on the support-vector fraction. It changes the model,
+	so SetSensitivity unfits the detector. Defaults are scikit-learn's: RBF kernel,
+	nu 0.5, gamma 'scale'.
+
+```
+svm := OneClassSvmDetector->New(SvmKernel->RBF, 0.05);
+flags := svm->FitPredict(X);
+```
+	~#
+	class OneClassSvmDetector implements OutlierDetector {
+		@model : OneClassSVM;
+		@nu : Float;
+		@cols : Int;
+		@train_scores : Float[];
+		@fitted : Bool;
+		@error : String;
+
+		#~
+		Constructor with scikit-learn's defaults: RBF kernel, nu 0.5, gamma 'scale'.
+		~#
+		New() {
+			@model := OneClassSVM->New(SvmKernel->RBF);
+			@nu := 0.5;
+			@fitted := false;
+			@error := "";
+		}
+
+		#~
+		Constructor; gamma is 'scale'.
+		@param kernel kernel function
+		@param nu bound on the training outlier fraction, in (0, 1]
+		~#
+		New(kernel : SvmKernel, nu : Float) {
+			@model := OneClassSVM->New(kernel, nu);
+			@nu := nu;
+			@fitted := false;
+			@error := "";
+		}
+
+		#~
+		Wraps a configured OneClassSVM (kernel, gamma, tolerance and so on are kept;
+		SetSensitivity changes its nu).
+		@param model the one-class SVM
+		~#
+		New(model : OneClassSVM) {
+			@model := model;
+			@nu := 0.5;
+			if(model <> Nil) {
+				@nu := model->GetNu();
+			};
+			@fitted := false;
+			@error := "";
+		}
+
+		#~
+		Fits the boundary.
+		@param X rows x features
+		@return true on success
+		~#
+		method : public : Fit(X : Float[,]) ~ Bool {
+			@fitted := false;
+			if(@model = Nil) {
+				@error := "no model";
+				return false;
+			};
+
+			@error := OutlierKit->CheckTrain(X);
+			if(@error <> Nil) {
+				return false;
+			};
+			@error := "";
+
+			if(<>@model->Fit(X)) {
+				@error := @model->GetLastError();
+				return false;
+			};
+
+			dims := X->Size();
+			@cols := dims[1];
+			@train_scores := @model->PredictScore(X);
+			@fitted := @train_scores <> Nil;
+			return @fitted;
+		}
+
+		#~
+		Fits, then labels the training rows.
+		@param X rows x features
+		@return labels (true = outlier), or Nil when the fit failed
+		~#
+		method : public : FitPredict(X : Float[,]) ~ Bool[] {
+			if(<>Fit(X)) {
+				return Nil;
+			};
+
+			return OutlierKit->Flags(@train_scores, 0.0);
+		}
+
+		#~
+		Labels rows: true where the decision value is below 0 (outside the boundary).
+		@param X rows x features
+		@return labels, or Nil when unfitted or the input is refused
+		~#
+		method : public : Predict(X : Float[,]) ~ Bool[] {
+			return OutlierKit->Flags(Score(X), 0.0);
+		}
+
+		#~
+		The negated decision value: higher means more anomalous.
+		@param X rows x features
+		@return scores, or Nil when unfitted or the input is refused
+		~#
+		method : public : Score(X : Float[,]) ~ Float[] {
+			if(<>@fitted) {
+				@error := "not fitted";
+				return Nil;
+			};
+
+			error := OutlierKit->CheckScore(X, @cols);
+			if(error <> Nil) {
+				@error := error;
+				return Nil;
+			};
+
+			return @model->PredictScore(X);
+		}
+
+		#~
+		Score minus the threshold 0.0, i.e. the negated decision value; positive
+		means outlier.
+		@param X rows x features
+		@return values, or Nil when unfitted or the input is refused
+		~#
+		method : public : DecisionFunction(X : Float[,]) ~ Float[] {
+			return OutlierKit->Decision(Score(X), 0.0);
+		}
+
+		#~
+		The training rows' scores.
+		@return scores, or Nil when unfitted
+		~#
+		method : public : GetTrainingScores() ~ Float[] {
+			return @train_scores;
+		}
+
+		#~
+		The threshold on Score, which is 0.0: the boundary itself.
+		@return 0.0
+		~#
+		method : public : GetThreshold() ~ Float {
+			return 0.0;
+		}
+
+		#~
+		The wrapped OneClassSVM.
+		@return the model
+		~#
+		method : public : GetModel() ~ OneClassSVM {
+			return @model;
+		}
+
+		#~
+		Whether the detector is fitted.
+		@return true when fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @fitted;
+		}
+
+		#~
+		Sets nu; the detector becomes unfitted, since nu changes the boundary.
+		@param value nu in (0, 1]
+		@return false when out of range
+		~#
+		method : public : SetSensitivity(value : Float) ~ Bool {
+			if(value <= 0.0 | value > 1.0 | value <> value) {
+				@error := "nu must be in (0, 1]";
+				return false;
+			};
+
+			if(@model = Nil) {
+				@error := "no model";
+				return false;
+			};
+
+			if(value <> @nu) {
+				@nu := value;
+				@model->SetNu(value);
+				@fitted := false;
+			};
+
+			return true;
+		}
+
+		#~
+		nu.
+		@return nu
+		~#
+		method : public : GetSensitivity() ~ Float {
+			return @nu;
+		}
+
+		#~
+		The setting's name.
+		@return "nu"
+		~#
+		method : public : GetSensitivityName() ~ String {
+			return "nu";
 		}
 
 		#~
