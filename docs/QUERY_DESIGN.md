@@ -1573,7 +1573,8 @@ value      := text | '?' | word                          -- a LIKE or MATCHES pa
 An expression produces, for each row, one of: a whole number (Int), a number (Float), text, a
 date, a Bool, another object (a cell of an OBJECT column that is none of these), or an empty
 value. Columns give their cells by their storage type; an OBJECT column's cell is classified by
-its class (`IntRef`, `FloatRef`, `String`, `Date`, `BoolRef`; any other class is an object).
+its class (`IntRef`, `FloatRef`, `String`, `Date`, `BoolRef`; any other class is an object, and
+a `BoolRef` there is a Bool that compares as an object, rule 6 below).
 Literals: a number as written (a whole number is an Int, anything with a `.` or an exponent a
 Float), text, a date, `TRUE`/`FALSE` as 1 and 0, `NULL` as empty. A placeholder has its bound
 value's kind.
@@ -1609,15 +1610,19 @@ always been compared with a constant (section 3, "Phase 2" and "Phase 6" in "As 
 2. Two Ints compare exactly (so `2^53 + 1 > 2^53`).
 3. Two numbers otherwise compare as Floats; if either is NaN they cannot be ordered.
 4. Two texts compare as text; two dates in time order.
-5. Two Bools compare with false before true; a Bool read from a BOOL column also compares with
-   the whole numbers 0 and 1 (which is what `TRUE` and `FALSE` are), as those numbers.
-6. Two objects of the same class compare by that class's `Compare`.
+5. A Bool read from a BOOL column compares, false before true, with another such Bool, with any
+   other Bool (an OBJECT cell's or a placeholder's), and with the whole numbers 0 and 1 (which
+   is what `TRUE` and `FALSE` are).
+6. Two other values of the same class (cells of OBJECT columns and placeholders' values that are
+   none of the kinds above, and Bools that are not from a BOOL column) compare by that class's
+   `Compare`, called on the left one, as `Cell->Compare` does.
 7. Anything else cannot be ordered.
 
-Rule 5's asymmetry is the engine's today, kept on purpose: `flag = true` matches a BOOL
-column, while a `BoolRef` in an OBJECT column, compared with the number 1, does not
-(`Cell->Compare`). With it, every pair of a column type and a constant compares exactly as the
-existing `Filter` compares them, which is what makes reduction (below) safe.
+Rules 5 and 6 are the engine's today, kept on purpose though they are uneven: `flag = true`
+matches a BOOL column, while a `BoolRef` in an OBJECT column compared with the number 1 does
+not, and `BoolRef->Compare` tells only equal from unequal. With them, every pair of a column type
+and a constant compares exactly as the existing `Filter` compares them, which is what makes
+reduction (below) safe.
 
 Values that cannot be ordered satisfy only `<>`. So NaN satisfies only `<>`, as it does today,
 and sorts after every number. `NOT` is the complement of a condition's rows, empty cells
