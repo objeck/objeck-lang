@@ -1,0 +1,413 @@
+# EXTRA_LIBS: net,net_server,regex,csv,misc,query,query_server,concurrent
+#~
+Query.Structured's TableServer answering requests at once (docs/QUERY_DESIGN.md, "A server
+that answers at once"). Eight client threads send SELECTs, table downloads and bad SQL to an
+in-process TableServer at the same moment, in CSV, JSON and .otab, and every answer must equal
+the one a catalog of the same tables gives on one thread. Then the program writes a published
+table from its main thread while clients read it, each change between BeginWrite and EndWrite:
+between changes every a is its row's id plus the number of changes so far and every b is minus
+that, so a read that saw a change half done would show it. Meanwhile a client sends statements
+that would write (INSERT, UPDATE, DELETE, CREATE and DROP INDEX, CREATE TABLE), and every one
+must be refused and change nothing.
+~#
+use Collection, System.IO.Net, Web.HTTP.Server, Query.Structured, Query.Structured.Server;
+
+class ServerClient from System.Concurrency.Thread {
+	@paths : String[];
+	@posts : String[];
+	@accepts : String[];
+	@expected : String[];
+	@barrier : System.Concurrency.Barrier;
+	@rounds : Int;
+	@wrong : Int;
+	@first : String;
+
+	New(paths : String[], posts : String[], accepts : String[], expected : String[], barrier : System.Concurrency.Barrier, rounds : Int) {
+		Parent("server_client");
+		@paths := paths;
+		@posts := posts;
+		@accepts := accepts;
+		@expected := expected;
+		@barrier := barrier;
+		@rounds := rounds;
+	}
+
+	method : public : GetWrong() ~ Int { return @wrong; }
+	method : public : GetFirst() ~ String { return @first; }
+
+	method : public : Run(param : System.Base) ~ Nil {
+		each(round : @rounds) {
+			each(i : @paths) {
+				@barrier->Await();
+				got := QueryServerConcurrent->Ask(@paths[i], @posts[i], @accepts[i]);
+				if(<>got->Equals(@expected[i])) {
+					@wrong += 1;
+					if(@first = Nil) {
+						@first := "'{$(@paths[i])}' {$(@posts[i])} gave '{$got}', not '{$(@expected[i])}'";
+					};
+				};
+			};
+		};
+	}
+}
+
+# reads the pairs table while the program writes it
+class PairReader from System.Concurrency.Thread {
+	@stop : Bool;
+	@reads : Int;
+	@torn : Int;
+	@failed : Int;
+	@first : String;
+
+	New() {
+		Parent("pair_reader");
+	}
+
+	method : public : Stop() ~ Nil { @stop := true; }
+	method : public : GetReads() ~ Int { return @reads; }
+	method : public : GetTorn() ~ Int { return @torn; }
+	method : public : GetFailed() ~ Int { return @failed; }
+	method : public : GetFirst() ~ String { return @first; }
+
+	method : public : Run(param : System.Base) ~ Nil {
+		while(<>@stop | @reads = 0) {
+			got := QueryServerConcurrent->Ask("/query", "select count(*) as n, sum(a) as sa, sum(b) as sb, min(a) as lo, max(a) as hi from pairs", "text/csv");
+			@reads += 1;
+			lines := got->Split("
+");
+			if(lines->Size() < 2 | <>lines[0]->Trim()->Equals("n,sa,sb,lo,hi")) {
+				@failed += 1;
+				if(@first = Nil) {
+					@first := "a read gave '{$got}'";
+				};
+			}
+			else {
+				# whole changes only: every a is its id plus the number of changes so far, and
+				# every b is minus that
+				fields := lines[1]->Trim()->Split(",");
+				whole := fields->Size() = 5;
+				if(whole) {
+					whole := fields[0]->Equals("2000") & fields[1]->ToInt() + fields[2]->ToInt() = 0 &
+						fields[4]->ToInt() - fields[3]->ToInt() = 1999;
+				};
+				if(<>whole) {
+					@torn += 1;
+					if(@first = Nil) {
+						@first := "a read during a write saw '{$(lines[1]->Trim())}'";
+					};
+				};
+			};
+		};
+	}
+}
+
+# sends statements that would write, which must all be refused
+class WriteSender from System.Concurrency.Thread {
+	@stop : Bool;
+	@sent : Int;
+	@accepted : Int;
+	@first : String;
+
+	New() {
+		Parent("write_sender");
+	}
+
+	method : public : Stop() ~ Nil { @stop := true; }
+	method : public : GetSent() ~ Int { return @sent; }
+	method : public : GetAccepted() ~ Int { return @accepted; }
+	method : public : GetFirst() ~ String { return @first; }
+
+	method : public : Run(param : System.Base) ~ Nil {
+		writes := [
+			"insert into pairs (id, a, b) values (9999, 1, 1)",
+			"update pairs set a = 0",
+			"delete from pairs where id < 10",
+			"create index pairs_a on pairs (a) using hash",
+			"drop index pairs_id on pairs",
+			"create table extra (x int)"];
+		while(<>@stop | @sent < writes->Size()) {
+			sql := writes[@sent % writes->Size()];
+			code := QueryServerConcurrent->Code(sql);
+			@sent += 1;
+			if(code <> 403) {
+				@accepted += 1;
+				if(@first = Nil) {
+					@first := "'{$sql}' was answered {$code}";
+				};
+			};
+		};
+	}
+}
+
+class QueryServerConcurrent {
+	@port : static : Int;
+	@failures : static : Int;
+	@server : static : TableServer;
+
+	function : Server() ~ TableServer { return @server; }
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : StartServer() ~ Bool {
+		@port := 0;
+		server_thread := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				QueryServerConcurrent->Server()->Serve(0);
+			}
+		};
+		server_thread->Execute(Nil);
+
+		waited := 0;
+		while(WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		@port := WebServer->GetBoundPort();
+		return @port > 0;
+	}
+
+	# a GET (post Nil) or a POST of a statement: the answer as text, an .otab answer as the
+	# CSV of the table it holds, with the status code first
+	function : Ask(path : String, post : String, accept : String) ~ String {
+		client := Web.HTTP.HttpClient->New();
+		client->AddHeader("Accept", accept);
+		url := Web.HTTP.Url->New("http://127.0.0.1:{$@port}{$path}");
+		response : Web.HTTP.Response := Nil;
+		if(post <> Nil) {
+			response := client->Post(url, post->ToByteArray(), "text/plain; charset=utf-8");
+		}
+		else {
+			response := client->Get(url);
+		};
+		if(response = Nil) {
+			return "no response";
+		};
+
+		content := response->GetContent();
+		code := response->GetCode();
+		if(code = 200 & accept->Equals("application/x-otab")) {
+			table := content <> Nil ? Table->FromBytes(content) : Nil;
+			return table <> Nil ? Normal(table->ToCsv()) : "200 with an unreadable image";
+		};
+		text := content <> Nil ? content->ToString() : "";
+		return code = 200 ? Normal(text) : "{$code} {$text}";
+	}
+
+	# the status code a POSTed statement gets
+	function : Code(sql : String) ~ Int {
+		client := Web.HTTP.HttpClient->New();
+		response := client->Post(Web.HTTP.Url->New("http://127.0.0.1:{$@port}/query"), sql->ToByteArray(), "text/plain; charset=utf-8");
+		return response <> Nil ? response->GetCode() : 0;
+	}
+
+	# adds 'by' to a column of every row, one cell at a time
+	function : Shift(table : Table, column : String, by : Int) ~ Nil {
+		each(i : table->Size()) {
+			row := table->Get(i);
+			row->Set(column, IntRef->New(row->Get(column)->As(IntRef)->Get() + by));
+		};
+	}
+
+	function : Normal(text : String) ~ String {
+		return text->ReplaceAll("\r\n", "\n");
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		runs := Table->New("runs", ["id", "grp", "score", "label"], [ColumnType->INT, ColumnType->INT, ColumnType->FLOAT, ColumnType->STRING], true);
+		labels := ["cat", "dog", "café", "日本", "owl"];
+		each(i : 6000) {
+			row := runs->Insert();
+			row->Set("id", IntRef->New(i));
+			row->Set("grp", IntRef->New(i % 17));
+			row->Set("score", FloatRef->New((i * 37 % 1000)->As(Float) / 1000.0));
+			row->Set("label", labels[i % 5]);
+		};
+		runs->CreateIndex("grp", IndexKind->HASH);
+		groups := Table->New("groups", ["grp", "name"], [ColumnType->INT, ColumnType->STRING], true);
+		each(g : 17) {
+			row := groups->Insert();
+			row->Set("grp", IntRef->New(g));
+			row->Set("name", "group {$g}");
+		};
+		pairs := Table->New("pairs", ["id", "a", "b"], [ColumnType->INT, ColumnType->INT, ColumnType->INT], true);
+		each(i : 2000) {
+			row := pairs->Insert();
+			row->Set("id", IntRef->New(i));
+			row->Set("a", IntRef->New(i));
+			row->Set("b", IntRef->New(-i));
+		};
+		pairs->CreateIndex("pairs_id", "id", IndexKind->SORTED);
+
+		@server := TableServer->New();
+		@server->Publish(runs);
+		@server->Publish(groups);
+		@server->Publish(pairs);
+		@server->SetRowLimit(10000);
+
+		# the oracle: a catalog of the same tables, on this thread
+		oracle := Catalog->New();
+		oracle->Add(runs);
+		oracle->Add(groups);
+		oracle->Add(pairs);
+
+		sqls := [
+			"select grp, count(*) as n, sum(score) as total from runs group by grp order by grp",
+			"select label, min(score) as lo, max(score) as hi from runs where grp = 3 group by label order by label",
+			"select id, score from runs where score > 0.99 order by score desc, id limit 20",
+			"select g.name, count(*) as n from runs r join groups g on r.grp = g.grp where r.label = 'café' group by g.name order by g.name",
+			"select count(*) as n, sum(a) as sa, sum(b) as sb from pairs where id between 100 and 900",
+			"select distinct label from runs order by label"];
+		accepts := ["text/csv", "application/json", "application/x-otab"];
+
+		paths := Vector->New()<String>;
+		posts := Vector->New()<String>;
+		kinds := Vector->New()<String>;
+		expected := Vector->New()<String>;
+		each(q : sqls) {
+			accept := accepts[q % accepts->Size()];
+			paths->AddBack("/query");
+			posts->AddBack(sqls[q]);
+			kinds->AddBack(accept);
+			result := oracle->Query(sqls[q]);
+			if(result = Nil) {
+				"FAIL: the oracle cannot answer '{$(sqls[q])}': {$(oracle->GetError())}"->PrintLine();
+				Runtime->Exit(1);
+			};
+			if(accept->Equals("application/json")) {
+				expected->AddBack(Normal(result->ToJson()));
+			}
+			else {
+				expected->AddBack(Normal(result->ToCsv()));
+			};
+		};
+		paths->AddBack("/tables/groups");
+		posts->AddBack(Nil);
+		kinds->AddBack("application/json");
+		expected->AddBack(Normal(groups->ToJson()));
+		paths->AddBack("/tables/pairs");
+		posts->AddBack(Nil);
+		kinds->AddBack("application/x-otab");
+		expected->AddBack(Normal(pairs->ToCsv()));
+		paths->AddBack("/query");
+		posts->AddBack("select nothing from nowhere");
+		kinds->AddBack("text/csv");
+		oracle->Query("select nothing from nowhere");
+		expected->AddBack("400 {$(oracle->GetError())}");
+
+		if(<>StartServer()) {
+			"FAIL: a server answering at once (the server did not start)"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		# every answer, one client at a time, is the oracle's
+		alone := 0;
+		each(i : paths) {
+			got := Ask(paths->Get(i), posts->Get(i), kinds->Get(i));
+			if(<>got->Equals(expected->Get(i))) {
+				alone += 1;
+				"    alone: '{$(paths->Get(i))}' {$(posts->Get(i))} gave '{$got}'"->PrintLine();
+			};
+		};
+		Check("one client's answers are the oracle's", alone = 0);
+
+		# and with eight clients at once, meeting before each request
+		threads := 8;
+		rounds := 6;
+		barrier := System.Concurrency.Barrier->New(threads);
+		clients := ServerClient->New[threads];
+		each(t : threads) {
+			clients[t] := ServerClient->New(paths->ToArray(), posts->ToArray(), kinds->ToArray(), expected->ToArray(), barrier, rounds);
+		};
+		answered := @server->GetAnswered();
+		each(t : threads) {
+			clients[t]->Execute(Nil);
+		};
+		each(t : threads) {
+			clients[t]->Join();
+		};
+		wrong := 0;
+		first : String := Nil;
+		each(t : threads) {
+			wrong += clients[t]->GetWrong();
+			if(first = Nil) {
+				first := clients[t]->GetFirst();
+			};
+		};
+		Check("eight clients at once get the oracle's answers ({$wrong} of {$(threads * rounds * paths->Size())} did not)", wrong = 0);
+		if(first <> Nil) {
+			"    {$first}"->PrintLine();
+		};
+		Check("and every request was counted", @server->GetAnswered() - answered = threads * rounds * paths->Size());
+
+		# the program writes the pairs table while clients read it and send writes of their own
+		readers := PairReader->New[4];
+		each(r : readers) {
+			readers[r] := PairReader->New();
+			readers[r]->Execute(Nil);
+		};
+		sender := WriteSender->New();
+		sender->Execute(Nil);
+
+		changes := 60;
+		each(c : changes) {
+			@server->BeginWrite();
+			# half done here: a + b is 1 for every row until b follows
+			Shift(pairs, "a", 1);
+			Shift(pairs, "b", -1);
+			@server->EndWrite();
+			System.Concurrency.Thread->Sleep(2);
+		};
+
+		each(r : readers) {
+			readers[r]->Stop();
+		};
+		sender->Stop();
+		reads := 0;
+		torn := 0;
+		failed := 0;
+		first := Nil;
+		each(r : readers) {
+			readers[r]->Join();
+			reads += readers[r]->GetReads();
+			torn += readers[r]->GetTorn();
+			failed += readers[r]->GetFailed();
+			if(first = Nil) {
+				first := readers[r]->GetFirst();
+			};
+		};
+		sender->Join();
+		Check("no read saw a write half done ({$torn} of {$reads} did)", torn = 0);
+		Check("and every read was answered ({$failed} were not)", failed = 0);
+		if(first <> Nil) {
+			"    {$first}"->PrintLine();
+		};
+		Check("statements that would write were all refused ({$(sender->GetAccepted())} of {$(sender->GetSent())} were not)", sender->GetAccepted() = 0);
+		if(sender->GetFirst() <> Nil) {
+			"    {$(sender->GetFirst())}"->PrintLine();
+		};
+
+		final := oracle->Query("select count(*) as n, sum(a) as sa, sum(b) as sb, min(a) as lo, max(a) as hi from pairs");
+		total := 1999000 + 2000 * changes;
+		last := 1999 + changes;
+		got := final <> Nil ? Normal(final->ToCsv()) : "Nil";
+		Check("the table holds exactly the program's changes ({$got})", got->Equals("n,sa,sb,lo,hi\n2000,{$total},-{$total},{$changes},{$last}\n"));
+		Check("and the indexes the program made, no others", pairs->HasIndex("id") & <>pairs->HasIndex("a"));
+
+		@server->Stop();
+		if(@failures = 0) {
+			"PASS: a table server answering requests at once"->PrintLine();
+		}
+		else {
+			"FAIL: a table server answering requests at once ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

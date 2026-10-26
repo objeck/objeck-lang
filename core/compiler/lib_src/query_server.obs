@@ -21,8 +21,12 @@ bundle Query.Structured.Server {
 	the default. Only SELECT is answered: a statement that would change data is refused (403),
 	and so is a query that names a file or a URL, which would let a client read the server's
 	disk or make it fetch an address. A result larger than the row limit is refused (413)
-	rather than cut short. Queries run one at a time, since tables are not shared between
-	threads. RemoteSource reads a published table from another program.
+	rather than cut short. RemoteSource reads a published table from another program.
+
+	Requests are answered at once, each on its own thread, since they only read. The program
+	that published the tables may change them while the server runs, but only between
+	BeginWrite and EndWrite, which wait for the requests being answered to finish and hold new
+	ones until the change is done; a table may not be written while another thread reads it.
 
 	Web.HTTP.Server runs one server per process, so one TableServer serves at a time.
 
@@ -31,12 +35,18 @@ server := TableServer->New();
 server->Publish(runs);
 server->SetRowLimit(50000);
 server->Serve(8090); # blocks; GET http://localhost:8090/tables/runs
+
+# on another thread, while it serves
+server->BeginWrite();
+runs->Execute("update runs set score = 0 where score < 0");
+server->EndWrite();
 ```
 	~#
 	class TableServer {
 		@catalog : Catalog;
 		@row_limit : Int;
 		@mutex : ThreadMutex;
+		@access : ReadWriteLock;
 		@answered : Int;
 		@active : static : TableServer;
 
@@ -48,29 +58,48 @@ server->Serve(8090); # blocks; GET http://localhost:8090/tables/runs
 			@catalog->SetFileAccess(false);
 			@row_limit := 100000;
 			@mutex := ThreadMutex->New("table_server");
+			@access := ReadWriteLock->New();
 		}
 
 		#~
-		Publishes a table under its name, replacing one of the same name
+		Publishes a table under its name, replacing one of the same name. A request already
+		being answered keeps the tables it found.
 		@param table table
 		~#
 		method : public : Publish(table : Table) ~ Nil {
-			critical(@mutex) {
-				@catalog->Add(table);
-			};
+			@catalog->Add(table);
 		}
 
 		#~
-		Stops publishing a table
+		Stops publishing a table. A request already being answered keeps the tables it found.
 		@param name table name
 		@return true if it was published
 		~#
 		method : public : Unpublish(name : String) ~ Bool {
-			removed := false;
-			critical(@mutex) {
-				removed := @catalog->Remove(name);
-			};
-			return removed;
+			return @catalog->Remove(name);
+		}
+
+		#~
+		Waits until no request is being answered, then holds new requests until EndWrite, so
+		the program may change its published tables: INSERT, UPDATE, DELETE, an index, a column,
+		Compact, or anything else that writes a table. Requests read the published tables at
+		once, and a table may not be written while another thread reads it. Call EndWrite when
+		done; a thread that called BeginWrite may not call it again before then.
+		```
+server->BeginWrite();
+runs->Execute("delete from runs where score < 0");
+server->EndWrite();
+		```
+		~#
+		method : public : BeginWrite() ~ Nil {
+			@access->BeginWrite();
+		}
+
+		#~
+		Ends a change BeginWrite began: requests are answered again
+		~#
+		method : public : EndWrite() ~ Nil {
+			@access->EndWrite();
 		}
 
 		#~
@@ -86,7 +115,11 @@ server->Serve(8090); # blocks; GET http://localhost:8090/tables/runs
 		@return requests answered
 		~#
 		method : public : GetAnswered() ~ Int {
-			return @answered;
+			answered := 0;
+			critical(@mutex) {
+				answered := @answered;
+			};
+			return answered;
 		}
 
 		#~
@@ -110,11 +143,15 @@ server->Serve(8090); # blocks; GET http://localhost:8090/tables/runs
 			return @active;
 		}
 
-		# one request, under the lock: Catalog keeps plan caches that two threads must not
-		# change at once
+		# one request, on the thread the web server gave it: any number at once, since a
+		# request only reads (a catalog and its tables may be queried by many threads, and each
+		# thread reads back its own errors), but none while the program writes a table
 		method : public : Answer(request : Request, response : Response, body : String) ~ Nil {
+			@access->BeginRead();
+			Handle(request, response, body);
+			@access->EndRead();
+
 			critical(@mutex) {
-				Handle(request, response, body);
 				@answered += 1;
 			};
 		}
@@ -176,19 +213,22 @@ server->Serve(8090); # blocks; GET http://localhost:8090/tables/runs
 			names := @catalog->GetNames();
 			each(i : names) {
 				table := @catalog->Get(names[i]);
-				if(i > 0) {
-					text += ",";
-				};
-				text += "{\"name\":\"" + Data.JSON.JsonElement->Encode(names[i]) + "\",\"rows\":{$(table->Size())},\"columns\":[";
-				columns := table->GetColumnNames();
-				for(c := 1; c < columns->Size(); c += 1;) {
-					if(c > 1) {
+				# unpublished since GetNames: left out
+				if(table <> Nil) {
+					if(text->Size() > 1) {
 						text += ",";
 					};
-					type := Column->TypeName(table->GetColumn(c)->GetType());
-					text += "{\"name\":\"" + Data.JSON.JsonElement->Encode(columns[c]) + "\",\"type\":\"{$type}\"}";
+					text += "{\"name\":\"" + Data.JSON.JsonElement->Encode(names[i]) + "\",\"rows\":{$(table->Size())},\"columns\":[";
+					columns := table->GetColumnNames();
+					for(c := 1; c < columns->Size(); c += 1;) {
+						if(c > 1) {
+							text += ",";
+						};
+						type := Column->TypeName(table->GetColumn(c)->GetType());
+						text += "{\"name\":\"" + Data.JSON.JsonElement->Encode(columns[c]) + "\",\"type\":\"{$type}\"}";
+					};
+					text += "]}";
 				};
-				text += "]}";
 			};
 			text += "]";
 			response->SetHeader("Content-Type", "application/json; charset=utf-8");
@@ -286,6 +326,58 @@ server->Serve(8090); # blocks; GET http://localhost:8090/tables/runs
 				return;
 			};
 			server->Answer(request, response, body);
+		}
+	}
+
+	# Many readers or one writer. A writer that is waiting holds new readers off, so a steady
+	# stream of requests cannot keep a change waiting for ever; the readers already in finish
+	# first. A thread waiting here is parked for the collector, as in any Condition wait.
+	class : private : ReadWriteLock {
+		@mutex : ThreadMutex;
+		@changed : Condition;
+		@readers : Int;
+		@writing : Bool;
+		@writers_waiting : Int;
+
+		New() {
+			@mutex := ThreadMutex->New("table_server_access");
+			@changed := Condition->New();
+		}
+
+		method : public : BeginRead() ~ Nil {
+			critical(@mutex) {
+				while(@writing | @writers_waiting > 0) {
+					@changed->Wait(@mutex);
+				};
+				@readers += 1;
+			};
+		}
+
+		method : public : EndRead() ~ Nil {
+			critical(@mutex) {
+				@readers -= 1;
+				if(@readers = 0) {
+					@changed->Broadcast();
+				};
+			};
+		}
+
+		method : public : BeginWrite() ~ Nil {
+			critical(@mutex) {
+				@writers_waiting += 1;
+				while(@writing | @readers > 0) {
+					@changed->Wait(@mutex);
+				};
+				@writers_waiting -= 1;
+				@writing := true;
+			};
+		}
+
+		method : public : EndWrite() ~ Nil {
+			critical(@mutex) {
+				@writing := false;
+				@changed->Broadcast();
+			};
 		}
 	}
 }
