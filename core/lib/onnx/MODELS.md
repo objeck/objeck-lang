@@ -84,6 +84,32 @@ curl -L -o buffalo_l.zip \
 unzip buffalo_l.zip det_10g.onnx w600k_r50.onnx -d data/models/
 ```
 
+## Text Encoders (BERT family)
+
+Used by `System.NLP.Onnx.BertEmbedder` (`-lib models,opencv,cipher,json,onnx,nlp,nlp_onnx`) for
+sentence embeddings; the encoder is frozen and a classifier is trained on its output
+(`docs/ML_BERT_DESIGN.md`). Any BERT-family export with this signature works:
+
+| Tensor | Type | Shape |
+|---|---|---|
+| `input_ids` | INT64 | [batch, sequence] |
+| `attention_mask` | INT64 | [batch, sequence] (optional) |
+| `token_type_ids` | INT64 | [batch, sequence] (absent from DistilBERT) |
+| `last_hidden_state` | FP32 | [batch, sequence, hidden] |
+| `pooler_output` | FP32 | [batch, hidden] (optional; BERT has it, DistilBERT does not) |
+
+- **Files**: `model.onnx` and the model's `vocab.txt` (WordPiece, one token per line)
+- **Source**: e.g. [bert-base-uncased](https://huggingface.co/bert-base-uncased), exported with
+  dynamic axes:
+  ```bash
+  pip install optimum[exporters]
+  optimum-cli export onnx --model bert-base-uncased bert-base-uncased-onnx/
+  ```
+  The output directory holds `model.onnx` and `vocab.txt`. An uncased model takes the
+  embedder's default tokenizer; a cased one needs `WordPieceTokenizer->New(vocab, false, false)`.
+- **Size**: ~440 MB (bert-base), ~90 MB (all-MiniLM-L6-v2)
+- An export with fixed axes works when its sequence length equals the embedder's `max_len`.
+
 ## Expected Directory Layout
 
 ```

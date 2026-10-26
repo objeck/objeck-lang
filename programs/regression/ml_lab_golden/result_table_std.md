@@ -1,0 +1,8 @@
+### Forest: trees
+
+| n_estimators | test_accuracy | fit_ms |
+|---|---:|---:|
+| 10 | 0.9000 ± 0.0125 | 10.0 ± 1.5 |
+| 100 | 0.9500 ± 0.0000 | 100.2 ± 12.0 |
+
+_repeats=3 seeds (1, 2, 3), cells are mean and sample standard deviation_

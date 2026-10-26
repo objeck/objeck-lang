@@ -1,0 +1,204 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+System.ML ConfusionMatrix, Metrics->FalsePositiveRate and SensitivitySweep.
+
+ConfusionMatrix is checked against hand-counted examples, including every zero
+denominator (each documented to give 0.0, as scikit-learn's zero_division=0).
+The sweep is checked against doing the same work by hand: for a threshold-only
+detector (z-score) one fit per setting must give the same table as the sweep's
+reuse of one fit; for a model setting (DBSCAN's eps) the sweep must refit and
+match a fresh DBSCAN per setting; the held-out form uses Predict; a rejected
+setting and a detector that cannot score new rows are recorded, not fatal.
+~#
+use System.ML;
+
+class MlOutlierSweep {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		ok := Confusion() & ok;
+		ok := Sweeps() & ok;
+
+		if(ok) {
+			"PASS: ml_outlier_sweep"->PrintLine();
+		}
+		else {
+			"FAIL: ml_outlier_sweep"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Confusion() ~ Bool {
+		# predictions T T T F F F F T, actuals T T F T F F F F:
+		# TP 2 (rows 0, 1), FP 2 (rows 2, 7), FN 1 (row 3), TN 3 (rows 4, 5, 6)
+		p := [true, true, true, false, false, false, false, true];
+		a := [true, true, false, true, false, false, false, false];
+		cm := ConfusionMatrix->New(p, a);
+		passed := Report("counts TP 2 FP 2 TN 3 FN 1", cm->GetTruePositives() = 2 & cm->GetFalsePositives() = 2 &
+			cm->GetTrueNegatives() = 3 & cm->GetFalseNegatives() = 1 & cm->IsValid());
+		passed := Report("total 8, flagged 4", cm->GetTotal() = 8 & cm->GetFlagged() = 4) & passed;
+		passed := Report("precision 2/4", Near(cm->GetPrecision(), 0.5)) & passed;
+		passed := Report("recall 2/3", Near(cm->GetRecall(), 2.0 / 3.0)) & passed;
+		passed := Report("F1 4/7", Near(cm->GetF1(), 4.0 / 7.0)) & passed;
+		passed := Report("FPR 2/5", Near(cm->GetFalsePositiveRate(), 0.4)) & passed;
+		passed := Report("specificity 3/5", Near(cm->GetSpecificity(), 0.6)) & passed;
+		passed := Report("accuracy 5/8", Near(cm->GetAccuracy(), 0.625)) & passed;
+		passed := Report("agrees with Metrics->Precision/Recall/F1Score",
+			Near(cm->GetPrecision(), Metrics->Precision(p, a)) & Near(cm->GetRecall(), Metrics->Recall(p, a)) &
+			Near(cm->GetF1(), Metrics->F1Score(p, a))) & passed;
+		passed := Report("Metrics->FalsePositiveRate is 2/5", Near(Metrics->FalsePositiveRate(p, a), 0.4)) & passed;
+		m := cm->ToMatrix();
+		legacy := Metrics->ConfusionMatrix(p, a);
+		passed := Report("ToMatrix matches Metrics->ConfusionMatrix's layout",
+			m[0, 0] = legacy[0, 0] & m[0, 1] = legacy[0, 1] & m[1, 0] = legacy[1, 0] & m[1, 1] = legacy[1, 1]) & passed;
+
+		# zero denominators
+		none := ConfusionMatrix->New([false, false, false], [true, false, false]);
+		passed := Report("nothing flagged: precision 0, F1 0", none->GetPrecision() = 0.0 & none->GetF1() = 0.0) & passed;
+		no_pos := ConfusionMatrix->New([true, false], [false, false]);
+		passed := Report("no real positives: recall 0", no_pos->GetRecall() = 0.0 & no_pos->GetFalsePositiveRate() = 0.5) & passed;
+		no_neg := ConfusionMatrix->New([true, false], [true, true]);
+		passed := Report("no real negatives: FPR 0, specificity 0", no_neg->GetFalsePositiveRate() = 0.0 & no_neg->GetSpecificity() = 0.0) & passed;
+		empty := ConfusionMatrix->New(Bool->New[0], Bool->New[0]);
+		passed := Report("empty: every rate 0", empty->GetAccuracy() = 0.0 & empty->GetPrecision() = 0.0 &
+			empty->GetRecall() = 0.0 & empty->GetF1() = 0.0 & empty->GetFalsePositiveRate() = 0.0) & passed;
+		bad := ConfusionMatrix->New([true], [true, false]);
+		passed := Report("mismatched lengths are invalid and zero", <>bad->IsValid() & bad->GetTotal() = 0) & passed;
+		passed := Report("Nil is invalid", <>ConfusionMatrix->New(Nil, a)->IsValid()) & passed;
+		passed := Report("Metrics->FalsePositiveRate guards no negatives", Metrics->FalsePositiveRate([true], [true]) = 0.0) & passed;
+		counts := ConfusionMatrix->New(5, 1, 90, 4);
+		passed := Report("from counts: precision 5/6, recall 5/9", Near(counts->GetPrecision(), 5.0 / 6.0) & Near(counts->GetRecall(), 5.0 / 9.0)) & passed;
+		return passed;
+	}
+
+	function : Sweeps() ~ Bool {
+		X := MakeData(71, 500, 25, 4, 8.0);
+		y := Labels(500, 25);
+		names := ["Low", "Medium", "High"];
+
+		# z-score: the threshold only moves the cut; equal to one fit per setting
+		settings := [3.0, 2.5, 2.0];
+		result := SensitivitySweep->Run(ZScoreDetector->New(), settings, names, X, y);
+		passed := Report("a z-score sweep has 3 rows", result <> Nil & result->Size() = 3);
+		passed := Report("named threshold", result->GetSettingName()->Equals("threshold")) & passed;
+		same := true;
+		each(s : settings) {
+			by_hand := ConfusionMatrix->New(ZScoreDetector->New(settings[s])->FitPredict(X), y);
+			got := result->GetConfusion(s);
+			if(got = Nil | got->GetTruePositives() <> by_hand->GetTruePositives() |
+					got->GetFalsePositives() <> by_hand->GetFalsePositives()) {
+				same := false;
+			};
+		};
+		passed := Report("z-score rows equal a fresh fit per setting", same) & passed;
+		flagged := result->GetConfusion(0)->GetFlagged() < result->GetConfusion(1)->GetFlagged() &
+			result->GetConfusion(1)->GetFlagged() < result->GetConfusion(2)->GetFlagged();
+		passed := Report("Low < Medium < High in flagged rows", flagged) & passed;
+		passed := Report("AUC is reported", result->GetAuc(0) > 0.9) & passed;
+
+		# DBSCAN: eps changes the model; the sweep refits, equal to a fresh DBSCAN
+		eps := [1.5, 1.0, 0.5];
+		scan := SensitivitySweep->Run(DbscanDetector->New(), eps, names, X, y);
+		same := scan <> Nil;
+		if(same) {
+			each(s : eps) {
+				scanner := DBSCAN->New(eps[s], 5);
+				scanner->Fit(X);
+				labels := scanner->GetLabels();
+				noise := Bool->New[labels->Size()];
+				each(i : labels) {
+					noise[i] := labels[i] = -1;
+				};
+				by_hand := ConfusionMatrix->New(noise, y);
+				got := scan->GetConfusion(s);
+				if(got = Nil | got->GetTruePositives() <> by_hand->GetTruePositives() |
+						got->GetFalsePositives() <> by_hand->GetFalsePositives()) {
+					same := false;
+				};
+			};
+		};
+		passed := Report("DBSCAN rows equal DBSCAN's noise at each eps", same) & passed;
+
+		# contamination detectors: sweep equals separate fits
+		forest := SensitivitySweep->Run(IsolationForest->New(), [0.01, 0.05, 0.10], names, X, y);
+		fresh := IsolationForest->New(100, 0, 0.05, 42);
+		by_hand := ConfusionMatrix->New(fresh->FitPredict(X), y);
+		passed := Report("Isolation Forest's 0.05 row equals a fresh fit",
+			forest->GetConfusion(1)->GetTruePositives() = by_hand->GetTruePositives() &
+			forest->GetConfusion(1)->GetFalsePositives() = by_hand->GetFalsePositives()) & passed;
+
+		# held out: fit on one sample, label another with Predict
+		test := MakeData(72, 200, 10, 4, 8.0);
+		y_test := Labels(200, 10);
+		held := SensitivitySweep->Run(IsolationForest->New(), [0.01, 0.05, 0.10], Nil, X, test, y_test);
+		passed := Report("the held-out sweep labels the test rows", held <> Nil & held->GetConfusion(0)->GetTotal() = 210) & passed;
+		passed := Report("unnamed rows are named by value", held->GetName(0)->Has("0.01")) & passed;
+
+		# failures are recorded, not fatal
+		lof := SensitivitySweep->Run(LocalOutlierFactor->New(), [0.05], Nil, X, test, y_test);
+		passed := Report("LOF without novelty cannot label held-out rows: recorded",
+			lof->GetConfusion(0) = Nil & lof->GetError(0)->Has("novelty")) & passed;
+		rejected := SensitivitySweep->Run(ZScoreDetector->New(), [3.0, -1.0, 2.0], Nil, X, y);
+		passed := Report("a rejected setting is recorded and the sweep goes on",
+			rejected->GetConfusion(1) = Nil & rejected->GetConfusion(2) <> Nil & rejected->GetError(1)->Size() > 0) & passed;
+		passed := Report("mismatched labels give Nil", SensitivitySweep->Run(ZScoreDetector->New(), settings, names, X, Labels(5, 1)) = Nil) & passed;
+
+		table := result->ToTable();
+		table->PrintLine();
+		passed := Report("the table has a header and three rows", table->Has("precision") & table->Has("Medium") & table->Has("2.500")) & passed;
+		return passed;
+	}
+
+	function : Labels(n_in : Int, n_out : Int) ~ Bool[] {
+		y := Bool->New[n_in + n_out];
+		for(i := n_in; i < n_in + n_out; i += 1;) {
+			y[i] := true;
+		};
+		return y;
+	}
+
+	function : Gauss(rng : System.ML.Random) ~ Float {
+		acc := 0.0;
+		each(k : 12) {
+			acc += rng->NextReal();
+		};
+		return acc - 6.0;
+	}
+
+	function : MakeData(seed : Int, n_in : Int, n_out : Int, p : Int, spread : Float) ~ Float[,] {
+		rng := System.ML.Random->New(seed);
+		X := Float->New[n_in + n_out, p];
+		z := Float->New[p];
+		each(i : n_in) {
+			each(j : p) {
+				z[j] := Gauss(rng);
+			};
+			each(j : p) {
+				v := z[j];
+				if(j > 0) {
+					v := v + 0.5 * z[j - 1];
+				};
+				X[i, j] := v;
+			};
+		};
+		for(i := n_in; i < n_in + n_out; i += 1;) {
+			each(j : p) {
+				X[i, j] := rng->NextReal() * (2.0 * spread) - spread;
+			};
+		};
+		return X;
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() <= 1.0e-12;
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+		return passed;
+	}
+}

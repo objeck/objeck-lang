@@ -1,0 +1,93 @@
+# EXTRA_LIBS: gen_collect
+#~
+A subscript on the result of a LATER link of a call chain:
+'cells->Get(r)->Get()[c]'.
+
+'GetItems()[0]' has worked since v2026.8.2, but only on the FIRST call of a
+chain. The context analyzer analyzed a call's index expressions in
+AnalyzeMethodCall, which later links of a chain never pass through: a chained
+link's receiver and callee were resolved, its index variable was not, and the
+emitter dereferenced the index variable's missing symbol entry. The compiler
+died with an access violation and no message. The first assertion here could
+not be compiled at all before the fix.
+~#
+use Collection;
+
+class CallIndicesNestedLink {
+	@cells : Vector<FloatArrayRef>;
+	@names : Vector<StringArrayRef>;
+
+	New() {
+		@cells := Vector->New()<FloatArrayRef>;
+		row := Float->New[3];
+		row[0] := 1.5; row[1] := 2.5; row[2] := 3.5;
+		@cells->AddBack(FloatArrayRef->New(row));
+		row2 := Float->New[2];
+		row2[0] := -1.0; row2[1] := 42.0;
+		@cells->AddBack(FloatArrayRef->New(row2));
+
+		@names := Vector->New()<StringArrayRef>;
+		words := String->New[2];
+		words[0] := "alpha"; words[1] := "beta";
+		@names->AddBack(StringArrayRef->New(words));
+	}
+
+	# the construct that crashed the compiler: index on the chain's second link
+	method : public : Cell(r : Int, c : Int) ~ Float {
+		return @cells->Get(r)->Get()[c];
+	}
+
+	method : public : Word(c : Int) ~ String {
+		return @names->Get(0)->Get()[c];
+	}
+
+	method : public : GetCells() ~ Vector<FloatArrayRef> {
+		return @cells;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		t := CallIndicesNestedLink->New();
+
+		ok := Report("an instance-variable chain reads the indexed element", t->Cell(0, 1) = 2.5) & ok;
+		ok := Report("a different row and column read correctly", t->Cell(1, 1) = 42.0 & t->Cell(1, 0) = -1.0) & ok;
+
+		# the index as an expression, and the result inside arithmetic
+		k := 1;
+		v := t->Cell(0, k + 1) * 2.0;
+		ok := Report("an index expression and arithmetic on the result work", v = 7.0) & ok;
+
+		# a chain starting from a local, three links deep
+		cells := t->GetCells();
+		ok := Report("a local-rooted chain reads the indexed element", cells->Get(0)->Get()[2] = 3.5) & ok;
+		ok := Report("a method-call-rooted chain reads the indexed element", t->GetCells()->Get(1)->Get()[1] = 42.0) & ok;
+
+		# non-float elements through the same shape
+		ok := Report("a String[] element reads through a chained link", t->Word(1)->Equals("beta")) & ok;
+
+		# the first-link form still works alongside
+		ref := cells->Get(0);
+		ok := Report("the first-link form is unchanged", ref->Get()[0] = 1.5) & ok;
+
+		# in a loop, with the index being the loop variable
+		sum := 0.0;
+		each(i : 3) {
+			sum += t->GetCells()->Get(0)->Get()[i];
+		};
+		ok := Report("a loop variable serves as the index", sum = 7.5) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}

@@ -99,12 +99,9 @@ text := tokenizer->Decode(enc->GetIds());                     # "he ' s unaffabl
 - Special-token ids are read from the vocabulary by name, never assumed: `[PAD]` is 0 and
   `[CLS]` 101 in Google's vocabularies, but not in every vocabulary.
 - **Unicode without a Unicode database.** Objeck's `ToLower` is ASCII-only and there is no NFD
-  table in the runtime, so the tokenizer carries its own: lowercase for Latin-1, Latin
-  Extended-A, Greek and Cyrillic; decomposition for the accented letters of Latin-1, Latin
-  Extended-A, Greek tonos and Cyrillic й/ё, plus dropping every combining mark
-  (U+0300–U+036F); Hangul syllables decompose algorithmically into jamo, as NFD does. Text
-  outside those ranges passes through unchanged, which differs from Hugging Face only for
-  characters that have case or decompose and are outside them. Documented in the class.
+  table in the runtime, so the tokenizer carries its own tables, generated from Python's
+  `unicodedata` (see "As built" below); Hangul syllables decompose algorithmically into jamo,
+  as NFD does.
 
 ```objeck
 apis := ApiSequenceTokenizer->New();
@@ -130,6 +127,39 @@ text := apis->ToText("CreateFileW,ReadFile", 62); # "CreateFileW ReadFile" -- fo
 - `Save(path)` / `Load(path)` write and read the vocabulary one token per line, the
   `vocab.txt` layout.
 
+**As built (stage 1).**
+
+- The Unicode tables (punctuation, control, nonspacing-mark ranges, lowercase runs, and the
+  NFD-minus-marks decomposition of 2,061 characters) are generated from Python's
+  `unicodedata` by `tools/nlp/gen_wordpiece_tables.py` into a marked block of `nlp.obs`, so
+  coverage is every plane, not the Latin/Greek/Cyrillic subset planned above. Text is decoded
+  to code points first (a surrogate pair is one code point where `Char` is UTF-16), so the
+  same text tokenizes the same on Windows and elsewhere.
+- **Parity.** `gen_wordpiece_parity.py` transcribes Hugging Face's slow `BertTokenizer`
+  (BasicTokenizer, WordpieceTokenizer, and the special-token split `PreTrainedTokenizer`
+  does first) against `unicodedata` and `str.lower()`, builds a 2,163-token vocabulary from
+  the corpus, and records ids for three modes (uncased; cased; lowercase keeping accents).
+  On every line of `docs/*.md` plus 28 multilingual and edge-case lines — 13,052 texts,
+  39,154 cases — the Objeck tokenizer gives identical ids. The committed fixture is a
+  234-text sample of the same (`nlp_wordpiece_parity.obs`); `--all` writes the full corpus
+  for a local run. Two cases are left out of the fixture: no-strip modes on decomposed text,
+  where Hugging Face's NFC step changes the answer and this tokenizer has none.
+- **Found on the way:** `String->SubString` and `String->New(Char[])` end a string at U+0000
+  (both go through `New(array, false)`, which scans for a NUL), while `Append(Char)` keeps it.
+  BERT drops NUL as text, not as an end, so the tokenizer works on code points throughout
+  and never cuts the input with `SubString`; the inconsistency in `lang.obs` is reported,
+  not changed here.
+- **Strings past U+FFFF.** A `Char` value holds any code point on every platform; only
+  `String` storage is UTF-16 on Windows, and `String->Append(Char)` writes a surrogate pair
+  there (#1185). The tokenizer asks `String->IsUtf16Storage()` rather than probing a `Char`,
+  which answers the wrong question.
+- `Encode` stops splitting once it has more pieces than `max_len` can hold: truncation keeps
+  the beginning, and an API trace of hundreds of calls was otherwise split in full to keep its
+  first 126 pieces. The ids are the same; the time halves for long traces.
+- Throughput (Windows build box, `obr`, JIT on): the full parity corpus — 39,154
+  tokenizations of lines averaging ~60 characters, plus reading and comparing — in 5–7 s;
+  `Encode` of a 200-call API trace in 1.4 ms at `max_len` 128 and 2.2 ms at 256.
+
 ### `System.NLP.Onnx` (new `nlp_onnx.obl`): the embedder
 
 ```objeck
@@ -138,7 +168,7 @@ if(<>embedder->IsOpen()) {
   EndPoint->GetLastError()->PrintLine();
   return;
 };
-embedder->SetPooling(BertPooling->MEAN);   # or CLS, or POOLER when the model has one
+embedder->SetPooling(BertEmbedder->Pooling->MEAN);   # or CLS, or POOLER when the model has one
 embedder->SetBatchSize(16);
 X := embedder->Embed(texts);               # Float[texts->Size(), hidden]
 embedder->Close();
@@ -180,6 +210,46 @@ library is the precedent `query_vision.obl` set for the same reason. A program u
 obc -src lab.obs -lib models,opencv,cipher,json,onnx,nlp,nlp_onnx
 ```
 
+or `-lib @vision`, whose group now includes it.
+
+**As built (stage 2).**
+
+- `Pooling` is an enum nested in the class, as `Client->Protocol` is in `API.Inference`:
+  `BertEmbedder->Pooling->MEAN`. `Load(model, vocab, max_len)` is the function form of the
+  three-argument constructor. An input the model declares other than the three is refused at
+  open with its name, rather than left unfilled.
+- With no session options the build's own provider runs the model (DirectML on Windows,
+  CoreML on macOS, CPU on Linux); `"ep" -> "cpu"` in the options map forces the CPU. The test
+  checks both give identical rows. When that default provider cannot open the model — the
+  Windows CI runner has no display adapter, so DirectML refuses every session there, as it
+  would on a laptop without a DirectX 12 GPU — and no options were given, the embedder opens
+  it on the CPU instead and `IsCpuFallback()` says so. Options that name a provider are
+  honoured exactly.
+- **Found on the way: `-lib @vision` had been broken since `onnx.obl` began linking
+  `models.obl`.** The group did not list `models.obl`, and the linker resolves every class a
+  linked library names, so every compile using the alias failed ("Unable to resolve external
+  library class: 'API.Models.TensorSpec'"), whatever the program used. The group now lists
+  `models`, and `nlp_onnx` with `nlp`; `lib_alias_vision.obs` compiles against the alias on
+  every platform so a group that is not closed fails the suite.
+- **Measured** (Windows build box, `obr`, the build's default provider), embedding 512 API
+  traces of 200 calls with MEAN pooling. A real BERT's encoder compute is not in these
+  numbers: the model is the tiny one's graph widened to hidden 768 (an embedding lookup), so
+  they are the cost of everything around the encoder — encoding, building the tensors, the
+  native crossing both ways, splitting the result and pooling:
+
+  | max_len | batch | per text | peak working set |
+  |---|---|---|---|
+  | 128 | 8 | 1.6 ms | 182 MB |
+  | 256 | 1 | 4.9 ms | 120 MB |
+  | 256 | 8 | 5.5 ms | 235 MB |
+  | 256 | 32 | 2.1 ms | 458 MB |
+
+  Encoding the 512 traces with `EncodeBatch` took a further 0.7 s at 128 and 1.1 s at 256.
+  A real BERT's encoder adds its own compute on top, which no model here measures. Peak memory
+  grows with batch × max_len × hidden, as the table shows; the batch-8 row at 256 was slower
+  than both batch 1 and batch 32 in repeated runs, so 32 is the better setting at that length
+  when memory allows.
+
 ### `System.ML` (`ml.obl`): `EmbeddingClassifier`
 
 ```objeck
@@ -209,6 +279,34 @@ yhat := head->PredictClass(X_test, 0.5);                      # Bool[]
   not, the head carries its own forward/backward pass and the duplication is noted for a later
   merge.
 
+**As built (stage 3).**
+
+- **No reuse yet.** The outlier work's `DenseNetwork` (docs/ML_OUTLIERS_DESIGN.md §2.5) is its
+  stage 2 and had not reached master, so `EmbeddingClassifier` (`ml_embed.obs`) has its own
+  dense forward and backward pass. The two overlap in the layer arithmetic and Adam, and
+  differ where their jobs do: that network is trained on mean squared error with Glorot
+  initialisation throughout; this head on class-weighted binary cross-entropy from the logit
+  (a numerically stable `log(1 + e^-|z|)` form), He-uniform before each ReLU and Glorot before
+  the sigmoid. Once `DenseNetwork` lands, the head's layers should become one with a sigmoid
+  output and a BCE loss option; the public API here does not change.
+- Matrix products go through `Matrix2D->DotProduct` (Eigen, in `libobjk_ml`); the elementwise
+  work and the optimizer are Objeck. `GetWeights(layer)` / `GetBias(layer)` return copies, for
+  inspection and for the gradient test.
+- **The loss history** is measured after each epoch on the whole training set with that
+  epoch's final weights, class-weighted and without L2 — so it is a curve of the objective,
+  not an average of minibatch losses taken while the weights moved. `Loss(X, y)` measures the
+  same on any rows, for a validation curve.
+- **Found on the way: the AMD64 JIT refused the update method.** With the SGD loops, the Adam
+  loops and the bias loops in one method, `OBJECK_JIT_REPORT=1` showed "compile failed at
+  instruction 231", and every update ran in the interpreter: 30 s to train a 768→64→1 head
+  for 20 epochs on 2,000 rows. With one loop per method the same training takes 1.8 s, with
+  identical results. The refusal is a JIT defect (a legal method should compile or spill, not
+  fall back silently); a standalone reproduction is reported with this stage rather than
+  fixed in it.
+- **Measured** (Windows build box, `obr`, JIT on), 20 epochs, batch 32, Adam, balanced
+  weights: 2,000 × 768 logistic 0.36 s; 2,000 × 768 → 64 → 1 1.8 s; 500 × 768 → 64 → 1 0.47 s
+  (0.31 s with SGD).
+
 ### The lab example: `programs/examples/ml/bert_malware_lab.obs`
 
 ```
@@ -232,6 +330,26 @@ obr bert_malware_lab.obe --synthetic            # no external data
 - **Experiment 2.** The same split at each MAX_SEQ_LENGTH; the same table per length.
 - **Experiment 3.** One length, the head retrained per learning rate; the per-epoch loss
   histories printed as columns (CSV-ready for plotting), with the final table.
+
+**As built (stage 4).**
+
+- The CSV `api_sequence` field may separate calls with commas as well as spaces and
+  semicolons (quoted), and CRLF files read as LF ones. A 300-row file mixing all three, with
+  `1`/`malware`/`true` labels, loads with the right counts.
+- POSRATIO keeps every training negative and adds the positives the ratio calls for; when the
+  pool has too few positives (0.50 usually), it keeps them all and drops negatives instead, and
+  the table prints the training size and its positives so the reader sees which happened. At
+  0.001 the training set holds a single positive.
+- Experiments 2 and 3 train with balanced class weights; experiment 1 shows both.
+- **Measured** with `--synthetic` and the tiny test model, 2,000 traces of 40–300 calls
+  (Windows, `obr`): 22 s for all three experiments, most of it encoding (2,000 traces at four
+  lengths). The tables show the effects in kind — recall collapsing at POSRATIO 0.001 and
+  0.01 without class weights; F1 rising with MAX_SEQ_LENGTH (0.27 at 32 to 0.77 at 256), since
+  the synthetic malicious calls sometimes start late; the lab's three rates barely moving the
+  loss in 20 epochs (0.85 → 0.79 at 1e-5) where 1e-3 and 1e-2 converge — but the tiny model is
+  an embedding lookup, so the numbers say nothing about BERT.
+- The six VM modes (`-opt s3`/`s0` × JIT, `--jit=off`, `OBJECK_JIT_THRESHOLD=1`) print
+  identical tables (`--samples 400 --epochs 6`).
 
 ## Test plan
 

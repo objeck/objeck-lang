@@ -1,0 +1,471 @@
+#~
+# EmbeddingClassifier: a logistic or multi-layer head over fixed-size
+# embeddings, trained by minibatch Adam or SGD on class-weighted binary
+# cross-entropy.
+#
+# EXTRA_LIBS: csv,ml
+#
+# What is checked, and against what:
+#   - the gradient: one full-batch SGD epoch moves the weights by exactly
+#     -rate x the gradient a reference backward pass in this test computes from
+#     the weights before it -- for logistic regression and for a ReLU hidden
+#     layer, with and without class weights. That pins the backward pass, the
+#     loss and the weighting to the arithmetic, not just to "it learns";
+#   - convergence: 100% training accuracy on linearly separable embeddings,
+#     logistic and with hidden layers, under Adam and SGD;
+#   - the loss history: one value per epoch, non-increasing for full-batch
+#     gradient descent at a small rate on the convex (logistic) problem, and
+#     falling overall with minibatches; Loss() on the training rows equals the
+#     last entry;
+#   - class weights: balanced weights are n / (2 n_class) and move predictions
+#     toward the rare class;
+#   - determinism: the same seed gives the same probabilities bit for bit, a
+#     different seed different ones;
+#   - PredictClass thresholds, the ScoreModel interface, the parameter count,
+#     and refusals (Nil, mismatched labels, NaN, wrong width, unfitted, bad
+#     configuration) that return false or Nil with a reason instead of aborting.
+~#
+
+use System.ML;
+use Collection;
+
+class MlEmbeddingClassifier {
+	@ok : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		t := MlEmbeddingClassifier->New();
+		t->Run();
+	}
+
+	New() {
+		@ok := true;
+	}
+
+	method : Check(name : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	method : Run() ~ Nil {
+		Gradient();
+		Separable();
+		LossHistory();
+		Imbalance();
+		Determinism();
+		Interface();
+		Refusals();
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	# Rows on either side of a random hyperplane, with a margin: linearly separable.
+	function : Separable(rows : Int, cols : Int, seed : Int, X : FloatMatrixRef, y : BoolArrayRef) ~ Nil {
+		random := System.ML.Random->New(seed);
+		w := Float->New[cols];
+		each(j : w) {
+			w[j] := random->NextReal(-1.0, 1.0);
+		};
+
+		data := Float->New[rows, cols];
+		labels := Bool->New[rows];
+		r := 0;
+		while(r < rows) {
+			v := Float->New[cols];
+			dot := 0.0;
+			each(j : v) {
+				v[j] := random->NextReal(-2.0, 2.0);
+				dot += v[j] * w[j];
+			};
+			if(dot->Abs() > 0.5) {
+				each(j : v) {
+					data[r, j] := v[j];
+				};
+				labels[r] := dot > 0.0;
+				r += 1;
+			};
+		};
+		X->Set(data);
+		y->Set(labels);
+	}
+
+	function : Accuracy(predicted : Bool[], actual : Bool[]) ~ Float {
+		right := 0;
+		each(i : actual) {
+			if(predicted[i] = actual[i]) {
+				right += 1;
+			};
+		};
+		return right->As(Float) / actual->Size()->As(Float);
+	}
+
+	function : Sigmoid(z : Float) ~ Float {
+		return 1.0 / (1.0 + (0.0 - z)->Exp());
+	}
+
+	# --- the gradient, against a reference backward pass written here ---
+
+	method : Gradient() ~ Nil {
+		Xr := FloatMatrixRef->New();
+		yr := BoolArrayRef->New();
+		Separable(24, 5, 7, Xr, yr);
+		X := Xr->Get();
+		y := yr->Get();
+
+		GradientCase("logistic", X, y, Int->New[0], 1.0, 1.0);
+		GradientCase("logistic, class-weighted", X, y, Int->New[0], 0.5, 3.0);
+		GradientCase("one ReLU hidden layer", X, y, [4], 1.0, 1.0);
+		GradientCase("one ReLU hidden layer, class-weighted", X, y, [4], 2.0, 0.25);
+	}
+
+	# Head A trains one epoch, head B two, same seed: B's first epoch is A, so B's second
+	# step must be A's weights minus rate x the gradient at A's weights. With one batch of
+	# every row, the step is plain gradient descent.
+	method : GradientCase(name : String, X : Float[,], y : Bool[], hidden : Int[], negative : Float, positive : Float) ~ Nil {
+		rate := 0.05;
+		rows := y->Size();
+		a := EmbeddingClassifier->New(hidden, rate, 1, rows, 11);
+		a->SetOptimizer(EmbeddingClassifier->Optimizer->SGD);
+		a->SetStandardize(false);
+		a->SetClassWeights(negative, positive);
+		a->Fit(X, y);
+		b := EmbeddingClassifier->New(hidden, rate, 2, rows, 11);
+		b->SetOptimizer(EmbeddingClassifier->Optimizer->SGD);
+		b->SetStandardize(false);
+		b->SetClassWeights(negative, positive);
+		b->Fit(X, y);
+
+		worst := 0.0;
+		if(hidden->Size() = 0) {
+			w := a->GetWeights(0);
+			bias := a->GetBias(0)[0];
+			dims := w->Size();
+			grad_w := Float->New[dims[0]];
+			grad_b := 0.0;
+			for(r := 0; r < rows; r += 1;) {
+				z := bias;
+				for(j := 0; j < dims[0]; j += 1;) {
+					z += X[r, j] * w[j, 0];
+				};
+				target := 0.0;
+				weight := negative;
+				if(y[r]) {
+					target := 1.0;
+					weight := positive;
+				};
+				d := weight * (Sigmoid(z) - target) / rows->As(Float);
+				for(j := 0; j < dims[0]; j += 1;) {
+					grad_w[j] += d * X[r, j];
+				};
+				grad_b += d;
+			};
+
+			w2 := b->GetWeights(0);
+			for(j := 0; j < dims[0]; j += 1;) {
+				diff := (w2[j, 0] - (w[j, 0] - rate * grad_w[j]))->Abs();
+				if(diff > worst) { worst := diff; };
+			};
+			diff := (b->GetBias(0)[0] - (bias - rate * grad_b))->Abs();
+			if(diff > worst) { worst := diff; };
+		}
+		else {
+			w1 := a->GetWeights(0);
+			b1 := a->GetBias(0);
+			w2 := a->GetWeights(1);
+			b2 := a->GetBias(1)[0];
+			dims1 := w1->Size();
+			inputs := dims1[0];
+			units := dims1[1];
+			g1 := Float->New[inputs, units];
+			gb1 := Float->New[units];
+			g2 := Float->New[units];
+			gb2 := 0.0;
+			for(r := 0; r < rows; r += 1;) {
+				h := Float->New[units];
+				pre := Float->New[units];
+				for(k := 0; k < units; k += 1;) {
+					s := b1[k];
+					for(j := 0; j < inputs; j += 1;) {
+						s += X[r, j] * w1[j, k];
+					};
+					pre[k] := s;
+					if(s > 0.0) {
+						h[k] := s;
+					};
+				};
+				z := b2;
+				for(k := 0; k < units; k += 1;) {
+					z += h[k] * w2[k, 0];
+				};
+				target := 0.0;
+				weight := negative;
+				if(y[r]) {
+					target := 1.0;
+					weight := positive;
+				};
+				d := weight * (Sigmoid(z) - target) / rows->As(Float);
+				for(k := 0; k < units; k += 1;) {
+					g2[k] += d * h[k];
+					if(pre[k] > 0.0) {
+						dh := d * w2[k, 0];
+						gb1[k] += dh;
+						for(j := 0; j < inputs; j += 1;) {
+							g1[j, k] += dh * X[r, j];
+						};
+					};
+				};
+				gb2 += d;
+			};
+
+			n1 := b->GetWeights(0);
+			nb1 := b->GetBias(0);
+			n2 := b->GetWeights(1);
+			nb2 := b->GetBias(1)[0];
+			for(j := 0; j < inputs; j += 1;) {
+				for(k := 0; k < units; k += 1;) {
+					diff := (n1[j, k] - (w1[j, k] - rate * g1[j, k]))->Abs();
+					if(diff > worst) { worst := diff; };
+				};
+			};
+			for(k := 0; k < units; k += 1;) {
+				diff := (nb1[k] - (b1[k] - rate * gb1[k]))->Abs();
+				if(diff > worst) { worst := diff; };
+				diff := (n2[k, 0] - (w2[k, 0] - rate * g2[k]))->Abs();
+				if(diff > worst) { worst := diff; };
+			};
+			diff := (nb2 - (b2 - rate * gb2))->Abs();
+			if(diff > worst) { worst := diff; };
+		};
+
+		Check("gradient, {$name}: an SGD step is -rate x the reference gradient (worst {$worst})", worst < 0.000000001);
+	}
+
+	# --- convergence ---
+
+	method : Separable() ~ Nil {
+		Xr := FloatMatrixRef->New();
+		yr := BoolArrayRef->New();
+		Separable(200, 16, 3, Xr, yr);
+		X := Xr->Get();
+		y := yr->Get();
+
+		logistic := EmbeddingClassifier->New(Int->New[0], 0.05, 60, 16, 42);
+		Check("logistic fits", logistic->Fit(X, y));
+		Check("logistic: 100% training accuracy on separable data", Accuracy(logistic->PredictClass(X), y) = 1.0);
+
+		mlp := EmbeddingClassifier->New([32, 16], 0.01, 60, 16, 42);
+		Check("MLP [32,16] fits", mlp->Fit(X, y));
+		Check("MLP: 100% training accuracy on separable data", Accuracy(mlp->PredictClass(X), y) = 1.0);
+		Check("its parameter count is 16x32+32 + 32x16+16 + 16+1", mlp->GetParameterCount() = 16 * 32 + 32 + 32 * 16 + 16 + 16 + 1);
+
+		sgd := EmbeddingClassifier->New([8], 0.2, 80, 16, 42);
+		sgd->SetOptimizer(EmbeddingClassifier->Optimizer->SGD);
+		sgd->Fit(X, y);
+		Check("SGD: 100% training accuracy on separable data", Accuracy(sgd->PredictClass(X), y) = 1.0);
+
+		# and it generalises to fresh rows from the same hyperplane
+		Tr := FloatMatrixRef->New();
+		tr := BoolArrayRef->New();
+		Separable(400, 16, 3, Tr, tr);
+		acc := Accuracy(mlp->PredictClass(Tr->Get()), tr->Get());
+		Check("MLP: at least 95% on 400 held-out rows ({$acc})", acc >= 0.95);
+	}
+
+	# --- the loss curve ---
+
+	method : LossHistory() ~ Nil {
+		# overlapping classes, so the loss cannot reach zero and keeps a curve
+		random := System.ML.Random->New(19);
+		rows := 120;
+		X := Float->New[rows, 6];
+		y := Bool->New[rows];
+		for(r := 0; r < rows; r += 1;) {
+			y[r] := r % 2 = 0;
+			shift := -0.4;
+			if(y[r]) {
+				shift := 0.4;
+			};
+			for(j := 0; j < 6; j += 1;) {
+				X[r, j] := random->NextReal(-1.0, 1.0) + shift;
+			};
+		};
+
+		full := EmbeddingClassifier->New(Int->New[0], 0.05, 40, rows, 5);
+		full->SetOptimizer(EmbeddingClassifier->Optimizer->SGD);
+		full->Fit(X, y);
+		history := full->GetLossHistory();
+		Check("one loss per epoch", history <> Nil & history->Size() = 40);
+		rises := 0;
+		for(i := 1; i < history->Size(); i += 1;) {
+			if(history[i] > history[i - 1] + 0.000000000001) {
+				rises += 1;
+			};
+		};
+		first := history[0];
+		last := history[history->Size() - 1];
+		Check("full-batch GD on the convex problem: the loss never rises ({$first} -> {$last})", rises = 0 & last < first);
+		Check("Loss() on the training rows is the last entry", (full->Loss(X, y) - last)->Abs() < 0.000000000001);
+
+		mini := EmbeddingClassifier->New(Int->New[0], 0.01, 40, 8, 5);
+		mini->Fit(X, y);
+		history := mini->GetLossHistory();
+		rises := 0;
+		for(i := 1; i < history->Size(); i += 1;) {
+			if(history[i] > history[i - 1]) {
+				rises += 1;
+			};
+		};
+		first := history[0];
+		last := history[history->Size() - 1];
+		Check("minibatch Adam at a small rate: the loss falls ({$first} -> {$last}, {$rises} rises in 39)", last < first & rises <= 4);
+
+		mlp := EmbeddingClassifier->New([16], 0.003, 30, 8, 5);
+		mlp->Fit(X, y);
+		history := mlp->GetLossHistory();
+		first := history[0];
+		last := history[history->Size() - 1];
+		Check("an MLP's loss falls too ({$first} -> {$last})", last < first);
+	}
+
+	# --- class imbalance ---
+
+	method : Imbalance() ~ Nil {
+		random := System.ML.Random->New(23);
+		rows := 400;
+		X := Float->New[rows, 4];
+		y := Bool->New[rows];
+		positives := 0;
+		for(r := 0; r < rows; r += 1;) {
+			y[r] := r % 20 = 0;
+			shift := 0.0;
+			if(y[r]) {
+				shift := 0.8;
+				positives += 1;
+			};
+			for(j := 0; j < 4; j += 1;) {
+				X[r, j] := random->NextReal(-1.0, 1.0) + shift;
+			};
+		};
+
+		plain := EmbeddingClassifier->New(Int->New[0], 0.01, 40, 16, 1);
+		plain->Fit(X, y);
+		balanced := EmbeddingClassifier->New(Int->New[0], 0.01, 40, 16, 1);
+		balanced->SetBalancedWeights();
+		balanced->Fit(X, y);
+
+		weights := balanced->GetClassWeights();
+		want_negative := rows->As(Float) / (2.0 * (rows - positives)->As(Float));
+		want_positive := rows->As(Float) / (2.0 * positives->As(Float));
+		Check("balanced weights are n / (2 n_class)", (weights[0] - want_negative)->Abs() < 0.000000001 &
+			(weights[1] - want_positive)->Abs() < 0.000000001);
+
+		flagged_plain := 0;
+		flagged_balanced := 0;
+		caught_plain := 0;
+		caught_balanced := 0;
+		p1 := plain->PredictClass(X);
+		p2 := balanced->PredictClass(X);
+		each(r : y) {
+			if(p1[r]) { flagged_plain += 1; if(y[r]) { caught_plain += 1; }; };
+			if(p2[r]) { flagged_balanced += 1; if(y[r]) { caught_balanced += 1; }; };
+		};
+		Check("balanced weights flag more rows ({$flagged_plain} -> {$flagged_balanced})", flagged_balanced > flagged_plain);
+		Check("and catch more positives ({$caught_plain} -> {$caught_balanced} of {$positives})", caught_balanced > caught_plain);
+
+		manual := EmbeddingClassifier->New(Int->New[0], 0.01, 40, 16, 1);
+		manual->SetClassWeights(want_negative, want_positive);
+		manual->Fit(X, y);
+		same := true;
+		q1 := manual->PredictProba(X);
+		q2 := balanced->PredictProba(X);
+		each(r : q1) {
+			if(q1[r] <> q2[r]) {
+				same := false;
+			};
+		};
+		Check("SetClassWeights with those numbers is the same model", same);
+	}
+
+	# --- determinism ---
+
+	method : Determinism() ~ Nil {
+		Xr := FloatMatrixRef->New();
+		yr := BoolArrayRef->New();
+		Separable(60, 8, 31, Xr, yr);
+		X := Xr->Get();
+		y := yr->Get();
+
+		a := EmbeddingClassifier->New([8], 0.01, 10, 7, 99);
+		a->Fit(X, y);
+		b := EmbeddingClassifier->New([8], 0.01, 10, 7, 99);
+		b->Fit(X, y);
+		c := EmbeddingClassifier->New([8], 0.01, 10, 7, 100);
+		c->Fit(X, y);
+		pa := a->PredictProba(X);
+		pb := b->PredictProba(X);
+		pc := c->PredictProba(X);
+		same := true;
+		differs := false;
+		each(r : pa) {
+			if(pa[r] <> pb[r]) { same := false; };
+			if(pa[r] <> pc[r]) { differs := true; };
+		};
+		Check("the same seed gives the same probabilities, bit for bit", same);
+		Check("a different seed gives different ones", differs);
+
+		# printed, so the six VM modes are compared on the digits too
+		p := pa[0];
+		"probability of row 0 under seed 99: {$p}"->PrintLine();
+		loss := a->GetLossHistory();
+		l := loss[loss->Size() - 1];
+		"final loss under seed 99: {$l}"->PrintLine();
+	}
+
+	method : Interface() ~ Nil {
+		Xr := FloatMatrixRef->New();
+		yr := BoolArrayRef->New();
+		Separable(40, 4, 5, Xr, yr);
+		model : ScoreModel := EmbeddingClassifier->New(Int->New[0], 0.05, 30, 8, 1);
+		Check("as a ScoreModel it fits", model->Fit(Xr->Get(), yr->Get()));
+		scores := model->PredictScore(Xr->Get());
+		Check("and scores every row in (0, 1)", scores <> Nil & scores->Size() = 40 & scores[0] > 0.0 & scores[0] < 1.0);
+
+		head := model->As(EmbeddingClassifier);
+		all := head->PredictClass(Xr->Get(), 0.0);
+		none := head->PredictClass(Xr->Get(), 1.01);
+		all_true := true;
+		none_true := false;
+		each(r : all) {
+			if(<>all[r]) { all_true := false; };
+			if(none[r]) { none_true := true; };
+		};
+		Check("PredictClass at threshold 0 flags every row, at 1.01 none", all_true & <>none_true);
+	}
+
+	method : Refusals() ~ Nil {
+		head := EmbeddingClassifier->New();
+		Check("unfitted: PredictProba is Nil", head->PredictProba(Float->New[1, 2]) = Nil & head->GetError() <> Nil);
+		Check("Fit(Nil) is refused", <>head->Fit(Nil, Bool->New[0]) & head->GetError() <> Nil);
+		Check("labels of the wrong length are refused", <>head->Fit(Float->New[3, 2], Bool->New[2]));
+		bad := Float->New[2, 2];
+		bad[1, 0] := 0.0 / 1.0;
+		nan := (0.0 - 1.0)->Sqrt();
+		bad[1, 1] := nan;
+		Check("a NaN is refused, naming its cell", <>head->Fit(bad, Bool->New[2]) & head->GetError()->Has("[1,1]"));
+		Check("zero epochs are refused", <>EmbeddingClassifier->New(Int->New[0], 0.1, 0, 4, 1)->Fit(Float->New[2, 2], Bool->New[2]));
+		Check("an empty hidden layer is refused", <>EmbeddingClassifier->New([0], 0.1, 1, 4, 1)->Fit(Float->New[2, 2], Bool->New[2]));
+
+		ok := EmbeddingClassifier->New(Int->New[0], 0.1, 2, 4, 1);
+		ok->Fit(Float->New[4, 3], [true, false, true, false]);
+		Check("a constant feature is not a division by zero", ok->IsFitted());
+		Check("predicting with the wrong width is refused", ok->PredictProba(Float->New[2, 4]) = Nil & ok->GetError()->Has("columns"));
+		Check("an out-of-range layer has no weights", ok->GetWeights(1) = Nil & ok->GetBias(-1) = Nil);
+		Check("Loss with mismatched labels is -1", ok->Loss(Float->New[2, 3], Bool->New[3]) = -1.0);
+	}
+}

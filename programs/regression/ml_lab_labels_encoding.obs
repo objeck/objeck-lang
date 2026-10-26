@@ -1,0 +1,158 @@
+# EXTRA_LIBS: ml,ml_lab,gen_collect,csv,json
+#~
+System.ML.Lab.Labels, and the NSL-KDD encoding path through TableEncoder and
+FeatureScaler.
+
+The lab's dataset has three string columns (protocol_type, service, flag) among
+numeric ones and a label column whose one benign value, "normal", stands against
+many attack names. This file runs a miniature of exactly that shape through the
+existing encoder and asserts the width, the column names, the binary mapping,
+and -- the part that is easy to get wrong -- that the scaler fitted on the
+TRAINING table is what transforms the TEST table: the test column has a
+different mean, so a scaler that re-fits returns centred values where the right
+answer is off-centre.
+~#
+use Data.CSV;
+use System.ML;
+use System.ML.Lab;
+
+class MlLabLabelsEncoding {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		# --- Labels over a String[] ---
+		names := String->New[6];
+		names[0] := "normal"; names[1] := "neptune"; names[2] := "normal";
+		names[3] := "smurf"; names[4] := "neptune"; names[5] := "normal";
+
+		attack := Labels->ToBinaryExcept(names, "normal");
+		ok := Report("ToBinaryExcept marks every non-normal row positive",
+			<>attack[0] & attack[1] & <>attack[2] & attack[3] & attack[4] & <>attack[5]) & ok;
+
+		neptune := Labels->ToBinary(names, "neptune");
+		ok := Report("ToBinary marks only the named value positive",
+			<>neptune[0] & neptune[1] & <>neptune[2] & <>neptune[3] & neptune[4] & <>neptune[5]) & ok;
+
+		classes := Labels->Classes(names);
+		ok := Report("Classes lists distinct values in first-seen order",
+			classes->Size() = 3 & classes[0]->Equals("normal") & classes[1]->Equals("neptune") & classes[2]->Equals("smurf")) & ok;
+
+		codes := Labels->ToIndices(names, classes);
+		ok := Report("ToIndices maps each value to its class index",
+			codes[0] = 0.0 & codes[1] = 1.0 & codes[2] = 0.0 & codes[3] = 2.0 & codes[4] = 1.0 & codes[5] = 0.0) & ok;
+
+		unknown := String->New[1];
+		unknown[0] := "teardrop";
+		missing := Labels->ToIndices(unknown, classes);
+		ok := Report("a value outside the class list codes as -1", missing[0] = -1.0) & ok;
+
+		# the codes can stratify a split by attack family (two rows per family here)
+		families := String->New[6];
+		families[0] := "normal"; families[1] := "neptune"; families[2] := "normal";
+		families[3] := "smurf"; families[4] := "neptune"; families[5] := "smurf";
+		fam_codes := Labels->ToIndices(families, classes);
+		x6 := Float->New[6, 1];
+		ok := Report("class codes work as strata",
+			Partition->TrainTest(x6, attack, fam_codes, 0.5, 1)->GetTestSize() = 3) & ok;
+
+		no_names : String[];
+		refused := false;
+		try {
+			Labels->ToBinary(no_names, "x");
+		}
+		on(e : LabError) {
+			refused := true;
+		};
+		ok := Report("Nil labels are refused", refused) & ok;
+
+		# --- the NSL-KDD shape through TableEncoder ---
+		train := CsvTable->New(
+			"duration,protocol_type,service,flag,src_bytes,dst_bytes,class\n" +
+			"0,tcp,http,SF,181,5450,normal\n" +
+			"2,udp,domain_u,SF,105,146,normal\n" +
+			"0,tcp,private,S0,0,0,neptune\n" +
+			"4,icmp,ecr_i,SF,1032,0,smurf\n" +
+			"0,tcp,http,SF,239,486,normal\n");
+		ok := Report("the training table parses", train->IsParsed()) & ok;
+
+		col := Labels->Column(train, "class");
+		ok := Report("Column reads the data rows and skips the header",
+			col->Size() = 5 & col[0]->Equals("normal") & col[2]->Equals("neptune") & col[3]->Equals("smurf")) & ok;
+
+		refused := false;
+		try {
+			Labels->Column(train, "no_such_column");
+		}
+		on(e : LabError) {
+			refused := true;
+		};
+		ok := Report("a missing column is refused", refused) & ok;
+
+		enc := TableEncoder->New("class");
+		train_x := enc->FitTransform(train);
+		ok := Report("the encoder fits and transforms the training table", train_x <> Nil) & ok;
+
+		# duration(1) + protocol tcp/udp/icmp(3) + service http/domain_u/private/ecr_i(4)
+		# + flag SF/S0(2) + src_bytes(1) + dst_bytes(1) = 12
+		ok := Report("the encoded width is 12 (3 string columns one-hot, 3 numeric)", enc->GetWidth() = 12) & ok;
+		feature_names := enc->GetFeatureNames();
+		ok := Report("the one-hot columns are named column=value",
+			feature_names[0]->Equals("duration") & feature_names[1]->Equals("protocol_type=tcp") &
+			feature_names[4]->Equals("service=http") & feature_names[8]->Equals("flag=SF") &
+			feature_names[10]->Equals("src_bytes")) & ok;
+
+		dims := train_x->Size();
+		ok := Report("five data rows are encoded", dims[0] = 5 & dims[1] = 12) & ok;
+		ok := Report("row 3 (icmp, ecr_i) sets exactly those one-hot cells",
+			train_x[3, 3] = 1.0 & train_x[3, 1] = 0.0 & train_x[3, 7] = 1.0 & train_x[3, 10] = 1032.0) & ok;
+
+		train_y := CrossValidation->ToBool(enc->TransformLabelsBinary(train, "normal"));
+		ok := Report("the attack label maps to 0 for normal and 1 for every attack",
+			<>train_y[0] & <>train_y[1] & train_y[2] & train_y[3] & <>train_y[4]) & ok;
+
+		# a test table with a service the training table never saw
+		test := CsvTable->New(
+			"duration,protocol_type,service,flag,src_bytes,dst_bytes,class\n" +
+			"10,tcp,ftp_data,SF,300,0,warezclient\n" +
+			"20,udp,domain_u,SF,44,44,normal\n");
+		test_x := enc->Transform(test);
+		tdims := test_x->Size();
+		ok := Report("the test table encodes to the training width", tdims[0] = 2 & tdims[1] = 12) & ok;
+		ok := Report("an unseen service leaves its one-hot group all zeros",
+			test_x[0, 4] = 0.0 & test_x[0, 5] = 0.0 & test_x[0, 6] = 0.0 & test_x[0, 7] = 0.0 & test_x[0, 1] = 1.0) & ok;
+		test_y := CrossValidation->ToBool(enc->TransformLabelsBinary(test, "normal"));
+		ok := Report("an attack name unseen at Fit still maps to positive", test_y[0] & <>test_y[1]) & ok;
+
+		# --- FeatureScaler fitted on train only ---
+		scaler := FeatureScaler->New();
+		ok := Report("the scaler fits on the training matrix", scaler->Fit(train_x)) & ok;
+		means := scaler->GetMeans();
+		stds := scaler->GetStandardDeviations();
+		# duration column: 0,2,0,4,0 -> mean 1.2, population sd sqrt((1.44+0.64+1.44+7.84+1.44)/5) = sqrt(2.56) = 1.6
+		ok := Report("the training mean and deviation of duration are 1.2 and 1.6",
+			Near(means[0], 1.2) & Near(stds[0], 1.6)) & ok;
+
+		test_z := scaler->Transform(test_x);
+		# (10 - 1.2) / 1.6 = 5.5 ; (20 - 1.2) / 1.6 = 11.75 -- a re-fitting scaler would give -1 and +1
+		ok := Report("the test table is standardized by the TRAINING statistics",
+			Near(test_z[0, 0], 5.5) & Near(test_z[1, 0], 11.75)) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.000001;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}

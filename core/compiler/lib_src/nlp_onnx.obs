@@ -1,0 +1,650 @@
+#~~
+# Copyright (c) 2026 Randy Hollines
+# Text embeddings from BERT-family ONNX models
+~~#
+
+use Collection;
+use API.Models;
+use API.Onnx;
+use System.NLP;
+
+#~
+Sentence embeddings from a pretrained BERT-family encoder exported to ONNX: the text is
+tokenized with WordPieceTokenizer, run through API.Onnx, and pooled into one vector per text.
+
+A library of its own because it needs both System.NLP and API.Onnx, and the compiler resolves
+every class a linked library names: an embedder inside onnx.obl would make every ONNX program
+link nlp too, and one inside nlp.obl would make every NLP program need ONNX Runtime
+(docs/ML_BERT_DESIGN.md). Compile with -lib models,opencv,cipher,json,onnx,nlp,nlp_onnx.
+~#
+bundle System.NLP.Onnx {
+	#~
+	Sentence embeddings from a BERT-family ONNX model: Embed(texts) gives one row of hidden-size
+	numbers per text.
+
+	The model is a Hugging Face export (optimum-cli export onnx, or torch.onnx.export) taking
+	input_ids, and usually attention_mask and token_type_ids, as INT64[batch, sequence], and
+	giving last_hidden_state FP32[batch, sequence, hidden] and, for BERT though not for
+	DistilBERT, pooler_output FP32[batch, hidden]. The model's own signature decides what is
+	sent: an input it does not declare is not built, and the one output the pooling needs is
+	the only one asked for.
+
+	With no session options, the build's default provider runs the model, and the CPU when
+	that provider cannot open it (DirectML needs a display adapter): see IsCpuFallback.
+
+	Pooling: CLS takes the hidden state of the first token; MEAN averages the hidden states of
+	the real tokens, padding excluded, as sentence-transformers does; POOLER is the model's
+	pooler_output, when it has one.
+
+	Every text is padded to max_len, not to the longest text in its batch, so a text's
+	embedding does not depend on which texts share its batch.
+
+	The encoder is frozen: this computes embeddings, it does not train the model. A classifier
+	trained on them (System.ML's EmbeddingClassifier) is the frozen-encoder alternative to
+	fine-tuning.
+
+```
+embedder := BertEmbedder->New("model.onnx", "vocab.txt", 128);
+if(<>embedder->IsOpen()) {
+  embedder->GetError()->PrintLine();
+  return;
+};
+embedder->SetPooling(BertEmbedder->Pooling->MEAN);
+X := embedder->Embed(["first text", "second text"]);   # Float[2, hidden]
+embedder->Close();
+```
+	~#
+	class BertEmbedder {
+		#~
+		How a text's token vectors become one vector.
+		~#
+		enum Pooling {
+			#~
+			The hidden state of the first token, [CLS].
+			~#
+			CLS,
+			#~
+			The mean of the hidden states of the real tokens, padding excluded.
+			~#
+			MEAN,
+			#~
+			The model's pooler_output: tanh of a dense layer over [CLS], as BERT was pretrained.
+			~#
+			POOLER
+		}
+
+		@session : Session;
+		@tokenizer : WordPieceTokenizer;
+		@max_len : Int;
+		@batch_size : Int;
+		@batch_limit : Int;
+		@pooling : BertEmbedder->Pooling;
+		@ids_name : String;
+		@mask_name : String;
+		@types_name : String;
+		@hidden_name : String;
+		@pooler_name : String;
+		@hidden_size : Int;
+		@cpu_fallback : Bool;
+		@open_error : String;
+		@error : String;
+
+		#~
+		Opens a model with the vocabulary of an uncased model: lowercase, strip accents.
+		@param model_path the .onnx file
+		@param vocab_path the model's vocab.txt
+		@param max_len the sequence length every text is truncated and padded to
+		~#
+		New(model_path : String, vocab_path : String, max_len : Int) {
+			Open(model_path, WordPieceTokenizer->New(vocab_path), max_len, Nil);
+		}
+
+		#~
+		Opens a model with a tokenizer configured by the caller, and session options.
+		@param model_path the .onnx file
+		@param tokenizer the model's tokenizer, e.g. a cased one
+		@param max_len the sequence length every text is truncated and padded to
+		@param config session options, e.g. "ep" to "cpu"; may be Nil
+		~#
+		New(model_path : String, tokenizer : WordPieceTokenizer, max_len : Int, config : Map<String, String>) {
+			Open(model_path, tokenizer, max_len, config);
+		}
+
+		#~
+		Opens a model with the vocabulary of an uncased model.
+		@param model_path the .onnx file
+		@param vocab_path the model's vocab.txt
+		@param max_len the sequence length every text is truncated and padded to
+		@return the embedder; test IsOpen before using it
+		~#
+		function : Load(model_path : String, vocab_path : String, max_len : Int) ~ BertEmbedder {
+			return BertEmbedder->New(model_path, vocab_path, max_len);
+		}
+
+		method : Open(model_path : String, tokenizer : WordPieceTokenizer, max_len : Int, config : Map<String, String>) ~ Nil {
+			@tokenizer := tokenizer;
+			@max_len := max_len;
+			@batch_size := 8;
+			@batch_limit := -1;
+			@pooling := BertEmbedder->Pooling->CLS;
+			@hidden_size := -1;
+
+			if(tokenizer = Nil | <>tokenizer->IsLoaded()) {
+				reason := "no tokenizer";
+				if(tokenizer <> Nil) {
+					reason := tokenizer->GetError();
+				};
+				OpenFail("the vocabulary did not load: {$reason}");
+				return;
+			};
+			if(max_len < 2) {
+				OpenFail("max_len must be at least 2, for [CLS] and [SEP]");
+				return;
+			};
+
+			if(config = Nil) {
+				@session := Session->New(model_path);
+				# The build's own provider -- DirectML on Windows, CoreML on macOS -- can fail
+				# where the CPU would not: a machine with no display adapter has no DirectML.
+				# With no provider asked for, any provider will do, so try the CPU.
+				if(<>@session->IsOpen() & System.IO.Filesystem.File->Exists(model_path)) {
+					cpu := Map->New()<String, String>;
+					cpu->Insert("ep", "cpu");
+					@session := Session->New(model_path, cpu);
+					@cpu_fallback := @session->IsOpen();
+				};
+			}
+			else {
+				@session := Session->New(model_path, config);
+			};
+			if(<>@session->IsOpen()) {
+				OpenFail("the model '{$model_path}' did not open");
+				return;
+			};
+
+			info := @session->GetModelInfo();
+			if(info = Nil) {
+				OpenFail("the model '{$model_path}' reported no signature");
+				Close();
+				return;
+			};
+
+			# inputs, by the names exports use
+			inputs := info->GetInputs();
+			each(spec in inputs) {
+				name := spec->GetName();
+				if(name->Equals("input_ids")) {
+					@ids_name := name;
+					if(<>CheckSequenceAxis(spec)) {
+						Close();
+						return;
+					};
+				}
+				else if(name->Equals("attention_mask")) {
+					@mask_name := name;
+				}
+				else if(name->Equals("token_type_ids")) {
+					@types_name := name;
+				}
+				else {
+					OpenFail("the model takes an input this embedder does not know how to fill: '{$name}'");
+					Close();
+					return;
+				};
+			};
+			if(@ids_name = Nil) {
+				OpenFail("the model has no 'input_ids' input");
+				Close();
+				return;
+			};
+
+			# outputs: by name, else the first FP32 output of rank 3 (hidden) or 2 (pooler)
+			outputs := info->GetOutputs();
+			each(spec in outputs) {
+				name := spec->GetName();
+				if(name->Equals("last_hidden_state")) {
+					@hidden_name := name;
+				}
+				else if(name->Equals("pooler_output")) {
+					@pooler_name := name;
+				};
+			};
+			each(spec in outputs) {
+				rank := spec->GetShape()->Size();
+				if(spec->GetDatatype()->Equals("FP32")) {
+					if(@hidden_name = Nil & rank = 3) {
+						@hidden_name := spec->GetName();
+					}
+					else if(@pooler_name = Nil & rank = 2 & <>spec->GetName()->Equals(@hidden_name)) {
+						@pooler_name := spec->GetName();
+					};
+				};
+			};
+			if(@hidden_name = Nil) {
+				OpenFail("the model has no last_hidden_state output (FP32, rank 3)");
+				Close();
+				return;
+			};
+
+			hidden_spec := info->Find(@hidden_name);
+			shape := hidden_spec->GetShape();
+			if(shape[2] > 0) {
+				@hidden_size := shape[2];
+			};
+		}
+
+		# A fixed sequence axis must be max_len: running another length would change the
+		# experiment without saying so. A fixed batch axis caps the batch size.
+		method : CheckSequenceAxis(spec : TensorSpec) ~ Bool {
+			shape := spec->GetShape();
+			if(shape->Size() <> 2) {
+				declared := spec->ToString();
+				OpenFail("input_ids should be [batch, sequence]; the model declares {$declared}");
+				return false;
+			};
+
+			if(shape[1] > 0 & shape[1] <> @max_len) {
+				fixed := shape[1];
+				OpenFail("the model fixes the sequence length at {$fixed}, but max_len is {$@max_len}");
+				return false;
+			};
+
+			if(shape[0] > 0) {
+				@batch_limit := shape[0];
+				if(@batch_size > @batch_limit) {
+					@batch_size := @batch_limit;
+				};
+			};
+
+			return true;
+		}
+
+		method : OpenFail(reason : String) ~ Nil {
+			@open_error := reason;
+			Fail(reason);
+		}
+
+		method : Fail(reason : String) ~ Nil {
+			@error := reason;
+			EndPoint->SetLastError(reason);
+		}
+
+		#~
+		Whether the model and vocabulary loaded and the model has the inputs and outputs of a
+		BERT-family encoder.
+		@return true when Embed can run
+		~#
+		method : public : IsOpen() ~ Bool {
+			return @session <> Nil & @session->IsOpen() & @hidden_name <> Nil & @open_error = Nil;
+		}
+
+		#~
+		Why the embedder did not open, or why the last Embed returned Nil.
+		@return the reason, or Nil
+		~#
+		method : public : GetError() ~ String {
+			if(@open_error <> Nil) {
+				return @open_error;
+			};
+			return @error;
+		}
+
+		#~
+		Releases the model. Safe to call more than once.
+		~#
+		method : public : Close() ~ Nil {
+			if(@session <> Nil) {
+				@session->Close();
+			};
+		}
+
+		#~
+		Whether the build's default provider failed to open the model and the CPU provider
+		was used instead. Only when no session options were given.
+		@return true when running on the CPU as a fallback
+		~#
+		method : public : IsCpuFallback() ~ Bool {
+			return @cpu_fallback;
+		}
+
+		#~
+		The length of each embedding: the model's hidden size. A model whose hidden axis is
+		symbolic reports it after the first Embed.
+		@return hidden size, or -1 when not yet known
+		~#
+		method : public : GetHiddenSize() ~ Int {
+			return @hidden_size;
+		}
+
+		#~
+		The sequence length every text is truncated and padded to.
+		@return max_len
+		~#
+		method : public : GetMaxLength() ~ Int {
+			return @max_len;
+		}
+
+		#~
+		Texts run through the model at once.
+		@return batch size
+		~#
+		method : public : GetBatchSize() ~ Int {
+			return @batch_size;
+		}
+
+		#~
+		Sets how many texts run through the model at once. Larger batches are faster per text
+		and hold more memory: a batch's hidden states are batch x max_len x hidden numbers. A
+		model with a fixed batch axis caps it.
+		@param batch_size texts per run, at least 1
+		~#
+		method : public : SetBatchSize(batch_size : Int) ~ Nil {
+			@batch_size := batch_size;
+			if(@batch_size < 1) {
+				@batch_size := 1;
+			};
+			if(@batch_limit > 0 & @batch_size > @batch_limit) {
+				@batch_size := @batch_limit;
+			};
+		}
+
+		#~
+		The pooling Embed uses.
+		@return pooling
+		~#
+		method : public : GetPooling() ~ BertEmbedder->Pooling {
+			return @pooling;
+		}
+
+		#~
+		Sets the pooling Embed uses; CLS by default.
+		@param pooling CLS, MEAN or POOLER
+		~#
+		method : public : SetPooling(pooling : BertEmbedder->Pooling) ~ Nil {
+			@pooling := pooling;
+		}
+
+		#~
+		Whether the model has a pooler_output, so POOLER pooling is available.
+		@return true when it has one
+		~#
+		method : public : HasPooler() ~ Bool {
+			return @pooler_name <> Nil;
+		}
+
+		#~
+		The tokenizer, e.g. to inspect what a text becomes.
+		@return the tokenizer
+		~#
+		method : public : GetTokenizer() ~ WordPieceTokenizer {
+			return @tokenizer;
+		}
+
+		#~
+		The ONNX session, for what this class does not cover.
+		@return the session
+		~#
+		method : public : GetSession() ~ Session {
+			return @session;
+		}
+
+		#~
+		Embeds texts with the configured pooling.
+		@param texts the texts
+		@return one row per text, hidden-size columns; Nil on failure (see GetError)
+		~#
+		method : public : Embed(texts : String[]) ~ Float[,] {
+			return Embed(texts, @pooling);
+		}
+
+		#~
+		Embeds texts with a given pooling.
+		@param texts the texts
+		@param pooling CLS, MEAN or POOLER
+		@return one row per text, hidden-size columns; Nil on failure (see GetError)
+		~#
+		method : public : Embed(texts : String[], pooling : BertEmbedder->Pooling) ~ Float[,] {
+			if(texts = Nil) {
+				Fail("no texts");
+				return Nil;
+			};
+			if(<>IsOpen()) {
+				return Nil;
+			};
+
+			encodings := TokenEncoding->New[texts->Size()];
+			each(i : texts) {
+				encodings[i] := @tokenizer->Encode(texts[i], @max_len);
+				if(encodings[i] = Nil) {
+					reason := @tokenizer->GetError();
+					Fail("text {$i} could not be encoded: {$reason}");
+					return Nil;
+				};
+			};
+
+			return EmbedEncoded(encodings, pooling);
+		}
+
+		#~
+		Embeds texts already encoded, with the configured pooling: for a caller with its own
+		tokenizer or cached encodings. Every encoding must be max_len long.
+		@param encodings the encoded texts
+		@return one row per text, hidden-size columns; Nil on failure (see GetError)
+		~#
+		method : public : EmbedEncoded(encodings : TokenEncoding[]) ~ Float[,] {
+			return EmbedEncoded(encodings, @pooling);
+		}
+
+		#~
+		Embeds texts already encoded, with a given pooling.
+		@param encodings the encoded texts, each max_len long
+		@param pooling CLS, MEAN or POOLER
+		@return one row per text, hidden-size columns; Nil on failure (see GetError)
+		~#
+		method : public : EmbedEncoded(encodings : TokenEncoding[], pooling : BertEmbedder->Pooling) ~ Float[,] {
+			if(<>IsOpen()) {
+				return Nil;
+			};
+			if(encodings = Nil) {
+				Fail("no encodings");
+				return Nil;
+			};
+			if(pooling = BertEmbedder->Pooling->POOLER & @pooler_name = Nil) {
+				Fail("POOLER pooling needs a pooler_output, and this model has none; use CLS or MEAN");
+				return Nil;
+			};
+			each(i : encodings) {
+				if(encodings[i] = Nil | encodings[i]->GetSize() <> @max_len) {
+					Fail("encoding {$i} is not {$@max_len} tokens long");
+					return Nil;
+				};
+			};
+
+			count := encodings->Size();
+			out : Float[,] := Nil;
+			start := 0;
+			while(start < count) {
+				rows := count - start;
+				if(rows > @batch_size) {
+					rows := @batch_size;
+				};
+
+				pooled := RunBatch(encodings, start, rows, pooling);
+				if(pooled = Nil) {
+					return Nil;
+				};
+
+				if(out = Nil) {
+					out := Float->New[count, @hidden_size];
+				};
+				for(r := 0; r < rows; r += 1;) {
+					for(j := 0; j < @hidden_size; j += 1;) {
+						out[start + r, j] := pooled[r, j];
+					};
+				};
+				start += rows;
+			};
+
+			if(out = Nil) {
+				size := @hidden_size;
+				if(size < 0) {
+					size := 0;
+				};
+				out := Float->New[0, size];
+			};
+			@error := Nil;
+			return out;
+		}
+
+		method : RunBatch(encodings : TokenEncoding[], start : Int, rows : Int, pooling : BertEmbedder->Pooling) ~ Float[,] {
+			length := @max_len;
+			ids := Int->New[rows * length];
+			mask := Int->New[rows * length];
+			types := Int->New[rows * length];
+			for(r := 0; r < rows; r += 1;) {
+				encoding := encodings[start + r];
+				row_ids := encoding->GetIds();
+				row_mask := encoding->GetAttentionMask();
+				row_types := encoding->GetTokenTypeIds();
+				for(s := 0; s < length; s += 1;) {
+					ids[r * length + s] := row_ids[s];
+					mask[r * length + s] := row_mask[s];
+					types[r * length + s] := row_types[s];
+				};
+			};
+
+			inputs := Vector->New()<Tensor>;
+			inputs->AddBack(Tensor->New(@ids_name, [rows, length], ids));
+			if(@mask_name <> Nil) {
+				inputs->AddBack(Tensor->New(@mask_name, [rows, length], mask));
+			};
+			if(@types_name <> Nil) {
+				inputs->AddBack(Tensor->New(@types_name, [rows, length], types));
+			};
+
+			wanted := String->New[1];
+			if(pooling = BertEmbedder->Pooling->POOLER) {
+				wanted[0] := @pooler_name;
+			}
+			else {
+				wanted[0] := @hidden_name;
+			};
+
+			outputs := @session->Run(inputs, wanted);
+			if(outputs = Nil | outputs->Size() = 0) {
+				reason := EndPoint->GetLastError();
+				Fail("the model run failed: {$reason}");
+				return Nil;
+			};
+
+			tensor := outputs->Get(0);
+			shape := tensor->GetShape();
+			values := tensor->GetFloats();
+			if(values = Nil) {
+				values := tensor->AsFloats();
+			};
+
+			if(pooling = BertEmbedder->Pooling->POOLER) {
+				if(shape->Size() <> 2 | shape[0] <> rows) {
+					got := tensor->ToString();
+					Fail("pooler_output came back as {$got}, not [{$rows}, hidden]");
+					return Nil;
+				};
+				if(<>KnowHidden(shape[1])) {
+					return Nil;
+				};
+
+				pooled := Float->New[rows, @hidden_size];
+				for(r := 0; r < rows; r += 1;) {
+					for(j := 0; j < @hidden_size; j += 1;) {
+						pooled[r, j] := values[r * @hidden_size + j];
+					};
+				};
+				return pooled;
+			};
+
+			if(shape->Size() <> 3 | shape[0] <> rows | shape[1] <> length) {
+				got := tensor->ToString();
+				Fail("last_hidden_state came back as {$got}, not [{$rows}, {$length}, hidden]");
+				return Nil;
+			};
+			if(<>KnowHidden(shape[2])) {
+				return Nil;
+			};
+
+			if(pooling = BertEmbedder->Pooling->MEAN) {
+				return MeanPool(values, rows, length, @hidden_size, mask);
+			};
+			return ClsPool(values, rows, length, @hidden_size);
+		}
+
+		method : KnowHidden(size : Int) ~ Bool {
+			if(@hidden_size < 0) {
+				@hidden_size := size;
+			}
+			else if(@hidden_size <> size) {
+				Fail("the model returned hidden size {$size}, after {$@hidden_size} before");
+				return false;
+			};
+			return true;
+		}
+
+		#~
+		Mean pooling: for each row, the mean of the token vectors whose mask is 1. A row with no
+		real token pools to zeros.
+		@param hidden token vectors, flat and row-major: [batch, sequence, dim]
+		@param batch rows
+		@param sequence tokens per row
+		@param dim length of each token vector
+		@param mask attention mask, flat: [batch, sequence]
+		@return [batch, dim]
+
+```
+pooled := BertEmbedder->MeanPool(values, 2, 128, 768, mask);
+```
+		~#
+		function : MeanPool(hidden : Float[], batch : Int, sequence : Int, dim : Int, mask : Int[]) ~ Float[,] {
+			pooled := Float->New[batch, dim];
+			for(b := 0; b < batch; b += 1;) {
+				count := 0;
+				for(s := 0; s < sequence; s += 1;) {
+					if(mask[b * sequence + s] <> 0) {
+						count += 1;
+						base := (b * sequence + s) * dim;
+						for(j := 0; j < dim; j += 1;) {
+							pooled[b, j] := pooled[b, j] + hidden[base + j];
+						};
+					};
+				};
+
+				if(count > 0) {
+					for(j := 0; j < dim; j += 1;) {
+						pooled[b, j] := pooled[b, j] / count->As(Float);
+					};
+				};
+			};
+
+			return pooled;
+		}
+
+		#~
+		CLS pooling: for each row, the vector of the first token.
+		@param hidden token vectors, flat and row-major: [batch, sequence, dim]
+		@param batch rows
+		@param sequence tokens per row
+		@param dim length of each token vector
+		@return [batch, dim]
+		~#
+		function : ClsPool(hidden : Float[], batch : Int, sequence : Int, dim : Int) ~ Float[,] {
+			pooled := Float->New[batch, dim];
+			for(b := 0; b < batch; b += 1;) {
+				base := b * sequence * dim;
+				for(j := 0; j < dim; j += 1;) {
+					pooled[b, j] := hidden[base + j];
+				};
+			};
+
+			return pooled;
+		}
+	}
+}

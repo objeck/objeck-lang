@@ -1,0 +1,249 @@
+# EXTRA_LIBS: ml,ml_lab,gen_collect,csv,json
+#~
+System.ML.Lab.Experiment: a sweep over one parameter, with repeats.
+
+The Trial here returns predictions chosen so that every metric has a known
+value. On a ten-row test set of five positives and five negatives, seed 1
+yields tp=3 fp=1 fn=2 tn=4 (accuracy 0.7, precision 0.75, recall 0.6, F1 2/3,
+FPR 0.2, two false negatives); seeds 2 and 3 catch one more positive each. So
+the mean and the sample standard deviation over the three seeds are known
+exactly, and a runner that averaged wrongly, divided by n instead of n-1, or
+scored the training predictions as the test ones fails here.
+~#
+use Collection;
+use System.ML.Lab;
+
+class KnownTrial implements Trial {
+	@calls : Vector<String>;
+	@train_y : Bool[];
+	@test_y : Bool[];
+
+	New() {
+		@calls := Vector->New()<String>;
+		@train_y := Bool->New[4];
+		@train_y[0] := true; @train_y[2] := true;
+		@test_y := Bool->New[10];
+		each(i : 5) {
+			@test_y[i] := true;
+		};
+	}
+
+	method : public : GetCalls() ~ Vector<String> {
+		return @calls;
+	}
+
+	method : public : Run(value : Float, name : String, seed : Int) ~ TrialResult {
+		@calls->AddBack(name + "/" + seed->ToString());
+
+		# training predictions: all right, except seed 3 misses one (0.75)
+		train_pred := Bool->New[4];
+		train_pred[0] := true;
+		train_pred[2] := (seed <> 3);
+
+		# test predictions: positives caught = 2 + seed, one false positive always
+		test_pred := Bool->New[10];
+		caught := 2 + seed;
+		each(i : caught) {
+			test_pred[i] := true;
+		};
+		test_pred[5] := true;
+
+		sw := Stopwatch->New();
+		sw->Start();
+		ms := sw->Stop();
+
+		return TrialResult->New(train_pred, @train_y, test_pred, @test_y, ms);
+	}
+}
+
+class NilTrial implements Trial {
+	New() {}
+
+	method : public : Run(value : Float, name : String, seed : Int) ~ TrialResult {
+		return Nil;
+	}
+}
+
+class RaggedTrial implements Trial {
+	New() {}
+
+	method : public : Run(value : Float, name : String, seed : Int) ~ TrialResult {
+		return TrialResult->New(Bool->New[3], Bool->New[4], Bool->New[2], Bool->New[2], 0.0);
+	}
+}
+
+class MlLabExperiment {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		# --- repeated runs ---
+		exp := Experiment->New("Forest: trees", "n_estimators");
+		values := Float->New[3];
+		values[0] := 10.0; values[1] := 50.0; values[2] := 100.0;
+		exp->SetValues(values);
+		seeds := Int->New[3];
+		seeds[0] := 1; seeds[1] := 2; seeds[2] := 3;
+		exp->SetSeeds(seeds);
+		exp->AddSetting("max_depth", "8");
+		exp->AddSetting("min_samples", "2");
+
+		trial := KnownTrial->New();
+		table := exp->Run(trial);
+		ok := Report("Run returns a table", table <> Nil) & ok;
+		ok := Report("the table carries the title and parameter",
+			table->GetTitle()->Equals("Forest: trees") & table->GetParameter()->Equals("n_estimators")) & ok;
+		ok := Report("one row per value", table->Size() = 3) & ok;
+		ok := Report("rows are named by their number", table->GetRowName(0)->Equals("10") & table->GetRowName(2)->Equals("100")) & ok;
+		ok := Report("rows keep their numeric value", table->GetRowValue(1) = 50.0) & ok;
+
+		names := table->GetColumnNames();
+		ok := Report("the eight metric columns are present in order",
+			names->Size() = 8 & names[0]->Equals("train_accuracy") & names[1]->Equals("test_accuracy") &
+			names[2]->Equals("precision") & names[3]->Equals("recall") & names[4]->Equals("f1") &
+			names[5]->Equals("fpr") & names[6]->Equals("false_negatives") & names[7]->Equals("fit_ms")) & ok;
+
+		# every value is run once per seed, in order
+		calls := trial->GetCalls();
+		ok := Report("each value runs once per seed, values outer and seeds inner",
+			calls->Size() = 9 & calls->Get(0)->Equals("10/1") & calls->Get(1)->Equals("10/2") &
+			calls->Get(2)->Equals("10/3") & calls->Get(3)->Equals("50/1") & calls->Get(8)->Equals("100/3")) & ok;
+
+		# the known numbers, per seed, and what the table must report
+		train_acc := Triple(1.0, 1.0, 0.75);
+		test_acc := Triple(0.7, 0.8, 0.9);
+		precision := Triple(0.75, 0.8, 5.0 / 6.0);
+		recall := Triple(0.6, 0.8, 1.0);
+		f1 := Triple(2.0 / 3.0, 0.8, 10.0 / 11.0);
+		fpr := Triple(0.2, 0.2, 0.2);
+		fn := Triple(2.0, 1.0, 0.0);
+
+		ok := Report("train_accuracy is the training-set accuracy", Column(table, 0, train_acc)) & ok;
+		ok := Report("test_accuracy mean 0.8, std 0.1", Column(table, 1, test_acc) & Near(table->Get(0, 1), 0.8) & Near(table->GetStd(0, 1), 0.1)) & ok;
+		ok := Report("precision is tp / (tp + fp) on the test set", Column(table, 2, precision)) & ok;
+		ok := Report("recall mean 0.8, std 0.2", Column(table, 3, recall) & Near(table->GetStd(0, 3), 0.2)) & ok;
+		ok := Report("f1 is the harmonic mean of precision and recall", Column(table, 4, f1)) & ok;
+		ok := Report("fpr is constant, so its std is 0", Column(table, 5, fpr) & table->GetStd(0, 5) = 0.0) & ok;
+		ok := Report("false_negatives mean 1, std 1", Column(table, 6, fn) & Near(table->GetStd(0, 6), 1.0)) & ok;
+		ok := Report("fit_ms is non-negative", table->Get(0, 7) >= 0.0 & table->GetStd(0, 7) >= 0.0) & ok;
+		ok := Report("every value row carries the same known numbers", Column2(table, 2, 1, test_acc) & Column2(table, 1, 3, recall)) & ok;
+		ok := Report("the table reports deviations", table->HasStds()) & ok;
+
+		foot := table->GetFootnote();
+		ok := Report("the footnote lists the fixed settings and the seeds",
+			foot->Has("max_depth=8; min_samples=2") & foot->Has("repeats=3 seeds (1, 2, 3)")) & ok;
+
+		md := table->ToMarkdown();
+		ok := Report("the Markdown shows the known recall with its deviation", md->Has("0.8000 ± 0.2000")) & ok;
+		ok := Report("false negatives render as a whole number", md->Has("| 1 ± 1 |")) & ok;
+
+		# --- a single run: no deviations, no repeats note ---
+		single := Experiment->New("Forest: trees", "n_estimators");
+		single->SetValues(values);
+		one := Int->New[1];
+		one[0] := 1;
+		single->SetSeeds(one);
+		single->AddSetting("max_depth", "8");
+		t1 := single->Run(KnownTrial->New());
+		ok := Report("a single seed stores no deviations", <>t1->HasStds() & t1->GetStd(0, 1) = 0.0) & ok;
+		ok := Report("a single seed reports that seed's numbers", Near(t1->Get(0, 1), 0.7) & Near(t1->Get(0, 3), 0.6) & t1->Get(0, 6) = 2.0) & ok;
+		ok := Report("a single seed's footnote has no repeats note", t1->GetFootnote()->Equals("max_depth=8")) & ok;
+		ok := Report("a single seed's Markdown has no ±", <>t1->ToMarkdown()->Has("±")) & ok;
+
+		# the default is one run with seed 0
+		dflt := Experiment->New("Forest: trees", "n_estimators");
+		dflt->SetValues(values);
+		kt := KnownTrial->New();
+		dflt->Run(kt);
+		ok := Report("the default is one run with seed 0", kt->GetCalls()->Size() = 3 & kt->GetCalls()->Get(0)->Equals("10/0")) & ok;
+
+		# --- a categorical sweep keeps its names ---
+		cat := Experiment->New("SVM: kernel", "kernel");
+		kv := Float->New[3];
+		kv[0] := 0.0; kv[1] := 1.0; kv[2] := 2.0;
+		kn := String->New[3];
+		kn[0] := "linear"; kn[1] := "rbf"; kn[2] := "poly";
+		cat->SetValues(kv, kn);
+		kt2 := KnownTrial->New();
+		tc := cat->Run(kt2);
+		ok := Report("a categorical sweep names its rows", tc->GetRowName(1)->Equals("rbf") & tc->GetRowValue(1) = 1.0) & ok;
+		ok := Report("the trial receives the name", kt2->GetCalls()->Get(2)->Equals("poly/0")) & ok;
+
+		# --- refusals ---
+		ok := Report("Run before SetValues is refused", Refuses(1)) & ok;
+		ok := Report("an empty value list is refused", Refuses(2)) & ok;
+		ok := Report("names of another length are refused", Refuses(3)) & ok;
+		ok := Report("an empty seed list is refused", Refuses(4)) & ok;
+		ok := Report("a trial returning Nil is refused, naming the value", Refuses(5)) & ok;
+		ok := Report("ragged prediction arrays are refused", Refuses(6)) & ok;
+		ok := Report("a Nil trial is refused", Refuses(7)) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Refuses(which : Int) ~ Bool {
+		refused := false;
+		msg := "";
+		three := Float->New[3];
+		three[0] := 1.0; three[1] := 2.0; three[2] := 3.0;
+		try {
+			e := Experiment->New("t", "p");
+			select(which) {
+				label 1: { e->Run(KnownTrial->New()); }
+				label 2: { e->SetValues(Float->New[0]); }
+				label 3: { e->SetValues(three, String->New[2]); }
+				label 4: { e->SetSeeds(Int->New[0]); }
+				label 5: { e->SetValues(three); e->Run(NilTrial->New()); }
+				label 6: { e->SetValues(three); e->Run(RaggedTrial->New()); }
+				label 7: { e->SetValues(three); e->Run(Nil->As(Trial)); }
+			};
+		}
+		on(ex : LabError) {
+			refused := true;
+			msg := ex->GetMessage();
+		};
+
+		if(which = 5 & refused) {
+			return msg->Has("returned Nil for 1");
+		};
+
+		return refused;
+	}
+
+	function : Triple(a : Float, b : Float, c : Float) ~ Float[] {
+		out := Float->New[3];
+		out[0] := a; out[1] := b; out[2] := c;
+		return out;
+	}
+
+	# row 0 of the column holds the mean and sample std of the three seeds
+	function : Column(t : ResultTable, col : Int, per_seed : Float[]) ~ Bool {
+		return Column2(t, 0, col, per_seed);
+	}
+
+	function : Column2(t : ResultTable, row : Int, col : Int, per_seed : Float[]) ~ Bool {
+		mean := (per_seed[0] + per_seed[1] + per_seed[2]) / 3.0;
+		sq := 0.0;
+		each(i : 3) {
+			sq += (per_seed[i] - mean) * (per_seed[i] - mean);
+		};
+		std := Float->Sqrt(sq / 2.0);
+
+		return Near(t->Get(row, col), mean) & Near(t->GetStd(row, col), std);
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.000001;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}

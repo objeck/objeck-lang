@@ -3908,6 +3908,42 @@ void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, con
 }
 
 /****************************
+ * A subscript on a call's result, 'GetItems()[i]'. The index expressions
+ * are ordinary expressions and must be analyzed, or they reach the emitter
+ * with no resolved entry -- which segfaults rather than diagnosing, and marks
+ * any variable used only as an index as unreferenced.
+ *
+ * Called for the FIRST link of a chain from AnalyzeMethodCall and for every
+ * later link from AnalyzeExpressionMethodCall: the later links never passed
+ * through AnalyzeMethodCall, so 'v->Get(r)->Get()[c]' analyzed its receiver
+ * and callee but not 'c', and the emitter dereferenced the index variable's
+ * missing entry (an access violation in EmitVariable, with no diagnostic).
+ ****************************/
+void ContextAnalyzer::AnalyzeCallIndices(MethodCall* method_call, const int depth)
+{
+  ExpressionList* call_indices = method_call->GetCallIndices();
+  if(!call_indices) {
+    return;
+  }
+
+  std::vector<Expression*> index_exprs = call_indices->GetExpressions();
+  if(index_exprs.size() != 1) {
+    ProcessError(static_cast<Expression*>(method_call),
+                 L"Only a single dimension may be indexed on a method call result");
+  }
+
+  for(size_t i = 0; i < index_exprs.size(); ++i) {
+    AnalyzeExpression(index_exprs[i], depth + 1);
+
+    Type* index_type = GetExpressionType(index_exprs[i], depth + 1);
+    if(index_type && index_type->GetType() != INT_TYPE && index_type->GetType() != BYTE_TYPE &&
+       index_type->GetType() != CHAR_TYPE) {
+      ProcessError(static_cast<Expression*>(method_call), L"Expected an integer index");
+    }
+  }
+}
+
+/****************************
  * Analyzes a method call
  ****************************/
 void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth)
@@ -3936,28 +3972,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
     }
   } named_argument_guard = { this, method_call };
 
-  // A subscript on this call's result, 'GetItems()[i]'. The index expressions
-  // are ordinary expressions and must be analyzed, or they reach the emitter
-  // with no resolved entry -- which segfaults rather than diagnosing, and marks
-  // any variable used only as an index as unreferenced.
-  ExpressionList* call_indices = method_call->GetCallIndices();
-  if(call_indices) {
-    std::vector<Expression*> index_exprs = call_indices->GetExpressions();
-    if(index_exprs.size() != 1) {
-      ProcessError(static_cast<Expression*>(method_call),
-                   L"Only a single dimension may be indexed on a method call result");
-    }
-
-    for(size_t i = 0; i < index_exprs.size(); ++i) {
-      AnalyzeExpression(index_exprs[i], depth + 1);
-
-      Type* index_type = GetExpressionType(index_exprs[i], depth + 1);
-      if(index_type && index_type->GetType() != INT_TYPE && index_type->GetType() != BYTE_TYPE &&
-         index_type->GetType() != CHAR_TYPE) {
-        ProcessError(static_cast<Expression*>(method_call), L"Expected an integer index");
-      }
-    }
-  }
+  AnalyzeCallIndices(method_call, depth);
 
   //
   // new array call
@@ -4660,6 +4675,10 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
     else {
       // track rouge return
       ++nested_call_depth;
+
+      // a subscript on THIS link's result; the first link's is handled by
+      // AnalyzeMethodCall, which later links do not pass through
+      AnalyzeCallIndices(method_call, depth);
 
       std::wstring encoding;
       Class* klass = nullptr;

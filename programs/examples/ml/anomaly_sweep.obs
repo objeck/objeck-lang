@@ -1,0 +1,165 @@
+#~
+Anomaly Detection Sensitivity Across 7 Algorithms -- a lab in System.ML.
+
+Each detector flags anomalies in the same labelled data at three sensitivity
+settings (Low, Medium, High), and every setting is scored against the labels:
+precision, recall, F1 and false-positive rate, plus the AUC of the detector's
+scores. The settings are the lab's:
+
+  Z-Score             absolute threshold        3.0 / 2.5 / 2.0
+  Elliptic Envelope   contamination             0.01 / 0.05 / 0.10
+  LOF                 contamination             0.01 / 0.05 / 0.10
+  DBSCAN              eps                       1.5 / 1.0 / 0.5
+  One-Class SVM       nu                        0.01 / 0.05 / 0.10
+  Isolation Forest    contamination             0.01 / 0.05 / 0.10
+  Autoencoder         error percentile          99.5 / 97.5 / 95.0
+
+The data (seed 2026, 6 features, 2,100 rows, 100 of them anomalies = 4.8%):
+  * 2,000 normal rows from two correlated clusters (1,200 around the origin,
+    800 around (3, 3, 0, 0, 3, 0)), each feature x_j = z_j + 0.6 z_(j-1) for
+    near-Gaussian z (the sum of 12 uniforms minus 6);
+  * 40 scattered anomalies, uniform over [-6, 9]^6;
+  * 30 shifted anomalies: the first cluster moved by +4 on features 2 and 3;
+  * 30 correlation-breaking anomalies: feature 1 = -1.5 x feature 0, where the
+    normal data correlates them positively -- each value is ordinary on its own,
+    only the combination is not, so per-feature rules (Z-Score) miss them.
+All features are then standardized, so DBSCAN's eps is in standard deviations.
+
+One-Class SVM is OneClassSVM (RBF kernel, gamma 'scale') through the
+OneClassSvmDetector adapter, so it sweeps nu like the others sweep theirs.
+
+Build and run:
+  obc -src anomaly_sweep.obs -lib ml,gen_collect,csv
+  obr anomaly_sweep.obe
+~#
+use System.ML;
+
+class AnomalySweep {
+	function : Main(args : String[]) ~ Nil {
+		X := Standardize(MakeData(2026));
+		y := Bool->New[2100];
+		for(i := 2000; i < 2100; i += 1;) {
+			y[i] := true;
+		};
+
+		"Anomaly Detection Sensitivity Across 7 Algorithms"->PrintLine();
+		"2,100 rows x 6 features, 100 labelled anomalies; every detector flags the same rows"->PrintLine();
+		""->PrintLine();
+
+		names := ["Low", "Medium", "High"];
+		Show("Z-Score (max |z| over features)", ZScoreDetector->New(), [3.0, 2.5, 2.0], names, X, y);
+		Show("Elliptic Envelope (FastMCD)", EllipticEnvelope->New(), [0.01, 0.05, 0.10], names, X, y);
+		Show("Local Outlier Factor (k = 20)", LocalOutlierFactor->New(), [0.01, 0.05, 0.10], names, X, y);
+		Show("DBSCAN (min_points = 5; outliers = noise)", DbscanDetector->New(1.5, 5), [1.5, 1.0, 0.5], names, X, y);
+		Show("One-Class SVM (RBF, gamma = scale)", OneClassSvmDetector->New(SvmKernel->RBF, 0.01), [0.01, 0.05, 0.10], names, X, y);
+		Show("Isolation Forest (100 trees)", IsolationForest->New(), [0.01, 0.05, 0.10], names, X, y);
+		Show("Autoencoder (6-3-2-3-6, 50 epochs)", AutoencoderDetector->New(), [99.5, 97.5, 95.0], names, X, y);
+	}
+
+	function : Show(title : String, detector : OutlierDetector, settings : Float[], names : String[], X : Float[,], y : Bool[]) ~ Nil {
+		timer := System.Time.Timer->New();
+		timer->Start();
+		result := SensitivitySweep->Run(detector, settings, names, X, y);
+		timer->End();
+		secs := SweepResult->Fixed(timer->GetElapsedTime(), 2);
+		"== {$title} -- {$secs}s =="->PrintLine();
+		result->ToTable()->PrintLine();
+	}
+
+	# the near-Gaussian draw: 12 uniforms minus 6
+	function : Gauss(rng : System.ML.Random) ~ Float {
+		acc := 0.0;
+		each(k : 12) {
+			acc += rng->NextReal();
+		};
+		return acc - 6.0;
+	}
+
+	function : MakeData(seed : Int) ~ Float[,] {
+		rng := System.ML.Random->New(seed);
+		X := Float->New[2100, 6];
+		z := Float->New[6];
+		centre := [3.0, 3.0, 0.0, 0.0, 3.0, 0.0];
+
+		# normal rows: two correlated clusters
+		each(i : 2000) {
+			each(j : 6) {
+				z[j] := Gauss(rng);
+			};
+			each(j : 6) {
+				v := z[j];
+				if(j > 0) {
+					v := v + 0.6 * z[j - 1];
+				};
+				if(i >= 1200) {
+					v := v + centre[j];
+				};
+				X[i, j] := v;
+			};
+		};
+
+		# 40 scattered anomalies
+		for(i := 2000; i < 2040; i += 1;) {
+			each(j : 6) {
+				X[i, j] := rng->NextReal() * 15.0 - 6.0;
+			};
+		};
+
+		# 30 shifted anomalies: cluster one, moved on features 2 and 3
+		for(i := 2040; i < 2070; i += 1;) {
+			each(j : 6) {
+				z[j] := Gauss(rng);
+			};
+			each(j : 6) {
+				v := z[j];
+				if(j > 0) {
+					v := v + 0.6 * z[j - 1];
+				};
+				if(j = 2 | j = 3) {
+					v := v + 4.0;
+				};
+				X[i, j] := v;
+			};
+		};
+
+		# 30 correlation-breaking anomalies: feature 1 against feature 0
+		for(i := 2070; i < 2100; i += 1;) {
+			each(j : 6) {
+				z[j] := Gauss(rng);
+			};
+			each(j : 6) {
+				v := z[j];
+				if(j > 0) {
+					v := v + 0.6 * z[j - 1];
+				};
+				X[i, j] := v;
+			};
+			X[i, 1] := -1.5 * X[i, 0] + 0.1 * Gauss(rng);
+		};
+
+		return X;
+	}
+
+	function : Standardize(X : Float[,]) ~ Float[,] {
+		dims := X->Size();
+		rows := dims[0];
+		cols := dims[1];
+		each(j : cols) {
+			sum := 0.0;
+			each(i : rows) {
+				sum += X[i, j];
+			};
+			mean := sum / rows->As(Float);
+			ss := 0.0;
+			each(i : rows) {
+				d := X[i, j] - mean;
+				ss += d * d;
+			};
+			sd := Float->Sqrt(ss / rows->As(Float));
+			each(i : rows) {
+				X[i, j] := (X[i, j] - mean) / sd;
+			};
+		};
+		return X;
+	}
+}

@@ -1952,6 +1952,10 @@ labels := model->PredictClass(X);
 	lambda/2*||w||^2 + (1/n)*sum(max(0, 1 - y*(w*x + b))), with labels mapped
 	internally from {0,1} to {-1,+1}. The bias is not regularized.
 
+	For kernels (RBF, polynomial, sigmoid) or scikit-learn's SVC parameters (C,
+	gamma, degree, coef0) use KernelSVM, which solves the dual exactly with
+	LIBSVM's SMO; this class is kept unchanged for existing programs.
+
 ```
 model := SVM->New(0.01, 0.1, 500);
 model->Fit(X, y);

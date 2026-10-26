@@ -1,0 +1,345 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+System.ML IsolationForest.
+
+The average path length c(n) is checked exactly against the formula. A forest is
+random, so its scores cannot match a reference value for value; instead an
+independent numpy forest (its own generator, 2000 trees) scored the same 315 rows
+-- 300 correlated near-Gaussian inliers and 15 uniform outliers, built by both
+sides from System.ML.Random with arithmetic only -- and the Spearman rank
+correlation with this forest's scores must exceed 0.99. Regenerate the fixture
+with ml_outlier_ref/gen_fixtures.py.
+
+Also: seeded determinism, the "auto" and contamination thresholds, the flagged
+fraction, SetSensitivity equal to a fresh fit, max_samples capping, a constant
+feature, a single row, injected-outlier detection and refusals.
+~#
+use System.ML;
+
+class MlOutlierIForest {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		# c(n), exactly
+		ns := [1, 2, 3, 4, 5, 10, 100, 256, 1000, 100000];
+		expected_c := ExpectedC();
+		c_ok := true;
+		each(i : ns) {
+			if(IsolationForest->AveragePathLength(ns[i]) <> expected_c[i]) {
+				c_ok := false;
+				"  c({$ns[i]}) mismatch"->PrintLine();
+			};
+		};
+		ok := Report("c(n) matches the formula exactly for 10 sizes", c_ok) & ok;
+
+		X := MakeData(21, 300, 15, 4, 8.0);
+		y := Labels(300, 15);
+
+		forest := IsolationForest->New(1000, 0, 0.0, 7);
+		ok := Report("fits", forest->Fit(X)) & ok;
+		ok := Report("max_samples defaults to min(256, n)", forest->GetSampleSize() = 256) & ok;
+		ok := Report("1000 trees", forest->GetTreeCount() = 1000) & ok;
+		scores := forest->GetTrainingScores();
+		rho := Spearman(scores, ReferenceScores());
+		ok := Report("rank correlation with the numpy forest is {$rho} > 0.99", rho > 0.99) & ok;
+		reference := ReferenceScores();
+		gap := 0.0;
+		worst := 0.0;
+		each(i : scores) {
+			d := (scores[i] - reference[i])->Abs();
+			gap += d;
+			if(d > worst) {
+				worst := d;
+			};
+		};
+		gap := gap / scores->Size()->As(Float);
+		ok := Report("score values agree too: mean |diff| {$gap} < 0.005, max {$worst} < 0.03", gap < 0.005 & worst < 0.03) & ok;
+
+		in_range := true;
+		each(i : scores) {
+			if(scores[i] <= 0.0 | scores[i] > 1.0) {
+				in_range := false;
+			};
+		};
+		ok := Report("scores lie in (0, 1]", in_range) & ok;
+
+		auc := Metrics->AucRoc(scores, y);
+		ok := Report("scores feed AucRoc (AUC {$auc} > 0.97)", auc > 0.97) & ok;
+
+		# defaults: 100 trees, auto contamination
+		default_forest : OutlierDetector := IsolationForest->New();
+		flags := default_forest->FitPredict(X);
+		ok := Report("auto contamination thresholds at 0.5", default_forest->GetThreshold() = 0.5) & ok;
+		rho100 := Spearman(default_forest->GetTrainingScores(), ReferenceScores());
+		ok := Report("100 trees still correlate {$rho100} > 0.95", rho100 > 0.95) & ok;
+		caught := 0;
+		for(i := 300; i < 315; i += 1;) {
+			if(flags[i]) {
+				caught += 1;
+			};
+		};
+		ok := Report("auto flags at least 12 of 15 injected outliers ({$caught})", caught >= 12) & ok;
+
+		fp := Fingerprint(default_forest->GetTrainingScores());
+		"  fingerprint: {$fp}"->PrintLine();
+
+		# determinism
+		again := IsolationForest->New(100, 0, 0.0, 42);
+		again->Fit(X);
+		ok := Report("same seed, identical scores", Same(again->GetTrainingScores(), default_forest->GetTrainingScores())) & ok;
+		reseeded := IsolationForest->New(100, 0, 0.0, 43);
+		reseeded->Fit(X);
+		ok := Report("another seed, different scores", <>Same(reseeded->GetTrainingScores(), default_forest->GetTrainingScores())) & ok;
+
+		# contamination sets the training flagged fraction; 0.05 of 315 rows: the
+		# threshold interpolates between the 15th and 16th highest scores
+		c05 := IsolationForest->New(100, 0, 0.05, 42);
+		f05 := c05->FitPredict(X);
+		n05 := Count(f05);
+		ok := Report("contamination 0.05 flags 16 of 315 ({$n05})", n05 = 16) & ok;
+		c10 := IsolationForest->New(100, 0, 0.10, 42);
+		n10 := Count(c10->FitPredict(X));
+		c01 := IsolationForest->New(100, 0, 0.01, 42);
+		n01 := Count(c01->FitPredict(X));
+		ok := Report("0.01 < 0.05 < 0.10 in flags ({$n01}, {$n05}, {$n10})", n01 < n05 & n05 < n10) & ok;
+
+		# SetSensitivity keeps the trees: same threshold and labels as a fresh fit
+		c05->SetSensitivity(0.10);
+		ok := Report("SetSensitivity equals a fresh fit", c05->GetThreshold() = c10->GetThreshold() & c05->IsFitted()) & ok;
+		ok := Report("contamination 0.7 is rejected", <>c05->SetSensitivity(0.7)) & ok;
+
+		# new rows: an outlier and an inlier
+		probe := [[0.1, 0.0, -0.1, 0.05], [7.5, -7.5, 7.5, -7.5]];
+		ps := default_forest->Score(probe);
+		ok := Report("a far row outscores a central one", ps <> Nil & ps[1] > ps[0]) & ok;
+		pd := default_forest->DecisionFunction(probe);
+		ok := Report("DecisionFunction is score - 0.5", pd <> Nil & pd[1] = ps[1] - 0.5) & ok;
+
+		# max_samples is capped at n; a constant feature never splits
+		C := Float->New[50, 3];
+		each(i : 50) {
+			C[i, 0] := i->As(Float);
+			C[i, 1] := 4.0;
+			C[i, 2] := (i % 7)->As(Float);
+		};
+		capped := IsolationForest->New(20, 500, 0.0, 1);
+		ok := Report("a constant feature fits", capped->Fit(C)) & ok;
+		ok := Report("max_samples 500 is capped at 50", capped->GetSampleSize() = 50) & ok;
+		cs := capped->Score([[25.0, 4.0, 3.0], [25.0, 900.0, 3.0]]);
+		ok := Report("the constant feature never splits (score ignores it)", cs <> Nil & cs[0] = cs[1]) & ok;
+
+		single := IsolationForest->New();
+		ok := Report("a single row fits", single->Fit([[1.0, 2.0]])) & ok;
+		ok := Report("and scores 1, as sklearn", single->GetTrainingScores()[0] = 1.0) & ok;
+
+		# refusals
+		bad := MakeData(5, 20, 0, 3, 1.0);
+		bad[19, 2] := Float->NaN();
+		r := IsolationForest->New();
+		ok := Report("NaN is refused", <>r->Fit(bad) & r->GetError()->Has("row 19, column 2")) & ok;
+		ok := Report("0 trees are refused", <>IsolationForest->New(0, 0, 0.0, 1)->Fit(X)) & ok;
+		ok := Report("unfitted Score is Nil", IsolationForest->New()->Score(X) = Nil) & ok;
+		ok := Report("a column mismatch is refused", default_forest->Score([[1.0]]) = Nil) & ok;
+
+		if(ok) {
+			"PASS: ml_outlier_iforest"->PrintLine();
+		}
+		else {
+			"FAIL: ml_outlier_iforest"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# Spearman: Pearson correlation of the ranks (average ranks for ties)
+	function : Spearman(a : Float[], b : Float[]) ~ Float {
+		ra := Ranks(a);
+		rb := Ranks(b);
+		n := a->Size()->As(Float);
+		ma := 0.0;
+		mb := 0.0;
+		each(i : ra) {
+			ma += ra[i];
+			mb += rb[i];
+		};
+		ma := ma / n;
+		mb := mb / n;
+		sab := 0.0;
+		saa := 0.0;
+		sbb := 0.0;
+		each(i : ra) {
+			da := ra[i] - ma;
+			db := rb[i] - mb;
+			sab += da * db;
+			saa += da * da;
+			sbb += db * db;
+		};
+		return sab / Float->Sqrt(saa * sbb);
+	}
+
+	function : Ranks(v : Float[]) ~ Float[] {
+		n := v->Size();
+		ranks := Float->New[n];
+		each(i : n) {
+			less := 0;
+			equal := 0;
+			each(j : n) {
+				if(v[j] < v[i]) {
+					less += 1;
+				}
+				else if(v[j] = v[i]) {
+					equal += 1;
+				};
+			};
+			ranks[i] := less->As(Float) + (equal + 1)->As(Float) / 2.0;
+		};
+		return ranks;
+	}
+
+	function : Same(a : Float[], b : Float[]) ~ Bool {
+		if(a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	function : Count(flags : Bool[]) ~ Int {
+		n := 0;
+		each(i : flags) {
+			if(flags[i]) {
+				n += 1;
+			};
+		};
+		return n;
+	}
+
+	function : Labels(n_in : Int, n_out : Int) ~ Bool[] {
+		y := Bool->New[n_in + n_out];
+		for(i := n_in; i < n_in + n_out; i += 1;) {
+			y[i] := true;
+		};
+		return y;
+	}
+
+	function : Gauss(rng : System.ML.Random) ~ Float {
+		acc := 0.0;
+		each(k : 12) {
+			acc += rng->NextReal();
+		};
+		return acc - 6.0;
+	}
+
+	function : MakeData(seed : Int, n_in : Int, n_out : Int, p : Int, spread : Float) ~ Float[,] {
+		rng := System.ML.Random->New(seed);
+		X := Float->New[n_in + n_out, p];
+		z := Float->New[p];
+		each(i : n_in) {
+			each(j : p) {
+				z[j] := Gauss(rng);
+			};
+			each(j : p) {
+				v := z[j];
+				if(j > 0) {
+					v := v + 0.5 * z[j - 1];
+				};
+				X[i, j] := v;
+			};
+		};
+		for(i := n_in; i < n_in + n_out; i += 1;) {
+			each(j : p) {
+				X[i, j] := rng->NextReal() * (2.0 * spread) - spread;
+			};
+		};
+		return X;
+	}
+
+	# printed so runs under different -opt levels and JIT modes can be diffed: the
+	# scores to 1e-12, folded into one integer
+	function : Fingerprint(v : Float[]) ~ Int {
+		total := 0;
+		each(i : v) {
+			total += (v[i] * 1000000000000.0)->As(Int) * (i % 7 + 1);
+		};
+		return total;
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+		return passed;
+	}
+
+	# BEGIN GENERATED FIXTURE
+	# by ml_outlier_ref/gen_fixtures.py; do not edit by hand
+	function : ReferenceScores() ~ Float[] {
+		return [
+			0.3838159979930534, 0.36625301975075664, 0.3963364117774221, 0.379165331601087, 0.3877371314856701, 0.3536511493645235,
+			0.36729574335462717, 0.36286024791114385, 0.40169395288649273, 0.3695527599429414, 0.3971996919588885, 0.3895248429422034,
+			0.4125290210862997, 0.35615095232039895, 0.42399225818045777, 0.369124211808247, 0.3713675741179468, 0.4119969932281691,
+			0.4946833290594643, 0.3837295418447837, 0.34957221114726506, 0.4608312170076759, 0.3780591261333902, 0.36714436702773656,
+			0.4185047273207342, 0.40656686632189887, 0.41186599599140167, 0.35508538478890617, 0.41896464759331536, 0.4333123168729672,
+			0.3636072293330947, 0.41606239013027607, 0.47026972978869613, 0.384635566488692, 0.387807913356609, 0.3484399699903905,
+			0.3590958804351925, 0.3604374224303446, 0.42102724819169596, 0.3722596223583001, 0.48537882991823145, 0.3680521387975878,
+			0.36754781366063927, 0.3524604370404362, 0.3588697213988406, 0.3795782570471484, 0.37960657544859416, 0.44868627505712877,
+			0.3627074904984038, 0.36230259363078515, 0.37699002385470914, 0.3915305620269731, 0.376061476514114, 0.40262710959042614,
+			0.39583774252137616, 0.45942253177311126, 0.39996375656312133, 0.36209142632730035, 0.37429817005297855, 0.39374491632544634,
+			0.36490939780649206, 0.4185313957261799, 0.41725712787472313, 0.43049598928965616, 0.3950538911228547, 0.35311207362008984,
+			0.43279700878212873, 0.42170004886234724, 0.37531875569016887, 0.3668124565435655, 0.38246211820545545, 0.41037150597579786,
+			0.36749349746021814, 0.4693180147727547, 0.374085307483199, 0.36058060059880404, 0.3784103506466878, 0.3802477394831311,
+			0.3586056700661597, 0.4752761586883825, 0.379229636102313, 0.3846513122466126, 0.5166963465711352, 0.44058895248612717,
+			0.35633252089756806, 0.3889254813323814, 0.39575449396662293, 0.3954896105971672, 0.3987533897437037, 0.35714747233305555,
+			0.3869228817210327, 0.35441331641623985, 0.3771249346886487, 0.3948859479185848, 0.38581233699570566, 0.35613172543896227,
+			0.4521915403997241, 0.36885905735576136, 0.35479999285150876, 0.3837719208105661, 0.39909014247858876, 0.3479180357288833,
+			0.3782362752095094, 0.4554542326468358, 0.36142725703547396, 0.3602326239275646, 0.4048504354558623, 0.36813397966491007,
+			0.4383823047627598, 0.4546702412675861, 0.364202374232748, 0.3518760286475057, 0.39037342446401624, 0.44270819066975314,
+			0.36195424901013723, 0.4561618810822218, 0.4212188915540757, 0.45587288984401275, 0.458958267253185, 0.3574656910030662,
+			0.363934608666331, 0.3742203781886245, 0.4222768040747504, 0.4158848678410392, 0.3631713887370669, 0.4184514069575415,
+			0.36203694265386194, 0.39677527866657386, 0.35488564395341987, 0.41645567655797855, 0.4515420904707222, 0.3568646926105587,
+			0.41444136075989907, 0.36672164784339084, 0.35776235591993927, 0.42972297914575774, 0.36807302588131224, 0.36133728064820825,
+			0.3770337414460092, 0.3837220178939602, 0.44768553317324383, 0.353674332987297, 0.39595307095556725, 0.46812319650331485,
+			0.4327112093318109, 0.3593680493901216, 0.3848518125965137, 0.41212109742661435, 0.3630025055614299, 0.3769625569014025,
+			0.3883561801430489, 0.3511194368452338, 0.35901991059343374, 0.36060054150242116, 0.36027059794419614, 0.37478948353878616,
+			0.404069226631283, 0.384222896108747, 0.4087171475224406, 0.3914782484402519, 0.43808322510992015, 0.37231902806721956,
+			0.4025276966606339, 0.358873821122181, 0.4518571944118547, 0.35966468094617354, 0.3990920222166347, 0.3796692425589756,
+			0.3784986729177399, 0.36655466401653525, 0.36904146936550425, 0.37959838719455014, 0.38496191619717235, 0.3776434429574296,
+			0.3996946683842325, 0.3635681718401556, 0.3734752338866048, 0.34667446271921165, 0.3501381215218309, 0.37348914842596426,
+			0.440121038402716, 0.3608824221346256, 0.4742624288747419, 0.3972258956730801, 0.3764076425823411, 0.3611423969454964,
+			0.3755084435203329, 0.3966128012908203, 0.4014148790448966, 0.38764227051412364, 0.3738300557843147, 0.381706612117917,
+			0.43988658644489587, 0.37760729664387194, 0.3810927162777204, 0.3519068765658408, 0.3721769641835431, 0.39326038258807405,
+			0.42563123163147815, 0.387136629672784, 0.36054733158302615, 0.3919811459797657, 0.35390842410281953, 0.483735119332315,
+			0.3971108400868912, 0.4188352615181893, 0.3746940199540923, 0.3706977725322993, 0.4044941176464718, 0.35702995525586495,
+			0.37926878445068235, 0.3705134314823122, 0.40093669875358107, 0.4233133476683478, 0.3689541097860924, 0.3855853139297607,
+			0.435850514084667, 0.36942885789038427, 0.38642556419944335, 0.3516634509338039, 0.3623070179791833, 0.392490206068031,
+			0.3516619288530156, 0.36355495553909245, 0.35374469867638253, 0.42188393048515127, 0.3726781640329538, 0.4677897756324306,
+			0.3552242764995336, 0.4075204741703184, 0.35249655379854705, 0.3704260378591607, 0.46464567857477956, 0.377633411489947,
+			0.3766833975857295, 0.38118071741382015, 0.37712494159317417, 0.3583155577121948, 0.4464701335915127, 0.37412289307852187,
+			0.3523704944627583, 0.3874688719566948, 0.38834340118010596, 0.35673883367175163, 0.40092275036175323, 0.4094360263095209,
+			0.3875972506852767, 0.35252548561327784, 0.38474616377761756, 0.40903679765098777, 0.41717573617461906, 0.35229824140090393,
+			0.3779332407557062, 0.4207733580141547, 0.382828129531549, 0.37235761569420983, 0.3785309915286619, 0.3578431202864712,
+			0.3758774646154309, 0.4671658790142983, 0.42810698248637935, 0.3821234551625162, 0.36079365295854987, 0.39429457892306125,
+			0.5035441875010462, 0.4083178085942244, 0.3575563509871051, 0.37649752528327013, 0.3862511589338651, 0.35525399090659765,
+			0.38535263768560735, 0.361931136284717, 0.39338131350518907, 0.3715331211687444, 0.3643510561937795, 0.357914107539346,
+			0.3580571060118644, 0.4038999839622048, 0.38235437083293256, 0.3752099076587373, 0.3567445091337334, 0.36748334747383793,
+			0.3832278276684551, 0.3794152251923918, 0.38230298131768925, 0.40556418599183597, 0.36084502118243916, 0.4177560939966211,
+			0.38919385803172024, 0.3564818023243912, 0.4002136887176407, 0.380760430897976, 0.36612767912483224, 0.4828468680782477,
+			0.4356594817693472, 0.4193868016214039, 0.36536114363412386, 0.4180933545237007, 0.39030199095871726, 0.3480897122765179,
+			0.7404049770216434, 0.5808128904272528, 0.6898957371727732, 0.5813204474426286, 0.6852821526938088, 0.7248379499301137,
+			0.7122355432134801, 0.7383839686743832, 0.6205250729969073, 0.7260649019778564, 0.7691326269362396, 0.5650614578166699,
+			0.6909160278036337, 0.6406755722579207, 0.6243547969726769];
+	}
+
+	function : ExpectedC() ~ Float[] {
+		return [
+			0.0, 1.0, 1.207392357589623, 1.8516559071392855, 2.327020052042847, 3.748880484475505,
+			8.364671030072245, 10.244770920119917, 12.969940887100174, 22.180282259643523];
+	}
+	# END GENERATED FIXTURE
+}

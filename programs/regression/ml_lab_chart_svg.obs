@@ -1,0 +1,392 @@
+# EXTRA_LIBS: ml,ml_lab,gen_collect,csv,json
+#~
+System.ML.Lab.Chart: standalone SVG line, bar and loss-curve charts.
+
+Three kinds of check. Structure: the SVG parses with Data.XML, its root is svg
+with the SVG namespace and a viewBox, and it holds the elements the data
+implies -- one polyline per line series, one circle per point, one rect per
+bar, one error-bar line per point with a non-zero error. Geometry: every
+coordinate the chart writes lies inside the viewport, which catches a scale
+that maps data off the page. Determinism: the text matches golden files under
+ml_lab_golden/, so a layout change is a deliberate golden update.
+~#
+use Collection;
+use Data.XML;
+use System.IO.Filesystem;
+use System.ML.Lab;
+
+class MlLabChartSvg {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		# --- a line chart with two series and error bars ---
+		xs := Float->New[5];
+		xs[0] := 10.0; xs[1] := 50.0; xs[2] := 100.0; xs[3] := 200.0; xs[4] := 500.0;
+		train := Float->New[5];
+		train[0] := 0.91; train[1] := 0.97; train[2] := 0.99; train[3] := 0.995; train[4] := 1.0;
+		test := Float->New[5];
+		test[0] := 0.88; test[1] := 0.92; test[2] := 0.93; test[3] := 0.925; test[4] := 0.93;
+		err := Float->New[5];
+		err[0] := 0.02; err[1] := 0.015; err[2] := 0.0; err[3] := 0.01; err[4] := 0.012;
+
+		c := Chart->New("Random forest: train vs test accuracy", "n_estimators", "accuracy");
+		c->AddLine("train", xs, train);
+		c->AddLine("test", xs, test, err);
+		svg := c->ToSvg();
+
+		root := Parse(svg);
+		ok := Report("the line chart parses as XML", root <> Nil) & ok;
+		if(root <> Nil) {
+			ok := Report("the root is svg in the SVG namespace with a viewBox",
+				root->GetName()->Equals("svg") & Attr(root, "xmlns")->Equals("http://www.w3.org/2000/svg") &
+				Attr(root, "viewBox")->Equals("0 0 800 480") & Attr(root, "version")->Equals("1.1")) & ok;
+			ok := Report("the default size is 800 x 480", Attr(root, "width")->Equals("800") & Attr(root, "height")->Equals("480")) & ok;
+			ok := Report("one polyline per line series", Count(root, "polyline") = 2) & ok;
+			ok := Report("one marker per point", Count(root, "circle") = 10) & ok;
+			ok := Report("one error bar per point with a non-zero error (plus the two axes)", Count(root, "line") = 4 + 2 + 6) & ok;
+			ok := Report("a title element and the axis titles are present",
+				Count(root, "title") = 1 & Texts(root)->Has("n_estimators") & Texts(root)->Has("accuracy")) & ok;
+			ok := Report("the legend names both series", Texts(root)->Has("train") & Texts(root)->Has("test")) & ok;
+			ok := Report("every coordinate lies inside the viewport", InsideViewport(root, 800.0, 480.0)) & ok;
+			ok := Report("y ticks cover the unit interval for rates", Texts(root)->Has("0.2") & Texts(root)->Has("1")) & ok;
+		};
+		ok := Golden("the line chart matches ml_lab_golden/chart_line_err.svg", svg, "ml_lab_golden/chart_line_err.svg") & ok;
+		ok := Report("the same data renders the same bytes", c->ToSvg()->Equals(svg)) & ok;
+
+		# --- a log-x chart ---
+		cs := Float->New[5];
+		cs[0] := 0.001; cs[1] := 0.01; cs[2] := 0.1; cs[3] := 1.0; cs[4] := 10.0;
+		rec := Float->New[5];
+		rec[0] := 0.3; rec[1] := 0.55; rec[2] := 0.8; rec[3] := 0.9; rec[4] := 0.91;
+		lg := Chart->New("SVM: recall vs C", "C", "recall");
+		lg->SetLogX(true);
+		lg->AddLine("rbf", cs, rec);
+		lsvg := lg->ToSvg();
+		lroot := Parse(lsvg);
+		ok := Report("the log chart parses", lroot <> Nil) & ok;
+		if(lroot <> Nil) {
+			ok := Report("log x ticks are powers of ten", Texts(lroot)->Has("0.001") & Texts(lroot)->Has("0.01") & Texts(lroot)->Has("10")) & ok;
+			ok := Report("log x keeps every coordinate inside the viewport", InsideViewport(lroot, 800.0, 480.0)) & ok;
+			ok := Report("on a log axis the decades are equally spaced", DecadesEquallySpaced(lroot)) & ok;
+		};
+		ok := Golden("the log chart matches ml_lab_golden/chart_logx.svg", lsvg, "ml_lab_golden/chart_logx.svg") & ok;
+
+		# --- grouped bars with error bars and a custom size ---
+		kinds := String->New[3];
+		kinds[0] := "linear"; kinds[1] := "rbf"; kinds[2] := "poly";
+		p := Float->New[3];
+		p[0] := 0.7; p[1] := 0.9; p[2] := 0.85;
+		r := Float->New[3];
+		r[0] := 0.6; r[1] := 0.95; r[2] := 0.8;
+		re := Float->New[3];
+		re[0] := 0.05; re[1] := 0.0; re[2] := 0.02;
+		b := Chart->New("SVM kernels", "kernel", "score");
+		b->SetSize(640, 400);
+		b->SetCategories(kinds);
+		b->AddBars("precision", p);
+		b->AddBars("recall", r, re);
+		bsvg := b->ToSvg();
+		broot := Parse(bsvg);
+		ok := Report("the bar chart parses", broot <> Nil) & ok;
+		if(broot <> Nil) {
+			ok := Report("the custom size is written", Attr(broot, "viewBox")->Equals("0 0 640 400")) & ok;
+			# 6 bars + 1 background + 1 legend box + 2 legend swatches
+			ok := Report("one rect per bar, plus the background and the legend's box and swatches", Count(broot, "rect") = 6 + 1 + 1 + 2) & ok;
+			ok := Report("bars carry error bars only where the error is non-zero", Count(broot, "line") = 2 + 6 + 2) & ok;
+			ok := Report("the category names are the x ticks", Texts(broot)->Has("linear") & Texts(broot)->Has("poly")) & ok;
+			ok := Report("bars stay inside the viewport", InsideViewport(broot, 640.0, 400.0)) & ok;
+		};
+		ok := Golden("the bar chart matches ml_lab_golden/chart_bars.svg", bsvg, "ml_lab_golden/chart_bars.svg") & ok;
+
+		# --- a loss curve ---
+		names := String->New[2];
+		names[0] := "lr=0.1"; names[1] := "lr=0.01";
+		losses := Float->New[2, 6];
+		each(e : 6) {
+			losses[0, e] := 2.0 / (e + 1)->As(Float);
+			losses[1, e] := 2.2 - 0.2 * e->As(Float);
+		};
+		lc := Chart->LossCurve("Training loss", names, losses);
+		csvg := lc->ToSvg();
+		croot := Parse(csvg);
+		ok := Report("the loss curve parses", croot <> Nil) & ok;
+		if(croot <> Nil) {
+			ok := Report("one polyline per learning rate", Count(croot, "polyline") = 2 & Count(croot, "circle") = 12) & ok;
+			ok := Report("epochs are the x axis", Texts(croot)->Has("epoch") & Texts(croot)->Has("6")) & ok;
+			ok := Report("the loss curve stays inside the viewport", InsideViewport(croot, 800.0, 480.0)) & ok;
+		};
+		ok := Golden("the loss curve matches ml_lab_golden/chart_loss.svg", csvg, "ml_lab_golden/chart_loss.svg") & ok;
+
+		# --- text is escaped ---
+		esc := Chart->New("a < b & \"c\"", "x's", "y");
+		esc->AddLine("s<1>", xs, test);
+		eroot := Parse(esc->ToSvg());
+		ok := Report("special characters in titles and names are escaped", eroot <> Nil & Texts(eroot)->Has("a &lt; b &amp; &quot;c&quot;") & Texts(eroot)->Has("s&lt;1&gt;")) & ok;
+
+		# --- ResultTable->ToChart ---
+		t := ResultTable->New("Forest: trees", "n_estimators");
+		t->AddColumn("train_accuracy");
+		t->AddColumn("test_accuracy");
+		t->AddColumn("fit_ms", 1);
+		each(i : 5) {
+			cells := Float->New[3];
+			cells[0] := train[i]; cells[1] := test[i]; cells[2] := xs[i] * 1.5;
+			stds := Float->New[3];
+			stds[1] := err[i];
+			t->AddRow(Nil->As(String), xs[i], cells, stds);
+		};
+		metrics := String->New[2];
+		metrics[0] := "train_accuracy"; metrics[1] := "test_accuracy";
+		tc := t->ToChart(metrics);
+		tsvg := tc->ToSvg();
+		troot := Parse(tsvg);
+		ok := Report("ToChart draws one series per named metric", troot <> Nil & Count(troot, "polyline") = 2) & ok;
+		# 6 grid lines, 2 axes, and an error bar for each of the 4 non-zero deviations
+		ok := Report("ToChart draws error bars from the table's deviations", troot <> Nil & Count(troot, "line") = 6 + 2 + 4) & ok;
+		ok := Report("ToChart titles the chart from the table and the axis from the parameter",
+			troot <> Nil & Texts(troot)->Has("Forest: trees") & Texts(troot)->Has("n_estimators")) & ok;
+		ok := Golden("the table chart matches ml_lab_golden/chart_from_table.svg", tsvg, "ml_lab_golden/chart_from_table.svg") & ok;
+
+		one := String->New[1];
+		one[0] := "fit_ms";
+		ok := Report("ToChart of a single metric labels y with it", Texts(Parse(t->ToChart(one)->ToSvg()))->Has("fit_ms")) & ok;
+		logc := t->ToChart(metrics, true);
+		ok := Report("ToChart can ask for a log x axis", Texts(Parse(logc->ToSvg()))->Has("100")) & ok;
+
+		kt := ResultTable->New("SVM: kernel", "kernel");
+		kt->AddColumn("recall");
+		each(i : 3) {
+			cells := Float->New[1];
+			cells[0] := r[i];
+			kt->AddRow(kinds[i], i->As(Float), cells);
+		};
+		kroot := Parse(kt->ToChart(String->New[0])->ToSvg());
+		ok := Report("ToChart of a categorical table uses the names as x ticks and every column",
+			kroot <> Nil & Texts(kroot)->Has("rbf") & Count(kroot, "polyline") = 1) & ok;
+
+		# --- Save ---
+		path := Runtime->GetTempDir() + "/ml_lab_chart_test.svg";
+		ok := Report("Save writes the SVG", c->Save(path) & FileReader->ReadFile(path)->Equals(svg)) & ok;
+		File->Delete(path);
+
+		# --- refusals ---
+		ok := Report("an empty chart is refused", Refuses(1)) & ok;
+		ok := Report("a log axis with a non-positive x is refused", Refuses(2)) & ok;
+		ok := Report("bars without categories are refused", Refuses(3)) & ok;
+		ok := Report("mismatched xs and ys are refused", Refuses(4)) & ok;
+		ok := Report("a tiny size is refused", Refuses(5)) & ok;
+		ok := Report("ToChart with an unknown metric is refused", Refuses(6)) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Refuses(which : Int) ~ Bool {
+		refused := false;
+		xs := Float->New[2];
+		xs[0] := 0.0; xs[1] := 1.0;
+		try {
+			c := Chart->New("t", "x", "y");
+			select(which) {
+				label 1: { c->ToSvg(); }
+				label 2: { c->SetLogX(true); c->AddLine("s", xs, xs); c->ToSvg(); }
+				label 3: { c->AddBars("s", xs); }
+				label 4: { c->AddLine("s", xs, Float->New[3]); }
+				label 5: { c->SetSize(10, 10); }
+				label 6: {
+					t := ResultTable->New("t", "p");
+					t->AddColumn("a");
+					m := String->New[1];
+					m[0] := "nope";
+					t->ToChart(m);
+				}
+			};
+		}
+		on(e : LabError) {
+			refused := true;
+		};
+
+		return refused;
+	}
+
+	function : Parse(svg : String) ~ XmlElement {
+		parser := XmlParser->New(svg);
+		if(<>parser->Parse()) {
+			err := parser->GetError();
+			"  xml error: {$err}"->PrintLine();
+			return Nil;
+		};
+
+		return parser->GetRoot();
+	}
+
+	# decoded: the parser keeps attribute values encoded (a space is "&#x20;")
+	function : Attr(e : XmlElement, name : String) ~ String {
+		a := e->GetAttribute(name);
+		if(a = Nil) {
+			return "";
+		};
+
+		return a->GetDecodedValue();
+	}
+
+	function : Count(e : XmlElement, name : String) ~ Int {
+		n := 0;
+		if(e->GetName() <> Nil & e->GetName()->Equals(name)) {
+			n += 1;
+		};
+		each(i : e->Size()) {
+			n += Count(e->Get(i), name);
+		};
+
+		return n;
+	}
+
+	# every text node's content, joined, so a label can be looked for
+	function : Texts(e : XmlElement) ~ String {
+		out := "";
+		if(e->GetName() <> Nil & (e->GetName()->Equals("text") | e->GetName()->Equals("title")) & e->GetContent() <> Nil) {
+			out += "|";
+			out += e->GetContent();
+			out += "|";
+		};
+		each(i : e->Size()) {
+			out += Texts(e->Get(i));
+		};
+
+		return out;
+	}
+
+	function : InsideViewport(e : XmlElement, w : Float, h : Float) ~ Bool {
+		ok := true;
+		name := e->GetName();
+		if(name <> Nil) {
+			if(name->Equals("circle")) {
+				ok := Within(Attr(e, "cx"), 0.0, w) & Within(Attr(e, "cy"), 0.0, h);
+			}
+			else if(name->Equals("rect")) {
+				ok := Within(Attr(e, "x"), 0.0, w) & Within(Attr(e, "y"), 0.0, h) &
+					Within(Attr(e, "width"), 0.0, w) & Within(Attr(e, "height"), 0.0, h);
+			}
+			else if(name->Equals("line")) {
+				ok := Within(Attr(e, "x1"), 0.0, w) & Within(Attr(e, "x2"), 0.0, w) &
+					Within(Attr(e, "y1"), 0.0, h) & Within(Attr(e, "y2"), 0.0, h);
+			}
+			else if(name->Equals("polyline")) {
+				ok := PointsWithin(Attr(e, "points"), w, h);
+			}
+			else if(name->Equals("text")) {
+				ok := Within(Attr(e, "x"), 0.0, w) & Within(Attr(e, "y"), 0.0, h);
+			};
+			if(<>ok) {
+				"  outside the viewport: {$name}"->PrintLine();
+			};
+		};
+
+		each(i : e->Size()) {
+			if(<>InsideViewport(e->Get(i), w, h)) {
+				ok := false;
+			};
+		};
+
+		return ok;
+	}
+
+	function : Within(text : String, lo : Float, hi : Float) ~ Bool {
+		if(text = Nil | text->Size() = 0) {
+			return false;
+		};
+
+		v := text->ToFloat();
+		return v >= lo & v <= hi;
+	}
+
+	function : PointsWithin(points : String, w : Float, h : Float) ~ Bool {
+		if(points = Nil) {
+			return false;
+		};
+
+		pairs := points->Split(" ");
+		each(i : pairs) {
+			xy := pairs[i]->Split(",");
+			if(xy->Size() <> 2) {
+				return false;
+			};
+			if(<>Within(xy[0], 0.0, w) | <>Within(xy[1], 0.0, h)) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	# the x tick labels 0.001 .. 10 must be at equal pixel steps
+	function : DecadesEquallySpaced(root : XmlElement) ~ Bool {
+		px := Float->New[5];
+		found := 0;
+		labels := String->New[5];
+		labels[0] := "0.001"; labels[1] := "0.01"; labels[2] := "0.1"; labels[3] := "1"; labels[4] := "10";
+		Collect(root, labels, px);
+		each(i : 5) {
+			if(px[i] > 0.0) {
+				found += 1;
+			};
+		};
+		if(found <> 5) {
+			return false;
+		};
+
+		step := px[1] - px[0];
+		each(i : 4) {
+			if(((px[i + 1] - px[i]) - step)->Abs() > 0.2) {
+				return false;
+			};
+		};
+
+		return step > 50.0;
+	}
+
+	# only the x tick row (below the plot area), not a y tick that reads "1"
+	function : Collect(e : XmlElement, labels : String[], px : Float[]) ~ Nil {
+		if(e->GetName() <> Nil & e->GetName()->Equals("text") & e->GetContent() <> Nil & Attr(e, "y")->ToFloat() > 420.0) {
+			each(i : labels) {
+				if(e->GetContent()->Equals(labels[i]) & px[i] = 0.0) {
+					px[i] := Attr(e, "x")->ToFloat();
+				};
+			};
+		};
+		each(i : e->Size()) {
+			Collect(e->Get(i), labels, px);
+		};
+	}
+
+	function : Golden(name : String, actual : String, path : String) ~ Bool {
+		expected := FileReader->ReadFile(path);
+		if(expected = Nil) {
+			"FAIL: {$name} (golden file missing)"->PrintLine();
+			return false;
+		};
+
+		expected := expected->ReplaceAll("\r", "");
+		if(actual->Equals(expected)) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		"--- actual ---"->PrintLine();
+		actual->PrintLine();
+		return false;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}
