@@ -1282,7 +1282,11 @@ size_t* ObjectDeserializer::DeserializeObject() {
                !CanRead((INT64_VALUE)array_size * (INT64_VALUE)sizeof(FLOAT_VALUE))) {
               return nullptr;
             }
-            size_t* array = MemoryManager::AllocateArray(array_size * 2 + array_dim + 2, instructions::INT_TYPE,
+            // a FLOAT_TYPE array, as the program allocates one: deserialized Float[]
+            // fields came back typed INT_TYPE (gc-verify B2 on Query.Structured.Column
+            // in query_serialize_generic), so the array's type no longer matched the
+            // field's declared type after a round trip
+            size_t* array = MemoryManager::AllocateArray(array_size * 2 + array_dim + 2, instructions::FLOAT_TYPE,
                                                          op_stack, *stack_pos, false);
 
             array[0] = array_size;

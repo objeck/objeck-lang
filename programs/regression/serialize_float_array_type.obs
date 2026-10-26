@@ -1,0 +1,150 @@
+#~
+A Float[] field read back by the Deserializer is a Float[] to the VM.
+
+ObjectDeserializer::DeserializeObject (core/vm/common.cpp) allocated the array of a Float[]
+field with the memory type of an Int[], so a deserialized object held an array whose type
+word did not match the field's declared type. The heap verifier reported it on
+query_serialize_generic (gc-verify B2: "typed reference has the wrong memory TYPE 1003
+(expected 1004)", on the Float[] columns of Query.Structured.Column) in every run on
+Windows and Linux; the Deserializer's own ReadFloatArray and a program's Float->New were
+right.
+
+The test runs itself again as a child under the heap verifier with a 256 KB nursery; the
+child serializes an object with Float[] and Int[] fields, reads it back, keeps it across
+collections, and checks the values. The parent needs its .obe beside it, as the regression
+runner compiles it.
+~#
+use System.IO.Filesystem;
+
+class Readings {
+	@title : String;
+	@values : Float[];
+	@counts : Int[];
+
+	New(title : String, size : Int) {
+		@title := title;
+		@values := Float->New[size];
+		@counts := Int->New[size];
+		each(i : size) {
+			@values[i] := i->As(Float) * 0.5 + 0.25;
+			@counts[i] := i * 3;
+		};
+	}
+
+	method : public : GetTitle() ~ String { return @title; }
+	method : public : GetValues() ~ Float[] { return @values; }
+	method : public : GetCounts() ~ Int[] { return @counts; }
+}
+
+class SerializeFloatArrayType {
+	function : Child() ~ Nil {
+		original := Readings->New("sensor", 40);
+		writer := Serializer->New();
+		writer->Write(original);
+		bytes := writer->Serialize();
+		copy := Deserializer->New(bytes)->ReadObject()->As(Readings);
+
+		# collections with the copy live: the verifier checks every typed field after each
+		pad := "";
+		each(k : 20) {
+			pad += "0123456789";
+		};
+		each(i : 2000) {
+			junk := String->New[64];
+			each(j : 64) {
+				junk[j] := "{$pad} {$i} {$j}";
+			};
+			if(junk[63]->Size() < pad->Size()) {
+				"FAIL: padding lost"->PrintLine();
+				Runtime->Exit(1);
+			};
+		};
+
+		if(<>copy->GetTitle()->Equals("sensor")) {
+			"FAIL: title '{$(copy->GetTitle())}'"->PrintLine();
+			Runtime->Exit(1);
+		};
+		values := copy->GetValues();
+		counts := copy->GetCounts();
+		if(values->Size() <> 40 | counts->Size() <> 40) {
+			"FAIL: sizes {$(values->Size())} and {$(counts->Size())}"->PrintLine();
+			Runtime->Exit(1);
+		};
+		each(i : 40) {
+			if(values[i] <> i->As(Float) * 0.5 + 0.25 | counts[i] <> i * 3) {
+				"FAIL: element {$i}: {$(values[i])} and {$(counts[i])}"->PrintLine();
+				Runtime->Exit(1);
+			};
+		};
+		# the copy serializes again to the same bytes
+		again := Serializer->New();
+		again->Write(copy);
+		bytes2 := again->Serialize();
+		if(bytes2->Size() <> bytes->Size()) {
+			"FAIL: a second round trip has {$(bytes2->Size())} bytes, the first {$(bytes->Size())}"->PrintLine();
+			Runtime->Exit(1);
+		};
+		each(i : bytes) {
+			if(bytes[i] <> bytes2[i]) {
+				"FAIL: byte {$i} differs after a second round trip"->PrintLine();
+				Runtime->Exit(1);
+			};
+		};
+
+		"child done: {$(bytes->Size())} bytes round-tripped"->PrintLine();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1 & args[0]->Equals("child")) {
+			Child();
+			return;
+		};
+
+		if(<>File->Exists("serialize_float_array_type.obe")) {
+			"FAIL: run this test from the folder that holds serialize_float_array_type.obe"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		windows := Directory->GetSlash() = '\\';
+		vm := Runtime->GetInstallDir();
+		vm += windows ? "\\bin\\obr.exe" : "/bin/obr";
+		output := "{$(Runtime->GetTempDir())}/serialize_float_array_type_{$(Runtime->GetProcessId())}.txt";
+
+		# the child runs under the heap verifier, with a nursery small enough to fill often,
+		# once with the JIT and once without
+		Runtime->SetEnvironmentVariable("OBJECK_GC_VERIFY", "1");
+		Runtime->SetEnvironmentVariable("OBJECK_NURSERY", "256k");
+		modes := ["", "--jit=off "];
+		each(m : modes) {
+			command := "\"{$vm}\" {$(modes[m])}serialize_float_array_type.obe child > \"{$output}\" 2>&1";
+			if(windows) {
+				# cmd /c strips the first and last quote of a line that starts with one
+				command := "\"{$command}\"";
+			};
+			status := Runtime->Command(command);
+			text := FileReader->ReadFile(output);
+			if(text = Nil) {
+				text := "";
+			};
+			File->Delete(output);
+
+			# the verifier reports a violation as ">>> gc-verify: ... violation ..." and aborts;
+			# its "[gc-verify] verification took ..." note is not one
+			if(status <> 0 | <>text->Has("child done") | text->Has("violation")) {
+				first := "no output";
+				lines := text->Split("\n");
+				each(i : lines) {
+					line := lines[i]->Trim();
+					if(line->Size() > 0 & (line->Has("violation") | line->StartsWith("FAIL"))) {
+						first := line;
+						break;
+					};
+				};
+				"FAIL: serialize_float_array_type: the child (obr {$(modes[m])}) exited {$status}; {$first}"->PrintLine();
+				Runtime->Exit(1);
+			};
+		};
+
+		"PASS: serialize_float_array_type (a deserialized Float[] field kept its type under the heap verifier, with and without the JIT)"->PrintLine();
+	}
+}
