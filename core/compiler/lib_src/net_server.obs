@@ -3172,11 +3172,8 @@ bundle Web.HTTP.Server.MCP {
 			@config := Nil;
 		}
 
-		#~
-		Checks a configuration before Serve uses it
-		@param config JSON configuration
-		@return Nil if the configuration is usable, else why it is not, naming the key
-		~#
+		# Checks a configuration before Serve uses it: Nil if it is usable, else
+		# why it is not, naming the key
 		function : private : CheckConfig(config : JsonElement) ~ String {
 			if(config = Nil) {
 				return "configuration is Nil";
