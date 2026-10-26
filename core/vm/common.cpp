@@ -161,6 +161,7 @@ static inline void WinWriteWide(HANDLE h, std::wostream& fallback, const wchar_t
 
 #include <csignal>
 #include <cmath>
+#include <chrono>
 #include <filesystem>
 #include <charconv>
 #include <version>
@@ -1789,22 +1790,33 @@ static INT64_VALUE UtcSecondsOf(size_t* instance)
                     (INT64_VALUE)instance[3], (INT64_VALUE)instance[4], (INT64_VALUE)instance[5]);
 }
 
+// System.Time.Timer keeps one slot: the start instant until End, the elapsed
+// interval after it. Both are steady_clock nanoseconds. This used C clock(),
+// which is wall time on Windows (at 1 ms granularity) but PROCESS CPU TIME on
+// Linux and macOS: a multi-threaded fit was over-counted, a sleep was not
+// counted at all, and "training time" meant different things per platform.
+static size_t SteadyNanos()
+{
+  return (size_t)std::chrono::duration_cast<std::chrono::nanoseconds>(
+    std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
 void TrapProcessor::ProcessTimerStart(size_t* &op_stack, size_t* &stack_pos)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  instance[0] = clock();
+  instance[0] = SteadyNanos();
 }
 
 void TrapProcessor::ProcessTimerEnd(size_t* &op_stack, size_t* &stack_pos)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  instance[0] = clock() - (clock_t)instance[0];
+  instance[0] = SteadyNanos() - instance[0];
 }
 
 void TrapProcessor::ProcessTimerElapsed(size_t* &op_stack, size_t* &stack_pos)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  PushFloat((double)instance[0] / (double)CLOCKS_PER_SEC, op_stack, stack_pos);
+  PushFloat((double)instance[0] / 1.0e9, op_stack, stack_pos);
 }
 
 /********************************

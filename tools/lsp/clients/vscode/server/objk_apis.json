@@ -14855,6 +14855,157 @@
 				}
 			}
 		},
+		"System.ML.Lab.DataSplit": {
+			"description": "The matrices and labels of a train\/test split, plus the source row of every row in each half so predictions can be joined back to the original table.",
+			"functions": {
+				"GetTestRows": {
+					"descriptions": ["**Source row of each test row, ascending.**\n\n```method : public : GetTestRows() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetTestSize": {
+					"descriptions": ["**Rows in the test half.**\n\n```method : public : GetTestSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetTestX": {
+					"descriptions": ["**Test features.**\n\n```method : public : GetTestX() ~ Float[,]```\n\n\n\nreturn: Float[,]"]
+				},
+				"GetTestY": {
+					"descriptions": ["**Test labels.**\n\n```method : public : GetTestY() ~ Bool[]```\n\n\n\nreturn: Bool[]"]
+				},
+				"GetTrainRows": {
+					"descriptions": ["**Source row of each training row, ascending.**\n\n```method : public : GetTrainRows() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetTrainSize": {
+					"descriptions": ["**Rows in the training half.**\n\n```method : public : GetTrainSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetTrainX": {
+					"descriptions": ["**Training features.**\n\n```method : public : GetTrainX() ~ Float[,]```\n\n\n\nreturn: Float[,]"]
+				},
+				"GetTrainY": {
+					"descriptions": ["**Training labels.**\n\n```method : public : GetTrainY() ~ Bool[]```\n\n\n\nreturn: Bool[]"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(train_x:Float[,], train_y:Bool[], test_x:Float[,], test_y:Bool[], train_rows:Int[], test_rows:Int[])```\n\n\n\ntrain_x: Float[,]\n\ntrain_y: Bool[]\n\ntest_x: Float[,]\n\ntest_y: Bool[]\n\ntrain_rows: Int[]\n\ntest_rows: Int[]"]
+				}
+			}
+		},
+		"System.ML.Lab.IndexSplit": {
+			"description": "The row indexes of a train\/test split, each half in ascending order.",
+			"functions": {
+				"GetTest": {
+					"descriptions": ["**Test row indexes, ascending.**\n\n```method : public : GetTest() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetTrain": {
+					"descriptions": ["**Training row indexes, ascending.**\n\n```method : public : GetTrain() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(train:Int[], test:Int[])```\n\n\n\ntrain: Int[]\n\ntest: Int[]"]
+				}
+			}
+		},
+		"System.ML.Lab.LabError": {
+			"description": "Raised by every System.ML.Lab function that is handed input it cannot act on, with a message naming the problem. Uncaught, the program ends printing it; catch it with try { } on(e : LabError) { }.",
+			"functions": {
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(message:String)```\n\n\n\nmessage: String"]
+				}
+			}
+		},
+		"System.ML.Lab.Labels": {
+			"description": "Label helpers for labels that arrive as strings or need to become strata.\n\nTableEncoder already maps a CsvTable's label column; these cover a String[] read any other way, and the multi-class codes a split or k-fold can be stratified by.",
+			"functions": {
+				"Classes": {
+					"descriptions": ["**Distinct values in first-seen order.**\n\n```function : Classes(values:String[]) ~ String[]```\n\n\n\nvalues: String[]\n\nreturn: String[]"]
+				},
+				"Column": {
+					"descriptions": ["**One column of a parsed table's DATA rows, as strings; the header row is skipped. A missing cell is Nil.**\n\n```function : Column(table:CsvTable, name:String) ~ String[]```\n\n\n\ntable: CsvTable\n\nname: String\n\nreturn: String[]"]
+				},
+				"ToBinary": {
+					"descriptions": ["**True where the value equals the positive label.**\n\n```function : ToBinary(values:String[], positive:String) ~ Bool[]```\n\n\n\nvalues: String[]\n\npositive: String\n\nreturn: Bool[]"]
+				},
+				"ToBinaryExcept": {
+					"descriptions": ["**True everywhere except where the value equals the negative label: the intrusion-detection shape, one benign value against many attack names.**\n\n```function : ToBinaryExcept(values:String[], negative:String) ~ Bool[]```\n\n\n\nvalues: String[]\n\nnegative: String\n\nreturn: Bool[]"]
+				},
+				"ToIndices": {
+					"descriptions": ["**The index of each value in a class list, as strata codes.**\n\n```function : ToIndices(values:String[], classes:String[]) ~ Float[]```\n\n\n\nvalues: String[]\n\nclasses: String[]\n\nreturn: Float[]"]
+				}
+			}
+		},
+		"System.ML.Lab.Partition": {
+			"description": "A deterministic, stratified train\/test hold-out split.\n\nAllocation is per stratum and exact: a stratum of n rows contributes Float->Round(n * test_fraction) rows to the test half, clamped so that every stratum has at least one row in each half. Within a stratum the rows are shuffled from the seed (Fisher-Yates over a MINSTD generator), so the same inputs and seed select the same rows on every platform. Each half comes back in ascending source-row order.\n\nNamed Partition rather than Split because System.ML already has a Split class (a tree's split point), and a program that uses both bundles would find the name ambiguous.",
+			"functions": {
+				"Indices": {
+					"descriptions": ["**The row indexes of a stratified split, without copying any data.\n\nStrata holding a single distinct value give an unstratified split of Float->Round(rows * test_fraction) test rows.**\n\n```function : Indices(strata:Float[], test_fraction:Float, seed:Int) ~ IndexSplit```\n\n\n\nstrata: Float[]\n\ntest_fraction: Float\n\nseed: Int\n\nreturn: IndexSplit"]
+				},
+				"Take": {
+					"descriptions": ["**Gathers rows of a matrix, in the order given.**\n\n```function : Take(X:Float[,], rows:Int[]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nrows: Int[]\n\nreturn: Float[,]", "**Gathers labels, in the order given.**\n\n```function : Take(y:Bool[], rows:Int[]) ~ Bool[]```\n\n\n\ny: Bool[]\n\nrows: Int[]\n\nreturn: Bool[]", "**Gathers values, in the order given.**\n\n```function : Take(y:Float[], rows:Int[]) ~ Float[]```\n\n\n\ny: Float[]\n\nrows: Int[]\n\nreturn: Float[]"]
+				},
+				"TrainTest": {
+					"descriptions": ["**Splits features and binary labels, optionally stratified by the label.**\n\n```function : TrainTest(X:Float[,], y:Bool[], test_fraction:Float, seed:Int, stratify:Bool) ~ DataSplit```\n\n\n\nX: Float[,]\n\ny: Bool[]\n\ntest_fraction: Float\n\nseed: Int\n\nstratify: Bool\n\nreturn: DataSplit", "**Splits features and binary labels, stratified by caller-supplied codes.\n\nThe codes can be anything the test half should keep in proportion: the attack family behind a binary label, a device model, a day of capture. One code per row; a stratum is every row sharing a code.**\n\n```function : TrainTest(X:Float[,], y:Bool[], strata:Float[], test_fraction:Float, seed:Int) ~ DataSplit```\n\n\n\nX: Float[,]\n\ny: Bool[]\n\nstrata: Float[]\n\ntest_fraction: Float\n\nseed: Int\n\nreturn: DataSplit"]
+				}
+			}
+		},
+		"System.ML.Lab.Resample": {
+			"description": "Changes the class balance of a TRAINING set to a requested positive ratio.\n\nThe class-imbalance experiment trains at ratios from 0.001 to 0.5 and must measure every run on the same test set. These functions take only the training half, so the order is fixed by construction: Partition->TrainTest first, then resample what it returned as training data; the test half is never touched.",
+			"functions": {
+				"CountPositives": {
+					"descriptions": ["**Number of positive labels.**\n\n```function : CountPositives(y:Bool[]) ~ Int```\n\n\n\ny: Bool[]\n\nreturn: Int"]
+				},
+				"PositiveRatio": {
+					"descriptions": ["**Share of positive labels.**\n\n```function : PositiveRatio(y:Bool[]) ~ Float```\n\n\n\ny: Bool[]\n\nreturn: Float"]
+				},
+				"ToPositiveRatio": {
+					"descriptions": ["**Down-samples the over-represented class until positives \/ rows is the requested ratio; the other class is kept whole.\n\nIf the current ratio is above the request, positives are cut to Round(ratio * negatives \/ (1 - ratio)); otherwise negatives are cut to Round(positives * (1 - ratio) \/ ratio). The rows kept are chosen by a seeded shuffle and returned in ascending source order. The achieved ratio is exact when the arithmetic allows and otherwise within one row; Sample->GetPositiveRatio reports it.**\n\n```function : ToPositiveRatio(X:Float[,], y:Bool[], ratio:Float, seed:Int) ~ Sample```\n\n\n\nX: Float[,]\n\ny: Bool[]\n\nratio: Float\n\nseed: Int\n\nreturn: Sample", "**Reaches the requested ratio by down-sampling (oversample false, as above) or by duplicating the under-represented class (oversample true): rows of that class are drawn with replacement from a seeded generator and appended after the original rows, and nothing is dropped.**\n\n```function : ToPositiveRatio(X:Float[,], y:Bool[], ratio:Float, seed:Int, oversample:Bool) ~ Sample```\n\n\n\nX: Float[,]\n\ny: Bool[]\n\nratio: Float\n\nseed: Int\n\noversample: Bool\n\nreturn: Sample"]
+				}
+			}
+		},
+		"System.ML.Lab.Sample": {
+			"description": "A resampled training set: features, labels and the source row of every row, so duplicates from oversampling are visible.",
+			"functions": {
+				"GetPositiveRatio": {
+					"descriptions": ["**Share of positive rows actually achieved; report this, not the request.**\n\n```method : public : GetPositiveRatio() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetRows": {
+					"descriptions": ["**Source row of each row of the sample. A row drawn twice by oversampling appears twice.**\n\n```method : public : GetRows() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetX": {
+					"descriptions": ["**Features.**\n\n```method : public : GetX() ~ Float[,]```\n\n\n\nreturn: Float[,]"]
+				},
+				"GetY": {
+					"descriptions": ["**Labels.**\n\n```method : public : GetY() ~ Bool[]```\n\n\n\nreturn: Bool[]"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(x:Float[,], y:Bool[], rows:Int[])```\n\n\n\nx: Float[,]\n\ny: Bool[]\n\nrows: Int[]"]
+				},
+				"Size": {
+					"descriptions": ["**Rows in the sample.**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				}
+			}
+		},
+		"System.ML.Lab.Stopwatch": {
+			"description": "A wall-clock stopwatch with sub-millisecond resolution, for training time.\n\nAccumulates across Start\/Stop pairs until Reset. Built on System.Time.Timer, which measures elapsed (wall-clock) time on every platform.",
+			"functions": {
+				"GetElapsedMs": {
+					"descriptions": ["**Total elapsed milliseconds, including the interval still running.**\n\n```method : public : GetElapsedMs() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetElapsedSeconds": {
+					"descriptions": ["**Total elapsed seconds, including the interval still running.**\n\n```method : public : GetElapsedSeconds() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"IsRunning": {
+					"descriptions": ["**Whether Start has been called without a matching Stop.**\n\n```method : public : IsRunning() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor; the stopwatch is stopped at zero.**\n\n```New()```\n\n"]
+				},
+				"Reset": {
+					"descriptions": ["**Stops and clears the total.**\n\n```method : public : Reset() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Start": {
+					"descriptions": ["**Starts timing. Starting a running stopwatch has no effect.**\n\n```method : public : Start() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Stop": {
+					"descriptions": ["**Stops timing and adds the interval to the total.**\n\n```method : public : Stop() ~ Float```\n\n\n\nreturn: Float"]
+				}
+			}
+		},
 		"System.Math.BigInt": {
 			"description": "An integer of arbitrary size, exact at every step.\n\nImmutable: every operation returns a new value and none modifies its receiver, so a `BigInt` can be shared without copying.",
 			"functions": {
@@ -19323,6 +19474,54 @@
 		"TreeNode": [
 			{
 				"bundle": "System.ML",
+				"file": ""
+			}
+		],
+		"DataSplit": [
+			{
+				"bundle": "System.ML.Lab",
+				"file": ""
+			}
+		],
+		"IndexSplit": [
+			{
+				"bundle": "System.ML.Lab",
+				"file": ""
+			}
+		],
+		"LabError": [
+			{
+				"bundle": "System.ML.Lab",
+				"file": ""
+			}
+		],
+		"Labels": [
+			{
+				"bundle": "System.ML.Lab",
+				"file": ""
+			}
+		],
+		"Partition": [
+			{
+				"bundle": "System.ML.Lab",
+				"file": ""
+			}
+		],
+		"Resample": [
+			{
+				"bundle": "System.ML.Lab",
+				"file": ""
+			}
+		],
+		"Sample": [
+			{
+				"bundle": "System.ML.Lab",
+				"file": ""
+			}
+		],
+		"Stopwatch": [
+			{
+				"bundle": "System.ML.Lab",
 				"file": ""
 			}
 		],

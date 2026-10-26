@@ -1,0 +1,56 @@
+#~
+System.Time.Timer measures wall-clock time on every platform.
+
+The VM implemented the timer traps with C clock(). On Windows that is elapsed
+time at 1 ms granularity; on Linux and macOS it is PROCESS CPU TIME, so a sleep
+measured as roughly zero and a multi-threaded fit was over-counted. A stopwatch
+whose meaning changes with the platform cannot report "training time".
+
+The assertion that carries this file is the sleep: 50 ms of Thread->Sleep must
+read as at least 40 ms. CPU time reads it as ~0 and fails; wall time passes.
+The upper bound is loose (a loaded CI box can overshoot a sleep by a lot) and
+only guards against a unit mistake such as reporting nanoseconds as seconds.
+~#
+use System.Time;
+use System.Concurrency;
+
+class TimeTimerWallClock {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		t := Timer->New();
+		t->Start();
+		Thread->Sleep(50);
+		t->End();
+		s := t->GetElapsedTime();
+		"slept 50 ms, timer read {$s} s"->PrintLine();
+		ok := Report("a 50 ms sleep reads as at least 40 ms", s >= 0.04) & ok;
+		ok := Report("a 50 ms sleep reads as less than 5 s", s < 5.0) & ok;
+
+		# a second Start resets the interval rather than accumulating it
+		t->Start();
+		t->End();
+		s2 := t->GetElapsedTime();
+		ok := Report("restarting the timer discards the earlier interval", s2 >= 0.0 & s2 < 0.04) & ok;
+
+		# the start-on-construction form
+		t2 := Timer->New(true);
+		Thread->Sleep(20);
+		s3 := t2->GetElapsedTime();
+		ok := Report("New(true) starts the timer", s3 >= 0.015 & s3 < 5.0) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}
