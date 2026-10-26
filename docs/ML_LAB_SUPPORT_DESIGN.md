@@ -360,7 +360,9 @@ the training half, and runs two sweeps:
    two seeds, so the table shows `mean ± std` and the chart error bars. The
    500-tree fits dominate: about 16 s each on a laptop, 50 s for the whole
    program (1,000 rows and three seeds took five and a half minutes, which is
-   too long for an example; the `fit_ms` column is the point of the sweep);
+   too long for an example; the `fit_ms` column is the point of the sweep).
+   Those times predate #1415's sorted split sweep: with it, a 500-tree fit
+   takes about 0.1 s and the whole program about a second (Windows x64);
 2. the linear `SVM` over `lambda` (L2 strength, the inverse role of `C`) on a
    log axis, 1e-3 .. 10.
 

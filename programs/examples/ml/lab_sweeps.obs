@@ -17,7 +17,8 @@ everywhere.
 
 Sweep 1: RandomForestClassifier over n_estimators 10, 50, 100, 200, 500, two
 seeds, max_depth 6, min_samples 2. The 500-tree fits dominate the run time
-(about a minute in all on a laptop); the fit_ms column is the point. Outputs rf_trees.md, rf_trees.csv,
+(about 0.1 s each, a second or two in all, since the forests' split search became
+a sorted sweep); the fit_ms column is the point. Outputs rf_trees.md, rf_trees.csv,
 rf_trees.svg (test accuracy, precision, recall, F1 with error bars) and
 rf_train_vs_test.svg (the overfitting curve).
 
