@@ -1042,6 +1042,24 @@ network := NeuralNetwork->Train(2, inputs, 8, 1, targets, 0.5, 12500);
 network->Confidence(FloatMatrixRef->New([[0.0], [1.0]]))->PrintLine();  # ~0.99
 ```
 
+### Classifier head over embeddings
+
+`EmbeddingClassifier` trains a logistic or multi-layer ReLU head with binary cross-entropy by
+minibatch Adam or SGD, at a configurable learning rate, with class weights for imbalance and a
+per-epoch training-loss history. It is the trainable half of a frozen-encoder classifier: feed
+it `BertEmbedder` rows (see Natural Language Processing above) or any fixed-size features.
+
+```ruby
+use System.ML;
+
+head := EmbeddingClassifier->New([64], 0.001, 20, 32, 42);   # hidden sizes, rate, epochs, batch, seed
+head->SetBalancedWeights();                                 # or SetClassWeights(negative, positive)
+head->Fit(X_train, y_train);                                # Float[,], Bool[]
+loss := head->GetLossHistory();                             # one value per epoch, for a loss plot
+probabilities := head->PredictProba(X_test);
+labels := head->PredictClass(X_test, 0.5);
+```
+
 ### Model Persistence
 
 Every estimator round-trips through `Store`/`Load`; loaded models reproduce the original predictions exactly.
@@ -1228,6 +1246,7 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 | Clustering | `KMeans`, `DBSCAN`, `GaussianMixture` | `ml` | None |
 | Decomposition | `PCA` | `ml` | None |
 | Neural network | `NeuralNetwork` | `ml` | None |
+| Classifier head over embeddings | `EmbeddingClassifier` | `ml` | None |
 | Graph search | `Dijkstra`, `AStar`, `BreadthFirst`, `DepthFirst` | `ai` | None |
 | Game playing | `Minimax`, `MonteCarloTreeSearch` | `ai` | None |
 | Metaheuristics | `GeneticAlgorithm`, `SimulatedAnnealing`, `HillClimbing` | `ai` | None |

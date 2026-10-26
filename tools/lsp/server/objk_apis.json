@@ -13822,6 +13822,65 @@
 				}
 			}
 		},
+		"System.ML.EmbeddingClassifier": {
+			"description": "A binary classifier trained on fixed-size feature vectors -- sentence embeddings from a frozen encoder above all: logistic regression (no hidden layer) or a small multi-layer network with ReLU hidden layers, a sigmoid output and binary cross-entropy loss, trained by minibatch Adam or SGD at a configurable learning rate.\n\nFor class imbalance, SetClassWeights (or SetBalancedWeights) weights each row's loss by its class. GetLossHistory gives the training loss after every epoch, for a loss curve.\n\nInputs are standardised with the training set's mean and deviation, which are kept with the model: embedding dimensions differ widely in scale, and an unscaled head trains far slower. Weights start from System.ML.Random with the given seed, and minibatches are shuffled by the same generator: the same seed and data give the same model, bit for bit.\n\nThis is the head of a frozen-encoder classifier (docs\/ML_BERT_DESIGN.md); nothing here trains the encoder.",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Trains the head.**\n\n```method : public : Fit(X:Float[,], y:Bool[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Bool[]\n\nreturn: Bool"]
+				},
+				"GetBias": {
+					"descriptions": ["**A layer's biases, for inspection. A copy.**\n\n```method : public : GetBias(layer:Int) ~ Float[]```\n\n\n\nlayer: Int\n\nreturn: Float[]"]
+				},
+				"GetClassWeights": {
+					"descriptions": ["**The class weights in use: those set, or after a balanced Fit, those computed.**\n\n```method : public : GetClassWeights() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last Fit returned false or the last prediction Nil.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetLossHistory": {
+					"descriptions": ["**The training loss after each epoch: the class-weighted binary cross-entropy over the whole training set, averaged over its rows, with L2 left out.**\n\n```method : public : GetLossHistory() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetParameterCount": {
+					"descriptions": ["**Number of trainable parameters, weights and biases.**\n\n```method : public : GetParameterCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetWeights": {
+					"descriptions": ["**A layer's weights, inputs by outputs, for inspection: layer 0 takes the (standardised) input, the last gives the logit. A copy.**\n\n```method : public : GetWeights(layer:Int) ~ Float[,]```\n\n\n\nlayer: Int\n\nreturn: Float[,]"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether Fit has succeeded.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Loss": {
+					"descriptions": ["**The class-weighted binary cross-entropy of the model on labelled rows, averaged over the rows: the measure GetLossHistory records, for a validation curve.**\n\n```method : public : Loss(X:Float[,], y:Bool[]) ~ Float```\n\n\n\nX: Float[,]\n\ny: Bool[]\n\nreturn: Float"]
+				},
+				"New": {
+					"descriptions": ["**A head with one hidden layer of 64, learning rate 0.001, 20 epochs, batch 32, seed 42.**\n\n```New()```\n\n", "**A head.**\n\n```New(hidden:Int[], learning_rate:Float, epochs:Int, batch_size:Int, seed:Int)```\n\n\n\nhidden: Int[]\n\nlearning_rate: Float\n\nepochs: Int\n\nbatch_size: Int\n\nseed: Int"]
+				},
+				"PredictClass": {
+					"descriptions": ["**Predicts each row's class: positive when its probability is at least threshold.**\n\n```method : public : PredictClass(X:Float[,], threshold:Float) ~ Bool[]```\n\n\n\nX: Float[,]\n\nthreshold: Float\n\nreturn: Bool[]", "**Predicts each row's class at a threshold of 0.5.**\n\n```method : public : PredictClass(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"PredictProba": {
+					"descriptions": ["**The probability of the positive class for each row.**\n\n```method : public : PredictProba(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"PredictScore": {
+					"descriptions": ["**Scores each row, higher meaning more positive: the positive-class probability, for CrossValidation and the threshold tools in Metrics.**\n\n```method : public : PredictScore(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"SetBalancedWeights": {
+					"descriptions": ["**Weights each class by n \/ (2 x its count) at Fit, so both classes carry equal total weight -- scikit-learn's class_weight=\"balanced\".**\n\n```method : public : SetBalancedWeights() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"SetClassWeights": {
+					"descriptions": ["**Weights each training row's loss by its class, for imbalanced data: a positive weight of 99 makes one missed positive cost as much as 99 false alarms. Both 1.0 by default.**\n\n```method : public : SetClassWeights(negative:Float, positive:Float) ~ Nil```\n\n\n\nnegative: Float\n\npositive: Float\n\nreturn: Nil"]
+				},
+				"SetL2": {
+					"descriptions": ["**Sets L2 regularisation of the weights (not the biases); 0.0 by default.**\n\n```method : public : SetL2(l2:Float) ~ Nil```\n\n\n\nl2: Float\n\nreturn: Nil"]
+				},
+				"SetOptimizer": {
+					"descriptions": ["**Sets the optimizer; Adam by default.**\n\n```method : public : SetOptimizer(optimizer:EmbeddingClassifier-&gt;Optimizer) ~ Nil```\n\n\n\noptimizer: EmbeddingClassifier-&gt;Optimizer\n\nreturn: Nil"]
+				},
+				"SetStandardize": {
+					"descriptions": ["**Whether inputs are standardised with the training mean and deviation; true by default.**\n\n```method : public : SetStandardize(standardize:Bool) ~ Nil```\n\n\n\nstandardize: Bool\n\nreturn: Nil"]
+				}
+			}
+		},
 		"System.ML.FeatureScaler": {
 			"description": "Feature scaling and normalization utilities",
 			"functions": {
@@ -19292,6 +19351,12 @@
 				"file": ""
 			}
 		],
+		"EmbeddingClassifier": [
+			{
+				"bundle": "System.ML",
+				"file": ""
+			}
+		],
 		"FeatureScaler": [
 			{
 				"bundle": "System.ML",
@@ -21649,6 +21714,17 @@
 				{ "name": "FLOAT", "value": "-56", "description": "" },
 				{ "name": "CLASS", "value": "-55", "description": "" },
 				{ "name": "FUNC", "value": "-54", "description": "" }
+			]
+		},
+		"System.ML.EmbeddingClassifier#Optimizer": {
+			"name": "Optimizer",
+			"bundle": "System.ML",
+			"class": "System.ML.EmbeddingClassifier",
+			"kind": "enum",
+			"description": "How the weights are updated.",
+			"items": [
+				{ "name": "ADAM", "value": "0", "description": "Adam: beta1 0.9, beta2 0.999, epsilon 1e-8, with bias correction." },
+				{ "name": "SGD", "value": "1", "description": "Plain minibatch stochastic gradient descent." }
 			]
 		},
 		"System.NLP.Onnx.BertEmbedder#Pooling": {

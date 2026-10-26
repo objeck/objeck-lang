@@ -1,0 +1,749 @@
+#~~
+# Objeck machine learning library: a trainable classification head over embeddings
+# Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+
+#~
+A classification head trained over fixed-size embeddings: EmbeddingClassifier. Compile with -lib ml.
+~#
+bundle System.ML {
+	#~
+	A binary classifier trained on fixed-size feature vectors -- sentence embeddings from a frozen
+	encoder above all: logistic regression (no hidden layer) or a small multi-layer network with
+	ReLU hidden layers, a sigmoid output and binary cross-entropy loss, trained by minibatch Adam
+	or SGD at a configurable learning rate.
+
+	For class imbalance, SetClassWeights (or SetBalancedWeights) weights each row's loss by its
+	class. GetLossHistory gives the training loss after every epoch, for a loss curve.
+
+	Inputs are standardised with the training set's mean and deviation, which are kept with the
+	model: embedding dimensions differ widely in scale, and an unscaled head trains far slower.
+	Weights start from System.ML.Random with the given seed, and minibatches are shuffled by the
+	same generator: the same seed and data give the same model, bit for bit.
+
+	This is the head of a frozen-encoder classifier (docs/ML_BERT_DESIGN.md); nothing here trains
+	the encoder.
+
+```
+head := EmbeddingClassifier->New([64], 0.001, 20, 32, 42);
+head->SetBalancedWeights();
+head->Fit(X_train, y_train);
+loss := head->GetLossHistory();             # one value per epoch
+p := head->PredictProba(X_test);            # P(positive) per row
+yhat := head->PredictClass(X_test, 0.5);
+```
+	~#
+	class EmbeddingClassifier implements ScoreModel {
+		#~
+		How the weights are updated.
+		~#
+		enum Optimizer {
+			#~
+			Adam: beta1 0.9, beta2 0.999, epsilon 1e-8, with bias correction.
+			~#
+			ADAM,
+			#~
+			Plain minibatch stochastic gradient descent.
+			~#
+			SGD
+		}
+
+		@hidden : Int[];
+		@learning_rate : Float;
+		@epochs : Int;
+		@batch_size : Int;
+		@seed : Int;
+		@optimizer : EmbeddingClassifier->Optimizer;
+		@negative_weight : Float;
+		@positive_weight : Float;
+		@balanced : Bool;
+		@l2 : Float;
+		@standardize : Bool;
+
+		# per layer: weights [in, out] and biases [out]
+		@weights : FloatMatrixRef[];
+		@biases : FloatArrayRef[];
+		@mean : Float[];
+		@scale : Float[];
+		@loss_history : Float[];
+		@fitted : Bool;
+		@error : String;
+
+		#~
+		A head with one hidden layer of 64, learning rate 0.001, 20 epochs, batch 32, seed 42.
+		~#
+		New() {
+			Init([64], 0.001, 20, 32, 42);
+		}
+
+		#~
+		A head.
+		@param hidden hidden-layer sizes; an empty array is logistic regression
+		@param learning_rate step size
+		@param epochs passes over the training data
+		@param batch_size rows per update
+		@param seed seed for the initial weights and the shuffles
+		~#
+		New(hidden : Int[], learning_rate : Float, epochs : Int, batch_size : Int, seed : Int) {
+			Init(hidden, learning_rate, epochs, batch_size, seed);
+		}
+
+		method : Init(hidden : Int[], learning_rate : Float, epochs : Int, batch_size : Int, seed : Int) ~ Nil {
+			@hidden := hidden;
+			if(@hidden = Nil) {
+				@hidden := Int->New[0];
+			};
+			@learning_rate := learning_rate;
+			@epochs := epochs;
+			@batch_size := batch_size;
+			@seed := seed;
+			@optimizer := EmbeddingClassifier->Optimizer->ADAM;
+			@negative_weight := 1.0;
+			@positive_weight := 1.0;
+			@balanced := false;
+			@l2 := 0.0;
+			@standardize := true;
+			@fitted := false;
+		}
+
+		#~
+		Sets the optimizer; Adam by default.
+		@param optimizer ADAM or SGD
+		~#
+		method : public : SetOptimizer(optimizer : EmbeddingClassifier->Optimizer) ~ Nil {
+			@optimizer := optimizer;
+		}
+
+		#~
+		Weights each training row's loss by its class, for imbalanced data: a positive weight of
+		99 makes one missed positive cost as much as 99 false alarms. Both 1.0 by default.
+		@param negative weight of a negative row
+		@param positive weight of a positive row
+		~#
+		method : public : SetClassWeights(negative : Float, positive : Float) ~ Nil {
+			@negative_weight := negative;
+			@positive_weight := positive;
+			@balanced := false;
+		}
+
+		#~
+		Weights each class by n / (2 x its count) at Fit, so both classes carry equal total
+		weight -- scikit-learn's class_weight="balanced".
+		~#
+		method : public : SetBalancedWeights() ~ Nil {
+			@balanced := true;
+		}
+
+		#~
+		Sets L2 regularisation of the weights (not the biases); 0.0 by default.
+		@param l2 strength
+		~#
+		method : public : SetL2(l2 : Float) ~ Nil {
+			@l2 := l2;
+		}
+
+		#~
+		Whether inputs are standardised with the training mean and deviation; true by default.
+		@param standardize false to train on the inputs as given
+		~#
+		method : public : SetStandardize(standardize : Bool) ~ Nil {
+			@standardize := standardize;
+		}
+
+		#~
+		The training loss after each epoch: the class-weighted binary cross-entropy over the
+		whole training set, averaged over its rows, with L2 left out.
+		@return one value per epoch, or Nil before Fit
+		~#
+		method : public : GetLossHistory() ~ Float[] {
+			return @loss_history;
+		}
+
+		#~
+		Whether Fit has succeeded.
+		@return true when the model can predict
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @fitted;
+		}
+
+		#~
+		Why the last Fit returned false or the last prediction Nil.
+		@return the reason, or Nil
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		The class weights in use: those set, or after a balanced Fit, those computed.
+		@return [negative, positive]
+		~#
+		method : public : GetClassWeights() ~ Float[] {
+			return [@negative_weight, @positive_weight];
+		}
+
+		#~
+		Number of trainable parameters, weights and biases.
+		@return parameter count, 0 before Fit
+		~#
+		method : public : GetParameterCount() ~ Int {
+			if(@weights = Nil) {
+				return 0;
+			};
+
+			count := 0;
+			each(l : @weights) {
+				dims := @weights[l]->Get()->Size();
+				count += dims[0] * dims[1] + dims[1];
+			};
+			return count;
+		}
+
+		#~
+		A layer's weights, inputs by outputs, for inspection: layer 0 takes the (standardised)
+		input, the last gives the logit. A copy.
+		@param layer layer index
+		@return weights, or Nil before Fit or for a layer out of range
+		~#
+		method : public : GetWeights(layer : Int) ~ Float[,] {
+			if(@weights = Nil | layer < 0 | layer >= @weights->Size()) {
+				return Nil;
+			};
+
+			w := @weights[layer]->Get();
+			dims := w->Size();
+			out := Float->New[dims[0], dims[1]];
+			for(i := 0; i < dims[0]; i += 1;) {
+				for(j := 0; j < dims[1]; j += 1;) {
+					out[i, j] := w[i, j];
+				};
+			};
+			return out;
+		}
+
+		#~
+		A layer's biases, for inspection. A copy.
+		@param layer layer index
+		@return biases, or Nil before Fit or for a layer out of range
+		~#
+		method : public : GetBias(layer : Int) ~ Float[] {
+			if(@biases = Nil | layer < 0 | layer >= @biases->Size()) {
+				return Nil;
+			};
+
+			b := @biases[layer]->Get();
+			out := Float->New[b->Size()];
+			each(j : b) {
+				out[j] := b[j];
+			};
+			return out;
+		}
+
+		#~
+		Trains the head.
+		@param X rows x features
+		@param y one label per row, true for the positive class
+		@return true when trained; false with GetError set for empty, mismatched or NaN input,
+		or a configuration that cannot train
+		~#
+		method : public : Fit(X : Float[,], y : Bool[]) ~ Bool {
+			@fitted := false;
+			@error := Nil;
+			if(<>Check(X)) {
+				return false;
+			};
+			dims := X->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(y = Nil | y->Size() <> rows) {
+				@error := "y must have one label per row of X";
+				return false;
+			};
+			if(@epochs < 1 | @batch_size < 1 | @learning_rate <= 0.0) {
+				@error := "epochs, batch size and learning rate must be positive";
+				return false;
+			};
+			each(i : @hidden) {
+				if(@hidden[i] < 1) {
+					@error := "hidden layer {$i} has no units";
+					return false;
+				};
+			};
+
+			positives := 0;
+			each(i : y) {
+				if(y[i]) {
+					positives += 1;
+				};
+			};
+			if(@balanced) {
+				# n / (2 n_class); a class with no rows keeps weight 1.0, which nothing uses
+				@negative_weight := 1.0;
+				@positive_weight := 1.0;
+				if(rows - positives > 0) {
+					@negative_weight := rows->As(Float) / (2.0 * (rows - positives)->As(Float));
+				};
+				if(positives > 0) {
+					@positive_weight := rows->As(Float) / (2.0 * positives->As(Float));
+				};
+			};
+
+			# standardisation, from the training rows
+			@mean := Float->New[cols];
+			@scale := Float->New[cols];
+			for(j := 0; j < cols; j += 1;) {
+				@scale[j] := 1.0;
+			};
+			if(@standardize) {
+				for(j := 0; j < cols; j += 1;) {
+					total := 0.0;
+					for(i := 0; i < rows; i += 1;) {
+						total += X[i, j];
+					};
+					@mean[j] := total / rows->As(Float);
+
+					spread := 0.0;
+					for(i := 0; i < rows; i += 1;) {
+						d := X[i, j] - @mean[j];
+						spread += d * d;
+					};
+					sd := (spread / rows->As(Float))->Sqrt();
+					if(sd > 0.0) {
+						@scale[j] := sd;
+					};
+				};
+			};
+			Z := Scale(X);
+
+			# layers: cols -> hidden... -> 1
+			sizes := Int->New[@hidden->Size() + 2];
+			sizes[0] := cols;
+			each(i : @hidden) {
+				sizes[i + 1] := @hidden[i];
+			};
+			sizes[sizes->Size() - 1] := 1;
+			layers := sizes->Size() - 1;
+
+			random := Random->New(@seed);
+			@weights := FloatMatrixRef->New[layers];
+			@biases := FloatArrayRef->New[layers];
+			# first and second moments, for Adam
+			mw := FloatMatrixRef->New[layers];
+			vw := FloatMatrixRef->New[layers];
+			mb := FloatArrayRef->New[layers];
+			vb := FloatArrayRef->New[layers];
+			for(l := 0; l < layers; l += 1;) {
+				fan_in := sizes[l];
+				fan_out := sizes[l + 1];
+				# He-uniform before a ReLU, Glorot-uniform before the sigmoid
+				limit := (6.0 / fan_in->As(Float))->Sqrt();
+				if(l = layers - 1) {
+					limit := (6.0 / (fan_in + fan_out)->As(Float))->Sqrt();
+				};
+				w := Float->New[fan_in, fan_out];
+				for(i := 0; i < fan_in; i += 1;) {
+					for(j := 0; j < fan_out; j += 1;) {
+						w[i, j] := random->NextReal(-limit, limit);
+					};
+				};
+				@weights[l] := FloatMatrixRef->New(w);
+				@biases[l] := FloatArrayRef->New(Float->New[fan_out]);
+				mw[l] := FloatMatrixRef->New(Float->New[fan_in, fan_out]);
+				vw[l] := FloatMatrixRef->New(Float->New[fan_in, fan_out]);
+				mb[l] := FloatArrayRef->New(Float->New[fan_out]);
+				vb[l] := FloatArrayRef->New(Float->New[fan_out]);
+			};
+
+			@loss_history := Float->New[@epochs];
+			order := Int->New[rows];
+			each(i : order) {
+				order[i] := i;
+			};
+
+			step := 0;
+			for(epoch := 0; epoch < @epochs; epoch += 1;) {
+				# Fisher-Yates, from the seeded generator
+				i := rows - 1;
+				while(i > 0) {
+					k := random->NextInt(i + 1);
+					t := order[i];
+					order[i] := order[k];
+					order[k] := t;
+					i -= 1;
+				};
+
+				start := 0;
+				while(start < rows) {
+					count := rows - start;
+					if(count > @batch_size) {
+						count := @batch_size;
+					};
+
+					batch := Float->New[count, cols];
+					labels := Bool->New[count];
+					for(r := 0; r < count; r += 1;) {
+						row := order[start + r];
+						for(j := 0; j < cols; j += 1;) {
+							batch[r, j] := Z[row, j];
+						};
+						labels[r] := y[row];
+					};
+
+					step += 1;
+					Update(batch, labels, step, mw, vw, mb, vb);
+					start += count;
+				};
+
+				@loss_history[epoch] := WeightedLoss(Z, y);
+			};
+
+			@fitted := true;
+			return true;
+		}
+
+		# One minibatch: forward, back-propagate the weighted BCE, update every layer.
+		method : Update(batch : Float[,], labels : Bool[], step : Int, mw : FloatMatrixRef[], vw : FloatMatrixRef[],
+				mb : FloatArrayRef[], vb : FloatArrayRef[]) ~ Nil {
+			layers := @weights->Size();
+			count := labels->Size();
+
+			# activations[l] is layer l's input; pre[l] its output before the ReLU
+			activations := FloatMatrixRef->New[layers + 1];
+			pre := FloatMatrixRef->New[layers];
+			activations[0] := FloatMatrixRef->New(batch);
+			for(l := 0; l < layers; l += 1;) {
+				z := Linear(activations[l]->Get(), l);
+				pre[l] := FloatMatrixRef->New(z);
+				if(l < layers - 1) {
+					activations[l + 1] := FloatMatrixRef->New(Relu(z));
+				};
+			};
+
+			# dLoss/dz at the output: w (p - y) / count
+			out := pre[layers - 1]->Get();
+			delta := Float->New[count, 1];
+			for(r := 0; r < count; r += 1;) {
+				p := Sigmoid(out[r, 0]);
+				target := 0.0;
+				weight := @negative_weight;
+				if(labels[r]) {
+					target := 1.0;
+					weight := @positive_weight;
+				};
+				delta[r, 0] := weight * (p - target) / count->As(Float);
+			};
+
+			l := layers - 1;
+			while(l >= 0) {
+				w := @weights[l]->Get();
+				input := activations[l]->Get();
+				grad_w := Matrix2D->DotProduct(Matrix2D->Transpose(input), delta);
+				dims := w->Size();
+				grad_b := Float->New[dims[1]];
+				for(r := 0; r < count; r += 1;) {
+					for(j := 0; j < dims[1]; j += 1;) {
+						grad_b[j] += delta[r, j];
+					};
+				};
+				if(@l2 > 0.0) {
+					for(i := 0; i < dims[0]; i += 1;) {
+						for(j := 0; j < dims[1]; j += 1;) {
+							grad_w[i, j] += @l2 * w[i, j];
+						};
+					};
+				};
+
+				# the next delta down, through this layer's weights and the ReLU below it
+				if(l > 0) {
+					below := Matrix2D->DotProduct(delta, Matrix2D->Transpose(w));
+					z := pre[l - 1]->Get();
+					below_dims := below->Size();
+					for(r := 0; r < below_dims[0]; r += 1;) {
+						for(j := 0; j < below_dims[1]; j += 1;) {
+							if(z[r, j] <= 0.0) {
+								below[r, j] := 0.0;
+							};
+						};
+					};
+					delta := below;
+				};
+
+				Step(w, grad_w, @biases[l]->Get(), grad_b, step, mw[l]->Get(), vw[l]->Get(), mb[l]->Get(), vb[l]->Get());
+				l -= 1;
+			};
+		}
+
+		method : Step(w : Float[,], grad_w : Float[,], b : Float[], grad_b : Float[], step : Int,
+				mw : Float[,], vw : Float[,], mb : Float[], vb : Float[]) ~ Nil {
+			if(@optimizer = EmbeddingClassifier->Optimizer->SGD) {
+				SgdStep(w, grad_w);
+				SgdStep(b, grad_b);
+			}
+			else {
+				beta1 := 0.9;
+				beta2 := 0.999;
+				# the bias corrections, folded: w -= rate * (m / c1) / (sqrt(v / c2) + eps)
+				correct1 := 1.0 - beta1->Pow(step->As(Float));
+				correct2 := 1.0 - beta2->Pow(step->As(Float));
+				alpha := @learning_rate / correct1;
+				AdamStep(w, grad_w, mw, vw, alpha, correct2);
+				AdamStep(b, grad_b, mb, vb, alpha, correct2);
+			};
+		}
+
+		# One loop per method: with the SGD and Adam loops and the bias loops in one method, the
+		# AMD64 JIT refused to compile it ("compile failed", OBJECK_JIT_REPORT=1) and every update
+		# ran in the interpreter, twenty times slower.
+		method : SgdStep(w : Float[,], grad : Float[,]) ~ Nil {
+			dims := w->Size();
+			rate := @learning_rate;
+			for(i := 0; i < dims[0]; i += 1;) {
+				for(j := 0; j < dims[1]; j += 1;) {
+					w[i, j] -= rate * grad[i, j];
+				};
+			};
+		}
+
+		method : SgdStep(b : Float[], grad : Float[]) ~ Nil {
+			rate := @learning_rate;
+			each(j : b) {
+				b[j] -= rate * grad[j];
+			};
+		}
+
+		# Adam: beta1 0.9, beta2 0.999, epsilon 1e-8
+		method : AdamStep(w : Float[,], grad : Float[,], mw : Float[,], vw : Float[,], alpha : Float, correct2 : Float) ~ Nil {
+			dims := w->Size();
+			for(i := 0; i < dims[0]; i += 1;) {
+				for(j := 0; j < dims[1]; j += 1;) {
+					g := grad[i, j];
+					m := 0.9 * mw[i, j] + 0.1 * g;
+					v := 0.999 * vw[i, j] + 0.001 * g * g;
+					mw[i, j] := m;
+					vw[i, j] := v;
+					w[i, j] -= alpha * m / ((v / correct2)->Sqrt() + 0.00000001);
+				};
+			};
+		}
+
+		method : AdamStep(b : Float[], grad : Float[], mb : Float[], vb : Float[], alpha : Float, correct2 : Float) ~ Nil {
+			each(j : b) {
+				g := grad[j];
+				m := 0.9 * mb[j] + 0.1 * g;
+				v := 0.999 * vb[j] + 0.001 * g * g;
+				mb[j] := m;
+				vb[j] := v;
+				b[j] -= alpha * m / ((v / correct2)->Sqrt() + 0.00000001);
+			};
+		}
+
+		# input x weights + bias, for layer l
+		method : Linear(input : Float[,], l : Int) ~ Float[,] {
+			z := Matrix2D->DotProduct(input, @weights[l]->Get());
+			b := @biases[l]->Get();
+			dims := z->Size();
+			for(r := 0; r < dims[0]; r += 1;) {
+				for(j := 0; j < dims[1]; j += 1;) {
+					z[r, j] += b[j];
+				};
+			};
+			return z;
+		}
+
+		function : Relu(z : Float[,]) ~ Float[,] {
+			dims := z->Size();
+			out := Float->New[dims[0], dims[1]];
+			for(r := 0; r < dims[0]; r += 1;) {
+				for(j := 0; j < dims[1]; j += 1;) {
+					if(z[r, j] > 0.0) {
+						out[r, j] := z[r, j];
+					};
+				};
+			};
+			return out;
+		}
+
+		# a sigmoid that does not overflow Exp for a large |z|
+		function : Sigmoid(z : Float) ~ Float {
+			if(z >= 0.0) {
+				return 1.0 / (1.0 + (0.0 - z)->Exp());
+			};
+			e := z->Exp();
+			return e / (1.0 + e);
+		}
+
+		# log(1 + e^-|z|) + max(z, 0) - z y: BCE from the logit, stable for any z
+		function : LogitLoss(z : Float, target : Float) ~ Float {
+			loss := (1.0 + (0.0 - z->Abs())->Exp())->Log() - z * target;
+			if(z > 0.0) {
+				loss += z;
+			};
+			return loss;
+		}
+
+		# the output logits for standardised rows
+		method : Logits(Z : Float[,]) ~ Float[] {
+			layers := @weights->Size();
+			a := Z;
+			for(l := 0; l < layers; l += 1;) {
+				z := Linear(a, l);
+				if(l < layers - 1) {
+					a := Relu(z);
+				}
+				else {
+					a := z;
+				};
+			};
+
+			dims := a->Size();
+			out := Float->New[dims[0]];
+			for(r := 0; r < dims[0]; r += 1;) {
+				out[r] := a[r, 0];
+			};
+			return out;
+		}
+
+		method : WeightedLoss(Z : Float[,], y : Bool[]) ~ Float {
+			logits := Logits(Z);
+			total := 0.0;
+			each(r : logits) {
+				if(y[r]) {
+					total += @positive_weight * LogitLoss(logits[r], 1.0);
+				}
+				else {
+					total += @negative_weight * LogitLoss(logits[r], 0.0);
+				};
+			};
+			return total / logits->Size()->As(Float);
+		}
+
+		method : Scale(X : Float[,]) ~ Float[,] {
+			dims := X->Size();
+			out := Float->New[dims[0], dims[1]];
+			for(i := 0; i < dims[0]; i += 1;) {
+				for(j := 0; j < dims[1]; j += 1;) {
+					out[i, j] := (X[i, j] - @mean[j]) / @scale[j];
+				};
+			};
+			return out;
+		}
+
+		method : Check(X : Float[,]) ~ Bool {
+			if(X = Nil) {
+				@error := "X is Nil";
+				return false;
+			};
+			dims := X->Size();
+			if(dims[0] = 0 | dims[1] = 0) {
+				@error := "X has no rows or no columns";
+				return false;
+			};
+			for(i := 0; i < dims[0]; i += 1;) {
+				for(j := 0; j < dims[1]; j += 1;) {
+					v := X[i, j];
+					if(v <> v) {
+						@error := "X[{$i},{$j}] is NaN";
+						return false;
+					};
+				};
+			};
+			return true;
+		}
+
+		method : Ready(X : Float[,]) ~ Bool {
+			if(<>@fitted) {
+				@error := "the model is not fitted";
+				return false;
+			};
+			if(<>Check(X)) {
+				return false;
+			};
+			dims := X->Size();
+			if(dims[1] <> @mean->Size()) {
+				expected := @mean->Size();
+				given := dims[1];
+				@error := "X has {$given} columns; the model was fitted on {$expected}";
+				return false;
+			};
+			return true;
+		}
+
+		#~
+		The probability of the positive class for each row.
+		@param X rows x features, as many as Fit saw
+		@return one probability per row, or Nil (see GetError)
+		~#
+		method : public : PredictProba(X : Float[,]) ~ Float[] {
+			if(<>Ready(X)) {
+				return Nil;
+			};
+
+			logits := Logits(Scale(X));
+			out := Float->New[logits->Size()];
+			each(r : logits) {
+				out[r] := Sigmoid(logits[r]);
+			};
+			return out;
+		}
+
+		#~
+		Scores each row, higher meaning more positive: the positive-class probability, for
+		CrossValidation and the threshold tools in Metrics.
+		@param X rows x features
+		@return one score per row, or Nil (see GetError)
+		~#
+		method : public : PredictScore(X : Float[,]) ~ Float[] {
+			return PredictProba(X);
+		}
+
+		#~
+		Predicts each row's class: positive when its probability is at least threshold.
+		@param X rows x features
+		@param threshold the cut, e.g. 0.5
+		@return one label per row, or Nil (see GetError)
+		~#
+		method : public : PredictClass(X : Float[,], threshold : Float) ~ Bool[] {
+			p := PredictProba(X);
+			if(p = Nil) {
+				return Nil;
+			};
+
+			out := Bool->New[p->Size()];
+			each(r : p) {
+				out[r] := p[r] >= threshold;
+			};
+			return out;
+		}
+
+		#~
+		Predicts each row's class at a threshold of 0.5.
+		@param X rows x features
+		@return one label per row, or Nil (see GetError)
+		~#
+		method : public : PredictClass(X : Float[,]) ~ Bool[] {
+			return PredictClass(X, 0.5);
+		}
+
+		#~
+		The class-weighted binary cross-entropy of the model on labelled rows, averaged over
+		the rows: the measure GetLossHistory records, for a validation curve.
+		@param X rows x features
+		@param y one label per row
+		@return the loss, or -1.0 when X or y cannot be scored (see GetError)
+		~#
+		method : public : Loss(X : Float[,], y : Bool[]) ~ Float {
+			if(<>Ready(X)) {
+				return -1.0;
+			};
+			dims := X->Size();
+			if(y = Nil | y->Size() <> dims[0]) {
+				@error := "y must have one label per row of X";
+				return -1.0;
+			};
+			return WeightedLoss(Scale(X), y);
+		}
+	}
+}
