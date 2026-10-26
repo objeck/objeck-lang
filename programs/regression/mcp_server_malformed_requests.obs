@@ -1,0 +1,449 @@
+# EXTRA_LIBS: net,net_server,cipher
+#
+# McpRequestHandler->ProcessPost read client-supplied JSON without checks:
+# root_json->Get("method")->GetValue(), ->Get("id")->GetInt(), ->Get("params")
+# ->Get("uri")->GetValue(). A POST body that was not JSON, was JSON but not
+# an object, lacked "method" or "id", or carried them with the wrong type
+# dereferenced Nil on the handler thread, which ended the whole VM: one
+# request from any client killed the server. A tool callback that raised or
+# returned Nil did the same.
+#
+# Now every malformed body is answered with the JSON-RPC 2.0 error the MCP
+# spec mandates (-32700 parse error, -32600 invalid request, -32601 method
+# not found, -32602 invalid params, -32603 internal error), the request id is
+# echoed when it is usable and null otherwise, a body over 4 MiB is refused,
+# notifications get a bodyless 202, and the server is still answering after
+# the whole battery.
+#
+use Collection, Data.JSON, System.IO.Net, Web.HTTP, Web.HTTP.Server, Web.HTTP.Server.MCP;
+
+class HardeningMcpHandler from McpRequestHandler {
+	New() { Parent(); }
+
+	method : ListResources() ~ Vector<ResourceItem> {
+		return Vector->New()<ResourceItem>;
+	}
+
+	method : ListTemplates() ~ Vector<ResourceTemplate> {
+		return Vector->New()<ResourceTemplate>;
+	}
+
+	method : GetResource(uri : Url) ~ Vector<ResourceContent> {
+		return Vector->New()<ResourceContent>;
+	}
+
+	method : ListTools() ~ Vector<ToolItem> {
+		return Vector->New()<ToolItem>;
+	}
+
+	# the tool callbacks a program might get wrong: one returns Nil, one
+	# raises, one dereferences Nil, one hands back a Nil content item
+	method : CallTool(name : String, arguments : JsonElement) ~ Vector<ToolContent> {
+		if(name->Equals("nil_tool")) {
+			return Nil;
+		};
+
+		if(name->Equals("raise_tool")) {
+			Runtime->Raise(RuntimeError->New("tool exploded"));
+		};
+
+		if(name->Equals("deref_tool")) {
+			nothing : String;
+			nothing->Size();
+		};
+
+		contents := Vector->New()<ToolContent>;
+		if(name->Equals("nil_item_tool")) {
+			contents->AddBack(Nil);
+			return contents;
+		};
+
+		# "echo": the arguments back as text, so a valid call is seen to work
+		contents->AddBack(ToolContent->New("text", arguments->ToString()));
+		return contents;
+	}
+
+	# a list callback that returns Nil
+	method : ListPrompts() ~ Vector<PromptItem> {
+		return Nil;
+	}
+
+	method : CallPrompt(name : String, arguments : JsonElement) ~ Vector<PromptMessage> {
+		return Vector->New()<PromptMessage>;
+	}
+}
+
+class McpServerMalformedRequests {
+	@failures : static : Int;
+	@base_url : static : String;
+
+	#
+	# Sends a POST; a Nil response is retried (#669's loopback teardown race
+	# drops one outright on Windows)
+	#
+	function : Post(body : Byte[], session_id : String) ~ Web.HTTP.Response {
+		resp : Web.HTTP.Response;
+		for(i := 0; i < 5; i += 1;) {
+			client := HttpClient->New();
+			client->AddHeader("Content-Type", "application/json");
+			if(session_id <> Nil) {
+				client->AddHeader("mcp-session-id", session_id);
+			};
+			resp := client->Post(Url->New(@base_url), body, "application/json");
+			if(resp <> Nil) {
+				return resp;
+			};
+			System.Concurrency.Thread->Sleep(200);
+		};
+		return resp;
+	}
+
+	function : Fail(what : String, detail : String) ~ Nil {
+		"  FAIL: {$what}: {$detail}"->PrintLine();
+		@failures += 1;
+	}
+
+	#
+	# Posts the body and checks the HTTP status, the JSON-RPC error code
+	# (0: a "result" is expected instead) and the echoed id (its JSON text,
+	# "null" for a null id, Nil to skip the check). Returns the parsed reply.
+	#
+	function : Check(what : String, body : Byte[], http_expect : Int, rpc_code_expect : Int, id_expect : String) ~ JsonElement {
+		resp := Post(body, Nil);
+		if(resp = Nil) {
+			Fail(what, "no response at all");
+			return Nil;
+		};
+
+		code := resp->GetCode();
+		if(code <> http_expect) {
+			Fail(what, "HTTP {$code}, expected {$http_expect}");
+			return Nil;
+		};
+
+		content := resp->GetContent();
+		if(content = Nil | content->Size() = 0) {
+			Fail(what, "HTTP {$code} with an empty body");
+			return Nil;
+		};
+
+		root := JsonParser->TextToElement(content->ToString());
+		if(root = Nil | root->GetType() <> JsonElement->JsonType->OBJECT) {
+			text := content->ToString();
+			Fail(what, "body is not a JSON object: {$text}");
+			return Nil;
+		};
+
+		version := root->Get("jsonrpc");
+		if(version = Nil | <>version->GetValue()->Equals("2.0")) {
+			Fail(what, "reply lacks \"jsonrpc\":\"2.0\"");
+		};
+
+		if(rpc_code_expect = 0) {
+			if(root->Get("result") = Nil | root->Get("error") <> Nil) {
+				text := content->ToString();
+				Fail(what, "expected a result, got {$text}");
+			};
+		}
+		else {
+			error := root->Get("error");
+			if(error = Nil | error->GetType() <> JsonElement->JsonType->OBJECT) {
+				text := content->ToString();
+				Fail(what, "expected error {$rpc_code_expect}, got {$text}");
+			}
+			else {
+				rpc_code := error->Get("code");
+				if(rpc_code = Nil | rpc_code->GetType() <> JsonElement->JsonType->NUMBER | rpc_code->GetInt() <> rpc_code_expect) {
+					text := content->ToString();
+					Fail(what, "expected error code {$rpc_code_expect}, got {$text}");
+				};
+
+				message := error->Get("message");
+				if(message = Nil | message->GetType() <> JsonElement->JsonType->STRING | message->GetValue()->IsEmpty()) {
+					text := content->ToString();
+					Fail(what, "error has no message: {$text}");
+				};
+
+				if(root->Get("result") <> Nil) {
+					Fail(what, "an error reply also carries a result");
+				};
+			};
+		};
+
+		# the id: "<null>" for a JSON null, else the value as the request sent it
+		# (a string id is compared decoded, since Data.JSON keeps a parsed
+		# string's escapes raw)
+		if(id_expect <> Nil) {
+			id := root->Get("id");
+			if(id = Nil) {
+				Fail(what, "reply has no id, expected {$id_expect}");
+			}
+			else if(id_expect->Equals("<null>")) {
+				if(id->GetType() <> JsonElement->JsonType->NULL) {
+					id_text := id->ToString();
+					Fail(what, "reply id is {$id_text}, expected null");
+				};
+			}
+			else {
+				id_text := id->GetValue();
+				if(id->GetType() = JsonElement->JsonType->STRING) {
+					id_text := JsonElement->Decode(id_text);
+				}
+				else if(id->GetType() <> JsonElement->JsonType->NUMBER) {
+					id_text := id->ToString();
+				};
+				if(<>id_text->Equals(id_expect)) {
+					Fail(what, "reply id is {$id_text}, expected {$id_expect}");
+				};
+			};
+		};
+
+		return root;
+	}
+
+	function : Check(what : String, body : String, http_expect : Int, rpc_code_expect : Int, id_expect : String) ~ JsonElement {
+		return Check(what, body->ToByteArray(), http_expect, rpc_code_expect, id_expect);
+	}
+
+	#
+	# A notification is accepted with a bodyless 202
+	#
+	function : CheckAccepted(what : String, body : String) ~ Nil {
+		resp := Post(body->ToByteArray(), Nil);
+		if(resp = Nil) {
+			Fail(what, "no response at all");
+			return;
+		};
+
+		code := resp->GetCode();
+		if(code <> 202) {
+			Fail(what, "HTTP {$code}, expected 202");
+		};
+
+		content := resp->GetContent();
+		if(content <> Nil & content->Size() > 0) {
+			text := content->ToString();
+			Fail(what, "a notification was answered with a body: {$text}");
+		};
+	}
+
+	function : Repeat(text : String, count : Int) ~ String {
+		out := String->New();
+		each(i : count) {
+			out->Append(text);
+		};
+		return out;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		# the server, on a port the system chooses
+		server_thread := System.Concurrency.Thread->New() {
+			New() { Parent() }
+			method : public : Run(arg : System.Base) ~ Nil {
+				config_builder := JsonBuilder->New();
+				elem_json := config_builder->PushObject();
+				elem_json->Insert("name", "Malformed request MCP Server");
+				elem_json->Insert("instructions", "Regression test server");
+				elem_json->Insert("version", "0.0.1");
+				elem_json->Insert("http_port", 0);
+				elem_json->Insert("http_session_timeout", 30);
+				elem_json->Insert("debug", false);
+				McpServer->Serve(config_builder->Pop(), HardeningMcpHandler->New());
+			}
+		};
+		server_thread->Execute(Nil);
+
+		waited := 0;
+		while(McpServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		port := McpServer->GetBoundPort();
+		if(port = 0) {
+			"FAIL: the MCP server never listened"->PrintLine();
+			Runtime->Exit(1);
+		};
+		@base_url := "http://localhost:{$port}/";
+
+		# --- not JSON at all: -32700, HTTP 400, id null -----------------------
+		Check("empty body", Byte->New[0], 400, -32700, "<null>");
+		Check("garbage", "@@@ not json @@@", 400, -32700, "<null>");
+		Check("truncated JSON", "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":1", 400, -32700, "<null>");
+		Check("bad value", "{\"jsonrpc\":\"2.0\",\"method\":}", 400, -32700, "<null>");
+
+		# not text at all: a byte-order mark's worth of high bytes, NULs and the
+		# rest of the byte range (a body that starts with a digit or a letter
+		# would scan as a number or a bare word instead)
+		binary := Byte->New[256];
+		each(i : binary) {
+			binary[i] := (i * 37) % 256;
+		};
+		binary[0] := 0xFF; binary[1] := 0xFE; binary[2] := 0; binary[3] := 0x80;
+		Check("binary bytes", binary, 400, -32700, "<null>");
+
+		deep := Repeat("[", 10000) + Repeat("]", 10000);
+		Check("10,000-deep nesting", deep, 400, -32700, "<null>");
+
+		deep := Repeat("{\"a\":", 10000) + "1" + Repeat("}", 10000);
+		Check("10,000-deep objects", deep, 400, -32700, "<null>");
+
+		# --- JSON, but not a request object: -32600, HTTP 400 ------------------
+		Check("JSON array (a batch)", "[{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":1}]", 400, -32600, "<null>");
+		Check("a number", "42", 400, -32600, "<null>");
+		Check("a string", "\"ping\"", 400, -32600, "<null>");
+		Check("true", "true", 400, -32600, "<null>");
+		Check("null", "null", 400, -32600, "<null>");
+		Check("empty object", "{}", 400, -32600, "<null>");
+		Check("no method", "{\"jsonrpc\":\"2.0\",\"id\":1}", 400, -32600, "1");
+		Check("method not a string", "{\"jsonrpc\":\"2.0\",\"method\":5,\"id\":1}", 400, -32600, "1");
+		Check("method an object", "{\"jsonrpc\":\"2.0\",\"method\":{\"x\":1},\"id\":1}", 400, -32600, "1");
+		Check("empty method", "{\"jsonrpc\":\"2.0\",\"method\":\"\",\"id\":1}", 400, -32600, "1");
+		Check("no jsonrpc", "{\"method\":\"ping\",\"id\":1}", 400, -32600, "1");
+		Check("jsonrpc 1.0", "{\"jsonrpc\":\"1.0\",\"method\":\"ping\",\"id\":1}", 400, -32600, "1");
+		Check("jsonrpc a number", "{\"jsonrpc\":2,\"method\":\"ping\",\"id\":1}", 400, -32600, "1");
+
+		# an id that cannot be echoed is answered with null
+		Check("id an object", "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":{\"a\":1}}", 400, -32600, "<null>");
+		Check("id an array", "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":[1]}", 400, -32600, "<null>");
+		Check("id true", "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":true}", 400, -32600, "<null>");
+		Check("id null", "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":null}", 400, -32600, "<null>");
+
+		# params must be an object
+		Check("params a number", "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":1,\"params\":5}", 400, -32600, "1");
+		Check("params a string", "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"id\":1,\"params\":\"x\"}", 400, -32600, "1");
+		Check("params an array", "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"id\":1,\"params\":[1]}", 400, -32600, "1");
+
+		# a body over 4 MiB is refused before it is parsed
+		big := "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":1,\"params\":{\"pad\":\"";
+		big += Repeat(Repeat("x", 1024), 5 * 1024);
+		big += "\"}}";
+		Check("5 MB body", big, 413, -32600, "<null>");
+
+		# --- valid ids of every allowed shape are echoed as sent -----------------
+		Check("string id", "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":\"abc-123\"}", 200, 0, "abc-123");
+		Check("fractional id", "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":1.5}", 200, 0, "1.5");
+		Check("negative id", "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":-7}", 200, 0, "-7");
+		Check("huge id", "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":99999999999999999999999}", 200, 0, "99999999999999999999999");
+		Check("string id with spaces, a slash and a quote", "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":\"req 7/a:\\\"b\\\"\"}", 200, 0, "req 7/a:\"b\"");
+
+		# duplicate keys: Data.JSON keeps the last, the request is still a ping
+		Check("duplicate keys", "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":1,\"id\":2,\"method\":\"ping\"}", 200, 0, "2");
+
+		# --- a well-formed request for something the server lacks: in-band errors, HTTP 200
+		Check("unknown method", "{\"jsonrpc\":\"2.0\",\"method\":\"nope/zip\",\"id\":9}", 200, -32601, "9");
+		Check("unknown method, string id", "{\"jsonrpc\":\"2.0\",\"method\":\"tools/zap\",\"id\":\"q\"}", 200, -32601, "q");
+
+		Check("tools/call without params", "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"id\":10}", 200, -32602, "10");
+		Check("tools/call without name", "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"id\":11,\"params\":{\"arguments\":{}}}", 200, -32602, "11");
+		Check("tools/call name not a string", "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"id\":12,\"params\":{\"name\":3}}", 200, -32602, "12");
+		Check("tools/call arguments not an object", "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"id\":13,\"params\":{\"name\":\"echo\",\"arguments\":\"x\"}}", 200, -32602, "13");
+		Check("resources/read without params", "{\"jsonrpc\":\"2.0\",\"method\":\"resources/read\",\"id\":14}", 200, -32602, "14");
+		Check("resources/read without uri", "{\"jsonrpc\":\"2.0\",\"method\":\"resources/read\",\"id\":15,\"params\":{}}", 200, -32602, "15");
+		Check("resources/read uri not a string", "{\"jsonrpc\":\"2.0\",\"method\":\"resources/read\",\"id\":16,\"params\":{\"uri\":7}}", 200, -32602, "16");
+		Check("prompts/get without name", "{\"jsonrpc\":\"2.0\",\"method\":\"prompts/get\",\"id\":17,\"params\":{}}", 200, -32602, "17");
+		Check("prompts/get arguments not an object", "{\"jsonrpc\":\"2.0\",\"method\":\"prompts/get\",\"id\":18,\"params\":{\"name\":\"p\",\"arguments\":[]}}", 200, -32602, "18");
+
+		# --- a handler callback that goes wrong is an internal error, not a dead server
+		Check("tool returns Nil", "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"id\":20,\"params\":{\"name\":\"nil_tool\",\"arguments\":{}}}", 200, -32603, "20");
+		Check("tool raises", "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"id\":21,\"params\":{\"name\":\"raise_tool\",\"arguments\":{}}}", 200, -32603, "21");
+		Check("tool dereferences Nil", "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"id\":22,\"params\":{\"name\":\"deref_tool\",\"arguments\":{}}}", 200, -32603, "22");
+		Check("tool returns a Nil item", "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"id\":23,\"params\":{\"name\":\"nil_item_tool\",\"arguments\":{}}}", 200, -32603, "23");
+		Check("prompts/list returns Nil", "{\"jsonrpc\":\"2.0\",\"method\":\"prompts/list\",\"id\":24}", 200, -32603, "24");
+
+		# the raised error's message reaches the client
+		reply := Check("tool raises, message", "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"id\":25,\"params\":{\"name\":\"raise_tool\",\"arguments\":{}}}", 200, -32603, "25");
+		if(reply <> Nil) {
+			message := reply->Get("error")->Get("message")->GetValue();
+			if(<>message->Has("tool exploded")) {
+				Fail("tool raises, message", "message '{$message}' does not carry the raised error");
+			};
+		};
+
+		# --- notifications: accepted, no body, whatever the method ---------------
+		CheckAccepted("notifications/initialized", "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}");
+		CheckAccepted("notifications/cancelled", "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\",\"params\":{\"requestId\":1}}");
+		CheckAccepted("unknown notification", "{\"jsonrpc\":\"2.0\",\"method\":\"something/unknown\"}");
+		CheckAccepted("notifications/initialized with an id, as before", "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\",\"id\":1}");
+		# a notification that is not a request object is still refused
+		Check("notification, method not a string", "{\"jsonrpc\":\"2.0\",\"method\":7}", 400, -32600, "<null>");
+
+		# --- valid requests are unchanged ------------------------------------------
+		# tools/call with the arguments optional, as the spec has it
+		reply := Check("tools/call echo", "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"id\":30,\"params\":{\"name\":\"echo\",\"arguments\":{\"k\":\"v\"}}}", 200, 0, "30");
+		if(reply <> Nil) {
+			contents := reply->Get("result")->Get("content");
+			if(contents = Nil | contents->GetType() <> JsonElement->JsonType->ARRAY | contents->Size() <> 1) {
+				Fail("tools/call echo", "no single content item in the result");
+			}
+			else {
+				# the tool answered with the arguments' JSON text, which the reply
+				# carries as an escaped string; its key and value are in it
+				text := contents->Get(0)->Get("text");
+				if(text = Nil | <>text->GetValue()->StartsWith("{") | <>text->GetValue()->Has("k") | <>text->GetValue()->Has("v")) {
+					Fail("tools/call echo", "the arguments did not reach the tool");
+				};
+			};
+		};
+		Check("tools/call without arguments", "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"id\":31,\"params\":{\"name\":\"echo\"}}", 200, 0, "31");
+
+		# --- after all that the server is still answering -------------------------
+		init_client := HttpClient->New();
+		init_client->AddHeader("Content-Type", "application/json");
+		init_resp : Web.HTTP.Response;
+		for(i := 0; i < 5 & init_resp = Nil; i += 1;) {
+			init_resp := init_client->Post(Url->New(@base_url), "{\"jsonrpc\":\"2.0\",\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\",\"capabilities\":{}},\"id\":100}"->ToByteArray(), "application/json");
+			if(init_resp = Nil) {
+				System.Concurrency.Thread->Sleep(200);
+			};
+		};
+		session_id : String;
+		if(init_resp = Nil | init_resp->GetCode() <> 200) {
+			code := -1; if(init_resp <> Nil) { code := init_resp->GetCode(); };
+			Fail("initialize after the battery", "HTTP {$code}");
+		}
+		else {
+			root := JsonParser->TextToElement(init_resp->GetContent()->ToString());
+			if(root = Nil | root->Get("result") = Nil | root->Get("result")->Get("serverInfo") = Nil) {
+				Fail("initialize after the battery", "no serverInfo in the result");
+			};
+			session_id := init_client->GetResponseHeaders()->Find("mcp-session-id");
+			if(session_id = Nil | session_id->IsEmpty()) {
+				Fail("initialize after the battery", "no mcp-session-id header");
+			};
+		};
+
+		tools_body := "{\"jsonrpc\":\"2.0\",\"method\":\"tools/list\",\"id\":101}"->ToByteArray();
+		tools_resp := Post(tools_body, session_id);
+		if(tools_resp = Nil | tools_resp->GetCode() <> 200) {
+			code := -1; if(tools_resp <> Nil) { code := tools_resp->GetCode(); };
+			Fail("tools/list in the session after the battery", "HTTP {$code}");
+		}
+		else {
+			root := JsonParser->TextToElement(tools_resp->GetContent()->ToString());
+			if(root = Nil | root->Get("result") = Nil | root->Get("result")->Get("tools") = Nil) {
+				Fail("tools/list in the session after the battery", "no result.tools");
+			};
+		};
+
+		Check("ping after the battery", "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":102}", 200, 0, "102");
+
+		# an unknown session is still 404, as before
+		stale := Post("{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":103}"->ToByteArray(), "no-such-session");
+		if(stale = Nil | stale->GetCode() <> 404) {
+			code := -1; if(stale <> Nil) { code := stale->GetCode(); };
+			Fail("unknown session", "HTTP {$code}, expected 404");
+		};
+
+		WebServer->Stop();
+
+		if(@failures = 0) {
+			"PASS: McpRequestHandler answers malformed requests with JSON-RPC errors and survives them"->PrintLine();
+		}
+		else {
+			"FAIL: McpRequestHandler malformed requests, {$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
