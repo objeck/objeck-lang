@@ -177,14 +177,15 @@ bundle Web.HTTP.Server {
 		}
 
 		#~
-		Starts a HTTP server that listens for requests
-		@param filename configuration file (an <a href='https://github.com/objeck/objeck-web-server/blob/master/config/simple_config.json' target='_blank'>example</a>)
+		NOT IMPLEMENTED: starting a HTTP server from a configuration file. The
+		call reports this on standard error and returns without serving; it
+		used to load the file and then silently serve nothing. Use
+		Serve(callback, port) or Serve(callback, port, is_debug) for HTTP, or
+		ServeSecure(filename) for HTTPS, which does read a configuration file.
+		@param filename configuration file (ignored)
 		~#
 		function : Serve(filename : String) ~ Nil {
-			@server_config := WebServerConfig->New(filename);
-			if(@server_config->Load()) {
-				# callback : Class, port : Int, is_debug : Bool
-			};
+			">>> Error: WebServer->Serve(filename) is not implemented; use Serve(callback, port) or ServeSecure(filename) <<<"->ErrorLine();
 		}
 
 		#~
@@ -3038,10 +3039,20 @@ bundle Web.HTTP.Server.MCP {
 	names; an "http_port" of 0 asks the system for a free port, which
 	GetBoundPort answers once the server is listening, so a program that starts
 	the server in a thread can poll for the port instead of picking a number.
+
+	The configuration is a JSON object with these keys, all required:
+	"http_port" (an integer 0..65535), "http_session_timeout" (an integer
+	number of seconds, greater than 0), "debug" (true or false), and the
+	strings "name", "version" and "instructions" the server answers an MCP
+	initialize request with. A Nil configuration, a missing key or a value of
+	the wrong type is refused with a message naming the key (see
+	GetLastError) instead of being dereferenced, and leaves the server free
+	to be started again.
 	~#
 	class McpServer {
 		@is_debug : static : Bool;
 		@config : static : JsonElement;
+		@last_error : static : String;
 
 		#~
 		Returns rather the server is in debug mode
@@ -3070,6 +3081,9 @@ bundle Web.HTTP.Server.MCP {
 			method : public : Run(arg : System.Base) ~ Nil {
 				builder := Data.JSON.JsonBuilder->New();
 				config := builder->PushObject();
+				config->Insert("name", "My MCP server");
+				config->Insert("version", "1.0.0");
+				config->Insert("instructions", "What this server is for");
 				config->Insert("http_port", 0);
 				config->Insert("http_session_timeout", 30);
 				config->Insert("debug", false);
@@ -3088,15 +3102,54 @@ bundle Web.HTTP.Server.MCP {
 		}
 
 		#~
+		Gets why the last call to Serve was refused: the server was already
+		initialized, the handler was Nil, or the configuration was Nil, not a
+		JSON object, missing a key or held a value of the wrong type or out of
+		range. The message names the key. Nil once a Serve has been accepted;
+		a port that cannot be bound is reported by the web server on standard
+		error instead.
+		@return why the last Serve was refused, Nil if it was not
+
+		```
+		Web.HTTP.Server.MCP.McpServer->Serve(config, MyMcpHandler->New());
+		reason := Web.HTTP.Server.MCP.McpServer->GetLastError();
+		if(reason <> Nil) {
+			"MCP server not started: {$reason}"->ErrorLine();
+		};
+		```
+		~#
+		function : GetLastError() ~ String {
+			return @last_error;
+		}
+
+		#~
 		Initializes the MCP server and serves until the web server is stopped.
 		The configuration's "http_port" is the port to listen on; 0 takes a
 		port the system chooses (see GetBoundPort), a negative port is refused.
-		@param config JSON configuration file
+		A configuration that is Nil, is not a JSON object, lacks one of the
+		required keys (see the class) or holds a value of the wrong type is
+		refused with a message naming the key, on standard error and from
+		GetLastError, and the server may be started again with a valid one.
+		@param config JSON configuration (see the class for the keys)
 		@param handler MCP request handler
 		~#
 		function : Serve(config : JsonElement, handler : McpRequestHandler) ~ Nil {
 			if(@config <> Nil) {
+				@last_error := "MCP server already initialized";
 				">>> Error MCP server already initialized <<<"->ErrorLine();
+				return;
+			};
+
+			# refuse a configuration the server cannot use before anything reads
+			# it: a missing key used to be dereferenced, which crashed the VM
+			reason := CheckConfig(config);
+			if(reason = Nil & handler = Nil) {
+				reason := "handler is Nil";
+			};
+
+			if(reason <> Nil) {
+				@last_error := reason;
+				">>> Unable to initialize MCP server: {$reason} <<<"->ErrorLine();
 				return;
 			};
 
@@ -3105,16 +3158,101 @@ bundle Web.HTTP.Server.MCP {
 
 			# 0 is a port the system chooses, as it is for WebServer->Serve
 			http_port := config->Get("http_port")->GetInt();
-			if(http_port < 0 | <>McpRequestHandler->Initialize(config)) {
-				">>> Unable to initialize MCP server <<<"->ErrorLine();
+			if(<>McpRequestHandler->Initialize(config)) {
+				@last_error := "'http_session_timeout' was not accepted";
+				">>> Unable to initialize MCP server: {$@last_error} <<<"->ErrorLine();
 				# the server did not start, so a later Serve may try again
 				@config := Nil;
 				return;
 			};
+			@last_error := Nil;
 
 			WebServer->Serve(handler->GetClass(), http_port, @is_debug);
 			McpRequestHandler->StopCacheTimer();
 			@config := Nil;
+		}
+
+		# Checks a configuration before Serve uses it: Nil if it is usable, else
+		# why it is not, naming the key
+		function : private : CheckConfig(config : JsonElement) ~ String {
+			if(config = Nil) {
+				return "configuration is Nil";
+			};
+
+			if(config->GetType() <> JsonElement->JsonType->OBJECT) {
+				return "configuration is not a JSON object";
+			};
+
+			# an integer 0..65535, 0 for a port the system chooses
+			reason := CheckInteger(config, "http_port");
+			if(reason <> Nil) {
+				return reason;
+			};
+			http_port := config->Get("http_port")->GetInt();
+			if(http_port < 0 | http_port > 65535) {
+				return "'http_port' must be 0..65535, got {$http_port}";
+			};
+
+			# seconds a session lives, more than 0
+			reason := CheckInteger(config, "http_session_timeout");
+			if(reason <> Nil) {
+				return reason;
+			};
+			session_timeout := config->Get("http_session_timeout")->GetInt();
+			if(session_timeout <= 0) {
+				return "'http_session_timeout' must be greater than 0, got {$session_timeout}";
+			};
+
+			debug_json := config->Get("debug");
+			if(debug_json = Nil) {
+				return "'debug' is missing";
+			};
+			if(debug_json->GetType() <> JsonElement->JsonType->TRUE & debug_json->GetType() <> JsonElement->JsonType->FALSE) {
+				return "'debug' must be true or false";
+			};
+
+			# the strings an MCP initialize request is answered with
+			reason := CheckString(config, "name");
+			if(reason <> Nil) {
+				return reason;
+			};
+			reason := CheckString(config, "version");
+			if(reason <> Nil) {
+				return reason;
+			};
+			return CheckString(config, "instructions");
+		}
+
+		# an integer: a JSON number written without a fraction or an exponent
+		function : private : CheckInteger(config : JsonElement, key : String) ~ String {
+			elem := config->Get(key);
+			if(elem = Nil) {
+				return "'{$key}' is missing";
+			};
+
+			if(elem->GetType() <> JsonElement->JsonType->NUMBER) {
+				return "'{$key}' must be an integer";
+			};
+
+			value := elem->GetValue();
+			if(value->Has('.') | value->Has('e') | value->Has('E')) {
+				return "'{$key}' must be an integer, got {$value}";
+			};
+
+			return Nil;
+		}
+
+		function : private : CheckString(config : JsonElement, key : String) ~ String {
+			elem := config->Get(key);
+			if(elem = Nil) {
+				return "'{$key}' is missing";
+			};
+
+			if(elem->GetType() <> JsonElement->JsonType->STRING) {
+				return "'{$key}' must be a string";
+			};
+
+			return Nil;
 		}
 	}
 
@@ -3138,16 +3276,24 @@ bundle Web.HTTP.Server.MCP {
 
 		#~
 		Initializes the MCP request handler
-		@param config JSON configuration
-		@return true if successful, false otherwise
+		@param config JSON configuration, with an "http_session_timeout" greater than 0
+		@return true if successful, false if the configuration is Nil or its "http_session_timeout" is missing or not greater than 0
 		~#
 		function : Initialize(config : JsonElement) ~ Bool {
-			@config := config;
+			if(config = Nil) {
+				return false;
+			};
 
-			session_timeout := config->Get("http_session_timeout")->GetInt();
+			session_timeout_json := config->Get("http_session_timeout");
+			if(session_timeout_json = Nil) {
+				return false;
+			};
+
+			session_timeout := session_timeout_json->GetInt();
 			if(session_timeout <= 0) {
 				return false;
 			};
+			@config := config;
 			@session_timeout := session_timeout;
 
 			@session_cache_mutex := System.Concurrency.ThreadMutex->New("cache_mutex");

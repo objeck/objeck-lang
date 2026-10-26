@@ -1,0 +1,245 @@
+# EXTRA_LIBS: net,net_server,cipher
+#
+# McpServer->Serve with a configuration it cannot use. Serve used to read
+# config->Get("http_port"), ->Get("debug") and ->Get("http_session_timeout")
+# without a Nil check, so a configuration missing any of them (or a Nil
+# configuration) crashed the VM with a Nil dereference instead of being
+# refused. Now each case is refused with a message naming the key, reported
+# by McpServer->GetLastError, and leaves the server free to be started again:
+# a valid Serve afterwards listens (on a system-chosen port) and answers.
+#
+use Collection, Data.JSON, System.IO.Net, Web.HTTP, Web.HTTP.Server, Web.HTTP.Server.MCP;
+
+class BadConfigMcpHandler from McpRequestHandler {
+	New() { Parent(); }
+
+	method : ListResources() ~ Vector<ResourceItem> {
+		return Vector->New()<ResourceItem>;
+	}
+
+	method : ListTemplates() ~ Vector<ResourceTemplate> {
+		return Vector->New()<ResourceTemplate>;
+	}
+
+	method : GetResource(uri : Url) ~ Vector<ResourceContent> {
+		return Vector->New()<ResourceContent>;
+	}
+
+	method : ListTools() ~ Vector<ToolItem> {
+		return Vector->New()<ToolItem>;
+	}
+
+	method : CallTool(name : String, arguments : JsonElement) ~ Vector<ToolContent> {
+		return Vector->New()<ToolContent>;
+	}
+
+	method : ListPrompts() ~ Vector<PromptItem> {
+		return Vector->New()<PromptItem>;
+	}
+
+	method : CallPrompt(name : String, arguments : JsonElement) ~ Vector<PromptMessage> {
+		return Vector->New()<PromptMessage>;
+	}
+}
+
+class McpServerBadConfigTest {
+	@failures : static : Int;
+
+	#
+	# A valid configuration as a JSON object; a test retypes one key
+	#
+	function : ValidConfig() ~ JsonElement {
+		return Without("");
+	}
+
+	#
+	# The valid configuration with one key left out
+	#
+	function : Without(skip : String) ~ JsonElement {
+		config_builder := JsonBuilder->New();
+		elem_json := config_builder->PushObject();
+		if(<>skip->Equals("name")) {
+			elem_json->Insert("name", "Bad config MCP Server");
+		};
+		if(<>skip->Equals("instructions")) {
+			elem_json->Insert("instructions", "Regression test server");
+		};
+		if(<>skip->Equals("version")) {
+			elem_json->Insert("version", "0.0.1");
+		};
+		if(<>skip->Equals("http_port")) {
+			elem_json->Insert("http_port", 0);
+		};
+		if(<>skip->Equals("http_session_timeout")) {
+			elem_json->Insert("http_session_timeout", 30);
+		};
+		if(<>skip->Equals("debug")) {
+			elem_json->Insert("debug", false);
+		};
+		return config_builder->Pop();
+	}
+
+	#
+	# Serve must return (not crash) with GetLastError holding the expected
+	# message and nothing listening
+	#
+	function : ExpectRefused(what : String, config : JsonElement, expected : String) ~ Nil {
+		McpServer->Serve(config, BadConfigMcpHandler->New());
+		reason := McpServer->GetLastError();
+		if(reason = Nil) {
+			"  FAIL: {$what}: Serve was not refused"->PrintLine();
+			@failures += 1;
+		}
+		else if(<>reason->Equals(expected)) {
+			"  FAIL: {$what}: refused with '{$reason}', expected '{$expected}'"->PrintLine();
+			@failures += 1;
+		};
+
+		if(McpServer->GetBoundPort() <> 0) {
+			port := McpServer->GetBoundPort();
+			"  FAIL: {$what}: a refused Serve reports bound port {$port}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	#
+	# Sends a ping, retrying on a transient failure (#669's loopback teardown
+	# race drops a response outright on Windows); a 200 is only accepted once
+	# its body is a JSON-RPC reply with a "result" member.
+	#
+	function : Ping(port : Int) ~ Bool {
+		url := Url->New("http://localhost:{$port}/");
+		payload := "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":1}"->ToByteArray();
+		for(i := 0; i < 5; i += 1;) {
+			client := HttpClient->New();
+			client->AddHeader("Content-Type", "application/json");
+			resp := client->Post(url, payload, "application/json");
+			if(resp <> Nil & resp->GetCode() = 200) {
+				content := resp->GetContent();
+				if(content <> Nil & content->Size() > 0) {
+					root := JsonParser->TextToElement(content->ToString());
+					if(root <> Nil & root->Get("result") <> Nil) {
+						return true;
+					};
+				};
+			};
+			System.Concurrency.Thread->Sleep(200);
+		};
+		return false;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		# nothing to read at all
+		ExpectRefused("Nil config", Nil, "configuration is Nil");
+		ExpectRefused("array config", JsonParser->TextToElement("[1, 2]"), "configuration is not a JSON object");
+		ExpectRefused("empty object", JsonParser->TextToElement("{}"), "'http_port' is missing");
+
+		# each required key missing
+		ExpectRefused("missing http_port", Without("http_port"), "'http_port' is missing");
+		ExpectRefused("missing http_session_timeout", Without("http_session_timeout"), "'http_session_timeout' is missing");
+		ExpectRefused("missing debug", Without("debug"), "'debug' is missing");
+		ExpectRefused("missing name", Without("name"), "'name' is missing");
+		ExpectRefused("missing version", Without("version"), "'version' is missing");
+		ExpectRefused("missing instructions", Without("instructions"), "'instructions' is missing");
+
+		# wrong types and out-of-range values
+		config := ValidConfig();
+		config->Insert("http_port", "8080");
+		ExpectRefused("string http_port", config, "'http_port' must be an integer");
+
+		config := ValidConfig();
+		config->Insert("http_port", 80.5);
+		ExpectRefused("fractional http_port", config, "'http_port' must be an integer, got 80.5");
+
+		config := ValidConfig();
+		config->Insert("http_port", -1);
+		ExpectRefused("negative http_port", config, "'http_port' must be 0..65535, got -1");
+
+		config := ValidConfig();
+		config->Insert("http_port", 65536);
+		ExpectRefused("http_port 65536", config, "'http_port' must be 0..65535, got 65536");
+
+		config := ValidConfig();
+		config->Insert("http_session_timeout", true);
+		ExpectRefused("bool http_session_timeout", config, "'http_session_timeout' must be an integer");
+
+		config := ValidConfig();
+		config->Insert("http_session_timeout", 0);
+		ExpectRefused("zero http_session_timeout", config, "'http_session_timeout' must be greater than 0, got 0");
+
+		config := ValidConfig();
+		config->Insert("debug", "yes");
+		ExpectRefused("string debug", config, "'debug' must be true or false");
+
+		config := ValidConfig();
+		config->Insert("name", 7);
+		ExpectRefused("number name", config, "'name' must be a string");
+
+		# a Nil handler is refused too
+		McpServer->Serve(ValidConfig(), Nil);
+		reason := McpServer->GetLastError();
+		if(reason = Nil | <>reason->Equals("handler is Nil")) {
+			"  FAIL: Nil handler: refused with '{$reason}', expected 'handler is Nil'"->PrintLine();
+			@failures += 1;
+		};
+
+		# after all that, a valid Serve still works: the server listens on a
+		# system-chosen port and answers, and GetLastError is cleared
+		server_thread := System.Concurrency.Thread->New() {
+			New() { Parent() }
+			method : public : Run(arg : System.Base) ~ Nil {
+				McpServer->Serve(McpServerBadConfigTest->ValidConfig(), BadConfigMcpHandler->New());
+			}
+		};
+		server_thread->Execute(Nil);
+
+		waited := 0;
+		while(McpServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		port := McpServer->GetBoundPort();
+
+		if(port <= 0 | port > 65535) {
+			"  FAIL: a valid Serve after the refusals never listened, bound port {$port}"->PrintLine();
+			@failures += 1;
+		}
+		else {
+			if(McpServer->GetLastError() <> Nil) {
+				reason := McpServer->GetLastError();
+				"  FAIL: an accepted Serve left GetLastError '{$reason}'"->PrintLine();
+				@failures += 1;
+			};
+
+			if(<>Ping(port)) {
+				"  FAIL: ping on bound port {$port} was not answered"->PrintLine();
+				@failures += 1;
+			};
+
+			# a second Serve while serving is refused and leaves the first alone
+			McpServer->Serve(ValidConfig(), BadConfigMcpHandler->New());
+			reason := McpServer->GetLastError();
+			if(reason = Nil | <>reason->Equals("MCP server already initialized")) {
+				"  FAIL: a second Serve was refused with '{$reason}', expected 'MCP server already initialized'"->PrintLine();
+				@failures += 1;
+			};
+			if(McpServer->GetBoundPort() <> port) {
+				again := McpServer->GetBoundPort();
+				"  FAIL: a second Serve changed the bound port {$port} to {$again}"->PrintLine();
+				@failures += 1;
+			};
+		};
+
+		WebServer->Stop();
+
+		if(@failures = 0) {
+			"PASS: McpServer refuses a Nil, incomplete or ill-typed configuration and serves a valid one afterwards"->PrintLine();
+		}
+		else {
+			"FAIL: McpServer bad config, {$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
