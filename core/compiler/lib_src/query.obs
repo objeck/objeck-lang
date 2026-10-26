@@ -4901,6 +4901,20 @@ results->ToString()->PrintLine();
 				return 0;
 			};
 
+			# two Bools: false before true. BoolRef->Compare tells only equal from unequal (1
+			# both ways), which is no order: sorting by it depended on the sort's steps
+			if(left->TypeOf(BoolRef) & right->TypeOf(BoolRef)) {
+				l := left->As(BoolRef)->Get() ? 1 : 0;
+				r := right->As(BoolRef)->Get() ? 1 : 0;
+				if(l < r) {
+					return -1;
+				}
+				else if(l > r) {
+					return 1;
+				};
+				return 0;
+			};
+
 			if(left->GetClassID() = right->GetClassID()) {
 				result := left->Compare(right);
 				if(result < 0) {
@@ -5890,9 +5904,13 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 		@regex : RegEx;
 		@bad_pattern : Bool;
 		@plan : String;
+		@expr_left : SqlEval;
+		@expr_right : SqlEval;
+		@fixed : Int;
 
 		New(op : Op) {
 			@op := op;
+			@fixed := -1;
 		}
 
 		# how the last Apply over a whole table found its rows
@@ -5926,6 +5944,10 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 				return filter;
 			};
 
+			if(pred->TypeOf(ExprPredicate)) {
+				return BindExpr(pred->As(ExprPredicate), table, params, error);
+			};
+
 			column := table->GetColumn(pred->GetColumn());
 			if(column = Nil) {
 				error->Set("unknown column '{$(pred->GetColumn())}'");
@@ -5953,6 +5975,280 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 
 		method : public : IsBadPattern() ~ Bool {
 			return @bad_pattern;
+		}
+
+		# Binds an expression test (docs/QUERY_DESIGN.md, "Reduction"). A lone column against a
+		# constant, or IS NULL, LIKE or MATCHES on a lone column, becomes the comparison this
+		# class has always made, so it keeps zone maps and indexes; a test that reads no column
+		# is decided once; anything else is evaluated in batches by EvalExpr.
+		function : BindExpr(pred : ExprPredicate, table : Table, params : Compare[], error : StringHolder) ~ Filter {
+			op := pred->GetOp();
+			left := SqlEval->Bind(pred->GetLeftExpr(), table, params, error);
+			if(left = Nil) {
+				return Nil;
+			};
+
+			right : SqlEval;
+			if(pred->GetRightExpr() <> Nil) {
+				right := SqlEval->Bind(pred->GetRightExpr(), table, params, error);
+				if(right = Nil) {
+					return Nil;
+				};
+			};
+
+			filter := Filter->New(op);
+			if(op = Op->IS_NULL | op = Op->NOT_NULL) {
+				if(left->IsColumn()) {
+					filter->Prepare(left->GetColumn(), Nil);
+					return filter;
+				};
+				filter->SetExprs(left, Nil);
+				return filter;
+			};
+
+			if(IsTextOp(op)) {
+				pattern := right->GetValue();
+				if(left->IsColumn()) {
+					filter->Prepare(left->GetColumn(), pattern);
+				}
+				else {
+					filter->PreparePattern(pattern);
+					if(<>filter->IsBadPattern()) {
+						filter->SetExprs(left, Nil);
+					};
+				};
+
+				if(filter->IsBadPattern()) {
+					error->Set("'{$(pattern->As(String))}' is not a valid regular expression");
+					return Nil;
+				};
+				return filter;
+			};
+
+			if(left->IsColumn() & right->IsConstant()) {
+				filter->Prepare(left->GetColumn(), right->GetValue());
+				return filter;
+			};
+
+			# Flipped, a test compares the column with the constant. That is the same answer for
+			# every value whose class orders both ways alike; an object of another class, against
+			# an OBJECT column, is compared by the left value's own Compare, so it is not flipped
+			if(left->IsConstant() & right->IsColumn() & (right->GetColumn()->GetType() <> ColumnType->OBJECT | IsPlainValue(left->GetValue()))) {
+				flipped := Filter->New(Flip(op));
+				flipped->Prepare(right->GetColumn(), left->GetValue());
+				return flipped;
+			};
+
+			filter->SetExprs(left, right);
+			return filter;
+		}
+
+		# empty, a number, text, a date or a Bool: a value whose order is the same seen from
+		# either side
+		function : IsPlainValue(value : Compare) ~ Bool {
+			return value = Nil | value->TypeOf(IntRef) | value->TypeOf(FloatRef) | value->TypeOf(String) | value->TypeOf(Date) |
+				value->TypeOf(BoolRef);
+		}
+
+		# the comparison with its sides swapped: a < b is b > a
+		function : Flip(op : Op) ~ Op {
+			select(op) {
+				label Op->LT: { return Op->GT; }
+				label Op->LE: { return Op->GE; }
+				label Op->GT: { return Op->LT; }
+				label Op->GE: { return Op->LE; }
+			};
+
+			return op;
+		}
+
+		# a LIKE or MATCHES pattern for an operand that is an expression
+		method : public : PreparePattern(value : Compare) ~ Nil {
+			@value := value;
+			if(value = Nil) {
+				@never := true;
+				return;
+			};
+
+			if(value->TypeOf(String)) {
+				@text := value->As(String);
+				if(IsMatchOp(@op)) {
+					@regex := RegEx->New(@text);
+					if(<>@regex->IsOk()) {
+						@bad_pattern := true;
+					};
+				};
+			};
+		}
+
+		# the operands of an expression test; one that reads no column is decided here, once
+		method : public : SetExprs(left : SqlEval, right : SqlEval) ~ Nil {
+			@expr_left := left;
+			@expr_right := right;
+			if(left->IsConstant() & (right = Nil | right->IsConstant())) {
+				left->Eval(Nil, 0, 1);
+				if(right <> Nil) {
+					right->Eval(Nil, 0, 1);
+				};
+				@fixed := PassesAt(0) ? 1 : 0;
+			};
+		}
+
+		# whether position i of the operands' last batch passes the test
+		method : PassesAt(i : Int) ~ Bool {
+			tags := @expr_left->GetTags();
+			if(@op = Op->IS_NULL) {
+				return tags[i] = SqlEval->EmptyTag();
+			}
+			else if(@op = Op->NOT_NULL) {
+				return tags[i] <> SqlEval->EmptyTag();
+			};
+
+			if(IsTextOp(@op)) {
+				# only text takes part, NOT LIKE included
+				if(@never | @text = Nil | tags[i] <> SqlEval->TextTag()) {
+					return false;
+				};
+				texts := @expr_left->GetTexts();
+				is_like := @op = Op->LIKE | @op = Op->MATCHES;
+				return TextMatches(texts[i]) = is_like;
+			};
+
+			return Holds(SqlEval->CompareAt(@expr_left, i, @expr_right, i));
+		}
+
+		# whether a comparison's result passes this test
+		method : Holds(result : Int) ~ Bool {
+			if(result = SqlEval->EmptyResult()) {
+				return false;
+			}
+			else if(result = SqlEval->NotComparable()) {
+				return @op = Op->NE;
+			};
+
+			select(@op) {
+				label Op->EQ: { return result = 0; }
+				label Op->NE: { return result <> 0; }
+				label Op->LT: { return result < 0; }
+				label Op->LE: { return result <= 0; }
+				label Op->GT: { return result > 0; }
+				label Op->GE: { return result >= 0; }
+			};
+
+			return false;
+		}
+
+		# The rows of 'rows' (every live row when Nil) an expression test passes, in order:
+		# both operands computed a batch at a time, then compared into the kept list. Two whole
+		# numbers and two numbers are compared here; anything else goes through CompareAt.
+		method : EvalExpr(table : Table, rows : Int[]) ~ Int[] {
+			all := rows <> Nil ? rows : table->LiveRows();
+			size := all->Size();
+			if(@fixed > -1) {
+				if(@fixed = 0) {
+					return Int->New[0];
+				};
+				return Trim(all, size);
+			};
+
+			kept := Int->New[size];
+			n := 0;
+			batch := SqlEval->BatchRows();
+			comparing := @expr_right <> Nil & <>IsTextOp(@op);
+			pass_lt := @op = Op->LT | @op = Op->LE | @op = Op->NE;
+			pass_eq := @op = Op->EQ | @op = Op->LE | @op = Op->GE;
+			pass_gt := @op = Op->GT | @op = Op->GE | @op = Op->NE;
+			pass_nc := @op = Op->NE;
+			start := 0;
+			while(start < size) {
+				count := size - start;
+				if(count > batch) {
+					count := batch;
+				};
+
+				@expr_left->Eval(all, start, count);
+				if(@expr_right <> Nil) {
+					@expr_right->Eval(all, start, count);
+				};
+
+				if(comparing) {
+					lt := @expr_left->GetTags();
+					li := @expr_left->GetInts();
+					lf := @expr_left->GetFloats();
+					rt := @expr_right->GetTags();
+					ri := @expr_right->GetInts();
+					rf := @expr_right->GetFloats();
+					each(i : count) {
+						a := lt[i];
+						b := rt[i];
+						result := 3;
+						if(a = 1 & b = 1) {
+							x := li[i];
+							y := ri[i];
+							if(x < y) {
+								result := -1;
+							}
+							else if(x > y) {
+								result := 1;
+							}
+							else {
+								result := 0;
+							};
+						}
+						else if((a = 1 | a = 2) & (b = 1 | b = 2)) {
+							x := a = 1 ? li[i]->As(Float) : lf[i];
+							y := b = 1 ? ri[i]->As(Float) : rf[i];
+							if(x < y) {
+								result := -1;
+							}
+							else if(x > y) {
+								result := 1;
+							}
+							else if(x = y) {
+								result := 0;
+							}
+							else {
+								# NaN
+								result := 2;
+							};
+						}
+						else if(a <> 0 & b <> 0) {
+							result := SqlEval->CompareAt(@expr_left, i, @expr_right, i);
+						};
+
+						pass := false;
+						if(result = -1) {
+							pass := pass_lt;
+						}
+						else if(result = 0) {
+							pass := pass_eq;
+						}
+						else if(result = 1) {
+							pass := pass_gt;
+						}
+						else if(result = 2) {
+							pass := pass_nc;
+						};
+
+						if(pass) {
+							kept[n] := all[start + i];
+							n += 1;
+						};
+					};
+				}
+				else {
+					each(i : count) {
+						if(PassesAt(i)) {
+							kept[n] := all[start + i];
+							n += 1;
+						};
+					};
+				};
+
+				start += count;
+			};
+
+			return Trim(kept, n);
 		}
 
 		function : IsMatchOp(op : Op) ~ Bool {
@@ -6376,6 +6672,10 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 					all := rows <> Nil ? rows : table->LiveRows();
 					return Difference(all, @left->Eval(table, all));
 				}
+			};
+
+			if(@expr_left <> Nil | @fixed > -1) {
+				return EvalExpr(table, rows);
 			};
 
 			if(rows <> Nil) {
@@ -10345,7 +10645,6 @@ if(file->IsOpen()) {
 		New(expr : SqlExpr) {
 			@expr := expr;
 			@name := expr->GetText();
-			expr->Ordinals(IntRef->New(0));
 		}
 
 		# the expression, or Nil for a column or an aggregate
@@ -10389,24 +10688,35 @@ if(file->IsOpen()) {
 		}
 	}
 
-	# An arithmetic expression in a select list (docs/QUERY_DESIGN.md, "Expressions in the
-	# select list"): column references and numbers joined by + - * / %, with unary minus and
-	# parentheses. Evaluated per row: whole numbers stay whole under + - * and %, '/' always
-	# gives a Float, and an empty or non-numeric operand, or a zero divisor, gives an empty cell.
+	# An expression in a statement (docs/QUERY_DESIGN.md, "Expressions in every clause"): a
+	# column, a literal, a placeholder, or arithmetic over them (+ - * / % and unary minus). The
+	# parser builds it and nothing changes it afterwards, so the trees of a cached plan are shared
+	# by every thread that runs it; name resolution makes new trees, and binding to a table for
+	# one run makes a SqlEval.
 	class : private : SqlExpr {
 		@kind : Int;
 		@name : String;
 		@value : Compare;
+		@param : Int;
 		@op : Char;
 		@left : SqlExpr;
 		@right : SqlExpr;
 		@text : String;
-		@ordinal : Int;
 
+		# a column reference
 		function : ColumnKind() ~ Int { return 0; }
+		# a number literal
 		function : NumberKind() ~ Int { return 1; }
+		# + - * / %
 		function : BinaryKind() ~ Int { return 2; }
+		# unary minus
 		function : NegateKind() ~ Int { return 3; }
+		# another literal, in a condition: text, a date, TRUE or FALSE (1 or 0), NULL (Nil)
+		function : ValueKind() ~ Int { return 4; }
+		# a '?' placeholder
+		function : ParamKind() ~ Int { return 5; }
+		# a bare word alone in a value position: a column if a table has it, otherwise text
+		function : WordKind() ~ Int { return 6; }
 
 		New(kind : Int, text : String) {
 			@kind := kind;
@@ -10419,9 +10729,27 @@ if(file->IsOpen()) {
 			return expr;
 		}
 
+		function : Word(name : String) ~ SqlExpr {
+			expr := SqlExpr->New(WordKind(), name);
+			expr->SetName(name);
+			return expr;
+		}
+
 		function : Number(text : String, value : Compare) ~ SqlExpr {
 			expr := SqlExpr->New(NumberKind(), text);
 			expr->SetValue(value);
+			return expr;
+		}
+
+		function : Value(text : String, value : Compare) ~ SqlExpr {
+			expr := SqlExpr->New(ValueKind(), text);
+			expr->SetValue(value);
+			return expr;
+		}
+
+		function : Param(param : Int) ~ SqlExpr {
+			expr := SqlExpr->New(ParamKind(), "?");
+			expr->SetParam(param);
 			return expr;
 		}
 
@@ -10439,6 +10767,7 @@ if(file->IsOpen()) {
 
 		method : public : SetName(name : String) ~ Nil { @name := name; }
 		method : public : SetValue(value : Compare) ~ Nil { @value := value; }
+		method : public : SetParam(param : Int) ~ Nil { @param := param; }
 		method : public : SetParts(op : Char, left : SqlExpr, right : SqlExpr) ~ Nil {
 			@op := op;
 			@left := left;
@@ -10448,111 +10777,637 @@ if(file->IsOpen()) {
 		method : public : GetText() ~ String { return @text; }
 		method : public : GetKind() ~ Int { return @kind; }
 		method : public : GetName() ~ String { return @name; }
+		method : public : GetValue() ~ Compare { return @value; }
+		method : public : GetParam() ~ Int { return @param; }
+		method : public : GetOp() ~ Char { return @op; }
+		method : public : GetLeft() ~ SqlExpr { return @left; }
+		method : public : GetRight() ~ SqlExpr { return @right; }
 
-		# a bare column reference: a plain select item, not an expression
+		# a bare column reference
 		method : public : IsColumn() ~ Bool {
 			return @kind = ColumnKind();
 		}
 
-		# the column names it reads, in order
-		method : public : AddColumns(names : Vector<String>) ~ Nil {
-			if(@kind = ColumnKind()) {
+		# a literal or a placeholder: what a condition always compared a column with
+		method : public : IsLiteral() ~ Bool {
+			return @kind = NumberKind() | @kind = ValueKind() | @kind = ParamKind();
+		}
+
+		# The names it reads, in order: column references, and with 'words' also the bare words
+		# that may be columns
+		method : public : AddNames(names : Vector<String>, words : Bool) ~ Nil {
+			if(@kind = ColumnKind() | (words & @kind = WordKind())) {
 				names->AddBack(@name);
 			}
 			else if(@kind = BinaryKind()) {
-				@left->AddColumns(names);
-				@right->AddColumns(names);
+				@left->AddNames(names, words);
+				@right->AddNames(names, words);
 			}
 			else if(@kind = NegateKind()) {
-				@left->AddColumns(names);
+				@left->AddNames(names, words);
 			};
 		}
 
-		# numbers the column references in AddColumns order, once, when the item is made
-		method : public : Ordinals(next : IntRef) ~ Nil {
-			if(@kind = ColumnKind()) {
-				@ordinal := next->Get();
-				next->Set(@ordinal + 1);
-			}
-			else if(@kind = BinaryKind()) {
-				@left->Ordinals(next);
-				@right->Ordinals(next);
-			}
-			else if(@kind = NegateKind()) {
-				@left->Ordinals(next);
+		# the column names it reads, in order
+		method : public : AddColumns(names : Vector<String>) ~ Nil {
+			AddNames(names, false);
+		}
+	}
+
+	# An expression bound to one table for one run (docs/QUERY_DESIGN.md, "Batch evaluation"):
+	# names resolved to columns, placeholders to their values, and parts that read no column
+	# computed once. Eval computes a batch of rows into arrays the node keeps for the whole run,
+	# so evaluation allocates nothing per row. A row's result is a kind (the *Tag functions) and
+	# a value in the array that kind uses: Ints for INT, DATE (epoch milliseconds) and BOOL (0 or
+	# 1), Floats for FLOAT, texts for TEXT and objects for OBJECT.
+	class : private : SqlEval {
+		@kind : Int;
+		@op : Char;
+		@left : SqlEval;
+		@right : SqlEval;
+		@column : Column;
+		@type : ColumnType;
+		@nulls : Int[];
+		@col_ints : Int[];
+		@col_floats : Float[];
+		@col_strings : String[];
+		@col_objects : Compare[];
+		@dict : String[];
+		@value : Compare;
+		@tags : Int[];
+		@ints : Int[];
+		@floats : Float[];
+		@texts : String[];
+		@objects : Compare[];
+		@filled : Int;
+
+		function : ColumnKind() ~ Int { return 0; }
+		function : ConstKind() ~ Int { return 1; }
+		function : BinaryKind() ~ Int { return 2; }
+		function : NegateKind() ~ Int { return 3; }
+
+		# rows evaluated at a time
+		function : BatchRows() ~ Int { return 1024; }
+
+		function : EmptyTag() ~ Int { return 0; }
+		function : IntTag() ~ Int { return 1; }
+		function : FloatTag() ~ Int { return 2; }
+		function : TextTag() ~ Int { return 3; }
+		function : DateTag() ~ Int { return 4; }
+		# a BOOL column's cell, as 0 or 1
+		function : BoolTag() ~ Int { return 5; }
+		# anything else: another class in an OBJECT column, or a Bool that is not a BOOL column's
+		function : ObjectTag() ~ Int { return 6; }
+
+		# a comparison's result when the two values cannot be ordered
+		function : NotComparable() ~ Int { return 2; }
+		# a comparison's result when either value is empty
+		function : EmptyResult() ~ Int { return 3; }
+
+		New(kind : Int) {
+			@kind := kind;
+		}
+
+		method : public : IsColumn() ~ Bool { return @kind = ColumnKind(); }
+		method : public : IsConstant() ~ Bool { return @kind = ConstKind(); }
+		method : public : GetColumn() ~ Column { return @column; }
+		# a constant's value, Nil if it is empty
+		method : public : GetValue() ~ Compare { return @value; }
+		method : public : GetTags() ~ Int[] { return @tags; }
+		method : public : GetInts() ~ Int[] { return @ints; }
+		method : public : GetFloats() ~ Float[] { return @floats; }
+		method : public : GetTexts() ~ String[] { return @texts; }
+		method : public : GetObjects() ~ Compare[] { return @objects; }
+
+		method : public : SetParts(op : Char, left : SqlEval, right : SqlEval) ~ Nil {
+			@op := op;
+			@left := left;
+			@right := right;
+		}
+
+		method : public : SetConstant(value : Compare) ~ Nil {
+			@value := value;
+		}
+
+		method : public : SetColumn(column : Column) ~ Nil {
+			@column := column;
+			@type := column->GetType();
+			@nulls := column->GetNullBits();
+			@col_ints := column->GetIntArray();
+			@col_floats := column->GetFloatArray();
+			@col_strings := column->GetStringArray();
+			@col_objects := column->GetObjectArray();
+			if(column->IsEncoded()) {
+				@dict := column->GetDictionary();
 			};
 		}
 
-		# The value for one row; 'columns' gives each column reference's index in 'table', in
-		# AddColumns order. Nil for an empty cell.
-		method : public : Eval(table : Table, row : Int, columns : Int[]) ~ Compare {
-			if(@kind = ColumnKind()) {
-				value := table->GetColumn(columns[@ordinal])->Get(row);
-				if(value <> Nil & (value->TypeOf(IntRef) | value->TypeOf(FloatRef))) {
-					return value;
-				};
-				return Nil;
-			}
-			else if(@kind = NumberKind()) {
-				return @value;
-			}
-			else if(@kind = NegateKind()) {
-				value := @left->Eval(table, row, columns);
-				if(value = Nil) {
+		#
+		# Binding
+		#
+
+		# Binds an expression whose names are columns of 'table'. A bare word is a column when
+		# the table has one by that name, otherwise text. Nil with 'error' set for an unknown
+		# column or an unbound placeholder.
+		function : Bind(expr : SqlExpr, table : Table, params : Compare[], error : StringHolder) ~ SqlEval {
+			kind := expr->GetKind();
+			if(kind = SqlExpr->ColumnKind() | kind = SqlExpr->WordKind()) {
+				column := table->GetColumn(expr->GetName());
+				if(column = Nil) {
+					if(kind = SqlExpr->WordKind()) {
+						return Constant(expr->GetName());
+					};
+					error->Set("unknown column '{$(expr->GetName())}'");
 					return Nil;
 				};
-				if(value->TypeOf(IntRef)) {
-					return IntRef->New(0 - value->As(IntRef)->Get());
-				};
-				return FloatRef->New(0.0 - value->As(FloatRef)->Get());
-			};
 
-			a := @left->Eval(table, row, columns);
-			b := @right->Eval(table, row, columns);
-			if(a = Nil | b = Nil) {
-				return Nil;
-			};
-
-			if(a->TypeOf(IntRef) & b->TypeOf(IntRef) & @op <> '/') {
-				x := a->As(IntRef)->Get();
-				y := b->As(IntRef)->Get();
-				select(@op) {
-					label '+': { return IntRef->New(x + y); }
-					label '-': { return IntRef->New(x - y); }
-					label '*': { return IntRef->New(x * y); }
-				};
-				# '%'
-				if(y = 0) {
+				node := SqlEval->New(ColumnKind());
+				node->SetColumn(column);
+				return node;
+			}
+			else if(kind = SqlExpr->NumberKind() | kind = SqlExpr->ValueKind()) {
+				return Constant(expr->GetValue());
+			}
+			else if(kind = SqlExpr->ParamKind()) {
+				param := expr->GetParam();
+				if(params = Nil | param > params->Size()) {
+					error->Set("no value bound for placeholder {$param}");
 					return Nil;
 				};
-				return IntRef->New(x % y);
+				return Constant(params[param - 1]);
 			};
 
-			x := ToFloat(a);
-			y := ToFloat(b);
-			select(@op) {
-				label '+': { return FloatRef->New(x + y); }
-				label '-': { return FloatRef->New(x - y); }
-				label '*': { return FloatRef->New(x * y); }
-			};
-
-			# '/' and '%': a zero divisor (which would raise) gives an empty cell
-			if(y = 0.0) {
+			left := Bind(expr->GetLeft(), table, params, error);
+			if(left = Nil) {
 				return Nil;
 			};
-			if(@op = '/') {
-				return FloatRef->New(x / y);
+
+			right : SqlEval;
+			if(kind = SqlExpr->BinaryKind()) {
+				right := Bind(expr->GetRight(), table, params, error);
+				if(right = Nil) {
+					return Nil;
+				};
 			};
-			quotient := x / y;
-			whole := quotient < 0.0 ? (0.0 - quotient)->Floor() * -1.0 : quotient->Floor();
-			return FloatRef->New(x - whole * y);
+
+			node := SqlEval->New(kind = SqlExpr->BinaryKind() ? BinaryKind() : NegateKind());
+			node->SetParts(expr->GetOp(), left, right);
+
+			# a part that reads no column is computed once, here
+			if(left->IsConstant() & (right = Nil | right->IsConstant())) {
+				node->Eval(Nil, 0, 1);
+				return Constant(node->ValueAt(0));
+			};
+
+			return node;
 		}
 
-		function : ToFloat(value : Compare) ~ Float {
-			if(value->TypeOf(IntRef)) {
-				return value->As(IntRef)->Get()->As(Float);
+		function : Constant(value : Compare) ~ SqlEval {
+			node := SqlEval->New(ConstKind());
+			node->SetConstant(value);
+			return node;
+		}
+
+		# the result of row 'i' of the last batch, boxed; Nil if empty
+		method : public : ValueAt(i : Int) ~ Compare {
+			select(@tags[i]) {
+				label 1: { return IntRef->New(@ints[i]); }
+				label 2: { return FloatRef->New(@floats[i]); }
+				label 3: { return @texts[i]; }
+				label 4: { return DateCodec->ToDate(@ints[i], false); }
+				label 5: { return BoolRef->New(@ints[i] <> 0); }
+				label 6: { return @objects[i]; }
 			};
-			return value->As(FloatRef)->Get();
+
+			return Nil;
+		}
+
+		#
+		# Evaluation
+		#
+
+		# the arrays for 'count' rows, made once and kept for the run
+		method : Reserve(count : Int) ~ Nil {
+			if(@tags = Nil | @tags->Size() < count) {
+				size := count < 1 ? 1 : count;
+				@tags := Int->New[size];
+				@ints := Int->New[size];
+				@floats := Float->New[size];
+				@texts := String->New[size];
+				@objects := Compare->New[size];
+				@filled := 0;
+			};
+		}
+
+		# Computes the rows rows[start] .. rows[start + count - 1] into positions 0 .. count - 1.
+		# A constant ignores 'rows'.
+		method : public : Eval(rows : Int[], start : Int, count : Int) ~ Nil {
+			Reserve(count);
+			select(@kind) {
+				label 0: {
+					EvalColumn(rows, start, count);
+				}
+
+				label 1: {
+					# the same value in every position, written once
+					if(@filled < count) {
+						tag := EmptyTag();
+						int_value := 0;
+						float_value := 0.0;
+						text : String;
+						object : Compare;
+						if(@value <> Nil) {
+							if(@value->TypeOf(IntRef)) {
+								tag := IntTag();
+								int_value := @value->As(IntRef)->Get();
+							}
+							else if(@value->TypeOf(FloatRef)) {
+								tag := FloatTag();
+								float_value := @value->As(FloatRef)->Get();
+							}
+							else if(@value->TypeOf(String)) {
+								tag := TextTag();
+								text := @value->As(String);
+							}
+							else if(@value->TypeOf(Date)) {
+								tag := DateTag();
+								int_value := DateCodec->ToMillis(@value->As(Date));
+							}
+							else {
+								tag := ObjectTag();
+								object := @value;
+							};
+						};
+
+						for(i := @filled; i < count; i += 1;) {
+							@tags[i] := tag;
+							@ints[i] := int_value;
+							@floats[i] := float_value;
+							@texts[i] := text;
+							@objects[i] := object;
+						};
+						@filled := count;
+					};
+				}
+
+				label 2: {
+					@left->Eval(rows, start, count);
+					@right->Eval(rows, start, count);
+					EvalBinary(count);
+				}
+
+				label 3: {
+					@left->Eval(rows, start, count);
+					EvalNegate(count);
+				}
+			};
+		}
+
+		method : EvalColumn(rows : Int[], start : Int, count : Int) ~ Nil {
+			select(@type) {
+				label ColumnType->INT:
+				label ColumnType->DATE:
+				label ColumnType->BOOL: {
+					tag := IntTag();
+					if(@type = ColumnType->DATE) {
+						tag := DateTag();
+					}
+					else if(@type = ColumnType->BOOL) {
+						tag := BoolTag();
+					};
+
+					each(i : count) {
+						row := rows[start + i];
+						if((@nulls[row >> 6] and (1 << (row and 63))) <> 0) {
+							@tags[i] := 0;
+						}
+						else {
+							@tags[i] := tag;
+							@ints[i] := @col_ints[row];
+						};
+					};
+				}
+
+				label ColumnType->FLOAT: {
+					each(i : count) {
+						row := rows[start + i];
+						if((@nulls[row >> 6] and (1 << (row and 63))) <> 0) {
+							@tags[i] := 0;
+						}
+						else {
+							@tags[i] := 2;
+							@floats[i] := @col_floats[row];
+						};
+					};
+				}
+
+				label ColumnType->STRING: {
+					each(i : count) {
+						row := rows[start + i];
+						if((@nulls[row >> 6] and (1 << (row and 63))) <> 0) {
+							@tags[i] := 0;
+						}
+						else {
+							@tags[i] := 3;
+							if(@dict <> Nil) {
+								@texts[i] := @dict[@col_ints[row]];
+							}
+							else {
+								@texts[i] := @col_strings[row];
+							};
+						};
+					};
+				}
+
+				label ColumnType->OBJECT: {
+					each(i : count) {
+						row := rows[start + i];
+						cell := @col_objects[row];
+						if((@nulls[row >> 6] and (1 << (row and 63))) <> 0 | cell = Nil) {
+							@tags[i] := 0;
+						}
+						else if(cell->TypeOf(IntRef)) {
+							@tags[i] := 1;
+							@ints[i] := cell->As(IntRef)->Get();
+						}
+						else if(cell->TypeOf(FloatRef)) {
+							@tags[i] := 2;
+							@floats[i] := cell->As(FloatRef)->Get();
+						}
+						else if(cell->TypeOf(String)) {
+							@tags[i] := 3;
+							@texts[i] := cell->As(String);
+						}
+						else if(cell->TypeOf(Date)) {
+							@tags[i] := 4;
+							@ints[i] := DateCodec->ToMillis(cell->As(Date));
+						}
+						else {
+							@tags[i] := 6;
+							@objects[i] := cell;
+						};
+					};
+				}
+
+				other: {
+					# a column with no type yet holds only empty cells
+					each(i : count) {
+						@tags[i] := 0;
+					};
+				}
+			};
+		}
+
+		# Arithmetic reads numbers only. Ints stay Ints under + - * and %, and an Int result that
+		# does not fit in 64 bits is empty; '/' always gives a Float; a zero divisor is empty.
+		method : EvalBinary(count : Int) ~ Nil {
+			lt := @left->GetTags();
+			li := @left->GetInts();
+			lf := @left->GetFloats();
+			rt := @right->GetTags();
+			ri := @right->GetInts();
+			rf := @right->GetFloats();
+			op := @op;
+			smallest := -9223372036854775807 - 1;
+			each(i : count) {
+				a := lt[i];
+				b := rt[i];
+				if((a = 1 | a = 2) & (b = 1 | b = 2)) {
+					if(a = 1 & b = 1 & op <> '/') {
+						x := li[i];
+						y := ri[i];
+						z := 0;
+						ok := true;
+						if(op = '+') {
+							z := x + y;
+							ok := ((x xor z) and (y xor z)) >= 0;
+						}
+						else if(op = '-') {
+							z := x - y;
+							ok := ((x xor y) and (x xor z)) >= 0;
+						}
+						else if(op = '*') {
+							if(x = 0 | y = 0) {
+								z := 0;
+							}
+							else if(x = -1) {
+								ok := y <> smallest;
+								z := 0 - y;
+							}
+							else if(y = -1) {
+								ok := x <> smallest;
+								z := 0 - x;
+							}
+							else {
+								z := x * y;
+								ok := z / y = x;
+							};
+						}
+						else {
+							# '%': the hardware traps on the smallest Int % -1, which is 0
+							if(y = 0) {
+								ok := false;
+							}
+							else if(y = -1) {
+								z := 0;
+							}
+							else {
+								z := x % y;
+							};
+						};
+
+						if(ok) {
+							@tags[i] := 1;
+							@ints[i] := z;
+						}
+						else {
+							@tags[i] := 0;
+						};
+					}
+					else {
+						x := a = 1 ? li[i]->As(Float) : lf[i];
+						y := b = 1 ? ri[i]->As(Float) : rf[i];
+						@tags[i] := 2;
+						if(op = '+') {
+							@floats[i] := x + y;
+						}
+						else if(op = '-') {
+							@floats[i] := x - y;
+						}
+						else if(op = '*') {
+							@floats[i] := x * y;
+						}
+						else if(y = 0.0) {
+							# a Float division by zero would stop the program
+							@tags[i] := 0;
+						}
+						else if(op = '/') {
+							@floats[i] := x / y;
+						}
+						else {
+							quotient := x / y;
+							whole := quotient < 0.0 ? (0.0 - quotient)->Floor() * -1.0 : quotient->Floor();
+							@floats[i] := x - whole * y;
+						};
+					};
+				}
+				else {
+					@tags[i] := 0;
+				};
+			};
+		}
+
+		# unary minus: 0 - a
+		method : EvalNegate(count : Int) ~ Nil {
+			lt := @left->GetTags();
+			li := @left->GetInts();
+			lf := @left->GetFloats();
+			smallest := -9223372036854775807 - 1;
+			each(i : count) {
+				a := lt[i];
+				if(a = 1) {
+					x := li[i];
+					if(x = smallest) {
+						@tags[i] := 0;
+					}
+					else {
+						@tags[i] := 1;
+						@ints[i] := 0 - x;
+					};
+				}
+				else if(a = 2) {
+					@tags[i] := 2;
+					@floats[i] := 0.0 - lf[i];
+				}
+				else {
+					@tags[i] := 0;
+				};
+			};
+		}
+
+		#
+		# Comparison (docs/QUERY_DESIGN.md, "Comparisons"): -1, 0 or 1; NotComparable() when the
+		# two values cannot be ordered, so only '<>' holds; EmptyResult() when either is empty,
+		# so no comparison holds
+		#
+		function : CompareAt(left : SqlEval, i : Int, right : SqlEval, j : Int) ~ Int {
+			left_tags := left->GetTags();
+			right_tags := right->GetTags();
+			a := left_tags[i];
+			b := right_tags[j];
+			if(a = 0 | b = 0) {
+				return EmptyResult();
+			};
+
+			left_ints := left->GetInts();
+			right_ints := right->GetInts();
+			if(a = 1 & b = 1) {
+				return Filter->Order3(left_ints[i], right_ints[j]);
+			};
+
+			if((a = 1 | a = 2) & (b = 1 | b = 2)) {
+				left_floats := left->GetFloats();
+				right_floats := right->GetFloats();
+				x := a = 1 ? left_ints[i]->As(Float) : left_floats[i];
+				y := b = 1 ? right_ints[j]->As(Float) : right_floats[j];
+				if(x <> x | y <> y) {
+					return NotComparable();
+				};
+				return Filter->Order3F(x, y);
+			};
+
+			if(a = 3 & b = 3) {
+				left_texts := left->GetTexts();
+				right_texts := right->GetTexts();
+				return Filter->Sign(left_texts[i]->Compare(right_texts[j]));
+			};
+
+			if(a = 4 & b = 4) {
+				return Filter->Order3(left_ints[i], right_ints[j]);
+			};
+
+			# a BOOL column's cell against a Bool or the numbers 0 and 1
+			if(a = 5 | b = 5) {
+				x := BoolValue(left, i, a);
+				y := BoolValue(right, j, b);
+				if(x < 0 | y < 0) {
+					return NotComparable();
+				};
+				return Filter->Order3(x, y);
+			};
+
+			if(a = 6 & b = 6) {
+				left_objects := left->GetObjects();
+				right_objects := right->GetObjects();
+				l := left_objects[i];
+				r := right_objects[j];
+				if(l->TypeOf(BoolRef) & r->TypeOf(BoolRef)) {
+					return Filter->Order3(l->As(BoolRef)->Get() ? 1 : 0, r->As(BoolRef)->Get() ? 1 : 0);
+				};
+				if(l->GetClassID() = r->GetClassID()) {
+					return Filter->Sign(l->Compare(r));
+				};
+			};
+
+			return NotComparable();
+		}
+
+		# a value beside a BOOL column's cell as 0 or 1: a Bool, or the number 0 or 1; -1 for
+		# anything else
+		function : BoolValue(node : SqlEval, i : Int, tag : Int) ~ Int {
+			if(tag = 5) {
+				ints := node->GetInts();
+				return ints[i];
+			}
+			else if(tag = 1) {
+				ints := node->GetInts();
+				n := ints[i];
+				if(n = 0 | n = 1) {
+					return n;
+				};
+			}
+			else if(tag = 6) {
+				objects := node->GetObjects();
+				object := objects[i];
+				if(object->TypeOf(BoolRef)) {
+					return object->As(BoolRef)->Get() ? 1 : 0;
+				};
+			};
+
+			return -1;
+		}
+	}
+
+	# A condition with expressions on either side of a comparison, or an expression tested by IS
+	# NULL, LIKE or MATCHES (docs/QUERY_DESIGN.md, "Expressions in every clause"). The parser
+	# makes one only where a condition is not the column-against-a-value Predicate it always made;
+	# Filter->Bind reduces it to that where it can. Never changed after parsing.
+	class : private : ExprPredicate from Predicate {
+		@left_expr : SqlExpr;
+		@right_expr : SqlExpr;
+
+		New(op : Op, left : SqlExpr, right : SqlExpr) {
+			Parent(op, Nil, Nil, 0);
+			@left_expr := left;
+			@right_expr := right;
+		}
+
+		# the left operand, or the operand of IS NULL, LIKE and MATCHES
+		method : public : GetLeftExpr() ~ SqlExpr {
+			return @left_expr;
+		}
+
+		# the right operand, or the pattern of LIKE and MATCHES; Nil for IS NULL
+		method : public : GetRightExpr() ~ SqlExpr {
+			return @right_expr;
+		}
+
+		# the names it reads, bare words included
+		method : public : AddNames(names : Vector<String>) ~ Nil {
+			@left_expr->AddNames(names, true);
+			if(@right_expr <> Nil) {
+				@right_expr->AddNames(names, true);
+			};
 		}
 	}
 
@@ -10603,11 +11458,24 @@ if(file->IsOpen()) {
 		@name : String;
 		@position : Int;
 		@descending : Bool;
+		@expr : SqlExpr;
 
 		New(name : String, position : Int, descending : Bool) {
 			@name := name;
 			@position := position;
 			@descending := descending;
+		}
+
+		# an entry that is an expression; its name is its text
+		New(expr : SqlExpr, descending : Bool) {
+			@expr := expr;
+			@name := expr->GetText();
+			@descending := descending;
+		}
+
+		# the expression, or Nil for a name, an aggregate or a position
+		method : public : GetExpr() ~ SqlExpr {
+			return @expr;
 		}
 
 		# a column name, an alias or an aggregate call; Nil when a position is given
@@ -10784,8 +11652,10 @@ if(file->IsOpen()) {
 		@tokens : Vector<SqlToken>;
 		@index : Int;
 		@error : String;
+		@error_at : Int;
 		@statement : SqlStatement;
 		@in_having : Bool;
+		@in_condition : Bool;
 		@ref_name : String;
 		@ref_file : SqlFile;
 
@@ -10891,6 +11761,17 @@ if(file->IsOpen()) {
 			if(@error = Nil) {
 				token := Current();
 				@error := "syntax error at position {$(token->GetPosition())}: expected {$expected}, found {$(token->Describe())}";
+				@error_at := @index;
+			};
+
+			return Nil;
+		}
+
+		# records an error that is not a syntax error; always Nil
+		method : Refuse(message : String) ~ SqlStatement {
+			if(@error = Nil) {
+				@error := message;
+				@error_at := @index;
 			};
 
 			return Nil;
@@ -11009,12 +11890,35 @@ if(file->IsOpen()) {
 			return left;
 		}
 
-		# a number, a column name, '-' factor, or '(' sum ')'
+		# a number, a column name, a placeholder, '-' factor, or '(' sum ')'; in a condition also
+		# text, a date, TRUE, FALSE and NULL
 		method : ParseFactor() ~ SqlExpr {
 			token := Current();
 			if(token->GetKind() = SqlToken->Kind->NUMBER) {
 				Next();
 				return SqlExpr->Number(token->GetText(), token->GetValue());
+			}
+			else if(token->GetKind() = SqlToken->Kind->PARAM) {
+				Next();
+				return SqlExpr->Param(token->GetValue()->As(IntRef)->Get());
+			}
+			else if(@in_condition & (token->GetKind() = SqlToken->Kind->TEXT | token->GetKind() = SqlToken->Kind->DATE)) {
+				Next();
+				text := token->GetKind() = SqlToken->Kind->TEXT ? "'{$(token->GetText())}'" : "#{$(token->GetText())}#";
+				return SqlExpr->Value(text, token->GetValue());
+			}
+			else if(@in_condition & (token->IsWord("true") | token->IsWord("false"))) {
+				# 1 and 0, as conditions always read them, so they match BOOL and INT columns
+				Next();
+				return SqlExpr->Value(token->GetText(), IntRef->New(token->IsWord("true") ? 1 : 0));
+			}
+			else if(@in_condition & token->IsWord("null")) {
+				Next();
+				return SqlExpr->Value(token->GetText(), Nil);
+			}
+			else if(@in_condition & <>@in_having & AtAggregate()) {
+				Fail("a column name (aggregates belong in HAVING, not WHERE)");
+				return Nil;
 			}
 			else if(token->IsSymbol("-")) {
 				Next();
@@ -11326,7 +12230,7 @@ if(file->IsOpen()) {
 
 			if(Current()->IsWord("where")) {
 				Next();
-				where := ParseOr();
+				where := ParseCondition();
 				if(where = Nil) {
 					return Nil;
 				};
@@ -11358,10 +12262,13 @@ if(file->IsOpen()) {
 				if(Current()->IsWord("having")) {
 					Next();
 					@in_having := true;
-					having := ParseOr();
+					having := ParseCondition();
 					@in_having := false;
 					if(having = Nil) {
 						return Nil;
+					};
+					if(HasExpression(having)) {
+						return Refuse("HAVING compares an aggregate or a grouping column with a value; expressions in HAVING are not supported yet");
 					};
 					statement->SetHaving(having);
 				};
@@ -11375,9 +12282,10 @@ if(file->IsOpen()) {
 
 				ordering := true;
 				while(ordering) {
-					order_name : String;
+					order_name : String := Nil;
+					order_expr : SqlExpr := Nil;
 					position := 0;
-					if(Current()->GetKind() = SqlToken->Kind->NUMBER & Current()->GetValue()->TypeOf(IntRef)) {
+					if(Current()->GetKind() = SqlToken->Kind->NUMBER & Current()->GetValue()->TypeOf(IntRef) & EndsOrderEntry(1)) {
 						position := Current()->GetValue()->As(IntRef)->Get();
 						if(position < 1) {
 							return Fail("a select-list position from 1");
@@ -11389,13 +12297,24 @@ if(file->IsOpen()) {
 						if(item = Nil) {
 							return Nil;
 						};
+						if(<>EndsOrderEntry(0)) {
+							return Refuse("'{$(item->GetCall())}' in ORDER BY: an expression over an aggregate is not supported yet");
+						};
 						NoteAggregate(item);
 						order_name := item->GetCall();
 					}
 					else {
-						order_name := ParseName("a column name, an aggregate or a position");
-						if(order_name = Nil) {
+						expr := ParseSum();
+						if(expr = Nil) {
 							return Nil;
+						};
+
+						# a lone name is a label or a column, as it always was
+						if(expr->IsColumn()) {
+							order_name := expr->GetName();
+						}
+						else {
+							order_expr := expr;
 						};
 					};
 
@@ -11407,7 +12326,13 @@ if(file->IsOpen()) {
 					else if(Current()->IsWord("asc")) {
 						Next();
 					};
-					statement->GetOrder()->AddBack(SqlOrder->New(order_name, position, descending));
+
+					if(order_expr <> Nil) {
+						statement->GetOrder()->AddBack(SqlOrder->New(order_expr, descending));
+					}
+					else {
+						statement->GetOrder()->AddBack(SqlOrder->New(order_name, position, descending));
+					};
 
 					if(Current()->IsSymbol(",")) {
 						Next();
@@ -11464,6 +12389,34 @@ if(file->IsOpen()) {
 			extra->AddBack(item);
 		}
 
+		# whether the token n ahead ends an ORDER BY entry
+		method : EndsOrderEntry(n : Int) ~ Bool {
+			token := Ahead(n);
+			return token->GetKind() = SqlToken->Kind->EOS | token->IsSymbol(",") | token->IsSymbol(";") |
+				token->IsWord("asc") | token->IsWord("desc") | token->IsWord("limit") | token->IsWord("offset");
+		}
+
+		# whether a condition holds an expression test anywhere
+		function : HasExpression(pred : Predicate) ~ Bool {
+			op := pred->GetOp();
+			if(op = Op->AND | op = Op->OR) {
+				return HasExpression(pred->GetLeft()) | HasExpression(pred->GetRight());
+			}
+			else if(op = Op->NOT) {
+				return HasExpression(pred->GetLeft());
+			};
+
+			return pred->TypeOf(ExprPredicate);
+		}
+
+		# a condition: WHERE, HAVING, or UPDATE's and DELETE's WHERE
+		method : ParseCondition() ~ Predicate {
+			@in_condition := true;
+			condition := ParseOr();
+			@in_condition := false;
+			return condition;
+		}
+
 		# or := and (OR and)*
 		method : ParseOr() ~ Predicate {
 			left := ParseAnd();
@@ -11502,7 +12455,9 @@ if(file->IsOpen()) {
 			return left;
 		}
 
-		# unary := NOT unary | '(' or ')' | comparison
+		# unary := NOT unary | '(' or ')' | comparison. A '(' opens a grouped condition when
+		# what it encloses is one and nothing after the ')' continues an expression or a test;
+		# otherwise it opens a parenthesised expression (docs/QUERY_DESIGN.md, "Grammar").
 		method : ParseUnary() ~ Predicate {
 			if(Current()->IsWord("not") & <>Ahead(1)->IsWord("like") & <>Ahead(1)->IsWord("matches") & <>Ahead(1)->IsWord("between") & <>Ahead(1)->IsWord("in")) {
 				Next();
@@ -11514,20 +12469,91 @@ if(file->IsOpen()) {
 			};
 
 			if(Current()->IsSymbol("(")) {
+				start := @index;
 				Next();
 				inner := ParseOr();
-				if(inner = Nil | <>ExpectSymbol(")")) {
-					return Nil;
+				if(inner <> Nil) {
+					if(Current()->IsSymbol(")")) {
+						if(<>ContinuesOperand(1)) {
+							Next();
+							return inner;
+						};
+					}
+					else {
+						# a condition with no ')' after it
+						Fail("')'");
+					};
 				};
-				return inner;
+
+				# read it again as an expression; when neither reading parses, report the error
+				# found furthest into the statement
+				grouped_error := @error;
+				grouped_at := @error_at;
+				@error := Nil;
+				@index := start;
+				test := ParseComparison();
+				if(test = Nil & grouped_error <> Nil & grouped_at > @error_at) {
+					@error := grouped_error;
+					@error_at := grouped_at;
+				};
+				return test;
 			};
 
 			return ParseComparison();
 		}
 
+		# whether the token n ahead continues an expression or a test, so a ')' before it closed
+		# an expression rather than a grouped condition
+		method : ContinuesOperand(n : Int) ~ Bool {
+			token := Ahead(n);
+			if(token->IsSymbol("+") | token->IsSymbol("-") | token->IsSymbol("*") | token->IsSymbol("/") | token->IsSymbol("%") |
+					token->IsSymbol("=") | token->IsSymbol("<>") | token->IsSymbol("<") | token->IsSymbol("<=") |
+					token->IsSymbol(">") | token->IsSymbol(">=")) {
+				return true;
+			};
+
+			if(token->GetKind() = SqlToken->Kind->NUMBER & token->GetText()->StartsWith("-")) {
+				return true;
+			};
+
+			if(token->IsWord("is") | token->IsWord("between") | token->IsWord("in") | token->IsWord("like") | token->IsWord("matches")) {
+				return true;
+			};
+
+			next := Ahead(n + 1);
+			return token->IsWord("not") & (next->IsWord("between") | next->IsWord("in") | next->IsWord("like") | next->IsWord("matches"));
+		}
+
+		# An operand of a test. In a value position (the right of a comparison, a BETWEEN bound,
+		# an IN entry), a bare word alone is a column when a table has it and otherwise text, as
+		# unquoted words always were; in HAVING it is text, as before.
+		method : ParseOperand(value_position : Bool) ~ SqlExpr {
+			first := Current();
+			start := @index;
+			expr := ParseSum();
+			if(expr <> Nil & value_position & expr->IsColumn() & @index = start + 1 & first->GetKind() = SqlToken->Kind->WORD) {
+				if(@in_having) {
+					return SqlExpr->Value(first->GetText(), first->GetText());
+				};
+				return SqlExpr->Word(first->GetText());
+			};
+
+			return expr;
+		}
+
+		# a test of two operands: the Predicate a condition always made when it is a column (or
+		# an aggregate in HAVING) against a literal or a placeholder, an ExprPredicate otherwise
+		method : Test(op : Op, left : SqlExpr, right : SqlExpr) ~ Predicate {
+			if(left->IsColumn() & right->IsLiteral()) {
+				return Predicate->New(op, left->GetName(), right->GetValue(), right->GetParam());
+			};
+
+			return ExprPredicate->New(op, left, right);
+		}
+
 		# operand ([NOT] op value | [NOT] BETWEEN v AND v | [NOT] IN (v, ...) | IS [NOT] NULL)
 		method : ParseComparison() ~ Predicate {
-			name : String;
+			left : SqlExpr;
 			if(AtAggregate()) {
 				if(<>@in_having) {
 					return FailCondition("a column name (aggregates belong in HAVING, not WHERE)");
@@ -11537,11 +12563,12 @@ if(file->IsOpen()) {
 					return Nil;
 				};
 				NoteAggregate(item);
-				name := item->GetCall();
+				# named by its call, as the grouped result names it
+				left := SqlExpr->Column(item->GetCall());
 			}
 			else {
-				name := ParseName("a column name");
-				if(name = Nil) {
+				left := ParseOperand(false);
+				if(left = Nil) {
 					return Nil;
 				};
 			};
@@ -11557,7 +12584,11 @@ if(file->IsOpen()) {
 					return FailCondition("NULL");
 				};
 				Next();
-				return Predicate->New(negated ? Op->NOT_NULL : Op->IS_NULL, name, Nil, 0);
+				op := negated ? Op->NOT_NULL : Op->IS_NULL;
+				if(left->IsColumn()) {
+					return Predicate->New(op, left->GetName(), Nil, 0);
+				};
+				return ExprPredicate->New(op, left, Nil);
 			};
 
 			negated := false;
@@ -11568,15 +12599,15 @@ if(file->IsOpen()) {
 
 			if(Current()->IsWord("between")) {
 				Next();
-				low := ParseConditionValue();
+				low := ParseOperand(true);
 				if(low = Nil | <>ExpectWord("and")) {
 					return Nil;
 				};
-				high := ParseConditionValue();
+				high := ParseOperand(true);
 				if(high = Nil) {
 					return Nil;
 				};
-				range := Predicate->New(Op->GE, name, low->GetValue(), low->GetParam())->AndAlso(Predicate->New(Op->LE, name, high->GetValue(), high->GetParam()));
+				range := Test(Op->GE, left, low)->AndAlso(Test(Op->LE, left, high));
 				return negated ? range->Negate() : range;
 			};
 
@@ -11589,11 +12620,11 @@ if(file->IsOpen()) {
 				any : Predicate;
 				listing := true;
 				while(listing) {
-					entry := ParseConditionValue();
+					entry := ParseOperand(true);
 					if(entry = Nil) {
 						return Nil;
 					};
-					equal := Predicate->New(Op->EQ, name, entry->GetValue(), entry->GetParam());
+					equal := Test(Op->EQ, left, entry);
 					any := any = Nil ? equal : any->OrElse(equal);
 
 					if(Current()->IsSymbol(",")) {
@@ -11641,12 +12672,31 @@ if(file->IsOpen()) {
 			};
 			Next();
 
-			value := ParseConditionValue();
-			if(value = Nil) {
+			if(op = Op->LIKE | op = Op->NOT_LIKE | op = Op->MATCHES | op = Op->NOT_MATCHES) {
+				# a pattern is a value, as it always was
+				pattern := ParseConditionValue();
+				if(pattern = Nil) {
+					return Nil;
+				};
+				if(left->IsColumn()) {
+					return Predicate->New(op, left->GetName(), pattern->GetValue(), pattern->GetParam());
+				};
+				pattern_expr : SqlExpr;
+				if(pattern->GetParam() > 0) {
+					pattern_expr := SqlExpr->Param(pattern->GetParam());
+				}
+				else {
+					pattern_expr := SqlExpr->Value("pattern", pattern->GetValue());
+				};
+				return ExprPredicate->New(op, left, pattern_expr);
+			};
+
+			right := ParseOperand(true);
+			if(right = Nil) {
 				return Nil;
 			};
 
-			return Predicate->New(op, name, value->GetValue(), value->GetParam());
+			return Test(op, left, right);
 		}
 
 		# a value in a condition. 'true' and 'false' read as 1 and 0, as the old engine read
@@ -11819,7 +12869,7 @@ if(file->IsOpen()) {
 
 			if(Current()->IsWord("where")) {
 				Next();
-				where := ParseOr();
+				where := ParseCondition();
 				if(where = Nil) {
 					return Nil;
 				};
@@ -11844,7 +12894,7 @@ if(file->IsOpen()) {
 
 			if(Current()->IsWord("where")) {
 				Next();
-				where := ParseOr();
+				where := ParseCondition();
 				if(where = Nil) {
 					return Nil;
 				};
@@ -13124,6 +14174,8 @@ if(file->IsOpen()) {
 		@joined : Bool;
 		@steps : Vector<String>;
 		@computed : Int[];
+		@order_columns : Int[];
+		@data_columns : Int;
 
 		New(statement : SqlStatement, tables : Table[], params : Compare[], error : StringHolder) {
 			@statement := statement;
@@ -13249,6 +14301,23 @@ if(file->IsOpen()) {
 				return inner->Negate();
 			};
 
+			if(pred->TypeOf(ExprPredicate)) {
+				test := pred->As(ExprPredicate);
+				left := RenameExpr(test->GetLeftExpr(), plain);
+				if(left = Nil) {
+					return Nil;
+				};
+
+				right : SqlExpr;
+				if(test->GetRightExpr() <> Nil) {
+					right := RenameExpr(test->GetRightExpr(), plain);
+					if(right = Nil) {
+						return Nil;
+					};
+				};
+				return ExprPredicate->New(op, left, right);
+			};
+
 			ref := Resolve(pred->GetColumn());
 			if(ref = Nil) {
 				return Nil;
@@ -13256,6 +14325,110 @@ if(file->IsOpen()) {
 
 			name := plain ? ref->GetColumn() : WorkName(ref);
 			return Predicate->New(op, name, pred->GetValue(), pred->GetParam());
+		}
+
+		# whether a name is a column of one of the query's tables, as 'alias.column' or alone
+		method : IsColumnName(name : String) ~ Bool {
+			dot := name->Find('.');
+			if(dot > 0) {
+				prefix := name->SubString(0, dot);
+				rest := name->SubString(dot + 1, name->Size() - dot - 1);
+				each(s : @aliases) {
+					if(@aliases[s]->Equals(prefix) & @tables[s]->GetIndex(rest) > -1) {
+						return true;
+					};
+				};
+			};
+
+			each(s : @tables) {
+				if(@tables[s]->GetIndex(name) > -1) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		# An expression with its names replaced: by working-table names, or by the plain names
+		# of the one table it reads. A bare word that names no column becomes text. A new tree:
+		# the parsed one belongs to a plan other threads may be running. Nil with the error set
+		# for an unknown or ambiguous column.
+		method : RenameExpr(expr : SqlExpr, plain : Bool) ~ SqlExpr {
+			kind := expr->GetKind();
+			if(kind = SqlExpr->WordKind() & <>IsColumnName(expr->GetName())) {
+				return SqlExpr->Value(expr->GetName(), expr->GetName());
+			};
+
+			if(kind = SqlExpr->ColumnKind() | kind = SqlExpr->WordKind()) {
+				ref := Resolve(expr->GetName());
+				if(ref = Nil) {
+					return Nil;
+				};
+				return SqlExpr->Column(plain ? ref->GetColumn() : WorkName(ref));
+			}
+			else if(kind = SqlExpr->BinaryKind()) {
+				left := RenameExpr(expr->GetLeft(), plain);
+				right := RenameExpr(expr->GetRight(), plain);
+				if(left = Nil | right = Nil) {
+					return Nil;
+				};
+				renamed := SqlExpr->Binary(expr->GetOp(), left, right);
+				renamed->SetText(expr->GetText());
+				return renamed;
+			}
+			else if(kind = SqlExpr->NegateKind()) {
+				operand := RenameExpr(expr->GetLeft(), plain);
+				if(operand = Nil) {
+					return Nil;
+				};
+				renamed := SqlExpr->Negate(operand);
+				renamed->SetText(expr->GetText());
+				return renamed;
+			};
+
+			# a literal or a placeholder reads no name
+			return expr;
+		}
+
+		# The table an expression's columns come from, merged with 'found': -3 while none is
+		# found, the table's position, -1 for several, -2 on error. A bare word that names no
+		# column is text and reads none.
+		method : SourceOfExpr(expr : SqlExpr, found : Int) ~ Int {
+			if(found = -2 | expr = Nil) {
+				return found;
+			};
+
+			kind := expr->GetKind();
+			if(kind = SqlExpr->ColumnKind() | (kind = SqlExpr->WordKind() & IsColumnName(expr->GetName()))) {
+				ref := Resolve(expr->GetName());
+				if(ref = Nil) {
+					return -2;
+				};
+				if(found = -3 | found = ref->GetSource()) {
+					return ref->GetSource();
+				};
+				return -1;
+			}
+			else if(kind = SqlExpr->BinaryKind()) {
+				return SourceOfExpr(expr->GetRight(), SourceOfExpr(expr->GetLeft(), found));
+			}
+			else if(kind = SqlExpr->NegateKind()) {
+				return SourceOfExpr(expr->GetLeft(), found);
+			};
+
+			return found;
+		}
+
+		# the column names of the query's tables an expression reads, bare words that name one
+		# included
+		method : ExprColumns(expr : SqlExpr, names : Vector<String>) ~ Nil {
+			all := Vector->New()<String>;
+			expr->AddNames(all, true);
+			each(i : all) {
+				if(IsColumnName(all->Get(i))) {
+					names->AddBack(all->Get(i));
+				};
+			};
 		}
 
 		# the one table every column in a condition comes from; -1 for several, -2 on error
@@ -13271,6 +14444,14 @@ if(file->IsOpen()) {
 			}
 			else if(op = Op->NOT) {
 				return SourceOf(pred->GetLeft());
+			};
+
+			if(pred->TypeOf(ExprPredicate)) {
+				test := pred->As(ExprPredicate);
+				found := SourceOfExpr(test->GetRightExpr(), SourceOfExpr(test->GetLeftExpr(), -3));
+				# a test that reads no column holds for every row or none: the first table's
+				# rows are as good a place as any to decide it
+				return found = -3 ? 0 : found;
 			};
 
 			ref := Resolve(pred->GetColumn());
@@ -13342,6 +14523,12 @@ if(file->IsOpen()) {
 						return Fail("'{$(items->Get(i)->GetName())}': an expression in the select list of a grouped or aggregate query is not supported; compute it in a query over the grouped result");
 					};
 				};
+				order := @statement->GetOrder();
+				each(i : order) {
+					if(order->Get(i)->GetExpr() <> Nil) {
+						return Fail("ORDER BY '{$(order->Get(i)->GetName())}': an expression in ORDER BY of a grouped or aggregate query is not supported yet");
+					};
+				};
 				return Group(rows);
 			};
 
@@ -13355,17 +14542,24 @@ if(file->IsOpen()) {
 			return Plain(rows);
 		}
 
+		# whether the select list or ORDER BY computes an expression
 		method : HasExpressions() ~ Bool {
-			if(@statement->IsStar()) {
-				return false;
+			if(<>@statement->IsStar()) {
+				items := @statement->GetItems();
+				each(i : items) {
+					if(items->Get(i)->GetExpr() <> Nil) {
+						return true;
+					};
+				};
 			};
 
-			items := @statement->GetItems();
-			each(i : items) {
-				if(items->Get(i)->GetExpr() <> Nil) {
+			order := @statement->GetOrder();
+			each(i : order) {
+				if(order->Get(i)->GetExpr() <> Nil) {
 					return true;
 				};
 			};
+
 			return false;
 		}
 
@@ -13382,11 +14576,108 @@ if(file->IsOpen()) {
 			return index;
 		}
 
-		# The select list's expressions computed over the rows that passed: the working table's
-		# columns copied for those rows, in their order, with one column per expression after
-		# them, which becomes the working table. Names and indexes of the copied columns are
-		# the original's, so the rest of the query reads them as before. @computed gives each
-		# item's column (-1 for a plain item). Nil with the error set.
+		# An expression with its names as the working table's column names, so it can be bound
+		# to that table. With 'aliases' (ORDER BY), a name that is a select-list alias is that
+		# item's column, named by aliases[i]. A new tree; Nil with the error set, naming 'what'.
+		method : WorkExpr(expr : SqlExpr, aliases : String[], what : String) ~ SqlExpr {
+			kind := expr->GetKind();
+			if(kind = SqlExpr->ColumnKind()) {
+				name := expr->GetName();
+				if(aliases <> Nil) {
+					position := ItemByAlias(name);
+					if(position > -1 & aliases[position] <> Nil) {
+						return SqlExpr->Column(aliases[position]);
+					};
+				};
+
+				index := ExprIndex(name);
+				if(index < 0) {
+					Fail("unknown column '{$name}' in {$what}");
+					return Nil;
+				};
+				return SqlExpr->Column(@work->GetColumn(index)->GetName());
+			}
+			else if(kind = SqlExpr->BinaryKind()) {
+				left := WorkExpr(expr->GetLeft(), aliases, what);
+				right := WorkExpr(expr->GetRight(), aliases, what);
+				if(left = Nil | right = Nil) {
+					return Nil;
+				};
+				return SqlExpr->Binary(expr->GetOp(), left, right);
+			}
+			else if(kind = SqlExpr->NegateKind()) {
+				operand := WorkExpr(expr->GetLeft(), aliases, what);
+				if(operand = Nil) {
+					return Nil;
+				};
+				return SqlExpr->Negate(operand);
+			};
+
+			return expr;
+		}
+
+		# a new column of 'out', named so it shadows no other
+		function : AddSlot(out : Table, prefix : String) ~ Int {
+			slot := prefix;
+			while(out->GetIndex(slot) > -1) {
+				slot += "#";
+			};
+			out->AddColumn(slot, ColumnType->NONE);
+			return out->GetIndex(slot);
+		}
+
+		# Computes an expression for 'rows' of the table it is bound to, a batch at a time, into
+		# a column of 'out' whose row i is rows[i]. Arithmetic gives numbers, so the column is INT
+		# when every result is an Int and FLOAT when any is a Float, as a column is typed.
+		function : FillComputed(column : Column, eval : SqlEval, rows : Int[]) ~ Nil {
+			size := rows->Size();
+			ints := Int->New[size];
+			floats := Float->New[size];
+			present := Bool->New[size];
+			any := false;
+			any_float := false;
+			batch := SqlEval->BatchRows();
+			start := 0;
+			while(start < size) {
+				count := size - start;
+				if(count > batch) {
+					count := batch;
+				};
+
+				eval->Eval(rows, start, count);
+				tags := eval->GetTags();
+				values := eval->GetInts();
+				reals := eval->GetFloats();
+				each(i : count) {
+					tag := tags[i];
+					if(tag = 1) {
+						ints[start + i] := values[i];
+						floats[start + i] := values[i]->As(Float);
+						present[start + i] := true;
+						any := true;
+					}
+					else if(tag = 2) {
+						floats[start + i] := reals[i];
+						present[start + i] := true;
+						any := true;
+						any_float := true;
+					};
+				};
+				start += count;
+			};
+
+			# with no results at all the column stays untyped, all empty
+			if(any) {
+				column->FillNumbers(any_float ? ColumnType->FLOAT : ColumnType->INT, ints, floats, present);
+			};
+		}
+
+		# The select list's and ORDER BY's expressions computed over the rows that passed: the
+		# working table's columns copied for those rows, in their order, with one column per
+		# expression after them, which becomes the working table. Names and indexes of the copied
+		# columns are the original's, so the rest of the query reads them as before. @computed
+		# gives each item's column (-1 for a plain item) and @order_columns each ORDER BY entry's
+		# (-1 for one that is not an expression). Nil with the error set.
 		method : Computed(rows : Int[]) ~ Int[] {
 			base := @work;
 			names := base->GetColumnNames();
@@ -13396,53 +14687,84 @@ if(file->IsOpen()) {
 				columns[i] := i + 1;
 				data_names[i] := names[i + 1];
 			};
+			@data_columns := columns->Size();
 
 			items := @statement->GetItems();
-			bound := Vector->New()<IntArrayRef>;
+			if(@statement->IsStar()) {
+				items := Vector->New()<SqlItem>;
+			};
+
+			# each expression bound to the working table before anything is copied, so an
+			# unknown column is reported first
+			bound := Vector->New()<SqlEval>;
 			each(i : items) {
-				expr := items->Get(i)->GetExpr();
-				indexes : Int[] := Nil;
-				if(expr <> Nil) {
-					reads := Vector->New()<String>;
-					expr->AddColumns(reads);
-					indexes := Int->New[reads->Size()];
-					each(r : reads) {
-						indexes[r] := ExprIndex(reads->Get(r));
-						if(indexes[r] < 0) {
-							Fail("unknown column '{$(reads->Get(r))}' in '{$(items->Get(i)->GetName())}'");
-							return Nil;
-						};
+				item := items->Get(i);
+				eval : SqlEval := Nil;
+				if(item->GetExpr() <> Nil) {
+					expr := WorkExpr(item->GetExpr(), Nil, "'{$(item->GetName())}'");
+					if(expr = Nil) {
+						return Nil;
+					};
+					eval := SqlEval->Bind(expr, base, @params, @error);
+					if(eval = Nil) {
+						return Nil;
 					};
 				};
-				bound->AddBack(IntArrayRef->New(indexes));
+				bound->AddBack(eval);
 			};
 
 			out := Table->Gather(base->GetName(), base, columns, data_names, rows);
 			@computed := Int->New[items->Size()];
+			# the column each item has in 'out', for ORDER BY's aliases
+			item_columns := String->New[items->Size()];
 			each(i : items) {
 				@computed[i] := -1;
-				expr := items->Get(i)->GetExpr();
-				if(expr <> Nil) {
-					# a name no column has, so it shadows none
-					slot := "#expr{$i}";
-					while(out->GetIndex(slot) > -1) {
-						slot += "#";
-					};
-					out->AddColumn(slot, ColumnType->NONE);
-					index := out->GetIndex(slot);
+				eval := bound->Get(i);
+				if(eval <> Nil) {
+					index := AddSlot(out, "#expr{$i}");
 					@computed[i] := index;
-					indexes := bound->Get(i)->Get();
-					each(r : rows) {
-						value := expr->Eval(base, rows[r], indexes);
-						if(value <> Nil) {
-							out->SetCell(r, index, value);
-						};
+					item_columns[i] := out->GetColumn(index)->GetName();
+					FillComputed(out->GetColumn(index), eval, rows);
+				}
+				else if(@joined) {
+					index := WorkIndex(items->Get(i)->GetName());
+					@error->Set(Nil);
+					if(index > -1) {
+						item_columns[i] := base->GetColumn(index)->GetName();
+					};
+				}
+				else {
+					index := base->GetIndex(Strip(items->Get(i)->GetName()));
+					if(index > -1) {
+						item_columns[i] := base->GetColumn(index)->GetName();
 					};
 				};
 			};
 
+			# ORDER BY expressions, over the copied rows, where an alias names its item's column
+			order := @statement->GetOrder();
+			@order_columns := Int->New[order->Size()];
+			out_rows := out->LiveRows();
+			each(k : order) {
+				@order_columns[k] := -1;
+				entry := order->Get(k);
+				if(entry->GetExpr() <> Nil) {
+					expr := WorkExpr(entry->GetExpr(), item_columns, "ORDER BY '{$(entry->GetName())}'");
+					if(expr = Nil) {
+						return Nil;
+					};
+					eval := SqlEval->Bind(expr, out, @params, @error);
+					if(eval = Nil) {
+						return Nil;
+					};
+					index := AddSlot(out, "#order{$k}");
+					@order_columns[k] := index;
+					FillComputed(out->GetColumn(index), eval, out_rows);
+				};
+			};
+
 			@work := out;
-			return out->LiveRows();
+			return out_rows;
 		}
 
 		#
@@ -13638,7 +14960,27 @@ if(file->IsOpen()) {
 				return WantCondition(wanted, pred->GetLeft());
 			};
 
+			if(pred->TypeOf(ExprPredicate)) {
+				test := pred->As(ExprPredicate);
+				names := Vector->New()<String>;
+				ExprColumns(test->GetLeftExpr(), names);
+				if(test->GetRightExpr() <> Nil) {
+					ExprColumns(test->GetRightExpr(), names);
+				};
+				return WantNames(wanted, names);
+			};
+
 			return WantName(wanted, pred->GetColumn());
+		}
+
+		method : WantNames(wanted : Vector<SqlRef>, names : Vector<String>) ~ Bool {
+			each(i : names) {
+				if(<>WantName(wanted, names->Get(i))) {
+					return false;
+				};
+			};
+
+			return true;
 		}
 
 		# every column the rest of the query reads, in the order it shows them
@@ -13688,13 +15030,43 @@ if(file->IsOpen()) {
 			# an ORDER BY name may be a select-list label rather than a column
 			order := @statement->GetOrder();
 			each(i : order) {
-				name := order->Get(i)->GetName();
-				if(name <> Nil & ItemByLabel(name) < 0 & ItemByCall(name) < 0 & <>WantName(wanted, name)) {
-					return false;
+				entry := order->Get(i);
+				if(entry->GetExpr() <> Nil) {
+					# inside an ORDER BY expression a name is a select-list alias first
+					reads := Vector->New()<String>;
+					entry->GetExpr()->AddColumns(reads);
+					each(r : reads) {
+						if(ItemByAlias(reads->Get(r)) < 0 & <>WantName(wanted, reads->Get(r))) {
+							return false;
+						};
+					};
+				}
+				else {
+					name := entry->GetName();
+					if(name <> Nil & ItemByLabel(name) < 0 & ItemByCall(name) < 0 & <>WantName(wanted, name)) {
+						return false;
+					};
 				};
 			};
 
 			return WantCondition(wanted, remaining);
+		}
+
+		# the select-list position whose alias is 'name', or -1
+		method : ItemByAlias(name : String) ~ Int {
+			if(@statement->IsStar()) {
+				return -1;
+			};
+
+			items := @statement->GetItems();
+			each(i : items) {
+				alias_name := items->Get(i)->GetAlias();
+				if(alias_name <> Nil & alias_name->Equals(name)) {
+					return i;
+				};
+			};
+
+			return -1;
 		}
 
 		# the select-list position whose label is 'name', or -1
@@ -13731,24 +15103,18 @@ if(file->IsOpen()) {
 			columns : Int[];
 			labels : String[];
 			if(@statement->IsStar()) {
+				# not the hidden columns of ORDER BY expressions
+				names := @work->GetColumnNames();
+				shown := @computed <> Nil ? @data_columns : names->Size() - 1;
+				columns := Int->New[shown];
+				labels := String->New[shown];
+				each(i : columns) {
+					columns[i] := i + 1;
+					labels[i] := names[i + 1];
+				};
+
 				if(@joined) {
-					names := @work->GetColumnNames();
-					columns := Int->New[names->Size() - 1];
-					labels := String->New[columns->Size()];
-					each(i : columns) {
-						columns[i] := i + 1;
-						labels[i] := names[i + 1];
-					};
 					Shorten(labels);
-				}
-				else {
-					names := @work->GetColumnNames();
-					columns := Int->New[names->Size() - 1];
-					labels := String->New[columns->Size()];
-					each(i : columns) {
-						columns[i] := i + 1;
-						labels[i] := names[i + 1];
-					};
 				};
 			}
 			else {
@@ -13792,7 +15158,10 @@ if(file->IsOpen()) {
 			while(k >= 0) {
 				entry := order->Get(k);
 				index := -1;
-				if(entry->GetPosition() > 0) {
+				if(entry->GetExpr() <> Nil) {
+					index := @order_columns[k];
+				}
+				else if(entry->GetPosition() > 0) {
 					if(entry->GetPosition() > columns->Size()) {
 						return Fail("ORDER BY {$(entry->GetPosition())} is past the {$(columns->Size())} columns of the select list");
 					};

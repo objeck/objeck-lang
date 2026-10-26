@@ -1,0 +1,1481 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured expressions, differentially (docs/QUERY_DESIGN.md, "Expressions in every clause"
+and "Tests"). Random tables (INT with negatives, whole numbers past 2^53 and next to the largest
+and smallest Int; FLOAT with NaN, infinities and -0.0; encoded and plain STRING; DATE; BOOL; an
+OBJECT column mixing numbers, text, dates and Bools; empty cells; deleted rows) get random
+queries: expression trees of columns, literals of every kind, placeholders, + - * / %, unary
+minus and parentheses, in conditions (every comparison, AND, OR, NOT, IN, BETWEEN, LIKE, IS
+[NOT] NULL, bare words, constants on either side), select lists, DISTINCT, ORDER BY and LIMIT.
+Each query runs through the engine, on a twin table with random hash and sorted indexes, and
+through the row-at-a-time evaluator below, written from the design's rules; all three must give
+the same rows in the same order. Table sizes sit on both sides of the 1,024-row batch. Seeds come
+from the command line (six by default, sized for the suite's time cap), with '--rounds N' for
+more queries per seed; a seventh seed and every seventh after it also spans two 64K-row groups
+with a dictionary that turns into plain strings, for soaks (query_expr_zone_maps covers those
+boundaries in the suite).
+~#
+use Query.Structured, System.Time, Collection;
+
+# a value as the reference evaluator sees it
+class V {
+	@kind : Int;
+	@i : Int;
+	@f : Float;
+	@s : String;
+	@o : Compare;
+
+	# kinds: 0 empty, 1 Int, 2 Float, 3 text, 4 date (a stamp), 5 a BOOL column's Bool (0 or 1),
+	# 6 any other object (a BoolRef that is not a BOOL column's included)
+	New(kind : Int, i : Int, f : Float, s : String, o : Compare) {
+		@kind := kind;
+		@i := i;
+		@f := f;
+		@s := s;
+		@o := o;
+	}
+
+	function : Empty() ~ V { return V->New(0, 0, 0.0, Nil, Nil); }
+	function : OfInt(i : Int) ~ V { return V->New(1, i, 0.0, Nil, Nil); }
+	function : OfFloat(f : Float) ~ V { return V->New(2, 0, f, Nil, Nil); }
+
+	method : public : GetKind() ~ Int { return @kind; }
+	method : public : GetInt() ~ Int { return @i; }
+	method : public : GetFloat() ~ Float { return @f; }
+	method : public : GetText() ~ String { return @s; }
+	method : public : GetObject() ~ Compare { return @o; }
+
+	method : public : IsNumber() ~ Bool { return @kind = 1 | @kind = 2; }
+
+	method : public : AsFloat() ~ Float {
+		if(@kind = 1) {
+			return @i->As(Float);
+		};
+		return @f;
+	}
+
+	# a cell of a column of the given type
+	function : FromCell(value : Compare, type : String) ~ V {
+		if(value = Nil) {
+			return Empty();
+		};
+
+		if(type->Equals("bool")) {
+			return V->New(5, value->As(BoolRef)->Get() ? 1 : 0, 0.0, Nil, Nil);
+		};
+
+		return FromValue(value);
+	}
+
+	# a literal's, a placeholder's or an OBJECT cell's value
+	function : FromValue(value : Compare) ~ V {
+		if(value = Nil) {
+			return Empty();
+		}
+		else if(value->TypeOf(IntRef)) {
+			return OfInt(value->As(IntRef)->Get());
+		}
+		else if(value->TypeOf(FloatRef)) {
+			return OfFloat(value->As(FloatRef)->Get());
+		}
+		else if(value->TypeOf(String)) {
+			return V->New(3, 0, 0.0, value->As(String), Nil);
+		}
+		else if(value->TypeOf(Date)) {
+			return V->New(4, Stamp(value->As(Date)), 0.0, Nil, Nil);
+		};
+
+		return V->New(6, 0, 0.0, Nil, value);
+	}
+
+	# a date's fields as one number that orders as the dates do
+	function : Stamp(d : Date) ~ Int {
+		return ((((d->GetYear() * 13 + d->GetMonth()) * 32 + d->GetDay()) * 24 + d->GetHours()) * 60 + d->GetMinutes()) * 60 + d->GetSeconds();
+	}
+}
+
+# a generated expression: kind 0 a column, 1 a literal or a bound placeholder, 2 binary, 3 negate
+class E {
+	@kind : Int;
+	@name : String;
+	@value : Compare;
+	@op : Char;
+	@left : E;
+	@right : E;
+
+	New(kind : Int, name : String, value : Compare, op : Char, left : E, right : E) {
+		@kind := kind;
+		@name := name;
+		@value := value;
+		@op := op;
+		@left := left;
+		@right := right;
+	}
+
+	function : Column(name : String) ~ E { return E->New(0, name, Nil, ' ', Nil, Nil); }
+	function : Literal(value : Compare) ~ E { return E->New(1, Nil, value, ' ', Nil, Nil); }
+
+	method : public : GetKind() ~ Int { return @kind; }
+	method : public : GetName() ~ String { return @name; }
+	method : public : GetValue() ~ Compare { return @value; }
+	method : public : GetOp() ~ Char { return @op; }
+	method : public : GetLeft() ~ E { return @left; }
+	method : public : GetRight() ~ E { return @right; }
+}
+
+# a generated condition: kind 0 AND, 1 OR, 2 NOT, 3 a comparison (op), 4 IS NULL (negated for
+# IS NOT NULL), 5 LIKE (negated for NOT LIKE)
+class C {
+	@kind : Int;
+	@op : String;
+	@negated : Bool;
+	@left : E;
+	@right : E;
+	@pattern : String;
+	@a : C;
+	@b : C;
+
+	New(kind : Int, op : String, negated : Bool, left : E, right : E, pattern : String, a : C, b : C) {
+		@kind := kind;
+		@op := op;
+		@negated := negated;
+		@left := left;
+		@right := right;
+		@pattern := pattern;
+		@a := a;
+		@b := b;
+	}
+
+	method : public : GetKind() ~ Int { return @kind; }
+	method : public : GetOp() ~ String { return @op; }
+	method : public : IsNegated() ~ Bool { return @negated; }
+	method : public : GetLeft() ~ E { return @left; }
+	method : public : GetRight() ~ E { return @right; }
+	method : public : GetPattern() ~ String { return @pattern; }
+	method : public : GetA() ~ C { return @a; }
+	method : public : GetB() ~ C { return @b; }
+}
+
+# a column of values to sort or compare by: 'mode' says how they order
+class Keys {
+	@values : V[];
+	@mode : String;
+	@cells : Compare[];
+
+	New(values : V[], mode : String, cells : Compare[]) {
+		@values := values;
+		@mode := mode;
+		@cells := cells;
+	}
+
+	method : public : GetValues() ~ V[] { return @values; }
+	method : public : GetMode() ~ String { return @mode; }
+	method : public : GetCells() ~ Compare[] { return @cells; }
+}
+
+class QueryExprDifferential {
+	@seed : static : Int;
+	@failures : static : Int;
+	@queries : static : Int;
+	@sql : static : String;
+	@params : static : Vector<Compare>;
+	@names : static : String[];
+	@types : static : String[];
+	@words : static : String[];
+	@in_condition : static : Bool;
+
+	function : Next(bound : Int) ~ Int {
+		@seed := (@seed * 6364136223846793005 + 1442695040888963407) and 0x7FFFFFFFFFFFFFFF;
+		return (@seed >> 33) % bound;
+	}
+
+	function : Fail(what : String) ~ Nil {
+		@failures += 1;
+		if(@failures <= 8) {
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : KindOfColumn(name : String) ~ String {
+		each(i : @names) {
+			if(@names[i]->Equals(name)) {
+				return @types[i];
+			};
+		};
+		return Nil;
+	}
+
+	#
+	# Tables
+	#
+
+	function : IntValue() ~ Int {
+		pick := Next(24);
+		if(pick = 0) {
+			return 9007199254740992 + Next(3);
+		}
+		else if(pick = 1) {
+			return -9007199254740993 + Next(3);
+		}
+		else if(pick = 2) {
+			return 9223372036854775807 - Next(2);
+		}
+		else if(pick = 3) {
+			return -9223372036854775807 - 1 + Next(2);
+		};
+		return Next(41) - 20;
+	}
+
+	function : FloatValue() ~ Float {
+		pick := Next(24);
+		if(pick = 0) {
+			return Float->NaN();
+		}
+		else if(pick = 1) {
+			return Float->Inf();
+		}
+		else if(pick = 2) {
+			return 0.0 - Float->Inf();
+		}
+		else if(pick = 3) {
+			return -0.0;
+		};
+		return (Next(41) - 20)->As(Float) / 4.0;
+	}
+
+	function : DateValue() ~ Date {
+		return Date->New(1 + Next(28), 1 + Next(12), 2020 + Next(2), 0, 0, 0, false);
+	}
+
+	function : Cell(column : Int, wide : Bool) ~ Compare {
+		if(Next(7) = 0) {
+			return Nil;
+		};
+
+		type := @types[column];
+		if(type->Equals("int")) {
+			if(@names[column]->Equals("j")) {
+				return IntRef->New(Next(7) - 3);
+			};
+			return IntRef->New(IntValue());
+		}
+		else if(type->Equals("float")) {
+			return FloatRef->New(FloatValue());
+		}
+		else if(type->Equals("text")) {
+			if(wide & @names[column]->Equals("w")) {
+				return "w{$(Next(6000))}";
+			};
+			return @words[Next(@words->Size())];
+		}
+		else if(type->Equals("date")) {
+			return DateValue();
+		}
+		else if(type->Equals("bool")) {
+			return BoolRef->New(Next(2) = 0);
+		};
+
+		# the OBJECT column: numbers, text, dates and now and then a Bool
+		pick := Next(9);
+		if(pick < 3) {
+			return IntRef->New(Next(11) - 5);
+		}
+		else if(pick < 5) {
+			return FloatRef->New((Next(9) - 4)->As(Float) / 2.0);
+		}
+		else if(pick < 7) {
+			return @words[Next(@words->Size())];
+		}
+		else if(pick = 7) {
+			return DateValue();
+		};
+		return BoolRef->New(Next(2) = 0);
+	}
+
+	function : Fill(a : Table, b : Table, rows : Int, wide : Bool) ~ Nil {
+		each(r : rows) {
+			ra := a->Insert();
+			rb := b->Insert();
+			each(c : @names) {
+				value := Cell(c, wide);
+				ra->Set(@names[c], value);
+				rb->Set(@names[c], value);
+			};
+		};
+
+		# deletes, so both see tombstones
+		deletes := rows / 20 + 1;
+		each(k : deletes) {
+			live := a->LiveRows();
+			if(live->Size() > 0) {
+				key := a->RowAt(live[Next(live->Size())])->GetKey();
+				a->Delete(key);
+				b->Delete(key);
+			};
+		};
+	}
+
+	function : Reindex(b : Table) ~ Nil {
+		each(c : @names) {
+			if(<>@types[c]->Equals("object")) {
+				pick := Next(3);
+				if(pick = 0) {
+					b->DropIndex(@names[c]);
+				}
+				else {
+					b->CreateIndex(@names[c], pick = 1 ? IndexKind->HASH : IndexKind->SORTED);
+				};
+			};
+		};
+	}
+
+	#
+	# Generating SQL
+	#
+
+	# a placeholder's value: of every kind, NaN and infinities included
+	function : ParamValue() ~ Compare {
+		pick := Next(10);
+		if(pick < 3) {
+			return IntRef->New(Next(21) - 10);
+		}
+		else if(pick < 5) {
+			return FloatRef->New(FloatValue());
+		}
+		else if(pick = 5) {
+			return @words[Next(@words->Size())];
+		}
+		else if(pick = 6) {
+			return DateValue();
+		}
+		else if(pick = 7) {
+			return BoolRef->New(Next(2) = 0);
+		}
+		else if(pick = 8) {
+			return IntRef->New(IntValue());
+		};
+		return Nil;
+	}
+
+	function : Pad(n : Int) ~ String {
+		if(n < 10) {
+			return "0" + n->ToString();
+		};
+		return n->ToString();
+	}
+
+	# a number's SQL text and value
+	function : NumberLiteral() ~ E {
+		pick := Next(8);
+		if(pick = 0) {
+			v := (Next(41) - 20)->As(Float) / 4.0;
+			text := v->ToString();
+			if(<>text->Has('.')) {
+				text += ".0";
+			};
+			@sql += text;
+			return E->Literal(FloatRef->New(v));
+		}
+		else if(pick = 1) {
+			v := IntValue();
+			# the smallest Int has no literal
+			if(v < -9223372036854775807) {
+				v := -9223372036854775807;
+			};
+			text := v->ToString();
+			@sql += text;
+			# a whole number of more than 18 digits reads as a Float, as a CSV cell does
+			digits := text->StartsWith("-") ? text->Size() - 1 : text->Size();
+			if(digits > 18) {
+				return E->Literal(FloatRef->New(text->ToFloat()));
+			};
+			return E->Literal(IntRef->New(v));
+		};
+
+		v := Next(21) - 10;
+		@sql += v->ToString();
+		return E->Literal(IntRef->New(v));
+	}
+
+	# a literal that only a condition reads: text, a date, TRUE, FALSE or NULL
+	function : ConditionLiteral() ~ E {
+		pick := Next(5);
+		if(pick = 0) {
+			w := @words[Next(@words->Size())];
+			@sql += "'{$w}'";
+			return E->Literal(w);
+		}
+		else if(pick = 1) {
+			day := 1 + Next(28);
+			month := 1 + Next(12);
+			year := 2020 + Next(2);
+			@sql += "#{$(Pad(month))}/{$(Pad(day))}/{$year}#";
+			return E->Literal(Date->New(day, month, year, 0, 0, 0, false));
+		}
+		else if(pick = 2) {
+			@sql += "null";
+			return E->Literal(Nil);
+		};
+
+		truth := Next(2) = 0;
+		@sql += truth ? "true" : "false";
+		return E->Literal(IntRef->New(truth ? 1 : 0));
+	}
+
+	function : Param() ~ E {
+		value := ParamValue();
+		@params->AddBack(value);
+		@sql += "?";
+		return E->Literal(value);
+	}
+
+	function : ColumnRef() ~ E {
+		name := @names[Next(@names->Size())];
+		@sql += name;
+		return E->Column(name);
+	}
+
+	# an arithmetic expression
+	function : Arith(depth : Int) ~ E {
+		if(depth > 2 | Next(3) = 0) {
+			pick := Next(10);
+			if(pick < 5) {
+				return ColumnRef();
+			}
+			else if(pick < 8) {
+				return NumberLiteral();
+			}
+			else if(pick = 8) {
+				return Param();
+			}
+			else if(@in_condition) {
+				return ConditionLiteral();
+			};
+			return NumberLiteral();
+		};
+
+		pick := Next(9);
+		if(pick = 0) {
+			@sql += "-(";
+			inner := Arith(depth + 1);
+			@sql += ")";
+			return E->New(3, Nil, Nil, '-', inner, Nil);
+		}
+		else if(pick = 1) {
+			@sql += "(";
+			inner := Arith(depth + 1);
+			@sql += ")";
+			return inner;
+		};
+
+		ops := ['+', '-', '*', '/', '%'];
+		op := ops[Next(ops->Size())];
+		# a sum's operand that is a sum is bracketed, so the tree is the text's
+		@sql += "(";
+		left := Arith(depth + 1);
+		@sql += " {$op} ";
+		right := Arith(depth + 1);
+		@sql += ")";
+		return E->New(2, Nil, Nil, op, left, right);
+	}
+
+	# an operand of a test: arithmetic, a lone column, a literal, a placeholder, or in a value
+	# position a bare word, which is a column when one has the name and text otherwise
+	function : Operand(value_position : Bool) ~ E {
+		pick := Next(10);
+		if(pick < 4) {
+			return Arith(1);
+		}
+		else if(pick < 6) {
+			return ColumnRef();
+		}
+		else if(pick < 8) {
+			return Next(2) = 0 ? NumberLiteral() : ConditionLiteral();
+		}
+		else if(pick = 8 | <>value_position) {
+			return Param();
+		};
+
+		if(Next(2) = 0) {
+			return ColumnRef();
+		};
+		bare := ["ant", "zebra", "cow"];
+		w := bare[Next(3)];
+		@sql += w;
+		return E->Literal(w);
+	}
+
+	function : Test(depth : Int) ~ C {
+		if(depth < 3 & Next(3) = 0) {
+			pick := Next(4);
+			if(pick = 0) {
+				@sql += "not (";
+				inner := Test(depth + 1);
+				@sql += ")";
+				return C->New(2, Nil, false, Nil, Nil, Nil, inner, Nil);
+			};
+
+			@sql += "(";
+			a := Test(depth + 1);
+			@sql += pick = 1 ? " or " : " and ";
+			b := Test(depth + 1);
+			@sql += ")";
+			return C->New(pick = 1 ? 1 : 0, Nil, false, Nil, Nil, Nil, a, b);
+		};
+
+		kind := Next(12);
+		left := Operand(false);
+		negated := Next(5) = 0;
+		if(kind < 6) {
+			ops := ["=", "<>", "<", "<=", ">", ">="];
+			op := ops[kind];
+			@sql += " {$op} ";
+			right := Operand(true);
+			return C->New(3, op, false, left, right, Nil, Nil, Nil);
+		}
+		else if(kind = 6) {
+			@sql += negated ? " not between " : " between ";
+			low := Operand(true);
+			@sql += " and ";
+			high := Operand(true);
+			range := C->New(0, Nil, false, Nil, Nil, Nil, C->New(3, ">=", false, left, low, Nil, Nil, Nil), C->New(3, "<=", false, left, high, Nil, Nil, Nil));
+			return negated ? C->New(2, Nil, false, Nil, Nil, Nil, range, Nil) : range;
+		}
+		else if(kind = 7) {
+			@sql += negated ? " not in (" : " in (";
+			count := 1 + Next(3);
+			any : C := Nil;
+			each(i : count) {
+				if(i > 0) {
+					@sql += ", ";
+				};
+				entry := Operand(true);
+				equal := C->New(3, "=", false, left, entry, Nil, Nil, Nil);
+				any := any = Nil ? equal : C->New(1, Nil, false, Nil, Nil, Nil, any, equal);
+			};
+			@sql += ")";
+			return negated ? C->New(2, Nil, false, Nil, Nil, Nil, any, Nil) : any;
+		}
+		else if(kind < 10) {
+			@sql += negated ? " is not null" : " is null";
+			return C->New(4, Nil, negated, left, Nil, Nil, Nil, Nil);
+		};
+
+		patterns := ["a%", "%t", "_o_", "%", "a_b", "%e%", "1%", "-%"];
+		pattern := patterns[Next(patterns->Size())];
+		@sql += negated ? " not like '{$pattern}'" : " like '{$pattern}'";
+		return C->New(5, Nil, negated, left, Nil, pattern, Nil, Nil);
+	}
+
+	#
+	# The reference evaluator
+	#
+
+	function : Eval(e : E, row : Row) ~ V {
+		select(e->GetKind()) {
+			label 0: {
+				return V->FromCell(row->Get(e->GetName()), KindOfColumn(e->GetName()));
+			}
+
+			label 1: {
+				return V->FromValue(e->GetValue());
+			}
+
+			label 3: {
+				x := Eval(e->GetLeft(), row);
+				if(x->GetKind() = 1) {
+					if(x->GetInt() = -9223372036854775807 - 1) {
+						return V->Empty();
+					};
+					return V->OfInt(0 - x->GetInt());
+				}
+				else if(x->GetKind() = 2) {
+					return V->OfFloat(0.0 - x->GetFloat());
+				};
+				return V->Empty();
+			}
+		};
+
+		x := Eval(e->GetLeft(), row);
+		y := Eval(e->GetRight(), row);
+		if(<>x->IsNumber() | <>y->IsNumber()) {
+			return V->Empty();
+		};
+
+		op := e->GetOp();
+		if(x->GetKind() = 1 & y->GetKind() = 1 & op <> '/') {
+			return IntArith(op, x->GetInt(), y->GetInt());
+		};
+
+		a := x->AsFloat();
+		b := y->AsFloat();
+		if(op = '+') {
+			return V->OfFloat(a + b);
+		}
+		else if(op = '-') {
+			return V->OfFloat(a - b);
+		}
+		else if(op = '*') {
+			return V->OfFloat(a * b);
+		};
+
+		if(b = 0.0) {
+			return V->Empty();
+		};
+
+		if(op = '/') {
+			return V->OfFloat(a / b);
+		};
+
+		# a - trunc(a / b) * b
+		q := a / b;
+		t := q < 0.0 ? (0.0 - q)->Floor() * -1.0 : q->Floor();
+		return V->OfFloat(a - t * b);
+	}
+
+	# Int arithmetic, empty where the exact answer does not fit (checked before computing, unlike
+	# the engine, which checks after)
+	function : IntArith(op : Char, x : Int, y : Int) ~ V {
+		largest := 9223372036854775807;
+		smallest := -9223372036854775807 - 1;
+		if(op = '+') {
+			if((y > 0 & x > largest - y) | (y < 0 & x < smallest - y)) {
+				return V->Empty();
+			};
+			return V->OfInt(x + y);
+		}
+		else if(op = '-') {
+			if((y < 0 & x > largest + y) | (y > 0 & x < smallest + y)) {
+				return V->Empty();
+			};
+			return V->OfInt(x - y);
+		}
+		else if(op = '*') {
+			if(x > 0) {
+				if(y > 0) {
+					if(x > largest / y) {
+						return V->Empty();
+					};
+				}
+				else if(y < smallest / x) {
+					return V->Empty();
+				};
+			}
+			else if(x < 0) {
+				if(y > 0) {
+					if(x < smallest / y) {
+						return V->Empty();
+					};
+				}
+				else if(y < 0 & x < largest / y) {
+					return V->Empty();
+				};
+			};
+			return V->OfInt(x * y);
+		};
+
+		# '%'
+		if(y = 0) {
+			return V->Empty();
+		};
+		if(y = -1) {
+			return V->OfInt(0);
+		};
+		return V->OfInt(x % y);
+	}
+
+	# -1, 0 or 1; 2 when the two cannot be ordered; 3 when either is empty
+	function : Cmp(x : V, y : V) ~ Int {
+		a := x->GetKind();
+		b := y->GetKind();
+		if(a = 0 | b = 0) {
+			return 3;
+		};
+
+		if(a = 1 & b = 1) {
+			return Sign3(x->GetInt(), y->GetInt());
+		};
+
+		if(x->IsNumber() & y->IsNumber()) {
+			p := x->AsFloat();
+			q := y->AsFloat();
+			if(p <> p | q <> q) {
+				return 2;
+			};
+			return p < q ? -1 : (p > q ? 1 : 0);
+		};
+
+		if(a = 3 & b = 3) {
+			c := x->GetText()->Compare(y->GetText());
+			return c < 0 ? -1 : (c > 0 ? 1 : 0);
+		};
+
+		if(a = 4 & b = 4) {
+			return Sign3(x->GetInt(), y->GetInt());
+		};
+
+		# a BOOL column's Bool against a Bool, 0 or 1
+		if(a = 5 | b = 5) {
+			p := BoolOf(x);
+			q := BoolOf(y);
+			if(p < 0 | q < 0) {
+				return 2;
+			};
+			return Sign3(p, q);
+		};
+
+		if(a = 6 & b = 6) {
+			l := x->GetObject();
+			r := y->GetObject();
+			# Bools order false before true
+			if(l->TypeOf(BoolRef) & r->TypeOf(BoolRef)) {
+				return Sign3(l->As(BoolRef)->Get() ? 1 : 0, r->As(BoolRef)->Get() ? 1 : 0);
+			};
+			if(l->GetClassID() = r->GetClassID()) {
+				c := l->Compare(r);
+				return c < 0 ? -1 : (c > 0 ? 1 : 0);
+			};
+		};
+
+		return 2;
+	}
+
+	function : BoolOf(x : V) ~ Int {
+		if(x->GetKind() = 5) {
+			return x->GetInt();
+		}
+		else if(x->GetKind() = 1 & (x->GetInt() = 0 | x->GetInt() = 1)) {
+			return x->GetInt();
+		}
+		else if(x->GetKind() = 6 & x->GetObject()->TypeOf(BoolRef)) {
+			return x->GetObject()->As(BoolRef)->Get() ? 1 : 0;
+		};
+		return -1;
+	}
+
+	function : Sign3(a : Int, b : Int) ~ Int {
+		return a < b ? -1 : (a > b ? 1 : 0);
+	}
+
+	function : Holds(c : C, row : Row) ~ Bool {
+		select(c->GetKind()) {
+			label 0: { return Holds(c->GetA(), row) & Holds(c->GetB(), row); }
+			label 1: { return Holds(c->GetA(), row) | Holds(c->GetB(), row); }
+			label 2: { return <>Holds(c->GetA(), row); }
+			label 4: {
+				empty := Eval(c->GetLeft(), row)->GetKind() = 0;
+				return c->IsNegated() ? <>empty : empty;
+			}
+			label 5: {
+				x := Eval(c->GetLeft(), row);
+				if(x->GetKind() <> 3) {
+					return false;
+				};
+				matched := Like(x->GetText(), 0, c->GetPattern(), 0);
+				return c->IsNegated() ? <>matched : matched;
+			}
+		};
+
+		result := Cmp(Eval(c->GetLeft(), row), Eval(c->GetRight(), row));
+		op := c->GetOp();
+		if(result = 3) {
+			return false;
+		}
+		else if(result = 2) {
+			return op->Equals("<>");
+		};
+
+		if(op->Equals("=")) { return result = 0; };
+		if(op->Equals("<>")) { return result <> 0; };
+		if(op->Equals("<")) { return result < 0; };
+		if(op->Equals("<=")) { return result <= 0; };
+		if(op->Equals(">")) { return result > 0; };
+		return result >= 0;
+	}
+
+	function : Like(s : String, i : Int, p : String, j : Int) ~ Bool {
+		if(j = p->Size()) {
+			return i = s->Size();
+		};
+
+		c := p->Get(j);
+		if(c = '%') {
+			for(k := i; k <= s->Size(); k += 1;) {
+				if(Like(s, k, p, j + 1)) {
+					return true;
+				};
+			};
+			return false;
+		};
+
+		if(i < s->Size() & (c = '_' | c = s->Get(i))) {
+			return Like(s, i + 1, p, j + 1);
+		};
+
+		return false;
+	}
+
+	#
+	# Ordering, as a column of the result orders: numbers as Ints or Floats (NaN after every
+	# number), text as text, dates and Bools as numbers, an OBJECT column's cells by kind then
+	# value; empty values last either way
+	#
+
+	# a computed column's values: Floats when any is a Float, as the column is typed
+	function : Computed(values : V[]) ~ Keys {
+		any_float := false;
+		any := false;
+		each(i : values) {
+			if(values[i]->GetKind() = 2) {
+				any_float := true;
+			};
+			if(values[i]->IsNumber()) {
+				any := true;
+			};
+		};
+
+		typed := V->New[values->Size()];
+		each(i : values) {
+			v := values[i];
+			if(<>v->IsNumber()) {
+				typed[i] := V->Empty();
+			}
+			else if(any_float) {
+				typed[i] := V->OfFloat(v->AsFloat());
+			}
+			else {
+				typed[i] := v;
+			};
+		};
+
+		return Keys->New(typed, any_float ? "float" : (any ? "int" : "none"), Nil);
+	}
+
+	function : OrderOf(keys : Keys, a : Int, b : Int) ~ Int {
+		mode := keys->GetMode();
+		if(mode->Equals("object")) {
+			cells := keys->GetCells();
+			return ObjectOrder(cells[a], cells[b]);
+		};
+
+		values := keys->GetValues();
+		x := values[a];
+		y := values[b];
+		x_empty := x->GetKind() = 0;
+		y_empty := y->GetKind() = 0;
+		if(x_empty | y_empty) {
+			if(x_empty & y_empty) {
+				return 0;
+			};
+			return x_empty ? 1 : -1;
+		};
+
+		if(mode->Equals("float")) {
+			p := x->GetFloat();
+			q := y->GetFloat();
+			if(p <> p | q <> q) {
+				if(p <> p & q <> q) {
+					return 0;
+				};
+				return p <> p ? 1 : -1;
+			};
+			return p < q ? -1 : (p > q ? 1 : 0);
+		}
+		else if(mode->Equals("text")) {
+			c := x->GetText()->Compare(y->GetText());
+			return c < 0 ? -1 : (c > 0 ? 1 : 0);
+		};
+
+		return Sign3(x->GetInt(), y->GetInt());
+	}
+
+	# Cell->Order: numbers, then text, then dates, then the rest; NaN after the numbers
+	function : ObjectOrder(a : Compare, b : Compare) ~ Int {
+		ra := Rank(a);
+		rb := Rank(b);
+		if(ra <> rb) {
+			return ra < rb ? -1 : 1;
+		};
+		if(a = Nil) {
+			return 0;
+		};
+
+		if(ra = 0) {
+			p := V->FromValue(a);
+			q := V->FromValue(b);
+			p_nan := p->GetKind() = 2 & p->GetFloat() <> p->GetFloat();
+			q_nan := q->GetKind() = 2 & q->GetFloat() <> q->GetFloat();
+			if(p_nan | q_nan) {
+				if(p_nan & q_nan) {
+					return 0;
+				};
+				return p_nan ? 1 : -1;
+			};
+			return Cmp(p, q);
+		};
+
+		if(a->TypeOf(BoolRef) & b->TypeOf(BoolRef)) {
+			return Sign3(a->As(BoolRef)->Get() ? 1 : 0, b->As(BoolRef)->Get() ? 1 : 0);
+		};
+
+		if(a->GetClassID() = b->GetClassID()) {
+			c := a->Compare(b);
+			return c < 0 ? -1 : (c > 0 ? 1 : 0);
+		};
+
+		c := a->GetClass()->GetName()->Compare(b->GetClass()->GetName());
+		return c < 0 ? -1 : (c > 0 ? 1 : 0);
+	}
+
+	function : Rank(v : Compare) ~ Int {
+		if(v = Nil) {
+			return 4;
+		}
+		else if(v->TypeOf(IntRef) | v->TypeOf(FloatRef)) {
+			return 0;
+		}
+		else if(v->TypeOf(String)) {
+			return 1;
+		}
+		else if(v->TypeOf(Date)) {
+			return 2;
+		};
+		return 3;
+	}
+
+	# a plain column of the passing rows as keys
+	function : ColumnKeys(name : String, rows : Vector<Row>) ~ Keys {
+		type := KindOfColumn(name);
+		values := V->New[rows->Size()];
+		cells := Compare->New[rows->Size()];
+		each(i : rows) {
+			cells[i] := rows->Get(i)->Get(name);
+			values[i] := V->FromCell(cells[i], type);
+		};
+
+		mode := "int";
+		if(type->Equals("float")) {
+			mode := "float";
+		}
+		else if(type->Equals("text")) {
+			mode := "text";
+		}
+		else if(type->Equals("object")) {
+			mode := "object";
+		};
+
+		return Keys->New(values, mode, cells);
+	}
+
+	# a stable merge sort of positions by the keys, each ascending or descending
+	function : SortPositions(positions : Int[], keys : Vector<Keys>, descending : Vector<BoolRef>) ~ Int[] {
+		size := positions->Size();
+		if(size < 2) {
+			return positions;
+		};
+
+		middle := size / 2;
+		left := Int->New[middle];
+		right := Int->New[size - middle];
+		each(i : middle) {
+			left[i] := positions[i];
+		};
+		each(i : right) {
+			right[i] := positions[middle + i];
+		};
+		left := SortPositions(left, keys, descending);
+		right := SortPositions(right, keys, descending);
+
+		out := Int->New[size];
+		l := 0;
+		r := 0;
+		k := 0;
+		while(k < size) {
+			take_left := l < left->Size();
+			if(take_left & r < right->Size()) {
+				take_left := ComparePositions(left[l], right[r], keys, descending) <= 0;
+			};
+			if(take_left) {
+				out[k] := left[l];
+				l += 1;
+			}
+			else {
+				out[k] := right[r];
+				r += 1;
+			};
+			k += 1;
+		};
+		return out;
+	}
+
+	function : ComparePositions(a : Int, b : Int, keys : Vector<Keys>, descending : Vector<BoolRef>) ~ Int {
+		each(k : keys) {
+			key := keys->Get(k);
+			result := OrderOf(key, a, b);
+			if(result <> 0) {
+				# empty values stay last when descending
+				values := key->GetValues();
+				if(key->GetMode()->Equals("object")) {
+					cells := key->GetCells();
+					if(cells[a] = Nil | cells[b] = Nil) {
+						return result;
+					};
+				}
+				else if(values[a]->GetKind() = 0 | values[b]->GetKind() = 0) {
+					return result;
+				};
+				return descending->Get(k)->Get() ? 0 - result : result;
+			};
+		};
+		return 0;
+	}
+
+	function : Text(value : Compare) ~ String {
+		if(value = Nil) {
+			return "-";
+		}
+		else if(value->TypeOf(IntRef)) {
+			return value->As(IntRef)->Get()->ToString();
+		}
+		else if(value->TypeOf(FloatRef)) {
+			return value->As(FloatRef)->Get()->ToShortString();
+		}
+		else if(value->TypeOf(BoolRef)) {
+			return value->As(BoolRef)->Get() ? "T" : "F";
+		}
+		else if(value->TypeOf(Date)) {
+			d := value->As(Date);
+			return "{$(d->GetYear())}-{$(d->GetMonth())}-{$(d->GetDay())}";
+		};
+		return value->As(String);
+	}
+
+	function : VText(v : V, mode : String) ~ String {
+		select(v->GetKind()) {
+			label 0: { return "-"; }
+			label 1: {
+				if(mode->Equals("float")) {
+					return v->GetInt()->As(Float)->ToShortString();
+				};
+				return v->GetInt()->ToString();
+			}
+			label 2: { return v->GetFloat()->ToShortString(); }
+		};
+		return "?";
+	}
+
+	function : Render(result : Table) ~ String {
+		if(result = Nil) {
+			return Nil;
+		};
+
+		out := "";
+		rows := result->GetAll();
+		names := result->GetColumnNames();
+		each(r : rows) {
+			row := rows->Get(r);
+			for(c := 1; c < names->Size(); c += 1;) {
+				out += Text(row->Get(c));
+				out += "|";
+			};
+			out += ";";
+		};
+		return out;
+	}
+
+	#
+	# One query
+	#
+
+	function : RunQuery(a : Table, b : Table) ~ Nil {
+		@sql := "select ";
+		@params := Vector->New()<Compare>;
+		@in_condition := false;
+
+		# the select list: Nil for '*'; each item a column name or an expression
+		star := Next(4) = 0;
+		distinct := false;
+		item_names := Vector->New()<String>;
+		item_exprs := Vector->New()<E>;
+		aliases := Vector->New()<String>;
+		if(star) {
+			@sql += "*";
+		}
+		else {
+			distinct := a->Size() < 120 & Next(6) = 0;
+			if(distinct) {
+				@sql += "distinct ";
+			};
+			count := (distinct ? 2 : 1) + Next(3);
+			each(k : count) {
+				if(k > 0) {
+					@sql += ", ";
+				};
+				if(Next(2) = 0) {
+					name := @names[Next(@names->Size())];
+					@sql += name;
+					item_names->AddBack(name);
+					item_exprs->AddBack(Nil);
+				}
+				else {
+					expr := Arith(1);
+					# a lone column, even in parentheses, is a plain item
+					if(expr->GetKind() = 0) {
+						item_names->AddBack(expr->GetName());
+						item_exprs->AddBack(Nil);
+					}
+					else {
+						item_names->AddBack(Nil);
+						item_exprs->AddBack(expr);
+					};
+				};
+				alias_name := "c{$k}";
+				@sql += " as " + alias_name;
+				aliases->AddBack(alias_name);
+			};
+		};
+		@sql += " from t";
+
+		cond : C := Nil;
+		if(Next(6) > 0) {
+			@sql += " where ";
+			@in_condition := true;
+			cond := Test(0);
+			@in_condition := false;
+		};
+
+		# ORDER BY: an expression, a column, a position or an alias inside an expression
+		order_exprs := Vector->New()<E>;
+		order_names := Vector->New()<String>;
+		order_positions := Vector->New()<IntRef>;
+		order_desc := Vector->New()<BoolRef>;
+		if(Next(2) = 0) {
+			@sql += " order by ";
+			count := 1 + Next(2);
+			each(k : count) {
+				if(k > 0) {
+					@sql += ", ";
+				};
+				pick := Next(4);
+				if(pick = 0 & <>star) {
+					position := 1 + Next(item_names->Size());
+					@sql += position->ToString();
+					order_positions->AddBack(position);
+					order_names->AddBack(Nil);
+					order_exprs->AddBack(Nil);
+				}
+				else if(pick = 1) {
+					name := @names[Next(@names->Size())];
+					@sql += name;
+					order_positions->AddBack(0);
+					order_names->AddBack(name);
+					order_exprs->AddBack(Nil);
+				}
+				else if(pick = 2 & <>star) {
+					# an alias inside an expression is that item
+					which := Next(aliases->Size());
+					@sql += "{$(aliases->Get(which))} * -1";
+					order_positions->AddBack(-1 - which);
+					order_names->AddBack(Nil);
+					order_exprs->AddBack(Nil);
+				}
+				else {
+					# in parentheses, so a lone whole number is an expression rather than a position;
+					# a lone column, even in parentheses, is a name
+					@sql += "(";
+					expr := Arith(1);
+					@sql += ")";
+					order_positions->AddBack(0);
+					if(expr->GetKind() = 0) {
+						order_names->AddBack(expr->GetName());
+						order_exprs->AddBack(Nil);
+					}
+					else {
+						order_names->AddBack(Nil);
+						order_exprs->AddBack(expr);
+					};
+				};
+				descending := Next(2) = 0;
+				if(descending) {
+					@sql += " desc";
+				};
+				order_desc->AddBack(descending);
+			};
+		};
+
+		limit := -1;
+		offset := 0;
+		if(Next(4) = 0) {
+			limit := Next(12);
+			@sql += " limit {$limit}";
+			if(Next(2) = 0) {
+				offset := Next(4);
+				@sql += " offset {$offset}";
+			};
+		};
+
+		# the engine, on both tables
+		got := Render(Execute(a));
+		got_error := a->GetError();
+		indexed := Render(Execute(b));
+
+		# the reference: the passing rows in slot order
+		rows := Vector->New()<Row>;
+		live := a->LiveRows();
+		each(i : live) {
+			row := a->RowAt(live[i]);
+			if(cond = Nil | Holds(cond, row)) {
+				rows->AddBack(row);
+			};
+		};
+
+		# the shown columns, as keys
+		shown := Vector->New()<Keys>;
+		if(star) {
+			each(c : @names) {
+				shown->AddBack(ColumnKeys(@names[c], rows));
+			};
+		}
+		else {
+			each(k : item_names) {
+				if(item_exprs->Get(k) <> Nil) {
+					values := V->New[rows->Size()];
+					each(i : rows) {
+						values[i] := Eval(item_exprs->Get(k), rows->Get(i));
+					};
+					shown->AddBack(Computed(values));
+				}
+				else {
+					shown->AddBack(ColumnKeys(item_names->Get(k), rows));
+				};
+			};
+		};
+
+		positions := Int->New[rows->Size()];
+		each(i : positions) {
+			positions[i] := i;
+		};
+
+		# DISTINCT keeps the first row of each combination of the shown values
+		if(distinct) {
+			kept := Vector->New()<IntRef>;
+			each(i : positions) {
+				seen := false;
+				each(k : kept) {
+					if(<>seen) {
+						same := true;
+						each(s : shown) {
+							if(OrderOf(shown->Get(s), kept->Get(k)->Get(), i) <> 0) {
+								same := false;
+							};
+						};
+						if(same) {
+							seen := true;
+						};
+					};
+				};
+				if(<>seen) {
+					kept->AddBack(i);
+				};
+			};
+			positions := Int->New[kept->Size()];
+			each(k : kept) {
+				positions[k] := kept->Get(k)->Get();
+			};
+		};
+
+		if(order_desc->Size() > 0) {
+			keys := Vector->New()<Keys>;
+			each(k : order_desc) {
+				position := order_positions->Get(k)->Get();
+				if(order_exprs->Get(k) <> Nil) {
+					values := V->New[rows->Size()];
+					each(i : rows) {
+						values[i] := Eval(order_exprs->Get(k), rows->Get(i));
+					};
+					keys->AddBack(Computed(values));
+				}
+				else if(position > 0) {
+					keys->AddBack(shown->Get(position - 1));
+				}
+				else if(position < 0) {
+					# alias * -1: the item's typed values negated
+					item := shown->Get(-1 - position);
+					values := V->New[rows->Size()];
+					each(i : rows) {
+						values[i] := Negated(item, i);
+					};
+					keys->AddBack(Computed(values));
+				}
+				else {
+					keys->AddBack(ColumnKeys(order_names->Get(k), rows));
+				};
+			};
+			positions := SortPositions(positions, keys, order_desc);
+		};
+
+		# LIMIT and OFFSET
+		start := offset < positions->Size() ? offset : positions->Size();
+		count := positions->Size() - start;
+		if(limit > -1 & limit < count) {
+			count := limit;
+		};
+
+		want := "";
+		for(p := start; p < start + count; p += 1;) {
+			i := positions[p];
+			each(s : shown) {
+				key := shown->Get(s);
+				if(key->GetMode()->Equals("object") | key->GetCells() <> Nil) {
+					want += Text(key->GetCells()[i]);
+				}
+				else {
+					want += VText(key->GetValues()[i], key->GetMode());
+				};
+				want += "|";
+			};
+			want += ";";
+		};
+
+		@queries += 1;
+		if(got = Nil) {
+			Fail("{$@sql}\n    engine error: {$got_error}");
+			return;
+		};
+
+		if(<>got->Equals(want)) {
+			Fail("{$@sql}\n    engine:    {$(Window(got, want))}\n    reference: {$(Window(want, got))}");
+		}
+		else if(indexed = Nil | <>indexed->Equals(got)) {
+			Fail("{$@sql}\n    with indexes: {$indexed} ({$(b->GetError())})\n    without:      {$got}");
+		};
+	}
+
+	# the part of a result around where it first differs from another, rows cut at ';'
+	function : Window(text : String, compared : String) ~ String {
+		if(text->Size() < 400) {
+			return text;
+		};
+
+		pos := 0;
+		while(pos < text->Size() & pos < compared->Size() & text->Get(pos) = compared->Get(pos)) {
+			pos += 1;
+		};
+
+		start := pos - 150;
+		if(start < 0) {
+			start := 0;
+		};
+		finish := pos + 150;
+		if(finish > text->Size()) {
+			finish := text->Size();
+		};
+		return "...[{$pos}] " + text->SubString(start, finish - start) + "...";
+	}
+
+	# an item's value times -1, as ORDER BY 'alias * -1' computes it
+	function : Negated(item : Keys, i : Int) ~ V {
+		if(item->GetCells() <> Nil) {
+			x := V->FromCell(item->GetCells()[i], "object");
+			if(x->IsNumber()) {
+				return IntArithOrFloat(x);
+			};
+			return V->Empty();
+		};
+
+		x := item->GetValues()[i];
+		if(x->IsNumber()) {
+			return IntArithOrFloat(x);
+		};
+		return V->Empty();
+	}
+
+	function : IntArithOrFloat(x : V) ~ V {
+		if(x->GetKind() = 1) {
+			return IntArith('*', x->GetInt(), -1);
+		};
+		return V->OfFloat(x->GetFloat() * -1.0);
+	}
+
+	# the statement run as text, or prepared with its placeholders bound
+	function : Execute(t : Table) ~ Table {
+		if(@params->Size() = 0) {
+			return t->Query(@sql);
+		};
+
+		statement := t->Prepare(@sql);
+		if(statement = Nil) {
+			return Nil;
+		};
+		each(i : @params) {
+			statement->Bind(i + 1, @params->Get(i));
+		};
+		result := statement->Execute();
+		if(result = Nil) {
+			"    prepared: {$(statement->GetError())}"->PrintLine();
+		};
+		return result;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		@queries := 0;
+		@names := ["i", "j", "f", "s", "w", "d", "b", "o"];
+		@types := ["int", "int", "float", "text", "text", "date", "bool", "object"];
+		@words := ["ant", "bee", "cat", "cow", "dog", "a_b", "Cat", "", "10", "-3"];
+
+		seeds := Vector->New()<IntRef>;
+		rounds := 1;
+		i := 0;
+		while(i < args->Size()) {
+			if(args[i]->Equals("--rounds") & i + 1 < args->Size()) {
+				rounds := args[i + 1]->ToInt();
+				i += 1;
+			}
+			else {
+				seeds->AddBack(args[i]->ToInt());
+			};
+			i += 1;
+		};
+		if(seeds->Size() = 0) {
+			defaults := [11, 29, 404, 7001, 123457, 99];
+			each(k : defaults) {
+				seeds->AddBack(defaults[k]);
+			};
+		};
+
+		# table sizes on both sides of a 1,024-row batch; a seventh seed and every seventh after it
+		# (soaks only: the suite's run stays within its time cap) spans two 64K-row groups and
+		# turns its text column's dictionary into plain strings (query_expr_zone_maps covers both in
+		# the suite)
+		sizes := [40, 1023, 1025, 90, 2049, 1024, 65600];
+		each(k : seeds) {
+			@seed := seeds->Get(k)->Get();
+			size := sizes[k % sizes->Size()];
+			# a column of thousands of texts, so its dictionary turns into plain strings
+			wide := size > 10000;
+			kinds := [ColumnType->INT, ColumnType->INT, ColumnType->FLOAT, ColumnType->STRING, ColumnType->STRING, ColumnType->DATE, ColumnType->BOOL, ColumnType->OBJECT];
+			a := Table->New("t", @names, kinds);
+			b := Table->New("t", @names, kinds);
+			Fill(a, b, size, wide);
+			Reindex(b);
+
+			per_seed := size > 10000 ? 12 : (size > 1000 ? 60 : 150);
+			each(round : rounds) {
+				each(q : per_seed) {
+					RunQuery(a, b);
+					if(q % 40 = 39) {
+						Reindex(b);
+					};
+				};
+			};
+		};
+
+		if(@failures > 0) {
+			"FAIL: query_expr_differential, {$@failures} of {$@queries} queries differ"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: query_expr_differential ({$@queries} queries over {$(seeds->Size())} seeds)"->PrintLine();
+	}
+}
