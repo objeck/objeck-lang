@@ -596,7 +596,22 @@ void JitArm64::ProcessInstructions() {
       float_consts[floats_index] = instr->GetFloatOperand();
       working_stack.push_front(new RegInstr(&float_consts[floats_index++]));
       break;
-      
+
+      // Float->NaN(), Float->Inf(), Float->NegInf(): float literals by
+      // another name, through the same constant pool and so the same
+      // IMM_FLOAT loads as LOAD_FLOAT_LIT -- nothing is emitted here. The
+      // slot holds exactly the value the interpreter pushes (dispatch.cpp).
+    case NAN_FLOAT:
+    case INF_FLOAT:
+    case NEG_INF_FLOAT:
+      if(floats_index >= MAX_DBLS) {
+        compile_success = false;
+        break;
+      }
+      float_consts[floats_index] = JitFloatLimit(instr->GetType());
+      working_stack.push_front(new RegInstr(&float_consts[floats_index++]));
+      break;
+
       // load self
     case LOAD_INST_MEM: {
 #ifdef _DEBUG_JIT_JIT
@@ -6067,6 +6082,9 @@ static bool CanJitInstruction(InstructionType type) {
   case LOAD_CHAR_LIT:
   case LOAD_INT_LIT:
   case LOAD_FLOAT_LIT:
+  case NAN_FLOAT:
+  case INF_FLOAT:
+  case NEG_INF_FLOAT:
   case LOAD_INST_MEM:
   case LOAD_CLS_MEM:
   case LOAD_LOCL_INT_VAR:
