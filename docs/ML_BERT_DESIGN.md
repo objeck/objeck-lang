@@ -220,7 +220,11 @@ or `-lib @vision`, whose group now includes it.
   open with its name, rather than left unfilled.
 - With no session options the build's own provider runs the model (DirectML on Windows,
   CoreML on macOS, CPU on Linux); `"ep" -> "cpu"` in the options map forces the CPU. The test
-  checks both give identical rows.
+  checks both give identical rows. When that default provider cannot open the model — the
+  Windows CI runner has no display adapter, so DirectML refuses every session there, as it
+  would on a laptop without a DirectX 12 GPU — and no options were given, the embedder opens
+  it on the CPU instead and `IsCpuFallback()` says so. Options that name a provider are
+  honoured exactly.
 - **Found on the way: `-lib @vision` had been broken since `onnx.obl` began linking
   `models.obl`.** The group did not list `models.obl`, and the linker resolves every class a
   linked library names, so every compile using the alias failed ("Unable to resolve external
