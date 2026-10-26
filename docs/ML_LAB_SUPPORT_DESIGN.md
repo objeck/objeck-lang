@@ -87,20 +87,30 @@ resolved by keeping every entry.
 
 ## Stage 1: data utilities
 
-### `Split`
+### `Partition`
 
 ```objeck
-split := Split->TrainTest(X, y, 0.3, 42, true);          # stratified by y
-split := Split->TrainTest(X, y, families, 0.3, 42);      # stratified by Float[] codes
-idx   := Split->Indices(strata, 0.3, 42);                # the row indexes alone
+split := Partition->TrainTest(X, y, 0.3, 42, true);          # stratified by y
+split := Partition->TrainTest(X, y, families, 0.3, 42);      # stratified by Float[] codes
+idx   := Partition->Indices(strata, 0.3, 42);                # the row indexes alone
 ```
+
+Named `Partition` rather than `Split`: `System.ML` already has a `Split` class
+(a tree's split point) and the compiler reports an ambiguous name as an error
+when both bundles are in use.
 
 - `function : TrainTest(X : Float[,], y : Bool[], test_fraction : Float, seed : Int, stratify : Bool) ~ DataSplit`
 - `function : TrainTest(X : Float[,], y : Bool[], strata : Float[], test_fraction : Float, seed : Int) ~ DataSplit`
 - `function : Indices(strata : Float[], test_fraction : Float, seed : Int) ~ IndexSplit` -- `strata` of one distinct value is an unstratified split
 - `function : Take(X : Float[,], rows : Int[]) ~ Float[,]`, `Take(y : Bool[], rows : Int[]) ~ Bool[]`, `Take(y : Float[], rows : Int[]) ~ Float[]` -- gather rows, in order
-- `record : readonly : DataSplit { @train_x; @train_y; @test_x; @test_y; @train_rows : Int[]; @test_rows : Int[] }` (generated `GetTrainX()` ... `GetTestRows()`)
-- `record : readonly : IndexSplit { @train : Int[]; @test : Int[] }`
+- `DataSplit`: `GetTrainX()`, `GetTrainY()`, `GetTestX()`, `GetTestY()`, `GetTrainRows()`, `GetTestRows()`, `GetTrainSize()`, `GetTestSize()`
+- `IndexSplit`: `GetTrain()`, `GetTest()`
+
+These result types are record-shaped (immutable, constructor plus getters) but
+written as classes rather than with the `record` keyword: the API-doc and LSP
+index generators index only doc-commented members, and a record's generated
+accessors have none, so a `record` would be invisible to hover, completion and
+the published reference.
 
 Allocation is **per stratum and exact**: a stratum of `n_c` rows contributes
 `Float->Round(n_c * test_fraction)` rows to the test split, clamped to
@@ -124,7 +134,7 @@ to 0.5 and must measure every run on the *same* test set. The API makes that
 the only possible order: split first, then resample the training half.
 
 ```objeck
-split := Split->TrainTest(X, y, 0.3, 42, true);
+split := Partition->TrainTest(X, y, 0.3, 42, true);
 each(r : ratios) {
   train := Resample->ToPositiveRatio(split->GetTrainX(), split->GetTrainY(), ratios[r], 42);
   # train->GetX(), train->GetY(); split->GetTestX() is untouched
@@ -134,7 +144,7 @@ each(r : ratios) {
 - `function : ToPositiveRatio(X : Float[,], y : Bool[], ratio : Float, seed : Int) ~ Sample` -- **down-samples** whichever class is over-represented: if the current positive ratio is above `ratio`, positives are dropped to `Round(ratio * negatives / (1 - ratio))`; otherwise negatives are dropped to `Round(positives * (1 - ratio) / ratio)`. The class that is kept is kept whole. The rows kept are chosen by a seeded shuffle.
 - `function : ToPositiveRatio(X : Float[,], y : Bool[], ratio : Float, seed : Int, oversample : Bool) ~ Sample` -- with `oversample` true the *under*-represented class is duplicated by seeded sampling with replacement until the ratio holds, and nothing is dropped. Duplicates are visible in `GetRows()`.
 - `function : PositiveRatio(y : Bool[]) ~ Float`, `function : CountPositives(y : Bool[]) ~ Int`
-- `record : readonly : Sample { @x : Float[,]; @y : Bool[]; @rows : Int[] }` -- `GetRows()` is the source row of each sample row
+- `Sample`: `GetX()`, `GetY()`, `GetRows()` (the source row of each sample row), `Size()`, `GetPositiveRatio()`
 
 The achieved ratio is exact whenever the arithmetic allows (10 positives and 90
 negatives at 0.5 keeps 10 of each) and otherwise within one row; `PositiveRatio`
@@ -187,7 +197,7 @@ What is missing is the label side when labels do not come through
 - `Labels->ToBinary(values : String[], positive : String) ~ Bool[]`
 - `Labels->ToBinaryExcept(values : String[], negative : String) ~ Bool[]` -- `normal` against every attack name
 - `Labels->Classes(values : String[]) ~ String[]` -- distinct values in first-seen order
-- `Labels->ToIndices(values : String[], classes : String[]) ~ Float[]` -- class index per value, -1.0 for an unknown, ready for `Split->Indices` strata or `StratifiedKFold`
+- `Labels->ToIndices(values : String[], classes : String[]) ~ Float[]` -- class index per value, -1.0 for an unknown, ready for `Partition->Indices` strata or `StratifiedKFold`
 - `Labels->Column(table : CsvTable, name : String) ~ String[]` -- a data column (header skipped) as strings
 
 ## Stage 2: `Experiment` and `ResultTable`

@@ -1,0 +1,1036 @@
+#~~
+# Objeck machine learning library: experiment support for parameter sweeps
+# Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+use Data.CSV;
+use Data.JSON;
+use System.ML;
+
+#~
+Experiment support for a parameter sweep: a deterministic stratified hold-out split, class-ratio resampling of the training half against a fixed test set, a wall-clock stopwatch and label helpers. Compile with -lib ml,ml_lab,csv,json, or with the ai alias group. Design: docs/ML_LAB_SUPPORT_DESIGN.md.
+~#
+bundle System.ML.Lab {
+	#~
+	Raised by every System.ML.Lab function that is handed input it cannot act on,
+	with a message naming the problem. Uncaught, the program ends printing it;
+	catch it with try { } on(e : LabError) { }.
+	~#
+	class LabError from Error {
+		#~
+		Constructor
+		@param message what was refused and why
+		~#
+		New(message : String) {
+			Parent(message);
+		}
+	}
+
+	#~
+	The row indexes of a train/test split, each half in ascending order.
+	~#
+	class IndexSplit {
+		@train : Int[];
+		@test : Int[];
+
+		#~
+		Constructor
+		@param train training row indexes, ascending
+		@param test test row indexes, ascending
+		~#
+		New(train : Int[], test : Int[]) {
+			@train := train;
+			@test := test;
+		}
+
+		#~
+		Training row indexes, ascending.
+		@return row indexes
+		~#
+		method : public : GetTrain() ~ Int[] {
+			return @train;
+		}
+
+		#~
+		Test row indexes, ascending.
+		@return row indexes
+		~#
+		method : public : GetTest() ~ Int[] {
+			return @test;
+		}
+	}
+
+	#~
+	The matrices and labels of a train/test split, plus the source row of every
+	row in each half so predictions can be joined back to the original table.
+	~#
+	class DataSplit {
+		@train_x : Float[,];
+		@train_y : Bool[];
+		@test_x : Float[,];
+		@test_y : Bool[];
+		@train_rows : Int[];
+		@test_rows : Int[];
+
+		#~
+		Constructor
+		@param train_x training rows x features
+		@param train_y one label per training row
+		@param test_x test rows x features
+		@param test_y one label per test row
+		@param train_rows source row of each training row
+		@param test_rows source row of each test row
+		~#
+		New(train_x : Float[,], train_y : Bool[], test_x : Float[,], test_y : Bool[], train_rows : Int[], test_rows : Int[]) {
+			@train_x := train_x;
+			@train_y := train_y;
+			@test_x := test_x;
+			@test_y := test_y;
+			@train_rows := train_rows;
+			@test_rows := test_rows;
+		}
+
+		#~
+		Training features.
+		@return training rows x features
+		~#
+		method : public : GetTrainX() ~ Float[,] {
+			return @train_x;
+		}
+
+		#~
+		Training labels.
+		@return one label per training row
+		~#
+		method : public : GetTrainY() ~ Bool[] {
+			return @train_y;
+		}
+
+		#~
+		Test features.
+		@return test rows x features
+		~#
+		method : public : GetTestX() ~ Float[,] {
+			return @test_x;
+		}
+
+		#~
+		Test labels.
+		@return one label per test row
+		~#
+		method : public : GetTestY() ~ Bool[] {
+			return @test_y;
+		}
+
+		#~
+		Source row of each training row, ascending.
+		@return row indexes into the matrix that was split
+		~#
+		method : public : GetTrainRows() ~ Int[] {
+			return @train_rows;
+		}
+
+		#~
+		Source row of each test row, ascending.
+		@return row indexes into the matrix that was split
+		~#
+		method : public : GetTestRows() ~ Int[] {
+			return @test_rows;
+		}
+
+		#~
+		Rows in the training half.
+		@return training row count
+		~#
+		method : public : GetTrainSize() ~ Int {
+			return @train_y->Size();
+		}
+
+		#~
+		Rows in the test half.
+		@return test row count
+		~#
+		method : public : GetTestSize() ~ Int {
+			return @test_y->Size();
+		}
+	}
+
+	#~
+	A deterministic, stratified train/test hold-out split.
+
+	Allocation is per stratum and exact: a stratum of n rows contributes
+	Float->Round(n * test_fraction) rows to the test half, clamped so that every
+	stratum has at least one row in each half. Within a stratum the rows are
+	shuffled from the seed (Fisher-Yates over a MINSTD generator), so the same
+	inputs and seed select the same rows on every platform. Each half comes back
+	in ascending source-row order.
+
+	Named Partition rather than Split because System.ML already has a Split
+	class (a tree's split point), and a program that uses both bundles would
+	find the name ambiguous.
+
+```
+split := Partition->TrainTest(X, y, 0.3, 42, true);
+model->Fit(split->GetTrainX(), split->GetTrainY());
+preds := model->PredictClass(split->GetTestX());
+```
+	~#
+	class Partition {
+		#~
+		Splits features and binary labels, optionally stratified by the label.
+		@param X rows x features
+		@param y one label per row, true for the positive class
+		@param test_fraction share of each stratum that goes to the test half, in (0, 1)
+		@param seed seeds the shuffle; the same seed reproduces the same split
+		@param stratify true keeps the positive rate equal in both halves
+		@return the split; raises LabError on bad input or a stratum with fewer than 2 rows
+		~#
+		function : TrainTest(X : Float[,], y : Bool[], test_fraction : Float, seed : Int, stratify : Bool) ~ DataSplit {
+			if(y = Nil) {
+				Refuse("y is Nil");
+			};
+
+			strata := Float->New[y->Size()];
+			if(stratify) {
+				each(i : y) {
+					if(y[i]) {
+						strata[i] := 1.0;
+					};
+				};
+			};
+
+			return TrainTest(X, y, strata, test_fraction, seed);
+		}
+
+		#~
+		Splits features and binary labels, stratified by caller-supplied codes.
+
+		The codes can be anything the test half should keep in proportion: the
+		attack family behind a binary label, a device model, a day of capture.
+		One code per row; a stratum is every row sharing a code.
+		@param X rows x features
+		@param y one label per row, true for the positive class
+		@param strata one code per row
+		@param test_fraction share of each stratum that goes to the test half, in (0, 1)
+		@param seed seeds the shuffle
+		@return the split; raises LabError on bad input or a stratum with fewer than 2 rows
+		~#
+		function : TrainTest(X : Float[,], y : Bool[], strata : Float[], test_fraction : Float, seed : Int) ~ DataSplit {
+			if(X = Nil) {
+				Refuse("X is Nil");
+			};
+			if(y = Nil) {
+				Refuse("y is Nil");
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			if(y->Size() <> rows) {
+				ys := y->Size();
+				Refuse("X has {$rows} rows but y has {$ys} labels");
+			};
+
+			idx := Indices(strata, test_fraction, seed);
+			train := idx->GetTrain();
+			test := idx->GetTest();
+
+			return DataSplit->New(Take(X, train), Take(y, train), Take(X, test), Take(y, test), train, test);
+		}
+
+		#~
+		The row indexes of a stratified split, without copying any data.
+
+		Strata holding a single distinct value give an unstratified split of
+		Float->Round(rows * test_fraction) test rows.
+		@param strata one code per row
+		@param test_fraction share of each stratum that goes to the test half, in (0, 1)
+		@param seed seeds the shuffle
+		@return the indexes, each half ascending; raises LabError on bad input or a stratum with fewer than 2 rows
+		~#
+		function : Indices(strata : Float[], test_fraction : Float, seed : Int) ~ IndexSplit {
+			if(strata = Nil) {
+				Refuse("strata is Nil");
+			};
+
+			rows := strata->Size();
+			if(rows < 2) {
+				Refuse("{$rows} row(s); at least 2 are needed to split");
+			};
+
+			if(test_fraction <= 0.0 | test_fraction >= 1.0) {
+				Refuse("test_fraction must be in (0, 1), got {$test_fraction}");
+			};
+
+			# Hoisted: a local declared inside a nested block and read outside it
+			# is a known way to fault in this compiler.
+			found : Int;
+			n : Int;
+			p : Int;
+			k : Int;
+			j : Int;
+			t : Int;
+			code : String;
+			idx : Int[];
+
+			# distinct codes in first-seen order, and each row's code index
+			class_values := Float->New[rows];
+			class_of := Int->New[rows];
+			class_count := 0;
+			each(i : rows) {
+				found := -1;
+				each(c : class_count) {
+					if(class_values[c] = strata[i]) {
+						found := c;
+					};
+				};
+
+				if(found < 0) {
+					class_values[class_count] := strata[i];
+					found := class_count;
+					class_count += 1;
+				};
+
+				class_of[i] := found;
+			};
+
+			in_test := Bool->New[rows];
+			test_total := 0;
+			rnd := Random->New(seed);
+
+			each(c : class_count) {
+				n := 0;
+				each(i : rows) {
+					if(class_of[i] = c) {
+						n += 1;
+					};
+				};
+
+				if(n < 2) {
+					code := FormatCode(class_values[c]);
+					Refuse("stratum {$code} has {$n} row; at least 2 are needed to put one in each half");
+				};
+
+				idx := Int->New[n];
+				p := 0;
+				each(i : rows) {
+					if(class_of[i] = c) {
+						idx[p] := i;
+						p += 1;
+					};
+				};
+
+				# exact share, then at least one row in each half
+				k := Float->Round(n->As(Float) * test_fraction)->As(Int);
+				if(k < 1) {
+					k := 1;
+				};
+				if(k > n - 1) {
+					k := n - 1;
+				};
+
+				# Fisher-Yates, downward, from the seeded generator
+				for(i := n - 1; i > 0; i -= 1;) {
+					j := rnd->NextInt(i + 1);
+					t := idx[i];
+					idx[i] := idx[j];
+					idx[j] := t;
+				};
+
+				each(i : k) {
+					in_test[idx[i]] := true;
+				};
+				test_total += k;
+			};
+
+			train := Int->New[rows - test_total];
+			test := Int->New[test_total];
+			ti := 0;
+			si := 0;
+			each(i : rows) {
+				if(in_test[i]) {
+					test[si] := i;
+					si += 1;
+				}
+				else {
+					train[ti] := i;
+					ti += 1;
+				};
+			};
+
+			return IndexSplit->New(train, test);
+		}
+
+		#~
+		Gathers rows of a matrix, in the order given.
+		@param X rows x features
+		@param rows row indexes to take
+		@return a new matrix of rows->Size() rows; raises LabError on a bad index
+		~#
+		function : Take(X : Float[,], rows : Int[]) ~ Float[,] {
+			if(X = Nil | rows = Nil) {
+				Refuse("Take: X or rows is Nil");
+			};
+
+			dims := X->Size();
+			count := dims[0];
+			cols := dims[1];
+			result := Float->New[rows->Size(), cols];
+			r : Int;
+			each(i : rows) {
+				r := rows[i];
+				if(r < 0 | r >= count) {
+					Refuse("Take: row {$r} is outside 0..{$count}");
+				};
+				each(c : cols) {
+					result[i, c] := X[r, c];
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Gathers labels, in the order given.
+		@param y one label per row
+		@param rows row indexes to take
+		@return a new array of rows->Size() labels; raises LabError on a bad index
+		~#
+		function : Take(y : Bool[], rows : Int[]) ~ Bool[] {
+			if(y = Nil | rows = Nil) {
+				Refuse("Take: y or rows is Nil");
+			};
+
+			count := y->Size();
+			result := Bool->New[rows->Size()];
+			r : Int;
+			each(i : rows) {
+				r := rows[i];
+				if(r < 0 | r >= count) {
+					Refuse("Take: row {$r} is outside 0..{$count}");
+				};
+				result[i] := y[r];
+			};
+
+			return result;
+		}
+
+		#~
+		Gathers values, in the order given.
+		@param y one value per row
+		@param rows row indexes to take
+		@return a new array of rows->Size() values; raises LabError on a bad index
+		~#
+		function : Take(y : Float[], rows : Int[]) ~ Float[] {
+			if(y = Nil | rows = Nil) {
+				Refuse("Take: y or rows is Nil");
+			};
+
+			count := y->Size();
+			result := Float->New[rows->Size()];
+			r : Int;
+			each(i : rows) {
+				r := rows[i];
+				if(r < 0 | r >= count) {
+					Refuse("Take: row {$r} is outside 0..{$count}");
+				};
+				result[i] := y[r];
+			};
+
+			return result;
+		}
+
+		# a stratum code as a reader would write it: 2 rather than 2.000000
+		function : FormatCode(code : Float) ~ String {
+			if(code = Float->Floor(code) & Float->Abs(code) < 1.0e15) {
+				return code->As(Int)->ToString();
+			};
+
+			return code->ToString();
+		}
+
+		function : Refuse(message : String) ~ Nil {
+			Runtime->Raise(LabError->New("Partition: " + message));
+		}
+	}
+
+	#~
+	A resampled training set: features, labels and the source row of every row,
+	so duplicates from oversampling are visible.
+	~#
+	class Sample {
+		@x : Float[,];
+		@y : Bool[];
+		@rows : Int[];
+
+		#~
+		Constructor
+		@param x rows x features
+		@param y one label per row
+		@param rows source row of each row
+		~#
+		New(x : Float[,], y : Bool[], rows : Int[]) {
+			@x := x;
+			@y := y;
+			@rows := rows;
+		}
+
+		#~
+		Features.
+		@return rows x features
+		~#
+		method : public : GetX() ~ Float[,] {
+			return @x;
+		}
+
+		#~
+		Labels.
+		@return one label per row
+		~#
+		method : public : GetY() ~ Bool[] {
+			return @y;
+		}
+
+		#~
+		Source row of each row of the sample. A row drawn twice by oversampling
+		appears twice.
+		@return row indexes into the matrix that was resampled
+		~#
+		method : public : GetRows() ~ Int[] {
+			return @rows;
+		}
+
+		#~
+		Rows in the sample.
+		@return row count
+		~#
+		method : public : Size() ~ Int {
+			return @y->Size();
+		}
+
+		#~
+		Share of positive rows actually achieved; report this, not the request.
+		@return positives over rows
+		~#
+		method : public : GetPositiveRatio() ~ Float {
+			return Resample->PositiveRatio(@y);
+		}
+	}
+
+	#~
+	Changes the class balance of a TRAINING set to a requested positive ratio.
+
+	The class-imbalance experiment trains at ratios from 0.001 to 0.5 and must
+	measure every run on the same test set. These functions take only the
+	training half, so the order is fixed by construction: Partition->TrainTest
+	first, then resample what it returned as training data; the test half is
+	never touched.
+
+```
+split := Partition->TrainTest(X, y, 0.3, 42, true);
+each(r : ratios) {
+  train := Resample->ToPositiveRatio(split->GetTrainX(), split->GetTrainY(), ratios[r], 42);
+  model->Fit(train->GetX(), train->GetY());
+  preds := model->PredictClass(split->GetTestX());   # the same test set every time
+};
+```
+	~#
+	class Resample {
+		#~
+		Down-samples the over-represented class until positives / rows is the
+		requested ratio; the other class is kept whole.
+
+		If the current ratio is above the request, positives are cut to
+		Round(ratio * negatives / (1 - ratio)); otherwise negatives are cut to
+		Round(positives * (1 - ratio) / ratio). The rows kept are chosen by a seeded
+		shuffle and returned in ascending source order. The achieved ratio is exact
+		when the arithmetic allows and otherwise within one row; Sample->GetPositiveRatio
+		reports it.
+		@param X training rows x features
+		@param y one training label per row
+		@param ratio requested positives / rows, in (0, 1)
+		@param seed seeds the choice of rows
+		@return the resampled training set; raises LabError when a class is empty, the ratio is out of range, or the request would keep zero rows of a class
+		~#
+		function : ToPositiveRatio(X : Float[,], y : Bool[], ratio : Float, seed : Int) ~ Sample {
+			return ToPositiveRatio(X, y, ratio, seed, false);
+		}
+
+		#~
+		Reaches the requested ratio by down-sampling (oversample false, as above)
+		or by duplicating the under-represented class (oversample true): rows of
+		that class are drawn with replacement from a seeded generator and appended
+		after the original rows, and nothing is dropped.
+		@param X training rows x features
+		@param y one training label per row
+		@param ratio requested positives / rows, in (0, 1)
+		@param seed seeds the choice of rows
+		@param oversample true duplicates the minority instead of dropping the majority
+		@return the resampled training set; raises LabError on bad input
+		~#
+		function : ToPositiveRatio(X : Float[,], y : Bool[], ratio : Float, seed : Int, oversample : Bool) ~ Sample {
+			if(X = Nil) {
+				Refuse("X is Nil");
+			};
+			if(y = Nil) {
+				Refuse("y is Nil");
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			if(y->Size() <> rows) {
+				ys := y->Size();
+				Refuse("X has {$rows} rows but y has {$ys} labels");
+			};
+
+			if(ratio <= 0.0 | ratio >= 1.0) {
+				Refuse("ratio must be in (0, 1), got {$ratio}");
+			};
+
+			pos := CountPositives(y);
+			neg := rows - pos;
+			if(pos = 0) {
+				Refuse("no positive rows to resample");
+			};
+			if(neg = 0) {
+				Refuse("no negative rows to resample");
+			};
+
+			pos_rows := Int->New[pos];
+			neg_rows := Int->New[neg];
+			pi := 0;
+			ni := 0;
+			each(i : rows) {
+				if(y[i]) {
+					pos_rows[pi] := i;
+					pi += 1;
+				}
+				else {
+					neg_rows[ni] := i;
+					ni += 1;
+				};
+			};
+
+			current := pos->As(Float) / rows->As(Float);
+			rnd := Random->New(seed);
+			keep : Int[];
+
+			if(oversample) {
+				if(current < ratio) {
+					target := Float->Round(ratio * neg->As(Float) / (1.0 - ratio))->As(Int);
+					keep := Append(rows, Draw(pos_rows, target - pos, rnd));
+				}
+				else {
+					target := Float->Round(pos->As(Float) * (1.0 - ratio) / ratio)->As(Int);
+					keep := Append(rows, Draw(neg_rows, target - neg, rnd));
+				};
+			}
+			else {
+				if(current > ratio) {
+					target := Float->Round(ratio * neg->As(Float) / (1.0 - ratio))->As(Int);
+					if(target < 1) {
+						Refuse("ratio {$ratio} would keep 0 of {$pos} positives against {$neg} negatives; pass oversample true or ask for a larger ratio");
+					};
+					keep := Merge(Choose(pos_rows, target, rnd), neg_rows);
+				}
+				else {
+					target := Float->Round(pos->As(Float) * (1.0 - ratio) / ratio)->As(Int);
+					if(target < 1) {
+						Refuse("ratio {$ratio} would keep 0 of {$neg} negatives against {$pos} positives; pass oversample true or ask for a smaller ratio");
+					};
+					keep := Merge(pos_rows, Choose(neg_rows, target, rnd));
+				};
+			};
+
+			return Sample->New(Partition->Take(X, keep), Partition->Take(y, keep), keep);
+		}
+
+		#~
+		Share of positive labels.
+		@param y labels
+		@return positives over rows, 0.0 for an empty or Nil array
+		~#
+		function : PositiveRatio(y : Bool[]) ~ Float {
+			if(y = Nil | y->Size() = 0) {
+				return 0.0;
+			};
+
+			return CountPositives(y)->As(Float) / y->Size()->As(Float);
+		}
+
+		#~
+		Number of positive labels.
+		@param y labels
+		@return count of true values, 0 for Nil
+		~#
+		function : CountPositives(y : Bool[]) ~ Int {
+			if(y = Nil) {
+				return 0;
+			};
+
+			count := 0;
+			each(i : y) {
+				if(y[i]) {
+					count += 1;
+				};
+			};
+
+			return count;
+		}
+
+		# the first `count` of a seeded shuffle of `rows`, in ascending order
+		function : Choose(rows : Int[], count : Int, rnd : Random) ~ Int[] {
+			n := rows->Size();
+			idx := Int->New[n];
+			each(i : n) {
+				idx[i] := rows[i];
+			};
+
+			j : Int;
+			t : Int;
+			for(i := n - 1; i > 0; i -= 1;) {
+				j := rnd->NextInt(i + 1);
+				t := idx[i];
+				idx[i] := idx[j];
+				idx[j] := t;
+			};
+
+			chosen := Int->New[count];
+			each(i : count) {
+				chosen[i] := idx[i];
+			};
+
+			return SortAscending(chosen);
+		}
+
+		# `count` draws with replacement, in draw order
+		function : Draw(rows : Int[], count : Int, rnd : Random) ~ Int[] {
+			n := rows->Size();
+			if(count < 0) {
+				count := 0;
+			};
+
+			drawn := Int->New[count];
+			each(i : count) {
+				drawn[i] := rows[rnd->NextInt(n)];
+			};
+
+			return drawn;
+		}
+
+		# 0..rows-1 followed by the extra draws
+		function : Append(rows : Int, extra : Int[]) ~ Int[] {
+			out := Int->New[rows + extra->Size()];
+			each(i : rows) {
+				out[i] := i;
+			};
+			each(i : extra) {
+				out[rows + i] := extra[i];
+			};
+
+			return out;
+		}
+
+		# two ascending lists merged into one ascending list
+		function : Merge(a : Int[], b : Int[]) ~ Int[] {
+			out := Int->New[a->Size() + b->Size()];
+			i := 0;
+			j := 0;
+			p := 0;
+			while(i < a->Size() & j < b->Size()) {
+				if(a[i] < b[j]) {
+					out[p] := a[i];
+					i += 1;
+				}
+				else {
+					out[p] := b[j];
+					j += 1;
+				};
+				p += 1;
+			};
+			while(i < a->Size()) {
+				out[p] := a[i];
+				i += 1;
+				p += 1;
+			};
+			while(j < b->Size()) {
+				out[p] := b[j];
+				j += 1;
+				p += 1;
+			};
+
+			return out;
+		}
+
+		# insertion sort: the lists here are the kept rows of one class
+		function : SortAscending(values : Int[]) ~ Int[] {
+			n := values->Size();
+			v : Int;
+			j : Int;
+			for(i := 1; i < n; i += 1;) {
+				v := values[i];
+				j := i - 1;
+				while(j >= 0 & values[j] > v) {
+					values[j + 1] := values[j];
+					j -= 1;
+				};
+				values[j + 1] := v;
+			};
+
+			return values;
+		}
+
+		function : Refuse(message : String) ~ Nil {
+			Runtime->Raise(LabError->New("Resample: " + message));
+		}
+	}
+
+	#~
+	A wall-clock stopwatch with sub-millisecond resolution, for training time.
+
+	Accumulates across Start/Stop pairs until Reset. Built on System.Time.Timer,
+	which measures elapsed (wall-clock) time on every platform.
+
+```
+sw := Stopwatch->New();
+sw->Start();
+model->Fit(train_x, train_y);
+ms := sw->Stop();
+"fit took {$ms} ms"->PrintLine();
+```
+	~#
+	class Stopwatch {
+		@timer : System.Time.Timer;
+		@accumulated_ms : Float;
+		@running : Bool;
+
+		#~
+		Constructor; the stopwatch is stopped at zero.
+		~#
+		New() {
+			@timer := System.Time.Timer->New();
+			@accumulated_ms := 0.0;
+			@running := false;
+		}
+
+		#~
+		Starts timing. Starting a running stopwatch has no effect.
+		~#
+		method : public : Start() ~ Nil {
+			if(<>@running) {
+				@timer->Start();
+				@running := true;
+			};
+		}
+
+		#~
+		Stops timing and adds the interval to the total.
+		@return the total elapsed milliseconds so far
+		~#
+		method : public : Stop() ~ Float {
+			if(@running) {
+				@timer->End();
+				@accumulated_ms += @timer->GetElapsedTime() * 1000.0;
+				@running := false;
+			};
+
+			return @accumulated_ms;
+		}
+
+		#~
+		Stops and clears the total.
+		~#
+		method : public : Reset() ~ Nil {
+			@running := false;
+			@accumulated_ms := 0.0;
+		}
+
+		#~
+		Whether Start has been called without a matching Stop.
+		@return true while timing
+		~#
+		method : public : IsRunning() ~ Bool {
+			return @running;
+		}
+
+		#~
+		Total elapsed milliseconds, including the interval still running.
+		@return milliseconds
+		~#
+		method : public : GetElapsedMs() ~ Float {
+			if(@running) {
+				# Timer->End freezes its interval, so bank it and start a new one
+				@timer->End();
+				@accumulated_ms += @timer->GetElapsedTime() * 1000.0;
+				@timer->Start();
+			};
+
+			return @accumulated_ms;
+		}
+
+		#~
+		Total elapsed seconds, including the interval still running.
+		@return seconds
+		~#
+		method : public : GetElapsedSeconds() ~ Float {
+			return GetElapsedMs() / 1000.0;
+		}
+	}
+
+	#~
+	Label helpers for labels that arrive as strings or need to become strata.
+
+	TableEncoder already maps a CsvTable's label column; these cover a String[]
+	read any other way, and the multi-class codes a split or k-fold can be
+	stratified by.
+
+```
+names := Labels->Column(table, "class");
+y := Labels->ToBinaryExcept(names, "normal");         # attacks are positive
+families := Labels->ToIndices(names, Labels->Classes(names));
+split := Partition->TrainTest(X, y, families, 0.3, 42);
+```
+	~#
+	class Labels {
+		#~
+		True where the value equals the positive label.
+		@param values one label per row
+		@param positive the value that is the positive class
+		@return one Bool per row; raises LabError for Nil input
+		~#
+		function : ToBinary(values : String[], positive : String) ~ Bool[] {
+			if(values = Nil | positive = Nil) {
+				Refuse("ToBinary: values or positive is Nil");
+			};
+
+			out := Bool->New[values->Size()];
+			each(i : values) {
+				out[i] := values[i] <> Nil & values[i]->Equals(positive);
+			};
+
+			return out;
+		}
+
+		#~
+		True everywhere except where the value equals the negative label: the
+		intrusion-detection shape, one benign value against many attack names.
+		@param values one label per row
+		@param negative the value that is the negative class
+		@return one Bool per row; raises LabError for Nil input
+		~#
+		function : ToBinaryExcept(values : String[], negative : String) ~ Bool[] {
+			if(values = Nil | negative = Nil) {
+				Refuse("ToBinaryExcept: values or negative is Nil");
+			};
+
+			out := Bool->New[values->Size()];
+			each(i : values) {
+				out[i] := values[i] = Nil | <>values[i]->Equals(negative);
+			};
+
+			return out;
+		}
+
+		#~
+		Distinct values in first-seen order.
+		@param values labels
+		@return the distinct values; raises LabError for Nil input
+		~#
+		function : Classes(values : String[]) ~ String[] {
+			if(values = Nil) {
+				Refuse("Classes: values is Nil");
+			};
+
+			seen := Vector->New()<String>;
+			each(i : values) {
+				if(values[i] <> Nil & IndexOf(seen, values[i]) < 0) {
+					seen->AddBack(values[i]);
+				};
+			};
+
+			out := String->New[seen->Size()];
+			each(i : seen) {
+				out[i] := seen->Get(i);
+			};
+
+			return out;
+		}
+
+		#~
+		The index of each value in a class list, as strata codes.
+		@param values labels
+		@param classes the classes, e.g. from Classes(values) on the training labels
+		@return one code per value, -1.0 for a value not in classes; raises LabError for Nil input
+		~#
+		function : ToIndices(values : String[], classes : String[]) ~ Float[] {
+			if(values = Nil | classes = Nil) {
+				Refuse("ToIndices: values or classes is Nil");
+			};
+
+			out := Float->New[values->Size()];
+			each(i : values) {
+				out[i] := -1.0;
+				if(values[i] <> Nil) {
+					each(c : classes) {
+						if(classes[c] <> Nil & classes[c]->Equals(values[i])) {
+							out[i] := c->As(Float);
+						};
+					};
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		One column of a parsed table's DATA rows, as strings; the header row is
+		skipped. A missing cell is Nil.
+		@param table a parsed CsvTable whose row 0 is the header
+		@param name the column's header
+		@return one value per data row; raises LabError when the table is unparsed or the column is missing
+		~#
+		function : Column(table : CsvTable, name : String) ~ String[] {
+			if(table = Nil | <>table->IsParsed()) {
+				Refuse("Column: the table is Nil or did not parse");
+			};
+			if(name = Nil) {
+				Refuse("Column: name is Nil");
+			};
+
+			col := table->GetRowId(name);
+			if(col < 0) {
+				Refuse("Column: no column named '{$name}'");
+			};
+
+			rows := table->Size();
+			if(rows < 1) {
+				return String->New[0];
+			};
+
+			out := String->New[rows - 1];
+			row : CsvRow;
+			for(r := 1; r < rows; r += 1;) {
+				row := table->Get(r);
+				if(row <> Nil) {
+					out[r - 1] := row->Get(col);
+				};
+			};
+
+			return out;
+		}
+
+		function : IndexOf(list : Vector<String>, value : String) ~ Int {
+			each(i : list) {
+				if(list->Get(i)->Equals(value)) {
+					return i;
+				};
+			};
+
+			return -1;
+		}
+
+		function : Refuse(message : String) ~ Nil {
+			Runtime->Raise(LabError->New("Labels: " + message));
+		}
+	}
+}

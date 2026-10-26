@@ -37,7 +37,7 @@ cp "$DEPLOY_DIR/bin/obr" "$SANDBOX_DEPLOY/bin/"
 # has no network and the validator refuses Web.HTTP.
 #
 # Nothing else is copied: no SDL, ODBC, OpenCV, ONNX or hosted-AI libraries.
-ALLOWED_LIBS="lang gen_collect json xml regex cipher csv query query_ml ml nlp ai math misc diags concurrent net"
+ALLOWED_LIBS="lang gen_collect json xml regex cipher csv query query_ml ml ml_lab nlp ai math misc diags concurrent net"
 
 # Native modules those libraries load at run time (DllProxy looks in lib/native).
 # cipher -> crypto, ml -> ml, diags -> diags. Without them a program that hashes,

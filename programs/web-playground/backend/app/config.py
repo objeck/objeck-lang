@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     # image (docker/build-sandbox.sh copies it).
     allowed_libs: set[str] = {
         "gen_collect", "json", "xml", "regex", "cipher", "csv",
-        "query", "query_ml", "ml", "nlp", "ai", "math", "misc", "diags",
+        "query", "query_ml", "ml", "ml_lab", "nlp", "ai", "math", "misc", "diags",
         "concurrent",
     }
 

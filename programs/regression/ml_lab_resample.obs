@@ -1,0 +1,285 @@
+# EXTRA_LIBS: ml,ml_lab,gen_collect,csv,json
+#~
+System.ML.Lab.Resample: a training set at a requested positive ratio, with the
+test set left exactly as it was.
+
+The class-imbalance experiment trains at many ratios and must score every run on
+the same test set. The API only takes the training half, so the test half is
+untouched by construction; this file checks that anyway, by reference and by
+value, because it is the property the whole exercise depends on.
+
+The counts are exact where the arithmetic allows: 10 positives and 90 negatives
+at 0.5 keeps 10 and 10; at 0.1 keeps everything. Feature 0 is the row index, so
+alignment between features, labels and GetRows() is checked directly.
+~#
+use System.ML;
+use System.ML.Lab;
+
+class MlLabResample {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		rows := 100;
+		x := Float->New[rows, 1];
+		y := Bool->New[rows];
+		each(i : rows) {
+			x[i, 0] := i->As(Float);
+			y[i] := i < 10;      # 10 positives, 90 negatives
+		};
+		ok := Report("the source holds 10% positives", Near(Resample->PositiveRatio(y), 0.1)) & ok;
+
+		half := Resample->ToPositiveRatio(x, y, 0.5, 42);
+		ok := Report("down-sampling to 0.5 keeps 20 rows", half->Size() = 20) & ok;
+		ok := Report("exactly 10 positives and 10 negatives remain",
+			Resample->CountPositives(half->GetY()) = 10 & Near(half->GetPositiveRatio(), 0.5)) & ok;
+		ok := Report("every positive is kept", CountBelow(half->GetRows(), 10) = 10) & ok;
+		ok := Report("the kept rows are ascending and aligned with their features",
+			Ascending(half->GetRows()) & Aligned(half)) & ok;
+
+		same := Resample->ToPositiveRatio(x, y, 0.5, 42);
+		ok := Report("the same seed keeps the same negatives", SameRows(half->GetRows(), same->GetRows())) & ok;
+		alt := Resample->ToPositiveRatio(x, y, 0.5, 9);
+		ok := Report("a different seed keeps different negatives", <>SameRows(half->GetRows(), alt->GetRows())) & ok;
+		ok := Report("a different seed still holds the ratio", alt->Size() = 20 & Resample->CountPositives(alt->GetY()) = 10) & ok;
+
+		whole := Resample->ToPositiveRatio(x, y, 0.1, 42);
+		ok := Report("asking for the current ratio keeps every row", whole->Size() = 100 & Aligned(whole)) & ok;
+
+		fifth := Resample->ToPositiveRatio(x, y, 0.2, 42);
+		ok := Report("0.2 keeps 10 positives against 40 negatives",
+			fifth->Size() = 50 & Resample->CountPositives(fifth->GetY()) = 10 & Near(fifth->GetPositiveRatio(), 0.2)) & ok;
+
+		# the alt direction: 90% positive, cut positives down
+		flipped := Bool->New[rows];
+		each(i : rows) {
+			flipped[i] := <>y[i];
+		};
+		cut := Resample->ToPositiveRatio(x, flipped, 0.5, 42);
+		ok := Report("an over-represented positive class is the one cut",
+			cut->Size() = 20 & Resample->CountPositives(cut->GetY()) = 10 & CountBelow(cut->GetRows(), 10) = 10) & ok;
+
+		# oversampling: 10 positives and 30 negatives at 0.4 needs 20 positives
+		x40 := Float->New[40, 1];
+		y40 := Bool->New[40];
+		each(i : 40) {
+			x40[i, 0] := i->As(Float);
+			y40[i] := i < 10;
+		};
+		over := Resample->ToPositiveRatio(x40, y40, 0.4, 42, true);
+		ok := Report("oversampling adds rows rather than dropping them", over->Size() = 50) & ok;
+		ok := Report("oversampling reaches 20 positives", Resample->CountPositives(over->GetY()) = 20 & Near(over->GetPositiveRatio(), 0.4)) & ok;
+		ok := Report("the original 40 rows come first, in order", FirstN(over->GetRows(), 40)) & ok;
+		ok := Report("the 10 extra rows are duplicates of positives", CountBelow(Tail(over->GetRows(), 40), 10) = 10) & ok;
+		ok := Report("duplicated rows carry their own features and labels", Aligned(over)) & ok;
+
+		over_same := Resample->ToPositiveRatio(x40, y40, 0.4, 42, true);
+		ok := Report("oversampling is deterministic per seed", SameRows(over->GetRows(), over_same->GetRows())) & ok;
+
+		# the test set is untouched by a resample of the training set
+		split := Partition->TrainTest(x, y, 0.3, 42, true);
+		test_x := split->GetTestX();
+		test_y := split->GetTestY();
+		before_x := Copy(test_x);
+		before_y := Copy(test_y);
+		each(r : 3) {
+			Resample->ToPositiveRatio(split->GetTrainX(), split->GetTrainY(), 0.5, r);
+			Resample->ToPositiveRatio(split->GetTrainX(), split->GetTrainY(), 0.3, r, true);
+		};
+		ok := Report("the split still hands back the same test objects",
+			split->GetTestX() = test_x & split->GetTestY() = test_y) & ok;
+		ok := Report("the test features and labels are unchanged",
+			SameMatrix(test_x, before_x) & SameLabels(test_y, before_y)) & ok;
+		ok := Report("the training half is unchanged too (resampling copies)",
+			split->GetTrainSize() = 70 & Resample->CountPositives(split->GetTrainY()) = 7) & ok;
+
+		# refusals
+		ok := Report("a ratio of 0 is refused", Refuses(x, y, 0.0, false)) & ok;
+		ok := Report("a ratio of 1 is refused", Refuses(x, y, 1.0, false)) & ok;
+		ok := Report("a negative ratio is refused", Refuses(x, y, -0.1, false)) & ok;
+
+		msg := "";
+		refused := false;
+		try {
+			# 0.001 of 90 negatives would keep Round(0.09) = 0 positives
+			Resample->ToPositiveRatio(x, flipped, 0.001, 1);
+		}
+		on(e : LabError) {
+			refused := true;
+			msg := e->GetMessage();
+		};
+		ok := Report("a down-sample that would empty a class is refused", refused) & ok;
+		ok := Report("the refusal suggests oversampling", msg->Has("oversample")) & ok;
+
+		all_pos := Bool->New[rows];
+		each(i : rows) {
+			all_pos[i] := true;
+		};
+		ok := Report("a set with no negatives is refused", Refuses(x, all_pos, 0.5, false)) & ok;
+		ok := Report("a set with no positives is refused", Refuses(x, Bool->New[rows], 0.5, true)) & ok;
+
+		short_y := Bool->New[rows - 1];
+		ok := Report("mismatched lengths are refused", Refuses(x, short_y, 0.5, false)) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Refuses(x : Float[,], y : Bool[], ratio : Float, oversample : Bool) ~ Bool {
+		refused := false;
+		try {
+			Resample->ToPositiveRatio(x, y, ratio, 1, oversample);
+		}
+		on(e : LabError) {
+			refused := true;
+		};
+
+		return refused;
+	}
+
+	function : Aligned(s : Sample) ~ Bool {
+		m := s->GetX();
+		labels := s->GetY();
+		rows := s->GetRows();
+		dims := m->Size();
+		if(dims[0] <> rows->Size() | labels->Size() <> rows->Size()) {
+			return false;
+		};
+
+		each(r : rows) {
+			if(m[r, 0] <> rows[r]->As(Float)) {
+				return false;
+			};
+			if(labels[r] <> (rows[r] < 10)) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Ascending(rows : Int[]) ~ Bool {
+		for(i := 1; i < rows->Size(); i += 1;) {
+			if(rows[i] <= rows[i - 1]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : FirstN(rows : Int[], n : Int) ~ Bool {
+		if(rows->Size() < n) {
+			return false;
+		};
+
+		each(i : n) {
+			if(rows[i] <> i) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Tail(rows : Int[], skip : Int) ~ Int[] {
+		out := Int->New[rows->Size() - skip];
+		each(i : out) {
+			out[i] := rows[skip + i];
+		};
+
+		return out;
+	}
+
+	function : SameRows(a : Int[], b : Int[]) ~ Bool {
+		if(a->Size() <> b->Size()) {
+			return false;
+		};
+
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Copy(m : Float[,]) ~ Float[,] {
+		dims := m->Size();
+		out := Float->New[dims[0], dims[1]];
+		each(r : dims[0]) {
+			each(c : dims[1]) {
+				out[r, c] := m[r, c];
+			};
+		};
+
+		return out;
+	}
+
+	function : Copy(y : Bool[]) ~ Bool[] {
+		out := Bool->New[y->Size()];
+		each(i : y) {
+			out[i] := y[i];
+		};
+
+		return out;
+	}
+
+	function : SameMatrix(a : Float[,], b : Float[,]) ~ Bool {
+		da := a->Size();
+		db := b->Size();
+		if(da[0] <> db[0] | da[1] <> db[1]) {
+			return false;
+		};
+
+		each(r : da[0]) {
+			each(c : da[1]) {
+				if(a[r, c] <> b[r, c]) {
+					return false;
+				};
+			};
+		};
+
+		return true;
+	}
+
+	function : SameLabels(a : Bool[], b : Bool[]) ~ Bool {
+		if(a->Size() <> b->Size()) {
+			return false;
+		};
+
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : CountBelow(rows : Int[], limit : Int) ~ Int {
+		count := 0;
+		each(i : rows) {
+			if(rows[i] < limit) {
+				count += 1;
+			};
+		};
+
+		return count;
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.000001;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}
