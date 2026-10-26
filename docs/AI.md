@@ -881,6 +881,34 @@ sim := TextSimilarity->CosineSimilarity(tfidf->Transform("cats are pets"), tfidf
 "Similarity: {$sim}"->PrintLine();
 ```
 
+### BERT tokens and sentence embeddings
+
+`WordPieceTokenizer` is BERT's tokenizer (Hugging Face's `BertTokenizer`, checked id for id on
+a 13,000-line corpus); it reads a model's `vocab.txt` and gives the `input_ids`,
+`attention_mask` and `token_type_ids` a BERT-family ONNX model takes. `ApiSequenceTokenizer`
+builds a vocabulary of API names from malware traces. `BertEmbedder` (library `nlp_onnx`) runs
+an exported BERT through ONNX Runtime and pools its output into one vector per text — CLS,
+mean over the real tokens, or the model's pooler. The encoder is frozen: train a classifier on
+the embeddings. Design and limits: [docs/ML_BERT_DESIGN.md](ML_BERT_DESIGN.md).
+
+**Compile:** `obc -src your.obs -lib models,opencv,cipher,json,onnx,nlp,nlp_onnx` (or `-lib @vision`)
+
+```ruby
+use System.NLP;
+use System.NLP.Onnx;
+
+tokenizer := WordPieceTokenizer->New("vocab.txt");
+tokenizer->Tokenize("unaffable")->Size()->PrintLine();   # 3: un ##aff ##able
+encoding := tokenizer->Encode("He's unaffable.", 16);    # [CLS] ... [SEP] [PAD]...
+
+embedder := BertEmbedder->New("model.onnx", "vocab.txt", 128);
+if(embedder->IsOpen()) {
+    embedder->SetPooling(BertEmbedder->Pooling->MEAN);
+    X := embedder->Embed(["CreateFileW ReadFile CloseHandle", "RegOpenKeyExA RegSetValueExA"]);
+    embedder->Close();
+};
+```
+
 ---
 
 ## Machine Learning (System.ML)
@@ -1141,7 +1169,7 @@ obc -src program.obs -lib @ai -dest program.obe
 | `@data` | `xml`, `regex`, `csv`, `query`, `rss`, `misc`, `net`, `json`, `cipher` | parsing and querying structured data |
 | `@ml` | `gemini`, `openai`, `ollama`, `net_server`, `misc`, `net`, `json`, `cipher` | LLM clients: OpenAI, Gemini, Ollama |
 | `@ai` | `ai`, `ml`, `nlp`, `csv` | local System.ML / System.AI / System.NLP work |
-| `@vision` | `opencv`, `onnx`, `json`, `cipher` | OpenCV and ONNX inference |
+| `@vision` | `opencv`, `onnx`, `nlp_onnx`, `models`, `nlp`, `json`, `cipher` | OpenCV and ONNX inference, BERT text embeddings |
 | `@game` | `sdl2`, `sdl_game`, `sdl_gl`, `json`, `gen_collect` | SDL games, 2D and OpenGL |
 
 Aliases and explicit names mix in any order, for either `--target` (`-lib @ai,json` and `-lib json,@ai` are the same). Groups are user-editable: add a section to `configobjk.ini` and reference it as `@yourname`.
@@ -1190,6 +1218,8 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 | Either, behind one interface | `Engine`, `OnnxEngine`, `HttpEngine` | `models` + one backend | None |
 | Computer vision | `Image`, `VideoCapture` | `opencv` | None |
 | Sentiment / TF-IDF | `SentimentAnalyzer`, `TF_IDF` | `nlp` | None |
+| BERT tokenization | `WordPieceTokenizer`, `ApiSequenceTokenizer` | `nlp` | None |
+| Sentence embeddings (BERT) | `BertEmbedder` | `nlp_onnx` + `models`, `onnx`, `nlp` | None |
 | Linear / regularized regression | `LinearRegression`, `RidgeRegression`, `LassoRegression`, `ElasticNet` | `ml` | None |
 | Linear classifiers | `LogisticRegression`, `SVM`, `Perceptron` | `ml` | None |
 | Probabilistic classifiers | `GaussianNaiveBayes`, `NaiveBayes` | `ml` | None |

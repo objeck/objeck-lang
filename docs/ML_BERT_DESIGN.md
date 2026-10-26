@@ -168,7 +168,7 @@ if(<>embedder->IsOpen()) {
   EndPoint->GetLastError()->PrintLine();
   return;
 };
-embedder->SetPooling(BertPooling->MEAN);   # or CLS, or POOLER when the model has one
+embedder->SetPooling(BertEmbedder->Pooling->MEAN);   # or CLS, or POOLER when the model has one
 embedder->SetBatchSize(16);
 X := embedder->Embed(texts);               # Float[texts->Size(), hidden]
 embedder->Close();
@@ -209,6 +209,42 @@ library is the precedent `query_vision.obl` set for the same reason. A program u
 ```
 obc -src lab.obs -lib models,opencv,cipher,json,onnx,nlp,nlp_onnx
 ```
+
+or `-lib @vision`, whose group now includes it.
+
+**As built (stage 2).**
+
+- `Pooling` is an enum nested in the class, as `Client->Protocol` is in `API.Inference`:
+  `BertEmbedder->Pooling->MEAN`. `Load(model, vocab, max_len)` is the function form of the
+  three-argument constructor. An input the model declares other than the three is refused at
+  open with its name, rather than left unfilled.
+- With no session options the build's own provider runs the model (DirectML on Windows,
+  CoreML on macOS, CPU on Linux); `"ep" -> "cpu"` in the options map forces the CPU. The test
+  checks both give identical rows.
+- **Found on the way: `-lib @vision` had been broken since `onnx.obl` began linking
+  `models.obl`.** The group did not list `models.obl`, and the linker resolves every class a
+  linked library names, so every compile using the alias failed ("Unable to resolve external
+  library class: 'API.Models.TensorSpec'"), whatever the program used. The group now lists
+  `models`, and `nlp_onnx` with `nlp`; `lib_alias_vision.obs` compiles against the alias on
+  every platform so a group that is not closed fails the suite.
+- **Measured** (Windows build box, `obr`, the build's default provider), embedding 512 API
+  traces of 200 calls with MEAN pooling. A real BERT's encoder compute is not in these
+  numbers: the model is the tiny one's graph widened to hidden 768 (an embedding lookup), so
+  they are the cost of everything around the encoder — encoding, building the tensors, the
+  native crossing both ways, splitting the result and pooling:
+
+  | max_len | batch | per text | peak working set |
+  |---|---|---|---|
+  | 128 | 8 | 1.6 ms | 182 MB |
+  | 256 | 1 | 4.9 ms | 120 MB |
+  | 256 | 8 | 5.5 ms | 235 MB |
+  | 256 | 32 | 2.1 ms | 458 MB |
+
+  Encoding the 512 traces with `EncodeBatch` took a further 0.7 s at 128 and 1.1 s at 256.
+  A real BERT's encoder adds its own compute on top, which no model here measures. Peak memory
+  grows with batch × max_len × hidden, as the table shows; the batch-8 row at 256 was slower
+  than both batch 1 and batch 32 in repeated runs, so 32 is the better setting at that length
+  when memory allows.
 
 ### `System.ML` (`ml.obl`): `EmbeddingClassifier`
 

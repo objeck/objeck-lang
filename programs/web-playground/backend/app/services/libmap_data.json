@@ -148,6 +148,12 @@
     "System.NLP": ["ApiSequenceTokenizer", "SentimentAnalyzer", "SentimentResult", "TF_IDF", "TextPreprocessor", "TextSimilarity", "TokenEncoding", "Tokenizer", "WordPieceTokenizer"]
    }
   },
+  "nlp_onnx": {
+   "deps": ["gen_collect", "models", "opencv", "cipher", "json", "onnx", "nlp"],
+   "bundles": {
+    "System.NLP.Onnx": ["BertEmbedder"]
+   }
+  },
   "odbc": {
    "deps": ["gen_collect"],
    "bundles": {

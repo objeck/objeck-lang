@@ -15362,6 +15362,65 @@
 				}
 			}
 		},
+		"System.NLP.Onnx.BertEmbedder": {
+			"description": "Sentence embeddings from a BERT-family ONNX model: Embed(texts) gives one row of hidden-size numbers per text.\n\nThe model is a Hugging Face export (optimum-cli export onnx, or torch.onnx.export) taking input_ids, and usually attention_mask and token_type_ids, as INT64[batch, sequence], and giving last_hidden_state FP32[batch, sequence, hidden] and, for BERT though not for DistilBERT, pooler_output FP32[batch, hidden]. The model's own signature decides what is sent: an input it does not declare is not built, and the one output the pooling needs is the only one asked for.\n\nPooling: CLS takes the hidden state of the first token; MEAN averages the hidden states of the real tokens, padding excluded, as sentence-transformers does; POOLER is the model's pooler_output, when it has one.\n\nEvery text is padded to max_len, not to the longest text in its batch, so a text's embedding does not depend on which texts share its batch.\n\nThe encoder is frozen: this computes embeddings, it does not train the model. A classifier trained on them (System.ML's EmbeddingClassifier) is the frozen-encoder alternative to fine-tuning.",
+			"functions": {
+				"Close": {
+					"descriptions": ["**Releases the model. Safe to call more than once.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"ClsPool": {
+					"descriptions": ["**CLS pooling: for each row, the vector of the first token.**\n\n```function : ClsPool(hidden:Float[], batch:Int, sequence:Int, dim:Int) ~ Float[,]```\n\n\n\nhidden: Float[]\n\nbatch: Int\n\nsequence: Int\n\ndim: Int\n\nreturn: Float[,]"]
+				},
+				"Embed": {
+					"descriptions": ["**Embeds texts with the configured pooling.**\n\n```method : public : Embed(texts:String[]) ~ Float[,]```\n\n\n\ntexts: String[]\n\nreturn: Float[,]", "**Embeds texts with a given pooling.**\n\n```method : public : Embed(texts:String[], pooling:BertEmbedder-&gt;Pooling) ~ Float[,]```\n\n\n\ntexts: String[]\n\npooling: BertEmbedder-&gt;Pooling\n\nreturn: Float[,]"]
+				},
+				"EmbedEncoded": {
+					"descriptions": ["**Embeds texts already encoded, with the configured pooling: for a caller with its own tokenizer or cached encodings. Every encoding must be max_len long.**\n\n```method : public : EmbedEncoded(encodings:TokenEncoding[]) ~ Float[,]```\n\n\n\nencodings: TokenEncoding[]\n\nreturn: Float[,]", "**Embeds texts already encoded, with a given pooling.**\n\n```method : public : EmbedEncoded(encodings:TokenEncoding[], pooling:BertEmbedder-&gt;Pooling) ~ Float[,]```\n\n\n\nencodings: TokenEncoding[]\n\npooling: BertEmbedder-&gt;Pooling\n\nreturn: Float[,]"]
+				},
+				"GetBatchSize": {
+					"descriptions": ["**Texts run through the model at once.**\n\n```method : public : GetBatchSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the embedder did not open, or why the last Embed returned Nil.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetHiddenSize": {
+					"descriptions": ["**The length of each embedding: the model's hidden size. A model whose hidden axis is symbolic reports it after the first Embed.**\n\n```method : public : GetHiddenSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetMaxLength": {
+					"descriptions": ["**The sequence length every text is truncated and padded to.**\n\n```method : public : GetMaxLength() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetPooling": {
+					"descriptions": ["**The pooling Embed uses.**\n\n```method : public : GetPooling() ~ BertEmbedder-&gt;Pooling```\n\n\n\nreturn: BertEmbedder-&gt;Pooling"]
+				},
+				"GetSession": {
+					"descriptions": ["**The ONNX session, for what this class does not cover.**\n\n```method : public : GetSession() ~ Session```\n\n\n\nreturn: Session"]
+				},
+				"GetTokenizer": {
+					"descriptions": ["**The tokenizer, e.g. to inspect what a text becomes.**\n\n```method : public : GetTokenizer() ~ WordPieceTokenizer```\n\n\n\nreturn: WordPieceTokenizer"]
+				},
+				"HasPooler": {
+					"descriptions": ["**Whether the model has a pooler_output, so POOLER pooling is available.**\n\n```method : public : HasPooler() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsOpen": {
+					"descriptions": ["**Whether the model and vocabulary loaded and the model has the inputs and outputs of a BERT-family encoder.**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Load": {
+					"descriptions": ["**Opens a model with the vocabulary of an uncased model.**\n\n```function : Load(model_path:String, vocab_path:String, max_len:Int) ~ BertEmbedder```\n\n\n\nmodel_path: String\n\nvocab_path: String\n\nmax_len: Int\n\nreturn: BertEmbedder"]
+				},
+				"MeanPool": {
+					"descriptions": ["**Mean pooling: for each row, the mean of the token vectors whose mask is 1. A row with no real token pools to zeros.**\n\n```function : MeanPool(hidden:Float[], batch:Int, sequence:Int, dim:Int, mask:Int[]) ~ Float[,]```\n\n\n\nhidden: Float[]\n\nbatch: Int\n\nsequence: Int\n\ndim: Int\n\nmask: Int[]\n\nreturn: Float[,]\n\n```\npooled := BertEmbedder->MeanPool(values, 2, 128, 768, mask);\n```"]
+				},
+				"New": {
+					"descriptions": ["**Opens a model with the vocabulary of an uncased model: lowercase, strip accents.**\n\n```New(model_path:String, vocab_path:String, max_len:Int)```\n\n\n\nmodel_path: String\n\nvocab_path: String\n\nmax_len: Int", "**Opens a model with a tokenizer configured by the caller, and session options.**\n\n```New(model_path:String, tokenizer:WordPieceTokenizer, max_len:Int, config:Map&lt;String,String&gt;)```\n\n\n\nmodel_path: String\n\ntokenizer: WordPieceTokenizer\n\nmax_len: Int\n\nconfig: Map&lt;String,String&gt;"]
+				},
+				"SetBatchSize": {
+					"descriptions": ["**Sets how many texts run through the model at once. Larger batches are faster per text and hold more memory: a batch's hidden states are batch x max_len x hidden numbers. A model with a fixed batch axis caps it.**\n\n```method : public : SetBatchSize(batch_size:Int) ~ Nil```\n\n\n\nbatch_size: Int\n\nreturn: Nil"]
+				},
+				"SetPooling": {
+					"descriptions": ["**Sets the pooling Embed uses; CLS by default.**\n\n```method : public : SetPooling(pooling:BertEmbedder-&gt;Pooling) ~ Nil```\n\n\n\npooling: BertEmbedder-&gt;Pooling\n\nreturn: Nil"]
+				}
+			}
+		},
 		"System.Time.Alarm": {
 			"description": "Provides a system timer",
 			"functions": {
@@ -19536,6 +19595,12 @@
 				"file": ""
 			}
 		],
+		"BertEmbedder": [
+			{
+				"bundle": "System.NLP.Onnx",
+				"file": ""
+			}
+		],
 		"Alarm": [
 			{
 				"bundle": "System.Time",
@@ -21581,6 +21646,18 @@
 				{ "name": "FLOAT", "value": "-56", "description": "" },
 				{ "name": "CLASS", "value": "-55", "description": "" },
 				{ "name": "FUNC", "value": "-54", "description": "" }
+			]
+		},
+		"System.NLP.Onnx.BertEmbedder#Pooling": {
+			"name": "Pooling",
+			"bundle": "System.NLP.Onnx",
+			"class": "System.NLP.Onnx.BertEmbedder",
+			"kind": "enum",
+			"description": "How a text's token vectors become one vector.",
+			"items": [
+				{ "name": "CLS", "value": "0", "description": "The hidden state of the first token, [CLS]." },
+				{ "name": "MEAN", "value": "1", "description": "The mean of the hidden states of the real tokens, padding excluded." },
+				{ "name": "POOLER", "value": "2", "description": "The model's pooler_output: tanh of a dense layer over [CLS], as BERT was pretrained." }
 			]
 		},
 		"Web.HTTP.HttpClient#Task": {

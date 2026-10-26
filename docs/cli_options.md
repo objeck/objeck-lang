@@ -78,7 +78,7 @@ seven libraries that group lists.
 | `@data` | `xml`, `regex`, `csv`, `query`, `rss`, `misc`, `net`, `json`, `cipher` | parsing and querying structured data |
 | `@ml` | `gemini`, `openai`, `ollama`, `net_server`, `misc`, `net`, `json`, `cipher` | hosted-model API clients |
 | `@ai` | `ai`, `ml`, `nlp`, `csv` | local `System.ML` / `System.AI` / `System.NLP` |
-| `@vision` | `opencv`, `onnx`, `json`, `cipher` | OpenCV and ONNX inference |
+| `@vision` | `opencv`, `onnx`, `nlp_onnx`, `models`, `nlp`, `json`, `cipher` | OpenCV and ONNX inference, BERT text embeddings |
 | `@game` | `sdl2`, `sdl_game`, `sdl_gl`, `json`, `gen_collect` | SDL2, the 2D game and 3D OpenGL frameworks |
 
 Groups and explicit names mix in any order, for either `--target`: `-lib @ai,json` and

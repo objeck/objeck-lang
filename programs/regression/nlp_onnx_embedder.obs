@@ -1,0 +1,421 @@
+#~
+# BertEmbedder: sentence embeddings from a BERT-shaped ONNX model, checked
+# against the model's closed form.
+#
+# EXTRA_LIBS: models,opencv,onnx,nlp,nlp_onnx
+#
+# The models are data/bert's tiny BERT-shaped exports (gen_tiny_bert.py,
+# checked on their own by onnx_tiny_bert_model.obs). Their hidden states are
+# closed forms of the token id, token type, position and mask, so every
+# expected embedding here is computed by this test from the encoding alone --
+# a reference loop over the formula, with no model and no library code -- and
+# compared with what came back through tokenizer, tensors, ONNX Runtime and
+# pooling:
+#
+#   - MeanPool and ClsPool against reference loops, padding excluded;
+#   - CLS, MEAN and POOLER on the BERT shape, for texts of every length up to
+#     and past max_len; a pair encoding, so token_type_ids is shown to arrive;
+#   - the DistilBERT shape: no token types sent, POOLER refused with a reason;
+#   - a fixed [1,16] export: a different max_len refused with a reason, the
+#     batch capped at 1, and the result still right;
+#   - batch sizes 1, 3 and 8 and a shuffled order give identical rows, and a
+#     second run gives the same bits;
+#   - a missing model, a missing vocabulary, an encoding of the wrong length.
+#
+# The models are found relative to the working directory, which every runner
+# sets to this directory.
+~#
+
+use API.Onnx;
+use API.Models;
+use Collection;
+use System.NLP;
+use System.NLP.Onnx;
+
+class NlpOnnxEmbedder {
+	@ok : Bool;
+	@tokenizer : WordPieceTokenizer;
+
+	function : Main(args : String[]) ~ Nil {
+		t := NlpOnnxEmbedder->New();
+		t->Run();
+	}
+
+	New() {
+		@ok := true;
+	}
+
+	method : Check(name : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	method : LibraryPresent() ~ Bool {
+		dir := Runtime->GetProperty("lib_dir");
+		if(dir = Nil) {
+			return false;
+		};
+
+		base := "{$dir}native/libobjk_onnx";
+		return System.IO.Filesystem.File->Exists("{$base}.dll") |
+			System.IO.Filesystem.File->Exists("{$base}.so") |
+			System.IO.Filesystem.File->Exists("{$base}.dylib");
+	}
+
+	method : Run() ~ Nil {
+		Pooling();
+
+		if(<>LibraryPresent()) {
+			"SKIP: libobjk_onnx is not deployed"->PrintLine();
+			if(<>@ok) {
+				Runtime->Exit(1);
+			};
+			return;
+		};
+
+		@tokenizer := WordPieceTokenizer->New("data/bert/vocab.txt");
+		if(<>@tokenizer->IsLoaded()) {
+			"FAIL: data/bert/vocab.txt did not load; run from programs/regression"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		FullModel();
+		NoPoolerModel();
+		FixedModel();
+		Refusals();
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	# --- the closed form of data/bert/gen_tiny_bert.py ---
+
+	function : WordValue(i : Int, j : Int) ~ Float {
+		return ((i * 7 + j * 3) % 17 - 8)->As(Float) / 8.0;
+	}
+
+	function : TypeValue(t : Int, j : Int) ~ Float {
+		return ((t * 5 + j) % 5 - 2)->As(Float) / 16.0;
+	}
+
+	function : PosValue(p : Int, j : Int) ~ Float {
+		return ((p * 3 + j * 5) % 13 - 6)->As(Float) / 32.0;
+	}
+
+	function : PoolWeight(k : Int, j : Int) ~ Float {
+		return ((k * 3 + j * 7) % 9 - 4)->As(Float) / 16.0;
+	}
+
+	function : PoolBias(j : Int) ~ Float {
+		return (j % 3 - 1)->As(Float) / 8.0;
+	}
+
+	# the model's hidden state for position s of an encoding
+	function : Hidden(e : TokenEncoding, s : Int, j : Int, with_types : Bool) ~ Float {
+		ids := e->GetIds();
+		mask := e->GetAttentionMask();
+		types := e->GetTokenTypeIds();
+		v := WordValue(ids[s], j) + PosValue(s, j) + 0.25 * mask[s]->As(Float);
+		if(with_types) {
+			v += TypeValue(types[s], j);
+		};
+		return v;
+	}
+
+	# what each pooling should give, by the formula: 0 = CLS, 1 = MEAN, 2 = POOLER
+	function : Expected(e : TokenEncoding, pooling : Int, with_types : Bool) ~ Float[] {
+		out := Float->New[8];
+		if(pooling = 0) {
+			for(j := 0; j < 8; j += 1;) {
+				out[j] := Hidden(e, 0, j, with_types);
+			};
+		}
+		else if(pooling = 1) {
+			mask := e->GetAttentionMask();
+			real := 0;
+			each(s : mask) {
+				if(mask[s] = 1) {
+					real += 1;
+					for(j := 0; j < 8; j += 1;) {
+						out[j] += Hidden(e, s, j, with_types);
+					};
+				};
+			};
+			for(j := 0; j < 8; j += 1;) {
+				out[j] := out[j] / real->As(Float);
+			};
+		}
+		else {
+			for(j := 0; j < 8; j += 1;) {
+				z := PoolBias(j);
+				for(k := 0; k < 8; k += 1;) {
+					z += Hidden(e, 0, k, with_types) * PoolWeight(k, j);
+				};
+				out[j] := z->Tanh();
+			};
+		};
+		return out;
+	}
+
+	# worst absolute difference between rows of X and the formula
+	method : Worst(X : Float[,], encodings : TokenEncoding[], pooling : Int, with_types : Bool) ~ Float {
+		if(X = Nil) {
+			return 1000.0;
+		};
+		dims := X->Size();
+		if(dims[0] <> encodings->Size() | dims[1] <> 8) {
+			return 1000.0;
+		};
+
+		worst := 0.0;
+		each(r : encodings) {
+			want := Expected(encodings[r], pooling, with_types);
+			for(j := 0; j < 8; j += 1;) {
+				diff := (X[r, j] - want[j])->Abs();
+				if(diff > worst) {
+					worst := diff;
+				};
+			};
+		};
+		return worst;
+	}
+
+	function : Identical(a : Float[,], b : Float[,]) ~ Bool {
+		if(a = Nil | b = Nil) {
+			return false;
+		};
+		da := a->Size();
+		db := b->Size();
+		if(da[0] <> db[0] | da[1] <> db[1]) {
+			return false;
+		};
+		for(i := 0; i < da[0]; i += 1;) {
+			for(j := 0; j < da[1]; j += 1;) {
+				if(a[i, j] <> b[i, j]) {
+					return false;
+				};
+			};
+		};
+		return true;
+	}
+
+	method : Encode(texts : String[], max_len : Int) ~ TokenEncoding[] {
+		return @tokenizer->EncodeBatch(texts, max_len);
+	}
+
+	# --- pooling arithmetic, no model ---
+
+	method : Pooling() ~ Nil {
+		# batch 2, sequence 3, dim 2; row 0 has two real tokens, row 1 one
+		hidden := [1.0, 2.0,  3.0, 4.0,  100.0, 200.0,
+			5.0, -6.0,  7.0, 8.0,  9.0, 10.0];
+		mask := [1, 1, 0,  1, 0, 0];
+		mean := BertEmbedder->MeanPool(hidden, 2, 3, 2, mask);
+		Check("MeanPool excludes padding: row 0 is (2, 3)", mean[0, 0] = 2.0 & mean[0, 1] = 3.0);
+		Check("MeanPool of one real token is that token", mean[1, 0] = 5.0 & mean[1, 1] = -6.0);
+		cls := BertEmbedder->ClsPool(hidden, 2, 3, 2);
+		Check("ClsPool takes the first token of each row", cls[0, 0] = 1.0 & cls[0, 1] = 2.0 & cls[1, 0] = 5.0 & cls[1, 1] = -6.0);
+		none := BertEmbedder->MeanPool(hidden, 2, 3, 2, [0, 0, 0, 1, 1, 1]);
+		Check("a row with no real token pools to zeros", none[0, 0] = 0.0 & none[0, 1] = 0.0 & none[1, 0] = 7.0 & none[1, 1] = 4.0);
+
+		# a larger case against a reference loop written differently: accumulate per
+		# position, then divide
+		batch := 3; sequence := 5; dim := 4;
+		values := Float->New[batch * sequence * dim];
+		each(i : values) {
+			values[i] := ((i * 37) % 23 - 11)->As(Float) / 7.0;
+		};
+		lengths := [5, 2, 3];
+		big_mask := Int->New[batch * sequence];
+		for(b := 0; b < batch; b += 1;) {
+			for(s := 0; s < lengths[b]; s += 1;) {
+				big_mask[b * sequence + s] := 1;
+			};
+		};
+		got := BertEmbedder->MeanPool(values, batch, sequence, dim, big_mask);
+		worst := 0.0;
+		for(b := 0; b < batch; b += 1;) {
+			for(j := 0; j < dim; j += 1;) {
+				total := 0.0;
+				s := 0;
+				while(s < lengths[b]) {
+					total += values[(b * sequence + s) * dim + j];
+					s += 1;
+				};
+				diff := (got[b, j] - total / lengths[b]->As(Float))->Abs();
+				if(diff > worst) {
+					worst := diff;
+				};
+			};
+		};
+		Check("MeanPool matches a reference loop (worst {$worst})", worst < 0.000000000001);
+	}
+
+	# --- the BERT shape ---
+
+	method : FullModel() ~ Nil {
+		embedder := BertEmbedder->New("data/bert/tiny_bert.onnx", "data/bert/vocab.txt", 8);
+		Check("tiny_bert.onnx opens", embedder->IsOpen());
+		if(<>embedder->IsOpen()) {
+			error := embedder->GetError();
+			"  {$error}"->PrintLine();
+			return;
+		};
+		Check("hidden size 8 from the signature", embedder->GetHiddenSize() = 8);
+		Check("it has a pooler", embedder->HasPooler());
+		Check("max_len 8, batch 8, CLS by default", embedder->GetMaxLength() = 8 & embedder->GetBatchSize() = 8 &
+			embedder->GetPooling() = BertEmbedder->Pooling->CLS);
+
+		# empty, short, exactly full, and truncated (11 pieces into 6)
+		texts := ["", "hello", "He's unaffable", "The quick brown fox jumped over the lazy dog!"];
+		encodings := Encode(texts, 8);
+
+		cls := embedder->Embed(texts);
+		worst := Worst(cls, encodings, 0, true);
+		Check("CLS equals the formula ({$worst})", worst < 0.000001);
+		mean := embedder->Embed(texts, BertEmbedder->Pooling->MEAN);
+		worst := Worst(mean, encodings, 1, true);
+		Check("MEAN equals the formula, padding excluded ({$worst})", worst < 0.000001);
+		pooler := embedder->Embed(texts, BertEmbedder->Pooling->POOLER);
+		worst := Worst(pooler, encodings, 2, true);
+		Check("POOLER equals tanh(cls W + b) ({$worst})", worst < 0.000001);
+
+		# the hidden states are exact in FP32, so CLS and MEAN are exact too
+		exact := true;
+		each(r : encodings) {
+			want := Expected(encodings[r], 0, true);
+			for(j := 0; j < 8; j += 1;) {
+				if(cls[r, j] <> want[j]) {
+					exact := false;
+				};
+			};
+		};
+		Check("CLS is exact", exact);
+
+		# token types: a pair puts 1s in token_type_ids, and the model's type term shows it
+		pairs := TokenEncoding->New[2];
+		pairs[0] := @tokenizer->EncodePair("hello", "world", 8);
+		pairs[1] := @tokenizer->EncodePair("the dog", "fox", 8);
+		mean := embedder->EmbedEncoded(pairs, BertEmbedder->Pooling->MEAN);
+		worst := Worst(mean, pairs, 1, true);
+		Check("a pair's token types reach the model ({$worst})", worst < 0.000001);
+		single := embedder->Embed(["hello world"], BertEmbedder->Pooling->MEAN);
+		Check("and change the embedding", mean[0, 0] <> single[0, 0] | mean[0, 1] <> single[0, 1]);
+
+		# batching and determinism
+		many := ["hello", "the quick brown fox", "", "He's unaffable.", "CreateFileW ReadFile", "dog", "a b c", "jumps", "over the lazy dog"];
+		embedder->SetPooling(BertEmbedder->Pooling->MEAN);
+		embedder->SetBatchSize(8);
+		base := embedder->Embed(many);
+		embedder->SetBatchSize(1);
+		ones := embedder->Embed(many);
+		embedder->SetBatchSize(3);
+		threes := embedder->Embed(many);
+		Check("batch sizes 1, 3 and 8 give identical rows", Identical(base, ones) & Identical(base, threes));
+		again := embedder->Embed(many);
+		Check("a second run gives the same bits", Identical(threes, again));
+
+		order := [8, 2, 5, 0, 7, 1, 4, 6, 3];
+		shuffled := String->New[many->Size()];
+		each(i : order) {
+			shuffled[i] := many[order[i]];
+		};
+		rows := embedder->Embed(shuffled);
+		same := true;
+		each(i : order) {
+			for(j := 0; j < 8; j += 1;) {
+				if(rows[i, j] <> base[order[i], j]) {
+					same := false;
+				};
+			};
+		};
+		Check("a text's row does not depend on its neighbours", same);
+
+		cpu_config := Map->New()<String, String>;
+		cpu_config->Insert("ep", "cpu");
+		cpu := BertEmbedder->New("data/bert/tiny_bert.onnx", @tokenizer, 8, cpu_config);
+		cpu->SetPooling(BertEmbedder->Pooling->MEAN);
+		Check("the CPU provider gives the same rows", Identical(cpu->Embed(many), base));
+		cpu->Close();
+
+		empty := embedder->Embed(String->New[0]);
+		dims := empty->Size();
+		Check("no texts give a 0 x 8 matrix", dims[0] = 0 & dims[1] = 8);
+
+		wrong := TokenEncoding->New[1];
+		wrong[0] := @tokenizer->Encode("hello", 6);
+		Check("an encoding of the wrong length is refused", embedder->EmbedEncoded(wrong) = Nil & embedder->GetError() <> Nil);
+		Check("and the embedder stays open", embedder->IsOpen() & embedder->Embed(["hello"]) <> Nil);
+
+		embedder->Close();
+		Check("Close twice is safe", true);
+		embedder->Close();
+		Check("a closed embedder refuses", <>embedder->IsOpen() & embedder->Embed(["hello"]) = Nil);
+	}
+
+	# --- the DistilBERT shape: no token types, no pooler ---
+
+	method : NoPoolerModel() ~ Nil {
+		embedder := BertEmbedder->Load("data/bert/tiny_bert_nopool.onnx", "data/bert/vocab.txt", 6);
+		Check("tiny_bert_nopool.onnx opens", embedder->IsOpen());
+		if(<>embedder->IsOpen()) {
+			return;
+		};
+		Check("it has no pooler", <>embedder->HasPooler());
+
+		texts := ["hello world", "the quick brown fox jumped"];
+		encodings := Encode(texts, 6);
+		worst := Worst(embedder->Embed(texts, BertEmbedder->Pooling->CLS), encodings, 0, false);
+		Check("CLS without a type term ({$worst})", worst < 0.000001);
+		worst := Worst(embedder->Embed(texts, BertEmbedder->Pooling->MEAN), encodings, 1, false);
+		Check("MEAN without a type term ({$worst})", worst < 0.000001);
+		Check("POOLER is refused", embedder->Embed(texts, BertEmbedder->Pooling->POOLER) = Nil);
+		error := embedder->GetError();
+		Check("with a reason: {$error}", error <> Nil & error->Has("pooler"));
+		embedder->Close();
+	}
+
+	# --- an export with fixed axes ---
+
+	method : FixedModel() ~ Nil {
+		wrong := BertEmbedder->New("data/bert/tiny_bert_fixed.onnx", "data/bert/vocab.txt", 8);
+		error := wrong->GetError();
+		Check("a fixed sequence length other than max_len is refused: {$error}", <>wrong->IsOpen() & error <> Nil & error->Has("16"));
+		wrong->Close();
+
+		embedder := BertEmbedder->New("data/bert/tiny_bert_fixed.onnx", "data/bert/vocab.txt", 16);
+		Check("max_len 16 opens it", embedder->IsOpen());
+		if(<>embedder->IsOpen()) {
+			return;
+		};
+		Check("the fixed batch axis caps the batch size at 1", embedder->GetBatchSize() = 1);
+		embedder->SetBatchSize(4);
+		Check("and keeps it there", embedder->GetBatchSize() = 1);
+
+		texts := ["hello", "the lazy dog jumps over", "unaffable"];
+		encodings := Encode(texts, 16);
+		worst := Worst(embedder->Embed(texts, BertEmbedder->Pooling->MEAN), encodings, 1, true);
+		Check("three texts run one at a time, right ({$worst})", worst < 0.000001);
+		worst := Worst(embedder->Embed(texts, BertEmbedder->Pooling->POOLER), encodings, 2, true);
+		Check("and its pooler ({$worst})", worst < 0.000001);
+		embedder->Close();
+	}
+
+	method : Refusals() ~ Nil {
+		missing := BertEmbedder->New("data/bert/no_such_model.onnx", "data/bert/vocab.txt", 8);
+		Check("a missing model does not open, and says why", <>missing->IsOpen() & missing->GetError() <> Nil);
+		Check("and embeds nothing", missing->Embed(["hello"]) = Nil);
+
+		no_vocab := BertEmbedder->New("data/bert/tiny_bert.onnx", "data/bert/no_such_vocab.txt", 8);
+		Check("a missing vocabulary does not open, and says why", <>no_vocab->IsOpen() & no_vocab->GetError()->Has("vocabulary"));
+
+		short := BertEmbedder->New("data/bert/tiny_bert.onnx", "data/bert/vocab.txt", 1);
+		Check("max_len below 2 is refused", <>short->IsOpen());
+	}
+}
