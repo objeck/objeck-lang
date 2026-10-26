@@ -163,10 +163,9 @@ bundle API.Ollama {
 		}
 	}
 
-	# Reads fields out of parsed responses. The JSON parser keeps string values
-	# in their escaped form (serializing escapes them again), so every string
-	# read from a response is decoded here and every element that is sent back
-	# to the server is rebuilt from decoded values.
+	# Reads fields out of parsed responses. The JSON parser decodes strings, so
+	# a value read here is the text itself and an element can be sent back as
+	# it is: the serializer escapes it once on the way out.
 	class : private : Field {
 		# decoded string value, or Nil when absent or null
 		function : Text(elem : JsonElement) ~ String {
@@ -175,7 +174,7 @@ bundle API.Ollama {
 			};
 
 			if(elem->GetType() = JsonElement->JsonType->STRING) {
-				return JsonElement->Decode(elem->GetString());
+				return elem->GetString();
 			};
 
 			return elem->ToString();
@@ -227,35 +226,6 @@ bundle API.Ollama {
 			if(value <> Nil) {
 				buffer->Append(value);
 			};
-		}
-
-		# a copy of a parsed element with every string and key decoded, safe to serialize again
-		function : Decoded(elem : JsonElement) ~ JsonElement {
-			if(elem = Nil) {
-				return Nil;
-			};
-
-			type := elem->GetType();
-			if(type = JsonElement->JsonType->STRING) {
-				return JsonElement->New(JsonElement->Decode(elem->GetString()));
-			}
-			else if(type = JsonElement->JsonType->ARRAY) {
-				array_copy := JsonElement->New(JsonElement->JsonType->ARRAY);
-				each(i : elem) {
-					array_copy->Add(Decoded(elem->Get(i)));
-				};
-				return array_copy;
-			}
-			else if(type = JsonElement->JsonType->OBJECT) {
-				object_copy := JsonElement->New(JsonElement->JsonType->OBJECT);
-				names := elem->GetNames();
-				each(name in names) {
-					object_copy->Insert(JsonElement->Decode(name), Decoded(elem->Get(name)));
-				};
-				return object_copy;
-			};
-
-			return elem;
 		}
 	}
 
@@ -602,7 +572,7 @@ tool := Tool->New("get_weather", "Get the weather for a location", params);
 			func_json := call_json->Get("function");
 			if(func_json <> Nil) {
 				@name := Field->Text(func_json, "name");
-				@arguments := Field->Decoded(func_json->Get("arguments"));
+				@arguments := func_json->Get("arguments");
 			};
 
 			if(@arguments = Nil) {
@@ -1506,7 +1476,7 @@ chat->Send("What does this diagram show?", image)->PrintLine();
 			@license := Field->Text(model_json, "license");
 			@system := Field->Text(model_json, "system");
 			@capabilities := Field->Strings(model_json->Get("capabilities"));
-			@model_info := Field->Decoded(model_json->Get("model_info"));
+			@model_info := model_json->Get("model_info");
 		}
 
 		#~

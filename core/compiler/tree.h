@@ -1442,11 +1442,13 @@ namespace frontend {
     Expression* expression;
     Expression* if_expression;
     Expression* else_expression;
+    SymbolEntry* func_temp;
 
     Cond(const std::wstring &file_name, const int line_num, const int line_pos, Expression* c, Expression* s, Expression* e) : Expression(file_name, line_num, line_pos) {
       expression = c;
       if_expression = s;
       else_expression = e;
+      func_temp = nullptr;
     }
 
     ~Cond() {
@@ -1471,6 +1473,17 @@ namespace frontend {
 
     Expression* GetElseExpression() {
       return else_expression;
+    }
+
+    // A function-typed conditional's two-word value (closure memory and
+    // method id) meets at the join in this hidden local; the one-word and/or
+    // temporary cannot hold it
+    SymbolEntry* GetFuncTemp() {
+      return func_temp;
+    }
+
+    void SetFuncTemp(SymbolEntry* t) {
+      func_temp = t;
     }
   };
 

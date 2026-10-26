@@ -1,0 +1,302 @@
+#~
+A conditional expression ('c ? a : b') whose value is a Float or a function
+reference, interpreted and JIT-compiled.
+
+The branches' value meets at the join in a local, and the compiler stored and
+loaded it as an Int whatever its type. For a Float the interpreter moved the
+64 bits unchanged, so every answer was right, but the JIT will not store a
+float register with an integer store: every method holding a Float
+conditional silently stayed interpreted (OBJECK_JIT_REPORT=1 said "compile
+failed"), a loop over one ran about 40 times slower than the same loop written
+with if/else, and run_vm_flag_tests.py now checks that the Float methods here
+compile. A function reference is two words and the one-word temporary took only
+the method id: each branch left its closure word on the operand stack, which
+the interpreter's stack happened to line up again, while a compiled method kept
+the closure word of the branch it compiled last. Taking the other branch then
+called through the wrong closure: a wrong answer (Chooser below gave 10 for
+110), or an access violation once that closure captured anything (Apply and
+PickFunc; this file crashed before the fix).
+
+Every property is evaluated inside Probe(), called REPS times, and holds only
+if it holds on EVERY call: a count that is neither 0 nor REPS means the
+interpreted and compiled answers disagree. The special values arrive as
+parameters so that nothing is folded at compile time. Exits 1 on a failure.
+~#
+class JitConditionalValueTypes {
+  @fails : static : Int;
+  @reps : static : Int;
+
+  function : Main(args : String[]) ~ Nil {
+    @fails := 0;
+    @reps := 20000;
+
+    Check(0, "then-branch Float returned from a conditional");
+    Check(1, "else-branch Float returned from a conditional");
+    Check(2, "NaN through the then-branch");
+    Check(3, "NaN through the else-branch");
+    Check(4, "-0.0 keeps its sign through the then-branch");
+    Check(5, "-0.0 keeps its sign through the else-branch");
+    Check(6, "+Inf through the then-branch");
+    Check(7, "-Inf through the else-branch");
+    Check(8, "nested Float conditionals");
+    Check(9, "a Float conditional as an argument");
+    Check(10, "two Float conditionals in one expression");
+    Check(11, "a Float conditional summed in a loop matches if/else");
+    Check(12, "Int branches assigned to a Float");
+    Check(13, "Float branches assigned to an Int");
+    Check(14, "a Float conditional in a loop condition");
+    Check(15, "a Float[] conditional indexed");
+    Check(16, "a function-reference conditional over capturing lambdas, then-branch");
+    Check(17, "a function-reference conditional over capturing lambdas, else-branch");
+    Check(18, "a function reference returned from a conditional");
+    Check(19, "nested function-reference conditionals");
+    Check(20, "a Float conditional beside and/or, sharing the temporary");
+    Check(21, "Int, Char and Bool conditionals");
+    Check(22, "Float conditionals over a 2-D accumulation");
+    Check(23, "Float conditionals stored into array elements");
+    Check(24, "a function-reference conditional inside a lambda");
+    Check(25, "function-reference conditionals over closures passed in");
+
+    if(@fails > 0) {
+      Runtime->Exit(1);
+    };
+    "PASS: all Float and function-reference conditionals"->PrintLine();
+  }
+
+  function : Check(id : Int, name : String) ~ Nil {
+    values := Float->New[64];
+    flags := Bool->New[64];
+    each(i : values) {
+      values[i] := i * 0.25;
+      flags[i] := i % 3 <> 0;
+    };
+
+    hits := 0;
+    for(r := 0; r < @reps; r += 1;) {
+      if(Probe(id, true, false, 1.0, 2.0, Float->NaN(), Float->Inf(), Float->NegInf(), 0.0 * (0.0 - 1.0), 100, 3, values, flags)) {
+        hits += 1;
+      };
+    };
+
+    if(hits = @reps) {
+      "PASS: {$name}"->PrintLine();
+    }
+    else if(hits = 0) {
+      "FAIL: {$name} -- consistently wrong"->PrintLine();
+      @fails += 1;
+    }
+    else {
+      reps := @reps;
+      "FAIL: {$name} -- interpreter and JIT disagree ({$hits} of {$reps})"->PrintLine();
+      @fails += 1;
+    };
+  }
+
+  # -0.0 and +0.0 compare equal; only the sign tells them apart
+  function : IsNegZero(v : Float) ~ Bool {
+    return v = 0.0 & Float->ArcTan2(v, -1.0) < 0.0;
+  }
+
+  function : IsNaN(v : Float) ~ Bool {
+    return v <> v;
+  }
+
+  function : Pick(c : Bool, a : Float, b : Float) ~ Float {
+    return c ? a : b;
+  }
+
+  function : Twice(v : Float) ~ Float {
+    return v * 2.0;
+  }
+
+  function : SumTernary(values : Float[], flags : Bool[]) ~ Float {
+    total := 0.0;
+    each(i : values) {
+      x := flags[i] ? values[i] : 0.0 - values[i];
+      total += x;
+    };
+    return total;
+  }
+
+  function : SumBranches(values : Float[], flags : Bool[]) ~ Float {
+    total := 0.0;
+    each(i : values) {
+      x := 0.0;
+      if(flags[i]) {
+        x := values[i];
+      }
+      else {
+        x := 0.0 - values[i];
+      };
+      total += x;
+    };
+    return total;
+  }
+
+  # a conditional stored straight into an array element: the assignment gives
+  # the conditional the array variable's type, dimension and all
+  function : Fill(flags : Bool[], out : Float[,]) ~ Nil {
+    each(i : flags) {
+      out[i, 0] := flags[i] ? 1.0 : -0.5;
+      out[i, 1] := flags[i] ? i * 0.5 : 0.0 - i;
+    };
+  }
+
+  # the then- and else-branches' closures capture different variables
+  function : Apply(c : Bool, k : Int, m : Int, v : Int) ~ Int {
+    plus := \(Int) ~ Int : (x) => x + k;
+    times := \(Int) ~ Int : (x) => x * m;
+    g := c ? plus : times;
+    return g(v);
+  }
+
+  function : PickFunc(c : Bool, k : Int, m : Int) ~ (Int) ~ Int {
+    plus := \(Int) ~ Int : (x) => x + k;
+    times := \(Int) ~ Int : (x) => x * m;
+    return c ? plus : times;
+  }
+
+  # The closures arrive as parameters: a method that builds a capturing
+  # lambda (NEW_FUNC_INST) is not compiled on ARM64, so these are the
+  # function-reference methods run_vm_flag_tests.py requires compiled.
+  function : ChooseFunc(c : Bool, a : (Int) ~ Int, b : (Int) ~ Int) ~ (Int) ~ Int {
+    return c ? a : b;
+  }
+
+  function : ApplyChosen(c : Bool, d : Bool, a : (Int) ~ Int, b : (Int) ~ Int, v : Int) ~ Int {
+    g := c ? (d ? a : b) : b;
+    return g(v);
+  }
+
+  # the conditional is in the lambda's body, a method of its own
+  function : Chooser(k : Int, m : Int) ~ (Bool) ~ (Int) ~ Int {
+    plus := \(Int) ~ Int : (x) => x + k;
+    times := \(Int) ~ Int : (x) => x * m;
+    return \(Bool) ~ (Int) ~ Int : (c) => c ? plus : times;
+  }
+
+  function : PickNested(c : Bool, d : Bool, k : Int, m : Int) ~ (Int) ~ Int {
+    plus := \(Int) ~ Int : (x) => x + k;
+    times := \(Int) ~ Int : (x) => x * m;
+    minus := \(Int) ~ Int : (x) => x - k - m;
+    return c ? (d ? plus : times) : minus;
+  }
+
+  function : Probe(id : Int, t : Bool, f : Bool, one : Float, two : Float, nan : Float, inf : Float, ninf : Float, nzero : Float,
+                   k : Int, m : Int, values : Float[], flags : Bool[]) ~ Bool {
+    if(id = 0) { return Pick(t, one, two) = 1.0; };
+    if(id = 1) { return Pick(f, one, two) = 2.0; };
+    if(id = 2) { return IsNaN(Pick(t, nan, one)); };
+    if(id = 3) { return IsNaN(Pick(f, one, nan)); };
+    if(id = 4) { return IsNegZero(Pick(t, nzero, one)) & IsNegZero(t ? nzero : one); };
+    if(id = 5) { return IsNegZero(Pick(f, one, nzero)) & IsNegZero(f ? one : nzero); };
+    if(id = 6) { r := t ? inf : ninf; return r = inf & r > 1.0e308; };
+    if(id = 7) { r := f ? inf : ninf; return r = ninf & r < -1.0e308; };
+    if(id = 8) {
+      a := t ? (f ? one : two) : nan;
+      b := f ? nan : (t ? (f ? nan : inf) : one);
+      c := t ? (t ? (t ? one : two) : two) : two;
+      return a = 2.0 & b = inf & c = 1.0;
+    };
+    if(id = 9) { return Twice(f ? one : two) = 4.0 & Twice(t ? one : two) = 2.0; };
+    if(id = 10) { return (t ? one : two) + (f ? one : two) = 3.0 & (f ? one : two) * (t ? two : one) = 4.0; };
+    if(id = 11) {
+      # 0.25 * (the i < 64 with i % 3 <> 0, less the rest): 0.25 * (1323 - 693)
+      a := SumTernary(values, flags);
+      b := SumBranches(values, flags);
+      return a = b & a = 157.5;
+    };
+    if(id = 12) {
+      x : Float := t ? 3 : 4;
+      y : Float := f ? 3 : k;
+      return x = 3.0 & y = 100.0;
+    };
+    if(id = 13) {
+      i : Int := t ? 2.75 : -3.25;
+      j : Int := f ? 2.75 : -3.25;
+      return i = 2 & j = -3;
+    };
+    if(id = 14) {
+      n := 0;
+      while((n < 3 ? one : nan) = one) {
+        n += 1;
+      };
+      return n = 3;
+    };
+    if(id = 15) {
+      left := Float->New[2];
+      left[1] := one;
+      right := Float->New[2];
+      right[1] := two;
+      a := t ? left : right;
+      b := f ? left : right;
+      return a[1] = 1.0 & b[1] = 2.0 & a->Size() = 2;
+    };
+    if(id = 16) { return Apply(t, k, m, 10) = 110; };
+    if(id = 17) { return Apply(f, k, m, 10) = 30; };
+    if(id = 18) {
+      g := PickFunc(t, k, m);
+      h := PickFunc(f, k, m);
+      return g(10) = 110 & h(10) = 30;
+    };
+    if(id = 19) {
+      a := PickNested(t, t, k, m);
+      b := PickNested(t, f, k, m);
+      c := PickNested(f, t, k, m);
+      return a(10) = 110 & b(10) = 30 & c(10) = -93;
+    };
+    if(id = 20) {
+      r := (t & f) ? one : two;
+      s := (t | f) ? one : two;
+      ok := (t | f) & r = 2.0;
+      return ok & s = 1.0 & (r > s & (f | t));
+    };
+    if(id = 21) {
+      i := f ? 7 : -9;
+      c := t ? 'a' : 'b';
+      b := f ? f : t;
+      return i = -9 & c = 'a' & b;
+    };
+    if(id = 22) {
+      total := 0.0;
+      for(a := 0; a < 8; a += 1;) {
+        for(b := 0; b < 8; b += 1;) {
+          total += (a > b ? (a % 2 = 0 ? one : two) : (b = a ? nzero : 0.0 - one));
+        };
+      };
+      # a > b: 12 pairs with a even (one each), 16 with a odd (two each);
+      # a = b: eight -0.0s; a < b: 28 pairs of -1.0
+      return total = 12.0 + 32.0 - 28.0;
+    };
+    if(id = 23) {
+      grid := Float->New[64, 2];
+      Fill(flags, grid);
+      first := 0.0;
+      second := 0.0;
+      each(i : flags) {
+        first += grid[i, 0];
+        second += grid[i, 1];
+      };
+      single := Float->New[1];
+      single[0] := f ? one : two;
+      # 42 flagged rows and 22 not: 42 - 11; 0.5 * 1323 - 693
+      return first = 31.0 & second = -31.5 & single[0] = 2.0;
+    };
+    if(id = 24) {
+      chooser := Chooser(k, m);
+      a := chooser(t);
+      b := chooser(f);
+      return a(10) = 110 & b(10) = 30;
+    };
+    if(id = 25) {
+      plus := \(Int) ~ Int : (x) => x + k;
+      times := \(Int) ~ Int : (x) => x * m;
+      g := ChooseFunc(t, plus, times);
+      h := ChooseFunc(f, plus, times);
+      return g(10) = 110 & h(10) = 30 & ApplyChosen(t, t, plus, times, 10) = 110 &
+        ApplyChosen(t, f, plus, times, 10) = 30 & ApplyChosen(f, t, plus, times, 10) = 30;
+    };
+
+    return false;
+  }
+}

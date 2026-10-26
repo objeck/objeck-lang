@@ -1282,7 +1282,11 @@ size_t* ObjectDeserializer::DeserializeObject() {
                !CanRead((INT64_VALUE)array_size * (INT64_VALUE)sizeof(FLOAT_VALUE))) {
               return nullptr;
             }
-            size_t* array = MemoryManager::AllocateArray(array_size * 2 + array_dim + 2, instructions::INT_TYPE,
+            // a FLOAT_TYPE array, as the program allocates one: deserialized Float[]
+            // fields came back typed INT_TYPE (gc-verify B2 on Query.Structured.Column
+            // in query_serialize_generic), so the array's type no longer matched the
+            // field's declared type after a round trip
+            size_t* array = MemoryManager::AllocateArray(array_size * 2 + array_dim + 2, instructions::FLOAT_TYPE,
                                                          op_stack, *stack_pos, false);
 
             array[0] = array_size;
@@ -1402,8 +1406,8 @@ void APITools_MethodCall(size_t* op_stack, size_t *stack_pos, size_t* instance, 
   if(cls) {
     StackMethod* mthd = cls->GetMethod(mthd_id);
     if(mthd) {
-      Runtime::StackInterpreter intpr;
-      intpr.Execute(op_stack, stack_pos, 0, mthd, instance, false);
+      // on this thread's call stack, checked (see StackInterpreter::CallBack)
+      Runtime::StackInterpreter::CallBack(op_stack, stack_pos, mthd, instance);
     }
     else {
       std::wcerr << L">>> DLL call: Unable to locate method; id=" << mthd_id << L" <<<" << std::endl;
@@ -1423,8 +1427,8 @@ void APITools_MethodCall(size_t* op_stack, size_t* stack_pos, size_t* instance,
   if(cls) {
     StackMethod* mthd = cls->GetMethod(mthd_id);
     if(mthd) {
-      Runtime::StackInterpreter intpr;
-      intpr.Execute(op_stack, stack_pos, 0, mthd, instance, false);
+      // on this thread's call stack, checked (see StackInterpreter::CallBack)
+      Runtime::StackInterpreter::CallBack(op_stack, stack_pos, mthd, instance);
     }
     else {
       std::wcerr << L">>> Unable to locate method; name=': " << mthd_id << L"' <<<" << std::endl;
@@ -1444,8 +1448,8 @@ void APITools_MethodCallId(size_t* op_stack, size_t *stack_pos, size_t* instance
   if(cls) {
     StackMethod* mthd = cls->GetMethod(mthd_id);
     if(mthd) {
-      Runtime::StackInterpreter intpr;
-      intpr.Execute(op_stack, stack_pos, 0, mthd, instance, false);
+      // on this thread's call stack, checked (see StackInterpreter::CallBack)
+      Runtime::StackInterpreter::CallBack(op_stack, stack_pos, mthd, instance);
     }
     else {
       std::wcerr << L">>> DLL call: Unable to locate method; id=: " << mthd_id << L" <<<" << std::endl;
@@ -1471,6 +1475,14 @@ bool TrapProcessor::CreateNewObject(const std::wstring &cls_id, size_t* &op_stac
     // instance will be put on stack by method call
     const std::wstring mthd_name = cls_id + L":New:";
     APITools_MethodCall(op_stack, stack_pos, obj, cls_id.c_str(), mthd_name.c_str());
+    // the constructor failed under a Try() beneath this trap, which then fails
+    // with the error the constructor recorded (see StackInterpreter::CallBack)
+    bool& failed = Runtime::StackInterpreter::CallbackFailed();
+    if(failed) {
+      failed = false;
+      Runtime::StackInterpreter::TrapErrorRecorded() = true;
+      return false;
+    }
   }
   else {
     // no such class: Class->Instance(name) is Nil, as it is for a Nil name.
@@ -1490,9 +1502,15 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
   size_t* mthd_obj = MemoryManager::AllocateObject(program->GetMethodObjectId(),
                                                    op_stack, *stack_pos,
                                                    false);
-  // method and class object
+  // method and class object. AllocateObject with collect=false falls back to the
+  // old generation when the nursery is full, so this Method may be old while the
+  // Class object, the name and the return type it holds are young: every such
+  // store needs the write barrier, or a minor collection moves the young object
+  // and leaves this field pointing at the old copy (gc-verify A2 in
+  // query_differential and query_storage under OBJECK_NURSERY=256k).
   mthd_obj[0] = (size_t)mthd;
   mthd_obj[1] = (size_t)cls_obj;
+  MemoryManager::WriteBarrier(mthd_obj);
 
   // set method name
   const std::wstring &qual_mthd_name = mthd->GetName();
@@ -1510,6 +1528,7 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
   }
   const std::wstring &mthd_string = semi_qual_mthd_string.substr(0, mthd_index);
   mthd_obj[2] = (size_t)CreateStringObject(mthd_string, program, op_stack, stack_pos);
+  MemoryManager::WriteBarrier(mthd_obj);
 
   // One encoded type, from 'index' up to the next ',' or the end: a DataType
   // with the DataType->TypeId code, the class name and the dimension (#1175).
@@ -1560,6 +1579,8 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
         index++;
       }
       data_type_obj[1] = (size_t)CreateStringObject(sig.substr(name_start, index - name_start), program, op_stack, stack_pos);
+      // the DataType may be old (see CreateMethodObject), the name is young
+      MemoryManager::WriteBarrier(data_type_obj);
     }
       break;
 
@@ -1621,6 +1642,7 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
   // return type: Nil for a method that returns nothing
   size_t rtrn_index = 0;
   mthd_obj[4] = (size_t)parse_data_type(mthd->GetReturnName(), rtrn_index);
+  MemoryManager::WriteBarrier(mthd_obj);
 
   return mthd_obj;
 }
@@ -1794,19 +1816,19 @@ void TrapProcessor::ProcessCurrentTime(StackFrame* frame, bool is_gmt)
   time_t raw_time;
   raw_time = time(nullptr);
 
-  struct tm* curr_time;
+  struct tm curr_time;
   const bool got_time = GetTime(curr_time, raw_time, is_gmt);
 
   size_t* instance = (size_t*)frame->mem[0];
   if(got_time && instance) {
-    instance[0] = curr_time->tm_mday;          // day
-    instance[1] = curr_time->tm_mon + 1;       // month
-    instance[2] = curr_time->tm_year + 1900;   // year
-    instance[3] = curr_time->tm_hour;          // hours
-    instance[4] = curr_time->tm_min;           // mins
-    instance[5] = curr_time->tm_sec;           // secs
-    instance[6] = curr_time->tm_isdst;         // savings time
-    instance[7] = curr_time->tm_wday;          // day of week
+    instance[0] = curr_time.tm_mday;          // day
+    instance[1] = curr_time.tm_mon + 1;       // month
+    instance[2] = curr_time.tm_year + 1900;   // year
+    instance[3] = curr_time.tm_hour;          // hours
+    instance[4] = curr_time.tm_min;           // mins
+    instance[5] = curr_time.tm_sec;           // secs
+    instance[6] = curr_time.tm_isdst;         // savings time
+    instance[7] = curr_time.tm_wday;          // day of week
     instance[8] = is_gmt;                      // is GMT
   }
 }
@@ -1973,19 +1995,19 @@ void TrapProcessor::ProcessAddTime(TimeInterval t, size_t* &op_stack, size_t* &s
     }
     raw_time += offset;
 
-    struct tm* curr_time;
+    struct tm curr_time;
     const bool got_time = GetTime(curr_time, raw_time, is_gmt);
 
     // set instance values
     if(got_time) {
-      instance[0] = curr_time->tm_mday;           // day
-      instance[1] = curr_time->tm_mon + 1;        // month
-      instance[2] = curr_time->tm_year + 1900;    // year
-      instance[3] = curr_time->tm_hour;           // hours
-      instance[4] = curr_time->tm_min;            // mins
-      instance[5] = curr_time->tm_sec;            // secs
-      instance[6] = curr_time->tm_isdst;          // savings time
-      instance[7] = curr_time->tm_wday;           // day of week
+      instance[0] = curr_time.tm_mday;           // day
+      instance[1] = curr_time.tm_mon + 1;        // month
+      instance[2] = curr_time.tm_year + 1900;    // year
+      instance[3] = curr_time.tm_hour;           // hours
+      instance[4] = curr_time.tm_min;            // mins
+      instance[5] = curr_time.tm_sec;            // secs
+      instance[6] = curr_time.tm_isdst;          // savings time
+      instance[7] = curr_time.tm_wday;           // day of week
       instance[8] = is_gmt;                       // is GMT
     }
   }
@@ -3218,6 +3240,9 @@ bool TrapProcessor::LoadClsByInst(StackProgram* program, size_t* inst, size_t* &
   // set name and create 'Class' instance
   size_t* cls_obj = MemoryManager::AllocateObject(program->GetClassObjectId(), op_stack, *stack_pos, false);
   cls_obj[0] = (size_t)CreateStringObject(cls->GetName(), program, op_stack, stack_pos);
+  // the Class object may be old (collect=false falls back to the old generation
+  // when the nursery is full), its name is young: see CreateMethodObject
+  MemoryManager::WriteBarrier(cls_obj);
   frame->mem[1] = (size_t)cls_obj;
   CreateClassObject(cls, cls_obj, op_stack, stack_pos, program);
 
@@ -4298,6 +4323,9 @@ bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_s
     command_output_obj[0] = (size_t)command_obj;
     command_output_obj[1] = status;
     command_output_obj[2] = (size_t)str_obj_array;
+    // the CommandOutput may be old while the command string is young: see
+    // CreateMethodObject
+    MemoryManager::WriteBarrier(command_output_obj);
 
     PushInt((size_t)command_output_obj, op_stack, stack_pos);
   }
@@ -4441,9 +4469,10 @@ bool TrapProcessor::DateFromLocalTime(StackProgram* program, size_t* inst, size_
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if (instance) {
-#ifdef _WIN32
+    // the caller's own buffer on every platform: the POSIX form read the
+    // static buffer localtime() shares between threads
     struct tm set_time;
-    if (localtime_s(&set_time, &value)) {
+    if (!GetTime(set_time, value, false)) {
       return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"Unable to get local time");
     }
 
@@ -4456,18 +4485,6 @@ bool TrapProcessor::DateFromLocalTime(StackProgram* program, size_t* inst, size_
     instance[6] = set_time.tm_isdst;         // savings time
     instance[7] = set_time.tm_wday;          // day of week
     instance[8] = false;                      // is GMT
-#else
-    struct tm* set_time = localtime(&value);
-    instance[0] = set_time->tm_mday;          // day
-    instance[1] = set_time->tm_mon + 1;       // month
-    instance[2] = set_time->tm_year + 1900;   // year
-    instance[3] = set_time->tm_hour;          // hours
-    instance[4] = set_time->tm_min;           // mins
-    instance[5] = set_time->tm_sec;           // secs
-    instance[6] = set_time->tm_isdst;         // savings time
-    instance[7] = set_time->tm_wday;          // day of week
-    instance[8] = false;                       // is GMT
-#endif
   }
 
   return true;
@@ -5260,6 +5277,8 @@ bool TrapProcessor::SockTcpAccept(StackProgram* program, size_t* inst, size_t* &
     sock_obj[0] = client;
     sock_obj[1] = (size_t)CreateStringObject(wclient_address, program, op_stack, stack_pos);
     sock_obj[2] = client_port;
+    // the socket may be old while its address string is young: see CreateMethodObject
+    MemoryManager::WriteBarrier(sock_obj);
 
     PushInt((size_t)sock_obj, op_stack, stack_pos);
   }
@@ -6023,6 +6042,8 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
       sock_obj[3] = 1;
       sock_obj[4] = (size_t)CreateStringObject(BytesToUnicode(host_name), program, op_stack, stack_pos);
       sock_obj[5] = instance[6];
+      // the socket may be old while its address string is young: see CreateMethodObject
+      MemoryManager::WriteBarrier(sock_obj);
 
       PushInt((size_t)sock_obj, op_stack, stack_pos);
       return true;
@@ -8194,8 +8215,10 @@ bool TrapProcessor::RuntimeGetLastError(StackProgram* program, size_t* inst, siz
       PushInt(0, op_stack, stack_pos);
       return true;
     }
-    // Error's one field, @message
+    // Error's one field, @message. The Error may be old while the message is
+    // young: see CreateMethodObject
     error[0] = (size_t)CreateStringObject(state.message, program, op_stack, stack_pos);
+    MemoryManager::WriteBarrier(error);
     Runtime::StackInterpreter::SetRaisedErrorObject(error);
   }
 
@@ -11014,6 +11037,8 @@ bool TrapProcessor::SockDtlsAccept(StackProgram* program, size_t* inst, size_t*&
       sock_obj[3] = 1;
       sock_obj[4] = (size_t)CreateStringObject(BytesToUnicode(host_name), program, op_stack, stack_pos);
       sock_obj[5] = instance[6];
+      // the socket may be old while its address string is young: see CreateMethodObject
+      MemoryManager::WriteBarrier(sock_obj);
 
       PushInt((size_t)sock_obj, op_stack, stack_pos);
       return true;
@@ -11920,16 +11945,16 @@ bool TrapProcessor::FileCreateTime(StackProgram* program, size_t* inst, size_t* 
     const NativePath name = ToNativePath((wchar_t*)(array + 3));
     time_t raw_time = File::FileCreatedTime(name.c_str());
     if(raw_time > 0) {
-      struct tm* curr_time;
+      struct tm curr_time;
       const bool got_time = GetTime(curr_time, raw_time, is_gmt);
 
       if(got_time) {
-        frame->mem[3] = curr_time->tm_mday;          // day
-        frame->mem[4] = curr_time->tm_mon + 1;       // month
-        frame->mem[5] = curr_time->tm_year + 1900;   // year
-        frame->mem[6] = curr_time->tm_hour;          // hours
-        frame->mem[7] = curr_time->tm_min;           // mins
-        frame->mem[8] = curr_time->tm_sec;           // secs
+        frame->mem[3] = curr_time.tm_mday;          // day
+        frame->mem[4] = curr_time.tm_mon + 1;       // month
+        frame->mem[5] = curr_time.tm_year + 1900;   // year
+        frame->mem[6] = curr_time.tm_hour;          // hours
+        frame->mem[7] = curr_time.tm_min;           // mins
+        frame->mem[8] = curr_time.tm_sec;           // secs
       }
     }
     else {
@@ -11952,16 +11977,16 @@ bool TrapProcessor::FileModifiedTime(StackProgram* program, size_t* inst, size_t
     const NativePath name = ToNativePath((wchar_t*)(array + 3));
     time_t raw_time = File::FileModifiedTime(name.c_str());
     if(raw_time > 0) {
-      struct tm* curr_time;
+      struct tm curr_time;
       const bool got_time = GetTime(curr_time, raw_time, is_gmt);
 
       if(got_time) {
-        frame->mem[3] = curr_time->tm_mday;          // day
-        frame->mem[4] = curr_time->tm_mon + 1;       // month
-        frame->mem[5] = curr_time->tm_year + 1900;   // year
-        frame->mem[6] = curr_time->tm_hour;          // hours
-        frame->mem[7] = curr_time->tm_min;           // mins
-        frame->mem[8] = curr_time->tm_sec;           // secs
+        frame->mem[3] = curr_time.tm_mday;          // day
+        frame->mem[4] = curr_time.tm_mon + 1;       // month
+        frame->mem[5] = curr_time.tm_year + 1900;   // year
+        frame->mem[6] = curr_time.tm_hour;          // hours
+        frame->mem[7] = curr_time.tm_min;           // mins
+        frame->mem[8] = curr_time.tm_sec;           // secs
       }
     }
     else {
@@ -11984,16 +12009,16 @@ bool TrapProcessor::FileAccessedTime(StackProgram* program, size_t* inst, size_t
     const NativePath name = ToNativePath((wchar_t*)(array + 3));
     time_t raw_time = File::FileAccessedTime(name.c_str());
     if(raw_time > 0) {
-      struct tm* curr_time;
+      struct tm curr_time;
       const bool got_time = GetTime(curr_time, raw_time, is_gmt);
 
       if(got_time) {
-        frame->mem[3] = curr_time->tm_mday;          // day
-        frame->mem[4] = curr_time->tm_mon + 1;       // month
-        frame->mem[5] = curr_time->tm_year + 1900;   // year
-        frame->mem[6] = curr_time->tm_hour;          // hours
-        frame->mem[7] = curr_time->tm_min;           // mins
-        frame->mem[8] = curr_time->tm_sec;           // secs
+        frame->mem[3] = curr_time.tm_mday;          // day
+        frame->mem[4] = curr_time.tm_mon + 1;       // month
+        frame->mem[5] = curr_time.tm_year + 1900;   // year
+        frame->mem[6] = curr_time.tm_hour;          // hours
+        frame->mem[7] = curr_time.tm_min;           // mins
+        frame->mem[8] = curr_time.tm_sec;           // secs
       }
     }
     else {

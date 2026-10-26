@@ -195,6 +195,24 @@ APITools_CallMethod(context, instance, cls_id, mthd_id);
 The qualified-name form wants the full mangled signature, which is why the
 by-id form exists for anything called repeatedly.
 
+Push the method's parameters on `context.op_stack` (advancing
+`*context.stack_pos`) before the call; its return value, if any, is left there
+for you to pop after.
+
+A call back runs on the calling thread's own call stack and operand stack, so it
+is bounded like any other call: a recursion through your library and back --
+native code calling an Objeck method that calls the native code again -- stops at
+the thread's call-depth limit (`--call-depth`) or when its native stack runs low,
+with `call stack bounds have been exceeded`. A `try` block *inside* the method
+you called recovers from an error the usual way. When the only handler is
+*outside* your native call, the callback returns to you with zero in place of its
+result (and any further call back on that thread does the same at once): return
+as soon as you can, and the error is raised at your native call, where that
+handler takes it. With no handler at all the program reports the error and ends.
+A thread the VM did not start has no call stack to share; a call back from one
+runs as it always did, unchecked. `programs/regression/native_callback/` holds a
+test library that exercises all of this (`run_vm_flag_tests.py` section 18).
+
 Be aware that **no shipped binding currently uses this**, so it is the least
 exercised part of the interface. It also has a consequence for the memory rules
 below: calling back into Objeck runs a nested interpreter, whose allocations are

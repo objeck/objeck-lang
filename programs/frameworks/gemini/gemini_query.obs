@@ -20,13 +20,14 @@ class Test {
 	}
 
 	function : ParseDoc(doc : String) ~ JsonElement {
-		start := doc->Find("```json\\n");
-		start += "```json\\n"->Size();
+		start := doc->Find("```json\n");
+		start += "```json\n"->Size();
 		
 		end := doc->Find(start, "```");
 		text := doc->SubString(start, end - start);
 
-		text := text->ReplaceAll("\\n", "\n")->ReplaceAll("\\," ",")->ReplaceAll("\\\"", "\"")->ReplaceAll("\\'", "'")->Trim();
+		# the model's text arrives decoded: no escapes to undo by hand
+		text := text->Trim();
 
 text->PrintLine();		
 		return JsonParser->TextToElement(text);

@@ -157,7 +157,7 @@ use Web.HTTP, Collection, Data.JSON, System.IO.Filesystem;
 					role_json := content_json->Get("role");
 
 					responses->AddBack(role_json->GetString()->Trim());
-					responses->AddBack(JsonElement->Decode(text_json->GetString()->Trim()));
+					responses->AddBack(text_json->GetString()->Trim());
 				};
 			};
 

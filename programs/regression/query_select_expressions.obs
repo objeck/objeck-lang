@@ -7,8 +7,8 @@ Covered: + - * / % with precedence, parentheses and unary minus; 'n -1' (a name 
 negative number) as a subtraction; whole numbers staying whole except under '/'; empty,
 non-numeric and zero-divisor cells giving empty cells; aliases, ORDER BY by alias and by
 position, DISTINCT, LIMIT and WHERE with expressions; a join with an expression over both
-tables; Table->Query, Catalog->Query and a prepared statement; and the refusals (an expression
-in a grouped or aggregate query, an unknown column, a dangling operator), each with an error
+tables; Table->Query, Catalog->Query and a prepared statement; and the refusals (an ungrouped
+column in a grouped or aggregate query, an unknown column, a dangling operator), each with an error
 message rather than a silent Nil. Also checked: a Nil result's method call is the normal
 NilError, which a ?-> region recovers from, in every mode.
 ~#
@@ -132,8 +132,11 @@ class QuerySelectExpressions {
 		Check("the same text again from the plan cache", Csv(t->Query("select n + 1 from t where n = 7"))->Equals("n + 1\n8\n"));
 
 		# refusals: an error to read, not a silent Nil
-		Refused("an expression in a grouped query", t, "select k, n + 1 from t group by k", "grouped or aggregate");
-		Refused("an expression beside an aggregate", t, "select count(*), n + 1 from t", "grouped or aggregate");
+		# expressions in grouped queries came later (query_expr_grouped); a column outside an
+		# aggregate must still be grouped
+		Refused("an ungrouped column in an expression", t, "select k, n + 1 from t group by k", "column 'n' must be in GROUP BY or inside an aggregate");
+		Refused("an ungrouped column beside an aggregate", t, "select count(*), n + 1 from t", "column 'n' must be in GROUP BY or inside an aggregate");
+		Same("an expression over aggregates", t, "select k, sum(n) * 10 as s from t group by k", "k,s\neven,10\nodd,70\n");
 		Refused("an unknown column", t, "select zz + 1 from t", "unknown column 'zz'");
 		Refused("a dangling operator", t, "select n + from t", "syntax error");
 		Refused("an unclosed parenthesis", t, "select (n + 1 from t", "expected ')'");

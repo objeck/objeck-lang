@@ -1,0 +1,145 @@
+#~
+A call back into Objeck from inside the VM's C++ runs on the thread's own call
+stack, bounded like any other call.
+
+Class->Instance runs the constructor it names through the same entry point a
+native library uses to call back into Objeck (APITools_MethodCall). That entry
+built a new interpreter with a call stack of its own for every call, so the
+calls nested inside it were counted from zero again and checked against an
+operand stack that was not theirs: a constructor that makes another of its
+class by name recursed until the native stack ran out, and the process died in
+the OS (0xC00000FD, SIGSEGV) instead of reporting a full call stack.
+
+Now each such call shares its thread's call stack. A runaway recursion through
+Class->Instance ends with "call stack bounds have been exceeded", a RuntimeError
+a try block or a '?->' chain recovers from, interpreted or compiled, on the main
+thread and in a spawned one; after it the call stack is whole again, and a
+bounded recursion through the same entry gives the right answer.
+~#
+use System.Concurrency;
+
+class Nest {
+	@made : static : Int;
+	@limit : static : Int;
+
+	New() {
+		@made += 1;
+		# below the limit (or with none) make another, by name
+		if(@limit = 0 | @made < @limit) {
+			Class->Instance("Nest");
+		};
+	}
+
+	function : Reset(limit : Int) ~ Nil {
+		@made := 0;
+		@limit := limit;
+	}
+
+	function : Made() ~ Int {
+		return @made;
+	}
+}
+
+class Prober {
+	@failures : Int;
+	@where : String;
+
+	New(where : String) {
+		@failures := 0;
+		@where := where;
+	}
+
+	method : public : GetFailures() ~ Int {
+		return @failures;
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		where := @where;
+		if(ok) {
+			"PASS: {$name} ({$where})"->PrintLine();
+		}
+		else {
+			"FAIL: {$name} ({$where})"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : public : Probe() ~ Nil {
+		# bounded: 500 constructors, each entered through Class->Instance
+		Nest->Reset(500);
+		made := Class->Instance("Nest");
+		Check("a bounded recursion through Class->Instance runs", made <> Nil & Nest->Made() = 500);
+
+		# a runaway: a try block takes it as a RuntimeError
+		Nest->Reset(0);
+		message := "";
+		try {
+			Class->Instance("Nest");
+		}
+		on(e : RuntimeError) {
+			message := e->GetMessage();
+		};
+		Check("a runaway recursion through Class->Instance ends in a RuntimeError",
+			message->Has("call stack bounds have been exceeded"));
+		# Each level nests the interpreter in C++, about 7.5 KB of native stack
+		# compiled (measured on Windows x64), more under a sanitizer, so an 8 MB
+		# POSIX thread stack ends it near 1,000 levels; the bound only shows that
+		# the recursion ran before the limit stopped it
+		Check("it went past 250 constructors first", Nest->Made() > 250);
+
+		# the call stack is whole again
+		Nest->Reset(500);
+		Class->Instance("Nest");
+		Check("after recovery the bounded recursion runs again", Nest->Made() = 500);
+
+		# and a second runaway recovers too
+		Nest->Reset(0);
+		again := false;
+		try {
+			Class->Instance("Nest");
+		}
+		on(e2 : RuntimeError) {
+			again := e2->GetMessage()->Has("call stack bounds have been exceeded");
+		};
+		Check("a second runaway recursion recovers too", again);
+	}
+}
+
+class ProbeThread from Thread {
+	@failures : Int;
+
+	New() {
+		Parent("callback-depth-probe");
+		@failures := -1;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		p := Prober->New("spawned thread");
+		p->Probe();
+		@failures := p->GetFailures();
+	}
+
+	method : public : GetFailures() ~ Int {
+		return @failures;
+	}
+}
+
+class VmCallbackDepth {
+	function : Main(args : String[]) ~ Nil {
+		p := Prober->New("main thread");
+		p->Probe();
+		failures := p->GetFailures();
+
+		t := ProbeThread->New();
+		t->Execute(Nil);
+		t->Join();
+		if(t->GetFailures() <> 0) {
+			"FAIL: the spawned thread's probe did not pass"->PrintLine();
+			failures += 1;
+		};
+
+		if(failures > 0) {
+			Runtime->Exit(1);
+		};
+	}
+}

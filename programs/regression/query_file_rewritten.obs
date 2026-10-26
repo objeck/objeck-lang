@@ -1,0 +1,94 @@
+# EXTRA_LIBS: net,regex,csv,misc,query,concurrent
+#~
+Query.Structured: a file rewritten within the second it was read, to the same size, is read
+again.
+
+A Catalog reads a file named in SQL again only after it changes, which it told by the
+file's name, size and modification time in whole seconds. A program that writes a CSV,
+queries it and rewrites it with the same number of bytes inside the same second (a sensor
+log, a status file, a test fixture) then got the first contents from the cache: the
+value it had just written was not the one the query returned (39 of the 40 checks below
+on the old library). Now an entry read while its files were that recent (within a second,
+racy as git calls it) also keeps a digest of the files' bytes, and is served only while
+the files still digest the same; once the files are a second older than the read, a
+later write lands in a later second and the stamp tells. An unchanged file is still read
+once, however often it is queried (docs/QUERY_DESIGN.md, "One catalog, many threads").
+
+The test writes a one-row CSV, queries it, rewrites it with another value of the same
+width inside the same second, queries again, twenty times over, then queries the
+unchanged file five times more and checks it was not read again.
+~#
+use Query.Structured, System.IO.Filesystem;
+
+class QueryFileRewritten {
+	function : Value(catalog : Catalog, path : String) ~ String {
+		rs := catalog->Query("select v from '{$path}'");
+		if(rs = Nil) {
+			return "ERROR: {$(catalog->GetError())}";
+		};
+		return rs->ToCsv()->ReplaceAll("\r\n", "\n")->ReplaceAll("v\n", "")->Trim();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		dir := Runtime->GetTempDir()->ReplaceAll("\\", "/");
+		if(<>dir->EndsWith('/')) {
+			dir += "/";
+		};
+		path := "{$dir}query_file_rewritten_{$(Runtime->GetProcessId())}.csv";
+
+		catalog := Catalog->New();
+		checks := 0;
+		failures := 0;
+		first : String := Nil;
+		same_second := 0;
+		each(attempt : 20) {
+			before := "{$(attempt * 2 + 10)}";
+			after := "{$(attempt * 2 + 11)}";
+			FileWriter->WriteFile(path, "v\n{$before}\n");
+			stamp_before := File->ModifiedTime(path)->ToString();
+			got := Value(catalog, path);
+			checks += 1;
+			if(<>got->Equals(before)) {
+				failures += 1;
+				if(first = Nil) {
+					first := "attempt {$attempt}, first read: got '{$got}', expected '{$before}'";
+				};
+			};
+
+			FileWriter->WriteFile(path, "v\n{$after}\n");
+			stamp_after := File->ModifiedTime(path)->ToString();
+			if(stamp_after->Equals(stamp_before)) {
+				same_second += 1;
+			};
+			got := Value(catalog, path);
+			checks += 1;
+			if(<>got->Equals(after)) {
+				failures += 1;
+				if(first = Nil) {
+					first := "attempt {$attempt}, read after the rewrite (same second: {$(stamp_after->Equals(stamp_before))}): got '{$got}', expected '{$after}'";
+				};
+			};
+		};
+		# an unchanged file is still served from the cache: one read, however often it is queried
+		reads := catalog->GetFileReads();
+		each(i : 5) {
+			Value(catalog, path);
+		};
+		checks += 1;
+		if(catalog->GetFileReads() <> reads) {
+			failures += 1;
+			if(first = Nil) {
+				first := "an unchanged file was read {$(catalog->GetFileReads() - reads)} times in 5 queries";
+			};
+		};
+		File->Delete(path);
+
+		if(failures = 0) {
+			"PASS: query_file_rewritten ({$checks} checks, {$same_second} rewrites within the second of the first write)"->PrintLine();
+		}
+		else {
+			"FAIL: query_file_rewritten: {$failures} of {$checks} checks failed ({$same_second} rewrites within the second of the first write); first: {$first}"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

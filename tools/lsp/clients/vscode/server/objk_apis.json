@@ -10389,8 +10389,14 @@
 			}
 		},
 		"Query.Structured.Server.TableServer": {
-			"description": "Publishes tables over HTTP, read-only:\n\n- 'GET \/tables' lists the tables, their columns and row counts, as JSON.\n- 'GET \/tables\/NAME' returns a table.\n- 'GET \/query?sql=...' or 'POST \/query' (the statement as the UTF-8 body) runs a SELECT over the published tables and returns the result.\n\nResults are CSV, JSON or .otab by the request's Accept header ('text\/csv', 'application\/json', 'application\/x-otab'), or a 'format=csv|json|otab' parameter; CSV is the default. Only SELECT is answered: a statement that would change data is refused (403), and so is a query that names a file or a URL, which would let a client read the server's disk or make it fetch an address. A result larger than the row limit is refused (413) rather than cut short. Queries run one at a time, since tables are not shared between threads. RemoteSource reads a published table from another program.\n\nWeb.HTTP.Server runs one server per process, so one TableServer serves at a time.",
+			"description": "Publishes tables over HTTP, read-only:\n\n- 'GET \/tables' lists the tables, their columns and row counts, as JSON.\n- 'GET \/tables\/NAME' returns a table.\n- 'GET \/query?sql=...' or 'POST \/query' (the statement as the UTF-8 body) runs a SELECT over the published tables and returns the result.\n\nResults are CSV, JSON or .otab by the request's Accept header ('text\/csv', 'application\/json', 'application\/x-otab'), or a 'format=csv|json|otab' parameter; CSV is the default. Only SELECT is answered: a statement that would change data is refused (403), and so is a query that names a file or a URL, which would let a client read the server's disk or make it fetch an address. A result larger than the row limit is refused (413) rather than cut short. RemoteSource reads a published table from another program.\n\nRequests are answered at once, each on its own thread, since they only read. The program that published the tables may change them while the server runs, but only between BeginWrite and EndWrite, which wait for the requests being answered to finish and hold new ones until the change is done; a table may not be written while another thread reads it.\n\nWeb.HTTP.Server runs one server per process, so one TableServer serves at a time.",
 			"functions": {
+				"BeginWrite": {
+					"descriptions": ["**Waits until no request is being answered, then holds new requests until EndWrite, so the program may change its published tables: INSERT, UPDATE, DELETE, an index, a column, Compact, or anything else that writes a table. Requests read the published tables at once, and a table may not be written while another thread reads it. Call EndWrite when done; a thread that called BeginWrite may not call it again before then.**\n\n```method : public : BeginWrite() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nserver->BeginWrite();\nruns->Execute(\"delete from runs where score < 0\");\nserver->EndWrite();\n```"]
+				},
+				"EndWrite": {
+					"descriptions": ["**Ends a change BeginWrite began: requests are answered again**\n\n```method : public : EndWrite() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
 				"GetAnswered": {
 					"descriptions": ["**Gets the number of requests answered, successfully or not**\n\n```method : public : GetAnswered() ~ Int```\n\n\n\nreturn: Int"]
 				},
@@ -10398,7 +10404,7 @@
 					"descriptions": ["**Constructor; publishes nothing until Publish**\n\n```New()```\n\n"]
 				},
 				"Publish": {
-					"descriptions": ["**Publishes a table under its name, replacing one of the same name**\n\n```method : public : Publish(table:Table) ~ Nil```\n\n\n\ntable: Table\n\nreturn: Nil"]
+					"descriptions": ["**Publishes a table under its name, replacing one of the same name. A request already being answered keeps the tables it found.**\n\n```method : public : Publish(table:Table) ~ Nil```\n\n\n\ntable: Table\n\nreturn: Nil"]
 				},
 				"Serve": {
 					"descriptions": ["**Serves on a port until Stop; this call blocks**\n\n```method : public : Serve(port:Int) ~ Nil```\n\n\n\nport: Int\n\nreturn: Nil"]
@@ -10410,7 +10416,7 @@
 					"descriptions": ["**Stops serving**\n\n```method : public : Stop() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"Unpublish": {
-					"descriptions": ["**Stops publishing a table**\n\n```method : public : Unpublish(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool"]
+					"descriptions": ["**Stops publishing a table. A request already being answered keeps the tables it found.**\n\n```method : public : Unpublish(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -16238,7 +16244,7 @@
 					"descriptions": ["**Gets the port this server is bound to. A server started on port 0 is bound to a port the system chose; once Serve has it listening this answers that port, so a program that starts the server in a thread can poll here instead of picking a port number.**\n\n```function : GetBoundPort() ~ Int```\n\n\n\nreturn: Int\n\n```\n# serve on a port the system chooses, then find out which\nthread := System.Concurrency.Thread->New() {\nNew() { Parent(); }\nmethod : public : Run(arg : System.Base) ~ Nil {\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), 0, false);\n}\n};\nthread->Execute(Nil);\nwhile(Web.HTTP.Server.WebServer->GetBoundPort() = 0) {\nSystem.Concurrency.Thread->Sleep(10);\n};\nport := Web.HTTP.Server.WebServer->GetBoundPort();\n```"]
 				},
 				"Serve": {
-					"descriptions": ["**Starts a HTTP server that listens for requests**\n\n```function : Serve(filename:String) ~ Nil```\n\n\n\nfilename: String\n\nreturn: Nil", "**Starts a HTTP server that listens for requests**\n\n```function : Serve(callback:Class, port:Int) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\nreturn: Nil\n\n```\n# start an HTTP server on port 8080 using MyHandler\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), 8080, true);\n```", "**Starts a HTTP server that listens for requests**\n\n```function : Serve(callback:Class, port:Int, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\nis_debug: Bool\n\nreturn: Nil", "**Starts a HTTP server that listens for requests on one local address instead of every interface, e.g. \"127.0.0.1\" to take only clients on this machine. The address is read as by TCPSocketServer->New(address, port): a literal (\"127.0.0.1\", \"::1\") or a host name, of which the first IPv4 address (else the first IPv6 one) is bound, so \"localhost\" binds 127.0.0.1; an empty address binds every interface. An address that cannot be bound is reported on standard error and the call returns.**\n\n```function : Serve(callback:Class, address:String, port:Int) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\nreturn: Nil\n\n```\n# an HTTP server on port 8080 that only this machine can reach\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), \"127.0.0.1\", 8080);\n```", "**Starts a HTTP server that listens for requests on one local address instead of every interface; see Serve(callback, address, port).**\n\n```function : Serve(callback:Class, address:String, port:Int, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\nis_debug: Bool\n\nreturn: Nil"]
+					"descriptions": ["**NOT IMPLEMENTED: starting a HTTP server from a configuration file. The call reports this on standard error and returns without serving; it used to load the file and then silently serve nothing. Use Serve(callback, port) or Serve(callback, port, is_debug) for HTTP, or ServeSecure(filename) for HTTPS, which does read a configuration file.**\n\n```function : Serve(filename:String) ~ Nil```\n\n\n\nfilename: String\n\nreturn: Nil", "**Starts a HTTP server that listens for requests**\n\n```function : Serve(callback:Class, port:Int) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\nreturn: Nil\n\n```\n# start an HTTP server on port 8080 using MyHandler\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), 8080, true);\n```", "**Starts a HTTP server that listens for requests**\n\n```function : Serve(callback:Class, port:Int, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\nis_debug: Bool\n\nreturn: Nil", "**Starts a HTTP server that listens for requests on one local address instead of every interface, e.g. \"127.0.0.1\" to take only clients on this machine. The address is read as by TCPSocketServer->New(address, port): a literal (\"127.0.0.1\", \"::1\") or a host name, of which the first IPv4 address (else the first IPv6 one) is bound, so \"localhost\" binds 127.0.0.1; an empty address binds every interface. An address that cannot be bound is reported on standard error and the call returns.**\n\n```function : Serve(callback:Class, address:String, port:Int) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\nreturn: Nil\n\n```\n# an HTTP server on port 8080 that only this machine can reach\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), \"127.0.0.1\", 8080);\n```", "**Starts a HTTP server that listens for requests on one local address instead of every interface; see Serve(callback, address, port).**\n\n```function : Serve(callback:Class, address:String, port:Int, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\nis_debug: Bool\n\nreturn: Nil"]
 				},
 				"ServeSecure": {
 					"descriptions": ["**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(filename:String) ~ Nil```\n\n\n\nfilename: String\n\nreturn: Nil\n\n```\n# start an HTTPS server from a JSON config file\nWeb.HTTP.Server.WebServer->ServeSecure(\"config\/server_config.json\");\n```", "**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(callback:Class, port:Int, cert:String, cert_key:String, cert_key_passwd:String) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nreturn: Nil", "**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(callback:Class, port:Int, cert:String, cert_key:String, cert_key_passwd:String, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nis_debug: Bool\n\nreturn: Nil", "**Starts a HTTPS server that listens for requests on one local address instead of every interface, e.g. \"127.0.0.1\" to take only clients on this machine. The address is read as by TCPSocketServer->New(address, port): a literal (\"127.0.0.1\", \"::1\") or a host name, of which the first IPv4 address (else the first IPv6 one) is bound, so \"localhost\" binds 127.0.0.1; an empty address binds every interface. An address that cannot be bound is reported on standard error and the call returns.**\n\n```function : ServeSecure(callback:Class, address:String, port:Int, cert:String, cert_key:String, cert_key_passwd:String) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nreturn: Nil", "**Starts a HTTPS server that listens for requests on one local address instead of every interface; see ServeSecure(callback, address, port, cert, cert_key, cert_key_passwd).**\n\n```function : ServeSecure(callback:Class, address:String, port:Int, cert:String, cert_key:String, cert_key_passwd:String, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nis_debug: Bool\n\nreturn: Nil"]
@@ -16305,7 +16311,7 @@
 			}
 		},
 		"Web.HTTP.Server.MCP.McpRequestHandler": {
-			"description": "MCP request handler",
+			"description": "MCP request handler. Each POST body is one JSON-RPC 2.0 message from the client and nothing in it is trusted: a body that is not JSON, is not a request object, or carries \"jsonrpc\", \"method\", \"id\" or \"params\" of the wrong type is answered with the JSON-RPC error the MCP specification mandates (see ErrorCode) instead of being dereferenced, a body over MAX_BODY_SIZE bytes is refused with HTTP 413, a notification (no \"id\") is accepted with a bodyless HTTP 202, and a handler callback (ListTools, CallTool, ...) that raises, dereferences Nil or returns Nil is answered with an internal error rather than ending the server.",
 			"functions": {
 				"CallPrompt": {
 					"descriptions": ["**Calls a prompt**\n\n```method : private : virutal : CallPrompt(name:String, arguments:JsonElement) ~ Vector&lt;PromptMessage&gt;```\n\n\n\nname: String\n\narguments: JsonElement\n\nreturn: Vector&lt;PromptMessage&gt;"]
@@ -16341,7 +16347,7 @@
 					"descriptions": ["**Processes GET requests**\n\n```method : private : ProcessGet(request:Web.HTTP.Server.Request, response:Web.HTTP.Server.Response) ~ Bool```\n\n\n\nrequest: Web.HTTP.Server.Request\n\nresponse: Web.HTTP.Server.Response\n\nreturn: Bool"]
 				},
 				"ProcessPost": {
-					"descriptions": ["**Processes POST requests**\n\n```method : private : ProcessPost(request:Web.HTTP.Server.Request, response:Web.HTTP.Server.Response) ~ Bool```\n\n\n\nrequest: Web.HTTP.Server.Request\n\nresponse: Web.HTTP.Server.Response\n\nreturn: Bool"]
+					"descriptions": ["**Processes POST requests. The body is one JSON-RPC 2.0 message. A body that is empty, not JSON, over MAX_BODY_SIZE bytes or nested deeper than the parser allows is answered with PARSE_ERROR (INVALID_REQUEST and HTTP 413 for the size); JSON that is not an object, or whose \"jsonrpc\" is not \"2.0\", \"method\" is not a non-empty string, \"id\" is present but neither a string nor a number, or \"params\" is not an object, with INVALID_REQUEST (HTTP 400); a message without an \"id\", or whose method starts with \"notifications\/\", is a notification and gets a bodyless HTTP 202. A request for a method the server lacks, with params it cannot use, or whose handler callback raised, dereferenced Nil or returned Nil is answered with METHOD_NOT_FOUND, INVALID_PARAMS or INTERNAL_ERROR in a JSON-RPC error reply (HTTP 200). The request id is echoed in every reply, null when it was unusable.**\n\n```method : private : ProcessPost(request:Web.HTTP.Server.Request, response:Web.HTTP.Server.Response) ~ Bool```\n\n\n\nrequest: Web.HTTP.Server.Request\n\nresponse: Web.HTTP.Server.Response\n\nreturn: Bool"]
 				},
 				"ShowPayload": {
 					"descriptions": ["**Displays payload for debugging**\n\n```function : ShowPayload(payload:String) ~ Nil```\n\n\n\npayload: String\n\nreturn: Nil"]
@@ -16349,25 +16355,31 @@
 				"StopCacheTimer": {
 					"descriptions": ["**Stops the session cache timer**\n\n```function : StopCacheTimer() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
+				"WriteError": {
+					"descriptions": ["**Writes a JSON-RPC error response**\n\n```method : private : WriteError(code:Int, message:String, id:JsonElement, response:Web.HTTP.Server.Response, http_code:Int) ~ Nil```\n\n\n\ncode: Int\n\nmessage: String\n\nid: JsonElement\n\nresponse: Web.HTTP.Server.Response\n\nhttp_code: Int\n\nreturn: Nil"]
+				},
 				"WriteResponse": {
-					"descriptions": ["**Writes a JSON-RPC response**\n\n```method : private : WriteResponse(message:JsonElement, id:Int, response:Web.HTTP.Server.Response, code:Int) ~ Nil```\n\n\n\nmessage: JsonElement\n\nid: Int\n\nresponse: Web.HTTP.Server.Response\n\ncode: Int\n\nreturn: Nil"]
+					"descriptions": ["**Writes a JSON-RPC response**\n\n```method : private : WriteResponse(message:JsonElement, id:Int, response:Web.HTTP.Server.Response, code:Int) ~ Nil```\n\n\n\nmessage: JsonElement\n\nid: Int\n\nresponse: Web.HTTP.Server.Response\n\ncode: Int\n\nreturn: Nil", "**Writes a JSON-RPC response whose id is echoed as the request sent it (a string or a number; Nil writes null)**\n\n```method : private : WriteResponse(message:JsonElement, id:JsonElement, response:Web.HTTP.Server.Response, code:Int) ~ Nil```\n\n\n\nmessage: JsonElement\n\nid: JsonElement\n\nresponse: Web.HTTP.Server.Response\n\ncode: Int\n\nreturn: Nil"]
 				}
 			}
 		},
 		"Web.HTTP.Server.MCP.McpServer": {
-			"description": "MCP server. Serve listens on the HTTP port the configuration's \"http_port\" names; an \"http_port\" of 0 asks the system for a free port, which GetBoundPort answers once the server is listening, so a program that starts the server in a thread can poll for the port instead of picking a number.",
+			"description": "MCP server. Serve listens on the HTTP port the configuration's \"http_port\" names; an \"http_port\" of 0 asks the system for a free port, which GetBoundPort answers once the server is listening, so a program that starts the server in a thread can poll for the port instead of picking a number.\n\nThe configuration is a JSON object with these keys, all required: \"http_port\" (an integer 0..65535), \"http_session_timeout\" (an integer number of seconds, greater than 0), \"debug\" (true or false), and the strings \"name\", \"version\" and \"instructions\" the server answers an MCP initialize request with. A Nil configuration, a missing key or a value of the wrong type is refused with a message naming the key (see GetLastError) instead of being dereferenced, and leaves the server free to be started again.",
 			"functions": {
 				"Foo": {
 					"descriptions": ["**Virtual placeholder method**\n\n```function : virutal : Foo() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"GetBoundPort": {
-					"descriptions": ["**Gets the port the MCP server is bound to. An \"http_port\" of 0 is bound to a port the system chose; once Serve has the server listening this answers that port, so a program that starts the server in a thread can poll here instead of picking a port number.**\n\n```function : GetBoundPort() ~ Int```\n\n\n\nreturn: Int\n\n```\n# serve on a port the system chooses, then find out which\nthread := System.Concurrency.Thread->New() {\nNew() { Parent(); }\nmethod : public : Run(arg : System.Base) ~ Nil {\nbuilder := Data.JSON.JsonBuilder->New();\nconfig := builder->PushObject();\nconfig->Insert(\"http_port\", 0);\nconfig->Insert(\"http_session_timeout\", 30);\nconfig->Insert(\"debug\", false);\nWeb.HTTP.Server.MCP.McpServer->Serve(builder->Pop(), MyMcpHandler->New());\n}\n};\nthread->Execute(Nil);\nwhile(Web.HTTP.Server.MCP.McpServer->GetBoundPort() = 0) {\nSystem.Concurrency.Thread->Sleep(10);\n};\nport := Web.HTTP.Server.MCP.McpServer->GetBoundPort();\n```"]
+					"descriptions": ["**Gets the port the MCP server is bound to. An \"http_port\" of 0 is bound to a port the system chose; once Serve has the server listening this answers that port, so a program that starts the server in a thread can poll here instead of picking a port number.**\n\n```function : GetBoundPort() ~ Int```\n\n\n\nreturn: Int\n\n```\n# serve on a port the system chooses, then find out which\nthread := System.Concurrency.Thread->New() {\nNew() { Parent(); }\nmethod : public : Run(arg : System.Base) ~ Nil {\nbuilder := Data.JSON.JsonBuilder->New();\nconfig := builder->PushObject();\nconfig->Insert(\"name\", \"My MCP server\");\nconfig->Insert(\"version\", \"1.0.0\");\nconfig->Insert(\"instructions\", \"What this server is for\");\nconfig->Insert(\"http_port\", 0);\nconfig->Insert(\"http_session_timeout\", 30);\nconfig->Insert(\"debug\", false);\nWeb.HTTP.Server.MCP.McpServer->Serve(builder->Pop(), MyMcpHandler->New());\n}\n};\nthread->Execute(Nil);\nwhile(Web.HTTP.Server.MCP.McpServer->GetBoundPort() = 0) {\nSystem.Concurrency.Thread->Sleep(10);\n};\nport := Web.HTTP.Server.MCP.McpServer->GetBoundPort();\n```"]
+				},
+				"GetLastError": {
+					"descriptions": ["**Gets why the last call to Serve was refused: the server was already initialized, the handler was Nil, or the configuration was Nil, not a JSON object, missing a key or held a value of the wrong type or out of range. The message names the key. Nil once a Serve has been accepted; a port that cannot be bound is reported by the web server on standard error instead.**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String\n\n```\nWeb.HTTP.Server.MCP.McpServer->Serve(config, MyMcpHandler->New());\nreason := Web.HTTP.Server.MCP.McpServer->GetLastError();\nif(reason <> Nil) {\n\"MCP server not started: {$reason}\"->ErrorLine();\n};\n```"]
 				},
 				"IsDebug": {
 					"descriptions": ["**Returns rather the server is in debug mode**\n\n```function : IsDebug() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"Serve": {
-					"descriptions": ["**Initializes the MCP server and serves until the web server is stopped. The configuration's \"http_port\" is the port to listen on; 0 takes a port the system chooses (see GetBoundPort), a negative port is refused.**\n\n```function : Serve(config:JsonElement, handler:McpRequestHandler) ~ Nil```\n\n\n\nconfig: JsonElement\n\nhandler: McpRequestHandler\n\nreturn: Nil"]
+					"descriptions": ["**Initializes the MCP server and serves until the web server is stopped. The configuration's \"http_port\" is the port to listen on; 0 takes a port the system chooses (see GetBoundPort), a negative port is refused. A configuration that is Nil, is not a JSON object, lacks one of the required keys (see the class) or holds a value of the wrong type is refused with a message naming the key, on standard error and from GetLastError, and the server may be started again with a valid one.**\n\n```function : Serve(config:JsonElement, handler:McpRequestHandler) ~ Nil```\n\n\n\nconfig: JsonElement\n\nhandler: McpRequestHandler\n\nreturn: Nil"]
 				}
 			}
 		},
@@ -21453,6 +21465,30 @@
 				{ "name": "NONE", "value": "100", "description": "Not compressed." },
 				{ "name": "GZIP", "value": "101", "description": "gzip (RFC 1952), sent as Content-Encoding: gzip." },
 				{ "name": "DEFLATE", "value": "102", "description": "The zlib format (RFC 1950), which is what HTTP calls deflate." }
+			]
+		},
+		"Web.HTTP.Server.MCP.McpRequestHandler#ErrorCode": {
+			"name": "ErrorCode",
+			"bundle": "Web.HTTP.Server.MCP",
+			"class": "Web.HTTP.Server.MCP.McpRequestHandler",
+			"kind": "consts",
+			"description": "JSON-RPC 2.0 error codes the handler answers with: PARSE_ERROR for a body that is not JSON (HTTP 400), INVALID_REQUEST for JSON that is not a request object or has a member of the wrong type (HTTP 400, or 413 for a body over MAX_BODY_SIZE), METHOD_NOT_FOUND, INVALID_PARAMS and INTERNAL_ERROR for a well-formed request (HTTP 200, the error in the JSON-RPC reply)",
+			"items": [
+				{ "name": "PARSE_ERROR", "value": "-32700", "description": "" },
+				{ "name": "INVALID_REQUEST", "value": "-32600", "description": "" },
+				{ "name": "METHOD_NOT_FOUND", "value": "-32601", "description": "" },
+				{ "name": "INVALID_PARAMS", "value": "-32602", "description": "" },
+				{ "name": "INTERNAL_ERROR", "value": "-32603", "description": "" }
+			]
+		},
+		"Web.HTTP.Server.MCP.McpRequestHandler#Limit": {
+			"name": "Limit",
+			"bundle": "Web.HTTP.Server.MCP",
+			"class": "Web.HTTP.Server.MCP.McpRequestHandler",
+			"kind": "consts",
+			"description": "Limits on a request: MAX_BODY_SIZE is the largest POST body in bytes (4 MiB, the default of the reference MCP servers); a larger one is refused with HTTP 413 before it is parsed. Nesting is bounded by the JSON parser (64 levels; deeper is a parse error).",
+			"items": [
+				{ "name": "MAX_BODY_SIZE", "value": "4194304", "description": "" }
 			]
 		},
 		"Web.Server.Request#Method": {

@@ -448,18 +448,17 @@ bundle LSP {
 
 		#
 		# One string, or the descriptions of each overload. The index is read with
-		# Data.JSON's parser, which keeps strings as they were written, escapes and
-		# all, so each is decoded once here.
+		# Data.JSON's parser, which decodes its strings.
 		#
 		function : JoinDocumentation(docs_json : JsonElement) ~ String {
 			if(docs_json->GetType() = JsonElement->JsonType->STRING) {
-				return JsonElement->Decode(docs_json->GetString());
+				return docs_json->GetString();
 			};
 
 			text := "";
 			if(docs_json->GetType() = JsonElement->JsonType->ARRAY) {
 				each(i : docs_json) {
-					doc := JsonElement->Decode(docs_json->Get(i)->GetString());
+					doc := docs_json->Get(i)->GetString();
 					if(doc <> Nil & <>doc->IsEmpty()) {
 						if(<>text->IsEmpty()) {
 							text += "\n\n---\n\n";
@@ -775,7 +774,7 @@ bundle LSP {
 				item := items->Get(i);
 				item_name := item->Get("name")->GetString();
 				if(prefix = Nil | item_name->StartsWith(prefix)) {
-					item_value := JsonElement->Decode(item->Get("value")->GetString());
+					item_value := item->Get("value")->GetString();
 
 					completion := JsonElement->New(JsonElement->JsonType->OBJECT);
 					completion->Insert("label", item_name);
@@ -784,7 +783,7 @@ bundle LSP {
 					completion->Insert("detail", "{$display_name}->{$item_name} = {$item_value}");
 					item_desc_json := item->Get("description");
 					if(item_desc_json <> Nil) {
-						item_desc := JsonElement->Decode(item_desc_json->GetString());
+						item_desc := item_desc_json->GetString();
 						if(item_desc <> Nil & <>item_desc->IsEmpty()) {
 							completion->Insert("documentation", item_desc);
 						};
@@ -811,7 +810,7 @@ bundle LSP {
 					each(i : items) {
 						item := items->Get(i);
 						if(item->Get("name")->GetString()->Equals(item_name)) {
-							item_value := JsonElement->Decode(item->Get("value")->GetString());
+							item_value := item->Get("value")->GetString();
 							display_name := EnumDisplayName(enum_json);
 							text := "```objeck\n{$display_name}->{$item_name} = {$item_value}\n```";
 
@@ -819,10 +818,10 @@ bundle LSP {
 							desc : String;
 							item_desc_json := item->Get("description");
 							if(item_desc_json <> Nil) {
-								desc := JsonElement->Decode(item_desc_json->GetString());
+								desc := item_desc_json->GetString();
 							};
 							if(desc = Nil | desc->IsEmpty()) {
-								desc := JsonElement->Decode(enum_json->Get("description")->GetString());
+								desc := enum_json->Get("description")->GetString();
 							};
 							if(desc <> Nil & <>desc->IsEmpty()) {
 								text += "\n\n";
@@ -855,7 +854,7 @@ bundle LSP {
 			display_name := EnumDisplayName(enum_json);
 			text := "```objeck\n{$kind} {$display_name}\n```";
 
-			desc := JsonElement->Decode(enum_json->Get("description")->GetString());
+			desc := enum_json->Get("description")->GetString();
 			if(desc <> Nil & <>desc->IsEmpty()) {
 				text += "\n\n";
 				text += desc;
@@ -870,7 +869,7 @@ bundle LSP {
 					if(i < max_items) {
 						item := items->Get(i);
 						item_name := item->Get("name")->GetString();
-						item_value := JsonElement->Decode(item->Get("value")->GetString());
+						item_value := item->Get("value")->GetString();
 						text += "{$item_name} = {$item_value}\n";
 					};
 				};

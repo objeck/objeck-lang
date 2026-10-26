@@ -16,7 +16,6 @@ class Hello {
 					status := statuses->Get(i);
 					text := status->Get("text");
 					text->GetValue()->PrintLine();
-					JsonElement->Decode(text->GetValue())->PrintLine();
 					"---"->PrintLine();
 				};
 			};

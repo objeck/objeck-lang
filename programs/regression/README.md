@@ -59,6 +59,8 @@ The file-name prefix decides a test's category in `TESTS.md` (`core_`, `jit_`, `
 | `# JIT_DISABLE` | Runs the test with the JIT off; the next line must be `# reason: ...` (`tools/cicd/check_jit_optouts.py`) |
 | `# VERIFY_SKIP`, `# GC_STRESS_SKIP` | Skipped in the nightly heap-verifier and forced-GC-threshold runs; the next line must be `# reason: ...` naming the run that failed |
 
+Data a test reads lives under `data/`, found relative to this directory (every runner runs tests from here). `data/bert/` holds three tiny BERT-shaped ONNX models, their vocabulary and `gen_tiny_bert.py`, which regenerates them byte-for-byte; `docs/ML_BERT_DESIGN.md` describes them.
+
 ## Adding New Tests
 
 1. Create a new `.obs` file in this directory

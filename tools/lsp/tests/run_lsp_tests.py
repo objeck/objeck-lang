@@ -404,6 +404,87 @@ def check_formatting_literals(c):
     c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
 
 
+def check_escaped_text(c):
+    """Quotes, backslashes and line breaks cross the wire decoded exactly once.
+
+    The client sends the document as a JSON string, so every backslash in the
+    source arrives escaped. Data.JSON's parser now decodes it; the server used
+    to decode it a second time as well, which would turn the literal's
+    backslash-n into a line break and move every later column and line. The
+    diagnostic for zzz, after such a literal, must be where the client put it,
+    and its message must come back intact through the serializer.
+    """
+    bs = chr(92)
+    literal = '"C:' + bs + bs + 'new ' + bs + '"q' + bs + '" tab' + bs + 't"'
+    text = ("class EscText {\n"
+            "  function : Main(args : String[]) ~ Nil {\n"
+            "    s := " + literal + "; s->PrintLine(); y := zzz;\n"
+            "    t := \"line\"; t->PrintLine(); w := qqq;\n"
+            "  }\n"
+            "}\n")
+    uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_escaped_text.obs"))
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+    diags = c.diagnostics_for(uri, timeout=60) or []
+    lines = text.split("\n")
+    for name, line_no in (("zzz", 2), ("qqq", 3)):
+        want = {"line": line_no, "character": lines[line_no].index(name)}
+        found = [d for d in diags if name in str(d.get("message", ""))]
+        got = [d["range"]["start"] for d in found]
+        log_result(f"after an escaped literal, the diagnostic for {name} is where the client put it",
+                   want in got, f"want {want}, got {got}")
+    messages = [str(d.get("message", "")) for d in diags]
+    log_result("diagnostic messages carry no stray escapes",
+               all(bs not in m for m in messages) and len(messages) >= 2, f"got: {messages!r}")
+
+    # the server's own copy of the text: the formatter writes it back, and the
+    # literal must come back exactly as the client sent it
+    edits = result_of(c.request("textDocument/formatting", {
+        "textDocument": {"uri": uri},
+        "options": {"tabSize": 2, "insertSpaces": True}}))
+    applied = apply_edits(text, edits or [])
+    log_result("the server's copy keeps quotes, backslashes and tabs in a literal",
+               literal in applied, repr(applied[:200]))
+    c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+
+
+def check_formatting_unterminated(c):
+    """Formatting text that ends inside a literal or a comment answers.
+
+    The formatter's scanner looped until the closing quote, the end of the
+    block comment or the next line break, and never tested for the end of the
+    text: an unterminated string, character or block comment, or a line
+    comment on the last line with no newline after it, spun the server at
+    full CPU and every later request went unanswered. A document is in that
+    state every time someone types an opening quote.
+    """
+    bs = chr(92)
+    shapes = [
+        ("an unterminated string", 'class U1 {\n  function : Main(a : String[]) ~ Nil {\n    y := "a"b";\n  }\n}\n'),
+        ("a string ending in an escaped backslash", 'class U2 {\n  function : Main(a : String[]) ~ Nil {\n    y := "a' + bs + bs + '"; z := 1;\n  }\n}\n'),
+        ("an unterminated character", "class U3 {\n  function : Main(a : String[]) ~ Nil {\n    c := 'x;\n  }\n}\n"),
+        ("an unterminated block comment", "class U4 {\n  #~ never closed\n  function : Main(a : String[]) ~ Nil {\n  }\n}\n"),
+        ("a line comment on the last line", "class U5 {\n  function : Main(a : String[]) ~ Nil {\n  }\n}\n# last"),
+    ]
+    for n, (label, text) in enumerate(shapes):
+        uri = path_to_uri(os.path.join(TESTS_DIR, f"lsp_unterminated_{n}.obs"))
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+        c.diagnostics_for(uri, timeout=30)
+        resp = c.request("textDocument/formatting", {
+            "textDocument": {"uri": uri},
+            "options": {"tabSize": 2, "insertSpaces": True}}, timeout=30)
+        log_result(f"formatting {label} answers", resp is not None)
+        if n == 1 and resp is not None:
+            # valid code: the escaped backslash does not escape the closing quote
+            applied = apply_edits(text, result_of(resp) or [])
+            log_result("formatting keeps a literal that ends in an escaped backslash",
+                       '"a' + bs + bs + '";' in applied and "z := 1;" in applied, repr(applied[:160]))
+        c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+        if resp is None:
+            return
+
+
 def completion_items(resp):
     r = result_of(resp)
     if isinstance(r, dict):
@@ -497,6 +578,15 @@ def check_completion_docs(c, caps, probe_text, probe_uri):
     # code the renderer decodes it, and a bare '<' could read as a tag).
     log_result("documentation code shows <H>, not &lt;H&gt;",
                "~ Vector<H>`" in doc and "~ Vector&lt;" not in doc, f"got: {doc[:200]!r}")
+    # The index's strings are decoded once, by Data.JSON's parser: the example's
+    # quotes and the lambda's backslash survive. The server used to decode them
+    # itself as well, and a second decode drops a backslash it does not know
+    # ("\(" is not a JSON escape).
+    log_result("documentation keeps the example's quotes",
+               'v->AddBack("a");' in doc, f"got: {doc[-160:]!r}")
+    log_result("documentation keeps the example's backslash",
+               chr(92) + "(String) ~ Nil" in doc and doc.count(chr(92) + chr(92)) == 0,
+               f"got: {doc[-160:]!r}")
 
     hover = result_of(c.request("textDocument/hover",
                                 position_in(text, uri, "AddBack", 1, 2))) or {}
@@ -2045,6 +2135,8 @@ def main():
         log_result("textDocument/formatting", bool(fmt))
         check_formatting_applies(fmt, probe_text, "lsp_probe.obs")
         check_formatting_literals(c)
+        check_escaped_text(c)
+        check_formatting_unterminated(c)
         log_result("textDocument/foldingRange", non_empty(c.request(
             "textDocument/foldingRange", {"textDocument": {"uri": probe_uri}})))
         log_result("textDocument/selectionRange", non_empty(c.request(

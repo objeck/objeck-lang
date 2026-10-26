@@ -2939,6 +2939,29 @@ void ContextAnalyzer::AnalyzeConditional(Cond* conditional, const int depth)
     conditional->SetEvalType(if_type->GetType() == NIL_TYPE ? else_type : if_type, true);
     conditional->GetEvalType()->SetDimension(if_type->GetType() == NIL_TYPE ? value_dimension(else_conditional, else_type) : if_dimension);
     current_method->SetAndOr(true);
+
+    // A function reference is two words, and the branches' value used to meet
+    // at the join in the one-word and/or temporary: the store took the method
+    // id and left each branch's closure word on the operand stack. The
+    // interpreter's stack happened to line both up again, but a JIT-compiled
+    // method kept the closure word of the branch it compiled LAST, so taking
+    // the other branch called through the wrong closure -- an access violation
+    // once that branch captured anything (jit_conditional_value_types.obs).
+    // Such a conditional gets a hidden two-word local of its own instead.
+    Type* value_type = conditional->GetEvalType();
+    if(!conditional->GetFuncTemp() && value_type->GetType() == FUNC_TYPE && value_type->GetDimension() == 0 &&
+       current_method && current_table) {
+      static int cond_tmp_id = 0;
+      const std::wstring tmp_name = current_method->GetName() + L":#cond_tmp#" + std::to_wstring(cond_tmp_id++);
+      SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(tmp_name, TypeFactory::Instance()->MakeType(value_type), false, true);
+      if(current_table->AddEntry(entry, true)) {
+        entry->WasLoaded();
+        conditional->SetFuncTemp(entry);
+      }
+      else {
+        ProcessError(conditional, L"Internal error: unable to allocate a function-reference conditional's local");
+      }
+    }
   }
   else {
     ProcessError(conditional, L"Invalid 'if' statement");

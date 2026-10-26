@@ -1,0 +1,73 @@
+#~
+Fixture for run_vm_flag_tests.py section 19: transparent huge pages stay off the
+stacks of the threads the VM starts (Linux).
+
+'<n> <ms>': start n threads that each sleep ms milliseconds, print "started <n>"
+once all are running, join them and print "joined <n>". The script reads the
+process's mappings while the threads sleep: every thread's native stack, and
+its call and operand stacks, must carry the kernel's no-huge-page flag ("nh" in
+/proc/<pid>/smaps), and none may hold a huge page. With THP on for every
+mapping (the default in WSL and on many distributions) the kernel backed each
+glibc-allocated thread stack with a 2 MB page at its first touch: 100 idle
+threads held 37 MB more than they needed, and with --call-depth=100000 130 MB.
+
+With no arguments, as the regression runner runs it: 8 threads for 100 ms, and
+a PASS line once all have joined.
+~#
+use System.Concurrency;
+
+class Idle from Thread {
+	@ms : Int;
+	@done : Bool;
+
+	New(ms : Int) {
+		Parent("idle");
+		@ms := ms;
+		@done := false;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		Thread->Sleep(@ms);
+		@done := true;
+	}
+
+	method : public : IsDone() ~ Bool {
+		return @done;
+	}
+}
+
+class VmThreadStackPages {
+	function : Main(args : String[]) ~ Nil {
+		n := 8;
+		ms := 100;
+		if(args->Size() > 1) {
+			n := args[0]->ToInt();
+			ms := args[1]->ToInt();
+		};
+
+		threads := Idle->New[n];
+		each(i : threads) {
+			threads[i] := Idle->New(ms);
+			threads[i]->Execute(Nil);
+		};
+		"started {$n}"->PrintLine();
+		System.IO.Console->Flush();
+
+		done := 0;
+		each(i : threads) {
+			threads[i]->Join();
+			if(threads[i]->IsDone()) {
+				done += 1;
+			};
+		};
+		"joined {$done}"->PrintLine();
+
+		if(done = n) {
+			"PASS: {$n} threads started and joined"->PrintLine();
+		}
+		else {
+			"FAIL: {$done} of {$n} threads finished"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

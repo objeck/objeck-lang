@@ -192,7 +192,7 @@ rs := table->Where(Col("value")->Gt(0.5)->And(Col("grp")->Eq("g7")))
 
 ```
 SELECT [DISTINCT] (* | expr [AS name], ...)
-FROM table [[INNER | LEFT] JOIN table ON a.col = b.col ...]
+FROM table [[INNER | LEFT] JOIN table ON condition ...]
 [WHERE predicate]
 [GROUP BY col, ... [HAVING predicate]]
 [ORDER BY col [ASC | DESC], ...]
@@ -212,16 +212,17 @@ of reading numbers only:
 
 - whole numbers stay whole under `+ - *` and `%`; `/` always gives a Float (`7 / 2` is 3.5), and
   a Float anywhere gives a Float (`%` of Floats keeps the dividend's sign);
-- an empty cell, a cell that is not a number, and a zero divisor give an empty cell rather than
-  an error (a Float division by zero would otherwise stop the program);
+- an empty cell, a cell that is not a number, a zero divisor, and an Int result that does not
+  fit in 64 bits give an empty cell rather than an error or a wrapped number (a Float division
+  by zero would otherwise stop the program);
 - the default label is the expression as written (`n + 1`); `AS` names it, and `ORDER BY` can
   use that name or the position;
 - `n -1` (a name, then a number with its sign) is a subtraction, as it reads.
 
 Expressions are computed after WHERE, over the rows that pass, before DISTINCT, ORDER BY and
-LIMIT. Not yet: expressions in WHERE, ON, GROUP BY or HAVING, or in a grouped or aggregate
-query's select list (`sum(x) / count(*)`): each is refused with an error that says so, never a
-silent Nil. Every statement that fails returns Nil with `GetError` set; a program that calls a
+LIMIT. WHERE, ON, ORDER BY, GROUP BY, HAVING and a grouped query's select list take expressions
+too ("Expressions in every clause" below).
+Every statement that fails returns Nil with `GetError` set; a program that calls a
 method on that Nil gets the language's ordinary `NilError`, which a `?->` region recovers from.
 
 Aggregates: `COUNT(*)`, `COUNT(col)`, `SUM`, `AVG`, `MIN`, `MAX`, plus `MEDIAN` and `STDDEV`
@@ -784,8 +785,9 @@ design above. Each phase adds its notes here.
 
 **Phase 5 (reading).**
 - Downloads are kept under the system temporary folder in `objeck_query_cache`, revalidated
-  with `If-None-Match` and `If-Modified-Since`. A new copy is written beside the old and renamed
-  into place. Without a validator, the content's size and CRC32 tell versions apart.
+  with `If-None-Match` and `If-Modified-Since`. Without a validator, the content's size and
+  CRC32 tell versions apart. Each URL has a folder of versions and a note naming the current
+  one, which threads and processes share ("One cache folder, many processes" below).
 
 **Phase 5 (serving).**
 - `TableServer` lives in its own library, `query_server.obl` (bundle
@@ -796,9 +798,9 @@ design above. Each phase adds its notes here.
 - Only a SELECT is answered (403 otherwise). Its catalog has file access turned off
   (`Catalog->SetFileAccess(false)`), so a query naming a file or a URL is refused (403): it
   would otherwise read the server's disk or make the server fetch an address for the client.
-  A result over the row limit is refused (413) rather than cut short. Queries run one at a time
-  under a mutex (it predates catalogs that threads may share, below, and published tables may
-  be written by the program that publishes them). There is no time
+  A result over the row limit is refused (413) rather than cut short. Requests are answered at
+  once, each on its own thread; the program changes a published table only between
+  `BeginWrite` and `EndWrite` ("A server that answers at once" below). There is no time
   limit yet: the engine has no cancellation point to stop a running query at.
 - `Web.HTTP.Server` runs one server per process, so one `TableServer` serves at a time.
   Binding to localhost only needs a listen address, which the server does not take yet.
@@ -1053,7 +1055,7 @@ in a linked library method, so adding classes to `query.obl` made a query loop f
 
 **The contract.** One thread writes a table, or several threads read it, never both at once:
 writes are not locked, and a program that mixes them must order them itself (as `TableServer`
-does with its mutex). Within that contract, any number of threads may query one table at the
+does with its readers-writer lock). Within that contract, any number of threads may query one table at the
 same time, including the first queries after a write, and every answer is the answer a scan
 gives on one thread. `Table->GetError` reports the calling thread's own last error ("Errors
 per thread" below), and a `Catalog` may be shared too ("One catalog, many threads").
@@ -1171,16 +1173,21 @@ made by the first table or catalog, before there is one to share):
   loading. A query checks the file's stamp (its names, sizes and modification times) against
   the cache without a file lock; on a miss it takes the file's lock, checks the cache again, and
   only then reads, so threads that miss together read the file once and the rest find it
-  cached when the lock comes free. Files that share a lock by their hash wait for each other's
+  cached when the lock comes free. A stamp tells the modification time in whole seconds, so a
+  file rewritten within the second of its last read, to the same size, keeps its stamp; an
+  entry read while its files were that recent (within a second: racy, as git calls its index
+  entries) also keeps a digest of the files' bytes (size and CRC-32), taken before the read,
+  and is served only while the files still digest the same. Once the files are a second
+  older than the read, a later write lands in a later second and the stamp alone tells. Files that share a lock by their hash wait for each other's
   reads, which only costs time, and only when both are being read.
 - *URLs.* The revalidating request (`If-None-Match`, `If-Modified-Since`) goes out with no lock
-  held, so concurrent queries of one URL revalidate concurrently. The local copy and its note
-  are read and replaced only under the URL's file lock, which a catalog also holds while it
-  reads the copy into a table, so the copy cannot change under a reader, and the stamp the
-  table is cached under is the copy's own (the note now records it, on a third line older
-  versions ignore). A new copy and a new note are written to files named for this process and
-  thread and renamed into place: before, two threads downloading one URL wrote one `.part` file
-  at once, and the loser's rename failed its query.
+  held, so concurrent queries of one URL revalidate concurrently. Before, two threads
+  downloading one URL wrote one `.part` file at once, and the loser's rename failed its query;
+  this section first fixed that with the URL's file lock around the copy and its note, which
+  kept threads apart but not processes. The download cache now needs no lock at all ("One
+  cache folder, many processes" below): a fetch returns a version that never changes, with the
+  stamp that belongs to it, and a catalog reads that version into a table under the URL's file
+  lock only so that threads that miss together read it once.
 
 The locks cannot deadlock: nothing waits for a file lock while holding another lock, a thread
 holding a file lock may take only the catalog lock or an error lock, and those two take no other
@@ -1192,8 +1199,8 @@ with another table under that name, the same statement kept inserting into the o
 (now each run takes the table's columns as they are; `query_sql_relational` covers it); and the
 `CREATE TABLE` race above.
 
-Not changed: `TableServer` still answers one request at a time under its mutex, since the
-program that publishes tables may write them while it serves.
+`TableServer` answered one request at a time under its mutex until it, too, was made to answer
+at once ("A server that answers at once" below).
 
 **The test.** `query_catalog_concurrent`: six threads share one catalog over 30 rounds. Each
 round rewrites a CSV and a zip a little longer (so every thread misses the file cache for them
@@ -1211,6 +1218,92 @@ threads sharing a catalog query a URL with no validator (so every query download
 that answers 304, over eight rounds that each change the first; every answer must be right and
 the changed file read once per round. Before the fix a thread's query failed with "cannot
 write its copy" in the first round of every run.
+
+## One cache folder, many processes
+
+**The gap.** The download cache lives in one folder under the system's temporary folder, so
+every process on a machine shares it, and "One catalog, many threads" made it safe only within
+one process: the URL's file lock kept threads apart, and nothing kept processes apart. A URL
+had one copy and one note (its `ETag`, `Last-Modified` and stamp), each replaced by a rename,
+so two processes could:
+
+- *fail a query.* On Windows a rename cannot replace a file another process has open, and a
+  reader holds the copy open while it reads it, so the writer's rename failed and so did its
+  query ("cannot write its copy"). With six processes querying a changing file, about one
+  query in ten failed.
+- *pair a copy with another download's note.* The copy and the note were two renames. Two
+  processes that downloaded different versions could leave one's copy beside the other's note,
+  and a note's validators are what the next fetch sends: with the newer note beside the older
+  copy, the server answers 304 and the older copy is served as current until the file changes
+  again. A reader could also read a note, then a copy another process had replaced since.
+
+**The design: immutable versions and one small note, published by one rename.** Each URL has a
+folder of its own (named by the URL's hash) holding:
+
+- *versions*: each download, under a name no other writer uses (`PID-THREAD-COUNT_name.csv`:
+  the process id, the thread's number from `Thread->GetCurrentId`, and a count of this process's
+  writes; a name a process with the same id left behind is skipped). A version is written once,
+  whole, and never changed, so a reader never sees it change, and since no other writer uses its
+  name, writing it cannot fail because another process reads something. The URL's own file name
+  ends it, so its extension still says how to read it.
+- *the note*, `current`: four lines, the `ETag`, the `Last-Modified`, the stamp of the version
+  and the version's name. It is written under a name of the writer's own and renamed over the
+  old note: one rename of one small file publishes a version together with its validators. A
+  reader reads the note once and uses the version it names, so the validators it sends are
+  always the version's own and a 304 answer means that version is current.
+
+A fetch reads the note, revalidates with its validators, and on a 304 returns the version the
+note named. On a 200 it reads the note again: if it names the same content (the same stamp:
+another process published it meanwhile, or a server without validators sent it again), it
+returns that version and writes nothing; otherwise it writes a new version, publishes it, and
+returns it. A fetch always returns the version it decided on, whether or not its note is the one
+left in place, so two processes that download at once each get a whole, correct answer, and the
+last note wins, which costs at most one more download if it names the older version.
+
+The note is the only file ever replaced, and readers hold it open only for one small read.
+Where that collides on Windows, the writer tries the rename again for up to about a second,
+and a reader that cannot open the note while it is being replaced tries again for a few
+milliseconds; a note that still cannot be read counts as none (the file is downloaded again),
+and a note that cannot be published leaves the old one, which names a whole version too.
+Neither is an error.
+
+**Collecting old versions without a lock.** A reader learns a version's name from the note or by
+writing the version itself, and opens it at once. So a version the note no longer names can be
+in use only by a reader that read the note while it named that version, or that wrote it. The
+note's age bounds the first: while the note is older than the grace period (five minutes), every
+version it does not name was superseded at least that long ago. The version's own age bounds the
+second. A fetch therefore deletes, in its URL's folder, every file other than the note, the
+version the note names and the version it is returning that is older than the grace period,
+but only while the note is older than that too; it reads the note before its age, so a note
+replaced in between looks new and nothing is deleted. A file another process has open cannot be
+deleted on Windows, and a later fetch tries again. Versions a process wrote but never published,
+and notes left by a process that stopped mid-write, go the same way. No lock file is needed:
+nothing is ever read, changed and written back, and each step is one atomic rename or the
+creation of a new name.
+
+The cache of earlier versions of the library (a copy `HASH_name` and a `.meta` beside it in the
+cache folder itself) is not read: the first fetch of a URL downloads it again into its own
+folder, and the old files stay until the temporary folder is cleaned.
+
+**Within a process,** the catalog keeps its URL file lock only for single-flight reading: a
+fetch returns a version and its stamp, and threads that miss the catalog's file cache for that
+stamp together read the version once. It no longer re-reads the note under the lock to find the
+stamp of a copy that might have changed, because a version cannot change.
+
+**The test.** `query_url_cache_processes` starts an in-process server whose file changes every
+15 ms (two URLs: one with an `ETag`, one with no validator, so every fetch of it downloads),
+and in each of ten rounds starts six processes of its own program that point their cache at
+one shared folder and query the file 24 times each: through a catalog they keep, a new catalog
+each time, and a `CsvSource`. Every version of the file has a different number of rows, each
+naming the version, so an answer shows whether it read one whole version, and each query first
+asks the server which version it has, so an answer older than that is caught. After each
+round the server stops changing and the parent, sharing the folder, must read the current
+version. Before the fix it failed in every run on Windows, in every mode (133 to 184 of the
+1,440 queries failed with "cannot write its copy"), and in most runs on Linux, where nothing
+fails but answers are wrong: two to five per run read a version older than the server had when
+the query began (a 304 for a note paired with an older copy), and some read a copy cut short.
+After it, none fail on either, at `-opt s3` and `s0`, with and without the JIT, and with
+`OBJECK_JIT_THRESHOLD=1`.
 
 ## Archives and workbooks in SQL
 
@@ -1283,6 +1376,66 @@ sheet, a named sheet, a sheet pattern, `header => false`, `first_row`), joins ac
 three, the catalog cache, and every refusal above, each archive and workbook written by the
 test. Before the change every query fails at the lexer (`unexpected character '.'`).
 
+## A server that answers at once
+
+**The gap.** `TableServer` answered one request at a time: every request took its mutex, from
+parsing the statement to writing the answer, because a catalog could not be queried by two
+threads at once. Once it could ("One catalog, many threads"), the mutex served only to keep a
+request from reading a table while it was written, and the server could not even do that: the
+program that publishes the tables writes them from its own threads, which never took the server's
+mutex, so a request could read a table half changed while every other request waited in line.
+
+**What can write.** Nothing over the wire: the server answers only `SELECT` (a statement that
+would change data, `INSERT`, `UPDATE`, `DELETE`, `CREATE` and `DROP INDEX`, `CREATE TABLE`, is
+refused with 403, before it runs) and has file access off. Every request only reads. The writer
+is the program, through the `Table` objects it published.
+
+**The design: a readers-writer lock, and an API for the program's writes.**
+
+- Each request takes a read share for as long as it reads: from parsing to the last byte of
+  its answer (a table sent as CSV, JSON or `.otab` is read while it is written out). Any number
+  of requests hold read shares at once, each on the thread the web server gave its connection.
+- `TableServer->BeginWrite()` waits until no request is being answered and holds new ones off
+  until `EndWrite()`. A program changes a published table only between the two: `INSERT`,
+  `UPDATE`, `DELETE`, an index, a column, `Compact`, or anything else that writes a `Table`.
+  The server's guarantee is exactly that: it keeps its own requests from overlapping the program's
+  writes made inside `BeginWrite`/`EndWrite`, and nothing else; a write made outside them, or a
+  table also read by other threads of the program, is the program's to order, as the table
+  contract says ("Concurrent readers").
+- A waiting writer holds new readers off, so a steady stream of requests cannot keep a change
+  waiting for ever; the requests already in finish first. The lock is not reentrant: a thread
+  calls `EndWrite` before it calls `BeginWrite` again, and calls neither while answering a request.
+- `Publish` and `Unpublish` need no lock: they are a catalog's `Add` and `Remove`, which are safe
+  while threads query, and a request already being answered keeps the tables it found. The table
+  list skips a table unpublished while it was being written.
+- The lock is a `ThreadMutex` and a `Condition` in the server (a waiting thread is parked for
+  the collector). The count of answered requests has its own small lock.
+
+A callback form (`Write(change)`) was weighed and left out: the pair is the smallest API that
+lets a program hold the write across several statements, and Objeck has no exceptions that
+could skip the `EndWrite`.
+
+**The test.** `query_server_concurrent`: eight client threads meet at a barrier before each of
+nine requests (grouped and joined SELECTs, an ordered limit, `DISTINCT`, tables as JSON and
+`.otab`, and bad SQL), in CSV, JSON and `.otab`, over six rounds, and every answer must equal the
+one a catalog of the same tables gives on one thread. Then the program changes a published table
+sixty times between `BeginWrite` and `EndWrite`, cell by cell (every `a` is its row's id plus the
+changes so far and every `b` minus that, so a read during a change sees a sum or a range that is
+off), while four clients read it and another sends statements that would write, each of which
+must be refused with 403. On master the test does not compile (there is no `BeginWrite`); with
+the program's writes left unguarded, which is all master offered, 18 to 136 reads per run saw a
+change half done, in every mode. It passes at `-opt s3` and `s0`, with and without the JIT, and
+with `OBJECK_JIT_THRESHOLD=1`.
+
+**Throughput.** One SELECT (a `GROUP BY` over 20,000 rows) sent as fast as each client thread
+can, for six seconds, on this machine (Windows, 24 logical processors):
+
+| clients | before (mutex) | after |
+|---|---|---|
+| 1 | 37.8 req/s | 34.2 req/s |
+| 4 | 49.1 req/s | 86.7 req/s |
+| 8 | 48.2 req/s | 112.4 req/s |
+
 ## Indexes in .otab files
 
 **The gap.** Phase 6 left indexes out of the file, so a table lost them on every `Save` and
@@ -1345,6 +1498,404 @@ correct checksum so only the defect is refused. `query_net_range` reads the defi
 HTTP range requests; `query_net_serve` checks that served tables are version 1.
 `tools/otab/otab_dump.py` reads version 2.
 
+## Expressions in every clause
+
+**The gap.** #1367 put arithmetic in the select list and nowhere else. `where price * qty >
+100`, `where a + b = c`, `group by x % 10`, `having sum(a) / count(*) > 2`, `order by hi - lo`,
+`join u on t.n + 1 = u.n` and `select max(x) - min(x)` are each refused, so a research program
+computes a column in a first query and filters, groups or joins it in a second. These are the
+questions research code asks most, and the release v2026.10.2 includes the answer.
+
+**What is added, and what is not.** One expression grammar, the select list's, in every clause:
+WHERE, JOIN ... ON, GROUP BY, HAVING, ORDER BY, and inside and around aggregates. No scalar
+functions (`abs`, `round`, `coalesce`, `length`, `upper`, `lower`): nothing below needs one, each
+is a separate decision about types and empty cells, and the grammar leaves room for them later
+(a name followed by `(`, as the aggregates are written). No string concatenation, no date
+arithmetic, no `CASE`, no expressions in `UPDATE ... SET` or `INSERT ... VALUES`: values there
+stay literals and placeholders. The method-chaining API (`Col`, `Predicate`) is unchanged; no
+public class or method is added.
+
+### Grammar
+
+```
+condition  := or
+or         := and (OR and)*
+and        := not (AND not)*
+not        := NOT not | '(' condition ')' | test
+test       := expr cmp expr
+            | expr [NOT] BETWEEN expr AND expr
+            | expr [NOT] IN '(' expr (',' expr)* ')'
+            | expr [NOT] (LIKE | MATCHES) value
+            | expr IS [NOT] NULL
+cmp        := '=' | '<>' | '!=' | '<' | '<=' | '>' | '>='
+expr       := term (('+' | '-') term)*
+term       := unary (('*' | '/' | '%') unary)*
+unary      := '-' unary | primary
+primary    := number | name | '?' | '(' expr ')' | aggregate
+            | text | date | NULL | TRUE | FALSE           -- in a condition only
+aggregate  := COUNT '(' '*' ')' | func '(' expr ')'      -- func: COUNT SUM AVG MIN MAX MEDIAN STDDEV
+value      := text | '?' | word                          -- a LIKE or MATCHES pattern, as now
+```
+
+- **Precedence**, lowest first: `OR`, `AND`, `NOT`, the tests (`=`, `<>`, `<`, `<=`, `>`, `>=`,
+  `BETWEEN`, `IN`, `LIKE`, `MATCHES`, `IS`), `+ -`, `* / %`, unary minus. Arithmetic is
+  left-associative (`a - b - c` is `(a - b) - c`); tests do not chain (`a < b < c` is a syntax
+  error). `BETWEEN`'s `AND` belongs to it: `x between lo + 1 and hi and y > 0` is
+  `(x between lo + 1 and hi) and y > 0`. `NOT` before a test negates the test:
+  `not a + 1 > 2` is `not ((a + 1) > 2)`.
+- **A parenthesis in a condition** opens a grouped condition when what it encloses parses as a
+  condition and nothing after the `)` continues an expression or a test (`+ - * / %`, a
+  comparison, `IS`, `BETWEEN`, `IN`, `LIKE`, `MATCHES`, or `NOT` before one of those);
+  otherwise it opens a parenthesised expression. So `(a > 1 or b > 2) and c = 3` groups, and
+  `(a + b) * 2 > 10` and `(a) = 1` compute. When neither reading parses, the error reported is
+  the one found furthest into the statement.
+- **`n -1`** (a name, then a number with its sign) stays a subtraction, as #1367 made it, in every
+  clause; `x > -1` still compares with minus one.
+- **Words.** `TRUE` and `FALSE` are the numbers 1 and 0 in a condition, as they always were, and
+  `NULL` is an empty value; in the select list, ORDER BY and GROUP BY they stay names, as before.
+  A word standing alone in a **value position** of a test (the right side of a comparison, a
+  `BETWEEN` bound, an `IN` entry) is a column when one of the query's tables has a column of that
+  name, and otherwise text, which keeps the old engine's unquoted strings (`where s = cat`) while
+  letting `where a + b = c` compare with column `c`. This changes the meaning of an old statement
+  only where the word names a column (`where a = b` compared `a` with the text `'b'`; it now
+  compares two columns). Everywhere else a name is a column, and an unknown one is an error.
+- **Aggregates** may appear in the select list, HAVING and ORDER BY, not in WHERE, ON, GROUP BY
+  or inside another aggregate. An aggregate's argument is an expression (`sum(a * b)`).
+- **Placeholders** (`?`) may stand for any operand. They are numbered in the order they appear
+  in the statement, as now.
+- **ORDER BY** entries: a lone whole number is a select-list position (as now; below 1 is an
+  error); a lone name is a select-list label, else a column (as now); anything else is an
+  expression. **GROUP BY** entries: a column, as now, or an expression that reads at least one
+  column (`group by 1` and `group by 2 * 3` are refused rather than read as positions or as one
+  group).
+
+### Values
+
+An expression produces, for each row, one of: a whole number (Int), a number (Float), text, a
+date, a Bool, another object (a cell of an OBJECT column that is none of these), or an empty
+value. Columns give their cells by their storage type; an OBJECT column's cell is classified by
+its class (`IntRef`, `FloatRef`, `String`, `Date`, `BoolRef`; any other class is an object).
+Literals: a number as written (a whole number is an Int, anything with a `.` or an exponent a
+Float, and so is a whole number of more than 18 digits, as a CSV cell is typed), text, a date, `TRUE`/`FALSE` as 1 and 0, `NULL` as empty. A placeholder has its bound
+value's kind.
+
+**Arithmetic reads numbers only** (#1367's rule, kept): an operand that is empty, text, a date,
+a Bool or an object makes the result empty.
+
+| Operation | Ints | With a Float | Empty result when |
+|---|---|---|---|
+| `a + b`, `a - b`, `a * b` | Int | Float | an Int result does not fit in 64 bits |
+| `a / b` | Float (`7 / 2` is 3.5) | Float | `b` is zero (`0`, `0.0` or `-0.0`) |
+| `a % b` | Int, the sign of `a` (truncated); `a % -1` is 0 | Float: `a - trunc(a / b) * b` | `b` is zero |
+| `-a` | Int | Float | `a` is the smallest Int |
+
+- **Overflow** of Int arithmetic gives an empty cell, not a wrapped number (a change from #1367,
+  which wrapped silently; the release that ships either is v2026.10.2, so no released behaviour
+  changes). The checks cost a comparison or two per row. Float arithmetic follows IEEE 754:
+  overflow gives an infinity, `inf - inf` and `0 * inf` give NaN, and NaN propagates; NaN and the
+  infinities are values, not empty cells.
+- **A zero divisor** gives an empty cell, as #1367 decided (a Float division by zero would stop
+  the program, and an Int one would raise). `a % -1` is defined as 0 because the hardware
+  instruction traps on the smallest Int.
+- An Int that meets a Float converts to a Float, rounding past 2^53, as everywhere in the engine.
+- **Constant folding.** A part of an expression that reads no column (literals, and placeholders
+  with their values) is computed once per run, before any row is read, by the same rules.
+
+### Comparisons, and why indexes and zone maps keep working
+
+A test compares the two sides row by row with one table of rules, which is the rule a column has
+always been compared with a constant (section 3, "Phase 2" and "Phase 6" in "As built"):
+
+1. If either side is empty, every test except `IS NULL` is false (`<>` included).
+2. Two Ints compare exactly (so `2^53 + 1 > 2^53`).
+3. Two numbers otherwise compare as Floats; if either is NaN they cannot be ordered.
+4. Two texts compare as text; two dates in time order.
+5. Two Bools compare false before true; a Bool read from a BOOL column also compares with the
+   whole numbers 0 and 1 (which is what `TRUE` and `FALSE` are), as those numbers.
+6. Two other objects of the same class (cells of OBJECT columns and placeholders' values that
+   are none of the kinds above) compare by that class's `Compare`, called on the left one, as
+   `Cell->Compare` does.
+7. Anything else cannot be ordered.
+
+Rule 5's asymmetry is the engine's today, kept on purpose: `flag = true` matches a BOOL column,
+while a `BoolRef` in an OBJECT column compared with the number 1 does not (`Cell->Compare`). With
+it, every pair of a column type and a constant compares exactly as the existing `Filter` compares
+them, which is what makes reduction (below) safe.
+
+Values that cannot be ordered satisfy only `<>`. So NaN satisfies only `<>`, as it does today,
+and sorts after every number. `NOT` is the complement of a condition's rows, empty cells
+included (there is no three-valued logic, as before). `x IN (a, b)` is `x = a OR x = b`;
+`x BETWEEN a AND b` is `x >= a AND x <= b`. `LIKE` and `MATCHES` take part only when the operand
+is text (a number never matches, `NOT LIKE` included). `IS NULL` is true where the operand is
+empty, which for an expression includes an operand that is not a number and a zero divisor; NaN
+is not empty.
+
+**Reduction.** At the start of each run, with placeholders bound and constants folded, each test
+is reduced where it can be:
+
+- a lone column against a constant (`price > 100`, `100 < price`, `price > ? * 2`,
+  `name = cat`), and `IS [NOT] NULL`, `LIKE` or `MATCHES` on a lone column, becomes the test
+  the engine has always made, the column on the left (the operator flipped when it was on the
+  right). It is the same `Filter` node as before, so it
+  skips row groups by their zone maps, reads through a hash or sorted index, takes part in the
+  planner's choice and in `BETWEEN`'s single range, exactly as a plain comparison does today;
+- a test with no column at all is decided once: it keeps every row or none (`where 1 = 0`);
+- anything else, an expression over columns on either side or two columns
+  (`price * qty > 100`, `a = b`), is an **expression term**: no zone maps and no index, rows
+  tested by batch evaluation (below).
+
+There is no other rewriting: `x + 0 > 5` is not `x > 5` (on a text column the first is empty),
+and `-x < -5` is not `x > 5`. Because a reduced test is the node the engine already had, and the
+expression evaluator implements the same table of rules, reduction can only change speed, never
+an answer. In an AND, the planner reads the best index-backed term (section 5) and the
+expression terms are then tested on its candidates; an OR with an expression term scans, as an
+OR with any unindexed term does. A view's `GetPlan()` and `Explain` show what was chosen: a
+reduced term exactly as today (`where runs: SORTED index runs_score on score (>)`), and
+expression terms as part of a scan (`where runs: scan`).
+
+### Where each kind of expression is evaluated
+
+- **WHERE**, over the FROM table or the joined rows. Below a join, a term whose columns all come
+  from one table is applied to that table before the join, as now (except on the right of a
+  LEFT JOIN); a term over several tables is applied to the joined rows; a constant term is decided
+  once.
+- **The select list** of a query without grouping: after WHERE, over the rows that pass, into a
+  computed column (#1367). The column is typed as any column is (section 1): INT when every
+  result is an Int, FLOAT when any is a Float.
+- **ORDER BY** an expression: computed the same way into a hidden column, then sorted as a column
+  (stable; empty cells last in both directions; NaN after every number ascending and before them
+  descending, as a FLOAT column already sorts). In ORDER BY a name inside an expression is a select-list label first, then a
+  column, as a lone name already is (`select n * 10 as tens ... order by tens + n`). An entry
+  whose text repeats a select-list expression uses that column.
+- **GROUP BY** an expression: computed into a hidden column per row, then grouped exactly as a
+  column is (rows sorted by the keys, groups in key order, empty keys last together). The
+  default label of a select-list item that repeats a grouping expression is its text.
+- **A grouped query** (GROUP BY, or any aggregate) evaluates in two layers:
+  1. *per row:* grouping expressions and aggregate arguments (`sum(a * b)` sums the products;
+     `count(e)` counts rows where `e` is not empty);
+  2. *per group:* the select list, HAVING and ORDER BY are expressions over the group's keys and
+     its aggregates (`sum(a) / count(*)`, `max(x) - min(x)`, `avg(x) * 2`, `k + 1` where `k` is
+     grouped, `(x % 10) * 2` where `x % 10` is grouped). A column outside an aggregate must be a
+     grouping column, or sit inside a sub-expression that repeats a grouping expression (matched
+     by structure after names are resolved, not by spacing or redundant parentheses); otherwise
+     the existing error: `column 'x' must be in GROUP BY or inside an aggregate`. In HAVING and
+     ORDER BY a name is a select-list label first, as now.
+
+  Aggregates keep their rules ("Phase 4"): numbers only, empty when a group has none; COUNT is
+  INT; SUM, MIN and MAX stay INT over whole numbers, which for an expression argument means every
+  result of it is an Int (its computed column is INT); AVG, MEDIAN and STDDEV are FLOAT. (SUM of
+  Ints is computed in Int arithmetic and wraps on overflow, as it does today; making it empty
+  instead, like expression arithmetic, is left for a separate change.)
+- **JOIN ... ON** a condition over the tables joined so far and the new one:
+  - *Keys.* An AND-term of ON that is an equality whose one side reads only earlier tables and the
+    other only the new table is a **key equality**. Keys match as the join has always matched them ("Phase 4"): as
+    whole numbers when both sides are whole (INT, BOOL, DATE), as numbers when both are numbers
+    (NaN matches nothing), otherwise by their text; empty keys never match. This applies to every
+    key equality, so the order of the terms never matters; other tests in ON, an equality inside
+    an OR or a NOT included, follow the comparison table above.
+  - *The fast path.* When the AND-terms of ON include a key equality, the first one is matched
+    with the existing sorted key matcher: a side that is a column is used as it is, and a side
+    that is an expression is computed once per row of its side (the new table's rows, or the
+    rows joined so far) into a key column, typed as a computed column. The remaining terms are
+    then tested on each matched pair. A term that reads only the new table filters that table's
+    rows before matching (the same for INNER and LEFT joins: a right row that fails it never
+    matches), through its indexes where it reduces.
+  - *Otherwise* (`on a.x < b.y`, `on a.x + b.y = 10`, `on a.k = b.k or a.j = b.j`) every pair is
+    tested, O(n·m), and the plan says so (`join u: every pair`). A join on two columns plans as
+    it does today; a computed key adds `join u: key computed from t.n + 1`.
+  - *LEFT JOIN:* a left row with no pair that passes all of ON appears once, with empty cells on
+    the right, before WHERE is applied. Output order stays the existing order: left rows in order,
+    each with its matches in the right table's order.
+
+### Batch evaluation and the performance contract
+
+Expressions are bound once per run (names to columns, placeholders to values, constants
+folded) into a tree of evaluator nodes, separate from the parsed statement. Each node evaluates
+a **batch** of up to 1,024 row numbers at once into scratch arrays it allocated when bound: a
+kind per row plus an `Int[]`, a `Float[]`, a `String[]` and a `Compare[]` for the values. A node
+is one loop over its children's arrays; a column node reads the column's own arrays (an encoded
+text column through its dictionary, a date as its stored milliseconds). An expression term
+compares two batches into the selection vector, chunk by chunk over the candidate rows, so its
+cost is a few array loops per 1,024 rows and **no object is allocated per row**: text and objects
+are references to the stored cells, numbers are never boxed. Computed columns are filled with
+`FillNumbers` from typed arrays rather than cell by cell. The only allocations in a query remain
+its result arrays and one set of scratch arrays per bound expression.
+
+The bar: the select-list expression `price * qty` over 1,000,000 rows must not be slower than
+#1367's row-at-a-time evaluator (which boxes every operand and result), and `where price * qty >
+100` must be within a small factor of the same loop written over plain arrays. Both are
+measured, with the numbers recorded here, at stage 1; no timing gate is added to the suite.
+
+### Thread safety
+
+A parsed statement and its expression trees are built by the parser and never changed after:
+they are shared by every thread that finds the plan in a table's or catalog's cache. Name
+resolution makes new trees instead of renaming in place; binding makes evaluator nodes and
+scratch arrays that belong to one run. So a run writes nothing a cached plan holds, and the
+existing contracts ("Concurrent readers", "One catalog, many threads") cover expressions with no
+new lock. (#1367's select-list evaluator numbered its column references inside the parsed tree
+at parse time; that state moves into the per-run binding.)
+
+### Prepared statements
+
+A placeholder may stand anywhere an operand can, in any clause. Values are read at the start of
+each run, so constant folding and reduction use the bound values (`where price > ? * 2` reads
+through a sorted index on `price`), and a statement bound again re-plans. An unbound placeholder
+is refused as now (`no value bound for placeholder N`). A bound value in arithmetic that is not a
+number gives empty results, by the rule above.
+
+### Errors
+
+Every refusal returns Nil with `GetError` set, never a silent empty result:
+
+| Statement | Error |
+|---|---|
+| `select zz + 1 from t` | `unknown column 'zz' in 'zz + 1'` (#1367) |
+| `where zz + 1 > 0` | `unknown column 'zz'` |
+| `where sum(x) > 1` | `syntax error at position N: expected a column name (aggregates belong in HAVING, not WHERE), found 'sum'` (as now) |
+| `group by sum(x)` | `GROUP BY cannot use an aggregate: 'sum(x)'` |
+| `group by 1`, `group by 2 * 3` | `GROUP BY needs a column or an expression over columns, not '1'` |
+| `select sum(count(*))` | `an aggregate cannot contain another aggregate: 'sum(count(*))'` |
+| `on sum(t.x) = u.y` | `aggregates are not allowed in ON: 'sum(t.x)'` |
+| `select k, n + 1 from t group by k` | `column 'n' must be in GROUP BY or inside an aggregate` |
+| `where a < b < c` | `syntax error at position N: expected ...` (the parser's usual form) |
+| `order by zz + 1` | `unknown column 'zz' in ORDER BY 'zz + 1'` |
+
+Messages that exist today keep their text. Each stage replaces the refusals it lifts (#1367's
+`an expression in the select list of a grouped or aggregate query is not supported`, and the
+syntax errors that expressions in WHERE, ON, GROUP BY and HAVING meet today), and its test shows
+them before the change.
+
+### Stages
+
+Each stage is its own pull request, merged before the next starts, with `query.obl` and every
+library that links it rebuilt (`query_ml`, `query_odbc`, `query_server` and `query_vision` change
+only by class ids when classes are added to `query.obl`, which a decompressed comparison checks).
+
+1. **The expression core, WHERE and ORDER BY.** The typed expression tree and its batch
+   evaluator, used by the select list (replacing #1367's evaluator), WHERE (with reduction,
+   UPDATE and DELETE included) and ORDER BY.
+2. **Grouping.** GROUP BY expressions, aggregates over expressions, expressions over aggregates
+   in the select list, HAVING and ORDER BY.
+3. **Joins.** ON conditions: key equalities over expressions, other terms, and the every-pair
+   path.
+
+### Tests
+
+Every new or touched test runs at `-opt s3` and `-opt s0`, each under `obr`, `obr --jit=off`
+and `OBJECK_JIT_THRESHOLD=1`, on Windows and on Linux.
+
+- **Differential** (`query_expr_differential`, extended by each stage): random tables (INT with
+  negatives and whole numbers past 2^53, FLOAT with NaN, infinities and -0.0, STRING with an
+  encoded and a plain column, DATE, BOOL, an OBJECT column mixing numbers and text, empty cells,
+  deleted rows) and random expression trees (columns, literals of every kind, placeholders,
+  `+ - * / %`, unary minus, parentheses), in random conditions (every comparison, AND, OR, NOT,
+  IN, BETWEEN, LIKE, IS [NOT] NULL), select lists, ORDER BY, and at stages 2 and 3 GROUP BY,
+  aggregates, HAVING and joins. Each query runs through the engine and through a naive
+  row-at-a-time evaluator written in the test from the rules above, and the rows and their order
+  must be equal. Seeds come from the command line (a fixed default set for the suite), with many
+  rounds per seed.
+- **Indexes and zone maps:** each differential query also runs on a twin table carrying random
+  hash and sorted indexes, and on tables large enough to span several 64K-row groups and several
+  1,024-row batches (sizes just under, at and over each boundary); the answers must be equal.
+  Reduced terms must report index plans (`price > ? * 2`, `100 < price`).
+- **Prepared statements:** placeholders in every clause, bound and re-bound, against the oracle.
+- **Concurrency** (`query_expr_concurrent`): threads sharing a catalog meet at a barrier before
+  each statement, with expressions in every clause and statements new to the plan cache each
+  round; every answer must equal the one computed alone.
+- **Refusals** with their exact messages (the table above), and the old refusals shown failing
+  first.
+- **Explain**: reduced terms name their index, expression terms scan, joins without a key say
+  they test every pair.
+- The existing query tests, the full suite, and the libraries' decompressed comparison.
+
+### As built
+
+**Stage 1 (expression core, WHERE, ORDER BY).**
+- `SqlExpr` is the parsed tree (column, number, other literal, placeholder, bare word, `+ - * /
+  %`, unary minus); `SqlEval` is a tree bound for one run, with a batch `Eval` into a kind array
+  and typed arrays; `ExprPredicate`, a private subclass of `Predicate`, is the test the parser
+  makes when a condition is not column-against-a-value. Conditions that were column-against-a-
+  value still parse to exactly the `Predicate` they always did. #1367's per-row `SqlExpr->Eval`
+  and its parse-time column numbering are gone; the select list uses `SqlEval` and fills its
+  columns with `FillNumbers`.
+- `Filter->BindExpr` does the reduction. One case is not flipped: a constant of a class other
+  than a number, text, a date or a Bool, against an OBJECT column on the right, because such a
+  class's `Compare` need not order both ways alike; it is tested as an expression.
+- Found by the differential test and fixed at the source: `Cell->Compare` ordered two Bools of an
+  OBJECT column with `BoolRef->Compare`, which answers 1 for any two unequal values, so ORDER BY
+  over such a column depended on the sort's steps and `<`/`>` against a Bool were wrong both
+  ways. Two Bools now compare false before true, which is also rule 5's order, so rules 5 and 6
+  above need no Bool exception.
+- A whole number of more than 18 digits reads as a Float (`Cell->NumberKind`, unchanged), so
+  `9223372036854775807` in a statement is a Float literal; the test's evaluator follows that.
+- Found while measuring: a method holding a Float `?:` was never JIT-compiled (the compiler
+  stored the value through an Int temporary), which kept `SqlEval`'s arithmetic and
+  `Filter->EvalExpr` interpreted; fixed in the compiler by #1397. Measured at 1,000,000 rows
+  (Windows x64, `-opt s3`, best of three, `ExecuteView`), both with #1397's compiler:
+
+  | Query | Before (master) | Stage 1 |
+  |---|---|---|
+  | `select price * qty` | 585 ms (#1367, row at a time) | 146 ms |
+  | `where price * qty > 100` (773k rows) | refused | 29 ms |
+  | `where price * qty > 1500` (28k rows) | refused | 23 ms |
+  | the same filter over plain arrays | 9 ms | 9 ms |
+  | `where price > 50`, a scanned `Filter`, for scale | 29 ms | 28 ms |
+
+  So an expression term costs what a scanned column test does, about 3× a hand-written loop.
+  Without #1397 the expression terms took 530-650 ms (interpreted). Once they were compiled, the
+  differential test found the x64 JIT raising "Divide by zero" for a NaN divisor (its guard
+  took an unordered compare as equal), fixed in the JIT by #1399.
+- Tests: `query_expr_where` (59 checks), `query_expr_differential` (540 queries over 6 seeds by
+  default, sized for the suite's time cap; 9,672 queries over 60 seeds, every seventh seed
+  on a table of two 64K-row groups, checked once), `query_expr_zone_maps` (70,000 rows: group and
+  batch boundaries, deletes next to them, a dictionary turned into plain strings, NaN, against a
+  loop and an indexed twin), `query_expr_concurrent` (6 threads, 20 rounds, 1,920 checks).
+  `query_aggregates`' check that a literal on the left is an error now checks that it compares.
+
+**Stage 2 (grouping).**
+- `SqlExpr` gained an aggregate node, so `sum(a * b)`, `count(x + 1)` and `sum(?)` parse; the
+  select list, HAVING and ORDER BY parse every entry as an expression, and a lone column or a
+  lone plain aggregate (`sum(x)`, `count(*)`) is still the item, test or entry it always was.
+  GROUP BY takes expressions; a constant, a position and an aggregate are refused.
+- The per-row layer computes grouping expressions and aggregate arguments into columns of their
+  own, indexed by row slot like the working table's (`FillComputedAt`), so nothing is copied;
+  a key is either a working-table column (its sorted index still gives the grouping order) or
+  such a column. The grouped result holds the select list, then each aggregate no plain item
+  shows (labelled by its call written without surrounding parentheses, as HAVING and ORDER BY
+  name a plain aggregate), then every key (`#groupN`); the select list's, HAVING's and ORDER BY's
+  expressions are bound over it (`GroupExpr`). Two expressions are the same when their trees'
+  keys are (`SqlExpr->Key`), after names are resolved, so spacing and redundant parentheses
+  do not matter.
+- Changes beyond the design's letter, both widening: ORDER BY may name a grouping column the
+  select list does not show (it was refused), and a bare word on the right of a HAVING test is a
+  column of the grouped result when one has its name (it was always text).
+- Found by the differential test and fixed before landing: two aggregates written alike over
+  different placeholders (`sum(?)` twice) got one label, and the second was read through the
+  first's column (the grouped result's columns now have unique names; the labels shown are
+  unchanged); a plain aggregate shown twice was computed once; and an aggregate inside
+  parentheses was labelled with them, so HAVING could not find it.
+- Measured at 1,000,000 rows (Windows x64, `-opt s3`, best of three): `group by grp` with
+  `sum(price)` 397 ms; `group by qty % 10` 462 ms; `sum(price * qty) / count(*)` by `grp` 888 ms
+  (two aggregates: each of the engine's aggregates costs about 200-350 ms here, as before).
+
+**Stage 3 (joins).**
+- ON is parsed as WHERE is, aggregates refused (`aggregates are not allowed in ON: 'sum(t.n)'`);
+  `SqlJoin` keeps the condition. `a.col = b.col` alone is the key equality of two columns, read
+  through `SqlKeyMatcher` exactly as before, with the same plan.
+- `Join` splits each ON into its AND-terms: terms on the joined table alone join its WHERE filter
+  (so they can read its indexes); the first key equality is matched, an expression side computed
+  into a column indexed by row (the joined table's side over its rows, the earlier tables' side
+  over the positions joined so far); with no key equality every pair is a candidate. The other
+  terms are tested on a table of the candidate pairs (`TestPairs`) and the other key equalities
+  with `SqlKeyMatcher->KeyEquals`. A LEFT JOIN keeps a left row none of whose pairs passed, once,
+  with empty cells on the right. ON naming a table joined later is refused.
+- Plans add `join u: every pair` and `join u: key computed from <expression>`; a join of two
+  columns plans as it always did.
+- Candidate pairs are kept in `Int[]` arrays, never boxed. Measured (Windows x64, `-opt s3`,
+  best of three): 200,000 × 1,000 rows on `t.n = u.w` 29 ms (31 ms on master); on
+  `t.n + 1 = u.w + 1` 62 ms; on `t.n = u.w and t.v > u.lo` 41 ms; 2,000 × 1,000 rows on
+  `s.n between u.lo and u.hi` (every pair, 2,000,000 pairs) 346 ms.
 ## Open questions
 
 - Whether `Date` should be a first-class column type in phase 1 or start as an `ObjectColumn`; the

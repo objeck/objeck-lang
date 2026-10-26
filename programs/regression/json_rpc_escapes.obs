@@ -1,0 +1,116 @@
+# EXTRA_LIBS: json_rpc,net
+#~
+Data.JSON.RPC over a loopback socket: strings are escaped once on the way out
+and decoded once on the way in, and the server echoes the request's id.
+
+Client->Call pasted the method name into hand-built JSON unescaped, so a name
+holding a quote produced text the server could not parse. The server wrote
+the reply's id as the request id read as an Int, plus one, so a string id came
+back as 1 (JSON-RPC 2.0 requires the id as sent). And a handler saw a string
+parameter with its escapes as written, since Data.JSON kept them.
+~#
+
+use Collection;
+use Data.JSON;
+use Data.JSON.RPC;
+use System.IO.Net;
+
+class JsonRpcEscapes {
+	@failures : static : Int;
+
+	function : Check(ok : Bool, name : String) ~ Nil {
+		if(<>ok) {
+			"  [FAIL] {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# returns the "text" parameter, which the handler must see decoded
+	function : Echo(params : JsonElement) ~ JsonElement {
+		text := params->Get("text");
+		if(text = Nil) {
+			return JsonElement->New("<none>");
+		};
+		return JsonElement->New(text->GetString());
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		funcs := Hash->New()<String, Func2Ref<JsonElement, JsonElement>>;
+		funcs->Insert("echo", Func2Ref->New(JsonRpcEscapes->Echo(JsonElement) ~ JsonElement)<JsonElement, JsonElement>);
+		funcs->Insert("say \"hi\"", Func2Ref->New(JsonRpcEscapes->Echo(JsonElement) ~ JsonElement)<JsonElement, JsonElement>);
+
+		port := 41000 + Int->Random(7000);
+		server := Server->New(funcs, port);
+		thread := ServerThread->New(server);
+		thread->Execute(Nil);
+		System.Concurrency.Thread->Sleep(300);
+
+		# a parameter with a quote, a backslash, a line break and a u-escape
+		# arrives decoded and returns as the same text
+		text := "C:\\new \"x\"\n";
+		text->Append(0xE9->As(Char));
+		params := JsonElement->New(JsonElement->JsonType->OBJECT);
+		params->Insert("text", text);
+
+		client := Client->New("127.0.0.1", port);
+		result := client->Call("echo", params);
+		Check(result <> Nil, "echo returned a result");
+		if(result <> Nil) {
+			got := result->GetString();
+			Check(got->Equals(text), "the handler saw the decoded text, got [{$got}]");
+		};
+
+		# a method name holding a quote reaches the server intact
+		result := client->Call("say \"hi\"", params);
+		Check(result <> Nil & result->GetString()->Equals(text), "a method name with a quote is escaped in the request");
+
+		# the reply echoes the id as it was sent, a string id included
+		socket := TCPSocket->New("127.0.0.1", port);
+		Check(socket->IsOpen(), "raw socket connects");
+		if(socket->IsOpen()) {
+			socket->WriteString("{\"jsonrpc\":\"2.0\",\"method\":\"echo\",\"params\":{\"text\":\"a\\/b\"},\"id\":\"req \\\"7\\\"\"}\r\n");
+			line := socket->ReadLine();
+			socket->Close();
+			reply := line <> Nil ? JsonParser->TextToElement(line) : Nil;
+			Check(reply <> Nil, "the reply parses");
+			if(reply <> Nil) {
+				id := reply->Get("id");
+				Check(id <> Nil & id->GetType() = JsonElement->JsonType->STRING & id->GetString()->Equals("req \"7\""), "a string id is echoed as sent: {$line}");
+				answer := reply->Get("result");
+				Check(answer <> Nil & answer->GetString()->Equals("a/b"), "an escaped slash arrives as a slash");
+			};
+		};
+
+		socket := TCPSocket->New("127.0.0.1", port);
+		if(socket->IsOpen()) {
+			socket->WriteString("{\"jsonrpc\":\"2.0\",\"method\":\"echo\",\"params\":{\"text\":\"n\"},\"id\":41}\r\n");
+			line2 := socket->ReadLine();
+			socket->Close();
+			reply2 := line2 <> Nil ? JsonParser->TextToElement(line2) : Nil;
+			Check(reply2 <> Nil & reply2->Get("id") <> Nil & reply2->Get("id")->GetInt() = 41, "a number id is echoed as sent, not plus one");
+		};
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} JSON-RPC check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: JSON-RPC escapes strings once and echoes the id"->PrintLine();
+		Runtime->Exit(0);
+	}
+}
+
+class ServerThread from System.Concurrency.Thread {
+	@server : Server;
+
+	New(server : Server) {
+		Parent();
+		@server := server;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		@server->Process();
+	}
+}

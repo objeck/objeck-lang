@@ -69,26 +69,43 @@ class GcHeapSizing {
 			total += temp[0];
 		};
 		Check("the temporaries are intact", total = 4000 * 3999 / 2);
-		Check("the given threshold returns once the live heap fits under it", Threshold() = initial);
+		now := Threshold();
+		live := Allocated();
+		Check("the given threshold returns once the live heap fits under it (threshold {$now}, live {$live})",
+			now = initial);
 	}
 
 	# Its own method, so nothing in the caller's frame keeps the data alive afterwards
 	function : Outgrow(initial : Int) ~ Nil {
 		start := Majors();
 
-		# 4 MB kept: a threshold of 2 MB or less is outgrown before the last array
-		small := Int[]->New[4];
-		each(i : small) {
-			small[i] := Int->New[131072];
-			small[i][0] := i;
+		# 4 MB kept, in 512 pieces of 8 KB: a threshold of 2 MB or less is outgrown on the way
+		pieces := Int[]->New[512];
+		each(i : pieces) {
+			pieces[i] := Int->New[1024];
+			pieces[i][0] := i;
 		};
 		built := Majors() - start;
-		Check("the kept data survives", small[3][0] = 3);
+		Check("the kept data survives", pieces[0][0] = 0 & pieces[511][0] = 511);
 		Check("the threshold is above the live heap", Threshold() > Allocated());
 		if(initial <= 2097152) {
 			Check("a threshold the live heap outgrew scales with it", Threshold() > initial);
-			# 1 MB arrays from a threshold of 64 KB or more: a collection per array at most
-			Check("building 4 MB runs a few majors, not one per allocation ({$built} ran)", built <= 8);
+			# one major per doubling of the live heap, not one per allocation (512)
+			Check("building 4 MB runs a few majors, not one per allocation ({$built} ran)", built <= 16);
+		};
+
+		# Empty the container before returning. The collector reads some words
+		# conservatively -- the temporary slots beside a compiled frame's locals,
+		# the word at the operand stack's top -- and a stale copy of a reference
+		# there can outlive this method. Once, on linux-arm64 with every method
+		# compiled under --gc-threshold=1m, the threshold never came back after
+		# this returned (run 40257179714): built then from one container of four
+		# 1 MB arrays, a single such word could hold all 4 MB. (x64 never showed
+		# it in 600 local runs.) Emptied, and in 8 KB pieces, one stale word
+		# can keep at most 8 KB, under three quarters of the smallest threshold
+		# this runs under (64 KB), so the given threshold must still return.
+		each(i : pieces) {
+			pieces[i] := Nil;
 		};
 	}
 

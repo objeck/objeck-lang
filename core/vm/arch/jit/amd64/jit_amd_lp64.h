@@ -381,6 +381,17 @@ namespace Runtime {
     long code_buf_max;
     bool compile_success;
     bool skip_jump;
+    // Why the compile failed, for OBJECK_JIT_REPORT=1: the first reason given
+    // to CompileFailed, the instruction being translated then, and the method
+    // being inlined when it failed inside an inlined callee (else nullptr)
+    std::wstring compile_fail_reason;
+    long compile_fail_instr;
+    StackMethod* compile_fail_inlined;
+    // The register pool's size once set up, so AuditRegisterPool can find a
+    // holder that was taken and never given back (a leak) or given back twice
+    size_t gp_pool_size;
+    size_t xmm_pool_size;
+    bool pool_audit_reported;
 
     // loop detection
     struct LoopInfo {
@@ -458,6 +469,7 @@ namespace Runtime {
     }
     void EmitXmmSave(bool store, int disp, Register xmm);
     void PlanPinRegions();
+    void AuditRegisterPool();
     int PinRegionStartingAt(long lbl_index);
     int PinRegionContaining(long instr_idx);
     bool PinnedSlot(long offset, int& reg_index);
@@ -861,6 +873,13 @@ namespace Runtime {
       }
       else {
         cmp_imm_xreg((size_t)&float_consts[0], reg);
+        // ucomisd sets ZF for an unordered compare as well as for an equal one,
+        // so a bare je raised "Divide by zero" for `x / NaN`, which the
+        // interpreter (right == 0.0, false for NaN) computes as NaN. jp over the
+        // je: only a divisor that is really +0.0 or -0.0 takes the trap. Same
+        // parity rule as the fused float compare in cond_jmp (#1170).
+        AddMachineCode(0x7a);   // jp rel8, over the 6-byte je rel32
+        AddMachineCode(0x06);
       }
 #ifdef _DEBUG_JIT
       std::wcout << L"  " << (++instr_count) << L": [je <err>]" << std::endl;
@@ -926,6 +945,35 @@ namespace Runtime {
       return holder;
     }
 
+    // Fails the compile. The first reason, with the instruction being
+    // translated, is what OBJECK_JIT_REPORT=1 prints for the method: a bare
+    // "compile failed" said nothing about which resource or shape gave out.
+    void CompileFailed(const std::wstring& reason) {
+      if(compile_success) {
+        compile_fail_reason = reason;
+        compile_fail_instr = instr_index - 1;
+        compile_fail_inlined = is_inlining ? method : nullptr;
+      }
+      compile_success = false;
+    }
+
+    // What holds the pool's registers, for an exhaustion report
+    std::wstring PoolPressure() {
+      size_t gp_stack = 0, xmm_stack = 0;
+      for(RegInstr* entry : working_stack) {
+        if(entry->GetType() == REG_INT) {
+          ++gp_stack;
+        }
+        else if(entry->GetType() == REG_FLOAT) {
+          ++xmm_stack;
+        }
+      }
+      return L"the working stack holds " + std::to_wstring(gp_stack) + L" integer and " +
+        std::to_wstring(xmm_stack) + L" float register(s) in " + std::to_wstring(working_stack.size()) +
+        L" entries, of a pool of " + std::to_wstring(gp_pool_size) + L" integer and " +
+        std::to_wstring(xmm_pool_size) + L" float";
+    }
+
     // Gets an available register from the pool of registers
     RegisterHolder* GetRegister(bool use_aux = true) {
       RegisterHolder* holder;
@@ -946,7 +994,7 @@ namespace Runtime {
           aux_regs.pop();
         }
         else {
-          compile_success = false;
+          CompileFailed(L"no free integer register: " + PoolPressure());
 #ifdef _DEBUG_JIT
           std::wcout << L">>> No general registers avaiable! <<<" << std::endl;
 #endif
@@ -1030,7 +1078,7 @@ namespace Runtime {
 #endif
           return holder;
         }
-        compile_success = false;
+        CompileFailed(L"no free float register: " + PoolPressure());
 #ifdef _DEBUG_JIT
         std::wcout << L">>> No XMM registers avaiable! <<<" << std::endl;
 #endif

@@ -1,0 +1,166 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured expressions across row-group and batch boundaries (docs/QUERY_DESIGN.md,
+"Reduction" and "Batch evaluation"). A table of 70,000 rows spans two 64K-row groups and many
+1,024-row batches; its ids ascend, so zone maps rule groups out; a text column holds 5,000
+distinct values, so its dictionary has turned into plain strings; a Float column holds NaN;
+rows are deleted next to the boundaries. Each condition runs on the table, on a twin with
+sorted and hash indexes, and as a loop over the values the test inserted, and all three must
+give the same rows. Conditions that reduce to a column against a constant (constants on either
+side, a placeholder times a number) must read through the indexes; expression conditions scan.
+~#
+use Query.Structured, Collection;
+
+class QueryExprZoneMaps {
+	@failures : static : Int;
+	@checks : static : Int;
+	@ids : static : Int[];
+	@vs : static : Float[];
+	@ns : static : Int[];
+	@has_n : static : Bool[];
+	@live : static : Bool[];
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		@checks += 1;
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Ids(rs : Table) ~ String {
+		if(rs = Nil) {
+			return "<nil>";
+		};
+		out := "";
+		rows := rs->GetAll();
+		each(r : rows) {
+			out += rows->Get(r)->Get(1)->As(IntRef)->Get()->ToString();
+			out += ",";
+		};
+		return out;
+	}
+
+	# the rows a condition picks, by a loop over the values
+	function : Expected(test : Int) ~ String {
+		out := "";
+		each(i : @ids) {
+			if(@live[i] & Holds(test, i)) {
+				out += @ids[i]->ToString();
+				out += ",";
+			};
+		};
+		return out;
+	}
+
+	function : Holds(test : Int, i : Int) ~ Bool {
+		id := @ids[i];
+		v := @vs[i];
+		select(test) {
+			label 0: { return id >= 65530 & id < 65540; }
+			label 1: { return v > 16382.0; }
+			label 2: { return v = v & v * 4.0 > 279990.0; }
+			label 3: { return @has_n[i] & @ns[i] + 1 = 3; }
+			label 4: { return v <> v; }
+			label 5: { return i % 5000 = 4999; }
+		};
+		return false;
+	}
+
+	function : Same(what : String, a : Table, b : Table, sql : String, test : Int, plan : String) ~ Nil {
+		expected := Expected(test);
+		got := Ids(a->Query(sql));
+		indexed := Ids(b->Query(sql));
+		ok := got->Equals(expected) & indexed->Equals(expected);
+		if(<>ok) {
+			"    {$sql}: {$(got->Size())} / {$(indexed->Size())} / {$(expected->Size())} characters of ids"->PrintLine();
+		};
+		Check(what, ok);
+
+		if(plan <> Nil) {
+			explained := b->Explain(sql);
+			ok := explained <> Nil & explained->Has(plan);
+			if(<>ok) {
+				shown := explained <> Nil ? explained : "<nil>";
+				"    plan '{$shown}', wanted '{$plan}'"->PrintLine();
+			};
+			Check("plan: {$what}", ok);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		size := 70000;
+		@ids := Int->New[size];
+		@vs := Float->New[size];
+		@ns := Int->New[size];
+		@has_n := Bool->New[size];
+		@live := Bool->New[size];
+		names := ["id", "v", "w", "n"];
+		types := [ColumnType->INT, ColumnType->FLOAT, ColumnType->STRING, ColumnType->INT];
+		a := Table->New("z", names, types);
+		b := Table->New("z", names, types);
+		each(i : size) {
+			@ids[i] := i;
+			@vs[i] := i % 9973 = 17 ? Float->NaN() : i->As(Float) / 4.0;
+			@has_n[i] := i % 7 <> 0;
+			@ns[i] := i % 5;
+			@live[i] := true;
+			ra := a->Insert();
+			rb := b->Insert();
+			ra->Set(1, IntRef->New(@ids[i]));
+			rb->Set(1, IntRef->New(@ids[i]));
+			ra->Set(2, FloatRef->New(@vs[i]));
+			rb->Set(2, FloatRef->New(@vs[i]));
+			w := "w{$(i % 5000)}";
+			ra->Set(3, w);
+			rb->Set(3, w);
+			if(@has_n[i]) {
+				ra->Set(4, IntRef->New(@ns[i]));
+				rb->Set(4, IntRef->New(@ns[i]));
+			};
+		};
+
+		# deletes next to the group and batch boundaries
+		deletes := [65535, 65536, 65533, 1023, 1024, 69999];
+		each(d : deletes) {
+			# row slots follow insertion, so slot i holds id i
+			a->Delete(a->RowAt(deletes[d])->GetKey());
+			b->Delete(b->RowAt(deletes[d])->GetKey());
+			@live[deletes[d]] := false;
+		};
+
+		b->CreateIndex("id", IndexKind->SORTED);
+		b->CreateIndex("v", IndexKind->SORTED);
+		b->CreateIndex("w", IndexKind->HASH);
+		b->CreateIndex("n", IndexKind->HASH);
+		Check("the text column's dictionary turned into plain strings", <>a->GetColumn("w")->IsEncoded());
+
+		# reduced: the conditions the engine always made
+		Same("a range", a, b, "select id from z where id >= 65530 and id < 65540", 0, "SORTED index z_id");
+		Same("constants on the left", a, b, "select id from z where 65530 <= id and 65540 > id", 0, "SORTED index z_id");
+		Same("plain text", a, b, "select id from z where w = 'w4999'", 5, "HASH index z_w");
+		s := b->Prepare("select id from z where v > ? * 2");
+		s->Bind(1, 8191.0);
+		Check("a placeholder times a number reads the index", s->Explain()->Has("SORTED index z_v"));
+
+		# expressions: every row, in batches, whatever the groups
+		Same("arithmetic", a, b, "select id from z where id + 0 >= 65530 and id - 0 < 65540", 0, "scan");
+		Same("arithmetic in BETWEEN", a, b, "select id from z where id * 2 between 131060 and 131079", 0, Nil);
+		Same("a Float range", a, b, "select id from z where v > 16382.0", 1, "SORTED index z_v");
+		Same("Float arithmetic over NaN", a, b, "select id from z where v * 4 > 279990", 2, Nil);
+		Same("Int arithmetic over empty cells", a, b, "select id from z where n + 1 = 3", 3, Nil);
+		Same("a column against itself: NaN satisfies only <>", a, b, "select id from z where v <> v", 4, Nil);
+
+		# ORDER BY an expression over the last group
+		got := Ids(b->Query("select id from z where id > 69990 order by v * -1 limit 4"));
+		Check("ORDER BY an expression", got->Equals("69998,69997,69996,69995,"));
+
+		if(@failures = 0) {
+			"PASS: query_expr_zone_maps ({$@checks} checks)"->PrintLine();
+		}
+		else {
+			"FAIL: query_expr_zone_maps: {$@failures} of {$@checks} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

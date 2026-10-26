@@ -180,6 +180,51 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     gc_heap_sizing.obs pass under --gc-threshold=64k and 1m, interpreted, by
     default and with every method compiled; the regression runner passes no VM
     flags, so under it the fixture checks only its data.
+ 18. A native library's call back into Objeck is bounded. No library in the
+    repository calls back, so this builds one with the platform's C++
+    compiler (native_callback/callback_lib.cpp; skipped where there is none)
+    whose function calls an Objeck method that calls it again. Through it
+    (native_callback/vm_native_callback_depth.obs), a 300-deep recursion runs;
+    runaways in try blocks recover with "call stack bounds have been exceeded",
+    twice, on the main thread and a spawned one; and an unguarded runaway ends
+    with exactly the call-stack line and exit status 1 -- under --jit=off, the
+    default and --jit=1. Each call back used to get a call stack of its own, so
+    nothing bounded the recursion and it died in the OS (0xC00000FD, SIGSEGV)
+    with no output.
+ 19. Transparent huge pages stay off the stacks of the threads the VM starts
+    (Linux only). While vm_thread_stack_pages.obs holds 100 idle threads, every
+    thread's 8 MB native stack carries the kernel's no-huge-page flag ("nh" in
+    /proc/<pid>/smaps) and holds no huge page, under --jit=off, the default and
+    --jit=1. glibc allocated those stacks, and where THP is on for every mapping
+    the kernel backed each with a 2 MB page at its first touch: in WSL, 100
+    idle threads held 37 MB more (30 MB of it AnonHugePages), 130 MB more with
+    --call-depth=100000. The check reads flags, not sizes, so it holds whatever
+    the host's THP setting is.
+ 20. A method holding a Float or function-reference conditional is compiled.
+    The compiler passed every conditional's value through an Int store, so the
+    JIT gave up on any method with a Float one ("compile failed" under
+    OBJECK_JIT_REPORT=1) and it ran interpreted, about 40 times slower in a
+    loop, with every answer right -- which only the report can see. With
+    OBJECK_JIT_REPORT=1 and --jit=1, jit_conditional_value_types.obs passes and
+    its Float conditional methods (SumTernary, Pick, Fill) and function-reference
+    ones (ChooseFunc, ApplyChosen) report "compiled".
+ 21. Float->NaN(), Float->Inf() and Float->NegInf() are compiled. Their opcodes
+    (NAN_FLOAT, INF_FLOAT, NEG_INF_FLOAT) were unknown to both JIT backends, so
+    one `best := Float->Inf()` left the whole method to the interpreter
+    ("unsupported opcode 33") -- every kNN, clustering and min/max loop in
+    System.ML and System.AI. With OBJECK_JIT_REPORT=1 and --jit=1,
+    jit_float_limits.obs passes, every one of its methods reports "compiled",
+    and its stdout, which carries the raw bits of every result, is byte for byte
+    what --jit=off prints.
+ 22. Multi-dimensional array accesses give their index registers back. ArrayIndex
+    leaked the register of every later index already in a register (a computed
+    index, a cached local, a pinned loop local's copy), so a method with several
+    2-D accesses in loops ran the pool dry and was left to the interpreter
+    ("compile failed"). With OBJECK_JIT_REPORT=1 and --jit=1,
+    jit_array_index_registers.obs passes, its Mahalanobis, Adam and Cube
+    methods report "compiled", no method in it reports its register pool out
+    of balance, and its stdout (the raw bits of every result) is byte for byte
+    what --jit=off prints.
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only]
 
@@ -479,6 +524,16 @@ def main():
     check_call_depth(obc, obr, env, bin_dir)
 
     check_gc_threshold_scales(obc, obr, env, bin_dir)
+
+    check_native_callback_depth(obc, obr, env, bin_dir)
+
+    check_thread_stack_pages(obc, obr, env, bin_dir)
+
+    check_conditionals_compiled(obc, obr, env, bin_dir)
+
+    check_float_limits_compiled(obc, obr, env, bin_dir)
+
+    check_array_index_registers(obc, obr, env, bin_dir)
 
     # ---- 11. the heap verifier (OBJECK_GC_VERIFY) ----------------------------------
     verify_section(obc, obr, env, bin_dir)
@@ -1057,6 +1112,252 @@ def check_gc_threshold_scales(obc, obr, env, bin_dir):
                     m = re.search(r"majors=(\d+)", text)
                     check(f"{name} reports a bounded major count under --gc-threshold={threshold} ({label})",
                           m is not None and int(m.group(1)) <= 200, f"stderr={text[-240:]!r}")
+
+
+def build_callback_library(out_dir):
+    """Builds native_callback/callback_lib.cpp as <out_dir>/libobjk_callback_test.
+
+    Returns (path, None) on success, (None, reason) when no C++ compiler is
+    available (a skip), and raises RuntimeError when one is and the build fails.
+    """
+    repo = os.path.dirname(os.path.dirname(SCRIPT_DIR))
+    src = os.path.join(SCRIPT_DIR, "native_callback", "callback_lib.cpp")
+    if os.name == "nt":
+        import platform
+        vswhere = os.path.join(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"),
+                               "Microsoft Visual Studio", "Installer", "vswhere.exe")
+        if not os.path.exists(vswhere):
+            return None, "no vswhere.exe"
+        p = subprocess.run([vswhere, "-latest", "-products", "*", "-property", "installationPath"],
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        install = p.stdout.decode(errors="replace").strip().splitlines()
+        vcvarsall = os.path.join(install[0], "VC", "Auxiliary", "Build", "vcvarsall.bat") if install else ""
+        if not vcvarsall or not os.path.exists(vcvarsall):
+            return None, "no Visual C++ toolset"
+        target = "arm64" if platform.machine().upper() in ("ARM64", "AARCH64") else "x64"
+        out = os.path.join(out_dir, "libobjk_callback_test.dll")
+        script = os.path.join(out_dir, "build_callback.cmd")
+        with open(script, "w") as f:
+            f.write("@echo off\r\n")
+            f.write(f'call "{vcvarsall}" {target} >nul\r\n')
+            f.write(f'cd /d "{out_dir}"\r\n')
+            f.write(f'cl /nologo /LD /EHsc /O2 /std:c++17 /DWIN32 /DNDEBUG /D_CONSOLE '
+                    f'/I "{os.path.join(repo, "core", "lib", "zlib", "win")}" '
+                    f'/I "{os.path.join(repo, "core", "lib", "crypto", "win", "include")}" '
+                    f'"{src}" /Fe:libobjk_callback_test.dll\r\n')
+        p = subprocess.run(["cmd", "/c", script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    else:
+        cxx = shutil.which("c++") or shutil.which("g++") or shutil.which("clang++")
+        if not cxx:
+            return None, "no C++ compiler"
+        ext = ".dylib" if sys.platform == "darwin" else ".so"
+        out = os.path.join(out_dir, "libobjk_callback_test" + ext)
+        cmd = [cxx, "-std=c++17", "-O2", "-fPIC", "-shared", "-o", out, src]
+        if sys.platform == "darwin":
+            cmd[1:1] = ["-undefined", "dynamic_lookup"]
+            # lib_api.h includes the VM's headers, which include mbedtls's
+            includes = []
+            if os.environ.get("OBJECK_DEPS"):
+                includes.append(os.path.join(os.environ["OBJECK_DEPS"], "macos-bundle", "mbedtls", "include"))
+            brew = shutil.which("brew")
+            if brew:
+                b = subprocess.run([brew, "--prefix"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                includes.append(os.path.join(b.stdout.decode().strip(), "include"))
+            includes += ["/opt/homebrew/include", "/usr/local/include"]
+            for inc in includes:
+                if os.path.isdir(inc):
+                    cmd.insert(1, "-I" + inc)
+        p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if p.returncode != 0 or not os.path.exists(out):
+        raise RuntimeError(p.stdout.decode(errors="replace")[-1500:])
+    return out, None
+
+
+def check_native_callback_depth(obc, obr, env, bin_dir):
+    # ---- 18. a native library's call back into Objeck is bounded ---------------------
+    scratch = tempfile.mkdtemp(prefix="objeck-callback-")
+    try:
+        native_dir = os.path.join(scratch, "lib", "native")
+        os.makedirs(native_dir)
+        try:
+            lib, reason = build_callback_library(native_dir)
+        except RuntimeError as e:
+            check("the callback test library builds", False, str(e))
+            return
+        if not lib:
+            print(f"  [SKIP] native callback depth: {reason}")
+            return
+        check("the callback test library builds", True)
+
+        src = os.path.join(SCRIPT_DIR, "native_callback", "vm_native_callback_depth.obs")
+        dest = os.path.join(scratch, "vm_native_callback_depth.obe")
+        rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+        check("native callback fixture compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+        if rc != 0:
+            return
+
+        lib_flag = "--lib-path=" + os.path.join(scratch, "lib")
+        for label, flags in (("jit=off", ["--jit=off"]), ("default", []), ("jit=1", ["--jit=1"])):
+            rc, out, err = run([obr, lib_flag] + flags + [dest, "300"], env=env, cwd=bin_dir)
+            check(f"a bounded recursion through a native callback runs 300 deep ({label})",
+                  rc == 0 and out.strip().endswith(b"reached 300"),
+                  f"rc={rc} out={out[-160:]!r} stderr={err[-300:]!r}")
+
+            rc, out, err = run([obr, lib_flag] + flags + [dest, "guarded"], env=env, cwd=bin_dir, timeout=300)
+            check(f"runaways through a native callback recover in a try block, on two threads ({label})",
+                  rc == 0 and b"FAIL" not in out and out.count(b"PASS:") == 10 and b"guarded: done" in out,
+                  f"rc={rc} out={out[-400:]!r} stderr={err[-300:]!r}")
+
+            rc, out, err = run([obr, lib_flag] + flags + [dest, "0"], env=env, cwd=bin_dir, timeout=300)
+            text = err.decode(errors="replace")
+            lines = [l.strip() for l in text.splitlines() if "call stack bounds" in l]
+            detail = f"rc={rc} lines={lines!r} out={out[-160:]!r} stderr={text[-300:]!r}"
+            check(f"an unguarded runaway through a native callback ends with the call-stack line ({label})",
+                  lines == [CALL_DEPTH_LINE] and b"reached" not in out, detail)
+            check(f"it exits 1, not by a signal ({label})", rc == 1, detail)
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+
+
+def smaps_entries(pid):
+    """The process's mappings: (size_kb, anon_huge_kb, vmflags, path) each."""
+    entries = []
+    current = None
+    with open(f"/proc/{pid}/smaps") as f:
+        for line in f:
+            if re.match(r"^[0-9a-f]+-[0-9a-f]+ ", line):
+                parts = line.split()
+                current = {"path": parts[5] if len(parts) > 5 else "", "size": 0, "huge": 0, "flags": ""}
+                entries.append(current)
+            elif current is not None:
+                key, _, value = line.partition(":")
+                if key == "Size":
+                    current["size"] = int(value.split()[0])
+                elif key == "AnonHugePages":
+                    current["huge"] = int(value.split()[0])
+                elif key == "VmFlags":
+                    current["flags"] = value.split()
+    return entries
+
+
+def check_thread_stack_pages(obc, obr, env, bin_dir):
+    # ---- 19. no transparent huge pages on VM thread stacks (Linux) ---------------------
+    if not sys.platform.startswith("linux"):
+        return
+    src = os.path.join(SCRIPT_DIR, "vm_thread_stack_pages.obs")
+    dest = os.path.join(SCRIPT_DIR, "vm_thread_stack_pages.obe")
+    rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+    check("thread stack fixture compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+    if rc != 0:
+        return
+
+    threads = 100
+    stack_kb = 8192    # NativeThreadStackBytes() at the default call depth
+    for label, flags in (("jit=off", ["--jit=off"]), ("default", []), ("jit=1", ["--jit=1"])):
+        p = subprocess.Popen([obr] + flags + [dest, str(threads), "4000"], cwd=bin_dir, env=env,
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            started = p.stdout.readline()
+            entries = smaps_entries(p.pid) if started.startswith(b"started") else []
+            rest, err = p.communicate(timeout=120)
+        except Exception as e:
+            p.kill()
+            p.communicate()
+            check(f"thread stacks inspected ({label})", False, repr(e))
+            continue
+        # A stack's mapping is its size, or a little more where the kernel merged
+        # it with an adjacent mapping carrying the same flags -- a thread's
+        # committed call stack, which is marked the same way (measured: 95 of
+        # 100 at 8,192 kB and 5 at 8,224 kB). A guard page sits between stacks.
+        stacks = [e for e in entries
+                  if not e["path"] and "wr" in e["flags"] and stack_kb <= e["size"] < stack_kb + 2048]
+        flagged = [e for e in stacks if "nh" in e["flags"]]
+        huge = sum(e["huge"] for e in stacks)
+        detail = (f"rc={p.returncode} started={started!r} {stack_kb} kB anonymous mappings={len(stacks)} "
+                  f"with nh={len(flagged)} AnonHugePages={huge} kB stderr={err[-200:]!r}")
+        check(f"each of {threads} thread stacks is marked no-huge-page ({label})",
+              p.returncode == 0 and len(flagged) >= threads, detail)
+        check(f"the thread stacks hold no huge page ({label})", len(stacks) >= threads and huge == 0, detail)
+
+
+def check_conditionals_compiled(obc, obr, env, bin_dir):
+    # ---- 20. Float and function-reference conditionals are compiled ------------------
+    src = os.path.join(SCRIPT_DIR, "jit_conditional_value_types.obs")
+    dest = os.path.join(SCRIPT_DIR, "jit_conditional_value_types.obe")
+    rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+    check("conditional fixture compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+    if rc != 0:
+        return
+
+    report_env = dict(env)
+    report_env["OBJECK_JIT_REPORT"] = "1"
+    rc, out, err = run([obr, "--jit=1", dest], env=report_env, cwd=bin_dir, timeout=300)
+    text = err.decode(errors="replace")
+    check("the conditional fixture passes with every method compiled",
+          rc == 0 and b"PASS: all Float and function-reference conditionals" in out,
+          f"rc={rc} out={out[-200:]!r} stderr={text[-300:]!r}")
+    # not Apply, PickFunc or PickNested: they build capturing lambdas, and ARM64
+    # leaves any method with NEW_FUNC_INST to the interpreter
+    for method in ("SumTernary:f*,l*,", "Pick:l,f,f,", "Fill:l*,f**,", "ChooseFunc:l,m.(i,)~i,m.(i,)~i,",
+                   "ApplyChosen:l,l,m.(i,)~i,m.(i,)~i,i,"):
+        line = f"[jit] JitConditionalValueTypes:{method}: compiled"
+        report = [l for l in text.splitlines() if f"JitConditionalValueTypes:{method}:" in l]
+        check(f"JitConditionalValueTypes:{method} is compiled", line in text, f"report={report!r}")
+
+
+def check_float_limits_compiled(obc, obr, env, bin_dir):
+    # ---- 21. Float->NaN/Inf/NegInf are compiled ---------------------------------------
+    src = os.path.join(SCRIPT_DIR, "jit_float_limits.obs")
+    dest = os.path.join(SCRIPT_DIR, "jit_float_limits.obe")
+    rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+    check("float limits fixture compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+    if rc != 0:
+        return
+
+    report_env = dict(env)
+    report_env["OBJECK_JIT_REPORT"] = "1"
+    rc, jit_out, err = run([obr, "--jit=1", dest], env=report_env, cwd=bin_dir, timeout=300)
+    text = err.decode(errors="replace")
+    check("the float limits fixture passes compiled",
+          rc == 0 and b"PASS: Float->NaN/Inf/NegInf in compiled methods" in jit_out,
+          f"rc={rc} out={jit_out[-300:]!r} stderr={text[-300:]!r}")
+    rc, off_out, err = run([obr, "--jit=off", dest], env=env, cwd=bin_dir, timeout=300)
+    check("the float limits fixture passes interpreted", rc == 0, f"rc={rc} out={off_out[-300:]!r}")
+    check("the float limits fixture prints the same bits compiled and interpreted",
+          jit_out == off_out, f"jit={jit_out[-400:]!r} off={off_out[-400:]!r}")
+    for method in ("Limits:i,", "Nearest:f*,f,", "MinMax:f*,f,", "Compares:f,f,",
+                   "Arith:f,f,f,f,", "Pressure:f*,f,"):
+        line = f"[jit] JitFloatLimits:{method}: compiled"
+        report = [l for l in text.splitlines() if f"JitFloatLimits:{method}:" in l]
+        check(f"JitFloatLimits:{method} is compiled", line in text, f"report={report!r}")
+
+
+def check_array_index_registers(obc, obr, env, bin_dir):
+    # ---- 22. multi-dimensional array accesses give their index registers back --------
+    src = os.path.join(SCRIPT_DIR, "jit_array_index_registers.obs")
+    dest = os.path.join(SCRIPT_DIR, "jit_array_index_registers.obe")
+    rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+    check("array index fixture compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+    if rc != 0:
+        return
+
+    report_env = dict(env)
+    report_env["OBJECK_JIT_REPORT"] = "1"
+    rc, jit_out, err = run([obr, "--jit=1", dest], env=report_env, cwd=bin_dir, timeout=300)
+    text = err.decode(errors="replace")
+    check("the array index fixture passes compiled",
+          rc == 0 and b"PASS: multi-dimensional array accesses in compiled loops" in jit_out,
+          f"rc={rc} out={jit_out[-300:]!r} stderr={text[-300:]!r}")
+    rc, off_out, err = run([obr, "--jit=off", dest], env=env, cwd=bin_dir, timeout=300)
+    check("the array index fixture passes interpreted", rc == 0, f"rc={rc} out={off_out[-300:]!r}")
+    check("the array index fixture prints the same bits compiled and interpreted",
+          jit_out == off_out, f"jit={jit_out[-400:]!r} off={off_out[-400:]!r}")
+    for method in ("Mahalanobis:f**,i,i,f*,f**,", "Adam:f**,f**,f*,f*,i,f**,f**,f*,f*,f,l,", "Cube:f***,"):
+        line = f"[jit] JitArrayIndexRegisters:{method}: compiled"
+        report = [l for l in text.splitlines() if f"JitArrayIndexRegisters:{method}:" in l]
+        check(f"JitArrayIndexRegisters:{method} is compiled", line in text, f"report={report!r}")
+    leaks = [l for l in text.splitlines() if "JitArrayIndexRegisters:" in l and "out of balance" in l]
+    check("no JitArrayIndexRegisters method leaks a register", not leaks, f"report={leaks!r}")
 
 
 def check_call_depth(obc, obr, env, bin_dir):
