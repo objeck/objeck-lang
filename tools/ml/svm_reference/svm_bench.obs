@@ -1,0 +1,200 @@
+#~
+KernelSVM training time at NSL-KDD scale, on synthetic data of NSL-KDD's shape
+(41 features, about 46.5% attacks in four attack families with distinct traffic
+profiles, overlapping classes). Throughput depends on the shape and on how many
+support vectors the problem needs, not on the meaning of the columns, so no
+dataset download is needed.
+
+Usage: obr svm_bench.obe <rows> <cache_mb> [kernel: rbf|linear|poly|sigmoid] [C] [gamma] [noise]
+
+noise (default 1.0) widens each profile: 1.0 gives about 95% held-out accuracy
+and a quarter of the rows as support vectors, harder than NSL-KDD itself; 0.6
+gives about 99.9%, closer to what an RBF SVM reaches on the real data.
+Prints one line: rows, cache, fit seconds, iterations, support vectors, bounded
+SVs, converged, held-out accuracy and recall on 2,000 rows, and prediction seconds.
+Run each size as its own process so peak memory can be read per fit.
+~#
+use System.ML;
+
+class SvmBench {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() < 2) {
+			"usage: svm_bench <rows> <cache_mb> [kernel] [C] [gamma]"->ErrorLine();
+			Runtime->Exit(2);
+		};
+
+		rows := args[0]->ToInt();
+		cache := args[1]->ToInt();
+		kernel := SvmKernel->RBF;
+		name := "rbf";
+		if(args->Size() > 2) {
+			name := args[2];
+			if(name->Equals("linear")) {
+				kernel := SvmKernel->LINEAR;
+			}
+			else if(name->Equals("poly")) {
+				kernel := SvmKernel->POLY;
+			}
+			else if(name->Equals("sigmoid")) {
+				kernel := SvmKernel->SIGMOID;
+			};
+		};
+		c := 1.0;
+		if(args->Size() > 3) {
+			c := args[3]->ToFloat();
+		};
+
+		noise := 1.0;
+		if(args->Size() > 5) {
+			noise := args[5]->ToFloat();
+		};
+		gen := NslKddLike->New(42, noise);
+		train := gen->Rows(rows);
+		test := gen->Rows(2000);
+
+		scaler := FeatureScaler->New();
+		scaler->Fit(train->GetX());
+		x := scaler->Transform(train->GetX());
+		tx := scaler->Transform(test->GetX());
+
+		svm := KernelSVM->New(kernel, c);
+		if(args->Size() > 4) {
+			if(args[4]->ToFloat() > 0.0) {
+				svm->SetGamma(args[4]->ToFloat());
+			};
+		};
+		svm->SetCacheSize(cache);
+		if(<>svm->Fit(x, train->GetY())) {
+			error := svm->GetLastError();
+			"fit failed: {$error}"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		timer := System.Time.Timer->New();
+		timer->Start();
+		pred := svm->PredictClass(tx);
+		timer->End();
+		predict_secs := timer->GetElapsedTime();
+
+		acc := Metrics->Accuracy(pred, test->GetY());
+		rec := Metrics->Recall(pred, test->GetY());
+		secs := svm->GetFitSeconds();
+		iters := svm->GetIterations();
+		svs := svm->GetSupportVectorCount();
+		bsv := svm->GetBoundedSupportVectorCount();
+		conv := svm->IsConverged();
+		gamma := svm->GetGamma();
+		"noise={$noise} kernel={$name} rows={$rows} cache_mb={$cache} C={$c} gamma={$gamma} fit_s={$secs} iterations={$iters} sv={$svs} bounded_sv={$bsv} converged={$conv} test_acc={$acc} test_recall={$rec} predict_2000_s={$predict_secs}"->PrintLine();
+	}
+}
+
+#~
+Synthetic rows of NSL-KDD's shape: 41 features and a normal/attack label.
+
+Each row is drawn from one of five traffic profiles -- normal, and four attack
+families standing in for DoS, probe, R2L and U2R -- with family shares close to
+NSL-KDD's training set (normal 53.5%, DoS 36.5%, probe 9.3%, R2L 0.8%, U2R 0.04%;
+the two rare families are raised to 0.6% here so a few thousand rows still see
+them). A profile fixes each feature's centre; a row adds noise around it. Feature
+kinds follow the real columns: 3 categorical codes (protocol, service, flag),
+heavy-tailed counts (durations, bytes), binary flags and rates in [0, 1]. Noise
+is wide enough that the classes overlap, so a kernel SVM needs a realistic
+fraction of support vectors instead of a handful.
+
+Deterministic per seed (System.ML.Random).
+~#
+class NslKddLike {
+	@rand : System.ML.Random;
+	@centres : Float[,];
+	@noise : Float;
+
+	New(seed : Int, noise : Float) {
+		@noise := noise;
+		@rand := System.ML.Random->New(seed);
+
+		# One centre per profile and feature, drawn once.
+		@centres := Float->New[5, 41];
+		each(p : 5) {
+			each(f : 41) {
+				@centres[p, f] := @rand->NextReal();
+			};
+		};
+	}
+
+	method : public : Rows(count : Int) ~ LabeledRows {
+		x := Float->New[count, 41];
+		y := Bool->New[count];
+		profile := 0;
+		u := 0.0;
+		centre := 0.0;
+		v := 0.0;
+
+		each(i : count) {
+			u := @rand->NextReal();
+			if(u < 0.535) {
+				profile := 0;
+			}
+			else if(u < 0.892) {
+				profile := 1;
+			}
+			else if(u < 0.982) {
+				profile := 2;
+			}
+			else if(u < 0.994) {
+				profile := 3;
+			}
+			else {
+				profile := 4;
+			};
+			y[i] := profile > 0;
+
+			each(f : 41) {
+				centre := @centres[profile, f];
+				# a sum of three uniforms: a bell-shaped noise in [-1.5, 1.5]
+				v := centre + @noise * (@rand->NextReal() + @rand->NextReal() + @rand->NextReal() - 1.5);
+				if(f < 3) {
+					# categorical code: protocol (3), service (70), flag (11)
+					v := Float->Round(v * (f = 0 ? 3.0 : (f = 1 ? 70.0 : 11.0)));
+				}
+				else if(f < 9) {
+					# heavy-tailed counts: durations, bytes, connection counts
+					v := Float->Exp(4.0 * v);
+				}
+				else if(f < 20) {
+					# binary flags
+					v := v > 0.5 ? 1.0 : 0.0;
+				}
+				else {
+					# rates in [0, 1]
+					if(v < 0.0) {
+						v := 0.0;
+					};
+					if(v > 1.0) {
+						v := 1.0;
+					};
+				};
+				x[i, f] := v;
+			};
+		};
+
+		return LabeledRows->New(x, y);
+	}
+}
+
+class LabeledRows {
+	@x : Float[,];
+	@y : Bool[];
+
+	New(x : Float[,], y : Bool[]) {
+		@x := x;
+		@y := y;
+	}
+
+	method : public : GetX() ~ Float[,] {
+		return @x;
+	}
+
+	method : public : GetY() ~ Bool[] {
+		return @y;
+	}
+}

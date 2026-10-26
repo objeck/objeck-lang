@@ -1,0 +1,262 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+KernelSVM against known geometry, with the optimality (KKT) conditions checked
+after every fit from the public API alone.
+
+XOR cannot be separated by a line and can by RBF and by a degree-2 polynomial; a
+linearly separable set reaches zero training error at large C; the total slack
+sum(max(0, 1 - y f(x))) never grows as C grows (at the optimum, for C1 < C2,
+adding the two optimality inequalities gives (C2 - C1)(slack2 - slack1) <= 0);
+a tiny gamma underfits XOR, a huge one memorises the training set and loses on
+unseen rows.
+
+The KKT check: with tol the solver's stopping tolerance, every row with alpha 0
+has y f >= 1 - tol, every free support vector |y f - 1| <= tol, every bounded one
+y f <= 1 + tol, and sum alpha y = 0.
+
+The last line prints a checksum of the decision values, so runs at different
+optimisation levels and JIT settings can be compared for identical output.
+~#
+use System.ML;
+
+class MlKernelSvmGeometry {
+	@checksum : static : Float;
+
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		@checksum := 0.0;
+
+		# XOR: four quadrants, the label is whether x0 and x1 share a sign.
+		rand := System.ML.Random->New(11);
+		n := 80;
+		x := Float->New[n, 2];
+		y := Bool->New[n];
+		each(i : n) {
+			x[i, 0] := rand->NextReal(-1.0, 1.0);
+			x[i, 1] := rand->NextReal(-1.0, 1.0);
+			y[i] := x[i, 0] * x[i, 1] > 0.0;
+		};
+
+		linear := KernelSVM->New(SvmKernel->LINEAR, 1.0);
+		ok := Report("XOR: linear fits", linear->Fit(x, y) & Kkt(linear, x, y, 1.0)) & ok;
+		ok := Report("XOR: a line cannot separate it (training accuracy <= 0.75)",
+			linear->Score(x, y) <= 0.75) & ok;
+
+		rbf := KernelSVM->New(SvmKernel->RBF, 10.0, 2.0);
+		ok := Report("XOR: RBF fits", rbf->Fit(x, y) & Kkt(rbf, x, y, 10.0)) & ok;
+		ok := Report("XOR: RBF separates it (training accuracy >= 0.95)",
+			rbf->Score(x, y) >= 0.95) & ok;
+
+		poly := KernelSVM->New(SvmKernel->POLY, 100.0, 4.0, 2, 0.0);
+		ok := Report("XOR: degree-2 polynomial fits", poly->Fit(x, y) & Kkt(poly, x, y, 100.0)) & ok;
+		ok := Report("XOR: the x0*x1 term separates it (training accuracy >= 0.95)",
+			poly->Score(x, y) >= 0.95) & ok;
+
+		# Fresh XOR rows from the same distribution.
+		tx := Float->New[n, 2];
+		ty := Bool->New[n];
+		each(i : n) {
+			tx[i, 0] := rand->NextReal(-1.0, 1.0);
+			tx[i, 1] := rand->NextReal(-1.0, 1.0);
+			ty[i] := tx[i, 0] * tx[i, 1] > 0.0;
+		};
+
+		# gamma extremes on XOR.
+		flat := KernelSVM->New(SvmKernel->RBF, 1.0, 0.0001);
+		ok := Report("tiny gamma fits", flat->Fit(x, y) & Kkt(flat, x, y, 1.0)) & ok;
+		ok := Report("tiny gamma underfits: the kernel is nearly constant (training accuracy <= 0.75)",
+			flat->Score(x, y) <= 0.75) & ok;
+
+		sharp := KernelSVM->New(SvmKernel->RBF, 1.0, 1000.0);
+		ok := Report("huge gamma fits", sharp->Fit(x, y) & Kkt(sharp, x, y, 1.0)) & ok;
+		ok := Report("huge gamma memorises: every training row is a support vector",
+			sharp->GetSupportVectorCount() = n) & ok;
+		ok := Report("huge gamma memorises: training accuracy is 1.0", sharp->Score(x, y) = 1.0) & ok;
+		ok := Report("huge gamma overfits: worse on unseen rows than gamma 2",
+			sharp->Score(tx, ty) < rbf->Score(tx, ty)) & ok;
+		Accumulate(rbf->DecisionFunction(tx));
+		Accumulate(poly->DecisionFunction(tx));
+
+		# Linearly separable: a gap of 0.4 around x0 + x1 = 1.
+		sx := Float->New[n, 2];
+		sy := Bool->New[n];
+		each(i : n) {
+			sx[i, 0] := rand->NextReal(0.0, 1.0);
+			sx[i, 1] := rand->NextReal(0.0, 1.0);
+			sy[i] := i % 2 = 0;
+			if(sy[i]) {
+				sx[i, 1] := 1.2 - sx[i, 0] + rand->NextReal(0.0, 1.0);
+			}
+			else {
+				sx[i, 1] := 0.8 - sx[i, 0] - rand->NextReal(0.0, 1.0);
+			};
+		};
+
+		hard := KernelSVM->New(SvmKernel->LINEAR, 1000.0);
+		ok := Report("separable: linear at C=1000 fits", hard->Fit(sx, sy) & Kkt(hard, sx, sy, 1000.0)) & ok;
+		ok := Report("separable: zero training error at large C", hard->Score(sx, sy) = 1.0) & ok;
+		ok := Report("separable: no support vector is at the bound",
+			hard->GetBoundedSupportVectorCount() = 0) & ok;
+		hard_rbf := KernelSVM->New(SvmKernel->RBF, 1000.0, 1.0);
+		ok := Report("separable: RBF at C=1000 fits", hard_rbf->Fit(sx, sy) & Kkt(hard_rbf, sx, sy, 1000.0)) & ok;
+		ok := Report("separable: RBF also has zero training error", hard_rbf->Score(sx, sy) = 1.0) & ok;
+		Accumulate(hard->DecisionFunction(sx));
+
+		# Overlapping classes: slack must not grow along a C ladder.
+		ox := Float->New[n, 2];
+		oy := Bool->New[n];
+		each(i : n) {
+			oy[i] := i % 2 = 0;
+			ox[i, 0] := rand->NextReal(0.0, 1.0) + (oy[i] ? 0.4 : 0.0);
+			ox[i, 1] := rand->NextReal(0.0, 1.0);
+		};
+
+		cs := [0.01, 0.1, 1.0, 10.0, 100.0];
+		previous := Float->Inf();
+		monotone := true;
+		all_kkt := true;
+		each(k : cs) {
+			c := cs[k];
+			model := KernelSVM->New(SvmKernel->RBF, c, 1.0);
+			model->SetTolerance(0.0000001);
+			if(<>model->Fit(ox, oy) | <>Kkt(model, ox, oy, c)) {
+				all_kkt := false;
+			};
+			slack := Slack(model, ox, oy);
+			violations := Violations(model, ox, oy);
+			"  C={$c}: slack={$slack} margin violations={$violations}"->PrintLine();
+			if(slack > previous * (1.0 + 0.000001) + 0.000001) {
+				monotone := false;
+			};
+			previous := slack;
+			Accumulate(model->DecisionFunction(ox));
+		};
+		ok := Report("C ladder: every fit satisfies KKT", all_kkt) & ok;
+		ok := Report("C ladder: total slack never grows as C grows", monotone) & ok;
+
+		# The sigmoid kernel is not positive semi-definite in general, but the
+		# solver must still stop at a point meeting the optimality conditions.
+		sig := KernelSVM->New(SvmKernel->SIGMOID, 1.0, 0.5, 3, -0.5);
+		ok := Report("sigmoid fits and meets KKT", sig->Fit(ox, oy) & Kkt(sig, ox, oy, 1.0)) & ok;
+		Accumulate(sig->DecisionFunction(ox));
+
+		String->SetFloatFormat(Number->Format->SCIENTIFIC);
+		String->SetFloatPrecision(17);
+		sum := @checksum;
+		"checksum {$sum}"->PrintLine();
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Accumulate(values : Float[]) ~ Nil {
+		if(values = Nil) {
+			return;
+		};
+
+		v := 0.0;
+		each(i : values) {
+			v := values[i];
+			@checksum := @checksum + v * (i + 1)->As(Float);
+		};
+	}
+
+	# sum of max(0, 1 - y f(x))
+	function : Slack(model : KernelSVM, x : Float[,], y : Bool[]) ~ Float {
+		f := model->DecisionFunction(x);
+		total := 0.0;
+		m := 0.0;
+		each(i : f) {
+			m := y[i] ? f[i] : -1.0 * f[i];
+			if(m < 1.0) {
+				total += 1.0 - m;
+			};
+		};
+
+		return total;
+	}
+
+	function : Violations(model : KernelSVM, x : Float[,], y : Bool[]) ~ Int {
+		f := model->DecisionFunction(x);
+		count := 0;
+		m := 0.0;
+		each(i : f) {
+			m := y[i] ? f[i] : -1.0 * f[i];
+			if(m < 1.0) {
+				count += 1;
+			};
+		};
+
+		return count;
+	}
+
+	# The KKT conditions of the dual at the model's tolerance, from the public API.
+	function : Kkt(model : KernelSVM, x : Float[,], y : Bool[], c : Float) ~ Bool {
+		if(<>model->IsFitted()) {
+			return false;
+		};
+
+		dims := x->Size();
+		n := dims[0];
+		alpha := Float->New[n];
+		idx := model->GetSupportIndices();
+		coef := model->GetDualCoefficients();
+		balance := 0.0;
+		total := 0.0;
+		a := 0.0;
+		each(s : idx) {
+			a := coef[s]->Abs();
+			alpha[idx[s]] := a;
+			balance += coef[s];
+			total += a;
+		};
+
+		if(balance->Abs() > 0.000000001 * (1.0 + total)) {
+			"  KKT: sum(alpha y) = {$balance}"->PrintLine();
+			return false;
+		};
+
+		tol := model->GetTolerance() + 0.0000001;
+		f := model->DecisionFunction(x);
+		margin := 0.0;
+		each(i : n) {
+			margin := y[i] ? f[i] : -1.0 * f[i];
+			a := alpha[i];
+			if(a < 0.0 | a > c) {
+				"  KKT: alpha {$a} outside [0, C] at row {$i}"->PrintLine();
+				return false;
+			};
+			if(a = 0.0) {
+				if(margin < 1.0 - tol) {
+					"  KKT: row {$i} has alpha 0 and y f = {$margin}"->PrintLine();
+					return false;
+				};
+			}
+			else if(a < c) {
+				if((margin - 1.0)->Abs() > tol) {
+					"  KKT: free row {$i} has y f = {$margin}"->PrintLine();
+					return false;
+				};
+			}
+			else {
+				if(margin > 1.0 + tol) {
+					"  KKT: bounded row {$i} has y f = {$margin}"->PrintLine();
+					return false;
+				};
+			};
+		};
+
+		return true;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}

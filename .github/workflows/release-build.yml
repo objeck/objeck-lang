@@ -1038,6 +1038,7 @@ jobs:
             ../../../compiler/lib_src/ml_neighbors.obs \
             ../../../compiler/lib_src/ml_cluster.obs \
             ../../../compiler/lib_src/ml_data.obs \
+            ../../../compiler/lib_src/ml_svm.obs \
             ../../../compiler/lib_src/ml_outlier.obs \
             ../../../compiler/lib_src/ml_lab.obs \
             ../../../compiler/lib_src/ai_search.obs \
