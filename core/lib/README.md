@@ -18,14 +18,14 @@ Each library typically consists of:
 - **ollama.obs** - Ollama local LLM integration
 - **opencv.obs** - OpenCV computer vision library
 - **onnx.obs** - ONNX Runtime for cross-platform ML inference
-- **ml_core.obs** - ML core: NeuralNetwork, Matrix2D, Random, MatrixReader
+- **ml_core.obs** - ML core: NeuralNetwork, DenseNetwork, Matrix2D, Random, MatrixReader
 - **ml_linear.obs** - Linear models: LinearRegression, Ridge, Lasso, ElasticNet, LogisticRegression, Perceptron, SVM
 - **ml_tree.obs** - Tree models: DecisionTree, RandomForest, AdaBoost, RegressionTree, GradientBoostedTrees
 - **ml_bayes.obs** - Bayesian classifiers: NaiveBayes, GaussianNaiveBayes
 - **ml_neighbors.obs** - Nearest neighbors: KNearestNeighbors, KDTree
 - **ml_cluster.obs** - Clustering: KMeans, DBSCAN, GaussianMixture
 - **ml_data.obs** - Data utilities: FeatureScaler, Metrics, CrossValidation, PCA
-- **ml_outlier.obs** - Anomaly detection: OutlierDetector, ZScoreDetector, IsolationForest, LocalOutlierFactor, EllipticEnvelope, DbscanDetector
+- **ml_outlier.obs** - Anomaly detection: OutlierDetector, ZScoreDetector, IsolationForest, LocalOutlierFactor, EllipticEnvelope, DbscanDetector, AutoencoderDetector
 - **ai_search.obs** - Graph search: Dijkstra, A*, BFS, DFS
 - **ai_game.obs** - Adversarial game search: Minimax, Monte Carlo Tree Search
 - **ai_optimize.obs** - Optimization: GeneticAlgorithm, SimulatedAnnealing, HillClimbing

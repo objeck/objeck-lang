@@ -261,3 +261,101 @@ def mcd_reference(X, starts=500, seed=0):
     loc, cov = _estimate(X, mask)
     final_dist = _mahal(X, loc, cov)
     return raw_loc, raw_cov, raw_support, loc, cov, mask, final_dist, h
+
+
+# ---------------------------------------------------------------- dense network
+ACT = {"linear": (lambda z: z, lambda a: np.ones_like(a)),
+       "relu": (lambda z: np.maximum(z, 0.0), lambda a: (a > 0.0).astype(float)),
+       "sigmoid": (lambda z: 1.0 / (1.0 + np.exp(-z)), lambda a: a * (1.0 - a)),
+       "tanh": (np.tanh, lambda a: 1.0 - a * a)}
+
+
+class DenseRef:
+    """A dense network trained by minibatch Adam on MSE, written from the
+    textbook equations with numpy matrix products. The Glorot-uniform weights and
+    the epoch shuffles are drawn from the same Lehmer stream System.ML.DenseNetwork
+    uses, so a run can be replayed step for step; Adam is PyTorch's."""
+
+    def __init__(self, sizes, hidden, output, seed, lr=0.001, batch=32, b1=0.9, b2=0.999, eps=1e-8):
+        self.rng = Lehmer(seed)
+        self.hidden, self.output = hidden, output
+        self.lr, self.batch, self.b1, self.b2, self.eps = lr, batch, b1, b2, eps
+        self.W, self.b = [], []
+        for l in range(len(sizes) - 1):
+            fi, fo = sizes[l], sizes[l + 1]
+            limit = math.sqrt(6.0 / (fi + fo))
+            w = np.zeros((fi, fo))
+            for i in range(fi):
+                for j in range(fo):
+                    w[i, j] = (2.0 * self.rng.next_real() - 1.0) * limit
+            self.W.append(w)
+            self.b.append(np.zeros((1, fo)))
+        self.mW = [np.zeros_like(w) for w in self.W]
+        self.vW = [np.zeros_like(w) for w in self.W]
+        self.mb = [np.zeros_like(b) for b in self.b]
+        self.vb = [np.zeros_like(b) for b in self.b]
+        self.t = 0
+
+    def kind(self, l):
+        return self.output if l == len(self.W) - 1 else self.hidden
+
+    def forward(self, X):
+        acts = [X]
+        for l in range(len(self.W)):
+            acts.append(ACT[self.kind(l)][0](acts[-1] @ self.W[l] + self.b[l]))
+        return acts
+
+    def predict(self, X):
+        return self.forward(X)[-1]
+
+    def train_batch(self, Xb, Yb):
+        acts = self.forward(Xb)
+        diff = acts[-1] - Yb
+        delta = 2.0 * diff / diff.size
+        gW, gb = [None] * len(self.W), [None] * len(self.W)
+        for l in range(len(self.W) - 1, -1, -1):
+            delta = delta * ACT[self.kind(l)][1](acts[l + 1])
+            gW[l] = acts[l].T @ delta
+            gb[l] = delta.sum(axis=0, keepdims=True)
+            if l > 0:
+                delta = delta @ self.W[l].T
+        self.t += 1
+        bias1 = 1.0 - self.b1 ** self.t
+        bias2 = math.sqrt(1.0 - self.b2 ** self.t)
+        for P, G, M, V in ((self.W, gW, self.mW, self.vW), (self.b, gb, self.mb, self.vb)):
+            for l in range(len(P)):
+                M[l] = self.b1 * M[l] + (1.0 - self.b1) * G[l]
+                V[l] = self.b2 * V[l] + (1.0 - self.b2) * G[l] * G[l]
+                P[l] = P[l] - (self.lr / bias1) * M[l] / (np.sqrt(V[l]) / bias2 + self.eps)
+        return (diff * diff).sum()
+
+    def fit(self, X, Y, epochs):
+        n = X.shape[0]
+        order = list(range(n))
+        loss = 0.0
+        for _ in range(epochs):
+            for i in range(n - 1, 0, -1):
+                k = self.rng.next_int() % (i + 1)
+                order[i], order[k] = order[k], order[i]
+            total, start = 0.0, 0
+            while start < n:
+                idx = order[start:start + self.batch]
+                total += self.train_batch(X[idx], Y[idx])
+                start += len(idx)
+            loss = total / (n * Y.shape[1])
+        return loss
+
+
+def autoencoder_ref(X, hidden, epochs, seed, lr=0.001, batch=32):
+    """Standardize (population sd; a constant feature keeps scale 1), train
+    p -> hidden -> p with ReLU hidden and linear output, return the network, the
+    last epoch's loss and the per-row mean squared reconstruction errors."""
+    mean = X.mean(axis=0)
+    sd = X.std(axis=0)
+    sd[sd == 0.0] = 1.0
+    Z = (X - mean) / sd
+    p = X.shape[1]
+    net = DenseRef([p] + list(hidden) + [p], "relu", "linear", seed, lr=lr, batch=batch)
+    loss = net.fit(Z, Z, epochs)
+    errors = ((net.predict(Z) - Z) ** 2).mean(axis=1)
+    return net, loss, errors
