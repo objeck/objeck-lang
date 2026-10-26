@@ -10717,6 +10717,8 @@ if(file->IsOpen()) {
 		function : ParamKind() ~ Int { return 5; }
 		# a bare word alone in a value position: a column if a table has it, otherwise text
 		function : WordKind() ~ Int { return 6; }
+		# an aggregate: its function is the name and its argument the left side, Nil for '*'
+		function : AggregateKind() ~ Int { return 7; }
 
 		New(kind : Int, text : String) {
 			@kind := kind;
@@ -10765,6 +10767,73 @@ if(file->IsOpen()) {
 			return expr;
 		}
 
+		# func(argument), or count(*) with a Nil argument
+		function : Aggregate(func : String, argument : SqlExpr) ~ SqlExpr {
+			text := argument <> Nil ? "{$func}({$(argument->GetText())})" : "{$func}(*)";
+			expr := SqlExpr->New(AggregateKind(), text);
+			expr->SetName(func);
+			expr->SetParts(' ', argument, Nil);
+			return expr;
+		}
+
+		# an aggregate whose argument is '*' or a lone column: what a select list always took
+		method : public : IsPlainAggregate() ~ Bool {
+			return @kind = AggregateKind() & (@left = Nil | @left->IsColumn());
+		}
+
+		method : public : IsAggregate() ~ Bool {
+			return @kind = AggregateKind();
+		}
+
+		# whether an aggregate appears anywhere in it
+		method : public : HasAggregate() ~ Bool {
+			if(@kind = AggregateKind()) {
+				return true;
+			}
+			else if(@kind = BinaryKind()) {
+				return @left->HasAggregate() | @right->HasAggregate();
+			}
+			else if(@kind = NegateKind()) {
+				return @left->HasAggregate();
+			};
+
+			return false;
+		}
+
+		# whether it reads a column outside an aggregate's argument
+		method : public : ReadsColumn() ~ Bool {
+			if(@kind = ColumnKind()) {
+				return true;
+			}
+			else if(@kind = BinaryKind()) {
+				return @left->ReadsColumn() | @right->ReadsColumn();
+			}
+			else if(@kind = NegateKind()) {
+				return @left->ReadsColumn();
+			};
+
+			return false;
+		}
+
+		# The tree's shape as text, so two trees are the same expression when their keys are
+		# equal, whatever their spacing and redundant parentheses
+		method : public : Key() ~ String {
+			select(@kind) {
+				label 0: { return "c:{$@name}"; }
+				label 1: { return "n:{$@text}"; }
+				label 2: { return "({$(@left->Key())} {$@op} {$(@right->Key())})"; }
+				label 3: { return "-({$(@left->Key())})"; }
+				label 4: { return "v:{$@text}"; }
+				label 5: { return "p:{$@param}"; }
+				label 6: { return "w:{$@name}"; }
+			};
+
+			if(@left = Nil) {
+				return "{$@name}(*)";
+			};
+			return "{$@name}({$(@left->Key())})";
+		}
+
 		method : public : SetName(name : String) ~ Nil { @name := name; }
 		method : public : SetValue(value : Compare) ~ Nil { @value := value; }
 		method : public : SetParam(param : Int) ~ Nil { @param := param; }
@@ -10803,7 +10872,7 @@ if(file->IsOpen()) {
 				@left->AddNames(names, words);
 				@right->AddNames(names, words);
 			}
-			else if(@kind = NegateKind()) {
+			else if((@kind = NegateKind() | @kind = AggregateKind()) & @left <> Nil) {
 				@left->AddNames(names, words);
 			};
 		}
@@ -10935,6 +11004,11 @@ if(file->IsOpen()) {
 					return Nil;
 				};
 				return Constant(params[param - 1]);
+			}
+			else if(kind = SqlExpr->AggregateKind()) {
+				# a grouped query binds an aggregate's column in its place
+				error->Set("'{$(expr->GetText())}': an aggregate belongs in the select list, HAVING or ORDER BY of a query");
+				return Nil;
 			};
 
 			left := Bind(expr->GetLeft(), table, params, error);
@@ -11576,6 +11650,7 @@ if(file->IsOpen()) {
 		@joins : Vector<SqlJoin>;
 		@where : Predicate;
 		@group : Vector<String>;
+		@group_exprs : Vector<SqlExpr>;
 		@having : Predicate;
 		@order : Vector<SqlOrder>;
 		@limit : Int;
@@ -11592,6 +11667,7 @@ if(file->IsOpen()) {
 			@extra := Vector->New()<SqlItem>;
 			@joins := Vector->New()<SqlJoin>;
 			@group := Vector->New()<String>;
+			@group_exprs := Vector->New()<SqlExpr>;
 			@order := Vector->New()<SqlOrder>;
 			@columns := Vector->New()<String>;
 			@values := Vector->New()<Vector<SqlValue>>;
@@ -11618,6 +11694,8 @@ if(file->IsOpen()) {
 		method : public : GetWhere() ~ Predicate { return @where; }
 		method : public : SetWhere(where : Predicate) ~ Nil { @where := where; }
 		method : public : GetGroup() ~ Vector<String> { return @group; }
+		# each GROUP BY entry's expression, Nil for a column (then GetGroup has its name)
+		method : public : GetGroupExprs() ~ Vector<SqlExpr> { return @group_exprs; }
 		method : public : GetHaving() ~ Predicate { return @having; }
 		method : public : SetHaving(having : Predicate) ~ Nil { @having := having; }
 		method : public : GetOrder() ~ Vector<SqlOrder> { return @order; }
@@ -11636,15 +11714,43 @@ if(file->IsOpen()) {
 		method : public : GetIndexName() ~ String { return @index_name; }
 		method : public : SetIndexName(index_name : String) ~ Nil { @index_name := index_name; }
 
-		# whether the select list or HAVING uses an aggregate
+		# whether the select list, HAVING or ORDER BY uses an aggregate
 		method : public : HasAggregates() ~ Bool {
 			each(i : @items) {
-				if(@items->Get(i)->IsAggregate()) {
+				item := @items->Get(i);
+				if(item->IsAggregate() | (item->GetExpr() <> Nil & item->GetExpr()->HasAggregate())) {
 					return true;
 				};
 			};
 
-			return @extra->Size() > 0;
+			each(i : @order) {
+				expr := @order->Get(i)->GetExpr();
+				if(expr <> Nil & expr->HasAggregate()) {
+					return true;
+				};
+			};
+
+			return @extra->Size() > 0 | HasAggregate(@having);
+		}
+
+		function : HasAggregate(pred : Predicate) ~ Bool {
+			if(pred = Nil) {
+				return false;
+			};
+
+			op := pred->GetOp();
+			if(op = Op->AND | op = Op->OR) {
+				return HasAggregate(pred->GetLeft()) | HasAggregate(pred->GetRight());
+			}
+			else if(op = Op->NOT) {
+				return HasAggregate(pred->GetLeft());
+			};
+
+			if(pred->TypeOf(ExprPredicate)) {
+				test := pred->As(ExprPredicate);
+				return test->GetLeftExpr()->HasAggregate() | (test->GetRightExpr() <> Nil & test->GetRightExpr()->HasAggregate());
+			};
+			return false;
 		}
 	}
 
@@ -11656,6 +11762,8 @@ if(file->IsOpen()) {
 		@statement : SqlStatement;
 		@in_having : Bool;
 		@in_condition : Bool;
+		@in_group : Bool;
+		@in_on : Bool;
 		@ref_name : String;
 		@ref_file : SqlFile;
 
@@ -11920,6 +12028,22 @@ if(file->IsOpen()) {
 				Fail("a column name (aggregates belong in HAVING, not WHERE)");
 				return Nil;
 			}
+			else if(AtAggregate()) {
+				aggregate := ParseAggregateExpr();
+				if(aggregate = Nil) {
+					return Nil;
+				};
+
+				if(@in_group) {
+					Refuse("GROUP BY cannot use an aggregate: '{$(aggregate->GetText())}'");
+					return Nil;
+				}
+				else if(@in_on) {
+					Refuse("aggregates are not allowed in ON: '{$(aggregate->GetText())}'");
+					return Nil;
+				};
+				return aggregate;
+			}
 			else if(token->IsSymbol("-")) {
 				Next();
 				operand := ParseFactor();
@@ -11939,6 +12063,43 @@ if(file->IsOpen()) {
 
 			name := ParseName("a column name, an aggregate, a number or '*'");
 			return name <> Nil ? SqlExpr->Column(name) : Nil;
+		}
+
+		# func '(' ('*' | expression) ')'; only COUNT takes '*', and no aggregate holds another
+		method : ParseAggregateExpr() ~ SqlExpr {
+			func := Current()->GetText()->ToLower();
+			Next();
+			Next();
+
+			if(Current()->IsSymbol("*")) {
+				if(<>func->Equals("count")) {
+					Fail("a column name ({$func}(*) is not allowed)");
+					return Nil;
+				};
+				Next();
+				if(<>ExpectSymbol(")")) {
+					return Nil;
+				};
+				return SqlExpr->Aggregate(func, Nil);
+			};
+
+			argument := ParseSum();
+			if(argument = Nil | <>ExpectSymbol(")")) {
+				return Nil;
+			};
+
+			aggregate := SqlExpr->Aggregate(func, argument);
+			if(argument->HasAggregate()) {
+				Refuse("an aggregate cannot contain another aggregate: '{$(aggregate->GetText())}'");
+				return Nil;
+			};
+			return aggregate;
+		}
+
+		# a select-list item, HAVING operand or ORDER BY entry that is a plain aggregate
+		function : PlainItem(aggregate : SqlExpr) ~ SqlItem {
+			argument := aggregate->GetLeft();
+			return SqlItem->New(argument = Nil ? "*" : argument->GetName(), aggregate->GetName());
 		}
 
 		# func '(' ('*' | name) ')'; only COUNT takes '*'
@@ -12134,15 +12295,18 @@ if(file->IsOpen()) {
 				else {
 					done := false;
 					while(<>done) {
-						item : SqlItem;
-						if(AtAggregate()) {
-							item := ParseAggregate();
-						}
-						else {
-							expr := ParseSum();
-							if(expr <> Nil) {
-								# a lone column is a plain item, as it always was
-								item := expr->IsColumn() ? SqlItem->New(expr->GetName(), Nil) : SqlItem->New(expr);
+						item : SqlItem := Nil;
+						expr := ParseSum();
+						if(expr <> Nil) {
+							# a lone column and a plain aggregate are the items they always were
+							if(expr->IsColumn()) {
+								item := SqlItem->New(expr->GetName(), Nil);
+							}
+							else if(expr->IsPlainAggregate()) {
+								item := PlainItem(expr);
+							}
+							else {
+								item := SqlItem->New(expr);
 							};
 						};
 
@@ -12245,11 +12409,25 @@ if(file->IsOpen()) {
 
 				grouping := true;
 				while(grouping) {
-					name := ParseName("a column name");
-					if(name = Nil) {
+					@in_group := true;
+					expr := ParseSum();
+					@in_group := false;
+					if(expr = Nil) {
 						return Nil;
 					};
-					statement->GetGroup()->AddBack(name);
+
+					# a column, as always, or an expression that reads one
+					if(expr->IsColumn()) {
+						statement->GetGroup()->AddBack(expr->GetName());
+						statement->GetGroupExprs()->AddBack(Nil);
+					}
+					else if(<>expr->ReadsColumn()) {
+						return Refuse("GROUP BY needs a column or an expression over columns, not '{$(expr->GetText())}'");
+					}
+					else {
+						statement->GetGroup()->AddBack(expr->GetText());
+						statement->GetGroupExprs()->AddBack(expr);
+					};
 
 					if(Current()->IsSymbol(",")) {
 						Next();
@@ -12266,9 +12444,6 @@ if(file->IsOpen()) {
 					@in_having := false;
 					if(having = Nil) {
 						return Nil;
-					};
-					if(HasExpression(having)) {
-						return Refuse("HAVING compares an aggregate or a grouping column with a value; expressions in HAVING are not supported yet");
 					};
 					statement->SetHaving(having);
 				};
@@ -12292,26 +12467,21 @@ if(file->IsOpen()) {
 						};
 						Next();
 					}
-					else if(AtAggregate()) {
-						item := ParseAggregate();
-						if(item = Nil) {
-							return Nil;
-						};
-						if(<>EndsOrderEntry(0)) {
-							return Refuse("'{$(item->GetCall())}' in ORDER BY: an expression over an aggregate is not supported yet");
-						};
-						NoteAggregate(item);
-						order_name := item->GetCall();
-					}
 					else {
 						expr := ParseSum();
 						if(expr = Nil) {
 							return Nil;
 						};
 
-						# a lone name is a label or a column, as it always was
+						# a lone name is a label or a column, and a plain aggregate is named by its
+						# call, as they always were
 						if(expr->IsColumn()) {
 							order_name := expr->GetName();
+						}
+						else if(expr->IsPlainAggregate()) {
+							item := PlainItem(expr);
+							NoteAggregate(item);
+							order_name := item->GetCall();
 						}
 						else {
 							order_expr := expr;
@@ -12525,16 +12695,13 @@ if(file->IsOpen()) {
 		}
 
 		# An operand of a test. In a value position (the right of a comparison, a BETWEEN bound,
-		# an IN entry), a bare word alone is a column when a table has it and otherwise text, as
-		# unquoted words always were; in HAVING it is text, as before.
+		# an IN entry), a bare word alone is a column when a table has it (in HAVING, a column of
+		# the grouped result) and otherwise text, as unquoted words always were.
 		method : ParseOperand(value_position : Bool) ~ SqlExpr {
 			first := Current();
 			start := @index;
 			expr := ParseSum();
 			if(expr <> Nil & value_position & expr->IsColumn() & @index = start + 1 & first->GetKind() = SqlToken->Kind->WORD) {
-				if(@in_having) {
-					return SqlExpr->Value(first->GetText(), first->GetText());
-				};
 				return SqlExpr->Word(first->GetText());
 			};
 
@@ -12553,24 +12720,17 @@ if(file->IsOpen()) {
 
 		# operand ([NOT] op value | [NOT] BETWEEN v AND v | [NOT] IN (v, ...) | IS [NOT] NULL)
 		method : ParseComparison() ~ Predicate {
-			left : SqlExpr;
-			if(AtAggregate()) {
-				if(<>@in_having) {
-					return FailCondition("a column name (aggregates belong in HAVING, not WHERE)");
-				};
-				item := ParseAggregate();
-				if(item = Nil) {
-					return Nil;
-				};
+			left := ParseOperand(false);
+			if(left = Nil) {
+				return Nil;
+			};
+
+			# a plain aggregate on the left of a HAVING test is named by its call, as the grouped
+			# result names it, so the test is the Predicate it always was
+			if(left->IsPlainAggregate()) {
+				item := PlainItem(left);
 				NoteAggregate(item);
-				# named by its call, as the grouped result names it
 				left := SqlExpr->Column(item->GetCall());
-			}
-			else {
-				left := ParseOperand(false);
-				if(left = Nil) {
-					return Nil;
-				};
 			};
 
 			if(Current()->IsWord("is")) {
@@ -14176,6 +14336,15 @@ if(file->IsOpen()) {
 		@computed : Int[];
 		@order_columns : Int[];
 		@data_columns : Int;
+		@key_exprs : SqlExpr[];
+		@key_refs : SqlRef[];
+		@key_out : Int[];
+		@aggs : Vector<SqlExpr>;
+		@agg_labels : Vector<String>;
+		@agg_columns : Int[];
+		@group_out : Table;
+		@group_labels : String[];
+		@group_names : String[];
 
 		New(statement : SqlStatement, tables : Table[], params : Compare[], error : StringHolder) {
 			@statement := statement;
@@ -14517,18 +14686,6 @@ if(file->IsOpen()) {
 			};
 
 			if(@statement->GetGroup()->Size() > 0 | @statement->HasAggregates()) {
-				items := @statement->GetItems();
-				each(i : items) {
-					if(items->Get(i)->GetExpr() <> Nil) {
-						return Fail("'{$(items->Get(i)->GetName())}': an expression in the select list of a grouped or aggregate query is not supported; compute it in a query over the grouped result");
-					};
-				};
-				order := @statement->GetOrder();
-				each(i : order) {
-					if(order->Get(i)->GetExpr() <> Nil) {
-						return Fail("ORDER BY '{$(order->Get(i)->GetName())}': an expression in ORDER BY of a grouped or aggregate query is not supported yet");
-					};
-				};
 				return Group(rows);
 			};
 
@@ -14578,8 +14735,9 @@ if(file->IsOpen()) {
 
 		# An expression with its names as the working table's column names, so it can be bound
 		# to that table. With 'aliases' (ORDER BY), a name that is a select-list alias is that
-		# item's column, named by aliases[i]. A new tree; Nil with the error set, naming 'what'.
-		method : WorkExpr(expr : SqlExpr, aliases : String[], what : String) ~ SqlExpr {
+		# item's column, named by aliases[i]. A new tree; Nil with the error set, naming 'what',
+		# or with 'quiet' Nil and no error.
+		method : WorkExpr(expr : SqlExpr, aliases : String[], what : String, quiet : Bool) ~ SqlExpr {
 			kind := expr->GetKind();
 			if(kind = SqlExpr->ColumnKind()) {
 				name := expr->GetName();
@@ -14592,21 +14750,23 @@ if(file->IsOpen()) {
 
 				index := ExprIndex(name);
 				if(index < 0) {
-					Fail("unknown column '{$name}' in {$what}");
+					if(<>quiet) {
+						Fail("unknown column '{$name}' in {$what}");
+					};
 					return Nil;
 				};
 				return SqlExpr->Column(@work->GetColumn(index)->GetName());
 			}
 			else if(kind = SqlExpr->BinaryKind()) {
-				left := WorkExpr(expr->GetLeft(), aliases, what);
-				right := WorkExpr(expr->GetRight(), aliases, what);
+				left := WorkExpr(expr->GetLeft(), aliases, what, quiet);
+				right := WorkExpr(expr->GetRight(), aliases, what, quiet);
 				if(left = Nil | right = Nil) {
 					return Nil;
 				};
 				return SqlExpr->Binary(expr->GetOp(), left, right);
 			}
 			else if(kind = SqlExpr->NegateKind()) {
-				operand := WorkExpr(expr->GetLeft(), aliases, what);
+				operand := WorkExpr(expr->GetLeft(), aliases, what, quiet);
 				if(operand = Nil) {
 					return Nil;
 				};
@@ -14672,6 +14832,56 @@ if(file->IsOpen()) {
 			};
 		}
 
+		# Computes an expression for 'rows' of the table it is bound to into a column indexed as
+		# that table is, by row slot, of 'capacity' rows; slots not in 'rows' are empty. Typed as
+		# FillComputed types.
+		function : FillComputedAt(column : Column, eval : SqlEval, rows : Int[], capacity : Int) ~ Nil {
+			ints := Int->New[capacity];
+			floats := Float->New[capacity];
+			present := Bool->New[capacity];
+			any := false;
+			any_float := false;
+			size := rows->Size();
+			batch := SqlEval->BatchRows();
+			start := 0;
+			while(start < size) {
+				count := size - start;
+				if(count > batch) {
+					count := batch;
+				};
+
+				eval->Eval(rows, start, count);
+				tags := eval->GetTags();
+				values := eval->GetInts();
+				reals := eval->GetFloats();
+				each(i : count) {
+					slot := rows[start + i];
+					tag := tags[i];
+					if(tag = 1) {
+						ints[slot] := values[i];
+						floats[slot] := values[i]->As(Float);
+						present[slot] := true;
+						any := true;
+					}
+					else if(tag = 2) {
+						floats[slot] := reals[i];
+						present[slot] := true;
+						any := true;
+						any_float := true;
+					};
+				};
+				start += count;
+			};
+
+			if(any) {
+				column->FillNumbers(any_float ? ColumnType->FLOAT : ColumnType->INT, ints, floats, present);
+			}
+			else {
+				# no number at all: an untyped column of empty cells
+				column->FillNulls(capacity);
+			};
+		}
+
 		# The select list's and ORDER BY's expressions computed over the rows that passed: the
 		# working table's columns copied for those rows, in their order, with one column per
 		# expression after them, which becomes the working table. Names and indexes of the copied
@@ -14701,7 +14911,7 @@ if(file->IsOpen()) {
 				item := items->Get(i);
 				eval : SqlEval := Nil;
 				if(item->GetExpr() <> Nil) {
-					expr := WorkExpr(item->GetExpr(), Nil, "'{$(item->GetName())}'");
+					expr := WorkExpr(item->GetExpr(), Nil, "'{$(item->GetName())}'", false);
 					if(expr = Nil) {
 						return Nil;
 					};
@@ -14749,7 +14959,7 @@ if(file->IsOpen()) {
 				@order_columns[k] := -1;
 				entry := order->Get(k);
 				if(entry->GetExpr() <> Nil) {
-					expr := WorkExpr(entry->GetExpr(), item_columns, "ORDER BY '{$(entry->GetName())}'");
+					expr := WorkExpr(entry->GetExpr(), item_columns, "ORDER BY '{$(entry->GetName())}'", false);
 					if(expr = Nil) {
 						return Nil;
 					};
@@ -14973,6 +15183,32 @@ if(file->IsOpen()) {
 			return WantName(wanted, pred->GetColumn());
 		}
 
+		method : WantHaving(wanted : Vector<SqlRef>, pred : Predicate) ~ Bool {
+			if(pred = Nil) {
+				return true;
+			};
+
+			op := pred->GetOp();
+			if(op = Op->AND | op = Op->OR) {
+				return WantHaving(wanted, pred->GetLeft()) & WantHaving(wanted, pred->GetRight());
+			}
+			else if(op = Op->NOT) {
+				return WantHaving(wanted, pred->GetLeft());
+			};
+
+			if(pred->TypeOf(ExprPredicate)) {
+				test := pred->As(ExprPredicate);
+				names := Vector->New()<String>;
+				ExprColumns(test->GetLeftExpr(), names);
+				if(test->GetRightExpr() <> Nil) {
+					ExprColumns(test->GetRightExpr(), names);
+				};
+				return WantNames(wanted, names);
+			};
+
+			return true;
+		}
+
 		method : WantNames(wanted : Vector<SqlRef>, names : Vector<String>) ~ Bool {
 			each(i : names) {
 				if(<>WantName(wanted, names->Get(i))) {
@@ -15021,10 +15257,24 @@ if(file->IsOpen()) {
 			};
 
 			group := @statement->GetGroup();
+			group_exprs := @statement->GetGroupExprs();
 			each(i : group) {
-				if(<>WantName(wanted, group->Get(i))) {
+				if(group_exprs->Get(i) <> Nil) {
+					reads := Vector->New()<String>;
+					group_exprs->Get(i)->AddColumns(reads);
+					if(<>WantNames(wanted, reads)) {
+						return false;
+					};
+				}
+				else if(<>WantName(wanted, group->Get(i))) {
 					return false;
 				};
+			};
+
+			# HAVING's expressions may read columns inside aggregates; its other names are the
+			# grouped result's labels
+			if(<>WantHaving(wanted, @statement->GetHaving())) {
+				return false;
 			};
 
 			# an ORDER BY name may be a select-list label rather than a column
@@ -15372,7 +15622,12 @@ if(file->IsOpen()) {
 		}
 
 		#
-		# GROUP BY, aggregates and HAVING
+		# GROUP BY, aggregates and HAVING (docs/QUERY_DESIGN.md, "Where each kind of expression is
+		# evaluated"). Per row, the grouping expressions and the aggregates' arguments are computed
+		# into columns; the rows are sorted by the keys, so each group is a run; per group, the
+		# result holds the select list, the aggregates only an expression, HAVING or ORDER BY
+		# names, and the keys; then the select list's, HAVING's and ORDER BY's expressions are
+		# computed over that result.
 		#
 
 		method : Group(rows : Int[]) ~ View {
@@ -15380,29 +15635,111 @@ if(file->IsOpen()) {
 				return Fail("SELECT * cannot be grouped; name the columns");
 			};
 
-			# the grouping columns
+			items := @statement->GetItems();
 			group := @statement->GetGroup();
-			keys := Int->New[group->Size()];
-			each(i : keys) {
-				keys[i] := WorkIndex(group->Get(i));
-				if(keys[i] < 0) {
+			group_exprs := @statement->GetGroupExprs();
+
+			# the grouping expressions, with their names as working-table names; Nil for a column
+			@key_exprs := SqlExpr->New[group->Size()];
+			@key_refs := SqlRef->New[group->Size()];
+			each(k : group) {
+				expr := group_exprs->Get(k);
+				if(expr <> Nil) {
+					@key_exprs[k] := WorkExpr(expr, Nil, "GROUP BY '{$(expr->GetText())}'", false);
+					if(@key_exprs[k] = Nil) {
+						return Nil;
+					};
+				}
+				else {
+					@key_refs[k] := Resolve(group->Get(k));
+					if(@key_refs[k] = Nil) {
+						return Nil;
+					};
+				};
+			};
+
+			# every aggregate the query names, once each, with its label: the select list's,
+			# HAVING's and ORDER BY's
+			@aggs := Vector->New()<SqlExpr>;
+			@agg_labels := Vector->New()<String>;
+			each(i : items) {
+				item := items->Get(i);
+				if(item->IsAggregate()) {
+					if(<>NoteAggregateItem(item)) {
+						return Nil;
+					};
+				}
+				else if(item->GetExpr() <> Nil & <>CollectAggregates(item->GetExpr())) {
+					return Nil;
+				};
+			};
+			extra := @statement->GetExtra();
+			each(i : extra) {
+				if(<>NoteAggregateItem(extra->Get(i))) {
+					return Nil;
+				};
+			};
+			if(<>CollectHaving(@statement->GetHaving())) {
+				return Nil;
+			};
+			order := @statement->GetOrder();
+			each(i : order) {
+				if(order->Get(i)->GetExpr() <> Nil & <>CollectAggregates(order->Get(i)->GetExpr())) {
 					return Nil;
 				};
 			};
 
-			# a plain column in the select list must be one of them
-			items := @statement->GetItems();
+			# Per row: grouping expressions and aggregate arguments that are not a lone column are
+			# computed into columns of their own, indexed by row slot as the working table's
+			# columns are, so nothing is copied. A key is a column of either kind.
+			key_columns := Column->New[group->Size()];
+			key_indexes := Int->New[group->Size()];
+			each(k : group) {
+				key_indexes[k] := -1;
+				if(@key_exprs[k] <> Nil) {
+					eval := SqlEval->Bind(@key_exprs[k], @work, @params, @error);
+					if(eval = Nil) {
+						return Nil;
+					};
+					key_columns[k] := Column->New("#key{$k}", ColumnType->NONE, false);
+					FillComputedAt(key_columns[k], eval, rows, @work->GetRowCapacity());
+				}
+				else {
+					key_indexes[k] := @work->GetIndex(WorkName(@key_refs[k]));
+					key_columns[k] := @work->GetColumn(key_indexes[k]);
+				};
+			};
+
+			agg_sources := Column->New[@aggs->Size()];
+			each(a : @aggs) {
+				argument := @aggs->Get(a)->GetLeft();
+				if(argument <> Nil) {
+					if(argument->IsColumn()) {
+						agg_sources[a] := @work->GetColumn(@work->GetIndex(argument->GetName()));
+					}
+					else {
+						eval := SqlEval->Bind(argument, @work, @params, @error);
+						if(eval = Nil) {
+							return Nil;
+						};
+						agg_sources[a] := Column->New("#arg{$a}", ColumnType->NONE, false);
+						FillComputedAt(agg_sources[a], eval, rows, @work->GetRowCapacity());
+					};
+				};
+			};
+
+			# a plain column in the select list must be one of the grouping columns
 			each(i : items) {
 				item := items->Get(i);
-				if(<>item->IsAggregate()) {
+				if(<>item->IsAggregate() & item->GetExpr() = Nil) {
 					index := WorkIndex(item->GetName());
 					if(index < 0) {
 						return Nil;
 					};
 
 					grouped := false;
-					each(j : keys) {
-						if(keys[j] = index) {
+					each(k : key_indexes) {
+						if(key_indexes[k] = index) {
 							grouped := true;
 						};
 					};
@@ -15413,16 +15750,22 @@ if(file->IsOpen()) {
 				};
 			};
 
-			# rows sorted by the grouping columns, so each group is a run
+			# rows sorted by the grouping columns, so each group is a run; a column's sorted
+			# index gives its order where it has one
 			sorters := Vector->New()<Sorter>;
-			each(i : keys) {
-				sorters->AddBack(Sorter->New(@work->GetColumn(keys[i]), false));
+			each(k : key_columns) {
+				sorters->AddBack(Sorter->New(key_columns[k], false));
 			};
 
 			ordered := rows;
 			k := sorters->Size() - 1;
 			while(k >= 0) {
-				ordered := SortBy(keys[k], ordered, false);
+				if(key_indexes[k] > -1) {
+					ordered := SortBy(key_indexes[k], ordered, false);
+				}
+				else {
+					ordered := sorters->Get(k)->Sort(ordered);
+				};
 				k -= 1;
 			};
 
@@ -15437,67 +15780,125 @@ if(file->IsOpen()) {
 			};
 
 			# without GROUP BY every row is one group, even no rows at all
-			if(keys->Size() = 0) {
+			if(key_columns->Size() = 0) {
 				groups := 1;
 				starts[0] := 0;
 			};
 			starts[groups] := ordered->Size();
 
-			# the result: the select list, then aggregates only HAVING or ORDER BY name
-			extra := @statement->GetExtra();
-			hidden := Vector->New()<SqlItem>;
-			each(i : extra) {
-				if(ItemByCall(extra->Get(i)->GetCall()) < 0) {
-					hidden->AddBack(extra->Get(i));
+			# The result: the select list; then the aggregates no plain item shows; then the
+			# keys. The hidden aggregates are labelled by their calls, as HAVING and ORDER BY
+			# name them.
+			@agg_columns := Int->New[@aggs->Size()];
+			shown_count := items->Size();
+			hidden := Vector->New()<IntRef>;
+			each(a : @aggs) {
+				@agg_columns[a] := -1;
+				each(i : items) {
+					item := items->Get(i);
+					if(@agg_columns[a] < 0 & item->IsAggregate() & AggregateOf(item)->Key()->Equals(@aggs->Get(a)->Key())) {
+						@agg_columns[a] := i + 1;
+					};
+				};
+				if(@agg_columns[a] < 0) {
+					hidden->AddBack(a);
 				};
 			};
 
-			all := Vector->New()<SqlItem>;
+			labels := String->New[shown_count + hidden->Size() + group->Size()];
 			each(i : items) {
-				all->AddBack(items->Get(i));
-			};
-			each(i : hidden) {
-				all->AddBack(hidden->Get(i));
-			};
-
-			labels := String->New[all->Size()];
-			each(i : labels) {
-				labels[i] := all->Get(i)->GetLabel();
-				if(<>@joined & <>all->Get(i)->IsAggregate() & all->Get(i)->GetAlias() = Nil) {
+				labels[i] := items->Get(i)->GetLabel();
+				if(<>@joined & <>items->Get(i)->IsAggregate() & items->Get(i)->GetExpr() = Nil & items->Get(i)->GetAlias() = Nil) {
 					labels[i] := Strip(labels[i]);
 				};
+			};
+			each(h : hidden) {
+				a := hidden->Get(h)->Get();
+				labels[shown_count + h] := @agg_labels->Get(a);
+				@agg_columns[a] := shown_count + h + 1;
+			};
+			@key_out := Int->New[group->Size()];
+			each(k : group) {
+				labels[shown_count + hidden->Size() + k] := "#group{$k}";
+				@key_out[k] := shown_count + hidden->Size() + k + 1;
 			};
 			if(@joined) {
 				Shorten(labels);
 			};
 
-			out := Table->New("<rs>", labels);
+			# column names: the labels, made unique, so a column is bound by its name even when
+			# two labels are the same (two calls of sum(?) over different placeholders)
+			@group_names := String->New[labels->Size()];
+			each(i : labels) {
+				name := labels[i];
+				taken := true;
+				while(taken) {
+					taken := false;
+					each(j : i) {
+						if(@group_names[j]->Equals(name)) {
+							taken := true;
+						};
+					};
+					if(taken) {
+						name := "{$name}#";
+					};
+				};
+				@group_names[i] := name;
+			};
+
+			out := Table->New("<rs>", @group_names);
 			out->Fill(groups);
 			firsts := Int->New[groups];
 			each(g : groups) {
 				firsts[g] := starts[g] < ordered->Size() ? ordered[starts[g]] : -1;
 			};
 
-			each(i : all) {
-				item := all->Get(i);
-				column := out->GetColumn(i + 1);
+			# the keys, the aggregates, and the select list's plain columns
+			each(k : group) {
+				out->GetColumn(@key_out[k])->Gather(key_columns[k], firsts);
+			};
+			each(a : @aggs) {
+				Aggregate(out->GetColumn(@agg_columns[a]), @aggs->Get(a)->GetName(), agg_sources[a], ordered, starts, groups);
+			};
+			# a plain aggregate the select list shows twice: each copy is computed
+			each(i : items) {
+				item := items->Get(i);
 				if(item->IsAggregate()) {
-					source : Column;
-					if(<>item->GetName()->Equals("*")) {
-						index := WorkIndex(item->GetName());
-						if(index < 0) {
-							return Nil;
+					key := AggregateOf(item)->Key();
+					each(a : @aggs) {
+						if(@agg_columns[a] <> i + 1 & @aggs->Get(a)->Key()->Equals(key)) {
+							Aggregate(out->GetColumn(i + 1), item->GetFunc(), agg_sources[a], ordered, starts, groups);
 						};
-						source := @work->GetColumn(index);
 					};
-					Aggregate(column, item->GetFunc(), source, ordered, starts, groups);
-				}
-				else {
-					column->Gather(@work->GetColumn(WorkIndex(item->GetName())), firsts);
+				};
+			};
+			each(i : items) {
+				item := items->Get(i);
+				if(<>item->IsAggregate() & item->GetExpr() = Nil) {
+					out->GetColumn(i + 1)->Gather(@work->GetColumn(WorkIndex(item->GetName())), firsts);
 				};
 			};
 
-			result := out->LiveRows();
+			# the select list's expressions, over the groups
+			@group_out := out;
+			@group_labels := labels;
+			out_rows := out->LiveRows();
+			each(i : items) {
+				item := items->Get(i);
+				if(item->GetExpr() <> Nil) {
+					expr := GroupExpr(item->GetExpr(), false, "'{$(item->GetName())}'");
+					if(expr = Nil) {
+						return Nil;
+					};
+					eval := SqlEval->Bind(expr, out, @params, @error);
+					if(eval = Nil) {
+						return Nil;
+					};
+					FillComputed(out->GetColumn(i + 1), eval, out_rows);
+				};
+			};
+
+			result := out_rows;
 			having := @statement->GetHaving();
 			if(having <> Nil) {
 				renamed := Relabel(having, labels);
@@ -15512,12 +15913,23 @@ if(file->IsOpen()) {
 				result := filter->Apply(out, result);
 			};
 
-			order := @statement->GetOrder();
 			k := order->Size() - 1;
 			while(k >= 0) {
 				entry := order->Get(k);
 				index := -1;
-				if(entry->GetPosition() > 0) {
+				if(entry->GetExpr() <> Nil) {
+					expr := GroupExpr(entry->GetExpr(), true, "ORDER BY '{$(entry->GetName())}'");
+					if(expr = Nil) {
+						return Nil;
+					};
+					eval := SqlEval->Bind(expr, out, @params, @error);
+					if(eval = Nil) {
+						return Nil;
+					};
+					index := AddSlot(out, "#order{$k}");
+					FillComputed(out->GetColumn(index), eval, out_rows);
+				}
+				else if(entry->GetPosition() > 0) {
 					if(entry->GetPosition() > items->Size()) {
 						return Fail("ORDER BY {$(entry->GetPosition())} is past the {$(items->Size())} columns of the select list");
 					};
@@ -15545,6 +15957,182 @@ if(file->IsOpen()) {
 			view := View->New(out, shown, shown_labels, Slice(result));
 			view->SetPlan(PlanText());
 			return view;
+		}
+
+		# a plain aggregate item as an expression over working-table names
+		method : AggregateOf(item : SqlItem) ~ SqlExpr {
+			if(item->GetName()->Equals("*")) {
+				return SqlExpr->Aggregate(item->GetFunc(), Nil);
+			};
+
+			index := WorkIndex(item->GetName());
+			@error->Set(Nil);
+			name := index > -1 ? @work->GetColumn(index)->GetName() : item->GetName();
+			return SqlExpr->Aggregate(item->GetFunc(), SqlExpr->Column(name));
+		}
+
+		# notes a plain aggregate item, or one HAVING or ORDER BY names; false with the error set
+		method : NoteAggregateItem(item : SqlItem) ~ Bool {
+			if(<>item->GetName()->Equals("*") & WorkIndex(item->GetName()) < 0) {
+				return false;
+			};
+
+			AddAggregate(AggregateOf(item), item->GetCall());
+			return true;
+		}
+
+		# an aggregate, once, with its label
+		method : AddAggregate(aggregate : SqlExpr, label_text : String) ~ Nil {
+			key := aggregate->Key();
+			each(a : @aggs) {
+				if(@aggs->Get(a)->Key()->Equals(key)) {
+					return;
+				};
+			};
+			@aggs->AddBack(aggregate);
+			@agg_labels->AddBack(label_text);
+		}
+
+		# the aggregates in an expression, their arguments renamed to working-table names;
+		# false with the error set
+		method : CollectAggregates(expr : SqlExpr) ~ Bool {
+			kind := expr->GetKind();
+			if(kind = SqlExpr->AggregateKind()) {
+				argument := expr->GetLeft();
+				renamed : SqlExpr := Nil;
+				if(argument <> Nil) {
+					renamed := WorkExpr(argument, Nil, "'{$(expr->GetText())}'", false);
+					if(renamed = Nil) {
+						return false;
+					};
+				};
+				# labelled by its call as written, without parentheses around it, as HAVING and ORDER BY
+				# name a plain aggregate
+				AddAggregate(SqlExpr->Aggregate(expr->GetName(), renamed), SqlExpr->Aggregate(expr->GetName(), argument)->GetText());
+				return true;
+			}
+			else if(kind = SqlExpr->BinaryKind()) {
+				return CollectAggregates(expr->GetLeft()) & CollectAggregates(expr->GetRight());
+			}
+			else if(kind = SqlExpr->NegateKind()) {
+				return CollectAggregates(expr->GetLeft());
+			};
+
+			return true;
+		}
+
+		method : CollectHaving(pred : Predicate) ~ Bool {
+			if(pred = Nil) {
+				return true;
+			};
+
+			op := pred->GetOp();
+			if(op = Op->AND | op = Op->OR) {
+				return CollectHaving(pred->GetLeft()) & CollectHaving(pred->GetRight());
+			}
+			else if(op = Op->NOT) {
+				return CollectHaving(pred->GetLeft());
+			};
+
+			if(pred->TypeOf(ExprPredicate)) {
+				test := pred->As(ExprPredicate);
+				if(<>CollectAggregates(test->GetLeftExpr())) {
+					return false;
+				};
+				return test->GetRightExpr() = Nil | CollectAggregates(test->GetRightExpr());
+			};
+
+			return true;
+		}
+
+		# An expression over a group (the select list's, HAVING's or ORDER BY's) as one over the
+		# grouped result's columns: an aggregate is its column; a part that repeats a grouping
+		# expression is that key's column; a name is a grouping column's key column, or with
+		# 'labels' (HAVING and ORDER BY) a select-list label first. Nil with the error set, for a
+		# column that is neither grouped nor inside an aggregate.
+		method : GroupExpr(expr : SqlExpr, labels : Bool, what : String) ~ SqlExpr {
+			kind := expr->GetKind();
+			out := @group_out;
+			if(kind = SqlExpr->AggregateKind()) {
+				argument := expr->GetLeft();
+				renamed : SqlExpr := Nil;
+				if(argument <> Nil) {
+					renamed := WorkExpr(argument, Nil, what, false);
+					if(renamed = Nil) {
+						return Nil;
+					};
+				};
+				key := SqlExpr->Aggregate(expr->GetName(), renamed)->Key();
+				each(a : @aggs) {
+					if(@aggs->Get(a)->Key()->Equals(key)) {
+						return SqlExpr->Column(out->GetColumn(@agg_columns[a])->GetName());
+					};
+				};
+				Fail("'{$(expr->GetText())}' in {$what} is not computed");
+				return Nil;
+			};
+
+			if(kind = SqlExpr->NumberKind() | kind = SqlExpr->ValueKind() | kind = SqlExpr->ParamKind()) {
+				return expr;
+			};
+
+			# a select-list label, in HAVING and ORDER BY
+			if(labels & (kind = SqlExpr->ColumnKind() | kind = SqlExpr->WordKind())) {
+				position := LabelIndex(@group_labels, expr->GetName());
+				if(position > -1 & position < @statement->GetItems()->Size()) {
+					return SqlExpr->Column(out->GetColumn(position + 1)->GetName());
+				};
+			};
+
+			# a part that repeats a grouping expression
+			renamed := WorkExpr(expr, Nil, what, true);
+			if(renamed <> Nil) {
+				key := renamed->Key();
+				each(k : @key_exprs) {
+					if(@key_exprs[k] <> Nil & @key_exprs[k]->Key()->Equals(key)) {
+						return SqlExpr->Column(out->GetColumn(@key_out[k])->GetName());
+					};
+				};
+			};
+
+			if(kind = SqlExpr->ColumnKind() | kind = SqlExpr->WordKind()) {
+				name := expr->GetName();
+				if(kind = SqlExpr->WordKind() & <>IsColumnName(name)) {
+					return SqlExpr->Value(name, name);
+				};
+
+				ref := Resolve(name);
+				if(ref = Nil) {
+					return Nil;
+				};
+
+				each(k : @key_refs) {
+					key_ref := @key_refs[k];
+					if(key_ref <> Nil & key_ref->GetSource() = ref->GetSource() & key_ref->GetColumn()->Equals(ref->GetColumn())) {
+						return SqlExpr->Column(out->GetColumn(@key_out[k])->GetName());
+					};
+				};
+
+				Fail("column '{$name}' must be in GROUP BY or inside an aggregate");
+				return Nil;
+			}
+			else if(kind = SqlExpr->BinaryKind()) {
+				left := GroupExpr(expr->GetLeft(), labels, what);
+				right := GroupExpr(expr->GetRight(), labels, what);
+				if(left = Nil | right = Nil) {
+					return Nil;
+				};
+				return SqlExpr->Binary(expr->GetOp(), left, right);
+			}
+			else if(kind = SqlExpr->NegateKind()) {
+				operand := GroupExpr(expr->GetLeft(), labels, what);
+				if(operand = Nil) {
+					return Nil;
+				};
+				return SqlExpr->Negate(operand);
+			};
+
+			return expr;
 		}
 
 		# where a HAVING or ORDER BY name is in the grouped result: a label, an aggregate call,
@@ -15577,11 +16165,20 @@ if(file->IsOpen()) {
 			items := @statement->GetItems();
 			each(i : items) {
 				item := items->Get(i);
-				if(<>item->IsAggregate()) {
+				if(<>item->IsAggregate() & item->GetExpr() = Nil) {
 					other_ref := Resolve(item->GetName());
 					if(other_ref <> Nil & other_ref->GetSource() = ref->GetSource() & other_ref->GetColumn()->Equals(ref->GetColumn())) {
 						return i;
 					};
+				};
+			};
+
+			# a grouping column the select list does not show
+			each(k : @key_refs) {
+				key_ref := @key_refs[k];
+				if(key_ref <> Nil & key_ref->GetSource() = ref->GetSource() & key_ref->GetColumn()->Equals(ref->GetColumn())) {
+					@error->Set(Nil);
+					return @key_out[k] - 1;
 				};
 			};
 			@error->Set(Nil);
@@ -15589,7 +16186,8 @@ if(file->IsOpen()) {
 			return -1;
 		}
 
-		# a HAVING condition with its names as result-column labels
+		# a HAVING condition with its names as result-column labels, and its expression tests as
+		# tests over the grouped result's columns
 		method : Relabel(pred : Predicate, labels : String[]) ~ Predicate {
 			op := pred->GetOp();
 			if(op = Op->AND | op = Op->OR) {
@@ -15608,13 +16206,51 @@ if(file->IsOpen()) {
 				return inner->Negate();
 			};
 
+			if(pred->TypeOf(ExprPredicate)) {
+				test := pred->As(ExprPredicate);
+				left := HavingOperand(test->GetLeftExpr(), labels);
+				if(left = Nil) {
+					return Nil;
+				};
+
+				right : SqlExpr := Nil;
+				if(test->GetRightExpr() <> Nil) {
+					right := HavingOperand(test->GetRightExpr(), labels);
+					if(right = Nil) {
+						return Nil;
+					};
+				};
+				return ExprPredicate->New(op, left, right);
+			};
+
 			position := ResultIndex(pred->GetColumn(), labels);
 			if(position < 0) {
 				@error->Set("HAVING names '{$(pred->GetColumn())}', which is not a column of the grouped result");
 				return Nil;
 			};
 
-			return Predicate->New(op, labels[position], pred->GetValue(), pred->GetParam());
+			return Predicate->New(op, @group_names[position], pred->GetValue(), pred->GetParam());
+		}
+
+		# an operand of a HAVING test over the grouped result: a lone name the way HAVING always
+		# read one (a label, an aggregate call, a grouping column), anything else as GroupExpr
+		method : HavingOperand(expr : SqlExpr, labels : String[]) ~ SqlExpr {
+			kind := expr->GetKind();
+			if(kind = SqlExpr->ColumnKind() | kind = SqlExpr->WordKind()) {
+				position := ResultIndex(expr->GetName(), labels);
+				if(position > -1) {
+					return SqlExpr->Column(@group_names[position]);
+				};
+
+				if(kind = SqlExpr->WordKind()) {
+					return SqlExpr->Value(expr->GetName(), expr->GetName());
+				};
+
+				@error->Set("HAVING names '{$(expr->GetName())}', which is not a column of the grouped result");
+				return Nil;
+			};
+
+			return GroupExpr(expr, true, "HAVING");
 		}
 
 		# one aggregate per group, into a result column. COUNT counts; the others read numbers

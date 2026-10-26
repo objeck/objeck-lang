@@ -8,7 +8,8 @@ this thread (so the sorted indexes the planner reads are stale and the first que
 them at once), works out every answer alone with an oracle catalog over equal tables, then six
 threads meet at a barrier before each statement and run it through the shared catalog:
 expressions in WHERE (reduced to index reads and not), in the select list and in ORDER BY, with
-placeholders; a join with an expression over both tables; statements new to the plan cache
+placeholders; grouped by an expression, with aggregates over expressions and expressions over
+aggregates in the select list, HAVING and ORDER BY; a join with an expression over both tables; statements new to the plan cache
 every round; a statement that fails; and a prepared statement each thread binds to values of
 its own. Every answer must equal the oracle's.
 ~#
@@ -191,11 +192,12 @@ class QueryExprConcurrent {
 		failures := 0;
 		checks := 0;
 		first : String := Nil;
+		last_answers : String[] := Nil;
 		each(round : rounds) {
 			Change(shared_m, round);
 			Change(oracle_m, round);
 
-			sqls := String->New[12];
+			sqls := String->New[16];
 			sqls[0] := "select id, price * qty as total from m where price * qty > 4000 order by total desc, id limit 20";
 			sqls[1] := "select id from m where 200 < price and qty % 7 = 3 order by id";
 			sqls[2] := "select id, -qty as nq from m where qty + 1 > 9007199254740990 order by nq, id";
@@ -210,6 +212,11 @@ class QueryExprConcurrent {
 			# failures, each refused with its reason
 			sqls[10] := "select id from m where nope_{$round} * 2 > 1";
 			sqls[11] := "select id from m order by zz + {$round}";
+			# grouped: GROUP BY an expression, aggregates over and under expressions, HAVING
+			sqls[12] := "select qty % 5 as r, count(*) as n, sum(price * qty) / count(*) as mean from m where qty < 1000 group by qty % 5 order by r";
+			sqls[13] := "select grp, max(price) - min(price) as spread, avg(qty) * 2 as twice from m where qty < 1000 group by grp having sum(qty) / count(*) > 15 order by spread desc";
+			sqls[14] := "select m.grp, sum(m.qty * g.w) as total from m join g on m.grp = g.grp where m.qty < 1000 group by m.grp order by total * -1";
+			sqls[15] := "select id % {$(round + 3)} as b, count(price + 1) as c from m group by id % {$(round + 3)} having count(*) > {$round} order by b";
 
 			answers := String->New[sqls->Size()];
 			each(q : sqls) {
@@ -226,6 +233,7 @@ class QueryExprConcurrent {
 				prepared_answers[v] := Text(statement->Execute());
 			};
 
+			last_answers := answers;
 			work := Round->New(round, sqls, answers, prepared, values, prepared_answers);
 			barrier := Barrier->New(threads);
 			workers := Worker->New[threads];
@@ -247,11 +255,12 @@ class QueryExprConcurrent {
 			};
 		};
 
-		# the answers were real ones, not all errors
-		sample := Answer(oracle, "select count(*) as n from m where price * qty > 4000");
-		if(sample->StartsWith("ERROR")) {
-			failures += 1;
-			first := "the oracle could not answer: {$sample}";
+		# the answers were real ones, not errors, but for the two statements meant to fail
+		each(q : last_answers) {
+			if((q < 10 | q > 11) & last_answers[q]->StartsWith("ERROR")) {
+				failures += 1;
+				first := "the oracle could not answer statement {$q}: {$(last_answers[q])}";
+			};
 		};
 		refusal := Answer(oracle, "select id from m where nope_1 * 2 > 1");
 		if(<>refusal->Equals("ERROR: unknown column 'nope_1'")) {

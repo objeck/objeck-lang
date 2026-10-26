@@ -220,9 +220,9 @@ of reading numbers only:
 - `n -1` (a name, then a number with its sign) is a subtraction, as it reads.
 
 Expressions are computed after WHERE, over the rows that pass, before DISTINCT, ORDER BY and
-LIMIT. WHERE and ORDER BY take expressions too ("Expressions in every clause" below). Not yet:
-expressions in ON, GROUP BY or HAVING, or in a grouped or aggregate query's select list
-(`sum(x) / count(*)`): each is refused with an error that says so, never a silent Nil. Every statement that fails returns Nil with `GetError` set; a program that calls a
+LIMIT. WHERE, ORDER BY, GROUP BY, HAVING and a grouped query's select list take expressions too
+("Expressions in every clause" below). Not yet: expressions in ON, which still takes `a.col = b.col`.
+Every statement that fails returns Nil with `GetError` set; a program that calls a
 method on that Nil gets the language's ordinary `NilError`, which a `?->` region recovers from.
 
 Aggregates: `COUNT(*)`, `COUNT(col)`, `SUM`, `AVG`, `MIN`, `MAX`, plus `MEDIAN` and `STDDEV`
@@ -1852,6 +1852,32 @@ and `OBJECK_JIT_THRESHOLD=1`, on Windows and on Linux.
   batch boundaries, deletes next to them, a dictionary turned into plain strings, NaN, against a
   loop and an indexed twin), `query_expr_concurrent` (6 threads, 20 rounds, 1,920 checks).
   `query_aggregates`' check that a literal on the left is an error now checks that it compares.
+
+**Stage 2 (grouping).**
+- `SqlExpr` gained an aggregate node, so `sum(a * b)`, `count(x + 1)` and `sum(?)` parse; the
+  select list, HAVING and ORDER BY parse every entry as an expression, and a lone column or a
+  lone plain aggregate (`sum(x)`, `count(*)`) is still the item, test or entry it always was.
+  GROUP BY takes expressions; a constant, a position and an aggregate are refused.
+- The per-row layer computes grouping expressions and aggregate arguments into columns of their
+  own, indexed by row slot like the working table's (`FillComputedAt`), so nothing is copied;
+  a key is either a working-table column (its sorted index still gives the grouping order) or
+  such a column. The grouped result holds the select list, then each aggregate no plain item
+  shows (labelled by its call written without surrounding parentheses, as HAVING and ORDER BY
+  name a plain aggregate), then every key (`#groupN`); the select list's, HAVING's and ORDER BY's
+  expressions are bound over it (`GroupExpr`). Two expressions are the same when their trees'
+  keys are (`SqlExpr->Key`), after names are resolved, so spacing and redundant parentheses
+  do not matter.
+- Changes beyond the design's letter, both widening: ORDER BY may name a grouping column the
+  select list does not show (it was refused), and a bare word on the right of a HAVING test is a
+  column of the grouped result when one has its name (it was always text).
+- Found by the differential test and fixed before landing: two aggregates written alike over
+  different placeholders (`sum(?)` twice) got one label, and the second was read through the
+  first's column (the grouped result's columns now have unique names; the labels shown are
+  unchanged); a plain aggregate shown twice was computed once; and an aggregate inside
+  parentheses was labelled with them, so HAVING could not find it.
+- Measured at 1,000,000 rows (Windows x64, `-opt s3`, best of three): `group by grp` with
+  `sum(price)` 397 ms; `group by qty % 10` 462 ms; `sum(price * qty) / count(*)` by `grp` 888 ms
+  (two aggregates: each of the engine's aggregates costs about 200-350 ms here, as before).
 
 ## Open questions
 

@@ -173,6 +173,111 @@ class Keys {
 	method : public : GetCells() ~ Compare[] { return @cells; }
 }
 
+# a generated aggregate: its function over '*' (both Nil), a column or an expression
+class A {
+	@func : String;
+	@column : String;
+	@expr : E;
+
+	New(func : String, column : String, expr : E) {
+		@func := func;
+		@column := column;
+		@expr := expr;
+	}
+
+	method : public : GetFunc() ~ String { return @func; }
+	method : public : GetColumn() ~ String { return @column; }
+	method : public : GetExpr() ~ E { return @expr; }
+	method : public : IsStar() ~ Bool { return @column = Nil & @expr = Nil; }
+}
+
+# a generated expression over a group: kind 0 an aggregate, 1 a grouping key, 2 a literal or a
+# bound placeholder, 3 binary, 4 negate
+class P {
+	@kind : Int;
+	@agg : A;
+	@key : Int;
+	@value : Compare;
+	@op : Char;
+	@left : P;
+	@right : P;
+
+	New(kind : Int, agg : A, key : Int, value : Compare, op : Char, left : P, right : P) {
+		@kind := kind;
+		@agg := agg;
+		@key := key;
+		@value := value;
+		@op := op;
+		@left := left;
+		@right := right;
+	}
+
+	method : public : GetKind() ~ Int { return @kind; }
+	method : public : GetAgg() ~ A { return @agg; }
+	method : public : GetKey() ~ Int { return @key; }
+	method : public : GetValue() ~ Compare { return @value; }
+	method : public : GetOp() ~ Char { return @op; }
+	method : public : GetLeft() ~ P { return @left; }
+	method : public : GetRight() ~ P { return @right; }
+}
+
+# a generated HAVING condition: kind 0 AND, 1 OR, 2 NOT, 3 a comparison
+class H {
+	@kind : Int;
+	@op : String;
+	@left : P;
+	@right : P;
+	@a : H;
+	@b : H;
+
+	New(kind : Int, op : String, left : P, right : P, a : H, b : H) {
+		@kind := kind;
+		@op := op;
+		@left := left;
+		@right := right;
+		@a := a;
+		@b := b;
+	}
+
+	method : public : GetKind() ~ Int { return @kind; }
+	method : public : GetOp() ~ String { return @op; }
+	method : public : GetLeft() ~ P { return @left; }
+	method : public : GetRight() ~ P { return @right; }
+	method : public : GetA() ~ H { return @a; }
+	method : public : GetB() ~ H { return @b; }
+}
+
+# one grouped query's state while the reference evaluates it
+class Groups {
+	@rows : Vector<Row>;
+	@ordered : Int[];
+	@starts : Int[];
+	@count : Int;
+	@keys : Vector<Keys>;
+
+	New(rows : Vector<Row>, ordered : Int[], starts : Int[], count : Int, keys : Vector<Keys>) {
+		@rows := rows;
+		@ordered := ordered;
+		@starts := starts;
+		@count := count;
+		@keys := keys;
+	}
+
+	method : public : GetRows() ~ Vector<Row> { return @rows; }
+	method : public : GetOrdered() ~ Int[] { return @ordered; }
+	method : public : GetStarts() ~ Int[] { return @starts; }
+	method : public : GetCount() ~ Int { return @count; }
+	method : public : GetKeys() ~ Vector<Keys> { return @keys; }
+
+	# the row position a group's values come from, -1 for a group of no rows
+	method : public : First(g : Int) ~ Int {
+		if(@starts[g] < @ordered->Size()) {
+			return @ordered[@starts[g]];
+		};
+		return -1;
+	}
+}
+
 class QueryExprDifferential {
 	@seed : static : Int;
 	@failures : static : Int;
@@ -183,6 +288,11 @@ class QueryExprDifferential {
 	@types : static : String[];
 	@words : static : String[];
 	@in_condition : static : Bool;
+	@no_params : static : Bool;
+	@seed_now : static : Int;
+	@grouped : static : Int;
+	@arg_aggs : static : Vector<A>;
+	@arg_keys : static : Vector<Keys>;
 
 	function : Next(bound : Int) ~ Int {
 		@seed := (@seed * 6364136223846793005 + 1442695040888963407) and 0x7FFFFFFFFFFFFFFF;
@@ -192,7 +302,7 @@ class QueryExprDifferential {
 	function : Fail(what : String) ~ Nil {
 		@failures += 1;
 		if(@failures <= 8) {
-			"  FAIL: {$what}"->PrintLine();
+			"  FAIL (seed {$@seed_now}, query {$@queries}): {$what}"->PrintLine();
 		};
 	}
 
@@ -423,6 +533,10 @@ class QueryExprDifferential {
 	}
 
 	function : Param() ~ E {
+		# a grouping key has no placeholder: repeating its text would number a new one
+		if(@no_params) {
+			return NumberLiteral();
+		};
 		value := ParamValue();
 		@params->AddBack(value);
 		@sql += "?";
@@ -1397,6 +1511,725 @@ class QueryExprDifferential {
 		return V->OfFloat(x->GetFloat() * -1.0);
 	}
 
+	#
+	# Grouped queries: GROUP BY columns and expressions, aggregates over columns and
+	# expressions, expressions over aggregates and keys in the select list, HAVING and ORDER BY
+	#
+
+	function : ReadsColumn(e : E) ~ Bool {
+		select(e->GetKind()) {
+			label 0: { return true; }
+			label 2: { return ReadsColumn(e->GetLeft()) | ReadsColumn(e->GetRight()); }
+			label 3: { return ReadsColumn(e->GetLeft()); }
+		};
+		return false;
+	}
+
+	# a grouping key: a column, or an expression that reads one and has no placeholder; its SQL
+	# text is kept so the select list, HAVING and ORDER BY can repeat it
+	function : MakeKey(names : Vector<String>, exprs : Vector<E>, texts : Vector<String>) ~ Nil {
+		saved := @sql;
+		@no_params := true;
+		expr : E := Nil;
+		if(Next(2) = 0) {
+			tries := 0;
+			while(expr = Nil & tries < 5) {
+				@sql := "";
+				candidate := Arith(1);
+				if(ReadsColumn(candidate)) {
+					expr := candidate;
+				};
+				tries += 1;
+			};
+		};
+		if(expr = Nil) {
+			candidates := ["i", "j", "s", "d", "b", "o", "f", "w"];
+			name := candidates[Next(candidates->Size())];
+			@sql := String->New(name);
+			expr := E->Column(name);
+		};
+		@no_params := false;
+		text := @sql;
+		@sql := saved;
+
+		if(expr->GetKind() = 0) {
+			names->AddBack(expr->GetName());
+			exprs->AddBack(Nil);
+		}
+		else {
+			names->AddBack(Nil);
+			exprs->AddBack(expr);
+		};
+		texts->AddBack(text);
+	}
+
+	function : MakeAggregate() ~ A {
+		funcs := ["count", "sum", "avg", "min", "max", "median", "stddev"];
+		func := funcs[Next(funcs->Size())];
+		@sql += func;
+		@sql += "(";
+		agg : A := Nil;
+		if(func->Equals("count") & Next(3) = 0) {
+			@sql += "*";
+			agg := A->New(func, Nil, Nil);
+		}
+		else if(Next(2) = 0) {
+			name := @names[Next(@names->Size())];
+			@sql += name;
+			agg := A->New(func, name, Nil);
+		}
+		else {
+			expr := Arith(1);
+			if(expr->GetKind() = 0) {
+				agg := A->New(func, expr->GetName(), Nil);
+			}
+			else {
+				agg := A->New(func, Nil, expr);
+			};
+		};
+		@sql += ")";
+		return agg;
+	}
+
+	# an expression over a group: aggregates, keys, numbers and placeholders
+	function : MakeGroupExpr(depth : Int, key_texts : Vector<String>) ~ P {
+		if(depth > 2 | Next(3) = 0) {
+			pick := Next(10);
+			if(pick < 5) {
+				return P->New(0, MakeAggregate(), -1, Nil, ' ', Nil, Nil);
+			}
+			else if(pick < 7 & key_texts->Size() > 0) {
+				k := Next(key_texts->Size());
+				@sql += key_texts->Get(k);
+				return P->New(1, Nil, k, Nil, ' ', Nil, Nil);
+			}
+			else if(pick < 9) {
+				literal := NumberLiteral();
+				return P->New(2, Nil, -1, literal->GetValue(), ' ', Nil, Nil);
+			};
+			literal := Param();
+			return P->New(2, Nil, -1, literal->GetValue(), ' ', Nil, Nil);
+		};
+
+		if(Next(6) = 0) {
+			@sql += "-(";
+			inner := MakeGroupExpr(depth + 1, key_texts);
+			@sql += ")";
+			return P->New(4, Nil, -1, Nil, '-', inner, Nil);
+		};
+
+		ops := ['+', '-', '*', '/', '%'];
+		op := ops[Next(ops->Size())];
+		@sql += "(";
+		left := MakeGroupExpr(depth + 1, key_texts);
+		@sql += " {$op} ";
+		right := MakeGroupExpr(depth + 1, key_texts);
+		@sql += ")";
+		return P->New(3, Nil, -1, Nil, op, left, right);
+	}
+
+	function : MakeHaving(depth : Int, key_texts : Vector<String>) ~ H {
+		if(depth < 2 & Next(3) = 0) {
+			pick := Next(3);
+			if(pick = 0) {
+				@sql += "not (";
+				inner := MakeHaving(depth + 1, key_texts);
+				@sql += ")";
+				return H->New(2, Nil, Nil, Nil, inner, Nil);
+			};
+			@sql += "(";
+			a := MakeHaving(depth + 1, key_texts);
+			@sql += pick = 1 ? " or " : " and ";
+			b := MakeHaving(depth + 1, key_texts);
+			@sql += ")";
+			return H->New(pick = 1 ? 1 : 0, Nil, Nil, Nil, a, b);
+		};
+
+		ops := ["=", "<>", "<", "<=", ">", ">="];
+		op := ops[Next(ops->Size())];
+		left := MakeGroupExpr(1, key_texts);
+		@sql += " {$op} ";
+		right : P := Nil;
+		if(Next(2) = 0) {
+			literal := NumberLiteral();
+			right := P->New(2, Nil, -1, literal->GetValue(), ' ', Nil, Nil);
+		}
+		else {
+			right := MakeGroupExpr(1, key_texts);
+		};
+		return H->New(3, op, left, right, Nil, Nil);
+	}
+
+	# an aggregate's argument, for every passing row: a column's values and cells, or an
+	# expression's values typed as their computed column is
+	function : ArgumentOf(agg : A, rows : Vector<Row>) ~ Keys {
+		each(i : @arg_aggs) {
+			if(@arg_aggs->Get(i) = agg) {
+				return @arg_keys->Get(i);
+			};
+		};
+
+		keys : Keys := Nil;
+		if(agg->GetColumn() <> Nil) {
+			keys := ColumnKeys(agg->GetColumn(), rows);
+		}
+		else if(agg->GetExpr() <> Nil) {
+			values := V->New[rows->Size()];
+			each(r : rows) {
+				values[r] := Eval(agg->GetExpr(), rows->Get(r));
+			};
+			keys := Computed(values);
+		};
+		@arg_aggs->AddBack(agg);
+		@arg_keys->AddBack(keys);
+		return keys;
+	}
+
+	# one aggregate over one group, by the engine's rules ("Phase 4"): numbers only; COUNT an Int;
+	# SUM, MIN and MAX of whole numbers Ints, the rest Floats
+	function : AggregateValue(agg : A, groups : Groups, g : Int) ~ V {
+		rows := groups->GetRows();
+		ordered := groups->GetOrdered();
+		starts := groups->GetStarts();
+		start := starts[g];
+		finish := starts[g + 1];
+		func := agg->GetFunc();
+
+		if(agg->IsStar()) {
+			return V->OfInt(finish - start);
+		};
+
+		source := ArgumentOf(agg, rows);
+		values := source->GetValues();
+		cells := source->GetCells();
+		type := agg->GetColumn() <> Nil ? KindOfColumn(agg->GetColumn()) : "computed";
+
+		if(func->Equals("count")) {
+			n := 0;
+			for(i := start; i < finish; i += 1;) {
+				row := ordered[i];
+				if(cells <> Nil ? cells[row] <> Nil : values[row]->GetKind() <> 0) {
+					n += 1;
+				};
+			};
+			return V->OfInt(n);
+		};
+
+		whole := type->Equals("int") | (type->Equals("computed") & source->GetMode()->Equals("int"));
+		integral := whole & (func->Equals("sum") | func->Equals("min") | func->Equals("max"));
+		floats := Float->New[finish - start];
+		int_sum := 0;
+		int_min := 0;
+		int_max := 0;
+		n := 0;
+		for(i := start; i < finish; i += 1;) {
+			row := ordered[i];
+			numeric := false;
+			number := 0.0;
+			whole_number := 0;
+			if(type->Equals("int") | type->Equals("float")) {
+				if(cells[row] <> Nil) {
+					numeric := true;
+					number := values[row]->AsFloat();
+					whole_number := values[row]->GetInt();
+				};
+			}
+			else if(type->Equals("object")) {
+				cell := cells[row];
+				if(cell <> Nil & (cell->TypeOf(IntRef) | cell->TypeOf(FloatRef))) {
+					numeric := true;
+					number := V->FromValue(cell)->AsFloat();
+				};
+			}
+			else if(type->Equals("computed")) {
+				if(values[row]->IsNumber()) {
+					numeric := true;
+					number := values[row]->AsFloat();
+					whole_number := values[row]->GetInt();
+				};
+			};
+
+			if(numeric) {
+				if(whole) {
+					if(n = 0 | whole_number < int_min) {
+						int_min := whole_number;
+					};
+					if(n = 0 | whole_number > int_max) {
+						int_max := whole_number;
+					};
+					int_sum += whole_number;
+				};
+				floats[n] := number;
+				n += 1;
+			};
+		};
+
+		if(n = 0) {
+			return V->Empty();
+		};
+
+		if(integral) {
+			if(func->Equals("sum")) {
+				return V->OfInt(int_sum);
+			}
+			else if(func->Equals("min")) {
+				return V->OfInt(int_min);
+			};
+			return V->OfInt(int_max);
+		};
+
+		return Summarize(func, floats, n);
+	}
+
+	# the engine's own arithmetic for SUM, AVG, MIN, MAX, MEDIAN and STDDEV, step for step,
+	# so the Floats agree to the last bit
+	function : Summarize(func : String, values : Float[], n : Int) ~ V {
+		if(func->Equals("sum") | func->Equals("avg")) {
+			total := 0.0;
+			each(i : n) {
+				total += values[i];
+			};
+			return V->OfFloat(func->Equals("sum") ? total : total / n->As(Float));
+		}
+		else if(func->Equals("min") | func->Equals("max")) {
+			best := values[0];
+			for(i := 1; i < n; i += 1;) {
+				if(func->Equals("min") ? values[i] < best : values[i] > best) {
+					best := values[i];
+				};
+			};
+			return V->OfFloat(best);
+		}
+		else if(func->Equals("median")) {
+			sorted := SortFloats(values, n);
+			middle := n / 2;
+			if(n % 2 = 1) {
+				return V->OfFloat(sorted[middle]);
+			};
+			return V->OfFloat((sorted[middle - 1] + sorted[middle]) / 2.0);
+		};
+
+		# stddev: Welford's running mean and squared deviation
+		if(n < 2) {
+			return V->Empty();
+		};
+		mean := 0.0;
+		squares := 0.0;
+		each(i : n) {
+			delta := values[i] - mean;
+			mean += delta / (i + 1)->As(Float);
+			squares += delta * (values[i] - mean);
+		};
+		return V->OfFloat((squares / (n - 1)->As(Float))->Sqrt());
+	}
+
+	# the engine's merge sort of Floats, so NaN lands where the engine's lands
+	function : SortFloats(values : Float[], n : Int) ~ Float[] {
+		src := Float->New[n];
+		each(i : n) {
+			src[i] := values[i];
+		};
+		dest := Float->New[n];
+
+		width := 1;
+		while(width < n) {
+			start := 0;
+			while(start < n) {
+				middle := start + width;
+				if(middle > n) {
+					middle := n;
+				};
+				finish := start + width * 2;
+				if(finish > n) {
+					finish := n;
+				};
+
+				l := start;
+				r := middle;
+				k := start;
+				while(k < finish) {
+					if(l < middle & (r >= finish | src[l] <= src[r])) {
+						dest[k] := src[l];
+						l += 1;
+					}
+					else {
+						dest[k] := src[r];
+						r += 1;
+					};
+					k += 1;
+				};
+				start := finish;
+			};
+
+			swap := src;
+			src := dest;
+			dest := swap;
+			width *= 2;
+		};
+
+		return src;
+	}
+
+	# arithmetic on two values, by the design's rules
+	function : BinaryV(op : Char, x : V, y : V) ~ V {
+		if(<>x->IsNumber() | <>y->IsNumber()) {
+			return V->Empty();
+		};
+
+		if(x->GetKind() = 1 & y->GetKind() = 1 & op <> '/') {
+			return IntArith(op, x->GetInt(), y->GetInt());
+		};
+
+		a := x->AsFloat();
+		b := y->AsFloat();
+		if(op = '+') {
+			return V->OfFloat(a + b);
+		}
+		else if(op = '-') {
+			return V->OfFloat(a - b);
+		}
+		else if(op = '*') {
+			return V->OfFloat(a * b);
+		};
+
+		if(b = 0.0) {
+			return V->Empty();
+		};
+		if(op = '/') {
+			return V->OfFloat(a / b);
+		};
+
+		q := a / b;
+		t := q < 0.0 ? (0.0 - q)->Floor() * -1.0 : q->Floor();
+		return V->OfFloat(a - t * b);
+	}
+
+	function : NegateV(x : V) ~ V {
+		if(x->GetKind() = 1) {
+			if(x->GetInt() = -9223372036854775807 - 1) {
+				return V->Empty();
+			};
+			return V->OfInt(0 - x->GetInt());
+		}
+		else if(x->GetKind() = 2) {
+			return V->OfFloat(0.0 - x->GetFloat());
+		};
+		return V->Empty();
+	}
+
+	# a group's value of an expression over it
+	function : EvalP(p : P, groups : Groups, g : Int) ~ V {
+		select(p->GetKind()) {
+			label 0: {
+				return AggregateValue(p->GetAgg(), groups, g);
+			}
+
+			label 1: {
+				first := groups->First(g);
+				if(first < 0) {
+					return V->Empty();
+				};
+				key := groups->GetKeys()->Get(p->GetKey());
+				values := key->GetValues();
+				return values[first];
+			}
+
+			label 2: {
+				return V->FromValue(p->GetValue());
+			}
+
+			label 3: {
+				return BinaryV(p->GetOp(), EvalP(p->GetLeft(), groups, g), EvalP(p->GetRight(), groups, g));
+			}
+		};
+
+		return NegateV(EvalP(p->GetLeft(), groups, g));
+	}
+
+	function : HoldsH(h : H, groups : Groups, g : Int) ~ Bool {
+		select(h->GetKind()) {
+			label 0: { return HoldsH(h->GetA(), groups, g) & HoldsH(h->GetB(), groups, g); }
+			label 1: { return HoldsH(h->GetA(), groups, g) | HoldsH(h->GetB(), groups, g); }
+			label 2: { return <>HoldsH(h->GetA(), groups, g); }
+		};
+
+		result := Cmp(EvalP(h->GetLeft(), groups, g), EvalP(h->GetRight(), groups, g));
+		op := h->GetOp();
+		if(result = 3) {
+			return false;
+		}
+		else if(result = 2) {
+			return op->Equals("<>");
+		};
+
+		if(op->Equals("=")) { return result = 0; };
+		if(op->Equals("<>")) { return result <> 0; };
+		if(op->Equals("<")) { return result < 0; };
+		if(op->Equals("<=")) { return result <= 0; };
+		if(op->Equals(">")) { return result > 0; };
+		return result >= 0;
+	}
+
+	# a column of the grouped result, one value per group, typed as the engine types it: a
+	# grouping column's cells as its column, a plain aggregate's as INT or FLOAT, anything else
+	# as a computed column
+	function : GroupColumn(p : P, groups : Groups, key_names : Vector<String>) ~ Keys {
+		count := groups->GetCount();
+		values := V->New[count];
+		each(g : count) {
+			values[g] := EvalP(p, groups, g);
+		};
+
+		if(p->GetKind() = 1 & key_names->Get(p->GetKey()) <> Nil) {
+			name := key_names->Get(p->GetKey());
+			cells := Compare->New[count];
+			rows := groups->GetRows();
+			each(g : count) {
+				first := groups->First(g);
+				if(first > -1) {
+					cells[g] := rows->Get(first)->Get(name);
+				};
+			};
+			type := KindOfColumn(name);
+			mode := "int";
+			if(type->Equals("float")) {
+				mode := "float";
+			}
+			else if(type->Equals("text")) {
+				mode := "text";
+			}
+			else if(type->Equals("object")) {
+				mode := "object";
+			};
+			return Keys->New(values, mode, cells);
+		};
+
+		if(p->GetKind() = 0 & <>p->GetAgg()->IsStar() & p->GetAgg()->GetExpr() = Nil) {
+			# a plain aggregate: its column is INT when the aggregate is, FLOAT otherwise
+			agg := p->GetAgg();
+			func := agg->GetFunc();
+			integral := func->Equals("count") | (KindOfColumn(agg->GetColumn())->Equals("int") & (func->Equals("sum") | func->Equals("min") | func->Equals("max")));
+			return Keys->New(values, integral ? "int" : "float", Nil);
+		}
+		else if(p->GetKind() = 0 & p->GetAgg()->IsStar()) {
+			return Keys->New(values, "int", Nil);
+		};
+
+		return Computed(values);
+	}
+
+	function : RunGrouped(a : Table, b : Table) ~ Nil {
+		@sql := "select ";
+		@params := Vector->New()<Compare>;
+		@in_condition := false;
+		@arg_aggs := Vector->New()<A>;
+		@arg_keys := Vector->New()<Keys>;
+
+		key_names := Vector->New()<String>;
+		key_exprs := Vector->New()<E>;
+		key_texts := Vector->New()<String>;
+		key_count := Next(3);
+		each(k : key_count) {
+			MakeKey(key_names, key_exprs, key_texts);
+		};
+
+		items := Vector->New()<P>;
+		count := 1 + Next(3);
+		each(k : count) {
+			if(k > 0) {
+				@sql += ", ";
+			};
+			# without GROUP BY, an aggregate first, so the query is one group
+			if(key_count = 0 & k = 0) {
+				items->AddBack(P->New(0, MakeAggregate(), -1, Nil, ' ', Nil, Nil));
+			}
+			else {
+				items->AddBack(MakeGroupExpr(1, key_texts));
+			};
+			@sql += " as c{$k}";
+		};
+		@sql += " from t";
+
+		cond : C := Nil;
+		if(Next(3) > 0) {
+			@sql += " where ";
+			@in_condition := true;
+			cond := Test(0);
+			@in_condition := false;
+		};
+
+		if(key_count > 0) {
+			@sql += " group by ";
+			each(k : key_texts) {
+				if(k > 0) {
+					@sql += ", ";
+				};
+				@sql += key_texts->Get(k);
+			};
+		};
+
+		having : H := Nil;
+		if(key_count > 0 & Next(3) = 0) {
+			@sql += " having ";
+			having := MakeHaving(0, key_texts);
+		};
+
+		order_items := Vector->New()<P>;
+		order_positions := Vector->New()<IntRef>;
+		order_desc := Vector->New()<BoolRef>;
+		if(Next(2) = 0) {
+			@sql += " order by ";
+			entries := 1 + Next(2);
+			each(k : entries) {
+				if(k > 0) {
+					@sql += ", ";
+				};
+				if(Next(2) = 0) {
+					position := 1 + Next(count);
+					@sql += position->ToString();
+					order_positions->AddBack(position);
+					order_items->AddBack(Nil);
+				}
+				else {
+					@sql += "(";
+					order_items->AddBack(MakeGroupExpr(1, key_texts));
+					@sql += ")";
+					order_positions->AddBack(0);
+				};
+				descending := Next(2) = 0;
+				if(descending) {
+					@sql += " desc";
+				};
+				order_desc->AddBack(descending);
+			};
+		};
+
+		limit := -1;
+		if(Next(4) = 0) {
+			limit := Next(8);
+			@sql += " limit {$limit}";
+		};
+
+		got := Render(Execute(a));
+		got_error := a->GetError();
+		indexed := Render(Execute(b));
+
+		# the reference: the passing rows, sorted by the keys, in runs
+		rows := Vector->New()<Row>;
+		live := a->LiveRows();
+		each(i : live) {
+			row := a->RowAt(live[i]);
+			if(cond = Nil | Holds(cond, row)) {
+				rows->AddBack(row);
+			};
+		};
+
+		keys := Vector->New()<Keys>;
+		ascending := Vector->New()<BoolRef>;
+		each(k : key_count) {
+			if(key_exprs->Get(k) <> Nil) {
+				values := V->New[rows->Size()];
+				each(r : rows) {
+					values[r] := Eval(key_exprs->Get(k), rows->Get(r));
+				};
+				keys->AddBack(Computed(values));
+			}
+			else {
+				keys->AddBack(ColumnKeys(key_names->Get(k), rows));
+			};
+			ascending->AddBack(false);
+		};
+
+		positions := Int->New[rows->Size()];
+		each(i : positions) {
+			positions[i] := i;
+		};
+		ordered := key_count > 0 ? SortPositions(positions, keys, ascending) : positions;
+
+		starts := Int->New[ordered->Size() + 2];
+		group_count := 0;
+		each(i : ordered) {
+			if(i = 0 | ComparePositions(ordered[i - 1], ordered[i], keys, ascending) <> 0) {
+				starts[group_count] := i;
+				group_count += 1;
+			};
+		};
+		if(key_count = 0) {
+			group_count := 1;
+			starts[0] := 0;
+		};
+		starts[group_count] := ordered->Size();
+		groups := Groups->New(rows, ordered, starts, group_count, keys);
+
+		shown := Vector->New()<Keys>;
+		each(k : items) {
+			shown->AddBack(GroupColumn(items->Get(k), groups, key_names));
+		};
+
+		kept := Vector->New()<IntRef>;
+		each(g : group_count) {
+			if(having = Nil | HoldsH(having, groups, g)) {
+				kept->AddBack(g);
+			};
+		};
+		result := Int->New[kept->Size()];
+		each(k : kept) {
+			result[k] := kept->Get(k)->Get();
+		};
+
+		if(order_desc->Size() > 0) {
+			order_keys := Vector->New()<Keys>;
+			each(k : order_desc) {
+				position := order_positions->Get(k)->Get();
+				if(position > 0) {
+					order_keys->AddBack(shown->Get(position - 1));
+				}
+				else {
+					# a lone grouping column, even in parentheses, is a name, sorted as its column
+					order_keys->AddBack(GroupColumn(order_items->Get(k), groups, key_names));
+				};
+			};
+			result := SortPositions(result, order_keys, order_desc);
+		};
+
+		total := result->Size();
+		if(limit > -1 & limit < total) {
+			total := limit;
+		};
+
+		want := "";
+		each(p : total) {
+			g := result[p];
+			each(s : shown) {
+				key := shown->Get(s);
+				if(key->GetCells() <> Nil) {
+					cells := key->GetCells();
+					want += Text(cells[g]);
+				}
+				else {
+					values := key->GetValues();
+					want += VText(values[g], key->GetMode());
+				};
+				want += "|";
+			};
+			want += ";";
+		};
+
+		@queries += 1;
+		@grouped += 1;
+		if(got = Nil) {
+			Fail("{$@sql}\n    engine error: {$got_error}");
+			return;
+		};
+
+		if(<>got->Equals(want)) {
+			Fail("{$@sql}\n    engine:    {$(Window(got, want))}\n    reference: {$(Window(want, got))}");
+		}
+		else if(indexed = Nil | <>indexed->Equals(got)) {
+			Fail("{$@sql}\n    with indexes: {$indexed} ({$(b->GetError())})\n    without:      {$got}");
+		};
+	}
+
 	# the statement run as text, or prepared with its placeholders bound
 	function : Execute(t : Table) ~ Table {
 		if(@params->Size() = 0) {
@@ -1420,6 +2253,7 @@ class QueryExprDifferential {
 	function : Main(args : String[]) ~ Nil {
 		@failures := 0;
 		@queries := 0;
+		@grouped := 0;
 		@names := ["i", "j", "f", "s", "w", "d", "b", "o"];
 		@types := ["int", "int", "float", "text", "text", "date", "bool", "object"];
 		@words := ["ant", "bee", "cat", "cow", "dog", "a_b", "Cat", "", "10", "-3"];
@@ -1451,6 +2285,7 @@ class QueryExprDifferential {
 		sizes := [40, 1023, 1025, 90, 2049, 1024, 65600];
 		each(k : seeds) {
 			@seed := seeds->Get(k)->Get();
+			@seed_now := @seed;
 			size := sizes[k % sizes->Size()];
 			# a column of thousands of texts, so its dictionary turns into plain strings
 			wide := size > 10000;
@@ -1463,7 +2298,12 @@ class QueryExprDifferential {
 			per_seed := size > 10000 ? 12 : (size > 1000 ? 60 : 150);
 			each(round : rounds) {
 				each(q : per_seed) {
-					RunQuery(a, b);
+					if(Next(3) = 0) {
+						RunGrouped(a, b);
+					}
+					else {
+						RunQuery(a, b);
+					};
 					if(q % 40 = 39) {
 						Reindex(b);
 					};
@@ -1476,6 +2316,6 @@ class QueryExprDifferential {
 			Runtime->Exit(1);
 		};
 
-		"PASS: query_expr_differential ({$@queries} queries over {$(seeds->Size())} seeds)"->PrintLine();
+		"PASS: query_expr_differential ({$@queries} queries, {$@grouped} of them grouped, over {$(seeds->Size())} seeds)"->PrintLine();
 	}
 }

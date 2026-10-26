@@ -1,0 +1,150 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured: expressions in grouped queries (docs/QUERY_DESIGN.md, "Expressions in every
+clause", stage 2). Before, 'group by x % 10' and 'having sum(a) / count(*) > 2' were syntax
+errors, and an expression beside an aggregate ('select k, sum(a) / count(*)') was refused.
+Covered, each against a hand-computed answer: GROUP BY an expression, and a select-list item
+that repeats it (by structure, not spacing); aggregates over expressions (sum(a * b), count(x +
+1), avg of a zero divisor); expressions over aggregates and keys (sum(a) / count(*), max(x) -
+min(x), avg(x) * 2, key + 1); HAVING with expressions, labels and keys; ORDER BY an expression
+over aggregates, a label inside one, a grouping column the list does not show; one group
+without GROUP BY, also with no rows; a join grouped by an expression over both tables;
+placeholders; the plans; and the refusals with their exact messages.
+~#
+use Query.Structured, Collection;
+
+class QueryExprGrouped {
+	@failures : static : Int;
+	@checks : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		@checks += 1;
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Csv(rs : Table) ~ String {
+		if(rs = Nil) {
+			return "<nil>";
+		};
+		return rs->ToCsv()->ReplaceAll("\r\n", "|")->ReplaceAll("\n", "|");
+	}
+
+	function : Same(what : String, t : Table, sql : String, expected : String) ~ Nil {
+		got := Csv(t->Query(sql));
+		if(got->Equals("<nil>")) {
+			got := "<nil: {$(t->GetError())}>";
+		};
+		ok := got->Equals(expected);
+		if(<>ok) {
+			"    {$sql}"->PrintLine();
+			"    got:      {$got}"->PrintLine();
+			"    expected: {$expected}"->PrintLine();
+		};
+		Check(what, ok);
+	}
+
+	function : Refused(what : String, t : Table, sql : String, reason : String) ~ Nil {
+		rs := t->Query(sql);
+		error := t->GetError();
+		ok := rs = Nil & error <> Nil & error->Equals(reason);
+		if(<>ok) {
+			shown := error <> Nil ? error : "no error";
+			"    {$sql}: '{$shown}', wanted '{$reason}'"->PrintLine();
+		};
+		Check("refused: {$what}", ok);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		# k: p for i % 3 = 0, else q; x = 7i; a = i; b = i / 2; n empty for i = 11
+		t := Table->New("t", ["k", "x", "a", "b", "n"]);
+		each(i : 12) {
+			r := t->Insert();
+			r->Set("k", i % 3 = 0 ? "p" : "q");
+			r->Set("x", IntRef->New(i * 7));
+			r->Set("a", IntRef->New(i));
+			r->Set("b", FloatRef->New(i->As(Float) / 2.0));
+			if(i < 11) {
+				r->Set("n", IntRef->New(i % 4));
+			};
+		};
+
+		# GROUP BY an expression
+		Same("GROUP BY an expression", t, "select x % 10 as bucket, count(*) as c from t group by x % 10", "bucket,c|0,2|1,1|2,1|3,1|4,1|5,1|6,1|7,2|8,1|9,1|");
+		# the label is the expression's text as the parser writes it
+		Same("the repeated expression, spaced differently", t, "select x%10, count(*) from t group by x % 10 having count(*) > 1", "x % 10,count(*)|0,2|7,2|");
+		Same("a repeat with redundant parentheses", t, "select ((x % 10)) * 2 as d from t group by x % 10 having count(*) > 1", "d|0|14|");
+		Same("two keys, one an expression", t, "select a % 2 as par, k, sum(b) as s from t group by a % 2, k order by par, k", "par,k,s|0,p,3.0|0,q,12.0|1,p,6.0|1,q,12.0|");
+		Same("an empty key groups last", t, "select n * 10 as m, count(*) as c from t group by n * 10", "m,c|0,3|10,3|20,3|30,2|,1|");
+
+		# aggregates over expressions, expressions over aggregates and keys
+		Same("expressions over aggregates", t, "select k, sum(a) / count(*) as mean, max(x) - min(x) as spread, sum(a * b) as dot, avg(x) * 2 as twice from t group by k", "k,mean,spread,dot,twice|p,4.5,63,63.0,63.0|q,6.0,70,190.0,84.0|");
+		Same("count of an expression counts its values", t, "select k, count(n + 1) as c, count(*) as all from t group by k", "k,c,all|p,4,4|q,7,8|");
+		Same("a key in arithmetic", t, "select n, n * 100 + count(*) as code from t where n is not null group by n", "n,code|0,3|1,103|2,203|3,302|");
+		Same("an aggregate over a zero divisor", t, "select k, sum(x / (a - 3)) as s from t group by k", "k,s|p,24.5|q,71.075|");
+		Same("an Int sum stays an Int", t, "select k, sum(a * 2) as s, min(a - 100) as low from t group by k", "k,s,low|p,36,-100|q,96,-99|");
+
+		# HAVING
+		Same("HAVING an expression over aggregates", t, "select k, sum(a) from t group by k having sum(a) / count(*) > 5", "k,sum(a)|q,48|");
+		Same("HAVING a label in an expression", t, "select k, sum(a) as s from t group by k having s * 2 > 50", "k,s|q,48|");
+		Same("HAVING a key in an expression", t, "select n, count(*) as c from t group by n having n * 2 >= 4", "n,c|2,3|3,2|");
+		Same("HAVING an aggregate on the right", t, "select k from t group by k having 30 < sum(a)", "k|q|");
+		Same("HAVING a plain aggregate", t, "select k from t group by k having count(*) > 5", "k|q|");
+
+		# ORDER BY
+		Same("ORDER BY an expression over aggregates", t, "select k, count(*) as c from t group by k order by sum(a) * -1", "k,c|q,8|p,4|");
+		Same("ORDER BY a label in an expression", t, "select k, sum(a) as s from t group by k order by s % 7 desc", "k,s|q,48|p,18|");
+		Same("ORDER BY a grouping column the list does not show", t, "select count(*) as c from t group by n order by n desc", "c|2|3|3|3|1|");
+		Same("ORDER BY the repeated expression", t, "select x % 10, count(*) from t group by x % 10 order by count(*) desc, 1 limit 3", "x % 10,count(*)|0,2|7,2|1,1|");
+
+		# one group
+		Same("no GROUP BY, an expression over aggregates", t, "select sum(a) / count(*) as mean, max(b) * 2 as top from t", "mean,top|5.5,11.0|");
+		Same("no rows: one group of empty values", t, "select count(*) as c, sum(a) / count(*) as m from t where a > 100", "c,m|0,|");
+
+		# placeholders
+		s := t->Prepare("select k, sum(a) * ? as s from t group by k having sum(a) > ? order by s");
+		s->Bind(1, 10);
+		s->Bind(2, 20);
+		first := Csv(s->Execute());
+		s->Bind(1, 0.5);
+		s->Bind(2, 0);
+		second := Csv(s->Execute());
+		Check("a prepared grouped statement, run twice", first->Equals("k,s|q,480|") & second->Equals("k,s|p,9.0|q,24.0|"));
+		if(<>(first->Equals("k,s|q,480|") & second->Equals("k,s|p,9.0|q,24.0|"))) {
+			"    {$first} / {$second}"->PrintLine();
+		};
+
+		# a join, grouped by an expression over both tables
+		u := Table->New("u", ["k", "w"]);
+		r := u->Insert(); r->Set("k", "p"); r->Set("w", IntRef->New(100));
+		r := u->Insert(); r->Set("k", "q"); r->Set("w", IntRef->New(1000));
+		catalog := Catalog->New();
+		catalog->Add(t);
+		catalog->Add(u);
+		joined := Csv(catalog->Query("select (t.a + u.w) % 2 as par, sum(t.x * u.w) as total from t join u on t.k = u.k group by (t.a + u.w) % 2 order by par"));
+		Check("a join grouped by an expression over both tables", joined->Equals("par,total|0,172200|1,176400|"));
+		if(<>joined->Equals("par,total|0,172200|1,176400|")) {
+			"    {$joined} ({$(catalog->GetError())})"->PrintLine();
+		};
+
+		# refusals
+		Refused("an ungrouped column in an expression", t, "select k, a + 1 from t group by k", "column 'a' must be in GROUP BY or inside an aggregate");
+		Refused("an aggregate in an aggregate", t, "select sum(count(*)) from t", "an aggregate cannot contain another aggregate: 'sum(count(*))'");
+		Refused("an aggregate in GROUP BY", t, "select count(*) from t group by sum(a)", "GROUP BY cannot use an aggregate: 'sum(a)'");
+		Refused("a position in GROUP BY", t, "select count(*) from t group by 1", "GROUP BY needs a column or an expression over columns, not '1'");
+		Refused("a constant in GROUP BY", t, "select count(*) from t group by 2 * 3", "GROUP BY needs a column or an expression over columns, not '2 * 3'");
+		Refused("an unknown column in an aggregate", t, "select sum(zz * 2) from t", "unknown column 'zz' in 'sum(zz * 2)'");
+		Refused("an ungrouped column in HAVING", t, "select k from t group by k having a > 1", "HAVING names 'a', which is not a column of the grouped result");
+		Refused("an aggregate in WHERE", t, "select k from t where sum(a) > 1 group by k", "syntax error at position 22: expected a column name (aggregates belong in HAVING, not WHERE), found 'sum'");
+
+		if(@failures = 0) {
+			"PASS: query_expr_grouped ({$@checks} checks)"->PrintLine();
+		}
+		else {
+			"FAIL: query_expr_grouped: {$@failures} of {$@checks} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
