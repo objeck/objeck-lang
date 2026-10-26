@@ -12,7 +12,7 @@ use Collection;
 use Data.CSV;
 
 #~
-Kernel support vector machines: KernelSVM (C-SVC with linear, RBF, polynomial and sigmoid kernels) on a LIBSVM-style SMO solver. Compile with -lib ml.
+Kernel support vector machines: KernelSVM (C-SVC with linear, RBF, polynomial and sigmoid kernels) and OneClassSVM (outlier and novelty detection) on a LIBSVM-style SMO solver. Compile with -lib ml.
 ~#
 bundle System.ML {
 	#~
@@ -91,6 +91,39 @@ bundle System.ML {
 			};
 
 			return Float->Tanh(gamma * sum + coef0);
+		}
+
+		#~
+		The kernel expansion sum(coef_t K(sv_t, x)) - rho for every row of X, the
+		decision function of both KernelSVM and OneClassSVM.
+		@param kernel kernel code
+		@param gamma gamma
+		@param degree degree
+		@param coef0 coef0
+		@param sv support vectors
+		@param coef one coefficient per support vector
+		@param rho threshold
+		@param X rows to evaluate
+		@param d feature count
+		@return one value per row of X
+		~#
+		function : Decision(kernel : Int, gamma : Float, degree : Int, coef0 : Float,
+				sv : Float[,], coef : Float[], rho : Float, X : Float[,], d : Int) ~ Float[] {
+			dims := X->Size();
+			rows := dims[0];
+			result := Float->New[rows];
+			count := coef->Size();
+			sum := 0.0;
+
+			each(r : rows) {
+				sum := 0.0;
+				each(t : count) {
+					sum += coef[t] * Value(kernel, gamma, degree, coef0, sv, t, X, r, d);
+				};
+				result[r] := sum - rho;
+			};
+
+			return result;
 		}
 
 		#~
@@ -1090,6 +1123,16 @@ bundle System.ML {
 				return sum_free / nr_free->As(Float);
 			};
 
+			# Every rho in [lb, ub] is optimal. LIBSVM takes the midpoint, which is
+			# infinite when one side is unbounded -- a one-class fit at nu = 1 puts
+			# every alpha at its upper bound -- so then take the finite end.
+			if(ub = inf) {
+				return lb;
+			};
+			if(lb = -1.0 * inf) {
+				return ub;
+			};
+
 			return (ub + lb) / 2.0;
 		}
 
@@ -1585,12 +1628,10 @@ if(svm->Fit(x_train, y_train)) {
 				return Nil;
 			};
 
-			result := Float->New[rows];
-			count := @coef->Size();
-			code := SvmKernelMath->Code(@kernel);
+			result : Float[];
 			sum := 0.0;
-
 			if(@linear_w <> Nil) {
+				result := Float->New[rows];
 				each(r : rows) {
 					sum := 0.0;
 					each(k : @d) {
@@ -1602,15 +1643,7 @@ if(svm->Fit(x_train, y_train)) {
 				return result;
 			};
 
-			each(r : rows) {
-				sum := 0.0;
-				each(t : count) {
-					sum += @coef[t] * SvmKernelMath->Value(code, @fit_gamma, @degree, @coef0, @sv, t, X, r, @d);
-				};
-				result[r] := sum - @rho;
-			};
-
-			return result;
+			return SvmKernelMath->Decision(SvmKernelMath->Code(@kernel), @fit_gamma, @degree, @coef0, @sv, @coef, @rho, X, @d);
 		}
 
 		#~
@@ -1805,6 +1838,653 @@ if(svm->Fit(x_train, y_train)) {
 		The gamma in use: after Fit the value the kernel used, including the one
 		'scale' or 'auto' resolved to; before Fit the explicit value, or -1.0 for
 		'scale' and -2.0 for 'auto'.
+		@return gamma
+		~#
+		method : public : GetGamma() ~ Float {
+			if(@fitted) {
+				return @fit_gamma;
+			};
+			if(@gamma_mode = 0) {
+				return -1.0;
+			}
+			else if(@gamma_mode = 1) {
+				return -2.0;
+			};
+
+			return @gamma;
+		}
+
+		#~
+		The POLY degree.
+		@return degree
+		~#
+		method : public : GetDegree() ~ Int {
+			return @degree;
+		}
+
+		#~
+		The POLY/SIGMOID independent term.
+		@return coef0
+		~#
+		method : public : GetCoef0() ~ Float {
+			return @coef0;
+		}
+
+		#~
+		The stopping tolerance.
+		@return tol
+		~#
+		method : public : GetTolerance() ~ Float {
+			return @tol;
+		}
+
+		#~
+		The iteration cap as set; 0 or less means LIBSVM's own.
+		@return cap
+		~#
+		method : public : GetMaxIterations() ~ Int {
+			return @max_iter;
+		}
+
+		#~
+		The kernel-row cache size.
+		@return megabytes
+		~#
+		method : public : GetCacheSize() ~ Int {
+			return @cache_mb;
+		}
+
+		#~
+		Whether shrinking is on.
+		@return true when shrinking
+		~#
+		method : public : IsShrinking() ~ Bool {
+			return @shrinking;
+		}
+	}
+
+	#~
+	One-class SVM for outlier and novelty detection, with scikit-learn's
+	OneClassSVM parameters (kernel, nu, gamma, degree, coef0, tol, shrinking, cache
+	size, max_iter) and LIBSVM's formulation, solved by the same SMO solver as
+	KernelSVM: minimise 1/2 a'Ka subject to 0 <= a_i <= 1 and sum(a) = nu * n.
+
+	nu is an upper bound on the fraction of training rows left outside the
+	boundary (DecisionFunction below 0) and a lower bound on the fraction that are
+	support vectors.
+
+	Signs follow scikit-learn: DecisionFunction is positive inside the boundary
+	(an inlier) and negative outside, and Predict returns +1 / -1. Because the
+	fixed-false-positive-rate metrics treat higher scores as more positive and the
+	positive class in intrusion detection is the attack, PredictScore is the
+	NEGATED decision value -- higher means more anomalous -- and IsOutlier is true
+	for an outlier. Train on normal rows only for novelty detection; Fit(X, y), the
+	ScoreModel form, ignores y as scikit-learn does.
+
+```
+detector := OneClassSVM->New(SvmKernel->RBF, 0.05);
+if(detector->Fit(x_normal)) {
+  anomaly := detector->PredictScore(x_test);
+  auc := Metrics->AucRoc(anomaly, is_attack);
+  flagged := detector->IsOutlier(x_test);
+};
+```
+	~#
+	class OneClassSVM implements ScoreModel {
+		@kernel : SvmKernel;
+		@nu : Float;
+		@gamma : Float;
+		@gamma_mode : Int;
+		@degree : Int;
+		@coef0 : Float;
+		@tol : Float;
+		@max_iter : Int;
+		@cache_mb : Int;
+		@shrinking : Bool;
+
+		@d : Int;
+		@fit_gamma : Float;
+		@sv : Float[,];
+		@sv_index : Int[];
+		@coef : Float[];
+		@rho : Float;
+		@obj : Float;
+		@iterations : Int;
+		@converged : Bool;
+		@bounded : Int;
+		@fit_seconds : Float;
+		@last_error : String;
+		@fitted : Bool;
+
+		#~
+		Constructor with scikit-learn's defaults: nu = 0.5, gamma = 'scale',
+		degree = 3, coef0 = 0.0, tol = 0.001, shrinking on, a 200 MB cache.
+		@param kernel kernel function
+		~#
+		New(kernel : SvmKernel) {
+			Init(kernel, 0.5);
+		}
+
+		#~
+		Constructor with nu; gamma is 'scale'.
+		@param kernel kernel function
+		@param nu bound on the training outlier fraction, in (0, 1]
+		~#
+		New(kernel : SvmKernel, nu : Float) {
+			Init(kernel, nu);
+		}
+
+		#~
+		Constructor with nu and an explicit gamma.
+		@param kernel kernel function
+		@param nu bound on the training outlier fraction, in (0, 1]
+		@param gamma kernel coefficient for RBF, POLY and SIGMOID; must be >= 0
+		~#
+		New(kernel : SvmKernel, nu : Float, gamma : Float) {
+			Init(kernel, nu);
+			SetGamma(gamma);
+		}
+
+		#~
+		Constructor with every kernel parameter.
+		@param kernel kernel function
+		@param nu bound on the training outlier fraction, in (0, 1]
+		@param gamma kernel coefficient for RBF, POLY and SIGMOID; must be >= 0
+		@param degree POLY degree; must be >= 0
+		@param coef0 independent term of POLY and SIGMOID
+		~#
+		New(kernel : SvmKernel, nu : Float, gamma : Float, degree : Int, coef0 : Float) {
+			Init(kernel, nu);
+			SetGamma(gamma);
+			@degree := degree;
+			@coef0 := coef0;
+		}
+
+		method : Init(kernel : SvmKernel, nu : Float) ~ Nil {
+			@kernel := kernel;
+			@nu := nu;
+			@gamma := 0.0;
+			@gamma_mode := 0;
+			@degree := 3;
+			@coef0 := 0.0;
+			@tol := 0.001;
+			@max_iter := -1;
+			@cache_mb := 200;
+			@shrinking := true;
+			@last_error := "";
+			@fitted := false;
+		}
+
+		#~
+		Sets nu: an upper bound on the fraction of training rows outside the
+		boundary and a lower bound on the fraction of support vectors.
+		@param nu value in (0, 1]
+		~#
+		method : public : SetNu(nu : Float) ~ Nil {
+			@nu := nu;
+		}
+
+		#~
+		Sets an explicit gamma.
+		@param gamma kernel coefficient; must be >= 0
+		~#
+		method : public : SetGamma(gamma : Float) ~ Nil {
+			@gamma := gamma;
+			@gamma_mode := 2;
+		}
+
+		#~
+		Uses gamma = 1 / (features * X.var()) at Fit, scikit-learn's 'scale' and
+		the default; 1.0 when the variance is zero.
+		~#
+		method : public : SetGammaScale() ~ Nil {
+			@gamma_mode := 0;
+		}
+
+		#~
+		Uses gamma = 1 / features at Fit, scikit-learn's 'auto'.
+		~#
+		method : public : SetGammaAuto() ~ Nil {
+			@gamma_mode := 1;
+		}
+
+		#~
+		Sets the POLY degree.
+		@param degree degree; must be >= 0
+		~#
+		method : public : SetDegree(degree : Int) ~ Nil {
+			@degree := degree;
+		}
+
+		#~
+		Sets the independent term of the POLY and SIGMOID kernels.
+		@param coef0 offset
+		~#
+		method : public : SetCoef0(coef0 : Float) ~ Nil {
+			@coef0 := coef0;
+		}
+
+		#~
+		Sets the stopping tolerance (LIBSVM's eps, scikit-learn's tol).
+		@param tol tolerance; must be > 0
+		~#
+		method : public : SetTolerance(tol : Float) ~ Nil {
+			@tol := tol;
+		}
+
+		#~
+		Caps the solver's iterations; when reached, Fit still returns true and
+		IsConverged is false.
+		@param max_iter iteration cap; 0 or less means LIBSVM's own, max(10,000,000, 100 * rows)
+		~#
+		method : public : SetMaxIterations(max_iter : Int) ~ Nil {
+			@max_iter := max_iter;
+		}
+
+		#~
+		Sets the kernel-row cache size; the result does not depend on it.
+		@param megabytes cache size in MB; must be >= 1
+		~#
+		method : public : SetCacheSize(megabytes : Int) ~ Nil {
+			@cache_mb := megabytes;
+		}
+
+		#~
+		Turns LIBSVM's shrinking heuristic on or off.
+		@param on true to shrink
+		~#
+		method : public : SetShrinking(on : Bool) ~ Nil {
+			@shrinking := on;
+		}
+
+		#~
+		Fits the boundary around the rows of X.
+		@param X rows x features; for novelty detection, normal rows only
+		@return true when fitted; false on bad input or parameters, with GetLastError saying why
+		~#
+		method : public : Fit(X : Float[,]) ~ Bool {
+			@fitted := false;
+			@last_error := "";
+
+			if(X = Nil) {
+				@last_error := "X is Nil";
+				return false;
+			};
+
+			dims := X->Size();
+			n := dims[0];
+			d := dims[1];
+			if(n < 1 | d < 1) {
+				@last_error := "X has no rows or no columns";
+				return false;
+			};
+
+			if(<>(@nu > 0.0) | @nu > 1.0) {
+				@last_error := "nu must be in (0, 1]";
+				return false;
+			};
+			if(@gamma_mode = 2 & <>(@gamma >= 0.0)) {
+				@last_error := "gamma must be >= 0";
+				return false;
+			};
+			if(@degree < 0) {
+				@last_error := "degree must be >= 0";
+				return false;
+			};
+			if(<>(@tol > 0.0)) {
+				@last_error := "tol must be > 0";
+				return false;
+			};
+			if(@cache_mb < 1) {
+				@last_error := "cache size must be at least 1 MB";
+				return false;
+			};
+
+			if(<>SvmKernelMath->AllFinite(X)) {
+				@last_error := "X holds NaN or infinity";
+				return false;
+			};
+
+			timer := System.Time.Timer->New();
+			timer->Start();
+
+			gamma := @gamma;
+			if(@gamma_mode = 0) {
+				gamma := SvmKernelMath->ScaleGamma(X);
+			}
+			else if(@gamma_mode = 1) {
+				gamma := 1.0 / d->As(Float);
+			};
+
+			# LIBSVM's start: the first floor(nu * n) alphas at their bound of 1,
+			# the next at the remainder, so sum(alpha) = nu * n from the outset.
+			xw := Float->New[n, d];
+			signs := Float->New[n];
+			cs := Float->New[n];
+			p := Float->New[n];
+			alpha := Float->New[n];
+			total := @nu * n->As(Float);
+			full := total->As(Int);
+			each(i : n) {
+				each(k : d) {
+					xw[i, k] := X[i, k];
+				};
+				signs[i] := 1.0;
+				cs[i] := 1.0;
+				if(i < full) {
+					alpha[i] := 1.0;
+				};
+			};
+			if(full < n) {
+				alpha[full] := total - full->As(Float);
+			};
+
+			code := SvmKernelMath->Code(@kernel);
+			q := SvmKernelRows->New(xw, signs, false, code, gamma, @degree, @coef0, @cache_mb);
+			cap := @max_iter;
+			if(cap <= 0) {
+				cap := 100 * n;
+				if(cap < 10000000) {
+					cap := 10000000;
+				};
+			};
+			solver := SvmSolver->New(q, p, signs, alpha, cs, @tol, @shrinking, cap);
+			solver->Solve();
+
+			alpha := solver->GetAlpha();
+			count := 0;
+			bounded := 0;
+			each(i : n) {
+				if(alpha[i] > 0.0) {
+					count += 1;
+					if(alpha[i] >= 1.0) {
+						bounded += 1;
+					};
+				};
+			};
+
+			@sv := Float->New[count, d];
+			@sv_index := Int->New[count];
+			@coef := Float->New[count];
+			s := 0;
+			each(i : n) {
+				if(alpha[i] > 0.0) {
+					each(k : d) {
+						@sv[s, k] := X[i, k];
+					};
+					@sv_index[s] := i;
+					@coef[s] := alpha[i];
+					s += 1;
+				};
+			};
+
+			@d := d;
+			@fit_gamma := gamma;
+			@rho := solver->GetRho();
+			@obj := solver->GetObjective();
+			@iterations := solver->GetIterations();
+			@converged := solver->IsConverged();
+			@bounded := bounded;
+
+			timer->End();
+			@fit_seconds := timer->GetElapsedTime();
+			@fitted := true;
+
+			return true;
+		}
+
+		#~
+		The ScoreModel form of Fit. y is ignored, as in scikit-learn; pass only the
+		normal rows to Fit(X) for novelty detection.
+		@param X rows x features
+		@param y ignored
+		@return true when fitted
+		~#
+		method : public : Fit(X : Float[,], y : Bool[]) ~ Bool {
+			return Fit(X);
+		}
+
+		#~
+		The signed decision value sum(alpha_i K(x_i, x)) - rho: positive inside the
+		boundary (an inlier), negative outside (an outlier), scikit-learn's
+		decision_function.
+		@param X rows x features, with the column count used at Fit
+		@return one value per row, or Nil when unfitted or the shape differs
+		~#
+		method : public : DecisionFunction(X : Float[,]) ~ Float[] {
+			if(<>@fitted | X = Nil) {
+				return Nil;
+			};
+
+			dims := X->Size();
+			if(dims[1] <> @d) {
+				return Nil;
+			};
+
+			return SvmKernelMath->Decision(SvmKernelMath->Code(@kernel), @fit_gamma, @degree, @coef0, @sv, @coef, @rho, X, @d);
+		}
+
+		#~
+		The unshifted score sum(alpha_i K(x_i, x)), scikit-learn's score_samples:
+		DecisionFunction plus GetOffset. Higher means more normal.
+		@param X rows x features
+		@return one value per row, or Nil when unfitted or the shape differs
+		~#
+		method : public : ScoreSamples(X : Float[,]) ~ Float[] {
+			if(<>@fitted | X = Nil) {
+				return Nil;
+			};
+
+			dims := X->Size();
+			if(dims[1] <> @d) {
+				return Nil;
+			};
+
+			return SvmKernelMath->Decision(SvmKernelMath->Code(@kernel), @fit_gamma, @degree, @coef0, @sv, @coef, 0.0, X, @d);
+		}
+
+		#~
+		The anomaly score for the metric functions: the negated decision value, so
+		higher means more anomalous and Metrics->AucRoc / RecallAtFpr can take the
+		attack as the positive class. Satisfies ScoreModel.
+		@param X rows x features
+		@return one score per row, or Nil when unfitted
+		~#
+		method : public : PredictScore(X : Float[,]) ~ Float[] {
+			scores := DecisionFunction(X);
+			if(scores = Nil) {
+				return Nil;
+			};
+
+			each(i : scores) {
+				scores[i] := -1.0 * scores[i];
+			};
+
+			return scores;
+		}
+
+		#~
+		scikit-learn's predict: +1 for an inlier (decision >= 0), -1 for an outlier.
+		@param X rows x features
+		@return one label per row, or Nil when unfitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Int[] {
+			scores := DecisionFunction(X);
+			if(scores = Nil) {
+				return Nil;
+			};
+
+			result := Int->New[scores->Size()];
+			each(i : scores) {
+				result[i] := scores[i] >= 0.0 ? 1 : -1;
+			};
+
+			return result;
+		}
+
+		#~
+		True for an outlier (decision value below 0), the label Metrics takes when
+		the attack is the positive class.
+		@param X rows x features
+		@return one flag per row, or Nil when unfitted
+		~#
+		method : public : IsOutlier(X : Float[,]) ~ Bool[] {
+			scores := DecisionFunction(X);
+			if(scores = Nil) {
+				return Nil;
+			};
+
+			result := Bool->New[scores->Size()];
+			each(i : scores) {
+				result[i] := scores[i] < 0.0;
+			};
+
+			return result;
+		}
+
+		#~
+		Number of support vectors (training rows with alpha > 0).
+		@return count, or 0 when unfitted
+		~#
+		method : public : GetSupportVectorCount() ~ Int {
+			if(<>@fitted) {
+				return 0;
+			};
+
+			return @coef->Size();
+		}
+
+		#~
+		Number of support vectors at the bound alpha = 1; every training outlier is one.
+		@return count, or 0 when unfitted
+		~#
+		method : public : GetBoundedSupportVectorCount() ~ Int {
+			if(<>@fitted) {
+				return 0;
+			};
+
+			return @bounded;
+		}
+
+		#~
+		Training-row indexes of the support vectors, ascending.
+		@return indexes, or Nil when unfitted
+		~#
+		method : public : GetSupportIndices() ~ Int[] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			return @sv_index;
+		}
+
+		#~
+		The support vectors, one row each, in GetSupportIndices order.
+		@return support vectors x features, or Nil when unfitted
+		~#
+		method : public : GetSupportVectors() ~ Float[,] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			return @sv;
+		}
+
+		#~
+		alpha per support vector, scikit-learn's dual_coef_; they sum to nu * n.
+		@return coefficients, or Nil when unfitted
+		~#
+		method : public : GetDualCoefficients() ~ Float[] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			return @coef;
+		}
+
+		#~
+		The intercept of the decision function (-rho, scikit-learn's intercept_).
+		@return intercept
+		~#
+		method : public : GetIntercept() ~ Float {
+			return -1.0 * @rho;
+		}
+
+		#~
+		rho, scikit-learn's offset_: ScoreSamples minus DecisionFunction.
+		@return offset
+		~#
+		method : public : GetOffset() ~ Float {
+			return @rho;
+		}
+
+		#~
+		The dual objective 1/2 a'Ka at the solution.
+		@return objective
+		~#
+		method : public : GetObjective() ~ Float {
+			return @obj;
+		}
+
+		#~
+		Solver iterations used by the last Fit.
+		@return iterations
+		~#
+		method : public : GetIterations() ~ Int {
+			return @iterations;
+		}
+
+		#~
+		Whether the last Fit met the tolerance before the iteration cap.
+		@return true when converged
+		~#
+		method : public : IsConverged() ~ Bool {
+			return @fitted & @converged;
+		}
+
+		#~
+		Seconds the last Fit took.
+		@return elapsed seconds
+		~#
+		method : public : GetFitSeconds() ~ Float {
+			return @fit_seconds;
+		}
+
+		#~
+		Why the last Fit returned false.
+		@return a reason, or an empty string after a successful Fit
+		~#
+		method : public : GetLastError() ~ String {
+			return @last_error;
+		}
+
+		#~
+		Whether Fit has succeeded.
+		@return true when fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @fitted;
+		}
+
+		#~
+		The kernel.
+		@return kernel
+		~#
+		method : public : GetKernel() ~ SvmKernel {
+			return @kernel;
+		}
+
+		#~
+		nu.
+		@return nu
+		~#
+		method : public : GetNu() ~ Float {
+			return @nu;
+		}
+
+		#~
+		The gamma in use: after Fit the value the kernel used; before Fit the
+		explicit value, or -1.0 for 'scale' and -2.0 for 'auto'.
 		@return gamma
 		~#
 		method : public : GetGamma() ~ Float {

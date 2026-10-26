@@ -1,0 +1,342 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+OneClassSVM: the nu property, the optimality conditions, sign conventions and
+novelty detection.
+
+nu is checked as the theory states it, over a ladder of values: at the optimum
+every training row outside the boundary (decision below 0) has alpha at its
+bound of 1, and the alphas sum to nu * n, so at most nu * n rows are outside; and
+since no alpha exceeds 1, at least nu * n rows are support vectors. "Outside" is
+counted with the solver's tolerance as slack, which is what the conditions
+guarantee at a finite tolerance.
+
+The KKT check (from the public API): alpha 0 => f >= -tol, 0 < alpha < 1 =>
+|f| <= tol, alpha 1 => f <= tol, sum(alpha) = nu * n, where f is the decision
+value.
+
+Signs follow scikit-learn (DecisionFunction positive inside, Predict +1/-1),
+ScoreSamples is DecisionFunction plus GetOffset, and PredictScore is the negated
+decision value so that Metrics take the anomaly as the positive class.
+
+The checksum line lets runs at different optimisation levels and JIT settings be
+compared for identical output.
+~#
+use System.ML;
+
+class MlOneClassSvm {
+	@checksum : static : Float;
+
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		@checksum := 0.0;
+		rand := System.ML.Random->New(17);
+
+		# A bell-shaped cluster around the origin.
+		n := 200;
+		x := Float->New[n, 2];
+		each(i : n) {
+			x[i, 0] := rand->NextReal() + rand->NextReal() + rand->NextReal() - 1.5;
+			x[i, 1] := rand->NextReal() + rand->NextReal() + rand->NextReal() - 1.5;
+		};
+
+		# The nu ladder.
+		nus := [0.02, 0.05, 0.1, 0.25, 0.5, 0.9];
+		upper := true;
+		lower := true;
+		kkt := true;
+		each(k : nus) {
+			nu := nus[k];
+			model := OneClassSVM->New(SvmKernel->RBF, nu, 1.0);
+			if(<>model->Fit(x) | <>Kkt(model, x, nu)) {
+				kkt := false;
+			};
+			outside := Outside(model, x);
+			svs := model->GetSupportVectorCount();
+			"  nu={$nu}: outside={$outside} support vectors={$svs} of {$n}"->PrintLine();
+			if(outside->As(Float) > nu * n->As(Float)) {
+				upper := false;
+			};
+			if(svs->As(Float) < nu * n->As(Float)) {
+				lower := false;
+			};
+			Accumulate(model->DecisionFunction(x));
+		};
+		ok := Report("every fit on the nu ladder meets KKT", kkt) & ok;
+		ok := Report("nu bounds the fraction of training rows outside the boundary", upper) & ok;
+		ok := Report("nu bounds the fraction of support vectors from below", lower) & ok;
+
+		# Every kernel fits and meets the conditions.
+		lin := OneClassSVM->New(SvmKernel->LINEAR, 0.2);
+		poly := OneClassSVM->New(SvmKernel->POLY, 0.2, 0.5, 2, 1.0);
+		sig := OneClassSVM->New(SvmKernel->SIGMOID, 0.2, 0.1, 3, 0.0);
+		ok := Report("linear fits and meets KKT", lin->Fit(x) & Kkt(lin, x, 0.2)) & ok;
+		ok := Report("poly fits and meets KKT", poly->Fit(x) & Kkt(poly, x, 0.2)) & ok;
+		ok := Report("sigmoid fits and meets KKT", sig->Fit(x) & Kkt(sig, x, 0.2)) & ok;
+		Accumulate(poly->DecisionFunction(x));
+
+		# Sign conventions.
+		# A gamma small enough that the bumps around the boundary rows merge: a
+		# large gamma can leave a shallow dip below zero in the middle of a cluster.
+		model := OneClassSVM->New(SvmKernel->RBF, 0.1, 0.3);
+		model->Fit(x);
+		probe := Float->New[4, 2];
+		probe[0, 0] := 0.0;
+		probe[0, 1] := 0.0;
+		probe[1, 0] := 5.0;
+		probe[1, 1] := 5.0;
+		probe[2, 0] := -4.0;
+		probe[2, 1] := 3.0;
+		probe[3, 0] := 0.2;
+		probe[3, 1] := -0.1;
+		f := model->DecisionFunction(probe);
+		ss := model->ScoreSamples(probe);
+		ps := model->PredictScore(probe);
+		pr := model->Predict(probe);
+		io := model->IsOutlier(probe);
+		consistent := true;
+		each(i : 4) {
+			if((ss[i] - (f[i] + model->GetOffset()))->Abs() > 0.000000001) {
+				consistent := false;
+			};
+			if(ps[i] <> -1.0 * f[i]) {
+				consistent := false;
+			};
+			if((f[i] >= 0.0 & pr[i] <> 1) | (f[i] < 0.0 & pr[i] <> -1)) {
+				consistent := false;
+			};
+			if(io[i] <> (f[i] < 0.0)) {
+				consistent := false;
+			};
+		};
+		ok := Report("ScoreSamples = DecisionFunction + offset, PredictScore = -decision, Predict and IsOutlier agree",
+			consistent) & ok;
+		ok := Report("the centre of the cluster is an inlier", pr[0] = 1 & pr[3] = 1) & ok;
+		ok := Report("far-away rows are outliers", pr[1] = -1 & pr[2] = -1 & io[1] & io[2]) & ok;
+		ok := Report("the intercept is -offset", model->GetIntercept() = -1.0 * model->GetOffset()) & ok;
+		alpha_sum := 0.0;
+		coef := model->GetDualCoefficients();
+		each(i : coef) {
+			alpha_sum += coef[i];
+		};
+		ok := Report("the dual coefficients sum to nu * n", (alpha_sum - 0.1 * n->As(Float))->Abs() < 0.000000001) & ok;
+		Accumulate(f);
+
+		# Novelty detection: fitted on normal rows only, attacks scored highest.
+		m := 100;
+		test := Float->New[m, 2];
+		attack := Bool->New[m];
+		each(i : m) {
+			attack[i] := i % 4 = 0;
+			if(attack[i]) {
+				test[i, 0] := 3.0 + rand->NextReal();
+				test[i, 1] := -3.0 - rand->NextReal();
+			}
+			else {
+				test[i, 0] := rand->NextReal() + rand->NextReal() + rand->NextReal() - 1.5;
+				test[i, 1] := rand->NextReal() + rand->NextReal() + rand->NextReal() - 1.5;
+			};
+		};
+		ok := Report("AucRoc of PredictScore against the attack labels is 1.0",
+			Metrics->AucRoc(model->PredictScore(test), attack) = 1.0) & ok;
+		ok := Report("every attack is flagged by IsOutlier",
+			Metrics->Recall(model->IsOutlier(test), attack) = 1.0) & ok;
+
+		# ScoreModel: Fit(X, y) ignores y.
+		ignored := OneClassSVM->New(SvmKernel->RBF, 0.1, 0.3);
+		labels := Bool->New[n];
+		labels[3] := true;
+		ok := Report("Fit(X, y) ignores y",
+			ignored->Fit(x, labels) & Identical(ignored->DecisionFunction(test), model->DecisionFunction(test))) & ok;
+		result := CrossValidation->Evaluate(OneClassSVM->New(SvmKernel->RBF, 0.1, 1.0), test, attack, 3, 5, 0.1);
+		ok := Report("CrossValidation->Evaluate takes a OneClassSVM", result <> Nil) & ok;
+
+		# nu = 1: every alpha is at its bound and every row a support vector.
+		everything := OneClassSVM->New(SvmKernel->RBF, 1.0, 1.0);
+		ok := Report("nu = 1 fits", everything->Fit(x) & Kkt(everything, x, 1.0)) & ok;
+		ok := Report("nu = 1 makes every row a bounded support vector",
+			everything->GetSupportVectorCount() = n & everything->GetBoundedSupportVectorCount() = n) & ok;
+		# Every rho at or above the largest score is optimal then; LIBSVM's
+		# midpoint of that interval is infinite, so the finite end is used and the
+		# highest-scoring training row sits exactly on the boundary.
+		ef := everything->DecisionFunction(x);
+		top := -1.0 * Float->Inf();
+		each(i : ef) {
+			if(ef[i] > top) {
+				top := ef[i];
+			};
+		};
+		ok := Report("nu = 1 still gives finite decision values, the largest at 0",
+			top->Abs() < 0.000000001 & everything->GetOffset() < Float->Inf()) & ok;
+
+		# Refusals.
+		nothing : Float[,];
+		ok := Report("Nil X is refused", <>OneClassSVM->New(SvmKernel->RBF)->Fit(nothing)) & ok;
+		zero := OneClassSVM->New(SvmKernel->RBF, 0.0);
+		ok := Report("nu = 0 is refused, with a reason", <>zero->Fit(x) & zero->GetLastError()->Has("nu")) & ok;
+		ok := Report("nu > 1 is refused", <>OneClassSVM->New(SvmKernel->RBF, 1.5)->Fit(x)) & ok;
+		bad := Float->New[3, 2];
+		bad[1, 1] := Float->NaN();
+		ok := Report("NaN is refused", <>OneClassSVM->New(SvmKernel->RBF)->Fit(bad)) & ok;
+		fresh := OneClassSVM->New(SvmKernel->RBF);
+		ok := Report("unfitted DecisionFunction is Nil", fresh->DecisionFunction(x) = Nil) & ok;
+		ok := Report("defaults are scikit-learn's",
+			fresh->GetNu() = 0.5 & fresh->GetGamma() = -1.0 & fresh->GetTolerance() = 0.001 &
+			fresh->GetCacheSize() = 200 & fresh->IsShrinking()) & ok;
+
+		# Identical rows: one decision value, and still the nu property.
+		same := Float->New[30, 3];
+		each(i : 30) {
+			same[i, 0] := 2.0;
+			same[i, 1] := 2.0;
+			same[i, 2] := 2.0;
+		};
+		flat := OneClassSVM->New(SvmKernel->RBF, 0.3);
+		ok := Report("identical rows fit", flat->Fit(same) & Kkt(flat, same, 0.3)) & ok;
+		ok := Report("and 'scale' falls back to gamma 1.0", flat->GetGamma() = 1.0) & ok;
+
+		# The iteration cap.
+		capped := OneClassSVM->New(SvmKernel->RBF, 0.1, 5.0);
+		capped->SetMaxIterations(3);
+		ok := Report("a capped fit returns true but did not converge",
+			capped->Fit(x) & <>capped->IsConverged() & capped->GetIterations() = 3) & ok;
+
+		# Determinism and the cache: bit-identical across caches and repeats.
+		big := 400;
+		bx := Float->New[big, 3];
+		each(i : big) {
+			each(k : 3) {
+				bx[i, k] := rand->NextReal(-1.0, 1.0);
+			};
+		};
+		small_cache := OneClassSVM->New(SvmKernel->RBF, 0.15, 2.0);
+		small_cache->SetCacheSize(1);
+		big_cache := OneClassSVM->New(SvmKernel->RBF, 0.15, 2.0);
+		big_cache->SetCacheSize(500);
+		ok := Report("a 1 MB and a 500 MB cache both fit and meet KKT",
+			small_cache->Fit(bx) & big_cache->Fit(bx) & Kkt(small_cache, bx, 0.15)) & ok;
+		ok := Report("with bit-identical results",
+			Identical(small_cache->DecisionFunction(bx), big_cache->DecisionFunction(bx)) &
+			small_cache->GetIterations() = big_cache->GetIterations()) & ok;
+		again := OneClassSVM->New(SvmKernel->RBF, 0.15, 2.0);
+		ok := Report("a repeat fit is bit-identical",
+			again->Fit(bx) & Identical(again->DecisionFunction(bx), big_cache->DecisionFunction(bx))) & ok;
+		Accumulate(small_cache->DecisionFunction(bx));
+
+		String->SetFloatFormat(Number->Format->SCIENTIFIC);
+		String->SetFloatPrecision(17);
+		sum := @checksum;
+		"checksum {$sum}"->PrintLine();
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	# Training rows outside the boundary by more than the tolerance.
+	function : Outside(model : OneClassSVM, x : Float[,]) ~ Int {
+		f := model->DecisionFunction(x);
+		tol := model->GetTolerance();
+		count := 0;
+		each(i : f) {
+			if(f[i] < -1.0 * tol) {
+				count += 1;
+			};
+		};
+
+		return count;
+	}
+
+	function : Identical(a : Float[], b : Float[]) ~ Bool {
+		if(a = Nil | b = Nil) {
+			return false;
+		};
+		if(a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Accumulate(values : Float[]) ~ Nil {
+		if(values = Nil) {
+			return;
+		};
+
+		v := 0.0;
+		each(i : values) {
+			v := values[i];
+			@checksum := @checksum + v * (i + 1)->As(Float);
+		};
+	}
+
+	function : Kkt(model : OneClassSVM, x : Float[,], nu : Float) ~ Bool {
+		if(<>model->IsFitted()) {
+			return false;
+		};
+
+		dims := x->Size();
+		n := dims[0];
+		alpha := Float->New[n];
+		idx := model->GetSupportIndices();
+		coef := model->GetDualCoefficients();
+		total := 0.0;
+		each(s : idx) {
+			alpha[idx[s]] := coef[s];
+			total += coef[s];
+		};
+
+		want := nu * n->As(Float);
+		if((total - want)->Abs() > 0.000000001 * (1.0 + want)) {
+			"  KKT: sum(alpha) = {$total}, want {$want}"->PrintLine();
+			return false;
+		};
+
+		tol := model->GetTolerance() + 0.0000001;
+		f := model->DecisionFunction(x);
+		a := 0.0;
+		v := 0.0;
+		each(i : n) {
+			a := alpha[i];
+			v := f[i];
+			if(a < 0.0 | a > 1.0) {
+				"  KKT: alpha {$a} outside [0, 1] at row {$i}"->PrintLine();
+				return false;
+			};
+			if(a = 0.0) {
+				if(v < -1.0 * tol) {
+					"  KKT: row {$i} has alpha 0 and f = {$v}"->PrintLine();
+					return false;
+				};
+			}
+			else if(a < 1.0) {
+				if(v->Abs() > tol) {
+					"  KKT: free row {$i} has f = {$v}"->PrintLine();
+					return false;
+				};
+			}
+			else {
+				if(v > tol) {
+					"  KKT: bounded row {$i} has f = {$v}"->PrintLine();
+					return false;
+				};
+			};
+		};
+
+		return true;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare System.ML's KernelSVM against two independent references.
+"""Compare System.ML's KernelSVM and OneClassSVM against two independent references.
 
 scikit-learn is not assumed. The references here share no code with the Objeck
 solver and use different algorithms:
@@ -19,6 +19,10 @@ For every random problem the Objeck fit (at a tight tolerance) must give:
     rows, except where the reference's |f| < 1e-6, and values within 1e-5;
   * KKT conditions, recomputed here from Objeck's alphas: max violation <= its tol
     (times 1 + 1e-6 for rounding).
+
+One-class problems (OneClassSVM, LIBSVM's formulation: Q = K, p = 0, y = +1,
+0 <= a <= 1, sum(a) = nu * n) are compared the same way; the "margin" is f = 0
+instead of y f = 1, and sum(a) = nu * n replaces sum(a y) = 0.
 
 The sigmoid kernel is not positive semi-definite in general, which makes the dual
 non-convex; problems whose Q has a negative eigenvalue are counted separately and
@@ -54,11 +58,13 @@ def kernel_matrix(a, b, code, gamma, degree, coef0):
     return np.tanh(gamma * dot + coef0)
 
 
-def smo_reference(Q, y, C, p, tol=1e-10, max_iter=5_000_000):
-    """First-order SMO: the maximal violating pair, an exact clipped step."""
+def smo_reference(Q, y, C, p, tol=1e-10, max_iter=5_000_000, a0=None):
+    """First-order SMO: the maximal violating pair, an exact clipped step.
+
+    a0 is a feasible start (zeros when omitted, which is feasible for C-SVC)."""
     n = len(y)
-    a = np.zeros(n)
-    G = p.astype(float).copy()
+    a = np.zeros(n) if a0 is None else a0.astype(float).copy()
+    G = Q @ a + p
     for _ in range(max_iter):
         v = -y * G
         up = ((y > 0) & (a < C)) | ((y < 0) & (a > 0))
@@ -119,6 +125,11 @@ def exact_reference(Q, y, C, p, delta=0.0):
             af = sol[:k]
             if (af < -1e-12).any() or (af > C[free] + 1e-12).any():
                 continue
+            # a "free" value within rounding of a bound is that bound; leaving it
+            # free would make rho the mean over it, a different (equally optimal
+            # but not comparable) threshold
+            af = np.where(np.abs(af - C[free]) < 1e-9, C[free], af)
+            af = np.where(np.abs(af) < 1e-9, 0.0, af)
             a[free] = np.clip(af, 0.0, C[free])
         obj = 0.5 * a @ Q @ a + p @ a
         if best is None or obj < best[1] - 1e-15:
@@ -147,6 +158,12 @@ def rho_of(a, G, y, C):
                 ub = min(ub, yG[i])
             else:
                 lb = max(lb, yG[i])
+    # every rho in [lb, ub] is optimal; the midpoint unless one end is
+    # unbounded (a one-class fit at nu = 1 puts every alpha at its bound)
+    if ub == np.inf:
+        return lb
+    if lb == -np.inf:
+        return ub
     return (ub + lb) / 2.0
 
 
@@ -191,7 +208,34 @@ def make_problem(rng, pid, code, n, m, d, tiny, large):
     shrink = int(rng.random() < 0.8)
     return dict(id=pid, code=code, n=n, m=m, d=d, x=x, y=yb, t=t, C=C, gamma=gamma,
                 degree=degree, coef0=coef0, tol=1e-9, cache=cache, shrink=shrink,
-                tiny=tiny, large=large)
+                tiny=tiny, large=large, mode=0)
+
+
+def make_one_class(rng, pid, code, n, m, d, tiny, large):
+    """A dense cluster plus a few scattered rows; nu in place of C."""
+    pr = make_problem(rng, pid, code, n, m, d, tiny, large)
+    x = rng.normal(size=(n, d)) * rng.uniform(0.3, 1.5)
+    stray = rng.random(n) < 0.1
+    x[stray] = rng.uniform(-4, 4, size=(int(stray.sum()), d))
+    if rng.random() < 0.2 and n >= 6:
+        x[n - 1] = x[0]   # a duplicate row
+    pr["x"] = x
+    pr["y"] = np.ones(n, dtype=bool)
+    pr["t"] = rng.uniform(-4, 4, size=(m, d))
+    pr["C"] = float(rng.choice([0.01, 0.05, 0.1, 0.2, 0.5, 0.9, 1.0]))   # nu
+    if pr["C"] * n < 1.0:
+        pr["C"] = 1.0 / n + 0.05
+    pr["mode"] = 1
+    return pr
+
+
+def libsvm_one_class_start(n, nu):
+    a = np.zeros(n)
+    full = int(nu * n)
+    a[:full] = 1.0
+    if full < n:
+        a[full] = nu * n - full
+    return a
 
 
 def fmt(v):
@@ -201,10 +245,10 @@ def fmt(v):
 def write_problems(path, problems):
     with open(path, "w", newline="\n") as fh:
         for pr in problems:
-            fh.write("P %d %d %d %d %d %s %s %d %s %s %d %d\n" % (
+            fh.write("P %d %d %d %d %d %s %s %d %s %s %d %d %d\n" % (
                 pr["id"], pr["n"], pr["m"], pr["d"], pr["code"], fmt(pr["C"]),
                 fmt(pr["gamma"]), pr["degree"], fmt(pr["coef0"]), fmt(pr["tol"]),
-                pr["cache"], pr["shrink"]))
+                pr["cache"], pr["shrink"], pr.get("mode", 0)))
             for i in range(pr["n"]):
                 fh.write(("1" if pr["y"][i] else "0") + " " +
                          " ".join(fmt(v) for v in pr["x"][i]) + "\n")
@@ -234,13 +278,27 @@ def read_results(text):
 def compare(pr, res, stats, failures, notes):
     code = pr["code"]
     x, t = pr["x"], pr["t"]
-    y = np.where(pr["y"], 1.0, -1.0)
     n = pr["n"]
-    C = np.full(n, pr["C"])
     K = kernel_matrix(x, x, code, pr["gamma"], pr["degree"], pr["coef0"])
+    one_class = pr.get("mode", 0) == 1
+    if one_class:
+        nu = pr["C"]
+        y = np.ones(n)
+        C = np.ones(n)
+        p = np.zeros(n)
+        delta = nu * n
+        a0 = libsvm_one_class_start(n, nu)
+        bound = 1.0
+        tag = "oc-%s#%d(n=%d,d=%d,nu=%g)" % (KERNELS[code], pr["id"], n, pr["d"], nu)
+    else:
+        y = np.where(pr["y"], 1.0, -1.0)
+        C = np.full(n, pr["C"])
+        p = -np.ones(n)
+        delta = 0.0
+        a0 = None
+        bound = pr["C"]
+        tag = "%s#%d(n=%d,d=%d,C=%g)" % (KERNELS[code], pr["id"], n, pr["d"], pr["C"])
     Q = (y[:, None] * y[None, :]) * K
-    p = -np.ones(n)
-    tag = "%s#%d(n=%d,d=%d,C=%g)" % (KERNELS[code], pr["id"], n, pr["d"], pr["C"])
 
     if "error" in res:
         failures.append(tag + ": Objeck Fit failed: " + res["error"])
@@ -261,8 +319,8 @@ def compare(pr, res, stats, failures, notes):
     viol = max_violation(a_o, G_o, y, C)
     if viol > pr["tol"] * (1 + 1e-6) + 1e-12:
         failures.append(tag + ": Objeck KKT violation %.3g > tol" % viol)
-    if abs(y @ a_o) > 1e-9 * max(1.0, a_o.sum()):
-        failures.append(tag + ": Objeck sum(alpha y) = %.3g" % (y @ a_o))
+    if abs(y @ a_o - delta) > 1e-9 * max(1.0, a_o.sum()):
+        failures.append(tag + ": Objeck sum(alpha y) = %.12g, want %.12g" % (y @ a_o, delta))
     if (a_o < 0).any() or (a_o > C * (1 + 1e-15)).any():
         failures.append(tag + ": Objeck alpha outside [0, C]")
     obj_o = 0.5 * a_o @ Q @ a_o + p @ a_o
@@ -280,13 +338,13 @@ def compare(pr, res, stats, failures, notes):
 
     refs = []
     if pr["tiny"]:
-        best = exact_reference(Q, y, C, p)
+        best = exact_reference(Q, y, C, p, delta)
         if best is None:
             failures.append(tag + ": exact enumeration found no feasible point")
             return
         refs.append(("exact", best[0]))
     try:
-        a_r, _ = smo_reference(Q, y, C, p)
+        a_r, _ = smo_reference(Q, y, C, p, a0=a0)
         refs.append(("smo", a_r))
     except RuntimeError as exc:
         failures.append(tag + ": " + str(exc))
@@ -319,14 +377,15 @@ def compare(pr, res, stats, failures, notes):
             so = a_o[idx].sum()
             sr = a_r[idx].sum()
             if unique:
-                thr = 1e-6 * pr["C"]
+                thr = 1e-6 * bound
                 if (so == 0.0 and sr > thr) or (sr == 0.0 and so > thr):
                     mismatch += 1
             else:
-                yf = y[idx[0]] * f_train[idx[0]]
-                if yf > 1.0 + 1e-6 and so != 0.0:
+                # distance past the margin: y f - 1 for C-SVC, f for one-class
+                m_i = f_train[idx[0]] if one_class else y[idx[0]] * f_train[idx[0]] - 1.0
+                if m_i > 1e-6 and so != 0.0:
                     mismatch += 1
-                elif yf < 1.0 - 1e-6 and abs(so - pr["C"] * len(idx)) > 1e-9 * pr["C"] * len(idx):
+                elif m_i < -1e-6 and abs(so - bound * len(idx)) > 1e-9 * bound * len(idx):
                     mismatch += 1
         kind = "sv_unique_" if unique else "sv_face_"
         if mismatch:
@@ -355,6 +414,8 @@ def main():
     ap.add_argument("--driver", required=True)
     ap.add_argument("--per-kernel", type=int, default=60)
     ap.add_argument("--large", type=int, default=8)
+    ap.add_argument("--one-class", type=int, default=50)
+    ap.add_argument("--one-class-large", type=int, default=4)
     ap.add_argument("--seed", type=int, default=20261026)
     ap.add_argument("--work", default=".")
     ap.add_argument("--obr-args", default="")
@@ -393,6 +454,25 @@ def main():
             problems.append(make_problem(rng, pid, code, n, 50, d, False, True))
             pid += 1
 
+    for code in range(4):
+        for k in range(args.one_class):
+            tiny = k % 3 == 0
+            n = int(rng.integers(3, 8)) if tiny else int(rng.integers(10, 61))
+            d = int(rng.integers(1, 6))
+            pr = make_one_class(rng, pid, code, n, 20, d, tiny, False)
+            if code == 3 and k % 4 != 0:
+                n = int(rng.integers(5, 16))
+                pr = make_one_class(rng, pid, code, n, 20, n + 4, n <= 7, False)
+                pr["coef0"] = 0.0
+                pr["gamma"] = 0.02 / pr["d"]
+            problems.append(pr)
+            pid += 1
+        for k in range(args.one_class_large):
+            n = int(rng.integers(400, 700))
+            d = int(rng.integers(2, 10))
+            problems.append(make_one_class(rng, pid, code, n, 50, d, False, True))
+            pid += 1
+
     os.makedirs(args.work, exist_ok=True)
     path = os.path.join(args.work, "svm_problems.txt")
     write_problems(path, problems)
@@ -405,7 +485,7 @@ def main():
         return 1
     results = read_results(proc.stdout)
 
-    stats = {k: collections.Counter() for k in KERNELS}
+    stats = collections.defaultdict(collections.Counter)
     failures = []
     notes = []
     for pr in problems:
@@ -413,14 +493,14 @@ def main():
         if res is None:
             failures.append("problem %d: no result" % pr["id"])
             continue
-        st = stats[KERNELS[pr["code"]]]
+        st = stats[("oc-" if pr.get("mode", 0) == 1 else "") + KERNELS[pr["code"]]]
         st["problems"] += 1
         compare(pr, res, st, failures, notes)
 
     print("problems: %d (tiny exact-enumerated: %d, large n>=400: %d)" % (
         len(problems), sum(p["tiny"] for p in problems), sum(p["large"] for p in problems)))
-    for k in KERNELS:
-        print("  %-8s %s" % (k, ", ".join("%s=%d" % kv for kv in sorted(stats[k].items()))))
+    for k in sorted(stats):
+        print("  %-10s %s" % (k, ", ".join("%s=%d" % kv for kv in sorted(stats[k].items()))))
     for f in notes:
         print("NOTE (non-convex): " + f)
     for f in failures:
