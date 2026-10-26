@@ -55,6 +55,10 @@
 // times its live size (see CollectMemory)
 #define GC_HEAP_GROWTH 2
 
+// a threshold given with --gc-threshold holds while a major collection leaves at
+// least 1/GC_FIXED_HEADROOM_DIV of it free for new allocation (see CollectMemory)
+#define GC_FIXED_HEADROOM_DIV 4
+
 #define EXTRA_BUF_SIZE 3
 #define MARKED_FLAG -1
 #define SIZE_OR_CLS -2
@@ -206,8 +210,11 @@ class MemoryManager {
   static std::atomic<size_t> allocation_size;
   // note: protected by 'allocated_lock'
   static size_t mem_max_size;
-  // true when --gc-threshold set mem_max_size, which then stays as given
+  // true when --gc-threshold gave the threshold (mem_fixed_threshold): it then holds
+  // as given while the live heap fits under it, and scales with the live heap while
+  // it does not (see CollectMemory)
   static bool mem_fixed_size;
+  static size_t mem_fixed_threshold;
 
   // always-on GC cycle counters (exposed via Get*GcCount for runtime diagnostics).
   // Unlike mem_cycle these exist in every build, not just under _MEM_LOGGING.

@@ -1,0 +1,86 @@
+#~
+A heap threshold set with --gc-threshold is a trigger, not a promise to collect on every
+allocation. While the live heap fits well under it the threshold stays exactly as given (stress
+runs use a small one to force frequent collections); once a major collection leaves more than
+three quarters of it live, the next major waits until the heap has doubled, as it would with no
+flag, and the given threshold returns as soon as the live heap fits under it again.
+
+It used to stay fixed whatever survived. With a few thousand objects kept under
+--gc-threshold=64k, every array allocated after the live heap passed 64 KB ran a full
+collection, each scanning everything kept: this program ran about 24,000 majors where it now
+runs a few dozen, and holding 800 objects took 200,240 majors and 127 s in one program.
+
+The regression runner passes no VM flags, so the bound below is checked when a non-default
+threshold is in force: under the nightly suite's --gc-threshold=64k and in
+run_vm_flag_tests.py, which runs this with --gc-threshold=64k and 1m, interpreted and with
+every method compiled. Under the default the program checks only that the kept data survives.
+~#
+
+class Kept {
+	@value : Int;
+	@pad : Int[];
+
+	New(value : Int) {
+		@value := value;
+		@pad := Int->New[4];
+		@pad[0] := value * 3;
+	}
+
+	method : public : Value() ~ Int {
+		return @value + @pad[0];
+	}
+}
+
+class GcFixedThresholdScales {
+	function : Stat(name : String) ~ Int {
+		return Runtime->GetProperty(name)->ToInt();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		failures := 0;
+		threshold := Stat("runtime.memory.max");
+		start := Stat("runtime.gc.major");
+
+		# a few hundred KB kept for the whole run: 4,000 objects, each with an array
+		kept := Kept->New[4000];
+		each(i : kept) {
+			kept[i] := Kept->New(i);
+		};
+
+		# 20,000 short-lived arrays, about 2 MB in all
+		total := 0;
+		each(i : 20000) {
+			temp := Int->New[8];
+			temp[0] := i;
+			total += temp[0];
+		};
+
+		majors := Stat("runtime.gc.major") - start;
+
+		sum := 0;
+		each(i : kept) {
+			sum += kept[i]->Value();
+		};
+		# 4 * (0 + 1 + ... + 3999)
+		if(sum <> 31992000 | total <> 199990000) {
+			"FAIL: kept data damaged (sum={$sum}, total={$total})"->PrintLine();
+			failures += 1;
+		};
+
+		# stderr: the count depends on where collections land
+		"majors={$majors} threshold={$threshold}"->ErrorLine();
+
+		# 8 MB is the default start; anything else came from --gc-threshold
+		if(threshold <> 8388608 & majors > 200) {
+			"FAIL: {$majors} major collections under a {$threshold}-byte threshold, expected at most 200"->PrintLine();
+			failures += 1;
+		};
+
+		if(failures = 0) {
+			"PASS: a fixed heap threshold scales with the live heap"->PrintLine();
+		}
+		else {
+			Runtime->Exit(1);
+		};
+	}
+}
