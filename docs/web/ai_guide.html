@@ -496,7 +496,7 @@ class LocalChat {
     <div class="lib-flag">ml,gen_collect,csv</div>
     <p>
       Pure Objeck ML routines backed by the Eigen C++ library — no Python, no external frameworks.
-      Covers linear algebra, regression, neural networks, clustering, and model evaluation.
+      Covers linear algebra, regression, neural networks, clustering, kernel and one-class SVMs, outlier detection, and model evaluation. The new <code>System.ML.Lab</code> library (<code>ml_lab</code>) adds train/test partitions, resampling, experiments, result tables and SVG charts.
     </p>
 
     <h4 id="ml-matrix">Matrix Operations</h4>
@@ -860,7 +860,7 @@ class VisionExample {
     <!-- ═══════════════════════════════════════ NLP ═══ -->
     <h3 id="nlp">Natural Language Processing</h3>
     <div class="lib-flag">gen_collect,nlp</div>
-    <p>Built-in NLP primitives — no model download required. Pure Objeck bytecode.</p>
+    <p>Built-in NLP primitives — no model download required. Pure Objeck bytecode. For sentence embeddings from a BERT-family ONNX export, <code>System.NLP.Onnx.BertEmbedder</code> is in the <code>nlp_onnx</code> library (<code>-lib @vision</code> includes it); <code>WordPieceTokenizer</code> and <code>System.ML.EmbeddingClassifier</code> complete the pipeline.</p>
 
     <pre class="line-numbers"><code class="language-cpp">use System.NLP;
 
