@@ -1,0 +1,154 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+OneClassSVM: why the flagged training fraction can exceed nu at the default
+tolerance, and that it converges to the guarantee as the tolerance tightens.
+
+nu bounds the fraction of training rows STRICTLY outside the boundary. At the
+exact optimum every free support vector lies exactly on the boundary (decision
+0), and a row that rounds to just below 0 is flagged by IsOutlier / Predict --
+as by scikit-learn, whose predict is decision >= 0. At a finite tolerance tol the
+optimality conditions only place rows within tol of the boundary, so at the
+default 1e-3 rows up to about -tol are flagged. On this data, 230 rows in five
+dimensions with nu = 0.01 (nu * n = 2.3), 20 rows are flagged at tol 1e-3, none
+of them at its bound, all within 4e-4 of the boundary.
+
+That is solver tolerance, not a wrong rho: an independent numpy transcription of
+LIBSVM's solver stopped at 1e-3 flags the same 20 rows with the same rho to seven
+digits in the same 62 iterations, and a first-order SMO run to 1e-12 gives the
+rho and objective this solver reaches at tol 1e-10
+(tools/ml/svm_reference/oneclass_tolerance.py rebuilds this data and runs both). What this test checks, over tol = 1e-3 ... 1e-10:
+
+- the guarantee: rows below -tol never exceed nu * n, at every tolerance;
+- convergence: the most negative decision value of an unbounded row is within
+  tol of 0, so it shrinks with tol, and at tol 1e-10 no row is below -1e-9 for
+  nu = 0.01 and 0.05 (no alpha reaches its bound there);
+- rho converges: within 1e-3 of the tightest fit at 1e-3, within 1e-7 at 1e-8.
+
+For a lab that expects the flagged fraction to track nu, tighten the tolerance
+(SetTolerance(1e-6) costs little more) or count rows below -tol.
+~#
+use System.ML;
+
+class MlOneClassSvmTolerance {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		String->SetFloatFormat(Number->Format->SCIENTIFIC);
+		String->SetFloatPrecision(3);
+
+		n := 230;
+		d := 5;
+		rand := System.ML.Random->New(3);
+		x := Float->New[n, d];
+		each(i : n) {
+			each(k : d) {
+				x[i, k] := rand->NextReal() + rand->NextReal() + rand->NextReal() - 1.5;
+				if(i >= 220) {
+					x[i, k] := rand->NextReal(-4.0, 4.0);
+				};
+			};
+		};
+
+		nus := [0.01, 0.05, 0.1];
+		tols := [0.001, 0.000001, 0.00000001, 0.0000000001];
+		guarantee := true;
+		converges := true;
+		rho_converges := true;
+		exact := true;
+		default_over := false;
+
+		each(a : nus) {
+			nu := nus[a];
+			bound := nu * n->As(Float);
+
+			tight := OneClassSVM->New(SvmKernel->RBF, nu);
+			tight->SetTolerance(0.0000000001);
+			tight->Fit(x);
+			rho_best := tight->GetOffset();
+
+			each(b : tols) {
+				tol := tols[b];
+				svm := OneClassSVM->New(SvmKernel->RBF, nu);
+				svm->SetTolerance(tol);
+				if(<>svm->Fit(x)) {
+					guarantee := false;
+				};
+
+				f := svm->DecisionFunction(x);
+				alpha := Alphas(svm, n);
+				flagged := 0;
+				beyond := 0;
+				strict := 0;
+				worst_free := 0.0;
+				each(i : n) {
+					if(f[i] < 0.0) {
+						flagged += 1;
+					};
+					if(f[i] < -1.0 * tol) {
+						beyond += 1;
+					};
+					if(f[i] < -0.000000001) {
+						strict += 1;
+					};
+					if(alpha[i] < 1.0 & f[i] < worst_free) {
+						worst_free := f[i];
+					};
+				};
+				"  nu={$nu} tol={$tol}: flagged {$flagged}, below -tol {$beyond}, below -1e-9 {$strict}, nu*n {$bound}, most negative unbounded row {$worst_free}"->PrintLine();
+
+				if(beyond->As(Float) > bound) {
+					guarantee := false;
+				};
+				# An unbounded row can sit below the boundary by at most the
+				# tolerance (plus rounding).
+				if(worst_free < -1.0 * tol - 0.0000000001) {
+					converges := false;
+				};
+				if(b = 0 & flagged->As(Float) > bound) {
+					default_over := true;
+				};
+				if(b = 0 & (svm->GetOffset() - rho_best)->Abs() > 0.001) {
+					rho_converges := false;
+				};
+				if(b = 2 & (svm->GetOffset() - rho_best)->Abs() > 0.0000001) {
+					rho_converges := false;
+				};
+				if(b = 3 & a < 2 & strict > 0) {
+					exact := false;
+				};
+			};
+		};
+
+		ok := Report("rows below -tol never exceed nu * n, at every tolerance", guarantee) & ok;
+		ok := Report("an unbounded row is never further than tol below the boundary", converges) & ok;
+		ok := Report("rho converges as the tolerance tightens", rho_converges) & ok;
+		ok := Report("at tol 1e-10 no row is strictly outside for nu 0.01 and 0.05, whose alphas are all free", exact) & ok;
+		ok := Report("at the default tolerance the flagged count does exceed nu * n here (the documented behaviour)",
+			default_over) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	# alpha per training row (0 for a row that is not a support vector)
+	function : Alphas(svm : OneClassSVM, n : Int) ~ Float[] {
+		alpha := Float->New[n];
+		idx := svm->GetSupportIndices();
+		coef := svm->GetDualCoefficients();
+		each(s : idx) {
+			alpha[idx[s]] := coef[s];
+		};
+
+		return alpha;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}
