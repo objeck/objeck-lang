@@ -690,6 +690,7 @@ class ContextAnalyzer {
   bool AnalyzeExpressionMethodCall(Expression* expression, std::wstring &encoding, Class* &klass, LibraryClass* &lib_klass, bool &is_enum_call);
   bool AnalyzeExpressionMethodCall(Type* type, const int dimension, std::wstring &encoding, Class* &klass, LibraryClass* &lib_klass, bool &is_enum_call);
   void AnalyzeMethodCall(MethodCall* method_call, const int depth);
+  void AnalyzeCallIndices(MethodCall* method_call, const int depth);
   void AnalyzeNewArrayCall(MethodCall* method_call, const int depth);
   void AnalyzeParentCall(MethodCall* method_call, const int depth);
   void RogueReturn(MethodCall* method_call);

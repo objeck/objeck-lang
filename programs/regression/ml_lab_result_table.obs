@@ -1,0 +1,249 @@
+# EXTRA_LIBS: ml,ml_lab,gen_collect,csv,json
+#~
+System.ML.Lab.ResultTable: the table a sweep hands in, rendered four ways and
+read back from two of them.
+
+The renderings are compared byte-for-byte against golden files under
+ml_lab_golden/, so a change in alignment, decimals or escaping is a deliberate
+golden update rather than a silent drift. The round trips use a row name that
+holds a comma, a double quote, a pipe and non-ASCII letters, because those are
+exactly the characters a CSV or JSON writer gets wrong.
+~#
+use Data.JSON;
+use System.IO.Filesystem;
+use System.ML.Lab;
+
+class MlLabResultTable {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		# --- FormatNumber: what CSV and JSON carry ---
+		ok := Report("FormatNumber trims trailing zeros", ResultTable->FormatNumber(0.5)->Equals("0.5")) & ok;
+		ok := Report("FormatNumber drops the point of a whole number", ResultTable->FormatNumber(100.0)->Equals("100")) & ok;
+		ok := Report("FormatNumber keeps ten decimals", ResultTable->FormatNumber(1.0 / 3.0)->Equals("0.3333333333")) & ok;
+		ok := Report("FormatNumber keeps a small value", ResultTable->FormatNumber(0.0000001)->Equals("0.0000001")) & ok;
+		ok := Report("FormatNumber never writes -0", ResultTable->FormatNumber(-0.0)->Equals("0")) & ok;
+		ok := Report("FormatNumber keeps a negative", ResultTable->FormatNumber(-1234.5678)->Equals("-1234.5678")) & ok;
+
+		# --- a table without deviations ---
+		t := ResultTable->New("SVM: C sweep (naïve kernels)", "C");
+		t->AddColumn("recall");
+		t->AddColumn("fpr");
+		t->AddColumn("fit_ms", 1);
+		t->AddColumn("false_negatives", 0);
+		t->SetFootnote("gamma=0.5; dataset=synthetic-2d v1; 70/30 stratified, seed 42");
+
+		ok := Report("columns are named in order",
+			t->GetColumnNames()->Size() = 4 & t->GetColumnNames()[2]->Equals("fit_ms")) & ok;
+		ok := Report("ColumnIndex finds a column and reports -1 for a stranger",
+			t->ColumnIndex("fpr") = 1 & t->ColumnIndex("nope") = -1) & ok;
+
+		c1 := Float->New[4];
+		c1[0] := 0.5; c1[1] := 0.01; c1[2] := 12.345; c1[3] := 3.0;
+		t->AddRow("0.001", 0.001, c1);
+		c2 := Float->New[4];
+		c2[0] := 0.875; c2[1] := 0.125; c2[2] := 1234.56; c2[3] := 0.0;
+		t->AddRow("naïve \"rbf\", γ=0.5", 2.0, c2);
+		c3 := Float->New[4];
+		c3[0] := 1.0; c3[1] := 0.33333333; c3[2] := 0.04; c3[3] := 12.0;
+		t->AddRow("a|b", 3.0, c3);
+
+		ok := Report("Size counts the rows", t->Size() = 3) & ok;
+		ok := Report("Get reads a cell", t->Get(1, 2) = 1234.56) & ok;
+		ok := Report("GetStd is 0 when no deviations were given", t->GetStd(1, 2) = 0.0 & <>t->HasStds()) & ok;
+		ok := Report("GetRowName and GetRowValue read the first column",
+			t->GetRowName(2)->Equals("a|b") & t->GetRowValue(2) = 3.0) & ok;
+		col := t->GetColumn("recall");
+		ok := Report("GetColumn returns the column in row order",
+			col->Size() = 3 & col[0] = 0.5 & col[1] = 0.875 & col[2] = 1.0) & ok;
+		vals := t->GetRowValues();
+		ok := Report("GetRowValues returns the x axis", vals[0] = 0.001 & vals[2] = 3.0) & ok;
+
+		# --- renderings against the goldens ---
+		ok := Golden("ToText matches ml_lab_golden/result_table.txt", t->ToText(), "ml_lab_golden/result_table.txt") & ok;
+		ok := Golden("ToMarkdown matches ml_lab_golden/result_table.md", t->ToMarkdown(), "ml_lab_golden/result_table.md") & ok;
+		ok := Golden("ToCsv matches ml_lab_golden/result_table.csv", t->ToCsv(), "ml_lab_golden/result_table.csv") & ok;
+		# JSON is compared by structure, not bytes: Data.JSON owns the escaping
+		# choices ("\/" or "/", "ï" or the letter), and a golden must not
+		# pin them. The committed document is read back instead, so FromJson is
+		# held to a fixed input while ToJson is checked through the parser below.
+		golden_json := FileReader->ReadFile("ml_lab_golden/result_table.json");
+		ok := Report("FromJson reads the committed golden document into the same table",
+			golden_json <> Nil & SameTable(t, ResultTable->FromJson(golden_json))) & ok;
+
+		md := t->ToMarkdown();
+		ok := Report("Markdown escapes a pipe in a name", md->Has("| a\\|b |")) & ok;
+		ok := Report("Markdown renders fit_ms with one decimal and counts with none", md->Has("| 12.3 | 3 |")) & ok;
+		txt := t->ToText();
+		ok := Report("text renders the title and an underline", txt->Has("SVM: C sweep (naïve kernels)\n====")) & ok;
+		csv := t->ToCsv();
+		ok := Report("CSV quotes the name that holds a comma and doubles its quote",
+			csv->Has("\"naïve \"\"rbf\"\", γ=0.5\",2,0.875,0.125,1234.56,0")) & ok;
+		ok := Report("CSV header names the parameter and its value column",
+			csv->Has("C,C_value,recall,fpr,fit_ms,false_negatives\n")) & ok;
+
+		# --- CSV round trip ---
+		back := ResultTable->FromCsv(csv);
+		ok := Report("FromCsv recovers the parameter and the columns",
+			back->GetParameter()->Equals("C") & back->GetColumnNames()->Size() = 4 & back->ColumnIndex("fit_ms") = 2) & ok;
+		ok := Report("FromCsv recovers the rows", back->Size() = 3) & ok;
+		ok := Report("FromCsv recovers the name with the comma, quote and non-ASCII letters",
+			back->GetRowName(1)->Equals("naïve \"rbf\", γ=0.5")) & ok;
+		ok := Report("FromCsv recovers the values and cells", SameTable(t, back)) & ok;
+		ok := Report("FromCsv of a table without deviations has none", <>back->HasStds()) & ok;
+
+		# --- JSON round trip, and the JSON is what Data.JSON parses ---
+		json := t->ToJson();
+		parser := JsonParser->New(json);
+		ok := Report("ToJson parses with Data.JSON", parser->Parse()) & ok;
+		root := parser->GetRoot();
+		ok := Report("the JSON carries the title and footnote",
+			root->Get("title")->GetString()->Equals("SVM: C sweep (naïve kernels)") &
+			root->Get("footnote")->GetString()->Has("gamma=0.5")) & ok;
+		ok := Report("the JSON row keeps the awkward name",
+			root->Get("rows")->Get(1)->Get("name")->GetString()->Equals("naïve \"rbf\", γ=0.5")) & ok;
+		ok := Report("the JSON cell is a number", root->Get("rows")->Get(1)->Get("cells")->Get("fit_ms")->GetFloat() = 1234.56) & ok;
+
+		back2 := ResultTable->FromJson(json);
+		ok := Report("FromJson recovers title, parameter and footnote",
+			back2->GetTitle()->Equals(t->GetTitle()) & back2->GetParameter()->Equals("C") & back2->GetFootnote()->Equals(t->GetFootnote())) & ok;
+		ok := Report("FromJson recovers the rows and cells", back2->Size() = 3 & SameTable(t, back2)) & ok;
+		ok := Report("FromJson keeps the per-column precision (it renders the same text)", back2->ToText()->Equals(t->ToText())) & ok;
+
+		# --- a table with deviations ---
+		s := ResultTable->New("Forest: trees", "n_estimators");
+		s->AddColumn("test_accuracy");
+		s->AddColumn("fit_ms", 1);
+		m1 := Float->New[2];
+		m1[0] := 0.9; m1[1] := 10.0;
+		d1 := Float->New[2];
+		d1[0] := 0.0125; d1[1] := 1.5;
+		s->AddRow("10", 10.0, m1, d1);
+		m2 := Float->New[2];
+		m2[0] := 0.95; m2[1] := 100.25;
+		d2 := Float->New[2];
+		d2[0] := 0.0; d2[1] := 12.0;
+		s->AddRow("100", 100.0, m2, d2);
+		s->SetFootnote("repeats=3 seeds (1, 2, 3), cells are mean and sample standard deviation");
+
+		ok := Report("HasStds is true once a row carries deviations", s->HasStds()) & ok;
+		ok := Report("GetStd reads a deviation", s->GetStd(0, 1) = 1.5) & ok;
+		stds := s->GetColumnStds("fit_ms");
+		ok := Report("GetColumnStds returns the deviations in row order", stds[0] = 1.5 & stds[1] = 12.0) & ok;
+		ok := Golden("ToText with deviations matches ml_lab_golden/result_table_std.txt", s->ToText(), "ml_lab_golden/result_table_std.txt") & ok;
+		ok := Golden("ToMarkdown with deviations matches ml_lab_golden/result_table_std.md", s->ToMarkdown(), "ml_lab_golden/result_table_std.md") & ok;
+		ok := Golden("ToCsv with deviations matches ml_lab_golden/result_table_std.csv", s->ToCsv(), "ml_lab_golden/result_table_std.csv") & ok;
+		ok := Report("text shows mean +/- std", s->ToText()->Has("0.9000 +/- 0.0125")) & ok;
+		ok := Report("Markdown shows mean ± std", s->ToMarkdown()->Has("0.9000 ± 0.0125")) & ok;
+		ok := Report("CSV adds a _std column per metric", s->ToCsv()->Has("test_accuracy_std,fit_ms_std")) & ok;
+
+		back3 := ResultTable->FromCsv(s->ToCsv());
+		ok := Report("FromCsv recovers deviations", back3->HasStds() & back3->GetStd(1, 1) = 12.0 & SameTable(s, back3)) & ok;
+		back4 := ResultTable->FromJson(s->ToJson());
+		ok := Report("FromJson recovers deviations", back4->HasStds() & back4->GetStd(0, 0) = 0.0125 & SameTable(s, back4)) & ok;
+
+		# --- Save picks the form by extension ---
+		dir := Runtime->GetTempDir();
+		base := dir + "/ml_lab_result_table_test";
+		ok := Report("Save writes Markdown for .md", s->Save(base + ".md") & FileReader->ReadFile(base + ".md")->Equals(s->ToMarkdown())) & ok;
+		ok := Report("Save writes CSV for .csv", s->Save(base + ".csv") & FileReader->ReadFile(base + ".csv")->Equals(s->ToCsv())) & ok;
+		ok := Report("Save writes JSON for .json", s->Save(base + ".json") & FileReader->ReadFile(base + ".json")->Equals(s->ToJson())) & ok;
+		ok := Report("Save writes text otherwise", s->Save(base + ".txt") & FileReader->ReadFile(base + ".txt")->Equals(s->ToText())) & ok;
+		File->Delete(base + ".md");
+		File->Delete(base + ".csv");
+		File->Delete(base + ".json");
+		File->Delete(base + ".txt");
+
+		# --- refusals ---
+		ok := Report("a column cannot be added after rows", Refuses(1, t)) & ok;
+		ok := Report("a duplicate column is refused", Refuses(2, s)) & ok;
+		ok := Report("a row with the wrong cell count is refused", Refuses(3, s)) & ok;
+		ok := Report("an unknown column is refused by GetColumn", Refuses(4, s)) & ok;
+		ok := Report("a cell outside the table is refused", Refuses(5, s)) & ok;
+		ok := Report("FromCsv refuses text that is not a table", Refuses(6, s)) & ok;
+		ok := Report("FromJson refuses text that is not a table", Refuses(7, s)) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Refuses(which : Int, t : ResultTable) ~ Bool {
+		refused := false;
+		try {
+			select(which) {
+				label 1: { t->AddColumn("late"); }
+				label 2: { t->AddColumn("fit_ms"); }
+				label 3: { t->AddRow("x", 1.0, Float->New[1]); }
+				label 4: { t->GetColumn("nope"); }
+				label 5: { t->Get(99, 0); }
+				label 6: { ResultTable->FromCsv("just,some,text\n1,2,3\n"); }
+				label 7: { ResultTable->FromJson("{\"title\": \"x\"}"); }
+			};
+		}
+		on(e : LabError) {
+			refused := true;
+		};
+
+		return refused;
+	}
+
+	function : SameTable(a : ResultTable, b : ResultTable) ~ Bool {
+		if(a->Size() <> b->Size() | a->GetColumnNames()->Size() <> b->GetColumnNames()->Size()) {
+			return false;
+		};
+
+		cols := a->GetColumnNames()->Size();
+		each(r : a->Size()) {
+			if(<>a->GetRowName(r)->Equals(b->GetRowName(r))) {
+				return false;
+			};
+			if(<>Near(a->GetRowValue(r), b->GetRowValue(r))) {
+				return false;
+			};
+			each(c : cols) {
+				if(<>Near(a->Get(r, c), b->Get(r, c)) | <>Near(a->GetStd(r, c), b->GetStd(r, c))) {
+					return false;
+				};
+			};
+		};
+
+		return true;
+	}
+
+	function : Golden(name : String, actual : String, path : String) ~ Bool {
+		expected := FileReader->ReadFile(path);
+		if(expected = Nil) {
+			"FAIL: {$name} (golden file missing)"->PrintLine();
+			return false;
+		};
+
+		# the goldens are LF; a checkout that gave them CRLF must not fail this
+		expected := expected->ReplaceAll("\r", "");
+		if(actual->Equals(expected)) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		"--- expected ---"->PrintLine();
+		expected->PrintLine();
+		"--- actual ---"->PrintLine();
+		actual->PrintLine();
+		return false;
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.0000000001;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}

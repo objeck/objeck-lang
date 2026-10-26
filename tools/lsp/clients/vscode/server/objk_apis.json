@@ -15284,6 +15284,26 @@
 				}
 			}
 		},
+		"System.ML.Lab.Experiment": {
+			"description": "A sweep over one named parameter: for every value (and every seed, when repeats are asked for) it runs the Trial, scores the predictions, and collects a ResultTable with train_accuracy, test_accuracy, precision, recall, f1, fpr, false_negatives and fit_ms per value -- mean and sample standard deviation over the seeds when there is more than one.\n\nTest-set metrics come from the test predictions; train_accuracy is the only training-set number, there for the overfitting curve. The confusion counts come from the trial's Bool predictions and the rates from ThresholdResult, every ratio guarded (a value that predicts nothing positive has no precision and reports 0.0).",
+			"functions": {
+				"AddSetting": {
+					"descriptions": ["**Records a fixed setting for the footnote, e.g. (\"max_depth\", \"8\").**\n\n```method : public : AddSetting(name:String, value:String) ~ Nil```\n\n\n\nname: String\n\nvalue: String\n\nreturn: Nil"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(title:String, parameter:String)```\n\n\n\ntitle: String\n\nparameter: String"]
+				},
+				"Run": {
+					"descriptions": ["**Runs the sweep.**\n\n```method : public : Run(trial:Trial) ~ ResultTable```\n\n\n\ntrial: Trial\n\nreturn: ResultTable"]
+				},
+				"SetSeeds": {
+					"descriptions": ["**Seeds for repeated runs; each value is run once per seed and the table reports the mean and sample standard deviation. The default is one run with seed 0.**\n\n```method : public : SetSeeds(seeds:Int[]) ~ Nil```\n\n\n\nseeds: Int[]\n\nreturn: Nil"]
+				},
+				"SetValues": {
+					"descriptions": ["**The values to sweep, named by their number.**\n\n```method : public : SetValues(values:Float[]) ~ Nil```\n\n\n\nvalues: Float[]\n\nreturn: Nil", "**The values to sweep with display names, for a categorical parameter such as a kernel (values 0, 1, 2; names \"linear\", \"rbf\", \"poly\").**\n\n```method : public : SetValues(values:Float[], names:String[]) ~ Nil```\n\n\n\nvalues: Float[]\n\nnames: String[]\n\nreturn: Nil"]
+				}
+			}
+		},
 		"System.ML.Lab.IndexSplit": {
 			"description": "The row indexes of a train\/test split, each half in ascending order.",
 			"functions": {
@@ -15354,6 +15374,92 @@
 				}
 			}
 		},
+		"System.ML.Lab.ResultTable": {
+			"description": "A table of results: a title, one row per parameter value (a display name and a numeric value), named numeric columns, optional per-cell standard deviations, and a footnote of fixed settings. Renders as aligned text, Markdown, CSV and JSON, and reads CSV and JSON back.\n\nNumbers render with a fixed number of decimals per column (4 by default), so the output is byte-stable; CSV and JSON carry up to 10 decimals with trailing zeros trimmed, so a value survives a round trip to within 1e-10.",
+			"functions": {
+				"AddColumn": {
+					"descriptions": ["**Adds a numeric column rendered with 4 decimals. Columns must be added before rows.**\n\n```method : public : AddColumn(name:String) ~ Nil```\n\n\n\nname: String\n\nreturn: Nil", "**Adds a numeric column.**\n\n```method : public : AddColumn(name:String, precision:Int) ~ Nil```\n\n\n\nname: String\n\nprecision: Int\n\nreturn: Nil"]
+				},
+				"AddRow": {
+					"descriptions": ["**Adds a row without deviations.**\n\n```method : public : AddRow(name:String, value:Float, cells:Float[]) ~ Nil```\n\n\n\nname: String\n\nvalue: Float\n\ncells: Float[]\n\nreturn: Nil", "**Adds a row with a standard deviation per cell, from repeated runs.**\n\n```method : public : AddRow(name:String, value:Float, cells:Float[], stds:Float[]) ~ Nil```\n\n\n\nname: String\n\nvalue: Float\n\ncells: Float[]\n\nstds: Float[]\n\nreturn: Nil"]
+				},
+				"ColumnIndex": {
+					"descriptions": ["**The index of a column by name.**\n\n```method : public : ColumnIndex(name:String) ~ Int```\n\n\n\nname: String\n\nreturn: Int"]
+				},
+				"FormatNumber": {
+					"descriptions": ["**A number for CSV and JSON: up to 10 decimals, trailing zeros and a trailing point trimmed, never \"-0\".**\n\n```function : FormatNumber(value:Float) ~ String```\n\n\n\nvalue: Float\n\nreturn: String"]
+				},
+				"FromCsv": {
+					"descriptions": ["**Reads a table written by ToCsv. The title and footnote come back empty.**\n\n```function : FromCsv(text:String) ~ ResultTable```\n\n\n\ntext: String\n\nreturn: ResultTable"]
+				},
+				"FromJson": {
+					"descriptions": ["**Reads a table written by ToJson.**\n\n```function : FromJson(text:String) ~ ResultTable```\n\n\n\ntext: String\n\nreturn: ResultTable"]
+				},
+				"Get": {
+					"descriptions": ["**A cell.**\n\n```method : public : Get(row:Int, col:Int) ~ Float```\n\n\n\nrow: Int\n\ncol: Int\n\nreturn: Float"]
+				},
+				"GetColumn": {
+					"descriptions": ["**One column's values, in row order.**\n\n```method : public : GetColumn(name:String) ~ Float[]```\n\n\n\nname: String\n\nreturn: Float[]"]
+				},
+				"GetColumnNames": {
+					"descriptions": ["**Column headings, in order.**\n\n```method : public : GetColumnNames() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetColumnStds": {
+					"descriptions": ["**One column's standard deviations, in row order.**\n\n```method : public : GetColumnStds(name:String) ~ Float[]```\n\n\n\nname: String\n\nreturn: Float[]"]
+				},
+				"GetFootnote": {
+					"descriptions": ["**The footnote.**\n\n```method : public : GetFootnote() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetParameter": {
+					"descriptions": ["**The swept parameter's name.**\n\n```method : public : GetParameter() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetRowName": {
+					"descriptions": ["**A row's display name.**\n\n```method : public : GetRowName(row:Int) ~ String```\n\n\n\nrow: Int\n\nreturn: String"]
+				},
+				"GetRowNames": {
+					"descriptions": ["**The row names, in row order.**\n\n```method : public : GetRowNames() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetRowValue": {
+					"descriptions": ["**A row's numeric parameter value.**\n\n```method : public : GetRowValue(row:Int) ~ Float```\n\n\n\nrow: Int\n\nreturn: Float"]
+				},
+				"GetRowValues": {
+					"descriptions": ["**The parameter values, in row order: the x axis of a chart.**\n\n```method : public : GetRowValues() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetStd": {
+					"descriptions": ["**A cell's standard deviation.**\n\n```method : public : GetStd(row:Int, col:Int) ~ Float```\n\n\n\nrow: Int\n\ncol: Int\n\nreturn: Float"]
+				},
+				"GetTitle": {
+					"descriptions": ["**The title.**\n\n```method : public : GetTitle() ~ String```\n\n\n\nreturn: String"]
+				},
+				"HasStds": {
+					"descriptions": ["**Whether any row carries standard deviations.**\n\n```method : public : HasStds() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(title:String, parameter:String)```\n\n\n\ntitle: String\n\nparameter: String"]
+				},
+				"Save": {
+					"descriptions": ["**Writes the table in the form the file extension names: .md Markdown, .csv CSV, .json JSON, anything else the aligned text.**\n\n```method : public : Save(path:String) ~ Bool```\n\n\n\npath: String\n\nreturn: Bool"]
+				},
+				"SetFootnote": {
+					"descriptions": ["**Sets the footnote of fixed settings printed under the table.**\n\n```method : public : SetFootnote(text:String) ~ Nil```\n\n\n\ntext: String\n\nreturn: Nil"]
+				},
+				"Size": {
+					"descriptions": ["**Rows in the table.**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"ToCsv": {
+					"descriptions": ["**RFC 4180 CSV: a header of the parameter name, \"<parameter>_value\", the columns and, when the table holds deviations, \"<column>_std\" for each; then one record per row. Fields are quoted only when they must be. The title and footnote are not written: a CSV is data, the Markdown and JSON forms carry the prose.**\n\n```method : public : ToCsv() ~ String```\n\n\n\nreturn: String"]
+				},
+				"ToJson": {
+					"descriptions": ["**JSON, built with Data.JSON: {\"title\",\"parameter\",\"footnote\",\"columns\":[], \"precision\":[],\"rows\":[{\"name\",\"value\",\"cells\":{column: value}, \"stds\":{column: deviation}}]}; \"stds\" is present only when the table holds deviations.**\n\n```method : public : ToJson() ~ String```\n\n\n\nreturn: String"]
+				},
+				"ToMarkdown": {
+					"descriptions": ["**A GitHub-flavoured Markdown table under a \"###\" title, the footnote in italics. Deviations render as \"mean \u00b1 std\"; a pipe in a name is escaped.**\n\n```method : public : ToMarkdown() ~ String```\n\n\n\nreturn: String"]
+				},
+				"ToText": {
+					"descriptions": ["**An aligned plain-text table: the title, a header, one line per row, the footnote. Deviations render as \"mean +\/- std\".**\n\n```method : public : ToText() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
 		"System.ML.Lab.Sample": {
 			"description": "A resampled training set: features, labels and the source row of every row, so duplicates from oversampling are visible.",
 			"functions": {
@@ -15400,6 +15506,40 @@
 				},
 				"Stop": {
 					"descriptions": ["**Stops timing and adds the interval to the total.**\n\n```method : public : Stop() ~ Float```\n\n\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.ML.Lab.Trial": {
+			"description": "One point of a sweep: given a parameter value, build the model, fit it under a Stopwatch, predict on the training and test sets, and return the result.\n\nAn interface rather than a function reference, as ScoreModel and ScoreMetric are: it crosses the library boundary reliably and reads clearly in a write-up.",
+			"functions": {
+				"Run": {
+					"descriptions": ["**Runs one trial.**\n\n```method : public : virutal : Run(value:Float, name:String, seed:Int) ~ TrialResult```\n\n\n\nvalue: Float\n\nname: String\n\nseed: Int\n\nreturn: TrialResult"]
+				}
+			}
+		},
+		"System.ML.Lab.TrialResult": {
+			"description": "What one trial of a sweep produced: predictions on the training and test sets, the labels they are scored against, the fit time, and optionally a per-epoch training loss.\n\nBoth label arrays travel with the predictions because a trial may have resampled its own training set (the class-imbalance sweep), so the runner cannot assume one y.",
+			"functions": {
+				"GetFitMs": {
+					"descriptions": ["**Fit time.**\n\n```method : public : GetFitMs() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetLoss": {
+					"descriptions": ["**Training loss per epoch, when the trial recorded one.**\n\n```method : public : GetLoss() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetTestLabels": {
+					"descriptions": ["**True test labels.**\n\n```method : public : GetTestLabels() ~ Bool[]```\n\n\n\nreturn: Bool[]"]
+				},
+				"GetTestPredictions": {
+					"descriptions": ["**Predicted test labels.**\n\n```method : public : GetTestPredictions() ~ Bool[]```\n\n\n\nreturn: Bool[]"]
+				},
+				"GetTrainLabels": {
+					"descriptions": ["**True training labels.**\n\n```method : public : GetTrainLabels() ~ Bool[]```\n\n\n\nreturn: Bool[]"]
+				},
+				"GetTrainPredictions": {
+					"descriptions": ["**Predicted training labels.**\n\n```method : public : GetTrainPredictions() ~ Bool[]```\n\n\n\nreturn: Bool[]"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(train_pred:Bool[], train_y:Bool[], test_pred:Bool[], test_y:Bool[], fit_ms:Float)```\n\n\n\ntrain_pred: Bool[]\n\ntrain_y: Bool[]\n\ntest_pred: Bool[]\n\ntest_y: Bool[]\n\nfit_ms: Float", "**Constructor with a training-loss curve.**\n\n```New(train_pred:Bool[], train_y:Bool[], test_pred:Bool[], test_y:Bool[], fit_ms:Float, loss:Float[])```\n\n\n\ntrain_pred: Bool[]\n\ntrain_y: Bool[]\n\ntest_pred: Bool[]\n\ntest_y: Bool[]\n\nfit_ms: Float\n\nloss: Float[]"]
 				}
 			}
 		},
@@ -20048,6 +20188,12 @@
 				"file": ""
 			}
 		],
+		"Experiment": [
+			{
+				"bundle": "System.ML.Lab",
+				"file": ""
+			}
+		],
 		"IndexSplit": [
 			{
 				"bundle": "System.ML.Lab",
@@ -20078,6 +20224,12 @@
 				"file": ""
 			}
 		],
+		"ResultTable": [
+			{
+				"bundle": "System.ML.Lab",
+				"file": ""
+			}
+		],
 		"Sample": [
 			{
 				"bundle": "System.ML.Lab",
@@ -20085,6 +20237,18 @@
 			}
 		],
 		"Stopwatch": [
+			{
+				"bundle": "System.ML.Lab",
+				"file": ""
+			}
+		],
+		"Trial": [
+			{
+				"bundle": "System.ML.Lab",
+				"file": ""
+			}
+		],
+		"TrialResult": [
 			{
 				"bundle": "System.ML.Lab",
 				"file": ""

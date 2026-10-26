@@ -1033,4 +1033,1181 @@ split := Partition->TrainTest(X, y, families, 0.3, 42);
 			Runtime->Raise(LabError->New("Labels: " + message));
 		}
 	}
+
+	#~
+	What one trial of a sweep produced: predictions on the training and test
+	sets, the labels they are scored against, the fit time, and optionally a
+	per-epoch training loss.
+
+	Both label arrays travel with the predictions because a trial may have
+	resampled its own training set (the class-imbalance sweep), so the runner
+	cannot assume one y.
+	~#
+	class TrialResult {
+		@train_pred : Bool[];
+		@train_y : Bool[];
+		@test_pred : Bool[];
+		@test_y : Bool[];
+		@fit_ms : Float;
+		@loss : Float[];
+
+		#~
+		Constructor
+		@param train_pred predicted labels on the training set
+		@param train_y true labels of the training set
+		@param test_pred predicted labels on the test set
+		@param test_y true labels of the test set
+		@param fit_ms wall-clock milliseconds the fit took
+		~#
+		New(train_pred : Bool[], train_y : Bool[], test_pred : Bool[], test_y : Bool[], fit_ms : Float) {
+			@train_pred := train_pred;
+			@train_y := train_y;
+			@test_pred := test_pred;
+			@test_y := test_y;
+			@fit_ms := fit_ms;
+		}
+
+		#~
+		Constructor with a training-loss curve.
+		@param train_pred predicted labels on the training set
+		@param train_y true labels of the training set
+		@param test_pred predicted labels on the test set
+		@param test_y true labels of the test set
+		@param fit_ms wall-clock milliseconds the fit took
+		@param loss training loss per epoch
+		~#
+		New(train_pred : Bool[], train_y : Bool[], test_pred : Bool[], test_y : Bool[], fit_ms : Float, loss : Float[]) {
+			@train_pred := train_pred;
+			@train_y := train_y;
+			@test_pred := test_pred;
+			@test_y := test_y;
+			@fit_ms := fit_ms;
+			@loss := loss;
+		}
+
+		#~
+		Predicted training labels.
+		@return one label per training row
+		~#
+		method : public : GetTrainPredictions() ~ Bool[] {
+			return @train_pred;
+		}
+
+		#~
+		True training labels.
+		@return one label per training row
+		~#
+		method : public : GetTrainLabels() ~ Bool[] {
+			return @train_y;
+		}
+
+		#~
+		Predicted test labels.
+		@return one label per test row
+		~#
+		method : public : GetTestPredictions() ~ Bool[] {
+			return @test_pred;
+		}
+
+		#~
+		True test labels.
+		@return one label per test row
+		~#
+		method : public : GetTestLabels() ~ Bool[] {
+			return @test_y;
+		}
+
+		#~
+		Fit time.
+		@return wall-clock milliseconds
+		~#
+		method : public : GetFitMs() ~ Float {
+			return @fit_ms;
+		}
+
+		#~
+		Training loss per epoch, when the trial recorded one.
+		@return the curve, or Nil
+		~#
+		method : public : GetLoss() ~ Float[] {
+			return @loss;
+		}
+	}
+
+	#~
+	One point of a sweep: given a parameter value, build the model, fit it under
+	a Stopwatch, predict on the training and test sets, and return the result.
+
+	An interface rather than a function reference, as ScoreModel and ScoreMetric
+	are: it crosses the library boundary reliably and reads clearly in a write-up.
+
+```
+class ForestTrial implements Trial {
+  @split : DataSplit;
+  New(split : DataSplit) { @split := split; }
+  method : public : Run(value : Float, name : String, seed : Int) ~ TrialResult {
+    forest := RandomForestClassifier->New(value->As(Int), 8, 2, seed);
+    sw := Stopwatch->New();
+    sw->Start();
+    forest->Fit(@split->GetTrainX(), @split->GetTrainY());
+    ms := sw->Stop();
+    return TrialResult->New(forest->PredictClass(@split->GetTrainX()), @split->GetTrainY(),
+      forest->PredictClass(@split->GetTestX()), @split->GetTestY(), ms);
+  }
+}
+```
+	~#
+	interface Trial {
+		#~
+		Runs one trial.
+		@param value the swept parameter's value
+		@param name the value's display name (the meaning of a categorical value)
+		@param seed the repetition's seed
+		@return what the trial produced; Nil is refused by the runner
+		~#
+		method : virtual : public : Run(value : Float, name : String, seed : Int) ~ TrialResult;
+	}
+
+	#~
+	A table of results: a title, one row per parameter value (a display name and
+	a numeric value), named numeric columns, optional per-cell standard
+	deviations, and a footnote of fixed settings. Renders as aligned text,
+	Markdown, CSV and JSON, and reads CSV and JSON back.
+
+	Numbers render with a fixed number of decimals per column (4 by default), so
+	the output is byte-stable; CSV and JSON carry up to 10 decimals with trailing
+	zeros trimmed, so a value survives a round trip to within 1e-10.
+
+```
+t := ResultTable->New("Random forest: trees", "n_estimators");
+t->AddColumn("test_accuracy");
+t->AddColumn("fit_ms", 1);
+t->AddRow("10", 10.0, [0.9412, 12.5]);
+t->SetFootnote("max_depth=8; seed=42");
+t->ToMarkdown()->PrintLine();
+t->Save("rf_trees.csv");
+```
+	~#
+	class ResultTable {
+		@title : String;
+		@parameter : String;
+		@footnote : String;
+		@columns : Vector<String>;
+		@precision : Vector<IntRef>;
+		@row_names : Vector<String>;
+		@row_values : Vector<FloatRef>;
+		@cells : Vector<FloatArrayRef>;
+		@stds : Vector<FloatArrayRef>;
+		@has_stds : Bool;
+
+		#~
+		Constructor
+		@param title shown above the table
+		@param parameter the swept parameter's name, the first column's heading
+		~#
+		New(title : String, parameter : String) {
+			@title := (title = Nil) ? "" : title;
+			@parameter := (parameter = Nil) ? "" : parameter;
+			@footnote := "";
+			@columns := Vector->New()<String>;
+			@precision := Vector->New()<IntRef>;
+			@row_names := Vector->New()<String>;
+			@row_values := Vector->New()<FloatRef>;
+			@cells := Vector->New()<FloatArrayRef>;
+			@stds := Vector->New()<FloatArrayRef>;
+			@has_stds := false;
+		}
+
+		#~
+		Adds a numeric column rendered with 4 decimals. Columns must be added
+		before rows.
+		@param name column heading
+		~#
+		method : public : AddColumn(name : String) ~ Nil {
+			AddColumn(name, 4);
+		}
+
+		#~
+		Adds a numeric column.
+		@param name column heading
+		@param precision decimals when rendered as text or Markdown
+		~#
+		method : public : AddColumn(name : String, precision : Int) ~ Nil {
+			if(name = Nil | name->Size() = 0) {
+				Refuse("a column needs a name");
+			};
+			if(@row_names->Size() > 0) {
+				Refuse("add every column before the first row");
+			};
+			if(ColumnIndex(name) >= 0) {
+				Refuse("column '{$name}' is already in the table");
+			};
+
+			@columns->AddBack(name);
+			@precision->AddBack(IntRef->New(precision < 0 ? 0 : precision));
+		}
+
+		#~
+		Adds a row without deviations.
+		@param name the parameter value's display name
+		@param value the parameter's numeric value
+		@param cells one value per column
+		~#
+		method : public : AddRow(name : String, value : Float, cells : Float[]) ~ Nil {
+			AddRow(name, value, cells, Nil->As(Float[]));
+		}
+
+		#~
+		Adds a row with a standard deviation per cell, from repeated runs.
+		@param name the parameter value's display name
+		@param value the parameter's numeric value
+		@param cells one mean per column
+		@param stds one standard deviation per column, or Nil for none
+		~#
+		method : public : AddRow(name : String, value : Float, cells : Float[], stds : Float[]) ~ Nil {
+			cols := @columns->Size();
+			if(cols = 0) {
+				Refuse("add columns before rows");
+			};
+			if(cells = Nil | cells->Size() <> cols) {
+				Refuse("row '{$name}' needs {$cols} cells");
+			};
+			if(stds <> Nil & stds->Size() <> cols) {
+				Refuse("row '{$name}' needs {$cols} deviations");
+			};
+
+			copy := Float->New[cols];
+			spread := Float->New[cols];
+			each(c : cols) {
+				copy[c] := cells[c];
+				if(stds <> Nil) {
+					spread[c] := stds[c];
+				};
+			};
+
+			@row_names->AddBack((name = Nil) ? FormatNumber(value) : name);
+			@row_values->AddBack(FloatRef->New(value));
+			@cells->AddBack(FloatArrayRef->New(copy));
+			@stds->AddBack(FloatArrayRef->New(spread));
+			if(stds <> Nil) {
+				@has_stds := true;
+			};
+		}
+
+		#~
+		Sets the footnote of fixed settings printed under the table.
+		@param text the footnote
+		~#
+		method : public : SetFootnote(text : String) ~ Nil {
+			@footnote := (text = Nil) ? "" : text;
+		}
+
+		#~
+		The title.
+		@return title text
+		~#
+		method : public : GetTitle() ~ String {
+			return @title;
+		}
+
+		#~
+		The swept parameter's name.
+		@return the first column's heading
+		~#
+		method : public : GetParameter() ~ String {
+			return @parameter;
+		}
+
+		#~
+		The footnote.
+		@return footnote text, empty when unset
+		~#
+		method : public : GetFootnote() ~ String {
+			return @footnote;
+		}
+
+		#~
+		Column headings, in order.
+		@return the numeric columns' names
+		~#
+		method : public : GetColumnNames() ~ String[] {
+			out := String->New[@columns->Size()];
+			each(i : @columns) {
+				out[i] := @columns->Get(i);
+			};
+
+			return out;
+		}
+
+		#~
+		Rows in the table.
+		@return row count
+		~#
+		method : public : Size() ~ Int {
+			return @row_names->Size();
+		}
+
+		#~
+		A row's display name.
+		@param row row index
+		@return the name
+		~#
+		method : public : GetRowName(row : Int) ~ String {
+			CheckRow(row);
+			return @row_names->Get(row);
+		}
+
+		#~
+		A row's numeric parameter value.
+		@param row row index
+		@return the value
+		~#
+		method : public : GetRowValue(row : Int) ~ Float {
+			CheckRow(row);
+			return @row_values->Get(row)->Get();
+		}
+
+		#~
+		A cell.
+		@param row row index
+		@param col column index
+		@return the value (the mean, for repeated runs)
+		~#
+		method : public : Get(row : Int, col : Int) ~ Float {
+			CheckRow(row);
+			CheckCol(col);
+			return @cells->Get(row)->Get()[col];
+		}
+
+		#~
+		A cell's standard deviation.
+		@param row row index
+		@param col column index
+		@return the deviation, 0.0 when the table holds none
+		~#
+		method : public : GetStd(row : Int, col : Int) ~ Float {
+			CheckRow(row);
+			CheckCol(col);
+			return @stds->Get(row)->Get()[col];
+		}
+
+		#~
+		Whether any row carries standard deviations.
+		@return true after an AddRow with deviations
+		~#
+		method : public : HasStds() ~ Bool {
+			return @has_stds;
+		}
+
+		#~
+		The index of a column by name.
+		@param name column heading
+		@return the index, or -1
+		~#
+		method : public : ColumnIndex(name : String) ~ Int {
+			each(i : @columns) {
+				if(@columns->Get(i)->Equals(name)) {
+					return i;
+				};
+			};
+
+			return -1;
+		}
+
+		#~
+		One column's values, in row order.
+		@param name column heading
+		@return one value per row; raises LabError for an unknown column
+		~#
+		method : public : GetColumn(name : String) ~ Float[] {
+			c := ColumnIndex(name);
+			if(c < 0) {
+				Refuse("no column named '{$name}'");
+			};
+
+			out := Float->New[Size()];
+			each(r : out) {
+				out[r] := @cells->Get(r)->Get()[c];
+			};
+
+			return out;
+		}
+
+		#~
+		One column's standard deviations, in row order.
+		@param name column heading
+		@return one deviation per row (zeros when the table holds none); raises LabError for an unknown column
+		~#
+		method : public : GetColumnStds(name : String) ~ Float[] {
+			c := ColumnIndex(name);
+			if(c < 0) {
+				Refuse("no column named '{$name}'");
+			};
+
+			out := Float->New[Size()];
+			each(r : out) {
+				out[r] := @stds->Get(r)->Get()[c];
+			};
+
+			return out;
+		}
+
+		#~
+		The parameter values, in row order: the x axis of a chart.
+		@return one value per row
+		~#
+		method : public : GetRowValues() ~ Float[] {
+			out := Float->New[Size()];
+			each(r : out) {
+				out[r] := @row_values->Get(r)->Get();
+			};
+
+			return out;
+		}
+
+		#~
+		The row names, in row order.
+		@return one name per row
+		~#
+		method : public : GetRowNames() ~ String[] {
+			out := String->New[Size()];
+			each(r : out) {
+				out[r] := @row_names->Get(r);
+			};
+
+			return out;
+		}
+
+		#~
+		An aligned plain-text table: the title, a header, one line per row,
+		the footnote. Deviations render as "mean +/- std".
+		@return the text, lines ending in LF
+		~#
+		method : public : ToText() ~ String {
+			cols := @columns->Size();
+			rows := Size();
+
+			# render every cell first, then size the columns to the widest
+			header := String->New[cols + 1];
+			header[0] := @parameter;
+			each(c : cols) {
+				header[c + 1] := @columns->Get(c);
+			};
+
+			texts := String->New[rows, cols + 1];
+			each(r : rows) {
+				texts[r, 0] := @row_names->Get(r);
+				each(c : cols) {
+					texts[r, c + 1] := FormatCell(r, c, "+/-");
+				};
+			};
+
+			width := cols + 1;
+			widths := Int->New[width];
+			each(c : width) {
+				widths[c] := header[c]->Size();
+				each(r : rows) {
+					if(texts[r, c]->Size() > widths[c]) {
+						widths[c] := texts[r, c]->Size();
+					};
+				};
+			};
+
+			out := "";
+			if(@title->Size() > 0) {
+				out += @title;
+				out += "\n";
+				out += Repeat('=', @title->Size());
+				out += "\n";
+			};
+
+			each(c : width) {
+				if(c > 0) {
+					out += "  ";
+				};
+				out += header[c]->PadTo(widths[c], ' ', c > 0);
+			};
+			out += "\n";
+
+			each(c : width) {
+				if(c > 0) {
+					out += "  ";
+				};
+				out += Repeat('-', widths[c]);
+			};
+			out += "\n";
+
+			each(r : rows) {
+				each(c : width) {
+					if(c > 0) {
+						out += "  ";
+					};
+					out += texts[r, c]->PadTo(widths[c], ' ', c > 0);
+				};
+				out += "\n";
+			};
+
+			if(@footnote->Size() > 0) {
+				out += "\n";
+				out += @footnote;
+				out += "\n";
+			};
+
+			return out;
+		}
+
+		#~
+		A GitHub-flavoured Markdown table under a "###" title, the footnote in
+		italics. Deviations render as "mean ± std"; a pipe in a name is escaped.
+		@return the Markdown, lines ending in LF
+		~#
+		method : public : ToMarkdown() ~ String {
+			cols := @columns->Size();
+			out := "";
+			if(@title->Size() > 0) {
+				out += "### ";
+				out += EscapeMarkdown(@title);
+				out += "\n\n";
+			};
+
+			out += "| ";
+			out += EscapeMarkdown(@parameter);
+			each(c : cols) {
+				out += " | ";
+				out += EscapeMarkdown(@columns->Get(c));
+			};
+			out += " |\n|---|";
+			each(c : cols) {
+				out += "---:|";
+			};
+			out += "\n";
+
+			each(r : Size()) {
+				out += "| ";
+				out += EscapeMarkdown(@row_names->Get(r));
+				each(c : cols) {
+					out += " | ";
+					out += FormatCell(r, c, "±");
+				};
+				out += " |\n";
+			};
+
+			if(@footnote->Size() > 0) {
+				out += "\n_";
+				out += EscapeMarkdown(@footnote);
+				out += "_\n";
+			};
+
+			return out;
+		}
+
+		#~
+		RFC 4180 CSV: a header of the parameter name, "<parameter>_value", the
+		columns and, when the table holds deviations, "<column>_std" for each;
+		then one record per row. Fields are quoted only when they must be. The
+		title and footnote are not written: a CSV is data, the Markdown and JSON
+		forms carry the prose.
+		@return the CSV, records ending in LF
+		~#
+		method : public : ToCsv() ~ String {
+			cols := @columns->Size();
+			width := 2 + cols + (@has_stds ? cols : 0);
+			fields := String->New[width];
+			fields[0] := @parameter;
+			fields[1] := @parameter + "_value";
+			each(c : cols) {
+				fields[2 + c] := @columns->Get(c);
+				if(@has_stds) {
+					fields[2 + cols + c] := @columns->Get(c) + "_std";
+				};
+			};
+
+			out := CsvTable->FormatRow(fields);
+			out += "\n";
+
+			each(r : Size()) {
+				fields := String->New[width];
+				fields[0] := @row_names->Get(r);
+				fields[1] := FormatNumber(@row_values->Get(r)->Get());
+				each(c : cols) {
+					fields[2 + c] := FormatNumber(@cells->Get(r)->Get()[c]);
+					if(@has_stds) {
+						fields[2 + cols + c] := FormatNumber(@stds->Get(r)->Get()[c]);
+					};
+				};
+				out += CsvTable->FormatRow(fields);
+				out += "\n";
+			};
+
+			return out;
+		}
+
+		#~
+		JSON, built with Data.JSON: {"title","parameter","footnote","columns":[],
+		"precision":[],"rows":[{"name","value","cells":{column: value},
+		"stds":{column: deviation}}]}; "stds" is present only when the table holds
+		deviations.
+		@return the JSON text
+		~#
+		method : public : ToJson() ~ String {
+			root := JsonElement->New(JsonElement->JsonType->OBJECT);
+			root->Insert("title", @title);
+			root->Insert("parameter", @parameter);
+			root->Insert("footnote", @footnote);
+
+			columns := JsonElement->New(JsonElement->JsonType->ARRAY);
+			precision := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(c : @columns) {
+				columns->Add(@columns->Get(c));
+				precision->Add(@precision->Get(c)->Get());
+			};
+			root->Insert("columns", columns);
+			root->Insert("precision", precision);
+
+			rows := JsonElement->New(JsonElement->JsonType->ARRAY);
+			row : JsonElement;
+			cells : JsonElement;
+			stds : JsonElement;
+			each(r : Size()) {
+				row := JsonElement->New(JsonElement->JsonType->OBJECT);
+				row->Insert("name", @row_names->Get(r));
+				row->Insert("value", Number(@row_values->Get(r)->Get()));
+				cells := JsonElement->New(JsonElement->JsonType->OBJECT);
+				each(c : @columns) {
+					cells->Insert(@columns->Get(c), Number(@cells->Get(r)->Get()[c]));
+				};
+				row->Insert("cells", cells);
+				if(@has_stds) {
+					stds := JsonElement->New(JsonElement->JsonType->OBJECT);
+					each(c : @columns) {
+						stds->Insert(@columns->Get(c), Number(@stds->Get(r)->Get()[c]));
+					};
+					row->Insert("stds", stds);
+				};
+				rows->Add(row);
+			};
+			root->Insert("rows", rows);
+
+			return root->ToString();
+		}
+
+		#~
+		Reads a table written by ToCsv. The title and footnote come back empty.
+		@param text CSV text
+		@return the table; raises LabError when the text is not a ToCsv table
+		~#
+		function : FromCsv(text : String) ~ ResultTable {
+			if(text = Nil) {
+				Refuse("FromCsv: text is Nil");
+			};
+
+			table := CsvTable->New(text);
+			if(<>table->IsParsed() | table->Size() < 1) {
+				Refuse("FromCsv: the text did not parse as CSV");
+			};
+
+			header := table->GetHeaders();
+			width := header->Size();
+			if(width < 2 | <>header->Get(1)->Equals(header->Get(0) + "_value")) {
+				Refuse("FromCsv: the header is not <parameter>,<parameter>_value,...");
+			};
+
+			result := ResultTable->New("", header->Get(0));
+			# metric columns are those before the first "_std" column
+			metrics := 0;
+			for(c := 2; c < width; c += 1;) {
+				if(<>header->Get(c)->EndsWith("_std")) {
+					metrics += 1;
+				};
+			};
+			has_stds := width = 2 + 2 * metrics;
+			if(<>has_stds & width <> 2 + metrics) {
+				Refuse("FromCsv: deviation columns do not match the value columns");
+			};
+			each(c : metrics) {
+				result->AddColumn(header->Get(2 + c));
+			};
+
+			row : CsvRow;
+			cells : Float[];
+			stds : Float[];
+			for(r := 1; r < table->Size(); r += 1;) {
+				row := table->Get(r);
+				if(row <> Nil & row->Size() = width) {
+					cells := Float->New[metrics];
+					each(c : metrics) {
+						cells[c] := row->Get(2 + c)->ToFloat();
+					};
+					if(has_stds) {
+						stds := Float->New[metrics];
+						each(c : metrics) {
+							stds[c] := row->Get(2 + metrics + c)->ToFloat();
+						};
+						result->AddRow(row->Get(0), row->Get(1)->ToFloat(), cells, stds);
+					}
+					else {
+						result->AddRow(row->Get(0), row->Get(1)->ToFloat(), cells);
+					};
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Reads a table written by ToJson.
+		@param text JSON text
+		@return the table; raises LabError when the text is not a ToJson table
+		~#
+		function : FromJson(text : String) ~ ResultTable {
+			if(text = Nil) {
+				Refuse("FromJson: text is Nil");
+			};
+
+			parser := JsonParser->New(text);
+			if(<>parser->Parse()) {
+				Refuse("FromJson: the text did not parse as JSON");
+			};
+
+			root := parser->GetRoot();
+			if(root = Nil | <>root->Has("parameter") | <>root->Has("columns") | <>root->Has("rows")) {
+				Refuse("FromJson: not a ResultTable document");
+			};
+
+			result := ResultTable->New(TextOf(root, "title"), TextOf(root, "parameter"));
+			result->SetFootnote(TextOf(root, "footnote"));
+
+			columns := root->Get("columns");
+			precision := root->Get("precision");
+			each(c : columns->Size()) {
+				if(precision <> Nil & precision->Has(c)) {
+					result->AddColumn(columns->Get(c)->GetString(), precision->Get(c)->GetInt());
+				}
+				else {
+					result->AddColumn(columns->Get(c)->GetString());
+				};
+			};
+
+			rows := root->Get("rows");
+			row : JsonElement;
+			cells : JsonElement;
+			stds : JsonElement;
+			values : Float[];
+			spread : Float[];
+			name : String;
+			each(r : rows->Size()) {
+				row := rows->Get(r);
+				cells := row->Get("cells");
+				values := Float->New[columns->Size()];
+				each(c : columns->Size()) {
+					name := columns->Get(c)->GetString();
+					if(cells <> Nil & cells->Has(name)) {
+						values[c] := cells->Get(name)->GetFloat();
+					};
+				};
+				if(row->Has("stds")) {
+					stds := row->Get("stds");
+					spread := Float->New[columns->Size()];
+					each(c : columns->Size()) {
+						name := columns->Get(c)->GetString();
+						if(stds->Has(name)) {
+							spread[c] := stds->Get(name)->GetFloat();
+						};
+					};
+					result->AddRow(TextOf(row, "name"), row->Get("value")->GetFloat(), values, spread);
+				}
+				else {
+					result->AddRow(TextOf(row, "name"), row->Get("value")->GetFloat(), values);
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Writes the table in the form the file extension names: .md Markdown,
+		.csv CSV, .json JSON, anything else the aligned text.
+		@param path file to write
+		@return true when written
+		~#
+		method : public : Save(path : String) ~ Bool {
+			if(path = Nil) {
+				return false;
+			};
+
+			lower := path->ToLower();
+			if(lower->EndsWith(".md")) {
+				return System.IO.Filesystem.FileWriter->WriteFile(path, ToMarkdown());
+			};
+			if(lower->EndsWith(".csv")) {
+				return System.IO.Filesystem.FileWriter->WriteFile(path, ToCsv());
+			};
+			if(lower->EndsWith(".json")) {
+				return System.IO.Filesystem.FileWriter->WriteFile(path, ToJson());
+			};
+
+			return System.IO.Filesystem.FileWriter->WriteFile(path, ToText());
+		}
+
+		#~
+		A number for CSV and JSON: up to 10 decimals, trailing zeros and a
+		trailing point trimmed, never "-0".
+		@param value the number
+		@return its text
+		~#
+		function : FormatNumber(value : Float) ~ String {
+			text := Float->ToString(value, 10);
+			if(text->Has('.')) {
+				last := text->Size() - 1;
+				while(last > 0 & text->Get(last) = '0') {
+					last -= 1;
+				};
+				if(text->Get(last) = '.') {
+					last -= 1;
+				};
+				text := text->SubString(0, last + 1);
+			};
+			if(text->Equals("-0")) {
+				return "0";
+			};
+
+			return text;
+		}
+
+		method : FormatCell(r : Int, c : Int, plus_minus : String) ~ String {
+			p := @precision->Get(c)->Get();
+			text := Float->ToString(@cells->Get(r)->Get()[c], p);
+			if(@has_stds) {
+				text += " ";
+				text += plus_minus;
+				text += " ";
+				text += Float->ToString(@stds->Get(r)->Get()[c], p);
+			};
+
+			return text;
+		}
+
+		function : Number(value : Float) ~ JsonElement {
+			return JsonElement->New(JsonElement->JsonType->NUMBER, FormatNumber(value));
+		}
+
+		function : TextOf(elem : JsonElement, name : String) ~ String {
+			if(elem = Nil | <>elem->Has(name)) {
+				return "";
+			};
+
+			value := elem->Get(name);
+			if(value = Nil | value->IsNull()) {
+				return "";
+			};
+
+			return value->GetString();
+		}
+
+		function : EscapeMarkdown(text : String) ~ String {
+			if(text = Nil) {
+				return "";
+			};
+
+			return text->ReplaceAll("|", "\\|");
+		}
+
+		function : Repeat(ch : Char, count : Int) ~ String {
+			out := String->New();
+			each(i : count) {
+				out->Append(ch);
+			};
+
+			return out;
+		}
+
+		method : CheckRow(row : Int) ~ Nil {
+			if(row < 0 | row >= Size()) {
+				Refuse("row {$row} is outside the table");
+			};
+		}
+
+		method : CheckCol(col : Int) ~ Nil {
+			if(col < 0 | col >= @columns->Size()) {
+				Refuse("column {$col} is outside the table");
+			};
+		}
+
+		function : Refuse(message : String) ~ Nil {
+			Runtime->Raise(LabError->New("ResultTable: " + message));
+		}
+	}
+
+	#~
+	A sweep over one named parameter: for every value (and every seed, when
+	repeats are asked for) it runs the Trial, scores the predictions, and
+	collects a ResultTable with train_accuracy, test_accuracy, precision,
+	recall, f1, fpr, false_negatives and fit_ms per value -- mean and sample
+	standard deviation over the seeds when there is more than one.
+
+	Test-set metrics come from the test predictions; train_accuracy is the only
+	training-set number, there for the overfitting curve. The confusion counts
+	come from the trial's Bool predictions and the rates from ThresholdResult,
+	every ratio guarded (a value that predicts nothing positive has no precision
+	and reports 0.0).
+
+```
+exp := Experiment->New("Random forest: trees", "n_estimators");
+exp->SetValues([10.0, 50.0, 100.0, 200.0, 500.0]);
+exp->SetSeeds([1, 2, 3]);
+exp->AddSetting("max_depth", "8");
+table := exp->Run(ForestTrial->New(split));
+table->ToMarkdown()->PrintLine();
+```
+	~#
+	class Experiment {
+		@title : String;
+		@parameter : String;
+		@values : Float[];
+		@names : String[];
+		@seeds : Int[];
+		@settings : Vector<String>;
+
+		#~
+		Constructor
+		@param title the table's title
+		@param parameter the swept parameter's name
+		~#
+		New(title : String, parameter : String) {
+			@title := title;
+			@parameter := parameter;
+			@settings := Vector->New()<String>;
+			@seeds := Int->New[1];
+		}
+
+		#~
+		The values to sweep, named by their number.
+		@param values one per trial
+		~#
+		method : public : SetValues(values : Float[]) ~ Nil {
+			SetValues(values, Nil->As(String[]));
+		}
+
+		#~
+		The values to sweep with display names, for a categorical parameter such
+		as a kernel (values 0, 1, 2; names "linear", "rbf", "poly").
+		@param values one per trial
+		@param names one per value, or Nil to name each by its number
+		~#
+		method : public : SetValues(values : Float[], names : String[]) ~ Nil {
+			if(values = Nil | values->Size() = 0) {
+				Refuse("at least one value is needed");
+			};
+			if(names <> Nil & names->Size() <> values->Size()) {
+				Refuse("names and values differ in length");
+			};
+
+			@values := values;
+			@names := String->New[values->Size()];
+			each(i : values) {
+				if(names <> Nil & names[i] <> Nil) {
+					@names[i] := names[i];
+				}
+				else {
+					@names[i] := ResultTable->FormatNumber(values[i]);
+				};
+			};
+		}
+
+		#~
+		Seeds for repeated runs; each value is run once per seed and the table
+		reports the mean and sample standard deviation. The default is one run
+		with seed 0.
+		@param seeds one per repetition
+		~#
+		method : public : SetSeeds(seeds : Int[]) ~ Nil {
+			if(seeds = Nil | seeds->Size() = 0) {
+				Refuse("at least one seed is needed");
+			};
+
+			@seeds := seeds;
+		}
+
+		#~
+		Records a fixed setting for the footnote, e.g. ("max_depth", "8").
+		@param name the setting
+		@param value its value
+		~#
+		method : public : AddSetting(name : String, value : String) ~ Nil {
+			@settings->AddBack(name + "=" + value);
+		}
+
+		#~
+		Runs the sweep.
+		@param trial builds, fits and predicts for one value
+		@return the table, one row per value; raises LabError when no values are set, the trial returns Nil, or its arrays disagree in length
+		~#
+		method : public : Run(trial : Trial) ~ ResultTable {
+			if(trial = Nil) {
+				Refuse("trial is Nil");
+			};
+			if(@values = Nil) {
+				Refuse("call SetValues before Run");
+			};
+
+			table := ResultTable->New(@title, @parameter);
+			table->AddColumn("train_accuracy");
+			table->AddColumn("test_accuracy");
+			table->AddColumn("precision");
+			table->AddColumn("recall");
+			table->AddColumn("f1");
+			table->AddColumn("fpr");
+			table->AddColumn("false_negatives", 0);
+			table->AddColumn("fit_ms", 1);
+
+			metrics := 8;
+			reps := @seeds->Size();
+			sums := Float->New[metrics];
+			sq := Float->New[metrics];
+			means := Float->New[metrics];
+			stds := Float->New[metrics];
+			m : Float[];
+			result : TrialResult;
+			value : Float;
+			name : String;
+			seed : Int;
+
+			each(i : @values) {
+				value := @values[i];
+				name := @names[i];
+				each(k : metrics) {
+					sums[k] := 0.0;
+					sq[k] := 0.0;
+				};
+
+				each(s : reps) {
+					seed := @seeds[s];
+					result := trial->Run(value, name, seed);
+					if(result = Nil) {
+						Refuse("the trial returned Nil for {$name} (seed {$seed})");
+					};
+					m := Measure(result, name, seed);
+					each(k : metrics) {
+						sums[k] += m[k];
+						sq[k] += m[k] * m[k];
+					};
+				};
+
+				means := Float->New[metrics];
+				stds := Float->New[metrics];
+				each(k : metrics) {
+					means[k] := sums[k] / reps->As(Float);
+					if(reps > 1) {
+						# sample variance via sums, clamped: rounding can leave it a hair below zero
+						variance := (sq[k] - reps->As(Float) * means[k] * means[k]) / (reps - 1)->As(Float);
+						if(variance < 0.0) {
+							variance := 0.0;
+						};
+						stds[k] := Float->Sqrt(variance);
+					};
+				};
+
+				if(reps > 1) {
+					table->AddRow(name, value, means, stds);
+				}
+				else {
+					table->AddRow(name, value, means);
+				};
+			};
+
+			table->SetFootnote(Footnote());
+
+			return table;
+		}
+
+		# [train_accuracy, test_accuracy, precision, recall, f1, fpr, false_negatives, fit_ms]
+		method : Measure(result : TrialResult, name : String, seed : Int) ~ Float[] {
+			train := Counts(result->GetTrainPredictions(), result->GetTrainLabels(), "training", name, seed);
+			test := Counts(result->GetTestPredictions(), result->GetTestLabels(), "test", name, seed);
+
+			m := Float->New[8];
+			m[0] := train->GetAccuracy();
+			m[1] := test->GetAccuracy();
+			m[2] := test->GetPrecision();
+			m[3] := test->GetRecall();
+			m[4] := 0.0;
+			if(m[2] + m[3] > 0.0) {
+				m[4] := 2.0 * m[2] * m[3] / (m[2] + m[3]);
+			};
+			m[5] := test->GetFpr();
+			m[6] := test->GetFalseNegatives()->As(Float);
+			m[7] := result->GetFitMs();
+
+			return m;
+		}
+
+		# The four confusion cells, handed to ThresholdResult for the rates. One
+		# place to change when a shared ConfusionMatrix class exists.
+		function : Counts(pred : Bool[], actual : Bool[], which : String, name : String, seed : Int) ~ ThresholdResult {
+			if(pred = Nil | actual = Nil) {
+				Refuse("the {$which} predictions or labels are Nil for {$name} (seed {$seed})");
+			};
+			if(pred->Size() <> actual->Size() | pred->Size() = 0) {
+				ps := pred->Size();
+				as := actual->Size();
+				Refuse("{$ps} {$which} predictions against {$as} labels for {$name} (seed {$seed})");
+			};
+
+			tp := 0;
+			fp := 0;
+			fn := 0;
+			tn := 0;
+			each(i : pred) {
+				if(pred[i]) {
+					if(actual[i]) {
+						tp += 1;
+					}
+					else {
+						fp += 1;
+					};
+				}
+				else {
+					if(actual[i]) {
+						fn += 1;
+					}
+					else {
+						tn += 1;
+					};
+				};
+			};
+
+			return ThresholdResult->New(0.5, tp, fp, fn, tn);
+		}
+
+		method : Footnote() ~ String {
+			out := "";
+			each(i : @settings) {
+				if(i > 0) {
+					out += "; ";
+				};
+				out += @settings->Get(i);
+			};
+
+			if(@seeds->Size() > 1) {
+				if(out->Size() > 0) {
+					out += "; ";
+				};
+				n := @seeds->Size();
+				out += "repeats={$n} seeds (";
+				each(i : @seeds) {
+					if(i > 0) {
+						out += ", ";
+					};
+					out += @seeds[i]->ToString();
+				};
+				out += "), cells are mean and sample standard deviation";
+			};
+
+			return out;
+		}
+
+		function : Refuse(message : String) ~ Nil {
+			Runtime->Raise(LabError->New("Experiment: " + message));
+		}
+	}
 }
