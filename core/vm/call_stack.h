@@ -38,6 +38,11 @@
 #ifndef _WIN32
 #include <sys/mman.h>
 #include <unistd.h>
+#include <pthread.h>
+#endif
+#ifdef __linux__
+#include <mutex>
+#include <unordered_map>
 #endif
 
 // What bounds a call, and why there are three limits.
@@ -101,11 +106,8 @@ namespace Runtime {
   // set of 1,000 idle threads did not change). POSIX: 8 MB, Linux's default and
   // the size of a POSIX main thread's stack, unless --call-depth asks for more
   // than the default; macOS's own default of 512 KB held only a few hundred
-  // compiled frames. Larger stacks are not free there: where transparent huge
-  // pages are on for every mapping (THP "always"), glibc lets 2 MB pages back a
-  // thread stack, and the resident size grew with the stack -- measured on
-  // Linux, 100 idle threads held 48 MB with 8 MB stacks and 86 MB with 18 MB
-  // ones. A 32-bit build keeps the platform default.
+  // compiled frames. A 32-bit build keeps the platform default. On Linux the VM
+  // allocates the stack itself (AllocateThreadStack), so huge pages stay off it.
   inline size_t NativeThreadStackBytes() {
 #if UINTPTR_MAX > 0xFFFFFFFFu
     const size_t mb = 1048576ULL;
@@ -126,6 +128,104 @@ namespace Runtime {
     return 0;
 #endif
   }
+
+  // Keeps transparent huge pages off a stack-like region on Linux: a thread's
+  // native stack, its call and operand stacks. Where THP is on for every
+  // mapping ("always", the default on many distributions and in WSL), the
+  // kernel backs any 2 MB-aligned stretch of an anonymous mapping with one huge
+  // page at the first touch inside it, so a thread that used a few KB of stack
+  // held up to 2 MB resident. Measured in WSL with THP "always": 100 idle VM
+  // threads added 37 MB of RSS, 30 MB of it AnonHugePages, and the 18 MB stacks
+  // an earlier --call-depth change tried took the same 100 from 48 to 86 MB.
+  // A stack is touched a page at a time from the top and seldom deeply, the
+  // case huge pages cost most for. Elsewhere it does nothing: Windows commits
+  // stacks page by page, and macOS has no THP.
+  inline void NoHugePages(void* addr, size_t bytes) {
+#if defined(__linux__) && defined(MADV_NOHUGEPAGE)
+    if(addr && bytes) {
+      madvise(addr, bytes, MADV_NOHUGEPAGE);
+    }
+#else
+    (void)addr;
+    (void)bytes;
+#endif
+  }
+
+#if defined(__linux__)
+  // Native stacks for the threads the VM starts, allocated by the VM rather
+  // than by glibc so that NoHugePages applies before the first touch: glibc
+  // writes its thread descriptor at the top of a stack it allocates before the
+  // thread runs, and an madvise after that leaves the huge page it faulted in.
+  // (glibc.pthread.stack_hugetlb=0 does the same, but only as a GLIBC_TUNABLES
+  // setting the user makes before the process starts.) A stack is freed when
+  // its thread is joined, which is also when glibc frees one it allocated for
+  // a joinable thread; one never joined stays mapped until exit, as glibc's do.
+  class ThreadStacks {
+    struct Region {
+      void* base;
+      size_t bytes;
+    };
+
+    static std::mutex& Lock() {
+      static std::mutex lock;
+      return lock;
+    }
+
+    static std::unordered_map<pthread_t, Region>& Regions() {
+      static std::unordered_map<pthread_t, Region> regions;
+      return regions;
+    }
+
+  public:
+    // Maps 'bytes' of stack plus a guard page below it and sets it on 'attrs'.
+    // Returns the mapping's base, or nullptr (attrs untouched: glibc allocates)
+    static void* Allocate(pthread_attr_t* attrs, size_t bytes, size_t &mapped) {
+      const size_t page = (size_t)sysconf(_SC_PAGESIZE);
+      bytes = (bytes + page - 1) / page * page;
+      mapped = bytes + page;
+      void* base = mmap(nullptr, mapped, PROT_READ | PROT_WRITE,
+                        MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_NORESERVE, -1, 0);
+      if(base == MAP_FAILED) {
+        return nullptr;
+      }
+      NoHugePages(base, mapped);
+      // the guard page: an overflow faults instead of running into whatever
+      // is mapped below (glibc gives no guard to a stack it did not allocate)
+      if(mprotect(base, page, PROT_NONE) || pthread_attr_setstack(attrs, (char*)base + page, bytes)) {
+        munmap(base, mapped);
+        return nullptr;
+      }
+      return base;
+    }
+
+    static void Free(void* base, size_t mapped) {
+      if(base) {
+        munmap(base, mapped);
+      }
+    }
+
+    // the thread created on a stack from Allocate
+    static void Record(pthread_t thread, void* base, size_t mapped) {
+      std::lock_guard<std::mutex> guard(Lock());
+      Regions()[thread] = Region{ base, mapped };
+    }
+
+    // after a successful pthread_join: the thread is gone, and so may its stack be
+    static void Release(pthread_t thread) {
+      Region region{ nullptr, 0 };
+      {
+        std::lock_guard<std::mutex> guard(Lock());
+        auto found = Regions().find(thread);
+        if(found == Regions().end()) {
+          return;
+        }
+        region = found->second;
+        Regions().erase(found);
+      }
+      Free(region.base, region.bytes);
+    }
+  };
+#endif
 
   struct CallStack {
     // --- read by compiled code; offsets are fixed (see above) ---
@@ -322,7 +422,13 @@ namespace Runtime {
       return VirtualAlloc(nullptr, bytes, MEM_RESERVE, PAGE_NOACCESS);
 #else
       void* mem = mmap(nullptr, bytes, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
-      return mem == MAP_FAILED ? nullptr : mem;
+      if(mem == MAP_FAILED) {
+        return nullptr;
+      }
+      // the flag stays with the range as Commit makes parts of it usable, so a
+      // deep stack's frames are not backed 2 MB at a time either
+      NoHugePages(mem, bytes);
+      return mem;
 #endif
     }
 

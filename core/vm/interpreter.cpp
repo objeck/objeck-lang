@@ -1652,6 +1652,10 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
     VmExit(1);
 #endif
   }
+#ifdef __linux__
+  // the stack the VM allocated for it (ProcessAsyncMethodCall)
+  ThreadStacks::Release(vm_thread);
+#endif
 #endif
   MemoryManager::EndBlocking();
 }
@@ -2127,9 +2131,18 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param
   // 8 MB, or more for a --call-depth above the default (call_stack.h); macOS's
   // own default is 512 KB
   const size_t native_stack = NativeThreadStackBytes();
+#ifdef __linux__
+  // allocated here with huge pages off, freed at the join (call_stack.h)
+  size_t stack_mapped = 0;
+  void* stack_base = native_stack ? ThreadStacks::Allocate(&attrs, native_stack, stack_mapped) : nullptr;
+  if(native_stack && !stack_base) {
+    pthread_attr_setstacksize(&attrs, native_stack);
+  }
+#else
   if(native_stack) {
     pthread_attr_setstacksize(&attrs, native_stack);
   }
+#endif
 
   // execute thread
   pthread_t vm_thread;
@@ -2137,7 +2150,13 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param
     std::wcerr << L">>> Internal error: Internal error: Unable to create runtime thread! <<<" << std::endl;
     VmExit(-1);
   }
-#endif  
+  pthread_attr_destroy(&attrs);
+#ifdef __linux__
+  if(stack_base) {
+    ThreadStacks::Record(vm_thread, stack_base, stack_mapped);
+  }
+#endif
+#endif
   
   // assign thread ID
   if(!instance) {
