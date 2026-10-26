@@ -171,6 +171,15 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     modes. A
     v2026.10.1 obr fails all of this: its call stack was a fixed 256 frames,
     and it does not know the flag.
+ 17. A heap threshold given with --gc-threshold scales with the live heap.
+    It holds as given while a major collection leaves a quarter of it free, and
+    follows the live heap (twice what survived) while it does not. Held fixed
+    whatever survived, a threshold below the live heap collected on every
+    allocation: gc_fixed_threshold_scales.obs, keeping 4,000 objects under
+    --gc-threshold=64k, ran 23,539 majors (11-18 s) and runs 8 now. It and
+    gc_heap_sizing.obs pass under --gc-threshold=64k and 1m, interpreted, by
+    default and with every method compiled; the regression runner passes no VM
+    flags, so under it the fixture checks only its data.
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only]
 
@@ -468,6 +477,8 @@ def main():
     check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base)
 
     check_call_depth(obc, obr, env, bin_dir)
+
+    check_gc_threshold_scales(obc, obr, env, bin_dir)
 
     # ---- 11. the heap verifier (OBJECK_GC_VERIFY) ----------------------------------
     verify_section(obc, obr, env, bin_dir)
@@ -1023,6 +1034,29 @@ def check_trace_signatures(obc, obr, env, bin_dir):
 
 
 CALL_DEPTH_LINE = ">>> call stack bounds have been exceeded! <<<"
+
+
+def check_gc_threshold_scales(obc, obr, env, bin_dir):
+    # ---- 17. a heap threshold given with --gc-threshold scales with the live heap -----
+    for name in ("gc_fixed_threshold_scales", "gc_heap_sizing"):
+        src = os.path.join(SCRIPT_DIR, name + ".obs")
+        dest = os.path.join(SCRIPT_DIR, name + ".obe")
+        rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+        check(f"{name} compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+        if rc != 0:
+            continue
+        for threshold in ("64k", "1m"):
+            for label, flags in (("jit=off", ["--jit=off"]), ("default", []), ("jit=1", ["--jit=1"])):
+                rc, out, err = run([obr, "--gc-threshold=" + threshold] + flags + [dest], env=env, cwd=bin_dir)
+                text = err.decode(errors="replace")
+                check(f"{name} passes under --gc-threshold={threshold} ({label})",
+                      rc == 0 and out.startswith(b"PASS:"),
+                      f"rc={rc} out={out[-240:]!r} stderr={text[-240:]!r}")
+                if name == "gc_fixed_threshold_scales":
+                    # the fixture checks its own bound; this names the count when it fails
+                    m = re.search(r"majors=(\d+)", text)
+                    check(f"{name} reports a bounded major count under --gc-threshold={threshold} ({label})",
+                          m is not None and int(m.group(1)) <= 200, f"stderr={text[-240:]!r}")
 
 
 def check_call_depth(obc, obr, env, bin_dir):

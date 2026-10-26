@@ -9,8 +9,10 @@ anything. A program that keeps a large data set while making temporaries -- a ta
 never met the first condition: once its live data passed the 8 MB start, every array it
 allocated ran a full collection: building this test's data ran 121 majors.
 
-A threshold given with --gc-threshold stays fixed instead (stress runs use a small one to force
-collections), so under one this test checks that the threshold does not move.
+A threshold given with --gc-threshold holds as given while the live heap fits well under it
+(stress runs use a small one to force collections), and scales with the live heap while three
+quarters of it or more survive a major collection: held fixed, a threshold below the live heap
+ran a full collection on every allocation. Under one this test checks both halves.
 ~#
 class GcHeapSizing {
 	@failures : static : Int;
@@ -30,19 +32,17 @@ class GcHeapSizing {
 		return Runtime->GetProperty("runtime.memory.max")->ToInt();
 	}
 
+	function : Allocated() ~ Int {
+		return Runtime->GetProperty("runtime.memory.allocated")->ToInt();
+	}
+
 	function : Main(args : String[]) ~ Nil {
 		@failures := 0;
 
-		# 8 MB unless --gc-threshold fixed it. A fixed threshold under this test's 64 MB would
-		# collect on every array allocation, which is that setting's purpose, so under one
-		# the test checks only that the threshold does not move, with a few MB of data.
+		# 8 MB unless --gc-threshold gave it, and then the test uses a few MB of data
 		initial := Threshold();
 		if(initial <> 8388608) {
-			small := Int[]->New[4];
-			each(i : small) {
-				small[i] := Int->New[131072];
-			};
-			Check("a threshold set with --gc-threshold stays as given", Threshold() = initial);
+			Given(initial);
 		}
 		else {
 			Sized();
@@ -54,6 +54,41 @@ class GcHeapSizing {
 		else {
 			"FAIL: the major-collection threshold follows the live heap ({$@failures} checks)"->PrintLine();
 			Runtime->Exit(1);
+		};
+	}
+
+	function : Given(initial : Int) ~ Nil {
+		Outgrow(initial);
+
+		# with that data gone, 16 MB of 4 KB temporaries runs majors whose survivors fit
+		# well under the given threshold, which then holds as given
+		total := 0;
+		each(i : 4000) {
+			temp := Int->New[512];
+			temp[0] := i;
+			total += temp[0];
+		};
+		Check("the temporaries are intact", total = 4000 * 3999 / 2);
+		Check("the given threshold returns once the live heap fits under it", Threshold() = initial);
+	}
+
+	# Its own method, so nothing in the caller's frame keeps the data alive afterwards
+	function : Outgrow(initial : Int) ~ Nil {
+		start := Majors();
+
+		# 4 MB kept: a threshold of 2 MB or less is outgrown before the last array
+		small := Int[]->New[4];
+		each(i : small) {
+			small[i] := Int->New[131072];
+			small[i][0] := i;
+		};
+		built := Majors() - start;
+		Check("the kept data survives", small[3][0] = 3);
+		Check("the threshold is above the live heap", Threshold() > Allocated());
+		if(initial <= 2097152) {
+			Check("a threshold the live heap outgrew scales with it", Threshold() > initial);
+			# 1 MB arrays from a threshold of 64 KB or more: a collection per array at most
+			Check("building 4 MB runs a few majors, not one per allocation ({$built} ran)", built <= 8);
 		};
 	}
 

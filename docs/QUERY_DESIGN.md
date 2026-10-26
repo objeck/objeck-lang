@@ -784,8 +784,9 @@ design above. Each phase adds its notes here.
 
 **Phase 5 (reading).**
 - Downloads are kept under the system temporary folder in `objeck_query_cache`, revalidated
-  with `If-None-Match` and `If-Modified-Since`. A new copy is written beside the old and renamed
-  into place. Without a validator, the content's size and CRC32 tell versions apart.
+  with `If-None-Match` and `If-Modified-Since`. Without a validator, the content's size and
+  CRC32 tell versions apart. Each URL has a folder of versions and a note naming the current
+  one, which threads and processes share ("One cache folder, many processes" below).
 
 **Phase 5 (serving).**
 - `TableServer` lives in its own library, `query_server.obl` (bundle
@@ -1179,13 +1180,13 @@ made by the first table or catalog, before there is one to share):
   older than the read, a later write lands in a later second and the stamp alone tells. Files that share a lock by their hash wait for each other's
   reads, which only costs time, and only when both are being read.
 - *URLs.* The revalidating request (`If-None-Match`, `If-Modified-Since`) goes out with no lock
-  held, so concurrent queries of one URL revalidate concurrently. The local copy and its note
-  are read and replaced only under the URL's file lock, which a catalog also holds while it
-  reads the copy into a table, so the copy cannot change under a reader, and the stamp the
-  table is cached under is the copy's own (the note now records it, on a third line older
-  versions ignore). A new copy and a new note are written to files named for this process and
-  thread and renamed into place: before, two threads downloading one URL wrote one `.part` file
-  at once, and the loser's rename failed its query.
+  held, so concurrent queries of one URL revalidate concurrently. Before, two threads
+  downloading one URL wrote one `.part` file at once, and the loser's rename failed its query;
+  this section first fixed that with the URL's file lock around the copy and its note, which
+  kept threads apart but not processes. The download cache now needs no lock at all ("One
+  cache folder, many processes" below): a fetch returns a version that never changes, with the
+  stamp that belongs to it, and a catalog reads that version into a table under the URL's file
+  lock only so that threads that miss together read it once.
 
 The locks cannot deadlock: nothing waits for a file lock while holding another lock, a thread
 holding a file lock may take only the catalog lock or an error lock, and those two take no other
@@ -1216,6 +1217,92 @@ threads sharing a catalog query a URL with no validator (so every query download
 that answers 304, over eight rounds that each change the first; every answer must be right and
 the changed file read once per round. Before the fix a thread's query failed with "cannot
 write its copy" in the first round of every run.
+
+## One cache folder, many processes
+
+**The gap.** The download cache lives in one folder under the system's temporary folder, so
+every process on a machine shares it, and "One catalog, many threads" made it safe only within
+one process: the URL's file lock kept threads apart, and nothing kept processes apart. A URL
+had one copy and one note (its `ETag`, `Last-Modified` and stamp), each replaced by a rename,
+so two processes could:
+
+- *fail a query.* On Windows a rename cannot replace a file another process has open, and a
+  reader holds the copy open while it reads it, so the writer's rename failed and so did its
+  query ("cannot write its copy"). With six processes querying a changing file, about one
+  query in ten failed.
+- *pair a copy with another download's note.* The copy and the note were two renames. Two
+  processes that downloaded different versions could leave one's copy beside the other's note,
+  and a note's validators are what the next fetch sends: with the newer note beside the older
+  copy, the server answers 304 and the older copy is served as current until the file changes
+  again. A reader could also read a note, then a copy another process had replaced since.
+
+**The design: immutable versions and one small note, published by one rename.** Each URL has a
+folder of its own (named by the URL's hash) holding:
+
+- *versions*: each download, under a name no other writer uses (`PID-THREAD-COUNT_name.csv`:
+  the process id, the thread's number from `Thread->GetCurrentId`, and a count of this process's
+  writes; a name a process with the same id left behind is skipped). A version is written once,
+  whole, and never changed, so a reader never sees it change, and since no other writer uses its
+  name, writing it cannot fail because another process reads something. The URL's own file name
+  ends it, so its extension still says how to read it.
+- *the note*, `current`: four lines, the `ETag`, the `Last-Modified`, the stamp of the version
+  and the version's name. It is written under a name of the writer's own and renamed over the
+  old note: one rename of one small file publishes a version together with its validators. A
+  reader reads the note once and uses the version it names, so the validators it sends are
+  always the version's own and a 304 answer means that version is current.
+
+A fetch reads the note, revalidates with its validators, and on a 304 returns the version the
+note named. On a 200 it reads the note again: if it names the same content (the same stamp:
+another process published it meanwhile, or a server without validators sent it again), it
+returns that version and writes nothing; otherwise it writes a new version, publishes it, and
+returns it. A fetch always returns the version it decided on, whether or not its note is the one
+left in place, so two processes that download at once each get a whole, correct answer, and the
+last note wins, which costs at most one more download if it names the older version.
+
+The note is the only file ever replaced, and readers hold it open only for one small read.
+Where that collides on Windows, the writer tries the rename again for up to about a second,
+and a reader that cannot open the note while it is being replaced tries again for a few
+milliseconds; a note that still cannot be read counts as none (the file is downloaded again),
+and a note that cannot be published leaves the old one, which names a whole version too.
+Neither is an error.
+
+**Collecting old versions without a lock.** A reader learns a version's name from the note or by
+writing the version itself, and opens it at once. So a version the note no longer names can be
+in use only by a reader that read the note while it named that version, or that wrote it. The
+note's age bounds the first: while the note is older than the grace period (five minutes), every
+version it does not name was superseded at least that long ago. The version's own age bounds the
+second. A fetch therefore deletes, in its URL's folder, every file other than the note, the
+version the note names and the version it is returning that is older than the grace period,
+but only while the note is older than that too; it reads the note before its age, so a note
+replaced in between looks new and nothing is deleted. A file another process has open cannot be
+deleted on Windows, and a later fetch tries again. Versions a process wrote but never published,
+and notes left by a process that stopped mid-write, go the same way. No lock file is needed:
+nothing is ever read, changed and written back, and each step is one atomic rename or the
+creation of a new name.
+
+The cache of earlier versions of the library (a copy `HASH_name` and a `.meta` beside it in the
+cache folder itself) is not read: the first fetch of a URL downloads it again into its own
+folder, and the old files stay until the temporary folder is cleaned.
+
+**Within a process,** the catalog keeps its URL file lock only for single-flight reading: a
+fetch returns a version and its stamp, and threads that miss the catalog's file cache for that
+stamp together read the version once. It no longer re-reads the note under the lock to find the
+stamp of a copy that might have changed, because a version cannot change.
+
+**The test.** `query_url_cache_processes` starts an in-process server whose file changes every
+15 ms (two URLs: one with an `ETag`, one with no validator, so every fetch of it downloads),
+and in each of ten rounds starts six processes of its own program that point their cache at
+one shared folder and query the file 24 times each: through a catalog they keep, a new catalog
+each time, and a `CsvSource`. Every version of the file has a different number of rows, each
+naming the version, so an answer shows whether it read one whole version, and each query first
+asks the server which version it has, so an answer older than that is caught. After each
+round the server stops changing and the parent, sharing the folder, must read the current
+version. Before the fix it failed in every run on Windows, in every mode (133 to 184 of the
+1,440 queries failed with "cannot write its copy"), and in most runs on Linux, where nothing
+fails but answers are wrong: two to five per run read a version older than the server had when
+the query began (a 304 for a note paired with an older copy), and some read a copy cut short.
+After it, none fail on either, at `-opt s3` and `s0`, with and without the JIT, and with
+`OBJECK_JIT_THRESHOLD=1`.
 
 ## Archives and workbooks in SQL
 

@@ -15896,17 +15896,13 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 					return known;
 				};
 
-				# a miss: read the local copy under the URL's lock, which every writer of the
-				# copy holds too, so the copy cannot change while it is read and the stamp it
-				# is cached under is the copy's own
+				# a miss: read the version the fetch returned, which never changes and is the
+				# version its stamp names, under the URL's lock, so threads that miss together
+				# read it once
 				downloaded : Table := Nil;
 				lock := CatalogLocks->ForFile(path);
 				critical(lock) {
-					stamp := UrlCache->CurrentStamp(path);
-					if(stamp = Nil) {
-						stamp := fetched->GetStamp();
-					};
-
+					stamp := fetched->GetStamp();
 					downloaded := CachedFile(key, stamp);
 					if(downloaded = Nil) {
 						CountRead();
@@ -17022,13 +17018,21 @@ catalog->Load(source);
 	}
 
 	#
-	# Reading files over HTTP (docs/QUERY_DESIGN.md, section 10). A download is kept in a
-	# cache folder under the system's temporary folder, keyed by URL, beside a note of the
-	# server's ETag and Last-Modified. A later fetch asks the server whether it changed
-	# (If-None-Match, If-Modified-Since); a 304 answer reuses the copy. A new copy is written
-	# to a temporary file and renamed into place, so a reader never sees half a file.
+	# Reading files over HTTP (docs/QUERY_DESIGN.md, section 10, and "One cache folder, many
+	# processes"). Downloads are kept in a cache folder under the system's temporary folder,
+	# one folder per URL, which any number of threads and processes share. A URL's folder
+	# holds its versions, each a whole download under a name no other writer uses and never
+	# changed once written, and a small note, 'current', naming the version to use with the
+	# server's ETag and Last-Modified for it. A later fetch asks the server whether it changed
+	# (If-None-Match, If-Modified-Since); a 304 answer uses the version the note named. A new
+	# download is written as a new version and then published by replacing the note, one
+	# rename of one small file, so a reader reads either the old note and the old version or
+	# the new note and the new version, never a copy with another copy's note. Versions the
+	# note no longer names are deleted once nothing can still be using them.
 	#
 	class : private : UrlCache {
+		# a version or a note this process wrote, for names no other writer uses
+		@written : static : Int;
 		function : IsUrl(path : String) ~ Bool {
 			if(path = Nil) {
 				return false;
@@ -17087,9 +17091,9 @@ catalog->Load(source);
 			return out;
 		}
 
-		# the local copy's file name: the hash, then the URL's own file name, so the
-		# extension (and a '.gz') still says how to read it
-		function : LocalPath(url : String) ~ String {
+		# the URL's own file name, which ends every version's name, so the extension (and a
+		# '.gz') still says how to read it
+		function : BaseName(url : String) ~ String {
 			path := PathPart(url);
 			start := 0;
 			each(i : path) {
@@ -17102,50 +17106,78 @@ catalog->Load(source);
 			if(base->Size() = 0) {
 				base := "index";
 			};
+			return base;
+		}
 
-			name := Folder();
-			name += "/";
-			name += Hash(url);
-			name += "_";
-			name += base;
+		# the URL's folder, made if missing (by this process or another at the same moment);
+		# Nil if it cannot be made
+		function : EntryFolder(url : String) ~ String {
+			entry := Folder();
+			entry += "/";
+			entry += Hash(url);
+			if(<>Directory->Exists(entry)) {
+				Directory->Create(entry);
+			};
+			return Directory->Exists(entry) ? entry : Nil;
+		}
+
+		# a name no other thread or process writes: this process's id, the thread's number and
+		# a count of this process's writes. A process that ended may have left a file under a
+		# name a later process with its id would choose, so a name in use is skipped; no
+		# process running now has this one's id, so no other can take the name meanwhile.
+		function : UniqueName(entry : String, suffix : String) ~ String {
+			lock := CatalogLocks->Maps();
+			name : String := Nil;
+			while(name = Nil) {
+				count := 0;
+				critical(lock) {
+					@written += 1;
+					count := @written;
+				};
+
+				candidate := "{$(Runtime->GetProcessId())}-{$(System.Concurrency.Thread->GetCurrentId())}-{$count}{$suffix}";
+				if(<>File->Exists("{$entry}/{$candidate}")) {
+					name := candidate;
+				};
+			};
 			return name;
 		}
 
-		# The current copy of a URL, fetched or revalidated; Nil with the error set. Several
-		# threads may fetch one URL at once: the request goes out with no lock held, and the
-		# copy and its note are read and replaced only under the URL's file lock (CatalogLocks),
-		# which a catalog also holds while it reads the copy. A new copy is written to a file of
-		# this process and thread's own, then renamed over the old, and so is its note, which
-		# records the copy's stamp; the note's two validator lines are those earlier versions
-		# wrote, so either reads the other's cache.
+		# how long, in seconds, a version the note no longer names is kept, and a file left by a
+		# writer that stopped: a reader opens the version a fetch returned at once, and reads an
+		# archive's members well within this
+		function : Grace() ~ Int {
+			return 300;
+		}
+
+		# The current copy of a URL, fetched or revalidated; Nil with the error set. Any number
+		# of threads and processes may fetch one URL at once, with no lock held: a version never
+		# changes once written, and the note naming it is replaced by one rename, so the note a
+		# fetch reads names a whole version its validators belong to. A fetch that downloads
+		# writes a version of its own and returns it, whether or not its note is the one left
+		# in place, unless the note already names the same content.
 		function : Fetch(url : String, error : StringHolder) ~ UrlFile {
-			local := LocalPath(url);
-			meta := String->New(local);
-			meta += ".meta";
-
-			etag := "";
-			modified := "";
-			lock := CatalogLocks->ForFile(url);
-			critical(lock) {
-				lines := Notes(local, meta);
-				if(lines <> Nil) {
-					etag := lines->Get(0)->Trim();
-					modified := lines->Get(1)->Trim();
-				};
+			entry := EntryFolder(url);
+			if(entry = Nil) {
+				error->Set("'{$url}': cannot make its cache folder under '{$(Folder())}'");
+				return Nil;
 			};
 
-			client := Web.HTTP.HttpClient->New();
-			if(etag <> Nil & etag->Size() > 0) {
-				client->AddHeader("If-None-Match", etag);
-			};
-			if(modified <> Nil & modified->Size() > 0) {
-				client->AddHeader("If-Modified-Since", modified);
-			};
-
+			note := ReadNote(entry);
+			client := Client(note);
 			response := client->Get(Web.HTTP.Url->New(url));
 			code := response <> Nil ? response->GetCode() : 0;
-			if(code = 304 & File->Exists(local)) {
-				return UrlFile->New(local, "{$etag}|{$modified}");
+			if(code = 304 & note <> Nil) {
+				version := note->Get(3);
+				Collect(entry, version);
+				return UrlFile->New("{$entry}/{$version}", note->Get(2));
+			};
+
+			if(code = 304) {
+				# validators this fetch did not send: ask again for the whole file
+				client := Client(Nil);
+				response := client->Get(Web.HTTP.Url->New(url));
+				code := response <> Nil ? response->GetCode() : 0;
 			};
 
 			if(code < 200 | code > 299) {
@@ -17166,7 +17198,7 @@ catalog->Load(source);
 			headers := client->GetResponseHeaders();
 			etag := headers->Find("etag");
 			modified := headers->Find("last-modified");
-			# trimmed, as they are when read back from the note beside the copy
+			# trimmed, as they are when read back from the note
 			etag := etag = Nil ? "" : etag->Trim();
 			modified := modified = Nil ? "" : modified->Trim();
 
@@ -17178,70 +17210,145 @@ catalog->Load(source);
 				stamp := "{$size}|{$check}";
 			};
 
-			# a new copy, and then its note, each beside the old and renamed over it, under a
-			# name no other process or thread writes
-			mine := ".{$(Runtime->GetProcessId())}_{$(System.Concurrency.Thread->GetCurrentId())}.part";
-			partial := String->New(local);
-			partial += mine;
-			note := String->New(meta);
-			note += mine;
-			written := false;
-			critical(lock) {
-				if(FileWriter->WriteFile(partial, body) & File->Rename(partial, local)) {
-					if(FileWriter->WriteFile(note, "{$etag}\n{$modified}\n{$stamp}\n")) {
-						File->Rename(note, meta);
+			# the note may name this content already (another fetch published it meanwhile, or
+			# a server without validators sent it again): use that version and write nothing
+			current := ReadNote(entry);
+			if(current <> Nil) {
+				if(current->Get(2)->Equals(stamp)) {
+					version := current->Get(3);
+					Collect(entry, version);
+					return UrlFile->New("{$entry}/{$version}", stamp);
+				};
+			};
+
+			# a new version under a name no other writer uses, whole before any note names it
+			version := UniqueName(entry, "_{$(BaseName(url))}");
+			copy := "{$entry}/{$version}";
+			if(<>FileWriter->WriteFile(copy, body)) {
+				File->Delete(copy);
+				error->Set("'{$url}': cannot write its copy to '{$copy}'");
+				return Nil;
+			};
+
+			Publish(entry, "{$etag}\n{$modified}\n{$stamp}\n{$version}\n");
+			Collect(entry, version);
+			return UrlFile->New(copy, stamp);
+		}
+
+		# a client that revalidates with a note's validators, or asks for the whole file
+		function : Client(note : Vector<String>) ~ Web.HTTP.HttpClient {
+			client := Web.HTTP.HttpClient->New();
+			if(note <> Nil) {
+				etag := note->Get(0);
+				modified := note->Get(1);
+				if(etag->Size() > 0) {
+					client->AddHeader("If-None-Match", etag);
+				};
+				if(modified->Size() > 0) {
+					client->AddHeader("If-Modified-Since", modified);
+				};
+			};
+			return client;
+		}
+
+		# The note's lines, trimmed: ETag, Last-Modified, the version's stamp and its name. Nil
+		# if there is no note, it is not whole, or the version it names is missing (deleted by
+		# hand: the cache then downloads again).
+		function : ReadNote(entry : String) ~ Vector<String> {
+			note := "{$entry}/current";
+			text := FileReader->ReadFile(note);
+			# on Windows a note being replaced cannot be opened for a moment
+			tries := 0;
+			while(text = Nil & tries < 50 & File->Exists(note)) {
+				System.Concurrency.Thread->Sleep(1);
+				text := FileReader->ReadFile(note);
+				tries += 1;
+			};
+			if(text = Nil) {
+				return Nil;
+			};
+
+			lines := SourceText->Lines(text);
+			if(lines->Size() < 4) {
+				return Nil;
+			};
+
+			fields := Vector->New()<String>;
+			each(i : 4) {
+				fields->AddBack(lines->Get(i)->Trim());
+			};
+
+			version := fields->Get(3);
+			if(version->Size() = 0 | version->Has("/") | version->Has("\\") | <>File->Exists("{$entry}/{$version}")) {
+				return Nil;
+			};
+			return fields;
+		}
+
+		# Replaces the note: written beside it under a name of this writer's own, then renamed
+		# over it, so a reader reads the old note or the new one, whole. On Windows a rename
+		# cannot replace a file that another process has open, as a reader has the note for a
+		# moment, so it is tried again for a while. A note that cannot be published leaves the
+		# old one, which names a whole version too, and the version this fetch wrote is still
+		# its answer.
+		function : Publish(entry : String, text : String) ~ Bool {
+			temp := String->New(entry);
+			temp += "/";
+			temp += UniqueName(entry, ".note");
+			if(<>FileWriter->WriteFile(temp, text)) {
+				File->Delete(temp);
+				return false;
+			};
+
+			note := "{$entry}/current";
+			tries := 0;
+			while(tries < 200) {
+				if(File->Rename(temp, note)) {
+					return true;
+				};
+				System.Concurrency.Thread->Sleep(tries < 20 ? 1 : 5);
+				tries += 1;
+			};
+
+			File->Delete(temp);
+			return false;
+		}
+
+		# Deletes what the note no longer names once nothing can be using it: versions, and
+		# notes never published, of any process, unchanged for the grace period, and only while
+		# the note itself is older than that. A reader learns a version's name from the note or
+		# by writing it, so a version is in use only by a reader that read the note while it
+		# named that version, which the note's age bounds, or that wrote it, which the version's
+		# age bounds. The note is read before its age is, so a note replaced in between is seen
+		# as new. 'keep' is the version this fetch returns. On Windows a file another process
+		# has open cannot be deleted; a later fetch tries again.
+		function : Collect(entry : String, keep : String) ~ Nil {
+			names := Directory->List(entry);
+			if(names->Size() < 3) {
+				return;
+			};
+
+			note := ReadNote(entry);
+			if(note = Nil) {
+				return;
+			};
+			current := note->Get(3);
+
+			now := Date->New(true)->GetUnixTime();
+			grace := Grace();
+			if(now - File->ModifiedTime("{$entry}/current", true)->GetUnixTime() <= grace) {
+				return;
+			};
+
+			each(i : names) {
+				name := names[i];
+				if(<>name->Equals("current") & <>name->Equals(current) & <>name->Equals(keep)) {
+					path := "{$entry}/{$name}";
+					if(now - File->ModifiedTime(path, true)->GetUnixTime() > grace) {
+						File->Delete(path);
 					};
-					written := true;
 				};
 			};
-
-			if(<>written) {
-				File->Delete(partial);
-				error->Set("'{$url}': cannot write its copy to '{$local}'");
-				return Nil;
-			};
-
-			return UrlFile->New(local, stamp);
-		}
-
-		# the lines of a URL's note, Nil if it or the copy is missing; the caller holds the
-		# URL's lock
-		function : Notes(local : String, meta : String) ~ Vector<String> {
-			if(<>File->Exists(local) | <>File->Exists(meta)) {
-				return Nil;
-			};
-
-			notes := FileReader->ReadFile(meta);
-			if(notes = Nil) {
-				return Nil;
-			};
-
-			lines := SourceText->Lines(notes);
-			return lines->Size() > 1 ? lines : Nil;
-		}
-
-		# The stamp of a URL's local copy as it is now, Nil if there is none: the note's third
-		# line, or for a note an earlier version wrote, its validators. The caller holds the
-		# URL's lock, so the copy cannot change until it has read it.
-		function : CurrentStamp(url : String) ~ String {
-			local := LocalPath(url);
-			meta := String->New(local);
-			meta += ".meta";
-			lines := Notes(local, meta);
-			if(lines = Nil) {
-				return Nil;
-			};
-
-			if(lines->Size() > 2) {
-				stamp := lines->Get(2)->Trim();
-				if(stamp->Size() > 0) {
-					return stamp;
-				};
-			};
-
-			etag := lines->Get(0)->Trim();
-			modified := lines->Get(1)->Trim();
-			return "{$etag}|{$modified}";
 		}
 	}
 

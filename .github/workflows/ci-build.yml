@@ -1051,6 +1051,28 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_lib_array_copy.py "%BIN%"
 
+    # An .obe compiled by another toolchain version is refused by the loader
+    # before it runs; the message must name both versions, say which side is
+    # stale and say to recompile. Built by patching a fresh .obe's VER_NUM, so
+    # both directions are covered and nothing committed rots at the next bump.
+    - name: obr refuses an .obe from another toolchain version with a clear message (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_obe_version_mismatch.py "$BIN"
+
+    - name: obr refuses an .obe from another toolchain version with a clear message (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_obe_version_mismatch.py "%BIN%"
+
     # Named arguments reach a library method through the parameter names its .obl
     # records; skipping a middle default goes through the method's mask forwarder,
     # which only a library build generates. No shipped library has a method that
