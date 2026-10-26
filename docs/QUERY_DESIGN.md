@@ -221,7 +221,7 @@ of reading numbers only:
 Expressions are computed after WHERE, over the rows that pass, before DISTINCT, ORDER BY and
 LIMIT. Not yet: expressions in WHERE, ON, GROUP BY or HAVING, or in a grouped or aggregate
 query's select list (`sum(x) / count(*)`): each is refused with an error that says so, never a
-silent Nil. Every statement that fails returns Nil with `GetError` set; a program that calls a
+silent Nil. "Expressions in every clause" below designs them, in three stages. Every statement that fails returns Nil with `GetError` set; a program that calls a
 method on that Nil gets the language's ordinary `NilError`, which a `?->` region recovers from.
 
 Aggregates: `COUNT(*)`, `COUNT(col)`, `SUM`, `AVG`, `MIN`, `MAX`, plus `MEDIAN` and `STDDEV`
@@ -1496,6 +1496,320 @@ version 1 and version 2 files; a durable table's indexes through Open, replay, `
 correct checksum so only the defect is refused. `query_net_range` reads the definitions over
 HTTP range requests; `query_net_serve` checks that served tables are version 1.
 `tools/otab/otab_dump.py` reads version 2.
+
+## Expressions in every clause
+
+**The gap.** #1367 put arithmetic in the select list and nowhere else. `where price * qty >
+100`, `where a + b = c`, `group by x % 10`, `having sum(a) / count(*) > 2`, `order by hi - lo`,
+`join u on t.n + 1 = u.n` and `select max(x) - min(x)` are each refused, so a research program
+computes a column in a first query and filters, groups or joins it in a second. These are the
+questions research code asks most, and the release v2026.10.2 includes the answer.
+
+**What is added, and what is not.** One expression grammar, the select list's, in every clause:
+WHERE, JOIN ... ON, GROUP BY, HAVING, ORDER BY, and inside and around aggregates. No scalar
+functions (`abs`, `round`, `coalesce`, `length`, `upper`, `lower`): nothing below needs one, each
+is a separate decision about types and empty cells, and the grammar leaves room for them later
+(a name followed by `(`, as the aggregates are written). No string concatenation, no date
+arithmetic, no `CASE`, no expressions in `UPDATE ... SET` or `INSERT ... VALUES`: values there
+stay literals and placeholders. The method-chaining API (`Col`, `Predicate`) is unchanged; no
+public class or method is added.
+
+### Grammar
+
+```
+condition  := or
+or         := and (OR and)*
+and        := not (AND not)*
+not        := NOT not | '(' condition ')' | test
+test       := expr cmp expr
+            | expr [NOT] BETWEEN expr AND expr
+            | expr [NOT] IN '(' expr (',' expr)* ')'
+            | expr [NOT] (LIKE | MATCHES) value
+            | expr IS [NOT] NULL
+cmp        := '=' | '<>' | '!=' | '<' | '<=' | '>' | '>='
+expr       := term (('+' | '-') term)*
+term       := unary (('*' | '/' | '%') unary)*
+unary      := '-' unary | primary
+primary    := number | name | '?' | '(' expr ')' | aggregate
+            | text | date | NULL | TRUE | FALSE           -- in a condition only
+aggregate  := COUNT '(' '*' ')' | func '(' expr ')'      -- func: COUNT SUM AVG MIN MAX MEDIAN STDDEV
+value      := text | '?' | word                          -- a LIKE or MATCHES pattern, as now
+```
+
+- **Precedence**, lowest first: `OR`, `AND`, `NOT`, the tests (`=`, `<>`, `<`, `<=`, `>`, `>=`,
+  `BETWEEN`, `IN`, `LIKE`, `MATCHES`, `IS`), `+ -`, `* / %`, unary minus. Arithmetic is
+  left-associative (`a - b - c` is `(a - b) - c`); tests do not chain (`a < b < c` is a syntax
+  error). `BETWEEN`'s `AND` belongs to it: `x between lo + 1 and hi and y > 0` is
+  `(x between lo + 1 and hi) and y > 0`. `NOT` before a test negates the test:
+  `not a + 1 > 2` is `not ((a + 1) > 2)`.
+- **A parenthesis in a condition** opens a grouped condition when what it encloses parses as a
+  condition and nothing after the `)` continues an expression or a test (`+ - * / %`, a
+  comparison, `IS`, `BETWEEN`, `IN`, `LIKE`, `MATCHES`, or `NOT` before one of those);
+  otherwise it opens a parenthesised expression. So `(a > 1 or b > 2) and c = 3` groups, and
+  `(a + b) * 2 > 10` and `(a) = 1` compute. When neither reading parses, the error reported is
+  the one found furthest into the statement.
+- **`n -1`** (a name, then a number with its sign) stays a subtraction, as #1367 made it, in every
+  clause; `x > -1` still compares with minus one.
+- **Words.** `TRUE` and `FALSE` are the numbers 1 and 0 in a condition, as they always were, and
+  `NULL` is an empty value; in the select list, ORDER BY and GROUP BY they stay names, as before.
+  A word standing alone in a **value position** of a test (the right side of a comparison, a
+  `BETWEEN` bound, an `IN` entry) is a column when one of the query's tables has a column of that
+  name, and otherwise text, which keeps the old engine's unquoted strings (`where s = cat`) while
+  letting `where a + b = c` compare with column `c`. This changes the meaning of an old statement
+  only where the word names a column (`where a = b` compared `a` with the text `'b'`; it now
+  compares two columns). Everywhere else a name is a column, and an unknown one is an error.
+- **Aggregates** may appear in the select list, HAVING and ORDER BY, not in WHERE, ON, GROUP BY
+  or inside another aggregate. An aggregate's argument is an expression (`sum(a * b)`).
+- **Placeholders** (`?`) may stand for any operand. They are numbered in the order they appear
+  in the statement, as now.
+- **ORDER BY** entries: a lone whole number is a select-list position (as now; below 1 is an
+  error); a lone name is a select-list label, else a column (as now); anything else is an
+  expression. **GROUP BY** entries: a column, as now, or an expression that reads at least one
+  column (`group by 1` and `group by 2 * 3` are refused rather than read as positions or as one
+  group).
+
+### Values
+
+An expression produces, for each row, one of: a whole number (Int), a number (Float), text, a
+date, a Bool, another object (a cell of an OBJECT column that is none of these), or an empty
+value. Columns give their cells by their storage type; an OBJECT column's cell is classified by
+its class (`IntRef`, `FloatRef`, `String`, `Date`, `BoolRef`; any other class is an object, and
+a `BoolRef` there is a Bool that compares as an object, rule 6 below).
+Literals: a number as written (a whole number is an Int, anything with a `.` or an exponent a
+Float), text, a date, `TRUE`/`FALSE` as 1 and 0, `NULL` as empty. A placeholder has its bound
+value's kind.
+
+**Arithmetic reads numbers only** (#1367's rule, kept): an operand that is empty, text, a date,
+a Bool or an object makes the result empty.
+
+| Operation | Ints | With a Float | Empty result when |
+|---|---|---|---|
+| `a + b`, `a - b`, `a * b` | Int | Float | an Int result does not fit in 64 bits |
+| `a / b` | Float (`7 / 2` is 3.5) | Float | `b` is zero (`0`, `0.0` or `-0.0`) |
+| `a % b` | Int, the sign of `a` (truncated); `a % -1` is 0 | Float: `a - trunc(a / b) * b` | `b` is zero |
+| `-a` | Int | Float | `a` is the smallest Int |
+
+- **Overflow** of Int arithmetic gives an empty cell, not a wrapped number (a change from #1367,
+  which wrapped silently; the release that ships either is v2026.10.2, so no released behaviour
+  changes). The checks cost a comparison or two per row. Float arithmetic follows IEEE 754:
+  overflow gives an infinity, `inf - inf` and `0 * inf` give NaN, and NaN propagates; NaN and the
+  infinities are values, not empty cells.
+- **A zero divisor** gives an empty cell, as #1367 decided (a Float division by zero would stop
+  the program, and an Int one would raise). `a % -1` is defined as 0 because the hardware
+  instruction traps on the smallest Int.
+- An Int that meets a Float converts to a Float, rounding past 2^53, as everywhere in the engine.
+- **Constant folding.** A part of an expression that reads no column (literals, and placeholders
+  with their values) is computed once per run, before any row is read, by the same rules.
+
+### Comparisons, and why indexes and zone maps keep working
+
+A test compares the two sides row by row with one table of rules, which is the rule a column has
+always been compared with a constant (section 3, "Phase 2" and "Phase 6" in "As built"):
+
+1. If either side is empty, every test except `IS NULL` is false (`<>` included).
+2. Two Ints compare exactly (so `2^53 + 1 > 2^53`).
+3. Two numbers otherwise compare as Floats; if either is NaN they cannot be ordered.
+4. Two texts compare as text; two dates in time order.
+5. A Bool read from a BOOL column compares, false before true, with another such Bool, with any
+   other Bool (an OBJECT cell's or a placeholder's), and with the whole numbers 0 and 1 (which
+   is what `TRUE` and `FALSE` are).
+6. Two other values of the same class (cells of OBJECT columns and placeholders' values that are
+   none of the kinds above, and Bools that are not from a BOOL column) compare by that class's
+   `Compare`, called on the left one, as `Cell->Compare` does.
+7. Anything else cannot be ordered.
+
+Rules 5 and 6 are the engine's today, kept on purpose though they are uneven: `flag = true`
+matches a BOOL column, while a `BoolRef` in an OBJECT column compared with the number 1 does
+not, and `BoolRef->Compare` tells only equal from unequal. With them, every pair of a column type
+and a constant compares exactly as the existing `Filter` compares them, which is what makes
+reduction (below) safe.
+
+Values that cannot be ordered satisfy only `<>`. So NaN satisfies only `<>`, as it does today,
+and sorts after every number. `NOT` is the complement of a condition's rows, empty cells
+included (there is no three-valued logic, as before). `x IN (a, b)` is `x = a OR x = b`;
+`x BETWEEN a AND b` is `x >= a AND x <= b`. `LIKE` and `MATCHES` take part only when the operand
+is text (a number never matches, `NOT LIKE` included). `IS NULL` is true where the operand is
+empty, which for an expression includes an operand that is not a number and a zero divisor; NaN
+is not empty.
+
+**Reduction.** At the start of each run, with placeholders bound and constants folded, each test
+is reduced where it can be:
+
+- a lone column against a constant (`price > 100`, `100 < price`, `price > ? * 2`,
+  `name = cat`), and `IS [NOT] NULL`, `LIKE` or `MATCHES` on a lone column, becomes the test
+  the engine has always made, the column on the left (the operator flipped when it was on the
+  right). It is the same `Filter` node as before, so it
+  skips row groups by their zone maps, reads through a hash or sorted index, takes part in the
+  planner's choice and in `BETWEEN`'s single range, exactly as a plain comparison does today;
+- a test with no column at all is decided once: it keeps every row or none (`where 1 = 0`);
+- anything else, an expression over columns on either side or two columns
+  (`price * qty > 100`, `a = b`), is an **expression term**: no zone maps and no index, rows
+  tested by batch evaluation (below).
+
+There is no other rewriting: `x + 0 > 5` is not `x > 5` (on a text column the first is empty),
+and `-x < -5` is not `x > 5`. Because a reduced test is the node the engine already had, and the
+expression evaluator implements the same table of rules, reduction can only change speed, never
+an answer. In an AND, the planner reads the best index-backed term (section 5) and the
+expression terms are then tested on its candidates; an OR with an expression term scans, as an
+OR with any unindexed term does. A view's `GetPlan()` and `Explain` show what was chosen: a
+reduced term exactly as today (`where runs: SORTED index runs_score on score (>)`), and
+expression terms as part of a scan (`where runs: scan`).
+
+### Where each kind of expression is evaluated
+
+- **WHERE**, over the FROM table or the joined rows. Below a join, a term whose columns all come
+  from one table is applied to that table before the join, as now (except on the right of a
+  LEFT JOIN); a term over several tables is applied to the joined rows; a constant term is decided
+  once.
+- **The select list** of a query without grouping: after WHERE, over the rows that pass, into a
+  computed column (#1367). The column is typed as any column is (section 1): INT when every
+  result is an Int, FLOAT when any is a Float.
+- **ORDER BY** an expression: computed the same way into a hidden column, then sorted as a column
+  (stable; empty cells last in both directions; NaN after every number ascending and before them
+  descending, as a FLOAT column already sorts). In ORDER BY a name inside an expression is a select-list label first, then a
+  column, as a lone name already is (`select n * 10 as tens ... order by tens + n`). An entry
+  whose text repeats a select-list expression uses that column.
+- **GROUP BY** an expression: computed into a hidden column per row, then grouped exactly as a
+  column is (rows sorted by the keys, groups in key order, empty keys last together). The
+  default label of a select-list item that repeats a grouping expression is its text.
+- **A grouped query** (GROUP BY, or any aggregate) evaluates in two layers:
+  1. *per row:* grouping expressions and aggregate arguments (`sum(a * b)` sums the products;
+     `count(e)` counts rows where `e` is not empty);
+  2. *per group:* the select list, HAVING and ORDER BY are expressions over the group's keys and
+     its aggregates (`sum(a) / count(*)`, `max(x) - min(x)`, `avg(x) * 2`, `k + 1` where `k` is
+     grouped, `(x % 10) * 2` where `x % 10` is grouped). A column outside an aggregate must be a
+     grouping column, or sit inside a sub-expression that repeats a grouping expression (matched
+     by structure after names are resolved, not by spacing or redundant parentheses); otherwise
+     the existing error: `column 'x' must be in GROUP BY or inside an aggregate`. In HAVING and
+     ORDER BY a name is a select-list label first, as now.
+
+  Aggregates keep their rules ("Phase 4"): numbers only, empty when a group has none; COUNT is
+  INT; SUM, MIN and MAX stay INT over whole numbers, which for an expression argument means every
+  result of it is an Int (its computed column is INT); AVG, MEDIAN and STDDEV are FLOAT. (SUM of
+  Ints is computed in Int arithmetic and wraps on overflow, as it does today; making it empty
+  instead, like expression arithmetic, is left for a separate change.)
+- **JOIN ... ON** a condition over the tables joined so far and the new one:
+  - *Keys.* An equality in ON whose one side reads only earlier tables and the other only the new
+    table is a **key equality**. Keys match as the join has always matched them ("Phase 4"): as
+    whole numbers when both sides are whole (INT, BOOL, DATE), as numbers when both are numbers
+    (NaN matches nothing), otherwise by their text; empty keys never match. This applies to every
+    key equality in ON, so the order of the terms never matters; other tests in ON follow the
+    comparison table above.
+  - *The fast path.* When the AND-terms of ON include a key equality, the first one is matched
+    with the existing sorted key matcher: a side that is a column is used as it is, and a side
+    that is an expression is computed once per row of its side (the new table's rows, or the
+    rows joined so far) into a key column, typed as a computed column. The remaining terms are
+    then tested on each matched pair. A term that reads only the new table filters that table's
+    rows before matching (the same for INNER and LEFT joins: a right row that fails it never
+    matches), through its indexes where it reduces.
+  - *Otherwise* (`on a.x < b.y`, `on a.x + b.y = 10`, `on a.k = b.k or a.j = b.j`) every pair is
+    tested, O(n·m), and the plan says so (`join u: every pair`). A join on two columns plans as
+    it does today; a computed key adds `join u: key computed from t.n + 1`.
+  - *LEFT JOIN:* a left row with no pair that passes all of ON appears once, with empty cells on
+    the right, before WHERE is applied. Output order stays the existing order: left rows in order,
+    each with its matches in the right table's order.
+
+### Batch evaluation and the performance contract
+
+Expressions are bound once per run (names to columns, placeholders to values, constants
+folded) into a tree of evaluator nodes, separate from the parsed statement. Each node evaluates
+a **batch** of up to 1,024 row numbers at once into scratch arrays it allocated when bound: a
+kind per row plus an `Int[]`, a `Float[]`, a `String[]` and a `Compare[]` for the values. A node
+is one loop over its children's arrays; a column node reads the column's own arrays (an encoded
+text column through its dictionary, a date as its stored milliseconds). An expression term
+compares two batches into the selection vector, chunk by chunk over the candidate rows, so its
+cost is a few array loops per 1,024 rows and **no object is allocated per row**: text and objects
+are references to the stored cells, numbers are never boxed. Computed columns are filled with
+`FillNumbers` from typed arrays rather than cell by cell. The only allocations in a query remain
+its result arrays and one set of scratch arrays per bound expression.
+
+The bar: the select-list expression `price * qty` over 1,000,000 rows must not be slower than
+#1367's row-at-a-time evaluator (which boxes every operand and result), and `where price * qty >
+100` must be within a small factor of the same loop written over plain arrays. Both are
+measured, with the numbers recorded here, at stage 1; no timing gate is added to the suite.
+
+### Thread safety
+
+A parsed statement and its expression trees are built by the parser and never changed after:
+they are shared by every thread that finds the plan in a table's or catalog's cache. Name
+resolution makes new trees instead of renaming in place; binding makes evaluator nodes and
+scratch arrays that belong to one run. So a run writes nothing a cached plan holds, and the
+existing contracts ("Concurrent readers", "One catalog, many threads") cover expressions with no
+new lock. (#1367's select-list evaluator numbered its column references inside the parsed tree
+at parse time; that state moves into the per-run binding.)
+
+### Prepared statements
+
+A placeholder may stand anywhere an operand can, in any clause. Values are read at the start of
+each run, so constant folding and reduction use the bound values (`where price > ? * 2` reads
+through a sorted index on `price`), and a statement bound again re-plans. An unbound placeholder
+is refused as now (`no value bound for placeholder N`). A bound value in arithmetic that is not a
+number gives empty results, by the rule above.
+
+### Errors
+
+Every refusal returns Nil with `GetError` set, never a silent empty result:
+
+| Statement | Error |
+|---|---|
+| `select zz + 1 from t` | `unknown column 'zz' in 'zz + 1'` (#1367) |
+| `where zz + 1 > 0` | `unknown column 'zz'` |
+| `where sum(x) > 1` | `syntax error at position N: expected a column name (aggregates belong in HAVING, not WHERE), found 'sum'` (as now) |
+| `group by sum(x)` | `GROUP BY cannot use an aggregate: 'sum(x)'` |
+| `group by 1`, `group by 2 * 3` | `GROUP BY needs a column or an expression over columns, not '1'` |
+| `select sum(count(*))` | `an aggregate cannot contain another aggregate: 'sum(count(*))'` |
+| `on sum(t.x) = u.y` | `aggregates are not allowed in ON: 'sum(t.x)'` |
+| `select k, n + 1 from t group by k` | `column 'n' must be in GROUP BY or inside an aggregate` |
+| `where a < b < c` | `syntax error at position N: expected ...` (the parser's usual form) |
+| `order by zz + 1` | `unknown column 'zz' in ORDER BY 'zz + 1'` |
+
+Messages that exist today keep their text. Each stage replaces the refusals it lifts (#1367's
+`an expression in the select list of a grouped or aggregate query is not supported`, and the
+syntax errors that expressions in WHERE, ON, GROUP BY and HAVING meet today), and its test shows
+them before the change.
+
+### Stages
+
+Each stage is its own pull request, merged before the next starts, with `query.obl` and every
+library that links it rebuilt (`query_ml`, `query_odbc`, `query_server` and `query_vision` change
+only by class ids when classes are added to `query.obl`, which a decompressed comparison checks).
+
+1. **The expression core, WHERE and ORDER BY.** The typed expression tree and its batch
+   evaluator, used by the select list (replacing #1367's evaluator), WHERE (with reduction,
+   UPDATE and DELETE included) and ORDER BY.
+2. **Grouping.** GROUP BY expressions, aggregates over expressions, expressions over aggregates
+   in the select list, HAVING and ORDER BY.
+3. **Joins.** ON conditions: key equalities over expressions, other terms, and the every-pair
+   path.
+
+### Tests
+
+Every new or touched test runs at `-opt s3` and `-opt s0`, each under `obr`, `obr --jit=off`
+and `OBJECK_JIT_THRESHOLD=1`, on Windows and on Linux.
+
+- **Differential** (`query_expr_differential`, extended by each stage): random tables (INT with
+  negatives and whole numbers past 2^53, FLOAT with NaN, infinities and -0.0, STRING with an
+  encoded and a plain column, DATE, BOOL, an OBJECT column mixing numbers and text, empty cells,
+  deleted rows) and random expression trees (columns, literals of every kind, placeholders,
+  `+ - * / %`, unary minus, parentheses), in random conditions (every comparison, AND, OR, NOT,
+  IN, BETWEEN, LIKE, IS [NOT] NULL), select lists, ORDER BY, and at stages 2 and 3 GROUP BY,
+  aggregates, HAVING and joins. Each query runs through the engine and through a naive
+  row-at-a-time evaluator written in the test from the rules above, and the rows and their order
+  must be equal. Seeds come from the command line (a fixed default set for the suite), with many
+  rounds per seed.
+- **Indexes and zone maps:** each differential query also runs on a twin table carrying random
+  hash and sorted indexes, and on tables large enough to span several 64K-row groups and several
+  1,024-row batches (sizes just under, at and over each boundary); the answers must be equal.
+  Reduced terms must report index plans (`price > ? * 2`, `100 < price`).
+- **Prepared statements:** placeholders in every clause, bound and re-bound, against the oracle.
+- **Concurrency** (`query_expr_concurrent`): threads sharing a catalog meet at a barrier before
+  each statement, with expressions in every clause and statements new to the plan cache each
+  round; every answer must equal the one computed alone.
+- **Refusals** with their exact messages (the table above), and the old refusals shown failing
+  first.
+- **Explain**: reduced terms name their index, expression terms scan, joins without a key say
+  they test every pair.
+- The existing query tests, the full suite, and the libraries' decompressed comparison.
 
 ## Open questions
 
