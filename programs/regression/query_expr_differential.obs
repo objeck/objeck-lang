@@ -289,6 +289,9 @@ class QueryExprDifferential {
 	@words : static : String[];
 	@in_condition : static : Bool;
 	@no_params : static : Bool;
+	@joined : static : Int;
+	@u_names : static : String[];
+	@u_types : static : String[];
 	@seed_now : static : Int;
 	@grouped : static : Int;
 	@arg_aggs : static : Vector<A>;
@@ -2230,6 +2233,525 @@ class QueryExprDifferential {
 		};
 	}
 
+	# a value for a cell of u
+	function : UCell(column : Int) ~ Compare {
+		if(Next(7) = 0) {
+			return Nil;
+		};
+
+		select(column) {
+			label 0: { return IntRef->New(Next(7) - 3); }
+			label 1: { return FloatRef->New(Next(9) = 0 ? Float->NaN() : (Next(17) - 8)->As(Float) / 2.0); }
+			label 2: { return @words[Next(@words->Size())]; }
+			label 3: { return IntRef->New(IntValue()); }
+		};
+
+		pick := Next(3);
+		if(pick = 0) {
+			return IntRef->New(Next(7) - 3);
+		}
+		else if(pick = 1) {
+			return FloatRef->New((Next(7) - 3)->As(Float) / 2.0);
+		};
+		return @words[Next(@words->Size())];
+	}
+
+	#
+	# Joins: ON conditions with key equalities over columns and expressions on either side,
+	# tests on one table or both, OR, and LEFT JOIN, against nested loops over every pair
+	#
+
+	# the kind of a column of t or u, by its qualified name
+	function : JoinKind(name : String) ~ String {
+		if(name->StartsWith("u.")) {
+			column := name->SubString(2, name->Size() - 2);
+			each(i : @u_names) {
+				if(@u_names[i]->Equals(column)) {
+					return @u_types[i];
+				};
+			};
+			return Nil;
+		};
+		return KindOfColumn(name->SubString(2, name->Size() - 2));
+	}
+
+	# a value of a qualified column for a pair of rows; the right row is Nil for an unmatched
+	# LEFT JOIN row
+	function : Eval2(e : E, left : Row, right : Row) ~ V {
+		select(e->GetKind()) {
+			label 0: {
+				name := e->GetName();
+				row := name->StartsWith("u.") ? right : left;
+				if(row = Nil) {
+					return V->Empty();
+				};
+				return V->FromCell(row->Get(name->SubString(2, name->Size() - 2)), JoinKind(name));
+			}
+
+			label 1: {
+				return V->FromValue(e->GetValue());
+			}
+
+			label 3: {
+				return NegateV(Eval2(e->GetLeft(), left, right));
+			}
+		};
+
+		return BinaryV(e->GetOp(), Eval2(e->GetLeft(), left, right), Eval2(e->GetRight(), left, right));
+	}
+
+	# a cell of one table, by its qualified name, boxed as the table holds it
+	function : Cell2(name : String, left : Row, right : Row) ~ Compare {
+		row := name->StartsWith("u.") ? right : left;
+		if(row = Nil) {
+			return Nil;
+		};
+		return row->Get(name->SubString(2, name->Size() - 2));
+	}
+
+	# an expression over one table's numeric and text columns, written qualified
+	function : JoinArith(prefix : String, depth : Int) ~ E {
+		if(depth > 1 | Next(2) = 0) {
+			pick := Next(8);
+			if(pick < 5) {
+				# text and the mixed column alone (keys matched by text), numbers inside arithmetic
+				names := prefix->Equals("t") ? ["i", "j", "f", "j", "o"] : ["k", "x", "k", "i", "o"];
+				if(depth = 1) {
+					names := prefix->Equals("t") ? ["i", "j", "f", "s", "o"] : ["k", "x", "s", "i", "o"];
+				};
+				name := "{$prefix}.{$(names[Next(names->Size())])}";
+				@sql += name;
+				return E->Column(name);
+			}
+			else if(pick < 8 | Next(3) > 0) {
+				v := Next(9) - 4;
+				@sql += v->ToString();
+				return E->Literal(IntRef->New(v));
+			};
+			return Param();
+		};
+
+		ops := ['+', '-', '*', '%'];
+		op := ops[Next(ops->Size())];
+		@sql += "(";
+		left := JoinArith(prefix, depth + 1);
+		@sql += " {$op} ";
+		right := JoinArith(prefix, depth + 1);
+		@sql += ")";
+		return E->New(2, Nil, Nil, op, left, right);
+	}
+
+	# Kinds of ON term: 0 a key equality (left over t, right over u), 1 a test on t, 2 a test on
+	# u, 3 a test over both, 4 an OR
+	function : JoinTerm(kinds : Vector<IntRef>, lefts : Vector<E>, rights : Vector<E>, conds : Vector<C>) ~ Nil {
+		pick := Next(10);
+		if(pick < 4) {
+			# an equality over both, written either way round; ClassifyTerm decides whether it is
+			# a key equality by the tables each side reads
+			if(Next(2) = 0) {
+				left := JoinArith("t", 1);
+				@sql += " = ";
+				right := JoinArith("u", 1);
+				AddTerm(C->New(3, "=", false, left, right, Nil, Nil, Nil), kinds, lefts, rights, conds);
+			}
+			else {
+				right := JoinArith("u", 1);
+				@sql += " = ";
+				left := JoinArith("t", 1);
+				AddTerm(C->New(3, "=", false, right, left, Nil, Nil, Nil), kinds, lefts, rights, conds);
+			};
+			return;
+		};
+
+		ops := ["=", "<>", "<", "<=", ">", ">="];
+		op := ops[Next(ops->Size())];
+		if(pick < 6) {
+			prefix := pick = 4 ? "t" : "u";
+			left := JoinArith(prefix, 1);
+			@sql += " {$op} ";
+			v := Next(9) - 4;
+			@sql += v->ToString();
+			AddTerm(C->New(3, op, false, left, E->Literal(IntRef->New(v)), Nil, Nil, Nil), kinds, lefts, rights, conds);
+			return;
+		};
+
+		if(pick < 9) {
+			left := JoinArith("t", 1);
+			@sql += " {$op} ";
+			right := JoinArith("u", 1);
+			AddTerm(C->New(3, op, false, left, right, Nil, Nil, Nil), kinds, lefts, rights, conds);
+			return;
+		};
+
+		# an OR of an equality over both and a test on u
+		@sql += "(";
+		a := JoinArith("t", 1);
+		@sql += " = ";
+		b := JoinArith("u", 1);
+		@sql += " or ";
+		c := JoinArith("u", 1);
+		@sql += " {$op} 0)";
+		AddTerm(C->New(1, Nil, false, Nil, Nil, Nil, C->New(3, "=", false, a, b, Nil, Nil, Nil), C->New(3, op, false, c, E->Literal(IntRef->New(0)), Nil, Nil, Nil)), kinds, lefts, rights, conds);
+	}
+
+	# the tables an expression reads: 1 for t, 2 for u
+	function : ETables(e : E) ~ Int {
+		select(e->GetKind()) {
+			label 0: { return e->GetName()->StartsWith("u.") ? 2 : 1; }
+			label 2: { return ETables(e->GetLeft()) or ETables(e->GetRight()); }
+			label 3: { return ETables(e->GetLeft()); }
+		};
+		return 0;
+	}
+
+	function : CTables(c : C) ~ Int {
+		if(c->GetKind() = 3) {
+			return ETables(c->GetLeft()) or ETables(c->GetRight());
+		}
+		else if(c->GetKind() = 2) {
+			return CTables(c->GetA());
+		};
+		return CTables(c->GetA()) or CTables(c->GetB());
+	}
+
+	# An AND-term of ON, classified as the design does: kind 0 a key equality (an equality
+	# whose one side reads only t and the other only u; lefts gets t's side), kind 2 a test
+	# that reads only u (it filters u's rows first), kind 3 anything else
+	function : AddTerm(c : C, kinds : Vector<IntRef>, lefts : Vector<E>, rights : Vector<E>, conds : Vector<C>) ~ Nil {
+		if(c->GetKind() = 3 & c->GetOp()->Equals("=")) {
+			a := ETables(c->GetLeft());
+			b := ETables(c->GetRight());
+			if((a = 1 & b = 2) | (a = 2 & b = 1)) {
+				kinds->AddBack(0);
+				lefts->AddBack(a = 1 ? c->GetLeft() : c->GetRight());
+				rights->AddBack(a = 1 ? c->GetRight() : c->GetLeft());
+				conds->AddBack(c);
+				return;
+			};
+		};
+
+		kinds->AddBack(CTables(c) = 2 ? 2 : 3);
+		lefts->AddBack(Nil);
+		rights->AddBack(Nil);
+		conds->AddBack(c);
+	}
+
+	function : Holds2(c : C, left : Row, right : Row) ~ Bool {
+		select(c->GetKind()) {
+			label 0: { return Holds2(c->GetA(), left, right) & Holds2(c->GetB(), left, right); }
+			label 1: { return Holds2(c->GetA(), left, right) | Holds2(c->GetB(), left, right); }
+			label 2: { return <>Holds2(c->GetA(), left, right); }
+		};
+
+		result := Cmp(Eval2(c->GetLeft(), left, right), Eval2(c->GetRight(), left, right));
+		op := c->GetOp();
+		if(result = 3) {
+			return false;
+		}
+		else if(result = 2) {
+			return op->Equals("<>");
+		};
+
+		if(op->Equals("=")) { return result = 0; };
+		if(op->Equals("<>")) { return result <> 0; };
+		if(op->Equals("<")) { return result < 0; };
+		if(op->Equals("<=")) { return result <= 0; };
+		if(op->Equals(">")) { return result > 0; };
+		return result >= 0;
+	}
+
+	# A side of a key equality over a list of rows, typed as the engine types it: a lone
+	# column's cells as its column, an expression computed as a computed column is. Each
+	# entry gives its Keys and kind ("int", "float", "text", "object", "date", "bool" or
+	# "none").
+	function : KeySide(e : E, lefts : Vector<Row>, rights : Vector<Row>) ~ Keys {
+		size := lefts->Size();
+		values := V->New[size];
+		cells := Compare->New[size];
+		each(r : size) {
+			values[r] := Eval2(e, lefts->Get(r), rights->Get(r));
+			if(e->GetKind() = 0) {
+				cells[r] := Cell2(e->GetName(), lefts->Get(r), rights->Get(r));
+			};
+		};
+
+		if(e->GetKind() = 0) {
+			return Keys->New(values, JoinKind(e->GetName()), cells);
+		};
+
+		typed := Computed(values);
+		boxed := Compare->New[size];
+		typed_values := typed->GetValues();
+		each(r : size) {
+			x := typed_values[r];
+			if(x->GetKind() = 1) {
+				boxed[r] := IntRef->New(x->GetInt());
+			}
+			else if(x->GetKind() = 2) {
+				boxed[r] := FloatRef->New(x->GetFloat());
+			};
+		};
+		return Keys->New(typed_values, typed->GetMode(), boxed);
+	}
+
+	function : IsWholeKind(kind : String) ~ Bool {
+		return kind->Equals("int") | kind->Equals("date") | kind->Equals("bool");
+	}
+
+	function : IsNumberKind(kind : String) ~ Bool {
+		return kind->Equals("int") | kind->Equals("float");
+	}
+
+	# a cell's text as a join key: text as it is, anything else as Cell->Text writes it
+	function : KeyText(value : Compare) ~ String {
+		if(value->TypeOf(IntRef)) {
+			return value->As(IntRef)->ToString();
+		}
+		else if(value->TypeOf(FloatRef)) {
+			return value->As(FloatRef)->ToString();
+		}
+		else if(value->TypeOf(Date)) {
+			return value->As(Date)->ToString();
+		}
+		else if(value->TypeOf(String)) {
+			return value->As(String);
+		}
+		else if(value->TypeOf(BoolRef)) {
+			return value->As(BoolRef)->Get() ? "true" : "false";
+		};
+		return value->GetClass()->GetName();
+	}
+
+	# whether two keys match as a join matches them: as whole numbers when both sides are
+	# whole, as numbers when both are numbers (NaN matches nothing), otherwise by their text
+	function : KeyEquals(a : Keys, i : Int, b : Keys, j : Int) ~ Bool {
+		a_cells := a->GetCells();
+		b_cells := b->GetCells();
+		x := a_cells[i];
+		y := b_cells[j];
+		if(x = Nil | y = Nil) {
+			return false;
+		};
+
+		a_kind := a->GetMode();
+		b_kind := b->GetMode();
+		if(IsWholeKind(a_kind) & IsWholeKind(b_kind)) {
+			a_values := a->GetValues();
+			b_values := b->GetValues();
+			return a_values[i]->GetInt() = b_values[j]->GetInt();
+		};
+
+		if(IsNumberKind(a_kind) & IsNumberKind(b_kind)) {
+			a_values := a->GetValues();
+			b_values := b->GetValues();
+			p := a_values[i]->AsFloat();
+			q := b_values[j]->AsFloat();
+			return p = q;
+		};
+
+		return KeyText(x)->Equals(KeyText(y));
+	}
+
+	function : RunJoined(ca : Catalog, cb : Catalog, t : Table, u : Table) ~ Nil {
+		@sql := "select ";
+		@params := Vector->New()<Compare>;
+		@in_condition := false;
+
+		# the select list: two columns of t, two of u, and an expression over both
+		items := ["t.i", "t.s", "u.k", "u.s"];
+		@sql += "t.i as c0, t.s as c1, u.k as c2, u.s as c3, ";
+		expr := JoinArith("t", 1);
+		@sql += " + ";
+		expr2 := JoinArith("u", 1);
+		joined_expr := E->New(2, Nil, Nil, '+', expr, expr2);
+		@sql += " as c4 from t ";
+
+		is_left := Next(3) = 0;
+		@sql += is_left ? "left join u on " : "join u on ";
+		@in_condition := true;
+		kinds := Vector->New()<IntRef>;
+		lefts := Vector->New()<E>;
+		rights := Vector->New()<E>;
+		conds := Vector->New()<C>;
+		terms := 1 + Next(3);
+		each(k : terms) {
+			if(k > 0) {
+				@sql += " and ";
+			};
+			JoinTerm(kinds, lefts, rights, conds);
+		};
+		@in_condition := false;
+
+		limit := -1;
+		if(Next(4) = 0) {
+			limit := Next(20);
+			@sql += " limit {$limit}";
+		};
+
+		got := Render(ExecuteIn(ca));
+		got_error := ca->GetError();
+		indexed := Render(ExecuteIn(cb));
+
+		# the reference: u's rows after its own ON tests; the key equality over the rows it
+		# is computed for; then every pair through the rest
+		t_rows := Vector->New()<Row>;
+		live := t->LiveRows();
+		each(i : live) {
+			t_rows->AddBack(t->RowAt(live[i]));
+		};
+		u_rows := Vector->New()<Row>;
+		live := u->LiveRows();
+		each(i : live) {
+			row := u->RowAt(live[i]);
+			passes := true;
+			each(k : kinds) {
+				if(kinds->Get(k)->Get() = 2 & <>Holds2(conds->Get(k), Nil, row)) {
+					passes := false;
+				};
+			};
+			if(passes) {
+				u_rows->AddBack(row);
+			};
+		};
+
+		key := -1;
+		each(k : kinds) {
+			if(key < 0 & kinds->Get(k)->Get() = 0) {
+				key := k;
+			};
+		};
+
+		# the key's two sides: t's over every row of t, u's over u's remaining rows
+		left_keys : Keys := Nil;
+		right_keys : Keys := Nil;
+		if(key > -1) {
+			nils_t := Vector->New()<Row>;
+			each(r : t_rows) {
+				nils_t->AddBack(Nil);
+			};
+			nils_u := Vector->New()<Row>;
+			each(r : u_rows) {
+				nils_u->AddBack(Nil);
+			};
+			left_keys := KeySide(lefts->Get(key), t_rows, nils_t);
+			right_keys := KeySide(rights->Get(key), nils_u, u_rows);
+		};
+
+		# the candidate pairs, through the rest of ON
+		pair_t := Vector->New()<IntRef>;
+		pair_u := Vector->New()<IntRef>;
+		each(i : t_rows) {
+			each(j : u_rows) {
+				if(key < 0 | KeyEquals(left_keys, i, right_keys, j)) {
+					passes := true;
+					each(k : kinds) {
+						kind := kinds->Get(k)->Get();
+						if(kind = 3 & <>Holds2(conds->Get(k), t_rows->Get(i), u_rows->Get(j))) {
+							passes := false;
+						};
+					};
+					if(passes) {
+						pair_t->AddBack(i);
+						pair_u->AddBack(j);
+					};
+				};
+			};
+		};
+
+		# the other key equalities, each over the pairs that pass so far, as keys match
+		each(k : kinds) {
+			if(k <> key & kinds->Get(k)->Get() = 0) {
+				pl := Vector->New()<Row>;
+				pr := Vector->New()<Row>;
+				each(p : pair_t) {
+					pl->AddBack(t_rows->Get(pair_t->Get(p)->Get()));
+					pr->AddBack(u_rows->Get(pair_u->Get(p)->Get()));
+				};
+				a_side := KeySide(lefts->Get(k), pl, pr);
+				b_side := KeySide(rights->Get(k), pl, pr);
+				kept_t := Vector->New()<IntRef>;
+				kept_u := Vector->New()<IntRef>;
+				each(p : pair_t) {
+					if(KeyEquals(a_side, p, b_side, p)) {
+						kept_t->AddBack(pair_t->Get(p));
+						kept_u->AddBack(pair_u->Get(p));
+					};
+				};
+				pair_t := kept_t;
+				pair_u := kept_u;
+			};
+		};
+
+		# the joined rows in t's order, each with its pairs in u's; LEFT keeps a lone row
+		out_left := Vector->New()<Row>;
+		out_right := Vector->New()<Row>;
+		p := 0;
+		each(i : t_rows) {
+			found := false;
+			while(p < pair_t->Size() & pair_t->Get(p)->Get() = i) {
+				out_left->AddBack(t_rows->Get(i));
+				out_right->AddBack(u_rows->Get(pair_u->Get(p)->Get()));
+				found := true;
+				p += 1;
+			};
+			if(<>found & is_left) {
+				out_left->AddBack(t_rows->Get(i));
+				out_right->AddBack(Nil);
+			};
+		};
+
+		values := V->New[out_left->Size()];
+		each(r : out_left) {
+			values[r] := Eval2(joined_expr, out_left->Get(r), out_right->Get(r));
+		};
+		computed := Computed(values);
+		computed_values := computed->GetValues();
+
+		count := out_left->Size();
+		if(limit > -1 & limit < count) {
+			count := limit;
+		};
+		want := "";
+		each(r : count) {
+			each(c : items) {
+				want += Text(Cell2(items[c], out_left->Get(r), out_right->Get(r)));
+				want += "|";
+			};
+			want += VText(computed_values[r], computed->GetMode());
+			want += "|;";
+		};
+
+		@queries += 1;
+		@joined += 1;
+		if(got = Nil) {
+			Fail("{$@sql}\n    engine error: {$got_error}");
+			return;
+		};
+
+		if(<>got->Equals(want)) {
+			Fail("{$@sql}\n    engine:    {$(Window(got, want))}\n    reference: {$(Window(want, got))}");
+		}
+		else if(indexed = Nil | <>indexed->Equals(got)) {
+			Fail("{$@sql}\n    with indexes: {$indexed} ({$(cb->GetError())})\n    without:      {$got}");
+		};
+	}
+
+	# the statement against a catalog, as text or prepared with its placeholders bound
+	function : ExecuteIn(catalog : Catalog) ~ Table {
+		if(@params->Size() = 0) {
+			return catalog->Query(@sql);
+		};
+
+		statement := catalog->Prepare(@sql);
+		if(statement = Nil) {
+			return Nil;
+		};
+		each(i : @params) {
+			statement->Bind(i + 1, @params->Get(i));
+		};
+		return statement->Execute();
+	}
+
 	# the statement run as text, or prepared with its placeholders bound
 	function : Execute(t : Table) ~ Table {
 		if(@params->Size() = 0) {
@@ -2254,6 +2776,9 @@ class QueryExprDifferential {
 		@failures := 0;
 		@queries := 0;
 		@grouped := 0;
+		@joined := 0;
+		@u_names := ["k", "x", "s", "i", "o"];
+		@u_types := ["int", "float", "text", "int", "object"];
 		@names := ["i", "j", "f", "s", "w", "d", "b", "o"];
 		@types := ["int", "int", "float", "text", "text", "date", "bool", "object"];
 		@words := ["ant", "bee", "cat", "cow", "dog", "a_b", "Cat", "", "10", "-3"];
@@ -2295,10 +2820,41 @@ class QueryExprDifferential {
 			Fill(a, b, size, wide);
 			Reindex(b);
 
+			# u, joined to t: a few dozen rows, the twin with random indexes
+			u_kinds := [ColumnType->INT, ColumnType->FLOAT, ColumnType->STRING, ColumnType->INT, ColumnType->OBJECT];
+			ua := Table->New("u", @u_names, u_kinds);
+			ub := Table->New("u", @u_names, u_kinds);
+			u_size := 10 + Next(40);
+			each(r : u_size) {
+				ra := ua->Insert();
+				rb := ub->Insert();
+				each(c : @u_names) {
+					value := UCell(c);
+					ra->Set(@u_names[c], value);
+					rb->Set(@u_names[c], value);
+				};
+			};
+			each(c : @u_names) {
+				if(<>@u_types[c]->Equals("object") & Next(2) = 0) {
+					ub->CreateIndex(@u_names[c], Next(2) = 0 ? IndexKind->HASH : IndexKind->SORTED);
+				};
+			};
+			ca := Catalog->New();
+			ca->Add(a);
+			ca->Add(ua);
+			cb := Catalog->New();
+			cb->Add(b);
+			cb->Add(ub);
+
 			per_seed := size > 10000 ? 12 : (size > 1000 ? 60 : 150);
 			each(round : rounds) {
 				each(q : per_seed) {
-					if(Next(3) = 0) {
+					pick := Next(4);
+					# a join tests every pair in the reference, so it runs on the smaller tables
+					if(pick = 0 & size < 1000) {
+						RunJoined(ca, cb, a, ua);
+					}
+					else if(pick = 1) {
 						RunGrouped(a, b);
 					}
 					else {
@@ -2316,6 +2872,6 @@ class QueryExprDifferential {
 			Runtime->Exit(1);
 		};
 
-		"PASS: query_expr_differential ({$@queries} queries, {$@grouped} of them grouped, over {$(seeds->Size())} seeds)"->PrintLine();
+		"PASS: query_expr_differential ({$@queries} queries, {$@grouped} grouped and {$@joined} joins among them, over {$(seeds->Size())} seeds)"->PrintLine();
 	}
 }

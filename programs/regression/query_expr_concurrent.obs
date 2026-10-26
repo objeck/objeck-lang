@@ -9,7 +9,8 @@ them at once), works out every answer alone with an oracle catalog over equal ta
 threads meet at a barrier before each statement and run it through the shared catalog:
 expressions in WHERE (reduced to index reads and not), in the select list and in ORDER BY, with
 placeholders; grouped by an expression, with aggregates over expressions and expressions over
-aggregates in the select list, HAVING and ORDER BY; a join with an expression over both tables; statements new to the plan cache
+aggregates in the select list, HAVING and ORDER BY; joins on a key computed from an expression,
+on an inequality (every pair) and on a key with another test; a join with an expression over both tables; statements new to the plan cache
 every round; a statement that fails; and a prepared statement each thread binds to values of
 its own. Every answer must equal the oracle's.
 ~#
@@ -197,7 +198,7 @@ class QueryExprConcurrent {
 			Change(shared_m, round);
 			Change(oracle_m, round);
 
-			sqls := String->New[16];
+			sqls := String->New[19];
 			sqls[0] := "select id, price * qty as total from m where price * qty > 4000 order by total desc, id limit 20";
 			sqls[1] := "select id from m where 200 < price and qty % 7 = 3 order by id";
 			sqls[2] := "select id, -qty as nq from m where qty + 1 > 9007199254740990 order by nq, id";
@@ -217,6 +218,10 @@ class QueryExprConcurrent {
 			sqls[13] := "select grp, max(price) - min(price) as spread, avg(qty) * 2 as twice from m where qty < 1000 group by grp having sum(qty) / count(*) > 15 order by spread desc";
 			sqls[14] := "select m.grp, sum(m.qty * g.w) as total from m join g on m.grp = g.grp where m.qty < 1000 group by m.grp order by total * -1";
 			sqls[15] := "select id % {$(round + 3)} as b, count(price + 1) as c from m group by id % {$(round + 3)} having count(*) > {$round} order by b";
+			# joins: a key computed from an expression, every pair, a key with another test
+			sqls[16] := "select m.id, g.grp from m join g on m.qty % 7 = g.w % 7 where m.id < {$(40 + round)} order by m.id, g.grp";
+			sqls[17] := "select m.id, g.w from m join g on m.qty between g.w - 3 and g.w + {$(round % 5)} where m.price > 240 order by m.id, g.w";
+			sqls[18] := "select m.grp, count(*) as n from m left join g on m.grp = g.grp and m.qty * g.w > 100 group by m.grp order by m.grp";
 
 			answers := String->New[sqls->Size()];
 			each(q : sqls) {

@@ -11489,17 +11489,15 @@ if(file->IsOpen()) {
 		@is_left : Bool;
 		@table_name : String;
 		@alias_name : String;
-		@left_key : String;
-		@right_key : String;
+		@on : Predicate;
 		@file : SqlFile;
 
-		New(is_left : Bool, table_name : String, file : SqlFile, alias_name : String, left_key : String, right_key : String) {
+		New(is_left : Bool, table_name : String, file : SqlFile, alias_name : String, on : Predicate) {
 			@is_left := is_left;
 			@table_name := table_name;
 			@file := file;
 			@alias_name := alias_name;
-			@left_key := left_key;
-			@right_key := right_key;
+			@on := on;
 		}
 
 		method : public : IsLeft() ~ Bool {
@@ -11519,12 +11517,9 @@ if(file->IsOpen()) {
 			return @alias_name;
 		}
 
-		method : public : GetLeftKey() ~ String {
-			return @left_key;
-		}
-
-		method : public : GetRightKey() ~ String {
-			return @right_key;
+		# the ON condition
+		method : public : GetOn() ~ Predicate {
+			return @on;
 		}
 	}
 
@@ -12024,7 +12019,7 @@ if(file->IsOpen()) {
 				Next();
 				return SqlExpr->Value(token->GetText(), Nil);
 			}
-			else if(@in_condition & <>@in_having & AtAggregate()) {
+			else if(@in_condition & <>@in_having & <>@in_on & AtAggregate()) {
 				Fail("a column name (aggregates belong in HAVING, not WHERE)");
 				return Nil;
 			}
@@ -12377,15 +12372,15 @@ if(file->IsOpen()) {
 					if(@error <> Nil | <>ExpectWord("on")) {
 						return Nil;
 					};
-					left_key := ParseName("a column name");
-					if(left_key = Nil | <>ExpectSymbol("=")) {
+
+					# a condition, as WHERE's, without aggregates
+					@in_on := true;
+					on := ParseCondition();
+					@in_on := false;
+					if(on = Nil) {
 						return Nil;
 					};
-					right_key := ParseName("a column name");
-					if(right_key = Nil) {
-						return Nil;
-					};
-					statement->GetJoins()->AddBack(SqlJoin->New(is_left, join_table, join_file, join_alias, left_key, right_key));
+					statement->GetJoins()->AddBack(SqlJoin->New(is_left, join_table, join_file, join_alias, on));
 				}
 				else {
 					joining := false;
@@ -14981,15 +14976,20 @@ if(file->IsOpen()) {
 		# Joins
 		#
 
-		# joins the tables into a working table of the columns the query uses, and returns the
-		# part of the WHERE clause still to apply; @work stays Nil on error. A condition on one
-		# table is applied to that table before the join, except on the right of a LEFT JOIN,
-		# where an unmatched row must still reach the WHERE clause as empty cells.
+		# Joins the tables into a working table of the columns the query uses, and returns the
+		# part of the WHERE clause still to apply; @work stays Nil on error. A WHERE condition on
+		# one table is applied to that table before the join, except on the right of a LEFT
+		# JOIN, where an unmatched row must still reach the WHERE clause as empty cells. ON
+		# conditions (docs/QUERY_DESIGN.md, "Where each kind of expression is evaluated"): a
+		# term that reads only the joined table filters its rows first; the first key equality
+		# (one side over earlier tables, the other over the joined one) matches keys through
+		# SqlKeyMatcher, its sides computed where they are expressions; with none, every pair is
+		# tested; the remaining terms are then tested on each pair.
 		method : Join(where : Predicate) ~ Predicate {
 			count := @tables->Size();
 			joins := @statement->GetJoins();
 			pushed := Predicate->New[count];
-			remaining : Predicate;
+			remaining : Predicate := Nil;
 			if(where <> Nil) {
 				parts := Vector->New()<Predicate>;
 				Conjuncts(where, parts);
@@ -15010,6 +15010,51 @@ if(file->IsOpen()) {
 					}
 					else {
 						remaining := remaining = Nil ? part : remaining->AndAlso(part);
+					};
+				};
+			};
+
+			# each ON condition split into the joined table's own terms (added to its filter),
+			# its key equality, its other key equalities and the rest
+			keys := ExprPredicate->New[count];
+			extra_keys := Vector->New()<Vector<ExprPredicate>>;
+			rests := Predicate->New[count];
+			each(s : count) {
+				extra_keys->AddBack(Vector->New()<ExprPredicate>);
+			};
+			each(k : joins) {
+				right := k + 1;
+				parts := Vector->New()<Predicate>;
+				Conjuncts(joins->Get(k)->GetOn(), parts);
+				each(i : parts) {
+					part := parts->Get(i);
+					tables := TablesOf(part);
+					if(tables < 0) {
+						return Nil;
+					};
+
+					if((tables >> (right + 1)) <> 0) {
+						@error->Set("the ON condition of the join with '{$(@aliases[right])}' names a table joined after it");
+						return Nil;
+					};
+
+					if(tables = (1 << right)) {
+						renamed := Rename(part, true);
+						if(renamed = Nil) {
+							return Nil;
+						};
+						pushed[right] := pushed[right] = Nil ? renamed : pushed[right]->AndAlso(renamed);
+					}
+					else if(IsKeyEquality(part, right)) {
+						if(keys[right] = Nil) {
+							keys[right] := part->As(ExprPredicate);
+						}
+						else {
+							extra_keys->Get(right)->AddBack(part->As(ExprPredicate));
+						};
+					}
+					else {
+						rests[right] := rests[right] = Nil ? part : rests[right]->AndAlso(part);
 					};
 				};
 			};
@@ -15038,54 +15083,44 @@ if(file->IsOpen()) {
 			each(k : joins) {
 				join := joins->Get(k);
 				right := k + 1;
-				first := Resolve(join->GetLeftKey());
-				second := Resolve(join->GetRightKey());
-				if(first = Nil | second = Nil) {
+
+				# the candidate pairs: an index into the positions so far, and a row of the
+				# joined table
+				pair_rows := SqlRows->New[2];
+				if(<>Pairs(keys[right], right, positions, size, base[right]->Get(), pair_rows)) {
 					return Nil;
 				};
+				pair_left := pair_rows[0]->Get();
+				pair_right := pair_rows[1]->Get();
 
-				right_ref : SqlRef;
-				left_ref : SqlRef;
-				if(second->GetSource() = right & first->GetSource() < right) {
-					left_ref := first;
-					right_ref := second;
-				}
-				else if(first->GetSource() = right & second->GetSource() < right) {
-					left_ref := second;
-					right_ref := first;
-				}
-				else {
-					@error->Set("the ON condition of the join with '{$(@aliases[right])}' must compare one of its columns with a column of an earlier table");
-					return Nil;
+				# the rest of ON on each pair
+				passing := Int->New[pair_left->Size()];
+				each(p : passing) {
+					passing[p] := p;
+				};
+				if(rests[right] <> Nil | extra_keys->Get(right)->Size() > 0) {
+					passing := TestPairs(rests[right], extra_keys->Get(right), right, positions, pair_left, pair_right);
+					if(passing = Nil) {
+						return Nil;
+					};
 				};
 
-				matcher := SqlKeyMatcher->New(@tables[right]->GetColumn(right_ref->GetColumn()), base[right]->Get(),
-					@tables[left_ref->GetSource()]->GetColumn(left_ref->GetColumn()));
-				left_rows := positions[left_ref->GetSource()]->Get();
-
-				# the matches of each position, kept in the left side's order, then the right's
+				# the passing pairs in the left side's order, each left position's pairs in the
+				# right's; a LEFT JOIN keeps a position no pair passed for, with an empty right
 				capacity := size > 16 ? size : 16;
 				joined_rows := SqlRows->New[right + 1];
 				each(s : joined_rows) {
 					joined_rows[s] := SqlRows->New(Int->New[capacity]);
 				};
 				n := 0;
+				p := 0;
 				for(i := 0; i < size; i += 1;) {
-					start := -1;
-					finish := -1;
-					if(left_rows[i] > -1) {
-						range := matcher->Find(left_rows[i]);
-						if(range <> Nil) {
-							start := range[0];
-							finish := range[1];
-						};
+					first := p;
+					while(p < passing->Size() & pair_left[passing[p]] = i) {
+						p += 1;
 					};
-
-					emit := finish - start;
-					if(start < 0) {
-						emit := join->IsLeft() ? 1 : 0;
-					};
-
+					lone := p = first & join->IsLeft();
+					emit := lone ? 1 : p - first;
 					if(n + emit > capacity) {
 						while(n + emit > capacity) {
 							capacity *= 2;
@@ -15095,14 +15130,14 @@ if(file->IsOpen()) {
 						};
 					};
 
-					for(e := 0; e < emit; e += 1;) {
+					each(e : emit) {
 						for(s := 0; s < right; s += 1;) {
 							target := joined_rows[s]->Get();
 							earlier := positions[s]->Get();
 							target[n] := earlier[i];
 						};
 						target := joined_rows[right]->Get();
-						target[n] := start < 0 ? -1 : matcher->RowAt(start + e);
+						target[n] := lone ? -1 : pair_right[passing[first + e]];
 						n += 1;
 					};
 				};
@@ -15134,6 +15169,314 @@ if(file->IsOpen()) {
 			@work := work;
 
 			return remaining;
+		}
+
+		# the tables a condition reads, a bit per table position; -1 on error
+		method : TablesOf(pred : Predicate) ~ Int {
+			op := pred->GetOp();
+			if(op = Op->AND | op = Op->OR) {
+				left := TablesOf(pred->GetLeft());
+				right := TablesOf(pred->GetRight());
+				if(left < 0 | right < 0) {
+					return -1;
+				};
+				return left or right;
+			}
+			else if(op = Op->NOT) {
+				return TablesOf(pred->GetLeft());
+			};
+
+			if(pred->TypeOf(ExprPredicate)) {
+				test := pred->As(ExprPredicate);
+				left := ExprTables(test->GetLeftExpr());
+				right := test->GetRightExpr() <> Nil ? ExprTables(test->GetRightExpr()) : 0;
+				if(left < 0 | right < 0) {
+					return -1;
+				};
+				return left or right;
+			};
+
+			ref := Resolve(pred->GetColumn());
+			if(ref = Nil) {
+				return -1;
+			};
+			return 1 << ref->GetSource();
+		}
+
+		# the tables an expression reads, a bit per table position; -1 on error. A bare word
+		# that names no column is text and reads none.
+		method : ExprTables(expr : SqlExpr) ~ Int {
+			kind := expr->GetKind();
+			if(kind = SqlExpr->ColumnKind() | (kind = SqlExpr->WordKind() & IsColumnName(expr->GetName()))) {
+				ref := Resolve(expr->GetName());
+				if(ref = Nil) {
+					return -1;
+				};
+				return 1 << ref->GetSource();
+			}
+			else if(kind = SqlExpr->BinaryKind()) {
+				left := ExprTables(expr->GetLeft());
+				right := ExprTables(expr->GetRight());
+				if(left < 0 | right < 0) {
+					return -1;
+				};
+				return left or right;
+			}
+			else if(kind = SqlExpr->NegateKind()) {
+				return ExprTables(expr->GetLeft());
+			};
+
+			return 0;
+		}
+
+		# an equality whose one side reads only tables before 'right' and the other only 'right'
+		method : IsKeyEquality(pred : Predicate, right : Int) ~ Bool {
+			if(<>pred->TypeOf(ExprPredicate) | pred->GetOp() <> Op->EQ) {
+				return false;
+			};
+
+			test := pred->As(ExprPredicate);
+			left_tables := ExprTables(test->GetLeftExpr());
+			right_tables := ExprTables(test->GetRightExpr());
+			earlier := (1 << right) - 1;
+			joined := 1 << right;
+			return (left_tables > 0 & (left_tables and earlier) = left_tables & right_tables = joined) |
+				(right_tables > 0 & (right_tables and earlier) = right_tables & left_tables = joined);
+		}
+
+		# The candidate pairs for a join: through the key equality's matcher when there is one,
+		# every pair otherwise. False with the error set.
+		method : Pairs(key : ExprPredicate, right : Int, positions : SqlRows[], size : Int, right_rows : Int[],
+				pair_rows : SqlRows[]) ~ Bool {
+			if(key = Nil) {
+				Note("join {$(@aliases[right])}: every pair");
+				count := size * right_rows->Size();
+				lefts := Int->New[count];
+				rights := Int->New[count];
+				n := 0;
+				for(i := 0; i < size; i += 1;) {
+					each(r : right_rows) {
+						lefts[n] := i;
+						rights[n] := right_rows[r];
+						n += 1;
+					};
+				};
+				pair_rows[0] := SqlRows->New(lefts);
+				pair_rows[1] := SqlRows->New(rights);
+				return true;
+			};
+
+			# the key's sides: earlier tables on the left, the joined table on the right
+			left_expr := key->GetLeftExpr();
+			right_expr := key->GetRightExpr();
+			if(ExprTables(left_expr) = (1 << right)) {
+				left_expr := key->GetRightExpr();
+				right_expr := key->GetLeftExpr();
+			};
+
+			# the joined table's key: its column, or the expression computed for its rows,
+			# indexed by row as the table is
+			right_column : Column := Nil;
+			right_plain := RenameExpr(right_expr, true);
+			if(right_plain = Nil) {
+				return false;
+			};
+			if(right_plain->IsColumn()) {
+				right_column := @tables[right]->GetColumn(right_plain->GetName());
+			}
+			else {
+				eval := SqlEval->Bind(right_plain, @tables[right], @params, @error);
+				if(eval = Nil) {
+					return false;
+				};
+				right_column := Column->New("#key", ColumnType->NONE, false);
+				FillComputedAt(right_column, eval, right_rows, @tables[right]->GetRowCapacity());
+				Note("join {$(@aliases[right])}: key computed from {$(right_expr->GetText())}");
+			};
+
+			# the earlier tables' key: a column of one of them read at its positions, or the
+			# expression computed for each position so far
+			left_column : Column := Nil;
+			left_rows : Int[] := Nil;
+			left_kind := left_expr->GetKind();
+			if(left_kind = SqlExpr->ColumnKind() | left_kind = SqlExpr->WordKind()) {
+				ref := Resolve(left_expr->GetName());
+				if(ref = Nil) {
+					return false;
+				};
+				left_column := @tables[ref->GetSource()]->GetColumn(ref->GetColumn());
+				left_rows := positions[ref->GetSource()]->Get();
+			}
+			else {
+				so_far := SoFar(left_expr, positions, size);
+				if(so_far = Nil) {
+					return false;
+				};
+				renamed := RenameExpr(left_expr, false);
+				if(renamed = Nil) {
+					return false;
+				};
+				eval := SqlEval->Bind(renamed, so_far, @params, @error);
+				if(eval = Nil) {
+					return false;
+				};
+				left_column := Column->New("#key", ColumnType->NONE, false);
+				left_rows := Int->New[size];
+				each(i : size) {
+					left_rows[i] := i;
+				};
+				FillComputedAt(left_column, eval, left_rows, size);
+				Note("join {$(@aliases[right])}: key computed from {$(left_expr->GetText())}");
+			};
+
+			matcher := SqlKeyMatcher->New(right_column, right_rows, left_column);
+			capacity := size > 16 ? size : 16;
+			lefts := Int->New[capacity];
+			rights := Int->New[capacity];
+			n := 0;
+			for(i := 0; i < size; i += 1;) {
+				if(left_rows[i] > -1) {
+					range := matcher->Find(left_rows[i]);
+					if(range <> Nil) {
+						if(n + range[1] - range[0] > capacity) {
+							while(n + range[1] - range[0] > capacity) {
+								capacity *= 2;
+							};
+							lefts := Column->GrowInts(lefts, capacity);
+							rights := Column->GrowInts(rights, capacity);
+						};
+						for(e := range[0]; e < range[1]; e += 1;) {
+							lefts[n] := i;
+							rights[n] := matcher->RowAt(e);
+							n += 1;
+						};
+					};
+				};
+			};
+			pair_rows[0] := SqlRows->New(Filter->Trim(lefts, n));
+			pair_rows[1] := SqlRows->New(Filter->Trim(rights, n));
+
+			return true;
+		}
+
+		# a table of the columns an expression reads from the tables joined so far, a row per
+		# position, named as the working table names them; Nil with the error set
+		method : SoFar(expr : SqlExpr, positions : SqlRows[], size : Int) ~ Table {
+			reads := Vector->New()<String>;
+			ExprColumns(expr, reads);
+			refs := Vector->New()<SqlRef>;
+			each(r : reads) {
+				if(<>WantName(refs, reads->Get(r))) {
+					return Nil;
+				};
+			};
+
+			names := String->New[refs->Size()];
+			each(i : names) {
+				names[i] := WorkName(refs->Get(i));
+			};
+			so_far := Table->New("<on>", names);
+			so_far->Fill(size);
+			each(i : names) {
+				ref := refs->Get(i);
+				so_far->GetColumn(i + 1)->Gather(@tables[ref->GetSource()]->GetColumn(ref->GetColumn()), Filter->Trim(positions[ref->GetSource()]->Get(), size));
+			};
+			return so_far;
+		}
+
+		# The pairs (as indexes into pair_left and pair_right) that pass the rest of an ON
+		# condition and its other key equalities, in order; Nil with the error set
+		method : TestPairs(rest : Predicate, extra_keys : Vector<ExprPredicate>, right : Int, positions : SqlRows[],
+				pair_left : Int[], pair_right : Int[]) ~ Int[] {
+			# the columns the tests read, a row per pair
+			refs := Vector->New()<SqlRef>;
+			if(rest <> Nil & <>WantCondition(refs, rest)) {
+				return Nil;
+			};
+			each(k : extra_keys) {
+				if(<>WantCondition(refs, extra_keys->Get(k))) {
+					return Nil;
+				};
+			};
+
+			pairs := pair_left->Size();
+			names := String->New[refs->Size()];
+			each(i : names) {
+				names[i] := WorkName(refs->Get(i));
+			};
+			table := Table->New("<on>", names);
+			table->Fill(pairs);
+			each(i : names) {
+				ref := refs->Get(i);
+				source := ref->GetSource();
+				rows := Int->New[pairs];
+				if(source = right) {
+					each(p : pairs) {
+						rows[p] := pair_right[p];
+					};
+				}
+				else {
+					earlier := positions[source]->Get();
+					each(p : pairs) {
+						rows[p] := earlier[pair_left[p]];
+					};
+				};
+				table->GetColumn(i + 1)->Gather(@tables[source]->GetColumn(ref->GetColumn()), rows);
+			};
+
+			passing := table->LiveRows();
+			if(rest <> Nil) {
+				renamed := Rename(rest, false);
+				if(renamed = Nil) {
+					return Nil;
+				};
+				filter := Filter->Bind(renamed, table, @params, @error);
+				if(filter = Nil) {
+					return Nil;
+				};
+				passing := filter->Apply(table, passing);
+			};
+
+			# the other key equalities, matched as join keys are
+			each(k : extra_keys) {
+				test := extra_keys->Get(k);
+				left := PairColumn(test->GetLeftExpr(), table, passing);
+				right_side := PairColumn(test->GetRightExpr(), table, passing);
+				if(left = Nil | right_side = Nil) {
+					return Nil;
+				};
+				kept := Int->New[passing->Size()];
+				n := 0;
+				each(p : passing) {
+					if(SqlKeyMatcher->KeyEquals(left, right_side, passing[p])) {
+						kept[n] := passing[p];
+						n += 1;
+					};
+				};
+				passing := Filter->Trim(kept, n);
+			};
+
+			return passing;
+		}
+
+		# a side of a key equality over the pair table: its column, or the expression computed
+		# for the pairs; Nil with the error set
+		method : PairColumn(expr : SqlExpr, table : Table, rows : Int[]) ~ Column {
+			renamed := RenameExpr(expr, false);
+			if(renamed = Nil) {
+				return Nil;
+			};
+			if(renamed->IsColumn()) {
+				return table->GetColumn(renamed->GetName());
+			};
+
+			eval := SqlEval->Bind(renamed, table, @params, @error);
+			if(eval = Nil) {
+				return Nil;
+			};
+			column := Column->New("#key", ColumnType->NONE, false);
+			FillComputedAt(column, eval, rows, table->GetRowCapacity());
+			return column;
 		}
 
 		# adds a column to the working set once
@@ -16605,6 +16948,26 @@ if(file->IsOpen()) {
 			};
 
 			return src;
+		}
+
+		# Whether two cells of one row match as join keys do: as whole numbers when both columns
+		# hold whole numbers, as numbers when both hold numbers (NaN matches nothing), otherwise
+		# by their text; an empty cell matches nothing
+		function : KeyEquals(left : Column, right : Column, row : Int) ~ Bool {
+			if(left->IsNull(row) | right->IsNull(row)) {
+				return false;
+			};
+
+			left_type := left->GetType();
+			right_type := right->GetType();
+			if(IsWhole(left_type) & IsWhole(right_type)) {
+				return left->GetInt(row) = right->GetInt(row);
+			}
+			else if(IsNumber(left_type) & IsNumber(right_type)) {
+				return left->GetFloat(row) = right->GetFloat(row);
+			};
+
+			return KeyText(left, row)->Equals(KeyText(right, row));
 		}
 
 		# the right row at a position Find returned
