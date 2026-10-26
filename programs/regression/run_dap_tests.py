@@ -362,6 +362,78 @@ def run_unicode_scenario(obc, obd, bin_dir):
         shutil.rmtree(work, ignore_errors=True)
 
 
+def run_output_order_scenario(obc, obd, bin_dir):
+    """Every `output` event of a run arrives before the `terminated` that ends it.
+
+    The adapter forwards the program's stdout from a pipe on a reader thread,
+    and used to send `terminated` as soon as the VM thread finished: a program
+    whose last lines were still in the pipe had them delivered after the
+    editor had been told the session was over (the non-ASCII scenario's one
+    line lost that race on the macOS runners). Three quarters of a megabyte
+    written in one go right before the end make the backlog certain: the pipe
+    holds a fraction of it, so the reader is still forwarding when the VM
+    thread finishes.
+    """
+    work = tempfile.mkdtemp(prefix="dap-order-")
+    try:
+        src = os.path.join(work, "order.obs")
+        obe = os.path.join(work, "order.obe")
+        lines = 1 << 17
+        with open(src, "w", encoding="utf-8", newline="\n") as f:
+            f.write("class DapOutputOrder {\n"
+                    "  function : Main(args : String[]) ~ Nil {\n"
+                    "    text := \"ligne\\n\";\n"
+                    "    each(k : 17) {\n"
+                    "      text += text;\n"
+                    "    };\n"
+                    "    text->Print();\n"
+                    "    \"fin\"->PrintLine();\n"
+                    "  }\n"
+                    "}\n")
+        if not compile_test(obc, src, obe, bin_dir):
+            log_result("compile the output-order fixture", False)
+            return
+
+        c = DapClient(obd, work, bin_dir)
+        c.send("initialize", {"adapterID": "objeck"})
+        c.wait_response("initialize")
+        c.send("launch", {"program": obe, "sourceDir": work})
+        c.wait_response("launch")
+        c.send("configurationDone")
+
+        before = []
+        terminated = None
+        end = time.time() + 30
+        while time.time() < end:
+            m = c.wait_for(lambda x: x.get("event") in ("output", "terminated"), max(0.05, end - time.time()))
+            if not m:
+                break
+            if m.get("event") == "terminated":
+                terminated = m
+                break
+            before.append(m["body"].get("output", ""))
+        # anything the adapter still sends after `terminated`
+        after = []
+        end = time.time() + 2
+        while time.time() < end:
+            m = c.wait_for(lambda x: x.get("event") == "output", max(0.05, end - time.time()))
+            if not m:
+                break
+            after.append(m["body"].get("output", ""))
+        text_before = "".join(before)
+        got_before = text_before.count("ligne")
+        log_result("the run ends with a terminated event", terminated is not None)
+        log_result(f"all {lines} lines and the last one arrive before terminated",
+                   got_before == lines and "fin" in text_before,
+                   f"{got_before} of {lines} before, 'fin' {'seen' if 'fin' in text_before else 'missing'}, {len(after)} output event(s) after")
+        log_result("no output event follows terminated", not after,
+                   f"{len(after)} after, first {after[0][:40]!r}" if after else "")
+        code = c.close()
+        log_result("clean exit after the output-order session", code == 0, f"exit={code}")
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def run_standalone_tests(bin_dir):
     """Run the self-contained dap_*_test.py suites.
 
@@ -464,6 +536,8 @@ def main():
     run_exception_breakpoint(obd, exc_obe, REG_DIR, bin_dir)
     print("\nNon-ASCII program, source and output:")
     run_unicode_scenario(obc, obd, bin_dir)
+    print("\nOutput before terminated:")
+    run_output_order_scenario(obc, obd, bin_dir)
     print("")
     print("Standalone suites (drill-down, protocol, data breakpoints, teardown):")
     run_standalone_tests(bin_dir)

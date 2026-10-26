@@ -220,7 +220,14 @@ void DapAdapter::OutputReaderLoop(int fd, const std::string& category)
   while(true) {
     int n = READ(fd, buf, sizeof(buf));
     if(n <= 0) {
-      // Pipe closed (program ended) or error — exit cleanly.
+      // Pipe closed (program ended) or error: the last chunk has been sent, so
+      // whoever waits in DrainProgramOutput may go on.
+      CLOSE(fd);
+      {
+        std::lock_guard<std::mutex> lock(reader_mtx);
+        readers_running--;
+      }
+      reader_cv.notify_all();
       return;
     }
 
@@ -268,6 +275,10 @@ void DapAdapter::StartOutputReaders()
 {
   if(prog_stdout_pipe[0] >= 0) {
     int fd = prog_stdout_pipe[0];
+    {
+      std::lock_guard<std::mutex> lock(reader_mtx);
+      readers_running++;
+    }
     stdout_reader_thread = std::thread([this, fd]() {
       this->OutputReaderLoop(fd, "stdout");
     });
@@ -275,11 +286,67 @@ void DapAdapter::StartOutputReaders()
   }
   if(prog_stderr_pipe[0] >= 0) {
     int fd = prog_stderr_pipe[0];
+    {
+      std::lock_guard<std::mutex> lock(reader_mtx);
+      readers_running++;
+    }
     stderr_reader_thread = std::thread([this, fd]() {
       this->OutputReaderLoop(fd, "stderr");
     });
     stderr_reader_thread.detach();
   }
+}
+
+void DapAdapter::DrainProgramOutput()
+{
+  // What the program printed last may still be in its pipes, or in a reader
+  // thread's hands, when the VM thread reports the end: the readers forward it
+  // as `output` events on their own schedule, so a `terminated` sent now could
+  // reach the editor before the output it is the end of -- run_dap_tests.py's
+  // "program's non-ASCII output arrives in an output event" failed that way
+  // on the macOS runners (runs 40249649989 and 40279448526). Flush the
+  // streams, move the program's stdout and stderr onto fresh pipes (so a
+  // restarted program is still captured), which closes the old pipes' only
+  // write ends, wait for the readers to reach end-of-file and send what was
+  // left, and read the new pipes from here on. A child process the program
+  // left behind would hold the old write end open; two seconds is the most
+  // the end of a session waits for it.
+  std::wcout.flush();
+  std::cout.flush();
+  fflush(stdout);
+  std::wcerr.flush();
+  std::cerr.flush();
+  fflush(stderr);
+
+  int out_pipe[2] = { -1, -1 };
+  int err_pipe[2] = { -1, -1 };
+  if(prog_stdout_pipe[0] >= 0 && PIPE(out_pipe) == 0) {
+    DUP2(out_pipe[1], FILENO(stdout));
+    CLOSE(out_pipe[1]);
+  }
+  if(prog_stderr_pipe[0] >= 0 && PIPE(err_pipe) == 0) {
+    DUP2(err_pipe[1], FILENO(stderr));
+    CLOSE(err_pipe[1]);
+  }
+
+  bool drained;
+  {
+    std::unique_lock<std::mutex> lock(reader_mtx);
+    drained = reader_cv.wait_for(lock, std::chrono::seconds(2), [this]() { return readers_running == 0; });
+  }
+
+  // the old readers own the old read ends and close them on end-of-file; a
+  // reader still waiting on a write end some child holds keeps its pipe
+  if(out_pipe[0] >= 0) {
+    prog_stdout_pipe[0] = out_pipe[0];
+  }
+  if(err_pipe[0] >= 0) {
+    prog_stderr_pipe[0] = err_pipe[0];
+  }
+  if(out_pipe[0] >= 0 || err_pipe[0] >= 0) {
+    StartOutputReaders();
+  }
+  (void)drained;
 }
 
 void DapAdapter::SendResponse(int request_seq, const std::string& command, const json& body, bool success, const std::string& message)
@@ -2233,6 +2300,8 @@ void DapAdapter::OnTerminated()
 {
   if(!is_terminated) {
     is_terminated = true;
+    // every `output` event of the run goes out before the `terminated` that ends it
+    DrainProgramOutput();
     SendEvent("terminated");
 
     json thread_body;
