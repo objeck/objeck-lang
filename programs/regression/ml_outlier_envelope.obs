@@ -1,0 +1,577 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+System.ML EllipticEnvelope (FastMCD) against independent references.
+
+* Chi-square quantiles against closed-form CDFs (1e-9).
+* The MCD search on the larger-n paths -- 800 x 3 (subsets of 300 pooled on the
+  full data), 2000 x 4 (pooled on 1500 rows, finished on the full data) and
+  600 x 8 (the native matrix-product path), each 10% uniform outliers -- against a
+  numpy MCD run from hundreds of random starts to convergence: within 0.005 of its
+  log-determinant, reweighted location (0.05) and covariance (0.10), flagged rows
+  at contamination 0.1 at most 2 apart. The 30-dataset n <= 500 comparison is
+  ml_outlier_mcd.obs.
+* The exact univariate MCD (sklearn's shortest-half algorithm) for one feature.
+* Squared Mahalanobis distances against the native Matrix2D inverse.
+Data is built by both sides from System.ML.Random with arithmetic only.
+Regenerate with ml_outlier_ref/gen_fixtures.py.
+
+Also: contamination and SetSensitivity, a constant feature, a singular
+covariance refused with a reason, n <= p, NaN.
+~#
+use System.ML;
+
+class MlOutlierEnvelope {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		ok := ChiSquare() & ok;
+		ok := Mcd() & ok;
+		ok := Univariate() & ok;
+		ok := Behaviour() & ok;
+		ok := Edges() & ok;
+
+		if(ok) {
+			"PASS: ml_outlier_envelope"->PrintLine();
+		}
+		else {
+			"FAIL: ml_outlier_envelope"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : ChiSquare() ~ Bool {
+		dofs := [1, 2, 3, 4, 6, 20];
+		expected := ExpectedChi2();
+		passed := true;
+		each(i : dofs) {
+			med := EllipticEnvelope->ChiSquareQuantile(dofs[i], 0.5);
+			hi := EllipticEnvelope->ChiSquareQuantile(dofs[i], 0.975);
+			if(<>Near(med, expected[2 * i], 1.0e-9) | <>Near(hi, expected[2 * i + 1], 1.0e-9)) {
+				"  chi2({$dofs[i]}): {$med} {$hi}"->PrintLine();
+				passed := false;
+			};
+		};
+		return Report("chi-square medians and 0.975 quantiles match closed forms (6 dof)", passed);
+	}
+
+	function : Mcd() ~ Bool {
+		seeds := CaseSeeds();
+		inliers := CaseInliers();
+		outliers := CaseOutliers();
+		features := CaseFeatures();
+		logdets := RawLogDets();
+		raw_loc := RawLocations();
+		fin_loc := FinalLocations();
+		fin_cov := FinalCovariances();
+		counts := FlaggedCounts();
+		flagged := FlaggedRows();
+
+		loc_at := 0;
+		cov_at := 0;
+		flag_at := 0;
+		optimal := 0;
+		near_optimal := 0;
+		final_close := 0;
+		same_flags := 0;
+		close_flags := 0;
+		total := seeds->Size();
+		each(c : seeds) {
+			p := features[c];
+			X := MakeData(seeds[c], inliers[c], outliers[c], p, 8.0);
+			envelope := EllipticEnvelope->New(0.1, 0.0, 42);
+			if(envelope->Fit(X)) {
+				# FastMCD is a search heuristic and on Gaussian data many h-subsets are
+				# near-ties, so it is held to within 0.005 of the many-start optimum's
+				# log-determinant everywhere, and to the optimum itself on most of the
+				# small datasets (sklearn's 30 random h-subsets reach it far less often)
+				gap := LogDet(envelope->GetRawCovariance(), p) - logdets[c];
+				if(gap <= 0.005) {
+					near_optimal += 1;
+				}
+				else {
+					"  seed {$seeds[c]}: log-determinant {$gap} above the reference"->PrintLine();
+				};
+				if(gap->Abs() <= 1.0e-9 & Matches(envelope->GetRawLocation(), raw_loc, loc_at, p, 1.0e-6)) {
+					if(inliers[c] + outliers[c] <= 500) {
+						optimal += 1;
+					};
+				}
+				else {
+					"  seed {$seeds[c]}: a near-tie optimum, log-determinant {$gap} from the reference"->PrintLine();
+				};
+
+				# the reweighted estimate, which is what scores rows
+				if(Matches(envelope->GetLocation(), fin_loc, loc_at, p, 0.05) &
+						Matches2(envelope->GetCovariance(), fin_cov, cov_at, p, 0.10)) {
+					final_close += 1;
+				}
+				else {
+					"  seed {$seeds[c]}: reweighted estimate differs from the reference"->PrintLine();
+				};
+
+				# the flagged rows at contamination 0.1
+				labels := envelope->Predict(X);
+				expected := Bool->New[labels->Size()];
+				each(k : counts[c]) {
+					expected[flagged[flag_at + k]] := true;
+				};
+				differ := 0;
+				each(i : labels) {
+					if(labels[i] <> expected[i]) {
+						differ += 1;
+					};
+				};
+				if(differ = 0) {
+					same_flags += 1;
+				}
+				else {
+					"  seed {$seeds[c]}: {$differ} rows flagged differently"->PrintLine();
+				};
+				if(differ <= 2) {
+					close_flags += 1;
+				};
+			}
+			else {
+				"  seed {$seeds[c]}: fit failed"->PrintLine();
+			};
+
+			loc_at += p;
+			cov_at += p * p;
+			flag_at += counts[c];
+		};
+
+		passed := Report("the MCD search reaches within 0.005 of the optimum's log-determinant on {$near_optimal} of {$total}", near_optimal = total);
+		passed := Report("reweighted location (0.05) and covariance (0.10) agree on {$final_close} of {$total}", final_close = total) & passed;
+		passed := Report("the same rows are flagged on {$same_flags} of {$total}", same_flags >= total - 1) & passed;
+		passed := Report("never more than 2 rows differ ({$close_flags} of {$total})", close_flags = total) & passed;
+		return passed;
+	}
+
+	# log-determinant by Gaussian elimination with partial pivoting
+	function : LogDet(m : Float[,], p : Int) ~ Float {
+		a := Float->New[p, p];
+		each(i : p) {
+			each(j : p) {
+				a[i, j] := m[i, j];
+			};
+		};
+		total := 0.0;
+		each(c : p) {
+			pivot := c;
+			for(r := c + 1; r < p; r += 1;) {
+				if(a[r, c]->Abs() > a[pivot, c]->Abs()) {
+					pivot := r;
+				};
+			};
+			if(pivot <> c) {
+				each(j : p) {
+					tmp := a[c, j];
+					a[c, j] := a[pivot, j];
+					a[pivot, j] := tmp;
+				};
+			};
+			total += Float->Log(a[c, c]->Abs());
+			for(r := c + 1; r < p; r += 1;) {
+				f := a[r, c] / a[c, c];
+				for(j := c; j < p; j += 1;) {
+					a[r, j] -= f * a[c, j];
+				};
+			};
+		};
+		return total;
+	}
+
+	function : Matches(got : Float[], expected : Float[], at : Int, p : Int, tol : Float) ~ Bool {
+		each(j : p) {
+			if(<>Near(got[j], expected[at + j], tol)) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	function : Matches2(got : Float[,], expected : Float[], at : Int, p : Int, tol : Float) ~ Bool {
+		each(a : p) {
+			each(b : p) {
+				if(<>Near(got[a, b], expected[at + a * p + b], tol)) {
+					return false;
+				};
+			};
+		};
+		return true;
+	}
+
+	function : Univariate() ~ Bool {
+		X := MakeData(77, 90, 10, 1, 8.0);
+		envelope := EllipticEnvelope->New(0.1, 0.0, 1);
+		if(<>envelope->Fit(X)) {
+			return Report("one feature fits", false);
+		};
+
+		passed := Report("univariate raw location is sklearn's shortest-half midpoint",
+			Near(envelope->GetRawLocation()[0], UniRawLocation(), 1.0e-12));
+		raw_cov := envelope->GetRawCovariance();
+		passed := Report("univariate raw variance", Near(raw_cov[0, 0], UniRawVariance(), 1.0e-12)) & passed;
+		passed := Report("univariate reweighted location", Near(envelope->GetLocation()[0], UniLocation(), 1.0e-12)) & passed;
+		cov := envelope->GetCovariance();
+		passed := Report("univariate reweighted variance", Near(cov[0, 0], UniVariance(), 1.0e-12)) & passed;
+		passed := Report("univariate distances", Close(envelope->GetTrainingScores(), UniScores(), 1.0e-10)) & passed;
+		return passed;
+	}
+
+	function : Behaviour() ~ Bool {
+		X := MakeData(101, 180, 20, 3, 8.0);
+		y := Labels(180, 20);
+		envelope : OutlierDetector := EllipticEnvelope->New();
+		flags := envelope->FitPredict(X);
+		passed := Report("defaults fit (contamination 0.1)", flags <> Nil);
+		if(flags = Nil) {
+			return false;
+		};
+
+		n := Count(flags);
+		passed := Report("contamination 0.1 flags 20 of 200 ({$n})", n = 20) & passed;
+		auc := Metrics->AucRoc(envelope->GetTrainingScores(), y);
+		passed := Report("distances feed AucRoc (AUC {$auc} > 0.95)", auc > 0.95) & passed;
+
+		# squared Mahalanobis against an independent inverse (Eigen, native)
+		e := envelope->As(EllipticEnvelope);
+		mu := e->GetLocation();
+		inverse := Matrix2D->Inverse(e->GetCovariance());
+		scores := envelope->Score(X);
+		mahal := true;
+		each(i : 200) {
+			d := 0.0;
+			each(a : 3) {
+				each(b : 3) {
+					d += (X[i, a] - mu[a]) * inverse[a, b] * (X[i, b] - mu[b]);
+				};
+			};
+			if(<>Near(scores[i], d, 1.0e-9)) {
+				mahal := false;
+			};
+		};
+		passed := Report("squared Mahalanobis distances match an independent inverse", mahal) & passed;
+
+		# the sweep: contamination moves only the threshold
+		counts := Int->New[3];
+		settings := [0.01, 0.05, 0.10];
+		each(s : settings) {
+			envelope->SetSensitivity(settings[s]);
+			counts[s] := Count(envelope->Predict(X));
+		};
+		passed := Report("0.01 < 0.05 < 0.10 in flags ({$counts[0]}, {$counts[1]}, {$counts[2]})",
+			counts[0] < counts[1] & counts[1] < counts[2]) & passed;
+		fresh := EllipticEnvelope->New(0.05, 0.0, 42);
+		fresh->Fit(X);
+		envelope->SetSensitivity(0.05);
+		passed := Report("SetSensitivity equals a fresh fit", fresh->GetThreshold() = envelope->GetThreshold()) & passed;
+
+		# determinism
+		again := EllipticEnvelope->New(0.1, 0.0, 42);
+		again->Fit(X);
+		twice := EllipticEnvelope->New(0.1, 0.0, 42);
+		twice->Fit(X);
+		passed := Report("same seed, identical distances", Same(again->GetTrainingScores(), twice->GetTrainingScores())) & passed;
+
+		fp := Fingerprint(scores);
+		"  fingerprint: {$fp}"->PrintLine();
+
+		dec := envelope->DecisionFunction(X);
+		passed := Report("DecisionFunction is score - threshold", dec <> Nil & dec[0] = scores[0] - envelope->GetThreshold()) & passed;
+		return passed;
+	}
+
+	function : Edges() ~ Bool {
+		# a constant feature is left out: same distances as without it
+		X := MakeData(102, 90, 10, 2, 8.0);
+		W := Float->New[100, 3];
+		each(i : 100) {
+			W[i, 0] := X[i, 0];
+			W[i, 1] := 7.0;
+			W[i, 2] := X[i, 1];
+		};
+		plain := EllipticEnvelope->New(0.1, 0.0, 42);
+		plain->Fit(X);
+		wide := EllipticEnvelope->New(0.1, 0.0, 42);
+		passed := Report("a constant feature fits", wide->Fit(W));
+		passed := Report("and is left out of the distance", Close(wide->GetTrainingScores(), plain->GetTrainingScores(), 1.0e-12)) & passed;
+		passed := Report("its location reports the constant", wide->GetLocation()[1] = 7.0) & passed;
+
+		# collinear: column 2 = column 0 + column 1
+		L := Float->New[100, 3];
+		each(i : 100) {
+			L[i, 0] := X[i, 0];
+			L[i, 1] := X[i, 1];
+			L[i, 2] := X[i, 0] + X[i, 1];
+		};
+		collinear := EllipticEnvelope->New();
+		passed := Report("collinear features are refused", <>collinear->Fit(L)) & passed;
+		passed := Report("with a reason that names singularity", collinear->GetError()->Has("singular")) & passed;
+
+		# too few rows for the features
+		few := EllipticEnvelope->New();
+		passed := Report("n <= p is refused", <>few->Fit([[1.0, 2.0, 3.0], [2.0, 1.0, 0.0], [0.5, 0.5, 4.0]])) & passed;
+
+		# most rows identical: the support is singular
+		D := Float->New[60, 2];
+		each(i : 60) {
+			if(i < 45) {
+				D[i, 0] := 1.0;
+				D[i, 1] := 2.0;
+			}
+			else {
+				D[i, 0] := i->As(Float);
+				D[i, 1] := (i * i % 13)->As(Float);
+			};
+		};
+		dup := EllipticEnvelope->New();
+		passed := Report("75% duplicate rows are refused", <>dup->Fit(D) & dup->GetError()->Has("singular")) & passed;
+
+		bad := MakeData(5, 30, 0, 2, 1.0);
+		bad[3, 1] := Float->NaN();
+		nan_fit := EllipticEnvelope->New();
+		passed := Report("NaN is refused", <>nan_fit->Fit(bad) & nan_fit->GetError()->Has("row 3, column 1")) & passed;
+		passed := Report("contamination 0 is refused", <>EllipticEnvelope->New(0.0, 0.0, 1)->Fit(X)) & passed;
+		passed := Report("unfitted Score is Nil", EllipticEnvelope->New()->Score(X) = Nil) & passed;
+		return passed;
+	}
+
+	function : Same(a : Float[], b : Float[]) ~ Bool {
+		if(a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	function : Count(flags : Bool[]) ~ Int {
+		n := 0;
+		each(i : flags) {
+			if(flags[i]) {
+				n += 1;
+			};
+		};
+		return n;
+	}
+
+	function : Labels(n_in : Int, n_out : Int) ~ Bool[] {
+		y := Bool->New[n_in + n_out];
+		for(i := n_in; i < n_in + n_out; i += 1;) {
+			y[i] := true;
+		};
+		return y;
+	}
+
+	function : Gauss(rng : System.ML.Random) ~ Float {
+		acc := 0.0;
+		each(k : 12) {
+			acc += rng->NextReal();
+		};
+		return acc - 6.0;
+	}
+
+	function : MakeData(seed : Int, n_in : Int, n_out : Int, p : Int, spread : Float) ~ Float[,] {
+		rng := System.ML.Random->New(seed);
+		X := Float->New[n_in + n_out, p];
+		z := Float->New[p];
+		each(i : n_in) {
+			each(j : p) {
+				z[j] := Gauss(rng);
+			};
+			each(j : p) {
+				v := z[j];
+				if(j > 0) {
+					v := v + 0.5 * z[j - 1];
+				};
+				X[i, j] := v;
+			};
+		};
+		for(i := n_in; i < n_in + n_out; i += 1;) {
+			each(j : p) {
+				X[i, j] := rng->NextReal() * (2.0 * spread) - spread;
+			};
+		};
+		return X;
+	}
+
+	function : Near(a : Float, b : Float, tol : Float) ~ Bool {
+		scale := b->Abs();
+		if(scale < 1.0) {
+			scale := 1.0;
+		};
+		return (a - b)->Abs() <= tol * scale;
+	}
+
+	function : Close(a : Float[], b : Float[], tol : Float) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(<>Near(a[i], b[i], tol)) {
+				"  mismatch at {$i}: {$a[i]} vs {$b[i]}"->PrintLine();
+				return false;
+			};
+		};
+		return true;
+	}
+
+	# printed so runs under different -opt levels and JIT modes can be diffed: the
+	# scores to 1e-12, folded into one integer
+	function : Fingerprint(v : Float[]) ~ Int {
+		total := 0;
+		each(i : v) {
+			total += (v[i] * 1000000000000.0)->As(Int) * (i % 7 + 1);
+		};
+		return total;
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+		return passed;
+	}
+
+	# BEGIN GENERATED FIXTURE
+	# by ml_outlier_ref/gen_fixtures.py; do not edit by hand
+	function : ExpectedChi2() ~ Float[] {
+		return [
+			0.45493642311957283, 5.023886187314885, 1.3862943611198904, 7.377758908227866, 2.3659738843753395, 9.348403604496138,
+			3.356693980033321, 11.14328678187779, 5.34812062744712, 14.449375335447915, 19.33742922942826, 34.169606902838325];
+	}
+
+	function : CaseSeeds() ~ Int[] {
+		return [
+			201, 301, 401];
+	}
+
+	function : CaseInliers() ~ Int[] {
+		return [
+			720, 1800, 540];
+	}
+
+	function : CaseOutliers() ~ Int[] {
+		return [
+			80, 200, 60];
+	}
+
+	function : CaseFeatures() ~ Int[] {
+		return [
+			3, 4, 8];
+	}
+
+	function : RawLogDets() ~ Float[] {
+		return [
+			-2.245992569958003, -2.616166445899447, -3.6892197286776063];
+	}
+
+	function : RawLocations() ~ Float[] {
+		return [
+			-0.013207752232460089, -0.1419468653679795, -0.07709352075079627, -0.028608455857842427, -0.011384970091333022, 0.046661818716796546,
+			-0.01908143334782407, -0.05143792541558468, -0.07416100585927722, 0.008134308720711305, 0.014285207307511233, -0.05951099533106891,
+			-0.02449309118316556, -0.010757351835824712, -0.06906088801171618];
+	}
+
+	function : FinalLocations() ~ Float[] {
+		return [
+			0.03612395025496907, -0.01758026760524425, 0.031507659023918166, -0.016945254406742584, -0.02964784295014806, 0.011350460322985657,
+			0.005397750889276197, -0.02142172722505939, -0.08908097511904359, -0.016886814032935793, 0.012386770087344385, -0.017262413196761004,
+			-0.07519263776500532, -0.05645514972978607, -0.015186294662157524];
+	}
+
+	function : FinalCovariances() ~ Float[] {
+		return [
+			1.0498120306579488, 0.5773562942678436, 0.006696206345208066, 0.5773562942678436, 1.2378352804370025, 0.5193368070709893,
+			0.006696206345208066, 0.5193368070709893, 1.325705320780215, 0.9900130997561942, 0.47712949552710193, 0.005253434593060298,
+			0.031567793508809484, 0.47712949552710193, 1.1729047700059612, 0.4331613506691174, -0.035488003391746854, 0.005253434593060298,
+			0.4331613506691174, 1.1690515115236764, 0.4616338438499612, 0.031567793508809484, -0.035488003391746854, 0.4616338438499612,
+			1.2896202993146368, 0.9286189849078296, 0.49524099825486667, 0.017609248069659092, -0.07737751015374289, -0.011588633089675178,
+			-0.08092351434596691, -0.08522141430425972, -0.05513791814635925, 0.49524099825486667, 1.1957480825010347, 0.5210380663254549,
+			0.01562936263242038, 0.000395510246880968, -0.05989303330291361, -0.10684499057817148, -0.010176322924047486, 0.017609248069659092,
+			0.5210380663254549, 1.2866284780279462, 0.4881982060786147, -0.10947467677765828, -0.03926791204123663, 0.015856981165160215,
+			0.013910243647381994, -0.07737751015374289, 0.01562936263242038, 0.4881982060786147, 1.0484406672346869, 0.40019076095308875,
+			0.08016599277514486, 0.11425836297469377, 0.08217594484126818, -0.011588633089675178, 0.000395510246880968, -0.10947467677765828,
+			0.40019076095308875, 1.2094090707523315, 0.53458620337055, 0.09145300860796146, 0.044724872046773834, -0.08092351434596691,
+			-0.05989303330291361, -0.03926791204123663, 0.08016599277514486, 0.53458620337055, 1.1883634714939324, 0.5026248584933646,
+			0.019668759752582952, -0.08522141430425972, -0.10684499057817148, 0.015856981165160215, 0.11425836297469377, 0.09145300860796146,
+			0.5026248584933646, 1.2994717021539597, 0.5813661751636966, -0.05513791814635925, -0.010176322924047486, 0.013910243647381994,
+			0.08217594484126818, 0.044724872046773834, 0.019668759752582952, 0.5813661751636966, 1.1600538304609411];
+	}
+
+	function : FlaggedCounts() ~ Int[] {
+		return [
+			80, 200, 60];
+	}
+
+	function : FlaggedRows() ~ Int[] {
+		return [
+			356, 463, 611, 633, 720, 721, 722, 723, 724, 725, 726, 727, 729, 730, 731, 732,
+			733, 734, 735, 736, 737, 738, 739, 740, 741, 742, 743, 744, 745, 746, 747, 748,
+			749, 751, 752, 753, 754, 755, 756, 757, 758, 759, 760, 761, 762, 763, 764, 765,
+			766, 767, 768, 769, 770, 771, 772, 773, 775, 776, 777, 778, 779, 780, 781, 782,
+			783, 784, 785, 786, 787, 788, 789, 790, 791, 792, 793, 794, 795, 796, 797, 799,
+			207, 216, 229, 245, 247, 1221, 1800, 1801, 1802, 1803, 1804, 1805, 1806, 1807, 1808, 1809,
+			1810, 1811, 1812, 1813, 1814, 1815, 1817, 1818, 1819, 1820, 1821, 1822, 1823, 1824, 1825, 1826,
+			1827, 1828, 1829, 1830, 1831, 1832, 1833, 1834, 1835, 1836, 1837, 1838, 1839, 1840, 1841, 1842,
+			1843, 1844, 1845, 1846, 1847, 1848, 1849, 1850, 1851, 1852, 1853, 1854, 1855, 1856, 1857, 1858,
+			1859, 1860, 1861, 1862, 1863, 1864, 1865, 1866, 1867, 1868, 1869, 1870, 1871, 1872, 1873, 1874,
+			1875, 1876, 1877, 1878, 1879, 1880, 1881, 1882, 1883, 1884, 1885, 1886, 1887, 1888, 1890, 1891,
+			1892, 1893, 1894, 1895, 1897, 1898, 1900, 1901, 1902, 1903, 1904, 1905, 1906, 1907, 1908, 1909,
+			1910, 1911, 1912, 1913, 1914, 1915, 1916, 1917, 1918, 1919, 1921, 1922, 1923, 1924, 1926, 1927,
+			1928, 1929, 1930, 1931, 1932, 1933, 1934, 1935, 1936, 1937, 1938, 1939, 1940, 1941, 1942, 1943,
+			1944, 1945, 1946, 1947, 1948, 1949, 1950, 1951, 1952, 1953, 1954, 1955, 1956, 1957, 1958, 1959,
+			1960, 1961, 1962, 1963, 1964, 1965, 1966, 1967, 1968, 1969, 1970, 1971, 1972, 1973, 1974, 1975,
+			1976, 1977, 1978, 1979, 1980, 1981, 1982, 1983, 1984, 1985, 1986, 1987, 1988, 1989, 1990, 1991,
+			1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 540, 541, 542, 543, 544, 545, 546, 547,
+			548, 549, 550, 551, 552, 553, 554, 555, 556, 557, 558, 559, 560, 561, 562, 563,
+			564, 565, 566, 567, 568, 569, 570, 571, 572, 573, 574, 575, 576, 577, 578, 579,
+			580, 581, 582, 583, 584, 585, 586, 587, 588, 589, 590, 591, 592, 593, 594, 595,
+			596, 597, 598, 599];
+	}
+
+	function : UniRawLocation() ~ Float {
+		return 0.1566834036059146;
+	}
+
+	function : UniRawVariance() ~ Float {
+		return 0.15766270357381493;
+	}
+
+	function : UniLocation() ~ Float {
+		return -0.07879685521069767;
+	}
+
+	function : UniVariance() ~ Float {
+		return 0.9509397529852213;
+	}
+
+	function : UniScores() ~ Float[] {
+		return [
+			0.5371047467528655, 0.3691584751887568, 1.3575813731936972, 2.932037959951474, 0.09379217113968898, 5.0090083913355885,
+			0.047765685522691906, 1.2319416256967906, 0.609028752512552, 1.5258296967108747, 1.8797165206694741, 0.006629632593165489,
+			0.34322472484479855, 2.2748935763353386, 2.80847542559813, 0.5227860214243781, 1.0896510618147377, 0.6007415014722215,
+			0.18980966709464636, 0.34090275793488006, 0.04602558010972222, 0.253132573308396, 0.4695665436210252, 3.685621929227097,
+			1.3883836596791341, 0.3617714283181094, 0.47971608380680686, 1.257977427026339, 0.6435816886067213, 5.05621009632706,
+			0.03214534185167785, 0.7524975998070764, 1.3917189053443262, 0.3838730864989837, 4.165250243322073, 0.7166958001999162,
+			0.048295104447652885, 0.338609927076171, 0.004523281979796081, 0.003487330871025794, 0.16339079158538308, 0.025495356645217102,
+			0.003058302075822656, 4.714443209354136, 0.3420040194439311, 0.058072488168210215, 0.01858806864966023, 0.02994772480146234,
+			0.05751909974373469, 0.8434940292787209, 3.2948041100539345, 1.6111989924560015, 1.0009786238916827, 0.19044815947194157,
+			0.5799669981571751, 4.781885672529053, 0.15350773929883907, 0.2090451478545447, 0.6290506932943015, 0.306152213015726,
+			0.6633748499028121, 0.44055169815532796, 4.847382869832849, 0.001799959781112413, 0.22157108417298185, 0.8286473417382725,
+			1.525922050823577, 0.47453688206678213, 0.6543835899515014, 0.0072695169720496, 0.0035324553954772992, 3.6070232670243754,
+			2.29978258736545, 1.1654247327179845, 0.004392302538880992, 0.000025848052314760123, 0.6703329960009647, 0.2101500041888937,
+			2.734242420097579, 0.9723523909033004, 0.011019394636192134, 0.016801255526608487, 2.9089342202193555, 0.00883398399384542,
+			1.645208392332161, 0.10473896587886025, 0.17524966456237043, 0.1387248060633005, 1.2698546481878095, 0.2136665135295994,
+			15.735683198889168, 36.21326457382275, 0.1153721911645042, 24.134619159857323, 57.30564064571307, 3.6440651470704153,
+			9.21776682767247, 15.449744307390652, 55.680822464663294, 41.83208484605633];
+	}
+	# END GENERATED FIXTURE
+}

@@ -1,0 +1,158 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+System.ML DbscanDetector: DBSCAN's noise as an OutlierDetector.
+
+The outliers must be exactly the rows the existing DBSCAN class labels noise
+(-1), at several eps, on 330 rows of correlated near-Gaussian data with 30 uniform
+outliers. Also: the score is the distance to the nearest core row and the
+threshold is eps, smaller eps flags more (the lab's 1.5 / 1.0 / 0.5), changing eps
+unfits the detector, Predict on new rows, no core rows at all, refusals.
+~#
+use System.ML;
+
+class MlOutlierDbscan {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		X := MakeData(31, 300, 30, 3, 8.0);
+		y := Labels(300, 30);
+
+		settings := [1.5, 1.0, 0.5];
+		counts := Int->New[3];
+		detector : OutlierDetector := DbscanDetector->New(1.5, 5);
+		ok := Report("sensitivity is named eps", detector->GetSensitivityName()->Equals("eps")) & ok;
+		each(s : settings) {
+			eps := settings[s];
+			ok := Report("eps {$eps} accepted", detector->SetSensitivity(eps)) & ok;
+			if(s > 0) {
+				ok := Report("changing eps unfits", <>detector->IsFitted()) & ok;
+			};
+			flags := detector->FitPredict(X);
+
+			scanner := DBSCAN->New(eps, 5);
+			scanner->Fit(X);
+			labels := scanner->GetLabels();
+			same := flags <> Nil;
+			if(same) {
+				each(i : labels) {
+					if(flags[i] <> (labels[i] = -1)) {
+						same := false;
+					};
+				};
+			};
+			counts[s] := Count(flags);
+			ok := Report("eps {$eps}: outliers are exactly DBSCAN's noise ({$counts[s]} rows)", same) & ok;
+
+			scores := detector->GetTrainingScores();
+			core := detector->As(DbscanDetector)->GetCoreMask();
+			rule := true;
+			each(i : scores) {
+				if(core[i] & scores[i] <> 0.0) {
+					rule := false;
+				};
+				if(<>core[i] & scores[i] = 0.0) {
+					rule := false;
+				};
+			};
+			ok := Report("eps {$eps}: core rows score 0, others their nearest-core distance", rule) & ok;
+			ok := Report("eps {$eps}: threshold is eps", detector->GetThreshold() = eps) & ok;
+		};
+		ok := Report("smaller eps flags more ({$counts[0]}, {$counts[1]}, {$counts[2]})",
+			counts[0] < counts[1] & counts[1] < counts[2]) & ok;
+
+		detector->SetSensitivity(1.0);
+		detector->Fit(X);
+		auc := Metrics->AucRoc(detector->GetTrainingScores(), y);
+		ok := Report("scores feed AucRoc (AUC {$auc} > 0.9)", auc > 0.9) & ok;
+
+		# new rows: one beside the data, one far away
+		probe := [[0.0, 0.0, 0.0], [20.0, 20.0, 20.0]];
+		flags := detector->Predict(probe);
+		ok := Report("a central new row is an inlier, a far one an outlier", flags <> Nil & <>flags[0] & flags[1]) & ok;
+		scores := detector->Score(probe);
+		ok := Report("the far row's score is its distance to the nearest core row", scores[1] > 20.0) & ok;
+		dec := detector->DecisionFunction(probe);
+		ok := Report("DecisionFunction is score - eps", dec[1] = scores[1] - 1.0) & ok;
+
+		# no core rows: everything is noise and scores +Inf
+		sparse := DbscanDetector->New(0.1, 5);
+		sf := sparse->FitPredict([[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]]);
+		ok := Report("no core rows: all noise", sf <> Nil & sf[0] & sf[1] & sf[2]) & ok;
+		ok := Report("and every score is +Inf", sparse->GetTrainingScores()[0] = Float->Inf()) & ok;
+
+		# refusals
+		bad := MakeData(2, 10, 0, 2, 1.0);
+		bad[0, 0] := Float->NaN();
+		r := DbscanDetector->New();
+		ok := Report("NaN is refused", <>r->Fit(bad) & r->GetError()->Has("row 0, column 0")) & ok;
+		ok := Report("eps 0 is rejected", <>r->SetSensitivity(0.0)) & ok;
+		ok := Report("unfitted Predict is Nil", DbscanDetector->New()->Predict(X) = Nil) & ok;
+
+		if(ok) {
+			"PASS: ml_outlier_dbscan"->PrintLine();
+		}
+		else {
+			"FAIL: ml_outlier_dbscan"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Count(flags : Bool[]) ~ Int {
+		n := 0;
+		each(i : flags) {
+			if(flags[i]) {
+				n += 1;
+			};
+		};
+		return n;
+	}
+
+	function : Labels(n_in : Int, n_out : Int) ~ Bool[] {
+		y := Bool->New[n_in + n_out];
+		for(i := n_in; i < n_in + n_out; i += 1;) {
+			y[i] := true;
+		};
+		return y;
+	}
+
+	function : Gauss(rng : System.ML.Random) ~ Float {
+		acc := 0.0;
+		each(k : 12) {
+			acc += rng->NextReal();
+		};
+		return acc - 6.0;
+	}
+
+	function : MakeData(seed : Int, n_in : Int, n_out : Int, p : Int, spread : Float) ~ Float[,] {
+		rng := System.ML.Random->New(seed);
+		X := Float->New[n_in + n_out, p];
+		z := Float->New[p];
+		each(i : n_in) {
+			each(j : p) {
+				z[j] := Gauss(rng);
+			};
+			each(j : p) {
+				v := z[j];
+				if(j > 0) {
+					v := v + 0.5 * z[j - 1];
+				};
+				X[i, j] := v;
+			};
+		};
+		for(i := n_in; i < n_in + n_out; i += 1;) {
+			each(j : p) {
+				X[i, j] := rng->NextReal() * (2.0 * spread) - spread;
+			};
+		};
+		return X;
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+		return passed;
+	}
+}

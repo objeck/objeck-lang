@@ -81,6 +81,7 @@ if %ERRORLEVEL% NEQ 0 (
 	%LIB_SRC%\ml_neighbors.obs ^
 	%LIB_SRC%\ml_cluster.obs ^
 	%LIB_SRC%\ml_data.obs ^
+	%LIB_SRC%\ml_outlier.obs ^
 	%LIB_SRC%\ml_lab.obs ^
 	%LIB_SRC%\ai_search.obs ^
 	%LIB_SRC%\ai_game.obs ^

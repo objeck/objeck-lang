@@ -1,0 +1,3097 @@
+#~~
+# Objeck machine learning library: anomaly (outlier) detection
+# Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+
+#~
+Anomaly detection: the OutlierDetector interface and ZScoreDetector, IsolationForest, LocalOutlierFactor, EllipticEnvelope and DbscanDetector, with scikit-learn's defaults and threshold rules. Compile with -lib ml.
+~#
+bundle System.ML {
+	#~
+	An unsupervised anomaly detector: fitted on rows, it labels and scores rows.
+
+	Conventions, shared by every detector so they are interchangeable (see
+	docs/ML_OUTLIERS_DESIGN.md):
+
+	- Labels are Bool and **true means outlier**. scikit-learn uses +1 for inliers
+	  and -1 for outliers, so sklearn's -1 is our true. The anomaly is the positive
+	  class, so a prediction feeds Metrics and ConfusionMatrix directly.
+	- Scores: **higher means more anomalous**, so they go straight into
+	  Metrics->AucRoc and RecallAtFpr. Where scikit-learn has score_samples (higher
+	  means more normal), Score is exactly its negation.
+	- GetThreshold is the cut on Score, sklearn's -offset_. DecisionFunction is
+	  Score minus the threshold, so positive means outlier (sklearn's
+	  -decision_function). A row is an outlier when its score is strictly greater
+	  than the threshold, as in sklearn's predict.
+	- Where a detector takes a contamination, the threshold is that quantile of the
+	  training scores (numpy's linear interpolation), as in scikit-learn.
+	- NaN input is refused: Fit returns false and GetError says where; Predict and
+	  Score return Nil.
+
+```
+detector : OutlierDetector := IsolationForest->New();
+if(detector->Fit(X)) {
+  flags := detector->Predict(X_new);      # true = outlier
+  scores := detector->Score(X_new);       # higher = more anomalous
+  auc := Metrics->AucRoc(scores, y_new);
+};
+```
+	~#
+	interface OutlierDetector {
+		#~
+		Fits the detector to training rows.
+		@param X rows x features
+		@return true on success; on false GetError says why
+		~#
+		method : virtual : public : Fit(X : Float[,]) ~ Bool;
+
+		#~
+		Fits, then labels the training rows themselves. For LocalOutlierFactor without
+		novelty this is the only way to label (each training row is scored without
+		counting itself as a neighbour); for DbscanDetector it is DBSCAN's noise.
+		@param X rows x features
+		@return one label per row (true = outlier), or Nil when the fit failed
+		~#
+		method : virtual : public : FitPredict(X : Float[,]) ~ Bool[];
+
+		#~
+		Labels new rows: true where the score is strictly above the threshold.
+		@param X rows x features, as many columns as the training data
+		@return one label per row (true = outlier), or Nil when unfitted or the input is refused
+		~#
+		method : virtual : public : Predict(X : Float[,]) ~ Bool[];
+
+		#~
+		Anomaly scores for new rows; higher means more anomalous.
+		@param X rows x features, as many columns as the training data
+		@return one score per row, or Nil when unfitted or the input is refused
+		~#
+		method : virtual : public : Score(X : Float[,]) ~ Float[];
+
+		#~
+		Score minus the threshold: positive means outlier, the negation of
+		scikit-learn's decision_function.
+		@param X rows x features
+		@return one value per row, or Nil when unfitted or the input is refused
+		~#
+		method : virtual : public : DecisionFunction(X : Float[,]) ~ Float[];
+
+		#~
+		The scores of the training rows the threshold was taken from.
+		@return one score per training row, or Nil when unfitted
+		~#
+		method : virtual : public : GetTrainingScores() ~ Float[];
+
+		#~
+		The cut on Score above which a row is an outlier (scikit-learn's -offset_).
+		@return the threshold
+		~#
+		method : virtual : public : GetThreshold() ~ Float;
+
+		#~
+		Whether the detector is fitted and ready to label.
+		@return true when fitted
+		~#
+		method : virtual : public : IsFitted() ~ Bool;
+
+		#~
+		Sets the detector's sensitivity setting (GetSensitivityName names it). When
+		the setting only moves the threshold (a z-score threshold, a contamination, a
+		percentile), a fitted detector re-derives its threshold from its training
+		scores and stays fitted; when it changes the model (DBSCAN's eps) the detector
+		becomes unfitted and must be fitted again.
+		@param value the new setting
+		@return false when the value is out of range (nothing is changed)
+		~#
+		method : virtual : public : SetSensitivity(value : Float) ~ Bool;
+
+		#~
+		The current sensitivity setting.
+		@return the setting
+		~#
+		method : virtual : public : GetSensitivity() ~ Float;
+
+		#~
+		The name of the sensitivity setting, e.g. "contamination".
+		@return setting name
+		~#
+		method : virtual : public : GetSensitivityName() ~ String;
+
+		#~
+		Why the last Fit, Predict or Score failed.
+		@return the reason, or an empty string
+		~#
+		method : virtual : public : GetError() ~ String;
+	}
+
+	#~
+	Shared helpers for the outlier detectors: input checks, numpy-compatible
+	percentiles, sorting, and the chi-square quantile.
+	~#
+	class : private : OutlierKit {
+		#~
+		Checks a training matrix.
+		@param X matrix
+		@return Nil when usable, otherwise the reason
+		~#
+		function : CheckTrain(X : Float[,]) ~ String {
+			if(X = Nil) {
+				return "input is Nil";
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows < 1 | cols < 1) {
+				return "input has no rows or no columns";
+			};
+
+			return CheckNan(X, rows, cols);
+		}
+
+		#~
+		Checks a matrix to score against the training width.
+		@param X matrix
+		@param cols the training column count
+		@return Nil when usable, otherwise the reason
+		~#
+		function : CheckScore(X : Float[,], cols : Int) ~ String {
+			if(X = Nil) {
+				return "input is Nil";
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			if(dims[1] <> cols) {
+				given := dims[1];
+				return "input has {$given} columns; the detector was fitted on {$cols}";
+			};
+
+			return CheckNan(X, rows, cols);
+		}
+
+		function : CheckNan(X : Float[,], rows : Int, cols : Int) ~ String {
+			each(i : rows) {
+				each(j : cols) {
+					v := X[i, j];
+					# NaN is the only value not equal to itself
+					if(v <> v) {
+						return "input contains NaN at row {$i}, column {$j}";
+					};
+				};
+			};
+
+			return Nil;
+		}
+
+		#~
+		numpy's linear interpolation between two order statistics, reproduced to the
+		bit: it interpolates from the nearer end.
+		~#
+		function : Lerp(a : Float, b : Float, t : Float) ~ Float {
+			diff := b - a;
+			if(t >= 0.5) {
+				return b - diff * (1.0 - t);
+			};
+
+			return a + diff * t;
+		}
+
+		#~
+		numpy.percentile(values, pct) with the default linear method.
+		@param values sample (not modified)
+		@param pct percentile, 0 to 100
+		@return the percentile, 0.0 for an empty sample
+		~#
+		function : Percentile(values : Float[], pct : Float) ~ Float {
+			n := values->Size();
+			if(n = 0) {
+				return 0.0;
+			};
+
+			sorted := Float->Sort(values);
+			return SortedPercentile(sorted, pct / 100.0);
+		}
+
+		#~
+		The q quantile (0..1) of an ascending array, numpy's linear method.
+		~#
+		function : SortedPercentile(sorted : Float[], q : Float) ~ Float {
+			n := sorted->Size();
+			if(n = 0) {
+				return 0.0;
+			};
+
+			pos := (n - 1)->As(Float) * q;
+			if(pos <= 0.0) {
+				return sorted[0];
+			};
+			if(pos >= (n - 1)->As(Float)) {
+				return sorted[n - 1];
+			};
+
+			lo := Float->Floor(pos)->As(Int);
+			t := pos - lo->As(Float);
+			return Lerp(sorted[lo], sorted[lo + 1], t);
+		}
+
+		#~
+		The anomaly-score threshold for a contamination: the negation of
+		numpy.percentile(-scores, 100 * contamination), i.e. scikit-learn's -offset_.
+		@param scores training scores, higher = more anomalous
+		@param contamination expected outlier fraction
+		@return threshold
+		~#
+		function : ContaminationThreshold(scores : Float[], contamination : Float) ~ Float {
+			n := scores->Size();
+			if(n = 0) {
+				return 0.0;
+			};
+
+			negated := Float->New[n];
+			each(i : n) {
+				negated[i] := 0.0 - scores[i];
+			};
+
+			sorted := Float->Sort(negated);
+			q := (100.0 * contamination) / 100.0;
+			return 0.0 - SortedPercentile(sorted, q);
+		}
+
+		#~
+		Indexes that sort values ascending; stable, so equal values keep row order.
+		@param values values (not modified)
+		@return permutation
+		~#
+		function : ArgSort(values : Float[]) ~ Int[] {
+			n := values->Size();
+			idx := Int->New[n];
+			each(i : n) {
+				idx[i] := i;
+			};
+
+			if(n > 1) {
+				buffer := Int->New[n];
+				MergeRange(values, idx, buffer, 0, n - 1);
+			};
+
+			return idx;
+		}
+
+		function : MergeRange(values : Float[], idx : Int[], buffer : Int[], lo : Int, hi : Int) ~ Nil {
+			# short ranges: insertion sort, stable
+			if(hi - lo < 16) {
+				for(i := lo + 1; i <= hi; i += 1;) {
+					cur := idx[i];
+					v := values[cur];
+					j := i - 1;
+					while(j >= lo & values[idx[j]] > v) {
+						idx[j + 1] := idx[j];
+						j -= 1;
+					};
+					idx[j + 1] := cur;
+				};
+				return;
+			};
+
+			mid := (lo + hi) / 2;
+			MergeRange(values, idx, buffer, lo, mid);
+			MergeRange(values, idx, buffer, mid + 1, hi);
+
+			if(values[idx[mid]] <= values[idx[mid + 1]]) {
+				return;
+			};
+
+			i := lo;
+			j := mid + 1;
+			p := lo;
+			while(i <= mid & j <= hi) {
+				if(values[idx[i]] <= values[idx[j]]) {
+					buffer[p] := idx[i];
+					i += 1;
+				}
+				else {
+					buffer[p] := idx[j];
+					j += 1;
+				};
+				p += 1;
+			};
+
+			while(i <= mid) {
+				buffer[p] := idx[i];
+				i += 1;
+				p += 1;
+			};
+
+			while(j <= hi) {
+				buffer[p] := idx[j];
+				j += 1;
+				p += 1;
+			};
+
+			for(q := lo; q <= hi; q += 1;) {
+				idx[q] := buffer[q];
+			};
+		}
+
+		#~
+		The k-th smallest value (0-based) by quickselect on a copy; O(n) expected.
+		@param values values (not modified)
+		@param k rank, 0 to n - 1
+		@return the value
+		~#
+		function : KthSmallest(values : Float[], k : Int) ~ Float {
+			n := values->Size();
+			a := Float->New[n];
+			each(i : n) {
+				a[i] := values[i];
+			};
+
+			lo := 0;
+			hi := n - 1;
+			while(lo < hi) {
+				# median of three as the pivot
+				mid := lo + (hi - lo) / 2;
+				x := a[lo];
+				y := a[mid];
+				z := a[hi];
+				pivot := y;
+				if((x <= y & y <= z) | (z <= y & y <= x)) {
+					pivot := y;
+				}
+				else if((y <= x & x <= z) | (z <= x & x <= y)) {
+					pivot := x;
+				}
+				else {
+					pivot := z;
+				};
+
+				i := lo;
+				j := hi;
+				while(i <= j) {
+					while(a[i] < pivot) {
+						i += 1;
+					};
+					while(a[j] > pivot) {
+						j -= 1;
+					};
+					if(i <= j) {
+						tmp := a[i];
+						a[i] := a[j];
+						a[j] := tmp;
+						i += 1;
+						j -= 1;
+					};
+				};
+
+				if(k <= j) {
+					hi := j;
+				}
+				else if(k >= i) {
+					lo := i;
+				}
+				else {
+					return a[k];
+				};
+			};
+
+			return a[k];
+		}
+
+		#~
+		Labels from scores: true where score > threshold.
+		~#
+		function : Flags(scores : Float[], threshold : Float) ~ Bool[] {
+			if(scores = Nil) {
+				return Nil;
+			};
+
+			flags := Bool->New[scores->Size()];
+			each(i : scores) {
+				flags[i] := scores[i] > threshold;
+			};
+
+			return flags;
+		}
+
+		#~
+		Score minus threshold.
+		~#
+		function : Decision(scores : Float[], threshold : Float) ~ Float[] {
+			if(scores = Nil) {
+				return Nil;
+			};
+
+			result := Float->New[scores->Size()];
+			each(i : scores) {
+				result[i] := scores[i] - threshold;
+			};
+
+			return result;
+		}
+
+		#~
+		A copy of a matrix.
+		~#
+		function : Copy(X : Float[,]) ~ Float[,] {
+			dims := X->Size();
+			rows := dims[0];
+			cols := dims[1];
+			result := Float->New[rows, cols];
+			each(i : rows) {
+				each(j : cols) {
+					result[i, j] := X[i, j];
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		ln(Gamma(x)) for x > 0, Lanczos (g = 7, 9 terms), about 15 digits.
+		~#
+		function : LogGamma(x : Float) ~ Float {
+			if(x < 0.5) {
+				# reflection
+				pi := Float->Pi();
+				return Float->Log(pi / Float->Sin(pi * x)->Abs()) - LogGamma(1.0 - x);
+			};
+
+			z := x - 1.0;
+			a := 0.99999999999980993;
+			a += 676.5203681218851 / (z + 1.0);
+			a += -1259.1392167224028 / (z + 2.0);
+			a += 771.32342877765313 / (z + 3.0);
+			a += -176.61502916214059 / (z + 4.0);
+			a += 12.507343278686905 / (z + 5.0);
+			a += -0.13857109526572012 / (z + 6.0);
+			a += 0.0000099843695780195716 / (z + 7.0);
+			a += 0.00000015056327351493116 / (z + 8.0);
+			t := z + 7.5;
+
+			return 0.91893853320467274 + (z + 0.5) * Float->Log(t) - t + Float->Log(a);
+		}
+
+		#~
+		The regularized lower incomplete gamma function P(a, x).
+		~#
+		function : GammaP(a : Float, x : Float) ~ Float {
+			if(x <= 0.0) {
+				return 0.0;
+			};
+
+			lead := Float->Exp(a * Float->Log(x) - x - LogGamma(a));
+			if(x < a + 1.0) {
+				# series
+				term := 1.0 / a;
+				sum := term;
+				ap := a;
+				for(n := 0; n < 10000; n += 1;) {
+					ap += 1.0;
+					term *= x / ap;
+					sum += term;
+					if(term->Abs() < sum->Abs() * 1.0e-17) {
+						break;
+					};
+				};
+
+				return sum * lead;
+			};
+
+			# continued fraction for Q(a, x) (modified Lentz)
+			tiny := 1.0e-300;
+			b := x + 1.0 - a;
+			c := 1.0 / tiny;
+			d := 1.0 / b;
+			h := d;
+			for(i := 1; i < 10000; i += 1;) {
+				an := (0 - i)->As(Float) * (i->As(Float) - a);
+				b += 2.0;
+				d := an * d + b;
+				if(d->Abs() < tiny) {
+					d := tiny;
+				};
+				c := b + an / c;
+				if(c->Abs() < tiny) {
+					c := tiny;
+				};
+				d := 1.0 / d;
+				delta := d * c;
+				h *= delta;
+				if((delta - 1.0)->Abs() < 1.0e-17) {
+					break;
+				};
+			};
+
+			return 1.0 - lead * h;
+		}
+
+		#~
+		The chi-square quantile: x with P(X <= x) = prob for dof degrees of freedom
+		(scipy.stats.chi2(dof).ppf(prob)); bisection on the regularized incomplete gamma.
+		@param dof degrees of freedom (>= 1)
+		@param prob probability in (0, 1)
+		@return quantile
+		~#
+		function : ChiSquareQuantile(dof : Int, prob : Float) ~ Float {
+			a := dof->As(Float) / 2.0;
+			lo := 0.0;
+			hi := dof->As(Float) + 10.0 * Float->Sqrt(2.0 * dof->As(Float)) + 50.0;
+			while(GammaP(a, hi / 2.0) < prob) {
+				hi *= 2.0;
+			};
+
+			for(i := 0; i < 200; i += 1;) {
+				mid := 0.5 * (lo + hi);
+				if(mid = lo | mid = hi) {
+					break;
+				};
+
+				if(GammaP(a, mid / 2.0) < prob) {
+					lo := mid;
+				}
+				else {
+					hi := mid;
+				};
+			};
+
+			return 0.5 * (lo + hi);
+		}
+	}
+
+	#~
+	Flags rows whose standardized value on some feature is extreme.
+
+	Fit stores each feature's mean and population standard deviation (ddof 0, as
+	scipy.stats.zscore). A row's score combines its per-feature |z| by the rule:
+	MAX (default) is max |z|, i.e. "any feature beyond the threshold"; MEAN is the
+	mean |z|; RMS is sqrt(mean z^2), a diagonal Mahalanobis distance over sqrt(p).
+
+	The threshold is the absolute value itself (default 3.0); a lower threshold
+	flags more. A feature constant in training contributes |z| = 0 when a value
+	equals the constant and +Inf otherwise.
+
+```
+z := ZScoreDetector->New(2.5);
+flags := z->FitPredict(X);          # true where some |z| > 2.5
+```
+	~#
+	class ZScoreDetector implements OutlierDetector {
+		@threshold : Float;
+		@rule : ZScoreDetector->Rule;
+		@means : Float[];
+		@sds : Float[];
+		@cols : Int;
+		@train_scores : Float[];
+		@fitted : Bool;
+		@error : String;
+
+		#~
+		How per-feature |z| values combine into one score.
+		~#
+		enum Rule {
+			MAX,
+			MEAN,
+			RMS
+		}
+
+		#~
+		Constructor: threshold 3.0, MAX rule.
+		~#
+		New() {
+			@threshold := 3.0;
+			@rule := Rule->MAX;
+			@fitted := false;
+			@error := "";
+		}
+
+		#~
+		Constructor.
+		@param threshold absolute z threshold (> 0)
+		~#
+		New(threshold : Float) {
+			@threshold := threshold;
+			@rule := Rule->MAX;
+			@fitted := false;
+			@error := "";
+		}
+
+		#~
+		Constructor.
+		@param threshold absolute z threshold (> 0)
+		@param rule how per-feature |z| values combine
+		~#
+		New(threshold : Float, rule : ZScoreDetector->Rule) {
+			@threshold := threshold;
+			@rule := rule;
+			@fitted := false;
+			@error := "";
+		}
+
+		#~
+		Fits per-feature means and standard deviations.
+		@param X rows x features
+		@return true on success
+		~#
+		method : public : Fit(X : Float[,]) ~ Bool {
+			@fitted := false;
+			if(@threshold <= 0.0) {
+				@error := "threshold must be > 0";
+				return false;
+			};
+
+			@error := OutlierKit->CheckTrain(X);
+			if(@error <> Nil) {
+				return false;
+			};
+			@error := "";
+
+			dims := X->Size();
+			rows := dims[0];
+			@cols := dims[1];
+			@means := Float->New[@cols];
+			@sds := Float->New[@cols];
+
+			each(j : @cols) {
+				sum := 0.0;
+				each(i : rows) {
+					sum += X[i, j];
+				};
+				mean := sum / rows->As(Float);
+
+				ss := 0.0;
+				each(i : rows) {
+					d := X[i, j] - mean;
+					ss += d * d;
+				};
+
+				@means[j] := mean;
+				@sds[j] := Float->Sqrt(ss / rows->As(Float));
+			};
+
+			@fitted := true;
+			@train_scores := Compute(X);
+
+			return true;
+		}
+
+		#~
+		Fits, then labels the training rows.
+		@param X rows x features
+		@return one label per row (true = outlier), or Nil when the fit failed
+		~#
+		method : public : FitPredict(X : Float[,]) ~ Bool[] {
+			if(<>Fit(X)) {
+				return Nil;
+			};
+
+			return OutlierKit->Flags(@train_scores, @threshold);
+		}
+
+		#~
+		Labels rows: true where the combined |z| exceeds the threshold.
+		@param X rows x features
+		@return labels, or Nil when unfitted or the input is refused
+		~#
+		method : public : Predict(X : Float[,]) ~ Bool[] {
+			return OutlierKit->Flags(Score(X), @threshold);
+		}
+
+		#~
+		The combined |z| of each row.
+		@param X rows x features
+		@return scores, or Nil when unfitted or the input is refused
+		~#
+		method : public : Score(X : Float[,]) ~ Float[] {
+			if(<>@fitted) {
+				@error := "not fitted";
+				return Nil;
+			};
+
+			error := OutlierKit->CheckScore(X, @cols);
+			if(error <> Nil) {
+				@error := error;
+				return Nil;
+			};
+
+			return Compute(X);
+		}
+
+		#~
+		Per-feature z values (signed) for each row.
+		@param X rows x features
+		@return rows x features z matrix, or Nil when unfitted or the input is refused
+		~#
+		method : public : ZScores(X : Float[,]) ~ Float[,] {
+			if(<>@fitted) {
+				@error := "not fitted";
+				return Nil;
+			};
+
+			error := OutlierKit->CheckScore(X, @cols);
+			if(error <> Nil) {
+				@error := error;
+				return Nil;
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			z := Float->New[rows, @cols];
+			each(i : rows) {
+				each(j : @cols) {
+					z[i, j] := ZValue(X[i, j], j);
+				};
+			};
+
+			return z;
+		}
+
+		method : ZValue(v : Float, j : Int) ~ Float {
+			sd := @sds[j];
+			if(sd = 0.0) {
+				if(v = @means[j]) {
+					return 0.0;
+				};
+
+				if(v > @means[j]) {
+					return Float->Inf();
+				};
+
+				return Float->NegInf();
+			};
+
+			return (v - @means[j]) / sd;
+		}
+
+		method : Compute(X : Float[,]) ~ Float[] {
+			dims := X->Size();
+			rows := dims[0];
+			scores := Float->New[rows];
+			each(i : rows) {
+				acc := 0.0;
+				each(j : @cols) {
+					z := ZValue(X[i, j], j)->Abs();
+					if(@rule = Rule->MAX) {
+						if(z > acc) {
+							acc := z;
+						};
+					}
+					else if(@rule = Rule->MEAN) {
+						acc += z;
+					}
+					else {
+						acc += z * z;
+					};
+				};
+
+				if(@rule = Rule->MEAN) {
+					acc := acc / @cols->As(Float);
+				}
+				else if(@rule = Rule->RMS) {
+					acc := Float->Sqrt(acc / @cols->As(Float));
+				};
+
+				scores[i] := acc;
+			};
+
+			return scores;
+		}
+
+		#~
+		Score minus the threshold; positive means outlier.
+		@param X rows x features
+		@return values, or Nil when unfitted or the input is refused
+		~#
+		method : public : DecisionFunction(X : Float[,]) ~ Float[] {
+			return OutlierKit->Decision(Score(X), @threshold);
+		}
+
+		#~
+		The training rows' scores.
+		@return scores, or Nil when unfitted
+		~#
+		method : public : GetTrainingScores() ~ Float[] {
+			return @train_scores;
+		}
+
+		#~
+		The z threshold.
+		@return threshold
+		~#
+		method : public : GetThreshold() ~ Float {
+			return @threshold;
+		}
+
+		#~
+		Per-feature training means.
+		@return means, or Nil when unfitted
+		~#
+		method : public : GetMeans() ~ Float[] {
+			return @means;
+		}
+
+		#~
+		Per-feature training population standard deviations.
+		@return standard deviations, or Nil when unfitted
+		~#
+		method : public : GetStdDevs() ~ Float[] {
+			return @sds;
+		}
+
+		#~
+		Whether the detector is fitted.
+		@return true when fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @fitted;
+		}
+
+		#~
+		Sets the z threshold; a fitted detector stays fitted.
+		@param value threshold (> 0)
+		@return false when value <= 0
+		~#
+		method : public : SetSensitivity(value : Float) ~ Bool {
+			if(value <= 0.0 | value <> value) {
+				@error := "threshold must be > 0";
+				return false;
+			};
+
+			@threshold := value;
+			return true;
+		}
+
+		#~
+		The z threshold.
+		@return threshold
+		~#
+		method : public : GetSensitivity() ~ Float {
+			return @threshold;
+		}
+
+		#~
+		The setting's name.
+		@return "threshold"
+		~#
+		method : public : GetSensitivityName() ~ String {
+			return "threshold";
+		}
+
+		#~
+		Why the last call failed.
+		@return the reason, or an empty string
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+	}
+
+	#~
+	One isolation tree, stored as flat node arrays.
+	~#
+	class : private : IsolationTree {
+		@feature : Int[];
+		@split : Float[];
+		@left : Int[];
+		@right : Int[];
+		@leaf_size : Int[];
+		@depth : Int[];
+		@count : Int;
+
+		New(capacity : Int) {
+			@feature := Int->New[capacity];
+			@split := Float->New[capacity];
+			@left := Int->New[capacity];
+			@right := Int->New[capacity];
+			@leaf_size := Int->New[capacity];
+			@depth := Int->New[capacity];
+			@count := 0;
+		}
+
+		method : public : Grow(X : Float[,], rows : Int[], lo : Int, hi : Int, depth : Int, max_depth : Int,
+				feats : Int[], rand : Random) ~ Int {
+			node := @count;
+			@count += 1;
+			@depth[node] := depth;
+			@left[node] := -1;
+			@right[node] := -1;
+			@feature[node] := -1;
+			size := hi - lo + 1;
+			@leaf_size[node] := size;
+
+			if(depth >= max_depth | size <= 1) {
+				return node;
+			};
+
+			# a feature drawn uniformly from those not constant in this node: draw
+			# without replacement until one varies, as scikit-learn's splitter does
+			cols := feats->Size();
+			remaining := cols;
+			found := -1;
+			fmin := 0.0;
+			fmax := 0.0;
+			while(found < 0 & remaining > 0) {
+				pick := rand->NextInt(remaining);
+				f := feats[pick];
+				feats[pick] := feats[remaining - 1];
+				feats[remaining - 1] := f;
+				remaining -= 1;
+
+				fmin := X[rows[lo], f];
+				fmax := fmin;
+				for(i := lo + 1; i <= hi; i += 1;) {
+					v := X[rows[i], f];
+					if(v < fmin) {
+						fmin := v;
+					};
+					if(v > fmax) {
+						fmax := v;
+					};
+				};
+
+				if(fmax > fmin) {
+					found := f;
+				};
+			};
+
+			if(found < 0) {
+				return node;
+			};
+
+			split := fmin + (fmax - fmin) * rand->NextReal();
+			if(split >= fmax) {
+				split := fmin;
+			};
+
+			# partition: x <= split to the left
+			i := lo;
+			j := hi;
+			while(i <= j) {
+				if(X[rows[i], found] <= split) {
+					i += 1;
+				}
+				else {
+					tmp := rows[i];
+					rows[i] := rows[j];
+					rows[j] := tmp;
+					j -= 1;
+				};
+			};
+
+			@feature[node] := found;
+			@split[node] := split;
+			@leaf_size[node] := 0;
+			@left[node] := Grow(X, rows, lo, i - 1, depth + 1, max_depth, feats, rand);
+			@right[node] := Grow(X, rows, i, hi, depth + 1, max_depth, feats, rand);
+
+			return node;
+		}
+
+		#~
+		Path length of row r of X: depth of its leaf plus c(leaf size).
+		~#
+		method : public : PathLength(X : Float[,], r : Int) ~ Float {
+			node := 0;
+			while(@feature[node] >= 0) {
+				if(X[r, @feature[node]] <= @split[node]) {
+					node := @left[node];
+				}
+				else {
+					node := @right[node];
+				};
+			};
+
+			return @depth[node]->As(Float) + IsolationForest->AveragePathLength(@leaf_size[node]);
+		}
+
+		method : public : GetNodeCount() ~ Int {
+			return @count;
+		}
+	}
+
+	#~
+	Isolation Forest (Liu, Ting and Zhou 2008), as scikit-learn implements it.
+
+	Each tree isolates a random subsample of max_samples rows (default min(256, n),
+	drawn without replacement) by recursive random splits: a feature drawn among
+	those that vary in the node, a split point uniform between its min and max.
+	Trees stop at depth ceil(log2(max_samples)). An anomaly isolates quickly, so its
+	average path length E[h(x)] is short. The score is 2^(-E[h(x)] / c(max_samples)),
+	in (0, 1], where c(n) is the average path length of an unsuccessful binary-search
+	-tree search; h adds c(leaf size) at a leaf. That is the negation of sklearn's
+	score_samples.
+
+	Contamination 0.0 is sklearn's "auto": threshold 0.5 (offset_ -0.5). Otherwise
+	the threshold is the (1 - contamination) quantile of the training scores.
+	Contamination does not change the trees, so SetSensitivity keeps the forest.
+
+```
+forest := IsolationForest->New(100, 0, 0.05, 42);
+forest->Fit(X);
+scores := forest->Score(X_test);
+```
+	~#
+	class IsolationForest implements OutlierDetector {
+		@num_trees : Int;
+		@max_samples : Int;
+		@contamination : Float;
+		@seed : Int;
+		@trees : Vector<IsolationTree>;
+		@samples_used : Int;
+		@cols : Int;
+		@threshold : Float;
+		@train_scores : Float[];
+		@fitted : Bool;
+		@error : String;
+
+		#~
+		Constructor with scikit-learn's defaults: 100 trees, max_samples min(256, n),
+		contamination auto, seed 42.
+		~#
+		New() {
+			Init(100, 0, 0.0, 42);
+		}
+
+		#~
+		Constructor.
+		@param num_trees trees (n_estimators), >= 1
+		@param max_samples rows per tree; 0 means min(256, n); capped at n
+		@param contamination expected outlier fraction in (0, 0.5], or 0.0 for "auto"
+		@param seed random seed
+		~#
+		New(num_trees : Int, max_samples : Int, contamination : Float, seed : Int) {
+			Init(num_trees, max_samples, contamination, seed);
+		}
+
+		method : Init(num_trees : Int, max_samples : Int, contamination : Float, seed : Int) ~ Nil {
+			@num_trees := num_trees;
+			@max_samples := max_samples;
+			@contamination := contamination;
+			@seed := seed;
+			@fitted := false;
+			@error := "";
+		}
+
+		#~
+		The average path length of an unsuccessful search in a binary search tree of
+		n nodes: c(n) = 2 H(n-1) - 2(n-1)/n with H(i) = ln(i) + 0.5772156649,
+		c(1) = 0 (and c(0) = 0), c(2) = 1. scikit-learn's _average_path_length.
+		@param n node count
+		@return c(n)
+		~#
+		function : AveragePathLength(n : Int) ~ Float {
+			if(n <= 1) {
+				return 0.0;
+			};
+
+			if(n = 2) {
+				return 1.0;
+			};
+
+			nf := n->As(Float);
+			return 2.0 * (Float->Log(nf - 1.0) + 0.5772156649015329) - 2.0 * (nf - 1.0) / nf;
+		}
+
+		#~
+		Grows the forest and sets the threshold from the training scores.
+		@param X rows x features
+		@return true on success
+		~#
+		method : public : Fit(X : Float[,]) ~ Bool {
+			@fitted := false;
+			if(@num_trees < 1) {
+				@error := "num_trees must be >= 1";
+				return false;
+			};
+
+			if(<>ValidContamination(@contamination)) {
+				@error := "contamination must be in (0, 0.5], or 0.0 for auto";
+				return false;
+			};
+
+			@error := OutlierKit->CheckTrain(X);
+			if(@error <> Nil) {
+				return false;
+			};
+			@error := "";
+
+			dims := X->Size();
+			rows := dims[0];
+			@cols := dims[1];
+
+			psi := @max_samples;
+			if(psi <= 0) {
+				psi := 256;
+			};
+			if(psi > rows) {
+				psi := rows;
+			};
+			@samples_used := psi;
+
+			max_depth := 0;
+			reach := 1;
+			while(reach < psi) {
+				reach *= 2;
+				max_depth += 1;
+			};
+			if(max_depth < 1) {
+				max_depth := 1;
+			};
+
+			rand := Random->New(@seed);
+			perm := Int->New[rows];
+			each(i : rows) {
+				perm[i] := i;
+			};
+			sample := Int->New[psi];
+			feats := Int->New[@cols];
+
+			@trees := Vector->New()<IsolationTree>;
+			each(t : @num_trees) {
+				# psi rows without replacement: a partial Fisher-Yates over a running
+				# permutation, which stays uniform whatever order it was left in
+				each(i : psi) {
+					k := i + rand->NextInt(rows - i);
+					tmp := perm[i];
+					perm[i] := perm[k];
+					perm[k] := tmp;
+					sample[i] := perm[i];
+				};
+
+				each(j : @cols) {
+					feats[j] := j;
+				};
+
+				tree := IsolationTree->New(2 * psi);
+				tree->Grow(X, sample, 0, psi - 1, 0, max_depth, feats, rand);
+				@trees->AddBack(tree);
+			};
+
+			@fitted := true;
+			@train_scores := Compute(X);
+			SetThreshold();
+
+			return true;
+		}
+
+		method : ValidContamination(c : Float) ~ Bool {
+			return c = 0.0 | (c > 0.0 & c <= 0.5);
+		}
+
+		method : SetThreshold() ~ Nil {
+			if(@contamination = 0.0) {
+				@threshold := 0.5;
+			}
+			else {
+				@threshold := OutlierKit->ContaminationThreshold(@train_scores, @contamination);
+			};
+		}
+
+		method : Compute(X : Float[,]) ~ Float[] {
+			dims := X->Size();
+			rows := dims[0];
+			scores := Float->New[rows];
+			denominator := @trees->Size()->As(Float) * AveragePathLength(@samples_used);
+
+			each(i : rows) {
+				total := 0.0;
+				each(t : @trees) {
+					total += @trees->Get(t)->PathLength(X, i);
+				};
+
+				# a single-row sample has c = 0; sklearn scores that 1
+				if(denominator = 0.0) {
+					scores[i] := 1.0;
+				}
+				else {
+					scores[i] := Float->Pow(2.0, 0.0 - total / denominator);
+				};
+			};
+
+			return scores;
+		}
+
+		#~
+		Fits, then labels the training rows.
+		@param X rows x features
+		@return labels (true = outlier), or Nil when the fit failed
+		~#
+		method : public : FitPredict(X : Float[,]) ~ Bool[] {
+			if(<>Fit(X)) {
+				return Nil;
+			};
+
+			return OutlierKit->Flags(@train_scores, @threshold);
+		}
+
+		#~
+		Labels rows: true where the score exceeds the threshold.
+		@param X rows x features
+		@return labels, or Nil when unfitted or the input is refused
+		~#
+		method : public : Predict(X : Float[,]) ~ Bool[] {
+			return OutlierKit->Flags(Score(X), @threshold);
+		}
+
+		#~
+		Anomaly scores 2^(-E[h(x)]/c(max_samples)), in (0, 1].
+		@param X rows x features
+		@return scores, or Nil when unfitted or the input is refused
+		~#
+		method : public : Score(X : Float[,]) ~ Float[] {
+			if(<>@fitted) {
+				@error := "not fitted";
+				return Nil;
+			};
+
+			error := OutlierKit->CheckScore(X, @cols);
+			if(error <> Nil) {
+				@error := error;
+				return Nil;
+			};
+
+			return Compute(X);
+		}
+
+		#~
+		Mean path length E[h(x)] of each row over the trees.
+		@param X rows x features
+		@return mean path lengths, or Nil when unfitted or the input is refused
+		~#
+		method : public : PathLengths(X : Float[,]) ~ Float[] {
+			if(<>@fitted) {
+				@error := "not fitted";
+				return Nil;
+			};
+
+			error := OutlierKit->CheckScore(X, @cols);
+			if(error <> Nil) {
+				@error := error;
+				return Nil;
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			result := Float->New[rows];
+			each(i : rows) {
+				total := 0.0;
+				each(t : @trees) {
+					total += @trees->Get(t)->PathLength(X, i);
+				};
+				result[i] := total / @trees->Size()->As(Float);
+			};
+
+			return result;
+		}
+
+		#~
+		Score minus the threshold; positive means outlier.
+		@param X rows x features
+		@return values, or Nil when unfitted or the input is refused
+		~#
+		method : public : DecisionFunction(X : Float[,]) ~ Float[] {
+			return OutlierKit->Decision(Score(X), @threshold);
+		}
+
+		#~
+		The training rows' scores.
+		@return scores, or Nil when unfitted
+		~#
+		method : public : GetTrainingScores() ~ Float[] {
+			return @train_scores;
+		}
+
+		#~
+		The score threshold (sklearn's -offset_).
+		@return threshold
+		~#
+		method : public : GetThreshold() ~ Float {
+			return @threshold;
+		}
+
+		#~
+		Rows each tree was grown on (max_samples after the default and the cap).
+		@return sample size, or 0 when unfitted
+		~#
+		method : public : GetSampleSize() ~ Int {
+			if(<>@fitted) {
+				return 0;
+			};
+
+			return @samples_used;
+		}
+
+		#~
+		Trees in the forest.
+		@return tree count, or 0 when unfitted
+		~#
+		method : public : GetTreeCount() ~ Int {
+			if(<>@fitted) {
+				return 0;
+			};
+
+			return @trees->Size();
+		}
+
+		#~
+		Whether the forest is grown.
+		@return true when fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @fitted;
+		}
+
+		#~
+		Sets the contamination; a fitted forest keeps its trees and re-derives the
+		threshold from its training scores.
+		@param value contamination in (0, 0.5], or 0.0 for auto
+		@return false when out of range
+		~#
+		method : public : SetSensitivity(value : Float) ~ Bool {
+			if(<>ValidContamination(value)) {
+				@error := "contamination must be in (0, 0.5], or 0.0 for auto";
+				return false;
+			};
+
+			@contamination := value;
+			if(@fitted) {
+				SetThreshold();
+			};
+
+			return true;
+		}
+
+		#~
+		The contamination (0.0 = auto).
+		@return contamination
+		~#
+		method : public : GetSensitivity() ~ Float {
+			return @contamination;
+		}
+
+		#~
+		The setting's name.
+		@return "contamination"
+		~#
+		method : public : GetSensitivityName() ~ String {
+			return "contamination";
+		}
+
+		#~
+		Why the last call failed.
+		@return the reason, or an empty string
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+	}
+
+	#~
+	Local Outlier Factor (Breunig et al. 2000), as scikit-learn implements it.
+
+	A row's local reachability density is the inverse of its mean reachability
+	distance to its k nearest neighbours, reach(a, o) = max(k-distance(o), d(a, o));
+	its LOF is the mean density of those neighbours over its own. About 1 inside a
+	cluster, well above 1 for a row in a sparser region than its neighbours. The score
+	is the LOF (sklearn's score_samples is -LOF).
+
+	k defaults to 20 and is capped at n - 1. Neighbours come from the exact KDTree;
+	a training row's neighbours exclude itself. Contamination 0.0 is sklearn's
+	"auto": threshold 1.5. Otherwise the threshold is the (1 - contamination)
+	quantile of the training LOFs.
+
+	Without novelty (the default) the detector labels its training rows only, through
+	FitPredict and GetTrainingScores; Predict and Score refuse, as sklearn raises,
+	because scoring a training row as new would count it as its own neighbour. With
+	novelty, new rows are scored against the training graph.
+
+```
+lof := LocalOutlierFactor->New(20, 0.05, false);
+flags := lof->FitPredict(X);
+```
+	~#
+	class LocalOutlierFactor implements OutlierDetector {
+		@k_requested : Int;
+		@k : Int;
+		@contamination : Float;
+		@novelty : Bool;
+		@data : Float[,];
+		@tree : KDTree;
+		@rows : Int;
+		@cols : Int;
+		@k_dist : Float[];
+		@lrd : Float[];
+		@threshold : Float;
+		@train_scores : Float[];
+		@fitted : Bool;
+		@error : String;
+
+		#~
+		Constructor with scikit-learn's defaults: k 20, contamination auto, no novelty.
+		~#
+		New() {
+			Init(20, 0.0, false);
+		}
+
+		#~
+		Constructor.
+		@param k neighbours (n_neighbors), >= 1
+		@param contamination expected outlier fraction in (0, 0.5], or 0.0 for auto
+		@param novelty true to score new rows with Predict and Score
+		~#
+		New(k : Int, contamination : Float, novelty : Bool) {
+			Init(k, contamination, novelty);
+		}
+
+		method : Init(k : Int, contamination : Float, novelty : Bool) ~ Nil {
+			@k_requested := k;
+			@contamination := contamination;
+			@novelty := novelty;
+			@fitted := false;
+			@error := "";
+		}
+
+		method : ValidContamination(c : Float) ~ Bool {
+			return c = 0.0 | (c > 0.0 & c <= 0.5);
+		}
+
+		#~
+		Builds the neighbour graph and the training LOFs.
+		@param X rows x features
+		@return true on success
+		~#
+		method : public : Fit(X : Float[,]) ~ Bool {
+			@fitted := false;
+			if(@k_requested < 1) {
+				@error := "k must be >= 1";
+				return false;
+			};
+
+			if(<>ValidContamination(@contamination)) {
+				@error := "contamination must be in (0, 0.5], or 0.0 for auto";
+				return false;
+			};
+
+			@error := OutlierKit->CheckTrain(X);
+			if(@error <> Nil) {
+				return false;
+			};
+			@error := "";
+
+			dims := X->Size();
+			@rows := dims[0];
+			@cols := dims[1];
+			if(@rows < 2) {
+				@error := "LOF needs at least 2 rows";
+				return false;
+			};
+
+			@k := @k_requested;
+			if(@k > @rows - 1) {
+				@k := @rows - 1;
+			};
+
+			@data := OutlierKit->Copy(X);
+			@tree := KDTree->New(@data);
+
+			# neighbours of every training row, excluding the row itself
+			nbr := Int->New[@rows, @k];
+			dist := Float->New[@rows, @k];
+			@k_dist := Float->New[@rows];
+			query := Float->New[@cols];
+
+			each(i : @rows) {
+				each(j : @cols) {
+					query[j] := @data[i, j];
+				};
+
+				found := @tree->Nearest(@k + 1, query);
+				# drop the row itself; if duplicates crowded it out, drop the first
+				# (zero-distance) neighbour instead, as sklearn's kneighbors does
+				skip := 0;
+				each(m : found) {
+					if(found[m] = i) {
+						skip := m;
+					};
+				};
+
+				p := 0;
+				each(m : found) {
+					if(m <> skip & p < @k) {
+						nbr[i, p] := found[m];
+						dist[i, p] := Distance(query, found[m]);
+						p += 1;
+					};
+				};
+
+				@k_dist[i] := dist[i, @k - 1];
+			};
+
+			@lrd := Float->New[@rows];
+			each(i : @rows) {
+				sum := 0.0;
+				each(p : @k) {
+					o := nbr[i, p];
+					reach := dist[i, p];
+					if(@k_dist[o] > reach) {
+						reach := @k_dist[o];
+					};
+					sum += reach;
+				};
+
+				# sklearn's 1e-10 keeps more than k duplicates finite
+				@lrd[i] := 1.0 / (sum / @k->As(Float) + 1.0e-10);
+			};
+
+			@train_scores := Float->New[@rows];
+			each(i : @rows) {
+				ratio := 0.0;
+				each(p : @k) {
+					ratio += @lrd[nbr[i, p]] / @lrd[i];
+				};
+				@train_scores[i] := ratio / @k->As(Float);
+			};
+
+			@fitted := true;
+			SetThreshold();
+
+			return true;
+		}
+
+		method : SetThreshold() ~ Nil {
+			if(@contamination = 0.0) {
+				@threshold := 1.5;
+			}
+			else {
+				@threshold := OutlierKit->ContaminationThreshold(@train_scores, @contamination);
+			};
+		}
+
+		method : Distance(query : Float[], row : Int) ~ Float {
+			sum := 0.0;
+			each(j : @cols) {
+				d := query[j] - @data[row, j];
+				sum += d * d;
+			};
+
+			return Float->Sqrt(sum);
+		}
+
+		#~
+		Fits, then labels the training rows by their LOF.
+		@param X rows x features
+		@return labels (true = outlier), or Nil when the fit failed
+		~#
+		method : public : FitPredict(X : Float[,]) ~ Bool[] {
+			if(<>Fit(X)) {
+				return Nil;
+			};
+
+			return OutlierKit->Flags(@train_scores, @threshold);
+		}
+
+		#~
+		Labels new rows (novelty mode only).
+		@param X rows x features
+		@return labels, or Nil when unfitted, not in novelty mode, or the input is refused
+		~#
+		method : public : Predict(X : Float[,]) ~ Bool[] {
+			return OutlierKit->Flags(Score(X), @threshold);
+		}
+
+		#~
+		LOF of new rows against the training data (novelty mode only).
+		@param X rows x features
+		@return scores, or Nil when unfitted, not in novelty mode, or the input is refused
+		~#
+		method : public : Score(X : Float[,]) ~ Float[] {
+			if(<>@fitted) {
+				@error := "not fitted";
+				return Nil;
+			};
+
+			if(<>@novelty) {
+				@error := "Predict and Score need novelty = true; use FitPredict or GetTrainingScores for the training rows";
+				return Nil;
+			};
+
+			error := OutlierKit->CheckScore(X, @cols);
+			if(error <> Nil) {
+				@error := error;
+				return Nil;
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			scores := Float->New[rows];
+			query := Float->New[@cols];
+
+			each(i : rows) {
+				each(j : @cols) {
+					query[j] := X[i, j];
+				};
+
+				found := @tree->Nearest(@k, query);
+				sum := 0.0;
+				each(p : @k) {
+					o := found[p];
+					reach := Distance(query, o);
+					if(@k_dist[o] > reach) {
+						reach := @k_dist[o];
+					};
+					sum += reach;
+				};
+				lrd := 1.0 / (sum / @k->As(Float) + 1.0e-10);
+
+				ratio := 0.0;
+				each(p : @k) {
+					ratio += @lrd[found[p]] / lrd;
+				};
+				scores[i] := ratio / @k->As(Float);
+			};
+
+			return scores;
+		}
+
+		#~
+		Score minus the threshold; positive means outlier (novelty mode only).
+		@param X rows x features
+		@return values, or Nil
+		~#
+		method : public : DecisionFunction(X : Float[,]) ~ Float[] {
+			return OutlierKit->Decision(Score(X), @threshold);
+		}
+
+		#~
+		The training rows' LOFs (sklearn's -negative_outlier_factor_).
+		@return LOFs, or Nil when unfitted
+		~#
+		method : public : GetTrainingScores() ~ Float[] {
+			return @train_scores;
+		}
+
+		#~
+		The training rows' local reachability densities.
+		@return densities, or Nil when unfitted
+		~#
+		method : public : GetDensities() ~ Float[] {
+			return @lrd;
+		}
+
+		#~
+		The LOF threshold (sklearn's -offset_).
+		@return threshold
+		~#
+		method : public : GetThreshold() ~ Float {
+			return @threshold;
+		}
+
+		#~
+		The neighbour count in use: k, capped at n - 1.
+		@return neighbours, or the requested k when unfitted
+		~#
+		method : public : GetNeighbors() ~ Int {
+			if(<>@fitted) {
+				return @k_requested;
+			};
+
+			return @k;
+		}
+
+		#~
+		Whether the detector is fitted.
+		@return true when fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @fitted;
+		}
+
+		#~
+		Sets the contamination; a fitted detector keeps its neighbour graph and
+		re-derives the threshold from the training LOFs.
+		@param value contamination in (0, 0.5], or 0.0 for auto
+		@return false when out of range
+		~#
+		method : public : SetSensitivity(value : Float) ~ Bool {
+			if(<>ValidContamination(value)) {
+				@error := "contamination must be in (0, 0.5], or 0.0 for auto";
+				return false;
+			};
+
+			@contamination := value;
+			if(@fitted) {
+				SetThreshold();
+			};
+
+			return true;
+		}
+
+		#~
+		The contamination (0.0 = auto).
+		@return contamination
+		~#
+		method : public : GetSensitivity() ~ Float {
+			return @contamination;
+		}
+
+		#~
+		The setting's name.
+		@return "contamination"
+		~#
+		method : public : GetSensitivityName() ~ String {
+			return "contamination";
+		}
+
+		#~
+		Why the last call failed.
+		@return the reason, or an empty string
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+	}
+
+	#~
+	A location, covariance and support from one MCD candidate.
+	~#
+	class : private : McdEstimate {
+		@location : Float[];
+		@covariance : Float[,];
+		@chol : Float[,];
+		@logdet : Float;
+		@support : Bool[];
+
+		New(location : Float[], covariance : Float[,], chol : Float[,], logdet : Float, support : Bool[]) {
+			@location := location;
+			@covariance := covariance;
+			@chol := chol;
+			@logdet := logdet;
+			@support := support;
+		}
+
+		method : public : GetLocation() ~ Float[] { return @location; }
+		method : public : GetCovariance() ~ Float[,] { return @covariance; }
+		method : public : GetCholesky() ~ Float[,] { return @chol; }
+		method : public : GetLogDet() ~ Float { return @logdet; }
+		method : public : GetSupport() ~ Bool[] { return @support; }
+	}
+
+	#~
+	Robust covariance outlier detection: the Minimum Covariance Determinant by
+	FastMCD (Rousseeuw and Van Driessen 1999), following scikit-learn's
+	EllipticEnvelope / MinCovDet.
+
+	The MCD estimate is the mean and covariance of the h rows whose covariance has
+	the smallest determinant; h defaults to ceil((n + p + 1) / 2), so up to almost
+	half the rows can be outliers without moving it. FastMCD searches by C-steps from
+	random (p + 1)-subsets, as the paper does: 500 of them for n <= 500, the best 50
+	run to convergence; above that the nested scheme (at most 5 subsets of 300, pooled
+	on 1500 rows, finished on the full data). scikit-learn starts from 30 random
+	h-subsets instead, which reach the lowest determinant less often. The search is a
+	heuristic either way: on Gaussian data many h-subsets have nearly the same
+	determinant. The raw estimate is then made
+	consistent at the normal model (covariance scaled by median(d^2) / chi2_p median)
+	and reweighted (mean and covariance of the rows with corrected d^2 below the chi2_p
+	0.975 quantile), as MinCovDet does.
+
+	The score is the squared Mahalanobis distance under the reweighted estimate
+	(sklearn's score_samples negated); the threshold is the (1 - contamination)
+	quantile of the training distances. Contamination does not change the estimate.
+
+	A feature constant over the training rows is left out of the distance (what
+	sklearn's pseudo-inverse does for it). If the covariance of the support is still
+	singular -- collinear features, or h rows in a lower-dimensional subspace such as
+	many duplicates -- Fit refuses and says so rather than regularising silently.
+
+```
+envelope := EllipticEnvelope->New(0.05, 0.0, 42);
+flags := envelope->FitPredict(X);
+d2 := envelope->Score(X_test);    # squared Mahalanobis distances
+```
+	~#
+	class EllipticEnvelope implements OutlierDetector {
+		@contamination : Float;
+		@support_fraction : Float;
+		@seed : Int;
+		@cols : Int;
+		@active : Int[];
+		@constants : Float[];
+		@raw : McdEstimate;
+		@final : McdEstimate;
+		@raw_dist : Float[];
+		@threshold : Float;
+		@train_scores : Float[];
+		@fitted : Bool;
+		@error : String;
+
+		#~
+		Constructor with scikit-learn's defaults: contamination 0.1, support fraction
+		auto, seed 42.
+		~#
+		New() {
+			Init(0.1, 0.0, 42);
+		}
+
+		#~
+		Constructor.
+		@param contamination expected outlier fraction in (0, 0.5]
+		@param support_fraction share of rows in the MCD support in (0, 1], or 0.0 for ceil((n + p + 1) / 2) rows
+		@param seed random seed
+		~#
+		New(contamination : Float, support_fraction : Float, seed : Int) {
+			Init(contamination, support_fraction, seed);
+		}
+
+		method : Init(contamination : Float, support_fraction : Float, seed : Int) ~ Nil {
+			@contamination := contamination;
+			@support_fraction := support_fraction;
+			@seed := seed;
+			@fitted := false;
+			@error := "";
+		}
+
+		#~
+		Fits the robust location and covariance.
+		@param X rows x features
+		@return true on success; false with GetError on bad input or a singular covariance
+		~#
+		method : public : Fit(X : Float[,]) ~ Bool {
+			@fitted := false;
+			if(@contamination <= 0.0 | @contamination > 0.5) {
+				@error := "contamination must be in (0, 0.5]";
+				return false;
+			};
+
+			if(@support_fraction < 0.0 | @support_fraction > 1.0) {
+				@error := "support_fraction must be in (0, 1], or 0.0 for auto";
+				return false;
+			};
+
+			@error := OutlierKit->CheckTrain(X);
+			if(@error <> Nil) {
+				return false;
+			};
+			@error := "";
+
+			dims := X->Size();
+			n := dims[0];
+			@cols := dims[1];
+
+			# features that vary; a constant one is left out of the distance
+			count := 0;
+			varies := Bool->New[@cols];
+			@constants := Float->New[@cols];
+			each(j : @cols) {
+				first := X[0, j];
+				@constants[j] := first;
+				each(i : n) {
+					if(X[i, j] <> first) {
+						varies[j] := true;
+					};
+				};
+				if(varies[j]) {
+					count += 1;
+				};
+			};
+
+			if(count = 0) {
+				@error := "every feature is constant";
+				return false;
+			};
+
+			@active := Int->New[count];
+			p := 0;
+			each(j : @cols) {
+				if(varies[j]) {
+					@active[p] := j;
+					p += 1;
+				};
+			};
+
+			Z := Reduce(X);
+			q := count;
+
+			h := 0;
+			if(@support_fraction = 0.0) {
+				h := Float->Ceil(0.5 * (n + @cols + 1)->As(Float))->As(Int);
+			}
+			else {
+				h := (@support_fraction * n->As(Float))->As(Int);
+			};
+			if(h > n) {
+				h := n;
+			};
+
+			if(h < q + 1) {
+				@error := "too few rows: the support of {$h} rows cannot determine a covariance over {$q} varying features";
+				return false;
+			};
+
+			rand := Random->New(@seed);
+			raw : McdEstimate;
+			if(q = 1) {
+				raw := Univariate(Z, n, h);
+			}
+			else {
+				raw := FastMcd(Z, n, q, h, rand);
+			};
+
+			if(raw = Nil) {
+				if(@error = Nil | @error->Size() = 0) {
+					@error := "the support covariance is singular";
+				};
+				return false;
+			};
+			@raw := raw;
+
+			# consistency correction: scale so the median distance matches chi2_q
+			@raw_dist := Distances(Z, n, q, raw->GetLocation(), raw->GetCholesky());
+			median := Median(@raw_dist);
+			correction := median / OutlierKit->ChiSquareQuantile(q, 0.5);
+			if(correction <= 0.0) {
+				@error := "the support covariance is singular: more than half the rows coincide";
+				return false;
+			};
+
+			cut := OutlierKit->ChiSquareQuantile(q, 0.975);
+			mask := Bool->New[n];
+			kept := 0;
+			each(i : n) {
+				if(@raw_dist[i] / correction < cut) {
+					mask[i] := true;
+					kept += 1;
+				};
+			};
+
+			if(kept < q + 1) {
+				@error := "the reweighted support of {$kept} rows is too small for {$q} features";
+				return false;
+			};
+
+			@final := Estimate(Z, n, q, mask, kept);
+			if(@final = Nil) {
+				@error := "the reweighted covariance is singular (collinear features?)";
+				return false;
+			};
+
+			@train_scores := Distances(Z, n, q, @final->GetLocation(), @final->GetCholesky());
+			@threshold := OutlierKit->ContaminationThreshold(@train_scores, @contamination);
+			@fitted := true;
+
+			return true;
+		}
+
+		#~
+		The chi-square quantile: the x with P(X <= x) = prob for dof degrees of
+		freedom (scipy.stats.chi2(dof).ppf(prob)). The consistency correction uses
+		the median and the reweighting the 0.975 quantile; a caller can use it to
+		turn a squared Mahalanobis distance into a tail probability cut.
+		@param dof degrees of freedom (>= 1)
+		@param prob probability in (0, 1)
+		@return the quantile, or 0.0 for a bad argument
+		~#
+		function : ChiSquareQuantile(dof : Int, prob : Float) ~ Float {
+			if(dof < 1 | prob <= 0.0 | prob >= 1.0) {
+				return 0.0;
+			};
+
+			return OutlierKit->ChiSquareQuantile(dof, prob);
+		}
+
+		# X restricted to the varying features
+		method : Reduce(X : Float[,]) ~ Float[,] {
+			dims := X->Size();
+			n := dims[0];
+			q := @active->Size();
+			Z := Float->New[n, q];
+			each(i : n) {
+				each(p : q) {
+					Z[i, p] := X[i, @active[p]];
+				};
+			};
+
+			return Z;
+		}
+
+		# numpy.median
+		method : Median(values : Float[]) ~ Float {
+			sorted := Float->Sort(values);
+			n := sorted->Size();
+			if(n % 2 = 1) {
+				return sorted[n / 2];
+			};
+
+			return (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0;
+		}
+
+		# Exact univariate MCD, as sklearn's fast_mcd for one feature: the shortest
+		# window of h sorted values gives the location (mean of the window midpoints
+		# over ties), the support is the h values nearest it.
+		method : Univariate(Z : Float[,], n : Int, h : Int) ~ McdEstimate {
+			values := Float->New[n];
+			each(i : n) {
+				values[i] := Z[i, 0];
+			};
+
+			location := 0.0;
+			support := Bool->New[n];
+			if(h < n) {
+				sorted := Float->Sort(values);
+				best := Float->Inf();
+				windows := n - h;
+				each(i : windows) {
+					d := sorted[h + i] - sorted[i];
+					if(d < best) {
+						best := d;
+					};
+				};
+
+				total := 0.0;
+				ties := 0;
+				each(i : windows) {
+					if(sorted[h + i] - sorted[i] = best) {
+						total += 0.5 * (sorted[h + i] + sorted[i]);
+						ties += 1;
+					};
+				};
+				location := total / ties->As(Float);
+
+				away := Float->New[n];
+				each(i : n) {
+					away[i] := (values[i] - location)->Abs();
+				};
+				order := OutlierKit->ArgSort(away);
+				each(i : h) {
+					support[order[i]] := true;
+				};
+			}
+			else {
+				sum := 0.0;
+				each(i : n) {
+					sum += values[i];
+					support[i] := true;
+				};
+				location := sum / n->As(Float);
+			};
+
+			# variance of the support (ddof 0)
+			mean := 0.0;
+			each(i : n) {
+				if(support[i]) {
+					mean += values[i];
+				};
+			};
+			mean := mean / h->As(Float);
+
+			var := 0.0;
+			each(i : n) {
+				if(support[i]) {
+					d := values[i] - mean;
+					var += d * d;
+				};
+			};
+			var := var / h->As(Float);
+
+			if(var <= 0.0) {
+				@error := "the support covariance is singular: the {$h} most central values are identical";
+				return Nil;
+			};
+
+			loc := Float->New[1];
+			loc[0] := location;
+			cov := Float->New[1, 1];
+			cov[0, 0] := var;
+			chol := Float->New[1, 1];
+			chol[0, 0] := Float->Sqrt(var);
+
+			return McdEstimate->New(loc, cov, chol, Float->Log(var), support);
+		}
+
+		# FastMCD for q > 1 features: the paper's (p + 1)-subset starts within the
+		# structure of sklearn's fast_mcd.
+		method : FastMcd(Z : Float[,], n : Int, q : Int, h : Int, rand : Random) ~ McdEstimate {
+			if(n <= 500) {
+				starts := SelectRandom(Z, n, q, h, 500, 50, 2, rand);
+				if(starts = Nil) {
+					return Nil;
+				};
+
+				best := SelectFrom(Z, n, q, h, starts, 1, 30);
+				if(best = Nil) {
+					return Nil;
+				};
+
+				return best->Get(0);
+			};
+
+			# 1. candidates on disjoint subsets: n / 300 of them, at most 5 of 300 rows
+			n_subsets := n / 300;
+			if(n_subsets > 5) {
+				n_subsets := 5;
+			};
+			subset_rows := n / n_subsets;
+			if(n_subsets = 5 & subset_rows > 300) {
+				subset_rows := 300;
+			};
+			h_subset := Float->Ceil(subset_rows->As(Float) * (h->As(Float) / n->As(Float)))->As(Int);
+			trials := 500 / n_subsets;
+			if(trials < 10) {
+				trials := 10;
+			};
+
+			shuffle := Permutation(n, rand);
+			pooled := Vector->New()<McdEstimate>;
+			each(s : n_subsets) {
+				sub := Rows(Z, shuffle, s * subset_rows, subset_rows, q);
+				found := SelectRandom(sub, subset_rows, q, h_subset, trials, 10, 2, rand);
+				if(found = Nil) {
+					return Nil;
+				};
+
+				each(f : found) {
+					pooled->AddBack(found->Get(f));
+				};
+			};
+
+			# 2. pool the candidates on a merged sample of up to 1500 rows
+			merged_rows := n;
+			if(merged_rows > 1500) {
+				merged_rows := 1500;
+			};
+			h_merged := Float->Ceil(merged_rows->As(Float) * (h->As(Float) / n->As(Float)))->As(Int);
+			n_best_merged := 1;
+			if(n > 1500) {
+				n_best_merged := 10;
+			};
+
+			selection := Permutation(n, rand);
+			merged := Rows(Z, selection, 0, merged_rows, q);
+			best_merged := SelectFrom(merged, merged_rows, q, h_merged, pooled, n_best_merged, 30);
+			if(best_merged = Nil) {
+				return Nil;
+			};
+
+			# 3. finish on the full data (for n <= 1500 the merged sample is the full data
+			# in another order; one more C-step there maps its support back to rows)
+			final := SelectFrom(Z, n, q, h, best_merged, 1, 30);
+			if(final = Nil) {
+				return Nil;
+			};
+
+			return final->Get(0);
+		}
+
+		method : Permutation(n : Int, rand : Random) ~ Int[] {
+			perm := Int->New[n];
+			each(i : n) {
+				perm[i] := i;
+			};
+
+			# numpy-style shuffle (Fisher-Yates from the end)
+			for(i := n - 1; i > 0; i -= 1;) {
+				k := rand->NextInt(i + 1);
+				tmp := perm[i];
+				perm[i] := perm[k];
+				perm[k] := tmp;
+			};
+
+			return perm;
+		}
+
+		method : Rows(Z : Float[,], order : Int[], start : Int, count : Int, q : Int) ~ Float[,] {
+			sub := Float->New[count, q];
+			each(i : count) {
+				r := order[start + i];
+				each(p : q) {
+					sub[i, p] := Z[r, p];
+				};
+			};
+
+			return sub;
+		}
+
+		# Random starts, as the FastMCD paper draws them: a random (p + 1)-subset (grown
+		# one random row at a time while its covariance is singular), extended to the h
+		# rows nearest its estimate, then n_iter C-steps; keep the `keep` lowest
+		# determinants. (scikit-learn starts from random h-subsets instead, which sit
+		# near the overall mean and reach the lowest determinant far less often.)
+		method : SelectRandom(Z : Float[,], n : Int, q : Int, h : Int, n_trials : Int, keep : Int,
+				n_iter : Int, rand : Random) ~ Vector<McdEstimate> {
+			found := Vector->New()<McdEstimate>;
+			perm := Int->New[n];
+			each(i : n) {
+				perm[i] := i;
+			};
+
+			each(t : n_trials) {
+				subset := Bool->New[n];
+				m := 0;
+				start : McdEstimate := Nil;
+				while(start = Nil & m < h) {
+					# one more row, drawn without replacement (partial Fisher-Yates)
+					k := m + rand->NextInt(n - m);
+					tmp := perm[m];
+					perm[m] := perm[k];
+					perm[k] := tmp;
+					subset[perm[m]] := true;
+					m += 1;
+
+					if(m >= q + 1) {
+						start := Estimate(Z, n, q, subset, m);
+					};
+				};
+
+				if(start = Nil) {
+					@error := "the support covariance is singular: {$h} random rows span fewer than {$q} dimensions (duplicated rows or collinear features)";
+					return Nil;
+				};
+
+				dist := Distances(Z, n, q, start->GetLocation(), start->GetCholesky());
+				first := Estimate(Z, n, q, Smallest(dist, h), h);
+				if(first = Nil) {
+					@error := "the support covariance is singular: the {$h} most central rows span fewer than {$q} dimensions (duplicated rows or collinear features)";
+					return Nil;
+				};
+
+				result := CStep(Z, n, q, h, first, n_iter);
+				if(result = Nil) {
+					return Nil;
+				};
+				found->AddBack(result);
+			};
+
+			return Best(found, keep);
+		}
+
+		# sklearn's select_candidates from given estimates.
+		method : SelectFrom(Z : Float[,], n : Int, q : Int, h : Int, starts : Vector<McdEstimate>,
+				keep : Int, n_iter : Int) ~ Vector<McdEstimate> {
+			found := Vector->New()<McdEstimate>;
+			each(s : starts) {
+				start := starts->Get(s);
+				# one step to turn the given location and covariance into a support of Z
+				dist := Distances(Z, n, q, start->GetLocation(), start->GetCholesky());
+				support := Smallest(dist, h);
+				first := Estimate(Z, n, q, support, h);
+				if(first = Nil) {
+					@error := "the support covariance is singular: the {$h} most central rows span fewer than {$q} dimensions (duplicated rows or collinear features)";
+					return Nil;
+				};
+
+				result := CStep(Z, n, q, h, first, n_iter);
+				if(result = Nil) {
+					return Nil;
+				};
+				found->AddBack(result);
+			};
+
+			return Best(found, keep);
+		}
+
+		# the `keep` estimates with the lowest log-determinant, stable
+		method : Best(found : Vector<McdEstimate>, keep : Int) ~ Vector<McdEstimate> {
+			count := found->Size();
+			dets := Float->New[count];
+			each(i : count) {
+				dets[i] := found->Get(i)->GetLogDet();
+			};
+
+			order := OutlierKit->ArgSort(dets);
+			best := Vector->New()<McdEstimate>;
+			each(i : count) {
+				if(i < keep) {
+					best->AddBack(found->Get(order[i]));
+				};
+			};
+
+			return best;
+		}
+
+		# C-steps from an estimate until the determinant stops falling, as sklearn's
+		# _c_step: keep the h rows nearest the current estimate, re-estimate, repeat.
+		method : CStep(Z : Float[,], n : Int, q : Int, h : Int, start : McdEstimate, n_iter : Int) ~ McdEstimate {
+			current := start;
+			remaining := n_iter;
+			previous : McdEstimate := Nil;
+
+			while(remaining > 0 & (previous = Nil | current->GetLogDet() < previous->GetLogDet())) {
+				previous := current;
+				dist := Distances(Z, n, q, current->GetLocation(), current->GetCholesky());
+				support := Smallest(dist, h);
+				next := Estimate(Z, n, q, support, h);
+				if(next = Nil) {
+					@error := "the support covariance is singular: the {$h} most central rows span fewer than {$q} dimensions (duplicated rows or collinear features)";
+					return Nil;
+				};
+
+				current := next;
+				remaining -= 1;
+			};
+
+			if(previous <> Nil & current->GetLogDet() > previous->GetLogDet()) {
+				# the last step made it worse: keep the one before
+				return previous;
+			};
+
+			return current;
+		}
+
+		# the h rows with the smallest distance; ties at the cut go to the lower row
+		# index, exactly as a stable sort would choose
+		method : Smallest(dist : Float[], h : Int) ~ Bool[] {
+			n := dist->Size();
+			support := Bool->New[n];
+			if(h >= n) {
+				each(i : n) {
+					support[i] := true;
+				};
+				return support;
+			};
+
+			cut := OutlierKit->KthSmallest(dist, h - 1);
+			taken := 0;
+			each(i : n) {
+				if(dist[i] < cut) {
+					support[i] := true;
+					taken += 1;
+				};
+			};
+			i := 0;
+			while(taken < h & i < n) {
+				if(dist[i] = cut) {
+					support[i] := true;
+					taken += 1;
+				};
+				i += 1;
+			};
+
+			return support;
+		}
+
+		# Mean and MLE covariance (divide by count) of the masked rows, with its Cholesky
+		# factor and log-determinant; Nil when the covariance is not positive definite.
+		method : Estimate(Z : Float[,], n : Int, q : Int, mask : Bool[], count : Int) ~ McdEstimate {
+			mean := Float->New[q];
+			each(i : n) {
+				if(mask[i]) {
+					each(p : q) {
+						mean[p] += Z[i, p];
+					};
+				};
+			};
+			each(p : q) {
+				mean[p] := mean[p] / count->As(Float);
+			};
+
+			if(q >= 6 & count >= 128) {
+				fast := NativeEstimate(Z, n, q, mask, count, mean);
+				if(fast <> Nil) {
+					return fast;
+				};
+			};
+
+			cov := Float->New[q, q];
+			centered := Float->New[q];
+			each(i : n) {
+				if(mask[i]) {
+					each(p : q) {
+						centered[p] := Z[i, p] - mean[p];
+					};
+					each(a : q) {
+						ca := centered[a];
+						for(b := 0; b <= a; b += 1;) {
+							cov[a, b] += ca * centered[b];
+						};
+					};
+				};
+			};
+
+			each(a : q) {
+				for(b := 0; b <= a; b += 1;) {
+					v := cov[a, b] / count->As(Float);
+					cov[a, b] := v;
+					cov[b, a] := v;
+				};
+			};
+
+			chol := Cholesky(cov, q);
+			if(chol = Nil) {
+				return Nil;
+			};
+
+			logdet := 0.0;
+			each(p : q) {
+				logdet += Float->Log(chol[p, p]);
+			};
+
+			return McdEstimate->New(mean, cov, chol, 2.0 * logdet, mask);
+		}
+
+		# Estimate's covariance through the native matrix product
+		method : NativeEstimate(Z : Float[,], n : Int, q : Int, mask : Bool[], count : Int, mean : Float[]) ~ McdEstimate {
+			centered := Float->New[count, q];
+			r := 0;
+			each(i : n) {
+				if(mask[i]) {
+					each(p : q) {
+						centered[r, p] := Z[i, p] - mean[p];
+					};
+					r += 1;
+				};
+			};
+
+			product := Matrix2D->DotProduct(Matrix2D->Transpose(centered), centered);
+			if(product = Nil) {
+				return Nil;
+			};
+
+			cov := Float->New[q, q];
+			each(a : q) {
+				for(b := 0; b <= a; b += 1;) {
+					# symmetrize from the lower triangle so the factor sees an exactly
+					# symmetric matrix
+					v := product[a, b] / count->As(Float);
+					cov[a, b] := v;
+					cov[b, a] := v;
+				};
+			};
+
+			chol := Cholesky(cov, q);
+			if(chol = Nil) {
+				return Nil;
+			};
+
+			logdet := 0.0;
+			each(p : q) {
+				logdet += Float->Log(chol[p, p]);
+			};
+
+			return McdEstimate->New(mean, cov, chol, 2.0 * logdet, mask);
+		}
+
+		# Lower Cholesky factor, or Nil when the matrix is not (numerically) positive
+		# definite.
+		method : Cholesky(A : Float[,], q : Int) ~ Float[,] {
+			scale := 0.0;
+			each(p : q) {
+				if(A[p, p] > scale) {
+					scale := A[p, p];
+				};
+			};
+			if(scale <= 0.0) {
+				return Nil;
+			};
+
+			L := Float->New[q, q];
+			each(j : q) {
+				sum := A[j, j];
+				each(k : j) {
+					sum -= L[j, k] * L[j, k];
+				};
+
+				if(sum <= scale * 1.0e-12) {
+					return Nil;
+				};
+
+				d := Float->Sqrt(sum);
+				L[j, j] := d;
+				for(i := j + 1; i < q; i += 1;) {
+					s := A[i, j];
+					each(k : j) {
+						s -= L[i, k] * L[j, k];
+					};
+					L[i, j] := s / d;
+				};
+			};
+
+			return L;
+		}
+
+		# squared Mahalanobis distance of every row: |L^-1 (x - mu)|^2
+		method : Distances(Z : Float[,], n : Int, q : Int, mu : Float[], L : Float[,]) ~ Float[] {
+			# large problems: the quadratic form through the native matrix product,
+			# about ten times faster at 20 features; same values to rounding
+			if(q >= 6 & n >= 128) {
+				fast := NativeDistances(Z, n, q, mu, L);
+				if(fast <> Nil) {
+					return fast;
+				};
+			};
+
+			dist := Float->New[n];
+			z := Float->New[q];
+			each(i : n) {
+				total := 0.0;
+				each(a : q) {
+					s := Z[i, a] - mu[a];
+					each(b : a) {
+						s -= L[a, b] * z[b];
+					};
+					v := s / L[a, a];
+					z[a] := v;
+					total += v * v;
+				};
+				dist[i] := total;
+			};
+
+			return dist;
+		}
+
+		# (x - mu)' P (x - mu) with P = L^-T L^-1, the product done natively
+		method : NativeDistances(Z : Float[,], n : Int, q : Int, mu : Float[], L : Float[,]) ~ Float[] {
+			# inverse of the lower-triangular factor
+			M := Float->New[q, q];
+			each(j : q) {
+				M[j, j] := 1.0 / L[j, j];
+				for(i := j + 1; i < q; i += 1;) {
+					s := 0.0;
+					for(k := j; k < i; k += 1;) {
+						s -= L[i, k] * M[k, j];
+					};
+					M[i, j] := s / L[i, i];
+				};
+			};
+
+			P := Float->New[q, q];
+			each(a : q) {
+				each(b : q) {
+					s := 0.0;
+					start := a;
+					if(b > start) {
+						start := b;
+					};
+					for(k := start; k < q; k += 1;) {
+						s += M[k, a] * M[k, b];
+					};
+					P[a, b] := s;
+				};
+			};
+
+			centered := Float->New[n, q];
+			each(i : n) {
+				each(a : q) {
+					centered[i, a] := Z[i, a] - mu[a];
+				};
+			};
+
+			product := Matrix2D->DotProduct(centered, P);
+			if(product = Nil) {
+				return Nil;
+			};
+
+			dist := Float->New[n];
+			each(i : n) {
+				total := 0.0;
+				each(a : q) {
+					total += product[i, a] * centered[i, a];
+				};
+				dist[i] := total;
+			};
+
+			return dist;
+		}
+
+		#~
+		Fits, then labels the training rows.
+		@param X rows x features
+		@return labels (true = outlier), or Nil when the fit failed
+		~#
+		method : public : FitPredict(X : Float[,]) ~ Bool[] {
+			if(<>Fit(X)) {
+				return Nil;
+			};
+
+			return OutlierKit->Flags(@train_scores, @threshold);
+		}
+
+		#~
+		Labels rows: true where the squared Mahalanobis distance exceeds the threshold.
+		@param X rows x features
+		@return labels, or Nil when unfitted or the input is refused
+		~#
+		method : public : Predict(X : Float[,]) ~ Bool[] {
+			return OutlierKit->Flags(Score(X), @threshold);
+		}
+
+		#~
+		Squared Mahalanobis distances under the robust estimate (sklearn's
+		mahalanobis, the negation of score_samples).
+		@param X rows x features
+		@return distances, or Nil when unfitted or the input is refused
+		~#
+		method : public : Score(X : Float[,]) ~ Float[] {
+			if(<>@fitted) {
+				@error := "not fitted";
+				return Nil;
+			};
+
+			error := OutlierKit->CheckScore(X, @cols);
+			if(error <> Nil) {
+				@error := error;
+				return Nil;
+			};
+
+			dims := X->Size();
+			return Distances(Reduce(X), dims[0], @active->Size(), @final->GetLocation(), @final->GetCholesky());
+		}
+
+		#~
+		Score minus the threshold; positive means outlier.
+		@param X rows x features
+		@return values, or Nil when unfitted or the input is refused
+		~#
+		method : public : DecisionFunction(X : Float[,]) ~ Float[] {
+			return OutlierKit->Decision(Score(X), @threshold);
+		}
+
+		#~
+		The training rows' squared Mahalanobis distances.
+		@return distances, or Nil when unfitted
+		~#
+		method : public : GetTrainingScores() ~ Float[] {
+			return @train_scores;
+		}
+
+		#~
+		The distance threshold (sklearn's -offset_).
+		@return threshold
+		~#
+		method : public : GetThreshold() ~ Float {
+			return @threshold;
+		}
+
+		#~
+		The robust (reweighted) location, one value per feature; a constant feature
+		reports its constant.
+		@return location, or Nil when unfitted
+		~#
+		method : public : GetLocation() ~ Float[] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			return Expand(@final->GetLocation());
+		}
+
+		#~
+		The robust (reweighted) covariance, features x features; rows and columns of
+		constant features are zero.
+		@return covariance, or Nil when unfitted
+		~#
+		method : public : GetCovariance() ~ Float[,] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			return ExpandMatrix(@final->GetCovariance());
+		}
+
+		#~
+		The raw MCD location, before reweighting.
+		@return location, or Nil when unfitted
+		~#
+		method : public : GetRawLocation() ~ Float[] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			return Expand(@raw->GetLocation());
+		}
+
+		#~
+		The raw MCD covariance, before the consistency correction and reweighting.
+		@return covariance, or Nil when unfitted
+		~#
+		method : public : GetRawCovariance() ~ Float[,] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			return ExpandMatrix(@raw->GetCovariance());
+		}
+
+		#~
+		Which training rows formed the raw MCD support (the h rows).
+		@return mask, or Nil when unfitted
+		~#
+		method : public : GetRawSupport() ~ Bool[] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			return @raw->GetSupport();
+		}
+
+		#~
+		Which training rows formed the reweighted support.
+		@return mask, or Nil when unfitted
+		~#
+		method : public : GetSupport() ~ Bool[] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			return @final->GetSupport();
+		}
+
+		method : Expand(values : Float[]) ~ Float[] {
+			result := Float->New[@cols];
+			each(j : @cols) {
+				result[j] := @constants[j];
+			};
+			each(p : @active) {
+				result[@active[p]] := values[p];
+			};
+
+			return result;
+		}
+
+		method : ExpandMatrix(m : Float[,]) ~ Float[,] {
+			result := Float->New[@cols, @cols];
+			each(a : @active) {
+				each(b : @active) {
+					result[@active[a], @active[b]] := m[a, b];
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Whether the detector is fitted.
+		@return true when fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @fitted;
+		}
+
+		#~
+		Sets the contamination; a fitted detector keeps its estimate and re-derives
+		the threshold from the training distances.
+		@param value contamination in (0, 0.5]
+		@return false when out of range
+		~#
+		method : public : SetSensitivity(value : Float) ~ Bool {
+			if(value <= 0.0 | value > 0.5 | value <> value) {
+				@error := "contamination must be in (0, 0.5]";
+				return false;
+			};
+
+			@contamination := value;
+			if(@fitted) {
+				@threshold := OutlierKit->ContaminationThreshold(@train_scores, @contamination);
+			};
+
+			return true;
+		}
+
+		#~
+		The contamination.
+		@return contamination
+		~#
+		method : public : GetSensitivity() ~ Float {
+			return @contamination;
+		}
+
+		#~
+		The setting's name.
+		@return "contamination"
+		~#
+		method : public : GetSensitivityName() ~ String {
+			return "contamination";
+		}
+
+		#~
+		Why the last call failed.
+		@return the reason, or an empty string
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+	}
+
+	#~
+	DBSCAN as an outlier detector, so its eps can be swept like any other
+	detector's setting. The outliers are exactly DBSCAN's noise: rows that are not
+	core (fewer than min_points rows, itself included, within eps) and have no core
+	row within eps. The existing DBSCAN class gives the same noise; this adds a
+	score and the OutlierDetector interface.
+
+	The score is the distance to the nearest core training row (0 for a core row),
+	the threshold is eps, and Predict applies the same rule to new rows. With no core
+	rows at all every score is +Inf. Distances are computed by brute force, O(n^2).
+	Changing eps changes the model, so SetSensitivity unfits it.
+
+```
+scan := DbscanDetector->New(1.0, 5);
+noise := scan->FitPredict(X);
+```
+	~#
+	class DbscanDetector implements OutlierDetector {
+		@eps : Float;
+		@min_points : Int;
+		@cols : Int;
+		@core : Float[,];
+		@core_count : Int;
+		@is_core : Bool[];
+		@train_scores : Float[];
+		@fitted : Bool;
+		@error : String;
+
+		#~
+		Constructor with scikit-learn's defaults: eps 0.5, min_points 5.
+		~#
+		New() {
+			@eps := 0.5;
+			@min_points := 5;
+			@fitted := false;
+			@error := "";
+		}
+
+		#~
+		Constructor.
+		@param eps neighbourhood radius (Euclidean), > 0
+		@param min_points rows within eps, itself included, for a core row (sklearn's min_samples)
+		~#
+		New(eps : Float, min_points : Int) {
+			@eps := eps;
+			@min_points := min_points;
+			@fitted := false;
+			@error := "";
+		}
+
+		#~
+		Finds the core rows and scores the training rows.
+		@param X rows x features
+		@return true on success
+		~#
+		method : public : Fit(X : Float[,]) ~ Bool {
+			@fitted := false;
+			if(@eps <= 0.0 | @min_points < 1) {
+				@error := "eps must be > 0 and min_points >= 1";
+				return false;
+			};
+
+			@error := OutlierKit->CheckTrain(X);
+			if(@error <> Nil) {
+				return false;
+			};
+			@error := "";
+
+			dims := X->Size();
+			n := dims[0];
+			@cols := dims[1];
+			eps_sq := @eps * @eps;
+
+			counts := Int->New[n];
+			each(i : n) {
+				counts[i] += 1;
+				for(j := i + 1; j < n; j += 1;) {
+					sum := 0.0;
+					c := 0;
+					while(c < @cols & sum <= eps_sq) {
+						d := X[i, c] - X[j, c];
+						sum += d * d;
+						c += 1;
+					};
+
+					if(sum <= eps_sq) {
+						counts[i] += 1;
+						counts[j] += 1;
+					};
+				};
+			};
+
+			@is_core := Bool->New[n];
+			@core_count := 0;
+			each(i : n) {
+				if(counts[i] >= @min_points) {
+					@is_core[i] := true;
+					@core_count += 1;
+				};
+			};
+
+			@core := Float->New[@core_count, @cols];
+			k := 0;
+			each(i : n) {
+				if(@is_core[i]) {
+					each(c : @cols) {
+						@core[k, c] := X[i, c];
+					};
+					k += 1;
+				};
+			};
+
+			@fitted := true;
+			@train_scores := Float->New[n];
+			each(i : n) {
+				if(@is_core[i]) {
+					@train_scores[i] := 0.0;
+				}
+				else {
+					@train_scores[i] := NearestCore(X, i);
+				};
+			};
+
+			return true;
+		}
+
+		method : NearestCore(X : Float[,], i : Int) ~ Float {
+			best := Float->Inf();
+			each(k : @core_count) {
+				sum := 0.0;
+				c := 0;
+				while(c < @cols & sum < best) {
+					d := X[i, c] - @core[k, c];
+					sum += d * d;
+					c += 1;
+				};
+
+				if(sum < best) {
+					best := sum;
+				};
+			};
+
+			if(best = Float->Inf()) {
+				return best;
+			};
+
+			return Float->Sqrt(best);
+		}
+
+		#~
+		Fits, then labels the training rows: true for DBSCAN noise.
+		@param X rows x features
+		@return labels (true = outlier), or Nil when the fit failed
+		~#
+		method : public : FitPredict(X : Float[,]) ~ Bool[] {
+			if(<>Fit(X)) {
+				return Nil;
+			};
+
+			return OutlierKit->Flags(@train_scores, @eps);
+		}
+
+		#~
+		Labels new rows: true where no core training row lies within eps.
+		@param X rows x features
+		@return labels, or Nil when unfitted or the input is refused
+		~#
+		method : public : Predict(X : Float[,]) ~ Bool[] {
+			return OutlierKit->Flags(Score(X), @eps);
+		}
+
+		#~
+		Distance from each row to the nearest core training row.
+		@param X rows x features
+		@return distances, or Nil when unfitted or the input is refused
+		~#
+		method : public : Score(X : Float[,]) ~ Float[] {
+			if(<>@fitted) {
+				@error := "not fitted";
+				return Nil;
+			};
+
+			error := OutlierKit->CheckScore(X, @cols);
+			if(error <> Nil) {
+				@error := error;
+				return Nil;
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			scores := Float->New[rows];
+			each(i : rows) {
+				scores[i] := NearestCore(X, i);
+			};
+
+			return scores;
+		}
+
+		#~
+		Score minus eps; positive means outlier.
+		@param X rows x features
+		@return values, or Nil when unfitted or the input is refused
+		~#
+		method : public : DecisionFunction(X : Float[,]) ~ Float[] {
+			return OutlierKit->Decision(Score(X), @eps);
+		}
+
+		#~
+		The training rows' distances to the nearest core row.
+		@return scores, or Nil when unfitted
+		~#
+		method : public : GetTrainingScores() ~ Float[] {
+			return @train_scores;
+		}
+
+		#~
+		The threshold, which is eps.
+		@return eps
+		~#
+		method : public : GetThreshold() ~ Float {
+			return @eps;
+		}
+
+		#~
+		Which training rows are core rows.
+		@return mask, or Nil when unfitted
+		~#
+		method : public : GetCoreMask() ~ Bool[] {
+			return @is_core;
+		}
+
+		#~
+		Whether the detector is fitted.
+		@return true when fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @fitted;
+		}
+
+		#~
+		Sets eps; the detector becomes unfitted, since the core rows change.
+		@param value eps (> 0)
+		@return false when value <= 0
+		~#
+		method : public : SetSensitivity(value : Float) ~ Bool {
+			if(value <= 0.0 | value <> value) {
+				@error := "eps must be > 0";
+				return false;
+			};
+
+			if(value <> @eps) {
+				@eps := value;
+				@fitted := false;
+			};
+
+			return true;
+		}
+
+		#~
+		eps.
+		@return eps
+		~#
+		method : public : GetSensitivity() ~ Float {
+			return @eps;
+		}
+
+		#~
+		The setting's name.
+		@return "eps"
+		~#
+		method : public : GetSensitivityName() ~ String {
+			return "eps";
+		}
+
+		#~
+		Why the last call failed.
+		@return the reason, or an empty string
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+	}
+}
