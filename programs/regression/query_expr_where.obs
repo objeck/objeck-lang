@@ -225,8 +225,9 @@ class QueryExprWhere {
 		Refused("an aggregate in WHERE", t, "select id from t where qty + sum(a) > 1", "syntax error at position 29: expected a column name (aggregates belong in HAVING, not WHERE), found 'sum'");
 		Refused("an unknown column in ORDER BY", t, "select id from t order by zz + 1", "unknown column 'zz' in ORDER BY 'zz + 1'");
 		Refused("a chained comparison", t, "select id from t where a < b < c", "syntax error at position 29: expected the end of the statement, found '<'");
-		Refused("ORDER BY an expression in a grouped query", t, "select a, count(*) from t group by a order by a + 1", "ORDER BY 'a + 1': an expression in ORDER BY of a grouped or aggregate query is not supported yet");
-		Refused("an expression in HAVING", t, "select a, count(*) from t group by a having count(*) > a + 1", "HAVING compares an aggregate or a grouping column with a value; expressions in HAVING are not supported yet");
+		# grouped queries take expressions too (query_expr_grouped)
+		Same("ORDER BY an expression in a grouped query", t, "select a, count(*) from t group by a order by 0 - a limit 3", "7|1;6|1;5|1;");
+		Same("an expression in HAVING", t, "select a, count(*) from t group by a having count(*) + a > 6", "6|1;7|1;");
 		Refused("an unclosed parenthesis", t, "select id from t where (a + 1 > 2", "syntax error at position 33: expected ')', found the end of the statement");
 
 		if(@failures = 0) {
