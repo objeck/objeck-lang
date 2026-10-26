@@ -6,7 +6,7 @@
 use Collection;
 
 #~
-Anomaly detection: the OutlierDetector interface and ZScoreDetector, IsolationForest, LocalOutlierFactor, EllipticEnvelope, DbscanDetector and AutoencoderDetector, with scikit-learn's defaults and threshold rules. Compile with -lib ml.
+Anomaly detection: the OutlierDetector interface and ZScoreDetector, IsolationForest, LocalOutlierFactor, EllipticEnvelope, DbscanDetector and AutoencoderDetector, with scikit-learn's defaults and threshold rules, and SensitivitySweep for precision/recall/F1/FPR tables. Compile with -lib ml.
 ~#
 bundle System.ML {
 	#~
@@ -3510,6 +3510,310 @@ errors := ae->Score(X_test);
 		~#
 		method : public : GetError() ~ String {
 			return @error;
+		}
+	}
+
+	#~
+	Runs one OutlierDetector at several sensitivity settings and scores each
+	setting's labels against the truth: precision, recall, F1 and false-positive
+	rate per setting, as a table.
+
+	Any detector works through the interface, so a detector added later (One-Class
+	SVM, say) needs nothing here. Each setting goes through SetSensitivity, and the
+	detector decides whether that needs a refit: a setting that only moves the
+	threshold (a z-score threshold, a contamination, an autoencoder percentile)
+	reuses the fitted model and its scores; one that changes the model (DBSCAN's
+	eps, One-Class SVM's nu) leaves the detector unfitted and the sweep fits it
+	again. The first setting always fits, so the detector's earlier state never leaks
+	into the table.
+
+	A setting the detector rejects, or a fit that fails, is recorded with its error
+	and the sweep goes on.
+
+```
+detector := ZScoreDetector->New();
+result := SensitivitySweep->Run(detector, [3.0, 2.5, 2.0], ["Low", "Medium", "High"], X, y);
+result->ToTable()->PrintLine();
+```
+	~#
+	class SensitivitySweep {
+		#~
+		Fits and labels the same rows (the usual unsupervised lab: flag the training
+		data itself, then compare with the labels). Uses FitPredict semantics, so
+		LocalOutlierFactor without novelty and DbscanDetector work.
+		@param detector the detector
+		@param settings sensitivity values, in table order
+		@param labels a name per setting, e.g. "Low"; Nil to name them by value
+		@param X rows x features
+		@param y true labels, true = anomaly
+		@return the table, or Nil when the inputs do not line up
+		~#
+		function : Run(detector : OutlierDetector, settings : Float[], labels : String[], X : Float[,], y : Bool[]) ~ SweepResult {
+			return Sweep(detector, settings, labels, X, X, y, true);
+		}
+
+		#~
+		Fits on training rows and labels held-out rows with Predict.
+		@param detector the detector (LocalOutlierFactor needs novelty = true)
+		@param settings sensitivity values, in table order
+		@param labels a name per setting; Nil to name them by value
+		@param X_train rows to fit on
+		@param X_test rows to label
+		@param y_test true labels of X_test, true = anomaly
+		@return the table, or Nil when the inputs do not line up
+		~#
+		function : Run(detector : OutlierDetector, settings : Float[], labels : String[], X_train : Float[,], X_test : Float[,], y_test : Bool[]) ~ SweepResult {
+			return Sweep(detector, settings, labels, X_train, X_test, y_test, false);
+		}
+
+		function : Sweep(detector : OutlierDetector, settings : Float[], labels : String[], X_train : Float[,],
+				X_test : Float[,], y : Bool[], same : Bool) ~ SweepResult {
+			if(detector = Nil | settings = Nil | X_train = Nil | X_test = Nil | y = Nil) {
+				return Nil;
+			};
+
+			if(labels <> Nil & labels->Size() <> settings->Size()) {
+				return Nil;
+			};
+
+			dims := X_test->Size();
+			if(dims[0] <> y->Size()) {
+				return Nil;
+			};
+
+			result := SweepResult->New(detector->GetSensitivityName(), settings->Size());
+			# the first usable setting always fits on these rows
+			fitted_here := false;
+			each(s : settings) {
+				value := settings[s];
+				name := "";
+				if(labels <> Nil) {
+					name := labels[s];
+				}
+				else {
+					name := value->ToString();
+				};
+
+				if(<>detector->SetSensitivity(value)) {
+					result->Set(s, name, value, Nil, -1.0, detector->GetError());
+				}
+				else {
+					fitted := true;
+					if(<>fitted_here | <>detector->IsFitted()) {
+						fitted := detector->Fit(X_train);
+						fitted_here := fitted;
+					};
+
+					if(<>fitted) {
+						result->Set(s, name, value, Nil, -1.0, detector->GetError());
+					}
+					else {
+						scores : Float[];
+						if(same) {
+							scores := detector->GetTrainingScores();
+						}
+						else {
+							scores := detector->Score(X_test);
+						};
+
+						if(scores = Nil) {
+							result->Set(s, name, value, Nil, -1.0, detector->GetError());
+						}
+						else {
+							threshold := detector->GetThreshold();
+							flags := Bool->New[scores->Size()];
+							each(i : scores) {
+								flags[i] := scores[i] > threshold;
+							};
+							result->Set(s, name, value, ConfusionMatrix->New(flags, y), Metrics->AucRoc(scores, y), "");
+						};
+					};
+				};
+			};
+
+			return result;
+		}
+	}
+
+	#~
+	A sensitivity sweep's table: per setting, its name and value, the confusion
+	counts, and the AUC of the scores at that setting (-1.0 when undefined).
+	~#
+	class SweepResult {
+		@setting_name : String;
+		@names : String[];
+		@values : Float[];
+		@matrices : ConfusionMatrix[];
+		@aucs : Float[];
+		@errors : String[];
+
+		New(setting_name : String, size : Int) {
+			@setting_name := setting_name;
+			@names := String->New[size];
+			@values := Float->New[size];
+			@matrices := ConfusionMatrix->New[size];
+			@aucs := Float->New[size];
+			@errors := String->New[size];
+		}
+
+		method : public : Set(i : Int, name : String, value : Float, matrix : ConfusionMatrix, auc : Float, error : String) ~ Nil {
+			@names[i] := name;
+			@values[i] := value;
+			@matrices[i] := matrix;
+			@aucs[i] := auc;
+			@errors[i] := error;
+		}
+
+		#~
+		Settings in the table.
+		@return row count
+		~#
+		method : public : Size() ~ Int {
+			return @values->Size();
+		}
+
+		#~
+		What the settings are, e.g. "contamination".
+		@return the detector's sensitivity name
+		~#
+		method : public : GetSettingName() ~ String {
+			return @setting_name;
+		}
+
+		#~
+		A row's name, e.g. "Low".
+		@param i row
+		@return name
+		~#
+		method : public : GetName(i : Int) ~ String {
+			return @names[i];
+		}
+
+		#~
+		A row's setting value.
+		@param i row
+		@return value
+		~#
+		method : public : GetSetting(i : Int) ~ Float {
+			return @values[i];
+		}
+
+		#~
+		A row's confusion counts and rates.
+		@param i row
+		@return counts, or Nil when the setting failed (see GetError)
+		~#
+		method : public : GetConfusion(i : Int) ~ ConfusionMatrix {
+			return @matrices[i];
+		}
+
+		#~
+		The AUC of the scores at a row's setting (Metrics->AucRoc).
+		@param i row
+		@return AUC, or -1.0 when the setting failed or one class is absent
+		~#
+		method : public : GetAuc(i : Int) ~ Float {
+			return @aucs[i];
+		}
+
+		#~
+		Why a row's setting failed.
+		@param i row
+		@return the reason, or an empty string
+		~#
+		method : public : GetError(i : Int) ~ String {
+			return @errors[i];
+		}
+
+		#~
+		The table as text: setting, value, flagged, TP FP TN FN, precision, recall,
+		F1, FPR and AUC, one row per setting.
+		@return table
+		~#
+		method : public : ToTable() ~ String {
+			table := String->New();
+			table += Pad("setting", 10);
+			table += Pad(@setting_name, 14);
+			table += Pad("flagged", 9);
+			table += Pad("TP", 7);
+			table += Pad("FP", 7);
+			table += Pad("TN", 7);
+			table += Pad("FN", 7);
+			table += Pad("precision", 11);
+			table += Pad("recall", 9);
+			table += Pad("F1", 9);
+			table += Pad("FPR", 9);
+			table += "AUC\n";
+
+			each(i : @values) {
+				table += Pad(@names[i], 10);
+				table += Pad(Fixed(@values[i], 3), 14);
+				cm := @matrices[i];
+				if(cm = Nil) {
+					table += "failed: ";
+					table += @errors[i];
+					table += "\n";
+				}
+				else {
+					table += Pad(cm->GetFlagged()->ToString(), 9);
+					table += Pad(cm->GetTruePositives()->ToString(), 7);
+					table += Pad(cm->GetFalsePositives()->ToString(), 7);
+					table += Pad(cm->GetTrueNegatives()->ToString(), 7);
+					table += Pad(cm->GetFalseNegatives()->ToString(), 7);
+					table += Pad(Fixed(cm->GetPrecision(), 3), 11);
+					table += Pad(Fixed(cm->GetRecall(), 3), 9);
+					table += Pad(Fixed(cm->GetF1(), 3), 9);
+					table += Pad(Fixed(cm->GetFalsePositiveRate(), 3), 9);
+					if(@aucs[i] < 0.0) {
+						table += "-\n";
+					}
+					else {
+						table += Fixed(@aucs[i], 3);
+						table += "\n";
+					};
+				};
+			};
+
+			return table;
+		}
+
+		function : Pad(text : String, width : Int) ~ String {
+			out := String->New(text);
+			while(out->Size() < width) {
+				out += " ";
+			};
+			out += " ";
+			return out;
+		}
+
+		# a value with a fixed number of decimals, rounded half away from zero
+		function : Fixed(value : Float, places : Int) ~ String {
+			negative := value < 0.0;
+			v := value->Abs();
+			scale := 1;
+			each(p : places) {
+				scale *= 10;
+			};
+
+			units := (v * scale->As(Float) + 0.5)->As(Int);
+			whole := units / scale;
+			frac := units % scale;
+			digits := frac->ToString();
+			while(digits->Size() < places) {
+				digits := "0" + digits;
+			};
+
+			out := String->New();
+			if(negative & units > 0) {
+				out += "-";
+			};
+			out += whole->ToString();
+			if(places > 0) {
+				out += ".";
+				out += digits;
+			};
+
+			return out;
 		}
 	}
 }

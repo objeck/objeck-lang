@@ -13656,6 +13656,59 @@
 				}
 			}
 		},
+		"System.ML.ConfusionMatrix": {
+			"description": "The four counts of a binary decision -- true positives, false positives, true negatives, false negatives -- and every rate read off them.\n\nFor outlier detection the anomaly is the positive class: a prediction of true (flagged) on a row that really is an anomaly is a true positive. Metrics' Precision, Recall and F1Score compute the same rates one at a time; this keeps them together with the counts they rest on, which is what a sweep table needs.\n\nEvery rate guards its denominator and returns 0.0 when it is zero, as scikit-learn does with zero_division=0: precision when nothing was flagged, recall when there are no real positives, the false-positive rate when there are no real negatives, F1 when there are no true positives, false positives or false negatives, accuracy on an empty sample.",
+			"functions": {
+				"GetAccuracy": {
+					"descriptions": ["**(TP + TN) \/ total.**\n\n```method : public : GetAccuracy() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetF1": {
+					"descriptions": ["**2 TP \/ (2 TP + FP + FN), the harmonic mean of precision and recall.**\n\n```method : public : GetF1() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetFalseNegatives": {
+					"descriptions": ["**Unflagged rows that really are positive.**\n\n```method : public : GetFalseNegatives() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetFalsePositiveRate": {
+					"descriptions": ["**FP \/ (FP + TN): of the real negatives, the share wrongly flagged (false-alarm rate).**\n\n```method : public : GetFalsePositiveRate() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetFalsePositives": {
+					"descriptions": ["**Flagged rows that are really negative.**\n\n```method : public : GetFalsePositives() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetFlagged": {
+					"descriptions": ["**Rows flagged positive.**\n\n```method : public : GetFlagged() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetPrecision": {
+					"descriptions": ["**TP \/ (TP + FP): of the rows flagged, the share that were real.**\n\n```method : public : GetPrecision() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetRecall": {
+					"descriptions": ["**TP \/ (TP + FN): of the real positives, the share flagged (true-positive rate, sensitivity, detection rate).**\n\n```method : public : GetRecall() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetSpecificity": {
+					"descriptions": ["**TN \/ (TN + FP), the true-negative rate: 1 minus the false-positive rate.**\n\n```method : public : GetSpecificity() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetTotal": {
+					"descriptions": ["**Rows counted.**\n\n```method : public : GetTotal() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetTrueNegatives": {
+					"descriptions": ["**Unflagged rows that are really negative.**\n\n```method : public : GetTrueNegatives() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetTruePositives": {
+					"descriptions": ["**Flagged rows that really are positive.**\n\n```method : public : GetTruePositives() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsValid": {
+					"descriptions": ["**False when the inputs were Nil, of different lengths, or the counts negative; every count is then 0.**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Counts predictions against actuals.**\n\n```New(predictions:Bool[], actuals:Bool[])```\n\n\n\npredictions: Bool[]\n\nactuals: Bool[]", "**From counts.**\n\n```New(tp:Int, fp:Int, tn:Int, fn:Int)```\n\n\n\ntp: Int\n\nfp: Int\n\ntn: Int\n\nfn: Int"]
+				},
+				"ToMatrix": {
+					"descriptions": ["**The counts in Metrics->ConfusionMatrix's layout: [[TN, FP], [FN, TP]].**\n\n```method : public : ToMatrix() ~ Int[,]```\n\n\n\nreturn: Int[,]"]
+				},
+				"ToString": {
+					"descriptions": ["**The counts and rates on one line.**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
 		"System.ML.CrossValidation": {
 			"description": "Cross-validation utilities for model evaluation",
 			"functions": {
@@ -14428,6 +14481,9 @@
 				"F1Score": {
 					"descriptions": ["**Calculates F1 score: 2 * (Precision * Recall) \/ (Precision + Recall)**\n\n```function : native : F1Score(predictions:Bool[], actuals:Bool[]) ~ Float```\n\n\n\npredictions: Bool[]\n\nactuals: Bool[]\n\nreturn: Float"]
 				},
+				"FalsePositiveRate": {
+					"descriptions": ["**Calculates the false-positive rate: FP \/ (FP + TN)**\n\n```function : FalsePositiveRate(predictions:Bool[], actuals:Bool[]) ~ Float```\n\n\n\npredictions: Bool[]\n\nactuals: Bool[]\n\nreturn: Float"]
+				},
 				"MCC": {
 					"descriptions": ["**Calculates Matthews Correlation Coefficient (MCC)**\n\n```function : native : MCC(predictions:Bool[], actuals:Bool[]) ~ Float```\n\n\n\npredictions: Bool[]\n\nactuals: Bool[]\n\nreturn: Float"]
 				},
@@ -14789,6 +14845,43 @@
 				},
 				"PredictScore": {
 					"descriptions": ["**Scores each row; higher means more positive.**\n\n```method : public : virutal : PredictScore(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				}
+			}
+		},
+		"System.ML.SensitivitySweep": {
+			"description": "Runs one OutlierDetector at several sensitivity settings and scores each setting's labels against the truth: precision, recall, F1 and false-positive rate per setting, as a table.\n\nAny detector works through the interface, so a detector added later (One-Class SVM, say) needs nothing here. Each setting goes through SetSensitivity, and the detector decides whether that needs a refit: a setting that only moves the threshold (a z-score threshold, a contamination, an autoencoder percentile) reuses the fitted model and its scores; one that changes the model (DBSCAN's eps, One-Class SVM's nu) leaves the detector unfitted and the sweep fits it again. The first setting always fits, so the detector's earlier state never leaks into the table.\n\nA setting the detector rejects, or a fit that fails, is recorded with its error and the sweep goes on.",
+			"functions": {
+				"Run": {
+					"descriptions": ["**Fits and labels the same rows (the usual unsupervised lab: flag the training data itself, then compare with the labels). Uses FitPredict semantics, so LocalOutlierFactor without novelty and DbscanDetector work.**\n\n```function : Run(detector:OutlierDetector, settings:Float[], labels:String[], X:Float[,], y:Bool[]) ~ SweepResult```\n\n\n\ndetector: OutlierDetector\n\nsettings: Float[]\n\nlabels: String[]\n\nX: Float[,]\n\ny: Bool[]\n\nreturn: SweepResult", "**Fits on training rows and labels held-out rows with Predict.**\n\n```function : Run(detector:OutlierDetector, settings:Float[], labels:String[], X_train:Float[,], X_test:Float[,], y_test:Bool[]) ~ SweepResult```\n\n\n\ndetector: OutlierDetector\n\nsettings: Float[]\n\nlabels: String[]\n\nX_train: Float[,]\n\nX_test: Float[,]\n\ny_test: Bool[]\n\nreturn: SweepResult"]
+				}
+			}
+		},
+		"System.ML.SweepResult": {
+			"description": "A sensitivity sweep's table: per setting, its name and value, the confusion counts, and the AUC of the scores at that setting (-1.0 when undefined).",
+			"functions": {
+				"GetAuc": {
+					"descriptions": ["**The AUC of the scores at a row's setting (Metrics->AucRoc).**\n\n```method : public : GetAuc(i:Int) ~ Float```\n\n\n\ni: Int\n\nreturn: Float"]
+				},
+				"GetConfusion": {
+					"descriptions": ["**A row's confusion counts and rates.**\n\n```method : public : GetConfusion(i:Int) ~ ConfusionMatrix```\n\n\n\ni: Int\n\nreturn: ConfusionMatrix"]
+				},
+				"GetError": {
+					"descriptions": ["**Why a row's setting failed.**\n\n```method : public : GetError(i:Int) ~ String```\n\n\n\ni: Int\n\nreturn: String"]
+				},
+				"GetName": {
+					"descriptions": ["**A row's name, e.g. \"Low\".**\n\n```method : public : GetName(i:Int) ~ String```\n\n\n\ni: Int\n\nreturn: String"]
+				},
+				"GetSetting": {
+					"descriptions": ["**A row's setting value.**\n\n```method : public : GetSetting(i:Int) ~ Float```\n\n\n\ni: Int\n\nreturn: Float"]
+				},
+				"GetSettingName": {
+					"descriptions": ["**What the settings are, e.g. \"contamination\".**\n\n```method : public : GetSettingName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"Size": {
+					"descriptions": ["**Settings in the table.**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"ToTable": {
+					"descriptions": ["**The table as text: setting, value, flagged, TP FP TN FN, precision, recall, F1, FPR and AUC, one row per setting.**\n\n```method : public : ToTable() ~ String```\n\n\n\nreturn: String"]
 				}
 			}
 		},
@@ -19213,6 +19306,12 @@
 				"file": ""
 			}
 		],
+		"ConfusionMatrix": [
+			{
+				"bundle": "System.ML",
+				"file": ""
+			}
+		],
 		"CrossValidation": [
 			{
 				"bundle": "System.ML",
@@ -19454,6 +19553,18 @@
 			}
 		],
 		"ScoreModel": [
+			{
+				"bundle": "System.ML",
+				"file": ""
+			}
+		],
+		"SensitivitySweep": [
+			{
+				"bundle": "System.ML",
+				"file": ""
+			}
+		],
+		"SweepResult": [
 			{
 				"bundle": "System.ML",
 				"file": ""
