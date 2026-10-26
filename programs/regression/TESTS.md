@@ -14,14 +14,14 @@ python gen_manifest.py
 ```
 
 
-**Total runtime tests: 692** (plus 14 debugger tests, see below).
+**Total runtime tests: 693** (plus 14 debugger tests, see below).
 
 
 ## Tests by Category
 
 | Category | Count |
 |----------|-------|
-| Other | 294 |
+| Other | 295 |
 | Negative | 97 |
 | Core Language | 53 |
 | Query.Structured | 41 |
@@ -742,15 +742,16 @@ python gen_manifest.py
 | 681 | `vm_set_locale_refused.obs` | Other | Runtime->SetLocale with a name the system cannot supply. The VM switched the C library's locale a... | ✅ |
 | 682 | `vm_set_property_first.obs` | Other | A program whose first property access is a set still gets the runtime's own properties. The runti... | ✅ |
 | 683 | `vm_set_property_overwrite.obs` | Other | A runtime property set twice reads back the second value. StackProgram::SetProperty stored with s... | ✅ |
-| 684 | `vm_trace_fn_param_format.obs` | Other (neg) | The stack trace names each method the way its source declares it, including function-typed parame... | ✅ |
-| 685 | `vm_unicode_args_env.obs` | Other | Fixture for run_vm_flag_tests.py (section 14): arguments, environment variables and command outpu... | ✅ |
-| 686 | `vm_write_char_buffer.obs` | Other | Console->WriteBuffer(Char[]) wrote the buffer twice-encoded, and ignored num. The trap (STD_OUT_C... | ✅ |
-| 687 | `web_server_test.obs` | Other | Web.Server end-to-end coverage. Every method on Web.Server.Request and Response used to call a na... | ✅ |
-| 688 | `websocket_test.obs` | Networking | websocket test | ✅ |
-| 689 | `xml_attribute_order.obs` | XML | XmlElement serializes its attributes in the order they were added, and a parsed element keeps doc... | ✅ |
-| 690 | `xml_build_ops.obs` | XML | xml build ops | ✅ |
-| 691 | `xml_encoding_ops.obs` | XML | Unit tests for the 2026-06 Data.XML improvements: truncated/garbage input is rejected (previously... | ✅ |
-| 692 | `xml_parse_ops.obs` | XML | xml parse ops | ✅ |
+| 684 | `vm_thread_stack_pages.obs` | Other | Fixture for run_vm_flag_tests.py section 19: transparent huge pages stay off the stacks of the th... | ✅ |
+| 685 | `vm_trace_fn_param_format.obs` | Other (neg) | The stack trace names each method the way its source declares it, including function-typed parame... | ✅ |
+| 686 | `vm_unicode_args_env.obs` | Other | Fixture for run_vm_flag_tests.py (section 14): arguments, environment variables and command outpu... | ✅ |
+| 687 | `vm_write_char_buffer.obs` | Other | Console->WriteBuffer(Char[]) wrote the buffer twice-encoded, and ignored num. The trap (STD_OUT_C... | ✅ |
+| 688 | `web_server_test.obs` | Other | Web.Server end-to-end coverage. Every method on Web.Server.Request and Response used to call a na... | ✅ |
+| 689 | `websocket_test.obs` | Networking | websocket test | ✅ |
+| 690 | `xml_attribute_order.obs` | XML | XmlElement serializes its attributes in the order they were added, and a parsed element keeps doc... | ✅ |
+| 691 | `xml_build_ops.obs` | XML | xml build ops | ✅ |
+| 692 | `xml_encoding_ops.obs` | XML | Unit tests for the 2026-06 Data.XML improvements: truncated/garbage input is rejected (previously... | ✅ |
+| 693 | `xml_parse_ops.obs` | XML | xml parse ops | ✅ |
 
 ## Debugger Tests (`run_debugger_tests.sh`)
 
