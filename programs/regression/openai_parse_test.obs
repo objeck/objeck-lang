@@ -105,6 +105,20 @@ class OpenAIParseTest {
     resp := Response->ParseResponse(body);
     Check("parts concatenate", resp <> Nil & Same(resp->GetText(), "Hello, world."));
 
+    # the text is decoded: GetText() returned the escapes as sent, and callers
+    # had to JsonElement->Decode it
+    body := "{\"id\":\"resp_e\",\"object\":\"response\",\"created_at\":1746989954,\"error\":null,\"model\":\"gpt-4.1\",\"output\":[{\"id\":\"msg_e\",\"type\":\"message\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"annotations\":[],\"text\":\"Say \\\"hi\\\"\\nC:\\\\new \\u00e9 a\\/b\"}]}]}";
+    resp := Response->ParseResponse(body);
+    escaped_want := "Say \"hi\"\nC:\\new ";
+    escaped_want->Append(0xE9->As(Char));
+    escaped_want += " a/b";
+    Check("reply text is decoded once", resp <> Nil & Same(resp->GetText(), escaped_want));
+
+    # an error message is decoded once: a real backslash survives
+    EndPoint->SetLastError(Nil);
+    Response->ParseResponse("{\"error\":{\"message\":\"bad path C:\\\\new \\\"x\\\"\",\"type\":\"invalid_request_error\",\"param\":null,\"code\":null}}");
+    Check("an error message is decoded once", Same(EndPoint->GetLastError(), "bad path C:\\new \"x\""));
+
     # a function call: no 'content', so no text
     body := "{\"id\":\"resp_2\",\"object\":\"response\",\"created_at\":1741294021,\"status\":\"completed\",\"error\":null,\"model\":\"gpt-4.1-2025-04-14\",\"output\":[{\"type\":\"function_call\",\"id\":\"fc_67ca09c6bedc8190a7abfec07b1a1332096610f474011cc0\",\"call_id\":\"call_unLAR8MvFNptuiZK6K6HCy5k\",\"name\":\"get_current_weather\",\"arguments\":\"{}\",\"status\":\"completed\"}]}";
     resp := Response->ParseResponse(body);

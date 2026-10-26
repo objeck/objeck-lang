@@ -120,10 +120,10 @@ class ReadmeBuilder {
 				next_feature_item_json := feature_items_json->Get(j + 1);
 
 				# get current and next feature entry
-				feature_item := JsonElement->Decode(feature_item_json->GetString());				
+				feature_item := feature_item_json->GetString();				
 				next_feature_item : String;
 				if(next_feature_item_json <> Nil) {
-					next_feature_item := JsonElement->Decode(next_feature_item_json->GetString());
+					next_feature_item := next_feature_item_json->GetString();
 				};
 
 				# add items and sub-items
@@ -233,10 +233,10 @@ class ReadmeBuilder {
 				next_feature_item_json := feature_items_json->Get(j + 1);
 
 				# get current and next feature entry
-				feature_item := JsonElement->Decode(feature_item_json->GetString());				
+				feature_item := feature_item_json->GetString();				
 				next_feature_item : String;
 				if(next_feature_item_json <> Nil) {
-					next_feature_item := JsonElement->Decode(next_feature_item_json->GetString());
+					next_feature_item := next_feature_item_json->GetString();
 				};
 
 				# add items and sub-items

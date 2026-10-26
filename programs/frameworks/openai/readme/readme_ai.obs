@@ -159,7 +159,7 @@ class ReadmeBuilder {
 		contents := @convo->Send(message, "user")->GetContents();
 		if(contents->Size() > 0) {
 			content := contents->Get(0)<String, String>;
-			return Data.JSON.JsonElement->Decode(content->GetSecond()<String>);
+			return content->GetSecond()<String>;
 		};
 
 		return Nil;

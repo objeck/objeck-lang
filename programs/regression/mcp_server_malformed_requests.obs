@@ -58,6 +58,19 @@ class HardeningMcpHandler from McpRequestHandler {
 			return contents;
 		};
 
+		# "arg_text": one argument's string value back as the text, to show the
+		# tool is handed decoded text
+		if(name->Equals("arg_text")) {
+			q := arguments->Get("q");
+			if(q = Nil) {
+				contents->AddBack(ToolContent->New("text", "<none>"));
+			}
+			else {
+				contents->AddBack(ToolContent->New("text", q->GetString()));
+			};
+			return contents;
+		};
+
 		# "echo": the arguments back as text, so a valid call is seen to work
 		contents->AddBack(ToolContent->New("text", arguments->ToString()));
 		return contents;
@@ -171,8 +184,7 @@ class McpServerMalformedRequests {
 		};
 
 		# the id: "<null>" for a JSON null, else the value as the request sent it
-		# (a string id is compared decoded, since Data.JSON keeps a parsed
-		# string's escapes raw)
+		# (a string id is compared as its text: Data.JSON decodes a parsed string)
 		if(id_expect <> Nil) {
 			id := root->Get("id");
 			if(id = Nil) {
@@ -186,10 +198,7 @@ class McpServerMalformedRequests {
 			}
 			else {
 				id_text := id->GetValue();
-				if(id->GetType() = JsonElement->JsonType->STRING) {
-					id_text := JsonElement->Decode(id_text);
-				}
-				else if(id->GetType() <> JsonElement->JsonType->NUMBER) {
+				if(id->GetType() <> JsonElement->JsonType->STRING & id->GetType() <> JsonElement->JsonType->NUMBER) {
 					id_text := id->ToString();
 				};
 				if(<>id_text->Equals(id_expect)) {
@@ -327,6 +336,8 @@ class McpServerMalformedRequests {
 		Check("negative id", "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":-7}", 200, 0, "-7");
 		Check("huge id", "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":99999999999999999999999}", 200, 0, "99999999999999999999999");
 		Check("string id with spaces, a slash and a quote", "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":\"req 7/a:\\\"b\\\"\"}", 200, 0, "req 7/a:\"b\"");
+		# a real backslash: decoded once by the parser, never again by the handler
+		Check("string id with a backslash", "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":\"C:\\\\new\"}", 200, 0, "C:\\new");
 
 		# duplicate keys: Data.JSON keeps the last, the request is still a ping
 		Check("duplicate keys", "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":1,\"id\":2,\"method\":\"ping\"}", 200, 0, "2");
@@ -387,6 +398,26 @@ class McpServerMalformedRequests {
 			};
 		};
 		Check("tools/call without arguments", "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"id\":31,\"params\":{\"name\":\"echo\"}}", 200, 0, "31");
+
+		# a tool's string argument arrives decoded -- a quote, a backslash, a line
+		# break, an escaped slash and a \u escape are the characters they stand
+		# for -- and the reply carries that text back escaped once. Data.JSON kept
+		# the escapes raw, so the tool saw x\"y\\z... and the reply doubled them.
+		reply := Check("tools/call arguments decoded", "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"id\":32,\"params\":{\"name\":\"arg_text\",\"arguments\":{\"q\":\"x\\\"y\\\\z\\n\\/\\u00e9\"}}}", 200, 0, "32");
+		if(reply <> Nil) {
+			arg_expected := "x\"y\\z\n/";
+			arg_expected->Append(0xE9->As(Char));
+			arg_contents := reply->Get("result")->Get("content");
+			if(arg_contents = Nil | arg_contents->Size() <> 1 | arg_contents->Get(0)->Get("text") = Nil) {
+				Fail("tools/call arguments decoded", "no text content in the result");
+			}
+			else {
+				arg_got := arg_contents->Get(0)->Get("text")->GetString();
+				if(<>arg_got->Equals(arg_expected)) {
+					Fail("tools/call arguments decoded", "the tool saw [{$arg_got}]");
+				};
+			};
+		};
 
 		# --- after all that the server is still answering -------------------------
 		init_client := HttpClient->New();

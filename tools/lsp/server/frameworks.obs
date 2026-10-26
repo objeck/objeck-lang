@@ -1078,49 +1078,14 @@ bundle LSP {
 				return RpcRequest->New(false);
 			};
 
-			return RpcRequest->New(Decoded(id_elem), JsonElement->Decode(mthd_elem->GetValue()), Decoded(node->Get("params")));
-		}
-
-		#
-		# Data.JSON's parser keeps string values as they were written, escapes and
-		# all, and leaves decoding to the caller (JsonElement->Decode). Every string
-		# in a message is decoded here, once, so the rest of the server works on
-		# plain text and the serializer's escaping on the way out is the only one.
-		#
-		# The Document used to hand-decode its text instead, and only \t \r \n \\
-		# and \": a client that sent non-ASCII as \u escapes left six characters
-		# in the document per character, and every column after it on the line was
-		# wrong (#1216).
-		#
-		function : Decoded(elem : JsonElement) ~ JsonElement {
-			if(elem = Nil) {
-				return Nil;
-			};
-
-			type := elem->GetType();
-			if(type = JsonElement->JsonType->STRING) {
-				return JsonElement->New(JsonElement->Decode(elem->GetValue()));
-			}
-			else if(type = JsonElement->JsonType->ARRAY) {
-				elems := Vector->New()<JsonElement>;
-				each(i : elem) {
-					elems->AddBack(Decoded(elem->Get(i)));
-				};
-				return JsonElement->New(elems);
-			}
-			else if(type = JsonElement->JsonType->OBJECT) {
-				members := Map->New()<String, JsonElement>;
-				names := elem->GetNames();
-				if(names <> Nil) {
-					each(i : names) {
-						name := names->Get(i);
-						members->Insert(JsonElement->Decode(name), Decoded(elem->Get(name)));
-					};
-				};
-				return JsonElement->New(members);
-			};
-
-			return elem;
+			# Data.JSON's parser decodes every string in a message, \u escapes
+			# included, so the server works on plain text and the serializer's
+			# escaping on the way out is the only one. The message used to be copied
+			# here with every string and key run through JsonElement->Decode, because
+			# the parser kept them as written. (Before that the Document hand-decoded
+			# its text, and only \t \r \n \\ and \": non-ASCII sent as \u escapes left
+			# six characters per character, and every later column was wrong, #1216.)
+			return RpcRequest->New(id_elem, mthd_elem->GetValue(), node->Get("params"));
 		}
 
 		# --- server-to-client request ---
@@ -1714,12 +1679,12 @@ bundle LSP {
 
 			file_strs := String->New[files_json->Size()];
 			each(i : files_json) {
-				file_strs[i] := JsonElement->Decode(files_json->Get(i)->GetValue());
+				file_strs[i] := files_json->Get(i)->GetValue();
 			};
 
 			libs_str := "";
 			each(i : libs_json) {
-				libs_str += JsonElement->Decode(libs_json->Get(i)->GetValue());
+				libs_str += libs_json->Get(i)->GetValue();
 				libs_str += ',';
 			};
 

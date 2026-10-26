@@ -331,7 +331,7 @@ resp_schema := Pair->New("application/json", schema)<String, ParameterType>;
 
 candidates := Model->GenerateContent("models/gemini-2.5-flash", content, resp_schema, token);
 if(candidates <> Nil & <>candidates->IsEmpty()) {
-    Data.JSON.JsonElement->Decode(candidates->First()->GetAllText()->Trim())->PrintLine();
+    candidates->First()->GetAllText()->Trim()->PrintLine();
 };
 ```
 

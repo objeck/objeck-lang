@@ -80,8 +80,24 @@ class Scanner {
 			};
 		}
 		else {
-			@cur_char := next_char := '\0';
+			# '\0' is the end of the text: every loop below stops at it. They
+			# did not, and an unterminated string, character or block comment,
+			# or a line comment on the last line, spun the language server
+			# forever on a formatting request. (This assigned a stray local,
+			# 'next_char', not the field.)
+			@cur_char := '\0';
+			@next_char := '\0';
 		};
+	}
+
+	# the text from 'start' up to the current character; all of the rest at the
+	# end of the text, where the current character is not part of it
+	method : TextFrom(start : Int) ~ String {
+		if(@cur_char = '\0' & @buffer_index >= @buffer->Size()) {
+			return String->New(@buffer, start, @buffer->Size() - start);
+		};
+
+		return String->New(@buffer, start, @buffer_index - 1 - start);
 	}
 
 	method : Whitespace() ~ Nil {
@@ -116,12 +132,13 @@ class Scanner {
 			
 			# comment
 			if(@cur_char = '#') {
+				after_hash := @buffer_index;
 				NextChar();
 
 				if(@cur_char = '~') {
+					start := @buffer_index;
 					NextChar();
-					start := @buffer_index - 1;
-					while(<>(@cur_char = '~' & @next_char = '#')) {
+					while(@cur_char <> '\0' & <>(@cur_char = '~' & @next_char = '#')) {
 						if(@cur_char = '\n') {
 							@line_num += 1;
 							@line_pos := 1;
@@ -129,69 +146,63 @@ class Scanner {
 
 						NextChar();
 					};
-					end := @buffer_index;
+					comment := TextFrom(start);
 					NextChar();
 					NextChar();
 
-					comment :=  String->New(@buffer, start, end - start - 1);
 					@tokens->AddBack(Token->New(@line_num, Token->Type->MULTI_COMMENT, comment));
 				}
 				else {
-					start := @buffer_index - 1;
-					while(<>@cur_char = '\n') {
+					start := after_hash;
+					while(@cur_char <> '\0' & @cur_char <> '\n') {
 						NextChar();
 					};
-					end := @buffer_index;
+					comment := TextFrom(start);
 					NextChar();
 
-					comment :=  String->New(@buffer, start, end - start - 1);
 					@tokens->AddBack(Token->New(@line_num, Token->Type->LINE_COMMENT, comment));
 				};
 			}
 			# string literal
 			else if(@cur_char = '"') {
-				NextChar();				
+				start := @buffer_index;
+				NextChar();
 				is_escape := false;
 
-				start := @buffer_index - 1;
-				while(is_escape | @cur_char <> '"') {
+				while(@cur_char <> '\0' & (is_escape | @cur_char <> '"')) {
 					if(is_escape) {
 						is_escape := false;
-					};
-
-					if(@cur_char = '\\') {
+					}
+					else if(@cur_char = '\\') {
 						is_escape := true;
 					};
 
 					NextChar();
-				};				
-				end := @buffer_index;
+				};
+				string_lit := TextFrom(start);
 				NextChar();
 
-				string_lit :=  String->New(@buffer, start, end - start - 1);
 				@tokens->AddBack(Token->New(@line_num, Token->Type->STRING_LIT, string_lit));
 			}
 			# char const
 			else if(@cur_char = '\'') {
-				NextChar();				
+				start := @buffer_index;
+				NextChar();
 				is_escape := false;
 
-				start := @buffer_index - 1;
-				while(is_escape | @cur_char <> '\'') {
+				while(@cur_char <> '\0' & (is_escape | @cur_char <> '\'')) {
 					if(is_escape) {
 						is_escape := false;
-					};
-
-					if(@cur_char = '\\') {
+					}
+					else if(@cur_char = '\\') {
 						is_escape := true;
 					};
 
 					NextChar();
-				};				
-				end := @buffer_index;
+				};
+				string_lit := TextFrom(start);
 				NextChar();
 
-				string_lit :=  String->New(@buffer, start, end - start - 1);
 				@tokens->AddBack(Token->New(@line_num, Token->Type->CHAR_LIT, string_lit));
 			}
 			# keyword or variable

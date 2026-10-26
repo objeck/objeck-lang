@@ -49,7 +49,8 @@ class JsonCodecEscapes {
 			fails += 1;
 		};
 
-		# serialize, parse, decode: the original comes back
+		# serialize, parse: the original comes back (the parser decodes; a second
+		# decode would corrupt the real backslash)
 		original := "line\n\ttab \"quoted\" back\\slash caf";
 		original->Append(0xE9->As(Char));
 		original += String->FromCodePoint(0x1F600);
@@ -58,9 +59,9 @@ class JsonCodecEscapes {
 		obj := JsonElement->New(JsonElement->JsonType->OBJECT);
 		obj->Insert("s", original);
 		parsed := JsonParser->TextToElement(obj->ToString());
-		back := JsonElement->Decode(parsed->Get("s")->GetValue());
+		back := parsed->Get("s")->GetValue();
 		if(<>back->Equals(original)) {
-			"FAIL: serialize, parse and decode round-trips"->PrintLine();
+			"FAIL: serialize and parse round-trips"->PrintLine();
 			fails += 1;
 		};
 

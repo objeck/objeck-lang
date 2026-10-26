@@ -339,17 +339,16 @@ row->ToJson()->PrintLine();
 				header := headers->Get(i);
 				value := @columns->Get(i);
 
-				buffer->Append('"');
-				buffer->Append(header);
-				buffer->Append("\":");
+				# names and text are escaped: a cell holding a quote, a backslash
+				# or a line break produced text that was not JSON
+				AppendJsonString(header, buffer);
+				buffer->Append(':');
 
 				if(value->IsInt() | value->IsFloat()) {
 					buffer->Append(value);
 				}
 				else {
-					buffer->Append('"');
-					buffer->Append(value);
-					buffer->Append('"');
+					AppendJsonString(value, buffer);
 				};
 
 				if(i + 1 < headers->Size()) {
@@ -357,8 +356,45 @@ row->ToJson()->PrintLine();
 				};
 			};
 			buffer->Append('}');
-			
+
 			return buffer;
+		}
+
+		#
+		# Appends 'str' as a JSON string (RFC 8259 section 7): the quote, the
+		# backslash and the control characters escaped, as Data.JSON's serializer
+		# does. Written here because this library does not link the JSON one.
+		#
+		function : AppendJsonString(str : String, buffer : String) ~ Nil {
+			hex := "0123456789abcdef";
+			buffer->Append('"');
+			each(i : str) {
+				c := str->Get(i);
+				if(c = '"') {
+					buffer->Append("\\\"");
+				}
+				else if(c = '\\') {
+					buffer->Append("\\\\");
+				}
+				else if(c = '\n') {
+					buffer->Append("\\n");
+				}
+				else if(c = '\r') {
+					buffer->Append("\\r");
+				}
+				else if(c = '\t') {
+					buffer->Append("\\t");
+				}
+				else if(c < 0x20) {
+					buffer->Append("\\u00");
+					buffer->Append(hex->Get(c->As(Int) >> 4));
+					buffer->Append(hex->Get(c->As(Int) and 0xF));
+				}
+				else {
+					buffer->Append(c);
+				};
+			};
+			buffer->Append('"');
 		}
 	}
 	

@@ -1,0 +1,458 @@
+# EXTRA_LIBS: json_stream
+#~
+Data.JSON strings: the parser decodes, the serializer escapes, and a round trip
+is the identity (RFC 8259 section 7).
+
+JsonParser kept a string's escapes as written: GetValue() of "x\"y" returned the
+backslash too, while ToString() escapes on output, so parse then serialize
+doubled every escape ({"a":"x\"y"} came back as {"a":"x\\\"y"}) and every caller
+had to know to call JsonElement->Decode, which a value holding a real backslash
+could not survive. The serializer also wrote '/' as an escape. The stream parser
+appended the letter of every escape a second time and ended a string at an
+escaped quote.
+
+Checks: decode on parse for every escape (surrogate pairs, unpaired surrogates,
+non-BMP), the exact serialized form, invalid escapes refused with an offset, the
+stream parser, and a fuzz pass: random strings -> serialize -> parse -> equal.
+The fuzz seeds come from the arguments (default 1 2 3 4); 100000 cases in all.
+~#
+
+use Collection;
+use Data.JSON;
+use Data.JSON.Stream;
+
+class JsonStringRoundTrip {
+	@failures : static : Int;
+	@checks : static : Int;
+
+	function : Check(ok : Bool, name : String) ~ Nil {
+		@checks += 1;
+		if(<>ok) {
+			"  [FAIL] {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# a string from code points; Append lays a code point above U+FFFF out as a
+	# surrogate pair where strings are UTF-16
+	function : S(cps : Int[]) ~ String {
+		out := String->New();
+		each(i : cps) {
+			out->Append(cps[i]->As(Char));
+		};
+		return out;
+	}
+
+	function : Show(str : String) ~ String {
+		out := String->New();
+		cps := str->CodePoints();
+		each(i : cps) {
+			if(i > 0) {
+				out->Append(' ');
+			};
+			out->Append(cps[i]->ToHexString());
+		};
+		return out;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		@checks := 0;
+
+		Decoding();
+		Keys();
+		Serializing();
+		RoundTrips();
+		Invalid();
+		Long();
+		Stream();
+		Fuzz(args);
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} of {$@checks} JSON string checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: JSON strings decode on parse, escape on output and round-trip ({$@checks} checks)"->PrintLine();
+	}
+
+	# the value of the JSON text 'json' (one string) must be 'want'
+	function : ExpectValue(json : String, want : String, name : String) ~ Nil {
+		parser := JsonParser->New(json);
+		if(<>parser->Parse()) {
+			error := parser->GetError();
+			Check(false, "{$name}: did not parse ({$error})");
+			return;
+		};
+
+		got := parser->GetRoot()->GetValue();
+		ok := got->Equals(want);
+		if(<>ok) {
+			Check(false, "{$name}: got [{$Show(got)}], want [{$Show(want)}]");
+		}
+		else {
+			Check(true, name);
+		};
+
+		# GetString is the same value, inside an object too
+		obj := JsonParser->TextToElement("{\"v\":" + json + "}");
+		Check(obj <> Nil & obj->Get("v")->GetString()->Equals(want), "{$name}: in an object");
+		arr := JsonParser->TextToElement("[1," + json + ",2]");
+		Check(arr <> Nil & arr->Get(1)->GetString()->Equals(want), "{$name}: in an array");
+	}
+
+	function : Decoding() ~ Nil {
+		ExpectValue("\"x\\\"y\"", S([0x78, 0x22, 0x79]), "escaped quote");
+		ExpectValue("\"a\\\\b\"", S([0x61, 0x5C, 0x62]), "escaped backslash");
+		ExpectValue("\"a\\/b\"", S([0x61, 0x2F, 0x62]), "escaped slash");
+		ExpectValue("\"a/b\"", S([0x61, 0x2F, 0x62]), "plain slash");
+		ExpectValue("\"\\b\\f\\n\\r\\t\"", S([0x08, 0x0C, 0x0A, 0x0D, 0x09]), "control escapes");
+		ExpectValue("\"\\u0041\\u00e9\\u4E2D\"", S([0x41, 0xE9, 0x4E2D]), "BMP u-escapes, either case");
+		ExpectValue("\"\\u0000\"", S([0x00]), "u-escaped NUL");
+		ExpectValue("\"\\u001f\\u007f\"", S([0x1F, 0x7F]), "u-escaped control and DEL");
+		ExpectValue("\"\\ud83d\\ude00\"", S([0x1F600]), "surrogate pair -> U+1F600");
+		ExpectValue("\"\\uD834\\uDD1E!\"", S([0x1D11E, 0x21]), "surrogate pair -> U+1D11E, upper case");
+		ExpectValue("\"\\udbff\\udfff\"", S([0x10FFFF]), "surrogate pair -> U+10FFFF");
+		ExpectValue("\"a\\ud800b\"", S([0x61, 0xFFFD, 0x62]), "unpaired high surrogate -> U+FFFD");
+		ExpectValue("\"\\udc00\"", S([0xFFFD]), "unpaired low surrogate -> U+FFFD");
+		ExpectValue("\"\\ud800\\u0041\"", S([0xFFFD, 0x41]), "high surrogate then a BMP escape");
+		ExpectValue("\"\\ud800\\ud83d\\ude00\"", S([0xFFFD, 0x1F600]), "high surrogate then a pair");
+		ExpectValue("\"\\ud800\\n\"", S([0xFFFD, 0x0A]), "high surrogate then another escape");
+		ExpectValue("\"\"", "", "empty");
+		ExpectValue("\"\\\\\\\"\\\\\"", S([0x5C, 0x22, 0x5C]), "backslash, quote, backslash");
+		ExpectValue("\"\\\\n\"", S([0x5C, 0x6E]), "an escaped backslash before n is not a newline");
+		ExpectValue("\"C:\\\\new\\\\table\"", S([0x43, 0x3A, 0x5C, 0x6E, 0x65, 0x77, 0x5C, 0x74, 0x61, 0x62, 0x6C, 0x65]), "Windows path");
+
+		# raw non-ASCII passes through
+		raw := "\"";
+		raw += S([0xE9, 0x4E2D, 0x1F600]);
+		raw += "\"";
+		ExpectValue(raw, S([0xE9, 0x4E2D, 0x1F600]), "raw non-ASCII");
+	}
+
+	function : Keys() ~ Nil {
+		root := JsonParser->TextToElement("{\"k\\\"ey\":1,\"a\\\\b\":2,\"\\u00e9\":3}");
+		Check(root <> Nil, "escaped keys parse");
+		if(root <> Nil) {
+			Check(root->Get(S([0x6B, 0x22, 0x65, 0x79])) <> Nil, "key with an escaped quote is decoded");
+			Check(root->Get(S([0x61, 0x5C, 0x62])) <> Nil, "key with an escaped backslash is decoded");
+			Check(root->Get(S([0xE9])) <> Nil, "key with a u-escape is decoded");
+			again := JsonParser->TextToElement(root->ToString());
+			Check(again <> Nil & again->Get(S([0x6B, 0x22, 0x65, 0x79])) <> Nil & again->Get(S([0x61, 0x5C, 0x62])) <> Nil &
+				again->Get(S([0xE9])) <> Nil & again->Size() = 3, "keys re-serialize and re-parse to the same names");
+		};
+	}
+
+	# the serialized form of the string 'value' must be exactly 'want'
+	function : ExpectText(value : String, want : String, name : String) ~ Nil {
+		got := JsonElement->New(value)->ToString();
+		if(<>got->Equals(want)) {
+			Check(false, "{$name}: serialized as {$got}, want {$want}");
+		}
+		else {
+			Check(true, name);
+		};
+		Check(JsonElement->Encode(value)->Equals(want->SubString(1, want->Size() - 2)), "{$name}: Encode agrees");
+	}
+
+	function : Serializing() ~ Nil {
+		ExpectText(S([0x78, 0x22, 0x79]), "\"x\\\"y\"", "quote");
+		ExpectText(S([0x61, 0x5C, 0x62]), "\"a\\\\b\"", "backslash");
+		ExpectText("a/b", "\"a/b\"", "slash is not escaped");
+		ExpectText(S([0x08, 0x0C, 0x0A, 0x0D, 0x09]), "\"\\b\\f\\n\\r\\t\"", "short control escapes");
+		ExpectText(S([0x00, 0x01, 0x1F]), "\"\\u0000\\u0001\\u001f\"", "other control characters");
+		ExpectText(S([0x7F, 0x20, 0x7E]), "\"" + S([0x7F, 0x20, 0x7E]) + "\"", "DEL and printable ASCII as is");
+		ExpectText(S([0xE9]), "\"\\u00e9\"", "non-ASCII as a u-escape");
+		ExpectText(S([0x1F600]), "\"\\ud83d\\ude00\"", "non-BMP as a surrogate pair");
+		ExpectText(S([0xD800]), "\"\\ufffd\"", "unpaired high surrogate");
+		ExpectText(S([0xDC00, 0x41]), "\"\\ufffdA\"", "unpaired low surrogate");
+		ExpectText("", "\"\"", "empty");
+
+		# keys are escaped the same way
+		obj := JsonElement->New(JsonElement->JsonType->OBJECT);
+		obj->Insert(S([0x61, 0x22, 0x2F, 0x5C]), "v");
+		Check(obj->ToString()->Equals("{\"a\\\"/\\\\\":\"v\"}"), "object key escaped: " + obj->ToString());
+
+		# the defect as reported: parse then serialize is the same text
+		Check(JsonParser->TextToElement("{\"a\":\"x\\\"y\"}")->ToString()->Equals("{\"a\":\"x\\\"y\"}"), "{\"a\":\"x\\\"y\"} re-serializes unchanged");
+		Check(JsonParser->TextToElement("{\"u\":\"http:\\/\\/x.org\\/p\"}")->ToString()->Equals("{\"u\":\"http://x.org/p\"}"), "an escaped slash re-serializes plain");
+		Check(JsonParser->TextToElement("[\"a\\\\nb\"]")->ToString()->Equals("[\"a\\\\nb\"]"), "an escaped backslash re-serializes unchanged");
+	}
+
+	function : RoundTrips() ~ Nil {
+		docs := [
+			"{\"a\":\"x\\\"y\",\"b\":[\"\\\\\",\"\\/\",\"\\b\\f\\n\\r\\t\"],\"c\":{\"d\\\"e\":\"\\u00e9\\ud83d\\ude00\"}}",
+			"[\"\",\" \",\"\\u0000\",\"\\\\u0041\",\"\\\"\\\"\"]",
+			"\"top-level \\\"string\\\"\"",
+			"{\"nested\":{\"deeper\":{\"text\":\"line1\\nline2\\ttab \\\\ back\"}}}"
+		];
+
+		each(i : docs) {
+			first := JsonParser->TextToElement(docs[i]);
+			Check(first <> Nil, "round-trip document {$i} parses");
+			if(first <> Nil) {
+				text := first->ToString();
+				second := JsonParser->TextToElement(text);
+				Check(second <> Nil, "round-trip document {$i} re-parses");
+				if(second <> Nil) {
+					Check(Same(first, second), "round-trip document {$i}: parse(serialize(parse(d))) = parse(d)");
+					Check(second->ToString()->Equals(text), "round-trip document {$i}: serialization is stable");
+				};
+
+				pretty := JsonParser->TextToElement(first->ToFormattedString());
+				Check(pretty <> Nil & Same(first, pretty), "round-trip document {$i}: through ToFormattedString");
+			};
+		};
+	}
+
+	# structural equality of two element trees
+	function : Same(a : JsonElement, b : JsonElement) ~ Bool {
+		if(a = Nil | b = Nil) {
+			return a = Nil & b = Nil;
+		};
+
+		if(a->GetType() <> b->GetType()) {
+			return false;
+		};
+
+		select(a->GetType()) {
+			label JsonElement->JsonType->ARRAY: {
+				if(a->Size() <> b->Size()) {
+					return false;
+				};
+				each(i : a) {
+					if(<>Same(a->Get(i), b->Get(i))) {
+						return false;
+					};
+				};
+				return true;
+			}
+
+			label JsonElement->JsonType->OBJECT: {
+				if(a->Size() <> b->Size()) {
+					return false;
+				};
+				names := a->GetNames();
+				each(i : names) {
+					if(<>Same(a->Get(names->Get(i)), b->Get(names->Get(i)))) {
+						return false;
+					};
+				};
+				return true;
+			}
+		};
+
+		return a->GetValue()->Equals(b->GetValue());
+	}
+
+	# an invalid escape is a parse error that names the escape's offset
+	function : ExpectError(json : String, offset : Int, name : String) ~ Nil {
+		parser := JsonParser->New(json);
+		parsed := parser->Parse();
+		Check(<>parsed, "{$name}: refused");
+		error := parser->GetError();
+		if(offset > -1) {
+			Check(error <> Nil & error->Has("offset {$offset}"), "{$name}: error names offset {$offset} ({$error})");
+		}
+		else {
+			Check(error <> Nil, "{$name}: has an error message");
+		};
+		Check(JsonParser->TextToElement(json) = Nil, "{$name}: TextToElement is Nil");
+	}
+
+	function : Invalid() ~ Nil {
+		ExpectError("\"\\x\"", 1, "unknown escape \\x");
+		ExpectError("{\"a\":\"b\\x\"}", 7, "unknown escape in a value");
+		ExpectError("{\"a\\q\":1}", 3, "unknown escape in a key");
+		ExpectError("[\"ok\",\"\\z\"]", 7, "unknown escape in an array");
+		ExpectError("\"\\u12\"", 1, "truncated u-escape");
+		ExpectError("\"\\u12", 1, "u-escape cut by the end of the text");
+		ExpectError("\"\\u12g4\"", 1, "u-escape with a non-hex digit");
+		ExpectError("\"\\ud83d\\u12\"", 7, "bad low half after a high surrogate");
+		ExpectError("\"abc\\", 4, "backslash at the end of the text");
+		ExpectError("\"abc", 0, "unterminated string");
+		ExpectError("{\"a\":\"abc}", 5, "unterminated string in an object");
+		ExpectError("\"\\U0041\"", 1, "upper-case U is not an escape");
+		ExpectError("\"\\'\"", 1, "escaped apostrophe is not JSON");
+
+		# the error names the escape
+		parser := JsonParser->New("[\"\\x\"]");
+		parser->Parse();
+		error := parser->GetError();
+		Check(error <> Nil & error->Has("Invalid escape"), "the error says invalid escape ({$error})");
+	}
+
+	function : Long() ~ Nil {
+		# 100000 characters, every kind of character, through a document
+		long := String->New();
+		pattern := S([0x61, 0x22, 0x5C, 0x2F, 0x0A, 0x01, 0xE9, 0x1F600, 0x20]);
+		while(long->Size() < 100000) {
+			long += pattern;
+		};
+
+		obj := JsonElement->New(JsonElement->JsonType->OBJECT);
+		obj->Insert("long", long);
+		back := JsonParser->TextToElement(obj->ToString());
+		Check(back <> Nil & back->Get("long")->GetString()->Equals(long), "a long string round-trips");
+	}
+
+	function : Stream() ~ Nil {
+		json := "{\"q\\\"k\":\"x\\\"y\",\"n\":\"a\\nb\",\"s\":\"\\\\start\",\"u\":\"\\u00e9\\ud83d\\ude00\\/\",\"b\":\"\\b\\f\",\"t\":\"tail\\\\\"}";
+		parser := StreamParser->New(LineStream->New(json));
+		labels := Vector->New()<String>;
+		values := Vector->New()<String>;
+		while(parser->Next()) {
+			if(parser->GetType() = StreamParser->Type->LABEL) {
+				labels->AddBack(parser->GetTypeValue());
+			}
+			else if(parser->GetType() = StreamParser->Type->STRING) {
+				values->AddBack(parser->GetTypeValue());
+			};
+		};
+
+		Check(<>parser->HasError(), "stream: no error on valid escapes");
+		Check(labels->Size() = 6 & values->Size() = 6, "stream: six labels and six values ({$labels->Size()}, {$values->Size()})");
+		if(labels->Size() = 6 & values->Size() = 6) {
+			Check(labels->Get(0)->Equals(S([0x71, 0x22, 0x6B])), "stream: escaped quote in a label");
+			Check(values->Get(0)->Equals(S([0x78, 0x22, 0x79])), "stream: escaped quote does not end the string [{$Show(values->Get(0))}]");
+			Check(values->Get(1)->Equals(S([0x61, 0x0A, 0x62])), "stream: newline escape read once [{$Show(values->Get(1))}]");
+			Check(values->Get(2)->Equals(S([0x5C, 0x73, 0x74, 0x61, 0x72, 0x74])), "stream: escape at the start [{$Show(values->Get(2))}]");
+			Check(values->Get(3)->Equals(S([0xE9, 0x1F600, 0x2F])), "stream: u-escapes and a surrogate pair [{$Show(values->Get(3))}]");
+			Check(values->Get(4)->Equals(S([0x08, 0x0C])), "stream: backspace and form feed [{$Show(values->Get(4))}]");
+			Check(values->Get(5)->Equals(S([0x74, 0x61, 0x69, 0x6C, 0x5C])), "stream: escaped backslash before the closing quote [{$Show(values->Get(5))}]");
+		};
+
+		bad := ["[\"\\x\"]", "[\"\\u12\"]", "{\"a\":\"open"];
+		each(i : bad) {
+			text := bad[i];
+			bad_parser := StreamParser->New(LineStream->New(text));
+			while(bad_parser->Next()) {};
+			Check(bad_parser->HasError(), "stream accepted '{$text}'");
+		};
+	}
+
+	# xorshift64: a generator the seed fixes, on every platform
+	function : NextRandom(state : Int[]) ~ Int {
+		x := state[0];
+		x := x xor (x << 13);
+		x := x xor ((x >> 7) and 0x01FFFFFFFFFFFFFF);
+		x := x xor (x << 17);
+		state[0] := x;
+		return x and 0x7FFFFFFFFFFFFFFF;
+	}
+
+	function : RandomCodePoint(state : Int[]) ~ Int {
+		kind := NextRandom(state) % 10;
+		if(kind < 3) {
+			# printable ASCII, heavy on the characters JSON treats specially
+			special := [0x22, 0x5C, 0x2F, 0x20, 0x75, 0x6E];
+			if(NextRandom(state) % 3 = 0) {
+				return special[NextRandom(state) % special->Size()];
+			};
+			return 0x20 + NextRandom(state) % 95;
+		}
+		else if(kind < 5) {
+			# control characters and DEL
+			if(NextRandom(state) % 8 = 0) {
+				return 0x7F;
+			};
+			return NextRandom(state) % 0x20;
+		}
+		else if(kind < 8) {
+			# the BMP outside the surrogates
+			cp := 0x80 + NextRandom(state) % (0xFFFE - 0x80);
+			while(cp >= 0xD800 & cp <= 0xDFFF) {
+				cp := 0x80 + NextRandom(state) % (0xFFFE - 0x80);
+			};
+			return cp;
+		};
+
+		# outside the BMP
+		return 0x10000 + NextRandom(state) % (0x110000 - 0x10000);
+	}
+
+	function : Fuzz(args : String[]) ~ Nil {
+		seeds := Vector->New()<IntRef>;
+		if(args <> Nil) {
+			each(i : args) {
+				seeds->AddBack(IntRef->New(args[i]->ToInt()));
+			};
+		};
+		if(seeds->IsEmpty()) {
+			for(s := 1; s <= 4; s += 1;) {
+				seeds->AddBack(IntRef->New(s));
+			};
+		};
+
+		total := 100000;
+		per_seed := total / seeds->Size();
+		failed := 0;
+		each(i : seeds) {
+			seed := seeds->Get(i)->Get();
+			state := Int->New[1];
+			state[0] := seed * 0x1E3779B97F4A7C15 + 0x2545F4914F6CDD1D;
+			if(state[0] = 0) {
+				state[0] := 1;
+			};
+
+			for(n := 0; n < per_seed; n += 1;) {
+				length := NextRandom(state) % 12;
+				cps := Int->New[length];
+				each(j : cps) {
+					cps[j] := RandomCodePoint(state);
+				};
+				value := S(cps);
+
+				# as a value and as a key, through a document
+				obj := JsonElement->New(JsonElement->JsonType->OBJECT);
+				obj->Insert(value, value);
+				text := obj->ToString();
+				back := JsonParser->TextToElement(text);
+				ok := back <> Nil & back->Size() = 1;
+				if(ok) {
+					elem := back->Get(value);
+					ok := elem <> Nil & elem->GetString()->Equals(value) & back->ToString()->Equals(text);
+				};
+
+				if(<>ok) {
+					failed += 1;
+					if(failed <= 5) {
+						"  [FAIL] fuzz seed {$seed} case {$n}: [{$Show(value)}] -> {$text}"->PrintLine();
+					};
+				};
+			};
+		};
+
+		Check(failed = 0, "fuzz: {$failed} of {$total} random strings did not round-trip");
+	}
+}
+
+# a one-line InputStream over a string
+class LineStream implements System.IO.InputStream {
+	@line : String;
+
+	New(line : String) {
+		@line := line;
+	}
+
+	method : public : ReadByte() ~ Byte {
+		return 0;
+	}
+
+	method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
+		return 0;
+	}
+
+	method : public : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
+		return 0;
+	}
+
+	method : public : ReadLine() ~ String {
+		line := @line;
+		@line := Nil;
+		return line;
+	}
+
+	method : public : Close() ~ Nil {
+	}
+}
