@@ -2831,6 +2831,45 @@ void JitArm64::EmitJitSafePoint() {
   const long cbz_index = code_index;
   cbz_reg(X11);                                                       // cbz W11, skip (patched below)
   // Slow path: a collection is active — park.
+  //
+  // The working stack is usually empty at a loop header, but not when the -opt
+  // s3 inliner pastes a callee with a loop into an expression whose earlier
+  // operands are still pending in pool registers (materialized at the label,
+  // #1256). Every pool register (X0-X7, X12-X15, D0-D7) is caller-saved, so
+  // SafePoint, an ordinary call, clobbers them, and while this thread is parked
+  // another thread's collection may move a young object a pending value points
+  // to. The pending values go to the callback path's scratch slots
+  // (ProcessStackCallback), which the collector marks and relocates
+  // (JIT_TMP_LOOK_BACK), and come back after the park; see the AMD64 twin. All
+  // of this sits between the cbz and its target, whose distance is computed
+  // below, so no hand-computed offset moves.
+  std::vector<std::pair<Register, long> > parked_regs;
+  std::vector<std::pair<Register, long> > parked_fregs;
+  {
+    long reg_offset = TMP_X0;
+    long fp_offset = TMP_D0;
+    for(RegInstr* pending : working_stack) {
+      if(pending->GetType() == REG_INT) {
+        if(reg_offset > TMP_X5) {
+          // more pending values than scratch slots: leave the method to the interpreter
+          compile_success = false;
+          break;
+        }
+        move_reg_mem(pending->GetRegister()->GetRegister(), reg_offset, SP);
+        parked_regs.push_back(std::make_pair(pending->GetRegister()->GetRegister(), reg_offset));
+        reg_offset += sizeof(size_t);
+      }
+      else if(pending->GetType() == REG_FLOAT) {
+        if(fp_offset > TMP_D3) {
+          compile_success = false;
+          break;
+        }
+        move_freg_mem(pending->GetRegister()->GetRegister(), fp_offset, SP);
+        parked_fregs.push_back(std::make_pair(pending->GetRegister()->GetRegister(), fp_offset));
+        fp_offset += sizeof(size_t);
+      }
+    }
+  }
   move_imm_reg((size_t)MemoryManager::SafePoint, X10);
   call_reg(X10);
   // While this thread was parked, another thread's collection may have promoted
@@ -2849,6 +2888,13 @@ void JitArm64::EmitJitSafePoint() {
     move_mem_reg(0, X10, X10);                // X10 = frame->mem
     move_mem_reg(0, X10, X10);                // X10 = frame->mem[0], relocated self
     move_reg_mem(X10, INSTANCE_MEM, SP);      // refresh the frame's self
+  }
+  // the pending values, relocated if a collection moved what they point to
+  for(const auto& parked : parked_regs) {
+    move_mem_reg(parked.second, SP, parked.first);
+  }
+  for(const auto& parked : parked_fregs) {
+    move_mem_freg(parked.second, SP, parked.first);
   }
   // Backpatch the cbz imm19 (bits 23:5, offset in instructions) to land past the call.
   const long skip_index = code_index;
