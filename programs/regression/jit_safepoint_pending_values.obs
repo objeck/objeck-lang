@@ -1,0 +1,153 @@
+#~
+A loop's GC safepoint keeps the values an expression still has pending.
+
+The JIT polls for a stop-the-world collection at every loop header, and when one
+is under way it parks the thread with an ordinary call. It assumed the working
+stack was empty there. It is not when the -opt s3 inliner pastes a callee that
+holds a loop into the middle of an expression: in `Combine("row {$k}",
+Copy(values, n), k)` the string is evaluated, then Copy's loop runs while the
+string waits in a register. The park clobbered every caller-saved register, and
+a collection on another thread could move the young string without the register
+following it, so Combine received garbage: a wrong sum, a Nil, or a crash. That
+is how query_expr_concurrent failed (a Column pending across Filter->Trim's
+inlined loop arrived as Nil), on master, about once in ten runs, only under the
+JIT.
+
+Three threads churn the young generation so collections happen while Work's
+loops run. Each pending shape is checked against the closed-form total: a young
+String, an Int[] and a Float. The interpreter always gets them right; before the
+fix the compiled method got them wrong in most runs. Exits 1 on a failure.
+~#
+use System.Concurrency;
+
+class Churn from Thread {
+  @stop : static : Bool;
+
+  New() {
+    Parent("churn");
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    keep := String->New[64];
+    i := 0;
+    while(<>@stop) {
+      keep[i % 64] := "garbage {$i}";
+      i += 1;
+    };
+  }
+
+  function : Stop() ~ Nil {
+    @stop := true;
+  }
+}
+
+class JitSafepointPendingValues {
+  # copies with a loop; small enough for the s3 inliner to paste into callers
+  function : Copy(values : Int[], size : Int) ~ Int[] {
+    out := Int->New[size];
+    each(i : size) {
+      out[i] := values[i];
+    };
+    return out;
+  }
+
+  function : Total(values : Int[], size : Int) ~ Float {
+    sum := 0.0;
+    each(i : size) {
+      sum += values[i]->As(Float);
+    };
+    return sum;
+  }
+
+  function : Combine(text : String, copied : Int[], extra : Int) ~ Int {
+    return text->Size() * 1000000 + copied->Size() * 1000 + extra;
+  }
+
+  function : Mix(scale : Float, total : Float, extra : Int) ~ Float {
+    return scale * 2.0 + total + extra->As(Float);
+  }
+
+  function : Pair(first : Int[], second : Int[]) ~ Int {
+    return first->Size() * 10 + second[1];
+  }
+
+  # a young String pending across Copy's loop
+  function : Strings(values : Int[], n : Int) ~ Int {
+    total := 0;
+    each(k : n) {
+      total += Combine("row {$k}", Copy(values, values->Size()), k);
+    };
+    return total;
+  }
+
+  # a Float pending across Total's loop
+  function : Floats(values : Int[], n : Int) ~ Float {
+    total := 0.0;
+    each(k : n) {
+      total += Mix(k->As(Float) * 0.5, Total(values, values->Size()), k);
+    };
+    return total;
+  }
+
+  # an Int[] (a fresh one, young) pending across Copy's loop
+  function : Arrays(values : Int[], n : Int) ~ Int {
+    total := 0;
+    each(k : n) {
+      total += Pair(Copy(values, 3), Copy(values, values->Size()));
+    };
+    return total;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    churners := Churn->New[3];
+    each(t : churners) {
+      churners[t] := Churn->New();
+      churners[t]->Execute(Nil);
+    };
+
+    n := 20000;
+    values := Int->New[500];
+    each(i : values) {
+      values[i] := i % 7;
+    };
+    value_sum := 0.0;
+    each(i : values) {
+      value_sum += values[i]->As(Float);
+    };
+
+    strings := Strings(values, n);
+    floats := Floats(values, n);
+    arrays := Arrays(values, n);
+
+    Churn->Stop();
+    each(t : churners) {
+      churners[t]->Join();
+    };
+
+    expected_strings := 0;
+    expected_floats := 0.0;
+    each(k : n) {
+      expected_strings += ("row {$k}")->Size() * 1000000 + values->Size() * 1000 + k;
+      expected_floats += k->As(Float) * 0.5 * 2.0 + value_sum + k->As(Float);
+    };
+    expected_arrays := n * (3 * 10 + values[1]);
+
+    fails := 0;
+    if(strings <> expected_strings) {
+      "FAIL: a String pending across an inlined loop: got {$strings}, expected {$expected_strings}"->PrintLine();
+      fails += 1;
+    };
+    if(floats <> expected_floats) {
+      "FAIL: a Float pending across an inlined loop: got {$floats}, expected {$expected_floats}"->PrintLine();
+      fails += 1;
+    };
+    if(arrays <> expected_arrays) {
+      "FAIL: an Int[] pending across an inlined loop: got {$arrays}, expected {$expected_arrays}"->PrintLine();
+      fails += 1;
+    };
+    if(fails > 0) {
+      Runtime->Exit(1);
+    };
+    "PASS: values pending across a loop's safepoint survive the park"->PrintLine();
+  }
+}

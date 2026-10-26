@@ -1895,6 +1895,48 @@ void JitAmd64::EmitJitSafePoint() {
   long je_pos = code_index;
   AddImm(0);
   // Slow path: a collection is active — park.
+  //
+  // The working stack is usually empty at a loop header, but not always: when
+  // the -opt s3 inliner pastes a callee with a loop into an expression (say
+  // `f(a, Trim(b, n))`, with `a` already evaluated), the loop starts while the
+  // expression's earlier operands are still pending, materialized in pool
+  // registers at the label (#1256). SafePoint is an ordinary C++ call, so it
+  // clobbers every caller-saved register -- RAX, RCX, RDX, R8-R11, and on POSIX
+  // RSI, RDI and every XMM -- and while this thread is parked another thread's
+  // collection may move a young object that a pending value points to, which
+  // no register can follow. So the pending values go to the scratch slots the
+  // callback path uses (ProcessStackCallback), which the collector both marks
+  // and relocates (CheckJitRoots/FixupRoots, JIT_TMP_LOOK_BACK), and come back
+  // after the park. Losing them is what made query_expr_concurrent fail: a
+  // Column held in RCX across Filter->Trim's inlined loop came back as Nil or
+  // garbage whenever the loop polled during another thread's collection.
+  std::vector<std::pair<Register, long> > parked_regs;
+  std::vector<std::pair<Register, long> > parked_xregs;
+  {
+    long reg_offset = TMP_REG_0;
+    long xmm_offset = TMP_XMM_0;
+    for(RegInstr* pending : working_stack) {
+      if(pending->GetType() == REG_INT) {
+        if(reg_offset < TMP_REG_9) {
+          // more pending values than scratch slots: leave the method to the interpreter
+          compile_success = false;
+          break;
+        }
+        move_reg_mem(pending->GetRegister()->GetRegister(), reg_offset, RBP);
+        parked_regs.push_back(std::make_pair(pending->GetRegister()->GetRegister(), reg_offset));
+        reg_offset -= sizeof(size_t);
+      }
+      else if(pending->GetType() == REG_FLOAT) {
+        if(xmm_offset < TMP_XMM_2) {
+          compile_success = false;
+          break;
+        }
+        move_xreg_mem(pending->GetRegister()->GetRegister(), xmm_offset, RBP);
+        parked_xregs.push_back(std::make_pair(pending->GetRegister()->GetRegister(), xmm_offset));
+        xmm_offset -= sizeof(double);
+      }
+    }
+  }
 #ifdef _WIN64
   sub_imm_reg(32, RSP);   // shadow space (RSP stays 16-aligned)
   move_imm_reg((size_t)MemoryManager::SafePoint, R10);
@@ -1925,6 +1967,13 @@ void JitAmd64::EmitJitSafePoint() {
   move_mem_reg(0, R11, R11);
   move_reg_mem(R11, INSTANCE_MEM, RBP);
 #endif
+  // the pending values, relocated if a collection moved what they point to
+  for(const auto& parked : parked_regs) {
+    move_mem_reg(parked.second, RBP, parked.first);
+  }
+  for(const auto& parked : parked_xregs) {
+    move_mem_xreg(parked.second, RBP, parked.first);
+  }
   // Backpatch the je to land here, past the slow-path call.
   long skip_index = code_index;
   long jmp_offset = skip_index - (je_pos + 4);
