@@ -861,6 +861,13 @@ namespace Runtime {
       }
       else {
         cmp_imm_xreg((size_t)&float_consts[0], reg);
+        // ucomisd sets ZF for an unordered compare as well as for an equal one,
+        // so a bare je raised "Divide by zero" for `x / NaN`, which the
+        // interpreter (right == 0.0, false for NaN) computes as NaN. jp over the
+        // je: only a divisor that is really +0.0 or -0.0 takes the trap. Same
+        // parity rule as the fused float compare in cond_jmp (#1170).
+        AddMachineCode(0x7a);   // jp rel8, over the 6-byte je rel32
+        AddMachineCode(0x06);
       }
 #ifdef _DEBUG_JIT
       std::wcout << L"  " << (++instr_count) << L": [je <err>]" << std::endl;
