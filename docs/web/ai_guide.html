@@ -750,11 +750,12 @@ class EvalExample {
 
     <!-- ═══════════════════════════════════════ ONNX ═══ -->
     <h3 id="onnx">ONNX Local Inference</h3>
-    <div class="lib-flag">json,cipher,opencv,onnx</div>
+    <div class="lib-flag">models,json,cipher,opencv,onnx</div>
     <p>
       Run ONNX models locally with hardware acceleration: DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS.
-      The Linux x64 library is CPU-only, and the Linux ARM64 packages include no ONNX library.
+      The Linux x64 and ARM64 libraries are CPU-only.
       CPU inference requires no GPU. Models load from local files — no internet at runtime.
+      <code>-lib models</code> is required since v2026.10.0: <code>API.Models</code> holds the <code>Tensor</code> the ONNX and inference libraries share, and library dependencies are not transitive.
     </p>
 
     <h4 id="onnx-face">Face Recognition</h4>
