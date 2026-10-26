@@ -2575,32 +2575,34 @@ class TrapProcessor {
 #endif
    }
 
-  static inline bool GetTime(struct tm*& curr_time, time_t raw_time, bool is_gmt) {
+  // Breaks a time down into the caller's own struct tm. The caller owns the
+  // buffer: localtime() and gmtime() share one static buffer per process, so
+  // two threads breaking down times at once read each other's fields (a file
+  // stamp or a date arithmetic result torn between threads), and the Windows
+  // form used to hand back a pointer to a local that had gone out of scope.
+  static inline bool GetTime(struct tm& curr_time, time_t raw_time, bool is_gmt) {
 #ifdef _WIN32
-    struct tm temp_time;
     if(is_gmt) {
-      if(gmtime_s(&temp_time, &raw_time)) {
+      if(gmtime_s(&curr_time, &raw_time)) {
         std::wcerr << L">>> Unable to get GMT time <<<" << std::endl;
         return false;
       }
     }
     else {
-      if(localtime_s(&temp_time, &raw_time)) {
-        std::wcerr << L">>> Unable to get GMT time <<<" << std::endl;
+      if(localtime_s(&curr_time, &raw_time)) {
+        std::wcerr << L">>> Unable to get local time <<<" << std::endl;
         return false;
       }
     }
-    curr_time = &temp_time;
+
+    return true;
 #else
     if(is_gmt) {
-      curr_time = gmtime(&raw_time);
+      return gmtime_r(&raw_time, &curr_time) != nullptr;
     }
-    else {
-      curr_time = localtime(&raw_time);
-    }
-#endif
 
-    return curr_time != nullptr;
+    return localtime_r(&raw_time, &curr_time) != nullptr;
+#endif
   }
 
   //

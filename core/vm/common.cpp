@@ -1794,19 +1794,19 @@ void TrapProcessor::ProcessCurrentTime(StackFrame* frame, bool is_gmt)
   time_t raw_time;
   raw_time = time(nullptr);
 
-  struct tm* curr_time;
+  struct tm curr_time;
   const bool got_time = GetTime(curr_time, raw_time, is_gmt);
 
   size_t* instance = (size_t*)frame->mem[0];
   if(got_time && instance) {
-    instance[0] = curr_time->tm_mday;          // day
-    instance[1] = curr_time->tm_mon + 1;       // month
-    instance[2] = curr_time->tm_year + 1900;   // year
-    instance[3] = curr_time->tm_hour;          // hours
-    instance[4] = curr_time->tm_min;           // mins
-    instance[5] = curr_time->tm_sec;           // secs
-    instance[6] = curr_time->tm_isdst;         // savings time
-    instance[7] = curr_time->tm_wday;          // day of week
+    instance[0] = curr_time.tm_mday;          // day
+    instance[1] = curr_time.tm_mon + 1;       // month
+    instance[2] = curr_time.tm_year + 1900;   // year
+    instance[3] = curr_time.tm_hour;          // hours
+    instance[4] = curr_time.tm_min;           // mins
+    instance[5] = curr_time.tm_sec;           // secs
+    instance[6] = curr_time.tm_isdst;         // savings time
+    instance[7] = curr_time.tm_wday;          // day of week
     instance[8] = is_gmt;                      // is GMT
   }
 }
@@ -1973,19 +1973,19 @@ void TrapProcessor::ProcessAddTime(TimeInterval t, size_t* &op_stack, size_t* &s
     }
     raw_time += offset;
 
-    struct tm* curr_time;
+    struct tm curr_time;
     const bool got_time = GetTime(curr_time, raw_time, is_gmt);
 
     // set instance values
     if(got_time) {
-      instance[0] = curr_time->tm_mday;           // day
-      instance[1] = curr_time->tm_mon + 1;        // month
-      instance[2] = curr_time->tm_year + 1900;    // year
-      instance[3] = curr_time->tm_hour;           // hours
-      instance[4] = curr_time->tm_min;            // mins
-      instance[5] = curr_time->tm_sec;            // secs
-      instance[6] = curr_time->tm_isdst;          // savings time
-      instance[7] = curr_time->tm_wday;           // day of week
+      instance[0] = curr_time.tm_mday;           // day
+      instance[1] = curr_time.tm_mon + 1;        // month
+      instance[2] = curr_time.tm_year + 1900;    // year
+      instance[3] = curr_time.tm_hour;           // hours
+      instance[4] = curr_time.tm_min;            // mins
+      instance[5] = curr_time.tm_sec;            // secs
+      instance[6] = curr_time.tm_isdst;          // savings time
+      instance[7] = curr_time.tm_wday;           // day of week
       instance[8] = is_gmt;                       // is GMT
     }
   }
@@ -4441,9 +4441,10 @@ bool TrapProcessor::DateFromLocalTime(StackProgram* program, size_t* inst, size_
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if (instance) {
-#ifdef _WIN32
+    // the caller's own buffer on every platform: the POSIX form read the
+    // static buffer localtime() shares between threads
     struct tm set_time;
-    if (localtime_s(&set_time, &value)) {
+    if (!GetTime(set_time, value, false)) {
       return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"Unable to get local time");
     }
 
@@ -4456,18 +4457,6 @@ bool TrapProcessor::DateFromLocalTime(StackProgram* program, size_t* inst, size_
     instance[6] = set_time.tm_isdst;         // savings time
     instance[7] = set_time.tm_wday;          // day of week
     instance[8] = false;                      // is GMT
-#else
-    struct tm* set_time = localtime(&value);
-    instance[0] = set_time->tm_mday;          // day
-    instance[1] = set_time->tm_mon + 1;       // month
-    instance[2] = set_time->tm_year + 1900;   // year
-    instance[3] = set_time->tm_hour;          // hours
-    instance[4] = set_time->tm_min;           // mins
-    instance[5] = set_time->tm_sec;           // secs
-    instance[6] = set_time->tm_isdst;         // savings time
-    instance[7] = set_time->tm_wday;          // day of week
-    instance[8] = false;                       // is GMT
-#endif
   }
 
   return true;
@@ -11920,16 +11909,16 @@ bool TrapProcessor::FileCreateTime(StackProgram* program, size_t* inst, size_t* 
     const NativePath name = ToNativePath((wchar_t*)(array + 3));
     time_t raw_time = File::FileCreatedTime(name.c_str());
     if(raw_time > 0) {
-      struct tm* curr_time;
+      struct tm curr_time;
       const bool got_time = GetTime(curr_time, raw_time, is_gmt);
 
       if(got_time) {
-        frame->mem[3] = curr_time->tm_mday;          // day
-        frame->mem[4] = curr_time->tm_mon + 1;       // month
-        frame->mem[5] = curr_time->tm_year + 1900;   // year
-        frame->mem[6] = curr_time->tm_hour;          // hours
-        frame->mem[7] = curr_time->tm_min;           // mins
-        frame->mem[8] = curr_time->tm_sec;           // secs
+        frame->mem[3] = curr_time.tm_mday;          // day
+        frame->mem[4] = curr_time.tm_mon + 1;       // month
+        frame->mem[5] = curr_time.tm_year + 1900;   // year
+        frame->mem[6] = curr_time.tm_hour;          // hours
+        frame->mem[7] = curr_time.tm_min;           // mins
+        frame->mem[8] = curr_time.tm_sec;           // secs
       }
     }
     else {
@@ -11952,16 +11941,16 @@ bool TrapProcessor::FileModifiedTime(StackProgram* program, size_t* inst, size_t
     const NativePath name = ToNativePath((wchar_t*)(array + 3));
     time_t raw_time = File::FileModifiedTime(name.c_str());
     if(raw_time > 0) {
-      struct tm* curr_time;
+      struct tm curr_time;
       const bool got_time = GetTime(curr_time, raw_time, is_gmt);
 
       if(got_time) {
-        frame->mem[3] = curr_time->tm_mday;          // day
-        frame->mem[4] = curr_time->tm_mon + 1;       // month
-        frame->mem[5] = curr_time->tm_year + 1900;   // year
-        frame->mem[6] = curr_time->tm_hour;          // hours
-        frame->mem[7] = curr_time->tm_min;           // mins
-        frame->mem[8] = curr_time->tm_sec;           // secs
+        frame->mem[3] = curr_time.tm_mday;          // day
+        frame->mem[4] = curr_time.tm_mon + 1;       // month
+        frame->mem[5] = curr_time.tm_year + 1900;   // year
+        frame->mem[6] = curr_time.tm_hour;          // hours
+        frame->mem[7] = curr_time.tm_min;           // mins
+        frame->mem[8] = curr_time.tm_sec;           // secs
       }
     }
     else {
@@ -11984,16 +11973,16 @@ bool TrapProcessor::FileAccessedTime(StackProgram* program, size_t* inst, size_t
     const NativePath name = ToNativePath((wchar_t*)(array + 3));
     time_t raw_time = File::FileAccessedTime(name.c_str());
     if(raw_time > 0) {
-      struct tm* curr_time;
+      struct tm curr_time;
       const bool got_time = GetTime(curr_time, raw_time, is_gmt);
 
       if(got_time) {
-        frame->mem[3] = curr_time->tm_mday;          // day
-        frame->mem[4] = curr_time->tm_mon + 1;       // month
-        frame->mem[5] = curr_time->tm_year + 1900;   // year
-        frame->mem[6] = curr_time->tm_hour;          // hours
-        frame->mem[7] = curr_time->tm_min;           // mins
-        frame->mem[8] = curr_time->tm_sec;           // secs
+        frame->mem[3] = curr_time.tm_mday;          // day
+        frame->mem[4] = curr_time.tm_mon + 1;       // month
+        frame->mem[5] = curr_time.tm_year + 1900;   // year
+        frame->mem[6] = curr_time.tm_hour;          // hours
+        frame->mem[7] = curr_time.tm_min;           // mins
+        frame->mem[8] = curr_time.tm_sec;           // secs
       }
     }
     else {
