@@ -1,0 +1,162 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+System.ML OneClassSvmDetector: OneClassSVM through the OutlierDetector interface.
+
+The adapter must reproduce OneClassSVM's own numbers exactly, only with the
+interface's conventions: Score is the negated DecisionFunction (higher = more
+anomalous), the threshold is 0.0, Predict is true exactly where OneClassSVM's
+IsOutlier is true and its Predict says -1. Checked on 230 rows (200 correlated
+near-Gaussian inliers, 30 uniform outliers) at nu 0.01, 0.05 and 0.10: the sweep
+refits at each nu and equals a fresh OneClassSVM there; a configured model keeps
+its gamma. (How many rows OneClassSVM itself flags at a given nu is its own
+test's business: at small nu many support vectors sit within the solver's
+tolerance of the boundary.)
+~#
+use System.ML;
+
+class MlOutlierOcsvm {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		X := MakeData(81, 200, 30, 3, 8.0);
+		y := Labels(200, 30);
+
+		detector : OutlierDetector := OneClassSvmDetector->New(SvmKernel->RBF, 0.05);
+		ok := Report("sensitivity is named nu", detector->GetSensitivityName()->Equals("nu")) & ok;
+		ok := Report("the threshold is the boundary, 0.0", detector->GetThreshold() = 0.0) & ok;
+		flags := detector->FitPredict(X);
+		ok := Report("fits", flags <> Nil & flags->Size() = 230) & ok;
+
+		model := OneClassSVM->New(SvmKernel->RBF, 0.05);
+		model->Fit(X);
+		decision := model->DecisionFunction(X);
+		outlier := model->IsOutlier(X);
+		labels := model->Predict(X);
+		scores := detector->GetTrainingScores();
+		same := scores <> Nil & decision <> Nil;
+		if(same) {
+			each(i : scores) {
+				if(scores[i] <> -1.0 * decision[i] | flags[i] <> outlier[i] | flags[i] <> (labels[i] = -1)) {
+					same := false;
+				};
+			};
+		};
+		ok := Report("Score = -DecisionFunction and Predict = IsOutlier = (Predict = -1), row for row", same) & ok;
+
+		probe := MakeData(82, 20, 5, 3, 8.0);
+		ps := detector->Score(probe);
+		pd := model->DecisionFunction(probe);
+		pf := detector->Predict(probe);
+		po := model->IsOutlier(probe);
+		same := ps <> Nil & pd <> Nil;
+		if(same) {
+			each(i : ps) {
+				if(ps[i] <> -1.0 * pd[i] | pf[i] <> po[i]) {
+					same := false;
+				};
+			};
+		};
+		ok := Report("and on new rows", same) & ok;
+		dec := detector->DecisionFunction(probe);
+		ok := Report("DecisionFunction is the score (threshold 0)", dec <> Nil & dec[0] = ps[0]) & ok;
+
+		auc := Metrics->AucRoc(scores, y);
+		ok := Report("scores feed AucRoc (AUC {$auc} > 0.9)", auc > 0.9) & ok;
+
+		# the sweep refits at each nu and matches a fresh OneClassSVM
+		nus := [0.01, 0.05, 0.10];
+		sweep := SensitivitySweep->Run(OneClassSvmDetector->New(SvmKernel->RBF, 0.5), nus, ["Low", "Medium", "High"], X, y);
+		ok := Report("a nu sweep has three rows", sweep <> Nil & sweep->Size() = 3) & ok;
+		matches := true;
+		counts := Int->New[3];
+		each(s : nus) {
+			fresh := OneClassSVM->New(SvmKernel->RBF, nus[s]);
+			fresh->Fit(X);
+			by_hand := ConfusionMatrix->New(fresh->IsOutlier(X), y);
+			got := sweep->GetConfusion(s);
+			if(got = Nil | got->GetTruePositives() <> by_hand->GetTruePositives() |
+					got->GetFalsePositives() <> by_hand->GetFalsePositives()) {
+				matches := false;
+			}
+			else {
+				counts[s] := got->GetFlagged();
+			};
+		};
+		ok := Report("each nu row equals a fresh OneClassSVM at that nu ({$counts[0]}, {$counts[1]}, {$counts[2]} flagged)", matches) & ok;
+		sweep->ToTable()->PrintLine();
+
+		# changing nu unfits; a configured model keeps its gamma
+		ok := Report("changing nu unfits", detector->SetSensitivity(0.10) & <>detector->IsFitted()) & ok;
+		ok := Report("nu 0 is rejected", <>detector->SetSensitivity(0.0)) & ok;
+		ok := Report("nu 1.5 is rejected", <>detector->SetSensitivity(1.5)) & ok;
+		configured := OneClassSVM->New(SvmKernel->RBF, 0.05, 0.25);
+		wrapped := OneClassSvmDetector->New(configured);
+		ok := Report("wrapping keeps the model's nu", wrapped->GetSensitivity() = 0.05) & ok;
+		wrapped->Fit(X);
+		ok := Report("and its gamma", wrapped->GetModel()->GetGamma() = 0.25) & ok;
+
+		bad := MakeData(83, 20, 0, 3, 1.0);
+		bad[2, 1] := Float->NaN();
+		r := OneClassSvmDetector->New();
+		ok := Report("NaN is refused", <>r->Fit(bad) & r->GetError()->Has("row 2, column 1")) & ok;
+		ok := Report("unfitted Score is Nil", OneClassSvmDetector->New()->Score(X) = Nil) & ok;
+		ok := Report("a column mismatch is refused", detector->FitPredict(X) <> Nil & detector->Score([[1.0]]) = Nil) & ok;
+
+		if(ok) {
+			"PASS: ml_outlier_ocsvm"->PrintLine();
+		}
+		else {
+			"FAIL: ml_outlier_ocsvm"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Labels(n_in : Int, n_out : Int) ~ Bool[] {
+		y := Bool->New[n_in + n_out];
+		for(i := n_in; i < n_in + n_out; i += 1;) {
+			y[i] := true;
+		};
+		return y;
+	}
+
+	function : Gauss(rng : System.ML.Random) ~ Float {
+		acc := 0.0;
+		each(k : 12) {
+			acc += rng->NextReal();
+		};
+		return acc - 6.0;
+	}
+
+	function : MakeData(seed : Int, n_in : Int, n_out : Int, p : Int, spread : Float) ~ Float[,] {
+		rng := System.ML.Random->New(seed);
+		X := Float->New[n_in + n_out, p];
+		z := Float->New[p];
+		each(i : n_in) {
+			each(j : p) {
+				z[j] := Gauss(rng);
+			};
+			each(j : p) {
+				v := z[j];
+				if(j > 0) {
+					v := v + 0.5 * z[j - 1];
+				};
+				X[i, j] := v;
+			};
+		};
+		for(i := n_in; i < n_in + n_out; i += 1;) {
+			each(j : p) {
+				X[i, j] := rng->NextReal() * (2.0 * spread) - spread;
+			};
+		};
+		return X;
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+		return passed;
+	}
+}
