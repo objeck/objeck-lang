@@ -2,7 +2,7 @@
 
 All notable changes to Objeck will be documented in this file.
 
-## [v2026.10.2] - 2026-10-25
+## [v2026.10.2] - 2026-10-26
 
 **Objeck gains a database in the standard library: `Query.Structured` is now a columnar engine with SQL joins, grouping, indexes and expressions over typed in-memory tables, files and URLs named in `FROM`, a crash-safe `.otab` file format, and sources that read CSV, JSON, XML, text logs, filesystems, zip and tar archives, Excel workbooks, ODBC databases, `System.ML` results and image detections as tables. The runtime collects in proportion to live data and allocates without searching, `Collection.Hash` is open-addressed with unboxed `IntVector`/`IntMap`/`BitSet` beside it, calls nest 16,384 deep, DTLS works for the first time, every socket failure says why, servers take IPv4 and IPv6 clients on every platform, and Windows handles non-ASCII arguments, environment variables, paths and console text. `System.ML` gains kernel and one-class SVMs, six outlier detectors and an autoencoder, a new `System.ML.Lab` for experiments, result tables and charts, and BERT sentence embeddings over ONNX; `Data.JSON` decodes escapes when it parses, so a document reads back as it was written; and the JIT compiles code it used to hand back to the interpreter and no longer loses a value at a loop's collection safepoint. Probing six libraries and the compiler fixed defects in CSV, JSON, regular expressions, NLP, ML, Ollama, OpenAI, Gemini, SDL2, ODBC, numeric literals, name resolution and array literals.**
 
