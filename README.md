@@ -31,7 +31,7 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ## Try It Online
 
-👉🏽 [Playground](https://playground.objeck.org) — 34 demos across 7 categories, Monaco editor, no install required.
+👉🏽 [Playground](https://playground.objeck.org) — 42 demos across 10 categories, Monaco editor, no install required.
 
 ## Quick Start
 
@@ -68,14 +68,16 @@ obc hello && obr hello
 
 Full details for every release are in the [CHANGELOG](CHANGELOG.md).
 
-### v2026.10.2 (coming)
-  * **Query.Structured** &mdash; a columnar database in the standard library: SQL with joins, grouping and ordering, files and URLs named in `FROM`, and its own `.otab` file format ([design](docs/QUERY_DESIGN.md))
-  * **Data sources** &mdash; CSV, JSON, XML, filesystems, zip/tar archives, Excel worksheets, ML results and vision detections as tables
-  * **Faster collections and runtime** &mdash; open-addressed `Hash`, O(1) `Cache`, unboxed `IntVector`/`IntMap`/`BitSet`, a size-class allocator and adaptive heap sizing
-  * **Networking** &mdash; dual-stack servers, working DTLS, TLS IP-address checks, UTF-8 URLs, and blocking I/O that no longer stalls the collector
-  * **Non-ASCII text on Windows** &mdash; arguments, environment variables, paths and install directories in any script
-  * **Compiler and library fixes** &mdash; ambiguous names, array literals, numeric literal ranges; CSV, JSON, regex, NLP, ML, Ollama and SDL2
-  * **Upgrading** &mdash; rebuild your own `.obl` libraries; `Directory->List` no longer returns `.` and `..`
+### v2026.10.2
+  * **Query.Structured** &mdash; a columnar database in the standard library: SQL with joins, grouping, indexes and expressions; files, URLs, archive members and worksheets named in `FROM`; a crash-safe `.otab` file format; sources that read CSV, JSON, XML, text logs, filesystems, zip/tar, Excel, ODBC, ML results and image detections as tables ([design](docs/QUERY_DESIGN.md))
+  * **ML and NLP lab** &mdash; kernel and one-class SVMs, outlier detectors and an autoencoder, `System.ML.Lab` for experiments, result tables and charts, and BERT sentence embeddings over ONNX
+  * **Faster runtime** &mdash; a size-class allocator, a collection threshold that follows the live heap, an open-addressed `Hash`, an O(1) `Cache`, and unboxed `IntVector`/`IntMap`/`BitSet`
+  * **Calls nest 16,384 deep** (`--call-depth`), and a full stack is recoverable compiled or interpreted
+  * **Networking** &mdash; DTLS works for the first time, servers take IPv4 and IPv6 clients on every platform or bind one address, every socket failure says why, blocking I/O no longer stalls the collector, UTF-8 URLs, every HTTP status code
+  * **Non-ASCII text on Windows** &mdash; arguments, environment variables, paths, install directories and console output, in every tool
+  * **JIT fixes** &mdash; `Float->NaN()`/`Inf()` and two-dimensional array code are compiled instead of handed back to the interpreter, and a value is no longer lost at a loop's collection safepoint
+  * **Compiler and library fixes** &mdash; ambiguous names, numeric literals (`0o` is octal; `010` is an error), array literals; CSV, JSON (escapes are decoded on parse), regex, NLP, ML, Ollama, OpenAI, Gemini, SDL2 and ODBC, including a macOS driver manager that could load no driver
+  * **Upgrading** &mdash; rebuild your own `.obl` libraries and recompile `.obe` files; a v2026.10.1 `obu` in a non-ASCII install directory cannot update itself, so install by hand; `Directory->List` drops `.` and `..` on Windows; `CompressBr` is `CompressDeflate`; `Byte[]->ToHexString` is a digest; `Hash` iteration order changes; stop calling `JsonElement->Decode` on parsed text; `TF_IDF->New()` smooths and normalizes by default; the full list is in the [CHANGELOG](CHANGELOG.md#v2026102---2026-10-26)
 
 ### v2026.10.1 ✅
   * **Typed errors** &mdash; `Runtime->Raise`, and `try`/`on`/`finally` that catch by error type
@@ -89,11 +91,6 @@ Full details for every release are in the [CHANGELOG](CHANGELOG.md).
   * **Any ONNX model can be run**, and `API.Inference` reaches model servers over HTTP
   * **Signed release manifests** that `obu` verifies
   * **ML evaluation**: thresholds, bootstrap confidence intervals and per-group recall
-
-### v2026.9.7
-  * **Honest model evaluation** &mdash; scalers, stratified folds and cross-validation
-  * **Tree classifiers**: decision tree, random forest and gradient boosting
-  * **NaN comparisons and library divisions fixed**; a faster collector old generation
 
 ## Downloads
 
