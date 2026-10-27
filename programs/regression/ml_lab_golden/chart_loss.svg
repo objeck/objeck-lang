@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="800" height="480" viewBox="0 0 800 480" font-family="sans-serif" font-size="12">
+<title>Training loss</title>
+<rect x="0" y="0" width="800" height="480" fill="white"/>
+<text x="400" y="26" text-anchor="middle" font-size="16" font-weight="bold">Training loss</text>
+<g stroke="#dddddd" stroke-width="1">
+<line x1="72.0" y1="416.0" x2="776.0" y2="416.0"/>
+<line x1="72.0" y1="342.4" x2="776.0" y2="342.4"/>
+<line x1="72.0" y1="268.8" x2="776.0" y2="268.8"/>
+<line x1="72.0" y1="195.2" x2="776.0" y2="195.2"/>
+<line x1="72.0" y1="121.6" x2="776.0" y2="121.6"/>
+<line x1="72.0" y1="48.0" x2="776.0" y2="48.0"/>
+</g>
+<g fill="#333333" text-anchor="end">
+<text x="64.0" y="420.0">0</text>
+<text x="64.0" y="346.4">0.5</text>
+<text x="64.0" y="272.8">1</text>
+<text x="64.0" y="199.2">1.5</text>
+<text x="64.0" y="125.6">2</text>
+<text x="64.0" y="52.0">2.5</text>
+</g>
+<g fill="#333333" text-anchor="middle">
+<text x="72.0" y="434.0">1</text>
+<text x="212.8" y="434.0">2</text>
+<text x="353.6" y="434.0">3</text>
+<text x="494.4" y="434.0">4</text>
+<text x="635.2" y="434.0">5</text>
+<text x="776.0" y="434.0">6</text>
+</g>
+<g stroke="#333333" stroke-width="1.5" fill="none">
+<line x1="72.0" y1="48.0" x2="72.0" y2="416.0"/>
+<line x1="72.0" y1="416.0" x2="776.0" y2="416.0"/>
+</g>
+<text x="424.0" y="464" text-anchor="middle" font-size="13">epoch</text>
+<text x="18" y="232.0" text-anchor="middle" font-size="13" transform="rotate(-90 18 232.0)">training loss</text>
+<polyline fill="none" stroke="#1f77b4" stroke-width="2" points="72.0,121.6 212.8,268.8 353.6,317.9 494.4,342.4 635.2,357.1 776.0,366.9"/>
+<g fill="#1f77b4" class="markers">
+<circle cx="72.0" cy="121.6" r="3.5"/>
+<circle cx="212.8" cy="268.8" r="3.5"/>
+<circle cx="353.6" cy="317.9" r="3.5"/>
+<circle cx="494.4" cy="342.4" r="3.5"/>
+<circle cx="635.2" cy="357.1" r="3.5"/>
+<circle cx="776.0" cy="366.9" r="3.5"/>
+</g>
+<polyline fill="none" stroke="#ff7f0e" stroke-width="2" points="72.0,92.2 212.8,121.6 353.6,151.0 494.4,180.5 635.2,209.9 776.0,239.4"/>
+<g fill="#ff7f0e" class="markers">
+<circle cx="72.0" cy="92.2" r="3.5"/>
+<circle cx="212.8" cy="121.6" r="3.5"/>
+<circle cx="353.6" cy="151.0" r="3.5"/>
+<circle cx="494.4" cy="180.5" r="3.5"/>
+<circle cx="635.2" cy="209.9" r="3.5"/>
+<circle cx="776.0" cy="239.4" r="3.5"/>
+</g>
+<g class="legend">
+<rect x="618.0" y="52.0" width="150" height="48.0" fill="white" fill-opacity="0.85" stroke="#cccccc"/>
+<rect x="626.0" y="58.0" width="12" height="12" fill="#1f77b4"/>
+<text x="644.0" y="68.0" fill="#333333">lr=0.1</text>
+<rect x="626.0" y="76.0" width="12" height="12" fill="#ff7f0e"/>
+<text x="644.0" y="86.0" fill="#333333">lr=0.01</text>
+</g>
+</svg>

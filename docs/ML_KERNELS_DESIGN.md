@@ -227,6 +227,48 @@ a documented, stratified, seeded draw, and the docs say so plainly. Interpreted
   infinite, and so is LIBSVM's rho and every decision value. The solver takes the
   finite end of the interval instead. A C-SVC fit cannot reach this case.
 
+### The flagged fraction at the default tolerance can exceed nu
+
+This is expected, and it matches LIBSVM and scikit-learn. A lab sweeping nu
+(0.01, 0.05, 0.10) and expecting the flagged training fraction to track it will
+see this.
+
+`nu` bounds the fraction of training rows *strictly* outside the boundary. Two
+things put more rows than that at `decision < 0`:
+
+1. **Boundary rows at the optimum.** Every free support vector lies exactly on
+   the boundary (decision 0); those that round just below 0 are flagged.
+   scikit-learn's `predict` is `decision_function >= 0`, the same rule.
+2. **The stopping tolerance.** SMO stops when the largest KKT violation is below
+   `tol`. Rows are then placed only within `tol` of the boundary, and rho is the
+   mean over the free support vectors. At sklearn's default `tol = 1e-3`, rows
+   down to about `-tol` are flagged.
+
+Measured on 230 rows in 5 dimensions (RBF, gamma 'scale'), counting `decision <
+0` against `nu * n`:
+
+| nu (nu * n) | tol 1e-3 | 1e-6 | 1e-8 | 1e-10 | below -1e-9 at 1e-10 |
+|---|---|---|---|---|---|
+| 0.01 (2.3) | 20 | 17 | 17 | 16 | 0 |
+| 0.05 (11.5) | 17 | 20 | 17 | 16 | 0 |
+| 0.10 (23) | 28 | 26 | 24 | 24 | 13 (the 13 bounded alphas) |
+
+At nu = 0.01 none of the 20 rows flagged at 1e-3 has its alpha at the bound;
+all are within 3.8e-4 of the boundary. Rows below `-tol` never exceed
+`nu * n` at any tolerance.
+
+**Not a rho defect.** An independent numpy transcription of LIBSVM's solver
+(`WSS3`, no shrinking), stopped at 1e-3, gives the same counts (20 / 17 / 28),
+the same rho to seven digits and the same iteration counts (62 / 80 / 89). A
+first-order SMO run to 1e-12 gives the rho and objective this solver reaches at
+`tol = 1e-10`, also to seven digits. `tools/ml/svm_reference/oneclass_tolerance.py`
+rebuilds the data and runs both. The exact KKT enumeration agrees on the
+small one-class problems in `tools/ml/svm_reference` at `tol = 1e-9`.
+
+**For the lab:** either call `SetTolerance(1e-6)`, which costs little, or count
+an outlier as `decision < -GetTolerance()`. `ml_one_class_svm_tolerance` checks
+the guarantee and the convergence.
+
 ## Probability outputs
 
 Out of scope. sklearn's `probability=True` fits Platt scaling by an internal

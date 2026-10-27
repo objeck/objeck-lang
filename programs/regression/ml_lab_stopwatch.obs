@@ -1,0 +1,64 @@
+# EXTRA_LIBS: ml,ml_lab,gen_collect,csv,json
+#~
+System.ML.Lab.Stopwatch: wall-clock milliseconds that accumulate across
+Start/Stop pairs until Reset.
+
+Bounds are loose on the high side (a loaded CI runner overshoots a sleep) and
+firm on the low side: a 30 ms sleep must read as at least 20 ms, which is what a
+CPU-time clock fails.
+~#
+use System.Concurrency;
+use System.ML.Lab;
+
+class MlLabStopwatch {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		sw := Stopwatch->New();
+		ok := Report("a new stopwatch is stopped at zero", <>sw->IsRunning() & sw->GetElapsedMs() = 0.0) & ok;
+
+		sw->Start();
+		ok := Report("Start sets IsRunning", sw->IsRunning()) & ok;
+		Thread->Sleep(30);
+		first := sw->Stop();
+		"first interval: {$first} ms"->PrintLine();
+		ok := Report("Stop returns the interval, at least 20 ms for a 30 ms sleep", first >= 20.0 & first < 5000.0) & ok;
+		ok := Report("Stop clears IsRunning", <>sw->IsRunning()) & ok;
+		ok := Report("GetElapsedMs agrees with Stop", sw->GetElapsedMs() = first) & ok;
+
+		sw->Start();
+		Thread->Sleep(30);
+		running := sw->GetElapsedMs();
+		ok := Report("GetElapsedMs while running includes the open interval", running >= first + 20.0) & ok;
+		ok := Report("reading it does not stop the watch", sw->IsRunning()) & ok;
+		total := sw->Stop();
+		ok := Report("intervals accumulate", total >= running & total >= 40.0) & ok;
+		ok := Report("seconds are milliseconds over 1000", (sw->GetElapsedSeconds() * 1000.0 - total)->Abs() < 0.000001) & ok;
+
+		unchanged := sw->Stop();
+		ok := Report("Stop on a stopped watch changes nothing", unchanged = total) & ok;
+
+		sw->Reset();
+		ok := Report("Reset returns to zero and stopped", sw->GetElapsedMs() = 0.0 & <>sw->IsRunning()) & ok;
+
+		sw->Start();
+		sw->Start();
+		Thread->Sleep(20);
+		again := sw->Stop();
+		ok := Report("a second Start while running is ignored", again >= 10.0 & again < 5000.0) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}

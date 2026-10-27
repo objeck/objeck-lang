@@ -87,20 +87,30 @@ resolved by keeping every entry.
 
 ## Stage 1: data utilities
 
-### `Split`
+### `Partition`
 
 ```objeck
-split := Split->TrainTest(X, y, 0.3, 42, true);          # stratified by y
-split := Split->TrainTest(X, y, families, 0.3, 42);      # stratified by Float[] codes
-idx   := Split->Indices(strata, 0.3, 42);                # the row indexes alone
+split := Partition->TrainTest(X, y, 0.3, 42, true);          # stratified by y
+split := Partition->TrainTest(X, y, families, 0.3, 42);      # stratified by Float[] codes
+idx   := Partition->Indices(strata, 0.3, 42);                # the row indexes alone
 ```
+
+Named `Partition` rather than `Split`: `System.ML` already has a `Split` class
+(a tree's split point) and the compiler reports an ambiguous name as an error
+when both bundles are in use.
 
 - `function : TrainTest(X : Float[,], y : Bool[], test_fraction : Float, seed : Int, stratify : Bool) ~ DataSplit`
 - `function : TrainTest(X : Float[,], y : Bool[], strata : Float[], test_fraction : Float, seed : Int) ~ DataSplit`
 - `function : Indices(strata : Float[], test_fraction : Float, seed : Int) ~ IndexSplit` -- `strata` of one distinct value is an unstratified split
 - `function : Take(X : Float[,], rows : Int[]) ~ Float[,]`, `Take(y : Bool[], rows : Int[]) ~ Bool[]`, `Take(y : Float[], rows : Int[]) ~ Float[]` -- gather rows, in order
-- `record : readonly : DataSplit { @train_x; @train_y; @test_x; @test_y; @train_rows : Int[]; @test_rows : Int[] }` (generated `GetTrainX()` ... `GetTestRows()`)
-- `record : readonly : IndexSplit { @train : Int[]; @test : Int[] }`
+- `DataSplit`: `GetTrainX()`, `GetTrainY()`, `GetTestX()`, `GetTestY()`, `GetTrainRows()`, `GetTestRows()`, `GetTrainSize()`, `GetTestSize()`
+- `IndexSplit`: `GetTrain()`, `GetTest()`
+
+These result types are record-shaped (immutable, constructor plus getters) but
+written as classes rather than with the `record` keyword: the API-doc and LSP
+index generators index only doc-commented members, and a record's generated
+accessors have none, so a `record` would be invisible to hover, completion and
+the published reference.
 
 Allocation is **per stratum and exact**: a stratum of `n_c` rows contributes
 `Float->Round(n_c * test_fraction)` rows to the test split, clamped to
@@ -124,7 +134,7 @@ to 0.5 and must measure every run on the *same* test set. The API makes that
 the only possible order: split first, then resample the training half.
 
 ```objeck
-split := Split->TrainTest(X, y, 0.3, 42, true);
+split := Partition->TrainTest(X, y, 0.3, 42, true);
 each(r : ratios) {
   train := Resample->ToPositiveRatio(split->GetTrainX(), split->GetTrainY(), ratios[r], 42);
   # train->GetX(), train->GetY(); split->GetTestX() is untouched
@@ -134,7 +144,7 @@ each(r : ratios) {
 - `function : ToPositiveRatio(X : Float[,], y : Bool[], ratio : Float, seed : Int) ~ Sample` -- **down-samples** whichever class is over-represented: if the current positive ratio is above `ratio`, positives are dropped to `Round(ratio * negatives / (1 - ratio))`; otherwise negatives are dropped to `Round(positives * (1 - ratio) / ratio)`. The class that is kept is kept whole. The rows kept are chosen by a seeded shuffle.
 - `function : ToPositiveRatio(X : Float[,], y : Bool[], ratio : Float, seed : Int, oversample : Bool) ~ Sample` -- with `oversample` true the *under*-represented class is duplicated by seeded sampling with replacement until the ratio holds, and nothing is dropped. Duplicates are visible in `GetRows()`.
 - `function : PositiveRatio(y : Bool[]) ~ Float`, `function : CountPositives(y : Bool[]) ~ Int`
-- `record : readonly : Sample { @x : Float[,]; @y : Bool[]; @rows : Int[] }` -- `GetRows()` is the source row of each sample row
+- `Sample`: `GetX()`, `GetY()`, `GetRows()` (the source row of each sample row), `Size()`, `GetPositiveRatio()`
 
 The achieved ratio is exact whenever the arithmetic allows (10 positives and 90
 negatives at 0.5 keeps 10 of each) and otherwise within one row; `PositiveRatio`
@@ -187,7 +197,7 @@ What is missing is the label side when labels do not come through
 - `Labels->ToBinary(values : String[], positive : String) ~ Bool[]`
 - `Labels->ToBinaryExcept(values : String[], negative : String) ~ Bool[]` -- `normal` against every attack name
 - `Labels->Classes(values : String[]) ~ String[]` -- distinct values in first-seen order
-- `Labels->ToIndices(values : String[], classes : String[]) ~ Float[]` -- class index per value, -1.0 for an unknown, ready for `Split->Indices` strata or `StratifiedKFold`
+- `Labels->ToIndices(values : String[], classes : String[]) ~ Float[]` -- class index per value, -1.0 for an unknown, ready for `Partition->Indices` strata or `StratifiedKFold`
 - `Labels->Column(table : CsvTable, name : String) ~ String[]` -- a data column (header skipped) as strings
 
 ## Stage 2: `Experiment` and `ResultTable`
@@ -255,6 +265,11 @@ private helper that takes the four counts, so once that lands the helper
 delegates to it and nothing public changes. Neither `ConfusionMatrix` nor a
 sensitivity sweep is defined here.
 
+As built (integration of the lab and outlier branches): the helper now returns
+`System.ML.ConfusionMatrix`, which counts the cells and supplies every rate,
+F1 included (`2TP / (2TP + FP + FN)`, equal to the harmonic mean of precision
+and recall); the lab library no longer counts or divides on its own.
+
 Refused: no values; `names` of a different length; a trial that returns `Nil`
 or arrays of unequal length (the message names the value and seed).
 
@@ -270,8 +285,8 @@ deviations, a footnote.
 - `SetFootnote(text : String)`; accessors `GetTitle`, `GetParameter`, `GetFootnote`, `GetColumnNames`, `Size`, `GetRowName(r)`, `GetRowValue(r)`, `Get(r, c)`, `GetStd(r, c)`, `HasStds()`, `ColumnIndex(name)`, `GetColumn(name) ~ Float[]`, `GetColumnStds(name) ~ Float[]`
 - `ToText() ~ String` -- aligned columns, title above, footnote below
 - `ToMarkdown() ~ String` -- a GitHub table under a `###` title, footnote in italics; pipes in names escaped
-- `ToCsv() ~ String` -- RFC 4180 through `Data.CSV`'s quoting (`CsvTable->FormatRow`-style: a field holding a comma, quote or line break is quoted, quotes doubled); std columns as `<name>_std`; the title and footnote are *not* in the CSV (a CSV is data; the Markdown and JSON carry the prose)
-- `ToJson() ~ String` -- built with `Data.JSON.JsonElement`, so string escaping is the library's: `{"title","parameter","footnote","columns":[...],"rows":[{"name","value","cells":{col: v},"stds":{col: s}}]}`
+- `ToCsv() ~ String` -- RFC 4180 through `Data.CSV`'s `CsvTable->FormatRow` (a field holding a comma, quote or line break is quoted, quotes doubled); the header is `<parameter>,<parameter>_value,<columns...>` and, when the table holds deviations, `<column>_std` for each; the title and footnote are *not* in the CSV (a CSV is data; the Markdown and JSON carry the prose)
+- `ToJson() ~ String` -- built with `Data.JSON.JsonElement`, so string escaping is the library's: `{"title","parameter","footnote","columns":[...],"precision":[...],"rows":[{"name","value","cells":{col: v},"stds":{col: s}}]}`. `FromJson` reads strings with `GetString()`, which returns decoded text once PR #1403 (*Data.JSON: decode strings on parse, escape once on output*) is in; on the current `master` the parser hands back the escaped text, so a title with a non-ASCII letter or a `/` does not round-trip until that lands. Stage 2 therefore merges after #1403, and its JSON golden is compared by structure (parsed back), not by bytes, because the serializer's escape choices belong to `Data.JSON`.
 - `function : FromCsv(text : String) ~ ResultTable`, `function : FromJson(text : String) ~ ResultTable` -- round trip; numbers written with up to 10 decimals and trailing zeros trimmed, so a value survives the trip to within 1e-10
 - `Save(path : String) ~ Bool` -- by extension: `.md`, `.csv`, `.json`, otherwise text
 - `ToChart(metrics : String[]) ~ Chart` (Stage 3) -- one series per named column, x = the parameter values, error bars from the stds
@@ -299,19 +314,33 @@ c->Save("recall_vs_c.svg");
 - `AddLine(name : String, xs : Float[], ys : Float[])`, `AddLine(name, xs, ys, errs : Float[])` -- a polyline with markers; `errs` draws symmetric error bars
 - `AddBars(name : String, ys : Float[])`, `AddBars(name, ys, errs)` -- grouped bars over the categories (one group per category, one bar per series)
 - `function : LossCurve(title : String, names : String[], losses : Float[,]) ~ Chart` -- rows are series (one per learning rate), columns are epochs, x = epoch
-- `ToSvg() ~ String`, `Save(path : String) ~ Bool`
+- `ToSvg() ~ String`, `Save(path : String) ~ Bool`, `Size()` (series added)
+- `ResultTable->ToChart(metrics : String[])` and `ToChart(metrics, log_x : Bool)`: x is the parameter value, or the row names as categories when a row's name is not its number; one line per named column (an empty array means every column); error bars from the deviations when the table holds them; y labelled with the metric names
 
-Layout: a title, axis titles, a legend in the top-right of the plot area, a light
-grid, tick labels from a 1-2-5 "nice step" rule (log x: powers of ten in range,
-labelled `0.001`, `0.01`, ...), `font-family="sans-serif"`, a fixed eight-colour
-palette, coordinates emitted with one decimal so the text is stable. Every text
-node is XML-escaped. Log x with a non-positive value is refused with a message.
+Layout: a title, axis titles, a legend in the top-right of the plot area on a
+translucent box (so it reads where it sits over a line), a light grid, tick
+labels from a 1-2-5 "nice step" rule (log x: powers of ten in range, labelled
+`0.001`, `0.01`, ...), `font-family="sans-serif"`, a fixed eight-colour
+palette, coordinates emitted with one decimal so the text is stable. A y range
+inside `[0, 1]` is drawn as the whole unit interval, so rate charts compare; any
+other range starts at 0 (bars, counts, milliseconds) and ends on a nice bound.
+Every text node is XML-escaped. An error bar is one `line` plus one `path` for
+its two caps. A series is held in a `ChartSeries` (name, xs, ys, errors, bars or
+line). Log x with a non-positive value is refused with a message.
+
+The renderer is split into small methods (`Ranges`, `Grid`, `XTicks`, `Axes`,
+`LineSeries`, `BarSeries`, `Legend`): written as one method it exceeded the
+VM's local-variable frame ("Local space has been exceeded"), which is a limit
+worth knowing when writing a long formatter in Objeck.
 
 Verification: the tests parse the SVG with `Data.XML` (well-formed, the root is
-`svg` with `xmlns` and `viewBox`), count the elements a chart must have (one
-`polyline` per line series, one `rect` per bar, `2 * n` error-bar `line`s),
-check that every emitted coordinate lies inside the viewport, and compare to
-golden files under `programs/regression/ml_lab_golden/`. **There is no SVG
+`svg` with `xmlns`, `version` and `viewBox`; attribute values are read with
+`GetDecodedValue`, since the parser keeps a space as `&#x20;`), count the
+elements a chart must have (one `polyline` per line series, one `circle` per
+point, one `rect` per bar, one error-bar `line` per point with a non-zero
+error, plus the grid and axis lines), check that every emitted coordinate lies
+inside the viewport, check that log-axis decades are equally spaced, and
+compare to golden files under `programs/regression/ml_lab_golden/`. **There is no SVG
 rasterizer in the tree** -- OpenCV's `Image->Load` does not read SVG and SDL
 has no SVG path -- so no PNG is produced here and none is added: a student opens
 the SVG in a browser or pastes it into Word. Where a rasterizer exists on the
@@ -321,14 +350,19 @@ guard structure and determinism, not pixels.
 ## Stage 4: the end-to-end example
 
 `programs/examples/ml/lab_sweeps.obs` builds a documented **synthetic**
-two-feature dataset from a fixed seed (two overlapping classes, 1,000 rows, 20 %
+two-feature dataset from a fixed seed (two overlapping classes, 500 rows, 20 %
 positive -- the generator and its parameters are in the file header so the
 hand-in can cite them), splits it 70/30 stratified, fits a `FeatureScaler` on
 the training half, and runs two sweeps:
 
 1. `RandomForestClassifier` over `n_estimators` 10, 50, 100, 200, 500 with the
    existing constructor (`max_depth`, `min_samples`, `seed` fixed and footnoted),
-   three seeds, so the table shows `mean ± std` and the chart error bars;
+   two seeds, so the table shows `mean ± std` and the chart error bars. The
+   500-tree fits dominate: about 16 s each on a laptop, 50 s for the whole
+   program (1,000 rows and three seeds took five and a half minutes, which is
+   too long for an example; the `fit_ms` column is the point of the sweep).
+   Those times predate #1415's sorted split sweep: with it, a 500-tree fit
+   takes about 0.1 s and the whole program about a second (Windows x64);
 2. the linear `SVM` over `lambda` (L2 strength, the inverse role of `C`) on a
    log axis, 1e-3 .. 10.
 
@@ -365,9 +399,21 @@ hand-ins listed); per-epoch loss from models that do not expose it
 ## Release note
 
 > **`System.ML.Lab` (`ml_lab.obl`)**: the plumbing a parameter sweep needs --
-> `Split->TrainTest` (stratified, seeded, exact), `Resample->ToPositiveRatio`
+> `Partition->TrainTest` (stratified, seeded, exact), `Resample->ToPositiveRatio`
 > for class-imbalance runs against a fixed test set, `Stopwatch`, `Labels`,
 > `Experiment` over any model through a `Trial`, a `ResultTable` with text,
 > Markdown, CSV and JSON output, and `Chart` writing standalone SVG line, bar
 > and loss-curve charts. `System.Time.Timer` now measures wall-clock time on
-> every platform (it was process CPU time on Linux and macOS).
+> every platform (it was process CPU time on Linux and macOS). The compiler no
+> longer crashes on a subscript applied to a later link of a call chain
+> (`v->Get(r)->Get()[c]`).
+
+## What landed where
+
+| Stage | PR | Contents |
+|---|---|---|
+| 0 | #1402 | this document |
+| 1 | #1405 | `ml_lab.obl`: `Partition`, `Resample`, `Stopwatch`, `Labels`, `LabError`; the `Timer` clock fix; lists, alias group, LSP index, playground policy |
+| 2 | stage-2 PR | `Experiment`, `Trial`, `TrialResult`, `ResultTable`; the chained-subscript compiler fix; merges after #1403 |
+| 3 | stage-3 PR | `Chart`, `ChartSeries`, `ResultTable->ToChart` |
+| 4 | stage-4 PR | `programs/examples/ml/lab_sweeps.obs`; `docs/AI.md` and `docs/cli_options.md` |

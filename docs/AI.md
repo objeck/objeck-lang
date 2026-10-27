@@ -881,6 +881,34 @@ sim := TextSimilarity->CosineSimilarity(tfidf->Transform("cats are pets"), tfidf
 "Similarity: {$sim}"->PrintLine();
 ```
 
+### BERT tokens and sentence embeddings
+
+`WordPieceTokenizer` is BERT's tokenizer (Hugging Face's `BertTokenizer`, checked id for id on
+a 13,000-line corpus); it reads a model's `vocab.txt` and gives the `input_ids`,
+`attention_mask` and `token_type_ids` a BERT-family ONNX model takes. `ApiSequenceTokenizer`
+builds a vocabulary of API names from malware traces. `BertEmbedder` (library `nlp_onnx`) runs
+an exported BERT through ONNX Runtime and pools its output into one vector per text — CLS,
+mean over the real tokens, or the model's pooler. The encoder is frozen: train a classifier on
+the embeddings. Design and limits: [docs/ML_BERT_DESIGN.md](ML_BERT_DESIGN.md).
+
+**Compile:** `obc -src your.obs -lib models,opencv,cipher,json,onnx,nlp,nlp_onnx` (or `-lib @vision`)
+
+```ruby
+use System.NLP;
+use System.NLP.Onnx;
+
+tokenizer := WordPieceTokenizer->New("vocab.txt");
+tokenizer->Tokenize("unaffable")->Size()->PrintLine();   # 3: un ##aff ##able
+encoding := tokenizer->Encode("He's unaffable.", 16);    # [CLS] ... [SEP] [PAD]...
+
+embedder := BertEmbedder->New("model.onnx", "vocab.txt", 128);
+if(embedder->IsOpen()) {
+    embedder->SetPooling(BertEmbedder->Pooling->MEAN);
+    X := embedder->Embed(["CreateFileW ReadFile CloseHandle", "RegOpenKeyExA RegSetValueExA"]);
+    embedder->Close();
+};
+```
+
 ---
 
 ## Machine Learning (System.ML)
@@ -937,6 +965,20 @@ svm := SVM->New(0.01, 0.1, 500);       # lambda, learning rate, epochs
 svm->Fit(X, y);
 margins := svm->Predict(X);            # signed distances from the plane
 
+# kernel SVM (C-SVC): scikit-learn's SVC parameters, LIBSVM's solver
+kernel_svm := KernelSVM->New(SvmKernel->RBF, 10.0, 0.1);   # kernel, C, gamma
+kernel_svm->Fit(Xs, labels);           # Bool[] labels; scale features first
+scores := kernel_svm->DecisionFunction(Xs_test);           # signed margins
+recall := Metrics->RecallAtFpr(scores, labels_test, 0.001);
+# LINEAR, RBF, POLY, SIGMOID; gamma 'scale' (default) or SetGammaAuto();
+# SetClassWeightBalanced(), SetCacheSize(mb), GetSupportVectorCount()
+
+# one-class SVM: fit on normal rows, flag what falls outside
+detector := OneClassSVM->New(SvmKernel->RBF, 0.05);       # kernel, nu
+detector->Fit(Xs_normal);
+anomaly := detector->PredictScore(Xs_test);   # -decision: higher = stranger
+flags := detector->IsOutlier(Xs_test);        # Bool[]; Predict gives +1/-1
+
 # multiclass Gaussian naive Bayes over integer labels 0..C-1
 gnb := GaussianNaiveBayes->New();
 gnb->Fit(X, y);
@@ -962,6 +1004,19 @@ forest->Score(data)->PrintLine();
 booster := AdaBoost->New(16);          # boosted decision stumps
 booster->Fit(data);
 ```
+
+```ruby
+# continuous-feature forest: Float[,] rows, Bool[] labels, scores to threshold
+forest := RandomForestClassifier->New(100, -1, 1, 42);   # trees, max_depth (-1 = None), min_samples, seed
+forest->SetMinSamplesLeaf(5);          # scikit-learn's min_samples_leaf
+forest->Fit(X, labels);
+scores := forest->PredictScore(X_test);
+importances := forest->GetFeatureImportances();   # mean decrease in Gini, sums to 1
+seconds := forest->GetFitSeconds();
+```
+
+Runnable lab sweeps (SVM kernel / C / gamma, forest trees / depth / leaf size, on
+NSL-KDD or synthetic data of its shape) are in `programs/examples/ml/`.
 
 ```ruby
 # k-nearest neighbors with an exact KDTree index
@@ -1014,6 +1069,24 @@ network := NeuralNetwork->Train(2, inputs, 8, 1, targets, 0.5, 12500);
 network->Confidence(FloatMatrixRef->New([[0.0], [1.0]]))->PrintLine();  # ~0.99
 ```
 
+### Classifier head over embeddings
+
+`EmbeddingClassifier` trains a logistic or multi-layer ReLU head with binary cross-entropy by
+minibatch Adam or SGD, at a configurable learning rate, with class weights for imbalance and a
+per-epoch training-loss history. It is the trainable half of a frozen-encoder classifier: feed
+it `BertEmbedder` rows (see Natural Language Processing above) or any fixed-size features.
+
+```ruby
+use System.ML;
+
+head := EmbeddingClassifier->New([64], 0.001, 20, 32, 42);   # hidden sizes, rate, epochs, batch, seed
+head->SetBalancedWeights();                                 # or SetClassWeights(negative, positive)
+head->Fit(X_train, y_train);                                # Float[,], Bool[]
+loss := head->GetLossHistory();                             # one value per epoch, for a loss plot
+probabilities := head->PredictProba(X_test);
+labels := head->PredictClass(X_test, 0.5);
+```
+
 ### Model Persistence
 
 Every estimator round-trips through `Store`/`Load`; loaded models reproduce the original predictions exactly.
@@ -1022,6 +1095,62 @@ Every estimator round-trips through `Store`/`Load`; loaded models reproduce the 
 model->Store("model.dat");
 loaded := LinearRegression->Load("model.dat");
 loaded->Predict(X);
+```
+
+### Lab support (System.ML.Lab)
+
+The plumbing around a parameter sweep, in `ml_lab.obl` (`-lib ml,ml_lab,csv,json` or `-lib @ai`): a deterministic stratified hold-out split, class-ratio resampling of the training set against a fixed test set, a wall-clock stopwatch, a sweep runner that collects accuracy, precision, recall, F1, FPR, false negatives and fit time per value (mean and standard deviation over seeds), a result table that renders as text, Markdown, CSV and JSON, and standalone SVG charts. Bad input raises `LabError` with a message naming the problem. Design: [ML_LAB_SUPPORT_DESIGN.md](ML_LAB_SUPPORT_DESIGN.md); a complete run is [`programs/examples/ml/lab_sweeps.obs`](../programs/examples/ml/lab_sweeps.obs).
+
+```ruby
+use System.ML, System.ML.Lab;
+
+# 70/30 stratified split from a seed; every stratum lands in both halves
+split := Partition->TrainTest(X, y, 0.3, 42, true);
+scaler := FeatureScaler->New();
+scaler->Fit(split->GetTrainX());            # training half only
+train_z := scaler->Transform(split->GetTrainX());
+test_z := scaler->Transform(split->GetTestX());
+
+# the class-imbalance experiment: resample the TRAINING half, the test set is untouched
+train := Resample->ToPositiveRatio(train_z, split->GetTrainY(), 0.05, 42);
+```
+
+```ruby
+# a sweep: the Trial builds, fits under a Stopwatch and predicts for one value
+class ForestTrial implements Trial {
+  @s : DataSplit;
+  New(s : DataSplit) { @s := s; }
+  method : public : Run(value : Float, name : String, seed : Int) ~ TrialResult {
+    forest := RandomForestClassifier->New(value->As(Int), 6, 2, seed);
+    sw := Stopwatch->New();
+    sw->Start();
+    forest->Fit(@s->GetTrainX(), @s->GetTrainY());
+    ms := sw->Stop();
+    return TrialResult->New(forest->Predict(@s->GetTrainX()), @s->GetTrainY(),
+      forest->Predict(@s->GetTestX()), @s->GetTestY(), ms);
+  }
+}
+
+exp := Experiment->New("Random forest: number of trees", "n_estimators");
+exp->SetValues([10.0, 50.0, 100.0, 200.0, 500.0]);
+exp->SetSeeds([1, 2, 3]);                        # mean ± std per cell
+exp->AddSetting("max_depth", "6");               # the footnote
+table := exp->Run(ForestTrial->New(split));
+
+table->ToText()->PrintLine();
+table->Save("rf_trees.md");                      # .md, .csv, .json or text by extension
+table->ToChart(["test_accuracy", "precision", "recall", "f1"])->Save("rf_trees.svg");
+table->ToChart(["train_accuracy", "test_accuracy"])->Save("overfitting.svg");
+```
+
+```ruby
+# charts on their own: lines with error bars, a log x axis, grouped bars, a loss curve
+c := Chart->New("Recall vs C", "C", "recall");
+c->SetLogX(true);
+c->AddLine("rbf", cs, recall_rbf, recall_std);
+c->Save("recall_vs_c.svg");
+
+loss := Chart->LossCurve("Training loss", ["lr=0.1", "lr=0.01"], losses);  # rows = series, columns = epochs
 ```
 
 ---
@@ -1140,8 +1269,8 @@ obc -src program.obs -lib @ai -dest program.obe
 | `@web` | `net_h2`, `net_quic`, `web_server`, `json_rpc`, `net_server`, `net`, `json`, `cipher` | HTTP/2, HTTP/3, the embedded server, JSON-RPC |
 | `@data` | `xml`, `regex`, `csv`, `query`, `rss`, `misc`, `net`, `json`, `cipher` | parsing and querying structured data |
 | `@ml` | `gemini`, `openai`, `ollama`, `net_server`, `misc`, `net`, `json`, `cipher` | LLM clients: OpenAI, Gemini, Ollama |
-| `@ai` | `ai`, `ml`, `nlp`, `csv` | local System.ML / System.AI / System.NLP work |
-| `@vision` | `opencv`, `onnx`, `json`, `cipher` | OpenCV and ONNX inference |
+| `@ai` | `ai`, `ml`, `ml_lab`, `nlp`, `csv`, `json` | local System.ML / System.ML.Lab / System.AI / System.NLP work |
+| `@vision` | `opencv`, `onnx`, `nlp_onnx`, `models`, `nlp`, `json`, `cipher` | OpenCV and ONNX inference, BERT text embeddings |
 | `@game` | `sdl2`, `sdl_game`, `sdl_gl`, `json`, `gen_collect` | SDL games, 2D and OpenGL |
 
 Aliases and explicit names mix in any order, for either `--target` (`-lib @ai,json` and `-lib json,@ai` are the same). Groups are user-editable: add a section to `configobjk.ini` and reference it as `@yourname`.
@@ -1190,14 +1319,18 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 | Either, behind one interface | `Engine`, `OnnxEngine`, `HttpEngine` | `models` + one backend | None |
 | Computer vision | `Image`, `VideoCapture` | `opencv` | None |
 | Sentiment / TF-IDF | `SentimentAnalyzer`, `TF_IDF` | `nlp` | None |
+| BERT tokenization | `WordPieceTokenizer`, `ApiSequenceTokenizer` | `nlp` | None |
+| Sentence embeddings (BERT) | `BertEmbedder` | `nlp_onnx` + `models`, `onnx`, `nlp` | None |
 | Linear / regularized regression | `LinearRegression`, `RidgeRegression`, `LassoRegression`, `ElasticNet` | `ml` | None |
 | Linear classifiers | `LogisticRegression`, `SVM`, `Perceptron` | `ml` | None |
+| Kernel SVMs | `KernelSVM` (linear, RBF, poly, sigmoid), `OneClassSVM` | `ml` | None |
 | Probabilistic classifiers | `GaussianNaiveBayes`, `NaiveBayes` | `ml` | None |
 | Trees & ensembles | `DecisionTree`, `RandomForest`, `AdaBoost` | `ml` | None |
 | Nearest neighbors | `KNearestNeighbors`, `KDTree` | `ml` | None |
 | Clustering | `KMeans`, `DBSCAN`, `GaussianMixture` | `ml` | None |
 | Decomposition | `PCA` | `ml` | None |
 | Neural network | `NeuralNetwork` | `ml` | None |
+| Classifier head over embeddings | `EmbeddingClassifier` | `ml` | None |
 | Graph search | `Dijkstra`, `AStar`, `BreadthFirst`, `DepthFirst` | `ai` | None |
 | Game playing | `Minimax`, `MonteCarloTreeSearch` | `ai` | None |
 | Metaheuristics | `GeneticAlgorithm`, `SimulatedAnnealing`, `HillClimbing` | `ai` | None |
@@ -1231,3 +1364,11 @@ ollama/   test_0.obs (generate)   test_1.obs (vision)
 opencv_onnx/  demo_face.obs    demo_yolo.obs    demo_resnet.obs
               demo_phi3_*.obs  demo_phi3v_*.obs
 ```
+
+[`programs/examples/ml/bert_malware_lab.obs`](../programs/examples/ml/bert_malware_lab.obs) runs a
+BERT malware-classification lab's three experiments — class imbalance with a fixed test set,
+MAX_SEQ_LENGTH, and learning rate with per-epoch loss curves — on a frozen BERT encoder and a
+trained `EmbeddingClassifier` head, from a CSV of API-call traces or a synthetic corpus
+(`--synthetic`). Its header says how this differs from the lab's end-to-end fine-tuning.
+
+A complete `System.ML.Lab` run -- two parameter sweeps with tables, CSVs and SVG charts -- is [`programs/examples/ml/lab_sweeps.obs`](../programs/examples/ml/lab_sweeps.obs).

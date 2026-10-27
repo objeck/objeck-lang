@@ -1,0 +1,308 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+System.ML LocalOutlierFactor against an independent brute-force reference.
+
+LOF is deterministic, so the scores must match to 1e-6: numpy computed them for
+the same 160 rows (150 correlated near-Gaussian inliers, 10 uniform outliers,
+3 features), built by both sides from System.ML.Random with arithmetic only. The
+reference finds neighbours by sorting every pairwise distance; the detector uses
+the KDTree. Regenerate with ml_outlier_ref/gen_fixtures.py.
+
+Checked: training LOFs at k = 20 and k = 5, novelty scores for 20 new rows, the
+contamination threshold and the rows it flags, "auto" (1.5), the novelty
+refusal, k capped at n - 1, duplicates beyond k, and refusals.
+~#
+use System.ML;
+
+class MlOutlierLof {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		X := MakeData(11, 150, 10, 3, 8.0);
+		Q := MakeData(12, 15, 5, 3, 8.0);
+		y := Labels(150, 10);
+
+		lof := LocalOutlierFactor->New(20, 0.05, false);
+		flags := lof->FitPredict(X);
+		ok := Report("fits", flags <> Nil & flags->Size() = 160) & ok;
+		ok := Report("k = 20 training LOFs match the reference to 1e-6",
+			Close(lof->GetTrainingScores(), ExpectedLof20(), 1.0e-6)) & ok;
+		t := lof->GetThreshold();
+		ok := Report("contamination 0.05 threshold matches ({$t})", Near(t, ExpectedThreshold05(), 1.0e-6)) & ok;
+
+		expected := ExpectedFlagged05();
+		got := Int->New[0];
+		count := Count(flags);
+		same := count = expected->Size();
+		if(same) {
+			k := 0;
+			each(i : flags) {
+				if(flags[i]) {
+					if(expected[k] <> i) {
+						same := false;
+					};
+					k += 1;
+				};
+			};
+		};
+		ok := Report("the same {$count} rows are flagged", same) & ok;
+		ok := Report("contamination sets the flagged fraction (8 of 160)", count = 8) & ok;
+
+		fp := Fingerprint(lof->GetTrainingScores());
+		"  fingerprint: {$fp}"->PrintLine();
+
+		auc := Metrics->AucRoc(lof->GetTrainingScores(), y);
+		ok := Report("LOF ranks the outliers (AUC {$auc} > 0.95)", auc > 0.95) & ok;
+
+		ok := Report("without novelty, Score refuses", lof->Score(Q) = Nil) & ok;
+		ok := Report("and says to use FitPredict", lof->GetError()->Has("novelty")) & ok;
+
+		lof5 := LocalOutlierFactor->New(5, 0.0, false);
+		lof5->Fit(X);
+		ok := Report("k = 5 training LOFs match the reference to 1e-6",
+			Close(lof5->GetTrainingScores(), ExpectedLof5(), 1.0e-6)) & ok;
+		ok := Report("auto contamination thresholds at 1.5", lof5->GetThreshold() = 1.5) & ok;
+
+		novel := LocalOutlierFactor->New(20, 0.05, true);
+		novel->Fit(X);
+		scores := novel->Score(Q);
+		ok := Report("novelty LOFs of 20 new rows match the reference to 1e-6", Close(scores, ExpectedNovel20(), 1.0e-6)) & ok;
+		pred := novel->Predict(Q);
+		agree := pred <> Nil;
+		if(agree) {
+			each(i : pred) {
+				if(pred[i] <> (scores[i] > novel->GetThreshold())) {
+					agree := false;
+				};
+			};
+		};
+		ok := Report("novelty Predict is score > threshold", agree) & ok;
+
+		# the sensitivity setting only moves the threshold; equal to a fresh fit
+		novel->SetSensitivity(0.10);
+		fresh := LocalOutlierFactor->New(20, 0.10, true);
+		fresh->Fit(X);
+		ok := Report("SetSensitivity equals a fresh fit", novel->GetThreshold() = fresh->GetThreshold()) & ok;
+		ok := Report("contamination 0.6 is rejected", <>novel->SetSensitivity(0.6)) & ok;
+
+		# k is capped at n - 1
+		small := LocalOutlierFactor->New();
+		ok := Report("5 rows fit with k = 20", small->Fit([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0], [9.0, 9.0]])) & ok;
+		ok := Report("k is capped at 4", small->GetNeighbors() = 4) & ok;
+		# with k = n - 1 every row's neighbourhood is everything else, so even the
+		# far row scores about 1; values from the reference
+		ok := Report("capped-k LOFs match the reference",
+			Close(small->GetTrainingScores(), [0.9858326971014482, 1.0034574061151804, 1.0034574061151804,
+				1.0221493289619807, 0.9858326971014482], 1.0e-9)) & ok;
+
+		# more duplicates than k: finite scores, the duplicates score exactly 1
+		D := Float->New[40, 2];
+		each(i : 30) {
+			D[i, 0] := 2.0;
+			D[i, 1] := 3.0;
+		};
+		for(i := 30; i < 40; i += 1;) {
+			D[i, 0] := i->As(Float);
+			D[i, 1] := 0.5 * i->As(Float);
+		};
+		dup := LocalOutlierFactor->New(10, 0.0, false);
+		ok := Report("30 duplicates fit", dup->Fit(D)) & ok;
+		ds := dup->GetTrainingScores();
+		finite := true;
+		each(i : ds) {
+			if(ds[i] <> ds[i] | ds[i] = Float->Inf()) {
+				finite := false;
+			};
+		};
+		ok := Report("every score is finite", finite) & ok;
+		ok := Report("a duplicate scores 1", Near(ds[0], 1.0, 1.0e-9)) & ok;
+
+		# refusals
+		one := LocalOutlierFactor->New();
+		ok := Report("one row is refused", <>one->Fit([[1.0, 2.0]])) & ok;
+		bad := MakeData(3, 10, 0, 2, 1.0);
+		bad[4, 0] := Float->NaN();
+		ok := Report("NaN is refused", <>one->Fit(bad) & one->GetError()->Has("row 4, column 0")) & ok;
+		ok := Report("k = 0 is refused", <>LocalOutlierFactor->New(0, 0.0, false)->Fit(X)) & ok;
+
+		if(ok) {
+			"PASS: ml_outlier_lof"->PrintLine();
+		}
+		else {
+			"FAIL: ml_outlier_lof"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Count(flags : Bool[]) ~ Int {
+		n := 0;
+		each(i : flags) {
+			if(flags[i]) {
+				n += 1;
+			};
+		};
+		return n;
+	}
+
+	function : Labels(n_in : Int, n_out : Int) ~ Bool[] {
+		y := Bool->New[n_in + n_out];
+		for(i := n_in; i < n_in + n_out; i += 1;) {
+			y[i] := true;
+		};
+		return y;
+	}
+
+	function : Gauss(rng : System.ML.Random) ~ Float {
+		acc := 0.0;
+		each(k : 12) {
+			acc += rng->NextReal();
+		};
+		return acc - 6.0;
+	}
+
+	function : MakeData(seed : Int, n_in : Int, n_out : Int, p : Int, spread : Float) ~ Float[,] {
+		rng := System.ML.Random->New(seed);
+		X := Float->New[n_in + n_out, p];
+		z := Float->New[p];
+		each(i : n_in) {
+			each(j : p) {
+				z[j] := Gauss(rng);
+			};
+			each(j : p) {
+				v := z[j];
+				if(j > 0) {
+					v := v + 0.5 * z[j - 1];
+				};
+				X[i, j] := v;
+			};
+		};
+		for(i := n_in; i < n_in + n_out; i += 1;) {
+			each(j : p) {
+				X[i, j] := rng->NextReal() * (2.0 * spread) - spread;
+			};
+		};
+		return X;
+	}
+
+	function : Near(a : Float, b : Float, tol : Float) ~ Bool {
+		scale := b->Abs();
+		if(scale < 1.0) {
+			scale := 1.0;
+		};
+		return (a - b)->Abs() <= tol * scale;
+	}
+
+	function : Close(a : Float[], b : Float[], tol : Float) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(<>Near(a[i], b[i], tol)) {
+				"  mismatch at {$i}: {$a[i]} vs {$b[i]}"->PrintLine();
+				return false;
+			};
+		};
+		return true;
+	}
+
+	# printed so runs under different -opt levels and JIT modes can be diffed: the
+	# scores to 1e-12, folded into one integer
+	function : Fingerprint(v : Float[]) ~ Int {
+		total := 0;
+		each(i : v) {
+			total += (v[i] * 1000000000000.0)->As(Int) * (i % 7 + 1);
+		};
+		return total;
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+		return passed;
+	}
+
+	# BEGIN GENERATED FIXTURE
+	# by ml_outlier_ref/gen_fixtures.py; do not edit by hand
+	function : ExpectedLof20() ~ Float[] {
+		return [
+			1.0713017987593452, 1.3824442257481053, 1.2795561755044444, 1.070325430482151, 0.9583918251988397, 1.1559898680644456,
+			1.0762735640971175, 1.0434214702940272, 1.2599260212348615, 1.0612651908612123, 1.4339607979315714, 0.9779141955322282,
+			1.3854791192744234, 1.0912156182368322, 1.0717776734906248, 0.9734582068577726, 1.085200424196058, 1.0011807183452701,
+			1.0708579774046347, 1.0425577679060516, 1.0066155870290887, 0.9740565057809736, 1.184067562925153, 1.1782530385831578,
+			1.0872835035501283, 1.0545729842695828, 1.0335897514633816, 1.0270969236615322, 1.139345421574561, 1.1803089777511562,
+			1.1433279008745825, 1.0545807818435293, 1.240275882226562, 0.972484399315505, 0.987281617705835, 1.409687214141933,
+			1.0661529944799177, 1.3562486903853768, 1.0349085145545243, 0.9931223057656569, 1.0031038265801369, 0.9913103833091801,
+			1.1318832280450657, 1.15528778134385, 1.058775316906841, 0.9853314473690803, 1.480635810239014, 1.0818243087603325,
+			1.0608896283037825, 1.110707603624461, 1.3179628696526855, 0.9658047403552752, 1.0364778632669998, 0.9786784874141123,
+			0.9885146622472136, 1.3302823417937537, 1.0394566205718763, 1.1162419631620089, 1.0240537205799316, 1.2880054016357168,
+			1.1434176177805693, 1.0336004075910632, 0.9976415397328063, 1.0478091805583598, 0.992139893188968, 0.9784771558168437,
+			1.2945441064307437, 1.0394703386355677, 1.1179812597870693, 0.9933757936948042, 1.3353303991252183, 1.018998927392025,
+			1.4858924137870455, 1.0000924883340343, 1.149808501528469, 1.0774012788339344, 1.073930537510063, 1.0947063373052133,
+			1.17427068162935, 1.3258651310449632, 1.0220491562396237, 1.3913229720929927, 0.9898902312088481, 0.959100020443184,
+			1.0884817751486726, 1.0499281229287454, 1.010072693422146, 0.9935777288670282, 1.1009008541038539, 1.3405991922934186,
+			0.9534716750064535, 1.0418853943045754, 1.6433621461180572, 1.159711518721474, 1.0567561647995722, 1.1980349855175594,
+			0.9828717326193702, 0.9940552708004496, 1.077831981260783, 1.0090914554544899, 1.1805434213029335, 1.0052920047572993,
+			1.1103066927081566, 1.1259233653336482, 1.143852946120007, 1.1277863073658465, 0.9956919863992362, 0.9766626393346229,
+			1.0805792349657655, 1.0203973668029436, 1.099771246282872, 1.0955281382151212, 1.428171162561228, 0.9903880929912813,
+			1.1107685742742262, 1.102267746931809, 0.9803725899898101, 1.0741592435924898, 0.977369981554084, 0.989330374267485,
+			1.0078070789687796, 0.950763258993358, 0.9508926600086388, 1.1654923676539273, 0.9669697121595047, 1.052810587074362,
+			1.090441532891737, 1.2163824054068533, 1.152011469224637, 0.9566203975117805, 1.3555349322862877, 1.0413681554318017,
+			1.110450722474473, 1.0202225635217772, 0.9863603691554126, 0.9668210728194765, 1.2900103762162693, 0.9662361158339394,
+			0.9792444791193373, 1.1054118716785302, 1.061952731223616, 1.0050783944013364, 0.9738562521501564, 1.2274841430752461,
+			0.9741140862788944, 1.0588681117197436, 1.4032615104760329, 0.9980379706640807, 1.1255329831783167, 1.1046333198177636,
+			1.8643561818751728, 4.7717997138238175, 4.478835627677152, 4.9550790029916145, 4.142609270493721, 3.944684590875706,
+			5.601890785429417, 2.760848242345225, 6.035729775922037, 5.102008616789538];
+	}
+
+	function : ExpectedLof5() ~ Float[] {
+		return [
+			1.1036681289734964, 1.4455216044613333, 1.6789430813535855, 1.0493965245441546, 1.0023732151408125, 1.1127718739598473,
+			1.1662730099682765, 0.9945772048695449, 1.3953894423602606, 1.2944207601639466, 1.49333242198881, 1.0320066371274437,
+			1.1923401871776371, 0.9972780157642861, 1.051898324902013, 1.0549017996708163, 0.96989943452436, 1.030329065109204,
+			1.0807397646344419, 1.0109872005262917, 0.9484592806384603, 0.9686856396466258, 1.1403802900960067, 1.0816758429099256,
+			1.053745344543469, 1.014217678148353, 1.0017197365023323, 1.0628630791544462, 0.9834365683918722, 1.0929442287144202,
+			1.0705858791283753, 0.9624537473031575, 1.1723453435830717, 0.930815856543785, 1.0818904529270676, 1.2028620222381792,
+			1.0323029062740492, 1.3175928401080097, 1.0298164167171575, 1.010112103463659, 0.961315573811517, 0.9788604693059592,
+			1.264361842146727, 1.430772327075614, 1.1345923955621688, 1.0219590488952448, 1.4755119225340276, 1.0529495762357286,
+			1.0120411979783175, 1.0457859535959328, 1.1294956873523077, 0.9840018608329331, 1.1244253914921811, 0.9928764312600624,
+			0.9965149067811282, 1.121662124788738, 1.0221670017860598, 1.0711295638709302, 1.0920120272601828, 1.1905410009092814,
+			1.028253090673143, 1.0173313943525422, 1.0954024468348222, 1.1092412562691152, 0.9342197797759878, 1.0500445366204658,
+			1.1674207013662223, 0.9459305412091193, 1.0243631950507583, 0.9873783109452194, 1.2702473405831964, 0.962804327431998,
+			1.4002209314476632, 1.0883238919913423, 1.1075157595630922, 1.059966624869818, 0.9766343473088905, 1.0067586702450897,
+			1.3310874618536979, 1.3528464935479267, 1.0194037044590112, 1.410496620556271, 0.9979805778543529, 0.94573745097516,
+			1.0261552023589025, 1.0075088958004106, 1.0245592414929434, 1.2719171083752627, 1.370658553449933, 1.2662162337606766,
+			1.0321757958207562, 1.0225032331080148, 1.7814929646495237, 1.021005550777407, 1.0806803681769475, 1.2851007747965206,
+			0.9433892308290585, 1.0467434168370946, 1.0454706478555145, 1.0391317898855421, 1.0325493295146608, 1.0287608040868974,
+			1.0113430360124727, 1.2112742929048899, 1.0260064122582397, 1.170325784459472, 0.9767756565453212, 0.966484133906393,
+			0.9970418472087509, 1.0938422288464265, 1.036436695444178, 1.0302668059872913, 1.4250020650055018, 1.0570394681503064,
+			1.2166360756460595, 1.3363598568457153, 0.9979805778543526, 0.9827782519540916, 1.0500445366204658, 1.025840896953612,
+			1.032832928753567, 0.9865556831663833, 1.0218536838689707, 1.0394517950093891, 1.102135875244065, 1.1198942886397656,
+			1.0426979956935558, 1.1001812833774174, 1.5046926077880571, 1.034967257848511, 1.5193785262575021, 1.0321666417958133,
+			1.043364183152942, 1.0149312640240558, 0.9874921140316408, 0.9833621271763769, 1.1071929627825776, 1.0253066301987896,
+			1.0042899988486604, 1.046756213650393, 1.0852935681145444, 0.9876392247369745, 0.9891707232169802, 1.2574113643663187,
+			0.9500423000188167, 1.1151391727403588, 1.8906620485392118, 1.0062408301317831, 1.1086021540937643, 0.9608006854177509,
+			2.3279153611265744, 4.2042051268733305, 1.9710041786927648, 3.3846312863719774, 3.1620882854409347, 2.5757337394150825,
+			3.470992492214132, 3.3650450880906853, 5.212190568289846, 3.3176331945969935];
+	}
+
+	function : ExpectedNovel20() ~ Float[] {
+		return [
+			1.3957904043307217, 1.2747342284735397, 0.9719478167178881, 1.0200476495126929, 1.325877272058743, 1.0313635630343732,
+			0.9988274578211144, 0.98635754982205, 1.2889911312039297, 1.1509058621545334, 1.0018040605623548, 1.040208111620235,
+			1.0760165491690665, 1.1835064698949096, 1.7747660034121115, 4.068236816401186, 5.667962946048723, 4.201830232743055,
+			4.920177843096151, 3.33429684660098];
+	}
+
+	function : ExpectedThreshold05() ~ Float {
+		return 2.820040059771749;
+	}
+
+	function : ExpectedFlagged05() ~ Int[] {
+		return [
+			151, 152, 153, 154, 155, 156, 158, 159];
+	}
+	# END GENERATED FIXTURE
+}

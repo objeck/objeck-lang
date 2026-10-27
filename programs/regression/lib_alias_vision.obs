@@ -1,0 +1,41 @@
+#~
+# The -lib alias @vision links: it is closed under its members' dependencies.
+#
+# EXTRA_LIBS: @vision
+#
+# An alias in core/lib/configobjk.ini expands to exactly the libraries it
+# lists; the linker does not chase a member's own dependencies, and it
+# resolves every class a linked library names. So a group missing one
+# dependency fails every compile that uses it -- even a program that never
+# touches the missing part. @vision did, from the day onnx.obl began linking
+# models.obl until nlp_onnx joined the group:
+#
+#   obc -src program.obs -lib @vision
+#   Error: Unable to resolve external library class: 'API.Models.TensorSpec'.
+#
+# Compiling this file is most of the test. It names classes from models,
+# onnx, nlp and nlp_onnx, so a member dropped from the group fails here too,
+# and it runs nothing that needs a model or the native ONNX library.
+~#
+
+use API.Onnx;
+use API.Models;
+use System.NLP;
+use System.NLP.Onnx;
+
+class LibAliasVision {
+	function : Main(args : String[]) ~ Nil {
+		spec := TensorSpec->New("input_ids", "INT64", [-1, -1]);
+		pooled := BertEmbedder->ClsPool([1.0, 2.0, 3.0, 4.0], 1, 2, 2);
+		tokenizer := WordPieceTokenizer->New(["[PAD]", "[UNK]", "[CLS]", "[SEP]"], true, true);
+		session : Session := Nil;
+
+		if(spec->GetName()->Equals("input_ids") & pooled[0, 1] = 2.0 & tokenizer->IsLoaded() & session = Nil) {
+			"PASS: @vision links models, onnx, nlp and nlp_onnx, with their dependencies"->PrintLine();
+		}
+		else {
+			"FAIL: @vision linked, but a member misbehaved"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

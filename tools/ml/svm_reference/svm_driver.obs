@@ -1,0 +1,164 @@
+#~
+Fits KernelSVM on every problem in a problem file written by svm_reference.py and
+prints what the reference comparison needs: the objective, intercept, iteration
+count, alpha per training row and the decision value of every row (training and
+test). Not a regression test; svm_reference.py drives it.
+
+Usage: obr svm_driver.obe <problems.txt>
+
+Problem file, one problem after another:
+  P id n m d kernel C gamma degree coef0 tol cache_mb shrinking [mode]
+  (mode 0 or absent: KernelSVM; mode 1: OneClassSVM with nu in the C field,
+  and the training labels are ignored)
+  then n training rows "label x1 .. xd" (label 1 or 0) and m test rows "x1 .. xd".
+~#
+use System.IO.Filesystem;
+use System.ML;
+
+class SvmDriver {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() <> 1) {
+			"usage: svm_driver <problems.txt>"->ErrorLine();
+			Runtime->Exit(2);
+		};
+
+		String->SetFloatFormat(Number->Format->SCIENTIFIC);
+		String->SetFloatPrecision(17);
+
+		reader := FileReader->New(args[0]);
+		line := reader->ReadLine();
+		while(line <> Nil) {
+			if(line->StartsWith("P ")) {
+				RunProblem(line, reader);
+			};
+			line := reader->ReadLine();
+		};
+		reader->Close();
+	}
+
+	function : RunProblem(header : String, reader : FileReader) ~ Nil {
+		parts := header->Split(" ");
+		id := parts[1]->ToInt();
+		n := parts[2]->ToInt();
+		m := parts[3]->ToInt();
+		d := parts[4]->ToInt();
+		code := parts[5]->ToInt();
+		c := parts[6]->ToFloat();
+		gamma := parts[7]->ToFloat();
+		degree := parts[8]->ToInt();
+		coef0 := parts[9]->ToFloat();
+		tol := parts[10]->ToFloat();
+		cache_mb := parts[11]->ToInt();
+		shrinking := parts[12]->ToInt() = 1;
+		mode := 0;
+		if(parts->Size() > 13) {
+			mode := parts[13]->ToInt();
+		};
+
+		x := Float->New[n, d];
+		y := Bool->New[n];
+		row : String[];
+		each(i : n) {
+			row := reader->ReadLine()->Split(" ");
+			y[i] := row[0]->ToInt() = 1;
+			each(k : d) {
+				x[i, k] := row[k + 1]->ToFloat();
+			};
+		};
+
+		t := Float->New[m, d];
+		each(i : m) {
+			row := reader->ReadLine()->Split(" ");
+			each(k : d) {
+				t[i, k] := row[k]->ToFloat();
+			};
+		};
+
+		kernel := SvmKernel->LINEAR;
+		if(code = 1) {
+			kernel := SvmKernel->RBF;
+		}
+		else if(code = 2) {
+			kernel := SvmKernel->POLY;
+		}
+		else if(code = 3) {
+			kernel := SvmKernel->SIGMOID;
+		};
+
+		if(mode = 1) {
+			OneClass(id, x, t, kernel, c, gamma, degree, coef0, tol, cache_mb, shrinking);
+			return;
+		};
+
+		svm := KernelSVM->New(kernel, c, gamma, degree, coef0);
+		svm->SetTolerance(tol);
+		svm->SetCacheSize(cache_mb);
+		svm->SetShrinking(shrinking);
+		if(<>svm->Fit(x, y)) {
+			error := svm->GetLastError();
+			"E {$id} {$error}"->PrintLine();
+			return;
+		};
+
+		obj := svm->GetObjective();
+		b := svm->GetIntercept();
+		iters := svm->GetIterations();
+		conv := svm->IsConverged() ? 1 : 0;
+		"R {$id} {$obj} {$b} {$iters} {$conv}"->PrintLine();
+
+		alpha := Float->New[n];
+		idx := svm->GetSupportIndices();
+		coef := svm->GetDualCoefficients();
+		v := 0.0;
+		each(s : idx) {
+			v := coef[s];
+			if(v < 0.0) {
+				v := -1.0 * v;
+			};
+			alpha[idx[s]] := v;
+		};
+		PrintArray("A", alpha);
+		PrintArray("F", svm->DecisionFunction(x));
+		PrintArray("T", svm->DecisionFunction(t));
+	}
+
+	# One-class: the C field carries nu, and alpha is the dual coefficient itself.
+	function : OneClass(id : Int, x : Float[,], t : Float[,], kernel : SvmKernel, nu : Float, gamma : Float,
+			degree : Int, coef0 : Float, tol : Float, cache_mb : Int, shrinking : Bool) ~ Nil {
+		svm := OneClassSVM->New(kernel, nu, gamma, degree, coef0);
+		svm->SetTolerance(tol);
+		svm->SetCacheSize(cache_mb);
+		svm->SetShrinking(shrinking);
+		if(<>svm->Fit(x)) {
+			error := svm->GetLastError();
+			"E {$id} {$error}"->PrintLine();
+			return;
+		};
+
+		obj := svm->GetObjective();
+		b := svm->GetIntercept();
+		iters := svm->GetIterations();
+		conv := svm->IsConverged() ? 1 : 0;
+		"R {$id} {$obj} {$b} {$iters} {$conv}"->PrintLine();
+
+		dims := x->Size();
+		alpha := Float->New[dims[0]];
+		idx := svm->GetSupportIndices();
+		coef := svm->GetDualCoefficients();
+		each(s : idx) {
+			alpha[idx[s]] := coef[s];
+		};
+		PrintArray("A", alpha);
+		PrintArray("F", svm->DecisionFunction(x));
+		PrintArray("T", svm->DecisionFunction(t));
+	}
+
+	function : PrintArray(tag : String, values : Float[]) ~ Nil {
+		out := String->New(tag);
+		each(i : values) {
+			out->Append(' ');
+			out->Append(values[i]->ToString());
+		};
+		out->PrintLine();
+	}
+}

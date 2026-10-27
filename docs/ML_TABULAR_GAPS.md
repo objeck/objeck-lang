@@ -22,6 +22,7 @@ such study snags.
 | Trees | `DecisionTree`, `RandomForest`, `RegressionTree`, `GradientBoostedTrees`, `AdaBoost` |
 | Unsupervised | `KMeans`, `DBSCAN`, `GaussianMixture`, `PCA` |
 | Data | `MatrixReader`, `FeatureScaler`, `CrossValidation`, `Metrics`, `Matrix` |
+| Anomaly detection (added 2026-10-26, `ml_outlier.obs`) | `OutlierDetector`, `ZScoreDetector`, `IsolationForest`, `LocalOutlierFactor`, `EllipticEnvelope`, `DbscanDetector`, `AutoencoderDetector` (on the new multi-layer `DenseNetwork`), `ConfusionMatrix`, `SensitivitySweep`; lab example `programs/examples/ml/anomaly_sweep.obs`; see `docs/ML_OUTLIERS_DESIGN.md` |
 
 ## The four gaps that block the study
 

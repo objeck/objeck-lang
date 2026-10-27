@@ -1732,6 +1732,637 @@ else if(args->Size() = 1) {
 	}
 
 	#~
+	A multi-layer dense (fully connected) network trained by minibatch Adam on mean
+	squared error.
+
+	NeuralNetwork above has one hidden layer of sigmoid units and answers Bool; this
+	is the general case: any number of layers of any size, a hidden activation and an
+	output activation (LINEAR, RELU, SIGMOID, TANH), real-valued outputs. Each layer
+	computes act(A W + b). Weights start Glorot-uniform from the seed, biases at 0.
+	Every epoch visits the rows in a seeded shuffle, in minibatches (default 32; the
+	last may be shorter). The loss is the mean over rows and outputs of the squared
+	error, as Keras's and PyTorch's MSE. Adam follows PyTorch: lr 0.001, beta1 0.9,
+	beta2 0.999, eps 1e-8, w -= (lr / (1 - beta1^t)) m / (sqrt(v) / sqrt(1 - beta2^t) + eps).
+
+	Deterministic: the same seed and data train the same weights.
+
+```
+net := DenseNetwork->New([4, 8, 4], DenseNetwork->Activation->RELU, DenseNetwork->Activation->LINEAR, 42);
+loss := net->Fit(X, Y, 100);
+Y_hat := net->Predict(X);
+```
+	~#
+	class DenseNetwork {
+		@sizes : Int[];
+		@hidden : DenseNetwork->Activation;
+		@output : DenseNetwork->Activation;
+		@w : FloatMatrixRef[];
+		@b : FloatMatrixRef[];
+		@mw : FloatMatrixRef[];
+		@vw : FloatMatrixRef[];
+		@mb : FloatMatrixRef[];
+		@vb : FloatMatrixRef[];
+		@rate : Float;
+		@beta1 : Float;
+		@beta2 : Float;
+		@epsilon : Float;
+		@batch : Int;
+		@step : Int;
+		@rand : Random;
+		@error : String;
+
+		#~
+		Unit activations.
+		~#
+		enum Activation {
+			LINEAR,
+			RELU,
+			SIGMOID,
+			TANH
+		}
+
+		#~
+		Constructor.
+		@param sizes units per layer, input first and output last (at least two entries, each >= 1)
+		@param hidden activation of every hidden layer
+		@param output activation of the output layer
+		@param seed seeds the weights and the minibatch shuffles
+		~#
+		New(sizes : Int[], hidden : DenseNetwork->Activation, output : DenseNetwork->Activation, seed : Int) {
+			@hidden := hidden;
+			@output := output;
+			@rate := 0.001;
+			@beta1 := 0.9;
+			@beta2 := 0.999;
+			@epsilon := 0.00000001;
+			@batch := 32;
+			@step := 0;
+			@error := "";
+			@rand := Random->New(seed);
+
+			valid := sizes <> Nil;
+			if(valid) {
+				valid := sizes->Size() >= 2;
+			};
+			if(valid) {
+				each(i : sizes) {
+					if(sizes[i] < 1) {
+						valid := false;
+					};
+				};
+			};
+
+			if(<>valid) {
+				@error := "sizes needs at least two layers of at least one unit";
+				return;
+			};
+
+			@sizes := Int->New[sizes->Size()];
+			each(i : sizes) {
+				@sizes[i] := sizes[i];
+			};
+
+			layers := @sizes->Size() - 1;
+			@w := FloatMatrixRef->New[layers];
+			@b := FloatMatrixRef->New[layers];
+			@mw := FloatMatrixRef->New[layers];
+			@vw := FloatMatrixRef->New[layers];
+			@mb := FloatMatrixRef->New[layers];
+			@vb := FloatMatrixRef->New[layers];
+			each(l : layers) {
+				fan_in := @sizes[l];
+				fan_out := @sizes[l + 1];
+				limit := Float->Sqrt(6.0 / (fan_in + fan_out)->As(Float));
+				weights := Float->New[fan_in, fan_out];
+				each(i : fan_in) {
+					each(j : fan_out) {
+						weights[i, j] := (2.0 * @rand->NextReal() - 1.0) * limit;
+					};
+				};
+				@w[l] := FloatMatrixRef->New(weights);
+				@b[l] := FloatMatrixRef->New(Float->New[1, fan_out]);
+				@mw[l] := FloatMatrixRef->New(Float->New[fan_in, fan_out]);
+				@vw[l] := FloatMatrixRef->New(Float->New[fan_in, fan_out]);
+				@mb[l] := FloatMatrixRef->New(Float->New[1, fan_out]);
+				@vb[l] := FloatMatrixRef->New(Float->New[1, fan_out]);
+			};
+		}
+
+		#~
+		Sets the Adam learning rate (default 0.001).
+		@param rate learning rate (> 0)
+		@return false when out of range
+		~#
+		method : public : SetLearningRate(rate : Float) ~ Bool {
+			if(rate <= 0.0 | rate <> rate) {
+				return false;
+			};
+
+			@rate := rate;
+			return true;
+		}
+
+		#~
+		Sets Adam's moment decay rates and epsilon (defaults 0.9, 0.999, 1e-8).
+		@param beta1 first-moment decay in [0, 1)
+		@param beta2 second-moment decay in [0, 1)
+		@param epsilon denominator guard (> 0)
+		@return false when out of range
+		~#
+		method : public : SetAdam(beta1 : Float, beta2 : Float, epsilon : Float) ~ Bool {
+			if(beta1 < 0.0 | beta1 >= 1.0 | beta2 < 0.0 | beta2 >= 1.0 | epsilon <= 0.0) {
+				return false;
+			};
+
+			@beta1 := beta1;
+			@beta2 := beta2;
+			@epsilon := epsilon;
+			return true;
+		}
+
+		#~
+		Sets the minibatch size (default 32).
+		@param size rows per batch (>= 1)
+		@return false when out of range
+		~#
+		method : public : SetBatchSize(size : Int) ~ Bool {
+			if(size < 1) {
+				return false;
+			};
+
+			@batch := size;
+			return true;
+		}
+
+		#~
+		Trains on X -> Y.
+		@param X rows x input units
+		@param Y rows x output units
+		@param epochs passes over the data
+		@return the last epoch's mean squared error, or -1.0 on bad input (GetError says why)
+		~#
+		method : public : Fit(X : Float[,], Y : Float[,], epochs : Int) ~ Float {
+			if(<>CheckPair(X, Y)) {
+				return -1.0;
+			};
+
+			if(epochs < 1) {
+				@error := "epochs must be >= 1";
+				return -1.0;
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			order := Int->New[rows];
+			each(i : rows) {
+				order[i] := i;
+			};
+
+			loss := 0.0;
+			each(e : epochs) {
+				# Fisher-Yates from the end
+				for(i := rows - 1; i > 0; i -= 1;) {
+					k := @rand->NextInt(i + 1);
+					tmp := order[i];
+					order[i] := order[k];
+					order[k] := tmp;
+				};
+
+				total := 0.0;
+				start := 0;
+				while(start < rows) {
+					count := @batch;
+					if(start + count > rows) {
+						count := rows - start;
+					};
+
+					total += TrainBatch(Gather(X, order, start, count), Gather(Y, order, start, count));
+					start += count;
+				};
+
+				loss := total / (rows * @sizes[@sizes->Size() - 1])->As(Float);
+			};
+
+			return loss;
+		}
+
+		#~
+		One Adam step on one minibatch.
+		@param Xb batch inputs
+		@param Yb batch targets
+		@return the batch's summed squared error
+		~#
+		method : public : TrainBatch(Xb : Float[,], Yb : Float[,]) ~ Float {
+			layers := @w->Size();
+			acts := FloatMatrixRef->New[layers + 1];
+			acts[0] := FloatMatrixRef->New(Xb);
+			each(l : layers) {
+				acts[l + 1] := FloatMatrixRef->New(Layer(acts[l]->Get(), l));
+			};
+
+			dims := Yb->Size();
+			count := dims[0];
+			outs := dims[1];
+			last := acts[layers]->Get();
+
+			# d(mean squared error)/d(output): 2 (y_hat - y) / (rows x outputs)
+			sse := 0.0;
+			scale := 2.0 / (count * outs)->As(Float);
+			delta := Float->New[count, outs];
+			each(i : count) {
+				each(j : outs) {
+					diff := last[i, j] - Yb[i, j];
+					sse += diff * diff;
+					delta[i, j] := scale * diff;
+				};
+			};
+
+			grads_w := FloatMatrixRef->New[layers];
+			grads_b := FloatMatrixRef->New[layers];
+			for(l := layers - 1; l >= 0; l -= 1;) {
+				ApplyDerivative(delta, acts[l + 1]->Get(), Kind(l));
+				grads_w[l] := FloatMatrixRef->New(MultiplyTransposeLeft(acts[l]->Get(), delta));
+				grads_b[l] := FloatMatrixRef->New(ColumnSums(delta));
+				if(l > 0) {
+					delta := MultiplyTransposeRight(delta, @w[l]->Get());
+				};
+			};
+
+			@step += 1;
+			bias1 := 1.0 - Float->Pow(@beta1, @step);
+			bias2 := Float->Sqrt(1.0 - Float->Pow(@beta2, @step));
+			each(l : layers) {
+				Adam(@w[l]->Get(), grads_w[l]->Get(), @mw[l]->Get(), @vw[l]->Get(), bias1, bias2);
+				Adam(@b[l]->Get(), grads_b[l]->Get(), @mb[l]->Get(), @vb[l]->Get(), bias1, bias2);
+			};
+
+			return sse;
+		}
+
+		# one Adam update of a parameter matrix in place
+		method : Adam(param : Float[,], grad : Float[,], m : Float[,], v : Float[,], bias1 : Float, bias2 : Float) ~ Nil {
+			dims := param->Size();
+			rows := dims[0];
+			cols := dims[1];
+			step := @rate / bias1;
+			each(i : rows) {
+				each(j : cols) {
+					g := grad[i, j];
+					mi := @beta1 * m[i, j] + (1.0 - @beta1) * g;
+					vi := @beta2 * v[i, j] + (1.0 - @beta2) * g * g;
+					m[i, j] := mi;
+					v[i, j] := vi;
+					param[i, j] := param[i, j] - step * mi / (Float->Sqrt(vi) / bias2 + @epsilon);
+				};
+			};
+		}
+
+		method : Kind(l : Int) ~ DenseNetwork->Activation {
+			if(l = @w->Size() - 1) {
+				return @output;
+			};
+
+			return @hidden;
+		}
+
+		# act(A W + b) for layer l
+		method : Layer(A : Float[,], l : Int) ~ Float[,] {
+			Z := Multiply(A, @w[l]->Get());
+			bias := @b[l]->Get();
+			kind := Kind(l);
+			dims := Z->Size();
+			rows := dims[0];
+			cols := dims[1];
+			each(i : rows) {
+				each(j : cols) {
+					Z[i, j] := Activate(Z[i, j] + bias[0, j], kind);
+				};
+			};
+
+			return Z;
+		}
+
+		function : Activate(z : Float, kind : DenseNetwork->Activation) ~ Float {
+			if(kind = Activation->RELU) {
+				if(z > 0.0) {
+					return z;
+				};
+				return 0.0;
+			}
+			else if(kind = Activation->SIGMOID) {
+				return 1.0 / (1.0 + Float->Exp(0.0 - z));
+			}
+			else if(kind = Activation->TANH) {
+				return Float->Tanh(z);
+			};
+
+			return z;
+		}
+
+		# delta *= act'(z), from the layer's output a = act(z)
+		function : ApplyDerivative(delta : Float[,], out : Float[,], kind : DenseNetwork->Activation) ~ Nil {
+			if(kind = Activation->LINEAR) {
+				return;
+			};
+
+			dims := delta->Size();
+			rows := dims[0];
+			cols := dims[1];
+			each(i : rows) {
+				each(j : cols) {
+					a := out[i, j];
+					d := 1.0;
+					if(kind = Activation->RELU) {
+						# relu(z) > 0 exactly when z > 0; the derivative at 0 is 0
+						if(a <= 0.0) {
+							d := 0.0;
+						};
+					}
+					else if(kind = Activation->SIGMOID) {
+						d := a * (1.0 - a);
+					}
+					else {
+						d := 1.0 - a * a;
+					};
+					delta[i, j] := delta[i, j] * d;
+				};
+			};
+		}
+
+		# A B
+		function : Multiply(A : Float[,], B : Float[,]) ~ Float[,] {
+			a_dims := A->Size();
+			b_dims := B->Size();
+			rows := a_dims[0];
+			inner := a_dims[1];
+			cols := b_dims[1];
+			C := Float->New[rows, cols];
+			each(i : rows) {
+				each(k : inner) {
+					a := A[i, k];
+					each(j : cols) {
+						C[i, j] := C[i, j] + a * B[k, j];
+					};
+				};
+			};
+
+			return C;
+		}
+
+		# A' B
+		function : MultiplyTransposeLeft(A : Float[,], B : Float[,]) ~ Float[,] {
+			a_dims := A->Size();
+			b_dims := B->Size();
+			rows := a_dims[0];
+			left := a_dims[1];
+			right := b_dims[1];
+			C := Float->New[left, right];
+			each(r : rows) {
+				each(i : left) {
+					a := A[r, i];
+					each(j : right) {
+						C[i, j] := C[i, j] + a * B[r, j];
+					};
+				};
+			};
+
+			return C;
+		}
+
+		# A B'
+		function : MultiplyTransposeRight(A : Float[,], B : Float[,]) ~ Float[,] {
+			a_dims := A->Size();
+			b_dims := B->Size();
+			rows := a_dims[0];
+			inner := a_dims[1];
+			cols := b_dims[0];
+			C := Float->New[rows, cols];
+			each(i : rows) {
+				each(j : cols) {
+					s := 0.0;
+					each(k : inner) {
+						s += A[i, k] * B[j, k];
+					};
+					C[i, j] := s;
+				};
+			};
+
+			return C;
+		}
+
+		function : ColumnSums(A : Float[,]) ~ Float[,] {
+			dims := A->Size();
+			rows := dims[0];
+			cols := dims[1];
+			sums := Float->New[1, cols];
+			each(i : rows) {
+				each(j : cols) {
+					sums[0, j] := sums[0, j] + A[i, j];
+				};
+			};
+
+			return sums;
+		}
+
+		function : Gather(X : Float[,], order : Int[], start : Int, count : Int) ~ Float[,] {
+			dims := X->Size();
+			cols := dims[1];
+			part := Float->New[count, cols];
+			each(i : count) {
+				r := order[start + i];
+				each(j : cols) {
+					part[i, j] := X[r, j];
+				};
+			};
+
+			return part;
+		}
+
+		method : CheckInput(X : Float[,], cols : Int) ~ Bool {
+			if(@w = Nil) {
+				if(@error = Nil | @error->Size() = 0) {
+					@error := "the network was not constructed";
+				};
+				return false;
+			};
+
+			if(X = Nil) {
+				@error := "input is Nil";
+				return false;
+			};
+
+			dims := X->Size();
+			if(dims[0] < 1 | dims[1] <> cols) {
+				given := dims[1];
+				@error := "input has {$given} columns; the layer has {$cols} units";
+				return false;
+			};
+
+			rows := dims[0];
+			each(i : rows) {
+				each(j : cols) {
+					v := X[i, j];
+					if(v <> v) {
+						@error := "input contains NaN at row {$i}, column {$j}";
+						return false;
+					};
+				};
+			};
+
+			return true;
+		}
+
+		method : CheckPair(X : Float[,], Y : Float[,]) ~ Bool {
+			if(@w = Nil) {
+				return CheckInput(X, 0);
+			};
+
+			if(<>CheckInput(X, @sizes[0]) | <>CheckInput(Y, @sizes[@sizes->Size() - 1])) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			y_dims := Y->Size();
+			if(x_dims[0] <> y_dims[0]) {
+				@error := "X and Y have different row counts";
+				return false;
+			};
+
+			return true;
+		}
+
+		#~
+		Network outputs for each row.
+		@param X rows x input units
+		@return rows x output units, or Nil on bad input
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[,] {
+			if(<>CheckInput(X, @sizes[0])) {
+				return Nil;
+			};
+
+			A := X;
+			layers := @w->Size();
+			each(l : layers) {
+				A := Layer(A, l);
+			};
+
+			return A;
+		}
+
+		#~
+		Mean squared error over rows and outputs.
+		@param X rows x input units
+		@param Y rows x output units
+		@return the error, or -1.0 on bad input
+		~#
+		method : public : Loss(X : Float[,], Y : Float[,]) ~ Float {
+			if(<>CheckPair(X, Y)) {
+				return -1.0;
+			};
+
+			P := Predict(X);
+			dims := Y->Size();
+			rows := dims[0];
+			cols := dims[1];
+			total := 0.0;
+			each(i : rows) {
+				each(j : cols) {
+					d := P[i, j] - Y[i, j];
+					total += d * d;
+				};
+			};
+
+			return total / (rows * cols)->As(Float);
+		}
+
+		#~
+		Units per layer, input first.
+		@return sizes, or Nil when construction failed
+		~#
+		method : public : GetLayerSizes() ~ Int[] {
+			return @sizes;
+		}
+
+		#~
+		A layer's weights (inputs x outputs); the live matrix, not a copy.
+		@param layer 0 for the first weight layer
+		@return weights, or Nil for a bad layer
+		~#
+		method : public : GetWeights(layer : Int) ~ Float[,] {
+			if(@w = Nil | layer < 0 | layer >= @w->Size()) {
+				return Nil;
+			};
+
+			return @w[layer]->Get();
+		}
+
+		#~
+		A layer's biases (1 x outputs); the live matrix, not a copy.
+		@param layer 0 for the first weight layer
+		@return biases, or Nil for a bad layer
+		~#
+		method : public : GetBiases(layer : Int) ~ Float[,] {
+			if(@b = Nil | layer < 0 | layer >= @b->Size()) {
+				return Nil;
+			};
+
+			return @b[layer]->Get();
+		}
+
+		#~
+		Replaces a layer's weights (copied), e.g. to start from known values.
+		@param layer 0 for the first weight layer
+		@param weights inputs x outputs
+		@return false when the layer or the shape is wrong
+		~#
+		method : public : SetWeights(layer : Int, weights : Float[,]) ~ Bool {
+			return Replace(@w, layer, weights);
+		}
+
+		#~
+		Replaces a layer's biases (copied).
+		@param layer 0 for the first weight layer
+		@param biases 1 x outputs
+		@return false when the layer or the shape is wrong
+		~#
+		method : public : SetBiases(layer : Int, biases : Float[,]) ~ Bool {
+			return Replace(@b, layer, biases);
+		}
+
+		method : Replace(store : FloatMatrixRef[], layer : Int, values : Float[,]) ~ Bool {
+			if(store = Nil | values = Nil | layer < 0 | layer >= store->Size()) {
+				return false;
+			};
+
+			current := store[layer]->Get();
+			c_dims := current->Size();
+			v_dims := values->Size();
+			if(c_dims[0] <> v_dims[0] | c_dims[1] <> v_dims[1]) {
+				return false;
+			};
+
+			rows := c_dims[0];
+			cols := c_dims[1];
+			each(i : rows) {
+				each(j : cols) {
+					current[i, j] := values[i, j];
+				};
+			};
+
+			return true;
+		}
+
+		#~
+		Why the last call failed.
+		@return the reason, or an empty string
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+	}
+
+	#~
 	Utilities for reading data from CSV data sources 
 	~#
 	class MatrixReader {

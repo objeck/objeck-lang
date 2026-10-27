@@ -1,0 +1,9 @@
+### SVM: C sweep (naïve kernels)
+
+| C | recall | fpr | fit_ms | false_negatives |
+|---|---:|---:|---:|---:|
+| 0.001 | 0.5000 | 0.0100 | 12.3 | 3 |
+| naïve "rbf", γ=0.5 | 0.8750 | 0.1250 | 1234.6 | 0 |
+| a\|b | 1.0000 | 0.3333 | 0.0 | 12 |
+
+_gamma=0.5; dataset=synthetic-2d v1; 70/30 stratified, seed 42_

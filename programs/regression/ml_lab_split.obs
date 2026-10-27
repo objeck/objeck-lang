@@ -1,0 +1,253 @@
+# EXTRA_LIBS: ml,ml_lab,gen_collect,csv,json
+#~
+System.ML.Lab.Partition: a deterministic, stratified hold-out split.
+
+The counts are exact, not approximate: 10 positives among 100 rows at a test
+fraction of 0.2 puts exactly 2 positives and 18 negatives in the test half, and
+the assertions say so. A split that ignores the labels passes every partition
+check and fails those.
+
+The second property is ALIGNMENT. Feature 0 of every row is the row's own index,
+so a split that pairs row i's features with row j's label -- which no size or
+coverage check can see -- is caught by re-deriving each split row's label from
+its own feature.
+~#
+use System.ML;
+use System.ML.Lab;
+
+class MlLabSplit {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		rows := 100;
+		x := Float->New[rows, 2];
+		y := Bool->New[rows];
+		each(i : rows) {
+			x[i, 0] := i->As(Float);
+			x[i, 1] := 1.0;
+			y[i] := (i % 10 = 0);
+		};
+
+		split := Partition->TrainTest(x, y, 0.2, 42, true);
+		ok := Report("a stratified split is produced", split <> Nil) & ok;
+
+		ok := Report("the test half holds exactly 20 rows", split->GetTestSize() = 20) & ok;
+		ok := Report("the training half holds the alt 80", split->GetTrainSize() = 80) & ok;
+		ok := Report("exactly 2 of the 10 positives are in the test half",
+			Resample->CountPositives(split->GetTestY()) = 2) & ok;
+		ok := Report("the alt 8 positives are in the training half",
+			Resample->CountPositives(split->GetTrainY()) = 8) & ok;
+
+		# every row in exactly one half, both halves ascending
+		seen := Int->New[rows];
+		train_rows := split->GetTrainRows();
+		test_rows := split->GetTestRows();
+		each(i : train_rows) {
+			seen[train_rows[i]] += 1;
+		};
+		each(i : test_rows) {
+			seen[test_rows[i]] += 1;
+		};
+		once := true;
+		each(i : rows) {
+			if(seen[i] <> 1) {
+				once := false;
+			};
+		};
+		ok := Report("every row lands in exactly one half", once) & ok;
+		ok := Report("both halves come back ascending", Ascending(train_rows) & Ascending(test_rows)) & ok;
+
+		# alignment: each half's rows carry their own features and labels
+		ok := Report("training features, labels and row indexes stay aligned",
+			Aligned(split->GetTrainX(), split->GetTrainY(), train_rows)) & ok;
+		ok := Report("test features, labels and row indexes stay aligned",
+			Aligned(split->GetTestX(), split->GetTestY(), test_rows)) & ok;
+
+		# determinism per seed
+		again := Partition->TrainTest(x, y, 0.2, 42, true);
+		ok := Report("the same seed selects the same test rows", SameRows(test_rows, again->GetTestRows())) & ok;
+		alt := Partition->TrainTest(x, y, 0.2, 7, true);
+		ok := Report("a different seed selects different test rows", <>SameRows(test_rows, alt->GetTestRows())) & ok;
+		ok := Report("a different seed still holds the stratified counts",
+			alt->GetTestSize() = 20 & Resample->CountPositives(alt->GetTestY()) = 2) & ok;
+
+		# unstratified: the overall count holds, the class count is whatever fell
+		plain := Partition->TrainTest(x, y, 0.2, 42, false);
+		ok := Report("an unstratified split still holds Round(rows * fraction) test rows", plain->GetTestSize() = 20) & ok;
+		ok := Report("an unstratified split stays aligned",
+			Aligned(plain->GetTestX(), plain->GetTestY(), plain->GetTestRows())) & ok;
+
+		# strata by caller codes: 50 / 30 / 20 rows at 0.3 -> 15 / 9 / 6
+		codes := Float->New[rows];
+		each(i : rows) {
+			if(i < 50) {
+				codes[i] := 0.0;
+			}
+			else if(i < 80) {
+				codes[i] := 1.0;
+			}
+			else {
+				codes[i] := 2.0;
+			};
+		};
+		idx := Partition->Indices(codes, 0.3, 3);
+		ok := Report("Indices returns 30 test rows for three strata at 0.3", idx->GetTest()->Size() = 30) & ok;
+		ok := Report("each stratum contributes its exact share (15, 9, 6)",
+			CountBelow(idx->GetTest(), 50) = 15 & CountBetween(idx->GetTest(), 50, 80) = 9 & CountBetween(idx->GetTest(), 80, 100) = 6) & ok;
+		ok := Report("Indices keeps 70 training rows", idx->GetTrain()->Size() = 70) & ok;
+
+		# the clamp: a stratum of 2 rows at 0.1 rounds to 0 but still sends one row
+		tiny := Float->New[12];
+		each(i : 12) {
+			tiny[i] := (i < 2) ? 1.0 : 0.0;
+		};
+		clamped := Partition->Indices(tiny, 0.1, 1);
+		ok := Report("a two-row stratum still puts one row in each half",
+			CountBelow(clamped->GetTest(), 2) = 1 & CountBelow(clamped->GetTrain(), 2) = 1) & ok;
+
+		# Take gathers in the order given
+		pick := Int->New[3];
+		pick[0] := 5; pick[1] := 0; pick[2] := 99;
+		taken := Partition->Take(x, pick);
+		ok := Report("Take gathers rows in the order given",
+			taken[0, 0] = 5.0 & taken[1, 0] = 0.0 & taken[2, 0] = 99.0) & ok;
+		taken_y := Partition->Take(y, pick);
+		ok := Report("Take gathers labels in the order given", <>taken_y[0] & taken_y[1] & <>taken_y[2]) & ok;
+
+		# refusals
+		ok := Report("a test fraction of 0 is refused", RefusesFraction(x, y, 0.0)) & ok;
+		ok := Report("a test fraction of 1 is refused", RefusesFraction(x, y, 1.0)) & ok;
+		ok := Report("a test fraction above 1 is refused", RefusesFraction(x, y, 1.5)) & ok;
+
+		single := Float->New[rows];
+		single[3] := 7.0;   # one row in stratum 7
+		msg := "";
+		refused := false;
+		try {
+			Partition->Indices(single, 0.2, 1);
+		}
+		on(e : LabError) {
+			refused := true;
+			msg := e->GetMessage();
+		};
+		ok := Report("a one-row stratum is refused", refused) & ok;
+		ok := Report("the refusal names the stratum and its count", msg->Has("stratum 7") & msg->Has("has 1 row")) & ok;
+
+		short_y := Bool->New[rows - 1];
+		refused := false;
+		try {
+			Partition->TrainTest(x, short_y, 0.2, 1, true);
+		}
+		on(e : LabError) {
+			refused := true;
+		};
+		ok := Report("mismatched X and y lengths are refused", refused) & ok;
+
+		no_x : Float[,];
+		refused := false;
+		try {
+			Partition->TrainTest(no_x, y, 0.2, 1, true);
+		}
+		on(e : LabError) {
+			refused := true;
+		};
+		ok := Report("a Nil matrix is refused", refused) & ok;
+
+		one := Float->New[1];
+		refused := false;
+		try {
+			Partition->Indices(one, 0.5, 1);
+		}
+		on(e : LabError) {
+			refused := true;
+		};
+		ok := Report("a single row is refused", refused) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : RefusesFraction(x : Float[,], y : Bool[], f : Float) ~ Bool {
+		refused := false;
+		try {
+			Partition->TrainTest(x, y, f, 1, true);
+		}
+		on(e : LabError) {
+			refused := e->GetMessage()->Has("test_fraction");
+		};
+
+		return refused;
+	}
+
+	function : Aligned(m : Float[,], labels : Bool[], rows : Int[]) ~ Bool {
+		if(m = Nil | labels = Nil | rows = Nil) {
+			return false;
+		};
+
+		dims := m->Size();
+		if(dims[0] <> rows->Size() | labels->Size() <> rows->Size()) {
+			return false;
+		};
+
+		each(r : rows) {
+			if(m[r, 0] <> rows[r]->As(Float)) {
+				return false;
+			};
+			if(labels[r] <> (rows[r] % 10 = 0)) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Ascending(rows : Int[]) ~ Bool {
+		for(i := 1; i < rows->Size(); i += 1;) {
+			if(rows[i] <= rows[i - 1]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : SameRows(a : Int[], b : Int[]) ~ Bool {
+		if(a->Size() <> b->Size()) {
+			return false;
+		};
+
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : CountBelow(rows : Int[], limit : Int) ~ Int {
+		return CountBetween(rows, 0, limit);
+	}
+
+	function : CountBetween(rows : Int[], lo : Int, hi : Int) ~ Int {
+		count := 0;
+		each(i : rows) {
+			if(rows[i] >= lo & rows[i] < hi) {
+				count += 1;
+			};
+		};
+
+		return count;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}

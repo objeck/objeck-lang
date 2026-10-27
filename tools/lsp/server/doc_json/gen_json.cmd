@@ -81,11 +81,16 @@ if %ERRORLEVEL% NEQ 0 (
 	%LIB_SRC%\ml_neighbors.obs ^
 	%LIB_SRC%\ml_cluster.obs ^
 	%LIB_SRC%\ml_data.obs ^
+	%LIB_SRC%\ml_svm.obs ^
+	%LIB_SRC%\ml_outlier.obs ^
+	%LIB_SRC%\ml_embed.obs ^
+	%LIB_SRC%\ml_lab.obs ^
 	%LIB_SRC%\ai_search.obs ^
 	%LIB_SRC%\ai_game.obs ^
 	%LIB_SRC%\ai_optimize.obs ^
 	%LIB_SRC%\ai_rl.obs ^
 	%LIB_SRC%\nlp.obs ^
+	%LIB_SRC%\nlp_onnx.obs ^
 	%LIB_SRC%\openai.obs ^
 	%LIB_SRC%\gemini.obs ^
 	%LIB_SRC%\ollama.obs ^

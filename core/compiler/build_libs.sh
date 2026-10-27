@@ -28,9 +28,13 @@ $OBC -src lib_src/diags.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/diags
 $OBC -src lib_src/xml.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/xml.obl
 $OBC -src lib_src/regex.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/regex.obl
 $OBC -src lib_src/csv.obs -tar lib -lib gen_collect -opt s3 -dest ../lib/csv.obl
-$OBC -src lib_src/ml_core.obs,lib_src/ml_linear.obs,lib_src/ml_tree.obs,lib_src/ml_bayes.obs,lib_src/ml_neighbors.obs,lib_src/ml_cluster.obs,lib_src/ml_data.obs -lib gen_collect,csv -tar lib -opt s3 -dest ../lib/ml.obl
+$OBC -src lib_src/ml_core.obs,lib_src/ml_linear.obs,lib_src/ml_tree.obs,lib_src/ml_bayes.obs,lib_src/ml_neighbors.obs,lib_src/ml_cluster.obs,lib_src/ml_data.obs,lib_src/ml_svm.obs,lib_src/ml_outlier.obs,lib_src/ml_embed.obs -lib gen_collect,csv -tar lib -opt s3 -dest ../lib/ml.obl
+$OBC -src lib_src/ml_lab.obs -lib gen_collect,csv,json,ml -tar lib -opt s3 -dest ../lib/ml_lab.obl
 $OBC -src lib_src/ai_search.obs,lib_src/ai_game.obs,lib_src/ai_optimize.obs,lib_src/ai_rl.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ai.obl
 $OBC -src lib_src/nlp.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/nlp.obl
+# Text embeddings from BERT-family ONNX models. A library of its own, after both nlp
+# and onnx, so neither of them has to link the other.
+$OBC -src lib_src/nlp_onnx.obs -lib gen_collect,models,opencv,cipher,json,onnx,nlp -tar lib -opt s3 -dest ../lib/nlp_onnx.obl
 $OBC -src lib_src/net_common.obs,lib_src/net.obs,lib_src/net_secure.obs -tar lib -lib gen_collect,cipher -opt s3 -dest ../lib/net.obl
 $OBC -src lib_src/net_h2.obs -tar lib -lib net,gen_collect,cipher -opt s3 -dest ../lib/net_h2.obl
 $OBC -src lib_src/net_quic.obs -tar lib -lib net,gen_collect,cipher -opt s3 -dest ../lib/net_quic.obl
