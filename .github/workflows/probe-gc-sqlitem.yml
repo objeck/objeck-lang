@@ -12,7 +12,7 @@ jobs:
   probe:
     name: Probe ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 90
+    timeout-minutes: 100
     strategy:
       fail-fast: false
       matrix:
@@ -28,19 +28,38 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v5
-      - name: Download master deploy tree
+      - name: Install Linux runtime dependencies
+        if: runner.os == 'Linux'
+        timeout-minutes: 10
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libmbedtls-dev unixodbc-dev libsqliteodbc libreadline-dev
+      - name: Install macOS runtime dependencies
+        if: runner.os == 'macOS'
+        timeout-minutes: 10
+        run: |
+          for pkg in unixodbc readline coreutils; do
+            brew list --versions "$pkg" >/dev/null 2>&1 || brew install "$pkg"
+          done
+      - name: Download deploy tree
         timeout-minutes: 10
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          RUN_ID=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci-build.yml --branch master --event push --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          RUN_ID=$(cat probe/run_id)
           echo "ci run $RUN_ID"
+          gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" --json headSha,headBranch --jq '.headBranch + " " + .headSha'
           gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n objeck-${{ matrix.platform }} -D tree
           chmod +x tree/bin/* || true
-          tree/bin/obc --version || true
+          tree/bin/obr 2>&1 | head -3 || true
       - name: Loop
-        timeout-minutes: 75
+        timeout-minutes: 85
         run: |
           chmod +x probe/loop.sh
-          probe/loop.sh "$PWD/tree" 40 120 query_catalog_concurrent query_index_differential exit_with_live_threads || true
+          echo "=== new test, no verifier"
+          VERIFY=0 CFGS=nursery OPTS=s3 probe/loop.sh "$PWD/tree" 30 150 jit_cond_value_minor_gc || true
+          echo "=== new test, verifier"
+          VERIFY=1 CFGS=nursery OPTS=s3 probe/loop.sh "$PWD/tree" 30 150 jit_cond_value_minor_gc || true
+          echo "=== nightly failures, verifier"
+          VERIFY=1 OPTS=s3 probe/loop.sh "$PWD/tree" 40 150 query_catalog_concurrent query_index_differential exit_with_live_threads || true
