@@ -83,6 +83,19 @@ if defined OBJECK_GC_VERIFY if not "%OBJECK_GC_VERIFY%"=="0" set VERIFY_ON=1
 set GC_STRESS_ON=
 if defined OBJECK_VM_ARGS echo.%OBJECK_VM_ARGS%|findstr /C:"--gc-threshold" >nul 2>&1 && set GC_STRESS_ON=1
 
+REM TEST_TIMEOUT: seconds per test run, as in run_regression.sh (which defaults to
+REM 60; this runner had no limit unless it was set, and one hung test stalled a
+REM full run for over an hour). One watchdog runs beside the suite: every two
+REM seconds it kills a run of obr that this runner started more than TEST_TIMEOUT
+REM seconds ago, after writing the test's name to TIMED_OUT_FILE. A wrapper that
+REM started PowerShell around every test cost about 0.35 s a test instead.
+if not defined TEST_TIMEOUT set TEST_TIMEOUT=300
+set TIMED_OUT_FILE=%RESULTS_DIR%\_timed_out.txt
+if exist "%TIMED_OUT_FILE%" del "%TIMED_OUT_FILE%"
+set WATCHDOG_RUNNING=%RESULTS_DIR%\_watchdog_running
+echo %TEST_TIMEOUT% > "%WATCHDOG_RUNNING%"
+start /b "" powershell -NoProfile -ExecutionPolicy Bypass -File "%REGRESSION_DIR%\run_watchdog.ps1" %TEST_TIMEOUT% "%ABS_VM%" "%REGRESSION_DIR%\%TIMED_OUT_FILE%" "%REGRESSION_DIR%\%WATCHDOG_RUNNING%" >nul 2>&1
+
 for %%f in (*.obs) do (
     echo Running: %%~nf...
 
@@ -197,17 +210,13 @@ for %%f in (*.obs) do (
             findstr /B /C:"# JIT_DISABLE" "%REGRESSION_DIR%\%%f" >nul 2>&1
             if !errorlevel! equ 0 set OBJECK_JIT_DISABLE=1
 
-            REM Run from regression directory
-            REM TEST_TIMEOUT: seconds per test run, as in run_regression.sh. Unset
-            REM means no limit (a hang then stalls the whole suite).
-            if defined TEST_TIMEOUT (
-                powershell -NoProfile -ExecutionPolicy Bypass -File "%REGRESSION_DIR%\run_with_timeout.ps1" %TEST_TIMEOUT% "%RESULTS_DIR%\%%~nf_output.txt" "%ABS_VM%" %OBJECK_VM_ARGS% "%%~nf.obe"
-            ) else (
-                "%ABS_VM%" %OBJECK_VM_ARGS% "%%~nf.obe" > "%RESULTS_DIR%\%%~nf_output.txt" 2>&1
-            )
+            REM Run from regression directory. The watchdog (see TEST_TIMEOUT above)
+            REM kills a run that outlives the limit and names the test in
+            REM TIMED_OUT_FILE before it does, so the name is there when the run returns.
+            "%ABS_VM%" %OBJECK_VM_ARGS% "%%~nf.obe" > "%RESULTS_DIR%\%%~nf_output.txt" 2>&1
             set RUN_RESULT=!errorlevel!
             set TIMED_OUT=
-            if defined TEST_TIMEOUT if !RUN_RESULT! equ 124 set TIMED_OUT=1
+            if exist "%TIMED_OUT_FILE%" findstr /X /C:"%%~nf" "%TIMED_OUT_FILE%" >nul 2>&1 && set TIMED_OUT=1
 
             if defined TIMED_OUT (
                 echo   FAIL ^(timed out after %TEST_TIMEOUT%s^)
@@ -261,6 +270,9 @@ for %%f in (*.obs) do (
         )
     )
 )
+
+REM The watchdog exits at its next look once this file is gone.
+if exist "%WATCHDOG_RUNNING%" del "%WATCHDOG_RUNNING%"
 
 echo.
 echo ========================================

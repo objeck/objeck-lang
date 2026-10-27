@@ -36,7 +36,7 @@ run_regression.cmd arm64    REM For ARM64 build
 Each test is compiled with `obc -opt s3 -lib cipher,collect,xml,json` (plus any libraries its `# EXTRA_LIBS:` line names) and run with `obr`. Compiler logs and program output go to `results/`. Apart from the negative tests (see the directives below), the runners judge a test by its exit code: 0 passes, anything else fails. A test that prints a line starting with `SKIP:` and exits 0 counts as skipped, not passed.
 
 Environment variables both runners honor:
-- `TEST_TIMEOUT` - seconds allowed per test run (the POSIX runner defaults to 60; the Windows runner has no limit unless it is set)
+- `TEST_TIMEOUT` - seconds allowed per test run (the POSIX runner defaults to 60, the Windows runner to 300, the value the nightly runs use)
 - `OBJECK_VM_ARGS` - extra `obr` options for every test, e.g. `--gc-threshold=64k`
 
 `OBJECK_JIT_THRESHOLD=1` makes `obr` compile every method on its first call; CI runs the suite a second time with it.
