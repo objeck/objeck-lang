@@ -1,0 +1,46 @@
+name: Probe gc sqlitem (do not merge)
+
+on:
+  push:
+    branches: [ 'probe/gc-sqlitem' ]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  probe:
+    name: Probe ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-arm64
+            os: ubuntu-24.04-arm
+          - platform: macos-arm64
+            os: macos-15
+          - platform: linux-x64
+            os: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+      - name: Download master deploy tree
+        timeout-minutes: 10
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          RUN_ID=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci-build.yml --branch master --event push --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          echo "ci run $RUN_ID"
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n objeck-${{ matrix.platform }} -D tree
+          chmod +x tree/bin/* || true
+          tree/bin/obc --version || true
+      - name: Loop
+        timeout-minutes: 75
+        run: |
+          chmod +x probe/loop.sh
+          probe/loop.sh "$PWD/tree" 40 120 query_catalog_concurrent query_index_differential exit_with_live_threads || true
