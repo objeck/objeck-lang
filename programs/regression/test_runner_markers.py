@@ -133,7 +133,7 @@ def make_tree(root, fixtures, deploy):
     """Lay out root/programs/regression + root/core/release/deploy-x64 (a link)."""
     reg = os.path.join(root, "programs", "regression")
     os.makedirs(reg)
-    for script in ("run_regression.cmd", "run_regression.sh", "run_with_timeout.ps1"):
+    for script in ("run_regression.cmd", "run_regression.sh", "run_watchdog.ps1"):
         if os.path.exists(os.path.join(RUNNER_DIR, script)):
             shutil.copyfile(os.path.join(RUNNER_DIR, script), os.path.join(reg, script))
     release = os.path.join(root, "core", "release")
