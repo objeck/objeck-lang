@@ -76,8 +76,10 @@ Full details for every release are in the [CHANGELOG](CHANGELOG.md).
   * **Networking** &mdash; DTLS works for the first time, servers take IPv4 and IPv6 clients on every platform or bind one address, every socket failure says why, blocking I/O no longer stalls the collector, UTF-8 URLs, every HTTP status code
   * **Non-ASCII text on Windows** &mdash; arguments, environment variables, paths, install directories and console output, in every tool
   * **JIT fixes** &mdash; `Float->NaN()`/`Inf()` and two-dimensional array code are compiled instead of handed back to the interpreter, and a value is no longer lost at a loop's collection safepoint
+  * **Garbage collector fix** &mdash; a conditional's value (`c ? a : b`) survives another thread's collection; multithreaded programs could store a dangling reference
+  * **Language server about 2&times; faster per edit** &mdash; each edit is analyzed once instead of twice
   * **Compiler and library fixes** &mdash; ambiguous names, numeric literals (`0o` is octal; `010` is an error), array literals; CSV, JSON (escapes are decoded on parse), regex, NLP, ML, Ollama, OpenAI, Gemini, SDL2 and ODBC, including a macOS driver manager that could load no driver
-  * **Upgrading** &mdash; rebuild your own `.obl` libraries and recompile `.obe` files; a v2026.10.1 `obu` in a non-ASCII install directory cannot update itself, so install by hand; `Directory->List` drops `.` and `..` on Windows; `CompressBr` is `CompressDeflate`; `Byte[]->ToHexString` is a digest; `Hash` iteration order changes; stop calling `JsonElement->Decode` on parsed text; `TF_IDF->New()` smooths and normalizes by default; the full list is in the [CHANGELOG](CHANGELOG.md#v2026102---2026-10-26)
+  * **Upgrading** &mdash; rebuild your own `.obl` libraries and recompile `.obe` files; a v2026.10.1 `obu` in a non-ASCII install directory cannot update itself, so install by hand; `Directory->List` drops `.` and `..` on Windows; `CompressBr` is `CompressDeflate`; `Byte[]->ToHexString` is a digest; `Hash` iteration order changes; stop calling `JsonElement->Decode` on parsed text; `TF_IDF->New()` smooths and normalizes by default; the full list is in the [CHANGELOG](CHANGELOG.md#v2026102---2026-10-28)
 
 ### v2026.10.1 ✅
   * **Typed errors** &mdash; `Runtime->Raise`, and `try`/`on`/`finally` that catch by error type

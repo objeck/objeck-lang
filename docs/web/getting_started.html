@@ -231,6 +231,11 @@
           Primitive Collections
          </a>
         </li>
+        <li>
+         <a href="#collect_query">
+          Querying Tables
+         </a>
+        </li>
        </ul>
        <li>
         <a href="#generics">
@@ -384,7 +389,7 @@
       On Ubuntu 24.04 LTS and distributions built on it (Linux Mint 22, Pop!_OS 24.04), download the <code>.deb</code> for your architecture from the
       <a href="https://github.com/objeck/objeck-lang/releases/latest">latest release</a> and install it with apt, which also installs the system libraries the toolchain needs. The commands are on <code>PATH</code> in every shell, with nothing to set:
      </p>
-     <pre class="cmd">&gt; sudo apt install ./objeck-ubuntu24.04-x64_2026.10.1.deb      # or -arm64
+     <pre class="cmd">&gt; sudo apt install ./objeck-ubuntu24.04-*.deb      # the x64 or arm64 file you downloaded
 &gt; obc hello &amp;&amp; obr hello</pre>
      <p>
       OpenCV, SDL2, unixODBC and LAME are recommended rather than required: they are needed only by the libraries that wrap them, and
@@ -1848,6 +1853,50 @@ class Counting {
   }
 }
 </code></pre>
+         <h3 id="collect_query">
+          Querying Tables
+         </h3>
+         <p>
+          <code>Query.Structured</code> is a columnar database in the standard library. A <code>Table</code> holds typed columns, and <code>Query</code> runs SQL over it &mdash; joins, <code>group by</code>, <code>having</code>, <code>order by</code>, indexes and expressions &mdash; returning another table. A quoted file name or URL in <code>from</code> is read as a table too (CSV, JSON, XML, <code>.otab</code>, zip and tar members, Excel worksheets), and <code>Explain</code> shows the plan. If a query fails it returns <code>Nil</code> and <code>GetError</code> says why.
+         </p>
+         <pre><code class="language-cpp">use Query.Structured;
+
+class Orders {
+  function : Main(args : String[]) ~ Nil {
+    orders := Table-&gt;New("orders", ["region", "item", "qty", "price"]);
+    Add(orders, "east", "apple", 10, 2.5);
+    Add(orders, "west", "pear", 4, 3.0);
+    Add(orders, "east", "fig", 6, 4.0);
+    Add(orders, "west", "apple", 8, 2.5);
+
+    totals := orders-&gt;Query("select region, sum(qty * price) as total from orders group by region order by total desc");
+    if(totals = Nil) {
+      orders-&gt;GetError()-&gt;PrintLine();
+      return;
+    };
+    totals-&gt;ToCsv()-&gt;Print();
+  }
+
+  function : Add(t : Table, region : String, item : String, qty : Int, price : Float) ~ Nil {
+    r := t-&gt;Insert();
+    r-&gt;Set("region", region);
+    r-&gt;Set("item", item);
+    r-&gt;Set("qty", IntRef-&gt;New(qty));
+    r-&gt;Set("price", FloatRef-&gt;New(price));
+  }
+}
+</code></pre>
+         <p>
+          <code>obc</code> does not pull in a library&rsquo;s dependencies, so name them all when compiling:
+         </p>
+         <pre class="cmd">&gt; obc -src orders.obs -lib query,misc,net,json,regex,xml,csv,cipher
+&gt; obr orders
+region,total
+east,49.0
+west,32.0</pre>
+         <p>
+          The <a href="https://github.com/objeck/objeck-lang/blob/master/docs/QUERY_DESIGN.md">design document</a> covers the SQL subset, sources, indexes and the <code>.otab</code> file format.
+         </p>
          <h2 id="funcs">
           Closures and Lambda Expressions
          </h2>
@@ -2716,7 +2765,7 @@ class DbExample {
           you've added. Start it by running <code>obi</code> with no arguments.
          </p>
          <pre class="cmd">&gt; obi
-Objeck REPL (2026.6.x)
+Objeck REPL (2026.10.2)
 ['/h' help | '/t' guided tutorial | omit ';' to print an expression]
 ---</pre>
          <p>
