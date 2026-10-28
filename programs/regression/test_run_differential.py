@@ -178,6 +178,38 @@ class RunnerTests(Harness):
         self.assertEqual(rc, 1)
         self.assertIn("timed out", res["hangs"]["details"][0])
 
+    def test_diff_timeout_lengthens_one_tests_limit(self):
+        # --timeout is 3 s in run_diff; a run of 5 s passes only under the marker
+        self.add_test("slow", "# DIFF_TIMEOUT: 20\n# reason: 5 s here\n")
+        self.add_test("unmarked")
+        self.spec["run"]["slow"] = {"*": {"sleep": 5}}
+        self.spec["run"]["unmarked"] = {"*": {"sleep": 5}}
+        rc, res = self.run_diff()
+        self.assertEqual(res["slow"]["status"], "ok", self.output)
+        self.assertEqual(res["unmarked"]["status"], "fail")
+        self.assertIn("timed out after 3s", res["unmarked"]["details"][0])
+
+    def test_diff_timeout_still_ends_a_hang(self):
+        self.add_test("hangs", "# DIFF_TIMEOUT: 4\n# reason: 3 s here\n")
+        self.spec["run"]["hangs"] = {"s3/jit1": {"sleep": 30}}
+        rc, res = self.run_diff()
+        self.assertEqual(rc, 1)
+        self.assertIn("timed out after 4s", res["hangs"]["details"][0])
+
+    def test_diff_timeout_never_shortens_the_limit(self):
+        self.add_test("short", "# DIFF_TIMEOUT: 1\n# reason: 1 s here\n")
+        self.spec["run"]["short"] = {"*": {"sleep": 2}}
+        rc, res = self.run_diff()
+        self.assertEqual(res["short"]["status"], "ok", self.output)
+
+    def test_bad_diff_timeout_fails(self):
+        for i, value in enumerate(("soon", "0", "901", "")):
+            self.add_test("bad%d" % i, "# DIFF_TIMEOUT: %s\n# reason: 5 s\n" % value)
+        rc, res = self.run_diff()
+        self.assertEqual(rc, 1)
+        for i in range(4):
+            self.assertIn("bad DIFF_TIMEOUT", res["bad%d" % i]["details"][0])
+
     def test_diff_configs_limits_the_comparison(self):
         self.add_test("tco", "# DIFF_CONFIGS: s3\n# reason: needs TCO\n")
         self.spec["run"]["tco"] = {"s0/off": {"out": "stack overflow\n", "rc": 1}}
@@ -290,6 +322,30 @@ class LintTests(unittest.TestCase):
         self.write("t01", "# DIFF_CONFIGS: s3\n# reason: needs TCO\n# DIFF_SERIAL\n")
         rc, out = self.lint()
         self.assertEqual(rc, 0, out)
+
+    def test_diff_timeout_with_a_measured_reason_passes(self):
+        self.write("t00", "# DIFF_TIMEOUT: 600\n# reason: 105 s with --jit=off on an idle desktop\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 0, out)
+
+    def test_diff_timeout_needs_a_reason_with_a_measurement(self):
+        self.write("t00", "# DIFF_TIMEOUT: 600\nuse System;\n")
+        self.write("t01", "# DIFF_TIMEOUT: 600\n# reason: it is slow\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 1)
+        self.assertIn("t00.obs:1", out)
+        self.assertIn("without a '# reason", out)
+        self.assertIn("t01.obs:1", out)
+        self.assertIn("no measured time", out)
+
+    def test_diff_timeout_value_and_whitespace_are_checked(self):
+        for name, line in (("t00", "# DIFF_TIMEOUT: soon"), ("t01", "# DIFF_TIMEOUT: 901"),
+                           ("t02", "# DIFF_TIMEOUT: 0"), ("t03", "# DIFF_TIMEOUT: 60 ")):
+            self.write(name, line + "\n# reason: 5 s\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 1)
+        for name in ("t00", "t01", "t02", "t03"):
+            self.assertIn(name + ".obs:1", out)
 
     def test_nondeterministic_without_reason_fails(self):
         self.write("t00", "# NONDETERMINISTIC_OUTPUT\nuse System;\n")
