@@ -1,0 +1,86 @@
+#~
+A program's own bounded generic class (T : Compare) returns its type argument,
+not its bound. The class is declared BEFORE its caller: analyzing it first
+rewrote the declared 'T' to 'Compare', so Holder<String>->Get() came back a
+Compare -- no Size(), no ToString in "{$...}", not assignable to a String.
+Declared after the caller, it already worked. Covers a plain return, an
+array return, a Vector<T> return, a parameter, a chained call, and a bound
+that is a program interface.
+~#
+use Collection;
+
+interface Named {
+  method : virtual : public : GetLabel() ~ String;
+}
+
+class Person implements Named, Stringify {
+  @n : String;
+  New(n : String) { @n := n; }
+  method : public : GetLabel() ~ String { return @n; }
+  method : public : Shout() ~ String { return @n->ToUpper(); }
+  method : public : ToString() ~ String { return "Person(" + @n + ")"; }
+}
+
+class Holder<T : Compare> {
+  @value : T;
+  New(value : T) { @value := value; }
+  method : public : Get() ~ T { return @value; }
+  method : public : Set(value : T) ~ Nil { @value := value; }
+  method : public : Pair() ~ T[] { return [@value, @value]; }
+  method : public : AsVector() ~ Vector<T> {
+    v := Vector->New()<T>;
+    v->AddBack(@value);
+    return v;
+  }
+  method : public : Self() ~ Holder<T> { return @self; }
+}
+
+class NamedBox<T : Named> {
+  @item : T;
+  New(item : T) { @item := item; }
+  method : public : Get() ~ T { return @item; }
+}
+
+class CoreGenericBoundedReturn {
+  function : Main(args : String[]) ~ Nil {
+    pass := true;
+
+    h := Holder->New("abc")<String>;
+    pass := Check("Get()->Size()", h->Get()->Size() = 3, pass);
+    pass := Check("interpolated Get()", "{$(h->Get())}"->Equals("abc"), pass);
+    t : String := h->Get();
+    pass := Check("assigned to a String", t->Equals("abc"), pass);
+    s := h->Get();
+    pass := Check("inferred local", "{$s}"->Equals("abc") & s->ToUpper()->Equals("ABC"), pass);
+
+    h->Set("hello");
+    pass := Check("Set(T)", h->Get()->Size() = 5, pass);
+    pass := Check("T[] return", h->Pair()[1]->Size() = 5, pass);
+    pass := Check("Vector<T> return", h->AsVector()->Get(0)->ToUpper()->Equals("HELLO"), pass);
+    pass := Check("chained Self()->Get()", h->Self()->Get()->Size() = 5, pass);
+
+    d : Holder<String> := Holder->New("xy")<String>;
+    pass := Check("declared variable", d->Get()->Size() = 2, pass);
+
+    n := NamedBox->New(Person->New("ada"))<Person>;
+    pass := Check("program interface bound", n->Get()->Shout()->Equals("ADA"), pass);
+    pass := Check("bound's method still callable", n->Get()->GetLabel()->Equals("ada"), pass);
+
+    if(pass) {
+      "PASS: bounded generic returns its type argument"->PrintLine();
+    }
+    else {
+      "FAIL: bounded generic returns its type argument"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  function : Check(name : String, ok : Bool, pass : Bool) ~ Bool {
+    if(ok) {
+      "  PASS: {$name}"->PrintLine();
+      return pass;
+    };
+    "  FAIL: {$name}"->PrintLine();
+    return false;
+  }
+}

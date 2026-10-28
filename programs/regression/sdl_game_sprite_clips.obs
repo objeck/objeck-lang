@@ -1,0 +1,146 @@
+# EXTRA_LIBS: gen_collect,sdl2,sdl_game
+#~
+Game.Framework: AnimatedImageSprite->AddClips cuts frames of the requested height.
+
+The defect: AddClips(num_x_clips, x_clip_size, num_y_clips, y_clip_size) built every clip as
+'Rect->New(j * x_clip_size, i * y_clip_size, x_clip_size, x_clip_size)': the frame WIDTH was
+also used as its height. Rows were placed at the right offsets, but each frame was cut square,
+so a sheet of non-square frames (the 32x52 player sheet in programs/deploy/media/player.png)
+drew only the top 32 rows of every frame. The fix uses y_clip_size for the height; the
+signature is unchanged, and square sheets cut exactly as before.
+
+How it is checked, headless: a 64x104 sheet of four 32x52 frames, each a solid colour, is drawn
+with a software renderer and saved as a PNG; an AnimatedImageSprite loads it onto a second
+software renderer, AddClips(2, 32, 2, 52) cuts it, and each frame is rendered at the origin of
+a black target. Reading the pixels back shows the frame's colour down to row 51 and black from
+row 52 (with the defect, black from row 32). A square-frame sheet checks the unchanged case.
+
+SDL_VIDEODRIVER is set to "dummy", as in sdl2_bindings.obs, so no display is needed. If SDL
+cannot start even so, or there is no temporary directory for the PNG, this prints SKIP and
+exits 0.
+~#
+use System;
+use System.IO.Filesystem;
+use Game.SDL2;
+use Game.Framework;
+
+class SdlGameSpriteClips {
+	@failures : Int;
+	@checks : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		SdlGameSpriteClips->New()->Run();
+	}
+
+	New() {
+		@failures := 0;
+		@checks := 0;
+	}
+
+	method : Check(name : String, ok : Bool) ~ Bool {
+		@checks += 1;
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			@failures += 1;
+			"  FAIL: {$name}"->PrintLine();
+		};
+
+		return ok;
+	}
+
+	method : Pixel(surface : Surface, x : Int, y : Int) ~ Int {
+		return surface->GetPixels()->Get(y * (surface->GetPitch() / 4) + x);
+	}
+
+	method : Run() ~ Nil {
+		Runtime->SetEnvironmentVariable("SDL_VIDEODRIVER", "dummy");
+		if(Core->Init(SubsystemFlags->SDL_INIT_VIDEO) <> 0) {
+			error := Core->GetError();
+			"SKIP: SDL video could not start with the dummy driver: {$error}"->PrintLine();
+			return;
+		};
+		Image->Init(ImageFlags->IMG_INIT_PNG);
+
+		directory := Runtime->GetTempDir();
+		if(directory = Nil | directory->Size() = 0) {
+			"SKIP: no temporary directory for the sprite sheet"->PrintLine();
+			Core->Quit();
+			return;
+		};
+		pid := Runtime->GetProcessId();
+
+		# opaque ARGB: red, green / blue, yellow (none is the loader's cyan colour key)
+		colours := [0xffff0000, 0xff00ff00, 0xff0000ff, 0xffffff00];
+
+		# the reported shape: frames taller than they are wide
+		CheckSheet("32x52 frames", "{$directory}/objeck_sprite_clips_tall_{$pid}.png", 32, 52, colours);
+		# frames wider than they are tall
+		CheckSheet("40x24 frames", "{$directory}/objeck_sprite_clips_wide_{$pid}.png", 40, 24, colours);
+		# square frames cut as they always did
+		CheckSheet("30x30 frames", "{$directory}/objeck_sprite_clips_square_{$pid}.png", 30, 30, colours);
+
+		Image->Quit();
+		Core->Quit();
+
+		if(@failures > 0) {
+			"FAIL: sdl_game_sprite_clips: {$@failures} of {$@checks} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: sdl_game_sprite_clips ({$@checks} checks)"->PrintLine();
+	}
+
+	# A 2x2 sheet of w x h frames, cut by AddClips(2, w, 2, h); each frame drawn at the origin
+	# must fill exactly w x h pixels with its colour
+	method : CheckSheet(what : String, path : String, w : Int, h : Int, colours : Int[]) ~ Nil {
+		"{$what}:"->PrintLine();
+
+		# the sheet
+		sheet := Surface->New(0, w * 2, h * 2, 32, PixelValue->SDL_PIXELFORMAT_ARGB8888);
+		painter := Renderer->CreateSoftwareRenderer(sheet);
+		each(i : 4) {
+			colour := colours[i];
+			painter->SetDrawColor((colour >> 16) and 0xff, (colour >> 8) and 0xff, colour and 0xff, 255);
+			painter->FillRect(Rect->New((i % 2) * w, (i / 2) * h, w, h));
+		};
+		File->Delete(path);
+		saved := painter->SavePNG(path);
+		painter->Destroy();
+		sheet->Free();
+		if(<>Check("the sheet is written", saved & File->Exists(path))) {
+			return;
+		};
+
+		# a target with room below and right of a frame, so an overlong cut would show
+		target := Surface->New(0, w * 2 + 8, h * 2 + 8, 32, PixelValue->SDL_PIXELFORMAT_ARGB8888);
+		renderer := Renderer->CreateSoftwareRenderer(target);
+		sprite := AnimatedImageSprite->New(renderer, path);
+		if(Check("the sheet loads as a sprite", sprite->IsOk())) {
+			sprite->AddClips(2, w, 2, h);
+			Check("AddClips(2, w, 2, h) makes four clips", sprite->GetClipCount() = 4);
+
+			each(i : 4) {
+				renderer->SetDrawColor(0, 0, 0, 255);
+				renderer->Clear();
+				sprite->Render(0, 0, i);
+
+				shot := renderer->ReadPixels(Nil);
+				if(Check("frame {$i} is read back", <>shot->IsNull())) {
+					colour := colours[i];
+					Check("frame {$i}: its colour at the top", Pixel(shot, 1, 1) = colour);
+					Check("frame {$i}: its colour on its last row ({$(h - 1)})", Pixel(shot, 1, h - 1) = colour & Pixel(shot, w - 1, h - 1) = colour);
+					Check("frame {$i}: nothing below it (row {$h})", Pixel(shot, 1, h) = 0xff000000);
+					Check("frame {$i}: nothing right of it (column {$w})", Pixel(shot, w, 1) = 0xff000000);
+					shot->Free();
+				};
+			};
+		};
+
+		sprite->Free();
+		renderer->Destroy();
+		target->Free();
+		File->Delete(path);
+	}
+}

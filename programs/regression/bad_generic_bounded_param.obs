@@ -1,0 +1,20 @@
+# EXPECT_COMPILE_ERROR: Undefined function/method call: 'Set(..)'
+# EXPECT_ERROR_COUNT: 1
+#~
+A bounded parameter (T : Compare) takes the type argument, not any value of
+the bound: Holder<String>->Set() must reject an IntRef, though IntRef is a
+Compare. With the class declared before its caller the parameter read as a
+Compare and the IntRef was stored silently; declared after, it was rejected.
+~#
+class Holder<T : Compare> {
+  @v : T;
+  New(v : T) { @v := v; }
+  method : public : Set(v : T) ~ Nil { @v := v; }
+}
+
+class BadGenericBoundedParam {
+  function : Main(args : String[]) ~ Nil {
+    h := Holder->New("abc")<String>;
+    h->Set(IntRef->New(5));
+  }
+}
