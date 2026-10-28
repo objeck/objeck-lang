@@ -1,6 +1,9 @@
 #~~
 # Objeck machine learning library: anomaly (outlier) detection
 # Copyright (c) 2026 Randy Hollines
+#
+# Credits: FastMCD, IsolationForest and LocalOutlierFactor follow the structure
+# of scikit-learn (Copyright (c) 2007-2026 The scikit-learn developers, BSD-3-Clause).
 ~~#
 
 use Collection;

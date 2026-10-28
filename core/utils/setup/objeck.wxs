@@ -5,13 +5,13 @@
 
   Build examples:
     wix build -arch x64 -o objeck-x64.msi ^
-      -d Platform=x64 -d Version=2026.2.1 ^
+      -d Platform=x64 -d Version=YEAR.MONTH.RELEASE ^
       -d SourceDir=..\..\Objeck-Build\release-x64\objeck-lang-x64 ^
       -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext ^
       objeck.wxs
 
     wix build -arch arm64 -o objeck-arm64.msi ^
-      -d Platform=arm64 -d Version=2026.2.1 ^
+      -d Platform=arm64 -d Version=YEAR.MONTH.RELEASE ^
       -d SourceDir=..\..\Objeck-Build\release-arm64\objeck-lang-arm64 ^
       -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext ^
       objeck.wxs

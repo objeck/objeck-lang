@@ -108,7 +108,7 @@ class Flashcards {
 	}
 
 	method : LoadMedia() ~ Font {
-		font_path :=  "./media/lazy.ttf";
+		font_path :=  "./media/hella.ttf";
 		font := Font->New(font_path, 128);
 		if(font->IsNull()) {
 			"Failed to load font '{$font_path}'!"->ErrorLine();
