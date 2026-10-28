@@ -761,6 +761,14 @@ graph LR
     style D fill:#fff4e1
 ```
 
+An analyzed program is keyed by the exact texts of its files and its library
+list. Diagnostics analyze each edit; hover and completion work from the last
+program that analyzed cleanly. Since v2026.10.2 an edit retires programs rather
+than freeing them, and a request whose texts and libraries match a retired
+program reuses it, so each edit is analyzed once instead of twice (about 2×
+faster per edit). Unclaimed programs are freed at the next edit, and
+`OBJECK_LSP_NO_CACHE=1` turns all reuse off.
+
 ### REPL Features
 
 - **Interactive Evaluation:** Execute code line-by-line
@@ -969,11 +977,14 @@ With multiple threads running, a collection cannot begin until every other
 thread has reached a known-safe point. Objeck uses a **cooperative**
 stop-the-world scheme rather than OS thread suspension:
 
-- **Safepoints.** Each mutator polls a safepoint in the interpreter dispatch
-  loop and again on each allocation. When a collection is requested, threads
-  observe the request at their next safepoint and **park** until it completes.
-  The AMD64 and ARM64 JITs emit the same safepoint poll at every label so
-  JIT-compiled code parks just as promptly as interpreted code.
+- **Safepoints.** The interpreter polls a safepoint every 1,024 instructions of
+  its dispatch loop, and every allocation polls too. When a collection is
+  requested, threads observe the request at their next safepoint and **park**
+  until it completes. The AMD64 and ARM64 JITs emit the same poll at every loop
+  header, so JIT-compiled code parks just as promptly; a compiled loop that
+  starts with values still pending in registers spills them to the frame's
+  scratch slots before it parks and reloads them after, because a register
+  cannot be relocated.
 - **Blocking calls.** A thread about to block in a syscall (thread `Join`/sleep,
   socket I/O) brackets the call with *begin/end-blocking* markers so it counts as
   already parked — a collection never waits on a thread stuck in a blocking read.
@@ -983,6 +994,16 @@ stop-the-world scheme rather than OS thread suspension:
   of roots scanned by the mark phase is exactly the set the fixup phase rewrites,
   so a live object can never be reclaimed while a reference to it survives in a
   parked thread's frame or operand stack.
+- **Typed and untyped roots.** A frame's declared locals are walked by type, so
+  only object slots are followed. Some frame words have no declaration and are
+  scanned *conservatively*: a word is treated as a reference only if it is the
+  address of a live object, and relocated only through a genuine forwarding
+  address. These are the operand stacks, the JIT's scratch slots, and a method's
+  **and/or slot**, where a conditional (`c ? a : b`) leaves its value between
+  the branch that stores it and the load after the join. A collection can fall
+  in that gap, so the slot is a root in interpreted and compiled frames alike;
+  before v2026.10.2 it was walked over, and a promoted object could be read
+  back through its old nursery address.
 
 The collector remains generational and non-OS-suspending; correctness comes from
 complete root coverage at the safepoint, not from freezing threads mid-instruction.
@@ -1055,18 +1076,19 @@ sequenceDiagram
 
     Note over YG: Young gen fills up
 
-    YG->>MM: Trigger GC
-    MM->>App: Stop the World
+    YG->>MM: Trigger GC (nursery full, or old generation past its threshold)
+    MM->>App: Stop the World (every other thread parks)
 
-    MM->>MM: Mark phase (from roots)
+    MM->>MM: Mark phase (from roots, and the dirty list on a minor GC)
     MM->>YG: Mark reachable objects
-    MM->>OG: Mark reachable objects
-
-    MM->>MM: Sweep phase
-    MM->>YG: Free unmarked objects
+    MM->>OG: Mark reachable objects (major GC)
 
     MM->>MM: Promote survivors
-    YG->>OG: Move long-lived objects
+    YG->>OG: Copy each marked young object, leave a forwarding address
+    MM->>MM: Fix up roots and old objects to the new addresses
+    MM->>YG: Reset the nursery (nothing in it is swept)
+
+    MM->>OG: Major GC only: sweep unmarked old objects into the free lists
 
     MM->>App: Resume execution
 ```
@@ -1096,6 +1118,23 @@ mindmap
 | **Nursery** (young) | Objects, bump-allocated in one contiguous region: 128 MB reserved (`YOUNG_REGION_SIZE`), its usable limit set by `--nursery` / `OBJECK_NURSERY`; on Windows only the limit is committed | Minor GC: survivors promoted to the old generation, references fixed up |
 | **Old generation** | Promoted objects, arrays, objects larger than the nursery limit, and every allocation a native library makes; each tracked in `PtrSet` | Major GC: mark and sweep in place |
 | **Operand and call stacks** | Locals, frames, temporaries | Scanned as roots, never collected |
+
+### When Collections Run
+
+- **Minor** collections run when the nursery fills.
+- **Major** collections run when the old generation outgrows its threshold.
+  After each major the next threshold is twice the live heap, never below
+  8 MB, so collection work stays proportional to allocation (before
+  v2026.10.2 it grew only after eight majors in a row freed nothing, and a
+  program holding a large table collected on nearly every array allocation).
+- **`--gc-threshold`** sets the threshold. It holds as given while a major
+  leaves at least a quarter of it free, which is what lets a stress run such
+  as the nightly `--gc-threshold=64k` collect every 64 KB; once more than three
+  quarters of it survive, it scales with the live heap like the default, and
+  returns to the given value once the live heap fits under it again.
+- **Freed old-generation blocks** go to one free list per size class, four
+  classes per power of two from 16 bytes to 4 MB, so a reuse is a single pop
+  rather than a search.
 
 **Key Characteristics:**
 - **O(1) Membership:** the old generation is an open-addressed address set; no linear scans
