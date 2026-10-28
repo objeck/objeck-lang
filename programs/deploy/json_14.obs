@@ -1,0 +1,153 @@
+#~
+# compile: obc -src json_14.obs -lib json,json_stream
+# run:     obr json_14.obe
+#
+# JSON is the most common way programs exchange data. The Data.JSON library
+# parses JSON text into a tree of JsonElement values that you can walk: an
+# object is looked up by name with Get, an array by index, and a value is
+# read as the type you expect with GetString, GetInt, GetFloat or GetBool.
+# FindElements jumps straight to a value by path, like "forecast/[0]/day".
+# You can also build a document in code and print it, compact or indented.
+# String escapes such as \n are already decoded when the text is parsed, so
+# GetString hands back the real characters. Finally, the streaming parser
+# reads a file token by token without building a tree, which suits files too
+# big to load at once. Run it from the examples folder so data/weather.json
+# is found.
+#
+# output (abridged):
+#   name: Ada, age: 36, active: true
+#   languages: 2
+#     en
+#     fr
+#   note has 2 lines
+#   fields: active age languages name note
+#   Tokyo is Sunny at 21.5 C
+#   Mon high 24 low 17
+#   Tue high 22 low 16
+#   Wed high 26 low 18
+#   first day by path: Mon
+#   built: {"city":"Oslo","days":["Thu","Fri"],"snow":true,"temp_c":-3.5}
+#   {
+#   	"city": "Oslo",
+#   	"days": [
+#   ...
+#   }
+#   streamed highs: 24 22 26
+~#
+
+use System.IO.Filesystem;
+use Data.JSON;
+use Data.JSON.Stream;
+
+class Json {
+  function : Main(args : String[]) ~ Nil {
+    ParseText();
+    ParseFile();
+    Build();
+    Stream();
+  }
+
+  # parse JSON held in a string and read typed values out of it
+  function : ParseText() ~ Nil {
+    # inside an Objeck string, \" is a quote and \\n becomes the two
+    # characters \ and n, which is how JSON spells a newline
+    text := "{\"name\": \"Ada\", \"age\": 36, \"active\": true, \"languages\": [\"en\", \"fr\"], \"note\": \"one\\ntwo\"}";
+
+    # TextToElement returns the root element, or Nil if the text is not JSON
+    root := JsonParser->TextToElement(text);
+    if(root = Nil) {
+      "could not parse the text"->PrintLine();
+      return;
+    };
+
+    # Get(name) finds a field of an object; then read it as the right type
+    name := root->Get("name")->GetString();
+    age := root->Get("age")->GetInt();
+    active := root->Get("active")->GetBool();
+    "name: {$name}, age: {$age}, active: {$active}"->PrintLine();
+
+    # an array has a Size, and Get(index) reads one element
+    languages := root->Get("languages");
+    "languages: {$(languages->Size())}"->PrintLine();
+    for(i := 0; i < languages->Size(); i += 1;) {
+      "  {$(languages->Get(i)->GetString())}"->PrintLine();
+    };
+
+    # the \n escape was decoded during parsing: the string holds a newline
+    note := root->Get("note")->GetString();
+    "note has {$(note->Lines()->Size())} lines"->PrintLine();
+
+    # GetNames lists an object's field names (a Vector, in sorted order)
+    names := root->GetNames();
+    "fields:"->Print();
+    for(i := 0; i < names->Size(); i += 1;) {
+      " {$(names->Get(i))}"->Print();
+    };
+    ""->PrintLine();
+  }
+
+  # load a JSON file and walk its nested objects and arrays
+  function : ParseFile() ~ Nil {
+    text := FileReader->ReadFile("data/weather.json");
+    root := JsonParser->TextToElement(text);
+    if(root = Nil) {
+      "could not read data/weather.json"->PrintLine();
+      return;
+    };
+
+    location := root->Get("location")->GetString();
+    current := root->Get("current");
+    condition := current->Get("condition")->GetString();
+    temp := current->Get("temp_c")->GetFloat();
+    "{$location} is {$condition} at {$temp:.1} C"->PrintLine();
+
+    # each element of the forecast array is an object of its own
+    forecast := root->Get("forecast");
+    for(i := 0; i < forecast->Size(); i += 1;) {
+      day := forecast->Get(i);
+      # (a '"' inside {$...} trips a known compiler defect, so a call that
+      # takes a string literal is stored in a local first)
+      name := day->Get("day")->GetString();
+      high := day->Get("high")->GetInt();
+      low := day->Get("low")->GetInt();
+      "{$name} high {$high} low {$low}"->PrintLine();
+    };
+
+    # FindElements follows a path: names separated by '/', [n] for an index
+    first := root->FindElements("forecast/[0]/day");
+    "first day by path: {$(first->GetString())}"->PrintLine();
+  }
+
+  # build a document in code and turn it into JSON text
+  function : Build() ~ Nil {
+    doc := JsonElement->New(JsonElement->JsonType->OBJECT);
+    doc->Insert("city", "Oslo");
+    doc->Insert("temp_c", -3.5);
+    doc->Insert("snow", true);
+
+    days := JsonElement->New(JsonElement->JsonType->ARRAY);
+    days->Add("Thu");
+    days->Add("Fri");
+    doc->Insert("days", days);
+
+    # ToString gives compact text; ToFormattedString indents it for people.
+    # Object fields come out sorted by name, not in the order inserted.
+    "built: {$(doc->ToString())}"->PrintLine();
+    doc->ToFormattedString()->PrintLine();
+  }
+
+  # the streaming parser moves forward through a file without building a tree
+  function : Stream() ~ Nil {
+    file := FileReader->New("data/weather.json");
+    parser := StreamParser->New(file);
+    "streamed highs:"->Print();
+    # FindElement skips ahead to the next field with this name; Next moves
+    # onto its value
+    while(parser->FindElement("high")) {
+      parser->Next();
+      " {$(parser->GetTypeValue())}"->Print();
+    };
+    ""->PrintLine();
+    file->Close();
+  }
+}

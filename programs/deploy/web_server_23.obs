@@ -1,0 +1,162 @@
+#~
+# compile: obc -src web_server_23.obs -lib net,net_server,json,cipher
+# run:     obr web_server_23.obe          (starts, tests itself, stops)
+#          obr web_server_23.obe serve    (keeps serving on port 8080)
+#
+# A small web server. You write a class that inherits from
+# HttpRequestHandler and fill in ProcessGet: it receives the Request (the
+# path, query string and headers the browser sent) and fills in the Response
+# (a status code, a content type and a body). WebServer->Serve runs it,
+# answering each connection on its own thread. This one has two routes: '/'
+# returns an HTML page and '/api/time' returns JSON; anything else is a 404.
+#
+# So that the example finishes on its own, it starts the server on a
+# background thread on port 0 (meaning "any free port"), asks the server
+# which port it got, calls itself with HttpClient, prints what came back,
+# and stops the server. Run it with 'serve' to keep it running on port 8080
+# instead, then open http://localhost:8080/ in a browser; Ctrl+C stops it.
+#
+# output (the port and time vary):
+#   server listening on port 57182
+#   GET /          -> 200 text/html: <html><body><h1>Hello from Objeck!</h1>< ...
+#   GET /api/time  -> 200 application/json: {"time":"Wednesday, October 28, 2026 4:3 ...
+#   GET /missing   -> 404
+#   server stopped
+~#
+
+use System.Concurrency;
+use Web.HTTP.Server;
+
+# The handler: the server makes one for each connection and calls
+# ProcessGet for each GET request on it.
+class SiteHandler from HttpRequestHandler {
+  # a static field is shared by every handler, so it counts all requests;
+  # handlers run on different threads, so a lock guards it
+  @count : static : Int;
+  @lock : static : ThreadMutex;
+
+  New() {
+    Parent();
+  }
+
+  method : ProcessGet(request : Request, response : Response) ~ Bool {
+    path := request->GetPath();
+
+    # route on the path: the part of the URL after the host name; the server
+    # hands a request for the bare '/' to us as '/index.html'
+    if(path->Equals("/index.html")) {
+      Count();
+      html := "<html><body><h1>Hello from Objeck!</h1><p>Try <a href='/api/time'>/api/time</a>.</p></body></html>";
+      response->SetCodeTypeContent(200, "text/html", html);
+    }
+    else if(path->Equals("/api/time")) {
+      requests := Count();
+      now := System.Time.Date->New()->ToString();
+      json := "{\"time\":\"{$now}\",\"requests\":{$requests}}";
+      response->SetCodeTypeContent(200, "application/json", json);
+    }
+    else {
+      response->SetCodeContent(404, "Not found");
+    };
+
+    # false: this request is fully answered; true would also pass it on to
+    # the server's own static-file handling
+    return false;
+  }
+
+  # every handler also says what to do with a POST (a form or upload);
+  # this site takes none, so the answer is 405 Method Not Allowed
+  method : ProcessPost(request : Request, response : Response) ~ Bool {
+    response->SetCodeContent(405, "Method not allowed");
+    return false;
+  }
+
+  # adds one to the shared request count and returns the new count
+  function : Count() ~ Int {
+    critical(@lock) {
+      @count += 1;
+    };
+    return @count;
+  }
+
+  function : Prepare() ~ Nil {
+    @lock := ThreadMutex->New("site_count");
+  }
+}
+
+class WebServerExample {
+  function : Main(args : String[]) ~ Nil {
+    SiteHandler->Prepare();
+
+    # 'serve' mode: run as a real server; Serve() does not return until the
+    # process is stopped (Ctrl+C); pass true as a third argument to have the
+    # server print every request it receives
+    if(args->Size() > 0 & args[0]->Equals("serve")) {
+      "serving on http://localhost:8080/ -- press Ctrl+C to stop"->PrintLine();
+      WebServer->Serve(SiteHandler->New()->GetClass(), 8080, false);
+      return;
+    };
+
+    # demo mode: Serve() blocks, so run it on a background thread
+    server := Thread->New() {
+      New() {
+        Parent();
+      }
+
+      method : public : Run(arg : System.Base) ~ Nil {
+        # port 0 lets the system pick a free port
+        WebServer->Serve(SiteHandler->New()->GetClass(), "127.0.0.1", 0);
+      }
+    };
+    server->Execute(Nil);
+
+    # wait (up to 10 seconds) until the server is listening and knows its port
+    waited := 0;
+    while(WebServer->GetBoundPort() = 0 & waited < 10000) {
+      Thread->Sleep(25);
+      waited += 25;
+    };
+    port := WebServer->GetBoundPort();
+    if(port = 0) {
+      "The server did not start."->PrintLine();
+      return;
+    };
+    "server listening on port {$port}"->PrintLine();
+
+    # be our own first visitors
+    Visit(port, "/");
+    Visit(port, "/api/time");
+    Visit(port, "/missing");
+
+    WebServer->Stop();
+    "server stopped"->PrintLine();
+  }
+
+  # requests one path and prints the status, content type and body
+  function : Visit(port : Int, path : String) ~ Nil {
+    # the client classes live in Web.HTTP; Web.HTTP.Server has its own
+    # Request and Response, so the client's names are written out in full
+    client := Web.HTTP.HttpClient->New();
+    response := client->Get(Web.HTTP.Url->New("http://127.0.0.1:{$port}{$path}"));
+    if(response = Nil | response->GetCode() = 0) {
+      "GET {$path} -> no answer"->PrintLine();
+      return;
+    };
+
+    code := response->GetCode();
+    line := "GET {$path}";
+    while(line->Size() < 14) {
+      line += " ";
+    };
+    line += " -> {$code}";
+
+    if(code = 200 & response->GetContent() <> Nil) {
+      body := response->GetContent()->ToString();
+      if(body->Size() > 40) {
+        body := body->SubString(40) + " ...";
+      };
+      line += " {$(response->GetType())}: {$body}";
+    };
+    line->PrintLine();
+  }
+}

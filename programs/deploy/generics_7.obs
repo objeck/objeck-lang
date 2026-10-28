@@ -1,0 +1,174 @@
+#~
+# compile: obc -src generics_7.obs
+# run:     obr generics_7.obe
+#
+# Generics: writing a class or a function once and using it with many types.
+# Box<T> below holds a value of some type T; when you create one you say what
+# T is, as in Box->New("hi")<String>, and the compiler then checks that only
+# Strings go in and knows that a String comes out -- no casts needed.
+#
+# Functions can have type parameters of their own. For those the compiler
+# works T out from the arguments, so a call looks like any other call:
+# Max(numbers). A bound such as <T : Compare> limits T to types that can be
+# compared, which is what lets the code inside call a->Compare(b).
+#
+#   class Box<T> { @value : T; ... }
+#   function : Max<T : Compare>(values : Vector<T>) ~ T
+#
+# The standard library's collections are generic: Vector<T> is a growable
+# list, and Map<K : Compare, V> a table from keys to values kept in key order
+# (its keys are bounded by Compare so that they can be sorted).
+#
+# output:
+#   box holds 'hello', size 5
+#   box holds 42
+#   largest word: pear
+#   largest number: 17
+#   oldest: Grace (85)
+#   15 clamped to 1..10: 10
+#   'zebra' clamped to 'apple'..'mango': mango
+#   swapped: c b a
+#   ages: Ada=36 Alan=41 Grace=85
+~#
+
+use Collection;
+
+# a generic class: T stands for whatever type the caller chooses
+class Box<T> {
+  @value : T;
+
+  New(value : T) {
+    @value := value;
+  }
+
+  method : public : Get() ~ T {
+    return @value;
+  }
+
+  method : public : Set(value : T) ~ Nil {
+    @value := value;
+  }
+}
+
+# a class of our own can meet the Compare bound by implementing it.
+# Compare returns a negative number, zero or a positive number.
+class Person implements Compare {
+  @name : String;
+  @age : Int;
+
+  New(name : String, age : Int) {
+    @name := name;
+    @age := age;
+  }
+
+  method : public : GetName() ~ String {
+    return @name;
+  }
+
+  method : public : GetAge() ~ Int {
+    return @age;
+  }
+
+  # people are ordered by age
+  method : public : Compare(rhs : Compare) ~ Int {
+    that := rhs->As(Person);
+    return @age - that->GetAge();
+  }
+
+  # Compare also asks for a hash number, used by hashed collections
+  method : public : HashID() ~ Int {
+    return @age;
+  }
+}
+
+# The bounds in this program are on functions. A bounded generic CLASS of
+# your own, such as class Holder<T : Compare>, currently hands back its
+# bound (Compare) where it should hand back T -- a known compiler defect --
+# so its results would need a cast. Unbounded classes like Box are not
+# affected.
+class Generics {
+  # a generic function: one body that works for any comparable type.
+  # T is inferred from the argument, and the result needs no cast.
+  function : Max<T : Compare>(values : Vector<T>) ~ T {
+    best := values->Get(0);
+    each(v in values) {
+      if(v->Compare(best) > 0) {
+        best := v;
+      };
+    };
+    return best;
+  }
+
+  # the bound again: keep a value between a low and a high limit
+  function : Clamp<T : Compare>(value : T, low : T, high : T) ~ T {
+    if(value->Compare(low) < 0) {
+      return low;
+    };
+    if(value->Compare(high) > 0) {
+      return high;
+    };
+    return value;
+  }
+
+  # no bound needed here: swapping works for an array of anything
+  function : Swap<T>(items : T[], i : Int, j : Int) ~ Nil {
+    temp := items[i];
+    items[i] := items[j];
+    items[j] := temp;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    # the type in <...> fixes what each Box holds
+    text := Box->New("hello")<String>;
+    "box holds '{$(text->Get())}', size {$(text->Get()->Size())}"->PrintLine();
+
+    # generics hold objects, so a whole number goes in an IntRef
+    # (an object that wraps an Int)
+    number := Box->New(IntRef->New(41))<IntRef>;
+    number->Set(IntRef->New(42));
+    "box holds {$(number->Get())}"->PrintLine();
+
+    # one generic function, three element types; T is worked out each time
+    fruit := Vector->New()<String>;
+    fruit->AddBack("kiwi");
+    fruit->AddBack("pear");
+    fruit->AddBack("apple");
+    "largest word: {$(Max(fruit))}"->PrintLine();
+
+    numbers := Vector->New()<IntRef>;
+    numbers->AddBack(IntRef->New(8));
+    numbers->AddBack(IntRef->New(17));
+    numbers->AddBack(IntRef->New(3));
+    "largest number: {$(Max(numbers))}"->PrintLine();
+
+    people := Vector->New()<Person>;
+    people->AddBack(Person->New("Ada", 36));
+    people->AddBack(Person->New("Grace", 85));
+    people->AddBack(Person->New("Alan", 41));
+    oldest := Max(people);
+    "oldest: {$(oldest->GetName())} ({$(oldest->GetAge())})"->PrintLine();
+
+    # Strings and IntRefs both implement Compare, so both fit the bound
+    limited := Clamp(IntRef->New(15), IntRef->New(1), IntRef->New(10));
+    "15 clamped to 1..10: {$limited}"->PrintLine();
+    word := Clamp("zebra", "apple", "mango");
+    "'zebra' clamped to 'apple'..'mango': {$word}"->PrintLine();
+
+    # T can also come from an array's element type
+    letters := ["a", "b", "c"];
+    Swap(letters, 0, 2);
+    "swapped: {$letters[0]} {$letters[1]} {$letters[2]}"->PrintLine();
+
+    # Map<K, V>: name each person's age; the keys come back in sorted order
+    ages := Map->New()<String, IntRef>;
+    each(person in people) {
+      ages->Insert(person->GetName(), IntRef->New(person->GetAge()));
+    };
+    line := "ages:";
+    keys := ages->GetKeys();
+    each(name in keys) {
+      line += " {$name}={$(ages->Find(name))}";
+    };
+    line->PrintLine();
+  }
+}

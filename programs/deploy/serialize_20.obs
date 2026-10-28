@@ -1,0 +1,127 @@
+#~
+# compile: obc -src serialize_20.obs
+# run:     obr serialize_20.obe
+#
+# Saving objects and loading them back. A Serializer turns values -- numbers,
+# arrays, strings, collections and your own objects, including the objects
+# they point to -- into one Byte[]. Write those bytes to a file (or send them
+# over a socket), and later a Deserializer rebuilds the same values, read back
+# in the same order they were written. This is the quickest way to save a
+# program's state between runs without designing a file format. Your own
+# classes need no extra code: every field is saved, and an object a field
+# refers to is saved along with it.
+#
+# output (the folder and byte count vary):
+#   wrote 332 bytes to C:\Users\me\AppData\Local\Temp/serialize_20.dat
+#   read 332 bytes back
+#   Ada, level 7, scores: 90 85 99, pet: Pip the owl
+#   map: 3 entries, language=Objeck
+#   weights: 3 values adding up to 1.00
+#   end marker: done
+#   file removed: true
+~#
+
+use Collection;
+use System.IO;
+use System.IO.Filesystem;
+
+# a pet belongs to a player: saving the player saves the pet as well
+class Pet {
+  @name : String;
+  @kind : String;
+
+  New(name : String, kind : String) {
+    @name := name;
+    @kind := kind;
+  }
+
+  method : public : ToString() ~ String {
+    return "{$@name} the {$@kind}";
+  }
+}
+
+class Player {
+  @name : String;
+  @level : Int;
+  @scores : Int[];
+  @pet : Pet;
+
+  New(name : String, level : Int, scores : Int[], pet : Pet) {
+    @name := name;
+    @level := level;
+    @scores := scores;
+    @pet := pet;
+  }
+
+  method : public : ToString() ~ String {
+    text := "{$@name}, level {$@level}, scores:";
+    each(i : @scores) {
+      text += " {$(@scores[i])}";
+    };
+    text += ", pet: {$(@pet->ToString())}";
+    return text;
+  }
+}
+
+class Serialize {
+  function : Main(args : String[]) ~ Nil {
+    # build some values worth saving: an object graph, a map and an array
+    player := Player->New("Ada", 7, [90, 85, 99], Pet->New("Pip", "owl"));
+
+    settings := Map->New()<String, Compare>;
+    settings->Insert("language", "Objeck");
+    settings->Insert("version", IntRef->New(2026));
+    settings->Insert("ratio", FloatRef->New(0.75));
+
+    weights := [0.5, 0.25, 0.25];
+
+    # write them, in order, then turn everything written into bytes
+    serializer := Serializer->New();
+    serializer->Write(player);
+    serializer->Write(settings);
+    serializer->Write(weights);
+    serializer->Write("done");
+    bytes := serializer->Serialize();
+
+    # save the bytes in the system's temporary folder
+    path := Runtime->GetTempDir();
+    path += "/serialize_20.dat";
+    if(<>FileWriter->WriteFile(path, bytes)) {
+      "could not write {$path}"->ErrorLine();
+      return;
+    };
+    "wrote {$(bytes->Size())} bytes to {$path}"->PrintLine();
+
+    # ... later, perhaps in another run of the program: read the file back
+    loaded := FileReader->ReadBinaryFile(path);
+    if(loaded = Nil) {
+      "could not read {$path}"->ErrorLine();
+      return;
+    };
+    "read {$(loaded->Size())} bytes back"->PrintLine();
+
+    # read the values in the SAME order they were written; ReadObject gives
+    # back a plain Base, so As() says what type it really is
+    deserializer := Deserializer->New(loaded);
+    copy := deserializer->ReadObject()->As(Player);
+    copy->ToString()->PrintLine();
+
+    map := deserializer->ReadObject()->As(Map<String, Compare>);
+    language := map->Find("language")->As(String);
+    "map: {$(map->Size())} entries, language={$language}"->PrintLine();
+
+    # arrays of numbers have their own Read call
+    loaded_weights := deserializer->ReadFloatArray();
+    total := 0.0;
+    each(i : loaded_weights) {
+      total += loaded_weights[i];
+    };
+    "weights: {$(loaded_weights->Size())} values adding up to {$(Float->ToString(total, 2))}"->PrintLine();
+
+    marker := deserializer->ReadObject()->As(String);
+    "end marker: {$marker}"->PrintLine();
+
+    # tidy up: remove the file we made
+    "file removed: {$(File->Delete(path))}"->PrintLine();
+  }
+}
