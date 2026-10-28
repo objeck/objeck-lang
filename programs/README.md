@@ -26,11 +26,11 @@ Collection of example programs, frameworks, tools, and tests demonstrating Objec
 ### Web & Networking
 - **[Web Framework](frameworks/web/)** - HTTP server, REST APIs, web scraping
 - **[HTTP Examples](examples/)** - `http.obs`, `https.obs`, `http_server.obs`
-- **[RSS Example](deploy/rss_https_xml_15.obs)** - Fetch and parse an RSS feed
+- **[HTTPS Client](deploy/http_client_22.obs)**, **[Web Server](deploy/web_server_23.obs)** and **[RSS Reader](deploy/rss_reader_24.obs)** - the shipped networking examples
 
 ### Games & Graphics
 - **[SDL2 Games](frameworks/sdl/)** - 2D games using SDL2
-- **[Game Examples](deploy/README.md)** - A 2D platformer (`2d_game_13.obs`), an OpenGL scene (`3d_gl_24.obs`) and tic-tac-toe
+- **[Gem Collector](deploy/game_31.obs)** - The shipped SDL2 game: a game loop, a state machine, sprites and a saved best score; the [OpenGL examples](examples/) include `gl_fps.obs`
 
 ### Data Processing
 - **[JSON Examples](frameworks/json/)** - JSON parsing, generation, streaming
@@ -70,8 +70,8 @@ The OpenCV and ONNX examples in `frameworks/opencv_onnx/` need model files that 
 ```bash
 # SDL2 game
 cd deploy
-obc -s 2d_game_13.obs -lib gen_collect,sdl2,sdl_game,json -d 2d_game_13.obe
-obr 2d_game_13.obe
+obc -src game_31.obs -lib sdl2,sdl_game,json
+obr game_31.obe
 ```
 
 ## Testing
@@ -121,11 +121,11 @@ class Example {
 
 Recommended order for learning Objeck:
 
-1. **Basic Syntax** - Start with `deploy/hello_0.obs`, `deploy/functions_5.obs` and `deploy/loops_27.obs`
-2. **Object-Oriented** - Move to `deploy/visitor_20.obs` and `deploy/records_28.obs`, then error handling in `deploy/errors_29.obs`
+1. **Basic Syntax** - The shipped examples in [deploy/](deploy/README.md) are numbered in learning order: start with `hello_0.obs` through `closures_8.obs`
+2. **Object-Oriented** - `deploy/classes_4.obs` and `deploy/records_enums_5.obs`, then error handling in `deploy/errors_6.obs` and generics in `deploy/generics_7.obs`
 3. **Collections** - Explore `examples/queue.obs`, `examples/hash.obs` and `examples/double_list.obs`
-4. **File I/O** - Check `deploy/serial_14.obs` and `examples/file.obs`
-5. **Networking** - Try `deploy/https_1.obs`, then the `frameworks/web` examples
+4. **File I/O** - Check `deploy/files_13.obs`, `deploy/serialize_20.obs` and `examples/file.obs`
+5. **Networking** - Try `deploy/http_client_22.obs` and `deploy/web_server_23.obs`, then the `frameworks/web` examples
 6. **AI/ML** - Experiment with `frameworks/openai` or `frameworks/gemini`
 7. **Advanced** - Dive into `frameworks/opencv_onnx` or games
 

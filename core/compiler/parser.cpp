@@ -1454,6 +1454,34 @@ static bool HasLambdaInInterpolation(const std::wstring& str)
 }
 
 /****************************
+ * True when a string literal ends inside a `{$ ... }` interpolation that is
+ * never closed. The scanner ends a string at the first unescaped quote, so a
+ * quoted argument inside an interpolation -- "x: {$(Join(items, ", "))}" --
+ * cuts the string at its first quote and leaves the '{$' open. Reporting that
+ * names the real mistake; the parse otherwise fails tokens later on whatever
+ * the rest of the line reads as.
+ ****************************/
+static bool HasUnclosedInterpolation(const std::wstring& str)
+{
+  bool in_interpolation = false;
+  for(size_t i = 0; i < str.size(); ++i) {
+    if(str[i] == L'\\') {
+      // an escaped character, such as \{ or \", opens and closes nothing
+      ++i;
+    }
+    else if(i + 1 < str.size() && str[i] == L'{' && str[i + 1] == L'$') {
+      in_interpolation = true;
+      ++i;
+    }
+    else if(str[i] == L'}') {
+      in_interpolation = false;
+    }
+  }
+
+  return in_interpolation;
+}
+
+/****************************
  * Parses lambda expression
  ****************************/
 Lambda* Parser::ParseLambda(int depth) {
@@ -1847,11 +1875,24 @@ StatementList* Parser::ParseStatementList(int depth)
 
   StatementList* statements = TreeFactory::Instance()->MakeStatementList();
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+    const size_t consumed = tokens_consumed;
     Statement* statement = ParseStatement(depth + 1);
     TakePendingStatements(statements);
     statements->AddStatement(statement);
     TakeTrailingStatements(statements, statement);
     CheckStatementSeparator(statement);
+
+    // A statement that consumed no token would be parsed again from the same
+    // token on the next pass, and again, allocating nodes each time: obc ran
+    // until it was killed, near 16 GB, on '"x: {$(Join(items, ", "))}"', where
+    // the quote inside the interpolation ends the string early. Report the
+    // token if nothing has yet, then step over it so the list moves on.
+    if(tokens_consumed == consumed) {
+      if(errors.empty()) {
+        ProcessError(L"Unexpected token in statement");
+      }
+      NextToken();
+    }
   }
   if(!Match(TOKEN_CLOSED_BRACE)) {
     ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
@@ -6458,6 +6499,10 @@ StaticArray* Parser::ParseStaticArray(int depth) {
         case TOKEN_CHAR_STRING_LIT: {
           const std::wstring ident = scanner->GetToken()->GetIdentifier();
           const bool is_lit = scanner->GetToken()->GetByteLit();
+          if(!is_lit && HasUnclosedInterpolation(ident)) {
+            ProcessError(L"A quote inside '{$...}' ends the string early, leaving the interpolation open; compute the value into a local first and interpolate the local", TOKEN_SEMI_COLON);
+            break;
+          }
           expression = TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, ident, is_lit);
           NextToken();
         }
@@ -7774,6 +7819,10 @@ Expression* Parser::ParseSimpleExpression(int depth)
     case TOKEN_CHAR_STRING_LIT: {
       const std::wstring ident = scanner->GetToken()->GetIdentifier();
       const bool is_lit = scanner->GetToken()->GetByteLit();
+      if(!is_lit && HasUnclosedInterpolation(ident)) {
+        ProcessError(L"A quote inside '{$...}' ends the string early, leaving the interpolation open; compute the value into a local first and interpolate the local", TOKEN_SEMI_COLON);
+        break;
+      }
       expression = TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, ident, is_lit);
       NextToken();
     }

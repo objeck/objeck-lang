@@ -367,7 +367,7 @@ class Sdl2Bindings {
 		Font->Init();
 
 		# the regression runner runs from the deploy tree's bin directory
-		font := Font->New("../lib/sdl/fonts/lazy.ttf", 24);
+		font := Font->New("../lib/sdl/fonts/lato.ttf", 24);
 		if(font->IsNull()) {
 			"  note: the bundled font was not found, so text is not exercised"->PrintLine();
 			Font->Quit();

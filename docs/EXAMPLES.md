@@ -353,8 +353,7 @@ it needs:
 The other GL examples are `gl_clear` (the smallest thing that opens a window — 25 lines),
 `cube_gl` (one textured spinning cube), `gl_boing` (the Boing Ball in 3D, in a room, with a
 post-process pass) and `gl_model` (loads `gl_crystal.obj` and fits it to frame whatever scale
-it was authored at). `programs/deploy/3d_gl_24.obs` and `programs/examples/gl_fps.obs` ship in the
-distribution.
+it was authored at). `programs/examples/gl_fps.obs` ships in the distribution.
 
 ### Objeck Range — a first-person shooting gallery
 

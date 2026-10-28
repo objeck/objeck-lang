@@ -1,13 +1,29 @@
 #~
 # compile: obc -src hello_0.obs
-# run: obr hello_0.obe
+# run:     obr hello_0.obe
+#
+# The smallest complete Objeck program. A program is built and run in two
+# steps: 'obc' compiles the source file (.obs) into a portable executable
+# (.obe), and 'obr' runs that executable on the Objeck virtual machine.
+#
+# Every Objeck program lives inside a class. A class groups related code and
+# data; here it only holds one function. A function is a named block of code
+# declared with 'function :'. One function is special: Main. When obr starts
+# a program it looks for a function named Main that takes the command-line
+# arguments as a String[] and returns Nil (nothing), and runs it.
+#
+# output:
+#   Hello World!
 ~#
 
+# a class named Hello; the name is up to you
 class Hello {
+  # the entry point: obr calls Main when the program starts.
+  # 'args' holds any command-line arguments, as an array of Strings,
+  # and '~ Nil' says that Main returns nothing.
   function : Main(args : String[]) ~ Nil {
- a := "!";
-    "Hello World {$a}"->PrintLine();
-    "Καλημέρα κόσμε" → PrintLine();
-    "こんにちは 世界" → PrintLine();
+    # in Objeck a string literal is an object, so it has methods of its own;
+    # '->' calls one. PrintLine writes the string followed by a new line.
+    "Hello World!"->PrintLine();
   }
 }

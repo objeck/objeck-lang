@@ -44,6 +44,16 @@ function ConvertTo-LfEol {
 $package_json = "..\..\tools\lsp\clients\vscode\package.json"
 (Get-Content $package_json) | ForEach-Object { $_ -replace '("version":\s*")[0-9.]+(")', ('${1}' + $version + '${2}') } | Set-Content $package_json
 
+# The macOS launcher bundle's Info.plist. Nothing stamped it, so it sat at
+# 2026.6.0 with a 2025 copyright through four releases. It is not templated
+# from an .in file: the two version strings and the copyright's end year are
+# rewritten in place, on the raw text, so its LF endings and tabs survive.
+$info_plist = (Resolve-Path -LiteralPath "..\utils\MacApp\Info.plist").ProviderPath
+$plist = [System.IO.File]::ReadAllText($info_plist)
+$plist = $plist -replace '(<key>CFBundle(Short)?Version(String)?</key>\s*<string>)[^<]*(</string>)', ('${1}' + $version + '${4}')
+$plist = $plist -replace '(Copyright \(c\) 2007-)\d{4}', ('${1}' + $year_end)
+[System.IO.File]::WriteAllText($info_plist, $plist, (New-Object System.Text.UTF8Encoding $false))
+
 
 # update window resource files
 (Get-Content ..\compiler\vs\objeck.in) | ForEach-Object { $_ -replace "@VERSION@", $version } | ForEach-Object { $_ -replace "@YEAR_END@", $year_end } | ForEach-Object { $_ -replace "@VERSION_WINDOWS@", $version_windows } | Set-Content ..\compiler\vs\objeck.rc

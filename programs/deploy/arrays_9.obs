@@ -1,0 +1,137 @@
+#~
+# compile: obc -src arrays_9.obs
+# run:     obr arrays_9.obe
+#
+# Arrays hold a fixed number of values of one type, side by side in memory.
+# This program shows how to create them (with Type->New[size] or with a
+# [...] literal), read and change elements, ask for their size, and loop over
+# them with each. It then moves on to 2-D arrays (a grid with rows and
+# columns, indexed as a[row, col]), jagged arrays (an array of rows where
+# every row can have its own length, written Int[][]), sorting, and the bulk
+# helpers Fill and Copy that work on a whole array at once.
+#
+# output (abridged):
+#   squares: [0,1,4,9,16]
+#   size: 5
+#   pair: 7 and 49
+#   word 0: red
+#   ...
+#   grid has 3 rows and 4 columns
+#     0  1  2  3
+#     4  5  6  7
+#     8  9 10 11
+#   row 0 has 1 items: 1
+#   ...
+#   row 3 has 4 items: 1 3 3 1
+#   ragged[2][1] = 5
+#   sorted copy: [1,2,3,5,8,9]
+#   original:    [5,3,9,1,8,2]
+#   sorted in place: [1,2,3,5,8,9]
+#   filled: [7,7,7,7,7]
+#   copied: [7,1,2,3,7]
+~#
+
+class Arrays {
+  function : Main(args : String[]) ~ Nil {
+    # --- creating and filling an array ---
+    # Int->New[5] makes room for five Ints; every element starts at 0
+    squares := Int->New[5];
+    # each(i : squares) walks the INDEXES 0, 1, 2, ... not the values
+    each(i : squares) {
+      squares[i] := i * i;
+    };
+    # Int->ToString formats a whole Int[] as text
+    "squares: {$(Int->ToString(squares))}"->PrintLine();
+    "size: {$(squares->Size())}"->PrintLine();
+
+    # --- array literals ---
+    # square brackets build an array in one step; the type comes from the
+    # elements, and an element can be any expression, not just a constant
+    x := 7;
+    pair := [x, x * x];
+    "pair: {$(pair[0])} and {$(pair[1])}"->PrintLine();
+    words := ["red", "green", "blue"];
+    each(i : words) {
+      "word {$i}: {$(words[i])}"->PrintLine();
+    };
+
+    # --- 2-D arrays ---
+    # Int->New[3, 4] is one block of 3 rows by 4 columns; index it as [row, col]
+    grid := Int->New[3, 4];
+    # for a 2-D array, Size() returns one length per dimension
+    dims := grid->Size();
+    "grid has {$(dims[0])} rows and {$(dims[1])} columns"->PrintLine();
+    for(row := 0; row < dims[0]; row += 1;) {
+      for(col := 0; col < dims[1]; col += 1;) {
+        grid[row, col] := row * dims[1] + col;
+      };
+    };
+    PrintGrid(grid);
+
+    # --- jagged arrays ---
+    # Int[][] is an array whose elements are themselves Int[] rows, so each
+    # row may have a different length; here we build Pascal's triangle
+    triangle := Int[]->New[4];
+    for(i := 0; i < triangle->Size(); i += 1;) {
+      # row i has i + 1 numbers, each 1 at the ends
+      triangle[i] := Int->New[i + 1];
+      triangle[i][0] := 1;
+      triangle[i][i] := 1;
+      # inner numbers are the sum of the two above them
+      for(j := 1; j < i; j += 1;) {
+        triangle[i][j] := triangle[i - 1][j - 1] + triangle[i - 1][j];
+      };
+    };
+    PrintTriangle(triangle);
+
+    # a literal whose elements are arrays is a jagged array too
+    ragged := [[1], [2, 3], [4, 5, 6]];
+    "ragged[2][1] = {$(ragged[2][1])}"->PrintLine();
+
+    # --- sorting ---
+    # Sort() on an Int[] returns a NEW sorted array and leaves the original alone
+    numbers := [5, 3, 9, 1, 8, 2];
+    sorted := numbers->Sort();
+    "sorted copy: {$(Int->ToString(sorted))}"->PrintLine();
+    "original:    {$(Int->ToString(numbers))}"->PrintLine();
+    # ArraySort->Sort sorts the array you give it, in place
+    ArraySort->Sort(numbers);
+    "sorted in place: {$(Int->ToString(numbers))}"->PrintLine();
+
+    # --- bulk Fill and Copy ---
+    # Fill sets every element to one value
+    block := Int->New[5];
+    Int->Fill(block, 7);
+    "filled: {$(Int->ToString(block))}"->PrintLine();
+    # Copy(dest, dest_offset, src, src_offset, count) copies a run of elements
+    Int->Copy(block, 1, [1, 2, 3], 0, 3);
+    "copied: {$(Int->ToString(block))}"->PrintLine();
+  }
+
+  # prints a 2-D array as a table, each number right-aligned in 3 columns
+  function : PrintGrid(grid : Int[,]) ~ Nil {
+    dims := grid->Size();
+    for(row := 0; row < dims[0]; row += 1;) {
+      line := "";
+      for(col := 0; col < dims[1]; col += 1;) {
+        value := grid[row, col];
+        line += "{$value:3}";
+      };
+      line->PrintLine();
+    };
+  }
+
+  # prints each row of a jagged array along with its length
+  function : PrintTriangle(rows : Int[][]) ~ Nil {
+    each(i : rows) {
+      # name the row with a local (not a copy: the same array) so we can ask
+      # for its size and loop over it
+      row := rows[i];
+      line := "row {$i} has {$(row->Size())} items:";
+      each(j : row) {
+        line += " {$(row[j])}";
+      };
+      line->PrintLine();
+    };
+  }
+}

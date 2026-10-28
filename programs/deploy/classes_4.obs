@@ -1,0 +1,172 @@
+#~
+# compile: obc -src classes_4.obs
+# run:     obr classes_4.obe
+#
+# Classes, inheritance and interfaces. A class describes a kind of object:
+# the data each object holds (its fields, written @name) and what it can do
+# (its methods). New(...) is the constructor that sets a new object up.
+#
+# Fields can only be reached from inside their class and its child classes;
+# methods are private unless marked 'public'. A class can extend another with
+# 'from', reusing its fields and methods, and its constructor calls
+# Parent(...) to set up the inherited part. An 'interface' is a contract, a
+# list of methods a class promises to provide when it says 'implements'.
+#
+# Which method a call runs is decided in one of two ways. An ordinary method
+# is chosen by the variable's declared type, when the program is compiled. A
+# 'virtual' method, or a method promised by an interface, is chosen by the
+# object's real class, when the program runs. So when behaviour should depend
+# on what an object really is, make it virtual or put it in an interface.
+# Turning an object into text is the everyday case: a class that implements
+# the Stringify interface has its own ToString used wherever the object is
+# printed, even through a Shape variable.
+#
+#   class Square from Rectangle { ... }    # inheritance
+#   class Shape implements Describable     # a promise to provide Describe
+#   shape->TypeOf(Circle)                  # true if shape is really a Circle
+#   shape->As(Circle)                      # use it as a Circle (checked)
+#
+# output:
+#   Circle area=12.566371
+#   Rectangle area=12.000000
+#   Square area=6.250000
+#   total area = 30.816371
+#   as text: Circle of radius 2.000000
+#   as text: Rectangle 3.000000 x 4.000000
+#   as text: Square 2.500000 x 2.500000
+#   shapes[0] is a Circle with radius 2.000000
+#   shapes[2] is a Rectangle and a Square
+#   through the interface: Rectangle area=12.000000
+#   printed through the interface: Rectangle 3.000000 x 4.000000
+~#
+
+# an interface: any class that implements it must provide Describe
+interface Describable {
+  method : virtual : public : Describe() ~ String;
+}
+
+# the parent of every shape. Area is 'virtual', so Shape has no body for it:
+# each kind of shape supplies one (its own or one it inherits), and a Shape
+# can never be created by itself.
+class Shape implements Describable {
+  @name : String;
+
+  New(name : String) {
+    @name := name;
+  }
+
+  method : public : GetName() ~ String {
+    return @name;
+  }
+
+  method : virtual : public : Area() ~ Float;
+
+  # written once for every shape: Area is virtual, so the call below runs
+  # the child's own Area, whichever kind of shape this turns out to be
+  method : public : Describe() ~ String {
+    return "{$@name} area={$(Area())}";
+  }
+}
+
+# implementing Stringify means "print me with my own ToString"
+class Circle from Shape implements Stringify {
+  @radius : Float;
+
+  New(radius : Float) {
+    # set up the inherited part first, then our own field
+    Parent("Circle");
+    @radius := radius;
+  }
+
+  method : public : GetRadius() ~ Float {
+    return @radius;
+  }
+
+  # the child's version of the parent's virtual method
+  method : public : Area() ~ Float {
+    return Float->Pi() * @radius * @radius;
+  }
+
+  method : public : ToString() ~ String {
+    return "Circle of radius {$@radius}";
+  }
+}
+
+class Rectangle from Shape implements Stringify {
+  @width : Float;
+  @height : Float;
+
+  New(width : Float, height : Float) {
+    Parent("Rectangle");
+    @width := width;
+    @height := height;
+  }
+
+  # a second constructor, so a child class can pass its own name up
+  New(name : String, width : Float, height : Float) {
+    Parent(name);
+    @width := width;
+    @height := height;
+  }
+
+  method : public : Area() ~ Float {
+    return @width * @height;
+  }
+
+  # this ToString is what {$...} shows for a Rectangle, and for a Square
+  method : public : ToString() ~ String {
+    return "{$@name} {$@width} x {$@height}";
+  }
+}
+
+# inheritance can go more than one level deep: a Square is a Rectangle,
+# so it gets Area, ToString and the Stringify promise without writing them
+class Square from Rectangle {
+  New(side : Float) {
+    Parent("Square", side, side);
+  }
+}
+
+class Classes {
+  function : Main(args : String[]) ~ Nil {
+    # one array can hold any mix of shapes, because each one is a Shape
+    shapes := Shape->New[3];
+    shapes[0] := Circle->New(2.0);
+    shapes[1] := Rectangle->New(3.0, 4.0);
+    shapes[2] := Square->New(2.5);
+
+    # the same calls work on every shape; each runs its own Area
+    total := 0.0;
+    each(shape in shapes) {
+      shape->Describe()->PrintLine();
+      total += shape->Area();
+    };
+    "total area = {$total}"->PrintLine();
+
+    # each shape prints with its own ToString, although 'shape' is declared
+    # as a plain Shape: the classes implement Stringify
+    each(shape in shapes) {
+      "as text: {$shape}"->PrintLine();
+    };
+
+    # TypeOf asks "is this object of that class, or a child of it?"
+    # As converts the reference so the child's own methods can be called.
+    first := shapes[0];
+    if(first->TypeOf(Circle)) {
+      circle := first->As(Circle);
+      "shapes[0] is a Circle with radius {$(circle->GetRadius())}"->PrintLine();
+    };
+
+    # a Square is both a Square and a Rectangle
+    last := shapes[2];
+    if(last->TypeOf(Rectangle) & last->TypeOf(Square)) {
+      "shapes[2] is a Rectangle and a Square"->PrintLine();
+    };
+
+    # any shape can be used wherever a Describable is expected, and it still
+    # prints with its own ToString through that reference too
+    describable := shapes[1]->As(Describable);
+    "through the interface: {$(describable->Describe())}"->PrintLine();
+    "printed through the interface: {$describable}"->PrintLine();
+  }
+}

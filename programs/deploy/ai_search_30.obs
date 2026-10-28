@@ -1,0 +1,234 @@
+#~
+# compile: obc -src ai_search_30.obs -lib ai
+# run:     obr ai_search_30.obe
+#
+# Two classic kinds of search from System.AI.
+#
+# A* pathfinding finds the shortest route across a map. The map below is a
+# grid of open squares (.) and walls (#); every open square becomes a node in
+# a Graph, joined to its open neighbours by an edge of cost 1. A* explores
+# the squares that look most promising first, guided by a heuristic -- a
+# guess of the distance left. The guess here is the Manhattan distance (rows
+# apart + columns apart), which never over-estimates on a grid without
+# diagonal moves, so A* is guaranteed to return a shortest path. Dijkstra,
+# which has no guess, finds an equally short path but expands more squares.
+#
+# Minimax chooses moves in a two-player game by assuming the opponent always
+# plays their best reply. The game is Nim: a pile of stones, each player takes
+# 1, 2 or 3, and whoever takes the last stone wins. You implement the
+# GameState interface (legal moves, what a move does, who won) and Minimax does
+# the rest, skipping hopeless branches with alpha-beta pruning. Nim has a
+# known winning rule -- always leave your opponent a multiple of 4 -- and the
+# search rediscovers it on its own: from 10 stones, player A takes 2.
+#
+# output:
+#   A* path from S to G:
+#     ..............
+#     ......#.......
+#     ......#.......
+#     S*****#******G
+#     .....*#*......
+#     .....***......
+#     17 steps; A* expanded 40 squares, Dijkstra 79
+#
+#   Nim: take 1-3 stones, whoever takes the last one wins
+#     pile 10: Player A takes 2
+#     pile 8: Player B takes 1
+#     pile 7: Player A takes 3
+#     pile 4: Player B takes 1
+#     pile 3: Player A takes 3
+#     Player A wins
+~#
+
+use System.AI;
+
+class Search {
+  function : Main(args : String[]) ~ Nil {
+    FindPath();
+    PlayNim();
+  }
+
+  # A* across a small walled map, from S to G
+  function : FindPath() ~ Nil {
+    map := [
+      "..............",
+      "......#.......",
+      "......#.......",
+      "S.....#......G",
+      "......#.......",
+      ".............."
+    ];
+    rows := map->Size();
+    cols := map[0]->Size();
+
+    # one node per square, numbered row by row: node = row * cols + col
+    graph := Graph->New(rows * cols);
+    start := 0;
+    goal := 0;
+    each(r : rows) {
+      each(c : cols) {
+        node := r * cols + c;
+        if(map[r]->Get(c) = 'S') {
+          start := node;
+        }
+        else if(map[r]->Get(c) = 'G') {
+          goal := node;
+        };
+
+        # join this square to the open squares right of and below it,
+        # in both directions, so every pair is connected exactly once
+        if(Open(map, r, c)) {
+          if(Open(map, r, c + 1)) {
+            graph->AddEdge(node, node + 1, 1.0);
+            graph->AddEdge(node + 1, node, 1.0);
+          };
+          if(Open(map, r + 1, c)) {
+            graph->AddEdge(node, node + cols, 1.0);
+            graph->AddEdge(node + cols, node, 1.0);
+          };
+        };
+      };
+    };
+
+    # the heuristic: Manhattan distance from every square to the goal
+    squares := rows * cols;
+    heuristic := Float->New[squares];
+    goal_r := goal / cols;
+    goal_c := goal % cols;
+    each(node : squares) {
+      dr := (node / cols - goal_r)->Abs();
+      dc := (node % cols - goal_c)->Abs();
+      heuristic[node] := (dr + dc)->As(Float);
+    };
+
+    astar := AStar->FindPath(graph, start, goal, heuristic);
+    dijkstra := Dijkstra->FindPath(graph, start, goal);
+    if(<>astar->Found()) {
+      "no path"->PrintLine();
+      return;
+    };
+
+    # copy the map and mark the path with '*' (keeping S and G)
+    path := astar->GetPath();
+    marked := Char->New[rows, cols];
+    each(r : rows) {
+      each(c : cols) {
+        marked[r, c] := map[r]->Get(c);
+      };
+    };
+    each(i : path) {
+      r := path[i] / cols;
+      c := path[i] % cols;
+      if(marked[r, c] = '.') {
+        marked[r, c] := '*';
+      };
+    };
+
+    "A* path from S to G:"->PrintLine();
+    each(r : rows) {
+      line := "  ";
+      each(c : cols) {
+        line->Append(marked[r, c]);
+      };
+      line->PrintLine();
+    };
+    steps := astar->GetCost()->As(Int);
+    a_expanded := astar->GetExpanded();
+    d_expanded := dijkstra->GetExpanded();
+    "  {$steps} steps; A* expanded {$a_expanded} squares, Dijkstra {$d_expanded}"->PrintLine();
+    ""->PrintLine();
+  }
+
+  # true when (r, c) is on the map and not a wall
+  function : Open(map : String[], r : Int, c : Int) ~ Bool {
+    if(r < 0 | r >= map->Size() | c < 0 | c >= map[0]->Size()) {
+      return false;
+    };
+    return map[r]->Get(c) <> '#';
+  }
+
+  # two minimax players play Nim from a pile of 10
+  function : PlayNim() ~ Nil {
+    "Nim: take 1-3 stones, whoever takes the last one wins"->PrintLine();
+
+    # depth 12 is deep enough to see every game from 10 stones to the end
+    searcher := Minimax->New(12);
+    state := NimState->New(10, true)->As(GameState);
+    while(<>state->IsTerminal()) {
+      nim := state->As(NimState);
+      take := searcher->FindBestMove(state);
+      player := nim->GetPlayerName();
+      pile := nim->GetPile();
+      "  pile {$pile}: {$player} takes {$take}"->PrintLine();
+      state := state->Apply(take);
+    };
+
+    # Evaluate on the final position says who took the last stone
+    winner := "Player B";
+    if(state->Evaluate() > 0.0) {
+      winner := "Player A";
+    };
+    "  {$winner} wins"->PrintLine();
+  }
+}
+
+# a Nim position: how many stones are left and whose turn it is.
+# Player A is the maximizer, so a position good for A scores above 0.
+class NimState implements GameState {
+  @pile : Int;
+  @a_to_move : Bool;
+
+  New(pile : Int, a_to_move : Bool) {
+    @pile := pile;
+    @a_to_move := a_to_move;
+  }
+
+  method : public : GetPile() ~ Int {
+    return @pile;
+  }
+
+  method : public : GetPlayerName() ~ String {
+    if(@a_to_move) {
+      return "Player A";
+    };
+    return "Player B";
+  }
+
+  # legal moves: take 1, 2 or 3 stones, but never more than are left
+  method : public : GetMoves() ~ Int[] {
+    count := 3;
+    if(@pile < 3) {
+      count := @pile;
+    };
+    moves := Int->New[count];
+    each(i : count) {
+      moves[i] := i + 1;
+    };
+    return moves;
+  }
+
+  # a move makes a NEW position; the old one is left untouched for the search
+  method : public : Apply(move : Int) ~ GameState {
+    return NimState->New(@pile - move, <>@a_to_move);
+  }
+
+  method : public : IsTerminal() ~ Bool {
+    return @pile = 0;
+  }
+
+  # at the end, the player whose turn it would be has lost: the other one took
+  # the last stone. +1 means A won, -1 means B won, 0 means not decided yet
+  method : public : Evaluate() ~ Float {
+    if(@pile > 0) {
+      return 0.0;
+    };
+    if(@a_to_move) {
+      return -1.0;
+    };
+    return 1.0;
+  }
+
+  method : public : IsMaximizing() ~ Bool {
+    return @a_to_move;
+  }
+}

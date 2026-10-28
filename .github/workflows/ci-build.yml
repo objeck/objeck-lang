@@ -745,23 +745,27 @@ jobs:
         ls -la "$LIB_DIR" | head -20
 
         # Basic tests for all platforms
-        $OBC -lib cipher,net,xml,json -src ../../../../programs/deploy/hello_0.obs || exit 1
-        $OBC -lib cipher,net,xml,json -src ../../../../programs/deploy/functions_5.obs || exit 1
-        $OBC -lib cipher,net,xml,json -src ../../../../programs/deploy/json_3.obs || exit 1
-        $OBC -lib cipher,net,xml,json -src ../../../../programs/deploy/xml_2.obs || exit 1
+        # each example compiles with the -lib line in its own header, so a wrong
+        # line in what readers copy fails here
+        $OBC -src ../../../../programs/deploy/hello_0.obs || exit 1
+        $OBC -src ../../../../programs/deploy/functions_3.obs || exit 1
+        $OBC -src ../../../../programs/deploy/errors_6.obs || exit 1
+        $OBC -lib xml -src ../../../../programs/deploy/xml_15.obs || exit 1
 
         echo "Basic tests compiled successfully"
 
         # Extended tests for Linux x64 only
         if [ "${{ matrix.platform }}" = "linux-x64" ]; then
           echo "Compiling extended tests..."
-          $OBC -lib cipher,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/calc_life_10.obs || exit 1
-          $OBC -lib cipher,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/closure_19.obs || exit 1
-          $OBC -lib cipher,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/encrypt_7.obs || exit 1
-          $OBC -lib cipher,net,odbc,rss,regex,misc,xml,query,json,csv -src ../../../../programs/deploy/fs_query_12.obs || exit 1
-          $OBC -lib cipher,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/lambda_17.obs || exit 1
-          $OBC -lib cipher,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/regex_4.obs || exit 1
-          $OBC -lib cipher,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/threads_6.obs || exit 1
+          $OBC -src ../../../../programs/deploy/values_1.obs || exit 1
+          $OBC -src ../../../../programs/deploy/closures_8.obs || exit 1
+          $OBC -lib cipher -src ../../../../programs/deploy/strings_10.obs || exit 1
+          $OBC -src ../../../../programs/deploy/collections_11.obs || exit 1
+          $OBC -lib regex -src ../../../../programs/deploy/regex_17.obs || exit 1
+          $OBC -lib query,misc,net,json,regex,xml,csv,cipher -src ../../../../programs/deploy/sql_tables_18.obs || exit 1
+          $OBC -lib csv,ml -src ../../../../programs/deploy/ml_outliers_27.obs || exit 1
+          $OBC -lib nlp -src ../../../../programs/deploy/nlp_28.obs || exit 1
+          $OBC -lib concurrent -src ../../../../programs/deploy/threads_12.obs || exit 1
           $OBC -lib cipher,net,gen_collect,net_h2 -src ../../../../programs/tests/prgm_http2.obs || exit 1
           $OBC -lib cipher,net,gen_collect,net_quic -src ../../../../programs/tests/prgm_http3.obs || exit 1
           $OBC -lib cipher,net,gen_collect,net_quic -src ../../../../programs/tests/http3_downgrade_test.obs || exit 1
@@ -781,28 +785,30 @@ jobs:
 
         # Basic tests
         $OBR ../../../../programs/deploy/hello_0.obe
-        $OBR ../../../../programs/deploy/functions_5.obe
-        $OBR ../../../../programs/deploy/json_3.obe
-        $OBR ../../../../programs/deploy/xml_2.obe
+        $OBR ../../../../programs/deploy/functions_3.obe
+        $OBR ../../../../programs/deploy/errors_6.obe
+        $OBR ../../../../programs/deploy/xml_15.obe
 
         # Extended tests for Linux x64
         if [ "${{ matrix.platform }}" = "linux-x64" ]; then
-          $OBR ../../../../programs/deploy/calc_life_10.obe
-          $OBR ../../../../programs/deploy/closure_19.obe
-          $OBR ../../../../programs/deploy/encrypt_7.obe
-          $OBR ../../../../programs/deploy/fs_query_12.obe
-          $OBR ../../../../programs/deploy/lambda_17.obe
-          $OBR ../../../../programs/deploy/regex_4.obe
+          $OBR ../../../../programs/deploy/values_1.obe
+          $OBR ../../../../programs/deploy/closures_8.obe
+          $OBR ../../../../programs/deploy/strings_10.obe
+          $OBR ../../../../programs/deploy/collections_11.obe
+          $OBR ../../../../programs/deploy/regex_17.obe
+          $OBR ../../../../programs/deploy/sql_tables_18.obe
+          $OBR ../../../../programs/deploy/ml_outliers_27.obe
+          $OBR ../../../../programs/deploy/nlp_28.obe
           # Threading test can be sensitive to CI runner timing; retry up to 3 times
           for attempt in 1 2 3; do
-            if $OBR ../../../../programs/deploy/threads_6.obe; then
+            if $OBR ../../../../programs/deploy/threads_12.obe; then
               break
             fi
             if [ $attempt -eq 3 ]; then
-              echo "threads_6.obe failed after 3 attempts"
+              echo "threads_12.obe failed after 3 attempts"
               exit 1
             fi
-            echo "threads_6.obe attempt $attempt failed, retrying..."
+            echo "threads_12.obe attempt $attempt failed, retrying..."
             sleep 2
           done
         fi

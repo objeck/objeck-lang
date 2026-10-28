@@ -142,6 +142,8 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
 #else
     std::wcout << VERSION_STRING << L" Objeck (macOS x86_64)" << std::endl;
 #endif
+#elif _ARM64
+    std::wcout << VERSION_STRING << L" Objeck (Linux ARM64)" << std::endl;
 #elif _X64
     std::wcout << VERSION_STRING << L" Objeck (Linux x86_64)" << std::endl;
 #elif _ARM32

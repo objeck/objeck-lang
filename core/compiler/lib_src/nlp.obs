@@ -4,6 +4,18 @@
 #
 # Provides text processing, tokenization, TF-IDF, similarity metrics,
 # and basic sentiment analysis for NLP applications
+#
+# Credits:
+# SentimentAnalyzer follows VADER (C.J. Hutto and E. Gilbert, ICWSM 2014;
+# vaderSentiment, Copyright (c) 2016 C.J. Hutto, MIT License): its -4..+4
+# scale, its booster increment (0.293) and negation rules, and about 190 of
+# the built-in valences, which are VADER's vader_lexicon.txt values; the rest
+# of the lexicon was written for this library. See the vaderSentiment
+# LICENSE in the distribution's doc/licenses.
+# WordPieceTokenizer reimplements the behaviour of Hugging Face's
+# BertTokenizer (transformers, Apache License 2.0).
+# Its Unicode tables are generated from the Unicode Character Database
+# (via Python's unicodedata), Copyright (c) Unicode, Inc., Unicode License v3.
 ~~#
 
 use Collection;
@@ -1269,8 +1281,9 @@ nd := TextSimilarity->NormalizedEditDistance("kitten", "sitting");
 	}
 
 	#~
-	Rule-based sentiment analysis in the manner of VADER (Hutto and Gilbert, 2014), with its own
-	English lexicon of valences on a -4..+4 scale. Negators ("not", "never", "don't") within
+	Rule-based sentiment analysis in the manner of VADER (Hutto and Gilbert, 2014), with a
+	built-in English lexicon of valences on a -4..+4 scale, part of it VADER's own values (MIT
+	licence). Negators ("not", "never", "don't") within
 	three words flip and damp a word's valence, boosters ("very", "extremely") and dampeners
 	("slightly", "kind of") scale it, a word in capitals in mixed-case text and each '!' add
 	emphasis, and "but" shifts weight to the clause after it. Unknown inflections fall back to
@@ -1299,7 +1312,8 @@ result->ToString()->PrintLine();
 				@boosters := Hash->New()<String, FloatRef>;
 				@negators := Hash->New()<String, BoolRef>;
 
-				# word:valence, on VADER's -4..+4 scale
+				# word:valence, on VADER's -4..+4 scale; about 190 values are VADER's
+				# vader_lexicon.txt ones (MIT License, see the file header)
 				lines := [
 					"good:1.9 great:3.1 excellent:2.7 amazing:2.8 wonderful:2.7 fantastic:2.6 awesome:3.1 love:3.2 lovely:2.8 best:3.2",
 					"better:1.9 perfect:2.7 beautiful:2.9 beauty:2.8 happy:2.7 glad:2.0 delighted:2.9 delightful:2.8 thrilled:2.6 joy:2.8",
