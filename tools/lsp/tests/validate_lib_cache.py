@@ -58,6 +58,8 @@ CORPORA = {
 CALL = re.compile(r"->([A-Z][A-Za-z0-9_]*)")
 DECL = re.compile(r"\b([a-z_][A-Za-z0-9_]*) :=")
 NEW = re.compile(r"\b([A-Z][A-Za-z0-9_]*)->New\b")
+# a file whose questions take longer than this is named as it finishes
+SLOW = 20
 CALL_HOVERS = 3
 DECL_HOVERS = 2
 # the libraries run_regression.sh links every test with, less 'collect', which
@@ -161,7 +163,10 @@ def workspace_for(path, text, root):
     with open(os.path.join(folder, name), "w", encoding="utf-8", newline="") as fh:
         fh.write(text)
     with open(os.path.join(folder, "build.json"), "w", encoding="utf-8") as fh:
-        json.dump({"files": [name], "libs": [l + ".obl" for l in libs], "flags": ""}, fh)
+        # an '@group' alias is named as it is; '@vision.obl' is an unknown alias,
+        # and an unknown library takes the whole server down (linker.cpp exits)
+        json.dump({"files": [name], "libs": [l if l.startswith("@") else l + ".obl" for l in libs],
+                   "flags": ""}, fh)
     return folder, os.path.join(folder, name)
 
 
@@ -208,6 +213,7 @@ def main():
     ap.add_argument("server_dir", nargs="?", default=os.path.join(TESTS_DIR, "..", "server"))
     ap.add_argument("--clients", type=int, default=4)
     ap.add_argument("--limit", type=int, default=0, help="files per corpus, 0 for all")
+    ap.add_argument("--skip", type=int, default=0, help="files to skip at the start of each corpus")
     ap.add_argument("--corpus", default="regression,lib_src")
     ap.add_argument("--no-verify", action="store_true",
                     help="leave verify mode off: a wrong library can then only show in the answers")
@@ -223,7 +229,7 @@ def main():
 
     files = []
     for name in args.corpus.split(","):
-        found = sorted(glob.glob(CORPORA[name]))
+        found = sorted(glob.glob(CORPORA[name]))[args.skip:]
         files += found[:args.limit] if args.limit else found
     print(f"{len(files)} files, {args.clients} clients per server", flush=True)
 
@@ -256,8 +262,15 @@ def main():
             folder = None
             if os.path.dirname(path) == os.path.dirname(CORPORA["regression"]):
                 folder, path = workspace_for(path, text, scratch)
+            began = time.time()
+            busy[i] = (source, began)
             want = answers(ref.clients[i], path, text, folder)
+            middle = time.time()
             have = answers(cached.clients[i], path, text, folder)
+            busy.pop(i, None)
+            if time.time() - began > SLOW:
+                print(f"  slow: {os.path.relpath(source, REPO_ROOT)} reference {middle - began:.0f}s, "
+                      f"cached {time.time() - middle:.0f}s", flush=True)
             with lock:
                 done[0] += 1
                 for key, value in have.items():
@@ -271,6 +284,19 @@ def main():
                 if done[0] % 50 == 0:
                     print(f"  {done[0]}/{len(files)} files, {len(mismatches)} mismatches", flush=True)
 
+    # names a file still being asked after SLOW seconds, and which servers are up
+    busy = {}
+    finished = threading.Event()
+
+    def watchdog():
+        while not finished.wait(SLOW):
+            for i, (path, began) in list(busy.items()):
+                if time.time() - began > SLOW:
+                    print(f"  still on: {os.path.relpath(path, REPO_ROOT)} for {time.time() - began:.0f}s "
+                          f"(client {i}); reference alive {ref.alive()}, cached alive {cached.alive()}",
+                          flush=True)
+    threading.Thread(target=watchdog, daemon=True).start()
+
     start = time.time()
     threads = [threading.Thread(target=worker, args=(i,)) for i in range(args.clients)]
     for t in threads:
@@ -278,6 +304,7 @@ def main():
     for t in threads:
         t.join()
     elapsed = time.time() - start
+    finished.set()
 
     alive = ref.alive() and cached.alive()
     ref.close()
@@ -300,6 +327,11 @@ def main():
         print(f"  {path} {key}\n    reference: {want}\n    cached:    {have}")
     for l in verify_bad[:10]:
         print("  " + l)
+    if not alive:
+        for server in (ref, cached):
+            print(f"  {server.name} stderr, last lines:")
+            for l in [l for l in server.lines if '[lsp-lib-cache]' not in l][-15:]:
+                print("    " + l)
 
     ok = alive and done[0] == len(files) and not mismatches and not verify_bad and hits > 0
     print("\nPASS" if ok else "\nFAIL")
