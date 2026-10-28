@@ -324,7 +324,12 @@ class QuerySqlRelational {
 
 		Expect("FROM with no SELECT", table->Query("from people where city = 'Oslo' order by age"), "Cid,Oslo,25|Ann,Oslo,30");
 		Expect("an unquoted word is a string", table->Query("select name from people where city = Rome"), "Bob");
-		Expect("an unknown select column is empty", table->Query("select name, nope from people where age > 40"), "Bob,null");
+		refused := table->Query("select name, nope from people where age > 40");
+		failure := table->GetError();
+		if(refused <> Nil | failure = Nil | <>failure->Has("unknown column 'nope'")) {
+			@failures += 1;
+			"  FAIL: an unknown select column is refused"->PrintLine();
+		};
 		Expect("a table's own alias", table->Query("select p.name from people p where p.age < 30"), "Cid");
 		Expect("BETWEEN, IN and NOT", table->Query("select name from people where age between 26 and 45 and not city in ('Rome')"), "Ann");
 		Expect("GROUP BY on one table", table->Query("select city, count(*) from people group by city"), "Oslo,2|Rome,1");
