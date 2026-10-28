@@ -1,6 +1,6 @@
 Objeck (a programming language)
 
-Copyright ©2026 Randy Hollines (objeck@gmail.com), All rights reserved.
+Copyright (c) 2007-2026 Randy Hollines (objeck@gmail.com), All rights reserved.
 ---
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -11,20 +11,52 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
 OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Supporting Libraries:
+Third-Party Software
 ---
-OpenSSL
-• Software written by Eric Young (eay@cryptsoft.com) and Tim Hudson (tjh@cryptsoft.com).
-• This product includes software developed under the OpenSSL license agreement (https://www.openssl.org/source/license.html)
+The distributions include the third-party software below, each under its own license. The full license and notice texts ship in each distribution's doc/licenses folder, one subfolder per component. Which components a distribution carries depends on the platform: on Linux, SDL2, OpenCV, Mbed TLS, LAME and unixODBC are system libraries installed by the package manager, not shipped.
 
-SDL2
-• This product includes software developed under the SDL license agreement (https://www.libsdl.org/license.php)
-• SDL2_gfx Andreas Schiffler (aschiffler@ferzkopp.net) library is licensed under the zLib license
+Mbed TLS (Windows, macOS)
+• Copyright The Mbed TLS Contributors. Apache License 2.0.
 
-zLib
-• Software written by Jean-loup Gailly (jloup@gzip.org) and Mark Adler (madler@alumni.caltech.edu)
-• This product includes software developed under the zLib license agreement (https://www.zlib.net/zlib_license.html) 
+nghttp2
+• Copyright Tatsuhiro Tsujikawa and contributors. MIT License.
+
+ngtcp2 and nghttp3 (Linux, macOS)
+• Copyright ngtcp2 and nghttp3 contributors. MIT License.
+
+AWS-LC (Linux, macOS)
+• Copyright Amazon.com, Inc. or its affiliates, and the BoringSSL and OpenSSL authors. Apache License 2.0, with portions under the ISC, MIT, BSD 3-Clause and MIT-0 licenses as listed in its LICENSE file.
+
+ONNX Runtime
+• Copyright Microsoft Corporation. MIT License, with the third-party notices in its ThirdPartyNotices.txt.
+• DirectML (Windows x64, when the operating system does not provide it): Microsoft DirectML License.
+• Qualcomm AI Engine Direct (QNN) runtime libraries (Windows ARM64): Copyright Qualcomm Technologies, Inc. Distributed under the Qualcomm license in doc/licenses/qnn.
+
+OpenCV (Windows, macOS)
+• Copyright the OpenCV authors. Apache License 2.0.
+• OpenCV's bundled third-party components (including zlib, libjpeg-turbo, libpng, libtiff, libwebp and, on Windows x64, FFmpeg under the LGPL 2.1) are under the licenses in doc/licenses/opencv.
+
+SDL2, SDL2_image, SDL2_mixer, SDL2_ttf, SDL2_net, SDL2_rtf and SDL2_sound (Windows, macOS)
+• Copyright Sam Lantinga and Ryan C. Gordon. zlib License.
+• Their bundled components (including FreeType, HarfBuzz, zlib, libtiff, libwebp, Ogg/Vorbis, Opus and libmodplug) are under the licenses in doc/licenses/sdl2.
+
+SDL2_gfx
+• Copyright Andreas Schiffler. zlib License.
+
+LAME (Windows, macOS)
+• Copyright The LAME Project. GNU Library General Public License, version 2. LAME ships as a separate shared library that can be replaced.
+
+iODBC (macOS)
+• Copyright OpenLink Software. BSD License or GNU Library General Public License, at the user's choice.
+
+LIBSVM
+• The support vector machine in the System.ML library is a port of LIBSVM. Copyright Chih-Chung Chang and Chih-Jen Lin. BSD 3-Clause License.
+
+VADER
+• The sentiment lexicon in the NLP library reuses values from VADER (Valence Aware Dictionary and sEntiment Reasoner). Copyright (c) 2016 C.J. Hutto. MIT License.
 
 Eigen
-• MPL2 is a simple, file-level-copyleft license (meaning that the copyleft does not propagate across source file boundaries) which should allow use by all projects.
-• Common questions about the MPL2 are answered about MPL2 license (http://www.mozilla.org/MPL/2.0/FAQ.html)
+• Copyright the Eigen authors, including Benoît Jacob and Gaël Guennebaud. Mozilla Public License 2.0; source at https://eigen.tuxfamily.org.
+
+Lato font
+• Copyright Łukasz Dziedzic. SIL Open Font License 1.1.

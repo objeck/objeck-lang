@@ -153,6 +153,11 @@ cd ../sdl
 xcodebuild -project macos/xcode/sdl.xcodeproj build $SIGN_FLAGS OBJECK_DEPS="$OBJECK_DEPS"
 cp macos/xcode/build/Release/libxcode.dylib ../../release/deploy/lib/native/libobjk_sdl.dylib
 cp lib/fonts/*.ttf ../../release/deploy/lib/sdl/fonts
+# OFL.txt is the bundled Lato font's SIL Open Font License; it ships beside the
+# font, and in doc/licenses/lato below. Copied when present.
+if [ -f lib/fonts/OFL.txt ]; then
+	cp lib/fonts/OFL.txt ../../release/deploy/lib/sdl/fonts/
+fi
 
 # Ship SDL2 INSIDE the distribution, the way Windows ships its DLLs beside the
 # binaries, instead of handing the user a tarball to install by hand.
@@ -347,6 +352,22 @@ for lib in opencv onnxruntime mbedtls iodbc lame; do
 	mkdir -p "core/release/deploy/doc/licenses/$lib"
 	cp "$OBJECK_DEPS/macos-bundle/$lib/licenses/"* "core/release/deploy/doc/licenses/$lib/" || exit 1
 done
+# SDL2 and its satellite libraries ship in lib/sdl; their license texts, and
+# those of FreeType and HarfBuzz, which SDL2_ttf links in, sit beside the
+# vendored dylibs. SDL2_gfx is compiled into libobjk_sdl, and Eigen's headers
+# into libobjk_ml.
+mkdir -p core/release/deploy/doc/licenses/sdl2 core/release/deploy/doc/licenses/sdl2_gfx core/release/deploy/doc/licenses/eigen
+cp core/lib/sdl/macos/arm64/LICENSE.*.txt core/release/deploy/doc/licenses/sdl2/ || exit 1
+cp core/lib/sdl/LICENSE.SDL2_gfx.txt core/release/deploy/doc/licenses/sdl2_gfx/ || exit 1
+cp core/lib/matrix/lib/eigen-3.4.0/COPYING.* core/release/deploy/doc/licenses/eigen/ || exit 1
+if [ -f core/lib/sdl/lib/fonts/OFL.txt ]; then
+	mkdir -p core/release/deploy/doc/licenses/lato
+	cp core/lib/sdl/lib/fonts/OFL.txt core/release/deploy/doc/licenses/lato/ || exit 1
+fi
+# The notices no package provides, for code ported or adapted into the .obl
+# libraries: LIBSVM (System.ML's support vector machine) and VADER (the NLP
+# sentiment lexicon).
+cp -R core/release/licenses/. core/release/deploy/doc/licenses/ || exit 1
 
 # Ship the dependency installer INSIDE the distribution. Linux links
 # libobjk_sdl.so against the system SDL2 and libGL and ships neither, so the

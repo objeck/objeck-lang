@@ -134,7 +134,9 @@ jobs:
             arch: x64
             deploy_script: deploy_windows.cmd x64 deploy
             shell: cmd
-            artifact_pattern: "objeck-windows-x64_0.0.0.*"
+            # deploy_windows.cmd names the MSI and zip with the release version
+            # itself, so release-publish's 0.0.0 rename passes them by.
+            artifact_pattern: "objeck-windows-x64_*.*"
 
           # Windows ARM64 (cross-compiled on x64 runner)
           - platform: windows-arm64
@@ -142,7 +144,7 @@ jobs:
             arch: ARM64
             deploy_script: deploy_windows.cmd arm64 deploy
             shell: cmd
-            artifact_pattern: "objeck-windows-arm64_0.0.0.*"
+            artifact_pattern: "objeck-windows-arm64_*.*"
 
           # Linux x64
           - platform: linux-x64
@@ -340,7 +342,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: core/lib/opencv/win/x64/bin
-          key: opencv-4.12.0-win-x64-dlls
+          key: opencv-4.12.0-win-x64-dlls-licenses
 
       - name: Download OpenCV runtime DLLs (Windows x64)
         if: matrix.platform == 'windows-x64' && steps.opencv-cache-x64.outputs.cache-hit != 'true'
@@ -358,6 +360,20 @@ jobs:
 
           Copy-Item "opencv-extract\opencv\build\x64\vc16\bin\opencv_world4120.dll" $binDir
           Copy-Item "opencv-extract\opencv\build\x64\vc16\bin\opencv_videoio_ffmpeg4120_64.dll" $binDir
+
+          # The package's license texts go beside the DLLs, inside the cache, so a
+          # cache hit carries them too. deploy_windows.cmd ships them in
+          # doc\licenses\opencv: OpenCV's LICENSE and etc\licenses, which covers what
+          # opencv_world links in and the LGPL FFmpeg in opencv_videoio_ffmpeg.
+          $licDir = "$binDir\licenses"
+          New-Item -ItemType Directory -Force -Path $licDir | Out-Null
+          $etc = Get-ChildItem opencv-extract -Recurse -Directory -Filter licenses | Where-Object { $_.FullName -match '\\etc\\licenses$' } | Select-Object -First 1
+          if (-not $etc) { throw "The OpenCV package has no etc\licenses directory" }
+          Copy-Item "$($etc.FullName)\*" $licDir
+          $top = @("opencv-extract\opencv\LICENSE", "opencv-extract\opencv\build\LICENSE") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $top) { throw "The OpenCV package has no LICENSE" }
+          Copy-Item $top "$licDir\LICENSE"
+          Get-ChildItem opencv-extract\opencv -Filter "LICENSE_FFMPEG*" | Copy-Item -Destination $licDir
 
           Remove-Item opencv-dl.exe -Force
           Remove-Item -Recurse opencv-extract -Force
@@ -492,6 +508,69 @@ jobs:
             exit 1
           }
           Write-Output "✅ API docs complete: $htmlCount HTML files"
+
+      # deploy_windows.cmd already fails on a missing license text; this lists
+      # what the PACKAGES carry, and holds the MSI to the release version. Every
+      # MSI before v2026.10.2 was built as 0.0.0.
+      - name: Verify license notices and MSI version (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $arch = if ("${{ matrix.arch }}" -eq "ARM64") { "arm64" } else { "x64" }
+          $version = "${{ needs.prepare.outputs.version }}"
+          $expect = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File core\release\msi_version.ps1).Trim().Split(' ')
+          if ($expect[0] -ne $version) { Write-Error "version.h says $($expect[0]), the release is $version"; exit 1 }
+          $dir = "$env:GITHUB_WORKSPACE\Objeck-Build\release-$arch"
+          $msi = "$dir\objeck-windows-${arch}_$version.msi"
+          $zip = "$dir\objeck-windows-${arch}_$version.zip"
+          foreach ($f in @($msi, $zip)) {
+            if (-not (Test-Path $f)) { Write-Error "Missing package $f"; exit 1 }
+          }
+
+          $installer = New-Object -ComObject WindowsInstaller.Installer
+          $db = $installer.GetType().InvokeMember("OpenDatabase", "InvokeMethod", $null, $installer, @($msi, 0))
+          function MsiProperty($name) {
+            $view = $db.GetType().InvokeMember("OpenView", "InvokeMethod", $null, $db, @("SELECT Value FROM Property WHERE Property='$name'"))
+            $view.GetType().InvokeMember("Execute", "InvokeMethod", $null, $view, $null) | Out-Null
+            $rec = $view.GetType().InvokeMember("Fetch", "InvokeMethod", $null, $view, $null)
+            $rec.GetType().InvokeMember("StringData", "GetProperty", $null, $rec, 1)
+          }
+          $pv = MsiProperty "ProductVersion"
+          $pn = MsiProperty "ProductName"
+          Write-Output "MSI: $(Split-Path $msi -Leaf)  ProductVersion=$pv  ProductName=$pn"
+          if ($pv -ne $expect[1]) { Write-Error "MSI ProductVersion is $pv, expected $($expect[1])"; exit 1 }
+
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $z = [System.IO.Compression.ZipFile]::OpenRead($zip)
+          $lic = $z.Entries | Where-Object { $_.FullName -match '[\\/]doc[\\/]licenses[\\/].+' -and $_.Length -gt 0 } | ForEach-Object { ($_.FullName -replace '\\', '/') -replace '^.*?/doc/licenses/', '' }
+          $z.Dispose()
+          Write-Output "doc/licenses in $(Split-Path $zip -Leaf):"
+          $lic | Sort-Object | ForEach-Object { "  $_" }
+          $folders = $lic | ForEach-Object { $_.Split('/')[0] } | Sort-Object -Unique
+          $need = @("eigen", "lame", "libsvm", "mbedtls", "nghttp2", "onnxruntime", "opencv", "sdl2", "sdl2_gfx", "vader")
+          if ($arch -eq "arm64") { $need += "qnn" }
+          $missing = $need | Where-Object { $folders -notcontains $_ }
+          if ($missing) { Write-Error "doc/licenses lacks: $($missing -join ', ')"; exit 1 }
+          Write-Output "✅ $($folders -join ', ')"
+
+      - name: Verify license notices (POSIX)
+        if: runner.os != 'Windows'
+        run: |
+          LIC="core/release/deploy/doc/licenses"
+          echo "doc/licenses in the deploy tree:"
+          (cd "$LIC" && find . -type f | sed 's|^\./|  |' | sort)
+          NEED="aws-lc ngtcp2 nghttp3 nghttp2 eigen libsvm sdl2_gfx vader"
+          case "${{ matrix.platform }}" in
+            linux-*) NEED="$NEED onnxruntime" ;;
+            macos-*) NEED="$NEED onnxruntime opencv mbedtls iodbc lame sdl2" ;;
+          esac
+          MISSING=""
+          for d in $NEED; do [ -d "$LIC/$d" ] || MISSING="$MISSING $d"; done
+          if [ -n "$MISSING" ]; then
+            echo "❌ doc/licenses lacks:$MISSING"
+            exit 1
+          fi
+          echo "✅ $NEED"
 
       - name: Verify required binaries (POSIX)
         if: runner.os != 'Windows'

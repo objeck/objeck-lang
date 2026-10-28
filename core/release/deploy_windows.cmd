@@ -97,6 +97,16 @@ mkdir %TARGET%\lib\sdl
 mkdir %TARGET%\lib\sdl\fonts
 mkdir %TARGET%\lib\native
 mkdir %TARGET%\lib\native\misc
+REM Third-party license texts. Each component's text is copied in the step
+REM that copies its binary, from the same place the binary comes from, so the
+REM text always matches what ships. The "verify license notices" step below
+REM fails the deploy if any is missing.
+mkdir %TARGET%\doc
+mkdir %TARGET%\doc\licenses
+REM release\licenses holds the notices no package provides, for code ported or
+REM adapted into the .obl libraries: LIBSVM in System.ML's support vector
+REM machine, VADER's lexicon values in the NLP sentiment scorer.
+xcopy /e /y /q licenses %TARGET%\doc\licenses\
 copy ..\lib\*.obl %TARGET%\lib
 copy ..\lib\*.ini %TARGET%\lib
 
@@ -245,6 +255,10 @@ if errorlevel 1 (
 	echo ============================================================
 	exit /b 1
 )
+REM LAME is LGPL: its license and the LGPL text ship beside libmp3lame.dll.
+mkdir %TARGET%\doc\licenses\lame
+copy ..\lib\lame\LICENSE %TARGET%\doc\licenses\lame
+copy ..\lib\lame\COPYING %TARGET%\doc\licenses\lame
 
 REM nghttp2 runtime DLL (required by obr for HTTP/2 support).
 REM Taken from vcpkg so the shipped DLL matches the import library linked
@@ -258,6 +272,12 @@ if errorlevel 1 (
 	echo ============================================================
 	exit /b 1
 )
+REM vcpkg installs each port's license as share\<port>\copyright. mbedTLS is
+REM linked statically into obr and the libraries, nghttp2 ships as nghttp2.dll.
+mkdir %TARGET%\doc\licenses\nghttp2
+copy "%VCPKG_DIR%\installed\%VCPKG_TRIPLET%\share\nghttp2\copyright" %TARGET%\doc\licenses\nghttp2\COPYING
+mkdir %TARGET%\doc\licenses\mbedtls
+copy "%VCPKG_DIR%\installed\%VCPKG_TRIPLET%\share\mbedtls\copyright" %TARGET%\doc\licenses\mbedtls\LICENSE
 
 @call "%~dp0ui.cmd" :ui_step "launchers + updater"
 REM native launcher
@@ -595,6 +615,9 @@ if [%1] == [x64] (
 	)
 	copy Release\x64\*.dll ..\..\release\%TARGET%\lib\native
 )
+REM libobjk_ml compiles in the vendored Eigen headers, MPL 2.0.
+mkdir ..\..\release\%TARGET%\doc\licenses\eigen
+copy lib\eigen-3.4.0\COPYING.* ..\..\release\%TARGET%\doc\licenses\eigen
 cd ..\..\release
 
 @call "%~dp0ui.cmd" :ui_step "library: opencv"
@@ -629,6 +652,19 @@ if [%1] == [arm64] (
 	for %%c in (z.dll jpeg62.dll libpng16.dll tiff.dll libwebp.dll libwebpdecoder.dll libwebpdemux.dll libwebpmux.dll liblzma.dll libsharpyuv.dll) do (
 		if exist "%VCPKG_DIR%\installed\%VCPKG_TRIPLET%\bin\%%c" copy /y "%VCPKG_DIR%\installed\%VCPKG_TRIPLET%\bin\%%c" ..\..\release\%TARGET%\bin
 	)
+
+	REM License texts: vcpkg's share\opencv4\copyright when this run built the
+	REM modules, otherwise the OpenCV 4.12.0 LICENSE committed beside the
+	REM committed modules. The codec ports' texts come from vcpkg, as their DLLs do.
+	mkdir ..\..\release\%TARGET%\doc\licenses\opencv
+	if exist "%VCPKG_DIR%\installed\%VCPKG_TRIPLET%\share\opencv4\copyright" (
+		copy /y "%VCPKG_DIR%\installed\%VCPKG_TRIPLET%\share\opencv4\copyright" ..\..\release\%TARGET%\doc\licenses\opencv\LICENSE
+	) else (
+		copy /y win\arm64\LICENSE ..\..\release\%TARGET%\doc\licenses\opencv\LICENSE
+	)
+	for %%p in (zlib libjpeg-turbo libpng tiff libwebp liblzma) do (
+		if exist "%VCPKG_DIR%\installed\%VCPKG_TRIPLET%\share\%%p\copyright" copy /y "%VCPKG_DIR%\installed\%VCPKG_TRIPLET%\share\%%p\copyright" ..\..\release\%TARGET%\doc\licenses\opencv\%%p-copyright.txt
+	)
 )
 
 if [%1] == [x64] (
@@ -656,6 +692,13 @@ if [%1] == [x64] (
 	)
 	if exist win\x64\bin\opencv_videoio_ffmpeg4120_64.dll (
 		copy /y win\x64\bin\opencv_videoio_ffmpeg4120_64.dll ..\..\release\%TARGET%\bin
+	)
+	REM The workflows unpack these DLLs from the OpenCV Windows package and put
+	REM that package's LICENSE and etc\licenses beside them in bin\licenses. That
+	REM covers what opencv_world links in, and FFmpeg, which is LGPL.
+	if exist win\x64\bin\licenses (
+		mkdir ..\..\release\%TARGET%\doc\licenses\opencv
+		xcopy /e /y /q win\x64\bin\licenses ..\..\release\%TARGET%\doc\licenses\opencv\
 	)
 )
 cd ..\..\release
@@ -706,6 +749,37 @@ echo NuGet restore attempt %NUGET_ATTEMPT% of %NUGET_MAX_ATTEMPTS% failed ^(tran
 powershell -Command "Start-Sleep -Seconds 15" >nul 2>&1
 goto nuget_restore_retry
 :nuget_restore_ok
+
+REM The ARM64 ONNX Runtime and Qualcomm QNN DLLs committed under eq\qnn came from
+REM the Microsoft.ML.OnnxRuntime.QNN 1.23.0 NuGet package. Fetch that package for
+REM its license texts: ONNX Runtime's LICENSE and ThirdPartyNotices.txt, and
+REM Qualcomm_LICENSE.pdf, the license the QnnCpu/Dsp/Gpu/Htp DLLs ship under.
+REM The package also holds the DLLs, so this reports whether the committed ones
+REM still match it. Outside the arm64 block below because it needs labels.
+set QNN_PKG=Microsoft.ML.OnnxRuntime.QNN
+set QNN_PKG_VERSION=1.23.0
+set QNN_PKG_DIR=packages\%QNN_PKG%.%QNN_PKG_VERSION%
+if not [%1] == [arm64] goto qnn_package_ok
+set NUGET_ATTEMPT=0
+:qnn_package_retry
+set /a NUGET_ATTEMPT+=1
+"%NUGET_EXE%" install %QNN_PKG% -Version %QNN_PKG_VERSION% -OutputDirectory packages -DependencyVersion Ignore -NonInteractive
+if not errorlevel 1 goto qnn_package_installed
+if %NUGET_ATTEMPT% geq %NUGET_MAX_ATTEMPTS% (
+	echo.
+	echo ============================================================
+	echo  ERROR: NuGet install of %QNN_PKG% %QNN_PKG_VERSION% failed after %NUGET_MAX_ATTEMPTS% attempts - aborting deploy
+	echo ============================================================
+	exit /b 1
+)
+echo NuGet install attempt %NUGET_ATTEMPT% of %NUGET_MAX_ATTEMPTS% failed - retrying in 15s...
+powershell -Command "Start-Sleep -Seconds 15" >nul 2>&1
+goto qnn_package_retry
+:qnn_package_installed
+for %%d in (onnxruntime_providers_qnn.dll QnnCpu.dll QnnDsp.dll QnnGpu.dll QnnHtp.dll) do (
+	fc /b "%QNN_PKG_DIR%\runtimes\win-arm64\native\%%d" "eq\qnn\win\onnx\arm64\bin\%%d" >nul 2>&1 && echo %%d matches %QNN_PKG% %QNN_PKG_VERSION% || echo Note: %%d differs from %QNN_PKG% %QNN_PKG_VERSION%
+)
+:qnn_package_ok
 
 if [%1] == [arm64] (
 	devenv onnx.sln /rebuild "Release-QNN|ARM64"
@@ -759,6 +833,11 @@ if [%1] == [arm64] (
 			echo ============================================================
 			exit /b 1
 		)
+		mkdir ..\..\release\%TARGET%\doc\licenses\onnxruntime
+		copy /y %QNN_PKG_DIR%\LICENSE ..\..\release\%TARGET%\doc\licenses\onnxruntime
+		copy /y %QNN_PKG_DIR%\ThirdPartyNotices.txt ..\..\release\%TARGET%\doc\licenses\onnxruntime
+		mkdir ..\..\release\%TARGET%\doc\licenses\qnn
+		copy /y %QNN_PKG_DIR%\Qualcomm_LICENSE.pdf ..\..\release\%TARGET%\doc\licenses\qnn
 	) else (
 		echo.
 		echo ============================================================
@@ -788,6 +867,9 @@ if [%1] == [x64] (
 
 	if exist packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native (
 		copy /y packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native\*.dll ..\..\release\%TARGET%\bin
+		mkdir ..\..\release\%TARGET%\doc\licenses\onnxruntime
+		copy /y packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\LICENSE ..\..\release\%TARGET%\doc\licenses\onnxruntime
+		copy /y packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\ThirdPartyNotices.txt ..\..\release\%TARGET%\doc\licenses\onnxruntime
 	) else (
 		echo Warning: OnnxRuntime.DirectML nuget packages not found - ONNX runtime unavailable
 	)
@@ -807,6 +889,13 @@ if [%1] == [x64] (
 		) else (
 			echo Warning: no OS DirectML.dll and no vendored package - GPU inference unavailable
 		)
+	)
+	REM DirectML's redistributable license ships only when its DLL does.
+	if exist ..\..\release\%TARGET%\bin\DirectML.dll (
+		mkdir ..\..\release\%TARGET%\doc\licenses\directml
+		copy /y packages\Microsoft.AI.DirectML.1.15.4\LICENSE.txt ..\..\release\%TARGET%\doc\licenses\directml
+		copy /y packages\Microsoft.AI.DirectML.1.15.4\LICENSE-CODE.txt ..\..\release\%TARGET%\doc\licenses\directml
+		copy /y packages\Microsoft.AI.DirectML.1.15.4\ThirdPartyNotices.txt ..\..\release\%TARGET%\doc\licenses\directml
 	)
 )
 cd ..\..\release
@@ -866,6 +955,20 @@ if [%1] == [x64] (
 	REM bin, not lib\sdl -- see the note on the arm64 copy above.
 	copy lib\x64\*.dll ..\..\release\%TARGET%\bin
 )
+REM SDL2, each SDL2 satellite library and what they link in keep their license
+REM texts beside the DLLs in lib\<arch>, as LICENSE.<component>.txt. SDL2_gfx is
+REM compiled into libobjk_sdl from the sources here. OFL.txt is the Lato font's
+REM SIL Open Font License; it ships beside the font and in doc\licenses\lato.
+REM Copied when present, so this does not depend on which fonts the tree has.
+mkdir ..\..\release\%TARGET%\doc\licenses\sdl2
+copy lib\%1\LICENSE.*.txt ..\..\release\%TARGET%\doc\licenses\sdl2
+mkdir ..\..\release\%TARGET%\doc\licenses\sdl2_gfx
+copy LICENSE.SDL2_gfx.txt ..\..\release\%TARGET%\doc\licenses\sdl2_gfx
+if exist lib\fonts\OFL.txt (
+	copy lib\fonts\OFL.txt ..\..\release\%TARGET%\lib\sdl\fonts
+	mkdir ..\..\release\%TARGET%\doc\licenses\lato
+	copy lib\fonts\OFL.txt ..\..\release\%TARGET%\doc\licenses\lato
+)
 cd ..\..\release
 
 @call "%~dp0ui.cmd" :ui_step "examples"
@@ -919,8 +1022,8 @@ if exist "%MODELS_SRC%\phi3v\directml-int4-rtn-block-32\model.onnx" (
 )
 
 @call "%~dp0ui.cmd" :ui_step "documentation"
-REM build and update docs
-mkdir %TARGET%\doc
+REM build and update docs (doc itself was made with the tree, for doc\licenses)
+if not exist %TARGET%\doc mkdir %TARGET%\doc
 mkdir %TARGET%\doc\syntax
 xcopy /e ..\..\docs\syntax\* %TARGET%\doc\syntax
 
@@ -958,6 +1061,42 @@ if errorlevel 1 (
 	echo.
 	echo ============================================================
 	echo  ERROR: a native library in %TARGET% cannot load - aborting deploy
+	echo ============================================================
+	exit /b 1
+)
+
+REM Verify license notices. Every third-party component the tree ships must carry
+REM its license text in doc\licenses. Nothing checks copy, so a missing text would
+REM otherwise ship as silently as the package went without them for years.
+for %%f in (mbedtls\LICENSE nghttp2\COPYING lame\LICENSE lame\COPYING onnxruntime\LICENSE onnxruntime\ThirdPartyNotices.txt opencv\LICENSE sdl2\LICENSE.SDL2.txt sdl2\LICENSE.SDL2_image.txt sdl2\LICENSE.SDL2_mixer.txt sdl2\LICENSE.SDL2_ttf.txt sdl2\LICENSE.freetype.txt sdl2\LICENSE.harfbuzz.txt sdl2_gfx\LICENSE.SDL2_gfx.txt eigen\COPYING.MPL2 libsvm\COPYRIGHT vader\LICENSE) do (
+	if not exist "%TARGET%\doc\licenses\%%f" (
+		echo.
+		echo ============================================================
+		echo  ERROR: missing license text %TARGET%\doc\licenses\%%f - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+)
+if [%1] == [arm64] for %%f in (qnn\Qualcomm_LICENSE.pdf sdl2\LICENSE.SDL2_net.txt sdl2\LICENSE.SDL2_rtf.txt sdl2\LICENSE.SDL2_sound.txt) do (
+	if not exist "%TARGET%\doc\licenses\%%f" (
+		echo.
+		echo ============================================================
+		echo  ERROR: missing license text %TARGET%\doc\licenses\%%f - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+)
+if exist ..\lib\sdl\lib\fonts\OFL.txt if not exist %TARGET%\doc\licenses\lato\OFL.txt (
+	echo.
+	echo ============================================================
+	echo  ERROR: the bundled font ships without OFL.txt - aborting deploy
+	echo ============================================================
+	exit /b 1
+)
+if exist %TARGET%\bin\DirectML.dll if not exist %TARGET%\doc\licenses\directml\LICENSE.txt (
+	echo.
+	echo ============================================================
+	echo  ERROR: DirectML.dll ships without its license - aborting deploy
 	echo ============================================================
 	exit /b 1
 )
@@ -1004,20 +1143,40 @@ if [%2] NEQ [deploy] goto end
 	REM Use absolute paths because WiX resolves -d variables relative to the .wxs file
 	for %%i in ("..\..\Objeck-Build") do set OBJECK_BUILD=%%~fi
 
+	REM The release version, from the version.h update_version.ps1 wrote, and the
+	REM MSI ProductVersion it maps to: 2026.10.2 becomes 26.10.2, because an MSI
+	REM major version cannot exceed 255. msi_version.ps1 documents the mapping.
+	REM Every MSI used to be built as 0.0.0, so Add/Remove Programs showed 0.0.0
+	REM and MajorUpgrade, which removes only LOWER versions, never replaced one.
+	set OBJECK_VERSION=
+	set MSI_VERSION=
+	for /f "tokens=1,2" %%a in ('powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0msi_version.ps1"') do (
+		set OBJECK_VERSION=%%a
+		set MSI_VERSION=%%b
+	)
+	if "%MSI_VERSION%" == "" (
+		echo.
+		echo ============================================================
+		echo  ERROR: could not read the release version from version.h - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	echo Packaging version %OBJECK_VERSION% ^(MSI ProductVersion %MSI_VERSION%^)
+
 	if [%1] == [arm64] (
 		set WIX_ARCH=arm64
 		set WIX_SOURCEDIR=%OBJECK_BUILD%\release-arm64\%INSTALL_TARGET%
-		set WIX_OUTPUT=%OBJECK_BUILD%\release-arm64\objeck-windows-arm64_0.0.0.msi
+		set WIX_OUTPUT=%OBJECK_BUILD%\release-arm64\objeck-windows-arm64_%OBJECK_VERSION%.msi
 	)
 
 	if [%1] == [x64] (
 		set WIX_ARCH=x64
 		set WIX_SOURCEDIR=%OBJECK_BUILD%\release-x64\%INSTALL_TARGET%
-		set WIX_OUTPUT=%OBJECK_BUILD%\release-x64\objeck-windows-x64_0.0.0.msi
+		set WIX_OUTPUT=%OBJECK_BUILD%\release-x64\objeck-windows-x64_%OBJECK_VERSION%.msi
 	)
 
 	wix build -arch %WIX_ARCH% -o %WIX_OUTPUT% ^
-		-d Platform=%WIX_ARCH% -d Version=0.0.0 ^
+		-d Platform=%WIX_ARCH% -d Version=%MSI_VERSION% -d DisplayVersion=%OBJECK_VERSION% ^
 		-d SourceDir=%WIX_SOURCEDIR% ^
 		-ext WixToolset.UI.wixext -ext WixToolset.Util.wixext ^
 		..\utils\setup\objeck.wxs
@@ -1039,10 +1198,10 @@ if [%2] NEQ [deploy] goto end
 
 	REM Create ZIP
 	if [%1] == [arm64] (
-		powershell -Command "Compress-Archive -Path '..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%' -DestinationPath '..\..\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.zip' -Force"
+		powershell -Command "Compress-Archive -Path '..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%' -DestinationPath '..\..\Objeck-Build\release-arm64\objeck-windows-arm64_%OBJECK_VERSION%.zip' -Force"
 	)
 	if [%1] == [x64] (
-		powershell -Command "Compress-Archive -Path '..\..\Objeck-Build\release-x64\%INSTALL_TARGET%' -DestinationPath '..\..\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.zip' -Force"
+		powershell -Command "Compress-Archive -Path '..\..\Objeck-Build\release-x64\%INSTALL_TARGET%' -DestinationPath '..\..\Objeck-Build\release-x64\objeck-windows-x64_%OBJECK_VERSION%.zip' -Force"
 	)
 	if errorlevel 1 (
 		echo.
