@@ -1,0 +1,121 @@
+#~
+Data.XML: in a FindElements path, '[n]' is the n-th match (1-based), as in XPath.
+
+The defect: the path syntax imitates XPath, where '/a/b[2]' is the second 'b' child of each
+'a'. FindElements read '[n]' as "the first n matches" instead, so '/a/b[2]' returned the first
+two 'b' elements and '/a/b[3]' the first three. Only '[1]' happened to agree.
+
+The fix gives '[n]' its XPath meaning: per parent, the n-th child of that name, or nothing when
+there are fewer than n (and nothing for '[0]'). This is a behaviour change for any caller that
+used '[n]' with n > 1 to mean "the first n"; GetChildren(name, max) still returns the first
+max children by name.
+
+Also fixed: '[n]' and '[attribute]' on a step below a leaf element raised NilError, because a
+leaf's child list is never created; they now find nothing.
+
+Also checked unchanged: '[1]', '[first()]', '[last()]', an '[attribute]' predicate, a bare
+step, '[n]' on an intermediate step, and '[n]' applied per parent across several parents.
+~#
+use System;
+use Collection;
+use Data.XML;
+
+class XmlPathPosition {
+	@failures : static : Int;
+	@checks : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		@checks += 1;
+		if(ok) {
+			"  ok: {$what}"->PrintLine();
+		}
+		else {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	# the matches' 'id' attributes, joined with ','
+	function : Ids(found : Vector<XmlElement>) ~ String {
+		ids := "";
+		each(i : found) {
+			if(i > 0) {
+				ids += ",";
+			};
+			attrib := found->Get(i)->GetAttribute("id");
+			ids += attrib <> Nil ? attrib->GetValue() : "?";
+		};
+		return ids;
+	}
+
+	function : Finds(parser : XmlParser, path : String, expected : String) ~ Nil {
+		got := Ids(parser->FindElements(path)<XmlElement>);
+		ok := got->Equals(expected);
+		if(<>ok) {
+			"    {$path}: got '{$got}', expected '{$expected}'"->PrintLine();
+		};
+		Check("{$path} is '{$expected}'", ok);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		xml := "<a>";
+		xml += "<s id=\"s1\"><b id=\"b1\"/><c id=\"c1\"/><b id=\"b2\" k=\"x\"/><b id=\"b3\"/></s>";
+		xml += "<s id=\"s2\"><b id=\"b4\"/><b id=\"b5\" k=\"y\"/></s>";
+		xml += "<s id=\"s3\"><c id=\"c2\"/></s>";
+		xml += "</a>";
+		parser := XmlParser->New(xml);
+		if(<>parser->Parse()) {
+			Check("the document parses", false);
+		}
+		else {
+			# the defect: [n] was the first n
+			Finds(parser, "/a/s[2]", "s2");
+			Finds(parser, "/a/s[3]", "s3");
+			Finds(parser, "/a/s[1]/b[2]", "b2");
+			Finds(parser, "/a/s[1]/b[3]", "b3");
+
+			# per parent: the second b of every s that has one
+			Finds(parser, "/a/s/b[2]", "b2,b5");
+			Finds(parser, "/a/s/b[3]", "b3");
+
+			# past the end, and zero
+			Finds(parser, "/a/s[4]", "");
+			Finds(parser, "/a/s[1]/b[9]", "");
+			Finds(parser, "/a/s[0]", "");
+
+			# a step below elements that have no children at all (these raised NilError for
+			# '[n]' and '[attribute]': the child list of a leaf is never created)
+			Finds(parser, "/a/s/b/x[2]", "");
+			Finds(parser, "/a/s/b/x[k]", "");
+			Finds(parser, "/a/s/b/x[1]", "");
+
+			# unchanged
+			Finds(parser, "/a/s[1]", "s1");
+			Finds(parser, "/a/s/b[1]", "b1,b4");
+			Finds(parser, "/a/s", "s1,s2,s3");
+			Finds(parser, "/a/s/b", "b1,b2,b3,b4,b5");
+			Finds(parser, "/a/s[first()]", "s1");
+			Finds(parser, "/a/s[last()]", "s3");
+			Finds(parser, "/a/s/b[last()]", "b3,b5");
+			Finds(parser, "/a/s[last()]/c[first()]", "c2");
+			Finds(parser, "/a/s/b[k]", "b2,b5");
+			Finds(parser, "/a/s[2]/b[k]", "b5");
+
+			# the element's own FindElements, as the parser's
+			found := parser->GetRoot()->FindElements("/a/s[2]/b[1]")<XmlElement>;
+			Check("XmlElement->FindElements(\"/a/s[2]/b[1]\") is 'b4'", Ids(found)->Equals("b4"));
+
+			# GetChildren(name, max) keeps its "first max" meaning
+			first_two := parser->GetRoot()->GetFirstChild("s")->GetChildren("b", 2)<XmlElement>;
+			Check("GetChildren(\"b\", 2) is still the first two", Ids(first_two)->Equals("b1,b2"));
+		};
+
+		if(@failures = 0) {
+			"PASS: xml_path_position ({$@checks} checks)"->PrintLine();
+		}
+		else {
+			"FAIL: xml_path_position: {$@failures} of {$@checks} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

@@ -1,0 +1,206 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured: a name that is not a column is an error in every clause.
+
+The defect: 'select region, colour from orders', where orders has no 'colour', returned a
+result with an empty 'colour' column instead of Nil. The SQL front end had kept the old
+engine's quirk on purpose (docs/QUERY_DESIGN.md, phase 4: "an unknown select column read as
+empty cells"), and ORDER BY likewise skipped an unknown column ("the old engine skipped an
+unknown ORDER BY column"), so 'order by colour' returned the rows unsorted. A misspelt column
+was a silent wrong answer. Only a plain name on a single table did this: a join, an
+expression, WHERE, GROUP BY, HAVING and aggregates already refused an unknown name.
+
+The fix: on a single table, a select-list name and an ORDER BY name that are not columns are
+refused as everywhere else, Query returns Nil and GetError() says "unknown column 'colour'", the
+same message the joined case and WHERE give. This is a behaviour change.
+
+Also checked, so the refusal is not too wide: aliases (in ORDER BY too), expressions, '*',
+'table.column' and 'alias.column' on one table (labelled as written, as before), a column whose name contains a dot, ORDER BY a
+column not in the select list and by position, GROUP BY, DISTINCT, joins with qualified and
+unqualified names, Catalog->Query and a prepared statement; and that WHERE, GROUP BY, HAVING,
+aggregates and joins still refuse an unknown name.
+~#
+use Query.Structured, Collection;
+
+class QueryUnknownColumn {
+	@failures : static : Int;
+	@checks : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		@checks += 1;
+		if(ok) {
+			"  ok: {$what}"->PrintLine();
+		}
+		else {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Csv(rs : Table) ~ String {
+		if(rs = Nil) {
+			return "<nil>";
+		};
+		return rs->ToCsv()->ReplaceAll("\r\n", "\n");
+	}
+
+	function : Same(what : String, t : Table, sql : String, expected : String) ~ Nil {
+		got := Csv(t->Query(sql));
+		if(got->Equals("<nil>")) {
+			got := "<nil: {$(t->GetError())}>";
+		};
+		ok := got->Equals(expected);
+		if(<>ok) {
+			shown_got := got->ReplaceAll("\n", "|");
+			shown_expected := expected->ReplaceAll("\n", "|");
+			"    {$sql}"->PrintLine();
+			"    got:      {$shown_got}"->PrintLine();
+			"    expected: {$shown_expected}"->PrintLine();
+		};
+		Check(what, ok);
+	}
+
+	function : SameIn(what : String, c : Catalog, sql : String, expected : String) ~ Nil {
+		got := Csv(c->Query(sql));
+		if(got->Equals("<nil>")) {
+			got := "<nil: {$(c->GetError())}>";
+		};
+		ok := got->Equals(expected);
+		if(<>ok) {
+			shown_got := got->ReplaceAll("\n", "|");
+			shown_expected := expected->ReplaceAll("\n", "|");
+			"    {$sql}"->PrintLine();
+			"    got:      {$shown_got}"->PrintLine();
+			"    expected: {$shown_expected}"->PrintLine();
+		};
+		Check(what, ok);
+	}
+
+	# what a query gave, for a FAIL line
+	function : Describe(rs : Table, error : String) ~ String {
+		if(rs <> Nil) {
+			rows := Csv(rs)->ReplaceAll("\n", "|");
+			return "a result: {$rows}";
+		};
+
+		if(error <> Nil) {
+			return error;
+		};
+
+		return "Nil with no error";
+	}
+
+	function : Refused(what : String, t : Table, sql : String, reason : String) ~ Nil {
+		rs := t->Query(sql);
+		error := t->GetError();
+		ok := rs = Nil & error <> Nil & error->Has(reason);
+		if(<>ok) {
+			shown := Describe(rs, error);
+			"    {$sql}: {$shown}; wanted Nil and '{$reason}'"->PrintLine();
+		};
+		Check("refused: {$what}", ok);
+	}
+
+	function : RefusedIn(what : String, c : Catalog, sql : String, reason : String) ~ Nil {
+		rs := c->Query(sql);
+		error := c->GetError();
+		ok := rs = Nil & error <> Nil & error->Has(reason);
+		if(<>ok) {
+			shown := Describe(rs, error);
+			"    {$sql}: {$shown}; wanted Nil and '{$reason}'"->PrintLine();
+		};
+		Check("refused: {$what}", ok);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		orders := Table->New("orders", ["id", "region", "amount", "cust", "meta.size"]);
+		regions := ["west", "east", "west", "north"];
+		amounts := [30, 10, 20, 40];
+		custs := [2, 1, 2, 3];
+		each(i : 4) {
+			r := orders->Insert();
+			r->Set("id", IntRef->New(i + 1));
+			r->Set("region", regions[i]);
+			r->Set("amount", IntRef->New(amounts[i]));
+			r->Set("cust", IntRef->New(custs[i]));
+			r->Set("meta.size", IntRef->New(i * 100));
+		};
+
+		customers := Table->New("customers", ["id", "name"]);
+		names := ["ann", "bob", "cat"];
+		each(i : 3) {
+			r := customers->Insert();
+			r->Set("id", IntRef->New(i + 1));
+			r->Set("name", names[i]);
+		};
+
+		catalog := Catalog->New();
+		catalog->Add(orders);
+		catalog->Add(customers);
+
+		"the defect: an unknown name in the select list or ORDER BY of one table"->PrintLine();
+		Refused("the reported case", orders, "select region, colour from orders", "unknown column 'colour'");
+		Refused("an unknown column alone", orders, "select colour from orders", "unknown column 'colour'");
+		Refused("an unknown column first", orders, "select colour, region from orders", "unknown column 'colour'");
+		Refused("an unknown column with an alias", orders, "select colour as c from orders", "unknown column 'colour'");
+		Refused("an unknown column with DISTINCT", orders, "select distinct colour from orders", "unknown column 'colour'");
+		Refused("an unknown column with WHERE and LIMIT", orders, "select id, colour from orders where amount > 10 limit 2", "unknown column 'colour'");
+		Refused("an unknown column beside an expression", orders, "select amount * 2 as d, colour from orders", "unknown column 'colour'");
+		Refused("an unknown 'table.column'", orders, "select orders.colour from orders", "unknown column 'orders.colour'");
+		Refused("an unknown 'alias.column'", orders, "select o.colour from orders o", "unknown column 'o.colour'");
+		Refused("an unknown ORDER BY column", orders, "select region from orders order by colour", "unknown column 'colour'");
+		Refused("an unknown ORDER BY column, descending", orders, "select id from orders order by colour desc", "unknown column 'colour'");
+		Refused("an unknown second ORDER BY column", orders, "select id from orders order by region, colour", "unknown column 'colour'");
+		Refused("an unknown ORDER BY column after SELECT *", orders, "select * from orders order by colour", "unknown column 'colour'");
+		Refused("an unknown ORDER BY column beside an expression", orders, "select amount * 2 as d from orders order by colour", "unknown column 'colour'");
+		RefusedIn("through Catalog->Query", catalog, "select region, colour from orders", "unknown column 'colour'");
+		statement := orders->Prepare("select region, colour from orders where amount > ?");
+		if(statement <> Nil) {
+			statement->Bind(1, 5);
+			Check("refused: a prepared statement", statement->Execute() = Nil & statement->GetError() <> Nil & statement->GetError()->Has("unknown column 'colour'"));
+		}
+		else {
+			Check("refused: a prepared statement (at Prepare)", orders->GetError() <> Nil & orders->GetError()->Has("unknown column 'colour'"));
+		};
+
+		"already refused, and still"->PrintLine();
+		Refused("WHERE", orders, "select region from orders where colour = 'red'", "unknown column 'colour'");
+		Refused("WHERE, in an expression", orders, "select region from orders where colour + 1 > 0", "unknown column 'colour'");
+		Refused("GROUP BY", orders, "select count(*) from orders group by colour", "unknown column 'colour'");
+		Refused("a grouped select-list column", orders, "select colour, count(*) from orders group by region", "unknown column 'colour'");
+		Refused("an aggregate's argument", orders, "select sum(colour) from orders", "colour");
+		Refused("HAVING", orders, "select region, count(*) from orders group by region having sum(colour) > 1", "colour");
+		Refused("an expression", orders, "select colour + 1 from orders", "unknown column 'colour'");
+		RefusedIn("a join's select list", catalog, "select o.id, c.colour from orders o join customers c on o.cust = c.id", "unknown column 'c.colour'");
+		RefusedIn("a join's ON", catalog, "select o.id from orders o join customers c on o.colour = c.id", "colour");
+		RefusedIn("a join's ORDER BY", catalog, "select o.id from orders o join customers c on o.cust = c.id order by colour", "unknown column 'colour'");
+
+		"still answered"->PrintLine();
+		Same("plain columns", orders, "select region, amount from orders where id < 3", "region,amount\nwest,30\neast,10\n");
+		Same("SELECT *", orders, "select * from orders where id = 2", "id,region,amount,cust,meta.size\n2,east,10,1,100\n");
+		Same("an alias", orders, "select region as r from orders where id = 1", "r\nwest\n");
+		Same("ORDER BY an alias", orders, "select region as r, amount from orders order by r, amount", "r,amount\neast,10\nnorth,40\nwest,20\nwest,30\n");
+		Same("ORDER BY an expression's alias", orders, "select id, amount * 2 as d from orders order by d desc limit 2", "id,d\n4,80\n1,60\n");
+		Same("ORDER BY a column not selected", orders, "select id from orders order by amount", "id\n2\n3\n1\n4\n");
+		Same("ORDER BY position", orders, "select id, amount from orders order by 2 desc limit 1", "id,amount\n4,40\n");
+		Same("'table.column'", orders, "select orders.region from orders where id = 4", "orders.region\nnorth\n");
+		Same("'alias.column'", orders, "select o.region from orders o where o.id = 4", "o.region\nnorth\n");
+		Same("ORDER BY 'alias.column'", orders, "select o.id from orders o order by o.amount desc limit 1", "o.id\n4\n");
+		Same("a column whose name has a dot", orders, "select id, meta.size from orders where id = 3", "id,meta.size\n3,200\n");
+		Same("ORDER BY a column whose name has a dot", orders, "select id from orders order by meta.size desc limit 1", "id\n4\n");
+		Same("DISTINCT", orders, "select distinct region from orders order by region", "region\neast\nnorth\nwest\n");
+		Same("GROUP BY", orders, "select region, sum(amount) as total from orders group by region order by total desc", "region,total\nwest,50\nnorth,40\neast,10\n");
+		Same("an expression and a column", orders, "select region, amount + 1 as a from orders where id = 2", "region,a\neast,11\n");
+		SameIn("a join, qualified", catalog, "select o.id, c.name from orders o join customers c on o.cust = c.id order by o.id", "id,name\n1,bob\n2,ann\n3,bob\n4,cat\n");
+		SameIn("a join, unqualified where unambiguous", catalog, "select region, name from orders o join customers c on o.cust = c.id where amount > 25 order by name", "region,name\nwest,bob\nnorth,cat\n");
+		SameIn("a join, by table name", catalog, "select orders.id, customers.name from orders join customers on orders.cust = customers.id where orders.id = 2", "id,name\n2,ann\n");
+
+		if(@failures = 0) {
+			"PASS: query_unknown_column ({$@checks} checks)"->PrintLine();
+		}
+		else {
+			"FAIL: query_unknown_column: {$@failures} of {$@checks} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

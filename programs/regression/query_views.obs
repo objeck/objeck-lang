@@ -141,7 +141,7 @@ class QueryViewsTest {
 		u := Build();
 		rs := u->Query("select n, label from t where label = 'dog' or n >= 50 order by n");
 		Check("SQL through the compiled filters", rs <> Nil & rs->Size() = 3 & rs->GetColumnCount() = 3);
-		Check("an unknown column in the select list reads empty", u->Query("select n, nope from t where n = 10")->Get(0)->Get("nope") = Nil);
+		Check("an unknown column in the select list is refused", u->Query("select n, nope from t where n = 10") = Nil & u->GetError() <> Nil & u->GetError()->Has("unknown column 'nope'"));
 		Check("true and false in SQL", u->Query("select n from t where flag = true")->Size() = 3);
 		statement := u->Prepare("select n from t where n > ? and label = ?");
 		Check("a statement counts its placeholders", statement <> Nil & statement->GetParamCount() = 2);

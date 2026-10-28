@@ -15726,8 +15726,12 @@ if(file->IsOpen()) {
 						};
 					}
 					else {
-						# an unknown column reads as empty cells, as it always has
+						# an unknown name is an error, as it is in a join, WHERE and GROUP BY; it
+						# used to read as a column of empty cells
 						columns[i] := @work->GetIndex(Strip(item->GetName()));
+						if(columns[i] < 0) {
+							return Fail("unknown column '{$(item->GetName())}'");
+						};
 					};
 					labels[i] := item->GetAlias() <> Nil ? item->GetAlias() : item->GetName();
 				};
@@ -15772,8 +15776,12 @@ if(file->IsOpen()) {
 						};
 					}
 					else {
-						# the old engine skipped an unknown ORDER BY column
+						# an unknown name is an error; the old engine skipped it, leaving the
+						# rows unsorted
 						index := @work->GetIndex(Strip(entry->GetName()));
+						if(index < 0) {
+							return Fail("unknown column '{$(entry->GetName())}'");
+						};
 					};
 				};
 

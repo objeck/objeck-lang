@@ -1,0 +1,151 @@
+#~
+Data.XML: a document whose root element is self-closing parses, and its attributes read.
+
+The defect: XmlParser->Parse took the first element as the root only when it was an opening
+tag (ELEMENT). A self-closing root such as '<a title="x y"/>' is a UNARY_ELEMENT, so Parse
+refused it with "Invalid root element...", GetRoot() was Nil, and the natural next call,
+'GetRoot()->GetAttribute("title")', raised NilError. The library's own doc examples
+('<item id="7"/>', '<link href="..."/>', '<a title="5 &lt; 6"/>') were all of this shape.
+
+The fix: a self-closing root is a whole document. Also checked here: a self-closing root after
+an XML declaration, with entity references in its attributes, with single-quoted values,
+followed by trailing whitespace; self-closing elements nested at several depths; that
+FindElements finds a self-closing root; that the root round-trips through ToString; and that
+an empty document and a lone closing tag are still refused.
+
+Found on the way and fixed with it, because each is the same "nothing left to parse" edge:
+an empty document raised NilError in Parse (it read the type of a Nil first tag), and input
+that ended in whitespace, or in the middle of a tag or attribute name ('<a', '<a title'),
+raised an index error, because the whitespace and name scanners read one character past the
+end. Each is now an ordinary parse failure.
+~#
+use System;
+use Data.XML;
+
+class XmlSelfClosingRoot {
+	@failures : static : Int;
+	@checks : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		@checks += 1;
+		if(ok) {
+			"  ok: {$what}"->PrintLine();
+		}
+		else {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	# the root of 'xml', or Nil with a FAIL line
+	function : Root(what : String, xml : String) ~ XmlElement {
+		parser := XmlParser->New(xml);
+		parsed := parser->Parse();
+		if(<>parsed) {
+			error := parser->GetError();
+			Check("{$what}: parses ({$error})", false);
+			return Nil;
+		};
+
+		root := parser->GetRoot();
+		Check("{$what}: parses with a root", root <> Nil);
+		return root;
+	}
+
+	# the decoded value of attribute 'name', or Nil
+	function : Attribute(element : XmlElement, name : String) ~ String {
+		if(element = Nil) {
+			return Nil;
+		};
+
+		attrib := element->GetAttribute(name);
+		if(attrib = Nil) {
+			return Nil;
+		};
+
+		return attrib->GetDecodedValue();
+	}
+
+	function : Is(value : String, expected : String) ~ Bool {
+		return value <> Nil & value->Equals(expected);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		# the reported case
+		root := Root("<a title=\"x y\"/>", "<a title=\"x y\"/>");
+		if(root <> Nil) {
+			Check("its name is 'a'", root->GetName()->Equals("a"));
+			Check("GetAttribute(\"title\") is 'x y'", Is(Attribute(root, "title"), "x y"));
+			Check("it has no children", root->Size() = 0);
+		};
+
+		# several attributes, entity references, single quotes, no space before '/>'
+		root := Root("entities", "<item id='7' note=\"5 &lt; 6 &amp; 7\" q=\"&quot;hi&quot;\" n=\"&#65;\"/>");
+		if(root <> Nil) {
+			Check("id is 7", Is(Attribute(root, "id"), "7"));
+			Check("&lt; and &amp; decode", Is(Attribute(root, "note"), "5 < 6 & 7"));
+			Check("&quot; decodes", Is(Attribute(root, "q"), "\"hi\""));
+			Check("a numeric reference decodes", Is(Attribute(root, "n"), "A"));
+			Check("GetAttributes() has all four in order", root->GetAttributes()->Size() = 4 &
+				root->GetAttributes()->Get(0)->GetName()->Equals("id") &
+				root->GetAttributes()->Get(3)->GetName()->Equals("n"));
+		};
+
+		# after a declaration, with whitespace around it
+		root := Root("after a declaration", "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n  <cfg mode=\"fast\" />\n");
+		if(root <> Nil) {
+			Check("mode is 'fast'", Is(Attribute(root, "mode"), "fast"));
+		};
+
+		# with no attributes at all
+		root := Root("<empty/>", "<empty/>");
+		if(root <> Nil) {
+			Check("its name is 'empty'", root->GetName()->Equals("empty"));
+			Check("GetAttribute of a missing name is Nil", root->GetAttribute("nope") = Nil);
+		};
+
+		# FindElements and ToString on a self-closing root
+		parser := XmlParser->New("<link href=\"http://example.com/a?b=1&amp;c=2\"/>");
+		if(parser->Parse()) {
+			found := parser->FindElements("/link")<XmlElement>;
+			Check("FindElements(\"/link\") finds the root", found->Size() = 1 & Is(Attribute(found->Get(0), "href"), "http://example.com/a?b=1&c=2"));
+			again := XmlParser->New(parser->GetRoot()->ToString());
+			Check("the root round-trips through ToString", again->Parse() & Is(Attribute(again->GetRoot(), "href"), "http://example.com/a?b=1&c=2"));
+		}
+		else {
+			Check("<link .../> parses", false);
+		};
+
+		# nested self-closing elements, at several depths, beside ordinary ones
+		root := Root("nested", "<r v=\"0\"><a k=\"1\"/><b><c k=\"2 &gt; 1\"/><d/></b><e k='3'/></r>");
+		if(root <> Nil) {
+			Check("the root's attribute", Is(Attribute(root, "v"), "0"));
+			Check("the root has three children", root->Size() = 3);
+			Check("a nested one's attribute", Is(Attribute(root->GetFirstChild("a"), "k"), "1"));
+			b := root->GetFirstChild("b");
+			Check("a deeper one's attribute, decoded", b <> Nil & Is(Attribute(b->GetFirstChild("c"), "k"), "2 > 1"));
+			Check("a deeper one with none", b <> Nil & b->GetFirstChild("d") <> Nil & b->GetFirstChild("d")->GetAttribute("k") = Nil);
+			Check("the last child's attribute", Is(Attribute(root->GetFirstChild("e"), "k"), "3"));
+			found := root->FindElements("/r/b/c")<XmlElement>;
+			Check("FindElements reaches a nested self-closing one", found->Size() = 1 & Is(Attribute(found->Get(0), "k"), "2 > 1"));
+		};
+
+		# still refused
+		Check("an empty document is refused", <>XmlParser->New("")->Parse());
+		Check("whitespace alone is refused", <>XmlParser->New("  \n ")->Parse());
+		Check("a lone closing tag is refused", <>XmlParser->New("</a>")->Parse());
+		Check("a declaration alone is refused", <>XmlParser->New("<?xml version=\"1.0\"?>")->Parse());
+		Check("a lone '<' is refused", <>XmlParser->New("<")->Parse());
+		Check("a name cut off by the end is refused", <>XmlParser->New("<a")->Parse());
+		Check("an attribute name cut off by the end is refused", <>XmlParser->New("<a title")->Parse());
+		Check("a self-closing tag cut off by the end is refused", <>XmlParser->New("<a title=\"x\"/")->Parse());
+
+		if(@failures = 0) {
+			"PASS: xml_self_closing_root ({$@checks} checks)"->PrintLine();
+		}
+		else {
+			"FAIL: xml_self_closing_root: {$@failures} of {$@checks} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
