@@ -2,7 +2,7 @@ use System.Diagnostics;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		analyzer := Analyzer->ParseFile("../../../../programs/deploy/calc_life_10.obs","collect.obl");
+		analyzer := Analyzer->ParseFile("../../../../programs/deploy/functions_3.obs","collect.obl");
 		if(analyzer->WasParsed()) {
 			ss := analyzer->GetSymbol(68, 3);
 #~			

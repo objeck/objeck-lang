@@ -1,0 +1,116 @@
+#~
+# compile: obc -src files_13.obs
+# run:     obr files_13.obe
+#
+# Files keep data after a program ends. This program writes a small text file
+# with a FileWriter, reads it back line by line with a FileReader, then reads
+# the whole thing at once with ReadFile. It appends a line to the end, asks
+# whether the file exists and how big it is, creates a folder, lists what is
+# inside it, and finally deletes everything it made. All of the work happens
+# in a new folder under the system's temporary directory
+# (Runtime->GetTempDir()), so running it leaves nothing behind. Always Close
+# a reader or writer when you are done: closing is what makes sure the data
+# really reaches the disk and frees the file for others.
+#
+# output:
+#   wrote notes.txt
+#   line 1: apples
+#   line 2: bread
+#   line 3: milk
+#   whole file has 3 lines
+#   after appending: apples, bread, milk, eggs
+#   notes.txt exists: true
+#   notes.txt size: 23 bytes
+#   folder contains: archive notes.txt
+#   archive is a folder: true
+#   deleted 3 items; folder still exists: false
+~#
+
+use System.IO.Filesystem;
+
+class Files {
+  function : Main(args : String[]) ~ Nil {
+    # --- pick a folder to work in ---
+    # GetTempDir may or may not end with a slash, so add one when it is missing
+    slash := Directory->GetSlash();
+    temp := Runtime->GetTempDir();
+    if(<>temp->EndsWith(slash)) {
+      temp->Append(slash);
+    };
+    # put the process id in the name so two runs at once cannot collide
+    folder := "{$temp}objeck_files_{$(Runtime->GetProcessId())}";
+    Directory->Create(folder);
+    path := "{$folder}{$slash}notes.txt";
+
+    # --- write a file ---
+    # creating a FileWriter creates the file (or empties an existing one)
+    writer := FileWriter->New(path);
+    writer->WriteString("apples\n");
+    writer->WriteString("bread\n");
+    writer->WriteString("milk\n");
+    writer->Close();
+    "wrote notes.txt"->PrintLine();
+
+    # --- read it back one line at a time ---
+    # ReadLine returns the next line without its newline, and Nil once
+    # there are no lines left
+    reader := FileReader->New(path);
+    number := 1;
+    line := reader->ReadLine();
+    while(line <> Nil) {
+      "line {$number}: {$line}"->PrintLine();
+      number += 1;
+      line := reader->ReadLine();
+    };
+    reader->Close();
+
+    # --- read the whole file in one call ---
+    # handy for small files; Lines() then splits the text into an array
+    text := FileReader->ReadFile(path);
+    "whole file has {$(text->Lines()->Size())} lines"->PrintLine();
+
+    # --- append to the end ---
+    # passing true as the second argument appends instead of starting over
+    writer := FileWriter->New(path, true);
+    writer->WriteString("eggs\n");
+    writer->Close();
+    items := FileReader->ReadFile(path)->Lines();
+    joined := String->Join(items, ", ");
+    "after appending: {$joined}"->PrintLine();
+
+    # --- ask about the file ---
+    "notes.txt exists: {$(File->Exists(path))}"->PrintLine();
+    "notes.txt size: {$(File->Size(path))} bytes"->PrintLine();
+
+    # --- folders: create one, then list what is in the parent ---
+    archive := "{$folder}{$slash}archive";
+    Directory->Create(archive);
+    # List returns bare names, in whatever order the system gives them, so
+    # sort them to print the same thing on every platform
+    names := Directory->List(folder);
+    SortNames(names);
+    listing := String->Join(names, " ");
+    "folder contains: {$listing}"->PrintLine();
+    "archive is a folder: {$(Directory->Exists(archive))}"->PrintLine();
+
+    # --- clean up ---
+    # Directory->Delete removes the folder and everything inside it, and
+    # returns how many files and folders it deleted
+    deleted := Directory->Delete(folder);
+    "deleted {$deleted} items; folder still exists: {$(Directory->Exists(folder))}"->PrintLine();
+  }
+
+  # a simple insertion sort for an array of names, in place
+  function : SortNames(names : String[]) ~ Nil {
+    for(i := 1; i < names->Size(); i += 1;) {
+      current := names[i];
+      j := i - 1;
+      # shift every larger name one place right to make room for current
+      while(j >= 0 & names[j]->Compare(current) > 0) {
+        names[j + 1] := names[j];
+        j -= 1;
+      };
+      names[j + 1] := current;
+    };
+  }
+}

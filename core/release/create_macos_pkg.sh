@@ -3,7 +3,7 @@
 # Creates a macOS .pkg installer for Objeck
 #
 # Usage: ./create_macos_pkg.sh <version> [sign_identity] [notarize]
-#   version       - e.g. "2026.2.1"
+#   version       - the release version, YEAR.MONTH.RELEASE (as in version.h)
 #   sign_identity - Developer ID Installer cert name (optional)
 #   notarize      - pass "notarize" to submit for notarization (optional)
 #

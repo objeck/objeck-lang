@@ -7129,7 +7129,7 @@ bundle Game.OpenGL {
 	and a clear is one line rather than an LRU.
 	```
 	overlay := Overlay->New(window);
-	font := Font->New("lazy.ttf", 18);
+	font := Font->New("lato.ttf", 18);
 	overlay->SetFont(font);
 
 	# per frame, after the scene
@@ -7255,7 +7255,7 @@ bundle Game.OpenGL {
 		An overlay using the font that ships with Objeck.
 
 		Three examples had ten identical lines of this -- Font->Init, a hardcoded
-		"../lib/sdl/fonts/lazy.ttf", an IsOk-and-not-null check, SetFont, SetColor,
+		"../lib/sdl/fonts/lato.ttf", an IsOk-and-not-null check, SetFont, SetColor,
 		and a Nil on failure that every draw site then had to test for.
 
 		That path is relative, and it only resolves when the program is started
@@ -7280,10 +7280,10 @@ bundle Game.OpenGL {
 			# In the order they are likely: beside the binaries, from a deploy
 			# tree's bin, from an examples directory one level in, and from a
 			# source checkout.
-			candidates := ["lib/sdl/fonts/lazy.ttf",
-				"../lib/sdl/fonts/lazy.ttf",
-				"../../lib/sdl/fonts/lazy.ttf",
-				"../lib/fonts/lazy.ttf"];
+			candidates := ["lib/sdl/fonts/lato.ttf",
+				"../lib/sdl/fonts/lato.ttf",
+				"../../lib/sdl/fonts/lato.ttf",
+				"../lib/fonts/lato.ttf"];
 
 			each(i : candidates) {
 				if(<>overlay->HasFont()) {

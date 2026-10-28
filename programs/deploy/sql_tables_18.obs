@@ -1,0 +1,97 @@
+#~
+# compile: obc -src sql_tables_18.obs -lib query,misc,net,json,regex,xml,csv,cipher
+# run:     obr sql_tables_18.obe
+#
+# A small database that lives inside your program. Query.Structured is the
+# columnar table engine in Objeck's standard library: you make a Table, add
+# rows, and then ask questions of it in plain SQL -- select, where, order by,
+# group by with sum/count/avg, and arithmetic such as qty * price. No server
+# and no setup. Indexes make lookups fast, Explain shows how a query will run,
+# and a query that cannot run returns Nil with GetError() saying why, so a
+# typo in your SQL is an error you can report rather than a crash.
+#
+# output (abridged):
+#   rows stored: 7
+#   --- every order, most expensive line first ---
+#   region,item,qty,price,amount
+#   north,widget,12,4.75,57.0
+#   north,gadget,4,10.0,40.0
+#   ...
+#   --- sales by region ---
+#   region,orders,units,total,avg_price
+#   north,3,32,101.0,5.0
+#   east,2,13,55.0,6.25
+#   west,2,12,47.5,4.25
+#   --- the plan for a lookup by region ---
+#   where orders: HASH index orders_region on region (=)
+#   where orders: SORTED index orders_price on price (>)
+#   --- a query with a mistake in it ---
+#   query failed: syntax error at position 0: expected SELECT, ... found 'selec'
+~#
+
+use Query.Structured;
+
+class SqlTables {
+  function : Main(args : String[]) ~ Nil {
+    # a table has a name and a list of column names; each column's type is
+    # worked out from the values you store (Int, Float, String, ...)
+    orders := Table->New("orders", ["region", "item", "qty", "price"]);
+
+    # add some rows; numbers are stored as IntRef/FloatRef objects
+    AddOrder(orders, "east", "widget", 10, 2.50);
+    AddOrder(orders, "east", "gadget", 3, 10.0);
+    AddOrder(orders, "west", "widget", 7, 2.50);
+    AddOrder(orders, "west", "gizmo", 5, 6.00);
+    AddOrder(orders, "north", "widget", 12, 4.75);
+    AddOrder(orders, "north", "gadget", 4, 10.0);
+    AddOrder(orders, "north", "gizmo", 16, 0.25);
+    "rows stored: {$(orders->Size())}"->PrintLine();
+
+    # select with an expression: 'qty * price' is computed for each row, and
+    # 'as amount' gives the new column a name we can sort by
+    "--- every order, most expensive line first ---"->PrintLine();
+    result := orders->Query("select region, item, qty, price, qty * price as amount from orders order by amount desc");
+    result->ToCsv()->Print();
+
+    # where filters rows before anything else happens
+    "--- widgets only ---"->PrintLine();
+    result := orders->Query("select region, qty from orders where item = 'widget' and qty > 8");
+    result->ToCsv()->Print();
+
+    # group by collapses the rows of each region into one row, and the
+    # aggregates (count, sum, avg) summarize the rows in each group
+    "--- sales by region ---"->PrintLine();
+    result := orders->Query("select region, count(*) as orders, sum(qty) as units, sum(qty * price) as total, avg(price) as avg_price from orders group by region order by total desc");
+    result->ToCsv()->Print();
+
+    # an index lets a query jump straight to matching rows instead of
+    # reading them all; a HASH index serves '=' lookups (SORTED serves ranges)
+    orders->CreateIndex("region", IndexKind->HASH);
+
+    # Explain shows the plan without running the query: here, that the
+    # lookup goes through the new index rather than scanning the table
+    "--- the plan for a lookup by region ---"->PrintLine();
+    orders->Explain("select item from orders where region = 'west'")->PrintLine();
+
+    # the same thing in SQL: an index on 'price' that can answer ranges
+    orders->Execute("create index on orders (price) using sorted");
+    orders->Explain("select item from orders where price > 5.0")->PrintLine();
+
+    # a query that cannot run returns Nil rather than stopping the program;
+    # GetError() says what was wrong (here, a misspelled 'select')
+    "--- a query with a mistake in it ---"->PrintLine();
+    result := orders->Query("selec region from orders");
+    if(result = Nil) {
+      "query failed: {$(orders->GetError())}"->PrintLine();
+    };
+  }
+
+  # adds one row: Insert() makes an empty row, Set() fills it by column name
+  function : AddOrder(orders : Table, region : String, item : String, qty : Int, price : Float) ~ Nil {
+    row := orders->Insert();
+    row->Set("region", region);
+    row->Set("item", item);
+    row->Set("qty", IntRef->New(qty));
+    row->Set("price", FloatRef->New(price));
+  }
+}

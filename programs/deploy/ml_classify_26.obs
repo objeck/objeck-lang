@@ -1,0 +1,130 @@
+#~
+# compile: obc -src ml_classify_26.obs -lib csv,ml
+# run:     obr ml_classify_26.obe
+#
+# A random forest classifier, checked honestly with cross-validation. The data
+# is 80 readings from machines: temperature, vibration and a serial-number digit
+# that has nothing to do with anything. A machine is "failing" when its heat
+# and vibration together run high -- plus a little noise, so no model can be
+# perfect.
+#
+# A random forest is a crowd of decision trees. Each tree learns yes/no
+# questions ("is vibration above 6.1?") from a random resample of the rows, and
+# the forest takes a vote. Many slightly different trees make fewer mistakes
+# than any one of them.
+#
+# Testing on the rows you trained on flatters a model, so 5-fold
+# cross-validation splits the rows into five groups, trains on four and tests
+# on the fifth, five times. Every row is predicted exactly once by a forest that
+# never saw it. Those predictions fill a confusion matrix: how many failing
+# machines were caught (true positives), missed (false negatives), and how many
+# healthy ones were wrongly flagged (false positives). Precision and recall are
+# read off it.
+#
+# output:
+#   fold 1: accuracy 0.75
+#   fold 2: accuracy 0.88
+#   fold 3: accuracy 0.94
+#   fold 4: accuracy 0.94
+#   fold 5: accuracy 0.75
+#
+#   Confusion matrix (all 80 rows, each predicted once):
+#                     predicted fail   predicted ok
+#     really failing    41                5
+#     really ok          7               27
+#   accuracy  0.850
+#   precision 0.854  (of the machines flagged, how many were failing)
+#   recall    0.891  (of the failing machines, how many were flagged)
+#   F1        0.872  (one number balancing the two)
+#
+#   feature importance: temperature 0.32, vibration 0.59, serial 0.09
+~#
+
+use System.ML;
+
+class Classify {
+  function : Main(args : String[]) ~ Nil {
+    rows := 80;
+    k := 5;
+
+    # build the dataset: 3 feature columns and one true/false label per row
+    X := Float->New[rows, 3];
+    y := Bool->New[rows];
+    rand := Random->New(2026);   # seeded, so every run sees the same data
+    each(i : rows) {
+      temperature := rand->NextReal(40.0, 90.0);
+      vibration := rand->NextReal(0.0, 10.0);
+      serial := rand->NextInt(10)->As(Float);
+      X[i, 0] := temperature;
+      X[i, 1] := vibration;
+      X[i, 2] := serial;
+
+      # the hidden rule, blurred by a random nudge near the boundary
+      risk := (temperature - 40.0) / 50.0 + vibration / 10.0 + rand->NextReal(-0.2, 0.2);
+      y[i] := risk > 1.0;
+    };
+
+    # stratified folds keep the same failing/ok mix in every fold; the seed
+    # makes the shuffle repeatable
+    folds := CrossValidation->StratifiedKFold(CrossValidation->ToFloat(y), k, 42);
+
+    # one out-of-fold prediction per row, filled in fold by fold
+    predicted := Bool->New[rows];
+    importance := Float->New[3];
+
+    each(f : k) {
+      # carve out this fold's train and test rows
+      split := CrossValidation->Split(X, y, folds[f]);
+
+      # 50 trees, unlimited depth (-1), stop splitting at 2 rows, seed 7
+      forest := RandomForestClassifier->New(50, -1, 2, 7);
+      forest->Fit(split->GetTrainX(), split->GetTrainY());
+
+      # predict the held-out rows and put each answer back at its own row
+      answers := forest->Predict(split->GetTestX());
+      test_rows := split->GetTestRows();
+      each(j : answers) {
+        predicted[test_rows[j]] := answers[j];
+      };
+
+      fold_accuracy := Metrics->Accuracy(answers, split->GetTestY());
+      fold := f + 1;
+      "fold {$fold}: accuracy {$fold_accuracy:.2}"->PrintLine();
+
+      # how much each feature helped, averaged over the five forests
+      weights := forest->GetFeatureImportances();
+      each(c : 3) {
+        importance[c] += weights[c] / k->As(Float);
+      };
+    };
+    ""->PrintLine();
+
+    # true means "failing", the class we care about catching
+    matrix := ConfusionMatrix->New(predicted, y);
+    tp := matrix->GetTruePositives();
+    fn := matrix->GetFalseNegatives();
+    fp := matrix->GetFalsePositives();
+    tn := matrix->GetTrueNegatives();
+
+    "Confusion matrix (all {$rows} rows, each predicted once):"->PrintLine();
+    "                  predicted fail   predicted ok"->PrintLine();
+    "  really failing  {$tp:4}             {$fn:4}"->PrintLine();
+    "  really ok       {$fp:4}             {$tn:4}"->PrintLine();
+
+    accuracy := matrix->GetAccuracy();
+    precision := matrix->GetPrecision();
+    recall := matrix->GetRecall();
+    f1 := matrix->GetF1();
+    "accuracy  {$accuracy:.3}"->PrintLine();
+    "precision {$precision:.3}  (of the machines flagged, how many were failing)"->PrintLine();
+    "recall    {$recall:.3}  (of the failing machines, how many were flagged)"->PrintLine();
+    "F1        {$f1:.3}  (one number balancing the two)"->PrintLine();
+    ""->PrintLine();
+
+    # the serial digit is noise, so the forest should learn to ignore it
+    t := importance[0];
+    v := importance[1];
+    s := importance[2];
+    "feature importance: temperature {$t:.2}, vibration {$v:.2}, serial {$s:.2}"->PrintLine();
+  }
+}

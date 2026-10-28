@@ -1,0 +1,167 @@
+#~
+# compile: obc -src collections_11.obs
+# run:     obr collections_11.obe
+#
+# Arrays have a fixed size; collections grow and shrink as you add and remove
+# things. The Collection bundle (the gen_collect library, which every program
+# gets without asking for it) offers a Vector (a growable array), a List (a
+# linked list), a Map (keys kept in sorted order), a Hash (fast lookup, no
+# particular order), a Set (no duplicates), and a Stack and Queue. They are
+# generic: Vector<String> holds only Strings, and the compiler checks that
+# for you. Generic collections hold objects, so a number goes in wrapped, as
+# an IntRef. For large amounts of plain numbers the "unboxed" collections
+# IntVector, FloatVector, IntMap, IntSet and BitSet store the numbers
+# directly, with no wrapper objects, which is faster and uses far less
+# memory.
+#
+# output (abridged):
+#   vector: [cherry,apple,banana], size 3, item 1 is apple
+#   after sorting: [apple,banana,cherry,date]
+#   list: plum pear fig
+#   map (sorted keys): alice=31 bob=25 carol=40
+#   bob is 25
+#   hash has 3 entries; 'gb' is United Kingdom
+#   set: [blue,green,red] (3 colors; adding 'red' twice changed nothing)
+#   stack pops: third second first
+#   queue serves: first second third
+#   int vector sum: 15, sorted: [1,2,3,4,5]
+#   float vector sum: 7.000000
+#   int map: 7 -> 49
+#   int set has 3: true, size: 3
+#   bit set: 3 bits on, bit 10 is true
+~#
+
+use Collection;
+
+class Collections {
+  function : Main(args : String[]) ~ Nil {
+    Vectors();
+    Lists();
+    Maps();
+    SetsStacksQueues();
+    Unboxed();
+  }
+
+  # a Vector is a growable array: fast to index and to add at the end
+  function : Vectors() ~ Nil {
+    fruit := Vector->New()<String>;
+    fruit->AddBack("cherry");
+    fruit->AddBack("apple");
+    fruit->AddBack("banana");
+    "vector: {$fruit}, size {$(fruit->Size())}, item 1 is {$(fruit->Get(1))}"->PrintLine();
+
+    # Sort takes a function that compares two items, returning <0, 0 or >0
+    fruit->AddBack("date");
+    fruit->Sort(\(a, b) => a->Compare(b));
+    "after sorting: {$fruit}"->PrintLine();
+  }
+
+  # a List is a chain of nodes: adding or removing at either end is cheap
+  function : Lists() ~ Nil {
+    names := List->New()<String>;
+    names->AddBack("pear");
+    names->AddBack("fig");
+    names->AddFront("plum");
+
+    # Each calls a small function (a lambda) once for every item, in order
+    "list:"->Print();
+    names->Each(\(name) => { " {$name}"->Print(); });
+    ""->PrintLine();
+  }
+
+  # Map and Hash both connect keys to values
+  function : Maps() ~ Nil {
+    # a Map keeps its keys sorted, so walking it gives a predictable order.
+    # Generic collections hold objects, so the values are IntRefs; the
+    # compiler wraps a plain number such as 40 into one for you.
+    ages := Map->New()<String, IntRef>;
+    ages->Insert("carol", 40);
+    ages->Insert("alice", 31);
+    ages->Insert("bob", 25);
+    "map (sorted keys):"->Print();
+    ages->Each(\(name, age) => { " {$name}={$age}"->Print(); });
+    ""->PrintLine();
+    # Find returns the value for a key, or Nil when the key is missing
+    bob_age := ages->Find("bob");
+    "bob is {$bob_age}"->PrintLine();
+
+    # a Hash looks keys up faster but keeps no order; Has asks whether a key
+    # is there without fetching its value
+    countries := Hash->New()<String, String>;
+    countries->Insert("fr", "France");
+    countries->Insert("gb", "United Kingdom");
+    countries->Insert("jp", "Japan");
+    if(countries->Has("gb")) {
+      name := countries->Find("gb");
+      "hash has {$(countries->Size())} entries; 'gb' is {$name}"->PrintLine();
+    };
+  }
+
+  function : SetsStacksQueues() ~ Nil {
+    # a Set ignores duplicates and keeps its items sorted
+    colors := Set->New()<String>;
+    colors->Insert("red");
+    colors->Insert("green");
+    colors->Insert("blue");
+    colors->Insert("red");
+    "set: {$colors} ({$(colors->Size())} colors; adding 'red' twice changed nothing)"->PrintLine();
+
+    # a Stack is last in, first out, like a pile of plates
+    stack := Stack->New()<String>;
+    stack->Push("first");
+    stack->Push("second");
+    stack->Push("third");
+    "stack pops:"->Print();
+    while(<>stack->IsEmpty()) {
+      " {$(stack->Pop())}"->Print();
+    };
+    ""->PrintLine();
+
+    # a Queue is first in, first out, like a line at a shop
+    queue := Queue->New()<String>;
+    queue->AddBack("first");
+    queue->AddBack("second");
+    queue->AddBack("third");
+    "queue serves:"->Print();
+    while(<>queue->IsEmpty()) {
+      " {$(queue->RemoveFront())}"->Print();
+    };
+    ""->PrintLine();
+  }
+
+  # the unboxed collections store plain Int or Float values directly
+  function : Unboxed() ~ Nil {
+    # IntVector: a growable Int array with Sum and Sort built in
+    numbers := IntVector->New([3, 5, 1, 4, 2]);
+    numbers->Sort();
+    "int vector sum: {$(numbers->Sum())}, sorted: {$numbers}"->PrintLine();
+
+    floats := FloatVector->New();
+    floats->AddBack(1.5);
+    floats->AddBack(2.5);
+    floats->AddBack(3.0);
+    "float vector sum: {$(floats->Sum())}"->PrintLine();
+
+    # IntMap: Int keys to Int values, with no IntRef wrappers
+    squares := IntMap->New();
+    for(i := 1; i <= 10; i += 1;) {
+      squares->Insert(i, i * i);
+    };
+    "int map: 7 -> {$(squares->Find(7))}"->PrintLine();
+
+    # IntSet: a set of Ints
+    seen := IntSet->New();
+    seen->Insert(3);
+    seen->Insert(9);
+    seen->Insert(3);
+    seen->Insert(27);
+    "int set has 3: {$(seen->Has(3))}, size: {$(seen->Size())}"->PrintLine();
+
+    # BitSet: one bit per flag, so a million flags take about 125 KB
+    flags := BitSet->New(64);
+    flags->Set(2);
+    flags->Set(10);
+    flags->Set(40);
+    "bit set: {$(flags->Cardinality())} bits on, bit 10 is {$(flags->Get(10))}"->PrintLine();
+  }
+}

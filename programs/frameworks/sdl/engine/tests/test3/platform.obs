@@ -77,7 +77,7 @@ class Platform {
 	method : StartGame() ~ Bool {
 		e := @engine->GetEvent();
 
-		font := Font->New("../../../../programs/sdl/engine/tests/media/lazy.ttf", 36);
+		font := Font->New(Runtime->GetProperty("lib_dir") + "/sdl/fonts/lato.ttf", 36);
 		red_color := Color->New(255, 0, 0);
 		black_color := Color->New(255, 255, 255);
 		play_text := @engine->AddTextSprite();

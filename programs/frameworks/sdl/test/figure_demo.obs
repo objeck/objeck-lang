@@ -50,8 +50,8 @@ class FigureDemo {
 		# all drawing below is in 640x400, whatever the window's size
 		@renderer->SetLogicalSize(640, 400);
 
-		@font := Font->New("../lib/sdl/fonts/lazy.ttf", 28);
-		@small := Font->New("../lib/sdl/fonts/lazy.ttf", 16);
+		@font := Font->New("../lib/sdl/fonts/lato.ttf", 28);
+		@small := Font->New("../lib/sdl/fonts/lato.ttf", 16);
 		if(@font->IsNull() | @small->IsNull()) {
 			"--- font not found; run from the deploy tree's bin directory ---"->ErrorLine();
 		};
