@@ -34,11 +34,50 @@
 #include "../../compiler/parser.h"
 #include "../../compiler/context.h"
 
+#include <algorithm>
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
 #include <map>
 #include <memory>
 #include <mutex>
 
 using namespace frontend;
+
+// OBJECK_LSP_TIMING=1 writes one line to stderr per parse and per analysis, so
+// the cost of a request can be split into parse, library loading and analysis
+// (issue #1236, phase 0 of docs/INCREMENTAL_ANALYSIS_DESIGN.md). Off by default;
+// tools/lsp/tests/bench_incremental.py turns it on and reads the lines back.
+static bool TimingEnabled()
+{
+  static const bool enabled = []{
+#ifdef _WIN32
+    size_t len = 0; char buf[8];
+    return getenv_s(&len, buf, sizeof(buf), "OBJECK_LSP_TIMING") == 0 && len > 1 && buf[0] != '0';
+#else
+    const char* value = std::getenv("OBJECK_LSP_TIMING");
+    return value && *value && *value != '0';
+#endif
+  }();
+
+  return enabled;
+}
+
+static double ElapsedMs(const std::chrono::steady_clock::time_point& start)
+{
+  return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+}
+
+// Times a parse and reports it with the size of what was parsed.
+static void ReportParse(ParsedProgram* program, const std::chrono::steady_clock::time_point& start,
+                        size_t files, size_t chars, size_t lines)
+{
+  if(TimingEnabled()) {
+    fwprintf(stderr, L"[lsp-timing] parse program=%p files=%zu lines=%zu chars=%zu ms=%.3f\n",
+             (void*)program, files, lines, chars, ElapsedMs(start));
+    fflush(stderr);
+  }
+}
 
 // Per-ParsedProgram analysis state.
 //
@@ -214,10 +253,32 @@ static ContextAnalyzer* EnsureAnalyzed(ParsedProgram* program, const std::wstrin
   // ("Generic to concrete size mismatch") and lost its symbols. Unseen while
   // every request parsed a fresh program; a program kept across requests
   // (the LSP, #1218) is queried many times.
+  const std::chrono::steady_clock::time_point analyze_start = std::chrono::steady_clock::now();
   ContextAnalyzer* fresh = new ContextAnalyzer(program, lib_path, false);
   state->analyzer = fresh;
   state->lib_path = lib_path;
   state->failed = !fresh->Analyze();
+
+  if(TimingEnabled()) {
+    const double total_ms = ElapsedMs(analyze_start);
+
+    // Library loading runs inside Analyze(), which the compiler does not time. A
+    // second Linker loads the same libraries again, alone, and its time is
+    // reported as the library share. It runs after the analysis, with the files
+    // as warm as the analysis left them; it still lands within a few ms either
+    // side of the load inside Analyze(), and on a small program it can exceed the
+    // total, which reads as "all of it". Freeing it is not timed: the analysis
+    // frees its own Linker only when the program goes.
+    Linker* probe = new Linker(lib_path);
+    const std::chrono::steady_clock::time_point link_start = std::chrono::steady_clock::now();
+    probe->Load(false);
+    const double link_ms = ElapsedMs(link_start);
+    delete probe;
+
+    fwprintf(stderr, L"[lsp-timing] analyze program=%p ok=%d total_ms=%.3f link_ms=%.3f libs=%ls\n",
+             (void*)program, state->failed ? 0 : 1, total_ms, link_ms, lib_path.c_str());
+    fflush(stderr);
+  }
 
   return state->failed ? nullptr : state->analyzer;
 }
@@ -287,10 +348,12 @@ extern "C" {
 
     std::vector<std::pair<std::wstring, std::wstring> > programs;
 
+    const std::chrono::steady_clock::time_point parse_start = std::chrono::steady_clock::now();
     Parser parser(src_file, false, programs);
     const bool was_parsed = parser.Parse();
 
     ParsedProgram* progam = parser.GetProgram();
+    ReportParse(progam, parse_start, 1, 0, 0);
     APITools_SetIntValue(context, 0, (size_t)progam);
     APITools_SetIntValue(context, 1, was_parsed ? 1 : 0);
     APITools_SetIntValue(context, 3, (size_t)parser.GetSymbolTable());
@@ -313,19 +376,28 @@ extern "C" {
 
     if(names_array_size > 0 && names_array_size == texts_array_size) {
       std::vector<std::pair<std::wstring, std::wstring>> texts;
+      size_t chars = 0;
+      size_t lines = 0;
       for(size_t i = 0; i < texts_array_size; ++i) {
         const wchar_t* file_name = APITools_GetStringValue(names_array, i);
         const wchar_t* file_text = APITools_GetStringValue(texts_array, i);
 
         if(file_name && file_text) {
           texts.push_back(std::make_pair(file_name, file_text));
+          if(TimingEnabled()) {
+            const std::wstring& text = texts.back().second;
+            chars += text.size();
+            lines += std::count(text.begin(), text.end(), L'\n') + 1;
+          }
         }
       }
 
+      const std::chrono::steady_clock::time_point parse_start = std::chrono::steady_clock::now();
       Parser parser(L"", false, texts);
       const bool was_parsed = parser.Parse();
 
       ParsedProgram* progam = parser.GetProgram();
+      ReportParse(progam, parse_start, texts.size(), chars, lines);
       APITools_SetIntValue(context, 0, (size_t)progam);
       APITools_SetIntValue(context, 1, was_parsed ? 1 : 0);
       APITools_SetIntValue(context, 4, (size_t)parser.GetSymbolTable());
