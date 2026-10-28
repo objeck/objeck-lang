@@ -1205,7 +1205,9 @@ bundle LSP {
 		@folders : Vector<LspFolder>;
 		@texts : String[,];
 		# parsed and analyzed programs, kept until any text changes (#1218)
-		@proxies : Map<String, AstProxy>;
+		@proxies : Map<String, ProxySource>;
+		# the programs of the generation before, until a request claims one back
+		@retired : Vector<ProxySource>;
 		@generation : Int;
 		@proxies_generation : Int;
 		@no_cache : Bool;
@@ -1216,7 +1218,8 @@ bundle LSP {
 			@is_debug := is_debug;
 			@documents := Map->New()<String, Document>;
 			@folders := Vector->New()<LspFolder>;
-			@proxies := Map->New()<String, AstProxy>;
+			@proxies := Map->New()<String, ProxySource>;
+			@retired := Vector->New()<ProxySource>;
 
 			# OBJECK_LSP_NO_CACHE=1 parses afresh for every request, as before, to
 			# compare against the cache
@@ -1236,6 +1239,14 @@ bundle LSP {
 		# uri, from workspace/symbol). Each comes in a current and a last-clean
 		# ('alt') text version.
 		#
+		# A program built from the same texts and libraries is reused under any key
+		# (#1236). An edit retires the programs rather than releasing them, so the
+		# next request for unchanged texts claims its program back: hover after an
+		# edit asks for the last clean texts, which diagnostics analyzed one edit
+		# before, and diagnostics then make the current texts the clean ones, which
+		# completion and hover ask for next. Each of those was a second parse and a
+		# second analysis of a program the server already had.
+		#
 		method : public : GetProxy(uri : String, use_alt : Bool) ~ AstProxy {
 			folder : LspFolder := Nil;
 			if(uri <> Nil) {
@@ -1245,26 +1256,60 @@ bundle LSP {
 		}
 
 		method : GetProxy(uri : String, folder : LspFolder, use_alt : Bool) ~ AstProxy {
-			if(@no_cache | @proxies_generation <> @generation) {
+			if(@no_cache) {
 				ReleaseProxies();
+			}
+			else if(@proxies_generation <> @generation) {
+				RetireProxies();
 				@proxies_generation := @generation;
 			};
 
 			key := ProxyKey(uri, folder, use_alt);
-			proxy := @proxies->Find(key);
-			if(proxy = Nil) {
+			source := @proxies->Find(key);
+			if(source = Nil) {
 				texts : String[,];
+				libs : String;
 				if(folder <> Nil) {
 					texts := folder->GetTexts(@documents, use_alt);
+					libs := folder->GetLibs();
 				}
 				else {
 					texts := GetStandaloneTexts(uri, use_alt);
+					libs := LspFolder->StandaloneLibs();
 				};
-				proxy := AstProxy->New(texts, @is_debug);
-				@proxies->Insert(key, proxy);
+
+				if(<>@no_cache) {
+					source := ClaimProxy(texts, libs);
+				};
+
+				if(source = Nil) {
+					source := ProxySource->New(AstProxy->New(texts, @is_debug), texts, libs);
+				};
+				@proxies->Insert(key, source);
 			};
 
-			return proxy;
+			return source->GetProxy();
+		}
+
+		# a current or retired program made from exactly these texts and libraries
+		method : ClaimProxy(texts : String[,], libs : String) ~ ProxySource {
+			current := @proxies->GetValues()<ProxySource>;
+			each(i : current) {
+				source := current->Get(i);
+				if(source->Matches(texts, libs)) {
+					return source;
+				};
+			};
+
+			each(i : @retired) {
+				source := @retired->Get(i);
+				if(source->Matches(texts, libs)) {
+					@retired->Remove(i);
+					return source;
+				};
+			};
+
+			return Nil;
 		}
 
 		function : ProxyKey(uri : String, folder : LspFolder, use_alt : Bool) ~ String {
@@ -1309,18 +1354,55 @@ bundle LSP {
 			each(i : keys) {
 				key := keys->Get(i);
 				if(key->StartsWith("alt|")) {
-					@proxies->Find(key)->Release();
+					source := @proxies->Find(key);
 					@proxies->Remove(key);
+					# the program may be the current text's too, which keeps it
+					if(<>IsCurrent(source)) {
+						source->Release();
+					};
 				};
 			};
 		}
 
-		method : ReleaseProxies() ~ Nil {
-			proxies := @proxies->GetValues()<AstProxy>;
-			each(i : proxies) {
-				proxies->Get(i)->Release();
+		method : IsCurrent(source : ProxySource) ~ Bool {
+			return Holds(@proxies->GetValues()<ProxySource>, source);
+		}
+
+		# by identity: one program can be under a text and an alt key
+		function : Holds(sources : Vector<ProxySource>, source : ProxySource) ~ Bool {
+			each(i : sources) {
+				if(sources->Get(i) = source) {
+					return true;
+				};
 			};
-			@proxies := Map->New()<String, AstProxy>;
+			return false;
+		}
+
+		# The last generation's programs that no request claimed are released; this
+		# generation's are kept, once each, for the next one to claim.
+		method : RetireProxies() ~ Nil {
+			each(i : @retired) {
+				@retired->Get(i)->Release();
+			};
+
+			@retired := Vector->New()<ProxySource>;
+			current := @proxies->GetValues()<ProxySource>;
+			each(i : current) {
+				source := current->Get(i);
+				if(<>Holds(@retired, source)) {
+					@retired->AddBack(source);
+				};
+			};
+			@proxies := Map->New()<String, ProxySource>;
+		}
+
+		# every program, current and retired
+		method : ReleaseProxies() ~ Nil {
+			RetireProxies();
+			each(i : @retired) {
+				@retired->Get(i)->Release();
+			};
+			@retired := Vector->New()<ProxySource>;
 		}
 
 		#
@@ -1578,6 +1660,83 @@ bundle LSP {
 				each(i : from_json) {
 					to->Add(from_json->Get(i));
 				};
+			};
+		}
+	}
+
+	#~
+	A program and what it was made from: the [uri, text] rows it parsed and the
+	libraries it is analyzed against. Two requests with the same of both can share
+	it; with different libraries they cannot, since a program is analyzed once and
+	a second analysis of its tree reports bogus errors (#1236).
+	~#
+	class : private : ProxySource {
+		@proxy : AstProxy;
+		@texts : String[,];
+		@libs : String;
+		@released : Bool;
+
+		New(proxy : AstProxy, texts : String[,], libs : String) {
+			@proxy := proxy;
+			@libs := libs;
+
+			# copies: a document's text is edited in place
+			if(texts <> Nil) {
+				dims := texts->Size();
+				@texts := String->New[dims[0], dims[1]];
+				for(i := 0; i < dims[0]; i += 1;) {
+					for(j := 0; j < dims[1]; j += 1;) {
+						text := texts[i,j];
+						if(text <> Nil) {
+							@texts[i,j] := String->New(text);
+						};
+					};
+				};
+			};
+		}
+
+		method : public : GetProxy() ~ AstProxy {
+			return @proxy;
+		}
+
+		method : public : Matches(texts : String[,], libs : String) ~ Bool {
+			if(@released | <>Same(@libs, libs)) {
+				return false;
+			};
+
+			if(@texts = Nil | texts = Nil) {
+				return @texts = Nil & texts = Nil;
+			};
+
+			dims := texts->Size();
+			own_dims := @texts->Size();
+			if(dims[0] <> own_dims[0] | dims[1] <> own_dims[1]) {
+				return false;
+			};
+
+			for(i := 0; i < dims[0]; i += 1;) {
+				for(j := 0; j < dims[1]; j += 1;) {
+					if(<>Same(@texts[i,j], texts[i,j])) {
+						return false;
+					};
+				};
+			};
+
+			return true;
+		}
+
+		function : Same(left : String, right : String) ~ Bool {
+			if(left = Nil | right = Nil) {
+				return left = Nil & right = Nil;
+			};
+			return left->Equals(right);
+		}
+
+		# once: the native release frees the program
+		method : public : Release() ~ Nil {
+			if(<>@released) {
+				@released := true;
+				@proxy->Release();
 			};
 		}
 	}
