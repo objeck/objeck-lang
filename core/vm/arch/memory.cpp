@@ -1658,9 +1658,20 @@ void* MemoryManager::CheckJitRoots([[maybe_unused]] void* arg)
 #ifdef _ARM64
       // front to back...
       if(method->HasAndOr()) {
+        // The and/or temporary (slot 0) has no declaration, but it is not only a
+        // Bool: a conditional's value meets at its join there, an object for
+        // 'c ? a : b' over objects, and so does a Try() receiver. The JIT keeps a
+        // load of the slot pending and reads it when the value is consumed, which
+        // can be after a collection point (NEW_OBJ_INST with the value as a
+        // constructor argument). So it is a root, scanned conservatively like the
+        // temporaries below and relocated by FixupRoots. On x64 the frame runs the
+        // other way and this slot is the first word of the temporaries' window; on
+        // ARM64 it was stepped over, and a minor collection left it naming the
+        // nursery copy of an object it had promoted (#1429-#1431).
+        CheckUntypedSlot(mem);
         mem++;
       }
-      
+
       for(int j = 0; j < dclrs_num; ++j) {
 #else
       // front to back...
@@ -1802,24 +1813,16 @@ void* MemoryManager::CheckJitRoots([[maybe_unused]] void* arg)
       }
 
       // NOTE: this marks temporary variables that are stored in JIT memory
-      // during some method calls. There are 6 integer temp addresses
+      // during some method calls. There are 6 integer temp addresses. On x64
+      // the window starts at the word after the declared locals, which is the
+      // and/or temporary when the method has one (scanned above on ARM64).
 #ifdef _ARM64
       mem = start;
       for(int i = 0; i > -JIT_TMP_LOOK_BACK; --i) {
 #else
       for(int i = 0; i < JIT_TMP_LOOK_BACK; ++i) {
 #endif
-        size_t* check_mem = (size_t*)mem[i];
-#ifndef _GC_SERIAL
-        MUTEX_LOCK(&allocated_lock);
-#endif 
-        const bool found = IsAllocated(check_mem);
-#ifndef _GC_SERIAL
-        MUTEX_UNLOCK(&allocated_lock);
-#endif
-        if(found) {
-          CheckObject(check_mem, false, 1);
-        }
+        CheckUntypedSlot(&mem[i]);
       }
     }
 #ifdef _DEBUG_GC
@@ -1836,8 +1839,23 @@ void* MemoryManager::CheckJitRoots([[maybe_unused]] void* arg)
   pthread_exit(nullptr);
 #endif
 #endif
-  
+
   return 0;
+}
+
+void MemoryManager::CheckUntypedSlot(size_t* slot)
+{
+  size_t* check_mem = (size_t*)*slot;
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&allocated_lock);
+#endif
+  const bool found = IsAllocated(check_mem);
+#ifndef _GC_SERIAL
+  MUTEX_UNLOCK(&allocated_lock);
+#endif
+  if(found) {
+    CheckObject(check_mem, false, 1);
+  }
 }
 
 #ifdef _WIN32
@@ -2032,6 +2050,12 @@ void* MemoryManager::CheckPdaRoots([[maybe_unused]] void* arg)
     }
 
     if(method->HasAndOr()) {
+      // the and/or slot (mem[1]) has no declaration but holds a conditional's value,
+      // an object for 'c ? a : b' over objects, from the branch's store until the load
+      // after the join; a collection in between must mark it and FixupRoots relocate
+      // it, or a promoted object is read back through its old nursery address
+      // (#1429-#1431: B3 on LiveNode and SqlItem, interpreted on every platform)
+      CheckUntypedSlot(mem + 1);
       mem += 2;
     }
     else {
@@ -2464,6 +2488,10 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
         }
 
         // Fix up locals
+        // the and/or slot: a conservative root (see CheckPdaRoots)
+        if(method->HasAndOr()) {
+          FixupSlot(mem + 1);
+        }
         size_t* local_mem = mem + (method->HasAndOr() ? 2 : 1);
         FixupMemory(local_mem, method->GetDeclarations(), method->GetNumberDeclarations());
       }
@@ -2500,6 +2528,9 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
           if(!method->IsLambda()) {
             FixupSelf(mem, method);
           }
+          if(method->HasAndOr()) {
+            FixupSlot(mem + 1);
+          }
           size_t* local_mem = mem + (method->HasAndOr() ? 2 : 1);
           FixupMemory(local_mem, method->GetDeclarations(), method->GetNumberDeclarations());
         }
@@ -2518,6 +2549,9 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
             size_t* mem = frame->mem;
             if(!method->IsLambda()) {
               FixupSelf(mem, method);
+            }
+            if(method->HasAndOr()) {
+              FixupSlot(mem + 1);
             }
             size_t* local_mem = mem + (method->HasAndOr() ? 2 : 1);
             FixupMemory(local_mem, method->GetDeclarations(), method->GetNumberDeclarations());
@@ -2545,6 +2579,9 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
       // Fix up JIT locals
 #ifdef _ARM64
       if(method->HasAndOr()) {
+        // the and/or temporary: a conservative root (see CheckJitRoots); on x64 it
+        // is the first word of the temporaries' window below
+        FixupSlot(mem);
         mem++;
       }
       StackDclr** dclrs = method->GetDeclarations();
@@ -2595,6 +2632,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
       // Fix up JIT temps (conservative scan of untyped words — FixupSlot validates
       // the forwarding target, so spilled scratch / float bit-patterns that merely
       // alias the young address range are not misread as relocatable references).
+      // On x64 mem[0] here is the and/or temporary when the method has one.
 #ifdef _ARM64
       size_t* start = frame->jit_mem - 1;
       for(int k = 0; k > -JIT_TMP_LOOK_BACK; --k) {

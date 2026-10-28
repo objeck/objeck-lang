@@ -1657,7 +1657,11 @@ NURSERY_STRESS_TESTS = ("obj_size_layout", "minor_gc_stress", "core_thread_gc_st
                         # worker per round into live frames -- and it needs a small
                         # nursery, because the path is in the young-gen scan and the
                         # default nursery gave it no minor collections at all
-                        "gc_closure_ids_stress")
+                        "gc_closure_ids_stress",
+                        # a conditional's object value pending across a
+                        # collection point lives in the and/or slot, which interpreted
+                        # and ARM64 JIT frames did not scan (#1429-#1431)
+                        "gc_cond_value_root")
 NURSERY_STRESS_SIZES = ("128k", "256k")
 
 # Looped with a 256k nursery in both JIT modes (check_nursery_and_gc_stats).

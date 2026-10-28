@@ -593,6 +593,8 @@ class MemoryManager {
   
   static void CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_size, const long depth);
   static void CheckObject(size_t* mem, bool is_obj, const long depth);
+  // marks what an untyped frame word (a JIT temporary, the and/or slot) names, if it is a heap address
+  static void CheckUntypedSlot(size_t* slot);
   
   static size_t* AllocateObject(const wchar_t* obj_name, size_t* op_stack, size_t stack_pos, bool collect = true) {
     StackClass* cls = prgm->GetClass(obj_name);

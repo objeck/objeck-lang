@@ -1,0 +1,202 @@
+#~
+A conditional's object value must survive another thread's collection that runs
+while this thread is parked between the conditional's store and its load.
+
+A conditional ('c ? a : b') stores each branch's value in the method's and/or
+slot, mem[1], and loads it again after the join. The interpreter's frame walks
+(CheckPdaRoots and FixupRoots) stepped over that slot, so it was neither marked
+nor relocated. The interpreter parks for another thread's collection at the
+poll it makes every 1,024 instructions; when the poll fell between the store
+and the load, the collection promoted the object and the load read its old
+nursery address, which the constructor below then stored. Found by the nightly
+heap verifier as 'B3 ... class=LiveNode field=1' in exit_with_live_threads
+(#1429); v2026.10.1 had the gap too, and #1311's more frequent major
+collections made it reproducible.
+
+The test runs itself again as a child, once interpreted and once with the JIT,
+under --gc-threshold=64k (a major collection every few allocations) and the
+heap verifier. In the child a worker builds a chain through a conditional and
+checks that each node's next is the node it built the round before; a stale
+slot hands the constructor whatever the nursery holds at the old address now,
+almost always another node with a different number, and the verifier reports
+the stale field. Each round runs a different amount of padding so the poll
+lands at every point of the round, and a second thread allocates arrays
+(allocated old) to keep collections coming. The parent needs its .obe beside
+it, as the regression runner compiles it.
+~#
+
+use System.IO.Filesystem;
+use System.Concurrency;
+
+class CondChainNode {
+  @v : Int;
+  @next : CondChainNode;
+
+  New(v : Int, next : CondChainNode) {
+    @v := v;
+    @next := next;
+  }
+
+  method : public : GetV() ~ Int {
+    return @v;
+  }
+
+  method : public : GetNext() ~ CondChainNode {
+    return @next;
+  }
+}
+
+class CondChainWorker from Thread {
+  @rounds : Int;
+  @bad : Int;
+  @first : String;
+  @done : Bool;
+
+  New(rounds : Int) {
+    Parent("cond-chain");
+    @rounds := rounds;
+    @bad := 0;
+    @first := "";
+    @done := false;
+  }
+
+  method : public : GetBad() ~ Int {
+    return @bad;
+  }
+
+  method : public : GetFirst() ~ String {
+    return @first;
+  }
+
+  method : public : IsDone() ~ Bool {
+    return @done;
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    head : CondChainNode := Nil;
+    for(i := 0; i < @rounds; i += 1;) {
+      # a different instruction count each round moves the 1,024-instruction poll
+      pad := 0;
+      for(j := 0; j < i % 37; j += 1;) {
+        pad += j;
+      };
+
+      head := CondChainNode->New(i, (i % 64 = 0) ? Nil : head);
+
+      next := head->GetNext();
+      if(i % 64 <> 0) {
+        if(next = Nil) {
+          Record("round {$i}: next is Nil");
+        }
+        else if(next->GetV() <> i - 1) {
+          Record("round {$i}: next is node {$(next->GetV())}, expected {$(i - 1)}");
+        };
+      };
+    };
+    @done := true;
+  }
+
+  method : Record(what : String) ~ Nil {
+    if(@bad = 0) {
+      @first := what;
+    };
+    @bad += 1;
+  }
+}
+
+class CondChainChurn from Thread {
+  @worker : CondChainWorker;
+
+  New(worker : CondChainWorker) {
+    Parent("cond-churn");
+    @worker := worker;
+  }
+
+  # arrays are allocated old, so this drives major collections while the worker runs
+  method : public : Run(param : System.Base) ~ Nil {
+    i := 0;
+    while(<>@worker->IsDone()) {
+      block := Int->New[512];
+      block[i % 512] := i;
+      i += 1;
+    };
+  }
+}
+
+class GcCondValueThreads {
+  function : Child() ~ Nil {
+    worker := CondChainWorker->New(20000);
+    churn := CondChainChurn->New(worker);
+    worker->Execute(Nil);
+    churn->Execute(Nil);
+    worker->Join();
+    churn->Join();
+
+    if(worker->GetBad() > 0) {
+      "FAIL: {$(worker->GetBad())} chain link(s) were stale after another thread's collection; first: {$(worker->GetFirst())}"->PrintLine();
+      Runtime->Exit(1);
+    };
+    majors := Runtime->GetProperty("runtime.gc.major")->ToInt();
+    if(majors < 100) {
+      "FAIL: only {$majors} major collection(s) ran; the case was not exercised"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "child done: {$majors} major collections"->PrintLine();
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    if(args->Size() = 1 & args[0]->Equals("child")) {
+      Child();
+      return;
+    };
+
+    # run_differential.py names its own .obe; the regression runners compile it here
+    obe := Runtime->GetEnvironmentVariable("OBJECK_TEST_OBE");
+    if(obe = Nil | obe->IsEmpty()) {
+      obe := "gc_cond_value_threads.obe";
+    };
+    if(<>File->Exists(obe)) {
+      "FAIL: run this test from the folder that holds gc_cond_value_threads.obe"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    windows := Directory->GetSlash() = '\\';
+    vm := Runtime->GetInstallDir();
+    vm += windows ? "\\bin\\obr.exe" : "/bin/obr";
+    output := "{$(Runtime->GetTempDir())}/gc_cond_value_threads_{$(Runtime->GetProcessId())}.txt";
+
+    Runtime->SetEnvironmentVariable("OBJECK_GC_VERIFY", "1");
+    modes := ["--jit=off ", ""];
+    each(m : modes) {
+      command := "\"{$vm}\" --gc-threshold=64k {$(modes[m])}\"{$obe}\" child > \"{$output}\" 2>&1";
+      if(windows) {
+        # cmd /c strips the first and last quote of a line that starts with one
+        command := "\"{$command}\"";
+      };
+      status := Runtime->Command(command);
+      text := FileReader->ReadFile(output);
+      if(text = Nil) {
+        text := "";
+      };
+      File->Delete(output);
+
+      # the verifier reports a violation as ">>> gc-verify: ... violation ..." and aborts;
+      # its "[gc-verify] verification took ..." note is not one
+      if(status <> 0 | <>text->Has("child done") | text->Has("violation")) {
+        first := "no output";
+        lines := text->Split("\n");
+        each(i : lines) {
+          line := lines[i]->Trim();
+          if(line->Size() > 0 & (line->Has("violation") | line->StartsWith("FAIL"))) {
+            first := line;
+            break;
+          };
+        };
+        "FAIL: gc_cond_value_threads: the child (obr --gc-threshold=64k {$(modes[m])}) exited {$status}; {$first}"->PrintLine();
+        Runtime->Exit(1);
+      };
+    };
+
+    "PASS: gc_cond_value_threads (a conditional's value survived other threads' collections, with and without the JIT)"->PrintLine();
+  }
+}
