@@ -357,7 +357,7 @@ if(parser->Parse()) {
 		}
 		
 		#~
-		Finds matching XML elements using xpath like syntax. Supports 'first()', 'last()' and '[cdata]' functions.
+		Finds matching XML elements using xpath like syntax. Supports '[n]' (the n-th match, 1-based, as in XPath), 'first()', 'last()', '[attribute]' and '[cdata]' functions.
 		@param path search string
 		@return matching XML elements
 
@@ -420,7 +420,7 @@ if(parser->Parse()) {
 			};
 
 			# parse declarations
-			while(tag->GetType() = XmlElement->Type->DECLARATION) {
+			while(tag <> Nil & tag->GetType() = XmlElement->Type->DECLARATION) {
 				@declarations->Insert(tag->GetName(), tag);
 				# update
 				tag := ParseElement();
@@ -429,8 +429,8 @@ if(parser->Parse()) {
 				};
 			};
 			
-			# find root
-			if(tag->GetType() = XmlElement->Type->ELEMENT) {
+			# find root; a self-closing root ('<a k="v"/>') is a whole document too
+			if(tag <> Nil & (tag->GetType() = XmlElement->Type->ELEMENT | tag->GetType() = XmlElement->Type->UNARY_ELEMENT)) {
 				@root := tag;
 			}
 			else {
@@ -510,11 +510,16 @@ if(parser->Parse()) {
 		# ignores whitespace
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 		method : native : IgnoreWhiteSpace() ~ Nil {
-			# ignore whitespace
-			if(@buffer_pos < @buffer->Size()) {
+			# ignore whitespace; the bound is checked before each read, so input that ends in
+			# whitespace (a document of whitespace alone) stops at the end instead of reading past it
+			done := false;
+			while(<>done & @buffer_pos < @buffer->Size()) {
 				char := @buffer[@buffer_pos];
-				while(@buffer_pos < @buffer->Size() & (char = ' ' | char = '\t' | char = '\r' | char = '\n' | char = '\f' | char = '\v')) {
-					char := @buffer[++@buffer_pos];
+				if(char = ' ' | char = '\t' | char = '\r' | char = '\n' | char = '\f' | char = '\v') {
+					@buffer_pos += 1;
+				}
+				else {
+					done := true;
 				};
 			};
 		}
@@ -523,19 +528,25 @@ if(parser->Parse()) {
 		# parse attribute name
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
 		method : native : ParseName() ~ String {
-			# check name start
+			# check name start; the bound is checked before each read, so a name that runs to
+			# the end of the input ('<a') is not read past
+			if(@buffer_pos >= @buffer->Size()) {
+				return Nil;
+			};
+
 			buffer_char := @buffer[@buffer_pos]->As(Char);
-			if(@buffer_pos < @buffer->Size() & (buffer_char->IsChar() |
-				@buffer[@buffer_pos] = ':' | @buffer[@buffer_pos] = '_')) {
+			if(buffer_char->IsChar() | buffer_char = ':' | buffer_char = '_') {
 				# look for name end
 				start_pos := @buffer_pos;
-				while(@buffer_pos < @buffer->Size() & (buffer_char->IsChar() | 
-					buffer_char->IsDigit() |
-					@buffer[@buffer_pos] = '-' | @buffer[@buffer_pos] = '.' | 
-					@buffer[@buffer_pos] = ':')) {
-					# update
-					@buffer_pos += 1;
+				done := false;
+				while(<>done & @buffer_pos < @buffer->Size()) {
 					buffer_char := @buffer[@buffer_pos]->As(Char);
+					if(buffer_char->IsChar() | buffer_char->IsDigit() | buffer_char = '-' | buffer_char = '.' | buffer_char = ':') {
+						@buffer_pos += 1;
+					}
+					else {
+						done := true;
+					};
 				};
 				
 				# copy buffer
@@ -1793,10 +1804,12 @@ if(parser->Parse()) {
 		method : public : native : GetChildren(name : String, attrib : String) ~ Vector<XmlElement> {
 			filtered := Vector->New()<XmlElement>;
 			
-			each(i : @children) {
-				element : XmlElement := @children->Get(i);
-				if(element->GetName()->Equals(name) & element->GetAttribute(attrib) <> Nil) {
-					filtered->AddBack(element);
+			if(@children <> Nil) {
+				each(i : @children) {
+					element : XmlElement := @children->Get(i);
+					if(element->GetName()->Equals(name) & element->GetAttribute(attrib) <> Nil) {
+						filtered->AddBack(element);
+					};
 				};
 			};
 			
@@ -1820,7 +1833,7 @@ if(parser->Parse()) {
 		method : public : native : GetChildren(name : String, max : Int) ~ Vector<XmlElement> {
 			filtered := Vector->New()<XmlElement>;
 
-			if(max > 0) {
+			if(max > 0 & @children <> Nil) {
 				found := 0;
 				for(i := 0; i < @children->Size() & found < max; i += 1;) {
 					element : XmlElement := @children->Get(i);
@@ -1924,8 +1937,14 @@ if(parser->Parse()) {
 				else {
 					if(expr->Size() > 0) {
 						if(expr->Get(0)->IsDigit()) {
-							max := expr->Trim()->ToInt();
-							return element->GetChildren(GetElementName(filter), max);
+							# XPath meaning: '[n]' is the n-th (1-based) match, not the first n
+							position := expr->Trim()->ToInt();
+							matches := Vector->New()<XmlElement>;
+							named := element->GetChildren(GetElementName(filter))<XmlElement>;
+							if(position > 0 & position <= named->Size()) {
+								matches->AddBack(named->Get(position - 1));
+							};
+							return matches;
 						} 
 						else if(expr->Get(0)->IsChar()) {
 							return element->GetChildren(GetElementName(filter), expr);
@@ -1940,7 +1959,7 @@ if(parser->Parse()) {
 		}
 		
 		#~
-		Finds matching XML elements using xpath like syntax. Supports 'first()', 'last()' and '[cdata]' functions.
+		Finds matching XML elements using xpath like syntax. Supports '[n]' (the n-th match, 1-based, as in XPath), 'first()', 'last()', '[attribute]' and '[cdata]' functions.
 		@param path search string
 		@return matching XML elements
 

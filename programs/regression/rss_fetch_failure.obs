@@ -1,0 +1,70 @@
+# EXTRA_LIBS: gen_collect,net,rss
+#~
+Web.RSS: a feed that cannot be fetched leaves the reader not-OK; it does not raise.
+
+The defect: RSSReader's FetchXml passed the response body straight to String->New, as
+'String->New(HttpsClient->QuickGet(url)->GetContent())'. When the fetch fails (no such host,
+refused connection, TLS failure) there is no body, so the constructor raised NilError and a
+caller had no reader to ask IsOk() of. A missing local file did the same, one step later, on
+'xml->Size()'.
+
+The fix: a failed fetch or read gives no text, and the constructor then leaves IsOk() false,
+as it already did for text that does not parse. The API is unchanged.
+
+No network is needed: '.invalid' is reserved (RFC 2606), so the name never resolves and the
+fetch fails at once. Each reader is built inside a ?-> region, so a NilError on a library
+that still has the defect is reported as a FAIL line rather than ending the run.
+~#
+use System;
+use Web.RSS;
+
+class Opener {
+	New() {}
+
+	method : public : Open(url : String) ~ RSSReader {
+		return RSSReader->New(url);
+	}
+}
+
+class RssFetchFailure {
+	@failures : static : Int;
+	@checks : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		@checks += 1;
+		if(ok) {
+			"  ok: {$what}"->PrintLine();
+		}
+		else {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : NotOk(what : String, url : String) ~ Nil {
+		reader := Opener->New()?->Open(url);
+		if(reader = Nil) {
+			error := Runtime->GetLastError();
+			shown := error <> Nil ? error->ToString() : "no error recorded";
+			Check("{$what}: the constructor raised ({$shown})", false);
+			return;
+		};
+
+		Check("{$what}: IsOk() is false", <>reader->IsOk());
+		Check("{$what}: GetPosts() is Nil", reader->GetPosts() = Nil);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		NotOk("an unreachable https host", "https://nonexistent.invalid/feed.xml");
+		NotOk("an unreachable http host", "http://nonexistent.invalid/feed.xml");
+		NotOk("a missing local file", "no_such_feed_file_rss_fetch_failure.xml");
+
+		if(@failures = 0) {
+			"PASS: rss_fetch_failure ({$@checks} checks)"->PrintLine();
+		}
+		else {
+			"FAIL: rss_fetch_failure: {$@failures} of {$@checks} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

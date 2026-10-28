@@ -29,7 +29,7 @@ if(reader->IsOk()) {
 		~#
 		New(url : String) {
 			xml := FetchXml(url);
-			if(xml->Size() > 0) {
+			if(xml <> Nil & xml->Size() > 0) {
 				parser := XmlParser->New(xml);
 				if(parser->Parse()) {
 					@channel := GetChannelData(parser);
@@ -151,20 +151,35 @@ if(reader->IsOk()) {
 			};	
 		}
 
+		# a failed fetch or read returns Nil; the constructor then leaves the reader not-OK
 		method : FetchXml(path : String) ~ String {
-			xml := "";
-
-			if(path->StartsWith("http:")) {
-				xml := String->New(HttpClient->QuickGet(Url->New(path))->GetContent());
-			}
-			else if(path->StartsWith("https:")) {
-				xml := String->New(HttpsClient->QuickGet(Url->New(path))->GetContent());
-			}
-			else {
-				xml := FileReader->ReadFile(path);
+			if(path = Nil) {
+				return Nil;
 			};
 
-			return xml;
+			if(path->StartsWith("http:")) {
+				response := HttpClient->QuickGet(Url->New(path));
+				return ResponseText(response);
+			}
+			else if(path->StartsWith("https:")) {
+				response := HttpsClient->QuickGet(Url->New(path));
+				return ResponseText(response);
+			};
+
+			return FileReader->ReadFile(path);
+		}
+
+		method : ResponseText(response : Response) ~ String {
+			if(response = Nil) {
+				return Nil;
+			};
+
+			content := response->GetContent();
+			if(content = Nil) {
+				return Nil;
+			};
+
+			return String->New(content);
 		}
 	}
 

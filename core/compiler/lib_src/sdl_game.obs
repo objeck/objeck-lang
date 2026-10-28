@@ -73,7 +73,7 @@ bundle Game.Framework {
 		method : public : AddClips(num_x_clips : Int, x_clip_size : Int, num_y_clips : Int, y_clip_size : Int) ~ Nil {
 			for(i := 0; i < num_y_clips; i += 1;) {
 				for(j := 0; j < num_x_clips; j += 1;) {
-					@clips->AddBack(Rect->New(j * x_clip_size, i * y_clip_size, x_clip_size, x_clip_size));
+					@clips->AddBack(Rect->New(j * x_clip_size, i * y_clip_size, x_clip_size, y_clip_size));
 				};
 			};
 		}
