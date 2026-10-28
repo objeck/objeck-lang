@@ -1,0 +1,109 @@
+#~
+# compile: obc -src sql_files_19.obs -lib query,misc,net,json,regex,xml,csv,cipher
+# run:     obr sql_files_19.obe
+#
+# SQL over files, with nothing loaded by hand. In Query.Structured a quoted
+# file path can stand wherever a table name goes: from 'data/weather.json'
+# reads the file, works out each column's type and runs the query. The
+# format follows the extension (.csv, .tsv, .json, .jsonl, even .csv.gz). A CSV
+# without a header line is read with csv(path, header => false), and its
+# columns are named c1, c2, c3 ... A Catalog holds several named tables at
+# once -- tables you build in code, or tables a source provides, such as
+# FilesystemSource, which turns a folder listing into a table called 'files'
+# -- so one query can join them, and join them to files too.
+#
+# output:
+#   1000 rows in data/gender.csv
+#   label 0: 516 rows, mean c1 = 0.694, mean c2 = 0.216
+#   label 1: 484 rows, mean c1 = 0.432, mean c2 = 0.185
+#   --- a JSON file, queried by its path ---
+#   location,temp
+#   Tokyo,21.5
+#   --- the three largest files in media/ ---
+#   name,ext,size
+#   music.wav,wav,374894
+#   fire.png,png,81516
+#   die.wav,wav,64430
+#   --- media/ by kind of file (a join) ---
+#   kind,files,bytes
+#   sound,5,518836
+#   image,9,119648
+~#
+
+use Query.Structured;
+
+class SqlFiles {
+  function : Main(args : String[]) ~ Nil {
+    # Catalog->Run answers a query that only reads files: no tables to set
+    # up first. data/gender.csv has no header line, so we say so and get the
+    # default column names c1, c2 and c3 (two measurements and a 0/1 label).
+    file := "csv('data/gender.csv', header => false)";
+    result := Catalog->Run("select count(*) as n from {$file}");
+    if(result = Nil) {
+      "could not read data/gender.csv -- run this from programs/deploy"->ErrorLine();
+      return;
+    };
+
+    # a result is itself a Table: Get(row) gives a Row, and a Row's Get(name)
+    # gives the value as an object (IntRef, FloatRef, String, ...)
+    count := result->Get(0)->Get("n")->As(IntRef)->Get();
+    "{$count} rows in data/gender.csv"->PrintLine();
+
+    # group the file's rows by label and average each measurement
+    result := Catalog->Run("select c3, count(*) as n, avg(c1) as m1, avg(c2) as m2 from {$file} group by c3 order by c3");
+    each(i : result->Size()) {
+      row := result->Get(i);
+      code := row->Get("c3")->As(IntRef)->Get();
+      n := row->Get("n")->As(IntRef)->Get();
+
+      # Float->ToString(value, digits) keeps the printout short
+      m1 := Float->ToString(row->Get("m1")->As(FloatRef)->Get(), 3);
+      m2 := Float->ToString(row->Get("m2")->As(FloatRef)->Get(), 3);
+      "label {$code}: {$n} rows, mean c1 = {$m1}, mean c2 = {$m2}"->PrintLine();
+    };
+
+    # a quoted path is all it takes; nested JSON fields get dotted names,
+    # and 'as' gives a column a shorter one
+    "--- a JSON file, queried by its path ---"->PrintLine();
+    Catalog->Run("select location, current.temp_c as temp from 'data/weather.json'")->ToCsv()->Print();
+
+    # a Catalog is a set of named tables that queries can use together;
+    # Load() adds the tables a source provides -- here, one row per file in
+    # the media folder, in a table named 'files'
+    catalog := Catalog->New();
+    if(<>catalog->Load(FilesystemSource->New("media", false))) {
+      "could not list media/: {$(catalog->GetError())}"->ErrorLine();
+      return;
+    };
+
+    "--- the three largest files in media/ ---"->PrintLine();
+    catalog->Query("select name, ext, size from files order by size desc limit 3")->ToCsv()->Print();
+
+    # a table built in code, added to the same catalog: which extension is
+    # which kind of file
+    kinds := Table->New("kinds", ["ext", "kind"]);
+    AddKind(kinds, "wav", "sound");
+    AddKind(kinds, "png", "image");
+    catalog->Add(kinds);
+
+    # a join pairs each file with the kinds row whose ext matches; the short
+    # names 'f' and 'k' are aliases, so 'f.ext' means the files table's ext
+    "--- media/ by kind of file (a join) ---"->PrintLine();
+    result := catalog->Query("select k.kind, count(*) as files, sum(f.size) as bytes from files f join kinds k on k.ext = f.ext group by k.kind order by bytes desc");
+    if(result = Nil) {
+      "the join failed: {$(catalog->GetError())}"->ErrorLine();
+      return;
+    };
+    result->ToCsv()->Print();
+
+    # files can be joined the same way, to each other or to catalog tables:
+    #   select r.score, m.team from 'runs.csv' r join 'meta.csv' m on m.id = r.id
+  }
+
+  # adds one row to the kinds table
+  function : AddKind(kinds : Table, ext : String, kind : String) ~ Nil {
+    row := kinds->Insert();
+    row->Set("ext", ext);
+    row->Set("kind", kind);
+  }
+}

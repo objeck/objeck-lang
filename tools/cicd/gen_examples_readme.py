@@ -79,17 +79,20 @@ def build():
         "\nWith no libraries:\n"
         "\n```\nobc -src hello_0.obs\nobr hello_0.obe\n```\n"
         "\nWith them, naming the list from the table above:\n"
-        "\n```\nobc -src json_stream_23.obs -lib json_stream\nobr json_stream_23.obe\n```\n"
+        "\n```\nobc -src json_14.obs -lib json,json_stream\nobr json_14.obe\n```\n"
     )
     out.append(
         "\n## Notes\n"
-        "\n- `2d_game_13.obs` and `3d_gl_24.obs` open a window and need SDL2; the rest\n"
-        "  run in a terminal.\n"
-        "- `odbc_select_11.obs` expects an ODBC datasource named `foo`.\n"
-        "- `gemini_22.obs` needs an API key, and the network examples need a\n"
-        "  connection.\n"
-        "- `neural_21.obs` trains and stores a model on its first run, then tests it\n"
-        "  when run again with `brun`.\n"
+        "\n- Read them in order: 0-13 teach the language, 14-21 work with data, 22-24\n"
+        "  are networking, 25-30 are AI and machine learning, and 31 is a game.\n"
+        "- Each program's header gives its compile and run lines and what it prints.\n"
+        "- `obc` does not pull in a library's own dependencies, so some `-lib` lists name\n"
+        "  libraries the program never uses directly: `ml` needs `csv`, and `query` needs\n"
+        "  the rest of its list.\n"
+        "- `game_31.obs` opens a window and needs a display; the rest run in a terminal.\n"
+        "- `odbc_21.obs` needs an ODBC data source (it explains how to set one up when\n"
+        "  it cannot connect), and `llm_29.obs` needs a Gemini API key.\n"
+        "- `http_client_22.obs` and `rss_reader_24.obs` need an internet connection.\n"
     )
     out.append(
         "\n---\n"

@@ -1,0 +1,126 @@
+#~
+# compile: obc -src strings_10.obs -lib cipher
+# run:     obr strings_10.obe
+#
+# Strings are text, and almost every program works with them. This program
+# tours the everyday String methods: size and characters, searching with
+# Find, cutting pieces out with SubString and Split, cleaning up with Trim
+# and changing case, testing with StartsWith/EndsWith, replacing text, and
+# building a longer string piece by piece. It shows why two strings are
+# compared with ->Equals() rather than '=', and how to format numbers inside
+# "{$...}" interpolation. It ends with the cipher library: turning a string
+# into a SHA-256 fingerprint and encoding bytes as Base64 text.
+#
+# output (abridged):
+#   text: 'Objeck is a fun language'
+#   size: 24
+#   first char: O, last char: e
+#   'fun' starts at index 12
+#   substring: fun
+#   word: Objeck
+#   ...
+#   trimmed: [padded]
+#   upper: OBJECK IS A FUN LANGUAGE
+#   lower: objeck is a fun language
+#   starts with 'report': true
+#   ends with '.csv': false
+#   replaced: Objeck is a friendly language
+#   3...2...1...go!
+#   joined: Objeck-is-a-fun-language
+#   same object: false
+#   Equals: true
+#   pi to 2 places: 3.14
+#   count padded: [   42] and 00042
+#   sha-256: 78c0bf66e6f13c580d087650cb318ea825261dda2f277f4762814d939ee872be
+#   base64: SGVsbG8=
+#   decoded: Hello
+~#
+
+class Strings {
+  function : Main(args : String[]) ~ Nil {
+    # --- size and characters ---
+    text := "Objeck is a fun language";
+    "text: '{$text}'"->PrintLine();
+    "size: {$(text->Size())}"->PrintLine();
+    # Get(i) returns the Char at an index; indexes start at 0
+    first := text->Get(0);
+    last := text->Get(text->Size() - 1);
+    "first char: {$first}, last char: {$last}"->PrintLine();
+
+    # --- searching and cutting ---
+    # Find returns the index of the first match, or -1 if there is none
+    at := text->Find("fun");
+    "'fun' starts at index {$at}"->PrintLine();
+    # SubString(offset, length) copies a piece out of the string
+    "substring: {$(text->SubString(at, 3))}"->PrintLine();
+    # Split breaks a string into an array at every separator
+    words := text->Split(" ");
+    each(i : words) {
+      "word: {$(words[i])}"->PrintLine();
+    };
+
+    # --- cleaning up and changing case ---
+    # Trim removes spaces (and tabs and newlines) from both ends
+    padded := "   padded   ";
+    "trimmed: [{$(padded->Trim())}]"->PrintLine();
+    "upper: {$(text->ToUpper())}"->PrintLine();
+    "lower: {$(text->ToLower())}"->PrintLine();
+
+    # --- testing and replacing ---
+    # (a '"' inside {$...} trips a known compiler defect, so a call that
+    # takes a string literal is stored in a local first)
+    file_name := "report.txt";
+    is_report := file_name->StartsWith("report");
+    is_csv := file_name->EndsWith(".csv");
+    "starts with 'report': {$is_report}"->PrintLine();
+    "ends with '.csv': {$is_csv}"->PrintLine();
+    # ReplaceAll returns a new string; the original is unchanged
+    replaced := text->ReplaceAll("fun", "friendly");
+    "replaced: {$replaced}"->PrintLine();
+
+    # --- building a string ---
+    # Append adds to the end of an existing string; it is cheaper than
+    # creating a new string with '+' every time round a loop
+    countdown := "";
+    for(i := 3; i > 0; i -= 1;) {
+      countdown->Append(i);
+      countdown->Append("...");
+    };
+    countdown->Append("go!");
+    countdown->PrintLine();
+    # Join goes the other way from Split: an array back into one string
+    joined := String->Join(words, "-");
+    "joined: {$joined}"->PrintLine();
+
+    # --- comparing strings ---
+    # '=' asks "are these the SAME object?"; two strings built separately are
+    # different objects even when they hold the same letters. Equals compares
+    # the letters, which is almost always what you want.
+    a := "abc";
+    b := "ab";
+    b->Append('c');
+    "same object: {$(a = b)}"->PrintLine();
+    "Equals: {$(a->Equals(b))}"->PrintLine();
+
+    # --- formatting numbers ---
+    # after a ':' inside {$...} you can give a format: .2 means two decimals,
+    # 5 means at least 5 characters wide, 05 pads with zeros
+    pi := 3.14159;
+    count := 42;
+    "pi to 2 places: {$pi:.2}"->PrintLine();
+    "count padded: [{$count:5}] and {$count:05}"->PrintLine();
+
+    # --- hashing and encoding (the cipher library) ---
+    # a hash turns any text into a fixed-size fingerprint; the same input
+    # always gives the same hash, and a tiny change gives a completely
+    # different one. Hash functions work on bytes, so convert first.
+    hash := Cipher.Hash->SHA256("Objeck"->ToByteArray());
+    "sha-256: {$(hash->ToHexString())}"->PrintLine();
+    # Base64 turns bytes into plain letters and digits that survive being
+    # pasted into email or JSON; Decrypt->Base64 turns them back into bytes
+    encoded := Cipher.Encrypt->Base64("Hello"->ToByteArray());
+    "base64: {$encoded}"->PrintLine();
+    decoded := String->New(Cipher.Decrypt->Base64(encoded));
+    "decoded: {$decoded}"->PrintLine();
+  }
+}

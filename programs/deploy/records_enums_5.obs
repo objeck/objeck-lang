@@ -1,0 +1,172 @@
+#~
+# compile: obc -src records_enums_5.obs
+# run:     obr records_enums_5.obe
+#
+# Records, enums and constants: three ways to describe data with very little
+# code.
+#
+# A 'record' lists its fields and the compiler writes the constructor, a
+# getter for each field (GetX) and a setter (SetX) for you, so a two-line
+# declaration is a complete type. Marking it 'readonly' leaves out the
+# setters and makes any assignment to a field outside the constructor a
+# compile error, turning "this never changes after it is made" into
+# something the compiler checks.
+#
+# An 'enum' is a set of named choices (Suit->Hearts, Suit->Spades, ...),
+# numbered in order from 0. 'consts' is a set of named numbers where you pick
+# each value yourself. Both read better than bare numbers, and both work in
+# a select statement.
+#
+#   record Point { @x : Int; @y : Int; }
+#   record : readonly : Card { @rank : Int; @suit : Suit; }
+#   enum Suit { Hearts, Spades }
+#   consts Limits { MaxPlayers := 4 }
+#
+# output:
+#   Point(3, 4)
+#   moved to (30, 4)
+#   370 degrees is 10
+#   -90 degrees is 270
+#   45 degrees is 45
+#   Suit->Clubs is 2, Rank->Queen is 12
+#   Queen of Hearts (red), worth 10
+#   7 of Clubs (black), worth 7
+#   Ace of Spades (black), worth 11
+~#
+
+# the whole of a Point: two fields in; constructor, getters and setters out
+record Point {
+  @x : Int;
+  @y : Int;
+}
+
+# a record with its own constructor, which runs instead of the generated one.
+# Here it tidies the value on the way in, so every Angle is 0..359.
+record Angle {
+  @degrees : Int;
+
+  New(degrees : Int) {
+    @degrees := degrees % 360;
+    if(@degrees < 0) {
+      @degrees += 360;
+    };
+  }
+}
+
+# an enum: the four suits, numbered 0, 1, 2, 3
+enum Suit {
+  Hearts,
+  Diamonds,
+  Clubs,
+  Spades
+}
+
+# consts: named numbers, each given its own value
+consts Rank {
+  Ace := 1,
+  Jack := 11,
+  Queen := 12,
+  King := 13
+}
+
+# readonly: getters only, and '@rank := ...' outside a constructor would
+# not compile.
+# A record can also have methods of its own.
+record : readonly : Card {
+  @rank : Int;
+  @suit : Suit;
+
+  method : public : IsRed() ~ Bool {
+    # select jumps to the label that matches the enum value
+    select(@suit) {
+      label Suit->Hearts:
+      label Suit->Diamonds: {
+        return true;
+      }
+    };
+    return false;
+  }
+
+  method : public : Name() ~ String {
+    # consts work in a select just like enums and numbers
+    rank_name : String;
+    select(@rank) {
+      label Rank->Ace: {
+        rank_name := "Ace";
+      }
+
+      label Rank->Jack: {
+        rank_name := "Jack";
+      }
+
+      label Rank->Queen: {
+        rank_name := "Queen";
+      }
+
+      label Rank->King: {
+        rank_name := "King";
+      }
+
+      other: {
+        rank_name := @rank->ToString();
+      }
+    };
+
+    suit_name := "Spades";
+    if(@suit = Suit->Hearts) {
+      suit_name := "Hearts";
+    }
+    else if(@suit = Suit->Diamonds) {
+      suit_name := "Diamonds";
+    }
+    else if(@suit = Suit->Clubs) {
+      suit_name := "Clubs";
+    };
+
+    return "{$rank_name} of {$suit_name}";
+  }
+}
+
+class RecordsEnums {
+  # blackjack-style value: face cards count 10, an ace 11
+  function : Value(card : Card) ~ Int {
+    rank := card->GetRank();
+    if(rank = Rank->Ace) {
+      return 11;
+    }
+    else if(rank > 10) {
+      return 10;
+    };
+    return rank;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    # the generated constructor takes the fields in order;
+    # the generated getters read them
+    p := Point->New(3, 4);
+    "Point({$(p->GetX())}, {$(p->GetY())})"->PrintLine();
+
+    # the generated setter, on a record that is not readonly
+    p->SetX(30);
+    "moved to ({$(p->GetX())}, {$(p->GetY())})"->PrintLine();
+
+    # our own constructor ran, so the angles are tidied
+    raw := [370, -90, 45];
+    each(d in raw) {
+      "{$d} degrees is {$(Angle->New(d)->GetDegrees())}"->PrintLine();
+    };
+
+    # an enum or consts value prints as its number
+    "Suit->Clubs is {$(Suit->Clubs)}, Rank->Queen is {$(Rank->Queen)}"->PrintLine();
+
+    # readonly records: uncommenting the line below is a compile error,
+    # because no SetRank was generated
+    hand := [Card->New(Rank->Queen, Suit->Hearts), Card->New(7, Suit->Clubs), Card->New(Rank->Ace, Suit->Spades)];
+    # hand[0]->SetRank(5);
+
+    each(card in hand) {
+      color := card->IsRed() ? "red" : "black";
+      "{$(card->Name())} ({$color}), worth {$(Value(card))}"->PrintLine();
+    };
+  }
+}

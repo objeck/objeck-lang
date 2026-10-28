@@ -1,0 +1,119 @@
+#~
+# compile: obc -src xml_15.obs -lib xml
+# run:     obr xml_15.obe
+#
+# XML stores data as nested elements, like <item>...</item>, and each element
+# can carry name="value" attributes. The Data.XML library parses XML text into
+# a tree of XmlElement objects. This program walks that tree (an element's
+# children, its attributes and its text), picks elements out by name and by a
+# path such as "/inventory/section/item/price", turns escaped text like &amp;
+# back into '&', and finally builds a new document in code and prints it as
+# XML text.
+#
+# output:
+#   root element: inventory (title = OmniCorp Store)
+#   section 'health' has 2 items
+#     Invisibility Cream: 14.50 (12 in stock)
+#     Levitation Salve: 23.99 (18 in stock)
+#   section 'food' has 2 items
+#     Blork & Freen Instameal: 4.95 (653 in stock)
+#     Grob winglets: 3.56 (44 in stock)
+#   all prices: 14.50 23.99 4.95 3.56
+#   first item in the last section: Blork &amp; Freen Instameal
+#   built: <order id="1001"><customer>Ada</customer><line sku="123456789" qty="2"/></order>
+~#
+
+use Data.XML;
+
+class Xml {
+  function : Main(args : String[]) ~ Nil {
+    # the document, written as one Objeck string; \" puts a quote inside it.
+    # '&' is special in XML, so the text spells it &amp;
+    input := "<inventory title=\"OmniCorp Store\">";
+    input += "<section name=\"health\">";
+    input += "<item upc=\"123456789\" stock=\"12\"><name>Invisibility Cream</name><price>14.50</price></item>";
+    input += "<item upc=\"445322344\" stock=\"18\"><name>Levitation Salve</name><price>23.99</price></item>";
+    input += "</section>";
+    input += "<section name=\"food\">";
+    input += "<item upc=\"485672034\" stock=\"653\"><name>Blork &amp; Freen Instameal</name><price>4.95</price></item>";
+    input += "<item upc=\"132957764\" stock=\"44\"><name>Grob winglets</name><price>3.56</price></item>";
+    input += "</section>";
+    input += "</inventory>";
+
+    # Parse returns false, and GetError says why, when the text is not XML
+    parser := XmlParser->New(input);
+    if(<>parser->Parse()) {
+      "parse error: {$(parser->GetError())}"->PrintLine();
+      return;
+    };
+
+    # --- walk the tree ---
+    root := parser->GetRoot();
+    # the parser stores attribute values encoded (a space becomes &#x20;),
+    # so GetDecodedValue gives the plain text back
+    title := root->GetAttribute("title")->GetDecodedValue();
+    "root element: {$(root->GetName())} (title = {$title})"->PrintLine();
+
+    # GetChildren(name) returns the child elements with that tag name
+    sections := root->GetChildren("section");
+    for(i := 0; i < sections->Size(); i += 1;) {
+      ShowSection(sections->Get(i));
+    };
+
+    # --- find by path ---
+    # a path names each level from the root down; every match is returned
+    prices := parser->FindElements("/inventory/section/item/price");
+    "all prices:"->Print();
+    for(i := 0; i < prices->Size(); i += 1;) {
+      " {$(prices->Get(i)->GetContent())}"->Print();
+    };
+    ""->PrintLine();
+
+    # [last()] and [first()] keep only the last or first match at a level.
+    # They are used rather than a number: in this library [n] keeps the
+    # first n matches, not the nth one -- a known defect.
+    # GetContent returns the text exactly as written, still escaped.
+    names := parser->FindElements("/inventory/section[last()]/item[first()]/name");
+    "first item in the last section: {$(names->Get(0)->GetContent())}"->PrintLine();
+
+    # --- build a document ---
+    BuildOrder();
+  }
+
+  # prints one section: its name attribute and a line per item
+  function : ShowSection(section : XmlElement) ~ Nil {
+    name := section->GetAttribute("name")->GetValue();
+    items := section->GetChildren("item");
+    "section '{$name}' has {$(items->Size())} items"->PrintLine();
+
+    for(i := 0; i < items->Size(); i += 1;) {
+      item := items->Get(i);
+      stock := item->GetAttribute("stock")->GetValue();
+      # GetFirstChild finds the first child with a tag name;
+      # GetDecodedContent turns &amp; and friends back into real characters
+      label_text := item->GetFirstChild("name")->GetDecodedContent();
+      price := item->GetFirstChild("price")->GetContent();
+      "  {$label_text}: {$price} ({$stock} in stock)"->PrintLine();
+    };
+  }
+
+  # builds <order> with a child element and an empty element with attributes
+  function : BuildOrder() ~ Nil {
+    # XmlBuilder creates the root element for us
+    builder := XmlBuilder->New("order");
+    order := builder->GetRoot();
+    order->AddAttribute(XmlAttribute->New("id", "1001"));
+
+    # an element with text inside it
+    customer := XmlElement->New(XmlElement->Type->ELEMENT, "customer", "Ada");
+    order->AddChild(customer);
+
+    # a UNARY element has no content and is written as <line ... />
+    line := XmlElement->New(XmlElement->Type->UNARY_ELEMENT, "line");
+    line->AddAttribute(XmlAttribute->New("sku", "123456789"));
+    line->AddAttribute(XmlAttribute->New("qty", "2"));
+    order->AddChild(line);
+
+    "built: {$(builder->ToString())}"->PrintLine();
+  }
+}

@@ -1,0 +1,158 @@
+#~
+# compile: obc -src control_flow_2.obs
+# run:     obr control_flow_2.obe
+#
+# Making decisions and repeating work. This program walks through every
+# control-flow statement in Objeck: if / else if / else, select (a multi-way
+# branch on a number or enum value), the while, do/while and for loops, the
+# each loop over arrays and collections, and break / continue to leave or
+# skip a loop pass early.
+#
+# One thing surprises newcomers: a block that belongs to a statement ends
+# with a semicolon after its closing brace, as in 'if(x) { ... };'.
+#
+#   each(i : values) { ... };   # i is the INDEX: 0, 1, 2, ...
+#   each(v in values) { ... };  # v is the ELEMENT itself
+#
+# output (abridged):
+#   15 is odd
+#   0 is zero
+#   -4 is even
+#   day 1: weekday
+#   day 6: weekend
+#   day 7: weekend
+#   day 9: not a day of the week
+#   while: 3
+#   ...
+#   do/while: try 2
+#   for: 0 2 4 6 8
+#   each by index: [0]=apple [1]=banana [2]=cherry
+#   each by element: APPLE BANANA CHERRY
+#   reverse: cherry banana apple
+#   vector: red green
+#   first multiple of 7 above 30: 35
+#   odd numbers below 10: 1 3 5 7 9
+~#
+
+class ControlFlow {
+  function : Main(args : String[]) ~ Nil {
+    # --- if / else if / else: pick one branch out of several ---
+    numbers := [15, 0, -4];
+    each(n in numbers) {
+      # conditions are tested top to bottom; the first true one wins
+      if(n = 0) {
+        "{$n} is zero"->PrintLine();
+      }
+      else if(n % 2 = 0) {
+        "{$n} is even"->PrintLine();
+      }
+      else {
+        # nothing above matched, so n must be odd
+        "{$n} is odd"->PrintLine();
+      };
+    };
+
+    # --- select: jump straight to the case that matches a value ---
+    # each 'label' names a value; several labels can share one block.
+    # 'other' catches every value no label names, like 'default' elsewhere.
+    days := [1, 6, 7, 9];
+    each(day in days) {
+      select(day) {
+        label 1:
+        label 2:
+        label 3:
+        label 4:
+        label 5: {
+          "day {$day}: weekday"->PrintLine();
+        }
+
+        label 6:
+        label 7: {
+          "day {$day}: weekend"->PrintLine();
+        }
+
+        other: {
+          "day {$day}: not a day of the week"->PrintLine();
+        }
+      };
+    };
+
+    # --- while: test first, then run the body (it may never run) ---
+    countdown := 3;
+    while(countdown > 0) {
+      "while: {$countdown}"->PrintLine();
+      countdown -= 1;
+    };
+
+    # --- do/while: run the body, then test (it runs at least once) ---
+    tries := 0;
+    do {
+      tries += 1;
+      "do/while: try {$tries}"->PrintLine();
+    }
+    while(tries < 2);
+
+    # --- for: start; keep going while; step -- all in one line ---
+    # note the semicolon after the step, before the closing parenthesis
+    line := "for:";
+    for(i := 0; i < 10; i += 2;) {
+      line += " {$i}";
+    };
+    line->PrintLine();
+
+    # --- each: visit every element of an array or collection ---
+    fruits := ["apple", "banana", "cherry"];
+
+    # 'each(i : fruits)' gives the index, so you can use fruits[i]
+    line := "each by index:";
+    each(i : fruits) {
+      line += " [{$i}]={$fruits[i]}";
+    };
+    line->PrintLine();
+
+    # 'each(fruit in fruits)' gives the element directly
+    line := "each by element:";
+    each(fruit in fruits) {
+      line += " " + fruit->ToUpper();
+    };
+    line->PrintLine();
+
+    # 'reverse' walks the same array from the end
+    line := "reverse:";
+    reverse(fruit in fruits) {
+      line += " " + fruit;
+    };
+    line->PrintLine();
+
+    # a generic Vector from the standard library is walked the same way
+    colors := Collection.Vector->New()<String>;
+    colors->AddBack("red");
+    colors->AddBack("green");
+    line := "vector:";
+    each(color in colors) {
+      line += " " + color;
+    };
+    line->PrintLine();
+
+    # --- break and continue ---
+    # break leaves the loop at once
+    found := 0;
+    for(n := 31; n < 100; n += 1;) {
+      if(n % 7 = 0) {
+        found := n;
+        break;
+      };
+    };
+    "first multiple of 7 above 30: {$found}"->PrintLine();
+
+    # continue skips the rest of this pass and moves on to the next one
+    line := "odd numbers below 10:";
+    for(n := 0; n < 10; n += 1;) {
+      if(n % 2 = 0) {
+        continue;
+      };
+      line += " {$n}";
+    };
+    line->PrintLine();
+  }
+}

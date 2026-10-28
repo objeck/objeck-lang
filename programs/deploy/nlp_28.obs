@@ -1,0 +1,159 @@
+#~
+# compile: obc -src nlp_28.obs -lib nlp
+# run:     obr nlp_28.obe
+#
+# Working with text in System.NLP. Computers cannot compare sentences
+# directly, so text processing starts by turning words into things that can
+# be counted. Four steps, each building on the last:
+#
+#   1. Tokenizing splits text into sentences and words.
+#   2. Stemming cuts words back to a shared root ("connected", "connection"
+#      and "connecting" all become "connect"), so variants count as one word.
+#   3. Sentiment scoring adds up how positive or negative each word is, with
+#      VADER-style rules for "not", "very" and "!" -- no trained model needed.
+#   4. TF-IDF turns each document into a list of numbers: a word weighs more
+#      the more often it appears in THIS document and the fewer documents it
+#      appears in at all. Two documents point the same way when they share
+#      their unusual words, which cosine similarity measures (1 = identical
+#      direction, 0 = nothing in common).
+#
+# output:
+#   Tokenizing
+#     sentence 0: Dr. Smith reached the lab early.
+#     sentence 1: She wasn't late!
+#     sentence 2: Was anyone surprised?
+#     words: [She] [wasn't] [late]
+#
+#   Porter stemming
+#     connected -> connect
+#     connection -> connect
+#     connecting -> connect
+#     running -> run
+#     happily -> happili
+#     generalization -> gener
+#
+#   Sentiment
+#     0.807 positive: The food was great and the staff were friendly.
+#     -0.510 negative: The food was not great.
+#     0.701 positive: The food was VERY good!!!
+#     -0.822 negative: Terrible service, cold soup, and a rude waiter.
+#     0.000 neutral: We ate dinner at seven.
+#
+#   TF-IDF search
+#     vocabulary: 27 words
+#     query: Where can I walk my dog?
+#     0.000  Cats are small furry pets that purr and chase mice.
+#     0.550  Dogs are loyal pets that love long walks in the park.
+#     0.000  The stock market fell sharply as investors sold shares.
+#     0.000  Rain and strong winds are expected across the coast tomorrow.
+#     best match: document 1
+~#
+
+use System.NLP;
+
+class TextDemo {
+  function : Main(args : String[]) ~ Nil {
+    Tokenize();
+    Stemming();
+    Sentiment();
+    Search();
+  }
+
+  # 1. split a paragraph into sentences, then a sentence into words
+  function : Tokenize() ~ Nil {
+    "Tokenizing"->PrintLine();
+    text := "Dr. Smith reached the lab early. She wasn't late! Was anyone surprised?";
+
+    # the sentence splitter knows the period in "Dr." does not end a sentence
+    sentences := Tokenizer->SentenceTokenize(text);
+    each(i : sentences) {
+      sentence := sentences[i];
+      "  sentence {$i}: {$sentence}"->PrintLine();
+    };
+
+    # punctuation is dropped and a contraction such as "wasn't" stays whole
+    words := Tokenizer->WordTokenize(sentences[1]);
+    line := "  words:";
+    each(i : words) {
+      line += " [";
+      line += words[i];
+      line += "]";
+    };
+    line->PrintLine();
+    ""->PrintLine();
+  }
+
+  # 2. the Porter stemmer strips suffixes by rule; a stem is a matching key,
+  # not always a real word ("happily" becomes "happili")
+  function : Stemming() ~ Nil {
+    "Porter stemming"->PrintLine();
+    words := ["connected", "connection", "connecting", "running", "happily", "generalization"];
+    each(i : words) {
+      word := words[i];
+      stem := TextPreprocessor->Stem(word);
+      "  {$word} -> {$stem}"->PrintLine();
+    };
+    ""->PrintLine();
+  }
+
+  # 3. score each review; compound runs from -1 (very negative) to +1
+  function : Sentiment() ~ Nil {
+    "Sentiment"->PrintLine();
+    reviews := [
+      "The food was great and the staff were friendly.",
+      "The food was not great.",
+      "The food was VERY good!!!",
+      "Terrible service, cold soup, and a rude waiter.",
+      "We ate dinner at seven."
+    ];
+    each(i : reviews) {
+      review := reviews[i];
+      compound := SentimentAnalyzer->AnalyzeCompound(review);
+      verdict := SentimentAnalyzer->Classify(review);
+      "  {$compound:.3} {$verdict}: {$review}"->PrintLine();
+    };
+    ""->PrintLine();
+  }
+
+  # 4. find the document most like a query with TF-IDF and cosine similarity
+  function : Search() ~ Nil {
+    "TF-IDF search"->PrintLine();
+    documents := [
+      "Cats are small furry pets that purr and chase mice.",
+      "Dogs are loyal pets that love long walks in the park.",
+      "The stock market fell sharply as investors sold shares.",
+      "Rain and strong winds are expected across the coast tomorrow."
+    ];
+
+    # true, true, true, true: smooth the weights, scale every vector to
+    # length 1, drop common words like "the" and "are", and stem, so "walk"
+    # in the query matches "walks" in a document
+    tfidf := TF_IDF->New(true, true, true, true);
+    tfidf->Fit(documents);
+    size := tfidf->GetVocabularySize();
+    "  vocabulary: {$size} words"->PrintLine();
+
+    query := "Where can I walk my dog?";
+    query_vector := tfidf->Transform(query);
+    "  query: {$query}"->PrintLine();
+
+    # compare the query with every document and remember the closest one
+    best := -1;
+    best_score := 0.0;
+    each(i : documents) {
+      score := TextSimilarity->CosineSimilarity(query_vector, tfidf->Transform(documents[i]));
+      "  {$score:.3}  {$documents[i]}"->PrintLine();
+      if(score > best_score) {
+        best_score := score;
+        best := i;
+      };
+    };
+
+    if(best > -1) {
+      "  best match: document {$best}"->PrintLine();
+    }
+    else {
+      "  no document shares a word with the query"->PrintLine();
+    };
+  }
+}

@@ -138,27 +138,31 @@ programs/frameworks/
 
 **Location:** `programs/deploy/`
 **Purpose:** Demonstrate real-world language usage
-**Size:** 29 programs, shipped in every release's `examples/` directory and indexed in [deploy/README.md](deploy/README.md)
-**CI Coverage:** 11 programs compile and run in GitHub Actions
+**Size:** 32 programs, shipped in every release's `examples/` directory and indexed in [deploy/README.md](deploy/README.md); `build_examples.py` compiles every one from that index
+**CI Coverage:** 13 programs compile and run in GitHub Actions, each with the `-lib` line from its own header
 
 ### Tests in CI
 
 These 4 programs run on every platform:
 
 1. `hello_0.obs` - Hello World
-2. `functions_5.obs` - Function examples
-3. `json_3.obs` - JSON processing
-4. `xml_2.obs` - XML parsing
+2. `functions_3.obs` - Functions, named arguments and `ref` parameters
+3. `errors_6.obs` - Typed errors
+4. `xml_15.obs` - XML parsing
 
-These 7 also run on Linux x64:
+These 9 also run on Linux x64:
 
-5. `calc_life_10.obs` - Genetic algorithm evolving toward a target
-6. `closure_19.obs` - Closure demonstrations
-7. `encrypt_7.obs` - Encryption examples
-8. `fs_query_12.obs` - File system queries
-9. `lambda_17.obs` - Lambda expressions
-10. `regex_4.obs` - Regular expressions
-11. `threads_6.obs` - Threading
+5. `values_1.obs` - Types, literals and conversions
+6. `closures_8.obs` - Lambdas and closures
+7. `strings_10.obs` - String methods, SHA-256 and Base64
+8. `collections_11.obs` - Collections, including the unboxed ones
+9. `regex_17.obs` - Regular expressions
+10. `sql_tables_18.obs` - SQL over in-memory tables
+11. `ml_outliers_27.obs` - Anomaly detection
+12. `nlp_28.obs` - Text processing
+13. `threads_12.obs` - Threading (retried up to three times)
+
+The rest need a display, a data source, an API key, the network or files beside them, so CI compiles them through `build_examples.py` rather than running them.
 
 ---
 

@@ -1,0 +1,120 @@
+#~
+# compile: obc -src regex_17.obs -lib regex
+# run:     obr regex_17.obe
+#
+# A regular expression ("regex") is a small pattern language for text: \d
+# means any digit, + means "one or more", [a-z] means any lower-case letter,
+# and so on. The Query.RegEx library compiles a pattern once into a RegEx
+# object you can use again and again. This program checks whether a whole
+# string fits a pattern, finds every match in a longer text, pulls pieces
+# out with capture groups (the parts of a pattern inside parentheses),
+# replaces matches, and, with a small helper, splits text wherever a
+# pattern matches. The
+# practical example pulls dates and email addresses out of a paragraph.
+#
+# Inside an Objeck string a backslash is written twice, so the regex \d is
+# typed "\\d".
+#
+# output:
+#   2026-10-28 is a date: true
+#   28/10/2026 is a date: false
+#   leading digits of '42 apples': 42
+#   dates found: 2
+#     2026-03-14 at index 18
+#     2026-11-02 at index 110
+#   date 2026-03-14 -> day 14 of month 3, year 2026
+#   date 2026-11-02 -> day 2 of month 11, year 2026
+#   emails: ada@example.com grace.h@navy.example.org
+#   hidden: Write to [email] or [email] for details.
+#   split: [red] [green] [blue] [yellow]
+~#
+
+use Query.RegEx;
+
+class Regex {
+  function : Main(args : String[]) ~ Nil {
+    # --- does a whole string fit the pattern? ---
+    # four digits, a dash, two digits, a dash, two digits
+    date := RegEx->New("\\d{4}-\\d{2}-\\d{2}");
+    # (a '"' inside {$...} trips a known compiler defect, so a call that
+    # takes a string literal is stored in a local first)
+    good := date->MatchExact("2026-10-28");
+    bad := date->MatchExact("28/10/2026");
+    "2026-10-28 is a date: {$good}"->PrintLine();
+    "28/10/2026 is a date: {$bad}"->PrintLine();
+
+    # Match reads as much as it can from the START of the string
+    digits := RegEx->New("\\d+");
+    leading := digits->Match("42 apples");
+    "leading digits of '42 apples': {$leading}"->PrintLine();
+
+    # --- find every match in a longer text ---
+    text := "The project began 2026-03-14 with two people: ada@example.com and ";
+    text += "grace.h@navy.example.org. Version 1 shipped 2026-11-02 to everyone.";
+
+    # Find returns a Vector of Result objects, one per match, in order
+    found := date->Find(text);
+    "dates found: {$(found->Size())}"->PrintLine();
+    for(i := 0; i < found->Size(); i += 1;) {
+      match := found->Get(i);
+      "  {$(match->GetValue())} at index {$(match->GetStart())}"->PrintLine();
+    };
+
+    # --- capture groups ---
+    # each (...) captures the text it matched; GetGroup(1) is the first
+    # group, GetGroup(2) the second, and GetGroup(0) the whole match
+    parts := RegEx->New("(\\d{4})-(\\d{2})-(\\d{2})");
+    found := parts->Find(text);
+    for(i := 0; i < found->Size(); i += 1;) {
+      match := found->Get(i);
+      # ToInt turns "03" into 3
+      year := match->GetGroup(1)->ToInt();
+      month := match->GetGroup(2)->ToInt();
+      day := match->GetGroup(3)->ToInt();
+      "date {$(match->GetValue())} -> day {$day} of month {$month}, year {$year}"->PrintLine();
+    };
+
+    # --- a practical pattern: email addresses ---
+    # name characters, an @, then domain parts separated by dots
+    email := RegEx->New("[\\w.]+@\\w+(\\.\\w+)+");
+    found := email->Find(text);
+    "emails:"->Print();
+    for(i := 0; i < found->Size(); i += 1;) {
+      " {$(found->Get(i)->GetValue())}"->Print();
+    };
+    ""->PrintLine();
+
+    # --- replace ---
+    # ReplaceAll swaps every match for the text you give it
+    note := "Write to ada@example.com or grace.h@navy.example.org for details.";
+    hidden := email->ReplaceAll(note, "[email]");
+    "hidden: {$hidden}"->PrintLine();
+
+    # --- split ---
+    # a comma or semicolon with any spaces around it
+    separator := RegEx->New("\\s*[,;]\\s*");
+    pieces := Split(separator, "red , green;blue ;  yellow");
+    "split:"->Print();
+    each(i : pieces) {
+      " [{$(pieces[i])}]"->Print();
+    };
+    ""->PrintLine();
+  }
+
+  # Query.RegEx has no split of its own, so this helper builds one from
+  # Find: the pieces are the text between one match's end and the next
+  # match's start
+  function : Split(pattern : RegEx, text : String) ~ String[] {
+    found := pattern->Find(text);
+    pieces := String->New[found->Size() + 1];
+    start := 0;
+    for(i := 0; i < found->Size(); i += 1;) {
+      match := found->Get(i);
+      pieces[i] := text->SubString(start, match->GetStart() - start);
+      start := match->GetStart() + match->GetLength();
+    };
+    # whatever follows the last match is the final piece
+    pieces[found->Size()] := text->SubString(start, text->Size() - start);
+    return pieces;
+  }
+}

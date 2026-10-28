@@ -1,0 +1,94 @@
+#~
+# compile: obc -src llm_29.obs -lib gemini,net,net_server,json,misc,cipher
+# run:     obr llm_29.obe
+#          obr llm_29.obe "Your own question here"
+#
+# Talking to a large language model (LLM) from Objeck. The program sends one
+# prompt to Google's Gemini model over HTTPS and prints the reply. A request
+# is built from Content -- a "role" (the user is speaking) holding one or more
+# Parts (here, one piece of text; images and audio are Parts too) -- and
+# Model->GenerateContent returns the model's candidate answers.
+#
+# Gemini needs an API key, a password-like string that identifies your
+# account. This program reads it from the GEMINI_API_KEY environment variable
+# so the key never appears in source code. Get a free key at
+# https://aistudio.google.com/apikey, then set it before running:
+#
+#   Windows:      set GEMINI_API_KEY=your-key
+#   Linux, macOS: export GEMINI_API_KEY=your-key
+#
+# The same idea works with other providers; only the class names change:
+#
+#   OpenAI (-lib openai,net,net_server,json,misc,cipher), key read the same
+#   way from OPENAI_API_KEY:
+#     msg := Pair->New("user", prompt)<String, String>;
+#     reply := API.OpenAI.Chat.Completion->Complete("gpt-4o-mini", msg, key);
+#     reply->GetFirstChoice()->GetMessage()->GetSecond()->PrintLine();
+#
+#   Ollama (-lib ollama,net,net_server,json,misc,cipher), a model running on
+#   your own computer with no key at all (install it from https://ollama.com):
+#     API.Ollama.Completion->Generate("llama3", prompt)->PrintLine();
+#
+# output (without a key):
+#   This example needs a Gemini API key.
+#     1. Get a free key at https://aistudio.google.com/apikey
+#     2. Set it:  set GEMINI_API_KEY=your-key       (Windows)
+#                 export GEMINI_API_KEY=your-key    (Linux, macOS)
+#     3. Run again: obr llm_29.obe
+#
+# output (with a key; the wording changes from run to run):
+#   Prompt: In two sentences, why is the sky blue?
+#   Reply:  Sunlight is made of many colours, and the tiny molecules of air
+#           scatter short blue wavelengths far more than long red ones. ...
+~#
+
+use API.Google.Gemini;
+
+class AskModel {
+  function : Main(args : String[]) ~ Nil {
+    # the question: the first command-line argument, or a default
+    prompt := "In two sentences, why is the sky blue?";
+    if(args->Size() > 0) {
+      prompt := args[0];
+    };
+
+    # the key comes from the environment; without it, explain and stop
+    # cleanly (exit code 0 -- a missing key is not a program error)
+    key := Runtime->GetEnvironmentVariable("GEMINI_API_KEY");
+    if(key = Nil | key->Trim()->IsEmpty()) {
+      PrintKeyHelp();
+      return;
+    };
+    key := key->Trim();
+
+    # build the request: one user message holding one text part
+    content := Content->New("user");
+    content->AddPart(TextPart->New(prompt));
+
+    # send it; GEMINI_2_5_FLASH is a fast, inexpensive model. The call waits
+    # for the whole reply, which can take a few seconds
+    "Prompt: {$prompt}"->PrintLine();
+    candidates := Model->GenerateContent(Model->GEMINI_2_5_FLASH(), content, key);
+
+    # a network failure, a bad key or a refused request gives no candidates;
+    # GetLastError says what the service reported
+    if(candidates = Nil | candidates->Size() = 0) {
+      error := EndPoint->GetLastError();
+      "No reply from Gemini: {$error}"->ErrorLine();
+      return;
+    };
+
+    # a candidate is one possible answer; the first one is the usual choice
+    reply := candidates->First()->GetAllText()->Trim();
+    "Reply:  {$reply}"->PrintLine();
+  }
+
+  # what to do when there is no key yet
+  function : PrintKeyHelp() ~ Nil {
+    "This example needs a Gemini API key."->PrintLine();
+    "  1. Get a free key at https://aistudio.google.com/apikey"->PrintLine();
+    "  2. Set it:  set GEMINI_API_KEY=your-key       (Windows)"->PrintLine();
+    "              export GEMINI_API_KEY=your-key    (Linux, macOS)"->PrintLine();
+    "  3. Run again: obr llm_29.obe"->PrintLine();
+  }
+}

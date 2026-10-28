@@ -1,0 +1,86 @@
+#~
+# compile: obc -src rss_reader_24.obs -lib rss,xml,net,cipher
+# run:     obr rss_reader_24.obe [feed_url] [count]
+#
+# Reading a news feed. RSS is the XML format that news sites and blogs use to
+# publish their latest items: a channel (the site's title, description and
+# link) holding a list of items, each with a title, a link and usually a
+# date. RSSReader fetches a feed over HTTP or HTTPS (or reads a local file),
+# parses the XML, and hands back the channel and the items as plain objects,
+# so printing the latest headlines takes a few lines. When the page is not
+# RSS, IsOk() is false. When the feed cannot be fetched at all, RSSReader
+# raises a NilError instead (a known defect), so the program catches that
+# too. Either way it says so politely.
+#
+# output (the headlines change; without a network, a short message instead):
+#   BBC News
+#   https://www.bbc.co.uk/news/technology
+#   ---
+#   1. 'An annoying buzz': The search for stealthier drones
+#      https://www.bbc.co.uk/news/articles/ck1exgejq3xvo?at_medium=RSS&at_campaign=rss
+#      Wed, 28 Oct 2026 00:01:10 GMT
+#   2. Apple to replace iPhone Duos affected by screen problem
+#      ...
+~#
+
+use Collection;
+use Web.RSS;
+
+class RssReader {
+  function : Main(args : String[]) ~ Nil {
+    # the feed and how many items to show can be given on the command line
+    feed := args->Size() > 0 ? args[0] : "https://feeds.bbci.co.uk/news/technology/rss.xml";
+    count := args->Size() > 1 ? args[1]->ToInt() : 5;
+
+    # fetch and parse the feed in one step
+    reader := Fetch(feed);
+    if(reader = Nil) {
+      "Could not read the feed at {$feed}."->PrintLine();
+      "Check your network connection, or try another feed URL."->PrintLine();
+      return;
+    };
+
+    # the channel describes the whole feed
+    channel := reader->GetChannel();
+    channel->GetTitle()->PrintLine();
+    channel->GetLink()->PrintLine();
+    "---"->PrintLine();
+
+    # the items, newest first in most feeds; show at most 'count' of them
+    posts := reader->GetPosts()<RSSPost>;
+    if(posts->Size() < count) {
+      count := posts->Size();
+    };
+
+    for(i := 0; i < count; i += 1;) {
+      post := posts->Get(i);
+      "{$(i + 1)}. {$(post->GetTitle())}"->PrintLine();
+
+      # not every feed gives every field, so check before printing
+      link := post->GetLink();
+      if(link <> Nil) {
+        "   {$link}"->PrintLine();
+      };
+
+      date := post->GetDate();
+      if(date <> Nil) {
+        "   {$date}"->PrintLine();
+      };
+    };
+  }
+
+  # Reads a feed, or returns Nil if it cannot be read. IsOk() is false for a
+  # page that is not RSS; when no answer comes back at all, RSSReader raises
+  # a NilError (a known defect), so the try catches that case too.
+  function : Fetch(feed : String) ~ RSSReader {
+    reader : RSSReader := Nil;
+    try {
+      reader := RSSReader->New(feed);
+    }
+    on(e : NilError) {
+      return Nil;
+    };
+
+    return reader->IsOk() ? reader : Nil;
+  }
+}

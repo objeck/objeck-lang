@@ -1,0 +1,190 @@
+#~
+# compile: obc -src ml_regression_25.obs -lib csv,ml
+# run:     obr ml_regression_25.obe
+#
+# Two classic models from System.ML trained on a real dataset. data/gender.csv
+# has 1,000 rows of two body measurements (already scaled to small numbers)
+# followed by a 0/1 class label. The rows are split into a training set the
+# models learn from and a test set they never see, because a model is only as
+# good as its predictions on NEW data.
+#
+# LinearRegression predicts a number: here, the second measurement from the
+# first, by fitting the straight line that best follows the training rows. It
+# is judged by RMSE (root mean squared error -- the typical size of a miss).
+#
+# LogisticRegression predicts a yes/no class: it squeezes a weighted sum of the
+# features through an S-shaped curve to get a probability, and says "class 1"
+# above 0.5. It is judged by accuracy, the fraction of test rows it gets right.
+# The features are standardized first (FeatureScaler) because gradient descent
+# learns far faster when every feature is centred on 0 with a spread of 1.
+#
+# output:
+#   loaded 1000 rows: 800 to train, 200 to test
+#
+#   Linear regression: measurement 2 from measurement 1
+#     line: m2 = 0.114 * m1 + 0.136
+#     test RMSE: 0.0114
+#     m1 = 0.448: predicted m2 0.187, actual 0.200
+#     m1 = 0.690: predicted m2 0.215, actual 0.203
+#     m1 = 0.728: predicted m2 0.219, actual 0.201
+#
+#   Logistic regression: class from both measurements
+#     test accuracy: 100.0%
+#     row 0: P(class 1) = 0.951, actual class 1
+#     row 1: P(class 1) = 0.021, actual class 0
+#     row 2: P(class 1) = 0.010, actual class 0
+#
+# The two classes separate cleanly, so the classifier is perfect here; the
+# regression line is a rougher fit because measurement 2 only loosely follows
+# measurement 1 -- a small RMSE next to values around 0.2 is still a real error.
+~#
+
+use System.ML;
+
+class Regression {
+  function : Main(args : String[]) ~ Nil {
+    # read the whole file and split it into lines
+    text := System.IO.Filesystem.FileReader->ReadFile("data/gender.csv");
+    if(text = Nil) {
+      "Unable to read 'data/gender.csv'"->ErrorLine();
+      return;
+    };
+    lines := text->Split("\n");
+
+    # count the non-blank lines and how many of them go to the test set:
+    # every fifth row is held back, an 80/20 split that is the same every run
+    rows := 0;
+    each(i : lines) {
+      if(lines[i]->Trim()->Size() > 0) {
+        rows += 1;
+      };
+    };
+    test_rows := rows / 5;
+    train_rows := rows - test_rows;
+    "loaded {$rows} rows: {$train_rows} to train, {$test_rows} to test"->PrintLine();
+    ""->PrintLine();
+
+    # matrices: X holds the two features, y the 0/1 label (one column)
+    train_x := Float->New[train_rows, 2];
+    train_y := Float->New[train_rows, 1];
+    test_x := Float->New[test_rows, 2];
+    test_y := Float->New[test_rows, 1];
+
+    # fill them, sending every fifth row to the test set
+    row := 0;
+    train := 0;
+    test := 0;
+    each(i : lines) {
+      line := lines[i]->Trim();
+      if(line->Size() > 0) {
+        cells := line->Split(",");
+        if(row % 5 = 4) {
+          test_x[test, 0] := cells[0]->ToFloat();
+          test_x[test, 1] := cells[1]->ToFloat();
+          test_y[test, 0] := cells[2]->ToFloat();
+          test += 1;
+        }
+        else {
+          train_x[train, 0] := cells[0]->ToFloat();
+          train_x[train, 1] := cells[1]->ToFloat();
+          train_y[train, 0] := cells[2]->ToFloat();
+          train += 1;
+        };
+        row += 1;
+      };
+    };
+
+    LinearDemo(train_x, test_x);
+    LogisticDemo(train_x, train_y, test_x, test_y);
+  }
+
+  # LinearRegression: predict measurement 2 from measurement 1
+  function : LinearDemo(train_x : Float[,], test_x : Float[,]) ~ Nil {
+    "Linear regression: measurement 2 from measurement 1"->PrintLine();
+
+    # pull the columns apart: one input column (m1), one target column (m2)
+    train_in := Column(train_x, 0);
+    train_out := Column(train_x, 1);
+    test_in := Column(test_x, 0);
+    test_out := Column(test_x, 1);
+
+    # true: also fit an intercept, the value of m2 when m1 is 0
+    model := LinearRegression->New();
+    if(<>model->Fit(train_in, train_out, true)) {
+      "  fit failed"->PrintLine();
+      return;
+    };
+
+    # coefficients come back intercept first, then one per feature
+    coeffs := model->GetCoefficients();
+    slope := coeffs[1];
+    intercept := coeffs[0];
+    "  line: m2 = {$slope:.3} * m1 + {$intercept:.3}"->PrintLine();
+
+    # RMSE on rows the model never saw: square each miss, average, square root
+    predictions := model->Predict(test_in);
+    rows := test_in->Size()[0];
+    sum := 0.0;
+    each(i : rows) {
+      miss := predictions[i, 0] - test_out[i, 0];
+      sum += miss * miss;
+    };
+    rmse := (sum / rows->As(Float))->Sqrt();
+    "  test RMSE: {$rmse:.4}"->PrintLine();
+
+    # a few predictions next to the real values
+    each(i : 3) {
+      m1 := test_in[i, 0];
+      guess := predictions[i, 0];
+      actual := test_out[i, 0];
+      "  m1 = {$m1:.3}: predicted m2 {$guess:.3}, actual {$actual:.3}"->PrintLine();
+    };
+    ""->PrintLine();
+  }
+
+  # LogisticRegression: predict the 0/1 class from both measurements
+  function : LogisticDemo(train_x : Float[,], train_y : Float[,], test_x : Float[,], test_y : Float[,]) ~ Nil {
+    "Logistic regression: class from both measurements"->PrintLine();
+
+    # learn each feature's mean and spread from the TRAINING rows only, then
+    # apply that same transformation to both sets (the test set stays unseen)
+    scaler := FeatureScaler->New();
+    scaled_train := scaler->FitTransform(train_x);
+    scaled_test := scaler->Transform(test_x);
+
+    # learning rate 0.1 (the size of each downhill step), 1000 steps
+    model := LogisticRegression->New(0.1, 1000);
+    if(<>model->Fit(scaled_train, train_y)) {
+      "  fit failed"->PrintLine();
+      return;
+    };
+
+    # PredictClass answers true for "class 1"; compare with the real labels
+    predicted := model->PredictClass(scaled_test);
+    rows := test_y->Size()[0];
+    actual := Bool->New[rows];
+    each(i : rows) {
+      actual[i] := test_y[i, 0] > 0.5;
+    };
+    accuracy := Metrics->Accuracy(predicted, actual) * 100.0;
+    "  test accuracy: {$accuracy:.1}%"->PrintLine();
+
+    # Predict gives the probability behind each answer
+    probs := model->Predict(scaled_test);
+    each(i : 3) {
+      p := probs[i];
+      truth := test_y[i, 0]->As(Int);
+      "  row {$i}: P(class 1) = {$p:.3}, actual class {$truth}"->PrintLine();
+    };
+  }
+
+  # copy one column of a matrix into its own one-column matrix
+  function : Column(m : Float[,], col : Int) ~ Float[,] {
+    rows := m->Size()[0];
+    out := Float->New[rows, 1];
+    each(i : rows) {
+      out[i, 0] := m[i, col];
+    };
+    return out;
+  }
+}
