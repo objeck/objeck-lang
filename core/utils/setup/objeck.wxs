@@ -3,15 +3,20 @@
 <!--
   Objeck WiX v4 Installer
 
+  Version is the MSI ProductVersion, major.minor.build with major <= 255, so
+  release 2026.10.2 is built as 26.10.2 (core/release/msi_version.ps1 holds the
+  mapping). DisplayVersion is the release string itself, shown in the product
+  name and written to HKLM\Software\Objeck\Version.
+
   Build examples:
-    wix build -arch x64 -o objeck-x64.msi ^
-      -d Platform=x64 -d Version=2026.2.1 ^
+    wix build -arch x64 -o objeck-windows-x64_2026.10.2.msi ^
+      -d Platform=x64 -d Version=26.10.2 -d DisplayVersion=2026.10.2 ^
       -d SourceDir=..\..\Objeck-Build\release-x64\objeck-lang-x64 ^
       -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext ^
       objeck.wxs
 
-    wix build -arch arm64 -o objeck-arm64.msi ^
-      -d Platform=arm64 -d Version=2026.2.1 ^
+    wix build -arch arm64 -o objeck-windows-arm64_2026.10.2.msi ^
+      -d Platform=arm64 -d Version=26.10.2 -d DisplayVersion=2026.10.2 ^
       -d SourceDir=..\..\Objeck-Build\release-arm64\objeck-lang-arm64 ^
       -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext ^
       objeck.wxs
@@ -21,7 +26,13 @@
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
      xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 
-  <Package Name="Objeck"
+  <?ifndef DisplayVersion?>
+    <?define DisplayVersion=$(var.Version)?>
+  <?endif?>
+
+  <!-- Add/Remove Programs shows the ProductVersion (26.10.2) in its version
+       column, so the product name carries the release string. -->
+  <Package Name="Objeck $(var.DisplayVersion)"
            Manufacturer="Randy Hollines"
            Version="$(var.Version)"
            UpgradeCode="FAD125F6-CB1B-46F7-91EB-429682D927CB"
@@ -30,8 +41,11 @@
            Codepage="1252"
            InstallerVersion="500">
 
-    <!-- Major upgrade: auto-uninstall previous versions -->
+    <!-- Major upgrade: auto-uninstall previous versions. Every product code is
+         new per build, so AllowSameVersionUpgrades lets a rebuilt MSI of the
+         same release replace the installed one instead of installing beside it. -->
     <MajorUpgrade DowngradeErrorMessage="A newer version of Objeck is already installed."
+                  AllowSameVersionUpgrades="yes"
                   Schedule="afterInstallInitialize" />
 
     <!-- Icon for Add/Remove Programs -->
@@ -83,7 +97,7 @@
     <Component Id="RegistryComponent" Directory="INSTALLFOLDER" Guid="C3D4E5F6-A7B8-4C9D-0E1F-2A3B4C5D6E7F">
       <RegistryKey Root="HKLM" Key="Software\Objeck">
         <RegistryValue Name="InstallPath" Type="string" Value="[INSTALLFOLDER]" />
-        <RegistryValue Name="Version" Type="string" Value="$(var.Version)" />
+        <RegistryValue Name="Version" Type="string" Value="$(var.DisplayVersion)" />
       </RegistryKey>
     </Component>
 
