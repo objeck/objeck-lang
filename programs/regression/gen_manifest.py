@@ -40,7 +40,9 @@ def desc(txt):
             continue
         if s.startswith('#'):
             t = s.lstrip('# ').strip()
-            if t and not t.startswith(('EXPECT_', 'JIT_DISABLE', 'EXTRA_LIBS', '-*-', '!')):
+            if t and not t.startswith(('EXPECT_', 'JIT_DISABLE', 'EXTRA_LIBS', '-*-', '!',
+                                       'DIFF_', 'NONDETERMINISTIC_OUTPUT', 'VERIFY_SKIP',
+                                       'GC_STRESS_SKIP', 'reason:')):
                 out.append(t)
             continue
         if s.startswith(('use ', 'class ', 'bundle ', 'function', 'interface')):

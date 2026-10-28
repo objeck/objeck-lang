@@ -9,6 +9,7 @@ markers let a test out of part of that comparison, and one changes scheduling:
     # DIFF_REQUIRES_JIT            skip the --jit=off configurations
     # NONDETERMINISTIC_OUTPUT      compare exit status only, never stdout
     # DIFF_SERIAL                  never run beside another test
+    # DIFF_TIMEOUT: 600            a longer limit for each run of this test
 
 and two let a test out of a nightly hardening regression run:
 
@@ -16,16 +17,19 @@ and two let a test out of a nightly hardening regression run:
     # GC_STRESS_SKIP               not run with a forced tiny heap threshold
                                    (OBJECK_VM_ARGS names --gc-threshold=)
 
-The coverage-reducing ones need a reason. The JIT opt-out marker showed where
+The coverage-reducing ones need a reason, and so does DIFF_TIMEOUT, which loosens
+the hang check for one test: its reason gives the measured time in seconds. The JIT opt-out marker showed where
 that goes unchecked (tools/cicd/check_jit_optouts.py): twenty of twenty-two
 opt-outs never said why, and every one passed without it. So, for every
 programs/regression/*.obs, this asserts:
 
 1. A directive is a whole line at column 0 with no trailing whitespace.
    DIFF_CONFIGS lists only -opt levels (s0, s3) or config names (s0/off,
-   s3/off, s3/default, s3/jit1, s0/jit1).
+   s3/off, s3/default, s3/jit1, s0/jit1). DIFF_TIMEOUT is whole seconds, 1 to
+   MAX_TEST_TIMEOUT (the same cap run_differential.py enforces).
 2. The line right after DIFF_CONFIGS, DIFF_REQUIRES_JIT, NONDETERMINISTIC_OUTPUT,
-   VERIFY_SKIP or GC_STRESS_SKIP starts with "# reason:" and says something.
+   DIFF_TIMEOUT, VERIFY_SKIP or GC_STRESS_SKIP starts with "# reason:" and says
+   something; a DIFF_TIMEOUT reason also gives the measured seconds ("105 s").
 3. No other line contains a marker's text (say "the nondeterministic-output
    marker" in prose), and no test carries both DIFF_REQUIRES_JIT and the JIT
    opt-out marker (the two leave nothing to run).
@@ -53,14 +57,18 @@ import re
 import sys
 
 NEEDS_REASON = ("# DIFF_CONFIGS:", "# DIFF_REQUIRES_JIT", "# NONDETERMINISTIC_OUTPUT",
-                "# VERIFY_SKIP", "# GC_STRESS_SKIP")
+                "# DIFF_TIMEOUT:", "# VERIFY_SKIP", "# GC_STRESS_SKIP")
 BARE = ("# DIFF_REQUIRES_JIT", "# NONDETERMINISTIC_OUTPUT", "# DIFF_SERIAL", "# VERIFY_SKIP",
         "# GC_STRESS_SKIP")
 ALL = ("# DIFF_CONFIGS", "# DIFF_REQUIRES_JIT", "# NONDETERMINISTIC_OUTPUT", "# DIFF_SERIAL",
-       "# VERIFY_SKIP", "# GC_STRESS_SKIP")
+       "# DIFF_TIMEOUT", "# VERIFY_SKIP", "# GC_STRESS_SKIP")
 REASON = "# reason:"
 CONFIG_TOKENS = {"s0", "s3", "s0/off", "s3/off", "s3/default", "s3/jit1", "s0/jit1"}
 NONDET_CAP_PERCENT = 5
+
+# The most seconds a DIFF_TIMEOUT may name; run_differential.py's MAX_TEST_TIMEOUT.
+MAX_TEST_TIMEOUT = 900
+MEASURED_SECONDS_RE = re.compile(r"\b\d+\s*(s|sec|secs|seconds)\b")
 
 # The markers that take a test out of a nightly hardening step, and the cap on
 # how many tests may carry them.
@@ -99,6 +107,12 @@ def check_file(path):
             if not tokens or bad:
                 problems.append((i + 1, "DIFF_CONFIGS names no valid configuration: %s"
                                  % (", ".join(bad) or "(empty)")))
+        elif line.startswith("# DIFF_TIMEOUT:") and line == line.rstrip():
+            directive = "# DIFF_TIMEOUT:"
+            value = line[len(directive):].strip()
+            if not (value.isdigit() and 1 <= int(value) <= MAX_TEST_TIMEOUT):
+                problems.append((i + 1, "DIFF_TIMEOUT is not whole seconds from 1 to %d: %r"
+                                 % (MAX_TEST_TIMEOUT, value)))
         if directive:
             if directive == "# NONDETERMINISTIC_OUTPUT":
                 nondet = True
@@ -111,6 +125,9 @@ def check_file(path):
                 if not nxt.startswith(REASON) or not nxt[len(REASON):].strip():
                     problems.append((i + 1, "%s without a '# reason: ...' line right after it"
                                      % directive.rstrip(":")))
+                elif directive == "# DIFF_TIMEOUT:" and not MEASURED_SECONDS_RE.search(nxt):
+                    problems.append((i + 1, "DIFF_TIMEOUT whose reason gives no measured time in "
+                                     "seconds ('105 s'): a longer limit rests on a measurement"))
                 elif directive in VERIFY_OPTOUTS and not RUN_REF_RE.search(nxt):
                     problems.append((i + 1, "%s whose reason names no run ('run <id>'): a test leaves "
                                      "a verifier step on an observed failure, not on a theory"
@@ -118,7 +135,7 @@ def check_file(path):
             continue
         hit = next((m for m in ALL if m in line), None)
         if hit:
-            if line.rstrip() in BARE or line.startswith("# DIFF_CONFIGS:"):
+            if line.rstrip() in BARE or line.startswith(("# DIFF_CONFIGS:", "# DIFF_TIMEOUT:")):
                 problems.append((i + 1, "directive with trailing whitespace: runners match whole lines"))
             else:
                 problems.append((i + 1, "mentions the literal text '%s'; describe the marker in words"

@@ -40,9 +40,14 @@ checked by tools/cicd/check_diff_markers.py:
     # DIFF_REQUIRES_JIT            skip the --jit=off configurations
     # NONDETERMINISTIC_OUTPUT      compare exit status only, never stdout
     # DIFF_SERIAL                  never run beside another test
+    # DIFF_TIMEOUT: 600            seconds each run of this test may take, in
+                                   place of --timeout when that is larger (at
+                                   most 900)
 
 The first three reduce coverage, so the lint requires a "# reason: ..." line
 right after each, and caps NONDETERMINISTIC_OUTPUT at 5% of the suite.
+DIFF_TIMEOUT removes none, but it loosens the hang check for one test, so the
+lint wants a reason there too: the measured time of the slowest configuration.
 
 Each run has OBJECK_TEST_OBE set to the .obe it runs, for a test that starts its
 own program again as a child; the regression runners leave it unset and the
@@ -73,6 +78,9 @@ from concurrent.futures import ThreadPoolExecutor
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 BASE_LIBS = "cipher,collect,xml,json"
+
+# The most a test's DIFF_TIMEOUT may ask for: a hang still ends in a failure.
+MAX_TEST_TIMEOUT = 900
 
 # (name, -opt level, obr flags). The first entry is the reference.
 CONFIGS = [
@@ -123,11 +131,19 @@ def parse_markers(text):
         "nondeterministic": "# NONDETERMINISTIC_OUTPUT" in lines,
         "serial_marker": "# DIFF_SERIAL" in lines,
         "diff_configs": None,
+        "timeout": None,
         "extra_libs": [],
         "errors": [],
     }
     for l in lines:
-        if l.startswith("# EXTRA_LIBS:"):
+        if l.startswith("# DIFF_TIMEOUT:"):
+            value = l[len("# DIFF_TIMEOUT:"):].strip()
+            if value.isdigit() and 1 <= int(value) <= MAX_TEST_TIMEOUT:
+                m["timeout"] = int(value)
+            else:
+                m["errors"].append("bad DIFF_TIMEOUT value: %r (whole seconds, 1-%d)"
+                                   % (value, MAX_TEST_TIMEOUT))
+        elif l.startswith("# EXTRA_LIBS:"):
             extra = l[len("# EXTRA_LIBS:"):].strip().split()
             if extra:
                 m["extra_libs"].append(extra[0])
@@ -262,12 +278,13 @@ class Runner:
         env = self.env
         if markers["jit_disable"]:
             env = dict(env, OBJECK_JIT_DISABLE="1")
+        run_timeout = max(self.args.timeout, markers["timeout"] or 0)
         results = []
         for cname, opt, flags in configs:
             # a test that runs its own program again as a child finds it here: the
             # .obe is not beside it in reg_dir, under the name the regression runners use
             rc, out, err, dt = run_proc([self.obr] + flags + [obes[opt]], self.reg_dir,
-                                        dict(env, OBJECK_TEST_OBE=obes[opt]), self.args.timeout)
+                                        dict(env, OBJECK_TEST_OBE=obes[opt]), run_timeout)
             tag = cname.replace("/", "_")
             with open(os.path.join(wd, tag + ".out"), "wb") as fh:
                 fh.write(out)
@@ -279,7 +296,7 @@ class Runner:
         timeouts = [c for c, rc, _ in results if rc is None]
         if timeouts:
             rec["status"] = "fail"
-            rec["details"].append("timed out after %ds: %s" % (self.args.timeout, ", ".join(timeouts)))
+            rec["details"].append("timed out after %ds: %s" % (run_timeout, ", ".join(timeouts)))
             return rec
 
         ref_name, ref_rc, ref_out = results[0]

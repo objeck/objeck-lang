@@ -1,4 +1,6 @@
 # EXTRA_LIBS: net,regex,csv,misc,query,concurrent
+# DIFF_TIMEOUT: 600
+# reason: the --jit=off configurations take about 105 s on an idle 16-core desktop (15 s with the JIT), more on a hosted runner; they timed out at the 180 s default in runs 40516411567 and 40672224592
 #~
 Query.Structured: one table queried from several threads right after a write
 (docs/QUERY_DESIGN.md, phase 6 "Concurrent readers").
