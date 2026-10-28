@@ -155,11 +155,12 @@ def position_in(text, uri, needle, occurrence=1, offset=0):
 class LspClient:
     """Minimal LSP TCP client with a background reader."""
 
-    def __init__(self, obr, server_obe, apis_json, bin_dir, timeout=90):
+    def __init__(self, obr, server_obe, apis_json, bin_dir, timeout=90,
+                 stderr=subprocess.DEVNULL):
         self.port = free_port()
         self.proc = subprocess.Popen(
             [obr, server_obe, apis_json, str(self.port)],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL, stderr=stderr,
             cwd=bin_dir, env=make_env(bin_dir))
         self.q = queue.Queue()
         self.notifications = []
