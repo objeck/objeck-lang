@@ -51,7 +51,118 @@
 #include "../shared/instrs.h"
 #include "../shared/version.h"
 
+#ifdef _DIAG_LIB
+#include <cstdio>
+#include <cstdlib>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <unordered_map>
+#endif
+
 using namespace instructions;
+
+#ifdef _DIAG_LIB
+/****************************
+ * Inflated libraries, kept by the language server (#1236, phase 1)
+ *
+ * The diagnostics library analyzes a fresh program for every edit, and each
+ * analysis read and inflated lang.obl and every listed library again. The cache
+ * keeps a library's inflated bytes, keyed by its path and checked against its
+ * compressed bytes: a library is still read from disk on every load, which is
+ * cheap, but inflated only when those bytes differ from the cached ones. A
+ * rebuilt library is therefore never served stale, whatever its size or
+ * timestamp. Each load gets its own copy, so a program owns and frees its buffer
+ * as before.
+ *
+ * Built into the diagnostics library only; obc never compiles this.
+ * OBJECK_LSP_NO_CACHE=1 turns it off, like the server's program cache, and
+ * OBJECK_LSP_LIB_CACHE_VERIFY=1 inflates again on every hit and reports any
+ * difference on stderr, for the validation tests.
+ ****************************/
+namespace {
+  struct InflatedLibrary {
+    std::string compressed;
+    std::string inflated;
+  };
+
+  std::mutex inflated_mutex;
+  std::unordered_map<std::wstring, std::shared_ptr<const InflatedLibrary> > inflated_libraries;
+
+  bool EnvIs(const char* name, char value)
+  {
+#ifdef _WIN32
+    size_t len = 0; char buf[8];
+    return getenv_s(&len, buf, sizeof(buf), name) == 0 && len > 1 && buf[0] == value;
+#else
+    const char* found = std::getenv(name);
+    return found && found[0] == value;
+#endif
+  }
+
+  bool LibraryCacheEnabled()
+  {
+    static const bool enabled = !EnvIs("OBJECK_LSP_NO_CACHE", '1');
+    return enabled;
+  }
+
+  bool LibraryCacheVerify()
+  {
+    static const bool verify = EnvIs("OBJECK_LSP_LIB_CACHE_VERIFY", '1');
+    return verify;
+  }
+
+  bool LibraryCacheReport()
+  {
+    static const bool report = LibraryCacheVerify() || EnvIs("OBJECK_LSP_TIMING", '1');
+    return report;
+  }
+
+  char* CopyOf(const std::string& bytes)
+  {
+    char* copy = static_cast<char*>(malloc(bytes.size() > 0 ? bytes.size() : 1));
+    if(copy && !bytes.empty()) {
+      memcpy(copy, bytes.data(), bytes.size());
+    }
+    return copy;
+  }
+}
+#endif
+
+/****************************
+ * Inflates a library file's bytes. The caller frees the result.
+ ****************************/
+static char* InflateLibrary(const char* buffer, size_t buffer_size, unsigned long& dest_len, const std::wstring& filename)
+{
+  // new format: [uncmp_size:4][zlib...]; old format: raw zlib (CMF byte = 0x78)
+  // When size LSB == 0x78, bytes[4..5] disambiguate: compress2(Z_BEST_COMPRESSION)
+  // always emits 0x78 0xDA; check (CMF*256+FLG)%31==0 to confirm valid zlib header.
+  uint32_t uncmp_hint = 0;
+  const char* src;
+  unsigned long src_size;
+  const bool zlib_at_4 = buffer_size >= 6 &&
+                          static_cast<uint8_t>(buffer[4]) == 0x78 &&
+                          (0x78u * 256u + static_cast<uint8_t>(buffer[5])) % 31u == 0u;
+  if(static_cast<uint8_t>(buffer[0]) == 0x78 && !zlib_at_4) {
+    src = buffer;
+    src_size = static_cast<unsigned long>(buffer_size);
+  } else {
+    memcpy(&uncmp_hint, buffer, sizeof(uncmp_hint));
+    src = buffer + sizeof(uncmp_hint);
+    src_size = static_cast<unsigned long>(buffer_size - sizeof(uncmp_hint));
+  }
+
+  char* out = OutputStream::UncompressZlib(src, src_size, dest_len, uncmp_hint);
+  if(!out) {
+    std::wcerr << L"Unable to uncompress file: " << filename << std::endl;
+    exit(1);
+  }
+#ifdef _DEBUG
+  GetLogger() << L"--- file in: compressed=" << buffer_size << L", uncompressed=" << dest_len << L" ---" << std::endl;
+#endif
+
+  return out;
+}
 
 /****************************
  * Creates associations with instructions
@@ -865,33 +976,64 @@ char* Library::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
     // close file
     in.close();
 
-    // new format: [uncmp_size:4][zlib...]; old format: raw zlib (CMF byte = 0x78)
-    // When size LSB == 0x78, bytes[4..5] disambiguate: compress2(Z_BEST_COMPRESSION)
-    // always emits 0x78 0xDA; check (CMF*256+FLG)%31==0 to confirm valid zlib header.
-    uint32_t uncmp_hint = 0;
-    const char* src;
-    unsigned long src_size;
-    const bool zlib_at_4 = buffer_size >= 6 &&
-                            static_cast<uint8_t>(buffer[4]) == 0x78 &&
-                            (0x78u * 256u + static_cast<uint8_t>(buffer[5])) % 31u == 0u;
-    if(static_cast<uint8_t>(buffer[0]) == 0x78 && !zlib_at_4) {
-      src = buffer;
-      src_size = static_cast<unsigned long>(buffer_size);
-    } else {
-      memcpy(&uncmp_hint, buffer, sizeof(uncmp_hint));
-      src = buffer + sizeof(uncmp_hint);
-      src_size = static_cast<unsigned long>(buffer_size - sizeof(uncmp_hint));
+#ifdef _DIAG_LIB
+    if(LibraryCacheEnabled()) {
+      std::shared_ptr<const InflatedLibrary> cached;
+      {
+        std::lock_guard<std::mutex> lock(inflated_mutex);
+        std::unordered_map<std::wstring, std::shared_ptr<const InflatedLibrary> >::iterator found = inflated_libraries.find(filename);
+        if(found != inflated_libraries.end()) {
+          cached = found->second;
+        }
+      }
+
+      if(cached && cached->compressed.size() == buffer_size &&
+         memcmp(cached->compressed.data(), buffer, buffer_size) == 0) {
+        char* out = CopyOf(cached->inflated);
+        const size_t out_len = cached->inflated.size();
+        if(LibraryCacheVerify()) {
+          // checks what is handed out, not the entry it was copied from
+          unsigned long fresh_len = 0;
+          char* fresh = InflateLibrary(buffer, buffer_size, fresh_len, filename);
+          const bool same = fresh_len == out_len && memcmp(fresh, out, fresh_len) == 0;
+          if(!same) {
+            fwprintf(stderr, L"[lsp-lib-cache] MISMATCH %ls\n", filename.c_str());
+            free(out);
+            out = fresh;
+            fresh = nullptr;
+          }
+          free(fresh);
+        }
+        if(LibraryCacheReport()) {
+          fwprintf(stderr, L"[lsp-lib-cache] hit %ls\n", filename.c_str());
+          fflush(stderr);
+        }
+        free(buffer);
+        buffer = nullptr;
+        return out;
+      }
+
+      unsigned long dest_len = 0;
+      char* out = InflateLibrary(buffer, buffer_size, dest_len, filename);
+      std::shared_ptr<InflatedLibrary> entry = std::make_shared<InflatedLibrary>();
+      entry->compressed.assign(buffer, buffer_size);
+      entry->inflated.assign(out, dest_len);
+      {
+        std::lock_guard<std::mutex> lock(inflated_mutex);
+        inflated_libraries[filename] = entry;
+      }
+      if(LibraryCacheReport()) {
+        fwprintf(stderr, L"[lsp-lib-cache] %ls %ls\n", cached ? L"changed" : L"miss", filename.c_str());
+        fflush(stderr);
+      }
+      free(buffer);
+      buffer = nullptr;
+      return out;
     }
+#endif
 
     unsigned long dest_len;
-    char* out = OutputStream::UncompressZlib(src, src_size, dest_len, uncmp_hint);
-    if(!out) {
-      std::wcerr << L"Unable to uncompress file: " << filename << std::endl;
-      exit(1);
-    }
-#ifdef _DEBUG
-    GetLogger() << L"--- file in: compressed=" << buffer_size << L", uncompressed=" << dest_len << L" ---" << std::endl;
-#endif
+    char* out = InflateLibrary(buffer, buffer_size, dest_len, filename);
 
     free(buffer);
     buffer = nullptr;

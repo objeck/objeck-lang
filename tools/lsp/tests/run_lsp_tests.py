@@ -1602,6 +1602,128 @@ def check_program_reuse(obr, server_obe, apis_json, bin_dir):
         shutil.rmtree(work, ignore_errors=True)
 
 
+CACHE_PROBE_LIB = """bundle CacheProbe {
+	class Probe {
+		function : %s() ~ Int {
+			return 1;
+		}
+	}
+}
+"""
+
+CACHE_PROBE_MAIN = """use CacheProbe;
+
+class CacheMain {
+	function : Main(args : String[]) ~ Nil {
+		Probe->One()->PrintLine();
+	}
+}
+"""
+
+
+def check_library_cache_invalidation(obr, server_obe, apis_json, bin_dir):
+    """A library rebuilt while the server runs is read again (#1236, phase 1).
+
+    The diagnostics library keeps each library's inflated bytes and reuses them
+    while the file's bytes are unchanged. Rebuilding a library the workspace links
+    must reach the next analysis: a stale copy would keep a method the new build
+    removed, and miss the one it added.
+    """
+    exe = ".exe" if os.name == "nt" else ""
+    obc = os.path.join(bin_dir, "obc" + exe)
+    if not os.path.exists(obc):
+        log_result("library cache: obc present to build the probe library", False, obc)
+        return
+
+    work = tempfile.mkdtemp(prefix="objk-lsp-libcache-")
+    try:
+        lib_dir = os.path.join(os.path.dirname(bin_dir), "lib")
+        probe_obl = os.path.join(work, "cache_probe.obl")
+        try:
+            # libraries are named relative to the library directory
+            probe_ref = os.path.relpath(probe_obl, lib_dir).replace("\\", "/")
+        except ValueError:
+            log_result("library cache: probe library reachable from the library path", False,
+                       f"{work} and {lib_dir} are on different drives")
+            return
+
+        def build_probe(method):
+            src = os.path.join(work, "cache_probe.obs")
+            with open(src, "w", encoding="utf-8", newline="\n") as fh:
+                fh.write(CACHE_PROBE_LIB % method)
+            r = subprocess.run([obc, "-src", src, "-tar", "lib", "-dest", probe_obl],
+                               cwd=bin_dir, env=make_env(bin_dir), capture_output=True, text=True)
+            return r.returncode == 0 and os.path.exists(probe_obl)
+
+        ws = os.path.join(work, "ws")
+        os.makedirs(ws)
+        with open(os.path.join(ws, "main.obs"), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(CACHE_PROBE_MAIN)
+        with open(os.path.join(ws, "build.json"), "w", encoding="utf-8") as fh:
+            json.dump({"files": ["main.obs"], "libs": ["gen_collect.obl", probe_ref], "flags": ""}, fh)
+        log_result("library cache: probe library builds", build_probe("One"))
+
+        root = path_to_uri(ws)
+        uri = root + "/main.obs"
+        text = CACHE_PROBE_MAIN
+        version = 1
+        c = LspClient(obr, server_obe, apis_json, bin_dir)
+        try:
+            c.request("initialize", {
+                "processId": os.getpid(), "rootUri": root, "capabilities": {},
+                "workspaceFolders": [{"uri": root, "name": "libcache"}]}, timeout=90)
+            c.notify("initialized", {})
+
+            def errors(timeout=60):
+                end = time.time() + timeout
+                while time.time() < end:
+                    for n in c.notifications:
+                        if (n.get("method") == "textDocument/publishDiagnostics"
+                                and n["params"].get("uri", "").lower() == uri.lower()):
+                            c.notifications.remove(n)
+                            return [d.get("message") for d in n["params"].get("diagnostics", [])
+                                    if d.get("severity") == 1]
+                    c.drain(0.2)
+                return None
+
+            def edit(new_text):
+                nonlocal text, version
+                version += 1
+                c.notifications.clear()
+                c.notify("textDocument/didChange", {
+                    "textDocument": {"uri": uri, "version": version},
+                    "contentChanges": [{"text": new_text}]})
+                text = new_text
+
+            c.notify("textDocument/didOpen", {"textDocument": {
+                "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+            first = errors()
+            log_result("library cache: a workspace linking the probe library analyzes cleanly",
+                       first == [], f"{first}")
+
+            # a second analysis reads the unchanged library from the cache
+            edit(text + "# again\n")
+            again = errors()
+            log_result("library cache: and again, from the cache", again == [], f"{again}")
+
+            # rebuilt with One renamed: the next analysis must see the new library
+            log_result("library cache: the probe library rebuilds with One renamed to Two",
+                       build_probe("Two"))
+            edit(text + "# rebuilt\n")
+            stale = errors()
+            log_result("library cache: a rebuilt library is read again, not served from the cache",
+                       stale is not None and any("One" in str(m) for m in stale), f"{stale}")
+
+            edit(text.replace("Probe->One()", "Probe->Two()"))
+            fixed = errors()
+            log_result("library cache: and the method the rebuild added resolves",
+                       fixed == [], f"{fixed}")
+        finally:
+            c.close()
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def check_progress_and_log(obr, server_obe, apis_json, bin_dir):
     """window/logMessage and work-done progress (#1234).
 
@@ -2747,6 +2869,7 @@ def main():
     check_jsonrpc_conformance(obr, server_obe, apis_json, bin_dir)
     check_multi_root(obr, server_obe, apis_json, bin_dir)
     check_program_reuse(obr, server_obe, apis_json, bin_dir)
+    check_library_cache_invalidation(obr, server_obe, apis_json, bin_dir)
     check_stdio_sessions(obr, server_obe, apis_json, bin_dir)
     check_progress_and_log(obr, server_obe, apis_json, bin_dir)
     check_pull_diagnostics(obr, server_obe, apis_json, bin_dir)
