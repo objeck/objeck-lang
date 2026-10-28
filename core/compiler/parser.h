@@ -104,6 +104,9 @@ class Parser {
   // line of the token NextToken() last consumed: two statements on one line
   // need a ';' between them (#1184)
   int prev_token_line = -1;
+  // tokens NextToken() has consumed: a statement list compares it before and
+  // after each statement, so one that reads nothing cannot repeat forever
+  size_t tokens_consumed = 0;
   // hidden declarations a statement needs to run before it, such as the local
   // that 'GetCells()[0] := 99' stores through; the enclosing list takes them
   std::vector<Statement*> pending_statements;
@@ -119,6 +122,7 @@ class Parser {
   inline void NextToken() {
     prev_token_line = scanner->GetToken()->GetLineNumber();
     scanner->NextToken();
+    ++tokens_consumed;
   }
   // returns true of scanner token matches 
   // expected token, false otherwise
