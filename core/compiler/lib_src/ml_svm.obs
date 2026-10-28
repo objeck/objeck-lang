@@ -6,6 +6,10 @@
 # The solver follows LIBSVM (Chih-Chung Chang and Chih-Jen Lin) and
 # R.-E. Fan, P.-H. Chen and C.-J. Lin, "Working Set Selection Using Second
 # Order Information for Training SVM", JMLR 6 (2005).
+#
+# Portions derived from LIBSVM, Copyright (c) 2000-2023 Chih-Chung Chang and
+# Chih-Jen Lin, BSD-3-Clause; see the LIBSVM COPYRIGHT in the distribution's
+# doc/licenses.
 ~~#
 
 use Collection;

@@ -48,6 +48,7 @@ This generates from `.in` templates:
 - `programs/deploy/util/readme/readme.json` (from `readme.json.in`)
 - `tools/lsp/clients/vscode/package.json` (`version` field; the committed copy, so the repo agrees with the `.vsix` the tag stamps)
 - Windows `.rc` resource files for compiler, VM, debugger, REPL, launcher
+- `core/utils/MacApp/Info.plist` (rewritten in place, not from an `.in`: `CFBundleVersion`, `CFBundleShortVersionString` and the copyright's end year)
 
 > **Curate `readme.json.in` by hand.** Only `@VERSION@`/`@YEAR@` are templated —
 > the `title` and the `features` array are hand-maintained. Before generating,
