@@ -1,0 +1,144 @@
+#~
+# compile: obc -src ml_outliers_27.obs -lib csv,ml
+# run:     obr ml_outliers_27.obe
+#
+# Anomaly detection: finding the rows that do not look like the rest. Nobody
+# tells the detector which points are "bad" -- it learns what normal looks like
+# from the data itself and gives every row an anomaly score, where higher means
+# stranger. Here 40 points are scattered around (5, 5) and four far-away points
+# are planted among them; two detectors from System.ML are asked to find them.
+#
+# IsolationForest builds many random trees that keep cutting the data at random
+# places. An odd point ends up alone after only a few cuts, so a short average
+# path means "easy to isolate", which means "probably an outlier".
+# LocalOutlierFactor compares how crowded each point's neighbourhood is with
+# how crowded its neighbours' neighbourhoods are; a point in a much emptier
+# region than its neighbours scores well above 1.
+#
+# Every detector shares one interface (OutlierDetector): Fit, Predict (true
+# means outlier), Score, and GetThreshold, the score above which a row is
+# flagged. Because true means "anomaly", the labels feed straight into
+# ConfusionMatrix to check the result against what we planted.
+#
+# Contamination 0.1 asks each detector to flag about 10% of the 44 rows, so
+# it flags five: the four planted points plus the loneliest ordinary point.
+# That trade-off -- catch everything, accept a false alarm -- is the knob you
+# turn with contamination (or SetSensitivity) on real data.
+#
+# output:
+#   Isolation forest: threshold 0.533
+#     row 35 (3.75, 3.70)  score 0.561
+#     row 40 (12.00, 12.00)  score 0.797  <- planted
+#     row 41 (-2.00, 4.00)  score 0.723  <- planted
+#     row 42 (5.00, -1.00)  score 0.722  <- planted
+#     row 43 (9.00, 6.50)  score 0.677  <- planted
+#     caught 4 of 4 planted outliers; false alarms: 1
+#
+#   Local outlier factor: threshold 2.330
+#     row 35 (3.75, 3.70)  score 2.477
+#     row 40 (12.00, 12.00)  score 12.772  <- planted
+#     row 41 (-2.00, 4.00)  score 11.026  <- planted
+#     row 42 (5.00, -1.00)  score 8.590  <- planted
+#     row 43 (9.00, 6.50)  score 5.477  <- planted
+#     caught 4 of 4 planted outliers; false alarms: 1
+~#
+
+use System.ML;
+
+class Outliers {
+  # how many ordinary points to generate, and how many we plant after them
+  @normal : static : Int;
+  @planted : static : Int;
+
+  function : Main(args : String[]) ~ Nil {
+    @normal := 40;
+    @planted := 4;
+
+    X := MakeData();
+
+    # the answer key: which rows we planted (only used to grade the detectors)
+    truth := Bool->New[@normal + @planted];
+    each(i : @planted) {
+      truth[@normal + i] := true;
+    };
+
+    # 100 trees, each built from up to 256 rows (0 = the library default);
+    # contamination 0.1 says "expect about 10% outliers", which sets the
+    # threshold; seed 42 makes the random trees the same on every run
+    forest := IsolationForest->New(100, 0, 0.1, 42);
+    if(forest->Fit(X)) {
+      Report("Isolation forest", forest->Predict(X), forest->Score(X), forest->GetThreshold(), X, truth);
+    }
+    else {
+      error := forest->GetError();
+      "Isolation forest failed: {$error}"->PrintLine();
+    };
+
+    # k = 10 neighbours per point, the same 10% contamination; novelty false
+    # means "label the rows I was fitted on", done in one step by FitPredict
+    lof := LocalOutlierFactor->New(10, 0.1, false);
+    flags := lof->FitPredict(X);
+    if(flags <> Nil) {
+      Report("Local outlier factor", flags, lof->GetTrainingScores(), lof->GetThreshold(), X, truth);
+    }
+    else {
+      error := lof->GetError();
+      "Local outlier factor failed: {$error}"->PrintLine();
+    };
+  }
+
+  # 40 points scattered around (5, 5), then four planted far away
+  function : MakeData() ~ Float[,] {
+    X := Float->New[@normal + @planted, 2];
+
+    # a seeded generator gives the same "random" points on every run
+    rand := Random->New(7);
+    each(i : @normal) {
+      # adding three uniform values gives a gentle bell-shaped spread
+      dx := rand->NextReal() + rand->NextReal() + rand->NextReal() - 1.5;
+      dy := rand->NextReal() + rand->NextReal() + rand->NextReal() - 1.5;
+      X[i, 0] := 5.0 + dx;
+      X[i, 1] := 5.0 + dy;
+    };
+
+    # the planted outliers: far from the cloud in different directions
+    X[@normal, 0] := 12.0;
+    X[@normal, 1] := 12.0;
+    X[@normal + 1, 0] := -2.0;
+    X[@normal + 1, 1] := 4.0;
+    X[@normal + 2, 0] := 5.0;
+    X[@normal + 2, 1] := -1.0;
+    X[@normal + 3, 0] := 9.0;
+    X[@normal + 3, 1] := 6.5;
+
+    return X;
+  }
+
+  # print the flagged rows with their scores, then grade them against the truth
+  function : Report(title : String, flags : Bool[], scores : Float[], threshold : Float,
+      X : Float[,], truth : Bool[]) ~ Nil {
+    "{$title}: threshold {$threshold:.3}"->PrintLine();
+
+    # only the rows the detector flagged (score above the threshold)
+    each(i : flags) {
+      if(flags[i]) {
+        x := X[i, 0];
+        y := X[i, 1];
+        score := scores[i];
+        line := "  row {$i} ({$x:.2}, {$y:.2})  score {$score:.3}";
+        if(truth[i]) {
+          line += "  <- planted";
+        };
+        line->PrintLine();
+      };
+    };
+
+    # true positives are planted rows that were caught; false positives are
+    # ordinary rows flagged by mistake
+    matrix := ConfusionMatrix->New(flags, truth);
+    caught := matrix->GetTruePositives();
+    false_alarms := matrix->GetFalsePositives();
+    "  caught {$caught} of {$@planted} planted outliers; false alarms: {$false_alarms}"->PrintLine();
+    ""->PrintLine();
+  }
+}

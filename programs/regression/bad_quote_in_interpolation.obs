@@ -1,0 +1,21 @@
+# EXPECT_COMPILE_ERROR: A quote inside '{$...}' ends the string early
+#~
+A quote inside an interpolation ends the string literal there: the scanner
+stops a string at its first unescaped '"', so "x: {$(Join(items, ", "))}" is
+the string 'x: {$(Join(items, ' followed by tokens no statement can start
+with. The parser's statement list called ParseStatement on that same token
+again and again without consuming it, allocating nodes each time, so obc ran
+until it was killed (near 16 GB) instead of reporting anything.
+
+Now a statement that consumes nothing makes the list step past its token, and
+a string left inside an open '{$' is reported as what it is, with the fix:
+compute the value into a local first. The regression runner's compile has a
+time limit, so a return of the hang fails this test rather than stalling it.
+~#
+
+class QuoteInInterpolation {
+  function : Main(args : String[]) ~ Nil {
+    items := ["a", "b"];
+    "x: {$(String->Join(items, ", "))}"->PrintLine();
+  }
+}

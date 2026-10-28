@@ -1,0 +1,120 @@
+#~
+# compile: obc -src csv_16.obs -lib csv
+# run:     obr csv_16.obe
+#
+# CSV ("comma-separated values") is the simplest way to move a table of data
+# between programs and spreadsheets: one record per line, fields separated by
+# commas. A field that itself contains a comma or a quote is wrapped in
+# double quotes. The Data.CSV library parses CSV text into a CsvTable of
+# CsvRow records. Row 0 is the header, so a field can be read by column name
+# as well as by position. This program reads an embedded table, picks out
+# rows and columns, filters and averages, writes CSV back out (quoting only
+# where needed), and then summarises the 1,000-row data/gender.csv file.
+# Run it from the examples folder so the data file is found.
+#
+# output:
+#   3 people, 4 columns
+#   header: "name","city","age","motto"
+#   Ada Lovelace lives in London, age 36
+#   Grace Hopper lives in New York, NY, age 85
+#   Alan Turing lives in Manchester, age 41
+#   Grace's motto: "It's easier to ask forgiveness"
+#   average age: 54.0
+#   people in London: 1
+#   written:
+#   name,motto
+#   Linus,"Talk is cheap, show me the code"
+#   Ken,"Use ""grep"""
+#   gender.csv: 1000 rows; class 1 in 484 rows; mean of column 0: 0.567
+~#
+
+use System.IO.Filesystem;
+use Data.CSV;
+
+class Csv {
+  function : Main(args : String[]) ~ Nil {
+    ReadTable();
+    WriteTable();
+    ReadFile();
+  }
+
+  function : ReadTable() ~ Nil {
+    # a table with a header line; the second record has a comma inside a
+    # quoted field, and the motto has quotes inside it written as "" (two
+    # double quotes), which is how CSV escapes a quote
+    text := "name,city,age,motto\n";
+    text += "Ada Lovelace,London,36,That brain of mine\n";
+    text += "Grace Hopper,\"New York, NY\",85,\"\"\"It's easier to ask forgiveness\"\"\"\n";
+    text += "Alan Turing,Manchester,41,We can only see a short distance ahead\n";
+
+    table := CsvTable->New(text);
+    # IsParsed is false, and GetError says why, when the text is malformed
+    if(<>table->IsParsed()) {
+      "bad CSV: {$(table->GetError())}"->PrintLine();
+      return;
+    };
+
+    # Size counts every row, header included; RowSize is the column count
+    "{$(table->Size() - 1)} people, {$(table->RowSize())} columns"->PrintLine();
+    "header: {$(table->GetHeaders()->ToString())}"->PrintLine();
+
+    # data rows start at 1; Get on a row takes a column name or a position
+    for(i := 1; i < table->Size(); i += 1;) {
+      row := table->Get(i);
+      name := row->Get("name");
+      city := row->Get("city");
+      age := row->Get(2)->ToInt();
+      "{$name} lives in {$city}, age {$age}"->PrintLine();
+    };
+    # the quotes around the motto were removed and "" became a single "
+    motto := table->Get(2)->Get("motto");
+    "Grace's motto: {$motto}"->PrintLine();
+
+    # ColumnValues gathers one column from every data row; it can do sums
+    # and averages on numeric columns
+    ages := table->ColumnValues("age");
+    average := ages->Average();
+    "average age: {$average:.1}"->PrintLine();
+
+    # CountMatches counts the rows whose column holds a value (Matches would
+    # return those rows as a smaller table)
+    in_london := table->CountMatches("city", "London");
+    "people in London: {$in_london}"->PrintLine();
+  }
+
+  function : WriteTable() ~ Nil {
+    # FormatRow turns an array of values into one CSV line, adding quotes
+    # only to the fields that need them
+    out := CsvTable->FormatRow(["name", "motto"]);
+    out += "\n";
+    out += CsvTable->FormatRow(["Linus", "Talk is cheap, show me the code"]);
+    out += "\n";
+    out += CsvTable->FormatRow(["Ken", "Use \"grep\""]);
+    "written:"->PrintLine();
+    out->PrintLine();
+  }
+
+  function : ReadFile() ~ Nil {
+    # data/gender.csv has no header line: three numeric columns per row
+    text := FileReader->ReadFile("data/gender.csv");
+    if(text = Nil) {
+      "could not read data/gender.csv"->PrintLine();
+      return;
+    };
+    table := CsvTable->New(text);
+
+    # with no header, row 0 is data too, so count from 0 here
+    rows := table->Size();
+    ones := 0;
+    total := 0.0;
+    for(i := 0; i < rows; i += 1;) {
+      row := table->Get(i);
+      total += row->Get(0)->ToFloat();
+      if(row->Get(2)->ToInt() = 1) {
+        ones += 1;
+      };
+    };
+    mean := total / rows;
+    "gender.csv: {$rows} rows; class 1 in {$ones} rows; mean of column 0: {$mean:.3}"->PrintLine();
+  }
+}

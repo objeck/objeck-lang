@@ -1,0 +1,103 @@
+#~
+# compile: obc -src values_1.obs
+# run:     obr values_1.obe
+#
+# Values, types and variables. Objeck has a small set of built-in value types:
+# Int (a 64-bit whole number), Float (a 64-bit decimal number), Bool (true or
+# false), Char (one Unicode character) and Byte (a small 8-bit number), plus
+# String for text. Every variable has exactly one type, fixed when it is
+# declared, and the compiler checks every use of it.
+#
+#   x := 42;          # ':=' declares and assigns; the type (Int) is inferred
+#   y : Float;        # an explicit type, with no value yet
+#   "x is {$x}"       # {$name} inserts a variable into a string
+#   "{$(x + 1)}"      # {$(...)} inserts any expression
+#
+# Note that '=' compares and ':=' assigns.
+#
+# output (abridged):
+#   count = 42, price = 9.990000, ready = true, grade = A
+#   name = Objeck, total = 100, small = 200
+#   hex 0x1F = 31, octal 0o17 = 15, binary 0b101 = 5
+#   one million = 1000000
+#   7 / 2 = 3, 7 % 2 = 1, 7.0 / 2.0 = 3.500000
+#   ...
+#   42 as Float / 2.5 = 16.800000, 9.99 as Int = 9
+#   '123' + 1 = 124, '0.25' * 4 = 1.000000, as text: 124!
+#   code of 'A' = 65, next letter = B
+~#
+
+class Values {
+  function : Main(args : String[]) ~ Nil {
+    # --- declaring variables ---
+    # with ':=' the compiler works out the type from the value:
+    # 42 is an Int, 9.99 a Float, true a Bool, 'A' a Char
+    count := 42;
+    price := 9.99;
+    ready := true;
+    grade := 'A';
+    name := "Objeck";
+
+    # you can also name the type yourself. This is useful when you want to
+    # declare a variable before you have a value for it, or to make your
+    # intent obvious to a reader.
+    total : Int;
+    total := 100;
+    small : Byte := 200;
+
+    # string interpolation: {$name} inserts a variable's value
+    "count = {$count}, price = {$price}, ready = {$ready}, grade = {$grade}"->PrintLine();
+    "name = {$name}, total = {$total}, small = {$small}"->PrintLine();
+
+    # --- number literals ---
+    # whole numbers can also be written in hexadecimal (0x), octal (0o) or
+    # binary (0b). They are all just Ints. A literal like 010 with a leading
+    # zero is a compile error, so a stray zero can never silently turn a
+    # decimal number into an octal one. Underscores are ignored, for grouping.
+    "hex 0x1F = {$(0x1F)}, octal 0o17 = {$(0o17)}, binary 0b101 = {$(0b101)}"->PrintLine();
+    million := 1_000_000;
+    "one million = {$million}"->PrintLine();
+
+    # --- arithmetic ---
+    # dividing two Ints gives an Int: the remainder is dropped, and '%' gives
+    # the remainder. Use Floats when you want the fractional part.
+    # {$(...)} inserts the result of any expression into the string.
+    "7 / 2 = {$(7 / 2)}, 7 % 2 = {$(7 % 2)}, 7.0 / 2.0 = {$(7.0 / 2.0)}"->PrintLine();
+
+    # the usual precedence rules apply; parentheses make the order explicit
+    "2 + 3 * 4 = {$(2 + 3 * 4)}, (2 + 3) * 4 = {$((2 + 3) * 4)}"->PrintLine();
+
+    # compound assignment updates a variable in place
+    total += 5;
+    total *= 2;
+    "total after += 5 and *= 2 is {$total}"->PrintLine();
+
+    # built-in values have methods too: '->' calls one
+    "-17 abs = {$(-17->Abs())}, 2.0 sqrt = {$(2.0->Sqrt())}"->PrintLine();
+    "'{$name}' has {$(name->Size())} characters, upper case {$(name->ToUpper())}"->PrintLine();
+
+    # --- comparisons and Bool ---
+    # '=' tests equality and '<>' inequality; '&' is "and", '|' is "or"
+    in_range := count > 10 & count < 50;
+    "count is between 10 and 50: {$in_range}"->PrintLine();
+    "count <> 42: {$(count <> 42)}"->PrintLine();
+
+    # --- converting between types ---
+    # Objeck never converts a Float to an Int behind your back: you say so.
+    # As(Float) widens an Int; As(Int) drops a Float's fraction.
+    half := count->As(Float) / 2.5;
+    whole := price->As(Int);
+    "42 as Float / 2.5 = {$half}, 9.99 as Int = {$whole}"->PrintLine();
+
+    # text to numbers and back: ToInt and ToFloat read a String,
+    # ToString turns any value into one
+    parsed := "123"->ToInt() + 1;
+    ratio := "0.25"->ToFloat() * 4.0;
+    text := parsed->ToString() + "!";
+    "'123' + 1 = {$parsed}, '0.25' * 4 = {$ratio}, as text: {$text}"->PrintLine();
+
+    # a Char is a number underneath: its Unicode code point
+    next := (grade->As(Int) + 1)->As(Char);
+    "code of 'A' = {$(grade->As(Int))}, next letter = {$next}"->PrintLine();
+  }
+}

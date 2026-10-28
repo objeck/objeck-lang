@@ -15,36 +15,38 @@ install): two of them read files from `data/`, which ships alongside.
 
 | Example | Libraries | What it shows |
 |---|---|---|
-| [`hello_0.obs`](hello_0.obs) | none | a class, Main, and one line of output |
-| [`https_1.obs`](https_1.obs) | `-lib gen_collect,net,json,cipher` | fetch a page over HTTPS |
-| [`xml_2.obs`](xml_2.obs) | `-lib xml,gen_collect` | parse an XML document and walk it |
-| [`json_3.obs`](json_3.obs) | `-lib json,net,cipher` | fetch JSON over the network and parse it |
-| [`regex_4.obs`](regex_4.obs) | `-lib regex` | match and extract with regular expressions |
-| [`functions_5.obs`](functions_5.obs) | none | functions, parameters and return values |
-| [`threads_6.obs`](threads_6.obs) | none | the Mandelbrot set, drawn by several threads |
-| [`encrypt_7.obs`](encrypt_7.obs) | `-lib cipher` | hashing and symmetric encryption |
-| [`http_xml_regex_8.obs`](http_xml_regex_8.obs) | `-lib net,regex,gen_collect,json,cipher` | fetch, then parse with XML and a regex together |
-| [`http_regex_9.obs`](http_regex_9.obs) | `-lib net,json,regex,cipher` | pull fields out of a fetched page |
-| [`calc_life_10.obs`](calc_life_10.obs) | none | a genetic algorithm evolving toward a target |
-| [`odbc_select_11.obs`](odbc_select_11.obs) | `-lib odbc` | query a database through ODBC |
-| [`fs_query_12.obs`](fs_query_12.obs) | `-lib query,regex,misc,net,json,csv,xml,cipher` | structured queries over the filesystem |
-| [`2d_game_13.obs`](2d_game_13.obs) | `-lib gen_collect,sdl2,sdl_game,json` | a side-scrolling platformer drawn with SDL2 |
-| [`serial_14.obs`](serial_14.obs) | `-lib gen_collect` | write objects to a file and read them back |
-| [`rss_https_xml_15.obs`](rss_https_xml_15.obs) | `-lib net,rss,gen_collect,xml,cipher` | fetch and parse an RSS feed |
-| [`tic_tac_toe_16.obs`](tic_tac_toe_16.obs) | none | tic-tac-toe in the terminal |
-| [`lambda_17.obs`](lambda_17.obs) | `-lib gen_collect` | lambdas |
-| [`first_class_18.obs`](first_class_18.obs) | `-lib gen_collect` | functions passed around as values |
-| [`closure_19.obs`](closure_19.obs) | `-lib gen_collect` | closures that capture their environment |
-| [`loops_27.obs`](loops_27.obs) | none | every loop form the language has |
-| [`visitor_20.obs`](visitor_20.obs) | none | the visitor pattern over an expression tree |
-| [`neural_21.obs`](neural_21.obs) | `-lib gen_collect,ml,csv` | a neural network trained from a CSV file |
-| [`gemini_22.obs`](gemini_22.obs) | `-lib gemini,net,json,misc,cipher,net_server` | calling the Gemini API |
-| [`json_stream_23.obs`](json_stream_23.obs) | `-lib json_stream` | reading large JSON as a stream |
-| [`3d_gl_24.obs`](3d_gl_24.obs) | `-lib sdl2,sdl_gl` | a lit, shadowed, spinning scene in OpenGL |
-| [`ai_search_25.obs`](ai_search_25.obs) | `-lib ai` | shortest-path search across a small map |
-| [`ml_regression_26.obs`](ml_regression_26.obs) | `-lib ml,csv` | linear regression over a CSV dataset |
-| [`records_28.obs`](records_28.obs) | `-lib gen_collect` | records: generated constructors and accessors, and readonly |
-| [`errors_29.obs`](errors_29.obs) | none | raise errors and catch them by type with try, on and finally |
+| [`hello_0.obs`](hello_0.obs) | none | a class, a function, Main, and one line of output |
+| [`values_1.obs`](values_1.obs) | none | types, literals, variables, interpolation and conversions |
+| [`control_flow_2.obs`](control_flow_2.obs) | none | if, select, while, do/while, for, each, break and continue |
+| [`functions_3.obs`](functions_3.obs) | none | functions, default and named arguments, ref parameters, recursion |
+| [`classes_4.obs`](classes_4.obs) | none | classes, inheritance, virtual methods, interfaces and Stringify |
+| [`records_enums_5.obs`](records_enums_5.obs) | none | records, readonly records, enums and consts |
+| [`errors_6.obs`](errors_6.obs) | none | custom errors, try/on/finally, built-in errors and ?-> recovery |
+| [`generics_7.obs`](generics_7.obs) | none | generic classes, bounded generic functions, Vector and Map |
+| [`closures_8.obs`](closures_8.obs) | none | functions as values, lambdas and closures |
+| [`arrays_9.obs`](arrays_9.obs) | none | arrays: literals, 2-D, jagged, sorting, Fill and Copy |
+| [`strings_10.obs`](strings_10.obs) | `-lib cipher` | string methods, comparison, formatting, SHA-256 and Base64 |
+| [`collections_11.obs`](collections_11.obs) | none | Vector, List, Map, Hash, Set, Stack, Queue, unboxed collections |
+| [`threads_12.obs`](threads_12.obs) | `-lib concurrent` | threads, critical sections and a CountDownLatch |
+| [`files_13.obs`](files_13.obs) | none | write, read, append and list files and folders |
+| [`json_14.obs`](json_14.obs) | `-lib json,json_stream` | parse, walk, query and build JSON; stream a file |
+| [`xml_15.obs`](xml_15.obs) | `-lib xml` | parse XML, walk elements and attributes, build XML |
+| [`csv_16.obs`](csv_16.obs) | `-lib csv` | read CSV by row and column, quoted fields, write CSV |
+| [`regex_17.obs`](regex_17.obs) | `-lib regex` | match, find all, capture groups, replace and split |
+| [`sql_tables_18.obs`](sql_tables_18.obs) | `-lib query,misc,net,json,regex,xml,csv,cipher` | SQL over in-memory tables: group by, indexes, Explain |
+| [`sql_files_19.obs`](sql_files_19.obs) | `-lib query,misc,net,json,regex,xml,csv,cipher` | SQL over CSV and JSON files and a folder, with a join |
+| [`serialize_20.obs`](serialize_20.obs) | none | save objects to a file and load them back |
+| [`odbc_21.obs`](odbc_21.obs) | `-lib odbc` | a database through ODBC: prepared inserts and queries |
+| [`http_client_22.obs`](http_client_22.obs) | `-lib net,json,cipher` | HTTPS GET: status, headers, JSON and failure handling |
+| [`web_server_23.obs`](web_server_23.obs) | `-lib net,net_server,json,cipher` | a two-route web server that tests itself and stops |
+| [`rss_reader_24.obs`](rss_reader_24.obs) | `-lib rss,xml,net,cipher` | fetch an RSS feed and list the latest headlines |
+| [`ml_regression_25.obs`](ml_regression_25.obs) | `-lib csv,ml` | linear and logistic regression with a test split |
+| [`ml_classify_26.obs`](ml_classify_26.obs) | `-lib csv,ml` | random forest, cross-validation and a confusion matrix |
+| [`ml_outliers_27.obs`](ml_outliers_27.obs) | `-lib csv,ml` | anomaly detection with isolation forest and LOF |
+| [`nlp_28.obs`](nlp_28.obs) | `-lib nlp` | tokenizing, stemming, sentiment and TF-IDF search |
+| [`llm_29.obs`](llm_29.obs) | `-lib gemini,net,net_server,json,misc,cipher` | ask a large language model (Gemini) a question |
+| [`ai_search_30.obs`](ai_search_30.obs) | `-lib ai` | A* pathfinding and minimax |
+| [`game_31.obs`](game_31.obs) | `-lib sdl2,sdl_game,json` | an SDL2 game: collect gems, dodge spiders, keep a best score |
 
 ## Building all of them
 
@@ -74,19 +76,22 @@ obr hello_0.obe
 With them, naming the list from the table above:
 
 ```
-obc -src json_stream_23.obs -lib json_stream
-obr json_stream_23.obe
+obc -src json_14.obs -lib json,json_stream
+obr json_14.obe
 ```
 
 ## Notes
 
-- `2d_game_13.obs` and `3d_gl_24.obs` open a window and need SDL2; the rest
-  run in a terminal.
-- `odbc_select_11.obs` expects an ODBC datasource named `foo`.
-- `gemini_22.obs` needs an API key, and the network examples need a
-  connection.
-- `neural_21.obs` trains and stores a model on its first run, then tests it
-  when run again with `brun`.
+- Read them in order: 0-13 teach the language, 14-21 work with data, 22-24
+  are networking, 25-30 are AI and machine learning, and 31 is a game.
+- Each program's header gives its compile and run lines and what it prints.
+- `obc` does not pull in a library's own dependencies, so some `-lib` lists name
+  libraries the program never uses directly: `ml` needs `csv`, and `query` needs
+  the rest of its list.
+- `game_31.obs` opens a window and needs a display; the rest run in a terminal.
+- `odbc_21.obs` needs an ODBC data source (it explains how to set one up when
+  it cannot connect), and `llm_29.obs` needs a Gemini API key.
+- `http_client_22.obs` and `rss_reader_24.obs` need an internet connection.
 
 ---
 

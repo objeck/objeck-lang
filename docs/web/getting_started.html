@@ -1902,11 +1902,11 @@ west,32.0</pre>
          </h2>
          <p>
           First class functions allow programmers to use functions like variables. They can be passed into methods/functions, have methods/functions return functions and be assigned to variables. In addition, Objeck supports
-          <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/closure_19.obs">
+          <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/closures_8.obs">
            closures
           </a>
           and
-          <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/lambda_17.obs">
+          <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/closures_8.obs">
            lambda expressions
           </a>
           .
@@ -2214,7 +2214,7 @@ if(class_obj &lt;&gt; Nil) {
          </p>
          <p>
           The code snippet below shows how to lock a critical section.
-          <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/threads_6.obs">
+          <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/threads_12.obs">
            Here
           </a>
           is a complete code example demonstrating the concepts above.
@@ -3234,9 +3234,9 @@ goodbye.</pre>
           A portable runtime environment can be created using the "obb" command
          </p>
          <p>
-          Encrypt and decrypt example:
+          The strings example (hashing and Base64):
          </p>
-         <pre class="cmd">&gt; obb -src_file encrypt_7.obe -to_dir /tmp -to_name encrypt</pre>
+         <pre class="cmd">&gt; obb -src_file strings_10.obe -to_dir /tmp -to_name strings</pre>
          <p>
           Optionally, application specific resources can be copied using the "-src_dir" option.
          </p>
@@ -3266,64 +3266,107 @@ goodbye.</pre>
           </p>
           <ol>
            <li>
-            Gaming and graphics:
-            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/2d_game_13.obs">
-             2D Side Scroller
+            The 32 programs that ship in the <code>examples</code> folder of every release, in learning order, each with its compile and run lines and what it prints:
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/README.md">
+             example index
+            </a>
+           </li>
+           <li>
+            Language:
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/values_1.obs">
+             Values
             </a>
             ,
-            <a href="https://github.com/objeck/objeck-lang/tree/master/programs/frameworks/sdl">
-             Lazy Foo SDL2 Examples
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/functions_3.obs">
+             Functions and named arguments
+            </a>
+            ,
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/classes_4.obs">
+             Classes and interfaces
+            </a>
+            ,
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/errors_6.obs">
+             Errors
+            </a>
+            ,
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/generics_7.obs">
+             Generics
+            </a>
+            ,
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/closures_8.obs">
+             Closures and lambdas
+            </a>
+           </li>
+           <li>
+            Data:
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/json_14.obs">
+             JSON
+            </a>
+            ,
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/xml_15.obs">
+             XML
+            </a>
+            ,
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/csv_16.obs">
+             CSV
+            </a>
+            ,
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/regex_17.obs">
+             Regular expressions
+            </a>
+            ,
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/sql_tables_18.obs">
+             SQL tables
+            </a>
+            ,
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/sql_files_19.obs">
+             SQL over files
+            </a>
+           </li>
+           <li>
+            Web:
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/http_client_22.obs">
+             HTTPS client
+            </a>
+            ,
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/web_server_23.obs">
+             Web server
+            </a>
+            ,
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/rss_reader_24.obs">
+             RSS reader
             </a>
            </li>
            <li>
             AI/ML:
-            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/gemini_22.obs">
-             Gemini Vision
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/ml_classify_26.obs">
+             Random forest
             </a>
             ,
-            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/neural_21.obs">
-             Neural Network
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/ml_outliers_27.obs">
+             Anomaly detection
             </a>
             ,
-            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/tic_tac_toe_16.obs">
-             Tic-Tac-Toe
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/nlp_28.obs">
+             Text processing
+            </a>
+            ,
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/llm_29.obs">
+             Gemini
+            </a>
+            ,
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/ai_search_30.obs">
+             A* and minimax
             </a>
            </li>
            <li>
-            Text Processing:
-            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/xml_2.obs">
-             XML
-            </a>
-            [
-            <a href="https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/xml.obs">
-             library
-            </a>
-            ],
-            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/json_3.obs">
-             JSON
-            </a>
-            [
-            <a href="https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/json.obs">
-             library
-            </a>
-            ],
-            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/csv_data.obs">
-             CSV
-            </a>
-            [
-            <a href="https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/csv.obs">
-             library
-            </a>
-            ]
-           </li>
-           <li>
-            Web:
-            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/rss_https_xml_15.obs">
-             RSS Reader
+            Gaming and graphics:
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/game_31.obs">
+             Gem Collector (SDL2)
             </a>
             ,
-            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/url_shortener.obs">
-             Web Server
+            <a href="https://github.com/objeck/objeck-lang/tree/master/programs/frameworks/sdl">
+             Lazy Foo SDL2 Examples
             </a>
            </li>
            <li>
