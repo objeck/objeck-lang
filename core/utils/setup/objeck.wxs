@@ -9,14 +9,14 @@
   name and written to HKLM\Software\Objeck\Version.
 
   Build examples:
-    wix build -arch x64 -o objeck-windows-x64_2026.10.2.msi ^
-      -d Platform=x64 -d Version=26.10.2 -d DisplayVersion=2026.10.2 ^
+    wix build -arch x64 -o objeck-windows-x64_YEAR.MONTH.RELEASE.msi ^
+      -d Platform=x64 -d Version=YY.MONTH.RELEASE -d DisplayVersion=YEAR.MONTH.RELEASE ^
       -d SourceDir=..\..\Objeck-Build\release-x64\objeck-lang-x64 ^
       -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext ^
       objeck.wxs
 
-    wix build -arch arm64 -o objeck-windows-arm64_2026.10.2.msi ^
-      -d Platform=arm64 -d Version=26.10.2 -d DisplayVersion=2026.10.2 ^
+    wix build -arch arm64 -o objeck-windows-arm64_YEAR.MONTH.RELEASE.msi ^
+      -d Platform=arm64 -d Version=YY.MONTH.RELEASE -d DisplayVersion=YEAR.MONTH.RELEASE ^
       -d SourceDir=..\..\Objeck-Build\release-arm64\objeck-lang-arm64 ^
       -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext ^
       objeck.wxs

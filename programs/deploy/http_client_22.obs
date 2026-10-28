@@ -1,0 +1,106 @@
+#~
+# compile: obc -src http_client_22.obs -lib net,json,cipher
+# run:     obr http_client_22.obe [url]
+#
+# Fetching data from the web. HttpsClient makes HTTPS requests -- the
+# certificate is checked for you -- and gives back a Response holding the
+# status code (200 means OK, 404 not found, ...) and the body as bytes. The
+# client also keeps the response's headers, which say what kind of data came
+# back. Here the body is JSON from GitHub's public API, which JsonParser turns
+# into elements you can walk with Get("name"). Networks fail, so every step is
+# checked: no connection, an error status, or a body that is not the JSON we
+# expected each ends with a short message instead of a crash.
+#
+# output (the numbers change; without a network, a short message instead):
+#   GET https://api.github.com/repos/objeck/objeck-lang
+#   status: 200
+#   content-type: application/json; charset=utf-8
+#   received 5544 bytes
+#   repository:  objeck/objeck-lang
+#   description: Lightweight object-oriented and functional programming ...
+#   language:    C++
+#   stars:       165
+#   open issues: 5
+~#
+
+use Web.HTTP;
+use Data.JSON;
+
+class FetchJson {
+  function : Main(args : String[]) ~ Nil {
+    # any URL can be passed on the command line; the default returns JSON
+    address := args->Size() > 0 ? args[0] : "https://api.github.com/repos/objeck/objeck-lang";
+    "GET {$address}"->PrintLine();
+
+    # a client object (rather than the one-line HttpsClient->QuickGet) lets us
+    # add request headers and read the response headers afterwards
+    client := HttpsClient->New();
+    client->AddHeader("Accept", "application/json");
+    response := client->Get(Url->New(address));
+
+    # Nil or a code of 0 means no answer at all: no network, a name that
+    # does not resolve, a failed TLS handshake, ...
+    if(response = Nil | response->GetCode() = 0) {
+      "Could not reach the server -- check your network connection."->PrintLine();
+      return;
+    };
+
+    # the status code: 2xx is success, 4xx a problem with the request, 5xx
+    # a problem on the server
+    code := response->GetCode();
+    "status: {$code}"->PrintLine();
+
+    # header names are kept in lower case
+    content_type := client->GetResponseHeaders()->Find("content-type");
+    if(content_type <> Nil) {
+      "content-type: {$content_type}"->PrintLine();
+    };
+
+    if(code <> 200) {
+      "The server answered, but not with success; nothing to show."->PrintLine();
+      return;
+    };
+
+    body := response->GetContent();
+    if(body = Nil) {
+      "The response had no body."->PrintLine();
+      return;
+    };
+    "received {$(body->Size())} bytes"->PrintLine();
+
+    # parse the bytes as JSON; Parse() returns false for text that is not
+    parser := JsonParser->New(body);
+    if(<>parser->Parse()) {
+      "The body is not JSON: {$(parser->GetError())}"->PrintLine();
+      return;
+    };
+
+    # the document is one JSON object; Get(name) finds a field in it, and
+    # GetString/GetInt convert the field's value
+    repo := parser->GetRoot();
+    if(<>repo->Has("full_name")) {
+      "The JSON is not a GitHub repository."->PrintLine();
+      return;
+    };
+    name := repo->Get("full_name")->GetString();
+    description := Text(repo, "description");
+    language := Text(repo, "language");
+    stars := repo->Get("stargazers_count")->GetInt();
+    issues := repo->Get("open_issues_count")->GetInt();
+
+    "repository:  {$name}"->PrintLine();
+    "description: {$description}"->PrintLine();
+    "language:    {$language}"->PrintLine();
+    "stars:       {$stars}"->PrintLine();
+    "open issues: {$issues}"->PrintLine();
+  }
+
+  # a text field that may be missing or JSON null
+  function : Text(object : JsonElement, name : String) ~ String {
+    value := object->Get(name);
+    if(value = Nil | value->IsNull()) {
+      return "(none)";
+    };
+    return value->GetString();
+  }
+}

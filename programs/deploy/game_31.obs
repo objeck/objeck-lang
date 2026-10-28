@@ -1,0 +1,382 @@
+#~
+# compile: obc -src game_31.obs -lib sdl2,sdl_game,json
+# run:     obr game_31.obe
+#
+# A small arcade game built with SDL2, the library behind many real games.
+# Press Space to start, then use the arrow keys to collect the spinning gems.
+# Each gem is a point, and every 5 gems another spider joins the ones bouncing
+# around the room. Touch a spider and the game is over: R plays again. P
+# pauses, and Esc quits at any time. Your best score is remembered between
+# runs in a small JSON file, .gem_collector.json, in your home folder
+# (C:\Users\you on Windows, /home/you on Linux, /Users/you on macOS).
+#
+# Every video game is the same loop, run about 60 times a second:
+#
+#   1. read input   (which keys are pressed?)
+#   2. update       (move things, check what touched what, keep score)
+#   3. draw         (clear the screen, draw every picture, show it)
+#
+# GameFramework from Game.Framework opens the window, loads images and sounds,
+# and keeps the loop at a steady 60 frames per second. Images and sounds come
+# from the media/ folder, so run the program from this folder.
+#
+# output: a window titled "Gem Collector" with a stone background, the player
+# in a pink shirt, a gem, a black spider, "Score: 0   Best: 0" in the top-left
+# corner and "Press Space to start" in the middle, with music playing. The
+# console only shows the framework's "Warning: No joysticks connected!" when no
+# game controller is plugged in.
+~#
+
+use Collection;
+use Game.SDL2;
+use Game.Framework;
+use Data.JSON;
+use System.IO.Filesystem;
+
+# the four situations the game can be in; see the select in GemCollector->Run
+enum State {
+  READY,
+  PLAYING,
+  PAUSED,
+  OVER
+}
+
+# One spider. This is why classes exist: the game can hold any number of
+# spiders, each with its own position and speed, from one definition.
+class Spider {
+  @x : Int;
+  @y : Int;
+  @dx : Int;
+  @dy : Int;
+
+  New(x : Int, y : Int, dx : Int, dy : Int) {
+    @x := x;
+    @y := y;
+    @dx := dx;
+    @dy := dy;
+  }
+
+  # take one step, turning around at the edges of the room
+  method : public : Move(width : Int, height : Int) ~ Nil {
+    @x += @dx;
+    @y += @dy;
+    if(@x < 0 | @x > width - GemCollector->SpiderW()) {
+      @dx := -1 * @dx;
+    };
+    if(@y < 0 | @y > height - GemCollector->SpiderH()) {
+      @dy := -1 * @dy;
+    };
+  }
+
+  # true when this spider's box overlaps the given box
+  method : public : Touches(x : Int, y : Int, w : Int, h : Int) ~ Bool {
+    return GemCollector->Overlap(@x, @y, GemCollector->SpiderW(), GemCollector->SpiderH(), x, y, w, h);
+  }
+
+  # all spiders share one picture, so set which way it faces before drawing:
+  # mirrored when walking left
+  method : public : Render(sprite : ImageSprite) ~ Nil {
+    sprite->SetFlip(@dx < 0 ? RendererFlip->SDL_FLIP_HORIZONTAL : RendererFlip->SDL_FLIP_NONE);
+    sprite->Render(@x, @y);
+  }
+}
+
+class GemCollector {
+  # pictures and sounds
+  @framework : GameFramework;
+  @background : ImageSprite;
+  @player : AnimatedImageSprite;
+  @gem : AnimatedImageSprite;
+  @spider_image : ImageSprite;
+  @score_text : TextSprite;
+  @message_text : TextSprite;
+  @gem_sound : MixChunk;
+  @die_sound : MixChunk;
+
+  # where things are
+  @player_x : Int;
+  @player_y : Int;
+  @gem_x : Int;
+  @gem_y : Int;
+  @spiders : Vector<Spider>;
+
+  # game state
+  @state : State;
+  @score : Int;
+  @best : Int;
+  @best_file : String;
+  @frame : Int;
+  @moving : Bool;
+
+  # window and picture sizes, in pixels
+  function : Width() ~ Int {
+    return 800;
+  }
+
+  function : Height() ~ Int {
+    return 640;
+  }
+
+  function : SpiderW() ~ Int {
+    return 32;
+  }
+
+  function : SpiderH() ~ Int {
+    return 18;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    GemCollector->New()->Run();
+  }
+
+  New() {
+  }
+
+  method : Run() ~ Nil {
+    # open the window; IsOk is false if SDL, a picture or a sound failed
+    @framework := GameFramework->New(Width(), Height(), "Gem Collector");
+    if(<>@framework->IsOk()) {
+      "Unable to start SDL2"->ErrorLine();
+      return;
+    };
+
+    # player.png holds 7 walking poses side by side, each 32 x 52, and
+    # gems.png 6 frames of a spinning gem; a "clip" is the part to draw
+    @background := @framework->AddImageSprite("media/background.png");
+    @player := @framework->AddAnimatedImageSprite("media/player.png");
+    each(i : 7) {
+      @player->AddClip(Rect->New(i * 32, 0, 32, 52));
+    };
+    @gem := @framework->AddAnimatedImageSprite("media/gems.png");
+    each(i : 6) {
+      @gem->AddClip(Rect->New(i * 32, 0, 32, 32));
+    };
+    @spider_image := @framework->AddImageSprite("media/spider.png");
+    @score_text := @framework->AddTextSprite();
+    @message_text := @framework->AddTextSprite();
+    @gem_sound := @framework->AddMixChunk("media/gem.wav");
+    @die_sound := @framework->AddMixChunk("media/die.wav");
+    music := @framework->SetMusicChunk("media/music.wav");
+    if(<>@framework->IsOk()) {
+      "Unable to load the media/ files; run from the examples folder"->ErrorLine();
+      @framework->Quit();
+      return;
+    };
+
+    # -1 loops the music forever; it fades in over one second
+    music->FadeInMusic(-1, 1000);
+
+    # the best score lives in the home folder, never in the examples folder
+    @best_file := Runtime->GetUserDir() + Directory->GetSlash() + ".gem_collector.json";
+    @best := LoadBest();
+    Reset();
+
+    event := @framework->GetEvent();
+    quit := false;
+    while(<>quit) {
+      @framework->FrameStart();
+
+      # events: the close button and single key presses; what a key does
+      # depends on the state the game is in
+      while(event->Poll() <> 0) {
+        if(event->GetType() = EventType->SDL_QUIT) {
+          quit := true;
+        }
+        else if(event->GetType() = EventType->SDL_KEYDOWN) {
+          key := event->GetKey()->GetKeysym()->GetScancode();
+          if(key = Scancode->SDL_SCANCODE_ESCAPE) {
+            quit := true;
+          }
+          else if(key = Scancode->SDL_SCANCODE_SPACE & @state = State->READY) {
+            SetState(State->PLAYING);
+          }
+          else if(key = Scancode->SDL_SCANCODE_P & @state = State->PLAYING) {
+            SetState(State->PAUSED);
+          }
+          else if(key = Scancode->SDL_SCANCODE_P & @state = State->PAUSED) {
+            SetState(State->PLAYING);
+          }
+          else if(key = Scancode->SDL_SCANCODE_R & @state = State->OVER) {
+            Reset();
+          };
+        };
+      };
+
+      # A state machine: nearly every game is organised this way. Each state
+      # decides what moves and what is shown, and keys move between states.
+      select(@state) {
+        label State->PLAYING: {
+          Update();
+          Draw(false);
+        }
+
+        label State->READY:
+        label State->PAUSED:
+        label State->OVER: {
+          Draw(true);
+        }
+      };
+
+      # wait out the rest of this 1/60th of a second
+      @framework->FrameEnd();
+    };
+
+    @framework->Quit();
+  }
+
+  # change state and show the message that goes with it, looked up by the
+  # state's number (READY = 0, PLAYING = 1, ...); text is drawn into a
+  # picture, so it is rebuilt only when it changes, not on every frame
+  method : SetState(state : State) ~ Nil {
+    messages := ["Press Space to start", " ", "Paused - P to resume",
+      "Game over! R = play again, Esc = quit"];
+    @state := state;
+    @message_text->RenderedText(messages[state->As(Int)]);
+  }
+
+  # a new game: player in the middle, one spider in a corner, a fresh gem
+  method : Reset() ~ Nil {
+    @score := 0;
+    @player_x := Width() / 2;
+    @player_y := Height() / 2;
+    @spiders := Vector->New()<Spider>;
+    AddSpider();
+    PlaceGem();
+    UpdateScore();
+    SetState(State->READY);
+  }
+
+  # one step of play: move everything, then check what touches what
+  method : Update() ~ Nil {
+    @frame += 1;
+
+    # Keyboard->GetState says which keys are held right now (non-zero = down),
+    # which gives smooth movement rather than one step per key press
+    keys := Keyboard->GetState();
+    @moving := false;
+    if(keys[Scancode->SDL_SCANCODE_LEFT] <> 0 & @player_x > 0) {
+      @player_x -= 4;
+      @player->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
+      @moving := true;
+    };
+    if(keys[Scancode->SDL_SCANCODE_RIGHT] <> 0 & @player_x < Width() - 32) {
+      @player_x += 4;
+      @player->SetFlip(RendererFlip->SDL_FLIP_NONE);
+      @moving := true;
+    };
+    if(keys[Scancode->SDL_SCANCODE_UP] <> 0 & @player_y > 0) {
+      @player_y -= 4;
+      @moving := true;
+    };
+    if(keys[Scancode->SDL_SCANCODE_DOWN] <> 0 & @player_y < Height() - 52) {
+      @player_y += 4;
+      @moving := true;
+    };
+
+    # collision with the gem: a point, a sound, and every 5th gem a spider
+    if(Overlap(@player_x, @player_y, 32, 52, @gem_x, @gem_y, 32, 32)) {
+      @score += 1;
+      @gem_sound->PlayChannel(-1, 0);
+      if(@score % 5 = 0) {
+        AddSpider();
+      };
+      PlaceGem();
+      UpdateScore();
+    };
+
+    # every spider moves the same way, so one loop handles them all
+    each(i : @spiders) {
+      spider := @spiders->Get(i);
+      spider->Move(Width(), Height());
+      if(spider->Touches(@player_x, @player_y, 32, 52) & @state = State->PLAYING) {
+        @die_sound->PlayChannel(-1, 0);
+        if(@score > @best) {
+          @best := @score;
+          SaveBest();
+          UpdateScore();
+        };
+        SetState(State->OVER);
+      };
+    };
+  }
+
+  # draw back to front: background first, text last so it sits on top
+  method : Draw(show_message : Bool) ~ Nil {
+    @framework->Clear();
+    @background->Render(0, 0);
+
+    # the gem cycles through its 6 frames, changing every 8 game frames; the
+    # player shows walking poses while moving and pose 0 standing still
+    @gem->Render(@gem_x, @gem_y, (@frame / 8) % 6);
+    pose := 0;
+    if(@moving) {
+      pose := (@frame / 6) % 7;
+    };
+    @player->Render(@player_x, @player_y, pose);
+    each(i : @spiders) {
+      @spiders->Get(i)->Render(@spider_image);
+    };
+
+    @score_text->Render(10, 10);
+    if(show_message) {
+      @message_text->Render((Width() - @message_text->GetWidth()) / 2, Height() / 2 - 80);
+    };
+
+    # everything was drawn off-screen; Show puts it on the window at once
+    @framework->Show();
+  }
+
+  # a new spider starts in the corner farthest from the player, so it never
+  # appears on top of you, and each one is a little faster than the last
+  method : AddSpider() ~ Nil {
+    x := 10;
+    y := 10;
+    dx := 3 + @spiders->Size();
+    dy := 2 + @spiders->Size();
+    if(@player_x < Width() / 2) {
+      x := Width() - SpiderW() - 10;
+      dx := -1 * dx;
+    };
+    if(@player_y < Height() / 2) {
+      y := Height() - SpiderH() - 10;
+      dy := -1 * dy;
+    };
+    @spiders->AddBack(Spider->New(x, y, dx, dy));
+  }
+
+  # two boxes overlap unless one is entirely left, right, above or below the
+  # other -- the simplest collision test there is
+  function : Overlap(ax : Int, ay : Int, aw : Int, ah : Int, bx : Int, by : Int, bw : Int, bh : Int) ~ Bool {
+    return ax < bx + bw & bx < ax + aw & ay < by + bh & by < ay + ah;
+  }
+
+  # put the gem somewhere random, away from the screen edges
+  method : PlaceGem() ~ Nil {
+    @gem_x := Int->Random(40, Width() - 72);
+    @gem_y := Int->Random(60, Height() - 72);
+  }
+
+  method : UpdateScore() ~ Nil {
+    @score_text->RenderedText("Score: {$@score}   Best: {$@best}");
+  }
+
+  # read {"best": 12}; a missing or damaged file just means no best yet
+  method : LoadBest() ~ Int {
+    text := FileReader->ReadFile(@best_file);
+    if(text <> Nil) {
+      parser := JsonParser->New(text);
+      if(parser->Parse() & parser->GetRoot() <> Nil) {
+        best := parser->GetRoot()->Get("best");
+        if(best <> Nil & best->GetType() = JsonElement->JsonType->NUMBER) {
+          return best->GetInt();
+        };
+      };
+    };
+    return 0;
+  }
+
+  # write the new best back; if that fails the game simply carries on
+  method : SaveBest() ~ Nil {
+    FileWriter->WriteFile(@best_file, "{\"best\": {$@best}}");
+  }
+}

@@ -1,0 +1,119 @@
+#~
+# compile: obc -src closures_8.obs
+# run:     obr closures_8.obe
+#
+# Functions as values. In Objeck a function can be stored in a variable,
+# passed to another function, and returned from one, just like a number or a
+# string. The type of a function value is written with its parameter types
+# and its return type: (Int) ~ Int is "a function from Int to Int".
+#
+#   f := Square(Int) ~ Int;                  # an existing function, as a value
+#   g := \(Int) ~ Int : (x) => x + 1;        # a lambda: a function with no name
+#   v->Map(\(x) => ...)                      # short form, types taken from context
+#
+# A lambda that uses a variable from around it is a closure: it captures a
+# copy of the variable when the lambda is made, and keeps that copy for as
+# long as the lambda lives, even after the function that created it has
+# returned. That is how MakeAdder(10) below builds a new function that
+# remembers its 10. Because the lambda holds a copy, a change it makes is
+# not seen outside it; to hand a result back out, capture an object (such
+# as an IntRef) and change what is inside it.
+#
+# output:
+#   Square as a value: 49
+#   lambda add-one: 8
+#   apply twice, add-one: 9
+#   apply twice, square: 2401
+#   add10(5) = 15, add100(5) = 105
+#   counter: 1 2 3
+#   evens: 2 4 6
+#   doubled: 2 4 6 8 10 12
+#   sum: 21
+~#
+
+use Collection;
+
+class Closures {
+  # an ordinary function, which we will use as a value
+  function : Square(n : Int) ~ Int {
+    return n * n;
+  }
+
+  # takes a function as a parameter: 'f' is any function from Int to Int
+  function : ApplyTwice(f : (Int) ~ Int, value : Int) ~ Int {
+    return f(f(value));
+  }
+
+  # returns a function. The lambda uses 'amount', so it captures it:
+  # each call to MakeAdder makes a new function with its own amount.
+  function : MakeAdder(amount : Int) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (x) => x + amount;
+  }
+
+  # a closure can also keep state that changes between calls: the lambda's
+  # own copy of 'count' carries over from one call to the next
+  function : MakeCounter() ~ () ~ Int {
+    count := 0;
+    return \() ~ Int : () => {
+      count += 1;
+      return count;
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    # --- a named function used as a value ---
+    # 'Square(Int) ~ Int' names the function without calling it
+    square := Square(Int) ~ Int;
+    "Square as a value: {$(square(7))}"->PrintLine();
+
+    # --- lambdas: functions written inline, without a name ---
+    # \(parameter types) ~ return type : (parameter names) => result
+    add_one := \(Int) ~ Int : (x) => x + 1;
+    "lambda add-one: {$(add_one(7))}"->PrintLine();
+
+    # --- passing functions to functions ---
+    "apply twice, add-one: {$(ApplyTwice(add_one, 7))}"->PrintLine();
+    "apply twice, square: {$(ApplyTwice(square, 7))}"->PrintLine();
+
+    # --- returning functions, and closures capturing variables ---
+    add10 := MakeAdder(10);
+    add100 := MakeAdder(100);
+    "add10(5) = {$(add10(5))}, add100(5) = {$(add100(5))}"->PrintLine();
+
+    # each call to counter() sees the count left by the call before
+    counter := MakeCounter();
+    first := counter();
+    second := counter();
+    third := counter();
+    "counter: {$first} {$second} {$third}"->PrintLine();
+
+    # --- the short lambda form with the library's collections ---
+    numbers := Vector->New()<IntRef>;
+    for(i := 1; i <= 6; i += 1;) {
+      numbers->AddBack(IntRef->New(i));
+    };
+
+    # Filter keeps the elements the lambda says yes to. In \(n) => ...
+    # the compiler already knows n is an IntRef, so no types are written.
+    evens := numbers->Filter(\(n) => n->Get() % 2 = 0);
+    line := "evens:";
+    each(n in evens) {
+      line += " {$n}";
+    };
+    line->PrintLine();
+
+    # Map makes a new vector from the lambda's result for each element
+    doubled := numbers->Map(\(n) => IntRef->New(n->Get() * 2));
+    line := "doubled:";
+    each(n in doubled) {
+      line += " {$n}";
+    };
+    line->PrintLine();
+
+    # to get a result OUT of a lambda, capture an object: the lambda's copy
+    # of 'total' refers to the same IntRef, so the sum is seen out here
+    total := IntRef->New(0);
+    numbers->Each(\(n) => total->Set(total->Get() + n->Get()));
+    "sum: {$total}"->PrintLine();
+  }
+}

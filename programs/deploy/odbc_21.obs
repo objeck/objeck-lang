@@ -1,0 +1,112 @@
+#~
+# compile: obc -src odbc_21.obs -lib odbc
+# run:     obr odbc_21.obe [data_source_name]
+#
+# Talking to a real database through ODBC, the standard interface that
+# SQLite, PostgreSQL, MySQL, SQL Server and most other databases provide a
+# driver for. Database.ODBC connects to a named "data source" (DSN), runs SQL
+# statements, and walks the rows a query returns. The insert uses a prepared
+# statement: the SQL has ? placeholders and the values are bound separately,
+# which is both faster when repeated and safe from SQL injection, because a
+# value is never pasted into the SQL text.
+#
+# This program needs a data source you set up once. The default name is
+# "objeck_sqlite": install the SQLite ODBC driver (http://www.ch-werner.de/
+# sqliteodbc/, or 'apt install libsqliteodbc' / 'brew install sqliteodbc'),
+# then add a DSN of that name with your ODBC administrator (Windows) or in
+# ~/.odbc.ini (Linux and macOS). Without one, it explains this and exits.
+#
+# output (without a data source, it explains how to make one):
+#   Could not connect to the ODBC data source 'objeck_sqlite'.
+#     (driver says: [IM002] ... Data source name not found ...)
+#   ...
+#
+# output (with a data source):
+#   connected to 'objeck_sqlite'
+#   inserted 4 rows
+#   id      name    score
+#   1       Ada     95.50
+#   3       Grace   88.00
+#   2       Alan    72.25
+#   average of scores above 80: 91.75
+~#
+
+use Database.ODBC;
+
+class OdbcExample {
+  function : Main(args : String[]) ~ Nil {
+    # the data source name can be given on the command line
+    dsn := args->Size() > 0 ? args[0] : "objeck_sqlite";
+
+    # connect: data source, user name, password (SQLite needs neither)
+    conn := Connection->New(dsn, "", "");
+    if(<>conn->IsOpen()) {
+      Explain(dsn, conn->GetLastError());
+      return;
+    };
+    "connected to '{$dsn}'"->PrintLine();
+
+    # Update() runs a statement that returns no rows; start from a clean table
+    conn->Update("DROP TABLE IF EXISTS students");
+    conn->Update("CREATE TABLE students (id INTEGER, name VARCHAR(40), score REAL)");
+
+    # a prepared statement: the SQL is sent once, then each row binds its own
+    # values to the ? placeholders, which are numbered from 1
+    names := ["Ada", "Alan", "Grace", "Linus"];
+    scores := [95.5, 72.25, 88.0, 61.0];
+    insert := conn->CreateParameterStatement("INSERT INTO students VALUES (?, ?, ?)");
+    each(i : names) {
+      insert->SetInt(1, i + 1);
+      insert->SetVarchar(2, names[i]);
+      insert->SetDouble(3, scores[i]);
+      insert->Update();
+    };
+    insert->Close();
+    "inserted {$(names->Size())} rows"->PrintLine();
+
+    # Select() returns a ResultSet; Next() moves to each row in turn, and the
+    # Get calls read a column by its position (from 1) or by its name
+    rows := conn->Select("SELECT id, name, score FROM students WHERE score > 70 ORDER BY score DESC");
+    if(rows <> Nil) {
+      "id\tname\tscore"->PrintLine();
+      while(rows->Next()) {
+        id := rows->GetInt(1);
+        name := rows->GetVarchar("name");
+        score := Float->ToString(rows->GetDouble(3), 2);
+        "{$id}\t{$name}\t{$score}"->PrintLine();
+      };
+      rows->Close();
+    };
+
+    # a prepared statement works for queries too: here the bound value is a
+    # threshold, and the database does the averaging
+    query := conn->CreateParameterStatement("SELECT AVG(score) FROM students WHERE score > ?");
+    query->SetDouble(1, 80.0);
+    rows := query->Select();
+    if(rows <> Nil & rows->Next()) {
+      average := Float->ToString(rows->GetDouble(1), 2);
+      "average of scores above 80: {$average}"->PrintLine();
+      rows->Close();
+    };
+    query->Close();
+
+    # tidy up and disconnect
+    conn->Update("DROP TABLE students");
+    conn->Close();
+  }
+
+  # what to do when there is no database to talk to
+  function : Explain(dsn : String, error : String) ~ Nil {
+    "Could not connect to the ODBC data source '{$dsn}'."->PrintLine();
+    if(error <> Nil) {
+      "  (driver says: {$error})"->PrintLine();
+    };
+    ""->PrintLine();
+    "To run this example, set up a SQLite data source:"->PrintLine();
+    "  1. Install the SQLite ODBC driver: http://www.ch-werner.de/sqliteodbc/"->PrintLine();
+    "     (Linux: apt install libsqliteodbc   macOS: brew install sqliteodbc)"->PrintLine();
+    "  2. Add a data source named '{$dsn}' that uses it, with Database=:memory:"->PrintLine();
+    "     (Windows: the 'ODBC Data Sources' app; Linux and macOS: ~/.odbc.ini)"->PrintLine();
+    "  3. Run again, or pass another name: obr odbc_21.obe my_dsn"->PrintLine();
+  }
+}

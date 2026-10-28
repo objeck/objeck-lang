@@ -210,9 +210,9 @@ class Test {
 			return false;
 		};
 
-		@font := Font->New("images/lazy.ttf", 28);
+		@font := Font->New(Runtime->GetProperty("lib_dir") + "/sdl/fonts/lato.ttf", 28);
 		if(@font->IsNull()) {
-			"Failed to load lazy font!"->ErrorLine();
+			"Failed to load font!"->ErrorLine();
 			return false;
 		};
 

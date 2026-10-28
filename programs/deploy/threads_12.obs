@@ -1,0 +1,118 @@
+#~
+# compile: obc -src threads_12.obs -lib concurrent
+# run:     obr threads_12.obe
+#
+# Threads let a program do several things at the same time. You make one by
+# subclassing Thread and writing its Run method; Execute starts it and Join
+# waits for it to finish. When threads share data they must take turns
+# changing it, or updates get lost: critical(mutex) { ... } lets only one
+# thread at a time into the block. This program starts four workers that
+# each add up a slice of the numbers 1 to 100,000 into one shared total. A
+# CountDownLatch from System.Concurrency acts as a starting gun so they all
+# begin together. The threads finish in a different order on every run, but
+# the total is always the same, which is the point of the locking.
+#
+# output:
+#   starting 4 workers
+#   all workers finished
+#   worker 0 added 312512500
+#   worker 1 added 937512500
+#   worker 2 added 1562512500
+#   worker 3 added 2187512500
+#   shared total: 5000050000
+#   expected:     5000050000
+~#
+
+use System.Concurrency;
+
+# one worker: adds the numbers first..last into a total shared by all workers
+class Adder from Thread {
+  # static fields belong to the class, so every Adder sees the same ones
+  @total : static : Int;
+  @lock : static : ThreadMutex;
+
+  # instance fields belong to one worker
+  @first : Int;
+  @last : Int;
+  @start : CountDownLatch;
+  @mine : Int;
+
+  # sets up the shared state once, before any worker runs
+  function : Reset() ~ Nil {
+    @total := 0;
+    @lock := ThreadMutex->New("total");
+  }
+
+  function : GetTotal() ~ Int {
+    return @total;
+  }
+
+  New(id : Int, first : Int, last : Int, start : CountDownLatch) {
+    # Parent passes a name up to the Thread class
+    Parent("worker {$id}");
+    @first := first;
+    @last := last;
+    @start := start;
+    @mine := 0;
+  }
+
+  # Run is what the thread does once Execute starts it
+  method : public : Run(param : System.Base) ~ Nil {
+    # wait here until the main thread fires the starting gun
+    @start->Await();
+
+    for(n := @first; n <= @last; n += 1;) {
+      @mine += n;
+      # total += n is really "read, add, write back"; without the lock two
+      # threads could read the same old value and one addition would vanish
+      critical(@lock) {
+        @total += n;
+      };
+    };
+  }
+
+  method : public : GetMine() ~ Int {
+    return @mine;
+  }
+}
+
+class Threads {
+  function : Main(args : String[]) ~ Nil {
+    count := 4;
+    limit := 100000;
+    slice := limit / count;
+
+    Adder->Reset();
+
+    # a latch that opens after one CountDown: the starting gun
+    start := CountDownLatch->New(1);
+
+    # create the workers; each gets its own slice of the numbers
+    workers := Adder->New[count];
+    each(i : workers) {
+      workers[i] := Adder->New(i, i * slice + 1, (i + 1) * slice, start);
+    };
+
+    # Execute starts each thread; they all block on the latch for now
+    "starting {$count} workers"->PrintLine();
+    each(i : workers) {
+      workers[i]->Execute(Nil);
+    };
+    start->CountDown();
+
+    # Join waits until a thread's Run has returned
+    each(i : workers) {
+      workers[i]->Join();
+    };
+    "all workers finished"->PrintLine();
+
+    # only the main thread prints, after the joins, so the output is in order
+    each(i : workers) {
+      "worker {$i} added {$(workers[i]->GetMine())}"->PrintLine();
+    };
+
+    # the sum 1 + 2 + ... + n is n * (n + 1) / 2
+    "shared total: {$(Adder->GetTotal())}"->PrintLine();
+    "expected:     {$(limit * (limit + 1) / 2)}"->PrintLine();
+  }
+}

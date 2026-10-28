@@ -1,0 +1,134 @@
+#~
+# compile: obc -src functions_3.obs
+# run:     obr functions_3.obe
+#
+# Functions and methods: the named, reusable blocks your program is built
+# from. A 'function' belongs to the class itself and is called as
+# Class->Name(...); a 'method' belongs to an object (an instance made with
+# New) and is called on that object, obj->Name(...). Both list their
+# parameters with types and say what they return after '~'.
+#
+#   function : Area(w : Int, h : Int := 1) ~ Int     # h has a default value
+#   Train("model", rate: 0.1)                         # a named argument
+#   function : Swap(ref a : Int, ref b : Int) ~ Nil  # the caller's variables change
+#   Swap(ref x, ref y);                               # 'ref' at the call site too
+#
+# Named arguments make long parameter lists readable and let a call skip any
+# parameter that has a default, not just the last ones. A 'ref' parameter
+# lets a function change the caller's own variable, which is how a function
+# hands back more than one result.
+#
+# output:
+#   Square(7) = 49
+#   Area(4, 5) = 20, Area(4) = 4
+#   a: epochs=10 rate=0.500000 verbose=false
+#   b: epochs=10 rate=0.500000 verbose=true
+#   c: epochs=50 rate=0.100000 verbose=false
+#   counter = 16
+#   before Swap: x = 1, y = 2
+#   after Swap: x = 2, y = 1
+#   17 / 5 = 3 remainder 2
+#   5! = 120, fib(10) = 55
+~#
+
+# a small class with a field and methods, to contrast with functions
+class Counter {
+  @count : Int;
+
+  New() {
+    @count := 0;
+  }
+
+  # a method: it can read and change this object's own fields
+  method : public : Add(amount : Int := 1) ~ Nil {
+    @count += amount;
+  }
+
+  method : public : Get() ~ Int {
+    return @count;
+  }
+}
+
+class Functions {
+  # a function: takes an Int, returns an Int
+  function : Square(n : Int) ~ Int {
+    return n * n;
+  }
+
+  # a default value: callers may leave 'h' out and get 1
+  function : Area(w : Int, h : Int := 1) ~ Int {
+    return w * h;
+  }
+
+  # several defaults: named arguments let a caller set just the ones it needs
+  function : Train(name : String, epochs : Int := 10, rate : Float := 0.5, verbose : Bool := false) ~ String {
+    return "{$name}: epochs={$epochs} rate={$rate} verbose={$verbose}";
+  }
+
+  # 'ref' parameters: assigning to a or b changes the caller's variables
+  function : Swap(ref a : Int, ref b : Int) ~ Nil {
+    temp := a;
+    a := b;
+    b := temp;
+  }
+
+  # a second result through 'ref': the quotient is returned, the remainder
+  # is written back into the caller's variable
+  function : Divide(a : Int, b : Int, ref remainder : Int) ~ Int {
+    remainder := a % b;
+    return a / b;
+  }
+
+  # recursion: a function that calls itself on a smaller problem.
+  # Every recursive function needs a base case that stops the calls.
+  function : Factorial(n : Int) ~ Int {
+    if(n <= 1) {
+      return 1;
+    };
+    return n * Factorial(n - 1);
+  }
+
+  function : Fib(n : Int) ~ Int {
+    if(n < 2) {
+      return n;
+    };
+    return Fib(n - 1) + Fib(n - 2);
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    # inside the same class, a function is called by its name alone;
+    # from another class you would write Functions->Square(7)
+    "Square(7) = {$(Square(7))}"->PrintLine();
+
+    # leaving out a parameter that has a default
+    "Area(4, 5) = {$(Area(4, 5))}, Area(4) = {$(Area(4))}"->PrintLine();
+
+    # named arguments: positional arguments come first, then 'name: value'
+    # pairs in any order. Any defaulted parameter can be skipped.
+    Train("a")->PrintLine();
+    Train("b", verbose: true)->PrintLine();
+    Train("c", rate: 0.1, epochs: 50)->PrintLine();
+
+    # methods are called on an object created with New
+    counter := Counter->New();
+    counter->Add();
+    counter->Add(10);
+    counter->Add(amount: 5);
+    "counter = {$(counter->Get())}"->PrintLine();
+
+    # ref parameters: both the declaration and the call say 'ref', so a
+    # reader can see at the call site that x and y may change
+    x := 1;
+    y := 2;
+    "before Swap: x = {$x}, y = {$y}"->PrintLine();
+    Swap(ref x, ref y);
+    "after Swap: x = {$x}, y = {$y}"->PrintLine();
+
+    remainder := 0;
+    quotient := Divide(17, 5, ref remainder);
+    "17 / 5 = {$quotient} remainder {$remainder}"->PrintLine();
+
+    # recursion
+    "5! = {$(Factorial(5))}, fib(10) = {$(Fib(10))}"->PrintLine();
+  }
+}
