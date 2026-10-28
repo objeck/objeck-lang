@@ -44,6 +44,10 @@ checked by tools/cicd/check_diff_markers.py:
 The first three reduce coverage, so the lint requires a "# reason: ..." line
 right after each, and caps NONDETERMINISTIC_OUTPUT at 5% of the suite.
 
+Each run has OBJECK_TEST_OBE set to the .obe it runs, for a test that starts its
+own program again as a child; the regression runners leave it unset and the
+test finds <name>.obe in the current folder.
+
 Also honored, with the regression runners' meaning:
     # EXPECT_COMPILE_ERROR         skipped: nothing to run
     # EXPECT_RUNTIME_ERROR         every configuration must exit non-zero
@@ -260,8 +264,10 @@ class Runner:
             env = dict(env, OBJECK_JIT_DISABLE="1")
         results = []
         for cname, opt, flags in configs:
-            rc, out, err, dt = run_proc([self.obr] + flags + [obes[opt]], self.reg_dir, env,
-                                        self.args.timeout)
+            # a test that runs its own program again as a child finds it here: the
+            # .obe is not beside it in reg_dir, under the name the regression runners use
+            rc, out, err, dt = run_proc([self.obr] + flags + [obes[opt]], self.reg_dir,
+                                        dict(env, OBJECK_TEST_OBE=obes[opt]), self.args.timeout)
             tag = cname.replace("/", "_")
             with open(os.path.join(wd, tag + ".out"), "wb") as fh:
                 fh.write(out)

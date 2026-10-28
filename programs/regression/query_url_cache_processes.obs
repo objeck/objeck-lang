@@ -263,12 +263,21 @@ class QueryUrlCacheProcesses {
 		};
 	}
 
+	# this program's .obe: run_differential.py names its own; the regression runners compile it here
+	function : SelfObe() ~ String {
+		obe := Runtime->GetEnvironmentVariable("OBJECK_TEST_OBE");
+		if(obe = Nil | obe->IsEmpty()) {
+			return "query_url_cache_processes.obe";
+		};
+		return obe;
+	}
+
 	# a command line that runs this program again as a child, its output to a file
 	function : ChildCommand(port : Int, cache_root : String, id : Int, count : Int, output : String) ~ String {
 		windows := Directory->GetSlash() = '\\';
 		vm := Runtime->GetInstallDir();
 		vm += windows ? "\\bin\\obr.exe" : "/bin/obr";
-		command := "\"{$vm}\" query_url_cache_processes.obe child {$port} \"{$cache_root}\" {$id} {$count} > \"{$output}\" 2>&1";
+		command := "\"{$vm}\" \"{$(SelfObe())}\" child {$port} \"{$cache_root}\" {$id} {$count} > \"{$output}\" 2>&1";
 		if(windows) {
 			# cmd /c strips the first and last quote of a line that starts with one
 			command := "\"{$command}\"";
@@ -282,7 +291,7 @@ class QueryUrlCacheProcesses {
 			return;
 		};
 
-		if(<>File->Exists("query_url_cache_processes.obe")) {
+		if(<>File->Exists(SelfObe())) {
 			"FAIL: run this test from the folder that holds query_url_cache_processes.obe"->PrintLine();
 			Runtime->Exit(1);
 		};

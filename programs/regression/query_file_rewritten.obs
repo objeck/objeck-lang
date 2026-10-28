@@ -84,7 +84,9 @@ class QueryFileRewritten {
 		File->Delete(path);
 
 		if(failures = 0) {
-			"PASS: query_file_rewritten ({$checks} checks, {$same_second} rewrites within the second of the first write)"->PrintLine();
+			# how many rewrites share a second depends on timing, so it goes to stderr
+			"PASS: query_file_rewritten ({$checks} checks)"->PrintLine();
+			"{$same_second} rewrites within the second of the first write"->ErrorLine();
 		}
 		else {
 			"FAIL: query_file_rewritten: {$failures} of {$checks} checks failed ({$same_second} rewrites within the second of the first write); first: {$first}"->PrintLine();
