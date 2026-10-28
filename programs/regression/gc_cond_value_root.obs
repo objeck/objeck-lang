@@ -1,0 +1,152 @@
+#~
+A conditional's object value must survive a minor collection that runs before
+the value is consumed.
+
+A conditional ('c ? a : b') leaves its value in the method's and/or temporary,
+local slot 0, which no declaration types: the compiler stores each branch's
+value there and loads it again after the join. Between the two there can be a
+collection point, so the slot has to be a root that the collector marks and
+relocates. It was not, in two places:
+
+- Interpreted frames: the collector's frame walks (CheckPdaRoots and the three
+  in FixupRoots) stepped over mem[1], the slot, to reach the declared locals.
+  The interpreter polls for a collection every 1,024 instructions, and when
+  that poll fell between a branch's store to the slot and the load after the
+  join while another thread collected, the load read the old nursery address.
+  Where the poll lands depends on the loop's instruction count, so unrelated
+  statements in the loop made it appear and disappear.
+- ARM64 JIT frames: the JIT keeps a reference to the slot on its working stack
+  and reads it when the value is consumed, after NEW_OBJ_INST when the
+  conditional is a constructor argument, or after a later argument's
+  allocation. The declaration walk stepped over the slot and the temporaries
+  are below the frame base, so it was never scanned. On x64 the temporaries'
+  conservative window starts at that slot.
+
+Either way a collection promoted the young object through its typed local and
+left the and/or slot naming the old nursery copy, which the constructor then
+stored into the new object.
+
+Found by the nightly heap verifier (#1429-#1431): 'B3 ... class=LiveNode
+field=1' in exit_with_live_threads on linux-x64, linux-arm64 and windows-arm64,
+from 'LiveNode->New(i, (i % 64 = 0) ? Nil : head)', and
+'class=Query.Structured.SqlItem field=1' on linux-arm64, from
+'SqlItem->New(argument = Nil ? "*" : argument->GetName(), ...)'.
+
+Each round allocates a small young object, then constructs a large one with the
+small one passed through a conditional. The large object is most of each
+round's allocation, so most minor collections land on its NEW_OBJ_INST, while
+the conditional's value is pending. The constructed object must hold the same
+reference as the typed local. Runs in the regression suite at the default
+nursery and in run_vm_flag_tests.py at 128k and 256k with every method
+compiled; a pre-fix linux-arm64 obr failed every run at 256k.
+~#
+
+class CondValueSmall {
+  @v : Int;
+
+  New(v : Int) {
+    @v := v;
+  }
+
+  method : public : Get() ~ Int {
+    return @v;
+  }
+}
+
+# 32 field words: most of each round's allocation, so most collections run here
+class CondValueBig {
+  @small : CondValueSmall;
+  @extra : CondValueSmall;
+  @a0 : Int; @a1 : Int; @a2 : Int; @a3 : Int; @a4 : Int; @a5 : Int; @a6 : Int; @a7 : Int;
+  @b0 : Int; @b1 : Int; @b2 : Int; @b3 : Int; @b4 : Int; @b5 : Int; @b6 : Int; @b7 : Int;
+  @c0 : Int; @c1 : Int; @c2 : Int; @c3 : Int; @c4 : Int; @c5 : Int; @c6 : Int; @c7 : Int;
+  @d0 : Int; @d1 : Int; @d2 : Int; @d3 : Int; @d4 : Int; @d5 : Int;
+
+  New(small : CondValueSmall, extra : CondValueSmall) {
+    @small := small;
+    @extra := extra;
+  }
+
+  method : public : GetSmall() ~ CondValueSmall {
+    return @small;
+  }
+
+  method : public : GetExtra() ~ CondValueSmall {
+    return @extra;
+  }
+}
+
+class JitCondValueMinorGc {
+  function : Main(args : String[]) ~ Nil {
+    t := JitCondValueMinorGc->New();
+    if(t->Run() = false) {
+      Runtime->Exit(1);
+    };
+    "PASS: a conditional's object value survived minor collections before it was consumed"->PrintLine();
+  }
+
+  New() {
+  }
+
+  function : Minors() ~ Int {
+    return Runtime->GetProperty("runtime.gc.minor")->ToInt();
+  }
+
+  function : Capacity() ~ Int {
+    return Runtime->GetProperty("runtime.gc.nursery.capacity")->ToInt();
+  }
+
+  # the conditional is the constructor's argument: NEW_OBJ_INST runs while it is pending
+  method : AsArgument(i : Int) ~ Bool {
+    small := CondValueSmall->New(i);
+    big := CondValueBig->New(i >= 0 ? small : Nil, Nil);
+    held := big->GetSmall();
+    if(held <> small) {
+      return false;
+    };
+    return held->Get() = i;
+  }
+
+  # a later argument allocates while the conditional is pending
+  method : BeforeAllocation(i : Int) ~ Bool {
+    small := CondValueSmall->New(i);
+    big := CondValueBig->New(i >= 0 ? small : Nil, CondValueSmall->New(i + 1));
+    held := big->GetSmall();
+    if(held <> small) {
+      return false;
+    };
+    return held->Get() = i & big->GetExtra()->Get() = i + 1;
+  }
+
+  method : Run() ~ Bool {
+    # about 300 bytes a round: eight nurseries' worth per case
+    rounds := Capacity() / 300 * 8;
+    before := Minors();
+    bad_argument := 0;
+    bad_allocation := 0;
+    for(i := 0; i < rounds; i += 1;) {
+      if(<>AsArgument(i)) {
+        bad_argument += 1;
+      };
+      if(<>BeforeAllocation(i)) {
+        bad_allocation += 1;
+      };
+    };
+    minors := Minors() - before;
+
+    ok := true;
+    if(bad_argument > 0) {
+      "FAIL: {$bad_argument} of {$rounds} constructor arguments from a conditional were stale after a minor collection"->PrintLine();
+      ok := false;
+    };
+    if(bad_allocation > 0) {
+      "FAIL: {$bad_allocation} of {$rounds} conditional values were stale after a later argument's allocation"->PrintLine();
+      ok := false;
+    };
+    if(minors < 8) {
+      "FAIL: {$minors} minor collection(s) ran; the case was not exercised"->PrintLine();
+      ok := false;
+    };
+    return ok;
+  }
+}
