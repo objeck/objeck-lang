@@ -1479,6 +1479,128 @@ def check_multi_root(obr, server_obe, apis_json, bin_dir):
         shutil.rmtree(work, ignore_errors=True)
 
 
+REUSE_TYPES = """class Shape {
+	New() {}
+
+	method : public : Area() ~ Int {
+		return 4;
+	}
+}
+"""
+
+REUSE_MAIN = """class ReuseMain {
+	function : Main(args : String[]) ~ Nil {
+		shape := Shape->New();
+		shape->Area()->PrintLine();
+	}
+}
+"""
+
+
+def check_program_reuse(obr, server_obe, apis_json, bin_dir):
+    """A program is reused only for the texts and libraries it was made from (#1236).
+
+    An edit retires the analyzed programs, and a request for the same texts claims
+    one back instead of parsing and analyzing again. Hover answers from the last
+    clean texts and diagnostics from the current ones, so a wrong match shows up
+    as a hover that misses a method the last clean edit added, or that answers
+    from a broken file instead of the last clean one.
+    """
+    work = tempfile.mkdtemp(prefix="objk-lsp-reuse-")
+    try:
+        for name, text in (("types.obs", REUSE_TYPES), ("main.obs", REUSE_MAIN)):
+            with open(os.path.join(work, name), "w", encoding="utf-8", newline="\n") as fh:
+                fh.write(text)
+        with open(os.path.join(work, "build.json"), "w", encoding="utf-8") as fh:
+            json.dump({"files": ["types.obs", "main.obs"], "libs": ["gen_collect.obl"],
+                       "flags": ""}, fh)
+        root = path_to_uri(work)
+        types_uri, main_uri = root + "/types.obs", root + "/main.obs"
+        texts = {types_uri: REUSE_TYPES, main_uri: REUSE_MAIN}
+        versions = {types_uri: 1, main_uri: 1}
+
+        c = LspClient(obr, server_obe, apis_json, bin_dir)
+        try:
+            c.request("initialize", {
+                "processId": os.getpid(), "rootUri": root, "capabilities": {},
+                "workspaceFolders": [{"uri": root, "name": "reuse"}]}, timeout=90)
+            c.notify("initialized", {})
+
+            def diagnostics(uri, timeout=60):
+                end = time.time() + timeout
+                while time.time() < end:
+                    for n in c.notifications:
+                        if (n.get("method") == "textDocument/publishDiagnostics"
+                                and n["params"].get("uri", "").lower() == uri.lower()):
+                            c.notifications.remove(n)
+                            return n["params"].get("diagnostics", [])
+                    c.drain(0.2)
+                return None
+
+            def errors(uri):
+                return [d.get("message") for d in diagnostics(uri) or [] if d.get("severity") == 1]
+
+            def replace(uri, old, new):
+                text = texts[uri]
+                line, char = find_pos(text, old)
+                texts[uri] = text.replace(old, new, 1)
+                versions[uri] += 1
+                c.notifications.clear()
+                c.notify("textDocument/didChange", {
+                    "textDocument": {"uri": uri, "version": versions[uri]},
+                    "contentChanges": [{"range": {
+                        "start": {"line": line, "character": char},
+                        "end": {"line": line + old.count("\n"),
+                                "character": len(old.split("\n")[-1]) if "\n" in old
+                                else char + len(old)}}, "text": new}]})
+
+            def hover(needle):
+                resp = c.request("textDocument/hover",
+                                 position_in(texts[main_uri], main_uri, needle, 1, 2), timeout=60)
+                return str(markup_value((result_of(resp) or {}).get("contents")) or "")
+
+            for uri in (types_uri, main_uri):
+                c.notify("textDocument/didOpen", {"textDocument": {
+                    "uri": uri, "languageId": "objeck", "version": 1, "text": texts[uri]}})
+            log_result("reuse: the workspace analyzes cleanly",
+                       not errors(types_uri) and not errors(main_uri))
+            log_result("reuse: hover answers before any edit", "Area" in hover("Area()"))
+
+            # a clean edit in each file: hover must see the method it added
+            replace(types_uri, "\tmethod : public : Area()",
+                    "\tmethod : public : Perimeter() ~ Int {\n\t\treturn 8;\n\t}\n\n"
+                    "\tmethod : public : Area()")
+            types_errors = errors(types_uri)
+            replace(main_uri, "shape->Area()->PrintLine();",
+                    "shape->Area()->PrintLine();\n\t\tshape->Perimeter()->PrintLine();")
+            main_errors = errors(main_uri)
+            log_result("reuse: two clean edits analyze cleanly", not types_errors and not main_errors,
+                       f"{types_errors} {main_errors}")
+            got = hover("Perimeter()")
+            log_result("reuse: hover sees the method a clean edit added", "Perimeter" in got,
+                       f"got: {got[:160]!r}")
+
+            # break the other file: hover answers from the last clean texts of both,
+            # not from the program diagnostics now analyze
+            replace(types_uri, "\t\treturn 8;", "\t\treturn 8 +;")
+            broken = errors(types_uri)
+            log_result("reuse: the broken file reports an error", bool(broken), f"{broken}")
+            got = hover("Perimeter()")
+            log_result("reuse: hover answers from the last clean program, not the broken one",
+                       "Perimeter" in got, f"got: {got[:160]!r}")
+
+            # and mended, the current program is the clean one again
+            replace(types_uri, "\t\treturn 8 +;", "\t\treturn 8;")
+            mended = errors(types_uri)
+            got = hover("Perimeter()")
+            log_result("reuse: after the fix, diagnostics and hover agree again",
+                       not mended and "Perimeter" in got, f"{mended} {got[:120]!r}")
+        finally:
+            c.close()
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def check_progress_and_log(obr, server_obe, apis_json, bin_dir):
     """window/logMessage and work-done progress (#1234).
 
@@ -2623,6 +2745,7 @@ def main():
 
     check_jsonrpc_conformance(obr, server_obe, apis_json, bin_dir)
     check_multi_root(obr, server_obe, apis_json, bin_dir)
+    check_program_reuse(obr, server_obe, apis_json, bin_dir)
     check_stdio_sessions(obr, server_obe, apis_json, bin_dir)
     check_progress_and_log(obr, server_obe, apis_json, bin_dir)
     check_pull_diagnostics(obr, server_obe, apis_json, bin_dir)
