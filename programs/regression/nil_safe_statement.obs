@@ -1,3 +1,5 @@
+# DIFF_CONFIGS: s3
+# reason: the million-deep guarded Down() needs the s3 tail-call rewrite; at s0 it reaches the 16,384-frame call limit by design
 #~
 Regression: a `?->` call used as a statement (#1113).
 

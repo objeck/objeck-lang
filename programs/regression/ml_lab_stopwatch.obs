@@ -21,7 +21,8 @@ class MlLabStopwatch {
 		ok := Report("Start sets IsRunning", sw->IsRunning()) & ok;
 		Thread->Sleep(30);
 		first := sw->Stop();
-		"first interval: {$first} ms"->PrintLine();
+		# run-dependent, so stderr: stdout stays comparable across configurations
+		"first interval: {$first} ms"->ErrorLine();
 		ok := Report("Stop returns the interval, at least 20 ms for a 30 ms sleep", first >= 20.0 & first < 5000.0) & ok;
 		ok := Report("Stop clears IsRunning", <>sw->IsRunning()) & ok;
 		ok := Report("GetElapsedMs agrees with Stop", sw->GetElapsedMs() = first) & ok;

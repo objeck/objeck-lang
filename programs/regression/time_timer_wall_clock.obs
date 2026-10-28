@@ -23,7 +23,8 @@ class TimeTimerWallClock {
 		Thread->Sleep(50);
 		t->End();
 		s := t->GetElapsedTime();
-		"slept 50 ms, timer read {$s} s"->PrintLine();
+		# run-dependent, so stderr: stdout stays comparable across configurations
+		"slept 50 ms, timer read {$s} s"->ErrorLine();
 		ok := Report("a 50 ms sleep reads as at least 40 ms", s >= 0.04) & ok;
 		ok := Report("a 50 ms sleep reads as less than 5 s", s < 5.0) & ok;
 

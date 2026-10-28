@@ -243,7 +243,9 @@ class RosettaAtomicUpdates {
 		# would conserve the total perfectly and prove nothing
 		done := bank->GetTransfers();
 		if(done > 0) {
-			"PASS: transfers actually ran ({$done})"->PrintLine();
+			# the count depends on scheduling, so it goes to stderr
+			"PASS: transfers actually ran"->PrintLine();
+			"transfers: {$done}"->ErrorLine();
 		}
 		else {
 			"FAIL: no transfer was applied, so the invariant held vacuously"->PrintLine();

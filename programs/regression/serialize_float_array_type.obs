@@ -100,7 +100,12 @@ class SerializeFloatArrayType {
 			return;
 		};
 
-		if(<>File->Exists("serialize_float_array_type.obe")) {
+		# run_differential.py names its own .obe; the regression runners compile it here
+		obe := Runtime->GetEnvironmentVariable("OBJECK_TEST_OBE");
+		if(obe = Nil | obe->IsEmpty()) {
+			obe := "serialize_float_array_type.obe";
+		};
+		if(<>File->Exists(obe)) {
 			"FAIL: run this test from the folder that holds serialize_float_array_type.obe"->PrintLine();
 			Runtime->Exit(1);
 		};
@@ -116,7 +121,7 @@ class SerializeFloatArrayType {
 		Runtime->SetEnvironmentVariable("OBJECK_NURSERY", "256k");
 		modes := ["", "--jit=off "];
 		each(m : modes) {
-			command := "\"{$vm}\" {$(modes[m])}serialize_float_array_type.obe child > \"{$output}\" 2>&1";
+			command := "\"{$vm}\" {$(modes[m])}\"{$obe}\" child > \"{$output}\" 2>&1";
 			if(windows) {
 				# cmd /c strips the first and last quote of a line that starts with one
 				command := "\"{$command}\"";
