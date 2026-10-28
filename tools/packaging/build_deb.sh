@@ -110,6 +110,13 @@ fi
 
 mkdir -p "$ROOT/usr/share/doc/objeck"
 cp "$ROOT$PREFIX/LICENSE" "$ROOT/usr/share/doc/objeck/copyright"
+# The third-party license texts the tarball carries in doc/licenses, one folder
+# per component. Linked rather than copied, so the package holds one copy and
+# /usr/share/doc/objeck/licenses is where Debian users look for them.
+[ -d "$ROOT$PREFIX/doc/licenses" ] || die "$name has no doc/licenses"
+ln -s "$PREFIX/doc/licenses" "$ROOT/usr/share/doc/objeck/licenses"
+printf '\nThe full license texts of the third-party software above are in\n/usr/share/doc/objeck/licenses, one folder per component.\n' \
+  >> "$ROOT/usr/share/doc/objeck/copyright"
 
 # ------------------------------------------------------------ dependencies
 # dpkg-shlibdeps wants a source package's debian/control to exist; it reads

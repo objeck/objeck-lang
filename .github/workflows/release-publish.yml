@@ -182,7 +182,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: core/lib/opencv/win/x64/bin
-          key: opencv-4.12.0-win-x64-dlls
+          key: opencv-4.12.0-win-x64-dlls-licenses
 
       - name: Download OpenCV runtime DLLs (Windows x64)
         if: steps.opencv-cache-x64.outputs.cache-hit != 'true'
@@ -200,6 +200,20 @@ jobs:
 
           Copy-Item "opencv-extract\opencv\build\x64\vc16\bin\opencv_world4120.dll" $binDir
           Copy-Item "opencv-extract\opencv\build\x64\vc16\bin\opencv_videoio_ffmpeg4120_64.dll" $binDir
+
+          # The package's license texts go beside the DLLs, inside the cache, so a
+          # cache hit carries them too. deploy_windows.cmd ships them in
+          # doc\licenses\opencv: OpenCV's LICENSE and etc\licenses, which covers what
+          # opencv_world links in and the LGPL FFmpeg in opencv_videoio_ffmpeg.
+          $licDir = "$binDir\licenses"
+          New-Item -ItemType Directory -Force -Path $licDir | Out-Null
+          $etc = Get-ChildItem opencv-extract -Recurse -Directory -Filter licenses | Where-Object { $_.FullName -match '\\etc\\licenses$' } | Select-Object -First 1
+          if (-not $etc) { throw "The OpenCV package has no etc\licenses directory" }
+          Copy-Item "$($etc.FullName)\*" $licDir
+          $top = @("opencv-extract\opencv\LICENSE", "opencv-extract\opencv\build\LICENSE") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $top) { throw "The OpenCV package has no LICENSE" }
+          Copy-Item $top "$licDir\LICENSE"
+          Get-ChildItem opencv-extract\opencv -Filter "LICENSE_FFMPEG*" | Copy-Item -Destination $licDir
 
           Remove-Item opencv-dl.exe -Force
           Remove-Item -Recurse opencv-extract -Force
@@ -255,6 +269,22 @@ jobs:
 
           Write-Output "✅ All binaries renamed"
           Get-ChildItem -Path $stageDir | Format-Table Name, Length
+
+          # The Windows MSIs and zips arrive already named with the version:
+          # deploy_windows.cmd builds the MSI with the real ProductVersion, so
+          # it names the files too, and the 0.0.0 rename above passes them by.
+          # Every other asset is renamed. Nothing may be left at 0.0.0.
+          $left = Get-ChildItem -Path $stageDir -Recurse -File | Where-Object { $_.Name -like "*_0.0.0.*" }
+          if ($left) {
+            Write-Error "Assets still named 0.0.0: $($left.Name -join ', ')"
+            exit 1
+          }
+          foreach ($want in @("objeck-windows-x64_$version.msi", "objeck-windows-arm64_$version.msi")) {
+            if (-not (Get-ChildItem -Path $stageDir -Recurse -File -Filter $want)) {
+              Write-Error "Missing $want"
+              exit 1
+            }
+          }
 
       # ============================================
       # Verify Code Signing (Windows Only)

@@ -132,6 +132,10 @@ ui_step "library: matrix (ml)"
 cd ../matrix
 ./build_linux.sh matrix || ui_fail
 cp matrix.so ../../release/deploy/lib/native/libobjk_ml.so
+# libobjk_ml compiles in Eigen's headers, MPL 2.0. The system libeigen3-dev is
+# 3.4.0, the same release as the copy vendored here with its license texts.
+mkdir -p ../../release/deploy/doc/licenses/eigen
+cp lib/eigen-3.4.0/COPYING.* ../../release/deploy/doc/licenses/eigen/ || exit 1
 
 ui_step "library: opencv"
 cd ../opencv
@@ -170,6 +174,11 @@ if [ -d cuda/lib/$ORT_ARCH/lib ]; then
 	cd ../../../../lib/onnx/eq
 
 	cp cuda/lib/$ORT_ARCH/lib/libonnxruntime_providers_shared.so ../../../release/deploy/lib/native/libonnxruntime_providers_shared.so
+
+	# ONNX Runtime 1.19.0's LICENSE and ThirdPartyNotices.txt, kept beside the
+	# vendored runtime they cover (both architectures are the same release).
+	mkdir -p ../../../release/deploy/doc/licenses/onnxruntime
+	cp cuda/lib/LICENSE cuda/lib/ThirdPartyNotices.txt ../../../release/deploy/doc/licenses/onnxruntime/ || exit 1
 else
 	echo "NOTE: no vendored ONNX Runtime for $ORT_ARCH (cuda/lib/$ORT_ARCH/lib) - libobjk_onnx is not built"
 fi
@@ -178,6 +187,16 @@ cd ../../sdl
 ./build_linux.sh sdl || ui_fail
 cp sdl.so ../../release/deploy/lib/native/libobjk_sdl.so
 cp lib/fonts/*.ttf ../../release/deploy/lib/sdl/fonts
+# Linux links the system SDL2 and ships none of it, but SDL2_gfx is compiled
+# into libobjk_sdl from the sources here. OFL.txt is the bundled Lato font's
+# SIL Open Font License: beside the font and in doc/licenses/lato, when present.
+mkdir -p ../../release/deploy/doc/licenses/sdl2_gfx
+cp LICENSE.SDL2_gfx.txt ../../release/deploy/doc/licenses/sdl2_gfx/ || exit 1
+if [ -f lib/fonts/OFL.txt ]; then
+	cp lib/fonts/OFL.txt ../../release/deploy/lib/sdl/fonts/
+	mkdir -p ../../release/deploy/doc/licenses/lato
+	cp lib/fonts/OFL.txt ../../release/deploy/doc/licenses/lato/ || exit 1
+fi
 
 ui_step "library: diags"
 cd ../diags
@@ -247,6 +266,23 @@ cp docs/readme.html core/release/deploy
 cp docs/style/readme.css core/release/deploy/doc
 
 cp LICENSE core/release/deploy
+# The notices no package provides, for code ported or adapted into the .obl
+# libraries: LIBSVM (System.ML's support vector machine) and VADER (the NLP
+# sentiment lexicon). SDL2, OpenCV, Mbed TLS, LAME and unixODBC are system
+# libraries on Linux, not shipped, so their licenses come with the system's.
+cp -R core/release/licenses/. core/release/deploy/doc/licenses/ || exit 1
+# Every third-party text this tree must carry. The QUIC stack's come from
+# OBJECK_DEPS with obr; ONNX Runtime's only when libobjk_onnx was built.
+for _lic in aws-lc ngtcp2 nghttp3 nghttp2 eigen/COPYING.MPL2 sdl2_gfx/LICENSE.SDL2_gfx.txt libsvm/COPYRIGHT vader/LICENSE; do
+	if [ ! -e "core/release/deploy/doc/licenses/$_lic" ]; then
+		echo "ERROR: license text doc/licenses/$_lic missing - aborting deploy"
+		exit 1
+	fi
+done
+if [ -f core/release/deploy/lib/native/libonnxruntime.so.1.19.0 ] && [ ! -f core/release/deploy/doc/licenses/onnxruntime/ThirdPartyNotices.txt ]; then
+	echo "ERROR: ONNX Runtime ships without its license - aborting deploy"
+	exit 1
+fi
 
 # Ship the dependency installer INSIDE the distribution. Linux links
 # libobjk_sdl.so against the system SDL2 and libGL and ships neither, so the
