@@ -15,17 +15,21 @@ collections made it reproducible.
 
 The test runs itself again as a child, interpreted, under --gc-threshold=64k (a
 major collection every few allocations) and the heap verifier, sampled every 16
-collections to keep the run inside the suite's 60 s limit. Interpreted
-because the poll is the interpreter's; the ARM64 JIT half of the gap is
-gc_cond_value_root's, and compiled, the worker finished before the other thread
-had forced enough collections to exercise anything. In the child a worker builds a chain through a conditional and
-checks that each node's next is the node it built the round before; a stale
-slot hands the constructor whatever the nursery holds at the old address now,
-almost always another node with a different number, and the verifier reports
-the stale field. Each round runs a different amount of padding so the poll
-lands at every point of the round, and a second thread allocates arrays
-(allocated old) to keep collections coming. The parent needs its .obe beside
-it, as the regression runner compiles it.
+collections. Interpreted because the poll is the interpreter's; the ARM64 JIT
+half of the gap is gc_cond_value_root's, and compiled, the worker finished
+before the other thread had forced enough collections to exercise anything.
+
+In the child a worker builds a chain through a conditional and checks that each
+node's next is the node it built the round before; a stale slot hands the
+constructor whatever the nursery holds at the old address now, almost always
+another node with a different number, and the verifier reports the stale field.
+Each round runs a different amount of padding so the poll lands at every point
+of the round, and a second thread allocates arrays (allocated old) to keep
+collections coming. The main thread stops the worker after about 10 s, so the
+run takes the same time on any machine and stays inside the suite's 60 s limit.
+Linux x64: master failed 4/4 unpinned and 4/4 on 4 cores; fixed passed 4/4
+each, about 11 s. The parent needs its .obe beside it, as the regression
+runner compiles it.
 ~#
 
 use System.IO.Filesystem;
@@ -54,6 +58,7 @@ class CondChainWorker from Thread {
   @bad : Int;
   @first : String;
   @done : Bool;
+  @stop : Bool;
 
   New(rounds : Int) {
     Parent("cond-chain");
@@ -61,6 +66,13 @@ class CondChainWorker from Thread {
     @bad := 0;
     @first := "";
     @done := false;
+    @stop := false;
+  }
+
+  # ends the run early: the suite stops a test at 60 s, and a CI runner is
+  # several times slower than a workstation under 64k collections
+  method : public : Stop() ~ Nil {
+    @stop := true;
   }
 
   method : public : GetBad() ~ Int {
@@ -78,6 +90,10 @@ class CondChainWorker from Thread {
   method : public : Run(param : System.Base) ~ Nil {
     head : CondChainNode := Nil;
     for(i := 0; i < @rounds; i += 1;) {
+      if(i % 256 = 0 & @stop) {
+        break;
+      };
+
       # a different instruction count each round moves the 1,024-instruction poll
       pad := 0;
       for(j := 0; j < i % 37; j += 1;) {
@@ -128,10 +144,15 @@ class CondChainChurn from Thread {
 
 class GcCondValueThreads {
   function : Child() ~ Nil {
-    worker := CondChainWorker->New(20000);
+    worker := CondChainWorker->New(1000000);
     churn := CondChainChurn->New(worker);
     worker->Execute(Nil);
     churn->Execute(Nil);
+    # at most about 10 s of collections, then stop the worker where it is
+    for(t := 0; t < 100 & <>worker->IsDone(); t += 1;) {
+      Thread->Sleep(100);
+    };
+    worker->Stop();
     worker->Join();
     churn->Join();
 
