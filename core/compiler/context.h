@@ -411,6 +411,7 @@ class ContextAnalyzer {
 
   // check if token contains expression operators (method call, array access, etc.)
   bool IsComplexExpression(const std::wstring& token);
+  bool IsInterpolatedLiteral(const std::wstring& token);
 
   // checks for sting concatenation  
   StringConcat* AnalyzeStringConcat(Expression* expression, int depth);

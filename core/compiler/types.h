@@ -156,7 +156,12 @@ namespace frontend {
     void* lib_klass_cache_ptr;
     // a method type parameter erased to its bound: the parameter's name (#1242)
     std::wstring method_generic;
-    
+    // a class type parameter resolved to its bound: the parameter's name. The
+    // in-class analysis reads the bound; a caller maps the name to its type
+    // argument, so `Get() ~ T` in Holder<T : Compare> is a String to a
+    // Holder<String>, not a Compare.
+    std::wstring class_generic;
+
     Type(Type* t) {
 #ifdef _DEBUG
       assert(t);
@@ -175,7 +180,8 @@ namespace frontend {
         klass_cache_ptr = t->klass_cache_ptr;
         lib_klass_cache_ptr = t->lib_klass_cache_ptr;
         method_generic = t->method_generic;
-      } 
+        class_generic = t->class_generic;
+      }
     }
     
     Type(EntryType t, const std::wstring &n, const std::wstring& f, int l, int p) {
@@ -230,6 +236,15 @@ namespace frontend {
 
     void SetMethodGeneric(const std::wstring &g) {
       method_generic = g;
+    }
+
+    // a class type parameter resolved to its bound: 'T' in Holder<T : Compare>
+    const std::wstring &GetClassGeneric() const {
+      return class_generic;
+    }
+
+    void SetClassGeneric(const std::wstring &g) {
+      class_generic = g;
     }
 
     // whether the type, one of its generic arguments, or a function type's

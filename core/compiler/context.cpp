@@ -11409,6 +11409,11 @@ bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
          if(klass->HasGenericInterface()) {
             Type* inf_type = klass->GetGenericInterface();
             if(ResolveClassEnumType(inf_type)) {
+               // keep the parameter's name: the rename is in place, on the
+               // declaration a caller later maps to its type argument
+               if(type->GetClassGeneric().empty()) {
+                  type->SetClassGeneric(type->GetName());
+               }
                type->SetName(inf_type->GetName());
                type->SetResolved(true);
                return true;
@@ -11778,6 +11783,22 @@ bool ContextAnalyzer::IsComplexExpression(const std::wstring& token)
 }
 
 /****************************
+ * Whether an interpolation token is a literal: a number (decimal, hex,
+ * octal, binary or float), a character or string literal, or true/false
+ ****************************/
+bool ContextAnalyzer::IsInterpolatedLiteral(const std::wstring& token)
+{
+  if(token.empty()) {
+    return false;
+  }
+
+  const wchar_t first = token[0];
+  return (first >= L'0' && first <= L'9') || first == L'\'' || first == L'"' ||
+    (first == L'\\' && token.size() > 1 && token[1] == L'"') ||
+    token == L"true" || token == L"false";
+}
+
+/****************************
  * Analyzes a character string expression
  * (for interpolated method calls, array access, etc.)
  ****************************/
@@ -11954,7 +11975,11 @@ void ContextAnalyzer::AnalyzeInterpolatedToken(const std::wstring& token, Charac
   if(SplitFormatSpec(token, expr_part, spec_part)) {
     AnalyzeCharacterStringFormat(expr_part, spec_part, char_str, depth);
   }
-  else if(IsComplexExpression(token)) {
+  // A literal -- `{$0x1F}`, `{$42}`, `{$1.5}`, `{$'a'}`, `{$true}` -- is an
+  // expression. No name starts with a digit or a quote, and true/false are
+  // reserved, so this never takes a variable; it was looked up as one and
+  // reported undefined, though `{$255:x}` and `{$-1}` already compiled.
+  else if(IsComplexExpression(token) || IsInterpolatedLiteral(token)) {
     AnalyzeCharacterStringExpression(token, char_str, depth);
   }
   else {
@@ -12282,6 +12307,11 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
       const std::wstring generic_name = candidate_type->GetName();
       if(klass) {
         concrete_index = klass->GenericIndex(generic_name);
+        // a bounded parameter's declaration may already read as its bound, if
+        // the callee's class was analyzed first; map it by the parameter's name
+        if(concrete_index < 0 && !candidate_type->GetClassGeneric().empty()) {
+          concrete_index = klass->GenericIndex(candidate_type->GetClassGeneric());
+        }
       }
       else if(lib_klass) {
         concrete_index = lib_klass->GenericIndex(generic_name);
@@ -12406,6 +12436,8 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
         if(concrete_index < (int)concrete_types.size()) {
           Type* concrete_type = TypeFactory::Instance()->MakeType(concrete_types[concrete_index]);
           concrete_type->SetDimension(candidate_type->GetDimension());
+          // the type argument, not a parameter of the callee's class
+          concrete_type->SetClassGeneric(L"");
           ResolveClassEnumType(concrete_type);
           return concrete_type;
         }

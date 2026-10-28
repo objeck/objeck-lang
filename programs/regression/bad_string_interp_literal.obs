@@ -1,0 +1,9 @@
+# EXPECT_COMPILE_ERROR: Invalid expression in string interpolation: '0x'
+# EXPECT_ERROR_COUNT: 1
+# A malformed literal inside "{$...}" is reported as an invalid expression,
+# not as an undefined variable named '0x'.
+class BadStringInterpLiteral {
+  function : Main(args : String[]) ~ Nil {
+    "{$0x}"->PrintLine();
+  }
+}

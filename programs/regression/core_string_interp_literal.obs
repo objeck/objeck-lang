@@ -1,0 +1,49 @@
+# Verifies a literal directly inside "{$...}": hex, octal, binary, decimal,
+# float, negative, character and boolean literals. "{$0x1F}" was looked up as
+# a variable and reported undefined, though "{$(0x1F)}" and "{$255:x}" compiled.
+use System;
+
+class CoreStringInterpLiteralTest {
+  function : Main(args : String[]) ~ Nil {
+    "Testing literals in string interpolation..."->PrintLine();
+    pass := true;
+
+    pass := Check("{$0x1F}", "31", pass);
+    pass := Check("{$0o17}", "15", pass);
+    pass := Check("{$0b101}", "5", pass);
+    pass := Check("{$42}", "42", pass);
+    pass := Check("{$0}", "0", pass);
+    pass := Check("{$-7}", "-7", pass);
+    pass := Check("{$-0x10}", "-16", pass);
+    pass := Check("{$'z'}", "z", pass);
+    pass := Check("{$true}", "true", pass);
+    pass := Check("{$false}", "false", pass);
+    pass := Check("[{$\"hi\"}]", "[hi]", pass);
+    # a literal prints as the same value held in a variable does
+    f := 2.5;
+    pass := Check("{$2.5}", "{$f}", pass);
+    # a literal with a format spec, and beside a variable
+    pass := Check("{$255:x}", "0xff", pass);
+    n := 9;
+    pass := Check("{$0x0A}-{$n}", "10-9", pass);
+    # unchanged: parenthesized and bare-variable forms
+    pass := Check("{$(0x1F)}", "31", pass);
+    pass := Check("{$n}", "9", pass);
+
+    if(pass) {
+      "PASS: Literals in string interpolation"->PrintLine();
+    }
+    else {
+      "FAIL: Literals in string interpolation"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  function : Check(actual : String, expected : String, pass : Bool) ~ Bool {
+    if(<>actual->Equals(expected)) {
+      "  FAIL: got '{$actual}', expected '{$expected}'"->PrintLine();
+      return false;
+    };
+    return pass;
+  }
+}
