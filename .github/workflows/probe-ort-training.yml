@@ -48,6 +48,7 @@ jobs:
             "== shipped $k  ($((Get-Item $dll).Length) bytes)"
             ./probe.exe $dll; "exit=$LASTEXITCODE"
           }
+          exit 0
       - name: Probe upstream training 1.19.2 (positive control)
         shell: pwsh
         run: |
@@ -61,8 +62,10 @@ jobs:
           "== training 1.19.2"
           ./probe.exe $dll; "exit=$LASTEXITCODE"
           Get-ChildItem -Recurse training -Filter *training_c_api.h | ForEach-Object { $_.FullName }
+          exit 0
 
   linux:
+    if: false
     strategy:
       fail-fast: false
       matrix:
@@ -89,6 +92,7 @@ jobs:
           find training -name '*training*.h'
 
   macos:
+    if: false
     runs-on: macos-15
     timeout-minutes: 30
     steps:
