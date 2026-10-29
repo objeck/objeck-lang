@@ -1,0 +1,108 @@
+name: Probe ORT training API (do not merge)
+
+# Throwaway probe for docs/ML_BERT_FINETUNE_DESIGN.md: does GetTrainingApi return
+# non-NULL in the ONNX Runtime builds Objeck ships, and (positive control) in
+# upstream's last training builds, 1.19.2?  Also records the training libraries'
+# unpacked sizes.
+
+on:
+  push:
+    branches: [ probe/ort-training-api ]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  HDR: core/lib/onnx/eq/cuda/lib/include
+  REL: https://github.com/microsoft/onnxruntime/releases/download/v1.19.2
+
+jobs:
+  windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-2025-vs2026, arch: x64, vc: x64 }
+          - { os: windows-11-arm, arch: arm64, vc: arm64 }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build probe
+        shell: cmd
+        run: |
+          for /f "usebackq delims=" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath`) do set VS=%%i
+          call "%VS%\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.vc }} || exit /b 1
+          cl /nologo /I%HDR% .github\probe\ort_training_probe.c /Fe:probe.exe || exit /b 1
+      - name: Probe shipped runtimes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          if ('${{ matrix.arch }}' -eq 'arm64') {
+            $sets = @{ 'qnn-1.23.0' = 'core/lib/onnx/eq/qnn/win/onnx/arm64/bin/onnxruntime.7z';
+                       'dml-1.22.1' = 'core/lib/onnx/eq/lib/win/arm64/bin/onnxruntime.7z' }
+          } else {
+            $sets = @{ 'dml-1.22.1' = 'core/lib/onnx/eq/lib/win/x64/bin/onnxruntime.7z' }
+          }
+          foreach ($k in $sets.Keys) {
+            7z x -y "-oshipped-$k" $sets[$k] | Out-Null
+            $dll = (Resolve-Path "shipped-$k/onnxruntime.dll").Path
+            "== shipped $k  ($((Get-Item $dll).Length) bytes)"
+            ./probe.exe $dll; "exit=$LASTEXITCODE"
+          }
+      - name: Probe upstream training 1.19.2 (positive control)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $name = "onnxruntime-training-win-${{ matrix.arch }}-1.19.2"
+          Invoke-WebRequest "$env:REL/$name.zip" -OutFile t.zip
+          Expand-Archive t.zip -DestinationPath training
+          Get-ChildItem -Recurse training -File | Where-Object { $_.Extension -in '.dll','.lib','.pdb' } |
+            ForEach-Object { "{0,12} {1}" -f $_.Length, $_.FullName.Substring((Get-Location).Path.Length + 1) }
+          $dll = (Get-ChildItem -Recurse training -Filter onnxruntime.dll | Select-Object -First 1).FullName
+          "== training 1.19.2"
+          ./probe.exe $dll; "exit=$LASTEXITCODE"
+          Get-ChildItem -Recurse training -Filter *training_c_api.h | ForEach-Object { $_.FullName }
+
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, arch: x64, up: x64 }
+          - { os: ubuntu-24.04-arm, arch: arm64, up: aarch64 }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe
+        run: |
+          set +e
+          gcc -O1 -I$HDR .github/probe/ort_training_probe.c -o probe -ldl || exit 1
+          lib=core/lib/onnx/eq/cuda/lib/${{ matrix.arch }}/lib/libonnxruntime.so.1.19.0
+          echo "== shipped 1.19.0 ($(stat -c %s $lib) bytes)"
+          ./probe "$PWD/$lib"; echo "exit=$?"
+          curl -sSL -o t.tgz "$REL/onnxruntime-training-linux-${{ matrix.up }}-1.19.2.tgz"
+          mkdir training && tar -xzf t.tgz -C training
+          find training -name '*.so*' -type f -printf '%12s %p\n'
+          so=$(find training -name 'libonnxruntime.so.1.19.2' | head -1)
+          echo "== training 1.19.2"
+          ./probe "$PWD/$so"; echo "exit=$?"
+          find training -name '*training*.h'
+
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe Homebrew onnxruntime (what the macOS release links)
+        run: |
+          set +e
+          brew list onnxruntime >/dev/null 2>&1 || brew install onnxruntime
+          brew info onnxruntime | head -3
+          prefix=$(brew --prefix onnxruntime)
+          clang -O1 -I$HDR .github/probe/ort_training_probe.c -o probe || exit 1
+          lib=$(ls $prefix/lib/libonnxruntime.*.dylib | head -1)
+          ls -l $prefix/lib/
+          echo "== homebrew $lib"
+          ./probe "$lib"; echo "exit=$?"
+          echo "== upstream macOS arm64 training archive for 1.19.2:"
+          curl -sI "$REL/onnxruntime-training-osx-arm64-1.19.2.tgz" | head -1
