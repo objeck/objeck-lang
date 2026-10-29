@@ -42,7 +42,8 @@ document and the example say so:
 What fine-tuning would add, for the record: back-propagation through 12 transformer layers
 (attention, layer norm, GELU, the embedding tables), an optimizer state of 2–3× the model's
 size, and mixed precision to make it affordable. ONNX Runtime has a training API
-(`onnxruntime-training`) that could be bound later; nothing here precludes it.
+(`onnxruntime-training`) that could be bound later; nothing here precludes it. That binding
+is designed in `docs/ML_BERT_FINETUNE_DESIGN.md`.
 
 ## What an exported BERT looks like
 
