@@ -59,6 +59,66 @@ Before changing anything, time the three parts per request:
 The audit's 146 ms is the baseline. This decides whether phase 1 or phase 2 comes first: if
 reloading the libraries is a large share, phase 1 is nearly free.
 
+#### Phase 0 results (2026-10-27)
+
+How to repeat it: `OBJECK_LSP_TIMING=1` makes `libobjk_diags` write one `[lsp-timing]` line
+to stderr per parse and per analysis. `tools/lsp/tests/bench_incremental.py <bin_dir>
+[server_dir]` turns it on, runs the server, and prints the table below. It is a separate script
+rather than a `run_lsp_tests.py` case because it reports numbers and does not pass or fail.
+Per workspace it opens one document, makes 10 body-only edits (a comment line), sends a
+hover after each edit, and waits for the diagnostics. It then times `obc` on the same
+program. The `link` column is a second `Linker` loading the same libraries, alone, right after
+the analysis: `Linker::Load` runs inside `Analyze()`, and timing it there would mean changing
+the compiler. `analyze` is the analysis total minus that load.
+
+Windows x64, Ryzen AI 9 HX 370, master at 36923202bd, JIT pinned off as the editor clients
+set it. Medians, in ms per edit, summed over the programs analyzed for that edit:
+
+| workspace | lines | parse | link | analyze | native total | hover after edit | programs per edit | obc |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| tiny: a 6-line file, standalone (13 default libraries) | 8 | 0.1 | 76 | 0 | 76 | 274 | 2 | 172 |
+| two_files: `tests/ws_multi_a`, gen_collect | 23 | 0.3 | 27 | 0 | 27 | 107 | 2 | 111 |
+| json_standalone: `lib_src/json.obs` alone (13 default libraries) | 2.8k | 9 | 52 | 65 | 126 | 299 | 1 | 212 |
+| lsp_server: `tools/lsp/server`'s own sources, 5 files, 6 libraries | 8.6k | 121 | 38 | 775 | 933 | 1209 | 2 | 1188 |
+
+Runs vary by about ±30% (a second run gave 90 and 1340 ms native for tiny and lsp_server), so
+read the shares, not the last digit. Opening the same document (one program, no hover) took
+150 to 600 ms to diagnostics.
+
+What the numbers say:
+
+1. **Every edit analyzes the program twice.** Diagnostics read the current text (`text|`
+   proxy) and hover, completion and signature help read the last clean text (`alt|`). An edit
+   bumps the generation, `GetProxy` releases both, and after a clean edit the two texts are
+   the same. So the second parse and analysis repeat the first. This was not in the plan, and it
+   is the cheapest win: half of every row's native time, with an LSP-side change and no compiler
+   change. (`json_standalone` shows 1 because its errors keep the `alt` text from moving.)
+2. **Small programs are all library loading.** For tiny and two_files the analysis is the
+   `Linker` reading and building `lang.obl` plus the listed libraries: 38 ms for the 13 default
+   libraries and 14 ms for gen_collect, per program, every edit. That matches how Objeck code is
+   written today, with most of it in precompiled libraries. Phase 1 removes it.
+3. **Large programs are all analysis.** For the 8.6k-line workspace, `Analyze()` without its
+   library load is 83% (380 to 460 ms per program), parsing 13% (about 60 ms per program) and
+   the libraries 4%. Phase 3 (re-parse one file) can save at most the parse share, less the cost
+   of cloning, which confirms that it should wait. Only phase 4 reaches the large share.
+4. **`obc` is the same picture.** It takes 1.2 s on the 8.6k-line program and 170 ms on a
+   6-line file, where the second figure is mostly loading 13 libraries. A library cache and
+   repeatable analysis help the command-line compiler too, as the Decisions section expects.
+5. **Not attributed:** hover after an edit takes about 200 ms more than the native work on the
+   small workspaces. That is not parse, link or analysis, and running the server with the JIT
+   on does not change it. The hover's own native queries are not timed. A profile of that path
+   should come before anything else is changed for small files.
+
+Recommended order:
+- **First: analyze once per edit.** Keep the `alt` proxy, or share the `text` one, when the
+  texts are equal. This is a small LSP-side change.
+- **Then phase 1, step 1 (the byte cache).** It is worth about 15 to 40 ms per program on every
+  edit, and it is all of the time on small files. The cache saves the read and the inflate. Step
+  2 is needed to save building the library objects too. These numbers do not split those two
+  parts, so measure that split before step 2.
+- **Phase 4 next** for large workspaces, with phase 3 after it.
+- **Phase 2** pays only in multi-root workspaces; nothing here measured that case.
+
 ### Phase 1 — load each library once per server
 
 `Linker` objects are per program because user classes write into them
@@ -148,6 +208,8 @@ kind of result to a side table behind the existing accessors, with the suite and
 
 ## First steps
 
-1. Phase 0's timing switch and test, and the measured split recorded in this document.
-2. Phase 1, step 1: the byte cache, behind a switch, compared with `OBJECK_LSP_NO_CACHE=1`.
-3. Profile the superlinear 10k-line `obc` case and file what it finds as its own issue.
+1. ~~Phase 0's timing switch and test, and the measured split recorded in this document.~~
+   Done; see "Phase 0 results".
+2. One analysis per edit: share the `text` and `alt` programs when their texts are equal.
+3. Phase 1, step 1: the byte cache, behind a switch, compared with `OBJECK_LSP_NO_CACHE=1`.
+4. Profile the superlinear 10k-line `obc` case and file what it finds as its own issue.
