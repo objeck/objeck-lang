@@ -82,6 +82,13 @@ BASE_LIBS = "cipher,collect,xml,json"
 # The most a test's DIFF_TIMEOUT may ask for: a hang still ends in a failure.
 MAX_TEST_TIMEOUT = 900
 
+# How much of a failing configuration's output the report carries: the first
+# differing line rarely says why (#1443 printed its counts on the next lines).
+# Kept under nightly_triage.py's DETAIL_LINES for a test with two bad configs.
+OUTPUT_LINES = 12
+ERROR_LINES = 4
+OUTPUT_WIDTH = 200
+
 # (name, -opt level, obr flags). The first entry is the reference.
 CONFIGS = [
     ("s0/off", "s0", ["--jit=off"]),
@@ -219,6 +226,15 @@ def first_difference(a, b):
     return None
 
 
+def output_tail(data, count):
+    """The last 'count' non-empty lines of a run's output, each cut to OUTPUT_WIDTH."""
+    lines = [l.rstrip("\r") for l in data.decode("utf-8", "replace").split("\n")]
+    lines = [l[:OUTPUT_WIDTH] for l in lines if l.strip()]
+    if len(lines) > count:
+        return ["... %d earlier line(s)" % (len(lines) - count)] + lines[-count:]
+    return lines
+
+
 class Runner:
     def __init__(self, args):
         self.args = args
@@ -232,7 +248,8 @@ class Runner:
 
     def test_one(self, name):
         src = os.path.join(self.reg_dir, name + ".obs")
-        rec = {"test": name, "status": "ok", "details": [], "configs": {}, "self_skip": False}
+        rec = {"test": name, "status": "ok", "details": [], "configs": {}, "output": {},
+               "self_skip": False}
         with open(src, encoding="utf-8", errors="replace") as fh:
             markers = parse_markers(fh.read())
         rec["serial"] = markers["serial"]
@@ -280,6 +297,7 @@ class Runner:
             env = dict(env, OBJECK_JIT_DISABLE="1")
         run_timeout = max(self.args.timeout, markers["timeout"] or 0)
         results = []
+        errors = {}
         for cname, opt, flags in configs:
             # a test that runs its own program again as a child finds it here: the
             # .obe is not beside it in reg_dir, under the name the regression runners use
@@ -292,30 +310,50 @@ class Runner:
                 fh.write(err)
             rec["configs"][cname] = {"rc": rc, "secs": round(dt, 3), "stdout_bytes": len(out)}
             results.append((cname, rc, out))
+            errors[cname] = err
+
+        # What a bad configuration printed, apart from 'details': those name the
+        # failure for nightly_triage.py's signature, and output with counts or
+        # ports in it would make every night's failure a new one.
+        def keep_output(cname, rc, out):
+            kept = {"stdout": output_tail(out, OUTPUT_LINES)}
+            if rc != 0:
+                kept["stderr"] = output_tail(errors[cname], ERROR_LINES)
+            rec["output"][cname] = kept
 
         timeouts = [c for c, rc, _ in results if rc is None]
         if timeouts:
             rec["status"] = "fail"
             rec["details"].append("timed out after %ds: %s" % (run_timeout, ", ".join(timeouts)))
+            for cname, rc, out in results:
+                if rc is None:
+                    keep_output(cname, rc, out)
             return rec
 
         ref_name, ref_rc, ref_out = results[0]
         rec["self_skip"] = any(l.startswith(b"SKIP:") for l in ref_out.split(b"\n"))
         for cname, rc, out in results[1:]:
+            differs = False
             if (rc != 0) != (ref_rc != 0):
-                rec["status"] = "diff"
+                differs = True
                 rec["details"].append("exit status: %s=%d, %s=%d" % (ref_name, ref_rc, cname, rc))
             if not markers["nondeterministic"] and out != ref_out:
-                rec["status"] = "diff"
+                differs = True
                 line, x, y = first_difference(ref_out, out)
                 rec["details"].append("stdout: %s vs %s differ at line %d: %r vs %r"
                                       % (ref_name, cname, line, x, y))
+            if differs:
+                rec["status"] = "diff"
+                keep_output(cname, rc, out)
+        if rec["status"] == "diff" and ref_rc != 0:
+            keep_output(ref_name, ref_rc, ref_out)
         if rec["status"] == "ok":
             want_nonzero = markers["runtime_error"]
             if (ref_rc != 0) != want_nonzero:
                 rec["status"] = "fail"
                 rec["details"].append("every configuration exited %d; expected %s"
                                       % (ref_rc, "non-zero" if want_nonzero else "0"))
+                keep_output(ref_name, ref_rc, ref_out)
         return rec
 
     def report(self, rec):
@@ -326,6 +364,14 @@ class Runner:
         for d in rec["details"]:
             if rec["status"] != "skip":
                 line += "\n       " + d
+        # '|' keeps a test's own "FAIL: ..." lines from reading as failures of
+        # their own to nightly_triage.py, which matches FAIL/DIFF after spaces
+        for cname, kept in rec.get("output", {}).items():
+            for stream in ("stdout", "stderr"):
+                if stream in kept:
+                    line += "\n       %s %s:" % (cname, stream)
+                    for l in kept[stream] or ["<empty>"]:
+                        line += "\n       | " + l
         say(line)
 
     def guarded(self, name):

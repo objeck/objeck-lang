@@ -178,6 +178,62 @@ class RunnerTests(Harness):
         self.assertEqual(rc, 1)
         self.assertIn("timed out", res["hangs"]["details"][0])
 
+    def test_failing_config_output_is_reported(self):
+        # #1443: the first differing line was all a nightly kept; the counts that
+        # said what went wrong were on the lines after it
+        self.add_test("counts")
+        lines = ["  FAIL: every query read one whole version (3 did not)",
+                 "    3 queries failed, 0 read part of a version",
+                 "    round 4: no response from the server",
+                 "FAIL: URL cache (1 checks)"]
+        self.spec["run"]["counts"] = {"s3/jit1": {"out": "\n".join(lines) + "\n", "rc": 1}}
+        rc, res = self.run_diff()
+        self.assertEqual(rc, 1)
+        rec = res["counts"]
+        self.assertEqual(list(rec["output"]), ["s3/jit1"])
+        self.assertEqual(rec["output"]["s3/jit1"]["stdout"], lines)
+        self.assertEqual(rec["output"]["s3/jit1"]["stderr"], ["timing s3/jit1"])
+        # the details name the failure for the triage signature; output stays out
+        self.assertNotIn("queries failed", " ".join(rec["details"]))
+        self.assertIn("       | " + lines[1], self.output)
+
+        # the triage parser sees one failure, not one per "FAIL:" the test printed,
+        # and carries the output into the issue's detail
+        sys.path.insert(0, os.path.dirname(LINT))
+        try:
+            import nightly_triage
+        finally:
+            sys.path.pop(0)
+        failures = nightly_triage.parse_generic_log(self.output)
+        self.assertEqual([f["test"] for f in failures], ["counts", "counts"])
+        self.assertIn("queries failed", failures[0]["detail"])
+
+    def test_long_output_keeps_its_last_lines(self):
+        self.add_test("chatty")
+        out = "".join("line %d %s\n" % (i, "x" * 300) for i in range(50))
+        self.spec["run"]["chatty"] = {"s3/off": {"out": out}}
+        rc, res = self.run_diff()
+        self.assertEqual(rc, 1)
+        kept = res["chatty"]["output"]["s3/off"]
+        self.assertEqual(kept["stdout"][0], "... 38 earlier line(s)")
+        self.assertTrue(kept["stdout"][-1].startswith("line 49 "))
+        self.assertTrue(all(len(l) <= 200 for l in kept["stdout"]))
+        self.assertNotIn("stderr", kept)  # exited 0: its stderr is timings
+
+    def test_consistent_failure_reports_the_reference_output(self):
+        self.add_test("broken")
+        self.spec["run"]["broken"] = {"*": {"rc": 1, "out": "FAIL: why\n"}}
+        rc, res = self.run_diff()
+        self.assertEqual(res["broken"]["status"], "fail")
+        self.assertEqual(res["broken"]["output"]["s0/off"]["stdout"], ["FAIL: why"])
+
+    def test_timed_out_config_output_is_reported(self):
+        self.add_test("stalls")
+        self.spec["run"]["stalls"] = {"s3/jit1": {"sleep": 6, "out": "started\n"}}
+        rc, res = self.run_diff()
+        self.assertEqual(rc, 1)
+        self.assertIn("s3/jit1", res["stalls"]["output"])
+
     def test_diff_timeout_lengthens_one_tests_limit(self):
         # --timeout is 3 s in run_diff; a run of 5 s passes only under the marker
         self.add_test("slow", "# DIFF_TIMEOUT: 20\n# reason: 5 s here\n")
