@@ -2100,7 +2100,17 @@ struct StackFrame {
   long ip;
   bool jit_called;
   size_t* jit_mem;
-  long jit_offset;
+  union {
+    // a compiled frame: its locals' offset from the frame pointer
+    long jit_offset;
+    // An interpreted frame (jit_mem null): where the collector finds it, for its
+    // operand-stack reference map (ref_map.h). The instruction in progress plus
+    // one, stored by every instruction that can collect (the dispatch loop's
+    // default path); or -(next + 2) while the thread is parked at the loop's
+    // safepoint poll, between instructions; 0 before either. ip is the return
+    // address only, and error traces read it.
+    long cur_ip;
+  };
   size_t* jit_inst_mem;  // pointer to JIT frame's INSTANCE_MEM slot for GC fixup
 };
 

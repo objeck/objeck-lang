@@ -69,6 +69,7 @@
 //
 
 #include "memory.h"
+#include "ref_map.h"
 #include <chrono>
 #include <csignal>
 #include <cstdio>
@@ -1200,4 +1201,260 @@ bool MemoryManager::VerifySkipBarrier(size_t* target_obj)
     return true;
   }
   return GcVerifier::barrier_skip_target.load() == target_obj;
+}
+
+//
+// Operand-stack root audit (OBJECK_GC_ROOTS=audit), docs/GC_ROOTS_DESIGN.md phase 1.
+//
+// The collector marks and relocates every operand-stack word on a guess. This
+// audit works out, at every collection and without changing what is marked,
+// what the reference maps (ref_map.h) say each word is, and reports where the
+// two disagree: a word typed Int or Float that points at a live object
+// (relocating it changes the Int: #1452), a word typed as a reference that
+// points at no object, and threads whose frames' stack segments do not add up
+// to the thread's stack position. A summary goes to stderr at exit.
+//
+namespace {
+  struct RootAudit {
+    long collections = 0;
+    long threads = 0;
+    long threads_mismatched = 0;
+    long frames_interpreted = 0;
+    long frames_compiled = 0;
+    long maps_built = 0;
+    long maps_failed = 0;
+    size_t words_ref = 0;
+    size_t words_int = 0;
+    size_t words_float = 0;
+    size_t words_unknown = 0;
+    size_t words_conflict = 0;
+    size_t words_unattributed = 0;
+    size_t andor_slots = 0;
+    size_t int_points_at_object = 0;
+    size_t ref_points_at_nothing = 0;
+    size_t unknown_points_at_object = 0;
+    // each distinct note once, with how often it came up
+    std::vector<std::wstring> notes;
+    std::unordered_map<std::wstring, size_t> note_counts;
+    std::unordered_map<StackMethod*, RefMap*> maps;
+  };
+  RootAudit* root_audit = nullptr;
+  const size_t MAX_AUDIT_NOTES = 60;
+
+  void AuditNote(const std::wstring& note) {
+    auto found = root_audit->note_counts.find(note);
+    if(found != root_audit->note_counts.end()) {
+      found->second++;
+    }
+    else if(root_audit->notes.size() < MAX_AUDIT_NOTES) {
+      root_audit->notes.push_back(note);
+      root_audit->note_counts[note] = 1;
+    }
+  }
+
+  void PrintRootAudit() {
+    RootAudit* a = root_audit;
+    std::wcerr << L"[gc-roots] collections=" << a->collections << L" threads=" << a->threads
+               << L" mismatched_threads=" << a->threads_mismatched << L" frames: interpreted=" << a->frames_interpreted
+               << L" compiled=" << a->frames_compiled << L" maps: built=" << a->maps_built << L" failed=" << a->maps_failed
+               << std::endl;
+    std::wcerr << L"[gc-roots] words: ref=" << a->words_ref << L" int=" << a->words_int << L" float=" << a->words_float
+               << L" unknown=" << a->words_unknown << L" conflict=" << a->words_conflict
+               << L" unattributed=" << a->words_unattributed << L" and/or slots=" << a->andor_slots << std::endl;
+    std::wcerr << L"[gc-roots] disagreements: int_points_at_object=" << a->int_points_at_object
+               << L" ref_points_at_nothing=" << a->ref_points_at_nothing
+               << L" unknown_points_at_object=" << a->unknown_points_at_object << std::endl;
+    for(size_t i = 0; i < a->notes.size(); ++i) {
+      std::wcerr << L"[gc-roots]   " << a->note_counts[a->notes[i]] << L"x " << a->notes[i] << std::endl;
+    }
+  }
+
+  std::wstring AuditWhere(StackMethod* method, long pc) {
+    std::wstring where = method->GetName() + L" @" + std::to_wstring(pc);
+    if(pc >= 0 && pc < method->GetInstructionCount()) {
+      where += L" (type " + std::to_wstring(method->GetInstruction(pc)->GetType()) + L")";
+    }
+    return where;
+  }
+}
+
+RefMap* MemoryManager::GetRefMap(StackMethod* method)
+{
+  auto found = root_audit->maps.find(method);
+  if(found != root_audit->maps.end()) {
+    return found->second;
+  }
+  RefMap* map = RefMap::Build(prgm, method);
+  root_audit->maps[method] = map;
+  if(map->ok) {
+    root_audit->maps_built++;
+  }
+  else {
+    root_audit->maps_failed++;
+    AuditNote(L"map failed: " + AuditWhere(method, map->error_ip) + L": " + map->error);
+  }
+  return map;
+}
+
+void MemoryManager::AuditWord(size_t value, uint8_t kind, StackMethod* method, long pc, long depth)
+{
+  RootAudit* a = root_audit;
+  const bool object = value && IsAllocated((size_t*)value);
+  switch(kind) {
+  case RK_REF:
+    a->words_ref++;
+    if(value && !object) {
+      a->ref_points_at_nothing++;
+      AuditNote(L"ref at nothing: " + AuditWhere(method, pc) + L" depth " + std::to_wstring(depth));
+    }
+    break;
+  case RK_INT:
+  case RK_FLOAT:
+    if(kind == RK_INT) {
+      a->words_int++;
+    }
+    else {
+      a->words_float++;
+    }
+    if(object) {
+      a->int_points_at_object++;
+      AuditNote(std::wstring(RefKindName(kind)) + L" at an object: " + AuditWhere(method, pc) +
+                L" depth " + std::to_wstring(depth));
+    }
+    break;
+  case RK_CONFLICT:
+    a->words_conflict++;
+    if(object) {
+      a->unknown_points_at_object++;
+    }
+    break;
+  default:
+    a->words_unknown++;
+    if(object) {
+      a->unknown_points_at_object++;
+    }
+    break;
+  }
+}
+
+// After the stop-the-world handshake, beside VerifyBeforeCollection: every
+// mutator is parked, so the stacks and frames hold still
+void MemoryManager::AuditRoots()
+{
+  RootAudit* a = root_audit;
+  a->collections++;
+
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&pda_monitor_lock);
+#endif
+  for(auto iter = pda_monitors.begin(); iter != pda_monitors.end(); ++iter) {
+    StackFrameMonitor* monitor = *iter;
+    if(!monitor->op_stack || !monitor->stack_pos || !monitor->call_stack || !monitor->call_stack_pos) {
+      continue;
+    }
+    a->threads++;
+    const size_t* op_stack = monitor->op_stack;
+    const long sp = (long)*monitor->stack_pos;
+
+    // bottom to top: the callers, then the current frame
+    std::vector<StackFrame*> frames;
+    for(long i = 0; i < *monitor->call_stack_pos; ++i) {
+      if(monitor->call_stack[i]) {
+        frames.push_back(monitor->call_stack[i]);
+      }
+    }
+    StackFrame* cur = monitor->cur_frame ? *monitor->cur_frame : nullptr;
+    if(cur) {
+      frames.push_back(cur);
+    }
+
+    long base = 0;
+    bool mismatched = false;
+    for(size_t k = 0; k < frames.size() && !mismatched; ++k) {
+      StackFrame* frame = frames[k];
+      const bool top = k + 1 == frames.size();
+      if(frame->jit_mem) {
+        // A compiled frame keeps its pending values in registers and spill slots;
+        // while it is the newest frame, what is here is a callback's arguments
+        a->frames_compiled++;
+        if(top) {
+          a->words_unattributed += sp > base ? (size_t)(sp - base) : 0;
+          base = sp;
+        }
+        continue;
+      }
+
+      a->frames_interpreted++;
+      StackMethod* method = frame->method;
+      RefMap* map = GetRefMap(method);
+      const long cur_ip = frame->cur_ip;
+      const bool between = cur_ip <= -2;
+      const long pc = between ? -(cur_ip + 2) : cur_ip - 1;
+      if(!map->ok || pc < 0 || pc >= (long)map->height.size() || map->height[pc] < 0) {
+        mismatched = true;
+        if(map->ok) {
+          AuditNote(L"no position: " + method->GetName() + L" cur_ip " + std::to_wstring(cur_ip));
+        }
+        break;
+      }
+      const long height = map->height[pc];
+      const long low = between ? height : height - map->pops[pc];
+      long segment;
+      if(top) {
+        segment = sp - base;
+        if(segment < low || segment > height) {
+          mismatched = true;
+          AuditNote(L"top segment " + std::to_wstring(segment) + L" outside [" + std::to_wstring(low) + L", " +
+                    std::to_wstring(height) + L"]: " + AuditWhere(method, pc));
+          break;
+        }
+      }
+      else {
+        segment = low;
+        if(base + segment > sp) {
+          mismatched = true;
+          AuditNote(L"segments pass the stack position: " + AuditWhere(method, pc));
+          break;
+        }
+      }
+      for(long d = 0; d < segment; ++d) {
+        AuditWord(op_stack[base + d], map->Kind(pc, (int)d), method, pc, d);
+      }
+      if(method->HasAndOr() && frame->mem) {
+        a->andor_slots++;
+        AuditWord(frame->mem[1], map->andor[pc], method, pc, -1);
+      }
+      base += segment;
+    }
+
+    if(!mismatched && base != sp) {
+      mismatched = true;
+      AuditNote(L"segments end at " + std::to_wstring(base) + L", stack position " + std::to_wstring(sp));
+    }
+    if(mismatched) {
+      a->threads_mismatched++;
+    }
+  }
+#ifndef _GC_SERIAL
+  MUTEX_UNLOCK(&pda_monitor_lock);
+#endif
+}
+
+int MemoryManager::gc_roots_audit = 0;
+
+void MemoryManager::RootAuditInitialize()
+{
+  const std::string mode = ReadEnv("OBJECK_GC_ROOTS");
+  if(mode.empty()) {
+    return;
+  }
+  if(mode != "audit") {
+    std::wcerr << L">>> OBJECK_GC_ROOTS: expected 'audit' <<<" << std::endl;
+    VmExit(1);
+  }
+  if(!root_audit) {
+    root_audit = new RootAudit;
+    atexit(PrintRootAudit);
+  }
+  gc_roots_audit = 1;
 }

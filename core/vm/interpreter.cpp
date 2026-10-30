@@ -295,6 +295,8 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
   // execute using dispatch table
   do {
     if((++safepoint_ticks & 0x3FF) == 0) {
+      // parked between instructions: the next one has not started
+      (*stack_frame)->cur_ip = -(ip + 2);
       MemoryManager::SafePoint();
     }
     StackInstr* instr = &instrs[ip++];
@@ -307,6 +309,7 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
     if(debugger) {
       debugger->ProcessInstruction(instr, ip, call_stack, (*call_stack_pos), (*stack_frame));
     }
+    (*stack_frame)->cur_ip = ip;
     DispatchResult result = instr_dispatch[instr->GetType()](ctx);
     if(result == DispatchResult::RETURN_JIT) {
       return;
@@ -523,6 +526,8 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
       continue;
 
     default: {
+      // every instruction that can collect comes here (the cases above cannot)
+      (*stack_frame)->cur_ip = ip;
       DispatchResult result = instr_dispatch[instr->GetType()](ctx);
       if(result == DispatchResult::RETURN_JIT) {
         return;
