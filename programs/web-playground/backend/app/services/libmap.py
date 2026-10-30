@@ -68,7 +68,7 @@ LANG_BLOCKED_BUNDLES: dict[str, str] = {
 _BLOCK_REASONS: dict[str, str] = {}
 for _libs, _reason in (
     (("net", "net_h2", "net_quic", "net_server", "web_server", "json_rpc", "rss",
-      "query_server"), "the sandbox has no network access"),
+      "query_server", "ai_hub"), "the sandbox has no network access"),
     (("openai", "gemini", "ollama", "inference"), "it needs network access to a hosted model"),
     (("models", "onnx", "opencv", "query_vision"), "it needs model files and native vision libraries"),
     (("nlp_onnx",), "it needs a model file and the ONNX runtime"),

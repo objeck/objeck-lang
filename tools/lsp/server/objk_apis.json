@@ -2635,6 +2635,9 @@
 				"SHA256": {
 					"descriptions": ["**Hash input using SHA-256**\n\n```function : SHA256(stream_in:Byte[]) ~ Byte[]```\n\n\n\nstream_in: Byte[]\n\nreturn: Byte[]\n\n```\nbytes := \"password123\"->ToByteArray();\nhash := Cipher.Hash->SHA256(bytes); # compute SHA-256 digest\nCipher.Encrypt->Base64(hash)->PrintLine(); # print as Base64\n```"]
 				},
+				"SHA256File": {
+					"descriptions": ["**Hash a file using SHA-256, a megabyte at a time: a file of any size is hashed without being held in memory, e.g. to verify a downloaded model.**\n\n```function : SHA256File(path:String) ~ Byte[]```\n\n\n\npath: String\n\nreturn: Byte[]\n\n```\nhash := Cipher.Hash->SHA256File(\"model.onnx\");\nif(hash <> Nil) {\n  hash->ToHexString()->PrintLine();\n};\n```"]
+				},
 				"SHA512": {
 					"descriptions": ["**Hash input using SHA-512**\n\n```function : SHA512(stream_in:Byte[]) ~ Byte[]```\n\n\n\nstream_in: Byte[]\n\nreturn: Byte[]\n\n```\nbytes := \"secret\"->ToByteArray();\nhash := Cipher.Hash->SHA512(bytes); # 64-byte digest\nCipher.Encrypt->Base64(hash)->PrintLine();\n```"]
 				}
@@ -12264,6 +12267,47 @@
 
 			}
 		},
+		"System.AI.Hub.HubClient": {
+			"description": "Downloads files of a Hugging Face model repository into a local cache and gives back their paths: a snapshot folder that TextClassifier and the other pipelines open as they open any model folder.\n\nEach call asks the Hub API which commit the revision (\"main\" unless named) is at, and downloads from that commit, so every file of a snapshot comes from the same commit. A file already in the cache at the right size is not downloaded again. A downloaded file is checked before it is kept: SHA-256 for a large (LFS) file, the git blob hash for a small one, and the size for both; a file that does not match is deleted and the call fails. Downloads stream to disk, so a file's size is limited only by the disk.\n\nThe cache, by environment:\n\n- OBJECK_HUB_CACHE: the cache folder; default .objeck/hub in the user's home folder. The layout is the one Python's huggingface_hub uses -- models--org--name/refs/main holds the commit, models--org--name/snapshots/commit/ the files -- with real files, not symbolic links;\n- OBJECK_HUB_OFFLINE or HF_HUB_OFFLINE set to 1: no network at all; revisions resolve through the cache's refs. Offline, and when the Hub cannot be reached, a file the cache does not hold is looked for in Python's cache (HF_HUB_CACHE, else HF_HOME/hub, else .cache/huggingface/hub in the home folder), which is read and never written;\n- OBJECK_HUB_TOKEN or HF_TOKEN: a token for gated and private repositories. It is sent to the Hub only: a redirect to another origin, such as the Hub's file CDN, drops it;\n- HF_ENDPOINT: another Hub, e.g. a mirror; default https://huggingface.co.",
+			"functions": {
+				"Download": {
+					"descriptions": ["**Downloads one file of a repository at \"main\".**\n\n```method : public : Download(repo:String, file:String) ~ String```\n\n\n\nrepo: String\n\nfile: String\n\nreturn: String", "**Downloads one file of a repository at a revision.**\n\n```method : public : Download(repo:String, file:String, revision:String) ~ String```\n\n\n\nrepo: String\n\nfile: String\n\nrevision: String\n\nreturn: String"]
+				},
+				"GetCacheDir": {
+					"descriptions": ["**The cache folder.**\n\n```method : public : GetCacheDir() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetCommit": {
+					"descriptions": ["**The commit the last Snapshot or Download used.**\n\n```method : public : GetCommit() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetDownloadCount": {
+					"descriptions": ["**How many files the last Snapshot or Download fetched from the network; the rest came from the cache.**\n\n```method : public : GetDownloadCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetEndpoint": {
+					"descriptions": ["**The Hub's address.**\n\n```method : public : GetEndpoint() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call returned Nil.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"IsOffline": {
+					"descriptions": ["**Whether the client works from the cache alone.**\n\n```method : public : IsOffline() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**A client with the cache, token, endpoint and offline mode from the environment.**\n\n```New()```\n\n", "**A client with a cache folder of the caller's; token, endpoint and offline mode from the environment.**\n\n```New(cache_dir:String)```\n\n\n\ncache_dir: String"]
+				},
+				"SetEndpoint": {
+					"descriptions": ["**Sets the Hub's address, e.g. a mirror.**\n\n```method : public : SetEndpoint(endpoint:String) ~ Nil```\n\n\n\nendpoint: String\n\nreturn: Nil"]
+				},
+				"SetOffline": {
+					"descriptions": ["**Sets whether the client works from the cache alone.**\n\n```method : public : SetOffline(offline:Bool) ~ Nil```\n\n\n\noffline: Bool\n\nreturn: Nil"]
+				},
+				"SetToken": {
+					"descriptions": ["**Sets the token sent to the Hub for gated and private repositories; Nil sends none.**\n\n```method : public : SetToken(token:String) ~ Nil```\n\n\n\ntoken: String\n\nreturn: Nil"]
+				},
+				"Snapshot": {
+					"descriptions": ["**Downloads files of a repository at \"main\" into one snapshot folder.**\n\n```method : public : Snapshot(repo:String, files:String[]) ~ String```\n\n\n\nrepo: String\n\nfiles: String[]\n\nreturn: String", "**Downloads files of a repository at a revision into one snapshot folder. Every file comes from the commit the revision is at when the call is made.**\n\n```method : public : Snapshot(repo:String, files:String[], revision:String) ~ String```\n\n\n\nrepo: String\n\nfiles: String[]\n\nrevision: String\n\nreturn: String"]
+				}
+			}
+		},
 		"System.API.DllProxy": {
 			"description": "Class allow programmers to load native shared libraries that can be called by Objeck classes. Programmers can call native C functions within these libraries.",
 			"functions": {
@@ -16421,6 +16465,47 @@
 				}
 			}
 		},
+		"System.NLP.BpeTokenizer": {
+			"description": "Byte-level BPE, the tokenizer of RoBERTa, DistilRoBERTa and GPT-2, as Hugging Face's tokenizers library runs it: the GPT-2 split of the text into words, numbers, punctuation runs and whitespace; each piece's UTF-8 bytes as characters; the merges applied lowest rank first; then RoBERTa's specials, <s> text </s> or <s> a </s></s> b </s>.\n\nEvery encoding records each token's character offsets in the text (GetOffsets), with the leading space a token carries trimmed off when trim_offsets is set, as RoBERTa's are. Special tokens the vocabulary lists, such as <mask>, are matched in the text before it is split; one marked lstrip takes the whitespace before it.\n\nUsually built from a model's tokenizer.json by System.NLP.Onnx; the constructor takes the vocabulary and merges themselves.",
+			"functions": {
+				"AddSpecialToken": {
+					"descriptions": ["**Adds a special token matched in the text before it is split, e.g. <mask>; the specials SetSpecialTokens names are matched already. Adding one again replaces its rules.**\n\n```method : public : AddSpecialToken(content:String, lstrip:Bool, rstrip:Bool) ~ Bool```\n\n\n\ncontent: String\n\nlstrip: Bool\n\nrstrip: Bool\n\nreturn: Bool"]
+				},
+				"Decode": {
+					"descriptions": ["**Turns ids back into text: the tokens' bytes, decoded as UTF-8, special tokens left out.**\n\n```method : public : Decode(ids:Int[]) ~ String```\n\n\n\nids: Int[]\n\nreturn: String"]
+				},
+				"Encode": {
+					"descriptions": ["**Encodes one text: <s> text </s>, then <pad> to max_len. Text past max_len - 2 tokens is dropped, and the encoding says so.**\n\n```method : public : Encode(text:String, max_len:Int) ~ TokenEncoding```\n\n\n\ntext: String\n\nmax_len: Int\n\nreturn: TokenEncoding"]
+				},
+				"EncodePair": {
+					"descriptions": ["**Encodes a pair: <s> a </s></s> b </s>, then <pad> to max_len; token types are all 0, as RoBERTa's are. When the pair is too long, a token at a time is dropped from the end of whichever text is longer (the second on a tie), Hugging Face's longest_first truncation.**\n\n```method : public : EncodePair(text_a:String, text_b:String, max_len:Int) ~ TokenEncoding```\n\n\n\ntext_a: String\n\ntext_b: String\n\nmax_len: Int\n\nreturn: TokenEncoding"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the vocabulary did not load, or why the last call returned Nil.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetId": {
+					"descriptions": ["**A token's id.**\n\n```method : public : GetId(token:String) ~ Int```\n\n\n\ntoken: String\n\nreturn: Int"]
+				},
+				"GetToken": {
+					"descriptions": ["**The token an id stands for.**\n\n```method : public : GetToken(id:Int) ~ String```\n\n\n\nid: Int\n\nreturn: String"]
+				},
+				"GetVocabularySize": {
+					"descriptions": ["**The vocabulary's size.**\n\n```method : public : GetVocabularySize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsLoaded": {
+					"descriptions": ["**Whether the vocabulary and specials loaded.**\n\n```method : public : IsLoaded() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Builds a tokenizer from a vocabulary and its merges, with RoBERTa's specials: <s>, </s>, <pad> and <unk>.**\n\n```New(tokens:String[], merges:String[], add_prefix_space:Bool, trim_offsets:Bool)```\n\n\n\ntokens: String[]\n\nmerges: String[]\n\nadd_prefix_space: Bool\n\ntrim_offsets: Bool"]
+				},
+				"SetSpecialTokens": {
+					"descriptions": ["**Sets the special tokens, for a vocabulary that does not use RoBERTa's names.**\n\n```method : public : SetSpecialTokens(cls:String, sep:String, pad:String, unk:String) ~ Bool```\n\n\n\ncls: String\n\nsep: String\n\npad: String\n\nunk: String\n\nreturn: Bool"]
+				},
+				"Tokenize": {
+					"descriptions": ["**The pieces a text becomes, before special tokens are added: byte-level strings, a leading \u0120 for a space.**\n\n```method : public : Tokenize(text:String) ~ String[]```\n\n\n\ntext: String\n\nreturn: String[]"]
+				}
+			}
+		},
 		"System.NLP.SentimentAnalyzer": {
 			"description": "Rule-based sentiment analysis in the manner of VADER (Hutto and Gilbert, 2014), with a built-in English lexicon of valences on a -4..+4 scale, part of it VADER's own values (MIT licence). Negators (\"not\", \"never\", \"don't\") within three words flip and damp a word's valence, boosters (\"very\", \"extremely\") and dampeners (\"slightly\", \"kind of\") scale it, a word in capitals in mixed-case text and each '!' add emphasis, and \"but\" shifts weight to the clause after it. Unknown inflections fall back to their base form (\"loved\" finds \"love\", \"terribly\" finds \"terrible\").",
 			"functions": {
@@ -16470,6 +16555,23 @@
 				},
 				"ToString": {
 					"descriptions": ["**String representation**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"System.NLP.SubwordTokenizer": {
+			"description": "A tokenizer that turns text into a model's input: WordPieceTokenizer (BERT, DistilBERT, MiniLM) and BpeTokenizer (RoBERTa, GPT-2). The task classes of System.NLP.Onnx take either.",
+			"functions": {
+				"Encode": {
+					"descriptions": ["**Encodes one text, truncated and padded to max_len, special tokens included.**\n\n```method : public : virutal : Encode(text:String, max_len:Int) ~ TokenEncoding```\n\n\n\ntext: String\n\nmax_len: Int\n\nreturn: TokenEncoding"]
+				},
+				"EncodePair": {
+					"descriptions": ["**Encodes a pair of texts, truncated and padded to max_len, special tokens included.**\n\n```method : public : virutal : EncodePair(text_a:String, text_b:String, max_len:Int) ~ TokenEncoding```\n\n\n\ntext_a: String\n\ntext_b: String\n\nmax_len: Int\n\nreturn: TokenEncoding"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the vocabulary did not load, or why the last call returned Nil.**\n\n```method : public : virutal : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"IsLoaded": {
+					"descriptions": ["**Whether the vocabulary loaded.**\n\n```method : public : virutal : IsLoaded() ~ Bool```\n\n\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -16548,6 +16650,9 @@
 				"GetLength": {
 					"descriptions": ["**Tokens before the padding, [CLS] and [SEP] included.**\n\n```method : public : GetLength() ~ Int```\n\n\n\nreturn: Int"]
 				},
+				"GetOffsets": {
+					"descriptions": ["**Each token's character offsets in its text, as Hugging Face's offset_mapping: the token at position i spans [offsets[2i], offsets[2i + 1]) of the text it came from; special tokens and padding are (0, 0).**\n\n```method : public : GetOffsets() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
 				"GetSize": {
 					"descriptions": ["**Total length, padding included: the max_len it was encoded to.**\n\n```method : public : GetSize() ~ Int```\n\n\n\nreturn: Int"]
 				},
@@ -16561,7 +16666,7 @@
 					"descriptions": ["**Whether text was dropped to fit max_len.**\n\n```method : public : IsTruncated() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
-					"descriptions": ["**Constructor, for a tokenizer of the program's own.**\n\n```New(ids:Int[], attention_mask:Int[], token_type_ids:Int[], tokens:String[], length:Int, truncated:Bool)```\n\n\n\nids: Int[]\n\nattention_mask: Int[]\n\ntoken_type_ids: Int[]\n\ntokens: String[]\n\nlength: Int\n\ntruncated: Bool"]
+					"descriptions": ["**Constructor, for a tokenizer of the program's own.**\n\n```New(ids:Int[], attention_mask:Int[], token_type_ids:Int[], tokens:String[], length:Int, truncated:Bool)```\n\n\n\nids: Int[]\n\nattention_mask: Int[]\n\ntoken_type_ids: Int[]\n\ntokens: String[]\n\nlength: Int\n\ntruncated: Bool", "**Constructor with each token's character offsets in the text.**\n\n```New(ids:Int[], attention_mask:Int[], token_type_ids:Int[], tokens:String[], length:Int, truncated:Bool, offsets:Int[])```\n\n\n\nids: Int[]\n\nattention_mask: Int[]\n\ntoken_type_ids: Int[]\n\ntokens: String[]\n\nlength: Int\n\ntruncated: Bool\n\noffsets: Int[]"]
 				}
 			}
 		},
@@ -20383,6 +20488,12 @@
 				"file": ""
 			}
 		],
+		"HubClient": [
+			{
+				"bundle": "System.AI.Hub",
+				"file": ""
+			}
+		],
 		"DllProxy": [
 			{
 				"bundle": "System.API",
@@ -21115,6 +21226,12 @@
 				"file": ""
 			}
 		],
+		"BpeTokenizer": [
+			{
+				"bundle": "System.NLP",
+				"file": ""
+			}
+		],
 		"SentimentAnalyzer": [
 			{
 				"bundle": "System.NLP",
@@ -21122,6 +21239,12 @@
 			}
 		],
 		"SentimentResult": [
+			{
+				"bundle": "System.NLP",
+				"file": ""
+			}
+		],
+		"SubwordTokenizer": [
 			{
 				"bundle": "System.NLP",
 				"file": ""

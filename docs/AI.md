@@ -886,7 +886,10 @@ sim := TextSimilarity->CosineSimilarity(tfidf->Transform("cats are pets"), tfidf
 `WordPieceTokenizer` is BERT's tokenizer (Hugging Face's `BertTokenizer`, checked id for id on
 a 13,000-line corpus); it reads a model's `vocab.txt` and gives the `input_ids`,
 `attention_mask` and `token_type_ids` a BERT-family ONNX model takes. `ApiSequenceTokenizer`
-builds a vocabulary of API names from malware traces. `BertEmbedder` (library `nlp_onnx`) runs
+builds a vocabulary of API names from malware traces. `BpeTokenizer` is RoBERTa's and GPT-2's
+byte-level BPE (checked id for id and offset for offset against Hugging Face's `tokenizers`,
+with DistilRoBERTa's own 50,265-token vocabulary). Both implement `SubwordTokenizer`, and
+their encodings carry each token's character offsets (`GetOffsets`, BPE). `BertEmbedder` (library `nlp_onnx`) runs
 an exported BERT through ONNX Runtime and pools its output into one vector per text — CLS,
 mean over the real tokens, or the model's pooler. The encoder is frozen: train a classifier on
 the embeddings. Design and limits: [docs/ML_BERT_DESIGN.md](ML_BERT_DESIGN.md).
@@ -934,6 +937,36 @@ if(classifier->IsOpen()) {
         p->GetScore()->PrintLine();      # its probability
     };
     classifier->Close();
+};
+```
+
+### Models from the Hugging Face Hub
+
+`HubClient` (library `ai_hub`) downloads a model repository's files by name into a local
+cache, as Python's `from_pretrained` does, and returns the snapshot folder the model classes
+open.
+- **Pinned to one commit:** every file of a snapshot comes from the same commit.
+- **Verified:** each file is checked against the Hub's SHA-256 (large files) or git blob hash
+  (small files), and its size. A mismatch is not kept.
+- **Streamed:** downloads go to disk, so file size is limited only by disk space.
+- **Cached:** a second run downloads nothing, and `OBJECK_HUB_OFFLINE=1` works from the cache
+  alone. Python's cache is read as a fallback, never written.
+- **Tokens stay with the Hub:** a token (`HF_TOKEN`) is sent to the Hub only, never to its file
+  CDN.
+
+The default cache is `.objeck/hub` in your home folder; set `OBJECK_HUB_CACHE` to move it.
+Design: [docs/AI_FOUNDATION_DESIGN.md](AI_FOUNDATION_DESIGN.md) §7.3.
+
+**Compile:** `obc -src your.obs -lib gen_collect,cipher,json,net,ai_hub`
+
+```ruby
+use System.AI.Hub;
+
+hub := HubClient->New();
+folder := hub->Snapshot("Xenova/distilbert-base-uncased-finetuned-sst-2-english",
+    ["config.json", "tokenizer.json", "tokenizer_config.json", "onnx/model.onnx"]);
+if(folder = Nil) {
+    hub->GetError()->ErrorLine();
 };
 ```
 
@@ -1350,6 +1383,7 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 | BERT tokenization | `WordPieceTokenizer`, `ApiSequenceTokenizer` | `nlp` | None |
 | Sentence embeddings (BERT) | `BertEmbedder` | `nlp_onnx` + `models`, `onnx`, `nlp` | None |
 | Text classification (fine-tuned BERT) | `TextClassifier`, `Prediction` | `nlp_onnx` + `models`, `onnx`, `nlp` | None |
+| Hugging Face Hub downloads | `HubClient` | `ai_hub` + `net`, `json`, `cipher` | Network (cache works offline) |
 | Linear / regularized regression | `LinearRegression`, `RidgeRegression`, `LassoRegression`, `ElasticNet` | `ml` | None |
 | Linear classifiers | `LogisticRegression`, `SVM`, `Perceptron` | `ml` | None |
 | Kernel SVMs | `KernelSVM` (linear, RBF, poly, sigmoid), `OneClassSVM` | `ml` | None |

@@ -29,6 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <mbedtls/md.h>
@@ -145,6 +146,60 @@ static void hash_data(VMContext& context, mbedtls_md_type_t md_type, int digest_
   output_holder[0] = (size_t)output_byte_array;
 }
 
+//
+// Digests a file a megabyte at a time, so a file of any size is hashed without being
+// held in memory (a downloaded model is hundreds of megabytes). Nil when the file cannot
+// be opened or read.
+//
+static void hash_file(VMContext& context, mbedtls_md_type_t md_type, int digest_len) {
+  size_t* output_holder = APITools_GetArray(context, 0);
+  output_holder[0] = 0;
+
+  const std::wstring w_path = APITools_GetStringValue(context, 1);
+#ifdef _WIN32
+  FILE* file = nullptr;
+  if(_wfopen_s(&file, w_path.c_str(), L"rb") != 0) {
+    file = nullptr;
+  }
+#else
+  FILE* file = fopen(UnicodeToBytes(w_path).c_str(), "rb");
+#endif
+  if(!file) {
+    return;
+  }
+
+  const mbedtls_md_info_t* md_info = mbedtls_md_info_from_type(md_type);
+  mbedtls_md_context_t md;
+  mbedtls_md_init(&md);
+  bool ok = md_info && mbedtls_md_setup(&md, md_info, 0) == 0 && mbedtls_md_starts(&md) == 0;
+
+  const size_t block_size = 1024 * 1024;
+  unsigned char* block = new unsigned char[block_size];
+  while(ok) {
+    const size_t read = fread(block, 1, block_size, file);
+    if(read > 0 && mbedtls_md_update(&md, block, read) != 0) {
+      ok = false;
+    }
+    if(read < block_size) {
+      if(ferror(file)) {
+        ok = false;
+      }
+      break;
+    }
+  }
+  delete[] block;
+  fclose(file);
+
+  unsigned char output[MBEDTLS_MD_MAX_SIZE];
+  if(ok && mbedtls_md_finish(&md, output) == 0) {
+    size_t* output_byte_array = APITools_MakeByteArray(context, digest_len);
+    unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
+    memcpy(output_byte_array_buffer, output, digest_len * sizeof(unsigned char));
+    output_holder[0] = (size_t)output_byte_array;
+  }
+  mbedtls_md_free(&md);
+}
+
 extern "C" {
   //
   // initialize library
@@ -182,6 +237,16 @@ extern "C" {
 #endif
   void crypto_hash_sha256(VMContext& context) {
     hash_data(context, MBEDTLS_MD_SHA256, SHA256_DIGEST_LEN);
+  }
+
+  //
+  // SHA-256 of a file, streamed
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void crypto_hash_sha256_file(VMContext& context) {
+    hash_file(context, MBEDTLS_MD_SHA256, SHA256_DIGEST_LEN);
   }
 
   //
