@@ -4489,7 +4489,7 @@
 					"descriptions": ["**Encodes the five XML markup characters (&lt; &gt; &amp; &quot; ') and leaves everything else \u2014 including whitespace \u2014 untouched. Use this for readable element content and attribute values; EncodeString additionally encodes whitespace as numeric references for exact whitespace preservation.**\n\n```function : EncodeText(input:String) ~ String```\n\n\n\ninput: String\n\nreturn: String\n\n```\nraw := \"price < 10 & size > 5\";\nXmlElement->EncodeText(raw)->PrintLine();   # price &lt; 10 &amp; size &gt; 5\n```"]
 				},
 				"FindElements": {
-					"descriptions": ["**Finds matching XML elements using xpath like syntax. Supports 'first()', 'last()' and '[cdata]' functions.**\n\n```method : public : FindElements(path:String) ~ Vector&lt;XmlElement&gt;```\n\n\n\npath: String\n\nreturn: Vector&lt;XmlElement&gt;\n\n```\nparser := XmlParser->New(\"<catalog><book><title>Dune</title></book></catalog>\");\nif(parser->Parse()) {\n  results := parser->GetRoot()->FindElements(\"/catalog/book/title\")<XmlElement>;\n  results->Get(0)->GetContent()->PrintLine();\n};\n```"]
+					"descriptions": ["**Finds matching XML elements using xpath like syntax. Supports '[n]' (the n-th match, 1-based, as in XPath), 'first()', 'last()', '[attribute]' and '[cdata]' functions.**\n\n```method : public : FindElements(path:String) ~ Vector&lt;XmlElement&gt;```\n\n\n\npath: String\n\nreturn: Vector&lt;XmlElement&gt;\n\n```\nparser := XmlParser->New(\"<catalog><book><title>Dune</title></book></catalog>\");\nif(parser->Parse()) {\n  results := parser->GetRoot()->FindElements(\"/catalog/book/title\")<XmlElement>;\n  results->Get(0)->GetContent()->PrintLine();\n};\n```"]
 				},
 				"Get": {
 					"descriptions": ["**Gets a child element**\n\n```method : public : Get(i:Int) ~ XmlElement```\n\n\n\ni: Int\n\nreturn: XmlElement\n\n```\nparser := XmlParser->New(\"<root><first/><second/></root>\");\nif(parser->Parse()) {\n  parser->GetRoot()->Get(1)->GetName()->PrintLine();\n};\n```"]
@@ -4572,7 +4572,7 @@
 			"description": "Parses an XML document",
 			"functions": {
 				"FindElements": {
-					"descriptions": ["**Finds matching XML elements using xpath like syntax. Supports 'first()', 'last()' and '[cdata]' functions.**\n\n```method : public : FindElements(path:String) ~ Vector&lt;XmlElement&gt;```\n\n\n\npath: String\n\nreturn: Vector&lt;XmlElement&gt;\n\n```\nparser := XmlParser->New(\"<store><item><price>9.99</price></item></store>\");\nif(parser->Parse()) {\n  results := parser->FindElements(\"/store/item/price\")<XmlElement>;\n  each(e := results) {\n    e->GetContent()->PrintLine();\n  };\n};\n```"]
+					"descriptions": ["**Finds matching XML elements using xpath like syntax. Supports '[n]' (the n-th match, 1-based, as in XPath), 'first()', 'last()', '[attribute]' and '[cdata]' functions.**\n\n```method : public : FindElements(path:String) ~ Vector&lt;XmlElement&gt;```\n\n\n\npath: String\n\nreturn: Vector&lt;XmlElement&gt;\n\n```\nparser := XmlParser->New(\"<store><item><price>9.99</price></item></store>\");\nif(parser->Parse()) {\n  results := parser->FindElements(\"/store/item/price\")<XmlElement>;\n  each(e := results) {\n    e->GetContent()->PrintLine();\n  };\n};\n```"]
 				},
 				"GetEncoding": {
 					"descriptions": ["**Gets the XML encoding**\n\n```method : public : GetEncoding() ~ String```\n\n\n\nreturn: String\n\n```\nparser := XmlParser->New(\"<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?><root/>\");\nif(parser->Parse()) {\n  parser->GetEncoding()->PrintLine();\n};\n```"]
@@ -17064,11 +17064,17 @@
 				"GetCookies": {
 					"descriptions": ["**Gets the cookies**\n\n```method : public : GetCookies() ~ Vector&lt;Cookie&gt;```\n\n\n\nreturn: Vector&lt;Cookie&gt;\n\n```\nclient := Web.HTTP.HttpClient->New(true);\nclient->Get(Web.HTTP.Url->New(\"https://httpbin.org/cookies/set/session/abc\"));\ncookies := client->GetCookies();\neach(c in cookies) {\n  c->GetName()->PrintLine();\n};\n```"]
 				},
+				"GetDownloadSize": {
+					"descriptions": ["**Bytes the last GetToFile wrote.**\n\n```method : public : GetDownloadSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetRequestHeaders": {
 					"descriptions": ["**Gets the HTTP request headers**\n\n```method : public : GetRequestHeaders() ~ Hash&lt;String,String&gt;```\n\n\n\nreturn: Hash&lt;String,String&gt;"]
 				},
 				"GetResponseHeaders": {
 					"descriptions": ["**Gets the HTTP response headers**\n\n```method : public : GetResponseHeaders() ~ Hash&lt;String,String&gt;```\n\n\n\nreturn: Hash&lt;String,String&gt;"]
+				},
+				"GetToFile": {
+					"descriptions": ["**Downloads a resource to a file without holding it in memory, so its size is limited only by the disk. Redirects, retries and headers work as for Get. A 2xx body is written to path + \".part\" and moved over path only once complete, so an interrupted download never leaves a truncated file under the real name. Any other status leaves path untouched and its body in the response, as Get would return it.**\n\n```method : public : GetToFile(url:Web.HTTP.Url, path:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\npath: String\n\nreturn: Web.HTTP.Response\n\n```\nclient := Web.HTTP.HttpClient->New();\nresponse := client->GetToFile(Web.HTTP.Url->New(\"http://example.com/model.onnx\"), \"model.onnx\");\nif(response <> Nil & response->GetCode() = 200) {\n  client->GetDownloadSize()->PrintLine();\n};\n```"]
 				},
 				"HasCookie": {
 					"descriptions": ["**Checks for a cookie**\n\n```method : public : HasCookie(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool"]
@@ -17090,6 +17096,9 @@
 				},
 				"QuickGet": {
 					"descriptions": ["**Performs a HTTP GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nreturn: Web.HTTP.Response\n\n```\nresponse := Web.HTTP.HttpClient->QuickGet(Web.HTTP.Url->New(\"https://httpbin.org/get\"));\nif(response <> Nil) {\n  response->ToString()->PrintLine();\n};\n```", "**Performs a HTTP GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response\n\n```\nhdrs := Collection.Map->New()<String, String>;\nhdrs->Insert(\"Accept\", \"application/json\");\nresponse := Web.HTTP.HttpClient->QuickGet(Web.HTTP.Url->New(\"https://api.example.com\"), hdrs);\nresponse->ToString()->PrintLine();\n```", "**Performs a HTTP GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url, content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs a HTTP GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url, content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
+				},
+				"QuickGetToFile": {
+					"descriptions": ["**Downloads a resource to a file without holding it in memory. See GetToFile.**\n\n```function : QuickGetToFile(url:Web.HTTP.Url, path:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\npath: String\n\nreturn: Web.HTTP.Response"]
 				},
 				"QuickPatch": {
 					"descriptions": ["**Performs a HTTP PATCH**\n\n```function : QuickPatch(url:Web.HTTP.Url, data:Byte[]) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\nreturn: Web.HTTP.Response", "**Performs a HTTP PATCH**\n\n```function : QuickPatch(url:Web.HTTP.Url, data:Byte[], content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs a HTTP PATCH**\n\n```function : QuickPatch(url:Web.HTTP.Url, data:Byte[], content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
@@ -17135,6 +17144,9 @@
 				"GetCookies": {
 					"descriptions": ["**Gets the cookies**\n\n```method : public : GetCookies() ~ Vector&lt;Cookie&gt;```\n\n\n\nreturn: Vector&lt;Cookie&gt;"]
 				},
+				"GetDownloadSize": {
+					"descriptions": ["**Bytes the last GetToFile wrote.**\n\n```method : public : GetDownloadSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetIssuer": {
 					"descriptions": ["**Gets the socket's X.509 certificate issuer name**\n\n```method : public : GetIssuer() ~ String```\n\n\n\nreturn: String\n\n```\nclient := Web.HTTP.HttpsClient->New();\nclient->Get(Web.HTTP.Url->New(\"https://example.com/\"));\nclient->GetIssuer()->PrintLine();   # e.g. \"Let's Encrypt Authority X3\"\n```"]
 				},
@@ -17146,6 +17158,9 @@
 				},
 				"GetSubject": {
 					"descriptions": ["**Gets the socket's X.509 certificate subject name**\n\n```method : public : GetSubject() ~ String```\n\n\n\nreturn: String\n\n```\nclient := Web.HTTP.HttpsClient->New();\nclient->Get(Web.HTTP.Url->New(\"https://example.com/\"));\nclient->GetSubject()->PrintLine();  # e.g. \"CN=example.com\"\n```"]
+				},
+				"GetToFile": {
+					"descriptions": ["**Downloads a resource to a file without holding it in memory, so its size is limited only by the disk. Redirects, retries and headers work as for Get. A 2xx body is written to path + \".part\" and moved over path only once complete, so an interrupted download never leaves a truncated file under the real name. Any other status leaves path untouched and its body in the response, as Get would return it.**\n\n```method : public : GetToFile(url:Web.HTTP.Url, path:String, pem:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\npath: String\n\npem: String\n\nreturn: Web.HTTP.Response\n\n```\nclient := Web.HTTP.HttpsClient->New();\nresponse := client->GetToFile(Web.HTTP.Url->New(\"https://example.com/model.onnx\"), \"model.onnx\", Nil);\nif(response <> Nil & response->GetCode() = 200) {\n  client->GetDownloadSize()->PrintLine();\n};\n```", "**Downloads a resource to a file without holding it in memory, trusting the system's certificates. See GetToFile(url, path, pem).**\n\n```method : public : GetToFile(url:Web.HTTP.Url, path:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\npath: String\n\nreturn: Web.HTTP.Response"]
 				},
 				"HasCookie": {
 					"descriptions": ["**Checks for a cookie**\n\n```method : public : HasCookie(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool"]
@@ -17167,6 +17182,9 @@
 				},
 				"QuickGet": {
 					"descriptions": ["**Performs a HTTPS GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nreturn: Web.HTTP.Response\n\n```\nurl := Web.HTTP.Url->New(\"https://httpbin.org/get\");\nresponse := Web.HTTP.HttpsClient->QuickGet(url);\nif(response <> Nil) {\n  response->GetCode()->PrintLine();            # 200\n  String->New(response->GetContent())->PrintLine();  # JSON body\n};\n```", "**Performs a HTTPS GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response", "**Performs a HTTPS GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url, content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs a HTTPS GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url, content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response", "**Performs a HTTPS GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url, content_type:String, headers:Map&lt;String,String&gt;, pem:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\npem: String\n\nreturn: Web.HTTP.Response"]
+				},
+				"QuickGetToFile": {
+					"descriptions": ["**Downloads a resource to a file without holding it in memory. See GetToFile.**\n\n```function : QuickGetToFile(url:Web.HTTP.Url, path:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\npath: String\n\nreturn: Web.HTTP.Response"]
 				},
 				"QuickPatch": {
 					"descriptions": ["**Performs a HTTPS PATCH**\n\n```function : QuickPatch(url:Web.HTTP.Url, data:Byte[]) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\nreturn: Web.HTTP.Response\n\n```\nurl := Web.HTTP.Url->New(\"https://api.example.com/items/1\");\nbody := \"{\\\"status\\\":\\\"active\\\"}\"->ToByteArray();\nresponse := Web.HTTP.HttpsClient->QuickPatch(url, body, \"application/json\");\nresponse->GetCode()->PrintLine();  # 200\n```", "**Performs a HTTPS PATCH**\n\n```function : QuickPatch(url:Web.HTTP.Url, data:Byte[], content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs a HTTPS PATCH**\n\n```function : QuickPatch(url:Web.HTTP.Url, data:Byte[], content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]

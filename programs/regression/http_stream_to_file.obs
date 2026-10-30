@@ -1,0 +1,433 @@
+#~
+# Large responses: GetToFile streams to disk, and memory reads have no 256 MB cap
+#
+# A model file is hundreds of megabytes (bert-base's ONNX export is 438 MB). The HTTP
+# clients read every body into memory, and refused one over 256 MB: ReadLength returned
+# Nil, so the GET came back with no content and no reason. The chunked reader refused any
+# chunk over 256 KB the same way. Now:
+#
+#   - GetToFile streams a 2xx body to a file through a 256 KB buffer, writing to
+#     path + ".part" and moving it over path only once complete;
+#   - Get has no size limit beyond memory, and chunks of any size are read.
+#
+# An in-process server, on a port the system chose, answers:
+#
+#   /big       257 MB with Content-Length, just over the old cap, into memory --
+#              checked a megabyte at a time against SHA-256 of the pattern
+#   /medium    3 MB with Content-Length, to a file, checked the same way (GetToFile has
+#              no size-dependent path, so it needs no 257 MB body: the test stays inside
+#              the 60 s a POSIX leg gives it, interpreted as well)
+#   /chunked   chunks of 1 MB and 300 KB (the second with a ";name=value" extension) and
+#              17 bytes: to a file and into memory
+#   /close     no length, the body ends when the server closes
+#   /moved     302 to /chunked: GetToFile follows it
+#   /missing   404 with a body: the existing file is untouched, the body is in the response
+#   /short     Content-Length 1000 and only 500 bytes: Nil, no file, no .part left behind
+#
+# and a TLS server answers /chunked and /missing for HttpsClient, with a self-signed
+# certificate pinned as the only trust anchor (openssl, as tls_ip_san makes them).
+# EXTRA_LIBS: net
+~#
+
+use Collection, System.Concurrency, System.IO.Filesystem, System.IO.Net, Web.HTTP;
+
+# The bodies, built from one deterministic megabyte
+class Bodies {
+	function : Block() ~ Byte[] {
+		block := Byte->New[1048576];
+		each(i : block) {
+			block[i] := ((i * 31 + 7) % 251)->As(Byte);
+		};
+		return block;
+	}
+
+	# the /chunked body: 1 MB, then the block's first 300 KB, then 17 bytes
+	function : Chunked(block : Byte[]) ~ Byte[] {
+		tail := "end-of-chunks!!!!"->ToByteArray();
+		body := Byte->New[1048576 + 307200 + tail->Size()];
+		Runtime->Copy(body, 0, block, 0, 1048576);
+		Runtime->Copy(body, 1048576, block, 0, 307200);
+		Runtime->Copy(body, 1048576 + 307200, tail, 0, tail->Size());
+		return body;
+	}
+
+	function : Close() ~ Byte[] {
+		return "the body ends when the server closes"->ToByteArray();
+	}
+}
+
+# Reads a request and writes the reply to out; true when the connection is to be closed
+# abruptly (the /short case) rather than gracefully.
+class Replies {
+	function : Answer(stream : System.IO.InputStream, out : System.IO.OutputStream, block : Byte[], chunked : Byte[]) ~ Bool {
+		header : String;
+		line := stream->ReadLine();
+		if(line = Nil) {
+			return false;
+		};
+		do {
+			header := stream->ReadLine();
+		}
+		while(header <> Nil & header->Size() > 0);
+
+		if(line->Has(" /big ")) {
+			Head(out, "200 OK", "Content-Length: 269484032");
+			for(i := 0; i < 257; i += 1;) {
+				out->WriteBuffer(0, block->Size(), block);
+			};
+		}
+		else if(line->Has(" /medium ")) {
+			Head(out, "200 OK", "Content-Length: 3145728");
+			for(i := 0; i < 3; i += 1;) {
+				out->WriteBuffer(0, block->Size(), block);
+			};
+		}
+		else if(line->Has(" /chunked ")) {
+			Head(out, "200 OK", "Transfer-Encoding: chunked");
+			Text(out, "100000\r\n");
+			out->WriteBuffer(0, 1048576, chunked);
+			Text(out, "\r\n4b000;name=value\r\n");
+			out->WriteBuffer(1048576, 307200, chunked);
+			Text(out, "\r\n11\r\n");
+			out->WriteBuffer(1048576 + 307200, 17, chunked);
+			Text(out, "\r\n0\r\n\r\n");
+		}
+		else if(line->Has(" /close ")) {
+			body := Bodies->Close();
+			Text(out, "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nConnection: close\r\n\r\n");
+			out->WriteBuffer(0, body->Size(), body);
+		}
+		else if(line->Has(" /moved ")) {
+			Head(out, "302 Found", "Location: /chunked\r\nContent-Length: 0");
+		}
+		else if(line->Has(" /missing ")) {
+			Head(out, "404 Not Found", "Content-Length: 4");
+			Text(out, "nope");
+		}
+		else if(line->Has(" /short ")) {
+			Head(out, "200 OK", "Content-Length: 1000");
+			out->WriteBuffer(0, 500, block);
+			return true;
+		}
+		else {
+			Head(out, "404 Not Found", "Content-Length: 0");
+		};
+		return false;
+	}
+
+	function : Head(out : System.IO.OutputStream, status : String, header : String) ~ Nil {
+		Text(out, "HTTP/1.1 {$status}\r\nContent-Type: application/octet-stream\r\n{$header}\r\nConnection: close\r\n\r\n");
+	}
+
+	function : Text(out : System.IO.OutputStream, text : String) ~ Nil {
+		bytes := text->ToByteArray();
+		out->WriteBuffer(0, bytes->Size(), bytes);
+	}
+}
+
+# Serves plain HTTP until the program ends
+class PlainServer from Thread {
+	@server : TCPSocketServer;
+	@block : Byte[];
+	@chunked : Byte[];
+
+	New(server : TCPSocketServer, block : Byte[], chunked : Byte[]) {
+		Parent("stream-plain");
+		@server := server;
+		@block := block;
+		@chunked := chunked;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		while(true) {
+			client := @server->Accept();
+			if(client <> Nil & client->IsOpen()) {
+				if(Replies->Answer(client, client, @block, @chunked)) {
+					client->Close();
+				}
+				else {
+					# Not Close(): let the client read the reply and hang up first (#669)
+					client->CloseGracefully();
+				};
+			};
+		};
+	}
+}
+
+# Serves HTTPS until the program ends
+class TlsServer from Thread {
+	@server : TCPSecureSocketServer;
+	@block : Byte[];
+	@chunked : Byte[];
+
+	New(server : TCPSecureSocketServer, block : Byte[], chunked : Byte[]) {
+		Parent("stream-tls");
+		@server := server;
+		@block := block;
+		@chunked := chunked;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		while(true) {
+			client := @server->Accept();
+			if(client <> Nil & client->IsOpen()) {
+				if(Replies->Answer(client, client, @block, @chunked)) {
+					client->Close();
+				}
+				else {
+					client->CloseGracefully();
+				};
+			};
+		};
+	}
+}
+
+class HttpStreamToFile {
+	@passed : Int;
+	@failed : Int;
+	@block : Byte[];
+	@block_hash : String;
+	@chunked : Byte[];
+	@prefix : String;
+
+	New() {
+		@passed := 0;
+		@failed := 0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		HttpStreamToFile->New()->Run();
+	}
+
+	method : Run() ~ Nil {
+		"Testing streamed and large HTTP downloads..."->PrintLine();
+
+		passed : Int;
+		failed : Int;
+
+		@block := Bodies->Block();
+		@block_hash := Hash(@block);
+		@chunked := Bodies->Chunked(@block);
+		@prefix := "stream-to-file-{$Runtime->GetProcessId()}";
+
+		PlainCases();
+		TlsCases();
+
+		passed := @passed;
+		failed := @failed;
+		if(failed > 0) {
+			"---"->PrintLine();
+			"{$passed} passed, {$failed} failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: {$passed} checks; large and streamed downloads arrive whole"->PrintLine();
+	}
+
+	method : PlainCases() ~ Nil {
+		server : TCPSocketServer;
+		client : HttpClient;
+		response : Web.HTTP.Response;
+		base : String;
+		path : String;
+		port : Int;
+
+		server := TCPSocketServer->New("127.0.0.1", 0);
+		if(<>server->Listen(8)) {
+			Fail("http: the test server did not listen");
+			return;
+		};
+		port := server->GetPort();
+		PlainServer->New(server, @block, @chunked)->Execute(Nil);
+		base := "http://127.0.0.1:{$port}";
+		path := "{$@prefix}.bin";
+
+		# 3 MB with a length, to a file
+		client := HttpClient->New();
+		response := client->GetToFile(Url->New(base + "/medium"), path);
+		Check("http: GetToFile of 3 MB answers 200", response <> Nil & response->GetCode() = 200);
+		Check("http: GetToFile of 3 MB reports 3145728 bytes", client->GetDownloadSize() = 3145728);
+		Check("http: the 3 MB file is whole", FileWhole(path, 3));
+		Check("http: a 2xx to a file has no content in the response", response <> Nil & response->GetContent() = Nil);
+		Check("http: no .part is left behind", <>File->Exists("{$path}.part"));
+		File->Delete(path);
+
+		# 257 MB into memory: refused before, past the 256 MB cap
+		response := HttpClient->New()->Get(Url->New(base + "/big"));
+		Check("http: Get of 257 MB answers 200", response <> Nil & response->GetCode() = 200);
+		Check("http: Get of 257 MB holds the whole body", response <> Nil & BigBytesWhole(response->GetContent()));
+		response := Nil;
+
+		# chunks larger than the old 256 KB limit, one with an extension
+		client := HttpClient->New();
+		response := client->GetToFile(Url->New(base + "/chunked"), path);
+		Check("http: GetToFile of a chunked body answers 200", response <> Nil & response->GetCode() = 200);
+		Check("http: the chunked file is whole", SameBytes(ReadAll(path), @chunked) & client->GetDownloadSize() = @chunked->Size());
+		response := HttpClient->New()->Get(Url->New(base + "/chunked"));
+		Check("http: Get reads chunks over 256 KB", response <> Nil & SameBytes(response->GetContent(), @chunked));
+
+		# a body that ends when the server closes
+		response := HttpClient->New()->GetToFile(Url->New(base + "/close"), path);
+		Check("http: GetToFile of a body ended by close", response <> Nil & response->GetCode() = 200 & SameBytes(ReadAll(path), Bodies->Close()));
+
+		# a redirect is followed
+		response := HttpClient->QuickGetToFile(Url->New(base + "/moved"), path);
+		Check("http: QuickGetToFile follows a redirect", response <> Nil & response->GetCode() = 200 & SameBytes(ReadAll(path), @chunked));
+
+		# a 404 leaves the existing file alone and keeps its body in the response
+		client := HttpClient->New();
+		response := client->GetToFile(Url->New(base + "/missing"), path);
+		Check("http: a 404 returns the response with its body", response <> Nil & response->GetCode() = 404 & response->GetContent() <> Nil & response->GetContent()->ToString()->Equals("nope"));
+		Check("http: a 404 leaves the existing file untouched", SameBytes(ReadAll(path), @chunked) & client->GetDownloadSize() = -1);
+
+		# a body cut short: Nil, and neither the file nor a .part
+		File->Delete(path);
+		client := HttpClient->New();
+		response := client->GetToFile(Url->New(base + "/short"), path);
+		Check("http: a body cut short returns Nil", response = Nil & client->GetDownloadSize() = -1);
+		Check("http: a body cut short leaves no file and no .part", <>File->Exists(path) & <>File->Exists("{$path}.part"));
+
+		File->Delete(path);
+	}
+
+	method : TlsCases() ~ Nil {
+		server : TCPSecureSocketServer;
+		client : HttpsClient;
+		response : Web.HTTP.Response;
+		name : String;
+		pem : String;
+		base : String;
+		path : String;
+		port : Int;
+
+		name := "{$@prefix}-tls";
+		if(<>MakeCert(name)) {
+			Fail("https: openssl could not make the test certificate");
+			return;
+		};
+		pem := "{$name}-cert.pem";
+
+		server := TCPSecureSocketServer->New(pem, "{$name}-key.pem", "", "127.0.0.1", 0);
+		if(<>server->Listen()) {
+			Fail("https: the test server did not listen");
+			return;
+		};
+		port := server->GetPort();
+		TlsServer->New(server, @block, @chunked)->Execute(Nil);
+		base := "https://127.0.0.1:{$port}";
+		path := "{$@prefix}-tls.bin";
+
+		client := HttpsClient->New();
+		response := client->GetToFile(Url->New(base + "/chunked"), path, pem);
+		Check("https: GetToFile of a chunked body answers 200", response <> Nil & response->GetCode() = 200);
+		Check("https: the chunked file is whole", SameBytes(ReadAll(path), @chunked) & client->GetDownloadSize() = @chunked->Size());
+
+		response := HttpsClient->New()->Get(Url->New(base + "/chunked"), "application/octet-stream", pem);
+		Check("https: Get reads chunks over 256 KB", response <> Nil & SameBytes(response->GetContent(), @chunked));
+
+		client := HttpsClient->New();
+		response := client->GetToFile(Url->New(base + "/missing"), path, pem);
+		Check("https: a 404 leaves the existing file untouched", response <> Nil & response->GetCode() = 404 & SameBytes(ReadAll(path), @chunked) & client->GetDownloadSize() = -1);
+
+		File->Delete(path);
+		File->Delete(pem);
+		File->Delete("{$name}-key.pem");
+	}
+
+	# --- checks ---
+
+	function : Hash(bytes : Byte[]) ~ String {
+		return Cipher.Hash->SHA256(bytes)->ToHexString();
+	}
+
+	function : SameBytes(got : Byte[], want : Byte[]) ~ Bool {
+		if(got = Nil | want = Nil | got->Size() <> want->Size()) {
+			return false;
+		};
+		return Hash(got)->Equals(Hash(want));
+	}
+
+	# the whole file, for the small bodies
+	function : ReadAll(path : String) ~ Byte[] {
+		if(<>File->Exists(path)) {
+			return Nil;
+		};
+		size := File->Size(path);
+		bytes := Byte->New[size];
+		reader := FileReader->New(path);
+		total := 0;
+		while(total < size) {
+			read := reader->ReadBuffer(total, size - total, bytes);
+			if(read <= 0) {
+				reader->Close();
+				return Nil;
+			};
+			total += read;
+		};
+		reader->Close();
+		return bytes;
+	}
+
+	# blocks megabytes, each the block: read and hashed a megabyte at a time
+	method : FileWhole(path : String, blocks : Int) ~ Bool {
+		if(<>File->Exists(path) | File->Size(path) <> blocks * 1048576) {
+			return false;
+		};
+		buffer := Byte->New[1048576];
+		reader := FileReader->New(path);
+		for(i := 0; i < blocks; i += 1;) {
+			total := 0;
+			while(total < 1048576) {
+				read := reader->ReadBuffer(total, 1048576 - total, buffer);
+				if(read <= 0) {
+					reader->Close();
+					return false;
+				};
+				total += read;
+			};
+			if(<>Hash(buffer)->Equals(@block_hash)) {
+				reader->Close();
+				return false;
+			};
+		};
+		reader->Close();
+		return true;
+	}
+
+	method : BigBytesWhole(bytes : Byte[]) ~ Bool {
+		if(bytes = Nil | bytes->Size() <> 269484032) {
+			return false;
+		};
+		buffer := Byte->New[1048576];
+		for(i := 0; i < 257; i += 1;) {
+			Runtime->Copy(buffer, 0, bytes, i * 1048576, 1048576);
+			if(<>Hash(buffer)->Equals(@block_hash)) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			@passed += 1;
+		}
+		else {
+			Fail(name);
+		};
+	}
+
+	method : Fail(message : String) ~ Nil {
+		"  FAIL: {$message}"->PrintLine();
+		@failed += 1;
+	}
+
+	# a self-signed certificate naming IP:127.0.0.1, as tls_ip_san makes them
+	function : MakeCert(name : String) ~ Bool {
+		File->Delete("{$name}-cert.pem");
+		File->Delete("{$name}-key.pem");
+		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
+		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=objeck-stream-test\" -addext \"subjectAltName=IP:127.0.0.1\" -keyout {$name}-key.pem -out {$name}-cert.pem";
+		return Runtime->Command(command) = 0;
+	}
+}
