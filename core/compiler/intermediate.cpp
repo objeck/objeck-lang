@@ -219,12 +219,20 @@ void IntermediateEmitter::Translate()
     }    
   }
 
-  // resolve referenced interfaces
+  // resolve referenced interfaces: against the program's uses and the class's own bundle,
+  // since a library built before its interface names were qualified holds them as written
+  // ('implements SubwordTokenizer' inside System.NLP)
   for(size_t i = 0; i < lib_classes.size(); ++i) {
-    LibraryClass* lib_class = lib_classes[i]; 
+    LibraryClass* lib_class = lib_classes[i];
     std::vector<std::wstring> interface_names = lib_class->GetInterfaceNames();
+    std::vector<std::wstring> uses = parsed_program->GetLibUses();
+    const std::wstring& class_name = lib_class->GetName();
+    const size_t bundle_end = class_name.find_last_of(L'.');
+    if(bundle_end != std::wstring::npos) {
+      uses.push_back(class_name.substr(0, bundle_end));
+    }
     for(size_t j = 0; j < interface_names.size(); ++j) {
-      LibraryClass* inf_klass = parsed_program->GetLinker()->SearchClassLibraries(interface_names[j], parsed_program->GetLibUses());
+      LibraryClass* inf_klass = parsed_program->GetLinker()->SearchClassLibraries(interface_names[j], uses);
       if(inf_klass) {
         lib_class->AddInterfaceId(inf_klass->GetId());
       }
@@ -635,15 +643,25 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
     }
   }
 
-  // process interfaces
+  // process interfaces: ids, and the names a library keeps for the programs that link it.
+  // Those names are the resolved, fully qualified ones, not the source's: the source may say
+  // 'implements SubwordTokenizer' inside bundle System.NLP, and a program that links the
+  // library resolves the name against its OWN uses -- which need not include System.NLP --
+  // so the class lost the interface and a cast to it failed at run time.
   std::vector<int> interface_ids;
+  std::vector<std::wstring> interface_names;
   std::vector<Class*> interfaces = current_class->GetInterfaces();
   for(size_t i = 0; i < interfaces.size(); ++i) {
     interface_ids.push_back(interfaces[i]->GetId());
+    interface_names.push_back(interfaces[i]->GetName());
   }
   std::vector<LibraryClass*> lib_interfaces = current_class->GetLibraryInterfaces();
   for(size_t i = 0; i < lib_interfaces.size(); ++i) {
     interface_ids.push_back(lib_interfaces[i]->GetId());
+    interface_names.push_back(lib_interfaces[i]->GetName());
+  }
+  if(interface_names.empty()) {
+    interface_names = current_class->GetInterfaceNames();
   }
 
   // get short file name
@@ -657,7 +675,7 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
     short_file_name = file_name.substr(offset + 1);
   }
   
-  imm_klass = new IntermediateClass(current_class->GetId(), current_class->GetName(),  pid, parent_name, interface_ids, current_class->GetInterfaceNames(), 
+  imm_klass = new IntermediateClass(current_class->GetId(), current_class->GetName(),  pid, parent_name, interface_ids, interface_names,
                                     current_class->IsInterface(), current_class->IsPublic(), current_class->GetGenericStrings(),  current_class->IsVirtual(), 
                                     cls_space, inst_space, cls_entries, inst_entries, short_file_name, is_debug);
   // block
