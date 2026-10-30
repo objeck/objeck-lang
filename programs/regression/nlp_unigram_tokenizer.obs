@@ -1,0 +1,294 @@
+#~
+# UnigramTokenizer: SentencePiece's Unigram (DeBERTa-v3, XLM-R), id for id and offset for
+# offset with Hugging Face's tokenizers library.
+#
+# data/bert/unigram holds 2,000 pieces trained by gen_unigram_parity.py with tokenizers
+# itself, and the precompiled character map of a real DeBERTa-v3 tokenizer -- the
+# normalization table SentencePiece compiles, NFKC-style. unigram_parity.txt is what
+# Python's tokenizer gives 123 texts -- 100 lines of this repository's docs and edge cases:
+# combining marks, full-width forms, ligatures, non-breaking spaces, Roman numerals, tabs and
+# line breaks, Greek, Cyrillic, CJK, Hangul jamo, Devanagari, emoji with modifiers and
+# joiners, flags, specials in the text, empty and whitespace-only text -- in both shapes:
+#
+#   deberta  Strip, Precompiled, collapse spaces; Metaspace; [CLS] a [SEP] b [SEP]
+#   xlmr     Precompiled; split on whitespace, Metaspace; <s> a </s></s> b </s>; <mask> lstrip
+#
+# alone and paired with the next text. Every id and every character offset must match.
+# unigram_sweep.txt is what the character map makes of every code point it changes, alone;
+# each must match, and a sample of the rest must come back unchanged. Then truncation,
+# padding, token types, Decode, and refusals.
+# EXTRA_LIBS: nlp
+~#
+
+use Collection;
+use System.IO.Filesystem;
+use System.NLP;
+
+class NlpUnigramTokenizer {
+	@ok : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		NlpUnigramTokenizer->New()->Run();
+	}
+
+	New() {
+		@ok := true;
+	}
+
+	method : Check(name : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	method : Run() ~ Nil {
+		lines := Lines(FileReader->ReadFile("data/bert/unigram/pieces.txt"));
+		charsmap := FileReader->ReadBinaryFile("data/bert/unigram/charsmap.bin");
+		rows := Lines(FileReader->ReadFile("data/bert/unigram_parity.txt"));
+		sweep := Lines(FileReader->ReadFile("data/bert/unigram_sweep.txt"));
+		if(lines = Nil | charsmap = Nil | rows = Nil | sweep = Nil) {
+			"FAIL: data/bert/unigram, unigram_parity.txt or unigram_sweep.txt did not load; run from programs/regression"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		pieces := String->New[lines->Size()];
+		scores := Float->New[lines->Size()];
+		each(i : lines) {
+			fields := Fields(lines->Get(i), '\t');
+			pieces[i] := fields[0];
+			scores[i] := fields[1]->ToFloat();
+		};
+
+		deberta := UnigramTokenizer->New(pieces, scores, 3, charsmap);
+		deberta->SetNormalization(true, true);
+		Check("deberta: loads 2,000 pieces and the character map", deberta->IsLoaded() & deberta->GetVocabularySize() = 2000);
+		Check("deberta: [MASK] is a special token", deberta->AddSpecialToken("[MASK]", false, false));
+
+		xlmr := UnigramTokenizer->New(pieces, scores, 8, charsmap);
+		Check("xlmr: <s>, </s> and <pad> with the RoBERTa template", xlmr->SetSpecialTokens("<s>", "</s>", "<pad>", UnigramTokenizer->Template->ROBERTA));
+		xlmr->SetWhitespaceSplit(true);
+		Check("xlmr: <mask> takes the whitespace before it", xlmr->AddSpecialToken("<mask>", true, false));
+
+		Parity(deberta, xlmr, rows);
+		Sweep(xlmr, sweep);
+		Shapes(deberta, xlmr);
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	method : Parity(deberta : UnigramTokenizer, xlmr : UnigramTokenizer, rows : Vector<String>) ~ Nil {
+		count := 0;
+		failures := 0;
+		each(r : rows) {
+			row := rows->Get(r);
+			if(row->Size() > 0 & <>row->StartsWith("#")) {
+				fields := Fields(row, '\t');
+				tokenizer := deberta;
+				if(fields[0]->Equals("xlmr")) {
+					tokenizer := xlmr;
+				};
+				text := Unescape(fields[2]);
+				encoding : TokenEncoding;
+				if(fields[1]->Equals("pair")) {
+					encoding := tokenizer->EncodePair(text, Unescape(fields[3]), 4096);
+				}
+				else {
+					encoding := tokenizer->Encode(text, 4096);
+				};
+
+				want_ids := Fields(fields[4], ' ');
+				want_offsets := Fields(fields[5], ' ');
+				same := encoding <> Nil & encoding->GetLength() = want_ids->Size();
+				if(same) {
+					ids := encoding->GetIds();
+					offsets := encoding->GetOffsets();
+					each(k : want_ids) {
+						span := Fields(want_offsets[k], ',');
+						if(ids[k] <> want_ids[k]->ToInt() | offsets[2 * k] <> span[0]->ToInt() | offsets[2 * k + 1] <> span[1]->ToInt()) {
+							same := false;
+						};
+					};
+				};
+
+				count += 1;
+				if(<>same) {
+					failures += 1;
+					if(failures <= 6) {
+						"  differs ({$fields[0]} {$fields[1]}): '{$fields[2]}'"->PrintLine();
+						"    want ids {$fields[4]}"->PrintLine();
+						"    want offsets {$fields[5]}"->PrintLine();
+						if(encoding <> Nil) {
+							got := "";
+							for(k := 0; k < encoding->GetLength(); k += 1;) {
+								got += encoding->GetIds()[k];
+								got += ':';
+								got += encoding->GetOffsets()[2 * k];
+								got += ',';
+								got += encoding->GetOffsets()[2 * k + 1];
+								got += ' ';
+							};
+							"    got {$got}"->PrintLine();
+						};
+					};
+				};
+			};
+		};
+		Check("{$count} encodings (492 expected) match tokenizers id for id and offset for offset", count = 492 & failures = 0);
+	}
+
+	# every code point the map changes, alone; and a sample of the ones it leaves alone
+	method : Sweep(tokenizer : UnigramTokenizer, sweep : Vector<String>) ~ Nil {
+		changed := Set->New()<IntRef>;
+		count := 0;
+		failures := 0;
+		each(r : sweep) {
+			row := sweep->Get(r);
+			if(row->Size() > 0 & <>row->StartsWith("#")) {
+				fields := Fields(row, '\t');
+				cp := ("0x" + fields[0])->ToInt();
+				changed->Insert(IntRef->New(cp));
+				want := "";
+				if(fields->Size() > 1 & fields[1]->Size() > 0) {
+					parts := Fields(fields[1], ' ');
+					each(k : parts) {
+						want->Append(("0x" + parts[k])->ToInt()->As(Char));
+					};
+				};
+				text := "";
+				text->Append(cp->As(Char));
+				got := tokenizer->Normalize(text);
+				count += 1;
+				if(got = Nil | <>got->Equals(want)) {
+					failures += 1;
+					if(failures <= 5) {
+						"  U+{$fields[0]}: want '{$want}'"->PrintLine();
+					};
+				};
+			};
+		};
+		Check("{$count} code points the map changes (4,837 expected) normalize as tokenizers does", count = 4837 & failures = 0);
+
+		kept := 0;
+		moved := 0;
+		cp := 0x20;
+		while(cp < 0x110000) {
+			if((cp < 0xD800 | cp > 0xDFFF) & <>changed->Has(IntRef->New(cp))) {
+				text := "";
+				text->Append(cp->As(Char));
+				got := tokenizer->Normalize(text);
+				if(got <> Nil & got->Equals(text)) {
+					kept += 1;
+				}
+				else {
+					moved += 1;
+				};
+			};
+			cp += 37;
+		};
+		Check("{$kept} sampled code points the map leaves alone come back unchanged", moved = 0 & kept > 20000);
+	}
+
+	method : Shapes(deberta : UnigramTokenizer, xlmr : UnigramTokenizer) ~ Nil {
+		text := "the quick brown fox jumps over the lazy dog";
+		full := deberta->Encode(text, 4096);
+		short := deberta->Encode(text, 6);
+		Check("truncation keeps [CLS], the first 4 pieces and [SEP]", short <> Nil & short->GetLength() = 6 & short->IsTruncated() &
+			short->GetIds()[0] = deberta->GetId("[CLS]") & short->GetIds()[5] = deberta->GetId("[SEP]") & short->GetIds()[4] = full->GetIds()[4]);
+		padded := deberta->Encode("x", 8);
+		Check("padding is [PAD], mask 0, offsets (0, 0)", padded <> Nil & padded->GetSize() = 8 & padded->GetIds()[7] = deberta->GetId("[PAD]") &
+			padded->GetAttentionMask()[7] = 0 & padded->GetOffsets()[14] = 0 & <>padded->IsTruncated());
+		pair := deberta->EncodePair("first text", "second", 4096);
+		Check("BERT template: the second text and its [SEP] are token type 1", pair <> Nil &
+			pair->GetTokenTypeIds()[0] = 0 & pair->GetTokenTypeIds()[pair->GetLength() - 1] = 1 & pair->GetTokenTypeIds()[pair->GetLength() - 2] = 1);
+		roberta := xlmr->EncodePair("first text", "second", 4096);
+		Check("RoBERTa template: </s></s> between, all token type 0", roberta <> Nil & roberta->GetTokenTypeIds()[roberta->GetLength() - 1] = 0);
+		Check("pair truncation stays within max_len", deberta->EncodePair(text, text, 9)->GetLength() = 9 & xlmr->EncodePair(text, text, 9)->GetLength() = 9);
+		Check("max_len below 2 is refused", deberta->Encode(text, 1) = Nil & deberta->GetError() <> Nil);
+		Check("Decode joins pieces, ▁ as a space", deberta->Decode(deberta->Encode("Hello world again", 64)->GetIds())->Equals("Hello world again"));
+		Check("Normalize folds full width and ligatures", xlmr->Normalize("ＡＢ ﬁ")->Equals("AB fi"));
+		pieces := deberta->Tokenize("Hello world");
+		Check("Tokenize gives ▁-led pieces", pieces <> Nil & pieces->Size() > 1 & pieces[0]->StartsWith("▁"));
+
+		bad := UnigramTokenizer->New(["a", "b"], [-1.0, -2.0], 0, Nil);
+		Check("a vocabulary with no specials is refused with a reason", <>bad->IsLoaded() & bad->GetError() <> Nil);
+		mismatched := UnigramTokenizer->New(["a", "b"], [-1.0], 0, Nil);
+		Check("pieces without one score each are refused", <>mismatched->IsLoaded());
+	}
+
+	# --- fixtures ---
+
+	function : Lines(text : String) ~ Vector<String> {
+		if(text = Nil) {
+			return Nil;
+		};
+		lines := Vector->New()<String>;
+		line := "";
+		each(i : text) {
+			c := text->Get(i);
+			if(c = '\n') {
+				lines->AddBack(line);
+				line := "";
+			}
+			else if(c <> '\r') {
+				line->Append(c);
+			};
+		};
+		if(line->Size() > 0) {
+			lines->AddBack(line);
+		};
+		return lines;
+	}
+
+	function : Fields(line : String, separator : Char) ~ String[] {
+		fields := Vector->New()<String>;
+		field := "";
+		each(i : line) {
+			c := line->Get(i);
+			if(c = separator) {
+				fields->AddBack(field);
+				field := "";
+			}
+			else {
+				field->Append(c);
+			};
+		};
+		fields->AddBack(field);
+		return fields->ToArray();
+	}
+
+	# the fixture's escapes: \t, \n, \r and \\
+	function : Unescape(text : String) ~ String {
+		out := "";
+		i := 0;
+		while(i < text->Size()) {
+			c := text->Get(i);
+			if(c = '\\' & i + 1 < text->Size()) {
+				next := text->Get(i + 1);
+				if(next = 't') {
+					out->Append('\t');
+				}
+				else if(next = 'n') {
+					out->Append('\n');
+				}
+				else if(next = 'r') {
+					out->Append('\r');
+				}
+				else {
+					out->Append(next);
+				};
+				i += 2;
+			}
+			else {
+				out->Append(c);
+				i += 1;
+			};
+		};
+		return out;
+	}
+}

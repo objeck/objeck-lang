@@ -2820,7 +2820,8 @@ encoding := tokenizer->Encode("the quick brown fox", 128);
 
 	#~
 	A tokenizer that turns text into a model's input: WordPieceTokenizer (BERT, DistilBERT,
-	MiniLM) and BpeTokenizer (RoBERTa, GPT-2). The task classes of System.NLP.Onnx take either.
+	MiniLM), BpeTokenizer (RoBERTa, GPT-2) and UnigramTokenizer (DeBERTa-v3, XLM-R). The task
+	classes of System.NLP.Onnx take any of them.
 	~#
 	interface SubwordTokenizer {
 		#~
@@ -3197,7 +3198,7 @@ encoding->GetTokens()->Size()->PrintLine();   # 8: <s> Hello Ġworld </s> <pad> 
 			segment := 0;
 			i := 0;
 			while(i < size) {
-				match := MatchAdded(points, i);
+				match := BpeAdded->Match(@added, points, i);
 				if(match = Nil) {
 					i += 1;
 				}
@@ -3228,28 +3229,6 @@ encoding->GetTokens()->Size()->PrintLine();   # 8: <s> Hello Ġworld </s> <pad> 
 				TrimOffsets(sequence);
 			};
 			return sequence;
-		}
-
-		# the longest special token that starts at position i
-		method : MatchAdded(points : Int[], i : Int) ~ BpeAdded {
-			best : BpeAdded;
-			each(k : @added) {
-				candidate := @added->Get(k);
-				content := candidate->GetPoints();
-				length := content->Size();
-				if(i + length <= points->Size() & (best = Nil | length > best->GetLength())) {
-					same := true;
-					for(j := 0; same & j < length; j += 1;) {
-						if(points[i + j] <> content[j]) {
-							same := false;
-						};
-					};
-					if(same) {
-						best := candidate;
-					};
-				};
-			};
-			return best;
 		}
 
 		# text between special tokens: the GPT-2 split, then BPE on each piece's bytes
@@ -3653,6 +3632,35 @@ encoding->GetTokens()->Size()->PrintLine();   # 8: <s> Hello Ġworld </s> <pad> 
 		method : public : GetId() ~ Int { return @id; }
 		method : public : IsLstrip() ~ Bool { return @lstrip; }
 		method : public : IsRstrip() ~ Bool { return @rstrip; }
+
+		# the longest special token that starts at position i of the text
+		function : Match(added : Vector<BpeAdded>, points : Int[], i : Int) ~ BpeAdded {
+			# Every local is declared here, at the top, and best is Nil explicitly: with `same`
+			# declared inside the if, a call that matched nothing returned the previous call's
+			# match (the nested-declaration hazard; see nlp_bpe_tokenizer's <mask> cases).
+			best : BpeAdded := Nil;
+			candidate : BpeAdded;
+			content : Int[];
+			length := 0;
+			same := false;
+			each(k : added) {
+				candidate := added->Get(k);
+				content := candidate->GetPoints();
+				length := content->Size();
+				if(i + length <= points->Size() & (best = Nil | length > best->GetLength())) {
+					same := true;
+					for(j := 0; same & j < length; j += 1;) {
+						if(points[i + j] <> content[j]) {
+							same := false;
+						};
+					};
+					if(same) {
+						best := candidate;
+					};
+				};
+			};
+			return best;
+		}
 	}
 
 	# a piece's tokens after merging, cached by the piece
@@ -3692,6 +3700,924 @@ encoding->GetTokens()->Size()->PrintLine();   # 8: <s> Hello Ġworld </s> <pad> 
 		method : public : GetTokens() ~ Vector<String> { return @tokens; }
 		method : public : GetStarts() ~ IntVector { return @starts; }
 		method : public : GetEnds() ~ IntVector { return @ends; }
+	}
+
+	#~
+	SentencePiece's Unigram, the tokenizer of DeBERTa-v3, XLM-R, ALBERT and T5, as Hugging
+	Face's tokenizers runs it.
+
+	The text is normalized with the model's precompiled character map, SentencePiece's
+	NFKC-style folding (full-width forms to ASCII, ligatures split, compatibility characters
+	replaced); a space becomes ▁ and one is put before each piece of text; then each word
+	takes the vocabulary's most probable segmentation (Viterbi over the pieces' log
+	probabilities), a character no piece covers becoming the unknown token. The specials go
+	around it as the template says: BERT's [CLS] a [SEP] b [SEP] (DeBERTa-v3) or RoBERTa's
+	<s> a </s></s> b </s> (XLM-R).
+
+	DeBERTa-v3 also strips the text's ends and collapses runs of spaces
+	(SetNormalization(true, true)); XLM-R splits on whitespace before the ▁ is added
+	(SetWhitespaceSplit(true)). Every encoding records each token's character offsets in the
+	text (GetOffsets).
+
+	Usually built from a model's tokenizer.json by System.NLP.Onnx; the constructor takes the
+	pieces, their scores and the precompiled character map themselves.
+
+```
+tokenizer := UnigramTokenizer->New(pieces, scores, 3, charsmap);
+tokenizer->SetNormalization(true, true);
+encoding := tokenizer->Encode("Hello world", 8);   # [CLS] ▁Hello ▁world [SEP] [PAD] ...
+```
+	~#
+	class UnigramTokenizer implements SubwordTokenizer {
+		#~
+		Where the special tokens go.
+		~#
+		enum Template {
+			#~
+			[CLS] a [SEP], and [CLS] a [SEP] b [SEP] with b's token type 1: DeBERTa-v3, ALBERT.
+			~#
+			BERT,
+			#~
+			<s> a </s>, and <s> a </s></s> b </s>, all token type 0: XLM-R.
+			~#
+			ROBERTA
+		}
+
+		@vocab : Hash<String, IntRef>;
+		@pieces : String[];
+		@scores : Float[];
+		@unk_id : Int;
+		@unk_score : Float;
+		@max_piece : Int;
+		@charsmap : PrecompiledMap;
+		@strip : Bool;
+		@collapse : Bool;
+		@whitespace_split : Bool;
+		@template : UnigramTokenizer->Template;
+		@cls_token : String;
+		@sep_token : String;
+		@pad_token : String;
+		@cls_id : Int;
+		@sep_id : Int;
+		@pad_id : Int;
+		@added : Vector<BpeAdded>;
+		@load_error : String;
+		@error : String;
+
+		#~
+		Builds a tokenizer from its pieces. The specials are found by name: [CLS], [SEP] and
+		[PAD] with the BERT template, else <s>, </s> and <pad> with the RoBERTa one.
+		@param pieces the vocabulary, each piece's index its id (e.g. "▁Hello")
+		@param scores each piece's log probability
+		@param unk_id the id of the unknown token
+		@param charsmap SentencePiece's precompiled character map; Nil for no normalization
+		~#
+		New(pieces : String[], scores : Float[], unk_id : Int, charsmap : Byte[]) {
+			@added := Vector->New()<BpeAdded>;
+			@cls_id := -1;
+			@sep_id := -1;
+			@pad_id := -1;
+
+			if(pieces = Nil | scores = Nil | pieces->Size() = 0 | pieces->Size() <> scores->Size()) {
+				@load_error := "no pieces, or not one score per piece";
+				return;
+			};
+			if(unk_id < 0 | unk_id >= pieces->Size()) {
+				@load_error := "the unknown token's id {$unk_id} is not a piece's";
+				return;
+			};
+
+			@pieces := pieces;
+			@scores := scores;
+			@unk_id := unk_id;
+			@vocab := Hash->New()<String, IntRef>;
+			lowest := scores[0];
+			@max_piece := 1;
+			each(i : pieces) {
+				if(pieces[i] <> Nil) {
+					if(@vocab->Find(pieces[i]) = Nil) {
+						@vocab->Insert(pieces[i], IntRef->New(i));
+					};
+					length := WordPieceText->Decode(pieces[i])->Size();
+					if(length > @max_piece) {
+						@max_piece := length;
+					};
+				};
+				if(scores[i] < lowest) {
+					lowest := scores[i];
+				};
+			};
+			# Hugging Face's K_UNK_PENALTY: the unknown token is worse than any piece
+			@unk_score := lowest - 10.0;
+
+			if(charsmap <> Nil) {
+				@charsmap := PrecompiledMap->New(charsmap);
+				if(<>@charsmap->IsValid()) {
+					@load_error := "the precompiled character map does not parse";
+					return;
+				};
+			};
+
+			if(Id("[CLS]") >= 0 & Id("[SEP]") >= 0 & Id("[PAD]") >= 0) {
+				SetSpecialTokens("[CLS]", "[SEP]", "[PAD]", UnigramTokenizer->Template->BERT);
+			}
+			else if(<>SetSpecialTokens("<s>", "</s>", "<pad>", UnigramTokenizer->Template->ROBERTA)) {
+				@load_error := "the vocabulary has neither [CLS], [SEP] and [PAD] nor <s>, </s> and <pad>";
+			};
+		}
+
+		#~
+		Sets the special tokens and the template. Special tokens added before are cleared;
+		these three and the unknown token are matched in the text.
+		@param cls the token that starts a text, e.g. [CLS] or <s>
+		@param sep the token that ends one, e.g. [SEP] or </s>
+		@param pad the padding token, e.g. [PAD] or <pad>
+		@param layout BERT or ROBERTA
+		@return true when the vocabulary holds them
+		~#
+		method : public : SetSpecialTokens(cls : String, sep : String, pad : String, layout : UnigramTokenizer->Template) ~ Bool {
+			cls_id := Id(cls);
+			sep_id := Id(sep);
+			pad_id := Id(pad);
+			if(cls_id < 0 | sep_id < 0 | pad_id < 0) {
+				@error := "the vocabulary has no '{$cls}', '{$sep}' or '{$pad}'";
+				return false;
+			};
+
+			@cls_token := cls;
+			@sep_token := sep;
+			@pad_token := pad;
+			@cls_id := cls_id;
+			@sep_id := sep_id;
+			@pad_id := pad_id;
+			@template := layout;
+
+			@added := Vector->New()<BpeAdded>;
+			AddSpecialToken(cls, false, false);
+			AddSpecialToken(sep, false, false);
+			AddSpecialToken(pad, false, false);
+			AddSpecialToken(@pieces[@unk_id], false, false);
+			return true;
+		}
+
+		#~
+		Adds a special token matched in the text before it is normalized, e.g. [MASK] or <mask>.
+		Adding one again replaces its rules.
+		@param content the token, as the vocabulary lists it
+		@param lstrip whether it takes the whitespace before it
+		@param rstrip whether it takes the whitespace after it
+		@return true when the vocabulary holds it
+		~#
+		method : public : AddSpecialToken(content : String, lstrip : Bool, rstrip : Bool) ~ Bool {
+			id := Id(content);
+			if(id < 0) {
+				@error := "the vocabulary has no '{$content}'";
+				return false;
+			};
+			return AddSpecialToken(content, id, lstrip, rstrip);
+		}
+
+		#~
+		Adds a special token with an id of its own, as tokenizer.json's added_tokens list one
+		past the pieces (DeBERTa-v3's [MASK] is 128000, after 128,000 pieces).
+		@param content the token
+		@param id its id
+		@param lstrip whether it takes the whitespace before it
+		@param rstrip whether it takes the whitespace after it
+		@return true when it was added
+		~#
+		method : public : AddSpecialToken(content : String, id : Int, lstrip : Bool, rstrip : Bool) ~ Bool {
+			if(content = Nil | content->Size() = 0 | id < 0) {
+				@error := "a special token needs text and an id";
+				return false;
+			};
+			token := BpeAdded->New(WordPieceText->Decode(content), content, id, lstrip, rstrip);
+			each(i : @added) {
+				if(@added->Get(i)->GetContent()->Equals(content)) {
+					@added->Set(token, i);
+					return true;
+				};
+			};
+			@added->AddBack(token);
+			return true;
+		}
+
+		#~
+		Sets DeBERTa-v3's extra normalization.
+		@param strip whether whitespace at the text's ends is removed
+		@param collapse_spaces whether a run of spaces becomes one
+		~#
+		method : public : SetNormalization(strip : Bool, collapse_spaces : Bool) ~ Nil {
+			@strip := strip;
+			@collapse := collapse_spaces;
+		}
+
+		#~
+		Sets whether the text is split on whitespace before ▁ is added: XLM-R's, so each word
+		gets its own ▁ and the spaces themselves are dropped.
+		@param split true to split
+		~#
+		method : public : SetWhitespaceSplit(split : Bool) ~ Nil {
+			@whitespace_split := split;
+		}
+
+		method : Id(token : String) ~ Int {
+			if(token = Nil | @vocab = Nil) {
+				return -1;
+			};
+			id := @vocab->Find(token);
+			if(id = Nil) {
+				return -1;
+			};
+			return id->Get();
+		}
+
+		#~
+		Whether the pieces, character map and specials loaded.
+		@return true when the tokenizer can encode
+		~#
+		method : public : IsLoaded() ~ Bool {
+			return @vocab <> Nil & @load_error = Nil & @cls_id >= 0;
+		}
+
+		#~
+		Why the tokenizer did not load, or why the last call returned Nil.
+		@return the reason, or Nil
+		~#
+		method : public : GetError() ~ String {
+			if(@load_error <> Nil) {
+				return @load_error;
+			};
+			return @error;
+		}
+
+		#~
+		The vocabulary's size.
+		@return pieces
+		~#
+		method : public : GetVocabularySize() ~ Int {
+			if(@pieces = Nil) {
+				return 0;
+			};
+			return @pieces->Size();
+		}
+
+		#~
+		A piece's id.
+		@param piece the piece, e.g. "▁Hello"
+		@return its id, or -1 when the vocabulary lacks it
+		~#
+		method : public : GetId(piece : String) ~ Int {
+			return Id(piece);
+		}
+
+		#~
+		The piece an id stands for.
+		@param id the id
+		@return the piece, or Nil
+		~#
+		method : public : GetToken(id : Int) ~ String {
+			if(@pieces = Nil | id < 0 | id >= @pieces->Size()) {
+				return Nil;
+			};
+			return @pieces[id];
+		}
+
+		#~
+		What the normalizer makes of a text, before ▁ and the pieces: the precompiled map, and
+		the stripping and space collapsing when set.
+		@param text the text
+		@return the normalized text
+		~#
+		method : public : Normalize(text : String) ~ String {
+			if(text = Nil) {
+				return Nil;
+			};
+			points := WordPieceText->Decode(text);
+			normal := NormalText->New(points, 0, points->Size());
+			Normalized(normal);
+			return WordPieceText->Encode(normal->GetChars()->ToArray());
+		}
+
+		#~
+		The pieces a text becomes, before special tokens are added.
+		@param text the text
+		@return the pieces; Nil when the tokenizer is not loaded
+		~#
+		method : public : Tokenize(text : String) ~ String[] {
+			if(<>IsLoaded() | text = Nil) {
+				return Nil;
+			};
+			return Sequence(text)->GetTokens()->ToArray();
+		}
+
+		#~
+		Encodes one text with the template's specials, then pads to max_len. Text past
+		max_len - 2 pieces is dropped, and the encoding says so.
+		@param text the text
+		@param max_len the length to truncate and pad to, at least 2
+		@return the encoding, or Nil when the tokenizer is not loaded or max_len is below 2
+		~#
+		method : public : Encode(text : String, max_len : Int) ~ TokenEncoding {
+			if(<>IsLoaded()) {
+				return Nil;
+			};
+			if(text = Nil) {
+				@error := "no text";
+				return Nil;
+			};
+			if(max_len < 2) {
+				@error := "max_len must be at least 2 for {$@cls_token} and {$@sep_token}";
+				return Nil;
+			};
+
+			a := Sequence(text);
+			keep := a->Size();
+			truncated := false;
+			if(keep > max_len - 2) {
+				keep := max_len - 2;
+				truncated := true;
+			};
+			return Layout(a, keep, Nil, 0, max_len, truncated);
+		}
+
+		#~
+		Encodes a pair with the template's specials, then pads to max_len. When the pair is too
+		long, a piece at a time is dropped from the end of whichever text is longer (the second
+		on a tie), Hugging Face's longest_first truncation.
+		@param text_a the first text
+		@param text_b the second text
+		@param max_len the length to truncate and pad to: at least 3 with BERT's template, 4 with RoBERTa's
+		@return the encoding, or Nil when the tokenizer is not loaded or max_len is too small
+		~#
+		method : public : EncodePair(text_a : String, text_b : String, max_len : Int) ~ TokenEncoding {
+			if(<>IsLoaded()) {
+				return Nil;
+			};
+			if(text_a = Nil | text_b = Nil) {
+				@error := "no text";
+				return Nil;
+			};
+			specials := 3;
+			if(@template = UnigramTokenizer->Template->ROBERTA) {
+				specials := 4;
+			};
+			if(max_len < specials) {
+				@error := "max_len must be at least {$specials} for a pair";
+				return Nil;
+			};
+
+			a := Sequence(text_a);
+			b := Sequence(text_b);
+			keep_a := a->Size();
+			keep_b := b->Size();
+			truncated := false;
+			while(keep_a + keep_b > max_len - specials) {
+				if(keep_a > keep_b) {
+					keep_a -= 1;
+				}
+				else {
+					keep_b -= 1;
+				};
+				truncated := true;
+			};
+			return Layout(a, keep_a, b, keep_b, max_len, truncated);
+		}
+
+		#~
+		Turns ids back into text: the pieces joined, ▁ as a space, the first space dropped,
+		special tokens left out.
+		@param ids piece ids
+		@return the text
+		~#
+		method : public : Decode(ids : Int[]) ~ String {
+			if(ids = Nil | <>IsLoaded()) {
+				return Nil;
+			};
+
+			points := IntVector->New();
+			each(i : ids) {
+				id := ids[i];
+				if(id >= 0 & id < @pieces->Size() & <>IsSpecial(id)) {
+					piece := WordPieceText->Decode(@pieces[id]);
+					each(k : piece) {
+						cp := piece[k];
+						if(cp = 0x2581) {
+							cp := 32;
+						};
+						if(<>(cp = 32 & points->Size() = 0)) {
+							points->AddBack(cp);
+						};
+					};
+				};
+			};
+			return WordPieceText->Encode(points->ToArray());
+		}
+
+		method : IsSpecial(id : Int) ~ Bool {
+			each(i : @added) {
+				if(@added->Get(i)->GetId() = id) {
+					return true;
+				};
+			};
+			return false;
+		}
+
+		# --- encoding ---
+
+		# one text's pieces, ids and offsets; special tokens are matched in the raw text first
+		method : Sequence(text : String) ~ BpeSequence {
+			points := WordPieceText->Decode(text);
+			sequence := BpeSequence->New();
+			size := points->Size();
+
+			segment := 0;
+			i := 0;
+			while(i < size) {
+				match := BpeAdded->Match(@added, points, i);
+				if(match = Nil) {
+					i += 1;
+				}
+				else {
+					cut := i;
+					if(match->IsLstrip()) {
+						while(cut > segment & BpeTokenizer->IsSpace(points[cut - 1])) {
+							cut -= 1;
+						};
+					};
+					EncodeSegment(points, segment, cut, sequence);
+
+					finish := i + match->GetLength();
+					if(match->IsRstrip()) {
+						while(finish < size & BpeTokenizer->IsSpace(points[finish])) {
+							finish += 1;
+						};
+					};
+					# the template does not trim: the whitespace taken is in the offsets
+					sequence->Add(match->GetId(), match->GetContent(), cut, finish);
+					segment := finish;
+					i := finish;
+				};
+			};
+			EncodeSegment(points, segment, size, sequence);
+			return sequence;
+		}
+
+		method : EncodeSegment(points : Int[], start : Int, finish : Int, sequence : BpeSequence) ~ Nil {
+			if(start >= finish) {
+				return;
+			};
+
+			normal := NormalText->New(points, start, finish);
+			Normalized(normal);
+
+			chars := normal->GetChars();
+			if(@whitespace_split) {
+				i := 0;
+				while(i < chars->Size()) {
+					while(i < chars->Size() & BpeTokenizer->IsSpace(chars->Get(i))) {
+						i += 1;
+					};
+					j := i;
+					while(j < chars->Size() & <>BpeTokenizer->IsSpace(chars->Get(j))) {
+						j += 1;
+					};
+					if(j > i) {
+						Metaspace(normal, i, j, sequence);
+					};
+					i := j;
+				};
+			}
+			else if(chars->Size() > 0) {
+				Metaspace(normal, 0, chars->Size(), sequence);
+			};
+		}
+
+		method : Normalized(normal : NormalText) ~ Nil {
+			if(@strip) {
+				normal->Strip();
+			};
+			if(@charsmap <> Nil) {
+				@charsmap->Apply(normal);
+			};
+			if(@collapse) {
+				normal->CollapseSpaces();
+			};
+		}
+
+		# Metaspace: a space is ▁, one ▁ goes first, and each word starts at a ▁
+		method : Metaspace(normal : NormalText, start : Int, finish : Int, sequence : BpeSequence) ~ Nil {
+			chars := IntVector->New();
+			starts := IntVector->New();
+			ends := IntVector->New();
+			for(k := start; k < finish; k += 1;) {
+				cp := normal->GetChars()->Get(k);
+				if(cp = 32) {
+					cp := 0x2581;
+				};
+				if(k = start & cp <> 0x2581) {
+					chars->AddBack(0x2581);
+					starts->AddBack(normal->GetStarts()->Get(k));
+					ends->AddBack(normal->GetEnds()->Get(k));
+				};
+				chars->AddBack(cp);
+				starts->AddBack(normal->GetStarts()->Get(k));
+				ends->AddBack(normal->GetEnds()->Get(k));
+			};
+
+			word := 0;
+			for(k := 1; k <= chars->Size(); k += 1;) {
+				if(k = chars->Size() | chars->Get(k) = 0x2581) {
+					Viterbi(chars, starts, ends, word, k, sequence);
+					word := k;
+				};
+			};
+		}
+
+		# the most probable segmentation of chars[start, finish): the pieces' scores summed,
+		# a character no single piece covers taken as unknown; consecutive unknowns fused
+		method : Viterbi(chars : IntVector, starts : IntVector, ends : IntVector, start : Int, finish : Int, sequence : BpeSequence) ~ Nil {
+			n := finish - start;
+			best := Float->New[n + 1];
+			back := Int->New[n + 1];
+			ids := Int->New[n + 1];
+			reached := Bool->New[n + 1];
+			reached[0] := true;
+
+			for(i := 0; i < n; i += 1;) {
+				if(reached[i]) {
+					single := false;
+					limit := n - i;
+					if(limit > @max_piece) {
+						limit := @max_piece;
+					};
+					text := String->New();
+					for(length := 1; length <= limit; length += 1;) {
+						WordPieceText->AppendCodePoint(text, chars->Get(start + i + length - 1));
+						id := Id(text);
+						if(id >= 0) {
+							if(length = 1) {
+								single := true;
+							};
+							Relax(best, back, ids, reached, i, i + length, best[i] + @scores[id], id);
+						};
+					};
+					if(<>single) {
+						Relax(best, back, ids, reached, i, i + 1, best[i] + @unk_score, @unk_id);
+					};
+				};
+			};
+
+			# back from the end, then forward, fusing runs of the unknown token
+			path := IntVector->New();
+			at := n;
+			while(at > 0) {
+				path->AddBack(at);
+				at := back[at];
+			};
+
+			from_at := 0;
+			pending := -1;
+			for(k := path->Size() - 1; k >= 0; k -= 1;) {
+				end_at := path->Get(k);
+				id := ids[end_at];
+				if(id = @unk_id) {
+					if(pending < 0) {
+						pending := from_at;
+					};
+				}
+				else {
+					if(pending >= 0) {
+						Emit(sequence, @unk_id, chars, starts, ends, start + pending, start + from_at);
+						pending := -1;
+					};
+					Emit(sequence, id, chars, starts, ends, start + from_at, start + end_at);
+				};
+				from_at := end_at;
+			};
+			if(pending >= 0) {
+				Emit(sequence, @unk_id, chars, starts, ends, start + pending, start + n);
+			};
+		}
+
+		function : Relax(best : Float[], back : Int[], ids : Int[], reached : Bool[], begin : Int, finish : Int, score : Float, id : Int) ~ Nil {
+			if(<>reached[finish] | score > best[finish]) {
+				best[finish] := score;
+				back[finish] := begin;
+				ids[finish] := id;
+				reached[finish] := true;
+			};
+		}
+
+		method : Emit(sequence : BpeSequence, id : Int, chars : IntVector, starts : IntVector, ends : IntVector, begin : Int, finish : Int) ~ Nil {
+			text := String->New();
+			for(k := begin; k < finish; k += 1;) {
+				WordPieceText->AppendCodePoint(text, chars->Get(k));
+			};
+			if(id <> @unk_id) {
+				text := @pieces[id];
+			};
+			sequence->Add(id, text, starts->Get(begin), ends->Get(finish - 1));
+		}
+
+		method : Layout(a : BpeSequence, keep_a : Int, b : BpeSequence, keep_b : Int, max_len : Int, truncated : Bool) ~ TokenEncoding {
+			ids := Int->New[max_len];
+			mask := Int->New[max_len];
+			types := Int->New[max_len];
+			tokens := String->New[max_len];
+			offsets := Int->New[2 * max_len];
+
+			at := 0;
+			at := Put(ids, mask, types, tokens, offsets, at, @cls_id, @cls_token, 0, 0, 0);
+			for(i := 0; i < keep_a; i += 1;) {
+				at := Put(ids, mask, types, tokens, offsets, at, a->GetIds()->Get(i), a->GetTokens()->Get(i), a->GetStarts()->Get(i), a->GetEnds()->Get(i), 0);
+			};
+			at := Put(ids, mask, types, tokens, offsets, at, @sep_id, @sep_token, 0, 0, 0);
+			if(b <> Nil) {
+				second := 1;
+				if(@template = UnigramTokenizer->Template->ROBERTA) {
+					second := 0;
+					at := Put(ids, mask, types, tokens, offsets, at, @sep_id, @sep_token, 0, 0, 0);
+				};
+				for(i := 0; i < keep_b; i += 1;) {
+					at := Put(ids, mask, types, tokens, offsets, at, b->GetIds()->Get(i), b->GetTokens()->Get(i), b->GetStarts()->Get(i), b->GetEnds()->Get(i), second);
+				};
+				at := Put(ids, mask, types, tokens, offsets, at, @sep_id, @sep_token, 0, 0, second);
+			};
+			length := at;
+			while(at < max_len) {
+				ids[at] := @pad_id;
+				tokens[at] := @pad_token;
+				at += 1;
+			};
+
+			return TokenEncoding->New(ids, mask, types, tokens, length, truncated, offsets);
+		}
+
+		function : Put(ids : Int[], mask : Int[], types : Int[], tokens : String[], offsets : Int[], at : Int, id : Int, token : String, start : Int, finish : Int, segment : Int) ~ Int {
+			ids[at] := id;
+			mask[at] := 1;
+			types[at] := segment;
+			tokens[at] := token;
+			offsets[2 * at] := start;
+			offsets[2 * at + 1] := finish;
+			return at + 1;
+		}
+	}
+
+	# Text being normalized: its characters, each with the span [start, end) of the original
+	# characters it came from, as Hugging Face's NormalizedString aligns them.
+	class : private : NormalText {
+		@chars : IntVector;
+		@starts : IntVector;
+		@ends : IntVector;
+
+		New(points : Int[], start : Int, finish : Int) {
+			@chars := IntVector->New();
+			@starts := IntVector->New();
+			@ends := IntVector->New();
+			for(k := start; k < finish; k += 1;) {
+				@chars->AddBack(points[k]);
+				@starts->AddBack(k);
+				@ends->AddBack(k + 1);
+			};
+		}
+
+		method : public : GetChars() ~ IntVector { return @chars; }
+		method : public : GetStarts() ~ IntVector { return @starts; }
+		method : public : GetEnds() ~ IntVector { return @ends; }
+
+		method : public : Set(chars : IntVector, starts : IntVector, ends : IntVector) ~ Nil {
+			@chars := chars;
+			@starts := starts;
+			@ends := ends;
+		}
+
+		# whitespace at both ends removed
+		method : public : Strip() ~ Nil {
+			first := 0;
+			while(first < @chars->Size() & BpeTokenizer->IsSpace(@chars->Get(first))) {
+				first += 1;
+			};
+			last := @chars->Size();
+			while(last > first & BpeTokenizer->IsSpace(@chars->Get(last - 1))) {
+				last -= 1;
+			};
+			Keep(first, last);
+		}
+
+		method : Keep(first : Int, last : Int) ~ Nil {
+			chars := IntVector->New();
+			starts := IntVector->New();
+			ends := IntVector->New();
+			for(k := first; k < last; k += 1;) {
+				chars->AddBack(@chars->Get(k));
+				starts->AddBack(@starts->Get(k));
+				ends->AddBack(@ends->Get(k));
+			};
+			Set(chars, starts, ends);
+		}
+
+		# Replace(' {2,}', ' '): a run of spaces becomes one, aligned to the run's last space
+		method : public : CollapseSpaces() ~ Nil {
+			chars := IntVector->New();
+			starts := IntVector->New();
+			ends := IntVector->New();
+			k := 0;
+			while(k < @chars->Size()) {
+				if(@chars->Get(k) = 32) {
+					run := k;
+					while(run + 1 < @chars->Size() & @chars->Get(run + 1) = 32) {
+						run += 1;
+					};
+					chars->AddBack(32);
+					starts->AddBack(@starts->Get(run));
+					ends->AddBack(@ends->Get(run));
+					k := run + 1;
+				}
+				else {
+					chars->AddBack(@chars->Get(k));
+					starts->AddBack(@starts->Get(k));
+					ends->AddBack(@ends->Get(k));
+					k += 1;
+				};
+			};
+			Set(chars, starts, ends);
+		}
+	}
+
+	# SentencePiece's precompiled character map, as the spm_precompiled crate reads it: a
+	# double-array trie over UTF-8 bytes, then the replacement strings, each ending in a 0 byte.
+	class : private : PrecompiledMap {
+		@units : Int[];
+		@blob : Int[];
+		@valid : Bool;
+
+		New(charsmap : Byte[]) {
+			if(charsmap = Nil | charsmap->Size() < 4) {
+				return;
+			};
+			trie_size := Unit(charsmap, 0);
+			if(trie_size < 0 | 4 + trie_size > charsmap->Size()) {
+				return;
+			};
+			@units := Int->New[trie_size / 4];
+			each(k : @units) {
+				@units[k] := Unit(charsmap, 4 + 4 * k);
+			};
+			@blob := Int->New[charsmap->Size() - 4 - trie_size];
+			each(k : @blob) {
+				@blob[k] := charsmap[4 + trie_size + k]->As(Int) and 255;
+			};
+			@valid := @units->Size() > 0;
+		}
+
+		function : Unit(bytes : Byte[], at : Int) ~ Int {
+			return (bytes[at]->As(Int) and 255) or ((bytes[at + 1]->As(Int) and 255) << 8) or
+				((bytes[at + 2]->As(Int) and 255) << 16) or ((bytes[at + 3]->As(Int) and 255) << 24);
+		}
+
+		method : public : IsValid() ~ Bool {
+			return @valid;
+		}
+
+		# spm_precompiled's normalize: each grapheme under 6 bytes replaced whole when the map
+		# has an entry for it, else each character on its own
+		method : public : Apply(normal : NormalText) ~ Nil {
+			chars := normal->GetChars();
+			starts := normal->GetStarts();
+			ends := normal->GetEnds();
+			out_chars := IntVector->New();
+			out_starts := IntVector->New();
+			out_ends := IntVector->New();
+
+			i := 0;
+			while(i < chars->Size()) {
+				g := GraphemeEnd(chars, i);
+				done := false;
+				bytes := IntVector->New();
+				for(k := i; k < g; k += 1;) {
+					one := BpeTokenizer->Utf8One(chars->Get(k));
+					each(b : one) {
+						bytes->AddBack(one[b]);
+					};
+				};
+				if(bytes->Size() < 6) {
+					replacement := Transform(bytes->ToArray());
+					if(replacement <> Nil) {
+						Replace(replacement, starts, ends, i, g, out_chars, out_starts, out_ends);
+						done := true;
+					};
+				};
+				if(<>done) {
+					for(k := i; k < g; k += 1;) {
+						replacement := Transform(BpeTokenizer->Utf8One(chars->Get(k)));
+						if(replacement <> Nil) {
+							Replace(replacement, starts, ends, k, k + 1, out_chars, out_starts, out_ends);
+						}
+						else {
+							out_chars->AddBack(chars->Get(k));
+							out_starts->AddBack(starts->Get(k));
+							out_ends->AddBack(ends->Get(k));
+						};
+					};
+				};
+				i := g;
+			};
+			normal->Set(out_chars, out_starts, out_ends);
+		}
+
+		# tokenizers' alignment of a replacement: new characters take the old ones' spans in
+		# order; when there are fewer, the rest of the old are dropped; when more, the extra
+		# share the last old character's span
+		function : Replace(replacement : Int[], starts : IntVector, ends : IntVector, begin : Int, finish : Int,
+				out_chars : IntVector, out_starts : IntVector, out_ends : IntVector) ~ Nil {
+			each(k : replacement) {
+				source := begin + k;
+				if(source >= finish) {
+					source := finish - 1;
+				};
+				out_chars->AddBack(replacement[k]);
+				out_starts->AddBack(starts->Get(source));
+				out_ends->AddBack(ends->Get(source));
+			};
+		}
+
+		# the replacement for a chunk's bytes: the SHORTEST key that prefixes them, as
+		# spm_precompiled's transform takes results[0]; Nil when none does
+		method : Transform(key : Int[]) ~ Int[] {
+			index := Search(key);
+			if(index < 0) {
+				return Nil;
+			};
+			bytes := IntVector->New();
+			k := index;
+			while(k < @blob->Size() & @blob[k] <> 0) {
+				bytes->AddBack(@blob[k]);
+				k += 1;
+			};
+			return BpeTokenizer->FromUtf8(bytes->ToArray());
+		}
+
+		method : Search(key : Int[]) ~ Int {
+			node := 0;
+			unit := @units[node];
+			node := node xor Offset(unit);
+			each(k : key) {
+				c := key[k];
+				if(c = 0) {
+					return -1;
+				};
+				node := node xor c;
+				if(node < 0 | node >= @units->Size()) {
+					return -1;
+				};
+				unit := @units[node];
+				if(Label(unit) <> c) {
+					return -1;
+				};
+				node := node xor Offset(unit);
+				if(node < 0 | node >= @units->Size()) {
+					return -1;
+				};
+				if(((unit >> 8) and 1) = 1) {
+					return @units[node] and 0x7FFFFFFF;
+				};
+			};
+			return -1;
+		}
+
+		function : Label(unit : Int) ~ Int {
+			return unit and (0x80000000 or 0xFF);
+		}
+
+		function : Offset(unit : Int) ~ Int {
+			return (unit >> 10) << ((unit and 0x200) >> 6);
+		}
+
+		# a grapheme cluster, as far as the 6-byte test can tell: CR LF, or a character and
+		# the marks and joiners that extend it (none after a control)
+		function : GraphemeEnd(chars : IntVector, i : Int) ~ Int {
+			cp := chars->Get(i);
+			j := i + 1;
+			if(cp = 13 & j < chars->Size() & chars->Get(j) = 10) {
+				return j + 1;
+			};
+			if(cp < 32 | cp = 127 | (cp <> 0x200C & cp <> 0x200D & WordPieceText->InRanges(WordPieceUnicode->GetControl(), cp))) {
+				return j;
+			};
+			while(j < chars->Size() & Extends(chars->Get(j))) {
+				j += 1;
+			};
+			return j;
+		}
+
+		function : Extends(cp : Int) ~ Bool {
+			return WordPieceText->InRanges(WordPieceUnicode->GetMarks(), cp) |
+				WordPieceText->InRanges(WordPieceUnicode->GetJoining(), cp) |
+				cp = 0x200C | cp = 0x200D | (cp >= 0x1F3FB & cp <= 0x1F3FF) |
+				(cp >= 0xE0020 & cp <= 0xE007F) | cp = 0xFF9E | cp = 0xFF9F;
+		}
 	}
 
 	# Code points, and the Unicode properties BERT's BasicTokenizer uses. Objeck's Char is a
@@ -3932,6 +4858,7 @@ encoding->GetTokens()->Size()->PrintLine();   # 8: <s> Hello Ġworld </s> <pad> 
 		@strip_values : static : Int[];
 		@letters : static : Int[];
 		@numbers : static : Int[];
+		@joining : static : Int[];
 
 		# Two threads racing here each build the same arrays; either result is right.
 		function : Init() ~ Nil {
@@ -3947,6 +4874,7 @@ encoding->GetTokens()->Size()->PrintLine();   # 8: <s> Hello Ġworld </s> <pad> 
 			if(@numbers = Nil) {
 				@letters := Letters();
 				@numbers := Numbers();
+				@joining := Joining();
 			};
 		}
 
@@ -3959,6 +4887,7 @@ encoding->GetTokens()->Size()->PrintLine();   # 8: <s> Hello Ġworld </s> <pad> 
 		function : GetStripValues() ~ Int[] { Init(); return @strip_values; }
 		function : GetLetters() ~ Int[] { Init(); return @letters; }
 		function : GetNumbers() ~ Int[] { Init(); return @numbers; }
+		function : GetJoining() ~ Int[] { Init(); return @joining; }
 
 		function : private : Punctuation() ~ Int[] {
 			return [
@@ -4783,6 +5712,41 @@ encoding->GetTokens()->Size()->PrintLine();   # 8: <s> Hello Ġworld </s> <pad> 
 				0x1D360, 0x1D378, 0x1D7CE, 0x1D7FF, 0x1E140, 0x1E149, 0x1E2F0, 0x1E2F9, 0x1E8C7, 0x1E8CF, 0x1E950, 0x1E959,
 				0x1EC71, 0x1ECAB, 0x1ECAD, 0x1ECAF, 0x1ECB1, 0x1ECB4, 0x1ED01, 0x1ED2D, 0x1ED2F, 0x1ED3D, 0x1F100, 0x1F10C,
 				0x1FBF0, 0x1FBF9
+			];
+		}
+
+		function : private : Joining() ~ Int[] {
+			return [
+				0x488, 0x489, 0x903, 0x903, 0x93B, 0x93B, 0x93E, 0x940, 0x949, 0x94C, 0x94E, 0x94F,
+				0x982, 0x983, 0x9BE, 0x9C0, 0x9C7, 0x9C8, 0x9CB, 0x9CC, 0x9D7, 0x9D7, 0xA03, 0xA03,
+				0xA3E, 0xA40, 0xA83, 0xA83, 0xABE, 0xAC0, 0xAC9, 0xAC9, 0xACB, 0xACC, 0xB02, 0xB03,
+				0xB3E, 0xB3E, 0xB40, 0xB40, 0xB47, 0xB48, 0xB4B, 0xB4C, 0xB57, 0xB57, 0xBBE, 0xBBF,
+				0xBC1, 0xBC2, 0xBC6, 0xBC8, 0xBCA, 0xBCC, 0xBD7, 0xBD7, 0xC01, 0xC03, 0xC41, 0xC44,
+				0xC82, 0xC83, 0xCBE, 0xCBE, 0xCC0, 0xCC4, 0xCC7, 0xCC8, 0xCCA, 0xCCB, 0xCD5, 0xCD6,
+				0xD02, 0xD03, 0xD3E, 0xD40, 0xD46, 0xD48, 0xD4A, 0xD4C, 0xD57, 0xD57, 0xD82, 0xD83,
+				0xDCF, 0xDD1, 0xDD8, 0xDDF, 0xDF2, 0xDF3, 0xF3E, 0xF3F, 0xF7F, 0xF7F, 0x102B, 0x102C,
+				0x1031, 0x1031, 0x1038, 0x1038, 0x103B, 0x103C, 0x1056, 0x1057, 0x1062, 0x1064, 0x1067, 0x106D,
+				0x1083, 0x1084, 0x1087, 0x108C, 0x108F, 0x108F, 0x109A, 0x109C, 0x17B6, 0x17B6, 0x17BE, 0x17C5,
+				0x17C7, 0x17C8, 0x1923, 0x1926, 0x1929, 0x192B, 0x1930, 0x1931, 0x1933, 0x1938, 0x1A19, 0x1A1A,
+				0x1A55, 0x1A55, 0x1A57, 0x1A57, 0x1A61, 0x1A61, 0x1A63, 0x1A64, 0x1A6D, 0x1A72, 0x1ABE, 0x1ABE,
+				0x1B04, 0x1B04, 0x1B35, 0x1B35, 0x1B3B, 0x1B3B, 0x1B3D, 0x1B41, 0x1B43, 0x1B44, 0x1B82, 0x1B82,
+				0x1BA1, 0x1BA1, 0x1BA6, 0x1BA7, 0x1BAA, 0x1BAA, 0x1BE7, 0x1BE7, 0x1BEA, 0x1BEC, 0x1BEE, 0x1BEE,
+				0x1BF2, 0x1BF3, 0x1C24, 0x1C2B, 0x1C34, 0x1C35, 0x1CE1, 0x1CE1, 0x1CF7, 0x1CF7, 0x20DD, 0x20E0,
+				0x20E2, 0x20E4, 0x302E, 0x302F, 0xA670, 0xA672, 0xA823, 0xA824, 0xA827, 0xA827, 0xA880, 0xA881,
+				0xA8B4, 0xA8C3, 0xA952, 0xA953, 0xA983, 0xA983, 0xA9B4, 0xA9B5, 0xA9BA, 0xA9BB, 0xA9BE, 0xA9C0,
+				0xAA2F, 0xAA30, 0xAA33, 0xAA34, 0xAA4D, 0xAA4D, 0xAA7B, 0xAA7B, 0xAA7D, 0xAA7D, 0xAAEB, 0xAAEB,
+				0xAAEE, 0xAAEF, 0xAAF5, 0xAAF5, 0xABE3, 0xABE4, 0xABE6, 0xABE7, 0xABE9, 0xABEA, 0xABEC, 0xABEC,
+				0x11000, 0x11000, 0x11002, 0x11002, 0x11082, 0x11082, 0x110B0, 0x110B2, 0x110B7, 0x110B8, 0x1112C, 0x1112C,
+				0x11145, 0x11146, 0x11182, 0x11182, 0x111B3, 0x111B5, 0x111BF, 0x111C0, 0x111CE, 0x111CE, 0x1122C, 0x1122E,
+				0x11232, 0x11233, 0x11235, 0x11235, 0x112E0, 0x112E2, 0x11302, 0x11303, 0x1133E, 0x1133F, 0x11341, 0x11344,
+				0x11347, 0x11348, 0x1134B, 0x1134D, 0x11357, 0x11357, 0x11362, 0x11363, 0x11435, 0x11437, 0x11440, 0x11441,
+				0x11445, 0x11445, 0x114B0, 0x114B2, 0x114B9, 0x114B9, 0x114BB, 0x114BE, 0x114C1, 0x114C1, 0x115AF, 0x115B1,
+				0x115B8, 0x115BB, 0x115BE, 0x115BE, 0x11630, 0x11632, 0x1163B, 0x1163C, 0x1163E, 0x1163E, 0x116AC, 0x116AC,
+				0x116AE, 0x116AF, 0x116B6, 0x116B6, 0x11720, 0x11721, 0x11726, 0x11726, 0x1182C, 0x1182E, 0x11838, 0x11838,
+				0x11930, 0x11935, 0x11937, 0x11938, 0x1193D, 0x1193D, 0x11940, 0x11940, 0x11942, 0x11942, 0x119D1, 0x119D3,
+				0x119DC, 0x119DF, 0x119E4, 0x119E4, 0x11A39, 0x11A39, 0x11A57, 0x11A58, 0x11A97, 0x11A97, 0x11C2F, 0x11C2F,
+				0x11C3E, 0x11C3E, 0x11CA9, 0x11CA9, 0x11CB1, 0x11CB1, 0x11CB4, 0x11CB4, 0x11D8A, 0x11D8E, 0x11D93, 0x11D94,
+				0x11D96, 0x11D96, 0x11EF5, 0x11EF6, 0x16F51, 0x16F87, 0x16FF0, 0x16FF1, 0x1D165, 0x1D166, 0x1D16D, 0x1D172
 			];
 		}
 

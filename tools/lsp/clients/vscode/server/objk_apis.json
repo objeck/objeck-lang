@@ -16515,7 +16515,7 @@
 			}
 		},
 		"System.NLP.SubwordTokenizer": {
-			"description": "A tokenizer that turns text into a model's input: WordPieceTokenizer (BERT, DistilBERT, MiniLM) and BpeTokenizer (RoBERTa, GPT-2). The task classes of System.NLP.Onnx take either.",
+			"description": "A tokenizer that turns text into a model's input: WordPieceTokenizer (BERT, DistilBERT, MiniLM), BpeTokenizer (RoBERTa, GPT-2) and UnigramTokenizer (DeBERTa-v3, XLM-R). The task classes of System.NLP.Onnx take any of them.",
 			"functions": {
 				"Encode": {
 					"descriptions": ["**Encodes one text, truncated and padded to max_len, special tokens included.**\n\n```method : public : virutal : Encode(text:String, max_len:Int) ~ TokenEncoding```\n\n\n\ntext: String\n\nmax_len: Int\n\nreturn: TokenEncoding"]
@@ -16640,6 +16640,56 @@
 				},
 				"WordTokenize": {
 					"descriptions": ["**Tokenizes text into words. A word is a run of letters and digits, including non-Latin letters; an apostrophe between letters (don't, O'Brien), a hyphen between letters or digits (state-of-the-art, COVID-19) and a '.' or ',' between digits (3.14, 5,000) stay inside it. Whitespace and punctuation separate words and are dropped. Case is kept.**\n\n```function : WordTokenize(text:String) ~ String[]```\n\n\n\ntext: String\n\nreturn: String[]\n\n```\nwords := Tokenizer->WordTokenize(\"I don't think 3.14 is state-of-the-art.\");\neach(w in words) {\n  w->PrintLine();\n};\n```"]
+				}
+			}
+		},
+		"System.NLP.UnigramTokenizer": {
+			"description": "SentencePiece's Unigram, the tokenizer of DeBERTa-v3, XLM-R, ALBERT and T5, as Hugging Face's tokenizers runs it.\n\nThe text is normalized with the model's precompiled character map, SentencePiece's NFKC-style folding (full-width forms to ASCII, ligatures split, compatibility characters replaced); a space becomes \u2581 and one is put before each piece of text; then each word takes the vocabulary's most probable segmentation (Viterbi over the pieces' log probabilities), a character no piece covers becoming the unknown token. The specials go around it as the template says: BERT's [CLS] a [SEP] b [SEP] (DeBERTa-v3) or RoBERTa's <s> a </s></s> b </s> (XLM-R).\n\nDeBERTa-v3 also strips the text's ends and collapses runs of spaces (SetNormalization(true, true)); XLM-R splits on whitespace before the \u2581 is added (SetWhitespaceSplit(true)). Every encoding records each token's character offsets in the text (GetOffsets).\n\nUsually built from a model's tokenizer.json by System.NLP.Onnx; the constructor takes the pieces, their scores and the precompiled character map themselves.",
+			"functions": {
+				"AddSpecialToken": {
+					"descriptions": ["**Adds a special token matched in the text before it is normalized, e.g. [MASK] or <mask>. Adding one again replaces its rules.**\n\n```method : public : AddSpecialToken(content:String, lstrip:Bool, rstrip:Bool) ~ Bool```\n\n\n\ncontent: String\n\nlstrip: Bool\n\nrstrip: Bool\n\nreturn: Bool", "**Adds a special token with an id of its own, as tokenizer.json's added_tokens list one past the pieces (DeBERTa-v3's [MASK] is 128000, after 128,000 pieces).**\n\n```method : public : AddSpecialToken(content:String, id:Int, lstrip:Bool, rstrip:Bool) ~ Bool```\n\n\n\ncontent: String\n\nid: Int\n\nlstrip: Bool\n\nrstrip: Bool\n\nreturn: Bool"]
+				},
+				"Decode": {
+					"descriptions": ["**Turns ids back into text: the pieces joined, \u2581 as a space, the first space dropped, special tokens left out.**\n\n```method : public : Decode(ids:Int[]) ~ String```\n\n\n\nids: Int[]\n\nreturn: String"]
+				},
+				"Encode": {
+					"descriptions": ["**Encodes one text with the template's specials, then pads to max_len. Text past max_len - 2 pieces is dropped, and the encoding says so.**\n\n```method : public : Encode(text:String, max_len:Int) ~ TokenEncoding```\n\n\n\ntext: String\n\nmax_len: Int\n\nreturn: TokenEncoding"]
+				},
+				"EncodePair": {
+					"descriptions": ["**Encodes a pair with the template's specials, then pads to max_len. When the pair is too long, a piece at a time is dropped from the end of whichever text is longer (the second on a tie), Hugging Face's longest_first truncation.**\n\n```method : public : EncodePair(text_a:String, text_b:String, max_len:Int) ~ TokenEncoding```\n\n\n\ntext_a: String\n\ntext_b: String\n\nmax_len: Int\n\nreturn: TokenEncoding"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the tokenizer did not load, or why the last call returned Nil.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetId": {
+					"descriptions": ["**A piece's id.**\n\n```method : public : GetId(piece:String) ~ Int```\n\n\n\npiece: String\n\nreturn: Int"]
+				},
+				"GetToken": {
+					"descriptions": ["**The piece an id stands for.**\n\n```method : public : GetToken(id:Int) ~ String```\n\n\n\nid: Int\n\nreturn: String"]
+				},
+				"GetVocabularySize": {
+					"descriptions": ["**The vocabulary's size.**\n\n```method : public : GetVocabularySize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsLoaded": {
+					"descriptions": ["**Whether the pieces, character map and specials loaded.**\n\n```method : public : IsLoaded() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Builds a tokenizer from its pieces. The specials are found by name: [CLS], [SEP] and [PAD] with the BERT template, else <s>, </s> and <pad> with the RoBERTa one.**\n\n```New(pieces:String[], scores:Float[], unk_id:Int, charsmap:Byte[])```\n\n\n\npieces: String[]\n\nscores: Float[]\n\nunk_id: Int\n\ncharsmap: Byte[]"]
+				},
+				"Normalize": {
+					"descriptions": ["**What the normalizer makes of a text, before \u2581 and the pieces: the precompiled map, and the stripping and space collapsing when set.**\n\n```method : public : Normalize(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String"]
+				},
+				"SetNormalization": {
+					"descriptions": ["**Sets DeBERTa-v3's extra normalization.**\n\n```method : public : SetNormalization(strip:Bool, collapse_spaces:Bool) ~ Nil```\n\n\n\nstrip: Bool\n\ncollapse_spaces: Bool\n\nreturn: Nil"]
+				},
+				"SetSpecialTokens": {
+					"descriptions": ["**Sets the special tokens and the template. Special tokens added before are cleared; these three and the unknown token are matched in the text.**\n\n```method : public : SetSpecialTokens(cls:String, sep:String, pad:String, layout:UnigramTokenizer-&gt;Template) ~ Bool```\n\n\n\ncls: String\n\nsep: String\n\npad: String\n\nlayout: UnigramTokenizer-&gt;Template\n\nreturn: Bool"]
+				},
+				"SetWhitespaceSplit": {
+					"descriptions": ["**Sets whether the text is split on whitespace before \u2581 is added: XLM-R's, so each word gets its own \u2581 and the spaces themselves are dropped.**\n\n```method : public : SetWhitespaceSplit(split:Bool) ~ Nil```\n\n\n\nsplit: Bool\n\nreturn: Nil"]
+				},
+				"Tokenize": {
+					"descriptions": ["**The pieces a text becomes, before special tokens are added.**\n\n```method : public : Tokenize(text:String) ~ String[]```\n\n\n\ntext: String\n\nreturn: String[]"]
 				}
 			}
 		},
@@ -21127,6 +21177,12 @@
 				"file": ""
 			}
 		],
+		"UnigramTokenizer": [
+			{
+				"bundle": "System.NLP",
+				"file": ""
+			}
+		],
 		"WordPieceTokenizer": [
 			{
 				"bundle": "System.NLP",
@@ -23233,6 +23289,17 @@
 				{ "name": "MAX", "value": "0", "description": "" },
 				{ "name": "MEAN", "value": "1", "description": "" },
 				{ "name": "RMS", "value": "2", "description": "" }
+			]
+		},
+		"System.NLP.UnigramTokenizer#Template": {
+			"name": "Template",
+			"bundle": "System.NLP",
+			"class": "System.NLP.UnigramTokenizer",
+			"kind": "enum",
+			"description": "Where the special tokens go.",
+			"items": [
+				{ "name": "BERT", "value": "0", "description": "[CLS] a [SEP], and [CLS] a [SEP] b [SEP] with b's token type 1: DeBERTa-v3, ALBERT." },
+				{ "name": "ROBERTA", "value": "1", "description": "<s> a </s>, and <s> a </s></s> b </s>, all token type 0: XLM-R." }
 			]
 		},
 		"System.NLP.Onnx.BertEmbedder#Pooling": {

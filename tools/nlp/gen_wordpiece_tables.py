@@ -28,6 +28,8 @@ Tables, all over every plane:
   letters       [start, end] pairs of the L* categories, and
   numbers       [start, end] pairs of the N* categories: the \p{L} and \p{N} of
                 the GPT-2 / RoBERTa byte-level pre-tokenizer (BpeTokenizer).
+  joining       [start, end] pairs of Mc and Me: with marks (Mn), what extends a
+                grapheme cluster for SentencePiece's normalizer (UnigramTokenizer).
 
 usage: python tools/nlp/gen_wordpiece_tables.py   (rewrites core/compiler/lib_src/nlp.obs)
 """
@@ -107,6 +109,7 @@ def main():
     keys, offsets, values = strip_table()
     letters = ranges(lambda c: ud.category(chr(c)).startswith("L"))
     numbers = ranges(lambda c: ud.category(chr(c)).startswith("N"))
+    joining = ranges(lambda c: ud.category(chr(c)) in ("Mc", "Me"))
 
     flat = lambda rs: [v for r in rs for v in r]
     block = [BEGIN,
@@ -121,6 +124,7 @@ def main():
              "\t\t@strip_values : static : Int[];",
              "\t\t@letters : static : Int[];",
              "\t\t@numbers : static : Int[];",
+             "\t\t@joining : static : Int[];",
              "",
              "\t\t# Two threads racing here each build the same arrays; either result is right.",
              "\t\tfunction : Init() ~ Nil {",
@@ -136,6 +140,7 @@ def main():
              "\t\t\tif(@numbers = Nil) {",
              "\t\t\t\t@letters := Letters();",
              "\t\t\t\t@numbers := Numbers();",
+             "\t\t\t\t@joining := Joining();",
              "\t\t\t};",
              "\t\t}",
              "",
@@ -148,6 +153,7 @@ def main():
              "\t\tfunction : GetStripValues() ~ Int[] { Init(); return @strip_values; }",
              "\t\tfunction : GetLetters() ~ Int[] { Init(); return @letters; }",
              "\t\tfunction : GetNumbers() ~ Int[] { Init(); return @numbers; }",
+             "\t\tfunction : GetJoining() ~ Int[] { Init(); return @joining; }",
              "",
              literal("Punctuation", flat(punct)),
              literal("Control", flat(control)),
@@ -158,6 +164,7 @@ def main():
              literal("StripValues", values),
              literal("Letters", flat(letters)),
              literal("Numbers", flat(numbers)),
+             literal("Joining", flat(joining)),
              "\t}",
              END]
     generated = "\n".join(block)

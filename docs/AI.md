@@ -888,7 +888,9 @@ a 13,000-line corpus); it reads a model's `vocab.txt` and gives the `input_ids`,
 `attention_mask` and `token_type_ids` a BERT-family ONNX model takes. `ApiSequenceTokenizer`
 builds a vocabulary of API names from malware traces. `BpeTokenizer` is RoBERTa's and GPT-2's
 byte-level BPE (checked id for id and offset for offset against Hugging Face's `tokenizers`,
-with DistilRoBERTa's own 50,265-token vocabulary). Both implement `SubwordTokenizer`, and
+with DistilRoBERTa's own 50,265-token vocabulary). `UnigramTokenizer` is SentencePiece's
+Unigram (DeBERTa-v3, XLM-R), with the model's precompiled normalization map, checked the same
+way with DeBERTa-v3's and XLM-R's own tokenizers. All three implement `SubwordTokenizer`, and
 their encodings carry each token's character offsets (`GetOffsets`, BPE). `BertEmbedder` (library `nlp_onnx`) runs
 an exported BERT through ONNX Runtime and pools its output into one vector per text — CLS,
 mean over the real tokens, or the model's pooler. The encoder is frozen: train a classifier on
