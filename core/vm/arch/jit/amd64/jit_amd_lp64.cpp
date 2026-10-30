@@ -342,8 +342,14 @@ void JitAmd64::RegisterRoot() {
   move_mem_reg(JIT_MEM, RBP, mem_holder->GetRegister());
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
 
-  // 10 slots to hold spilled registers (TMP_REG_0..9)
-  const int index = ((offset - 8) >> 3) + 10;
+  // The locals (offset bytes, with the Win64 RED_ZONE word) and the 10 slots
+  // that hold spilled registers, TMP_REG_9 up to TMP_REG_0. The collector
+  // scans every one of them (JIT_TMP_LOOK_BACK). The count was one short and
+  // left TMP_REG_0, the first slot every spill takes, holding whatever an
+  // earlier method entered at the same frame pointer had spilled there: a
+  // dead array stayed reachable for as long as the next method ran.
+  // jit_stale_spill_slot.obs fails on the old count.
+  const int index = (offset >> 3) + 10;
   // Zero them with straight stores for the common frame sizes: the LOOP
   // instruction is microcoded, and its eleven iterations for a one-local
   // method cost more than that method's body. Large frames keep the loop.
