@@ -164,6 +164,31 @@
       }
     }
 
+    // A method's arguments as stack words, the first one deepest. GetParamCount
+    // counts words, as the JIT's callbacks do: a func-ref parameter, one
+    // declaration, is two (its closure, then its id on top, as LOAD_FUNC_VAR
+    // pushes them)
+    inline void ParamWords(StackMethod* method, std::vector<SlotType>& out) {
+      out.clear();
+      const size_t words = (size_t)method->GetParamCount();
+      StackDclr** dclrs = method->GetDeclarations();
+      const long num_dclrs = method->GetNumberDeclarations();
+      for(long i = 0; i < num_dclrs && out.size() < words; ++i) {
+        if(dclrs[i]->type == FUNC_PARM) {
+          out.push_back({ RK_REF, RK_UNKNOWN });
+          out.push_back({ RK_INT, RK_UNKNOWN });
+        }
+        else {
+          out.push_back(DclrType(dclrs[i]->type));
+        }
+      }
+      // declarations that do not cover the words leave them untyped
+      while(out.size() < words) {
+        out.push_back({ RK_UNKNOWN, RK_UNKNOWN });
+      }
+      out.resize(words);
+    }
+
     // an encoded return type ("i", "o.System.String", "b*", "m.(i,)~i", "n")
     // as stack words, bottom first
     inline void ReturnWords(const std::wstring& name, MemoryType type, std::vector<SlotType>& out) {
@@ -621,21 +646,7 @@
         // the receiver on top, then the arguments, the last one nearest it
         if(!PopKind(stack, ip, RK_UNKNOWN)) return false;
         std::vector<SlotType> params;
-        StackDclr** dclrs = callee->GetDeclarations();
-        const long num_params = callee->GetParamCount();
-        if(num_params > callee->GetNumberDeclarations()) {
-          return Fail(ip, L"a callee with more parameters than declarations: " + callee->GetName());
-        }
-        for(long i = 0; i < num_params; ++i) {
-          if(dclrs[i]->type == FUNC_PARM) {
-            // a func-ref argument: its closure, then its id on top (LOAD_FUNC_VAR)
-            params.push_back({ RK_REF, RK_UNKNOWN });
-            params.push_back({ RK_INT, RK_UNKNOWN });
-          }
-          else {
-            params.push_back(DclrType(dclrs[i]->type));
-          }
-        }
+        ParamWords(callee, params);
         for(size_t i = params.size(); i > 0; --i) {
           if(!PopKind(stack, ip, params[i - 1].kind, params[i - 1].elem)) return false;
         }
@@ -884,15 +895,10 @@
       // An interpreted call leaves the arguments on the operand stack, and the
       // method's first instructions store them (the receiver went to mem[0])
       std::vector<int> entry;
-      const long num_params = method->GetParamCount();
-      if(num_params > num_dclrs) {
-        Fail(0, L"more parameters than declarations");
-        return;
-      }
-      for(long i = 0; i < num_params; ++i) {
-        for(int w = 0; w < DclrWords(dclrs[i]->type); ++w) {
-          entry.push_back(NewValue(RK_UNKNOWN));
-        }
+      std::vector<SlotType> params;
+      ParamWords(method, params);
+      for(size_t i = 0; i < params.size(); ++i) {
+        entry.push_back(NewValue(RK_UNKNOWN));
       }
       Flow(0, 0, entry, -1);
 

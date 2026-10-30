@@ -1370,6 +1370,8 @@ void MemoryManager::AuditRoots()
 
     long base = 0;
     bool mismatched = false;
+    // the frames as the audit read them, for a mismatch's note
+    std::wstring trail;
     for(size_t k = 0; k < frames.size() && !mismatched; ++k) {
       StackFrame* frame = frames[k];
       const bool top = k + 1 == frames.size();
@@ -1377,6 +1379,7 @@ void MemoryManager::AuditRoots()
         // A compiled frame keeps its pending values in registers and spill slots;
         // while it is the newest frame, what is here is a callback's arguments
         a->frames_compiled++;
+        trail += L" | [jit] " + frame->method->GetName();
         if(top) {
           a->words_unattributed += sp > base ? (size_t)(sp - base) : 0;
           base = sp;
@@ -1417,6 +1420,9 @@ void MemoryManager::AuditRoots()
           break;
         }
       }
+      trail += L" | " + method->GetName() + L" @" + std::to_wstring(pc) + L" t" +
+               std::to_wstring(method->GetInstruction(pc)->GetType()) + L" h" + std::to_wstring(height) +
+               L" seg" + std::to_wstring(segment);
       for(long d = 0; d < segment; ++d) {
         AuditWord(op_stack[base + d], map->Kind(pc, (int)d), method, pc, d);
       }
@@ -1433,6 +1439,7 @@ void MemoryManager::AuditRoots()
     }
     if(mismatched) {
       a->threads_mismatched++;
+      AuditNote(L"mismatched thread, sp " + std::to_wstring(sp) + L":" + trail);
     }
   }
 #ifndef _GC_SERIAL
