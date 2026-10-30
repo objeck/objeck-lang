@@ -149,7 +149,9 @@ jobs:
       if: runner.os == 'macOS'
       uses: actions/cache@v5
       with:
-        path: ~/Library/Caches/Homebrew
+        path: |
+          ~/Library/Caches/Homebrew
+          !~/Library/Caches/Homebrew/Backup
         key: ${{ runner.os }}-brew-downloads-${{ hashFiles('.github/workflows/ci-build.yml') }}
         restore-keys: |
           ${{ runner.os }}-brew-downloads-
@@ -157,6 +159,11 @@ jobs:
     - name: Install macOS dependencies
       if: runner.os == 'macOS'
       run: |
+        # A Backup/ restored from the downloads cache breaks relinking: when installing a
+        # formula unlinks a conflicting one (openssl@3 over the image's openssl@4), brew
+        # moves the old links into Backup/, and a stale Backup/bin/openssl there is "the
+        # same file" -- sdl2_mixer's install failed that way on 2026-10-30.
+        rm -rf ~/Library/Caches/Homebrew/Backup
         # Install only formulae that aren't already present. The hosted runner
         # preinstalls newer versions of some of these formulae (cmake), so a
         # plain `brew install` aborts with "already installed" (red CI error

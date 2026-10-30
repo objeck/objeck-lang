@@ -912,6 +912,34 @@ if(embedder->IsOpen()) {
 };
 ```
 
+### Text classification with a fine-tuned model
+
+`TextClassifier` (library `nlp_onnx`) runs a fine-tuned BERT-family classifier the way
+Python's `pipeline("text-classification")` does. Point it at the model's folder: what
+`save_pretrained` writes, with an ONNX export beside it, or a Hub repository's files as
+downloaded.
+- **Model:** `model.onnx` or `onnx/model.onnx`.
+- **Tokenizer:** `tokenizer.json` (WordPiece), or `vocab.txt` with `tokenizer_config.json`.
+- **Labels:** `config.json`'s `id2label`.
+- **Scores:** softmax, or sigmoid for multi-label and one-label models, as `transformers`
+  chooses them.
+
+The parity test checks ids, logits, scores and labels against `transformers` on three model
+shapes. Design: [docs/AI_FOUNDATION_DESIGN.md](AI_FOUNDATION_DESIGN.md) §7.5.
+
+```ruby
+use System.NLP.Onnx;
+
+classifier := TextClassifier->New("distilbert-malware");     # the model folder
+if(classifier->IsOpen()) {
+    each(p in classifier->Classify(["CreateFileW WriteFile CloseHandle", "RegSetValueExW"])) {
+        p->GetLabel()->PrintLine();      # e.g. malware, from config.json's id2label
+        p->GetScore()->PrintLine();      # its probability
+    };
+    classifier->Close();
+};
+```
+
 ---
 
 ## Machine Learning (System.ML)
@@ -1324,6 +1352,7 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 | Sentiment / TF-IDF | `SentimentAnalyzer`, `TF_IDF` | `nlp` | None |
 | BERT tokenization | `WordPieceTokenizer`, `ApiSequenceTokenizer` | `nlp` | None |
 | Sentence embeddings (BERT) | `BertEmbedder` | `nlp_onnx` + `models`, `onnx`, `nlp` | None |
+| Text classification (fine-tuned BERT) | `TextClassifier`, `Prediction` | `nlp_onnx` + `models`, `onnx`, `nlp` | None |
 | Linear / regularized regression | `LinearRegression`, `RidgeRegression`, `LassoRegression`, `ElasticNet` | `ml` | None |
 | Linear classifiers | `LogisticRegression`, `SVM`, `Perceptron` | `ml` | None |
 | Kernel SVMs | `KernelSVM` (linear, RBF, poly, sigmoid), `OneClassSVM` | `ml` | None |
