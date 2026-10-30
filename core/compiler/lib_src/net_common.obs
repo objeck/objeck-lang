@@ -760,9 +760,6 @@ bundle Web.HTTP {
 	}
 
 	#~
-	Downloads web content
-	~#
-	#~
 	What a client may carry across a redirect. Credentials belong to the origin the caller
 	addressed: once a redirect leaves that origin (scheme, host or port), Authorization,
 	Proxy-Authorization and cookies are not sent again for the rest of the chain, as curl and
@@ -825,6 +822,9 @@ bundle Web.HTTP {
 		}
 	}
 
+	#~
+	Downloads web content
+	~#
 	class WebDownloader {
 		#~
 		Downloads content for the given URLs
