@@ -1,0 +1,47 @@
+#~
+# A library class's interface does not depend on the program's `use` list
+#
+# Inside bundle System.ML, ml_data.obs declares `class AucMetric implements ScoreMetric` --
+# the interface named as the bundle sees it, unqualified. The library kept that name as
+# written, and a program that linked the library resolved it against the program's OWN
+# uses. This program has no `use System.ML`, so the name resolved to nothing and AucMetric
+# lost its interface:
+#
+#   - casting it to System.ML.ScoreMetric was a compile error ("Invalid cast between
+#     classes"), and
+#   - inside a library, upcasting a class to an interface the program had not `use`d failed
+#     at run time ("Invalid object cast").
+#
+# A library now records the fully qualified names it resolved, and the linker also looks in
+# the class's own bundle for a library built before. Against the pre-fix compiler and
+# libraries this file does not compile.
+#
+# Deliberately no `use System.ML`.
+# EXTRA_LIBS: ml,csv
+~#
+
+class LibInterfaceUnqualified {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		metric := System.ML.AucMetric->New();
+		general := metric->As(System.ML.ScoreMetric);
+		if(general = Nil) {
+			"FAIL: AucMetric cast to System.ML.ScoreMetric"->PrintLine();
+			ok := false;
+		};
+
+		# the interface's method dispatches to the class's: two scores, ranked perfectly
+		typed : System.ML.ScoreMetric := metric;
+		auc := typed->Compute([0.9, 0.1], [true, false]);
+		if(auc <> 1.0) {
+			"FAIL: Compute through the interface gave {$auc}, not 1.0"->PrintLine();
+			ok := false;
+		};
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+		"PASS: library classes keep their interfaces without the program's use"->PrintLine();
+	}
+}
