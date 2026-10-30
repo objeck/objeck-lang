@@ -44,7 +44,7 @@ flowchart LR
 ```
 
 **Tunables** (`GetJitAutoThreshold()`; the environment is read once, and a command-line override set through `vm_options.h` takes precedence over it):
-- `--jit=off` / `OBJECK_JIT_DISABLE=1` — turn auto-JIT off entirely (threshold → `LONG_MAX`).
+- `--jit=off` / `OBJECK_JIT_DISABLE=1` — run the interpreter only (threshold → `LONG_MAX`). No method is compiled, including one declared `native` (library methods too): `TryAutoJitCompile`, the path every compile takes, declines while the JIT is off. Before v2026.10.2 a `native` method was still compiled on its first call.
 - `--jit=<calls>` / `OBJECK_JIT_THRESHOLD=N` — custom positive call-count threshold. LSP/long-lived hosts set this very high to avoid compiling transient code.
 - The override slot lives in `vm_options.h` rather than here because `obd` is built with `_NO_JIT` and compiles `interpreter.cpp` without this header in scope.
 
