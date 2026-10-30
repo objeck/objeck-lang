@@ -65,6 +65,18 @@ bool JitCompiler::TryAutoJitCompile(StackMethod* callee)
     return true;
   }
 
+  // --jit=off / OBJECK_JIT_DISABLE=1 runs the interpreter only. The disabled
+  // threshold kept the call counter from ever reaching a compile, but a method
+  // declared `native` -- every library method so marked, too -- is compiled on
+  // its first call whatever the threshold, so "off" still ran compiled code and
+  // an interpreter-vs-JIT comparison (the nightly differential's s0/off) was not
+  // one. Every compile comes through here, so this is the one place to refuse.
+  // Callers already interpret a method this declines. jit_off_interprets_native
+  // fails without it.
+  if(JIT_AUTO_THRESHOLD == JIT_AUTO_THRESHOLD_DISABLED) {
+    return false;
+  }
+
   // Fast path on the shared compile state (avoids re-claiming after the outcome
   // is settled). A method must be compiled by exactly ONE thread: concurrent
   // mutators previously raced here, double-compiling (leaked NativeCode) and

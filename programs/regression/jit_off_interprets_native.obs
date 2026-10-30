@@ -1,0 +1,43 @@
+#~
+--jit=off runs the interpreter only, methods declared `native` included.
+
+A `native` method used to be compiled on its first call whatever the JIT
+setting, so --jit=off (and OBJECK_JIT_DISABLE=1) still ran compiled code for
+it and for every library method so declared. The program's answers are the
+same either way; what changed is which engine ran it, which only the JIT
+report shows. run_vm_flag_tests.py (section 23) runs this file under
+OBJECK_JIT_REPORT=1: with --jit=off or OBJECK_JIT_DISABLE=1 nothing may be
+reported compiled, and with the JIT on Sum and Scale must be. Here it checks
+its own arithmetic, so it passes in every configuration.
+~#
+
+class JitOffInterpretsNative {
+  function : Main(args : String[]) ~ Nil {
+    values := Int->New[64];
+    for(i := 0; i < values->Size(); i += 1;) {
+      values[i] := i;
+    };
+
+    total := Sum(values);
+    scaled := Scale(2.5, total);
+    if(total = 2016 & scaled = 5040.0) {
+      "PASS: native methods ran and computed {$total} and {$scaled}"->PrintLine();
+    }
+    else {
+      "FAIL: native methods computed {$total} and {$scaled}"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  function : native : Sum(values : Int[]) ~ Int {
+    sum := 0;
+    each(i : values) {
+      sum += values[i];
+    };
+    return sum;
+  }
+
+  function : native : Scale(factor : Float, value : Int) ~ Float {
+    return factor * value->As(Float);
+  }
+}
