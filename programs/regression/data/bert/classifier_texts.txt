@@ -1,0 +1,10 @@
+the quick brown fox
+The Quick Brown Fox
+
+Configure the regression runner with -opt s3 and run it again.
+Café naïve résumé
+unknownwordzzz qqq
+a b c d e f g h i j k l m n o p q r s t u v w x y z a b c d e f
+GetProcAddress LoadLibraryExW CreateFileW WriteFile CloseHandle RegSetValueExW
+x
+multi line\ttext with\ttabs
