@@ -339,15 +339,10 @@
         for(size_t i = 0; i < stack.size(); ++i) {
           Union(known[i], stack[i]);
         }
-        if(andor >= 0) {
-          if(andor_state[to] < 0) {
-            // set on one path only: the slot holds what that path stored, or what the
-            // frame was entered with (zero), so give the join that value
-            andor_state[to] = andor;
-          }
-          else {
-            Union(andor_state[to], andor);
-          }
+        // every path carries the slot's value (Run starts it as the zero the frame
+        // is entered with), so it meets like a stack word
+        if(andor >= 0 && andor_state[to] >= 0) {
+          Union(andor_state[to], andor);
         }
         return true;
       }
@@ -439,9 +434,6 @@
       case LOAD_LOCL_INT_VAR:
         if(!LocalType(ip, op1, slot)) return false;
         if(local_is_andor[op1]) {
-          if(andor < 0) {
-            andor = NewValue(RK_UNKNOWN);
-          }
           stack.push_back(andor);
         }
         else {
@@ -745,9 +737,23 @@
         stack.push_back(NewValue(RK_INT));
         break;
 
-      case TRAP:
+      case TRAP: {
         // the trap id and its arguments, none typed here
         if(!PopN(stack, ip, op1)) return false;
+        // A TRAP pushes nothing, as the JIT models it, except where its result is
+        // the method's: a trap right before the RTRN of a method that returns a
+        // value (Deserializer->ReadInt is LOAD_INT_LIT id; TRAP args=1; RTRN, and
+        // the trap pushes the Int). Such a method never compiles: the JIT finds
+        // nothing to return. The census of the suite's traps (#1457) found every
+        // value-pushing TRAP in this position and none elsewhere.
+        if(ip + 1 < count && instrs[ip + 1].GetType() == RTRN) {
+          std::vector<SlotType> rtrn;
+          ReturnWords(method->GetReturnName(), method->GetReturn(), rtrn);
+          while(stack.size() < rtrn.size()) {
+            stack.push_back(NewValue(RK_UNKNOWN));
+          }
+        }
+      }
         break;
 
       case TRAP_RTRN:
@@ -900,7 +906,13 @@
       for(size_t i = 0; i < params.size(); ++i) {
         entry.push_back(NewValue(RK_UNKNOWN));
       }
-      Flow(0, 0, entry, -1);
+      // The and/or slot holds what the frame was entered with, zero, until a path
+      // stores to it. Starting it as that value keeps one value on every path, so
+      // what two paths stored meets where they join. Without it, a join first
+      // reached by a path that had stored nothing had no value there, and what a
+      // later path stored never met it: Query.Structured.SqlRun:Plain's slot was
+      // typed Int where it held an object.
+      Flow(0, 0, entry, method->HasAndOr() ? NewValue(RK_LIT) : -1);
 
       while(!worklist.empty() && map->ok) {
         const long ip = worklist.back();

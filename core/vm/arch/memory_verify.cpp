@@ -1286,6 +1286,20 @@ RefMap* MemoryManager::GetRefMap(StackMethod* method)
   }
   RefMap* map = RefMap::Build(prgm, method);
   root_audit->maps[method] = map;
+
+  // OBJECK_GC_ROOTS_DUMP=<text>: print the map of every method whose name contains it
+  static const std::string dump = ReadEnv("OBJECK_GC_ROOTS_DUMP");
+  if(!dump.empty() && map->ok && method->GetName().find(std::wstring(dump.begin(), dump.end())) != std::wstring::npos) {
+    std::wcerr << L"[gc-roots] map " << method->GetName() << std::endl;
+    for(size_t ip = 0; ip < map->height.size(); ++ip) {
+      std::wcerr << L"[gc-roots]   " << ip << L" t" << method->GetInstruction((long)ip)->GetType() << L" h" << map->height[ip]
+                 << L" pops" << map->pops[ip] << L" and/or=" << RefKindName(map->andor[ip]) << L" [";
+      for(int d = 0; d < map->height[ip]; ++d) {
+        std::wcerr << (d ? L" " : L"") << RefKindName(map->Kind((long)ip, d));
+      }
+      std::wcerr << L"]" << std::endl;
+    }
+  }
   if(map->ok) {
     root_audit->maps_built++;
   }
