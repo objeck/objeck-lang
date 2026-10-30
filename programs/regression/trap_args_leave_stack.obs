@@ -1,0 +1,69 @@
+#~
+A trap consumes the stack words its bytecode declares (#1457).
+
+A TRAP or TRAP_RTRN instruction names how many words it takes: the trap's
+arguments, which the bytecode pushes, and its id on top. The trap's handler
+takes the arguments. A few handlers read their instance from the frame instead
+and took none: UDPSocketServer's Bind left two words on the operand stack,
+UDPSocket's and UDPSocketServer's Close one, File->GetTempName one. The words
+stayed there for the life of the thread, interpreted or compiled (the JIT's
+callback leaves the arguments to the trap too), so the stack grew with every
+such call, and the collector, which scans that stack, kept what they named
+alive: here, the server itself.
+
+Leave() binds a loopback UDP server that carries a 32 MB array, closes it and
+returns; the server is dead after that. Exits 1 when the heap does not drop
+below 32 MB after the collections.
+~#
+
+# EXTRA_LIBS: net,net_quic
+
+use System.IO.Filesystem, System.IO.Net;
+
+class HeavyServer from UDPSocketServer {
+  @pad : Byte[];
+
+  New(size : Int) {
+    Parent("127.0.0.1", 0, false);
+    @pad := Byte->New[size];
+  }
+}
+
+class TrapArgsLeaveStack {
+  @sink : static : Int;
+
+  function : Main(args : String[]) ~ Nil {
+    big := 32 * 1024 * 1024;
+    bound := Leave(big);
+    Garbage();
+    allocated := Runtime->GetProperty("runtime.memory.allocated")->ToInt();
+    if(bound & allocated < big) {
+      "PASS: the traps left nothing behind ({$allocated} bytes allocated)"->PrintLine();
+    }
+    else {
+      "FAIL: bound={$bound}; a trap's arguments kept a dead 32 MB server alive ({$allocated} bytes allocated)"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  function : Leave(size : Int) ~ Bool {
+    server := HeavyServer->New(size);
+    bound := server->Bind();
+    server->Close();
+    # leaves one word of its own, the receiver it does not use
+    File->GetTempName();
+    return bound;
+  }
+
+  # allocates until three major collections have run
+  function : Garbage() ~ Nil {
+    start := Runtime->GetProperty("runtime.gc.major")->ToInt();
+    i := 0;
+    while(i < 20000 & Runtime->GetProperty("runtime.gc.major")->ToInt() - start < 3) {
+      a := Int->New[65536];
+      a[0] := i;
+      @sink += a[0] % 2;
+      i += 1;
+    };
+  }
+}
