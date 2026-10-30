@@ -760,6 +760,69 @@ bundle Web.HTTP {
 	}
 
 	#~
+	What a client may carry across a redirect. Credentials belong to the origin the caller
+	addressed: once a redirect leaves that origin (scheme, host or port), Authorization,
+	Proxy-Authorization and cookies are not sent again for the rest of the chain, as curl and
+	Python requests do. The clients never follow a redirect to another scheme, so an https
+	request is never downgraded to http with or without them.
+	~#
+	class : private : RedirectCheck {
+		#~
+		Whether a redirect from one URL to another changes origin.
+		@param source the URL that answered with the redirect
+		@param target the redirect target
+		@return true when the scheme, host or effective port differs
+		~#
+		function : IsCrossOrigin(source : Url, target : Url) ~ Bool {
+			if(source = Nil | target = Nil) {
+				return true;
+			};
+
+			source_scheme := source->GetScheme();
+			target_scheme := target->GetScheme();
+			source_host := source->GetHost();
+			target_host := target->GetHost();
+			if(source_scheme = Nil | target_scheme = Nil | source_host = Nil | target_host = Nil) {
+				return true;
+			};
+
+			source_scheme := source_scheme->ToLower();
+			target_scheme := target_scheme->ToLower();
+			if(<>source_scheme->Equals(target_scheme) | <>source_host->ToLower()->Equals(target_host->ToLower())) {
+				return true;
+			};
+
+			return EffectivePort(source_scheme, source->GetPort()) <> EffectivePort(target_scheme, target->GetPort());
+		}
+
+		#~
+		Whether a request header carries credentials.
+		@param name header name, as stored by AddHeader (lower case)
+		@return true for Authorization, Proxy-Authorization and Cookie
+		~#
+		function : IsCredential(name : String) ~ Bool {
+			if(name = Nil) {
+				return false;
+			};
+
+			name := name->ToLower();
+			return name->Equals("authorization") | name->Equals("proxy-authorization") | name->Equals("cookie");
+		}
+
+		function : EffectivePort(scheme : String, port : Int) ~ Int {
+			if(port >= 0) {
+				return port;
+			};
+
+			if(scheme->Equals("https") | scheme->Equals("wss")) {
+				return 443;
+			};
+
+			return 80;
+		}
+	}
+
+	#~
 	Downloads web content
 	~#
 	class WebDownloader {

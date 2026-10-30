@@ -225,6 +225,13 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     methods report "compiled", no method in it reports its register pool out
     of balance, and its stdout (the raw bits of every result) is byte for byte
     what --jit=off prints.
+ 23. --jit=off and OBJECK_JIT_DISABLE=1 run the interpreter only. A method
+    declared `native` (every library method so declared, too) was compiled on
+    its first call whatever the setting, so "off" still ran compiled code and
+    the nightly differential's s0/off configuration was not an interpreter run.
+    With OBJECK_JIT_REPORT=1, jit_off_interprets_native.obs reports no compiled
+    method under --jit=off or OBJECK_JIT_DISABLE=1, reports its native Sum and
+    Scale compiled with the JIT on, and prints the same stdout all three ways.
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only]
 
@@ -534,6 +541,8 @@ def main():
     check_float_limits_compiled(obc, obr, env, bin_dir)
 
     check_array_index_registers(obc, obr, env, bin_dir)
+
+    check_jit_off_interprets_native(obc, obr, env, bin_dir)
 
     # ---- 11. the heap verifier (OBJECK_GC_VERIFY) ----------------------------------
     verify_section(obc, obr, env, bin_dir)
@@ -1358,6 +1367,45 @@ def check_array_index_registers(obc, obr, env, bin_dir):
         check(f"JitArrayIndexRegisters:{method} is compiled", line in text, f"report={report!r}")
     leaks = [l for l in text.splitlines() if "JitArrayIndexRegisters:" in l and "out of balance" in l]
     check("no JitArrayIndexRegisters method leaks a register", not leaks, f"report={leaks!r}")
+
+
+def check_jit_off_interprets_native(obc, obr, env, bin_dir):
+    # ---- 23. --jit=off compiles nothing, `native` methods included -------------------
+    src = os.path.join(SCRIPT_DIR, "jit_off_interprets_native.obs")
+    dest = os.path.join(SCRIPT_DIR, "jit_off_interprets_native.obe")
+    rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+    check("jit-off fixture compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+    if rc != 0:
+        return
+
+    report_env = dict(env)
+    report_env.pop("OBJECK_JIT_DISABLE", None)
+    report_env["OBJECK_JIT_REPORT"] = "1"
+    disable_env = dict(report_env)
+    disable_env["OBJECK_JIT_DISABLE"] = "1"
+    pass_line = b"PASS: native methods ran"
+
+    rc, on_out, err = run([obr, dest], env=report_env, cwd=bin_dir)
+    text = err.decode(errors="replace")
+    check("the jit-off fixture passes with the JIT on", rc == 0 and pass_line in on_out,
+          f"rc={rc} out={on_out[-200:]!r} stderr={text[-300:]!r}")
+    # the positive control: without it a report that never fires would pass below
+    for method in ("Sum:i*,", "Scale:f,i,"):
+        line = f"[jit] JitOffInterpretsNative:{method}: compiled"
+        check(f"JitOffInterpretsNative:{method} is compiled with the JIT on", line in text,
+              f"report={[l for l in text.splitlines() if 'JitOffInterpretsNative:' in l]!r}")
+
+    for label, cmd, run_env in (("--jit=off", [obr, "--jit=off", dest], report_env),
+                                ("OBJECK_JIT_DISABLE=1", [obr, dest], disable_env)):
+        rc, off_out, err = run(cmd, env=run_env, cwd=bin_dir)
+        text = err.decode(errors="replace")
+        compiled = [l for l in text.splitlines() if l.startswith("[jit] ")]
+        check(f"the jit-off fixture passes under {label}", rc == 0 and pass_line in off_out,
+              f"rc={rc} out={off_out[-200:]!r} stderr={text[-300:]!r}")
+        check(f"nothing is compiled under {label}, native methods included", not compiled,
+              f"report={compiled[:8]!r}")
+        check(f"the jit-off fixture prints the same under {label} as with the JIT on",
+              off_out == on_out, f"off={off_out[-300:]!r} on={on_out[-300:]!r}")
 
 
 def check_call_depth(obc, obr, env, bin_dir):
