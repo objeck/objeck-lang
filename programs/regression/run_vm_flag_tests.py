@@ -232,6 +232,16 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     With OBJECK_JIT_REPORT=1, jit_off_interprets_native.obs reports no compiled
     method under --jit=off or OBJECK_JIT_DISABLE=1, reports its native Sum and
     Scale compiled with the JIT on, and prints the same stdout all three ways.
+ 24. The operand-stack reference maps agree with the live stacks
+    (OBJECK_GC_ROOTS=audit, docs/GC_ROOTS_DESIGN.md phase 1). The collector
+    still marks and relocates every stack word on a guess; the audit computes
+    at every collection what the maps say each word is, without changing what
+    is marked. Interpreted, with a 256k nursery for frequent collections, on
+    fixtures for the and/or slot (gc_cond_value_root, opt_inline_and_or_slots),
+    func-ref parameters (closure_nested_capture) and the collections library
+    (collect_hash_open): every map builds, every thread's frames account for
+    every word on its stack, no word typed as a reference points at nothing,
+    and no word typed Int or Float points at an object.
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only]
 
@@ -543,6 +553,8 @@ def main():
     check_array_index_registers(obc, obr, env, bin_dir)
 
     check_jit_off_interprets_native(obc, obr, env, bin_dir)
+
+    check_gc_roots_audit(obc, obr, env, bin_dir)
 
     # ---- 11. the heap verifier (OBJECK_GC_VERIFY) ----------------------------------
     verify_section(obc, obr, env, bin_dir)
@@ -1406,6 +1418,36 @@ def check_jit_off_interprets_native(obc, obr, env, bin_dir):
               f"report={compiled[:8]!r}")
         check(f"the jit-off fixture prints the same under {label} as with the JIT on",
               off_out == on_out, f"off={off_out[-300:]!r} on={on_out[-300:]!r}")
+
+
+def check_gc_roots_audit(obc, obr, env, bin_dir):
+    # ---- 24. the operand-stack reference maps agree with the live stacks -----------
+    audit_env = dict(env)
+    audit_env["OBJECK_GC_ROOTS"] = "audit"
+    numbers = re.compile(r"(\w+)=(\d+)")
+    for name in ("gc_cond_value_root", "opt_inline_and_or_slots", "closure_nested_capture", "collect_hash_open"):
+        src = os.path.join(SCRIPT_DIR, name + ".obs")
+        dest = os.path.join(SCRIPT_DIR, name + ".obe")
+        rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+        check(f"{name} compiles for the roots audit", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+        if rc != 0:
+            continue
+        rc, out, err = run([obr, "--jit=off", "--nursery=256k", dest], env=audit_env, cwd=SCRIPT_DIR, timeout=300)
+        text = err.decode(errors="replace")
+        counts = {}
+        for line in text.splitlines():
+            if line.startswith("[gc-roots]") and not line.startswith("[gc-roots]   "):
+                for key, value in numbers.findall(line):
+                    counts[key] = int(value)
+        notes = [l for l in text.splitlines() if l.startswith("[gc-roots]   ")][:6]
+        check(f"{name} passes under the roots audit", rc == 0, f"rc={rc} out={out[-200:]!r}")
+        check(f"the roots audit ran on {name}", counts.get("collections", 0) > 0 and "built" in counts,
+              f"counts={counts!r}")
+        for key, what in (("failed", "every reference map builds"),
+                          ("mismatched_threads", "every thread's frames account for its whole stack"),
+                          ("ref_points_at_nothing", "no reference-typed word points at nothing"),
+                          ("int_points_at_object", "no Int- or Float-typed word points at an object")):
+            check(f"{name}: {what}", counts.get(key, -1) == 0, f"{key}={counts.get(key)} notes={notes!r}")
 
 
 def check_call_depth(obc, obr, env, bin_dir):
