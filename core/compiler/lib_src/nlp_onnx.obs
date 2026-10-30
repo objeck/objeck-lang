@@ -803,6 +803,7 @@ classifier->Close();
 		@logits_name : String;
 		@model_path : String;
 		@cpu_fallback : Bool;
+		@default_provider : Bool;
 		@open_error : String;
 		@error : String;
 
@@ -888,6 +889,7 @@ classifier->Close();
 				};
 			};
 
+			@default_provider := session_options = Nil;
 			if(session_options = Nil) {
 				@session := Session->New(@model_path);
 				# The build's own provider -- DirectML on Windows, CoreML on macOS -- can fail
@@ -1036,6 +1038,20 @@ classifier->Close();
 			return true;
 		}
 
+		method : ReopenOnCpu() ~ Bool {
+			cpu := Map->New()<String, String>;
+			cpu->Insert("ep", "cpu");
+			session := Session->New(@model_path, cpu);
+			if(<>session->IsOpen()) {
+				return false;
+			};
+
+			@session->Close();
+			@session := session;
+			@cpu_fallback := true;
+			return true;
+		}
+
 		method : OpenFail(reason : String) ~ Nil {
 			@open_error := reason;
 			Fail(reason);
@@ -1075,8 +1091,8 @@ classifier->Close();
 		}
 
 		#~
-		Whether the build's default provider failed to open the model and the CPU provider
-		was used instead. Only when no session options were given.
+		Whether the build's default provider failed to open or to run the model and the CPU
+		provider was used instead. Only when no session options were given.
 		@return true when running on the CPU as a fallback
 		~#
 		method : public : IsCpuFallback() ~ Bool {
@@ -1350,9 +1366,14 @@ classifier->Close();
 			};
 
 			outputs := @session->Run(inputs, [@logits_name]);
+			# The build's provider can open a model and still fail to run it: CoreML on macOS
+			# refuses some nodes of a torch.export-based export only when they execute. With no
+			# provider asked for, any provider will do, so run on the CPU, as opening does.
+			if((outputs = Nil | outputs->Size() = 0) & @default_provider & <>@cpu_fallback & ReopenOnCpu()) {
+				outputs := @session->Run(inputs, [@logits_name]);
+			};
 			if(outputs = Nil | outputs->Size() = 0) {
-				reason := EndPoint->GetLastError();
-				Fail("the model run failed: {$reason}");
+				Fail("the model run failed; ONNX Runtime's reason is on standard error");
 				return Nil;
 			};
 

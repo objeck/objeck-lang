@@ -16772,7 +16772,7 @@
 					"descriptions": ["**The tokenizer, e.g. to inspect what a text becomes.**\n\n```method : public : GetTokenizer() ~ WordPieceTokenizer```\n\n\n\nreturn: WordPieceTokenizer"]
 				},
 				"IsCpuFallback": {
-					"descriptions": ["**Whether the build's default provider failed to open the model and the CPU provider was used instead. Only when no session options were given.**\n\n```method : public : IsCpuFallback() ~ Bool```\n\n\n\nreturn: Bool"]
+					"descriptions": ["**Whether the build's default provider failed to open or to run the model and the CPU provider was used instead. Only when no session options were given.**\n\n```method : public : IsCpuFallback() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"IsOpen": {
 					"descriptions": ["**Whether the model, tokenizer and labels loaded.**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
