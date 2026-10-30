@@ -1,0 +1,384 @@
+#~
+# TextClassifier: a fine-tuned classifier opened from its model folder, checked against
+# Python.
+#
+# EXTRA_LIBS: models,opencv,onnx,nlp,nlp_onnx
+#
+# data/bert/classifier holds three tiny real classifiers (gen_tiny_classifier.py): real
+# transformers architectures with seeded random weights, saved as save_pretrained saves a
+# fine-tuned model and exported to ONNX. classifier_expected.txt is what Python makes of
+# ten texts with each: the tokenizer's ids, ONNX Runtime's and PyTorch's logits, and the
+# scores and top label of transformers' pipeline("text-classification"). Here each folder
+# is opened as a user opens a downloaded model, and must give the same:
+#
+#   - ids exactly, truncation included (tokenizer_config.json caps the length at 24);
+#   - logits within 1e-5 of ONNX Runtime and 1e-4 of PyTorch, relative to max(1, |logit|);
+#   - scores within 1e-4 of the pipeline, and its top label;
+#
+# across the three shapes a downloaded classifier comes in:
+#
+#   distilbert_cased  no token_type_ids, cased tokenizer.json, labels benign/malware, softmax
+#   bert_multilabel   token_type_ids, vocab.txt and tokenizer_config.json only, three labels,
+#                     problem_type multi_label_classification: sigmoid
+#   bert_one_label    one label: sigmoid
+#
+# Then: batch sizes 1, 3 and 10 give the same logits; NONE gives the logits; the refusals
+# (a missing folder, no model, a missing named model, a BPE tokenizer.json) say why.
+#
+# The fixtures are found relative to the working directory, which every runner sets to
+# this directory.
+~#
+
+use API.Onnx;
+use API.Models;
+use Collection;
+use System.IO.Filesystem;
+use System.NLP;
+use System.NLP.Onnx;
+
+# one line of classifier_expected.txt
+class ExpectedRow {
+	@fields : String[];
+
+	New(fields : String[]) {
+		@fields := fields;
+	}
+
+	method : public : GetFields() ~ String[] {
+		return @fields;
+	}
+}
+
+class NlpOnnxTextClassifier {
+	@ok : Bool;
+	@texts : String[];
+	@rows : Vector<ExpectedRow>;
+
+	function : Main(args : String[]) ~ Nil {
+		NlpOnnxTextClassifier->New()->Run();
+	}
+
+	New() {
+		@ok := true;
+	}
+
+	method : Check(name : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	method : LibraryPresent() ~ Bool {
+		dir := Runtime->GetProperty("lib_dir");
+		if(dir = Nil) {
+			return false;
+		};
+
+		base := "{$dir}native/libobjk_onnx";
+		return File->Exists("{$base}.dll") | File->Exists("{$base}.so") | File->Exists("{$base}.dylib");
+	}
+
+	method : Run() ~ Nil {
+		if(<>LibraryPresent()) {
+			"SKIP: libobjk_onnx is not deployed"->PrintLine();
+			return;
+		};
+
+		if(<>LoadFixtures()) {
+			"FAIL: data/bert/classifier_texts.txt or classifier_expected.txt did not load; run from programs/regression"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		Folder("distilbert_cased", ["benign", "malware"], TextClassifier->Function->SOFTMAX);
+		Folder("bert_multilabel", ["toxic", "obscene", "insult"], TextClassifier->Function->SIGMOID);
+		Folder("bert_one_label", ["LABEL_0"], TextClassifier->Function->SIGMOID);
+		Batches();
+		Refusals();
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	# --- fixtures ---
+
+	method : LoadFixtures() ~ Bool {
+		text := FileReader->ReadFile("data/bert/classifier_texts.txt");
+		expected := FileReader->ReadFile("data/bert/classifier_expected.txt");
+		if(text = Nil | expected = Nil) {
+			return false;
+		};
+
+		lines := Lines(text);
+		@texts := String->New[lines->Size()];
+		each(i : lines) {
+			@texts[i] := lines->Get(i)->ReplaceAll("\\t", "\t");
+		};
+
+		@rows := Vector->New()<ExpectedRow>;
+		lines := Lines(expected);
+		each(i : lines) {
+			line := lines->Get(i);
+			if(line->Size() > 0 & <>line->StartsWith("#")) {
+				@rows->AddBack(ExpectedRow->New(Fields(line, '\t')));
+			};
+		};
+
+		return @texts->Size() = 10 & @rows->Size() = 30;
+	}
+
+	# lines of a file, empty ones kept: one of the texts is the empty string
+	function : Lines(text : String) ~ Vector<String> {
+		lines := Vector->New()<String>;
+		line := "";
+		each(i : text) {
+			c := text->Get(i);
+			if(c = '\n') {
+				lines->AddBack(line);
+				line := "";
+			}
+			else if(c <> '\r') {
+				line->Append(c);
+			};
+		};
+		if(line->Size() > 0) {
+			lines->AddBack(line);
+		};
+		return lines;
+	}
+
+	function : Fields(line : String, separator : Char) ~ String[] {
+		fields := Vector->New()<String>;
+		field := "";
+		each(i : line) {
+			c := line->Get(i);
+			if(c = separator) {
+				fields->AddBack(field);
+				field := "";
+			}
+			else {
+				field->Append(c);
+			};
+		};
+		fields->AddBack(field);
+		return fields->ToArray();
+	}
+
+	function : Numbers(field : String) ~ Float[] {
+		parts := Fields(field, ' ');
+		values := Float->New[parts->Size()];
+		each(i : parts) {
+			values[i] := parts[i]->ToFloat();
+		};
+		return values;
+	}
+
+	# within tolerance, relative to max(1, |expected|)
+	function : Close(got : Float, want : Float, tolerance : Float) ~ Bool {
+		scale := want->Abs();
+		if(scale < 1.0) {
+			scale := 1.0;
+		};
+		return (got - want)->Abs() <= tolerance * scale;
+	}
+
+	# --- one folder against Python ---
+
+	method : Folder(name : String, labels : String[], scoring : TextClassifier->Function) ~ Nil {
+		classifier := TextClassifier->New("data/bert/classifier/{$name}");
+		Check("{$name}: opens", classifier->IsOpen());
+		if(<>classifier->IsOpen()) {
+			error := classifier->GetError();
+			"  error: {$error}"->PrintLine();
+			return;
+		};
+
+		got_labels := classifier->GetLabels();
+		same := got_labels->Size() = labels->Size();
+		if(same) {
+			each(i : labels) {
+				if(<>got_labels[i]->Equals(labels[i])) {
+					same := false;
+				};
+			};
+		};
+		Check("{$name}: labels from config.json", same);
+		Check("{$name}: maximum length from tokenizer_config.json is 24", classifier->GetMaxLength() = 24);
+		Check("{$name}: scoring function from config.json", classifier->GetFunction() = scoring);
+
+		logits := classifier->Logits(@texts);
+		scores := classifier->Scores(@texts);
+		predictions := classifier->Classify(@texts);
+		Check("{$name}: Logits, Scores and Classify return", logits <> Nil & scores <> Nil & predictions <> Nil);
+		if(logits = Nil | scores = Nil | predictions = Nil) {
+			error := classifier->GetError();
+			"  error: {$error}"->PrintLine();
+			classifier->Close();
+			return;
+		};
+
+		ids_ok := true;
+		ort_ok := true;
+		torch_ok := true;
+		scores_ok := true;
+		labels_ok := true;
+		truncated_ok := true;
+		each(r : @rows) {
+			row := @rows->Get(r)->GetFields();
+			if(row[0]->Equals(name)) {
+				index := row[1]->ToInt();
+
+				# ids: what the tokenizer gives, before padding
+				encoding := classifier->GetTokenizer()->Encode(@texts[index], classifier->GetMaxLength());
+				want_ids := Fields(row[2], ' ');
+				got_ids := encoding->GetIds();
+				if(encoding->GetLength() <> want_ids->Size()) {
+					ids_ok := false;
+				}
+				else {
+					each(k : want_ids) {
+						if(got_ids[k] <> want_ids[k]->ToInt()) {
+							ids_ok := false;
+						};
+					};
+				};
+
+				ort := Numbers(row[3]);
+				torch := Numbers(row[4]);
+				want_scores := Numbers(row[5]);
+				each(j : ort) {
+					if(<>Close(logits[index, j], ort[j], 0.00001)) {
+						ort_ok := false;
+						got := logits[index, j];
+						want := ort[j];
+						"  {$name} text {$index} logit {$j}: {$got}, ONNX Runtime {$want}"->PrintLine();
+					};
+					if(<>Close(logits[index, j], torch[j], 0.0001)) {
+						torch_ok := false;
+					};
+					if(<>Close(scores[index, j], want_scores[j], 0.0001)) {
+						scores_ok := false;
+						got := scores[index, j];
+						want := want_scores[j];
+						"  {$name} text {$index} score {$j}: {$got}, pipeline {$want}"->PrintLine();
+					};
+				};
+
+				prediction := predictions[index];
+				if(<>prediction->GetLabel()->Equals(row[6]) | <>labels[prediction->GetIndex()]->Equals(row[6])) {
+					labels_ok := false;
+				};
+				if(prediction->GetScore() <> scores[index, prediction->GetIndex()]) {
+					labels_ok := false;
+				};
+				if(prediction->IsTruncated() <> row[7]->Equals("1")) {
+					truncated_ok := false;
+				};
+			};
+		};
+		Check("{$name}: ids match the Python tokenizer, truncation included", ids_ok);
+		Check("{$name}: logits match ONNX Runtime (1e-5)", ort_ok);
+		Check("{$name}: logits match PyTorch (1e-4)", torch_ok);
+		Check("{$name}: scores match pipeline('text-classification') (1e-4)", scores_ok);
+		Check("{$name}: top labels match the pipeline", labels_ok);
+		Check("{$name}: truncation is reported", truncated_ok);
+
+		one := classifier->Classify(@texts[0]);
+		Check("{$name}: Classify(text) is Classify([text])[0]", one <> Nil & one->GetLabel()->Equals(predictions[0]->GetLabel()) & one->GetScore() = predictions[0]->GetScore());
+
+		classifier->SetFunction(TextClassifier->Function->NONE);
+		raw := classifier->Scores(@texts);
+		raw_ok := raw <> Nil;
+		if(raw_ok) {
+			for(i := 0; i < @texts->Size(); i += 1;) {
+				for(j := 0; j < labels->Size(); j += 1;) {
+					if(raw[i, j] <> logits[i, j]) {
+						raw_ok := false;
+					};
+				};
+			};
+		};
+		Check("{$name}: NONE scores are the logits", raw_ok);
+
+		classifier->Close();
+	}
+
+	# --- batching: each batch is padded to its own longest text; results must not move ---
+
+	method : Batches() ~ Nil {
+		classifier := TextClassifier->New("data/bert/classifier/bert_multilabel");
+		if(<>classifier->IsOpen()) {
+			Check("batches: opens", false);
+			return;
+		};
+
+		classifier->SetBatchSize(10);
+		all := classifier->Logits(@texts);
+		classifier->SetBatchSize(1);
+		single := classifier->Logits(@texts);
+		classifier->SetBatchSize(3);
+		three := classifier->Logits(@texts);
+		Check("batches: batch sizes 1, 3 and 10 return", all <> Nil & single <> Nil & three <> Nil);
+		if(all <> Nil & single <> Nil & three <> Nil) {
+			same := true;
+			for(i := 0; i < @texts->Size(); i += 1;) {
+				for(j := 0; j < 3; j += 1;) {
+					if(<>Close(single[i, j], all[i, j], 0.00001) | <>Close(three[i, j], all[i, j], 0.00001)) {
+						same := false;
+					};
+				};
+			};
+			Check("batches: batch sizes 1, 3 and 10 give the same logits", same);
+		};
+
+		Check("batches: SetMaxLength refuses 1", <>classifier->SetMaxLength(1));
+		Check("batches: SetMaxLength(16) takes", classifier->SetMaxLength(16) & classifier->GetMaxLength() = 16);
+		short := classifier->Classify(@texts[3]);
+		Check("batches: a 16-token limit truncates the long sentence", short <> Nil & short->IsTruncated());
+
+		classifier->Close();
+	}
+
+	# --- refusals say why ---
+
+	method : Refusals() ~ Nil {
+		missing := TextClassifier->New("data/bert/classifier/no_such_folder");
+		Check("refusal: a missing folder", <>missing->IsOpen() & missing->GetError() <> Nil & missing->GetError()->Has("does not exist"));
+
+		no_model := TextClassifier->New("data/bert");
+		Check("refusal: a folder with no model.onnx", <>no_model->IsOpen() & no_model->GetError() <> Nil & no_model->GetError()->Has("model.onnx"));
+
+		options := Map->New()<String, String>;
+		options->Insert("model", "onnx/model_quantized.onnx");
+		named := TextClassifier->New("data/bert/classifier/distilbert_cased", options);
+		Check("refusal: a named model that is not there", <>named->IsOpen() & named->GetError() <> Nil & named->GetError()->Has("model_quantized.onnx"));
+
+		options := Map->New()<String, String>;
+		options->Insert("model", "model.onnx");
+		options->Insert("ep", "cpu");
+		chosen := TextClassifier->New("data/bert/classifier/distilbert_cased", options);
+		Check("options: a named model with a session option opens", chosen->IsOpen() & <>chosen->IsCpuFallback());
+		chosen->Close();
+
+		# a BPE tokenizer.json beside a working model: refused by name, not misread
+		folder := "text_classifier_bpe_{$Runtime->GetProcessId()}";
+		Directory->Create(folder);
+		writer := FileWriter->New("{$folder}/tokenizer.json");
+		writer->WriteString("{\"model\": {\"type\": \"BPE\", \"vocab\": {}, \"merges\": []}}");
+		writer->Close();
+		options := Map->New()<String, String>;
+		options->Insert("model", "../data/bert/classifier/distilbert_cased/model.onnx");
+		bpe := TextClassifier->New(folder, options);
+		Check("refusal: a BPE tokenizer.json is named as such", <>bpe->IsOpen() & bpe->GetError() <> Nil & bpe->GetError()->Has("BPE"));
+		File->Delete("{$folder}/tokenizer.json");
+		Directory->Delete(folder);
+
+		classifier := TextClassifier->New("data/bert/classifier/distilbert_cased");
+		Check("refusal: Classify(Nil)", classifier->Classify(Nil->As(String)) = Nil & classifier->GetError() <> Nil);
+		classifier->Close();
+	}
+}

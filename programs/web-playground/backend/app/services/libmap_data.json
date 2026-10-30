@@ -163,7 +163,7 @@
   "nlp_onnx": {
    "deps": ["gen_collect", "models", "opencv", "cipher", "json", "onnx", "nlp"],
    "bundles": {
-    "System.NLP.Onnx": ["BertEmbedder"]
+    "System.NLP.Onnx": ["BertEmbedder", "Prediction", "TextClassifier"]
    }
   },
   "odbc": {
