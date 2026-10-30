@@ -1047,6 +1047,14 @@ response->GetStatusCode()->PrintLine();
 						}
 						while(line->Size() > 0);
 
+						# A reset can discard the rest of the reply (Windows loopback, #669). The
+						# empty line it leaves came with a socket error: a dropped connection,
+						# not the end of the headers.
+						if(TCPSocket->GetLastError() <> Nil) {
+							socket->Close();
+							return Nil;
+						};
+
 						if(status_code = 301 | status_code = 302 | status_code = 303 |
 						   status_code = 307 | status_code = 308) {
 							moved_location := @response_headers->Find("location");
@@ -1128,6 +1136,10 @@ if(response <> Nil & response->GetCode() = 200) {
 			@download_size := -1;
 			response := Get(url, "application/octet-stream");
 			@download_path := Nil;
+			# code 0: no status line arrived -- the connection dropped before the reply
+			if(response <> Nil & response->GetCode() = 0) {
+				return Nil;
+			};
 			return response;
 		}
 
@@ -1296,6 +1308,14 @@ if(response <> Nil & response->GetCode() = 200) {
 							};
 						}
 						while(line->Size() > 0);
+
+						# A reset can discard the rest of the reply (Windows loopback, #669). The
+						# empty line it leaves came with a socket error: a dropped connection,
+						# not the end of the headers.
+						if(TCPSocket->GetLastError() <> Nil) {
+							socket->Close();
+							return Nil;
+						};
 
 						if(status_code = 301 | status_code = 302 | status_code = 303 |
 						   status_code = 307 | status_code = 308) {
