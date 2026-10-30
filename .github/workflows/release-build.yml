@@ -1135,6 +1135,7 @@ jobs:
             ../../../compiler/lib_src/inference.obs \
             ../../../compiler/lib_src/nlp.obs \
             ../../../compiler/lib_src/nlp_onnx.obs \
+            ../../../compiler/lib_src/ai_hub.obs \
             ../../../compiler/lib_src/lame.obs 2>&1 | tee code_doc.log
           # A doc comment the parser rejects drops its member from the API reference with
           # only an ERROR line to show for it: two GLWindow members shipped undocumented
