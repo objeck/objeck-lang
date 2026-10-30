@@ -7,6 +7,7 @@ use Collection;
 use API.Models;
 use API.Onnx;
 use System.NLP;
+use Data.JSON;
 
 #~
 Sentence embeddings from a pretrained BERT-family encoder exported to ONNX: the text is
@@ -645,6 +646,994 @@ pooled := BertEmbedder->MeanPool(values, 2, 128, 768, mask);
 			};
 
 			return pooled;
+		}
+	}
+
+	#~
+	One text's classification: the top label, its score, and every label's score in label
+	order.
+	~#
+	class Prediction {
+		@top_label : String;
+		@index : Int;
+		@score : Float;
+		@scores : Float[];
+		@truncated : Bool;
+
+		#~
+		Constructor, for a classifier of the program's own.
+		@param top_label the top label
+		@param index the top label's index
+		@param score the top label's score
+		@param scores every label's score, in label order
+		@param truncated whether text was dropped to fit the model
+		~#
+		New(top_label : String, index : Int, score : Float, scores : Float[], truncated : Bool) {
+			@top_label := top_label;
+			@index := index;
+			@score := score;
+			@scores := scores;
+			@truncated := truncated;
+		}
+
+		#~
+		The top label, from the model's id2label.
+		@return label
+		~#
+		method : public : GetLabel() ~ String {
+			return @top_label;
+		}
+
+		#~
+		The top label's index.
+		@return index
+		~#
+		method : public : GetIndex() ~ Int {
+			return @index;
+		}
+
+		#~
+		The top label's score: a probability under SOFTMAX or SIGMOID, the raw logit under NONE.
+		@return score
+		~#
+		method : public : GetScore() ~ Float {
+			return @score;
+		}
+
+		#~
+		Every label's score, in label order.
+		@return scores
+		~#
+		method : public : GetScores() ~ Float[] {
+			return @scores;
+		}
+
+		#~
+		Whether the text was longer than the model's maximum length and was cut to fit.
+		@return true when truncated
+		~#
+		method : public : IsTruncated() ~ Bool {
+			return @truncated;
+		}
+
+		#~
+		The label and its score, e.g. "POSITIVE 0.9998".
+		@return text form
+		~#
+		method : public : ToString() ~ String {
+			return "{$@top_label} {$@score}";
+		}
+	}
+
+	#~
+	Text classification with a fine-tuned BERT-family model, as Python's
+	pipeline("text-classification"): a sentiment model, a topic classifier, a malware
+	classifier fine-tuned on Colab.
+
+	The model is a Hugging Face model folder (what save_pretrained writes, with an ONNX
+	export beside it), or a Hub repository's files downloaded as they are:
+
+	- the model: model.onnx, else onnx/model.onnx; or the file the "model" option names,
+	  relative to the folder;
+	- the tokenizer: tokenizer.json (WordPiece), else vocab.txt with tokenizer_config.json's
+	  do_lower_case (true when absent, as BertTokenizer defaults);
+	- the labels: config.json's id2label, else LABEL_0, LABEL_1, ...
+
+	The model's own signature decides what is sent: input_ids always, attention_mask and
+	token_type_ids only when declared (DistilBERT and RoBERTa exports have no
+	token_type_ids). The output is logits FP32[batch, labels].
+
+	Scores follow transformers: SIGMOID when config.json's problem_type is
+	multi_label_classification or there is one label, else SOFTMAX. SetFunction overrides it.
+
+	Texts longer than the maximum length are truncated, and the Prediction says so. The
+	maximum length is the smallest of 512, the model's max_position_embeddings and the
+	tokenizer's model_max_length, or the model's fixed sequence axis. Each batch is padded to
+	its longest text.
+
+	With no session options, the build's default provider runs the model, and the CPU when
+	that provider cannot open it: see IsCpuFallback. Any option other than "model" is a
+	session option, e.g. "ep" to "cpu".
+
+```
+classifier := TextClassifier->New("distilbert-sst2");
+if(<>classifier->IsOpen()) {
+  classifier->GetError()->ErrorLine();
+  return;
+};
+each(p in classifier->Classify(["I loved it", "Not worth the ticket"])) {
+  p->ToString()->PrintLine();   # POSITIVE 0.9998, then NEGATIVE 0.9991
+};
+classifier->Close();
+```
+	~#
+	class TextClassifier {
+		#~
+		How logits become scores, as transformers' function_to_apply.
+		~#
+		enum Function {
+			#~
+			Probabilities over the labels, summing to 1: single-label classification.
+			~#
+			SOFTMAX,
+			#~
+			An independent probability per label: multi-label classification, or one label.
+			~#
+			SIGMOID,
+			#~
+			The raw logits.
+			~#
+			NONE
+		}
+
+		@session : Session;
+		@tokenizer : WordPieceTokenizer;
+		@labels : String[];
+		@function : TextClassifier->Function;
+		@max_len : Int;
+		@fixed_len : Int;
+		@batch_size : Int;
+		@batch_limit : Int;
+		@ids_name : String;
+		@mask_name : String;
+		@types_name : String;
+		@logits_name : String;
+		@model_path : String;
+		@cpu_fallback : Bool;
+		@open_error : String;
+		@error : String;
+
+		#~
+		Opens a model folder.
+		@param folder the folder holding the model, tokenizer and config.json
+		~#
+		New(folder : String) {
+			Open(folder, Nil);
+		}
+
+		#~
+		Opens a model folder with options: "model" for the ONNX file inside the folder (e.g.
+		onnx/model_quantized.onnx); anything else is a session option, e.g. "ep" to "cpu".
+		@param folder the folder holding the model, tokenizer and config.json
+		@param options options; may be Nil
+		~#
+		New(folder : String, options : Map<String, String>) {
+			Open(folder, options);
+		}
+
+		method : Open(folder : String, options : Map<String, String>) ~ Nil {
+			@batch_size := 8;
+			@batch_limit := -1;
+			@fixed_len := -1;
+			@function := TextClassifier->Function->SOFTMAX;
+
+			model_folder := ModelFolder->New(folder);
+			if(<>model_folder->Exists()) {
+				OpenFail(model_folder->GetError());
+				return;
+			};
+
+			model_file : String;
+			session_options : Map<String, String>;
+			if(options <> Nil) {
+				model_file := options->Find("model");
+				keys := options->GetKeys()<String>;
+				each(key in keys) {
+					if(<>key->Equals("model")) {
+						if(session_options = Nil) {
+							session_options := Map->New()<String, String>;
+						};
+						session_options->Insert(key, options->Find(key));
+					};
+				};
+			};
+
+			@model_path := model_folder->FindModel(model_file);
+			if(@model_path = Nil) {
+				OpenFail(model_folder->GetError());
+				return;
+			};
+
+			@tokenizer := model_folder->LoadWordPiece();
+			if(@tokenizer = Nil) {
+				OpenFail(model_folder->GetError());
+				return;
+			};
+
+			config := model_folder->ReadJson("config.json");
+			if(config = Nil & model_folder->GetError() <> Nil) {
+				OpenFail(model_folder->GetError());
+				return;
+			};
+
+			@max_len := 512;
+			if(config <> Nil) {
+				positions := config->Get("max_position_embeddings");
+				if(positions <> Nil & positions->GetInt() > 1 & positions->GetInt() < @max_len) {
+					@max_len := positions->GetInt();
+				};
+			};
+			tokenizer_config := model_folder->ReadJson("tokenizer_config.json");
+			if(tokenizer_config <> Nil) {
+				model_max := tokenizer_config->Get("model_max_length");
+				# transformers writes a huge sentinel (1e30) when there is no limit
+				if(model_max <> Nil & model_max->GetType() = JsonElement->JsonType->NUMBER) {
+					text := model_max->GetString();
+					if(<>text->Has('e') & <>text->Has('E') & text->Size() < 10 & model_max->GetInt() > 1 & model_max->GetInt() < @max_len) {
+						@max_len := model_max->GetInt();
+					};
+				};
+			};
+
+			if(session_options = Nil) {
+				@session := Session->New(@model_path);
+				# The build's own provider -- DirectML on Windows, CoreML on macOS -- can fail
+				# where the CPU would not: a machine with no display adapter has no DirectML.
+				# With no provider asked for, any provider will do, so try the CPU.
+				if(<>@session->IsOpen()) {
+					cpu := Map->New()<String, String>;
+					cpu->Insert("ep", "cpu");
+					@session := Session->New(@model_path, cpu);
+					@cpu_fallback := @session->IsOpen();
+				};
+			}
+			else {
+				@session := Session->New(@model_path, session_options);
+			};
+			if(<>@session->IsOpen()) {
+				OpenFail("the model '{$@model_path}' did not open");
+				return;
+			};
+
+			if(<>ReadSignature()) {
+				Close();
+				return;
+			};
+
+			if(<>ReadLabels(config)) {
+				Close();
+				return;
+			};
+		}
+
+		method : ReadSignature() ~ Bool {
+			info := @session->GetModelInfo();
+			if(info = Nil) {
+				OpenFail("the model '{$@model_path}' reported no signature");
+				return false;
+			};
+
+			inputs := info->GetInputs();
+			each(spec in inputs) {
+				name := spec->GetName();
+				if(name->Equals("input_ids")) {
+					@ids_name := name;
+					shape := spec->GetShape();
+					if(shape->Size() <> 2) {
+						declared := spec->ToString();
+						OpenFail("input_ids should be [batch, sequence]; the model declares {$declared}");
+						return false;
+					};
+					if(shape[0] > 0) {
+						@batch_limit := shape[0];
+						if(@batch_size > @batch_limit) {
+							@batch_size := @batch_limit;
+						};
+					};
+					if(shape[1] > 0) {
+						@fixed_len := shape[1];
+						@max_len := shape[1];
+					};
+				}
+				else if(name->Equals("attention_mask")) {
+					@mask_name := name;
+				}
+				else if(name->Equals("token_type_ids")) {
+					@types_name := name;
+				}
+				else {
+					OpenFail("the model takes an input a text classifier does not know how to fill: '{$name}'");
+					return false;
+				};
+			};
+			if(@ids_name = Nil) {
+				OpenFail("the model has no 'input_ids' input");
+				return false;
+			};
+			if(@max_len < 2) {
+				OpenFail("the model's sequence length {$@max_len} leaves no room for [CLS] and [SEP]");
+				return false;
+			};
+
+			outputs := info->GetOutputs();
+			each(spec in outputs) {
+				if(spec->GetName()->Equals("logits")) {
+					@logits_name := spec->GetName();
+				};
+			};
+			if(@logits_name = Nil) {
+				each(spec in outputs) {
+					if(@logits_name = Nil & spec->GetDatatype()->Equals("FP32") & spec->GetShape()->Size() = 2) {
+						@logits_name := spec->GetName();
+					};
+				};
+			};
+			if(@logits_name = Nil) {
+				OpenFail("the model has no logits output (FP32, [batch, labels]): is it a sequence-classification export?");
+				return false;
+			};
+
+			return true;
+		}
+
+		method : ReadLabels(config : JsonElement) ~ Bool {
+			declared := -1;
+			shape := @session->GetModelInfo()->Find(@logits_name)->GetShape();
+			if(shape->Size() = 2 & shape[1] > 0) {
+				declared := shape[1];
+			};
+
+			id2label : JsonElement;
+			if(config <> Nil) {
+				id2label := config->Get("id2label");
+				problem := config->Get("problem_type");
+				if(problem <> Nil & problem->GetString()->Equals("multi_label_classification")) {
+					@function := TextClassifier->Function->SIGMOID;
+				};
+			};
+
+			count := declared;
+			if(id2label <> Nil & id2label->GetType() = JsonElement->JsonType->OBJECT) {
+				count := id2label->Size();
+				if(declared > 0 & declared <> count) {
+					OpenFail("config.json names {$count} labels, but the model gives {$declared} logits");
+					return false;
+				};
+			};
+			if(count < 1) {
+				OpenFail("the number of labels is unknown: config.json has no id2label and the model's logits axis is not fixed");
+				return false;
+			};
+
+			@labels := String->New[count];
+			for(i := 0; i < count; i += 1;) {
+				@labels[i] := "LABEL_{$i}";
+				if(id2label <> Nil) {
+					named := id2label->Get(i->ToString());
+					if(named <> Nil) {
+						@labels[i] := named->GetString();
+					};
+				};
+			};
+
+			if(count = 1) {
+				@function := TextClassifier->Function->SIGMOID;
+			};
+
+			return true;
+		}
+
+		method : OpenFail(reason : String) ~ Nil {
+			@open_error := reason;
+			Fail(reason);
+		}
+
+		method : Fail(reason : String) ~ Nil {
+			@error := reason;
+			EndPoint->SetLastError(reason);
+		}
+
+		#~
+		Whether the model, tokenizer and labels loaded.
+		@return true when Classify can run
+		~#
+		method : public : IsOpen() ~ Bool {
+			return @session <> Nil & @session->IsOpen() & @labels <> Nil & @open_error = Nil;
+		}
+
+		#~
+		Why the classifier did not open, or why the last call returned Nil.
+		@return the reason, or Nil
+		~#
+		method : public : GetError() ~ String {
+			if(@open_error <> Nil) {
+				return @open_error;
+			};
+			return @error;
+		}
+
+		#~
+		Releases the model. Safe to call more than once.
+		~#
+		method : public : Close() ~ Nil {
+			if(@session <> Nil) {
+				@session->Close();
+			};
+		}
+
+		#~
+		Whether the build's default provider failed to open the model and the CPU provider
+		was used instead. Only when no session options were given.
+		@return true when running on the CPU as a fallback
+		~#
+		method : public : IsCpuFallback() ~ Bool {
+			return @cpu_fallback;
+		}
+
+		#~
+		The labels, in the order of the model's logits.
+		@return labels
+		~#
+		method : public : GetLabels() ~ String[] {
+			return @labels;
+		}
+
+		#~
+		The ONNX file that was opened.
+		@return path
+		~#
+		method : public : GetModelPath() ~ String {
+			return @model_path;
+		}
+
+		#~
+		How logits become scores.
+		@return SOFTMAX, SIGMOID or NONE
+		~#
+		method : public : GetFunction() ~ TextClassifier->Function {
+			return @function;
+		}
+
+		#~
+		Sets how logits become scores, overriding what config.json implies.
+		@param scoring SOFTMAX, SIGMOID or NONE
+		~#
+		method : public : SetFunction(scoring : TextClassifier->Function) ~ Nil {
+			@function := scoring;
+		}
+
+		#~
+		The length, in tokens, a text is truncated to, [CLS] and [SEP] included.
+		@return maximum length
+		~#
+		method : public : GetMaxLength() ~ Int {
+			return @max_len;
+		}
+
+		#~
+		Sets the length, in tokens, a text is truncated to, e.g. the MAX_SEQ_LENGTH a model was
+		fine-tuned with. A model with a fixed sequence axis keeps its own.
+		@param max_len tokens, at least 2
+		@return true when set
+		~#
+		method : public : SetMaxLength(max_len : Int) ~ Bool {
+			if(max_len < 2) {
+				Fail("max_len must be at least 2, for [CLS] and [SEP]");
+				return false;
+			};
+			if(@fixed_len > 0 & max_len <> @fixed_len) {
+				Fail("the model fixes the sequence length at {$@fixed_len}");
+				return false;
+			};
+			@max_len := max_len;
+			return true;
+		}
+
+		#~
+		Texts run through the model at once.
+		@return batch size
+		~#
+		method : public : GetBatchSize() ~ Int {
+			return @batch_size;
+		}
+
+		#~
+		Sets how many texts run through the model at once. A model with a fixed batch axis
+		caps it.
+		@param batch_size texts per run, at least 1
+		~#
+		method : public : SetBatchSize(batch_size : Int) ~ Nil {
+			@batch_size := batch_size;
+			if(@batch_size < 1) {
+				@batch_size := 1;
+			};
+			if(@batch_limit > 0 & @batch_size > @batch_limit) {
+				@batch_size := @batch_limit;
+			};
+		}
+
+		#~
+		The tokenizer, e.g. to inspect what a text becomes.
+		@return the tokenizer
+		~#
+		method : public : GetTokenizer() ~ WordPieceTokenizer {
+			return @tokenizer;
+		}
+
+		#~
+		The ONNX session, for what this class does not cover.
+		@return the session
+		~#
+		method : public : GetSession() ~ Session {
+			return @session;
+		}
+
+		#~
+		Classifies one text.
+		@param text the text
+		@return the prediction; Nil on failure (see GetError)
+		~#
+		method : public : Classify(text : String) ~ Prediction {
+			if(text = Nil) {
+				Fail("no text");
+				return Nil;
+			};
+
+			predictions := Classify([text]);
+			if(predictions = Nil) {
+				return Nil;
+			};
+			return predictions[0];
+		}
+
+		#~
+		Classifies texts.
+		@param texts the texts
+		@return one prediction per text; Nil on failure (see GetError)
+		~#
+		method : public : Classify(texts : String[]) ~ Prediction[] {
+			encodings := Encode(texts);
+			if(encodings = Nil) {
+				return Nil;
+			};
+
+			scores := Score(RunEncoded(encodings));
+			if(scores = Nil) {
+				return Nil;
+			};
+
+			count := @labels->Size();
+			predictions := Prediction->New[texts->Size()];
+			each(i : predictions) {
+				row := Float->New[count];
+				best := 0;
+				for(j := 0; j < count; j += 1;) {
+					row[j] := scores[i, j];
+					if(row[j] > row[best]) {
+						best := j;
+					};
+				};
+				predictions[i] := Prediction->New(@labels[best], best, row[best], row, encodings[i]->IsTruncated());
+			};
+
+			return predictions;
+		}
+
+		#~
+		Every label's score for each text, with the configured function.
+		@param texts the texts
+		@return [texts, labels]; Nil on failure (see GetError)
+		~#
+		method : public : Scores(texts : String[]) ~ Float[,] {
+			encodings := Encode(texts);
+			if(encodings = Nil) {
+				return Nil;
+			};
+			return Score(RunEncoded(encodings));
+		}
+
+		#~
+		The raw logits for each text.
+		@param texts the texts
+		@return [texts, labels]; Nil on failure (see GetError)
+		~#
+		method : public : Logits(texts : String[]) ~ Float[,] {
+			encodings := Encode(texts);
+			if(encodings = Nil) {
+				return Nil;
+			};
+			return RunEncoded(encodings);
+		}
+
+		method : Encode(texts : String[]) ~ TokenEncoding[] {
+			if(texts = Nil) {
+				Fail("no texts");
+				return Nil;
+			};
+			if(<>IsOpen()) {
+				return Nil;
+			};
+
+			encodings := TokenEncoding->New[texts->Size()];
+			each(i : texts) {
+				if(texts[i] = Nil) {
+					Fail("text {$i} is Nil");
+					return Nil;
+				};
+				encodings[i] := @tokenizer->Encode(texts[i], @max_len);
+				if(encodings[i] = Nil) {
+					reason := @tokenizer->GetError();
+					Fail("text {$i} could not be encoded: {$reason}");
+					return Nil;
+				};
+			};
+
+			return encodings;
+		}
+
+		method : RunEncoded(encodings : TokenEncoding[]) ~ Float[,] {
+			count := encodings->Size();
+			labels := @labels->Size();
+			logits := Float->New[count, labels];
+
+			start := 0;
+			while(start < count) {
+				rows := count - start;
+				if(rows > @batch_size) {
+					rows := @batch_size;
+				};
+
+				batch := RunBatch(encodings, start, rows);
+				if(batch = Nil) {
+					return Nil;
+				};
+				for(r := 0; r < rows; r += 1;) {
+					for(j := 0; j < labels; j += 1;) {
+						logits[start + r, j] := batch[r * labels + j];
+					};
+				};
+				start += rows;
+			};
+
+			@error := Nil;
+			return logits;
+		}
+
+		method : RunBatch(encodings : TokenEncoding[], start : Int, rows : Int) ~ Float[] {
+			# pad to the longest text of the batch, or to a fixed sequence axis
+			length := @fixed_len;
+			if(length < 0) {
+				length := 2;
+				for(r := 0; r < rows; r += 1;) {
+					used := encodings[start + r]->GetLength();
+					if(used > length) {
+						length := used;
+					};
+				};
+			};
+
+			ids := Int->New[rows * length];
+			mask := Int->New[rows * length];
+			types := Int->New[rows * length];
+			for(r := 0; r < rows; r += 1;) {
+				encoding := encodings[start + r];
+				row_ids := encoding->GetIds();
+				row_mask := encoding->GetAttentionMask();
+				row_types := encoding->GetTokenTypeIds();
+				for(s := 0; s < length; s += 1;) {
+					ids[r * length + s] := row_ids[s];
+					mask[r * length + s] := row_mask[s];
+					types[r * length + s] := row_types[s];
+				};
+			};
+
+			inputs := Vector->New()<Tensor>;
+			inputs->AddBack(Tensor->New(@ids_name, [rows, length], ids));
+			if(@mask_name <> Nil) {
+				inputs->AddBack(Tensor->New(@mask_name, [rows, length], mask));
+			};
+			if(@types_name <> Nil) {
+				inputs->AddBack(Tensor->New(@types_name, [rows, length], types));
+			};
+
+			outputs := @session->Run(inputs, [@logits_name]);
+			if(outputs = Nil | outputs->Size() = 0) {
+				reason := EndPoint->GetLastError();
+				Fail("the model run failed: {$reason}");
+				return Nil;
+			};
+
+			tensor := outputs->Get(0);
+			shape := tensor->GetShape();
+			labels := @labels->Size();
+			if(shape->Size() <> 2 | shape[0] <> rows | shape[1] <> labels) {
+				got := tensor->ToString();
+				Fail("logits came back as {$got}, not [{$rows}, {$labels}]");
+				return Nil;
+			};
+
+			values := tensor->GetFloats();
+			if(values = Nil) {
+				values := tensor->AsFloats();
+			};
+			return values;
+		}
+
+		method : Score(logits : Float[,]) ~ Float[,] {
+			if(logits = Nil) {
+				return Nil;
+			};
+
+			dims := logits->Size();
+			count := dims[0];
+			labels := dims[1];
+			if(@function = TextClassifier->Function->NONE) {
+				return logits;
+			};
+
+			scores := Float->New[count, labels];
+			for(i := 0; i < count; i += 1;) {
+				if(@function = TextClassifier->Function->SIGMOID) {
+					for(j := 0; j < labels; j += 1;) {
+						scores[i, j] := Sigmoid(logits[i, j]);
+					};
+				}
+				else {
+					# softmax, shifted by the row's maximum so exp cannot overflow
+					top := logits[i, 0];
+					for(j := 1; j < labels; j += 1;) {
+						if(logits[i, j] > top) {
+							top := logits[i, j];
+						};
+					};
+					sum := 0.0;
+					for(j := 0; j < labels; j += 1;) {
+						scores[i, j] := (logits[i, j] - top)->Exp();
+						sum += scores[i, j];
+					};
+					for(j := 0; j < labels; j += 1;) {
+						scores[i, j] := scores[i, j] / sum;
+					};
+				};
+			};
+
+			return scores;
+		}
+
+		function : Sigmoid(z : Float) ~ Float {
+			if(z >= 0.0) {
+				return 1.0 / (1.0 + (0.0 - z)->Exp());
+			};
+			e := z->Exp();
+			return e / (1.0 + e);
+		}
+	}
+
+	# A Hugging Face model folder: finds the ONNX file, reads its JSON files and builds its
+	# tokenizer. Shared by the task classes; not API.
+	class : private : ModelFolder {
+		@folder : String;
+		@error : String;
+
+		New(folder : String) {
+			@folder := folder;
+		}
+
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		method : public : Exists() ~ Bool {
+			if(@folder = Nil | <>System.IO.Filesystem.Directory->Exists(@folder)) {
+				@error := "the model folder '{$@folder}' does not exist";
+				return false;
+			};
+			return true;
+		}
+
+		method : public : Path(name : String) ~ String {
+			path := @folder->Clone();
+			if(<>path->EndsWith("/") & <>path->EndsWith("\\")) {
+				path += '/';
+			};
+			path += name;
+			return path;
+		}
+
+		# the named file, else model.onnx, else onnx/model.onnx -- the fp32 export, so results
+		# match the framework's; a quantized variant is used only when named
+		method : public : FindModel(name : String) ~ String {
+			if(name <> Nil) {
+				path := Path(name);
+				if(<>System.IO.Filesystem.File->Exists(path)) {
+					@error := "the model file '{$path}' does not exist";
+					return Nil;
+				};
+				return path;
+			};
+
+			candidates := ["model.onnx", "onnx/model.onnx"];
+			each(candidate in candidates) {
+				path := Path(candidate);
+				if(System.IO.Filesystem.File->Exists(path)) {
+					return path;
+				};
+			};
+
+			@error := "no model.onnx or onnx/model.onnx in '{$@folder}'; name the file with the \"model\" option";
+			return Nil;
+		}
+
+		# a JSON file of the folder; Nil with no error when it is absent, Nil with an error
+		# when it does not parse
+		method : public : ReadJson(name : String) ~ JsonElement {
+			@error := Nil;
+			path := Path(name);
+			if(<>System.IO.Filesystem.File->Exists(path)) {
+				return Nil;
+			};
+
+			text := System.IO.Filesystem.FileReader->ReadFile(path);
+			if(text = Nil) {
+				@error := "cannot read '{$path}'";
+				return Nil;
+			};
+
+			root := JsonParser->TextToElement(text);
+			if(root = Nil | root->GetType() <> JsonElement->JsonType->OBJECT) {
+				@error := "'{$path}' is not a JSON object";
+				return Nil;
+			};
+			return root;
+		}
+
+		# tokenizer.json when present, else vocab.txt with tokenizer_config.json
+		method : public : LoadWordPiece() ~ WordPieceTokenizer {
+			root := ReadJson("tokenizer.json");
+			if(root <> Nil) {
+				return FromTokenizerJson(root);
+			};
+			if(@error <> Nil) {
+				return Nil;
+			};
+
+			vocab := Path("vocab.txt");
+			if(<>System.IO.Filesystem.File->Exists(vocab)) {
+				@error := "no tokenizer.json or vocab.txt in '{$@folder}'";
+				return Nil;
+			};
+
+			# BertTokenizer's defaults: lowercase, and strip accents when lowercasing
+			lower_case := true;
+			strip_accents := true;
+			config := ReadJson("tokenizer_config.json");
+			if(@error <> Nil) {
+				return Nil;
+			};
+			if(config <> Nil) {
+				lower := config->Get("do_lower_case");
+				if(lower <> Nil & IsBool(lower)) {
+					lower_case := lower->GetType() = JsonElement->JsonType->TRUE;
+				};
+				strip_accents := lower_case;
+				strip := config->Get("strip_accents");
+				if(strip <> Nil & IsBool(strip)) {
+					strip_accents := strip->GetType() = JsonElement->JsonType->TRUE;
+				};
+			};
+
+			tokenizer := WordPieceTokenizer->New(vocab, lower_case, strip_accents);
+			if(<>tokenizer->IsLoaded()) {
+				@error := tokenizer->GetError();
+				return Nil;
+			};
+			return tokenizer;
+		}
+
+		method : FromTokenizerJson(root : JsonElement) ~ WordPieceTokenizer {
+			path := Path("tokenizer.json");
+			model := root->Get("model");
+			if(model = Nil | model->Get("type") = Nil) {
+				@error := "'{$path}' has no model";
+				return Nil;
+			};
+
+			type := model->Get("type")->GetString();
+			if(<>type->Equals("WordPiece")) {
+				@error := "'{$path}' is a {$type} tokenizer; this release reads WordPiece (BERT, DistilBERT, MiniLM) only";
+				return Nil;
+			};
+
+			prefix := model->Get("continuing_subword_prefix");
+			if(prefix <> Nil & prefix->GetType() = JsonElement->JsonType->STRING & <>prefix->GetString()->Equals("##")) {
+				text := prefix->GetString();
+				@error := "'{$path}' marks word continuations with '{$text}', not '##'";
+				return Nil;
+			};
+
+			pre := root->Get("pre_tokenizer");
+			if(pre <> Nil & pre->GetType() = JsonElement->JsonType->OBJECT) {
+				pre_type := pre->Get("type");
+				if(pre_type <> Nil & <>pre_type->GetString()->Equals("BertPreTokenizer")) {
+					text := pre_type->GetString();
+					@error := "'{$path}' splits words with {$text}; this release reads BertPreTokenizer only";
+					return Nil;
+				};
+			};
+
+			# BertNormalizer: strip_accents null means "as lowercase does"
+			lower_case := false;
+			strip_accents := false;
+			normalizer := root->Get("normalizer");
+			if(normalizer <> Nil & normalizer->GetType() = JsonElement->JsonType->OBJECT) {
+				norm_type := normalizer->Get("type");
+				if(norm_type = Nil | <>norm_type->GetString()->Equals("BertNormalizer")) {
+					text := "?";
+					if(norm_type <> Nil) {
+						text := norm_type->GetString();
+					};
+					@error := "'{$path}' normalizes with {$text}; this release reads BertNormalizer only";
+					return Nil;
+				};
+				lower := normalizer->Get("lowercase");
+				if(lower <> Nil & IsBool(lower)) {
+					lower_case := lower->GetType() = JsonElement->JsonType->TRUE;
+				};
+				strip_accents := lower_case;
+				strip := normalizer->Get("strip_accents");
+				if(strip <> Nil & IsBool(strip)) {
+					strip_accents := strip->GetType() = JsonElement->JsonType->TRUE;
+				};
+			};
+
+			vocab := model->Get("vocab");
+			if(vocab = Nil | vocab->GetType() <> JsonElement->JsonType->OBJECT) {
+				@error := "'{$path}' has no WordPiece vocabulary";
+				return Nil;
+			};
+
+			names := vocab->GetNames();
+			top := -1;
+			each(name in names) {
+				id := vocab->Get(name)->GetInt();
+				if(id > top) {
+					top := id;
+				};
+			};
+			if(top < 0) {
+				@error := "'{$path}' has an empty vocabulary";
+				return Nil;
+			};
+
+			# ids are the vocabulary's indexes; an id with no token stays Nil
+			tokens := String->New[top + 1];
+			each(name in names) {
+				id := vocab->Get(name)->GetInt();
+				if(id >= 0) {
+					tokens[id] := name;
+				};
+			};
+
+			tokenizer := WordPieceTokenizer->New(tokens, lower_case, strip_accents);
+			if(<>tokenizer->IsLoaded()) {
+				@error := tokenizer->GetError();
+				return Nil;
+			};
+			return tokenizer;
+		}
+
+		function : IsBool(value : JsonElement) ~ Bool {
+			return value->GetType() = JsonElement->JsonType->TRUE | value->GetType() = JsonElement->JsonType->FALSE;
 		}
 	}
 }

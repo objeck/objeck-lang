@@ -4489,7 +4489,7 @@
 					"descriptions": ["**Encodes the five XML markup characters (&lt; &gt; &amp; &quot; ') and leaves everything else \u2014 including whitespace \u2014 untouched. Use this for readable element content and attribute values; EncodeString additionally encodes whitespace as numeric references for exact whitespace preservation.**\n\n```function : EncodeText(input:String) ~ String```\n\n\n\ninput: String\n\nreturn: String\n\n```\nraw := \"price < 10 & size > 5\";\nXmlElement->EncodeText(raw)->PrintLine();   # price &lt; 10 &amp; size &gt; 5\n```"]
 				},
 				"FindElements": {
-					"descriptions": ["**Finds matching XML elements using xpath like syntax. Supports 'first()', 'last()' and '[cdata]' functions.**\n\n```method : public : FindElements(path:String) ~ Vector&lt;XmlElement&gt;```\n\n\n\npath: String\n\nreturn: Vector&lt;XmlElement&gt;\n\n```\nparser := XmlParser->New(\"<catalog><book><title>Dune</title></book></catalog>\");\nif(parser->Parse()) {\n  results := parser->GetRoot()->FindElements(\"/catalog/book/title\")<XmlElement>;\n  results->Get(0)->GetContent()->PrintLine();\n};\n```"]
+					"descriptions": ["**Finds matching XML elements using xpath like syntax. Supports '[n]' (the n-th match, 1-based, as in XPath), 'first()', 'last()', '[attribute]' and '[cdata]' functions.**\n\n```method : public : FindElements(path:String) ~ Vector&lt;XmlElement&gt;```\n\n\n\npath: String\n\nreturn: Vector&lt;XmlElement&gt;\n\n```\nparser := XmlParser->New(\"<catalog><book><title>Dune</title></book></catalog>\");\nif(parser->Parse()) {\n  results := parser->GetRoot()->FindElements(\"/catalog/book/title\")<XmlElement>;\n  results->Get(0)->GetContent()->PrintLine();\n};\n```"]
 				},
 				"Get": {
 					"descriptions": ["**Gets a child element**\n\n```method : public : Get(i:Int) ~ XmlElement```\n\n\n\ni: Int\n\nreturn: XmlElement\n\n```\nparser := XmlParser->New(\"<root><first/><second/></root>\");\nif(parser->Parse()) {\n  parser->GetRoot()->Get(1)->GetName()->PrintLine();\n};\n```"]
@@ -4572,7 +4572,7 @@
 			"description": "Parses an XML document",
 			"functions": {
 				"FindElements": {
-					"descriptions": ["**Finds matching XML elements using xpath like syntax. Supports 'first()', 'last()' and '[cdata]' functions.**\n\n```method : public : FindElements(path:String) ~ Vector&lt;XmlElement&gt;```\n\n\n\npath: String\n\nreturn: Vector&lt;XmlElement&gt;\n\n```\nparser := XmlParser->New(\"<store><item><price>9.99</price></item></store>\");\nif(parser->Parse()) {\n  results := parser->FindElements(\"/store/item/price\")<XmlElement>;\n  each(e := results) {\n    e->GetContent()->PrintLine();\n  };\n};\n```"]
+					"descriptions": ["**Finds matching XML elements using xpath like syntax. Supports '[n]' (the n-th match, 1-based, as in XPath), 'first()', 'last()', '[attribute]' and '[cdata]' functions.**\n\n```method : public : FindElements(path:String) ~ Vector&lt;XmlElement&gt;```\n\n\n\npath: String\n\nreturn: Vector&lt;XmlElement&gt;\n\n```\nparser := XmlParser->New(\"<store><item><price>9.99</price></item></store>\");\nif(parser->Parse()) {\n  results := parser->FindElements(\"/store/item/price\")<XmlElement>;\n  each(e := results) {\n    e->GetContent()->PrintLine();\n  };\n};\n```"]
 				},
 				"GetEncoding": {
 					"descriptions": ["**Gets the XML encoding**\n\n```method : public : GetEncoding() ~ String```\n\n\n\nreturn: String\n\n```\nparser := XmlParser->New(\"<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?><root/>\");\nif(parser->Parse()) {\n  parser->GetEncoding()->PrintLine();\n};\n```"]
@@ -16712,6 +16712,91 @@
 				}
 			}
 		},
+		"System.NLP.Onnx.Prediction": {
+			"description": "One text's classification: the top label, its score, and every label's score in label order.",
+			"functions": {
+				"GetIndex": {
+					"descriptions": ["**The top label's index.**\n\n```method : public : GetIndex() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetLabel": {
+					"descriptions": ["**The top label, from the model's id2label.**\n\n```method : public : GetLabel() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetScore": {
+					"descriptions": ["**The top label's score: a probability under SOFTMAX or SIGMOID, the raw logit under NONE.**\n\n```method : public : GetScore() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetScores": {
+					"descriptions": ["**Every label's score, in label order.**\n\n```method : public : GetScores() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"IsTruncated": {
+					"descriptions": ["**Whether the text was longer than the model's maximum length and was cut to fit.**\n\n```method : public : IsTruncated() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor, for a classifier of the program's own.**\n\n```New(top_label:String, index:Int, score:Float, scores:Float[], truncated:Bool)```\n\n\n\ntop_label: String\n\nindex: Int\n\nscore: Float\n\nscores: Float[]\n\ntruncated: Bool"]
+				},
+				"ToString": {
+					"descriptions": ["**The label and its score, e.g. \"POSITIVE 0.9998\".**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"System.NLP.Onnx.TextClassifier": {
+			"description": "Text classification with a fine-tuned BERT-family model, as Python's pipeline(\"text-classification\"): a sentiment model, a topic classifier, a malware classifier fine-tuned on Colab.\n\nThe model is a Hugging Face model folder (what save_pretrained writes, with an ONNX export beside it), or a Hub repository's files downloaded as they are:\n\n- the model: model.onnx, else onnx/model.onnx; or the file the \"model\" option names, relative to the folder;\n- the tokenizer: tokenizer.json (WordPiece), else vocab.txt with tokenizer_config.json's do_lower_case (true when absent, as BertTokenizer defaults);\n- the labels: config.json's id2label, else LABEL_0, LABEL_1, ...\n\nThe model's own signature decides what is sent: input_ids always, attention_mask and token_type_ids only when declared (DistilBERT and RoBERTa exports have no token_type_ids). The output is logits FP32[batch, labels].\n\nScores follow transformers: SIGMOID when config.json's problem_type is multi_label_classification or there is one label, else SOFTMAX. SetFunction overrides it.\n\nTexts longer than the maximum length are truncated, and the Prediction says so. The maximum length is the smallest of 512, the model's max_position_embeddings and the tokenizer's model_max_length, or the model's fixed sequence axis. Each batch is padded to its longest text.\n\nWith no session options, the build's default provider runs the model, and the CPU when that provider cannot open it: see IsCpuFallback. Any option other than \"model\" is a session option, e.g. \"ep\" to \"cpu\".",
+			"functions": {
+				"Classify": {
+					"descriptions": ["**Classifies one text.**\n\n```method : public : Classify(text:String) ~ Prediction```\n\n\n\ntext: String\n\nreturn: Prediction", "**Classifies texts.**\n\n```method : public : Classify(texts:String[]) ~ Prediction[]```\n\n\n\ntexts: String[]\n\nreturn: Prediction[]"]
+				},
+				"Close": {
+					"descriptions": ["**Releases the model. Safe to call more than once.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetBatchSize": {
+					"descriptions": ["**Texts run through the model at once.**\n\n```method : public : GetBatchSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the classifier did not open, or why the last call returned Nil.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetFunction": {
+					"descriptions": ["**How logits become scores.**\n\n```method : public : GetFunction() ~ TextClassifier-&gt;Function```\n\n\n\nreturn: TextClassifier-&gt;Function"]
+				},
+				"GetLabels": {
+					"descriptions": ["**The labels, in the order of the model's logits.**\n\n```method : public : GetLabels() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetMaxLength": {
+					"descriptions": ["**The length, in tokens, a text is truncated to, [CLS] and [SEP] included.**\n\n```method : public : GetMaxLength() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetModelPath": {
+					"descriptions": ["**The ONNX file that was opened.**\n\n```method : public : GetModelPath() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetSession": {
+					"descriptions": ["**The ONNX session, for what this class does not cover.**\n\n```method : public : GetSession() ~ Session```\n\n\n\nreturn: Session"]
+				},
+				"GetTokenizer": {
+					"descriptions": ["**The tokenizer, e.g. to inspect what a text becomes.**\n\n```method : public : GetTokenizer() ~ WordPieceTokenizer```\n\n\n\nreturn: WordPieceTokenizer"]
+				},
+				"IsCpuFallback": {
+					"descriptions": ["**Whether the build's default provider failed to open the model and the CPU provider was used instead. Only when no session options were given.**\n\n```method : public : IsCpuFallback() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsOpen": {
+					"descriptions": ["**Whether the model, tokenizer and labels loaded.**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Logits": {
+					"descriptions": ["**The raw logits for each text.**\n\n```method : public : Logits(texts:String[]) ~ Float[,]```\n\n\n\ntexts: String[]\n\nreturn: Float[,]"]
+				},
+				"New": {
+					"descriptions": ["**Opens a model folder.**\n\n```New(folder:String)```\n\n\n\nfolder: String", "**Opens a model folder with options: \"model\" for the ONNX file inside the folder (e.g. onnx/model_quantized.onnx); anything else is a session option, e.g. \"ep\" to \"cpu\".**\n\n```New(folder:String, options:Map&lt;String,String&gt;)```\n\n\n\nfolder: String\n\noptions: Map&lt;String,String&gt;"]
+				},
+				"Scores": {
+					"descriptions": ["**Every label's score for each text, with the configured function.**\n\n```method : public : Scores(texts:String[]) ~ Float[,]```\n\n\n\ntexts: String[]\n\nreturn: Float[,]"]
+				},
+				"SetBatchSize": {
+					"descriptions": ["**Sets how many texts run through the model at once. A model with a fixed batch axis caps it.**\n\n```method : public : SetBatchSize(batch_size:Int) ~ Nil```\n\n\n\nbatch_size: Int\n\nreturn: Nil"]
+				},
+				"SetFunction": {
+					"descriptions": ["**Sets how logits become scores, overriding what config.json implies.**\n\n```method : public : SetFunction(scoring:TextClassifier-&gt;Function) ~ Nil```\n\n\n\nscoring: TextClassifier-&gt;Function\n\nreturn: Nil"]
+				},
+				"SetMaxLength": {
+					"descriptions": ["**Sets the length, in tokens, a text is truncated to, e.g. the MAX_SEQ_LENGTH a model was fine-tuned with. A model with a fixed sequence axis keeps its own.**\n\n```method : public : SetMaxLength(max_len:Int) ~ Bool```\n\n\n\nmax_len: Int\n\nreturn: Bool"]
+				}
+			}
+		},
 		"System.Time.Alarm": {
 			"description": "Provides a system timer",
 			"functions": {
@@ -21066,6 +21151,18 @@
 				"file": ""
 			}
 		],
+		"Prediction": [
+			{
+				"bundle": "System.NLP.Onnx",
+				"file": ""
+			}
+		],
+		"TextClassifier": [
+			{
+				"bundle": "System.NLP.Onnx",
+				"file": ""
+			}
+		],
 		"Alarm": [
 			{
 				"bundle": "System.Time",
@@ -23172,6 +23269,18 @@
 				{ "name": "CLS", "value": "0", "description": "The hidden state of the first token, [CLS]." },
 				{ "name": "MEAN", "value": "1", "description": "The mean of the hidden states of the real tokens, padding excluded." },
 				{ "name": "POOLER", "value": "2", "description": "The model's pooler_output: tanh of a dense layer over [CLS], as BERT was pretrained." }
+			]
+		},
+		"System.NLP.Onnx.TextClassifier#Function": {
+			"name": "Function",
+			"bundle": "System.NLP.Onnx",
+			"class": "System.NLP.Onnx.TextClassifier",
+			"kind": "enum",
+			"description": "How logits become scores, as transformers' function_to_apply.",
+			"items": [
+				{ "name": "SOFTMAX", "value": "0", "description": "Probabilities over the labels, summing to 1: single-label classification." },
+				{ "name": "SIGMOID", "value": "1", "description": "An independent probability per label: multi-label classification, or one label." },
+				{ "name": "NONE", "value": "2", "description": "The raw logits." }
 			]
 		},
 		"Web.HTTP.HttpClient#Task": {
