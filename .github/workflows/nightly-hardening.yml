@@ -199,7 +199,9 @@ jobs:
         timeout-minutes: 5
         uses: actions/cache/restore@v5
         with:
-          path: ~/Library/Caches/Homebrew
+          path: |
+            ~/Library/Caches/Homebrew
+            !~/Library/Caches/Homebrew/Backup
           key: ${{ runner.os }}-brew-downloads-${{ hashFiles('.github/workflows/nightly-hardening.yml') }}
           restore-keys: |
             ${{ runner.os }}-brew-downloads-
@@ -208,6 +210,11 @@ jobs:
         if: runner.os == 'macOS'
         timeout-minutes: 10
         run: |
+          # A Backup/ restored from the downloads cache breaks relinking: when installing a
+          # formula unlinks a conflicting one (openssl@3 over the image's openssl@4), brew
+          # moves the old links into Backup/, and a stale Backup/bin/openssl there is "the
+          # same file" -- sdl2_mixer's install failed that way on 2026-10-30.
+          rm -rf ~/Library/Caches/Homebrew/Backup
           for pkg in unixodbc sdl2 sdl2_image sdl2_ttf sdl2_mixer readline; do
             brew list --versions "$pkg" >/dev/null 2>&1 || brew install "$pkg"
           done
