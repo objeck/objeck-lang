@@ -8,6 +8,12 @@
     "System.AI": ["AStar", "BreadthFirst", "DepthFirst", "Dijkstra", "EnergyFunction", "Environment", "FitnessFunction", "GameState", "GeneticAlgorithm", "Graph", "HillClimbing", "MarkovDecisionProcess", "Minimax", "MonteCarloTreeSearch", "QLearning", "Sarsa", "SearchResult", "SimulatedAnnealing", "StepResult"]
    }
   },
+  "ai_hub": {
+   "deps": ["gen_collect", "cipher", "json", "net"],
+   "bundles": {
+    "System.AI.Hub": ["HubClient"]
+   }
+  },
   "cipher": {
    "deps": [],
    "bundles": {

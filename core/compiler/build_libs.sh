@@ -53,6 +53,8 @@ $OBC -src lib_src/openai.obs -lib json,net,net_server,cipher,misc -tar lib -opt 
 $OBC -src lib_src/gemini.obs -lib misc,json,net,net_server,cipher -tar lib -opt s3 -dest ../lib/gemini.obl
 $OBC -src lib_src/ollama.obs -lib net,json,cipher,misc -tar lib -opt s3 -dest ../lib/ollama.obl
 $OBC -src lib_src/inference.obs -lib models,net,json,cipher,gen_collect -tar lib -opt s3 -dest ../lib/inference.obl
+# Hugging Face Hub downloads and the model cache (docs/AI_FOUNDATION_DESIGN.md sec. 7.3)
+$OBC -src lib_src/ai_hub.obs -lib gen_collect,cipher,json,net -tar lib -opt s3 -dest ../lib/ai_hub.obl
 $OBC -src lib_src/sdl2.obs -tar lib -dest ../lib/sdl2.obl
 $OBC -src lib_src/sdl_game.obs -lib gen_collect,json,sdl2 -tar lib -dest ../lib/sdl_game.obl
 $OBC -src lib_src/sdl_gl.obs -lib gen_collect,sdl2 -tar lib -dest ../lib/sdl_gl.obl

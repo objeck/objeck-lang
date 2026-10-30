@@ -82,6 +82,7 @@ rm -f *.obe
 	$LIB_SRC/ai_rl.obs \
 	$LIB_SRC/nlp.obs \
 	$LIB_SRC/nlp_onnx.obs \
+	$LIB_SRC/ai_hub.obs \
 	$LIB_SRC/openai.obs \
 	$LIB_SRC/gemini.obs \
 	$LIB_SRC/ollama.obs \

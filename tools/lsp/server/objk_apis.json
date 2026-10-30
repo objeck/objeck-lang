@@ -2635,6 +2635,9 @@
 				"SHA256": {
 					"descriptions": ["**Hash input using SHA-256**\n\n```function : SHA256(stream_in:Byte[]) ~ Byte[]```\n\n\n\nstream_in: Byte[]\n\nreturn: Byte[]\n\n```\nbytes := \"password123\"->ToByteArray();\nhash := Cipher.Hash->SHA256(bytes); # compute SHA-256 digest\nCipher.Encrypt->Base64(hash)->PrintLine(); # print as Base64\n```"]
 				},
+				"SHA256File": {
+					"descriptions": ["**Hash a file using SHA-256, a megabyte at a time: a file of any size is hashed without being held in memory, e.g. to verify a downloaded model.**\n\n```function : SHA256File(path:String) ~ Byte[]```\n\n\n\npath: String\n\nreturn: Byte[]\n\n```\nhash := Cipher.Hash->SHA256File(\"model.onnx\");\nif(hash <> Nil) {\n  hash->ToHexString()->PrintLine();\n};\n```"]
+				},
 				"SHA512": {
 					"descriptions": ["**Hash input using SHA-512**\n\n```function : SHA512(stream_in:Byte[]) ~ Byte[]```\n\n\n\nstream_in: Byte[]\n\nreturn: Byte[]\n\n```\nbytes := \"secret\"->ToByteArray();\nhash := Cipher.Hash->SHA512(bytes); # 64-byte digest\nCipher.Encrypt->Base64(hash)->PrintLine();\n```"]
 				}
@@ -12264,6 +12267,47 @@
 
 			}
 		},
+		"System.AI.Hub.HubClient": {
+			"description": "Downloads files of a Hugging Face model repository into a local cache and gives back their paths: a snapshot folder that TextClassifier and the other pipelines open as they open any model folder.\n\nEach call asks the Hub API which commit the revision (\"main\" unless named) is at, and downloads from that commit, so every file of a snapshot comes from the same commit. A file already in the cache at the right size is not downloaded again. A downloaded file is checked before it is kept: SHA-256 for a large (LFS) file, the git blob hash for a small one, and the size for both; a file that does not match is deleted and the call fails. Downloads stream to disk, so a file's size is limited only by the disk.\n\nThe cache, by environment:\n\n- OBJECK_HUB_CACHE: the cache folder; default .objeck/hub in the user's home folder. The layout is the one Python's huggingface_hub uses -- models--org--name/refs/main holds the commit, models--org--name/snapshots/commit/ the files -- with real files, not symbolic links;\n- OBJECK_HUB_OFFLINE or HF_HUB_OFFLINE set to 1: no network at all; revisions resolve through the cache's refs. Offline, and when the Hub cannot be reached, a file the cache does not hold is looked for in Python's cache (HF_HUB_CACHE, else HF_HOME/hub, else .cache/huggingface/hub in the home folder), which is read and never written;\n- OBJECK_HUB_TOKEN or HF_TOKEN: a token for gated and private repositories. It is sent to the Hub only: a redirect to another origin, such as the Hub's file CDN, drops it;\n- HF_ENDPOINT: another Hub, e.g. a mirror; default https://huggingface.co.",
+			"functions": {
+				"Download": {
+					"descriptions": ["**Downloads one file of a repository at \"main\".**\n\n```method : public : Download(repo:String, file:String) ~ String```\n\n\n\nrepo: String\n\nfile: String\n\nreturn: String", "**Downloads one file of a repository at a revision.**\n\n```method : public : Download(repo:String, file:String, revision:String) ~ String```\n\n\n\nrepo: String\n\nfile: String\n\nrevision: String\n\nreturn: String"]
+				},
+				"GetCacheDir": {
+					"descriptions": ["**The cache folder.**\n\n```method : public : GetCacheDir() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetCommit": {
+					"descriptions": ["**The commit the last Snapshot or Download used.**\n\n```method : public : GetCommit() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetDownloadCount": {
+					"descriptions": ["**How many files the last Snapshot or Download fetched from the network; the rest came from the cache.**\n\n```method : public : GetDownloadCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetEndpoint": {
+					"descriptions": ["**The Hub's address.**\n\n```method : public : GetEndpoint() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call returned Nil.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"IsOffline": {
+					"descriptions": ["**Whether the client works from the cache alone.**\n\n```method : public : IsOffline() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**A client with the cache, token, endpoint and offline mode from the environment.**\n\n```New()```\n\n", "**A client with a cache folder of the caller's; token, endpoint and offline mode from the environment.**\n\n```New(cache_dir:String)```\n\n\n\ncache_dir: String"]
+				},
+				"SetEndpoint": {
+					"descriptions": ["**Sets the Hub's address, e.g. a mirror.**\n\n```method : public : SetEndpoint(endpoint:String) ~ Nil```\n\n\n\nendpoint: String\n\nreturn: Nil"]
+				},
+				"SetOffline": {
+					"descriptions": ["**Sets whether the client works from the cache alone.**\n\n```method : public : SetOffline(offline:Bool) ~ Nil```\n\n\n\noffline: Bool\n\nreturn: Nil"]
+				},
+				"SetToken": {
+					"descriptions": ["**Sets the token sent to the Hub for gated and private repositories; Nil sends none.**\n\n```method : public : SetToken(token:String) ~ Nil```\n\n\n\ntoken: String\n\nreturn: Nil"]
+				},
+				"Snapshot": {
+					"descriptions": ["**Downloads files of a repository at \"main\" into one snapshot folder.**\n\n```method : public : Snapshot(repo:String, files:String[]) ~ String```\n\n\n\nrepo: String\n\nfiles: String[]\n\nreturn: String", "**Downloads files of a repository at a revision into one snapshot folder. Every file comes from the commit the revision is at when the call is made.**\n\n```method : public : Snapshot(repo:String, files:String[], revision:String) ~ String```\n\n\n\nrepo: String\n\nfiles: String[]\n\nrevision: String\n\nreturn: String"]
+				}
+			}
+		},
 		"System.API.DllProxy": {
 			"description": "Class allow programmers to load native shared libraries that can be called by Objeck classes. Programmers can call native C functions within these libraries.",
 			"functions": {
@@ -20441,6 +20485,12 @@
 		"StepResult": [
 			{
 				"bundle": "System.AI",
+				"file": ""
+			}
+		],
+		"HubClient": [
+			{
+				"bundle": "System.AI.Hub",
 				"file": ""
 			}
 		],
