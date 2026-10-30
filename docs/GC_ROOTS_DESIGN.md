@@ -5,6 +5,38 @@ suspected JIT root bugs (`jit_stale_spill_slot`, `jit_inline_local_root`) and a 
 that each patched one consequence of the same assumption. This is a design for review, not a record of
 built work: nothing below has landed.
 
+**Status, 2026-10-30.** The user chose the full redesign over a targeted fix.
+- **Phase 0 is merged** (#1455): `--jit=off` now compiles nothing.
+- **Phase 1 is built**, on branch `gc-roots/phase1`. What changed against this document:
+  - **The knob is `OBJECK_GC_ROOTS=audit`**, not `OBJECK_GC_VERIFY=roots`. It reports, at every
+    collection, where the maps and the live stacks disagree. Its per-method dump is
+    `OBJECK_GC_ROOTS_DUMP=<name>`.
+  - **The interpreter is not free** (§6.2). `frame->ip` is written only at calls, and error traces read
+    it. The instruction in progress now goes to `StackFrame::cur_ip`: a union with `jit_offset`, so both
+    JITs' frame records keep their layout. It is written on the dispatch loop's default path, which
+    every instruction that can collect takes, and at the safepoint poll, encoded as "between
+    instructions". The measured cost is within noise: -0.5% on a call- and allocation-heavy
+    interpreted benchmark.
+  - **The operand stack is one array per thread**, the frames' segments end to end. The audit splits it
+    with each frame's height at its pc. A caller's segment is its height less what its call popped; the
+    top frame's segment is anywhere between that and its height.
+  - **A trap's stack effect:** `TRAP_RTRN` pops `args` and pushes one word, as the JIT models it. A plain
+    `TRAP` pushes nothing, except right before the `RTRN` of a value-returning method, whose value it
+    pushes (`Deserializer->ReadInt`).
+  - **`GetParamCount()` counts stack words**: a func-ref parameter is two.
+  - **The and/or slot starts as the zero the frame is entered with**, on every path, so what two paths
+    store meets where they join.
+  - **#1457 is a prerequisite**, found by the audit. Three trap handlers left their declared arguments on
+    the operand stack for good, interpreted and compiled, keeping objects alive and shifting every frame
+    above them. Fixed in #1458.
+- **Suite-wide audit** (665 tests, interpreted, 256k nursery, on the #1457 fix):
+  - 2,568 maps, 0 failed;
+  - 0 threads whose segments do not add up;
+  - 42 words left unknown, of about 417,000;
+  - 0 reference-typed words at nothing;
+  - every Int-typed word at an object is `gc_conservative_bad_class`, which keeps an address in an Int
+    on purpose.
+
 ## 1. Summary
 
 The collector does not know which words in a frame are references. It finds roots in three ways:
@@ -240,8 +272,8 @@ collection happens. No word is ever relocated on a guess.
 
 ### 5.3 Conservative scanning afterwards
 
-There is none in frame or stack root discovery. The old scan survives in one place: the verifier mode
-`OBJECK_GC_VERIFY=roots`, which runs the conservative scan beside the precise one and reports any
+There is none in frame or stack root discovery. The old scan survives in one place: the audit mode
+`OBJECK_GC_ROOTS=audit`, which runs the conservative scan beside the precise one and reports any
 allocated word the conservative scan would mark that the precise scan did not. That is the migration
 safety net. During phases 1-4 it reports, and it never changes what is marked.
 
@@ -273,9 +305,9 @@ guess.
 
 ### 6.2 Interpreter: stack maps per (method, pc)
 
-The interpreter costs nothing at run time: the map is read only when a collection walks the frame.
-`frame->ip` (or the thread's current instruction for the collecting thread) indexes the cached
-`RefMap`.
+The map is read only when a collection walks the frame, and indexed by the instruction in progress,
+`StackFrame::cur_ip` (see the status note at the top). Recording it is one store on the dispatch loop's
+default path, which only instructions that can collect take, and one at the safepoint poll.
 
 ### 6.3 JIT: three options compared
 
@@ -311,7 +343,7 @@ tests (`gc_*_stress`, `jit_gc_stress`, `gc_mt_small_nursery_stress`, the nightly
 | phase | content | fixes | risk |
 |---|---|---|---|
 | **0** | Fix `--jit=off` so it disables `native` compilation too, or rename its meaning; the differential's `s0/off` depends on it. Add the measurement baseline (§8). | the evidence gap in §2.1 | low |
-| **1** | `RefMap` analysis in `jit_common` plus the `OBJECK_GC_VERIFY=roots` report-only mode. Report how often `unknown` occurs per suite. No behaviour change. | nothing yet; measures the design | low |
+| **1** | `RefMap` analysis (`core/vm/arch/ref_map.h`, header-only so no build file changes) plus the `OBJECK_GC_ROOTS=audit` report-only mode. Report how often `unknown` occurs per suite. No behaviour change. | nothing yet; measures the design | low |
 | **2** | Interpreter operand stacks and the interpreted and/or slot marked and relocated by `RefMap`; audit traps that hold references across allocations. Lands `gc_int_not_relocated` (interpreter configurations). | §3.3 in interpreted code; retires 9cdc656566's interpreter half | medium |
 | **3** | AMD64: typed spill areas (`TMP_REF_*` / `TMP_VAL_*`), `RegInstr` ref bit, clear after reload, entry zeroing of the reference slots; `CheckJitRoots`/`FixupRoots` walk them by type on x64. Lands `jit_stale_spill_slot` and the JIT configurations of `gc_int_not_relocated`. | §3.1 paths 1 and 2, §3.3 compiled, on AMD64 | medium-high (frame constants) |
 | **4** | ARM64: the same. Compile-checked locally with `cl /Zs` and the cross toolchain; proven on CI's arm64 legs. | the same, on ARM64 | medium-high |
@@ -374,7 +406,7 @@ that:
 It checks every value afterwards: integers unchanged, objects with their fields intact. It runs under
 `OBJECK_GC_VERIFY=checkmark` with `--nursery=64k`, at s0 and s3, with `--jit=off` and with
 `OBJECK_JIT_THRESHOLD=1`, plus a two-thread variant that parks at loop polls. The fixed seeds run in the
-regression suite, and the nightly runs fresh seeds. During phase 1 the verifier's `roots` mode must
+regression suite, and the nightly runs fresh seeds. During phase 1 `OBJECK_GC_ROOTS=audit` must
 report zero differences across the suite before phase 2 starts.
 
 ## 10. Not established
