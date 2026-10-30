@@ -883,7 +883,7 @@ response->GetStatusCode()->PrintLine();
 		}
 
 		method : PushPullOperation(url : Web.HTTP.Url, data : Byte[], content_type : String, task : HttpClient->Task) ~ Web.HTTP.Response {
-			response := PushPullOperationInner(url, data, content_type, task, 0);
+			response := PushPullOperationInner(url, data, content_type, task, 0, false);
 
 			if(response <> Nil & @max_retries > 0) {
 				code := response->GetCode();
@@ -891,7 +891,7 @@ response->GetStatusCode()->PrintLine();
 					delay := @retry_delay_ms;
 					for(attempt := 0; attempt < @max_retries; attempt += 1;) {
 						System.Concurrency.Thread->Sleep(delay);
-						response := PushPullOperationInner(url, data, content_type, task, 0);
+						response := PushPullOperationInner(url, data, content_type, task, 0, false);
 						if(response = Nil | (response->GetCode() <> 429 & response->GetCode() <> 503)) {
 							break;
 						};
@@ -903,7 +903,7 @@ response->GetStatusCode()->PrintLine();
 			return response;
 		}
 
-		method : PushPullOperationInner(url : Web.HTTP.Url, data : Byte[], content_type : String, task : HttpClient->Task, redirect_count : Int) ~ Web.HTTP.Response {
+		method : PushPullOperationInner(url : Web.HTTP.Url, data : Byte[], content_type : String, task : HttpClient->Task, redirect_count : Int, strip : Bool) ~ Web.HTTP.Response {
 			if(redirect_count > @max_redirects) {
 				return Web.HTTP.Response->New(310);
 			};
@@ -993,14 +993,17 @@ response->GetStatusCode()->PrintLine();
 					request_keys := @request_headers->GetKeys()<String>;
 					each(i : request_keys) {
 						request_key := request_keys->Get(i);
-						request_value := @request_headers->Find(request_key);
-						oper->Append(request_key);
-						oper->Append(": ");
-						oper->Append(request_value);
-						oper->Append("\r\n");
+						# the caller's credentials go to the caller's origin only (#1453)
+						if(<>strip | <>Web.HTTP.RedirectCheck->IsCredential(request_key)) {
+							request_value := @request_headers->Find(request_key);
+							oper->Append(request_key);
+							oper->Append(": ");
+							oper->Append(request_value);
+							oper->Append("\r\n");
+						};
 					};
 
-					if(@cookies_enabled & @cookies->Size() > 0) {
+					if(<>strip & @cookies_enabled & @cookies->Size() > 0) {
 						oper->Append("Cookie: ");
 						each(i : @cookies) {
 							oper->Append(@cookies->Get(i)->ToShortString());
@@ -1047,14 +1050,15 @@ response->GetStatusCode()->PrintLine();
 							moved_location := @response_headers->Find("location");
 							if(moved_location <> Nil) {
 								moved_url_str := BuildRedirectUrl(address, port, "http://", moved_location);
+								moved_url := Url->New(moved_url_str);
 								@response_headers->Empty();
 								socket->Close();
 
 								if(status_code = 301 | status_code = 302 | status_code = 303) {
-									return PullOperationInner(Url->New(moved_url_str), content_type, HttpClient->Task->GET, redirect_count + 1);
+									return PullOperationInner(moved_url, content_type, HttpClient->Task->GET, redirect_count + 1, strip | Web.HTTP.RedirectCheck->IsCrossOrigin(url, moved_url));
 								}
 								else {
-									return PushPullOperationInner(Url->New(moved_url_str), data, content_type, task, redirect_count + 1);
+									return PushPullOperationInner(moved_url, data, content_type, task, redirect_count + 1, strip | Web.HTTP.RedirectCheck->IsCrossOrigin(url, moved_url));
 								};
 							};
 						};
@@ -1096,7 +1100,7 @@ response->GetStatusCode()->PrintLine();
 		}
 
 		method : PullOperation(url : Web.HTTP.Url, content_type : String, task : HttpClient->Task) ~ Web.HTTP.Response {
-			response := PullOperationInner(url, content_type, task, 0);
+			response := PullOperationInner(url, content_type, task, 0, false);
 
 			if(response <> Nil & @max_retries > 0) {
 				code := response->GetCode();
@@ -1104,7 +1108,7 @@ response->GetStatusCode()->PrintLine();
 					delay := @retry_delay_ms;
 					for(attempt := 0; attempt < @max_retries; attempt += 1;) {
 						System.Concurrency.Thread->Sleep(delay);
-						response := PullOperationInner(url, content_type, task, 0);
+						response := PullOperationInner(url, content_type, task, 0, false);
 						if(response = Nil | (response->GetCode() <> 429 & response->GetCode() <> 503)) {
 							break;
 						};
@@ -1116,7 +1120,7 @@ response->GetStatusCode()->PrintLine();
 			return response;
 		}
 
-		method : PullOperationInner(url : Web.HTTP.Url, content_type : String, task : HttpClient->Task, redirect_count : Int) ~ Web.HTTP.Response {
+		method : PullOperationInner(url : Web.HTTP.Url, content_type : String, task : HttpClient->Task, redirect_count : Int, strip : Bool) ~ Web.HTTP.Response {
 			if(redirect_count > @max_redirects) {
 				return Web.HTTP.Response->New(310);
 			};
@@ -1190,14 +1194,17 @@ response->GetStatusCode()->PrintLine();
 					request_keys := @request_headers->GetKeys()<String>;
 					each(i : request_keys) {
 						request_key := request_keys->Get(i);
-						request_value := @request_headers->Find(request_key);
-						oper->Append(request_key);
-						oper->Append(": ");
-						oper->Append(request_value);
-						oper->Append("\r\n");
+						# the caller's credentials go to the caller's origin only (#1453)
+						if(<>strip | <>Web.HTTP.RedirectCheck->IsCredential(request_key)) {
+							request_value := @request_headers->Find(request_key);
+							oper->Append(request_key);
+							oper->Append(": ");
+							oper->Append(request_value);
+							oper->Append("\r\n");
+						};
 					};
 
-					if(@cookies_enabled & @cookies->Size() > 0) {
+					if(<>strip & @cookies_enabled & @cookies->Size() > 0) {
 						oper->Append("Cookie: ");
 						each(i : @cookies) {
 							oper->Append(@cookies->Get(i)->ToShortString());
@@ -1245,10 +1252,11 @@ response->GetStatusCode()->PrintLine();
 							moved_location := @response_headers->Find("location");
 							if(moved_location <> Nil) {
 								moved_url_str := BuildRedirectUrl(address, port, "http://", moved_location);
+								moved_url := Url->New(moved_url_str);
 								@response_headers->Empty();
 								socket->Close();
 
-								return PullOperationInner(Url->New(moved_url_str), content_type, HttpClient->Task->GET, redirect_count + 1);
+								return PullOperationInner(moved_url, content_type, HttpClient->Task->GET, redirect_count + 1, strip | Web.HTTP.RedirectCheck->IsCrossOrigin(url, moved_url));
 							};
 						};
 
