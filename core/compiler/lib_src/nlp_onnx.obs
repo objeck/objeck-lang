@@ -749,7 +749,10 @@ pooled := BertEmbedder->MeanPool(values, 2, 128, 768, mask);
 	Texts longer than the maximum length are truncated, and the Prediction says so. The
 	maximum length is the smallest of 512, the model's max_position_embeddings and the
 	tokenizer's model_max_length, or the model's fixed sequence axis. Each batch is padded to
-	its longest text.
+	its longest text. With an fp32 model a text's scores do not depend on which texts share
+	its batch. With a dynamically quantized one (model_quantized.onnx, model_int8.onnx) they
+	do, slightly: activations are quantized with a scale taken from the whole batch.
+	SetBatchSize(1) gives what Python's pipeline gives one text at a time.
 
 	With no session options, the build's default provider runs the model, and the CPU when
 	that provider cannot open it: see IsCpuFallback. Any option other than "model" is a
@@ -1149,7 +1152,7 @@ classifier->Close();
 
 		#~
 		Sets how many texts run through the model at once. A model with a fixed batch axis
-		caps it.
+		caps it. With a dynamically quantized model, 1 reproduces one-at-a-time results.
 		@param batch_size texts per run, at least 1
 		~#
 		method : public : SetBatchSize(batch_size : Int) ~ Nil {
