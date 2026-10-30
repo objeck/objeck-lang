@@ -25,6 +25,9 @@ Tables, all over every plane:
   strip         NFD of every character that has a canonical decomposition,
                 with the Mn marks already removed: keys, offsets, values.
                 Hangul syllables decompose algorithmically, in code.
+  letters       [start, end] pairs of the L* categories, and
+  numbers       [start, end] pairs of the N* categories: the \p{L} and \p{N} of
+                the GPT-2 / RoBERTa byte-level pre-tokenizer (BpeTokenizer).
 
 usage: python tools/nlp/gen_wordpiece_tables.py   (rewrites core/compiler/lib_src/nlp.obs)
 """
@@ -102,6 +105,8 @@ def main():
     marks = ranges(lambda c: ud.category(chr(c)) == "Mn")
     lower = lower_runs()
     keys, offsets, values = strip_table()
+    letters = ranges(lambda c: ud.category(chr(c)).startswith("L"))
+    numbers = ranges(lambda c: ud.category(chr(c)).startswith("N"))
 
     flat = lambda rs: [v for r in rs for v in r]
     block = [BEGIN,
@@ -114,6 +119,8 @@ def main():
              "\t\t@strip_keys : static : Int[];",
              "\t\t@strip_offsets : static : Int[];",
              "\t\t@strip_values : static : Int[];",
+             "\t\t@letters : static : Int[];",
+             "\t\t@numbers : static : Int[];",
              "",
              "\t\t# Two threads racing here each build the same arrays; either result is right.",
              "\t\tfunction : Init() ~ Nil {",
@@ -126,6 +133,10 @@ def main():
              "\t\t\t\t@strip_offsets := StripOffsets();",
              "\t\t\t\t@strip_values := StripValues();",
              "\t\t\t};",
+             "\t\t\tif(@numbers = Nil) {",
+             "\t\t\t\t@letters := Letters();",
+             "\t\t\t\t@numbers := Numbers();",
+             "\t\t\t};",
              "\t\t}",
              "",
              "\t\tfunction : GetPunctuation() ~ Int[] { Init(); return @punctuation; }",
@@ -135,6 +146,8 @@ def main():
              "\t\tfunction : GetStripKeys() ~ Int[] { Init(); return @strip_keys; }",
              "\t\tfunction : GetStripOffsets() ~ Int[] { Init(); return @strip_offsets; }",
              "\t\tfunction : GetStripValues() ~ Int[] { Init(); return @strip_values; }",
+             "\t\tfunction : GetLetters() ~ Int[] { Init(); return @letters; }",
+             "\t\tfunction : GetNumbers() ~ Int[] { Init(); return @numbers; }",
              "",
              literal("Punctuation", flat(punct)),
              literal("Control", flat(control)),
@@ -143,6 +156,8 @@ def main():
              literal("StripKeys", keys),
              literal("StripOffsets", offsets),
              literal("StripValues", values),
+             literal("Letters", flat(letters)),
+             literal("Numbers", flat(numbers)),
              "\t}",
              END]
     generated = "\n".join(block)
@@ -156,8 +171,9 @@ def main():
     source = source[:start] + generated + source[stop + len(END):]
     with open(TARGET, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(source)
-    print("punctuation %d ranges, control %d, marks %d, lower %d runs, strip %d characters (%d values)"
-          % (len(punct), len(control), len(marks), len(lower), len(keys), len(values)))
+    print("punctuation %d ranges, control %d, marks %d, lower %d runs, strip %d characters (%d values), "
+          "letters %d ranges, numbers %d" % (len(punct), len(control), len(marks), len(lower), len(keys),
+                                              len(values), len(letters), len(numbers)))
 
 
 if __name__ == "__main__":

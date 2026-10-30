@@ -4489,7 +4489,7 @@
 					"descriptions": ["**Encodes the five XML markup characters (&lt; &gt; &amp; &quot; ') and leaves everything else \u2014 including whitespace \u2014 untouched. Use this for readable element content and attribute values; EncodeString additionally encodes whitespace as numeric references for exact whitespace preservation.**\n\n```function : EncodeText(input:String) ~ String```\n\n\n\ninput: String\n\nreturn: String\n\n```\nraw := \"price < 10 & size > 5\";\nXmlElement->EncodeText(raw)->PrintLine();   # price &lt; 10 &amp; size &gt; 5\n```"]
 				},
 				"FindElements": {
-					"descriptions": ["**Finds matching XML elements using xpath like syntax. Supports 'first()', 'last()' and '[cdata]' functions.**\n\n```method : public : FindElements(path:String) ~ Vector&lt;XmlElement&gt;```\n\n\n\npath: String\n\nreturn: Vector&lt;XmlElement&gt;\n\n```\nparser := XmlParser->New(\"<catalog><book><title>Dune</title></book></catalog>\");\nif(parser->Parse()) {\n  results := parser->GetRoot()->FindElements(\"/catalog/book/title\")<XmlElement>;\n  results->Get(0)->GetContent()->PrintLine();\n};\n```"]
+					"descriptions": ["**Finds matching XML elements using xpath like syntax. Supports '[n]' (the n-th match, 1-based, as in XPath), 'first()', 'last()', '[attribute]' and '[cdata]' functions.**\n\n```method : public : FindElements(path:String) ~ Vector&lt;XmlElement&gt;```\n\n\n\npath: String\n\nreturn: Vector&lt;XmlElement&gt;\n\n```\nparser := XmlParser->New(\"<catalog><book><title>Dune</title></book></catalog>\");\nif(parser->Parse()) {\n  results := parser->GetRoot()->FindElements(\"/catalog/book/title\")<XmlElement>;\n  results->Get(0)->GetContent()->PrintLine();\n};\n```"]
 				},
 				"Get": {
 					"descriptions": ["**Gets a child element**\n\n```method : public : Get(i:Int) ~ XmlElement```\n\n\n\ni: Int\n\nreturn: XmlElement\n\n```\nparser := XmlParser->New(\"<root><first/><second/></root>\");\nif(parser->Parse()) {\n  parser->GetRoot()->Get(1)->GetName()->PrintLine();\n};\n```"]
@@ -4572,7 +4572,7 @@
 			"description": "Parses an XML document",
 			"functions": {
 				"FindElements": {
-					"descriptions": ["**Finds matching XML elements using xpath like syntax. Supports 'first()', 'last()' and '[cdata]' functions.**\n\n```method : public : FindElements(path:String) ~ Vector&lt;XmlElement&gt;```\n\n\n\npath: String\n\nreturn: Vector&lt;XmlElement&gt;\n\n```\nparser := XmlParser->New(\"<store><item><price>9.99</price></item></store>\");\nif(parser->Parse()) {\n  results := parser->FindElements(\"/store/item/price\")<XmlElement>;\n  each(e := results) {\n    e->GetContent()->PrintLine();\n  };\n};\n```"]
+					"descriptions": ["**Finds matching XML elements using xpath like syntax. Supports '[n]' (the n-th match, 1-based, as in XPath), 'first()', 'last()', '[attribute]' and '[cdata]' functions.**\n\n```method : public : FindElements(path:String) ~ Vector&lt;XmlElement&gt;```\n\n\n\npath: String\n\nreturn: Vector&lt;XmlElement&gt;\n\n```\nparser := XmlParser->New(\"<store><item><price>9.99</price></item></store>\");\nif(parser->Parse()) {\n  results := parser->FindElements(\"/store/item/price\")<XmlElement>;\n  each(e := results) {\n    e->GetContent()->PrintLine();\n  };\n};\n```"]
 				},
 				"GetEncoding": {
 					"descriptions": ["**Gets the XML encoding**\n\n```method : public : GetEncoding() ~ String```\n\n\n\nreturn: String\n\n```\nparser := XmlParser->New(\"<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?><root/>\");\nif(parser->Parse()) {\n  parser->GetEncoding()->PrintLine();\n};\n```"]
@@ -16421,6 +16421,47 @@
 				}
 			}
 		},
+		"System.NLP.BpeTokenizer": {
+			"description": "Byte-level BPE, the tokenizer of RoBERTa, DistilRoBERTa and GPT-2, as Hugging Face's tokenizers library runs it: the GPT-2 split of the text into words, numbers, punctuation runs and whitespace; each piece's UTF-8 bytes as characters; the merges applied lowest rank first; then RoBERTa's specials, <s> text </s> or <s> a </s></s> b </s>.\n\nEvery encoding records each token's character offsets in the text (GetOffsets), with the leading space a token carries trimmed off when trim_offsets is set, as RoBERTa's are. Special tokens the vocabulary lists, such as <mask>, are matched in the text before it is split; one marked lstrip takes the whitespace before it.\n\nUsually built from a model's tokenizer.json by System.NLP.Onnx; the constructor takes the vocabulary and merges themselves.",
+			"functions": {
+				"AddSpecialToken": {
+					"descriptions": ["**Adds a special token matched in the text before it is split, e.g. <mask>; the specials SetSpecialTokens names are matched already. Adding one again replaces its rules.**\n\n```method : public : AddSpecialToken(content:String, lstrip:Bool, rstrip:Bool) ~ Bool```\n\n\n\ncontent: String\n\nlstrip: Bool\n\nrstrip: Bool\n\nreturn: Bool"]
+				},
+				"Decode": {
+					"descriptions": ["**Turns ids back into text: the tokens' bytes, decoded as UTF-8, special tokens left out.**\n\n```method : public : Decode(ids:Int[]) ~ String```\n\n\n\nids: Int[]\n\nreturn: String"]
+				},
+				"Encode": {
+					"descriptions": ["**Encodes one text: <s> text </s>, then <pad> to max_len. Text past max_len - 2 tokens is dropped, and the encoding says so.**\n\n```method : public : Encode(text:String, max_len:Int) ~ TokenEncoding```\n\n\n\ntext: String\n\nmax_len: Int\n\nreturn: TokenEncoding"]
+				},
+				"EncodePair": {
+					"descriptions": ["**Encodes a pair: <s> a </s></s> b </s>, then <pad> to max_len; token types are all 0, as RoBERTa's are. When the pair is too long, a token at a time is dropped from the end of whichever text is longer (the second on a tie), Hugging Face's longest_first truncation.**\n\n```method : public : EncodePair(text_a:String, text_b:String, max_len:Int) ~ TokenEncoding```\n\n\n\ntext_a: String\n\ntext_b: String\n\nmax_len: Int\n\nreturn: TokenEncoding"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the vocabulary did not load, or why the last call returned Nil.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetId": {
+					"descriptions": ["**A token's id.**\n\n```method : public : GetId(token:String) ~ Int```\n\n\n\ntoken: String\n\nreturn: Int"]
+				},
+				"GetToken": {
+					"descriptions": ["**The token an id stands for.**\n\n```method : public : GetToken(id:Int) ~ String```\n\n\n\nid: Int\n\nreturn: String"]
+				},
+				"GetVocabularySize": {
+					"descriptions": ["**The vocabulary's size.**\n\n```method : public : GetVocabularySize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsLoaded": {
+					"descriptions": ["**Whether the vocabulary and specials loaded.**\n\n```method : public : IsLoaded() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Builds a tokenizer from a vocabulary and its merges, with RoBERTa's specials: <s>, </s>, <pad> and <unk>.**\n\n```New(tokens:String[], merges:String[], add_prefix_space:Bool, trim_offsets:Bool)```\n\n\n\ntokens: String[]\n\nmerges: String[]\n\nadd_prefix_space: Bool\n\ntrim_offsets: Bool"]
+				},
+				"SetSpecialTokens": {
+					"descriptions": ["**Sets the special tokens, for a vocabulary that does not use RoBERTa's names.**\n\n```method : public : SetSpecialTokens(cls:String, sep:String, pad:String, unk:String) ~ Bool```\n\n\n\ncls: String\n\nsep: String\n\npad: String\n\nunk: String\n\nreturn: Bool"]
+				},
+				"Tokenize": {
+					"descriptions": ["**The pieces a text becomes, before special tokens are added: byte-level strings, a leading \u0120 for a space.**\n\n```method : public : Tokenize(text:String) ~ String[]```\n\n\n\ntext: String\n\nreturn: String[]"]
+				}
+			}
+		},
 		"System.NLP.SentimentAnalyzer": {
 			"description": "Rule-based sentiment analysis in the manner of VADER (Hutto and Gilbert, 2014), with a built-in English lexicon of valences on a -4..+4 scale, part of it VADER's own values (MIT licence). Negators (\"not\", \"never\", \"don't\") within three words flip and damp a word's valence, boosters (\"very\", \"extremely\") and dampeners (\"slightly\", \"kind of\") scale it, a word in capitals in mixed-case text and each '!' add emphasis, and \"but\" shifts weight to the clause after it. Unknown inflections fall back to their base form (\"loved\" finds \"love\", \"terribly\" finds \"terrible\").",
 			"functions": {
@@ -16470,6 +16511,23 @@
 				},
 				"ToString": {
 					"descriptions": ["**String representation**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"System.NLP.SubwordTokenizer": {
+			"description": "A tokenizer that turns text into a model's input: WordPieceTokenizer (BERT, DistilBERT, MiniLM) and BpeTokenizer (RoBERTa, GPT-2). The task classes of System.NLP.Onnx take either.",
+			"functions": {
+				"Encode": {
+					"descriptions": ["**Encodes one text, truncated and padded to max_len, special tokens included.**\n\n```method : public : virutal : Encode(text:String, max_len:Int) ~ TokenEncoding```\n\n\n\ntext: String\n\nmax_len: Int\n\nreturn: TokenEncoding"]
+				},
+				"EncodePair": {
+					"descriptions": ["**Encodes a pair of texts, truncated and padded to max_len, special tokens included.**\n\n```method : public : virutal : EncodePair(text_a:String, text_b:String, max_len:Int) ~ TokenEncoding```\n\n\n\ntext_a: String\n\ntext_b: String\n\nmax_len: Int\n\nreturn: TokenEncoding"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the vocabulary did not load, or why the last call returned Nil.**\n\n```method : public : virutal : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"IsLoaded": {
+					"descriptions": ["**Whether the vocabulary loaded.**\n\n```method : public : virutal : IsLoaded() ~ Bool```\n\n\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -16548,6 +16606,9 @@
 				"GetLength": {
 					"descriptions": ["**Tokens before the padding, [CLS] and [SEP] included.**\n\n```method : public : GetLength() ~ Int```\n\n\n\nreturn: Int"]
 				},
+				"GetOffsets": {
+					"descriptions": ["**Each token's character offsets in its text, as Hugging Face's offset_mapping: the token at position i spans [offsets[2i], offsets[2i + 1]) of the text it came from; special tokens and padding are (0, 0).**\n\n```method : public : GetOffsets() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
 				"GetSize": {
 					"descriptions": ["**Total length, padding included: the max_len it was encoded to.**\n\n```method : public : GetSize() ~ Int```\n\n\n\nreturn: Int"]
 				},
@@ -16561,7 +16622,7 @@
 					"descriptions": ["**Whether text was dropped to fit max_len.**\n\n```method : public : IsTruncated() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
-					"descriptions": ["**Constructor, for a tokenizer of the program's own.**\n\n```New(ids:Int[], attention_mask:Int[], token_type_ids:Int[], tokens:String[], length:Int, truncated:Bool)```\n\n\n\nids: Int[]\n\nattention_mask: Int[]\n\ntoken_type_ids: Int[]\n\ntokens: String[]\n\nlength: Int\n\ntruncated: Bool"]
+					"descriptions": ["**Constructor, for a tokenizer of the program's own.**\n\n```New(ids:Int[], attention_mask:Int[], token_type_ids:Int[], tokens:String[], length:Int, truncated:Bool)```\n\n\n\nids: Int[]\n\nattention_mask: Int[]\n\ntoken_type_ids: Int[]\n\ntokens: String[]\n\nlength: Int\n\ntruncated: Bool", "**Constructor with each token's character offsets in the text.**\n\n```New(ids:Int[], attention_mask:Int[], token_type_ids:Int[], tokens:String[], length:Int, truncated:Bool, offsets:Int[])```\n\n\n\nids: Int[]\n\nattention_mask: Int[]\n\ntoken_type_ids: Int[]\n\ntokens: String[]\n\nlength: Int\n\ntruncated: Bool\n\noffsets: Int[]"]
 				}
 			}
 		},
@@ -21012,6 +21073,12 @@
 				"file": ""
 			}
 		],
+		"BpeTokenizer": [
+			{
+				"bundle": "System.NLP",
+				"file": ""
+			}
+		],
 		"SentimentAnalyzer": [
 			{
 				"bundle": "System.NLP",
@@ -21019,6 +21086,12 @@
 			}
 		],
 		"SentimentResult": [
+			{
+				"bundle": "System.NLP",
+				"file": ""
+			}
+		],
+		"SubwordTokenizer": [
 			{
 				"bundle": "System.NLP",
 				"file": ""
