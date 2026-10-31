@@ -1,0 +1,140 @@
+diff --git a/core/vm/arch/win32/win32.cpp b/core/vm/arch/win32/win32.cpp
+index 116a0bd277..33152cc7e3 100644
+--- a/core/vm/arch/win32/win32.cpp
++++ b/core/vm/arch/win32/win32.cpp
+@@ -35,6 +35,64 @@
+ 
+ #include "win32.h"
+ 
++#include <mutex>
++
++void SockTrace(const char* what, SOCKET sock, int detail) {
++  static std::mutex lock;
++  static FILE* out = [] {
++    char dir[512];
++    if(!GetEnvironmentVariableA("OBJECK_SOCK_TRACE", dir, sizeof(dir))) {
++      return (FILE*)nullptr;
++    }
++    char path[600];
++    snprintf(path, sizeof(path), "%s\\sock_%lu.log", dir, GetCurrentProcessId());
++    return _fsopen(path, "a", _SH_DENYNO);
++  }();
++  if(!out) {
++    return;
++  }
++  const int saved = WSAGetLastError();
++  int lport = -1, pport = -1;
++  struct sockaddr_storage a;
++  int len = sizeof(a);
++  if(sock != INVALID_SOCKET && !getsockname(sock, (struct sockaddr*)&a, &len)) {
++    lport = ntohs(((struct sockaddr_in*)&a)->sin_port);
++  }
++  len = sizeof(a);
++  int peer_err = 0;
++  if(sock != INVALID_SOCKET && !getpeername(sock, (struct sockaddr*)&a, &len)) {
++    pport = ntohs(((struct sockaddr_in*)&a)->sin_port);
++  }
++  else {
++    peer_err = WSAGetLastError();
++  }
++  FILETIME ft;
++  GetSystemTimePreciseAsFileTime(&ft);
++  const unsigned long long t = ((unsigned long long)ft.dwHighDateTime << 32 | ft.dwLowDateTime) / 10; // us
++  std::lock_guard<std::mutex> guard(lock);
++  fprintf(out, "%llu %lu %lu %s h=%llu l=%d p=%d d=%d pe=%d\n", t, GetCurrentProcessId(), GetCurrentThreadId(),
++          what, (unsigned long long)sock, lport, pport, detail, peer_err);
++  fflush(out);
++  WSASetLastError(saved);
++}
++
++void SockTracePending(SOCKET sock) {
++  u_long pending = 0;
++  if(ioctlsocket(sock, FIONREAD, &pending) || pending == 0) {
++    return;
++  }
++  char peek[24];
++  const int n = recv(sock, peek, sizeof(peek), MSG_PEEK);
++  char text[64] = {0};
++  for(int i = 0; i < n && i < (int)sizeof(peek); ++i) {
++    const char c = peek[i];
++    text[i] = (c >= 33 && c < 127) ? c : (c == '\r' ? '<' : (c == '\n' ? '>' : '.'));
++  }
++  char what[96];
++  snprintf(what, sizeof(what), "UNREAD:%s", text);
++  SockTrace(what, sock, (int)pending);
++}
++
+ // see the declaration in win32.h
+ void IPSocket::Startup() {
+   static const bool started = [] {
+@@ -196,6 +254,7 @@ SOCKET IPSocket::Connect(const char* address, int port, int type, int timeout_ms
+ // see the declaration in win32.h
+ SOCKET IPSocket::Open(const char* address, int port, int timeout_ms, SocketError& error) {
+   const SOCKET sock = Connect(address, port, SOCK_STREAM, timeout_ms, error);
++  SockTrace(sock != INVALID_SOCKET ? "CONNECT" : "CONNECT_FAIL", sock, sock != INVALID_SOCKET ? port : error.code);
+ 
+   // Set default receive timeout (30 seconds)
+   if(sock != INVALID_SOCKET) {
+@@ -432,6 +491,8 @@ SOCKET IPSocket::Accept(SOCKET server, char* client_address, int& client_port) {
+ 		WSASetLastError(0);
+ 	}
+ 
++	SockTrace("ACCEPT", client, 0);
++
+ 	// client_address holds INET6_ADDRSTRLEN (see SockTcpAccept)
+ 	FormatAddress((struct sockaddr*)&pin, client_address, INET6_ADDRSTRLEN, client_port);
+ 
+diff --git a/core/vm/arch/win32/win32.h b/core/vm/arch/win32/win32.h
+index 189ea1f518..f5ffecc535 100644
+--- a/core/vm/arch/win32/win32.h
++++ b/core/vm/arch/win32/win32.h
+@@ -496,6 +496,9 @@ public:
+ /****************************
+  * IP socket support class
+  ****************************/
++void SockTrace(const char* what, SOCKET sock, int detail);
++void SockTracePending(SOCKET sock);
++
+ class IPSocket {
+  public:
+    static std::vector<std::string> Resolve(const char* address);
+@@ -566,8 +569,12 @@ class IPSocket {
+     status = recv(sock, &value, 1, 0);
+     if(status == SOCKET_ERROR) {
+       error = WSAGetLastError();
++      SockTrace("READ_ERR", sock, error);
+       return '\0';
+     }
++    if(status == 0) {
++      SockTrace("READ_EOF", sock, 0);
++    }
+ 
+     error = 0;
+     return value;
+@@ -581,9 +588,11 @@ class IPSocket {
+       int status = recv(sock, values + total, len - total, 0);
+       if(status == SOCKET_ERROR) {
+         error = WSAGetLastError();
++        SockTrace("READ_ERR", sock, error);
+         return total > 0 ? total : -1;
+       }
+       if(status == 0) {
++        SockTrace("READ_EOF", sock, 0);
+         break; // connection closed
+       }
+       total += status;
+@@ -599,8 +608,12 @@ class IPSocket {
+     // shutdown() hands the queued bytes off and sends FIN before the handle
+     // goes away. Errors are ignored on purpose: the socket may already be
+     // torn down by the peer, and there is nothing useful to do about it here.
+-    shutdown(sock, 1 /* SD_SEND; winsock2.h is not in this header's include set */);
+-    closesocket(sock);
++    SockTracePending(sock);
++    const int shut = shutdown(sock, 1 /* SD_SEND; winsock2.h is not in this header's include set */);
++    SockTrace("CLOSE", sock, shut ? WSAGetLastError() : 0);
++    if(closesocket(sock)) {
++      SockTrace("CLOSE_ERR", INVALID_SOCKET, WSAGetLastError());
++    }
+   }
+ 
+   static bool SetKeepAlive(SOCKET sock, bool enable) {
