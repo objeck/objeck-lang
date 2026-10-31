@@ -1136,6 +1136,48 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
         outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR,
           local_instr_offset - 1, LOCL));
 
+        // A call starts with its locals zeroed -- the interpreter clears the frame
+        // and a compiled method's prologue its slots -- so a local declared without
+        // a value (`best : Added;`) reads Nil until it is assigned. The compiler
+        // emits no store for such a declaration and relies on that. An inlined
+        // body's locals are slots of the caller's frame, which nothing cleared
+        // between one inlined "call" and the next: a callee in a loop read what the
+        // previous iteration had left, so a search that found nothing returned the
+        // last call's match (#1464). Zero them here, as the frame would be: the
+        // and/or temporary and every local past the parameters, which the callee's
+        // first instructions store from the stack. GetNumParams counts words.
+        {
+          const int callee_base = local_instr_offset + (mthd_called->HasAndOr() ? 1 : 0);
+          if(mthd_called->HasAndOr()) {
+            outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, 0L));
+            outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR,
+              (long)local_instr_offset, LOCL));
+          }
+          const std::vector<IntermediateDeclaration*> callee_locals = mthd_called->GetEntries()->GetParameters();
+          const int param_words = mthd_called->GetNumParams();
+          int slot = 0;
+          for(size_t j = 0; j < callee_locals.size(); ++j) {
+            const instructions::ParamType type = callee_locals[j]->GetType();
+            if(slot >= param_words) {
+              const long id = callee_base + slot;
+              if(type == instructions::FLOAT_PARM) {
+                outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_LIT, (FLOAT_VALUE)0.0));
+                outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_FLOAT_VAR, id, LOCL));
+              }
+              else if(type == instructions::FUNC_PARM) {
+                outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, 0L));
+                outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, 0L));
+                outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_FUNC_VAR, id, LOCL));
+              }
+              else {
+                outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, 0L));
+                outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, id, LOCL));
+              }
+            }
+            slot += type == instructions::FUNC_PARM ? 2 : 1;
+          }
+        }
+
         current_entries->AddParameter(new IntermediateDeclaration(L"", OBJ_PARM));
         if(mthd_called->HasAndOr()) {
           current_entries->AddParameter(new IntermediateDeclaration(L"", INT_PARM));

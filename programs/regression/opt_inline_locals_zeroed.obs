@@ -1,0 +1,87 @@
+#~
+An inlined call starts with its locals zeroed, as a call does (#1464).
+
+A local declared without a value reads Nil (or 0) until it is assigned: a call
+starts with its frame cleared, and the compiler emits no store for such a
+declaration. The -opt s3 inliner pastes a small callee into its caller, and the
+callee's locals become slots of the caller's frame, which nothing cleared from
+one inlined call to the next. A callee called in a loop then read what the
+previous iteration left: Pick() returned the last call's string where it should
+have returned Nil. In System.NLP it made a BPE tokenizer's added-token match
+repeat the previous position's token for every later position.
+
+Run() is not Main, which is never inlined into, so Pick() is inlined into it at
+-opt s3. Exits 1 when a call that matched nothing returns a value.
+~#
+
+class Box {
+  @v : Int;
+
+  New(v : Int) {
+    @v := v;
+  }
+
+  method : public : Get() ~ Int {
+    return @v;
+  }
+}
+
+class OptInlineLocalsZeroed {
+  function : Main(args : String[]) ~ Nil {
+    bad := Run();
+    if(bad = 0) {
+      "PASS: every inlined call started with its locals cleared"->PrintLine();
+    }
+    else {
+      "FAIL: {$bad} inlined call(s) read the previous call's local"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  # an object local, an Int and a Float, each set only on a match
+  function : Pick(x : Int, c : String) ~ String {
+    best : String;
+    if(x > 5) {
+      best := c;
+    };
+    return best;
+  }
+
+  function : Count(x : Int) ~ Int {
+    n : Int;
+    if(x > 5) {
+      n := x;
+    };
+    return n;
+  }
+
+  function : Scale(x : Int) ~ Float {
+    f : Float;
+    if(x > 5) {
+      f := 2.5;
+    };
+    return f;
+  }
+
+  function : Run() ~ Int {
+    bad := 0;
+    for(i := 0; i < 20; i += 1;) {
+      x := i % 2 = 0 ? 9 : 1;
+      text := Pick(x, "match");
+      count := Count(x);
+      scale := Scale(x);
+      if(x <= 5) {
+        if(text <> Nil) {
+          bad += 1;
+        };
+        if(count <> 0) {
+          bad += 1;
+        };
+        if(scale <> 0.0) {
+          bad += 1;
+        };
+      };
+    };
+    return bad;
+  }
+}
