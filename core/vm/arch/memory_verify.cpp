@@ -1363,8 +1363,9 @@ void MemoryManager::AuditWord(size_t value, uint8_t kind, StackMethod* method, l
 // what the call popped, the newest frame's anything from that to its height.
 // 'kinds' gets a kind per word below the stack position and 'andors' the
 // and/or slot of each interpreted frame that has one; 'sites', when given,
-// where each word's kind came from. A compiled frame owns no words, except the
-// newest frame's callback arguments, which stay RK_UNKNOWN. False, with a
+// where each word's kind came from. Words are typed only up to the first frame
+// compiled code sits under: a compiled frame, or an interpreted one compiled
+// code called back into. From there up they stay RK_UNKNOWN. False, with a
 // reason, when the maps do not account for the stack: the caller treats the
 // whole thread conservatively then.
 bool MemoryManager::AttributeThread(StackFrameMonitor* monitor, std::vector<uint8_t>& kinds,
@@ -1390,7 +1391,21 @@ bool MemoryManager::AttributeThread(StackFrameMonitor* monitor, std::vector<uint
     frames.push_back(cur);
   }
 
+  // Compiled code owns operand-stack words no map describes: what a compiled frame
+  // pushed for a call, and the values it hands an interpreted callee. A compiled
+  // frame entered from the interpreter is not even in the call stack: it is the
+  // monitor's current frame, and when it calls back into the interpreter, a nested
+  // interpreter pushes the frames it runs onto the same call stack, directly above
+  // the compiled frame's caller. Laying those frames' segments on top of the
+  // caller's put the compiled frame's words in slots the maps type Int, and a live
+  // reference there was neither marked nor relocated (#1475, #1476:
+  // query_*_differential under the heap verifier, JIT on, B3 on a Filter's String
+  // fields). So typing stops at the first compiled frame below the top, or the first
+  // interpreted frame compiled code called; the words from there up stay RK_UNKNOWN
+  // and are scanned as before phase 2. The frames above still type their and/or
+  // slots, which depend only on their own ip.
   long base = 0;
+  bool attributing = true;
   std::wstring trail;
   for(size_t k = 0; k < frames.size(); ++k) {
     StackFrame* frame = frames[k];
@@ -1398,14 +1413,12 @@ bool MemoryManager::AttributeThread(StackFrameMonitor* monitor, std::vector<uint
     if(frame->jit_mem) {
       if(root_audit) {
         root_audit->frames_compiled++;
-        if(top) {
+        if(attributing) {
           root_audit->words_unattributed += sp > base ? (size_t)(sp - base) : 0;
         }
       }
       trail += L" | [jit] " + frame->method->GetName();
-      if(top) {
-        base = sp;
-      }
+      attributing = false;
       continue;
     }
 
@@ -1420,6 +1433,19 @@ bool MemoryManager::AttributeThread(StackFrameMonitor* monitor, std::vector<uint
     if(!map->ok || pc < 0 || pc >= (long)map->height.size() || map->height[pc] < 0) {
       why = map->ok ? L"no position: " + method->GetName() + L" cur_ip " + std::to_wstring(cur_ip) : L"";
       return false;
+    }
+    if(attributing && frame->jit_called) {
+      if(root_audit) {
+        root_audit->words_unattributed += sp > base ? (size_t)(sp - base) : 0;
+      }
+      attributing = false;
+    }
+    if(!attributing) {
+      if(method->HasAndOr() && frame->mem) {
+        andors.push_back(std::make_pair(frame, map->andor[pc]));
+      }
+      trail += L" | " + method->GetName() + L" @" + std::to_wstring(pc) + (frame->jit_called ? L" [bridge]" : L"");
+      continue;
     }
     const long height = map->height[pc];
     const long low = between ? height : height - map->pops[pc];
@@ -1454,7 +1480,7 @@ bool MemoryManager::AttributeThread(StackFrameMonitor* monitor, std::vector<uint
     base += segment;
   }
 
-  if(base != sp) {
+  if(attributing && base != sp) {
     why = L"segments end at " + std::to_wstring(base) + L", stack position " + std::to_wstring(sp) + L":" + trail;
     return false;
   }

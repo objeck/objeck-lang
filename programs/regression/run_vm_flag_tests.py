@@ -263,6 +263,18 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     spilling method, and a live frame's spill slot is not cleared after its
     reload: GC roots phase 3. The fixture is outside the regression runner's
     directory because the runner compiles at s3.)
+ 27. The reference maps type the stack right when compiled code calls back into
+    the interpreter (#1475, #1476). A compiled method entered from the
+    interpreter is not in the call stack, and the frames a nested interpreter
+    runs for it were laid directly over its caller's words, so its own pending
+    words were typed by the callee's map: a live reference typed Int was neither
+    marked nor relocated, and the nightly heap verifier found typed references
+    into the nursery (query_index_differential, query_expr_differential, JIT
+    on). Section 24 runs interpreted, so it never saw this. gc_roots_jit_bridge.obs
+    runs with the JIT on, its interpreted callee kept interpreted
+    (OBJECK_JIT_THRESHOLD), a 64k nursery and the roots audit, at -opt s0 and s3:
+    the same four counts as section 24 must be zero. Before the fix the audit
+    found hundreds of shifted words at s0 and of over-long frames at s3.
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only]
 
@@ -580,6 +592,8 @@ def main():
     check_int_not_relocated(obc, obr, env, bin_dir)
 
     check_entry_zeroes_spill_slots(obc, obr, env, bin_dir)
+
+    check_gc_roots_jit_bridge(obc, obr, env, bin_dir)
 
     # ---- 11. the heap verifier (OBJECK_GC_VERIFY) ----------------------------------
     verify_section(obc, obr, env, bin_dir)
@@ -1449,7 +1463,6 @@ def check_gc_roots_audit(obc, obr, env, bin_dir):
     # ---- 24. the operand-stack reference maps agree with the live stacks -----------
     audit_env = dict(env)
     audit_env["OBJECK_GC_ROOTS"] = "audit"
-    numbers = re.compile(r"(\w+)=(\d+)")
     for name in ("gc_cond_value_root", "opt_inline_and_or_slots", "closure_nested_capture", "collect_hash_open"):
         src = os.path.join(SCRIPT_DIR, name + ".obs")
         dest = os.path.join(SCRIPT_DIR, name + ".obe")
@@ -1458,21 +1471,28 @@ def check_gc_roots_audit(obc, obr, env, bin_dir):
         if rc != 0:
             continue
         rc, out, err = run([obr, "--jit=off", "--nursery=256k", dest], env=audit_env, cwd=SCRIPT_DIR, timeout=300)
-        text = err.decode(errors="replace")
-        counts = {}
-        for line in text.splitlines():
-            if line.startswith("[gc-roots]") and not line.startswith("[gc-roots]   "):
-                for key, value in numbers.findall(line):
-                    counts[key] = int(value)
-        notes = [l for l in text.splitlines() if l.startswith("[gc-roots]   ")][:6]
-        check(f"{name} passes under the roots audit", rc == 0, f"rc={rc} out={out[-200:]!r}")
-        check(f"the roots audit ran on {name}", counts.get("collections", 0) > 0 and "built" in counts,
-              f"counts={counts!r}")
-        for key, what in (("failed", "every reference map builds"),
-                          ("mismatched_threads", "every thread's frames account for its whole stack"),
-                          ("ref_points_at_nothing", "no reference-typed word points at nothing"),
-                          ("int_points_at_object", "no Int- or Float-typed word points at an object")):
-            check(f"{name}: {what}", counts.get(key, -1) == 0, f"{key}={counts.get(key)} notes={notes!r}")
+        check_roots_audit_counts(name, rc, out, err)
+
+
+def check_roots_audit_counts(name, rc, out, err):
+    # the summary an OBJECK_GC_ROOTS=audit run prints at exit: every count that
+    # means the maps and the live stacks disagree must be zero
+    numbers = re.compile(r"(\w+)=(\d+)")
+    text = err.decode(errors="replace")
+    counts = {}
+    for line in text.splitlines():
+        if line.startswith("[gc-roots]") and not line.startswith("[gc-roots]   "):
+            for key, value in numbers.findall(line):
+                counts[key] = int(value)
+    notes = [l for l in text.splitlines() if l.startswith("[gc-roots]   ")][:6]
+    check(f"{name} passes under the roots audit", rc == 0, f"rc={rc} out={out[-200:]!r}")
+    check(f"the roots audit ran on {name}", counts.get("collections", 0) > 0 and "built" in counts,
+          f"counts={counts!r}")
+    for key, what in (("failed", "every reference map builds"),
+                      ("mismatched_threads", "every thread's frames account for its whole stack"),
+                      ("ref_points_at_nothing", "no reference-typed word points at nothing"),
+                      ("int_points_at_object", "no Int- or Float-typed word points at an object")):
+        check(f"{name}: {what}", counts.get(key, -1) == 0, f"{key}={counts.get(key)} notes={notes!r}")
 
 
 def check_int_not_relocated(obc, obr, env, bin_dir):
@@ -1506,6 +1526,26 @@ def check_entry_zeroes_spill_slots(obc, obr, env, bin_dir):
         check(f"no stale spill slot keeps a dead array alive ({label})",
               rc == 0 and b"PASS: the dead array was collected" in out,
               f"rc={rc} out={out[-300:]!r} stderr={err.decode(errors='replace')[-300:]!r}")
+
+
+def check_gc_roots_jit_bridge(obc, obr, env, bin_dir):
+    # ---- 27. the maps type the stack right across compiled-to-interpreted calls -------
+    audit_env = dict(env)
+    audit_env["OBJECK_GC_ROOTS"] = "audit"
+    # the interpreted callee must stay interpreted for compiled code to call back
+    audit_env["OBJECK_JIT_THRESHOLD"] = "999999999"
+    src = os.path.join(SCRIPT_DIR, "gc_roots_jit_bridge.obs")
+    for opt in ("s0", "s3"):
+        name = f"gc_roots_jit_bridge (-opt {opt}, JIT on)"
+        dest = os.path.join(SCRIPT_DIR, "gc_roots_jit_bridge_" + opt + ".obe")
+        rc, out, err = run([obc, "-src", src, "-dest", dest, "-opt", opt], env=env, cwd=bin_dir)
+        check(f"{name} compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+        if rc != 0:
+            continue
+        rc, out, err = run([obr, "--nursery=64k", dest], env=audit_env, cwd=SCRIPT_DIR, timeout=300)
+        check_roots_audit_counts(name, rc, out, err)
+        check(f"{name} built every tree intact", b"PASS: every tree built across the bridge is intact" in out,
+              f"out={out[-200:]!r}")
 
 
 def check_call_depth(obc, obr, env, bin_dir):
