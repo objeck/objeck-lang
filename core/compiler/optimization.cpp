@@ -1149,7 +1149,7 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
         {
           const int callee_base = local_instr_offset + (mthd_called->HasAndOr() ? 1 : 0);
           if(mthd_called->HasAndOr()) {
-            outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, 0L));
+            outputs->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, 0));
             outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR,
               (long)local_instr_offset, LOCL));
           }
@@ -1165,12 +1165,12 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
                 outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_FLOAT_VAR, id, LOCL));
               }
               else if(type == instructions::FUNC_PARM) {
-                outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, 0L));
-                outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, 0L));
+                outputs->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, 0));
+                outputs->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, 0));
                 outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_FUNC_VAR, id, LOCL));
               }
               else {
-                outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, 0L));
+                outputs->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, 0));
                 outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, id, LOCL));
               }
             }
