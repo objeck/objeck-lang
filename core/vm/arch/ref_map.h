@@ -242,10 +242,20 @@
       long count;
       RefMap* map;
 
-      // values: union-find with a kind, an element kind (arrays) and an origin
+      // Values: union-find, each class with two kinds -- what produced it ('kind':
+      // a typed load, NEW_*, LOAD_INST_MEM, a call's return type) and what it is
+      // used as ('use': a store to a typed slot, an argument, a return,
+      // arithmetic) -- an element kind (arrays) and an origin. The use decides:
+      // a value the program goes on to treat as an Int is an Int, whatever
+      // produced it. GetInstanceID() inlined at -opt s3 is LOAD_INST_MEM, a
+      // reference, returned as an Int; typed by its producer it was relocated
+      // when its object moved (#1452). An object still in use is kept by its
+      // references, not by an Int that equals its address, and nothing turns
+      // an Int back into one.
       enum Origin : uint8_t { ORIGIN_NONE = 0, ORIGIN_SELF, ORIGIN_CLS, ORIGIN_MIXED };
       std::vector<int> parent;
       std::vector<uint8_t> kind;
+      std::vector<uint8_t> use;
       std::vector<uint8_t> elem;
       std::vector<uint8_t> origin;
 
@@ -262,8 +272,10 @@
       std::vector<bool> local_is_andor;
 
       // constraints resolved after the pass
-      struct ElemLink { int array; int value; };
-      struct FieldLink { int receiver; long index; int value; };
+      // 'load': the value comes from the element or field (it produces the value);
+      // otherwise it goes there (a use of the value)
+      struct ElemLink { int array; int value; bool load; };
+      struct FieldLink { int receiver; long index; int value; bool load; };
       std::vector<ElemLink> elem_links;
       std::vector<FieldLink> field_links;
       std::vector<SlotType> self_fields;
@@ -273,6 +285,7 @@
         const int id = static_cast<int>(parent.size());
         parent.push_back(id);
         kind.push_back(k);
+        use.push_back(RK_UNKNOWN);
         elem.push_back(e);
         origin.push_back(o);
         return id;
@@ -294,13 +307,36 @@
         }
         parent[b] = a;
         kind[a] = MergeKind(kind[a], kind[b]);
+        use[a] = MergeKind(use[a], use[b]);
         elem[a] = MergeKind(elem[a], elem[b]);
         if(origin[a] != origin[b]) {
           origin[a] = ORIGIN_MIXED;
         }
       }
 
+      // a use of the value as k (and, an array, with elements e)
       void Constrain(int v, uint8_t k, uint8_t e = RK_UNKNOWN) {
+        v = Find(v);
+        if(k != RK_UNKNOWN) {
+          use[v] = MergeKind(use[v], k);
+        }
+        if(e != RK_UNKNOWN) {
+          elem[v] = MergeKind(elem[v], e);
+        }
+      }
+
+      // what a value is: its use when it has one, else what produced it
+      uint8_t Effective(int v) {
+        v = Find(v);
+        const uint8_t u = use[v];
+        if(u == RK_INT || u == RK_FLOAT || u == RK_REF || u == RK_CONFLICT) {
+          return u;
+        }
+        return kind[v] == RK_LIT ? RK_INT : kind[v];
+      }
+
+      // a producer's fact about the value
+      void Produce(int v, uint8_t k, uint8_t e = RK_UNKNOWN) {
         v = Find(v);
         if(k != RK_UNKNOWN) {
           kind[v] = MergeKind(kind[v], k);
@@ -463,7 +499,7 @@
         int receiver;
         if(!Pop(stack, ip, receiver)) return false;
         const int value = NewValue(RK_UNKNOWN);
-        field_links.push_back({ receiver, op1, value });
+        field_links.push_back({ receiver, op1, value, true });
         stack.push_back(value);
       }
         break;
@@ -471,7 +507,7 @@
       case STOR_CLS_INST_INT_VAR: {
         int receiver;
         if(!Pop(stack, ip, receiver) || !Pop(stack, ip, v)) return false;
-        field_links.push_back({ receiver, op1, v });
+        field_links.push_back({ receiver, op1, v, false });
       }
         break;
 
@@ -479,7 +515,7 @@
         int receiver;
         if(!Pop(stack, ip, receiver)) return false;
         if(stack.empty()) return Fail(ip, L"the operand stack runs out");
-        field_links.push_back({ receiver, op1, stack.back() });
+        field_links.push_back({ receiver, op1, stack.back(), false });
       }
         break;
 
@@ -536,7 +572,7 @@
         Constrain(array, RK_REF);
         if(!PopN(stack, ip, op1, RK_INT)) return false;
         const int value = NewValue(RK_UNKNOWN);
-        elem_links.push_back({ array, value });
+        elem_links.push_back({ array, value, true });
         stack.push_back(value);
       }
         break;
@@ -555,7 +591,7 @@
         if(!Pop(stack, ip, array)) return false;
         Constrain(array, RK_REF);
         if(!PopN(stack, ip, op1, RK_INT) || !Pop(stack, ip, v)) return false;
-        elem_links.push_back({ array, v });
+        elem_links.push_back({ array, v, false });
       }
         break;
 
@@ -832,19 +868,32 @@
           if(fields && link.index >= 0 && link.index < (long)fields->size()) {
             const int value = Find(link.value);
             const uint8_t before_kind = kind[value];
+            const uint8_t before_use = use[value];
             const uint8_t before_elem = elem[value];
-            Constrain(value, (*fields)[link.index].kind, (*fields)[link.index].elem);
-            changed |= kind[Find(value)] != before_kind || elem[Find(value)] != before_elem;
+            if(link.load) {
+              Produce(value, (*fields)[link.index].kind, (*fields)[link.index].elem);
+            }
+            else {
+              Constrain(value, (*fields)[link.index].kind, (*fields)[link.index].elem);
+            }
+            const int now = Find(value);
+            changed |= kind[now] != before_kind || use[now] != before_use || elem[now] != before_elem;
           }
         }
         for(size_t i = 0; i < elem_links.size(); ++i) {
           const int array = Find(elem_links[i].array);
           const int value = Find(elem_links[i].value);
           const uint8_t ek = elem[array];
-          const uint8_t vk = kind[value];
+          const uint8_t vk = Effective(value);
           if((ek == RK_INT || ek == RK_FLOAT || ek == RK_REF) && vk != ek) {
-            Constrain(value, ek);
-            changed = true;
+            const uint8_t before = elem_links[i].load ? kind[value] : use[value];
+            if(elem_links[i].load) {
+              Produce(value, ek);
+            }
+            else {
+              Constrain(value, ek);
+            }
+            changed |= (elem_links[i].load ? kind[Find(value)] : use[Find(value)]) != before;
           }
           else if(ek == RK_UNKNOWN && (vk == RK_INT || vk == RK_FLOAT || vk == RK_REF)) {
             elem[array] = vk;
@@ -933,12 +982,10 @@
         map->height[ip] = static_cast<int>(stack.size());
         map->offset[ip] = static_cast<uint32_t>(map->kinds.size());
         for(size_t i = 0; i < stack.size(); ++i) {
-          uint8_t k = kind[Find(stack[i])];
-          map->kinds.push_back(k == RK_LIT ? RK_INT : k);
+          map->kinds.push_back(Effective(stack[i]));
         }
         if(andor_state[ip] >= 0) {
-          const uint8_t k = kind[Find(andor_state[ip])];
-          map->andor[ip] = k == RK_LIT ? RK_INT : k;
+          map->andor[ip] = Effective(andor_state[ip]);
         }
       }
     }

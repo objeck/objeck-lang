@@ -1236,7 +1236,6 @@ namespace {
     // each distinct note once, with how often it came up
     std::vector<std::wstring> notes;
     std::unordered_map<std::wstring, size_t> note_counts;
-    std::unordered_map<StackMethod*, RefMap*> maps;
   };
   RootAudit* root_audit = nullptr;
   const size_t MAX_AUDIT_NOTES = 60;
@@ -1278,14 +1277,20 @@ namespace {
   }
 }
 
+namespace {
+  // every method's map, built on first need; only the collecting thread touches
+  // it, with the world stopped, before the mark threads start
+  std::unordered_map<StackMethod*, RefMap*> ref_maps;
+}
+
 RefMap* MemoryManager::GetRefMap(StackMethod* method)
 {
-  auto found = root_audit->maps.find(method);
-  if(found != root_audit->maps.end()) {
+  auto found = ref_maps.find(method);
+  if(found != ref_maps.end()) {
     return found->second;
   }
   RefMap* map = RefMap::Build(prgm, method);
-  root_audit->maps[method] = map;
+  ref_maps[method] = map;
 
   // OBJECK_GC_ROOTS_DUMP=<text>: print the map of every method whose name contains it
   static const std::string dump = ReadEnv("OBJECK_GC_ROOTS_DUMP");
@@ -1300,12 +1305,14 @@ RefMap* MemoryManager::GetRefMap(StackMethod* method)
       std::wcerr << L"]" << std::endl;
     }
   }
-  if(map->ok) {
-    root_audit->maps_built++;
-  }
-  else {
-    root_audit->maps_failed++;
-    AuditNote(L"map failed: " + AuditWhere(method, map->error_ip) + L": " + map->error);
+  if(root_audit) {
+    if(map->ok) {
+      root_audit->maps_built++;
+    }
+    else {
+      root_audit->maps_failed++;
+      AuditNote(L"map failed: " + AuditWhere(method, map->error_ip) + L": " + map->error);
+    }
   }
   return map;
 }
@@ -1351,6 +1358,109 @@ void MemoryManager::AuditWord(size_t value, uint8_t kind, StackMethod* method, l
   }
 }
 
+// One thread's operand stack, word by word, as its frames' reference maps see
+// it: each frame owns a segment, a caller's being its height at its call less
+// what the call popped, the newest frame's anything from that to its height.
+// 'kinds' gets a kind per word below the stack position and 'andors' the
+// and/or slot of each interpreted frame that has one; 'sites', when given,
+// where each word's kind came from. A compiled frame owns no words, except the
+// newest frame's callback arguments, which stay RK_UNKNOWN. False, with a
+// reason, when the maps do not account for the stack: the caller treats the
+// whole thread conservatively then.
+bool MemoryManager::AttributeThread(StackFrameMonitor* monitor, std::vector<uint8_t>& kinds,
+                                    std::vector<std::pair<StackFrame*, uint8_t> >& andors,
+                                    std::vector<RootSite>* sites, std::wstring& why)
+{
+  const long sp = (long)*monitor->stack_pos;
+  kinds.assign(sp > 0 ? (size_t)sp : 0, RK_UNKNOWN);
+  andors.clear();
+  if(sites) {
+    sites->assign(kinds.size(), RootSite{ nullptr, -1, -1 });
+  }
+
+  // bottom to top: the callers, then the current frame
+  std::vector<StackFrame*> frames;
+  for(long i = 0; i < *monitor->call_stack_pos; ++i) {
+    if(monitor->call_stack[i]) {
+      frames.push_back(monitor->call_stack[i]);
+    }
+  }
+  StackFrame* cur = monitor->cur_frame ? *monitor->cur_frame : nullptr;
+  if(cur) {
+    frames.push_back(cur);
+  }
+
+  long base = 0;
+  std::wstring trail;
+  for(size_t k = 0; k < frames.size(); ++k) {
+    StackFrame* frame = frames[k];
+    const bool top = k + 1 == frames.size();
+    if(frame->jit_mem) {
+      if(root_audit) {
+        root_audit->frames_compiled++;
+        if(top) {
+          root_audit->words_unattributed += sp > base ? (size_t)(sp - base) : 0;
+        }
+      }
+      trail += L" | [jit] " + frame->method->GetName();
+      if(top) {
+        base = sp;
+      }
+      continue;
+    }
+
+    if(root_audit) {
+      root_audit->frames_interpreted++;
+    }
+    StackMethod* method = frame->method;
+    RefMap* map = GetRefMap(method);
+    const long cur_ip = frame->cur_ip;
+    const bool between = cur_ip <= -2;
+    const long pc = between ? -(cur_ip + 2) : cur_ip - 1;
+    if(!map->ok || pc < 0 || pc >= (long)map->height.size() || map->height[pc] < 0) {
+      why = map->ok ? L"no position: " + method->GetName() + L" cur_ip " + std::to_wstring(cur_ip) : L"";
+      return false;
+    }
+    const long height = map->height[pc];
+    const long low = between ? height : height - map->pops[pc];
+    long segment;
+    if(top) {
+      segment = sp - base;
+      if(segment < low || segment > height) {
+        why = L"top segment " + std::to_wstring(segment) + L" outside [" + std::to_wstring(low) + L", " +
+              std::to_wstring(height) + L"]: " + AuditWhere(method, pc);
+        return false;
+      }
+    }
+    else {
+      segment = low;
+      if(base + segment > sp) {
+        why = L"segments pass the stack position: " + AuditWhere(method, pc);
+        return false;
+      }
+    }
+    trail += L" | " + method->GetName() + L" @" + std::to_wstring(pc) + L" t" +
+             std::to_wstring(method->GetInstruction(pc)->GetType()) + L" h" + std::to_wstring(height) +
+             L" seg" + std::to_wstring(segment);
+    for(long d = 0; d < segment; ++d) {
+      kinds[base + d] = map->Kind(pc, (int)d);
+      if(sites) {
+        (*sites)[base + d] = RootSite{ method, pc, d };
+      }
+    }
+    if(method->HasAndOr() && frame->mem) {
+      andors.push_back(std::make_pair(frame, map->andor[pc]));
+    }
+    base += segment;
+  }
+
+  if(base != sp) {
+    why = L"segments end at " + std::to_wstring(base) + L", stack position " + std::to_wstring(sp) + L":" + trail;
+    return false;
+  }
+  return true;
+}
+
 // After the stop-the-world handshake, beside VerifyBeforeCollection: every
 // mutator is parked, so the stacks and frames hold still
 void MemoryManager::AuditRoots()
@@ -1361,99 +1471,91 @@ void MemoryManager::AuditRoots()
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&pda_monitor_lock);
 #endif
+  std::vector<uint8_t> kinds;
+  std::vector<std::pair<StackFrame*, uint8_t> > andors;
+  std::vector<RootSite> sites;
   for(auto iter = pda_monitors.begin(); iter != pda_monitors.end(); ++iter) {
     StackFrameMonitor* monitor = *iter;
     if(!monitor->op_stack || !monitor->stack_pos || !monitor->call_stack || !monitor->call_stack_pos) {
       continue;
     }
     a->threads++;
-    const size_t* op_stack = monitor->op_stack;
-    const long sp = (long)*monitor->stack_pos;
-
-    // bottom to top: the callers, then the current frame
-    std::vector<StackFrame*> frames;
-    for(long i = 0; i < *monitor->call_stack_pos; ++i) {
-      if(monitor->call_stack[i]) {
-        frames.push_back(monitor->call_stack[i]);
-      }
-    }
-    StackFrame* cur = monitor->cur_frame ? *monitor->cur_frame : nullptr;
-    if(cur) {
-      frames.push_back(cur);
-    }
-
-    long base = 0;
-    bool mismatched = false;
-    // the frames as the audit read them, for a mismatch's note
-    std::wstring trail;
-    for(size_t k = 0; k < frames.size() && !mismatched; ++k) {
-      StackFrame* frame = frames[k];
-      const bool top = k + 1 == frames.size();
-      if(frame->jit_mem) {
-        // A compiled frame keeps its pending values in registers and spill slots;
-        // while it is the newest frame, what is here is a callback's arguments
-        a->frames_compiled++;
-        trail += L" | [jit] " + frame->method->GetName();
-        if(top) {
-          a->words_unattributed += sp > base ? (size_t)(sp - base) : 0;
-          base = sp;
-        }
-        continue;
-      }
-
-      a->frames_interpreted++;
-      StackMethod* method = frame->method;
-      RefMap* map = GetRefMap(method);
-      const long cur_ip = frame->cur_ip;
-      const bool between = cur_ip <= -2;
-      const long pc = between ? -(cur_ip + 2) : cur_ip - 1;
-      if(!map->ok || pc < 0 || pc >= (long)map->height.size() || map->height[pc] < 0) {
-        mismatched = true;
-        if(map->ok) {
-          AuditNote(L"no position: " + method->GetName() + L" cur_ip " + std::to_wstring(cur_ip));
-        }
-        break;
-      }
-      const long height = map->height[pc];
-      const long low = between ? height : height - map->pops[pc];
-      long segment;
-      if(top) {
-        segment = sp - base;
-        if(segment < low || segment > height) {
-          mismatched = true;
-          AuditNote(L"top segment " + std::to_wstring(segment) + L" outside [" + std::to_wstring(low) + L", " +
-                    std::to_wstring(height) + L"]: " + AuditWhere(method, pc));
-          break;
-        }
-      }
-      else {
-        segment = low;
-        if(base + segment > sp) {
-          mismatched = true;
-          AuditNote(L"segments pass the stack position: " + AuditWhere(method, pc));
-          break;
-        }
-      }
-      trail += L" | " + method->GetName() + L" @" + std::to_wstring(pc) + L" t" +
-               std::to_wstring(method->GetInstruction(pc)->GetType()) + L" h" + std::to_wstring(height) +
-               L" seg" + std::to_wstring(segment);
-      for(long d = 0; d < segment; ++d) {
-        AuditWord(op_stack[base + d], map->Kind(pc, (int)d), method, pc, d);
-      }
-      if(method->HasAndOr() && frame->mem) {
-        a->andor_slots++;
-        AuditWord(frame->mem[1], map->andor[pc], method, pc, -1);
-      }
-      base += segment;
-    }
-
-    if(!mismatched && base != sp) {
-      mismatched = true;
-      AuditNote(L"segments end at " + std::to_wstring(base) + L", stack position " + std::to_wstring(sp));
-    }
-    if(mismatched) {
+    std::wstring why;
+    if(!AttributeThread(monitor, kinds, andors, &sites, why)) {
       a->threads_mismatched++;
-      AuditNote(L"mismatched thread, sp " + std::to_wstring(sp) + L":" + trail);
+      if(!why.empty()) {
+        AuditNote(L"mismatched thread: " + why);
+      }
+      continue;
+    }
+    for(size_t i = 0; i < kinds.size(); ++i) {
+      if(sites[i].method) {
+        AuditWord(monitor->op_stack[i], kinds[i], sites[i].method, sites[i].pc, sites[i].depth);
+      }
+    }
+    for(size_t i = 0; i < andors.size(); ++i) {
+      StackFrame* frame = andors[i].first;
+      a->andor_slots++;
+      const long cur_ip = frame->cur_ip;
+      const long pc = cur_ip <= -2 ? -(cur_ip + 2) : cur_ip - 1;
+      AuditWord(frame->mem[1], andors[i].second, frame->method, pc, -1);
+    }
+  }
+#ifndef _GC_SERIAL
+  MUTEX_UNLOCK(&pda_monitor_lock);
+#endif
+}
+
+//
+// Precise operand-stack roots (docs/GC_ROOTS_DESIGN.md phase 2).
+//
+// The collector marked and relocated every operand-stack word that looked like
+// an object, and the and/or slot of every interpreted frame. A minor collection
+// therefore rewrote an Int that happened to equal a young object's address
+// (#1452): GetInstanceID() is one. Before each collection, with the world
+// stopped, every thread's stack is now attributed to its frames by their
+// reference maps, and a word the maps type Int or Float is neither marked nor
+// relocated, nor is an and/or slot typed so. Everything else -- a reference,
+// an unknown or conflicting word, a compiled frame's callback arguments, the
+// stale word just above the top that the scans have always included, and a
+// whole thread whose frames the maps do not account for -- is handled exactly
+// as before. OBJECK_GC_ROOTS=conservative turns this off.
+//
+std::unordered_map<const size_t*, std::vector<bool> > MemoryManager::stack_non_refs;
+std::unordered_set<StackFrame*> MemoryManager::andor_non_refs;
+int MemoryManager::gc_roots_conservative = 0;
+
+void MemoryManager::ComputeStackRoots()
+{
+  stack_non_refs.clear();
+  andor_non_refs.clear();
+  if(gc_roots_conservative) {
+    return;
+  }
+
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&pda_monitor_lock);
+#endif
+  std::vector<uint8_t> kinds;
+  std::vector<std::pair<StackFrame*, uint8_t> > andors;
+  for(auto iter = pda_monitors.begin(); iter != pda_monitors.end(); ++iter) {
+    StackFrameMonitor* monitor = *iter;
+    if(!monitor->op_stack || !monitor->stack_pos || !monitor->call_stack || !monitor->call_stack_pos) {
+      continue;
+    }
+    std::wstring why;
+    if(!AttributeThread(monitor, kinds, andors, nullptr, why)) {
+      continue;
+    }
+    std::vector<bool>& non_refs = stack_non_refs[monitor->op_stack];
+    non_refs.assign(kinds.size(), false);
+    for(size_t i = 0; i < kinds.size(); ++i) {
+      non_refs[i] = kinds[i] == RK_INT || kinds[i] == RK_FLOAT;
+    }
+    for(size_t i = 0; i < andors.size(); ++i) {
+      if(andors[i].second == RK_INT || andors[i].second == RK_FLOAT) {
+        andor_non_refs.insert(andors[i].first);
+      }
     }
   }
 #ifndef _GC_SERIAL
@@ -1469,8 +1571,12 @@ void MemoryManager::RootAuditInitialize()
   if(mode.empty()) {
     return;
   }
+  if(mode == "conservative") {
+    gc_roots_conservative = 1;
+    return;
+  }
   if(mode != "audit") {
-    std::wcerr << L">>> OBJECK_GC_ROOTS: expected 'audit' <<<" << std::endl;
+    std::wcerr << L">>> OBJECK_GC_ROOTS: expected 'audit' or 'conservative' <<<" << std::endl;
     VmExit(1);
   }
   if(!root_audit) {
