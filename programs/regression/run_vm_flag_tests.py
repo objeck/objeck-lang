@@ -242,6 +242,15 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     (collect_hash_open): every map builds, every thread's frames account for
     every word on its stack, no word typed as a reference points at nothing,
     and no word typed Int or Float points at an object.
+ 25. A minor collection leaves an Int alone, whatever its value (#1452). The
+    collector relocated every operand-stack word equal to a moved object's old
+    address, so an Int holding GetInstanceID() changed under a collection. It now
+    skips the words the reference maps type Int or Float (GC_ROOTS_DESIGN.md
+    phase 2). gc_int_not_relocated.obs keeps such an Int pending across 2,000
+    allocating calls; with --nursery=64k it passes interpreted at -opt s0 and s3,
+    and under OBJECK_GC_ROOTS=conservative, the old guess, it fails, which shows
+    the fixture still detects the defect. Compiled frames' spill slots stay a
+    guess until phase 3, which adds the compiled configurations here.
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only]
 
@@ -555,6 +564,8 @@ def main():
     check_jit_off_interprets_native(obc, obr, env, bin_dir)
 
     check_gc_roots_audit(obc, obr, env, bin_dir)
+
+    check_int_not_relocated(obc, obr, env, bin_dir)
 
     # ---- 11. the heap verifier (OBJECK_GC_VERIFY) ----------------------------------
     verify_section(obc, obr, env, bin_dir)
@@ -1448,6 +1459,26 @@ def check_gc_roots_audit(obc, obr, env, bin_dir):
                           ("ref_points_at_nothing", "no reference-typed word points at nothing"),
                           ("int_points_at_object", "no Int- or Float-typed word points at an object")):
             check(f"{name}: {what}", counts.get(key, -1) == 0, f"{key}={counts.get(key)} notes={notes!r}")
+
+
+def check_int_not_relocated(obc, obr, env, bin_dir):
+    # ---- 25. a minor collection leaves an Int alone (#1452) ------------------------
+    src = os.path.join(SCRIPT_DIR, "gc_int_not_relocated.obs")
+    conservative_env = dict(env)
+    conservative_env["OBJECK_GC_ROOTS"] = "conservative"
+    for opt in ("s0", "s3"):
+        dest = os.path.join(SCRIPT_DIR, "gc_int_not_relocated_" + opt + ".obe")
+        rc, out, err = run([obc, "-src", src, "-dest", dest, "-opt", opt], env=env, cwd=bin_dir)
+        check(f"gc_int_not_relocated compiles at -opt {opt}", rc == 0 and os.path.exists(dest),
+              err.decode(errors="replace")[-300:])
+        if rc != 0:
+            continue
+        rc, out, err = run([obr, "--jit=off", "--nursery=64k", dest], env=env, cwd=SCRIPT_DIR, timeout=300)
+        check(f"no pending Int is rewritten interpreted at -opt {opt} (64k nursery)",
+              rc == 0 and b"PASS: no pending Int was rewritten" in out, f"rc={rc} out={out[-200:]!r}")
+        rc, out, err = run([obr, "--jit=off", "--nursery=64k", dest], env=conservative_env, cwd=SCRIPT_DIR, timeout=300)
+        check(f"the old guess still rewrites pending Ints at -opt {opt} (the fixture detects #1452)",
+              rc != 0 and b"FAIL:" in out, f"rc={rc} out={out[-200:]!r}")
 
 
 def check_call_depth(obc, obr, env, bin_dir):

@@ -420,6 +420,39 @@ class MemoryManager {
   static void AuditRoots();
   static RefMap* GetRefMap(StackMethod* method);
   static void AuditWord(size_t value, uint8_t kind, StackMethod* method, long pc, long depth);
+  struct RootSite {
+    StackMethod* method;
+    long pc;
+    long depth;
+  };
+  static bool AttributeThread(StackFrameMonitor* monitor, std::vector<uint8_t>& kinds,
+                              std::vector<std::pair<StackFrame*, uint8_t> >& andors,
+                              std::vector<RootSite>* sites, std::wstring& why);
+
+  // Precise operand-stack roots (memory_verify.cpp, docs/GC_ROOTS_DESIGN.md phase
+  // 2): computed by ComputeStackRoots at the start of every collection, with the
+  // world stopped and before the mark threads start, and only read after that.
+  // A word the reference maps type Int or Float, on a thread whose frames the
+  // maps account for, is not a root; nor is an and/or slot typed so.
+  static int gc_roots_conservative;
+  static std::unordered_map<const size_t*, std::vector<bool> > stack_non_refs;
+  static std::unordered_set<StackFrame*> andor_non_refs;
+  static void ComputeStackRoots();
+
+  // the precise verdicts for one operand stack: null when the whole stack is
+  // treated conservatively
+  static inline const std::vector<bool>* StackNonRefs(const size_t* op_stack) {
+    auto found = stack_non_refs.find(op_stack);
+    return found == stack_non_refs.end() ? nullptr : &found->second;
+  }
+
+  static inline bool IsStackNonRef(const std::vector<bool>* non_refs, size_t index) {
+    return non_refs && index < non_refs->size() && (*non_refs)[index];
+  }
+
+  static inline bool IsAndOrNonRef(StackFrame* frame) {
+    return andor_non_refs.count(frame) != 0;
+  }
 
 #ifdef _MEM_LOGGING
   static ofstream mem_logger;

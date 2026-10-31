@@ -1135,6 +1135,9 @@ void* MemoryManager::CollectMemory(void* arg)
   CollectionInfo* info = (CollectionInfo*)arg;
   const size_t saved_stack_pos = info->stack_pos;  // Save before CheckStack modifies it
 
+  // which operand-stack words are not roots, before any thread marks or fixes up
+  ComputeStackRoots();
+
   // always-on collection statistics (independent of _MEM_LOGGING / _DEBUG_GC).
   // This is the single choke point for both minor and major collections; the
   // minor_gc_mode flag distinguishes which is running.
@@ -1587,7 +1590,12 @@ void* MemoryManager::CheckStack(void* arg)
 #endif    
 #endif
 
+  const std::vector<bool>* non_refs = StackNonRefs(info->op_stack);
   while((int64_t)info->stack_pos > -1) {
+    if(IsStackNonRef(non_refs, info->stack_pos)) {
+      info->stack_pos--;
+      continue;
+    }
     size_t* check_mem = (size_t*)info->op_stack[info->stack_pos--];
 #ifndef _GC_SERIAL
     MUTEX_LOCK(&allocated_lock);
@@ -1996,7 +2004,11 @@ void* MemoryManager::CheckPdaRoots([[maybe_unused]] void* arg)
     if(mon_op_stack && mon_stack_pos) {
       const size_t pos = *mon_stack_pos;
       std::atomic_thread_fence(std::memory_order_acquire);
+      const std::vector<bool>* non_refs = StackNonRefs(mon_op_stack);
       for(size_t i = 0; i <= pos; ++i) {
+        if(IsStackNonRef(non_refs, i)) {
+          continue;
+        }
         size_t* check_mem = (size_t*)mon_op_stack[i];
 #ifndef _GC_SERIAL
         MUTEX_LOCK(&allocated_lock);
@@ -2059,7 +2071,9 @@ void* MemoryManager::CheckPdaRoots([[maybe_unused]] void* arg)
       // after the join; a collection in between must mark it and FixupRoots relocate
       // it, or a promoted object is read back through its old nursery address
       // (#1429-#1431: B3 on LiveNode and SqlItem, interpreted on every platform)
-      CheckUntypedSlot(mem + 1);
+      if(!IsAndOrNonRef(frame)) {
+        CheckUntypedSlot(mem + 1);
+      }
       mem += 2;
     }
     else {
@@ -2430,8 +2444,11 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
   // Fix up GC-triggering thread's operand stack. Conservative scan of untyped words:
   // FixupSlot validates the forwarding target so a plain integer that merely aliases
   // the young address range is not misread as a relocatable reference.
+  const std::vector<bool>* own_non_refs = StackNonRefs(op_stack);
   for(size_t i = 0; i <= stack_pos; ++i) {
-    FixupSlot(&op_stack[i]);
+    if(!IsStackNonRef(own_non_refs, i)) {
+      FixupSlot(&op_stack[i]);
+    }
   }
 
   // Fix up other threads' operand stacks via monitors.
@@ -2448,8 +2465,11 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
     size_t* other_stack_pos = monitor->stack_pos;
     if(other_op_stack && other_stack_pos && other_op_stack != op_stack) {
       size_t pos = *other_stack_pos;
+      const std::vector<bool>* non_refs = StackNonRefs(other_op_stack);
       for(size_t i = 0; i <= pos; ++i) {
-        FixupSlot(&other_op_stack[i]);  // conservative scan — validated relocation
+        if(!IsStackNonRef(non_refs, i)) {
+          FixupSlot(&other_op_stack[i]);  // conservative scan — validated relocation
+        }
       }
     }
   }
@@ -2493,7 +2513,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
 
         // Fix up locals
         // the and/or slot: a conservative root (see CheckPdaRoots)
-        if(method->HasAndOr()) {
+        if(method->HasAndOr() && !IsAndOrNonRef(frame)) {
           FixupSlot(mem + 1);
         }
         size_t* local_mem = mem + (method->HasAndOr() ? 2 : 1);
@@ -2532,7 +2552,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
           if(!method->IsLambda()) {
             FixupSelf(mem, method);
           }
-          if(method->HasAndOr()) {
+          if(method->HasAndOr() && !IsAndOrNonRef(cur_frame)) {
             FixupSlot(mem + 1);
           }
           size_t* local_mem = mem + (method->HasAndOr() ? 2 : 1);
@@ -2554,7 +2574,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
             if(!method->IsLambda()) {
               FixupSelf(mem, method);
             }
-            if(method->HasAndOr()) {
+            if(method->HasAndOr() && !IsAndOrNonRef(frame)) {
               FixupSlot(mem + 1);
             }
             size_t* local_mem = mem + (method->HasAndOr() ? 2 : 1);

@@ -1,0 +1,71 @@
+#~
+A minor collection leaves an Int alone, whatever its value (#1452).
+
+The collector relocated every operand-stack word that looked like a young
+object: when an object moved, any word equal to its old address was rewritten
+to the new one. An Int is not a reference, but one can equal an address:
+GetInstanceID() returns the object's. Run() keeps such an Int pending on the
+stack while Churn() allocates enough to collect, and compares it with the same
+value kept in a typed Int local, which the collector never touched. With a
+64k nursery about one comparison in eight came back changed.
+
+The collector now asks the operand stack's reference maps which words are
+references (docs/GC_ROOTS_DESIGN.md, phase 2). The regression runner cannot
+pass VM flags, and with the default nursery no collection lands in the
+window, so here the test is vacuous. run_vm_flag_tests.py (section 25) runs
+it with --nursery=64k: interpreted it must pass, and with the old guess
+(OBJECK_GC_ROOTS=conservative) it must fail, which shows it still detects
+the defect. Compiled frames keep pending values in spill slots that are
+scanned on a guess until phase 3, which adds the compiled configurations.
+~#
+
+class Box {
+  @v : Int;
+
+  New(v : Int) {
+    @v := v;
+  }
+
+  method : public : Get() ~ Int {
+    return @v;
+  }
+}
+
+class GcIntNotRelocated {
+  function : Main(args : String[]) ~ Nil {
+    bad := Run();
+    if(bad = 0) {
+      "PASS: no pending Int was rewritten by a collection"->PrintLine();
+    }
+    else {
+      "FAIL: {$bad} pending Int value(s) changed by a collection"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  function : Run() ~ Int {
+    bad := 0;
+    for(i := 0; i < 2000; i += 1;) {
+      o := Box->New(i);
+      before := o->GetInstanceID();
+      # the id is pending on the operand stack while Churn allocates
+      if(Same(o->GetInstanceID(), Churn(i), before) = false) {
+        bad += 1;
+      };
+    };
+    return bad;
+  }
+
+  function : Same(a : Int, c : Int, b : Int) ~ Bool {
+    return a = b;
+  }
+
+  function : Churn(n : Int) ~ Int {
+    s := 0;
+    for(j := 0; j < 200; j += 1;) {
+      b := Box->New(j);
+      s += b->Get();
+    };
+    return s;
+  }
+}
