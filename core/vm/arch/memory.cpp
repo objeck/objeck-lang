@@ -140,6 +140,11 @@ std::atomic<size_t> MemoryManager::young_offset;
 PtrSet MemoryManager::old_generation;
 size_t MemoryManager::old_allocation_size;
 
+// Instance IDs (see memory.h)
+std::unordered_map<size_t*, INT64_VALUE> MemoryManager::instance_ids;
+std::mutex MemoryManager::instance_ids_lock;
+INT64_VALUE MemoryManager::next_instance_id = 1;
+
 // Lock-free dirty list
 size_t* MemoryManager::dirty_list[DIRTY_LIST_MAX];
 std::atomic<size_t> MemoryManager::dirty_count;
@@ -987,6 +992,53 @@ void MemoryManager::ClearFreeMemory() {
 #endif
 }
 
+INT64_VALUE MemoryManager::GetInstanceId(size_t* mem)
+{
+  if(!mem) {
+    return 0;
+  }
+
+  // A mutator holds the lock only here, and allocates nothing while it does, so it
+  // never parks holding it; the collector takes it only once the world is stopped.
+  std::lock_guard<std::mutex> guard(instance_ids_lock);
+  auto found = instance_ids.find(mem);
+  if(found != instance_ids.end()) {
+    return found->second;
+  }
+  const INT64_VALUE id = next_instance_id++;
+  instance_ids[mem] = id;
+  return id;
+}
+
+// After a collection has promoted the nursery's survivors and before the nursery is
+// reused: a promoted object's ID moves to its new address, and a dead young object's
+// ID is forgotten, so the next object allocated at that address gets an ID of its own.
+void MemoryManager::RekeyInstanceIds()
+{
+  std::lock_guard<std::mutex> guard(instance_ids_lock);
+  if(instance_ids.empty()) {
+    return;
+  }
+
+  std::vector<std::pair<size_t*, INT64_VALUE>> moved;
+  for(auto iter = instance_ids.begin(); iter != instance_ids.end(); ) {
+    size_t* mem = iter->first;
+    if(IsYoungCandidate(mem)) {
+      const size_t fwd = ForwardedAddr(mem);
+      if(fwd) {
+        moved.push_back(std::make_pair((size_t*)fwd, iter->second));
+      }
+      iter = instance_ids.erase(iter);
+    }
+    else {
+      ++iter;
+    }
+  }
+  for(size_t i = 0; i < moved.size(); ++i) {
+    instance_ids[moved[i].first] = moved[i].second;
+  }
+}
+
 size_t* MemoryManager::ValidObjectCast(size_t* mem, long to_id, long* cls_hierarchy, long** cls_interfaces)
 {
   // invalid array cast  
@@ -1352,6 +1404,14 @@ void* MemoryManager::CollectMemory(void* arg)
     scan_ptr += total;
   }
 
+  // instance IDs follow promoted objects and drop dead young ones (forwarding words
+  // are in place, and the nursery has not been reset)
+  try {
+    RekeyInstanceIds();
+  }
+  catch(const std::bad_alloc&) {
+    FatalCollectorOutOfMemory(0);
+  }
 
   // --- Sweep old generation (major GC only) ---
   size_t dead_old_count = 0;
@@ -1377,6 +1437,8 @@ void* MemoryManager::CollectMemory(void* arg)
         allocation_size -= mem_size;
         old_allocation_size -= mem_size;
         dead_old_count++;
+
+        ForgetInstanceId(mem);
 
         size_t* tmp = mem - EXTRA_BUF_SIZE;
         AddFreeMemory(tmp - 1);

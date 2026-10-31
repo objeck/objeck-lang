@@ -1795,6 +1795,9 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
 # Run with small nurseries (check_nursery_and_gc_stats); each prints PASS.
 NURSERY_STRESS_TESTS = ("obj_size_layout", "minor_gc_stress", "core_thread_gc_stress", "gc_minor_closure_capture",
                         "gc_zero_field_nursery_end", "gc_closure_capture_nursery_end",
+                        # instance IDs stay put when their objects move, and Hash and Map
+                        # keyed by BasicCompare objects keep their entries
+                        "gc_instance_id_stable",
                         # an -opt s3 inlined callee's object local stays a root; the
                         # old layout lost it interpreted, which the runner never runs
                         "opt_inline_and_or_slots",

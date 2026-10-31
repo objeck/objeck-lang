@@ -3129,6 +3129,13 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case THREAD_IS_ALIVE:
     return ThreadIsAlive(program, inst, op_stack, stack_pos, frame);
 
+  case INST_STABLE_ID: {
+    // Base->GetInstanceID(): an ID the collector cannot change (see MemoryManager)
+    size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+    PushInt((size_t)MemoryManager::GetInstanceId(instance), op_stack, stack_pos);
+    return true;
+  }
+
   case UNCOMPRESS_DEFLATE_LIMIT:
     return UncompressLimit(-MAX_WBITS, program, inst, op_stack, stack_pos, frame);
 
