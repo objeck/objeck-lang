@@ -148,7 +148,9 @@ jobs:
 
           # Linux x64
           - platform: linux-x64
-            os: ubuntu-latest
+            # Pinned: ubuntu-latest became 26.04 on 2026-10-31, which links OpenCV 4.10 and mbedTLS 3.x
+            # and would ship binaries older distributions cannot run (runtime_deps.json describes 24.04).
+            os: ubuntu-24.04
             arch: x64
             deploy_script: ./deploy_posix.sh x64 deploy
             shell: bash
