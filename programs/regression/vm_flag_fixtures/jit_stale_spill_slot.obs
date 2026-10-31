@@ -1,0 +1,101 @@
+#~
+A JIT frame's spill slots are roots only while they hold a pending value.
+
+A compiled method spills the values an expression still has pending to scratch
+slots below its frame pointer when it makes a call that can collect, and the
+collector found them by scanning a fixed window of words beside each frame's
+locals, whether or not the frame had written them. Two ways that kept a dead
+object alive, both shown here:
+
+- Entry zeroing missed a slot (fixed). An AMD64 method's entry zeroed nine of
+  the ten integer slots; TMP_REG_0, the first one every spill uses, kept whatever an earlier
+  call at the same depth had left there. At -opt s0, Leave() spills the 32 MB
+  array MakeBig returns to its TMP_REG_0 while the constructor runs (the
+  arguments are evaluated left to right), and returns. Churn() is entered at
+  the same frame pointer and never writes the slot, so every collection under
+  it found the dead array there.
+- Spills are never cleared. At -opt s3 Leave is inlined into Run, and the
+  spill sits in Run's own TMP_REG_0 after the call returns, for as long as Run
+  runs. That path is not fixed yet (GC roots phase 3, docs/GC_ROOTS_DESIGN.md),
+  so this fixture is run at -opt s0 only, by run_vm_flag_tests.py section 26:
+  the regression runner compiles at s3 and passes no VM flags, which is why it
+  lives outside the runner's directory.
+
+Run is called three times: the first call resolves its callees through the
+bridge, whose C++ frames happen to overwrite the old slot; later calls go
+straight from compiled code to compiled code, as a hot path does. Exits 1 when
+the heap does not drop below 32 MB.
+~#
+
+class StaleSmall {
+  @v : Int;
+
+  New(v : Int) {
+    @v := v;
+  }
+
+  method : public : Get() ~ Int {
+    return @v;
+  }
+}
+
+class JitStaleSpillSlot {
+  @sink : static : Int;
+
+  function : Main(args : String[]) ~ Nil {
+    big := 32 * 1024 * 1024;
+    Run();
+    Run();
+    Run();
+    allocated := Runtime->GetProperty("runtime.memory.allocated")->ToInt();
+    if(allocated < big) {
+      "PASS: the dead array was collected ({$allocated} bytes allocated)"->PrintLine();
+    }
+    else {
+      "FAIL: a stale spill slot kept a dead 32 MB array alive ({$allocated} bytes allocated)"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  # Leave and Churn are called from the same frame, so they share a frame
+  # pointer and with it the spill slots' addresses
+  function : Run() ~ Nil {
+    Leave();
+    Churn();
+  }
+
+  # arguments are evaluated left to right: the array is pending across the
+  # constructor call, so it is spilled to TMP_REG_0 and left there
+  function : Leave() ~ Nil {
+    Keep(MakeBig(), StaleSmall->New(7));
+  }
+
+  function : MakeBig() ~ Byte[] {
+    return Byte->New[32 * 1024 * 1024];
+  }
+
+  function : Keep(b : Byte[], s : StaleSmall) ~ Nil {
+    @sink += s->Get() + b->Size() % 3;
+  }
+
+  # writes nothing to its own spill slots: one call, no pending values
+  function : Churn() ~ Nil {
+    Garbage();
+  }
+
+  # allocates until three major collections have run under Churn's frame
+  function : Garbage() ~ Nil {
+    start := Majors();
+    i := 0;
+    while(i < 20000 & Majors() - start < 3) {
+      a := Int->New[65536];
+      a[0] := i;
+      @sink += a[0] % 2;
+      i += 1;
+    };
+  }
+
+  function : Majors() ~ Int {
+    return Runtime->GetProperty("runtime.gc.major")->ToInt();
+  }
+}

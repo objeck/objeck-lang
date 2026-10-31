@@ -251,6 +251,14 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     and under OBJECK_GC_ROOTS=conservative, the old guess, it fails, which shows
     the fixture still detects the defect. Compiled frames' spill slots stay a
     guess until phase 3, which adds the compiled configurations here.
+ 26. A compiled method's entry zeroes every spill slot the collector scans. On
+    AMD64 the count was one short and left TMP_REG_0 holding what an earlier
+    method at the same frame pointer had spilled, so a dead 32 MB array outlived
+    every collection. vm_flag_fixtures/jit_stale_spill_slot.obs, compiled at
+    -opt s0, passes with --jit=1 and --jit=off. (At s3 the compiler inlines the
+    spilling method, and a live frame's spill slot is not cleared after its
+    reload: GC roots phase 3. The fixture is outside the regression runner's
+    directory because the runner compiles at s3.)
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only]
 
@@ -566,6 +574,8 @@ def main():
     check_gc_roots_audit(obc, obr, env, bin_dir)
 
     check_int_not_relocated(obc, obr, env, bin_dir)
+
+    check_entry_zeroes_spill_slots(obc, obr, env, bin_dir)
 
     # ---- 11. the heap verifier (OBJECK_GC_VERIFY) ----------------------------------
     verify_section(obc, obr, env, bin_dir)
@@ -1479,6 +1489,22 @@ def check_int_not_relocated(obc, obr, env, bin_dir):
         rc, out, err = run([obr, "--jit=off", "--nursery=64k", dest], env=conservative_env, cwd=SCRIPT_DIR, timeout=300)
         check(f"the old guess still rewrites pending Ints at -opt {opt} (the fixture detects #1452)",
               rc != 0 and b"FAIL:" in out, f"rc={rc} out={out[-200:]!r}")
+
+
+def check_entry_zeroes_spill_slots(obc, obr, env, bin_dir):
+    # ---- 26. a compiled method's entry zeroes every scanned spill slot ---------------
+    src = os.path.join(SCRIPT_DIR, "vm_flag_fixtures", "jit_stale_spill_slot.obs")
+    dest = os.path.join(SCRIPT_DIR, "vm_flag_fixtures", "jit_stale_spill_slot.obe")
+    rc, out, err = run([obc, "-src", src, "-opt", "s0", "-dest", dest], env=env, cwd=bin_dir)
+    check("stale spill slot fixture compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+    if rc != 0:
+        return
+
+    for label, flags in (("--jit=1", ["--jit=1"]), ("--jit=off", ["--jit=off"])):
+        rc, out, err = run([obr] + flags + [dest], env=env, cwd=bin_dir, timeout=300)
+        check(f"no stale spill slot keeps a dead array alive ({label})",
+              rc == 0 and b"PASS: the dead array was collected" in out,
+              f"rc={rc} out={out[-300:]!r} stderr={err.decode(errors='replace')[-300:]!r}")
 
 
 def check_call_depth(obc, obr, env, bin_dir):
