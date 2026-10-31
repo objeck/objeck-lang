@@ -1888,7 +1888,10 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     break;
 
   case instructions::LOAD_INST_UID:
+    // an ID the collector cannot change: the address was one, and moved with the object
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, instructions::INST_STABLE_ID));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
     
   case instructions::LOAD_ARY_SIZE:

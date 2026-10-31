@@ -39,6 +39,8 @@
 #include <random>
 #include <atomic>
 #include <chrono>
+#include <mutex>
+#include <unordered_map>
 #ifndef _WIN32
 #include <sys/mman.h>
 #endif
@@ -164,6 +166,24 @@ class MemoryManager {
   // 67.5 ns under g++, more than the object's own calloc (#871). See ptr_set.h.
   static PtrSet old_generation;
   static size_t old_allocation_size;
+
+  // Instance IDs (GetInstanceID): a number assigned the first time an object's ID is
+  // asked for, from a counter that never repeats, kept here by the object's address.
+  // An ID used to be the address itself, and a minor collection moves young objects,
+  // so an object's ID, its BasicCompare HashID and its Compare order all changed when
+  // it was promoted: a Hash or Map keyed by such objects lost them. The collector
+  // re-keys the table as it moves objects and forgets the dead, so an address reused
+  // by a new object never inherits an old ID. Only objects whose ID was asked for
+  // have an entry.
+  static std::unordered_map<size_t*, INT64_VALUE> instance_ids;
+  static std::mutex instance_ids_lock;
+  static INT64_VALUE next_instance_id;
+  static void RekeyInstanceIds();
+  static inline void ForgetInstanceId(size_t* mem) {
+    if(!instance_ids.empty()) {
+      instance_ids.erase(mem);
+    }
+  }
 
   // Lock-free dirty list (replaces remembered_set + remembered_set_lock)
   static size_t* dirty_list[DIRTY_LIST_MAX];
@@ -726,6 +746,9 @@ class MemoryManager {
   
   // object verification
   static size_t* ValidObjectCast(size_t* mem, long to_id, long* cls_hierarchy, long** cls_interfaces);
+
+  // an object's instance ID: stable for its lifetime, unique among objects, never 0
+  static INT64_VALUE GetInstanceId(size_t* mem);
   
   //
   // returns the class reference for an object instance

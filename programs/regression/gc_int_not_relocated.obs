@@ -13,10 +13,16 @@ The collector now asks the operand stack's reference maps which words are
 references (docs/GC_ROOTS_DESIGN.md, phase 2). The regression runner cannot
 pass VM flags, and with the default nursery no collection lands in the
 window, so here the test is vacuous. run_vm_flag_tests.py (section 25) runs
-it with --nursery=64k: interpreted it must pass, and with the old guess
-(OBJECK_GC_ROOTS=conservative) it must fail, which shows it still detects
-the defect. Compiled frames keep pending values in spill slots that are
-scanned on a guess until phase 3, which adds the compiled configurations.
+it with --nursery=64k, interpreted.
+
+This test no longer has a trigger. Instance IDs are counters now, not
+addresses (#1472), so Objeck code can no longer produce an Int equal to an
+object's address: the old guess has nothing here to rewrite either. The test
+guards against a regression in how IDs are kept, and does not show that the
+reference maps type the stack correctly. The negative control that expected
+a failure under the old guess (OBJECK_GC_ROOTS=conservative) was removed for
+that reason; #1473 plans a test-only way to make such an Int, which phase 3's
+compiled configurations need too.
 ~#
 
 class Box {

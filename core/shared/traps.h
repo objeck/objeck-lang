@@ -358,6 +358,9 @@ namespace instructions {
     // number names is still running, so state kept per thread can be found
     // and dropped once its thread ends
     THREAD_CURRENT_ID,
-    THREAD_IS_ALIVE
+    THREAD_IS_ALIVE,
+    // Base->GetInstanceID(): a number assigned to the object once, not its
+    // address, which a minor collection changes when it moves the object
+    INST_STABLE_ID
   };
 }

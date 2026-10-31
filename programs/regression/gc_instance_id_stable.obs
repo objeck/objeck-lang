@@ -1,0 +1,208 @@
+#~
+# An object's instance ID survives the collector moving it
+#
+# GetInstanceID() was the object's address, and a minor collection moves young objects into
+# the old generation, so an object's ID changed when it was promoted. BasicCompare's HashID
+# and Compare are both the ID, so a Hash or Map keyed by BasicCompare objects lost its
+# entries once the keys moved: with the default nursery, after enough allocation, 2,000 of
+# 2,000 Hash lookups and about 1,700 Map lookups missed. And an Int that held an ID was
+# itself an address, which the collector rewrote wherever it found one (#1452): IDs saved
+# in an Int[] all changed, and so did an ID pending on the stack across an allocation.
+#
+# The ID is now a number assigned once per object, never an address. This test moves
+# objects with enough allocation for collections under the default nursery, and
+# run_vm_flag_tests.py runs it again at 128k and 256k, interpreted and compiled.
+~#
+
+use Collection;
+
+class Key from BasicCompare {
+	@n : Int;
+
+	New(n : Int) {
+		Parent();
+		@n := n;
+	}
+
+	method : public : GetN() ~ Int {
+		return @n;
+	}
+}
+
+class Junk {
+	@a : Int;
+	@b : Int;
+
+	New(a : Int) {
+		@a := a;
+		@b := a;
+	}
+
+	method : public : Get() ~ Int {
+		return @a + @b;
+	}
+}
+
+class GcInstanceIdStable {
+	@failed : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		GcInstanceIdStable->New()->Run();
+	}
+
+	New() {
+		@failed := 0;
+	}
+
+	method : Run() ~ Nil {
+		Keys();
+		Pending();
+		Unique();
+		Reused();
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: instance IDs survive collections that move their objects"->PrintLine();
+	}
+
+	# Hash and Map keyed by BasicCompare objects, IDs saved in an Int[] and as text
+	method : Keys() ~ Nil {
+		count := 2000;
+		keys := Vector->New()<Key>;
+		hash := Hash->New()<Key, IntRef>;
+		tree := Map->New()<Key, IntRef>;
+		ids := Int->New[count];
+		texts := String->New[count];
+		for(i := 0; i < count; i += 1;) {
+			key := Key->New(i);
+			keys->AddBack(key);
+			hash->Insert(key, IntRef->New(i));
+			tree->Insert(key, IntRef->New(i));
+			ids[i] := key->GetInstanceID();
+			texts[i] := ids[i]->ToString();
+		};
+
+		collections := Churn(3);
+		Check("keys: collections ran ({$collections})", collections >= 3);
+
+		changed := 0;
+		saved := 0;
+		hash_miss := 0;
+		tree_miss := 0;
+		for(i := 0; i < count; i += 1;) {
+			key := keys->Get(i);
+			if(<>key->GetInstanceID()->ToString()->Equals(texts[i])) {
+				changed += 1;
+			};
+			if(<>ids[i]->ToString()->Equals(texts[i])) {
+				saved += 1;
+			};
+			found := hash->Find(key);
+			if(found = Nil | found->Get() <> i) {
+				hash_miss += 1;
+			};
+			found := tree->Find(key);
+			if(found = Nil | found->Get() <> i) {
+				tree_miss += 1;
+			};
+		};
+		Check("keys: no ID changed when its object moved ({$changed} did)", changed = 0);
+		Check("keys: no ID saved in an Int[] was rewritten ({$saved} were)", saved = 0);
+		Check("keys: every Hash lookup finds its key ({$hash_miss} missed)", hash_miss = 0);
+		Check("keys: every Map lookup finds its key ({$tree_miss} missed)", tree_miss = 0);
+	}
+
+	# #1452's shape: an ID pending on the stack while the callee allocates
+	method : Pending() ~ Nil {
+		bad := 0;
+		for(i := 0; i < 2000; i += 1;) {
+			key := Key->New(i);
+			before := key->GetInstanceID();
+			if(<>Same(key->GetInstanceID(), Allocate(i), before)) {
+				bad += 1;
+			};
+		};
+		Check("pending: no ID pending across an allocation changed ({$bad} did)", bad = 0);
+	}
+
+	# distinct objects never share an ID, before and after they move
+	method : Unique() ~ Nil {
+		count := 3000;
+		keys := Key->New[count];
+		seen := IntMap->New();
+		for(i := 0; i < count; i += 1;) {
+			keys[i] := Key->New(i);
+			seen->Insert(keys[i]->GetInstanceID(), 1);
+		};
+		Churn(2);
+		for(i := 0; i < count; i += 1;) {
+			seen->Insert(keys[i]->GetInstanceID(), 1);
+		};
+		Check("unique: {$count} objects have {$count} IDs ({$(seen->Size())})", seen->Size() = count);
+		zero := 0;
+		each(k : keys) {
+			if(keys[k]->GetInstanceID() = 0) {
+				zero += 1;
+			};
+		};
+		Check("unique: no ID is 0", zero = 0);
+	}
+
+	# an object allocated where a dead one was does not inherit its ID
+	method : Reused() ~ Nil {
+		old_ids := IntMap->New();
+		for(i := 0; i < 2000; i += 1;) {
+			old_ids->Insert(Key->New(i)->GetInstanceID(), 1);
+		};
+		Churn(2);
+		repeated := 0;
+		for(i := 0; i < 2000; i += 1;) {
+			if(old_ids->Has(Key->New(i)->GetInstanceID())) {
+				repeated += 1;
+			};
+		};
+		Check("reused: a new object never repeats a dead one's ID ({$repeated} did)", repeated = 0);
+	}
+
+	function : Same(a : Int, c : Int, b : Int) ~ Bool {
+		return a = b;
+	}
+
+	function : Allocate(n : Int) ~ Int {
+		s := 0;
+		for(j := 0; j < 200; j += 1;) {
+			junk := Junk->New(j);
+			s += junk->Get();
+		};
+		return s;
+	}
+
+	# allocates until at least 'count' more collections have run, each of which promotes the
+	# nursery (minor or major); returns how many
+	function : Churn(count : Int) ~ Int {
+		start := Collections();
+		s := 0;
+		rounds := 0;
+		while(Collections() - start < count & rounds < 4000) {
+			for(j := 0; j < 10000; j += 1;) {
+				junk := Junk->New(j);
+				s += junk->Get();
+			};
+			rounds += 1;
+		};
+		return Collections() - start;
+	}
+
+	function : Collections() ~ Int {
+		return Runtime->GetProperty("runtime.gc.total")->ToInt();
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+}

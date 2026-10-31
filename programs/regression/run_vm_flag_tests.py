@@ -246,11 +246,15 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     collector relocated every operand-stack word equal to a moved object's old
     address, so an Int holding GetInstanceID() changed under a collection. It now
     skips the words the reference maps type Int or Float (GC_ROOTS_DESIGN.md
-    phase 2). gc_int_not_relocated.obs keeps such an Int pending across 2,000
-    allocating calls; with --nursery=64k it passes interpreted at -opt s0 and s3,
-    and under OBJECK_GC_ROOTS=conservative, the old guess, it fails, which shows
-    the fixture still detects the defect. Compiled frames' spill slots stay a
-    guess until phase 3, which adds the compiled configurations here.
+    phase 2). gc_int_not_relocated.obs keeps an ID pending across 2,000
+    allocating calls and, with --nursery=64k, passes interpreted at -opt s0 and
+    s3. Since instance IDs became counters rather than addresses, Objeck code
+    can no longer produce an Int equal to an object's address, so this check
+    has no trigger left: it guards against a regression in how IDs are kept,
+    and it does not show that the reference maps type the stack correctly. The
+    negative control that ran the old guess (OBJECK_GC_ROOTS=conservative) and
+    expected a failure is gone for the same reason; a test-only way to make
+    such an Int is planned for the JIT phases (#1473).
  26. A compiled method's entry zeroes every spill slot the collector scans. On
     AMD64 the count was one short and left TMP_REG_0 holding what an earlier
     method at the same frame pointer had spilled, so a dead 32 MB array outlived
@@ -1474,8 +1478,6 @@ def check_gc_roots_audit(obc, obr, env, bin_dir):
 def check_int_not_relocated(obc, obr, env, bin_dir):
     # ---- 25. a minor collection leaves an Int alone (#1452) ------------------------
     src = os.path.join(SCRIPT_DIR, "gc_int_not_relocated.obs")
-    conservative_env = dict(env)
-    conservative_env["OBJECK_GC_ROOTS"] = "conservative"
     for opt in ("s0", "s3"):
         dest = os.path.join(SCRIPT_DIR, "gc_int_not_relocated_" + opt + ".obe")
         rc, out, err = run([obc, "-src", src, "-dest", dest, "-opt", opt], env=env, cwd=bin_dir)
@@ -1484,11 +1486,10 @@ def check_int_not_relocated(obc, obr, env, bin_dir):
         if rc != 0:
             continue
         rc, out, err = run([obr, "--jit=off", "--nursery=64k", dest], env=env, cwd=SCRIPT_DIR, timeout=300)
+        # no trigger since instance IDs became counters: a regression guard, not proof
+        # that the maps type the stack (see this section's description)
         check(f"no pending Int is rewritten interpreted at -opt {opt} (64k nursery)",
               rc == 0 and b"PASS: no pending Int was rewritten" in out, f"rc={rc} out={out[-200:]!r}")
-        rc, out, err = run([obr, "--jit=off", "--nursery=64k", dest], env=conservative_env, cwd=SCRIPT_DIR, timeout=300)
-        check(f"the old guess still rewrites pending Ints at -opt {opt} (the fixture detects #1452)",
-              rc != 0 and b"FAIL:" in out, f"rc={rc} out={out[-200:]!r}")
 
 
 def check_entry_zeroes_spill_slots(obc, obr, env, bin_dir):
@@ -1795,6 +1796,9 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
 # Run with small nurseries (check_nursery_and_gc_stats); each prints PASS.
 NURSERY_STRESS_TESTS = ("obj_size_layout", "minor_gc_stress", "core_thread_gc_stress", "gc_minor_closure_capture",
                         "gc_zero_field_nursery_end", "gc_closure_capture_nursery_end",
+                        # instance IDs stay put when their objects move, and Hash and Map
+                        # keyed by BasicCompare objects keep their entries
+                        "gc_instance_id_stable",
                         # an -opt s3 inlined callee's object local stays a root; the
                         # old layout lost it interpreted, which the runner never runs
                         "opt_inline_and_or_slots",
