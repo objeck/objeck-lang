@@ -128,7 +128,7 @@ flowchart TB
         L_CORE["lang · gen_collect<br/>concurrent · regex · misc"]
         L_DATA["json · json_stream · xml<br/>csv · query · odbc"]
         L_NET["net · net_h2 · net_quic<br/>net_server · web_server<br/>json_rpc · rss · cipher"]
-        L_AI["ml_* · ai_* · nlp<br/>openai · gemini · ollama<br/>models · inference"]
+        L_AI["ml_* · ai_* · nlp · nlp_onnx<br/>ai_hub (Hugging Face Hub)<br/>openai · gemini · ollama<br/>models · inference"]
         L_VISION["onnx · opencv"]
         L_MEDIA["sdl2 · sdl_game · sdl_gl<br/>lame"]
         L_TOOLS["diags"]
@@ -185,7 +185,7 @@ flowchart TB
 - **Memory:** generational, multithreaded garbage collection; C++ code that stores into an old object takes a write barrier.
 - **Language server:** written in Objeck (`tools/lsp`), analyzing with the compiler's own front end through `libobjk_diags`, so editor diagnostics match `obc`.
 - **Tools:** `obi` (REPL and full-screen editor), `obd` (debugger, also a Debug Adapter Protocol server), `obu` (updater that verifies signed manifests), `obb` (builds a native launcher for a program).
-- **Libraries:** 46 library sources; native modules wrap mbedTLS, nghttp2/ngtcp2, ODBC, ONNX Runtime, OpenCV, SDL2 and LAME.
+- **Libraries:** 56 library sources; native modules wrap mbedTLS, nghttp2/ngtcp2, ODBC, ONNX Runtime, OpenCV, SDL2 and LAME.
 - **CI and release:** five platform legs on every pull request, the regression suite in three JIT modes, LSP, DAP and debugger tests, and a release gate that verifies all five platforms at one commit before tagging.
 
 ---
@@ -526,12 +526,12 @@ more falls back to the interpreter whole.
 
 ## 5. Library Ecosystem
 
-46 library sources providing comprehensive functionality.
+56 library sources providing comprehensive functionality.
 
 ```mermaid
 mindmap
     root((Objeck Libraries
-    46))
+    56))
         Core Runtime
             lang: runtime, errors, strings
             gen_collect: Vector, Map, Hash, List
@@ -542,9 +542,11 @@ mindmap
             ml_core · ml_data
             ml_linear · ml_tree · ml_bayes
             ml_neighbors · ml_cluster · ml_svm · ml_outlier
-            nlp
+            nlp: tokenizers (WordPiece, BPE), TF-IDF, sentiment
         AI
             onnx: in-process inference, face detection and recognition
+            nlp_onnx: BERT embeddings, Hugging Face text classifiers
+            ai_hub: Hugging Face Hub downloads into a verified cache
             inference: model server over HTTP
             models: shared Tensor and Engine
             openai · gemini · ollama
@@ -579,6 +581,8 @@ graph TB
         I[ollama.obl] --> J[HTTP Client]
         K[openai.obl] --> J
         L[gemini.obl] --> J
+        HUB[ai_hub.obl] --> J
+        NO[nlp_onnx.obl] --> C
     end
 
     subgraph "Web Stack"
