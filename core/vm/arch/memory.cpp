@@ -304,6 +304,7 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
 
   // OBJECK_GC_VERIFY / OBJECK_GC_VERIFY_INJECT, read once (memory_verify.cpp)
   VerifyInitialize();
+  RootAuditInitialize();
 
   initialized = true;
 }
@@ -1082,6 +1083,9 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, size_t stack_pos)
 
   if(gc_verify) {
     VerifyBeforeCollection(false);
+  }
+  if(gc_roots_audit) {
+    AuditRoots();
   }
 
   CollectionInfo* info = new CollectionInfo;
@@ -2703,6 +2707,9 @@ void MemoryManager::CollectMinor(size_t* op_stack, size_t stack_pos)
   // world stopped, remembered set not yet scanned (A1/A2 need it untouched)
   if(gc_verify) {
     VerifyBeforeCollection(true);
+  }
+  if(gc_roots_audit) {
+    AuditRoots();
   }
 
   // Phase 1: Scan dirty old-gen objects for young references (with minor_gc_mode=true)

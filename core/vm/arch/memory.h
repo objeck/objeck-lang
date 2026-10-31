@@ -109,6 +109,8 @@ struct ClassMethodId {
   long mthd_id;
 };
 
+class RefMap;
+
 class MemoryManager {
   static bool initialized;
   static StackProgram* prgm;
@@ -410,6 +412,14 @@ class MemoryManager {
   static void VerifyAfterCollection(bool minor);
   static void VerifyUnforwarded(size_t* value);
   static bool VerifySkipBarrier(size_t* target_obj);
+
+  // Operand-stack root audit (OBJECK_GC_ROOTS=audit, memory_verify.cpp): checks
+  // the reference maps (ref_map.h) against the live stacks at every collection
+  static int gc_roots_audit;
+  static void RootAuditInitialize();
+  static void AuditRoots();
+  static RefMap* GetRefMap(StackMethod* method);
+  static void AuditWord(size_t value, uint8_t kind, StackMethod* method, long pc, long depth);
 
 #ifdef _MEM_LOGGING
   static ofstream mem_logger;
