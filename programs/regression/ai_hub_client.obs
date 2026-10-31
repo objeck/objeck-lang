@@ -1,0 +1,375 @@
+#~
+# HubClient: Hugging Face Hub downloads into a verified local cache
+#
+# Two in-process servers stand in for the Hub and its file CDN, on ports the system chose,
+# so the CDN is another origin, as on huggingface.co (a 302 to a signed CDN URL). The Hub
+# answers the API the client asks first -- /api/models/<repo>/revision/<rev>?blobs=true,
+# the commit and each file's size, git blob hash and, for a large file, SHA-256 -- and
+# /<repo>/resolve/<commit>/<file>. The hashes below were computed with Python's hashlib,
+# not with the code under test.
+#
+#   - a snapshot of config.json and onnx/model.onnx (3 MB, via the CDN): the files whole,
+#     in models--test-org--tiny-model/snapshots/<commit>, refs/main written;
+#   - the token goes to the Hub and NOT to the CDN (the cross-origin rule of #1453);
+#   - a second snapshot downloads nothing; offline, no request at all;
+#   - offline, a file the cache does not hold fails with a reason; so does an
+#     unreachable Hub, which still serves what the cache holds;
+#   - a file whose SHA-256 or size is not what the Hub says is refused and not kept;
+#   - a missing file, a missing repository (404), a gated one (401);
+#   - names that would step outside the cache: refused before any request;
+#   - Python's cache (HF_HUB_CACHE) is read when this one misses.
+# EXTRA_LIBS: net,ai_hub
+~#
+
+use Collection, System.Concurrency, System.IO.Filesystem, System.IO.Net, Web.HTTP, System.AI.Hub;
+
+# What the servers saw, read by the test between requests
+class Seen {
+	@api : Int;
+	@api_auth : Bool;
+	@resolve : Int;
+	@cdn : Int;
+	@cdn_auth : Bool;
+
+	New() {
+	}
+
+	method : public : Api(auth : Bool) ~ Nil {
+		@api += 1;
+		@api_auth := auth;
+	}
+
+	method : public : Resolve() ~ Nil {
+		@resolve += 1;
+	}
+
+	method : public : Cdn(auth : Bool) ~ Nil {
+		@cdn += 1;
+		@cdn_auth := auth;
+	}
+
+	method : public : GetApi() ~ Int { return @api; }
+	method : public : GetApiAuth() ~ Bool { return @api_auth; }
+	method : public : GetResolve() ~ Int { return @resolve; }
+	method : public : GetCdn() ~ Int { return @cdn; }
+	method : public : GetCdnAuth() ~ Bool { return @cdn_auth; }
+
+	method : public : Total() ~ Int {
+		return @api + @resolve + @cdn;
+	}
+}
+
+class Fixture {
+	function : Commit() ~ String {
+		return "0123456789abcdef0123456789abcdef01234567";
+	}
+
+	function : Config() ~ String {
+		return "{\"model_type\": \"bert\", \"id2label\": {\"0\": \"a\"}}";
+	}
+
+	# 3 MB: three copies of the deterministic megabyte
+	function : Model() ~ Byte[] {
+		block := Byte->New[1048576];
+		each(i : block) {
+			block[i] := ((i * 31 + 7) % 251)->As(Byte);
+		};
+		model := Byte->New[3 * 1048576];
+		for(i := 0; i < 3; i += 1;) {
+			Runtime->Copy(model, i * 1048576, block, 0, 1048576);
+		};
+		return model;
+	}
+
+	# the API's answer, with hashes from Python's hashlib
+	function : Api() ~ String {
+		commit := Commit();
+		json := "{\"id\": \"test-org/tiny-model\", \"sha\": \"{$commit}\", \"siblings\": [";
+		json += "{\"rfilename\": \"config.json\", \"blobId\": \"49c497985025fbae234e01cae9d111fd27d5534d\", \"size\": 46}, ";
+		json += "{\"rfilename\": \"onnx/model.onnx\", \"blobId\": \"43fbc6074953d7e5ad229353f15b5c2cd30fd729\", \"size\": 3145728, ";
+		json += "\"lfs\": {\"sha256\": \"d4713e490bc15c0c88fb74312706bd420d01adaf889782f6faa9c867d96c99cb\", \"size\": 3145728, \"pointerSize\": 134}}, ";
+		# the right size, a wrong SHA-256
+		json += "{\"rfilename\": \"bad.bin\", \"blobId\": \"44d6628cdc698707a875a1059f701f7c639845ad\", \"size\": 3, ";
+		json += "\"lfs\": {\"sha256\": \"0000000000000000000000000000000000000000000000000000000000000000\", \"size\": 3, \"pointerSize\": 134}}, ";
+		# a git blob hash that matches, a size that does not
+		json += "{\"rfilename\": \"short.json\", \"blobId\": \"9e26dfeeb6e641a33dae4961196235bdb965b21b\", \"size\": 999}";
+		json += "]}";
+		return json;
+	}
+}
+
+# The Hub, or with cdn set, its CDN
+class FakeHub from Thread {
+	@server : TCPSocketServer;
+	@cdn : Bool;
+	@cdn_port : Int;
+	@seen : Seen;
+	@model : Byte[];
+
+	New(server : TCPSocketServer, cdn : Bool, cdn_port : Int, seen : Seen, model : Byte[]) {
+		Parent("fake-hub");
+		@server := server;
+		@cdn := cdn;
+		@cdn_port := cdn_port;
+		@seen := seen;
+		@model := model;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		header : String;
+		while(true) {
+			client := @server->Accept();
+			if(client <> Nil & client->IsOpen()) {
+				line := client->ReadLine();
+				auth := false;
+				do {
+					header := client->ReadLine();
+					if(header <> Nil & header->ToLower()->StartsWith("authorization:")) {
+						auth := true;
+					};
+				}
+				while(header <> Nil & header->Size() > 0);
+
+				if(line <> Nil) {
+					Answer(client, line, auth);
+				};
+				client->CloseGracefully();
+			};
+		};
+	}
+
+	method : Answer(client : TCPSocket, line : String, auth : Bool) ~ Nil {
+		commit := Fixture->Commit();
+		if(@cdn) {
+			@seen->Cdn(auth);
+			if(line->Has(" /blob/model ")) {
+				Send(client, "200 OK", @model);
+			}
+			else {
+				Send(client, "404 Not Found", "no"->ToByteArray());
+			};
+			return;
+		};
+
+		if(line->Has(" /api/models/test-org/tiny-model/revision/main?blobs=true ") |
+				line->Has(" /api/models/test-org/tiny-model/revision/{$commit}?blobs=true ")) {
+			@seen->Api(auth);
+			Send(client, "200 OK", Fixture->Api()->ToByteArray());
+		}
+		else if(line->Has(" /api/models/gated-org/model/")) {
+			@seen->Api(auth);
+			Send(client, "401 Unauthorized", "{\"error\": \"gated\"}"->ToByteArray());
+		}
+		else if(line->Has(" /api/models/")) {
+			@seen->Api(auth);
+			Send(client, "404 Not Found", "{\"error\": \"Repository not found\"}"->ToByteArray());
+		}
+		else if(line->Has(" /test-org/tiny-model/resolve/{$commit}/config.json ")) {
+			@seen->Resolve();
+			Send(client, "200 OK", Fixture->Config()->ToByteArray());
+		}
+		else if(line->Has(" /test-org/tiny-model/resolve/{$commit}/onnx/model.onnx ")) {
+			@seen->Resolve();
+			client->WriteString("HTTP/1.1 302 Found\r\nLocation: http://127.0.0.1:{$@cdn_port}/blob/model\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+		}
+		else if(line->Has(" /test-org/tiny-model/resolve/{$commit}/bad.bin ")) {
+			@seen->Resolve();
+			Send(client, "200 OK", "bad"->ToByteArray());
+		}
+		else if(line->Has(" /test-org/tiny-model/resolve/{$commit}/short.json ")) {
+			@seen->Resolve();
+			Send(client, "200 OK", "{}"->ToByteArray());
+		}
+		else {
+			@seen->Resolve();
+			Send(client, "404 Not Found", "no"->ToByteArray());
+		};
+	}
+
+	function : Send(client : TCPSocket, status : String, body : Byte[]) ~ Nil {
+		size := body->Size();
+		client->WriteString("HTTP/1.1 {$status}\r\nContent-Type: application/octet-stream\r\nContent-Length: {$size}\r\nConnection: close\r\n\r\n");
+		client->WriteBuffer(0, size, body);
+	}
+}
+
+class AiHubClient {
+	@passed : Int;
+	@failed : Int;
+
+	New() {
+		@passed := 0;
+		@failed := 0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		AiHubClient->New()->Run();
+	}
+
+	method : Run() ~ Nil {
+		"Testing HubClient against an in-process Hub..."->PrintLine();
+
+		hub_server : TCPSocketServer;
+		cdn_server : TCPSocketServer;
+		hub : HubClient;
+		seen : Seen;
+		model : Byte[];
+		root : String;
+		cache : String;
+		folder : String;
+		path : String;
+		endpoint : String;
+		before : Int;
+		passed : Int;
+		failed : Int;
+
+		root := "ai_hub_test_{$Runtime->GetProcessId()}";
+		cache := "{$root}/cache";
+		Directory->Delete(root);
+		Directory->CreatePath(cache);
+
+		model := Fixture->Model();
+		seen := Seen->New();
+		hub_server := TCPSocketServer->New("127.0.0.1", 0);
+		cdn_server := TCPSocketServer->New("127.0.0.1", 0);
+		if(<>hub_server->Listen(8) | <>cdn_server->Listen(8)) {
+			Fail("the fake Hub did not listen");
+			Finish(root);
+			return;
+		};
+		FakeHub->New(hub_server, false, cdn_server->GetPort(), seen, model)->Execute(Nil);
+		FakeHub->New(cdn_server, true, 0, seen, model)->Execute(Nil);
+		endpoint := "http://127.0.0.1:{$hub_server->GetPort()}";
+
+		# --- a snapshot, through the CDN ---
+		hub := HubClient->New(cache);
+		hub->SetEndpoint(endpoint);
+		hub->SetToken("hf_secret");
+		hub->SetOffline(false);
+		folder := hub->Snapshot("test-org/tiny-model", ["config.json", "onnx/model.onnx"]);
+		Check("snapshot: returns the snapshot folder", folder <> Nil & folder->EndsWith("models--test-org--tiny-model/snapshots/" + Fixture->Commit()));
+		if(folder = Nil) {
+			error := hub->GetError();
+			"  error: {$error}"->PrintLine();
+			Finish(root);
+			return;
+		};
+		Check("snapshot: config.json is the Hub's", FileReader->ReadFile("{$folder}/config.json")->Equals(Fixture->Config()));
+		Check("snapshot: the 3 MB model is whole", Same(FileReader->ReadBinaryFile("{$folder}/onnx/model.onnx"), model));
+		Check("snapshot: GetCommit and GetDownloadCount", Fixture->Commit()->Equals(hub->GetCommit()) & hub->GetDownloadCount() = 2);
+		Check("snapshot: refs/main holds the commit", FileReader->ReadFile("{$cache}/models--test-org--tiny-model/refs/main")->Trim()->Equals(Fixture->Commit()));
+		Check("snapshot: no .download is left behind", <>File->Exists("{$folder}/onnx/model.onnx.download"));
+		Check("token: sent to the Hub", seen->GetApiAuth());
+		Check("token: NOT sent to the CDN, another origin", seen->GetCdn() = 1 & <>seen->GetCdnAuth());
+
+		# --- the cache serves a second snapshot ---
+		before := seen->GetResolve() + seen->GetCdn();
+		folder := hub->Snapshot("test-org/tiny-model", ["onnx/model.onnx", "config.json"]);
+		Check("cache: a second snapshot downloads nothing", folder <> Nil & hub->GetDownloadCount() = 0 & seen->GetResolve() + seen->GetCdn() = before);
+		path := hub->Download("test-org/tiny-model", "config.json", Fixture->Commit());
+		Check("cache: Download by commit gives the file's path", path <> Nil & path->EndsWith("/config.json") & File->Exists(path));
+
+		# --- offline ---
+		hub->SetOffline(true);
+		before := seen->Total();
+		folder := hub->Snapshot("test-org/tiny-model", ["config.json", "onnx/model.onnx"]);
+		Check("offline: the cached snapshot, through refs/main", folder <> Nil & Fixture->Commit()->Equals(hub->GetCommit()));
+		Check("offline: no request at all", seen->Total() = before);
+		Check("offline: a file the cache lacks fails with a reason", hub->Download("test-org/tiny-model", "tokenizer.json") = Nil & hub->GetError() <> Nil & hub->GetError()->Has("offline"));
+		hub->SetOffline(false);
+
+		# --- the Hub unreachable: the cache still serves ---
+		unreachable := HubClient->New(cache);
+		unreachable->SetEndpoint("http://127.0.0.1:{$FreePort()}");
+		unreachable->SetOffline(false);
+		Check("unreachable: the cache still serves", unreachable->Snapshot("test-org/tiny-model", ["config.json"]) <> Nil);
+		Check("unreachable: a file the cache lacks fails with a reason", unreachable->Download("test-org/tiny-model", "tokenizer.json") = Nil & unreachable->GetError()->Has("could not be reached"));
+
+		# --- files that are not what the Hub says ---
+		Check("verify: a wrong SHA-256 is refused", hub->Download("test-org/tiny-model", "bad.bin") = Nil & hub->GetError()->Has("SHA-256"));
+		Check("verify: the refused file is not kept", <>File->Exists("{$folder}/bad.bin") & <>File->Exists("{$folder}/bad.bin.download"));
+		Check("verify: a wrong size is refused", hub->Download("test-org/tiny-model", "short.json") = Nil & hub->GetError()->Has("bytes"));
+
+		# --- what is not there ---
+		Check("missing: a file the repository lacks", hub->Download("test-org/tiny-model", "nope.txt") = Nil & hub->GetError()->Has("has no file"));
+		Check("missing: a repository the Hub lacks (404)", hub->Download("test-org/missing", "config.json") = Nil & hub->GetError()->Has("no repository"));
+		gated := HubClient->New(cache);
+		gated->SetEndpoint(endpoint);
+		gated->SetToken(Nil);
+		gated->SetOffline(false);
+		Check("gated: a 401 names HF_TOKEN", gated->Download("gated-org/model", "config.json") = Nil & gated->GetError()->Has("HF_TOKEN"));
+
+		# --- names that would leave the cache: refused before any request ---
+		before := seen->Total();
+		Check("names: ../x is refused", hub->Download("../x", "config.json") = Nil);
+		Check("names: a/b/c is refused", hub->Download("a/b/c", "config.json") = Nil);
+		Check("names: a file ../../escape is refused", hub->Download("test-org/tiny-model", "../../escape") = Nil);
+		Check("names: an absolute file is refused", hub->Download("test-org/tiny-model", "/etc/passwd") = Nil);
+		Check("names: a backslash is refused", hub->Download("test-org/tiny-model", "onnx\\model.onnx") = Nil);
+		Check("names: a revision with .. is refused", hub->Download("test-org/tiny-model", "config.json", "../main") = Nil);
+		Check("names: no request was made", seen->Total() = before);
+
+		# --- Python's cache, read when this one misses ---
+		python := "{$root}/python";
+		snapshot := "{$python}/models--py-org--py-model/snapshots/" + Fixture->Commit();
+		Directory->CreatePath("{$python}/models--py-org--py-model/refs");
+		Directory->CreatePath(snapshot);
+		Write("{$python}/models--py-org--py-model/refs/main", Fixture->Commit());
+		Write("{$snapshot}/config.json", Fixture->Config());
+		Runtime->SetEnvironmentVariable("HF_HUB_CACHE", python);
+		reader := HubClient->New(cache);
+		reader->SetOffline(true);
+		folder := reader->Snapshot("py-org/py-model", ["config.json"]);
+		Check("python cache: read when this cache misses", folder <> Nil & folder->Equals(snapshot));
+		Check("python cache: nothing written into it", <>File->Exists("{$python}/models--py-org--py-model/refs/main.download"));
+
+		Finish(root);
+	}
+
+	method : Finish(root : String) ~ Nil {
+		Directory->Delete(root);
+
+		passed := @passed;
+		failed := @failed;
+		if(failed > 0) {
+			"---"->PrintLine();
+			"{$passed} passed, {$failed} failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: {$passed} checks; the Hub client verifies, caches and keeps tokens at home"->PrintLine();
+	}
+
+	function : Same(got : Byte[], want : Byte[]) ~ Bool {
+		if(got = Nil | got->Size() <> want->Size()) {
+			return false;
+		};
+		return Cipher.Hash->SHA256(got)->ToHexString()->Equals(Cipher.Hash->SHA256(want)->ToHexString());
+	}
+
+	function : Write(path : String, text : String) ~ Nil {
+		writer := FileWriter->New(path);
+		writer->WriteString(text);
+		writer->Close();
+	}
+
+	function : FreePort() ~ Int {
+		reserved := TCPSocketServer->New("127.0.0.1", 0);
+		port := reserved->GetPort();
+		reserved->Close();
+		return port;
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			@passed += 1;
+		}
+		else {
+			Fail(name);
+		};
+	}
+
+	method : Fail(message : String) ~ Nil {
+		"  FAIL: {$message}"->PrintLine();
+		@failed += 1;
+	}
+}

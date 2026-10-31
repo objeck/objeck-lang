@@ -1,0 +1,219 @@
+#~
+# BpeTokenizer: byte-level BPE (RoBERTa, GPT-2), id for id and offset for offset with
+# Hugging Face's tokenizers library.
+#
+# data/bert/bpe is a tiny RoBERTa-style tokenizer trained by gen_bpe_parity.py with
+# tokenizers itself (2,000 tokens, 1,739 merges, <mask> taking the whitespace before it).
+# bpe_parity.txt holds what Python's tokenizer gives 174 texts -- 150 lines of this
+# repository's docs and edge cases: contractions, numbers, accents, Greek, Cyrillic, CJK,
+# emoji, tabs, runs of spaces, specials in the text, empty and whitespace-only text --
+# alone and as a pair with the next text. Every id and every character offset must
+# match. Then truncation, padding, Decode, and a vocabulary without the specials.
+# EXTRA_LIBS: nlp
+~#
+
+use Collection;
+use System.IO.Filesystem;
+use System.NLP;
+
+class NlpBpeTokenizer {
+	@ok : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		NlpBpeTokenizer->New()->Run();
+	}
+
+	New() {
+		@ok := true;
+	}
+
+	method : Check(name : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	method : Run() ~ Nil {
+		tokens := Lines(FileReader->ReadFile("data/bert/bpe/vocab.txt"));
+		merges := Lines(FileReader->ReadFile("data/bert/bpe/merges.txt"));
+		rows := Lines(FileReader->ReadFile("data/bert/bpe_parity.txt"));
+		if(tokens = Nil | merges = Nil | rows = Nil) {
+			"FAIL: data/bert/bpe or bpe_parity.txt did not load; run from programs/regression"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		tokenizer := BpeTokenizer->New(tokens->ToArray(), merges->ToArray(), false, true);
+		Check("loads 2,000 tokens and the specials", tokenizer->IsLoaded() & tokenizer->GetVocabularySize() = 2000);
+		Check("<mask> is a special token taking the space before it", tokenizer->AddSpecialToken("<mask>", true, false));
+		Parity(tokenizer, rows);
+		Shapes(tokenizer);
+
+		bare := BpeTokenizer->New(["a", "b"], ["a b"], false, true);
+		Check("a vocabulary without <s> and </s> is refused with a reason", <>bare->IsLoaded() & bare->GetError() <> Nil & bare->GetError()->Has("<s>"));
+		Check("an unloaded tokenizer encodes Nil", bare->Encode("ab", 8) = Nil);
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	method : Parity(tokenizer : BpeTokenizer, rows : Vector<String>) ~ Nil {
+		count := 0;
+		failures := 0;
+		each(r : rows) {
+			row := rows->Get(r);
+			if(row->Size() > 0 & <>row->StartsWith("#")) {
+				fields := Fields(row, '\t');
+				text := Unescape(fields[1]);
+				encoding : TokenEncoding;
+				if(fields[0]->Equals("pair")) {
+					encoding := tokenizer->EncodePair(text, Unescape(fields[2]), 4096);
+				}
+				else {
+					encoding := tokenizer->Encode(text, 4096);
+				};
+
+				want_ids := Fields(fields[3], ' ');
+				want_offsets := Fields(fields[4], ' ');
+				same := encoding <> Nil & encoding->GetLength() = want_ids->Size();
+				if(same) {
+					ids := encoding->GetIds();
+					offsets := encoding->GetOffsets();
+					each(k : want_ids) {
+						span := Fields(want_offsets[k], ',');
+						if(ids[k] <> want_ids[k]->ToInt() | offsets[2 * k] <> span[0]->ToInt() | offsets[2 * k + 1] <> span[1]->ToInt()) {
+							same := false;
+						};
+					};
+				};
+
+				count += 1;
+				if(<>same) {
+					failures += 1;
+					if(failures <= 5) {
+						"  differs ({$fields[0]}): '{$text}'"->PrintLine();
+						"    want ids {$fields[3]}"->PrintLine();
+						"    want offsets {$fields[4]}"->PrintLine();
+						if(encoding <> Nil) {
+							got := "";
+							got_offsets := "";
+							for(k := 0; k < encoding->GetLength(); k += 1;) {
+								got += encoding->GetIds()[k];
+								got += ' ';
+								got += encoding->GetOffsets()[2 * k];
+								got_offsets += encoding->GetOffsets()[2 * k];
+								got_offsets += ',';
+								got_offsets += encoding->GetOffsets()[2 * k + 1];
+								got_offsets += ' ';
+							};
+							"    got offsets {$got_offsets}"->PrintLine();
+						};
+					};
+				};
+			};
+		};
+		Check("{$count} encodings (348 expected) match tokenizers id for id and offset for offset", count = 348 & failures = 0);
+	}
+
+	method : Shapes(tokenizer : BpeTokenizer) ~ Nil {
+		text := "the quick brown fox jumps over the lazy dog";
+		full := tokenizer->Encode(text, 4096);
+		short := tokenizer->Encode(text, 6);
+		Check("truncation keeps <s>, the first 4 tokens and </s>", short <> Nil & short->GetLength() = 6 & short->IsTruncated() &
+			short->GetIds()[0] = tokenizer->GetId("<s>") & short->GetIds()[5] = tokenizer->GetId("</s>") &
+			short->GetIds()[4] = full->GetIds()[4]);
+		padded := tokenizer->Encode("x", 8);
+		Check("padding is <pad>, with mask 0 and offsets (0, 0)", padded <> Nil & padded->GetLength() = 3 & padded->GetSize() = 8 &
+			padded->GetIds()[7] = tokenizer->GetId("<pad>") & padded->GetAttentionMask()[7] = 0 & padded->GetAttentionMask()[2] = 1 &
+			padded->GetOffsets()[14] = 0 & padded->GetOffsets()[15] = 0 & <>padded->IsTruncated());
+		pair := tokenizer->EncodePair(text, text, 10);
+		Check("pair truncation: longest first, within max_len", pair <> Nil & pair->GetLength() = 10 & pair->IsTruncated());
+		Check("token types are all 0", pair <> Nil & pair->GetTokenTypeIds()[8] = 0);
+		Check("max_len below 2 is refused", tokenizer->Encode(text, 1) = Nil & tokenizer->GetError() <> Nil);
+
+		sample := "Café 漢字 αβ ";
+		sample->Append(0x1F600->As(Char));
+		sample += " it's 42";
+		round := tokenizer->Decode(tokenizer->Encode(sample, 4096)->GetIds());
+		Check("Decode gives the text back, UTF-8 and all", round <> Nil & round->Equals(sample));
+		pieces := tokenizer->Tokenize("Hello world");
+		spaced := false;
+		if(pieces <> Nil) {
+			each(p : pieces) {
+				if(pieces[p]->StartsWith("Ġ")) {
+					spaced := true;
+				};
+			};
+		};
+		Check("Tokenize gives the byte-level pieces, a space as Ġ", pieces <> Nil & pieces->Size() > 1 & spaced);
+	}
+
+	# --- fixtures ---
+
+	function : Lines(text : String) ~ Vector<String> {
+		if(text = Nil) {
+			return Nil;
+		};
+		lines := Vector->New()<String>;
+		line := "";
+		each(i : text) {
+			c := text->Get(i);
+			if(c = '\n') {
+				lines->AddBack(line);
+				line := "";
+			}
+			else if(c <> '\r') {
+				line->Append(c);
+			};
+		};
+		if(line->Size() > 0) {
+			lines->AddBack(line);
+		};
+		return lines;
+	}
+
+	function : Fields(line : String, separator : Char) ~ String[] {
+		fields := Vector->New()<String>;
+		field := "";
+		each(i : line) {
+			c := line->Get(i);
+			if(c = separator) {
+				fields->AddBack(field);
+				field := "";
+			}
+			else {
+				field->Append(c);
+			};
+		};
+		fields->AddBack(field);
+		return fields->ToArray();
+	}
+
+	# the fixture's escapes: \t is a tab, \\ a backslash
+	function : Unescape(text : String) ~ String {
+		out := "";
+		i := 0;
+		while(i < text->Size()) {
+			c := text->Get(i);
+			if(c = '\\' & i + 1 < text->Size()) {
+				next := text->Get(i + 1);
+				if(next = 't') {
+					out->Append('\t');
+				}
+				else {
+					out->Append(next);
+				};
+				i += 2;
+			}
+			else {
+				out->Append(c);
+				i += 1;
+			};
+		};
+		return out;
+	}
+}

@@ -1,0 +1,15 @@
+{
+  "backend": "tokenizers",
+  "cls_token": "[CLS]",
+  "mask_token": "[MASK]",
+  "model_input_names": [
+    "input_ids",
+    "token_type_ids",
+    "attention_mask"
+  ],
+  "model_max_length": 24,
+  "pad_token": "[PAD]",
+  "sep_token": "[SEP]",
+  "tokenizer_class": "TokenizersBackend",
+  "unk_token": "[UNK]"
+}

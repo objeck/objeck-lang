@@ -1,0 +1,718 @@
+#~~
+# Copyright (c) 2026 Randy Hollines
+# Hugging Face Hub downloads and a local model cache
+~~#
+
+use Collection;
+use Data.JSON;
+use Web.HTTP;
+use System.IO.Filesystem;
+
+#~
+Model downloads from the Hugging Face Hub, into a local cache that later runs, and offline
+runs, read from: a model by name, as Python's from_pretrained does, with no Python.
+Compile with -lib gen_collect,cipher,json,net,ai_hub.
+~#
+bundle System.AI.Hub {
+	#~
+	Downloads files of a Hugging Face model repository into a local cache and gives back
+	their paths: a snapshot folder that TextClassifier and the other pipelines open as they
+	open any model folder.
+
+	Each call asks the Hub API which commit the revision ("main" unless named) is at, and
+	downloads from that commit, so every file of a snapshot comes from the same commit. A
+	file already in the cache at the right size is not downloaded again. A downloaded file
+	is checked before it is kept: SHA-256 for a large (LFS) file, the git blob hash for a
+	small one, and the size for both; a file that does not match is deleted and the call
+	fails. Downloads stream to disk, so a file's size is limited only by the disk.
+
+	The cache, by environment:
+
+	- OBJECK_HUB_CACHE: the cache folder; default .objeck/hub in the user's home folder.
+	  The layout is the one Python's huggingface_hub uses -- models--org--name/refs/main
+	  holds the commit, models--org--name/snapshots/commit/ the files -- with real files,
+	  not symbolic links;
+	- OBJECK_HUB_OFFLINE or HF_HUB_OFFLINE set to 1: no network at all; revisions resolve
+	  through the cache's refs. Offline, and when the Hub cannot be reached, a file the cache
+	  does not hold is looked for in Python's cache (HF_HUB_CACHE, else HF_HOME/hub, else
+	  .cache/huggingface/hub in the home folder), which is read and never written;
+	- OBJECK_HUB_TOKEN or HF_TOKEN: a token for gated and private repositories. It is sent
+	  to the Hub only: a redirect to another origin, such as the Hub's file CDN, drops it;
+	- HF_ENDPOINT: another Hub, e.g. a mirror; default https://huggingface.co.
+
+```
+hub := HubClient->New();
+folder := hub->Snapshot("Xenova/distilbert-base-uncased-finetuned-sst-2-english",
+  ["config.json", "tokenizer.json", "tokenizer_config.json", "onnx/model.onnx"]);
+if(folder = Nil) {
+  hub->GetError()->ErrorLine();
+  return;
+};
+folder->PrintLine();   # .../models--Xenova--distilbert-.../snapshots/0b6928ef...
+```
+	~#
+	class HubClient {
+		@cache_dir : String;
+		@python_cache : String;
+		@endpoint : String;
+		@token : String;
+		@offline : Bool;
+		@commit : String;
+		@downloads : Int;
+		@unreachable : Bool;
+		@error : String;
+
+		#~
+		A client with the cache, token, endpoint and offline mode from the environment.
+		~#
+		New() {
+			Init(Nil);
+		}
+
+		#~
+		A client with a cache folder of the caller's; token, endpoint and offline mode from
+		the environment.
+		@param cache_dir the cache folder
+		~#
+		New(cache_dir : String) {
+			Init(cache_dir);
+		}
+
+		method : Init(cache_dir : String) ~ Nil {
+			home := Runtime->GetProperty("user_dir");
+			if(home = Nil) {
+				home := ".";
+			};
+
+			@cache_dir := cache_dir;
+			if(@cache_dir = Nil) {
+				@cache_dir := Env("OBJECK_HUB_CACHE");
+			};
+			if(@cache_dir = Nil) {
+				@cache_dir := Join(home, ".objeck/hub");
+			};
+			@cache_dir := Trim(@cache_dir);
+
+			@python_cache := Env("HF_HUB_CACHE");
+			if(@python_cache = Nil) {
+				hf_home := Env("HF_HOME");
+				if(hf_home <> Nil) {
+					@python_cache := Join(hf_home, "hub");
+				};
+			};
+			if(@python_cache = Nil) {
+				@python_cache := Join(home, ".cache/huggingface/hub");
+			};
+
+			@endpoint := Env("HF_ENDPOINT");
+			if(@endpoint = Nil) {
+				@endpoint := "https://huggingface.co";
+			};
+			@endpoint := Trim(@endpoint);
+
+			@token := Env("OBJECK_HUB_TOKEN");
+			if(@token = Nil) {
+				@token := Env("HF_TOKEN");
+			};
+
+			@offline := IsSet(Env("OBJECK_HUB_OFFLINE")) | IsSet(Env("HF_HUB_OFFLINE"));
+		}
+
+		function : Env(name : String) ~ String {
+			value := Runtime->GetEnvironmentVariable(name);
+			if(value = Nil | value->Trim()->Size() = 0) {
+				return Nil;
+			};
+			return value->Trim();
+		}
+
+		function : IsSet(value : String) ~ Bool {
+			if(value = Nil) {
+				return false;
+			};
+			lower := value->ToLower();
+			return lower->Equals("1") | lower->Equals("true") | lower->Equals("yes") | lower->Equals("on");
+		}
+
+		# a folder with no trailing slash
+		function : Trim(path : String) ~ String {
+			trimmed := path->Clone();
+			while(trimmed->Size() > 1 & (trimmed->EndsWith("/") | trimmed->EndsWith("\\"))) {
+				trimmed := trimmed->SubString(trimmed->Size() - 1);
+			};
+			return trimmed;
+		}
+
+		function : Join(folder : String, name : String) ~ String {
+			path := Trim(folder);
+			path += '/';
+			path += name;
+			return path;
+		}
+
+		#~
+		The cache folder.
+		@return path
+		~#
+		method : public : GetCacheDir() ~ String {
+			return @cache_dir;
+		}
+
+		#~
+		The Hub's address.
+		@return e.g. https://huggingface.co
+		~#
+		method : public : GetEndpoint() ~ String {
+			return @endpoint;
+		}
+
+		#~
+		Sets the Hub's address, e.g. a mirror.
+		@param endpoint e.g. https://huggingface.co
+		~#
+		method : public : SetEndpoint(endpoint : String) ~ Nil {
+			if(endpoint <> Nil) {
+				@endpoint := Trim(endpoint);
+			};
+		}
+
+		#~
+		Sets the token sent to the Hub for gated and private repositories; Nil sends none.
+		@param token the token
+		~#
+		method : public : SetToken(token : String) ~ Nil {
+			@token := token;
+		}
+
+		#~
+		Whether the client works from the cache alone.
+		@return true when offline
+		~#
+		method : public : IsOffline() ~ Bool {
+			return @offline;
+		}
+
+		#~
+		Sets whether the client works from the cache alone.
+		@param offline true for no network
+		~#
+		method : public : SetOffline(offline : Bool) ~ Nil {
+			@offline := offline;
+		}
+
+		#~
+		The commit the last Snapshot or Download used.
+		@return a 40-character commit hash, or Nil
+		~#
+		method : public : GetCommit() ~ String {
+			return @commit;
+		}
+
+		#~
+		How many files the last Snapshot or Download fetched from the network; the rest
+		came from the cache.
+		@return files downloaded
+		~#
+		method : public : GetDownloadCount() ~ Int {
+			return @downloads;
+		}
+
+		#~
+		Why the last call returned Nil.
+		@return the reason, or Nil
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Downloads one file of a repository at "main".
+		@param repo the repository, e.g. Xenova/bert-base-uncased
+		@param file the file's path in the repository, e.g. onnx/model.onnx
+		@return the file's path in the cache; Nil on failure (see GetError)
+		~#
+		method : public : Download(repo : String, file : String) ~ String {
+			return Download(repo, file, "main");
+		}
+
+		#~
+		Downloads one file of a repository at a revision.
+		@param repo the repository, e.g. Xenova/bert-base-uncased
+		@param file the file's path in the repository, e.g. onnx/model.onnx
+		@param revision a branch, tag or commit
+		@return the file's path in the cache; Nil on failure (see GetError)
+		~#
+		method : public : Download(repo : String, file : String, revision : String) ~ String {
+			if(file = Nil) {
+				@error := "no file";
+				return Nil;
+			};
+			folder := Snapshot(repo, [file], revision);
+			if(folder = Nil) {
+				return Nil;
+			};
+			return Join(folder, file);
+		}
+
+		#~
+		Downloads files of a repository at "main" into one snapshot folder.
+		@param repo the repository, e.g. Xenova/bert-base-uncased
+		@param files the files' paths in the repository
+		@return the snapshot folder; Nil on failure (see GetError)
+		~#
+		method : public : Snapshot(repo : String, files : String[]) ~ String {
+			return Snapshot(repo, files, "main");
+		}
+
+		#~
+		Downloads files of a repository at a revision into one snapshot folder. Every file
+		comes from the commit the revision is at when the call is made.
+		@param repo the repository, e.g. Xenova/bert-base-uncased
+		@param files the files' paths in the repository
+		@param revision a branch, tag or commit
+		@return the snapshot folder; Nil on failure (see GetError)
+		~#
+		method : public : Snapshot(repo : String, files : String[], revision : String) ~ String {
+			@error := Nil;
+			@commit := Nil;
+			@downloads := 0;
+
+			if(<>ValidRepo(repo)) {
+				@error := "'{$repo}' is not a repository name: owner/name, of letters, digits, '-', '_' and '.'";
+				return Nil;
+			};
+			if(revision = Nil | revision->Size() = 0 | revision->Has("..") | revision->Has('\\')) {
+				@error := "'{$revision}' is not a revision";
+				return Nil;
+			};
+			if(files = Nil | files->Size() = 0) {
+				@error := "no files";
+				return Nil;
+			};
+			each(i : files) {
+				if(<>ValidFile(files[i])) {
+					name := files[i];
+					@error := "'{$name}' is not a file path inside a repository";
+					return Nil;
+				};
+			};
+
+			if(@offline) {
+				return CachedSnapshot(repo, files, revision, "offline");
+			};
+
+			info := FetchInfo(repo, revision);
+			if(info = Nil) {
+				# as huggingface_hub does: with no Hub, what the cache holds still serves
+				if(@unreachable) {
+					return CachedSnapshot(repo, files, revision, @error);
+				};
+				return Nil;
+			};
+
+			commit_elem := info->Get("sha");
+			siblings := info->Get("siblings");
+			if(commit_elem = Nil | siblings = Nil | siblings->GetType() <> JsonElement->JsonType->ARRAY) {
+				@error := "the Hub's answer for '{$repo}' has no commit or file list";
+				return Nil;
+			};
+			commit := commit_elem->GetString();
+			if(<>IsCommit(commit)) {
+				@error := "the Hub named '{$commit}' as the commit of '{$repo}'";
+				return Nil;
+			};
+			@commit := commit;
+
+			repo_dir := RepoDir(@cache_dir, repo);
+			snapshot := Join(Join(repo_dir, "snapshots"), commit);
+			if(<>revision->Equals(commit)) {
+				if(<>WriteRef(repo_dir, revision, commit)) {
+					return Nil;
+				};
+			};
+
+			each(i : files) {
+				name := files[i];
+				entry := FindSibling(siblings, name);
+				if(entry = Nil) {
+					@error := "'{$repo}' has no file '{$name}' at {$commit}";
+					return Nil;
+				};
+				if(<>Fetch(repo, commit, name, entry, Join(snapshot, name))) {
+					return Nil;
+				};
+			};
+
+			return snapshot;
+		}
+
+		# --- the Hub ---
+
+		# the API's description of a revision: its commit and its files, with sizes and hashes;
+		# Nil with @error on failure, falling back to the cache when the Hub cannot be reached
+		method : FetchInfo(repo : String, revision : String) ~ JsonElement {
+			url := "{$@endpoint}/api/models/{$repo}/revision/";
+			url += Encode(revision, false);
+			url += "?blobs=true";
+
+			@unreachable := false;
+			response := Get(url, Nil);
+			if(response = Nil | response->GetCode() = 0) {
+				@error := "the Hub at {$@endpoint} could not be reached";
+				@unreachable := true;
+				return Nil;
+			};
+
+			code := response->GetCode();
+			if(code = 401 | code = 403) {
+				if(@token = Nil) {
+					@error := "'{$repo}' is gated or private: set HF_TOKEN (or OBJECK_HUB_TOKEN) to a token that may read it";
+				}
+				else {
+					@error := "the token may not read '{$repo}' (HTTP {$code})";
+				};
+				return Nil;
+			};
+			if(code = 404) {
+				@error := "the Hub has no repository '{$repo}' at revision '{$revision}'";
+				return Nil;
+			};
+			if(code <> 200) {
+				@error := "the Hub answered HTTP {$code} for '{$repo}'";
+				return Nil;
+			};
+
+			body := response->GetContent();
+			if(body = Nil) {
+				@error := "the Hub's answer for '{$repo}' is empty";
+				return Nil;
+			};
+			root := JsonParser->TextToElement(String->New(body));
+			if(root = Nil | root->GetType() <> JsonElement->JsonType->OBJECT) {
+				@error := "the Hub's answer for '{$repo}' is not JSON";
+				return Nil;
+			};
+			return root;
+		}
+
+		# one file into the snapshot, unless the cache already has it at the right size
+		method : Fetch(repo : String, commit : String, name : String, entry : JsonElement, target : String) ~ Bool {
+			size := -1;
+			sha256 : String;
+			lfs := entry->Get("lfs");
+			if(lfs <> Nil & lfs->GetType() = JsonElement->JsonType->OBJECT) {
+				if(lfs->Get("sha256") <> Nil) {
+					sha256 := lfs->Get("sha256")->GetString()->ToLower();
+				};
+				if(lfs->Get("size") <> Nil) {
+					size := lfs->Get("size")->GetInt();
+				};
+			};
+			if(size < 0 & entry->Get("size") <> Nil) {
+				size := entry->Get("size")->GetInt();
+			};
+			blob : String;
+			if(entry->Get("blobId") <> Nil) {
+				blob := entry->Get("blobId")->GetString()->ToLower();
+			};
+
+			if(File->Exists(target) & (size < 0 | File->Size(target) = size)) {
+				return true;
+			};
+
+			slash := target->FindLast('/');
+			if(slash > 0) {
+				folder := target->SubString(slash);
+				if(<>Directory->Exists(folder) & <>Directory->CreatePath(folder)) {
+					@error := "cannot create the cache folder '{$folder}'";
+					return false;
+				};
+			};
+
+			url := "{$@endpoint}/{$repo}/resolve/{$commit}/";
+			url += Encode(name, true);
+			partial := "{$target}.download";
+			response := GetToFile(url, partial);
+			if(response = Nil) {
+				@error := "the download of '{$name}' from '{$repo}' failed: the connection dropped or the file could not be written";
+				File->Delete(partial);
+				return false;
+			};
+			if(response->GetCode() <> 200) {
+				code := response->GetCode();
+				@error := "the Hub answered HTTP {$code} for '{$name}' in '{$repo}'";
+				File->Delete(partial);
+				return false;
+			};
+
+			# the file must be the one the Hub described
+			got_size := File->Size(partial);
+			if(size >= 0 & got_size <> size) {
+				@error := "'{$name}' from '{$repo}' is {$got_size} bytes; the Hub says {$size}";
+				File->Delete(partial);
+				return false;
+			};
+			if(sha256 <> Nil) {
+				digest := Cipher.Hash->SHA256File(partial);
+				got := "";
+				if(digest <> Nil) {
+					got := digest->ToHexString()->ToLower();
+				};
+				if(<>got->Equals(sha256)) {
+					@error := "'{$name}' from '{$repo}' has SHA-256 {$got}; the Hub says {$sha256}";
+					File->Delete(partial);
+					return false;
+				};
+			}
+			else if(blob <> Nil) {
+				got := GitBlobHash(partial);
+				if(got = Nil | <>got->Equals(blob)) {
+					@error := "'{$name}' from '{$repo}' has git blob hash {$got}; the Hub says {$blob}";
+					File->Delete(partial);
+					return false;
+				};
+			};
+
+			if(File->Exists(target)) {
+				File->Delete(target);
+			};
+			if(<>File->Rename(partial, target)) {
+				@error := "cannot move '{$partial}' to '{$target}'";
+				File->Delete(partial);
+				return false;
+			};
+
+			@downloads += 1;
+			return true;
+		}
+
+		# GET into memory, the token sent when one is set
+		method : Get(url : String, path : String) ~ Web.HTTP.Response {
+			if(@endpoint->StartsWith("https://")) {
+				secure := HttpsClient->New();
+				Authorize(secure->GetRequestHeaders());
+				return secure->Get(Url->New(url), "application/json");
+			};
+			plain := HttpClient->New();
+			Authorize(plain->GetRequestHeaders());
+			return plain->Get(Url->New(url), "application/json");
+		}
+
+		# GET streamed to a file, the token sent when one is set
+		method : GetToFile(url : String, path : String) ~ Web.HTTP.Response {
+			if(@endpoint->StartsWith("https://")) {
+				secure := HttpsClient->New();
+				Authorize(secure->GetRequestHeaders());
+				return secure->GetToFile(Url->New(url), path);
+			};
+			plain := HttpClient->New();
+			Authorize(plain->GetRequestHeaders());
+			return plain->GetToFile(Url->New(url), path);
+		}
+
+		method : Authorize(headers : Hash<String, String>) ~ Nil {
+			if(@token <> Nil) {
+				headers->Insert("authorization", "Bearer {$@token}");
+			};
+		}
+
+		# --- the cache ---
+
+		# the files at the commit the cache's refs give for the revision, in this cache or
+		# else in Python's
+		method : CachedSnapshot(repo : String, files : String[], revision : String, why : String) ~ String {
+			folder := CachedFolder(@cache_dir, repo, files, revision);
+			if(folder <> Nil) {
+				return folder;
+			};
+			folder := CachedFolder(@python_cache, repo, files, revision);
+			if(folder <> Nil) {
+				return folder;
+			};
+
+			url := "{$@endpoint}/{$repo}/tree/";
+			url += Encode(revision, false);
+			@error := "{$why}: the cache has no complete snapshot of '{$repo}' at '{$revision}' for these files; download them online first ({$url})";
+			return Nil;
+		}
+
+		method : CachedFolder(cache : String, repo : String, files : String[], revision : String) ~ String {
+			repo_dir := RepoDir(cache, repo);
+			commit := revision;
+			if(<>IsCommit(revision)) {
+				commit := ReadRef(repo_dir, revision);
+				if(commit = Nil) {
+					return Nil;
+				};
+			};
+
+			snapshot := Join(Join(repo_dir, "snapshots"), commit);
+			each(i : files) {
+				if(<>File->Exists(Join(snapshot, files[i]))) {
+					return Nil;
+				};
+			};
+			@commit := commit;
+			return snapshot;
+		}
+
+		# models--owner--name, as huggingface_hub names it
+		function : RepoDir(cache : String, repo : String) ~ String {
+			name := "models--";
+			each(i : repo) {
+				c := repo->Get(i);
+				if(c = '/') {
+					name += "--";
+				}
+				else {
+					name += c;
+				};
+			};
+			return Join(cache, name);
+		}
+
+		method : WriteRef(repo_dir : String, revision : String, commit : String) ~ Bool {
+			path := Join(Join(repo_dir, "refs"), revision);
+			slash := path->FindLast('/');
+			folder := path->SubString(slash);
+			if(<>Directory->Exists(folder) & <>Directory->CreatePath(folder)) {
+				@error := "cannot create the cache folder '{$folder}'";
+				return false;
+			};
+
+			writer := FileWriter->New(path);
+			if(<>writer->IsOpen()) {
+				@error := "cannot write '{$path}'";
+				return false;
+			};
+			writer->WriteString(commit);
+			writer->Close();
+			return true;
+		}
+
+		function : ReadRef(repo_dir : String, revision : String) ~ String {
+			path := Join(Join(repo_dir, "refs"), revision);
+			if(<>File->Exists(path)) {
+				return Nil;
+			};
+			text := FileReader->ReadFile(path);
+			if(text = Nil) {
+				return Nil;
+			};
+			commit := text->Trim();
+			if(<>IsCommit(commit)) {
+				return Nil;
+			};
+			return commit;
+		}
+
+		# --- checks ---
+
+		# git's object id for a file's content: SHA-1 of "blob <size>\0" and the bytes
+		function : GitBlobHash(path : String) ~ String {
+			content := FileReader->ReadBinaryFile(path);
+			if(content = Nil) {
+				return Nil;
+			};
+
+			header := "blob {$content->Size()}"->ToByteArray();
+			bytes := Byte->New[header->Size() + 1 + content->Size()];
+			Runtime->Copy(bytes, 0, header, 0, header->Size());
+			bytes[header->Size()] := 0;
+			Runtime->Copy(bytes, header->Size() + 1, content, 0, content->Size());
+
+			digest := Cipher.Hash->SHA1(bytes);
+			if(digest = Nil) {
+				return Nil;
+			};
+			return digest->ToHexString()->ToLower();
+		}
+
+		function : FindSibling(siblings : JsonElement, name : String) ~ JsonElement {
+			for(i := 0; i < siblings->Size(); i += 1;) {
+				entry := siblings->Get(i);
+				file := entry->Get("rfilename");
+				if(file <> Nil & file->GetString()->Equals(name)) {
+					return entry;
+				};
+			};
+			return Nil;
+		}
+
+		function : IsCommit(text : String) ~ Bool {
+			if(text = Nil | text->Size() <> 40) {
+				return false;
+			};
+			each(i : text) {
+				c := text->Get(i);
+				if(<>((c >= '0' & c <= '9') | (c >= 'a' & c <= 'f'))) {
+					return false;
+				};
+			};
+			return true;
+		}
+
+		# owner/name: one '/', and neither part empty, "." or ".."
+		function : ValidRepo(repo : String) ~ Bool {
+			if(repo = Nil) {
+				return false;
+			};
+			slash := repo->Find('/');
+			if(slash < 1 | slash = repo->Size() - 1 | repo->FindLast('/') <> slash) {
+				return false;
+			};
+			each(i : repo) {
+				c := repo->Get(i);
+				if(<>(c->IsChar() | c->IsDigit() | c = '-' | c = '_' | c = '.' | c = '/')) {
+					return false;
+				};
+			};
+			owner := repo->SubString(slash);
+			name := repo->SubString(slash + 1, repo->Size() - slash - 1);
+			return <>owner->Equals(".") & <>owner->Equals("..") & <>name->Equals(".") & <>name->Equals("..");
+		}
+
+		# a relative path inside the repository: no leading '/', no '\', no '..' or '.'
+		# segment, so a file name from the Hub cannot step outside the snapshot folder
+		function : ValidFile(file : String) ~ Bool {
+			if(file = Nil | file->Size() = 0 | file->StartsWith("/") | file->Has('\\') | file->Has(':')) {
+				return false;
+			};
+			segment := "";
+			each(i : file) {
+				c := file->Get(i);
+				if(c = '/') {
+					if(segment->Size() = 0 | segment->Equals(".") | segment->Equals("..")) {
+						return false;
+					};
+					segment := "";
+				}
+				else {
+					segment->Append(c);
+				};
+			};
+			return segment->Size() > 0 & <>segment->Equals(".") & <>segment->Equals("..");
+		}
+
+		# percent-encodes a path for a URL; '/' kept when keep_slash
+		function : Encode(text : String, keep_slash : Bool) ~ String {
+			encoded := "";
+			bytes := text->ToByteArray();
+			each(i : bytes) {
+				b := bytes[i]->As(Int) and 255;
+				c := b->As(Char);
+				if((c >= 'a' & c <= 'z') | (c >= 'A' & c <= 'Z') | (c >= '0' & c <= '9') |
+						c = '-' | c = '_' | c = '.' | c = '~' | (keep_slash & c = '/')) {
+					encoded->Append(c);
+				}
+				else {
+					encoded->Append('%');
+					hex := "0123456789ABCDEF";
+					encoded->Append(hex->Get(b / 16));
+					encoded->Append(hex->Get(b % 16));
+				};
+			};
+			return encoded;
+		}
+	}
+}

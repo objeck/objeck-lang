@@ -185,6 +185,8 @@ if(html <> Nil) {
 		@max_redirects : Int;
 		@max_retries : Int;
 		@retry_delay_ms : Int;
+		@download_path : String;
+		@download_size : Int;
 		
 		#~
 		Default constructor
@@ -1099,6 +1101,54 @@ response->GetStatusCode()->PrintLine();
 			return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
 		}
 
+		#~
+		Downloads a resource to a file without holding it in memory, so its size is limited
+		only by the disk. Redirects, retries and headers work as for Get. A 2xx body is written
+		to path + ".part" and moved over path only once complete, so an interrupted download
+		never leaves a truncated file under the real name. Any other status leaves path
+		untouched and its body in the response, as Get would return it.
+		@param url URL
+		@param path the file to write
+		@return the response: status and headers, no content for a 2xx; Nil when the connection
+		failed or the file could not be written
+```
+client := Web.HTTP.HttpClient->New();
+response := client->GetToFile(Web.HTTP.Url->New("http://example.com/model.onnx"), "model.onnx");
+if(response <> Nil & response->GetCode() = 200) {
+  client->GetDownloadSize()->PrintLine();
+};
+```
+		~#
+		method : public : GetToFile(url : Web.HTTP.Url, path : String) ~ Web.HTTP.Response {
+			if(url = Nil | path = Nil) {
+				return Nil;
+			};
+
+			@download_path := path;
+			@download_size := -1;
+			response := Get(url, "application/octet-stream");
+			@download_path := Nil;
+			return response;
+		}
+
+		#~
+		Bytes the last GetToFile wrote.
+		@return bytes written, or -1 when nothing was written (a failure, or a non-2xx response)
+		~#
+		method : public : GetDownloadSize() ~ Int {
+			return @download_size;
+		}
+
+		#~
+		Downloads a resource to a file without holding it in memory. See GetToFile.
+		@param url URL
+		@param path the file to write
+		@return the response; Nil when the connection failed or the file could not be written
+		~#
+		function : QuickGetToFile(url : Web.HTTP.Url, path : String) ~ Web.HTTP.Response {
+			return HttpClient->New()->GetToFile(url, path);
+		}
+
 		method : PullOperation(url : Web.HTTP.Url, content_type : String, task : HttpClient->Task) ~ Web.HTTP.Response {
 			response := PullOperationInner(url, content_type, task, 0, false);
 
@@ -1267,6 +1317,15 @@ response->GetStatusCode()->PrintLine();
 						# server holds the connection: the read would wait out the timeout.
 						if(status_code < 200 | status_code = 204 | status_code = 304) {
 							content := Nil;
+						}
+						# GetToFile: a successful body goes to the file, not into memory
+						else if(@download_path <> Nil & status_code < 300) {
+							@download_size := WebCommon->SaveBody(socket, encoding, @response_headers->Find("content-length"), @download_path);
+							content := Nil;
+							if(@download_size < 0) {
+								socket->Close();
+								return Nil;
+							};
 						}
 						else if(encoding <> Nil & encoding->Equals("chunked")) {
 							content := WebCommon->ReadChunked(socket);

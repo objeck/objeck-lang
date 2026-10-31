@@ -34,6 +34,7 @@ bundle Cipher {
 		@fn_crypto_hash_ripemd160 : static : String;
 		@fn_crypto_hash_sha1 : static : String;
 		@fn_crypto_hash_sha256 : static : String;
+		@fn_crypto_hash_sha256_file : static : String;
 		@fn_crypto_hash_sha512 : static : String;
 		#~
 		Hash input using SHA-1
@@ -77,11 +78,38 @@ bundle Cipher {
 				array_args[1] := ByteArrayRef->New(stream_in);				
 				if(@fn_crypto_hash_sha256 = Nil) { @fn_crypto_hash_sha256 := "crypto_hash_sha256"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_crypto_hash_sha256, array_args);
-				
+
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
 			};
-			
+
+			return Nil;
+		}
+
+		#~
+		Hash a file using SHA-256, a megabyte at a time: a file of any size is hashed
+		without being held in memory, e.g. to verify a downloaded model.
+		@param path file to hash
+		@return hashed bytes, or Nil when the file cannot be read
+		```
+		hash := Cipher.Hash->SHA256File("model.onnx");
+		if(hash <> Nil) {
+		  hash->ToHexString()->PrintLine();
+		};
+		```
+		~#
+		function : SHA256File(path : String) ~ Byte[] {
+			if(path <> Nil) {
+				array_args := Base->New[2];
+				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
+				array_args[1] := path;
+				if(@fn_crypto_hash_sha256_file = Nil) { @fn_crypto_hash_sha256_file := "crypto_hash_sha256_file"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_crypto_hash_sha256_file, array_args);
+
+				holder := array_args[0]->As(ByteArrayRef);
+				return holder->Get();
+			};
+
 			return Nil;
 		}
 

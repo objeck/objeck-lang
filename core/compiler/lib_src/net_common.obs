@@ -653,26 +653,26 @@ bundle Web.HTTP {
 
 			done := false;
 			do {
-				size_line := "0x";
-
-				size_line->Append(socket->ReadLine());
-				chunk_size := size_line->ToInt();
-				if(chunk_size > buf_max) {
+				chunk_size := ChunkSize(socket->ReadLine());
+				if(chunk_size < 0) {
 					return Nil;
 				};
 
 				if(chunk_size > 0) {
+					# a chunk may be larger than the buffer: read it a buffer at a time
 					total_read := 0;
 					while(total_read < chunk_size) {
-						remaining := chunk_size - total_read;
-						read := socket->ReadBuffer(total_read, remaining, buffer);
+						wanted := chunk_size - total_read;
+						if(wanted > buf_max) {
+							wanted := buf_max;
+						};
+						read := socket->ReadBuffer(0, wanted, buffer);
 						if(read <= 0) {
 							return Nil;
 						};
+						output->Append(read, buffer);
 						total_read += read;
 					};
-					output->Append(chunk_size, buffer);
-					buffer->Clear();
 
 					# read CR/LF
 					socket->ReadByte();
@@ -687,8 +687,162 @@ bundle Web.HTTP {
 			return output;
 		}
 
+		# The size on a chunk's header line, hexadecimal, ignoring any ";extension"
+		# (RFC 9112 sec. 7.1.1); -1 when there is no line or no hex digit.
+		function : ChunkSize(line : String) ~ Int {
+			if(line = Nil) {
+				return -1;
+			};
+
+			size := 0;
+			digits := 0;
+			each(i : line) {
+				c := line->Get(i);
+				value := -1;
+				if(c >= '0' & c <= '9') {
+					value := c->As(Int) - '0'->As(Int);
+				}
+				else if(c >= 'a' & c <= 'f') {
+					value := c->As(Int) - 'a'->As(Int) + 10;
+				}
+				else if(c >= 'A' & c <= 'F') {
+					value := c->As(Int) - 'A'->As(Int) + 10;
+				}
+				else if(digits > 0 | (c <> ' ' & c <> '\t')) {
+					break;
+				};
+
+				if(value >= 0) {
+					size := size * 16 + value;
+					digits += 1;
+				};
+			};
+
+			if(digits = 0) {
+				return -1;
+			};
+			return size;
+		}
+
+		# Streams a body of known length to out: the bytes written, or -1 when the
+		# connection ended first or a write failed. Nothing is held beyond one buffer.
+		function : CopyLength(length : Int, socket : System.IO.InputStream, out : System.IO.OutputStream) ~ Int {
+			buffer := Byte->New[256*1024];
+			total := 0;
+			while(total < length) {
+				wanted := length - total;
+				if(wanted > buffer->Size()) {
+					wanted := buffer->Size();
+				};
+				read := socket->ReadBuffer(0, wanted, buffer);
+				if(read <= 0 | out->WriteBuffer(0, read, buffer) <> read) {
+					return -1;
+				};
+				total += read;
+			};
+			return total;
+		}
+
+		# Streams a chunked body to out: the bytes written, or -1 on a malformed
+		# chunk, an early end or a failed write.
+		function : CopyChunked(socket : System.IO.InputStream, out : System.IO.OutputStream) ~ Int {
+			total := 0;
+			done := false;
+			do {
+				chunk_size := ChunkSize(socket->ReadLine());
+				if(chunk_size < 0) {
+					return -1;
+				};
+
+				if(chunk_size > 0) {
+					if(CopyLength(chunk_size, socket, out) < 0) {
+						return -1;
+					};
+					total += chunk_size;
+
+					# read CR/LF
+					socket->ReadByte();
+					socket->ReadByte();
+				}
+				else {
+					done := true;
+				};
+			}
+			while(<>done);
+
+			return total;
+		}
+
+		# Streams a body that ends when the server closes: the bytes written, or -1
+		# when a write failed.
+		function : CopyUntilClose(socket : System.IO.InputStream, out : System.IO.OutputStream) ~ Int {
+			buffer := Byte->New[256*1024];
+			total := 0;
+			do {
+				read := socket->ReadBuffer(0, buffer->Size(), buffer);
+				if(read > 0) {
+					if(out->WriteBuffer(0, read, buffer) <> read) {
+						return -1;
+					};
+					total += read;
+				};
+			}
+			while(read > 0);
+			return total;
+		}
+
+		# Writes a response body to path without holding it in memory. It goes to
+		# path + ".part" and replaces path only once complete, so an interrupted
+		# download never leaves a truncated file under the real name. The bytes
+		# written, or -1 (and no file) on failure.
+		function : SaveBody(socket : System.IO.InputStream, encoding : String, length_header : String, path : String) ~ Int {
+			part := "{$path}.part";
+			System.IO.Filesystem.File->Delete(part);
+
+			writer := System.IO.Filesystem.FileWriter->New(part);
+			if(<>writer->IsOpen()) {
+				return -1;
+			};
+
+			written : Int;
+			if(encoding <> Nil & encoding->Equals("chunked")) {
+				written := CopyChunked(socket, writer);
+			}
+			else if(length_header <> Nil) {
+				length := length_header->Trim()->ToInt();
+				if(length < 0) {
+					written := -1;
+				}
+				else {
+					written := CopyLength(length, socket, writer);
+				};
+			}
+			else {
+				written := CopyUntilClose(socket, writer);
+			};
+			writer->Close();
+
+			if(written < 0) {
+				System.IO.Filesystem.File->Delete(part);
+				return -1;
+			};
+
+			# rename does not replace an existing file on Windows
+			if(System.IO.Filesystem.File->Exists(path)) {
+				System.IO.Filesystem.File->Delete(path);
+			};
+			if(<>System.IO.Filesystem.File->Rename(part, path)) {
+				System.IO.Filesystem.File->Delete(part);
+				return -1;
+			};
+
+			return written;
+		}
+
+		# Reads a body of known length into memory. There is no size limit beyond
+		# memory: a caller that does not want a large body in memory uses GetToFile.
 		function : ReadLength(length : Int, socket : System.IO.InputStream) ~ ByteBuffer {
-			if(length > 256*1048576) { # 256M buffer max
+			if(length < 0) {
 				return Nil;
 			};
 

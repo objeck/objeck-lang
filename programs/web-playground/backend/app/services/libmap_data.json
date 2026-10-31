@@ -8,6 +8,12 @@
     "System.AI": ["AStar", "BreadthFirst", "DepthFirst", "Dijkstra", "EnergyFunction", "Environment", "FitnessFunction", "GameState", "GeneticAlgorithm", "Graph", "HillClimbing", "MarkovDecisionProcess", "Minimax", "MonteCarloTreeSearch", "QLearning", "Sarsa", "SearchResult", "SimulatedAnnealing", "StepResult"]
    }
   },
+  "ai_hub": {
+   "deps": ["gen_collect", "cipher", "json", "net"],
+   "bundles": {
+    "System.AI.Hub": ["HubClient"]
+   }
+  },
   "cipher": {
    "deps": [],
    "bundles": {
@@ -151,13 +157,13 @@
   "nlp": {
    "deps": ["gen_collect"],
    "bundles": {
-    "System.NLP": ["ApiSequenceTokenizer", "SentimentAnalyzer", "SentimentResult", "TF_IDF", "TextPreprocessor", "TextSimilarity", "TokenEncoding", "Tokenizer", "WordPieceTokenizer"]
+    "System.NLP": ["ApiSequenceTokenizer", "BpeTokenizer", "SentimentAnalyzer", "SentimentResult", "SubwordTokenizer", "TF_IDF", "TextPreprocessor", "TextSimilarity", "TokenEncoding", "Tokenizer", "WordPieceTokenizer"]
    }
   },
   "nlp_onnx": {
    "deps": ["gen_collect", "models", "opencv", "cipher", "json", "onnx", "nlp"],
    "bundles": {
-    "System.NLP.Onnx": ["BertEmbedder"]
+    "System.NLP.Onnx": ["BertEmbedder", "Prediction", "TextClassifier"]
    }
   },
   "odbc": {
