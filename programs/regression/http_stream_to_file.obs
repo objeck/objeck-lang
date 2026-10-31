@@ -280,7 +280,9 @@ class HttpStreamToFile {
 		Check("http: a 404 returns the response with its body", response <> Nil & response->GetCode() = 404 & response->GetContent() <> Nil & response->GetContent()->ToString()->Equals("nope"));
 		Check("http: a 404 leaves the existing file untouched", SameBytes(ReadAll(path), @chunked) & client->GetDownloadSize() = -1);
 
-		# a body cut short: Nil, and neither the file nor a .part
+		# a body cut short: Nil, and neither the file nor a .part. The server resets the
+		# connection, and on Windows the reset can discard the reply before its status line
+		# arrives (#669); that is a dropped connection too, and also Nil.
 		File->Delete(path);
 		client := HttpClient->New();
 		response := client->GetToFile(Url->New(base + "/short"), path);

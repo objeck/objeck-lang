@@ -1030,9 +1030,10 @@ response->GetStatusCode()->PrintLine();
 					# is not HTTP. A genuine 500 must fall through here so its headers
 					# and body are read like any other response.
 					if(status_code <> 0) {
+						line : String := Nil;
 						do {
 							line := socket->ReadLine();
-							if(line->Size() > 0) {
+							if(line <> Nil & line->Size() > 0) {
 								index := line->Find(':');
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
@@ -1045,7 +1046,15 @@ response->GetStatusCode()->PrintLine();
 								};
 							};
 						}
-						while(line->Size() > 0);
+						while(line <> Nil & line->Size() > 0);
+
+						# A reset can discard the rest of the reply (Windows loopback, #669). The
+						# line it ends on is Nil, or empty with a socket error: a dropped
+						# connection, not the end of the headers.
+						if(line = Nil | TCPSocket->GetLastError() <> Nil) {
+							socket->Close();
+							return Nil;
+						};
 
 						if(status_code = 301 | status_code = 302 | status_code = 303 |
 						   status_code = 307 | status_code = 308) {
@@ -1128,6 +1137,10 @@ if(response <> Nil & response->GetCode() = 200) {
 			@download_size := -1;
 			response := Get(url, "application/octet-stream");
 			@download_path := Nil;
+			# code 0: no status line arrived -- the connection dropped before the reply
+			if(response <> Nil & response->GetCode() = 0) {
+				return Nil;
+			};
 			return response;
 		}
 
@@ -1280,9 +1293,10 @@ if(response <> Nil & response->GetCode() = 200) {
 					# is not HTTP. A genuine 500 must fall through here so its headers
 					# and body are read like any other response.
 					if(status_code <> 0) {
+						line : String := Nil;
 						do {
 							line := socket->ReadLine();
-							if(line->Size() > 0) {
+							if(line <> Nil & line->Size() > 0) {
 								index := line->Find(':');
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
@@ -1295,7 +1309,15 @@ if(response <> Nil & response->GetCode() = 200) {
 								};
 							};
 						}
-						while(line->Size() > 0);
+						while(line <> Nil & line->Size() > 0);
+
+						# A reset can discard the rest of the reply (Windows loopback, #669). The
+						# line it ends on is Nil, or empty with a socket error: a dropped
+						# connection, not the end of the headers.
+						if(line = Nil | TCPSocket->GetLastError() <> Nil) {
+							socket->Close();
+							return Nil;
+						};
 
 						if(status_code = 301 | status_code = 302 | status_code = 303 |
 						   status_code = 307 | status_code = 308) {

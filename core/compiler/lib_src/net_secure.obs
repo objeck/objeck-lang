@@ -1131,6 +1131,10 @@ if(response <> Nil & response->GetCode() = 200) {
 			@download_size := -1;
 			response := Get(url, "application/octet-stream", pem);
 			@download_path := Nil;
+			# code 0: no status line arrived -- the connection dropped before the reply
+			if(response <> Nil & response->GetCode() = 0) {
+				return Nil;
+			};
 			return response;
 		}
 
