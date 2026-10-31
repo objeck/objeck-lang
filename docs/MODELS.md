@@ -71,6 +71,16 @@ ONNX models run fully on-device, on the accelerator the platform's build was com
 | `OpenPoseSession` | Human pose estimation | OpenPose | [CMU OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose) |
 | `FaceSession` | Face detection + recognition | SCRFD + ArcFace R50 | [InsightFace buffalo_l](https://github.com/deepinsight/insightface/releases/tag/v0.7) |
 
+### Hugging Face models by name
+
+Text models published on the Hugging Face Hub with an ONNX export download by name, with no Python: `System.AI.Hub.HubClient` (`-lib net,ai_hub`) fetches a repository's files into `~/.objeck/hub` (or `OBJECK_HUB_CACHE`), checks each file's size and SHA-256 against the Hub, and works offline from the cache. `System.NLP.Onnx.TextClassifier` then opens the folder. See [AI.md](AI.md#models-from-the-hugging-face-hub).
+
+```objeck
+folder := HubClient->New()->Snapshot("Xenova/distilbert-base-uncased-finetuned-sst-2-english",
+  ["config.json", "tokenizer.json", "tokenizer_config.json", "onnx/model.onnx"]);
+classifier := TextClassifier->New(folder);
+```
+
 ### Download Models
 
 **Phi-3 Mini (text generation, ~2 GB)**

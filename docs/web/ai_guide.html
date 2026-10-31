@@ -211,6 +211,7 @@
       </li>
       <li><a href="#opencv">Computer Vision (OpenCV)</a></li>
       <li><a href="#nlp">Natural Language Processing</a></li>
+      <li><a href="#hf">Hugging Face Models</a></li>
       <li><a href="#ref">Quick Reference</a></li>
      </ul>
     </div>
@@ -893,6 +894,42 @@ class NLPExample {
     <pre class="cmd">&gt; obc -src nlp.obs -lib gen_collect,nlp
 &gt; obr nlp</pre>
 
+    <!-- ═══════════════════════════════════════ Hugging Face ═══ -->
+    <h3 id="hf">Hugging Face Models</h3>
+    <div class="lib-flag">cipher,gen_collect,json,net,ai_hub,models,opencv,onnx,nlp,nlp_onnx</div>
+    <p>Download a model by name and run it the way Python's <code>transformers</code> does, with no Python installed. <code>System.AI.Hub.HubClient</code> fetches a repository's files from the Hugging Face Hub into a cache (<code>OBJECK_HUB_CACHE</code>, default <code>~/.objeck/hub</code>, in <code>huggingface_hub</code>'s layout), checks each file's size and SHA-256 against what the Hub reports, and serves from the cache when offline (<code>OBJECK_HUB_OFFLINE=1</code>) or when the Hub cannot be reached. A token in <code>HF_TOKEN</code> goes to the Hub only, never to the file CDN.</p>
+    <p><code>System.NLP.Onnx.TextClassifier</code> opens such a folder (what <code>save_pretrained</code> writes, with an ONNX export) and classifies text as <code>pipeline("text-classification")</code> does: the tokenizer from <code>tokenizer.json</code>, labels from <code>config.json</code>, the same sigmoid or softmax scoring, and the maximum length the model allows. This release reads WordPiece (BERT, DistilBERT) tokenizers; <code>System.NLP.BpeTokenizer</code>, RoBERTa's and GPT-2's tokenizer, is available on its own.</p>
+
+    <pre class="line-numbers"><code class="language-cpp">use System.AI.Hub, System.NLP.Onnx;
+
+class HfClassify {
+  function : Main(args : String[]) ~ Nil {
+    # download by name, checked against the Hub's sizes and SHA-256
+    hub := HubClient->New();
+    folder := hub->Snapshot("Xenova/distilbert-base-uncased-finetuned-sst-2-english",
+      ["config.json", "tokenizer.json", "tokenizer_config.json", "onnx/model.onnx"]);
+    if(folder = Nil) {
+      hub->GetError()->ErrorLine();
+      return;
+    };
+
+    # classify as pipeline("text-classification") does
+    classifier := TextClassifier->New(folder);
+    if(<>classifier->IsOpen()) {
+      classifier->GetError()->ErrorLine();
+      return;
+    };
+    each(p in classifier->Classify(["I loved it", "Not worth the ticket"])) {
+      p->ToString()->PrintLine();   # POSITIVE 0.9998, then NEGATIVE 0.9991
+    };
+    classifier->Close();
+  }
+}
+</code></pre>
+    <pre class="cmd">&gt; obc -src hf_classify.obs -lib cipher,gen_collect,json,net,ai_hub,models,opencv,onnx,nlp,nlp_onnx
+&gt; obr hf_classify</pre>
+    <p>Files of any size download with <code>HttpClient-&gt;GetToFile(url, path)</code> and <code>HttpsClient-&gt;GetToFile(url, path)</code>, which stream the body to <code>path.part</code> and move it into place only once it is complete.</p>
+
     <!-- ═══════════════════════════════════════ Quick Reference ═══ -->
     <h3 id="ref">Quick Reference</h3>
 
@@ -928,6 +965,7 @@ class NLPExample {
       <tr><td>Local SLM</td><td><code>Phi3Session</code></td><td><code>onnx</code></td><td>None</td></tr>
       <tr><td>Computer vision</td><td><code>Image</code>, <code>VideoCapture</code></td><td><code>opencv</code></td><td>None</td></tr>
       <tr><td>Sentiment / TF-IDF</td><td><code>SentimentAnalyzer</code>, <code>TF_IDF</code></td><td><code>nlp</code></td><td>None</td></tr>
+      <tr><td>Hugging Face models</td><td><code>HubClient</code>, <code>TextClassifier</code></td><td><code>ai_hub</code>, <code>nlp_onnx</code></td><td>Optional (<code>HF_TOKEN</code>)</td></tr>
      </tbody>
     </table>
 

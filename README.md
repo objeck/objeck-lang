@@ -71,6 +71,8 @@ Full details for every release are in the [CHANGELOG](CHANGELOG.md).
 ### v2026.10.2
   * **Query.Structured** &mdash; a columnar database in the standard library: SQL with joins, grouping, indexes and expressions; files, URLs, archive members and worksheets named in `FROM`; a crash-safe `.otab` file format; sources that read CSV, JSON, XML, text logs, filesystems, zip/tar, Excel, ODBC, ML results and image detections as tables ([design](docs/QUERY_DESIGN.md))
   * **ML and NLP lab** &mdash; kernel and one-class SVMs, outlier detectors and an autoencoder, `System.ML.Lab` for experiments, result tables and charts, and BERT sentence embeddings over ONNX
+  * **Hugging Face models without Python** &mdash; `TextClassifier` runs a text classifier as `pipeline()` does, `HubClient` downloads models by name into a verified cache, `BpeTokenizer` matches RoBERTa's and GPT-2's tokenizer id for id, and `GetToFile` streams downloads of any size to disk
+  * **Security fix** &mdash; an HTTP redirect to another host no longer receives your `Authorization` header or cookies
   * **Faster runtime** &mdash; a size-class allocator, a collection threshold that follows the live heap, an open-addressed `Hash`, an O(1) `Cache`, and unboxed `IntVector`/`IntMap`/`BitSet`
   * **Calls nest 16,384 deep** (`--call-depth`), and a full stack is recoverable compiled or interpreted
   * **Networking** &mdash; DTLS works for the first time, servers take IPv4 and IPv6 clients on every platform or bind one address, every socket failure says why, blocking I/O no longer stalls the collector, UTF-8 URLs, every HTTP status code
