@@ -1,0 +1,161 @@
+#~
+# A TLS client socket times out on a peer that goes quiet; it does not block forever
+#
+# A plain TCP client socket starts with a 30 second receive timeout (IPSocket::Open), but a
+# TLS client socket connected through IPSocket::Connect and got none: when a peer stopped
+# sending without closing, a read under TCPSecureSocket or HttpsClient blocked for good. One
+# run of http_stream_to_file in about a hundred hung that way on Windows. TLS client sockets
+# now start with a receive timeout too: 300 seconds by default, since a model API can be
+# silent for longer than 30, and OBJECK_TLS_RECV_TIMEOUT (milliseconds) overrides it. This
+# test sets 1.5 seconds and checks both places a quiet peer can stop a client:
+#
+#   - during the handshake: a plain TCP server accepts and never answers the ClientHello,
+#     so TCPSecureSocket->New fails rather than waits;
+#   - after it: a TLS server completes the handshake and never answers the request, so
+#     HttpsClient->Get returns Nil rather than waits.
+#
+# Neither server ever closes the connection, so against the old VM the test blocks until the
+# runner's timeout stops it.
+# EXTRA_LIBS: net
+~#
+
+use Collection, System.IO.Net, System.IO.Filesystem, System.Concurrency, System.Time, Web.HTTP;
+
+# Accepts connections and holds them open, saying nothing
+class QuietPlainServer from Thread {
+	@server : TCPSocketServer;
+	@held : Vector<TCPSocket>;
+
+	New(server : TCPSocketServer) {
+		Parent("quiet-plain");
+		@server := server;
+		@held := Vector->New()<TCPSocket>;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		while(true) {
+			client := @server->Accept();
+			if(client <> Nil) {
+				@held->AddBack(client);
+			};
+		};
+	}
+}
+
+# Completes each TLS handshake and then says nothing
+class QuietTlsServer from Thread {
+	@server : TCPSecureSocketServer;
+	@held : Vector<TCPSecureSocket>;
+
+	New(server : TCPSecureSocketServer) {
+		Parent("quiet-tls");
+		@server := server;
+		@held := Vector->New()<TCPSecureSocket>;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		while(true) {
+			client := @server->Accept();
+			if(client <> Nil) {
+				@held->AddBack(client);
+			};
+		};
+	}
+}
+
+class TlsClientRecvTimeout {
+	@failed : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		TlsClientRecvTimeout->New()->Run();
+	}
+
+	New() {
+		@failed := 0;
+	}
+
+	method : Run() ~ Nil {
+		# read when the first TLS socket connects, so set before any
+		Runtime->SetEnvironmentVariable("OBJECK_TLS_RECV_TIMEOUT", "1500");
+
+		name := "tls-recv-timeout-{$(Runtime->GetProcessId())}";
+		if(<>MakeCert(name)) {
+			"FAIL: openssl could not make the test certificate"->PrintLine();
+			Runtime->Exit(1);
+		};
+		pem := "{$name}-cert.pem";
+
+		Handshake(pem);
+		Response(name, pem);
+
+		File->Delete(pem);
+		File->Delete("{$name}-key.pem");
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: a quiet TLS peer times the client out, in the handshake and after it"->PrintLine();
+		Runtime->Exit(0);
+	}
+
+	# a peer that accepts TCP and never answers the ClientHello
+	method : Handshake(pem : String) ~ Nil {
+		server := TCPSocketServer->New("127.0.0.1", 0);
+		if(<>server->Listen(8)) {
+			Fail("handshake: the plain server did not listen");
+			return;
+		};
+		port := server->GetPort();
+		QuietPlainServer->New(server)->Execute(Nil);
+
+		timer := Timer->New(true);
+		socket := TCPSecureSocket->New("127.0.0.1", port, pem);
+		timer->End();
+		seconds := timer->GetElapsedTime();
+
+		Check("handshake: the connect fails", <>socket->IsOpen());
+		Check("handshake: within the timeout, not after a long wait ({$seconds} s)", seconds < 20.0);
+		error := TCPSecureSocket->GetLastError();
+		Check("handshake: GetLastError says why", error <> Nil & error->Size() > 0);
+	}
+
+	# a peer that completes the handshake and never answers the request
+	method : Response(name : String, pem : String) ~ Nil {
+		server := TCPSecureSocketServer->New(pem, "{$name}-key.pem", "", "127.0.0.1", 0);
+		if(<>server->Listen()) {
+			Fail("response: the TLS server did not listen");
+			return;
+		};
+		port := server->GetPort();
+		QuietTlsServer->New(server)->Execute(Nil);
+
+		timer := Timer->New(true);
+		response := HttpsClient->New()->Get(Url->New("https://127.0.0.1:{$port}/quiet"), "text/plain", pem);
+		timer->End();
+		seconds := timer->GetElapsedTime();
+
+		code := response <> Nil ? response->GetCode() : -1;
+		Check("response: Get returns no response (code {$code})", response = Nil | response->GetCode() = 0);
+		Check("response: within the timeout, not after a long wait ({$seconds} s)", seconds < 20.0);
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			Fail(name);
+		};
+	}
+
+	method : Fail(name : String) ~ Nil {
+		"  FAIL: {$name}"->PrintLine();
+		@failed += 1;
+	}
+
+	function : MakeCert(name : String) ~ Bool {
+		File->Delete("{$name}-cert.pem");
+		File->Delete("{$name}-key.pem");
+		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
+		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=objeck-tls-timeout-test\" -addext \"subjectAltName=IP:127.0.0.1\" -keyout {$name}-key.pem -out {$name}-cert.pem";
+		return Runtime->Command(command) = 0;
+	}
+}

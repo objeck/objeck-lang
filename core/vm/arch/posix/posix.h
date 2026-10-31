@@ -954,6 +954,30 @@ class IPSecureSocket {
     return cached == 1;
   }
 
+  // The receive timeout every TLS client socket starts with, in milliseconds.
+  // A plain TCP client gets 30 seconds (IPSocket::Open), but TLS connects went
+  // through IPSocket::Connect and got none, so a peer that went quiet without
+  // closing left a read blocked forever. TLS is given 300 seconds rather than
+  // 30: API.OpenAI and API.Google wait on non-streaming HTTPS requests while a
+  // model reasons, often silently for longer than 30 seconds. 0 means no
+  // timeout. OBJECK_TLS_RECV_TIMEOUT (milliseconds) overrides it. Cached on
+  // first read.
+  static int DefaultRecvTimeoutMs() {
+    static int cached = -1;
+    if(cached < 0) {
+      cached = 300000;
+      const char* val = getenv("OBJECK_TLS_RECV_TIMEOUT");
+      if(val && *val) {
+        char* end = nullptr;
+        const long ms = strtol(val, &end, 10);
+        if(end != val && *end == '\0' && ms >= 0 && ms <= 0x7fffffffL) {
+          cached = (int)ms;
+        }
+      }
+    }
+    return cached;
+  }
+
   //
   // Connects net for mbedTLS as mbedtls_net_connect does -- each address the
   // name resolves to, in turn -- returning 0 or the error it would return, with
@@ -968,6 +992,18 @@ class IPSecureSocket {
     }
 
     net.fd = (int)sock;
+
+    // a stream socket starts with the TLS default receive timeout (best effort,
+    // as IPSocket::Open's is): without it a quiet peer blocks a read forever
+    const int recv_ms = DefaultRecvTimeoutMs();
+    if(type == SOCK_STREAM && recv_ms > 0) {
+      struct timeval tv;
+      tv.tv_sec = recv_ms / 1000;
+      tv.tv_usec = (recv_ms % 1000) * 1000;
+      if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+        errno = 0;
+      }
+    }
     return 0;
   }
 

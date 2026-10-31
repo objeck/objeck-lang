@@ -702,6 +702,31 @@ class IPSecureSocket {
     return cached == 1;
   }
 
+  // The receive timeout every TLS client socket starts with, in milliseconds.
+  // A plain TCP client gets 30 seconds (IPSocket::Open), but TLS connects went
+  // through IPSocket::Connect and got none, so a peer that went quiet without
+  // closing left a read blocked forever. TLS is given 300 seconds rather than
+  // 30: API.OpenAI and API.Google wait on non-streaming HTTPS requests while a
+  // model reasons, often silently for longer than 30 seconds. 0 means no
+  // timeout. OBJECK_TLS_RECV_TIMEOUT (milliseconds) overrides it. Cached on
+  // first read.
+  static int DefaultRecvTimeoutMs() {
+    static int cached = -1;
+    if(cached < 0) {
+      cached = 300000;
+      size_t len = 0;
+      char val[16] = { 0 };
+      if(!getenv_s(&len, val, sizeof(val), "OBJECK_TLS_RECV_TIMEOUT") && len > 0) {
+        char* end = nullptr;
+        const long ms = strtol(val, &end, 10);
+        if(end != val && *end == '\0' && ms >= 0 && ms <= 0x7fffffffL) {
+          cached = (int)ms;
+        }
+      }
+    }
+    return cached;
+  }
+
   //
   // Connects net for mbedTLS as mbedtls_net_connect does -- each address the
   // name resolves to, in turn -- returning 0 or the error it would return, with
@@ -717,6 +742,16 @@ class IPSecureSocket {
 
     // mbedtls keeps a Winsock handle as an int, as mbedtls_net_connect does
     net.fd = (int)sock;
+
+    // a stream socket starts with the TLS default receive timeout (best effort,
+    // as IPSocket::Open's is): without it a quiet peer blocks a read forever
+    const int recv_ms = DefaultRecvTimeoutMs();
+    if(type == SOCK_STREAM && recv_ms > 0) {
+      const DWORD timeout = (DWORD)recv_ms;
+      if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout)) == SOCKET_ERROR) {
+        WSASetLastError(0);
+      }
+    }
     return 0;
   }
 
