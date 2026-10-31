@@ -13,7 +13,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://scan.coverity.com/projects/10314/badge.svg" alt="Coverity Scan Build Status"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.10.1-blue" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.10.2-blue" alt="Latest Release"></a>
 </p>
 
 ## Why Objeck?
@@ -37,12 +37,12 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Ubuntu 24.04: one package, system libraries included (-arm64 for ARM)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.10.1/objeck-ubuntu24.04-x64_2026.10.1.deb
-sudo apt install ./objeck-ubuntu24.04-x64_2026.10.1.deb
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.10.2/objeck-ubuntu24.04-x64_2026.10.2.deb
+sudo apt install ./objeck-ubuntu24.04-x64_2026.10.2.deb
 
 # Any other Linux, or macOS: the archive
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.10.1/objeck-linux-x64_2026.10.1.tgz
-tar xzf objeck-linux-x64_2026.10.1.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.10.2/objeck-linux-x64_2026.10.2.tgz
+tar xzf objeck-linux-x64_2026.10.2.tgz
 # Linux only: install the system libraries the toolchain links against
 # (mbedTLS, readline, SDL2/GL, OpenCV, unixODBC, LAME) --
 # obr does not start without them. --check reports without installing.
@@ -68,7 +68,7 @@ obc hello && obr hello
 
 Full details for every release are in the [CHANGELOG](CHANGELOG.md).
 
-### v2026.10.2
+### v2026.10.2 ✅
   * **Query.Structured** &mdash; a columnar database in the standard library: SQL with joins, grouping, indexes and expressions; files, URLs, archive members and worksheets named in `FROM`; a crash-safe `.otab` file format; sources that read CSV, JSON, XML, text logs, filesystems, zip/tar, Excel, ODBC, ML results and image detections as tables ([design](docs/QUERY_DESIGN.md))
   * **ML and NLP lab** &mdash; kernel and one-class SVMs, outlier detectors and an autoencoder, `System.ML.Lab` for experiments, result tables and charts, and BERT sentence embeddings over ONNX
   * **Hugging Face models without Python** &mdash; `TextClassifier` runs a text classifier as `pipeline()` does, `HubClient` downloads models by name into a verified cache, `BpeTokenizer` matches RoBERTa's and GPT-2's tokenizer id for id, and `GetToFile` streams downloads of any size to disk
@@ -85,7 +85,7 @@ Full details for every release are in the [CHANGELOG](CHANGELOG.md).
   * **Compiler and library fixes** &mdash; a quote inside `{$...}` is an error instead of a compiler hang; a bounded generic class returns its type argument and a literal in `{$...}` compiles; ambiguous names, numeric literals (`0o` is octal; `010` is an error), array literals; CSV, JSON (escapes are decoded on parse), regex, NLP, ML, Ollama, OpenAI, Gemini, SDL2 and ODBC, including a macOS driver manager that could load no driver
   * **Upgrading** &mdash; rebuild your own `.obl` libraries and recompile `.obe` files; a v2026.10.1 `obu` in a non-ASCII install directory cannot update itself, so install by hand; `Directory->List` drops `.` and `..` on Windows; `CompressBr` is `CompressDeflate`; `Byte[]->ToHexString` is a digest; `Hash` iteration order changes; stop calling `JsonElement->Decode` on parsed text; `TF_IDF->New()` smooths and normalizes by default; XML `FindElements` `[n]` is the n-th match, not the first n; `Query` returns `Nil` for an unknown column in a select list or `ORDER BY`; the full list is in the [CHANGELOG](CHANGELOG.md#v2026102---2026-10-28)
 
-### v2026.10.1 ✅
+### v2026.10.1
   * **Typed errors** &mdash; `Runtime->Raise`, and `try`/`on`/`finally` that catch by error type
   * **Named arguments, method-level generics and `ref` parameters**
   * **Array literals hold expressions; jagged arrays**
@@ -100,7 +100,7 @@ Full details for every release are in the [CHANGELOG](CHANGELOG.md).
 
 ## Downloads
 
-**Latest Release:** [v2026.10.1](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.10.2](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|
