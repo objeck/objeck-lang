@@ -1,0 +1,120 @@
+#~
+Compiled code calling back into the interpreter keeps the collector's stack
+typing honest (#1475, #1476).
+
+Phase 2 of the GC roots redesign (docs/GC_ROOTS_DESIGN.md) types each word of a
+thread's operand stack from the reference maps of the interpreted frames that
+own it, and the collector skips the words typed Int or Float. A compiled method
+entered from the interpreter is not in the call stack, though: it is only the
+thread's current frame. When it calls an interpreted method, a nested
+interpreter pushes that method's frames onto the same call stack, directly
+above the compiled method's caller. The attribution then laid the interpreted
+callee's segment over the compiled method's own operand-stack words, so a
+reference the compiled method still had pending was typed as one of the
+callee's Int literals, and a minor collection neither marked nor relocated it.
+The nightly heap verifier caught it in query_index_differential and
+query_expr_differential (B3: a typed reference into the nursery after the
+collection), with the JIT on only.
+
+Here Run (interpreted) calls Build (compiled, it is native), which calls Leaf
+(interpreted) with its own results pending, and Leaf holds three Int literals
+on its stack while Churn allocates. run_vm_flag_tests.py section 27 runs it with
+the JIT on, Leaf kept interpreted (OBJECK_JIT_THRESHOLD), a 64k nursery and the
+roots audit, which must find every word where the maps say. Before the fix the
+audit found the shifted typing on every collection: reference-typed words
+holding plain numbers at -opt s0, and frames claiming more of the stack than
+there is at -opt s3. On its own the program checks the trees it built.
+~#
+
+class BridgeNode {
+  @value : Int;
+  @left : BridgeNode;
+  @right : BridgeNode;
+  @a : Int;
+  @b : Int;
+  @c : Int;
+
+  New(value : Int, left : BridgeNode, right : BridgeNode) {
+    @value := value;
+    @left := left;
+    @right := right;
+  }
+
+  New(a : Int, b : Int, c : Int, value : Int) {
+    @a := a;
+    @b := b;
+    @c := c;
+    @value := value;
+  }
+
+  method : public : Sum() ~ Int {
+    total := @value + @a + @b + @c;
+    if(@left <> Nil) {
+      total += @left->Sum();
+    };
+    if(@right <> Nil) {
+      total += @right->Sum();
+    };
+    return total;
+  }
+}
+
+class GcRootsJitBridge {
+  @sink : static : Int;
+
+  function : Main(args : String[]) ~ Nil {
+    expected := Expected(0);
+    bad := Run(expected);
+    if(bad = 0) {
+      "PASS: every tree built across the bridge is intact"->PrintLine();
+    }
+    else {
+      "FAIL: {$bad} trees came back wrong"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  # interpreted: enters the compiled Build from the interpreter
+  function : Run(expected : Int) ~ Int {
+    bad := 0;
+    for(i := 0; i < 400; i += 1;) {
+      tree := Build(0);
+      if(tree->Sum() <> expected) {
+        bad += 1;
+      };
+    };
+    return bad;
+  }
+
+  # compiled: its own result and the depth are pending across the call to the
+  # interpreted Leaf
+  function : native : Build(depth : Int) ~ BridgeNode {
+    if(depth < 4) {
+      return BridgeNode->New(depth, Build(depth + 1), Leaf(depth));
+    };
+    return Leaf(depth);
+  }
+
+  # interpreted, called from compiled code: three Int literals are on its stack
+  # while Churn collects
+  function : Leaf(depth : Int) ~ BridgeNode {
+    return BridgeNode->New(1, 2, 3, Churn(depth));
+  }
+
+  function : Churn(depth : Int) ~ Int {
+    # objects, not arrays: arrays are born in the old generation
+    for(i := 0; i < 200; i += 1;) {
+      junk := BridgeNode->New(i, i, i, i);
+      @sink += junk->Sum();
+    };
+    return depth;
+  }
+
+  # what Build(depth)->Sum() is: a leaf adds 1 + 2 + 3 + depth
+  function : Expected(depth : Int) ~ Int {
+    if(depth < 4) {
+      return depth + Expected(depth + 1) + 6 + depth;
+    };
+    return 6 + depth;
+  }
+}
