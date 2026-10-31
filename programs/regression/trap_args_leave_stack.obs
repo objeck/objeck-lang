@@ -38,7 +38,7 @@ class TrapArgsLeaveStack {
     Garbage();
     allocated := Runtime->GetProperty("runtime.memory.allocated")->ToInt();
     if(bound & allocated < big) {
-      "PASS: the traps left nothing behind ({$allocated} bytes allocated)"->PrintLine();
+      "PASS: the traps left nothing behind"->PrintLine();
     }
     else {
       "FAIL: bound={$bound}; a trap's arguments kept a dead 32 MB server alive ({$allocated} bytes allocated)"->PrintLine();
