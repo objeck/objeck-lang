@@ -3,13 +3,19 @@
 		"string": "@VERSION@",
 		"year": @YEAR@
 	},
-	"title": "Query.Structured, a columnar database in the standard library; a faster runtime; DTLS and dual-stack servers; non-ASCII text on Windows; System.ML and System.NLP lab work",
+	"title": "v2026.10.3 (in development)",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
 		"markdown_out": "readme.md"
 	},
 	"features": [
+		{
+			"version": "v2026.10.3",
+			"items": [
+				"In development: this version has no release notes yet. CHANGELOG.md lists what it will contain."
+			]
+		},
 		{
 			"version": "v2026.10.2",
 			"items": [
