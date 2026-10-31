@@ -6892,6 +6892,11 @@ static bool UdpSocketOpen(const size_t* instance)
 // every interface) in the fourth.
 //
 bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
+  // The bytecode pushes the instance and one more word (TRAP args=3, with the
+  // id); this trap reads the instance from 'inst', but both words are its to
+  // take (#1457, see SockUdpClose)
+  PopInt(op_stack, stack_pos);
+  PopInt(op_stack, stack_pos);
   if(inst) {
     const long port = (long)inst[2];
     std::string host;
@@ -6927,6 +6932,11 @@ bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op
 }
 
 bool TrapProcessor::SockUdpClose(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
+  // The bytecode pushes the instance (TRAP args=2, with the id); this trap
+  // reads it from 'inst', but the word is still its to take. Left on the
+  // interpreter's operand stack, it stayed there for the life of the thread
+  // and kept the socket alive (#1457).
+  PopInt(op_stack, stack_pos);
   if(UdpSocketOpen(inst)) {
     UdpEndpoint* ep = (UdpEndpoint*)inst[1];
     // Forgotten once closed. The handle and the freed address were left in
@@ -11574,6 +11584,9 @@ bool TrapProcessor::FileSize(StackProgram* program, size_t* inst, size_t* &op_st
 
 bool TrapProcessor::FileTempName(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) 
 {
+  // the receiver word the bytecode pushes (TRAP args=2, with the id), unused
+  // here but this trap's to take (#1457, see SockUdpClose)
+  PopInt(op_stack, stack_pos);
   // decoded, not widened byte by byte: a temp directory under a user folder with
   // an accented name came back as mojibake
   const std::wstring full_path = FromNativePath(File::TempName());
