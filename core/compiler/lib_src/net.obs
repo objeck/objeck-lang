@@ -1030,9 +1030,10 @@ response->GetStatusCode()->PrintLine();
 					# is not HTTP. A genuine 500 must fall through here so its headers
 					# and body are read like any other response.
 					if(status_code <> 0) {
+						line : String := Nil;
 						do {
 							line := socket->ReadLine();
-							if(line->Size() > 0) {
+							if(line <> Nil & line->Size() > 0) {
 								index := line->Find(':');
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
@@ -1045,12 +1046,12 @@ response->GetStatusCode()->PrintLine();
 								};
 							};
 						}
-						while(line->Size() > 0);
+						while(line <> Nil & line->Size() > 0);
 
 						# A reset can discard the rest of the reply (Windows loopback, #669). The
-						# empty line it leaves came with a socket error: a dropped connection,
-						# not the end of the headers.
-						if(TCPSocket->GetLastError() <> Nil) {
+						# line it ends on is Nil, or empty with a socket error: a dropped
+						# connection, not the end of the headers.
+						if(line = Nil | TCPSocket->GetLastError() <> Nil) {
 							socket->Close();
 							return Nil;
 						};
@@ -1292,9 +1293,10 @@ if(response <> Nil & response->GetCode() = 200) {
 					# is not HTTP. A genuine 500 must fall through here so its headers
 					# and body are read like any other response.
 					if(status_code <> 0) {
+						line : String := Nil;
 						do {
 							line := socket->ReadLine();
-							if(line->Size() > 0) {
+							if(line <> Nil & line->Size() > 0) {
 								index := line->Find(':');
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
@@ -1307,12 +1309,12 @@ if(response <> Nil & response->GetCode() = 200) {
 								};
 							};
 						}
-						while(line->Size() > 0);
+						while(line <> Nil & line->Size() > 0);
 
 						# A reset can discard the rest of the reply (Windows loopback, #669). The
-						# empty line it leaves came with a socket error: a dropped connection,
-						# not the end of the headers.
-						if(TCPSocket->GetLastError() <> Nil) {
+						# line it ends on is Nil, or empty with a socket error: a dropped
+						# connection, not the end of the headers.
+						if(line = Nil | TCPSocket->GetLastError() <> Nil) {
 							socket->Close();
 							return Nil;
 						};
