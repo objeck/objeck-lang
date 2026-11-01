@@ -190,7 +190,9 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     with exactly the call-stack line and exit status 1 -- under --jit=off, the
     default and --jit=1. Each call back used to get a call stack of its own, so
     nothing bounded the recursion and it died in the OS (0xC00000FD, SIGSEGV)
-    with no output.
+    with no output. The same library also reads the VMContext it is handed:
+    APITools_GetAbiVersion must report 1 and struct_size must cover every
+    field lib_api.h declares ("abi 1 1").
  19. Transparent huge pages stay off the stacks of the threads the VM starts
     (Linux only). While vm_thread_stack_pages.obs holds 100 idle threads, every
     thread's 8 MB native stack carries the kernel's no-huge-page flag ("nh" in
@@ -1270,6 +1272,13 @@ def check_native_callback_depth(obc, obr, env, bin_dir):
             return
 
         lib_flag = "--lib-path=" + os.path.join(scratch, "lib")
+        # the VMContext a library is handed names its version and size, so a
+        # library built against a newer lib_api.h can tell what an older VM lacks
+        rc, out, err = run([obr, lib_flag, dest, "abi"], env=env, cwd=bin_dir)
+        check("a native library reads VMContext abi_version 1 and a struct_size covering its header",
+              rc == 0 and out.strip().endswith(b"abi 1 1"),
+              f"rc={rc} out={out[-160:]!r} stderr={err[-300:]!r}")
+
         for label, flags in (("jit=off", ["--jit=off"]), ("default", []), ("jit=1", ["--jit=1"])):
             rc, out, err = run([obr, lib_flag] + flags + [dest, "300"], env=env, cwd=bin_dir)
             check(f"a bounded recursion through a native callback runs 300 deep ({label})",
