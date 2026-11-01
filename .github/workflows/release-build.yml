@@ -98,7 +98,7 @@ jobs:
           echo "✅ Synced $PS1 to $MAJOR.$MINOR.$PATCH"
 
       - name: Upload version metadata
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: version-metadata
           path: |
@@ -859,7 +859,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Upload release artifacts
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-${{ matrix.platform }}
           path: |
@@ -980,14 +980,14 @@ jobs:
           echo "✅ LSP package created: objeck-lsp_0.0.0.zip"
 
       - name: Upload LSP artifact
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-lsp
           path: objeck-lsp_0.0.0.zip
           retention-days: 7
 
       - name: Upload VS Code extension artifact
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: vscode-extension
           path: tools/lsp/clients/vscode/objeck-lsp.vsix
@@ -1230,7 +1230,7 @@ jobs:
           git push origin master || echo "Push skipped (no changes)"
 
       - name: Upload API docs
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: api-docs
           path: docs/api.zip
