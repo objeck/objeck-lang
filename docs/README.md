@@ -17,6 +17,7 @@
 | [native_interface.md](native_interface.md) | Calling C/C++ from Objeck — the whole contract |
 | [ADDING_AN_INTRINSIC.md](ADDING_AN_INTRINSIC.md) | Every file to touch for a new intrinsic or VM trap, and what breaks when one is missed |
 | [optimization_pipeline.md](optimization_pipeline.md) | What the optimizer does, and in what order |
+| [SECURITY_MODEL.md](SECURITY_MODEL.md) | What the VM trusts: an `.obe` is native code |
 | [performance.md](performance.md) | Benchmarks and where the time goes |
 | [AI.md](AI.md) | AI and ML developer guide |
 | [MODELS.md](MODELS.md) | Models the AI bindings expect |
