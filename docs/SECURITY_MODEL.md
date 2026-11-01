@@ -93,7 +93,7 @@ Nothing relates them to the program they are part of:
   looked up at run time; `StackProgram::GetClass` and `StackClass::GetMethod`
   bounds-check and return `nullptr` (`common.h:2060`, `:1497`), but the call
   paths dereferenced that result (`interpreter.cpp:2439`, `:2550`, `:2611`,
-  `:2655`). A pending change reports it as a runtime error instead; it is the
+  `:2655`). #1494 reports it as a runtime error instead; it is the
   one item on this list with a run-time guard.
 
 ---
