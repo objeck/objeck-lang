@@ -34,6 +34,12 @@
 #include "common.h"
 #include <string.h>
 
+#ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
+// Thrown in place of exit(1) by the libFuzzer build (tools/fuzz/loader), so a
+// rejected input returns to the harness instead of ending the fuzzing run.
+struct LoaderFuzzReject {};
+#endif
+
 class Loader {
   static StackProgram* program;
   StackInstr** cached_instrs;
@@ -56,7 +62,17 @@ class Loader {
   std::map<const std::wstring, const int> params;
   bool from_mem;
   bool abandoned;
-  
+
+  // Every loader failure ends here, after its message has been written: obr
+  // exits with status 1. The fuzz build throws instead (see LoaderFuzzReject).
+  [[noreturn]] static void LoadFailed() {
+#ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
+    throw LoaderFuzzReject();
+#else
+    LoadFailed();
+#endif
+  }
+
   // Bounds guard for the raw deserialization cursor. Bytecode (.obe/.obl) is
   // untrusted input; a truncated or crafted file must never drive a read past the
   // decompressed buffer. buffer_end is null only for the trusted in-memory
@@ -65,7 +81,7 @@ class Loader {
   inline void EnsureBytes(size_t needed) {
     if(buffer_end && (buffer > buffer_end || needed > (size_t)(buffer_end - buffer))) {
       std::wcerr << L">>> Corrupt bytecode: read past end of buffer <<<" << std::endl;
-      exit(1);
+      LoadFailed();
     }
   }
 
@@ -85,7 +101,7 @@ class Loader {
     const long value = ReadInt();
     if(value < 0 || (buffer_end && (size_t)value > (size_t)(buffer_end - buffer))) {
       std::wcerr << L">>> Corrupt bytecode: invalid element count/length <<<" << std::endl;
-      exit(1);
+      LoadFailed();
     }
     return static_cast<int>(value);
   }
@@ -115,7 +131,7 @@ class Loader {
     const int size = static_cast<int>(ReadInt());
     if(size < 0) {
       std::wcerr << L">>> Corrupt bytecode: negative string length <<<" << std::endl;
-      exit(1);
+      LoadFailed();
     }
     EnsureBytes((size_t)size);
     std::string in(buffer, size);
@@ -124,7 +140,7 @@ class Loader {
     std::wstring out;
     if(!BytesToUnicode(in, out)) {
       std::wcerr << L">>> Unable to read unicode std::string <<<" << std::endl;
-      exit(1);
+      LoadFailed();
     }
 
     return out;
@@ -136,7 +152,7 @@ class Loader {
     const int size = static_cast<int>(ReadInt());
     if(size < 0) {
       std::wcerr << L">>> Corrupt bytecode: negative character length <<<" << std::endl;
-      exit(1);
+      LoadFailed();
     }
     if(size) {
       EnsureBytes((size_t)size);
@@ -144,7 +160,7 @@ class Loader {
       buffer += size;
       if(!BytesToCharacter(in, out)) {
         std::wcerr << L">>> Unable to read character <<<" << std::endl;
-        exit(1);
+        LoadFailed();
       }
     }
     else {
@@ -194,6 +210,32 @@ public:
     buffer_end = nullptr;
     program = new StackProgram;
   }
+
+  // An image that is already decompressed and comes with its length, checked
+  // like a file (the fuzz harness, tools/fuzz/loader). The bytes are copied, so
+  // the caller keeps its own buffer.
+  Loader(const char* image, size_t size, const std::vector<std::wstring>& a) {
+    from_mem = false;
+    abandoned = false;
+    arguments = a;
+    filename = L"<memory>";
+    LoadOperInstrs();
+
+    string_cls_id = -1;
+    buffer_pos = 0;
+    buffer_size = size;
+    // exactly 'size' bytes (one when empty), so a sanitizer sees any read past it
+    alloc_buffer = buffer = (char*)malloc(size ? size : 1);
+    if(size) {
+      memcpy(buffer, image, size);
+    }
+    buffer_end = buffer + size;
+    program = new StackProgram;
+  }
+
+  // Decompresses an .obe file's bytes ([uncompressed size:4][zlib] or raw
+  // zlib) into a malloc'd image, or returns nullptr when they do not decode.
+  static char* DecodeImage(const char* data, size_t size, size_t& image_size);
 
   Loader(const wchar_t* arg) {
     from_mem = false;
