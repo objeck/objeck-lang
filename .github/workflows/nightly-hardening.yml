@@ -166,7 +166,7 @@ jobs:
     steps:
       - name: Checkout the tested commit
         timeout-minutes: 5
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.use_dispatch_ref && github.sha || needs.resolve.outputs.head_sha }}
 
@@ -376,7 +376,7 @@ jobs:
       issue_count: ${{ steps.triage.outputs.issue_count }}
       new_issues: ${{ steps.triage.outputs.new_issues }}
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Triage tool tests
         run: |
@@ -478,7 +478,7 @@ jobs:
       matrix:
         issue: ${{ fromJSON(needs.triage.outputs.new_issues) }}
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: .github/actions
 
