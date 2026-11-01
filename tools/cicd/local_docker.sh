@@ -9,7 +9,9 @@
 #
 # The image is cached after the first build (about two minutes); the build tree lives in
 # a Docker volume (objeck-ci-work), so it is not slowed by the bind mount and survives
-# between runs. `docker volume rm objeck-ci-work` clears it.
+# between runs, and the QUIC libraries (AWS-LC, ngtcp2, nghttp3, nghttp2: about ten
+# minutes the first time) in another (objeck-ci-deps). `docker volume rm objeck-ci-work
+# objeck-ci-deps` clears them.
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
@@ -29,7 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential libopencv-dev libmbedtls-dev unixodbc-dev libsqliteodbc \
       libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev \
       libegl1 libegl-mesa0 libgl1-mesa-dri libreadline-dev libeigen3-dev libmp3lame-dev \
-      ccache expect git python3 openssl ca-certificates \
+      ccache expect git python3 openssl ca-certificates cmake \
     && rm -rf /var/lib/apt/lists/*
 EOF
 
@@ -41,4 +43,5 @@ fi
 MSYS_NO_PATHCONV=1 docker run --rm \
   -v "$src":/src:ro \
   -v objeck-ci-work:/work -e OBJECK_CI_WORK=/work \
+  -v objeck-ci-deps:/root/objeck-deps \
   -w /src "$IMAGE" bash tools/cicd/local_linux.sh "$@"
