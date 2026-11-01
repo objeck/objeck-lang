@@ -63,7 +63,7 @@ after a version bump, or every input is refused at the version check.
 ## Findings
 
 Every finding is fixed and has a case in
-`programs/regression/run_vm_flag_tests.py` (section 29), which runs `obr` on a
+`programs/regression/run_vm_flag_tests.py` (section 30), which runs `obr` on a
 reduced input and expects the loader's message and exit status 1. The inputs
 are in `programs/regression/vm_flag_fixtures/loader/`, written by
 `make_regression_inputs.py` from a small compiled program; the test stamps

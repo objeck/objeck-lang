@@ -46,6 +46,8 @@ class ObjeckLang {
   std::vector<std::wstring> errors;
   char* code;
 
+  bool CompileSource(std::vector<std::pair<std::wstring, std::wstring>>& file_source, const std::wstring opt_level);
+
 public:
   ObjeckLang(const std::wstring &lib_uses);
   ~ObjeckLang();

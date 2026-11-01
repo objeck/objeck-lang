@@ -295,7 +295,16 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     (GC roots phases 3 and 4: AMD64 and ARM64), and OBJECK_GC_ROOTS=conservative,
     which scans the old window over every slot, must make the compiled run FAIL
     as well, so the typed slots are shown to be what keeps the Int intact.
- 29. The loader refuses a malformed program with a message and status 1, never
+ 29. A fatal compiler error leaves through the command line's own door. The
+    compiler's back end ended the process with exit(1) where it could not go
+    on, which also killed any host that embedded it (the language server, the
+    REPL); it throws CompilerFatal now and obc prints the same text and exits
+    with the same status. A library that is not there ('-lib no_such_library')
+    must print "Unable to read library: ..." and exit 1 with no "internal
+    error" and no .obe, and an executable named as a library must print
+    "Unable to use executable ..." and exit 1. The embedding half is
+    tools/lsp/tests/run_lsp_tests.py (check_fatal_library).
+ 30. The loader refuses a malformed program with a message and status 1, never
     a crash. The inputs are what the loader fuzz target (tools/fuzz/loader)
     found, reduced, in vm_flag_fixtures/loader/ as decompressed images; the
     check stamps each with this toolchain's version and compresses it as obc
@@ -669,6 +678,8 @@ def main():
     check_array_index_registers(obc, obr, env, bin_dir)
 
     check_jit_off_interprets_native(obc, obr, env, bin_dir)
+
+    check_compiler_fatal(obc, obr, env, bin_dir)
 
     check_gc_roots_audit(obc, obr, env, bin_dir)
 
@@ -1553,6 +1564,55 @@ def check_jit_off_interprets_native(obc, obr, env, bin_dir):
               off_out == on_out, f"off={off_out[-300:]!r} on={on_out[-300:]!r}")
 
 
+def check_compiler_fatal(obc, obr, env, bin_dir):
+    # ---- 29. a fatal compiler error: the same text, the same status -------------------
+    work = tempfile.mkdtemp(prefix="objk-fatal-")
+    try:
+        src = os.path.join(work, "hello.obs")
+        with open(src, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write('class Hello {\n  function : Main(args : String[]) ~ Nil {\n    "hello"->PrintLine();\n  }\n}\n')
+        dest = os.path.join(work, "hello.obe")
+
+        rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+        check("fatal: the control program compiles", rc == 0 and os.path.exists(dest),
+              err.decode(errors="replace")[-300:])
+        if rc != 0:
+            return
+
+        # a library that is not there
+        missing = os.path.join(work, "missing.obe")
+        rc, out, err = run([obc, "-src", src, "-lib", "no_such_library_zq", "-dest", missing],
+                           env=env, cwd=bin_dir)
+        text = err.decode(errors="replace")
+        check("fatal: a missing library exits 1", rc == 1, f"rc={rc} stderr={text[-300:]!r}")
+        check("fatal: and names the library file",
+              "Unable to read library: '" in text and "no_such_library_zq.obl'" in text,
+              f"stderr={text[-300:]!r}")
+        check("fatal: and is not reported as an internal error", "internal error" not in text,
+              f"stderr={text[-300:]!r}")
+        check("fatal: and writes no program", not os.path.exists(missing))
+
+        # an executable named as a library: reached after the file is read and unpacked
+        lib_dir = os.path.join(work, "lib")
+        os.makedirs(lib_dir)
+        real_lib = env["OBJECK_LIB_PATH"]
+        for name in ("lang.obl", "gen_collect.obl"):
+            shutil.copy(os.path.join(real_lib, name), os.path.join(lib_dir, name))
+        shutil.copy(dest, os.path.join(lib_dir, "exe_as_lib.obl"))
+        lib_env = dict(env)
+        lib_env["OBJECK_LIB_PATH"] = lib_dir + os.sep
+        rc, out, err = run([obc, "-src", src, "-lib", "exe_as_lib", "-dest", missing],
+                           env=lib_env, cwd=bin_dir)
+        text = err.decode(errors="replace")
+        check("fatal: an executable named as a library exits 1", rc == 1, f"rc={rc} stderr={text[-300:]!r}")
+        check("fatal: and says so",
+              "Unable to use executable '" in text and "as linked library." in text,
+              f"stderr={text[-300:]!r}")
+        check("fatal: and writes no program either", not os.path.exists(missing))
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def check_gc_roots_audit(obc, obr, env, bin_dir):
     # ---- 24. the operand-stack reference maps agree with the live stacks -----------
     audit_env = dict(env)
@@ -1690,7 +1750,7 @@ def check_address_int_pending(obc, obr, env, bin_dir):
               rc == 2 and b"returned 0" in out, f"rc={rc} out={out[-200:]!r}")
 
 
-# Section 29: inputs the loader fuzz target (tools/fuzz/loader) found, reduced. Each
+# Section 30: inputs the loader fuzz target (tools/fuzz/loader) found, reduced. Each
 # '.img' is a decompressed program image; the check stamps it with this toolchain's
 # version and compresses it the way obc does, so the loader reaches the code the
 # input was found in. Each must be refused with its message and status 1.
@@ -1731,7 +1791,7 @@ def loader_refused(rc, err, message):
 
 
 def check_loader_rejects_malformed(obc, obr, env, bin_dir):
-    # ---- 29. the loader refuses malformed programs with a message, never a crash ----
+    # ---- 30. the loader refuses malformed programs with a message, never a crash ----
     fixture_dir = os.path.join(SCRIPT_DIR, "vm_flag_fixtures", "loader")
     with tempfile.TemporaryDirectory() as scratch:
         src = os.path.join(scratch, "loader_control.obs")

@@ -257,6 +257,17 @@ void ContextAnalyzer::ProcessError(ParseNode* node, const std::wstring &msg)
 }
 
 /****************************
+ * An analysis that cannot continue: the error is recorded as usual and then
+ * thrown, where it used to be recorded and the process ended without printing
+ * it. The text is the located form ProcessError stores.
+ ****************************/
+void ContextAnalyzer::ProcessFatalError(ParseNode* node, const std::wstring& msg)
+{
+  ProcessError(node, msg);
+  throw CompilerFatal(node->GetFileName() + L":(" + ToString(node->GetLineNumber()) + L',' + ToString(node->GetLinePosition()) + L"): " + msg);
+}
+
+/****************************
  * Emits an error
  ****************************/
 void ContextAnalyzer::ProcessError(const std::wstring& fn, int ln, int lp, const std::wstring& msg)
@@ -706,8 +717,7 @@ void ContextAnalyzer::AnalyzeDuplicateEntries(std::vector<Class*> &classes, cons
             ProcessError(declaration, L"Declaration name '" + short_name + L"' defined in a parent class");
           }
           else {
-            ProcessError(declaration, L"Internal compiler error: Invalid entry name");
-            exit(1);
+            ProcessFatalError(declaration, L"Internal compiler error: Invalid entry name");
           }
         }
       }
@@ -2148,8 +2158,7 @@ void ContextAnalyzer::BuildLambdaFunction(Lambda* lambda, Type* lambda_type, con
       lambda->SetTypes(method_call->GetEvalType());
     }
     else {
-      std::wcerr << L"Internal compiler error: Invalid method name." << std::endl;
-      exit(1);
+      throw CompilerFatal(L"Internal compiler error: Invalid method name.");
     }
   }
   else {
@@ -8265,8 +8274,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
                   break;
 
                 default:
-                  ProcessError(assignment, L"Internal compiler error.");
-                  exit(1);
+                  ProcessFatalError(assignment, L"Internal compiler error.");
                 }
               }
               else {
@@ -8311,8 +8319,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
               break;
 
             default:
-              ProcessError(assignment, L"Internal compiler error.");
-              exit(1);
+              ProcessFatalError(assignment, L"Internal compiler error.");
             }
           }
         }
@@ -8354,8 +8361,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
             break;
 
           default:
-            ProcessError(assignment, L"Internal compiler error.");
-            exit(1);
+            ProcessFatalError(assignment, L"Internal compiler error.");
           }
 
           if(calc_expression) {

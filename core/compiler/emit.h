@@ -979,6 +979,16 @@ namespace backend {
       return instance;
     }
 
+    // Frees the program, if there is one. A FileEmitter does this when it goes;
+    // a compilation that throws before it gets that far (CompilerFatal from the
+    // translator or the optimizer) leaves the program behind, and the next
+    // compilation in a host that keeps running would build on its remains.
+    static void Release() {
+      if(instance) {
+        delete instance;
+      }
+    }
+
     ~IntermediateProgram() {
       // clean up
       while(!enums.empty()) {
