@@ -417,6 +417,45 @@ A library with mutable global state needs its own locking. Several of the
 bindings here are single-threaded in practice only because their callers happen
 to be.
 
+### Which VM you are running on
+
+`VMContext` only grows, at the end. A library compiled against an older
+`lib_api.h` reads the fields it knows at the offsets it knows, so it keeps
+working on a newer VM without a rebuild. The other direction is the hazard: a
+library built against a *newer* header, run by an *older* VM, is handed a
+shorter struct, and the fields past its end are whatever lies beyond it on that
+VM's stack.
+
+Two markers make that detectable, and each field added since is guarded by one:
+
+| field | present when | how to check |
+|---|---|---|
+| `write_barrier` | set by every VM since #864; an older VM's struct ends before it, and no marker says so | `APITools_WriteBarrier` no-ops on null only |
+| `blocking_abi`, `begin_blocking`, `end_blocking` | `blocking_abi == APITOOLS_BLOCKING_ABI` ("OBJKPARK") | `APITools_Parked` checks it |
+| `abi_version`, `struct_size` | `APITools_GetAbiVersion(context) >= 1` | it checks `blocking_abi`, then the "OBJK" tag in the high half of `abi_version` |
+
+`abi_version` is `APITOOLS_ABI_TAG | APITOOLS_ABI_VERSION` and `struct_size` is
+`sizeof(VMContext)`, both as the VM was built; every construction site in
+`core/vm/interpreter.cpp` sets them. A field appended after `struct_size` is
+present exactly when it ends within `struct_size`:
+
+```cpp
+if(APITools_HasField(context, offsetof(VMContext, new_field) + sizeof(context.new_field))) {
+  // safe to read context.new_field
+}
+```
+
+`APITools_GetAbiVersion` returns 0 for any VM that predates the field, which
+says nothing about the fields before it: check those by their own markers.
+Whoever appends a field
+bumps `APITOOLS_ABI_VERSION` in the same change and adds a line for it to the
+comment beside the define. `run_vm_flag_tests.py` section 18 builds a library
+that reads both fields back and expects version 1 and a `struct_size` that
+covers the whole header.
+
+The helpers in `lib_api.h` are all `inline`, so a library may include the header
+from more than one source file without duplicate-symbol errors.
+
 ---
 
 ## What a call costs

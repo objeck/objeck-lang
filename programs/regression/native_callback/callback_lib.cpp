@@ -40,4 +40,15 @@ extern "C" {
     const size_t result = context.op_stack[--(*context.stack_pos)];
     APITools_SetIntValue(context, 0, result);
   }
+
+  // args[0]: an IntRef set to the VMContext version the VM reports; args[1]: an
+  // IntRef set to 1 when the VM's struct_size covers every field this header
+  // knows, else 0. A VM that forgets to set either reads as 0 here.
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void callback_abi(VMContext& context) {
+    APITools_SetIntValue(context, 0, APITools_GetAbiVersion(context));
+    APITools_SetIntValue(context, 1, APITools_HasField(context, sizeof(VMContext)) ? 1 : 0);
+  }
 }
