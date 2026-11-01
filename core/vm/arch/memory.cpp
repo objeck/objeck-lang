@@ -1891,13 +1891,32 @@ void* MemoryManager::CheckJitRoots([[maybe_unused]] void* arg)
       // (SpillPending on AMD64, ProcessStackCallback and the safepoint on
       // ARM64).
 #ifdef JIT_LAYOUT_ARM64
-      // ARM64 (until GC roots phase 4): the slots are untyped, so a window of
-      // JIT_TMP_LOOK_BACK words is scanned conservatively, downward from the
-      // word below the first local. jit_frame_layout.h proves the window
-      // reaches every integer slot (Runtime::JitFrameLayout::WORDS_TO_LAST_INT_SLOT).
-      mem = start;
-      for(int i = 0; i > -JIT_TMP_LOOK_BACK; --i) {
-        CheckUntypedSlot(&mem[i]);
+      // ARM64 (GC roots phase 4): start is the RED_ZONE word below the and/or
+      // temp (scanned above) and the locals; the frame's typed spill slots lie
+      // below it at fixed distances. Only the TMP_REF_* slots, which hold
+      // references and whatever the map could not type, are read; the
+      // TMP_VAL_* slots hold Ints the map proved and the TMP_SCR_* slots
+      // scratch saves, and neither is a root. Under OBJECK_GC_ROOTS=
+      // conservative the old window over every slot is scanned instead: the
+      // negative control for gc_address_int_pending.
+      if(gc_roots_conservative) {
+        for(int i = 0; i < Runtime::JitFrameLayout::CONSERVATIVE_WINDOW; ++i) {
+          CheckUntypedSlot(&start[-i]);
+        }
+      }
+      else {
+        for(int k = 0; k < Runtime::JitFrameLayout::TMP_REF_SLOTS; ++k) {
+          size_t* slot = Runtime::JitFrameLayout::RefSlot(start, k);
+          if(gc_trace && *slot) {
+            std::wcerr << L"[gc]   ref slot " << k << L" @" << (void*)slot << L" -> " << (void*)(*slot) << std::endl;
+          }
+          CheckUntypedSlot(slot);
+        }
+        if(gc_roots_audit) {
+          for(int k = 0; k < Runtime::JitFrameLayout::TMP_VAL_SLOTS; ++k) {
+            AuditJitValueSlot(Runtime::JitFrameLayout::ValSlot(start, k), method, k);
+          }
+        }
       }
 #else
       // AMD64 (GC roots phase 3): mem is the word after the declared locals,
@@ -2756,12 +2775,19 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
 
       // Fix up JIT temps: the same words CheckJitRoots marks, and only those.
 #ifdef JIT_LAYOUT_ARM64
-      // ARM64: the conservative window (FixupSlot validates the forwarding
-      // target, so spilled scratch / float bit-patterns that merely alias the
-      // young address range are not misread as relocatable references).
+      // ARM64 (GC roots phase 4): the TMP_REF_* slots below the RED_ZONE word,
+      // the same words CheckJitRoots marks. A TMP_VAL_* slot is never
+      // relocated: it holds an Int the map proved.
       size_t* start = frame->jit_mem - 1;
-      for(int k = 0; k > -JIT_TMP_LOOK_BACK; --k) {
-        FixupSlot(&start[k]);
+      if(gc_roots_conservative) {
+        for(int i = 0; i < Runtime::JitFrameLayout::CONSERVATIVE_WINDOW; ++i) {
+          FixupSlot(&start[-i]);
+        }
+      }
+      else {
+        for(int k = 0; k < Runtime::JitFrameLayout::TMP_REF_SLOTS; ++k) {
+          FixupSlot(Runtime::JitFrameLayout::RefSlot(start, k));
+        }
       }
 #else
       // AMD64: the and/or temporary (mem[0] when the method has one) and the

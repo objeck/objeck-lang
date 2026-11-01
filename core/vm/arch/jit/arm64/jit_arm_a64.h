@@ -391,6 +391,30 @@ namespace Runtime {
     // instruction indices of loop-header labels (back-edge targets); only these
     // labels need a GC safepoint poll — if/else merge labels are skipped.
     unordered_set<long> safepoint_lbl_indices;
+
+    // GC roots phase 4 (docs/GC_ROOTS_DESIGN.md): the method's reference map
+    // (ref_map.h), built once per compile, types each value the working
+    // stack holds at a spill site, and the value goes to a TMP_VAL_* slot
+    // only when the map proves it an Int there (SpillPending). ref_map_ip is
+    // the instruction ProcessInstructions is emitting, the map's index.
+    RefMap* ref_map;
+    long ref_map_ip;
+    // what the spills did, for OBJECK_JIT_REPORT
+    long spill_sites, spill_refs, spill_vals, spill_unknown, spill_mismatch;
+    struct PendingSpill {
+      Register reg;
+      long offset;
+      bool is_ref;
+    };
+    // a caller-saved float parked in a callee-saved register across a libm call
+    struct ParkedFp {
+      Register reg;
+      RegisterHolder* park;
+    };
+    bool SpillPending(long popped, long keep, bool fp_slots, std::vector<PendingSpill>& regs,
+                      std::vector<PendingSpill>& fregs, std::vector<ParkedFp>& parked, const wchar_t* what);
+    void ReloadPending(const std::vector<PendingSpill>& regs, const std::vector<PendingSpill>& fregs,
+                       std::vector<ParkedFp>& parked);
     // CBZ/CBNZ optimization: track last comparison
     bool last_cmp_was_zero;
     Register last_cmp_reg;
