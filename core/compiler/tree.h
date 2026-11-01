@@ -49,6 +49,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include "linker.h"
+#include "diagnostic.h"
 #include "../shared/instrs.h"
 
 #ifdef _DEBUG
@@ -4337,8 +4338,8 @@ namespace frontend {
     TreeFactory* tree_factory;
     TypeFactory* type_factory;
 #ifdef _DIAG_LIB
-    std::vector<std::wstring> error_strings;
-    std::vector<std::wstring> warning_strings;
+    std::vector<Diagnostic> error_diagnostics;
+    std::vector<Diagnostic> warning_diagnostics;
 #endif
 
     // the argument shapes calls with named arguments use, by method name (#1244)
@@ -4399,20 +4400,20 @@ namespace frontend {
     }
 
 #ifdef _DIAG_LIB
-    const std::vector<std::wstring> GetErrorStrings() {
-      return error_strings;
+    const std::vector<Diagnostic> GetErrorDiagnostics() {
+      return error_diagnostics;
     }
 
-    void SetErrorStrings(std::vector<std::wstring> msgs) {
-      error_strings = msgs;
+    void SetErrorDiagnostics(const std::vector<Diagnostic>& diagnostics) {
+      error_diagnostics = diagnostics;
     }
-    
-    const std::vector<std::wstring> GetWarningStrings() {
-      return warning_strings;
+
+    const std::vector<Diagnostic> GetWarningDiagnostics() {
+      return warning_diagnostics;
     }
-    
-    void SetWarningStrings(std::vector<std::wstring> msgs) {
-      warning_strings = msgs;
+
+    void SetWarningDiagnostics(const std::vector<Diagnostic>& diagnostics) {
+      warning_diagnostics = diagnostics;
     }
 
     bool FindMethodOrClass(const std::wstring uri, const int line_num, Class* &found_klass, Method* &found_method, SymbolTable*& table);

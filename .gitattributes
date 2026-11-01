@@ -44,6 +44,8 @@ tools/cicd/fixtures/obu_verify/** -text
 *.obl binary
 *.obe binary
 *.obm binary
+# decompressed program images (the loader's regression inputs, tools/fuzz/loader)
+*.img binary
 *.png binary
 *.jpg binary
 *.gif binary

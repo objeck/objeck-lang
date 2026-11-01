@@ -82,7 +82,7 @@ built work: nothing below has landed.
   from before is refused with a message instead of having its object arrays read as `Int[]`; the
   committed `.obl` were rebuilt. An Int array a native or a trap allocates stays `INT_TYPE`,
   conservative as before. `OBJECK_GC_ROOTS=conservative` scans an `INT_ARY_TYPE` array the old way,
-  the negative control for `gc_address_int_array` (run_vm_flag_tests.py section 29). Element access
+  the negative control for `gc_address_int_array` (run_vm_flag_tests.py section 31). Element access
   is untouched: only the allocation's tag differs, and the collector does less. The closure capture
   block's own type (193f076fdd(b)) is still open.
 - **Phase 5 is built 2026-11-01** (branch `gc-roots-phase5`), narrower than the table below says, for

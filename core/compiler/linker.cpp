@@ -169,8 +169,7 @@ void Linker::ResolveExternalMethodCalls()
                 instr->SetOperand2(lib_method->GetId());
               }
               else {
-                std::wcerr << L"Error: Unable to resolve external library method: '" << instr->GetOperand6() << L"'; check library path" << std::endl;
-                exit(1);
+                throw CompilerFatal(L"Error: Unable to resolve external library method: '" + instr->GetOperand6() + L"'; check library path");
               }
             }
             else {
@@ -191,8 +190,7 @@ void Linker::ResolveExternalMethodCalls()
                 instr->SetOperand7(lib_method_cls_id);
               }
               else {
-                std::wcerr << L"Error: Unable to resolve external library method: '" << instr->GetOperand6() << L"'; check library path" << std::endl;
-                exit(1);
+                throw CompilerFatal(L"Error: Unable to resolve external library method: '" + instr->GetOperand6() + L"'; check library path");
               }
             }
             else {
@@ -402,30 +400,30 @@ LibraryEnum* Linker::SearchEnumLibraries(const std::wstring& name, const std::ve
   return nullptr;
 }
 
-// Reports an unusable '@alias' and exits.
+// Reports an unusable '@alias' by throwing CompilerFatal.
 //
 // The message this replaces named neither the file it searched nor the aliases
 // it did find, so a typo, a group missing from configobjk.ini, and a
 // configobjk.ini that was never read all produced one sentence -- whose only
 // advice was to check an environment variable that is usually not the problem.
-static void ReportUnknownAlias(const std::wstring& file_ref, const std::wstring& config_file_path,
+[[noreturn]] static void ReportUnknownAlias(const std::wstring& file_ref, const std::wstring& config_file_path,
                                const std::map<std::wstring, std::vector<std::pair<std::wstring, std::wstring>>>& lib_aliases)
 {
-  std::wcerr << L"Unknown library alias: '" << file_ref << L"'." << std::endl;
+  std::wostringstream msg;
+  msg << L"Unknown library alias: '" << file_ref << L"'." << std::endl;
 
   if(lib_aliases.empty()) {
-    std::wcerr << L"\tNo alias groups were read from '" << config_file_path << L"'." << std::endl;
-    std::wcerr << L"\tCheck that the file exists, and that 'OBJECK_LIB_PATH' refers to the library directory." << std::endl;
+    msg << L"\tNo alias groups were read from '" << config_file_path << L"'." << std::endl;
+    msg << L"\tCheck that the file exists, and that 'OBJECK_LIB_PATH' refers to the library directory.";
   }
   else {
-    std::wcerr << L"\tGroups defined in '" << config_file_path << L"':";
+    msg << L"\tGroups defined in '" << config_file_path << L"':";
     for(const auto& alias : lib_aliases) {
-      std::wcerr << L' ' << alias.first;
+      msg << L' ' << alias.first;
     }
-    std::wcerr << std::endl;
   }
 
-  exit(1);
+  throw CompilerFatal(msg.str());
 }
 
 // Names the libraries that define 'cls_name' but were NOT linked.
@@ -467,31 +465,41 @@ std::vector<std::wstring> Linker::LibrariesDefining(const std::wstring& cls_name
   return hits;
 }
 
-// Reports an unresolvable class and exits, naming the library that would
+// Reports an unresolvable class (by throwing CompilerFatal), naming the library that would
 // supply it. 'check library path' was the whole of the old advice, which is
 // true and unactionable: the path is usually right and one library is
 // missing from -lib. The @web alias shipped broken for exactly this reason,
 // and this message would have named net_server.obl on the first run.
 void Linker::ReportUnresolvedClass(const std::wstring& cls_name)
 {
-  std::wcerr << L"Error: Unable to resolve external library class: '" << cls_name << L"'." << std::endl;
+  std::wostringstream msg;
+  msg << L"Error: Unable to resolve external library class: '" << cls_name << L"'." << std::endl;
 
-  const std::vector<std::wstring> supplying = LibrariesDefining(cls_name);
+  // probing opens every unlinked library, and a stale one fails there; the
+  // command line used to have printed the line above before that happened
+  std::vector<std::wstring> supplying;
+  try {
+    supplying = LibrariesDefining(cls_name);
+  }
+  catch(const CompilerFatal& probe_failure) {
+    throw CompilerFatal(msg.str() + probe_failure.Message());
+  }
+
   if(supplying.empty()) {
-    std::wcerr << L"\tNo library in '" << GetLibraryPath() << L"' defines it." << std::endl;
+    msg << L"\tNo library in '" << GetLibraryPath() << L"' defines it.";
   }
   else {
-    std::wcerr << L"\tAdd it with '-lib ";
+    msg << L"\tAdd it with '-lib ";
     for(size_t i = 0; i < supplying.size(); ++i) {
       if(i) {
-        std::wcerr << L',';
+        msg << L',';
       }
-      std::wcerr << supplying[i];
+      msg << supplying[i];
     }
-    std::wcerr << L"'" << std::endl;
+    msg << L"'";
   }
 
-  exit(1);
+  throw CompilerFatal(msg.str());
 }
 
 void Linker::Load([[maybe_unused]] bool is_lib)
@@ -531,9 +539,9 @@ void Linker::Load([[maybe_unused]] bool is_lib)
                   file_path += L".obl";
                 }
 
-                Library* library = new Library(file_path);
+                std::unique_ptr<Library> library(new Library(file_path));
                 library->Load();
-                libraries.insert(std::pair<std::wstring, Library*>(file_path, library));
+                libraries.insert(std::pair<std::wstring, Library*>(file_path, library.release()));
                 paths.push_back(std::move(file_path));
               }
             }
@@ -550,10 +558,10 @@ void Linker::Load([[maybe_unused]] bool is_lib)
           if(!frontend::EndsWith(file_path, L".obl")) {
             file_path += L".obl";
           }
-          Library* library = new Library(file_path);
+          std::unique_ptr<Library> library(new Library(file_path));
           library->Load();
           // insert library
-          libraries.insert(std::pair<std::wstring, Library*>(file_path, library));
+          libraries.insert(std::pair<std::wstring, Library*>(file_path, library.release()));
           std::vector<std::wstring>::iterator found = find(paths.begin(), paths.end(), file_path);
           if(found == paths.end()) {
             paths.push_back(std::move(file_path));
@@ -584,9 +592,9 @@ void Linker::Load([[maybe_unused]] bool is_lib)
               file_path += L".obl";
             }
 
-            Library* library = new Library(file_path);
+            std::unique_ptr<Library> library(new Library(file_path));
             library->Load();
-            libraries.insert(std::pair<std::wstring, Library*>(file_path, library));
+            libraries.insert(std::pair<std::wstring, Library*>(file_path, library.release()));
             paths.push_back(std::move(file_path));
           }
         }
@@ -599,9 +607,9 @@ void Linker::Load([[maybe_unused]] bool is_lib)
           file_path += L".obl";
         }
 
-        Library* library = new Library(file_path);
+        std::unique_ptr<Library> library(new Library(file_path));
         library->Load();
-        libraries.insert(std::pair<std::wstring, Library*>(file_path, library));
+        libraries.insert(std::pair<std::wstring, Library*>(file_path, library.release()));
         paths.push_back(file_path);
       }
 #ifdef _DEBUG
@@ -786,8 +794,7 @@ std::map<backend::IntermediateDeclarations*, std::pair<std::wstring, int>> Libra
     const std::wstring lib_mthd_name = lambda_pair.first;
     LibraryMethod* lib_method = GetMethod(lib_mthd_name);
     if(!lib_method) {
-      std::wcerr << L"Internal compiler error: Invalid method name." << std::endl;
-      exit(1);
+      throw CompilerFatal(L"Internal compiler error: Invalid method name.");
     }
     backend::IntermediateDeclarations* dclr = lambda_pair.second;
     closure_entries[dclr] = std::pair<std::wstring, int>(lib_mthd_name, lib_method->GetId());
@@ -858,8 +865,7 @@ char* Library::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
     buffer = static_cast<char*>(calloc(buffer_size + 1, sizeof(char)));
     if(!buffer) {
       in.close();
-      std::wcerr << L"Unable to allocate memory for file: '" << filename << L"'" << std::endl;
-      return nullptr;
+      throw CompilerFatal(L"Unable to allocate memory for file: '" + filename + L"'");
     }
     in.read(buffer, buffer_size);
     // close file
@@ -886,8 +892,8 @@ char* Library::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
     unsigned long dest_len;
     char* out = OutputStream::UncompressZlib(src, src_size, dest_len, uncmp_hint);
     if(!out) {
-      std::wcerr << L"Unable to uncompress file: " << filename << std::endl;
-      exit(1);
+      free(buffer);
+      throw CompilerFatal(L"Unable to uncompress file: " + filename);
     }
 #ifdef _DEBUG
     GetLogger() << L"--- file in: compressed=" << buffer_size << L", uncompressed=" << dest_len << L" ---" << std::endl;
@@ -899,13 +905,13 @@ char* Library::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
   }
   else {
     if(frontend::EndsWith(filename, L".obl")) {
-      std::wcerr << L"Unable to read library: '" << filename << L"'" << std::endl;
+      throw CompilerFatal(L"Unable to read library: '" + filename + L"'");
     }
     else if(frontend::EndsWith(filename, L".obl")) {
-      std::wcerr << L"Unable to read source: '" << filename << L"'" << std::endl;
+      throw CompilerFatal(L"Unable to read source: '" + filename + L"'");
     }
     else {
-      std::wcerr << L"Unable to open file: '" << filename << L"'" << std::endl;
+      throw CompilerFatal(L"Unable to open file: '" + filename + L"'");
     }
   }
 
@@ -931,46 +937,40 @@ void Library::LoadFile(const std::wstring &file_name)
       //
       // The direction is the whole diagnostic, and both values are already in
       // hand here.
-      std::wcerr << L"Toolchain version mismatch reading " << lib_path << std::endl
-                 << L"\tthe library was built by toolchain " << ver_num << std::endl
-                 << L"\tthis binary expects                " << VER_NUM << std::endl;
+      std::wostringstream msg;
+      msg << L"Toolchain version mismatch reading " << lib_path << std::endl
+          << L"\tthe library was built by toolchain " << ver_num << std::endl
+          << L"\tthis binary expects                " << VER_NUM << std::endl;
       if(ver_num > VER_NUM) {
-        std::wcerr << L"\t-> this binary is older than the library. Rebuild it, including any"
-                   << std::endl
-                   << L"\t   native libraries, which build separately and are easy to miss."
-                   << std::endl;
+        msg << L"\t-> this binary is older than the library. Rebuild it, including any"
+            << std::endl
+            << L"\t   native libraries, which build separately and are easy to miss.";
       }
       else {
-        std::wcerr << L"\t-> the library is older than this binary. Rebuild the libraries."
-                   << std::endl;
+        msg << L"\t-> the library is older than this binary. Rebuild the libraries.";
       }
-      exit(1);
+      throw CompilerFatal(msg.str());
     }
 
     const int magic_num = ReadInt();
     if(magic_num == MAGIC_NUM_EXE) {
-      std::wcerr << L"Unable to use executable '" << file_name << L"' as linked library." << std::endl;
-      exit(1);
+      throw CompilerFatal(L"Unable to use executable '" + file_name + L"' as linked library.");
     }
     else if(magic_num == MAGIC_NUM_LIB_UNQUALIFIED_ENUMS) {
-      std::wcerr << L"Library '" << file_name << L"' was built before enums were named with their bundle.\n\tRebuild it with this toolchain." << std::endl;
-      exit(1);
+      throw CompilerFatal(L"Library '" + file_name + L"' was built before enums were named with their bundle.\n\tRebuild it with this toolchain.");
     }
     else if(magic_num == MAGIC_NUM_LIB_NO_GENERIC_MARKS) {
-      std::wcerr << L"Library '" << file_name << L"' was built before libraries recorded their methods' type parameters.\n\tRebuild it with this toolchain." << std::endl;
-      exit(1);
+      throw CompilerFatal(L"Library '" + file_name + L"' was built before libraries recorded their methods' type parameters.\n\tRebuild it with this toolchain.");
     }
     else if(magic_num == MAGIC_NUM_LIB_NO_PARAM_NAMES) {
-      std::wcerr << L"Library '" << file_name << L"' was built before libraries recorded their parameter names.\n\tRebuild it with this toolchain." << std::endl;
-      exit(1);
+      throw CompilerFatal(L"Library '" + file_name + L"' was built before libraries recorded their parameter names.\n\tRebuild it with this toolchain.");
     }
     else if(magic_num == MAGIC_NUM_LIB_UNTYPED_INT_ARRAYS) {
       std::wcerr << L"Library '" << file_name << L"' was built before an Int[] and an object array were allocated with distinct opcodes (its object arrays would be read as Int[]).\n\tRebuild it with this toolchain." << std::endl;
       exit(1);
     }
     else if(magic_num != MAGIC_NUM_LIB) {
-      std::wcerr << L"Unable to link invalid library file '" << file_name << L"'.\n\tThe file carries no Objeck library signature -- check that it is a .obl, not an .obe or a file from another toolchain." << std::endl;
-      exit(1);
+      throw CompilerFatal(L"Unable to link invalid library file '" + file_name + L"'.\n\tThe file carries no Objeck library signature -- check that it is a .obl, not an .obe or a file from another toolchain.");
     }
 
     // read float strings
@@ -2013,11 +2013,9 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       break;
 
     default: {
-#ifdef _DEBUG
-      InstructionType instr = (InstructionType)type;
-      std::wcerr << L">>> unknown instruction: " << instr << L" <<<" << std::endl;
-#endif
-      exit(1);
+      // the command line used to print this only in a debug build, and otherwise
+      // exited without a word
+      throw CompilerFatal(L">>> unknown instruction: " + std::to_wstring(static_cast<int>(type)) + L" <<<");
     }
       break;
     }    

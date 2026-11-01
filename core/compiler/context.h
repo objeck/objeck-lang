@@ -252,8 +252,8 @@ class ContextAnalyzer {
   };
   std::vector<CaptureFrame> capture_frames;
   std::pair<Lambda*, MethodCall*> lambda_inferred;
-  std::multimap<int, std::wstring> errors;
-  // the statement, expression or declaration being analyzed: where a name it
+  DiagnosticSink diagnostics;
+// the statement, expression or declaration being analyzed: where a name it
   // resolves is written (see CheckAmbiguousUse)
   ParseNode* resolve_site;
   // >0 while a name is resolved in a class other than the one being analyzed
@@ -267,8 +267,7 @@ class ContextAnalyzer {
   // names already reported as undefined classes, so dependent
   // diagnostics about the same name can be suppressed
   std::set<std::wstring> undefined_classes;
-  std::multimap<int, std::wstring> warnings;
-  std::vector<std::wstring> alt_error_method_names;
+std::vector<std::wstring> alt_error_method_names;
   std::map<const std::wstring, Type*> type_map;
   std::unordered_set<std::wstring> holder_types;
   std::vector<Class*> anonymous_classes;
@@ -295,9 +294,9 @@ class ContextAnalyzer {
   std::set<std::wstring> range_names;
   
 #if defined(_DIAG_LIB) || defined(_MODULE)
-  std::vector<std::wstring> error_strings;
+  std::vector<Diagnostic> error_diagnostics;
 #ifdef _DIAG_LIB
-  std::vector<std::wstring> warning_strings;
+  std::vector<Diagnostic> warning_diagnostics;
   std::vector<Expression*> diagnostic_expressions;
 #endif
 #endif
@@ -594,6 +593,8 @@ class ContextAnalyzer {
   // error processing
   void ProcessError(const std::wstring& fn, int ln, int lp, const std::wstring& msg);
   void ProcessError(ParseNode* n, const std::wstring& msg);
+  // records the error, then throws CompilerFatal with the same located text
+  [[noreturn]] void ProcessFatalError(ParseNode* n, const std::wstring& msg);
   void ProcessWarning(ParseNode* n, const std::wstring& msg);
   void ProcessErrorAlternativeMethods(std::wstring &message);
   void ProcessError(const std::wstring &fn, const std::wstring &msg);
