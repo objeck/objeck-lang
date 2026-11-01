@@ -160,7 +160,7 @@ nothing: the frame is gone and the epilogue restores the registers.
   for `IMM_INT` / `REG_INT` / `MEM_INT` operands. No memory store. Any `local_reg_cache` entry for
   the slot is impossible (pinned slots never enter the cache) and asserted so.
 - `COPY_INT_VAR` (store that keeps the value on the working stack): the same, leaving the value.
-- Everything else -- the cache, the working stack, spills to `TMP_REG_n`, inlined callees whose
+- Everything else -- the cache, the working stack, spills to the `TMP_REF_n`/`TMP_VAL_n` slots, inlined callees whose
   locals live in the inline area at other offsets, `ProcessParameters` at method entry, the
   self-recursive tail-call back-edge (which stores the new argument values before jumping to the
   header, an interior jump, so the registers already hold them) -- is unchanged.

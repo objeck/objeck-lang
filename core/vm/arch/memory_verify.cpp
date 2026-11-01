@@ -1233,6 +1233,9 @@ namespace {
     size_t int_points_at_object = 0;
     size_t ref_points_at_nothing = 0;
     size_t unknown_points_at_object = 0;
+    // AMD64 compiled frames: a TMP_VAL_* slot, which the collector never
+    // reads, found holding an object's address (GC roots phase 3)
+    size_t jit_value_slot_at_object = 0;
     // each distinct note once, with how often it came up
     std::vector<std::wstring> notes;
     std::unordered_map<std::wstring, size_t> note_counts;
@@ -1262,7 +1265,8 @@ namespace {
                << L" unattributed=" << a->words_unattributed << L" and/or slots=" << a->andor_slots << std::endl;
     std::wcerr << L"[gc-roots] disagreements: int_points_at_object=" << a->int_points_at_object
                << L" ref_points_at_nothing=" << a->ref_points_at_nothing
-               << L" unknown_points_at_object=" << a->unknown_points_at_object << std::endl;
+               << L" unknown_points_at_object=" << a->unknown_points_at_object
+               << L" jit_value_slot_at_object=" << a->jit_value_slot_at_object << std::endl;
     for(size_t i = 0; i < a->notes.size(); ++i) {
       std::wcerr << L"[gc-roots]   " << a->note_counts[a->notes[i]] << L"x " << a->notes[i] << std::endl;
     }
@@ -1356,6 +1360,29 @@ void MemoryManager::AuditWord(size_t value, uint8_t kind, StackMethod* method, l
     }
     break;
   }
+}
+
+// AMD64 (GC roots phase 3): a compiled frame's value slot holds an Int the
+// method's reference map proved at the spill, so the collector never reads it.
+// One that holds a real object's address means the map typed a reference as
+// an Int, or the JIT's working stack did not line up with the map's stack and
+// the check in SpillPending missed it: a root the collector would not see.
+// Called from CheckJitRoots, in the one thread that marks compiled frames.
+void MemoryManager::AuditJitValueSlot(size_t* slot, StackMethod* method, int k)
+{
+  if(!root_audit) {
+    return;
+  }
+  size_t* value = (size_t*)*slot;
+  if(!value || !IsAllocated(value)) {
+    return;
+  }
+  // a young candidate is only a range match: it must be an object's start
+  if(!old_generation.count(value) && !IsYoungObjectStart(value, (StackClass*)value[SIZE_OR_CLS])) {
+    return;
+  }
+  root_audit->jit_value_slot_at_object++;
+  AuditNote(L"value slot at an object: " + method->GetName() + L" TMP_VAL_" + std::to_wstring(k));
 }
 
 // One thread's operand stack, word by word, as its frames' reference maps see

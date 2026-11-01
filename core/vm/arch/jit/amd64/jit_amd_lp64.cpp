@@ -30,6 +30,7 @@
  ***************************************************************************/
 
 #include "jit_amd_lp64.h"
+#include "../../ref_map.h"
 #include <cstddef>
 #include <unordered_map>
 #include <algorithm>
@@ -327,15 +328,16 @@ void JitAmd64::RegisterRoot() {
   // calculate root address
   // note: the offset required to 
   // get to the first local variable
-  // the bytes from the lowest local up to TMP_REG_9: the locals (and/or temp
-  // included) plus the RED_ZONE word Win64 keeps under the temps
-  // (JitFrameLayout::LOCALS_TO_TMP_WORDS, 1 there and 0 on SysV)
-  const long offset = org_local_space + RED_ZONE + TMP_REG_9 +
-    JitFrameLayout::LOCALS_TO_TMP_WORDS * (long)sizeof(size_t);
+  // org_local_space is the distance from the frame pointer down to the lowest
+  // local (ProcessIndices); offset is the bytes from that local up to
+  // TMP_REF_9: the locals (and/or temp included) plus the RED_ZONE word Win64
+  // keeps under the slots (JitFrameLayout::LOCALS_TO_REF_WORDS, 1 there and 0
+  // on SysV)
+  const long offset = org_local_space + TMP_REF_9;
   // get to stack locals
   RegisterHolder* holder = GetRegister();
   move_reg_reg(RBP, holder->GetRegister());
-  sub_imm_reg(-TMP_REG_9 + offset, holder->GetRegister());
+  sub_imm_reg(org_local_space, holder->GetRegister());
 
   // set JIT memory to stack locals
   RegisterHolder* mem_holder = GetRegister();
@@ -343,13 +345,26 @@ void JitAmd64::RegisterRoot() {
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
 
   // The locals (offset bytes, with the Win64 RED_ZONE word) and the slots
-  // that hold spilled registers, TMP_REG_9 up to TMP_REG_0. The collector
-  // scans every one of them (JIT_TMP_LOOK_BACK). The count was one short and
-  // left TMP_REG_0, the first slot every spill takes, holding whatever an
-  // earlier method entered at the same frame pointer had spilled there: a
-  // dead array stayed reachable for as long as the next method ran. The slot
-  // count is derived from the layout (jit_frame_layout.h), not written here.
-  const int index = (int)(offset >> 3) + JitFrameLayout::TMP_INT_SLOTS;
+  // that hold spilled references, TMP_REF_9 up to TMP_REF_0: every word the
+  // collector reads from this frame beside the locals, so none can carry what
+  // an earlier method entered at the same frame pointer left there (a dead
+  // array stayed reachable that way, #1468). The value and scratch slots
+  // above are never read by the collector and are not zeroed. The slot count
+  // is derived from the layout (jit_frame_layout.h), not written here.
+  int index = (int)(offset >> 3) + JitFrameLayout::TMP_REF_SLOTS;
+  // OBJECK_GC_ROOTS=audit: zero the value slots too (they sit right above
+  // TMP_REF_0, so the same sweep covers them). The audit reports a value slot
+  // that holds an object's address (AuditJitValueSlot); without this, a slot
+  // the method never wrote still holds whatever an earlier, deeper frame left
+  // on the stack there, which is as often a pointer as not. Audit-only: the
+  // collector never reads these slots, so a plain run has no reason to pay.
+  static const bool zero_value_slots = []() {
+    std::string roots;
+    return JitEnvFlag("OBJECK_GC_ROOTS", &roots) && roots == "audit";
+  }();
+  if(zero_value_slots) {
+    index += JitFrameLayout::TMP_VAL_SLOTS;
+  }
   // Zero them with straight stores for the common frame sizes: the LOOP
   // instruction is microcoded, and its eleven iterations for a one-local
   // method cost more than that method's body. Large frames keep the loop.
@@ -530,6 +545,8 @@ void JitAmd64::ProcessInstructions() {
   while(instr_index < method->GetInstructionCount() && compile_success) {
     StackInstr* instr = method->GetInstruction(instr_index++);
     instr->SetOffset(code_index);
+    // the reference map's index for every spill this instruction emits
+    ref_map_ip = instr_index - 1;
     if(!is_inlining) {
       // F3: a pinned loop's header (the back-edge target, the instruction after
       // the loop's label) loads its locals into R13-R15. The entry path and
@@ -1511,10 +1528,12 @@ long JitAmd64::EmitNewObjectInline(StackClass* cls) {
   }
 
   FlushLocalCache();
-  move_reg_mem(RAX, TMP_REG_0, RBP);
-  move_reg_mem(RBX, TMP_REG_1, RBP);
-  move_reg_mem(RCX, TMP_REG_2, RBP);
-  move_reg_mem(RDX, TMP_REG_3, RBP);
+  // scratch saves: nothing between here and the restores can collect, so the
+  // collector never reads these slots (jit_frame_layout.h)
+  move_reg_mem(RAX, TMP_SCR_0, RBP);
+  move_reg_mem(RBX, TMP_SCR_1, RBP);
+  move_reg_mem(RCX, TMP_SCR_2, RBP);
+  move_reg_mem(RDX, TMP_SCR_3, RBP);
 
   move_imm_reg((int64_t)MemoryManager::YoungOffsetAddr(), RBX);   // RBX = &young_offset
 
@@ -1538,7 +1557,7 @@ long JitAmd64::EmitNewObjectInline(StackClass* cls) {
   add_reg_reg(RAX, RDX);                              // RDX = raw_mem = base + offset
   // zero-on-alloc: clear raw_mem[3] (MARKED_FLAG) + field words raw_mem[4..]. raw_mem[0..2]
   // (size word, TYPE, SIZE_OR_CLS) are written explicitly just below, so skip them. Uses
-  // only RAX (=0) and RDX (base), both already spilled to TMP_REG_* at entry.
+  // only RAX (=0) and RDX (base), both already saved to TMP_SCR_* at entry.
   move_imm_reg(0, RAX);
   for(size_t w = (size_t)(1 + EXTRA_BUF_SIZE - 1); w < zero_words; ++w) {
     move_reg_mem(RAX, (long)(w * sizeof(size_t)), RDX);   // raw_mem[w] = 0
@@ -1567,18 +1586,18 @@ long JitAmd64::EmitNewObjectInline(StackClass* cls) {
   // raced the locked old-gen updates and lost increments, skewing the major-GC trigger.
   AddMachineCode(0xF0); AddMachineCode(0x48); AddMachineCode(0x81); AddMachineCode(0x00); AddImm((int)size);
 
-  move_mem_reg(TMP_REG_0, RBP, RAX);
-  move_mem_reg(TMP_REG_1, RBP, RBX);
-  move_mem_reg(TMP_REG_2, RBP, RCX);
-  move_mem_reg(TMP_REG_3, RBP, RDX);
+  move_mem_reg(TMP_SCR_0, RBP, RAX);
+  move_mem_reg(TMP_SCR_1, RBP, RBX);
+  move_mem_reg(TMP_SCR_2, RBP, RCX);
+  move_mem_reg(TMP_SCR_3, RBP, RDX);
   AddMachineCode(0xe9);
   const long done_jmp_pos = code_index; AddImm(0);
 
   { int off = (int)(code_index - (ja_pos + 4)); memcpy(&code[(size_t)ja_pos], &off, 4); }   // OVERFLOW:
-  move_mem_reg(TMP_REG_0, RBP, RAX);
-  move_mem_reg(TMP_REG_1, RBP, RBX);
-  move_mem_reg(TMP_REG_2, RBP, RCX);
-  move_mem_reg(TMP_REG_3, RBP, RDX);
+  move_mem_reg(TMP_SCR_0, RBP, RAX);
+  move_mem_reg(TMP_SCR_1, RBP, RBX);
+  move_mem_reg(TMP_SCR_2, RBP, RCX);
+  move_mem_reg(TMP_SCR_3, RBP, RDX);
   return done_jmp_pos;
 }
 
@@ -1910,38 +1929,17 @@ void JitAmd64::EmitJitSafePoint() {
   // clobbers every caller-saved register -- RAX, RCX, RDX, R8-R11, and on POSIX
   // RSI, RDI and every XMM -- and while this thread is parked another thread's
   // collection may move a young object that a pending value points to, which
-  // no register can follow. So the pending values go to the scratch slots the
-  // callback path uses (ProcessStackCallback), which the collector both marks
-  // and relocates (CheckJitRoots/FixupRoots, JIT_TMP_LOOK_BACK), and come back
-  // after the park. Losing them is what made query_expr_concurrent fail: a
-  // Column held in RCX across Filter->Trim's inlined loop came back as Nil or
+  // no register can follow. So the pending values go to the spill slots the
+  // callback path uses (SpillPending): a reference to a TMP_REF_* slot, which
+  // the collector marks and relocates (CheckJitRoots/FixupRoots), an Int the
+  // map proves to a TMP_VAL_* slot it never reads, and they come back after
+  // the park. Losing them is what made query_expr_concurrent fail: a Column
+  // held in RCX across Filter->Trim's inlined loop came back as Nil or
   // garbage whenever the loop polled during another thread's collection.
-  std::vector<std::pair<Register, long> > parked_regs;
-  std::vector<std::pair<Register, long> > parked_xregs;
-  {
-    long reg_offset = TMP_REG_0;
-    long xmm_offset = TMP_XMM_0;
-    for(RegInstr* pending : working_stack) {
-      if(pending->GetType() == REG_INT) {
-        if(reg_offset < TMP_REG_9) {
-          // more pending values than scratch slots: leave the method to the interpreter
-          compile_success = false;
-          break;
-        }
-        move_reg_mem(pending->GetRegister()->GetRegister(), reg_offset, RBP);
-        parked_regs.push_back(std::make_pair(pending->GetRegister()->GetRegister(), reg_offset));
-        reg_offset -= sizeof(size_t);
-      }
-      else if(pending->GetType() == REG_FLOAT) {
-        if(xmm_offset < TMP_XMM_2) {
-          compile_success = false;
-          break;
-        }
-        move_xreg_mem(pending->GetRegister()->GetRegister(), xmm_offset, RBP);
-        parked_xregs.push_back(std::make_pair(pending->GetRegister()->GetRegister(), xmm_offset));
-        xmm_offset -= sizeof(double);
-      }
-    }
+  std::vector<PendingSpill> parked_regs;
+  std::vector<PendingSpill> parked_xregs;
+  if(!SpillPending(0, -1, TMP_XMM_0, parked_regs, parked_xregs, L"a loop-header safepoint")) {
+    return;
   }
 #ifdef _WIN64
   sub_imm_reg(32, RSP);   // shadow space (RSP stays 16-aligned)
@@ -1974,12 +1972,7 @@ void JitAmd64::EmitJitSafePoint() {
   move_reg_mem(R11, INSTANCE_MEM, RBP);
 #endif
   // the pending values, relocated if a collection moved what they point to
-  for(const auto& parked : parked_regs) {
-    move_mem_reg(parked.second, RBP, parked.first);
-  }
-  for(const auto& parked : parked_xregs) {
-    move_mem_xreg(parked.second, RBP, parked.first);
-  }
+  ReloadPending(parked_regs, parked_xregs);
   // Backpatch the je to land here, past the slow-path call.
   long skip_index = code_index;
   long jmp_offset = skip_index - (je_pos + 4);
@@ -2925,6 +2918,119 @@ void JitAmd64::ProcessCopy(StackInstr* instr) {
   }
 }
 
+/**
+ * GC roots phase 3 (docs/GC_ROOTS_DESIGN.md section 6.3, option C). The
+ * values the working stack holds at a point that can collect -- a callback,
+ * a loop-header park -- or that a libm call would clobber are spilled to the
+ * frame's typed slots and reloaded after. Which class a value goes to is what
+ * the method's reference map says of that operand-stack depth at this
+ * instruction:
+ *
+ *   - an Int, proven, goes to a TMP_VAL_* slot the collector never reads, so
+ *     an Int that equals a moved object's address is not rewritten;
+ *   - a reference, an unknown, a conflict or a literal goes to a TMP_REF_* slot
+ *     the collector scans and relocates, and the slot is cleared on reload so
+ *     a dead object does not stay reachable through it;
+ *   - a float goes to a TMP_XMM_* slot, never read by the collector.
+ *
+ * The map is read only when it lines up with the working stack: the map's
+ * height at this instruction, less what the site popped already, must be the
+ * working stack's size, and no entry may be a float where the map says Int or
+ * reference, or an integer register where it says Float. Otherwise every
+ * integer goes to a reference slot, which costs retention at worst. `keep` is
+ * how many values from the bottom are spilled (-1: all); a callback leaves its
+ * arguments to EmitNativeCallSite/ProcessReturn.
+ */
+bool JitAmd64::SpillPending(long popped, long keep, long xmm_first, std::vector<PendingSpill>& regs,
+                            std::vector<PendingSpill>& xmms, const wchar_t* what) {
+  const long size = (long)working_stack.size();
+  if(keep < 0 || keep > size) {
+    keep = size;
+  }
+
+  bool mapped = ref_map && ref_map->ok && ref_map_ip >= 0 && ref_map_ip < (long)ref_map->height.size() &&
+                ref_map->height[ref_map_ip] == (int)(size + popped);
+  if(mapped) {
+    long depth = 0;
+    for(std::deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin(); iter != working_stack.rend() && depth < keep; ++iter, ++depth) {
+      const RegType type = (*iter)->GetType();
+      const uint8_t kind = ref_map->Kind(ref_map_ip, (int)depth);
+      const bool is_float = type == REG_FLOAT || type == MEM_FLOAT || type == IMM_FLOAT;
+      if(is_float ? (kind == RK_INT || kind == RK_REF) : kind == RK_FLOAT) {
+        mapped = false;
+        break;
+      }
+    }
+  }
+  if(!mapped) {
+    spill_mismatch++;
+  }
+
+  long ref_offset = TMP_REF_0;
+  long val_offset = TMP_VAL_0;
+  long xmm_offset = xmm_first;
+  long depth = 0;
+  for(std::deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin(); iter != working_stack.rend() && depth < keep; ++iter, ++depth) {
+    RegInstr* pending = *iter;
+    const uint8_t kind = mapped ? ref_map->Kind(ref_map_ip, (int)depth) : RK_UNKNOWN;
+    if(pending->GetType() == REG_INT) {
+      const Register r = pending->GetRegister()->GetRegister();
+      if(kind == RK_INT) {
+        if(val_offset < TMP_VAL_9) {
+          CompileFailed(std::wstring(L"more live integer values across ") + what + L" than value slots");
+          return false;
+        }
+        move_reg_mem(r, val_offset, RBP);
+        regs.push_back({ r, val_offset, false });
+        val_offset -= (long)sizeof(size_t);
+        spill_vals++;
+      }
+      else {
+        if(ref_offset < TMP_REF_9) {
+          CompileFailed(std::wstring(L"more live references across ") + what + L" than reference slots");
+          return false;
+        }
+        move_reg_mem(r, ref_offset, RBP);
+        regs.push_back({ r, ref_offset, true });
+        ref_offset -= (long)sizeof(size_t);
+        if(kind == RK_REF) {
+          spill_refs++;
+        }
+        else {
+          spill_unknown++;
+        }
+      }
+    }
+    else if(pending->GetType() == REG_FLOAT) {
+      if(xmm_offset < TMP_XMM_2) {
+        CompileFailed(std::wstring(L"more live float values across ") + what + L" than float slots");
+        return false;
+      }
+      const Register r = pending->GetRegister()->GetRegister();
+      move_xreg_mem(r, xmm_offset, RBP);
+      xmms.push_back({ r, xmm_offset, false });
+      xmm_offset -= (long)sizeof(double);
+    }
+  }
+  spill_sites++;
+
+  return true;
+}
+
+// the values SpillPending spilled come back; a reference slot is cleared so
+// the frame does not keep a dead object reachable for as long as it runs
+void JitAmd64::ReloadPending(const std::vector<PendingSpill>& regs, const std::vector<PendingSpill>& xmms) {
+  for(const PendingSpill& spill : regs) {
+    move_mem_reg(spill.offset, RBP, spill.reg);
+    if(spill.is_ref) {
+      move_imm_mem(0, spill.offset, RBP);
+    }
+  }
+  for(const PendingSpill& spill : xmms) {
+    move_mem_xreg(spill.offset, RBP, spill.reg);
+  }
+}
+
 void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &instr_index, long params) {
   // flush cached locals before callback (callback may modify memory)
   FlushLocalCache();
@@ -2941,48 +3047,17 @@ void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
   std::wcout << L"Return: params=" << params << L", non-params=" << non_params << std::endl;
 #endif
 
-  std::stack<RegInstr*> regs;
-  std::stack<long> dirty_regs;
-  long reg_offset = TMP_REG_0;
-
-  std::stack<RegInstr*> xmms;
-  std::stack<long> dirty_xmms;
-  long xmm_offset = TMP_XMM_0;
-
-  long i = 0;
-  for(std::deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin(); iter != working_stack.rend(); ++iter) {
-    RegInstr* left = (*iter);
-    if(i < non_params) {
-      switch(left->GetType()) {
-        case REG_INT:
-          move_reg_mem(left->GetRegister()->GetRegister(), reg_offset, RBP);
-          dirty_regs.push(reg_offset);
-          regs.push(left);
-          reg_offset -= sizeof(size_t);
-          break;
-
-        case REG_FLOAT:
-          move_xreg_mem(left->GetRegister()->GetRegister(), xmm_offset, RBP);
-          dirty_xmms.push(xmm_offset);
-          xmms.push(left);
-          xmm_offset -= sizeof(double);
-          break;
-
-        default:
-          break;
-      }
-      // update
-      i++;
-    }
+  // The values that stay pending across the call (everything under the
+  // arguments) go to the typed spill slots: SpillPending. The map's index is
+  // the instruction ProcessInstructions is emitting; a callback for any other
+  // instruction would type the stack with the wrong map, so it is checked.
+  if(ref_map_ip < 0 || ref_map_ip >= method->GetInstructionCount() || method->GetInstruction(ref_map_ip) != instr) {
+    ref_map_ip = -1;
   }
-
-#ifdef _DEBUG_JIT
-  assert(reg_offset >= TMP_REG_9);
-  assert(xmm_offset >= TMP_XMM_2);
-#endif
-
-  if(dirty_regs.size() > (size_t)JitFrameLayout::TMP_INT_SLOTS || dirty_xmms.size() > (size_t)JitFrameLayout::TMP_FLOAT_SLOTS) {
-    CompileFailed(L"more live values across a call than spill slots (10 integer, 3 float)");
+  std::vector<PendingSpill> spilled_regs;
+  std::vector<PendingSpill> spilled_xmms;
+  if(!SpillPending(0, non_params, TMP_XMM_0, spilled_regs, spilled_xmms, L"a call")) {
+    return;
   }
 
   // A bound or cached callee is called straight into its native entry with
@@ -3000,22 +3075,8 @@ void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
     EmitBridgeCall(instr_id, instr, instr_index);
   }
 
-  // restore register values
-  while(!dirty_regs.empty()) {
-    RegInstr* left = regs.top();
-    move_mem_reg(dirty_regs.top(), RBP, left->GetRegister()->GetRegister());
-    // update
-    regs.pop();
-    dirty_regs.pop();
-  }
-
-  while(!dirty_xmms.empty()) {
-    RegInstr* left = xmms.top();
-    move_mem_xreg(dirty_xmms.top(), RBP, left->GetRegister()->GetRegister());
-    // update
-    xmms.pop();
-    dirty_xmms.pop();
-  }
+  // restore register values; a reference slot is cleared once reloaded
+  ReloadPending(spilled_regs, spilled_xmms);
 
   // Reload INSTANCE_MEM from frame->mem[0] in case GC moved the young object
   // during the callback. GC updates frame->mem[0] but not [RBP+INSTANCE_MEM].
@@ -4453,27 +4514,13 @@ RegisterHolder* JitAmd64::call_xfunc(double(*func_ptr)(double), RegInstr* left)
   // temp -- the 7 in "7 + x->Pow(5.0)->As(Int)" -- is destroyed by pow().
   // ARM64 fixed the same bug (db4c37b662); AMD64 never got it. Win64 keeps
   // XMM6-15 and RBX/RSI/RDI, which is why it never showed on Windows. Spill to
-  // the scratch slots ProcessStackCallback already uses; with more temps than
-  // slots, fall back to the interpreter for this method.
-  std::vector<std::pair<Register, long> > spilled_regs;
-  std::vector<std::pair<Register, long> > spilled_xregs;
-  long spill_off = TMP_REG_0;
-  long xspill_off = TMP_XMM_1;
-  for(RegInstr* pending : working_stack) {
-    if(pending->GetType() == REG_INT) {
-      if(spill_off < TMP_REG_9) { CompileFailed(L"more live integer values across a math call than spill slots"); break; }
-      const Register r = pending->GetRegister()->GetRegister();
-      move_reg_mem(r, spill_off, RBP);
-      spilled_regs.push_back(std::make_pair(r, spill_off));
-      spill_off -= sizeof(size_t);
-    }
-    else if(pending->GetType() == REG_FLOAT) {
-      if(xspill_off < TMP_XMM_2) { CompileFailed(L"more live float values across a math call than spill slots"); break; }
-      const Register r = pending->GetRegister()->GetRegister();
-      move_xreg_mem(r, xspill_off, RBP);
-      spilled_xregs.push_back(std::make_pair(r, xspill_off));
-      xspill_off -= sizeof(double);
-    }
+  // the typed slots ProcessStackCallback uses (SpillPending; the caller popped
+  // the operand already, so the map's stack is one deeper); with more temps
+  // than slots, fall back to the interpreter for this method.
+  std::vector<PendingSpill> spilled_regs;
+  std::vector<PendingSpill> spilled_xregs;
+  if(!SpillPending(1, -1, TMP_XMM_1, spilled_regs, spilled_xregs, L"a math call")) {
+    return GetXmmRegister();
   }
 
   move_xreg_mem(XMM0, TMP_XMM_0, RBP);
@@ -4505,12 +4552,7 @@ RegisterHolder* JitAmd64::call_xfunc(double(*func_ptr)(double), RegInstr* left)
   }
 
   // Restore the temps spilled above.
-  for(size_t si = 0; si < spilled_regs.size(); ++si) {
-    move_mem_reg(spilled_regs[si].second, RBP, spilled_regs[si].first);
-  }
-  for(size_t si = 0; si < spilled_xregs.size(); ++si) {
-    move_mem_xreg(spilled_xregs[si].second, RBP, spilled_xregs[si].first);
-  }
+  ReloadPending(spilled_regs, spilled_xregs);
 
   return result_holder;
 }
@@ -4523,32 +4565,14 @@ RegisterHolder* JitAmd64::call_xfunc2(double(*func_ptr)(double, double), RegInst
   // See call_xfunc: drop cached locals across the clobbering libc call.
   FlushLocalCache();
 
-  // Preserve in-flight working-stack temps across the libc call. Under SysV
-  // every XMM register and RAX/RCX/RDX/R8-R11 are caller-saved, so a pending
-  // temp -- the 7 in "7 + x->Pow(5.0)->As(Int)" -- is destroyed by pow().
-  // ARM64 fixed the same bug (db4c37b662); AMD64 never got it. Win64 keeps
-  // XMM6-15 and RBX/RSI/RDI, which is why it never showed on Windows. Spill to
-  // the scratch slots ProcessStackCallback already uses; with more temps than
-  // slots, fall back to the interpreter for this method.
-  std::vector<std::pair<Register, long> > spilled_regs;
-  std::vector<std::pair<Register, long> > spilled_xregs;
-  long spill_off = TMP_REG_0;
-  long xspill_off = TMP_XMM_2;
-  for(RegInstr* pending : working_stack) {
-    if(pending->GetType() == REG_INT) {
-      if(spill_off < TMP_REG_9) { CompileFailed(L"more live integer values across a math call than spill slots"); break; }
-      const Register r = pending->GetRegister()->GetRegister();
-      move_reg_mem(r, spill_off, RBP);
-      spilled_regs.push_back(std::make_pair(r, spill_off));
-      spill_off -= sizeof(size_t);
-    }
-    else if(pending->GetType() == REG_FLOAT) {
-      if(xspill_off < TMP_XMM_2) { CompileFailed(L"more live float values across a math call than spill slots"); break; }
-      const Register r = pending->GetRegister()->GetRegister();
-      move_xreg_mem(r, xspill_off, RBP);
-      spilled_xregs.push_back(std::make_pair(r, xspill_off));
-      xspill_off -= sizeof(double);
-    }
+  // Preserve in-flight working-stack temps across the libc call (see
+  // call_xfunc). Both operands are off the working stack by now, so the map's
+  // stack is two deeper.
+  std::vector<PendingSpill> spilled_regs;
+  std::vector<PendingSpill> spilled_xregs;
+  if(!SpillPending(2, -1, TMP_XMM_2, spilled_regs, spilled_xregs, L"a math call")) {
+    delete right;
+    return GetXmmRegister();
   }
 
 #ifdef _DEBUG_JIT
@@ -4600,12 +4624,7 @@ RegisterHolder* JitAmd64::call_xfunc2(double(*func_ptr)(double, double), RegInst
   right = nullptr;
 
   // Restore the temps spilled above.
-  for(size_t si = 0; si < spilled_regs.size(); ++si) {
-    move_mem_reg(spilled_regs[si].second, RBP, spilled_regs[si].first);
-  }
-  for(size_t si = 0; si < spilled_xregs.size(); ++si) {
-    move_mem_xreg(spilled_xregs[si].second, RBP, spilled_xregs[si].first);
-  }
+  ReloadPending(spilled_regs, spilled_xregs);
 
   return result_holder;
 }
@@ -6201,15 +6220,15 @@ void JitAmd64::EmitMagicDivision(int64_t d, Register dest, bool is_mod) {
   const bool save_rax = (dest != RAX && !IsRegisterFree(RAX));
   const bool save_rdx = (dest != RDX && !IsRegisterFree(RDX));
   if(save_rdx) {
-    move_reg_mem(RDX, TMP_REG_1, RBP);
+    move_reg_mem(RDX, TMP_SCR_1, RBP);
   }
   if(save_rax) {
-    move_reg_mem(RAX, TMP_REG_0, RBP);
+    move_reg_mem(RAX, TMP_SCR_0, RBP);
   }
   // n is needed after the multiply; keep it in a slot when dest is a register the multiply clobbers
   const bool n_in_slot = (dest == RAX || dest == RDX);
   if(n_in_slot) {
-    move_reg_mem(dest, TMP_REG_3, RBP);
+    move_reg_mem(dest, TMP_SCR_3, RBP);
   }
   // n goes to RAX first: when dest is RDX, loading the magic constant into
   // RDX before this copy multiplied magic by itself (the fixture's
@@ -6219,13 +6238,13 @@ void JitAmd64::EmitMagicDivision(int64_t d, Register dest, bool is_mod) {
   }
   // the magic constant goes through a slot so no register is taken from the pool
   move_imm_reg(magic, RDX);
-  move_reg_mem(RDX, TMP_REG_2, RBP);
-  imul_mem(TMP_REG_2, RBP);                       // RDX:RAX = n * magic
+  move_reg_mem(RDX, TMP_SCR_2, RBP);
+  imul_mem(TMP_SCR_2, RBP);                       // RDX:RAX = n * magic
   if(d > 0 && magic < 0) {
-    if(n_in_slot) { add_mem_reg(TMP_REG_3, RBP, RDX); } else { add_reg_reg(dest, RDX); }
+    if(n_in_slot) { add_mem_reg(TMP_SCR_3, RBP, RDX); } else { add_reg_reg(dest, RDX); }
   }
   else if(d < 0 && magic > 0) {
-    if(n_in_slot) { sub_mem_reg(TMP_REG_3, RBP, RDX); } else { sub_reg_reg(dest, RDX); }
+    if(n_in_slot) { sub_mem_reg(TMP_SCR_3, RBP, RDX); } else { sub_reg_reg(dest, RDX); }
   }
   if(shift > 0) {
     sar_imm_reg(shift, RDX);
@@ -6239,7 +6258,7 @@ void JitAmd64::EmitMagicDivision(int64_t d, Register dest, bool is_mod) {
     move_imm_reg(d, RAX);
     mul_reg_reg(RAX, RDX);                        // RDX = q * d
     if(n_in_slot) {
-      move_mem_reg(TMP_REG_3, RBP, RAX);
+      move_mem_reg(TMP_SCR_3, RBP, RAX);
       sub_reg_reg(RDX, RAX);                      // RAX = n - q * d
       if(dest != RAX) {
         move_reg_reg(RAX, dest);
@@ -6253,10 +6272,10 @@ void JitAmd64::EmitMagicDivision(int64_t d, Register dest, bool is_mod) {
     move_reg_reg(RDX, dest);
   }
   if(save_rax && dest != RAX) {
-    move_mem_reg(TMP_REG_0, RBP, RAX);
+    move_mem_reg(TMP_SCR_0, RBP, RAX);
   }
   if(save_rdx && dest != RDX) {
-    move_mem_reg(TMP_REG_1, RBP, RDX);
+    move_mem_reg(TMP_SCR_1, RBP, RDX);
   }
 }
 
@@ -6508,15 +6527,15 @@ void JitAmd64::div_mem_reg(long offset, Register src, Register dest, bool is_mod
 
   if(is_mod) {
     if(dest != RDX) {
-      move_reg_mem(RDX, TMP_REG_1, RBP);
+      move_reg_mem(RDX, TMP_SCR_1, RBP);
     }
-    move_reg_mem(RAX, TMP_REG_0, RBP);
+    move_reg_mem(RAX, TMP_SCR_0, RBP);
   }
   else {
     if(dest != RAX) {
-      move_reg_mem(RAX, TMP_REG_0, RBP);
+      move_reg_mem(RAX, TMP_SCR_0, RBP);
     }
-    move_reg_mem(RDX, TMP_REG_1, RBP);
+    move_reg_mem(RDX, TMP_SCR_1, RBP);
   }
 
   // ============
@@ -6544,21 +6563,21 @@ void JitAmd64::div_mem_reg(long offset, Register src, Register dest, bool is_mod
   if(is_mod) {
     if(dest != RDX) {
       move_reg_reg(RDX, dest);
-      move_mem_reg(TMP_REG_1, RBP, RDX);
+      move_mem_reg(TMP_SCR_1, RBP, RDX);
     }
 
     if(dest != RAX) {
-      move_mem_reg(TMP_REG_0, RBP, RAX);
+      move_mem_reg(TMP_SCR_0, RBP, RAX);
     }
   }
   else {
     if(dest != RAX) {
       move_reg_reg(RAX, dest);
-      move_mem_reg(TMP_REG_0, RBP, RAX);
+      move_mem_reg(TMP_SCR_0, RBP, RAX);
     }
     
     if(dest != RDX) {
-      move_mem_reg(TMP_REG_1, RBP, RDX);
+      move_mem_reg(TMP_SCR_1, RBP, RDX);
     }
   }
 
@@ -6582,10 +6601,10 @@ void JitAmd64::div_reg_reg(Register src, Register dest, bool is_mod, bool src_no
   const bool save_rax = (src == RAX) || (dest != RAX && !IsRegisterFree(RAX));
   const bool save_rdx = (src == RDX) || (dest != RDX && !IsRegisterFree(RDX));
   if(save_rdx) {
-    move_reg_mem(RDX, TMP_REG_1, RBP);
+    move_reg_mem(RDX, TMP_SCR_1, RBP);
   }
   if(save_rax) {
-    move_reg_mem(RAX, TMP_REG_0, RBP);
+    move_reg_mem(RAX, TMP_SCR_0, RBP);
   }
   // ============
   move_reg_reg(dest, RAX);
@@ -6616,15 +6635,15 @@ void JitAmd64::div_reg_reg(Register src, Register dest, bool is_mod, bool src_no
     // encode
     AddMachineCode(XB(RBP));
     AddMachineCode(0xf7);
-    EmitModRMDisp(ModRM(RBP, RDI), (src == RAX) ? TMP_REG_0 : TMP_REG_1);
+    EmitModRMDisp(ModRM(RBP, RDI), (src == RAX) ? TMP_SCR_0 : TMP_SCR_1);
     
 #ifdef _DEBUG_JIT
     if(is_mod) {
-      std::wcout << L"  " << (++instr_count) << L": [imod " << TMP_REG_0 << L"(%" 
+      std::wcout << L"  " << (++instr_count) << L": [imod " << TMP_SCR_0 << L"(%" 
             << GetRegisterName(RBP) << L")]" << std::endl;
     }
     else {
-      std::wcout << L"  " << (++instr_count) << L": [idiv " << TMP_REG_0 << L"(%" 
+      std::wcout << L"  " << (++instr_count) << L": [idiv " << TMP_SCR_0 << L"(%" 
             << GetRegisterName(RBP) << L")]" << std::endl;
     }
 #endif
@@ -6641,10 +6660,10 @@ void JitAmd64::div_reg_reg(Register src, Register dest, bool is_mod, bool src_no
     }
   }
   if(save_rax && dest != RAX) {
-    move_mem_reg(TMP_REG_0, RBP, RAX);
+    move_mem_reg(TMP_SCR_0, RBP, RAX);
   }
   if(save_rdx && dest != RDX) {
-    move_mem_reg(TMP_REG_1, RBP, RDX);
+    move_mem_reg(TMP_SCR_1, RBP, RDX);
   }
 
   PatchDivMinusOneJump(done_patch);
@@ -6738,7 +6757,7 @@ void JitAmd64::shl_reg_reg(Register src, Register dest)
   }
   
   if(src != RCX) {
-    move_reg_mem(RCX, TMP_REG_0, RBP);
+    move_reg_mem(RCX, TMP_SCR_0, RBP);
     move_reg_reg(src, RCX);
   }
   
@@ -6756,7 +6775,7 @@ void JitAmd64::shl_reg_reg(Register src, Register dest)
 #endif
   
   if(src != RCX) {
-    move_mem_reg(TMP_REG_0, RBP, RCX);
+    move_mem_reg(TMP_SCR_0, RBP, RCX);
   }
   
   if(reg_holder) {
@@ -6813,7 +6832,7 @@ void JitAmd64::shr_reg_reg(Register src, Register dest)
   }
   
   if(src != RCX) {
-    move_reg_mem(RCX, TMP_REG_0, RBP);
+    move_reg_mem(RCX, TMP_SCR_0, RBP);
     move_reg_reg(src, RCX);
   }
     
@@ -6831,7 +6850,7 @@ void JitAmd64::shr_reg_reg(Register src, Register dest)
 #endif
   
   if(src != RCX) {
-    move_mem_reg(TMP_REG_0, RBP, RCX);
+    move_mem_reg(TMP_SCR_0, RBP, RCX);
   }
   
   if(reg_holder) {
@@ -6865,7 +6884,7 @@ void JitAmd64::sar_reg_reg(Register src, Register dest)
   }
   
   if(src != RCX) {
-    move_reg_mem(RCX, TMP_REG_0, RBP);
+    move_reg_mem(RCX, TMP_SCR_0, RBP);
     move_reg_reg(src, RCX);
   }
     
@@ -6883,7 +6902,7 @@ void JitAmd64::sar_reg_reg(Register src, Register dest)
 #endif
   
   if(src != RCX) {
-    move_mem_reg(TMP_REG_0, RBP, RCX);
+    move_mem_reg(TMP_SCR_0, RBP, RCX);
   }
   
   if(reg_holder) {
@@ -8001,7 +8020,13 @@ void JitAmd64::ProcessIndices()
     }
 #endif
   }
-  org_local_space = local_space = -(index + TMP_REG_9);
+  // The frame's locals region: from the frame pointer down to the lowest
+  // local. It used to be -(index + TMP_REG_9), which reserved |TMP_REG_9|
+  // more bytes (160 on SysV, 104 on Win64) under the lowest local that nothing
+  // addressed: the record block and the outgoing area are placed and reserved
+  // on their own below (Compile, Prolog). Those bytes were 36% of a small
+  // method's frame, and the 14 typed slots above would have made it 272.
+  org_local_space = local_space = -index;
 
 #ifdef _DEBUG_JIT
   std::wcout << L"Local space required: " << (local_space + 16) << L" byte(s)" << std::endl;
@@ -8619,6 +8644,12 @@ bool JitAmd64::Compile(StackMethod* cm)
     local_space = floats_index = instr_index = code_index = epilog_index = instr_count = 0;
     float_consts[floats_index++] = 0.0;
 
+    // GC roots phase 3: the map that types the working stack at every spill
+    // site. A map that does not build leaves every spilled value a reference.
+    ref_map = RefMap::Build(program, method);
+    ref_map_ip = -1;
+    spill_sites = spill_refs = spill_vals = spill_unknown = spill_mismatch = 0;
+
     rax_reg = NewRegisterHolder(RAX);
 #ifdef _WIN64
     // general use registers. R8-R11 are caller-saved, need no prologue save,
@@ -8697,14 +8728,14 @@ bool JitAmd64::Compile(StackMethod* cm)
       }
     }
     // inline locals start after caller's locals (mirrors ProcessIndices index computation)
-    inline_local_offset = -(local_space + TMP_REG_9);
+    inline_local_offset = -local_space;
     local_space += extra_inline_space;
 
     // The frame record block for the native entry (EmitNativePrologue) goes
     // below the locals and the inline space: the StackFrame, its two mem
     // words and the entry kind. Outside the region the collector walks
     // (org_local_space), like the inline space.
-    rec_base = -(local_space + TMP_REG_9) - REC_SIZE;
+    rec_base = -local_space - REC_SIZE;
     local_space += REC_SIZE;
 
     // the outgoing area for the method's native call sites, sized for the
@@ -8809,6 +8840,8 @@ bool JitAmd64::Compile(StackMethod* cm)
         aux_regs.pop();
       }
 
+      delete ref_map;
+      ref_map = nullptr;
       return false;
     }
 
@@ -8926,6 +8959,17 @@ bool JitAmd64::Compile(StackMethod* cm)
     if(dump_native) {
       JitDumpNativeCode(method->GetName(), code, code_index, native_entry_offset);
     }
+
+    // OBJECK_JIT_REPORT: what the spill sites did with the map (GC roots
+    // phase 3). "mismatch" counts sites where the map and the working stack
+    // did not line up and every value went to a reference slot.
+    if(JitReportEnabled() && spill_sites > 0) {
+      std::wcerr << L"[jit] " << method->GetName() << L": spills sites=" << spill_sites << L" ref=" << spill_refs
+                 << L" val=" << spill_vals << L" unknown=" << spill_unknown << L" mismatch=" << spill_mismatch
+                 << (ref_map && ref_map->ok ? L"" : L" (no map)") << std::endl;
+    }
+    delete ref_map;
+    ref_map = nullptr;
 
     // store compiled code
     NativeCode* native_code = new NativeCode(page_manager->GetPage(code, code_index), code_index, float_consts, native_entry_offset);

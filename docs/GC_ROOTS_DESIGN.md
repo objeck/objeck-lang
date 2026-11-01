@@ -29,6 +29,39 @@ built work: nothing below has landed.
   - **#1457 is a prerequisite**, found by the audit. Three trap handlers left their declared arguments on
     the operand stack for good, interpreted and compiled, keeping objects alive and shifting every frame
     above them. Fixed in #1458.
+- **Phase 3 is built (AMD64), 2026-10-31**, on branch `gc-roots-amd64`, after a layout header PR that
+  moved every frame constant of both backends and the collector's window assumptions into
+  `core/vm/arch/jit/jit_frame_layout.h` with `static_assert`s. What changed against §6.3:
+  - **Three slot classes, not two.** `TMP_REF_0..9` (references and anything the map leaves
+    unknown; zeroed at entry, cleared on reload, the only words beside the locals the collector reads),
+    `TMP_VAL_0..9` (pending values the map proves `int`; never read) and `TMP_SCR_0..3` (the scratch
+    saves of §5.2 rule 6: the division's `RAX`/`RDX`, a shift's `RCX`, the inline allocator's
+    `RAX`-`RDX`). Scratch got its own class so a reference saved around an inline allocation never
+    sits in a value slot, which keeps the audit below exact. The frame grows by 14 words; the entry
+    zeroing covers the same ten slots it did.
+  - **The libm spills are typed like the others**, not treated as scratch, so a value slot only ever
+    holds what the map proved.
+  - **The map is used only where it lines up with the JIT's working stack** (`JitAmd64::SpillPending`):
+    its height at the instruction, less what the site popped already, must equal the working stack's
+    size, and no entry may be a float where the map says `int`/`ref` or an integer register where it
+    says `float`. Otherwise the whole site spills to reference slots. `OBJECK_JIT_REPORT=1` prints
+    per method `spills sites= ref= val= unknown= mismatch=`.
+  - **The audit covers compiled frames**: under `OBJECK_GC_ROOTS=audit` a `TMP_VAL_*` word that is a
+    real object's address counts as `jit_value_slot_at_object` (a mistyped reference, or a working
+    stack the check above missed). In audit mode the entry zeroing covers the value slots too, so a
+    slot the frame never wrote cannot report what an earlier, deeper frame left there (without that
+    the count was 79,663 across the suite, all stale stack words). `gc_address_int_pending` trips it
+    by construction; the regression suite must not. Measured on the suite (771 tests, every method
+    compiled, 64k nursery): 293,818 collections, 3,235,280 compiled frames,
+    `jit_value_slot_at_object=0`; 455,462 spill sites, 107,306 to reference slots, 7,921 to value
+    slots, 303 unknown, 31 sites where the map did not line up (all in `File:GetTempName`,
+    `UDPSocketServer:Bind`, whose maps do not build, and `Guarded:Read`/`ReadNested`), every one of
+    which spilled to reference slots.
+  - **`OBJECK_GC_ROOTS=conservative` scans the old window over every slot class on x64**, so it is the
+    negative control for compiled code as well: `gc_address_int_pending` must FAIL under it with
+    `--jit=1`, and PASS without it.
+  - **The and/or slot is still scanned conservatively** on x64, as before; it is typed in phase 5.
+    ARM64 is untouched (phase 4).
 - **Suite-wide audit** (665 tests, interpreted, 256k nursery, on the #1457 fix):
   - 2,568 maps, 0 failed;
   - 0 threads whose segments do not add up;
@@ -345,7 +378,7 @@ tests (`gc_*_stress`, `jit_gc_stress`, `gc_mt_small_nursery_stress`, the nightly
 | **0** | Fix `--jit=off` so it disables `native` compilation too, or rename its meaning; the differential's `s0/off` depends on it. Add the measurement baseline (§8). | the evidence gap in §2.1 | low |
 | **1** | `RefMap` analysis (`core/vm/arch/ref_map.h`, header-only so no build file changes) plus the `OBJECK_GC_ROOTS=audit` report-only mode. Report how often `unknown` occurs per suite. No behaviour change. | nothing yet; measures the design | low |
 | **2** | Interpreter operand stacks and the interpreted and/or slot marked and relocated by `RefMap`; audit traps that hold references across allocations. Lands `gc_int_not_relocated` (interpreter configurations). | §3.3 in interpreted code; retires 9cdc656566's interpreter half | medium |
-| **3** | AMD64: typed spill areas (`TMP_REF_*` / `TMP_VAL_*`), `RegInstr` ref bit, clear after reload, entry zeroing of the reference slots; `CheckJitRoots`/`FixupRoots` walk them by type on x64. Lands `jit_stale_spill_slot` and the JIT configurations of `gc_int_not_relocated`. | §3.1 paths 1 and 2, §3.3 compiled, on AMD64 | medium-high (frame constants) |
+| **3** | AMD64: typed spill areas (`TMP_REF_*` / `TMP_VAL_*` / `TMP_SCR_*`), the kind read from `RefMap` at the spill site, clear after reload, entry zeroing of the reference slots; `CheckJitRoots`/`FixupRoots` walk them by type on x64. Lands `jit_stale_spill_slot` at s3 and the JIT configurations of `gc_address_int_pending`. **Built** (see the status note). | §3.1 paths 1 and 2, §3.3 compiled, on AMD64 | medium-high (frame constants) |
 | **4** | ARM64: the same. Compile-checked locally with `cl /Zs` and the cross toolchain; proven on CI's arm64 legs. | the same, on ARM64 | medium-high |
 | **5** | Remove `JIT_TMP_LOOK_BACK` and every `CheckUntypedSlot`/`FixupSlot` call on frame and stack words. Delete the dead JIT inliner (`ProcessInlineMethod`, `CanInlineMethod`, `extra_inline_space`). Remove the symptom code made redundant: the conservative and/or marking (9cdc656566) and the window spill comment paths in the loop safepoints (613e68a63f/8617fda009, now `TMP_REF_*`). Demote the conservative-word class validation (181d478f70) and the `FixupSelf` checks (4542ec7e41) to verifier assertions. | the whole class | medium |
 | **6** | Heap side: a reference type for closure capture blocks, retiring 193f076fdd's conservative dirty-block path. Separately, stable instance IDs. | 193f076fdd(b); ID identity | medium |

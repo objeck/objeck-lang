@@ -82,7 +82,7 @@ From the `_DEBUG_JIT` listing of `r := a->Add(i)` (AMD64, Windows). The callee's
 fourteen instructions. Around them:
 
 **The call site, about 40 emitted instructions.** `FlushLocalCache`, spill of any live
-non-pinned temporaries to the `TMP_REG` slots; the operand-stack top computed from the frame's
+non-pinned temporaries to the `TMP_REF_*`/`TMP_VAL_*` slots (typed by the reference map, GC roots phase 3); the operand-stack top computed from the frame's
 `OP_STACK` and `STACK_POS` slots (five instructions), then each argument pushed with a reload of
 `STACK_POS`, a store, an `inc [stack_pos]` and an `add` (five per argument); four argument
 registers loaded with the opcode, the `StackInstr*`, `CLS_ID` and `MTHD_ID`; six frame slots
@@ -190,7 +190,7 @@ call [rax + NativeCode::code]        ; or the code pointer cached on StackMethod
 mov  rdx, [rbp+MEM]; mov rdx,[rdx]; mov [rbp+INSTANCE_MEM], rdx    ; the reload rule, unchanged
 ```
 
-The caller's live temporaries spill to the `TMP_REG` slots around the call exactly as around a
+The caller's live temporaries spill to the typed `TMP_REF_*`/`TMP_VAL_*` slots around the call exactly as around a
 callback; they lie inside `jit_offset`, so the collector scans them. The pinned loop locals
 (`R13`-`R15`, `XMM6`-`XMM9`; ARM64 `X19`+ and `D8`-`D15` when the ARM64 pins land) are
 callee-saved and the callee's prologue preserves them, so a pinned loop calls without spilling.
