@@ -268,8 +268,10 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     --jit=1 and --jit=off at -opt s0 (the entry-zeroing path) and at -opt s3,
     where the compiler inlines the spilling method into a frame that stays
     live and the reference slot must be cleared on reload (GC roots phase 3,
-    docs/GC_ROOTS_DESIGN.md). The fixture is outside the regression runner's
-    directory because the runner passes no VM flags.
+    docs/GC_ROOTS_DESIGN.md). On ARM64, which keeps its untyped window until
+    phase 4, the s3 compiled run is pinned as the known gap instead. The
+    fixture is outside the regression runner's directory because the runner
+    passes no VM flags.
  27. The reference maps type the stack right when compiled code calls back into
     the interpreter (#1475, #1476). A compiled method entered from the
     interpreter is not in the call stack, and the frames a nested interpreter
@@ -294,7 +296,8 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     reference map proves an Int to a TMP_VAL_* slot the collector never reads
     (GC roots phase 3), and OBJECK_GC_ROOTS=conservative, which scans the old
     window over every slot, must make the compiled run FAIL as well, so the
-    typed slots are shown to be what keeps the Int intact.
+    typed slots are shown to be what keeps the Int intact. On ARM64 the
+    compiled run is pinned as the known gap until phase 4 types its slots.
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only] [--only name[,name]]
 
@@ -307,6 +310,7 @@ tools, which CI does not build, is checked by hand.
 """
 import concurrent.futures
 import os
+import platform
 import re
 import shutil
 import subprocess
@@ -1597,6 +1601,13 @@ def check_int_not_relocated(obc, obr, env, bin_dir):
               rc == 0 and b"PASS: no pending Int was rewritten" in out, f"rc={rc} out={out[-200:]!r}")
 
 
+def typed_spill_slots():
+    """True where compiled frames spill to typed slots (GC roots phase 3: AMD64). ARM64
+    still spills to one untyped class that the collector scans as a window, until
+    phase 4, so the checks that need the typed slots stay pinned as the known gap there."""
+    return platform.machine().lower() not in ("arm64", "aarch64")
+
+
 def check_entry_zeroes_spill_slots(obc, obr, env, bin_dir):
     # ---- 26. a spill slot is a root only while it holds a pending value --------------
     src = os.path.join(SCRIPT_DIR, "vm_flag_fixtures", "jit_stale_spill_slot.obs")
@@ -1610,6 +1621,13 @@ def check_entry_zeroes_spill_slots(obc, obr, env, bin_dir):
 
         for label, flags in (("--jit=1", ["--jit=1"]), ("--jit=off", ["--jit=off"])):
             rc, out, err = run([obr] + flags + [dest], env=env, cwd=bin_dir, timeout=300)
+            if opt == "s3" and label == "--jit=1" and not typed_spill_slots():
+                # ARM64 never clears a spill slot after its reload (GC roots phase 4), so the
+                # inlined spill in a live frame keeps the array: pinned until phase 4 lands,
+                # when this check flips to the plain "must PASS" below.
+                check(f"known gap until GC roots phase 4: a cleared-on-reload slot is AMD64 only (-opt {opt}, {label})",
+                      rc == 1 and b"FAIL: a stale spill slot kept" in out, f"rc={rc} out={out[-300:]!r}")
+                continue
             check(f"no stale spill slot keeps a dead array alive (-opt {opt}, {label})",
                   rc == 0 and b"PASS: the dead array was collected" in out,
                   f"rc={rc} out={out[-300:]!r} stderr={err.decode(errors='replace')[-300:]!r}")
@@ -1664,10 +1682,16 @@ def check_address_int_pending(obc, obr, env, bin_dir):
         # A compiled frame spills the pending Int to a value slot the collector never
         # reads (GC roots phase 3, AMD64), so it survives too; the old window over every
         # slot (OBJECK_GC_ROOTS=conservative) is the negative control for compiled code.
+        # ARM64 still scans the old window (phase 4), so there the compiled run is pinned
+        # as the known gap, and it flips to "must PASS" when phase 4 lands.
         rc, out, err = run([obr, "--jit=1", "--nursery=64k", dest], env=hooks_env, cwd=SCRIPT_DIR, timeout=300)
-        check(f"no pending address-valued Int is rewritten compiled at -opt {opt}",
-              rc == 0 and b"PASS: no pending address-valued Int was rewritten" in out,
-              f"rc={rc} out={out[-200:]!r}")
+        if typed_spill_slots():
+            check(f"no pending address-valued Int is rewritten compiled at -opt {opt}",
+                  rc == 0 and b"PASS: no pending address-valued Int was rewritten" in out,
+                  f"rc={rc} out={out[-200:]!r}")
+        else:
+            check(f"known gap until GC roots phase 4: compiled code still rewrites a pending address-valued Int on ARM64 (-opt {opt})",
+                  rc == 1 and b"changed by a collection" in out, f"rc={rc} out={out[-200:]!r}")
 
         rc, out, err = run([obr, "--jit=1", "--nursery=64k", dest], env=conservative_env, cwd=SCRIPT_DIR, timeout=300)
         check(f"the old guess rewrites a pending address-valued Int in compiled code (negative control, -opt {opt})",
