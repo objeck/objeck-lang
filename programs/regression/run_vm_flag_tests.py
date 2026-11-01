@@ -255,14 +255,16 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     negative control that ran the old guess (OBJECK_GC_ROOTS=conservative) and
     expected a failure is gone for the same reason; section 28 restores both
     with a test-only hook (#1473).
- 26. A compiled method's entry zeroes every spill slot the collector scans. On
-    AMD64 the count was one short and left TMP_REG_0 holding what an earlier
-    method at the same frame pointer had spilled, so a dead 32 MB array outlived
-    every collection. vm_flag_fixtures/jit_stale_spill_slot.obs, compiled at
-    -opt s0, passes with --jit=1 and --jit=off. (At s3 the compiler inlines the
-    spilling method, and a live frame's spill slot is not cleared after its
-    reload: GC roots phase 3. The fixture is outside the regression runner's
-    directory because the runner compiles at s3.)
+ 26. A compiled frame's spill slots are roots only while they hold a pending
+    value. On AMD64 the entry zeroing was one slot short and left TMP_REG_0
+    holding what an earlier method at the same frame pointer had spilled, and
+    a slot was never cleared after its reload, so a dead 32 MB array outlived
+    every collection. vm_flag_fixtures/jit_stale_spill_slot.obs passes with
+    --jit=1 and --jit=off at -opt s0 (the entry-zeroing path) and at -opt s3,
+    where the compiler inlines the spilling method into a frame that stays
+    live and the reference slot must be cleared on reload (GC roots phase 3,
+    docs/GC_ROOTS_DESIGN.md). The fixture is outside the regression runner's
+    directory because the runner passes no VM flags.
  27. The reference maps type the stack right when compiled code calls back into
     the interpreter (#1475, #1476). A compiled method entered from the
     interpreter is not in the call stack, and the frames a nested interpreter
@@ -283,9 +285,11 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     OBJECK_GC_ROOTS=conservative (the old guess) must make it FAIL: the negative
     control section 25 lost when instance IDs became counters. Without the
     variable the fixture refuses to run, so a missing hook cannot pass. With the
-    JIT on, compiled frames are still scanned by the old guess and the fixture
-    FAILS; that is pinned as a known gap until GC roots phase 3 types compiled
-    frames, and the check flips to "must PASS" then.
+    JIT on (--jit=1) it must PASS too: an AMD64 frame spills a pending value the
+    reference map proves an Int to a TMP_VAL_* slot the collector never reads
+    (GC roots phase 3), and OBJECK_GC_ROOTS=conservative, which scans the old
+    window over every slot, must make the compiled run FAIL as well, so the
+    typed slots are shown to be what keeps the Int intact.
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only]
 
@@ -1504,7 +1508,8 @@ def check_roots_audit_counts(name, rc, out, err):
     for key, what in (("failed", "every reference map builds"),
                       ("mismatched_threads", "every thread's frames account for its whole stack"),
                       ("ref_points_at_nothing", "no reference-typed word points at nothing"),
-                      ("int_points_at_object", "no Int- or Float-typed word points at an object")):
+                      ("int_points_at_object", "no Int- or Float-typed word points at an object"),
+                      ("jit_value_slot_at_object", "no compiled frame's value slot holds an object")):
         check(f"{name}: {what}", counts.get(key, -1) == 0, f"{key}={counts.get(key)} notes={notes!r}")
 
 
@@ -1526,19 +1531,21 @@ def check_int_not_relocated(obc, obr, env, bin_dir):
 
 
 def check_entry_zeroes_spill_slots(obc, obr, env, bin_dir):
-    # ---- 26. a compiled method's entry zeroes every scanned spill slot ---------------
+    # ---- 26. a spill slot is a root only while it holds a pending value --------------
     src = os.path.join(SCRIPT_DIR, "vm_flag_fixtures", "jit_stale_spill_slot.obs")
-    dest = os.path.join(SCRIPT_DIR, "vm_flag_fixtures", "jit_stale_spill_slot.obe")
-    rc, out, err = run([obc, "-src", src, "-opt", "s0", "-dest", dest], env=env, cwd=bin_dir)
-    check("stale spill slot fixture compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
-    if rc != 0:
-        return
+    for opt in ("s0", "s3"):
+        dest = os.path.join(SCRIPT_DIR, "vm_flag_fixtures", "jit_stale_spill_slot_" + opt + ".obe")
+        rc, out, err = run([obc, "-src", src, "-opt", opt, "-dest", dest], env=env, cwd=bin_dir)
+        check(f"stale spill slot fixture compiles at -opt {opt}", rc == 0 and os.path.exists(dest),
+              err.decode(errors="replace")[-300:])
+        if rc != 0:
+            continue
 
-    for label, flags in (("--jit=1", ["--jit=1"]), ("--jit=off", ["--jit=off"])):
-        rc, out, err = run([obr] + flags + [dest], env=env, cwd=bin_dir, timeout=300)
-        check(f"no stale spill slot keeps a dead array alive ({label})",
-              rc == 0 and b"PASS: the dead array was collected" in out,
-              f"rc={rc} out={out[-300:]!r} stderr={err.decode(errors='replace')[-300:]!r}")
+        for label, flags in (("--jit=1", ["--jit=1"]), ("--jit=off", ["--jit=off"])):
+            rc, out, err = run([obr] + flags + [dest], env=env, cwd=bin_dir, timeout=300)
+            check(f"no stale spill slot keeps a dead array alive (-opt {opt}, {label})",
+                  rc == 0 and b"PASS: the dead array was collected" in out,
+                  f"rc={rc} out={out[-300:]!r} stderr={err.decode(errors='replace')[-300:]!r}")
 
 
 def check_gc_roots_jit_bridge(obc, obr, env, bin_dir):
@@ -1587,12 +1594,18 @@ def check_address_int_pending(obc, obr, env, bin_dir):
               rc == 1 and b"FAIL: " in out and b"changed by a collection" in out,
               f"rc={rc} out={out[-200:]!r}")
 
-        # Compiled frames are still scanned by the old guess (GC roots phase 3 types them),
-        # so a compiled method rewrites the pending Int. This pins the gap: when phase 3
-        # lands this check fails, and it becomes a plain "must PASS" like the one above.
+        # A compiled frame spills the pending Int to a value slot the collector never
+        # reads (GC roots phase 3, AMD64), so it survives too; the old window over every
+        # slot (OBJECK_GC_ROOTS=conservative) is the negative control for compiled code.
         rc, out, err = run([obr, "--jit=1", "--nursery=64k", dest], env=hooks_env, cwd=SCRIPT_DIR, timeout=300)
-        check(f"known gap until GC roots phase 3: compiled code still rewrites a pending address-valued Int (-opt {opt})",
-              rc == 1 and b"changed by a collection" in out, f"rc={rc} out={out[-200:]!r}")
+        check(f"no pending address-valued Int is rewritten compiled at -opt {opt}",
+              rc == 0 and b"PASS: no pending address-valued Int was rewritten" in out,
+              f"rc={rc} out={out[-200:]!r}")
+
+        rc, out, err = run([obr, "--jit=1", "--nursery=64k", dest], env=conservative_env, cwd=SCRIPT_DIR, timeout=300)
+        check(f"the old guess rewrites a pending address-valued Int in compiled code (negative control, -opt {opt})",
+              rc == 1 and b"FAIL: " in out and b"changed by a collection" in out,
+              f"rc={rc} out={out[-200:]!r}")
 
         rc, out, err = run([obr] + flags + [dest], env=env, cwd=SCRIPT_DIR, timeout=300)
         check(f"the hook is inert without OBJECK_GC_TEST_HOOKS (-opt {opt})",

@@ -7,19 +7,20 @@ collector found them by scanning a fixed window of words beside each frame's
 locals, whether or not the frame had written them. Two ways that kept a dead
 object alive, both shown here:
 
-- Entry zeroing missed a slot (fixed). An AMD64 method's entry zeroed nine of
-  the ten integer slots; TMP_REG_0, the first one every spill uses, kept whatever an earlier
-  call at the same depth had left there. At -opt s0, Leave() spills the 32 MB
-  array MakeBig returns to its TMP_REG_0 while the constructor runs (the
-  arguments are evaluated left to right), and returns. Churn() is entered at
-  the same frame pointer and never writes the slot, so every collection under
-  it found the dead array there.
-- Spills are never cleared. At -opt s3 Leave is inlined into Run, and the
-  spill sits in Run's own TMP_REG_0 after the call returns, for as long as Run
-  runs. That path is not fixed yet (GC roots phase 3, docs/GC_ROOTS_DESIGN.md),
-  so this fixture is run at -opt s0 only, by run_vm_flag_tests.py section 26:
-  the regression runner compiles at s3 and passes no VM flags, which is why it
-  lives outside the runner's directory.
+- Entry zeroing missed a slot (fixed, #1468). An AMD64 method's entry zeroed
+  nine of the ten integer slots; the first one every spill uses kept whatever
+  an earlier call at the same depth had left there. At -opt s0, Leave() spills
+  the 32 MB array MakeBig returns to its first reference slot (TMP_REF_0)
+  while the constructor runs (the arguments are evaluated left to right), and
+  returns. Churn() is entered at the same frame pointer and never writes the
+  slot, so every collection under it found the dead array there.
+- Spills were never cleared (fixed, GC roots phase 3). At -opt s3 Leave is
+  inlined into Run, and the spill sat in Run's own slot after the call
+  returned, for as long as Run ran. A reference slot is now cleared when its
+  value is reloaded (JitAmd64::ReloadPending), so the frame keeps nothing it
+  no longer holds. run_vm_flag_tests.py section 26 runs this fixture at -opt
+  s0 and s3 with --jit=1 and --jit=off; it lives outside the regression
+  runner's directory because the runner passes no VM flags.
 
 Run is called three times: the first call resolves its callees through the
 bridge, whose C++ frames happen to overwrite the old slot; later calls go
@@ -65,7 +66,7 @@ class JitStaleSpillSlot {
   }
 
   # arguments are evaluated left to right: the array is pending across the
-  # constructor call, so it is spilled to TMP_REG_0 and left there
+  # constructor call, so it is spilled to the frame's first reference slot
   function : Leave() ~ Nil {
     Keep(MakeBig(), StaleSmall->New(7));
   }

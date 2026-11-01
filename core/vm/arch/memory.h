@@ -442,6 +442,9 @@ class MemoryManager {
   static void AuditRoots();
   static RefMap* GetRefMap(StackMethod* method);
   static void AuditWord(size_t value, uint8_t kind, StackMethod* method, long pc, long depth);
+  // AMD64 (GC roots phase 3): a compiled frame's TMP_VAL_* slot k, which the
+  // collector never reads; the audit reports one that holds an object's address
+  static void AuditJitValueSlot(size_t* slot, StackMethod* method, int k);
   struct RootSite {
     StackMethod* method;
     long pc;

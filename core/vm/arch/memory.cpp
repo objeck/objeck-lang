@@ -1888,21 +1888,55 @@ void* MemoryManager::CheckJitRoots([[maybe_unused]] void* arg)
 
       // The spill slots: the values a compiled method keeps pending across a
       // call, a loop-header park or a libm call go to its TMP_* slots
-      // (ProcessStackCallback, EmitJitSafePoint, call_xfunc). They are untyped,
-      // so a window of JIT_TMP_LOOK_BACK words is scanned conservatively. On
-      // x64 it starts at the word after the declared locals, which is the
-      // and/or temporary when the method has one (scanned above on ARM64), and
-      // runs upward; on ARM64 it starts at the word below the first local and
-      // runs downward. jit_frame_layout.h proves the window reaches every
-      // integer slot (JitFrameLayout::WORDS_TO_LAST_INT_SLOT <= WINDOW).
+      // (SpillPending on AMD64, ProcessStackCallback and the safepoint on
+      // ARM64).
 #ifdef _ARM64
+      // ARM64 (until GC roots phase 4): the slots are untyped, so a window of
+      // JIT_TMP_LOOK_BACK words is scanned conservatively, downward from the
+      // word below the first local. jit_frame_layout.h proves the window
+      // reaches every integer slot (Runtime::JitFrameLayout::WORDS_TO_LAST_INT_SLOT).
       mem = start;
       for(int i = 0; i > -JIT_TMP_LOOK_BACK; --i) {
-#else
-      for(int i = 0; i < JIT_TMP_LOOK_BACK; ++i) {
-#endif
         CheckUntypedSlot(&mem[i]);
       }
+#else
+      // AMD64 (GC roots phase 3): mem is the word after the declared locals,
+      // the and/or temporary when the method has one, which is still scanned
+      // conservatively (it is typed in phase 5). The frame's spill slots are
+      // typed: only the TMP_REF_* slots, which hold references and whatever
+      // the map could not type, are read; the TMP_VAL_* slots hold Ints the
+      // map proved and the TMP_SCR_* slots scratch saves, and neither is a
+      // root, so an Int equal to a moved object's address is never relocated
+      // (docs/GC_ROOTS_DESIGN.md section 3.3). Under OBJECK_GC_ROOTS=
+      // conservative the old window over every slot is scanned instead: the
+      // negative control for gc_address_int_pending.
+      const bool has_andor = method->HasAndOr();
+      if(gc_roots_conservative) {
+        for(int i = 0; i < Runtime::JitFrameLayout::CONSERVATIVE_WINDOW; ++i) {
+          CheckUntypedSlot(&mem[i]);
+        }
+      }
+      else {
+        if(has_andor) {
+          CheckUntypedSlot(mem);
+        }
+        size_t* rbp = Runtime::JitFrameLayout::FramePointer(mem, has_andor);
+        for(int k = 0; k < Runtime::JitFrameLayout::TMP_REF_SLOTS; ++k) {
+          size_t* slot = Runtime::JitFrameLayout::RefSlot(rbp, k);
+          if(gc_trace && *slot) {
+            std::wcerr << L"[gc]   ref slot " << k << L" @" << (void*)slot << L" -> " << (void*)(*slot) << std::endl;
+          }
+          CheckUntypedSlot(slot);
+        }
+        if(gc_roots_audit) {
+          // a value slot that holds an object's address is a map that typed a
+          // reference Int, or a working stack the map did not line up with
+          for(int k = 0; k < Runtime::JitFrameLayout::TMP_VAL_SLOTS; ++k) {
+            AuditJitValueSlot(Runtime::JitFrameLayout::ValSlot(rbp, k), method, k);
+          }
+        }
+      }
+#endif
     }
 #ifdef _DEBUG_GC
     else {
@@ -2720,19 +2754,34 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
         }
       }
 
-      // Fix up JIT temps (conservative scan of untyped words — FixupSlot validates
-      // the forwarding target, so spilled scratch / float bit-patterns that merely
-      // alias the young address range are not misread as relocatable references).
-      // On x64 mem[0] here is the and/or temporary when the method has one. The
-      // window is the one CheckJitRoots scans (jit_frame_layout.h).
+      // Fix up JIT temps: the same words CheckJitRoots marks, and only those.
 #ifdef _ARM64
+      // ARM64: the conservative window (FixupSlot validates the forwarding
+      // target, so spilled scratch / float bit-patterns that merely alias the
+      // young address range are not misread as relocatable references).
       size_t* start = frame->jit_mem - 1;
       for(int k = 0; k > -JIT_TMP_LOOK_BACK; --k) {
         FixupSlot(&start[k]);
       }
 #else
-      for(int k = 0; k < JIT_TMP_LOOK_BACK; ++k) {
-        FixupSlot(&mem[k]);
+      // AMD64: the and/or temporary (mem[0] when the method has one) and the
+      // TMP_REF_* slots. A TMP_VAL_* slot is never relocated: it holds an Int
+      // the map proved, which keeps its value even when it equals a moved
+      // object's old address.
+      const bool has_andor = method->HasAndOr();
+      if(gc_roots_conservative) {
+        for(int k = 0; k < Runtime::JitFrameLayout::CONSERVATIVE_WINDOW; ++k) {
+          FixupSlot(&mem[k]);
+        }
+      }
+      else {
+        if(has_andor) {
+          FixupSlot(mem);
+        }
+        size_t* rbp = Runtime::JitFrameLayout::FramePointer(mem, has_andor);
+        for(int k = 0; k < Runtime::JitFrameLayout::TMP_REF_SLOTS; ++k) {
+          FixupSlot(Runtime::JitFrameLayout::RefSlot(rbp, k));
+        }
       }
 #endif
     }
