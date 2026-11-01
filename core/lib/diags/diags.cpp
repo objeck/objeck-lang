@@ -225,7 +225,14 @@ static void SafeCallDiag(void (*fn)(VMContext&), VMContext& ctx, int prgm_index)
   // call -- and those nodes belong to the program being queried. Without this they
   // would land in the per-thread fallback factory and never be freed.
   ScopedProgramFactories scoped_factories(program);
-  SafeCallDiagGuarded(fn, ctx);
+  try {
+    SafeCallDiagGuarded(fn, ctx);
+  }
+  catch(const CompilerFatal&) {
+    // Backstop: the analysis catches its own (EnsureAnalyzed). Anything else that
+    // reaches here would unwind through the VM's native-call frame and end the
+    // process; the query answers with what it had instead.
+  }
 }
 
 static inline size_t safe_pos(int p) { return p > 0 ? static_cast<size_t>(p - 1) : 0; }
@@ -257,7 +264,18 @@ static ContextAnalyzer* EnsureAnalyzed(ParsedProgram* program, const std::wstrin
   ContextAnalyzer* fresh = new ContextAnalyzer(program, lib_path, false);
   state->analyzer = fresh;
   state->lib_path = lib_path;
-  state->failed = !fresh->Analyze();
+  try {
+    state->failed = !fresh->Analyze();
+  }
+  catch(const CompilerFatal& fatal) {
+    // A library that cannot be read or linked used to end this process with
+    // exit(1), taking the language server and every open document with it. It
+    // is an analysis failure like any other: reported as an error against the
+    // program, and remembered so the analysis is not run again over a tree it
+    // left half done.
+    state->failed = true;
+    program->SetErrorStrings(std::vector<std::wstring>(1, program->GetFileName() + L":(1,1): " + fatal.Message()));
+  }
 
   if(TimingEnabled()) {
     const double total_ms = ElapsedMs(analyze_start);
@@ -271,7 +289,12 @@ static ContextAnalyzer* EnsureAnalyzed(ParsedProgram* program, const std::wstrin
     // frees its own Linker only when the program goes.
     Linker* probe = new Linker(lib_path);
     const std::chrono::steady_clock::time_point link_start = std::chrono::steady_clock::now();
-    probe->Load(false);
+    try {
+      probe->Load(false);
+    }
+    catch(const CompilerFatal&) {
+      // the analysis above reported it
+    }
     const double link_ms = ElapsedMs(link_start);
     delete probe;
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Writes the loader's regression inputs (run_vm_flag_tests.py, section 29).
+"""Writes the loader's regression inputs (run_vm_flag_tests.py, section 30).
 
     python3 tools/fuzz/loader/make_regression_inputs.py <program.obe> <out dir>
 

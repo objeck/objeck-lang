@@ -65,7 +65,7 @@ memory with no length (`buffer_end = nullptr`, `loader.h:194`).
 These checks are fuzzed: [tools/fuzz/loader](../tools/fuzz/loader/README.md)
 holds libFuzzer targets on `Loader::Load`, seeded with the compiled regression
 programs, and every input they found is a case in `run_vm_flag_tests.py`
-(section 29).
+(section 30).
 
 ## What the verification pass checks
 
