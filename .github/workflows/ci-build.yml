@@ -1700,6 +1700,17 @@ jobs:
       - name: JIT opt-outs are directives with a stated reason
         run: python3 tools/cicd/check_jit_optouts.py
 
+      # An intrinsic is wired through traps.h, the scanner, the parser, the code
+      # generator and the VM's ProcessTrap, and nothing connected them: a missing
+      # ProcessTrap case builds, links, and kills the first program that runs the
+      # trap, and an edit to the dead second copy of the parser (deleted in this
+      # change) changed nothing. Enumerators with no VM case need a written reason.
+      # The --test run mutates the real sources and fails unless each break is caught.
+      - name: Every VM trap has a handler and every intrinsic is parsed
+        run: |
+          python3 tools/cicd/check_trap_handlers.py --test
+          python3 tools/cicd/check_trap_handlers.py
+
       # Same class of guard, for a rule that was previously prose only. A native
       # library may store an object it ALLOCATED anywhere -- those go straight to
       # the old generation and never move. An object it RECEIVED may be young, so

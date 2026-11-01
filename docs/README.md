@@ -15,6 +15,7 @@
 |---|---|
 | [architecture.md](architecture.md) | How the compiler, VM and JIT fit together |
 | [native_interface.md](native_interface.md) | Calling C/C++ from Objeck — the whole contract |
+| [ADDING_AN_INTRINSIC.md](ADDING_AN_INTRINSIC.md) | Every file to touch for a new intrinsic or VM trap, and what breaks when one is missed |
 | [optimization_pipeline.md](optimization_pipeline.md) | What the optimizer does, and in what order |
 | [performance.md](performance.md) | Benchmarks and where the time goes |
 | [AI.md](AI.md) | AI and ML developer guide |
