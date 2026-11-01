@@ -159,9 +159,7 @@ bundle API.OpenAI.Audio {
 			headers->Insert("Authorization", "Bearer {$token}");
 			
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/audio/speech"), data, "application/json", headers);
-			if(response = Nil) {
-				base_url := GetBaseUrl();
-				SetLastError("No response from {$base_url}");
+			if(NoReply(response)) {
 				return Nil;
 			};
 
@@ -4304,9 +4302,7 @@ session->Close();
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/files"), data, 
 				"multipart/form-data; boundary={$boundary}", headers);
-			if(response = Nil) {
-				base_url := GetBaseUrl();
-				SetLastError("No response from {$base_url}");
+			if(NoReply(response)) {
 				return false;
 			};
 
@@ -4479,9 +4475,7 @@ session->Close();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/files/{$id}/content"), "application/json", headers);
-			if(response = Nil) {
-				base_url := GetBaseUrl();
-				SetLastError("No response from {$base_url}");
+			if(NoReply(response)) {
 				return Nil;
 			};
 
@@ -5891,7 +5885,7 @@ embedding := Embedding->Create("Hello world", Models->TEXT_EMBEDDING_3_SMALL(), 
 
 			response := HttpsClient->QuickPost(Url->New(EndPoint->GetBaseUrl() + "/embeddings"), data, "application/json", headers);
 			if(response <> Nil) {
-				return ParseEmbedding(ResponseText(response));
+				return ParseEmbedding(EndPoint->ResponseText(response));
 			};
 
 			return Nil;
@@ -6369,6 +6363,23 @@ job = Batch->Get(job->GetId(), token);
 
 		function : SetLastError(last_message : String) ~ Nil {
 			@last_message := last_message;
+		}
+
+		#~
+		Checks whether a request got an answer, recording the failure as the last
+		error if not. A refused or dropped connection is a Nil response over HTTP and
+		a response with status 0 and no content over HTTPS.
+		@param response HTTP response, or Nil
+		@return true if there was no answer
+		~#
+		function : NoReply(response : Web.HTTP.Response) ~ Bool {
+			if(response <> Nil & response->GetCode() <> 0) {
+				return false;
+			};
+
+			base_url := GetBaseUrl();
+			SetLastError("No response from {$base_url}");
+			return true;
 		}
 
 		#~

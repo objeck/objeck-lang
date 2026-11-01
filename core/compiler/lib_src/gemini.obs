@@ -3010,7 +3010,7 @@ bundle API.Google.Gemini.Tuning {
 			
 			url_str := "https://generativelanguage.googleapis.com/v1beta/tunedModels";
 			response := HttpsClient->QuickGet(Url->New(url_str), headers);
-			if(response = Nil) {
+			if(response = Nil | response->GetCode() = 0) {
 				SetLastError("No response from {$url_str}");
 				return Nil;
 			};
