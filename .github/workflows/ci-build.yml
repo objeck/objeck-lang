@@ -1761,6 +1761,17 @@ jobs:
       - name: Generated files match their .in templates
         run: python3 tools/cicd/check_version_templates.py
 
+      # The linker and the runtime refuse a library whose first integer is not
+      # the toolchain's VER_NUM, so a version bump that does not rebuild and
+      # commit every core/lib/*.obl ships a tree that cannot link (v2026.9.x,
+      # #1010). Read straight from the committed bytes; nothing is built. The
+      # self-test comes first for the usual reason: a check that can only say
+      # "ok" has not checked anything.
+      - name: Committed libraries carry the toolchain version
+        run: |
+          python3 tools/cicd/check_obl_versions.py --test
+          python3 tools/cicd/check_obl_versions.py
+
       # Same class again, and the one with the worst failure mode. obu refuses a
       # manifest whose signature does not verify (#723 phase 3), so a tool that
       # replaces a published SHA256SUMS and leaves SHA256SUMS.minisig alone does
