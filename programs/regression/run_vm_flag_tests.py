@@ -1816,7 +1816,12 @@ def check_loader_rejects_malformed(obc, obr, env, bin_dir):
         if rc != 0:
             return
         image = obe_image_of(control)
-        version = image[:4]
+        # The header the loader checks before anything else: the toolchain version
+        # and the executable magic number, four bytes each. Each fixture gets this
+        # toolchain's pair, so neither check can refuse it first (the magic moved
+        # with GC roots phase 6, which would have refused every image as "compiled
+        # before ..." and hidden the malformation each one is there to exercise).
+        header = image[:8]
 
         # The control: the same image, decompressed and packed again by this check,
         # must load and run. Without it a packing mistake here would make every case
@@ -1841,7 +1846,7 @@ def check_loader_rejects_malformed(obc, obr, env, bin_dir):
 
         for name, message, about in LOADER_INPUTS:
             with open(os.path.join(fixture_dir, name), "rb") as f:
-                case = version + f.read()[4:]
+                case = header + f.read()[8:]
             path = os.path.join(scratch, name.replace(".img", ".obe"))
             with open(path, "wb") as f:
                 f.write(obe_file_of(case))
