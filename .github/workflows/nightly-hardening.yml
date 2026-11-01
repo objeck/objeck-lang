@@ -7,8 +7,10 @@ name: Nightly Hardening
 # failure into infra / known / new (tools/cicd/nightly_triage.py) and reports
 # only the new ones as issues. Plan: docs/PLAN_2026_10_0_HARDENING.md, 1.6.
 #
-# Dispatch only for now, so the first runs MEASURE the cost per leg. Enable the
-# schedule after the first measured dispatch, off the hour.
+# Runs daily at 07:23 UTC (off the hour) and on dispatch. A scheduled run has no
+# inputs, so every input is read through a default: no run id = latest successful
+# master push run, no seed = UTC date, fuzz_count/stress_runs fall back to 200/20,
+# and use_dispatch_ref is empty = false, so the CI run commit is checked out.
 on:
   workflow_dispatch:
     inputs:
@@ -33,9 +35,9 @@ on:
         type: boolean
         required: false
         default: false
-  # schedule:
-  #   # Enabled after the first measured dispatch. 07:23 UTC, off the hour.
-  #   - cron: '23 7 * * *'
+  schedule:
+    # 07:23 UTC, off the hour. Scheduled runs use the default branch.
+    - cron: '23 7 * * *'
 
 permissions:
   contents: read
