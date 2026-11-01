@@ -421,3 +421,14 @@ report zero differences across the suite before phase 2 starts.
 - **ARM64 behaviour of `jit_stale_spill_slot`.** Inferred from the code (path 2 only), not run. CI's
   arm64 legs will run it when the test lands.
 - **When the s0 trigger appeared.** It is absent on 10-22 and present on master, and it was not bisected.
+- **Heap `Int[]` elements are rewritten by a minor collection (new, 2026-10-31; not fixed by phases
+  1-5).** An `Int[]` and an object array share `INT_TYPE` on the heap (§6.1 says the same of the
+  bytecode), so the collector's fixup of a reachable array's elements cannot tell an integer from a
+  reference and relocates any element equal to a forwarded young object's address. Evidence, with the
+  test hook from PR 1483 (`Runtime->TestAddressOf`, `OBJECK_GC_TEST_HOOKS=1`): a test that stores an
+  object's address in an `Int[]` element and then allocates enough for a minor collection sees the
+  element change in 242 of 2,000 iterations, in default mode (no `OBJECK_GC_ROOTS`), interpreted and
+  compiled alike. This is the heap-side twin of §3.3: it is not a root problem, and the reference maps
+  cannot reach it, because the array header is what lacks the type. It needs a distinct
+  reference-array tag from the compiler, which is phase 6 territory (the heap side), and is not fixed
+  in phases 1-5.
