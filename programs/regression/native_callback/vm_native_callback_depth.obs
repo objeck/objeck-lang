@@ -10,7 +10,8 @@ and print "reached <n>". With 0, no limit, unguarded: the VM must end it with
 ">>> call stack bounds have been exceeded! <<<" and exit status 1. 'guarded':
 runaways inside try blocks, which must recover with a RuntimeError, after which
 a bounded recursion through the library works again, on the main thread and in
-a spawned one.
+a spawned one. 'abi': print "abi <version> <complete>" as the library reads
+the VMContext's abi_version and struct_size.
 ~#
 use System.API, System.Concurrency;
 
@@ -50,7 +51,16 @@ class VmNativeCallbackDepth {
 			Runtime->Exit(2);
 		};
 
-		if(args[0]->Equals("guarded")) {
+		if(args[0]->Equals("abi")) {
+			abi := Base->New[2];
+			abi[0] := IntRef->New(0);
+			abi[1] := IntRef->New(0);
+			@lib->CallFunction("callback_abi", abi);
+			version := abi[0]->As(IntRef)->Get();
+			complete := abi[1]->As(IntRef)->Get();
+			"abi {$version} {$complete}"->PrintLine();
+		}
+		else if(args[0]->Equals("guarded")) {
 			failures := Prober->New("main thread")->Probe();
 			t := ProbeThread->New();
 			t->Execute(Nil);

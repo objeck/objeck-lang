@@ -18,6 +18,21 @@ with the subject line `SECURITY: <short summary>`.
 We aim to acknowledge reports within a few days and will keep you updated as we
 investigate and prepare a fix.
 
+## Trust Model
+
+Running an Objeck program (`.obe`) is equivalent to running native code with
+the privileges of the `obr` process. The loader checks that the file is well
+formed, not that its bytecode is safe: jump targets, local-variable ids,
+trap arguments and operand-stack depth are trusted as written, and any program
+can load a native library or run a shell command. `obr` is not a sandbox; the
+web playground isolates programs with Docker, not with the VM.
+
+So a crafted `.obe` that corrupts memory, or a program that uses the file system,
+the network or `DllProxy`, is expected behaviour today rather than a
+vulnerability. A bytecode verifier and deny flags are planned.
+[docs/SECURITY_MODEL.md](docs/SECURITY_MODEL.md) has the details, with the code
+behind each statement.
+
 ## Supported Versions
 
 Security fixes target the latest released version. Please upgrade to the most

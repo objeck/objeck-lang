@@ -1061,11 +1061,17 @@ bundle Web.HTTP {
 		}
 
 		method : public : Run(param : Base) ~ Nil {
+			response : Response;
 			if(@url->GetScheme()->Equals("https")) {
-				@content := HttpsClient->QuickGet(@url, @headers)->GetContent();
+				response := HttpsClient->QuickGet(@url, @headers);
 			}
 			else if(@url->GetScheme()->Equals("http")) {
-				@content := HttpClient->QuickGet(@url, @headers)->GetContent();
+				response := HttpClient->QuickGet(@url, @headers);
+			};
+
+			# a failed request leaves the content Nil
+			if(response <> Nil) {
+				@content := response->GetContent();
 			};
 		}
 	}

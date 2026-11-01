@@ -1,7 +1,7 @@
 use Web.HTTP, Collection, Data.JSON, System.Time, System.IO.Filesystem;
 
 #~
-Date, time, and elapsed-timer utilities. Date provides current date/time and arithmetic (AddDays, AddHours). Timer measures wall-clock elapsed time. Included in lang.obl.
+Date string parsing and formatting (DateUtility) and network time retrieval. Date and Timer are in lang.obl; this bundle is built as misc.obl, so compile with -lib misc.
 ~#
 bundle System.Time {
 	#~
@@ -272,7 +272,7 @@ if(triplet <> Nil) {
 		~#
 		function : GetNetworkTime() ~ Collection.Tuple.Triplet<IntRef, Date, Date> {
 			response := HttpClient->QuickGet(Url->New("http://worldtimeapi.org/api/ip"));
-			if(response->GetCode() = 200) {
+			if(response <> Nil & response->GetCode() = 200 & response->GetContent() <> Nil) {
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(response_json <> Nil) {
 					unix_time_json := response_json->Get("unixtime");					
@@ -341,7 +341,7 @@ if(triplet <> Nil) {
 }
 
 #~
-Miscellaneous runtime utilities: UUID generation, date string parsing and formatting, command-line parameter handling, network time retrieval, and console spinner animations. Included in lang.obl.
+Miscellaneous utilities: a string tokenizer (Parser), a console spinner (Spinner) and a source code formatter (CodeFormatter). Built as misc.obl, not part of lang.obl: compile with -lib misc.
 ~#
 bundle System.Utility {
 	#~

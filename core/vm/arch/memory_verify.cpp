@@ -339,7 +339,7 @@ public:
     const long count = method->GetNumberDeclarations();
     if(frame->jit_mem) {
       size_t* mem = frame->jit_mem;
-#ifdef _ARM64
+#ifdef JIT_LAYOUT_ARM64
       if(method->HasAndOr()) {
         mem++;
       }

@@ -1,0 +1,16 @@
+# Weekly pull requests that move the SHA-pinned actions in .github/workflows and
+# .github/actions to their latest release (the trailing "# vX.Y.Z" comment is
+# updated with the SHA). Actions are pinned by commit, so a moved tag upstream
+# cannot change what CI runs until a reviewed update lands.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directories:
+      - "/"
+      - "/.github/actions/*"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"

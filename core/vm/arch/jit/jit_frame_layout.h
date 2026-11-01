@@ -46,7 +46,15 @@
 // slot offsets, so a widened slot range cannot go stale again.
 //
 // Frame pointer offsets, by backend. The selection order matters: a Windows
-// ARM64 build defines _ARM64 and _WIN64 both.
+// ARM64 build defines _ARM64 and _WIN64 both. The ARM64 layout is selected on
+// the compiler's own target macro as well as the build's _ARM64, because not
+// every project that compiles the ARM64 backend defines _ARM64 (the Windows
+// debugger project compiles jit_arm_a64.cpp with _WIN64 alone, and got the
+// Win64 block). JIT_LAYOUT_ARM64 is the one test the collector uses for the
+// frame walk, so it and the backend can never disagree about the layout.
+#if defined(_ARM64) || defined(_M_ARM64) || defined(__aarch64__)
+#define JIT_LAYOUT_ARM64 1
+#endif
 //
 //   AMD64 (RBP-relative; negative offsets grow downward from RBP)
 //     Win64: the home area the caller provides holds CLS_ID .. FRAME_MEM
@@ -89,7 +97,7 @@
 // by their offsets from RED_ZONE (JitFrameLayout::RefSlot), and scans the
 // old window only under OBJECK_GC_ROOTS=conservative, the negative control.
 
-#if defined(_ARM64)
+#if defined(JIT_LAYOUT_ARM64)
   // offsets for ARM A64 addresses
 #define TMP_LR 104
 #define INT_CONSTS 96
@@ -228,7 +236,7 @@
 #define RED_ZONE -272
 #endif
 
-#if !defined(_ARM64)
+#if !defined(JIT_LAYOUT_ARM64)
   // The register-argument entry (EmitNativePrologue). A native caller's
   // arguments start at NATIVE_ARGS from the callee's frame pointer: past the
   // return address and the saved frame pointer, the register homes and stack
@@ -257,7 +265,7 @@ namespace Runtime {
   struct JitFrameLayout {
     static constexpr long WORD = (long)sizeof(size_t);
 
-#if defined(_ARM64)
+#if defined(JIT_LAYOUT_ARM64)
     // how many words beside every compiled frame the collector scans as
     // untyped roots (CheckJitRoots, FixupRoots): downward from the and/or
     // temp's word
@@ -328,7 +336,7 @@ namespace Runtime {
     }
 #endif
 
-#if defined(_ARM64)
+#if defined(JIT_LAYOUT_ARM64)
     // The window covers every integer spill slot. This is the check that
     // would have caught the ten-slot widening on AMD64: the window was fixed
     // at sixteen while the count the zeroing used was not.
@@ -337,7 +345,7 @@ namespace Runtime {
   };
 }
 
-#if defined(_ARM64)
+#if defined(JIT_LAYOUT_ARM64)
 // the collector's name for the window
 #define JIT_TMP_LOOK_BACK (Runtime::JitFrameLayout::WINDOW)
 #endif
