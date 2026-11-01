@@ -901,6 +901,11 @@ void JitArm64::ProcessInstructions() {
       ProcessReturnParameters(INT_TYPE);
       break;
 
+    case NEW_OBJ_ARY:
+      ProcessStackCallback(NEW_OBJ_ARY, instr, instr_index, instr->GetOperand());
+      ProcessReturnParameters(INT_TYPE);
+      break;
+
     case NEW_FLOAT_ARY:
 #ifdef _DEBUG_JIT_JIT
       std::wcout << L"NEW_FLOAT_ARY: dim=" << instr->GetOperand() << L" regs=" << aval_regs.size()
@@ -6248,6 +6253,7 @@ static bool CanJitInstruction(InstructionType type) {
   case NEW_BYTE_ARY:
   case NEW_CHAR_ARY:
   case NEW_INT_ARY:
+  case NEW_OBJ_ARY:
   case NEW_FLOAT_ARY:
   case NEW_OBJ_INST:
     // array copy/zero

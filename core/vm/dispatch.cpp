@@ -684,12 +684,19 @@ static DispatchResult Handle_NEW_CHAR_ARY(DispatchContext& ctx) {
 }
 
 static DispatchResult Handle_NEW_INT_ARY(DispatchContext& ctx) {
-  ctx.interp->ProcessNewArray(ctx.instr, ctx.op_stack, ctx.stack_pos, false);
+  // an Int[]: INT_ARY_TYPE, which the collector never scans (GC roots phase 6)
+  ctx.interp->ProcessNewArray(ctx.instr, ctx.op_stack, ctx.stack_pos, instructions::INT_ARY_TYPE);
+  return DispatchResult::CONTINUE;
+}
+
+static DispatchResult Handle_NEW_OBJ_ARY(DispatchContext& ctx) {
+  // an array of references: INT_TYPE, scanned and relocated by the collector
+  ctx.interp->ProcessNewArray(ctx.instr, ctx.op_stack, ctx.stack_pos, instructions::INT_TYPE);
   return DispatchResult::CONTINUE;
 }
 
 static DispatchResult Handle_NEW_FLOAT_ARY(DispatchContext& ctx) {
-  ctx.interp->ProcessNewArray(ctx.instr, ctx.op_stack, ctx.stack_pos, true);
+  ctx.interp->ProcessNewArray(ctx.instr, ctx.op_stack, ctx.stack_pos, instructions::FLOAT_TYPE);
   return DispatchResult::CONTINUE;
 }
 
@@ -1148,8 +1155,11 @@ OpcodeHandler Runtime::instr_dispatch[] = {
   Handle_JMP_TABLE,             // 143: JMP_TABLE
   Handle_JMP_TABLE_SLOT,        // 144: JMP_TABLE_SLOT
 
-  // End marker (145)
-  Handle_END_STMTS              // 145: END_STMTS
+  // Object arrays (145), appended after the select table (GC roots phase 6)
+  Handle_NEW_OBJ_ARY,           // 145: NEW_OBJ_ARY
+
+  // End marker (146)
+  Handle_END_STMTS              // 146: END_STMTS
 };
 
 static_assert(sizeof(Runtime::instr_dispatch) / sizeof(Runtime::instr_dispatch[0]) == instructions::END_STMTS + 1,

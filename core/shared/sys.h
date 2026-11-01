@@ -77,7 +77,12 @@ namespace instructions {
     CHAR_ARY_TYPE,
     INT_TYPE,
     FLOAT_TYPE,
-    FUNC_TYPE
+    FUNC_TYPE,
+    // An Int[] (GC roots phase 6): its elements are never references, so the
+    // collector neither marks nor relocates them. INT_TYPE stays the tag of an
+    // object array, and of an Int array a native or a trap allocates, which
+    // the collector scans as it always did.
+    INT_ARY_TYPE
   };
 
   // garbage types

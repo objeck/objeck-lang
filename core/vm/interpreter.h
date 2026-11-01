@@ -675,7 +675,7 @@ namespace Runtime {
     void CriticalStart(size_t* &op_stack, size_t* &stack_pos);
     void CriticalEnd(size_t* &op_stack, size_t* &stack_pos);
 
-    void ProcessNewArray(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos, bool is_float = false);
+    void ProcessNewArray(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos, instructions::MemoryType elem_type);
     void ProcessNewByteArray(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos);
     void ProcessNewCharArray(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos);
     void ProcessNewObjectInstance(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos);

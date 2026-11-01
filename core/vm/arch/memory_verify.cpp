@@ -170,7 +170,9 @@ public:
     case instructions::CHAR_ARY_TYPE:
       return L"Char[]";
     case instructions::INT_TYPE:
-      return L"Int[] or object array";
+      return L"object array, or an Int array a native allocated";
+    case instructions::INT_ARY_TYPE:
+      return L"Int[]";
     case instructions::FLOAT_TYPE:
       return L"Float[]";
     default:
@@ -254,7 +256,7 @@ public:
   }
 
   static bool IsValidType(size_t type) {
-    return type >= instructions::NIL_TYPE && type <= instructions::FLOAT_TYPE;
+    return (type >= instructions::NIL_TYPE && type <= instructions::FLOAT_TYPE) || type == instructions::INT_ARY_TYPE;
   }
 
   // the memory TYPE a declaration requires of a non-zero reference; 0 = any
@@ -651,7 +653,10 @@ public:
     }
     const size_t type = ((size_t*)value)[TYPE];
     const size_t expected = ExpectedType(parm);
-    if(expected && type != expected) {
+    // an Int[] the program allocated is INT_ARY_TYPE; one a native allocated is
+    // INT_TYPE (GC roots phase 6): an Int[] declaration accepts both
+    const bool int_array = parm == instructions::INT_ARY_PARM && type == instructions::INT_ARY_TYPE;
+    if(expected && type != expected && !int_array) {
       Report(L"B2", origin, value, L"typed reference has the wrong memory TYPE " + std::to_wstring(type) +
              L" (expected " + std::to_wstring(expected) + L")");
       return false;

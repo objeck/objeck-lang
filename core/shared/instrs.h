@@ -203,6 +203,11 @@ namespace instructions {
     // select jump table dispatch
     JMP_TABLE,
     JMP_TABLE_SLOT,
+    // An array of references (GC roots phase 6): a class, string, function or
+    // generic element type. NEW_INT_ARY allocates an Int[], which the
+    // collector never scans. Appended here so the opcodes above keep their
+    // numbers; MAGIC_NUM_EXE/MAGIC_NUM_LIB changed with it.
+    NEW_OBJ_ARY,
     // system directives
     END_STMTS,
   };
