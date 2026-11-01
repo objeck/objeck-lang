@@ -72,7 +72,7 @@ enum ResultPosition {
   POS_END_POS = 8
 };
 
-size_t* FormatErrors(VMContext& context, const std::vector<std::wstring>& error_strings, const std::vector<std::wstring>& warning_strings = std::vector<std::wstring>());
+size_t* FormatErrors(VMContext& context, const std::vector<frontend::Diagnostic>& errors, const std::vector<frontend::Diagnostic>& warnings = std::vector<frontend::Diagnostic>());
 void GetTypeName(frontend::Type* type, std::wstring &output);
 frontend::Declaration* FindInstanceDeclaration(frontend::Class* klass, const std::vector<frontend::Expression*>& expressions);
 size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program, const std::wstring uri, const int line_num, const int line_pos, const std::wstring lib_path);

@@ -53,13 +53,18 @@ the file's *structure*:
 | the magic number names an executable, not a library or unknown file | `loader.cpp:86` |
 | every read stays inside the decompressed buffer (`EnsureBytes`) | `loader.h:65` |
 | counts and lengths that size an allocation are non-negative and no larger than the bytes left (`ReadCount`) | `loader.h:84` |
-| class count non-negative; each class id in `[0, class count)` before it is stored | `loader.cpp:337`, `:354` |
-| method count non-negative; each method id in `[0, method count)` before it is stored | `loader.cpp:455`, `:468` |
+| class count no larger than the bytes left; each class id in `[0, class count)` and stored once; an interface count no larger than the ids left | `Loader::LoadClasses`, `loader.cpp:413`, `:436`, `:452` |
+| method count no larger than the bytes left; each method id in `[0, method count)` and stored once | `Loader::LoadMethods`, `loader.cpp:558`, `:570` |
 | instruction count no larger than the bytes left | `loader.cpp:598` |
 | every opcode is known; library-only opcodes are refused in an executable | `loader.cpp:945`, `:948` |
 
 The bounds check is off for the bundled-executable path, which loads from
 memory with no length (`buffer_end = nullptr`, `loader.h:194`).
+
+These checks are fuzzed: [tools/fuzz/loader](../tools/fuzz/loader/README.md)
+holds libFuzzer targets on `Loader::Load`, seeded with the compiled regression
+programs, and every input they found is a case in `run_vm_flag_tests.py`
+(section 30).
 
 ## What the loader does not check
 

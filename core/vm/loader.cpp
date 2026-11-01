@@ -80,7 +80,7 @@ void Loader::Load()
       std::wcerr << L"\t-> the program is older than this runtime. Recompile its source with this" << std::endl
                  << L"\t   toolchain's obc (an .obe does not run across toolchain versions)." << std::endl;
     }
-    exit(1);
+    LoadFailed();
   }
 
   const int magic_num = static_cast<int>(ReadInt());
@@ -91,7 +91,7 @@ void Loader::Load()
   case MAGIC_NUM_LIB_NO_PARAM_NAMES:
     std::wcerr << L"Cannot run '" << filename << L"': it is a library (.obl), not a program (.obe)." << std::endl
                << L"\tLink it into a program with 'obc -lib' and run that program's .obe." << std::endl;
-    exit(1);
+    LoadFailed();
 
   case MAGIC_NUM_EXE:
     break;
@@ -103,7 +103,7 @@ void Loader::Load()
 
   default:
     std::wcerr << L"Unknown file type for '" << filename << L"'." << std::endl;
-    exit(1);
+    LoadFailed();
   }
 
   // read string id
@@ -115,10 +115,13 @@ void Loader::Load()
   // read float strings
   //
   num_float_strings = ReadCount();
-  FLOAT_VALUE** float_strings = new FLOAT_VALUE*[num_float_strings];
+  // Each table is zeroed and handed to the program before it is filled, so a
+  // load that stops part way leaves ~StackProgram what was read (no leak).
+  FLOAT_VALUE** float_strings = new FLOAT_VALUE*[num_float_strings]();
+  program->SetFloatStrings(float_strings, num_float_strings);
   for(i = 0; i < num_float_strings; ++i) {
     const int float_string_length = ReadCount();
-    FLOAT_VALUE* float_string = new FLOAT_VALUE[float_string_length];
+    FLOAT_VALUE* float_string = float_strings[i] = new FLOAT_VALUE[float_string_length];
     // copy string    
 #ifdef _DEBUG
     std::wcout << L"Loaded static float string[" << i << L"]: '";
@@ -132,18 +135,17 @@ void Loader::Load()
 #ifdef _DEBUG
     std::wcout << L"'" << std::endl;
 #endif
-    float_strings[i] = float_string;
   }
-  program->SetFloatStrings(float_strings, num_float_strings);
 
   //
   // read boolean strings
   //
   num_bool_strings = ReadCount();
-  bool** bool_strings = new bool* [num_bool_strings];
+  bool** bool_strings = new bool* [num_bool_strings]();
+  program->SetBoolStrings(bool_strings, num_bool_strings);
   for(i = 0; i < num_bool_strings; ++i) {
     const int bool_string_length = ReadCount();
-    bool* bool_string = new bool[bool_string_length];
+    bool* bool_string = bool_strings[i] = new bool[bool_string_length];
     // copy string    
 #ifdef _DEBUG
     std::wcout << L"Loaded static bool string[" << i << L"]: '";
@@ -157,19 +159,18 @@ void Loader::Load()
 #ifdef _DEBUG
     std::wcout << L"'" << std::endl;
 #endif
-    bool_strings[i] = bool_string;
   }
-  program->SetBoolStrings(bool_strings, num_bool_strings);
 
 
   //
   // read byte strings
   //
   num_byte_strings = ReadCount();
-  char** byte_strings = new char*[num_byte_strings];
+  char** byte_strings = new char*[num_byte_strings]();
+  program->SetByteStrings(byte_strings, num_byte_strings);
   for(i = 0; i < num_byte_strings; ++i) {
     const int byte_string_length = ReadCount();
-    char* byte_string = new char[byte_string_length];
+    char* byte_string = byte_strings[i] = new char[byte_string_length];
     // copy string    
 #ifdef _DEBUG
     std::wcout << L"Loaded static byte string[" << i << L"]: '";
@@ -183,18 +184,17 @@ void Loader::Load()
 #ifdef _DEBUG
     std::wcout << L"'" << std::endl;
 #endif
-    byte_strings[i] = byte_string;
   }
-  program->SetByteStrings(byte_strings, num_byte_strings);
 
   //
   // read int strings
   //
   num_int_strings = ReadCount();
-  INT64_VALUE** int_strings = new INT64_VALUE *[num_int_strings];
+  INT64_VALUE** int_strings = new INT64_VALUE *[num_int_strings]();
+  program->SetIntStrings(int_strings, num_int_strings);
   for(i = 0; i < num_int_strings; ++i) {
     const int int_string_length = ReadCount();
-    INT64_VALUE* int_string = new INT64_VALUE[int_string_length];
+    INT64_VALUE* int_string = int_strings[i] = new INT64_VALUE[int_string_length];
     // copy string    
 #ifdef _DEBUG
     std::wcout << L"Loaded static int string[" << i << L"]: '";
@@ -208,18 +208,20 @@ void Loader::Load()
 #ifdef _DEBUG
     std::wcout << L"'" << std::endl;
 #endif
-    int_strings[i] = int_string;
   }
-  program->SetIntStrings(int_strings, num_int_strings);
   
   //
   // read char strings
   //
   num_char_strings = ReadCount();
-  wchar_t** char_strings = new wchar_t*[num_char_strings + arguments.size()];
+  // the program's arguments follow its own strings, and the table counts them
+  // too: they were copied with wcsdup and never freed
+  const int num_all_char_strings = num_char_strings + (int)arguments.size();
+  wchar_t** char_strings = new wchar_t*[num_all_char_strings]();
+  program->SetCharStrings(char_strings, num_all_char_strings);
   for(i = 0; i < num_char_strings; ++i) {
     const std::wstring value = ReadString();
-    wchar_t* char_string = new wchar_t[value.size() + 1];
+    wchar_t* char_string = char_strings[i] = new wchar_t[value.size() + 1];
     // copy string
 #ifdef _WIN32
     wcscpy_s(char_string, value.size() + 1, value.c_str());
@@ -230,22 +232,18 @@ void Loader::Load()
 #ifdef _DEBUG
     std::wcout << L"Loaded static character string[" << i << L"]: '" << char_string << L"'" << std::endl;
 #endif
-    char_strings[i] = char_string;
   }
 
   // copy command line params
   for(size_t j = 0; j < arguments.size(); ++i, ++j) {
-#ifdef _WIN32
-    char_strings[i] = _wcsdup((arguments[j]).c_str());
-#else
-    char_strings[i] = wcsdup((arguments[j]).c_str());
-#endif
+    const std::wstring& value = arguments[j];
+    char_strings[i] = new wchar_t[value.size() + 1];
+    std::copy(value.c_str(), value.c_str() + value.size() + 1, char_strings[i]);
 
 #ifdef _DEBUG
     std::wcout << L"Loaded static std::string: '" << char_strings[i] << L"'" << std::endl;
 #endif
   }
-  program->SetCharStrings(char_strings, num_char_strings);
 
 #ifdef _DEBUG
   std::wcout << L"=======================================" << std::endl;
@@ -272,6 +270,48 @@ void Loader::Load()
   program->SetStringObjectId(string_cls_id);
 }
 
+char* Loader::DecodeImage(const char* data, size_t size, size_t& image_size)
+{
+  image_size = 0;
+
+  // new format: [uncmp_size:4][zlib...]; old format: raw zlib (CMF byte = 0x78)
+  // When size LSB == 0x78, bytes[4..5] disambiguate: compress2(Z_BEST_COMPRESSION)
+  // always emits 0x78 0xDA; check (CMF*256+FLG)%31==0 to confirm valid zlib header.
+  uint32_t uncmp_hint = 0;
+  const char* src;
+  uLong src_size;
+  const bool zlib_at_4 = size >= 6 &&
+                         (uint8_t)data[4] == 0x78 &&
+                         (0x78u * 256u + (uint8_t)data[5]) % 31u == 0u;
+  if(size > 0 && (uint8_t)data[0] == 0x78 && !zlib_at_4) {
+    src = data;
+    src_size = (uLong)size;
+  }
+  else {
+    // A file shorter than the size header (an empty or truncated .obe) used to
+    // be read four bytes deep regardless, and its zlib length underflowed to
+    // nearly 2^64, which sent inflate far past the end of the buffer.
+    if(size < sizeof(uncmp_hint)) {
+      return nullptr;
+    }
+    memcpy(&uncmp_hint, data, sizeof(uncmp_hint));
+    src = data + sizeof(uncmp_hint);
+    src_size = (uLong)(size - sizeof(uncmp_hint));
+  }
+
+  uLong dest_len;
+  char* out = OutputStream::UncompressZlib(src, src_size, dest_len, uncmp_hint);
+  if(!out) {
+    return nullptr;
+  }
+#ifdef _DEBUG
+  std::wcout << L"--- file in: compressed=" << size << L", uncompressed=" << dest_len << L" ---" << std::endl;
+#endif
+
+  image_size = (size_t)dest_len;
+  return out;
+}
+
 char* Loader::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
 {
   char* buffer;
@@ -285,66 +325,108 @@ char* Loader::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
     if(!buffer) {
       in.close();
       std::wcerr << L"Unable to allocate memory for file: '" << filename << L"'" << std::endl;
-      exit(1);
+      LoadFailed();
     }
     in.read(buffer, buffer_size);
     // close file
     in.close();
 
-    // new format: [uncmp_size:4][zlib...]; old format: raw zlib (CMF byte = 0x78)
-    // When size LSB == 0x78, bytes[4..5] disambiguate: compress2(Z_BEST_COMPRESSION)
-    // always emits 0x78 0xDA; check (CMF*256+FLG)%31==0 to confirm valid zlib header.
-    uint32_t uncmp_hint = 0;
-    const char* src;
-    uLong src_size;
-    const bool zlib_at_4 = buffer_size >= 6 &&
-                            (uint8_t)buffer[4] == 0x78 &&
-                            (0x78u * 256u + (uint8_t)buffer[5]) % 31u == 0u;
-    if((uint8_t)buffer[0] == 0x78 && !zlib_at_4) {
-      src = buffer;
-      src_size = (uLong)buffer_size;
-    } else {
-      memcpy(&uncmp_hint, buffer, sizeof(uncmp_hint));
-      src = buffer + sizeof(uncmp_hint);
-      src_size = (uLong)(buffer_size - sizeof(uncmp_hint));
-    }
-
-    uLong dest_len;
-    char* out = OutputStream::UncompressZlib(src, src_size, dest_len, uncmp_hint);
-    if(!out) {
-      std::wcerr << L"Unable to uncompress file: " << filename << std::endl;
-      exit(1);
-    }
-#ifdef _DEBUG
-    std::wcout << L"--- file in: compressed=" << buffer_size << L", uncompressed=" << dest_len << L" ---" << std::endl;
-#endif
-
+    size_t image_size = 0;
+    char* out = DecodeImage(buffer, buffer_size, image_size);
     free(buffer);
     buffer = nullptr;
+    if(!out) {
+      std::wcerr << L"Unable to uncompress file: " << filename << std::endl;
+      LoadFailed();
+    }
+
     // Report the DECOMPRESSED length to the caller so every subsequent Read* can
     // be bounds-checked. Previously buffer_size kept the (smaller) compressed
     // size, which made bounds checking impossible.
-    buffer_size = (size_t)dest_len;
+    buffer_size = image_size;
     return out;
   }
   else {
     std::wcerr << L"Unable to open file: '" << filename << L"'" << std::endl;
-    exit(1);
+    LoadFailed();
   }
 
   return nullptr;
 }
 
+// Frees a declaration table built by LoadDeclarations; null entries and a null
+// table are fine.
+static void DeleteDeclarations(StackDclr** dclrs, const int num_dclrs)
+{
+  if(dclrs) {
+    for(int i = 0; i < num_dclrs; ++i) {
+      delete dclrs[i];
+    }
+    delete[] dclrs;
+  }
+}
+
+// What LoadClasses has read so far. The arrays reach the program only after
+// the last class, because SetClasses reads every entry; until then this owns
+// them, so a load that stops part way frees what it read rather than leaking
+// it (a refused .obe in an embedding host, and the fuzz target, which loads
+// millions of them in one process).
+struct PartialClasses {
+  int num;
+  long* hierarchy;
+  long** interfaces;
+  StackClass** classes;
+
+  ~PartialClasses() {
+    if(classes) {
+      for(int i = 0; i < num; ++i) {
+        delete classes[i];
+      }
+      delete[] classes;
+    }
+    if(interfaces) {
+      for(int i = 0; i < num; ++i) {
+        delete[] interfaces[i];
+      }
+      delete[] interfaces;
+    }
+    delete[] hierarchy;
+  }
+};
+
+// The declaration tables of a class not yet constructed; freed unless released.
+struct PartialClassDeclarations {
+  StackDclr** cls_dclrs = nullptr;
+  int cls_num_dclrs = 0;
+  StackDclr** inst_dclrs = nullptr;
+  int inst_num_dclrs = 0;
+  std::map<int, std::pair<int, StackDclr**> > closures;
+
+  ~PartialClassDeclarations() {
+    DeleteDeclarations(cls_dclrs, cls_num_dclrs);
+    DeleteDeclarations(inst_dclrs, inst_num_dclrs);
+    for(auto& closure : closures) {
+      DeleteDeclarations(closure.second.second, closure.second.first);
+    }
+  }
+};
+
 void Loader::LoadClasses()
 {
-  const int num_classes = static_cast<int>(ReadInt());
-  if(num_classes < 0) {
-    std::wcerr << L">>> Corrupt bytecode: negative class count <<<" << std::endl;
-    exit(1);
-  }
-  long* cls_hierarchy = new long[num_classes];
-  long** cls_interfaces = new long*[num_classes];
-  StackClass** classes = new StackClass*[num_classes];
+  // ReadCount: a count no larger than the bytes left. A plain ReadInt let a
+  // crafted count size these arrays at up to 16 GB (found by the fuzz target).
+  const int num_classes = ReadCount();
+  // Zeroed, and every id may be stored once: a repeated id used to leave
+  // another slot holding whatever the allocator returned, which SetClasses and
+  // ~StackProgram then dereferenced (found by the fuzz target).
+  PartialClasses loaded;
+  loaded.num = num_classes;
+  loaded.hierarchy = new long[num_classes]();
+  loaded.interfaces = new long*[num_classes]();
+  loaded.classes = new StackClass*[num_classes]();
+  long* cls_hierarchy = loaded.hierarchy;
+  long** cls_interfaces = loaded.interfaces;
+  StackClass** classes = loaded.classes;
 
 #ifdef _DEBUG
   std::wcout << L"Reading " << num_classes << L" classe(s)..." << std::endl;
@@ -357,27 +439,33 @@ void Loader::LoadClasses()
     // a crafted .obe could otherwise drive an arbitrary-offset heap write.
     if(id < 0 || id >= num_classes) {
       std::wcerr << L">>> Corrupt bytecode: class id out of range <<<" << std::endl;
-      exit(1);
+      LoadFailed();
+    }
+    if(classes[id]) {
+      std::wcerr << L">>> Corrupt bytecode: duplicate class id <<<" << std::endl;
+      LoadFailed();
     }
     std::wstring name = ReadString();
     const int pid = static_cast<int>(ReadInt());
     std::wstring parent_name = ReadString();
 
-    // read interface ids
+    // read interface ids: none when the count is not positive, as before, and
+    // never more than the four-byte ids left in the buffer (a crafted count
+    // sized this array at up to 16 GB; found by the fuzz target)
     const int num_interfaces = static_cast<int>(ReadInt());
+    if(num_interfaces > 0 && buffer_end && (size_t)num_interfaces > (size_t)(buffer_end - buffer) / sizeof(int32_t)) {
+      std::wcerr << L">>> Corrupt bytecode: invalid interface count <<<" << std::endl;
+      LoadFailed();
+    }
     if(num_interfaces > 0) {
-      long* interfaces = new long[num_interfaces + 1];
+      long* interfaces = cls_interfaces[id] = new long[num_interfaces + 1];
       int j = 0;
       while(j < num_interfaces) {
         interfaces[j++] = ReadInt();
       }
       interfaces[j] = INF_ENDING;
-      cls_interfaces[id] = interfaces;
     }
-    else {
-      cls_interfaces[id] = nullptr;
-    }
-    
+
     const bool is_virtual = ReadByte() != 0;
     const bool is_debug = ReadByte() != 0;
     std::wstring file_name;
@@ -389,29 +477,41 @@ void Loader::LoadClasses()
     const int cls_space = static_cast<int>(ReadInt());
     const int inst_space = static_cast<int>(ReadInt());
 
+    PartialClassDeclarations dclrs;
+
     // read class declarations
-    const int cls_num_dclrs = ReadCount();
-    StackDclr** cls_dclrs = LoadDeclarations(cls_num_dclrs, is_debug);
+    dclrs.cls_num_dclrs = ReadCount();
+    dclrs.cls_dclrs = LoadDeclarations(dclrs.cls_num_dclrs, is_debug);
 
     // read instance declarations
-    const int inst_num_dclrs = ReadCount();
-    StackDclr** inst_dclrs = LoadDeclarations(inst_num_dclrs, is_debug);
-    
+    dclrs.inst_num_dclrs = ReadCount();
+    dclrs.inst_dclrs = LoadDeclarations(dclrs.inst_num_dclrs, is_debug);
+
     // read closure declarations
-    std::map<int, std::pair<int, StackDclr**> > closure_dclr_map;
     const int num_closure_dclrs = ReadCount();
-    for(int i = 0; i < num_closure_dclrs; ++i) {
+    for(int j = 0; j < num_closure_dclrs; ++j) {
       const int closure_mthd_id = static_cast<int>(ReadInt());
       // read closure declarations
       const int closure_num_dclrs = ReadCount();
       StackDclr** closure_dclrs = LoadDeclarations(closure_num_dclrs, is_debug);
-      // add declarations to map
-      closure_dclr_map[closure_mthd_id] = std::pair<int, StackDclr**>(closure_num_dclrs, closure_dclrs);
+      // add declarations to map; a repeated id replaces the earlier entry, as
+      // before, which is now freed rather than lost
+      auto found = dclrs.closures.find(closure_mthd_id);
+      if(found != dclrs.closures.end()) {
+        DeleteDeclarations(found->second.second, found->second.first);
+      }
+      dclrs.closures[closure_mthd_id] = std::pair<int, StackDclr**>(closure_num_dclrs, closure_dclrs);
     }
 
     cls_hierarchy[id] = pid;
-    StackClass* cls = new StackClass(id, name, file_name, pid, is_virtual, cls_dclrs, cls_num_dclrs, inst_dclrs, 
-                                     closure_dclr_map, inst_num_dclrs, cls_space, inst_space, is_debug);
+    StackClass* cls = new StackClass(id, name, file_name, pid, is_virtual, dclrs.cls_dclrs, dclrs.cls_num_dclrs,
+                                     dclrs.inst_dclrs, dclrs.closures, dclrs.inst_num_dclrs, cls_space, inst_space,
+                                     is_debug);
+    // the class owns the declarations now
+    dclrs.cls_dclrs = dclrs.inst_dclrs = nullptr;
+    dclrs.closures.clear();
+    // stored before its methods load, so a failure there frees it too
+    classes[id] = cls;
 
 #ifdef _DEBUG
     std::wcout << L"Class(" << cls << L"): id=" << id << L"; name='" << name << L"'; parent='"
@@ -421,79 +521,24 @@ void Loader::LoadClasses()
 
     // load methods
     LoadMethods(cls, is_debug);
-    // add class
-#ifdef _DEBUG
-    assert(id < num_classes);
-#endif
-    classes[id] = cls;
   }
 
   // set class hierarchy and interfaces
   program->SetClasses(classes, num_classes);
   program->SetHierarchy(cls_hierarchy);
   program->SetInterfaces(cls_interfaces);
+  loaded.classes = nullptr;
+  loaded.interfaces = nullptr;
+  loaded.hierarchy = nullptr;
 }
 
 StackDclr** Loader::LoadDeclarations(const int num_dclrs, const bool is_debug)
 {
-  StackDclr** dclrs = new StackDclr * [num_dclrs];
-  for(int j = 0; j < num_dclrs; ++j) {
-    // set type
-    int type = static_cast<int>(ReadInt());
-    // set name
-    std::wstring name;
-    if(is_debug) {
-      name = ReadString();
-    }
-    dclrs[j] = new StackDclr;
-    dclrs[j]->name = name;
-    dclrs[j]->type = (ParamType)type;
-  }
-
-  return dclrs;
-}
-
-void Loader::LoadMethods(StackClass* cls, bool is_debug)
-{
-  const int number = static_cast<int>(ReadInt());
-  if(number < 0) {
-    std::wcerr << L">>> Corrupt bytecode: negative method count <<<" << std::endl;
-    exit(1);
-  }
-#ifdef _DEBUG
-  std::wcout << L"Reading " << number << L" method(s)..." << std::endl;
-#endif
-
-  StackMethod** methods = new StackMethod*[number];
-  for(int i = 0; i < number; ++i) {
-    // id
-    const int id = static_cast<int>(ReadInt());
-    // Validate before the methods[id] store (crafted .obe → arbitrary heap write).
-    if(id < 0 || id >= number) {
-      std::wcerr << L">>> Corrupt bytecode: method id out of range <<<" << std::endl;
-      exit(1);
-    }
-    // method type
-    const bool is_virtual = ReadByte() != 0;
-    // has and/or
-    const bool has_and_or = ReadByte() != 0;
-    // is lambda expression
-    const bool is_lambda = ReadByte() != 0;
-    // name
-    const std::wstring name = ReadString();
-    // return
-    const std::wstring rtrn_name = ReadString();
-    // params
-    const int params = static_cast<int>(ReadInt());
-    // space
-    const int mem_size = static_cast<int>(ReadInt());
-    // read type parameters
-    const int num_dclrs = ReadCount();
-
-    StackDclr** dclrs = new StackDclr*[num_dclrs];
+  StackDclr** dclrs = new StackDclr * [num_dclrs]();
+  try {
     for(int j = 0; j < num_dclrs; ++j) {
       // set type
-      const int type = static_cast<int>(ReadInt());
+      int type = static_cast<int>(ReadInt());
       // set name
       std::wstring name;
       if(is_debug) {
@@ -503,57 +548,118 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
       dclrs[j]->name = name;
       dclrs[j]->type = (ParamType)type;
     }
+  }
+  catch(...) {
+    DeleteDeclarations(dclrs, num_dclrs);
+    throw;
+  }
 
-    // parse return
-    MemoryType rtrn_type;
-    switch(rtrn_name[0]) {
-    case L'l': // bool
-    case L'b': // byte
-    case L'c': // character
-    case L'i': // int
-    case L'o': // object
-      rtrn_type = INT_TYPE;
-      break;
+  return dclrs;
+}
 
-    case L'f': // float
-      if(rtrn_name.size() > 1) {
-        rtrn_type = INT_TYPE;
-      } 
-      else {
-        rtrn_type = FLOAT_TYPE;
-      }
-      break;
-
-    case L'n': // nil
-      rtrn_type = NIL_TYPE;
-      break;
-
-    case L'm': // function
-      rtrn_type = FUNC_TYPE;
-      break;
-
-    default:
-      std::wcerr << L">>> unknown type: " << rtrn_name[0] << L"(" << (int)rtrn_name[0] << L") <<" << std::endl;
-      exit(1);
-      break;
-    }
-
-    StackMethod* mthd = new StackMethod(id, name, is_virtual, has_and_or, is_lambda, dclrs,
-          num_dclrs, params, mem_size, rtrn_type, cls);    
-    mthd->SetReturnName(rtrn_name);
-    // load statements
+void Loader::LoadMethods(StackClass* cls, bool is_debug)
+{
+  // bounded by the bytes left and zeroed, as LoadClasses does for classes
+  const int number = ReadCount();
 #ifdef _DEBUG
-    std::wcout << L"Method(" << mthd << L"): id=" << id << L"; name='" << name << L"'; return='" 
-    << rtrn_name << L"'; params=" << params << L"; bytes=" 
-    << mem_size << std::endl;
-#endif    
-    LoadStatements(mthd, is_debug);
-
-    // add method
-#ifdef _DEBUG
-    assert(id < number);
+  std::wcout << L"Reading " << number << L" method(s)..." << std::endl;
 #endif
-    methods[id] = mthd;
+
+  StackMethod** methods = new StackMethod*[number]();
+  try {
+    for(int i = 0; i < number; ++i) {
+      // id
+      const int id = static_cast<int>(ReadInt());
+      // Validate before the methods[id] store (crafted .obe → arbitrary heap write).
+      if(id < 0 || id >= number) {
+        std::wcerr << L">>> Corrupt bytecode: method id out of range <<<" << std::endl;
+        LoadFailed();
+      }
+      if(methods[id]) {
+        std::wcerr << L">>> Corrupt bytecode: duplicate method id <<<" << std::endl;
+        LoadFailed();
+      }
+      // method type
+      const bool is_virtual = ReadByte() != 0;
+      // has and/or
+      const bool has_and_or = ReadByte() != 0;
+      // is lambda expression
+      const bool is_lambda = ReadByte() != 0;
+      // name
+      const std::wstring name = ReadString();
+      // return
+      const std::wstring rtrn_name = ReadString();
+      // params
+      const int params = static_cast<int>(ReadInt());
+      // space
+      const int mem_size = static_cast<int>(ReadInt());
+      // read type parameters
+      const int num_dclrs = ReadCount();
+      StackDclr** dclrs = LoadDeclarations(num_dclrs, is_debug);
+
+      // parse return
+      MemoryType rtrn_type = NIL_TYPE;
+      switch(rtrn_name[0]) {
+      case L'l': // bool
+      case L'b': // byte
+      case L'c': // character
+      case L'i': // int
+      case L'o': // object
+        rtrn_type = INT_TYPE;
+        break;
+
+      case L'f': // float
+        if(rtrn_name.size() > 1) {
+          rtrn_type = INT_TYPE;
+        }
+        else {
+          rtrn_type = FLOAT_TYPE;
+        }
+        break;
+
+      case L'n': // nil
+        rtrn_type = NIL_TYPE;
+        break;
+
+      case L'm': // function
+        rtrn_type = FUNC_TYPE;
+        break;
+
+      default:
+        DeleteDeclarations(dclrs, num_dclrs);
+        std::wcerr << L">>> unknown type: " << rtrn_name[0] << L"(" << (int)rtrn_name[0] << L") <<" << std::endl;
+        LoadFailed();
+        break;
+      }
+
+      StackMethod* mthd;
+      try {
+        mthd = new StackMethod(id, name, is_virtual, has_and_or, is_lambda, dclrs,
+                               num_dclrs, params, mem_size, rtrn_type, cls);
+      }
+      catch(...) {
+        // an unparsable signature throws from the constructor, which then owns nothing
+        DeleteDeclarations(dclrs, num_dclrs);
+        throw;
+      }
+      // stored before its statements load, so a failure there frees it too
+      methods[id] = mthd;
+      mthd->SetReturnName(rtrn_name);
+      // load statements
+#ifdef _DEBUG
+      std::wcout << L"Method(" << mthd << L"): id=" << id << L"; name='" << name << L"'; return='"
+      << rtrn_name << L"'; params=" << params << L"; bytes="
+      << mem_size << std::endl;
+#endif
+      LoadStatements(mthd, is_debug);
+    }
+  }
+  catch(...) {
+    for(int i = 0; i < number; ++i) {
+      delete methods[i];
+    }
+    delete[] methods;
+    throw;
   }
   cls->SetMethods(methods, number);
 }
@@ -602,9 +708,11 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
   // exceeding the bytes remaining is corrupt -- reject before the allocation.
   if(buffer_end && num_instrs > (size_t)(buffer_end - buffer)) {
     std::wcerr << L">>> Corrupt bytecode: invalid instruction count <<<" << std::endl;
-    exit(1);
+    LoadFailed();
   }
   StackInstr* mthd_instrs = new StackInstr[num_instrs];
+  // the method owns the array from here, so a failure below frees it
+  method->SetInstructions(mthd_instrs, static_cast<int>(num_instrs));
 
   for(unsigned long i = 0; i < num_instrs; ++i) {
     const int type = ReadByte();
@@ -945,27 +1053,22 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
 
     case LIB_OBJ_INST_CAST:
       std::wcerr << L">>> unsupported instruction for executable: LIB_OBJ_INST_CAST <<<" << std::endl;
-      exit(1);
+      LoadFailed();
 
     case LIB_NEW_OBJ_INST:
       std::wcerr << L">>> unsupported instruction for executable: LIB_NEW_OBJ_INST <<<" << std::endl;
-      exit(1);
+      LoadFailed();
 
     case LIB_MTHD_CALL:
       std::wcerr << L">>> unsupported instruction for executable: LIB_MTHD_CALL <<<" << std::endl;
-      exit(1);
+      LoadFailed();
 
-    default: {
-#ifdef _DEBUG
-      InstructionType instr = (InstructionType)type;
-      std::wcout << L">>> unknown instruction: id=" << instr << L" <<<" << std::endl;
-#endif
-      exit(1);
-    }
+    default:
+      // said only in debug builds before: a release obr exited 1 without a word
+      std::wcerr << L">>> Corrupt bytecode: unknown instruction: id=" << type << L" <<<" << std::endl;
+      LoadFailed();
       break;
     }
   }
 
-  // copy and set instructions
-  method->SetInstructions(mthd_instrs, static_cast<int>(num_instrs));
 }

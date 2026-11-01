@@ -295,7 +295,23 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     (GC roots phases 3 and 4: AMD64 and ARM64), and OBJECK_GC_ROOTS=conservative,
     which scans the old window over every slot, must make the compiled run FAIL
     as well, so the typed slots are shown to be what keeps the Int intact.
- 29. A collection leaves an Int[] element alone when its value IS an object's
+ 29. A fatal compiler error leaves through the command line's own door. The
+    compiler's back end ended the process with exit(1) where it could not go
+    on, which also killed any host that embedded it (the language server, the
+    REPL); it throws CompilerFatal now and obc prints the same text and exits
+    with the same status. A library that is not there ('-lib no_such_library')
+    must print "Unable to read library: ..." and exit 1 with no "internal
+    error" and no .obe, and an executable named as a library must print
+    "Unable to use executable ..." and exit 1. The embedding half is
+    tools/lsp/tests/run_lsp_tests.py (check_fatal_library).
+ 30. The loader refuses a malformed program with a message and status 1, never
+    a crash. The inputs are what the loader fuzz target (tools/fuzz/loader)
+    found, reduced, in vm_flag_fixtures/loader/ as decompressed images; the
+    check stamps each with this toolchain's version and compresses it as obc
+    does, so the version check cannot refuse it first. A control repacks a
+    freshly compiled program the same way and must run, and .obe files shorter
+    than the size header must be refused rather than read past their end.
+ 31. A collection leaves an Int[] element alone when its value IS an object's
     address (GC roots phase 6, docs/GC_ROOTS_DESIGN.md section 10). An Int[]
     and an object array shared one heap tag, so the collector scanned every
     Int[] element as a possible reference and relocated one equal to a moved
@@ -675,6 +691,8 @@ def main():
 
     check_jit_off_interprets_native(obc, obr, env, bin_dir)
 
+    check_compiler_fatal(obc, obr, env, bin_dir)
+
     check_gc_roots_audit(obc, obr, env, bin_dir)
 
     check_int_not_relocated(obc, obr, env, bin_dir)
@@ -685,6 +703,7 @@ def main():
 
     check_address_int_pending(obc, obr, env, bin_dir)
 
+    check_loader_rejects_malformed(obc, obr, env, bin_dir)
     check_address_int_array(obc, obr, env, bin_dir)
 
     # ---- 11. the heap verifier (OBJECK_GC_VERIFY) ----------------------------------
@@ -1558,6 +1577,55 @@ def check_jit_off_interprets_native(obc, obr, env, bin_dir):
               off_out == on_out, f"off={off_out[-300:]!r} on={on_out[-300:]!r}")
 
 
+def check_compiler_fatal(obc, obr, env, bin_dir):
+    # ---- 29. a fatal compiler error: the same text, the same status -------------------
+    work = tempfile.mkdtemp(prefix="objk-fatal-")
+    try:
+        src = os.path.join(work, "hello.obs")
+        with open(src, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write('class Hello {\n  function : Main(args : String[]) ~ Nil {\n    "hello"->PrintLine();\n  }\n}\n')
+        dest = os.path.join(work, "hello.obe")
+
+        rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+        check("fatal: the control program compiles", rc == 0 and os.path.exists(dest),
+              err.decode(errors="replace")[-300:])
+        if rc != 0:
+            return
+
+        # a library that is not there
+        missing = os.path.join(work, "missing.obe")
+        rc, out, err = run([obc, "-src", src, "-lib", "no_such_library_zq", "-dest", missing],
+                           env=env, cwd=bin_dir)
+        text = err.decode(errors="replace")
+        check("fatal: a missing library exits 1", rc == 1, f"rc={rc} stderr={text[-300:]!r}")
+        check("fatal: and names the library file",
+              "Unable to read library: '" in text and "no_such_library_zq.obl'" in text,
+              f"stderr={text[-300:]!r}")
+        check("fatal: and is not reported as an internal error", "internal error" not in text,
+              f"stderr={text[-300:]!r}")
+        check("fatal: and writes no program", not os.path.exists(missing))
+
+        # an executable named as a library: reached after the file is read and unpacked
+        lib_dir = os.path.join(work, "lib")
+        os.makedirs(lib_dir)
+        real_lib = env["OBJECK_LIB_PATH"]
+        for name in ("lang.obl", "gen_collect.obl"):
+            shutil.copy(os.path.join(real_lib, name), os.path.join(lib_dir, name))
+        shutil.copy(dest, os.path.join(lib_dir, "exe_as_lib.obl"))
+        lib_env = dict(env)
+        lib_env["OBJECK_LIB_PATH"] = lib_dir + os.sep
+        rc, out, err = run([obc, "-src", src, "-lib", "exe_as_lib", "-dest", missing],
+                           env=lib_env, cwd=bin_dir)
+        text = err.decode(errors="replace")
+        check("fatal: an executable named as a library exits 1", rc == 1, f"rc={rc} stderr={text[-300:]!r}")
+        check("fatal: and says so",
+              "Unable to use executable '" in text and "as linked library." in text,
+              f"stderr={text[-300:]!r}")
+        check("fatal: and writes no program either", not os.path.exists(missing))
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def check_gc_roots_audit(obc, obr, env, bin_dir):
     # ---- 24. the operand-stack reference maps agree with the live stacks -----------
     audit_env = dict(env)
@@ -1695,8 +1763,94 @@ def check_address_int_pending(obc, obr, env, bin_dir):
               rc == 2 and b"returned 0" in out, f"rc={rc} out={out[-200:]!r}")
 
 
+# Section 30: inputs the loader fuzz target (tools/fuzz/loader) found, reduced. Each
+# '.img' is a decompressed program image; the check stamps it with this toolchain's
+# version and compresses it the way obc does, so the loader reaches the code the
+# input was found in. Each must be refused with its message and status 1.
+LOADER_INPUTS = [
+    # (fixture, the loader's message, what it was before the fix)
+    ("class_count_huge.img", "invalid element count", "a 16 GB allocation for the class tables"),
+    ("method_count_huge.img", "invalid element count", "a 16 GB allocation for a method table"),
+    ("interface_count_huge.img", "invalid interface count", "a 16 GB allocation, std::bad_alloc"),
+    ("class_id_repeated.img", "duplicate class id", "an unset class slot read: SIGSEGV"),
+    ("method_id_repeated.img", "duplicate method id", "an unset method slot read: SIGSEGV"),
+    ("method_signature_bad.img", "Invalid method signature", "unset program fields freed on the way out"),
+    ("instruction_unknown.img", "unknown instruction", "exit 1 without a word"),
+]
+
+
+def obe_image_of(path):
+    """The decompressed image of an .obe obc wrote ([uncompressed size:4][zlib])."""
+    import zlib
+    with open(path, "rb") as f:
+        data = f.read()
+    zlib_at_4 = len(data) >= 6 and data[4] == 0x78 and (0x78 * 256 + data[5]) % 31 == 0
+    return zlib.decompress(data if data[:1] == b"\x78" and not zlib_at_4 else data[4:])
+
+
+def obe_file_of(image):
+    import struct
+    import zlib
+    return struct.pack("<I", len(image)) + zlib.compress(image, 9)
+
+
+def loader_refused(rc, err, message):
+    """obr refused the input with its message and a plain failure status: 1, or on
+    Windows the -1 Execute returns for a load error raised as an exception (an
+    unparsable method signature). Never a signal, a Windows exception code
+    (0xC0000005 and kin) or anything from the interpreter."""
+    plain = rc == 1 or (os.name == "nt" and rc in (-1, 0xFFFFFFFF))
+    return plain and message in err and ">>> virtual machine" not in err
+
+
+def check_loader_rejects_malformed(obc, obr, env, bin_dir):
+    # ---- 30. the loader refuses malformed programs with a message, never a crash ----
+    fixture_dir = os.path.join(SCRIPT_DIR, "vm_flag_fixtures", "loader")
+    with tempfile.TemporaryDirectory() as scratch:
+        src = os.path.join(scratch, "loader_control.obs")
+        with open(src, "w") as f:
+            f.write('class LoaderControl { function : Main(args : String[]) ~ Nil { "loaded"->PrintLine(); } }\n')
+        control = os.path.join(scratch, "loader_control.obe")
+        rc, out, err = run([obc, "-src", src, "-dest", control], env=env, cwd=bin_dir)
+        check("loader control fixture compiles", rc == 0 and os.path.exists(control), err.decode(errors="replace")[-300:])
+        if rc != 0:
+            return
+        image = obe_image_of(control)
+        version = image[:4]
+
+        # The control: the same image, decompressed and packed again by this check,
+        # must load and run. Without it a packing mistake here would make every case
+        # below a refusal for the wrong reason.
+        repacked = os.path.join(scratch, "loader_repacked.obe")
+        with open(repacked, "wb") as f:
+            f.write(obe_file_of(image))
+        rc, out, err = run([obr, repacked], env=env, cwd=bin_dir)
+        check("an image repacked by this check loads and runs (control)",
+              rc == 0 and b"loaded" in out, f"rc={rc} out={out[-200:]!r} err={err[-300:]!r}")
+
+        # Files too short to hold the size header: read four bytes deep and inflated
+        # with a length that had underflowed to nearly 2^64.
+        for name, data in (("an empty", b""), ("a one-byte", b"\x01"), ("a three-byte", b"\x01\x02\x03")):
+            path = os.path.join(scratch, "short.obe")
+            with open(path, "wb") as f:
+                f.write(data)
+            rc, out, err = run([obr, path], env=env, cwd=bin_dir)
+            text = err.decode(errors="replace")
+            check(f"{name} .obe is refused, not read past its end",
+                  loader_refused(rc, text, "Unable to uncompress file"), f"rc={rc} err={text[-300:]!r}")
+
+        for name, message, about in LOADER_INPUTS:
+            with open(os.path.join(fixture_dir, name), "rb") as f:
+                case = version + f.read()[4:]
+            path = os.path.join(scratch, name.replace(".img", ".obe"))
+            with open(path, "wb") as f:
+                f.write(obe_file_of(case))
+            rc, out, err = run([obr, path], env=env, cwd=bin_dir, timeout=60)
+            text = err.decode(errors="replace")
+            check(f"loader refuses {name} ({about})", loader_refused(rc, text, message),
+                  f"rc={rc} err={text[-300:]!r}")
 def check_address_int_array(obc, obr, env, bin_dir):
-    # ---- 29. an Int[] element equal to an object's address survives a collection -----
+    # ---- 31. an Int[] element equal to an object's address survives a collection -----
     src = os.path.join(SCRIPT_DIR, "vm_flag_fixtures", "gc_address_int_array.obs")
     hooks_env = dict(env)
     hooks_env["OBJECK_GC_TEST_HOOKS"] = "1"
