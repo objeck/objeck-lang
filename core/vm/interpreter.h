@@ -685,6 +685,19 @@ namespace Runtime {
     void ProcessMethodCall(StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos);
     void ProcessJitOnlyMethodCall(StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos);
     StackMethod* ResolveVirtualMethod(StackMethod* concrete_call, size_t* instance, StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &stack_pos);
+
+    //
+    // The method a call instruction names, or nullptr when its class or method
+    // id is out of range. Both lookups already bounds-check; this only stops
+    // the nullptr from being dereferenced. The loader does not validate call
+    // operands, so a corrupt or crafted .obe reaches here
+    // (docs/SECURITY_MODEL.md).
+    //
+    inline StackMethod* ResolveCallTarget(const long cls_id, const long mthd_id) const {
+      StackClass* cls = program->GetClass(cls_id);
+      return cls ? cls->GetMethod(mthd_id) : nullptr;
+    }
+    void UnresolvedMethodCall(const long cls_id, const long mthd_id, size_t* &stack_pos);
     bool NilFunctionValue(size_t* &op_stack, size_t* &stack_pos);
     void ProcessDynamicMethodCall(StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos);
     void ProcessJitOnlyDynamicMethodCall(StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos);

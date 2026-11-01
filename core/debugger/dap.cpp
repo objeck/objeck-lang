@@ -709,9 +709,26 @@ void DapAdapter::HandleSetBreakpoints(int request_seq, const json& args)
 
   std::wstring wfile_name = BytesToUnicode(file_name);
 
-  // Clear existing breakpoints for this file
+  // The file is identified by its path, not its name: src/a/util.obs and
+  // src/b/util.obs are two files. A path that exists on this machine is
+  // normalized to a key the debugger matches the program's own files against.
+  // One that does not (the client and the program see different file systems)
+  // has only its base name to go on, as every breakpoint used to.
+  std::wstring path_key;
+  if(debugger && !path.empty()) {
+    const std::wstring normalized = debugger->NormalizePath(BytesToUnicode(path));
+    if(!normalized.empty()) {
+      path_key = Debugger::PathKey(normalized);
+      debugger->NoteSourcePath(normalized);
+    }
+  }
+
+  // Replace the breakpoints this request names the file's whole set of. Their
+  // ids are kept for lines that stay, so the client's breakpoint keeps its id
+  // across edits to the others.
+  std::map<int, int> prior_ids;
   if(debugger) {
-    debugger->ClearFileBreaks(wfile_name);
+    prior_ids = debugger->ClearSourceBreaks(path_key, wfile_name);
   }
 
   // Add new breakpoints
@@ -725,7 +742,7 @@ void DapAdapter::HandleSetBreakpoints(int request_seq, const json& args)
     // set in the editor quietly became an unconditional one.
     std::string hit_condition_str = bp.value("hitCondition", "");
 
-    bool added = false;
+    int id = 0;
     std::string failure;
     if(debugger && line > 0) {
       // A condition that does not parse used to leave 'condition' null, which
@@ -742,39 +759,42 @@ void DapAdapter::HandleSetBreakpoints(int request_seq, const json& args)
         }
       }
 
-      if(!condition_ok) {
-        // not added
-      }
-      else if(!log_message_str.empty()) {
-        // logpoint: log-and-continue instead of stopping
-        added = debugger->AddBreak(line, wfile_name, condition, false, BytesToUnicode(log_message_str));
-      }
-      else {
-        added = debugger->AddBreak(line, wfile_name, condition);
-        if(added && !hit_condition_str.empty()) {
-          // DAP leaves the syntax open; VS Code's own UI produces a bare count
-          // meaning "stop on the Nth hit", which is our ignore_count + 1.
-          // An expression form we do not implement (">= 5") is not a count:
-          // leave it unconditional rather than guessing at one.
+      if(condition_ok) {
+        // DAP leaves the hitCondition syntax open; VS Code's own UI produces a
+        // bare count meaning "stop on the Nth hit", which is our ignore_count + 1.
+        // An expression form we do not implement (">= 5") is not a count: leave
+        // it unconditional rather than guessing at one.
+        int hits = 0;
+        if(log_message_str.empty() && !hit_condition_str.empty()) {
           std::string count_text = hit_condition_str;
           while(!count_text.empty() && count_text.back() == ' ') {
             count_text.pop_back();
           }
-          int hits = 0;
-          if(objeck_parse::ToInt(count_text, hits) && hits > 1) {
-            debugger->SetIgnoreCountForDap(line, wfile_name, hits - 1);
+          if(!objeck_parse::ToInt(count_text, hits)) {
+            hits = 0;
           }
         }
+
+        // a logpoint logs and carries on instead of stopping
+        const std::map<int, int>::const_iterator prior = prior_ids.find(line);
+        id = debugger->AddSourceBreak(line, wfile_name, path_key, condition, BytesToUnicode(log_message_str), hits,
+                                      prior == prior_ids.end() ? 0 : prior->second);
       }
     }
+    const bool added = id > 0;
 
     if(!added && failure.empty()) {
       failure = !debugger ? "The program has not been launched" :
                 (line > 0 ? "A breakpoint is already set on this line" : "Invalid line number");
     }
 
+    // The id is the breakpoint's own: unique for the session, and the same one
+    // again when the line is set again. (It used to be the line number, so two
+    // files' breakpoints on one line were indistinguishable to the client.)
     json bp_result;
-    bp_result["id"] = line;
+    if(added) {
+      bp_result["id"] = id;
+    }
     bp_result["line"] = line;
     bp_result["verified"] = added;
     if(!added) {
@@ -855,8 +875,18 @@ void DapAdapter::HandleThreads(int request_seq)
   SendResponse(request_seq, "threads", body);
 }
 
-std::string DapAdapter::ResolveSourcePath(const std::wstring& file_name)
+std::string DapAdapter::ResolveSourcePath(const std::wstring& file_name, const std::wstring& class_name)
 {
+  // The file the class was written in, as the breakpoints see it: so a stack
+  // frame in src/b/util.obs opens that file, not whichever util.obs the source
+  // directory has directly in it.
+  if(debugger && !class_name.empty()) {
+    const std::wstring resolved_file = debugger->ResolveClassSource(file_name, class_name);
+    if(!resolved_file.empty()) {
+      return UnicodeToBytes(resolved_file);
+    }
+  }
+
   // Extract basename from file_name
   std::wstring basename = file_name;
   size_t sep = file_name.find_last_of(L"/\\");
@@ -929,7 +959,7 @@ void DapAdapter::HandleStackTrace(int request_seq, const json& args)
       frame["name"] = UnicodeToBytes(debugger->PrintMethodPublic(method));
 
       json source;
-      std::string resolved = ResolveSourcePath(method->GetClass()->GetFileName());
+      std::string resolved = ResolveSourcePath(method->GetClass()->GetFileName(), method->GetClass()->GetName());
       // Extract basename for display name
       std::string basename = resolved;
       size_t lastSep = resolved.find_last_of("/\\");
@@ -953,7 +983,7 @@ void DapAdapter::HandleStackTrace(int request_seq, const json& args)
         frame["name"] = UnicodeToBytes(debugger->PrintMethodPublic(method));
 
         json source;
-        std::string resolved2 = ResolveSourcePath(method->GetClass()->GetFileName());
+        std::string resolved2 = ResolveSourcePath(method->GetClass()->GetFileName(), method->GetClass()->GetName());
         std::string basename2 = resolved2;
         size_t lastSep2 = resolved2.find_last_of("/\\");
         if(lastSep2 != std::string::npos) basename2 = resolved2.substr(lastSep2 + 1);
@@ -1719,17 +1749,23 @@ void DapAdapter::HandleStepOut(int request_seq, const json& args)
 
 void DapAdapter::HandlePause(int request_seq, const json& args)
 {
-  // Asynchronous interruption of a running VM is not implemented. This used to
-  // answer success and do nothing, so the editor's pause button appeared to
-  // work and silently never stopped anything. An error at least reaches the
-  // user; the capability cannot be withheld because 'pause' has no gate.
+  // This used to answer an error ("Pause is not supported") because nothing in
+  // the VM could be interrupted from outside. Every thread now passes through the
+  // debugger's per-instruction hook, so a pause is a flag that the first thread
+  // to run an instruction with a source position takes, and it stops there like a
+  // breakpoint, with every other thread parked (reason "pause").
   if(is_stopped) {
     SendResponse(request_seq, "pause", json::object(), false, "Already stopped");
     return;
   }
 
-  SendResponse(request_seq, "pause", json::object(), false,
-               "Pause is not supported; set a breakpoint instead");
+  if(!debugger || !vm_thread.joinable() || is_terminated) {
+    SendResponse(request_seq, "pause", json::object(), false, "The program is not running");
+    return;
+  }
+
+  debugger->RequestPause();
+  SendResponse(request_seq, "pause");
 }
 
 void DapAdapter::HandleDisconnect(int request_seq, const json& args)

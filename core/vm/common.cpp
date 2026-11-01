@@ -4230,7 +4230,9 @@ bool TrapProcessor::SetSignal(StackProgram* program, size_t* inst, size_t*& op_s
   const long cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
   const long mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
 
-  StackMethod* signal_mthd = Loader::GetProgram()->GetClass(cls_id)->GetMethod(mthd_id);
+  // the ids come off the operand stack; an out-of-range class id is nullptr
+  StackClass* signal_cls = Loader::GetProgram()->GetClass(cls_id);
+  StackMethod* signal_mthd = signal_cls ? signal_cls->GetMethod(mthd_id) : nullptr;
   if(signal_mthd) {
     return program->AddSignalHandler(signal_id, signal_mthd);
   }
