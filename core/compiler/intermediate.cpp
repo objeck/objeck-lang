@@ -720,8 +720,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
     const std::wstring error_msg =  current_method->GetFileName() + L':' + 
       ToString(current_method->GetLineNumber()) + L": Local space has been exceeded by " + 
       ToString(space - LOCAL_SIZE) + L" bytes.";
-    std::wcerr << error_msg << std::endl;
-    exit(1);
+    throw CompilerFatal(error_msg);
   }
 
   std::vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
@@ -1358,8 +1357,7 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     break;
     
   default:
-    std::wcerr << L"internal error" << std::endl;
-    exit(1);
+    throw CompilerFatal(L"internal error");
   }
   
   if(!post_statements.empty()) {
@@ -3917,10 +3915,9 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     // code at all: the method ran with nothing on its operand stack and
     // returned whatever lay there. All 18 SOCK_DTLS_* traps were dead that way
     // from the day they were added. Refuse to produce such code.
-    std::wcerr << statement->GetFileName() << L':' << statement->GetLineNumber()
-               << L": internal error: no code emitted for system directive "
-               << statement->GetId() << std::endl;
-    exit(1);
+    throw CompilerFatal(statement->GetFileName() + L':' + ToString(statement->GetLineNumber()) +
+                        L": internal error: no code emitted for system directive " +
+                        ToString(static_cast<int>(statement->GetId())));
   }
 }
 

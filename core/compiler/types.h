@@ -35,6 +35,8 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <stdexcept>
 #include <assert.h>
 #ifndef _WIN32
 #include <stdint.h>
@@ -50,6 +52,46 @@
 #ifdef _DEBUG
 #include "../shared/logger.h"
 #endif
+
+/****************************
+ * A failure the compiler cannot continue past: an unreadable or stale
+ * library, an unresolvable external class, an internal inconsistency.
+ *
+ * The back end used to print the text to stderr and call exit(1), which
+ * ends the process -- fatal for any host that embeds the compiler (the
+ * language server, the REPL). It throws this instead. The message is
+ * exactly the text that was printed, without the trailing newline.
+ *
+ * Whoever drives the compiler decides what a fatal error means:
+ *  - the command line (Compile in compiler.cpp) prints the message to
+ *    stderr and exits with status 1, as before
+ *  - an embedding host (ObjeckLang::Compile, the diagnostics library)
+ *    catches it and reports the message as an error
+ * ContextAnalyzer::Analyze, IntermediateEmitter::Translate,
+ * ItermediateOptimizer::Optimize and the FileEmitter constructor may all
+ * throw it, so a new entry point must catch it too.
+ ****************************/
+class CompilerFatal : public std::runtime_error {
+  std::wstring message;
+
+  static std::string Narrow(const std::wstring& text) {
+    std::string out;
+    out.reserve(text.size());
+    for(const wchar_t ch : text) {
+      out.push_back(ch > 0 && ch < 128 ? static_cast<char>(ch) : '?');
+    }
+    return out;
+  }
+
+ public:
+  explicit CompilerFatal(const std::wstring& m) : std::runtime_error(Narrow(m)), message(m) {
+  }
+
+  // not GetMessage: <windows.h> defines that as a macro
+  const std::wstring& Message() const {
+    return message;
+  }
+};
 
 namespace frontend {
   /****************************

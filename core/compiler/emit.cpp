@@ -75,15 +75,13 @@ void FileEmitter::Emit()
   // library target
   if(emit_lib) {
     if(!frontend::EndsWith(file_name, L".obl")) {
-      std::wcerr << L"Error: Libraries must end in '.obl'" << std::endl;
-      exit(1);
+      throw CompilerFatal(L"Error: Libraries must end in '.obl'");
     }
   }
   // application target
   else {
     if(!frontend::EndsWith(file_name, L".obe")) {
-      std::wcerr << L"Error: Executables must end in '.obe'" << std::endl;
-      exit(1);
+      throw CompilerFatal(L"Error: Executables must end in '.obe'");
     }
   }
   
@@ -458,9 +456,8 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     // dump is worth having, and lets the inliners treat an unresolvable callee
     // as what it is: not inlinable.
     if(operand >= 0 && !IntermediateProgram::Instance()->GetClass(static_cast<int>(operand))) {
-      std::wcerr << L"Error: unresolved class id " << operand << L" in a method call." << std::endl
-                 << L"       A linked library was built by a different build of this compiler; rebuild the libraries." << std::endl;
-      exit(1);
+      throw CompilerFatal(L"Error: unresolved class id " + std::to_wstring(operand) + L" in a method call.\n"
+                          L"       A linked library was built by a different build of this compiler; rebuild the libraries.");
     }
     WriteInt(static_cast<int32_t>(operand), out_stream);
     WriteInt(static_cast<int32_t>(operand2), out_stream);

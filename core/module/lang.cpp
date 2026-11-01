@@ -50,6 +50,21 @@ ObjeckLang::~ObjeckLang()
 //
 bool ObjeckLang::Compile(std::vector<std::pair<std::wstring, std::wstring>> &file_source, const std::wstring opt_level)
 {
+  // A fatal compiler error (an unreadable library, an unresolvable class) comes
+  // back as an error like any other. It used to end the process, REPL and all.
+  try {
+    return CompileSource(file_source, opt_level);
+  }
+  catch(const CompilerFatal& fatal) {
+    // the translator may have left its program behind
+    IntermediateProgram::Release();
+    errors.assign(1, fatal.Message());
+    return false;
+  }
+}
+
+bool ObjeckLang::CompileSource(std::vector<std::pair<std::wstring, std::wstring>> &file_source, const std::wstring opt_level)
+{
   const bool is_debug = false;
   const bool is_lib = false;
   const bool show_asm = false;
