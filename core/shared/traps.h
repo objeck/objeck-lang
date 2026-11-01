@@ -361,6 +361,9 @@ namespace instructions {
     THREAD_IS_ALIVE,
     // Base->GetInstanceID(): a number assigned to the object once, not its
     // address, which a minor collection changes when it moves the object
-    INST_STABLE_ID
+    INST_STABLE_ID,
+    // Runtime->TestAddressOf(o): the object's current address, for the collector's
+    // regression tests; 0 unless OBJECK_GC_TEST_HOOKS=1
+    GC_TEST_ADDRESS
   };
 }

@@ -456,6 +456,7 @@ enum ScannerTokenType {
   SOCK_DTLS_LISTEN_ADDR,
   THREAD_CURRENT_ID,
   THREAD_IS_ALIVE,
+  GC_TEST_ADDRESS,
   // serialization
   SERL_CHAR,
   SERL_INT,
