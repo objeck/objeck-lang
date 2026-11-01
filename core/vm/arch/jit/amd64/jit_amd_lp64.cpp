@@ -327,11 +327,11 @@ void JitAmd64::RegisterRoot() {
   // calculate root address
   // note: the offset required to 
   // get to the first local variable
-#ifdef _WIN64
-  const long offset = org_local_space + RED_ZONE + TMP_REG_9 + 8;
-#else
-  const long offset = org_local_space + RED_ZONE + TMP_REG_9;
-#endif
+  // the bytes from the lowest local up to TMP_REG_9: the locals (and/or temp
+  // included) plus the RED_ZONE word Win64 keeps under the temps
+  // (JitFrameLayout::LOCALS_TO_TMP_WORDS, 1 there and 0 on SysV)
+  const long offset = org_local_space + RED_ZONE + TMP_REG_9 +
+    JitFrameLayout::LOCALS_TO_TMP_WORDS * (long)sizeof(size_t);
   // get to stack locals
   RegisterHolder* holder = GetRegister();
   move_reg_reg(RBP, holder->GetRegister());
@@ -342,13 +342,14 @@ void JitAmd64::RegisterRoot() {
   move_mem_reg(JIT_MEM, RBP, mem_holder->GetRegister());
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
 
-  // The locals (offset bytes, with the Win64 RED_ZONE word) and the 10 slots
+  // The locals (offset bytes, with the Win64 RED_ZONE word) and the slots
   // that hold spilled registers, TMP_REG_9 up to TMP_REG_0. The collector
   // scans every one of them (JIT_TMP_LOOK_BACK). The count was one short and
   // left TMP_REG_0, the first slot every spill takes, holding whatever an
   // earlier method entered at the same frame pointer had spilled there: a
-  // dead array stayed reachable for as long as the next method ran.
-  const int index = (offset >> 3) + 10;
+  // dead array stayed reachable for as long as the next method ran. The slot
+  // count is derived from the layout (jit_frame_layout.h), not written here.
+  const int index = (int)(offset >> 3) + JitFrameLayout::TMP_INT_SLOTS;
   // Zero them with straight stores for the common frame sizes: the LOOP
   // instruction is microcoded, and its eleven iterations for a one-local
   // method cost more than that method's body. Large frames keep the loop.
@@ -2980,7 +2981,7 @@ void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
   assert(xmm_offset >= TMP_XMM_2);
 #endif
 
-  if(dirty_regs.size() > 10 || dirty_xmms.size() > 3) {
+  if(dirty_regs.size() > (size_t)JitFrameLayout::TMP_INT_SLOTS || dirty_xmms.size() > (size_t)JitFrameLayout::TMP_FLOAT_SLOTS) {
     CompileFailed(L"more live values across a call than spill slots (10 integer, 3 float)");
   }
 

@@ -66,7 +66,9 @@
 #define SIZE_OR_CLS -2
 #define TYPE -3
 
-#define JIT_TMP_LOOK_BACK 16
+// JIT_TMP_LOOK_BACK, the untyped words scanned beside every compiled frame,
+// comes from the frame layout the backends and the collector share
+#include "jit/jit_frame_layout.h"
 
 #define ALIGN_POOL_MAX (1 << 22)
 

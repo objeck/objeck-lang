@@ -32,88 +32,13 @@
 #pragma once
 
 #include "../jit_common.h"
+#include "../jit_frame_layout.h"
 #include <unordered_set>
 
 namespace Runtime {
-#ifdef _WIN64
-  // offsets for Win64
-#define CLS_ID 16
-#define MTHD_ID 24
-#define CLASS_MEM 32
-#define INSTANCE_MEM 40
-#define OP_STACK 48
-#define STACK_POS 56
-#define CALL_STACK 64
-#define CALL_STACK_POS 72
-#define JIT_MEM 80
-#define JIT_OFFSET 88
-#define FRAME_MEM 96
-  // float temps
-#define TMP_XMM_0 -8
-#define TMP_XMM_1 -16
-#define TMP_XMM_2 -24
-  // integer temps
-#define TMP_REG_0 -32
-#define TMP_REG_1 -40
-#define TMP_REG_2 -48
-#define TMP_REG_3 -56
-#define TMP_REG_4 -64
-#define TMP_REG_5 -72
-#define TMP_REG_6 -80
-#define TMP_REG_7 -88
-#define TMP_REG_8 -96
-#define TMP_REG_9 -104
-#define RED_ZONE -112
-#else
-  // offset for Posix 64-bit
-#define CLS_ID -8
-#define MTHD_ID -16
-#define CLASS_MEM -24
-#define INSTANCE_MEM -32
-#define OP_STACK -40
-#define STACK_POS -48
-#define CALL_STACK 16
-#define CALL_STACK_POS 24
-#define JIT_MEM 32
-#define JIT_OFFSET 40
-#define FRAME_MEM 48
-  // float temps
-#define TMP_XMM_0 -64
-#define TMP_XMM_1 -72
-#define TMP_XMM_2 -80
-  // integer temps
-#define TMP_REG_0 -88
-#define TMP_REG_1 -96
-#define TMP_REG_2 -104
-#define TMP_REG_3 -112
-#define TMP_REG_4 -120
-#define TMP_REG_5 -128
-#define TMP_REG_6 -136
-#define TMP_REG_7 -144
-#define TMP_REG_8 -152
-#define TMP_REG_9 -160
-#define RED_ZONE -160
-#endif
-
-  // The register-argument entry (EmitNativePrologue). A native caller's
-  // arguments start at NATIVE_ARGS from the callee's frame pointer: past the
-  // return address and the saved frame pointer, the register homes and stack
-  // slots the bridge entry receives there (CLS_ID .. FRAME_MEM on Windows,
-  // CALL_STACK .. FRAME_MEM on POSIX), which the native prologue fills for
-  // itself. The caller writes them at OUT_ARGS from its stack pointer, in
-  // the outgoing area its prologue reserves (out_area).
-#ifdef _WIN64
-#define NATIVE_ARGS 104
-#else
-#define NATIVE_ARGS 56
-#endif
-#define OUT_ARGS (NATIVE_ARGS - 16)
-  // the frame record block below a method's locals (rec_base): its
-  // StackFrame, the two mem words (self, 0) the record points at, and the
-  // entry-kind word RTRN tests (0 bridge, 1 native)
-#define REC_MEM 56
-#define REC_KIND 72
-#define REC_SIZE 80
+  // The frame layout (CLS_ID .. FRAME_MEM, the TMP_* spill slots, RED_ZONE,
+  // NATIVE_ARGS/OUT_ARGS and the REC_* record block) lives in
+  // ../jit_frame_layout.h, shared with the collector.
 
 #define MAX_DBLS 256
 #define BUFFER_SIZE 512

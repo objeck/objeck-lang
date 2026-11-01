@@ -1719,7 +1719,7 @@ void* MemoryManager::CheckJitRoots([[maybe_unused]] void* arg)
 #endif
 
     if(mem) {
-#ifdef _ARM64
+#ifdef JIT_LAYOUT_ARM64
       size_t* start = mem - 1;
 #endif
       
@@ -1729,7 +1729,7 @@ void* MemoryManager::CheckJitRoots([[maybe_unused]] void* arg)
       }
 
       StackDclr** dclrs = method->GetDeclarations();
-#ifdef _ARM64
+#ifdef JIT_LAYOUT_ARM64
       // front to back...
       if(method->HasAndOr()) {
         // The and/or temporary (slot 0) has no declaration, but it is not only a
@@ -1886,11 +1886,16 @@ void* MemoryManager::CheckJitRoots([[maybe_unused]] void* arg)
         }
       }
 
-      // NOTE: this marks temporary variables that are stored in JIT memory
-      // during some method calls. There are 6 integer temp addresses. On x64
-      // the window starts at the word after the declared locals, which is the
-      // and/or temporary when the method has one (scanned above on ARM64).
-#ifdef _ARM64
+      // The spill slots: the values a compiled method keeps pending across a
+      // call, a loop-header park or a libm call go to its TMP_* slots
+      // (ProcessStackCallback, EmitJitSafePoint, call_xfunc). They are untyped,
+      // so a window of JIT_TMP_LOOK_BACK words is scanned conservatively. On
+      // x64 it starts at the word after the declared locals, which is the
+      // and/or temporary when the method has one (scanned above on ARM64), and
+      // runs upward; on ARM64 it starts at the word below the first local and
+      // runs downward. jit_frame_layout.h proves the window reaches every
+      // integer slot (JitFrameLayout::WORDS_TO_LAST_INT_SLOT <= WINDOW).
+#ifdef JIT_LAYOUT_ARM64
       mem = start;
       for(int i = 0; i > -JIT_TMP_LOOK_BACK; --i) {
 #else
@@ -2663,7 +2668,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
       }
 
       // Fix up JIT locals
-#ifdef _ARM64
+#ifdef JIT_LAYOUT_ARM64
       if(method->HasAndOr()) {
         // the and/or temporary: a conservative root (see CheckJitRoots); on x64 it
         // is the first word of the temporaries' window below
@@ -2718,8 +2723,9 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
       // Fix up JIT temps (conservative scan of untyped words — FixupSlot validates
       // the forwarding target, so spilled scratch / float bit-patterns that merely
       // alias the young address range are not misread as relocatable references).
-      // On x64 mem[0] here is the and/or temporary when the method has one.
-#ifdef _ARM64
+      // On x64 mem[0] here is the and/or temporary when the method has one. The
+      // window is the one CheckJitRoots scans (jit_frame_layout.h).
+#ifdef JIT_LAYOUT_ARM64
       size_t* start = frame->jit_mem - 1;
       for(int k = 0; k > -JIT_TMP_LOOK_BACK; --k) {
         FixupSlot(&start[k]);

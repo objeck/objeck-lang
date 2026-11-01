@@ -32,55 +32,15 @@
 #pragma once
 
 #include "../jit_common.h"
+#include "../jit_frame_layout.h"
 #include <unordered_set>
 
 using namespace std;
 
 namespace Runtime {
-  // offsets for ARM A64 addresses
-#define TMP_LR 104
-#define INT_CONSTS 96
-#define CLS_ID 88
-#define MTHD_ID 80
-#define CLASS_MEM 72
-#define INSTANCE_MEM 64
-#define OP_STACK 56
-#define OP_STACK_POS 48
-#define CALL_STACK 40
-#define CALL_STACK_POS 32
-#define JIT_MEM 24
-#define JIT_OFFSET 16
-  // float temps
-#define TMP_D0 112
-#define TMP_D1 120
-#define TMP_D2 128
-#define TMP_D3 136
-  // integer temps
-#define TMP_X0 144
-#define TMP_X1 152
-#define TMP_X2 160
-#define TMP_X3 168
-#define TMP_X4 176
-#define TMP_X5 184
-  // callee-saved FP register save slots
-#define SAVE_D8  192
-#define SAVE_D9  200
-#define SAVE_D10 208
-#define SAVE_D11 216
-#define SAVE_D12 224
-#define SAVE_D13 232
-#define SAVE_D14 240
-#define SAVE_D15 248
-#define RED_ZONE 256
-
-// The frame record block a native entry builds in its own frame (see
-// JitArm64::EmitNativePrologue): the StackFrame, the two mem words
-// (self, 0) the record points at, and the entry-kind word RTRN tests
-// (0 bridge, 1 native). It sits above the locals, outside the region the
-// entry zeroing and the collector's walk cover, as the outgoing area does.
-#define REC_MEM 56
-#define REC_KIND 72
-#define REC_SIZE 80
+  // The frame layout (TMP_LR .. JIT_OFFSET, the TMP_D*/TMP_X* spill slots,
+  // the SAVE_D* area, RED_ZONE and the REC_* record block) lives in
+  // ../jit_frame_layout.h, shared with the collector.
 
   // buffer sizes
 #define MAX_INTS 128
