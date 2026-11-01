@@ -69,7 +69,7 @@ class Loader {
 #ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
     throw LoaderFuzzReject();
 #else
-    LoadFailed();
+    exit(1);
 #endif
   }
 
