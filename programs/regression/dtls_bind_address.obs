@@ -57,14 +57,49 @@ class TwoDtlsAccepts from Thread {
 class DtlsBindAddress {
 	@failed : static : Int;
 
+	# A self-signed certificate for the test's servers, valid from 2025 rather than
+	# from the second it is made. `openssl req -x509` starts a certificate "now",
+	# and a clock that steps back after that -- a VM resynchronizing its time, as
+	# WSL2 does by seconds at a time -- sees a certificate that is not valid yet:
+	# the handshake fails "The certificate validity starts in the future". Before
+	# OpenSSL 3.4 only `openssl ca` can set the start, so it signs the request, in a
+	# scratch directory removed afterwards. The extensions are written out rather
+	# than left to each build's defaults.
+	function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+		dir := "{$cert}.ca";
+		Directory->Delete(dir);
+		File->Delete(cert);
+		File->Delete(key);
+		if(<>Directory->Create(dir)) {
+			return false;
+		};
+
+		cnf := FileWriter->New("{$dir}/openssl.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+		cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+		cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+		cnf->Close();
+		FileWriter->New("{$dir}/index.txt")->Close();
+		serial := FileWriter->New("{$dir}/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+
+		made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+		if(made) {
+			made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+		};
+
+		Directory->Delete(dir);
+		return made;
+	}
+
 	function : Main(args : String[]) ~ Nil {
 		@failed := 0;
 
 		File->Delete("dtls-bind-{$Runtime->GetProcessId()}-cert.pem");
 		File->Delete("dtls-bind-{$Runtime->GetProcessId()}-key.pem");
-		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
-		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1,IP:::1\" -keyout dtls-bind-{$Runtime->GetProcessId()}-key.pem -out dtls-bind-{$Runtime->GetProcessId()}-cert.pem";
-		if(Runtime->Command(command) <> 0) {
+		if(<>MakeServerCert("dtls-bind-{$Runtime->GetProcessId()}-cert.pem", "dtls-bind-{$Runtime->GetProcessId()}-key.pem", "/CN=localhost", "DNS:localhost,IP:127.0.0.1,IP:::1")) {
 			"FAIL: openssl could not create the DTLS fixture -- is openssl on PATH?"->PrintLine();
 			Runtime->Exit(1);
 		};
