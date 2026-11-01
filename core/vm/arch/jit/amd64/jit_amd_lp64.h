@@ -311,7 +311,6 @@ namespace Runtime {
     // being inlined when it failed inside an inlined callee (else nullptr)
     std::wstring compile_fail_reason;
     long compile_fail_instr;
-    StackMethod* compile_fail_inlined;
     // The register pool's size once set up, so AuditRegisterPool can find a
     // holder that was taken and never given back (a leak) or given back twice
     size_t gp_pool_size;
@@ -336,14 +335,16 @@ namespace Runtime {
     RefMap* ref_map;
     long ref_map_ip;
     // what the spills did, for OBJECK_JIT_REPORT
-    long spill_sites, spill_refs, spill_vals, spill_unknown, spill_mismatch;
+    long spill_sites, spill_refs, spill_vals, spill_unknown, spill_mismatch, spill_andor;
     struct PendingSpill {
       Register reg;
       long offset;
       bool is_ref;
+      bool andor;   // the and/or temp's copy (GC roots phase 5), not a register
     };
     bool SpillPending(long popped, long keep, long xmm_first, std::vector<PendingSpill>& regs,
-                      std::vector<PendingSpill>& xmms, const wchar_t* what);
+                      std::vector<PendingSpill>& xmms, const wchar_t* what, bool gc_point);
+    void pop_mem(long offset, Register dest);
     void ReloadPending(const std::vector<PendingSpill>& regs, const std::vector<PendingSpill>& xmms);
 
     // F3 (docs/JIT_LOOP_LOCALS_DESIGN.md): the hottest integer locals of each
@@ -426,13 +427,6 @@ namespace Runtime {
     std::unordered_map<long, RegisterHolder*> local_reg_cache;
     std::unordered_map<long, RegisterHolder*> local_xreg_cache;
 
-    // inlining support
-    bool is_inlining;
-    long inline_local_offset;
-    StackMethod* inline_callee;
-    // callees inlined into this compile, named by OBJECK_JIT_REPORT once it
-    // succeeds: their code ran natively without a compile of their own
-    std::vector<StackMethod*> inlined_callees;
     // set around ProcessStackCallback for a MTHD_CALL whose callee is bound at
     // compile time: the callback goes to JitCompiler::JitDirectCall with this
     // StackMethod* in place of the opcode
@@ -442,11 +436,6 @@ namespace Runtime {
     // owned by the method's NativeCode once the compile succeeds
     JitVirtualSite* virtual_site;
     std::vector<JitVirtualSite*> virtual_sites;
-    static const int MAX_INLINE_SIZE = 20;
-    bool CanInlineMethod(StackMethod* callee);
-    void ProcessInlineMethod(StackMethod* callee, StackInstr* call_instr, long& caller_instr_index);
-    long ComputeInlineLocalSpace(StackMethod* callee);
-
     // setup and tear down
     void Prolog();
     void Epilog();
@@ -895,7 +884,6 @@ namespace Runtime {
       if(compile_success) {
         compile_fail_reason = reason;
         compile_fail_instr = instr_index - 1;
-        compile_fail_inlined = is_inlining ? method : nullptr;
       }
       compile_success = false;
     }
