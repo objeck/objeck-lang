@@ -55,7 +55,7 @@ jobs:
   # will actually run.
   plan:
     name: Plan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.pick.outputs.matrix }}
       expected: ${{ steps.pick.outputs.expected }}
@@ -65,7 +65,7 @@ jobs:
         shell: bash
         run: |
           ALL='[
-            {"platform":"linux-x64",    "os":"ubuntu-latest",       "arch":"x64",   "family":"posix"},
+            {"platform":"linux-x64",    "os":"ubuntu-24.04",       "arch":"x64",   "family":"posix"},
             {"platform":"linux-arm64",  "os":"ubuntu-24.04-arm",    "arch":"arm64", "family":"posix"},
             {"platform":"macos-arm64",  "os":"macos-15",            "arch":"arm64", "family":"posix"},
             {"platform":"windows-x64",  "os":"windows-2025-vs2026", "arch":"x64",   "family":"windows", "cmd_arch":"x64"},
@@ -98,7 +98,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Setup dependencies
         uses: ./.github/actions/setup-objeck-deps
@@ -141,7 +141,7 @@ jobs:
       # withhold it.
       - name: Upload result
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: rc-results-${{ matrix.platform }}
           path: rc-results/
@@ -152,10 +152,10 @@ jobs:
     name: Gate summary
     needs: [plan, verify]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Collect the verdict files
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           pattern: rc-results-*
           path: collected

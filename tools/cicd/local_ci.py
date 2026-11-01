@@ -56,6 +56,8 @@ CHECKS = [
     ("Differential runner catches divergence", lambda: py("programs/regression/test_run_differential.py")),
     ("Shipped examples are all indexed", lambda: py("tools/cicd/check_examples_index.py")),
     ("Generated files match their .in templates", lambda: py("tools/cicd/check_version_templates.py")),
+    ("Committed libraries carry the toolchain version", lambda: py("tools/cicd/check_obl_versions.py")),
+    ("Library version check catches a stale library", lambda: py("tools/cicd/check_obl_versions.py", "--test")),
     ("SHA256SUMS re-sign check can detect a missing re-sign", lambda: py("tools/cicd/check_manifest_resign.py", "--test")),
     ("Every SHA256SUMS upload is re-signed", lambda: py("tools/cicd/check_manifest_resign.py")),
     ("Docs name only the dependencies Objeck needs", lambda: py("tools/cicd/check_docs_deps.py", "--docs")),

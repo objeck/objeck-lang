@@ -870,7 +870,7 @@ graph TB
 
 | Platform | Runner | Architecture | Compiler | Tests |
 |----------|--------|--------------|----------|-------|
-| **Linux** | `ubuntu-latest` | x64 | GCC | 529 regression |
+| **Linux** | `ubuntu-24.04` | x64 | GCC | 529 regression |
 | **Linux** | `ubuntu-24.04-arm` | ARM64 | GCC | 529 regression |
 | **macOS** | `macos-15` | ARM64 (Apple silicon) | Clang | 529 regression |
 | **Windows** | `windows-2025-vs2026` | x64 | MSVC (v145) | 529 regression |
