@@ -1389,6 +1389,89 @@ def check_batching(c):
     c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
 
 
+FATAL_MAIN = """class FatalMain {
+	function : Main(args : String[]) ~ Nil {
+		"still here"->PrintLine();
+	}
+}
+"""
+
+
+def check_fatal_library(obr, server_obe, apis_json, bin_dir):
+    """A library that cannot be linked is an error in the document, not the end of the server.
+
+    The compiler's back end ended the process (exit(1)) when a library in the
+    build.json could not be read: one misspelled name took the language server
+    down with every open document. It throws now, the diagnostics library turns
+    it into an error on the program, and the server answers on.
+    """
+    work = tempfile.mkdtemp(prefix="objk-lsp-fatal-")
+    try:
+        main_path = os.path.join(work, "main.obs")
+        with open(main_path, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(FATAL_MAIN)
+
+        def write_build(libs):
+            with open(os.path.join(work, "build.json"), "w", encoding="utf-8") as fh:
+                json.dump({"files": ["main.obs"], "libs": libs, "flags": ""}, fh)
+
+        write_build(["no_such_library_zq.obl"])
+        root = path_to_uri(work)
+        main_uri = root + "/main.obs"
+
+        c = LspClient(obr, server_obe, apis_json, bin_dir)
+        try:
+            c.request("initialize", {
+                "processId": os.getpid(), "rootUri": root, "capabilities": {},
+                "workspaceFolders": [{"uri": root, "name": "fatal"}]}, timeout=90)
+            c.notify("initialized", {})
+
+            def fresh_diagnostics(timeout=60):
+                end = time.time() + timeout
+                while time.time() < end:
+                    for n in c.notifications:
+                        if (n.get("method") == "textDocument/publishDiagnostics"
+                                and n["params"].get("uri", "").lower() == main_uri.lower()):
+                            c.notifications.remove(n)
+                            return n["params"].get("diagnostics", [])
+                    if c.proc.poll() is not None:
+                        return None
+                    c.drain(0.2)
+                return None
+
+            c.notify("textDocument/didOpen", {"textDocument": {
+                "uri": main_uri, "languageId": "objeck", "version": 1, "text": FATAL_MAIN}})
+            diags = fresh_diagnostics()
+            messages = [d.get("message", "") for d in diags or [] if d.get("severity") == 1]
+            log_result("fatal: an unreadable library is reported as an error on the document",
+                       any("no_such_library_zq" in m for m in messages),
+                       f"exit={c.proc.poll()} diagnostics={diags}")
+            log_result("fatal: and the server is still running", c.proc.poll() is None,
+                       f"exit code {c.proc.poll()}")
+
+            # the other queries do not reach the dead analysis, and do not end the server
+            hover = c.request("textDocument/hover", position_in(FATAL_MAIN, main_uri, "PrintLine", 1, 2),
+                              timeout=60)
+            log_result("fatal: a hover on the failed program is answered", "error" not in (hover or {}),
+                       f"{hover}")
+            log_result("fatal: and the server survives it", c.proc.poll() is None,
+                       f"exit code {c.proc.poll()}")
+
+            # mend the build.json: the same document analyzes cleanly again
+            write_build(["gen_collect.obl"])
+            c.notifications.clear()
+            c.notify("workspace/didChangeWatchedFiles", {"changes": [
+                {"uri": root + "/build.json", "type": 2}]})
+            mended = fresh_diagnostics()
+            errors = [d.get("message") for d in mended or [] if d.get("severity") == 1]
+            log_result("fatal: after the build.json is fixed the document analyzes cleanly",
+                       mended is not None and not errors, f"{mended}")
+        finally:
+            c.close()
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def check_multi_root(obr, server_obe, apis_json, bin_dir):
     """Each workspace folder is configured by its own build.json (#1232).
 
@@ -2747,6 +2830,7 @@ def main():
     check_jsonrpc_conformance(obr, server_obe, apis_json, bin_dir)
     check_multi_root(obr, server_obe, apis_json, bin_dir)
     check_program_reuse(obr, server_obe, apis_json, bin_dir)
+    check_fatal_library(obr, server_obe, apis_json, bin_dir)
     check_stdio_sessions(obr, server_obe, apis_json, bin_dir)
     check_progress_and_log(obr, server_obe, apis_json, bin_dir)
     check_pull_diagnostics(obr, server_obe, apis_json, bin_dir)
