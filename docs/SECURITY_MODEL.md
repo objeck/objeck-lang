@@ -38,7 +38,8 @@ neither.
    even with every library withheld.
 
 The first is the language working as designed. The second is the gap a
-bytecode verifier would close (below).
+bytecode verifier closes; the loader's verification pass closes part of it
+(below).
 
 ---
 
@@ -66,40 +67,48 @@ holds libFuzzer targets on `Loader::Load`, seeded with the compiled regression
 programs, and every input they found is a case in `run_vm_flag_tests.py`
 (section 29).
 
-## What the loader does not check
+## What the verification pass checks
 
-Operands are stored as read (`Loader::LoadStatements`, `loader.cpp:591-961`).
-Nothing relates them to the program they are part of:
+Once a program has loaded and before any of it runs, `Loader::Verify`
+(`core/vm/loader.cpp`) relates each operand to the program it is part of. A
+program that breaks a rule is refused with `>>> Invalid bytecode: <method>,
+instruction <n>: <rule> <<<` and status 1. Every rule holds for every program
+the toolchain compiles: the 849 compiled regression programs (each links the
+standard libraries; a quarter are compiled again with `-debug`) all pass.
 
-- **Jump targets.** `JMP`'s label operand is stored unchanged
-  (`loader.cpp:809`) and becomes the instruction pointer when the jump is
-  taken, with no comparison against the method's instruction count
-  (`Handle_JMP`, `core/vm/dispatch.cpp:649`, `:652`). `JMP_TABLE` checks the
-  selector against its own `range` (`dispatch.cpp:950`) but not `range` against
-  the instructions that follow, and the slot it reads supplies the next
-  instruction pointer unchecked (`dispatch.cpp:952`).
-- **Local and field ids against the frame or object size.** A method's
-  `mem_size` is read (`loader.cpp:484`) and sizes its frame (`mem_size + 2`
-  words, `StackMethod::NewMemory`, `core/vm/common.h:1276`), but a load or store
-  operand is never compared with it: `mem[instr->GetOperand() + 1]` is read and
-  written directly (`core/vm/interpreter.cpp:596`, `:889`, `:1754`, `:1821`,
-  `:1840`).
-- **Trap ids and their arguments.** `TRAP`'s operand is stored as read
-  (`loader.cpp:626`); the trap id itself is popped from the operand stack at
-  run time (`TrapProcessor::ProcessTrap`, `core/vm/common.cpp:2403`). An
-  unknown id fails the call (the switch falls through to `return false`,
-  `common.cpp:3225`), but a known trap trusts whatever words the program put on
-  the stack as its arguments -- object pointers included.
+| rule | what it closes |
+|---|---|
+| every `JMP`, `TRY_START` and jump-table target is an instruction of the method; a `JMP_TABLE`'s `range` slots exist and are `JMP_TABLE_SLOT`s | `Handle_JMP` and `Handle_JMP_TABLE` (`core/vm/dispatch.cpp`) set the instruction pointer from these unchecked |
+| the last instruction is `RTRN` or an unconditional `JMP` | control running off the end reads past the instruction array |
+| a local's id plus its width (two words for a function value) fits the frame: `id + width <= mem_size + 1` | `mem[id + 1]` (`interpreter.cpp`) on a frame of `mem_size + 2` words |
+| a class variable fits the class's static memory; an instance variable fits the largest object any class makes | `cls_inst_mem[id]` |
+| a memory context is `LOCL`, `INST` or `CLS`; array dimensions and `NEW_*_ARY` dimensions are at least 1 | |
+| `MTHD_CALL` names a class and a method that exist; `NEW_OBJ_INST`, `OBJ_INST_CAST` and `OBJ_TYPE_OF` name a class that exists | the call paths dereferenced a null class or method |
+| a parent id is a class or -1; an interface id is a class or -1 (not linked in) | |
+| a declaration type is a `ParamType` (checked as it is read) | the collector walks frames and objects by these |
+| `TRAP`/`TRAP_RTRN` directly follow the `LOAD_INT_LIT` that pushes a known trap id (the `Traps` enum, or `SET_SIGNAL`/`RAISE_SIGNAL`), and take at least one argument | `tools/cicd/check_trap_handlers.py` fails when a trap is added that this would refuse |
+| the start method exists; with program arguments, String's constructor (method 2) does too | the initialization code calls both |
+
+`run_vm_flag_tests.py` section 29 changes one operand of a freshly compiled
+program for each rule and requires the refusal.
+
+## What is still not checked
+
 - **Operand-stack depth.** Nothing computes a method's maximum stack depth or
   checks that each instruction has the operands it pops. `PushInt` and `PopInt`
-  index the operand stack with no bound (`core/vm/interpreter.h:540`, `:527`);
-  the only limit is checked at a call (`PushFrame`, `interpreter.h:307`).
-- **Call targets.** A `MTHD_CALL`'s class and method ids (`loader.cpp:793`) are
-  looked up at run time; `StackProgram::GetClass` and `StackClass::GetMethod`
-  bounds-check and return `nullptr` (`common.h:2060`, `:1497`), but the call
-  paths dereferenced that result (`interpreter.cpp:2439`, `:2550`, `:2611`,
-  `:2655`). A pending change reports it as a runtime error instead; it is the
-  one item on this list with a run-time guard.
+  index the operand stack with no bound (`core/vm/interpreter.h`); the only
+  limit is checked at a call (`PushFrame`). A trap pops as many words as its own
+  id says, so a depth check needs a per-trap table the compiler and the VM do
+  not share yet.
+- **Types.** An instance variable is checked against the largest object, not
+  the object on the stack: nothing proves which class that is. Likewise a trap
+  trusts whatever words the program put on the stack as its arguments -- object
+  pointers included.
+- **The bundled-executable path** (`buffer_end = nullptr`) is verified but not
+  bounds-checked while it is read.
+
+So the rule at the top of this page still stands: a crafted `.obe` can still
+corrupt memory through the stack or through a trap's arguments.
 
 ---
 
@@ -136,21 +145,14 @@ process as hostile and contain it from outside.
 
 ## Planned
 
-Neither of these exists yet; both are planned, and this section changes when
-they land.
-
-- **A bytecode verifier**, run by the loader before anything executes, so that
-  a crafted `.obe` is refused rather than trusted. It would check, per method:
-  every jump and jump-table target is an instruction index inside the method;
-  every local and field id is below the frame or object size; every call names
-  a class and method that exist; every trap id is known; and the operand-stack
-  depth at each instruction is consistent across every path into it, never
-  negative and bounded -- the checks listed as missing above. That turns "a
-  crafted `.obe` is native code" into "a crafted `.obe` is refused".
+- **Stack-depth and type checks**, completing the verifier: the operand-stack
+  depth at each instruction consistent across every path into it, never
+  negative and bounded, and the class of each object operand known. With them,
+  "a crafted `.obe` is native code" becomes "a crafted `.obe` is refused".
 - **Deny flags** on `obr`, for capabilities a program should not have even when
   it asks: native libraries (`DllProxy`), running commands, the file system,
   the network. Each would make the matching traps fail as a runtime error.
-  Together with the verifier, they would let `obr` itself enforce what the
-  playground currently enforces only with a container and a source scan.
+  Together with a complete verifier, they would let `obr` itself enforce what
+  the playground currently enforces only with a container and a source scan.
 
 Until both exist, the rule at the top of this page stands.

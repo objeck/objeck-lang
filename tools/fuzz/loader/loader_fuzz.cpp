@@ -11,11 +11,10 @@
  *                     covers the file layer (Loader::DecodeImage) and then
  *                     loads whatever decodes.
  *
- * A rejected input is a clean result: the loader prints its message (silenced
- * here) and, in this build only, throws LoaderFuzzReject instead of calling
- * exit(1). A method signature the VM cannot parse throws std::runtime_error
- * from StackMethod's constructor, which obr reports as a load error; that is
- * clean too. Anything else -- a sanitizer report, a signal, a timeout, an
+ * A refused input is a clean result: Load returns false with its message. A
+ * method signature the VM cannot parse throws std::runtime_error from
+ * StackMethod's constructor, which obr reports as a load error; that is clean
+ * too. Anything else -- a sanitizer report, a leak, a signal, a timeout, an
  * out-of-memory -- is a finding.
  ***************************************************************************/
 
@@ -30,9 +29,8 @@
 
 extern "C" int LLVMFuzzerInitialize(int*, char***)
 {
-  // The loader reports every rejection on stderr; at tens of thousands of
-  // inputs a second that is most of the run. Fuzzer and sanitizer reports go
-  // through stdio, not these streams, so they are unaffected.
+  // Nothing the loader does should print; silenced in case a debug path does.
+  // Fuzzer and sanitizer reports go through stdio, not these streams.
   std::wcerr.setstate(std::ios::badbit);
   std::wcout.setstate(std::ios::badbit);
   return 0;
@@ -44,9 +42,9 @@ static void LoadImage(const char* image, size_t size)
   std::vector<std::wstring> args = { L"first", L"second" };
   Loader* loader = new Loader(image, size, args);
   try {
-    loader->Load();
-  }
-  catch(const LoaderFuzzReject&) {
+    if(!loader->Load() && loader->GetError().empty()) {
+      __builtin_trap();  // a refusal must say why
+    }
   }
   catch(const std::runtime_error&) {
   }

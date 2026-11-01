@@ -883,7 +883,11 @@ void Runtime::Debugger::DoLoad()
 
   // invoke loader
   loader = new Loader(argc, argv);
-  loader->Load();
+  if(!loader->Load()) {
+    // as before Load reported failures: the loader's message, then exit 1
+    std::wcerr << loader->GetError() << std::flush;
+    exit(1);
+  }
 
   // Initialize on first load, or re-initialize after a prior run tore the
   // MemoryManager down (a DAP restart re-runs DapRun in-process, and the

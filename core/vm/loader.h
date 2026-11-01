@@ -33,12 +33,7 @@
 
 #include "common.h"
 #include <string.h>
-
-#ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
-// Thrown in place of exit(1) by the libFuzzer build (tools/fuzz/loader), so a
-// rejected input returns to the harness instead of ending the fuzzing run.
-struct LoaderFuzzReject {};
-#endif
+#include <sstream>
 
 class Loader {
   static StackProgram* program;
@@ -62,16 +57,26 @@ class Loader {
   std::map<const std::wstring, const int> params;
   bool from_mem;
   bool abandoned;
+  // each class's static memory size in bytes, by id, for Verify
+  std::vector<long> class_spaces;
 
-  // Every loader failure ends here, after its message has been written: obr
-  // exits with status 1. The fuzz build throws instead (see LoaderFuzzReject).
+  // What a failed load says, exactly as obr prints it (Load, GetError). The
+  // loader used to write it to stderr and call exit(1) on the spot, 16 places
+  // in loader.cpp and 7 in this file, so a host that embeds the VM (the
+  // debugger, a module) was ended by any file it could not load.
+  std::wostringstream error;
+
+  // Every loader failure ends here, after its message has been written to
+  // 'error'. Load catches it and returns false.
+  struct LoadError {};
   [[noreturn]] static void LoadFailed() {
-#ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
-    throw LoaderFuzzReject();
-#else
-    exit(1);
-#endif
+    throw LoadError();
   }
+
+  // the checks run after a program has loaded (loader.cpp)
+  void Verify();
+  void VerifyMethod(StackClass* cls, StackMethod* mthd, long max_inst_space);
+  [[noreturn]] void VerifyFailed(StackClass* cls, StackMethod* mthd, long ip, const wchar_t* why);
 
   // Bounds guard for the raw deserialization cursor. Bytecode (.obe/.obl) is
   // untrusted input; a truncated or crafted file must never drive a read past the
@@ -80,7 +85,7 @@ class Loader {
   // skipped, preserving prior behavior.
   inline void EnsureBytes(size_t needed) {
     if(buffer_end && (buffer > buffer_end || needed > (size_t)(buffer_end - buffer))) {
-      std::wcerr << L">>> Corrupt bytecode: read past end of buffer <<<" << std::endl;
+      error << L">>> Corrupt bytecode: read past end of buffer <<<" << std::endl;
       LoadFailed();
     }
   }
@@ -100,7 +105,7 @@ class Loader {
   inline int ReadCount() {
     const long value = ReadInt();
     if(value < 0 || (buffer_end && (size_t)value > (size_t)(buffer_end - buffer))) {
-      std::wcerr << L">>> Corrupt bytecode: invalid element count/length <<<" << std::endl;
+      error << L">>> Corrupt bytecode: invalid element count/length <<<" << std::endl;
       LoadFailed();
     }
     return static_cast<int>(value);
@@ -130,7 +135,7 @@ class Loader {
   inline std::wstring ReadString() {
     const int size = static_cast<int>(ReadInt());
     if(size < 0) {
-      std::wcerr << L">>> Corrupt bytecode: negative string length <<<" << std::endl;
+      error << L">>> Corrupt bytecode: negative string length <<<" << std::endl;
       LoadFailed();
     }
     EnsureBytes((size_t)size);
@@ -139,7 +144,7 @@ class Loader {
 
     std::wstring out;
     if(!BytesToUnicode(in, out)) {
-      std::wcerr << L">>> Unable to read unicode std::string <<<" << std::endl;
+      error << L">>> Unable to read unicode std::string <<<" << std::endl;
       LoadFailed();
     }
 
@@ -151,7 +156,7 @@ class Loader {
 
     const int size = static_cast<int>(ReadInt());
     if(size < 0) {
-      std::wcerr << L">>> Corrupt bytecode: negative character length <<<" << std::endl;
+      error << L">>> Corrupt bytecode: negative character length <<<" << std::endl;
       LoadFailed();
     }
     if(size) {
@@ -159,7 +164,7 @@ class Loader {
       std::string in(buffer, size);
       buffer += size;
       if(!BytesToCharacter(in, out)) {
-        std::wcerr << L">>> Unable to read character <<<" << std::endl;
+        error << L">>> Unable to read character <<<" << std::endl;
         LoadFailed();
       }
     }
@@ -188,6 +193,7 @@ class Loader {
   }
 
   // loading functions
+  void LoadImage();
   void LoadClasses();
   void LoadMethods(StackClass* cls, bool is_debug);
   StackDclr** LoadDeclarations(const int num_dclrs, const bool is_debug);
@@ -247,7 +253,9 @@ public:
     LoadOperInstrs();
 
     string_cls_id = -1;
-    ReadFile();
+    // read by Load, which can report a file that will not open or decode
+    alloc_buffer = buffer = buffer_end = nullptr;
+    buffer_size = buffer_pos = 0;
     program = new StackProgram;
   }
 
@@ -264,7 +272,9 @@ public:
       arguments.push_back(argv[i]);
     }
     string_cls_id = -1;
-    ReadFile();
+    // read by Load, which can report a file that will not open or decode
+    alloc_buffer = buffer = buffer_end = nullptr;
+    buffer_size = buffer_pos = 0;
     program = new StackProgram;
   }
 
@@ -434,5 +444,13 @@ public:
     return 0;
   }
   
-  void Load();
+  // Loads and verifies the program. False when it cannot be loaded: GetError
+  // then holds the message, as obr prints it (each line ends in a newline). A
+  // method signature StackMethod cannot parse still throws std::runtime_error,
+  // which obr reports as ">>> load error: ... <<<", as before.
+  bool Load();
+
+  std::wstring GetError() const {
+    return error.str();
+  }
 };

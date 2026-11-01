@@ -302,6 +302,11 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     does, so the version check cannot refuse it first. A control repacks a
     freshly compiled program the same way and must run, and .obe files shorter
     than the size header must be refused rather than read past their end.
+    Then the verification pass (Loader::Verify): the control program with one
+    operand changed per rule -- a jump out of its method, a local beyond its
+    frame, a call to a class or method that does not exist, an unknown trap
+    id, a method that runs off its end, an unknown declaration type, a start
+    method that does not exist -- each refused with the rule's message.
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only] [--only name[,name]]
 
@@ -1730,6 +1735,53 @@ def loader_refused(rc, err, message):
     return plain and message in err and ">>> virtual machine" not in err
 
 
+def verifier_cases(image):
+    """(name, message, image) for the verification pass (Loader::Verify): the control
+    program with one operand changed, each a rule the loader did not check before.
+    The first instruction of each kind anywhere in the program is the one changed."""
+    import struct
+    sys.path.insert(0, os.path.join(SCRIPT_DIR, "..", "..", "tools", "fuzz", "loader"))
+    import obe_image
+    op = obe_image.OP
+    locl = -3498  # instructions::LOCL
+
+    def put(data, at, fmt, value):
+        size = struct.calcsize(fmt)
+        return data[:at] + struct.pack(fmt, value) + data[at + size:]
+
+    _, classes, _ = obe_image.parse(image)
+    codes = [(m, obe_image.method_code(image, m[1], c["debug"])) for c in classes for m in c["methods"]]
+
+    def first(pred):
+        for m, (dclrs_at, code) in codes:
+            for k, (opcode, at, operands_at) in enumerate(code):
+                if pred(opcode, operands_at, code, k):
+                    return at, operands_at, code, k
+        raise RuntimeError("the control program has no such instruction")
+
+    def operand(at, n=0):
+        return struct.unpack_from("<i", image, at + 4 * n)[0]
+
+    cases = []
+    _, at = first(lambda o, a, c, k: o == op["JMP"])[:2]
+    cases.append(("a jump target outside its method", "jump target outside the method", put(image, at, "<i", 1000000)))
+    _, at = first(lambda o, a, c, k: o == op["STOR_INT_VAR"] and operand(a, 1) == locl)[:2]
+    cases.append(("a local beyond its frame", "local variable id beyond the frame", put(image, at, "<i", 100000)))
+    _, at = first(lambda o, a, c, k: o == op["MTHD_CALL"])[:2]
+    cases.append(("a call to a class that does not exist", "class id out of range", put(image, at, "<i", 1000000)))
+    cases.append(("a call to a method that does not exist", "method id out of range", put(image, at + 4, "<i", 1000000)))
+    _, _, code, k = first(lambda o, a, c, k: o in (op["TRAP"], op["TRAP_RTRN"]) and k > 0 and c[k - 1][0] == op["LOAD_INT_LIT"])
+    cases.append(("an unknown trap id", "trap without a known trap id", put(image, code[k - 1][2], "<q", 999999)))
+    rtrn_at = next(code[-1][1] for _, (_, code) in codes if code and code[-1][0] == op["RTRN"])
+    cases.append(("a method that runs past its end", "can run past its last instruction",
+                  put(image, rtrn_at, "<B", op["POP_INT"])))
+    dclrs_at = next(d for _, (d, _) in codes if operand(d) > 0)
+    cases.append(("an unknown declaration type", "unknown declaration type", put(image, dclrs_at + 4, "<i", 7)))
+    cases.append(("a start method that does not exist", "the start method does not exist",
+                  put(image, obe_image.start_ids_at(image) + 4, "<i", 1000000)))
+    return cases
+
+
 def check_loader_rejects_malformed(obc, obr, env, bin_dir):
     # ---- 29. the loader refuses malformed programs with a message, never a crash ----
     fixture_dir = os.path.join(SCRIPT_DIR, "vm_flag_fixtures", "loader")
@@ -1775,6 +1827,17 @@ def check_loader_rejects_malformed(obc, obr, env, bin_dir):
             rc, out, err = run([obr, path], env=env, cwd=bin_dir, timeout=60)
             text = err.decode(errors="replace")
             check(f"loader refuses {name} ({about})", loader_refused(rc, text, message),
+                  f"rc={rc} err={text[-300:]!r}")
+
+        # The verification pass: the control program, which loads and runs above,
+        # with one operand changed. Before the pass each of these was loaded and run.
+        for about, message, case in verifier_cases(image):
+            path = os.path.join(scratch, "verify_case.obe")
+            with open(path, "wb") as f:
+                f.write(obe_file_of(case))
+            rc, out, err = run([obr, path], env=env, cwd=bin_dir, timeout=60)
+            text = err.decode(errors="replace")
+            check(f"the loader's verification refuses {about}", loader_refused(rc, text, message),
                   f"rc={rc} err={text[-300:]!r}")
 
 

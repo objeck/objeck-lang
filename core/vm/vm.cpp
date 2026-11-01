@@ -34,6 +34,9 @@
 
 #define SUCCESS 0
 #define USAGE_ERROR -1
+// a program the loader refused (Loader::Load): obr exits 1, as when the loader
+// called exit(1) itself
+#define LOAD_ERROR 1
 
 // common execution point for all platforms
 #ifdef _WIN32
@@ -47,7 +50,12 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
 
     Loader loader(argc, commands);
     try {
-      loader.Load();
+      if(!loader.Load()) {
+        // the loader's own message, and the status its exit(1) used to give
+        std::wcerr << loader.GetError() << std::flush;
+        CleanUpCommandLine(argc, commands);
+        return LOAD_ERROR;
+      }
     }
     catch(const std::exception& e) {
       const std::string msg(e.what());

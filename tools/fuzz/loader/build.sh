@@ -24,13 +24,11 @@ if ! "$CXX" --version 2>/dev/null | grep -qi clang; then
   exit 2
 fi
 
-# FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION makes the loader throw where obr
-# exits (loader.h), so a rejected input returns to the harness. -O1 and frame
-# pointers keep the sanitizer stacks readable. The VM's own flags otherwise
+# -O1 and frame pointers keep the sanitizer stacks readable. The VM's own flags otherwise
 # follow core/vm/make/Makefile.amd64, without the HTTP/2 and HTTP/3 libraries,
 # which the loader never reaches.
 SAN="-fsanitize=address,fuzzer-no-link -fsanitize=bounds,signed-integer-overflow,shift,null,return,unreachable,vla-bound -fno-sanitize-recover=undefined"
-FLAGS="-g -O1 -fno-omit-frame-pointer -std=c++20 -mavx2 -pthread -m64 -D_X64 -D_OBJECK_NATIVE_LIB_PATH -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION -w"
+FLAGS="-g -O1 -fno-omit-frame-pointer -std=c++20 -mavx2 -pthread -m64 -D_X64 -D_OBJECK_NATIVE_LIB_PATH -w"
 
 SOURCES=(
   "$VM/common.cpp"

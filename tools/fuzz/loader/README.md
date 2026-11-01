@@ -23,12 +23,13 @@ The two targets:
   (`[uncompressed size:4][zlib]`, or raw zlib), decodes it with
   `Loader::DecodeImage` and loads what decodes.
 
-In the fuzz build (`FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION`) the loader
-throws where `obr` exits, so a refused input returns to the harness; a refusal
-is a clean result. So is a method signature `StackMethod` cannot parse (a
-`std::runtime_error`, which `obr` reports as a load error). Anything else -- a
-sanitizer report, a signal, a timeout, an allocation over the limit -- is a
-finding.
+A refusal is a clean result: `Loader::Load` returns false with its message,
+which must not be empty. So is a method signature `StackMethod` cannot parse
+(a `std::runtime_error`, which `obr` reports as a load error). Anything else --
+a sanitizer report, a leak, a signal, a timeout, an allocation over the limit
+-- is a finding. The image target runs the loader's verification pass too
+(`Loader::Verify`), so the checks that relate operands to the program are
+fuzzed with the rest.
 
 ## Running it (WSL2 Ubuntu 24.04)
 

@@ -127,7 +127,15 @@ void ObjeckLang::Execute(const std::wstring cmd_args)
 
   // load code
   Loader loader(code, params);
-  loader.Load();
+  if(!loader.Load()) {
+    // the loader used to end the host process here
+#ifdef _MODULE_STDIO
+    return loader.GetError();
+#else
+    std::wcerr << loader.GetError() << std::flush;
+    return;
+#endif
+  }
 
   // initialize execution
   size_t* stack_pos = new size_t;

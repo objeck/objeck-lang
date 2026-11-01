@@ -37,6 +37,11 @@ WHAT IT CHECKS
 3. Each id EmitSystemDirective writes ahead of a TRAP has a `case` in ProcessTrap.
    A few traps (SET_SIGNAL, RAISE_SIGNAL, ...) take their id from instrs.h rather
    than from `Traps`; they are fine so long as the VM handles them.
+4. The loader's verification pass (core/vm/loader.cpp) accepts every trap id a
+   program can carry: its LAST_TRAP names the last enumerator of `Traps`, and
+   IsTrapId has a `case` for each id EmitSystemDirective writes that is not in
+   `Traps`. Otherwise a new trap compiles and then every program using it is
+   refused at load ("trap without a known trap id").
 
 Usage: check_trap_handlers.py          (from anywhere in the tree)
        check_trap_handlers.py --test   (negative controls)
@@ -51,6 +56,7 @@ SCANNER_CPP = "core/compiler/scanner.cpp"
 PARSER_CPP = "core/compiler/parser.cpp"
 EMITTER_CPP = "core/compiler/intermediate.cpp"
 VM_CPP = "core/vm/common.cpp"
+LOADER_CPP = "core/vm/loader.cpp"
 
 # Enumerators of `Traps` the VM does not implement, and why. "dead" means nothing
 # emits or handles it; "pseudo-op" means the compiler rewrites it before the VM sees
@@ -144,11 +150,15 @@ def analyze(sources):
     parse_body = function_body(sources[PARSER_CPP], r"^Statement\* Parser::ParseStatement\([^)]*\)\s*\n?\{")
     emit_body = function_body(sources[EMITTER_CPP], r"^void IntermediateEmitter::EmitSystemDirective\([^)]*\)\s*\n?\{")
     keywords = system_keywords(sources[SCANNER_CPP])
+    loader_last = re.search(r"\bLAST_TRAP\s*=\s*(?:instructions::)?(\w+)\s*;", sources[LOADER_CPP])
+    loader_ids = function_body(sources[LOADER_CPP], r"^static bool IsTrapId\([^)]*\)\s*\n?\{")
     for what, value in (("the Traps enum in " + TRAPS_H, traps),
                         ("TrapProcessor::ProcessTrap in " + VM_CPP, vm_body),
                         ("Parser::ParseStatement in " + PARSER_CPP, parse_body),
                         ("EmitSystemDirective in " + EMITTER_CPP, emit_body),
-                        ("the _SYSTEM keywords in " + SCANNER_CPP, keywords)):
+                        ("the _SYSTEM keywords in " + SCANNER_CPP, keywords),
+                        ("LAST_TRAP in " + LOADER_CPP, loader_last),
+                        ("IsTrapId in " + LOADER_CPP, loader_ids)):
         if not value:
             problems.append("could not find %s: the check's patterns no longer match "
                             "the source, so it would pass vacuously" % what)
@@ -227,6 +237,16 @@ def analyze(sources):
         problems.append("EmitSystemDirective writes instructions::%s as a trap id, but ProcessTrap has no "
                         "`case %s:` for it: the VM rejects it at run time" % (name, name))
 
+    # 4. the loader's verification pass accepts every trap id
+    if loader_last.group(1) != traps[-1]:
+        problems.append("LAST_TRAP in %s is %s, but the last enumerator of Traps is %s: the loader "
+                        "refuses every program that uses a trap after LAST_TRAP" % (LOADER_CPP, loader_last.group(1),
+                                                                                   traps[-1]))
+    for name in sorted(emitted - trap_set - case_labels(loader_ids)):
+        problems.append("EmitSystemDirective writes instructions::%s as a trap id, but IsTrapId in %s has no "
+                        "`case instructions::%s:`: the loader refuses every program that uses it"
+                        % (name, LOADER_CPP, name))
+
     known = set(n for n, _ in keywords)
     for name, why in sorted(NOT_PARSED_INTRINSICS.items()):
         if name not in known:
@@ -241,7 +261,7 @@ def analyze(sources):
 
 
 def load(root):
-    return {k: read(root, k) for k in (TRAPS_H, SCANNER_CPP, PARSER_CPP, EMITTER_CPP, VM_CPP)}
+    return {k: read(root, k) for k in (TRAPS_H, SCANNER_CPP, PARSER_CPP, EMITTER_CPP, VM_CPP, LOADER_CPP)}
 
 
 def report(problems, stats):
@@ -304,6 +324,12 @@ def self_test(root):
         ("a stale NOT_PARSED_INTRINSICS entry (the parser gained the case)",
          mutate(PARSER_CPP, "    case GC_TEST_ADDRESS:\n", "    case GC_TEST_ADDRESS: case SOCK_TCP_SSL_SRV_CERT:\n"),
          "NOT_PARSED_INTRINSICS lists SOCK_TCP_SSL_SRV_CERT but ParseStatement handles it"),
+        ("a new last trap the loader's LAST_TRAP does not name",
+         mutate(TRAPS_H, "GC_TEST_ADDRESS\n", "GC_TEST_ADDRESS,\n    A_NEW_TRAP_FOR_TEST\n"),
+         "LAST_TRAP in core/vm/loader.cpp is GC_TEST_ADDRESS, but the last enumerator of Traps is A_NEW_TRAP_FOR_TEST"),
+        ("an instruction id written as a trap id that the loader does not accept",
+         mutate(LOADER_CPP, "  case instructions::RAISE_SIGNAL:\n", ""),
+         "IsTrapId in core/vm/loader.cpp has no `case instructions::RAISE_SIGNAL:`"),
         ("patterns that no longer match the source",
          mutate(VM_CPP, "TrapProcessor::ProcessTrap(", "TrapProcessor::ProcessTrapRenamed("),
          "could not find TrapProcessor::ProcessTrap"),

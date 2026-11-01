@@ -129,6 +129,40 @@ def read_statements(r, debug):
             r.skip(4 * OPERAND_INTS.get(op, 0))
 
 
+def method_code(data, start, debug=False):
+    """For the method record at 'start': where its declarations begin, and one
+    (opcode, opcode offset, operands offset) per instruction."""
+    r = Reader(data, start)
+    r.int()  # id
+    r.skip(3)
+    r.string()  # name
+    r.string()  # return
+    r.int()  # params
+    r.int()  # memory size
+    dclrs_at = r.pos
+    read_dclrs(r, debug)
+    code = []
+    for _ in range(r.uint()):
+        at = r.pos
+        op = r.byte()
+        if debug:
+            r.int()
+        operands_at = r.pos
+        if op == OP["LOAD_INT_LIT"] or op == OP["LOAD_FLOAT_LIT"]:
+            r.skip(8)
+        elif op == OP["LOAD_CHAR_LIT"]:
+            r.skip(r.int())
+        else:
+            r.skip(4 * OPERAND_INTS.get(op, 0))
+        code.append((op, at, operands_at))
+    return dclrs_at, code
+
+
+def start_ids_at(data):
+    """Where the start class and start method ids sit in the header."""
+    return read_header(Reader(data)) - 8
+
+
 def read_method(r, debug):
     """Returns (name, start, id_at, end)."""
     start = r.pos
@@ -164,7 +198,8 @@ def read_class(r):
         read_dclrs(r, debug)
     methods_at = r.pos
     methods = [read_method(r, debug) for _ in range(r.int())]
-    return {"name": name, "start": start, "methods_at": methods_at, "methods": methods, "end": r.pos}
+    return {"name": name, "start": start, "methods_at": methods_at, "methods": methods, "end": r.pos,
+            "debug": debug}
 
 
 def parse(data):
