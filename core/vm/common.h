@@ -808,6 +808,30 @@ struct StackDclr
  ********************************/
 class StackInstr
 {
+  // type and operand3 are rewritten at run time while other threads may be
+  // executing the same instruction: JitCompiler::PatchCallSites turns a
+  // MTHD_CALL / DYN_MTHD_CALL into its *_JIT form and sets operand3 to 1 once
+  // the callee's native code is published, and StackInterpreter::CheckAutoJit
+  // sets operand3 to -1 when a compile definitively failed. They are plain
+  // fields on purpose. The protocol that makes that safe in practice:
+  //   - each is one naturally aligned word, written whole by a single store;
+  //   - every value a writer stores is valid on its own, whichever a reader
+  //     sees, and a site never needs the two fields to agree with each other;
+  //   - the rewrites only move a site toward "compiled" (or "interpret"), and
+  //     the readers that act on "compiled" re-check GetNativeCode(), which is
+  //     published with release/acquire, before running native code
+  //     (ProcessJitMethodCall), so a stale or early read only costs a trip
+  //     through the interpreter.
+  // The JIT backends also store into operand3 of the variable-access
+  // instructions of a method they compile or inline (frame offsets); the
+  // interpreter reads operand3 only for call sites and JMP_TABLE (its default
+  // target), never for those. Formally these are still data races. std::atomic with relaxed loads was
+  // measured instead (2026-10-31, Linux x64, interleaved medians of 5 with
+  // every function 64-byte aligned so placement could not decide it): +1.5%
+  // geomean over 17 interpreted benchmarks, up to +10.7% (bench_strength_ext);
+  // the compiler schedules the dispatch loop's opcode loads differently once
+  // they are atomic. Above the 1% bar, so not adopted; revisit if a reader ever needs both fields to
+  // be consistent, or a write stops being a single word.
   InstructionType type;
   long operand;
   union {
