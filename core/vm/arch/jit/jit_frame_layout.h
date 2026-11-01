@@ -307,6 +307,11 @@ namespace Runtime {
     static_assert(TMP_REF_0 + (TMP_REF_SLOTS - 1) * WORD == TMP_REF_5, "RefSlot reaches TMP_REF_5 last");
     static_assert(TMP_VAL_0 + (TMP_VAL_SLOTS - 1) * WORD == TMP_VAL_5, "ValSlot reaches TMP_VAL_5 last");
 
+    // the and/or temp, the word above RED_ZONE (ProcessIndices lays slot 0 there);
+    // GC roots phase 5 carries it through a TMP_REF_* slot across a call, so the
+    // collector never reads it (CheckJitRoots)
+    static constexpr long ANDOR_OFFSET = RED_ZONE + WORD;
+
     // The collector's view: `red_zone` is the word below the first local
     // (jit_mem - 1, the RED_ZONE word); the slots lie at fixed distances below it.
     static inline size_t* RefSlot(size_t* red_zone, int k) {
@@ -348,6 +353,11 @@ namespace Runtime {
                   "the conservative window is the and/or temp, the RED_ZONE word and every integer slot");
     static_assert(TMP_REF_0 - (TMP_REF_SLOTS - 1) * WORD == TMP_REF_9, "RefSlot reaches TMP_REF_9 last");
     static_assert(TMP_VAL_0 - (TMP_VAL_SLOTS - 1) * WORD == TMP_VAL_9, "ValSlot reaches TMP_VAL_9 last");
+
+    // the and/or temp, the word below RED_ZONE (ProcessIndices lays slot 0
+    // there); GC roots phase 5 carries it through a TMP_REF_* slot across a
+    // call, so the collector never reads it (CheckJitRoots)
+    static constexpr long ANDOR_OFFSET = RED_ZONE - WORD;
 
     // The collector's view. After it walks the declared locals upward from
     // jit_mem, `after_locals` is the word above the highest one: the and/or

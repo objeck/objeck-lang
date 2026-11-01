@@ -1733,17 +1733,17 @@ void* MemoryManager::CheckJitRoots([[maybe_unused]] void* arg)
 #ifdef JIT_LAYOUT_ARM64
       // front to back...
       if(method->HasAndOr()) {
-        // The and/or temporary (slot 0) has no declaration, but it is not only a
-        // Bool: a conditional's value meets at its join there, an object for
-        // 'c ? a : b' over objects, and so does a Try() receiver. The JIT keeps a
-        // load of the slot pending and reads it when the value is consumed, which
-        // can be after a collection point (NEW_OBJ_INST with the value as a
-        // constructor argument). So it is a root, scanned conservatively like the
-        // temporaries below and relocated by FixupRoots. On x64 the frame runs the
-        // other way and this slot is the first word of the temporaries' window; on
-        // ARM64 it was stepped over, and a minor collection left it naming the
-        // nursery copy of an object it had promoted (#1429-#1431).
-        CheckUntypedSlot(mem);
+        // The and/or temporary (slot 0) has no declaration, and it is not only
+        // a Bool: a conditional's value meets at its join there, an object for
+        // 'c ? a : b' over objects, and so does a Try() receiver (#1429-#1431).
+        // Since GC roots phase 5 the compiled method carries it through a
+        // TMP_REF_* slot across every point that can collect (SpillPending),
+        // where it is marked and relocated with the other references, so the
+        // slot itself is not a root. Under OBJECK_GC_ROOTS=conservative it is
+        // scanned the old way.
+        if(gc_roots_conservative) {
+          CheckUntypedSlot(mem);
+        }
         mem++;
       }
 
@@ -1937,9 +1937,9 @@ void* MemoryManager::CheckJitRoots([[maybe_unused]] void* arg)
         }
       }
       else {
-        if(has_andor) {
-          CheckUntypedSlot(mem);
-        }
+        // the and/or temp (mem[0] when the method has one) is not a root since
+        // GC roots phase 5: the compiled method carries it through a TMP_REF_*
+        // slot across every point that can collect (SpillPending)
         size_t* rbp = Runtime::JitFrameLayout::FramePointer(mem, has_andor);
         for(int k = 0; k < Runtime::JitFrameLayout::TMP_REF_SLOTS; ++k) {
           size_t* slot = Runtime::JitFrameLayout::RefSlot(rbp, k);
@@ -2730,9 +2730,11 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
       // Fix up JIT locals
 #ifdef JIT_LAYOUT_ARM64
       if(method->HasAndOr()) {
-        // the and/or temporary: a conservative root (see CheckJitRoots); on x64 it
-        // is the first word of the temporaries' window below
-        FixupSlot(mem);
+        // the and/or temporary travels through a TMP_REF_* slot across a call
+        // (GC roots phase 5); scanned the old way only under the conservative control
+        if(gc_roots_conservative) {
+          FixupSlot(mem);
+        }
         mem++;
       }
       StackDclr** dclrs = method->GetDeclarations();
@@ -2808,9 +2810,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
         }
       }
       else {
-        if(has_andor) {
-          FixupSlot(mem);
-        }
+        // the and/or temp is relocated through its TMP_REF_* copy (GC roots phase 5)
         size_t* rbp = Runtime::JitFrameLayout::FramePointer(mem, has_andor);
         for(int k = 0; k < Runtime::JitFrameLayout::TMP_REF_SLOTS; ++k) {
           FixupSlot(Runtime::JitFrameLayout::RefSlot(rbp, k));

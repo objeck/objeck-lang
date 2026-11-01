@@ -2262,7 +2262,8 @@ void JitArm64::ProcessCopy(StackInstr* instr) {
  * how many values from the bottom are spilled (-1: all).
  */
 bool JitArm64::SpillPending(long popped, long keep, bool fp_slots, std::vector<PendingSpill>& regs,
-                            std::vector<PendingSpill>& fregs, std::vector<ParkedFp>& parked, const wchar_t* what) {
+                            std::vector<PendingSpill>& fregs, std::vector<ParkedFp>& parked, const wchar_t* what,
+                            bool gc_point) {
   const long size = (long)working_stack.size();
   if(keep < 0 || keep > size) {
     keep = size;
@@ -2301,7 +2302,7 @@ bool JitArm64::SpillPending(long popped, long keep, bool fp_slots, std::vector<P
           return false;
         }
         move_reg_mem(r, val_offset, SP);
-        regs.push_back({ r, val_offset, false });
+        regs.push_back({ r, val_offset, false, false });
         val_offset += (long)sizeof(size_t);
         spill_vals++;
       }
@@ -2311,7 +2312,7 @@ bool JitArm64::SpillPending(long popped, long keep, bool fp_slots, std::vector<P
           return false;
         }
         move_reg_mem(r, ref_offset, SP);
-        regs.push_back({ r, ref_offset, true });
+        regs.push_back({ r, ref_offset, true, false });
         ref_offset += (long)sizeof(size_t);
         if(kind == RK_REF) {
           spill_refs++;
@@ -2329,7 +2330,7 @@ bool JitArm64::SpillPending(long popped, long keep, bool fp_slots, std::vector<P
           return false;
         }
         move_freg_mem(r, fp_offset, SP);
-        fregs.push_back({ r, fp_offset, false });
+        fregs.push_back({ r, fp_offset, false, false });
         fp_offset += (long)sizeof(size_t);
       }
       else if(r <= D7) {
@@ -2344,16 +2345,48 @@ bool JitArm64::SpillPending(long popped, long keep, bool fp_slots, std::vector<P
       }
     }
   }
+  // GC roots phase 5: the and/or temp (slot 0) holds what a conditional's
+  // branches meet with, an object as often as a Bool, and the collector used
+  // to scan it conservatively (9cdc656566). At a point that can collect its
+  // word goes to a reference slot when the map says it may be a reference
+  // there, and comes back relocated, through X10: a scratch register the pool
+  // never hands out, dead at a call either side of it.
+  if(gc_point && method->HasAndOr()) {
+    const uint8_t kind = mapped ? ref_map->andor[ref_map_ip] : RK_UNKNOWN;
+    if(kind != RK_INT && kind != RK_FLOAT && kind != RK_LIT) {
+      if(ref_offset > TMP_REF_5) {
+        CompileFailed(std::wstring(L"more live references across ") + what + L" than reference slots");
+        return false;
+      }
+      move_mem_reg(JitFrameLayout::ANDOR_OFFSET, SP, X10);
+      move_reg_mem(X10, ref_offset, SP);
+      regs.push_back({ X10, ref_offset, true, true });
+      ref_offset += (long)sizeof(size_t);
+      spill_andor++;
+    }
+  }
   spill_sites++;
 
   return true;
 }
 
 // the values SpillPending spilled come back; a reference slot is cleared so
-// the frame does not keep a dead object reachable for as long as it runs
+// the frame does not keep a dead object reachable for as long as it runs.
+// The and/or temp's copy goes back to its slot first, through X10, before
+// any pending register is reloaded.
 void JitArm64::ReloadPending(const std::vector<PendingSpill>& regs, const std::vector<PendingSpill>& fregs,
                              std::vector<ParkedFp>& parked) {
   for(const PendingSpill& spill : regs) {
+    if(spill.andor) {
+      move_mem_reg(spill.offset, SP, X10);
+      move_reg_mem(X10, JitFrameLayout::ANDOR_OFFSET, SP);
+      str_xzr_mem(spill.offset, SP);
+    }
+  }
+  for(const PendingSpill& spill : regs) {
+    if(spill.andor) {
+      continue;
+    }
     move_mem_reg(spill.offset, SP, spill.reg);
     if(spill.is_ref) {
       str_xzr_mem(spill.offset, SP);
@@ -2395,7 +2428,7 @@ void JitArm64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
   std::vector<PendingSpill> spilled_regs;
   std::vector<PendingSpill> spilled_fregs;
   std::vector<ParkedFp> parked_fp;
-  if(!SpillPending(0, non_params, true, spilled_regs, spilled_fregs, parked_fp, L"a call")) {
+  if(!SpillPending(0, non_params, true, spilled_regs, spilled_fregs, parked_fp, L"a call", true)) {
     return;
   }
 
@@ -2943,7 +2976,7 @@ void JitArm64::EmitJitSafePoint() {
   std::vector<PendingSpill> parked_regs;
   std::vector<PendingSpill> parked_fregs;
   std::vector<ParkedFp> parked_fp;
-  if(!SpillPending(0, -1, true, parked_regs, parked_fregs, parked_fp, L"a loop-header safepoint")) {
+  if(!SpillPending(0, -1, true, parked_regs, parked_fregs, parked_fp, L"a loop-header safepoint", true)) {
     return;
   }
   move_imm_reg((size_t)MemoryManager::SafePoint, X10);
@@ -5439,7 +5472,7 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
   std::vector<PendingSpill> spilled_regs;
   std::vector<PendingSpill> spilled_fregs;
   std::vector<ParkedFp> parked_fp;
-  if(!SpillPending(1, -1, false, spilled_regs, spilled_fregs, parked_fp, L"a math call")) {
+  if(!SpillPending(1, -1, false, spilled_regs, spilled_fregs, parked_fp, L"a math call", false)) {
     return;
   }
 
@@ -5673,7 +5706,7 @@ void JitArm64::ProcessFloatOperation2(StackInstr* instruction)
   std::vector<PendingSpill> spilled_regs;
   std::vector<PendingSpill> spilled_fregs;
   std::vector<ParkedFp> parked_fp;
-  if(!SpillPending(2, -1, false, spilled_regs, spilled_fregs, parked_fp, L"a math call")) {
+  if(!SpillPending(2, -1, false, spilled_regs, spilled_fregs, parked_fp, L"a math call", false)) {
     return;
   }
 
@@ -6450,7 +6483,7 @@ bool JitArm64::Compile(StackMethod* cm)
     // site. A map that does not build leaves every spilled value a reference.
     ref_map = RefMap::Build(program, method);
     ref_map_ip = -1;
-    spill_sites = spill_refs = spill_vals = spill_unknown = spill_mismatch = 0;
+    spill_sites = spill_refs = spill_vals = spill_unknown = spill_mismatch = spill_andor = 0;
     
     // General-purpose pool, handed out from the back: X0-X7 first, then
     // X12-X15 (F4 on ARM64). All twelve are caller-saved, and every path that
@@ -6756,7 +6789,7 @@ bool JitArm64::Compile(StackMethod* cm)
     if(JitReportEnabled() && spill_sites > 0) {
       std::wcerr << L"[jit] " << method->GetName() << L": spills sites=" << spill_sites << L" ref=" << spill_refs
                  << L" val=" << spill_vals << L" unknown=" << spill_unknown << L" mismatch=" << spill_mismatch
-                 << (ref_map && ref_map->ok ? L"" : L" (no map)") << std::endl;
+                 << L" andor=" << spill_andor << (ref_map && ref_map->ok ? L"" : L" (no map)") << std::endl;
     }
     delete ref_map;
     ref_map = nullptr;

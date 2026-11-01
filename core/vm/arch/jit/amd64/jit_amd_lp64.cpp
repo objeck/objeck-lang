@@ -547,24 +547,22 @@ void JitAmd64::ProcessInstructions() {
     instr->SetOffset(code_index);
     // the reference map's index for every spill this instruction emits
     ref_map_ip = instr_index - 1;
-    if(!is_inlining) {
-      // F3: a pinned loop's header (the back-edge target, the instruction after
-      // the loop's label) loads its locals into R13-R15. The entry path and
-      // jumps from outside land on the instruction's offset, before the loads;
-      // jumps from inside the loop land on loop_offset, past them and on the
-      // safepoint poll, so every iteration polls.
-      const int pin_region = PinRegionStartingAt(instr_index - 1);
-      if(pin_region >= 0) {
-        EmitPinEntry(pin_region);
-      }
-      // GC safepoint at loop headers only: a label's target is the head of a
-      // loop iff some jump to it is backward, and every cyclic path contains a
-      // back-edge, so polling these alone reaches every JITed loop (else the
-      // stop-the-world collector waits forever on an allocation-free loop).
-      // The working stack is empty here, right after a label.
-      if(safepoint_lbl_indices.find(instr_index - 1) != safepoint_lbl_indices.end()) {
-        EmitJitSafePoint();
-      }
+    // F3: a pinned loop's header (the back-edge target, the instruction after
+    // the loop's label) loads its locals into R13-R15. The entry path and
+    // jumps from outside land on the instruction's offset, before the loads;
+    // jumps from inside the loop land on loop_offset, past them and on the
+    // safepoint poll, so every iteration polls.
+    const int pin_region = PinRegionStartingAt(instr_index - 1);
+    if(pin_region >= 0) {
+      EmitPinEntry(pin_region);
+    }
+    // GC safepoint at loop headers only: a label's target is the head of a
+    // loop iff some jump to it is backward, and every cyclic path contains a
+    // back-edge, so polling these alone reaches every JITed loop (else the
+    // stop-the-world collector waits forever on an allocation-free loop).
+    // The working stack is empty here, right after a label.
+    if(safepoint_lbl_indices.find(instr_index - 1) != safepoint_lbl_indices.end()) {
+      EmitJitSafePoint();
     }
     
     switch(instr->GetType()) {
@@ -796,11 +794,7 @@ void JitAmd64::ProcessInstructions() {
       std::wcout << L"RTRN: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
       FlushLocalCache();
-      if(is_inlining) {
-        // inlined method: leave return value on working_stack, stop processing
-        instr_index = method->GetInstructionCount(); // exit ProcessInstructions loop
-      }
-      else if(native_entry_offset >= 0) {
+      if(native_entry_offset >= 0) {
         // Two exits for the two entries (EmitNativePrologue). The value goes
         // to XMM0 first, while the working stack still holds it: a native
         // caller takes it from there, and the method's own frame record
@@ -855,8 +849,6 @@ void JitAmd64::ProcessInstructions() {
               << L"," << instr->GetOperand2() << L", params=" << (called_method->GetParamCount() + 1)
               << L": regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
-        // MTHD_CALL uses callback (ProcessInlineMethod has INSTANCE_MEM
-        // offset issues with constructors that need further investigation).
         // A callee bound here -- anything but a `virtual` declaration, which
         // the bridge resolves per receiver -- takes the direct bridge entry
         // with its StackMethod* as the first argument.
@@ -1342,9 +1334,8 @@ void JitAmd64::ProcessInstructions() {
       // collector deadlocks on a no-allocation loop). Forward-only labels
       // (if/else merges) re-execute at most once per call and are skipped — that
       // removes the poll from branchy straight-line code. The working stack is
-      // empty at a label, so the poll loses no live JIT value. Inlined callees
-      // contain no labels (CanInlineMethod rejects control flow), so all loops
-      // live in this instruction stream and are covered by safepoint_lbl_indices.
+      // empty at a label, so the poll loses no live JIT value. All loops live
+      // in this instruction stream and are covered by safepoint_lbl_indices.
       break;
       
     default:
@@ -1353,7 +1344,7 @@ void JitAmd64::ProcessInstructions() {
     }
     // F3: leaving a pinned loop by fall-through (a conditional back-edge not
     // taken): the locals go back to their slots
-    if(!is_inlining && active_pin_region >= 0 && instr_index - 1 == pin_regions[active_pin_region].end) {
+    if(active_pin_region >= 0 && instr_index - 1 == pin_regions[active_pin_region].end) {
       EmitPinWriteBack(active_pin_region);
       active_pin_region = -1;
     }
@@ -1943,7 +1934,7 @@ void JitAmd64::EmitJitSafePoint() {
   // garbage whenever the loop polled during another thread's collection.
   std::vector<PendingSpill> parked_regs;
   std::vector<PendingSpill> parked_xregs;
-  if(!SpillPending(0, -1, TMP_XMM_0, parked_regs, parked_xregs, L"a loop-header safepoint")) {
+  if(!SpillPending(0, -1, TMP_XMM_0, parked_regs, parked_xregs, L"a loop-header safepoint", true)) {
     return;
   }
 #ifdef _WIN64
@@ -2947,7 +2938,7 @@ void JitAmd64::ProcessCopy(StackInstr* instr) {
  * arguments to EmitNativeCallSite/ProcessReturn.
  */
 bool JitAmd64::SpillPending(long popped, long keep, long xmm_first, std::vector<PendingSpill>& regs,
-                            std::vector<PendingSpill>& xmms, const wchar_t* what) {
+                            std::vector<PendingSpill>& xmms, const wchar_t* what, bool gc_point) {
   const long size = (long)working_stack.size();
   if(keep < 0 || keep > size) {
     keep = size;
@@ -2986,7 +2977,7 @@ bool JitAmd64::SpillPending(long popped, long keep, long xmm_first, std::vector<
           return false;
         }
         move_reg_mem(r, val_offset, RBP);
-        regs.push_back({ r, val_offset, false });
+        regs.push_back({ r, val_offset, false, false });
         val_offset -= (long)sizeof(size_t);
         spill_vals++;
       }
@@ -2996,7 +2987,7 @@ bool JitAmd64::SpillPending(long popped, long keep, long xmm_first, std::vector<
           return false;
         }
         move_reg_mem(r, ref_offset, RBP);
-        regs.push_back({ r, ref_offset, true });
+        regs.push_back({ r, ref_offset, true, false });
         ref_offset -= (long)sizeof(size_t);
         if(kind == RK_REF) {
           spill_refs++;
@@ -3013,8 +3004,29 @@ bool JitAmd64::SpillPending(long popped, long keep, long xmm_first, std::vector<
       }
       const Register r = pending->GetRegister()->GetRegister();
       move_xreg_mem(r, xmm_offset, RBP);
-      xmms.push_back({ r, xmm_offset, false });
+      xmms.push_back({ r, xmm_offset, false, false });
       xmm_offset -= (long)sizeof(double);
+    }
+  }
+  // GC roots phase 5: the and/or temp (slot 0) holds what a conditional's
+  // branches meet with, an object as often as a Bool, and the collector used
+  // to scan it conservatively (9cdc656566). At a point that can collect its
+  // word goes to a reference slot when the map says it may be a reference
+  // there, and comes back relocated. No register is free here (the arguments
+  // above `keep` are still in theirs), so it travels through the machine
+  // stack: push [rbp+andor] / pop [rbp+slot], and the reverse on reload.
+  if(gc_point && method->HasAndOr()) {
+    const uint8_t kind = mapped ? ref_map->andor[ref_map_ip] : RK_UNKNOWN;
+    if(kind != RK_INT && kind != RK_FLOAT && kind != RK_LIT) {
+      if(ref_offset < TMP_REF_9) {
+        CompileFailed(std::wstring(L"more live references across ") + what + L" than reference slots");
+        return false;
+      }
+      push_mem(JitFrameLayout::ANDOR_OFFSET, RBP);
+      pop_mem(ref_offset, RBP);
+      regs.push_back({ RAX, ref_offset, true, true });
+      ref_offset -= (long)sizeof(size_t);
+      spill_andor++;
     }
   }
   spill_sites++;
@@ -3023,9 +3035,21 @@ bool JitAmd64::SpillPending(long popped, long keep, long xmm_first, std::vector<
 }
 
 // the values SpillPending spilled come back; a reference slot is cleared so
-// the frame does not keep a dead object reachable for as long as it runs
+// the frame does not keep a dead object reachable for as long as it runs.
+// The and/or temp's copy goes back to its slot first, through the machine
+// stack, before any pending register is reloaded.
 void JitAmd64::ReloadPending(const std::vector<PendingSpill>& regs, const std::vector<PendingSpill>& xmms) {
   for(const PendingSpill& spill : regs) {
+    if(spill.andor) {
+      push_mem(spill.offset, RBP);
+      pop_mem(JitFrameLayout::ANDOR_OFFSET, RBP);
+      move_imm_mem(0, spill.offset, RBP);
+    }
+  }
+  for(const PendingSpill& spill : regs) {
+    if(spill.andor) {
+      continue;
+    }
     move_mem_reg(spill.offset, RBP, spill.reg);
     if(spill.is_ref) {
       move_imm_mem(0, spill.offset, RBP);
@@ -3034,6 +3058,20 @@ void JitAmd64::ReloadPending(const std::vector<PendingSpill>& regs, const std::v
   for(const PendingSpill& spill : xmms) {
     move_mem_xreg(spill.offset, RBP, spill.reg);
   }
+}
+
+// pop qword [dest+offset] (8F /0), the counterpart of push_mem (FF /6): with the
+// two, a word moves memory to memory through the machine stack with no register
+void JitAmd64::pop_mem(long offset, Register dest) {
+  AddMachineCode(B(dest));
+  AddMachineCode(0x8f);
+  unsigned char code = 0x80;
+  RegisterEncode3(code, 5, dest);
+  EmitModRMDisp(code, offset);
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [popq " << offset << L"(%"
+        << GetRegisterName(dest) << L")" << L"]" << std::endl;
+#endif
 }
 
 void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &instr_index, long params) {
@@ -3061,7 +3099,7 @@ void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
   }
   std::vector<PendingSpill> spilled_regs;
   std::vector<PendingSpill> spilled_xmms;
-  if(!SpillPending(0, non_params, TMP_XMM_0, spilled_regs, spilled_xmms, L"a call")) {
+  if(!SpillPending(0, non_params, TMP_XMM_0, spilled_regs, spilled_xmms, L"a call", true)) {
     return;
   }
 
@@ -4524,7 +4562,7 @@ RegisterHolder* JitAmd64::call_xfunc(double(*func_ptr)(double), RegInstr* left)
   // than slots, fall back to the interpreter for this method.
   std::vector<PendingSpill> spilled_regs;
   std::vector<PendingSpill> spilled_xregs;
-  if(!SpillPending(1, -1, TMP_XMM_1, spilled_regs, spilled_xregs, L"a math call")) {
+  if(!SpillPending(1, -1, TMP_XMM_1, spilled_regs, spilled_xregs, L"a math call", false)) {
     return GetXmmRegister();
   }
 
@@ -4575,7 +4613,7 @@ RegisterHolder* JitAmd64::call_xfunc2(double(*func_ptr)(double, double), RegInst
   // stack is two deeper.
   std::vector<PendingSpill> spilled_regs;
   std::vector<PendingSpill> spilled_xregs;
-  if(!SpillPending(2, -1, TMP_XMM_2, spilled_regs, spilled_xregs, L"a math call")) {
+  if(!SpillPending(2, -1, TMP_XMM_2, spilled_regs, spilled_xregs, L"a math call", false)) {
     delete right;
     return GetXmmRegister();
   }
@@ -8041,209 +8079,6 @@ void JitAmd64::ProcessIndices()
 // forward declaration (defined below)
 static bool CanJitInstruction(InstructionType type);
 
-// ── Method Inlining ────────────────────────────────────────────────────
-
-bool JitAmd64::CanInlineMethod(StackMethod* callee) {
-  if(!callee || callee == method) return false;           // no recursion
-  if(callee->IsVirtual()) return false;                   // static dispatch only
-  if(callee->GetInstructionCount() > MAX_INLINE_SIZE) return false;
-  if(HasFrameDependentTrap(callee)) return false;         // null frame in trap callback
-
-  for(long i = 0; i < callee->GetInstructionCount(); ++i) {
-    InstructionType type = callee->GetInstruction(i)->GetType();
-    // no calls, no control flow, no async
-    if(type == MTHD_CALL || type == DYN_MTHD_CALL || type == ASYNC_MTHD_CALL) return false;
-    if(type == JMP || type == LBL || type == JMP_TABLE || type == JMP_TABLE_SLOT) return false;
-    // all instructions must be JIT-compilable
-    if(!CanJitInstruction(type) && type != RTRN) return false;
-  }
-  return true;
-}
-
-static bool UsesInstanceMem(StackMethod* method) {
-  for(long i = 0; i < method->GetInstructionCount(); ++i) {
-    if(method->GetInstruction(i)->GetType() == LOAD_INST_MEM) return true;
-  }
-  return false;
-}
-
-long JitAmd64::ComputeInlineLocalSpace(StackMethod* callee) {
-  std::set<long> seen_ids;
-  long space = 0;
-  // reserve save slot for INSTANCE_MEM when inlining instance methods
-  if(UsesInstanceMem(callee)) space += sizeof(size_t);
-  for(long i = 0; i < callee->GetInstructionCount(); ++i) {
-    StackInstr* ci = callee->GetInstruction(i);
-    if(ci->GetOperand2() == INST || ci->GetOperand2() == CLS) continue;
-    long var_id = ci->GetOperand();
-    switch(ci->GetType()) {
-    case LOAD_LOCL_INT_VAR: case STOR_LOCL_INT_VAR: case COPY_LOCL_INT_VAR:
-    case LOAD_CLS_INST_INT_VAR: case STOR_CLS_INST_INT_VAR: case COPY_CLS_INST_INT_VAR:
-      if(seen_ids.insert(var_id).second) space += sizeof(size_t);
-      break;
-    case LOAD_FUNC_VAR: case STOR_FUNC_VAR:
-      if(seen_ids.insert(var_id).second) space += sizeof(size_t) * 2;
-      break;
-    case LOAD_FLOAT_VAR: case STOR_FLOAT_VAR: case COPY_FLOAT_VAR:
-      if(seen_ids.insert(var_id).second) space += sizeof(double);
-      break;
-    default:
-      break;
-    }
-  }
-  return space;
-}
-
-void JitAmd64::ProcessInlineMethod(StackMethod* callee, [[maybe_unused]] StackInstr* call_instr, [[maybe_unused]] long& caller_instr_index) {
-#ifdef _DEBUG_JIT
-  std::wcout << L"=== INLINE: method='" << callee->GetName() << L"' ===" << std::endl;
-#endif
-
-  // Save caller context
-  StackMethod* saved_method = method;
-  long saved_instr_index = instr_index;
-  bool saved_skip_jump = skip_jump;
-
-  // Save callee's original operand3 values (will be restored after inlining)
-  const long callee_instr_count = callee->GetInstructionCount();
-  std::vector<long> saved_operand3(callee_instr_count);
-  for(long i = 0; i < callee_instr_count; ++i) {
-    saved_operand3[i] = callee->GetInstruction(i)->GetOperand3();
-  }
-
-  // Instance method handling: self is on top of working_stack and must be
-  // routed to INSTANCE_MEM so LOAD_INST_MEM works inside the inlined code.
-  const bool is_instance_method = UsesInstanceMem(callee);
-  long save_inst_offset = 0;
-
-  if(is_instance_method) {
-    // Reserve a save slot for the caller's INSTANCE_MEM
-    save_inst_offset = inline_local_offset;
-    inline_local_offset -= sizeof(size_t);
-
-    // Save caller's INSTANCE_MEM to the save slot
-    RegisterHolder* tmp = GetRegister();
-    move_mem_reg(INSTANCE_MEM, RBP, tmp->GetRegister());
-    move_reg_mem(tmp->GetRegister(), save_inst_offset, RBP);
-    ReleaseRegister(tmp);
-
-    // Pop self from working_stack and write to INSTANCE_MEM
-    RegInstr* self_val = working_stack.front();
-    working_stack.pop_front();
-    switch(self_val->GetType()) {
-    case REG_INT:
-      move_reg_mem(self_val->GetRegister()->GetRegister(), INSTANCE_MEM, RBP);
-      ReleaseRegister(self_val->GetRegister());
-      break;
-    case MEM_INT: {
-      RegisterHolder* holder = GetRegister();
-      move_mem_reg((long)self_val->GetOperand(), RBP, holder->GetRegister());
-      move_reg_mem(holder->GetRegister(), INSTANCE_MEM, RBP);
-      ReleaseRegister(holder);
-    }
-      break;
-    case IMM_INT:
-      move_imm_mem(self_val->GetOperand(), INSTANCE_MEM, RBP);
-      break;
-    default:
-      break;
-    }
-    delete self_val;
-  }
-
-  // Run mini-ProcessIndices for callee at the inline offset region
-  {
-    std::multimap<long, StackInstr*> vars;
-    for(long i = 0; i < callee_instr_count; ++i) {
-      StackInstr* ci = callee->GetInstruction(i);
-      switch(ci->GetType()) {
-      case LOAD_LOCL_INT_VAR: case LOAD_CLS_INST_INT_VAR:
-      case STOR_LOCL_INT_VAR: case STOR_CLS_INST_INT_VAR:
-      case LOAD_FUNC_VAR: case STOR_FUNC_VAR:
-      case COPY_LOCL_INT_VAR: case COPY_CLS_INST_INT_VAR:
-      case LOAD_FLOAT_VAR: case STOR_FLOAT_VAR: case COPY_FLOAT_VAR:
-        vars.insert(std::pair<long, StackInstr*>(ci->GetOperand(), ci));
-        break;
-      default: break;
-      }
-    }
-
-    long index = inline_local_offset;
-    long last_id = -1;
-    for(auto iter = vars.begin(); iter != vars.end(); ++iter) {
-      long id = iter->first;
-      StackInstr* ci = iter->second;
-      if(ci->GetOperand2() == INST || ci->GetOperand2() == CLS) {
-        ci->SetOperand3(ci->GetOperand() * sizeof(size_t));
-      }
-      else {
-        if(last_id != id) {
-          switch(ci->GetType()) {
-          case LOAD_LOCL_INT_VAR: case LOAD_CLS_INST_INT_VAR:
-          case STOR_LOCL_INT_VAR: case STOR_CLS_INST_INT_VAR:
-          case COPY_LOCL_INT_VAR: case COPY_CLS_INST_INT_VAR:
-            index -= sizeof(size_t); break;
-          case LOAD_FUNC_VAR: case STOR_FUNC_VAR:
-            index -= sizeof(size_t) * 2; break;
-          default:
-            index -= sizeof(double); break;
-          }
-        }
-        ci->SetOperand3(index);
-        last_id = id;
-      }
-    }
-    inline_local_offset = index;
-  }
-
-  // Store parameters from working_stack into callee's local slots.
-  // The callee's first param_count instructions are STOR_* instructions
-  // that ProcessParameters would normally handle. For inlining, the values
-  // are already on working_stack, so we just call ProcessStore directly.
-  const long param_count = callee->GetParamCount();
-  for(long i = 0; i < param_count && i < callee_instr_count; ++i) {
-    StackInstr* param_instr = callee->GetInstruction(i);
-    param_instr->SetOffset(code_index);
-    ProcessStore(param_instr);
-  }
-
-  // Switch to callee context and process remaining instructions
-  method = callee;
-  instr_index = param_count;
-  skip_jump = false;
-  is_inlining = true;
-  inline_callee = callee;
-  inlined_callees.push_back(callee);
-
-  ProcessInstructions();
-
-  // Restore callee's original operand3 values
-  for(long i = 0; i < callee_instr_count; ++i) {
-    callee->GetInstruction(i)->SetOperand3(saved_operand3[i]);
-  }
-
-  // Restore caller's INSTANCE_MEM if we saved it
-  if(is_instance_method) {
-    RegisterHolder* tmp = GetRegister();
-    move_mem_reg(save_inst_offset, RBP, tmp->GetRegister());
-    move_reg_mem(tmp->GetRegister(), INSTANCE_MEM, RBP);
-    ReleaseRegister(tmp);
-  }
-
-  // Restore caller context
-  method = saved_method;
-  instr_index = saved_instr_index;
-  skip_jump = saved_skip_jump;
-  is_inlining = false;
-  inline_callee = nullptr;
-
-  // Handle return value: it's already on working_stack from the inlined code.
-  // The caller will use it naturally (ProcessReturnParameters is NOT called).
-#ifdef _DEBUG_JIT
-  std::wcout << L"=== END INLINE: method='" << callee->GetName() << L"' ===" << std::endl;
-#endif
-}
-
 // Returns true if the instruction type is supported by the JIT compiler.
 // This whitelist must match the cases handled in ProcessInstructions().
 static bool CanJitInstruction(InstructionType type) {
@@ -8542,7 +8377,6 @@ bool JitAmd64::Compile(StackMethod* cm)
   compile_success = true;
   compile_fail_reason.clear();
   compile_fail_instr = -1;
-  compile_fail_inlined = nullptr;
   pool_audit_reported = false;
 
   if(!cm->GetNativeCode()) {
@@ -8561,13 +8395,9 @@ bool JitAmd64::Compile(StackMethod* cm)
     active_pin_region = -1;
     method_pins = false;
     method_pins_float = false;
-    is_inlining = false;
-    inline_callee = nullptr;
-    inlined_callees.clear();
     direct_callee = nullptr;
     virtual_site = nullptr;
     virtual_sites.clear();
-    inline_local_offset = 0;
     xmm_pool_used = false;
     xmm_save_indices.clear();
     xmm_restore_indices.clear();
@@ -8654,7 +8484,7 @@ bool JitAmd64::Compile(StackMethod* cm)
     // site. A map that does not build leaves every spilled value a reference.
     ref_map = RefMap::Build(program, method);
     ref_map_ip = -1;
-    spill_sites = spill_refs = spill_vals = spill_unknown = spill_mismatch = 0;
+    spill_sites = spill_refs = spill_vals = spill_unknown = spill_mismatch = spill_andor = 0;
 
     rax_reg = NewRegisterHolder(RAX);
 #ifdef _WIN64
@@ -8722,25 +8552,9 @@ bool JitAmd64::Compile(StackMethod* cm)
     // the prologue needs to know whether to save the registers
     PlanPinRegions();
 
-    // compute extra frame space for inline callees
-    long extra_inline_space = 0;
-    for(long i = 0; i < method->GetInstructionCount(); ++i) {
-      StackInstr* si = method->GetInstruction(i);
-      if(si->GetType() == MTHD_CALL) {
-        StackMethod* callee = program->GetClass(si->GetOperand())->GetMethod(si->GetOperand2());
-        if(CanInlineMethod(callee)) {
-          extra_inline_space += ComputeInlineLocalSpace(callee);
-        }
-      }
-    }
-    // inline locals start after caller's locals (mirrors ProcessIndices index computation)
-    inline_local_offset = -local_space;
-    local_space += extra_inline_space;
-
     // The frame record block for the native entry (EmitNativePrologue) goes
-    // below the locals and the inline space: the StackFrame, its two mem
-    // words and the entry kind. Outside the region the collector walks
-    // (org_local_space), like the inline space.
+    // below the locals: the StackFrame, its two mem words and the entry
+    // kind. Outside the region the collector walks (org_local_space).
     rec_base = -local_space - REC_SIZE;
     local_space += REC_SIZE;
 
@@ -8806,15 +8620,11 @@ bool JitAmd64::Compile(StackMethod* cm)
     if(!compile_success) {
       if(JitReportEnabled()) {
         // the instruction that failed, its opcode (as `obc -asm` numbers it)
-        // and why; inside an inlined callee, the index is the callee's
-        StackMethod* failed_in = compile_fail_inlined ? compile_fail_inlined : method;
+        // and why
         std::wcerr << L"[jit] " << method->GetName() << L": compile failed at instruction "
                    << compile_fail_instr;
-        if(compile_fail_instr >= 0 && compile_fail_instr < failed_in->GetInstructionCount()) {
-          std::wcerr << L" (opcode " << failed_in->GetInstruction(compile_fail_instr)->GetType() << L")";
-        }
-        if(compile_fail_inlined) {
-          std::wcerr << L" of inlined " << compile_fail_inlined->GetName();
+        if(compile_fail_instr >= 0 && compile_fail_instr < method->GetInstructionCount()) {
+          std::wcerr << L" (opcode " << method->GetInstruction(compile_fail_instr)->GetType() << L")";
         }
         std::wcerr << L" -- " << (compile_fail_reason.empty() ? std::wstring(L"no reason recorded") : compile_fail_reason)
                    << std::endl;
@@ -8849,12 +8659,6 @@ bool JitAmd64::Compile(StackMethod* cm)
       delete ref_map;
       ref_map = nullptr;
       return false;
-    }
-
-    if(JitReportEnabled()) {
-      for(StackMethod* inlined : inlined_callees) {
-        std::wcerr << L"[jit] " << method->GetName() << L": inlined " << inlined->GetName() << std::endl;
-      }
     }
 
     // RTRN emits the epilogue, and with it the error handlers and the teardown
@@ -8972,7 +8776,7 @@ bool JitAmd64::Compile(StackMethod* cm)
     if(JitReportEnabled() && spill_sites > 0) {
       std::wcerr << L"[jit] " << method->GetName() << L": spills sites=" << spill_sites << L" ref=" << spill_refs
                  << L" val=" << spill_vals << L" unknown=" << spill_unknown << L" mismatch=" << spill_mismatch
-                 << (ref_map && ref_map->ok ? L"" : L" (no map)") << std::endl;
+                 << L" andor=" << spill_andor << (ref_map && ref_map->ok ? L"" : L" (no map)") << std::endl;
     }
     delete ref_map;
     ref_map = nullptr;
