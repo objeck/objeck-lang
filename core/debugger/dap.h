@@ -61,6 +61,7 @@ namespace Runtime {
     Debugger* debugger;
 
     // DAP protocol state
+    // Outgoing sequence number. Written only by SendMessage, under send_mtx.
     int seq;
     bool is_initialized;
     bool is_launched;
@@ -147,7 +148,8 @@ namespace Runtime {
 
     // JSON-RPC transport
     std::string ReadMessage();
-    void SendMessage(const json& msg);
+    // Takes the message by reference: it stamps the outgoing seq under send_mtx.
+    void SendMessage(json& msg);
     void SendResponse(int request_seq, const std::string& command, const json& body = json::object(), bool success = true, const std::string& message = "");
     void SendEvent(const std::string& event, const json& body = json::object());
 
