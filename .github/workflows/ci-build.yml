@@ -822,21 +822,40 @@ jobs:
           $OBR ../../../../programs/deploy/sql_tables_18.obe
           $OBR ../../../../programs/deploy/ml_outliers_27.obe
           $OBR ../../../../programs/deploy/nlp_28.obe
-          # Threading test can be sensitive to CI runner timing; retry up to 3 times
-          for attempt in 1 2 3; do
-            if $OBR ../../../../programs/deploy/threads_12.obe; then
-              break
-            fi
-            if [ $attempt -eq 3 ]; then
-              echo "threads_12.obe failed after 3 attempts"
-              exit 1
-            fi
-            echo "threads_12.obe attempt $attempt failed, retrying..."
-            sleep 2
-          done
+          # One run, no retry: the workers' locking makes the total exact, so a run that
+          # exits non-zero, hangs or prints another total is a real failure to look at.
+          # (A retry here hid failures, and the exit code alone missed a wrong total.)
+          out=$(timeout 120 $OBR ../../../../programs/deploy/threads_12.obe 2>&1) || { echo "$out"; echo "threads_12.obe failed (exit status or timeout)"; exit 1; }
+          echo "$out"
+          if ! echo "$out" | grep -qx 'shared total: 5000050000'; then
+            echo "threads_12.obe: the shared total is not 5000050000"
+            exit 1
+          fi
         fi
         # NOTE: HTTP/2 and HTTP/3 tests are intentionally NOT here. They depend
         # on live upstream servers and run as a separate non-gating step below.
+
+    # Measures how often threads_12 goes wrong on the runner, so a flake is a number in the
+    # job summary rather than a retry nobody sees. Non-gating: the gating run is above.
+    - name: threads_12 flake rate (non-gating)
+      if: matrix.platform == 'linux-x64'
+      continue-on-error: true
+      working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
+      shell: bash
+      run: |
+        runs=50
+        bad=0
+        for i in $(seq 1 $runs); do
+          # into a variable first: grep -q on a pipe can close it early and fail obr with SIGPIPE
+          out=$(timeout 120 ./obr ../../../../programs/deploy/threads_12.obe 2>&1) || out=""
+          if ! echo "$out" | grep -qx 'shared total: 5000050000'; then
+            bad=$((bad + 1))
+          fi
+        done
+        echo "threads_12: $bad of $runs runs wrong or failed" | tee -a "$GITHUB_STEP_SUMMARY"
+        if [ "$bad" -ne 0 ]; then
+          echo "::warning::threads_12 went wrong in $bad of $runs runs"
+        fi
 
     # ============================================
     # Regression Tests
