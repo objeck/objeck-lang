@@ -1757,13 +1757,13 @@ def check_loader_rejects_malformed(obc, obr, env, bin_dir):
 
         # Files too short to hold the size header: read four bytes deep and inflated
         # with a length that had underflowed to nearly 2^64.
-        for name, data in (("empty", b""), ("one byte", b"\x01"), ("three bytes", b"\x01\x02\x03")):
+        for name, data in (("an empty", b""), ("a one-byte", b"\x01"), ("a three-byte", b"\x01\x02\x03")):
             path = os.path.join(scratch, "short.obe")
             with open(path, "wb") as f:
                 f.write(data)
             rc, out, err = run([obr, path], env=env, cwd=bin_dir)
             text = err.decode(errors="replace")
-            check(f"a {name} .obe is refused, not read past its end",
+            check(f"{name} .obe is refused, not read past its end",
                   loader_refused(rc, text, "Unable to uncompress file"), f"rc={rc} err={text[-300:]!r}")
 
         for name, message, about in LOADER_INPUTS:
