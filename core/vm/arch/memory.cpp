@@ -847,6 +847,7 @@ size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, s
     break;
 
   case INT_TYPE:
+  case INT_ARY_TYPE:
     elem_size = sizeof(size_t);
     break;
 
@@ -2441,7 +2442,7 @@ void MemoryManager::ScanDirtyObject(size_t* mem)
         size_t* ref = (size_t*)(*field_ptr);
         if(ref && IsYoung(ref)) {
           if(MarkMemory(ref)) {
-            if(ref[TYPE] == INT_TYPE || ref[TYPE] == NIL_TYPE) {
+            if(ArrayElementsAreRoots(ref[TYPE])) {
               size_t size = ref[0];
               size_t dim = ref[1];
               size_t* objects = ref + 2 + dim;
@@ -2460,7 +2461,9 @@ void MemoryManager::ScanDirtyObject(size_t* mem)
       }
     }
   }
-  else if(mem[TYPE] == INT_TYPE) {
+  else if(mem[TYPE] == INT_TYPE || (mem[TYPE] == INT_ARY_TYPE && gc_roots_conservative)) {
+    // an array of references, or an Int[] under the old guess; an Int[] the
+    // program allocated (INT_ARY_TYPE) holds no reference (GC roots phase 6)
     size_t size = mem[0];
     size_t dim = mem[1];
     size_t* objects = mem + 2 + dim;
@@ -2538,8 +2541,12 @@ void MemoryManager::FixupObject(size_t* mem)
       FixupMemory(mem, cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations());
     }
   }
-  else if(mem[TYPE] == INT_TYPE) {
-    // Int/obj arrays can contain object references
+  else if(mem[TYPE] == INT_TYPE || (mem[TYPE] == INT_ARY_TYPE && gc_roots_conservative)) {
+    // An array of references, or an Int array a native allocated, can hold
+    // object references; an Int[] the program allocated (INT_ARY_TYPE) never
+    // does, and its elements are not relocated, so an Int that equals a moved
+    // object's address keeps its value (GC roots phase 6). The old guess is
+    // kept under OBJECK_GC_ROOTS=conservative.
     size_t size = mem[0];
     size_t dim = mem[1];
     size_t* objects = mem + 2 + dim;
@@ -3015,8 +3022,9 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
 
       // primitive or object array
       if(MarkMemory(mem)) {
-        // ensure we're only checking int and obj arrays
-        if(mem[TYPE] == NIL_TYPE || mem[TYPE] == INT_TYPE) {
+        // only an array that holds references: not an Int[] the program
+        // allocated (GC roots phase 6), nor a Byte, Char or Float array
+        if(ArrayElementsAreRoots(mem[TYPE])) {
             size_t* array = mem;
             const size_t size = array[0];
             const size_t dim = array[1];

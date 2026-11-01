@@ -460,6 +460,15 @@ class MemoryManager {
   // A word the reference maps type Int or Float, on a thread whose frames the
   // maps account for, is not a root; nor is an and/or slot typed so.
   static int gc_roots_conservative;
+  // Which heap arrays hold references the collector marks and relocates: an
+  // object array (INT_TYPE) and an Int array a native allocated (INT_TYPE too),
+  // never an Int[] the program allocated (INT_ARY_TYPE, GC roots phase 6),
+  // except under OBJECK_GC_ROOTS=conservative, the old guess: the negative
+  // control for gc_address_int_array.
+  static inline bool ArrayElementsAreRoots(size_t type) {
+    return type == instructions::INT_TYPE || type == instructions::NIL_TYPE ||
+      (type == instructions::INT_ARY_TYPE && gc_roots_conservative);
+  }
   static std::unordered_map<const size_t*, std::vector<bool> > stack_non_refs;
   static std::unordered_set<StackFrame*> andor_non_refs;
   static void ComputeStackRoots();

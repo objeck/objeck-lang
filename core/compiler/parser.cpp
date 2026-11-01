@@ -148,14 +148,7 @@ void Parser::LoadErrorCodes()
  ****************************/
 void Parser::ProcessError(ScannerTokenType type)
 {
-  std::wstring msg = error_msgs[type];
-#ifdef _DEBUG
-  GetLogger() << L"\tError: " << GetFileName() << L":(" << GetLineNumber() << L',' << GetLinePosition() << L"): " << msg << std::endl;
-#endif
-
-  const std::wstring& str_line_num = ToString(GetLineNumber());
-  const std::wstring& str_line_pos = ToString(GetLinePosition());
-  errors.insert(std::pair<int, std::wstring>(GetLineNumber(), GetFileName()+ L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
+  diagnostics.Error(GetFileName(), GetLineNumber(), GetLinePosition(), error_msgs[type]);
 }
 
 /****************************
@@ -163,13 +156,7 @@ void Parser::ProcessError(ScannerTokenType type)
  ****************************/
 void Parser::ProcessError(const std::wstring &msg)
 {
-#ifdef _DEBUG
-  GetLogger() << L"\tError: " << GetFileName() << L":(" << GetLineNumber() << L',' << GetLinePosition() << L"): " << msg << std::endl;
-#endif
-
-  const std::wstring &str_line_num = ToString(GetLineNumber());
-  const std::wstring& str_line_pos = ToString(GetLinePosition());
-  errors.insert(std::pair<int, std::wstring>(GetLineNumber(), GetFileName()+ L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
+  diagnostics.Error(GetFileName(), GetLineNumber(), GetLinePosition(), msg);
 }
 
 /****************************
@@ -177,14 +164,7 @@ void Parser::ProcessError(const std::wstring &msg)
  ****************************/
 void Parser::ProcessError(const std::wstring &msg, ScannerTokenType sync)
 {
-#ifdef _DEBUG
-  GetLogger() << L"\tError: " << GetFileName() << L":(" << GetLineNumber() << L',' << GetLinePosition() << L"): " << msg << std::endl;
-#endif
-
-  const std::wstring &str_line_num = ToString(GetLineNumber());
-  const std::wstring& str_line_pos = ToString(GetLinePosition());
-
-  errors.insert(std::pair<int, std::wstring>(GetLineNumber(), GetFileName() + L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
+  diagnostics.Error(GetFileName(), GetLineNumber(), GetLinePosition(), msg);
   ScannerTokenType token = GetToken();
   while(token != sync && token != TOKEN_END_OF_STREAM) {
     NextToken();
@@ -276,14 +256,7 @@ static INT64_VALUE NegateIntLiteral(INT64_VALUE value)
  ****************************/
 void Parser::ProcessError(const std::wstring &msg, ParseNode * node)
 {
-#ifdef _DEBUG
-  GetLogger() << L"\tError: " << node->GetFileName() << L':' << node->GetLineNumber()
-    << L": " << msg << std::endl;
-#endif
-
-  const std::wstring &str_line_num = ToString(node->GetLineNumber());
-  const std::wstring &str_line_pos = ToString(node->GetLinePosition());
-  errors.insert(std::pair<int, std::wstring>(node->GetLineNumber(), node->GetFileName() + L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
+  diagnostics.Error(node->GetFileName(), node->GetLineNumber(), node->GetLinePosition(), msg);
 }
 
 /****************************
@@ -292,32 +265,23 @@ void Parser::ProcessError(const std::wstring &msg, ParseNode * node)
 bool Parser::CheckErrors()
 {
   // check and process errors
-  if(errors.size()) {
+  if(diagnostics.HasErrors()) {
     const size_t error_max = 8;
 
-    // Repeats are dropped before the cap, not after. The same diagnostic is
-    // raised from more than one resolution path -- an undefined method call can
-    // be reported three times at one position -- and identical copies were
-    // pushing real errors off the end of the output.
-    std::set<std::wstring> seen;
-    std::vector<std::wstring> unique_errors;
-    for(std::multimap<int, std::wstring>::iterator error = errors.begin(); error != errors.end(); ++error) {
-      if(seen.insert(error->second).second) {
-        unique_errors.push_back(error->second);
-      }
-    }
+    // Repeats are dropped before the cap, not after (DiagnosticSink).
+    const std::vector<Diagnostic> unique_errors = diagnostics.UniqueErrors();
 
     const size_t shown = unique_errors.size() < error_max ? unique_errors.size() : error_max;
     for(size_t i = 0; i < shown; ++i) {
 #if defined(_DIAG_LIB) || defined(_MODULE)
-      error_strings.push_back(unique_errors[i]);
+      error_diagnostics.push_back(unique_errors[i]);
 #else
-      std::wcerr << unique_errors[i] << std::endl;
+      std::wcerr << unique_errors[i].Format() << std::endl;
 #endif
     }
 
 #ifdef _DIAG_LIB
-    program->SetErrorStrings(error_strings);
+    program->SetErrorDiagnostics(error_diagnostics);
 #endif
 
     return false;
@@ -329,7 +293,12 @@ bool Parser::CheckErrors()
 #ifdef _MODULE
 std::vector<std::wstring> Parser::GetErrors()
 {
-  return error_strings;
+  std::vector<std::wstring> lines;
+  for(size_t i = 0; i < error_diagnostics.size(); ++i) {
+    lines.push_back(error_diagnostics[i].Format());
+  }
+
+  return lines;
 }
 #endif
 
@@ -1888,7 +1857,7 @@ StatementList* Parser::ParseStatementList(int depth)
     // the quote inside the interpolation ends the string early. Report the
     // token if nothing has yet, then step over it so the list moves on.
     if(tokens_consumed == consumed) {
-      if(errors.empty()) {
+      if(!diagnostics.HasErrors()) {
         ProcessError(L"Unexpected token in statement");
       }
       NextToken();

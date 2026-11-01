@@ -116,6 +116,11 @@ void Loader::LoadImage()
   case MAGIC_NUM_EXE:
     break;
 
+  case MAGIC_NUM_EXE_UNTYPED_INT_ARRAYS:
+    error << L"Cannot run '" << filename << L"': it was compiled before an Int[] and an object array were allocated with distinct opcodes," << std::endl
+          << L"\tso this runtime would read its object arrays as Int[]. Recompile its source with this toolchain's obc." << std::endl;
+    LoadFailed();
+
   default:
     error << L"Unknown file type for '" << filename << L"'." << std::endl;
     LoadFailed();
@@ -697,7 +702,8 @@ void Loader::LoadInitializationCode(StackMethod* method)
   std::vector<StackInstr> instrs;
 
   instrs.push_back(StackInstr(-1, arguments.size()));
-  instrs.push_back(StackInstr(-1, NEW_INT_ARY, (long)1));
+  // the program's String[] arguments: an array of references
+  instrs.push_back(StackInstr(-1, NEW_OBJ_ARY, (long)1));
   instrs.push_back(StackInstr(-1, STOR_LOCL_INT_VAR, 0L, LOCL));
 
   for(size_t i = 0; i < arguments.size(); ++i) {
@@ -809,6 +815,10 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
 
     case NEW_INT_ARY:
       mthd_instrs[i] = StackInstr(line_num, NEW_INT_ARY, CheckDimension(method, ip, ReadInt()));
+      break;
+
+    case NEW_OBJ_ARY:
+      mthd_instrs[i] = StackInstr(line_num, NEW_OBJ_ARY, CheckDimension(method, ip, ReadInt()));
       break;
 
     case NEW_BYTE_ARY:

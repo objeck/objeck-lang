@@ -965,6 +965,10 @@ void Library::LoadFile(const std::wstring &file_name)
     else if(magic_num == MAGIC_NUM_LIB_NO_PARAM_NAMES) {
       throw CompilerFatal(L"Library '" + file_name + L"' was built before libraries recorded their parameter names.\n\tRebuild it with this toolchain.");
     }
+    else if(magic_num == MAGIC_NUM_LIB_UNTYPED_INT_ARRAYS) {
+      std::wcerr << L"Library '" << file_name << L"' was built before an Int[] and an object array were allocated with distinct opcodes (its object arrays would be read as Int[]).\n\tRebuild it with this toolchain." << std::endl;
+      exit(1);
+    }
     else if(magic_num != MAGIC_NUM_LIB) {
       throw CompilerFatal(L"Unable to link invalid library file '" + file_name + L"'.\n\tThe file carries no Objeck library signature -- check that it is a .obl, not an .obe or a file from another toolchain.");
     }
@@ -1390,6 +1394,12 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     case NEW_INT_ARY: {
       const int dim = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, NEW_INT_ARY, dim));
+    }
+      break;
+
+    case NEW_OBJ_ARY: {
+      const int dim = ReadInt();
+      instrs.push_back(new LibraryInstr(line_num, NEW_OBJ_ARY, dim));
     }
       break;
 

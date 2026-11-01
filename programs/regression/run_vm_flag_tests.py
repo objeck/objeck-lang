@@ -316,6 +316,18 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     frame, a call to a class or method that does not exist, an unknown trap
     id, a method that runs off its end, an unknown declaration type, a start
     method that does not exist -- each refused with the rule's message.
+ 31. A collection leaves an Int[] element alone when its value IS an object's
+    address (GC roots phase 6, docs/GC_ROOTS_DESIGN.md section 10). An Int[]
+    and an object array shared one heap tag, so the collector scanned every
+    Int[] element as a possible reference and relocated one equal to a moved
+    object's address, interpreted and compiled, in default mode. The compiler
+    now allocates an Int[] with NEW_INT_ARY (INT_ARY_TYPE, never scanned) and
+    an object array with NEW_OBJ_ARY. vm_flag_fixtures/gc_address_int_array.obs
+    keeps such an address in an Int[] element across 200 allocations at
+    --nursery=64k: it must PASS with --jit=off and --jit=1 at -opt s0 and s3,
+    and OBJECK_GC_ROOTS=conservative, under which the collector scans an Int[]
+    the old way, must make every one of those runs FAIL, so the heap tag is
+    shown to be what keeps the element intact.
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only] [--only name[,name]]
 
@@ -697,6 +709,7 @@ def main():
     check_address_int_pending(obc, obr, env, bin_dir)
 
     check_loader_rejects_malformed(obc, obr, env, bin_dir)
+    check_address_int_array(obc, obr, env, bin_dir)
 
     # ---- 11. the heap verifier (OBJECK_GC_VERIFY) ----------------------------------
     verify_section(obc, obr, env, bin_dir)
@@ -1855,7 +1868,12 @@ def check_loader_rejects_malformed(obc, obr, env, bin_dir):
         if rc != 0:
             return
         image = obe_image_of(control)
-        version = image[:4]
+        # The header the loader checks before anything else: the toolchain version
+        # and the executable magic number, four bytes each. Each fixture gets this
+        # toolchain's pair, so neither check can refuse it first (the magic moved
+        # with GC roots phase 6, which would have refused every image as "compiled
+        # before ..." and hidden the malformation each one is there to exercise).
+        header = image[:8]
 
         # The control: the same image, decompressed and packed again by this check,
         # must load and run. Without it a packing mistake here would make every case
@@ -1880,7 +1898,7 @@ def check_loader_rejects_malformed(obc, obr, env, bin_dir):
 
         for name, message, about in LOADER_INPUTS:
             with open(os.path.join(fixture_dir, name), "rb") as f:
-                case = version + f.read()[4:]
+                case = header + f.read()[8:]
             path = os.path.join(scratch, name.replace(".img", ".obe"))
             with open(path, "wb") as f:
                 f.write(obe_file_of(case))
@@ -1888,6 +1906,35 @@ def check_loader_rejects_malformed(obc, obr, env, bin_dir):
             text = err.decode(errors="replace")
             check(f"loader refuses {name} ({about})", loader_refused(rc, text, message),
                   f"rc={rc} err={text[-300:]!r}")
+def check_address_int_array(obc, obr, env, bin_dir):
+    # ---- 31. an Int[] element equal to an object's address survives a collection -----
+    src = os.path.join(SCRIPT_DIR, "vm_flag_fixtures", "gc_address_int_array.obs")
+    hooks_env = dict(env)
+    hooks_env["OBJECK_GC_TEST_HOOKS"] = "1"
+    conservative_env = dict(hooks_env)
+    conservative_env["OBJECK_GC_ROOTS"] = "conservative"
+    for opt in ("s0", "s3"):
+        dest = os.path.join(SCRIPT_DIR, "vm_flag_fixtures", "gc_address_int_array_" + opt + ".obe")
+        rc, out, err = run([obc, "-src", src, "-dest", dest, "-opt", opt], env=env, cwd=bin_dir)
+        check(f"gc_address_int_array compiles at -opt {opt}", rc == 0 and os.path.exists(dest),
+              err.decode(errors="replace")[-300:])
+        if rc != 0:
+            continue
+
+        for label, jit in (("interpreted", "--jit=off"), ("compiled", "--jit=1")):
+            flags = [jit, "--nursery=64k"]
+            rc, out, err = run([obr] + flags + [dest], env=hooks_env, cwd=SCRIPT_DIR, timeout=300)
+            check(f"no Int[] element holding an object's address is rewritten {label} at -opt {opt}",
+                  rc == 0 and b"PASS: no Int[] element" in out, f"rc={rc} out={out[-200:]!r}")
+
+            rc, out, err = run([obr] + flags + [dest], env=conservative_env, cwd=SCRIPT_DIR, timeout=300)
+            check(f"the old guess rewrites an Int[] element holding an object's address (negative control, {label}, -opt {opt})",
+                  rc == 1 and b"FAIL: " in out and b"changed by a collection" in out,
+                  f"rc={rc} out={out[-200:]!r}")
+
+        rc, out, err = run([obr, "--jit=off", "--nursery=64k", dest], env=env, cwd=SCRIPT_DIR, timeout=300)
+        check(f"the hook is inert without OBJECK_GC_TEST_HOOKS for gc_address_int_array (-opt {opt})",
+              rc == 2 and b"returned 0" in out, f"rc={rc} out={out[-200:]!r}")
 
         # The verification pass: the control program, which loads and runs above,
         # with one operand changed. Before the pass each of these was loaded and run.

@@ -1968,10 +1968,10 @@ void StackInterpreter::ProcessNewFunctionInstance(StackInstr* instr, size_t*& op
 /********************************
  * Processes a new array instance request.
  ********************************/
-void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos, bool is_float)
+void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos, instructions::MemoryType elem_type)
 {
 #ifdef _DEBUG
-  std::wcout << L"stack oper: NEW_INT_ARY/NEW_FLOAT_ARY; call_pos=" << (*call_stack_pos) << std::endl;
+  std::wcout << L"stack oper: NEW_INT_ARY/NEW_OBJ_ARY/NEW_FLOAT_ARY; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
   size_t indices[8]{};
   const size_t value = PopInt(op_stack, stack_pos);
@@ -2001,9 +2001,9 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, siz
     std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
     VmExit(1);
   }
-  size_t* mem = is_float ?
-    (size_t*)MemoryManager::AllocateArray(size + (size_t)dim + 2, FLOAT_TYPE, op_stack, *stack_pos) :
-    (size_t*)MemoryManager::AllocateArray(size + (size_t)dim + 2, INT_TYPE, op_stack, *stack_pos);
+  // elem_type is the heap tag: INT_ARY_TYPE for an Int[] (never scanned),
+  // INT_TYPE for an array of references, FLOAT_TYPE for a Float[]
+  size_t* mem = (size_t*)MemoryManager::AllocateArray(size + (size_t)dim + 2, elem_type, op_stack, *stack_pos);
   mem[0] = size;
   mem[1] = dim;
 

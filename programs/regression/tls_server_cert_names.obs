@@ -82,16 +82,32 @@ class TlsServerCertNames {
 		# basicConstraints CA:TRUE, mbedTLS does not accept the CA as one, and the
 		# defaults differ by build -- LibreSSL (macOS) adds none -- so the client
 		# could not connect there. -addext is not in every build either.
-		cnf := FileWriter->New("tls-names-{$Runtime->GetProcessId()}.cnf");
+		#
+		# Both certificates are valid from 2025, not from the second they are made:
+		# a clock that steps back after that -- a VM resynchronizing its time, as
+		# WSL2 does by seconds at a time -- would see certificates not valid yet, and
+		# the handshake would fail. `openssl x509 -req` and `openssl req -x509` cannot
+		# set the start before OpenSSL 3.4; `openssl ca` can, so it signs both, its
+		# working files in a scratch directory that Cleanup() removes.
+		Directory->Create("tls-names-{$Runtime->GetProcessId()}.ca");
+		cnf := FileWriter->New("tls-names-{$Runtime->GetProcessId()}.ca/openssl.cnf");
 		cnf->WriteString("[req]\ndistinguished_name = dn\nprompt = no\n[dn]\nCN = Objeck Test CA\n");
+		cnf->WriteString("[ca]\ndefault_ca = fixture\n[fixture]\ndatabase = tls-names-{$Runtime->GetProcessId()}.ca/index.txt\nserial = tls-names-{$Runtime->GetProcessId()}.ca/serial\nnew_certs_dir = tls-names-{$Runtime->GetProcessId()}.ca\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
 		cnf->WriteString("[v3_ca]\nbasicConstraints = critical,CA:TRUE\nkeyUsage = critical,keyCertSign,cRLSign\nsubjectKeyIdentifier = hash\n");
 		cnf->WriteString("[v3_leaf]\nbasicConstraints = CA:FALSE\nkeyUsage = critical,digitalSignature,keyEncipherment\nextendedKeyUsage = serverAuth\nsubjectAltName = DNS:localhost\n");
 		cnf->Close();
+		FileWriter->New("tls-names-{$Runtime->GetProcessId()}.ca/index.txt")->Close();
+		serial := FileWriter->New("tls-names-{$Runtime->GetProcessId()}.ca/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+		dates := "-startdate 250101000000Z -enddate 491231235959Z";
 
 		# a CA, and a server certificate it signs
-		if(Runtime->Command("openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 -config tls-names-{$Runtime->GetProcessId()}.cnf -extensions v3_ca -keyout tls-names-{$Runtime->GetProcessId()}-ca-key.pem -out tls-names-{$Runtime->GetProcessId()}-ca.pem") <> 0 |
-				Runtime->Command("openssl req -newkey rsa:2048 -sha256 -nodes -config tls-names-{$Runtime->GetProcessId()}.cnf -subj \"/CN=localhost\" -keyout tls-names-{$Runtime->GetProcessId()}-key.pem -out tls-names-{$Runtime->GetProcessId()}.csr") <> 0 |
-				Runtime->Command("openssl x509 -req -sha256 -days 1 -in tls-names-{$Runtime->GetProcessId()}.csr -CA tls-names-{$Runtime->GetProcessId()}-ca.pem -CAkey tls-names-{$Runtime->GetProcessId()}-ca-key.pem -CAcreateserial -extfile tls-names-{$Runtime->GetProcessId()}.cnf -extensions v3_leaf -out tls-names-{$Runtime->GetProcessId()}-cert.pem") <> 0) {
+		if(Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config tls-names-{$Runtime->GetProcessId()}.ca/openssl.cnf -keyout tls-names-{$Runtime->GetProcessId()}.ca/ca-key.pem -out tls-names-{$Runtime->GetProcessId()}.ca/ca.csr") <> 0 |
+				Runtime->Command("openssl ca -batch -selfsign -notext -config tls-names-{$Runtime->GetProcessId()}.ca/openssl.cnf -extensions v3_ca -keyfile tls-names-{$Runtime->GetProcessId()}.ca/ca-key.pem -in tls-names-{$Runtime->GetProcessId()}.ca/ca.csr {$dates} -out tls-names-{$Runtime->GetProcessId()}-ca.pem") <> 0 |
+				Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config tls-names-{$Runtime->GetProcessId()}.ca/openssl.cnf -subj \"/CN=localhost\" -keyout tls-names-{$Runtime->GetProcessId()}-key.pem -out tls-names-{$Runtime->GetProcessId()}.ca/server.csr") <> 0 |
+				Runtime->Command("openssl ca -batch -notext -config tls-names-{$Runtime->GetProcessId()}.ca/openssl.cnf -extensions v3_leaf -cert tls-names-{$Runtime->GetProcessId()}-ca.pem -keyfile tls-names-{$Runtime->GetProcessId()}.ca/ca-key.pem -in tls-names-{$Runtime->GetProcessId()}.ca/server.csr {$dates} -out tls-names-{$Runtime->GetProcessId()}-cert.pem") <> 0) {
 			"FAIL: openssl could not create the TLS fixture -- is openssl on PATH?"->PrintLine();
 			Runtime->Exit(1);
 		};
@@ -142,12 +158,9 @@ class TlsServerCertNames {
 	}
 
 	method : Cleanup() ~ Nil {
+		Directory->Delete("tls-names-{$Runtime->GetProcessId()}.ca");
 		File->Delete("tls-names-{$Runtime->GetProcessId()}-ca.pem");
-		File->Delete("tls-names-{$Runtime->GetProcessId()}-ca-key.pem");
-		File->Delete("tls-names-{$Runtime->GetProcessId()}-ca.srl");
 		File->Delete("tls-names-{$Runtime->GetProcessId()}-key.pem");
-		File->Delete("tls-names-{$Runtime->GetProcessId()}.csr");
 		File->Delete("tls-names-{$Runtime->GetProcessId()}-cert.pem");
-		File->Delete("tls-names-{$Runtime->GetProcessId()}.cnf");
 	}
 }

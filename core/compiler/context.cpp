@@ -247,13 +247,7 @@ static bool StructuralGenericEquals(frontend::Type* a, frontend::Type* b)
  ****************************/
 void ContextAnalyzer::ProcessError(ParseNode* node, const std::wstring &msg)
 {
-#ifdef _DEBUG
-  GetLogger() << L"\tError: " << node->GetFileName() << L":(" << node->GetLineNumber() << L',' << node->GetLinePosition() << L"): " << msg << std::endl;
-#endif
-
-  const std::wstring &str_line_num = ToString(node->GetLineNumber());
-  const std::wstring &str_line_pos = ToString(node->GetLinePosition());
-  errors.insert(std::pair<int, std::wstring>(node->GetLineNumber(), node->GetFileName()+ L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
+  diagnostics.Error(node->GetFileName(), node->GetLineNumber(), node->GetLinePosition(), msg);
 }
 
 /****************************
@@ -272,13 +266,7 @@ void ContextAnalyzer::ProcessFatalError(ParseNode* node, const std::wstring& msg
  ****************************/
 void ContextAnalyzer::ProcessError(const std::wstring& fn, int ln, int lp, const std::wstring& msg)
 {
-#ifdef _DEBUG
-  GetLogger() << L"\tError: " << fn << L": (" << ln << L',' << lp << L"): " << msg << std::endl;
-#endif
-
-  const std::wstring& str_line_num = ToString(ln);
-  const std::wstring& str_line_pos = ToString(lp);
-  errors.insert(std::pair<int, std::wstring>(ln, fn+ L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
+  diagnostics.Error(fn, ln, lp, msg);
 }
 
 /****************************
@@ -286,11 +274,7 @@ void ContextAnalyzer::ProcessError(const std::wstring& fn, int ln, int lp, const
  ****************************/
 void ContextAnalyzer::ProcessError(const std::wstring& fn, const std::wstring& msg)
 {
-#ifdef _DEBUG
-  GetLogger() << L"\tError: " << msg << std::endl;
-#endif
-
-  errors.insert(std::pair<int, std::wstring>(1, fn + L":(1,1): " + msg));
+  diagnostics.Error(fn, msg);
 }
 
 /****************************
@@ -382,13 +366,7 @@ void ContextAnalyzer::ProcessErrorAlternativeMethods(std::wstring &message)
  ****************************/
 void ContextAnalyzer::ProcessWarning(ParseNode* node, const std::wstring& msg)
 {
-#ifdef _DEBUG
-  GetLogger() << L"\tWarning: " << node->GetFileName() << L":(" << node->GetLineNumber() << L',' << node->GetLinePosition() << L"): " << msg << std::endl;
-#endif
-
-  const std::wstring& str_line_num = ToString(node->GetLineNumber());
-  const std::wstring& str_line_pos = ToString(node->GetLinePosition());
-  warnings.insert(std::pair<int, std::wstring>(node->GetLineNumber(), node->GetFileName() + L":(" + str_line_num + L',' + str_line_pos + L"): Warning: " + msg));
+  diagnostics.Warning(node->GetFileName(), node->GetLineNumber(), node->GetLinePosition(), msg);
 }
 
 /****************************
@@ -401,29 +379,19 @@ bool ContextAnalyzer::CheckErrorsWarnings()
   bool status = true;
 
   // check and process errors
-  if(!errors.empty()) {
-    // Repeats are dropped before the cap, not after. The same diagnostic is
-    // raised from more than one resolution path -- an undefined method call can
-    // be reported three times at one position -- and identical copies were
-    // pushing real errors off the end of the output.
-    std::set<std::wstring> seen;
-    std::vector<std::wstring> unique_errors;
-    for(std::multimap<int, std::wstring>::iterator error = errors.begin(); error != errors.end(); ++error) {
-      if(seen.insert(error->second).second) {
-        unique_errors.push_back(error->second);
-      }
-    }
-
+  if(diagnostics.HasErrors()) {
+    // Repeats are dropped before anything is shown (DiagnosticSink).
+    const std::vector<Diagnostic> unique_errors = diagnostics.UniqueErrors();
     for(size_t i = 0; i < unique_errors.size(); ++i) {
 #if defined(_DIAG_LIB) || defined(_MODULE)
-      error_strings.push_back(unique_errors[i]);
+      error_diagnostics.push_back(unique_errors[i]);
 #else
-      std::wcerr << unique_errors[i] << std::endl;
+      std::wcerr << unique_errors[i].Format() << std::endl;
 #endif
     }
 
 #ifdef _DIAG_LIB
-    program->SetErrorStrings(error_strings);
+    program->SetErrorDiagnostics(error_diagnostics);
 #endif
 
     status = false;
@@ -431,22 +399,18 @@ bool ContextAnalyzer::CheckErrorsWarnings()
 
 #ifndef _MODULE
   // check and process warnings
-  if(!warnings.empty()) {
-    // same reasoning as the errors above
-    std::set<std::wstring> seen_warnings;
-    for(std::multimap<int, std::wstring>::iterator warning = warnings.begin(); warning != warnings.end(); ++warning) {
-      if(!seen_warnings.insert(warning->second).second) {
-        continue;
-      }
+  if(diagnostics.HasWarnings()) {
+    const std::vector<Diagnostic> unique_warnings = diagnostics.UniqueWarnings();
+    for(size_t i = 0; i < unique_warnings.size(); ++i) {
 #ifdef _DIAG_LIB
-      warning_strings.push_back(warning->second);
+      warning_diagnostics.push_back(unique_warnings[i]);
 #else
-      std::wcerr << warning->second << std::endl;
+      std::wcerr << unique_warnings[i].Format() << std::endl;
 #endif
     }
 
 #ifdef _DIAG_LIB
-    program->SetWarningStrings(warning_strings);
+    program->SetWarningDiagnostics(warning_diagnostics);
 #endif
   }
 #endif
@@ -457,7 +421,12 @@ bool ContextAnalyzer::CheckErrorsWarnings()
 #ifdef _MODULE
 std::vector<std::wstring> ContextAnalyzer::GetErrors()
 {
-  return error_strings;
+  std::vector<std::wstring> lines;
+  for(size_t i = 0; i < error_diagnostics.size(); ++i) {
+    lines.push_back(error_diagnostics[i].Format());
+  }
+
+  return lines;
 }
 #endif
 
