@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# local_linux.sh [REF] [--jit1] [--flags] [--skip-regression]
+# local_linux.sh [REF] [--jit1] [--flags] [--skip-regression] [--skip-libs] [--strict-libs]
 #
 # Builds and tests the COMMITTED tree (REF, default HEAD) the way ci-build.yml's
 # linux-x64 leg does, in a clean copy, so a break shows up before the push rather
@@ -14,6 +14,13 @@
 #     for a 4-core runner) becomes -j$OBJECK_CI_JOBS in the copy (default: every CPU)
 #   * check_docs_deps.py --artifacts: the built tree against runtime_deps.json,
 #     the check that failed master CI when ubuntu-latest moved to 26.04 (#1479)
+#   * every library compiled from source (core/compiler/build_libs.sh), which must produce
+#     the committed core/lib/*.obl: deploy_posix.sh only COPIES the committed files, so
+#     without this a library that no longer compiles passes locally and fails in the cloud.
+#     A library that fails to compile is an error. A committed .obl that merely LAGS its
+#     source (the repo refreshes the set at each version bump) is a warning, because cloud
+#     CI rebuilds the libraries and does not require them committed; --strict-libs makes
+#     it an error. lang.obl is built by the separate bootstrap compiler and is not rebuilt.
 #   * the regression suite, split into $OBJECK_CI_SHARDS processes (default 8) when the
 #     tree's run_regression.sh supports REGRESSION_SHARD; with --jit1 again with
 #     OBJECK_JIT_THRESHOLD=1
@@ -30,11 +37,15 @@ REF=HEAD
 JIT1=0
 FLAGS=0
 REGRESSION=1
+LIBS=1
+LIBS_STRICT=0
 for arg in "$@"; do
   case "$arg" in
     --jit1)            JIT1=1 ;;
     --flags)           FLAGS=1 ;;
     --skip-regression) REGRESSION=0 ;;
+    --skip-libs)       LIBS=0 ;;
+    --strict-libs)     LIBS_STRICT=1 ;;
     -*)                echo "unknown option: $arg"; exit 2 ;;
     *)                 REF="$arg" ;;
   esac
@@ -138,6 +149,31 @@ fi
 step "built tree vs runtime_deps.json"
 ( cd "$work" && python3 tools/cicd/check_docs_deps.py --artifacts core/release/deploy --platform linux-x64 ) \
   || bad "the built tree links libraries runtime_deps.json does not list (or the reverse)"
+
+if [ "$LIBS" -eq 1 ]; then
+  step "libraries compile from source and equal the committed .obl"
+  start=$(date +%s)
+  rm -rf "$work/committed_obl"; mkdir -p "$work/committed_obl"
+  cp "$work"/core/lib/*.obl "$work/committed_obl/"
+  if ( cd "$work/core/compiler" && sh ./build_libs.sh ./obc ) > "$work/libs.log" 2>&1; then
+    differ=0
+    for f in "$work"/committed_obl/*.obl; do
+      n=$(basename "$f")
+      [ "$n" = lang.obl ] && continue
+      if ! cmp -s "$f" "$work/core/lib/$n"; then echo "   differs from the committed copy: $n"; differ=1; fi
+    done
+    if [ "$differ" -eq 0 ]; then
+      echo "   $(ls "$work"/committed_obl/*.obl | wc -l) libraries rebuilt, identical to the committed set ($(( $(date +%s) - start )) s)"
+    elif [ "$LIBS_STRICT" -eq 1 ]; then
+      bad "a committed .obl lags its source (rebuild with core/compiler/update_version.sh and commit it)"
+    else
+      echo "   warning: the libraries above lag their source; the set is refreshed at each version bump (--strict-libs fails on this)"
+    fi
+  else
+    tail -20 "$work/libs.log"
+    bad "a library does not compile from source: $work/libs.log"
+  fi
+fi
 
 if [ "$REGRESSION" -eq 1 ]; then
   step "regression"
