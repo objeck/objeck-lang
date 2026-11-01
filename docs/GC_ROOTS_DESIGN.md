@@ -62,6 +62,19 @@ built work: nothing below has landed.
     `--jit=1`, and PASS without it.
   - **The and/or slot is still scanned conservatively** on x64, as before; it is typed in phase 5.
     ARM64 is untouched (phase 4).
+- **Phase 4 is built (ARM64), 2026-11-01**, on branch `gc-roots-arm64`, the same design as phase 3
+  with the ARM64 frame: `TMP_SCR_0..2` (X9 across a libm call; the write barrier's destination and
+  pending values, whose overflow now fails the compile instead of being skipped), `TMP_VAL_0..5`, the
+  D8-D15 save area, `TMP_REF_0..5` right under the RED_ZONE word, so the entry zeroing is one range
+  from `TMP_REF_0` through the locals (the save area is outside it, as before). The FP save/restore
+  blocks are encoded from the layout rather than hand-written immediates. The frame no longer adds
+  `RED_ZONE` (256 bytes) above the outgoing area, slack that only the X19 save word at the top used:
+  a small method's frame is 168 bytes smaller than before despite the nine new slots. The collector
+  reads `TMP_REF_0..5` by their distance below the RED_ZONE word (`JitFrameLayout::RefSlot`), the
+  audit checks `TMP_VAL_0..5`, and `OBJECK_GC_ROOTS=conservative` scans the old window over every slot.
+  A libm call parks a pending caller-saved float in a callee-saved register, as before; ints go to the
+  typed slots. There is no ARM64 machine here: compile-checked with `cl /Zs` under the ARM64 cross
+  toolchain (with and without `_ARM64`), proven on CI's three arm64 legs.
 - **Suite-wide audit** (665 tests, interpreted, 256k nursery, on the #1457 fix):
   - 2,568 maps, 0 failed;
   - 0 threads whose segments do not add up;
@@ -379,7 +392,7 @@ tests (`gc_*_stress`, `jit_gc_stress`, `gc_mt_small_nursery_stress`, the nightly
 | **1** | `RefMap` analysis (`core/vm/arch/ref_map.h`, header-only so no build file changes) plus the `OBJECK_GC_ROOTS=audit` report-only mode. Report how often `unknown` occurs per suite. No behaviour change. | nothing yet; measures the design | low |
 | **2** | Interpreter operand stacks and the interpreted and/or slot marked and relocated by `RefMap`; audit traps that hold references across allocations. Lands `gc_int_not_relocated` (interpreter configurations). | §3.3 in interpreted code; retires 9cdc656566's interpreter half | medium |
 | **3** | AMD64: typed spill areas (`TMP_REF_*` / `TMP_VAL_*` / `TMP_SCR_*`), the kind read from `RefMap` at the spill site, clear after reload, entry zeroing of the reference slots; `CheckJitRoots`/`FixupRoots` walk them by type on x64. Lands `jit_stale_spill_slot` at s3 and the JIT configurations of `gc_address_int_pending`. **Built** (see the status note). | §3.1 paths 1 and 2, §3.3 compiled, on AMD64 | medium-high (frame constants) |
-| **4** | ARM64: the same. Compile-checked locally with `cl /Zs` and the cross toolchain; proven on CI's arm64 legs. | the same, on ARM64 | medium-high |
+| **4** | ARM64: the same. Compile-checked locally with `cl /Zs` and the cross toolchain; proven on CI's arm64 legs. **Built** (see the status note). | the same, on ARM64 | medium-high |
 | **5** | Remove `JIT_TMP_LOOK_BACK` and every `CheckUntypedSlot`/`FixupSlot` call on frame and stack words. Delete the dead JIT inliner (`ProcessInlineMethod`, `CanInlineMethod`, `extra_inline_space`). Remove the symptom code made redundant: the conservative and/or marking (9cdc656566) and the window spill comment paths in the loop safepoints (613e68a63f/8617fda009, now `TMP_REF_*`). Demote the conservative-word class validation (181d478f70) and the `FixupSelf` checks (4542ec7e41) to verifier assertions. | the whole class | medium |
 | **6** | Heap side: a reference type for closure capture blocks, retiring 193f076fdd's conservative dirty-block path. Separately, stable instance IDs. | 193f076fdd(b); ID identity | medium |
 

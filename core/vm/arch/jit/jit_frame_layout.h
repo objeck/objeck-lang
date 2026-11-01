@@ -38,7 +38,7 @@
 // the frame's words from StackFrame::jit_mem (CheckJitRoots, FixupRoots in
 // memory.cpp). Both used to carry their own copy of the numbers: the backend
 // in its header, the collector as "6 integer temp addresses" and a window of
-// JIT_TMP_LOOK_BACK words. When 5555f2960b widened the AMD64 spill slots from
+// sixteen untyped words. When 5555f2960b widened the AMD64 spill slots from
 // six to ten, the entry zeroing kept a count derived from six and left
 // TMP_REG_0 unzeroed (#1468, docs/GC_ROOTS_DESIGN.md section 3.1). This
 // header is the one place the layout lives, and the static_asserts at the
@@ -83,19 +83,21 @@
 //                     here, so it costs retention, never a missed root.
 //     The and/or temp keeps its conservative scan until phase 5 types it.
 //   ARM64 (SP-relative; positive offsets)
-//     the frame record and the JIT_* words, the float temps, the six
-//     integer temps, the D8-D15 save area, RED_ZONE (the and/or temp), then
-//     the declared locals upward from RED_ZONE + 8, lowest id first.
+//     the frame record and the JIT_* words, the float temps, then the same
+//     three classes of integer slot (TMP_SCR_0..2, TMP_VAL_0..5), the D8-D15
+//     save area, TMP_REF_0..5, the RED_ZONE word, the and/or temp when the
+//     method has one, then the declared locals upward, lowest id first. The
+//     reference slots sit right under RED_ZONE so the entry zeroing is one
+//     range from TMP_REF_0 through the locals.
 //
 // StackFrame::jit_mem points at the lowest-addressed declared local on all
 // three. On AMD64 the collector walks the declarations upward from there
 // (highest id first) and the and/or temp is the word after them; on ARM64 it
 // walks them upward from jit_mem (lowest id first) and the and/or temp is the
-// word before. On ARM64 a conservative window (JIT_TMP_LOOK_BACK) then runs
-// downward from the and/or temp's word, and the asserts below prove it reaches
-// every integer spill slot. On AMD64 the collector reads the TMP_REF_* slots
-// by their offsets from RED_ZONE (JitFrameLayout::RefSlot), and scans the
-// old window only under OBJECK_GC_ROOTS=conservative, the negative control.
+// word before. On both the collector reads the TMP_REF_* slots by their
+// offsets from the RED_ZONE word (JitFrameLayout::RefSlot), and scans the old
+// conservative window over every slot class only under
+// OBJECK_GC_ROOTS=conservative, the negative control.
 
 #if defined(JIT_LAYOUT_ARM64)
   // offsets for ARM A64 addresses
@@ -116,23 +118,36 @@
 #define TMP_D1 120
 #define TMP_D2 128
 #define TMP_D3 136
-  // integer temps
-#define TMP_X0 144
-#define TMP_X1 152
-#define TMP_X2 160
-#define TMP_X3 168
-#define TMP_X4 176
-#define TMP_X5 184
+  // scratch saves, never scanned: X9 across a libm call; the destination
+  // object and the pending values across the write barrier's slow path
+#define TMP_SCR_0 144
+#define TMP_SCR_1 152
+#define TMP_SCR_2 160
+  // pending Int values, never scanned
+#define TMP_VAL_0 168
+#define TMP_VAL_1 176
+#define TMP_VAL_2 184
+#define TMP_VAL_3 192
+#define TMP_VAL_4 200
+#define TMP_VAL_5 208
   // callee-saved FP register save slots
-#define SAVE_D8  192
-#define SAVE_D9  200
-#define SAVE_D10 208
-#define SAVE_D11 216
-#define SAVE_D12 224
-#define SAVE_D13 232
-#define SAVE_D14 240
-#define SAVE_D15 248
-#define RED_ZONE 256
+#define SAVE_D8  216
+#define SAVE_D9  224
+#define SAVE_D10 232
+#define SAVE_D11 240
+#define SAVE_D12 248
+#define SAVE_D13 256
+#define SAVE_D14 264
+#define SAVE_D15 272
+  // pending references (and unknowns): zeroed at entry, scanned, relocated.
+  // Right under RED_ZONE and the locals, so the entry zeroing is one range.
+#define TMP_REF_0 280
+#define TMP_REF_1 288
+#define TMP_REF_2 296
+#define TMP_REF_3 304
+#define TMP_REF_4 312
+#define TMP_REF_5 320
+#define RED_ZONE 328
 
 // The frame record block a native entry builds in its own frame (see
 // JitArm64::EmitNativePrologue): the StackFrame, the two mem words
@@ -266,25 +281,40 @@ namespace Runtime {
     static constexpr long WORD = (long)sizeof(size_t);
 
 #if defined(JIT_LAYOUT_ARM64)
-    // how many words beside every compiled frame the collector scans as
-    // untyped roots (CheckJitRoots, FixupRoots): downward from the and/or
-    // temp's word
-    static constexpr int WINDOW = 16;
-    // the six integer spill slots TMP_X0 .. TMP_X5 and the four float ones
-    static constexpr int TMP_INT_SLOTS = (TMP_X5 - TMP_X0) / WORD + 1;
+    // the three slot classes and the float temps (GC roots phase 4)
+    static constexpr int TMP_REF_SLOTS = (TMP_REF_5 - TMP_REF_0) / WORD + 1;
+    static constexpr int TMP_VAL_SLOTS = (TMP_VAL_5 - TMP_VAL_0) / WORD + 1;
+    static constexpr int TMP_SCR_SLOTS = (TMP_SCR_2 - TMP_SCR_0) / WORD + 1;
     static constexpr int TMP_FLOAT_SLOTS = (TMP_D3 - TMP_D0) / WORD + 1;
-    // the window starts at the and/or temp (RED_ZONE, the word below the first
-    // local) and runs downward; the last integer slot it must reach is TMP_X0
-    static constexpr int WORDS_TO_LAST_INT_SLOT = (RED_ZONE - TMP_X0) / WORD + 1;
-    // the save area the window crosses before the temps: harmless, never
-    // meaningful (docs/GC_ROOTS_DESIGN.md section 5.1)
     static constexpr int SAVE_AREA_WORDS = (SAVE_D15 - SAVE_D8) / WORD + 1;
-    static_assert(TMP_X1 - TMP_X0 == WORD && TMP_D1 - TMP_D0 == WORD, "the temps are consecutive words");
-    static_assert(TMP_X0 == TMP_D3 + WORD && SAVE_D8 == TMP_X5 + WORD && RED_ZONE == SAVE_D15 + WORD,
-                  "the float temps, the integer temps, the save area and RED_ZONE are contiguous");
-    static_assert(TMP_INT_SLOTS == 6, "RegisterRoot zeroes six integer slots");
+    // The old conservative window, kept for OBJECK_GC_ROOTS=conservative:
+    // from the RED_ZONE word (below the and/or temp and the locals) downward
+    // through the first scratch slot, so it covers every integer slot of
+    // every class, as the pre-phase-4 window covered TMP_X0..TMP_X5.
+    static constexpr int CONSERVATIVE_WINDOW = (RED_ZONE - TMP_SCR_0) / WORD + 1;
+    static_assert(TMP_REF_1 - TMP_REF_0 == WORD && TMP_VAL_1 - TMP_VAL_0 == WORD &&
+                  TMP_SCR_1 - TMP_SCR_0 == WORD && TMP_D1 - TMP_D0 == WORD && SAVE_D9 - SAVE_D8 == WORD,
+                  "the temps are consecutive words");
+    static_assert(TMP_SCR_0 == TMP_D3 + WORD && TMP_VAL_0 == TMP_SCR_2 + WORD && SAVE_D8 == TMP_VAL_5 + WORD &&
+                  TMP_REF_0 == SAVE_D15 + WORD && RED_ZONE == TMP_REF_5 + WORD,
+                  "float temps, scratch, value slots, the save area, reference slots and RED_ZONE are contiguous, in that order upward");
+    static_assert(TMP_REF_SLOTS == 6 && TMP_VAL_SLOTS == 6, "six pending values of either class, as the one untyped class allowed before");
+    static_assert(TMP_SCR_SLOTS == 3, "the write barrier saves its destination and up to two pending values");
     static_assert(TMP_FLOAT_SLOTS == 4, "ProcessStackCallback has four float slots");
-    static_assert(WORDS_TO_LAST_INT_SLOT == 1 + SAVE_AREA_WORDS + TMP_INT_SLOTS, "what lies between the and/or temp and TMP_X0");
+    static_assert(SAVE_AREA_WORDS == 8, "D8-D15");
+    static_assert(CONSERVATIVE_WINDOW == 1 + TMP_REF_SLOTS + SAVE_AREA_WORDS + TMP_VAL_SLOTS + TMP_SCR_SLOTS,
+                  "the conservative window is the RED_ZONE word and every slot below it");
+    static_assert(TMP_REF_0 + (TMP_REF_SLOTS - 1) * WORD == TMP_REF_5, "RefSlot reaches TMP_REF_5 last");
+    static_assert(TMP_VAL_0 + (TMP_VAL_SLOTS - 1) * WORD == TMP_VAL_5, "ValSlot reaches TMP_VAL_5 last");
+
+    // The collector's view: `red_zone` is the word below the first local
+    // (jit_mem - 1, the RED_ZONE word); the slots lie at fixed distances below it.
+    static inline size_t* RefSlot(size_t* red_zone, int k) {
+      return (size_t*)((char*)red_zone - (RED_ZONE - TMP_REF_0) + k * WORD);
+    }
+    static inline size_t* ValSlot(size_t* red_zone, int k) {
+      return (size_t*)((char*)red_zone - (RED_ZONE - TMP_VAL_0) + k * WORD);
+    }
 #else
     // the three slot classes and the float temps
     static constexpr int TMP_REF_SLOTS = (TMP_REF_0 - TMP_REF_9) / WORD + 1;
@@ -336,16 +366,6 @@ namespace Runtime {
     }
 #endif
 
-#if defined(JIT_LAYOUT_ARM64)
-    // The window covers every integer spill slot. This is the check that
-    // would have caught the ten-slot widening on AMD64: the window was fixed
-    // at sixteen while the count the zeroing used was not.
-    static_assert(WORDS_TO_LAST_INT_SLOT <= WINDOW, "the conservative window must reach every integer spill slot");
-#endif
   };
 }
 
-#if defined(JIT_LAYOUT_ARM64)
-// the collector's name for the window
-#define JIT_TMP_LOOK_BACK (Runtime::JitFrameLayout::WINDOW)
-#endif
