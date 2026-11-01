@@ -166,13 +166,13 @@ jobs:
     steps:
       - name: Checkout the probe commit
         timeout-minutes: 5
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       # Restore only; ci-build.yml keeps these entries warm.
       - name: Restore APT packages (Linux)
         if: runner.os == 'Linux'
         timeout-minutes: 5
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: ~/apt-cache
           key: ${{ runner.os }}-${{ matrix.arch }}-apt-${{ hashFiles('.github/workflows/stress-probe.yml') }}
@@ -201,7 +201,7 @@ jobs:
 
       - name: Download the CI deploy tree
         timeout-minutes: 10
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: objeck-${{ matrix.platform }}
           run-id: ${{ needs.resolve.outputs.run_id }}
@@ -240,7 +240,7 @@ jobs:
       - name: Upload results
         if: always()
         timeout-minutes: 5
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: stress-probe-${{ matrix.platform }}
           path: |

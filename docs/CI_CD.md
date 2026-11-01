@@ -525,7 +525,7 @@ GitHub Actions **automatically masks** secret values in logs:
 ### Dependency Security
 
 **Mitigation:**
-- Actions are pinned to **major-version tags** (e.g., `actions/checkout@v5`), not commit SHAs
+- Actions are pinned to **full commit SHAs** with a trailing version comment (e.g., `actions/checkout@<sha> # v5.1.0`); Dependabot (`.github/dependabot.yml`) proposes weekly updates
 - Mostly official actions; the third-party ones are `ilammy/msvc-dev-cmd`, `gitleaks/gitleaks-action` and `release-drafter/release-drafter`
 - Regularly update action versions
 - Monitor GitHub Security Advisories

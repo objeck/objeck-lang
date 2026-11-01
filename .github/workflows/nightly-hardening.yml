@@ -166,7 +166,7 @@ jobs:
     steps:
       - name: Checkout the tested commit
         timeout-minutes: 5
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ inputs.use_dispatch_ref && github.sha || needs.resolve.outputs.head_sha }}
 
@@ -175,7 +175,7 @@ jobs:
       - name: Restore APT packages (Linux)
         if: runner.os == 'Linux'
         timeout-minutes: 5
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: ~/apt-cache
           key: ${{ runner.os }}-${{ matrix.arch }}-apt-${{ hashFiles('.github/workflows/nightly-hardening.yml') }}
@@ -201,7 +201,7 @@ jobs:
       - name: Restore Homebrew downloads (macOS)
         if: runner.os == 'macOS'
         timeout-minutes: 5
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: |
             ~/Library/Caches/Homebrew
@@ -225,7 +225,7 @@ jobs:
 
       - name: Download the CI deploy tree
         timeout-minutes: 10
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: objeck-${{ matrix.platform }}
           run-id: ${{ needs.resolve.outputs.run_id }}
@@ -350,7 +350,7 @@ jobs:
       - name: Upload results
         if: always()
         timeout-minutes: 5
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: nightly-${{ matrix.platform }}
           path: nightly-results/
@@ -376,7 +376,7 @@ jobs:
       issue_count: ${{ steps.triage.outputs.issue_count }}
       new_issues: ${{ steps.triage.outputs.new_issues }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Triage tool tests
         run: |
@@ -385,7 +385,7 @@ jobs:
           python3 -m unittest discover -s tools/fuzz -p "test_run_fuzz.py"
 
       - name: Download leg results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         continue-on-error: true
         with:
           pattern: nightly-*
@@ -405,7 +405,7 @@ jobs:
 
       - name: Upload triage
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: nightly-triage
           path: nightly-triage/
@@ -478,12 +478,12 @@ jobs:
       matrix:
         issue: ${{ fromJSON(needs.triage.outputs.new_issues) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           sparse-checkout: .github/actions
 
       - name: Download triage
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: nightly-triage
           path: nightly-triage

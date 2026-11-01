@@ -82,7 +82,7 @@ jobs:
       GH_REPO: ${{ github.repository }}
       VERSION: ${{ needs.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Download the released tarball
         run: |
@@ -110,7 +110,7 @@ jobs:
       - name: Install and test on a clean Ubuntu 24.04
         run: bash tools/packaging/test_deb.sh out/objeck-ubuntu24.04-${{ matrix.arch }}_$VERSION.deb
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: deb-${{ matrix.arch }}
           path: out/*.deb
@@ -126,7 +126,7 @@ jobs:
       GH_REPO: ${{ github.repository }}
       VERSION: ${{ needs.version.outputs.version }}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           pattern: deb-*
           merge-multiple: true

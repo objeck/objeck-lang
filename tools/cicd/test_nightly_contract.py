@@ -50,7 +50,9 @@ def _scalar(value):
     value = value.strip()
     if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
         return value[1:-1]
-    return value
+    # An unquoted scalar ends at ' #' (YAML comment), e.g. a pinned action's
+    # `uses: owner/repo@<sha> # v1.2.3`.
+    return value.split(" #", 1)[0].rstrip()
 
 
 def scan_workflow(text):
