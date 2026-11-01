@@ -192,9 +192,18 @@ fi
 if [ "$FLAGS" -eq 1 ]; then
   step "run_vm_flag_tests.py"
   ( cd "$work/programs/regression" && python3 run_vm_flag_tests.py "$work/core/release/deploy/bin" ) > "$work/flags.log" 2>&1
+  flags_rc=$?
   grep -c '\[PASS\]' "$work/flags.log" | sed 's/^/   passed: /'
   grep '\[FAIL\]' "$work/flags.log" | head -10
   grep -q '\[FAIL\]' "$work/flags.log" && bad "flag tests had failures: $work/flags.log"
+  # The exit status counts too: a traceback or a crash part-way through prints no [FAIL] line,
+  # and a merge once left the script dying with a NameError after section 31 while this leg
+  # still reported a pass.
+  if [ "$flags_rc" -ne 0 ]; then
+    tail -5 "$work/flags.log"
+    bad "run_vm_flag_tests.py exited $flags_rc: $work/flags.log"
+  fi
+  grep -q '^Traceback' "$work/flags.log" && bad "run_vm_flag_tests.py raised: $work/flags.log"
 fi
 
 echo
