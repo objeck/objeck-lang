@@ -476,7 +476,8 @@ def run_standalone_tests(bin_dir):
                  "dap_stepout_types_test.py", "dap_drilldown_test.py",
                  "dap_protocol_test.py", "dap_databreak_test.py",
                  "dap_frame_eval_test.py", "dap_thread_test.py", "dap_setvar_test.py",
-                 "dap_robustness_test.py", "obd_teardown_test.py"):
+                 "dap_robustness_test.py", "dap_pause_test.py",
+                 "dap_breakpoint_keys_test.py", "obd_teardown_test.py"):
         path = os.path.join(REG_DIR, name)
         if not os.path.exists(path):
             continue

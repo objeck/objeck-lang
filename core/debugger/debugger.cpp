@@ -36,6 +36,12 @@
 #include "../shared/version.h"
 #include "../vm/vm.h"
 #include <sstream>
+#ifndef _WIN32
+#include <sys/stat.h>
+#endif
+#include <filesystem>
+#include <fstream>
+#include <iterator>
 
  /********************************
   * Debugger main
@@ -372,6 +378,21 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
     return;
   }
 
+  // The fast path. With no breakpoint, watch, step, pause or stop in play there
+  // is nothing the rest of this function could do, and it is by far the common
+  // case -- so it must not cost a lock. (It took three per instruction, which
+  // serialized every thread of a threaded program under obd: see hook_work.)
+  // All that is kept is the thread's entry in the thread list, once per thread,
+  // so that 'threads' knows about it before the first stop.
+  if(hook_work.load(std::memory_order_relaxed) == 0) {
+    thread_local const Debugger* noted_for = nullptr;
+    if(noted_for != this && frame->method->GetClass()) {
+      noted_for = this;
+      NoteThreadSite(instr->GetLineNumber(), frame->method->GetClass()->GetFileName(), frame, call_stack, call_stack_pos);
+    }
+    return;
+  }
+
   // Every VM thread arrives here now, not just the one the program started on.
   // Note where this thread is BEFORE taking the lock, so a thread blocked
   // behind another's stop is still listed with a real position.
@@ -393,6 +414,14 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
     std::lock_guard<std::mutex> guard(sites_lock);
     thread_sites[SelfKey()].parked = false;
   }
+  // Every way out of here, the step state is what the other threads' fast path
+  // reads next. Declared after hook_guard so it runs before the lock is let go.
+  struct StepSync {
+    Debugger* debugger;
+    ~StepSync() {
+      debugger->SyncStepWork();
+    }
+  } step_sync{this};
 
   if(frame->method->GetClass()) {
     const int line_num = instr->GetLineNumber();
@@ -435,7 +464,11 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
       prev_instr_line = line_num;
       prev_instr_pos = call_stack_pos;
 
-      UserBreak* hit_break = ((new_line_instr && (continue_state == 2 || line_num != cur_line_num || call_stack_pos != cur_call_stack_pos)) ? FindBreak(line_num, file_name) : nullptr);
+      // The break list and the watch list are edited by the DAP request thread
+      // while this runs; hold their lock from the lookup to the last use of
+      // what it found, and drop it before any stop.
+      std::unique_lock<std::recursive_mutex> state_guard(state_lock);
+      UserBreak* hit_break = ((new_line_instr && (continue_state == 2 || line_num != cur_line_num || call_stack_pos != cur_call_stack_pos)) ? FindBreak(line_num, file_name, frame->method->GetClass()->GetName()) : nullptr);
       bool found_break = (hit_break != nullptr);
 
       // honor disabled breakpoints
@@ -512,9 +545,23 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
         breaks.remove(hit_break);
         delete hit_break;
         hit_break = nullptr;
+        SyncBreakWork();
+      }
+      state_guard.unlock();
+
+      // A pause request is taken by the first thread here that has a source
+      // position to stop at. exchange() makes it exactly one thread.
+      bool pause_hit = false;
+      if(pause_requested.load(std::memory_order_relaxed) && pause_requested.exchange(false)) {
+        pause_hit = true;
+        SetWork(WORK_PAUSE, false);
+        if(pause_requested.load()) {
+          // a second request raced in between the exchange and the clear
+          SetWork(WORK_PAUSE, true);
+        }
       }
 
-      if(found_break || found_next_line || step_into || step_out || until_hit || watch_hit) {
+      if(found_break || found_next_line || step_into || step_out || until_hit || watch_hit || pause_hit) {
         // set current line
         cur_line_num = line_num;
         cur_file_name = file_name;
@@ -532,11 +579,13 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
           std::lock_guard<std::mutex> guard(sites_lock);
           world_stopped = true;
           stopped_thread = std::this_thread::get_id();
+          SetWork(WORK_STOPPED, true);
         }
 
         if(mode == DebugMode::DAP && dap_adapter) {
           // DAP mode: notify adapter and block until resume
-          std::string reason = found_break ? "breakpoint" : (watch_hit ? "data breakpoint" : "step");
+          std::string reason = found_break ? "breakpoint" : (watch_hit ? "data breakpoint" :
+                               ((pause_hit && !(found_next_line || step_into || step_out || until_hit)) ? "pause" : "step"));
           dap_adapter->OnStopped(reason, line_num, file_name, frame, call_stack, call_stack_pos);
 
           // After resume, check what stepping mode was requested
@@ -548,6 +597,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
             }
             std::lock_guard<std::mutex> guard(sites_lock);
             world_stopped = false;
+            SetWork(WORK_STOPPED, false);
             return;
           }
           if(dap_adapter->IsStepInto()) {
@@ -601,6 +651,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
         {
           std::lock_guard<std::mutex> guard(sites_lock);
           world_stopped = false;
+          SetWork(WORK_STOPPED, false);
         }
         // The resumed thread comes straight back for the lock on its very next
         // instruction, and an unfair mutex lets it win every time -- three
@@ -936,10 +987,12 @@ void Runtime::Debugger::ProcessBreaks() {
 }
 
 void Runtime::Debugger::ProcessDeleteById(int id) {
+  std::lock_guard<std::recursive_mutex> guard(state_lock);
   for(std::list<UserBreak*>::iterator iter = breaks.begin(); iter != breaks.end(); ++iter) {
     if((*iter)->id == id) {
       UserBreak* user_break = *iter;
       breaks.erase(iter);
+      SyncBreakWork();
       std::wcout << L"removed breakpoint #" << id << L": file='" << user_break->file_name
                  << L"', line=" << user_break->line_num << L"." << std::endl;
       delete user_break;
@@ -2188,25 +2241,15 @@ bool Runtime::Debugger::DirectoryExists(const std::wstring& wdir_name)
 #endif
 }
 
-// Bridges DAP's hitCondition onto the ignore counts the engine already has.
-bool Runtime::Debugger::SetIgnoreCountForDap(int line_num, const std::wstring& file_name, int count)
-{
-  UserBreak* user_break = FindBreak(line_num, file_name);
-  if(!user_break) {
-    return false;
-  }
-
-  user_break->ignore_count = count;
-  return true;
-}
-
 bool Runtime::Debugger::DeleteBreak(int line_num, const std::wstring& file_name)
 {
+  std::lock_guard<std::recursive_mutex> guard(state_lock);
   UserBreak* user_break = FindBreak(line_num, file_name);
   if(user_break) {
     breaks.remove(user_break);
     // remove() unlinks; it does not free. Every 'delete' leaked one UserBreak.
     delete user_break;
+    SyncBreakWork();
     return true;
   }
 
@@ -2218,20 +2261,12 @@ Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num)
   return FindBreak(line_num, cur_file_name);
 }
 
-Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num, const std::wstring& file_name)
+Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num, const std::wstring& file_name, const std::wstring& class_name)
 {
-  // Extract basename from instruction's file_name for fallback comparison
-  std::wstring instr_basename = file_name;
-  size_t sep = file_name.find_last_of(L"/\\");
-  if(sep != std::wstring::npos) {
-    instr_basename = file_name.substr(sep + 1);
-  }
-
+  std::lock_guard<std::recursive_mutex> guard(state_lock);
   for(std::list<UserBreak*>::iterator iter = breaks.begin(); iter != breaks.end(); iter++) {
     UserBreak* user_break = (*iter);
-    const std::wstring base_file_name = base_path_param + user_break->file_name;
-    if(user_break->line_num == line_num &&
-       (user_break->file_name == file_name || base_file_name == file_name || user_break->file_name == instr_basename)) {
+    if(user_break->line_num == line_num && BreakMatches(user_break, file_name, class_name)) {
       return *iter;
     }
   }
@@ -2239,29 +2274,407 @@ Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num, const std::wstrin
   return nullptr;
 }
 
-// forward declarations for file-scope helpers defined further below
-static StackProgram* DbgProgram(StackProgram* cur_program, Loader* loader);
-static StackFrame* DbgFrameAt(long pos, StackFrame* top, StackFrame** call_stack, long top_pos);
+bool Runtime::Debugger::BreakMatches(const UserBreak* user_break, const std::wstring& file_name, const std::wstring& class_name)
+{
+  // the base name of the instruction's file, for the comparisons that use it
+  std::wstring instr_basename = file_name;
+  const size_t sep = file_name.find_last_of(L"/\\");
+  if(sep != std::wstring::npos) {
+    instr_basename = file_name.substr(sep + 1);
+  }
+
+  // A DAP breakpoint set on a file that exists here belongs to that file. The
+  // compiled program records base names only, so the base name has to agree,
+  // and when more than one known file has it the class the instruction belongs
+  // to says which one it was written in. Matching on the base name alone made a
+  // breakpoint in src/b/util.obs stop the program in src/a/util.obs too. When
+  // the file cannot be told from another, the base name is all there is.
+  if(!user_break->full_path.empty()) {
+    if(user_break->file_name != instr_basename) {
+      return false;
+    }
+    const std::wstring resolved = ResolveClassSource(file_name, class_name);
+    return resolved.empty() || PathKey(resolved) == user_break->full_path;
+  }
+
+  const std::wstring base_file_name = base_path_param + user_break->file_name;
+  return user_break->file_name == file_name || base_file_name == file_name || user_break->file_name == instr_basename;
+}
 
 bool Runtime::Debugger::AddBreak(int line_num, const std::wstring& file_name, Expression* condition, bool temporary, const std::wstring& log_message)
 {
-  if(line_num > 0 && !FindBreak(line_num, file_name)) {
-    UserBreak* user_break = new UserBreak;
-    user_break->id = next_break_id++;
-    user_break->line_num = line_num;
-    user_break->file_name = file_name;
-    user_break->condition = condition;
-    user_break->enabled = true;
-    user_break->temporary = temporary;
-    user_break->ignore_count = 0;
-    user_break->last_line = -1;
-    user_break->last_pos = -1;
-    user_break->log_message = log_message;
-    breaks.push_back(user_break);
-    return true;
+  return AddBreakEntry(line_num, file_name, L"", condition, temporary, log_message, 0) != nullptr;
+}
+
+Runtime::UserBreak* Runtime::Debugger::AddBreakEntry(int line_num, const std::wstring& file_name, const std::wstring& path_key,
+                                                      Expression* condition, bool temporary, const std::wstring& log_message, int preferred_id)
+{
+  std::lock_guard<std::recursive_mutex> guard(state_lock);
+  if(line_num <= 0) {
+    return nullptr;
   }
 
-  return false;
+  // one breakpoint per place: the same file's key for a DAP one, the same file
+  // by name (or resolved to the same path) for any other
+  if(!path_key.empty()) {
+    for(std::list<UserBreak*>::iterator iter = breaks.begin(); iter != breaks.end(); ++iter) {
+      if((*iter)->line_num == line_num && (*iter)->full_path == path_key) {
+        return nullptr;
+      }
+    }
+  }
+  else if(FindBreak(line_num, file_name)) {
+    return nullptr;
+  }
+
+  // ids are never reused: a client keys its breakpoints on them
+  int id = preferred_id;
+  for(std::list<UserBreak*>::iterator iter = breaks.begin(); id > 0 && iter != breaks.end(); ++iter) {
+    if((*iter)->id == id) {
+      id = 0;
+    }
+  }
+  if(id <= 0) {
+    id = next_break_id++;
+  }
+
+  UserBreak* user_break = new UserBreak;
+  user_break->id = id;
+  user_break->line_num = line_num;
+  user_break->file_name = file_name;
+  user_break->full_path = path_key;
+  user_break->condition = condition;
+  user_break->enabled = true;
+  user_break->temporary = temporary;
+  user_break->ignore_count = 0;
+  user_break->last_line = -1;
+  user_break->last_pos = -1;
+  user_break->log_message = log_message;
+  breaks.push_back(user_break);
+  SyncBreakWork();
+  return user_break;
+}
+
+int Runtime::Debugger::AddSourceBreak(int line_num, const std::wstring& display_name, const std::wstring& path_key,
+                                      Expression* condition, const std::wstring& log_message, int hit_count, int preferred_id)
+{
+  std::lock_guard<std::recursive_mutex> guard(state_lock);
+  UserBreak* user_break = AddBreakEntry(line_num, display_name, path_key, condition, false, log_message, preferred_id);
+  if(!user_break) {
+    return 0;
+  }
+
+  // DAP's hitCondition, as a count, is the engine's ignore count plus one
+  if(hit_count > 1) {
+    user_break->ignore_count = hit_count - 1;
+  }
+  return user_break->id;
+}
+
+std::map<int, int> Runtime::Debugger::ClearSourceBreaks(const std::wstring& path_key, const std::wstring& file_name)
+{
+  std::lock_guard<std::recursive_mutex> guard(state_lock);
+  std::map<int, int> removed;
+  std::list<UserBreak*>::iterator iter = breaks.begin();
+  while(iter != breaks.end()) {
+    const UserBreak* user_break = *iter;
+    const bool ours = !path_key.empty() ? user_break->full_path == path_key
+                                         : (user_break->full_path.empty() && user_break->file_name == file_name);
+    if(ours) {
+      removed[user_break->line_num] = user_break->id;
+      delete *iter;
+      iter = breaks.erase(iter);
+    }
+    else {
+      ++iter;
+    }
+  }
+  SyncBreakWork();
+  return removed;
+}
+
+void Runtime::Debugger::RequestPause()
+{
+  pause_requested = true;
+  SetWork(WORK_PAUSE, true);
+}
+
+void Runtime::Debugger::CancelPause()
+{
+  pause_requested = false;
+  SetWork(WORK_PAUSE, false);
+}
+
+// ---- paths ---------------------------------------------------------------
+
+// forward declarations for file-scope helpers defined further below
+static StackProgram* DbgProgram(StackProgram* cur_program, Loader* loader);
+static StackFrame* DbgFrameAt(long pos, StackFrame* top, StackFrame** call_stack, long top_pos);
+static std::wstring DbgBaseName(const std::wstring& f);
+
+// whether 'path' names a file (not a directory) that can be looked at
+static bool DbgIsFile(const std::wstring& path)
+{
+#ifdef _WIN32
+  const DWORD attributes = GetFileAttributesW(path.c_str());
+  return attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
+#else
+  struct stat info;
+  return stat(UnicodeToBytes(path).c_str(), &info) == 0 && S_ISREG(info.st_mode);
+#endif
+}
+
+static bool DbgIsAbsolute(const std::wstring& path)
+{
+  return !path.empty() && (path[0] == L'/' || path[0] == L'\\' || (path.size() > 1 && path[1] == L':'));
+}
+
+std::wstring Runtime::Debugger::NormalizePath(const std::wstring& path)
+{
+  if(path.empty()) {
+    return L"";
+  }
+
+  // a relative name is the source directory's before it is the working directory's
+  std::wstring candidate = path;
+  if(!DbgIsAbsolute(path) && DbgIsFile(base_path_param + path)) {
+    candidate = base_path_param + path;
+  }
+  if(!DbgIsFile(candidate)) {
+    return L"";
+  }
+
+#ifdef _WIN32
+  wchar_t full[_MAX_PATH];
+  if(_wfullpath(full, candidate.c_str(), _MAX_PATH)) {
+    return full;
+  }
+#else
+  char resolved[PATH_MAX];
+  if(realpath(UnicodeToBytes(candidate).c_str(), resolved)) {
+    return BytesToUnicode(std::string(resolved));
+  }
+#endif
+  return candidate;
+}
+
+std::wstring Runtime::Debugger::PathKey(const std::wstring& normalized_path)
+{
+  std::wstring key = normalized_path;
+#ifdef _WIN32
+  // the file system ignores case, and a client may spell the drive in either
+  for(wchar_t& ch : key) {
+    if(ch == L'/') {
+      ch = L'\\';
+    }
+    else {
+      ch = (wchar_t)towlower(ch);
+    }
+  }
+#endif
+  return key;
+}
+
+// The identifiers that follow the declaring keywords in an Objeck source: the
+// classes (and interfaces, enums, constants) the file defines. A tolerant scan,
+// not a parse -- it skips comments and string literals and nothing else.
+static std::set<std::wstring> DbgScanDeclaredClasses(const std::wstring& path)
+{
+  std::set<std::wstring> classes;
+  std::ifstream in(ToFsPath(path).c_str(), std::ios::binary);
+  if(!in.is_open()) {
+    return classes;
+  }
+  const std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+
+  const size_t size = text.size();
+  bool declares = false;      // the previous word was a declaring keyword
+  size_t i = 0;
+  while(i < size) {
+    const char ch = text[i];
+    if(ch == '#') {
+      if(i + 1 < size && text[i + 1] == '~') {
+        const size_t end = text.find("~#", i + 2);
+        i = (end == std::string::npos) ? size : end + 2;
+      }
+      else {
+        while(i < size && text[i] != '\n') {
+          i++;
+        }
+      }
+    }
+    else if(ch == '"' || ch == '\'') {
+      i++;
+      while(i < size && text[i] != ch) {
+        i += (text[i] == '\\' && i + 1 < size) ? 2 : 1;
+      }
+      i++;
+      declares = false;
+    }
+    else if(isalpha((unsigned char)ch) || ch == '_') {
+      const size_t start = i;
+      while(i < size && (isalnum((unsigned char)text[i]) || text[i] == '_')) {
+        i++;
+      }
+      const std::string word = text.substr(start, i - start);
+      if(declares) {
+        classes.insert(std::wstring(word.begin(), word.end()));
+        declares = false;
+      }
+      else {
+        declares = (word == "class" || word == "interface" || word == "enum" || word == "consts");
+      }
+    }
+    else {
+      if(!isspace((unsigned char)ch)) {
+        declares = false;
+      }
+      i++;
+    }
+  }
+
+  return classes;
+}
+
+// "Collection.Vector|Int,|" -> "Vector": the name a source file declares
+static std::wstring DbgClassLeaf(const std::wstring& class_name)
+{
+  std::wstring name = class_name.substr(0, class_name.find_first_of(L"<|"));
+  const size_t dot = name.find_last_of(L'.');
+  return dot == std::wstring::npos ? name : name.substr(dot + 1);
+}
+
+const std::set<std::wstring>& Runtime::Debugger::DeclaredClasses(const std::wstring& full_path)
+{
+  std::lock_guard<std::recursive_mutex> guard(state_lock);
+  std::unordered_map<std::wstring, std::set<std::wstring>>::iterator found = declared_classes.find(full_path);
+  if(found == declared_classes.end()) {
+    found = declared_classes.emplace(full_path, DbgScanDeclaredClasses(full_path)).first;
+  }
+  return found->second;
+}
+
+void Runtime::Debugger::NoteSourcePath(const std::wstring& normalized_path)
+{
+  if(normalized_path.empty()) {
+    return;
+  }
+
+  std::lock_guard<std::recursive_mutex> guard(state_lock);
+  const std::wstring base = DbgBaseName(normalized_path);
+  std::vector<std::wstring>& known = known_sources[base];
+  const bool first_of_its_name = known.empty();
+
+  auto add = [&known](const std::wstring& path) {
+    for(const std::wstring& have : known) {
+      if(PathKey(have) == PathKey(path)) {
+        return;
+      }
+    }
+    known.push_back(path);
+  };
+  add(normalized_path);
+
+  // a file system path as the wide string the rest of the debugger uses
+  auto from_fs = [](const std::filesystem::path& path) {
+#ifdef _WIN32
+    return path.wstring();
+#else
+    return BytesToUnicode(path.string());
+#endif
+  };
+
+  // The first time a name is seen, look for others of the name under the source
+  // directory -- a file the client has not set a breakpoint in is still a file
+  // the program may have been built from. Bounded: this runs on a request thread.
+  if(first_of_its_name && !base_path_param.empty()) {
+    std::error_code ec;
+    std::filesystem::recursive_directory_iterator walk(ToFsPath(base_path_param),
+                                                       std::filesystem::directory_options::skip_permission_denied, ec);
+    size_t visited = 0;
+    for(; !ec && walk != std::filesystem::recursive_directory_iterator() && visited < 20000; walk.increment(ec)) {
+      visited++;
+      if(walk.depth() > 8) {
+        walk.disable_recursion_pending();
+        continue;
+      }
+      if(PathKey(from_fs(walk->path().filename())) == PathKey(base)) {
+        std::error_code regular_ec;
+        if(walk->is_regular_file(regular_ec)) {
+          const std::wstring other = NormalizePath(from_fs(walk->path()));
+          if(!other.empty()) {
+            add(other);
+          }
+        }
+      }
+    }
+  }
+
+  // what is known about the name changed, so what was worked out from it did too
+  resolved_files.clear();
+}
+
+std::wstring Runtime::Debugger::ResolveClassSource(const std::wstring& instr_file_name, const std::wstring& class_name)
+{
+  std::lock_guard<std::recursive_mutex> guard(state_lock);
+  const std::wstring cache_key = instr_file_name + L"\n" + class_name;
+  const std::unordered_map<std::wstring, std::wstring>::iterator cached = resolved_files.find(cache_key);
+  if(cached != resolved_files.end()) {
+    return cached->second;
+  }
+
+  const std::wstring base = DbgBaseName(instr_file_name);
+  std::wstring found;
+
+  // A name with a directory in it says where the file is, and needs no guessing:
+  // as written, or under the source directory.
+  if(base != instr_file_name) {
+    const std::wstring written[] = { instr_file_name, base_path_param + instr_file_name };
+    for(size_t i = 0; found.empty() && i < 2; ++i) {
+      if(DbgIsFile(written[i])) {
+        found = NormalizePath(written[i]);
+      }
+    }
+  }
+
+  if(found.empty()) {
+    // every file this base name could be: the ones the client named, and the one
+    // in the source directory the editor's stack trace has always assumed
+    std::vector<std::wstring> candidates;
+    const std::map<std::wstring, std::vector<std::wstring>>::const_iterator known = known_sources.find(base);
+    if(known != known_sources.end()) {
+      candidates = known->second;
+    }
+    const std::wstring flat = DbgIsFile(base_path_param + base) ? NormalizePath(base_path_param + base) : L"";
+    bool have_flat = flat.empty();
+    for(size_t i = 0; !have_flat && i < candidates.size(); ++i) {
+      have_flat = PathKey(candidates[i]) == PathKey(flat);
+    }
+    if(!have_flat) {
+      candidates.push_back(flat);
+    }
+
+    if(candidates.size() == 1) {
+      found = candidates[0];
+    }
+    else if(candidates.size() > 1 && !class_name.empty()) {
+      // more than one: the one that declares the class
+      const std::wstring leaf = DbgClassLeaf(class_name);
+      size_t owners = 0;
+      for(const std::wstring& candidate : candidates) {
+        if(DeclaredClasses(candidate).count(leaf)) {
+          found = candidate;
+          owners++;
+        }
+      }
+      if(owners != 1) {
+        found.clear();
+      }
+    }
+  }
+
+  resolved_files[cache_key] = found;
+  return found;
 }
 
 bool Runtime::Debugger::ResolveAssignable(Expression* target, size_t*& slot, int& slot_type, std::wstring& error)
@@ -2938,7 +3351,11 @@ void Runtime::Debugger::ProcessWatch(Watch* watch) {
   wp->is_float = false;
   wp->last_int = 0;
   wp->last_float = 0.0;
-  watches.push_back(wp);
+  {
+    std::lock_guard<std::recursive_mutex> guard(state_lock);
+    watches.push_back(wp);
+    SyncWatchWork();
+  }
   std::wcout << L"added watchpoint #" << wp->id << L"." << std::endl;
 }
 
@@ -2947,6 +3364,7 @@ void Runtime::Debugger::ProcessUnwatch(int id) {
   // after a removal -- doing both skipped every second watchpoint and left
   // 'unwatch' reporting success for watches it had stepped over.
   int removed = 0;
+  std::lock_guard<std::recursive_mutex> guard(state_lock);
   std::list<WatchPoint*>::iterator iter = watches.begin();
   while(iter != watches.end()) {
     if(id < 0 || (*iter)->id == id) {
@@ -2954,6 +3372,7 @@ void Runtime::Debugger::ProcessUnwatch(int id) {
       iter = watches.erase(iter);
       delete wp;
       ++removed;
+      SyncWatchWork();
       if(id >= 0) {
         std::wcout << L"removed watchpoint #" << id << L"." << std::endl;
         return;
@@ -3543,6 +3962,7 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
 
 void Runtime::Debugger::ClearBreaks() {
   std::wcout << L"breakpoints cleared." << std::endl;
+  std::lock_guard<std::recursive_mutex> guard(state_lock);
   while(!breaks.empty()) {
     UserBreak* tmp = breaks.front();
     breaks.erase(breaks.begin());
@@ -3550,6 +3970,7 @@ void Runtime::Debugger::ClearBreaks() {
     delete tmp;
     tmp = nullptr;
   }
+  SyncBreakWork();
 }
 
 void Runtime::Debugger::ClearProgram(bool clear_loader) {
@@ -3622,13 +4043,21 @@ void Runtime::Debugger::ClearProgram(bool clear_loader) {
   prev_instr_line = -1;
   prev_instr_pos = -1;
 
+  // a pause asked for in the run that just ended is not one for the next
+  CancelPause();
+  SyncStepWork();
+
   // clear watchpoints
+  std::lock_guard<std::recursive_mutex> guard(state_lock);
   while(!watches.empty()) {
     WatchPoint* tmp = watches.front();
     watches.erase(watches.begin());
     delete tmp;
     tmp = nullptr;
   }
+  SyncWatchWork();
+  // the source directory may have changed, and the next run has its own files
+  resolved_files.clear();
 }
 
 // ============================================
@@ -3670,20 +4099,6 @@ void Runtime::Debugger::DapRun() {
     interpreter->Execute(op_stack, stack_pos, 0, cur_program->GetInitializationMethod(), nullptr, false);
 
     ClearReload();
-  }
-}
-
-void Runtime::Debugger::ClearFileBreaks(const std::wstring& file_name)
-{
-  auto iter = breaks.begin();
-  while(iter != breaks.end()) {
-    if((*iter)->file_name == file_name) {
-      delete *iter;
-      iter = breaks.erase(iter);
-    }
-    else {
-      ++iter;
-    }
   }
 }
 
@@ -3809,17 +4224,21 @@ int Runtime::Debugger::AddDataWatch(const std::wstring& expr_str)
   wp->is_float = false;
   wp->last_int = 0;
   wp->last_float = 0.0;
+  std::lock_guard<std::recursive_mutex> guard(state_lock);
   watches.push_back(wp);
+  SyncWatchWork();
 
   return wp->id;
 }
 
 void Runtime::Debugger::ClearDataWatches()
 {
+  std::lock_guard<std::recursive_mutex> guard(state_lock);
   for(std::list<WatchPoint*>::iterator iter = watches.begin(); iter != watches.end(); ++iter) {
     delete *iter;
   }
   watches.clear();
+  SyncWatchWork();
 
   last_watch_text.clear();
   last_watch_old.clear();
