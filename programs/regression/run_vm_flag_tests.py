@@ -53,7 +53,10 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     Runtime->SetProperty("runtime.test.throw", ...), a key the VM reserves to
     throw on purpose; it must print the line and leave obr non-zero both by
     default and with --jit=1, where the JIT's bridge reports it the same way
-    (since #778). And a command line that is all flags ("obr --jit=off")
+    (since #778). vm_thread_error_exit.obs throws the same way from a spawned
+    thread's Run, which had no catch and aborted (std::terminate): it must
+    print the line and exit non-zero by status, under --jit=off, by default
+    and with --jit=1. And a command line that is all flags ("obr --jit=off")
     names no program: that is the usage and a non-zero exit, not a silent
     one (it was a silent exit 0 on POSIX).
  10. The nursery knob and the GC statistics. --nursery (and OBJECK_NURSERY)
@@ -574,6 +577,23 @@ def main():
                   b"before" in out and b"after" not in out and b">>> virtual machine: internal error:" in err,
                   f"rc={rc} out={out[-80:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
             check(f"obr exits non-zero after that internal error, {label} (was 0 on POSIX)", rc != 0, f"rc={rc}")
+
+    # The same exception on a spawned thread: AsyncMethodCall had no catch, so it
+    # left the thread entry point and std::terminate aborted the process with
+    # nothing from the VM. A signal reads as a negative rc here on POSIX; on
+    # Windows abort() exits 3, which the line check rules out.
+    thr_src = os.path.join(SCRIPT_DIR, "vm_thread_error_exit.obs")
+    thr_obe = os.path.join(SCRIPT_DIR, "vm_thread_error_exit.obe")
+    rc, out, err = run([obc, "-src", thr_src, "-dest", thr_obe], env=env, cwd=bin_dir)
+    check("thread VM-error fixture compiles", rc == 0 and os.path.exists(thr_obe), err.decode(errors="replace")[-300:])
+    if rc == 0:
+        for label, flags in (("jit=off", ["--jit=off"]), ("default", []), ("jit=1", ["--jit=1"])):
+            rc, out, err = run([obr] + flags + [thr_obe], env=env, cwd=bin_dir, timeout=120)
+            detail = f"rc={rc} out={out[-80:]!r} stderr={err.decode(errors='replace')[-300:]!r}"
+            check(f"an exception escaping a spawned thread is reported as an internal error, {label}",
+                  b"before" in out and b"after" not in out
+                  and b">>> virtual machine: internal error: deliberate worker exception" in err, detail)
+            check(f"and obr exits non-zero by status, not by a signal, {label}", rc > 0, detail)
 
     # Every argument a flag, no program: Execute returns -1 for that without a
     # word, and the POSIX entry point turned it into a silent exit 0.

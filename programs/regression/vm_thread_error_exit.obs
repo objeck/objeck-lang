@@ -1,0 +1,40 @@
+# EXPECT_RUNTIME_ERROR
+#~
+A C++ exception that escapes the interpreter on a SPAWNED thread must end the
+program the way one on the main thread does: the VM's internal-error line and a
+non-zero exit status, not an abort.
+
+Execute (core/vm/vm.cpp) wraps the main thread's interpreter in last-resort
+catches. A thread started by Thread->Execute runs its own interpreter from
+AsyncMethodCall (core/vm/interpreter.cpp), which had none, so the exception left
+the thread entry point and the C++ runtime called std::terminate: SIGABRT on
+Linux and macOS, abort() on Windows, with nothing from the VM on stderr.
+
+The way in is Runtime->SetProperty("runtime.test.throw", ...), the key the VM
+reserves to throw on purpose (see vm_error_exit.obs), called from Run.
+
+The regression runner passes this file on any non-zero exit with output, which
+an abort also is; run_vm_flag_tests.py (section 7) names the line and the status
+under --jit=off, by default and under --jit=1.
+~#
+use System.Concurrency;
+
+class VmThreadErrorExit {
+	function : Main(args : String[]) ~ Nil {
+		"before"->PrintLine();
+		t := VmThreadErrorThrower->New();
+		t->Execute(Nil);
+		t->Join();
+		"after"->PrintLine();
+	}
+}
+
+class VmThreadErrorThrower from Thread {
+	New() {
+		Parent("vm-thread-error");
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		Runtime->SetProperty("runtime.test.throw", "deliberate worker exception");
+	}
+}

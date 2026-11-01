@@ -1537,15 +1537,18 @@ void StackInterpreter::ObjInstCast(StackInstr* instr, size_t* &op_stack, size_t*
   std::wcout << L"stack oper: OBJ_INST_CAST: from=" << mem << L", to=" << instr->GetOperand() << std::endl;
 #endif
   if(!result && mem) {
+    // the target class id comes from the instruction, which nothing validates
+    StackClass* cast_cls = program->GetClass(instr->GetOperand());
+    const std::wstring cast_name = cast_cls ? cast_cls->GetName() : L"?";
     // Recoverable like the other runtime errors: a?->b() yields Nil rather than
     // ending the program (#900).
-    if(TryErrorRecovery(stack_pos, RECOVERED_INVALID_CAST, std::wstring(L"Invalid object cast: '") + (MemoryManager::GetClass((size_t*)mem) ? MemoryManager::GetClass((size_t*)mem)->GetName() : L"?") + L"' to '" + program->GetClass(instr->GetOperand())->GetName() + L"'")) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_INVALID_CAST, std::wstring(L"Invalid object cast: '") + (MemoryManager::GetClass((size_t*)mem) ? MemoryManager::GetClass((size_t*)mem)->GetName() : L"?") + L"' to '" + cast_name + L"'")) {
       return;
     }
 
     StackClass* to_cls = MemoryManager::GetClass((size_t*)mem);
     std::wcerr << L">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : L"?")
-          << L"' to '" << program->GetClass(instr->GetOperand())->GetName() << L"' <<<" << std::endl;
+          << L"' to '" << cast_name << L"' <<<" << std::endl;
     StackErrorUnwind();
 #ifdef _NO_HALT
     halt = true;
@@ -1579,10 +1582,29 @@ void StackInterpreter::AsyncMthdCall([[maybe_unused]] size_t* &op_stack, size_t*
 
   std::wstring method_name = impl_class->GetName() + L":Run:o.System.Base,";
   StackMethod* called = impl_class->GetMethod(method_name);
-  while(!called) {
+  while(!called && impl_class->GetParent()) {
     impl_class = impl_class->GetParent();
     method_name = impl_class->GetName() + L":Run:o.System.Base,";
     called = impl_class->GetMethod(method_name);
+  }
+  // no Run(Base) anywhere up the hierarchy: the walk used to step off the root
+  // and dereference nullptr. System.Concurrency.Thread declares Run(Base)
+  // (lang.obs), so the walk stops there for any Thread subclass; only an
+  // instance outside that hierarchy -- a corrupt .obe -- gets here.
+  if(!called) {
+    const std::wstring message = L"Invalid thread class: no Run method in '" +
+      MemoryManager::GetClass(instance)->GetName() + L"'";
+    if(TryErrorRecovery(stack_pos, RECOVERED_OTHER, message)) {
+      return;
+    }
+    std::wcerr << L">>> " << message << L" <<<" << std::endl;
+    StackErrorUnwind();
+#ifdef _NO_HALT
+    halt = true;
+    return;
+#else
+    VmExit(1);
+#endif
   }
 
 #ifdef _DEBUG
@@ -2183,6 +2205,39 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param
 #endif
 }
 
+//
+// Runs a spawned thread's entry method under the same last-resort catches as
+// the main thread's (Execute in vm.cpp): a C++ exception that escapes the
+// interpreter -- bad_alloc when memory runs out, or anything a trap throws --
+// used to leave the thread entry point and call std::terminate, an abort with
+// no word of the VM's. It is reported with the main thread's lines and ends
+// the program with the main thread's status (-1, USAGE_ERROR there). This
+// thread is still a registered mutator, so VmExit takes the _Exit path and does
+// not run teardown under live threads (#877). Compiled code has its own catch
+// in the JIT's bridge, which reports the same way; this one covers the
+// interpreter.
+//
+static void ExecuteThreadBody(Runtime::StackInterpreter* intpr, size_t* op_stack, size_t* stack_pos,
+                              StackMethod* called, size_t* self)
+{
+  try {
+    intpr->Execute(op_stack, stack_pos, 0, called, self, false);
+  }
+  catch(const std::bad_alloc&) {
+    std::wcerr << L">>> virtual machine: out of memory <<<" << std::endl;
+    VmExit(-1);
+  }
+  catch(const std::exception& e) {
+    const std::string msg(e.what());
+    std::wcerr << L">>> virtual machine: internal error: " << std::wstring(msg.begin(), msg.end()) << L" <<<" << std::endl;
+    VmExit(-1);
+  }
+  catch(...) {
+    std::wcerr << L">>> virtual machine: unexpected error <<<" << std::endl;
+    VmExit(-1);
+  }
+}
+
 #ifdef _WIN32
 //
 // windows thread callback
@@ -2214,7 +2269,7 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   // wires op_stack/cur_frame before any allocation or safepoint, so the param placed
   // here becomes GC-scannable before this thread can park -> it cannot go stale.
   thread_op_stack[(*thread_stack_pos)++] = (size_t)holder->param;
-  intpr->Execute(thread_op_stack, thread_stack_pos, 0, holder->called, holder->self, false);
+  ExecuteThreadBody(intpr, thread_op_stack, thread_stack_pos, holder->called, holder->self);
   MemoryManager::UnregisterMutator();
 
 #ifdef _DEBUG
@@ -2276,7 +2331,7 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   // wires op_stack/cur_frame before any allocation or safepoint, so the param placed
   // here becomes GC-scannable before this thread can park -> it cannot go stale.
   thread_op_stack[(*thread_stack_pos)++] = (size_t)holder->param;
-  intpr->Execute(thread_op_stack, thread_stack_pos, 0, holder->called, holder->self, false);
+  ExecuteThreadBody(intpr, thread_op_stack, thread_stack_pos, holder->called, holder->self);
   MemoryManager::UnregisterMutator();
 
 #ifdef _DEBUG
@@ -2398,6 +2453,35 @@ bool StackInterpreter::NilFunctionValue(size_t* &op_stack, size_t* &stack_pos)
 #endif
 }
 
+/********************************
+ * A call instruction whose class or method id resolves to nothing (see
+ * ResolveCallTarget). The compiler never emits one, so this is a corrupt or
+ * crafted .obe: reported and recoverable like the other runtime errors, where
+ * it used to dereference nullptr. The caller's frame is already pushed;
+ * recovery pops it with the rest. Kept out of line, off the call path.
+ ********************************/
+#ifdef _MSC_VER
+__declspec(noinline) void StackInterpreter::UnresolvedMethodCall(
+#else
+void __attribute__((noinline, cold)) StackInterpreter::UnresolvedMethodCall(
+#endif
+    const long cls_id, const long mthd_id, size_t* &stack_pos)
+{
+  const std::wstring message = L"Invalid method call: class id=" + std::to_wstring(cls_id) +
+    L", method id=" + std::to_wstring(mthd_id);
+  if(TryErrorRecovery(stack_pos, RECOVERED_OTHER, message)) {
+    return;
+  }
+
+  std::wcerr << L">>> " << message << L" <<<" << std::endl;
+  StackErrorUnwind();
+#ifdef _NO_HALT
+  halt = true;
+#else
+  VmExit(1);
+#endif
+}
+
 void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos)
 {
   if(NilFunctionValue(op_stack, stack_pos)) {
@@ -2436,7 +2520,11 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr* &
 #ifdef _DEBUG
   std::wcout << L"stack oper: DYN_MTHD_CALL; cls_mtd_id=" << cls_id << L"," << mthd_id << std::endl;
 #endif
-  StackMethod* called = program->GetClass(cls_id)->GetMethod(mthd_id);
+  StackMethod* called = ResolveCallTarget(cls_id, mthd_id);
+  if(!called) {
+    UnresolvedMethodCall(cls_id, mthd_id, stack_pos);
+    return;
+  }
 #ifdef _DEBUG
   std::wcout << L"=== Binding function call: to: '" << called->GetName() << L"' ===" << std::endl;
 #endif
@@ -2547,7 +2635,11 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr* &instrs,
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   // make call
-  StackMethod* concrete_call = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
+  StackMethod* concrete_call = ResolveCallTarget(instr->GetOperand(), instr->GetOperand2());
+  if(!concrete_call) {
+    UnresolvedMethodCall(instr->GetOperand(), instr->GetOperand2(), stack_pos);
+    return;
+  }
 
   // virtual method call -- resolve in cold path
   if(concrete_call->IsVirtual()) {
@@ -2608,7 +2700,11 @@ void StackInterpreter::ProcessJitOnlyMethodCall(StackInstr* instr, StackInstr* &
 #endif
   }
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  StackMethod* concrete_call = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
+  StackMethod* concrete_call = ResolveCallTarget(instr->GetOperand(), instr->GetOperand2());
+  if(!concrete_call) {
+    UnresolvedMethodCall(instr->GetOperand(), instr->GetOperand2(), stack_pos);
+    return;
+  }
 
   if(concrete_call->IsVirtual()) {
     concrete_call = ResolveVirtualMethod(concrete_call, instance, instr, instrs, ip, stack_pos);
@@ -2652,7 +2748,11 @@ void StackInterpreter::ProcessJitOnlyDynamicMethodCall([[maybe_unused]] StackIns
   }
 
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  StackMethod* called = program->GetClass(cls_id)->GetMethod(mthd_id);
+  StackMethod* called = ResolveCallTarget(cls_id, mthd_id);
+  if(!called) {
+    UnresolvedMethodCall(cls_id, mthd_id, stack_pos);
+    return;
+  }
 
   ProcessJitMethodCall(called, instance, instrs, ip, op_stack, stack_pos);
 }
