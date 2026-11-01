@@ -4951,8 +4951,12 @@ each(i : 3) {
 				post_response := HttpsClient->QuickPost(Url->New(token_uri_str), data, "application/x-www-form-urlencoded", headers);
 
 				if(post_response <> Nil) {
-					response_json := JsonParser->TextToElement(post_response->GetContent()->ToString());
-					if(response_json->Has("access_token")) {
+					response_json : JsonElement;
+					if(post_response->GetContent() <> Nil) {
+						response_json := JsonParser->TextToElement(post_response->GetContent()->ToString());
+					};
+
+					if(response_json <> Nil & response_json->Has("access_token")) {
 						access_token := response_json->Get("access_token")->GetString();
 						expires_in := response_json->Get("expires_in")->GetInt();
 						scope := response_json->Get("scope")->GetString();
@@ -5064,9 +5068,12 @@ each(i : 3) {
 
 				if(post_response <> Nil) {
 					# post_response->GetContent()->ToString()->PrintLine();			
-					response_json := JsonParser->TextToElement(post_response->GetContent()->ToString());
-						
-					if(response_json->Has("access_token")) {
+					response_json : JsonElement;
+					if(post_response->GetContent() <> Nil) {
+						response_json := JsonParser->TextToElement(post_response->GetContent()->ToString());
+					};
+
+					if(response_json <> Nil & response_json->Has("access_token")) {
 						access_token := response_json->Get("access_token")->GetString();
 						refresh_token := response_json->Get("refresh_token")->GetString();
 						expires_in := response_json->Get("expires_in")->GetInt();

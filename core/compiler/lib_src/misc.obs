@@ -272,7 +272,7 @@ if(triplet <> Nil) {
 		~#
 		function : GetNetworkTime() ~ Collection.Tuple.Triplet<IntRef, Date, Date> {
 			response := HttpClient->QuickGet(Url->New("http://worldtimeapi.org/api/ip"));
-			if(response->GetCode() = 200) {
+			if(response <> Nil & response->GetCode() = 200 & response->GetContent() <> Nil) {
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(response_json <> Nil) {
 					unix_time_json := response_json->Get("unixtime");					

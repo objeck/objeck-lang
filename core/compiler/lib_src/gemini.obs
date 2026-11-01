@@ -47,6 +47,25 @@ bundle API.Google.Gemini {
 		}
 
 		#~
+		Reads a response body as text. A reply with no body (an HTTP 204, a proxy
+		error page without content) has no content bytes to read.
+		@param response HTTP response, or Nil
+		@return body text, or an empty string if the response has no body
+		~#
+		function : ResponseText(response : Web.HTTP.Response) ~ String {
+			if(response = Nil) {
+				return "";
+			};
+
+			content := response->GetContent();
+			if(content = Nil) {
+				return "";
+			};
+
+			return content->ToString();
+		}
+
+		#~
 		Reads the message of an error response. The parser keeps a JSON string's
 		escapes, so the message is JSON-unescaped here; an error without a message
 		gives the error element's JSON text.
@@ -2047,7 +2066,7 @@ candidate->GetAllText()->PrintLine();
 			url := Url->New("https://generativelanguage.googleapis.com/upload/v1beta/files?uploadType=multipart&key={$key}");
 			response := HttpsClient->QuickPost(url, full_body, content_type);
 			if(response <> Nil) {
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json <> Nil) {
 					file_json := response_json->Get("file");
 					if(file_json <> Nil) {
@@ -2391,7 +2410,7 @@ candidate->GetAllText()->PrintLine();
 		@return parsed JSON, or Nil on failure
 		~#
 		function : ParseBody(body : String) ~ JsonElement {
-			if(body = Nil) {
+			if(body = Nil | body->IsEmpty()) {
 				SetLastError("Empty response");
 				return Nil;
 			};
@@ -2438,7 +2457,7 @@ candidate->GetAllText()->PrintLine();
 		function : private : GetRequest(url : Url) ~ JsonElement {
 			response := HttpsClient->QuickGet(url, "application/json");
 			if(response <> Nil) {
-				return ParseBody(response->GetContent()->ToString());
+				return ParseBody(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 			};
 
 			return Nil;
@@ -2447,7 +2466,7 @@ candidate->GetAllText()->PrintLine();
 		function : private : PostRequest(request : JsonElement, url : Url, headers : Map<String,String>) ~ JsonElement {
 			response := HttpsClient->QuickPost(url, request->ToString()->ToByteArray(), "application/json", headers);
 			if(response <> Nil) {
-				return ParseBody(response->GetContent()->ToString());
+				return ParseBody(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 			};
 
 			return Nil;
@@ -2456,7 +2475,7 @@ candidate->GetAllText()->PrintLine();
 		function : private : PostRequest(request : JsonElement, url : Url) ~ JsonElement {
 			response := HttpsClient->QuickPost(url, request->ToString()->ToByteArray(), "application/json");
 			if(response <> Nil) {
-				return ParseBody(response->GetContent()->ToString());
+				return ParseBody(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 			};
 
 			return Nil;
@@ -2573,7 +2592,7 @@ bundle API.Google.Gemini.Tuning {
 			response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/tunedModels"), data, "application/json", headers);
 			if(response <> Nil) {
 				
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
@@ -2605,7 +2624,7 @@ bundle API.Google.Gemini.Tuning {
 			response := HttpsClient->QuickGet(Url->New(url_str), "application/json", headers);
 			if(response <> Nil) {
 				
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
@@ -2650,7 +2669,7 @@ bundle API.Google.Gemini.Tuning {
 			response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/tunedModels"), "application/json", headers);
 			if(response <> Nil) {
 				
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
@@ -2677,7 +2696,7 @@ bundle API.Google.Gemini.Tuning {
 							return Nil;
 						}
 						else {
-							response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+							response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 							if(response_json = Nil) {
 								"### Error: Unable to parse response ###"->ErrorLine();
 								return Nil;
@@ -2725,7 +2744,7 @@ bundle API.Google.Gemini.Tuning {
 			response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/{$model_id}:transferOwnership"), data, "application/json", headers);			
 			if(response <> Nil) {
 				
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					return false;
 				};
@@ -2965,7 +2984,7 @@ bundle API.Google.Gemini.Tuning {
 
 			response := HttpsClient->QuickPost(url, data, "application/json", headers);
 			if(response <> Nil) {
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
@@ -2989,10 +3008,23 @@ bundle API.Google.Gemini.Tuning {
 			headers := Collection.Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			
-			url_str := "https://generativelanguage.googleapis.com/v1beta/tunedModels"
+			url_str := "https://generativelanguage.googleapis.com/v1beta/tunedModels";
 			response := HttpsClient->QuickGet(Url->New(url_str), headers);
+			if(response = Nil | response->GetCode() = 0) {
+				SetLastError("No response from {$url_str}");
+				return Nil;
+			};
 
-			response_json	:= JsonParser->TextToElement(response->GetContent()->ToString());
+			response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
+			if(response_json = Nil) {
+				SetLastError("Unable to parse response");
+				return Nil;
+			};
+
+			if(response_json->Has("error")) {
+				SetLastError(API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json));
+				return Nil;
+			};
 
 			next_page_json : JsonElement;
 			do {
@@ -3007,7 +3039,7 @@ bundle API.Google.Gemini.Tuning {
 						return Nil;
 					}
 					else {
-						response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+						response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 						if(response_json = Nil) {
 							"### Error: Unable to parse response ###"->ErrorLine();
 							return Nil;
@@ -3047,7 +3079,7 @@ bundle API.Google.Gemini.Tuning {
 			
 			if(response <> Nil) {
 				
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return false;
@@ -3618,7 +3650,7 @@ each(result in results) {
 
 			if(response <> Nil) {
 				
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
@@ -3651,7 +3683,7 @@ each(result in results) {
 			if(response <> Nil) {
 				#response->GetContent()->ToString()->PrintLine();
 				
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
@@ -3681,7 +3713,7 @@ each(result in results) {
 			
 			if(response <> Nil) {
 				
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return false;
@@ -3718,7 +3750,7 @@ each(result in results) {
 
 			if(response <> Nil) {
 				
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
@@ -3881,7 +3913,7 @@ each(result in results) {
 
 			if(response <> Nil) {
 				
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
@@ -3933,7 +3965,7 @@ each(result in results) {
 
 			if(response <> Nil) {
 				
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
@@ -3966,7 +3998,7 @@ each(result in results) {
 			if(response <> Nil) {
 				#response->GetContent()->ToString()->PrintLine();
 				
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
@@ -4001,7 +4033,7 @@ each(result in results) {
 			if(response <> Nil) {
 				
 				
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
@@ -4028,7 +4060,7 @@ each(result in results) {
 							return Nil;
 						}
 						else {
-							response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+							response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 							if(response_json = Nil) {
 								"### Error: Unable to parse response ###"->ErrorLine();
 								return Nil;
@@ -4072,7 +4104,7 @@ each(result in results) {
 			
 			if(response <> Nil) {
 				
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return false;
@@ -4217,7 +4249,7 @@ each(result in results) {
 
 			if(response <> Nil) {
 				
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
@@ -4250,7 +4282,7 @@ each(result in results) {
 			if(response <> Nil) {
 				#response->GetContent()->ToString()->PrintLine();
 				
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
@@ -4281,7 +4313,7 @@ each(result in results) {
 			
 			if(response <> Nil) {
 				
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return false;
@@ -4313,7 +4345,7 @@ each(result in results) {
 			response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/{$doc_id}/chunks"), "application/json", headers);
 			if(response <> Nil) {
 				
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
@@ -4340,7 +4372,7 @@ each(result in results) {
 							return Nil;
 						}
 						else {
-							response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+							response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 							if(response_json = Nil) {
 								"### Error: Unable to parse response ###"->ErrorLine();
 								return Nil;
