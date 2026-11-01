@@ -14,7 +14,7 @@ note: compile compiler with -D_SYSTEM flag (on Linux)
 ~#	
 
 #~
-Core runtime library providing primitive types (Bool, Byte, Char, Int, Float, String), base collections, and system utilities. Every Objeck program links against this bundle automatically via lang.obl.
+Core runtime library providing primitive types (Bool, Byte, Char, Int, Float, String), the Ref wrappers and array helpers, and system utilities (console, files, threads, sockets). Collections are not here: they are in gen_collect.obl. Every Objeck program links against this bundle automatically via lang.obl.
 ~#
 bundle System {
 	#~
