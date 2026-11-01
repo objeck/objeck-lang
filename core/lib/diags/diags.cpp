@@ -274,7 +274,7 @@ static ContextAnalyzer* EnsureAnalyzed(ParsedProgram* program, const std::wstrin
     // program, and remembered so the analysis is not run again over a tree it
     // left half done.
     state->failed = true;
-    program->SetErrorStrings(std::vector<std::wstring>(1, program->GetFileName() + L":(1,1): " + fatal.Message()));
+    program->SetErrorDiagnostics(std::vector<Diagnostic>(1, Diagnostic(DIAG_ERROR, program->GetFileName(), 1, 1, fatal.Message(), DIAG_CODE_FATAL)));
   }
 
   if(TimingEnabled()) {
@@ -452,16 +452,16 @@ extern "C" {
       const bool was_analyzed = (analyzer != nullptr);
       APITools_SetBoolValue(context, 3, was_analyzed);
 
-      const std::vector<std::wstring> warning_strings = program->GetWarningStrings();
-      if(!was_analyzed || !warning_strings.empty()) {
-        std::vector<std::wstring> error_strings = program->GetErrorStrings();
-        size_t* diagnostics_array = FormatErrors(context, error_strings, warning_strings);
+      const std::vector<Diagnostic> warnings = program->GetWarningDiagnostics();
+      if(!was_analyzed || !warnings.empty()) {
+        std::vector<Diagnostic> errors = program->GetErrorDiagnostics();
+        size_t* diagnostics_array = FormatErrors(context, errors, warnings);
         prgm_obj[3] = (size_t)diagnostics_array;
       }
     }
     else {
-      std::vector<std::wstring> error_strings = program->GetErrorStrings();
-      size_t* diagnostics_array = FormatErrors(context, error_strings);
+      std::vector<Diagnostic> errors = program->GetErrorDiagnostics();
+      size_t* diagnostics_array = FormatErrors(context, errors);
       prgm_obj[3] = (size_t)diagnostics_array;
     }
   }
@@ -2085,7 +2085,7 @@ extern "C" {
 // Supporting functions
 //
 
-size_t* FormatErrors(VMContext& context, const std::vector<std::wstring>& error_strings, const std::vector<std::wstring>& warning_strings)
+size_t* FormatErrors(VMContext& context, const std::vector<Diagnostic>& errors, const std::vector<Diagnostic>& warnings)
 {
   // A bound against pathological output, not a display limit. At 10 a file with
   // fifty errors reported ten of them with nothing saying so, so the author
@@ -2093,7 +2093,7 @@ size_t* FormatErrors(VMContext& context, const std::vector<std::wstring>& error_
   // of how deep it went. Editors already cap what they render; the server has no
   // reason to decide for them at a number this low.
   const size_t throttle = 100;
-  size_t max_results = error_strings.size() + warning_strings.size();
+  size_t max_results = errors.size() + warnings.size();
   if(max_results > throttle) {
     max_results = throttle;
   }
@@ -2103,65 +2103,32 @@ size_t* FormatErrors(VMContext& context, const std::vector<std::wstring>& error_
   size_t* diagnostics_array = APITools_MakeIntArray(context, (int)max_results);
   size_t* diagnostics_array_ptr = diagnostics_array + 3;
 
-  // process errors
-  size_t count;
-  for(count = 0; count < error_strings.size() && count < max_results; ++count) {
-    const std::wstring error_string = error_strings[count];
+  // The diagnostics arrive as records (frontend::Diagnostic); this used to take
+  // the "file:(line,pos): message" text apart again.
+  size_t count = 0;
+  for(size_t i = 0; i < errors.size() && count < max_results; ++i, ++count) {
+    const Diagnostic& error = errors[i];
 
-    // parse error string
-    const size_t file_mid = error_string.find(L":(");
-    const std::wstring file_str = error_string.substr(0, file_mid);
-
-    const size_t msg_mid = error_string.find(L"):");
-    const std::wstring msg_str = error_string.substr(msg_mid + 3, error_string.size() - msg_mid - 3);
-
-    const std::wstring line_pos_str = error_string.substr(file_mid + 2, msg_mid - file_mid - 2);
-    const size_t line_pos_mid = line_pos_str.find(L',');
-    const std::wstring line_str = line_pos_str.substr(0, line_pos_mid);
-    const std::wstring pos_str = line_pos_str.substr(line_pos_mid + 1, line_pos_str.size() - line_pos_mid - 1);
-
-    wchar_t* end;
-    const int line_index = (int)wcstol(line_str.c_str(), &end, 10);
-    const int pos_index = (int)wcstol(pos_str.c_str(), &end, 10);
-
-    // create objects
     size_t* diag_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-    diag_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, msg_str);
+    diag_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, error.message);
     diag_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_ERROR; // error type
-    diag_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, file_str);
-    diag_obj[ResultPosition::POS_START_LINE] = (size_t)line_index;
-    diag_obj[ResultPosition::POS_START_POS] = (size_t)pos_index;
+    diag_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, error.file);
+    diag_obj[ResultPosition::POS_START_LINE] = (size_t)error.line;
+    diag_obj[ResultPosition::POS_START_POS] = (size_t)error.pos;
     diag_obj[ResultPosition::POS_END_LINE] = diag_obj[ResultPosition::POS_END_POS] = -1;
     diagnostics_array_ptr[count] = (size_t)diag_obj;
   }
 
-  // process warnings
-  for(size_t i = 0; i < warning_strings.size() && count < max_results; ++i, ++count) {
-    const std::wstring warning_string = warning_strings[i];
+  // process warnings: the message keeps the "Warning: " it was always sent with
+  for(size_t i = 0; i < warnings.size() && count < max_results; ++i, ++count) {
+    const Diagnostic& warning = warnings[i];
 
-    // parse warning string
-    const size_t file_mid = warning_string.find(L":(");
-    const std::wstring file_str = warning_string.substr(0, file_mid);
-
-    const size_t msg_mid = warning_string.find(L"):");
-    const std::wstring msg_str = warning_string.substr(msg_mid + 3, warning_string.size() - msg_mid - 3);
-
-    const std::wstring line_pos_str = warning_string.substr(file_mid + 2, msg_mid - file_mid - 2);
-    const size_t line_pos_mid = line_pos_str.find(L',');
-    const std::wstring line_str = line_pos_str.substr(0, line_pos_mid);
-    const std::wstring pos_str = line_pos_str.substr(line_pos_mid + 1, line_pos_str.size() - line_pos_mid - 1);
-
-    wchar_t* end;
-    const int line_index = (int)wcstol(line_str.c_str(), &end, 10);
-    const int pos_index = (int)wcstol(pos_str.c_str(), &end, 10);
-
-    // create objects
     size_t* diag_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-    diag_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, msg_str);
+    diag_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, L"Warning: " + warning.message);
     diag_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_WARN; // warning type
-    diag_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, file_str);
-    diag_obj[ResultPosition::POS_START_LINE] = (size_t)line_index;
-    diag_obj[ResultPosition::POS_START_POS] = (size_t)pos_index;
+    diag_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, warning.file);
+    diag_obj[ResultPosition::POS_START_LINE] = (size_t)warning.line;
+    diag_obj[ResultPosition::POS_START_POS] = (size_t)warning.pos;
     diag_obj[ResultPosition::POS_END_LINE] = diag_obj[ResultPosition::POS_END_POS] = -1;
     diagnostics_array_ptr[count] = (size_t)diag_obj;
   }
