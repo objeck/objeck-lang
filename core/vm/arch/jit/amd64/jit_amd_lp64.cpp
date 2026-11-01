@@ -328,15 +328,16 @@ void JitAmd64::RegisterRoot() {
   // calculate root address
   // note: the offset required to 
   // get to the first local variable
-  // the bytes from the lowest local up to TMP_REF_9: the locals (and/or temp
-  // included) plus the RED_ZONE word Win64 keeps under the slots
-  // (JitFrameLayout::LOCALS_TO_REF_WORDS, 1 there and 0 on SysV)
-  const long offset = org_local_space + RED_ZONE + TMP_REF_9 +
-    JitFrameLayout::LOCALS_TO_REF_WORDS * (long)sizeof(size_t);
+  // org_local_space is the distance from the frame pointer down to the lowest
+  // local (ProcessIndices); offset is the bytes from that local up to
+  // TMP_REF_9: the locals (and/or temp included) plus the RED_ZONE word Win64
+  // keeps under the slots (JitFrameLayout::LOCALS_TO_REF_WORDS, 1 there and 0
+  // on SysV)
+  const long offset = org_local_space + TMP_REF_9;
   // get to stack locals
   RegisterHolder* holder = GetRegister();
   move_reg_reg(RBP, holder->GetRegister());
-  sub_imm_reg(-TMP_REF_9 + offset, holder->GetRegister());
+  sub_imm_reg(org_local_space, holder->GetRegister());
 
   // set JIT memory to stack locals
   RegisterHolder* mem_holder = GetRegister();
@@ -8019,7 +8020,13 @@ void JitAmd64::ProcessIndices()
     }
 #endif
   }
-  org_local_space = local_space = -(index + TMP_REF_9);
+  // The frame's locals region: from the frame pointer down to the lowest
+  // local. It used to be -(index + TMP_REG_9), which reserved |TMP_REG_9|
+  // more bytes (160 on SysV, 104 on Win64) under the lowest local that nothing
+  // addressed: the record block and the outgoing area are placed and reserved
+  // on their own below (Compile, Prolog). Those bytes were 36% of a small
+  // method's frame, and the 14 typed slots above would have made it 272.
+  org_local_space = local_space = -index;
 
 #ifdef _DEBUG_JIT
   std::wcout << L"Local space required: " << (local_space + 16) << L" byte(s)" << std::endl;
@@ -8721,14 +8728,14 @@ bool JitAmd64::Compile(StackMethod* cm)
       }
     }
     // inline locals start after caller's locals (mirrors ProcessIndices index computation)
-    inline_local_offset = -(local_space + TMP_REF_9);
+    inline_local_offset = -local_space;
     local_space += extra_inline_space;
 
     // The frame record block for the native entry (EmitNativePrologue) goes
     // below the locals and the inline space: the StackFrame, its two mem
     // words and the entry kind. Outside the region the collector walks
     // (org_local_space), like the inline space.
-    rec_base = -(local_space + TMP_REF_9) - REC_SIZE;
+    rec_base = -local_space - REC_SIZE;
     local_space += REC_SIZE;
 
     // the outgoing area for the method's native call sites, sized for the
