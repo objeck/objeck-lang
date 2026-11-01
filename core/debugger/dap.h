@@ -185,7 +185,7 @@ namespace Runtime {
     void HandleSetDataBreakpoints(int seq, const json& args);
 
     // Source path resolution
-    std::string ResolveSourcePath(const std::wstring& file_name);
+    std::string ResolveSourcePath(const std::wstring& file_name, const std::wstring& class_name = L"");
 
     // Frame lookup helper
     StackFrame* GetFrameByIndex(int frame_index);

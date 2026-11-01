@@ -41,10 +41,12 @@
 #include "color.h"
 #include <iomanip>
 #include <set>
+#include <map>
 #include <mutex>
 #include <condition_variable>
 #include <thread>
 #include <unordered_map>
+#include <atomic>
 #ifdef _WIN32
 #include "windows.h"
 #include <fcntl.h>
@@ -65,7 +67,15 @@ namespace Runtime {
   typedef struct _UserBreak {
     int id;
     int line_num;
+    // What the breakpoint was set with: a bare file name for the CLI, the
+    // source's base name (for display) for DAP
     std::wstring file_name;
+    // DAP: the PathKey of the source's full path, which names the file the
+    // breakpoint belongs to, so two files that share a base name are two
+    // different places (see Debugger::BreakMatches). Empty for a breakpoint the
+    // CLI or a function breakpoint set, or for a DAP source that does not exist
+    // on this machine, which match on 'file_name' alone.
+    std::wstring full_path;
     Expression* condition;
     bool enabled;
     bool temporary;
@@ -192,6 +202,65 @@ namespace Runtime {
     // StackInterpreter constructor can attach to it instead of running blind.
     static Debugger* active_debugger;
 
+    // ---- the per-instruction fast path ---------------------------------
+    //
+    // ProcessInstruction runs on EVERY instruction of EVERY thread, and used to
+    // take the global recursive hook_lock (and the sites_lock, twice more) on
+    // each one -- so a threaded program under obd ran its threads one at a time
+    // even when there was nothing to debug. 'hook_work' says whether there is
+    // anything the hook could act on; when it is 0 the hook returns without a
+    // lock. Each bit is owned by one source of work and is set and cleared with
+    // an atomic read-modify-write, so one source cannot lose another's update.
+    // Every writer syncs its bit after each change to what the bit mirrors. A
+    // thread that has just passed the check can run one more instruction before
+    // it sees a new 1; a stale 1 only costs a lock. What must never happen is a
+    // stale 0 that outlives the change, which is why the Sync* helpers are called
+    // under state_lock (breaks, watches) or hook_lock (step state).
+    enum : unsigned {
+      WORK_BREAKS = 1,    // any breakpoint or logpoint is defined
+      WORK_WATCHES = 2,   // any data breakpoint (watch) is defined
+      WORK_STEP = 4,      // a step / next / finish / until is in progress
+      WORK_PAUSE = 8,     // the client asked for a pause
+      WORK_STOPPED = 16   // a thread owns a stop: the others must park
+    };
+    std::atomic<unsigned> hook_work;
+    void SetWork(unsigned bit, bool on) {
+      if(on) {
+        hook_work.fetch_or(bit);
+      }
+      else {
+        hook_work.fetch_and(~bit);
+      }
+    }
+    // Guards 'breaks', 'watches' and the bits that mirror them, between the DAP
+    // request thread (which edits them while the program runs) and the VM
+    // threads (which read them on every instruction). Never held across a stop.
+    std::recursive_mutex state_lock;
+    void SyncBreakWork() {
+      SetWork(WORK_BREAKS, !breaks.empty());
+    }
+    void SyncWatchWork() {
+      SetWork(WORK_WATCHES, !watches.empty());
+    }
+    // The step state is only written by a thread that holds hook_lock.
+    void SyncStepWork() {
+      SetWork(WORK_STEP, is_step_into || is_next_line || is_step_out || until_line > 0);
+    }
+    // DAP pause: set by the request thread, claimed by the first thread to run
+    // an instruction that has a source position
+    std::atomic<bool> pause_requested;
+    // Which source file a class was written in, by (compiled file name, class):
+    // "" when that cannot be told. The hook asks per line, so it is remembered.
+    std::unordered_map<std::wstring, std::wstring> resolved_files;
+    // Every source file the client has named (and the files of the same name
+    // found under the source directory), by base name, as full paths. The
+    // compiled program records base names only, so two files that share one are
+    // told apart by the classes each declares.
+    std::map<std::wstring, std::vector<std::wstring>> known_sources;
+    // full path -> the class names its source declares, scanned on first use
+    std::unordered_map<std::wstring, std::set<std::wstring>> declared_classes;
+    const std::set<std::wstring>& DeclaredClasses(const std::wstring& full_path);
+
     // break info
     std::list<UserBreak*> breaks;
     int cur_line_num;
@@ -257,11 +326,24 @@ namespace Runtime {
     // deletes a break point
     bool DeleteBreak(int line_num, const std::wstring &file_name);
 
-    // searches for a valid breakpoint based upon the line number provided
-    UserBreak* FindBreak(int line_num, const std::wstring& file_name);
+    // searches for a valid breakpoint based upon the line number provided;
+    // 'class_name' (the class the instruction belongs to) lets a DAP breakpoint
+    // tell apart two source files that share a base name
+    UserBreak* FindBreak(int line_num, const std::wstring& file_name, const std::wstring& class_name = L"");
 
     // adds a break (with optional condition expression / logpoint message)
     bool AddBreak(int line_num, const std::wstring &file_name, Expression* condition = nullptr, bool temporary = false, const std::wstring& log_message = L"");
+
+    // The one place a UserBreak is created. Returns it, or nullptr when the line
+    // is invalid or the same place already has one. 'full_path' (DAP) makes the
+    // duplicate check and the later match use the path; 'preferred_id' reuses an
+    // id when it is positive.
+    UserBreak* AddBreakEntry(int line_num, const std::wstring& file_name, const std::wstring& full_path,
+                             Expression* condition, bool temporary, const std::wstring& log_message, int preferred_id);
+
+    // Whether 'user_break' is the breakpoint for 'file_name', the file name an
+    // instruction's class carries, and 'class_name', that class.
+    bool BreakMatches(const UserBreak* user_break, const std::wstring& file_name, const std::wstring& class_name);
 
     // lists all breaks
     void ListBreaks();
@@ -406,6 +488,8 @@ namespace Runtime {
 
     Debugger(const std::wstring &fn, const std::wstring &bp, const std::wstring &ap) {
       active_debugger = this;
+      hook_work = 0;
+      pause_requested = false;
       world_stopped = false;
       next_thread_id = 1;
       program_file_param = fn;
@@ -474,8 +558,48 @@ namespace Runtime {
     const std::wstring& GetBasePath() { return base_path_param; }
     std::wstring PrintMethodPublic(StackMethod* method) { return PrintMethod(method); }
 
-    // clear breakpoints for a specific file
-    void ClearFileBreaks(const std::wstring& file_name);
+    // The full path of an existing file -- absolute, one separator, no "." or
+    // "..", symlinks resolved -- or empty when there is no such file. A relative
+    // path is looked for under the source directory, then the working directory.
+    std::wstring NormalizePath(const std::wstring& path);
+
+    // What two paths to the same file have in common: the normalized path, case
+    // folded on Windows. This is the key DAP breakpoints are matched on.
+    static std::wstring PathKey(const std::wstring& normalized_path);
+
+    // Tells the debugger a source file exists (a full path, as NormalizePath
+    // returns it), and looks under the source directory for files of the same
+    // name, so that two of them can be told apart.
+    void NoteSourcePath(const std::wstring& normalized_path);
+
+    // The full path of the source file 'class_name' was written in, where
+    // 'instr_file_name' is the file name the compiler recorded for it. The
+    // compiler records the base name only, so when more than one known file has
+    // that name this is the one that declares the class. Empty when the file
+    // cannot be found, or cannot be told from another.
+    std::wstring ResolveClassSource(const std::wstring& instr_file_name, const std::wstring& class_name);
+
+    // Removes the breakpoints a setBreakpoints request replaces and returns their
+    // (line -> id) pairs, so the re-set can keep the ids. With a 'path_key' those
+    // are the ones set on that file; without one (the client's file is not on
+    // this machine) those set by the base name 'file_name' alone. Function
+    // breakpoints are never removed by it.
+    std::map<int, int> ClearSourceBreaks(const std::wstring& path_key, const std::wstring& file_name);
+
+    // Sets a DAP source breakpoint (a logpoint when 'log_message' is not empty).
+    // 'path_key' is the file's PathKey, or empty to match on 'display_name' (the
+    // base name) alone. 'hit_count' is the Nth hit to stop on (1 or less: every
+    // hit). Returns the breakpoint's id -- unique for the life of the session and
+    // kept by 'preferred_id' when the same line is set again -- or 0 when none
+    // was added.
+    int AddSourceBreak(int line_num, const std::wstring& display_name, const std::wstring& path_key,
+                       Expression* condition, const std::wstring& log_message, int hit_count, int preferred_id);
+
+    // DAP pause: stop at the next instruction that has a source position, on
+    // whichever thread gets there first. The request stays pending until a thread
+    // claims it or CancelPause withdraws it.
+    void RequestPause();
+    void CancelPause();
 
     // parse a condition expression string (for DAP conditional breakpoints)
     Expression* ParseCondition(const std::wstring& expr_str);
@@ -489,7 +613,6 @@ namespace Runtime {
       return eval_error_message;
     }
     std::wstring FormatNonReferenceForDap(Expression* expression);
-    bool SetIgnoreCountForDap(int line_num, const std::wstring& file_name, int count);
 
     // Same evaluation, but reports the raw value and its type so the DAP
     // adapter can hand back an expandable reference for watch/hover results.
