@@ -1,0 +1,82 @@
+# EXTRA_LIBS: openai,json,net,net_server,cipher,misc
+#~
+A request that gets no answer must not dereference Nil, tested offline against a
+closed local port (no key, no network).
+
+Defects this guards:
+- OpenAI Files->Retrieve chained QuickGet(...)->GetContent(), Files->Create read
+  response->GetCode(), and Speech->Speak read response->GetType(), all with no
+  Nil check, so a refused connection ended the program instead of returning the
+  library's failure value with the last error set.
+- WebDownloader's worker threads (Downloader) chained QuickGet(...)->GetContent().
+~#
+
+class LibraryNilResponseTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Same(a : String, b : String) ~ Bool {
+    return a <> Nil & a->Equals(b);
+  }
+
+  function : HasError(text : String) ~ Bool {
+    err := API.OpenAI.EndPoint->GetLastError();
+    return err <> Nil & err->Find(text) > -1;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+
+    TestClosedPort();
+    TestDownloader();
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: library nil response handling"->PrintLine();
+  }
+
+  # nothing listens on port 1 of the loopback address
+  function : TestClosedPort() ~ Nil {
+    "-- OpenAI against a closed port --"->PrintLine();
+
+    API.OpenAI.EndPoint->SetBaseUrl("http://127.0.0.1:1");
+
+    API.OpenAI.EndPoint->SetLastError(Nil);
+    content := API.OpenAI.File->Retrieve("file-1", "test-token");
+    Check("Retrieve returns Nil", content = Nil);
+    Check("Retrieve records the error", HasError("No response"));
+
+    API.OpenAI.EndPoint->SetLastError(Nil);
+    created := API.OpenAI.File->Create("a.txt", "assistants", "hello"->ToByteArray(), "test-token");
+    Check("Create returns false", <>created);
+    Check("Create records the error", HasError("No response"));
+
+    API.OpenAI.EndPoint->SetLastError(Nil);
+    audio := API.OpenAI.Audio.Speech->Speak("tts-1", "hi", "alloy", "mp3", "test-token");
+    Check("Speak returns Nil", audio = Nil);
+    Check("Speak records the error", HasError("No response"));
+  }
+
+  function : TestDownloader() ~ Nil {
+    "-- WebDownloader against a closed port --"->PrintLine();
+
+    urls := Collection.Vector->New()<Web.HTTP.Url>;
+    urls->AddBack(Web.HTTP.Url->New("http://127.0.0.1:1/a"));
+    results := Web.HTTP.WebDownloader->Download(urls, Nil);
+    Check("one result per URL", results <> Nil & results->Size() = 1);
+    if(results <> Nil & results->Size() = 1) {
+      Check("a failed download has no content", results->Get(0)->GetSecond()->Get() = Nil);
+    };
+  }
+}
