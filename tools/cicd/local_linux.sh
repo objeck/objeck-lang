@@ -55,6 +55,19 @@ git -c safe.directory='*' archive "$REF" | tar -x -C "$work" || exit 2
 # keep the three newest trees
 ls -1dt "$base"/*/ 2>/dev/null | tail -n +4 | xargs -r rm -rf
 
+# ci-build.yml gives the regression suite an in-memory SQLite ODBC data source and sets
+# OBJECK_REQUIRE_ODBC so an ODBC test that cannot open it FAILS rather than printing SKIP.
+# Do the same when the SQLite driver is installed (libsqliteodbc); otherwise say that the
+# ODBC tests will skip, so a green run here is not read as covering them.
+if command -v odbcinst >/dev/null 2>&1 && odbcinst -q -d 2>/dev/null | grep -q '^\[SQLite3\]'; then
+  if ! grep -qs '^\[objeck_sqlite_test\]' "$HOME/.odbc.ini"; then
+    printf '[objeck_sqlite_test]\nDescription=Objeck ODBC regression test DSN\nDriver=SQLite3\nDatabase=:memory:\n' >> "$HOME/.odbc.ini"
+  fi
+  export OBJECK_REQUIRE_ODBC=1
+else
+  echo "   note: no SQLite ODBC driver (apt install libsqliteodbc): the ODBC regression tests will skip"
+fi
+
 FAIL=0
 step() { printf '\n== %s\n' "$*"; }
 bad()  { echo "   FAIL: $*"; FAIL=1; }
