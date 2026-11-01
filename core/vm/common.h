@@ -1375,6 +1375,9 @@ class StackClass {
     name = cn;
     file_name = fn;
     parent = nullptr;
+    // empty until SetMethods, so a class whose methods failed to load can be deleted
+    methods = nullptr;
+    method_num = 0;
     pid = p;
     is_virtual = v;
     cls_dclrs = cdclrs;
@@ -1722,10 +1725,24 @@ class StackProgram {
 #endif
 
   StackProgram() {
+    // Everything ~StackProgram frees starts empty: a load that stops part way
+    // (a refused or unparsable .obe) leaves the rest unset, and the destructor
+    // used to free whatever those words held (found by the loader fuzz target).
     cls_hierarchy = nullptr;
     cls_interfaces = nullptr;
     classes = nullptr;
+    class_num = 0;
+    init_method = nullptr;
+    float_strings = nullptr;
+    num_float_strings = 0;
+    bool_strings = nullptr;
+    num_bool_strings = 0;
+    byte_strings = nullptr;
+    num_byte_strings = 0;
+    int_strings = nullptr;
+    num_int_strings = 0;
     char_strings = nullptr;
+    num_char_strings = 0;
     string_cls_id = cls_cls_id = mthd_cls_id = sock_cls_id = secure_sock_cls_id = dtls_sock_cls_id = data_type_cls_id = command_output_cls_id = -1;
 #ifdef _WIN32
     InitializeCriticalSection(&program_cs);
@@ -1766,6 +1783,23 @@ class StackProgram {
       }
       delete[] float_strings;
       float_strings = nullptr;
+    }
+
+    // the Bool and Byte literal tables were never freed
+    if(bool_strings) {
+      for(int i = 0; i < num_bool_strings; ++i) {
+        delete[] bool_strings[i];
+      }
+      delete[] bool_strings;
+      bool_strings = nullptr;
+    }
+
+    if(byte_strings) {
+      for(int i = 0; i < num_byte_strings; ++i) {
+        delete[] byte_strings[i];
+      }
+      delete[] byte_strings;
+      byte_strings = nullptr;
     }
 
     if(int_strings) {
