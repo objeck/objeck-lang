@@ -11,6 +11,8 @@ Defects this guards:
 - WebDownloader's worker threads (Downloader) chained QuickGet(...)->GetContent().
 ~#
 
+use Collection, Web.HTTP;
+
 class LibraryNilResponseTest {
   @failures : static : Int;
 
@@ -71,9 +73,9 @@ class LibraryNilResponseTest {
   function : TestDownloader() ~ Nil {
     "-- WebDownloader against a closed port --"->PrintLine();
 
-    urls := Collection.Vector->New()<Web.HTTP.Url>;
-    urls->AddBack(Web.HTTP.Url->New("http://127.0.0.1:1/a"));
-    results := Web.HTTP.WebDownloader->Download(urls, Nil);
+    urls := Vector->New()<Url>;
+    urls->AddBack(Url->New("http://127.0.0.1:1/a"));
+    results := WebDownloader->Download(urls, Nil)<Pair<Url, ByteArrayRef>>;
     Check("one result per URL", results <> Nil & results->Size() = 1);
     if(results <> Nil & results->Size() = 1) {
       Check("a failed download has no content", results->Get(0)->GetSecond()->Get() = Nil);
