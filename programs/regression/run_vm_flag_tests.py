@@ -287,7 +287,11 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     FAILS; that is pinned as a known gap until GC roots phase 3 types compiled
     frames, and the check flips to "must PASS" then.
 
-Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only]
+Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only] [--only name[,name]]
+
+--only runs just the check_<name> functions that contain a name (for example
+--only gc_roots or --only int_not_relocated): seconds instead of the ten minutes of a
+full run, while iterating on one section. A name that matches nothing lists the choices.
 
 --unicode-only runs sections 14, 15 and 16 alone: how a MinGW (MSYS2) build of the
 tools, which CI does not build, is checked by hand.
@@ -361,6 +365,36 @@ def mt_oversubscribe_workers():
     return max(1, min(workers, MT_NURSERY_LOOP_RUNS))
 
 
+def only_names(args):
+    """The names after --only (comma-separated, or --only=a,b), or [] when absent."""
+    names = []
+    for i, arg in enumerate(args):
+        if arg == "--only" and i + 1 < len(args):
+            names += args[i + 1].split(",")
+        elif arg.startswith("--only="):
+            names += arg[len("--only="):].split(",")
+    return [n for n in names if n]
+
+
+def run_only(names, obc, obr, env, bin_dir):
+    # One section while iterating: the whole run takes about ten minutes. A name matches
+    # any check_<name> function containing it, in the order the full run reaches them;
+    # only the checks that take the standard four arguments can be picked.
+    import inspect
+    standard = ["obc", "obr", "env", "bin_dir"]
+    funcs = [(n, f) for n, f in list(globals().items())
+             if n.startswith("check_") and callable(f)
+             and list(inspect.signature(f).parameters) == standard]
+    picked = [(n, f) for n, f in funcs if any(w in n for w in names)]
+    if not picked:
+        print("--only matched no check; available: " + ", ".join(n[len("check_"):] for n, _ in funcs))
+        return 2
+    for n, f in picked:
+        print(f"  -- {n}")
+        f(obc, obr, env, bin_dir)
+    return finish()
+
+
 def main():
     # Sections 14 and 15 quote non-ASCII output in a failure's detail, and
     # stdout may be a pipe in the ANSI code page (it is on the hosted Windows
@@ -392,6 +426,10 @@ def main():
         check_unicode_tools(obc, bin_dir, lib_dir)
         check_unicode_text_out(obc, bin_dir, lib_dir)
         return finish()
+
+    only = only_names(sys.argv[2:])
+    if only:
+        return run_only(only, obc, obr, env, bin_dir)
 
     rc, out, err = run([obc, "-src", src, "-dest", obe], env=env, cwd=bin_dir)
     check("fixture compiles", rc == 0 and os.path.exists(obe), err.decode(errors="replace")[-300:])
