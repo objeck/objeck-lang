@@ -54,6 +54,15 @@ typedef void(*APITools_Blocking_Ptr) ();
 // Set in VMContext::blocking_abi by a VM that provides begin_blocking and
 // end_blocking ("OBJKPARK").
 #define APITOOLS_BLOCKING_ABI ((size_t)0x4B5241504B4A424FULL)
+// VMContext::abi_version is APITOOLS_ABI_TAG | <version>: the high half is the
+// tag ("OBJK"), the low half the version number. The tag is what tells a
+// library the field is really there (see APITools_GetAbiVersion).
+#define APITOOLS_ABI_TAG ((size_t)0x4B4A424F00000000ULL)
+#define APITOOLS_ABI_TAG_MASK ((size_t)0xFFFFFFFF00000000ULL)
+// The version of VMContext this header describes. Bump it, and append the
+// field, in the same change; never reuse or reorder a slot.
+//   1: abi_version and struct_size (every field above them is present too)
+#define APITOOLS_ABI_VERSION ((size_t)1)
 
 //
 // API calling context
@@ -82,7 +91,49 @@ struct VMContext {
   size_t blocking_abi;
   APITools_Blocking_Ptr begin_blocking;
   APITools_Blocking_Ptr end_blocking;
+  // ABI identification -- appended, as above. abi_version is APITOOLS_ABI_TAG |
+  // APITOOLS_ABI_VERSION as the VM was built; struct_size is sizeof(VMContext)
+  // as the VM was built, so a field appended after these is present exactly
+  // when its offset plus size is within struct_size (APITools_HasField). A VM
+  // built before these existed passes a struct that ends at end_blocking, so
+  // read them only through APITools_GetAbiVersion/APITools_HasField, which
+  // check the tags first.
+  size_t abi_version;
+  size_t struct_size;
 };
+
+//
+// The VMContext version the calling VM was built with, or 0 for a VM that
+// predates the field. 0 says nothing about the fields before abi_version:
+// parking is still known from blocking_abi.
+//
+// A VM that predates parking passes a struct that ends at write_barrier, and
+// one that predates versioning a struct that ends at end_blocking; for either,
+// the words read here are whatever lies beyond on its stack. Versioning was
+// added after parking, so blocking_abi is checked first, and then the tag in
+// the high half of abi_version, the same way APITools_Parked trusts its marker.
+//
+inline size_t APITools_GetAbiVersion(const VMContext& context) {
+  if(context.blocking_abi != APITOOLS_BLOCKING_ABI) {
+    return 0;
+  }
+
+  if((context.abi_version & APITOOLS_ABI_TAG_MASK) != APITOOLS_ABI_TAG) {
+    return 0;
+  }
+
+  return context.abi_version & ~APITOOLS_ABI_TAG_MASK;
+}
+
+//
+// Whether the calling VM's VMContext includes the field that ends at
+// 'field_end' bytes (offsetof(VMContext, f) + sizeof(f)), for fields appended
+// after struct_size. Fields at or before struct_size are covered by
+// APITools_GetAbiVersion() >= 1.
+//
+inline bool APITools_HasField(const VMContext& context, size_t field_end) {
+  return APITools_GetAbiVersion(context) >= 1 && field_end <= context.struct_size;
+}
 
 //
 // Parks the calling thread for the lifetime of the object, so a blocking call
@@ -132,7 +183,7 @@ class APITools_Parked {
 //
 // Gets the number of parameters being passes
 //
-size_t APITools_GetArgumentCount(VMContext& context) {
+inline size_t APITools_GetArgumentCount(VMContext& context) {
   if(context.data_array) {
     return context.data_array[0];
   }
@@ -143,7 +194,7 @@ size_t APITools_GetArgumentCount(VMContext& context) {
 //
 // Gets an array reference from an Objeck array holder reference
 //
-size_t* APITools_GetArrayAddress(size_t* array_holder) {
+inline size_t* APITools_GetArrayAddress(size_t* array_holder) {
   if(array_holder) {
     return (size_t*)array_holder[0];
   }
@@ -154,7 +205,7 @@ size_t* APITools_GetArrayAddress(size_t* array_holder) {
 //
 // Gets an array by index
 //
-size_t* APITools_GetArray(VMContext &context, size_t index) {
+inline size_t* APITools_GetArray(VMContext &context, size_t index) {
   size_t* data_array = context.data_array;
   if(data_array && index < data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
@@ -167,7 +218,7 @@ size_t* APITools_GetArray(VMContext &context, size_t index) {
 //
 // Gets an array 
 //
-size_t* APITools_GetArray(size_t* data_array) {
+inline size_t* APITools_GetArray(size_t* data_array) {
   if(data_array) {
     data_array += ARRAY_HEADER_OFFSET;
     return (size_t*)data_array;
@@ -191,7 +242,7 @@ size_t* APITools_GetArray(size_t* data_array) {
 // you return any object, with APITools_SetObjectValue(context, index, array) --
 // which also runs the write barrier for you.
 //
-size_t* APITools_SetArray(size_t* array_holder) {
+inline size_t* APITools_SetArray(size_t* array_holder) {
   if(array_holder) {
     return (size_t*)array_holder[0];
   }
@@ -202,7 +253,7 @@ size_t* APITools_SetArray(size_t* array_holder) {
 //
 // Gets the size of Objeck array by reference
 //
-size_t APITools_GetArraySize(size_t* array) {
+inline size_t APITools_GetArraySize(size_t* array) {
   if(array) {
     return array[0];
   }
@@ -213,7 +264,7 @@ size_t APITools_GetArraySize(size_t* array) {
 //
 // Creates a managed Int Objeck array instance
 //
-size_t* APITools_MakeIntArray(VMContext& context, const size_t int_array_size) {
+inline size_t* APITools_MakeIntArray(VMContext& context, const size_t int_array_size) {
   // create character array
   const size_t int_array_dim = 1;
   size_t* int_array = (size_t*)context.alloc_managed_array(int_array_size + int_array_dim + 2, instructions::INT_TYPE,
@@ -228,7 +279,7 @@ size_t* APITools_MakeIntArray(VMContext& context, const size_t int_array_size) {
 //
 // Creates a managed Float Objeck array instance
 //
-size_t* APITools_MakeFloatArray(VMContext& context, const size_t float_array_size) {
+inline size_t* APITools_MakeFloatArray(VMContext& context, const size_t float_array_size) {
   // create character array
   const long float_array_dim = 1;
   size_t* float_array = (size_t*)context.alloc_managed_array(float_array_size + float_array_dim + 2, instructions::FLOAT_TYPE,
@@ -243,7 +294,7 @@ size_t* APITools_MakeFloatArray(VMContext& context, const size_t float_array_siz
 //
 // Creates a managed 2D Float Objeck matrix instance
 //
-size_t* APITools_MakeFloatMatrix(VMContext& context, const size_t rows, const size_t cols) {
+inline size_t* APITools_MakeFloatMatrix(VMContext& context, const size_t rows, const size_t cols) {
   const long float_array_dim = 2;
   const size_t float_array_size = rows * cols;
 
@@ -261,7 +312,7 @@ size_t* APITools_MakeFloatMatrix(VMContext& context, const size_t rows, const si
 //
 // Creates a managed Char Objeck array instance
 //
-size_t* APITools_MakeCharArray(VMContext& context, const size_t char_array_size) {
+inline size_t* APITools_MakeCharArray(VMContext& context, const size_t char_array_size) {
   // create character array
   const long char_array_dim = 1;
   size_t* char_array = (size_t*)context.alloc_managed_array(char_array_size + 1 + ((char_array_dim + 2) * sizeof(size_t)),
@@ -276,7 +327,7 @@ size_t* APITools_MakeCharArray(VMContext& context, const size_t char_array_size)
 //
 // Creates a managed Byte Objeck array instance
 //
-size_t* APITools_MakeByteArray(VMContext& context, const size_t char_array_size) {
+inline size_t* APITools_MakeByteArray(VMContext& context, const size_t char_array_size) {
   // create character array
   const long char_array_dim = 1;
   size_t* char_array = (size_t*)context.alloc_managed_array(char_array_size + 1 + ((char_array_dim + 2) * sizeof(size_t)),
@@ -291,7 +342,7 @@ size_t* APITools_MakeByteArray(VMContext& context, const size_t char_array_size)
 //
 // Gets an array of integer elements
 //
-long APITools_GetIntArrayElement(size_t* data_array, size_t index) {
+inline long APITools_GetIntArrayElement(size_t* data_array, size_t index) {
   if(!data_array) {
     return 0;
   }
@@ -308,7 +359,7 @@ long APITools_GetIntArrayElement(size_t* data_array, size_t index) {
 //
 // Sets an integer array element
 //
-void APITools_SetIntArrayElement(size_t* data_array, size_t index, long value) {
+inline void APITools_SetIntArrayElement(size_t* data_array, size_t index, long value) {
   if(!data_array) {
     return;
   }
@@ -323,7 +374,7 @@ void APITools_SetIntArrayElement(size_t* data_array, size_t index, long value) {
 //
 // Gets an character array element
 //
-wchar_t APITools_GetCharArrayElement(size_t* array, size_t index) {
+inline wchar_t APITools_GetCharArrayElement(size_t* array, size_t index) {
   if(!array) {
     return 0;
   }
@@ -342,7 +393,7 @@ wchar_t APITools_GetCharArrayElement(size_t* array, size_t index) {
 //
 // Sets the Char array element value in a reference
 //
-void APITools_SetCharArrayElement(size_t* data_array, size_t index, wchar_t value) {
+inline void APITools_SetCharArrayElement(size_t* data_array, size_t index, wchar_t value) {
   if(!data_array) {
     return;
   }
@@ -362,7 +413,7 @@ void APITools_SetCharArrayElement(size_t* data_array, size_t index, wchar_t valu
 //
 // Gets an byte array element
 //
-unsigned char APITools_GetByteArrayElement(size_t* array, size_t index) {
+inline unsigned char APITools_GetByteArrayElement(size_t* array, size_t index) {
   if(!array) {
     return 0;
   }
@@ -380,7 +431,7 @@ unsigned char APITools_GetByteArrayElement(size_t* array, size_t index) {
 //
 // Sets the Byte array element value in a reference
 //
-void APITools_SetByteArrayElement(size_t* data_array, size_t index, unsigned char value) {
+inline void APITools_SetByteArrayElement(size_t* data_array, size_t index, unsigned char value) {
   if(!data_array) {
     return;
   }
@@ -399,7 +450,7 @@ void APITools_SetByteArrayElement(size_t* data_array, size_t index, unsigned cha
 //
 // Gets an float array element
 //
-double APITools_GetFloatArrayElement(size_t* array, size_t index) {
+inline double APITools_GetFloatArrayElement(size_t* array, size_t index) {
   if(!array) {
     return 0.0;
   }
@@ -417,7 +468,7 @@ double APITools_GetFloatArrayElement(size_t* array, size_t index) {
 //
 // Sets the Float array element value in a reference
 //
-void APITools_SetFloatArrayElement(size_t* data_array, size_t index, double value) {
+inline void APITools_SetFloatArrayElement(size_t* data_array, size_t index, double value) {
   if(!data_array) {
     return;
   }
@@ -436,7 +487,7 @@ void APITools_SetFloatArrayElement(size_t* data_array, size_t index, double valu
 //
 // Gets an indexed Bool value
 //
-bool APITools_GetBoolValue(VMContext& context, size_t index) {
+inline bool APITools_GetBoolValue(VMContext& context, size_t index) {
   size_t* data_array = context.data_array;
   if(data_array && index < data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
@@ -453,7 +504,7 @@ bool APITools_GetBoolValue(VMContext& context, size_t index) {
 //
 // Gets an indexed Int value
 //
-size_t APITools_GetIntValue(VMContext &context, size_t index) {
+inline size_t APITools_GetIntValue(VMContext &context, size_t index) {
   size_t* data_array = context.data_array;
   if(data_array && index < data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
@@ -470,7 +521,7 @@ size_t APITools_GetIntValue(VMContext &context, size_t index) {
 //
 // Gets an indexed Float value
 //
-double APITools_GetFloatValue(VMContext& context, size_t index) {
+inline double APITools_GetFloatValue(VMContext& context, size_t index) {
   size_t* data_array = context.data_array;
   if(data_array && index < data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
@@ -488,7 +539,7 @@ double APITools_GetFloatValue(VMContext& context, size_t index) {
 //
 // Gets an indexed Char value
 //
-wchar_t APITools_GetCharValue(VMContext& context, size_t index) {
+inline wchar_t APITools_GetCharValue(VMContext& context, size_t index) {
   size_t* data_array = context.data_array;
   if(data_array && index < data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
@@ -506,7 +557,7 @@ wchar_t APITools_GetCharValue(VMContext& context, size_t index) {
 //
 // Gets an indexed Byte value
 //
-unsigned char APITools_GetByteValue(VMContext& context, size_t index) {
+inline unsigned char APITools_GetByteValue(VMContext& context, size_t index) {
   size_t* data_array = context.data_array;
   if(data_array && index < data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
@@ -524,7 +575,7 @@ unsigned char APITools_GetByteValue(VMContext& context, size_t index) {
 //
 // Sets an indexed Bool value
 //
-void APITools_SetBoolValue(VMContext& context, int index, bool value) {
+inline void APITools_SetBoolValue(VMContext& context, int index, bool value) {
   size_t* data_array = context.data_array;
   if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
@@ -539,7 +590,7 @@ void APITools_SetBoolValue(VMContext& context, int index, bool value) {
 //
 // Sets an indexed Int value
 //
-void APITools_SetIntValue(VMContext &context, int index, size_t value) {
+inline void APITools_SetIntValue(VMContext &context, int index, size_t value) {
   size_t* data_array = context.data_array;
   if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
@@ -554,7 +605,7 @@ void APITools_SetIntValue(VMContext &context, int index, size_t value) {
 //
 // Gets an indexed Char value
 //
-void APITools_SetCharValue(VMContext& context, size_t index, wchar_t value) {
+inline void APITools_SetCharValue(VMContext& context, size_t index, wchar_t value) {
   size_t* data_array = context.data_array;
   if(data_array && index < data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
@@ -569,7 +620,7 @@ void APITools_SetCharValue(VMContext& context, size_t index, wchar_t value) {
 //
 // Gets an indexed Byte value
 //
-void APITools_SetByteValue(VMContext& context, size_t index, unsigned char value) {
+inline void APITools_SetByteValue(VMContext& context, size_t index, unsigned char value) {
   size_t* data_array = context.data_array;
   if(data_array && index < data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
@@ -584,7 +635,7 @@ void APITools_SetByteValue(VMContext& context, size_t index, unsigned char value
 //
 // Sets an indexed Float value
 //
-void APITools_SetFloatValue(VMContext &context, int index, double value) {
+inline void APITools_SetFloatValue(VMContext &context, int index, double value) {
   size_t* data_array = context.data_array;
   if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
@@ -599,7 +650,7 @@ void APITools_SetFloatValue(VMContext &context, int index, double value) {
 //
 // Gets an object reference value
 //
-size_t* APITools_GetObjectValue(VMContext& context, size_t index) {
+inline size_t* APITools_GetObjectValue(VMContext& context, size_t index) {
   size_t* data_array = context.data_array;
   if(data_array && index < data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
@@ -624,7 +675,7 @@ size_t* APITools_GetObjectValue(VMContext& context, size_t index) {
 // A no-op when the VM did not supply a barrier, which is how a library built
 // against this header stays loadable by a VM that predates the field.
 //
-void APITools_WriteBarrier(VMContext& context, size_t* target_obj) {
+inline void APITools_WriteBarrier(VMContext& context, size_t* target_obj) {
   if(context.write_barrier && target_obj) {
     context.write_barrier(target_obj);
   }
@@ -639,7 +690,7 @@ void APITools_WriteBarrier(VMContext& context, size_t* target_obj) {
 // exists for. Doing it here rather than asking every library to means the
 // supported way of returning an object cannot get this wrong (#864).
 //
-void APITools_SetObjectValue(VMContext &context, int index, size_t * obj) {
+inline void APITools_SetObjectValue(VMContext &context, int index, size_t * obj) {
   size_t* data_array = context.data_array;
   if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
@@ -655,14 +706,14 @@ void APITools_SetObjectValue(VMContext &context, int index, size_t * obj) {
 //
 // Creates an object instance by name
 //
-size_t* APITools_CreateObject(VMContext& context, const std::wstring& cls_name) {
+inline size_t* APITools_CreateObject(VMContext& context, const std::wstring& cls_name) {
   return context.alloc_managed_obj(cls_name.c_str(), context.op_stack, *context.stack_pos, false);
 }
 
 //
 // Creates a String value Objeck instance reference
 //
-size_t* APITools_CreateStringObject(VMContext& context, const std::wstring& value) {
+inline size_t* APITools_CreateStringObject(VMContext& context, const std::wstring& value) {
   // create character array
   const size_t char_array_size = value.size();
   const size_t char_array_dim = 1;
@@ -723,7 +774,7 @@ inline const wchar_t* APITools_GetStringValue(size_t* str_obj, size_t index) {
 // than [0], its element count (the same for the 1-D arrays passed today), and
 // then built a std::wstring straight from the nullptr that
 // APITools_GetStringValue returns for a Nil element, which faults in wcslen.
-std::vector<std::wstring> APITools_GetStringsValues(VMContext& context, size_t index) {
+inline std::vector<std::wstring> APITools_GetStringsValues(VMContext& context, size_t index) {
   std::vector<std::wstring> strings_values;
 
   size_t* string_array = APITools_GetArrayAddress(APITools_GetObjectValue(context, index));
@@ -746,21 +797,21 @@ std::vector<std::wstring> APITools_GetStringsValues(VMContext& context, size_t i
 //
 // Gets the C++ string value from an Objeck reference by index (i.e. String)
 //
-const wchar_t* APITools_GetStringValue(VMContext &context, size_t index) {
+inline const wchar_t* APITools_GetStringValue(VMContext &context, size_t index) {
   return APITools_GetStringValue(context.data_array, index);
 }
 
 //
 // Sets an Objeck string value instance reference by index
 //
-void APITools_SetStringValue(VMContext& context, int index, const std::wstring& value) {
+inline void APITools_SetStringValue(VMContext& context, int index, const std::wstring& value) {
   APITools_SetObjectValue(context, index, APITools_CreateStringObject(context, value));
 }
 
 //
 // Calls an Objeck method by qualified method name
 //
-void APITools_CallMethod(VMContext &context, size_t * instance, const wchar_t* qualified_name) {
+inline void APITools_CallMethod(VMContext &context, size_t * instance, const wchar_t* qualified_name) {
   const std::wstring qualified_method_name(qualified_name);
   size_t delim = qualified_method_name.find(':');
   if(delim != std::wstring::npos) {
@@ -780,7 +831,7 @@ void APITools_CallMethod(VMContext &context, size_t * instance, const wchar_t* q
 //
 // Calls an Objeck method by class and method ID
 //
-void APITools_CallMethod(VMContext &context, size_t * instance, const int cls_id, const int mthd_id) {
+inline void APITools_CallMethod(VMContext &context, size_t * instance, const int cls_id, const int mthd_id) {
   (*context.call_method_by_id)(context.op_stack, context.stack_pos, instance, cls_id, mthd_id);
 
 #ifdef _DEBUG

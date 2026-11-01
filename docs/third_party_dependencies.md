@@ -27,7 +27,7 @@ the three build workflows.
 ## Checking what a build actually used
 
 - **Windows**: in the CI log's "Install Windows dependencies" step, `vcpkg install` names each port with its version (`mbedtls:x64-windows@<version>`). OpenCV x64's version is `$opencvVersion` in the workflows (and the `4120` in its DLL name); ONNX Runtime x64's is the NuGet version in `core/lib/onnx/vs/packages.config`. The vendored DLLs, SDL2 and the ARM64 QNN ONNX Runtime (1.23.0), carry theirs in their file-version resources (`(Get-Item SDL2.dll).VersionInfo`).
-- **Linux**: `dpkg -l libmbedtls-dev libsdl2-dev libopencv-dev libmp3lame-dev` on the runner image (`ubuntu-latest` — the image, not the tree, decides the version). The HTTP/2 and HTTP/3 versions are pinned in `tools/deps/build_quic_deps.sh` and recorded in its prefix's `.quic-deps-stamp`.
+- **Linux**: `dpkg -l libmbedtls-dev libsdl2-dev libopencv-dev libmp3lame-dev` on the runner image (`ubuntu-24.04` — the image, not the tree, decides the version). The HTTP/2 and HTTP/3 versions are pinned in `tools/deps/build_quic_deps.sh` and recorded in its prefix's `.quic-deps-stamp`.
 - **macOS**: every third-party library is pinned in `tools/deps/build_macos_deps.sh` (version and sha256) and recorded in its prefix's `macos-bundle/.macos-deps-stamp`; HTTP/2 and HTTP/3 as on Linux (`.quic-deps-stamp`). The licenses ship under each library's `licenses/`.
 - **Shipped tree**: `ldd lib/native/libobjk_crypto.so` / `otool -L` / `dumpbin /dependents` names the exact runtime libraries a native module links, which is also what `verify_native_libs.sh|.ps1` checks resolve.
 

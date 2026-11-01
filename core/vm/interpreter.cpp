@@ -3193,6 +3193,8 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
   context.blocking_abi = APITOOLS_BLOCKING_ABI;
   context.begin_blocking = MemoryManager::BeginBlocking;
   context.end_blocking = MemoryManager::EndBlocking;
+  context.abi_version = APITOOLS_ABI_TAG | APITOOLS_ABI_VERSION;
+  context.struct_size = sizeof(VMContext);
   (*ext_load)(context);
 #else
   void* dll_handle = dlopen(dll_string.c_str(), RTLD_LAZY);
@@ -3230,6 +3232,8 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
   context.blocking_abi = APITOOLS_BLOCKING_ABI;
   context.begin_blocking = MemoryManager::BeginBlocking;
   context.end_blocking = MemoryManager::EndBlocking;
+  context.abi_version = APITOOLS_ABI_TAG | APITOOLS_ABI_VERSION;
+  context.struct_size = sizeof(VMContext);
   (*ext_load)(context);
 #endif
 }
@@ -3508,6 +3512,8 @@ void StackInterpreter::SharedLibraryCall([[maybe_unused]] StackInstr* instr, siz
     context.blocking_abi = APITOOLS_BLOCKING_ABI;
     context.begin_blocking = MemoryManager::BeginBlocking;
     context.end_blocking = MemoryManager::EndBlocking;
+    context.abi_version = APITOOLS_ABI_TAG | APITOOLS_ABI_VERSION;
+    context.struct_size = sizeof(VMContext);
     (*ext_func)(context);
     SharedLibraryCallbackFailure(stack_pos);
   }
@@ -3539,6 +3545,8 @@ void StackInterpreter::SharedLibraryCall([[maybe_unused]] StackInstr* instr, siz
     context.blocking_abi = APITOOLS_BLOCKING_ABI;
     context.begin_blocking = MemoryManager::BeginBlocking;
     context.end_blocking = MemoryManager::EndBlocking;
+    context.abi_version = APITOOLS_ABI_TAG | APITOOLS_ABI_VERSION;
+    context.struct_size = sizeof(VMContext);
     (*ext_func)(context);
     SharedLibraryCallbackFailure(stack_pos);
   }

@@ -23,7 +23,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v5
+      uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
     # Before the two-hour build, not after it. The catcher is the point of this
     # run, and discovering at the end that it cannot start would cost the whole
@@ -38,10 +38,10 @@ jobs:
         Write-Host "python: $v"
 
     - name: Setup Visual Studio
-      uses: microsoft/setup-msbuild@v3
+      uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57 # v3.0.0
 
     - name: Setup MSVC Environment
-      uses: ilammy/msvc-dev-cmd@v1
+      uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
       with:
         arch: ARM64
 
@@ -106,7 +106,7 @@ jobs:
 
     - name: Upload results
       if: always()
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         name: gc-stress-windows-arm64
         path: programs/regression/probe/results

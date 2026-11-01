@@ -79,14 +79,14 @@ bundle API.OpenAI.Audio {
 				"multipart/form-data; boundary={$boundary}", headers);
 
 			if(response <> Nil) {
-				model_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				model_json := JsonParser->TextToElement(ResponseText(response));
 				if(model_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
 				
 				if(model_json->Has("error")) {
-					error_str := model_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(model_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -159,22 +159,32 @@ bundle API.OpenAI.Audio {
 			headers->Insert("Authorization", "Bearer {$token}");
 			
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/audio/speech"), data, "application/json", headers);
+			if(NoReply(response)) {
+				return Nil;
+			};
 
-			if(response->GetType()->Equals("application/json")) {
-				audio_json := JsonParser->TextToElement(response->GetContent()->ToString());
+			content_type := response->GetType();
+			if(content_type <> Nil & content_type->Equals("application/json")) {
+				audio_json := JsonParser->TextToElement(ResponseText(response));
 				if(audio_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
 				
 				if(audio_json->Has("error")) {
-					error_str := audio_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(audio_json);
 					SetLastError(error_str);
 					return Nil;
 				};
 			};
 			
-			return Pair->New(response->GetType(), ByteArrayRef->New(response->GetContent()))<String, ByteArrayRef>;
+			if(response->GetContent() = Nil) {
+				code := response->GetCode();
+				SetLastError("Empty response (HTTP {$code})");
+				return Nil;
+			};
+
+			return Pair->New(content_type, ByteArrayRef->New(response->GetContent()))<String, ByteArrayRef>;
 		}
 	}
 }
@@ -719,10 +729,10 @@ resp->GetText()->PrintLine();
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/responses' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();				
+					ResponseText(response)->PrintLine();				
 				};
 
-				return ParseResponse(response->GetContent()->ToString());
+				return ParseResponse(ResponseText(response));
 			};
 
 			return Nil;
@@ -895,10 +905,10 @@ resp->GetText()->PrintLine();
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/responses' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();				
+					ResponseText(response)->PrintLine();				
 				};
 
-				return ParseResponse(response->GetContent()->ToString());
+				return ParseResponse(ResponseText(response));
 			};
 
 			return Nil;
@@ -1098,10 +1108,10 @@ resp->GetText()->PrintLine();
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/responses' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();				
+					ResponseText(response)->PrintLine();				
 				};
 
-				return ParseResponse(response->GetContent()->ToString());
+				return ParseResponse(ResponseText(response));
 			};
 
 			return Nil;
@@ -1545,10 +1555,10 @@ choice->GetMessage()->GetSecond()->PrintLine();
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/chat/completions' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();				
+					ResponseText(response)->PrintLine();				
 				};
 
-				return ParseCompletion(response->GetContent()->ToString());
+				return ParseCompletion(ResponseText(response));
 			};
 
 			return Nil;
@@ -1697,10 +1707,10 @@ choice->GetMessage()->GetSecond()->PrintLine();
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/chat/completions' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();				
+					ResponseText(response)->PrintLine();				
 				};
 
-				return ParseCompletion(response->GetContent()->ToString());
+				return ParseCompletion(ResponseText(response));
 			};
 
 			return Nil;
@@ -1989,7 +1999,7 @@ bundle API.OpenAI.Tuning {
 			if(error_code_json <> Nil) {
 				@error_code := error_code_json->GetString();
 				@error_param := tune_json->FindElements("error/param")->GetString();
-				@error_message := tune_json->FindElements("error/message")->GetString();
+				@error_message := ParseErrorMessage(tune_json);
 			};
 
 			estimated_finish_json := tune_json->Get("estimated_finish");
@@ -2093,7 +2103,7 @@ bundle API.OpenAI.Tuning {
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/fine_tuning/jobs"), data, "application/json", headers);
 			if(response <> Nil) {
-				tune_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				tune_json := JsonParser->TextToElement(ResponseText(response));
 
 				if(tune_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
@@ -2140,7 +2150,7 @@ bundle API.OpenAI.Tuning {
 
 			response := HttpsClient->QuickGet(Url->New(url_str), headers);
 			if(response <> Nil) {
-				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				root_json := JsonParser->TextToElement(ResponseText(response));
 
 				if(root_json = Nil) {
 					return Nil;
@@ -2191,7 +2201,7 @@ bundle API.OpenAI.Tuning {
 
 			response := HttpsClient->QuickGet(Url->New(url_str), headers);
 			if(response <> Nil) {
-				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				root_json := JsonParser->TextToElement(ResponseText(response));
 
 				if(root_json = Nil) {
 					return Nil;
@@ -2243,7 +2253,7 @@ bundle API.OpenAI.Tuning {
 			response := HttpsClient->QuickGet(Url->New(url_str), headers);
 			if(response <> Nil) {
 				
-				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				root_json := JsonParser->TextToElement(ResponseText(response));
 
 				if(root_json = Nil) {
 					return Nil;
@@ -2278,7 +2288,7 @@ bundle API.OpenAI.Tuning {
 			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/fine_tuning/jobs/{$job_id}"), "application/json", headers);
 			
 			if(response <> Nil) {
-				tuning_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				tuning_json := JsonParser->TextToElement(ResponseText(response));
 				if(tuning_json = Nil) {
 					return Nil;
 				};
@@ -2303,7 +2313,7 @@ bundle API.OpenAI.Tuning {
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/fine_tuning/jobs/{$job_id}/cancel"), 
 				Byte->New[0], "application/json", headers);
 			if(response <> Nil) {
-				tuning_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				tuning_json := JsonParser->TextToElement(ResponseText(response));
 				if(tuning_json = Nil) {
 					return Nil;
 				};
@@ -3266,7 +3276,7 @@ bundle API.OpenAI {
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/images/generations"), data, "application/json", headers);
 			if(response <> Nil) {
-				return ParseImage(response->GetContent()->ToString());
+				return ParseImage(ResponseText(response));
 			};
 
 			return Nil;
@@ -3393,7 +3403,7 @@ bundle API.OpenAI {
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/images/edits"), data, 
 				"multipart/form-data; boundary={$boundary}", headers);
 			if(response <> Nil) {
-				return ParseImage(response->GetContent()->ToString());					
+				return ParseImage(ResponseText(response));					
 			};
 
 			return Nil;
@@ -3502,7 +3512,7 @@ bundle API.OpenAI {
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/images/variations"), data, 
 				"multipart/form-data; boundary={$boundary}", headers);
 			if(response <> Nil) {
-				return ParseImage(response->GetContent()->ToString());					
+				return ParseImage(ResponseText(response));					
 			};
 
 			return Nil;
@@ -3620,17 +3630,17 @@ if(store <> Nil & file <> Nil) {
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/vector_stores' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();
+					ResponseText(response)->PrintLine();
 				};
 
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse thread response ###"->ErrorLine();
 					return Nil;
 				};
 				
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -3660,16 +3670,16 @@ if(store <> Nil & file <> Nil) {
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/vector_stores/{$store_id}/files' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();
+					ResponseText(response)->PrintLine();
 				};
 
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(ResponseText(response));
 				if(response_json = Nil) {
 					return Nil;
 				};
 
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -3705,16 +3715,16 @@ if(store <> Nil & file <> Nil) {
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/vector_stores/{$store_id}/files/{$store_file_id}' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();
+					ResponseText(response)->PrintLine();
 				};
 
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(ResponseText(response));
 				if(response_json = Nil) {
 					return Nil;
 				};
 
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -3743,16 +3753,16 @@ if(store <> Nil & file <> Nil) {
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/vector_stores/{$store_id}/files/{$store_file_id}' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();
+					ResponseText(response)->PrintLine();
 				};
 
-				file_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				file_json := JsonParser->TextToElement(ResponseText(response));
 				if(file_json = Nil) {
 					return false;
 				};
 
 				if(file_json->Has("error")) {
-					error_str := file_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(file_json);
 					SetLastError(error_str);
 					return false;
 				}
@@ -3927,17 +3937,17 @@ if(store <> Nil) {
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/vector_stores' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();
+					ResponseText(response)->PrintLine();
 				};
 
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse thread response ###"->ErrorLine();
 					return Nil;
 				};
 				
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -3974,16 +3984,16 @@ if(store <> Nil) {
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/vector_stores' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();
+					ResponseText(response)->PrintLine();
 				};
 
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(ResponseText(response));
 				if(response_json = Nil) {
 					return Nil;
 				};
 
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -4024,16 +4034,16 @@ if(store <> Nil) {
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/vector_stores/{$id}' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();
+					ResponseText(response)->PrintLine();
 				};
 
-				file_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				file_json := JsonParser->TextToElement(ResponseText(response));
 				if(file_json = Nil) {
 					return false;
 				};
 
 				if(file_json->Has("error")) {
-					error_str := file_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(file_json);
 					SetLastError(error_str);
 					return false;
 				}
@@ -4077,10 +4087,10 @@ if(store <> Nil) {
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/vector_stores/{$store_id}' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();
+					ResponseText(response)->PrintLine();
 				};
 
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				response_json := JsonParser->TextToElement(ResponseText(response));
 				if(response_json = Nil) {
 					return Nil;
 				};
@@ -4292,6 +4302,9 @@ session->Close();
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/files"), data, 
 				"multipart/form-data; boundary={$boundary}", headers);
+			if(NoReply(response)) {
+				return false;
+			};
 
 			return response->GetCode() = 200;
 		}
@@ -4308,13 +4321,13 @@ session->Close();
 			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/files/{$id}"), "application/json", headers);
 			
 			if(response <> Nil) {
-				file_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				file_json := JsonParser->TextToElement(ResponseText(response));
 				if(file_json = Nil) {
 					return Nil;
 				};
 
 				if(file_json->Has("error")) {
-					error_str := file_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(file_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -4339,13 +4352,13 @@ session->Close();
 			response := HttpsClient->QuickDelete(Url->New(GetBaseUrl() + "/files/{$id}"), "application/json", headers);
 			
 			if(response <> Nil) {
-				file_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				file_json := JsonParser->TextToElement(ResponseText(response));
 				if(file_json = Nil) {
 					return false;
 				};
 
 				if(file_json->Has("error")) {
-					error_str := file_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(file_json);
 					SetLastError(error_str);
 					return false;
 				}
@@ -4423,7 +4436,7 @@ session->Close();
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/files"), "application/json", headers);
 			if(response <> Nil) {
-				return ParseFileList(response->GetContent()->ToString(), token);
+				return ParseFileList(ResponseText(response), token);
 			};
 
 			return files;
@@ -4461,7 +4474,12 @@ session->Close();
 		function : Retrieve(id : String, token : String) ~ Byte[] {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			return HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/files/{$id}/content"), "application/json", headers)->GetContent();
+			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/files/{$id}/content"), "application/json", headers);
+			if(NoReply(response)) {
+				return Nil;
+			};
+
+			return response->GetContent();
 		}
 	}
 
@@ -4602,17 +4620,17 @@ session->Close();
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/assistants/{$@id}/files' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();
+					ResponseText(response)->PrintLine();
 				};
 
-				file_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				file_json := JsonParser->TextToElement(ResponseText(response));
 				if(file_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return false;
 				};
 				
 				if(file_json->Has("error")) {
-					error_str := file_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(file_json);
 					SetLastError(error_str);
 					return false;
 				};
@@ -4691,17 +4709,17 @@ session->Close();
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/assistants' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();
+					ResponseText(response)->PrintLine();
 				};
 
-				assistants_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				assistants_json := JsonParser->TextToElement(ResponseText(response));
 				if(assistants_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
 				
 				if(assistants_json->Has("error")) {
-					error_str := assistants_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(assistants_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -4871,16 +4889,16 @@ session->Close();
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/assistants' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();
+					ResponseText(response)->PrintLine();
 				};
 
-				assistant_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				assistant_json := JsonParser->TextToElement(ResponseText(response));
 				if(assistant_json = Nil) {
 					return Nil;
 				};
 				
 				if(assistant_json->Has("error")) {
-					error_str := assistant_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(assistant_json);
 					SetLastError(error_str);
 					return Nil;
 				}
@@ -4907,17 +4925,17 @@ session->Close();
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/assistants/{$id}' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();
+					ResponseText(response)->PrintLine();
 				};
 
-				assistant_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				assistant_json := JsonParser->TextToElement(ResponseText(response));
 				if(assistant_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
 				
 				if(assistant_json->Has("error")) {
-					error_str := assistant_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(assistant_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -4960,16 +4978,16 @@ session->Close();
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/assistants/{$id}' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();
+					ResponseText(response)->PrintLine();
 				};
 
-				file_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				file_json := JsonParser->TextToElement(ResponseText(response));
 				if(file_json = Nil) {
 					return false;
 				};
 
 				if(file_json->Has("error")) {
-					error_str := file_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(file_json);
 					SetLastError(error_str);
 					return false;
 				}
@@ -5055,17 +5073,17 @@ session->Close();
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/threads' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();
+					ResponseText(response)->PrintLine();
 				};
 
-				thread_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				thread_json := JsonParser->TextToElement(ResponseText(response));
 				if(thread_json = Nil) {
 					"### Error: Unable to parse thread response ###"->ErrorLine();
 					return Nil;
 				};
 				
 				if(thread_json->Has("error")) {
-					error_str := thread_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(thread_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -5090,17 +5108,17 @@ session->Close();
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: 'https://api.openai.com/v1/threads/{$id}' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();
+					ResponseText(response)->PrintLine();
 				};
 
-				thread_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				thread_json := JsonParser->TextToElement(ResponseText(response));
 				if(thread_json = Nil) {
 					"### Error: Unable to parse thread response ###"->ErrorLine();
 					return Nil;
 				};
 				
 				if(thread_json->Has("error")) {
-					error_str := thread_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(thread_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -5128,16 +5146,16 @@ session->Close();
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: 'https://api.openai.com/v1/threads/{$id}' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();
+					ResponseText(response)->PrintLine();
 				};
 
-				thread_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				thread_json := JsonParser->TextToElement(ResponseText(response));
 				if(thread_json = Nil) {
 					return false;
 				};
 
 				if(thread_json->Has("error")) {
-					error_str := thread_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(thread_json);
 					SetLastError(error_str);
 					return false;
 				}
@@ -5351,17 +5369,17 @@ session->Close();
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: 'https://api.openai.com/v1/threads/{$thread_id}/messages' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();
+					ResponseText(response)->PrintLine();
 				};
 
-				message_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				message_json := JsonParser->TextToElement(ResponseText(response));
 				if(message_json = Nil) {
 					"### Error: Unable to parse thread response ###"->ErrorLine();
 					return Nil;
 				};
 				
 				if(message_json->Has("error")) {
-					error_str := message_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(message_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -5388,29 +5406,29 @@ session->Close();
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: 'https://api.openai.com/v1/threads/{$thread_id}/messages/{$id}' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();
+					ResponseText(response)->PrintLine();
 				};
 
-				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				root_json := JsonParser->TextToElement(ResponseText(response));
 
 				if(root_json = Nil) {
 					return Nil;
 				};
 
 				if(root_json->Has("error")) {
-					error_str := root_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(root_json);
 					SetLastError(error_str);
 					return Nil;
 				};
 
-				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				root_json := JsonParser->TextToElement(ResponseText(response));
 
 				if(root_json = Nil) {
 					return Nil;
 				};
 
 				if(root_json->Has("error")) {
-					error_str := root_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(root_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -5438,17 +5456,17 @@ session->Close();
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- https://api.openai.com/v1/threads/{$thread_id}/messages' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();
+					ResponseText(response)->PrintLine();
 				};
 
-				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				root_json := JsonParser->TextToElement(ResponseText(response));
 
 				if(root_json = Nil) {
 					return Nil;
 				};
 
 				if(root_json->Has("error")) {
-					error_str := root_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(root_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -5572,14 +5590,14 @@ session->Close();
 			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/threads/{$thread_id}/runs"), data, "application/json", headers);
 			if(response <> Nil) {
-				run_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				run_json := JsonParser->TextToElement(ResponseText(response));
 				if(run_json = Nil) {
 					"### Error: Unable to parse thread response ###"->ErrorLine();
 					return Nil;
 				};
 				
 				if(run_json->Has("error")) {
-					error_str := run_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(run_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -5603,29 +5621,29 @@ session->Close();
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: 'https://api.openai.com/v1/threads/{$@thread_id}/runs/{$@id}' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();
+					ResponseText(response)->PrintLine();
 				};
 
-				run_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				run_json := JsonParser->TextToElement(ResponseText(response));
 
 				if(run_json = Nil) {
 					return false;
 				};
 
 				if(run_json->Has("error")) {
-					error_str := run_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(run_json);
 					SetLastError(error_str);
 					return false;
 				};
 
-				run_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				run_json := JsonParser->TextToElement(ResponseText(response));
 
 				if(run_json = Nil) {
 					return false;
 				};
 
 				if(run_json->Has("error")) {
-					error_str := run_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(run_json);
 					SetLastError(error_str);
 					return false;
 				};
@@ -5664,29 +5682,29 @@ session->Close();
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: 'https://api.openai.com/v1/threads/{$@thread_id}/runs/{$@id}/submit_tool_outputs' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();
+					ResponseText(response)->PrintLine();
 				};
 
-				run_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				run_json := JsonParser->TextToElement(ResponseText(response));
 
 				if(run_json = Nil) {
 					return false;
 				};
 
 				if(run_json->Has("error")) {
-					error_str := run_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(run_json);
 					SetLastError(error_str);
 					return false;
 				};
 
-				run_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				run_json := JsonParser->TextToElement(ResponseText(response));
 
 				if(run_json = Nil) {
 					return false;
 				};
 
 				if(run_json->Has("error")) {
-					error_str := run_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(run_json);
 					SetLastError(error_str);
 					return false;
 				};
@@ -5714,29 +5732,29 @@ session->Close();
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: 'https://api.openai.com/v1/threads/{$thread_id}/runs/{$id}' ---"->PrintLine();
-					response->GetContent()->ToString()->PrintLine();
+					ResponseText(response)->PrintLine();
 				};
 
-				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				root_json := JsonParser->TextToElement(ResponseText(response));
 
 				if(root_json = Nil) {
 					return Nil;
 				};
 
 				if(root_json->Has("error")) {
-					error_str := root_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(root_json);
 					SetLastError(error_str);
 					return Nil;
 				};
 
-				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				root_json := JsonParser->TextToElement(ResponseText(response));
 
 				if(root_json = Nil) {
 					return Nil;
 				};
 
 				if(root_json->Has("error")) {
-					error_str := root_json->FindElements("error/message")->GetString();
+					error_str := ParseErrorMessage(root_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -5867,7 +5885,7 @@ embedding := Embedding->Create("Hello world", Models->TEXT_EMBEDDING_3_SMALL(), 
 
 			response := HttpsClient->QuickPost(Url->New(EndPoint->GetBaseUrl() + "/embeddings"), data, "application/json", headers);
 			if(response <> Nil) {
-				return ParseEmbedding(response->GetContent()->ToString());
+				return ParseEmbedding(EndPoint->ResponseText(response));
 			};
 
 			return Nil;
@@ -6033,7 +6051,7 @@ if(result->IsFlagged()) {
 				query_json->ToString()->ToByteArray(), "application/json", headers);
 
 			if(response <> Nil) {
-				return ParseModeration(response->GetContent()->ToString(), model);
+				return ParseModeration(ResponseText(response), model);
 			};
 
 			return Nil;
@@ -6194,7 +6212,7 @@ job = Batch->Get(job->GetId(), token);
 				query_json->ToString()->ToByteArray(), "application/json", headers);
 
 			if(response <> Nil) {
-				return ParseBatchJob(response->GetContent()->ToString());
+				return ParseBatchJob(ResponseText(response));
 			};
 
 			return Nil;
@@ -6214,7 +6232,7 @@ job = Batch->Get(job->GetId(), token);
 				"application/json", headers);
 
 			if(response <> Nil) {
-				return ParseBatchJob(response->GetContent()->ToString());
+				return ParseBatchJob(ResponseText(response));
 			};
 
 			return Nil;
@@ -6234,7 +6252,7 @@ job = Batch->Get(job->GetId(), token);
 				""->ToByteArray(), "application/json", headers);
 
 			if(response <> Nil) {
-				return ParseBatchJob(response->GetContent()->ToString());
+				return ParseBatchJob(ResponseText(response));
 			};
 
 			return Nil;
@@ -6263,7 +6281,7 @@ job = Batch->Get(job->GetId(), token);
 				"application/json", headers);
 
 			if(response <> Nil) {
-				return ParseBatchList(response->GetContent()->ToString());
+				return ParseBatchList(ResponseText(response));
 			};
 
 			return Nil;
@@ -6348,6 +6366,71 @@ job = Batch->Get(job->GetId(), token);
 		}
 
 		#~
+		Checks whether a request got an answer, recording the failure as the last
+		error if not. A refused or dropped connection is a Nil response over HTTP and
+		a response with status 0 and no content over HTTPS.
+		@param response HTTP response, or Nil
+		@return true if there was no answer
+		~#
+		function : NoReply(response : Web.HTTP.Response) ~ Bool {
+			if(response <> Nil & response->GetCode() <> 0) {
+				return false;
+			};
+
+			base_url := GetBaseUrl();
+			SetLastError("No response from {$base_url}");
+			return true;
+		}
+
+		#~
+		Reads a response body as text. A reply with no body (an HTTP 204, a proxy
+		error page without content) has no content bytes to read.
+		@param response HTTP response, or Nil
+		@return body text, or an empty string if the response has no body
+		~#
+		function : ResponseText(response : Web.HTTP.Response) ~ String {
+			if(response = Nil) {
+				return "";
+			};
+
+			content := response->GetContent();
+			if(content = Nil) {
+				return "";
+			};
+
+			return content->ToString();
+		}
+
+		#~
+		Reads the message of an error response. The 'error' member is an object
+		with a 'message' on the documented path, but a gateway may send a plain
+		string, an object without a 'message', or null.
+		@param response_json parsed response
+		@return error message, never Nil
+		~#
+		function : ParseErrorMessage(response_json : JsonElement) ~ String {
+			if(response_json = Nil) {
+				return "Unknown error";
+			};
+
+			error_json := response_json->Get("error");
+			if(error_json = Nil | error_json->IsNull()) {
+				return "Unknown error";
+			};
+
+			message_json := error_json->Get("message");
+			if(message_json <> Nil & <>message_json->IsNull()) {
+				return message_json->GetString();
+			};
+
+			if(error_json->GetType() = JsonElement->JsonType->STRING) {
+				return error_json->GetString();
+			};
+
+			return error_json->ToString();
+		}
+
+		#~
 		Parses a response body, recording a failure as the last error. A body that
 		is not JSON, or that carries an 'error' object, yields Nil; an 'error' that
 		is null (the Responses API sends one on success) is not a failure.
@@ -6355,7 +6438,7 @@ job = Batch->Get(job->GetId(), token);
 		@return parsed JSON, or Nil on failure
 		~#
 		function : ParseBody(body : String) ~ JsonElement {
-			if(body = Nil) {
+			if(body = Nil | body->IsEmpty()) {
 				SetLastError("Empty response");
 				return Nil;
 			};

@@ -20,7 +20,7 @@ runs:
         fi
 
     - name: Cache QUIC deps
-      uses: actions/cache@v5
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
       with:
         # Only what build_quic_deps.sh installs: the macOS bundled libraries share
         # the prefix (macos-bundle/) and have their own cache.

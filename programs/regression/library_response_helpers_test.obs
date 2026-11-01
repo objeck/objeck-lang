@@ -1,0 +1,85 @@
+# EXTRA_LIBS: openai,gemini,json,net,net_server,cipher,misc
+#~
+A reply with no body, or an error reply of an unexpected shape, must not dereference Nil
+(offline: canned replies).
+
+Defects this guards:
+- A reply with no body (an HTTP 204, a proxy error page) has Nil content, and
+  response->GetContent()->ToString() dereferenced it throughout the OpenAI and
+  Gemini endpoints; the endpoints now read the body through ResponseText.
+- An error reply whose 'error' is a string, or an object without a 'message',
+  made FindElements("error/message")->GetString() dereference Nil; the OpenAI
+  endpoints now read it through ParseErrorMessage.
+~#
+
+class LibraryResponseHelpersTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Same(a : String, b : String) ~ Bool {
+    return a <> Nil & a->Equals(b);
+  }
+
+  function : HasError(text : String) ~ Bool {
+    err := API.OpenAI.EndPoint->GetLastError();
+    return err <> Nil & err->Find(text) > -1;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+
+    TestBodyText();
+    TestErrorMessage();
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: library response helpers"->PrintLine();
+  }
+
+  function : TestBodyText() ~ Nil {
+    "-- reply without a body --"->PrintLine();
+
+    no_body := Web.HTTP.Response->New(204);
+    Check("OpenAI ResponseText of a 204", Same(API.OpenAI.EndPoint->ResponseText(no_body), ""));
+    Check("OpenAI ResponseText of Nil", Same(API.OpenAI.EndPoint->ResponseText(Nil), ""));
+    Check("Gemini ResponseText of a 204", Same(API.Google.Gemini.OAuthEndPoint->ResponseText(no_body), ""));
+    Check("Gemini ResponseText of Nil", Same(API.Google.Gemini.OAuthEndPoint->ResponseText(Nil), ""));
+
+    with_body := Web.HTTP.Response->New("{\"a\":1}"->ToByteArray(), 200, "application/json");
+    Check("ResponseText of a body", Same(API.OpenAI.EndPoint->ResponseText(with_body), "{\"a\":1}"));
+
+    API.OpenAI.EndPoint->SetLastError(Nil);
+    Check("OpenAI ParseBody of an empty body", API.OpenAI.EndPoint->ParseBody("") = Nil);
+    Check("OpenAI ParseBody records Empty response", HasError("Empty response"));
+  }
+
+  function : TestErrorMessage() ~ Nil {
+    "-- error replies --"->PrintLine();
+
+    json := Data.JSON.JsonParser->TextToElement("{\"error\":{\"message\":\"Incorrect API key\",\"type\":\"invalid_request_error\"}}");
+    Check("message from an error object", Same(API.OpenAI.EndPoint->ParseErrorMessage(json), "Incorrect API key"));
+
+    json := Data.JSON.JsonParser->TextToElement("{\"error\":\"rate limited\"}");
+    Check("a plain-string error", Same(API.OpenAI.EndPoint->ParseErrorMessage(json), "rate limited"));
+
+    json := Data.JSON.JsonParser->TextToElement("{\"error\":{\"code\":500}}");
+    message := API.OpenAI.EndPoint->ParseErrorMessage(json);
+    Check("an error without a message", message <> Nil & message->Find("500") > -1);
+
+    json := Data.JSON.JsonParser->TextToElement("{\"error\":null}");
+    Check("a null error", Same(API.OpenAI.EndPoint->ParseErrorMessage(json), "Unknown error"));
+
+    Check("Nil gives a message", Same(API.OpenAI.EndPoint->ParseErrorMessage(Nil), "Unknown error"));
+  }
+}

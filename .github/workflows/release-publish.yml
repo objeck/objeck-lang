@@ -40,7 +40,7 @@ jobs:
 
   check-trigger:
     name: Check Trigger and Extract Parameters
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       should_publish: ${{ steps.check.outputs.should_publish }}
       version: ${{ steps.extract.outputs.version }}
@@ -125,7 +125,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Set version
         id: version
@@ -134,7 +134,7 @@ jobs:
           echo "📦 Release version: ${{ needs.check-trigger.outputs.version }}"
 
       - name: Download all release artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           path: artifacts/
           run-id: ${{ needs.check-trigger.outputs.run_id }}
@@ -151,7 +151,7 @@ jobs:
       # ============================================
 
       - name: Setup MSVC Environment
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
         with:
           arch: x64
 
@@ -179,7 +179,7 @@ jobs:
       # Same source, same version, same cache key.
       - name: Cache OpenCV DLLs (Windows x64)
         id: opencv-cache-x64
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: core/lib/opencv/win/x64/bin
           key: opencv-4.12.0-win-x64-dlls-licenses
@@ -326,7 +326,7 @@ jobs:
           Write-Output "✅ Removed .wixpdb debug files from release"
 
       - name: Upload renamed artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: release-final
           path: release-staging/*
@@ -339,7 +339,7 @@ jobs:
   github-release:
     name: Create GitHub Release
     needs: prepare
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     # Exposed at job level so the `if: env.MINISIGN_SECRET_KEY == ''` conditions
     # below can read it. A secret is not available to `if:` through the secrets
@@ -350,7 +350,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           # Tags are REQUIRED here: "Generate release notes" derives PREV_VERSION
           # from `git tag`. The default shallow checkout fetches no tags, so
@@ -359,7 +359,7 @@ jobs:
           fetch-depth: 0
 
       - name: Download final artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: release-final
           path: release-final/
@@ -541,7 +541,7 @@ jobs:
   sourceforge-upload:
     name: Upload to Sourceforge
     needs: [check-trigger, prepare, github-release]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: |
       needs.check-trigger.outputs.should_publish == 'true' &&
       (github.event_name == 'workflow_run' || github.event.inputs.skip_sourceforge != 'true')
@@ -551,7 +551,7 @@ jobs:
 
     steps:
       - name: Download final artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: release-final
           path: release-final/
@@ -624,7 +624,7 @@ jobs:
   deploy-playground:
     name: Deploy playground
     needs: [check-trigger, prepare, github-release]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: |
       needs.check-trigger.outputs.should_publish == 'true' &&
       (github.event_name == 'workflow_run' || github.event.inputs.skip_playground != 'true')
@@ -751,7 +751,7 @@ jobs:
   deploy-docs:
     name: Deploy API Documentation
     needs: [check-trigger, prepare]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: |
       needs.check-trigger.outputs.should_publish == 'true' &&
       (github.event_name == 'workflow_run' || github.event.inputs.skip_docs_deploy != 'true')
@@ -768,10 +768,10 @@ jobs:
       # With the secret unset the step was skipped, so nothing ever exercised
       # it: the same shape as resign-manifest.yml, which signed a manifest and
       # could not upload it because it had cd'd out of its checkout (#1081).
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Download API docs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: api-docs
           path: api-docs/
@@ -910,7 +910,7 @@ jobs:
   summary:
     name: Release Summary
     needs: [check-trigger, prepare, github-release, sourceforge-upload, deploy-docs, deploy-playground]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: always() && needs.check-trigger.outputs.should_publish == 'true'
 
     steps:
