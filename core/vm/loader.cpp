@@ -35,6 +35,9 @@
 
 StackProgram* Loader::program;
 
+// the trap ids a program may use (with the verification code below)
+static bool IsTrapId(const INT64_VALUE id);
+
 StackProgram* Loader::GetProgram() {
   return program;
 }
@@ -58,7 +61,24 @@ void Loader::LoadConfiguration()
   in.close();
 }
 
-void Loader::Load()
+bool Loader::Load()
+{
+  error.str(L"");
+  error.clear();
+  try {
+    if(!from_mem && !alloc_buffer) {
+      ReadFile();
+    }
+    LoadImage();
+  }
+  catch(const LoadError&) {
+    return false;
+  }
+
+  return true;
+}
+
+void Loader::LoadImage()
 {
   // An .obe is tied to the toolchain that compiled it: the VM's traps, call
   // stack and bytecode change between versions with no versioned format of
@@ -69,15 +89,15 @@ void Loader::Load()
   // told the reader neither.
   const int ver_num = static_cast<int>(ReadInt());
   if(ver_num != VER_NUM) {
-    std::wcerr << L"Toolchain version mismatch reading " << filename << std::endl
+    error << L"Toolchain version mismatch reading " << filename << std::endl
                << L"\tthe program was compiled by toolchain " << ver_num << std::endl
                << L"\tthis runtime is                       " << VER_NUM << std::endl;
     if(ver_num > VER_NUM) {
-      std::wcerr << L"\t-> this runtime is older than the program. Upgrade the runtime, or recompile" << std::endl
+      error << L"\t-> this runtime is older than the program. Upgrade the runtime, or recompile" << std::endl
                  << L"\t   the program's source with this toolchain's obc." << std::endl;
     }
     else {
-      std::wcerr << L"\t-> the program is older than this runtime. Recompile its source with this" << std::endl
+      error << L"\t-> the program is older than this runtime. Recompile its source with this" << std::endl
                  << L"\t   toolchain's obc (an .obe does not run across toolchain versions)." << std::endl;
     }
     LoadFailed();
@@ -89,7 +109,7 @@ void Loader::Load()
   case MAGIC_NUM_LIB_UNQUALIFIED_ENUMS:
   case MAGIC_NUM_LIB_NO_GENERIC_MARKS:
   case MAGIC_NUM_LIB_NO_PARAM_NAMES:
-    std::wcerr << L"Cannot run '" << filename << L"': it is a library (.obl), not a program (.obe)." << std::endl
+    error << L"Cannot run '" << filename << L"': it is a library (.obl), not a program (.obe)." << std::endl
                << L"\tLink it into a program with 'obc -lib' and run that program's .obe." << std::endl;
     LoadFailed();
 
@@ -97,12 +117,12 @@ void Loader::Load()
     break;
 
   case MAGIC_NUM_EXE_UNTYPED_INT_ARRAYS:
-    std::wcerr << L"Cannot run '" << filename << L"': it was compiled before an Int[] and an object array were allocated with distinct opcodes," << std::endl
-               << L"\tso this runtime would read its object arrays as Int[]. Recompile its source with this toolchain's obc." << std::endl;
-    exit(1);
+    error << L"Cannot run '" << filename << L"': it was compiled before an Int[] and an object array were allocated with distinct opcodes," << std::endl
+          << L"\tso this runtime would read its object arrays as Int[]. Recompile its source with this toolchain's obc." << std::endl;
+    LoadFailed();
 
   default:
-    std::wcerr << L"Unknown file type for '" << filename << L"'." << std::endl;
+    error << L"Unknown file type for '" << filename << L"'." << std::endl;
     LoadFailed();
   }
 
@@ -257,6 +277,7 @@ void Loader::Load()
 #endif
 
   LoadClasses();
+  Verify();
   
   const std::wstring name = L"$Initialization$:";
   StackDclr** dclrs = new StackDclr*[1];
@@ -324,7 +345,7 @@ char* Loader::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
     buffer = (char*)calloc(buffer_size + 1, sizeof(char));
     if(!buffer) {
       in.close();
-      std::wcerr << L"Unable to allocate memory for file: '" << filename << L"'" << std::endl;
+      error << L"Unable to allocate memory for file: '" << filename << L"'" << std::endl;
       LoadFailed();
     }
     in.read(buffer, buffer_size);
@@ -336,7 +357,7 @@ char* Loader::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
     free(buffer);
     buffer = nullptr;
     if(!out) {
-      std::wcerr << L"Unable to uncompress file: " << filename << std::endl;
+      error << L"Unable to uncompress file: " << filename << std::endl;
       LoadFailed();
     }
 
@@ -347,7 +368,7 @@ char* Loader::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
     return out;
   }
   else {
-    std::wcerr << L"Unable to open file: '" << filename << L"'" << std::endl;
+    error << L"Unable to open file: '" << filename << L"'" << std::endl;
     LoadFailed();
   }
 
@@ -427,6 +448,12 @@ void Loader::LoadClasses()
   long* cls_hierarchy = loaded.hierarchy;
   long** cls_interfaces = loaded.interfaces;
   StackClass** classes = loaded.classes;
+  class_spaces.assign(num_classes, 0);
+  verify.max_called.assign(num_classes, -1);
+  verify.called_where.assign(num_classes, std::pair<StackMethod*, long>(nullptr, -1));
+  verify.inst_end = 0;
+  verify.inst_where = nullptr;
+  verify.inst_ip = -1;
 
 #ifdef _DEBUG
   std::wcout << L"Reading " << num_classes << L" classe(s)..." << std::endl;
@@ -438,11 +465,11 @@ void Loader::LoadClasses()
     // Validate before any classes[id]/cls_interfaces[id]/cls_hierarchy[id] store:
     // a crafted .obe could otherwise drive an arbitrary-offset heap write.
     if(id < 0 || id >= num_classes) {
-      std::wcerr << L">>> Corrupt bytecode: class id out of range <<<" << std::endl;
+      error << L">>> Corrupt bytecode: class id out of range <<<" << std::endl;
       LoadFailed();
     }
     if(classes[id]) {
-      std::wcerr << L">>> Corrupt bytecode: duplicate class id <<<" << std::endl;
+      error << L">>> Corrupt bytecode: duplicate class id <<<" << std::endl;
       LoadFailed();
     }
     std::wstring name = ReadString();
@@ -454,7 +481,7 @@ void Loader::LoadClasses()
     // sized this array at up to 16 GB; found by the fuzz target)
     const int num_interfaces = static_cast<int>(ReadInt());
     if(num_interfaces > 0 && buffer_end && (size_t)num_interfaces > (size_t)(buffer_end - buffer) / sizeof(int32_t)) {
-      std::wcerr << L">>> Corrupt bytecode: invalid interface count <<<" << std::endl;
+      error << L">>> Corrupt bytecode: invalid interface count <<<" << std::endl;
       LoadFailed();
     }
     if(num_interfaces > 0) {
@@ -476,6 +503,7 @@ void Loader::LoadClasses()
     // space
     const int cls_space = static_cast<int>(ReadInt());
     const int inst_space = static_cast<int>(ReadInt());
+    class_spaces[id] = cls_space;
 
     PartialClassDeclarations dclrs;
 
@@ -537,8 +565,13 @@ StackDclr** Loader::LoadDeclarations(const int num_dclrs, const bool is_debug)
   StackDclr** dclrs = new StackDclr * [num_dclrs]();
   try {
     for(int j = 0; j < num_dclrs; ++j) {
-      // set type
+      // set type: the collector walks frames and objects by these, so an
+      // unknown one is refused (verification)
       int type = static_cast<int>(ReadInt());
+      if(type < CHAR_PARM || type > FUNC_PARM) {
+        error << L">>> Invalid bytecode: unknown declaration type " << type << L" <<<" << std::endl;
+        LoadFailed();
+      }
       // set name
       std::wstring name;
       if(is_debug) {
@@ -572,11 +605,11 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
       const int id = static_cast<int>(ReadInt());
       // Validate before the methods[id] store (crafted .obe → arbitrary heap write).
       if(id < 0 || id >= number) {
-        std::wcerr << L">>> Corrupt bytecode: method id out of range <<<" << std::endl;
+        error << L">>> Corrupt bytecode: method id out of range <<<" << std::endl;
         LoadFailed();
       }
       if(methods[id]) {
-        std::wcerr << L">>> Corrupt bytecode: duplicate method id <<<" << std::endl;
+        error << L">>> Corrupt bytecode: duplicate method id <<<" << std::endl;
         LoadFailed();
       }
       // method type
@@ -627,7 +660,7 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
 
       default:
         DeleteDeclarations(dclrs, num_dclrs);
-        std::wcerr << L">>> unknown type: " << rtrn_name[0] << L"(" << (int)rtrn_name[0] << L") <<" << std::endl;
+        error << L">>> unknown type: " << rtrn_name[0] << L"(" << (int)rtrn_name[0] << L") <<" << std::endl;
         LoadFailed();
         break;
       }
@@ -707,17 +740,36 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
   // Each instruction is at least one byte (opcode) in the stream, so a count
   // exceeding the bytes remaining is corrupt -- reject before the allocation.
   if(buffer_end && num_instrs > (size_t)(buffer_end - buffer)) {
-    std::wcerr << L">>> Corrupt bytecode: invalid instruction count <<<" << std::endl;
+    error << L">>> Corrupt bytecode: invalid instruction count <<<" << std::endl;
     LoadFailed();
   }
   StackInstr* mthd_instrs = new StackInstr[num_instrs];
   // the method owns the array from here, so a failure below frees it
   method->SetInstructions(mthd_instrs, static_cast<int>(num_instrs));
 
+  // Verification, as each instruction is read (see Loader::Verify): the
+  // operands the reading below relates to the method, its class and the class
+  // table. A separate walk over the finished program cost a fifth of the load
+  // time on a large one; here the checks ride on the switch that builds the
+  // instruction anyway.
+  StackClass* cls = method->GetClass();
+  const INT64_VALUE mem_size = method->GetMemorySize();
+  if(mem_size < 0) {
+    VerifyFailed(cls, method, -1, L"negative frame size");
+  }
+  const INT64_VALUE cls_space = class_spaces[cls->GetId()];
+  const long count = (long)num_instrs;
+  long slots_until = -1;
+
   for(unsigned long i = 0; i < num_instrs; ++i) {
     const int type = ReadByte();
     if(is_debug) {
       line_num = static_cast<int>(ReadInt());
+    }
+    const long ip = (long)i;
+    // the slots a JMP_TABLE reads follow it, and nothing else may stand there
+    if(ip <= slots_until && type != JMP_TABLE_SLOT) {
+      VerifyFailed(cls, method, ip, L"jump table slot missing");
     }
 
     switch(type) {
@@ -738,15 +790,19 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       break;
 
     case TRAP:
-      mthd_instrs[i] = StackInstr(line_num, TRAP, ReadInt());
-      break;
-
-    case TRAP_RTRN:
-      mthd_instrs[i] = StackInstr(line_num, TRAP_RTRN, ReadInt());
+    case TRAP_RTRN: {
+      const long num_args = ReadInt();
+      // the compiler pushes the trap id as a literal just ahead of the trap
+      if(num_args < 1 || i == 0 || mthd_instrs[i - 1].GetType() != LOAD_INT_LIT ||
+         !IsTrapId(mthd_instrs[i - 1].GetInt64Operand())) {
+        VerifyFailed(cls, method, ip, L"trap without a known trap id");
+      }
+      mthd_instrs[i] = StackInstr(line_num, (InstructionType)type, num_args);
+    }
       break;
 
     case OBJ_INST_CAST:
-      mthd_instrs[i] = StackInstr(line_num, OBJ_INST_CAST, ReadInt());
+      mthd_instrs[i] = StackInstr(line_num, OBJ_INST_CAST, CheckClassId(method, ip, ReadInt()));
       break;
 
     case LOAD_FLOAT_LIT:
@@ -754,27 +810,27 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       break;
 
     case NEW_FLOAT_ARY:
-      mthd_instrs[i] = StackInstr(line_num, NEW_FLOAT_ARY, ReadInt());
+      mthd_instrs[i] = StackInstr(line_num, NEW_FLOAT_ARY, CheckDimension(method, ip, ReadInt()));
       break;
 
     case NEW_INT_ARY:
-      mthd_instrs[i] = StackInstr(line_num, NEW_INT_ARY, ReadInt());
+      mthd_instrs[i] = StackInstr(line_num, NEW_INT_ARY, CheckDimension(method, ip, ReadInt()));
       break;
 
     case NEW_OBJ_ARY:
-      mthd_instrs[i] = StackInstr(line_num, NEW_OBJ_ARY, ReadInt());
+      mthd_instrs[i] = StackInstr(line_num, NEW_OBJ_ARY, CheckDimension(method, ip, ReadInt()));
       break;
 
     case NEW_BYTE_ARY:
-      mthd_instrs[i] = StackInstr(line_num, NEW_BYTE_ARY, ReadInt());
+      mthd_instrs[i] = StackInstr(line_num, NEW_BYTE_ARY, CheckDimension(method, ip, ReadInt()));
       break;
 
     case NEW_CHAR_ARY:
-      mthd_instrs[i] = StackInstr(line_num, NEW_CHAR_ARY, ReadInt());
+      mthd_instrs[i] = StackInstr(line_num, NEW_CHAR_ARY, CheckDimension(method, ip, ReadInt()));
       break;
 
     case NEW_OBJ_INST:
-      mthd_instrs[i] = StackInstr(line_num, NEW_OBJ_INST, ReadInt());
+      mthd_instrs[i] = StackInstr(line_num, NEW_OBJ_INST, CheckClassId(method, ip, ReadInt()));
       break;
 
     case NEW_FUNC_INST:
@@ -786,12 +842,13 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       break;
 
     case OBJ_TYPE_OF:
-      mthd_instrs[i] = StackInstr(line_num, OBJ_TYPE_OF, ReadInt());
+      mthd_instrs[i] = StackInstr(line_num, OBJ_TYPE_OF, CheckClassId(method, ip, ReadInt()));
       break;
 
     case LOAD_INT_VAR: {
       const long id = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
+      CheckSlot(method, ip, id, mem_context, 1, mem_size, cls_space);
       mthd_instrs[i] = StackInstr(line_num, mem_context == LOCL ? LOAD_LOCL_INT_VAR : LOAD_CLS_INST_INT_VAR, id, mem_context);
     }
       break;
@@ -799,6 +856,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case LOAD_FUNC_VAR: {
       const long id = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
+      CheckSlot(method, ip, id, mem_context, 2, mem_size, cls_space);
       mthd_instrs[i] = StackInstr(line_num, LOAD_FUNC_VAR, id, mem_context);
     }
       break;
@@ -806,6 +864,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case LOAD_FLOAT_VAR: {
       const long id = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
+      CheckSlot(method, ip, id, mem_context, 1, mem_size, cls_space);
       mthd_instrs[i] = StackInstr(line_num, LOAD_FLOAT_VAR, id, mem_context);
     }
       break;
@@ -813,6 +872,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case STOR_INT_VAR: {
       const long id = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
+      CheckSlot(method, ip, id, mem_context, 1, mem_size, cls_space);
       mthd_instrs[i] = StackInstr(line_num, mem_context == LOCL ? STOR_LOCL_INT_VAR : STOR_CLS_INST_INT_VAR, id, mem_context);
     }
       break;
@@ -820,6 +880,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case STOR_FUNC_VAR: {
       const long id = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
+      CheckSlot(method, ip, id, mem_context, 2, mem_size, cls_space);
       mthd_instrs[i] = StackInstr(line_num, STOR_FUNC_VAR, id, mem_context);
     }
       break;
@@ -827,6 +888,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case STOR_FLOAT_VAR: {
       const long id = ReadInt();
       const long mem_context = ReadInt();
+      CheckSlot(method, ip, id, mem_context, 1, mem_size, cls_space);
       mthd_instrs[i] = StackInstr(line_num, STOR_FLOAT_VAR, id, mem_context);
     }
       break;
@@ -834,6 +896,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case COPY_INT_VAR: {
       const long id = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
+      CheckSlot(method, ip, id, mem_context, 1, mem_size, cls_space);
       mthd_instrs[i] = StackInstr(line_num, mem_context == LOCL ? COPY_LOCL_INT_VAR : COPY_CLS_INST_INT_VAR, id, mem_context);
     }
       break;
@@ -841,6 +904,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case COPY_FLOAT_VAR: {
       const long id = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
+      CheckSlot(method, ip, id, mem_context, 1, mem_size, cls_space);
       mthd_instrs[i] = StackInstr(line_num, COPY_FLOAT_VAR, id, mem_context);
     }
       break;
@@ -848,6 +912,8 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case LOAD_BYTE_ARY_ELM: {
       const long dim = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
+      CheckDimension(method, ip, dim);
+      CheckContext(method, ip, mem_context);
       mthd_instrs[i] = StackInstr(line_num, LOAD_BYTE_ARY_ELM, dim, mem_context);
     }
       break;
@@ -855,6 +921,8 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case LOAD_CHAR_ARY_ELM: {
       const long dim = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
+      CheckDimension(method, ip, dim);
+      CheckContext(method, ip, mem_context);
       mthd_instrs[i] = StackInstr(line_num, LOAD_CHAR_ARY_ELM, dim, mem_context);
     }
       break;
@@ -862,6 +930,8 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case LOAD_INT_ARY_ELM: {
       const long dim = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
+      CheckDimension(method, ip, dim);
+      CheckContext(method, ip, mem_context);
       mthd_instrs[i] = StackInstr(line_num, LOAD_INT_ARY_ELM, dim, mem_context);
     }
       break;
@@ -869,6 +939,8 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case LOAD_FLOAT_ARY_ELM: {
       const long dim = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
+      CheckDimension(method, ip, dim);
+      CheckContext(method, ip, mem_context);
       mthd_instrs[i] = StackInstr(line_num, LOAD_FLOAT_ARY_ELM, dim, mem_context);
     }
       break;
@@ -876,6 +948,8 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case STOR_BYTE_ARY_ELM: {
       const long dim = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
+      CheckDimension(method, ip, dim);
+      CheckContext(method, ip, mem_context);
       mthd_instrs[i] = StackInstr(line_num, STOR_BYTE_ARY_ELM, dim, mem_context);
     }
       break;
@@ -883,6 +957,8 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case STOR_CHAR_ARY_ELM: {
       const long dim = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
+      CheckDimension(method, ip, dim);
+      CheckContext(method, ip, mem_context);
       mthd_instrs[i] = StackInstr(line_num, STOR_CHAR_ARY_ELM, dim, mem_context);
     }
       break;
@@ -890,6 +966,8 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case STOR_INT_ARY_ELM: {
       const long dim = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
+      CheckDimension(method, ip, dim);
+      CheckContext(method, ip, mem_context);
       mthd_instrs[i] = StackInstr(line_num, STOR_INT_ARY_ELM, dim, mem_context);
     }
       break;
@@ -897,6 +975,8 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case STOR_FLOAT_ARY_ELM: {
       const long dim = ReadInt();
       const long mem_context = ReadInt();
+      CheckDimension(method, ip, dim);
+      CheckContext(method, ip, mem_context);
       mthd_instrs[i] = StackInstr(line_num, STOR_FLOAT_ARY_ELM, dim, mem_context);
     }
       break;
@@ -909,9 +989,19 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       break;
 
     case MTHD_CALL: {
-      const long cls_id = ReadInt();
+      const long cls_id = CheckClassId(method, ip, ReadInt());
       const long mthd_id = ReadInt();
       const long is_native = ReadInt();
+      // The callee may not have loaded yet, so the highest method id named in
+      // each class is compared with its method count afterwards (Verify).
+      // ASYNC_MTHD_CALL is not checked: it takes its target from the stack.
+      if(mthd_id < 0) {
+        VerifyFailed(cls, method, ip, L"method id out of range");
+      }
+      if(mthd_id > verify.max_called[cls_id]) {
+        verify.max_called[cls_id] = mthd_id;
+        verify.called_where[cls_id] = std::make_pair(method, ip);
+      }
       mthd_instrs[i] = StackInstr(line_num, MTHD_CALL, cls_id, mthd_id, is_native);
     }
       break;
@@ -925,14 +1015,14 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       break;
 
     case JMP: {
-      const long label = ReadInt();
+      const long label = CheckTarget(method, ip, ReadInt(), count);
       const long cond = ReadInt();
       mthd_instrs[i] = StackInstr(line_num, JMP, label, cond);
     }
       break;
 
     case TRY_START: {
-      const long handler = ReadInt();
+      const long handler = CheckTarget(method, ip, ReadInt(), count);
       const long cond = ReadInt();
       mthd_instrs[i] = StackInstr(line_num, TRY_START, handler, cond);
     }
@@ -1040,35 +1130,226 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case JMP_TABLE: {
       const long base = ReadInt();
       const long range = ReadInt();
-      const long default_ip = ReadInt();
+      const long default_ip = CheckTarget(method, ip, ReadInt(), count);
+      // 'range' slots follow the header; the selector picks one
+      if(range < 0 || range >= count - ip) {
+        VerifyFailed(cls, method, ip, L"jump table larger than the method");
+      }
+      slots_until = ip + range;
       mthd_instrs[i] = StackInstr(line_num, JMP_TABLE, base, range, default_ip);
     }
       break;
 
     case JMP_TABLE_SLOT: {
-      const long target_ip = ReadInt();
+      const long target_ip = CheckTarget(method, ip, ReadInt(), count);
       mthd_instrs[i] = StackInstr(line_num, JMP_TABLE_SLOT, target_ip);
     }
       break;
 
     case LIB_OBJ_INST_CAST:
-      std::wcerr << L">>> unsupported instruction for executable: LIB_OBJ_INST_CAST <<<" << std::endl;
+      error << L">>> unsupported instruction for executable: LIB_OBJ_INST_CAST <<<" << std::endl;
       LoadFailed();
 
     case LIB_NEW_OBJ_INST:
-      std::wcerr << L">>> unsupported instruction for executable: LIB_NEW_OBJ_INST <<<" << std::endl;
+      error << L">>> unsupported instruction for executable: LIB_NEW_OBJ_INST <<<" << std::endl;
       LoadFailed();
 
     case LIB_MTHD_CALL:
-      std::wcerr << L">>> unsupported instruction for executable: LIB_MTHD_CALL <<<" << std::endl;
+      error << L">>> unsupported instruction for executable: LIB_MTHD_CALL <<<" << std::endl;
       LoadFailed();
 
     default:
       // said only in debug builds before: a release obr exited 1 without a word
-      std::wcerr << L">>> Corrupt bytecode: unknown instruction: id=" << type << L" <<<" << std::endl;
+      error << L">>> Corrupt bytecode: unknown instruction: id=" << type << L" <<<" << std::endl;
       LoadFailed();
       break;
     }
   }
 
+
+  // Control must not run past the last instruction: the interpreter would read
+  // the word after the array.
+  if(count > 0) {
+    const StackInstr& last = mthd_instrs[count - 1];
+    if(last.GetType() != RTRN && !(last.GetType() == JMP && last.GetOperand2() < 0)) {
+      VerifyFailed(cls, method, count - 1, L"the method can run past its last instruction");
+    }
+  }
+}
+
+//
+// Verification: checks made as a program loads, before any of it runs: per
+// instruction in LoadStatements (the helpers below), and for the whole program
+// in Verify. Loading proves the file is well formed; these relate each operand to
+// the program it is part of, the checks docs/SECURITY_MODEL.md listed as
+// missing, so a crafted .obe is refused instead of steering the interpreter
+// outside the method, the frame or the class tables. Each rule holds for every
+// program the toolchain compiles (all of programs/regression, which links the
+// shipped libraries); a program that breaks one was not written by obc.
+//
+// Not checked: operand-stack depth. A trap pops as many words as its own id
+// says, so a depth bound needs a per-trap table the compiler and the VM do not
+// share yet.
+//
+
+// The Traps enum's first and last ids (core/shared/traps.h). A trap added after
+// LAST_TRAP would be refused here, so tools/cicd/check_trap_handlers.py fails
+// when LAST_TRAP is not the enum's last enumerator.
+static const INT64_VALUE FIRST_TRAP = instructions::LOAD_CLS_INST_ID;
+static const INT64_VALUE LAST_TRAP = instructions::GC_TEST_ADDRESS;
+
+// The ids a program may push ahead of TRAP or TRAP_RTRN: the Traps enum, and the
+// instruction ids the compiler writes as trap ids (check_trap_handlers.py keeps
+// this list whole: every id IntermediateEmitter::EmitSystemDirective writes).
+static bool IsTrapId(const INT64_VALUE id)
+{
+  if(id >= FIRST_TRAP && id <= LAST_TRAP) {
+    return true;
+  }
+
+  switch(id) {
+  case instructions::SET_SIGNAL:
+  case instructions::RAISE_SIGNAL:
+    return true;
+
+  default:
+    return false;
+  }
+}
+
+void Loader::VerifyFailed(StackClass* cls, StackMethod* mthd, long ip, const wchar_t* why)
+{
+  error << L">>> Invalid bytecode: ";
+  if(mthd) {
+    error << mthd->GetName();
+  }
+  else if(cls) {
+    error << cls->GetName();
+  }
+  else {
+    error << L"the program";
+  }
+  if(ip >= 0) {
+    error << L", instruction " << ip;
+  }
+  error << L": " << why << L" <<<" << std::endl;
+  LoadFailed();
+}
+
+void Loader::CheckSlot(StackMethod* mthd, long ip, INT64_VALUE id, long context, int width,
+                       INT64_VALUE mem_size, INT64_VALUE cls_space)
+{
+  if(id < 0) {
+    VerifyFailed(nullptr, mthd, ip, L"negative variable id");
+  }
+  switch(context) {
+  case LOCL:
+    // the frame is mem_size + 2 words, and a local is mem[id + 1]
+    if(id + width > mem_size + 1) {
+      VerifyFailed(nullptr, mthd, ip, L"local variable id beyond the frame");
+    }
+    break;
+
+  case CLS:
+    if((id + width) * (INT64_VALUE)sizeof(size_t) > cls_space) {
+      VerifyFailed(nullptr, mthd, ip, L"class variable id beyond the class's memory");
+    }
+    break;
+
+  case INST:
+    // compared with the largest object once every class has loaded (Verify)
+    if((id + width) * (INT64_VALUE)sizeof(size_t) > verify.inst_end) {
+      verify.inst_end = (id + width) * (INT64_VALUE)sizeof(size_t);
+      verify.inst_where = mthd;
+      verify.inst_ip = ip;
+    }
+    break;
+
+  default:
+    VerifyFailed(nullptr, mthd, ip, L"unknown memory context");
+  }
+}
+
+void Loader::CheckContext(StackMethod* mthd, long ip, long context)
+{
+  if(context != LOCL && context != INST && context != CLS) {
+    VerifyFailed(nullptr, mthd, ip, L"unknown memory context");
+  }
+}
+
+long Loader::CheckDimension(StackMethod* mthd, long ip, long dimension)
+{
+  if(dimension < 1) {
+    VerifyFailed(nullptr, mthd, ip, L"array dimension below one");
+  }
+  return dimension;
+}
+
+long Loader::CheckClassId(StackMethod* mthd, long ip, long id)
+{
+  if(id < 0 || id >= (long)verify.max_called.size()) {
+    VerifyFailed(nullptr, mthd, ip, L"class id out of range");
+  }
+  return id;
+}
+
+long Loader::CheckTarget(StackMethod* mthd, long ip, long target, long count)
+{
+  if(target < 0 || target >= count) {
+    VerifyFailed(nullptr, mthd, ip, L"jump target outside the method");
+  }
+  return target;
+}
+
+// The checks that need the whole program, run once every class has loaded;
+// each instruction was checked as LoadStatements read it.
+void Loader::Verify()
+{
+  const long num_classes = program->GetClassNumber();
+  StackClass** classes = program->GetClasses();
+  long* hierarchy = program->GetHierarchy();
+  long** interfaces = program->GetInterfaces();
+
+  // An instance field is read from whatever object is on the stack, and the
+  // compiler addresses a field through a holder class whose own layout can be
+  // smaller (System.$Byte), so the bound is the largest object any class makes.
+  INT64_VALUE max_inst_space = 0;
+  for(long i = 0; i < num_classes; ++i) {
+    if(classes[i]->GetInstanceMemorySize() > max_inst_space) {
+      max_inst_space = classes[i]->GetInstanceMemorySize();
+    }
+  }
+  if(verify.inst_end > max_inst_space) {
+    VerifyFailed(nullptr, verify.inst_where, verify.inst_ip, L"instance variable id beyond every object's memory");
+  }
+
+  for(long i = 0; i < num_classes; ++i) {
+    StackClass* cls = classes[i];
+    if(hierarchy[i] < -1 || hierarchy[i] >= num_classes) {
+      VerifyFailed(cls, nullptr, -1, L"parent class id out of range");
+    }
+    if(interfaces[i]) {
+      // -1 marks an interface that was not linked in
+      for(long* inf = interfaces[i]; *inf != INF_ENDING; ++inf) {
+        if(*inf < -1 || *inf >= num_classes) {
+          VerifyFailed(cls, nullptr, -1, L"interface id out of range");
+        }
+      }
+    }
+    // the highest method id any MTHD_CALL names in this class
+    if(verify.max_called[i] >= cls->GetMethodCount()) {
+      VerifyFailed(nullptr, verify.called_where[i].first, verify.called_where[i].second, L"method id out of range");
+    }
+  }
+
+  // the entry point, and String's constructor, which the initialization code
+  // calls (method 2) once per program argument
+  StackClass* start_cls = program->GetClass(start_class_id);
+  if(!start_cls || !start_cls->GetMethod(start_method_id)) {
+    VerifyFailed(nullptr, nullptr, -1, L"the start method does not exist");
+  }
+  StackClass* string_cls = program->GetClass(string_cls_id);
+  if(!arguments.empty() && (!string_cls || string_cls->GetMethodCount() < 3)) {
+    VerifyFailed(nullptr, nullptr, -1, L"the String class id is out of range");
+  }
 }
