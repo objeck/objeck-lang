@@ -604,7 +604,7 @@ q->ToString()->PrintLine(); # [x,1,2.5,a,true]
 }
 
 #~
-Generic collections library: Vector (dynamic array), Map (hash map), Set, MultiMap, Stack, Queue, and Pair. Provides typed iteration, sorting, filtering, and functional operations (Reduce, Any, All). Compile with -lib gen_collect.
+Generic collections library: Vector (dynamic array), List (linked list), Map (ordered binary tree, O(log n)), Hash (hash table), Set, HashSet, SetHash, MultiMap, MultiHash, Stack, Queue, and Pair. Provides typed iteration, sorting, filtering, and functional operations (Reduce, Any, All). Compile with -lib gen_collect.
 ~#
 bundle Collection {
 	#~
