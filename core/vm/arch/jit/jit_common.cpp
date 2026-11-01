@@ -570,14 +570,18 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
   }
     break;
 
-  case NEW_INT_ARY: {
+  case NEW_INT_ARY:
+  case NEW_OBJ_ARY: {
     size_t indices[8];
     long dim;
     const size_t size = PopArrayDimensions(instr, op_stack, stack_pos, indices, dim, 8 + 2);
 
-    size_t* mem = (size_t*)MemoryManager::AllocateArray((int64_t)(size + dim + 2), INT_TYPE, op_stack, *stack_pos);
+    // an Int[] is INT_ARY_TYPE, which the collector never scans; an array of
+    // references is INT_TYPE (GC roots phase 6)
+    const MemoryType elem_type = instr->GetType() == NEW_INT_ARY ? INT_ARY_TYPE : INT_TYPE;
+    size_t* mem = (size_t*)MemoryManager::AllocateArray((int64_t)(size + dim + 2), elem_type, op_stack, *stack_pos);
 #ifdef _DEBUG_JIT
-    std::wcout << L"jit oper: NEW_INT_ARY: dim=" << dim << L"; size=" << size
+    std::wcout << L"jit oper: NEW_INT_ARY/NEW_OBJ_ARY: dim=" << dim << L"; size=" << size
       << L"; index=" << (*stack_pos) << L"; mem=" << mem << std::endl;
 #endif
     mem[0] = size;

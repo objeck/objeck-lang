@@ -735,6 +735,12 @@
         break;
 
       case NEW_INT_ARY:
+        // an Int[] (GC roots phase 6): its elements are Ints
+        if(!PopN(stack, ip, op1, RK_INT)) return false;
+        stack.push_back(NewValue(RK_REF, RK_INT));
+        break;
+
+      case NEW_OBJ_ARY:
         if(!PopN(stack, ip, op1, RK_INT)) return false;
         stack.push_back(NewValue(RK_REF));
         break;

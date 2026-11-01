@@ -75,6 +75,16 @@ built work: nothing below has landed.
   A libm call parks a pending caller-saved float in a callee-saved register, as before; ints go to the
   typed slots. There is no ARM64 machine here: compile-checked with `cl /Zs` under the ARM64 cross
   toolchain (with and without `_ARM64`), proven on CI's three arm64 legs.
+- **Phase 6 (heap side), the `Int[]` tag, is built 2026-11-01** on branch `gc-roots-int-array`: the
+  compiler allocates an `Int[]` with `NEW_INT_ARY` (heap tag `INT_ARY_TYPE`, never marked, never
+  relocated) and a class, string, function or generic array with the new `NEW_OBJ_ARY` (`INT_TYPE`,
+  scanned as before). `MAGIC_NUM_EXE` and `MAGIC_NUM_LIB` moved (0xffbf, 0xffba) so an .obe or .obl
+  from before is refused with a message instead of having its object arrays read as `Int[]`; the
+  committed `.obl` were rebuilt. An Int array a native or a trap allocates stays `INT_TYPE`,
+  conservative as before. `OBJECK_GC_ROOTS=conservative` scans an `INT_ARY_TYPE` array the old way,
+  the negative control for `gc_address_int_array` (run_vm_flag_tests.py section 31). Element access
+  is untouched: only the allocation's tag differs, and the collector does less. The closure capture
+  block's own type (193f076fdd(b)) is still open.
 - **Suite-wide audit** (665 tests, interpreted, 256k nursery, on the #1457 fix):
   - 2,568 maps, 0 failed;
   - 0 threads whose segments do not add up;
@@ -467,8 +477,8 @@ report zero differences across the suite before phase 2 starts.
 - **ARM64 behaviour of `jit_stale_spill_slot`.** Inferred from the code (path 2 only), not run. CI's
   arm64 legs will run it when the test lands.
 - **When the s0 trigger appeared.** It is absent on 10-22 and present on master, and it was not bisected.
-- **Heap `Int[]` elements are rewritten by a minor collection (new, 2026-10-31; not fixed by phases
-  1-5).** An `Int[]` and an object array share `INT_TYPE` on the heap (§6.1 says the same of the
+- **Heap `Int[]` elements are rewritten by a minor collection (found 2026-10-31; fixed by phase 6,
+  the `Int[]` tag, 2026-11-01).** An `Int[]` and an object array share `INT_TYPE` on the heap (§6.1 says the same of the
   bytecode), so the collector's fixup of a reachable array's elements cannot tell an integer from a
   reference and relocates any element equal to a forwarded young object's address. Evidence, with the
   test hook from PR 1483 (`Runtime->TestAddressOf`, `OBJECK_GC_TEST_HOOKS=1`): a test that stores an

@@ -417,6 +417,7 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
 
   case NEW_FLOAT_ARY:
   case NEW_INT_ARY:
+  case NEW_OBJ_ARY:
   case NEW_BYTE_ARY:
   case NEW_CHAR_ARY:
   case NEW_OBJ_INST:
@@ -1093,6 +1094,10 @@ void IntermediateInstruction::Debug(size_t i) {
 
   case NEW_INT_ARY:
     GetLogger() << L"  " << std::left << std::setw(6) << i << L"NEW_INT_ARY: dimension=" << operand << std::endl;
+    break;
+
+  case NEW_OBJ_ARY:
+    GetLogger() << L"  " << std::left << std::setw(6) << i << L"NEW_OBJ_ARY: dimension=" << operand << std::endl;
     break;
 
   case NEW_BYTE_ARY:

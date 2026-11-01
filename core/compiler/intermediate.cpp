@@ -5416,8 +5416,15 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
       store_instr = STOR_FLOAT_ARY_ELM;
       break;
 
-    default:
+    case frontend::INT_TYPE:
       new_instr = NEW_INT_ARY;
+      store_instr = STOR_INT_ARY_ELM;
+      break;
+
+    default:
+      // a class, string, function or generic element: an array the collector
+      // scans (GC roots phase 6)
+      new_instr = NEW_OBJ_ARY;
       store_instr = STOR_INT_ARY_ELM;
       break;
     }
@@ -5513,7 +5520,7 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
     }
     
     // create string array
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, NEW_INT_ARY, (long)array->GetDimension()));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, NEW_OBJ_ARY, (long)array->GetDimension()));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, instructions::CPY_CHAR_STR_ARYS));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, TRAP_RTRN, (long)(all_elements.size() + 2)));
   }
@@ -8118,9 +8125,13 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, NEW_CHAR_ARY, (long)expressions.size()));
         break;
 
-      case frontend::CLASS_TYPE:
       case frontend::INT_TYPE:
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, NEW_INT_ARY, (long)expressions.size()));
+        break;
+
+      case frontend::CLASS_TYPE:
+        // an array of references, which the collector scans (GC roots phase 6)
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, NEW_OBJ_ARY, (long)expressions.size()));
         break;
 
       case frontend::FLOAT_TYPE:
