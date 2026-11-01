@@ -57,8 +57,18 @@ class Loader {
   std::map<const std::wstring, const int> params;
   bool from_mem;
   bool abandoned;
-  // each class's static memory size in bytes, by id, for Verify
+  // each class's static memory size in bytes, by id, for CheckSlot
   std::vector<long> class_spaces;
+  // what the per-instruction checks defer to Verify, run once every class has loaded
+  struct {
+    // per class id: the highest method id a MTHD_CALL names, and where
+    std::vector<long> max_called;
+    std::vector<std::pair<StackMethod*, long> > called_where;
+    // the furthest instance-variable byte any instruction reaches, and where
+    INT64_VALUE inst_end;
+    StackMethod* inst_where;
+    long inst_ip;
+  } verify;
 
   // What a failed load says, exactly as obr prints it (Load, GetError). The
   // loader used to write it to stderr and call exit(1) on the spot, 16 places
@@ -75,7 +85,12 @@ class Loader {
 
   // the checks run after a program has loaded (loader.cpp)
   void Verify();
-  void VerifyMethod(StackClass* cls, StackMethod* mthd, long max_inst_space);
+  void CheckSlot(StackMethod* mthd, long ip, INT64_VALUE id, long context, int width,
+                 INT64_VALUE mem_size, INT64_VALUE cls_space);
+  void CheckContext(StackMethod* mthd, long ip, long context);
+  long CheckDimension(StackMethod* mthd, long ip, long dimension);
+  long CheckClassId(StackMethod* mthd, long ip, long id);
+  long CheckTarget(StackMethod* mthd, long ip, long target, long count);
   [[noreturn]] void VerifyFailed(StackClass* cls, StackMethod* mthd, long ip, const wchar_t* why);
 
   // Bounds guard for the raw deserialization cursor. Bytecode (.obe/.obl) is
