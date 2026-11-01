@@ -1659,7 +1659,7 @@ jobs:
   # pairs them with the .obl libraries committed under core/lib.
   tools:
     name: Tools (formatter, LSP, VS Code extension)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
@@ -1954,7 +1954,7 @@ jobs:
 
   status:
     name: CI Status
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [build, tools]
     if: always()
     permissions:

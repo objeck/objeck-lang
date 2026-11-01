@@ -396,10 +396,10 @@ cat objeck_sf_key
 |----------|--------|------------|------|------------|-----------|
 | Windows x64 | `windows-2025-vs2026` | Server 2025, VS 2026 | x64 | ~10 min | MSI, ZIP |
 | Windows ARM64 | `windows-2025-vs2026` | Server 2025, VS 2026 | ARM64 | 15-70 min | MSI, ZIP |
-| Linux x64 | `ubuntu-latest` | Ubuntu 24.04 | x64 | ~4 min | TGZ |
+| Linux x64 | `ubuntu-24.04` | Ubuntu 24.04 | x64 | ~4 min | TGZ |
 | Linux ARM64 | `ubuntu-24.04-arm` | Ubuntu 24.04 | ARM64 | ~4 min | TGZ |
 | macOS ARM64 | `macos-15` | macOS 15 | ARM64 | ~7 min | PKG, ZIP, TGZ |
-| LSP | `ubuntu-latest` | Ubuntu 24.04 | x64 | ~5 min | ZIP |
+| LSP | `ubuntu-24.04` | Ubuntu 24.04 | x64 | ~5 min | ZIP |
 
 **Notes:**
 - This is the release build (`release-build.yml`); build times are from the v2026.9.4 and v2026.9.5 tag builds. CI (`ci-build.yml`) uses the same runners except for Windows ARM64, which it builds and tests natively on `windows-11-arm`

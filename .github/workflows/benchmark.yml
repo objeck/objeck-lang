@@ -25,7 +25,7 @@ jobs:
       matrix:
         include:
           - platform: linux-x64
-            os: ubuntu-latest
+            os: ubuntu-24.04
             arch: x64
             deploy_script: ./deploy_posix.sh x64
 

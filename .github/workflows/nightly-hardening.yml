@@ -57,7 +57,7 @@ jobs:
   # ============================================
   resolve:
     name: Resolve CI artifacts
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
       run_id: ${{ steps.pick.outputs.run_id }}
@@ -364,7 +364,7 @@ jobs:
     name: Triage
     needs: [resolve, harden]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
@@ -465,7 +465,7 @@ jobs:
     name: Issue ${{ matrix.issue.id }}
     needs: triage
     if: always() && needs.triage.outputs.issue_count != '' && needs.triage.outputs.issue_count != '0'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read

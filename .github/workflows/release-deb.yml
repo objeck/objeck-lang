@@ -33,7 +33,7 @@ permissions:
 jobs:
   version:
     name: Resolve the release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     outputs:
       version: ${{ steps.v.outputs.version }}
@@ -120,7 +120,7 @@ jobs:
     name: Upload and add to SHA256SUMS
     needs: [version, build]
     if: needs.version.outputs.publish == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ github.repository }}

@@ -67,7 +67,7 @@ env:
 jobs:
   resolve:
     name: Resolve CI artifacts
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
       run_id: ${{ steps.pick.outputs.run_id }}
@@ -152,7 +152,7 @@ jobs:
             arch: x64
             py: python
           - platform: linux-x64
-            os: ubuntu-latest
+            os: ubuntu-24.04
             arch: x64
             py: python3
     defaults:

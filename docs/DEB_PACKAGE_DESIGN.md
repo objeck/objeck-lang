@@ -21,7 +21,7 @@ A `.deb` names its dependencies by package, and Debian names a shared-library
 package after the soname it carries plus distribution-specific suffixes: Ubuntu
 24.04 calls mbedTLS 2.28 `libmbedtls14t64`, Debian 12 `libmbedtls14`, and a release
 that moves to mbedTLS 3 has no such package at all. The binaries are built on the
-`ubuntu-latest` (24.04) and `ubuntu-24.04-arm` runners, so the package targets
+`ubuntu-24.04` and `ubuntu-24.04-arm` runners, so the package targets
 **Ubuntu 24.04 LTS and the distributions built on it** (Linux Mint 22, Pop!_OS 24.04,
 elementary OS 8). The file name says so: `objeck-ubuntu24.04-<arch>_<version>.deb`.
 The tarball stays the portable choice for every other distribution.

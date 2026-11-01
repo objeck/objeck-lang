@@ -18,7 +18,7 @@ jobs:
 
   prepare:
     name: Prepare Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.version.outputs.version }}
       version_number: ${{ steps.version.outputs.version_number }}
@@ -873,7 +873,7 @@ jobs:
   build-lsp:
     name: Build LSP Package
     needs: prepare
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout code
@@ -1000,7 +1000,7 @@ jobs:
   build-docs:
     name: Generate API Docs
     needs: prepare
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Skip for pre-release builds (test, rc, beta, alpha, etc.)
     # Pre-compiled libraries won't match pre-release versions
     # Only generate docs for official releases (no hyphen in version)
@@ -1283,7 +1283,7 @@ jobs:
   summary:
     name: Build Summary
     needs: [prepare, build, build-lsp, build-docs, install-test-macos]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: always()
     permissions:
       contents: read

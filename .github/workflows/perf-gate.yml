@@ -41,7 +41,7 @@ permissions:
 jobs:
   perf-gate:
     name: Perf gate (linux-x64)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
 

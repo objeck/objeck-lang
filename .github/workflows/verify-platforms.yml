@@ -55,7 +55,7 @@ jobs:
   # will actually run.
   plan:
     name: Plan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.pick.outputs.matrix }}
       expected: ${{ steps.pick.outputs.expected }}
@@ -65,7 +65,7 @@ jobs:
         shell: bash
         run: |
           ALL='[
-            {"platform":"linux-x64",    "os":"ubuntu-latest",       "arch":"x64",   "family":"posix"},
+            {"platform":"linux-x64",    "os":"ubuntu-24.04",       "arch":"x64",   "family":"posix"},
             {"platform":"linux-arm64",  "os":"ubuntu-24.04-arm",    "arch":"arm64", "family":"posix"},
             {"platform":"macos-arm64",  "os":"macos-15",            "arch":"arm64", "family":"posix"},
             {"platform":"windows-x64",  "os":"windows-2025-vs2026", "arch":"x64",   "family":"windows", "cmd_arch":"x64"},
@@ -152,7 +152,7 @@ jobs:
     name: Gate summary
     needs: [plan, verify]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Collect the verdict files
         uses: actions/download-artifact@v6

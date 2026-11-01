@@ -45,7 +45,7 @@ permissions:
 jobs:
   resign:
     name: Re-sign the published manifest
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
