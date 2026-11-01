@@ -51,7 +51,8 @@ NAMES = {v: k for k, v in OP.items()}
 
 # operand layout per opcode, as LoadStatements reads it
 _ONE_INT = ["TRAP", "TRAP_RTRN", "OBJ_INST_CAST", "NEW_FLOAT_ARY", "NEW_INT_ARY", "NEW_BYTE_ARY",
-            "NEW_CHAR_ARY", "NEW_OBJ_INST", "NEW_FUNC_INST", "LBL", "OBJ_TYPE_OF", "JMP_TABLE_SLOT"]
+            "NEW_CHAR_ARY", "NEW_OBJ_ARY", "NEW_OBJ_INST", "NEW_FUNC_INST", "LBL", "OBJ_TYPE_OF",
+            "JMP_TABLE_SLOT"]
 _TWO_INTS = ["LOAD_INT_VAR", "LOAD_FUNC_VAR", "LOAD_FLOAT_VAR", "STOR_INT_VAR", "STOR_FUNC_VAR",
              "STOR_FLOAT_VAR", "COPY_INT_VAR", "COPY_FLOAT_VAR", "LOAD_BYTE_ARY_ELM", "LOAD_CHAR_ARY_ELM",
              "LOAD_INT_ARY_ELM", "LOAD_FLOAT_ARY_ELM", "STOR_BYTE_ARY_ELM", "STOR_CHAR_ARY_ELM",
@@ -60,7 +61,8 @@ _THREE_INTS = ["MTHD_CALL", "ASYNC_MTHD_CALL", "JMP_TABLE"]
 OPERAND_INTS = {}
 for _names, _n in ((_ONE_INT, 1), (_TWO_INTS, 2), (_THREE_INTS, 3)):
     for _name in _names:
-        OPERAND_INTS[OP[_name]] = _n
+        if _name in OP:  # NEW_OBJ_ARY exists from the Int[] tag on (instrs.h)
+            OPERAND_INTS[OP[_name]] = _n
 
 
 class Reader:
