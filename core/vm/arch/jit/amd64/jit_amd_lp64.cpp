@@ -350,7 +350,20 @@ void JitAmd64::RegisterRoot() {
   // array stayed reachable that way, #1468). The value and scratch slots
   // above are never read by the collector and are not zeroed. The slot count
   // is derived from the layout (jit_frame_layout.h), not written here.
-  const int index = (int)(offset >> 3) + JitFrameLayout::TMP_REF_SLOTS;
+  int index = (int)(offset >> 3) + JitFrameLayout::TMP_REF_SLOTS;
+  // OBJECK_GC_ROOTS=audit: zero the value slots too (they sit right above
+  // TMP_REF_0, so the same sweep covers them). The audit reports a value slot
+  // that holds an object's address (AuditJitValueSlot); without this, a slot
+  // the method never wrote still holds whatever an earlier, deeper frame left
+  // on the stack there, which is as often a pointer as not. Audit-only: the
+  // collector never reads these slots, so a plain run has no reason to pay.
+  static const bool zero_value_slots = []() {
+    std::string roots;
+    return JitEnvFlag("OBJECK_GC_ROOTS", &roots) && roots == "audit";
+  }();
+  if(zero_value_slots) {
+    index += JitFrameLayout::TMP_VAL_SLOTS;
+  }
   // Zero them with straight stores for the common frame sizes: the LOOP
   // instruction is microcoded, and its eleven iterations for a one-local
   // method cost more than that method's body. Large frames keep the loop.

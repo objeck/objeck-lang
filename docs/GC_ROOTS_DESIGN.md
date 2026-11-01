@@ -48,8 +48,15 @@ built work: nothing below has landed.
     per method `spills sites= ref= val= unknown= mismatch=`.
   - **The audit covers compiled frames**: under `OBJECK_GC_ROOTS=audit` a `TMP_VAL_*` word that is a
     real object's address counts as `jit_value_slot_at_object` (a mistyped reference, or a working
-    stack the check above missed). `gc_address_int_pending` trips it by construction; the regression
-    suite must not.
+    stack the check above missed). In audit mode the entry zeroing covers the value slots too, so a
+    slot the frame never wrote cannot report what an earlier, deeper frame left there (without that
+    the count was 79,663 across the suite, all stale stack words). `gc_address_int_pending` trips it
+    by construction; the regression suite must not. Measured on the suite (771 tests, every method
+    compiled, 64k nursery): 293,818 collections, 3,235,280 compiled frames,
+    `jit_value_slot_at_object=0`; 455,462 spill sites, 107,306 to reference slots, 7,921 to value
+    slots, 303 unknown, 31 sites where the map did not line up (all in `File:GetTempName`,
+    `UDPSocketServer:Bind`, whose maps do not build, and `Guarded:Read`/`ReadNested`), every one of
+    which spilled to reference slots.
   - **`OBJECK_GC_ROOTS=conservative` scans the old window over every slot class on x64**, so it is the
     negative control for compiled code as well: `gc_address_int_pending` must FAIL under it with
     `--jit=1`, and PASS without it.
