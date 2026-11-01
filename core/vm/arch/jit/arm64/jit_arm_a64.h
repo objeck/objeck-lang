@@ -400,11 +400,12 @@ namespace Runtime {
     RefMap* ref_map;
     long ref_map_ip;
     // what the spills did, for OBJECK_JIT_REPORT
-    long spill_sites, spill_refs, spill_vals, spill_unknown, spill_mismatch;
+    long spill_sites, spill_refs, spill_vals, spill_unknown, spill_mismatch, spill_andor;
     struct PendingSpill {
       Register reg;
       long offset;
       bool is_ref;
+      bool andor;   // the and/or temp's copy (GC roots phase 5), not a pending register
     };
     // a caller-saved float parked in a callee-saved register across a libm call
     struct ParkedFp {
@@ -412,7 +413,8 @@ namespace Runtime {
       RegisterHolder* park;
     };
     bool SpillPending(long popped, long keep, bool fp_slots, std::vector<PendingSpill>& regs,
-                      std::vector<PendingSpill>& fregs, std::vector<ParkedFp>& parked, const wchar_t* what);
+                      std::vector<PendingSpill>& fregs, std::vector<ParkedFp>& parked, const wchar_t* what,
+                      bool gc_point);
     void ReloadPending(const std::vector<PendingSpill>& regs, const std::vector<PendingSpill>& fregs,
                        std::vector<ParkedFp>& parked);
     // CBZ/CBNZ optimization: track last comparison

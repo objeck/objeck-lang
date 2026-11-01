@@ -85,6 +85,20 @@ built work: nothing below has landed.
   the negative control for `gc_address_int_array` (run_vm_flag_tests.py section 31). Element access
   is untouched: only the allocation's tag differs, and the collector does less. The closure capture
   block's own type (193f076fdd(b)) is still open.
+- **Phase 5 is built 2026-11-01** (branch `gc-roots-phase5`), narrower than the table below says, for
+  a reason stated here. Done: the dead AMD64 inliner (`ProcessInlineMethod`, `CanInlineMethod`,
+  `ComputeInlineLocalSpace`, `extra_inline_space`, `inline_local_offset`, `is_inlining`) is deleted; the
+  compiled frame's and/or temp is no longer scanned: at every point that can collect, a compiled
+  method carries the temp through a `TMP_REF_*` slot when the map says it may hold a reference there
+  (`ref_map->andor[ip]`), and brings it back relocated (AMD64 through `push [rbp+andor]`/`pop [rbp+slot]`,
+  since no register is free while a call's arguments are still pending; ARM64 through X10), so the
+  9cdc656566 conservative scan is gone from `CheckJitRoots`/`FixupRoots` except under the
+  conservative control. Not done, on purpose: the operand-stack words the maps leave `unknown`
+  (42 across the suite) and the segments above the first compiled frame on a thread are still scanned
+  conservatively, because no map types them yet; removing that scan would drop roots, not precision.
+  With it, `CheckUntypedSlot`'s class validation (181d478f70) and the `FixupSelf` checks (4542ec7e41)
+  stay as guards rather than becoming verifier-only assertions. Typing those segments (the bridge's
+  stack effect per callback) is the remaining root-side item.
 - **Suite-wide audit** (665 tests, interpreted, 256k nursery, on the #1457 fix):
   - 2,568 maps, 0 failed;
   - 0 threads whose segments do not add up;
