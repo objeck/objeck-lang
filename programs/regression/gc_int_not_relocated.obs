@@ -21,8 +21,8 @@ object's address: the old guess has nothing here to rewrite either. The test
 guards against a regression in how IDs are kept, and does not show that the
 reference maps type the stack correctly. The negative control that expected
 a failure under the old guess (OBJECK_GC_ROOTS=conservative) was removed for
-that reason; #1473 plans a test-only way to make such an Int, which phase 3's
-compiled configurations need too.
+that reason; vm_flag_fixtures/gc_address_int_pending.obs (run_vm_flag_tests.py
+section 28) restores both with a test-only way to make such an Int (#1473).
 ~#
 
 class Box {

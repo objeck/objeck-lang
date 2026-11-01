@@ -8371,6 +8371,17 @@ Runtime->Raise(ParseError->New("row 12: expected a number"));
 		}
 
 		#~
+		Test hook for the collector's regression tests, not for programs: the object's
+		address as an Int, which a collection that moves the object changes. Returns 0
+		unless the VM runs with OBJECK_GC_TEST_HOOKS=1.
+		@param o an object
+		@return the object's current address, or 0 when the hook is off
+		~#
+		function : TestAddressOf(o : Base) ~ Int {
+			GC_TEST_ADDRESS;
+		}
+
+		#~
 		Executes a system command
 		@param c system command
 		@return command status code

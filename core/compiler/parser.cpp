@@ -3741,6 +3741,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case GC_TEST_ADDRESS:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::GC_TEST_ADDRESS);
+      NextToken();
+      break;
+
     case HTTP3_CLOSE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::HTTP3_CLOSE);
@@ -6258,6 +6264,12 @@ Statement* Parser::ParseSystemStatement(int line_num, int line_pos, const std::w
   case THREAD_IS_ALIVE:
      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                               instructions::THREAD_IS_ALIVE);
+     NextToken();
+     break;
+
+  case GC_TEST_ADDRESS:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::GC_TEST_ADDRESS);
      NextToken();
      break;
 

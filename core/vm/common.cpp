@@ -3136,6 +3136,24 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     return true;
   }
 
+  case GC_TEST_ADDRESS: {
+    // Runtime->TestAddressOf(o): an object's address as an Int, so a test can hold one
+    // pending across a collection (#1473). Inert unless OBJECK_GC_TEST_HOOKS=1.
+    static const bool hooks = []() {
+#ifdef _WIN32
+      char value[8] = {0};
+      size_t len = 0;
+      return !getenv_s(&len, value, sizeof(value), "OBJECK_GC_TEST_HOOKS") && !strcmp(value, "1");
+#else
+      const char* value = std::getenv("OBJECK_GC_TEST_HOOKS");
+      return value && !strcmp(value, "1");
+#endif
+    }();
+    const size_t address = (size_t)PopInt(op_stack, stack_pos);
+    PushInt(hooks ? address : 0, op_stack, stack_pos);
+    return true;
+  }
+
   case UNCOMPRESS_DEFLATE_LIMIT:
     return UncompressLimit(-MAX_WBITS, program, inst, op_stack, stack_pos, frame);
 

@@ -253,8 +253,8 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     has no trigger left: it guards against a regression in how IDs are kept,
     and it does not show that the reference maps type the stack correctly. The
     negative control that ran the old guess (OBJECK_GC_ROOTS=conservative) and
-    expected a failure is gone for the same reason; a test-only way to make
-    such an Int is planned for the JIT phases (#1473).
+    expected a failure is gone for the same reason; section 28 restores both
+    with a test-only hook (#1473).
  26. A compiled method's entry zeroes every spill slot the collector scans. On
     AMD64 the count was one short and left TMP_REG_0 holding what an earlier
     method at the same frame pointer had spilled, so a dead 32 MB array outlived
@@ -275,6 +275,17 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     (OBJECK_JIT_THRESHOLD), a 64k nursery and the roots audit, at -opt s0 and s3:
     the same four counts as section 24 must be zero. Before the fix the audit
     found hundreds of shifted words at s0 and of over-long frames at s3.
+ 28. A collection leaves an Int alone when its value IS an object's address
+    (#1473). Runtime->TestAddressOf(o) returns an object's address as an Int,
+    and 0 unless OBJECK_GC_TEST_HOOKS=1, so ordinary programs cannot reach it.
+    vm_flag_fixtures/gc_address_int_pending.obs keeps such an Int pending across
+    200 allocations at --nursery=64k. Interpreted it must PASS, and
+    OBJECK_GC_ROOTS=conservative (the old guess) must make it FAIL: the negative
+    control section 25 lost when instance IDs became counters. Without the
+    variable the fixture refuses to run, so a missing hook cannot pass. With the
+    JIT on, compiled frames are still scanned by the old guess and the fixture
+    FAILS; that is pinned as a known gap until GC roots phase 3 types compiled
+    frames, and the check flips to "must PASS" then.
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only]
 
@@ -594,6 +605,8 @@ def main():
     check_entry_zeroes_spill_slots(obc, obr, env, bin_dir)
 
     check_gc_roots_jit_bridge(obc, obr, env, bin_dir)
+
+    check_address_int_pending(obc, obr, env, bin_dir)
 
     # ---- 11. the heap verifier (OBJECK_GC_VERIFY) ----------------------------------
     verify_section(obc, obr, env, bin_dir)
@@ -1546,6 +1559,44 @@ def check_gc_roots_jit_bridge(obc, obr, env, bin_dir):
         check_roots_audit_counts(name, rc, out, err)
         check(f"{name} built every tree intact", b"PASS: every tree built across the bridge is intact" in out,
               f"out={out[-200:]!r}")
+
+
+def check_address_int_pending(obc, obr, env, bin_dir):
+    # ---- 28. an Int equal to an object's address survives a collection (#1473) ------
+    src = os.path.join(SCRIPT_DIR, "vm_flag_fixtures", "gc_address_int_pending.obs")
+    hooks_env = dict(env)
+    hooks_env["OBJECK_GC_TEST_HOOKS"] = "1"
+    conservative_env = dict(hooks_env)
+    conservative_env["OBJECK_GC_ROOTS"] = "conservative"
+    for opt in ("s0", "s3"):
+        dest = os.path.join(SCRIPT_DIR, "vm_flag_fixtures", "gc_address_int_pending_" + opt + ".obe")
+        rc, out, err = run([obc, "-src", src, "-dest", dest, "-opt", opt], env=env, cwd=bin_dir)
+        check(f"gc_address_int_pending compiles at -opt {opt}", rc == 0 and os.path.exists(dest),
+              err.decode(errors="replace")[-300:])
+        if rc != 0:
+            continue
+
+        flags = ["--jit=off", "--nursery=64k"]
+        rc, out, err = run([obr] + flags + [dest], env=hooks_env, cwd=SCRIPT_DIR, timeout=300)
+        check(f"no pending address-valued Int is rewritten interpreted at -opt {opt}",
+              rc == 0 and b"PASS: no pending address-valued Int was rewritten" in out,
+              f"rc={rc} out={out[-200:]!r}")
+
+        rc, out, err = run([obr] + flags + [dest], env=conservative_env, cwd=SCRIPT_DIR, timeout=300)
+        check(f"the old guess rewrites a pending address-valued Int (negative control, -opt {opt})",
+              rc == 1 and b"FAIL: " in out and b"changed by a collection" in out,
+              f"rc={rc} out={out[-200:]!r}")
+
+        # Compiled frames are still scanned by the old guess (GC roots phase 3 types them),
+        # so a compiled method rewrites the pending Int. This pins the gap: when phase 3
+        # lands this check fails, and it becomes a plain "must PASS" like the one above.
+        rc, out, err = run([obr, "--jit=1", "--nursery=64k", dest], env=hooks_env, cwd=SCRIPT_DIR, timeout=300)
+        check(f"known gap until GC roots phase 3: compiled code still rewrites a pending address-valued Int (-opt {opt})",
+              rc == 1 and b"changed by a collection" in out, f"rc={rc} out={out[-200:]!r}")
+
+        rc, out, err = run([obr] + flags + [dest], env=env, cwd=SCRIPT_DIR, timeout=300)
+        check(f"the hook is inert without OBJECK_GC_TEST_HOOKS (-opt {opt})",
+              rc == 2 and b"returned 0" in out, f"rc={rc} out={out[-200:]!r}")
 
 
 def check_call_depth(obc, obr, env, bin_dir):
