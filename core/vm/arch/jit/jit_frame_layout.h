@@ -46,7 +46,15 @@
 // slot offsets, so a widened slot range cannot go stale again.
 //
 // Frame pointer offsets, by backend. The selection order matters: a Windows
-// ARM64 build defines _ARM64 and _WIN64 both.
+// ARM64 build defines _ARM64 and _WIN64 both. The ARM64 layout is selected on
+// the compiler's own target macro as well as the build's _ARM64, because not
+// every project that compiles the ARM64 backend defines _ARM64 (the Windows
+// debugger project compiles jit_arm_a64.cpp with _WIN64 alone, and got the
+// Win64 block). JIT_LAYOUT_ARM64 is the one test the collector uses for the
+// frame walk, so it and the backend can never disagree about the layout.
+#if defined(_ARM64) || defined(_M_ARM64) || defined(__aarch64__)
+#define JIT_LAYOUT_ARM64 1
+#endif
 //
 //   AMD64 (RBP-relative; negative offsets grow downward from RBP)
 //     Win64: the home area the caller provides holds CLS_ID .. FRAME_MEM
@@ -69,7 +77,7 @@
 // and/or temp's word away from the locals: upward on AMD64, downward on
 // ARM64. The asserts below prove it reaches every integer spill slot.
 
-#if defined(_ARM64)
+#if defined(JIT_LAYOUT_ARM64)
   // offsets for ARM A64 addresses
 #define TMP_LR 104
 #define INT_CONSTS 96
@@ -176,7 +184,7 @@
 #define RED_ZONE -160
 #endif
 
-#if !defined(_ARM64)
+#if !defined(JIT_LAYOUT_ARM64)
   // The register-argument entry (EmitNativePrologue). A native caller's
   // arguments start at NATIVE_ARGS from the callee's frame pointer: past the
   // return address and the saved frame pointer, the register homes and stack
@@ -210,7 +218,7 @@ namespace Runtime {
     // away from the locals
     static constexpr int WINDOW = 16;
 
-#if defined(_ARM64)
+#if defined(JIT_LAYOUT_ARM64)
     // the six integer spill slots TMP_X0 .. TMP_X5 and the four float ones
     static constexpr int TMP_INT_SLOTS = (TMP_X5 - TMP_X0) / WORD + 1;
     static constexpr int TMP_FLOAT_SLOTS = (TMP_D3 - TMP_D0) / WORD + 1;

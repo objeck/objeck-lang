@@ -1719,7 +1719,7 @@ void* MemoryManager::CheckJitRoots([[maybe_unused]] void* arg)
 #endif
 
     if(mem) {
-#ifdef _ARM64
+#ifdef JIT_LAYOUT_ARM64
       size_t* start = mem - 1;
 #endif
       
@@ -1729,7 +1729,7 @@ void* MemoryManager::CheckJitRoots([[maybe_unused]] void* arg)
       }
 
       StackDclr** dclrs = method->GetDeclarations();
-#ifdef _ARM64
+#ifdef JIT_LAYOUT_ARM64
       // front to back...
       if(method->HasAndOr()) {
         // The and/or temporary (slot 0) has no declaration, but it is not only a
@@ -1895,7 +1895,7 @@ void* MemoryManager::CheckJitRoots([[maybe_unused]] void* arg)
       // runs upward; on ARM64 it starts at the word below the first local and
       // runs downward. jit_frame_layout.h proves the window reaches every
       // integer slot (JitFrameLayout::WORDS_TO_LAST_INT_SLOT <= WINDOW).
-#ifdef _ARM64
+#ifdef JIT_LAYOUT_ARM64
       mem = start;
       for(int i = 0; i > -JIT_TMP_LOOK_BACK; --i) {
 #else
@@ -2668,7 +2668,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
       }
 
       // Fix up JIT locals
-#ifdef _ARM64
+#ifdef JIT_LAYOUT_ARM64
       if(method->HasAndOr()) {
         // the and/or temporary: a conservative root (see CheckJitRoots); on x64 it
         // is the first word of the temporaries' window below
@@ -2725,7 +2725,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
       // alias the young address range are not misread as relocatable references).
       // On x64 mem[0] here is the and/or temporary when the method has one. The
       // window is the one CheckJitRoots scans (jit_frame_layout.h).
-#ifdef _ARM64
+#ifdef JIT_LAYOUT_ARM64
       size_t* start = frame->jit_mem - 1;
       for(int k = 0; k > -JIT_TMP_LOOK_BACK; --k) {
         FixupSlot(&start[k]);
