@@ -93,7 +93,7 @@ class Parser {
   Scanner* scanner;
   SymbolTableManager* symbol_table;
   std::map<ScannerTokenType, std::wstring> error_msgs;
-  std::multimap<int, std::wstring> errors;
+  DiagnosticSink diagnostics;
   std::wstring src_path;
   std::vector<std::pair<std::wstring, std::wstring> > programs;
   // '>' still owed by a '>>' or '>>>' that closed several generics at once
@@ -115,7 +115,7 @@ class Parser {
   int hidden_local_id = 0;
 
 #if defined(_DIAG_LIB) || defined(_MODULE)
-  std::vector<std::wstring> error_strings;
+  std::vector<Diagnostic> error_diagnostics;
 #endif
 
   // gets the scanner token
