@@ -138,14 +138,27 @@ std::string DapAdapter::ReadMessage()
   return body;
 }
 
-void DapAdapter::SendMessage(const json& msg)
+void DapAdapter::SendMessage(json& msg)
 {
   // Serialize against output reader threads which also write framed
   // messages to dap_out_fd. Without this lock, the headers and bodies
   // of concurrent sends would interleave on the wire.
   std::lock_guard<std::mutex> lock(send_mtx);
 
-  std::string body = msg.dump();
+  // The sequence number is taken here, under the same lock that orders the
+  // frames. It used to be taken by SendResponse/SendEvent before this point,
+  // as a plain int incremented from the request thread and both output readers:
+  // two threads could read the same value (a duplicated seq), and one that took
+  // 7 could be overtaken by another that took 8, putting 8 on the wire first.
+  msg["seq"] = seq++;
+
+  // 'replace', not the default 'strict': dump() throws type_error 316 on a byte
+  // sequence that is not UTF-8, and this is reached from the output reader
+  // threads, which have no handler -- the exception ends the whole process
+  // (std::terminate) over a program that printed an unlucky byte. A bad
+  // sequence is sent as U+FFFD instead; OutputReaderLoop keeps characters whole
+  // across reads, so this is for what is genuinely not text.
+  std::string body = msg.dump(-1, ' ', false, json::error_handler_t::replace);
   std::string header = "Content-Length: " + std::to_string(body.size()) + "\r\n\r\n";
   // A short or failed write means the client went away mid-message. There is
   // no channel left to report that on -- this IS the channel -- so the result
@@ -201,6 +214,37 @@ void DapAdapter::RedirectProgramStdio()
   }
 }
 
+// How many bytes at the end of 'data' begin a UTF-8 sequence that the bytes
+// after them (not yet read) would have to complete. 0 when the data ends on a
+// character boundary or in something that is not UTF-8 at all (that is left to
+// the JSON encoder's 'replace' handler: waiting for more would never help).
+#ifndef _WIN32
+static size_t IncompleteUtf8Tail(const std::string& data)
+{
+  const size_t size = data.size();
+  // a sequence is at most four bytes, so only the last three can be a lead byte
+  // whose continuation bytes have not arrived
+  for(size_t back = 1; back <= 3 && back <= size; ++back) {
+    const unsigned char ch = (unsigned char)data[size - back];
+    if((ch & 0xC0) == 0x80) {
+      continue;                       // a continuation byte: keep looking for its lead
+    }
+    size_t need = 0;
+    if(ch >= 0xC2 && ch <= 0xDF) {
+      need = 2;
+    }
+    else if(ch >= 0xE0 && ch <= 0xEF) {
+      need = 3;
+    }
+    else if(ch >= 0xF0 && ch <= 0xF4) {
+      need = 4;
+    }
+    return need > back ? back : 0;
+  }
+  return 0;
+}
+#endif
+
 void DapAdapter::OutputReaderLoop(int fd, const std::string& category)
 {
   // Read raw bytes from the program's redirected stdio pipe and forward
@@ -209,19 +253,52 @@ void DapAdapter::OutputReaderLoop(int fd, const std::string& category)
   // decode them to UTF-8 before sending the event so the editor displays
   // text correctly. On POSIX std::wcout converts to the locale encoding
   // (UTF-8 in modern setups), so we forward bytes as-is.
+  //
+  // A read returns whatever is in the pipe, up to the buffer size, so it can end
+  // in the middle of a character: of a UTF-8 sequence on POSIX, of a UTF-16
+  // surrogate pair on Windows. That tail is held back and joined to the next
+  // read, so a character is never split across two `output` events (the JSON
+  // encoder cannot represent half of one).
   char buf[2048];
+  // bytes carried over from the previous read: an odd byte of a UTF-16 code
+  // unit and a lone high surrogate (Windows), or the start of a UTF-8 sequence
+  std::string pending;
+
+  auto emit = [this, &category](const std::string& utf8) {
+    if(!utf8.empty()) {
+      json body;
+      body["category"] = category;
+      body["output"] = utf8;
+      SendEvent("output", body);
+    }
+  };
+
 #ifdef _WIN32
-  // `pending` holds the trailing odd byte from the previous read so we
-  // never split a UTF-16 code unit across DAP events.
-  char pending = 0;
-  bool has_pending = false;
+  // converts whole UTF-16 code units to UTF-8; 'wide' is 'wlen' units long
+  auto convert = [&emit](const wchar_t* wide, int wlen) {
+    if(wlen > 0) {
+      int ulen = WideCharToMultiByte(CP_UTF8, 0, wide, wlen, nullptr, 0, nullptr, nullptr);
+      if(ulen > 0) {
+        std::string utf8(ulen, '\0');
+        WideCharToMultiByte(CP_UTF8, 0, wide, wlen, &utf8[0], ulen, nullptr, nullptr);
+        emit(utf8);
+      }
+    }
+  };
 #endif
 
   while(true) {
     int n = READ(fd, buf, sizeof(buf));
     if(n <= 0) {
-      // Pipe closed (program ended) or error: the last chunk has been sent, so
-      // whoever waits in DrainProgramOutput may go on.
+      // Pipe closed (program ended) or error. Whatever is still held back is
+      // all there will ever be of it: send it (an incomplete character becomes
+      // U+FFFD) before the last chunk is declared sent, so whoever waits in
+      // DrainProgramOutput may go on.
+#ifdef _WIN32
+      convert((const wchar_t*)pending.data(), (int)(pending.size() / 2));
+#else
+      emit(pending);
+#endif
       CLOSE(fd);
       {
         std::lock_guard<std::mutex> lock(reader_mtx);
@@ -231,42 +308,21 @@ void DapAdapter::OutputReaderLoop(int fd, const std::string& category)
       return;
     }
 
+    pending.append(buf, n);
+
 #ifdef _WIN32
-    // Combine the saved odd byte from the previous read with the new
-    // chunk so the wide-char count is always whole.
-    char chunk[sizeof(buf) + 1];
-    int chunk_len = 0;
-    if(has_pending) {
-      chunk[chunk_len++] = pending;
-      has_pending = false;
+    // whole code units only, and not ending between the halves of a pair
+    int wlen = (int)(pending.size() / 2);
+    const wchar_t* wide = (const wchar_t*)pending.data();
+    if(wlen > 0 && wide[wlen - 1] >= 0xD800 && wide[wlen - 1] <= 0xDBFF) {
+      wlen--;
     }
-    memcpy(chunk + chunk_len, buf, n);
-    chunk_len += n;
-
-    int wlen = chunk_len / 2;
-    int leftover = chunk_len & 1;
-    if(leftover) {
-      pending = chunk[chunk_len - 1];
-      has_pending = true;
-    }
-
-    if(wlen > 0) {
-      const wchar_t* wide = (const wchar_t*)chunk;
-      int ulen = WideCharToMultiByte(CP_UTF8, 0, wide, wlen, nullptr, 0, nullptr, nullptr);
-      if(ulen > 0) {
-        std::string utf8(ulen, '\0');
-        WideCharToMultiByte(CP_UTF8, 0, wide, wlen, &utf8[0], ulen, nullptr, nullptr);
-        json body;
-        body["category"] = category;
-        body["output"] = utf8;
-        SendEvent("output", body);
-      }
-    }
+    convert(wide, wlen);
+    pending.erase(0, (size_t)wlen * 2);
 #else
-    json body;
-    body["category"] = category;
-    body["output"] = std::string(buf, n);
-    SendEvent("output", body);
+    const size_t keep = IncompleteUtf8Tail(pending);
+    emit(pending.substr(0, pending.size() - keep));
+    pending.erase(0, pending.size() - keep);
 #endif
   }
 }
@@ -352,7 +408,6 @@ void DapAdapter::DrainProgramOutput()
 void DapAdapter::SendResponse(int request_seq, const std::string& command, const json& body, bool success, const std::string& message)
 {
   json response;
-  response["seq"] = seq++;
   response["type"] = "response";
   response["request_seq"] = request_seq;
   response["command"] = command;
@@ -372,7 +427,6 @@ void DapAdapter::SendResponse(int request_seq, const std::string& command, const
 void DapAdapter::SendEvent(const std::string& event, const json& body)
 {
   json evt;
-  evt["seq"] = seq++;
   evt["type"] = "event";
   evt["event"] = event;
 
@@ -504,8 +558,12 @@ void DapAdapter::Run()
                      "Attach is not supported; use a launch configuration");
       }
       else {
-        // Unknown command — respond with success to avoid VS Code errors
-        SendResponse(request_seq, command);
+        // A request this adapter does not implement. Answering success told the
+        // client the request had been carried out, and any body it expected back
+        // (a source's text, a goto's targets) was missing; DAP clients cope with
+        // a failed optional request, and cannot cope with a false success.
+        SendResponse(request_seq, command, json::object(), false,
+                     "Unsupported request '" + command + "'");
       }
     }
     catch(const json::parse_error&) {
@@ -668,18 +726,30 @@ void DapAdapter::HandleSetBreakpoints(int request_seq, const json& args)
     std::string hit_condition_str = bp.value("hitCondition", "");
 
     bool added = false;
+    std::string failure;
     if(debugger && line > 0) {
-      if(!log_message_str.empty()) {
+      // A condition that does not parse used to leave 'condition' null, which
+      // AddBreak reads as "no condition": the breakpoint was added, reported
+      // verified, and stopped on every hit -- the opposite of what the user
+      // asked for, with nothing to say so. Refuse it instead and say why.
+      Expression* condition = nullptr;
+      bool condition_ok = true;
+      if(!condition_str.empty()) {
+        condition = debugger->ParseCondition(BytesToUnicode(condition_str));
+        if(!condition) {
+          condition_ok = false;
+          failure = "Cannot parse the condition '" + condition_str + "'";
+        }
+      }
+
+      if(!condition_ok) {
+        // not added
+      }
+      else if(!log_message_str.empty()) {
         // logpoint: log-and-continue instead of stopping
-        added = debugger->AddLogPoint(line, wfile_name, BytesToUnicode(log_message_str));
+        added = debugger->AddBreak(line, wfile_name, condition, false, BytesToUnicode(log_message_str));
       }
       else {
-        // Parse condition if provided
-        Expression* condition = nullptr;
-        if(!condition_str.empty()) {
-          std::wstring wcond = BytesToUnicode(condition_str);
-          condition = debugger->ParseCondition(wcond);
-        }
         added = debugger->AddBreak(line, wfile_name, condition);
         if(added && !hit_condition_str.empty()) {
           // DAP leaves the syntax open; VS Code's own UI produces a bare count
@@ -698,10 +768,18 @@ void DapAdapter::HandleSetBreakpoints(int request_seq, const json& args)
       }
     }
 
+    if(!added && failure.empty()) {
+      failure = !debugger ? "The program has not been launched" :
+                (line > 0 ? "A breakpoint is already set on this line" : "Invalid line number");
+    }
+
     json bp_result;
     bp_result["id"] = line;
     bp_result["line"] = line;
     bp_result["verified"] = added;
+    if(!added) {
+      bp_result["message"] = failure;
+    }
     verified_breakpoints.push_back(bp_result);
   }
 
