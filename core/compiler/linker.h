@@ -38,6 +38,7 @@
 #include <string.h>
 #include <assert.h>
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <vector>
 #include <map>
@@ -872,8 +873,7 @@ class Library {
       std::string in(buffer, size);
       buffer += size;
       if(!BytesToCharacter(in, out)) {
-        std::wcerr << L">>> Unable to read character <<<" << std::endl;
-        exit(1);
+        throw CompilerFatal(L">>> Unable to read character <<<");
       }
     }
     else {
@@ -890,8 +890,7 @@ class Library {
    
     std::wstring out;
     if(!BytesToUnicode(in, out)) {
-      std::wcerr << L">>> Unable to read unicode std::string <<<" << std::endl;
-      exit(1);
+      throw CompilerFatal(L">>> Unable to read unicode std::string <<<");
     }
 
     return out;
@@ -914,7 +913,8 @@ class Library {
     buffer_pos = 0;
     alloc_buffer = buffer = LoadFileBuffer(file, buffer_size);
     if(!alloc_buffer || !buffer) {
-      exit(1);
+      // LoadFileBuffer throws for every failure it can name
+      throw CompilerFatal(L"Unable to read library: '" + file + L"'");
     }
   }
 
@@ -1194,8 +1194,8 @@ public:
   // libraries in the path that define a class but were not linked
   std::vector<std::wstring> LibrariesDefining(const std::wstring& cls_name);
 
-  // reports an unresolvable class, naming what would supply it, and exits
-  void ReportUnresolvedClass(const std::wstring& cls_name);
+  // reports an unresolvable class, naming what would supply it, by throwing CompilerFatal
+  [[noreturn]] void ReportUnresolvedClass(const std::wstring& cls_name);
 
   // returns all classes including duplicates
   std::vector<LibraryClass*> GetAllClasses();

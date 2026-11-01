@@ -1452,8 +1452,8 @@ def check_fatal_library(obr, server_obe, apis_json, bin_dir):
             # the other queries do not reach the dead analysis, and do not end the server
             hover = c.request("textDocument/hover", position_in(FATAL_MAIN, main_uri, "PrintLine", 1, 2),
                               timeout=60)
-            log_result("fatal: a hover on the failed program is answered", "error" not in (hover or {}),
-                       f"{hover}")
+            log_result("fatal: a hover on the failed program is answered",
+                       hover is not None and "error" not in hover, f"{hover}")
             log_result("fatal: and the server survives it", c.proc.poll() is None,
                        f"exit code {c.proc.poll()}")
 

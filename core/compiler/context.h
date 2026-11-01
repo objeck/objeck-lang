@@ -594,6 +594,8 @@ class ContextAnalyzer {
   // error processing
   void ProcessError(const std::wstring& fn, int ln, int lp, const std::wstring& msg);
   void ProcessError(ParseNode* n, const std::wstring& msg);
+  // records the error, then throws CompilerFatal with the same located text
+  [[noreturn]] void ProcessFatalError(ParseNode* n, const std::wstring& msg);
   void ProcessWarning(ParseNode* n, const std::wstring& msg);
   void ProcessErrorAlternativeMethods(std::wstring &message);
   void ProcessError(const std::wstring &fn, const std::wstring &msg);

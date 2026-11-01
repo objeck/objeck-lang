@@ -44,6 +44,8 @@
 #define COMMAND_ERROR 1
 #define PARSE_ERROR 2
 #define CONTEXT_ERROR 3
+// a fatal error used to end the process with exit(1); the status stays 1
+#define FATAL_ERROR 1
 
 /****************************
  * Starts the compilation process
@@ -76,6 +78,12 @@ int Compile(const std::wstring& src_files, const std::wstring& opt, const std::w
     target.Emit();
 
     return SUCCESS;
+  }
+  // must precede the std::exception handler: CompilerFatal is one
+  catch(const CompilerFatal& fatal) {
+    IntermediateProgram::Release();
+    std::wcerr << fatal.Message() << std::endl;
+    return FATAL_ERROR;
   }
   catch(const std::bad_alloc&) {
     std::wcerr << L"internal error: out of memory during compilation" << std::endl;
