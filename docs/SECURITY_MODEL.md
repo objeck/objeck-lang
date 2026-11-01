@@ -89,7 +89,7 @@ standard libraries; a quarter are compiled again with `-debug`) all pass.
 | `TRAP`/`TRAP_RTRN` directly follow the `LOAD_INT_LIT` that pushes a known trap id (the `Traps` enum, or `SET_SIGNAL`/`RAISE_SIGNAL`), and take at least one argument | `tools/cicd/check_trap_handlers.py` fails when a trap is added that this would refuse |
 | the start method exists; with program arguments, String's constructor (method 2) does too | the initialization code calls both |
 
-`run_vm_flag_tests.py` section 29 changes one operand of a freshly compiled
+`run_vm_flag_tests.py` section 30 changes one operand of a freshly compiled
 program for each rule and requires the refusal.
 
 ## What is still not checked
