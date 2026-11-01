@@ -1906,6 +1906,19 @@ def check_loader_rejects_malformed(obc, obr, env, bin_dir):
             text = err.decode(errors="replace")
             check(f"loader refuses {name} ({about})", loader_refused(rc, text, message),
                   f"rc={rc} err={text[-300:]!r}")
+
+        # The verification pass: the control program, which loads and runs above,
+        # with one operand changed. Before the pass each of these was loaded and run.
+        for about, message, case in verifier_cases(image):
+            path = os.path.join(scratch, "verify_case.obe")
+            with open(path, "wb") as f:
+                f.write(obe_file_of(case))
+            rc, out, err = run([obr, path], env=env, cwd=bin_dir, timeout=60)
+            text = err.decode(errors="replace")
+            check(f"the loader's verification refuses {about}", loader_refused(rc, text, message),
+                  f"rc={rc} err={text[-300:]!r}")
+
+
 def check_address_int_array(obc, obr, env, bin_dir):
     # ---- 31. an Int[] element equal to an object's address survives a collection -----
     src = os.path.join(SCRIPT_DIR, "vm_flag_fixtures", "gc_address_int_array.obs")
@@ -1935,17 +1948,6 @@ def check_address_int_array(obc, obr, env, bin_dir):
         rc, out, err = run([obr, "--jit=off", "--nursery=64k", dest], env=env, cwd=SCRIPT_DIR, timeout=300)
         check(f"the hook is inert without OBJECK_GC_TEST_HOOKS for gc_address_int_array (-opt {opt})",
               rc == 2 and b"returned 0" in out, f"rc={rc} out={out[-200:]!r}")
-
-        # The verification pass: the control program, which loads and runs above,
-        # with one operand changed. Before the pass each of these was loaded and run.
-        for about, message, case in verifier_cases(image):
-            path = os.path.join(scratch, "verify_case.obe")
-            with open(path, "wb") as f:
-                f.write(obe_file_of(case))
-            rc, out, err = run([obr, path], env=env, cwd=bin_dir, timeout=60)
-            text = err.decode(errors="replace")
-            check(f"the loader's verification refuses {about}", loader_refused(rc, text, message),
-                  f"rc={rc} err={text[-300:]!r}")
 
 
 def check_call_depth(obc, obr, env, bin_dir):
