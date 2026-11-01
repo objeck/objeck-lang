@@ -21,6 +21,15 @@ RESULTS_DIR="./results"
 
 mkdir -p "$RESULTS_DIR"
 
+# REGRESSION_SHARD=i/n runs every nth test starting at the ith (0-based), so the suite can
+# run as n processes side by side (tools/cicd/local_linux.sh does). Unset: every test runs.
+SHARD_INDEX=0; SHARD_COUNT=''; TEST_INDEX=-1
+if [ -n "${REGRESSION_SHARD:-}" ]; then
+    SHARD_INDEX="${REGRESSION_SHARD%/*}"; SHARD_COUNT="${REGRESSION_SHARD#*/}"
+    case "$SHARD_INDEX$SHARD_COUNT" in *[!0-9]*|'') echo "REGRESSION_SHARD must be i/n, got '${REGRESSION_SHARD}'"; exit 2 ;; esac
+    if [ "$SHARD_COUNT" -lt 1 ] || [ "$SHARD_INDEX" -ge "$SHARD_COUNT" ]; then echo "REGRESSION_SHARD out of range: '${REGRESSION_SHARD}'"; exit 2; fi
+fi
+
 PASS_COUNT=0
 FAIL_COUNT=0
 SKIP_COUNT=0
@@ -122,6 +131,10 @@ fi
 # Run each test
 for test in *.obs; do
     [ -f "$test" ] || continue
+    if [ -n "$SHARD_COUNT" ]; then
+        TEST_INDEX=$((TEST_INDEX + 1))
+        [ $((TEST_INDEX % SHARD_COUNT)) -eq "$SHARD_INDEX" ] || continue
+    fi
     NAME="${test%.obs}"
     echo "Running: $NAME..."
 
