@@ -63,15 +63,15 @@ at a gift, **shaken** in a disaster. A king is the same creature in a cape and a
 | Level | Name | How it plays |
 |---|---|---|
 | 1 | Dozy Dave | any legal move (but always takes a compulsory jump) |
-| 2 | Clumsy Clara | the best move one ply ahead; 30% of the time a random one |
-| 3 | Wobbly Walt | 2 plies ahead; 12% random moves |
+| 2 | Clumsy Clara | the best move one ply ahead; 40% of the time a random one |
+| 3 | Wobbly Walt | 2 plies ahead; 22% random moves |
 | 4 | Careful Kit | the library's `Minimax`, 3 plies |
 | 5 | Sly Sam | `Minimax`, 4 plies |
 | 6 | Professor Pawn | `Minimax`, 6 plies |
-| 7 | Captain Crown | our alpha-beta (move ordering, jump extension), 7 plies |
-| 8 | Madame Minimax | alpha-beta, 9 plies |
-| 9 | Deep Thinker | iterative deepening with the **learned** evaluation, up to 11 plies / 1.2 million positions |
-| 10 | Grandmaster Gizmo | the same, up to 14 plies / 3.5 million positions (a few seconds a move) |
+| 7 | Captain Crown | our alpha-beta (move ordering, jump extension), 6 plies |
+| 8 | Madame Minimax | alpha-beta, 8 plies |
+| 9 | Deep Thinker | iterative deepening with the **learned** evaluation, up to 10 plies / 2 million positions |
+| 10 | Grandmaster Gizmo | the same, up to 13 plies / 6 million positions (several seconds a move) |
 
 The computer thinks on its own thread, so the window never freezes: the pieces keep
 wobbling and the face keeps sweating while a deep search runs.
