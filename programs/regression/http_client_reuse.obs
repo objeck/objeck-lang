@@ -1,0 +1,324 @@
+#~
+# HttpClient reuses a kept-alive connection, and retries only what reuse can lose (#1443)
+#
+# A request used to open a connection and close it once its response was read, and the side
+# that closes first keeps TIME_WAIT on its port for about two minutes: on Windows some 130
+# requests a second used every ephemeral port, and then each connect failed at once. Now a
+# response that says keep-alive and frames its body leaves the connection for the next GET
+# to the same server. A server may close a connection while it waits, so a GET that gets no
+# response at all on a REUSED connection is sent once more on a new one (RFC 9112 9.3.1).
+#
+# A raw server here counts connections and requests and is told how to answer:
+#   - 20 GETs, each from a new HttpClient, share one connection;
+#   - a server that closed the waiting connection costs one new connection and the GET
+#     still succeeds: exactly one retry, invisible to the caller;
+#   - a server that fails the retry too gives a real failure (code 0), after exactly two
+#     sends, one new connection: the retry is not a loop and does not hide an error;
+#   - a response with Connection: close, one with no Connection field and an HTTP/1.0 one
+#     are not reused;
+#   - a connection that has waited longer than the idle limit is not reused;
+#   - POST never goes out on a waiting connection, and closes the waiting connections to
+#     its server first: a server that serves one connection at a time would otherwise keep
+#     serving the idle one while the POST waited to be accepted;
+#   - HttpClient->CloseIdleConnections() and WebServer->Stop() close the waiting connections,
+#     so a program that runs a server and its own client does not leave the server's threads
+#     reading idle connections (the VM waits up to two seconds for live threads at exit).
+# These are checked by what the server sees -- the client closing its end -- not by time.
+# EXTRA_LIBS: net,net_server
+~#
+
+use Collection, System.Concurrency, System.IO.Net, Web.HTTP;
+
+# what the server saw, and how it answers the next request
+class Seen {
+	@lock : ThreadMutex;
+	@connections : Int;
+	@requests : Int;
+	@posts : Int;
+	@closed : Int;
+	@mode : Int;
+
+	New() {
+		@lock := ThreadMutex->New("seen");
+	}
+
+	method : public : Connection() ~ Nil {
+		critical(@lock) { @connections += 1; };
+	}
+
+	# counts a request and returns how to answer it
+	method : public : Request(post : Bool) ~ Int {
+		mode := 0;
+		critical(@lock) {
+			@requests += 1;
+			if(post) {
+				@posts += 1;
+			};
+			mode := @mode;
+		};
+		return mode;
+	}
+
+	# the client closed a connection while it waited for a request
+	method : public : Closed() ~ Nil {
+		critical(@lock) { @closed += 1; };
+	}
+
+	method : public : GetClosed() ~ Int {
+		n := 0;
+		critical(@lock) { n := @closed; };
+		return n;
+	}
+
+	method : public : SetMode(mode : Int) ~ Nil {
+		critical(@lock) { @mode := mode; };
+	}
+
+	method : public : GetConnections() ~ Int {
+		n := 0;
+		critical(@lock) { n := @connections; };
+		return n;
+	}
+
+	method : public : GetRequests() ~ Int {
+		n := 0;
+		critical(@lock) { n := @requests; };
+		return n;
+	}
+}
+
+# answer modes
+class AnswerMode {
+	function : Keep() ~ Int { return 0; }          # keep-alive, keep serving
+	function : KeepThenClose() ~ Int { return 1; } # say keep-alive, then close anyway
+	function : Drop() ~ Int { return 2; }          # read the request, close with no answer
+	function : SayClose() ~ Int { return 3; }      # Connection: close, then close
+	function : NoField() ~ Int { return 4; }       # no Connection field, keep serving
+	function : Http10() ~ Int { return 5; }        # an HTTP/1.0 answer, keep serving
+}
+
+class Acceptor from Thread {
+	@server : TCPSocketServer;
+	@seen : Seen;
+
+	New(server : TCPSocketServer, seen : Seen) {
+		Parent("acceptor");
+		@server := server;
+		@seen := seen;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		while(true) {
+			client := @server->Accept();
+			if(client <> Nil & client->IsOpen()) {
+				@seen->Connection();
+				ServedConnection->New(client, @seen)->Execute(Nil);
+			};
+		};
+	}
+}
+
+# one connection, request after request, until the client closes it or the mode ends it
+class ServedConnection from Thread {
+	@client : TCPSocket;
+	@seen : Seen;
+
+	New(client : TCPSocket, seen : Seen) {
+		Parent("connection");
+		@client := client;
+		@seen := seen;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		open := true;
+		while(open) {
+			line := @client->ReadLine();
+			if(line = Nil | line->Size() = 0) {
+				@seen->Closed();
+				open := false;
+			}
+			else {
+				post := line->StartsWith("POST ");
+				length := 0;
+				header : String;
+				do {
+					header := @client->ReadLine();
+					if(header <> Nil & header->ToLower()->StartsWith("content-length:")) {
+						length := header->SubString(15, header->Size() - 15)->Trim()->ToInt();
+					};
+				}
+				while(header <> Nil & header->Size() > 0);
+				if(length > 0) {
+					body := Byte->New[length];
+					@client->ReadBuffer(0, length, body);
+				};
+
+				mode := @seen->Request(post);
+				if(mode = AnswerMode->Drop()) {
+					open := false;
+				}
+				else if(mode = AnswerMode->SayClose()) {
+					@client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok");
+					open := false;
+				}
+				else if(mode = AnswerMode->NoField()) {
+					@client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok");
+				}
+				else if(mode = AnswerMode->Http10()) {
+					@client->WriteString("HTTP/1.0 200 OK\r\nContent-Length: 2\r\nConnection: keep-alive\r\n\r\nok");
+				}
+				else {
+					@client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: keep-alive\r\n\r\nok");
+					if(mode = AnswerMode->KeepThenClose()) {
+						# as a server whose keep-alive timeout ends: no request is pending
+						@client->CloseGracefully(100);
+						return;
+					};
+				};
+			};
+		};
+
+		@client->CloseGracefully();
+	}
+}
+
+class HttpClientReuse {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	# whether the server saw the client close a connection since it had seen 'before' closes;
+	# the server's thread notices the close a moment after the client makes it
+	function : ClosedSince(seen : Seen, before : Int) ~ Bool {
+		waited := 0;
+		while(seen->GetClosed() = before & waited < 5000) {
+			Thread->Sleep(10);
+			waited += 10;
+		};
+		return seen->GetClosed() > before;
+	}
+
+	# a GET from a new client, as the URL cache makes them; true if it read "ok"
+	function : Get(url : String) ~ Bool {
+		response := HttpClient->New()->Get(Url->New(url));
+		if(response = Nil | response->GetCode() <> 200) {
+			return false;
+		};
+		content := response->GetContent();
+		return content <> Nil & String->New(content)->Equals("ok");
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		seen := Seen->New();
+		server := TCPSocketServer->New("127.0.0.1", 0);
+		if(<>server->Listen(16)) {
+			"FAIL: the test server did not listen"->PrintLine();
+			Runtime->Exit(1);
+		};
+		Acceptor->New(server, seen)->Execute(Nil);
+		url := "http://127.0.0.1:{$server->GetPort()}/data";
+
+		# one connection for twenty GETs
+		all_ok := true;
+		each(i : 20) {
+			if(<>Get(url)) {
+				all_ok := false;
+			};
+		};
+		Check("20 GETs answered", all_ok);
+		Check("20 GETs share one connection ({$(seen->GetConnections())} used)", seen->GetConnections() = 1);
+		Check("20 GETs are 20 requests ({$(seen->GetRequests())})", seen->GetRequests() = 20);
+
+		# the server closes the connection after answering, though it said keep-alive: the
+		# next GET finds it closed, and goes again, once, on a new connection
+		seen->SetMode(AnswerMode->KeepThenClose());
+		Check("a GET the server answers and then closes", Get(url));
+		Thread->Sleep(500);
+		seen->SetMode(AnswerMode->Keep());
+		connections := seen->GetConnections();
+		requests := seen->GetRequests();
+		Check("a GET after the server closed the waiting connection succeeds", Get(url));
+		Check("  and took exactly one new connection ({$(seen->GetConnections() - connections)})", seen->GetConnections() - connections = 1);
+		Check("  and reached the server once ({$(seen->GetRequests() - requests)})", seen->GetRequests() - requests = 1);
+
+		# the server reads the request and closes with no answer, on the reused connection
+		# and on the new one: one retry, then a real failure
+		connections := seen->GetConnections();
+		requests := seen->GetRequests();
+		seen->SetMode(AnswerMode->Drop());
+		response := HttpClient->New()->Get(Url->New(url));
+		code := -1;
+		if(response <> Nil) {
+			code := response->GetCode();
+		};
+		Check("a GET the server never answers fails (code {$code})", code <= 0);
+		Check("  after exactly two sends ({$(seen->GetRequests() - requests)})", seen->GetRequests() - requests = 2);
+		Check("  on exactly one new connection ({$(seen->GetConnections() - connections)})", seen->GetConnections() - connections = 1);
+
+		# responses that do not keep the connection: each next GET opens a new one, with no retry
+		modes := Int->New[3];
+		modes[0] := AnswerMode->SayClose();
+		modes[1] := AnswerMode->NoField();
+		modes[2] := AnswerMode->Http10();
+		names := ["Connection: close", "no Connection field", "HTTP/1.0"];
+		each(m : modes) {
+			seen->SetMode(AnswerMode->Keep());
+			Get(url);
+			seen->SetMode(modes[m]);
+			Check("a GET answered with {$(names[m])}", Get(url));
+			seen->SetMode(AnswerMode->Keep());
+			connections := seen->GetConnections();
+			requests := seen->GetRequests();
+			Check("the GET after {$(names[m])} succeeds", Get(url));
+			Check("  on a new connection ({$(seen->GetConnections() - connections)})", seen->GetConnections() - connections = 1);
+			Check("  with no retry ({$(seen->GetRequests() - requests)})", seen->GetRequests() - requests = 1);
+		};
+
+		# a connection that waited past the idle limit is closed, not used
+		seen->SetMode(AnswerMode->Keep());
+		Get(url);
+		Thread->Sleep(4500);
+		connections := seen->GetConnections();
+		Check("a GET after the idle limit succeeds", Get(url));
+		Check("  on a new connection ({$(seen->GetConnections() - connections)})", seen->GetConnections() - connections = 1);
+
+		# a POST is not idempotent: it never takes a waiting connection, and it closes the
+		# waiting one first
+		Get(url);
+		connections := seen->GetConnections();
+		closed := seen->GetClosed();
+		post := HttpClient->New()->Post(Url->New(url), "x"->ToByteArray(), "text/plain");
+		Check("a POST is answered", post <> Nil & post->GetCode() = 200);
+		Check("  on a connection of its own ({$(seen->GetConnections() - connections)})", seen->GetConnections() - connections = 1);
+		# two closes: the waiting connection's, before the POST connects, and the POST's own
+		Check("  after closing the waiting connection", ClosedSince(seen, closed + 1));
+
+		# CloseIdleConnections, and WebServer->Stop, close the waiting connections
+		Get(url);
+		closed := seen->GetClosed();
+		HttpClient->CloseIdleConnections();
+		Check("CloseIdleConnections closes the waiting connection", ClosedSince(seen, closed));
+		connections := seen->GetConnections();
+		Check("  and the next GET succeeds", Get(url));
+		Check("  on a new connection ({$(seen->GetConnections() - connections)})", seen->GetConnections() - connections = 1);
+
+		closed := seen->GetClosed();
+		Web.HTTP.Server.WebServer->Stop();
+		Check("WebServer->Stop closes the client's waiting connections", ClosedSince(seen, closed));
+
+		if(@failures = 0) {
+			"PASS: HttpClient connection reuse"->PrintLine();
+		}
+		else {
+			"FAIL: HttpClient connection reuse ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		Runtime->Exit(0);
+	}
+}

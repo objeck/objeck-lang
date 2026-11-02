@@ -1868,7 +1868,7 @@ pair->GetSecond()->PrintLine(); # one
 
 		#~
 		Compares two objects based upon first value
-		@param first compare object
+		@param rhs another pair (the form a sorted collection passes) or the first value of another pair
 		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
 
 ```
@@ -1877,8 +1877,13 @@ b := Collection.Pair->New(IntRef->New(2), "two")<IntRef, String>;
 a->Compare(b->GetFirst())->PrintLine(); # -1
 ```
 		~#
-		method : public : Compare(first : System.Compare) ~ Int {
-			return @first->Compare(first);
+		method : public : Compare(rhs : System.Compare) ~ Int {
+			# a collection (CompareVector, Heap, Map) hands over the other Pair, not its first value
+			if(rhs <> Nil & rhs->GetClassID() = GetClassID()) {
+				return @first->Compare(rhs->As(Pair<F, S>)->GetFirst());
+			};
+
+			return @first->Compare(rhs);
 		}
 
 		#~

@@ -10,6 +10,16 @@ hundred lines of plain C with no VM involved:
 `programs/tests/win32_socket_close_race.cpp`. Tracked as
 [issue #669](https://github.com/objeck/objeck-lang/issues/669).
 
+**Not every Windows machine does this (measured 2026-11-02, #1443).** On GitHub's
+hosted Windows runners (x64 and arm64, plain Python sockets), a server that wrote
+its reply and closed first lost **0 of 30,000** replies, and a client that
+half-closed always ended in `TIME_WAIT`. On the development machine that measured
+the table below, the same scripts lost 104 of 2,400 replies, and 2-3% of client
+half-closes left the client in `LAST_ACK` while the server's end stayed
+`ESTABLISHED`, never told of the close. The difference is the machine's loopback
+path (filter drivers sit on it), not Windows itself, which is why Objeck keeps the
+client-closes-first design: it is safe on both kinds of machine.
+
 ## Who this affects
 
 **Only loopback, and only Windows.** Measured, two processes, 50 transfers a run:
@@ -116,6 +126,28 @@ If your peer closes first, there is no teardown to race. Concretely:
 What you should *not* do is sleep before closing. It works, which is precisely
 what makes it tempting, but it is a race you have widened rather than removed —
 and you pay for it on every close, forever.
+
+## The cost of closing first: TIME_WAIT (#1443)
+
+The side that closes first keeps the connection in `TIME_WAIT` for about two
+minutes, and on Windows that holds a local port out of the 16,384 the system hands
+out (49152-65535). A client that opens a connection per request and closes it
+first therefore has a budget of roughly 130 requests a second, sustained; past it
+every connect fails at once with `WSAEADDRINUSE` (10048). Measured on the hosted
+runners: the 16,135th connection failed, and so did the next 13,849. The nightly's
+`query_url_cache_processes`, run in four configurations back to back beside other
+network tests, made about 2,900 connections a configuration and hit that wall.
+
+So `HttpClient` reuses connections: a GET or DELETE goes out on a connection an
+earlier request to the same host and port left open, when that response said
+`Connection: keep-alive` and framed its body with its own `Content-Length` (or
+had none, 204 or 304). A connection waits at most four seconds for its next
+request. A server may close a waiting connection at any time, so a request that
+gets no status line at all on a REUSED connection is sent once more on a new one
+(RFC 9112 section 9.3.1); a second failure is the caller's error. POST, PUT and
+PATCH always open a connection of their own. With reuse, the same nightly run
+peaks at about 60 `TIME_WAIT` entries instead of the whole range
+(`programs/regression/http_client_reuse.obs` checks the reuse and the single retry).
 
 ## Reproducing it
 
