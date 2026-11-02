@@ -2116,6 +2116,7 @@ class CkSettings {
   @reduced : Bool;      # reduced motion: no shaking, bouncing or flashing
   @sound : Bool;
   @volume : Int;        # 0 .. 100
+  @music : Int;         # music style: 0 hip-hop, 1 modern beats, 2 off
 
   New() {
     @piece_set := 0;
@@ -2127,6 +2128,7 @@ class CkSettings {
     @reduced := false;
     @sound := true;
     @volume := 70;
+    @music := 0;
   }
 
   function : SetNames() ~ String[] {
@@ -2201,6 +2203,14 @@ class CkSettings {
     return @volume;
   }
 
+  method : public : MusicStyle() ~ Int {
+    return @music;
+  }
+
+  method : public : SetMusicStyle(v : Int) ~ Nil {
+    @music := Clamp(v, 0, 2);
+  }
+
   method : public : SetVolume(v : Int) ~ Nil {
     @volume := Clamp(v, 0, 100);
   }
@@ -2239,7 +2249,8 @@ class CkSettings {
     text += "  \"anim\": {$@anim},\n";
     text += "  \"reduced_motion\": {$@reduced},\n";
     text += "  \"sound\": {$@sound},\n";
-    text += "  \"volume\": {$@volume}\n";
+    text += "  \"volume\": {$@volume},\n";
+    text += "  \"music_style\": {$@music}\n";
     text += "}\n";
     return text;
   }
@@ -2263,6 +2274,7 @@ class CkSettings {
     SetHuman(ReadInt(root, "human", @human));
     SetFun(ReadInt(root, "fun", @fun));
     SetVolume(ReadInt(root, "volume", @volume));
+    SetMusicStyle(ReadInt(root, "music_style", @music));
     @flip := ReadBool(root, "flip", @flip);
     @anim := ReadBool(root, "anim", @anim);
     @reduced := ReadBool(root, "reduced_motion", @reduced);
@@ -2587,6 +2599,1354 @@ class CkThinker from System.Concurrency.Thread {
   }
 }
 
+# ---- checkers_music.obs ----
+#~
+# Checkers: music made up while the game runs. No sound files, no samples,
+# nothing to license: every drum hit and every note is computed.
+#
+# One generator writes NOTE EVENTS, just like the events in a MIDI file: a track,
+# a note number, a velocity and a start time in ticks (480 to a quarter note).
+# Two back ends play the same events:
+#
+#   CkMidi   writes them as a Standard MIDI File (format 1, drums on General
+#            MIDI channel 10), so the song can be exported and opened in any
+#            music program, or played by SDL_mixer where MIDI works.
+#   CkSynth  renders them to sound with a tiny software synthesizer: sine kick,
+#            noise snare and hats, 808 bass, electric-piano keys, a lead. It
+#            works everywhere there is an audio device, and can write a WAV.
+#
+# A STYLE is a table row (CkStyle): tempo range, swing, the drum patterns, how
+# the bass behaves, which scale is used, what the chords and the lead sound like.
+# Hip-hop (boom-bap) and Modern beats (trap) are two rows; adding a third style
+# is adding a row.
+#
+# The part that LEARNS is CkMarkov. A Markov chain is a table of "after this,
+# how often did that come next?". It counts the transitions in short phrases
+# written in this file (CkSeeds) and then walks the table with dice, which
+# invents melodies that have the habits of the seeds, and chord progressions that
+# move like the seed progressions: new tunes, same habits. The lead motif is
+# rewritten by the chain a little every bar.
+#
+# The mood of the game decides what plays (CkBeat->Layers): drums alone while
+# the position is calm; bass and keys when a jump is threatened; the whole groove
+# with fills when it is tense; a breakdown and a key change for a crowning; an
+# outro for a win or a loss.
+#
+# Needs checkers_engine.obs (CkRand).
+~#
+
+
+# Wave shapes, and the WAV file format.
+class CkWave {
+  # 0 sine, 1 triangle, 2 square (softened), 3 sawtooth: value at phase (cycles)
+  function : Value(kind : Int, phase : Float) ~ Float {
+    cycles := phase - phase->Floor();
+    if(kind = 0) {
+      return (cycles * 6.2831853)->Sin();
+    };
+    if(kind = 1) {
+      if(cycles < 0.5) {
+        return cycles * 4.0 - 1.0;
+      };
+      return 3.0 - cycles * 4.0;
+    };
+    if(kind = 2) {
+      if(cycles < 0.5) {
+        return 0.55;
+      };
+      return -0.55;
+    };
+    return cycles * 2.0 - 1.0;
+  }
+
+  # MIDI note number to Hertz (69 is the A above middle C, 440 Hz)
+  function : Hz(midi : Int) ~ Float {
+    return 440.0 * Float->Pow(2.0, (midi - 69)->As(Float) / 12.0);
+  }
+
+  # white noise at sample n: the same n always gives the same value
+  function : Noise(n : Int) ~ Float {
+    v := ((n->As(Float) * 12.9898)->Sin() * 43758.5453);
+    return (v - v->Floor()) * 2.0 - 1.0;
+  }
+
+  # pack mono samples (-1.0 .. 1.0) into a 16-bit PCM WAV file in memory
+  function : Encode(samples : Float[], rate : Int) ~ Byte[] {
+    n := samples->Size();
+    data := n * 2;
+    bytes := Byte->New[44 + data];
+    Text(bytes, 0, "RIFF");
+    Put32(bytes, 4, 36 + data);
+    Text(bytes, 8, "WAVE");
+    Text(bytes, 12, "fmt ");
+    Put32(bytes, 16, 16);
+    Put16(bytes, 20, 1);
+    Put16(bytes, 22, 1);
+    Put32(bytes, 24, rate);
+    Put32(bytes, 28, rate * 2);
+    Put16(bytes, 32, 2);
+    Put16(bytes, 34, 16);
+    Text(bytes, 36, "data");
+    Put32(bytes, 40, data);
+    each(i : n) {
+      v := samples[i];
+      if(v > 1.0) {
+        v := 1.0;
+      };
+      if(v < -1.0) {
+        v := -1.0;
+      };
+      s := (v * 32767.0)->As(Int);
+      if(s < 0) {
+        s += 65536;
+      };
+      bytes[44 + i * 2] := s % 256;
+      bytes[45 + i * 2] := s / 256;
+    };
+    return bytes;
+  }
+
+  function : Text(bytes : Byte[], at : Int, text : String) ~ Nil {
+    each(i : text->Size()) {
+      bytes[at + i] := text->Get(i)->As(Int);
+    };
+  }
+
+  function : Put16(bytes : Byte[], at : Int, v : Int) ~ Nil {
+    bytes[at] := v % 256;
+    bytes[at + 1] := (v / 256) % 256;
+  }
+
+  function : Put32(bytes : Byte[], at : Int, v : Int) ~ Nil {
+    bytes[at] := v % 256;
+    bytes[at + 1] := (v / 256) % 256;
+    bytes[at + 2] := (v / 65536) % 256;
+    bytes[at + 3] := (v / 16777216) % 256;
+  }
+
+  function : Get32(bytes : Byte[], at : Int) ~ Int {
+    return bytes[at]->As(Int) + bytes[at + 1]->As(Int) * 256 + bytes[at + 2]->As(Int) * 65536 + bytes[at + 3]->As(Int) * 16777216;
+  }
+
+  # is this a well-formed mono 16-bit PCM WAV whose sizes agree with its length?
+  function : IsValid(bytes : Byte[], rate : Int) ~ Bool {
+    if(bytes = Nil | bytes->Size() < 44) {
+      return false;
+    };
+    ok := bytes[0]->As(Int) = 82 & bytes[1]->As(Int) = 73 & bytes[2]->As(Int) = 70 & bytes[3]->As(Int) = 70;
+    ok := ok & bytes[8]->As(Int) = 87 & bytes[9]->As(Int) = 65 & bytes[10]->As(Int) = 86 & bytes[11]->As(Int) = 69;
+    ok := ok & bytes[36]->As(Int) = 100 & bytes[37]->As(Int) = 97 & bytes[38]->As(Int) = 116 & bytes[39]->As(Int) = 97;
+    ok := ok & Get32(bytes, 4) = bytes->Size() - 8;
+    ok := ok & Get32(bytes, 40) = bytes->Size() - 44;
+    ok := ok & Get32(bytes, 24) = rate;
+    ok := ok & bytes[22]->As(Int) = 1 & bytes[34]->As(Int) = 16;
+    return ok;
+  }
+}
+
+# A list of note events. Tracks: 0 drums, 1 bass, 2 keys, 3 lead, 4 pad or pluck.
+# Times are in ticks, 480 to a quarter note, so a 4/4 bar is 1920 ticks.
+class CkSong {
+  @tick : Int[];
+  @len : Int[];
+  @track : Int[];
+  @note : Int[];
+  @vel : Int[];
+  @count : Int;
+
+  New() {
+    @tick := Int->New[256];
+    @len := Int->New[256];
+    @track := Int->New[256];
+    @note := Int->New[256];
+    @vel := Int->New[256];
+  }
+
+  function : Ticks() ~ Int {
+    return 480;
+  }
+
+  function : BarTicks() ~ Int {
+    return 1920;
+  }
+
+  method : public : Count() ~ Int {
+    return @count;
+  }
+
+  method : public : Clear() ~ Nil {
+    @count := 0;
+  }
+
+  method : public : Add(tick : Int, len : Int, track : Int, note : Int, vel : Int) ~ Nil {
+    if(@count >= @tick->Size()) {
+      size := @tick->Size() * 2;
+      if(size > 8192) {
+        return;
+      };
+      nt := Int->New[size];
+      nl := Int->New[size];
+      nr := Int->New[size];
+      nn := Int->New[size];
+      nv := Int->New[size];
+      each(i : @count) {
+        nt[i] := @tick[i];
+        nl[i] := @len[i];
+        nr[i] := @track[i];
+        nn[i] := @note[i];
+        nv[i] := @vel[i];
+      };
+      @tick := nt;
+      @len := nl;
+      @track := nr;
+      @note := nn;
+      @vel := nv;
+    };
+    @tick[@count] := tick;
+    @len[@count] := len;
+    @track[@count] := track;
+    @note[@count] := note;
+    @vel[@count] := vel;
+    @count += 1;
+  }
+
+  method : public : Tick(i : Int) ~ Int {
+    return @tick[i];
+  }
+
+  method : public : Len(i : Int) ~ Int {
+    return @len[i];
+  }
+
+  method : public : Track(i : Int) ~ Int {
+    return @track[i];
+  }
+
+  method : public : Note(i : Int) ~ Int {
+    return @note[i];
+  }
+
+  method : public : Vel(i : Int) ~ Int {
+    return @vel[i];
+  }
+
+  # copy another song in, shifted later by offset ticks
+  method : public : Append(part : CkSong, offset : Int) ~ Nil {
+    each(i : part->Count()) {
+      Add(part->Tick(i) + offset, part->Len(i), part->Track(i), part->Note(i), part->Vel(i));
+    };
+  }
+
+  # the end of the last note
+  method : public : End() ~ Int {
+    e := 0;
+    each(i : @count) {
+      if(@tick[i] + @len[i] > e) {
+        e := @tick[i] + @len[i];
+      };
+    };
+    return e;
+  }
+
+  # how many events of a track
+  method : public : TrackCount(track : Int) ~ Int {
+    n := 0;
+    each(i : @count) {
+      if(@track[i] = track) {
+        n += 1;
+      };
+    };
+    return n;
+  }
+}
+
+# A Markov chain over small whole numbers 0 .. n-1: it counts how often each
+# value followed each other value in the phrases it is shown, then picks the next
+# value in proportion to those counts. No rules about music, only habits copied
+# from examples.
+class CkMarkov {
+  @n : Int;
+  @counts : Int[];
+  @first : Int[];
+  @seen : Int;
+
+  New(n : Int) {
+    @n := n;
+    @counts := Int->New[n * n];
+    @first := Int->New[n];
+  }
+
+  method : public : Size() ~ Int {
+    return @n;
+  }
+
+  method : public : Train(phrase : Int[]) ~ Nil {
+    if(phrase->Size() = 0) {
+      return;
+    };
+    @first[phrase[0]] := @first[phrase[0]] + 1;
+    for(i := 1; i < phrase->Size(); i += 1;) {
+      at := phrase[i - 1] * @n + phrase[i];
+      @counts[at] := @counts[at] + 1;
+      @seen += 1;
+    };
+  }
+
+  method : public : Count(prev : Int, nxt : Int) ~ Int {
+    return @counts[prev * @n + nxt];
+  }
+
+  method : public : Seen() ~ Int {
+    return @seen;
+  }
+
+  method : public : RowTotal(prev : Int) ~ Int {
+    total := 0;
+    each(nxt : @n) {
+      total += @counts[prev * @n + nxt];
+    };
+    return total;
+  }
+
+  # the chance (0 .. 1) that nxt follows prev; each row that was ever seen adds up to 1
+  method : public : Chance(prev : Int, nxt : Int) ~ Float {
+    total := RowTotal(prev);
+    if(total = 0) {
+      return 0.0;
+    };
+    return Count(prev, nxt)->As(Float) / total->As(Float);
+  }
+
+  # pick what follows prev from one roll of the dice; with nothing learned about
+  # prev, anything is possible
+  method : public : Next(prev : Int, dice : Int) ~ Int {
+    total := RowTotal(prev);
+    if(total = 0) {
+      return dice % @n;
+    };
+    pick := dice % total;
+    each(nxt : @n) {
+      pick -= @counts[prev * @n + nxt];
+      if(pick < 0) {
+        return nxt;
+      };
+    };
+    return 0;
+  }
+
+  method : public : Start(dice : Int) ~ Int {
+    total := 0;
+    each(i : @n) {
+      total += @first[i];
+    };
+    if(total = 0) {
+      return dice % @n;
+    };
+    pick := dice % total;
+    each(i : @n) {
+      pick -= @first[i];
+      if(pick < 0) {
+        return i;
+      };
+    };
+    return 0;
+  }
+}
+
+# The phrases the music learns from: my own short tunes as scale degrees (1 to 7)
+# and note lengths in sixteenth-note steps, and chord progressions by root degree.
+class CkSeeds {
+  # "degree:steps"; a degree of 0 is a rest
+  function : Melodies() ~ String[] {
+    return [
+      "1:4 3:2 5:2 3:4 2:4",
+      "5:2 5:2 6:2 5:2 3:4 1:4",
+      "1:2 1:2 3:4 5:2 3:2 2:4",
+      "3:4 3:2 4:2 5:4 4:2 3:2",
+      "5:4 3:2 1:2 3:4 5:4",
+      "6:2 5:2 3:4 5:2 6:2 5:4",
+      "1:2 2:2 3:4 1:4 2:2 1:2",
+      "3:2 4:2 5:4 6:2 5:2 3:4",
+      "2:4 4:2 6:2 4:4 5:4",
+      "1:4 5:2 3:2 5:4 1:4"
+    ];
+  }
+
+  # chord roots: the minor-key progressions of boom-bap and trap
+  function : Progressions() ~ String[] {
+    return ["1 6 7 1", "1 4 5 1", "1 6 4 5", "1 7 6 7", "1 3 7 6", "6 7 1 1", "1 1 4 5", "1 4 1 5", "1 6 3 7"];
+  }
+
+  # chain over the degrees 1 .. 7 (stored 0 .. 6)
+  function : MelodyChain() ~ CkMarkov {
+    chain := CkMarkov->New(7);
+    lines := Melodies();
+    each(i : lines) {
+      parts := lines[i]->Split(' ');
+      notes := Int->New[parts->Size()];
+      n := 0;
+      each(j : parts) {
+        pair := parts[j]->Split(':');
+        degree := pair[0]->ToInt();
+        if(degree > 0) {
+          notes[n] := degree - 1;
+          n += 1;
+        };
+      };
+      phrase := Int->New[n];
+      each(j : n) {
+        phrase[j] := notes[j];
+      };
+      chain->Train(phrase);
+    };
+    return chain;
+  }
+
+  # chain over note lengths 1 .. 4 steps (stored 0 .. 3)
+  function : RhythmChain() ~ CkMarkov {
+    chain := CkMarkov->New(4);
+    lines := Melodies();
+    each(i : lines) {
+      parts := lines[i]->Split(' ');
+      phrase := Int->New[parts->Size()];
+      each(j : parts) {
+        pair := parts[j]->Split(':');
+        phrase[j] := Int->Min(pair[1]->ToInt(), 4) - 1;
+      };
+      chain->Train(phrase);
+    };
+    return chain;
+  }
+
+  function : ChordChain() ~ CkMarkov {
+    chain := CkMarkov->New(7);
+    lines := Progressions();
+    each(i : lines) {
+      parts := lines[i]->Split(' ');
+      phrase := Int->New[parts->Size()];
+      each(j : parts) {
+        phrase[j] := parts[j]->ToInt() - 1;
+      };
+      chain->Train(phrase);
+    };
+    return chain;
+  }
+}
+
+# One row of the style table: everything that makes a style sound like itself.
+# Patterns are 16 characters, one per sixteenth of the bar: x a hit, g a quiet
+# ghost hit, o an open hat, . nothing.
+class CkStyle {
+  @name : String;
+  @bpm_lo : Int;
+  @bpm_hi : Int;
+  @swing : Int;         # percent: how late the off-beat sixteenths come
+  @kick : String;
+  @snare : String;
+  @snare_note : Int;    # 38 snare, 39 hand clap
+  @hat : String;
+  @open : String;
+  @ghost : String;
+  @rolls : Int;         # percent chance per bar of a rolling hi-hat burst
+  @scale : Int[];       # the seven semitone steps of the scale
+  @bass_beats : Int;    # how long a bass note holds
+  @glide : Bool;        # the 808 slides down into each note
+  @pad : Bool;          # keys as a held pad plus a plucked arpeggio instead of stabs
+  @lead_set : Int[];    # scale degrees (0 .. 6) the lead may use
+
+  New(index : Int) {
+    @scale := [0, 2, 3, 5, 7, 8, 10];
+    if(index = 1) {
+      @name := "Modern beats";
+      @bpm_lo := 132;
+      @bpm_hi := 144;
+      @swing := 0;
+      @kick := "x.....x..x.x....";
+      @snare := "........x.......";
+      @snare_note := 39;
+      @hat := "x.x.x.x.x.x.x.x.";
+      @open := "..............o.";
+      @ghost := "................";
+      @rolls := 55;
+      @bass_beats := 3;
+      @glide := true;
+      @pad := true;
+      @lead_set := [0, 2, 3, 4, 6];
+    }
+    else {
+      @name := "Hip-hop";
+      @bpm_lo := 80;
+      @bpm_hi := 95;
+      @swing := 38;
+      @kick := "x.....x..xx.....";
+      @snare := "....x.......x...";
+      @snare_note := 38;
+      @hat := "x.x.x.x.x.x.x.x.";
+      @open := "......o.......o.";
+      @ghost := "..g..g.....g..g.";
+      @rolls := 0;
+      @bass_beats := 3;
+      @glide := false;
+      @pad := false;
+      @lead_set := [0, 2, 3, 4, 6];
+    };
+  }
+
+  # the number of styles in the table, the last of which (Off) makes no sound
+  function : Count() ~ Int {
+    return 3;
+  }
+
+  function : Name(index : Int) ~ String {
+    names := ["Hip-hop", "Modern beats", "Off"];
+    if(index < 0 | index > 2) {
+      return "Off";
+    };
+    return names[index];
+  }
+
+  method : public : Title() ~ String {
+    return @name;
+  }
+
+  method : public : BpmLow() ~ Int {
+    return @bpm_lo;
+  }
+
+  method : public : BpmHigh() ~ Int {
+    return @bpm_hi;
+  }
+
+  method : public : Swing() ~ Int {
+    return @swing;
+  }
+
+  method : public : KickPattern() ~ String {
+    return @kick;
+  }
+
+  method : public : SnarePattern() ~ String {
+    return @snare;
+  }
+
+  method : public : SnareNote() ~ Int {
+    return @snare_note;
+  }
+
+  method : public : HatPattern() ~ String {
+    return @hat;
+  }
+
+  method : public : OpenPattern() ~ String {
+    return @open;
+  }
+
+  method : public : GhostPattern() ~ String {
+    return @ghost;
+  }
+
+  method : public : Rolls() ~ Int {
+    return @rolls;
+  }
+
+  method : public : Scale() ~ Int[] {
+    return @scale;
+  }
+
+  method : public : BassBeats() ~ Int {
+    return @bass_beats;
+  }
+
+  method : public : Glide() ~ Bool {
+    return @glide;
+  }
+
+  method : public : PadKeys() ~ Bool {
+    return @pad;
+  }
+
+  method : public : LeadSet() ~ Int[] {
+    return @lead_set;
+  }
+}
+
+# Writes the music one bar at a time, in the style it is given. It remembers the
+# lead motif, the chord and the key from bar to bar.
+class CkBeat {
+  @style : CkStyle;
+  @melody : CkMarkov;
+  @rhythm : CkMarkov;
+  @chords : CkMarkov;
+  @rand : CkRand;
+  @key : Int;           # MIDI note of the tonic, 45 is A2
+  @chord : Int;         # root degree (0 .. 6) of the current chord
+  @motif : Int[];       # the lead motif, as scale degrees (0 .. 6)
+  @motif_len : Int[];   # and the length of each note in sixteenths
+  @bars : Int;
+  @transposed : Int;    # semitones the key has been moved up by crownings
+
+  New(style : CkStyle, seed : Int) {
+    @style := style;
+    @melody := CkSeeds->MelodyChain();
+    @rhythm := CkSeeds->RhythmChain();
+    @chords := CkSeeds->ChordChain();
+    @rand := CkRand->New(seed);
+    @key := 45;
+    @motif := Int->New[4];
+    @motif_len := Int->New[4];
+    MakeMotif();
+  }
+
+  method : public : Style() ~ CkStyle {
+    return @style;
+  }
+
+  method : public : Melody() ~ CkMarkov {
+    return @melody;
+  }
+
+  method : public : Rhythm() ~ CkMarkov {
+    return @rhythm;
+  }
+
+  method : public : Chords() ~ CkMarkov {
+    return @chords;
+  }
+
+  method : public : Key() ~ Int {
+    return @key;
+  }
+
+  method : public : Bars() ~ Int {
+    return @bars;
+  }
+
+  method : public : Motif() ~ Int[] {
+    return @motif;
+  }
+
+  # a new four-note motif from the learned chain, kept inside the style's lead set
+  method : MakeMotif() ~ Nil {
+    deg := @melody->Start(@rand->Next());
+    each(i : 4) {
+      @motif[i] := Fit(deg);
+      @motif_len[i] := @rhythm->Next(@rand->NextInt(4), @rand->Next()) + 1;
+      deg := @melody->Next(deg, @rand->Next());
+    };
+  }
+
+  # the closest degree the lead is allowed to use
+  method : Fit(degree : Int) ~ Int {
+    set := @style->LeadSet();
+    best := set[0];
+    each(i : set->Size()) {
+      if(Int->Abs(set[i] - degree) < Int->Abs(best - degree)) {
+        best := set[i];
+      };
+    };
+    return best;
+  }
+
+  # the motif changes a little every bar: one note is re-chosen by the chain
+  method : Vary() ~ Nil {
+    i := @rand->NextInt(4);
+    prev := @motif[(i + 3) % 4];
+    @motif[i] := Fit(@melody->Next(prev, @rand->Next()));
+    if(@rand->NextInt(4) = 0) {
+      @motif_len[i] := @rhythm->Next(@motif_len[i] - 1, @rand->Next()) + 1;
+    };
+  }
+
+  # the beats per minute for a bar: the style's range, faster when the game is tense
+  method : public : Bpm(intensity : Float, mood : Int) ~ Int {
+    lo := @style->BpmLow();
+    hi := @style->BpmHigh();
+    if(mood = 3) {
+      return lo - 6;
+    };
+    return lo + ((hi - lo)->As(Float) * intensity)->As(Int);
+  }
+
+  # what plays: bit 1 drums, 2 bass, 4 keys, 8 lead, 16 fill, 32 breakdown, 64 outro
+  function : Layers(mood : Int, intensity : Float, bar : Int) ~ Int {
+    if(mood = 2 | mood = 3) {
+      return 1 or 2 or 4 or 64;
+    };
+    if(mood = 4) {
+      return 4 or 8 or 32;
+    };
+    layers := 1;
+    if(mood = 1 | intensity > 0.35) {
+      layers := layers or 2 or 4;
+    };
+    if(intensity > 0.6) {
+      layers := layers or 8;
+      if(bar % 4 = 3) {
+        layers := layers or 16;
+      };
+    };
+    return layers;
+  }
+
+  # MIDI note of a scale degree (0 .. 6) in an octave counted from the tonic
+  method : public : Pitch(degree : Int, octave : Int) ~ Int {
+    return @key + 12 * octave + @style->Scale()[degree % 7];
+  }
+
+  # ticks to delay sixteenth step s by swing: every second sixteenth is late
+  method : Swung(step : Int) ~ Int {
+    t := step * 120;
+    if(step % 2 = 1) {
+      t += 40 * @style->Swing() / 100;
+    };
+    return t;
+  }
+
+  # The next bar as note events, ticks counted from the start of the bar.
+  # mood: 0 calm, 1 a jump is threatened, 2 win outro, 3 loss outro, 4 a crowning.
+  method : public : Bar(mood : Int, intensity : Float) ~ CkSong {
+    song := CkSong->New();
+    layers := Layers(mood, intensity, @bars);
+    if(mood = 4 & @bars > 0 & @transposed < 4) {
+      # a crowning moves the key up a tone
+      @key += 2;
+      @transposed += 2;
+    };
+    @chord := @chords->Next(@chord, @rand->Next());
+    if((layers and 1) <> 0) {
+      Drums(song, layers, intensity);
+    };
+    if((layers and 2) <> 0) {
+      Bass(song, layers);
+    };
+    if((layers and 4) <> 0) {
+      Keys(song, layers);
+    };
+    if((layers and 8) <> 0) {
+      Lead(song);
+    };
+    Vary();
+    @bars += 1;
+    return song;
+  }
+
+  method : Drums(song : CkSong, layers : Int, intensity : Float) ~ Nil {
+    kick := @style->KickPattern();
+    snare := @style->SnarePattern();
+    hat := @style->HatPattern();
+    open := @style->OpenPattern();
+    ghost := @style->GhostPattern();
+    outro := (layers and 64) <> 0;
+    each(s : 16) {
+      t := Swung(s);
+      if(kick->Get(s) = 'x') {
+        song->Add(t, 100, 0, 36, 112);
+      };
+      if(snare->Get(s) = 'x') {
+        song->Add(t, 100, 0, @style->SnareNote(), 108);
+      };
+      if(ghost->Get(s) = 'g' & intensity > 0.3) {
+        song->Add(t, 60, 0, 38, 36);
+      };
+      if(hat->Get(s) = 'x' & (<>outro | s < 8)) {
+        v := 70;
+        if(s % 4 = 0) {
+          v := 86;
+        };
+        song->Add(t, 60, 0, 42, v);
+      };
+      if(open->Get(s) = 'o') {
+        song->Add(t, 200, 0, 46, 80);
+      };
+    };
+
+    # trap hi-hats roll: a burst of thirty-second notes, now and then a triplet
+    if(@style->Rolls() > 0 & @rand->NextInt(100) < @style->Rolls()) {
+      at := 12 * 120;
+      if(@rand->NextInt(2) = 0) {
+        each(i : 6) {
+          song->Add(at + i * 80, 50, 0, 42, 60 + i * 8);
+        };
+      }
+      else {
+        each(i : 8) {
+          song->Add(at + i * 60, 40, 0, 42, 56 + i * 5);
+        };
+      };
+    };
+
+    # a fill on the last beat of every fourth bar: snare and toms, then a crash
+    if((layers and 16) <> 0) {
+      toms := [38, 45, 47, 38];
+      each(i : 4) {
+        song->Add(1440 + i * 120, 100, 0, toms[i], 90 + i * 8);
+      };
+      song->Add(1920 - 60, 400, 0, 49, 70);
+    };
+  }
+
+  # an 808-style bass: long notes on the chord root, sliding in when the style says so
+  method : Bass(song : CkSong, layers : Int) ~ Nil {
+    beats := @style->BassBeats();
+    root := Pitch(@chord, 0);
+    song->Add(0, beats * 480 - 20, 1, root, 118);
+    if((layers and 64) = 0) {
+      fifth := Pitch((@chord + 4) % 7, 0);
+      song->Add(beats * 480, (4 - beats) * 480 - 20, 1, fifth, 100);
+    };
+  }
+
+  # minor-seventh chord stabs (Rhodes-like), or a pad with a plucked arpeggio
+  method : Keys(song : CkSong, layers : Int) ~ Nil {
+    third := (@chord + 2) % 7;
+    fifth := (@chord + 4) % 7;
+    seventh := (@chord + 6) % 7;
+    notes := [Pitch(@chord, 1), Pitch(third, 1), Pitch(fifth, 1), Pitch(seventh, 1)];
+    if(@style->PadKeys()) {
+      each(i : 4) {
+        song->Add(0, 1900, 4, notes[i], 70);
+      };
+      if((layers and 64) = 0) {
+        each(i : 8) {
+          song->Add(i * 240, 200, 4, notes[i % 4] + 12, 80);
+        };
+      };
+    }
+    else {
+      stabs := [0, 720, 1200];
+      if((layers and 32) <> 0) {
+        stabs := [0, 960, 1440];
+      };
+      each(k : 3) {
+        each(i : 4) {
+          song->Add(stabs[k], 220, 2, notes[i], 78 - k * 6);
+        };
+      };
+    };
+  }
+
+  # the motif, played on a sparse rhythm that follows the learned note lengths
+  method : Lead(song : CkSong) ~ Nil {
+    t := 0;
+    each(i : 4) {
+      if(t < 1800) {
+        song->Add(t, @motif_len[i] * 100, 3, Pitch(@motif[i], 2), 96);
+      };
+      t += @motif_len[i] * 120 + 240;
+    };
+  }
+}
+
+# Standard MIDI Files: the writer, and a parser the tests use to read one back.
+class CkMidi {
+  function : Channel(track : Int) ~ Int {
+    if(track = 0) {
+      return 9;
+    };
+    return track - 1;
+  }
+
+  # General MIDI programs: 38 Synth Bass 1, 4 Electric Piano 1, 81 Saw Lead, 90 Pad
+  function : Program(track : Int) ~ Int {
+    programs := [0, 38, 4, 80, 88];
+    return programs[track];
+  }
+
+  # append a variable-length quantity: seven bits at a time, high bit set on all but the last
+  function : Vlq(out : Byte[], at : Int, v : Int) ~ Int {
+    if(v < 128) {
+      out[at] := v;
+      return at + 1;
+    };
+    parts := Int->New[4];
+    n := 0;
+    rest := v;
+    while(rest > 0) {
+      parts[n] := rest % 128;
+      rest := rest / 128;
+      n += 1;
+    };
+    each(i : n) {
+      b := parts[n - 1 - i];
+      if(i < n - 1) {
+        b += 128;
+      };
+      out[at] := b;
+      at += 1;
+    };
+    return at;
+  }
+
+  # one MTrk chunk holding the events of a track (all tracks when track < 0 is not used)
+  function : TrackChunk(song : CkSong, track : Int) ~ Byte[] {
+    # note-on and note-off events, in time order; offs sort before ons at the same tick
+    n := 0;
+    each(i : song->Count()) {
+      if(song->Track(i) = track) {
+        n += 2;
+      };
+    };
+    times := Int->New[n];
+    keys := Int->New[n];
+    at := 0;
+    each(i : song->Count()) {
+      if(song->Track(i) = track) {
+        times[at] := song->Tick(i) + song->Len(i);
+        keys[at] := i * 2;
+        at += 1;
+        times[at] := song->Tick(i);
+        keys[at] := i * 2 + 1;
+        at += 1;
+      };
+    };
+    # insertion sort by time, then offs (even keys) before ons (odd keys)
+    each(i : n) {
+      j := i;
+      while(j > 0 & (times[j] < times[j - 1] | (times[j] = times[j - 1] & keys[j] % 2 < keys[j - 1] % 2))) {
+        t := times[j]; times[j] := times[j - 1]; times[j - 1] := t;
+        k := keys[j]; keys[j] := keys[j - 1]; keys[j - 1] := k;
+        j -= 1;
+      };
+    };
+
+    body := Byte->New[16 + n * 10];
+    p := 0;
+    chan := Channel(track);
+    # program change at the start (the drum channel ignores it)
+    body[p] := 0;
+    body[p + 1] := 192 + chan;
+    body[p + 2] := Program(track);
+    p += 3;
+    last := 0;
+    each(e : n) {
+      idx := keys[e] / 2;
+      is_on := keys[e] % 2 = 1;
+      p := Vlq(body, p, times[e] - last);
+      last := times[e];
+      if(is_on) {
+        body[p] := 144 + chan;
+        body[p + 1] := song->Note(idx);
+        body[p + 2] := song->Vel(idx);
+      }
+      else {
+        body[p] := 128 + chan;
+        body[p + 1] := song->Note(idx);
+        body[p + 2] := 0;
+      };
+      p += 3;
+    };
+    # end of track
+    body[p] := 0;
+    body[p + 1] := 255;
+    body[p + 2] := 47;
+    body[p + 3] := 0;
+    p += 4;
+
+    chunk := Byte->New[8 + p];
+    CkWave->Text(chunk, 0, "MTrk");
+    Be32(chunk, 4, p);
+    each(i : p) {
+      chunk[8 + i] := body[i];
+    };
+    return chunk;
+  }
+
+  function : Be32(out : Byte[], at : Int, v : Int) ~ Nil {
+    out[at] := (v / 16777216) % 256;
+    out[at + 1] := (v / 65536) % 256;
+    out[at + 2] := (v / 256) % 256;
+    out[at + 3] := v % 256;
+  }
+
+  function : Be16(out : Byte[], at : Int, v : Int) ~ Nil {
+    out[at] := (v / 256) % 256;
+    out[at + 1] := v % 256;
+  }
+
+  # A Standard MIDI File, format 1: a tempo track followed by one track per
+  # instrument that has notes (drums on channel 10), 480 ticks to the quarter note.
+  function : Write(song : CkSong, bpm : Int) ~ Byte[] {
+    used := 0;
+    each(t : 5) {
+      if(song->TrackCount(t) > 0) {
+        used += 1;
+      };
+    };
+
+    # the tempo track: tempo in microseconds per quarter note, 4/4, end of track
+    micros := 60000000 / bpm;
+    tempo := Byte->New[8 + 7 + 8 + 4];
+    CkWave->Text(tempo, 0, "MTrk");
+    Be32(tempo, 4, 19);
+    tempo[8] := 0;
+    tempo[9] := 255;
+    tempo[10] := 81;
+    tempo[11] := 3;
+    tempo[12] := (micros / 65536) % 256;
+    tempo[13] := (micros / 256) % 256;
+    tempo[14] := micros % 256;
+    tempo[15] := 0;
+    tempo[16] := 255;
+    tempo[17] := 88;
+    tempo[18] := 4;
+    tempo[19] := 4;
+    tempo[20] := 2;
+    tempo[21] := 24;
+    tempo[22] := 8;
+    tempo[23] := 0;
+    tempo[24] := 255;
+    tempo[25] := 47;
+    tempo[26] := 0;
+
+    total := 14 + 27;
+    pieces := Vector->New()<ByteArrayRef>;
+    each(t : 5) {
+      if(song->TrackCount(t) > 0) {
+        chunk := TrackChunk(song, t);
+        pieces->AddBack(ByteArrayRef->New(chunk));
+        total += chunk->Size();
+      };
+    };
+
+    out := Byte->New[total];
+    CkWave->Text(out, 0, "MThd");
+    Be32(out, 4, 6);
+    Be16(out, 8, 1);
+    Be16(out, 10, used + 1);
+    Be16(out, 12, 480);
+    at := 14;
+    each(i : 27) {
+      out[at + i] := tempo[i];
+    };
+    at += 27;
+    each(k : pieces->Size()) {
+      chunk := pieces->Get(k)->Get();
+      each(i : chunk->Size()) {
+        out[at + i] := chunk[i];
+      };
+      at += chunk->Size();
+    };
+    return out;
+  }
+
+  # the numbers a test wants from a MIDI file; the all-notes fields are filled
+  # in by Parse. ok is false when the file is not a well-formed SMF.
+  function : Be(bytes : Byte[], at : Int, n : Int) ~ Int {
+    v := 0;
+    each(i : n) {
+      v := v * 256 + bytes[at + i]->As(Int);
+    };
+    return v;
+  }
+
+  # Read a file written by Write back: returns {format, tracks, division, tempo
+  # microseconds, note-on count, then the number of note-ons on each of the 16
+  # channels}; the first number is -1 when the file is malformed.
+  function : Parse(bytes : Byte[]) ~ Int[] {
+    result := Int->New[21];
+    result[0] := -1;
+    if(bytes = Nil | bytes->Size() < 14) {
+      return result;
+    };
+    if(bytes[0]->As(Int) <> 77 | bytes[1]->As(Int) <> 84 | bytes[2]->As(Int) <> 104 | bytes[3]->As(Int) <> 100) {
+      return result;
+    };
+    if(Be(bytes, 4, 4) <> 6) {
+      return result;
+    };
+    format := Be(bytes, 8, 2);
+    tracks := Be(bytes, 10, 2);
+    division := Be(bytes, 12, 2);
+    at := 14;
+    seen := 0;
+    while(at + 8 <= bytes->Size() & seen < tracks) {
+      if(bytes[at]->As(Int) <> 77 | bytes[at + 1]->As(Int) <> 84 | bytes[at + 2]->As(Int) <> 114 | bytes[at + 3]->As(Int) <> 107) {
+        return result;
+      };
+      len := Be(bytes, at + 4, 4);
+      end := at + 8 + len;
+      if(end > bytes->Size()) {
+        return result;
+      };
+      p := at + 8;
+      ended := false;
+      while(p < end & <>ended) {
+        # delta time
+        while(bytes[p]->As(Int) >= 128) {
+          p += 1;
+        };
+        p += 1;
+        status := bytes[p]->As(Int);
+        if(status = 255) {
+          kind := bytes[p + 1]->As(Int);
+          size := bytes[p + 2]->As(Int);
+          if(kind = 81 & size = 3) {
+            result[3] := Be(bytes, p + 3, 3);
+          };
+          if(kind = 47) {
+            ended := true;
+          };
+          p += 3 + size;
+        }
+        else if(status >= 192 & status < 208) {
+          p += 2;
+        }
+        else {
+          if(status >= 144 & status < 160 & bytes[p + 2]->As(Int) > 0) {
+            result[4] := result[4] + 1;
+            result[5 + (status - 144)] := result[5 + (status - 144)] + 1;
+          };
+          p += 3;
+        };
+      };
+      if(<>ended | p <> end) {
+        return result;
+      };
+      at := end;
+      seen += 1;
+    };
+    if(seen <> tracks | at <> bytes->Size()) {
+      return result;
+    };
+    result[0] := format;
+    result[1] := tracks;
+    result[2] := division;
+    return result;
+  }
+}
+
+# The software synthesizer: turns note events into samples, one sample at a time
+# (no big buffers), so the game can ask for the next few hundred each frame.
+class CkSynth {
+  # the value of the song at second t, at the given tempo (beats per minute)
+  function : At(song : CkSong, bpm : Int, t : Float, key : Int) ~ Float {
+    sec_per_tick := 60.0 / (bpm->As(Float) * 480.0);
+    sum := 0.0;
+    each(i : song->Count()) {
+      age := t - song->Tick(i)->As(Float) * sec_per_tick;
+      if(age >= 0.0 & age < 2.0) {
+        sum += Voice(song->Track(i), song->Note(i), song->Vel(i), age, song->Len(i)->As(Float) * sec_per_tick, i);
+      };
+    };
+    return sum;
+  }
+
+  # one note or drum hit, age seconds after it began
+  function : Voice(track : Int, note : Int, vel : Int, age : Float, len : Float, id : Int) ~ Float {
+    loud := vel->As(Float) / 127.0;
+    if(track = 0) {
+      return Drum(note, age) * loud;
+    };
+    hz := CkWave->Hz(note);
+    attack := 1.0;
+    if(age < 0.008) {
+      attack := age / 0.008;
+    };
+    if(track = 1) {
+      # 808: a sine that sags in pitch, pushed a little into saturation
+      slide := 1.0 + 0.5 * (-1.0 * age / 0.06)->Exp();
+      phase := hz * 0.5 * age * slide;
+      wave := CkWave->Value(0, phase) * 1.5;
+      wave := wave->Tanh() * 0.9;
+      env := (-1.0 * age / (len + 0.3))->Exp();
+      if(age > len) {
+        env := env * (1.0 - (age - len) / 0.1);
+      };
+      if(env < 0.0) {
+        env := 0.0;
+      };
+      return wave * env * attack * loud * 0.9;
+    };
+    if(track = 2) {
+      # electric piano: a sine with a bell-like second partial that dies quickly
+      wave := CkWave->Value(0, hz * age) + 0.45 * CkWave->Value(0, hz * 2.0 * age) * (-1.0 * age / 0.12)->Exp();
+      env := (-1.0 * age / 0.35)->Exp();
+      return wave * env * attack * loud * 0.35;
+    };
+    if(track = 3) {
+      vibrato := 1.0 + 0.004 * (age * 38.0)->Sin();
+      wave := CkWave->Value(1, hz * age * vibrato) * 0.7 + CkWave->Value(2, hz * age) * 0.3;
+      env := 1.0 - age / (len + 0.15);
+      if(env < 0.0) {
+        env := 0.0;
+      };
+      return wave * env * attack * loud * 0.4;
+    };
+    # pad and pluck: two slightly detuned triangles; held when long, plucky when short
+    wave := CkWave->Value(1, hz * age) * 0.5 + CkWave->Value(1, hz * 1.006 * age) * 0.5;
+    env := 1.0;
+    if(len < 0.5) {
+      env := (-1.0 * age / (len * 0.8 + 0.05))->Exp();
+    }
+    else {
+      env := 0.6;
+      if(age < 0.15) {
+        env := env * age / 0.15;
+      };
+      if(age > len) {
+        env := env * (1.0 - (age - len) / 0.2);
+      };
+      if(env < 0.0) {
+        env := 0.0;
+      };
+    };
+    return wave * env * attack * loud * 0.3;
+  }
+
+  # General MIDI drum notes: 36 kick, 38 snare, 39 clap, 42 closed hat, 46 open
+  # hat, 45 / 47 toms, 49 crash
+  function : Drum(note : Int, age : Float) ~ Float {
+    n := (age * 44100.0)->As(Int);
+    if(note = 36) {
+      f := 45.0 + 110.0 * (-1.0 * age / 0.03)->Exp();
+      return CkWave->Value(0, f * age) * (-1.0 * age / 0.16)->Exp() * 1.2;
+    };
+    if(note = 38 | note = 40) {
+      return (CkWave->Noise(n) * 0.55 + CkWave->Value(0, 190.0 * age) * 0.5) * (-1.0 * age / 0.08)->Exp();
+    };
+    if(note = 39) {
+      burst := (-1.0 * Float->Mod(age, 0.011) / 0.004)->Exp();
+      if(age > 0.033) {
+        burst := (-1.0 * (age - 0.033) / 0.07)->Exp();
+      };
+      return CkWave->Noise(n) * burst * 0.7;
+    };
+    if(note = 42 | note = 44) {
+      return (CkWave->Noise(n) - CkWave->Noise(n - 1)) * (-1.0 * age / 0.025)->Exp() * 0.5;
+    };
+    if(note = 46) {
+      return (CkWave->Noise(n) - CkWave->Noise(n - 1)) * (-1.0 * age / 0.12)->Exp() * 0.45;
+    };
+    if(note = 45 | note = 47 | note = 41 | note = 43) {
+      f := 90.0 + (note - 41)->As(Float) * 12.0;
+      return CkWave->Value(0, f * age * (1.0 + 0.5 * (-1.0 * age / 0.05)->Exp())) * (-1.0 * age / 0.14)->Exp();
+    };
+    if(note = 49) {
+      return (CkWave->Noise(n) - CkWave->Noise(n - 1)) * (-1.0 * age / 0.35)->Exp() * 0.5;
+    };
+    return 0.0;
+  }
+
+  # render a whole song to mono samples (an extra half second for the tails)
+  function : Render(song : CkSong, bpm : Int, rate : Int) ~ Float[] {
+    secs := song->End()->As(Float) * 60.0 / (bpm->As(Float) * 480.0) + 0.5;
+    total := (secs * rate->As(Float))->As(Int);
+    out := Float->New[total];
+    each(i : total) {
+      v := At(song, bpm, i->As(Float) / rate->As(Float), 0) * 0.4;
+      if(v > 1.0) {
+        v := 1.0;
+      };
+      if(v < -1.0) {
+        v := -1.0;
+      };
+      out[i] := v;
+    };
+    return out;
+  }
+}
+
+# Sound effects: little formulas, one per event.
+class CkSfx {
+  function : Slide(rate : Int, secs : Float, hz0 : Float, hz1 : Float, kind : Int, loud : Float) ~ Float[] {
+    n := (secs * rate->As(Float))->As(Int);
+    out := Float->New[n];
+    phase := 0.0;
+    each(i : n) {
+      u := i->As(Float) / n->As(Float);
+      hz := hz0 + (hz1 - hz0) * u;
+      phase += hz / rate->As(Float);
+      env := (1.0 - u) * (1.0 - u);
+      if(u < 0.04) {
+        env := env * (u / 0.04);
+      };
+      out[i] := CkWave->Value(kind, phase) * env * loud;
+    };
+    return out;
+  }
+
+  # noise with a fading edge; smooth near 1.0 sounds duller (thunder, wind)
+  function : Noise(rate : Int, secs : Float, seed : Int, loud : Float, smooth : Float) ~ Float[] {
+    n := (secs * rate->As(Float))->As(Int);
+    out := Float->New[n];
+    rand := CkRand->New(seed);
+    last := 0.0;
+    each(i : n) {
+      u := i->As(Float) / n->As(Float);
+      white := rand->NextFloat() * 2.0 - 1.0;
+      last := last * smooth + white * (1.0 - smooth);
+      out[i] := last * (1.0 - u) * loud;
+    };
+    return out;
+  }
+
+  # b mixed into a, starting at sample offset at
+  function : Mix(a : Float[], b : Float[], at : Int) ~ Float[] {
+    size := a->Size();
+    if(at + b->Size() > size) {
+      size := at + b->Size();
+    };
+    out := Float->New[size];
+    each(i : a->Size()) {
+      out[i] := a[i];
+    };
+    each(i : b->Size()) {
+      out[at + i] += b[i];
+    };
+    return out;
+  }
+
+  # a short musical figure: notes as MIDI numbers, one every step seconds
+  function : Notes(rate : Int, notes : Int[], step : Float, hold : Float, kind : Int, loud : Float) ~ Float[] {
+    out := Float->New[0];
+    each(i : notes->Size()) {
+      one := Slide(rate, hold, CkWave->Hz(notes[i]), CkWave->Hz(notes[i]), kind, loud);
+      out := Mix(out, one, (step * i->As(Float) * rate->As(Float))->As(Int));
+    };
+    return out;
+  }
+
+  # the effects by number: 0 move, 1 select, 2 capture, 3 error, 4 crown, 5 win,
+  # 6 lose, 7 lightning, 8 earthquake, 9 wind, 10 gift
+  function : Make(kind : Int, rate : Int) ~ Float[] {
+    if(kind = 0) {
+      return Slide(rate, 0.09, 330.0, 440.0, 1, 0.5);
+    };
+    if(kind = 1) {
+      return Slide(rate, 0.05, 880.0, 880.0, 0, 0.35);
+    };
+    if(kind = 2) {
+      return Mix(Slide(rate, 0.22, 700.0, 140.0, 2, 0.5), Noise(rate, 0.12, 5, 0.5, 0.2), 0);
+    };
+    if(kind = 3) {
+      return Slide(rate, 0.16, 110.0, 90.0, 2, 0.5);
+    };
+    if(kind = 4) {
+      return Notes(rate, [72, 76, 79, 84, 88, 91], 0.06, 0.14, 1, 0.5);
+    };
+    if(kind = 5) {
+      return Mix(Notes(rate, [67, 72, 76, 79], 0.15, 0.2, 2, 0.5), Notes(rate, [84, 88, 91, 96], 0.12, 0.5, 1, 0.5), 0);
+    };
+    if(kind = 6) {
+      return Notes(rate, [64, 62, 60, 59, 57], 0.4, 0.5, 1, 0.5);
+    };
+    if(kind = 7) {
+      return Mix(Noise(rate, 0.5, 11, 0.8, 0.85), Slide(rate, 0.25, 1800.0, 60.0, 3, 0.5), 0);
+    };
+    if(kind = 8) {
+      return Mix(Noise(rate, 0.8, 12, 0.9, 0.97), Slide(rate, 0.8, 60.0, 35.0, 1, 0.8), 0);
+    };
+    if(kind = 9) {
+      return Noise(rate, 0.7, 13, 0.6, 0.7);
+    };
+    return Mix(Slide(rate, 0.12, 1200.0, 1500.0, 0, 0.4), Slide(rate, 0.25, 1600.0, 2000.0, 0, 0.4), 4000);
+  }
+
+  function : Count() ~ Int {
+    return 11;
+  }
+}
+
 # ---- checkers_tests.obs ----
 #~
 # compile: obc -src checkers_engine.obs,checkers_game.obs,checkers_ai.obs,checkers_logic.obs,checkers_tests.obs -lib ai,json -dest checkers_tests.obe
@@ -2630,6 +3990,7 @@ class CkTests {
     Window();
     Settings();
     Weights();
+    Music();
 
     if(@failures = 0) {
       "PASS: checkers ({$@checks} checks)"->PrintLine();
@@ -3170,10 +4531,11 @@ class CkTests {
     s->SetReduced(true);
     s->SetSound(false);
     s->SetVolume(35);
+    s->SetMusicStyle(1);
     text := s->ToJson();
     t := CkSettings->New();
     Check(t->FromJson(text), "settings: parse what was written");
-    Check(t->PieceSet() = 2 & t->Level() = 9 & t->Human() = 1 & t->Flip() & t->Fun() = 1, "settings: choices survive a round trip");
+    Check(t->PieceSet() = 2 & t->Level() = 9 & t->Human() = 1 & t->Flip() & t->Fun() = 1 & t->MusicStyle() = 1, "settings: choices survive a round trip");
     Check(<>t->Anim() & t->Reduced() & <>t->Sound() & t->Volume() = 35, "settings: switches survive a round trip");
     Check(<>t->Lively(), "settings: reduced motion means no lively animation");
 
@@ -3222,5 +4584,221 @@ class CkTests {
     f := Float->New[8];
     e->Features(CkPos->FromText("r:d4,a1 R:b2 w:b8 /0"), f);
     Check(f[0] = 1.0 & f[1] = 1.0, "features: men and kings counted Red minus White (got {$f[0]}, {$f[1]})");
+  }
+
+  # ---- the generated music ----
+
+  # is a MIDI note in the style's scale (given the key it was written in)?
+  function : InScale(note : Int, key : Int, scale : Int[]) ~ Bool {
+    pc := ((note - key) % 12 + 12) % 12;
+    each(i : 7) {
+      if(scale[i] = pc) {
+        return true;
+      };
+    };
+    return false;
+  }
+
+  function : Peak(samples : Float[]) ~ Float {
+    peak := 0.0;
+    each(i : samples->Size()) {
+      v := samples[i];
+      if(v < 0.0) {
+        v := 0.0 - v;
+      };
+      if(v > peak) {
+        peak := v;
+      };
+    };
+    return peak;
+  }
+
+  function : Sum(samples : Float[]) ~ Float {
+    total := 0.0;
+    each(i : samples->Size()) {
+      total += samples[i] * (1.0 + (i % 7)->As(Float));
+    };
+    return total;
+  }
+
+  function : SongSum(song : CkSong) ~ Int {
+    total := 0;
+    each(i : song->Count()) {
+      total += (song->Tick(i) * 3 + song->Note(i) * 7 + song->Vel(i) + song->Track(i) * 11 + song->Len(i)) * (i + 1);
+    };
+    return total;
+  }
+
+  # eight bars in a mood sequence, the way a game might ask for them
+  function : Eight(beat : CkBeat, moods : Int[], intensity : Float) ~ CkSong {
+    song := CkSong->New();
+    each(b : 8) {
+      song->Append(beat->Bar(moods[b], intensity), b * 1920);
+    };
+    return song;
+  }
+
+  function : Music() ~ Nil {
+    # the Markov chains learned something, and their rows are probabilities
+    beat0 := CkBeat->New(CkStyle->New(0), 1);
+    Check(beat0->Melody()->Seen() > 30 & beat0->Rhythm()->Seen() > 30 & beat0->Chords()->Seen() > 15, "music: the chains learned from the seed phrases");
+    rows_ok := true;
+    seen_only := true;
+    each(prev : 7) {
+      total := 0.0;
+      each(nxt : 7) {
+        total += beat0->Melody()->Chance(prev, nxt);
+      };
+      if(beat0->Melody()->RowTotal(prev) > 0) {
+        if(total < 0.999 | total > 1.001) {
+          rows_ok := false;
+        };
+        each(dice : 60) {
+          pick := beat0->Melody()->Next(prev, dice * 37 + 11);
+          if(beat0->Melody()->Count(prev, pick) = 0) {
+            seen_only := false;
+          };
+        };
+      };
+    };
+    Check(rows_ok, "music: every learned row adds up to 1");
+    Check(seen_only, "music: the chain only picks transitions it saw in training");
+
+    moods := [0, 1, 0, 1, 4, 0, 2, 3];
+    each(si : 2) {
+      style := CkStyle->New(si);
+      name := style->Title();
+      scale := style->Scale();
+
+      # deterministic for a seed, different for another
+      a := Eight(CkBeat->New(style, 42), moods, 0.8);
+      b := Eight(CkBeat->New(style, 42), moods, 0.8);
+      d := Eight(CkBeat->New(style, 43), moods, 0.8);
+      Check(a->Count() = b->Count() & SongSum(a) = SongSum(b), "music {$name}: the same seed gives the same events");
+      Check(SongSum(a) <> SongSum(d), "music {$name}: another seed gives other events");
+
+      # tempo inside the style's range, swing present in the style
+      bpm := CkBeat->New(style, 1)->Bpm(0.5, 0);
+      Check(bpm >= style->BpmLow() & bpm <= style->BpmHigh(), "music {$name}: tempo {$bpm} is inside {$style->BpmLow()} to {$style->BpmHigh()}");
+
+      # drums: only General MIDI drum numbers, kick on 36, hats on 42 and 46, snare
+      # or clap where the pattern says
+      drum_ok := true;
+      kick_on_one := false;
+      snare_there := false;
+      hats := 0;
+      beat := CkBeat->New(style, 9);
+      each(bar : 12) {
+        song := beat->Bar(0, 0.9);
+        each(i : song->Count()) {
+          if(song->Track(i) = 0) {
+            note := song->Note(i);
+            if(note <> 36 & note <> 38 & note <> 39 & note <> 42 & note <> 46 & note <> 45 & note <> 47 & note <> 49) {
+              drum_ok := false;
+            };
+            if(note = 36 & song->Tick(i) = 0) {
+              kick_on_one := true;
+            };
+            if(note = style->SnareNote() & song->Tick(i) >= 480 & song->Tick(i) <= 1500) {
+              snare_there := true;
+            };
+            if(note = 42 | note = 46) {
+              hats += 1;
+            };
+          };
+        };
+      };
+      Check(drum_ok, "music {$name}: every drum hit is a General MIDI drum note");
+      Check(kick_on_one & snare_there & hats > 40, "music {$name}: kick on the one, snare or clap in the bar, plenty of hats ({$hats})");
+
+      # every pitched note, of every track, is in the scale of the key it was written in
+      in_key := true;
+      each(m : 5) {
+        mood := m;
+        comp := CkBeat->New(style, 7 + m);
+        each(bar : 10) {
+          song := comp->Bar(mood, 0.2 + 0.08 * bar->As(Float));
+          # a crowning bar moves the key up before it is written
+          key := comp->Key();
+          each(i : song->Count()) {
+            if(song->Track(i) > 0) {
+              if(<>InScale(song->Note(i), key, scale)) {
+                in_key := false;
+                "  {$name}: note {$song->Note(i)} of track {$song->Track(i)} is outside the scale of key {$key}"->PrintLine();
+              };
+            };
+            if(song->Tick(i) < 0 | song->Tick(i) >= 1920 + 100) {
+              in_key := false;
+            };
+          };
+        };
+      };
+      Check(in_key, "music {$name}: all pitched notes are in the scale, all inside the bar");
+
+      # the layers follow the game
+      calm := CkBeat->New(style, 3)->Bar(0, 0.1);
+      threat := CkBeat->New(style, 3)->Bar(1, 0.5);
+      tense := CkBeat->New(style, 3);
+      tense_bar := tense->Bar(0, 0.9);
+      Check(calm->TrackCount(0) > 0 & calm->TrackCount(1) = 0 & calm->TrackCount(2) + calm->TrackCount(4) = 0, "music {$name}: a calm position plays drums only");
+      Check(threat->TrackCount(1) > 0 & threat->TrackCount(2) + threat->TrackCount(4) > 0, "music {$name}: a threatened jump adds bass and keys");
+      Check(tense_bar->TrackCount(3) > 0, "music {$name}: a tense position adds the lead");
+      fill := false;
+      each(bar : 4) {
+        x := tense->Bar(0, 0.9);
+        each(i : x->Count()) {
+          if(x->Note(i) = 49) {
+            fill := true;
+          };
+        };
+      };
+      Check(fill, "music {$name}: a tense position gets a fill with a crash");
+      outro := CkBeat->New(style, 3)->Bar(2, 0.8);
+      Check(outro->TrackCount(3) = 0, "music {$name}: the outro drops the lead");
+      before := CkBeat->New(style, 3);
+      key0 := before->Key();
+      before->Bar(0, 0.3);
+      before->Bar(4, 0.3);
+      Check(before->Key() = key0 + 2, "music {$name}: a crowning moves the key up a tone");
+
+      # the same events as a Standard MIDI File: parse it back
+      mid := CkMidi->Write(a, 90);
+      info := CkMidi->Parse(mid);
+      Check(info[0] = 1 & info[2] = 480 & info[3] = 60000000 / 90, "music {$name}: SMF format 1, 480 ticks, tempo track (got {$info[0]}, {$info[2]}, {$info[3]})");
+      Check(info[4] = a->Count(), "music {$name}: every event became a note-on ({$info[4]} of {$a->Count()})");
+      Check(info[14] = a->TrackCount(0), "music {$name}: the drums are on MIDI channel 10 ({$info[14]} hits)");
+      Check(mid[0]->As(Int) = 77 & mid[1]->As(Int) = 84 & mid[2]->As(Int) = 104 & mid[3]->As(Int) = 100, "music {$name}: the file starts with MThd");
+      bad := Byte->New[3];
+      Check(CkMidi->Parse(bad)[0] = -1 & CkMidi->Parse(Nil)[0] = -1, "music {$name}: junk is not a MIDI file");
+      cut := Byte->New[mid->Size() - 5];
+      each(i : cut->Size()) {
+        cut[i] := mid[i];
+      };
+      Check(CkMidi->Parse(cut)[0] = -1, "music {$name}: a truncated file is rejected");
+
+      # the synthesizer: audible, bounded, and the same twice
+      one := CkBeat->New(style, 11)->Bar(1, 0.7);
+      samples := CkSynth->Render(one, 90, 11025);
+      again := CkSynth->Render(CkBeat->New(style, 11)->Bar(1, 0.7), 90, 11025);
+      Check(samples->Size() > 11025 & Peak(samples) > 0.05 & Peak(samples) <= 1.0, "music {$name}: a bar renders to audible samples (peak {$(Peak(samples))})");
+      Check(samples->Size() = again->Size() & Sum(samples) = Sum(again), "music {$name}: the same events render to the same samples");
+      wav := CkWave->Encode(samples, 11025);
+      Check(CkWave->IsValid(wav, 11025) & wav->Size() = 44 + samples->Size() * 2, "music {$name}: the render makes a valid WAV");
+    };
+
+    # a style table row for Off, and the effects
+    Check(CkStyle->Count() = 3 & CkStyle->Name(2)->Equals("Off") & CkStyle->Name(0)->Equals("Hip-hop") & CkStyle->Name(1)->Equals("Modern beats"), "music: the style names");
+    junk := Byte->New[10];
+    Check(<>CkWave->IsValid(junk, 22050) & <>CkWave->IsValid(Nil, 22050), "music: junk is not a WAV");
+    fx_ok := true;
+    each(k : CkSfx->Count()) {
+      x := CkSfx->Make(k, 22050);
+      y := CkSfx->Make(k, 22050);
+      if(x->Size() < 500 | Peak(x) < 0.05 | Peak(x) > 1.5 | Sum(x) <> Sum(y)) {
+        fx_ok := false;
+        "  sound effect {$k} is wrong (size {$x->Size()}, peak {$(Peak(x))})"->PrintLine();
+      };
+    };
+    Check(fx_ok, "music: all sound effects are audible, bounded and repeatable");
   }
 }

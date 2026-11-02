@@ -21,6 +21,7 @@ class CkSettings {
   @reduced : Bool;      # reduced motion: no shaking, bouncing or flashing
   @sound : Bool;
   @volume : Int;        # 0 .. 100
+  @music : Int;         # music style: 0 hip-hop, 1 modern beats, 2 off
 
   New() {
     @piece_set := 0;
@@ -32,6 +33,7 @@ class CkSettings {
     @reduced := false;
     @sound := true;
     @volume := 70;
+    @music := 0;
   }
 
   function : SetNames() ~ String[] {
@@ -106,6 +108,14 @@ class CkSettings {
     return @volume;
   }
 
+  method : public : MusicStyle() ~ Int {
+    return @music;
+  }
+
+  method : public : SetMusicStyle(v : Int) ~ Nil {
+    @music := Clamp(v, 0, 2);
+  }
+
   method : public : SetVolume(v : Int) ~ Nil {
     @volume := Clamp(v, 0, 100);
   }
@@ -144,7 +154,8 @@ class CkSettings {
     text += "  \"anim\": {$@anim},\n";
     text += "  \"reduced_motion\": {$@reduced},\n";
     text += "  \"sound\": {$@sound},\n";
-    text += "  \"volume\": {$@volume}\n";
+    text += "  \"volume\": {$@volume},\n";
+    text += "  \"music_style\": {$@music}\n";
     text += "}\n";
     return text;
   }
@@ -168,6 +179,7 @@ class CkSettings {
     SetHuman(ReadInt(root, "human", @human));
     SetFun(ReadInt(root, "fun", @fun));
     SetVolume(ReadInt(root, "volume", @volume));
+    SetMusicStyle(ReadInt(root, "music_style", @music));
     @flip := ReadBool(root, "flip", @flip);
     @anim := ReadBool(root, "anim", @anim);
     @reduced := ReadBool(root, "reduced_motion", @reduced);

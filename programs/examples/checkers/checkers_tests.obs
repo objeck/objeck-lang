@@ -43,6 +43,7 @@ class CkTests {
     Window();
     Settings();
     Weights();
+    Music();
 
     if(@failures = 0) {
       "PASS: checkers ({$@checks} checks)"->PrintLine();
@@ -583,10 +584,11 @@ class CkTests {
     s->SetReduced(true);
     s->SetSound(false);
     s->SetVolume(35);
+    s->SetMusicStyle(1);
     text := s->ToJson();
     t := CkSettings->New();
     Check(t->FromJson(text), "settings: parse what was written");
-    Check(t->PieceSet() = 2 & t->Level() = 9 & t->Human() = 1 & t->Flip() & t->Fun() = 1, "settings: choices survive a round trip");
+    Check(t->PieceSet() = 2 & t->Level() = 9 & t->Human() = 1 & t->Flip() & t->Fun() = 1 & t->MusicStyle() = 1, "settings: choices survive a round trip");
     Check(<>t->Anim() & t->Reduced() & <>t->Sound() & t->Volume() = 35, "settings: switches survive a round trip");
     Check(<>t->Lively(), "settings: reduced motion means no lively animation");
 
@@ -635,5 +637,221 @@ class CkTests {
     f := Float->New[8];
     e->Features(CkPos->FromText("r:d4,a1 R:b2 w:b8 /0"), f);
     Check(f[0] = 1.0 & f[1] = 1.0, "features: men and kings counted Red minus White (got {$f[0]}, {$f[1]})");
+  }
+
+  # ---- the generated music ----
+
+  # is a MIDI note in the style's scale (given the key it was written in)?
+  function : InScale(note : Int, key : Int, scale : Int[]) ~ Bool {
+    pc := ((note - key) % 12 + 12) % 12;
+    each(i : 7) {
+      if(scale[i] = pc) {
+        return true;
+      };
+    };
+    return false;
+  }
+
+  function : Peak(samples : Float[]) ~ Float {
+    peak := 0.0;
+    each(i : samples->Size()) {
+      v := samples[i];
+      if(v < 0.0) {
+        v := 0.0 - v;
+      };
+      if(v > peak) {
+        peak := v;
+      };
+    };
+    return peak;
+  }
+
+  function : Sum(samples : Float[]) ~ Float {
+    total := 0.0;
+    each(i : samples->Size()) {
+      total += samples[i] * (1.0 + (i % 7)->As(Float));
+    };
+    return total;
+  }
+
+  function : SongSum(song : CkSong) ~ Int {
+    total := 0;
+    each(i : song->Count()) {
+      total += (song->Tick(i) * 3 + song->Note(i) * 7 + song->Vel(i) + song->Track(i) * 11 + song->Len(i)) * (i + 1);
+    };
+    return total;
+  }
+
+  # eight bars in a mood sequence, the way a game might ask for them
+  function : Eight(beat : CkBeat, moods : Int[], intensity : Float) ~ CkSong {
+    song := CkSong->New();
+    each(b : 8) {
+      song->Append(beat->Bar(moods[b], intensity), b * 1920);
+    };
+    return song;
+  }
+
+  function : Music() ~ Nil {
+    # the Markov chains learned something, and their rows are probabilities
+    beat0 := CkBeat->New(CkStyle->New(0), 1);
+    Check(beat0->Melody()->Seen() > 30 & beat0->Rhythm()->Seen() > 30 & beat0->Chords()->Seen() > 15, "music: the chains learned from the seed phrases");
+    rows_ok := true;
+    seen_only := true;
+    each(prev : 7) {
+      total := 0.0;
+      each(nxt : 7) {
+        total += beat0->Melody()->Chance(prev, nxt);
+      };
+      if(beat0->Melody()->RowTotal(prev) > 0) {
+        if(total < 0.999 | total > 1.001) {
+          rows_ok := false;
+        };
+        each(dice : 60) {
+          pick := beat0->Melody()->Next(prev, dice * 37 + 11);
+          if(beat0->Melody()->Count(prev, pick) = 0) {
+            seen_only := false;
+          };
+        };
+      };
+    };
+    Check(rows_ok, "music: every learned row adds up to 1");
+    Check(seen_only, "music: the chain only picks transitions it saw in training");
+
+    moods := [0, 1, 0, 1, 4, 0, 2, 3];
+    each(si : 2) {
+      style := CkStyle->New(si);
+      name := style->Title();
+      scale := style->Scale();
+
+      # deterministic for a seed, different for another
+      a := Eight(CkBeat->New(style, 42), moods, 0.8);
+      b := Eight(CkBeat->New(style, 42), moods, 0.8);
+      d := Eight(CkBeat->New(style, 43), moods, 0.8);
+      Check(a->Count() = b->Count() & SongSum(a) = SongSum(b), "music {$name}: the same seed gives the same events");
+      Check(SongSum(a) <> SongSum(d), "music {$name}: another seed gives other events");
+
+      # tempo inside the style's range, swing present in the style
+      bpm := CkBeat->New(style, 1)->Bpm(0.5, 0);
+      Check(bpm >= style->BpmLow() & bpm <= style->BpmHigh(), "music {$name}: tempo {$bpm} is inside {$style->BpmLow()} to {$style->BpmHigh()}");
+
+      # drums: only General MIDI drum numbers, kick on 36, hats on 42 and 46, snare
+      # or clap where the pattern says
+      drum_ok := true;
+      kick_on_one := false;
+      snare_there := false;
+      hats := 0;
+      beat := CkBeat->New(style, 9);
+      each(bar : 12) {
+        song := beat->Bar(0, 0.9);
+        each(i : song->Count()) {
+          if(song->Track(i) = 0) {
+            note := song->Note(i);
+            if(note <> 36 & note <> 38 & note <> 39 & note <> 42 & note <> 46 & note <> 45 & note <> 47 & note <> 49) {
+              drum_ok := false;
+            };
+            if(note = 36 & song->Tick(i) = 0) {
+              kick_on_one := true;
+            };
+            if(note = style->SnareNote() & song->Tick(i) >= 480 & song->Tick(i) <= 1500) {
+              snare_there := true;
+            };
+            if(note = 42 | note = 46) {
+              hats += 1;
+            };
+          };
+        };
+      };
+      Check(drum_ok, "music {$name}: every drum hit is a General MIDI drum note");
+      Check(kick_on_one & snare_there & hats > 40, "music {$name}: kick on the one, snare or clap in the bar, plenty of hats ({$hats})");
+
+      # every pitched note, of every track, is in the scale of the key it was written in
+      in_key := true;
+      each(m : 5) {
+        mood := m;
+        comp := CkBeat->New(style, 7 + m);
+        each(bar : 10) {
+          song := comp->Bar(mood, 0.2 + 0.08 * bar->As(Float));
+          # a crowning bar moves the key up before it is written
+          key := comp->Key();
+          each(i : song->Count()) {
+            if(song->Track(i) > 0) {
+              if(<>InScale(song->Note(i), key, scale)) {
+                in_key := false;
+                "  {$name}: note {$song->Note(i)} of track {$song->Track(i)} is outside the scale of key {$key}"->PrintLine();
+              };
+            };
+            if(song->Tick(i) < 0 | song->Tick(i) >= 1920 + 100) {
+              in_key := false;
+            };
+          };
+        };
+      };
+      Check(in_key, "music {$name}: all pitched notes are in the scale, all inside the bar");
+
+      # the layers follow the game
+      calm := CkBeat->New(style, 3)->Bar(0, 0.1);
+      threat := CkBeat->New(style, 3)->Bar(1, 0.5);
+      tense := CkBeat->New(style, 3);
+      tense_bar := tense->Bar(0, 0.9);
+      Check(calm->TrackCount(0) > 0 & calm->TrackCount(1) = 0 & calm->TrackCount(2) + calm->TrackCount(4) = 0, "music {$name}: a calm position plays drums only");
+      Check(threat->TrackCount(1) > 0 & threat->TrackCount(2) + threat->TrackCount(4) > 0, "music {$name}: a threatened jump adds bass and keys");
+      Check(tense_bar->TrackCount(3) > 0, "music {$name}: a tense position adds the lead");
+      fill := false;
+      each(bar : 4) {
+        x := tense->Bar(0, 0.9);
+        each(i : x->Count()) {
+          if(x->Note(i) = 49) {
+            fill := true;
+          };
+        };
+      };
+      Check(fill, "music {$name}: a tense position gets a fill with a crash");
+      outro := CkBeat->New(style, 3)->Bar(2, 0.8);
+      Check(outro->TrackCount(3) = 0, "music {$name}: the outro drops the lead");
+      before := CkBeat->New(style, 3);
+      key0 := before->Key();
+      before->Bar(0, 0.3);
+      before->Bar(4, 0.3);
+      Check(before->Key() = key0 + 2, "music {$name}: a crowning moves the key up a tone");
+
+      # the same events as a Standard MIDI File: parse it back
+      mid := CkMidi->Write(a, 90);
+      info := CkMidi->Parse(mid);
+      Check(info[0] = 1 & info[2] = 480 & info[3] = 60000000 / 90, "music {$name}: SMF format 1, 480 ticks, tempo track (got {$info[0]}, {$info[2]}, {$info[3]})");
+      Check(info[4] = a->Count(), "music {$name}: every event became a note-on ({$info[4]} of {$a->Count()})");
+      Check(info[14] = a->TrackCount(0), "music {$name}: the drums are on MIDI channel 10 ({$info[14]} hits)");
+      Check(mid[0]->As(Int) = 77 & mid[1]->As(Int) = 84 & mid[2]->As(Int) = 104 & mid[3]->As(Int) = 100, "music {$name}: the file starts with MThd");
+      bad := Byte->New[3];
+      Check(CkMidi->Parse(bad)[0] = -1 & CkMidi->Parse(Nil)[0] = -1, "music {$name}: junk is not a MIDI file");
+      cut := Byte->New[mid->Size() - 5];
+      each(i : cut->Size()) {
+        cut[i] := mid[i];
+      };
+      Check(CkMidi->Parse(cut)[0] = -1, "music {$name}: a truncated file is rejected");
+
+      # the synthesizer: audible, bounded, and the same twice
+      one := CkBeat->New(style, 11)->Bar(1, 0.7);
+      samples := CkSynth->Render(one, 90, 11025);
+      again := CkSynth->Render(CkBeat->New(style, 11)->Bar(1, 0.7), 90, 11025);
+      Check(samples->Size() > 11025 & Peak(samples) > 0.05 & Peak(samples) <= 1.0, "music {$name}: a bar renders to audible samples (peak {$(Peak(samples))})");
+      Check(samples->Size() = again->Size() & Sum(samples) = Sum(again), "music {$name}: the same events render to the same samples");
+      wav := CkWave->Encode(samples, 11025);
+      Check(CkWave->IsValid(wav, 11025) & wav->Size() = 44 + samples->Size() * 2, "music {$name}: the render makes a valid WAV");
+    };
+
+    # a style table row for Off, and the effects
+    Check(CkStyle->Count() = 3 & CkStyle->Name(2)->Equals("Off") & CkStyle->Name(0)->Equals("Hip-hop") & CkStyle->Name(1)->Equals("Modern beats"), "music: the style names");
+    junk := Byte->New[10];
+    Check(<>CkWave->IsValid(junk, 22050) & <>CkWave->IsValid(Nil, 22050), "music: junk is not a WAV");
+    fx_ok := true;
+    each(k : CkSfx->Count()) {
+      x := CkSfx->Make(k, 22050);
+      y := CkSfx->Make(k, 22050);
+      if(x->Size() < 500 | Peak(x) < 0.05 | Peak(x) > 1.5 | Sum(x) <> Sum(y)) {
+        fx_ok := false;
+        "  sound effect {$k} is wrong (size {$x->Size()}, peak {$(Peak(x))})"->PrintLine();
+      };
+    };
+    Check(fx_ok, "music: all sound effects are audible, bounded and repeatable");
   }
 }

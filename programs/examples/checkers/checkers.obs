@@ -101,6 +101,7 @@ class CheckersApp {
   @demo : Bool;
   @demo_dir : String;
   @over_frame : Int;
+  @t_start : Int;
 
   # the playful layer: particles, words, the opponent's face, shaking
   @fx : CkParticles;
@@ -122,6 +123,8 @@ class CheckersApp {
   @shake_x : Int;
   @shake_y : Int;
   @flash : Int;
+  @audio : CkAudio;     # music and sound effects; silent when there is no sound card
+  @silent : Bool;
   @ev_pos : CkPos;
 
   function : Main(args : String[]) ~ Nil {
@@ -192,6 +195,10 @@ class CheckersApp {
 
     @hand := CkEval->New();
     @learned := CkEval->Trained();
+    # no sound while taking pictures, and none with --silent
+    if(@shot_file = Nil & <>@silent) {
+      @audio := CkAudio->New(@fun_seed, @settings->MusicStyle());
+    };
     if(@learned->FromJson(FileReader->ReadFile("checkers_weights.json"))) {
       "Loaded checkers_weights.json"->PrintLine();
     };
@@ -219,6 +226,7 @@ class CheckersApp {
       @fw->FrameStart();
       HandleEvents();
       Update();
+      UpdateSound();
       Draw();
       if(@shot_file <> Nil & @frame = @shot_frame) {
         ok := @r->SavePNG(@shot_file);
@@ -243,6 +251,16 @@ class CheckersApp {
         name := @demo_dir + "/demo_{$(@frame / 45)}.png";
         @r->SavePNG(name);
       };
+      if(@demo & @frame = 150 & @audio <> Nil) {
+        "audio engine: {$@audio->Engine()}, {$@audio->Queued()} bytes queued"->PrintLine();
+      };
+      if(@demo & @frame = 100) {
+        @t_start := Timer->GetTicks();
+      };
+      if(@demo & @frame = 500) {
+        ms := Timer->GetTicks() - @t_start;
+        "400 frames took {$ms} ms ({$(ms / 400)} ms each, 16 is the 60 fps budget)"->PrintLine();
+      };
       @frame += 1;
       @now += 16;
       @fw->FrameEnd();
@@ -250,6 +268,9 @@ class CheckersApp {
 
     if(@shot_file = Nil & <>@demo) {
       @settings->Save(@settings_path);
+    };
+    if(@audio <> Nil) {
+      @audio->Close();
     };
     @fw->Quit();
   }
@@ -273,6 +294,9 @@ class CheckersApp {
       }
       else if(a->Equals("--frame") & has_next) {
         @shot_frame := args[i + 1]->ToInt();
+      }
+      else if(a->Equals("--silent")) {
+        @silent := true;
       }
       else if(a->Equals("--demo")) {
         @demo := true;
@@ -440,6 +464,7 @@ class CheckersApp {
     @anim_side := mover;
     @hint_move := Nil;
     @poofed := 0;
+    PlaySound(0);
     @think_quip := false;
     @ctl->Clear();
     if(@mood = CkChar->Thinking()) {
@@ -478,6 +503,7 @@ class CheckersApp {
       if((was = 1 | was = 3) & (now_is = 2 | now_is = 4)) {
         @crown_sq := mv->To();
         @crown_t0 := @now;
+        PlaySound(4);
         @fx->Sparkle(CenterX(mv->To()), CenterY(mv->To()), 26, 255, 214, 70);
         @pop->Add("KING ME!", CenterX(mv->To()), CenterY(mv->To()) - 40, 3, 255, 220, 80);
       };
@@ -691,9 +717,13 @@ class CheckersApp {
       # the controller has played it; now show it
       ShowLastMove(mover);
     }
+    else if(answer = CkController->Selected()) {
+      PlaySound(1);
+    }
     else if(answer = CkController->MustCapture()) {
       @msg := "You must jump when you can";
       @msg_until := @now + 2200;
+      PlaySound(3);
     };
   }
 
@@ -714,6 +744,12 @@ class CheckersApp {
 
     if(code = Scancode->SDL_SCANCODE_ESCAPE | code = Scancode->SDL_SCANCODE_M) {
       @screen := 0;
+    }
+    else if(code = Scancode->SDL_SCANCODE_S) {
+      Action(9);
+    }
+    else if(code = Scancode->SDL_SCANCODE_E) {
+      SaveSong();
     }
     else if(code = Scancode->SDL_SCANCODE_N) {
       StartGame();
@@ -793,8 +829,29 @@ class CheckersApp {
     else if(id = 313) {
       @settings->SetReduced(<>@settings->Reduced());
     }
-    else if(id = 314) {
+    else if(id = 314 | id = 9) {
       @settings->SetSound(<>@settings->Sound());
+      if(@settings->Sound()) {
+        PlaySound(1);
+      };
+    }
+    else if(id = 316) {
+      @settings->SetMusicStyle((@settings->MusicStyle() + 1) % CkStyle->Count());
+    }
+    else if(id = 317) {
+      SaveSong();
+    }
+    else if(id = 315 | id = 10) {
+      # volume goes 0, 20 ... 100 and round again
+      v := (@settings->Volume() / 20 + 1) * 20;
+      if(v > 100) {
+        v := 0;
+      };
+      @settings->SetVolume(v);
+      if(v > 0) {
+        @settings->SetSound(true);
+        PlaySound(1);
+      };
     }
     else if(id = 320 | id = 1) {
       StartGame();
@@ -920,8 +977,14 @@ class CheckersApp {
     Btn(312, OnOff("Animations", @settings->Anim()), 670, 508, 150, 42, @settings->Anim());
     Btn(313, OnOff("Reduced motion", @settings->Reduced()), 830, 508, 180, 42, @settings->Reduced());
 
+    Btn(314, OnOff("Sound", @settings->Sound()), 670, 560, 150, 42, @settings->Sound());
+    Btn(315, "Volume {$@settings->Volume()}%", 830, 560, 180, 42, false);
+
+    Btn(316, "Music: " + CkStyle->Name(@settings->MusicStyle()), 670, 612, 150, 42, @settings->MusicStyle() < 2);
+    Btn(317, "Save song (.mid)", 830, 612, 180, 42, false);
+
     Btn(320, "Play", Width() / 2 - 150, 600, 300, 54, true);
-    Btn(321, "Quit", Width() - 170, 612, 120, 42, false);
+    Btn(321, "Quit", 70, 612, 120, 42, false);
     @text->Draw("Enter starts a game, Esc quits", Width() / 2, 662, 1, t[12], t[13], t[14], 1);
   }
 
@@ -1272,6 +1335,7 @@ class CheckersApp {
           blue := 215;
         };
         @fx->Poof(CenterX(sq), CenterY(sq), red, green, blue);
+        PlaySound(2);
         w := (@game->Entries() * 7 + sq) % 8;
         @pop->Add(words[w], CenterX(sq), CenterY(sq) - 24, 3, 255, 235, 120);
         @shake := 5;
@@ -1422,18 +1486,20 @@ class CheckersApp {
     };
 
     # the moves so far
-    CkDraw->Panel(@r, px, 330, pw, 216, set);
+    CkDraw->Panel(@r, px, 330, pw, 178, set);
     @text->Draw("Moves", px + 16, 334, 1, t[12], t[13], t[14], 0);
     DrawMoveList(px + 16, 356, pw - 32);
 
     # the buttons
     bw := (pw - 10) / 2;
-    Btn(1, "New game", px, 558, bw, 38, false);
-    Btn(2, "Undo", px + bw + 10, 558, bw, 38, false);
-    Btn(3, "Hint", px, 604, bw, 38, false);
-    Btn(4, "Flip board", px + bw + 10, 604, bw, 38, false);
-    Btn(5, "Menu", px, 650, bw, 38, false);
-    Btn(6, "Quit", px + bw + 10, 650, bw, 38, false);
+    Btn(1, "New game", px, 518, bw, 36, false);
+    Btn(2, "Undo", px + bw + 10, 518, bw, 36, false);
+    Btn(3, "Hint", px, 560, bw, 36, false);
+    Btn(4, "Flip board", px + bw + 10, 560, bw, 36, false);
+    Btn(9, OnOff("Sound", @settings->Sound()), px, 602, bw, 36, false);
+    Btn(10, "Volume {$@settings->Volume()}%", px + bw + 10, 602, bw, 36, false);
+    Btn(5, "Menu", px, 644, bw, 36, false);
+    Btn(6, "Quit", px + bw + 10, 644, bw, 36, false);
   }
 
   # the opponent's speech bubble, two lines at most
@@ -1532,7 +1598,7 @@ class CheckersApp {
       };
     };
 
-    first := n - 10;
+    first := n - 8;
     if(first < 0) {
       first := 0;
     };
@@ -1677,6 +1743,11 @@ class CheckersApp {
     cx := CenterX(sq);
     cy := CenterY(sq);
     kind := ev->Kind();
+    snd := kind + 6;
+    if(kind = 0) {
+      snd := 10;
+    };
+    PlaySound(snd);
     if(kind = 0) {
       @fx->Sparkle(cx, cy, 30, 255, 120, 190);
       @pop->Add("A GIFT!", cx, cy - 50, 3, 255, 150, 210);
@@ -1751,6 +1822,7 @@ class CheckersApp {
     mid := BoardLeft() + Size() * 4;
     if(human < 2 & (status = 1 | status = 2)) {
       if(status - 1 = human) {
+        PlaySound(5);
         if(Fx()) {
           @fx->Confetti(Width(), 160);
           @pop->Add("YOU WIN!", mid, BoardTop() + 120, 4, 255, 230, 90);
@@ -1758,6 +1830,7 @@ class CheckersApp {
         SetMood(CkChar->Sad(), 600000, true);
       }
       else {
+        PlaySound(6);
         if(Fx()) {
           @pop->Add("Oh no...", mid, BoardTop() + 120, 4, 180, 200, 255);
         };
@@ -1770,4 +1843,68 @@ class CheckersApp {
     };
   }
 
+
+  # export the music so far as a Standard MIDI File in the home folder
+  method : SaveSong() ~ Nil {
+    path := Runtime->GetUserDir() + Directory->GetSlash() + "checkers_song.mid";
+    if(@audio <> Nil & @audio->ExportMidi(path)) {
+      @msg := "Song saved: " + path;
+    }
+    else {
+      @msg := "Nothing to save yet: play a few bars first";
+    };
+    @msg_until := @now + 4000;
+  }
+
+  # play sound effect number kind (see CkSfx->Make), if there is sound
+  method : PlaySound(kind : Int) ~ Nil {
+    if(@audio <> Nil & @settings->Sound()) {
+      @audio->Play(kind);
+    };
+  }
+
+  # Once a frame: tell the music how the game feels, and keep the sound card fed.
+  # Calm (major, slow) when the position is quiet and even; tense (minor, faster)
+  # when a jump is waiting or one side is well ahead; a fanfare for a win and a
+  # sad tune for a loss.
+  method : UpdateSound() ~ Nil {
+    if(@audio = Nil) {
+      return;
+    };
+    @audio->SetVolume(@settings->Volume());
+    @audio->SetStyle(@settings->MusicStyle());
+    @audio->SetMusic(@settings->Sound());
+    mood := 0;
+    intensity := 0.2;
+    if(@screen = 1) {
+      lost := @game->Lost(0) + @game->Lost(1);
+      intensity := 0.25 + 0.025 * lost->As(Float);
+      diff := CkBits->Pop(@game->Pos()->Pieces(0)) - CkBits->Pop(@game->Pos()->Pieces(1));
+      if(diff < 0) {
+        diff := 0 - diff;
+      };
+      if(@game->Legal()->Count() > 0 & @game->Legal()->Caps(0) <> 0) {
+        mood := 1;
+        intensity += 0.3;
+      }
+      else if(diff >= 2) {
+        mood := 1;
+      };
+      status := @game->Status();
+      human := @ctl->Human();
+      if(status = 1 | status = 2) {
+        mood := 2;
+        intensity := 0.8;
+        if(human < 2 & status - 1 <> human) {
+          mood := 3;
+          intensity := 0.2;
+        };
+      };
+    };
+    if(intensity > 1.0) {
+      intensity := 1.0;
+    };
+    @audio->SetMood(mood, intensity);
+    @audio->Pump();
+  }
 }
