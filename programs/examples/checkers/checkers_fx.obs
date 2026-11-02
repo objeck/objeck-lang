@@ -329,6 +329,19 @@ class CkChar {
   }
 
   # what the opponent says, by level and mood
+  # one-liners for the neo sets, whoever the opponent is: tech support humour, by mood
+  function : NeoLine(level : Int, mood : Int) ~ String {
+    lines := [
+      "Have you tried turning it off and on again?", "Rebooting my opponent module...", "Works on my machine.",
+      "Loading... 42%", "Compiling a plan. Please wait.", "Checking for updates... none found.",
+      "Capture complete. Zero bugs found.", "git push --force. No regrets.", "That is not a bug, that is a feature.",
+      "Error 404: your piece was not found.", "Unexpected token: your move.", "Stack overflow! Ctrl+Z, Ctrl+Z...",
+      "Fatal error: I lost. Rebooting.", "Segmentation fault (core dumped).", "Blue screen. Nobody saw that.",
+      "Ship it! Deployed to production.", "All tests green. All of them.", "It compiles! It must be right."
+    ];
+    return lines[mood * 3 + (level + mood) % 3];
+  }
+
   function : Line(level : Int, mood : Int) ~ String {
     lines := [
       "Zzz... oh, hi. Your move?", "Hmm... zzz... was that a move?", "Heh. I think I took one. Zzz.", "Wha?! Who moved my piece?", "I was winning... in my dream.", "I won?! Pinch me. Zzz.",
@@ -438,6 +451,17 @@ class CkChar {
       }
       else if(blink | sleepy) {
         r->ThickLineColor(sx - ew, ey, sx + ew, ey, 2, Color->New(40, 30, 30, 255));
+      }
+      else if(mood = 1 & lively) {
+        # loading-spinner eyes while it thinks: eight dots, one bright, chasing round
+        r->FilledEllipseColor(sx, ey, ew, eh, Color->New(255, 255, 255, 255));
+        head := (frame / 6) % 8;
+        each(k : 8) {
+          a := k->As(Float) * 0.7854;
+          age := (head - k + 8) % 8;
+          g := 40 + (7 - age) * 24;
+          r->FilledCircleColor(sx + (a->Cos() * (ew - 2)->As(Float))->As(Int), ey + (a->Sin() * (eh - 2)->As(Float))->As(Int), 1, Color->New(g, g, g + 20, 255));
+        };
       }
       else {
         r->FilledEllipseColor(sx, ey, ew, eh, Color->New(255, 255, 255, 255));
@@ -557,8 +581,9 @@ class CkChar {
     }
     else if(level = 6) {
       # wild white hair
+      step := rad * 2 / 7 + 1;
       each(i : 7) {
-        r->FilledTrigonColor(x - rad + 2 + i * 10, top + 8, x - rad + 12 + i * 10, top + 8, x - rad + 3 + i * 10 + (i % 2) * 8, top - 14, Color->New(245, 245, 250, 255));
+        r->FilledTrigonColor(x - rad + i * step, top + 8, x - rad + step + i * step, top + 8, x - rad + i * step + (i % 2) * step / 2, top - rad / 2, Color->New(245, 245, 250, 255));
       };
     }
     else if(level = 7) {

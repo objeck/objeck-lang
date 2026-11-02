@@ -6,6 +6,12 @@
 #   5  Monsters/Robots  one-eyed purple monsters (horns, fangs) against square steel robots (antenna)
 #   6  Snacks           pizzas (round, pepperoni) against burgers (stacked layers)
 #   7  Space            suns (rays) against moons (craters)
+#   8  Neo Duck         rubber-duck debuggers against coffee mugs, in neon
+#   9  Neo Glitch       glitchy pixel ghosts against rebooting robots, in neon
+#
+# The two neo sets are gadgets with glowing edges (a soft bloom of the outline colour
+# round every piece), a neon halo and a blinking antenna for a king instead of a cape,
+# and a blue-screen face when a piece is captured.
 #
 # Each side differs in colour AND outline (round and pointy against square, round
 # against stacked, rays against craters), and the two colours of a pair differ
@@ -30,17 +36,17 @@ class CkChars {
   }
 
   function : SetCount() ~ Int {
-    return 8;
+    return 10;
   }
 
   # name of a character set, and its two sides
   function : SetName(set : Int) ~ String {
-    names := ["Classic", "Glossy", "Engraved", "Modern", "Critters", "Monsters", "Snacks", "Space"];
+    names := ["Classic", "Glossy", "Engraved", "Modern", "Critters", "Monsters", "Snacks", "Space", "Neo Duck", "Neo Glitch"];
     return names[set];
   }
 
   function : SideName(set : Int, side : Int) ~ String {
-    names := ["Cats", "Dogs", "Monsters", "Robots", "Pizzas", "Burgers", "Suns", "Moons"];
+    names := ["Cats", "Dogs", "Monsters", "Robots", "Pizzas", "Burgers", "Suns", "Moons", "Ducks", "Mugs", "Ghosts", "Bots"];
     return names[(set - 4) * 2 + side];
   }
 
@@ -56,7 +62,11 @@ class CkChars {
       252, 200, 80,    170, 100, 40,  200, 50, 44,     4, 0,
       226, 160, 84,    90, 50, 24,    90, 190, 70,     5, 0,
       255, 220, 60,    220, 130, 20,  255, 160, 40,    6, 0,
-      214, 222, 240,   40, 50, 100,   150, 160, 190,   7, 0
+      214, 222, 240,   40, 50, 100,   150, 160, 190,   7, 0,
+      255, 218, 40,    255, 136, 0,   255, 120, 20,    8, 0,
+      34, 62, 102,     40, 240, 255,  255, 255, 255,   9, 0,
+      236, 228, 255,   255, 40, 200,  120, 255, 230,   10, 0,
+      42, 46, 58,      120, 255, 60,  170, 255, 120,   11, 2
     ];
     out := Int->New[11];
     at := ((set - 4) * 2 + side) * 11;
@@ -106,8 +116,13 @@ class CkChars {
     };
     r->FilledEllipseColor(cx + 2, cy + rad * 7 / 10 + 4, rx, ry * 45 / 100, Col(0, 0, 0, shade));
 
+    # a neon bloom behind the gadgets of the neo sets
+    if(set >= 8) {
+      NeoGlow(r, rc, cx, top, rx, ry, alpha, t);
+    };
+
     # a king's cape hangs behind
-    if(king) {
+    if(king & set < 8) {
       cr := 200;
       cg := 40;
       cb := 60;
@@ -143,16 +158,198 @@ class CkChars {
     else if(shape = 6) {
       Sun(r, rc, cx, top, rx, ry, alpha, t);
     }
-    else {
+    else if(shape = 7) {
       Moon(r, rc, cx, top, rx, ry, alpha);
+    }
+    else if(shape = 8) {
+      Duck(r, rc, cx, top, rx, ry, alpha, wig, mood);
+    }
+    else if(shape = 9) {
+      Mug(r, rc, cx, top, rx, ry, alpha, wig);
+    }
+    else if(shape = 10) {
+      Ghost(r, rc, cx, top, rx, ry, alpha, wig, t);
+    }
+    else {
+      Rebooter(r, rc, cx, top, rx, ry, alpha, wig, t);
     };
 
     # the face goes on top of the body
     Face(r, rc, shape, cx, top, rx, ry, mood, blink, alpha, wig);
 
     if(king) {
-      CkDraw->Crown(r, 0, cx, top - ry * 8 / 10, rad * 7 / 10, side, sx, sy, alpha, crown);
+      if(set >= 8) {
+        NeoKing(r, rc, cx, top, rx, ry, alpha, t, crown);
+      }
+      else {
+        CkDraw->Crown(r, 0, cx, top - ry * 8 / 10, rad * 7 / 10, side, sx, sy, alpha, crown);
+      };
     };
+  }
+
+  # ---- the tech-neo sets: gadgets with glowing edges ----
+
+  # a soft neon bloom behind a piece: three translucent rings in its outline colour
+  function : NeoGlow(r : Renderer, rc : Int[], cx : Int, cy : Int, rx : Int, ry : Int, alpha : Int, t : Float) ~ Nil {
+    pulse := 1.0;
+    if(t > 0.0) {
+      # a slow breathing, about once every two seconds
+      pulse := 0.93 + 0.07 * (t / 19.0)->Sin();
+    };
+    each(k : 3) {
+      g := (1.0 + 0.09 * (3 - k)->As(Float)) * pulse;
+      a := alpha * (14 + k * 14) / 255;
+      r->FilledEllipseColor(cx, cy, (rx->As(Float) * g)->As(Int), (ry->As(Float) * g)->As(Int), Col(rc[3], rc[4], rc[5], a));
+    };
+  }
+
+  # an arc as short straight strokes (angles in radians)
+  function : Arc(r : Renderer, cx : Int, cy : Int, rad : Int, a0 : Float, a1 : Float, thick : Int, col : Color) ~ Nil {
+    steps := 9;
+    px := cx + (a0->Cos() * rad->As(Float))->As(Int);
+    py := cy + (a0->Sin() * rad->As(Float))->As(Int);
+    each(i : steps) {
+      a := a0 + (a1 - a0) * (i + 1)->As(Float) / steps->As(Float);
+      nx := cx + (a->Cos() * rad->As(Float))->As(Int);
+      ny := cy + (a->Sin() * rad->As(Float))->As(Int);
+      r->ThickLineColor(px, py, nx, ny, thick, col);
+      px := nx;
+      py := ny;
+    };
+  }
+
+  # a king in the neo sets: a neon halo above the head and a blinking antenna
+  function : NeoKing(r : Renderer, rc : Int[], cx : Int, top : Int, rx : Int, ry : Int, alpha : Int, t : Float, crown : Float) ~ Nil {
+    hy := top - ry * 11 / 10;
+    hw := (rx->As(Float) * 0.55 * crown)->As(Int) + 1;
+    hh := ry * 17 / 100 + 1;
+    r->FilledEllipseColor(cx, hy, hw + 4, hh + 3, Col(255, 244, 150, alpha / 6));
+    r->AAEllipseColor(cx, hy, hw, hh, Col(255, 244, 150, alpha));
+    r->AAEllipseColor(cx, hy + 1, hw, hh, Col(255, 244, 150, alpha));
+    r->AAEllipseColor(cx, hy, hw - 1, hh - 1, Col(255, 255, 255, alpha / 2));
+    # the antenna: a stalk and a ball that blinks about twice a second
+    ay := top - ry * 16 / 10;
+    r->ThickLineColor(cx, top - ry * 8 / 10, cx, ay, 2, Col(rc[3], rc[4], rc[5], alpha));
+    lit := alpha;
+    if(t > 0.0 & (t->As(Int) / 15) % 2 = 1) {
+      lit := alpha / 3;
+    };
+    r->FilledCircleColor(cx, ay, rx / 8 + 2, Col(255, 244, 150, alpha / 5));
+    r->FilledCircleColor(cx, ay, rx / 12 + 1, Col(255, 244, 150, lit));
+  }
+
+  # the blue screen of death, drawn over a face: a sad smiley and lines of error text
+  function : BlueScreen(r : Renderer, cx : Int, cy : Int, rx : Int, ry : Int, alpha : Int) ~ Nil {
+    x0 := cx - rx * 6 / 10;
+    x1 := cx + rx * 6 / 10;
+    y0 := cy - ry * 5 / 10;
+    y1 := cy + ry * 5 / 10;
+    r->BoxColor(x0, y0, x1, y1, Col(16, 60, 214, alpha));
+    r->RectangleColor(x0, y0, x1, y1, Col(190, 215, 255, alpha));
+    w := Int->Max(rx / 10, 2);
+    r->FilledCircleColor(cx - rx * 2 / 10, y0 + ry * 2 / 10, w, Col(255, 255, 255, alpha));
+    r->FilledCircleColor(cx + rx * 2 / 10, y0 + ry * 2 / 10, w, Col(255, 255, 255, alpha));
+    Arc(r, cx, y0 + ry * 6 / 10, rx * 2 / 10, 3.6, 5.8, 2, Col(255, 255, 255, alpha));
+    each(i : 2) {
+      r->LineColor(x0 + 3, y1 - 5 - i * 4, x1 - 3 - i * rx / 4, y1 - 5 - i * 4, Col(190, 215, 255, alpha));
+    };
+  }
+
+  # the rubber-duck debugger: a yellow duck with a beak that opens, a tuft and a ladybird
+  function : Duck(r : Renderer, rc : Int[], cx : Int, cy : Int, rx : Int, ry : Int, alpha : Int, wig : Float, mood : Int) ~ Nil {
+    each(s : 2) {
+      d := -1;
+      if(s = 1) {
+        d := 1;
+      };
+      r->FilledEllipseColor(cx + d * rx * 86 / 100, cy + ry * 18 / 100, rx * 22 / 100, ry * 34 / 100, Col(rc[0] - 30, rc[1] - 40, rc[2], alpha));
+      r->AAEllipseColor(cx + d * rx * 86 / 100, cy + ry * 18 / 100, rx * 22 / 100, ry * 34 / 100, Col(rc[3], rc[4], rc[5], alpha));
+    };
+    r->FilledEllipseColor(cx, cy, rx * 92 / 100, ry * 95 / 100, Col(rc[0], rc[1], rc[2], alpha));
+    r->AAEllipseColor(cx, cy, rx * 92 / 100, ry * 95 / 100, Col(rc[3], rc[4], rc[5], alpha));
+    tuft := (wig * rx->As(Float) * 0.12)->As(Int);
+    each(i : 2) {
+      r->ThickLineColor(cx + (i - 1) * 3, cy - ry * 92 / 100, cx + tuft + (i - 1) * 6, cy - ry * 122 / 100, 2, Col(rc[0], rc[1], rc[2], alpha));
+    };
+    # a ladybird on the head
+    lx := cx + rx * 5 / 10;
+    ly := cy - ry * 62 / 100;
+    r->FilledCircleColor(lx, ly, rx / 9 + 1, Col(220, 40, 50, alpha));
+    r->FilledCircleColor(lx, ly, 1, Col(20, 20, 20, alpha));
+    # the beak opens when the duck is moved
+    open := mood = 1 | mood = 2 | mood = 3 | mood = 5;
+    bh := ry * 14 / 100 + 1;
+    if(open) {
+      bh := ry * 22 / 100 + 2;
+    };
+    r->FilledEllipseColor(cx, cy + ry * 30 / 100, rx * 42 / 100, bh, Col(rc[6], rc[7], rc[8], alpha));
+    if(open) {
+      r->FilledEllipseColor(cx, cy + ry * 32 / 100, rx * 30 / 100, bh / 2, Col(110, 30, 20, alpha));
+    };
+    r->AAEllipseColor(cx, cy + ry * 30 / 100, rx * 42 / 100, bh, Col(rc[3], rc[4], rc[5], alpha));
+  }
+
+  # a coffee mug that steams, with a handle, a dark body and a neon rim
+  function : Mug(r : Renderer, rc : Int[], cx : Int, cy : Int, rx : Int, ry : Int, alpha : Int, wig : Float) ~ Nil {
+    Arc(r, cx + rx * 78 / 100, cy + ry * 8 / 100, rx * 34 / 100, -1.9, 1.9, 4, Col(rc[3], rc[4], rc[5], alpha));
+    r->RoundedBoxColor(cx - rx * 82 / 100, cy - ry * 70 / 100, cx + rx * 82 / 100, cy + ry * 92 / 100, rx / 5, Col(rc[0], rc[1], rc[2], alpha));
+    r->RoundedRectangleColor(cx - rx * 82 / 100, cy - ry * 70 / 100, cx + rx * 82 / 100, cy + ry * 92 / 100, rx / 5, Col(rc[3], rc[4], rc[5], alpha));
+    r->RoundedRectangleColor(cx - rx * 76 / 100, cy - ry * 64 / 100, cx + rx * 76 / 100, cy + ry * 86 / 100, rx / 6, Col(rc[3], rc[4], rc[5], alpha * 4 / 10));
+    r->FilledEllipseColor(cx, cy - ry * 70 / 100, rx * 82 / 100, ry * 15 / 100, Col(112, 68, 38, alpha));
+    r->AAEllipseColor(cx, cy - ry * 70 / 100, rx * 82 / 100, ry * 15 / 100, Col(rc[3], rc[4], rc[5], alpha));
+    each(i : 3) {
+      x := cx + (i - 1) * rx * 4 / 10;
+      sway := ((wig + i->As(Float)) * rx->As(Float) * 0.1)->As(Int);
+      r->ThickLineColor(x, cy - ry * 86 / 100, x + sway, cy - ry * 112 / 100, 2, Col(255, 255, 255, alpha * 6 / 10));
+      r->ThickLineColor(x + sway, cy - ry * 112 / 100, x, cy - ry * 138 / 100, 2, Col(255, 255, 255, alpha * 4 / 10));
+    };
+  }
+
+  # a glitchy pixel ghost: a sheet with a zigzag hem, and an RGB-split echo that flickers
+  function : Ghost(r : Renderer, rc : Int[], cx : Int, cy : Int, rx : Int, ry : Int, alpha : Int, wig : Float, t : Float) ~ Nil {
+    echo := (wig * rx->As(Float) * 0.07)->As(Int);
+    if(t > 0.0) {
+      r->FilledEllipseColor(cx + 2 + echo, cy - ry * 15 / 100, rx * 88 / 100, ry * 80 / 100, Col(rc[6], rc[7], rc[8], alpha * 3 / 10));
+      r->FilledEllipseColor(cx - 2 - echo, cy - ry * 15 / 100, rx * 88 / 100, ry * 80 / 100, Col(rc[3], rc[4], rc[5], alpha * 3 / 10));
+    };
+    body := Col(rc[0], rc[1], rc[2], alpha);
+    line := Col(rc[3], rc[4], rc[5], alpha);
+    r->FilledEllipseColor(cx, cy - ry * 15 / 100, rx * 88 / 100, ry * 80 / 100, body);
+    r->BoxColor(cx - rx * 88 / 100, cy - ry * 15 / 100, cx + rx * 88 / 100, cy + ry * 68 / 100, body);
+    each(i : 4) {
+      x0 := cx - rx * 88 / 100 + i * rx * 44 / 100;
+      r->FilledTrigonColor(x0, cy + ry * 66 / 100, x0 + rx * 44 / 100, cy + ry * 66 / 100, x0 + rx * 22 / 100, cy + ry, body);
+      r->LineColor(x0, cy + ry * 66 / 100, x0 + rx * 22 / 100, cy + ry, line);
+      r->LineColor(x0 + rx * 22 / 100, cy + ry, x0 + rx * 44 / 100, cy + ry * 66 / 100, line);
+    };
+    r->AAEllipseColor(cx, cy - ry * 15 / 100, rx * 88 / 100, ry * 80 / 100, line);
+    r->LineColor(cx - rx * 88 / 100, cy - ry * 15 / 100, cx - rx * 88 / 100, cy + ry * 66 / 100, line);
+    r->LineColor(cx + rx * 88 / 100, cy - ry * 15 / 100, cx + rx * 88 / 100, cy + ry * 66 / 100, line);
+    # a glitch: now and then a slice of the sheet jumps sideways (one frame in about ten seconds a second)
+    if(t > 0.0 & (t->As(Int) / 7) % 11 = 0) {
+      gy := cy - ry * 10 / 100 + ((t->As(Int) / 7) % 5) * ry * 10 / 100;
+      r->BoxColor(cx - rx * 88 / 100 + 4, gy, cx + rx * 88 / 100 + 4, gy + ry * 9 / 100 + 1, Col(rc[6], rc[7], rc[8], alpha * 7 / 10));
+    };
+  }
+
+  # a robot caught rebooting: charcoal body, a visor, and a circular arrow on the forehead
+  function : Rebooter(r : Renderer, rc : Int[], cx : Int, cy : Int, rx : Int, ry : Int, alpha : Int, wig : Float, t : Float) ~ Nil {
+    sway := (wig * rx->As(Float) * 0.12)->As(Int);
+    r->ThickLineColor(cx, cy - ry * 8 / 10, cx + sway, cy - ry * 13 / 10, 2, Col(rc[3], rc[4], rc[5], alpha));
+    r->FilledCircleColor(cx + sway, cy - ry * 13 / 10, rx / 7 + 1, Col(rc[6], rc[7], rc[8], alpha));
+    r->RoundedBoxColor(cx - rx * 9 / 10, cy - ry * 8 / 10, cx + rx * 9 / 10, cy + ry * 8 / 10, rx / 4, Col(rc[0], rc[1], rc[2], alpha));
+    r->RoundedRectangleColor(cx - rx * 9 / 10, cy - ry * 8 / 10, cx + rx * 9 / 10, cy + ry * 8 / 10, rx / 4, Col(rc[3], rc[4], rc[5], alpha));
+    r->RoundedRectangleColor(cx - rx * 83 / 100, cy - ry * 72 / 100, cx + rx * 83 / 100, cy + ry * 72 / 100, rx / 5, Col(rc[3], rc[4], rc[5], alpha * 4 / 10));
+    r->RoundedBoxColor(cx - rx * 7 / 10, cy - ry * 32 / 100, cx + rx * 7 / 10, cy + ry * 6 / 100, 4, Col(10, 14, 22, alpha));
+    # the reload arrow turns slowly while the game is animated
+    a0 := t * 0.03;
+    ax := cx;
+    ay := cy + ry * 42 / 100;
+    rad := rx / 7 + 2;
+    Arc(r, ax, ay, rad, a0, a0 + 4.6, 2, Col(rc[3], rc[4], rc[5], alpha));
+    ex := ax + ((a0 + 4.6)->Cos() * rad->As(Float))->As(Int);
+    ey := ay + ((a0 + 4.6)->Sin() * rad->As(Float))->As(Int);
+    r->FilledCircleColor(ex, ey, 2, Col(rc[3], rc[4], rc[5], alpha));
   }
 
   # ---- the bodies ----
@@ -331,8 +528,25 @@ class CkChars {
     else if(shape = 1) {
       ey := cy - ry * 14 / 100;
       my := cy + ry * 58 / 100;
+    }
+    else if(shape = 8) {
+      ey := cy - ry * 20 / 100;
+    }
+    else if(shape = 9) {
+      ey := cy - ry * 10 / 100;
+      my := cy + ry * 50 / 100;
+    }
+    else if(shape = 10) {
+      ey := cy - ry * 22 / 100;
+      my := cy + ry * 28 / 100;
     };
     dark := Col(24, 20, 24, alpha);
+
+    # a captured gadget shows the blue screen of death
+    if(shape >= 8 & mood = 3) {
+      BlueScreen(r, cx, cy, rx, ry, alpha);
+      return;
+    };
 
     if(eyes = 1) {
       # one big eye
@@ -395,7 +609,10 @@ class CkChars {
     };
 
     # the mouth
-    if(eyes <> 2 | mood <> 0) {
+    if(shape = 8) {
+      # the duck's beak is its mouth: nothing more to draw
+    }
+    else if(eyes <> 2 | mood <> 0) {
       Mouth(r, cx, my, rx, ry, mood, alpha, dark);
     }
     else {
