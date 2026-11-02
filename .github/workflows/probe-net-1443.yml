@@ -1,93 +1,43 @@
 name: Probe net 1443 (Windows loopback)
 
 # A probe, not a gate: runs only for pushes to probe/net-1443-* branches.
-# 1. exhaust.py: plain Python, client closes first, many connections: does
-#    the client's TIME_WAIT use up the ephemeral ports, and how does connect
-#    fail then?
-# 2. The nightly's own harness (run_differential.py) on query_url_cache_processes
-#    and server_bind_address with master's CI binaries, a TCP state sampler beside it.
+# exhaust.py, plain Python on loopback, 30,000 requests per close style:
+# client closes first (Objeck today), server closes first, client resets,
+# and 8 requests per connection. Counts TCP states (TIME_WAIT peak), connect
+# errors and server ends left open.
 on:
   push:
     branches: [ 'probe/net-1443-*' ]
 
 permissions:
   contents: read
-  actions: read
 
 jobs:
   probe:
-    name: loopback probe ${{ matrix.platform }}
+    name: close styles ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: windows-x64
             os: windows-2025-vs2026
-            arch: x64
           - platform: windows-arm64
             os: windows-11-arm
-            arch: ARM64
     defaults:
       run:
         shell: pwsh
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-    - name: Environment
+    - name: Close styles
       run: |
-        (Get-CimInstance Win32_OperatingSystem).Caption + ' ' + (Get-CimInstance Win32_OperatingSystem).BuildNumber
-        (Get-CimInstance Win32_ComputerSystem).NumberOfLogicalProcessors
-        python --version
-        netsh int ipv4 show dynamicport tcp
-        Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters' | Select-Object TcpTimedWaitDelay,MaxUserPort | Format-List
-    - name: Python exhaustion probe
-      run: |
-        python tools/probe_1443/probe2.py drainhold 600 1
-        python tools/probe_1443/probe2.py shutclose 3000 6
-        Start-Sleep -Seconds 5
-        python tools/probe_1443/exhaust.py 30000 6
-        Start-Sleep -Seconds 5
-        python tools/probe_1443/exhaust.py 2000 6
-    - name: Wait for TIME_WAIT to drain
-      run: |
-        foreach ($i in 1..30) {
-          $tw = (netstat -ano -p tcp | Select-String 'TIME_WAIT').Count
-          "TIME_WAIT $tw"
-          if ($tw -lt 200) { break }
-          Start-Sleep -Seconds 10
-        }
-    - name: Find master's latest ci-build run
-      id: pick
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: |
-        $id = gh run list --repo $env:GITHUB_REPOSITORY --workflow ci-build.yml --branch master --event push --status success --limit 1 --json databaseId --jq '.[0].databaseId'
-        "run_id=$id" >> $env:GITHUB_OUTPUT
-        "ci-build run $id"
-    - name: Download the CI deploy tree
-      uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
-      with:
-        name: objeck-${{ matrix.platform }}
-        run-id: ${{ steps.pick.outputs.run_id }}
-        github-token: ${{ github.token }}
-        path: core/release/deploy-${{ matrix.arch }}
-    - name: Nightly harness with a TCP state sampler
-      run: |
-        $tree = "core/release/deploy-${{ matrix.arch }}"
-        & "$tree/bin/obc.exe" --version
-        foreach ($i in 1..3) {
-          "=== iteration $i"
-          $stop = "$env:RUNNER_TEMP\stop_$i"
-          $s = Start-Process python -ArgumentList "tools/probe_1443/twsample.py",$stop -NoNewWindow -PassThru -RedirectStandardOutput "$env:RUNNER_TEMP\tw_$i.txt"
-          python programs/regression/run_differential.py "$tree/bin" query_url_cache_processes server_bind_address query_net_read -j 3 --work "$env:RUNNER_TEMP\diff_$i"
-          New-Item -ItemType File $stop | Out-Null
-          $s.WaitForExit()
-          Get-Content "$env:RUNNER_TEMP\tw_$i.txt"
-          Get-ChildItem "$env:RUNNER_TEMP\diff_$i" -Recurse -Filter *.out | ForEach-Object { $t = Get-Content $_.FullName -Raw; if ($t -match 'FAIL') { "--- $($_.FullName)"; $t } }
-          foreach ($k in 1..30) {
+        foreach ($m in 'cfirst','sfirst','linger0','reuse8') {
+          foreach ($k in 1..40) {
             $tw = (netstat -ano -p tcp | Select-String 'TIME_WAIT').Count
-            if ($tw -lt 200) { break }
+            if ($tw -lt 100) { break }
             Start-Sleep -Seconds 10
           }
+          "TIME_WAIT before $m`: $tw"
+          python tools/probe_1443/exhaust.py 30000 6 $m
         }
