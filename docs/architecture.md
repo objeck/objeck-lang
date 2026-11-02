@@ -6,7 +6,7 @@ This document provides detailed architectural views of the Objeck programming la
 
 ![Objeck toolchain architecture](images/objeck-architecture.svg)
 
-*The whole toolchain on one page ([SVG](images/objeck-architecture.svg)); the sections below go into each part.*
+*The whole toolchain on one page ([SVG](images/objeck-architecture.svg)); the sections below go into each part. For a short written map with the invariants and the page that goes deeper on each part, see [ARCHITECTURE_MAP.md](ARCHITECTURE_MAP.md).*
 
 ---
 

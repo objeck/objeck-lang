@@ -37,7 +37,7 @@ The statement "the `.obe` embeds what it links" is checked in [File formats](#fi
 | `core/lib/` | the shipped libraries: the committed `.obl` files, and one directory per native module (`sdl`, `onnx`, `opencv`, `odbc`, `diags` and others) |
 | `core/debugger/`, `core/repl/` | `obd` (command line and DAP) and `obi` |
 | `core/module/` | the compiler and VM packaged as one static library (`module.a`) that `obi` links |
-| `core/utils/` | `obu` (updater), `obb` and `obn` (native launcher builders), the Windows and macOS launcher apps |
+| `core/utils/` | `obu` (updater), `obb` (application builder) and `obn` (the launcher it copies in), the Windows and macOS launcher apps |
 | `core/release/` | solutions, deploy scripts, packaging, `runtime_deps.json`, `update_version.ps1` |
 | `tools/` | `cicd/` (checks and release scripts), `lsp/` (language server and editor clients), `fuzz/`, `deps/`, `packaging/` |
 | `programs/` | `regression/` (the suite), `tests/` (older tests and benchmarks), `examples/`, `deploy/` (the examples a release ships), `web-playground/` |
@@ -82,7 +82,7 @@ flowchart LR
 **Invariants and rules.**
 - A new intrinsic or trap touches six code sites plus the library and a test, and a missing one fails late and quietly. Follow [ADDING_AN_INTRINSIC.md](ADDING_AN_INTRINSIC.md); `tools/cicd/check_trap_handlers.py` checks the sites it marks.
 - Append to `enum Traps` in `core/shared/traps.h`, never insert or delete: an enumerator's position (counting up from `LOAD_CLS_INST_ID = -4000`) is the wire id written into every `.obl` and `.obe`.
-- The back end no longer calls `exit(1)`: a fatal error is a `CompilerFatal` exception caught in `Compile()`, so a host that embeds the compiler survives it. Keep it that way (the language server and `obi` embed it).
+- The back end reports a fatal error by throwing `CompilerFatal`, caught in `Compile()`, so a host that embeds the compiler survives it (the language server and `obi` embed it). One site still calls `exit(1)`: the rejection of a library with the pre-`NEW_INT_ARY` magic, in `Library::LoadFile` (`linker.cpp`); its sibling checks throw. Do not add another.
 - The linker checks that a library's toolchain version equals `VER_NUM`; do not hand-edit a library's header.
 
 **Deeper.** [architecture.md](architecture.md) section 2; [optimization_pipeline.md](optimization_pipeline.md); [METHOD_GENERICS_DESIGN.md](METHOD_GENERICS_DESIGN.md), [NAMED_ARGUMENTS_DESIGN.md](NAMED_ARGUMENTS_DESIGN.md), [REFERENCE_PARAMETERS_DESIGN.md](REFERENCE_PARAMETERS_DESIGN.md), [ARRAY_LITERALS_DESIGN.md](ARRAY_LITERALS_DESIGN.md), [JAGGED_ARRAYS_DESIGN.md](JAGGED_ARRAYS_DESIGN.md) for individual features; [core/compiler/README.md](../core/compiler/README.md).
@@ -265,7 +265,7 @@ Checked while writing this page. The code is right in each case; the fix is note
 |---|---|---|---|
 | `core/compiler/README.md` | the linker is a back-end stage that "produces final bytecode" | `Linker::Load` runs inside `ContextAnalyzer::Analyze`, before analysis; `FileEmitter` writes the output | stage list corrected there |
 | `core/vm/arch/jit/README.md`, `.../amd64/README.md`, `core/vm/README.md` | AMD64 method inlining is complete but never called; the VM inlines methods | `ProcessInlineMethod` and its helpers are deleted (GC roots phase 5, #1511); the compiler's `s3` inliner is the only one | corrected in those three |
-| `docs/ARCHITECTURE_ASSESSMENT_2026_11.md` | 1.1 a dead parser copy; 2.1 no verifier; 2.2 `exit(1)` in the loader; 2.3 no ABI version; 5.1 nightly cron commented out | `ParseSystemStatement` is gone; `Loader::Verify` exists; the loader returns an error; `VMContext` has `abi_version`; the cron is live | the page is a dated snapshot; marked in `README.md` |
+| `docs/ARCHITECTURE_ASSESSMENT_2026_11.md` | 1.1 a dead parser copy; 2.1 no verifier; 2.2 `exit(1)` in the loader; 2.3 no ABI version; 5.1 nightly cron commented out | `ParseSystemStatement` is gone; `Loader::Verify` exists; the loader returns an error; `VMContext` has `abi_version`; the cron is live | the page is a dated snapshot; marked in `README.md`. One `exit(1)` is left in the linker (see Compiler) |
 | `docs/GC_ROOTS_DESIGN.md` | "nothing below has landed" (opening paragraph) | phases 0 to 6 are merged; the status block below it says so | marked in `README.md` |
 | test counts (`programs/README.md`, `programs/TESTING.md`, `programs/regression/README.md`, `core/readme.md`, `docs/architecture.md`) | "about 300", "299", "529" | 782 programs in `programs/regression/`, per its generated `TESTS.md` | corrected to point at `TESTS.md` |
 | `docs/cli_options.md` | VM options are parsed in `win_main.cpp` and `posix_main.cpp` | both call the one parser in `core/vm/vm_options.h` | corrected |
