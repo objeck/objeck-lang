@@ -633,17 +633,6 @@ namespace Runtime {
     }
 
     /**
-     * Encoding for AMD64 "XB" bits
-     */
-    inline unsigned char XB32(Register b) {
-      if((b > RSP && b < XMM0) || b > XMM7) {
-        return 0x66;
-      }
-
-      return 0x67;
-    }
-
-    /**
      * Encoding for AMD64 "RXB" bits
      */
     inline unsigned char RXB(Register r, Register b) {
@@ -1119,12 +1108,6 @@ namespace Runtime {
           working_stack[wi] = new RegInstr(mh);
         }
       }
-    }
-
-    RegisterHolder* GetStackPosRegister() {
-      RegisterHolder* op_stack_holder = GetRegister();
-      move_mem_reg(OP_STACK, RBP, op_stack_holder->GetRegister());
-      return op_stack_holder;
     }
 
     // move instructions

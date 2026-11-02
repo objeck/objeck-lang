@@ -54,7 +54,6 @@ class Loader {
   size_t buffer_pos;
   int start_class_id;
   int start_method_id;
-  std::map<const std::wstring, const int> params;
   bool from_mem;
   bool abandoned;
   // each class's static memory size in bytes, by id, for CheckSlot
@@ -214,8 +213,7 @@ class Loader {
   StackDclr** LoadDeclarations(const int num_dclrs, const bool is_debug);
   void LoadInitializationCode(StackMethod* mthd);
   void LoadStatements(StackMethod* mthd, bool is_debug);
-  void LoadConfiguration();
-  
+
 public:
   Loader(char* b, std::vector<std::wstring> &a) {
     from_mem = true;
@@ -448,15 +446,6 @@ public:
     }
 
     return nullptr;
-  }
-  
-  inline int GetConfigurationParameter(const std::wstring& key) {
-    std::map<const std::wstring, const int>::iterator result = params.find(key);
-    if(result != params.end()) {
-      return result->second;
-    }
-
-    return 0;
   }
   
   // Loads and verifies the program. False when it cannot be loaded: GetError

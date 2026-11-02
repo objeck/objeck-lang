@@ -628,7 +628,6 @@ namespace Runtime {
     void Str2Float(size_t* &op_stack, size_t* &stack_pos);
     void Int2Str(size_t* &op_stack, size_t* &stack_pos);
     void Float2Str(size_t*& op_stack, size_t*& stack_pos);
-    void ByteChar2Int(size_t*& op_stack, size_t*& stack_pos);
     void ShlInt(size_t* &op_stack, size_t* &stack_pos);
     void ShrInt(size_t* &op_stack, size_t* &stack_pos);
     void AndInt(size_t* &op_stack, size_t* &stack_pos);
