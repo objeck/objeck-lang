@@ -182,7 +182,7 @@ bundle Data.JSON.RPC {
 		@address : String;
 		@port : Int;
 		@last_error : Collection.Tuple.Pair<IntRef, String>;
-		@id : static : Int;
+		@id : Int;
 
 		#~
 		Constructor
@@ -232,6 +232,10 @@ bundle Data.JSON.RPC {
 				buffer += "\r\n";
 				socket->WriteString(buffer);
 
+				# each call carries its own id, which the reply must echo; the ids cycle
+				# from 1 to 512, and a call is answered before the next one is sent
+				sent_id := @id;
+				@id += 1;
 				if(@id > 512) {
 					@id := 1;
 				};
@@ -242,13 +246,31 @@ bundle Data.JSON.RPC {
 				if(response_str <> Nil) {
 					response_json := JsonParser->TextToElement(response_str);
 					if(response_json <> Nil) {
+						# the reply is for this request: it echoes the id that was sent. An error
+						# reply may carry a null id (the server could not read the request's id)
+						reply_id := response_json->Get("id");
+						id_echoed := false;
+						id_null := reply_id = Nil;
+						if(reply_id <> Nil) {
+							id_null := reply_id->GetType() = JsonElement->JsonType->NULL;
+							id_echoed := reply_id->GetType() = JsonElement->JsonType->NUMBER & reply_id->GetInt() = sent_id;
+						};
+
 						result_json := response_json->Get("result");
 						if(result_json <> Nil) {
+							if(<>id_echoed) {
+								@last_error := Collection.Tuple.Pair->New(IntRef->New(-32600), "Invalid Response: the id does not match the request")<IntRef, String>;
+								return Nil;
+							};
 							return result_json;
 						};
 
 						error_json := response_json->Get("error");
 						if(error_json <> Nil) {
+							if(<>id_echoed & <>id_null) {
+								@last_error := Collection.Tuple.Pair->New(IntRef->New(-32600), "Invalid Response: the id does not match the request")<IntRef, String>;
+								return Nil;
+							};
 							# the server's error need not be an object with a code and a message
 							err_id := -32000;
 							err_msg := "Server error";
