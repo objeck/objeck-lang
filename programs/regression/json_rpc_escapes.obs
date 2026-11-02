@@ -41,11 +41,28 @@ class JsonRpcEscapes {
 		funcs->Insert("echo", Func2Ref->New(JsonRpcEscapes->Echo(JsonElement) ~ JsonElement)<JsonElement, JsonElement>);
 		funcs->Insert("say \"hi\"", Func2Ref->New(JsonRpcEscapes->Echo(JsonElement) ~ JsonElement)<JsonElement, JsonElement>);
 
-		port := 41000 + Int->Random(7000);
-		server := Server->New(funcs, port);
+		# Port 0: the system picks a free port, read back with GetPort(). A port
+		# drawn at random from 41000-48000 sits in Linux's ephemeral range
+		# (32768-60999), so it was often one a client socket of an earlier test
+		# still held in TIME_WAIT: bind then failed with "Address already in use"
+		# (SO_REUSEADDR does not help against a socket that never set it), Process()
+		# returned at once, and every connection was refused.
+		server := Server->New(funcs, 0);
+		port := server->GetPort();
 		thread := ServerThread->New(server);
 		thread->Execute(Nil);
-		System.Concurrency.Thread->Sleep(300);
+
+		# wait until the server is listening, not a fixed time: bounded, and the
+		# deadline is a failure, never a retry of the checks below
+		waited := 0;
+		while(<>server->IsListening() & waited < 10000) {
+			System.Concurrency.Thread->Sleep(10);
+			waited += 10;
+		};
+		if(<>server->IsListening()) {
+			"FAIL: JSON-RPC server never listened on port {$port}"->PrintLine();
+			Runtime->Exit(1);
+		};
 
 		# a parameter with a quote, a backslash, a line break and a u-escape
 		# arrives decoded and returns as the same text

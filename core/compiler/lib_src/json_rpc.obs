@@ -15,11 +15,12 @@ bundle Data.JSON.RPC {
 		@server : TCPSocketServer;
 		@port : Int;
 		@funcs : Hash<String, Func2Ref<JsonElement, JsonElement>>;
+		@listening : Bool;
 
 		#~
 		Constructor
 		@param funcs collection of named function calls
-		@param port server port
+		@param port server port; 0 takes a free port the system chooses, which GetPort() reports
 		```
 		funcs := Hash->New()<String, Func2Ref<JsonElement, JsonElement>>;
 		# register an "add" method
@@ -38,6 +39,42 @@ bundle Data.JSON.RPC {
 			@port := port;
 
 			@server := TCPSocketServer->New(@port);
+			@port := @server->GetPort();
+		}
+
+		#~
+		Gets the port the server is bound to: the port given to the constructor
+		or, for a port of 0, the free one the system chose. A program that needs
+		no fixed number (a test, say) binds port 0 and reads the port back here, so
+		it cannot collide with a port another program, or an outgoing connection
+		of its own, already holds. Whether the bind and listen worked is IsListening().
+		@return bound port
+		```
+		server := Data.JSON.RPC.Server->New(funcs, 0);
+		port := server->GetPort(); # the port the system chose
+		```
+		~#
+		method : public : GetPort() ~ Int {
+			return @port;
+		}
+
+		#~
+		Tells whether Process() is listening, so connections are accepted. False
+		until Process() has begun listening, and for good if the port could not be
+		bound or listened on. A caller that runs Process() in a thread waits on
+		this, up to a deadline, rather than for a fixed time.
+		@return true if listening
+		```
+		thread->Execute(Nil); # runs server->Process()
+		waited := 0;
+		while(<>server->IsListening() & waited < 10000) {
+		  System.Concurrency.Thread->Sleep(10);
+		  waited += 10;
+		};
+		```
+		~#
+		method : public : IsListening() ~ Bool {
+			return @listening;
 		}
 
 		#~
@@ -50,6 +87,7 @@ bundle Data.JSON.RPC {
 		~#
 		method : public : Process() ~ Nil {
 			while(@server->Listen(8)) {
+				@listening := true;
 				client := @server->Accept();
 
 				thread := System.Concurrency.Thread->New() {
