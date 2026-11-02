@@ -10,10 +10,12 @@
 # menu and Q to quit. Your choices (piece set, level, colour) are remembered in
 # a small JSON file, .checkers.json, in your home folder.
 #
-# Eight piece sets are drawn with SDL2 shapes, so there is no artwork to license:
-# Classic, Glossy, Engraved and Modern discs, and four crazy sets of little
-# creatures (Critters, Monsters, Snacks, Space). The music is made up while you
-# play, in a hip-hop or a modern-beats style, from formulas: no sound files.
+# Ten piece sets are drawn with SDL2 shapes, so there is no artwork to license:
+# Classic, Glossy, Engraved and Modern discs, four crazy sets of little
+# creatures (Critters, Monsters, Snacks, Space) and two tech-neo sets of funny
+# gadgets with glowing edges (Neo Duck, Neo Glitch), the default. The music is
+# made up while you play, in hip-hop, modern beats, reggae, techno or classical
+# style, with a deep-bass setting, from formulas: no sound files.
 # S turns the sound on and off, E saves the music so far as a .mid file, B throws
 # a party.
 #
@@ -35,7 +37,7 @@
 # checkers_tournament.obs. There is a README.md next to this file.
 #
 # For pictures instead of play: --screenshot out.png [--scene start|play|capture|king|over]
-# [--set 0-7] [--level 1-10] saves one frame and exits; --demo [out_dir] lets
+# [--set 0-9] [--level 1-10] saves one frame and exits; --demo [out_dir] lets
 # the computer play itself for a few seconds (and saves frames to out_dir).
 #
 # output: a window titled "Checkers" (1040 x 700): a menu to pick the piece

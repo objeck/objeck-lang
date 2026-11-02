@@ -403,17 +403,17 @@ run:     obr boing_ball_mt
 ### Checkers — a game, a thinking computer and generated music
 
 `programs/examples/checkers/` is a complete checkers game: an SDL2 window at 60 frames a
-second, eight piece sets drawn from shapes (four of them crazy creatures), ten computer levels (the library `Minimax` and
+second, ten piece sets drawn from shapes (four crazy creatures and two tech-neo gadget sets), ten computer levels (the library `Minimax` and
 `MonteCarloTreeSearch` play it through a `System.AI.GameState` wrapper), a hill-climbing
 learner that tunes the evaluation by self-play, a tournament that proves level N beats
-level N-1, playful animation, and music generated while you play (hip-hop or modern
-beats, with a Markov chain that learns habits from seed phrases, played by a built-in
+level N-1, playful animation, and music generated while you play (hip-hop, modern beats, reggae, techno or classical, with a deep-bass
+setting and a Markov chain that learns habits from seed phrases, played by a built-in
 synthesizer or exported as a Standard MIDI File). The engine is checked with perft against
 the published move counts. See its [README](../programs/examples/checkers/README.md).
 
 ```
 cd programs/examples/checkers
-obc -src checkers_engine.obs,checkers_game.obs,checkers_ai.obs,checkers_logic.obs,checkers_draw.obs,checkers_chars.obs,checkers_fx.obs,checkers_music.obs,checkers_audio.obs,checkers.obs -lib sdl2,sdl_game,json,ai,gen_collect -dest checkers.obe
+obc -src checkers_engine.obs,checkers_game.obs,checkers_ai.obs,checkers_logic.obs,checkers_draw.obs,checkers_chars.obs,checkers_fx.obs,checkers_music.obs,checkers_audio.obs,checkers.obs -lib sdl2,sdl_game,ai,json,collect -dest checkers.obe
 obr checkers.obe
 ```
 

@@ -38,10 +38,12 @@ a capture or a crowning.
 
 ### Piece sets
 
-Eight sets, all drawn with SDL2 shapes, each with its own board colours. Four are plain
+Ten sets, all drawn with SDL2 shapes, each with its own board colours; the first neo set is
+what you get on a first run. Four are plain
 discs: **Classic** (flat with a rim), **Glossy** (gradient with a highlight), **Engraved**
 (grooved concentric rings) and **Modern** (flat teal against amber), each with a clear crown
-for kings. Four are crazy fun characters, every piece a little creature (`checkers_chars.obs`):
+for kings. Four are crazy fun characters, every piece a little creature, and two are tech-neo
+gadgets (`checkers_chars.obs`):
 
 | Set | Side one | Side two |
 |---|---|---|
@@ -49,6 +51,8 @@ for kings. Four are crazy fun characters, every piece a little creature (`checke
 | **Monsters** | one-eyed purple monsters with horns | square steel robots with an antenna |
 | **Snacks** | pizzas: round, pepperoni | burgers: stacked bun, patty, lettuce |
 | **Space** | suns: yellow with rays | moons: pale, craters, a sleepy cap |
+| **Neo Duck** | rubber-duck debuggers: yellow, a beak that opens, a ladybird on the head | coffee mugs: dark navy, neon cyan rim, steam, a handle |
+| **Neo Glitch** | glitchy pixel ghosts: pale lavender, magenta rim, an RGB-split echo | rebooting robots: charcoal, lime rim, a visor and a turning reload arrow |
 
 The two sides of a pair differ in outline (round and pointy against square, round against
 stacked, rays against craters) and strongly in lightness, so they stay apart for people who
@@ -57,6 +61,19 @@ their ears and antennae, and their faces react to the game: **worried** when the
 captured, **cheering** after a capture, **dizzy** (with stars) while being captured, **winking**
 at a gift, **shaken** in a disaster. A king is the same creature in a cape and a crown. With
 *Animations: off* the faces are still. The recipes are a table of numbers (`CkChars->Recipe`).
+
+**The neo sets** add a look to match: the board is dark glass over a circuit board (traces and
+vias on the playing squares), with a neon frame whose glow is a few translucent strokes under
+a bright one, a hairline grid, faint scanlines and a slow wave of light that sweeps the rows
+about once every four seconds (never faster than 1 Hz, and still when Animations are off or
+Reduced motion is on). Every piece has a soft neon bloom in its outline colour. A king is the
+same gadget with a **neon halo** and a **blinking antenna** (twice a second). A captured
+gadget shows the **blue screen of death** (a sad smiley and lines of error text). The panels
+and buttons are dark glass with a neon edge that glows when pointed at. The two sides differ
+in lightness (yellow against navy, lavender against charcoal) *and* in outline colour and shape,
+so they stay apart without colour vision. The opponent's face has loading-spinner eyes while
+it thinks, and in the neo sets half its one-liners come from tech support ("Have you tried
+turning it off and on again?", "Error 404: your piece was not found.").
 
 ## The ten levels
 
@@ -153,12 +170,19 @@ note, velocity, time) that two back ends can play: a built-in software synthesiz
 Standard MIDI File (format 1, drums on channel 10) that **Save song** writes to your home
 folder.
 
-* **Music style** is a table row (`CkStyle`): **Hip-hop** is boom-bap at 80 to 95 BPM with
+* **Music style** is a table row (`CkStyle`; five styles and Off): **Hip-hop** is boom-bap at 80 to 95 BPM with
   swung sixteenths, a kick/snare/hat pattern with ghost snares and open hats, an 808
   bass on the chord roots, minor-seventh chord stabs and a lead; **Modern beats** is trap
   at 132 to 144 BPM written half-time, a clap on the third beat, rolling hi-hats with
-  occasional triplet bursts, a gliding 808 sub bass, a pad and a plucked arpeggio. **Off**
-  keeps the sound effects only. A third style is one more row.
+  occasional triplet bursts, a gliding 808 sub bass, a pad and a plucked arpeggio; **Reggae**
+  is a one drop (kick and rim shot together on the third beat) at 68 to 80 BPM with a
+  swing, steady hats, skank chords on the offbeats and a bass that walks between root and
+  fifth; **Techno** is four on the floor at 124 to 134 BPM, claps on two and four, offbeat
+  open hats, a pad and an arpeggio; **Classical** has no drums at all: a major scale,
+  quarter-note chords, a bass and a singing lead at 66 to 96 BPM (its calm layer is the
+  keys, not the drums). **Off** keeps the sound effects only. A sixth style is one more row.
+* **Deep bass** (a menu setting, saved with the others) writes the bass line an octave lower
+  at full velocity, and the synthesizer gives a full-velocity bass note a sub-bass boost.
 * **It follows the game.** Drums alone while the position is calm; bass and keys when a
   jump is threatened; the lead and drum fills when the position is tense; a breakdown and a
   key change up a tone when a piece is crowned; an outro for a win or a loss. Captures,
@@ -174,6 +198,40 @@ folder.
   opened the game tries SDL_mixer's MIDI player with an eight-bar file; with no audio
   device at all it runs silently and without an error message. Check
   `obr checkers.obe --demo` prints `audio engine: synthesizer | midi | silent`.
+
+### Measuring the music offline
+
+The music can be rendered with no window and no sound card, so it can be *measured*.
+`checkers_wav.obs` renders eight bars of every style with the deep-bass setting off and on
+and prints, for each, the peak sample, the share of samples at the limit (clipping), the RMS
+(average loudness) and how much of the sound is below 120 Hz (the RMS left after two
+one-pole low-pass filters, a 12 dB per octave slope, divided by the RMS of everything):
+
+```
+obc -src checkers_engine.obs,checkers_music.obs,checkers_wav.obs -dest checkers_wav.obe
+obr checkers_wav.obe                    # the table below
+obr checkers_wav.obe 2 deep reggae.wav  # style 2 (Reggae), deep bass, written as a WAV
+```
+
+| style | deep bass | seconds | peak | clipped | RMS | bass below 120 Hz |
+|---|---|---|---|---|---|---|
+| Hip-hop | off | 21.8 | 1.00 | 0.00% | 0.192 | 71.2% |
+| Hip-hop | on | 21.8 | 1.00 | 0.08% | 0.291 | 87.3% |
+| Modern beats | off | 14.4 | 1.00 | 0.00% | 0.203 | 71.8% |
+| Modern beats | on | 14.4 | 1.00 | 0.05% | 0.305 | 86.3% |
+| Reggae | off | 26.0 | 1.00 | 0.00% | 0.160 | 68.8% |
+| Reggae | on | 26.0 | 1.00 | 0.00% | 0.245 | 87.4% |
+| Techno | off | 15.4 | 1.00 | 0.00% | 0.201 | 73.1% |
+| Techno | on | 15.4 | 1.00 | 0.04% | 0.242 | 84.3% |
+| Classical | off | 21.8 | 0.64 | 0.00% | 0.151 | 69.0% |
+| Classical | on | 21.8 | 0.97 | 0.00% | 0.244 | 88.7% |
+
+Deep bass makes every style louder in the bass (the RMS rises by a half or more and the bass
+share rises by 12 to 20 points) without clipping more than a tenth of a percent of the
+samples; classical has no drums to push its peak above 0.64 without it. The regression test
+makes the same measurements on three bars of every style and fails if deep bass does not add
+low-frequency energy, if more than half a percent of the samples clip, or if techno has less
+bass than classical. The measuring stick is itself tested with a 60 Hz and a 2000 Hz tone.
 
 ## Fun mode (off by default)
 
@@ -211,7 +269,7 @@ on your machine).
 
 ## Checking it without a human
 
-* `obr checkers.obe --screenshot out.png --scene start|play|capture|king|over|ev_zap|ev_gift|ev_quake|ev_wind --set 0-7 --level 1-10`
+* `obr checkers.obe --screenshot out.png --scene start|play|capture|king|over|think|ev_zap|ev_gift|ev_quake|ev_wind --set 0-9 --level 1-10`
   renders one frame (the scene scripted) and exits. `--frame N` picks the frame.
 * `obr checkers.obe --demo [dir]` lets the computer play itself for up to 25 seconds, saves
   a picture every 0.75 s to `dir`, and prints the frame time (about 16 ms with everything
@@ -221,7 +279,7 @@ on your machine).
 
 ### The tests
 
-`programs/regression/checkers_engine.obs` runs about 290 checks in a couple of seconds
+`programs/regression/checkers_engine.obs` runs about 440 checks in a couple of seconds
 with no window and no sound. It is generated from the files in this folder by
 `make_regression_test.py` (the regression runners compile one file per test); CI fails when
 it is stale. It covers:
@@ -239,10 +297,10 @@ it is stale. It covers:
   library `Minimax` and `MonteCarloTreeSearch`, the thinking thread;
 * the window logic (clicks, forced captures, flip, keyboard), the settings file, the
   weights file;
-* the music, for each style: deterministic for a seed, tempo in range, General MIDI drum
+* the music, for each of the five styles: deterministic for a seed, tempo in range, General MIDI drum
   numbers (36 kick, 38 snare, 39 clap, 42 and 46 hats), every pitched note in the scale, the
   layers following the mood, the key change, a Standard MIDI File parsed back (header,
-  tracks, channel 10), identical WAV renders.
+  tracks, channel 10), identical WAV renders, and the offline measurements above.
 
 ## The files
 
@@ -253,9 +311,10 @@ it is stale. It covers:
 | `checkers_ai.obs` | evaluation, alpha-beta search, `GameState` wrapper, the ten levels |
 | `checkers_logic.obs` | clicks and keys as intents, settings, level names, the thinking thread |
 | `checkers_draw.obs` | board, plain piece sets, crowns, buttons, text |
-| `checkers_chars.obs` | the four creature piece sets |
+| `checkers_chars.obs` | the creature and gadget piece sets (critters, monsters, snacks, space, neo duck, neo glitch) |
 | `checkers_fx.obs` | particles, pop-up words, the ten faces, the lists of words |
-| `checkers_music.obs` | style table, Markov chains, note events, MIDI writer, synthesizer, effects |
+| `checkers_music.obs` | style table, Markov chains, note events, MIDI writer, synthesizer, effects, `CkMeasure` |
+| `checkers_wav.obs` | renders and measures the music offline, writes WAV files |
 | `checkers_audio.obs` | playing it: the sound-card queue, MIDI fallback, song export |
 | `checkers.obs` | the window and the main loop |
 | `checkers_train.obs`, `checkers_tournament.obs` | the learner and the level tournament |
