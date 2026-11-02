@@ -109,6 +109,8 @@ class CheckersApp {
   @demo : Bool;
   @demo_dir : String;
   @over_frame : Int;
+  @view : CkView;        # the camera: flat or slanted
+  @view_arg : Int;
   @lay : CkLayout;       # where the panels go, from the window size
   @mlay : CkMenuLayout;  # where the menu's cards, levels and settings go
   @win_w : Int;
@@ -223,7 +225,7 @@ class CheckersApp {
       @win_h := 700;
     };
     @lay := CkLayout->New(@win_w, @win_h);
-    @mlay := CkMenuLayout->New(@lay->W(), @lay->H(), CkChars->SetCount(), 10);
+    @mlay := CkMenuLayout->New(@lay->W(), @lay->H(), CkChars->SetCount(), 11);
 
     @fw := GameFramework->New(Width(), Height(), "Checkers");
     @r := @fw->GetRenderer();
@@ -262,6 +264,10 @@ class CheckersApp {
       @settings->Load(@settings_path);
     };
 
+    if(@view_arg > 0) {
+      @settings->SetView(@view_arg - 1);
+    };
+    MakeView();
     @game := CkGame->New();
     @ctl := CkController->New(@game, @settings->Human(), false);
     @screen := 0;
@@ -359,6 +365,9 @@ class CheckersApp {
           @win_w := dims[0]->ToInt();
           @win_h := dims[1]->ToInt();
         };
+      }
+      else if(a->Equals("--view") & has_next) {
+        @view_arg := args[i + 1]->ToInt() + 1;
       }
       else if(a->Equals("--silent")) {
         @silent := true;
@@ -779,7 +788,7 @@ class CheckersApp {
     };
 
     if(@screen = 1) {
-      sq := CkController->SquareAt(x, y, BoardLeft(), BoardTop(), Size(), @ctl->Flipped());
+      sq := SquareUnder(x, y);
       if(sq >= 0) {
         BoardClick(sq);
       };
@@ -826,6 +835,9 @@ class CheckersApp {
     }
     else if(code = Scancode->SDL_SCANCODE_S) {
       Action(9);
+    }
+    else if(code = Scancode->SDL_SCANCODE_V) {
+      Action(319);
     }
     else if(code = Scancode->SDL_SCANCODE_E) {
       SaveSong();
@@ -901,6 +913,10 @@ class CheckersApp {
     else if(id >= 300 & id < 303) {
       @settings->SetHuman(id - 300);
     }
+    else if(id = 319) {
+      @settings->SetView(1 - @settings->View());
+      MakeView();
+    }
     else if(id = 303) {
       @settings->SetHuman((@settings->Human() + 1) % 3);
     }
@@ -974,6 +990,7 @@ class CheckersApp {
   # ---- drawing ----
 
   method : Draw() ~ Nil {
+    @view->SetShift(@shake_x, @shake_y);
     set := @settings->PieceSet();
     t := CkDraw->Theme(set);
     @r->SetDrawColor(t[9], t[10], t[11], 255);
@@ -1075,7 +1092,9 @@ class CheckersApp {
     Btn(314, OnOff("Sound", @settings->Sound()), rx, m->RowY(6), rw, rh, @settings->Sound());
     Btn(315, "Volume {$@settings->Volume()}%", rx, m->RowY(7), rw, rh, false);
     Btn(316, "Music: " + CkStyle->Name(@settings->MusicStyle()), rx, m->RowY(8), rw, rh, @settings->MusicStyle() < 2);
-    Btn(317, "Save song (.mid)", rx, m->RowY(9), rw, rh, false);
+    views := ["View: flat", "View: slanted"];
+    Btn(319, views[@settings->View()], rx, m->RowY(9), rw, rh, @settings->View() > 0);
+    Btn(317, "Save song (.mid)", rx, m->RowY(10), rw, rh, false);
 
     Btn(320, "Play", m->PlayX(), m->PlayY(), m->PlayW(), m->PlayH(), true);
     Btn(321, "Quit", 18, m->PlayY(), 120, m->PlayH(), false);
@@ -1139,14 +1158,51 @@ class CheckersApp {
 
 
   # centre of a board square on the screen
+  # centre of a board square on the screen, through the camera
   method : CenterX(sq : Int) ~ Int {
-    return BoardLeft() + @shake_x + CkController->ScreenCol(sq, @ctl->Flipped()) * Size() + Size() / 2;
+    sr := CkController->ScreenRow(sq, @ctl->Flipped());
+    sc := CkController->ScreenCol(sq, @ctl->Flipped());
+    return @view->X(sc->As(Float) + 0.5, sr->As(Float) + 0.5);
   }
+
 
 
   method : CenterY(sq : Int) ~ Int {
-    return BoardTop() + @shake_y + CkController->ScreenRow(sq, @ctl->Flipped()) * Size() + Size() / 2;
+    sr := CkController->ScreenRow(sq, @ctl->Flipped());
+    sc := CkController->ScreenCol(sq, @ctl->Flipped());
+    return @view->Y(sc->As(Float) + 0.5, sr->As(Float) + 0.5);
   }
+
+  # the camera for the current view setting and window; made again when either changes
+  method : MakeView() ~ Nil {
+    @view := CkView->New(@settings->View(), BoardLeft(), BoardTop(), Size());
+  }
+
+  # the radius of a piece standing on screen row sr: smaller in the far rows when slanted
+  method : PieceRadius(sr : Int) ~ Int {
+    base := Size() * 38 / 100;
+    r := (base->As(Float) * @view->Ratio(sr->As(Float) + 0.5))->As(Int);
+    if(r < 6) {
+      r := 6;
+    };
+    return r;
+  }
+
+  # the radius of the piece standing on board square sq
+  method : RadAt(sq : Int) ~ Int {
+    return PieceRadius(CkController->ScreenRow(sq, @ctl->Flipped()));
+  }
+
+  # a pixel on the screen -> board square (0..63), or -1 when it is not on the board;
+  # the same camera that drew the board, run backwards
+  method : SquareUnder(x : Int, y : Int) ~ Int {
+    cell := @view->CellAt(x, y);
+    if(cell < 0) {
+      return -1;
+    };
+    return CkController->ScreenToSquare(cell / 8, cell % 8, @ctl->Flipped());
+  }
+
 
 
   method : DrawBoard() ~ Nil {
@@ -1156,8 +1212,14 @@ class CheckersApp {
     top := BoardTop() + @shake_y;
     size := Size();
     flip := @ctl->Flipped();
-    CkDraw->Frame(@r, set, left, top, size);
-    CkDraw->Squares(@r, set, left, top, size);
+    if(@view->Tilted()) {
+      CkDraw->FrameV(@r, set, @view);
+      CkDraw->SquaresV(@r, set, @view);
+    }
+    else {
+      CkDraw->Frame(@r, set, left, top, size);
+      CkDraw->Squares(@r, set, left, top, size);
+    };
 
     # coordinates around the edge
     each(i : 8) {
@@ -1167,8 +1229,9 @@ class CheckersApp {
         file := "abcdefgh"->SubString(7 - i, 1);
         rank := "{$(i + 1)}";
       };
-      @text->Draw(file, left + i * size + size / 2, top + 8 * size + 4, 1, t[12], t[13], t[14], 1);
-      @text->Draw(rank, left - 16, top + i * size + size / 2 - 9, 1, t[12], t[13], t[14], 1);
+      fi := i->As(Float) + 0.5;
+      @text->Draw(file, @view->X(fi, 8.0), @view->Y(fi, 8.0) + 4, 1, t[12], t[13], t[14], 1);
+      @text->Draw(rank, @view->X(-0.25, fi), @view->Y(-0.25, fi) - 9, 1, t[12], t[13], t[14], 1);
     };
 
     # the last move, the picked-up piece, where it may go
@@ -1194,7 +1257,7 @@ class CheckersApp {
       pulse := 120 + (60.0 * (@now->As(Float) / 180.0)->Sin())->As(Int);
       each(sq : 64) {
         if((movable and (1 << sq)) <> 0) {
-          CkDraw->Outline(@r, left, top, size, CkController->ScreenRow(sq, flip), CkController->ScreenCol(sq, flip), 3, 255, 150, 40, pulse);
+          OutlineSquare(sq, 3, 255, 150, 40, pulse);
         };
       };
     };
@@ -1208,26 +1271,50 @@ class CheckersApp {
         if((dest and (1 << sq)) <> 0) {
           cx := CenterX(sq);
           cy := CenterY(sq);
+          unit := (size->As(Float) * @view->Ratio(CkController->ScreenRow(sq, flip)->As(Float) + 0.5))->As(Int);
           if(@game->Legal()->Caps(0) <> 0) {
-            @r->FilledCircleColor(cx, cy, size / 6, Color->New(220, 60, 50, 170));
-            @r->AACircleColor(cx, cy, size / 6, Color->New(120, 20, 20, 220));
+            @r->FilledCircleColor(cx, cy, unit / 6, Color->New(220, 60, 50, 170));
+            @r->AACircleColor(cx, cy, unit / 6, Color->New(120, 20, 20, 220));
           }
           else {
-            @r->FilledCircleColor(cx, cy, size / 8, Color->New(40, 40, 40, 120));
+            @r->FilledCircleColor(cx, cy, unit / 8, Color->New(40, 40, 40, 120));
           };
         };
       };
     };
 
     if(@kbd & @screen = 1) {
-      sq := @ctl->Cursor();
-      CkDraw->Outline(@r, left, top, size, CkController->ScreenRow(sq, flip), CkController->ScreenCol(sq, flip), 3, 255, 255, 255, 200);
+      OutlineSquare(@ctl->Cursor(), 3, 255, 255, 255, 200);
     };
   }
 
+  # a coloured wash over a square, flat or through the camera
   method : TintSquare(sq : Int, red : Int, green : Int, blue : Int, alpha : Int) ~ Nil {
-    CkDraw->Tint(@r, BoardLeft() + @shake_x, BoardTop() + @shake_y, Size(), CkController->ScreenRow(sq, @ctl->Flipped()), CkController->ScreenCol(sq, @ctl->Flipped()), red, green, blue, alpha);
+    sr := CkController->ScreenRow(sq, @ctl->Flipped());
+    sc := CkController->ScreenCol(sq, @ctl->Flipped());
+    if(@view->Tilted()) {
+      CkDraw->Cell(@r, @view, sr, sc, 0.0, red, green, blue, alpha, true);
+    }
+    else {
+      CkDraw->Tint(@r, BoardLeft() + @shake_x, BoardTop() + @shake_y, Size(), sr, sc, red, green, blue, alpha);
+    };
   }
+
+  # the edge of a square, thick pixels wide
+  method : OutlineSquare(sq : Int, thick : Int, red : Int, green : Int, blue : Int, alpha : Int) ~ Nil {
+    sr := CkController->ScreenRow(sq, @ctl->Flipped());
+    sc := CkController->ScreenCol(sq, @ctl->Flipped());
+    if(@view->Tilted()) {
+      each(i : thick) {
+        CkDraw->Cell(@r, @view, sr, sc, 0.02 + 0.03 * i->As(Float), red, green, blue, alpha, false);
+      };
+    }
+    else {
+      CkDraw->Outline(@r, BoardLeft() + @shake_x, BoardTop() + @shake_y, Size(), sr, sc, thick, red, green, blue, alpha);
+    };
+  }
+
+
 
   # pieces, from the top of the screen down so lower pieces overlap higher ones
   method : DrawPieces() ~ Nil {
@@ -1274,7 +1361,7 @@ class CheckersApp {
       hover := @ctl->Cursor();
     }
     else {
-      hover := CkController->SquareAt(@mx, @my, BoardLeft(), BoardTop(), Size(), @ctl->Flipped());
+      hover := SquareUnder(@mx, @my);
     };
     each(sr : 8) {
       each(sc : 8) {
@@ -1453,10 +1540,12 @@ class CheckersApp {
           if(Fx()) {
             idle := @frame + 1;
           };
+          prad := PieceRadius(sr);
+          lift := lift + @view->Raise(prad);
           if(alpha > 0) {
-            CkDraw->PieceX(@r, set, cx, cy, rad, side, king, sx, sy, lift, alpha, crown, mood, idle, sq);
+            CkDraw->PieceX(@r, set, cx, cy, prad, side, king, sx, sy, lift, alpha, crown, mood, idle, sq);
             if(eyes) {
-              DrawEyes(cx, cy - lift, rad, king, blink);
+              DrawEyes(cx, cy - lift, prad, king, blink);
             };
           };
         };
@@ -1600,12 +1689,17 @@ class CheckersApp {
     };
     x := CenterX(a) + ((CenterX(b) - CenterX(a))->As(Float) * e)->As(Int);
     y := CenterY(a) + ((CenterY(b) - CenterY(a))->As(Float) * e)->As(Int);
-    lift := 4;
+    # the piece grows as it travels toward the player when the board is slanted
+    row_a := CkController->ScreenRow(a, @ctl->Flipped());
+    row_b := CkController->ScreenRow(b, @ctl->Flipped());
+    rowf := row_a->As(Float) + (row_b - row_a)->As(Float) * e;
+    rad := ((Size() * 38 / 100)->As(Float) * @view->Ratio(rowf + 0.5))->As(Int);
+    lift := 4 + @view->Raise(rad);
     sx := 1.0;
     sy := 1.0;
     if(Fx()) {
       s := (e * 3.14159)->Sin();
-      lift := (24.0 * s)->As(Int) + 4;
+      lift := (24.0 * s)->As(Int) + 4 + @view->Raise(rad);
       # squash and stretch: crouch before the jump, stretch in the air
       sy := 1.0 + 0.14 * s;
       sx := 1.0 - 0.09 * s;

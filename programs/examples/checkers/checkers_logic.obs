@@ -23,6 +23,7 @@ class CkSettings {
   @volume : Int;        # 0 .. 100
   @music : Int;         # music style: 0 hip-hop, 1 modern beats, 2 off
   @shake : Bool;        # screen shake on
+  @view : Int;          # camera: 0 flat, 1 slanted (see CkView)
 
   New() {
     @piece_set := 0;
@@ -36,6 +37,7 @@ class CkSettings {
     @volume := 70;
     @music := 0;
     @shake := true;
+    @view := 1;
   }
 
   function : SetNames() ~ String[] {
@@ -110,6 +112,14 @@ class CkSettings {
     return @volume;
   }
 
+  method : public : View() ~ Int {
+    return @view;
+  }
+
+  method : public : SetView(v : Int) ~ Nil {
+    @view := Clamp(v, 0, 1);
+  }
+
   method : public : Shake() ~ Bool {
     return @shake;
   }
@@ -166,7 +176,8 @@ class CkSettings {
     text += "  \"sound\": {$@sound},\n";
     text += "  \"volume\": {$@volume},\n";
     text += "  \"music_style\": {$@music},\n";
-    text += "  \"shake\": {$@shake}\n";
+    text += "  \"shake\": {$@shake},\n";
+    text += "  \"view\": {$@view}\n";
     text += "}\n";
     return text;
   }
@@ -191,6 +202,7 @@ class CkSettings {
     SetFun(ReadInt(root, "fun", @fun));
     SetVolume(ReadInt(root, "volume", @volume));
     SetMusicStyle(ReadInt(root, "music_style", @music));
+    SetView(ReadInt(root, "view", @view));
     @flip := ReadBool(root, "flip", @flip);
     @shake := ReadBool(root, "shake", @shake);
     @anim := ReadBool(root, "anim", @anim);
@@ -932,5 +944,144 @@ class CkMenuLayout {
 
   method : public : All() ~ Int[] {
     return @all;
+  }
+}
+
+# The camera. The board is drawn as a flat 8 x 8 grid (mode 0) or as if seen from the
+# near edge at a slant (mode 1): the far rows shrink and crowd together, the near
+# rows grow, like a real board on a table in front of you. It is a plain pinhole
+# camera over a plane tilted by an angle about the horizontal axis:
+#
+#   depth of a point at row offset w from the middle (positive = nearer the player):
+#       z = D - w sin(tilt)         the nearer, the smaller z
+#   screen:  x = cx + S * u * (D / z)         u = column offset from the middle
+#            y = cy + S * w * cos(tilt) * (D / z)
+#
+# With tilt 0 that is just a grid of squares S pixels wide. Because the projection
+# is one formula in one place, drawing (squares, pieces, effects) and mouse picking
+# (Project and Unproject are exact inverses) cannot disagree about where a square is.
+# Board coordinates are those of the SCREEN grid: u is the column 0..8 from the left,
+# v the row 0..8 from the top (the far edge); flipping the board is done before
+# (CkController->ScreenToSquare), so this class never needs to know about it.
+class CkView {
+  @mode : Int;
+  @tilt : Float;
+  @sin : Float;
+  @cos : Float;
+  @dist : Float;
+  @cx : Float;
+  @cy : Float;
+  @s : Float;
+  @size : Int;
+  @sx : Int;
+  @sy : Int;
+
+  # mode 0 flat, 1 slanted; the board fills the area at (left, top) of 8 x 8 squares of size pixels
+  New(mode : Int, left : Int, top : Int, size : Int) {
+    @mode := mode;
+    @size := size;
+    @dist := 13.0;
+    @tilt := 0.0;
+    @sin := 0.0;
+    @cos := 1.0;
+    @s := size->As(Float);
+    @cx := (left + 4 * size)->As(Float);
+    @cy := (top + 4 * size)->As(Float);
+    if(mode = 1) {
+      @tilt := 0.80;
+      @sin := @tilt->Sin();
+      @cos := @tilt->Cos();
+      k_near := @dist / (@dist - 4.0 * @sin);
+      k_far := @dist / (@dist + 4.0 * @sin);
+      # the near edge, with its frame, is about as wide as the flat board and frame
+      @s := size->As(Float) * 0.88 / k_near;
+      # and the whole slanted board sits in the middle of the board area
+      y_far := 0.0 - 4.0 * @s * @cos * k_far;
+      y_near := 4.0 * @s * @cos * k_near;
+      @cy := (top + 4 * size)->As(Float) - (y_far + y_near) / 2.0;
+    };
+  }
+
+  method : public : Mode() ~ Int {
+    return @mode;
+  }
+
+  method : public : Tilted() ~ Bool {
+    return @mode = 1;
+  }
+
+  # shift the whole picture a few pixels (the screen shake)
+  method : public : SetShift(dx : Int, dy : Int) ~ Nil {
+    @sx := dx;
+    @sy := dy;
+  }
+
+  # how much nearer a point at row v is than the middle row: 1.0 in the middle
+  method : public : K(v : Float) ~ Float {
+    w := v - 4.0;
+    return 1.0 / (1.0 - w * @sin / @dist);
+  }
+
+  method : public : FX(u : Float, v : Float) ~ Float {
+    return @cx + @s * (u - 4.0) * K(v) + @sx->As(Float);
+  }
+
+  method : public : FY(u : Float, v : Float) ~ Float {
+    w := v - 4.0;
+    return @cy + @s * w * @cos * K(v) + @sy->As(Float);
+  }
+
+  # the pixel of board point (u, v)
+  method : public : X(u : Float, v : Float) ~ Int {
+    return (FX(u, v) + 0.5)->Floor()->As(Int);
+  }
+
+  method : public : Y(u : Float, v : Float) ~ Int {
+    return (FY(u, v) + 0.5)->Floor()->As(Int);
+  }
+
+  # the size of things standing on row v, compared with the flat board (1.0)
+  method : public : Ratio(v : Float) ~ Float {
+    return @s * K(v) / @size->As(Float);
+  }
+
+  # how far a standing piece of radius rad is lifted off the squares so it reads as a
+  # solid body (the flat board draws it flat on the square)
+  method : public : Raise(rad : Int) ~ Int {
+    if(@mode = 0) {
+      return 0;
+    };
+    return rad * 3 / 10;
+  }
+
+  # the thickness in pixels of the slab the board is cut from, at row v
+  method : public : Thick(v : Float) ~ Int {
+    if(@mode = 0) {
+      return 0;
+    };
+    return (@s * K(v) * 0.22)->As(Int) + 2;
+  }
+
+  # the board point (u, v) under a pixel: the exact inverse of X and Y
+  method : public : UnV(x : Int, y : Int) ~ Float {
+    ys := (y - @sy)->As(Float) - @cy;
+    w := ys / (@s * @cos + ys * @sin / @dist);
+    return w + 4.0;
+  }
+
+  method : public : UnU(x : Int, y : Int) ~ Float {
+    v := UnV(x, y);
+    k := K(v);
+    return ((x - @sx)->As(Float) - @cx) / (@s * k) + 4.0;
+  }
+
+  # the screen square (row * 8 + column, counted from the top-left) under a pixel, or -1
+  method : public : CellAt(x : Int, y : Int) ~ Int {
+    v := UnV(x, y);
+    u := UnU(x, y);
+    if(u < 0.0 | u >= 8.0 | v < 0.0 | v >= 8.0) {
+      return -1;
+    };
+    return v->Floor()->As(Int) * 8 + u->Floor()->As(Int);
   }
 }

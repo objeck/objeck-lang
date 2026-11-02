@@ -450,4 +450,82 @@ class CkDraw {
     r->RoundedBoxColor(x, y, x + w - 1, y + h - 1, 12, Col(t[15], t[16], t[17], 255));
     r->RoundedRectangleColor(x, y, x + w - 1, y + h - 1, 12, Col(255, 255, 255, 36));
   }
+
+  # ---- the board seen through a camera (CkView) ----
+
+  # a square of the board (screen row sr, column sc), shrunk by inset (a fraction of a
+  # square on every side), filled or only outlined, as a polygon through the camera
+  function : Cell(r : Renderer, view : CkView, sr : Int, sc : Int, inset : Float, red : Int, green : Int, blue : Int, alpha : Int, fill : Bool) ~ Nil {
+    u0 := sc->As(Float) + inset;
+    u1 := sc->As(Float) + 1.0 - inset;
+    v0 := sr->As(Float) + inset;
+    v1 := sr->As(Float) + 1.0 - inset;
+    vx := Int->New[4];
+    vy := Int->New[4];
+    vx[0] := view->X(u0, v0);
+    vy[0] := view->Y(u0, v0);
+    vx[1] := view->X(u1, v0);
+    vy[1] := view->Y(u1, v0);
+    vx[2] := view->X(u1, v1);
+    vy[2] := view->Y(u1, v1);
+    vx[3] := view->X(u0, v1);
+    vy[3] := view->Y(u0, v1);
+    if(fill) {
+      r->FilledPolygonColor(vx, vy, Col(red, green, blue, alpha));
+    }
+    else {
+      r->AAPolygonColor(vx, vy, Col(red, green, blue, alpha));
+    };
+  }
+
+  # a rectangle of the board in board coordinates, through the camera
+  function : Region(r : Renderer, view : CkView, u0 : Float, v0 : Float, u1 : Float, v1 : Float, red : Int, green : Int, blue : Int, alpha : Int) ~ Nil {
+    vx := Int->New[4];
+    vy := Int->New[4];
+    vx[0] := view->X(u0, v0);
+    vy[0] := view->Y(u0, v0);
+    vx[1] := view->X(u1, v0);
+    vy[1] := view->Y(u1, v0);
+    vx[2] := view->X(u1, v1);
+    vy[2] := view->Y(u1, v1);
+    vx[3] := view->X(u0, v1);
+    vy[3] := view->Y(u0, v1);
+    r->FilledPolygonColor(vx, vy, Col(red, green, blue, alpha));
+  }
+
+  # the squares: the whole board in the dark colour, then the light squares on it
+  function : SquaresV(r : Renderer, set : Int, view : CkView) ~ Nil {
+    t := Theme(set);
+    Region(r, view, 0.0, 0.0, 8.0, 8.0, t[3], t[4], t[5], 255);
+    each(sr : 8) {
+      each(sc : 8) {
+        if((sr + sc) % 2 = 0) {
+          Cell(r, view, sr, sc, 0.0, t[0], t[1], t[2], 255, true);
+        };
+      };
+    };
+  }
+
+  # the frame round the board and the thickness of the slab it sits on
+  function : FrameV(r : Renderer, set : Int, view : CkView) ~ Nil {
+    t := Theme(set);
+    e := 0.62;
+    th := view->Thick(8.0 + e);
+    vx := Int->New[4];
+    vy := Int->New[4];
+    # the front of the slab, under the near edge
+    vx[0] := view->X(0.0 - e, 8.0 + e);
+    vy[0] := view->Y(0.0 - e, 8.0 + e);
+    vx[1] := view->X(8.0 + e, 8.0 + e);
+    vy[1] := view->Y(8.0 + e, 8.0 + e);
+    vx[2] := vx[1];
+    vy[2] := vy[1] + th;
+    vx[3] := vx[0];
+    vy[3] := vy[0] + th;
+    r->FilledPolygonColor(vx, vy, Col(t[6] / 2, t[7] / 2, t[8] / 2, 255));
+    Region(r, view, 0.0 - e, 0.0 - e, 8.0 + e, 8.0 + e, t[6], t[7], t[8], 255);
+    # a fine dark line round the playing area
+    Region(r, view, -0.04, -0.04, 8.04, 8.04, 0, 0, 0, 110);
+  }
+
 }

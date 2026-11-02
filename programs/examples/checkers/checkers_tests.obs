@@ -45,6 +45,7 @@ class CkTests {
     Weights();
     Music();
     Layouts();
+    Views();
 
     if(@failures = 0) {
       "PASS: checkers ({$@checks} checks)"->PrintLine();
@@ -882,6 +883,86 @@ class CkTests {
       Check(CkLayout->CountOverlaps(menu->All()) = 0, "menu {$w}x{$h}: no two items overlap (card, level, setting, play, quit)");
       Check(CkLayout->CountOutside(menu->All(), w, h) = 0, "menu {$w}x{$h}: every item is inside the window");
     };
+  }
+
+
+  # ---- the camera: flat and slanted ----
+
+  function : Views() ~ Nil {
+    each(mode : 2) {
+      each(shift : 2) {
+        view := CkView->New(mode, 44, 46, 76);
+        if(shift = 1) {
+          view->SetShift(7, -5);
+        };
+        bad := 0;
+        each(sr : 8) {
+          each(sc : 8) {
+            # the centre of every square, projected and then picked, gives the same square
+            x := view->X(sc->As(Float) + 0.5, sr->As(Float) + 0.5);
+            y := view->Y(sc->As(Float) + 0.5, sr->As(Float) + 0.5);
+            if(view->CellAt(x, y) <> sr * 8 + sc) {
+              bad += 1;
+            };
+            # and so do points just inside its four corners
+            each(c : 4) {
+              fu := 0.12;
+              fv := 0.12;
+              if(c % 2 = 1) {
+                fu := 0.88;
+              };
+              if(c >= 2) {
+                fv := 0.88;
+              };
+              cx := view->X(sc->As(Float) + fu, sr->As(Float) + fv);
+              cy := view->Y(sc->As(Float) + fu, sr->As(Float) + fv);
+              if(view->CellAt(cx, cy) <> sr * 8 + sc) {
+                bad += 1;
+              };
+            };
+          };
+        };
+        Check(bad = 0, "view mode {$mode} shift {$shift}: picking inverts the projection on all 64 squares ({$bad} wrong)");
+        Check(view->CellAt(2, 2) = -1 & view->CellAt(1000, 690) = -1, "view mode {$mode}: pixels off the board pick nothing");
+      };
+    };
+
+    flat := CkView->New(0, 44, 46, 76);
+    slant := CkView->New(1, 44, 46, 76);
+    Check(flat->Ratio(0.5) = 1.0 & flat->Ratio(7.5) = 1.0 & flat->Raise(30) = 0, "flat view: every row the same size");
+    Check(slant->Ratio(0.5) < slant->Ratio(7.5) & slant->Raise(30) > 0, "slanted view: far rows are smaller than near rows");
+    far_w := slant->X(8.0, 0.0) - slant->X(0.0, 0.0);
+    near_w := slant->X(8.0, 8.0) - slant->X(0.0, 8.0);
+    Check(far_w > 100 & near_w > far_w, "slanted view: the far edge is narrower ({$far_w} v {$near_w} pixels)");
+    Check(slant->Y(4.0, 0.0) < slant->Y(4.0, 8.0) & slant->Y(4.0, 8.0) - slant->Y(4.0, 0.0) < flat->Y(4.0, 8.0) - flat->Y(4.0, 0.0), "slanted view: the board is foreshortened");
+    # the near row is taller than the far row (perspective), by the same ratio as it is wider
+    near_h := slant->Y(4.0, 8.0) - slant->Y(4.0, 7.0);
+    far_h := slant->Y(4.0, 1.0) - slant->Y(4.0, 0.0);
+    Check(near_h > far_h, "slanted view: near squares are taller ({$near_h} v {$far_h})");
+
+    # flipping the board turns which square is where, in both views
+    ok := true;
+    each(flip : 2) {
+      each(mode : 2) {
+        view := CkView->New(mode, 44, 46, 76);
+        each(sq : 64) {
+          sr := CkController->ScreenRow(sq, flip = 1);
+          sc := CkController->ScreenCol(sq, flip = 1);
+          cell := view->CellAt(view->X(sc->As(Float) + 0.5, sr->As(Float) + 0.5), view->Y(sc->As(Float) + 0.5, sr->As(Float) + 0.5));
+          if(CkController->ScreenToSquare(cell / 8, cell % 8, flip = 1) <> sq) {
+            ok := false;
+          };
+        };
+      };
+    };
+    Check(ok, "views: with the board flipped or not, the square picked is the square drawn");
+
+    s := CkSettings->New();
+    s->SetView(7);
+    Check(s->View() = 1, "settings: a view out of range is clamped");
+    s->SetView(0);
+    t := CkSettings->New();
+    Check(t->FromJson(s->ToJson()) & t->View() = 0, "settings: the view survives a round trip");
   }
 
 }
