@@ -308,10 +308,11 @@ def ask_all(c, uri, text, rng, full, note=lambda what: None, definition=True):
     return {k: json.dumps(v, sort_keys=True) for k, v in got.items()}
 
 
-def session(c, item, edits, seed, note=lambda what: None):
+def session(c, item, edits, seed, note=lambda what: None, step_done=lambda: None):
     """Opens the file, asks, edits and asks again; [(step, answers)].
 
-    note(what) is told each step, for the report of a file that takes long.
+    note(what) is told each step, for the report of a file that takes long, and
+    step_done() is called after each step.
     """
     label, folder, path, original, definition = item
     uri = path_to_uri(path)
@@ -330,6 +331,7 @@ def session(c, item, edits, seed, note=lambda what: None):
     answers.update(ask_all(c, uri, original, random.Random(seed), True,
                            lambda what: note("open: " + what), definition))
     steps.append(("open", answers))
+    step_done()
 
     script = edit_script(random.Random(seed), original, edits)
     ask_rng = random.Random(seed + 1)
@@ -343,6 +345,7 @@ def session(c, item, edits, seed, note=lambda what: None):
         answers = {"diagnostics": json.dumps(diags) if diags is not None else "<no diagnostics>"}
         answers.update(ask_all(c, uri, text, ask_rng, False, lambda what: note(step + ": " + what)))
         steps.append((step, answers))
+        step_done()
 
     c.notify("textDocument/didClose", doc)
     if folder:
@@ -418,18 +421,30 @@ def main():
             began = time.time()
             busy[i] = [label, began, {}]
 
-            # Both servers at once. One after the other, a connection sat idle while
-            # the other server worked, and the VM gives an accepted socket a 30 s
-            # receive timeout: the server read the idle connection as closed and
-            # dropped it, and the client then waited for answers that never came.
+            # Both servers at once, in step. One after the other, a connection sat
+            # idle while the other server worked, and the VM gives an accepted
+            # socket a 30 s receive timeout: the server read the idle connection as
+            # closed and dropped it, and the client then waited for answers that
+            # never came. In step, a connection waits at most one step of the other.
             results = {}
             took = {}
+            in_step = threading.Barrier(2)
+
+            def step_done():
+                try:
+                    in_step.wait(timeout=900)
+                except threading.BrokenBarrierError:
+                    pass
 
             def run(name, server, run_seed):
                 start = time.time()
                 where = busy[i][2]
-                results[name] = session(server.clients[i], item, args.edits, run_seed,
-                                        lambda what: where.__setitem__(name, what))
+                try:
+                    results[name] = session(server.clients[i], item, args.edits, run_seed,
+                                            lambda what: where.__setitem__(name, what), step_done)
+                finally:
+                    # the other session is not left waiting for this one
+                    in_step.abort()
                 took[name] = time.time() - start
             # --control: the cached server gets another edit script
             runs = [threading.Thread(target=run, args=("reference", ref, seed)),
