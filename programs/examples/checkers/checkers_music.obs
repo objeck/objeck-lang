@@ -452,9 +452,13 @@ class CkStyle {
   @glide : Bool;        # the 808 slides down into each note
   @pad : Bool;          # keys as a held pad plus a plucked arpeggio instead of stabs
   @lead_set : Int[];    # scale degrees (0 .. 6) the lead may use
+  @drums : Bool;        # false for a style with no drum kit (classical)
+  @stabs : Int[];       # ticks of the chord stabs in a bar (480 to a beat)
 
   New(index : Int) {
     @scale := [0, 2, 3, 5, 7, 8, 10];
+    @drums := true;
+    @stabs := [0, 720, 1200];
     if(index = 1) {
       @name := "Modern beats";
       @bpm_lo := 132;
@@ -471,6 +475,65 @@ class CkStyle {
       @glide := true;
       @pad := true;
       @lead_set := [0, 2, 3, 4, 6];
+    }
+    else if(index = 2) {
+      # reggae: one drop (kick and rim shot together on the third beat), steady offbeat
+      # skank chords, a bass that walks between root and fifth
+      @name := "Reggae";
+      @bpm_lo := 68;
+      @bpm_hi := 80;
+      @swing := 22;
+      @kick := "........x.......";
+      @snare := "........x.......";
+      @snare_note := 38;
+      @hat := "x.x.x.x.x.x.x.x.";
+      @open := "..............o.";
+      @ghost := "......g.......g.";
+      @rolls := 0;
+      @bass_beats := 2;
+      @glide := false;
+      @pad := false;
+      @lead_set := [0, 2, 4, 6];
+      @stabs := [240, 720, 1200, 1680];
+    }
+    else if(index = 3) {
+      # techno: four on the floor, claps on two and four, hats on the offbeat
+      @name := "Techno";
+      @bpm_lo := 124;
+      @bpm_hi := 134;
+      @swing := 0;
+      @kick := "x...x...x...x...";
+      @snare := "....x.......x...";
+      @snare_note := 39;
+      @hat := "x.x.x.x.x.x.x.x.";
+      @open := "..o...o...o...o.";
+      @ghost := "................";
+      @rolls := 0;
+      @bass_beats := 1;
+      @glide := false;
+      @pad := true;
+      @lead_set := [0, 2, 3, 4, 6];
+    }
+    else if(index = 4) {
+      # classical: no drums, a major scale, chords as quarter notes, a singing lead
+      @name := "Classical";
+      @bpm_lo := 66;
+      @bpm_hi := 96;
+      @swing := 0;
+      @kick := "................";
+      @snare := "................";
+      @snare_note := 38;
+      @hat := "................";
+      @open := "................";
+      @ghost := "................";
+      @rolls := 0;
+      @bass_beats := 2;
+      @glide := false;
+      @pad := false;
+      @scale := [0, 2, 4, 5, 7, 9, 11];
+      @lead_set := [0, 1, 2, 3, 4, 5, 6];
+      @drums := false;
+      @stabs := [0, 480, 960, 1440];
     }
     else {
       @name := "Hip-hop";
@@ -493,15 +556,28 @@ class CkStyle {
 
   # the number of styles in the table, the last of which (Off) makes no sound
   function : Count() ~ Int {
-    return 3;
+    return 6;
+  }
+
+  # the number of the style that makes no sound
+  function : OffIndex() ~ Int {
+    return 5;
   }
 
   function : Name(index : Int) ~ String {
-    names := ["Hip-hop", "Modern beats", "Off"];
-    if(index < 0 | index > 2) {
+    names := ["Hip-hop", "Modern beats", "Reggae", "Techno", "Classical", "Off"];
+    if(index < 0 | index > 5) {
       return "Off";
     };
     return names[index];
+  }
+
+  method : public : HasDrums() ~ Bool {
+    return @drums;
+  }
+
+  method : public : Stabs() ~ Int[] {
+    return @stabs;
   }
 
   method : public : Title() ~ String {
@@ -583,6 +659,7 @@ class CkBeat {
   @motif_len : Int[];   # and the length of each note in sixteenths
   @bars : Int;
   @transposed : Int;    # semitones the key has been moved up by crownings
+  @deep : Bool;         # the deep-bass setting: bass an octave lower, at full level
 
   New(style : CkStyle, seed : Int) {
     @style := style;
@@ -598,6 +675,10 @@ class CkBeat {
 
   method : public : Style() ~ CkStyle {
     return @style;
+  }
+
+  method : public : SetDeep(on : Bool) ~ Nil {
+    @deep := on;
   }
 
   method : public : Melody() ~ CkMarkov {
@@ -667,14 +748,18 @@ class CkBeat {
   }
 
   # what plays: bit 1 drums, 2 bass, 4 keys, 8 lead, 16 fill, 32 breakdown, 64 outro
-  function : Layers(mood : Int, intensity : Float, bar : Int) ~ Int {
+  method : Layers(mood : Int, intensity : Float, bar : Int) ~ Int {
     if(mood = 2 | mood = 3) {
       return 1 or 2 or 4 or 64;
     };
     if(mood = 4) {
       return 4 or 8 or 32;
     };
+    # the first layer is the drums; a style with no drums (classical) starts with the keys
     layers := 1;
+    if(<>@style->HasDrums()) {
+      layers := 4;
+    };
     if(mood = 1 | intensity > 0.35) {
       layers := layers or 2 or 4;
     };
@@ -787,11 +872,23 @@ class CkBeat {
   # an 808-style bass: long notes on the chord root, sliding in when the style says so
   method : Bass(song : CkSong, layers : Int) ~ Nil {
     beats := @style->BassBeats();
-    root := Pitch(@chord, 0);
-    song->Add(0, beats * 480 - 20, 1, root, 118);
+    octave := 0;
+    vel := 118;
+    if(@deep) {
+      # deep bass: an octave lower and as loud as MIDI goes
+      octave := -1;
+      vel := 127;
+    };
+    root := Pitch(@chord, octave);
+    song->Add(0, beats * 480 - 20, 1, root, vel);
     if((layers and 64) = 0) {
-      fifth := Pitch((@chord + 4) % 7, 0);
-      song->Add(beats * 480, (4 - beats) * 480 - 20, 1, fifth, 100);
+      fifth := Pitch((@chord + 4) % 7, octave);
+      t := beats * 480;
+      while(t < 1920) {
+        len := Int->Min(beats * 480, 1920 - t);
+        song->Add(t, len - 20, 1, fifth, vel - 18);
+        t += beats * 480;
+      };
     };
   }
 
@@ -812,11 +909,11 @@ class CkBeat {
       };
     }
     else {
-      stabs := [0, 720, 1200];
+      stabs := @style->Stabs();
       if((layers and 32) <> 0) {
         stabs := [0, 960, 1440];
       };
-      each(k : 3) {
+      each(k : stabs->Size()) {
         each(i : 4) {
           song->Add(stabs[k], 220, 2, notes[i], 78 - k * 6);
         };
@@ -1154,7 +1251,12 @@ class CkSynth {
       if(env < 0.0) {
         env := 0.0;
       };
-      return wave * env * attack * loud * 0.9;
+      # a bass note at full velocity (the deep-bass setting writes them) gets a sub-bass boost
+      boost := 0.9;
+      if(vel >= 127) {
+        boost := 1.7;
+      };
+      return wave * env * attack * loud * boost;
     };
     if(track = 2) {
       # electric piano: a sine with a bell-like second partial that dies quickly
@@ -1242,6 +1344,69 @@ class CkSynth {
       out[i] := v;
     };
     return out;
+  }
+}
+
+# Measuring rendered audio offline, with no sound card: how loud it is, how much of it
+# is deep bass, and how loud its loudest moment is.
+class CkMeasure {
+  function : Peak(samples : Float[]) ~ Float {
+    peak := 0.0;
+    each(i : samples->Size()) {
+      v := samples[i];
+      if(v < 0.0) {
+        v := 0.0 - v;
+      };
+      if(v > peak) {
+        peak := v;
+      };
+    };
+    return peak;
+  }
+
+  # the share of samples (0 .. 1) at the limit of -1 .. 1: those were cut off, which is
+  # what clipping sounds like
+  function : Clipped(samples : Float[]) ~ Float {
+    if(samples->Size() = 0) {
+      return 0.0;
+    };
+    n := 0;
+    each(i : samples->Size()) {
+      if(samples[i] >= 0.999 | samples[i] <= -0.999) {
+        n += 1;
+      };
+    };
+    return n->As(Float) / samples->Size()->As(Float);
+  }
+
+  # root mean square: the average loudness
+  function : Rms(samples : Float[]) ~ Float {
+    if(samples->Size() = 0) {
+      return 0.0;
+    };
+    total := 0.0;
+    each(i : samples->Size()) {
+      total += samples[i] * samples[i];
+    };
+    return (total / samples->Size()->As(Float))->Sqrt();
+  }
+
+  # the RMS of what is left below cutoff Hz, after two one-pole low-pass filters
+  # in a row (12 dB per octave): the loudness of the bass
+  function : LowRms(samples : Float[], rate : Int, cutoff : Float) ~ Float {
+    if(samples->Size() = 0) {
+      return 0.0;
+    };
+    a := 1.0 - (-2.0 * Float->Pi() * cutoff / rate->As(Float))->Exp();
+    one := 0.0;
+    two := 0.0;
+    total := 0.0;
+    each(i : samples->Size()) {
+      one += a * (samples[i] - one);
+      two += a * (one - two);
+      total += two * two;
+    };
+    return (total / samples->Size()->As(Float))->Sqrt();
   }
 }
 

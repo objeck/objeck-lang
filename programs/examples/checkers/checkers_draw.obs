@@ -134,12 +134,21 @@ class CkText {
 
 # The look of the game: palettes, the four piece sets, crowns, buttons.
 class CkDraw {
+  @pulse : static : Int;
+
   # ---- palettes ----
 
   # colours of a board theme, three numbers each (red, green, blue):
   # 0 light square, 1 dark square, 2 frame, 3 backdrop, 4 frame labels,
   # 5 panel, 6 accent
   function : Theme(set : Int) ~ Int[] {
+    if(set = 8) {
+      # glassy dark squares over a circuit board: cyan neon trim
+      return [44, 66, 108,  8, 14, 30,  8, 12, 24,  4, 6, 14,  110, 230, 255,  14, 24, 44,  40, 240, 255];
+    };
+    if(set = 9) {
+      return [62, 42, 108,  12, 8, 30,  12, 8, 28,  6, 4, 16,  255, 130, 230,  24, 16, 48,  255, 60, 210];
+    };
     if(set = 4) {
       return [250, 240, 214,  150, 190, 110,  70, 110, 50,  26, 40, 22,  214, 232, 180,  48, 74, 38,  255, 180, 70];
     };
@@ -426,23 +435,287 @@ class CkDraw {
       bb := Mix(fb, bg_b, 0.55);
     };
     r->RoundedBoxColor(x, y, x + w - 1, y + h - 1, 8, Col(br, bgc, bb, 255));
+    if(set >= 8) {
+      # neon buttons: the rim glows when pointed at, the chosen one is lit
+      if(hover & enabled) {
+        r->RoundedRectangleColor(x - 1, y - 1, x + w, y + h, 9, Col(fr, fg, fb, 70));
+        r->RoundedRectangleColor(x - 2, y - 2, x + w + 1, y + h + 1, 10, Col(fr, fg, fb, 30));
+      };
+      if(active) {
+        r->RoundedBoxColor(x + 1, y + 1, x + w - 2, y + h - 2, 8, Col(fr, fg, fb, 50));
+      };
+    };
     if(active) {
       r->RoundedRectangleColor(x, y, x + w - 1, y + h - 1, 8, Col(fr, fg, fb, 255));
     }
     else {
       r->RoundedRectangleColor(x, y, x + w - 1, y + h - 1, 8, Col(255, 255, 255, 40));
     };
+    # a long caption drops to the smaller font rather than spill out of the button
+    size := 2;
+    if(text->Width(caption, 2) > w - 12) {
+      size := 1;
+    };
     if(enabled) {
-      text->Draw(caption, x + w / 2, y + h / 2 - 11, 2, 245, 245, 245, 1);
+      text->Draw(caption, x + w / 2, y + h / 2 - 3 - size * 4, size, 245, 245, 245, 1);
     }
     else {
-      text->Draw(caption, x + w / 2, y + h / 2 - 11, 2, 120, 120, 120, 1);
+      text->Draw(caption, x + w / 2, y + h / 2 - 3 - size * 4, size, 120, 120, 120, 1);
+    };
+  }
+
+  # the body and rim colours of a side's piece, for little icons: 6 numbers
+  function : SideColors(set : Int, side : Int) ~ Int[] {
+    out := Int->New[6];
+    if(set >= 4) {
+      rc := CkChars->Recipe(set, side);
+      each(i : 6) {
+        out[i] := rc[i];
+      };
+      return out;
+    };
+    pc := PieceColors(set, side);
+    each(i : 6) {
+      out[i] := pc[i];
+    };
+    return out;
+  }
+
+  # a tray of twelve little discs for one side: those it has captured are filled
+  function : Tray(r : Renderer, set : Int, x : Int, y : Int, w : Int, taken : Int, side : Int) ~ Nil {
+    c := SideColors(set, side);
+    pip := w / 24;
+    if(pip > 7) {
+      pip := 7;
+    };
+    if(pip < 3) {
+      pip := 3;
+    };
+    each(i : 12) {
+      px := x + pip + i * (w - pip * 2) / 11;
+      if(i < taken) {
+        r->FilledCircleColor(px, y, pip, Col(c[3], c[4], c[5], 255));
+        r->FilledCircleColor(px, y, pip - 1, Col(c[0], c[1], c[2], 255));
+      }
+      else {
+        r->AACircleColor(px, y, pip, Col(c[0], c[1], c[2], 90));
+      };
     };
   }
 
   function : Panel(r : Renderer, x : Int, y : Int, w : Int, h : Int, set : Int) ~ Nil {
     t := Theme(set);
+    if(set >= 8) {
+      # dark glass: a faint wash on the top half, a hairline neon edge and a soft glow
+      r->RoundedBoxColor(x, y, x + w - 1, y + h - 1, 12, Col(t[15], t[16], t[17], 255));
+      r->RoundedBoxColor(x + 3, y + 2, x + w - 4, y + Int->Min(h / 3, 7), 4, Col(255, 255, 255, 12));
+      r->RoundedRectangleColor(x - 1, y - 1, x + w, y + h, 13, Col(t[18], t[19], t[20], 40));
+      r->RoundedRectangleColor(x, y, x + w - 1, y + h - 1, 12, Col(t[18], t[19], t[20], 130));
+      return;
+    };
     r->RoundedBoxColor(x, y, x + w - 1, y + h - 1, 12, Col(t[15], t[16], t[17], 255));
     r->RoundedRectangleColor(x, y, x + w - 1, y + h - 1, 12, Col(255, 255, 255, 36));
   }
+
+  # ---- the board seen through a camera (CkView) ----
+
+  # a square of the board (screen row sr, column sc), shrunk by inset (a fraction of a
+  # square on every side), filled or only outlined, as a polygon through the camera
+  function : Cell(r : Renderer, view : CkView, sr : Int, sc : Int, inset : Float, red : Int, green : Int, blue : Int, alpha : Int, fill : Bool) ~ Nil {
+    u0 := sc->As(Float) + inset;
+    u1 := sc->As(Float) + 1.0 - inset;
+    v0 := sr->As(Float) + inset;
+    v1 := sr->As(Float) + 1.0 - inset;
+    vx := Int->New[4];
+    vy := Int->New[4];
+    vx[0] := view->X(u0, v0);
+    vy[0] := view->Y(u0, v0);
+    vx[1] := view->X(u1, v0);
+    vy[1] := view->Y(u1, v0);
+    vx[2] := view->X(u1, v1);
+    vy[2] := view->Y(u1, v1);
+    vx[3] := view->X(u0, v1);
+    vy[3] := view->Y(u0, v1);
+    if(fill) {
+      r->FilledPolygonColor(vx, vy, Col(red, green, blue, alpha));
+    }
+    else {
+      r->AAPolygonColor(vx, vy, Col(red, green, blue, alpha));
+    };
+  }
+
+  # a rectangle of the board in board coordinates, through the camera
+  function : Region(r : Renderer, view : CkView, u0 : Float, v0 : Float, u1 : Float, v1 : Float, red : Int, green : Int, blue : Int, alpha : Int) ~ Nil {
+    vx := Int->New[4];
+    vy := Int->New[4];
+    vx[0] := view->X(u0, v0);
+    vy[0] := view->Y(u0, v0);
+    vx[1] := view->X(u1, v0);
+    vy[1] := view->Y(u1, v0);
+    vx[2] := view->X(u1, v1);
+    vy[2] := view->Y(u1, v1);
+    vx[3] := view->X(u0, v1);
+    vy[3] := view->Y(u0, v1);
+    r->FilledPolygonColor(vx, vy, Col(red, green, blue, alpha));
+  }
+
+
+  # ---- the tech-neo boards (sets 8 and 9): dark glass over a circuit board ----
+
+  # the time, in milliseconds, that the grid pulse runs on; 0 stops it (still boards)
+  function : SetPulse(ms : Int) ~ Nil {
+    @pulse := ms;
+  }
+
+  # is this one of the neon sets?
+  function : IsNeo(set : Int) ~ Bool {
+    return set >= 8;
+  }
+
+  # a line between two points of the board, in board coordinates, through the camera
+  function : BoardLine(r : Renderer, view : CkView, u0 : Float, v0 : Float, u1 : Float, v1 : Float, thick : Int, col : Color) ~ Nil {
+    r->ThickLineColor(view->X(u0, v0), view->Y(u0, v0), view->X(u1, v1), view->Y(u1, v1), thick, col);
+  }
+
+  # a rectangle of the board in neon: wide faint strokes under narrower bright ones, a bloom
+  function : NeonRect(r : Renderer, view : CkView, u0 : Float, v0 : Float, u1 : Float, v1 : Float, red : Int, green : Int, blue : Int, alpha : Int) ~ Nil {
+    each(k : 4) {
+      th := 9 - k * 2;
+      a := alpha * (12 + k * 22) / 255;
+      if(k = 3) {
+        a := alpha;
+        th := 1;
+      };
+      BoardLine(r, view, u0, v0, u1, v0, th, Col(red, green, blue, a));
+      BoardLine(r, view, u1, v0, u1, v1, th, Col(red, green, blue, a));
+      BoardLine(r, view, u1, v1, u0, v1, th, Col(red, green, blue, a));
+      BoardLine(r, view, u0, v1, u0, v0, th, Col(red, green, blue, a));
+    };
+  }
+
+  # the squares: glassy navy for the unused squares, a circuit board for the playing ones,
+  # a grid of neon hairlines, faint scanlines, and a slow wave of light that sweeps the rows
+  function : NeoSquares(r : Renderer, set : Int, view : CkView) ~ Nil {
+    t := Theme(set);
+    Region(r, view, 0.0, 0.0, 8.0, 8.0, t[3], t[4], t[5], 255);
+    each(sr : 8) {
+      each(sc : 8) {
+        if((sr + sc) % 2 = 0) {
+          # unused squares: smoked glass with a sheen along the top edge
+          Cell(r, view, sr, sc, 0.0, t[0], t[1], t[2], 255, true);
+          Cell(r, view, sr, sc, 0.06, t[0] + 10, t[1] + 12, t[2] + 18, 90, true);
+        }
+        else {
+          # playing squares: a few traces and a via, never the same two squares alike
+          Cell(r, view, sr, sc, 0.0, t[3] + 4, t[4] + 8, t[5] + 14, 255, true);
+          h := (sr * 7 + sc * 13) % 5;
+          u := sc->As(Float);
+          v := sr->As(Float);
+          trace := Col(t[18], t[19], t[20], 46);
+          if(h = 0) {
+            BoardLine(r, view, u + 0.15, v + 0.5, u + 0.55, v + 0.5, 2, trace);
+            BoardLine(r, view, u + 0.55, v + 0.5, u + 0.55, v + 0.85, 2, trace);
+            r->FilledCircleColor(view->X(u + 0.55, v + 0.85), view->Y(u + 0.55, v + 0.85), 3, Col(t[18], t[19], t[20], 70));
+          }
+          else if(h = 1) {
+            BoardLine(r, view, u + 0.5, v + 0.15, u + 0.5, v + 0.5, 2, trace);
+            BoardLine(r, view, u + 0.5, v + 0.5, u + 0.85, v + 0.5, 2, trace);
+            r->FilledCircleColor(view->X(u + 0.85, v + 0.5), view->Y(u + 0.85, v + 0.5), 3, Col(t[18], t[19], t[20], 70));
+          }
+          else if(h = 2) {
+            BoardLine(r, view, u + 0.2, v + 0.8, u + 0.5, v + 0.5, 2, trace);
+            BoardLine(r, view, u + 0.5, v + 0.5, u + 0.8, v + 0.8, 2, trace);
+          }
+          else if(h = 3) {
+            BoardLine(r, view, u + 0.15, v + 0.3, u + 0.85, v + 0.3, 2, trace);
+            r->FilledCircleColor(view->X(u + 0.15, v + 0.3), view->Y(u + 0.15, v + 0.3), 3, Col(t[18], t[19], t[20], 70));
+          };
+          # the wave of light: slow (a swell every four seconds or so), never a flash
+          if(@pulse > 0) {
+            wave := ((@pulse->As(Float) / 640.0) - sr->As(Float) * 0.7)->Sin();
+            if(wave > 0.0) {
+              Cell(r, view, sr, sc, 0.0, t[18], t[19], t[20], (22.0 * wave)->As(Int), true);
+            };
+          };
+        };
+      };
+    };
+    # the grid: a neon hairline between the squares
+    each(k : 9) {
+      g := k->As(Float);
+      BoardLine(r, view, 0.0, g, 8.0, g, 1, Col(t[18], t[19], t[20], 40));
+      BoardLine(r, view, g, 0.0, g, 8.0, 1, Col(t[18], t[19], t[20], 40));
+    };
+    # scanlines: faint dark lines, four to a square
+    each(i : 32) {
+      v := i->As(Float) / 4.0;
+      r->LineColor(view->X(0.0, v), view->Y(0.0, v), view->X(8.0, v), view->Y(8.0, v), Col(0, 0, 0, 22));
+    };
+  }
+
+  # the frame: a dark slab with a neon edge, brighter at the playing area
+  function : NeoFrame(r : Renderer, set : Int, view : CkView) ~ Nil {
+    t := Theme(set);
+    e := 0.62;
+    th := view->Thick(8.0 + e);
+    vx := Int->New[4];
+    vy := Int->New[4];
+    vx[0] := view->X(0.0 - e, 8.0 + e);
+    vy[0] := view->Y(0.0 - e, 8.0 + e);
+    vx[1] := view->X(8.0 + e, 8.0 + e);
+    vy[1] := view->Y(8.0 + e, 8.0 + e);
+    vx[2] := vx[1];
+    vy[2] := vy[1] + th;
+    vx[3] := vx[0];
+    vy[3] := vy[0] + th;
+    r->FilledPolygonColor(vx, vy, Col(t[6] / 2, t[7] / 2, t[8] / 2, 255));
+    r->AAPolygonColor(vx, vy, Col(t[18], t[19], t[20], 120));
+    Region(r, view, 0.0 - e, 0.0 - e, 8.0 + e, 8.0 + e, t[6], t[7], t[8], 255);
+    NeonRect(r, view, 0.0 - e, 0.0 - e, 8.0 + e, 8.0 + e, t[18], t[19], t[20], 200);
+    NeonRect(r, view, -0.04, -0.04, 8.04, 8.04, t[18], t[19], t[20], 255);
+  }
+
+  # the squares: the whole board in the dark colour, then the light squares on it
+  function : SquaresV(r : Renderer, set : Int, view : CkView) ~ Nil {
+    if(set >= 8) {
+      NeoSquares(r, set, view);
+      return;
+    };
+    t := Theme(set);
+    Region(r, view, 0.0, 0.0, 8.0, 8.0, t[3], t[4], t[5], 255);
+    each(sr : 8) {
+      each(sc : 8) {
+        if((sr + sc) % 2 = 0) {
+          Cell(r, view, sr, sc, 0.0, t[0], t[1], t[2], 255, true);
+        };
+      };
+    };
+  }
+
+  # the frame round the board and the thickness of the slab it sits on
+  function : FrameV(r : Renderer, set : Int, view : CkView) ~ Nil {
+    if(set >= 8) {
+      NeoFrame(r, set, view);
+      return;
+    };
+    t := Theme(set);
+    e := 0.62;
+    th := view->Thick(8.0 + e);
+    vx := Int->New[4];
+    vy := Int->New[4];
+    # the front of the slab, under the near edge
+    vx[0] := view->X(0.0 - e, 8.0 + e);
+    vy[0] := view->Y(0.0 - e, 8.0 + e);
+    vx[1] := view->X(8.0 + e, 8.0 + e);
+    vy[1] := view->Y(8.0 + e, 8.0 + e);
+    vx[2] := vx[1];
+    vy[2] := vy[1] + th;
+    vx[3] := vx[0];
+    vy[3] := vy[0] + th;
+    r->FilledPolygonColor(vx, vy, Col(t[6] / 2, t[7] / 2, t[8] / 2, 255));
+    Region(r, view, 0.0 - e, 0.0 - e, 8.0 + e, 8.0 + e, t[6], t[7], t[8], 255);
+    # a fine dark line round the playing area
+    Region(r, view, -0.04, -0.04, 8.04, 8.04, 0, 0, 0, 110);
+  }
+
 }

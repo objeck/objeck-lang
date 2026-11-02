@@ -2118,9 +2118,11 @@ class CkSettings {
   @volume : Int;        # 0 .. 100
   @music : Int;         # music style: 0 hip-hop, 1 modern beats, 2 off
   @shake : Bool;        # screen shake on
+  @view : Int;          # camera: 0 flat, 1 slanted (see CkView)
+  @deep : Bool;         # deep bass: the bass line an octave lower and louder
 
   New() {
-    @piece_set := 0;
+    @piece_set := 8;
     @level := 4;
     @human := 0;
     @flip := false;
@@ -2131,10 +2133,11 @@ class CkSettings {
     @volume := 70;
     @music := 0;
     @shake := true;
+    @view := 1;
   }
 
   function : SetNames() ~ String[] {
-    return ["Classic", "Glossy", "Engraved", "Modern", "Critters", "Monsters", "Snacks", "Space"];
+    return ["Classic", "Glossy", "Engraved", "Modern", "Critters", "Monsters", "Snacks", "Space", "Neo Duck", "Neo Glitch"];
   }
 
   method : public : PieceSet() ~ Int {
@@ -2142,7 +2145,7 @@ class CkSettings {
   }
 
   method : public : SetPieceSet(v : Int) ~ Nil {
-    @piece_set := Clamp(v, 0, 7);
+    @piece_set := Clamp(v, 0, 9);
   }
 
   method : public : Level() ~ Int {
@@ -2205,6 +2208,14 @@ class CkSettings {
     return @volume;
   }
 
+  method : public : View() ~ Int {
+    return @view;
+  }
+
+  method : public : SetView(v : Int) ~ Nil {
+    @view := Clamp(v, 0, 1);
+  }
+
   method : public : Shake() ~ Bool {
     return @shake;
   }
@@ -2213,12 +2224,20 @@ class CkSettings {
     @shake := v;
   }
 
+  method : public : DeepBass() ~ Bool {
+    return @deep;
+  }
+
+  method : public : SetDeepBass(v : Bool) ~ Nil {
+    @deep := v;
+  }
+
   method : public : MusicStyle() ~ Int {
     return @music;
   }
 
   method : public : SetMusicStyle(v : Int) ~ Nil {
-    @music := Clamp(v, 0, 2);
+    @music := Clamp(v, 0, 5);
   }
 
   method : public : SetVolume(v : Int) ~ Nil {
@@ -2261,7 +2280,9 @@ class CkSettings {
     text += "  \"sound\": {$@sound},\n";
     text += "  \"volume\": {$@volume},\n";
     text += "  \"music_style\": {$@music},\n";
-    text += "  \"shake\": {$@shake}\n";
+    text += "  \"deep_bass\": {$@deep},\n";
+    text += "  \"shake\": {$@shake},\n";
+    text += "  \"view\": {$@view}\n";
     text += "}\n";
     return text;
   }
@@ -2286,6 +2307,8 @@ class CkSettings {
     SetFun(ReadInt(root, "fun", @fun));
     SetVolume(ReadInt(root, "volume", @volume));
     SetMusicStyle(ReadInt(root, "music_style", @music));
+    @deep := ReadBool(root, "deep_bass", @deep);
+    SetView(ReadInt(root, "view", @view));
     @flip := ReadBool(root, "flip", @flip);
     @shake := ReadBool(root, "shake", @shake);
     @anim := ReadBool(root, "anim", @anim);
@@ -2608,6 +2631,567 @@ class CkThinker from System.Concurrency.Thread {
 
   method : public : Nodes() ~ Int {
     return @player->Nodes();
+  }
+}
+
+# Where everything goes, worked out in ONE place from the window size so that no two
+# panels can overlap (the old window hard-coded each position and the speech bubble
+# ended up on top of the "your move" panel). Every rectangle is x, y, width, height.
+# This class has no graphics in it, so the regression test checks that, at several
+# window sizes, no two panels overlap and all of them stay inside the window.
+class CkLayout {
+  @w : Int;
+  @h : Int;
+  @sq : Int;           # side of one board square in pixels
+  @bx : Int;           # top-left corner of the board squares
+  @by : Int;
+  @rects : Int[];      # frame, card, bubble, turn, trays, moves, buttons: 4 numbers each
+
+  # the parts of the game screen
+  function : Frame() ~ Int {
+    return 0;
+  }
+
+  function : Card() ~ Int {
+    return 1;
+  }
+
+  function : Bubble() ~ Int {
+    return 2;
+  }
+
+  function : Turn() ~ Int {
+    return 3;
+  }
+
+  function : Trays() ~ Int {
+    return 4;
+  }
+
+  function : Moves() ~ Int {
+    return 5;
+  }
+
+  function : Buttons() ~ Int {
+    return 6;
+  }
+
+  function : Parts() ~ Int {
+    return 7;
+  }
+
+  # the smallest window the layout is designed for
+  function : MinWidth() ~ Int {
+    return 800;
+  }
+
+  function : MinHeight() ~ Int {
+    return 560;
+  }
+
+  New(w : Int, h : Int) {
+    if(w < MinWidth()) {
+      w := MinWidth();
+    };
+    if(h < MinHeight()) {
+      h := MinHeight();
+    };
+    @w := w;
+    @h := h;
+    @rects := Int->New[28];
+
+    # the board takes the height it can, but leaves 290 pixels for the panel column
+    margin := 14;
+    pad := 24;
+    sq := (h - 2 * margin - 2 * pad) / 8;
+    by_width := (w - 290 - 3 * margin - 2 * pad) / 8;
+    if(by_width < sq) {
+      sq := by_width;
+    };
+    @sq := sq;
+    side := 8 * sq + 2 * pad;
+    fy := (h - side) / 2;
+    Set(Frame(), margin, fy, side, side);
+    @bx := margin + pad;
+    @by := fy + pad;
+
+    # the panel column fills the rest of the width
+    px := margin + side + margin;
+    pw := w - px - margin;
+    gap := 8;
+    card := 112;
+    bubble := 52;
+    turn := 54;
+    trays := 54;
+    rows := 4;
+    bh := 36;
+    if(h < 640) {
+      card := 92;
+      bubble := 46;
+      turn := 44;
+      trays := 46;
+      bh := 30;
+    };
+    buttons := rows * bh + (rows - 1) * 6;
+    y := margin;
+    Set(Card(), px, y, pw, card);
+    y += card + gap;
+    Set(Bubble(), px, y, pw, bubble);
+    y += bubble + gap;
+    Set(Turn(), px, y, pw, turn);
+    y += turn + gap;
+    Set(Trays(), px, y, pw, trays);
+    y += trays + gap;
+    moves := h - margin - buttons - gap - y;
+    Set(Moves(), px, y, pw, moves);
+    y += moves + gap;
+    Set(Buttons(), px, y, pw, buttons);
+  }
+
+  method : Set(part : Int, x : Int, y : Int, w : Int, h : Int) ~ Nil {
+    @rects[part * 4] := x;
+    @rects[part * 4 + 1] := y;
+    @rects[part * 4 + 2] := w;
+    @rects[part * 4 + 3] := h;
+  }
+
+  method : public : W() ~ Int {
+    return @w;
+  }
+
+  method : public : H() ~ Int {
+    return @h;
+  }
+
+  method : public : Square() ~ Int {
+    return @sq;
+  }
+
+  method : public : BoardLeft() ~ Int {
+    return @bx;
+  }
+
+  method : public : BoardTop() ~ Int {
+    return @by;
+  }
+
+  method : public : X(part : Int) ~ Int {
+    return @rects[part * 4];
+  }
+
+  method : public : Y(part : Int) ~ Int {
+    return @rects[part * 4 + 1];
+  }
+
+  method : public : PW(part : Int) ~ Int {
+    return @rects[part * 4 + 2];
+  }
+
+  method : public : PH(part : Int) ~ Int {
+    return @rects[part * 4 + 3];
+  }
+
+  # do two rectangles (x, y, w, h each, at offsets a and b of list) overlap?
+  function : Overlap(list : Int[], a : Int, b : Int) ~ Bool {
+    return list[a] < list[b] + list[b + 2] & list[b] < list[a] + list[a + 2] &
+      list[a + 1] < list[b + 1] + list[b + 3] & list[b + 1] < list[a + 1] + list[a + 3];
+  }
+
+  # how many pairs of rectangles in list (4 numbers each) overlap
+  function : CountOverlaps(list : Int[]) ~ Int {
+    n := list->Size() / 4;
+    found := 0;
+    each(i : n) {
+      for(j := i + 1; j < n; j += 1;) {
+        if(Overlap(list, i * 4, j * 4)) {
+          found += 1;
+        };
+      };
+    };
+    return found;
+  }
+
+  # how many rectangles in list are not entirely inside a w x h window, or too small to use
+  function : CountOutside(list : Int[], w : Int, h : Int) ~ Int {
+    n := list->Size() / 4;
+    found := 0;
+    each(i : n) {
+      at := i * 4;
+      if(list[at] < 0 | list[at + 1] < 0 | list[at] + list[at + 2] > w | list[at + 1] + list[at + 3] > h |
+          list[at + 2] < 8 | list[at + 3] < 8) {
+        found += 1;
+      };
+    };
+    return found;
+  }
+
+  # every part of the game screen as one list
+  method : public : All() ~ Int[] {
+    return @rects;
+  }
+}
+
+# The menu screen's rectangles: a grid of piece-set cards and the level buttons on the
+# left, a column of setting rows on the right, then Play and Quit. Like CkLayout it is
+# plain arithmetic from the window size, and the regression test checks that nothing
+# overlaps and everything fits at several window sizes.
+class CkMenuLayout {
+  @w : Int;
+  @h : Int;
+  @cards : Int;
+  @rows : Int;
+  @all : Int[];        # every rectangle: cards, levels, rows, play, quit, level info
+  @cols : Int;
+  @card_w : Int;
+  @card_h : Int;
+  @gx : Int;           # left edge of the card grid
+  @gy : Int;
+  @gap : Int;
+  @lvl_y : Int;
+  @lvl_w : Int;
+  @lvl_h : Int;
+  @row_x : Int;
+  @row_y : Int;
+  @row_w : Int;
+  @row_h : Int;
+  @row_gap : Int;
+  @play_x : Int;
+  @play_y : Int;
+  @play_w : Int;
+  @play_h : Int;
+  @info_y : Int;
+
+  New(w : Int, h : Int, cards : Int, rows : Int) {
+    if(w < CkLayout->MinWidth()) {
+      w := CkLayout->MinWidth();
+    };
+    if(h < CkLayout->MinHeight()) {
+      h := CkLayout->MinHeight();
+    };
+    @w := w;
+    @h := h;
+    @cards := cards;
+    @rows := rows;
+    margin := 18;
+    @gap := 10;
+    compact := h < 640;
+    top := 92;
+    lab := 24;
+    if(compact) {
+      top := 66;
+      lab := 20;
+    };
+
+    # the right column of settings is a third of the window, at least 300 wide
+    right_w := w * 36 / 100;
+    if(right_w < 300) {
+      right_w := 300;
+    };
+    left_w := w - right_w - 3 * margin;
+    @row_x := margin + left_w + margin;
+    @row_w := right_w;
+    @gx := margin;
+    @gy := top + lab;
+
+    # cards: four to a row
+    @cols := 4;
+    if(cards > 8) {
+      @cols := 5;
+    };
+    grid_rows := (cards + @cols - 1) / @cols;
+    @card_w := (left_w - (@cols - 1) * @gap) / @cols;
+    @card_h := @card_w * 70 / 100 + 20;
+    if(compact) {
+      @card_h := @card_w * 56 / 100 + 18;
+    };
+
+    # levels sit under the cards
+    grid_h := grid_rows * @card_h + (grid_rows - 1) * @gap;
+    ly := @gy + grid_h + 16;
+    @lvl_y := ly + lab;
+    @lvl_h := 38;
+    if(compact) {
+      @lvl_h := 30;
+    };
+    @lvl_w := (left_w - 9 * 6) / 10;
+    @info_y := @lvl_y + @lvl_h + 8;
+
+    # settings rows fill the right column down to the Play button
+    @row_y := top + lab;
+    @play_h := 52;
+    if(compact) {
+      @play_h := 42;
+    };
+    @play_y := h - margin - @play_h - 18;
+    @play_w := 300;
+    @play_x := (w - @play_w) / 2;
+    avail := @play_y - 14 - @row_y;
+    @row_gap := 6;
+    @row_h := (avail - (rows - 1) * @row_gap) / rows;
+    if(@row_h > 40) {
+      @row_h := 40;
+    };
+    BuildAll();
+  }
+
+  method : BuildAll() ~ Nil {
+    n := @cards + 10 + @rows + 3;
+    @all := Int->New[n * 4];
+    at := 0;
+    each(i : @cards) {
+      Put(at, CardX(i), CardY(i), @card_w, @card_h);
+      at += 4;
+    };
+    each(i : 10) {
+      Put(at, LevelX(i), @lvl_y, @lvl_w, @lvl_h);
+      at += 4;
+    };
+    each(i : @rows) {
+      Put(at, @row_x, RowY(i), @row_w, @row_h);
+      at += 4;
+    };
+    Put(at, @play_x, @play_y, @play_w, @play_h);
+    at += 4;
+    # Quit sits at the left of the Play button row
+    Put(at, 18, @play_y, 120, @play_h);
+    at += 4;
+    # the one-line description of the chosen level
+    Put(at, @gx, @info_y, @row_x - 36 - @gx, 24);
+  }
+
+  method : Put(at : Int, x : Int, y : Int, w : Int, h : Int) ~ Nil {
+    @all[at] := x;
+    @all[at + 1] := y;
+    @all[at + 2] := w;
+    @all[at + 3] := h;
+  }
+
+  method : public : CardX(i : Int) ~ Int {
+    return @gx + (i % @cols) * (@card_w + @gap);
+  }
+
+  method : public : CardY(i : Int) ~ Int {
+    return @gy + (i / @cols) * (@card_h + @gap);
+  }
+
+  method : public : CardW() ~ Int {
+    return @card_w;
+  }
+
+  method : public : CardH() ~ Int {
+    return @card_h;
+  }
+
+  method : public : LevelX(i : Int) ~ Int {
+    return @gx + i * (@lvl_w + 6);
+  }
+
+  method : public : LevelY() ~ Int {
+    return @lvl_y;
+  }
+
+  method : public : LevelW() ~ Int {
+    return @lvl_w;
+  }
+
+  method : public : LevelH() ~ Int {
+    return @lvl_h;
+  }
+
+  method : public : InfoY() ~ Int {
+    return @info_y;
+  }
+
+  method : public : RowX() ~ Int {
+    return @row_x;
+  }
+
+  method : public : RowY(i : Int) ~ Int {
+    return @row_y + i * (@row_h + @row_gap);
+  }
+
+  method : public : RowW() ~ Int {
+    return @row_w;
+  }
+
+  method : public : RowH() ~ Int {
+    return @row_h;
+  }
+
+  method : public : PlayX() ~ Int {
+    return @play_x;
+  }
+
+  method : public : PlayY() ~ Int {
+    return @play_y;
+  }
+
+  method : public : PlayW() ~ Int {
+    return @play_w;
+  }
+
+  method : public : PlayH() ~ Int {
+    return @play_h;
+  }
+
+  method : public : GridY() ~ Int {
+    return @gy;
+  }
+
+  method : public : GridX() ~ Int {
+    return @gx;
+  }
+
+  method : public : LabelY(i : Int) ~ Int {
+    return 0;
+  }
+
+  # y of the "Level" heading, just above the level buttons
+  method : public : LevelLabelY() ~ Int {
+    return @lvl_y - 24;
+  }
+
+  method : public : All() ~ Int[] {
+    return @all;
+  }
+}
+
+# The camera. The board is drawn as a flat 8 x 8 grid (mode 0) or as if seen from the
+# near edge at a slant (mode 1): the far rows shrink and crowd together, the near
+# rows grow, like a real board on a table in front of you. It is a plain pinhole
+# camera over a plane tilted by an angle about the horizontal axis:
+#
+#   depth of a point at row offset w from the middle (positive = nearer the player):
+#       z = D - w sin(tilt)         the nearer, the smaller z
+#   screen:  x = cx + S * u * (D / z)         u = column offset from the middle
+#            y = cy + S * w * cos(tilt) * (D / z)
+#
+# With tilt 0 that is just a grid of squares S pixels wide. Because the projection
+# is one formula in one place, drawing (squares, pieces, effects) and mouse picking
+# (Project and Unproject are exact inverses) cannot disagree about where a square is.
+# Board coordinates are those of the SCREEN grid: u is the column 0..8 from the left,
+# v the row 0..8 from the top (the far edge); flipping the board is done before
+# (CkController->ScreenToSquare), so this class never needs to know about it.
+class CkView {
+  @mode : Int;
+  @tilt : Float;
+  @sin : Float;
+  @cos : Float;
+  @dist : Float;
+  @cx : Float;
+  @cy : Float;
+  @s : Float;
+  @size : Int;
+  @sx : Int;
+  @sy : Int;
+
+  # mode 0 flat, 1 slanted; the board fills the area at (left, top) of 8 x 8 squares of size pixels
+  New(mode : Int, left : Int, top : Int, size : Int) {
+    @mode := mode;
+    @size := size;
+    @dist := 13.0;
+    @tilt := 0.0;
+    @sin := 0.0;
+    @cos := 1.0;
+    @s := size->As(Float);
+    @cx := (left + 4 * size)->As(Float);
+    @cy := (top + 4 * size)->As(Float);
+    if(mode = 1) {
+      @tilt := 0.80;
+      @sin := @tilt->Sin();
+      @cos := @tilt->Cos();
+      k_near := @dist / (@dist - 4.0 * @sin);
+      k_far := @dist / (@dist + 4.0 * @sin);
+      # the near edge, with its frame, is about as wide as the flat board and frame
+      @s := size->As(Float) * 0.88 / k_near;
+      # and the whole slanted board sits in the middle of the board area
+      y_far := 0.0 - 4.0 * @s * @cos * k_far;
+      y_near := 4.0 * @s * @cos * k_near;
+      @cy := (top + 4 * size)->As(Float) - (y_far + y_near) / 2.0;
+    };
+  }
+
+  method : public : Mode() ~ Int {
+    return @mode;
+  }
+
+  method : public : Tilted() ~ Bool {
+    return @mode = 1;
+  }
+
+  # shift the whole picture a few pixels (the screen shake)
+  method : public : SetShift(dx : Int, dy : Int) ~ Nil {
+    @sx := dx;
+    @sy := dy;
+  }
+
+  # how much nearer a point at row v is than the middle row: 1.0 in the middle
+  method : public : K(v : Float) ~ Float {
+    w := v - 4.0;
+    return 1.0 / (1.0 - w * @sin / @dist);
+  }
+
+  method : public : FX(u : Float, v : Float) ~ Float {
+    return @cx + @s * (u - 4.0) * K(v) + @sx->As(Float);
+  }
+
+  method : public : FY(u : Float, v : Float) ~ Float {
+    w := v - 4.0;
+    return @cy + @s * w * @cos * K(v) + @sy->As(Float);
+  }
+
+  # the pixel of board point (u, v)
+  method : public : X(u : Float, v : Float) ~ Int {
+    return (FX(u, v) + 0.5)->Floor()->As(Int);
+  }
+
+  method : public : Y(u : Float, v : Float) ~ Int {
+    return (FY(u, v) + 0.5)->Floor()->As(Int);
+  }
+
+  # the size of things standing on row v, compared with the flat board (1.0)
+  method : public : Ratio(v : Float) ~ Float {
+    return @s * K(v) / @size->As(Float);
+  }
+
+  # how far a standing piece of radius rad is lifted off the squares so it reads as a
+  # solid body (the flat board draws it flat on the square)
+  method : public : Raise(rad : Int) ~ Int {
+    if(@mode = 0) {
+      return 0;
+    };
+    return rad * 3 / 10;
+  }
+
+  # the thickness in pixels of the slab the board is cut from, at row v
+  method : public : Thick(v : Float) ~ Int {
+    if(@mode = 0) {
+      return 0;
+    };
+    return (@s * K(v) * 0.22)->As(Int) + 2;
+  }
+
+  # the board point (u, v) under a pixel: the exact inverse of X and Y
+  method : public : UnV(x : Int, y : Int) ~ Float {
+    ys := (y - @sy)->As(Float) - @cy;
+    w := ys / (@s * @cos + ys * @sin / @dist);
+    return w + 4.0;
+  }
+
+  method : public : UnU(x : Int, y : Int) ~ Float {
+    v := UnV(x, y);
+    k := K(v);
+    return ((x - @sx)->As(Float) - @cx) / (@s * k) + 4.0;
+  }
+
+  # the screen square (row * 8 + column, counted from the top-left) under a pixel, or -1
+  method : public : CellAt(x : Int, y : Int) ~ Int {
+    v := UnV(x, y);
+    u := UnU(x, y);
+    if(u < 0.0 | u >= 8.0 | v < 0.0 | v >= 8.0) {
+      return -1;
+    };
+    return v->Floor()->As(Int) * 8 + u->Floor()->As(Int);
   }
 }
 
@@ -3065,9 +3649,13 @@ class CkStyle {
   @glide : Bool;        # the 808 slides down into each note
   @pad : Bool;          # keys as a held pad plus a plucked arpeggio instead of stabs
   @lead_set : Int[];    # scale degrees (0 .. 6) the lead may use
+  @drums : Bool;        # false for a style with no drum kit (classical)
+  @stabs : Int[];       # ticks of the chord stabs in a bar (480 to a beat)
 
   New(index : Int) {
     @scale := [0, 2, 3, 5, 7, 8, 10];
+    @drums := true;
+    @stabs := [0, 720, 1200];
     if(index = 1) {
       @name := "Modern beats";
       @bpm_lo := 132;
@@ -3084,6 +3672,65 @@ class CkStyle {
       @glide := true;
       @pad := true;
       @lead_set := [0, 2, 3, 4, 6];
+    }
+    else if(index = 2) {
+      # reggae: one drop (kick and rim shot together on the third beat), steady offbeat
+      # skank chords, a bass that walks between root and fifth
+      @name := "Reggae";
+      @bpm_lo := 68;
+      @bpm_hi := 80;
+      @swing := 22;
+      @kick := "........x.......";
+      @snare := "........x.......";
+      @snare_note := 38;
+      @hat := "x.x.x.x.x.x.x.x.";
+      @open := "..............o.";
+      @ghost := "......g.......g.";
+      @rolls := 0;
+      @bass_beats := 2;
+      @glide := false;
+      @pad := false;
+      @lead_set := [0, 2, 4, 6];
+      @stabs := [240, 720, 1200, 1680];
+    }
+    else if(index = 3) {
+      # techno: four on the floor, claps on two and four, hats on the offbeat
+      @name := "Techno";
+      @bpm_lo := 124;
+      @bpm_hi := 134;
+      @swing := 0;
+      @kick := "x...x...x...x...";
+      @snare := "....x.......x...";
+      @snare_note := 39;
+      @hat := "x.x.x.x.x.x.x.x.";
+      @open := "..o...o...o...o.";
+      @ghost := "................";
+      @rolls := 0;
+      @bass_beats := 1;
+      @glide := false;
+      @pad := true;
+      @lead_set := [0, 2, 3, 4, 6];
+    }
+    else if(index = 4) {
+      # classical: no drums, a major scale, chords as quarter notes, a singing lead
+      @name := "Classical";
+      @bpm_lo := 66;
+      @bpm_hi := 96;
+      @swing := 0;
+      @kick := "................";
+      @snare := "................";
+      @snare_note := 38;
+      @hat := "................";
+      @open := "................";
+      @ghost := "................";
+      @rolls := 0;
+      @bass_beats := 2;
+      @glide := false;
+      @pad := false;
+      @scale := [0, 2, 4, 5, 7, 9, 11];
+      @lead_set := [0, 1, 2, 3, 4, 5, 6];
+      @drums := false;
+      @stabs := [0, 480, 960, 1440];
     }
     else {
       @name := "Hip-hop";
@@ -3106,15 +3753,28 @@ class CkStyle {
 
   # the number of styles in the table, the last of which (Off) makes no sound
   function : Count() ~ Int {
-    return 3;
+    return 6;
+  }
+
+  # the number of the style that makes no sound
+  function : OffIndex() ~ Int {
+    return 5;
   }
 
   function : Name(index : Int) ~ String {
-    names := ["Hip-hop", "Modern beats", "Off"];
-    if(index < 0 | index > 2) {
+    names := ["Hip-hop", "Modern beats", "Reggae", "Techno", "Classical", "Off"];
+    if(index < 0 | index > 5) {
       return "Off";
     };
     return names[index];
+  }
+
+  method : public : HasDrums() ~ Bool {
+    return @drums;
+  }
+
+  method : public : Stabs() ~ Int[] {
+    return @stabs;
   }
 
   method : public : Title() ~ String {
@@ -3196,6 +3856,7 @@ class CkBeat {
   @motif_len : Int[];   # and the length of each note in sixteenths
   @bars : Int;
   @transposed : Int;    # semitones the key has been moved up by crownings
+  @deep : Bool;         # the deep-bass setting: bass an octave lower, at full level
 
   New(style : CkStyle, seed : Int) {
     @style := style;
@@ -3211,6 +3872,10 @@ class CkBeat {
 
   method : public : Style() ~ CkStyle {
     return @style;
+  }
+
+  method : public : SetDeep(on : Bool) ~ Nil {
+    @deep := on;
   }
 
   method : public : Melody() ~ CkMarkov {
@@ -3280,14 +3945,18 @@ class CkBeat {
   }
 
   # what plays: bit 1 drums, 2 bass, 4 keys, 8 lead, 16 fill, 32 breakdown, 64 outro
-  function : Layers(mood : Int, intensity : Float, bar : Int) ~ Int {
+  method : Layers(mood : Int, intensity : Float, bar : Int) ~ Int {
     if(mood = 2 | mood = 3) {
       return 1 or 2 or 4 or 64;
     };
     if(mood = 4) {
       return 4 or 8 or 32;
     };
+    # the first layer is the drums; a style with no drums (classical) starts with the keys
     layers := 1;
+    if(<>@style->HasDrums()) {
+      layers := 4;
+    };
     if(mood = 1 | intensity > 0.35) {
       layers := layers or 2 or 4;
     };
@@ -3400,11 +4069,23 @@ class CkBeat {
   # an 808-style bass: long notes on the chord root, sliding in when the style says so
   method : Bass(song : CkSong, layers : Int) ~ Nil {
     beats := @style->BassBeats();
-    root := Pitch(@chord, 0);
-    song->Add(0, beats * 480 - 20, 1, root, 118);
+    octave := 0;
+    vel := 118;
+    if(@deep) {
+      # deep bass: an octave lower and as loud as MIDI goes
+      octave := -1;
+      vel := 127;
+    };
+    root := Pitch(@chord, octave);
+    song->Add(0, beats * 480 - 20, 1, root, vel);
     if((layers and 64) = 0) {
-      fifth := Pitch((@chord + 4) % 7, 0);
-      song->Add(beats * 480, (4 - beats) * 480 - 20, 1, fifth, 100);
+      fifth := Pitch((@chord + 4) % 7, octave);
+      t := beats * 480;
+      while(t < 1920) {
+        len := Int->Min(beats * 480, 1920 - t);
+        song->Add(t, len - 20, 1, fifth, vel - 18);
+        t += beats * 480;
+      };
     };
   }
 
@@ -3425,11 +4106,11 @@ class CkBeat {
       };
     }
     else {
-      stabs := [0, 720, 1200];
+      stabs := @style->Stabs();
       if((layers and 32) <> 0) {
         stabs := [0, 960, 1440];
       };
-      each(k : 3) {
+      each(k : stabs->Size()) {
         each(i : 4) {
           song->Add(stabs[k], 220, 2, notes[i], 78 - k * 6);
         };
@@ -3767,7 +4448,12 @@ class CkSynth {
       if(env < 0.0) {
         env := 0.0;
       };
-      return wave * env * attack * loud * 0.9;
+      # a bass note at full velocity (the deep-bass setting writes them) gets a sub-bass boost
+      boost := 0.9;
+      if(vel >= 127) {
+        boost := 1.7;
+      };
+      return wave * env * attack * loud * boost;
     };
     if(track = 2) {
       # electric piano: a sine with a bell-like second partial that dies quickly
@@ -3855,6 +4541,69 @@ class CkSynth {
       out[i] := v;
     };
     return out;
+  }
+}
+
+# Measuring rendered audio offline, with no sound card: how loud it is, how much of it
+# is deep bass, and how loud its loudest moment is.
+class CkMeasure {
+  function : Peak(samples : Float[]) ~ Float {
+    peak := 0.0;
+    each(i : samples->Size()) {
+      v := samples[i];
+      if(v < 0.0) {
+        v := 0.0 - v;
+      };
+      if(v > peak) {
+        peak := v;
+      };
+    };
+    return peak;
+  }
+
+  # the share of samples (0 .. 1) at the limit of -1 .. 1: those were cut off, which is
+  # what clipping sounds like
+  function : Clipped(samples : Float[]) ~ Float {
+    if(samples->Size() = 0) {
+      return 0.0;
+    };
+    n := 0;
+    each(i : samples->Size()) {
+      if(samples[i] >= 0.999 | samples[i] <= -0.999) {
+        n += 1;
+      };
+    };
+    return n->As(Float) / samples->Size()->As(Float);
+  }
+
+  # root mean square: the average loudness
+  function : Rms(samples : Float[]) ~ Float {
+    if(samples->Size() = 0) {
+      return 0.0;
+    };
+    total := 0.0;
+    each(i : samples->Size()) {
+      total += samples[i] * samples[i];
+    };
+    return (total / samples->Size()->As(Float))->Sqrt();
+  }
+
+  # the RMS of what is left below cutoff Hz, after two one-pole low-pass filters
+  # in a row (12 dB per octave): the loudness of the bass
+  function : LowRms(samples : Float[], rate : Int, cutoff : Float) ~ Float {
+    if(samples->Size() = 0) {
+      return 0.0;
+    };
+    a := 1.0 - (-2.0 * Float->Pi() * cutoff / rate->As(Float))->Exp();
+    one := 0.0;
+    two := 0.0;
+    total := 0.0;
+    each(i : samples->Size()) {
+      one += a * (samples[i] - one);
+      two += a * (one - two);
+      total += two * two;
+    };
+    return (total / samples->Size()->As(Float))->Sqrt();
   }
 }
 
@@ -4003,6 +4752,8 @@ class CkTests {
     Settings();
     Weights();
     Music();
+    Layouts();
+    Views();
 
     if(@failures = 0) {
       "PASS: checkers ({$@checks} checks)"->PrintLine();
@@ -4557,10 +5308,11 @@ class CkTests {
     Check(u->FromJson("{\"level\": 99, \"piece_set\": -4, \"volume\": 400, \"human\": \"x\"}"), "settings: odd values parse");
     Check(u->Level() = 10 & u->PieceSet() = 0 & u->Volume() = 100 & u->Human() = 0, "settings: out-of-range values are clamped");
     Check(u->FromJson("{}") & u->Level() = 10, "settings: an empty object keeps what it had");
-    u->SetPieceSet(7);
-    Check(u->PieceSet() = 7, "settings: eight piece sets, the last is number 7");
-    u->SetPieceSet(8);
-    Check(u->PieceSet() = 7 & CkSettings->SetNames()->Size() = 8, "settings: piece sets are clamped to the eight that exist");
+    u->SetPieceSet(9);
+    Check(u->PieceSet() = 9, "settings: ten piece sets, the last is number 9");
+    u->SetPieceSet(10);
+    Check(u->PieceSet() = 9 & CkSettings->SetNames()->Size() = 10, "settings: piece sets are clamped to the ten that exist");
+    Check(CkSettings->New()->PieceSet() = 8, "settings: the first neo set is the default");
 
     # saved to a file and read back
     path := "checkers_test_settings.json";
@@ -4654,6 +5406,62 @@ class CkTests {
     return song;
   }
 
+  # three bars of a style, with or without the deep-bass setting, rendered to samples
+  function : Render8(style : Int, deep : Bool, rate : Int) ~ Float[] {
+    beat := CkBeat->New(CkStyle->New(style), 21);
+    beat->SetDeep(deep);
+    song := CkSong->New();
+    moods := [1, 1, 0];
+    each(b : 3) {
+      song->Append(beat->Bar(moods[b], 0.8), b * 1920);
+    };
+    return CkSynth->Render(song, beat->Bpm(0.8, 0), rate);
+  }
+
+  # offline measurements of the rendered audio: how deep the bass is, with and without
+  # the deep-bass setting, and that no style clips
+  function : DeepBass() ~ Nil {
+    rate := 5512;
+    ratios := Float->New[5];
+    each(si : 5) {
+      name := CkStyle->Name(si);
+      plain := Render8(si, false, rate);
+      deep := Render8(si, true, rate);
+      p_peak := CkMeasure->Peak(plain);
+      d_peak := CkMeasure->Peak(deep);
+      Check(p_peak > 0.1 & p_peak <= 1.0 & d_peak <= 1.0, "bass {$name}: audible, inside -1 to 1 (peaks {$p_peak}, {$d_peak})");
+      d_clip := CkMeasure->Clipped(deep);
+      Check(CkMeasure->Clipped(plain) < 0.005 & d_clip < 0.005, "bass {$name}: fewer than 0.5 percent of the samples are clipped ({$d_clip})");
+      p_low := CkMeasure->LowRms(plain, rate, 120.0);
+      d_low := CkMeasure->LowRms(deep, rate, 120.0);
+      p_all := CkMeasure->Rms(plain);
+      d_all := CkMeasure->Rms(deep);
+      Check(p_all > 0.01 & d_all > 0.01, "bass {$name}: measurable loudness (RMS {$p_all}, {$d_all})");
+      Check(d_low > p_low * 1.2, "bass {$name}: deep bass puts more energy below 120 Hz ({$d_low} against {$p_low})");
+      p_ratio := p_low / p_all;
+      ratios[si] := p_ratio;
+      d_ratio := d_low / d_all;
+      Check(d_ratio > p_ratio, "bass {$name}: a larger share of the sound is deep bass ({$d_ratio} against {$p_ratio})");
+    };
+    # a classical piece has far less deep bass than a techno one
+    classical := ratios[4];
+    techno := ratios[3];
+    Check(techno > classical, "bass: techno has a larger share of deep bass than classical ({$techno} against {$classical})");
+    # the measuring stick itself: a 60 Hz sine is all bass, a 2000 Hz sine is almost none
+    low := Float->New[rate];
+    high := Float->New[rate];
+    each(i : rate) {
+      low[i] := (6.2831853 * 60.0 * i->As(Float) / rate->As(Float))->Sin();
+      high[i] := (6.2831853 * 2000.0 * i->As(Float) / rate->As(Float))->Sin();
+    };
+    Check(CkMeasure->LowRms(low, rate, 120.0) / CkMeasure->Rms(low) > 0.6, "measure: a 60 Hz tone passes the bass filter");
+    Check(CkMeasure->LowRms(high, rate, 120.0) / CkMeasure->Rms(high) < 0.02, "measure: a 2000 Hz tone does not");
+    s := CkSettings->New();
+    s->SetDeepBass(true);
+    t := CkSettings->New();
+    Check(t->FromJson(s->ToJson()) & t->DeepBass() & <>CkSettings->New()->DeepBass(), "settings: deep bass survives a round trip and is off by default");
+  }
+
   function : Music() ~ Nil {
     # the Markov chains learned something, and their rows are probabilities
     beat0 := CkBeat->New(CkStyle->New(0), 1);
@@ -4681,7 +5489,7 @@ class CkTests {
     Check(seen_only, "music: the chain only picks transitions it saw in training");
 
     moods := [0, 1, 0, 1, 4, 0, 2, 3];
-    each(si : 2) {
+    each(si : 5) {
       style := CkStyle->New(si);
       name := style->Title();
       scale := style->Scale();
@@ -4712,7 +5520,7 @@ class CkTests {
             if(note <> 36 & note <> 38 & note <> 39 & note <> 42 & note <> 46 & note <> 45 & note <> 47 & note <> 49) {
               drum_ok := false;
             };
-            if(note = 36 & song->Tick(i) = 0) {
+            if(note = 36) {
               kick_on_one := true;
             };
             if(note = style->SnareNote() & song->Tick(i) >= 480 & song->Tick(i) <= 1500) {
@@ -4725,7 +5533,12 @@ class CkTests {
         };
       };
       Check(drum_ok, "music {$name}: every drum hit is a General MIDI drum note");
-      Check(kick_on_one & snare_there & hats > 40, "music {$name}: kick on the one, snare or clap in the bar, plenty of hats ({$hats})");
+      if(style->HasDrums()) {
+        Check(kick_on_one & snare_there & hats > 40, "music {$name}: a kick, snare or clap in the bar, plenty of hats ({$hats})");
+      }
+      else {
+        Check(<>kick_on_one & <>snare_there & hats = 0, "music {$name}: a style with no drums plays none");
+      };
 
       # every pitched note, of every track, is in the scale of the key it was written in
       in_key := true;
@@ -4756,19 +5569,24 @@ class CkTests {
       threat := CkBeat->New(style, 3)->Bar(1, 0.5);
       tense := CkBeat->New(style, 3);
       tense_bar := tense->Bar(0, 0.9);
-      Check(calm->TrackCount(0) > 0 & calm->TrackCount(1) = 0 & calm->TrackCount(2) + calm->TrackCount(4) = 0, "music {$name}: a calm position plays drums only");
+      if(style->HasDrums()) {
+        Check(calm->TrackCount(0) > 0 & calm->TrackCount(1) = 0 & calm->TrackCount(2) + calm->TrackCount(4) = 0, "music {$name}: a calm position plays drums only");
+      }
+      else {
+        Check(calm->TrackCount(0) = 0 & calm->TrackCount(1) = 0 & calm->TrackCount(2) + calm->TrackCount(4) > 0, "music {$name}: a calm position plays the keys only");
+      };
       Check(threat->TrackCount(1) > 0 & threat->TrackCount(2) + threat->TrackCount(4) > 0, "music {$name}: a threatened jump adds bass and keys");
       Check(tense_bar->TrackCount(3) > 0, "music {$name}: a tense position adds the lead");
       fill := false;
       each(bar : 4) {
         x := tense->Bar(0, 0.9);
         each(i : x->Count()) {
-          if(x->Note(i) = 49) {
+          if(x->Track(i) = 0 & x->Note(i) = 49) {
             fill := true;
           };
         };
       };
-      Check(fill, "music {$name}: a tense position gets a fill with a crash");
+      Check(fill = style->HasDrums(), "music {$name}: a tense position gets a fill with a crash (when there are drums)");
       outro := CkBeat->New(style, 3)->Bar(2, 0.8);
       Check(outro->TrackCount(3) = 0, "music {$name}: the outro drops the lead");
       before := CkBeat->New(style, 3);
@@ -4803,7 +5621,8 @@ class CkTests {
     };
 
     # a style table row for Off, and the effects
-    Check(CkStyle->Count() = 3 & CkStyle->Name(2)->Equals("Off") & CkStyle->Name(0)->Equals("Hip-hop") & CkStyle->Name(1)->Equals("Modern beats"), "music: the style names");
+    Check(CkStyle->Count() = 6 & CkStyle->OffIndex() = 5 & CkStyle->Name(5)->Equals("Off") & CkStyle->Name(0)->Equals("Hip-hop") & CkStyle->Name(1)->Equals("Modern beats") & CkStyle->Name(2)->Equals("Reggae") & CkStyle->Name(3)->Equals("Techno") & CkStyle->Name(4)->Equals("Classical"), "music: the style names");
+    DeepBass();
     junk := Byte->New[10];
     Check(<>CkWave->IsValid(junk, 22050) & <>CkWave->IsValid(Nil, 22050), "music: junk is not a WAV");
     fx_ok := true;
@@ -4817,4 +5636,109 @@ class CkTests {
     };
     Check(fx_ok, "music: all sound effects are audible, bounded and repeatable");
   }
+
+  # ---- the layout of the screens ----
+
+  # at several window sizes, no two panels overlap and every panel stays inside the window
+  function : Layouts() ~ Nil {
+    widths := [1040, 880, 800, 1280, 1920, 700];
+    heights := [700, 600, 560, 800, 1080, 400];
+    each(i : 6) {
+      lay := CkLayout->New(widths[i], heights[i]);
+      w := lay->W();
+      h := lay->H();
+      Check(CkLayout->CountOverlaps(lay->All()) = 0, "layout {$w}x{$h}: no two panels overlap");
+      Check(CkLayout->CountOutside(lay->All(), w, h) = 0, "layout {$w}x{$h}: every panel is inside the window");
+      Check(lay->Square() >= 40, "layout {$w}x{$h}: squares are at least 40 pixels (got {$lay->Square()})");
+      Check(lay->PH(CkLayout->Moves()) >= 60, "layout {$w}x{$h}: the move list has room (got {$lay->PH(CkLayout->Moves())})");
+      # the squares sit inside the board frame
+      frame_right := lay->X(CkLayout->Frame()) + lay->PW(CkLayout->Frame());
+      Check(lay->BoardLeft() + 8 * lay->Square() <= frame_right & lay->BoardLeft() >= lay->X(CkLayout->Frame()), "layout {$w}x{$h}: the squares are inside the frame");
+
+      menu := CkMenuLayout->New(w, h, 12, 12);
+      Check(CkLayout->CountOverlaps(menu->All()) = 0, "menu {$w}x{$h}: no two items overlap (card, level, setting, play, quit)");
+      Check(CkLayout->CountOutside(menu->All(), w, h) = 0, "menu {$w}x{$h}: every item is inside the window");
+    };
+  }
+
+
+  # ---- the camera: flat and slanted ----
+
+  function : Views() ~ Nil {
+    each(mode : 2) {
+      each(shift : 2) {
+        view := CkView->New(mode, 44, 46, 76);
+        if(shift = 1) {
+          view->SetShift(7, -5);
+        };
+        bad := 0;
+        each(sr : 8) {
+          each(sc : 8) {
+            # the centre of every square, projected and then picked, gives the same square
+            x := view->X(sc->As(Float) + 0.5, sr->As(Float) + 0.5);
+            y := view->Y(sc->As(Float) + 0.5, sr->As(Float) + 0.5);
+            if(view->CellAt(x, y) <> sr * 8 + sc) {
+              bad += 1;
+            };
+            # and so do points just inside its four corners
+            each(c : 4) {
+              fu := 0.12;
+              fv := 0.12;
+              if(c % 2 = 1) {
+                fu := 0.88;
+              };
+              if(c >= 2) {
+                fv := 0.88;
+              };
+              cx := view->X(sc->As(Float) + fu, sr->As(Float) + fv);
+              cy := view->Y(sc->As(Float) + fu, sr->As(Float) + fv);
+              if(view->CellAt(cx, cy) <> sr * 8 + sc) {
+                bad += 1;
+              };
+            };
+          };
+        };
+        Check(bad = 0, "view mode {$mode} shift {$shift}: picking inverts the projection on all 64 squares ({$bad} wrong)");
+        Check(view->CellAt(2, 2) = -1 & view->CellAt(1000, 690) = -1, "view mode {$mode}: pixels off the board pick nothing");
+      };
+    };
+
+    flat := CkView->New(0, 44, 46, 76);
+    slant := CkView->New(1, 44, 46, 76);
+    Check(flat->Ratio(0.5) = 1.0 & flat->Ratio(7.5) = 1.0 & flat->Raise(30) = 0, "flat view: every row the same size");
+    Check(slant->Ratio(0.5) < slant->Ratio(7.5) & slant->Raise(30) > 0, "slanted view: far rows are smaller than near rows");
+    far_w := slant->X(8.0, 0.0) - slant->X(0.0, 0.0);
+    near_w := slant->X(8.0, 8.0) - slant->X(0.0, 8.0);
+    Check(far_w > 100 & near_w > far_w, "slanted view: the far edge is narrower ({$far_w} v {$near_w} pixels)");
+    Check(slant->Y(4.0, 0.0) < slant->Y(4.0, 8.0) & slant->Y(4.0, 8.0) - slant->Y(4.0, 0.0) < flat->Y(4.0, 8.0) - flat->Y(4.0, 0.0), "slanted view: the board is foreshortened");
+    # the near row is taller than the far row (perspective), by the same ratio as it is wider
+    near_h := slant->Y(4.0, 8.0) - slant->Y(4.0, 7.0);
+    far_h := slant->Y(4.0, 1.0) - slant->Y(4.0, 0.0);
+    Check(near_h > far_h, "slanted view: near squares are taller ({$near_h} v {$far_h})");
+
+    # flipping the board turns which square is where, in both views
+    ok := true;
+    each(flip : 2) {
+      each(mode : 2) {
+        view := CkView->New(mode, 44, 46, 76);
+        each(sq : 64) {
+          sr := CkController->ScreenRow(sq, flip = 1);
+          sc := CkController->ScreenCol(sq, flip = 1);
+          cell := view->CellAt(view->X(sc->As(Float) + 0.5, sr->As(Float) + 0.5), view->Y(sc->As(Float) + 0.5, sr->As(Float) + 0.5));
+          if(CkController->ScreenToSquare(cell / 8, cell % 8, flip = 1) <> sq) {
+            ok := false;
+          };
+        };
+      };
+    };
+    Check(ok, "views: with the board flipped or not, the square picked is the square drawn");
+
+    s := CkSettings->New();
+    s->SetView(7);
+    Check(s->View() = 1, "settings: a view out of range is clamped");
+    s->SetView(0);
+    t := CkSettings->New();
+    Check(t->FromJson(s->ToJson()) & t->View() = 0, "settings: the view survives a round trip");
+  }
+
 }
