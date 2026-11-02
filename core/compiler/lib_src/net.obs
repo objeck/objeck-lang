@@ -1216,7 +1216,22 @@ if(response <> Nil & response->GetCode() = 200) {
 					port := 80;
 				};
 
-				socket := TCPSocket->New(address, port);
+				# location and address land verbatim in the request line, so a CR, LF
+				# or space here splits the request itself. Url->New does not
+				# sanitize, and a Url is the input most likely to be untrusted.
+				if(Web.HTTP.HeaderCheck->IsValidRequestTarget(location) = false |
+						Web.HTTP.HeaderCheck->IsValidRequestTarget(address) = false) {
+					return Nil;
+				};
+
+				# GET and DELETE are idempotent, so they may go out on a connection an earlier
+				# request left open, and again on a new one if that gives no response
+				socket := HttpConnections->Take(address, port);
+				reused := socket <> Nil;
+				if(<>reused) {
+					socket := TCPSocket->New(address, port);
+				};
+
 				if(socket->IsOpen()) {
 					oper : String;
 
@@ -1226,14 +1241,6 @@ if(response <> Nil & response->GetCode() = 200) {
 					else {
 						oper := "DELETE ";
 					};
-
-					# location and address land verbatim in the request line, so a CR, LF
-					# or space here splits the request itself. Url->New does not
-					# sanitize, and a Url is the input most likely to be untrusted.
-					if(Web.HTTP.HeaderCheck->IsValidRequestTarget(location) = false |
-							Web.HTTP.HeaderCheck->IsValidRequestTarget(address) = false) {
-						return Nil;
-					};
 					oper->Append(location);
 					oper->Append(" HTTP/1.1\r\nHost: ");
 					oper->Append(address);
@@ -1241,13 +1248,10 @@ if(response <> Nil & response->GetCode() = 200) {
 						oper->Append(':');
 						oper->Append(port);
 					};
-					# keep-alive, not close. This is not about reusing the connection -- we
-					# still close it below after reading the response. It is about WHICH SIDE
-					# tears down. Asking the server to close meant the server tore down, and on
-					# Windows loopback a teardown before the peer application has read discards
-					# the response (#669). With keep-alive the server holds and we tear down,
-					# which removes the exposure: measured 28/100 transfers lost before, 0/100
-					# after, with no connection reuse involved.
+					# keep-alive: the server holds the connection after its response, so this
+					# side closes first (asking the server to close exposed #669 on Windows
+					# loopback), and a response that says where it ends leaves the connection
+					# for the next request (HttpConnections, #1443).
 					#
 					# A response we cannot frame still falls back to reading until close below.
 					# That is correct: a server unable to frame its body must answer with
@@ -1283,16 +1287,32 @@ if(response <> Nil & response->GetCode() = 200) {
 
 					status_line := socket->ReadLine();
 
+					# whether the connection can carry another request once this response is read
+					persistent := status_line <> Nil & status_line->StartsWith("HTTP/1.1 ");
 					if(status_line <> Nil & status_line->StartsWith("HTTP/1.")) {
 						status_line := status_line->SubString("HTTP/1."->Size() + 2,
 							status_line->Size() - "HTTP/1."->Size() - 2);
 						status_code := WebCommon->ParseStatusCode(status_line);
 					};
 
+					# No response at all on a connection an earlier request left open: the server
+					# closed it while it waited, which a server may do at any time. The request is
+					# idempotent, so it goes again on a new connection (RFC 9112 sec. 9.3.1). The
+					# other connections waiting for this server have likely gone the same way.
+					if(status_code = 0 & reused) {
+						socket->Close();
+						HttpConnections->Drop(address, port);
+						return PullOperationInner(url, content_type, task, redirect_count, strip);
+					};
+
 					# 0 means no status line was parsed -- a dead socket or a reply that
 					# is not HTTP. A genuine 500 must fall through here so its headers
 					# and body are read like any other response.
+					framed := false;
 					if(status_code <> 0) {
+						# this response's own framing, apart from @response_headers, which keeps
+						# the fields of every response this client has read
+						has_length := false;
 						line : String := Nil;
 						do {
 							line := socket->ReadLine();
@@ -1301,11 +1321,19 @@ if(response <> Nil & response->GetCode() = 200) {
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
 
+								lowered_name := name->ToLower();
+								if(lowered_name->Equals("content-length")) {
+									has_length := true;
+								}
+								else if(lowered_name->Equals("connection") & value->ToLower()->Find("close") > -1) {
+									persistent := false;
+								};
+
 								if(@cookies_enabled & name->Equals("Set-Cookie")) {
 									@cookies->AddBack(Cookie->New(value));
 								}
 								else {
-									@response_headers->Insert(name->ToLower(), value);
+									@response_headers->Insert(lowered_name, value);
 								};
 							};
 						}
@@ -1339,6 +1367,8 @@ if(response <> Nil & response->GetCode() = 200) {
 						# server holds the connection: the read would wait out the timeout.
 						if(status_code < 200 | status_code = 204 | status_code = 304) {
 							content := Nil;
+							# a 1xx is followed by the final response, which is not read here
+							framed := status_code >= 200;
 						}
 						# GetToFile: a successful body goes to the file, not into memory
 						else if(@download_path <> Nil & status_code < 300) {
@@ -1358,6 +1388,10 @@ if(response <> Nil & response->GetCode() = 200) {
 								length := length_header->ToInt();
 								if(length > 0) {
 									content := WebCommon->ReadLength(length, socket);
+									framed := has_length & content <> Nil;
+								}
+								else {
+									framed := has_length & length = 0;
 								};
 							}
 							else {
@@ -1365,7 +1399,15 @@ if(response <> Nil & response->GetCode() = 200) {
 							};
 						};
 					};
-					socket->Close();
+
+					# The response was read to the end its own header gave, and neither side asked
+					# to close: the connection is left for the next request to this server.
+					if(persistent & framed & socket->IsOpen() & TCPSocket->GetLastError() = Nil) {
+						HttpConnections->Give(address, port, socket);
+					}
+					else {
+						socket->Close();
+					};
 				}
 				else {
 					return Nil;
@@ -1378,6 +1420,157 @@ if(response <> Nil & response->GetCode() = 200) {
 
 			content_type := GetContentType();
 			return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
+		}
+	}
+
+	# An HTTP/1.1 connection waiting to carry another request, and how long it has waited.
+	class : private : HttpIdleConnection {
+		@key : String;
+		@socket : TCPSocket;
+		@idle : System.Time.Timer;
+
+		New(key : String, socket : TCPSocket) {
+			@key := key;
+			@socket := socket;
+			@idle := System.Time.Timer->New(true);
+		}
+
+		method : public : GetKey() ~ String {
+			return @key;
+		}
+
+		method : public : GetSocket() ~ TCPSocket {
+			return @socket;
+		}
+
+		method : public : GetIdleSeconds() ~ Float {
+			return @idle->GetElapsedTime();
+		}
+	}
+
+	#~
+	The plain HTTP connections HttpClient keeps open between requests, one set per process
+	(#1443). A request used to open a connection, and close it as soon as its response was
+	read. The side that closes first keeps the connection in TIME_WAIT for about two minutes,
+	and on Windows that holds a local port from the 16,384 the system hands out: a process
+	making some 130 requests a second used them all, after which every connect failed at
+	once (WSAEADDRINUSE). A response that says where its body ends leaves the connection
+	reusable, so it waits here for the next request to the same host and port instead.
+
+	A server may close a connection that waits too long, so one is reused only within
+	IDLE_SECONDS, below the keep-alive timeouts servers commonly use, and the caller sends
+	again on a new connection when a reused one gives no response at all (RFC 9112 sec.
+	9.3.1). Only idempotent requests take a waiting connection for that reason.
+	~#
+	class : private : HttpConnections {
+		@pool : static : HttpConnections;
+		@lock : System.Concurrency.ThreadMutex;
+		@idle : Vector<HttpIdleConnection>;
+
+		New() {
+			@lock := System.Concurrency.ThreadMutex->New("http_connections");
+			@idle := Vector->New()<HttpIdleConnection>;
+		}
+
+		# Two threads making the first request at once may each make a pool. One of them
+		# is kept; a connection given to the other is never reused, and closes when the
+		# process ends. Each pool has its own lock, so neither is ever used unlocked.
+		function : Pool() ~ HttpConnections {
+			pool := @pool;
+			if(pool = Nil) {
+				pool := HttpConnections->New();
+				@pool := pool;
+			};
+
+			return pool;
+		}
+
+		function : IdleSeconds() ~ Float {
+			return 4.0;
+		}
+
+		function : MaxIdle() ~ Int {
+			return 16;
+		}
+
+		function : Key(address : String, port : Int) ~ String {
+			return "{$address}:{$port}";
+		}
+
+		# a connection to address:port that is waiting for a request, Nil if there is none
+		function : Take(address : String, port : Int) ~ TCPSocket {
+			return Pool()->TakeIdle(Key(address, port));
+		}
+
+		# keeps a connection whose last response was read to its end, for the next request
+		function : Give(address : String, port : Int, socket : TCPSocket) ~ Nil {
+			Pool()->GiveIdle(Key(address, port), socket);
+		}
+
+		# closes the waiting connections to address:port: one of them was found closed
+		function : Drop(address : String, port : Int) ~ Nil {
+			Pool()->DropIdle(Key(address, port));
+		}
+
+		method : TakeIdle(key : String) ~ TCPSocket {
+			found : TCPSocket;
+			stale := Vector->New()<TCPSocket>;
+			critical(@lock) {
+				# the newest first: it has waited least
+				i := @idle->Size() - 1;
+				while(found = Nil & i >= 0) {
+					entry := @idle->Get(i);
+					if(entry->GetIdleSeconds() > IdleSeconds()) {
+						stale->AddBack(entry->GetSocket());
+						@idle->Remove(i);
+					}
+					else if(entry->GetKey()->Equals(key)) {
+						found := entry->GetSocket();
+						@idle->Remove(i);
+					};
+					i -= 1;
+				};
+			};
+
+			each(socket in stale) {
+				socket->Close();
+			};
+
+			return found;
+		}
+
+		method : GiveIdle(key : String, socket : TCPSocket) ~ Nil {
+			extra : TCPSocket;
+			critical(@lock) {
+				if(@idle->Size() >= MaxIdle()) {
+					extra := @idle->Get(0)->GetSocket();
+					@idle->Remove(0);
+				};
+				@idle->AddBack(HttpIdleConnection->New(key, socket));
+			};
+
+			if(extra <> Nil) {
+				extra->Close();
+			};
+		}
+
+		method : DropIdle(key : String) ~ Nil {
+			dropped := Vector->New()<TCPSocket>;
+			critical(@lock) {
+				i := @idle->Size() - 1;
+				while(i >= 0) {
+					entry := @idle->Get(i);
+					if(entry->GetKey()->Equals(key)) {
+						dropped->AddBack(entry->GetSocket());
+						@idle->Remove(i);
+					};
+					i -= 1;
+				};
+			};
+
+			each(socket in dropped) {
+				socket->Close();
+			};
 		}
 	}
 
