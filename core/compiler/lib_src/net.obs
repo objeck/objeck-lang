@@ -348,6 +348,20 @@ each(c in cookies) {
 			@cookies->AddBack(cookie);
 		}
 
+		#~
+		Closes the connections plain HTTP requests left open for reuse. A GET or DELETE
+		whose response said keep-alive leaves its connection waiting, up to four seconds,
+		for the next request to the same host and port. A program that also runs the
+		server those connections reach can call this when it is done with them: the
+		server's threads serving them then end. WebServer->Stop() calls it.
+```
+Web.HTTP.HttpClient->CloseIdleConnections();
+```
+		~#
+		function : CloseIdleConnections() ~ Nil {
+			HttpConnections->DropAll();
+		}
+
 		method : GetContentType() ~ String {
 			value := @response_headers->Find("content-type");
 			if(value <> Nil) {
@@ -938,6 +952,12 @@ response->GetStatusCode()->PrintLine();
 					port := 80;
 				};
 
+				# POST, PUT and PATCH never go out on a connection an earlier request left
+				# open: they are not retried, so they cannot risk one the server has closed.
+				# The waiting connections to this server are closed first: a server that
+				# serves one connection at a time would otherwise make this one wait until
+				# it gave up on the idle one (HttpConnections, #1443).
+				HttpConnections->Drop(address, port);
 				socket := TCPSocket->New(address, port);
 				if(socket->IsOpen()) {
 					oper : String;
@@ -1519,6 +1539,11 @@ if(response <> Nil & response->GetCode() = 200) {
 			Pool()->DropIdle(Key(address, port));
 		}
 
+		# closes every waiting connection
+		function : DropAll() ~ Nil {
+			Pool()->DropIdle(Nil);
+		}
+
 		method : TakeIdle(key : String) ~ TCPSocket {
 			found : TCPSocket;
 			stale := Vector->New()<TCPSocket>;
@@ -1561,13 +1586,14 @@ if(response <> Nil & response->GetCode() = 200) {
 			};
 		}
 
+		# Nil key: every waiting connection
 		method : DropIdle(key : String) ~ Nil {
 			dropped := Vector->New()<TCPSocket>;
 			critical(@lock) {
 				i := @idle->Size() - 1;
 				while(i >= 0) {
 					entry := @idle->Get(i);
-					if(entry->GetKey()->Equals(key)) {
+					if(key = Nil | entry->GetKey()->Equals(key)) {
 						dropped->AddBack(entry->GetSocket());
 						@idle->Remove(i);
 					};
