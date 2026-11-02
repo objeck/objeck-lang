@@ -102,6 +102,28 @@ class CheckersApp {
   @demo_dir : String;
   @over_frame : Int;
 
+  # the playful layer: particles, words, the opponent's face, shaking
+  @fx : CkParticles;
+  @pop : CkPopups;
+  @mood : Int;
+  @mood_until : Int;
+  @quip : String;
+  @quip_until : Int;
+  @think_quip : Bool;
+  @land_sq : Int;
+  @land_t0 : Int;
+  @crown_sq : Int;
+  @crown_t0 : Int;
+  @poofed : Int;
+  @over_seen : Bool;
+  @over_t0 : Int;
+  @shake : Int;
+  @shake_until : Int;
+  @shake_x : Int;
+  @shake_y : Int;
+  @flash : Int;
+  @ev_pos : CkPos;
+
   function : Main(args : String[]) ~ Nil {
     app := CheckersApp->New();
     app->Run(args);
@@ -113,6 +135,10 @@ class CheckersApp {
     @click_rects := Int->New[400];
     @ai := CkPlayer->New[2];
     @shot_frame := -1;
+    @fx := CkParticles->New();
+    @pop := CkPopups->New();
+    @land_sq := -1;
+    @crown_sq := -1;
   }
 
   # ---- layout ----
@@ -294,9 +320,52 @@ class CheckersApp {
       };
     }
     else if(scene->Equals("over")) {
-      @game->SetPosition(CkPos->FromText("r:d4,f4 R:c7 w:a7 /1"));
+      @game->SetPosition(CkPos->FromText("r:d4,f4,a1 R:c7 /1"));
       @msg := "";
+      @shot_frame := 60;
+    }
+    else if(scene->Equals("ev_announce")) {
+      EventScene(1, 90);
+    }
+    else if(scene->Equals("ev_gift")) {
+      EventScene(0, 135);
+    }
+    else if(scene->Equals("ev_zap")) {
+      EventScene(1, 125);
+    }
+    else if(scene->Equals("ev_quake")) {
+      EventScene(2, 130);
+    }
+    else if(scene->Equals("ev_wind")) {
+      EventScene(3, 132);
     };
+  }
+
+  # the computer captures a piece and fun mode answers with the given kind of event
+  method : EventScene(kind : Int, frame : Int) ~ Nil {
+    pos := CkPos->FromText("r:d4,a1 w:e5,c7,g7,h6,b8 /1");
+    e5 := CkBits->Parse("e5");
+    c3 := CkBits->Parse("c3");
+    seed := 1;
+    found := false;
+    while(<>found & seed < 600) {
+      g := CkGame->New();
+      g->SetPosition(pos);
+      g->SetFun(true, 0, seed, 12, 2, 1);
+      g->Play(g->Legal()->Find(e5, c3));
+      ev := g->PendingEvent();
+      if(ev <> Nil & ev->Kind() = kind) {
+        found := true;
+      }
+      else {
+        seed += 1;
+      };
+    };
+    @settings->SetFun(2);
+    @game->SetPosition(pos);
+    @game->SetFun(true, 0, seed, 12, 2, 1);
+    PlayAndAnimate(@game->Legal()->Find(e5, c3));
+    @shot_frame := frame;
   }
 
   # ---- games ----
@@ -335,7 +404,24 @@ class CheckersApp {
     @game->SetFun(@settings->FunActive(level) & human < 2, human, seed, 12, 2, 3);
     @msg := "";
     @pause_until := @now + 300;
+
+    @fx->Clear();
+    @pop->Clear();
+    @land_sq := -1;
+    @crown_sq := -1;
+    @over_seen := false;
+    @over_t0 := 0;
+    @flash := 0;
+    @shake := 0;
+    @think_quip := false;
+    @mood := CkChar->Idle();
+    @mood_until := 0;
+    @quip := Nil;
+    if(human < 2) {
+      SetMood(CkChar->Idle(), 3000, true);
+    };
   }
+
 
   # play legal move idx and start showing it
   method : PlayAndAnimate(idx : Int) ~ Nil {
@@ -353,7 +439,12 @@ class CheckersApp {
     @last_move := @anim_move;
     @anim_side := mover;
     @hint_move := Nil;
+    @poofed := 0;
+    @think_quip := false;
     @ctl->Clear();
+    if(@mood = CkChar->Thinking()) {
+      @mood_until := @now;
+    };
     if(@settings->Anim()) {
       hops := @anim_move->Hops();
       if(hops < 1) {
@@ -369,20 +460,69 @@ class CheckersApp {
     };
   }
 
+
   # called when a move has been shown: look for a fun event, then the end of the game
   method : AfterMove() ~ Nil {
+    mv := @anim_move;
+    human := @ctl->Human();
+    captured := mv->Caps() <> 0;
+
+    if(Fx()) {
+      # the piece lands with a squash
+      @land_sq := mv->To();
+      @land_t0 := @now;
+
+      # a man that became a king dances and wears a crown that pops on
+      was := @anim_pos->At(mv->From());
+      now_is := @game->Pos()->At(mv->To());
+      if((was = 1 | was = 3) & (now_is = 2 | now_is = 4)) {
+        @crown_sq := mv->To();
+        @crown_t0 := @now;
+        @fx->Sparkle(CenterX(mv->To()), CenterY(mv->To()), 26, 255, 214, 70);
+        @pop->Add("KING ME!", CenterX(mv->To()), CenterY(mv->To()) - 40, 3, 255, 220, 80);
+      };
+      if(mv->Hops() >= 2) {
+        words := ["DOUBLE!", "TRIPLE!", "MEGA!", "ULTRA!", "INSANE!"];
+        w := mv->Hops() - 2;
+        if(w > 4) {
+          w := 4;
+        };
+        @pop->Add(words[w], BoardLeft() + Size() * 4, BoardTop() + Size() * 4 - 10, 4, 255, 120, 60);
+      };
+    };
+
+    # the opponent reacts to a capture
+    if(human < 2 & captured) {
+      if(@anim_side = human) {
+        SetMood(CkChar->Surprised(), 2200, false);
+      }
+      else {
+        SetMood(CkChar->Smug(), 2200, false);
+      };
+    };
+
     ev := @game->PendingEvent();
     if(ev <> Nil) {
       @fun_event := ev;
       @fun_t0 := @now;
       @fun_applied := false;
+      SetMood(CkChar->Surprised(), 2400, true);
     };
     @pause_until := @now + 180;
   }
 
+
   method : Update() ~ Nil {
+    StepFx();
     if(@screen <> 1) {
       return;
+    };
+
+    # the game just ended: celebrate (or console)
+    if(@game->IsOver() & <>@over_seen & <>@anim_on & @fun_event = Nil) {
+      @over_seen := true;
+      @over_t0 := @now;
+      GameEnded();
     };
 
     # a move on its way across the board
@@ -394,14 +534,16 @@ class CheckersApp {
       return;
     };
 
-    # a fun-mode event: announce it, then make it happen
+    # a fun-mode event: announce it, then make it happen, then let it play out
     if(@fun_event <> Nil) {
       if(<>@fun_applied & @now - @fun_t0 >= 1500) {
+        @ev_pos := @game->Pos()->Copy();
         @game->ApplyEvent(@fun_event);
         @fun_applied := true;
         @fun_t0 := @now;
+        StartEventFx(@fun_event);
       }
-      else if(@fun_applied & @now - @fun_t0 >= 700) {
+      else if(@fun_applied & @now - @fun_t0 >= 1000) {
         @fun_event := Nil;
         @pause_until := @now + 200;
       };
@@ -424,8 +566,21 @@ class CheckersApp {
         stale := @thinker->Tag() <> @generation;
         @thinker := Nil;
         if(<>stale & mv >= 0) {
+          # how it feels about the position shows on its face
+          score := player->Score();
+          if(score > 150.0) {
+            SetMood(CkChar->Smug(), 1800, false);
+          }
+          else if(score < -150.0) {
+            SetMood(CkChar->Sad(), 1800, false);
+          };
           PlayAndAnimate(mv);
         };
+      }
+      else if(@now - @think_start > 1400 & @mood <> CkChar->Thinking() & <>@think_quip) {
+        # thinking for a while: say so
+        @think_quip := true;
+        SetMood(CkChar->Thinking(), 600000, true);
       };
     };
 
@@ -441,6 +596,7 @@ class CheckersApp {
       };
     };
   }
+
 
   method : StartThinking(player : CkPlayer) ~ Nil {
     keys := Int->New[@game->Entries() + 1];
@@ -798,18 +954,20 @@ class CheckersApp {
 
   # centre of a board square on the screen
   method : CenterX(sq : Int) ~ Int {
-    return BoardLeft() + CkController->ScreenCol(sq, @ctl->Flipped()) * Size() + Size() / 2;
+    return BoardLeft() + @shake_x + CkController->ScreenCol(sq, @ctl->Flipped()) * Size() + Size() / 2;
   }
 
+
   method : CenterY(sq : Int) ~ Int {
-    return BoardTop() + CkController->ScreenRow(sq, @ctl->Flipped()) * Size() + Size() / 2;
+    return BoardTop() + @shake_y + CkController->ScreenRow(sq, @ctl->Flipped()) * Size() + Size() / 2;
   }
+
 
   method : DrawBoard() ~ Nil {
     set := @settings->PieceSet();
     t := CkDraw->Theme(set);
-    left := BoardLeft();
-    top := BoardTop();
+    left := BoardLeft() + @shake_x;
+    top := BoardTop() + @shake_y;
     size := Size();
     flip := @ctl->Flipped();
     CkDraw->Frame(@r, set, left, top, size);
@@ -882,7 +1040,7 @@ class CheckersApp {
   }
 
   method : TintSquare(sq : Int, red : Int, green : Int, blue : Int, alpha : Int) ~ Nil {
-    CkDraw->Tint(@r, BoardLeft(), BoardTop(), Size(), CkController->ScreenRow(sq, @ctl->Flipped()), CkController->ScreenCol(sq, @ctl->Flipped()), red, green, blue, alpha);
+    CkDraw->Tint(@r, BoardLeft() + @shake_x, BoardTop() + @shake_y, Size(), CkController->ScreenRow(sq, @ctl->Flipped()), CkController->ScreenCol(sq, @ctl->Flipped()), red, green, blue, alpha);
   }
 
   # pieces, from the top of the screen down so lower pieces overlap higher ones
@@ -900,9 +1058,30 @@ class CheckersApp {
         progress := 1.0;
       };
       removed := CapturedSoFar(progress);
+      PoofNewlyCaptured(removed);
+    };
+
+    # an event that takes a piece away is played from the position before it
+    ev_sq := -1;
+    ev_t := 0;
+    ev_kind := -1;
+    if(@fun_event <> Nil & @fun_applied) {
+      ev_sq := @fun_event->Square();
+      ev_t := @now - @fun_t0;
+      ev_kind := @fun_event->Kind();
+      if(ev_kind > 0 & @ev_pos <> Nil) {
+        pos := @ev_pos;
+      };
     };
 
     rad := Size() * 38 / 100;
+    hover := -1;
+    if(@kbd) {
+      hover := @ctl->Cursor();
+    }
+    else {
+      hover := CkController->SquareAt(@mx, @my, BoardLeft(), BoardTop(), Size(), @ctl->Flipped());
+    };
     each(sr : 8) {
       each(sc : 8) {
         sq := CkController->ScreenToSquare(sr, sc, @ctl->Flipped());
@@ -913,7 +1092,122 @@ class CheckersApp {
             side := 1;
           };
           king := kind % 2 = 0;
-          CkDraw->Piece(@r, set, CenterX(sq), CenterY(sq), rad, side, king, 1.0, 1.0, 0, 255, 1.0);
+          sx := 1.0;
+          sy := 1.0;
+          lift := 0;
+          alpha := 255;
+          crown := 1.0;
+          cx := CenterX(sq);
+          cy := CenterY(sq);
+          eyes := false;
+          blink := false;
+
+          if(Fx()) {
+            # the piece that has just landed squashes and wobbles back
+            age := @now - @land_t0;
+            if(sq = @land_sq & age >= 0 & age < 450) {
+              a := 0.2 * (-1.0 * age->As(Float) / 110.0)->Exp() * (age->As(Float) / 26.0)->Cos();
+              sx := 1.0 + a;
+              sy := 1.0 - a;
+            };
+
+            # a new king hops and its crown pops on
+            cage := @now - @crown_t0;
+            if(sq = @crown_sq & cage >= 0 & cage < 900) {
+              decay := (-1.0 * cage->As(Float) / 350.0)->Exp();
+              lift := (18.0 * decay * (cage->As(Float) / 95.0)->Sin()->Abs())->As(Int);
+              grow := cage->As(Float) / 420.0;
+              if(grow > 1.0) {
+                grow := 1.0;
+              };
+              crown := grow * 1.0 + 0.5 * (1.0 - grow) * 0.0 + 0.45 * decay * (cage->As(Float) / 70.0)->Sin();
+              if(crown < 0.05) {
+                crown := 0.05;
+              };
+            };
+
+            # the picked-up piece wobbles, looks around, and blinks
+            if(sq = @ctl->Selection()) {
+              wob := (@now->As(Float) / 85.0)->Sin() * 0.05;
+              sx := 1.0 + wob;
+              sy := 1.0 - wob;
+              lift := 6;
+              eyes := true;
+            }
+            else if(sq = hover & (@ctl->Movable() and (1 << sq)) <> 0 & @ctl->HumanToMove() & <>@anim_on) {
+              eyes := true;
+            };
+            blink := (@now / 16) % 150 < 6;
+
+            # the end of the game: the winner dances, the loser sinks
+            if(@over_seen & @over_t0 > 0) {
+              status := @game->Status();
+              if(status = 1 | status = 2) {
+                if(side = status - 1) {
+                  lift := (9.0 * ((@now - @over_t0)->As(Float) / 130.0 + sq->As(Float))->Sin()->Abs())->As(Int);
+                }
+                else {
+                  sy := 0.9;
+                  sx := 1.05;
+                };
+              };
+            };
+          };
+
+          # events: a gift drops in, a disaster takes the piece away
+          if(sq = ev_sq & ev_t >= 0 & ev_t < 1000) {
+            if(ev_kind = 0) {
+              if(ev_t < 450) {
+                f := ev_t->As(Float) / 450.0;
+                lift := (230.0 * (1.0 - f * f))->As(Int);
+              }
+              else {
+                bt := (ev_t - 450)->As(Float);
+                lift := (22.0 * (-1.0 * bt / 180.0)->Exp() * (bt / 70.0)->Sin()->Abs())->As(Int);
+                if(bt < 120.0) {
+                  sx := 1.0 + 0.18 * (-1.0 * bt / 60.0)->Exp();
+                  sy := 1.0 - 0.18 * (-1.0 * bt / 60.0)->Exp();
+                };
+              };
+            }
+            else if(ev_kind = 1) {
+              alpha := 255 - ev_t * 255 / 500;
+              if(alpha < 0) {
+                alpha := 0;
+              };
+              sx := 1.0 + 0.2 * (ev_t->As(Float) / 25.0)->Sin();
+            }
+            else if(ev_kind = 2) {
+              f := ev_t->As(Float) / 700.0;
+              if(f > 1.0) {
+                f := 1.0;
+              };
+              sx := 1.0 + 0.4 * f;
+              sy := 1.0 - 0.7 * f;
+              cy := cy + (f * 20.0)->As(Int);
+              alpha := 255 - (f * 255.0)->As(Int);
+            }
+            else {
+              dir := 1;
+              if(CkController->ScreenCol(sq, @ctl->Flipped()) < 4) {
+                dir := -1;
+              };
+              cx := cx + dir * (ev_t->As(Float) * 0.45)->As(Int);
+              cy := cy - (ev_t->As(Float) * 0.12)->As(Int);
+              sx := (ev_t->As(Float) / 55.0)->Cos();
+              alpha := 255 - ev_t * 255 / 900;
+              if(alpha < 0) {
+                alpha := 0;
+              };
+            };
+          };
+
+          if(alpha > 0) {
+            CkDraw->Piece(@r, set, cx, cy, rad, side, king, sx, sy, lift, alpha, crown);
+            if(eyes) {
+              DrawEyes(cx, cy - lift, rad, king, blink);
+            };
+          };
         };
       };
     };
@@ -923,6 +1217,69 @@ class CheckersApp {
       DrawFlying(progress, rad);
     };
   }
+
+  # googly eyes for the piece that is picked up or pointed at
+  method : DrawEyes(cx : Int, cy : Int, rad : Int, king : Bool, blink : Bool) ~ Nil {
+    oy := cy - rad / 8;
+    if(king) {
+      oy := cy + rad / 4;
+    };
+    dx := (@mx - cx)->As(Float);
+    dy := (@my - oy)->As(Float);
+    d := (dx * dx + dy * dy)->Sqrt();
+    lx := 0;
+    ly := 0;
+    if(d > 1.0 & <>@kbd) {
+      lx := (dx / d * 2.0)->As(Int);
+      ly := (dy / d * 2.0)->As(Int);
+    };
+    each(side : 2) {
+      ex := cx - rad / 3;
+      if(side = 1) {
+        ex := cx + rad / 3;
+      };
+      if(blink) {
+        @r->ThickLineColor(ex - 4, oy, ex + 4, oy, 2, Color->New(30, 30, 30, 255));
+      }
+      else {
+        @r->FilledEllipseColor(ex, oy, 5, 6, Color->New(255, 255, 255, 255));
+        @r->AAEllipseColor(ex, oy, 5, 6, Color->New(40, 40, 40, 255));
+        @r->FilledCircleColor(ex + lx, oy + ly, 2, Color->New(20, 20, 20, 255));
+      };
+    };
+  }
+
+  # a puff of smoke and a comic word wherever a captured piece has just gone
+  method : PoofNewlyCaptured(removed : Int) ~ Nil {
+    fresh := removed and (@poofed xor 0x7FFFFFFFFFFFFFFF);
+    if(fresh = 0) {
+      return;
+    };
+    @poofed := @poofed or removed;
+    if(<>Fx()) {
+      return;
+    };
+    words := ["POW!", "BAM!", "ZAP!", "BOOM!", "WHAM!", "POOF!", "GOTCHA!", "OOF!"];
+    each(sq : 64) {
+      if((fresh and (1 << sq)) <> 0) {
+        side := 1 - @anim_side;
+        red := 240;
+        green := 90;
+        blue := 80;
+        if(side = 1) {
+          red := 235;
+          green := 230;
+          blue := 215;
+        };
+        @fx->Poof(CenterX(sq), CenterY(sq), red, green, blue);
+        w := (@game->Entries() * 7 + sq) % 8;
+        @pop->Add(words[w], CenterX(sq), CenterY(sq) - 24, 3, 255, 235, 120);
+        @shake := 5;
+        @shake_until := @now + 160;
+      };
+    };
+  }
+
 
   # the squares of captured pieces the moving piece has already passed over
   method : CapturedSoFar(progress : Float) ~ Int {
@@ -959,6 +1316,9 @@ class CheckersApp {
     v := u - k->As(Float);
     # ease in and out within each hop
     e := v * v * (3.0 - 2.0 * v);
+    if(<>Fx()) {
+      e := v;
+    };
     a := mv->Landing(k);
     b := mv->Landing(k + 1);
     if(hops = 0) {
@@ -967,14 +1327,29 @@ class CheckersApp {
     };
     x := CenterX(a) + ((CenterX(b) - CenterX(a))->As(Float) * e)->As(Int);
     y := CenterY(a) + ((CenterY(b) - CenterY(a))->As(Float) * e)->As(Int);
-    lift := (14.0 * (e * 3.14159)->Sin())->As(Int) + 4;
+    lift := 4;
+    sx := 1.0;
+    sy := 1.0;
+    if(Fx()) {
+      s := (e * 3.14159)->Sin();
+      lift := (24.0 * s)->As(Int) + 4;
+      # squash and stretch: crouch before the jump, stretch in the air
+      sy := 1.0 + 0.14 * s;
+      sx := 1.0 - 0.09 * s;
+      if(v < 0.18) {
+        q := 1.0 - v / 0.18;
+        sy := sy - 0.2 * q;
+        sx := sx + 0.14 * q;
+      };
+    };
     kind := @anim_pos->At(mv->From());
     side := 0;
     if(kind > 2) {
       side := 1;
     };
-    CkDraw->Piece(@r, set, x, y, rad, side, kind % 2 = 0, 1.0, 1.0, lift, 255, 1.0);
+    CkDraw->Piece(@r, set, x, y, rad, side, kind % 2 = 0, sx, sy, lift, 255, 1.0);
   }
+
 
   method : DrawPanel() ~ Nil {
     set := @settings->PieceSet();
@@ -984,23 +1359,27 @@ class CheckersApp {
     human := @ctl->Human();
     level := @settings->Level();
 
-    # the opponent
-    CkDraw->Panel(@r, px, 20, pw, 118, set);
-    @r->FilledCircleColor(px + 50, 79, 34, Color->New(t[18], t[19], t[20], 255));
-    @r->FilledCircleColor(px + 50, 79, 30, Color->New(t[15], t[16], t[17], 255));
-    @text->Draw("{$level}", px + 50, 62, 3, t[18], t[19], t[20], 1);
+    # the opponent: a face that follows the pointer, and what it is saying
+    CkDraw->Panel(@r, px, 20, pw, 112, set);
+    ring := CkDraw->Theme(set);
+    @r->FilledCircleColor(px + 52, 76, 41, Color->New(ring[18], ring[19], ring[20], 255));
+    @r->FilledCircleColor(px + 52, 76, 38, Color->New(ring[15] + 10, ring[16] + 10, ring[17] + 10, 255));
+    CkChar->Face(@r, level, px + 52, 82, 27, CurrentMood(), @frame, @mx, @my, Fx());
     name := CkLevels->Name(level);
     if(human = 2) {
       name := "Computer duel";
     };
-    @text->Draw(name, px + 98, 42, 3, 245, 245, 245, 0);
-    @text->Draw(CkLevels->Tagline(level), px + 98, 76, 1, t[12], t[13], t[14], 0);
-    Btn(7, "-", px + 98, 98, 34, 28, false);
-    Btn(8, "+", px + 138, 98, 34, 28, false);
-    @text->Draw("level", px + 182, 102, 1, t[12], t[13], t[14], 0);
+    @text->Draw(name, px + 106, 32, 3, 245, 245, 245, 0);
+    @text->Draw(CkLevels->Tagline(level), px + 106, 70, 1, t[12], t[13], t[14], 0);
+    Btn(7, "-", px + 106, 94, 34, 28, false);
+    Btn(8, "+", px + 146, 94, 34, 28, false);
+    @text->Draw("level {$level}", px + 190, 98, 1, t[12], t[13], t[14], 0);
+
+    # speech bubble
+    DrawBubble(px, 138, pw, set);
 
     # whose turn
-    CkDraw->Panel(@r, px, 150, pw, 72, set);
+    CkDraw->Panel(@r, px, 196, pw, 60, set);
     side := @game->Side();
     status := @game->Status();
     line := "";
@@ -1029,23 +1408,23 @@ class CheckersApp {
     if(@anim_on) {
       shown := @anim_side;
     };
-    CkDraw->Piece(@r, set, px + 36, 186, 20, shown, false, 1.0, 1.0, 0, 255, 1.0);
-    @text->Draw(line, px + 74, 170, 2, 245, 245, 245, 0);
+    CkDraw->Piece(@r, set, px + 34, 226, 18, shown, false, 1.0, 1.0, 0, 255, 1.0);
+    @text->Draw(line, px + 70, 212, 2, 245, 245, 245, 0);
 
     # pieces lost
-    CkDraw->Panel(@r, px, 234, pw, 64, set);
-    @text->Draw("Captured", px + 16, 240, 1, t[12], t[13], t[14], 0);
+    CkDraw->Panel(@r, px, 264, pw, 58, set);
+    @text->Draw("Captured", px + 16, 268, 1, t[12], t[13], t[14], 0);
     each(s : 2) {
       lost := @game->Lost(1 - s);
       base := px + 16 + s * (pw / 2);
-      CkDraw->Piece(@r, set, base + 12, 276, 11, s, false, 1.0, 1.0, 0, 255, 1.0);
-      @text->Draw("{$lost}", base + 32, 264, 2, 245, 245, 245, 0);
+      CkDraw->Piece(@r, set, base + 12, 303, 11, s, false, 1.0, 1.0, 0, 255, 1.0);
+      @text->Draw("{$lost}", base + 32, 291, 2, 245, 245, 245, 0);
     };
 
     # the moves so far
-    CkDraw->Panel(@r, px, 310, pw, 236, set);
-    @text->Draw("Moves", px + 16, 316, 1, t[12], t[13], t[14], 0);
-    DrawMoveList(px + 16, 340, pw - 32);
+    CkDraw->Panel(@r, px, 330, pw, 216, set);
+    @text->Draw("Moves", px + 16, 334, 1, t[12], t[13], t[14], 0);
+    DrawMoveList(px + 16, 356, pw - 32);
 
     # the buttons
     bw := (pw - 10) / 2;
@@ -1056,6 +1435,57 @@ class CheckersApp {
     Btn(5, "Menu", px, 650, bw, 38, false);
     Btn(6, "Quit", px + bw + 10, 650, bw, 38, false);
   }
+
+  # the opponent's speech bubble, two lines at most
+  method : DrawBubble(px : Int, y : Int, pw : Int, set : Int) ~ Nil {
+    if(@quip = Nil | @now > @quip_until) {
+      return;
+    };
+    lines := @quip->WrapLines(36);
+    n := lines->Size();
+    if(n > 2) {
+      n := 2;
+    };
+    h := 14 + n * 20;
+    @r->RoundedBoxColor(px + 4, y + 8, px + pw - 5, y + 8 + h, 10, Color->New(250, 248, 240, 245));
+    @r->FilledTrigonColor(px + 40, y + 8, px + 62, y + 8, px + 48, y - 2, Color->New(250, 248, 240, 245));
+    each(i : n) {
+      @text->Draw(lines[i], px + 16, y + 14 + i * 20, 1, 40, 36, 30, 0);
+    };
+  }
+
+  # the mood the face shows right now
+  method : CurrentMood() ~ Int {
+    if(@game->IsOver() & @over_seen) {
+      status := @game->Status();
+      human := @ctl->Human();
+      if(human < 2 & (status = 1 | status = 2)) {
+        if(status - 1 = human) {
+          return CkChar->Sad();
+        };
+        return CkChar->Happy();
+      };
+      return CkChar->Idle();
+    };
+    if(@now < @mood_until) {
+      return @mood;
+    };
+    if(@thinker <> Nil & @now - @think_start > 500) {
+      return CkChar->Thinking();
+    };
+    return CkChar->Idle();
+  }
+
+  # the face takes on a mood for a while, and may say something about it
+  method : SetMood(mood : Int, millis : Int, speak : Bool) ~ Nil {
+    @mood := mood;
+    @mood_until := @now + millis;
+    if(Fx() | speak) {
+      @quip := CkChar->Line(@settings->Level(), mood);
+      @quip_until := @now + 4200;
+    };
+  }
+
 
   method : ResultText(status : Int) ~ String {
     human := @ctl->Human();
@@ -1142,12 +1572,27 @@ class CheckersApp {
     status := @game->Status();
     if(status <> 0 & <>@anim_on & @fun_event = Nil) {
       text := ResultText(status);
-      @r->RoundedBoxColor(mid - 190, BoardTop() + 4 * Size() - 54, mid + 190, BoardTop() + 4 * Size() + 54, 18, Color->New(16, 16, 20, 225));
-      @r->RoundedRectangleColor(mid - 190, BoardTop() + 4 * Size() - 54, mid + 190, BoardTop() + 4 * Size() + 54, 18, Color->New(t[18], t[19], t[20], 255));
-      @text->Draw(text, mid, BoardTop() + 4 * Size() - 36, 3, t[18], t[19], t[20], 1);
-      @text->Draw("N: new game   Esc: menu", mid, BoardTop() + 4 * Size() + 12, 1, 220, 220, 220, 1);
+      bounce := 0;
+      if(Fx()) {
+        bounce := (5.0 * ((@now - @over_t0)->As(Float) / 160.0)->Sin())->As(Int);
+      };
+      top := BoardTop() + 4 * Size() - 54 + bounce;
+      @r->RoundedBoxColor(mid - 190, top, mid + 190, top + 108, 18, Color->New(16, 16, 20, 225));
+      @r->RoundedRectangleColor(mid - 190, top, mid + 190, top + 108, 18, Color->New(t[18], t[19], t[20], 255));
+      @text->Draw(text, mid, top + 18, 3, t[18], t[19], t[20], 1);
+      @text->Draw("N: new game   Esc: menu", mid, top + 66, 1, 220, 220, 220, 1);
+    };
+
+    # sparkles, puffs and pop-up words go on top of everything on the board
+    if(Fx()) {
+      @fx->Draw(@r);
+      @pop->Draw(@text);
+      if(@flash > 0) {
+        @r->BoxColor(0, 0, Width(), Height(), Color->New(255, 255, 255, @flash));
+      };
     };
   }
+
 
   method : DrawEventBanner(mid : Int) ~ Nil {
     ev := @fun_event;
@@ -1157,10 +1602,172 @@ class CheckersApp {
     @r->RoundedBoxColor(mid - w / 2, y, mid + w / 2, y + 44, 12, Color->New(60, 20, 90, 230));
     @r->RoundedRectangleColor(mid - w / 2, y, mid + w / 2, y + 44, 12, Color->New(255, 210, 90, 255));
     @text->Draw(text, mid, y + 11, 2, 255, 240, 200, 1);
-    if(@fun_applied) {
-      # a flash on the square it happened on
-      sq := ev->Square();
-      CkDraw->Tint(@r, BoardLeft(), BoardTop(), Size(), CkController->ScreenRow(sq, @ctl->Flipped()), CkController->ScreenCol(sq, @ctl->Flipped()), 255, 255, 200, 150);
+
+    sq := ev->Square();
+    sr := CkController->ScreenRow(sq, @ctl->Flipped());
+    sc := CkController->ScreenCol(sq, @ctl->Flipped());
+    if(<>@fun_applied) {
+      # announced: the square it will happen on pulses
+      pulse := 120 + (100.0 * ((@now - @fun_t0)->As(Float) / 90.0)->Sin())->As(Int);
+      CkDraw->Outline(@r, BoardLeft(), BoardTop(), Size(), sr, sc, 4, 255, 215, 90, pulse);
+    }
+    else {
+      DrawEventFx(ev, @now - @fun_t0);
     };
   }
+
+  # what the event looks like, in the second after it happens
+  method : DrawEventFx(ev : CkEvent, t : Int) ~ Nil {
+    if(<>Fx()) {
+      return;
+    };
+    sq := ev->Square();
+    cx := CenterX(sq);
+    cy := CenterY(sq);
+    kind := ev->Kind();
+    if(kind = 1) {
+      # a jagged bolt from the top of the board
+      if(t < 350) {
+        x := cx + 14;
+        y := BoardTop();
+        alpha := 255 - t * 255 / 350;
+        steps := 7;
+        each(i : steps) {
+          nx := x - 20 + ((i * 37 + sq) % 41);
+          ny := BoardTop() + (cy - BoardTop()) * (i + 1) / steps;
+          if(i = steps - 1) {
+            nx := cx;
+          };
+          @r->ThickLineColor(x, y, nx, ny, 6, Color->New(255, 240, 140, alpha / 2));
+          @r->ThickLineColor(x, y, nx, ny, 3, Color->New(255, 255, 255, alpha));
+          x := nx;
+          y := ny;
+        };
+      };
+      # a scorch mark where the piece stood
+      mark := 170 - t * 170 / 1000;
+      if(mark > 0) {
+        @r->FilledEllipseColor(cx, cy + 4, Size() / 3, Size() / 5, Color->New(20, 18, 16, mark));
+      };
+    }
+    else if(kind = 2) {
+      # cracks spreading from the square
+      reach := t * Size() / 500;
+      if(reach > Size() * 3 / 4) {
+        reach := Size() * 3 / 4;
+      };
+      each(i : 6) {
+        a := i->As(Float) * 1.05 + 0.3;
+        ex := cx + (a->Cos() * reach->As(Float))->As(Int);
+        ey := cy + (a->Sin() * reach->As(Float))->As(Int);
+        mx := (cx + ex) / 2 + ((i * 7) % 9) - 4;
+        my := (cy + ey) / 2 + ((i * 5) % 9) - 4;
+        @r->ThickLineColor(cx, cy, mx, my, 3, Color->New(30, 24, 20, 230));
+        @r->ThickLineColor(mx, my, ex, ey, 2, Color->New(30, 24, 20, 230));
+      };
+    };
+  }
+
+  # the effects of an event that has just been applied
+  method : StartEventFx(ev : CkEvent) ~ Nil {
+    if(<>Fx()) {
+      return;
+    };
+    sq := ev->Square();
+    cx := CenterX(sq);
+    cy := CenterY(sq);
+    kind := ev->Kind();
+    if(kind = 0) {
+      @fx->Sparkle(cx, cy, 30, 255, 120, 190);
+      @pop->Add("A GIFT!", cx, cy - 50, 3, 255, 150, 210);
+    }
+    else if(kind = 1) {
+      @flash := 220;
+      @shake := 6;
+      @shake_until := @now + 400;
+      @fx->Poof(cx, cy, 255, 230, 90);
+      @pop->Add("ZAP!", cx, cy - 40, 4, 255, 240, 120);
+    }
+    else if(kind = 2) {
+      @shake := 9;
+      @shake_until := @now + 900;
+      @fx->Poof(cx, cy, 160, 130, 100);
+      @pop->Add("RUMBLE!", cx, cy - 40, 3, 230, 200, 150);
+    }
+    else {
+      dir := 1;
+      if(CkController->ScreenCol(sq, @ctl->Flipped()) < 4) {
+        dir := -1;
+      };
+      @fx->Gust(cx, cy, dir);
+      @pop->Add("WHOOOSH!", cx, cy - 40, 3, 210, 235, 255);
+    };
+  }
+
+
+  # one frame of the effects: particles move, words float, the screen shakes
+  method : StepFx() ~ Nil {
+    if(<>Fx()) {
+      @shake_x := 0;
+      @shake_y := 0;
+      return;
+    };
+    @fx->Update();
+    @pop->Update();
+    if(@flash > 0) {
+      @flash := @flash - 14;
+      if(@flash < 0) {
+        @flash := 0;
+      };
+    };
+    if(@now < @shake_until & @shake > 0) {
+      left := (@shake_until - @now)->As(Float) / 400.0;
+      if(left > 1.0) {
+        left := 1.0;
+      };
+      mag := @shake->As(Float) * left;
+      @shake_x := (mag * (@now->As(Float) / 17.0)->Sin())->As(Int);
+      @shake_y := (mag * (@now->As(Float) / 13.0)->Cos())->As(Int);
+    }
+    else {
+      @shake_x := 0;
+      @shake_y := 0;
+    };
+    # a thinking face now and then sweats
+    if(@screen = 1 & CurrentMood() = CkChar->Thinking() & @frame % 38 = 0) {
+      @fx->Drop(704 + 52 + 22, 82 - 14);
+    };
+  }
+
+  # are the lively effects on? Animations must be on and reduced motion off.
+  method : Fx() ~ Bool {
+    return @settings->Lively();
+  }
+
+  # the game has just ended: confetti for a win, a sigh for a loss
+  method : GameEnded() ~ Nil {
+    status := @game->Status();
+    human := @ctl->Human();
+    mid := BoardLeft() + Size() * 4;
+    if(human < 2 & (status = 1 | status = 2)) {
+      if(status - 1 = human) {
+        if(Fx()) {
+          @fx->Confetti(Width(), 160);
+          @pop->Add("YOU WIN!", mid, BoardTop() + 120, 4, 255, 230, 90);
+        };
+        SetMood(CkChar->Sad(), 600000, true);
+      }
+      else {
+        if(Fx()) {
+          @pop->Add("Oh no...", mid, BoardTop() + 120, 4, 180, 200, 255);
+        };
+        SetMood(CkChar->Happy(), 600000, true);
+      };
+    }
+    else if(status = 3 | status = 4) {
+      @quip := "A draw! Shall we go again?";
+      @quip_until := @now + 6000;
+    };
+  }
+
 }
