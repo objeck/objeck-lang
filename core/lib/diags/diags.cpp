@@ -342,6 +342,9 @@ extern "C" {
   {
     ParsedProgram* program = (ParsedProgram*)APITools_GetIntValue(context, 0);
     if(program) {
+      // freeing a program frees its Linker too, and that was a share of an edit
+      const std::chrono::steady_clock::time_point release_start = std::chrono::steady_clock::now();
+
       // Unregister first, so no further request can find this program, then take
       // its lock: any request already inside one is finished before the AST goes
       // away, and any request blocked on the lock sees `released` and returns.
@@ -354,8 +357,14 @@ extern "C" {
         state->lib_path.clear();
       }
 
+      void* released = (void*)program;
       delete program;
       program = nullptr;
+
+      if(TimingEnabled()) {
+        fwprintf(stderr, L"[lsp-timing] release program=%p ms=%.3f\n", released, ElapsedMs(release_start));
+        fflush(stderr);
+      }
     }
   }
 

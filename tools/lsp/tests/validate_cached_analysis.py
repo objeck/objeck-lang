@@ -27,7 +27,9 @@ Corpora:
               standalone, and each ws_* folder as a workspace (build.json)
   regression  programs/regression/*.obs, each in a folder of its own whose
               build.json links what run_regression.sh links
-  lib_src     core/compiler/lib_src/*.obs, standalone (the 13 default libraries)
+  lib_src     core/compiler/lib_src/*.obs, standalone (the 13 default libraries),
+              without the definition request: on lang.obs it never answers and
+              stalls the server, on master as well, with or without the caches
 
 Usage:
   python3 validate_cached_analysis.py <bin_dir> [server_dir]
@@ -190,7 +192,7 @@ def regression_workspace(path, text, root):
 
 
 def corpus_items(names, skip, limit, scratch):
-    """(label, folder or None, path, text) per file to check."""
+    """(label, folder or None, path, text, ask definition) per file to check."""
     items = []
 
     def read(path):
@@ -201,20 +203,22 @@ def corpus_items(names, skip, limit, scratch):
         found = []
         if name == "lsp":
             for path in sorted(glob.glob(os.path.join(TESTS_DIR, "*.obs"))):
-                found.append((path, None, path, read(path)))
+                found.append((path, None, path, read(path), True))
             for ws in sorted(glob.glob(os.path.join(TESTS_DIR, "ws*"))):
                 if not os.path.exists(os.path.join(ws, "build.json")):
                     continue
                 for path in sorted(glob.glob(os.path.join(ws, "**", "*.obs"), recursive=True)):
-                    found.append((path, ws, path, read(path)))
+                    found.append((path, ws, path, read(path), True))
         elif name == "regression":
             for path in sorted(glob.glob(os.path.join(REGRESSION_DIR, "*.obs"))):
                 text = read(path)
                 folder, copy = regression_workspace(path, text, scratch)
-                found.append((path, folder, copy, text))
+                found.append((path, folder, copy, text, True))
         elif name == "lib_src":
             for path in sorted(glob.glob(os.path.join(LIB_SRC_DIR, "*.obs"))):
-                found.append((path, None, path, read(path)))
+                # no definition request: on lang.obs, opened alone, it never answers
+                # and stalls the server (on master too, with or without the caches)
+                found.append((path, None, path, read(path), False))
         else:
             raise SystemExit(f"unknown corpus '{name}'")
         found = found[skip:]
@@ -263,7 +267,7 @@ def edit_script(rng, original, count):
     return texts
 
 
-def ask_all(c, uri, text, rng, full):
+def ask_all(c, uri, text, rng, full, note=lambda what: None, definition=True):
     """This text's answers, as canonical JSON per request.
 
     full: the fixed questions (symbols, the first calls and locals, completion,
@@ -273,6 +277,7 @@ def ask_all(c, uri, text, rng, full):
     got = {}
 
     def ask(key, method, index):
+        note(method)
         got[key] = result_of(c.request(method, dict(doc, position=position(text, index)), timeout=180))
 
     calls = [m.start(1) for m in CALL.finditer(text)]
@@ -286,7 +291,7 @@ def ask_all(c, uri, text, rng, full):
             # right after the '->': the members of what is on its left
             ask("completion", "textDocument/completion", calls[0])
         made = NEW.search(text)
-        if made:
+        if made and definition:
             ask("definition", "textDocument/definition", made.start(1) + 1)
     else:
         idents = list(IDENT.finditer(text))
@@ -298,9 +303,12 @@ def ask_all(c, uri, text, rng, full):
     return {k: json.dumps(v, sort_keys=True) for k, v in got.items()}
 
 
-def session(c, item, edits, seed):
-    """Opens the file, asks, edits and asks again; [(step, answers)]."""
-    label, folder, path, original = item
+def session(c, item, edits, seed, note=lambda what: None):
+    """Opens the file, asks, edits and asks again; [(step, answers)].
+
+    note(what) is told each step, for the report of a file that takes long.
+    """
+    label, folder, path, original, definition = item
     uri = path_to_uri(path)
     doc = {"textDocument": {"uri": uri}}
     if folder:
@@ -310,10 +318,12 @@ def session(c, item, edits, seed):
     c.notify("textDocument/didOpen", {"textDocument": {
         "uri": uri, "languageId": "objeck", "version": 1, "text": original}})
     steps = []
+    note("open: diagnostics")
     diags = diagnostics(c, uri)
     # the published JSON as it came, order included
     answers = {"diagnostics": json.dumps(diags) if diags is not None else "<no diagnostics>"}
-    answers.update(ask_all(c, uri, original, random.Random(seed), True))
+    answers.update(ask_all(c, uri, original, random.Random(seed), True,
+                           lambda what: note("open: " + what), definition))
     steps.append(("open", answers))
 
     script = edit_script(random.Random(seed), original, edits)
@@ -322,10 +332,12 @@ def session(c, item, edits, seed):
         c.notifications.clear()
         c.notify("textDocument/didChange", {"textDocument": {"uri": uri, "version": version},
                                             "contentChanges": [{"text": text}]})
+        step = f"edit {version - 1} ({kind})"
+        note(step + ": diagnostics")
         diags = diagnostics(c, uri)
         answers = {"diagnostics": json.dumps(diags) if diags is not None else "<no diagnostics>"}
-        answers.update(ask_all(c, uri, text, ask_rng, False))
-        steps.append((f"edit {version - 1} ({kind})", answers))
+        answers.update(ask_all(c, uri, text, ask_rng, False, lambda what: note(step + ": " + what)))
+        steps.append((step, answers))
 
     c.notify("textDocument/didClose", doc)
     if folder:
@@ -399,11 +411,15 @@ def main():
             label = os.path.relpath(item[0], REPO_ROOT)
             seed = args.seed * 100003 + n
             began = time.time()
-            busy[i] = (label, began)
-            want = session(ref.clients[i], item, args.edits, seed)
+            busy[i] = [label, began, ""]
+
+            def note(server):
+                return lambda what: busy.get(i, [None, None, None]).__setitem__(2, f"{server} {what}")
+            want = session(ref.clients[i], item, args.edits, seed, note("reference"))
             middle = time.time()
             # --control: the cached server gets another edit script
-            have = session(cached.clients[i], item, args.edits, seed + 7 if args.control else seed)
+            have = session(cached.clients[i], item, args.edits, seed + 7 if args.control else seed,
+                           note("cached"))
             busy.pop(i, None)
             if time.time() - began > SLOW:
                 print(f"  slow: {label} reference {middle - began:.0f}s, "
@@ -429,9 +445,9 @@ def main():
 
     def watchdog():
         while not finished.wait(SLOW):
-            for i, (label, began) in list(busy.items()):
+            for i, (label, began, where) in list(busy.items()):
                 if time.time() - began > SLOW:
-                    print(f"  still on: {label} for {time.time() - began:.0f}s (client {i}); "
+                    print(f"  still on: {label} for {time.time() - began:.0f}s (client {i}, {where}); "
                           f"reference alive {ref.alive()}, cached alive {cached.alive()}", flush=True)
     threading.Thread(target=watchdog, daemon=True).start()
 
