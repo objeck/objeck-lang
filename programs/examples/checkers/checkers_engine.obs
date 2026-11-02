@@ -1,0 +1,840 @@
+#~
+# Checkers (English / American draughts): the rules engine. No window, no sound,
+# no library beyond the language itself, so the game window, the trainer, the
+# tournament and the regression test all share exactly the same rules.
+#
+# The board is a "bitboard": one 64-bit number in which bit r*8+c says whether
+# square (row r, column c) holds a piece. Checkers only uses the 32 dark squares
+# (the ones where r+c is odd), so a number per kind of piece is all a position
+# needs, and a whole row of the board is one AND away. Row 0 is the top of the
+# screen (rank 8), row 7 the bottom (rank 1); columns a to h run left to right.
+#
+#   red   - every red piece (men and kings); Red starts at the bottom, moves first
+#   white - every white piece; White starts at the top
+#   kings - the kings of both colours (a king is a piece that is also in kings)
+#
+# Rules implemented (see README.md): men step diagonally forward, kings in every
+# diagonal direction, one square at a time; a jump is mandatory and a jump may
+# continue (multi-jump) with whatever piece made it; a man that lands on the far
+# row is crowned and its move ends there; a side with no legal move loses; the
+# game is drawn by threefold repetition or after 40 moves each (80 plies)
+# without a capture or a crowning.
+#
+# Optional FUN MODE (CkFun, CkGame): early in a game, when the human is behind
+# on pieces, a seeded dice roll can give a man back or knock one of the
+# opponent's pieces off the board. It is off by default and never used by the
+# engine tests, the training or the tournament.
+~#
+
+use Collection;
+
+# Pre-computed tables and bit tricks shared by everything below.
+class CkBits {
+  @n1 : static : Int[];       # [sq * 4 + dir] square one step away, or -1
+  @n2 : static : Int[];       # [sq * 4 + dir] square two steps away, or -1
+  @lsb : static : Int[];      # lowest-set-bit lookup, indexed by (2^k mod 67)
+  @src : static : Int[];      # [dir] squares from which a step in dir stays on board
+  @names : static : String[]; # "a1" .. "h8" by square number
+  @ready : static : Bool;
+
+  # directions: 0 up-left, 1 up-right, 2 down-left, 3 down-right
+  function : Init() ~ Nil {
+    if(@ready) {
+      return;
+    };
+
+    n1 := Int->New[256];
+    n2 := Int->New[256];
+    src := Int->New[4];
+    names := String->New[64];
+    each(sq : 64) {
+      r := sq / 8;
+      c := sq % 8;
+      names[sq] := "abcdefgh"->SubString(c, 1) + (8 - r)->ToString();
+      each(d : 4) {
+        dr := 1;
+        if(d < 2) {
+          dr := -1;
+        };
+        dc := 1;
+        if(d % 2 = 0) {
+          dc := -1;
+        };
+
+        a := -1;
+        b := -1;
+        r1 := r + dr;
+        c1 := c + dc;
+        if(r1 >= 0 & r1 < 8 & c1 >= 0 & c1 < 8) {
+          a := r1 * 8 + c1;
+          src[d] := src[d] or (1 << sq);
+        };
+        r2 := r + dr * 2;
+        c2 := c + dc * 2;
+        if(r2 >= 0 & r2 < 8 & c2 >= 0 & c2 < 8) {
+          b := r2 * 8 + c2;
+        };
+        n1[sq * 4 + d] := a;
+        n2[sq * 4 + d] := b;
+      };
+    };
+
+    # only dark squares are ever occupied, so restrict the source masks to them
+    each(d : 4) {
+      src[d] := src[d] and DarkMask();
+    };
+
+    lsb := Int->New[67];
+    each(k : 63) {
+      lsb[(1 << k) % 67] := k;
+    };
+
+    @n1 := n1;
+    @n2 := n2;
+    @src := src;
+    @names := names;
+    @lsb := lsb;
+    @ready := true;
+  }
+
+  # the 32 dark squares: (row + column) is odd, so a1 (row 7, column 0) is dark
+  function : DarkMask() ~ Int {
+    return 0x55AA55AA55AA55AA;
+  }
+
+  function : Step1(sq : Int, d : Int) ~ Int {
+    return @n1[sq * 4 + d];
+  }
+
+  function : Step2(sq : Int, d : Int) ~ Int {
+    return @n2[sq * 4 + d];
+  }
+
+  function : SourceMask(d : Int) ~ Int {
+    return @src[d];
+  }
+
+  function : Name(sq : Int) ~ String {
+    return @names[sq];
+  }
+
+  # "c3" -> square number, or -1 when the text is not a square
+  function : Parse(name : String) ~ Int {
+    if(name->Size() <> 2) {
+      return -1;
+    };
+    c := "abcdefgh"->Find(name->Get(0));
+    r := 8 - name->SubString(1, 1)->ToInt();
+    if(c < 0 | r < 0 | r > 7) {
+      return -1;
+    };
+    return r * 8 + c;
+  }
+
+  # the number of 1 bits in x
+  function : Pop(x : Int) ~ Int {
+    x := x - ((x >> 1) and 0x5555555555555555);
+    x := (x and 0x3333333333333333) + ((x >> 2) and 0x3333333333333333);
+    x := (x + (x >> 4)) and 0x0F0F0F0F0F0F0F0F;
+    return ((x * 0x0101010101010101) >> 56) and 0xFF;
+  }
+
+  # the position of the lowest 1 bit of x (x must not be 0)
+  function : Low(x : Int) ~ Int {
+    return @lsb[(x and (0 - x)) % 67];
+  }
+
+  # the dark squares of row r
+  function : RowMask(r : Int) ~ Int {
+    return (0xFF << (r * 8)) and DarkMask();
+  }
+
+  # move every bit of x by delta places along the numbering (negative = down)
+  function : Shift(x : Int, delta : Int) ~ Int {
+    if(delta >= 0) {
+      return x << delta;
+    };
+    return x >> (0 - delta);
+  }
+
+  # one of the four directions as a number of bit places
+  function : Delta(d : Int) ~ Int {
+    if(d = 0) {
+      return -9;
+    };
+    if(d = 1) {
+      return -7;
+    };
+    if(d = 2) {
+      return 7;
+    };
+    return 9;
+  }
+}
+
+# A tiny deterministic random number generator (a 64-bit linear congruential
+# generator, using its high bits). The same seed always gives the same stream,
+# on every platform, which is what makes training, the tournament and the
+# fun-mode events repeatable.
+class CkRand {
+  @state : Int;
+
+  New(seed : Int) {
+    @state := seed * 2 + 1;
+    Next();
+    Next();
+  }
+
+  # the next 31 random bits
+  method : public : Next() ~ Int {
+    @state := @state * 6364136223846793005 + 1442695040888963407;
+    return (@state >> 33) and 0x7FFFFFFF;
+  }
+
+  # a number from 0 to n-1
+  method : public : NextInt(n : Int) ~ Int {
+    if(n <= 1) {
+      return 0;
+    };
+    return Next() % n;
+  }
+
+  # a number from 0.0 up to (not including) 1.0
+  method : public : NextFloat() ~ Float {
+    return Next()->As(Float) / 2147483648.0;
+  }
+
+  # a hash of a few numbers: the same inputs always give the same answer, with
+  # no state to carry around (used so a replayed game rolls the same dice)
+  function : Hash(a : Int, b : Int, c : Int) ~ Int {
+    r := CkRand->New(a * 1000003 + b * 8191 + c * 131 + 7);
+    r->Next();
+    return r->Next();
+  }
+}
+
+# One legal move: the piece on from lands on to, removing every piece in caps
+# (a bitboard). path holds the squares a multi-jump landed on, six bits each,
+# oldest first; hops says how many.
+class CkMove {
+  @fsq : Int;
+  @tsq : Int;
+  @caps : Int;
+  @path : Int;
+  @hops : Int;
+
+  New(fsq : Int, tsq : Int, caps : Int, path : Int, hops : Int) {
+    @fsq := fsq;
+    @tsq := tsq;
+    @caps := caps;
+    @path := path;
+    @hops := hops;
+  }
+
+  method : public : From() ~ Int {
+    return @fsq;
+  }
+
+  method : public : To() ~ Int {
+    return @tsq;
+  }
+
+  method : public : Caps() ~ Int {
+    return @caps;
+  }
+
+  method : public : Path() ~ Int {
+    return @path;
+  }
+
+  method : public : Hops() ~ Int {
+    return @hops;
+  }
+
+  method : public : IsCapture() ~ Bool {
+    return @caps <> 0;
+  }
+
+  # how many pieces the move removes
+  method : public : CaptureCount() ~ Int {
+    return CkBits->Pop(@caps);
+  }
+
+  # the square the piece stands on after hop number i (0 = the start square)
+  method : public : Landing(i : Int) ~ Int {
+    if(i <= 0) {
+      return @fsq;
+    };
+    if(i >= @hops | i > 9) {
+      return @tsq;
+    };
+    return (@path >> ((i - 1) * 6)) and 63;
+  }
+
+  # "c3-d4" for a step, "c3xe5xg7" for a jump
+  method : public : ToString() ~ String {
+    # Name hands out a shared string and += changes a string in place: copy first
+    text := CkBits->Name(@fsq)->Copy();
+    if(@caps = 0) {
+      text += "-";
+      text += CkBits->Name(@tsq);
+      return text;
+    };
+    each(i : @hops) {
+      text += "x";
+      text += CkBits->Name(Landing(i + 1));
+    };
+    return text;
+  }
+}
+
+# The legal moves of one position, kept in plain arrays so generating them in a
+# search costs no object allocation.
+class CkMoveList {
+  @fsq : Int[];
+  @tsq : Int[];
+  @caps : Int[];
+  @path : Int[];
+  @hops : Int[];
+  @count : Int;
+
+  New() {
+    @fsq := Int->New[48];
+    @tsq := Int->New[48];
+    @caps := Int->New[48];
+    @path := Int->New[48];
+    @hops := Int->New[48];
+  }
+
+  method : public : Clear() ~ Nil {
+    @count := 0;
+  }
+
+  method : public : Count() ~ Int {
+    return @count;
+  }
+
+  method : public : Add(fsq : Int, tsq : Int, caps : Int, path : Int, hops : Int) ~ Nil {
+    if(@count >= @fsq->Size()) {
+      Grow();
+    };
+    @fsq[@count] := fsq;
+    @tsq[@count] := tsq;
+    @caps[@count] := caps;
+    @path[@count] := path;
+    @hops[@count] := hops;
+    @count += 1;
+  }
+
+  # twice the room, for the rare position with a great many jump choices
+  method : Grow() ~ Nil {
+    size := @fsq->Size() * 2;
+    nf := Int->New[size];
+    nt := Int->New[size];
+    nc := Int->New[size];
+    np := Int->New[size];
+    nh := Int->New[size];
+    each(i : @count) {
+      nf[i] := @fsq[i];
+      nt[i] := @tsq[i];
+      nc[i] := @caps[i];
+      np[i] := @path[i];
+      nh[i] := @hops[i];
+    };
+    @fsq := nf;
+    @tsq := nt;
+    @caps := nc;
+    @path := np;
+    @hops := nh;
+  }
+
+  method : public : From(i : Int) ~ Int {
+    return @fsq[i];
+  }
+
+  method : public : To(i : Int) ~ Int {
+    return @tsq[i];
+  }
+
+  method : public : Caps(i : Int) ~ Int {
+    return @caps[i];
+  }
+
+  method : public : Path(i : Int) ~ Int {
+    return @path[i];
+  }
+
+  method : public : Hops(i : Int) ~ Int {
+    return @hops[i];
+  }
+
+  method : public : Get(i : Int) ~ CkMove {
+    return CkMove->New(@fsq[i], @tsq[i], @caps[i], @path[i], @hops[i]);
+  }
+
+  # the index of the move from -> to (the first, when several jumps share both
+  # ends), or -1; this is how a mouse click or a typed move finds its move
+  method : public : Find(fsq : Int, tsq : Int) ~ Int {
+    each(i : @count) {
+      if(@fsq[i] = fsq & @tsq[i] = tsq) {
+        return i;
+      };
+    };
+    return -1;
+  }
+}
+
+# A position: who is where and whose turn it is, with move generation and
+# make-move. It is small and cheap to copy, which is how the search backs out
+# of a move (copy four numbers, make the move, restore the four numbers).
+class CkPos {
+  @red : Int;
+  @white : Int;
+  @kings : Int;
+  @side : Int;      # 0 = Red to move, 1 = White to move
+  @clock : Int;     # plies since the last capture or crowning
+
+  # scratch used while a multi-jump is being followed
+  @list : CkMoveList;
+  @start : Int;
+  @occ : Int;
+  @theirs : Int;
+
+  New() {
+  }
+
+  function : Start() ~ CkPos {
+    CkBits->Init();
+    p := CkPos->New();
+    p->Set(0x55AA550000000000, 0x0000000000AA55AA, 0, 0, 0);
+    return p;
+  }
+
+  method : public : Set(red : Int, white : Int, kings : Int, side : Int, clock : Int) ~ Nil {
+    @red := red;
+    @white := white;
+    @kings := kings;
+    @side := side;
+    @clock := clock;
+  }
+
+  method : public : Copy() ~ CkPos {
+    p := CkPos->New();
+    p->Set(@red, @white, @kings, @side, @clock);
+    return p;
+  }
+
+  method : public : CopyFrom(p : CkPos) ~ Nil {
+    @red := p->Red();
+    @white := p->White();
+    @kings := p->Kings();
+    @side := p->Side();
+    @clock := p->Clock();
+  }
+
+  method : public : Red() ~ Int {
+    return @red;
+  }
+
+  method : public : White() ~ Int {
+    return @white;
+  }
+
+  method : public : Kings() ~ Int {
+    return @kings;
+  }
+
+  method : public : Side() ~ Int {
+    return @side;
+  }
+
+  method : public : Clock() ~ Int {
+    return @clock;
+  }
+
+  method : public : SetSide(side : Int) ~ Nil {
+    @side := side;
+  }
+
+  method : public : Pieces(side : Int) ~ Int {
+    if(side = 0) {
+      return @red;
+    };
+    return @white;
+  }
+
+  # 0 empty, 1 red man, 2 red king, 3 white man, 4 white king
+  method : public : At(sq : Int) ~ Int {
+    bit := 1 << sq;
+    if((@red and bit) <> 0) {
+      if((@kings and bit) <> 0) {
+        return 2;
+      };
+      return 1;
+    };
+    if((@white and bit) <> 0) {
+      if((@kings and bit) <> 0) {
+        return 4;
+      };
+      return 3;
+    };
+    return 0;
+  }
+
+  # Put a piece on a square (kind as in At). For building test positions.
+  method : public : Put(sq : Int, kind : Int) ~ Nil {
+    bit := 1 << sq;
+    if((@red and bit) <> 0) {
+      @red := @red xor bit;
+    };
+    if((@white and bit) <> 0) {
+      @white := @white xor bit;
+    };
+    if((@kings and bit) <> 0) {
+      @kings := @kings xor bit;
+    };
+    if(kind = 1 | kind = 2) {
+      @red := @red or bit;
+    }
+    else if(kind = 3 | kind = 4) {
+      @white := @white or bit;
+    };
+    if(kind = 2 | kind = 4) {
+      @kings := @kings or bit;
+    };
+  }
+
+  # A position from eight lines of text, top (rank 8) first. r R w W are men and
+  # kings, anything else is empty. side: 0 red to move, 1 white to move.
+  function : FromRows(rows : String[], side : Int) ~ CkPos {
+    CkBits->Init();
+    p := CkPos->New();
+    p->SetSide(side);
+    each(r : 8) {
+      row := rows[r];
+      each(c : 8) {
+        if(c < row->Size()) {
+          ch := row->Get(c);
+          sq := r * 8 + c;
+          if(ch = 'r') {
+            p->Put(sq, 1);
+          }
+          else if(ch = 'R') {
+            p->Put(sq, 2);
+          }
+          else if(ch = 'w') {
+            p->Put(sq, 3);
+          }
+          else if(ch = 'W') {
+            p->Put(sq, 4);
+          };
+        };
+      };
+    };
+    return p;
+  }
+
+  # A position from text such as "r:c3,e3 R:d4 w:b6 W:f8 /1": r R w W are red
+  # men, red kings, white men and white kings followed by their squares, and
+  # /0 or /1 says whose move it is. ToText writes the same form back.
+  function : FromText(text : String) ~ CkPos {
+    CkBits->Init();
+    p := CkPos->New();
+    parts := text->Split(' ');
+    each(i : parts) {
+      part := parts[i];
+      if(part->Size() > 1 & part->Get(0) = '/') {
+        p->SetSide(part->SubString(1, 1)->ToInt());
+      }
+      else if(part->Size() > 2 & part->Get(1) = ':') {
+        kind := 0;
+        ch := part->Get(0);
+        if(ch = 'r') {
+          kind := 1;
+        }
+        else if(ch = 'R') {
+          kind := 2;
+        }
+        else if(ch = 'w') {
+          kind := 3;
+        }
+        else if(ch = 'W') {
+          kind := 4;
+        };
+        squares := part->SubString(2, part->Size() - 2)->Split(',');
+        each(j : squares) {
+          p->Put(CkBits->Parse(squares[j]), kind);
+        };
+      };
+    };
+    return p;
+  }
+
+  method : public : ToText() ~ String {
+    text := "";
+    kinds := "rRwW";
+    each(k : 4) {
+      list := "";
+      each(sq : 64) {
+        if(At(sq) = k + 1) {
+          if(list->Size() > 0) {
+            list += ",";
+          };
+          list += CkBits->Name(sq);
+        };
+      };
+      if(list->Size() > 0) {
+        if(text->Size() > 0) {
+          text += " ";
+        };
+        text += kinds->SubString(k, 1);
+        text += ":";
+        text += list;
+      };
+    };
+    text += " /";
+    text += @side->ToString();
+    return text;
+  }
+
+  # true when the position is one a game could contain: pieces only on dark
+  # squares, no square holding both colours, kings only where there are pieces,
+  # and no man standing on the row where it would already be a king
+  method : public : IsValid() ~ Bool {
+    if((@red and @white) <> 0) {
+      return false;
+    };
+    if(((@red or @white) and (CkBits->DarkMask() xor 0x7FFFFFFFFFFFFFFF)) <> 0) {
+      return false;
+    };
+    if((@kings and ((@red or @white) xor 0x7FFFFFFFFFFFFFFF)) <> 0) {
+      return false;
+    };
+    top := CkBits->RowMask(0);
+    bottom := CkBits->RowMask(7);
+    if((@red and top and (@kings xor 0x7FFFFFFFFFFFFFFF)) <> 0) {
+      return false;
+    };
+    if((@white and bottom and (@kings xor 0x7FFFFFFFFFFFFFFF)) <> 0) {
+      return false;
+    };
+    return true;
+  }
+
+  # Fill list with every legal move of the side to move. A jump is mandatory:
+  # when any piece can jump, only jumps are listed.
+  method : public : Generate(list : CkMoveList) ~ Nil {
+    list->Clear();
+    mine := @red;
+    @theirs := @white;
+    dlo := 0;
+    dhi := 2;
+    crown := 0;
+    if(@side = 1) {
+      mine := @white;
+      @theirs := @red;
+      dlo := 2;
+      dhi := 4;
+      crown := 7;
+    };
+    @list := list;
+    occ := @red or @white;
+
+    # jumps first
+    m := mine;
+    while(m <> 0) {
+      low := m and (0 - m);
+      sq := CkBits->Low(low);
+      m := m xor low;
+      @start := sq;
+      @occ := occ xor low;
+      if((@kings and low) <> 0) {
+        Jump(sq, 0, 0, 0, 0, 4, 9, false);
+      }
+      else {
+        Jump(sq, 0, 0, 0, dlo, dhi, crown, true);
+      };
+    };
+    if(list->Count() > 0) {
+      return;
+    };
+
+    # no jump anywhere: simple one-square moves
+    empty := CkBits->DarkMask() xor occ;
+    kings := mine and @kings;
+    each(d : 4) {
+      delta := CkBits->Delta(d);
+      movers := kings;
+      if(d >= dlo & d < dhi) {
+        movers := mine;
+      };
+      movers := movers and CkBits->SourceMask(d);
+      targets := CkBits->Shift(movers, delta) and empty;
+      while(targets <> 0) {
+        low := targets and (0 - targets);
+        tsq := CkBits->Low(low);
+        targets := targets xor low;
+        list->Add(tsq - delta, tsq, 0, 0, 0);
+      };
+    };
+  }
+
+  # follow a jump from sq; every maximal chain of jumps becomes a move
+  method : Jump(sq : Int, caps : Int, path : Int, hops : Int, dlo : Int, dhi : Int, crown : Int, man : Bool) ~ Nil {
+    found := false;
+    for(d := dlo; d < dhi; d += 1;) {
+      over := CkBits->Step1(sq, d);
+      land := CkBits->Step2(sq, d);
+      if(over >= 0 & land >= 0) {
+        ob := 1 << over;
+        if((@theirs and ob) <> 0 & (caps and ob) = 0 & (@occ and (1 << land)) = 0) {
+          found := true;
+          np := path;
+          if(hops < 9) {
+            np := path or (land << (hops * 6));
+          };
+          if(man & land / 8 = crown) {
+            @list->Add(@start, land, caps or ob, np, hops + 1);
+          }
+          else {
+            Jump(land, caps or ob, np, hops + 1, dlo, dhi, crown, man);
+          };
+        };
+      };
+    };
+
+    if(<>found & hops > 0) {
+      @list->Add(@start, sq, caps, path, hops);
+    };
+  }
+
+  # Play a move for the side to move. Nothing checks that it is legal.
+  method : public : Make(fsq : Int, tsq : Int, caps : Int) ~ Nil {
+    fb := 1 << fsq;
+    tb := 1 << tsq;
+    was_king := (@kings and fb) <> 0;
+    crowned := false;
+    if(@side = 0) {
+      @red := (@red xor fb) or tb;
+      @white := @white xor (@white and caps);
+      if(<>was_king & tsq / 8 = 0) {
+        crowned := true;
+      };
+    }
+    else {
+      @white := (@white xor fb) or tb;
+      @red := @red xor (@red and caps);
+      if(<>was_king & tsq / 8 = 7) {
+        crowned := true;
+      };
+    };
+    @kings := @kings xor (@kings and caps);
+    if(was_king) {
+      @kings := (@kings xor fb) or tb;
+    }
+    else if(crowned) {
+      @kings := @kings or tb;
+    };
+
+    if(caps <> 0 | crowned) {
+      @clock := 0;
+    }
+    else {
+      @clock += 1;
+    };
+    @side := 1 - @side;
+  }
+
+  # does the side to move have any legal move? (cheap early exit for the search)
+  method : public : HasMove(list : CkMoveList) ~ Bool {
+    Generate(list);
+    return list->Count() > 0;
+  }
+
+  # a number that is the same for the same placement of pieces and side to move
+  method : public : Key() ~ Int {
+    k := @red * 31 + @white * 1000003 + @kings * 7919 + @side;
+    return k;
+  }
+
+  method : public : Equals(p : CkPos) ~ Bool {
+    return @red = p->Red() & @white = p->White() & @kings = p->Kings() & @side = p->Side();
+  }
+
+  # the pieces a side has: men and kings counted apart
+  method : public : MenCount(side : Int) ~ Int {
+    p := Pieces(side);
+    return CkBits->Pop(p xor (p and @kings));
+  }
+
+  method : public : KingCount(side : Int) ~ Int {
+    return CkBits->Pop(Pieces(side) and @kings);
+  }
+
+  # eight lines of text, top row first, e.g. for the console and the tests
+  method : public : ToString() ~ String {
+    text := "";
+    each(r : 8) {
+      each(c : 8) {
+        sq := r * 8 + c;
+        k := At(sq);
+        if(k = 1) {
+          text += "r";
+        }
+        else if(k = 2) {
+          text += "R";
+        }
+        else if(k = 3) {
+          text += "w";
+        }
+        else if(k = 4) {
+          text += "W";
+        }
+        else if((CkBits->DarkMask() and (1 << sq)) <> 0) {
+          text += ".";
+        }
+        else {
+          text += " ";
+        };
+      };
+      text += "\n";
+    };
+    return text;
+  }
+
+  # Count the leaf positions of a game tree to the given depth: the standard
+  # test that a move generator is right (see CkPerft in the regression test).
+  method : public : Perft(depth : Int) ~ Int {
+    size := depth + 1;
+    lists := CkMoveList->New[size];
+    each(i : size) {
+      lists[i] := CkMoveList->New();
+    };
+    return PerftRec(depth, lists, 0);
+  }
+
+  method : PerftRec(depth : Int, lists : CkMoveList[], ply : Int) ~ Int {
+    list := lists[ply];
+    Generate(list);
+    if(depth = 1) {
+      return list->Count();
+    };
+    total := 0;
+    n := list->Count();
+    sred := @red;
+    swhite := @white;
+    sking := @kings;
+    sside := @side;
+    sclock := @clock;
+    each(i : n) {
+      Make(list->From(i), list->To(i), list->Caps(i));
+      total += PerftRec(depth - 1, lists, ply + 1);
+      @red := sred;
+      @white := swhite;
+      @kings := sking;
+      @side := sside;
+      @clock := sclock;
+    };
+    return total;
+  }
+}

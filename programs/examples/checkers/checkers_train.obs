@@ -1,0 +1,288 @@
+#~
+# compile: obc -src checkers_engine.obs,checkers_game.obs,checkers_ai.obs,checkers_train.obs -lib ai,json -dest checkers_train.obe
+# run:     obr checkers_train.obe [seed [td_games [rounds [weights.json [final_openings [naive|hand [games_per_round]]]]]]]
+#
+# How the computer learns to evaluate a checkers position, with no human
+# games and no hand-written strategy.
+#
+# The evaluation is a weighted sum of eight facts (CkEval): how many men and
+# kings each side has, how far the men have advanced, and so on. Which weights
+# are good is not obvious, so the program finds them in two stages:
+#
+#   1. TD(lambda) self-play. The program plays itself thousands of times,
+#      looking two moves ahead and now and then trying a random move. After
+#      every move it asks "did this position look better or worse than the
+#      last one?" and nudges the weights so that the earlier position
+#      predicts what came after: positions that led to wins are scored up,
+#      positions that led to losses are scored down. This is temporal
+#      difference learning, the idea behind TD-Gammon.
+#
+#   2. Hill climbing against the champion. The current weights are the
+#      champion. Each round makes a challenger by adding a little random
+#      noise to the weights and plays it against the champion for a set of
+#      games; if the challenger wins, it becomes the champion. Evolution in
+#      miniature.
+#
+# At the end the champion plays the hand-tuned weights (the ones in
+# CkEval->Hand) on openings neither has seen, and the result is printed and
+# written, with the weights, to the JSON file the game loads.
+#
+# The man weight is fixed at 100 so the other weights mean "hundredths of a
+# man". Everything is seeded: the same arguments always produce the same file.
+~#
+
+use System.IO.Filesystem;
+use System.Time;
+
+class CkTrainer {
+  function : Main(args : String[]) ~ Nil {
+    seed := 7;
+    td_games := 4000;
+    rounds := 40;
+    out_file := "checkers_weights.json";
+    final_openings := 100;
+    start_from := "naive";
+    per_round := 30;
+    if(args->Size() > 0) {
+      seed := args[0]->ToInt();
+    };
+    if(args->Size() > 1) {
+      td_games := args[1]->ToInt();
+    };
+    if(args->Size() > 2) {
+      rounds := args[2]->ToInt();
+    };
+    if(args->Size() > 3) {
+      out_file := args[3];
+    };
+    if(args->Size() > 4) {
+      final_openings := args[4]->ToInt();
+    };
+    if(args->Size() > 5) {
+      start_from := args[5];
+    };
+    if(args->Size() > 6) {
+      per_round := args[6]->ToInt();
+    };
+
+    timer := Timer->New();
+    timer->Start();
+    hand := CkEval->New();
+
+    # start from "just count the pieces" (or from the hand-tuned weights, to
+    # polish them) and learn the rest
+    champion := CkEval->New();
+    if(<>start_from->Equals("hand")) {
+      start := Float->New[8];
+      start[0] := 100.0;
+      start[1] := 100.0;
+      champion->SetWeights(start);
+    };
+
+    "stage 1: TD(lambda) self-play, {$td_games} games"->PrintLine();
+    TdLearn(champion, td_games, seed);
+    Show("after TD(lambda)", champion);
+    td_score := Match(champion, hand, 3, 30, seed + 500);
+    "  TD weights vs hand-tuned (depth 3, 60 games): {$td_score} points of 1"->PrintLine();
+
+    "stage 2: hill climbing, {$rounds} rounds"->PrintLine();
+    HillClimb(champion, hand, rounds, seed, per_round);
+    Show("after hill climbing", champion);
+
+    "final: champion vs hand-tuned weights, {$(final_openings * 2)} games at depth 4, fresh openings"->PrintLine();
+    final_score := Match(champion, hand, 4, final_openings, seed + 9000);
+    percent := final_score * 100.0;
+    "  champion scores {$percent} percent against the hand-tuned weights"->PrintLine();
+
+    note := "trained by checkers_train.obs seed {$seed}, {$td_games} TD games, {$rounds} hill-climb rounds; ";
+    note += "scores ";
+    note += Float->ToString(percent, 1);
+    note += " percent against the hand-tuned weights over {$(final_openings * 2)} games at depth 4";
+    FileWriter->WriteFile(out_file, champion->ToJson(note));
+    timer->End();
+    "wrote {$out_file}  ({$timer->GetElapsedTime()} s)"->PrintLine();
+  }
+
+  function : Show(title : String, eval : CkEval) ~ Nil {
+    line := "  {$title}:";
+    each(i : CkEval->Count()) {
+      line += " ";
+      line += CkEval->FeatureName(i);
+      line += "=";
+      line += Float->ToString(eval->Weights()[i], 1);
+    };
+    line->PrintLine();
+  }
+
+  # the value of a position for Red, squashed into -1 .. +1
+  function : Value(eval : CkEval, f : Float[]) ~ Float {
+    s := 0.0;
+    w := eval->Weights();
+    each(i : 8) {
+      s += w[i] * f[i];
+    };
+    return (s * 0.004)->Tanh();
+  }
+
+  # TD(lambda): play td_games games against itself and learn from each
+  function : TdLearn(eval : CkEval, td_games : Int, seed : Int) ~ Nil {
+    game := CkGame->New();
+    search := CkSearch->New(eval);
+    rand := CkRand->New(seed);
+    f := Float->New[8];
+    trace := Float->New[8];
+    avoid := Int->New[1];
+    lambda := 0.7;
+    wins := 0;
+    losses := 0;
+
+    each(g : td_games) {
+      # the learning rate falls from 30 to 6 over the run
+      alpha := 30.0 - 24.0 * g->As(Float) / td_games->As(Float);
+      game->Reset();
+      each(i : 2) {
+        n := game->Legal()->Count();
+        game->Play(rand->NextInt(n));
+      };
+
+      each(i : 8) {
+        trace[i] := 0.0;
+      };
+      eval->Features(game->Pos(), f);
+      prev := Value(eval, f);
+      Gradient(f, prev, trace, 0.0);
+
+      while(game->Status() = 0 & game->Entries() < 160) {
+        n := game->Legal()->Count();
+        m := 0;
+        if(rand->NextInt(100) < 10) {
+          m := rand->NextInt(n);
+        }
+        else {
+          m := search->Choose(game->Pos(), 2, 0, avoid, 0);
+        };
+        game->Play(m);
+
+        status := game->Status();
+        target := 0.0;
+        done := true;
+        if(status = 1) {
+          target := 1.0;
+        }
+        else if(status = 2) {
+          target := -1.0;
+        }
+        else if(status = 0 & game->Entries() < 160) {
+          done := false;
+          eval->Features(game->Pos(), f);
+          target := Value(eval, f);
+        }
+        else if(status = 0) {
+          # a game that goes on too long is adjudicated by who has more pieces
+          eval->Features(game->Pos(), f);
+          target := (0.5 * (f[0] + 1.5 * f[1]))->Tanh();
+        };
+
+        # nudge every weight (except the fixed man weight) toward the new value
+        delta := target - prev;
+        w := eval->Weights();
+        for(i := 1; i < 8; i += 1;) {
+          w[i] := w[i] + alpha * delta * trace[i];
+        };
+
+        if(<>done) {
+          Gradient(f, target, trace, lambda);
+          prev := target;
+        };
+      };
+
+      if(game->Status() = 1) {
+        wins += 1;
+      }
+      else if(game->Status() = 2) {
+        losses += 1;
+      };
+      if((g + 1) % 1000 = 0) {
+        Show("game {$(g + 1)} (Red won {$wins}, White won {$losses} of the last 1000)", eval);
+        wins := 0;
+        losses := 0;
+      };
+    };
+  }
+
+  # trace = lambda * trace + the slope of the value with respect to each weight
+  function : Gradient(f : Float[], v : Float, trace : Float[], lambda : Float) ~ Nil {
+    slope := 0.004 * (1.0 - v * v);
+    each(i : 8) {
+      trace[i] := lambda * trace[i] + slope * f[i];
+    };
+  }
+
+  # the challenger plays the champion; a better challenger takes over
+  function : HillClimb(champion : CkEval, hand : CkEval, rounds : Int, seed : Int, per_round : Int) ~ Nil {
+    rand := CkRand->New(seed + 77);
+    accepted := 0;
+    each(r : rounds) {
+      scale := 1.5 - 1.0 * r->As(Float) / rounds->As(Float);
+      challenger := champion->Copy();
+      w := challenger->Weights();
+      for(i := 1; i < 8; i += 1;) {
+        sigma := w[i];
+        if(sigma < 0.0) {
+          sigma := 0.0 - sigma;
+        };
+        sigma := 0.2 * sigma;
+        if(sigma < 2.0) {
+          sigma := 2.0;
+        };
+        w[i] := w[i] + scale * sigma * Gauss(rand);
+      };
+
+      score := Match(challenger, champion, 3, per_round, seed * 100 + r);
+      verdict := "kept";
+      if(score > 0.56) {
+        champion->SetWeights(w);
+        accepted += 1;
+        verdict := "accepted";
+      };
+      "  round {$(r + 1)}: challenger scores {$score} against the champion: {$verdict}"->PrintLine();
+    };
+    "  {$accepted} of {$rounds} challengers took over"->PrintLine();
+  }
+
+  # a normally distributed random number (Box-Muller)
+  function : Gauss(rand : CkRand) ~ Float {
+    u := rand->NextFloat() + 0.000001;
+    v := rand->NextFloat();
+    return (-2.0 * u->Log())->Sqrt() * (2.0 * Float->Pi() * v)->Cos();
+  }
+
+  # a's score (win 1, draw 0.5) against b over 2 x openings games at a fixed
+  # depth, every opening played from both sides; the openings come from seed
+  function : Match(a : CkEval, b : CkEval, depth : Int, openings : Int, seed : Int) ~ Float {
+    game := CkGame->New();
+    pa_red := CkPlayer->New(a, depth, seed);
+    pb_white := CkPlayer->New(b, depth, seed + 1);
+    pb_red := CkPlayer->New(b, depth, seed + 2);
+    pa_white := CkPlayer->New(a, depth, seed + 3);
+    points := 0.0;
+    each(g : openings) {
+      opening := seed * 1000 + g;
+      r := CkMatch->Play(game, pa_red, pb_white, 6, opening);
+      if(r = 1) {
+        points += 1.0;
+      }
+      else if(r = 0) {
+        points += 0.5;
+      };
+      r := CkMatch->Play(game, pb_red, pa_white, 6, opening);
+      if(r = 2) {
+        points += 1.0;
+      }
+      else if(r = 0) {
+        points += 0.5;
+      };
+    };
+    return points / (openings * 2)->As(Float);
+  }
+}

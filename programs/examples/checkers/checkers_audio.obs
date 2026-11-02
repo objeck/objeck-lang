@@ -1,0 +1,278 @@
+#~
+# Checkers: playing the music and the sound effects. Needs the sdl2 library and
+# checkers_music.obs. If the computer has no sound card (or SDL cannot open it)
+# every call here quietly does nothing, so the game plays on in silence.
+#
+# Two ways to make sound, picked automatically:
+#
+#   1. The built-in synthesizer (CkSynth). The sound card is given a queue of
+#      samples; each frame this class tops it up with the next few hundred, adding
+#      up the current bar of music and any sound effects playing. About a tenth of
+#      a second is kept queued, so effects are heard at once and a slow frame does
+#      not stutter. This is adaptive: the next bar is written when the last one
+#      ends, from the game's mood.
+#   2. SDL_mixer MIDI, only when the queue cannot be opened: eight bars are written
+#      to a .mid file and played in a loop. Where SDL_mixer has no MIDI support or
+#      no sound font, the file does not load and the game is silent.
+#
+# Either way the song so far can be exported as a Standard MIDI File.
+~#
+
+use System.IO.Filesystem;
+use Game.SDL2;
+
+# one effect that is playing: its samples and how far through it is
+class CkVoice {
+  @samples : Float[];
+  @at : Int;
+
+  New(samples : Float[]) {
+    @samples := samples;
+  }
+
+  method : public : Done() ~ Bool {
+    return @at >= @samples->Size();
+  }
+
+  method : public : Next() ~ Float {
+    v := @samples[@at];
+    @at += 1;
+    return v;
+  }
+}
+
+class CkAudio {
+  @dev : AudioDevice;
+  @ok : Bool;
+  @rate : Int;
+  @seed : Int;
+  @style : Int;           # 0 hip-hop, 1 modern beats, 2 off
+  @beat : CkBeat;
+  @bar : CkSong;
+  @bar_at : Int;          # samples played of the current bar
+  @bar_len : Int;
+  @bpm : Int;
+  @history : CkSong;      # every bar played so far, for export
+  @history_bars : Int;
+  @mood : Int;
+  @intensity : Float;
+  @volume : Float;
+  @music_on : Bool;
+  @sfx_on : Bool;
+  @voices : CkVoice[];
+  @nvoices : Int;
+  @midi : MixMusic;
+  @engine : String;
+
+  New(seed : Int, style : Int) {
+    @rate := 22050;
+    @seed := seed;
+    @volume := 0.7;
+    @music_on := true;
+    @sfx_on := true;
+    @intensity := 0.25;
+    @voices := CkVoice->New[8];
+    @history := CkSong->New();
+    SetStyle(style);
+
+    # SDL's audio subsystem was started by the game framework; a machine with
+    # no sound hardware answers with an empty device, and we stay silent
+    @dev := AudioDevice->New(@rate, AudioFormat->SDL_AUDIO_F32, 1, 1024);
+    @ok := <>@dev->IsNull();
+    @engine := "silent";
+    if(@ok) {
+      @dev->Pause(false);
+      @engine := "synthesizer";
+    }
+    else {
+      StartMidi();
+    };
+  }
+
+  method : public : IsOk() ~ Bool {
+    return @ok;
+  }
+
+  # which back end is making the sound: synthesizer, midi or silent
+  method : public : Engine() ~ String {
+    return @engine;
+  }
+
+  method : public : SetStyle(style : Int) ~ Nil {
+    if(@beat = Nil | style <> @style) {
+      @style := style;
+      @beat := CkBeat->New(CkStyle->New(style), @seed + style * 101);
+      @bar := Nil;
+      @history := CkSong->New();
+      @history_bars := 0;
+    };
+  }
+
+  # 0 .. 100, the way the settings file says it
+  method : public : SetVolume(percent : Int) ~ Nil {
+    @volume := percent->As(Float) / 100.0;
+  }
+
+  method : public : SetMusic(on : Bool) ~ Nil {
+    @music_on := on;
+  }
+
+  method : public : SetEffects(on : Bool) ~ Nil {
+    @sfx_on := on;
+  }
+
+  # how the position feels, from the game: mood 0 calm, 1 a jump is threatened,
+  # 2 win outro, 3 loss outro, 4 a crowning (breakdown and key change); intensity
+  # 0.0 (drums alone, slow) to 1.0 (everything, fast). Applies from the next bar.
+  method : public : SetMood(mood : Int, intensity : Float) ~ Nil {
+    @mood := mood;
+    @intensity := intensity;
+  }
+
+  method : public : Mood() ~ Int {
+    return @mood;
+  }
+
+  # a sound effect (see CkSfx->Make for the numbers)
+  method : public : Play(kind : Int) ~ Nil {
+    if(<>@ok | <>@sfx_on | @volume <= 0.0) {
+      return;
+    };
+    if(@nvoices >= 8) {
+      return;
+    };
+    @voices[@nvoices] := CkVoice->New(CkSfx->Make(kind, @rate));
+    @nvoices += 1;
+  }
+
+  # call once a frame
+  method : public : Pump() ~ Nil {
+    if(<>@ok) {
+      return;
+    };
+    if(@volume <= 0.0 | (@style = 2 & @nvoices = 0) | (<>@music_on & @nvoices = 0)) {
+      @dev->Clear();
+      return;
+    };
+    queued := @dev->GetQueuedSize() / 4;
+    each(round : 2) {
+      if(queued < @rate / 9) {
+        chunk := Float->New[512];
+        Fill(chunk);
+        @dev->QueueFloats(chunk);
+        queued += 512;
+      };
+    };
+  }
+
+  # fill samples with the next piece of music and effects
+  method : Fill(chunk : Float[]) ~ Nil {
+    each(i : chunk->Size()) {
+      v := 0.0;
+      if(@music_on & @style < 2) {
+        if(@bar = Nil | @bar_at >= @bar_len) {
+          NextBar();
+        };
+        v += CkSynth->At(@bar, @bpm, @bar_at->As(Float) / @rate->As(Float), 0) * 0.32;
+        @bar_at += 1;
+      };
+
+      j := 0;
+      while(j < @nvoices) {
+        voice := @voices[j];
+        v += voice->Next() * 0.5;
+        if(voice->Done()) {
+          # drop it by moving the last voice into its place
+          @nvoices -= 1;
+          @voices[j] := @voices[@nvoices];
+          @voices[@nvoices] := Nil;
+        }
+        else {
+          j += 1;
+        };
+      };
+
+      # a gentle limiter keeps loud moments from crackling
+      v := v * @volume;
+      if(v > 0.0) {
+        v := v / (1.0 + v * 0.5);
+      }
+      else {
+        v := v / (1.0 - v * 0.5);
+      };
+      chunk[i] := v;
+    };
+  }
+
+  # write the next bar from the current mood and keep a copy for export
+  method : NextBar() ~ Nil {
+    @bpm := @beat->Bpm(@intensity, @mood);
+    @bar := @beat->Bar(@mood, @intensity);
+    @bar_len := (60.0 / @bpm->As(Float) * 4.0 * @rate->As(Float))->As(Int);
+    @bar_at := 0;
+    if(@history_bars < 64) {
+      @history->Append(@bar, @history_bars * CkSong->BarTicks());
+      @history_bars += 1;
+    };
+  }
+
+  # The song played so far as a Standard MIDI File in memory, or Nil when there
+  # is nothing yet (or the music is off).
+  method : public : MidiBytes() ~ Byte[] {
+    if(@history_bars = 0) {
+      return Nil;
+    };
+    bpm := @bpm;
+    if(bpm < 40) {
+      bpm := 90;
+    };
+    return CkMidi->Write(@history, bpm);
+  }
+
+  # write the song so far to a .mid file; false when there is nothing to write
+  method : public : ExportMidi(path : String) ~ Bool {
+    bytes := MidiBytes();
+    if(bytes = Nil) {
+      return false;
+    };
+    return FileWriter->WriteFile(path, bytes);
+  }
+
+  # no sample queue: try SDL_mixer's MIDI support with eight bars of the style
+  method : StartMidi() ~ Nil {
+    if(@style >= 2) {
+      return;
+    };
+    song := CkSong->New();
+    each(b : 8) {
+      song->Append(@beat->Bar(0, 0.5), b * CkSong->BarTicks());
+    };
+    path := Runtime->GetUserDir() + Directory->GetSlash() + ".checkers_music.mid";
+    if(FileWriter->WriteFile(path, CkMidi->Write(song, @beat->Bpm(0.5, 0)))) {
+      @midi := MixMusic->New(path);
+      if(<>@midi->IsNull() & @midi->PlayMusic(-1) = 0) {
+        @engine := "midi";
+      };
+    };
+    @beat := CkBeat->New(CkStyle->New(@style), @seed + @style * 101);
+  }
+
+  # bytes still waiting in the sound card's queue
+  method : public : Queued() ~ Int {
+    if(@ok) {
+      return @dev->GetQueuedSize();
+    };
+    return 0;
+  }
+
+  method : public : Close() ~ Nil {
+    if(@ok) {
+      @dev->Close();
+      @ok := false;
+    };
+    if(@midi <> Nil & <>@midi->IsNull()) {
+      MixMusic->Halt();
+      @midi->Free();
+    };
+  }
+}

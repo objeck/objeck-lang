@@ -55,6 +55,8 @@ CHECKS = [
     ("Differential and verifier markers have a stated reason", lambda: py("tools/cicd/check_diff_markers.py")),
     ("Differential runner catches divergence", lambda: py("programs/regression/test_run_differential.py")),
     ("Shipped examples are all indexed", lambda: py("tools/cicd/check_examples_index.py")),
+    ("Checkers regression test matches the example sources",
+     lambda: py("programs/examples/checkers/make_regression_test.py", "--check")),
     ("Generated files match their .in templates", lambda: py("tools/cicd/check_version_templates.py")),
     ("Committed libraries carry the toolchain version", lambda: py("tools/cicd/check_obl_versions.py")),
     ("Library version check catches a stale library", lambda: py("tools/cicd/check_obl_versions.py", "--test")),

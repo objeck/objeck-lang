@@ -1,0 +1,118 @@
+#~
+# compile: obc -src checkers_engine.obs,checkers_game.obs,checkers_ai.obs,checkers_tournament.obs -lib ai,json -dest checkers_tournament.obe
+# run:     obr checkers_tournament.obe [games [from [to [weights.json [seed]]]]]
+#
+# Does a higher level really play better? This program answers with numbers.
+# Level N plays level N-1 (every level from "from" up to "to", default 2 to 10)
+# for "games" random openings (default 10), each opening played twice with the
+# colours swapped, so every pair plays 2 x games games and neither colour is
+# favoured. Fun mode is always off here. It prints one line per pair and a
+# table you can paste into the README.
+#
+# Nothing in a game is left to chance except the opening moves, which come from
+# a seeded generator, so a run is repeatable: the same arguments always print
+# the same table. The higher levels think for a few seconds a move, so the full
+# table takes a while; "obr checkers_tournament.obe 2 2 5" is a quick check.
+~#
+
+use System.IO.Filesystem;
+use System.Time;
+
+class CkTournament {
+  function : Main(args : String[]) ~ Nil {
+    games := 10;
+    from_level := 2;
+    to_level := 10;
+    weights := "checkers_weights.json";
+    seed := 1;
+    if(args->Size() > 0) {
+      games := args[0]->ToInt();
+    };
+    if(args->Size() > 1) {
+      from_level := args[1]->ToInt();
+    };
+    if(args->Size() > 2) {
+      to_level := args[2]->ToInt();
+    };
+    if(args->Size() > 3) {
+      weights := args[3];
+    };
+    if(args->Size() > 4) {
+      seed := args[4]->ToInt();
+    };
+
+    hand := CkEval->New();
+    learned := CkEval->New();
+    if(learned->FromJson(FileReader->ReadFile(weights))) {
+      "learned weights: {$weights}"->PrintLine();
+    }
+    else {
+      "no weights file {$weights}: levels 9 and 10 use the hand-tuned weights"->PrintLine();
+    };
+
+    "level N plays level N-1, {$(games * 2)} games per pair (random openings, colours swapped, fun mode off)"->PrintLine();
+    "| pair | N wins | draws | N losses | N score | as Red | as White |"->PrintLine();
+    "|---|---|---|---|---|---|---|"->PrintLine();
+
+    game := CkGame->New();
+    for(level := from_level; level <= to_level; level += 1;) {
+      high_red := CkPlayer->New(level, hand, learned, seed);
+      high_white := CkPlayer->New(level, hand, learned, seed + 1);
+      low_red := CkPlayer->New(level - 1, hand, learned, seed + 2);
+      low_white := CkPlayer->New(level - 1, hand, learned, seed + 3);
+
+      wins := 0;
+      draws := 0;
+      losses := 0;
+      as_red := 0.0;
+      as_white := 0.0;
+      timer := Timer->New();
+      timer->Start();
+      each(g : games) {
+        opening := seed * 1000 + g;
+
+        # the high level as Red
+        r := CkMatch->Play(game, high_red, low_white, 4, opening);
+        if(r = 1) {
+          wins += 1;
+          as_red += 1.0;
+        }
+        else if(r = 0) {
+          draws += 1;
+          as_red += 0.5;
+        }
+        else {
+          losses += 1;
+        };
+
+        # the same opening with the colours swapped
+        r := CkMatch->Play(game, low_red, high_white, 4, opening);
+        if(r = 2) {
+          wins += 1;
+          as_white += 1.0;
+        }
+        else if(r = 0) {
+          draws += 1;
+          as_white += 0.5;
+        }
+        else {
+          losses += 1;
+        };
+      };
+      timer->End();
+
+      total := (games * 2)->As(Float);
+      score := (wins->As(Float) + draws->As(Float) * 0.5) / total * 100.0;
+      line := "| L{$level} vs L{$(level - 1)} | {$wins} | {$draws} | {$losses} | ";
+      line += Float->ToString(score, 1);
+      line += "% | ";
+      line += Float->ToString(as_red, 1);
+      line += "/{$games} | ";
+      line += Float->ToString(as_white, 1);
+      line += "/{$games} |";
+      line->PrintLine();
+      secs := timer->GetElapsedTime();
+      "  ({$secs} s)"->ErrorLine();
+    };
+  }
+}

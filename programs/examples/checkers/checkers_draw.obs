@@ -1,0 +1,448 @@
+#~
+# Checkers: everything that is drawn. Boards, the four piece sets, crowns,
+# buttons and text, all painted with SDL2 shapes (no picture files), so there is
+# no artwork to license. Needs the sdl2 and sdl_game libraries.
+~#
+
+use Collection;
+use Game.SDL2;
+use Game.Framework;
+
+# one piece of rendered text kept for reuse: building a texture from a font
+# is far slower than drawing one, and most of the text on screen never changes
+class CkTextEntry {
+  @texture : Texture;
+  @w : Int;
+  @h : Int;
+
+  New(texture : Texture, w : Int, h : Int) {
+    @texture := texture;
+    @w := w;
+    @h := h;
+  }
+
+  method : public : Texture() ~ Texture {
+    return @texture;
+  }
+
+  method : public : Width() ~ Int {
+    return @w;
+  }
+
+  method : public : Height() ~ Int {
+    return @h;
+  }
+}
+
+# Text drawing with a cache. Sizes are small numbers: 0 tiny, 1 small, 2 normal,
+# 3 large, 4 title.
+class CkText {
+  @r : Renderer;
+  @fonts : Font[];
+  @cache : Hash<String, CkTextEntry>;
+  @entries : Int;
+  @keys : Vector<String>;
+
+  New(r : Renderer, font_path : String) {
+    @r := r;
+    @fonts := Font->New[5];
+    sizes := [12, 15, 19, 28, 52];
+    each(i : 5) {
+      @fonts[i] := Font->New(font_path, sizes[i]);
+    };
+    @cache := Hash->New()<String, CkTextEntry>;
+    @keys := Vector->New()<String>;
+  }
+
+  method : public : IsOk() ~ Bool {
+    return <>@fonts[2]->IsNull();
+  }
+
+  # the entry for this text, built on first use
+  method : Entry(text : String, size : Int, red : Int, green : Int, blue : Int) ~ CkTextEntry {
+    key := "{$size}|{$red},{$green},{$blue}|{$text}";
+    found := @cache->Find(key);
+    if(found <> Nil) {
+      return found;
+    };
+
+    # a long session shows many different texts (move lists, quips); start over
+    if(@entries > 400) {
+      Flush();
+    };
+
+    surface := @fonts[size]->RenderTextBlended(text, Color->New(red, green, blue, 255));
+    if(surface->IsNull()) {
+      return Nil;
+    };
+    w := surface->GetW();
+    h := surface->GetH();
+    texture := surface->CreateTexture(@r);
+    surface->Free();
+    entry := CkTextEntry->New(texture, w, h);
+    @cache->Insert(key, entry);
+    @keys->AddBack(key);
+    @entries += 1;
+    return entry;
+  }
+
+  method : public : Flush() ~ Nil {
+    each(i : @keys->Size()) {
+      e := @cache->Find(@keys->Get(i));
+      if(e <> Nil) {
+        e->Texture()->Destroy();
+      };
+    };
+    @cache := Hash->New()<String, CkTextEntry>;
+    @keys := Vector->New()<String>;
+    @entries := 0;
+  }
+
+  # the width in pixels the text will take
+  method : public : Width(text : String, size : Int) ~ Int {
+    e := Entry(text, size, 255, 255, 255);
+    if(e = Nil) {
+      return 0;
+    };
+    return e->Width();
+  }
+
+  # align: 0 left edge at x, 1 centred on x, 2 right edge at x
+  method : public : Draw(text : String, x : Int, y : Int, size : Int, red : Int, green : Int, blue : Int, align : Int) ~ Nil {
+    DrawAlpha(text, x, y, size, red, green, blue, 255, align);
+  }
+
+  method : public : DrawAlpha(text : String, x : Int, y : Int, size : Int, red : Int, green : Int, blue : Int, alpha : Int, align : Int) ~ Nil {
+    if(text->Size() = 0) {
+      return;
+    };
+    e := Entry(text, size, red, green, blue);
+    if(e = Nil) {
+      return;
+    };
+    left := x;
+    if(align = 1) {
+      left := x - e->Width() / 2;
+    }
+    else if(align = 2) {
+      left := x - e->Width();
+    };
+    e->Texture()->SetAlphaMod(alpha);
+    @r->Copy(e->Texture(), Nil, Rect->New(left, y, e->Width(), e->Height()));
+  }
+}
+
+# The look of the game: palettes, the four piece sets, crowns, buttons.
+class CkDraw {
+  # ---- palettes ----
+
+  # colours of a board theme, three numbers each (red, green, blue):
+  # 0 light square, 1 dark square, 2 frame, 3 backdrop, 4 frame labels,
+  # 5 panel, 6 accent
+  function : Theme(set : Int) ~ Int[] {
+    if(set = 4) {
+      return [250, 240, 214,  150, 190, 110,  70, 110, 50,  26, 40, 22,  214, 232, 180,  48, 74, 38,  255, 180, 70];
+    };
+    if(set = 5) {
+      return [226, 214, 240,  128, 100, 170,  58, 40, 84,  24, 16, 36,  200, 180, 230,  46, 32, 66,  120, 240, 130];
+    };
+    if(set = 6) {
+      return [255, 244, 226,  214, 120, 100,  120, 60, 48,  44, 26, 22,  240, 204, 190,  74, 44, 36,  255, 200, 70];
+    };
+    if(set = 7) {
+      return [200, 208, 236,  96, 108, 170,  36, 40, 90,  14, 16, 40,  170, 180, 230,  30, 34, 72,  255, 226, 120];
+    };
+    if(set = 1) {
+      return [238, 238, 210,  118, 150, 86,  40, 70, 48,  22, 38, 28,  200, 220, 180,  36, 58, 44,  255, 214, 102];
+    };
+    if(set = 2) {
+      return [222, 227, 230,  140, 162, 173,  52, 66, 82,  28, 36, 46,  190, 205, 215,  44, 56, 70,  255, 190, 92];
+    };
+    if(set = 3) {
+      return [236, 239, 244,  176, 190, 208,  30, 34, 44,  16, 18, 26,  150, 160, 180,  28, 32, 42,  38, 198, 218];
+    };
+    return [240, 217, 181,  181, 136, 99,  92, 58, 36,  44, 30, 22,  231, 206, 166,  62, 44, 32,  232, 176, 60];
+  }
+
+  function : SetName(set : Int) ~ String {
+    return CkChars->SetName(set);
+  }
+
+  function : SideName(set : Int, side : Int) ~ String {
+    if(set >= 4) {
+      return CkChars->SideName(set, side);
+    };
+    if(set = 3) {
+      if(side = 0) {
+        return "Teal";
+      };
+      return "Amber";
+    };
+    if(side = 0) {
+      return "Red";
+    };
+    return "White";
+  }
+
+  function : Col(r : Int, g : Int, b : Int, a : Int) ~ Color {
+    return Color->New(r, g, b, a);
+  }
+
+  function : Mix(a : Int, b : Int, t : Float) ~ Int {
+    return (a->As(Float) + (b - a)->As(Float) * t)->As(Int);
+  }
+
+  # the three colours of a piece: 0 face, 1 dark rim/edge, 2 light highlight
+  function : PieceColors(set : Int, side : Int) ~ Int[] {
+    if(set = 3) {
+      if(side = 0) {
+        return [24, 170, 160,  12, 110, 106,  120, 230, 220];
+      };
+      return [255, 176, 40,  200, 118, 10,  255, 226, 140];
+    };
+    if(set = 1) {
+      if(side = 0) {
+        return [214, 40, 52,  120, 8, 28,  255, 150, 150];
+      };
+      return [244, 244, 240,  150, 152, 164,  255, 255, 255];
+    };
+    if(set = 2) {
+      if(side = 0) {
+        return [182, 64, 52,  108, 30, 26,  224, 112, 92];
+      };
+      return [232, 226, 210,  150, 140, 118,  252, 248, 238];
+    };
+    if(side = 0) {
+      return [200, 54, 50,  118, 24, 24,  240, 120, 110];
+    };
+    return [240, 232, 214,  150, 140, 118,  255, 252, 244];
+  }
+
+  # ---- pieces ----
+
+  # Draw one piece centred on (cx, cy). rad is its radius in pixels. sx and sy
+  # squash or stretch it (1.0 each is normal); lift raises it off the board
+  # (the shadow stays behind); alpha fades it (255 solid); crown scales the
+  # crown of a king (1.0 normal).
+  function : Piece(r : Renderer, set : Int, cx : Int, cy : Int, rad : Int, side : Int, king : Bool,
+      sx : Float, sy : Float, lift : Int, alpha : Int, crown : Float) ~ Nil {
+    PieceX(r, set, cx, cy, rad, side, king, sx, sy, lift, alpha, crown, 0, 0, 0);
+  }
+
+  # the same, with a mood (0 calm, 1 worried, 2 cheering, 3 dizzy, 4 winking, 5 shaken)
+  # and an animation frame (0 = still) for the character sets; the four plain
+  # sets ignore both
+  function : PieceX(r : Renderer, set : Int, cx : Int, cy : Int, rad : Int, side : Int, king : Bool,
+      sx : Float, sy : Float, lift : Int, alpha : Int, crown : Float, mood : Int, frame : Int, seed : Int) ~ Nil {
+    if(set >= 4) {
+      CkChars->Piece(r, set, cx, cy, rad, side, king, sx, sy, lift, alpha, crown, mood, frame, seed);
+      return;
+    };
+    PieceFlat(r, set, cx, cy, rad, side, king, sx, sy, lift, alpha, crown);
+  }
+
+  function : PieceFlat(r : Renderer, set : Int, cx : Int, cy : Int, rad : Int, side : Int, king : Bool,
+      sx : Float, sy : Float, lift : Int, alpha : Int, crown : Float) ~ Nil {
+    c := PieceColors(set, side);
+    rx := (rad->As(Float) * sx)->As(Int);
+    ry := (rad->As(Float) * sy * 0.9)->As(Int);
+    if(rx < 2) {
+      rx := 2;
+    };
+    if(ry < 2) {
+      ry := 2;
+    };
+    thick := rad / 6 + 1;
+    if(set = 3) {
+      thick := rad / 10 + 1;
+    };
+    top := cy - lift;
+
+    # the shadow stays on the board while the piece lifts away from it
+    shade := 74 * alpha / 255 - lift;
+    if(shade < 16) {
+      shade := 16;
+    };
+    r->FilledEllipseColor(cx + 2, cy + thick + 2, rx + 1, ry, Col(0, 0, 0, shade));
+
+    # the edge of the disc, then its face
+    r->FilledEllipseColor(cx, top + thick, rx, ry, Col(c[3], c[4], c[5], alpha));
+    r->FilledEllipseColor(cx, top, rx, ry, Col(c[3], c[4], c[5], alpha));
+
+    if(set = 1) {
+      # glossy: a gradient from the rim to a bright spot, then a window of light
+      each(i : 9) {
+        t := i->As(Float) / 8.0;
+        k := 1.0 - t * 0.78;
+        gx := cx - (rx->As(Float) * 0.28 * t)->As(Int);
+        gy := top - (ry->As(Float) * 0.28 * t)->As(Int);
+        r->FilledEllipseColor(gx, gy, (rx->As(Float) * k)->As(Int), (ry->As(Float) * k)->As(Int),
+          Col(Mix(c[3], c[6], t * t), Mix(c[4], c[7], t * t), Mix(c[5], c[8], t * t), alpha));
+      };
+      r->FilledEllipseColor(cx - rx / 3, top - ry / 3, rx / 3, ry / 5, Col(255, 255, 255, 120 * alpha / 255));
+      r->AAEllipseColor(cx, top, rx, ry, Col(c[3], c[4], c[5], alpha));
+    }
+    else if(set = 2) {
+      # engraved: concentric grooves cut into the face
+      r->FilledEllipseColor(cx, top, rx, ry, Col(c[0], c[1], c[2], alpha));
+      r->AAEllipseColor(cx, top, rx, ry, Col(c[3], c[4], c[5], alpha));
+      each(i : 3) {
+        k := 0.80 - i->As(Float) * 0.2;
+        er := (rx->As(Float) * k)->As(Int);
+        ey := (ry->As(Float) * k)->As(Int);
+        r->AAEllipseColor(cx, top, er, ey, Col(c[3], c[4], c[5], alpha));
+        r->AAEllipseColor(cx + 1, top + 1, er, ey, Col(c[6], c[7], c[8], alpha * 3 / 5));
+      };
+      r->FilledEllipseColor(cx, top, rx / 7 + 1, ry / 7 + 1, Col(c[3], c[4], c[5], alpha));
+    }
+    else if(set = 3) {
+      # modern: flat colour, no outline, a soft inner tone
+      r->FilledEllipseColor(cx, top, rx, ry, Col(c[0], c[1], c[2], alpha));
+      r->FilledEllipseColor(cx, top - 1, rx * 3 / 4, ry * 3 / 4, Col(c[6], c[7], c[8], alpha / 5));
+    }
+    else {
+      # classic: flat disc with a rim and one thin inner ring
+      r->FilledEllipseColor(cx, top, rx, ry, Col(c[0], c[1], c[2], alpha));
+      r->AAEllipseColor(cx, top, rx, ry, Col(c[3], c[4], c[5], alpha));
+      r->AAEllipseColor(cx, top, rx * 7 / 10, ry * 7 / 10, Col(c[3], c[4], c[5], alpha * 3 / 5));
+    };
+
+    if(king) {
+      Crown(r, set, cx, top, rad, side, sx, sy, alpha, crown);
+    };
+  }
+
+  # a three-pointed crown with jewels, gold on every set but Modern
+  function : Crown(r : Renderer, set : Int, cx : Int, cy : Int, rad : Int, side : Int, sx : Float, sy : Float, alpha : Int, scale : Float) ~ Nil {
+    u := rad->As(Float) * scale;
+    fx := [-0.50, -0.50, -0.26, 0.0, 0.26, 0.50, 0.50];
+    fy := [0.30, -0.22, 0.02, -0.40, 0.02, -0.22, 0.30];
+    vx := Int->New[7];
+    vy := Int->New[7];
+    each(i : 7) {
+      vx[i] := cx + (fx[i] * u * sx)->As(Int);
+      vy[i] := cy + (fy[i] * u * sy)->As(Int) + 1;
+    };
+
+    gr := 255;
+    gg := 208;
+    gb := 64;
+    kr := 110;
+    kg := 72;
+    kb := 0;
+    if(set = 3) {
+      gr := 250;
+      gg := 252;
+      gb := 255;
+      kr := 20;
+      kg := 60;
+      kb := 80;
+      if(side = 1) {
+        gr := 34;
+        gg := 40;
+        gb := 56;
+        kr := 255;
+        kg := 236;
+        kb := 190;
+      };
+    };
+
+    r->FilledPolygonColor(vx, vy, Col(gr, gg, gb, alpha));
+    r->AAPolygonColor(vx, vy, Col(kr, kg, kb, alpha));
+    # the band along the bottom, and a jewel on each point
+    bx := (0.5 * u * sx)->As(Int);
+    by := cy + (0.20 * u * sy)->As(Int) + 1;
+    bh := (0.14 * u * sy)->As(Int) + 1;
+    r->BoxColor(cx - bx, by, cx + bx, by + bh, Col(kr, kg, kb, alpha * 7 / 10));
+    jr := (0.075 * u)->As(Int) + 1;
+    r->FilledCircleColor(vx[1], vy[1], jr, Col(255, 255, 255, alpha));
+    r->FilledCircleColor(vx[3], vy[3], jr, Col(255, 255, 255, alpha));
+    r->FilledCircleColor(vx[5], vy[5], jr, Col(255, 255, 255, alpha));
+  }
+
+  # ---- board ----
+
+  # the top-left corner of the board is (left, top); every square is size pixels
+  function : Squares(r : Renderer, set : Int, left : Int, top : Int, size : Int) ~ Nil {
+    t := Theme(set);
+    each(sr : 8) {
+      each(sc : 8) {
+        x := left + sc * size;
+        y := top + sr * size;
+        if((sr + sc) % 2 = 1) {
+          r->BoxColor(x, y, x + size - 1, y + size - 1, Col(t[3], t[4], t[5], 255));
+        }
+        else {
+          r->BoxColor(x, y, x + size - 1, y + size - 1, Col(t[0], t[1], t[2], 255));
+        };
+      };
+    };
+  }
+
+  function : Frame(r : Renderer, set : Int, left : Int, top : Int, size : Int) ~ Nil {
+    t := Theme(set);
+    pad := 26;
+    r->RoundedBoxColor(left - pad, top - pad, left + size * 8 + pad - 1, top + size * 8 + pad - 1, 10, Col(t[6], t[7], t[8], 255));
+    r->RoundedRectangleColor(left - pad, top - pad, left + size * 8 + pad - 1, top + size * 8 + pad - 1, 10, Col(0, 0, 0, 90));
+    r->RectangleColor(left - 2, top - 2, left + size * 8 + 1, top + size * 8 + 1, Col(0, 0, 0, 110));
+  }
+
+  # a soft square highlight over board square (sr, sc) of the screen
+  function : Tint(r : Renderer, left : Int, top : Int, size : Int, sr : Int, sc : Int, red : Int, green : Int, blue : Int, alpha : Int) ~ Nil {
+    x := left + sc * size;
+    y := top + sr * size;
+    r->BoxColor(x, y, x + size - 1, y + size - 1, Col(red, green, blue, alpha));
+  }
+
+  function : Outline(r : Renderer, left : Int, top : Int, size : Int, sr : Int, sc : Int, thick : Int, red : Int, green : Int, blue : Int, alpha : Int) ~ Nil {
+    x := left + sc * size;
+    y := top + sr * size;
+    each(i : thick) {
+      r->RectangleColor(x + i, y + i, x + size - 1 - i, y + size - 1 - i, Col(red, green, blue, alpha));
+    };
+  }
+
+  # ---- buttons and panels ----
+
+  function : Button(r : Renderer, text : CkText, caption : String, x : Int, y : Int, w : Int, h : Int, set : Int, hover : Bool, active : Bool, enabled : Bool) ~ Nil {
+    t := Theme(set);
+    fr := t[18];
+    fg := t[19];
+    fb := t[20];
+    bg_r := t[15];
+    bg_g := t[16];
+    bg_b := t[17];
+    br := Mix(bg_r, 255, 0.10);
+    bgc := Mix(bg_g, 255, 0.10);
+    bb := Mix(bg_b, 255, 0.10);
+    if(hover & enabled) {
+      br := Mix(bg_r, 255, 0.22);
+      bgc := Mix(bg_g, 255, 0.22);
+      bb := Mix(bg_b, 255, 0.22);
+    };
+    if(active) {
+      br := Mix(fr, bg_r, 0.55);
+      bgc := Mix(fg, bg_g, 0.55);
+      bb := Mix(fb, bg_b, 0.55);
+    };
+    r->RoundedBoxColor(x, y, x + w - 1, y + h - 1, 8, Col(br, bgc, bb, 255));
+    if(active) {
+      r->RoundedRectangleColor(x, y, x + w - 1, y + h - 1, 8, Col(fr, fg, fb, 255));
+    }
+    else {
+      r->RoundedRectangleColor(x, y, x + w - 1, y + h - 1, 8, Col(255, 255, 255, 40));
+    };
+    if(enabled) {
+      text->Draw(caption, x + w / 2, y + h / 2 - 11, 2, 245, 245, 245, 1);
+    }
+    else {
+      text->Draw(caption, x + w / 2, y + h / 2 - 11, 2, 120, 120, 120, 1);
+    };
+  }
+
+  function : Panel(r : Renderer, x : Int, y : Int, w : Int, h : Int, set : Int) ~ Nil {
+    t := Theme(set);
+    r->RoundedBoxColor(x, y, x + w - 1, y + h - 1, 12, Col(t[15], t[16], t[17], 255));
+    r->RoundedRectangleColor(x, y, x + w - 1, y + h - 1, 12, Col(255, 255, 255, 36));
+  }
+}

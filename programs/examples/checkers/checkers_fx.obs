@@ -1,0 +1,641 @@
+#~
+# Checkers: the playful part. Particles (puffs, sparkles, confetti), pop-up words
+# and the opponent's face. Every effect is a few shapes drawn per frame, so it
+# costs almost nothing, and the game switches all of it off with "Animations: off"
+# or "Reduced motion". Needs the sdl2 and sdl_game libraries and checkers_draw.obs.
+~#
+
+use Game.SDL2;
+
+# Little bits that fly, fade and fall: smoke puffs, sparkles, confetti, drops.
+# One fixed-size pool, reused, so a long game never allocates.
+class CkParticles {
+  @x : Float[];
+  @y : Float[];
+  @vx : Float[];
+  @vy : Float[];
+  @life : Int[];       # frames left
+  @span : Int[];       # frames at the start
+  @size : Float[];
+  @red : Int[];
+  @green : Int[];
+  @blue : Int[];
+  @kind : Int[];       # 0 dot, 1 sparkle, 2 smoke, 3 confetti, 4 drop
+  @spin : Float[];
+  @count : Int;
+  @rand : CkRand;
+
+  New() {
+    n := 420;
+    @x := Float->New[n];
+    @y := Float->New[n];
+    @vx := Float->New[n];
+    @vy := Float->New[n];
+    @life := Int->New[n];
+    @span := Int->New[n];
+    @size := Float->New[n];
+    @red := Int->New[n];
+    @green := Int->New[n];
+    @blue := Int->New[n];
+    @kind := Int->New[n];
+    @spin := Float->New[n];
+    @rand := CkRand->New(2026);
+  }
+
+  method : public : Active() ~ Int {
+    n := 0;
+    each(i : 420) {
+      if(@life[i] > 0) {
+        n += 1;
+      };
+    };
+    return n;
+  }
+
+  method : public : Clear() ~ Nil {
+    each(i : 420) {
+      @life[i] := 0;
+    };
+  }
+
+  # add one particle in the first free slot (when the pool is full, it is skipped)
+  method : Add(x : Float, y : Float, vx : Float, vy : Float, life : Int, size : Float, red : Int, green : Int, blue : Int, kind : Int) ~ Nil {
+    each(i : 420) {
+      if(@life[i] <= 0) {
+        @x[i] := x;
+        @y[i] := y;
+        @vx[i] := vx;
+        @vy[i] := vy;
+        @life[i] := life;
+        @span[i] := life;
+        @size[i] := size;
+        @red[i] := red;
+        @green[i] := green;
+        @blue[i] := blue;
+        @kind[i] := kind;
+        @spin[i] := @rand->NextFloat() * 6.28;
+        return;
+      };
+    };
+  }
+
+  method : Spread() ~ Float {
+    return @rand->NextFloat() * 2.0 - 1.0;
+  }
+
+  # a comic "poof": a ring of grey-white smoke and a few coloured bits
+  method : public : Poof(cx : Int, cy : Int, red : Int, green : Int, blue : Int) ~ Nil {
+    each(i : 9) {
+      a := i->As(Float) * 0.7 + Spread() * 0.3;
+      Add(cx->As(Float), cy->As(Float), a->Cos() * 1.7, a->Sin() * 1.5, 26 + @rand->NextInt(10), 10.0 + @rand->NextFloat() * 8.0, 235, 235, 240, 2);
+    };
+    each(i : 12) {
+      a := i->As(Float) * 0.52 + Spread() * 0.2;
+      sp := 2.0 + @rand->NextFloat() * 3.0;
+      Add(cx->As(Float), cy->As(Float), a->Cos() * sp, a->Sin() * sp - 1.0, 24 + @rand->NextInt(14), 3.0 + @rand->NextFloat() * 3.0, red, green, blue, 0);
+    };
+  }
+
+  # sparkles: golden stars for a crowning, or any colour
+  method : public : Sparkle(cx : Int, cy : Int, count : Int, red : Int, green : Int, blue : Int) ~ Nil {
+    each(i : count) {
+      a := @rand->NextFloat() * 6.28;
+      sp := 1.0 + @rand->NextFloat() * 3.5;
+      Add(cx->As(Float), cy->As(Float), a->Cos() * sp, a->Sin() * sp - 1.5, 30 + @rand->NextInt(26), 3.0 + @rand->NextFloat() * 3.0, red, green, blue, 1);
+    };
+  }
+
+  method : public : Confetti(width : Int, count : Int) ~ Nil {
+    each(i : count) {
+      c := @rand->NextInt(5);
+      red := 240;
+      green := 70;
+      blue := 80;
+      if(c = 1) {
+        red := 255;
+        green := 200;
+        blue := 40;
+      }
+      else if(c = 2) {
+        red := 60;
+        green := 200;
+        blue := 120;
+      }
+      else if(c = 3) {
+        red := 70;
+        green := 160;
+        blue := 255;
+      }
+      else if(c = 4) {
+        red := 200;
+        green := 90;
+        blue := 240;
+      };
+      Add(@rand->NextFloat() * width->As(Float), -10.0 - @rand->NextFloat() * 120.0, Spread() * 1.2, 1.5 + @rand->NextFloat() * 2.0, 200 + @rand->NextInt(100), 5.0, red, green, blue, 3);
+    };
+  }
+
+  # blue drops of sweat from a thinking face
+  method : public : Drop(cx : Int, cy : Int) ~ Nil {
+    Add(cx->As(Float), cy->As(Float), Spread() * 0.5, -1.4, 30, 3.5, 120, 190, 255, 4);
+  }
+
+  # a handful of fast streaks, for wind
+  method : public : Gust(cx : Int, cy : Int, dir : Int) ~ Nil {
+    each(i : 14) {
+      Add(cx->As(Float), (cy - 30 + @rand->NextInt(60))->As(Float), dir->As(Float) * (4.0 + @rand->NextFloat() * 4.0), Spread() * 0.4, 22 + @rand->NextInt(12), 7.0, 235, 245, 255, 3);
+    };
+  }
+
+  # one animation step (a 60th of a second)
+  method : public : Update() ~ Nil {
+    each(i : 420) {
+      if(@life[i] > 0) {
+        @life[i] := @life[i] - 1;
+        @x[i] := @x[i] + @vx[i];
+        @y[i] := @y[i] + @vy[i];
+        k := @kind[i];
+        if(k = 0 | k = 1 | k = 4) {
+          @vy[i] := @vy[i] + 0.12;
+        }
+        else if(k = 2) {
+          @vx[i] := @vx[i] * 0.94;
+          @vy[i] := @vy[i] * 0.94 - 0.02;
+          @size[i] := @size[i] + 0.35;
+        }
+        else {
+          @vy[i] := @vy[i] + 0.02;
+          @spin[i] := @spin[i] + 0.2;
+        };
+      };
+    };
+  }
+
+  method : public : Draw(r : Renderer) ~ Nil {
+    each(i : 420) {
+      if(@life[i] > 0) {
+        fade := @life[i]->As(Float) / @span[i]->As(Float);
+        alpha := (255.0 * fade)->As(Int);
+        x := @x[i]->As(Int);
+        y := @y[i]->As(Int);
+        sz := @size[i]->As(Int);
+        k := @kind[i];
+        if(k = 2) {
+          r->FilledCircleColor(x, y, sz, Color->New(@red[i], @green[i], @blue[i], alpha * 6 / 10));
+        }
+        else if(k = 1) {
+          pulse := sz->As(Float) * (0.6 + 0.4 * @spin[i]->Cos());
+          s := pulse->As(Int) + 1;
+          r->LineColor(x - s, y, x + s, y, Color->New(@red[i], @green[i], @blue[i], alpha));
+          r->LineColor(x, y - s, x, y + s, Color->New(@red[i], @green[i], @blue[i], alpha));
+          r->FilledCircleColor(x, y, sz / 3 + 1, Color->New(255, 255, 255, alpha));
+        }
+        else if(k = 3) {
+          dx := (@spin[i]->Cos() * @size[i])->As(Int);
+          dy := (@spin[i]->Sin() * @size[i] * 0.5)->As(Int);
+          r->ThickLineColor(x - dx, y - dy, x + dx, y + dy, 3, Color->New(@red[i], @green[i], @blue[i], alpha));
+        }
+        else if(k = 4) {
+          r->FilledCircleColor(x, y, sz, Color->New(@red[i], @green[i], @blue[i], alpha));
+          r->FilledTrigonColor(x - sz, y, x + sz, y, x, y - sz * 2, Color->New(@red[i], @green[i], @blue[i], alpha));
+        }
+        else {
+          r->FilledCircleColor(x, y, sz, Color->New(@red[i], @green[i], @blue[i], alpha));
+        };
+      };
+    };
+  }
+}
+
+# Words that pop up, wobble and float away: "POW!", "KING ME!".
+class CkPopups {
+  @words : String[];
+  @x : Int[];
+  @y : Int[];
+  @start : Int[];     # frame it appeared
+  @size : Int[];
+  @red : Int[];
+  @green : Int[];
+  @blue : Int[];
+  @frame : Int;
+
+  New() {
+    @words := String->New[10];
+    @x := Int->New[10];
+    @y := Int->New[10];
+    @start := Int->New[10];
+    @size := Int->New[10];
+    @red := Int->New[10];
+    @green := Int->New[10];
+    @blue := Int->New[10];
+  }
+
+  method : public : Clear() ~ Nil {
+    each(i : 10) {
+      @words[i] := Nil;
+    };
+  }
+
+  method : public : Count() ~ Int {
+    n := 0;
+    each(i : 10) {
+      if(@words[i] <> Nil) {
+        n += 1;
+      };
+    };
+    return n;
+  }
+
+  # show a word at (x, y); size is a CkText size (2 normal, 3 large, 4 huge)
+  method : public : Add(word : String, x : Int, y : Int, size : Int, red : Int, green : Int, blue : Int) ~ Nil {
+    slot := 0;
+    each(i : 10) {
+      if(@words[i] = Nil) {
+        slot := i;
+        break;
+      };
+    };
+    @words[slot] := word;
+    @x[slot] := x;
+    @y[slot] := y;
+    @start[slot] := @frame;
+    @size[slot] := size;
+    @red[slot] := red;
+    @green[slot] := green;
+    @blue[slot] := blue;
+  }
+
+  method : public : Update() ~ Nil {
+    @frame += 1;
+    each(i : 10) {
+      if(@words[i] <> Nil & @frame - @start[i] > 70) {
+        @words[i] := Nil;
+      };
+    };
+  }
+
+  method : public : Draw(text : CkText) ~ Nil {
+    each(i : 10) {
+      if(@words[i] <> Nil) {
+        age := @frame - @start[i];
+        alpha := 255;
+        if(age > 45) {
+          alpha := 255 - (age - 45) * 10;
+          if(alpha < 0) {
+            alpha := 0;
+          };
+        };
+        rise := age * 5 / 4;
+        bob := (6.0 * (age->As(Float) * 0.35)->Sin())->As(Int);
+        # a drop shadow keeps the word readable on any square
+        y := @y[i] - rise + bob;
+        if(y < 24) {
+          y := 24;
+        };
+        text->DrawAlpha(@words[i], @x[i] + 2, y + 2, @size[i], 20, 20, 20, alpha * 7 / 10, 1);
+        text->DrawAlpha(@words[i], @x[i], y, @size[i], @red[i], @green[i], @blue[i], alpha, 1);
+      };
+    };
+  }
+}
+
+# The opponent's face: ten characters, one per level, each with its own
+# accessories, and moods that show in the eyes and mouth. The eyes follow the
+# mouse pointer.
+class CkChar {
+  # moods
+  function : Idle() ~ Int {
+    return 0;
+  }
+
+  function : Thinking() ~ Int {
+    return 1;
+  }
+
+  function : Smug() ~ Int {
+    return 2;
+  }
+
+  function : Surprised() ~ Int {
+    return 3;
+  }
+
+  function : Sad() ~ Int {
+    return 4;
+  }
+
+  function : Happy() ~ Int {
+    return 5;
+  }
+
+  # what the opponent says, by level and mood
+  function : Line(level : Int, mood : Int) ~ String {
+    lines := [
+      "Zzz... oh, hi. Your move?", "Hmm... zzz... was that a move?", "Heh. I think I took one. Zzz.", "Wha?! Who moved my piece?", "I was winning... in my dream.", "I won?! Pinch me. Zzz.",
+      "Ooh, which one is the pointy end?", "Let me think... or not.", "Oops, I jumped something!", "Whoa! That piece was MINE!", "I tripped over my own king.", "I won! Did I do that?",
+      "Er, left or right? Right.", "Wobble wobble, thinking...", "Ha! Got one! Probably.", "Wibble! Where did it go?", "My moustache droops...", "Wahoo! The moustache wins!",
+      "Let me check that twice.", "Calculating very carefully...", "A careful capture, thank you.", "Well, that was unexpected.", "I should have checked a third time.", "Careful play pays off.",
+      "Nice try. Now watch this.", "Hehe... I see your plan.", "Too easy, friend.", "Hm! Did not see that coming.", "You got me this time.", "Sly Sam strikes again!",
+      "Fascinating position!", "According to my calculations...", "Elementary, my dear pawn.", "Remarkable! A flaw in my theory!", "The data disagrees with me.", "Q.E.D. Quite easily done.",
+      "Forward, my crown!", "Charting a course...", "Boarded and captured!", "Shiver me timbers!", "Abandon ship...", "Victory is mine, matey!",
+      "Ooh la la, let me see...", "Minimax, minimax, minimax...", "C'est magnifique, a capture.", "Mon dieu! Impossible!", "Bravo. Truly. Bravo.", "Checkmate. Er, checkers-mate.",
+      "I have thought about this move for ten plies.", "Searching... searching... searching...", "Exactly as I computed.", "That was not in my search tree.", "A deeper search was needed.", "As calculated.",
+      "BEEP. Evaluating 2,400,000 positions.", "WHIRR... computing optimal move.", "TARGET ACQUIRED. Capture complete.", "ERROR 404: advantage not found.", "SYSTEM SAD. Recalibrating.", "BEEP BOOP. Victory confirmed."
+    ];
+    lv := level - 1;
+    if(lv < 0) {
+      lv := 0;
+    };
+    if(lv > 9) {
+      lv := 9;
+    };
+    return lines[lv * 6 + mood];
+  }
+
+  # skin / head colour of each character
+  function : Skin(level : Int) ~ Int[] {
+    tones := [
+      244, 214, 170,  250, 200, 170,  226, 180, 130,  240, 205, 160,  222, 170, 120,
+      246, 214, 184,  236, 190, 140,  250, 214, 190,  190, 215, 240,  176, 190, 205
+    ];
+    out := Int->New[3];
+    each(i : 3) {
+      out[i] := tones[(level - 1) * 3 + i];
+    };
+    return out;
+  }
+
+  # Draw the face of the character for level, centred on (cx, cy), head radius
+  # rad. mood is one of the moods above; frame drives blinking and wobbling;
+  # (mx, my) is where the mouse pointer is, so the eyes can follow it; lively
+  # false draws a still face.
+  function : Face(r : Renderer, level : Int, cx : Int, cy : Int, rad : Int, mood : Int, frame : Int, mx : Int, my : Int, lively : Bool) ~ Nil {
+    skin := Skin(level);
+    wob := 0;
+    if(lively) {
+      if(level = 3 | level = 2) {
+        wob := (2.5 * (frame->As(Float) * 0.07)->Sin())->As(Int);
+      }
+      else if(mood = 1) {
+        wob := (1.5 * (frame->As(Float) * 0.2)->Sin())->As(Int);
+      };
+    };
+    x := cx + wob;
+
+    robot := level = 10;
+    if(robot) {
+      r->RoundedBoxColor(x - rad, cy - rad + 4, x + rad, cy + rad - 2, 8, Color->New(skin[0], skin[1], skin[2], 255));
+      r->RoundedRectangleColor(x - rad, cy - rad + 4, x + rad, cy + rad - 2, 8, Color->New(70, 80, 95, 255));
+      r->LineColor(x, cy - rad + 4, x, cy - rad - 8, Color->New(70, 80, 95, 255));
+      lit := 150;
+      if(lively & (frame / 20) % 2 = 0) {
+        lit := 255;
+      };
+      r->FilledCircleColor(x, cy - rad - 10, 4, Color->New(255, lit, 60, 255));
+      r->BoxColor(x - rad + 6, cy - rad / 3 - 6, x + rad - 6, cy - rad / 3 + 12, Color->New(25, 30, 45, 255));
+    }
+    else {
+      r->FilledCircleColor(x, cy, rad, Color->New(skin[0], skin[1], skin[2], 255));
+      r->AACircleColor(x, cy, rad, Color->New(60, 40, 30, 200));
+    };
+
+    # accessories behind and above the face
+    Hat(r, level, x, cy, rad, frame, lively);
+
+    # eyes: they look toward the pointer, and blink now and then
+    ex := rad / 3;
+    ey := cy - rad / 6;
+    look_x := 0;
+    look_y := 0;
+    if(lively) {
+      dx := (mx - x)->As(Float);
+      dy := (my - ey)->As(Float);
+      d := (dx * dx + dy * dy)->Sqrt();
+      if(d > 1.0) {
+        reach := 3.0;
+        if(d < 40.0) {
+          reach := 3.0 * d / 40.0;
+        };
+        look_x := (dx / d * reach)->As(Int);
+        look_y := (dy / d * reach)->As(Int);
+      };
+    };
+    blink := lively & frame % 170 < 6;
+    sleepy := level = 1 & mood = 0;
+    each(side : 2) {
+      sx := x - ex;
+      if(side = 1) {
+        sx := x + ex;
+      };
+      ew := rad / 5 + 2;
+      eh := rad / 4 + 2;
+      if(mood = 3) {
+        eh := eh + 3;
+        ew := ew + 2;
+      };
+      if(robot) {
+        r->BoxColor(sx - ew, ey - 3, sx + ew, ey + 5, Color->New(80, 255, 220, 255));
+      }
+      else if(blink | sleepy) {
+        r->ThickLineColor(sx - ew, ey, sx + ew, ey, 2, Color->New(40, 30, 30, 255));
+      }
+      else {
+        r->FilledEllipseColor(sx, ey, ew, eh, Color->New(255, 255, 255, 255));
+        r->AAEllipseColor(sx, ey, ew, eh, Color->New(60, 40, 30, 255));
+        pr := ew / 2 + 1;
+        if(mood = 3) {
+          pr := pr - 1;
+        };
+        r->FilledCircleColor(sx + look_x, ey + look_y, pr, Color->New(30, 24, 24, 255));
+        r->FilledCircleColor(sx + look_x - 1, ey + look_y - 1, 1, Color->New(255, 255, 255, 255));
+      };
+    };
+
+    # eyebrows say a lot
+    by := ey - eh_of(rad) - 4;
+    if(mood = 2) {
+      r->ThickLineColor(x - ex - 6, by + 1, x - ex + 6, by - 2, 2, Color->New(60, 40, 30, 255));
+      r->ThickLineColor(x + ex - 6, by - 3, x + ex + 6, by + 1, 2, Color->New(60, 40, 30, 255));
+    }
+    else if(mood = 3) {
+      r->ThickLineColor(x - ex - 6, by - 3, x - ex + 6, by - 3, 2, Color->New(60, 40, 30, 255));
+      r->ThickLineColor(x + ex - 6, by - 3, x + ex + 6, by - 3, 2, Color->New(60, 40, 30, 255));
+    }
+    else if(mood = 4) {
+      r->ThickLineColor(x - ex - 6, by + 2, x - ex + 6, by - 2, 2, Color->New(60, 40, 30, 255));
+      r->ThickLineColor(x + ex - 6, by - 2, x + ex + 6, by + 2, 2, Color->New(60, 40, 30, 255));
+    }
+    else if(<>robot) {
+      r->ThickLineColor(x - ex - 6, by, x - ex + 6, by, 2, Color->New(60, 40, 30, 200));
+      r->ThickLineColor(x + ex - 6, by, x + ex + 6, by, 2, Color->New(60, 40, 30, 200));
+    };
+
+    # mouth
+    my_ := cy + rad / 2;
+    mouth := Color->New(80, 30, 30, 255);
+    if(robot) {
+      each(i : 6) {
+        r->LineColor(x - 14 + i * 5, my_ - 2, x - 14 + i * 5, my_ + 4, Color->New(80, 255, 220, 255));
+      };
+    }
+    else if(mood = 5) {
+      r->FilledEllipseColor(x, my_, rad / 3, rad / 4, mouth);
+      r->FilledEllipseColor(x, my_ - rad / 8, rad / 3 - 1, rad / 8, Color->New(skin[0], skin[1], skin[2], 255));
+    }
+    else if(mood = 3) {
+      r->FilledEllipseColor(x, my_ + 2, rad / 6, rad / 5, mouth);
+    }
+    else if(mood = 2) {
+      Smile(r, x + 3, my_ - 1, rad / 3, 5, mouth);
+    }
+    else if(mood = 4) {
+      Smile(r, x, my_ + 4, rad / 4, -4, mouth);
+    }
+    else if(mood = 1) {
+      r->ThickLineColor(x - rad / 5, my_ + 1, x - rad / 14, my_ - 1, 2, mouth);
+      r->ThickLineColor(x - rad / 14, my_ - 1, x + rad / 14, my_ + 2, 2, mouth);
+      r->ThickLineColor(x + rad / 14, my_ + 2, x + rad / 5, my_ - 1, 2, mouth);
+    }
+    else {
+      Smile(r, x, my_ - 1, rad / 4, 2, mouth);
+    };
+
+    # sweat drops while thinking
+    if(mood = 1 & lively) {
+      each(i : 2) {
+        t := (frame + i * 40) % 80;
+        r->FilledCircleColor(x + rad - 3 + i * 5, cy - rad / 2 + t / 3, 3, Color->New(120, 190, 255, 255 - t * 3));
+      };
+    };
+
+    Face2(r, level, x, cy, rad, mood, frame, lively);
+  }
+
+  function : eh_of(rad : Int) ~ Int {
+    return rad / 4 + 2;
+  }
+
+  # a smile (curve > 0) or frown (curve < 0) as three short strokes
+  function : Smile(r : Renderer, x : Int, y : Int, half : Int, curve : Int, col : Color) ~ Nil {
+    r->ThickLineColor(x - half, y, x - half / 2, y + curve * 2 / 3, 2, col);
+    r->ThickLineColor(x - half / 2, y + curve * 2 / 3, x + half / 2, y + curve * 2 / 3, 2, col);
+    r->ThickLineColor(x + half / 2, y + curve * 2 / 3, x + half, y, 2, col);
+  }
+
+  # hats, hair and other things on top
+  function : Hat(r : Renderer, level : Int, x : Int, cy : Int, rad : Int, frame : Int, lively : Bool) ~ Nil {
+    top := cy - rad;
+    if(level = 1) {
+      # a droopy red nightcap with a bobbing pompom
+      r->FilledTrigonColor(x - rad + 2, top + 14, x + rad - 2, top + 12, x + rad + 12, top + 28, Color->New(200, 60, 70, 255));
+      r->FilledEllipseColor(x, top + 8, rad - 1, 7, Color->New(250, 245, 240, 255));
+      bob := 0;
+      if(lively) {
+        bob := (2.0 * (frame->As(Float) * 0.1)->Sin())->As(Int);
+      };
+      r->FilledCircleColor(x + rad + 12, top + 30 + bob, 5, Color->New(250, 245, 240, 255));
+    }
+    else if(level = 2) {
+      # three tufts of messy hair
+      each(i : 3) {
+        r->FilledTrigonColor(x - 14 + i * 14, top + 4, x - 4 + i * 14, top + 4, x - 12 + i * 15, top - 12, Color->New(130, 80, 40, 255));
+      };
+    }
+    else if(level = 3) {
+      # a big moustache
+      r->FilledEllipseColor(x - 8, cy + rad / 3 + 1, 9, 4, Color->New(110, 70, 40, 255));
+      r->FilledEllipseColor(x + 8, cy + rad / 3 + 1, 9, 4, Color->New(110, 70, 40, 255));
+      r->FilledEllipseColor(x, top + 6, rad - 6, 7, Color->New(110, 70, 40, 255));
+    }
+    else if(level = 4) {
+      r->FilledEllipseColor(x, top + 5, rad - 4, 6, Color->New(90, 60, 40, 255));
+    }
+    else if(level = 5) {
+      # a cap worn at a rakish angle
+      r->FilledEllipseColor(x - 2, top + 6, rad, 11, Color->New(60, 110, 170, 255));
+      r->FilledEllipseColor(x + rad - 4, top + 12, 14, 4, Color->New(40, 80, 130, 255));
+    }
+    else if(level = 6) {
+      # wild white hair
+      each(i : 7) {
+        r->FilledTrigonColor(x - rad + 2 + i * 10, top + 8, x - rad + 12 + i * 10, top + 8, x - rad + 3 + i * 10 + (i % 2) * 8, top - 14, Color->New(245, 245, 250, 255));
+      };
+    }
+    else if(level = 7) {
+      # a captain's cap with a gold badge
+      r->FilledEllipseColor(x, top + 8, rad + 4, 6, Color->New(30, 40, 90, 255));
+      r->FilledEllipseColor(x, top + 1, rad - 2, 11, Color->New(250, 250, 250, 255));
+      r->BoxColor(x - rad + 3, top + 4, x + rad - 3, top + 9, Color->New(30, 40, 90, 255));
+      r->FilledCircleColor(x, top + 3, 4, Color->New(255, 205, 60, 255));
+    }
+    else if(level = 8) {
+      # an elegant bun and a tiara
+      r->FilledCircleColor(x + 4, top - 8, 12, Color->New(90, 40, 60, 255));
+      r->FilledTrigonColor(x - 12, top + 6, x - 4, top + 6, x - 8, top - 4, Color->New(255, 205, 60, 255));
+      r->FilledTrigonColor(x - 4, top + 6, x + 4, top + 6, x, top - 7, Color->New(255, 205, 60, 255));
+      r->FilledTrigonColor(x + 4, top + 6, x + 12, top + 6, x + 8, top - 4, Color->New(255, 205, 60, 255));
+    }
+    else if(level = 9) {
+      # a lightbulb that flickers on when it has an idea
+      glow := 120;
+      if(lively & (frame / 25) % 3 = 0) {
+        glow := 255;
+      };
+      r->FilledCircleColor(x, top - 12, 8, Color->New(255, 240, 120, glow));
+      r->BoxColor(x - 3, top - 5, x + 3, top - 1, Color->New(150, 150, 160, 255));
+    };
+  }
+
+  # things drawn over the face
+  function : Face2(r : Renderer, level : Int, x : Int, cy : Int, rad : Int, mood : Int, frame : Int, lively : Bool) ~ Nil {
+    ey := cy - rad / 6;
+    ex := rad / 3;
+    if(level = 4 | level = 6) {
+      # round glasses
+      r->AACircleColor(x - ex, ey, rad / 4 + 5, Color->New(40, 40, 50, 255));
+      r->AACircleColor(x + ex, ey, rad / 4 + 5, Color->New(40, 40, 50, 255));
+      r->LineColor(x - ex + rad / 4 + 5, ey, x + ex - rad / 4 - 5, ey, Color->New(40, 40, 50, 255));
+    }
+    else if(level = 8) {
+      r->AACircleColor(x + ex, ey, rad / 4 + 6, Color->New(255, 205, 60, 255));
+      r->LineColor(x + ex + rad / 4 + 6, ey + 2, x + ex + rad / 4 + 12, cy + rad, Color->New(255, 205, 60, 200));
+    }
+    else if(level = 2) {
+      # a plaster on the cheek
+      r->ThickLineColor(x + rad / 2 - 6, cy + 6, x + rad / 2 + 6, cy + 14, 5, Color->New(240, 190, 160, 255));
+    }
+    else if(level = 1 & mood = 0 & lively) {
+      zs := (frame / 30) % 3 + 1;
+      each(i : zs) {
+        r->FilledCircleColor(x + rad + 6 + i * 7, cy - rad / 2 - i * 8, 2 + i, Color->New(200, 220, 255, 220));
+      };
+    }
+    else if(level = 5) {
+      r->ThickLineColor(x + rad / 3, cy + rad / 2 - 2, x + rad / 3 + 8, cy + rad / 2 - 6, 2, Color->New(80, 30, 30, 255));
+    };
+  }
+}
+
+# The words and lines the effects use, as data: adding a word is adding to a list.
+class CkFxTable {
+  # pops up on a capture
+  function : CaptureWords() ~ String[] {
+    return ["POW!", "BAM!", "ZAP!", "BOOM!", "WHAM!", "POOF!", "GOTCHA!", "OOF!"];
+  }
+
+  # a chain of jumps counts up, one word per extra piece
+  function : ComboWords() ~ String[] {
+    return ["DOUBLE!", "TRIPLE!", "KA-BOOM!", "MEGA!", "ULTRA!", "INSANE!"];
+  }
+
+  # the silly things a piece does when nothing has happened for a while:
+  # a wave, a yawn, a sneeze that nudges its neighbours, a peek
+  function : AnticWords() ~ String[] {
+    return ["Hi!", "Yaaawn...", "Achoo!", "Peek-a-boo"];
+  }
+
+  # what the opponent says when its face is clicked
+  function : EggLines() ~ String[] {
+    return ["Hey, that tickles!", "Eyes up here!", "Stop poking me!", "Is it my turn yet?", "I can see you looking at my hat.", "Press B for a party.", "Tee-hee."];
+  }
+}
