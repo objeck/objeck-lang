@@ -3089,7 +3089,7 @@ class CkView {
       k_near := @dist / (@dist - 4.0 * @sin);
       k_far := @dist / (@dist + 4.0 * @sin);
       # the near edge, with its frame, is about as wide as the flat board and frame
-      @s := size->As(Float) * 0.92 / k_near;
+      @s := size->As(Float) * 0.88 / k_near;
       # and the whole slanted board sits in the middle of the board area
       y_far := 0.0 - 4.0 * @s * @cos * k_far;
       y_near := 4.0 * @s * @cos * k_near;
