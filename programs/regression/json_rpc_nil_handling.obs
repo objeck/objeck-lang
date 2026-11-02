@@ -1,0 +1,188 @@
+# EXTRA_LIBS: json_rpc,net
+#~
+Data.JSON.RPC must not dereference Nil on a request or a reply that leaves a member out.
+
+- A request without "params" (allowed by JSON-RPC 2.0) handed the handler Nil, so a handler
+  that read its parameters ended the whole server process with a Nil dereference. The handler
+  now gets an empty object.
+- Client->Call read error->Get("code")->GetInt() and error->Get("message")->GetString(), so a
+  server reply whose "error" was a string, or an object without a code or a message, ended
+  the client with a Nil dereference. And after a well-formed error object the call fell
+  through and overwrote the server's code and message with -32000 "Server error".
+
+Both ends run in this process on loopback ports the system chooses; nothing leaves the host.
+~#
+
+use Collection;
+use Data.JSON;
+use Data.JSON.RPC;
+use System.IO.Net;
+
+class JsonRpcNilHandling {
+	@failures : static : Int;
+
+	function : Check(ok : Bool, name : String) ~ Nil {
+		if(<>ok) {
+			"  [FAIL] {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# reads params with no Nil check, as the library's own example does
+	function : CountParams(params : JsonElement) ~ JsonElement {
+		return JsonElement->New(params->Size());
+	}
+
+	function : ExpectError(client : Client, result : JsonElement, code : Int, message : String, name : String) ~ Nil {
+		Check(result = Nil, "{$name}: no result");
+		error := client->GetLastError();
+		Check(error <> Nil, "{$name}: an error is recorded");
+		if(error <> Nil) {
+			got_code := error->GetFirst()->Get();
+			got_message := error->GetSecond();
+			Check(got_code = code, "{$name}: code {$code}, got {$got_code}");
+			Check(got_message <> Nil & got_message->Equals(message), "{$name}: message [{$message}], got [{$got_message}]");
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		TestServerWithoutParams();
+		TestClientErrorShapes();
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} JSON-RPC check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: JSON-RPC tolerates a missing params and a partial error"->PrintLine();
+		Runtime->Exit(0);
+	}
+
+	function : TestServerWithoutParams() ~ Nil {
+		"-- server: a request without params --"->PrintLine();
+
+		funcs := Hash->New()<String, Func2Ref<JsonElement, JsonElement>>;
+		funcs->Insert("count", Func2Ref->New(JsonRpcNilHandling->CountParams(JsonElement) ~ JsonElement)<JsonElement, JsonElement>);
+
+		server := Server->New(funcs, 0);
+		port := server->GetPort();
+		thread := ServerThread->New(server);
+		thread->Execute(Nil);
+
+		waited := 0;
+		while(<>server->IsListening() & waited < 10000) {
+			System.Concurrency.Thread->Sleep(10);
+			waited += 10;
+		};
+		if(<>server->IsListening()) {
+			"FAIL: JSON-RPC server never listened on port {$port}"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		# no "params" member at all
+		socket := TCPSocket->New("127.0.0.1", port);
+		Check(socket->IsOpen(), "raw socket connects");
+		if(socket->IsOpen()) {
+			socket->WriteString("{\"jsonrpc\":\"2.0\",\"method\":\"count\",\"id\":7}\r\n");
+			line := socket->ReadLine();
+			socket->Close();
+			reply := line <> Nil ? JsonParser->TextToElement(line) : Nil;
+			Check(reply <> Nil, "the reply parses: {$line}");
+			if(reply <> Nil) {
+				result := reply->Get("result");
+				Check(result <> Nil & result->GetInt() = 0, "the handler saw an empty object: {$line}");
+			};
+		};
+
+		# the server is still up for the next caller
+		client := Client->New("127.0.0.1", port);
+		params := JsonElement->New(JsonElement->JsonType->OBJECT);
+		params->Insert("a", 1);
+		params->Insert("b", 2);
+		result := client->Call("count", params);
+		Check(result <> Nil & result->GetInt() = 2, "the server still answers after a request without params");
+
+		# a client that passes Nil for the parameters
+		result := client->Call("count", Nil);
+		Check(result <> Nil & result->GetInt() = 0, "a call with Nil params reaches the handler as an empty object");
+	}
+
+	function : TestClientErrorShapes() ~ Nil {
+		"-- client: replies whose error is partial --"->PrintLine();
+
+		replies := String->New[5];
+		replies[0] := "{\"jsonrpc\":\"2.0\",\"error\":\"boom\",\"id\":1}";
+		replies[1] := "{\"jsonrpc\":\"2.0\",\"error\":{},\"id\":1}";
+		replies[2] := "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32601,\"message\":\"Method not found\"},\"id\":1}";
+		replies[3] := "{\"jsonrpc\":\"2.0\",\"error\":{\"message\":\"no code\"},\"id\":1}";
+		replies[4] := "this is not json";
+
+		fake := TCPSocketServer->New(0);
+		port := fake->GetPort();
+		if(<>fake->Listen(8)) {
+			"FAIL: the fake server cannot listen"->PrintLine();
+			Runtime->Exit(1);
+		};
+		thread := FakeServerThread->New(fake, replies);
+		thread->Execute(Nil);
+
+		client := Client->New("127.0.0.1", port);
+		params := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+		result := client->Call("m", params);
+		ExpectError(client, result, -32000, "boom", "error is a string");
+
+		result := client->Call("m", params);
+		ExpectError(client, result, -32000, "Server error", "error is an empty object");
+
+		result := client->Call("m", params);
+		ExpectError(client, result, -32601, "Method not found", "a well-formed error keeps the server's code and message");
+
+		result := client->Call("m", params);
+		ExpectError(client, result, -32000, "no code", "error has a message but no code");
+
+		result := client->Call("m", params);
+		Check(result = Nil, "a reply that is not JSON gives no result");
+		Check(client->GetLastError() <> Nil, "a reply that is not JSON records an error");
+
+		thread->Join();
+	}
+}
+
+class ServerThread from System.Concurrency.Thread {
+	@server : Server;
+
+	New(server : Server) {
+		Parent();
+		@server := server;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		@server->Process();
+	}
+}
+
+# answers each connection with the next scripted line
+class FakeServerThread from System.Concurrency.Thread {
+	@server : TCPSocketServer;
+	@replies : String[];
+
+	New(server : TCPSocketServer, replies : String[]) {
+		Parent();
+		@server := server;
+		@replies := replies;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		each(i : @replies) {
+			client := @server->Accept();
+			client->ReadLine();
+			reply := String->New(@replies[i]);
+			reply->Append("\r\n");
+			client->WriteString(reply);
+			client->Close();
+		};
+	}
+}

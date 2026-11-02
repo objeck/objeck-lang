@@ -246,7 +246,13 @@ if(parser->Parse()) {
 ```
 		~#
 		New(string : String) {
-			@buffer := string->ToCharArray();
+			# Nil, the text of a file that could not be read, is empty text: Parse() fails
+			if(string = Nil) {
+				@buffer := Char->New[0];
+			}
+			else {
+				@buffer := string->ToCharArray();
+			};
 			@buffer_pos := 0;
 			@declarations := Hash->New()<String, XmlElement>;
 		}
@@ -264,7 +270,12 @@ if(parser->Parse()) {
 ```
 		~#
 		New(buffer : Char[]) {
-			@buffer := buffer;
+			if(buffer = Nil) {
+				@buffer := Char->New[0];
+			}
+			else {
+				@buffer := buffer;
+			};
 			@buffer_pos := 0;
 			@declarations := Hash->New()<String, XmlElement>;
 		}
@@ -372,6 +383,11 @@ if(parser->Parse()) {
 ```
 		~#
 		method : public : FindElements(path : String) ~ Vector<XmlElement> {
+			# nothing to search when the document was not parsed
+			if(@root = Nil) {
+				return Vector->New()<XmlElement>;
+			};
+
 			return @root->FindElements(path)<XmlElement>;
 		}
 
