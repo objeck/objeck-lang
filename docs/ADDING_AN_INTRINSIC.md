@@ -31,7 +31,7 @@ Sites are named by function, not line number, because line numbers rot.
 
 ### 1. `traps.h`: append, never insert
 
-`enum Traps` has no explicit values, so an enumerator's ordinal **is** its wire id, and
+Only the first enumerator of `enum Traps` has an explicit value (`LOAD_CLS_INST_ID = -4000`); the rest count up from it, so an enumerator's position **is** its wire id, and
 that id is written into every compiled `.obl` and `.obe`. Insert one in the middle and
 every trap after it silently changes meaning. Put the new one last (after the comment
 that says so) and give it a comment naming the method. Never delete one either: that

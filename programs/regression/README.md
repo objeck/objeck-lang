@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This regression test suite validates the compiler, virtual machine, JIT and libraries after every change. It has about 300 tests; [TESTS.md](TESTS.md) lists every one, by category, with what it checks. It covers:
+This regression test suite validates the compiler, virtual machine, JIT and libraries after every change. It has about 780 tests; [TESTS.md](TESTS.md) lists every one, by category, with what it checks. It covers:
 
 - **Core language** - classes, generics, closures and lambdas, records, strings, collections, exceptions
 - **JIT** - AMD64 and ARM64 code generation (`jit_*`, `arm64_*`)

@@ -58,7 +58,7 @@ obr --version
 2. **JIT Compiler**
    - Converts hot methods to native machine code (auto-JIT by call count)
    - Architecture-specific code generation (x64 whitelist, ARM64 blacklist)
-   - Local register caching and (x64) method inlining
+   - Local register caching; direct JIT-to-JIT calls (method inlining is the compiler's `-opt s3` pass, not the JIT's)
    - Direct JIT-to-JIT calling via call-site patching (`MTHD_CALL` → `MTHD_CALL_JIT`)
    - See [JIT internals](arch/jit/README.md)
 
@@ -125,7 +125,7 @@ Objects are laid out in memory with:
 ### Optimizations
 - JIT compilation with local register caching
 - Direct JIT-to-JIT calling (no interpreter trampoline) via call-site patching
-- Method inlining (x64) and power-of-two division strength reduction
+- Division by a constant as a multiply or shift in both JITs; method inlining is done by the compiler at `-opt s3`
 - Young-generation bump allocation (lock-free) for short-lived objects
 - Constant pool optimization
 

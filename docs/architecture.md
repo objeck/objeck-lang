@@ -929,44 +929,43 @@ the ceiling problem for a slower build.
 
 ### Regression Test Suite
 
-529 tests under `programs/regression/`, grouped by the prefix on each filename.
-Counts are the file count per prefix, not a sample.
+782 tests under `programs/regression/`, grouped by the prefix on each filename. The counts change with almost every pull request, so they are not repeated here: `programs/regression/TESTS.md` (generated) has the current number per category.
 
 ```mermaid
 mindmap
     root((Regression Tests
-    529 total))
-        Language core (46)
+    782 total))
+        Language core
             core_*
                 Arithmetic, arrays, classes, generics, strings
-        Rejected programs (72)
+        Rejected programs
             bad_*
                 Errors the compiler must refuse
-        JIT (46)
+        JIT
             jit_*
                 Native compilation, float paths, GC interaction
-        Machine learning (31)
+        Machine learning
             ml_*
                 System.ML models and inference
-        Fixed defects (11)
+        Fixed defects
             fix_*
                 Regressions pinned to the bug that caused them
-        Collections (12)
+        Collections
             collect_*
                 Vector, Hash, Map, Set, Stack, Queue
-        Math and strings (26)
+        Math and strings
             math_* string_* func_*
                 Numerics, formatting, higher-order functions
-        ARM64 specific (5)
+        ARM64 specific
             arm64_*
                 Bitwise, char arrays, 64-bit immediates, multiply
-        Networking and web (16)
+        Networking and web
             http_* mcp_* xml_* json_* api_*
                 Clients, servers, serialisation
-        Rosetta Code tasks (99)
+        Rosetta Code tasks
             rosetta_*
                 Programs from Rosetta Code, output checked
-        Remainder (165)
+        Remainder
             closure_* try_* vm_* gc_* opt_* dap_* debugger_* onnx_* and others
                 Closures, error handling, the VM and its collector, AI bindings, debugger
 ```
