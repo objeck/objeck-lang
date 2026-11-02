@@ -196,7 +196,7 @@ jobs:
       # as the unprivileged runner fails with "tar: ...deb: Permission denied".
       - name: Cache APT packages (Linux)
         if: runner.os == 'Linux'
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/apt-cache
           key: ${{ runner.os }}-${{ matrix.arch }}-apt-release
@@ -224,7 +224,7 @@ jobs:
 
       - name: Cache Homebrew (macOS)
         if: runner.os == 'macOS'
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           # DOWNLOADS ONLY, not /opt/homebrew/Cellar. Caching the Cellar made
           # this single entry 1749 MB -- measured 2026-10-13, the largest in the
@@ -348,7 +348,7 @@ jobs:
       - name: Cache OpenCV DLLs (Windows x64)
         if: matrix.platform == 'windows-x64'
         id: opencv-cache-x64
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: core/lib/opencv/win/x64/bin
           key: opencv-4.12.0-win-x64-dlls-licenses
@@ -393,7 +393,7 @@ jobs:
       - name: Cache OpenCV DLLs (Windows ARM64)
         if: matrix.platform == 'windows-arm64'
         id: opencv-cache-arm64
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: core/lib/opencv/win/arm64/bin
           key: opencv-4.12.0-win-arm64-dlls
@@ -890,7 +890,7 @@ jobs:
       # Cache a USER-OWNED archive dir; restoring root-owned /var/cache/apt/archives
       # as the unprivileged runner fails with "tar: ...deb: Permission denied".
       - name: Cache APT packages
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/apt-cache
           key: ${{ runner.os }}-x64-apt-release

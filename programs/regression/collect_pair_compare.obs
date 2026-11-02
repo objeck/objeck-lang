@@ -1,0 +1,79 @@
+#~
+Collection.Pair->Compare takes the other pair, which is what a sorted collection passes.
+
+Pair->Compare forwarded its argument to the first value's Compare, so comparing two
+pairs handed a Pair to IntRef->Compare, which cast it to IntRef and ended the program
+with "Invalid object cast: 'Collection.Pair' to 'System.IntRef'". Sorting a CompareVector
+of pairs, or ordering them in a Heap, hit it. Comparing against another pair's first
+value, the form the documentation shows, must keep working.
+~#
+
+use Collection;
+
+class CollectPairCompare {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(<>ok) {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+
+    three := Pair->New(IntRef->New(3), "c")<IntRef, String>;
+    one := Pair->New(IntRef->New(1), "a")<IntRef, String>;
+    two := Pair->New(IntRef->New(2), "b")<IntRef, String>;
+    other_two := Pair->New(IntRef->New(2), "x")<IntRef, String>;
+
+    # pair against pair
+    Check("3 > 1", three->Compare(one) > 0);
+    Check("1 < 3", one->Compare(three) < 0);
+    Check("2 = 2 whatever the second values", two->Compare(other_two) = 0);
+
+    # pair against a first value, the documented form
+    Check("3 > first of 1", three->Compare(one->GetFirst()) > 0);
+    Check("1 < first of 3", one->Compare(three->GetFirst()) < 0);
+    Check("2 = first of 2", two->Compare(other_two->GetFirst()) = 0);
+
+    # sorted by first value
+    pairs := CompareVector->New()<Pair<IntRef, String>>;
+    pairs->AddBack(three);
+    pairs->AddBack(one);
+    pairs->AddBack(two);
+    pairs->Sort();
+    order := "";
+    each(i : pairs) {
+      order += pairs->Get(i)->GetSecond();
+    };
+    Check("sorted order is abc, got {$order}", order->Equals("abc"));
+
+    # a larger vector goes through the merge sort rather than the insertion sort
+    many := CompareVector->New()<Pair<IntRef, String>>;
+    each(i : 40) {
+      many->AddBack(Pair->New(IntRef->New((i * 17) % 40), "{$i}")<IntRef, String>);
+    };
+    many->Sort();
+    ascending := many->Size() = 40;
+    for(i := 1; i < many->Size() & ascending; i += 1;) {
+      ascending := many->Get(i - 1)->GetFirst()->Get() <= many->Get(i)->GetFirst()->Get();
+    };
+    Check("forty pairs sorted ascending", ascending);
+
+    # string first values
+    words := CompareVector->New()<Pair<String, IntRef>>;
+    words->AddBack(Pair->New("pear", IntRef->New(2))<String, IntRef>);
+    words->AddBack(Pair->New("apple", IntRef->New(1))<String, IntRef>);
+    words->Sort();
+    Check("string-keyed pairs sort", words->Get(0)->GetFirst()->Equals("apple"));
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} Pair->Compare check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    "PASS: Pair->Compare orders pairs"->PrintLine();
+  }
+}
