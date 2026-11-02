@@ -1,0 +1,60 @@
+#~
+# compile: obc -src readme_ai.obs -lib ai
+# run:     obr readme_ai.obe
+#
+# The README's System.AI sample: describe the game of Nim once, and let
+# Minimax and Monte Carlo tree search choose moves. Take 1, 2 or 3 stones;
+# whoever takes the last stone wins. Leaving a multiple of 4 wins, so from
+# 10 stones the right move is to take 2.
+#
+# Guide: docs/guides/ai.md
+~#
+
+use System.AI;
+
+class Nim implements GameState {
+  @stones : Int;
+  @a_to_move : Bool;
+
+  New(stones : Int, a_to_move : Bool) {
+    @stones := stones;
+    @a_to_move := a_to_move;
+  }
+
+  method : public : GetMoves() ~ Int[] {
+    count := @stones < 3 ? @stones : 3;
+    moves := Int->New[count];
+    each(i : count) {
+      moves[i] := i + 1;
+    };
+    return moves;
+  }
+
+  method : public : Apply(move : Int) ~ GameState {
+    return Nim->New(@stones - move, <>@a_to_move);
+  }
+
+  method : public : IsTerminal() ~ Bool {
+    return @stones = 0;
+  }
+
+  # +1 when player A took the last stone, -1 when B did
+  method : public : Evaluate() ~ Float {
+    if(@stones > 0) {
+      return 0.0;
+    };
+    return @a_to_move ? -1.0 : 1.0;
+  }
+
+  method : public : IsMaximizing() ~ Bool {
+    return @a_to_move;
+  }
+}
+
+class Play {
+  function : Main(args : String[]) ~ Nil {
+    state := Nim->New(10, true)->As(GameState);
+    "Minimax takes {$(Minimax->New(12)->FindBestMove(state))} of 10 stones"->PrintLine();
+    "Monte Carlo takes {$(MonteCarloTreeSearch->New(2000, 1.414, 7)->FindBestMove(state))} of 10 stones"->PrintLine();
+  }
+}

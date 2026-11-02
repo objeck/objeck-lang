@@ -1,0 +1,28 @@
+#~
+# compile: obc -src readme_regex.obs -lib regex
+# run:     obr readme_regex.obe
+#
+# The README's regular expression sample: find every match, read a capture
+# group, replace, and a pattern that is not OK.
+#
+# Guide: docs/guides/data_and_text.md
+~#
+
+use Query.RegEx;
+
+class Dates {
+  function : Main(args : String[]) ~ Nil {
+    text := "shipped 2026-10-31, patched 2026-11-02";
+    found := RegEx->New("(\\d{4})-(\\d{2})-(\\d{2})")->Find(text);
+    each(i : found) {
+      date := found->Get(i);
+      "{$(date->GetValue())} is month {$(date->GetGroup(2))}"->PrintLine();
+    };
+
+    hidden := RegEx->New("\\d")->ReplaceAll("call 555-0199", "#");
+    hidden->PrintLine();
+
+    bad := RegEx->New("a{2,1}");
+    "a{2,1} is a valid pattern: {$(bad->IsOk())}"->PrintLine();
+  }
+}

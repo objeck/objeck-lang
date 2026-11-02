@@ -1,0 +1,36 @@
+#~
+# compile: obc -src readme_query.obs -lib query,misc,net,json,regex,xml,csv,cipher
+# run:     obr readme_query.obe
+#
+# The README's Query.Structured sample: a table, SQL over it, and an error
+# that is a message instead of a crash.
+#
+# Guide: docs/guides/query.md
+~#
+
+use Query.Structured;
+
+class Sales {
+  function : Main(args : String[]) ~ Nil {
+    sales := Table->New("sales", ["region", "item", "qty", "price"]);
+    Add(sales, "east", "widget", 10, 2.5);
+    Add(sales, "west", "gadget", 4, 10.0);
+    Add(sales, "east", "gadget", 3, 10.0);
+    Add(sales, "west", "widget", 7, 2.5);
+
+    result := sales->Query("select region, sum(qty * price) as revenue from sales group by region order by revenue desc");
+    result->ToCsv()->Print();
+
+    if(sales->Query("select nothing from sales") = Nil) {
+      sales->GetError()->PrintLine();
+    };
+  }
+
+  function : Add(table : Table, region : String, item : String, qty : Int, price : Float) ~ Nil {
+    row := table->Insert();
+    row->Set("region", region);
+    row->Set("item", item);
+    row->Set("qty", IntRef->New(qty));
+    row->Set("price", FloatRef->New(price));
+  }
+}

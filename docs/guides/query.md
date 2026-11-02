@@ -23,7 +23,7 @@ names all of these:
 obc -src program.obs -lib query,misc,net,json,regex,xml,csv,cipher
 ```
 
-## 1. Your first table
+## Your first table
 
 A table has a name and a list of column names. `Insert()` makes an empty row and `Set()` fills a
 cell by column name. Numbers go in as `IntRef` or `FloatRef` objects, text as plain strings.
@@ -103,37 +103,23 @@ obr query_start.obe
 ```text
 rows: 5
 name,age
-
 Ken,61
-
 Barbara,52
-
 Grace,45
-
   Ken is 61
   Barbara is 52
   Grace is 45
 team,people,average_age
-
 compilers,2,40.5
-
 kernels,2,40.0
-
 tools,1,61.0
-
 column,type,count,nulls,distinct,min,max,mean,std
-
 name,string,5,0,5,,,,
-
 age,int,5,0,5,28.0,61.0,44.4,11.60344776348823
-
 team,string,5,0,3,,,,
-
 error: unknown column 'nickname'
 player,total
-
 grace,3400
-
 ada,3300
 ```
 
@@ -151,7 +137,7 @@ Things to notice:
   quoted name `'scores_guide.csv'` stands where a table name goes; the format follows the
   extension.
 
-## 2. The SQL you can use
+## The SQL you can use
 
 ```text
 SELECT [DISTINCT] (* | expr [AS name], ...)
@@ -181,7 +167,7 @@ CREATE INDEX ON table (col) [USING HASH | SORTED]
   returns the number of rows changed (or `-1` on error). A statement that fails changes nothing.
 - `?` is a placeholder for a value; see prepared statements below.
 
-## 3. Joins, expressions and prepared statements
+## Joins, expressions and prepared statements
 
 A `Catalog` holds named tables, and SQL run through it can join them. This program declares the
 type of every column, so a value of the wrong type is refused instead of changing the column.
@@ -291,53 +277,33 @@ storing text in an Int column: false
 
 -- inner join --
 name,item,total
-
 Ada,widget,25.0
-
 Ada,gadget,20.0
-
 Grace,widget,10.0
-
 Grace,gizmo,2.0
-
 -- left join --
 name,item
-
 Ada,widget
-
 Ada,gadget
-
 Grace,widget
-
 Grace,gizmo
-
 Linus,
-
 -- spending per customer, more than 20 in total --
 name,orders,spent
-
 Ada,2,45.0
-
 -- orders where qty * price is under 5 --
 customer_id,item,total
-
 2,gizmo,2.0
-
 9,widget,2.5
-
 -- prepared statement --
 item,qty
-
 gizmo,8
-
 customer 1 has 2 orders
 
 updated 3 rows
 deleted 1 row
 orders,value
-
 4,64.0
-
 error: no table named 'nobody'
 ```
 
@@ -352,7 +318,7 @@ Things to notice:
 - A join is a hash join on equality. `Explain(sql)` on a table or a catalog describes the plan
   without running the query.
 
-## 4. Keeping a table on disk
+## Keeping a table on disk
 
 An `.otab` file stores a table column by column. `Save` writes one (the write goes to a temporary
 file that is renamed over the old one, so a crash leaves the old file or the new one), `Load`
@@ -449,21 +415,14 @@ rows in memory: 100000
 file size: 203504 bytes
 rows loaded: 100000
 sensor,n,lowest,highest
-
 east,25000,10.2,29.8
-
 north,25000,10.0,29.6
-
 south,25000,10.1,29.7
-
 west,25000,10.3,29.9
-
 one column:  100000 rows, 157157 of 203504 bytes read
 all columns: 100000 rows, 203504 of 203504 bytes read
 hot_readings
-
 2000
-
 after changes: 75000 rows
 reopened: 75000 rows, 2 log records replayed
 ```
@@ -481,7 +440,7 @@ Things to notice:
 - A named `.otab` file cannot stand in `FROM` the way a CSV can: load it, add it to a catalog and
   query it by table name, as the program does.
 
-## 5. Other sources
+## Other sources
 
 A quoted file name in `FROM` reads that file: `from 'runs.csv'`, `from 'weather.json'`. The
 format follows the extension (`.csv`, `.tsv`, `.json`, `.jsonl`, `.xml`, `.xlsx`, also compressed

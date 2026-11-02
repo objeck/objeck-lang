@@ -9,6 +9,8 @@ web/
 ├── index.html             # Landing page
 ├── getting_started.html   # Quick start guide
 ├── ai_guide.html          # AI & ML developer guide
+├── guides.html            # Index of the getting-started guides
+├── guide_*.html           # The guides (query, http, data, collections, ai, editors, whats_new)
 ├── readme.html            # Changelog
 └── style/
     ├── styles.css         # Shared stylesheet

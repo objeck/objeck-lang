@@ -30,6 +30,10 @@ every release.
 | [`collections_tour.obs`](../../programs/examples/guides/collections_tour.obs) | none |
 | [`ai_tictactoe.obs`](../../programs/examples/guides/ai_tictactoe.obs) | `ai` |
 
+The seven `readme_*.obs` programs are the short examples shown in the project
+[README](../../README.md#examples): `readme_tour`, `readme_query`, `readme_json`, `readme_regex`,
+`readme_collections`, `readme_http` and `readme_ai`.
+
 Each file opens with a comment giving its exact compile and run lines. To build one:
 
 ```text

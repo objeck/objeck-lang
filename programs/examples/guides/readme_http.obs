@@ -1,0 +1,59 @@
+#~
+# compile: obc -src readme_http.obs -lib net,net_server,json,cipher
+# run:     obr readme_http.obe
+#
+# The README's web sample: a server with one route, a client that calls it,
+# and a clean stop.
+#
+# Guide: docs/guides/http.md
+~#
+
+use System.Concurrency;
+use Web.HTTP.Server;
+
+class Greeter from HttpRequestHandler {
+  New() {
+    Parent();
+  }
+
+  method : ProcessGet(request : Request, response : Response) ~ Bool {
+    name := request->GetParam("name");
+    if(name = Nil) {
+      name := "world";
+    };
+    response->SetCodeTypeContent(200, "text/plain", "Hello, {$name}!");
+    return false;
+  }
+
+  method : ProcessPost(request : Request, response : Response) ~ Bool {
+    response->SetCodeContent(405, "Method not allowed");
+    return false;
+  }
+}
+
+class HelloWeb {
+  function : Main(args : String[]) ~ Nil {
+    # Serve() blocks, so it runs on a thread; port 0 means any free port
+    server := Thread->New() {
+      New() {
+        Parent();
+      }
+
+      method : public : Run(arg : System.Base) ~ Nil {
+        WebServer->Serve(Greeter->New()->GetClass(), "127.0.0.1", 0);
+      }
+    };
+    server->Execute(Nil);
+
+    while(WebServer->GetBoundPort() = 0) {
+      Thread->Sleep(25);
+    };
+    port := WebServer->GetBoundPort();
+
+    client := Web.HTTP.HttpClient->New();
+    response := client->Get(Web.HTTP.Url->New("http://127.0.0.1:{$port}/hello?name=Ada"));
+    "{$(response->GetCode())} {$(response->GetContent()->ToString())}"->PrintLine();
+
+    WebServer->Stop();
+  }
+}

@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Query.Structured Guide — Objeck Language</title>
+  <meta name="description" content="A database inside your program: typed in-memory tables, SQL joins, grouping, prepared statements and files."/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+  <style>
+    /* ── Page title ── */
+    .page-title {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #f3f4f6;
+      margin: 0 0 0.4rem;
+      line-height: 1.2;
+    }
+    .page-lead {
+      color: #9ca3af;
+      font-size: 0.97rem;
+      margin-bottom: 1.75rem;
+      line-height: 1.7;
+      max-width: 700px;
+    }
+
+    /* ── Section headings with left accent ── */
+    .container h3 {
+      border-left: 3px solid #3b82f6;
+      padding-left: 12px;
+      margin-top: 3rem;
+    }
+    .container h3:first-of-type { margin-top: 1.25rem; }
+
+    /* ── Subsection (h4) spacing ── */
+    .container h4 {
+      margin-top: 1.75rem;
+      margin-bottom: 0.35rem;
+    }
+
+    /* ── Compile flag badge ── */
+    .lib-flag {
+      display: inline-block;
+      background: #151d28;
+      border: 1px solid #2d3a4d;
+      border-left: 3px solid #3b82f6;
+      border-radius: 4px 8px 8px 4px;
+      padding: 5px 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      color: #7dd3fc;
+      margin: 0.5rem 0 1.1rem;
+      letter-spacing: 0.2px;
+    }
+    .lib-flag::before {
+      content: "obc flag: ";
+      color: #9ca3af;
+      font-size: 0.72rem;
+    }
+
+    /* ── Prose within sections ── */
+    .container p {
+      color: #d1d5db;
+      margin-bottom: 0.85rem;
+      line-height: 1.7;
+    }
+    .container > p:first-child {
+      color: #9ca3af;
+    }
+
+    /* ── Code block after cmd block ── */
+    pre.cmd + h4,
+    pre + h4,
+    pre + p { margin-top: 1.25rem; }
+
+    /* ── Callout note box ── */
+    .note {
+      background: #1a2332;
+      border-left: 3px solid #f59e0b;
+      border-radius: 0 6px 6px 0;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      color: #d1d5db;
+      margin: 0.75rem 0 1rem;
+    }
+    .note strong { color: #f59e0b; }
+
+    /* ── File tree listing ── */
+    .file-tree {
+      background: #151d28;
+      border: 1px solid #2d3a4d;
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      color: #9ca3af;
+      line-height: 2;
+      margin: 0.75rem 0 1.5rem;
+      overflow-x: auto;
+    }
+    .file-tree .dir  { color: #7dd3fc; font-weight: 600; }
+    .file-tree .file { color: #86efac; }
+
+    /* ── Quick reference table overrides ── */
+    .ref-table th { background-color: #151d28 !important; color: #a3cefd !important; }
+    .ref-table td { vertical-align: top; }
+    .ref-table tr:nth-child(even) td { background-color: #1a2332; }
+    .ref-table tr:nth-child(odd)  td { background-color: #151d28; }
+    .ref-table tr:hover td { background-color: #2d3a4d; }
+    .ref-table code { white-space: nowrap; }
+
+    /* ── Section separator visual ── */
+    .section-end {
+      border: none;
+      border-top: 1px solid #2d3a4d;
+      margin: 2.5rem 0 0;
+    }
+  </style>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.style.display = menuItems.style.display === "block" ? "none" : "block";
+      });
+      document.addEventListener("click", () => { menuItems.style.display = "none"; });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Query.Structured: a database inside your program</h1>
+    <p class="page-lead"><code>Query.Structured</code> is a columnar, typed, in-memory table engine in the standard library (since v2026.10.2). You build a <code>Table</code>, put rows in it, and ask questions in SQL: <code>WHERE</code>, <code>GROUP BY</code>, <code>ORDER BY</code>, joins, arithmetic, indexes. There is no server and no setup. A table can be saved to a file, kept durable on disk, or read from a CSV, JSON or XML file, an archive, an Excel workbook or an ODBC database.</p>
+    <div id="toc_container">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#compiling">Compiling</a></li>
+      <li><a href="#your-first-table">Your first table</a></li>
+      <li><a href="#the-sql-you-can-use">The SQL you can use</a></li>
+      <li><a href="#joins-expressions-and-prepared-statements">Joins, expressions and prepared statements</a></li>
+      <li><a href="#keeping-a-table-on-disk">Keeping a table on disk</a></li>
+      <li><a href="#other-sources">Other sources</a></li>
+      <li><a href="#where-next">Where next</a></li>
+     </ul>
+    </div>
+
+    <p>Use it when you would otherwise write loops over arrays of records to filter, group and sort them. The design and the full list of what it does are in <a href="https://github.com/objeck/objeck-lang/blob/master/docs/QUERY_DESIGN.md" target="_blank"><code>docs/QUERY_DESIGN.md</code></a>; this page is the short, runnable way in.</p>
+    <p>Every program below is in <a href="https://github.com/objeck/objeck-lang/tree/master/programs/examples/guides" target="_blank"><code>programs/examples/guides/</code></a>. Each one was compiled and run with the v2026.10.3 toolchain, and the output shown is what it printed.</p>
+    <h3 id="compiling">Compiling</h3>
+    <p><code>obc</code> does not pull in a library's own dependencies, so a program that uses <code>Query.Structured</code> names all of these:</p>
+<pre class="cmd">obc -src program.obs -lib query,misc,net,json,regex,xml,csv,cipher</pre>
+    <h3 id="your-first-table">Your first table</h3>
+    <p>A table has a name and a list of column names. <code>Insert()</code> makes an empty row and <code>Set()</code> fills a cell by column name. Numbers go in as <code>IntRef</code> or <code>FloatRef</code> objects, text as plain strings. <code>Query()</code> takes SQL and returns another <code>Table</code>; <code>ToCsv()</code> prints it.</p>
+<pre class="line-numbers"><code class="language-cpp">use Query.Structured;
+use System.IO.Filesystem;
+
+class QueryStart {
+  function : Main(args : String[]) ~ Nil {
+    # a table has a name and a list of column names
+    people := Table-&gt;New("people", ["name", "age", "team"]);
+
+    # Insert makes an empty row; Set fills a cell by column name.
+    # Numbers go in as IntRef or FloatRef objects, text as plain strings.
+    Add(people, "Ada", 36, "compilers");
+    Add(people, "Grace", 45, "compilers");
+    Add(people, "Linus", 28, "kernels");
+    Add(people, "Barbara", 52, "kernels");
+    Add(people, "Ken", 61, "tools");
+    "rows: {$(people-&gt;Size())}"-&gt;PrintLine();
+
+    # --- ask a question; the answer is a Table ---
+    result := people-&gt;Query("select name, age from people where age &gt; 40 order by age desc");
+    result-&gt;ToCsv()-&gt;Print();
+
+    # --- read the cells of an answer yourself ---
+    # LiveRows() lists the row numbers, RowAt() gets a row, Get(name) a cell;
+    # a cell comes back as an IntRef, FloatRef or String
+    rows := result-&gt;LiveRows();
+    each(i : rows) {
+      row := result-&gt;RowAt(rows[i]);
+      name := row-&gt;Get("name")-&gt;As(String);
+      age := row-&gt;Get("age")-&gt;As(IntRef)-&gt;Get();
+      "  {$name} is {$age}"-&gt;PrintLine();
+    };
+
+    # --- group, count and average ---
+    result := people-&gt;Query("select team, count(*) as people, avg(age) as average_age from people group by team order by team");
+    result-&gt;ToCsv()-&gt;Print();
+
+    # --- a quick look at a table: its columns and their types ---
+    people-&gt;Describe()-&gt;ToCsv()-&gt;Print();
+
+    # --- a mistake is a Nil answer and a message ---
+    result := people-&gt;Query("select nickname from people");
+    if(result = Nil) {
+      "error: {$(people-&gt;GetError())}"-&gt;PrintLine();
+    };
+
+    # --- a CSV file, queried by its name ---
+    writer := FileWriter-&gt;New("scores_guide.csv");
+    writer-&gt;WriteString("player,level,points\nada,3,1200\ngrace,5,3400\nada,4,2100\n");
+    writer-&gt;Close();
+
+    result := Catalog-&gt;Run("select player, sum(points) as total from 'scores_guide.csv' group by player order by total desc");
+    result-&gt;ToCsv()-&gt;Print();
+    File-&gt;Delete("scores_guide.csv");
+  }
+
+  function : Add(table : Table, name : String, age : Int, team : String) ~ Nil {
+    row := table-&gt;Insert();
+    row-&gt;Set("name", name);
+    row-&gt;Set("age", IntRef-&gt;New(age));
+    row-&gt;Set("team", team);
+  }
+}
+</code></pre>
+<pre class="cmd">obc -src query_start.obs -lib query,misc,net,json,regex,xml,csv,cipher
+obr query_start.obe</pre>
+<pre class="cmd">rows: 5
+name,age
+Ken,61
+Barbara,52
+Grace,45
+  Ken is 61
+  Barbara is 52
+  Grace is 45
+team,people,average_age
+compilers,2,40.5
+kernels,2,40.0
+tools,1,61.0
+column,type,count,nulls,distinct,min,max,mean,std
+name,string,5,0,5,,,,
+age,int,5,0,5,28.0,61.0,44.4,11.60344776348823
+team,string,5,0,3,,,,
+error: unknown column 'nickname'
+player,total
+grace,3400
+ada,3300</pre>
+    <p>Things to notice:</p>
+    <ul>
+     <li>A column's type is worked out from the first value stored in it, so <code>age</code> is an <code>Int</code> column and <code>average_age</code> comes out as a <code>Float</code>.</li>
+     <li><code>avg(age)</code> over two <code>Int</code> cells is <code>40.5</code>: aggregates read numbers and return a <code>Float</code>.</li>
+     <li>A cell read back from a result is an <code>IntRef</code>, a <code>FloatRef</code> or a <code>String</code>; <code>-&gt;As(IntRef)-&gt;Get()</code> turns it into an <code>Int</code>.</li>
+     <li><code>people-&gt;Query("select nickname from people")</code> did not stop the program. It returned <code>Nil</code>, and <code>GetError()</code> said <code>unknown column 'nickname'</code>. Every statement that fails does this, and the error is kept per thread, so threads that query one table do not read each other's errors.</li>
+     <li><code>Catalog-&gt;Run(sql)</code> answers a query that only reads files, with no tables to set up first. The quoted name <code>'scores_guide.csv'</code> stands where a table name goes; the format follows the extension.</li>
+    </ul>
+    <h3 id="the-sql-you-can-use">The SQL you can use</h3>
+<pre class="cmd">SELECT [DISTINCT] (* | expr [AS name], ...)
+FROM table [[INNER | LEFT] JOIN table ON condition ...]
+[WHERE predicate]
+[GROUP BY expr, ... [HAVING predicate]]
+[ORDER BY expr [ASC | DESC], ...]
+[LIMIT n [OFFSET m]]
+
+INSERT INTO table [(cols)] VALUES (...), ...
+UPDATE table SET col = value, ... [WHERE predicate]
+DELETE FROM table [WHERE predicate]
+CREATE TABLE name (col type, ...)
+CREATE INDEX ON table (col) [USING HASH | SORTED]</pre>
+    <ul>
+     <li><strong>Expressions</strong> (<code>+ - * / %</code>, parentheses, unary minus) work in every clause: the select list, <code>WHERE</code>, <code>ON</code>, <code>GROUP BY</code>, <code>HAVING</code> and <code>ORDER BY</code>, inside and around aggregates (<code>having sum(qty * price) &gt; 20</code>).</li>
+     <li><strong>Tests</strong> are <code>= &lt;&gt; &lt; &lt;= &gt; &gt;=</code>, <code>BETWEEN</code>, <code>IN (...)</code>, <code>LIKE</code>, <code>MATCHES</code>, <code>IS [NOT] NULL</code>, combined with <code>AND</code>, <code>OR</code> and <code>NOT</code>.</li>
+     <li><strong>Aggregates</strong> are <code>COUNT(*)</code>, <code>COUNT</code>, <code>SUM</code>, <code>AVG</code>, <code>MIN</code>, <code>MAX</code>, <code>MEDIAN</code> and <code>STDDEV</code>.</li>
+     <li><strong>Arithmetic reads numbers only.</strong> An empty cell, a cell that is not a number or a zero divisor gives an empty result, not an error. <code>7 / 2</code> is <code>3.5</code>.</li>
+     <li>There are no scalar functions: <code>select upper(name) from people</code> is a syntax error.</li>
+     <li><code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>, <code>CREATE TABLE</code> and <code>CREATE INDEX</code> run with <code>Execute()</code>, which returns the number of rows changed (or <code>-1</code> on error). A statement that fails changes nothing.</li>
+     <li><code>?</code> is a placeholder for a value; see prepared statements below.</li>
+    </ul>
+    <h3 id="joins-expressions-and-prepared-statements">Joins, expressions and prepared statements</h3>
+    <p>A <code>Catalog</code> holds named tables, and SQL run through it can join them. This program declares the type of every column, so a value of the wrong type is refused instead of changing the column.</p>
+<pre class="line-numbers"><code class="language-cpp">use Query.Structured;
+
+class QueryJoin {
+  function : Main(args : String[]) ~ Nil {
+    catalog := Catalog-&gt;New();
+
+    # --- two tables with declared column types ---
+    customers := Table-&gt;New("customers", ["id", "name", "city"],
+      [ColumnType-&gt;INT, ColumnType-&gt;STRING, ColumnType-&gt;STRING]);
+    AddCustomer(customers, 1, "Ada", "London");
+    AddCustomer(customers, 2, "Grace", "New York");
+    AddCustomer(customers, 3, "Linus", "Helsinki");
+    catalog-&gt;Add(customers);
+
+    orders := Table-&gt;New("orders", ["customer_id", "item", "qty", "price"],
+      [ColumnType-&gt;INT, ColumnType-&gt;STRING, ColumnType-&gt;INT, ColumnType-&gt;FLOAT]);
+    AddOrder(orders, 1, "widget", 10, 2.5);
+    AddOrder(orders, 1, "gadget", 2, 10.0);
+    AddOrder(orders, 2, "widget", 4, 2.5);
+    AddOrder(orders, 2, "gizmo", 8, 0.25);
+    AddOrder(orders, 9, "widget", 1, 2.5);
+    catalog-&gt;Add(orders);
+
+    # --- a declared column refuses a value of another type ---
+    row := orders-&gt;Insert();
+    stored := row-&gt;Set("qty", "lots");
+    "storing text in an Int column: {$stored}"-&gt;PrintLine();
+    orders-&gt;Delete(row-&gt;GetKey());
+    ""-&gt;PrintLine();
+
+    # --- inner join: only customers that have orders ---
+    "-- inner join --"-&gt;PrintLine();
+    result := catalog-&gt;Query("select c.name, o.item, o.qty * o.price as total from customers c join orders o on c.id = o.customer_id order by total desc");
+    result-&gt;ToCsv()-&gt;Print();
+
+    # --- left join: every customer, with empty cells where there is no order ---
+    "-- left join --"-&gt;PrintLine();
+    result := catalog-&gt;Query("select c.name, o.item from customers c left join orders o on c.id = o.customer_id order by c.name");
+    result-&gt;ToCsv()-&gt;Print();
+
+    # --- group the joined rows; HAVING may use arithmetic over aggregates ---
+    "-- spending per customer, more than 20 in total --"-&gt;PrintLine();
+    result := catalog-&gt;Query("select c.name, count(*) as orders, sum(o.qty * o.price) as spent from customers c join orders o on c.id = o.customer_id group by c.name having sum(o.qty * o.price) &gt; 20 order by spent desc");
+    result-&gt;ToCsv()-&gt;Print();
+
+    # --- arithmetic in WHERE ---
+    "-- orders where qty * price is under 5 --"-&gt;PrintLine();
+    result := catalog-&gt;Query("select customer_id, item, qty * price as total from orders where qty * price &lt; 5 order by customer_id");
+    result-&gt;ToCsv()-&gt;Print();
+
+    # --- a prepared statement: parsed once, run with different values ---
+    "-- prepared statement --"-&gt;PrintLine();
+    lookup := catalog-&gt;Prepare("select item, qty from orders where customer_id = ? and qty &gt;= ?");
+    lookup-&gt;Bind(1, 2)-&gt;Bind(2, 5);
+    result := lookup-&gt;Execute();
+    result-&gt;ToCsv()-&gt;Print();
+    lookup-&gt;Bind(1, 1)-&gt;Bind(2, 1);
+    result := lookup-&gt;Execute();
+    "customer 1 has {$(result-&gt;Size())} orders"-&gt;PrintLine();
+
+    # --- UPDATE and DELETE report how many rows they changed ---
+    ""-&gt;PrintLine();
+    changed := catalog-&gt;Execute("update orders set price = 3.0 where item = 'widget'");
+    "updated {$changed} rows"-&gt;PrintLine();
+    removed := catalog-&gt;Execute("delete from orders where customer_id = 9");
+    "deleted {$removed} row"-&gt;PrintLine();
+    result := catalog-&gt;Query("select count(*) as orders, sum(qty * price) as value from orders");
+    result-&gt;ToCsv()-&gt;Print();
+
+    # --- a mistake is a Nil result with a message, not a crash ---
+    result := catalog-&gt;Query("select name from nobody");
+    if(result = Nil) {
+      "error: {$(catalog-&gt;GetError())}"-&gt;PrintLine();
+    };
+  }
+
+  function : AddCustomer(table : Table, id : Int, name : String, city : String) ~ Nil {
+    row := table-&gt;Insert();
+    row-&gt;Set("id", IntRef-&gt;New(id));
+    row-&gt;Set("name", name);
+    row-&gt;Set("city", city);
+  }
+
+  function : AddOrder(table : Table, customer : Int, item : String, qty : Int, price : Float) ~ Nil {
+    row := table-&gt;Insert();
+    row-&gt;Set("customer_id", IntRef-&gt;New(customer));
+    row-&gt;Set("item", item);
+    row-&gt;Set("qty", IntRef-&gt;New(qty));
+    row-&gt;Set("price", FloatRef-&gt;New(price));
+  }
+}
+</code></pre>
+<pre class="cmd">obc -src query_join.obs -lib query,misc,net,json,regex,xml,csv,cipher
+obr query_join.obe</pre>
+<pre class="cmd">storing text in an Int column: false
+
+-- inner join --
+name,item,total
+Ada,widget,25.0
+Ada,gadget,20.0
+Grace,widget,10.0
+Grace,gizmo,2.0
+-- left join --
+name,item
+Ada,widget
+Ada,gadget
+Grace,widget
+Grace,gizmo
+Linus,
+-- spending per customer, more than 20 in total --
+name,orders,spent
+Ada,2,45.0
+-- orders where qty * price is under 5 --
+customer_id,item,total
+2,gizmo,2.0
+9,widget,2.5
+-- prepared statement --
+item,qty
+gizmo,8
+customer 1 has 2 orders
+
+updated 3 rows
+deleted 1 row
+orders,value
+4,64.0
+error: no table named 'nobody'</pre>
+    <p>Things to notice:</p>
+    <ul>
+     <li><code>Table-&gt;New(name, names, types)</code> declares the types. <code>row-&gt;Set("qty", "lots")</code> returned <code>false</code> and stored nothing; with inferred types the column would have been promoted to hold both.</li>
+     <li><code>left join</code> kept Linus, who has no orders, with an empty cell where the order would be.</li>
+     <li><code>Prepare()</code> parses a statement once. <code>Bind(index, value)</code> fills the <code>?</code> placeholders, numbered from 1, and <code>Execute()</code> runs it as many times as you like with new values. A statement that changes rows runs with <code>ExecuteUpdate()</code>.</li>
+     <li>A join is a hash join on equality. <code>Explain(sql)</code> on a table or a catalog describes the plan without running the query.</li>
+    </ul>
+    <h3 id="keeping-a-table-on-disk">Keeping a table on disk</h3>
+    <p>An <code>.otab</code> file stores a table column by column. <code>Save</code> writes one (the write goes to a temporary file that is renamed over the old one, so a crash leaves the old file or the new one), <code>Load</code> reads it back, and <code>OtabFile</code> reads only the columns you name. <code>TableStore</code> goes further: it logs every <code>INSERT</code>, <code>UPDATE</code> and <code>DELETE</code> before the statement returns, so a crash loses at most the statement in progress.</p>
+<pre class="line-numbers"><code class="language-cpp">use Query.Structured;
+use System.IO.Filesystem;
+
+class QueryOtab {
+  function : Main(args : String[]) ~ Nil {
+    path := "readings_guide.otab";
+
+    # --- 100,000 readings from four sensors ---
+    readings := Table-&gt;New("readings", ["sensor", "day", "celsius"],
+      [ColumnType-&gt;STRING, ColumnType-&gt;INT, ColumnType-&gt;FLOAT]);
+    sensors := ["north", "south", "east", "west"];
+    each(i : 100000) {
+      row := readings-&gt;Insert();
+      row-&gt;Set("sensor", sensors[i % 4]);
+      row-&gt;Set("day", IntRef-&gt;New(i / 4));
+      row-&gt;Set("celsius", FloatRef-&gt;New(10.0 + ((i * 37) % 200)-&gt;As(Float) / 10.0));
+    };
+    "rows in memory: {$(readings-&gt;Size())}"-&gt;PrintLine();
+
+    # --- save, load, and query what came back ---
+    if(&lt;&gt;readings-&gt;Save(path, Compression-&gt;SMALL)) {
+      "save failed: {$(readings-&gt;GetError())}"-&gt;PrintLine();
+      return;
+    };
+    "file size: {$(File-&gt;Size(path))} bytes"-&gt;PrintLine();
+
+    loaded := Table-&gt;Load(path);
+    "rows loaded: {$(loaded-&gt;Size())}"-&gt;PrintLine();
+    result := loaded-&gt;Query("select sensor, count(*) as n, min(celsius) as lowest, max(celsius) as highest from readings group by sensor order by sensor");
+    result-&gt;ToCsv()-&gt;Print();
+
+    # --- OtabFile reads only the columns you ask for ---
+    # (the row keys are always read too, so a narrow read is not a tiny one)
+    one := OtabFile-&gt;New(path);
+    if(one-&gt;IsOpen()) {
+      part := one-&gt;Read(["celsius"]);
+      "one column:  {$(part-&gt;Size())} rows, {$(one-&gt;GetBytesRead())} of {$(one-&gt;GetFileSize())} bytes read"-&gt;PrintLine();
+    };
+    all := OtabFile-&gt;New(path);
+    if(all-&gt;IsOpen()) {
+      part := all-&gt;Read();
+      "all columns: {$(part-&gt;Size())} rows, {$(all-&gt;GetBytesRead())} of {$(all-&gt;GetFileSize())} bytes read"-&gt;PrintLine();
+    };
+
+    # --- SQL names a table in a catalog; a loaded .otab goes in with Add ---
+    catalog := Catalog-&gt;New();
+    catalog-&gt;Add(loaded);
+    result := catalog-&gt;Query("select count(*) as hot_readings from readings where celsius &gt; 29.5");
+    result-&gt;ToCsv()-&gt;Print();
+
+    # --- a durable table: changes survive closing and reopening ---
+    store := TableStore-&gt;New(path);
+    if(&lt;&gt;store-&gt;IsOpen()) {
+      "open failed: {$(store-&gt;GetError())}"-&gt;PrintLine();
+      return;
+    };
+    durable := store-&gt;GetTable();
+    durable-&gt;Execute("delete from readings where sensor = 'west'");
+    durable-&gt;Execute("update readings set celsius = 0.0 where day = 0");
+    "after changes: {$(durable-&gt;Size())} rows"-&gt;PrintLine();
+    store-&gt;Close();
+
+    reopened := TableStore-&gt;New(path);
+    if(reopened-&gt;IsOpen()) {
+      table := reopened-&gt;GetTable();
+      "reopened: {$(table-&gt;Size())} rows, {$(reopened-&gt;GetReplayed())} log records replayed"-&gt;PrintLine();
+      reopened-&gt;Checkpoint();
+      reopened-&gt;Close();
+    };
+
+    File-&gt;Delete(path);
+    File-&gt;Delete("{$path}.log");
+    File-&gt;Delete("{$path}.lock");
+  }
+}
+</code></pre>
+<pre class="cmd">obc -src query_otab.obs -lib query,misc,net,json,regex,xml,csv,cipher
+obr query_otab.obe</pre>
+<pre class="cmd">rows in memory: 100000
+file size: 203504 bytes
+rows loaded: 100000
+sensor,n,lowest,highest
+east,25000,10.2,29.8
+north,25000,10.0,29.6
+south,25000,10.1,29.7
+west,25000,10.3,29.9
+one column:  100000 rows, 157157 of 203504 bytes read
+all columns: 100000 rows, 203504 of 203504 bytes read
+hot_readings
+2000
+after changes: 75000 rows
+reopened: 75000 rows, 2 log records replayed</pre>
+    <p>Things to notice:</p>
+    <ul>
+     <li><code>Save(path, Compression-&gt;SMALL)</code> wrote the 100,000 rows as a 203,504-byte file. <code>NONE</code> and <code>FAST</code> are the other settings.</li>
+     <li>A narrow read touches fewer bytes than a full one, but not proportionally fewer here: the row keys are always read, and they are a large part of this file.</li>
+     <li><code>TableStore</code> takes a lock file (<code>path.lock</code>) so that one process writes at a time, and keeps a change log (<code>path.log</code>). After the two changes, reopening replayed 2 log records and the table had 75,000 rows. <code>Checkpoint()</code> folds the log into a new save.</li>
+     <li>Readers that do not write open the file with <code>Table-&gt;Load</code> and see the last save or checkpoint.</li>
+     <li>A named <code>.otab</code> file cannot stand in <code>FROM</code> the way a CSV can: load it, add it to a catalog and query it by table name, as the program does.</li>
+    </ul>
+    <h3 id="other-sources">Other sources</h3>
+    <p>A quoted file name in <code>FROM</code> reads that file: <code>from 'runs.csv'</code>, <code>from 'weather.json'</code>. The format follows the extension (<code>.csv</code>, <code>.tsv</code>, <code>.json</code>, <code>.jsonl</code>, <code>.xml</code>, <code>.xlsx</code>, also compressed <code>.csv.gz</code>), and <code>csv('data.csv', header =&gt; false)</code> and its relatives set options. A <code>Catalog</code> can also load sources that make tables of other things: <code>CsvSource</code>, <code>JsonSource</code>, <code>XmlSource</code>, <code>TextSource</code> (log lines), <code>FilesystemSource</code> (a folder listing), <code>ArchiveSource</code> (zip and tar), <code>XlsxSource</code> (worksheets), <code>ObjectSource</code> (your own objects), and, in separate libraries, ODBC results, <code>System.ML</code> results and image detections.</p>
+    <p>The shipped example <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/sql_files_19.obs" target="_blank"><code>sql_files_19.obs</code></a> queries CSV and JSON files and a folder, and joins them. <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/sql_tables_18.obs" target="_blank"><code>sql_tables_18.obs</code></a> is another tour of tables, indexes and <code>Explain</code>.</p>
+    <p>A catalog that answers queries from other people (as <code>TableServer</code> does) should call <code>SetFileAccess(false)</code>: otherwise a query could read any file the process can, or fetch any URL.</p>
+    <h3 id="where-next">Where next</h3>
+    <ul>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/docs/QUERY_DESIGN.md" target="_blank"><code>docs/QUERY_DESIGN.md</code></a>: the storage layout, the planner, indexes, the <code>.otab</code> format, sources, and the network server.</li>
+     <li>The API reference for <code>Query.Structured</code> at <a href="https://www.objeck.org/api/latest/" target="_blank">https://www.objeck.org/api/latest/</a>.</li>
+     <li><a href="guide_collections.html">Collections</a>, if what you need is a <code>Hash</code> or a <code>Vector</code> and not SQL.</li>
+    </ul>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

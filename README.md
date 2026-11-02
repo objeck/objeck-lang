@@ -64,6 +64,402 @@ obc hello && obr hello
 📖 **Full docs**: [objeck.org](https://www.objeck.org)
 💡 **Examples**: [github.com/objeck/objeck-lang/programs](https://github.com/objeck/objeck-lang/tree/master/programs)
 
+## Examples
+
+Every program below was compiled and run; the output is what it printed. They are in
+[`programs/examples/guides`](programs/examples/guides/), with longer ones and a [guide](docs/guides/README.md)
+for each topic. Libraries are named with `-lib`; `obc` does not pull in a library's own dependencies.
+
+### The language
+
+Classes, virtual methods, a generic `Vector`, a closure and string formatting.
+
+<details>
+<summary>Program and output (<code>readme_tour.obs</code>)</summary>
+
+```ruby
+use Collection;
+
+class Shape {
+  @name : String;
+
+  New(name : String) {
+    @name := name;
+  }
+
+  method : virtual : public : Area() ~ Float;
+
+  method : public : Describe() ~ String {
+    return "{$@name}: area {$(Area()):.2}";
+  }
+}
+
+class Circle from Shape {
+  @radius : Float;
+
+  New(radius : Float) {
+    Parent("circle");
+    @radius := radius;
+  }
+
+  method : public : Area() ~ Float {
+    return Float->Pi() * @radius * @radius;
+  }
+}
+
+class Square from Shape {
+  @side : Float;
+
+  New(side : Float) {
+    Parent("square");
+    @side := side;
+  }
+
+  method : public : Area() ~ Float {
+    return @side * @side;
+  }
+}
+
+class Tour {
+  function : Main(args : String[]) ~ Nil {
+    shapes := Vector->New()<Shape>;
+    shapes->AddBack(Circle->New(1.5));
+    shapes->AddBack(Square->New(2.0));
+    each(i : shapes) {
+      shapes->Get(i)->Describe()->PrintLine();
+    };
+
+    # a function that returns a function (the closure remembers `factor`)
+    triple := Scaler(3);
+    "triple(14) = {$(triple(14))}"->PrintLine();
+  }
+
+  function : Scaler(factor : Int) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (x) => x * factor;
+  }
+}
+```
+
+```text
+$ obc -src readme_tour.obs
+$ obr readme_tour.obe
+circle: area 7.07
+square: area 4.00
+triple(14) = 42
+```
+
+</details>
+
+### A database in your program
+
+`Query.Structured` runs SQL over typed in-memory tables, files and archives. A bad query is a message, not a crash. [Guide](docs/guides/query.md)
+
+<details open>
+<summary>Program and output (<code>readme_query.obs</code>)</summary>
+
+```ruby
+use Query.Structured;
+
+class Sales {
+  function : Main(args : String[]) ~ Nil {
+    sales := Table->New("sales", ["region", "item", "qty", "price"]);
+    Add(sales, "east", "widget", 10, 2.5);
+    Add(sales, "west", "gadget", 4, 10.0);
+    Add(sales, "east", "gadget", 3, 10.0);
+    Add(sales, "west", "widget", 7, 2.5);
+
+    result := sales->Query("select region, sum(qty * price) as revenue from sales group by region order by revenue desc");
+    result->ToCsv()->Print();
+
+    if(sales->Query("select nothing from sales") = Nil) {
+      sales->GetError()->PrintLine();
+    };
+  }
+
+  function : Add(table : Table, region : String, item : String, qty : Int, price : Float) ~ Nil {
+    row := table->Insert();
+    row->Set("region", region);
+    row->Set("item", item);
+    row->Set("qty", IntRef->New(qty));
+    row->Set("price", FloatRef->New(price));
+  }
+}
+```
+
+```text
+$ obc -src readme_query.obs -lib query,misc,net,json,regex,xml,csv,cipher
+$ obr readme_query.obe
+region,revenue
+west,57.5
+east,55.0
+unknown column 'nothing'
+```
+
+</details>
+
+### JSON
+
+Parse, read typed values, build, and tell when the text is not JSON. [Guide](docs/guides/data_and_text.md)
+
+<details>
+<summary>Program and output (<code>readme_json.obs</code>)</summary>
+
+```ruby
+use Data.JSON;
+
+class Json {
+  function : Main(args : String[]) ~ Nil {
+    root := JsonParser->TextToElement("{\"name\": \"Ada\", \"langs\": [\"en\", \"fr\"], \"age\": 36}");
+    name := root->Get("name")->GetString();
+    age := root->Get("age")->GetInt();
+    langs := root->Get("langs")->Size();
+    "{$name} is {$age} and speaks {$langs} languages"->PrintLine();
+
+    doc := JsonElement->New(JsonElement->JsonType->OBJECT);
+    doc->Insert("ok", true);
+    doc->Insert("count", 3);
+    doc->ToString()->PrintLine();
+
+    broken := JsonParser->TextToElement("{\"name\": ");
+    "broken text parses to Nil: {$(broken = Nil)}"->PrintLine();
+  }
+}
+```
+
+```text
+$ obc -src readme_json.obs -lib json
+$ obr readme_json.obe
+Ada is 36 and speaks 2 languages
+{"count":3,"ok":true}
+broken text parses to Nil: true
+```
+
+</details>
+
+### Regular expressions
+
+Find, capture, replace. A pattern the engine cannot accept is not OK and matches nothing. [Guide](docs/guides/data_and_text.md)
+
+<details>
+<summary>Program and output (<code>readme_regex.obs</code>)</summary>
+
+```ruby
+use Query.RegEx;
+
+class Dates {
+  function : Main(args : String[]) ~ Nil {
+    text := "shipped 2026-10-31, patched 2026-11-02";
+    found := RegEx->New("(\\d{4})-(\\d{2})-(\\d{2})")->Find(text);
+    each(i : found) {
+      date := found->Get(i);
+      "{$(date->GetValue())} is month {$(date->GetGroup(2))}"->PrintLine();
+    };
+
+    hidden := RegEx->New("\\d")->ReplaceAll("call 555-0199", "#");
+    hidden->PrintLine();
+
+    bad := RegEx->New("a{2,1}");
+    "a{2,1} is a valid pattern: {$(bad->IsOk())}"->PrintLine();
+  }
+}
+```
+
+```text
+$ obc -src readme_regex.obs -lib regex
+$ obr readme_regex.obe
+2026-10-31 is month 10
+2026-11-02 is month 11
+call ###-####
+a{2,1} is a valid pattern: false
+```
+
+</details>
+
+### Collections
+
+A `Hash` to count, a `Map` to report in key order. [Guide](docs/guides/collections.md) and [choosing a collection](docs/COLLECTIONS_GUIDE.md)
+
+<details>
+<summary>Program and output (<code>readme_collections.obs</code>)</summary>
+
+```ruby
+use Collection;
+
+class Words {
+  function : Main(args : String[]) ~ Nil {
+    counts := Hash->New()<String, IntRef>;
+    words := "the cat and the hat and the bat"->Split(" ");
+    each(i : words) {
+      seen := counts->Find(words[i]);
+      if(seen = Nil) {
+        counts->Insert(words[i], IntRef->New(1));
+      }
+      else {
+        seen->Set(seen->Get() + 1);
+      };
+    };
+
+    ordered := Map->New()<String, IntRef>;
+    pairs := counts->GetKeyValues();
+    each(i : pairs) {
+      ordered->Insert(pairs->Get(i)->GetFirst(), pairs->Get(i)->GetSecond());
+    };
+    entries := ordered->GetKeyValues();
+    each(i : entries) {
+      "{$(entries->Get(i)->GetFirst())}: {$(entries->Get(i)->GetSecond()->Get())}"->PrintLine();
+    };
+  }
+}
+```
+
+```text
+$ obc -src readme_collections.obs
+$ obr readme_collections.obe
+and: 2
+bat: 1
+cat: 1
+hat: 1
+the: 3
+```
+
+</details>
+
+### A web server and a client
+
+A one-route server, a request to it, and a clean stop. [Guide](docs/guides/http.md)
+
+<details>
+<summary>Program and output (<code>readme_http.obs</code>)</summary>
+
+```ruby
+use System.Concurrency;
+use Web.HTTP.Server;
+
+class Greeter from HttpRequestHandler {
+  New() {
+    Parent();
+  }
+
+  method : ProcessGet(request : Request, response : Response) ~ Bool {
+    name := request->GetParam("name");
+    if(name = Nil) {
+      name := "world";
+    };
+    response->SetCodeTypeContent(200, "text/plain", "Hello, {$name}!");
+    return false;
+  }
+
+  method : ProcessPost(request : Request, response : Response) ~ Bool {
+    response->SetCodeContent(405, "Method not allowed");
+    return false;
+  }
+}
+
+class HelloWeb {
+  function : Main(args : String[]) ~ Nil {
+    # Serve() blocks, so it runs on a thread; port 0 means any free port
+    server := Thread->New() {
+      New() {
+        Parent();
+      }
+
+      method : public : Run(arg : System.Base) ~ Nil {
+        WebServer->Serve(Greeter->New()->GetClass(), "127.0.0.1", 0);
+      }
+    };
+    server->Execute(Nil);
+
+    while(WebServer->GetBoundPort() = 0) {
+      Thread->Sleep(25);
+    };
+    port := WebServer->GetBoundPort();
+
+    client := Web.HTTP.HttpClient->New();
+    response := client->Get(Web.HTTP.Url->New("http://127.0.0.1:{$port}/hello?name=Ada"));
+    "{$(response->GetCode())} {$(response->GetContent()->ToString())}"->PrintLine();
+
+    WebServer->Stop();
+  }
+}
+```
+
+```text
+$ obc -src readme_http.obs -lib net,net_server,json,cipher
+$ obr readme_http.obe
+200 Hello, Ada!
+```
+
+</details>
+
+### Game search
+
+Describe a game once; `Minimax` and `MonteCarloTreeSearch` choose moves. [Guide](docs/guides/ai.md)
+
+<details>
+<summary>Program and output (<code>readme_ai.obs</code>)</summary>
+
+```ruby
+use System.AI;
+
+class Nim implements GameState {
+  @stones : Int;
+  @a_to_move : Bool;
+
+  New(stones : Int, a_to_move : Bool) {
+    @stones := stones;
+    @a_to_move := a_to_move;
+  }
+
+  method : public : GetMoves() ~ Int[] {
+    count := @stones < 3 ? @stones : 3;
+    moves := Int->New[count];
+    each(i : count) {
+      moves[i] := i + 1;
+    };
+    return moves;
+  }
+
+  method : public : Apply(move : Int) ~ GameState {
+    return Nim->New(@stones - move, <>@a_to_move);
+  }
+
+  method : public : IsTerminal() ~ Bool {
+    return @stones = 0;
+  }
+
+  # +1 when player A took the last stone, -1 when B did
+  method : public : Evaluate() ~ Float {
+    if(@stones > 0) {
+      return 0.0;
+    };
+    return @a_to_move ? -1.0 : 1.0;
+  }
+
+  method : public : IsMaximizing() ~ Bool {
+    return @a_to_move;
+  }
+}
+
+class Play {
+  function : Main(args : String[]) ~ Nil {
+    state := Nim->New(10, true)->As(GameState);
+    "Minimax takes {$(Minimax->New(12)->FindBestMove(state))} of 10 stones"->PrintLine();
+    "Monte Carlo takes {$(MonteCarloTreeSearch->New(2000, 1.414, 7)->FindBestMove(state))} of 10 stones"->PrintLine();
+  }
+}
+```
+
+```text
+$ obc -src readme_ai.obs -lib ai
+$ obr readme_ai.obe
+Minimax takes 2 of 10 stones
+Monte Carlo takes 2 of 10 stones
+```
+
+</details>
+
+More: [all the guides](docs/guides/README.md), the 32 numbered programs in [`programs/deploy`](programs/deploy/README.md) that ship with every release, and [what is new in v2026.10.3](docs/guides/whats_new_10_3.md).
+
 ## What's New
 
 Full details for every release are in the [CHANGELOG](CHANGELOG.md).
@@ -74,8 +470,12 @@ Full details for every release are in the [CHANGELOG](CHANGELOG.md).
   * **Errors no longer end the host** &mdash; a fatal compiler error and a failed library load are returned instead of calling `exit(1)`, so the language server stays up, and parser and analyzer diagnostics share one record
   * **Debugger** &mdash; output stays whole, messages are ordered, unknown requests are refused, you can pause, breakpoints keep their file and have their own ids, and a breakpoint-heavy run costs about 100&times; less in the hook (25 s to 0.25 s on four threads)
   * **Native library ABI is versioned** &mdash; `VMContext` carries an ABI version and its own size, so a library can tell it was built for a different VM; an unresolved call target and an exception on a worker thread are reported, not crashes
-  * **Library fixes** &mdash; a failed request or an empty reply in the OpenAI, Gemini, misc and net libraries no longer dereferences `Nil`
+  * **`HttpClient` reuses connections** &mdash; plain-HTTP connections wait in a pool when the server allows it and a `GET` or `DELETE` to the same host reuses one, so a program making many requests no longer runs Windows out of ports; `HttpClient->CloseIdleConnections()` closes the waiting ones ([guide](docs/guides/http.md))
+  * **Library fixes** &mdash; a failed request, an empty reply or a missing file in the OpenAI, Gemini, misc, net, JSON, XML, RegEx, RSS and JSON-RPC libraries no longer dereferences `Nil`; `RegEx` repeat counts are bounded (`a{99999999999}` no longer fills the heap); sorting a vector of `Collection.Pair` works ([guide](docs/guides/data_and_text.md))
+  * **Language server** &mdash; edits analyze faster (a hover after an edit in a small workspace: 165 ms to 53 ms on Windows) and a library that fails to load no longer takes the server down ([guide](docs/guides/language_server.md))
+  * **Checkers example** &mdash; an SDL2 game with ten AI levels built on `System.AI`, a self-play learner and generated music ([`programs/examples/checkers`](programs/examples/checkers/), [guide](docs/guides/ai.md))
   * **Tested more deeply** &mdash; the nightly hardening run is scheduled, a local script runs the cloud checks on your own machine first, and four intermittently failing tests were traced to their causes and fixed (three TLS tests whose certificates were valid only from the second they were made, and a JSON-RPC test that picked a port still held by an earlier connection)
+  * **Getting-started guides** &mdash; [Query.Structured](docs/guides/query.md), [HTTP](docs/guides/http.md), [JSON, XML and RegEx](docs/guides/data_and_text.md), [collections](docs/guides/collections.md), [game AI](docs/guides/ai.md) and [editor setup](docs/guides/language_server.md), each with a program that was compiled and run, plus [what is new in 10.3](docs/guides/whats_new_10_3.md)
   * **New docs** &mdash; the [architecture assessment](docs/ARCHITECTURE_ASSESSMENT_2026_11.md), the VM trust model (an `.obe` is native code), a [collections guide](docs/COLLECTIONS_GUIDE.md), [error conventions](docs/ERROR_CONVENTIONS.md) and [how to add an intrinsic](docs/ADDING_AN_INTRINSIC.md)
   * **Upgrading** &mdash; recompile your `.obe` files and rebuild your own `.obl` libraries: the file format changed, and a program or library built by an earlier version is refused with a message saying so
 
