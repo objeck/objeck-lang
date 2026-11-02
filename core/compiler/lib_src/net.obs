@@ -1287,8 +1287,14 @@ if(response <> Nil & response->GetCode() = 200) {
 
 					status_line := socket->ReadLine();
 
-					# whether the connection can carry another request once this response is read
-					persistent := status_line <> Nil & status_line->StartsWith("HTTP/1.1 ");
+					# Whether the connection can carry another request once this response is
+					# read: an HTTP/1.1 response whose server says, in its Connection field,
+					# that it keeps the connection. HTTP/1.1 persists by default, but a server
+					# that answers one request and closes without saying so is common in small
+					# servers and test fixtures, and reusing its connection would cost the
+					# next request a wait for that close; one that says keep-alive means it.
+					http11 := status_line <> Nil & status_line->StartsWith("HTTP/1.1 ");
+					persistent := false;
 					if(status_line <> Nil & status_line->StartsWith("HTTP/1.")) {
 						status_line := status_line->SubString("HTTP/1."->Size() + 2,
 							status_line->Size() - "HTTP/1."->Size() - 2);
@@ -1325,8 +1331,9 @@ if(response <> Nil & response->GetCode() = 200) {
 								if(lowered_name->Equals("content-length")) {
 									has_length := true;
 								}
-								else if(lowered_name->Equals("connection") & value->ToLower()->Find("close") > -1) {
-									persistent := false;
+								else if(lowered_name->Equals("connection")) {
+									options := value->ToLower();
+									persistent := http11 & options->Find("keep-alive") > -1 & options->Find("close") < 0;
 								};
 
 								if(@cookies_enabled & name->Equals("Set-Cookie")) {
