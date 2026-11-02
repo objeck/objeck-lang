@@ -1,0 +1,46 @@
+name: Probe net 1443 (Windows loopback half-close)
+
+# A probe, not a gate: runs only for pushes to probe/net-1443-* branches. Plain
+# Python sockets on loopback, no Objeck: client sends a request, reads the
+# reply, half-closes, reads to EOF. Counts server ends that never see the
+# client's FIN and the client TCB state (LAST_ACK) netstat reports for them.
+on:
+  push:
+    branches: [ 'probe/net-1443-*' ]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: loopback probe ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-2025-vs2026, windows-11-arm ]
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+    - name: Environment
+      run: |
+        hostname
+        [Environment]::OSVersion.VersionString
+        (Get-CimInstance Win32_OperatingSystem).Caption + ' ' + (Get-CimInstance Win32_OperatingSystem).BuildNumber
+        python --version
+        Get-CimInstance Win32_SystemDriver | Where-Object { $_.State -eq 'Running' } | Select-Object -ExpandProperty Name | Sort-Object | Out-String -Width 200
+        netsh int tcp show global
+    - name: Probes
+      run: |
+        $p = 'tools/probe_1443/probe2.py'
+        foreach ($i in 1..3) {
+          python $p drainhold 600 1
+          python $p drainhold 600 1 v6
+        }
+        python $p drain 600 6
+        python $p drain 600 6 v6
+        python $p shutclose 3000 6
+        python $p close 3000 6
