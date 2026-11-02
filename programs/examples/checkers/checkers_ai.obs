@@ -569,7 +569,7 @@ class CkState implements GameState {
 #   4-6  the System.AI Minimax class at depth 3, 4 and 6
 #   7-8  our own alpha-beta search (move ordering, jump extension) at depth 7 and 9
 #   9-10 iterative deepening with the LEARNED evaluation: as deep as it gets
-#        inside a budget of 0.4 million (9) or 2.4 million (10) positions
+#        inside a budget of 1.2 million (9) or 3.5 million (10) positions
 #
 # "Slips" means that with some probability the level plays a random legal move
 # instead; a jump is still always taken, because the rules force it.
@@ -624,13 +624,13 @@ class CkPlayer {
       @depth := 9;
     }
     else if(level = 9) {
-      @depth := 10;
-      @budget := 400000;
+      @depth := 11;
+      @budget := 1200000;
       @eval := learned;
     }
     else {
-      @depth := 16;
-      @budget := 2400000;
+      @depth := 14;
+      @budget := 3500000;
       @eval := learned;
     };
     @search := CkSearch->New(@eval);

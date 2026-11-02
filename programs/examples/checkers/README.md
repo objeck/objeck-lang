@@ -54,8 +54,8 @@ Four sets, all drawn with SDL2 shapes: **Classic** (flat discs with a rim), **Gl
 | 6 | Professor Pawn | `Minimax`, 6 plies |
 | 7 | Captain Crown | our alpha-beta (move ordering, jump extension), 7 plies |
 | 8 | Madame Minimax | alpha-beta, 9 plies |
-| 9 | Deep Thinker | iterative deepening with the **learned** evaluation, up to 10 plies / 0.4 million positions |
-| 10 | Grandmaster Gizmo | the same, up to 16 plies / 2.4 million positions (a few seconds a move) |
+| 9 | Deep Thinker | iterative deepening with the **learned** evaluation, up to 11 plies / 1.2 million positions |
+| 10 | Grandmaster Gizmo | the same, up to 14 plies / 3.5 million positions (a few seconds a move) |
 
 The computer thinks on its own thread, so the window never freezes: the pieces keep
 wobbling and the face keeps sweating while a deep search runs.
