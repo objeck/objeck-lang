@@ -1685,6 +1685,103 @@ def check_program_reuse(obr, server_obe, apis_json, bin_dir):
         shutil.rmtree(work, ignore_errors=True)
 
 
+def check_other_folder_kept(obr, server_obe, apis_json, bin_dir):
+    """Edits in one folder keep another folder's program (#1236, phase 2).
+
+    A program that stopped being current was released one generation later, so
+    two edits in one folder released every other folder's program, and the next
+    request there parsed and analyzed it again although none of its texts had
+    changed. Counted with OBJECK_LSP_TIMING=1, which reports each analysis.
+    """
+    work = tempfile.mkdtemp(prefix="objk-lsp-keep-")
+    saved = os.environ.get("OBJECK_LSP_TIMING")
+    os.environ["OBJECK_LSP_TIMING"] = "1"
+    c = None
+    try:
+        folders = {}
+        for name in ("ws_multi_a", "ws_multi_b"):
+            shutil.copytree(os.path.join(TESTS_DIR, name), os.path.join(work, name))
+            folders[name] = path_to_uri(os.path.join(work, name))
+        a_main = folders["ws_multi_a"] + "/main.obs"
+        b_main = folders["ws_multi_b"] + "/main.obs"
+        texts = {}
+        for name, uri in (("ws_multi_a", a_main), ("ws_multi_b", b_main)):
+            with open(os.path.join(work, name, "main.obs"), encoding="utf-8") as fh:
+                texts[uri] = fh.read()
+
+        c = LspClient(obr, server_obe, apis_json, bin_dir, stderr=subprocess.PIPE)
+        analyses = [0]
+
+        def read_stderr():
+            for raw in iter(c.proc.stderr.readline, b""):
+                if b"[lsp-timing] analyze" in raw.replace(b"\x00", b""):
+                    analyses[0] += 1
+        threading.Thread(target=read_stderr, daemon=True).start()
+
+        def fresh_diagnostics(uri, timeout=60):
+            end = time.time() + timeout
+            while time.time() < end:
+                for n in c.notifications:
+                    if (n.get("method") == "textDocument/publishDiagnostics"
+                            and n["params"].get("uri", "").lower() == uri.lower()):
+                        c.notifications.remove(n)
+                        return n["params"].get("diagnostics", [])
+                c.drain(0.2)
+            return None
+
+        c.request("initialize", {
+            "processId": os.getpid(), "rootUri": folders["ws_multi_a"], "capabilities": {},
+            "workspaceFolders": [{"uri": folders["ws_multi_a"], "name": "a"},
+                                 {"uri": folders["ws_multi_b"], "name": "b"}],
+        }, timeout=90)
+        c.notify("initialized", {})
+        for uri in (a_main, b_main):
+            c.notify("textDocument/didOpen", {"textDocument": {
+                "uri": uri, "languageId": "objeck", "version": 1, "text": texts[uri]}})
+        fresh_diagnostics(a_main)
+        fresh_diagnostics(b_main)
+
+        hover_b = position_in(texts[b_main], b_main, "BetaShape->New", offset=1)
+        first = result_of(c.request("textDocument/hover", hover_b, timeout=60))
+        c.drain(0.5)
+
+        # three edits in the first folder, each analyzed
+        for version in range(2, 5):
+            texts[a_main] += f"# edit {version}\n"
+            c.notify("textDocument/didChange", {
+                "textDocument": {"uri": a_main, "version": version},
+                "contentChanges": [{"text": texts[a_main]}]})
+            fresh_diagnostics(a_main)
+        c.drain(0.5)
+
+        before = analyses[0]
+        again = result_of(c.request("textDocument/hover", hover_b, timeout=60))
+        c.drain(0.5)
+        log_result("an edited folder leaves the other folder's program: hover there analyzes nothing",
+                   analyses[0] == before, f"{analyses[0] - before} analyses")
+        log_result("and answers as before", again is not None and again == first,
+                   f"before {first}, after {again}")
+
+        # the count can move: an edit in the second folder is analyzed
+        c.notify("textDocument/didChange", {
+            "textDocument": {"uri": b_main, "version": 2},
+            "contentChanges": [{"text": texts[b_main] + "# edit\n"}]})
+        b_diags = fresh_diagnostics(b_main)
+        c.drain(0.5)
+        log_result("an edit in that folder is analyzed",
+                   analyses[0] > before and b_diags is not None
+                   and not [d for d in b_diags if d.get("severity") == 1],
+                   f"{analyses[0] - before} analyses, {b_diags}")
+    finally:
+        if c is not None:
+            c.close()
+        if saved is None:
+            os.environ.pop("OBJECK_LSP_TIMING", None)
+        else:
+            os.environ["OBJECK_LSP_TIMING"] = saved
+        shutil.rmtree(work, ignore_errors=True)
+
+
 CACHE_PROBE_LIB = """bundle CacheProbe {
 	class Probe {
 		function : %s() ~ Int {
@@ -2952,6 +3049,7 @@ def main():
     check_jsonrpc_conformance(obr, server_obe, apis_json, bin_dir)
     check_multi_root(obr, server_obe, apis_json, bin_dir)
     check_program_reuse(obr, server_obe, apis_json, bin_dir)
+    check_other_folder_kept(obr, server_obe, apis_json, bin_dir)
     check_library_cache_invalidation(obr, server_obe, apis_json, bin_dir)
     check_fatal_library(obr, server_obe, apis_json, bin_dir)
     check_stdio_sessions(obr, server_obe, apis_json, bin_dir)

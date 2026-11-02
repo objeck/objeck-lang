@@ -1206,8 +1206,9 @@ bundle LSP {
 		@texts : String[,];
 		# parsed and analyzed programs, kept until any text changes (#1218)
 		@proxies : Map<String, ProxySource>;
-		# the programs of the generation before, until a request claims one back
-		@retired : Vector<ProxySource>;
+		# per key, the last program that stopped being current, until a request
+		# claims it back or a newer one takes its place (#1236, phase 2)
+		@retired : Map<String, ProxySource>;
 		@generation : Int;
 		@proxies_generation : Int;
 		@no_cache : Bool;
@@ -1219,7 +1220,7 @@ bundle LSP {
 			@documents := Map->New()<String, Document>;
 			@folders := Vector->New()<LspFolder>;
 			@proxies := Map->New()<String, ProxySource>;
-			@retired := Vector->New()<ProxySource>;
+			@retired := Map->New()<String, ProxySource>;
 
 			# OBJECK_LSP_NO_CACHE=1 parses afresh for every request, as before, to
 			# compare against the cache
@@ -1246,6 +1247,13 @@ bundle LSP {
 		# before, and diagnostics then make the current texts the clean ones, which
 		# completion and hover ask for next. Each of those was a second parse and a
 		# second analysis of a program the server already had.
+		#
+		# A retired program stays claimable until a newer program under the same key
+		# retires in its place (#1236, phase 2). Retired programs were released after
+		# one generation, so two edits in one folder released every other folder's
+		# program, and the next request there parsed and analyzed it again although
+		# none of its texts had changed. Whether a program is reused is still decided
+		# by its texts alone, as before; only how long it is kept changed.
 		#
 		method : public : GetProxy(uri : String, use_alt : Bool) ~ AstProxy {
 			folder : LspFolder := Nil;
@@ -1301,15 +1309,27 @@ bundle LSP {
 				};
 			};
 
-			each(i : @retired) {
-				source := @retired->Get(i);
+			retired := @retired->GetValues()<ProxySource>;
+			each(i : retired) {
+				source := retired->Get(i);
 				if(source->Matches(texts, libs)) {
-					@retired->Remove(i);
+					Unretire(source);
 					return source;
 				};
 			};
 
 			return Nil;
+		}
+
+		# a claimed program is current again: off every key it was retired under
+		method : Unretire(source : ProxySource) ~ Nil {
+			keys := @retired->GetKeys()<String>;
+			each(i : keys) {
+				key := keys->Get(i);
+				if(@retired->Find(key) = source) {
+					@retired->Remove(key);
+				};
+			};
 		}
 
 		function : ProxyKey(uri : String, folder : LspFolder, use_alt : Bool) ~ String {
@@ -1378,31 +1398,68 @@ bundle LSP {
 			return false;
 		}
 
-		# The last generation's programs that no request claimed are released; this
-		# generation's are kept, once each, for the next one to claim.
+		# This generation's programs retire under their keys, each taking the place
+		# of the program retired under that key before, which is released unless it
+		# is still retired under another key. Keys no request asked for this
+		# generation keep what they had.
 		method : RetireProxies() ~ Nil {
-			each(i : @retired) {
-				@retired->Get(i)->Release();
-			};
-
-			@retired := Vector->New()<ProxySource>;
-			current := @proxies->GetValues()<ProxySource>;
-			each(i : current) {
-				source := current->Get(i);
-				if(<>Holds(@retired, source)) {
-					@retired->AddBack(source);
+			replaced := Vector->New()<ProxySource>;
+			keys := @proxies->GetKeys()<String>;
+			each(i : keys) {
+				key := keys->Get(i);
+				old := @retired->Find(key);
+				if(old <> Nil) {
+					@retired->Remove(key);
+					replaced->AddBack(old);
 				};
+				@retired->Insert(key, @proxies->Find(key));
 			};
 			@proxies := Map->New()<String, ProxySource>;
+
+			ReleaseUnheld(replaced);
+		}
+
+		# The programs under a document's or a folder's keys, current or retired,
+		# now that it is closed or removed: nothing asks under those keys again, and
+		# a retired program would otherwise be kept for good.
+		method : DropKeys(keys : String[]) ~ Nil {
+			dropped := Vector->New()<ProxySource>;
+			each(i : keys) {
+				key := keys[i];
+				retired_source := @retired->Find(key);
+				if(retired_source <> Nil) {
+					@retired->Remove(key);
+					dropped->AddBack(retired_source);
+				};
+				current_source := @proxies->Find(key);
+				if(current_source <> Nil) {
+					@proxies->Remove(key);
+					dropped->AddBack(current_source);
+				};
+			};
+			ReleaseUnheld(dropped);
+		}
+
+		# releases each program that is neither current nor retired under a key
+		method : ReleaseUnheld(sources : Vector<ProxySource>) ~ Nil {
+			current := @proxies->GetValues()<ProxySource>;
+			retired := @retired->GetValues()<ProxySource>;
+			each(i : sources) {
+				source := sources->Get(i);
+				if(<>Holds(current, source) & <>Holds(retired, source)) {
+					source->Release();
+				};
+			};
 		}
 
 		# every program, current and retired
 		method : ReleaseProxies() ~ Nil {
 			RetireProxies();
-			each(i : @retired) {
-				@retired->Get(i)->Release();
+			retired := @retired->GetValues()<ProxySource>;
+			each(i : retired) {
+				retired->Get(i)->Release();
 			};
-			@retired := Vector->New()<ProxySource>;
+			@retired := Map->New()<String, ProxySource>;
 		}
 
 		#
@@ -1430,23 +1487,25 @@ bundle LSP {
 		method : public : RemoveFolder(uri : String) ~ Bool {
 			key := LspFolder->TrimUri(uri);
 			kept := Vector->New()<LspFolder>;
-			removed := false;
+			removed : LspFolder;
 			each(i : @folders) {
 				folder := @folders->Get(i);
 				if(folder->GetUri()->Equals(key)) {
-					removed := true;
+					removed := folder;
 				}
 				else {
 					kept->AddBack(folder);
 				};
 			};
 
-			if(removed) {
+			if(removed <> Nil) {
 				@folders := kept;
 				Invalidate();
+				DropKeys([ProxyKey(Nil, removed, false), ProxyKey(Nil, removed, true)]);
+				return true;
 			};
 
-			return removed;
+			return false;
 		}
 
 		#
@@ -1618,6 +1677,7 @@ bundle LSP {
 				document->Release();
 			};
 			Invalidate();
+			DropKeys([ProxyKey(uri, Nil, false), ProxyKey(uri, Nil, true)]);
 		}
 
 		#

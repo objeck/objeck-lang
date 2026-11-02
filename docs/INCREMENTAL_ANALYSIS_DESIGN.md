@@ -199,6 +199,8 @@ than a few lines.
 
 ### Phase 2 — invalidate per folder, and skip unchanged folders
 
+(Built differently from this plan; see "Phase 2 as built" below.)
+
 LSP-side and small. The generation becomes per folder:
 - an edit invalidates only the folder that contains the document;
 - standalone files invalidate only themselves;
@@ -206,6 +208,42 @@ LSP-side and small. The generation becomes per folder:
 
 In a multi-root workspace, an edit in one root no longer costs a re-analysis of the others
 (`check_multi_root` covers the shape).
+
+#### Phase 2 as built (2026-11-02): keep programs, not generations
+
+The plan above was written before #1437. Since #1437 a program is reused only when its texts
+and libraries equal the ones a request collects (`ProxySource->Matches`), so the generation
+no longer decides whether an answer is right, only how long a program is kept. That is where
+the lost work was: an edit retired every current program, and a retired program that no
+request claimed back within one more generation was released. Two edits in one folder
+therefore released every other folder's program, and the next request there parsed and
+analyzed it again although none of its texts had changed.
+
+So phase 2 changes the lifetime and leaves invalidation as it was:
+- a retired program is kept under its key (`text|`/`alt|` and the folder or document) until a
+  newer program retires under the same key, and only then released, unless it is still held
+  under another key;
+- a document's keys are dropped when it closes, and a folder's when it is removed, so nothing
+  is kept for a key no request can ask under again.
+
+This is simpler and safer than per-folder generations: a folder whose build.json lists a file
+that another folder also lists, or whose unopened files changed on disk, is still checked by
+its texts on the next request, exactly as before. At most one retired program per key is kept,
+where before at most one generation's were.
+
+Measured (Windows x64, the master diagnostics library, two folders: `ws_multi_a` and the
+server's own 8.8k lines; N edits in the first, then a hover in the second):
+
+| edits in the first folder | hover in the second, before | after | analyses for it, before | after |
+|---:|---:|---:|---:|---:|
+| 1 | 49 to 56 ms | 55 ms | 0 | 0 |
+| 2 | 574 to 628 ms | 55 to 56 ms | 1 | 0 |
+| 5 | 582 to 602 ms | 56 to 65 ms | 1 | 0 |
+
+Single-folder workspaces, the issue's measurements among them, do not change: hover after an
+edit, medians of four alternated `bench_incremental.py` rounds, is 149 ms before and 153 after
+for the 6-line file, 276 and 270 for `json.obs`, and 638 and 635 for the server's sources, with
+one analysis per edit in both.
 
 ### Phase 3 — re-parse only the edited file
 
