@@ -1,0 +1,2338 @@
+#~~
+Copyright (c) 2024 Randy Hollines
+~~#	
+
+use System.IO.Net, Collection;
+
+#~
+HTTP/1.1 client library. HttpClient supports GET, POST, PUT, PATCH, DELETE with headers, cookies, retries, and redirects. WebSocket provides full-duplex text and binary messaging. Compile with -lib net.
+~#
+bundle Web.HTTP {
+	#~
+	Validates an HTTP request header name/value pair.
+
+	Header content reaches the wire verbatim: HTTP/1.1 and HTTPS serialize the
+	whole request as text here in Objeck ("name: value" + CRLF), so a CR or LF
+	in a value ends the field and starts a new one -- request splitting, not a
+	parse error. HTTP/2 and HTTP/3 hand off to native code that performs no
+	validation of its own on submit.
+
+	Octets per RFC 9110 5.1/5.5, tightened by RFC 9113 8.2.1. Rejects CR, LF,
+	NUL, DEL and every other C0 control (SP and HTAB are legal), leading or
+	trailing whitespace, an empty name, and any name beginning with ':' --
+	HTTP/2 and HTTP/3 build the pseudo-headers themselves and a duplicate is
+	malformed (RFC 9114 4.3.1), the classic request-smuggling primitive.
+	~#
+	class HeaderCheck {
+		#~
+		Validates an HTTP header value.
+
+		Rejects DEL and every C0 control except HTAB -- so CR, LF and NUL are
+		refused, which is the request-splitting primitive: a CR or LF in a value
+		ends the field and starts a new one. SP and HTAB are legal per RFC 9110
+		5.5, but not leading or trailing, since a recipient strips them and two
+		values differing only in surrounding whitespace would compare equal.
+		@param v header value, may be Nil
+		@return true when safe to serialize into a header field
+		~#
+		function : IsValidValue(v : String) ~ Bool {
+			if(v = Nil) { return false; };
+			each(i : v) {
+				c := v->Get(i)->As(Int);
+				if(c = 127 | (c < 32 & c <> 9)) { return false; };
+			};
+			if(v->Size() > 0) {
+				f := v->Get(0)->As(Int);
+				b := v->Get(v->Size() - 1)->As(Int);
+				if(f = 32 | f = 9 | b = 32 | b = 9) { return false; };
+			};
+			return true;
+		}
+
+		#~
+		Validates an HTTP header name.
+
+		Accepts the RFC 9110 5.1 token characters, lower-case only -- callers
+		pass name->ToLower(), because HTTP/2 and HTTP/3 require lower-case field
+		names (RFC 9113 8.2.1) and an upper-case letter here is malformed. A name
+		beginning with ':' is refused: HTTP/2 and HTTP/3 build the pseudo-headers
+		themselves, and a caller-supplied duplicate is the classic
+		request-smuggling primitive (RFC 9114 4.3.1).
+		@param n header name, may be Nil
+		@return true when safe to serialize as a field name
+		~#
+		function : IsValidName(n : String) ~ Bool {
+			if(n = Nil | n->Size() = 0) { return false; };
+			if(n->Get(0) = ':') { return false; };
+			each(i : n) {
+				c := n->Get(i);
+				ok := (c >= 'a' & c <= 'z') | (c >= '0' & c <= '9') |
+					c = '!' | c = '#' | c = '$' | c = '%' | c = '&' |
+					c = '*' | c = '+' | c = '-' | c = '.' |
+					c = '^' | c = '_' | c = '`' | c = '|' | c = '~';
+				if(ok = false) { return false; };
+			};
+			return true;
+		}
+
+		#~
+		Validates a request target (path) or authority (host) for the HTTP/1.1
+		request line.
+
+		These are appended verbatim into the request line, so a CR, LF or space
+		splits the request itself -- a strictly worse version of header
+		injection, and reachable from a Url, which is the input most likely to
+		come from untrusted data. Url->New does not sanitize.
+
+		Rejects every control character (RFC 9110 forbids CTL in a request
+		target) plus space, which would terminate the target early.
+		@param s path or host
+		@return true when safe to place in a request line
+		~#
+		function : IsValidRequestTarget(s : String) ~ Bool {
+			if(s = Nil) { return false; };
+			each(i : s) {
+				c := s->Get(i)->As(Int);
+				if(c < 33 | c = 127) { return false; };
+			};
+			return true;
+		}
+
+		#~
+		Flattens request headers into a String[] of alternating key/value, the
+		shape the HTTP/2 and HTTP/3 traps consume.
+
+		Lives here rather than in each client because both need it, and because
+		lang.obs -- which declares the trap-facing method -- compiles with
+		-strict and no libraries, so it cannot name Hash<K,V> at all.
+
+		Invalid pairs are dropped rather than emitted, and the array is sized to
+		the surviving pairs so there are no trailing Nil holes: the native walker
+		reads exactly Size() elements and must never meet one. AddHeader already
+		refuses these, so this is defence in depth against any other insertion
+		path. The result length is therefore always even.
+		@param headers header map, may be Nil
+		@return alternating key/value array, never Nil
+		~#
+		function : Flatten(headers : Hash<String, String>) ~ String[] {
+			if(headers = Nil) { return String->New[0]; };
+
+			keys := headers->GetKeys()<String>;
+
+			count := 0;
+			each(i : keys) {
+				k := keys->Get(i);
+				v := headers->Find(k);
+				if(IsValidName(k) & IsValidValue(v)) { count += 1; };
+			};
+
+			out := String->New[count * 2];
+			n := 0;
+			each(i : keys) {
+				k := keys->Get(i);
+				v := headers->Find(k);
+				if(IsValidName(k) & IsValidValue(v)) {
+					out[n] := k;
+					out[n + 1] := v;
+					n += 2;
+				};
+			};
+
+			return out;
+		}
+	}
+
+	#~
+	HTTP client
+```
+html := HttpClient->QuickGet(Url->New("http://worldtimeapi.org/api/ip"))->ToString();
+if(html <> Nil) {
+  html->PrintLine();
+};
+```
+	~#
+	class HttpClient {
+		#~
+		The HTTP method of a request.
+		~#
+		enum Task {
+			#~
+			GET
+			~#
+			GET,
+			#~
+			DELETE
+			~#
+			DELETE,
+			#~
+			POST
+			~#
+			POST,
+			#~
+			PUT
+			~#
+			PUT,
+			#~
+			PATCH
+			~#
+			PATCH
+		}
+
+		@request_headers : Hash<String, String>;
+		@response_headers : Hash<String, String>;
+		@cookies_enabled : Bool;
+		@cookies: Vector<Cookie>;
+		@max_redirects : Int;
+		@max_retries : Int;
+		@retry_delay_ms : Int;
+		@download_path : String;
+		@download_size : Int;
+		
+		#~
+		Default constructor
+		@param cookies_enabled true if cookies are enabled, false otherwise
+		~#
+		New(cookies_enabled : Bool := false) {
+			@request_headers := Hash->New()<String, String>;
+			@request_headers->Insert("Cache-Control"->ToLower(), "max-age=0");
+			@request_headers->Insert("User-Agent"->ToLower(), "Objeck/1.0");
+			
+			@response_headers := Hash->New()<String, String>;
+
+			@cookies_enabled := cookies_enabled;
+			@cookies := Vector->New()<Cookie>;
+			@max_redirects := 10;
+			@max_retries := 3;
+			@retry_delay_ms := 1000;
+		}
+
+		#~
+		Gets the HTTP request headers
+		@return HTTP request headers
+		~#
+		method : public : GetRequestHeaders() ~ Hash<String, String> {
+			return @request_headers;
+		}
+
+		#~
+		Gets the HTTP response headers
+		@return HTTP response headers
+		~#
+		method : public : GetResponseHeaders() ~ Hash<String, String> {
+			return @response_headers;
+		}
+
+		#~
+		Adds a HTTP request header
+		@param name header name
+		@param value header value
+```
+client := Web.HTTP.HttpClient->New();
+client->AddHeader("Authorization", "Bearer my-token-123");
+client->AddHeader("Accept", "application/json");
+response := client->Get(Web.HTTP.Url->New("https://api.example.com/data"));
+if(response <> Nil) {
+  response->ToString()->PrintLine();
+};
+```
+		~#
+		method : public : AddHeader(name : String, value : String) ~ Nil {
+			# Refuse anything that could inject a header line of its own.
+			# A CR/LF here would split the request (HTTP/1.1) or reach the
+			# wire unvalidated (HTTP/2, HTTP/3). Never legitimate content.
+			if(Web.HTTP.HeaderCheck->IsValidName(name->ToLower()) = false |
+				Web.HTTP.HeaderCheck->IsValidValue(value) = false) {
+				return;
+			};
+			@request_headers->Insert(name->ToLower(), value);
+		}
+
+		#~
+		Removes a HTTP request header
+		@param name header name
+```
+client := Web.HTTP.HttpClient->New();
+client->AddHeader("X-Debug", "1");
+# remove before production call
+client->RemoveHeader("X-Debug");
+```
+		~#
+		method : public : RemoveHeader(name : String) ~ Nil {
+			@request_headers->Remove(name->ToLower());
+		}
+
+		#~
+		Sets the maximum number of redirects to follow (default 10)
+		@param max maximum redirects
+```
+client := Web.HTTP.HttpClient->New();
+client->SetMaxRedirects(3);
+```
+		~#
+		method : public : SetMaxRedirects(max : Int) ~ Nil {
+			@max_redirects := max;
+		}
+
+		#~
+		Sets retry behavior for transient errors (429, 503)
+		@param max_retries maximum retry attempts (default 3, 0 to disable)
+		@param delay_ms initial delay between retries in milliseconds (default 1000, doubles each retry)
+```
+client := Web.HTTP.HttpClient->New();
+client->SetRetry(3, 500);  # retry up to 3 times, 500ms between attempts
+response := client->Get(Web.HTTP.Url->New("https://api.example.com/items"));
+```
+		~#
+		method : public : SetRetry(max_retries : Int, delay_ms : Int) ~ Nil {
+			@max_retries := max_retries;
+			@retry_delay_ms := delay_ms;
+		}
+
+		#~
+		Sets cookie support
+		@param cookies_enabled true if cookies are enabled, false otherwise
+```
+client := Web.HTTP.HttpClient->New(false);
+client->EnableCookies(true);
+```
+		~#
+		method : public : EnableCookies(cookies_enabled : Bool) ~ Nil {
+			@cookies_enabled := cookies_enabled;
+		}
+
+		#~
+		Gets the cookies
+		@return vector of cookies
+```
+client := Web.HTTP.HttpClient->New(true);
+client->Get(Web.HTTP.Url->New("https://httpbin.org/cookies/set/session/abc"));
+cookies := client->GetCookies();
+each(c in cookies) {
+  c->GetName()->PrintLine();
+};
+```
+		~#
+		method : public : GetCookies() ~ Vector<Cookie> {
+			return @cookies;
+		}
+
+		#~
+		Get a cookie
+		@param name cookie name
+		@return found cookie, Nil otherwise
+		~#
+		method : public : GetCookie(name : String) ~ Cookie {
+			each(cookie in @cookies) {
+				if(cookie->GetName()->EqualsIgnoreCase(name)) {
+					return cookie;
+				};
+			};
+
+			return Nil;
+		}
+
+		#~
+		Checks for a cookie
+		@param name cookie name
+		@return true if found cookie, false otherwise
+		~#
+		method : public : HasCookie(name : String) ~ Bool {
+			return GetCookie(name) <> Nil;
+		}
+		
+		#~
+		Sets a cookie
+		@param cookie cookie
+		~#
+		method : public : SetCookie(cookie : Cookie) ~ Nil {
+			@cookies->AddBack(cookie);
+		}
+
+		method : GetContentType() ~ String {
+			value := @response_headers->Find("content-type");
+			if(value <> Nil) {
+				return value;
+			};
+
+			return "text/plain";
+		}
+
+		#~
+		Performs a HTTP POST
+		@param url URL
+		@param data data to post
+		@return read strings
+```
+body := "{\"event\":\"click\"}"->ToByteArray();
+response := Web.HTTP.HttpClient->QuickPost(Web.HTTP.Url->New("https://httpbin.org/post"), body);
+response->GetStatusCode()->PrintLine();
+```
+		~#
+		function : QuickPost(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
+			return HttpClient->New()->Post(url, data);
+		}
+		
+		#~
+		Performs a HTTPS POST
+		@param url URL
+		@param data data to post
+		@param content_type content type
+		@return read strings
+```
+body := "{\"x\":1}"->ToByteArray();
+response := Web.HTTP.HttpClient->QuickPost(
+  Web.HTTP.Url->New("https://api.example.com/events"),
+  body,
+  "application/json");
+response->GetStatusCode()->PrintLine();
+```
+		~#
+		function : QuickPost(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
+			return QuickPost(url, data, content_type, Nil);
+		}
+
+		#~
+		Performs a HTTP POST
+		@param url URL
+		@param data data to post
+		@param content_type content type
+		@param headers key/value headers
+		@return read strings
+		~#
+		function : QuickPost(url : Web.HTTP.Url, data : Byte[], content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {			
+			client := HttpClient->New();
+
+			if(headers <> Nil) {
+				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
+				each(i : header_key_values) {
+					key_value := header_key_values->Get(i);
+					key := key_value->GetFirst();
+					value := key_value->GetSecond();
+					client->AddHeader(key, value);
+				};
+			};
+
+			return client->PushPullOperation(url, data, content_type, HttpClient->Task->POST);
+		}
+
+		#~
+		Performs a HTTPS POST
+		@param url URL
+		@param data data to oper
+		@param content_type content type
+		@return string read
+```
+client := Web.HTTP.HttpClient->New();
+body := "{\"user\":\"bob\",\"score\":42}"->ToByteArray();
+response := client->Post(
+  Web.HTTP.Url->New("https://api.example.com/scores"),
+  body,
+  "application/json");
+response->GetStatusCode()->PrintLine();
+```
+		~#
+		method : public : Post(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
+			return PushPullOperation(url, data, content_type, HttpClient->Task->POST);
+		}
+
+		#~
+		Performs a HTTP POST
+		@param url URL
+		@param data data to post
+		@return string read
+```
+client := Web.HTTP.HttpClient->New();
+body := "{\"name\":\"Alice\"}"->ToByteArray();
+response := client->Post(Web.HTTP.Url->New("https://httpbin.org/post"), body);
+if(response <> Nil) {
+  response->GetStatusCode()->PrintLine();
+};
+```
+		~#
+		method : public : Post(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
+			return PushPullOperation(url, data, "text/plain", HttpClient->Task->POST);
+		}
+
+		#~
+		Performs a HTTP GET and returns results as a String
+		@param url URL
+		@return output buffer
+```
+response := Web.HTTP.HttpClient->QuickGet(Web.HTTP.Url->New("https://httpbin.org/get"));
+if(response <> Nil) {
+  response->ToString()->PrintLine();
+};
+```
+		~#
+		function : QuickGet(url : Web.HTTP.Url) ~ Web.HTTP.Response {
+			return QuickGet(url, "text/plain", Nil);
+		}
+
+		#~
+		Performs a HTTP GET and returns results as a String
+		@param url URL
+		@param headers key/value headers
+		@return output buffer
+```
+hdrs := Collection.Map->New()<String, String>;
+hdrs->Insert("Accept", "application/json");
+response := Web.HTTP.HttpClient->QuickGet(Web.HTTP.Url->New("https://api.example.com"), hdrs);
+response->ToString()->PrintLine();
+```
+		~#
+		function : QuickGet(url : Web.HTTP.Url, headers : Map<String, String>) ~ Web.HTTP.Response {
+			return QuickGet(url, "text/plain", headers);
+		}
+
+		#~
+		Performs a HTTP GET and returns results as a String
+		@param url URL
+		@param content_type content type
+		@return output buffer
+		~#
+		function : QuickGet(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
+			return QuickGet(url, content_type, Nil);
+		}
+		
+		#~
+		Performs a HTTP GET and returns results as a String
+		@param url URL
+		@param content_type content type
+		@param headers key/value headers
+		@return output buffer
+		~#
+		function : QuickGet(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {			
+			client := HttpClient->New();
+			if(headers <> Nil) {
+				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
+				each(i : header_key_values) {
+					key_value := header_key_values->Get(i);
+					key := key_value->GetFirst();
+					value := key_value->GetSecond();
+					
+					if(value->IsEmpty()) {
+						client->RemoveHeader(key);
+					}
+					else {
+						client->AddHeader(key, value);
+					};
+				};
+			};
+
+			return client->Get(url, content_type);
+		}
+				
+		#~
+		Performs a HTTP GET
+		@param url URL
+		@return string read
+```
+client := Web.HTTP.HttpClient->New();
+response := client->Get(Web.HTTP.Url->New("https://httpbin.org/get"));
+if(response <> Nil & response->GetStatusCode() = 200) {
+  response->ToString()->PrintLine();
+};
+```
+		~#
+		method : public : Get(url : Web.HTTP.Url) ~ Web.HTTP.Response {
+			return Get(url, "text/plain");
+		}
+		
+		#~
+		Performs a HTTP GET
+		@param url URL
+		@param content_type content type
+		@return string read
+```
+client := Web.HTTP.HttpClient->New();
+response := client->Get(Web.HTTP.Url->New("https://api.example.com/data"), "application/json");
+if(response <> Nil) {
+  response->ToString()->PrintLine();
+};
+```
+		~#
+		method : public : Get(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
+			return PullOperation(url, content_type, HttpClient->Task->GET);
+		}
+
+		#~
+		Performs a HTTP DELETE and returns results as a String
+		@param url URL
+		@return output buffer
+		~#
+		function : QuickDelete(url : Web.HTTP.Url) ~ Web.HTTP.Response {
+			return QuickDelete(url, "text/plain", Nil);
+		}
+
+		#~
+		Performs a HTTP DELETE and returns results as a String
+		@param url URL
+		@param headers key/value headers
+		@return output buffer
+		~#
+		function : QuickDelete(url : Web.HTTP.Url, headers : Map<String, String>) ~ Web.HTTP.Response {
+			return QuickDelete(url, "text/plain", headers);
+		}
+
+		#~
+		Performs a HTTP DELETE and returns results as a String
+		@param url URL
+		@param content_type content type
+		@return output buffer
+		~#
+		function : QuickDelete(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
+			return QuickDelete(url, content_type, Nil);
+		}
+		
+		#~
+		Performs a HTTP DELETE and returns results as a String
+		@param url URL
+		@param content_type content type
+		@param headers key/value headers
+		@return output buffer
+		~#
+		function : QuickDelete(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {			
+			client := HttpClient->New();
+			if(headers <> Nil) {
+				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
+				each(i : header_key_values) {
+					key_value := header_key_values->Get(i);
+					key := key_value->GetFirst();
+					value := key_value->GetSecond();
+					
+					if(value->IsEmpty()) {
+						client->RemoveHeader(key);
+					}
+					else {
+						client->AddHeader(key, value);
+					};
+				};
+			};
+
+			return client->Delete(url, content_type);
+		}
+				
+		#~
+		Performs a HTTP DELETE
+		@param url URL
+		@return string read
+```
+client := Web.HTTP.HttpClient->New();
+response := client->Delete(Web.HTTP.Url->New("https://api.example.com/items/42"));
+response->GetStatusCode()->PrintLine();  # 204
+```
+		~#
+		method : public : Delete(url : Web.HTTP.Url) ~ Web.HTTP.Response {
+			return Delete(url, "text/plain");
+		}
+		
+		#~
+		Performs a HTTP DELETE
+		@param url URL
+		@param content_type content type
+		@return string read
+		~#
+		method : public : Delete(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
+			return PullOperation(url, content_type, HttpClient->Task->DELETE);
+		}
+		
+		#~
+		Performs a HTTP POST
+		@param url URL
+		@param data data to post
+		@return read strings
+		~#
+		function : QuickPut(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
+			return HttpClient->New()->Put(url, data);
+		}
+		
+		#~
+		Performs a HTTPS POST
+		@param url URL
+		@param data data to post
+		@param content_type content type
+		@return read strings
+		~#
+		function : QuickPut(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
+			return QuickPut(url, data, content_type, Nil);
+		}
+
+		#~
+		Performs a HTTP POST
+		@param url URL
+		@param data data to post
+		@param content_type content type
+		@param headers key/value headers
+		@return read strings
+		~#
+		function : QuickPut(url : Web.HTTP.Url, data : Byte[], content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {			
+			client := HttpClient->New();
+
+			if(headers <> Nil) {
+				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
+				each(i : header_key_values) {
+					key_value := header_key_values->Get(i);
+					key := key_value->GetFirst();
+					value := key_value->GetSecond();
+					client->AddHeader(key, value);
+				};
+			};
+
+			return client->Put(url, data, content_type);
+		}
+
+		#~
+		Performs a HTTP POST
+		@param url URL
+		@param data data to post
+		@return string read
+```
+client := Web.HTTP.HttpClient->New();
+body := "{\"name\":\"Updated\"}"->ToByteArray();
+response := client->Put(Web.HTTP.Url->New("https://api.example.com/items/1"), body);
+response->GetStatusCode()->PrintLine();
+```
+		~#
+		method : public : Put(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
+			return Put(url, data, "text/plain");
+		}
+
+		#~
+		Performs a HTTP POST
+		@param url URL
+		@param data data to post
+		@param content_type content type
+		@return string read
+		~#
+		method : public : Put(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
+			return PushPullOperation(url, data, content_type, HttpClient->Task->PUT);
+		}
+
+		#~
+		Performs a HTTP PATCH
+		@param url URL
+		@param data data to patch
+		@return read strings
+		~#
+		function : QuickPatch(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
+			return HttpClient->New()->Patch(url, data);
+		}
+
+		#~
+		Performs a HTTP PATCH
+		@param url URL
+		@param data data to patch
+		@param content_type content type
+		@return read strings
+		~#
+		function : QuickPatch(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
+			return QuickPatch(url, data, content_type, Nil);
+		}
+
+		#~
+		Performs a HTTP PATCH
+		@param url URL
+		@param data data to patch
+		@param content_type content type
+		@param headers key/value headers
+		@return read strings
+		~#
+		function : QuickPatch(url : Web.HTTP.Url, data : Byte[], content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {
+			client := HttpClient->New();
+
+			if(headers <> Nil) {
+				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
+				each(i : header_key_values) {
+					key_value := header_key_values->Get(i);
+					key := key_value->GetFirst();
+					value := key_value->GetSecond();
+					client->AddHeader(key, value);
+				};
+			};
+
+			return client->Patch(url, data, content_type);
+		}
+
+		#~
+		Performs a HTTP PATCH
+		@param url URL
+		@param data data to patch
+		@return string read
+```
+client := Web.HTTP.HttpClient->New();
+body := "{\"status\":\"active\"}"->ToByteArray();
+response := client->Patch(Web.HTTP.Url->New("https://api.example.com/users/5"), body);
+response->GetStatusCode()->PrintLine();
+```
+		~#
+		method : public : Patch(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
+			return Patch(url, data, "text/plain");
+		}
+
+		#~
+		Performs a HTTP PATCH
+		@param url URL
+		@param data data to patch
+		@param content_type content type
+		@return string read
+		~#
+		method : public : Patch(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
+			return PushPullOperation(url, data, content_type, HttpClient->Task->PATCH);
+		}
+
+		#~
+		Performs a HTTP DELETE and returns results as a String
+		@param url URL
+		@param data data to post
+		@return output buffer
+		~#
+		function : QuickDelete(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
+			return QuickDelete(url, data, "text/plain", Nil);
+		}
+
+		#~
+		Performs a HTTP DELETE and returns results as a String
+		@param url URL
+		@param data data to post
+		@param headers key/value headers
+		@return output buffer
+		~#
+		function : QuickDelete(url : Web.HTTP.Url, data : Byte[], headers : Map<String, String>) ~ Web.HTTP.Response {
+			return QuickDelete(url, data, "text/plain", headers);
+		}
+
+		#~
+		Performs a HTTP DELETE and returns results as a String
+		@param url URL
+		@param data data to post
+		@param content_type content type
+		@return output buffer
+		~#
+		function : QuickDelete(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
+			return QuickDelete(url, data, content_type, Nil);
+		}
+		
+		#~
+		Performs a HTTP DELETE and returns results as a String
+		@param url URL
+		@param data data to post
+		@param content_type content type
+		@param headers key/value headers
+		@return output buffer
+		~#
+		function : QuickDelete(url : Web.HTTP.Url, data : Byte[], content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {			
+			client := HttpClient->New();
+			if(headers <> Nil) {
+				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
+				each(i : header_key_values) {
+					key_value := header_key_values->Get(i);
+					key := key_value->GetFirst();
+					value := key_value->GetSecond();
+					
+					if(value->IsEmpty()) {
+						client->RemoveHeader(key);
+					}
+					else {
+						client->AddHeader(key, value);
+					};
+				};
+			};
+
+			return client->Delete(url, data, content_type);
+		}
+				
+		#~
+		Performs a HTTP DELETE
+		@param url URL
+		@param data data to post
+		@return string read
+		~#
+		method : public : Delete(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
+			return Delete(url, data, "text/plain");
+		}
+		
+		#~
+		Performs a HTTP DELETE
+		@param url URL
+		@param data data to post
+		@param content_type content type
+		@return string read
+		~#
+		method : public : Delete(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
+			return PushPullOperation(url, data, content_type, HttpClient->Task->DELETE);
+		}
+
+		method : BuildRedirectUrl(address : String, port : Int, scheme : String, location : String) ~ String {
+			if(location->StartsWith("http://") | location->StartsWith("https://")) {
+				return location;
+			};
+
+			url := scheme;
+			url += address;
+			default_port := 80;
+			if(scheme->Equals("https://")) {
+				default_port := 443;
+			};
+			if(port <> default_port) {
+				url += ':';
+				url += port;
+			};
+			if(<>location->StartsWith("/")) {
+				url += '/';
+			};
+			url += location;
+			return url;
+		}
+
+		method : PushPullOperation(url : Web.HTTP.Url, data : Byte[], content_type : String, task : HttpClient->Task) ~ Web.HTTP.Response {
+			response := PushPullOperationInner(url, data, content_type, task, 0, false);
+
+			if(response <> Nil & @max_retries > 0) {
+				code := response->GetCode();
+				if(code = 429 | code = 503) {
+					delay := @retry_delay_ms;
+					for(attempt := 0; attempt < @max_retries; attempt += 1;) {
+						System.Concurrency.Thread->Sleep(delay);
+						response := PushPullOperationInner(url, data, content_type, task, 0, false);
+						if(response = Nil | (response->GetCode() <> 429 & response->GetCode() <> 503)) {
+							break;
+						};
+						delay *= 2;
+					};
+				};
+			};
+
+			return response;
+		}
+
+		method : PushPullOperationInner(url : Web.HTTP.Url, data : Byte[], content_type : String, task : HttpClient->Task, redirect_count : Int, strip : Bool) ~ Web.HTTP.Response {
+			if(redirect_count > @max_redirects) {
+				return Web.HTTP.Response->New(310);
+			};
+
+			content : ByteBuffer;
+			status_code := 0;
+
+			if(url->GetScheme()->Equals("http")) {
+				address := url->GetHost();
+
+				location := url->GetPath();
+				if(location = Nil) {
+					location := "/";
+				};
+
+				query := url->GetQuery();
+				if(query <> Nil) {
+					location += '?';
+					location += query;
+				};
+
+				frag := url->GetFragment();
+				if(frag <> Nil) {
+					location += '#';
+					location += frag;
+				};
+
+				port := url->GetPort();
+				if(port < 0) {
+					port := 80;
+				};
+
+				socket := TCPSocket->New(address, port);
+				if(socket->IsOpen()) {
+					oper : String;
+
+					if(task = HttpClient->Task->POST) {
+						oper := "POST ";
+					}
+					else if(task = HttpClient->Task->DELETE) {
+						oper := "DELETE ";
+					}
+					else if(task = HttpClient->Task->PATCH) {
+						oper := "PATCH ";
+					}
+					else {
+						oper := "PUT ";
+					};
+
+					# location and address land verbatim in the request line, so a CR, LF
+					# or space here splits the request itself. Url->New does not
+					# sanitize, and a Url is the input most likely to be untrusted.
+					if(Web.HTTP.HeaderCheck->IsValidRequestTarget(location) = false |
+							Web.HTTP.HeaderCheck->IsValidRequestTarget(address) = false) {
+						return Nil;
+					};
+					oper->Append(location);
+					oper->Append(" HTTP/1.1\r\nHost: ");
+					oper->Append(address);
+					if(port <> 80) {
+						oper->Append(':');
+						oper->Append(port);
+					};
+					# Caller-supplied. A CR/LF here would inject a header line into the
+					# request -- and it lands before Content-Length, which is the
+					# smuggling-relevant position. Fail closed rather than send it.
+					if(Web.HTTP.HeaderCheck->IsValidValue(content_type) = false) {
+						return Nil;
+					};
+					oper->Append("\r\nContent-Type: ");
+					oper->Append(content_type);
+					oper->Append("\r\nContent-Length: ");
+					oper->Append(data->Size()->ToString());
+					# keep-alive, not close. This is not about reusing the connection -- we
+					# still close it below after reading the response. It is about WHICH SIDE
+					# tears down. Asking the server to close meant the server tore down, and on
+					# Windows loopback a teardown before the peer application has read discards
+					# the response (#669). With keep-alive the server holds and we tear down,
+					# which removes the exposure: measured 28/100 transfers lost before, 0/100
+					# after, with no connection reuse involved.
+					#
+					# A response we cannot frame still falls back to reading until close below.
+					# That is correct: a server unable to frame its body must answer with
+					# Connection: close, and then it does close.
+					oper->Append("\r\nConnection: keep-alive\r\n");
+
+					request_keys := @request_headers->GetKeys()<String>;
+					each(i : request_keys) {
+						request_key := request_keys->Get(i);
+						# the caller's credentials go to the caller's origin only (#1453)
+						if(<>strip | <>Web.HTTP.RedirectCheck->IsCredential(request_key)) {
+							request_value := @request_headers->Find(request_key);
+							oper->Append(request_key);
+							oper->Append(": ");
+							oper->Append(request_value);
+							oper->Append("\r\n");
+						};
+					};
+
+					if(<>strip & @cookies_enabled & @cookies->Size() > 0) {
+						oper->Append("Cookie: ");
+						each(i : @cookies) {
+							oper->Append(@cookies->Get(i)->ToShortString());
+							if(i + 1 < @cookies->Size()) {
+								oper->Append("; ");
+							};
+						};
+						oper->Append("\r\n");
+					};
+					oper->Append("\r\n");
+					socket->WriteString(oper);
+					socket->WriteBuffer(data);
+
+					status_line := socket->ReadLine();
+					if(status_line <> Nil & status_line->StartsWith("HTTP/1.")) {
+						status_line := status_line->SubString("HTTP/1."->Size() + 2,
+							status_line->Size() - "HTTP/1."->Size() - 2);
+						status_code := WebCommon->ParseStatusCode(status_line);
+					};
+
+					# 0 means no status line was parsed -- a dead socket or a reply that
+					# is not HTTP. A genuine 500 must fall through here so its headers
+					# and body are read like any other response.
+					if(status_code <> 0) {
+						line : String := Nil;
+						do {
+							line := socket->ReadLine();
+							if(line <> Nil & line->Size() > 0) {
+								index := line->Find(':');
+								name := line->SubString(index);
+								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
+
+								if(@cookies_enabled & name->Equals("Set-Cookie")) {
+									@cookies->AddBack(Cookie->New(value));
+								}
+								else {
+									@response_headers->Insert(name->ToLower(), value);
+								};
+							};
+						}
+						while(line <> Nil & line->Size() > 0);
+
+						# A reset can discard the rest of the reply (Windows loopback, #669). The
+						# line it ends on is Nil, or empty with a socket error: a dropped
+						# connection, not the end of the headers.
+						if(line = Nil | TCPSocket->GetLastError() <> Nil) {
+							socket->Close();
+							return Nil;
+						};
+
+						if(status_code = 301 | status_code = 302 | status_code = 303 |
+						   status_code = 307 | status_code = 308) {
+							moved_location := @response_headers->Find("location");
+							if(moved_location <> Nil) {
+								moved_url_str := BuildRedirectUrl(address, port, "http://", moved_location);
+								moved_url := Url->New(moved_url_str);
+								@response_headers->Empty();
+								socket->Close();
+
+								if(status_code = 301 | status_code = 302 | status_code = 303) {
+									return PullOperationInner(moved_url, content_type, HttpClient->Task->GET, redirect_count + 1, strip | Web.HTTP.RedirectCheck->IsCrossOrigin(url, moved_url));
+								}
+								else {
+									return PushPullOperationInner(moved_url, data, content_type, task, redirect_count + 1, strip | Web.HTTP.RedirectCheck->IsCrossOrigin(url, moved_url));
+								};
+							};
+						};
+
+						encoding : String := @response_headers->Find("transfer-encoding");
+						# A 1xx, 204 or 304 response never has a body, whatever its headers say
+						# (RFC 9110 sec. 6.4.1, RFC 9112 sec. 6.3). Reading on would fall into
+						# ReadUntilClose, and because this request asked for keep-alive the
+						# server holds the connection: the read would wait out the timeout.
+						if(status_code < 200 | status_code = 204 | status_code = 304) {
+							content := Nil;
+						}
+						else if(encoding <> Nil & encoding->Equals("chunked")) {
+							content := WebCommon->ReadChunked(socket);
+						}
+						else {
+							length_header : String := @response_headers->Find("content-length");
+							if(length_header <> Nil) {
+								length := length_header->ToInt();
+								if(length > 0) {
+									content := WebCommon->ReadLength(length, socket);
+								};
+							}
+							else {
+								content := WebCommon->ReadUntilClose(socket);
+							};
+						};
+					};
+					socket->Close();
+				};
+			};
+
+			if(content = Nil) {
+				return Web.HTTP.Response->New(status_code);
+			};
+
+			content_type := GetContentType();
+			return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
+		}
+
+		#~
+		Downloads a resource to a file without holding it in memory, so its size is limited
+		only by the disk. Redirects, retries and headers work as for Get. A 2xx body is written
+		to path + ".part" and moved over path only once complete, so an interrupted download
+		never leaves a truncated file under the real name. Any other status leaves path
+		untouched and its body in the response, as Get would return it.
+		@param url URL
+		@param path the file to write
+		@return the response: status and headers, no content for a 2xx; Nil when the connection
+		failed or the file could not be written
+```
+client := Web.HTTP.HttpClient->New();
+response := client->GetToFile(Web.HTTP.Url->New("http://example.com/model.onnx"), "model.onnx");
+if(response <> Nil & response->GetCode() = 200) {
+  client->GetDownloadSize()->PrintLine();
+};
+```
+		~#
+		method : public : GetToFile(url : Web.HTTP.Url, path : String) ~ Web.HTTP.Response {
+			if(url = Nil | path = Nil) {
+				return Nil;
+			};
+
+			@download_path := path;
+			@download_size := -1;
+			response := Get(url, "application/octet-stream");
+			@download_path := Nil;
+			# code 0: no status line arrived -- the connection dropped before the reply
+			if(response <> Nil & response->GetCode() = 0) {
+				return Nil;
+			};
+			return response;
+		}
+
+		#~
+		Bytes the last GetToFile wrote.
+		@return bytes written, or -1 when nothing was written (a failure, or a non-2xx response)
+		~#
+		method : public : GetDownloadSize() ~ Int {
+			return @download_size;
+		}
+
+		#~
+		Downloads a resource to a file without holding it in memory. See GetToFile.
+		@param url URL
+		@param path the file to write
+		@return the response; Nil when the connection failed or the file could not be written
+		~#
+		function : QuickGetToFile(url : Web.HTTP.Url, path : String) ~ Web.HTTP.Response {
+			return HttpClient->New()->GetToFile(url, path);
+		}
+
+		method : PullOperation(url : Web.HTTP.Url, content_type : String, task : HttpClient->Task) ~ Web.HTTP.Response {
+			response := PullOperationInner(url, content_type, task, 0, false);
+
+			if(response <> Nil & @max_retries > 0) {
+				code := response->GetCode();
+				if(code = 429 | code = 503) {
+					delay := @retry_delay_ms;
+					for(attempt := 0; attempt < @max_retries; attempt += 1;) {
+						System.Concurrency.Thread->Sleep(delay);
+						response := PullOperationInner(url, content_type, task, 0, false);
+						if(response = Nil | (response->GetCode() <> 429 & response->GetCode() <> 503)) {
+							break;
+						};
+						delay *= 2;
+					};
+				};
+			};
+
+			return response;
+		}
+
+		method : PullOperationInner(url : Web.HTTP.Url, content_type : String, task : HttpClient->Task, redirect_count : Int, strip : Bool) ~ Web.HTTP.Response {
+			if(redirect_count > @max_redirects) {
+				return Web.HTTP.Response->New(310);
+			};
+
+			content : ByteBuffer;
+			status_code := 0;
+
+			if(url->GetScheme()->Equals("http")) {
+				address := url->GetHost();
+
+				location := url->GetPath();
+				if(location = Nil) {
+					location := "/";
+				};
+
+				query := url->GetQuery();
+				if(query <> Nil) {
+					location += '?';
+					location += query;
+				};
+
+				frag := url->GetFragment();
+				if(frag <> Nil) {
+					location += '#';
+					location += frag;
+				};
+
+				port := url->GetPort();
+				if(port < 0) {
+					port := 80;
+				};
+
+				# location and address land verbatim in the request line, so a CR, LF
+				# or space here splits the request itself. Url->New does not
+				# sanitize, and a Url is the input most likely to be untrusted.
+				if(Web.HTTP.HeaderCheck->IsValidRequestTarget(location) = false |
+						Web.HTTP.HeaderCheck->IsValidRequestTarget(address) = false) {
+					return Nil;
+				};
+
+				# GET and DELETE are idempotent, so they may go out on a connection an earlier
+				# request left open, and again on a new one if that gives no response
+				socket := HttpConnections->Take(address, port);
+				reused := socket <> Nil;
+				if(<>reused) {
+					socket := TCPSocket->New(address, port);
+				};
+
+				if(socket->IsOpen()) {
+					oper : String;
+
+					if(task = HttpClient->Task->GET) {
+						oper := "GET ";
+					}
+					else {
+						oper := "DELETE ";
+					};
+					oper->Append(location);
+					oper->Append(" HTTP/1.1\r\nHost: ");
+					oper->Append(address);
+					if(port <> 80) {
+						oper->Append(':');
+						oper->Append(port);
+					};
+					# keep-alive: the server holds the connection after its response, so this
+					# side closes first (asking the server to close exposed #669 on Windows
+					# loopback), and a response that says where it ends leaves the connection
+					# for the next request (HttpConnections, #1443).
+					#
+					# A response we cannot frame still falls back to reading until close below.
+					# That is correct: a server unable to frame its body must answer with
+					# Connection: close, and then it does close.
+					oper->Append("\r\nConnection: keep-alive\r\n");
+
+					request_keys := @request_headers->GetKeys()<String>;
+					each(i : request_keys) {
+						request_key := request_keys->Get(i);
+						# the caller's credentials go to the caller's origin only (#1453)
+						if(<>strip | <>Web.HTTP.RedirectCheck->IsCredential(request_key)) {
+							request_value := @request_headers->Find(request_key);
+							oper->Append(request_key);
+							oper->Append(": ");
+							oper->Append(request_value);
+							oper->Append("\r\n");
+						};
+					};
+
+					if(<>strip & @cookies_enabled & @cookies->Size() > 0) {
+						oper->Append("Cookie: ");
+						each(i : @cookies) {
+							oper->Append(@cookies->Get(i)->ToShortString());
+							if(i + 1 < @cookies->Size()) {
+								oper->Append("; ");
+							};
+						};
+						oper->Append("\r\n");
+					};
+					oper->Append("\r\n");
+
+					socket->WriteString(oper);
+
+					status_line := socket->ReadLine();
+
+					# whether the connection can carry another request once this response is read
+					persistent := status_line <> Nil & status_line->StartsWith("HTTP/1.1 ");
+					if(status_line <> Nil & status_line->StartsWith("HTTP/1.")) {
+						status_line := status_line->SubString("HTTP/1."->Size() + 2,
+							status_line->Size() - "HTTP/1."->Size() - 2);
+						status_code := WebCommon->ParseStatusCode(status_line);
+					};
+
+					# No response at all on a connection an earlier request left open: the server
+					# closed it while it waited, which a server may do at any time. The request is
+					# idempotent, so it goes again on a new connection (RFC 9112 sec. 9.3.1). The
+					# other connections waiting for this server have likely gone the same way.
+					if(status_code = 0 & reused) {
+						socket->Close();
+						HttpConnections->Drop(address, port);
+						return PullOperationInner(url, content_type, task, redirect_count, strip);
+					};
+
+					# 0 means no status line was parsed -- a dead socket or a reply that
+					# is not HTTP. A genuine 500 must fall through here so its headers
+					# and body are read like any other response.
+					framed := false;
+					if(status_code <> 0) {
+						# this response's own framing, apart from @response_headers, which keeps
+						# the fields of every response this client has read
+						has_length := false;
+						line : String := Nil;
+						do {
+							line := socket->ReadLine();
+							if(line <> Nil & line->Size() > 0) {
+								index := line->Find(':');
+								name := line->SubString(index);
+								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
+
+								lowered_name := name->ToLower();
+								if(lowered_name->Equals("content-length")) {
+									has_length := true;
+								}
+								else if(lowered_name->Equals("connection") & value->ToLower()->Find("close") > -1) {
+									persistent := false;
+								};
+
+								if(@cookies_enabled & name->Equals("Set-Cookie")) {
+									@cookies->AddBack(Cookie->New(value));
+								}
+								else {
+									@response_headers->Insert(lowered_name, value);
+								};
+							};
+						}
+						while(line <> Nil & line->Size() > 0);
+
+						# A reset can discard the rest of the reply (Windows loopback, #669). The
+						# line it ends on is Nil, or empty with a socket error: a dropped
+						# connection, not the end of the headers.
+						if(line = Nil | TCPSocket->GetLastError() <> Nil) {
+							socket->Close();
+							return Nil;
+						};
+
+						if(status_code = 301 | status_code = 302 | status_code = 303 |
+						   status_code = 307 | status_code = 308) {
+							moved_location := @response_headers->Find("location");
+							if(moved_location <> Nil) {
+								moved_url_str := BuildRedirectUrl(address, port, "http://", moved_location);
+								moved_url := Url->New(moved_url_str);
+								@response_headers->Empty();
+								socket->Close();
+
+								return PullOperationInner(moved_url, content_type, HttpClient->Task->GET, redirect_count + 1, strip | Web.HTTP.RedirectCheck->IsCrossOrigin(url, moved_url));
+							};
+						};
+
+						encoding : String := @response_headers->Find("transfer-encoding");
+						# A 1xx, 204 or 304 response never has a body, whatever its headers say
+						# (RFC 9110 sec. 6.4.1, RFC 9112 sec. 6.3). Reading on would fall into
+						# ReadUntilClose, and because this request asked for keep-alive the
+						# server holds the connection: the read would wait out the timeout.
+						if(status_code < 200 | status_code = 204 | status_code = 304) {
+							content := Nil;
+							# a 1xx is followed by the final response, which is not read here
+							framed := status_code >= 200;
+						}
+						# GetToFile: a successful body goes to the file, not into memory
+						else if(@download_path <> Nil & status_code < 300) {
+							@download_size := WebCommon->SaveBody(socket, encoding, @response_headers->Find("content-length"), @download_path);
+							content := Nil;
+							if(@download_size < 0) {
+								socket->Close();
+								return Nil;
+							};
+						}
+						else if(encoding <> Nil & encoding->Equals("chunked")) {
+							content := WebCommon->ReadChunked(socket);
+						}
+						else {
+							length_header : String := @response_headers->Find("content-length");
+							if(length_header <> Nil) {
+								length := length_header->ToInt();
+								if(length > 0) {
+									content := WebCommon->ReadLength(length, socket);
+									framed := has_length & content <> Nil;
+								}
+								else {
+									framed := has_length & length = 0;
+								};
+							}
+							else {
+								content := WebCommon->ReadUntilClose(socket);
+							};
+						};
+					};
+
+					# The response was read to the end its own header gave, and neither side asked
+					# to close: the connection is left for the next request to this server.
+					if(persistent & framed & socket->IsOpen() & TCPSocket->GetLastError() = Nil) {
+						HttpConnections->Give(address, port, socket);
+					}
+					else {
+						socket->Close();
+					};
+				}
+				else {
+					return Nil;
+				};
+			};	
+			
+			if(content = Nil) {
+				return Web.HTTP.Response->New(status_code);
+			};
+
+			content_type := GetContentType();
+			return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
+		}
+	}
+
+	# An HTTP/1.1 connection waiting to carry another request, and how long it has waited.
+	class : private : HttpIdleConnection {
+		@key : String;
+		@socket : TCPSocket;
+		@idle : System.Time.Timer;
+
+		New(key : String, socket : TCPSocket) {
+			@key := key;
+			@socket := socket;
+			@idle := System.Time.Timer->New(true);
+		}
+
+		method : public : GetKey() ~ String {
+			return @key;
+		}
+
+		method : public : GetSocket() ~ TCPSocket {
+			return @socket;
+		}
+
+		method : public : GetIdleSeconds() ~ Float {
+			return @idle->GetElapsedTime();
+		}
+	}
+
+	#~
+	The plain HTTP connections HttpClient keeps open between requests, one set per process
+	(#1443). A request used to open a connection, and close it as soon as its response was
+	read. The side that closes first keeps the connection in TIME_WAIT for about two minutes,
+	and on Windows that holds a local port from the 16,384 the system hands out: a process
+	making some 130 requests a second used them all, after which every connect failed at
+	once (WSAEADDRINUSE). A response that says where its body ends leaves the connection
+	reusable, so it waits here for the next request to the same host and port instead.
+
+	A server may close a connection that waits too long, so one is reused only within
+	IDLE_SECONDS, below the keep-alive timeouts servers commonly use, and the caller sends
+	again on a new connection when a reused one gives no response at all (RFC 9112 sec.
+	9.3.1). Only idempotent requests take a waiting connection for that reason.
+	~#
+	class : private : HttpConnections {
+		@pool : static : HttpConnections;
+		@lock : System.Concurrency.ThreadMutex;
+		@idle : Vector<HttpIdleConnection>;
+
+		New() {
+			@lock := System.Concurrency.ThreadMutex->New("http_connections");
+			@idle := Vector->New()<HttpIdleConnection>;
+		}
+
+		# Two threads making the first request at once may each make a pool. One of them
+		# is kept; a connection given to the other is never reused, and closes when the
+		# process ends. Each pool has its own lock, so neither is ever used unlocked.
+		function : Pool() ~ HttpConnections {
+			pool := @pool;
+			if(pool = Nil) {
+				pool := HttpConnections->New();
+				@pool := pool;
+			};
+
+			return pool;
+		}
+
+		function : IdleSeconds() ~ Float {
+			return 4.0;
+		}
+
+		function : MaxIdle() ~ Int {
+			return 16;
+		}
+
+		function : Key(address : String, port : Int) ~ String {
+			return "{$address}:{$port}";
+		}
+
+		# a connection to address:port that is waiting for a request, Nil if there is none
+		function : Take(address : String, port : Int) ~ TCPSocket {
+			return Pool()->TakeIdle(Key(address, port));
+		}
+
+		# keeps a connection whose last response was read to its end, for the next request
+		function : Give(address : String, port : Int, socket : TCPSocket) ~ Nil {
+			Pool()->GiveIdle(Key(address, port), socket);
+		}
+
+		# closes the waiting connections to address:port: one of them was found closed
+		function : Drop(address : String, port : Int) ~ Nil {
+			Pool()->DropIdle(Key(address, port));
+		}
+
+		method : TakeIdle(key : String) ~ TCPSocket {
+			found : TCPSocket;
+			stale := Vector->New()<TCPSocket>;
+			critical(@lock) {
+				# the newest first: it has waited least
+				i := @idle->Size() - 1;
+				while(found = Nil & i >= 0) {
+					entry := @idle->Get(i);
+					if(entry->GetIdleSeconds() > IdleSeconds()) {
+						stale->AddBack(entry->GetSocket());
+						@idle->Remove(i);
+					}
+					else if(entry->GetKey()->Equals(key)) {
+						found := entry->GetSocket();
+						@idle->Remove(i);
+					};
+					i -= 1;
+				};
+			};
+
+			each(socket in stale) {
+				socket->Close();
+			};
+
+			return found;
+		}
+
+		method : GiveIdle(key : String, socket : TCPSocket) ~ Nil {
+			extra : TCPSocket;
+			critical(@lock) {
+				if(@idle->Size() >= MaxIdle()) {
+					extra := @idle->Get(0)->GetSocket();
+					@idle->Remove(0);
+				};
+				@idle->AddBack(HttpIdleConnection->New(key, socket));
+			};
+
+			if(extra <> Nil) {
+				extra->Close();
+			};
+		}
+
+		method : DropIdle(key : String) ~ Nil {
+			dropped := Vector->New()<TCPSocket>;
+			critical(@lock) {
+				i := @idle->Size() - 1;
+				while(i >= 0) {
+					entry := @idle->Get(i);
+					if(entry->GetKey()->Equals(key)) {
+						dropped->AddBack(entry->GetSocket());
+						@idle->Remove(i);
+					};
+					i -= 1;
+				};
+			};
+
+			each(socket in dropped) {
+				socket->Close();
+			};
+		}
+	}
+
+	#~
+	Web socket client
+
+	```
+client := WebSocket->New(Url->New("ws://echo.websocket.org"));
+if(client->Connect()) {
+  client->ReadSocketText()->PrintLine();
+  
+  client->WriteTextSocket("Hello World!");
+  client->ReadSocketText()->PrintLine();
+  
+  client->CloseSocket();
+};
+	```
+	~#
+	class WebSocket {
+		# web socket support
+		@socket : TCPSocket;
+		@header : Byte[];
+		@url : Web.HTTP.Url;
+
+		@status_code : Int;
+		@status_msg : String;
+
+		# https client support
+		@request_headers : Hash<String, String>;
+		@response_headers : Hash<String, String>;
+		@cookies_enabled : Bool;
+		@cookies : Vector<Cookie>;
+		@cert_issuer : String;
+		@cert_subject : String;
+
+		@is_debug : Bool;
+
+		#~
+		Constructor
+		@param url URL
+		@param cookies_enabled true if cookies are enabled, false otherwise		
+		~#
+		New(url : Web.HTTP.Url, cookies_enabled : Bool) {
+			@url := url;
+
+			@request_headers := Hash->New()<String, String>;
+			@request_headers->Insert("Cache-Control"->ToLower(), "max-age=0");
+			@request_headers->Insert("User-Agent"->ToLower(), "Objeck/1.0");
+			
+			@response_headers := Hash->New()<String, String>;
+
+			@cookies_enabled := cookies_enabled;
+			@cookies := Vector->New()<Cookie>;
+
+			# @is_debug := true;
+		}
+
+		#~
+		Constructor
+		@param url URL
+		~#
+		New(url : Web.HTTP.Url) {
+			@url := url;
+
+			@request_headers := Hash->New()<String, String>;
+			@request_headers->Insert("Cache-Control"->ToLower(), "max-age=0");
+			@request_headers->Insert("User-Agent"->ToLower(), "Objeck/1.0");
+			
+			@response_headers := Hash->New()<String, String>;
+
+			# @is_debug := true;
+		}
+
+		#~
+		Opens a connection to a web socket
+		@return true if connected, false otherwise
+```
+ws := Web.HTTP.WebSocket->New(Web.HTTP.Url->New("wss://echo.websocket.org"));
+if(ws->Connect()) {
+  "Connected"->PrintLine();
+  ws->CloseSocket();
+};
+```
+		~#
+		method : public : Connect() ~ Bool {
+			if(@url->GetScheme()->Equals("ws")) {
+				address := @url->GetHost();
+				
+				location := @url->GetPath();
+				if(location = Nil) {
+					location := "/";
+				};
+
+				query := @url->GetQuery();
+				if(query <> Nil) {
+					location += '?';
+					location += query;
+				};
+
+				frag := @url->GetFragment();
+				if(frag <> Nil) {
+					location += '#';
+					location += frag;
+				};
+
+				port := @url->GetPort();
+				if(port < 0) {
+					port := 80;
+				};
+				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
+
+				socket := TCPSocket->New(address, port);
+				if(socket->IsOpen()) {
+					@response_headers->Empty();
+
+					oper := "GET ";
+					
+					# location and address land verbatim in the request line, so a CR, LF
+					# or space here splits the request itself. Url->New does not
+					# sanitize, and a Url is the input most likely to be untrusted.
+					if(Web.HTTP.HeaderCheck->IsValidRequestTarget(location) = false |
+							Web.HTTP.HeaderCheck->IsValidRequestTarget(address) = false) {
+						return false;
+					};
+					oper->Append(location);
+					oper->Append(" HTTP/1.1\r\nHost: ");
+					oper->Append(address);
+					oper->Append(':');
+					oper->Append(port);
+					oper->Append("\r\n");
+					
+					request_keys := @request_headers->GetKeys()<String>;
+					each(i : request_keys) {		
+						request_key := request_keys->Get(i);
+						request_value := @request_headers->Find(request_key);					
+						oper->Append(request_key);
+						oper->Append(": ");
+						oper->Append(request_value);
+						oper->Append("\r\n");
+					};
+
+					oper->Append("Connection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: ");
+
+					nonce := Byte->New[16];
+					each(i : nonce) {
+						nonce[i] := Int->Random(255);
+					};
+					key := Cipher.Encrypt->Base64(nonce);
+
+					oper->Append(key);
+					oper->Append("\r\n\r\n");		
+					
+					# IO.Console->Print("Get: |")->Print(oper)->PrintLine("|");
+					
+					socket->WriteString(oper);
+					
+					status_line := socket->ReadLine();
+					if(status_line <> Nil & status_line->StartsWith("HTTP/1.")) {
+						status_line := status_line->SubString("HTTP/1."->Size() + 2, status_line->Size() - "HTTP/1."->Size() - 2);
+					};
+
+					if(status_line <> Nil & status_line->StartsWith("101 Switching")) {
+						# get request headers
+						do {
+							line := socket->ReadLine();
+							if(line <> Nil & line->Size() > 0) {
+								index := line->Find(':');
+								name := line->SubString(index);
+								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
+
+								# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
+								if(@cookies_enabled & name->Equals("Set-Cookie")) {
+									@cookies->AddBack(Cookie->New(value));
+									# IO.Console->Print("cookie=")->PrintLine(value);
+								}
+								else {
+									@response_headers->Insert(name->ToLower(), value);
+								};
+							};
+						}
+						while(line <> Nil & line->Size() > 0);
+						
+						nonce_hash := @response_headers->Find("sec-websocket-accept");
+						# TODO: validate hash response '258EAFA5-E914-47DA-95CA-C5AB0DC85B11' base64 encoded
+						if(nonce_hash <> Nil) {
+							@socket := socket;
+							@header := Byte->New[2];
+							return true;
+						}
+					};
+				}
+			};	
+
+			return false;
+		}
+
+		#~
+		Writes binary output to the web socket
+		@param data binary payload
+		@param fragment true if fragmented, false otherwise
+		@return true if successful, false otherwise
+```
+ws := Web.HTTP.WebSocket->New(Web.HTTP.Url->New("wss://echo.websocket.org"));
+if(ws->Connect()) {
+  ws->WriteSocket("ping"->ToByteArray(), false);
+  ws->CloseSocket();
+};
+```
+		~#
+		method : public : WriteSocket(data : Byte[], fragment : Bool := false) ~ Bool {
+			chunk_size := 4096;
+			data_size := data->Size();
+
+			if(fragment & data_size > chunk_size) {
+				i := 0;
+
+				if(@is_debug) {
+					"0: write - off={$i}, len={$chunk_size}"->PrintLine();
+				};
+				WriteFrame(data, i, chunk_size, 2, true);
+
+				for(i := chunk_size; chunk_size + i  < data_size; i += chunk_size) {
+					if(@is_debug) {
+						"1: write - off={$i}, len={$chunk_size}"->PrintLine();
+					};
+
+					WriteFrame(data, i, chunk_size, 0, true);
+				};
+
+				# finish frame
+				if(data_size - i <> 0) {
+					rest := data_size - i;
+					if(@is_debug) {
+						"2: write - off={$i}, len={$rest}"->PrintLine();
+					};
+
+					WriteFrame(data, i, rest, 0, false);
+				};
+
+				return true;
+			}
+			else {
+				return WriteFrame(data, 0, data_size, 2, false);
+			};
+		}
+
+		#~
+		Writes text to the web socket
+		@param message message
+		@param fragment true if fragmented, false otherwise
+		@return true if successful, false otherwise
+```
+ws := Web.HTTP.WebSocket->New(Web.HTTP.Url->New("wss://echo.websocket.org"));
+if(ws->Connect()) {
+  ws->WriteSocket("Hello, WebSocket!");
+  ws->ReadSocketText()->PrintLine();
+  ws->CloseSocket();
+};
+```
+		~#
+		method : public : WriteSocket(message : String, fragment : Bool := false) ~ Bool {
+			chunk_size := 4096;
+
+			data := message->ToByteArray();
+			data_size := data->Size();
+
+			if(fragment & data_size > chunk_size) {
+				i := 0;
+
+				if(@is_debug) {
+					"0: write - off={$i}, len={$chunk_size}"->PrintLine();
+				};
+				WriteFrame(data, i, chunk_size, 1, true);
+
+				for(i := chunk_size; chunk_size + i  < data_size; i += chunk_size) {
+					if(@is_debug) {
+						"1: write - off={$i}, len={$chunk_size}"->PrintLine();
+					};
+
+					WriteFrame(data, i, chunk_size, 0, true);
+				};
+
+				# finish frame
+				if(data_size - i <> 0) {
+					rest := data_size - i;
+					if(@is_debug) {
+						"2: write - off={$i}, len={$rest}"->PrintLine();
+					};
+
+					WriteFrame(data, i, rest, 0, false);
+				};
+
+				return true;
+			}
+			else {
+				return WriteFrame(data, 0, data_size, 1, false);
+			};
+		}
+
+		#~
+		Reads binary input from the web socket
+		@return binary input read, Nil otherwise
+```
+ws := Web.HTTP.WebSocket->New(Web.HTTP.Url->New("wss://binary.example.com"));
+if(ws->Connect()) {
+  data := ws->ReadSocketBinary();
+  data->Size()->PrintLine();
+  ws->CloseSocket();
+};
+```
+		~#
+		method : public : ReadSocketBinary() ~ Byte[] {
+			return ReadFrame();
+		}
+
+		#~
+		Reads text from the web socket
+		@return text read, Nil otherwise
+```
+ws := Web.HTTP.WebSocket->New(Web.HTTP.Url->New("wss://echo.websocket.org"));
+if(ws->Connect()) {
+  ws->WriteSocket("Hello");
+  msg := ws->ReadSocketText();
+  msg->PrintLine();
+  ws->CloseSocket();
+};
+```
+		~#
+		method : public : ReadSocketText() ~ String {
+			data := ReadFrame();
+			if(data <> Nil) {
+				return String->New(data);
+			};
+
+			return Nil;
+		}
+
+		method : ReadFrame() ~ Byte[] {
+			if(@socket <> Nil) {
+				# read header
+				@socket->ReadBuffer(0, 2, @header);
+				opcode := (@header[0] and 0xff)->As(Byte);
+
+				if(@is_debug){
+					System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
+				};
+
+				# ping
+				if(opcode = 0x89) {
+					payload_length : Int := @header[1];
+					buffer := Byte->New[payload_length];
+					if(payload_length > 0) {
+						@socket->ReadBuffer(0, payload_length, buffer);
+					};
+
+					if(@is_debug){
+						System.IO.Console->Print("ping - payload: ")->PrintLine(buffer->ToHexString());
+					};
+
+					@socket->WriteByte(0x8a);
+					@socket->WriteBuffer(buffer);
+
+					# read header
+					@socket->ReadBuffer(0, 2, @header);
+					opcode := (@header[0] and 0xff)->As(Byte);
+
+					if(@is_debug){
+						System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
+					};
+				};
+
+				if(opcode = 0x81 | opcode = 0x82 | opcode = 0x88) {
+					payload_length : Int := @header[1];
+					if(payload_length = 126) {
+						@socket->ReadBuffer(0, 2, @header);
+
+						if(@is_debug){
+							System.IO.Console->Print("read - length-ext: ")->PrintLine(@header->ToHexString());
+						};
+
+						payload_length := DecodeInt(@header, 0, 2);
+					}
+					else if(payload_length = 127) {
+						buffer := Byte->New[8];
+						@socket->ReadBuffer(0, 8, buffer);
+
+						if(@is_debug){
+							System.IO.Console->Print("read - length-ext: ")->PrintLine(buffer->ToHexString());
+						};
+
+						payload_length := DecodeInt(buffer, 0, 8);
+					};
+
+					if(@is_debug){
+						System.IO.Console->Print("read - length: ")->PrintLine(payload_length);
+					};
+
+					# cap max at 4GB
+					if(payload_length < 4294967296) {
+						# read payload
+						buffer := Byte->New[payload_length];
+						if(payload_length > 0) {
+							@socket->ReadBuffer(0, payload_length, buffer);
+						};
+
+						if(opcode = 0x88) {
+							@status_code := DecodeInt(@header, 0, 2);
+							@status_msg := String->New(buffer, 2, buffer->Size() - 2);
+							@socket->Close();
+
+							return Nil;
+						};
+
+						if(@is_debug){
+							System.IO.Console->Print("read - buffer: '")->Print(String->New(buffer))->PrintLine("'\n===");
+						};
+
+						return buffer;
+					};
+				};
+			};
+
+			return Nil;
+		}
+
+		method : WriteFrame(data : Byte[], offset : Int, length : Int, mode : Int, fragment : Bool) ~ Bool {
+			# cap max at 4GB
+			if(@socket <> Nil & data <> Nil & length < 4294967296) { # TODO: bounds check
+				frame_offset : Int;
+				
+				# create frame
+				frame : Byte[];
+
+				if(length < 126) {
+					frame_offset := 6;
+				}
+				else if(length < 65536) {
+					frame_offset := 8;
+				}
+				else {
+					frame_offset := 14;
+				};
+				frame := Byte->New[frame_offset + length];	
+				
+				# set utf-8 opcode
+				if(fragment) {
+					frame[0] := 0x0 + mode;
+				}
+				else {
+					frame[0] := 0x80 + mode;
+				};
+
+				# set payload length and bit mask
+				mask_payload_length := 0x80; # set mask bit
+				if(length < 126) {
+					mask_payload_length += length; # payload size
+					frame[1] := mask_payload_length;
+
+					if(@is_debug){
+						opcodes := Byte->New[2];
+						opcodes[0] := frame[0];
+						opcodes[1] := frame[1];
+						System.IO.Console->Print("write - opcode+length: ")->PrintLine(opcodes->ToHexString());
+					};
+
+					# key mask
+					frame[2] := Int->Random(255);
+					frame[3] := Int->Random(255);
+					frame[4] := Int->Random(255);
+					frame[5] := Int->Random(255);
+
+					if(@is_debug){
+						mask := Byte->New[4];
+						mask[0] := frame[2];
+						mask[1] := frame[3];
+						mask[2] := frame[4];
+						mask[3] := frame[5];
+						System.IO.Console->Print("write - mask: ")->PrintLine(mask->ToHexString());
+					};
+				}
+				else if(length < 65536) {
+					mask_payload_length += 126; # payload size
+					
+					frame[1] := mask_payload_length;
+					EncodeInt(length, frame, 2, 2);
+
+					if(@is_debug){
+						opcodes := Byte->New[3];
+						opcodes[0] := frame[0];
+						opcodes[1] := frame[1];
+						opcodes[2] := frame[2];
+						System.IO.Console->Print("write - opcode+length-ext-2: ")->PrintLine(opcodes->ToHexString());
+					};
+
+					# key mask
+					frame[4] := Int->Random(255);
+					frame[5] := Int->Random(255);
+					frame[6] := Int->Random(255);
+					frame[7] := Int->Random(255);
+
+					if(@is_debug){
+						mask := Byte->New[4];
+						mask[0] := frame[4];
+						mask[1] := frame[5];
+						mask[2] := frame[6];
+						mask[3] := frame[7];
+						System.IO.Console->Print("write - mask: ")->PrintLine(mask->ToHexString());
+					};
+				}
+				else {
+					mask_payload_length += 127; # payload size
+
+					frame[1] := mask_payload_length;
+					EncodeInt(length, frame, 2, 8);
+
+					if(@is_debug){
+						opcodes := Byte->New[9];
+						opcodes[0] := frame[0];
+						opcodes[1] := frame[1];
+						opcodes[2] := frame[2];
+						opcodes[3] := frame[3];
+						opcodes[4] := frame[4];
+						opcodes[5] := frame[5];
+						opcodes[6] := frame[6];
+						opcodes[7] := frame[7];
+						opcodes[8] := frame[8];	
+
+						System.IO.Console->Print("write - opcode+length-ext-8: ")->PrintLine(opcodes->ToHexString());
+					};
+
+					# key mask
+					frame[10] := Int->Random(255);
+					frame[11] := Int->Random(255);
+					frame[12] := Int->Random(255);
+					frame[13] := Int->Random(255);
+
+					if(@is_debug){
+						mask := Byte->New[4];
+						mask[0] := frame[10];
+						mask[1] := frame[11];
+						mask[2] := frame[12];
+						mask[3] := frame[13];
+						System.IO.Console->Print("write - mask: ")->PrintLine(mask->ToHexString());
+					};
+				};
+
+				# encode payload
+				j := 0;
+				for(i := 0; i < length; i += 1;) {
+					frame[frame_offset + i] := data[i + offset] xor frame[j % 4 + frame_offset - 4];
+					j += 1;
+				};
+
+				if(@is_debug){
+					buffer := ByteBuffer->New();
+
+					"write - frame: "->Print();
+					each(f in frame) {
+						buffer->Append(f)
+					};
+					"\n==="->PrintLine();
+
+					buffer->ToByteArray()->ToHexString()->PrintLine();
+				};
+
+				return @socket->WriteBuffer(frame) > 0;
+			};
+
+			return false;
+		}
+
+		method : native : EncodeInt(value : Int, bytes : Byte[], offset : Int, num_bytes : Int) ~ Nil {
+			shift := (num_bytes - 1) << 3;
+			end := offset + num_bytes;
+
+			for(i := offset; i < end; i += 1;) {
+				bytes[i] := (value >> shift) and 0xff;
+				shift -= 8;
+			};
+		}
+
+		method : native : DecodeInt(bytes : Byte[], offset : Int, num_bytes : Int) ~ Int {
+			value : Int;
+
+			shift := (num_bytes - 1) << 3;
+			end := offset + num_bytes;
+
+			for(i := offset; i < end; i += 1;) {
+				value += (bytes[i] and 0xff) << shift;
+				shift -= 8;
+			};
+
+			return value;
+		}
+
+		#~
+		Pings the websocket server
+		@return true if pinged, false otherwise
+```
+ws := Web.HTTP.WebSocket->New(Web.HTTP.Url->New("wss://echo.websocket.org"));
+if(ws->Connect()) {
+  if(ws->PingSocket()) {
+    "Server alive"->PrintLine();
+  };
+  ws->CloseSocket();
+};
+```
+		~#
+		method : public : PingSocket() ~ Bool {
+			if(@socket <> Nil) {
+				# ping frame: FIN+ping, mask bit set, 0 payload, 4-byte mask
+				frame := Byte->New[6];
+				frame[0] := 0x89;
+				frame[1] := 0x80;
+				frame[2] := Int->Random(255);
+				frame[3] := Int->Random(255);
+				frame[4] := Int->Random(255);
+				frame[5] := Int->Random(255);
+				@socket->WriteBuffer(frame);
+
+				# read header
+				@socket->ReadBuffer(0, 2, @header);
+				opcode := (@header[0] and 0xff)->As(Byte);
+				# System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
+
+				payload_length : Int := @header[1];
+				buffer := Byte->New[payload_length];
+				if(payload_length > 0) {
+					@socket->ReadBuffer(0, payload_length, buffer);
+				};
+
+				if(@is_debug){
+					System.IO.Console->Print("pong - payload: ")->PrintLine(buffer->ToHexString());
+				};
+
+				if(opcode = 0x8a) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		Closes the web socket connection
+```
+ws->CloseSocket();
+```
+		~#
+		method : public : CloseSocket() ~ Nil {
+			CloseSocket(1000);
+		}
+
+		#~
+		Closes the web socket connection
+		@param reason reason to close socket
+```
+ws->CloseSocket(1000);  # 1000 = normal closure
+```
+		~#
+		method : public : CloseSocket(reason : Int) ~ Nil {
+			if(@socket <> Nil) {
+				frame := Byte->New[8];
+				frame[0] := 0x88;  # FIN + close opcode
+				frame[1] := 0x82;  # mask bit set + 2 bytes payload
+				frame[2] := Int->Random(255);  # masking key
+				frame[3] := Int->Random(255);
+				frame[4] := Int->Random(255);
+				frame[5] := Int->Random(255);
+				frame[6] := ((reason >> 8) and 0xff) xor frame[2];
+				frame[7] := (reason and 0xff) xor frame[3];
+				@socket->WriteBuffer(frame);
+				@socket->Close();
+			};
+		}
+
+		#~
+		Gets the last status code
+		@return last status code
+```
+ws := Web.HTTP.WebSocket->New(Web.HTTP.Url->New("wss://echo.websocket.org"));
+ws->Connect();
+ws->GetStatusCode()->PrintLine();  # 101
+```
+		~#
+		method : public : GetStatusCode() ~ Int {
+			return @status_code;
+		}
+
+		#~
+		Gets the last status message
+		@return last status message
+```
+ws := Web.HTTP.WebSocket->New(Web.HTTP.Url->New("wss://echo.websocket.org"));
+if(<>ws->Connect()) {
+  ws->GetStatusMessage()->PrintLine();  # error message
+};
+```
+		~#
+		method : public : GetStatusMessage() ~ String {
+			return @status_msg;
+		}
+
+		#~
+		Gets the socket's X.509 certificate issuer name
+		@return certificate issuer name
+		~#
+		method : public : GetIssuer() ~ String {
+			return @cert_issuer;
+		}
+
+		#~
+		Gets the socket's X.509 certificate subject name
+		@return certificate subject name
+		~#
+		method : public : GetSubject() ~ String {
+			return @cert_subject;
+		}
+
+		#~
+		Sets cookie support
+		@param cookies_enabled true if cookies are enabled, false otherwise
+		~#
+		method : public : EnableCookies(cookies_enabled : Bool) ~ Nil {
+			@cookies_enabled := cookies_enabled;
+		}	
+		
+		#~
+		Gets the cookies
+		@return vector of cookies
+		~#
+		method : public : GetCookies() ~ Vector<Cookie> {
+			return @cookies;
+		}
+
+		#~
+		Adds a HTTPS request header
+		@param name header name
+		@param value header value
+```
+ws := Web.HTTP.WebSocket->New(Web.HTTP.Url->New("wss://secure.example.com/ws"));
+ws->AddHeader("Authorization", "Bearer token123");
+ws->Connect();
+```
+		~#
+		method : public : AddHeader(name : String, value : String) ~  Nil {
+			# Refuse anything that could inject a header line of its own.
+			# A CR/LF here would split the request (HTTP/1.1) or reach the
+			# wire unvalidated (HTTP/2, HTTP/3). Never legitimate content.
+			if(Web.HTTP.HeaderCheck->IsValidName(name->ToLower()) = false |
+				Web.HTTP.HeaderCheck->IsValidValue(value) = false) {
+				return;
+			};
+			@request_headers->Insert(name->ToLower(), value);
+		}
+
+		#~
+		Removes a HTTPS request header
+		@param name header name
+		~#
+		method : public : RemoveHeader(name : String) ~  Nil {
+			@request_headers->Remove(name->ToLower());
+		}
+	}
+}

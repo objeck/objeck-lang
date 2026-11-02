@@ -1,43 +1,82 @@
 name: Probe net 1443 (Windows loopback)
 
 # A probe, not a gate: runs only for pushes to probe/net-1443-* branches.
-# exhaust.py, plain Python on loopback, 30,000 requests per close style:
-# client closes first (Objeck today), server closes first, client resets,
-# and 8 requests per connection. Counts TCP states (TIME_WAIT peak), connect
-# errors and server ends left open.
+# master's CI binaries, before and after the HttpClient connection reuse
+# (tools/probe_1443/net_pool.obs, compiled into net.obl here): two copies of
+# the nightly harness at once on the three flaky network tests, the way the
+# nightly runs them beside other network tests, with a TCP state sampler.
 on:
   push:
     branches: [ 'probe/net-1443-*' ]
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   probe:
-    name: close styles ${{ matrix.platform }}
+    name: before/after ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 75
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: windows-x64
             os: windows-2025-vs2026
+            arch: x64
           - platform: windows-arm64
             os: windows-11-arm
+            arch: ARM64
     defaults:
       run:
         shell: pwsh
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-    - name: Close styles
+    - name: Find master's latest ci-build run
+      id: pick
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
-        foreach ($m in 'cfirst','sfirst','linger0','reuse8') {
+        $id = gh run list --repo $env:GITHUB_REPOSITORY --workflow ci-build.yml --branch master --event push --status success --limit 1 --json databaseId --jq '.[0].databaseId'
+        "run_id=$id" >> $env:GITHUB_OUTPUT
+        "ci-build run $id"
+    - name: Download the CI deploy tree
+      uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+      with:
+        name: objeck-${{ matrix.platform }}
+        run-id: ${{ steps.pick.outputs.run_id }}
+        github-token: ${{ github.token }}
+        path: before
+    - name: Build the after tree
+      run: |
+        Copy-Item before after -Recurse
+        $env:OBJECK_LIB_PATH = "$PWD\after\lib"
+        Push-Location core/compiler
+        & "$env:GITHUB_WORKSPACE\after\bin\obc.exe" -src "lib_src/net_common.obs,$env:GITHUB_WORKSPACE/tools/probe_1443/net_pool.obs,lib_src/net_secure.obs" -tar lib -lib gen_collect,cipher -opt s3 -dest "$env:GITHUB_WORKSPACE\after\lib\net.obl"
+        Pop-Location
+        (Get-FileHash before\lib\net.obl).Hash
+        (Get-FileHash after\lib\net.obl).Hash
+    - name: Before and after, two harnesses at once
+      run: |
+        $tests = 'query_url_cache_processes','server_bind_address','query_net_read'
+        foreach ($tree in 'before','after','before','after') {
           foreach ($k in 1..40) {
             $tw = (netstat -ano -p tcp | Select-String 'TIME_WAIT').Count
             if ($tw -lt 100) { break }
             Start-Sleep -Seconds 10
           }
-          "TIME_WAIT before $m`: $tw"
-          python tools/probe_1443/exhaust.py 30000 6 $m
+          $tag = "$tree-" + (Get-Date -Format HHmmss)
+          "=== $tag (TIME_WAIT before: $tw)"
+          $stop = "$env:RUNNER_TEMP\stop_$tag"
+          $s = Start-Process python -ArgumentList "tools/probe_1443/twsample.py",$stop -NoNewWindow -PassThru -RedirectStandardOutput "$env:RUNNER_TEMP\tw_$tag.txt"
+          $h = @()
+          foreach ($c in 'a','b') {
+            $h += Start-Process python -ArgumentList (@('programs/regression/run_differential.py', "$tree/bin") + $tests + @('-j','3','--work',"$env:RUNNER_TEMP\diff_${tag}_$c")) -NoNewWindow -PassThru -RedirectStandardOutput "$env:RUNNER_TEMP\h_${tag}_$c.txt" -RedirectStandardError "$env:RUNNER_TEMP\h_${tag}_$c.err"
+          }
+          $h | ForEach-Object { $_.WaitForExit() }
+          New-Item -ItemType File $stop | Out-Null
+          $s.WaitForExit()
+          foreach ($c in 'a','b') { "--- harness $c"; Get-Content "$env:RUNNER_TEMP\h_${tag}_$c.txt" | Select-String -Pattern '^ (ok|DIFF|FAIL)|Results:|no response|FAIL:' }
+          Get-Content "$env:RUNNER_TEMP\tw_$tag.txt" | Select-String 'peak'
         }
