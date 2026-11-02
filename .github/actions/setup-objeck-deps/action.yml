@@ -47,7 +47,7 @@ runs:
     # "tar: ...deb: Permission denied", which silently disables the cache.
     - name: Cache APT packages (Linux)
       if: runner.os == 'Linux' && inputs.use-cache == 'true'
-      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/apt-cache
         key: ${{ runner.os }}-${{ inputs.arch }}-apt-${{ hashFiles('.github/actions/setup-objeck-deps/action.yml') }}
@@ -94,7 +94,7 @@ runs:
     # ---- macOS ---------------------------------------------------------------
     - name: Cache Homebrew downloads (macOS)
       if: runner.os == 'macOS' && inputs.use-cache == 'true'
-      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/Library/Caches/Homebrew
         key: ${{ runner.os }}-brew-downloads-${{ hashFiles('.github/actions/setup-objeck-deps/action.yml') }}
@@ -210,7 +210,7 @@ runs:
       # Only an optimization: a transient cache-service error must not fail the
       # run. On a miss or error cache-hit != 'true' and the next step downloads.
       continue-on-error: true
-      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: core/lib/opencv/win/x64/bin
         # The same key release-build.yml uses, holding the same files: the DLLs and
@@ -276,7 +276,7 @@ runs:
     # release costs about an extra hour.
     - name: Cache ccache (POSIX)
       if: runner.os != 'Windows' && inputs.use-cache == 'true'
-      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.ccache
         key: ${{ runner.os }}-${{ inputs.arch }}-ccache-verify
