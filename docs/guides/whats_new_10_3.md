@@ -94,8 +94,8 @@ See **[Editor setup and the language server](language_server.md)**.
 
 [`programs/examples/checkers`](../../programs/examples/checkers/) is an SDL2 game with ten
 opponents built from `System.AI`'s `Minimax` and `MonteCarloTreeSearch` and the example's own
-search, a self-play learner that tunes the evaluation, eight piece sets, and music generated while
-you play (hip-hop and modern-beat styles). Its move generator is checked against the published
+search, a self-play learner that tunes the evaluation, several piece sets, and music generated while
+you play. Its move generator is checked against the published
 perft counts. See **[Game AI with System.AI](ai.md)** for a small version of the same idea you can
 read in one sitting.
 

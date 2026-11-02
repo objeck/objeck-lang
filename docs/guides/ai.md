@@ -238,16 +238,12 @@ game in an SDL2 window that uses this library. Levels 4 to 6 are the library's `
 extension), and levels 9 and 10 add iterative deepening and an evaluation the program tuned by
 playing itself. The wrapper that lets the library search checkers is `CkState`, a
 `GameState`, and its tests check that `MonteCarloTreeSearch` takes a free piece. The move
-generator is checked against the published perft counts, and a headless 288-check test runs in
-the regression suite. The example also generates its music (hip-hop and modern-beat styles) as
-it plays. Its [README](../../programs/examples/checkers/README.md) has the rules, the table of
+generator is checked against the published perft counts, and a headless test of the engine, the players and the search runs in
+the regression suite. The example also generates its music as it plays. Its [README](../../programs/examples/checkers/README.md) has the rules, the table of
 levels, a tournament between neighbouring levels and how the learning works.
 
-```text
-cd programs/examples/checkers
-obc -src checkers_engine.obs,checkers_game.obs,checkers_ai.obs,checkers_logic.obs,checkers_draw.obs,checkers_chars.obs,checkers_fx.obs,checkers_music.obs,checkers_audio.obs,checkers.obs -lib sdl2,sdl_game,json,ai,gen_collect -dest checkers.obe
-obr checkers.obe
-```
+The example's README has the exact `obc` and `obr` lines (it is built from several source files and
+needs the SDL2 libraries).
 
 It opens a window, so it needs a display.
 
