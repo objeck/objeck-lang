@@ -1022,7 +1022,7 @@ bundle Web.HTTP {
 					downloader->Join();
 				};
 
-				download_count += group_ending;
+				download_count := group_ending;
 			};
 
 			results := Map->New()<Url, ByteArrayRef>;
