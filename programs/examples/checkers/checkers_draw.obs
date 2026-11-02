@@ -435,6 +435,16 @@ class CkDraw {
       bb := Mix(fb, bg_b, 0.55);
     };
     r->RoundedBoxColor(x, y, x + w - 1, y + h - 1, 8, Col(br, bgc, bb, 255));
+    if(set >= 8) {
+      # neon buttons: the rim glows when pointed at, the chosen one is lit
+      if(hover & enabled) {
+        r->RoundedRectangleColor(x - 1, y - 1, x + w, y + h, 9, Col(fr, fg, fb, 70));
+        r->RoundedRectangleColor(x - 2, y - 2, x + w + 1, y + h + 1, 10, Col(fr, fg, fb, 30));
+      };
+      if(active) {
+        r->RoundedBoxColor(x + 1, y + 1, x + w - 2, y + h - 2, 8, Col(fr, fg, fb, 50));
+      };
+    };
     if(active) {
       r->RoundedRectangleColor(x, y, x + w - 1, y + h - 1, 8, Col(fr, fg, fb, 255));
     }
@@ -454,8 +464,55 @@ class CkDraw {
     };
   }
 
+  # the body and rim colours of a side's piece, for little icons: 6 numbers
+  function : SideColors(set : Int, side : Int) ~ Int[] {
+    out := Int->New[6];
+    if(set >= 4) {
+      rc := CkChars->Recipe(set, side);
+      each(i : 6) {
+        out[i] := rc[i];
+      };
+      return out;
+    };
+    pc := PieceColors(set, side);
+    each(i : 6) {
+      out[i] := pc[i];
+    };
+    return out;
+  }
+
+  # a tray of twelve little discs for one side: those it has captured are filled
+  function : Tray(r : Renderer, set : Int, x : Int, y : Int, w : Int, taken : Int, side : Int) ~ Nil {
+    c := SideColors(set, side);
+    pip := w / 24;
+    if(pip > 7) {
+      pip := 7;
+    };
+    if(pip < 3) {
+      pip := 3;
+    };
+    each(i : 12) {
+      px := x + pip + i * (w - pip * 2) / 11;
+      if(i < taken) {
+        r->FilledCircleColor(px, y, pip, Col(c[3], c[4], c[5], 255));
+        r->FilledCircleColor(px, y, pip - 1, Col(c[0], c[1], c[2], 255));
+      }
+      else {
+        r->AACircleColor(px, y, pip, Col(c[0], c[1], c[2], 90));
+      };
+    };
+  }
+
   function : Panel(r : Renderer, x : Int, y : Int, w : Int, h : Int, set : Int) ~ Nil {
     t := Theme(set);
+    if(set >= 8) {
+      # dark glass: a faint wash on the top half, a hairline neon edge and a soft glow
+      r->RoundedBoxColor(x, y, x + w - 1, y + h - 1, 12, Col(t[15], t[16], t[17], 255));
+      r->RoundedBoxColor(x + 2, y + 2, x + w - 3, y + h / 3, 10, Col(255, 255, 255, 8));
+      r->RoundedRectangleColor(x - 1, y - 1, x + w, y + h, 13, Col(t[18], t[19], t[20], 40));
+      r->RoundedRectangleColor(x, y, x + w - 1, y + h - 1, 12, Col(t[18], t[19], t[20], 130));
+      return;
+    };
     r->RoundedBoxColor(x, y, x + w - 1, y + h - 1, 12, Col(t[15], t[16], t[17], 255));
     r->RoundedRectangleColor(x, y, x + w - 1, y + h - 1, 12, Col(255, 255, 255, 36));
   }

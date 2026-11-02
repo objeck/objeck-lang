@@ -124,6 +124,8 @@ class CheckersApp {
   @egg : Int;
   @cheer : Bool;        # the piece that just landed captured something
   @t_start : Int;
+  @last_screen : Int;
+  @fade_t0 : Int;
   @work_ms : Int;
 
   # the playful layer: particles, words, the opponent's face, shaking
@@ -385,6 +387,14 @@ class CheckersApp {
   # moments the README shows.
   method : SetupScene(scene : String) ~ Nil {
     if(scene->Equals("start")) {
+      return;
+    };
+
+    if(scene->Equals("think")) {
+      # the opponent's thinking face: spinner eyes and a worried quip
+      StartGame();
+      SetMood(CkChar->Thinking(), 600000, true);
+      @shot_frame := 40;
       return;
     };
 
@@ -1010,6 +1020,16 @@ class CheckersApp {
       DrawBoard();
       DrawPanel();
       DrawBanner();
+    };
+
+    # a short fade whenever the screen changes (about a quarter of a second, once)
+    if(@screen <> @last_screen) {
+      @last_screen := @screen;
+      @fade_t0 := @now;
+    };
+    if(Fx() & @now - @fade_t0 < 260) {
+      left := 1.0 - (@now - @fade_t0)->As(Float) / 260.0;
+      @r->BoxColor(0, 0, Width(), Height(), Color->New(t[9], t[10], t[11], (255.0 * left * left)->As(Int)));
     };
 
     # the buttons seen this frame are the ones the next click can hit
@@ -1754,7 +1774,7 @@ class CheckersApp {
     fy := cy + 14 + ring;
     @r->FilledCircleColor(fx, fy, ring, Color->New(t[18], t[19], t[20], 255));
     @r->FilledCircleColor(fx, fy, ring - 3, Color->New(t[15] + 10, t[16] + 10, t[17] + 10, 255));
-    CkChar->Face(@r, level, fx, fy + 5, ring * 66 / 100, CurrentMood(), @frame, @mx, @my, Fx());
+    CkChar->Face(@r, level, fx, fy + 7, ring * 58 / 100, CurrentMood(), @frame, @mx, @my, Fx());
     name := CkLevels->Name(level);
     if(human = 2) {
       name := "Computer duel";
@@ -1815,16 +1835,13 @@ class CheckersApp {
     rw := l->PW(CkLayout->Trays());
     rh := l->PH(CkLayout->Trays());
     CkDraw->Panel(@r, rx, ry, rw, rh, set);
-    @text->Draw("Captured", rx + 14, ry + 4, 0, t[12], t[13], t[14], 0);
-    pip := rh / 2 - 9;
-    if(pip > 11) {
-      pip := 11;
-    };
+    @text->Draw("Captured", rx + 14, ry + 3, 0, t[12], t[13], t[14], 0);
     each(s : 2) {
       lost := @game->Lost(1 - s);
-      base := rx + 14 + s * (rw / 2);
-      CkDraw->Piece(@r, set, base + pip, ry + rh - pip - 8, pip, s, false, 1.0, 1.0, 0, 255, 1.0);
-      @text->Draw("{$lost}", base + pip * 2 + 8, ry + rh - 8 - pip - 11, 2, 245, 245, 245, 0);
+      base := rx + 12 + s * (rw / 2);
+      colw := rw / 2 - 20;
+      Say("{$(CkDraw->SideName(set, s))}  {$lost}", base, ry + 17, colw, 1, 245, 245, 245, 0);
+      CkDraw->Tray(@r, set, base, ry + rh - 11, colw, lost, 1 - s);
     };
 
     # the moves so far
@@ -1907,6 +1924,9 @@ class CheckersApp {
     @mood_until := @now + millis;
     if(Fx() | speak) {
       @quip := CkChar->Line(@settings->Level(), mood);
+      if(@settings->PieceSet() >= 8 & (@game->Entries() + mood) % 2 = 0) {
+        @quip := CkChar->NeoLine(@settings->Level(), mood);
+      };
       @quip_until := @now + 4200;
     };
   }
