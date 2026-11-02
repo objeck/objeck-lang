@@ -17,8 +17,14 @@
 #   - a response with Connection: close, one with no Connection field and an HTTP/1.0 one
 #     are not reused;
 #   - a connection that has waited longer than the idle limit is not reused;
-#   - POST never goes out on a waiting connection.
-# EXTRA_LIBS: net
+#   - POST never goes out on a waiting connection, and closes the waiting connections to
+#     its server first: a server that serves one connection at a time would otherwise keep
+#     serving the idle one while the POST waited to be accepted;
+#   - HttpClient->CloseIdleConnections() and WebServer->Stop() close the waiting connections,
+#     so a program that runs a server and its own client does not leave the server's threads
+#     reading idle connections (the VM waits up to two seconds for live threads at exit).
+# These are checked by what the server sees -- the client closing its end -- not by time.
+# EXTRA_LIBS: net,net_server
 ~#
 
 use Collection, System.Concurrency, System.IO.Net, Web.HTTP;
@@ -29,6 +35,7 @@ class Seen {
 	@connections : Int;
 	@requests : Int;
 	@posts : Int;
+	@closed : Int;
 	@mode : Int;
 
 	New() {
@@ -50,6 +57,17 @@ class Seen {
 			mode := @mode;
 		};
 		return mode;
+	}
+
+	# the client closed a connection while it waited for a request
+	method : public : Closed() ~ Nil {
+		critical(@lock) { @closed += 1; };
+	}
+
+	method : public : GetClosed() ~ Int {
+		n := 0;
+		critical(@lock) { n := @closed; };
+		return n;
 	}
 
 	method : public : SetMode(mode : Int) ~ Nil {
@@ -116,6 +134,7 @@ class ServedConnection from Thread {
 		while(open) {
 			line := @client->ReadLine();
 			if(line = Nil | line->Size() = 0) {
+				@seen->Closed();
 				open := false;
 			}
 			else {
@@ -171,6 +190,17 @@ class HttpClientReuse {
 			@failures += 1;
 			"  FAIL: {$what}"->PrintLine();
 		};
+	}
+
+	# whether the server saw the client close a connection since it had seen 'before' closes;
+	# the server's thread notices the close a moment after the client makes it
+	function : ClosedSince(seen : Seen, before : Int) ~ Bool {
+		waited := 0;
+		while(seen->GetClosed() = before & waited < 5000) {
+			Thread->Sleep(10);
+			waited += 10;
+		};
+		return seen->GetClosed() > before;
 	}
 
 	# a GET from a new client, as the URL cache makes them; true if it read "ok"
@@ -258,12 +288,29 @@ class HttpClientReuse {
 		Check("a GET after the idle limit succeeds", Get(url));
 		Check("  on a new connection ({$(seen->GetConnections() - connections)})", seen->GetConnections() - connections = 1);
 
-		# a POST is not idempotent: it never takes a waiting connection
+		# a POST is not idempotent: it never takes a waiting connection, and it closes the
+		# waiting one first
 		Get(url);
 		connections := seen->GetConnections();
+		closed := seen->GetClosed();
 		post := HttpClient->New()->Post(Url->New(url), "x"->ToByteArray(), "text/plain");
 		Check("a POST is answered", post <> Nil & post->GetCode() = 200);
 		Check("  on a connection of its own ({$(seen->GetConnections() - connections)})", seen->GetConnections() - connections = 1);
+		# two closes: the waiting connection's, before the POST connects, and the POST's own
+		Check("  after closing the waiting connection", ClosedSince(seen, closed + 1));
+
+		# CloseIdleConnections, and WebServer->Stop, close the waiting connections
+		Get(url);
+		closed := seen->GetClosed();
+		HttpClient->CloseIdleConnections();
+		Check("CloseIdleConnections closes the waiting connection", ClosedSince(seen, closed));
+		connections := seen->GetConnections();
+		Check("  and the next GET succeeds", Get(url));
+		Check("  on a new connection ({$(seen->GetConnections() - connections)})", seen->GetConnections() - connections = 1);
+
+		closed := seen->GetClosed();
+		Web.HTTP.Server.WebServer->Stop();
+		Check("WebServer->Stop closes the client's waiting connections", ClosedSince(seen, closed));
 
 		if(@failures = 0) {
 			"PASS: HttpClient connection reuse"->PrintLine();
