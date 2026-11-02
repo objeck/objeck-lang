@@ -58,22 +58,24 @@ jobs:
           # Extract year from version
           YEAR=$(echo "$VERSION" | cut -d'.' -f1)
 
-          # Update version.h
-          cat > core/shared/version.h << EOF
-          #pragma once
+          # Update version.h from its template, the one place the magic numbers live.
+          # This step used to write the whole file from a copy kept here, and the copy
+          # went stale when the magic numbers moved (0xffba, MAGIC_NUM_*_UNTYPED_INT_ARRAYS):
+          # every POSIX build then failed to compile, and only a release-build run
+          # shows it, since ci-build.yml builds the committed version.h.
+          sed -e "s/@VERSION_NUMBER@/$VERSION_NUMBER/" -e "s/@VERSION@/$VERSION/" \
+            core/shared/version.in > core/shared/version.h
 
-          #include "instrs.h"
-          #include "traps.h"
-
-          #define MAGIC_NUM_EXE 0xffbe // bitmask 'e'
-          #define MAGIC_NUM_LIB 0xffb9
-          #define MAGIC_NUM_LIB_UNQUALIFIED_ENUMS 0xffb8
-          #define MAGIC_NUM_LIB_NO_GENERIC_MARKS 0xffb7
-          #define MAGIC_NUM_LIB_NO_PARAM_NAMES 0xffb6 // bitmask 'k'
-
-          #define VER_NUM $VERSION_NUMBER
-          #define VERSION_STRING L"$VERSION"
-          EOF
+          if grep -q '@[A-Z_]*@' core/shared/version.h; then
+            echo "❌ version.h still has an unfilled placeholder:"
+            grep -n '@[A-Z_]*@' core/shared/version.h
+            exit 1
+          fi
+          if ! grep -q "^#define VER_NUM $VERSION_NUMBER\$" core/shared/version.h || \
+             ! grep -q "^#define VERSION_STRING L\"$VERSION\"\$" core/shared/version.h; then
+            echo "❌ version.h does not carry version $VERSION"
+            exit 1
+          fi
 
           echo "✅ Updated version.h with version $VERSION"
 
