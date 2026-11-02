@@ -1847,6 +1847,19 @@ jobs:
       - name: Docs name only the dependencies Objeck needs
         run: python3 tools/cicd/check_docs_deps.py --docs
 
+      # Same class of guard, for the links between pages. A rename or a deleted
+      # page leaves relative links and #anchors that nothing complains about until
+      # a reader meets the 404; a path spelled with the wrong case works on Windows
+      # and macOS and fails on GitHub. Checks every Markdown file git knows against
+      # git's own file list and each page's headings, with no network access. The
+      # second step proves the checker can still fail. Known-broken links live in
+      # tools/cicd/doc_links_known.txt, and an entry whose link resolves is an error.
+      - name: Markdown links and anchors resolve
+        run: python3 tools/cicd/check_doc_links.py
+
+      - name: The link check can still detect a broken link
+        run: python3 tools/cicd/check_doc_links.py --test
+
       # Same class of guard, for both halves of what the benchmark harness does.
       # Every number on docs/performance.md was measured at the input printed
       # beside it, and perf-results/run_benchmarks.sh holds the input the harness

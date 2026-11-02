@@ -1,0 +1,4 @@
+# Links known to be broken, so the check can gate everything else. Format:
+#   file :: link target :: reason
+# Fix the link and delete its line: a line whose link resolves is itself an error.
+README.md :: CHANGELOG.md#v2026102---2026-10-28 :: the v2026.10.2 heading is dated 2026-10-31 (slug v2026102---2026-10-31); README.md is owned by another change

@@ -63,6 +63,8 @@ CHECKS = [
     ("SHA256SUMS re-sign check can detect a missing re-sign", lambda: py("tools/cicd/check_manifest_resign.py", "--test")),
     ("Every SHA256SUMS upload is re-signed", lambda: py("tools/cicd/check_manifest_resign.py")),
     ("Docs name only the dependencies Objeck needs", lambda: py("tools/cicd/check_docs_deps.py", "--docs")),
+    ("Markdown links and anchors resolve", lambda: py("tools/cicd/check_doc_links.py")),
+    ("The link check can still detect a broken link", lambda: py("tools/cicd/check_doc_links.py", "--test")),
     ("Benchmark set and inputs match the documented ones", lambda: py("tools/cicd/check_benchmark_inputs.py")),
     ("Benchmark set/input check catches drift", lambda: py("tools/cicd/test_check_benchmark_inputs.py")),
     ("Native call names are held, not re-allocated",
