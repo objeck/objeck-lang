@@ -849,10 +849,6 @@ class Library {
     return value;
   }
 
-  inline void ReadDummyInt() {
-    buffer += sizeof(int32_t);
-  }
-
   inline uint32_t ReadUnsigned() {
     uint32_t value = *reinterpret_cast<uint32_t*>(buffer);
     buffer += sizeof(value);
@@ -1160,24 +1156,6 @@ public:
   void ResloveExternalClass(LibraryClass* klass);
   void ResloveExternalClasses();
   void ResolveExternalMethodCalls();
-
-  std::vector<std::wstring> GetLibraryPaths() {
-    return paths;
-  }
-
-  Library* GetLibrary(const std::wstring &name) {
-    std::map<const std::wstring, Library*>::iterator result = libraries.find(name);
-    if(result != libraries.end()) {
-      return result->second;
-    }
-
-    return nullptr;
-  }
-
-  // get all libraries
-  std::map<const std::wstring, Library*> GetAllLibraries() {
-    return libraries;
-  }
 
   // get all used libraries
   std::vector<Library*> GetAllUsedLibraries();

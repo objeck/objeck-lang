@@ -233,10 +233,6 @@ namespace backend {
       operand3 = o3;
     }
 
-    void SetOperand4(FLOAT_VALUE o4) {
-      operand4 = o4;
-    }
-
     void Debug(size_t i);
 
     void Write(bool is_debug, OutputStream& out_stream);
@@ -795,18 +791,10 @@ namespace backend {
       return inst_space;
     }
 
-    void SetInstanceSpace(int s) {
-      inst_space = s;
-    }
-
     int GetClassSpace() {
       return cls_space;
     }
 
-    void SetClassSpace(int s) {
-      cls_space = s;
-    }
-    
     void AddMethod(IntermediateMethod* m) {
       methods.push_back(m);
       method_map.insert(std::pair<int, IntermediateMethod*>(m->GetId(), m));
@@ -1102,28 +1090,12 @@ namespace backend {
       method_id = m;
     }
 
-    int GetStartClassId() {
-      return class_id;
-    }
-
-    int GetStartMethodId() {
-      return method_id;
-    }
-
     void SetBundleNames(std::vector<std::wstring> &n) {
       bundle_names = std::move(n);
     }
 
     void SetStringClassId(int i) {
       string_cls_id = i;
-    }
-
-    void SetAliasesString(const std::wstring &a) {
-      aliases_str = a;
-    }
-
-    const std::wstring GetAliasesString() {
-      return aliases_str;
     }
 
     void Write(bool emit_lib, bool is_debug, OutputStream& out_stream, bool mute);
