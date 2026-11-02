@@ -1,0 +1,639 @@
+#~
+# compile: obc -src checkers_engine.obs,checkers_game.obs,checkers_ai.obs,checkers_logic.obs,checkers_tests.obs -lib ai,json -dest checkers_tests.obe
+# run:     obr checkers_tests.obe
+#
+# Tests for the checkers engine, rules, fun mode, computer players and the
+# window logic, with no window and no sound. programs/regression/checkers_engine.obs
+# is these files joined into one (see make_regression_test.py), so the regression
+# suite runs exactly this.
+#
+# The headline test is "perft": count every position reachable in N moves from
+# the start. The English-draughts counts are published (7, 49, 302, 1469, 7361,
+# 36768, 179740, 845931), so getting them all right is strong evidence that the
+# move generator is correct. A second set of positions, with kings and multiple
+# jumps, was counted by a separate generator (plain 8 x 8 arrays, written from
+# the rules without looking at this code) and must agree too.
+~#
+
+use Data.JSON;
+use System.IO.Filesystem;
+use System.AI;
+
+class CkTests {
+  @failures : static : Int;
+  @checks : static : Int;
+
+  function : Check(ok : Bool, what : String) ~ Nil {
+    @checks += 1;
+    if(<>ok) {
+      @failures += 1;
+      "  FAIL: {$what}"->PrintLine();
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    CkBits->Init();
+    Perft();
+    ReferencePositions();
+    Rules();
+    GameRules();
+    Fun();
+    Players();
+    GameStates();
+    Window();
+    Settings();
+    Weights();
+
+    if(@failures = 0) {
+      "PASS: checkers ({$@checks} checks)"->PrintLine();
+    }
+    else {
+      "FAIL: checkers, {$@failures} of {$@checks} checks failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  # ---- perft ----
+
+  function : Perft() ~ Nil {
+    start := CkPos->Start();
+    want := [7, 49, 302, 1469, 7361, 36768, 179740, 845931];
+    each(d : 8) {
+      got := start->Perft(d + 1);
+      Check(got = want[d], "perft({$(d + 1)}) = {$got}, want {$want[d]}");
+    };
+    Check(start->ToText()->Equals("r:a3,c3,e3,g3,b2,d2,f2,h2,a1,c1,e1,g1 w:b8,d8,f8,h8,a7,c7,e7,g7,b6,d6,f6,h6 /0"), "start position text");
+  }
+
+  # positions counted by an independent generator: perft 1, 2, 3, 4 each
+  function : ReferencePositions() ~ Nil {
+    lines := [
+      "r:a1 w:b2,d4,f6 /0 | 1 0 0 0",
+      "r:a1 w:b2,d4,f6,b4 /0 | 2 6 8 21",
+      "r:b6 w:c7,e7 /0 | 1 2 4 8",
+      "R:d4 w:c5,e5,c3,e3 /0 | 4 24 96 466",
+      "R:d4 w:c5,c7,e7,e3,g3 /0 | 2 10 28 109",
+      "r:c3,e3 R:d4 w:b6,d6,f6 W:g1 /1 | 8 24 92 321",
+      "r:a3 w:b2 /1 | 2 2 3 6",
+      "r:h6,f2,a1,e1,g1 w:d8,h8,a7,g7,d6 W:c1 /0 | 1 8 37 161",
+      "r:d2,h2 w:a7,f6 W:b4 /1 | 7 19 101 304",
+      "R:f6 w:a5 W:c5,c1 /1 | 7 28 182 689",
+      "r:d4,b2,d2,a1,c1 w:b8,h8,c7,e7,b6,f6,b4,a3,h2 W:g1 /0 | 5 23 65 259",
+      "R:c7,g7 W:a5,d4 /1 | 6 41 226 1259",
+      "r:b4,f4,c3,e3,a1,c1,e1 R:b8 w:f8,a7,e7,g7,b6,h6,f2 /0 | 1 6 45 228",
+      "r:h6,b4,c3,a1,c1,e1,g1 R:f8,h8 w:d8,a7,c7,b6 /0 | 14 49 331 1381",
+      "r:a7,e5,h4,a3,g3,h2,a1 R:h8 w:b8,e7,b6,h6,d2 /1 | 8 39 184 907"
+    ];
+    each(i : lines) {
+      parts := lines[i]->Split('|');
+      text := parts[0]->Trim();
+      pos := CkPos->FromText(text);
+      want := parts[1]->Trim()->Split(' ');
+      Check(pos->IsValid(), "valid position: {$text}");
+      Check(CkPos->FromText(pos->ToText())->Equals(pos), "text round trip: {$text}");
+      each(d : 4) {
+        got := pos->Perft(d + 1);
+        Check(got = want[d]->ToInt(), "perft({$(d + 1)}) of {$text} = {$got}, want {$want[d]}");
+      };
+    };
+  }
+
+  # ---- single rules ----
+
+  function : Rules() ~ Nil {
+    list := CkMoveList->New();
+
+    # a jump is compulsory: the step c3-b4 is not offered while c3xe5 is possible
+    pos := CkPos->FromText("r:c3,a1 w:d4 /0");
+    pos->Generate(list);
+    Check(list->Count() = 1, "forced capture: only the jump is legal (got {$list->Count()})");
+    Check(list->Caps(0) = (1 << CkBits->Parse("d4")), "forced capture removes d4");
+    Check(list->To(0) = CkBits->Parse("e5"), "forced capture lands on e5");
+
+    # a multi-jump is one move: a1 takes three men in a row and ends on g7
+    pos := CkPos->FromText("r:a1 w:b2,d4,f6 /0");
+    pos->Generate(list);
+    Check(list->Count() = 1 & list->To(0) = CkBits->Parse("g7") & list->Hops(0) = 3, "multi-jump a1xc3xe5xg7");
+    mv := list->Get(0);
+    Check(mv->ToString()->Equals("a1xc3xe5xg7"), "multi-jump text, got {$mv->ToString()}");
+    Check(CkBits->Pop(mv->Caps()) = 3, "multi-jump removes three pieces");
+    pos->Make(mv->From(), mv->To(), mv->Caps());
+    Check(pos->Pieces(1) = 0, "multi-jump leaves White with nothing");
+
+    # a man that reaches the far row by jumping is crowned and stops there,
+    # even though a king could carry on over e7
+    pos := CkPos->FromText("r:b6 w:c7,e7 /0");
+    pos->Generate(list);
+    Check(list->Count() = 1 & list->To(0) = CkBits->Parse("d8") & list->Hops(0) = 1, "crowning jump stops on d8");
+    pos->Make(list->From(0), list->To(0), list->Caps(0));
+    Check(pos->At(CkBits->Parse("d8")) = 2, "the man that landed on d8 is now a king");
+    Check(pos->Side() = 1, "turn passes after a crowning jump");
+
+    # a plain step to the far row also crowns, for White at the bottom as well
+    pos := CkPos->FromText("r:a7 w:h2 /0");
+    pos->Generate(list);
+    idx := list->Find(CkBits->Parse("a7"), CkBits->Parse("b8"));
+    Check(idx >= 0, "a7-b8 is legal");
+    pos->Make(list->From(idx), list->To(idx), list->Caps(idx));
+    Check(pos->At(CkBits->Parse("b8")) = 2, "step to rank 8 crowns Red");
+    pos->Generate(list);
+    idx := list->Find(CkBits->Parse("h2"), CkBits->Parse("g1"));
+    pos->Make(list->From(idx), list->To(idx), list->Caps(idx));
+    Check(pos->At(CkBits->Parse("g1")) = 4, "step to rank 1 crowns White");
+
+    # men only go forward; kings go both ways
+    pos := CkPos->FromText("r:d4 w:a7 /0");
+    pos->Generate(list);
+    Check(list->Count() = 2, "a man has two forward steps, got {$list->Count()}");
+    pos := CkPos->FromText("R:d4 w:a7 /0");
+    pos->Generate(list);
+    Check(list->Count() = 4, "a king has four steps, got {$list->Count()}");
+
+    # a man may not jump backwards; a king may
+    pos := CkPos->FromText("r:d4 w:c3 /0");
+    pos->Generate(list);
+    Check(list->Count() = 2 & list->Caps(0) = 0, "a man cannot jump backwards");
+    pos := CkPos->FromText("R:d4 w:c3 /0");
+    pos->Generate(list);
+    Check(list->Count() = 1 & list->Caps(0) <> 0, "a king jumps backwards");
+
+    # a piece cannot be jumped twice in one move: the king circles but takes each man once
+    pos := CkPos->FromText("R:d4 w:c5,c7,e7,e3,g3 /0");
+    pos->Generate(list);
+    most := 0;
+    each(i : list->Count()) {
+      if(list->Hops(i) > most) {
+        most := list->Hops(i);
+      };
+    };
+    Check(most >= 2, "the king can chain jumps");
+    each(i : list->Count()) {
+      Check(CkBits->Pop(list->Caps(i)) = list->Hops(i), "every hop removes a different piece");
+    };
+
+    # make leaves the position valid
+    pos := CkPos->Start();
+    each(i : 30) {
+      pos->Generate(list);
+      if(list->Count() > 0) {
+        pos->Make(list->From(i % list->Count()), list->To(i % list->Count()), list->Caps(i % list->Count()));
+      };
+      if(<>pos->IsValid()) {
+        Check(false, "position stayed valid after move {$i}");
+      };
+    };
+  }
+
+  # ---- whole games: wins, draws, undo ----
+
+  function : GameRules() ~ Nil {
+    game := CkGame->New();
+    Check(game->Status() = 0 & game->Legal()->Count() = 7, "new game: 7 moves, playing");
+
+    # no legal move loses: White has nothing left
+    game->SetPosition(CkPos->FromText("r:d4 /1"));
+    Check(game->Status() = 1, "White to move with no pieces: Red wins");
+    game->SetPosition(CkPos->FromText("r:a1 w:b2,c3 /0"));
+    Check(game->Status() = 2, "Red to move, a1 blocked and the jump is blocked: White wins");
+
+    # forty moves each without a capture or a crowning is a draw
+    p := CkPos->FromText("R:a1 W:h8 /0");
+    p->Set(p->Red(), p->White(), p->Kings(), 0, 79);
+    game->SetPosition(p);
+    Check(game->Status() = 0, "79 plies: still playing");
+    p->Set(p->Red(), p->White(), p->Kings(), 0, 80);
+    game->SetPosition(p);
+    Check(game->Status() = 4, "80 plies without capture or crowning: draw");
+
+    # a capture resets the count
+    p := CkPos->FromText("r:c3 w:d4 /0");
+    p->Set(p->Red(), p->White(), p->Kings(), 0, 70);
+    game->SetPosition(p);
+    game->Play(0);
+    Check(game->Pos()->Clock() = 0, "a capture resets the draw clock");
+
+    # threefold repetition: two kings shuffle back and forth
+    game->SetPosition(CkPos->FromText("R:a1 W:h8 /0"));
+    moves := ["a1-b2", "h8-g7", "b2-a1", "g7-h8"];
+    status_at_4 := -1;
+    each(round : 2) {
+      each(i : 4) {
+        parts := moves[i]->Split('-');
+        ok := game->PlayFromTo(CkBits->Parse(parts[0]), CkBits->Parse(parts[1]));
+        Check(ok, "shuffle move {$moves[i]}");
+      };
+      if(round = 0) {
+        status_at_4 := game->Status();
+      };
+    };
+    Check(status_at_4 = 0, "after one repetition the game goes on");
+    Check(game->Status() = 3, "third occurrence of the position: draw by repetition");
+
+    # undo takes back exactly one entry and restores the position
+    game->Reset();
+    before := game->Pos()->Copy();
+    game->Play(2);
+    game->Play(1);
+    Check(game->Entries() = 2 & game->Plies() = 2, "two moves in the history");
+    Check(game->Undo() & game->Undo(), "undo twice");
+    Check(game->Pos()->Equals(before) & game->Entries() = 0, "undo restores the start position");
+    Check(<>game->Undo(), "nothing left to undo");
+
+    # a full random game ends with a result and every position stays valid
+    rand := CkRand->New(99);
+    game->Reset();
+    valid := true;
+    while(game->Status() = 0 & game->Entries() < 400) {
+      game->Play(rand->NextInt(game->Legal()->Count()));
+      if(<>game->Pos()->IsValid()) {
+        valid := false;
+      };
+    };
+    Check(valid, "random game keeps valid positions");
+    Check(game->Status() <> 0 | game->Entries() >= 400, "random game ends");
+  }
+
+  # ---- fun mode ----
+
+  # human = Red (0). White (the computer) is about to capture d4, leaving Red with
+  # 2 pieces against 5, early in the game
+  function : FunGame(seed : Int, chance : Int) ~ CkGame {
+    game := CkGame->New();
+    game->SetPosition(CkPos->FromText("r:d4,a1 w:e5,c7,g7,h6,b8 /1"));
+    game->SetFun(true, 0, seed, 12, 2, chance);
+    idx := game->Legal()->Find(CkBits->Parse("e5"), CkBits->Parse("c3"));
+    game->Play(idx);
+    return game;
+  }
+
+  function : Fun() ~ Nil {
+    # with a one-in-one chance the conditions decide everything
+    game := FunGame(5, 1);
+    ev := game->PendingEvent();
+    Check(ev <> Nil, "fun: fires when the human is behind after a capture");
+    Check(game->PendingEvent()->Kind() = ev->Kind() & game->PendingEvent()->Square() = ev->Square(), "fun: asking twice gives the same event");
+
+    # same seed, same events, on a fresh game
+    again := FunGame(5, 1)->PendingEvent();
+    Check(again <> Nil & again->Kind() = ev->Kind() & again->Square() = ev->Square(), "fun: deterministic for a seed");
+
+    # never fires when off, when the human is not behind, after a step, or after the human's capture
+    game := FunGame(5, 1);
+    game->SetFun(false, 0, 5, 12, 2, 1);
+    Check(game->PendingEvent() = Nil, "fun: off means no events");
+    game->SetFun(true, 0, 5, 12, 0, 1);
+    Check(game->PendingEvent() = Nil, "fun: a cap of zero events");
+    game->SetFun(true, 0, 5, 0, 2, 1);
+    Check(game->PendingEvent() = Nil, "fun: outside the early-game window");
+    game->SetFun(true, 1, 5, 12, 2, 1);
+    Check(game->PendingEvent() = Nil, "fun: when the human is White the same capture is the human's own");
+
+    even := CkGame->New();
+    even->SetPosition(CkPos->FromText("r:d4,a1,g1,h2 w:e5,c7,g7 /1"));
+    even->SetFun(true, 0, 5, 12, 2, 1);
+    even->Play(even->Legal()->Find(CkBits->Parse("e5"), CkBits->Parse("c3")));
+    Check(even->PendingEvent() = Nil, "fun: equal pieces after the capture (3 v 3), human not behind");
+
+    ahead := CkGame->New();
+    ahead->SetPosition(CkPos->FromText("r:d4,a1,g1,h2,f2 w:e5,c7 /1"));
+    ahead->SetFun(true, 0, 5, 12, 2, 1);
+    ahead->Play(ahead->Legal()->Find(CkBits->Parse("e5"), CkBits->Parse("c3")));
+    Check(ahead->PendingEvent() = Nil, "fun: human ahead gets no help");
+
+    stepped := CkGame->New();
+    stepped->SetPosition(CkPos->FromText("r:a1,g1 w:g7,c7,h6,b8,e5 /1"));
+    stepped->SetFun(true, 0, 5, 12, 2, 1);
+    stepped->Play(stepped->Legal()->Find(CkBits->Parse("c7"), CkBits->Parse("d6")));
+    Check(stepped->PendingEvent() = Nil, "fun: a step is not a qualifying capture");
+
+    # roughly one in three at the default chance, across many seeds
+    fired := 0;
+    each(seed : 90) {
+      if(FunGame(seed, 3)->PendingEvent() <> Nil) {
+        fired += 1;
+      };
+    };
+    Check(fired > 12 & fired < 48, "fun: about one in three fires, {$fired} of 90");
+
+    # every event leaves a valid board, never costs the human a piece, and undo
+    # puts the position back exactly
+    kinds := Int->New[4];
+    bad := 0;
+    each(seed : 160) {
+      game := FunGame(seed, 1);
+      ev := game->PendingEvent();
+      if(ev = Nil) {
+        bad += 1;
+      }
+      else {
+        kinds[ev->Kind()] := kinds[ev->Kind()] + 1;
+        before := game->Pos()->Copy();
+        human_before := CkBits->Pop(before->Pieces(0));
+        white_before := CkBits->Pop(before->Pieces(1));
+        entries := game->Entries();
+        if(<>game->ApplyEvent(ev)) {
+          bad += 1;
+        }
+        else {
+          after := game->Pos();
+          if(<>after->IsValid()) {
+            bad += 1;
+          };
+          human_after := CkBits->Pop(after->Pieces(0));
+          white_after := CkBits->Pop(after->Pieces(1));
+          if(ev->Kind() = 0 & (human_after <> human_before + 1 | white_after <> white_before)) {
+            bad += 1;
+          };
+          if(ev->Kind() > 0 & (human_after <> human_before | white_after <> white_before - 1)) {
+            bad += 1;
+          };
+          if(game->Entries() <> entries + 1 | game->Events() <> 1 | game->Plies() <> 1) {
+            bad += 1;
+          };
+          if(game->Side() <> before->Side()) {
+            bad += 1;
+          };
+          game->Undo();
+          if(<>game->Pos()->Equals(before) | game->Entries() <> entries) {
+            bad += 1;
+          };
+          # a gift lands in the human's own home rows (Red: ranks 1 to 3)
+          if(ev->Kind() = 0 & ev->Square() / 8 < 5) {
+            bad += 1;
+          };
+        };
+      };
+    };
+    Check(bad = 0, "fun: {$bad} bad events out of 160");
+    Check(kinds[0] > 10 & kinds[1] > 10 & kinds[2] > 10 & kinds[3] > 10, "fun: all four kinds happen ({$kinds[0]},{$kinds[1]},{$kinds[2]},{$kinds[3]})");
+
+    # the cap: after an event, a second qualifying capture finds the cap of 1 reached
+    game := CkGame->New();
+    game->SetPosition(CkPos->FromText("r:d4,b2,a1,h2 w:e5,g5,c7,b8,h8,f8 /1"));
+    game->SetFun(true, 0, 5, 12, 1, 1);
+    game->Play(game->Legal()->Find(CkBits->Parse("e5"), CkBits->Parse("c3")));
+    ev := game->PendingEvent();
+    Check(ev <> Nil, "fun cap: first event fires");
+    game->ApplyEvent(ev);
+    Check(game->Events() = 1, "fun cap: one event recorded");
+    # the event is on the history, and an event is not a capture, so nothing more fires
+    Check(game->PendingEvent() = Nil, "fun cap: no second event right after the first");
+
+    # undo of a whole turn removes the event too
+    game := FunGame(7, 1);
+    ev := game->PendingEvent();
+    game->ApplyEvent(ev);
+    Check(game->UndoTurn(0), "undo turn after an event");
+    Check(game->Entries() = 0 & game->Pos()->Equals(CkPos->FromText("r:d4,a1 w:e5,c7,g7,h6,b8 /1")), "undo turn restores the position before the AI capture and the event");
+
+    # modes: off, levels 1-3, all levels
+    s := CkSettings->New();
+    s->SetFun(0);
+    Check(<>s->FunActive(1) & <>s->FunActive(10), "fun setting 0: never");
+    s->SetFun(1);
+    Check(s->FunActive(1) & s->FunActive(3) & <>s->FunActive(4) & <>s->FunActive(10), "fun setting 1: levels 1 to 3 only");
+    s->SetFun(2);
+    Check(s->FunActive(1) & s->FunActive(10), "fun setting 2: every level");
+  }
+
+  # ---- the computer players ----
+
+  function : Players() ~ Nil {
+    hand := CkEval->New();
+    game := CkGame->New();
+
+    # every level 1-8 returns a legal move from the start and from a position with a forced jump
+    each(level : 8) {
+      p := CkPlayer->New(level + 1, hand, hand, 3);
+      m := p->Choose(game);
+      Check(m >= 0 & m < game->Legal()->Count(), "level {$(level + 1)} plays a legal move");
+    };
+    forced := CkGame->New();
+    forced->SetPosition(CkPos->FromText("r:c3,a1 w:d4,g7 /0"));
+    each(level : 8) {
+      p := CkPlayer->New(level + 1, hand, hand, 4);
+      m := p->Choose(forced);
+      Check(m = 0, "level {$(level + 1)} takes the compulsory jump");
+    };
+
+    # search finds a clear win of material: red can take a man for free
+    pos := CkPos->FromText("r:c3,e1,g1 w:d4,f8 /0");
+    search := CkSearch->New(hand);
+    keys := Int->New[1];
+    m := search->Choose(pos, 4, 0, keys, 0);
+    list := CkMoveList->New();
+    pos->Generate(list);
+    Check(list->Caps(m) <> 0, "search takes the free man");
+
+    # and avoids stepping into a loss: red c3-d4?? is met by e5xc3, so a good search plays elsewhere
+    pos := CkPos->FromText("r:c3,a1,g1 w:e5,h8 /0");
+    m := search->Choose(pos, 6, 0, keys, 0);
+    pos->Generate(list);
+    Check(<>(list->From(m) = CkBits->Parse("c3") & list->To(m) = CkBits->Parse("d4")), "search does not hang a man on d4");
+
+    # a node budget stops the search early and still answers
+    m := search->Choose(CkPos->Start(), 12, 2000, keys, 0);
+    Check(m >= 0 & search->Nodes() <= 2100 & search->DepthDone() >= 1, "node budget respected (nodes {$search->Nodes()}, depth {$search->DepthDone()})");
+
+    # the same search twice gives the same answer
+    a := search->Choose(CkPos->Start(), 6, 0, keys, 0);
+    b := CkSearch->New(hand)->Choose(CkPos->Start(), 6, 0, keys, 0);
+    Check(a = b, "search is deterministic");
+
+    # a thread thinks to the same answer as a direct call
+    p1 := CkPlayer->New(hand, 5, 1);
+    p2 := CkPlayer->New(hand, 5, 1);
+    thinker := CkThinker->New(p1, CkPos->Start(), keys, 0, 77);
+    thinker->Execute(Nil);
+    thinker->Join();
+    direct := p2->ChoosePos(CkPos->Start(), keys, 0);
+    Check(thinker->IsDone() & thinker->Move() = direct & thinker->Tag() = 77, "thinking thread agrees with a direct call");
+
+    # a short match between two players finishes with a result
+    r := CkMatch->Play(game, CkPlayer->New(hand, 2, 1), CkPlayer->New(hand, 1, 2), 4, 12);
+    Check(r >= 0 & r <= 2, "match finishes");
+
+    # a deeper searcher beats a random mover far more often than not
+    wins := 0;
+    each(g : 6) {
+      r := CkMatch->Play(game, CkPlayer->New(hand, 3, g), CkPlayer->New(1, hand, hand, g), 2, 100 + g);
+      if(r = 1) {
+        wins += 1;
+      };
+      r := CkMatch->Play(game, CkPlayer->New(1, hand, hand, g), CkPlayer->New(hand, 3, g), 2, 100 + g);
+      if(r = 2) {
+        wins += 1;
+      };
+    };
+    Check(wins >= 9, "depth 3 beats the random mover in at least 9 of 12 games (won {$wins})");
+  }
+
+  # ---- the System.AI GameState wrapper ----
+
+  function : GameStates() ~ Nil {
+    hand := CkEval->New();
+    state := CkState->Start(hand);
+    moves := state->GetMoves();
+    Check(moves->Size() = 7, "state: 7 moves at the start");
+    Check(state->IsMaximizing() & <>state->IsTerminal(), "state: Red to move, not terminal");
+    Check(state->Evaluate() = 0.0, "state: the start position evaluates to 0");
+    next := state->Apply(moves[0]);
+    Check(<>next->IsMaximizing(), "state: White to move after one move");
+
+    # library minimax and our own search agree on the value of a shallow search
+    mm := Minimax->New(3);
+    best := mm->FindBestMove(state);
+    Check(best >= 0 & best < 7 & mm->GetNodesSearched() > 7, "library Minimax plays the wrapper");
+
+    # a terminal position scores a win for the side that has pieces left
+    over := CkState->New(CkPos->FromText("r:d4 /1"), hand);
+    Check(over->IsTerminal() & over->Evaluate() > 1000.0, "state: no moves for White is a Red win");
+    over := CkState->New(CkPos->FromText("w:d4 /0"), hand);
+    Check(over->IsTerminal() & over->Evaluate() < -1000.0, "state: no moves for Red is a White win");
+
+    # Monte Carlo tree search takes a free piece
+    free := CkState->New(CkPos->FromText("r:c3,e1,g1 w:d4,f8,b8 /0"), hand);
+    mcts := MonteCarloTreeSearch->New(300, 1.4, 5);
+    pick := mcts->FindBestMove(free);
+    Check(pick = 0, "MCTS takes the compulsory jump, got {$pick}");
+  }
+
+  # ---- window logic: clicks, keys, geometry ----
+
+  function : Window() ~ Nil {
+    game := CkGame->New();
+    ctl := CkController->New(game, 0, false);
+
+    # geometry
+    Check(CkController->SquareAt(46, 48, 44, 46, 76, false) = 0, "square at the top-left is a8 (0)");
+    Check(CkController->SquareAt(46, 48, 44, 46, 76, true) = 63, "flipped, the top-left is h1 (63)");
+    Check(CkController->SquareAt(10, 10, 44, 46, 76, false) = -1, "outside the board");
+    Check(CkController->SquareAt(44 + 76 * 8, 100, 44, 46, 76, false) = -1, "right of the board");
+    each(sq : 64) {
+      sr := CkController->ScreenRow(sq, true);
+      sc := CkController->ScreenCol(sq, true);
+      if(CkController->ScreenToSquare(sr, sc, true) <> sq) {
+        Check(false, "flip mapping round trip");
+      };
+    };
+
+    # click a piece, then its destination
+    c3 := CkBits->Parse("c3");
+    d4 := CkBits->Parse("d4");
+    Check(ctl->ClickSquare(CkBits->Parse("c3")) = CkController->Selected() & ctl->Selection() = c3, "click selects a movable piece");
+    Check((ctl->Destinations(c3) and (1 << d4)) <> 0 & (ctl->Destinations(c3) and (1 << CkBits->Parse("b4"))) <> 0, "destinations of c3");
+    Check(ctl->ClickSquare(c3) = CkController->Deselected() & ctl->Selection() = -1, "click again deselects");
+    Check(ctl->ClickSquare(CkBits->Parse("c1")) = CkController->None(), "a blocked piece cannot be selected");
+    ctl->ClickSquare(c3);
+    Check(ctl->ClickSquare(d4) = CkController->Moved(), "click on a destination plays the move");
+    Check(game->Entries() = 1 & game->Side() = 1, "the move was played and it is White's turn");
+    Check(ctl->ClickSquare(CkBits->Parse("d2")) = CkController->None(), "clicks are ignored on the computer's turn");
+
+    # forced capture: only the pieces that can jump may be picked
+    game->SetPosition(CkPos->FromText("r:c3,g1 w:d4 /0"));
+    ctl->Clear();
+    Check(ctl->JumpIsForced() & ctl->Movable() = (1 << c3), "a compulsory jump limits the movable pieces");
+    Check(ctl->ClickSquare(CkBits->Parse("g1")) = CkController->MustCapture(), "a piece that may not move says so");
+    Check(ctl->ClickSquare(c3) = CkController->Selected(), "the jumping piece can be picked");
+    Check(ctl->ClickSquare(CkBits->Parse("e5")) = CkController->Moved(), "and jumps");
+    Check(CkBits->Pop(game->Pos()->White()) = 0, "the jumped man is gone");
+
+    # keyboard cursor stays on the board in screen space, flipped or not
+    ctl->SetCursor(0);
+    ctl->MoveCursor(-1, 0);
+    ctl->MoveCursor(0, -1);
+    Check(ctl->Cursor() = 0, "cursor stops at the top-left");
+    ctl->MoveCursor(1, 1);
+    Check(ctl->Cursor() = 9, "cursor moves one square down-right");
+    ctl->SetFlipped(true);
+    ctl->SetCursor(63);
+    ctl->MoveCursor(1, 0);
+    Check(ctl->Cursor() = 55, "flipped: one row down the screen from the top-left is square 55");
+
+    # watching: the person never moves
+    watch := CkController->New(CkGame->New(), 2, false);
+    Check(<>watch->HumanToMove() & watch->ClickSquare(CkBits->Parse("c3")) = CkController->None(), "watching: clicks do nothing");
+
+    # playing White: White is the human, Red moves first
+    g2 := CkGame->New();
+    c2 := CkController->New(g2, 1, true);
+    Check(<>c2->HumanToMove(), "playing White: Red moves first");
+    g2->Play(0);
+    Check(c2->HumanToMove(), "playing White: now it is the person's turn");
+
+    # undo turn: back to the person's move
+    g3 := CkGame->New();
+    g3->Play(0);
+    g3->Play(0);
+    g3->Play(0);
+    g3->Play(0);
+    Check(g3->UndoTurn(0) & g3->Entries() = 2 & g3->Side() = 0, "undo turn: two plies back, Red to move");
+  }
+
+  # ---- remembered settings ----
+
+  function : Settings() ~ Nil {
+    s := CkSettings->New();
+    s->SetPieceSet(2);
+    s->SetLevel(9);
+    s->SetHuman(1);
+    s->SetFlip(true);
+    s->SetFun(1);
+    s->SetAnim(false);
+    s->SetReduced(true);
+    s->SetSound(false);
+    s->SetVolume(35);
+    text := s->ToJson();
+    t := CkSettings->New();
+    Check(t->FromJson(text), "settings: parse what was written");
+    Check(t->PieceSet() = 2 & t->Level() = 9 & t->Human() = 1 & t->Flip() & t->Fun() = 1, "settings: choices survive a round trip");
+    Check(<>t->Anim() & t->Reduced() & <>t->Sound() & t->Volume() = 35, "settings: switches survive a round trip");
+    Check(<>t->Lively(), "settings: reduced motion means no lively animation");
+
+    # damaged or hostile files never break the game
+    u := CkSettings->New();
+    Check(<>u->FromJson("this is not json"), "settings: not JSON is rejected");
+    Check(u->FromJson("{\"level\": 99, \"piece_set\": -4, \"volume\": 400, \"human\": \"x\"}"), "settings: odd values parse");
+    Check(u->Level() = 10 & u->PieceSet() = 0 & u->Volume() = 100 & u->Human() = 0, "settings: out-of-range values are clamped");
+    Check(u->FromJson("{}") & u->Level() = 10, "settings: an empty object keeps what it had");
+
+    # saved to a file and read back
+    path := "checkers_test_settings.json";
+    Check(s->Save(path), "settings: written to a file");
+    v := CkSettings->New();
+    Check(v->Load(path) & v->Level() = 9 & v->PieceSet() = 2, "settings: read back from a file");
+    File->Delete(path);
+    Check(<>CkSettings->New()->Load("no such folder/no_such_checkers.json"), "settings: a missing file is not an error");
+
+    Check(CkLevels->Name(1)->Equals("Dozy Dave") & CkLevels->Name(10)->Equals("Grandmaster Gizmo") & CkLevels->Name(0)->Size() > 0, "levels have names");
+  }
+
+  # ---- the evaluation and its weights file ----
+
+  function : Weights() ~ Nil {
+    e := CkEval->New();
+    Check(e->Score(CkPos->Start()) = 0.0, "evaluation: the start position is level");
+    # a mirrored position has the opposite score
+    a := e->Score(CkPos->FromText("r:d4,a1 w:b8 /0"));
+    b := e->Score(CkPos->FromText("w:e5,h8 r:g1 /0"));
+    Check(a > 0.0 & b < 0.0, "evaluation: more pieces is better for the side that has them");
+    Check(e->Score(CkPos->FromText("R:d4 w:b8 /0")) > e->Score(CkPos->FromText("r:d4 w:b8 /0")), "evaluation: a king is worth more than a man");
+
+    w := CkEval->New();
+    Check(w->FromJson("{\"weights\": [100.0, 150.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0]}"), "weights: parsed");
+    Check(w->Weights()[1] = 150.0 & w->Weights()[7] = 6.0, "weights: values read");
+    Check(<>w->FromJson("{\"weights\": [1, 2, 3]}"), "weights: wrong length rejected");
+    Check(<>w->FromJson("{}") & <>w->FromJson("nonsense"), "weights: junk rejected");
+    Check(w->Weights()[1] = 150.0, "weights: a rejected file changes nothing");
+
+    # written and read again
+    text := w->ToJson("test");
+    x := CkEval->New();
+    Check(x->FromJson(text) & x->Weights()[2] = 1.0 & x->Weights()[6] = 5.0, "weights: round trip");
+
+    # a trained eval and the hand-tuned one both play from the start
+    f := Float->New[8];
+    e->Features(CkPos->FromText("r:d4,a1 R:b2 w:b8 /0"), f);
+    Check(f[0] = 1.0 & f[1] = 1.0, "features: men and kings counted Red minus White (got {$f[0]}, {$f[1]})");
+  }
+}

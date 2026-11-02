@@ -1,0 +1,1166 @@
+#~
+# compile: obc -src checkers_engine.obs,checkers_game.obs,checkers_ai.obs,checkers_logic.obs,checkers_draw.obs,checkers.obs -lib sdl2,sdl_game,json,ai,gen_collect -dest checkers.obe
+# run:     obr checkers.obe
+#
+# Checkers (English draughts) against a computer that thinks at ten levels, or
+# watch the computer play itself. Click a piece, then click where it goes (or
+# use the arrow keys and Enter). Jumping is compulsory, as in the real game, and
+# a piece that reaches the far row is crowned a king. Press H for a hint, U to
+# take a move back, N for a new game, F to turn the board around, Esc for the
+# menu and Q to quit. Your choices (piece set, level, colour) are remembered in
+# a small JSON file, .checkers.json, in your home folder.
+#
+# Four piece sets are drawn with SDL2 shapes, so there is no artwork to license:
+# Classic, Glossy, Engraved and Modern.
+#
+# How it works, in the order you would read the files:
+#   checkers_engine.obs  the rules: the board as numbers (bitboards), legal moves
+#   checkers_game.obs    a whole game: history, undo, wins and draws
+#   checkers_ai.obs      the computer: evaluation, alpha-beta search, the 10 levels
+#   checkers_logic.obs   clicks and keys turned into moves (no graphics)
+#   checkers_draw.obs    the pictures: board, pieces, crowns, buttons
+#   checkers.obs         this file: the window, the 60 frames a second loop
+#
+# The computer thinks on its own thread, so the window never freezes: the
+# pieces keep moving while a deep search runs. For the games it has learned
+# from, see checkers_train.obs; for proof that level N beats level N-1, see
+# checkers_tournament.obs. There is a README.md next to this file.
+#
+# For pictures instead of play: --screenshot out.png [--scene start|play|capture|king|over]
+# [--set 0-3] [--level 1-10] saves one frame and exits; --demo [out_dir] lets
+# the computer play itself for a few seconds (and saves frames to out_dir).
+#
+# output: a window titled "Checkers" (1040 x 700): a menu to pick the piece
+# set, level and colour, then an 8 x 8 board with a side panel showing whose
+# move it is, the pieces captured, the moves so far and the buttons.
+~#
+
+use System.IO.Filesystem;
+use Game.SDL2;
+use Game.Framework;
+
+class CheckersApp {
+  # the window
+  @fw : GameFramework;
+  @r : Renderer;
+  @text : CkText;
+  @event : Event;
+  @quit : Bool;
+  @now : Int;            # milliseconds of game time (60 frames = 1000 ms)
+  @frame : Int;
+
+  # the game
+  @settings : CkSettings;
+  @settings_path : String;
+  @game : CkGame;
+  @ctl : CkController;
+  @hand : CkEval;
+  @learned : CkEval;
+  @ai : CkPlayer[];      # the computer player for each side (Nil for a human)
+  @hint_player : CkPlayer;
+  @screen : Int;         # 0 menu, 1 playing
+  @generation : Int;     # bumped by every new game / undo; stale thoughts are dropped
+
+  # thinking
+  @thinker : CkThinker;
+  @think_start : Int;
+  @hint_thinker : CkThinker;
+  @hint_move : CkMove;
+
+  # moving pieces
+  @anim_on : Bool;
+  @anim_pos : CkPos;
+  @anim_move : CkMove;
+  @anim_t0 : Int;
+  @anim_dur : Int;
+  @anim_side : Int;
+  @last_move : CkMove;
+  @pause_until : Int;
+
+  # fun mode
+  @fun_event : CkEvent;
+  @fun_t0 : Int;
+  @fun_applied : Bool;
+  @fun_seed : Int;
+
+  # the mouse and the messages
+  @mx : Int;
+  @my : Int;
+  @kbd : Bool;           # the keyboard cursor is showing
+  @msg : String;
+  @msg_until : Int;
+  @rects : Int[];        # buttons drawn this frame: id, x, y, w, h, ...
+  @nrects : Int;
+  @click_rects : Int[];  # the buttons of the previous frame, which clicks use
+  @click_n : Int;
+
+  # command line
+  @shot_file : String;
+  @shot_frame : Int;
+  @scene : String;
+  @demo : Bool;
+  @demo_dir : String;
+  @over_frame : Int;
+
+  function : Main(args : String[]) ~ Nil {
+    app := CheckersApp->New();
+    app->Run(args);
+  }
+
+  New() {
+    @settings := CkSettings->New();
+    @rects := Int->New[400];
+    @click_rects := Int->New[400];
+    @ai := CkPlayer->New[2];
+    @shot_frame := -1;
+  }
+
+  # ---- layout ----
+
+  function : Width() ~ Int {
+    return 1040;
+  }
+
+  function : Height() ~ Int {
+    return 700;
+  }
+
+  function : BoardLeft() ~ Int {
+    return 44;
+  }
+
+  function : BoardTop() ~ Int {
+    return 46;
+  }
+
+  function : Size() ~ Int {
+    return 76;
+  }
+
+  # ---- start up ----
+
+  method : Run(args : String[]) ~ Nil {
+    ParseArgs(args);
+
+    @fw := GameFramework->New(Width(), Height(), "Checkers");
+    @r := @fw->GetRenderer();
+    # SDL_mixer fails to start when there is no sound device; the game does not
+    # need sound, so carry on silently as long as the window and renderer exist
+    if(@r = Nil | @r->IsNull()) {
+      "Unable to start SDL2"->ErrorLine();
+      return;
+    };
+    @event := Event->New();
+    @r->SetDrawBlendMode(BlendMode->SDL_BLENDMODE_BLEND);
+    font_path := Runtime->GetProperty("lib_dir");
+    if(font_path = Nil) {
+      "Unable to find the lib folder (fonts)"->ErrorLine();
+      return;
+    };
+    font_path += "/sdl/fonts/lato.ttf";
+    @text := CkText->New(@r, font_path);
+    if(<>@text->IsOk()) {
+      "Unable to load the font"->ErrorLine();
+      return;
+    };
+
+    @hand := CkEval->New();
+    @learned := CkEval->Trained();
+    if(@learned->FromJson(FileReader->ReadFile("checkers_weights.json"))) {
+      "Loaded checkers_weights.json"->PrintLine();
+    };
+
+    @settings_path := Runtime->GetUserDir() + Directory->GetSlash() + ".checkers.json";
+    if(@shot_file = Nil & <>@demo) {
+      @settings->Load(@settings_path);
+    };
+
+    @game := CkGame->New();
+    @ctl := CkController->New(@game, @settings->Human(), false);
+    @screen := 0;
+    @fun_seed := 20260101;
+    @msg := "";
+
+    if(@demo) {
+      @settings->SetHuman(2);
+      StartGame();
+    }
+    else if(@scene <> Nil) {
+      SetupScene(@scene);
+    };
+
+    while(<>@quit) {
+      @fw->FrameStart();
+      HandleEvents();
+      Update();
+      Draw();
+      if(@shot_file <> Nil & @frame = @shot_frame) {
+        ok := @r->SavePNG(@shot_file);
+        if(ok) {
+          "wrote {$@shot_file}"->PrintLine();
+        }
+        else {
+          "could not write {$@shot_file}"->ErrorLine();
+        };
+        @quit := true;
+      };
+      @fw->Show();
+      if(@demo & @screen = 1) {
+        if(@game->IsOver() & @over_frame = 0) {
+          @over_frame := @frame;
+        };
+        if(@frame > 1500 | (@over_frame > 0 & @frame > @over_frame + 120)) {
+          @quit := true;
+        };
+      };
+      if(@demo & @demo_dir <> Nil & @frame % 45 = 0 & @screen = 1) {
+        name := @demo_dir + "/demo_{$(@frame / 45)}.png";
+        @r->SavePNG(name);
+      };
+      @frame += 1;
+      @now += 16;
+      @fw->FrameEnd();
+    };
+
+    if(@shot_file = Nil & <>@demo) {
+      @settings->Save(@settings_path);
+    };
+    @fw->Quit();
+  }
+
+  method : ParseArgs(args : String[]) ~ Nil {
+    each(i : args) {
+      a := args[i];
+      has_next := i + 1 < args->Size();
+      if(a->Equals("--screenshot") & has_next) {
+        @shot_file := args[i + 1];
+        @shot_frame := 40;
+      }
+      else if(a->Equals("--scene") & has_next) {
+        @scene := args[i + 1];
+      }
+      else if(a->Equals("--set") & has_next) {
+        @settings->SetPieceSet(args[i + 1]->ToInt());
+      }
+      else if(a->Equals("--level") & has_next) {
+        @settings->SetLevel(args[i + 1]->ToInt());
+      }
+      else if(a->Equals("--frame") & has_next) {
+        @shot_frame := args[i + 1]->ToInt();
+      }
+      else if(a->Equals("--demo")) {
+        @demo := true;
+        if(has_next & <>args[i + 1]->StartsWith("--")) {
+          @demo_dir := args[i + 1];
+        };
+      };
+    };
+  }
+
+  # Put the window in a particular state for --screenshot. The scenes are the
+  # moments the README shows.
+  method : SetupScene(scene : String) ~ Nil {
+    if(scene->Equals("start")) {
+      return;
+    };
+
+    @settings->SetHuman(0);
+    @settings->SetLevel(@settings->Level());
+    StartGame();
+    @anim_on := false;
+
+    if(scene->Equals("play")) {
+      @game->SetPosition(CkPos->FromText("r:a1,c1,e1,g1,b2,d2,f2,h2,c3,e3,g3,f4 w:b6,d6,f6,h6,a7,c7,e7,g7,b8,d8,f8,d4 /0"));
+      @ctl->SetFlipped(false);
+      @ctl->ClickSquare(CkBits->Parse("c3"));
+      @last_move := CkMove->New(CkBits->Parse("c5"), CkBits->Parse("d4"), 0, 0, 0);
+      @ctl->SetCursor(CkBits->Parse("d4"));
+      @kbd := true;
+    }
+    else if(scene->Equals("capture")) {
+      @game->SetPosition(CkPos->FromText("r:c3,e1,g1,h2 w:d4,f6,b6,e7 /0"));
+      idx := @game->Legal()->Find(CkBits->Parse("c3"), CkBits->Parse("g7"));
+      if(idx >= 0) {
+        PlayAndAnimate(idx);
+        @shot_frame := 12;
+      };
+    }
+    else if(scene->Equals("king")) {
+      @game->SetPosition(CkPos->FromText("r:a7,e1,g3 R:d4 w:c7,f6,h8 W:a3 /0"));
+      idx := @game->Legal()->Find(CkBits->Parse("a7"), CkBits->Parse("b8"));
+      if(idx >= 0) {
+        PlayAndAnimate(idx);
+        @shot_frame := 70;
+      };
+    }
+    else if(scene->Equals("over")) {
+      @game->SetPosition(CkPos->FromText("r:d4,f4 R:c7 w:a7 /1"));
+      @msg := "";
+    };
+  }
+
+  # ---- games ----
+
+  method : StartGame() ~ Nil {
+    @generation += 1;
+    @game->Reset();
+    human := @settings->Human();
+    @ctl->SetHuman(human);
+    flip := @settings->Flip();
+    if(human = 1) {
+      flip := <>flip;
+    };
+    @ctl->SetFlipped(flip);
+    @ctl->Clear();
+    @thinker := Nil;
+    @hint_thinker := Nil;
+    @hint_move := Nil;
+    @last_move := Nil;
+    @anim_on := false;
+    @fun_event := Nil;
+    @screen := 1;
+    level := @settings->Level();
+
+    @ai[0] := Nil;
+    @ai[1] := Nil;
+    seed := @fun_seed + @generation;
+    if(human <> 0) {
+      @ai[0] := CkPlayer->New(level, @hand, @learned, seed);
+    };
+    if(human <> 1) {
+      @ai[1] := CkPlayer->New(level, @hand, @learned, seed + 7);
+    };
+    @hint_player := CkPlayer->New(8, @hand, @learned, seed + 13);
+
+    @game->SetFun(@settings->FunActive(level) & human < 2, human, seed, 12, 2, 3);
+    @msg := "";
+    @pause_until := @now + 300;
+  }
+
+  # play legal move idx and start showing it
+  method : PlayAndAnimate(idx : Int) ~ Nil {
+    mover := @game->Side();
+    if(@game->Play(idx)) {
+      ShowLastMove(mover);
+    };
+  }
+
+  # show the move just played by mover: pieces slide across the board
+  method : ShowLastMove(mover : Int) ~ Nil {
+    last := @game->Entries() - 1;
+    @anim_pos := @game->EntryPos(last);
+    @anim_move := @game->EntryMove(last);
+    @last_move := @anim_move;
+    @anim_side := mover;
+    @hint_move := Nil;
+    @ctl->Clear();
+    if(@settings->Anim()) {
+      hops := @anim_move->Hops();
+      if(hops < 1) {
+        hops := 1;
+      };
+      @anim_dur := 260 + 140 * hops;
+      @anim_t0 := @now;
+      @anim_on := true;
+    }
+    else {
+      @anim_on := false;
+      AfterMove();
+    };
+  }
+
+  # called when a move has been shown: look for a fun event, then the end of the game
+  method : AfterMove() ~ Nil {
+    ev := @game->PendingEvent();
+    if(ev <> Nil) {
+      @fun_event := ev;
+      @fun_t0 := @now;
+      @fun_applied := false;
+    };
+    @pause_until := @now + 180;
+  }
+
+  method : Update() ~ Nil {
+    if(@screen <> 1) {
+      return;
+    };
+
+    # a move on its way across the board
+    if(@anim_on) {
+      if(@now - @anim_t0 >= @anim_dur) {
+        @anim_on := false;
+        AfterMove();
+      };
+      return;
+    };
+
+    # a fun-mode event: announce it, then make it happen
+    if(@fun_event <> Nil) {
+      if(<>@fun_applied & @now - @fun_t0 >= 1500) {
+        @game->ApplyEvent(@fun_event);
+        @fun_applied := true;
+        @fun_t0 := @now;
+      }
+      else if(@fun_applied & @now - @fun_t0 >= 700) {
+        @fun_event := Nil;
+        @pause_until := @now + 200;
+      };
+      return;
+    };
+
+    if(@game->IsOver() | @now < @pause_until) {
+      return;
+    };
+
+    # the computer's turn
+    side := @game->Side();
+    player := @ai[side];
+    if(player <> Nil) {
+      if(@thinker = Nil) {
+        StartThinking(player);
+      }
+      else if(@thinker->IsDone() & @now - @think_start >= 350) {
+        mv := @thinker->Move();
+        stale := @thinker->Tag() <> @generation;
+        @thinker := Nil;
+        if(<>stale & mv >= 0) {
+          PlayAndAnimate(mv);
+        };
+      };
+    };
+
+    # a hint the person asked for
+    if(@hint_thinker <> Nil & @hint_thinker->IsDone()) {
+      mv := @hint_thinker->Move();
+      stale := @hint_thinker->Tag() <> @generation;
+      @hint_thinker := Nil;
+      if(<>stale & mv >= 0 & @game->Side() = @ctl->Human()) {
+        @hint_move := @game->Legal()->Get(mv);
+        @msg := "Hint: " + @hint_move->ToString();
+        @msg_until := @now + 3500;
+      };
+    };
+  }
+
+  method : StartThinking(player : CkPlayer) ~ Nil {
+    keys := Int->New[@game->Entries() + 1];
+    each(i : @game->Entries()) {
+      keys[i] := @game->EntryKey(i);
+    };
+    @thinker := CkThinker->New(player, @game->Pos()->Copy(), keys, @game->Entries(), @generation);
+    @think_start := @now;
+    @thinker->Execute(Nil);
+  }
+
+  method : AskForHint() ~ Nil {
+    if(@hint_thinker <> Nil | @screen <> 1 | @game->IsOver() | @ctl->Human() > 1 | @game->Side() <> @ctl->Human()) {
+      return;
+    };
+    keys := Int->New[@game->Entries() + 1];
+    each(i : @game->Entries()) {
+      keys[i] := @game->EntryKey(i);
+    };
+    @hint_thinker := CkThinker->New(@hint_player, @game->Pos()->Copy(), keys, @game->Entries(), @generation);
+    @hint_thinker->Execute(Nil);
+    @msg := "Thinking about a hint...";
+    @msg_until := @now + 4000;
+  }
+
+  # ---- input ----
+
+  method : HandleEvents() ~ Nil {
+    while(@event->Poll() <> 0) {
+      type := @event->GetType();
+      if(type = EventType->SDL_QUIT) {
+        @quit := true;
+      }
+      else if(type = EventType->SDL_MOUSEMOTION) {
+        m := @event->GetMouseMotion();
+        @mx := m->GetX();
+        @my := m->GetY();
+        @kbd := false;
+      }
+      else if(type = EventType->SDL_MOUSEBUTTONDOWN) {
+        b := @event->GetMouseButton();
+        @mx := b->GetX();
+        @my := b->GetY();
+        @kbd := false;
+        if(b->GetButton() = 1) {
+          Click(@mx, @my);
+        };
+      }
+      else if(type = EventType->SDL_KEYDOWN) {
+        if(@event->GetKey()->GetRepeat() = 0) {
+          Key(@event->GetKey()->GetKeysym()->GetScancode());
+        };
+      };
+    };
+  }
+
+  # the button under a point: its id, or -1
+  method : ButtonAt(x : Int, y : Int) ~ Int {
+    found := -1;
+    each(i : @click_n) {
+      at := i * 5;
+      if(x >= @click_rects[at + 1] & x < @click_rects[at + 1] + @click_rects[at + 3] &
+          y >= @click_rects[at + 2] & y < @click_rects[at + 2] + @click_rects[at + 4]) {
+        found := @click_rects[at];
+      };
+    };
+    return found;
+  }
+
+  method : Click(x : Int, y : Int) ~ Nil {
+    id := ButtonAt(x, y);
+    if(id >= 0) {
+      Action(id);
+      return;
+    };
+
+    if(@screen = 1) {
+      sq := CkController->SquareAt(x, y, BoardLeft(), BoardTop(), Size(), @ctl->Flipped());
+      if(sq >= 0) {
+        BoardClick(sq);
+      };
+    };
+  }
+
+  method : BoardClick(sq : Int) ~ Nil {
+    if(@anim_on | @fun_event <> Nil) {
+      return;
+    };
+    mover := @game->Side();
+    answer := @ctl->ClickSquare(sq);
+    if(answer = CkController->Moved()) {
+      # the controller has played it; now show it
+      ShowLastMove(mover);
+    }
+    else if(answer = CkController->MustCapture()) {
+      @msg := "You must jump when you can";
+      @msg_until := @now + 2200;
+    };
+  }
+
+  method : Key(code : Int) ~ Nil {
+    if(code = Scancode->SDL_SCANCODE_Q) {
+      @quit := true;
+      return;
+    };
+    if(@screen = 0) {
+      if(code = Scancode->SDL_SCANCODE_ESCAPE) {
+        @quit := true;
+      }
+      else if(code = Scancode->SDL_SCANCODE_RETURN | code = Scancode->SDL_SCANCODE_SPACE) {
+        StartGame();
+      };
+      return;
+    };
+
+    if(code = Scancode->SDL_SCANCODE_ESCAPE | code = Scancode->SDL_SCANCODE_M) {
+      @screen := 0;
+    }
+    else if(code = Scancode->SDL_SCANCODE_N) {
+      StartGame();
+    }
+    else if(code = Scancode->SDL_SCANCODE_U) {
+      Undo();
+    }
+    else if(code = Scancode->SDL_SCANCODE_H) {
+      AskForHint();
+    }
+    else if(code = Scancode->SDL_SCANCODE_F) {
+      Flip();
+    }
+    else if(code = Scancode->SDL_SCANCODE_LEFT) {
+      @kbd := true;
+      @ctl->MoveCursor(0, -1);
+    }
+    else if(code = Scancode->SDL_SCANCODE_RIGHT) {
+      @kbd := true;
+      @ctl->MoveCursor(0, 1);
+    }
+    else if(code = Scancode->SDL_SCANCODE_UP) {
+      @kbd := true;
+      @ctl->MoveCursor(-1, 0);
+    }
+    else if(code = Scancode->SDL_SCANCODE_DOWN) {
+      @kbd := true;
+      @ctl->MoveCursor(1, 0);
+    }
+    else if(code = Scancode->SDL_SCANCODE_RETURN | code = Scancode->SDL_SCANCODE_SPACE) {
+      @kbd := true;
+      BoardClick(@ctl->Cursor());
+    };
+  }
+
+  method : Flip() ~ Nil {
+    @ctl->SetFlipped(<>@ctl->Flipped());
+    @settings->SetFlip(<>@settings->Flip());
+  }
+
+  method : Undo() ~ Nil {
+    if(@screen <> 1 | @ctl->Human() > 1 | @anim_on | @fun_event <> Nil) {
+      return;
+    };
+    if(@game->UndoTurn(@ctl->Human())) {
+      @generation += 1;
+      @thinker := Nil;
+      @hint_thinker := Nil;
+      @hint_move := Nil;
+      @ctl->Clear();
+      @last_move := @game->LastMove();
+      @msg := "Move taken back";
+      @msg_until := @now + 1500;
+    };
+  }
+
+  # what each button does
+  method : Action(id : Int) ~ Nil {
+    if(id >= 100 & id < 104) {
+      @settings->SetPieceSet(id - 100);
+    }
+    else if(id >= 200 & id < 211) {
+      @settings->SetLevel(id - 200);
+    }
+    else if(id >= 300 & id < 303) {
+      @settings->SetHuman(id - 300);
+    }
+    else if(id = 310) {
+      @settings->SetFlip(<>@settings->Flip());
+    }
+    else if(id = 311) {
+      @settings->SetFun((@settings->Fun() + 1) % 3);
+    }
+    else if(id = 312) {
+      @settings->SetAnim(<>@settings->Anim());
+    }
+    else if(id = 313) {
+      @settings->SetReduced(<>@settings->Reduced());
+    }
+    else if(id = 314) {
+      @settings->SetSound(<>@settings->Sound());
+    }
+    else if(id = 320 | id = 1) {
+      StartGame();
+    }
+    else if(id = 321 | id = 6) {
+      @quit := true;
+    }
+    else if(id = 2) {
+      Undo();
+    }
+    else if(id = 3) {
+      AskForHint();
+    }
+    else if(id = 4) {
+      Flip();
+    }
+    else if(id = 5) {
+      @screen := 0;
+    }
+    else if(id = 7) {
+      @settings->SetLevel(@settings->Level() - 1);
+      StartGame();
+    }
+    else if(id = 8) {
+      @settings->SetLevel(@settings->Level() + 1);
+      StartGame();
+    };
+  }
+
+  # ---- drawing ----
+
+  method : Draw() ~ Nil {
+    set := @settings->PieceSet();
+    t := CkDraw->Theme(set);
+    @r->SetDrawColor(t[9], t[10], t[11], 255);
+    @r->Clear();
+    @nrects := 0;
+
+    if(@screen = 0) {
+      DrawMenu();
+    }
+    else {
+      DrawBoard();
+      DrawPanel();
+      DrawBanner();
+    };
+
+    # the buttons seen this frame are the ones the next click can hit
+    total := @nrects * 5;
+    each(i : total) {
+      @click_rects[i] := @rects[i];
+    };
+    @click_n := @nrects;
+  }
+
+  # draw a button and remember where it is
+  method : Btn(id : Int, caption : String, x : Int, y : Int, w : Int, h : Int, active : Bool) ~ Nil {
+    if(@nrects < 80) {
+      at := @nrects * 5;
+      @rects[at] := id;
+      @rects[at + 1] := x;
+      @rects[at + 2] := y;
+      @rects[at + 3] := w;
+      @rects[at + 4] := h;
+      @nrects += 1;
+    };
+    hover := @mx >= x & @mx < x + w & @my >= y & @my < y + h & <>@kbd;
+    CkDraw->Button(@r, @text, caption, x, y, w, h, @settings->PieceSet(), hover, active, true);
+  }
+
+  method : OnOff(title : String, on : Bool) ~ String {
+    if(on) {
+      return title + ": on";
+    };
+    return title + ": off";
+  }
+
+  method : DrawMenu() ~ Nil {
+    set := @settings->PieceSet();
+    t := CkDraw->Theme(set);
+    ar := t[18];
+    ag := t[19];
+    ab := t[20];
+
+    @text->Draw("CHECKERS", Width() / 2, 22, 4, ar, ag, ab, 1);
+    @text->Draw("English draughts, with ten levels of computer opponent", Width() / 2, 84, 2, t[12], t[13], t[14], 1);
+
+    # the four piece sets, each on its own board colours
+    @text->Draw("Piece set", 70, 124, 2, 235, 235, 235, 0);
+    each(i : 4) {
+      x := 70 + i * 232;
+      y := 154;
+      DrawSetCard(i, x, y, 214, 128, i = set);
+      @text->Draw(CkDraw->SetName(i), x + 107, y + 100, 2, 245, 245, 245, 1);
+      if(@nrects < 80) {
+        at := @nrects * 5;
+        @rects[at] := 100 + i;
+        @rects[at + 1] := x;
+        @rects[at + 2] := y;
+        @rects[at + 3] := 214;
+        @rects[at + 4] := 128;
+        @nrects += 1;
+      };
+    };
+
+    @text->Draw("Level", 70, 306, 2, 235, 235, 235, 0);
+    each(i : 10) {
+      Btn(201 + i, "{$(i + 1)}", 70 + i * 90, 334, 80, 42, i + 1 = @settings->Level());
+    };
+    lvl := @settings->Level();
+    name := CkLevels->Name(lvl);
+    @text->Draw("{$name}: {$CkLevels->Tagline(lvl)}", 70, 384, 2, ar, ag, ab, 0);
+
+    @text->Draw("You play", 70, 428, 2, 235, 235, 235, 0);
+    Btn(300, CkDraw->SideName(set, 0) + " (first)", 70, 456, 170, 42, @settings->Human() = 0);
+    Btn(301, CkDraw->SideName(set, 1), 250, 456, 170, 42, @settings->Human() = 1);
+    Btn(302, "Watch the computer", 430, 456, 200, 42, @settings->Human() = 2);
+
+    @text->Draw("Options", 670, 428, 2, 235, 235, 235, 0);
+    Btn(310, OnOff("Flip board", @settings->Flip()), 670, 456, 150, 42, @settings->Flip());
+    fun := ["Fun mode: off", "Fun mode: levels 1-3", "Fun mode: all levels"];
+    Btn(311, fun[@settings->Fun()], 830, 456, 200 - 20, 42, @settings->Fun() > 0);
+    Btn(312, OnOff("Animations", @settings->Anim()), 670, 508, 150, 42, @settings->Anim());
+    Btn(313, OnOff("Reduced motion", @settings->Reduced()), 830, 508, 180, 42, @settings->Reduced());
+
+    Btn(320, "Play", Width() / 2 - 150, 600, 300, 54, true);
+    Btn(321, "Quit", Width() - 170, 612, 120, 42, false);
+    @text->Draw("Enter starts a game, Esc quits", Width() / 2, 662, 1, t[12], t[13], t[14], 1);
+  }
+
+  # a small board with a man and a king of one set, as a button face
+  method : DrawSetCard(set : Int, x : Int, y : Int, w : Int, h : Int, chosen : Bool) ~ Nil {
+    t := CkDraw->Theme(set);
+    @r->RoundedBoxColor(x - 6, y - 6, x + w + 5, y + h + 5, 12, Color->New(t[6], t[7], t[8], 255));
+    if(chosen) {
+      @r->RoundedRectangleColor(x - 6, y - 6, x + w + 5, y + h + 5, 12, Color->New(t[18], t[19], t[20], 255));
+      @r->RoundedRectangleColor(x - 7, y - 7, x + w + 6, y + h + 6, 12, Color->New(t[18], t[19], t[20], 255));
+      @r->RoundedRectangleColor(x - 8, y - 8, x + w + 7, y + h + 7, 12, Color->New(t[18], t[19], t[20], 255));
+    };
+    each(i : 6) {
+      each(j : 2) {
+        px := x + i * 35;
+        py := y + j * 46;
+        if((i + j) % 2 = 0) {
+          @r->BoxColor(px, py, px + 34, py + 45, Color->New(t[0], t[1], t[2], 255));
+        }
+        else {
+          @r->BoxColor(px, py, px + 34, py + 45, Color->New(t[3], t[4], t[5], 255));
+        };
+      };
+    };
+    CkDraw->Piece(@r, set, x + 52, y + 23, 15, 0, false, 1.0, 1.0, 0, 255, 1.0);
+    CkDraw->Piece(@r, set, x + 87, y + 69, 15, 1, false, 1.0, 1.0, 0, 255, 1.0);
+    CkDraw->Piece(@r, set, x + 122, y + 23, 15, 0, true, 1.0, 1.0, 0, 255, 1.0);
+    CkDraw->Piece(@r, set, x + 157, y + 69, 15, 1, true, 1.0, 1.0, 0, 255, 1.0);
+  }
+
+  # centre of a board square on the screen
+  method : CenterX(sq : Int) ~ Int {
+    return BoardLeft() + CkController->ScreenCol(sq, @ctl->Flipped()) * Size() + Size() / 2;
+  }
+
+  method : CenterY(sq : Int) ~ Int {
+    return BoardTop() + CkController->ScreenRow(sq, @ctl->Flipped()) * Size() + Size() / 2;
+  }
+
+  method : DrawBoard() ~ Nil {
+    set := @settings->PieceSet();
+    t := CkDraw->Theme(set);
+    left := BoardLeft();
+    top := BoardTop();
+    size := Size();
+    flip := @ctl->Flipped();
+    CkDraw->Frame(@r, set, left, top, size);
+    CkDraw->Squares(@r, set, left, top, size);
+
+    # coordinates around the edge
+    each(i : 8) {
+      file := "abcdefgh"->SubString(i, 1);
+      rank := "{$(8 - i)}";
+      if(flip) {
+        file := "abcdefgh"->SubString(7 - i, 1);
+        rank := "{$(i + 1)}";
+      };
+      @text->Draw(file, left + i * size + size / 2, top + 8 * size + 4, 1, t[12], t[13], t[14], 1);
+      @text->Draw(rank, left - 16, top + i * size + size / 2 - 9, 1, t[12], t[13], t[14], 1);
+    };
+
+    # the last move, the picked-up piece, where it may go
+    if(@last_move <> Nil) {
+      TintSquare(@last_move->From(), 255, 226, 80, 70);
+      TintSquare(@last_move->To(), 255, 226, 80, 90);
+    };
+    movable := 0;
+    if(@ctl->HumanToMove() & <>@anim_on & @fun_event = Nil) {
+      movable := @ctl->Movable();
+    };
+    selected := @ctl->Selection();
+    if(selected >= 0) {
+      TintSquare(selected, 90, 220, 120, 120);
+    };
+    if(@hint_move <> Nil) {
+      TintSquare(@hint_move->From(), 90, 170, 255, 110);
+      TintSquare(@hint_move->To(), 90, 170, 255, 150);
+    };
+
+    # forced jump: the pieces that must move glow orange
+    if(movable <> 0 & @ctl->JumpIsForced() & selected < 0) {
+      pulse := 120 + (60.0 * (@now->As(Float) / 180.0)->Sin())->As(Int);
+      each(sq : 64) {
+        if((movable and (1 << sq)) <> 0) {
+          CkDraw->Outline(@r, left, top, size, CkController->ScreenRow(sq, flip), CkController->ScreenCol(sq, flip), 3, 255, 150, 40, pulse);
+        };
+      };
+    };
+
+    DrawPieces();
+
+    # destinations of the picked-up piece
+    if(selected >= 0) {
+      dest := @ctl->Destinations(selected);
+      each(sq : 64) {
+        if((dest and (1 << sq)) <> 0) {
+          cx := CenterX(sq);
+          cy := CenterY(sq);
+          if(@game->Legal()->Caps(0) <> 0) {
+            @r->FilledCircleColor(cx, cy, size / 6, Color->New(220, 60, 50, 170));
+            @r->AACircleColor(cx, cy, size / 6, Color->New(120, 20, 20, 220));
+          }
+          else {
+            @r->FilledCircleColor(cx, cy, size / 8, Color->New(40, 40, 40, 120));
+          };
+        };
+      };
+    };
+
+    if(@kbd & @screen = 1) {
+      sq := @ctl->Cursor();
+      CkDraw->Outline(@r, left, top, size, CkController->ScreenRow(sq, flip), CkController->ScreenCol(sq, flip), 3, 255, 255, 255, 200);
+    };
+  }
+
+  method : TintSquare(sq : Int, red : Int, green : Int, blue : Int, alpha : Int) ~ Nil {
+    CkDraw->Tint(@r, BoardLeft(), BoardTop(), Size(), CkController->ScreenRow(sq, @ctl->Flipped()), CkController->ScreenCol(sq, @ctl->Flipped()), red, green, blue, alpha);
+  }
+
+  # pieces, from the top of the screen down so lower pieces overlap higher ones
+  method : DrawPieces() ~ Nil {
+    set := @settings->PieceSet();
+    pos := @game->Pos();
+    skip := -1;
+    removed := 0;
+    progress := 0.0;
+    if(@anim_on) {
+      pos := @anim_pos;
+      skip := @anim_move->From();
+      progress := (@now - @anim_t0)->As(Float) / @anim_dur->As(Float);
+      if(progress > 1.0) {
+        progress := 1.0;
+      };
+      removed := CapturedSoFar(progress);
+    };
+
+    rad := Size() * 38 / 100;
+    each(sr : 8) {
+      each(sc : 8) {
+        sq := CkController->ScreenToSquare(sr, sc, @ctl->Flipped());
+        kind := pos->At(sq);
+        if(kind > 0 & sq <> skip & (removed and (1 << sq)) = 0) {
+          side := 0;
+          if(kind > 2) {
+            side := 1;
+          };
+          king := kind % 2 = 0;
+          CkDraw->Piece(@r, set, CenterX(sq), CenterY(sq), rad, side, king, 1.0, 1.0, 0, 255, 1.0);
+        };
+      };
+    };
+
+    # the piece in flight, drawn last so it passes over the others
+    if(@anim_on) {
+      DrawFlying(progress, rad);
+    };
+  }
+
+  # the squares of captured pieces the moving piece has already passed over
+  method : CapturedSoFar(progress : Float) ~ Int {
+    hops := @anim_move->Hops();
+    if(hops < 1) {
+      return 0;
+    };
+    gone := 0;
+    each(k : hops) {
+      a := @anim_move->Landing(k);
+      b := @anim_move->Landing(k + 1);
+      u := progress * hops->As(Float) - k->As(Float);
+      if(u > 0.5) {
+        mid := ((a / 8 + b / 8) / 2) * 8 + (a % 8 + b % 8) / 2;
+        gone := gone or (1 << mid);
+      };
+    };
+    return gone;
+  }
+
+  method : DrawFlying(progress : Float, rad : Int) ~ Nil {
+    set := @settings->PieceSet();
+    mv := @anim_move;
+    hops := mv->Hops();
+    segs := hops;
+    if(segs < 1) {
+      segs := 1;
+    };
+    u := progress * segs->As(Float);
+    k := u->As(Int);
+    if(k >= segs) {
+      k := segs - 1;
+    };
+    v := u - k->As(Float);
+    # ease in and out within each hop
+    e := v * v * (3.0 - 2.0 * v);
+    a := mv->Landing(k);
+    b := mv->Landing(k + 1);
+    if(hops = 0) {
+      a := mv->From();
+      b := mv->To();
+    };
+    x := CenterX(a) + ((CenterX(b) - CenterX(a))->As(Float) * e)->As(Int);
+    y := CenterY(a) + ((CenterY(b) - CenterY(a))->As(Float) * e)->As(Int);
+    lift := (14.0 * (e * 3.14159)->Sin())->As(Int) + 4;
+    kind := @anim_pos->At(mv->From());
+    side := 0;
+    if(kind > 2) {
+      side := 1;
+    };
+    CkDraw->Piece(@r, set, x, y, rad, side, kind % 2 = 0, 1.0, 1.0, lift, 255, 1.0);
+  }
+
+  method : DrawPanel() ~ Nil {
+    set := @settings->PieceSet();
+    t := CkDraw->Theme(set);
+    px := 704;
+    pw := Width() - px - 20;
+    human := @ctl->Human();
+    level := @settings->Level();
+
+    # the opponent
+    CkDraw->Panel(@r, px, 20, pw, 118, set);
+    @r->FilledCircleColor(px + 50, 79, 34, Color->New(t[18], t[19], t[20], 255));
+    @r->FilledCircleColor(px + 50, 79, 30, Color->New(t[15], t[16], t[17], 255));
+    @text->Draw("{$level}", px + 50, 62, 3, t[18], t[19], t[20], 1);
+    name := CkLevels->Name(level);
+    if(human = 2) {
+      name := "Computer duel";
+    };
+    @text->Draw(name, px + 98, 42, 3, 245, 245, 245, 0);
+    @text->Draw(CkLevels->Tagline(level), px + 98, 76, 1, t[12], t[13], t[14], 0);
+    Btn(7, "-", px + 98, 98, 34, 28, false);
+    Btn(8, "+", px + 138, 98, 34, 28, false);
+    @text->Draw("level", px + 182, 102, 1, t[12], t[13], t[14], 0);
+
+    # whose turn
+    CkDraw->Panel(@r, px, 150, pw, 72, set);
+    side := @game->Side();
+    status := @game->Status();
+    line := "";
+    if(status = 0) {
+      if(human > 1) {
+        line := CkDraw->SideName(set, side) + " is thinking...";
+      }
+      else if(side = human) {
+        line := "Your move";
+        if(@ctl->JumpIsForced()) {
+          line := "Your move: you must jump";
+        };
+      }
+      else {
+        dots := (@now / 300) % 4;
+        line := "Thinking" + ".........."->SubString(dots);
+      };
+      if(@anim_on) {
+        line := CkDraw->SideName(set, @anim_side) + " moves";
+      };
+    }
+    else {
+      line := ResultText(status);
+    };
+    shown := side;
+    if(@anim_on) {
+      shown := @anim_side;
+    };
+    CkDraw->Piece(@r, set, px + 36, 186, 20, shown, false, 1.0, 1.0, 0, 255, 1.0);
+    @text->Draw(line, px + 74, 170, 2, 245, 245, 245, 0);
+
+    # pieces lost
+    CkDraw->Panel(@r, px, 234, pw, 64, set);
+    @text->Draw("Captured", px + 16, 240, 1, t[12], t[13], t[14], 0);
+    each(s : 2) {
+      lost := @game->Lost(1 - s);
+      base := px + 16 + s * (pw / 2);
+      CkDraw->Piece(@r, set, base + 12, 276, 11, s, false, 1.0, 1.0, 0, 255, 1.0);
+      @text->Draw("{$lost}", base + 32, 264, 2, 245, 245, 245, 0);
+    };
+
+    # the moves so far
+    CkDraw->Panel(@r, px, 310, pw, 236, set);
+    @text->Draw("Moves", px + 16, 316, 1, t[12], t[13], t[14], 0);
+    DrawMoveList(px + 16, 340, pw - 32);
+
+    # the buttons
+    bw := (pw - 10) / 2;
+    Btn(1, "New game", px, 558, bw, 38, false);
+    Btn(2, "Undo", px + bw + 10, 558, bw, 38, false);
+    Btn(3, "Hint", px, 604, bw, 38, false);
+    Btn(4, "Flip board", px + bw + 10, 604, bw, 38, false);
+    Btn(5, "Menu", px, 650, bw, 38, false);
+    Btn(6, "Quit", px + bw + 10, 650, bw, 38, false);
+  }
+
+  method : ResultText(status : Int) ~ String {
+    human := @ctl->Human();
+    if(status = 3) {
+      return "Draw: position repeated";
+    };
+    if(status = 4) {
+      return "Draw: 40 moves, no capture";
+    };
+    winner := status - 1;
+    if(human > 1) {
+      return CkDraw->SideName(@settings->PieceSet(), winner) + " wins";
+    };
+    if(winner = human) {
+      return "You win!";
+    };
+    return "You lose";
+  }
+
+  # the last twelve lines of the game: "3. c3-d4  b6-a5"
+  method : DrawMoveList(x : Int, y : Int, w : Int) ~ Nil {
+    set := @settings->PieceSet();
+    t := CkDraw->Theme(set);
+    lines := String->New[400];
+    n := 0;
+    number := 0;
+    each(i : @game->Entries()) {
+      mv := @game->EntryMove(i);
+      if(mv = Nil) {
+        lines[n] := @game->EntryText(i);
+        n += 1;
+      }
+      else if(@game->EntrySide(i) = 0 | n = 0 | lines[n - 1] = Nil) {
+        number += 1;
+        lines[n] := "{$number}. " + @game->EntryText(i);
+        n += 1;
+      }
+      else {
+        lines[n - 1]->Append("   ");
+        lines[n - 1]->Append(@game->EntryText(i));
+      };
+      if(n >= 399) {
+        break;
+      };
+    };
+
+    first := n - 10;
+    if(first < 0) {
+      first := 0;
+    };
+    row := 0;
+    for(i := first; i < n; i += 1;) {
+      if(@settings->Fun() > 0 & lines[i]->StartsWith("*")) {
+        @text->Draw(lines[i]->Truncate(34), x, y + row * 20, 1, t[18], t[19], t[20], 0);
+      }
+      else {
+        @text->Draw(lines[i]->Truncate(34), x, y + row * 20, 1, 225, 225, 225, 0);
+      };
+      row += 1;
+    };
+  }
+
+  # messages over the board: the compulsory-jump reminder, hints, results, events
+  method : DrawBanner() ~ Nil {
+    set := @settings->PieceSet();
+    t := CkDraw->Theme(set);
+    mid := BoardLeft() + Size() * 4;
+
+    if(@fun_event <> Nil) {
+      DrawEventBanner(mid);
+    }
+    else if(@msg->Size() > 0 & @now < @msg_until) {
+      w := @text->Width(@msg, 2) + 36;
+      @r->RoundedBoxColor(mid - w / 2, BoardTop() + 4, mid + w / 2, BoardTop() + 40, 10, Color->New(20, 20, 24, 215));
+      @text->Draw(@msg, mid, BoardTop() + 10, 2, 255, 255, 255, 1);
+    }
+    else if(@ctl->HumanToMove() & @ctl->JumpIsForced() & @ctl->Selection() < 0 & <>@anim_on) {
+      msg := "A jump is compulsory";
+      w := @text->Width(msg, 2) + 36;
+      @r->RoundedBoxColor(mid - w / 2, BoardTop() + 4, mid + w / 2, BoardTop() + 40, 10, Color->New(120, 50, 10, 210));
+      @text->Draw(msg, mid, BoardTop() + 10, 2, 255, 220, 160, 1);
+    };
+
+    status := @game->Status();
+    if(status <> 0 & <>@anim_on & @fun_event = Nil) {
+      text := ResultText(status);
+      @r->RoundedBoxColor(mid - 190, BoardTop() + 4 * Size() - 54, mid + 190, BoardTop() + 4 * Size() + 54, 18, Color->New(16, 16, 20, 225));
+      @r->RoundedRectangleColor(mid - 190, BoardTop() + 4 * Size() - 54, mid + 190, BoardTop() + 4 * Size() + 54, 18, Color->New(t[18], t[19], t[20], 255));
+      @text->Draw(text, mid, BoardTop() + 4 * Size() - 36, 3, t[18], t[19], t[20], 1);
+      @text->Draw("N: new game   Esc: menu", mid, BoardTop() + 4 * Size() + 12, 1, 220, 220, 220, 1);
+    };
+  }
+
+  method : DrawEventBanner(mid : Int) ~ Nil {
+    ev := @fun_event;
+    text := ev->Text();
+    w := @text->Width(text, 2) + 50;
+    y := BoardTop() + 4;
+    @r->RoundedBoxColor(mid - w / 2, y, mid + w / 2, y + 44, 12, Color->New(60, 20, 90, 230));
+    @r->RoundedRectangleColor(mid - w / 2, y, mid + w / 2, y + 44, 12, Color->New(255, 210, 90, 255));
+    @text->Draw(text, mid, y + 11, 2, 255, 240, 200, 1);
+    if(@fun_applied) {
+      # a flash on the square it happened on
+      sq := ev->Square();
+      CkDraw->Tint(@r, BoardLeft(), BoardTop(), Size(), CkController->ScreenRow(sq, @ctl->Flipped()), CkController->ScreenCol(sq, @ctl->Flipped()), 255, 255, 200, 150);
+    };
+  }
+}

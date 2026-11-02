@@ -1,0 +1,6 @@
+{
+  "game": "checkers",
+  "note": "trained by checkers_train.obs seed 7, 0 TD games, 300 hill-climb rounds; scores 51.2 percent against the hand-tuned weights over 200 games at depth 4",
+  "features": ["men", "kings", "advancement", "back_row", "centre", "edge", "mobility", "king_centre"],
+  "weights": [100.000, 137.214, -4.680, -1.630, 0.895, 8.167, 2.264, 17.172]
+}

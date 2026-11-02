@@ -1,0 +1,752 @@
+#~
+# Checkers: the thinking part. Needs checkers_engine.obs and checkers_game.obs,
+# and the ai and json libraries.
+#
+#   CkEval    - a linear evaluation: score = w1*f1 + w2*f2 + ... where each f is
+#               a countable fact about the position (pieces, kings, how far the
+#               men have advanced, ...) and each w says how much that fact is
+#               worth. The weights are what the trainer learns; they are read
+#               from checkers_weights.json.
+#   CkSearch  - alpha-beta search with move ordering and iterative deepening.
+#   CkState   - the position wrapped in the System.AI GameState interface, so the
+#               library's Minimax and MonteCarloTreeSearch can play it too.
+#   CkPlayer  - one of the ten levels: which search, how deep, how careless.
+~#
+
+use Collection;
+use Data.JSON;
+use System.AI;
+
+# The evaluation: eight facts about a position, each counted for Red minus
+# White, times a weight. Positive means good for Red.
+class CkEval {
+  @w : Float[];
+  @fr : Int[];
+  @fw : Int[];
+
+  New() {
+    @w := Float->New[8];
+    @fr := Int->New[8];
+    @fw := Int->New[8];
+    Hand();
+  }
+
+  # the number of facts
+  function : Count() ~ Int {
+    return 8;
+  }
+
+  function : FeatureName(i : Int) ~ String {
+    names := ["men", "kings", "advancement", "back_row", "centre", "edge", "mobility", "king_centre"];
+    return names[i];
+  }
+
+  # hand-tuned weights: the textbook values a good player would start from
+  method : public : Hand() ~ Nil {
+    @w[0] := 100.0;
+    @w[1] := 160.0;
+    @w[2] := 3.0;
+    @w[3] := 8.0;
+    @w[4] := 4.0;
+    @w[5] := -2.0;
+    @w[6] := 2.0;
+    @w[7] := 3.0;
+  }
+
+  # the weights checkers_train.obs learned (checkers_weights.json holds the
+  # same numbers; this copy lets the game run from any folder)
+  function : Trained() ~ CkEval {
+    e := CkEval->New();
+    w := [100.0, 137.214, -4.680, -1.630, 0.895, 8.167, 2.264, 17.172];
+    e->SetWeights(w);
+    return e;
+  }
+
+  method : public : Weights() ~ Float[] {
+    return @w;
+  }
+
+  method : public : SetWeights(w : Float[]) ~ Nil {
+    each(i : 8) {
+      @w[i] := w[i];
+    };
+  }
+
+  method : public : Copy() ~ CkEval {
+    e := CkEval->New();
+    e->SetWeights(@w);
+    return e;
+  }
+
+  # The eight facts of one side, written to out. men and kings are counts; the
+  # others are counted over the pieces: advancement is how many rows each man
+  # has travelled, back_row the men still on the home row (they stop enemy
+  # crownings), centre the pieces on the eight middle squares, edge the men on
+  # the side files, mobility the one-square moves available, king_centre the
+  # kings in the middle.
+  method : Side(pos : CkPos, side : Int, out : Int[]) ~ Nil {
+    all := pos->Pieces(side);
+    kings := all and pos->Kings();
+    men := all xor kings;
+    empty := CkBits->DarkMask() xor (pos->Red() or pos->White());
+    out[0] := CkBits->Pop(men);
+    out[1] := CkBits->Pop(kings);
+
+    adv := 0;
+    if(side = 0) {
+      each(r : 7) {
+        adv += (7 - r) * CkBits->Pop(men and CkBits->RowMask(r));
+      };
+      out[3] := CkBits->Pop(men and CkBits->RowMask(7));
+    }
+    else {
+      each(r : 7) {
+        adv += (r + 1) * CkBits->Pop(men and CkBits->RowMask(r + 1));
+      };
+      out[3] := CkBits->Pop(men and CkBits->RowMask(0));
+    };
+    out[2] := adv;
+
+    centre := 0x00003C3C3C3C0000;
+    out[4] := CkBits->Pop(all and centre);
+    out[5] := CkBits->Pop(men and 0x0180018001800180);
+    out[7] := CkBits->Pop(kings and centre);
+
+    dlo := 0;
+    dhi := 2;
+    if(side = 1) {
+      dlo := 2;
+      dhi := 4;
+    };
+    mob := 0;
+    each(d : 4) {
+      movers := kings;
+      if(d >= dlo & d < dhi) {
+        movers := all;
+      };
+      movers := movers and CkBits->SourceMask(d);
+      mob += CkBits->Pop(CkBits->Shift(movers, CkBits->Delta(d)) and empty);
+    };
+    out[6] := mob;
+  }
+
+  # the eight facts of a position, Red minus White
+  method : public : Features(pos : CkPos, f : Float[]) ~ Nil {
+    Side(pos, 0, @fr);
+    Side(pos, 1, @fw);
+    each(i : 8) {
+      f[i] := (@fr[i] - @fw[i])->As(Float);
+    };
+  }
+
+  # the score of a position for Red: weights times facts
+  method : public : Score(pos : CkPos) ~ Float {
+    Side(pos, 0, @fr);
+    Side(pos, 1, @fw);
+    s := 0.0;
+    each(i : 8) {
+      s += @w[i] * (@fr[i] - @fw[i])->As(Float);
+    };
+    return s;
+  }
+
+  # read {"weights": [...]}; false (weights untouched) if the text is not that
+  method : public : FromJson(text : String) ~ Bool {
+    if(text = Nil) {
+      return false;
+    };
+    parser := JsonParser->New(text);
+    if(<>parser->Parse() | parser->GetRoot() = Nil) {
+      return false;
+    };
+    arr := parser->GetRoot()->Get("weights");
+    if(arr = Nil | arr->Size() <> 8) {
+      return false;
+    };
+    got := Float->New[8];
+    each(i : 8) {
+      got[i] := arr->Get(i)->GetFloat();
+    };
+    SetWeights(got);
+    return true;
+  }
+
+  # the weights as JSON text, with a note saying where they came from
+  method : public : ToJson(note : String) ~ String {
+    text := "{\n  \"game\": \"checkers\",\n  \"note\": \"";
+    text += note;
+    text += "\",\n  \"features\": [";
+    each(i : 8) {
+      if(i > 0) {
+        text += ", ";
+      };
+      text += "\"";
+      text += FeatureName(i);
+      text += "\"";
+    };
+    text += "],\n  \"weights\": [";
+    each(i : 8) {
+      if(i > 0) {
+        text += ", ";
+      };
+      text += Float->ToString(@w[i], 3);
+    };
+    text += "]\n}\n";
+    return text;
+  }
+}
+
+# Alpha-beta search. It plays moves on one working position and takes them back
+# by restoring five saved numbers, so a search allocates nothing.
+class CkSearch {
+  @eval : CkEval;
+  @pos : CkPos;
+  @lists : CkMoveList[];
+  @order : Int[];      # per ply, the move numbers in the order they are tried
+  @keys : Int[];       # per ply, how promising each move looks (bigger = sooner)
+  @saved : Int[];      # per ply, the position before the move
+  @hist : Int[];       # history heuristic: quiet moves that caused cutoffs
+  @nodes : Int;
+  @budget : Int;
+  @aborted : Bool;
+  @max_ply : Int;
+  @best_score : Float;
+  @depth_done : Int;
+
+  New(eval : CkEval) {
+    @eval := eval;
+    @pos := CkPos->New();
+    @lists := CkMoveList->New[64];
+    each(i : 64) {
+      @lists[i] := CkMoveList->New();
+    };
+    @order := Int->New[64 * 256];
+    @keys := Int->New[64 * 256];
+    @saved := Int->New[64 * 5];
+    @hist := Int->New[4096];
+  }
+
+  function : Win() ~ Float {
+    return 100000.0;
+  }
+
+  method : public : Nodes() ~ Int {
+    return @nodes;
+  }
+
+  method : public : Score() ~ Float {
+    return @best_score;
+  }
+
+  method : public : DepthDone() ~ Int {
+    return @depth_done;
+  }
+
+  # Choose a move for the side to move in pos: the number of the move in
+  # pos->Generate's list, or -1 when there is none. It searches 1, 2, 3 ...
+  # plies deep up to max_depth, stopping early when the node budget (0 = no
+  # limit) runs out, and plays the best move of the last depth it finished.
+  # avoid is a list of keys of positions to treat as draws at the root (the
+  # ones that already happened in this game), so a side that is ahead does not
+  # shuffle back and forth.
+  method : public : Choose(pos : CkPos, max_depth : Int, budget : Int, avoid : Int[], avoid_n : Int) ~ Int {
+    @pos->CopyFrom(pos);
+    @nodes := 0;
+    @budget := budget;
+    @aborted := false;
+    @depth_done := 0;
+    each(i : 4096) {
+      @hist[i] := 0;
+    };
+
+    root := @lists[0];
+    @pos->Generate(root);
+    n := root->Count();
+    if(n = 0) {
+      return -1;
+    };
+    each(i : n) {
+      @order[i] := i;
+    };
+    @best_score := 0.0;
+    if(n = 1) {
+      return 0;
+    };
+
+    best := 0;
+    for(depth := 1; depth <= max_depth; depth += 1;) {
+      @max_ply := depth + 8;
+      if(@max_ply > 60) {
+        @max_ply := 60;
+      };
+      alpha := 0.0 - Win() - 1.0;
+      iter_best := -1;
+      iter_score := alpha;
+      each(k : n) {
+        idx := @order[k];
+        Save(0);
+        @pos->Make(root->From(idx), root->To(idx), root->Caps(idx));
+        v := 0.0 - Negamax(depth - 1, 0.0 - Win() - 1.0, 0.0 - alpha, 1);
+        if(@aborted) {
+          Restore(0);
+          break;
+        };
+        # a position that has been seen before in this game is a draw for now
+        if(avoid_n > 0 & Seen(@pos->Key(), avoid, avoid_n) & v > 0.0) {
+          v := 0.0;
+        };
+        Restore(0);
+        if(v > iter_score) {
+          iter_score := v;
+          iter_best := idx;
+          if(v > alpha) {
+            alpha := v;
+          };
+        };
+      };
+
+      if(@aborted) {
+        if(depth = 1 & iter_best >= 0) {
+          best := iter_best;
+        };
+        break;
+      };
+
+      best := iter_best;
+      @best_score := iter_score;
+      @depth_done := depth;
+
+      # try the best move first at the next depth
+      at := 0;
+      each(k : n) {
+        if(@order[k] = best) {
+          at := k;
+        };
+      };
+      each(k : at) {
+        @order[at - k] := @order[at - k - 1];
+      };
+      @order[0] := best;
+
+      if(iter_score > Win() - 200.0 | iter_score < 0.0 - Win() + 200.0) {
+        break;
+      };
+    };
+
+    return best;
+  }
+
+  method : Seen(key : Int, keys : Int[], n : Int) ~ Bool {
+    each(i : n) {
+      if(keys[i] = key) {
+        return true;
+      };
+    };
+    return false;
+  }
+
+  method : Save(ply : Int) ~ Nil {
+    at := ply * 5;
+    @saved[at] := @pos->Red();
+    @saved[at + 1] := @pos->White();
+    @saved[at + 2] := @pos->Kings();
+    @saved[at + 3] := @pos->Side();
+    @saved[at + 4] := @pos->Clock();
+  }
+
+  method : Restore(ply : Int) ~ Nil {
+    at := ply * 5;
+    @pos->Set(@saved[at], @saved[at + 1], @saved[at + 2], @saved[at + 3], @saved[at + 4]);
+  }
+
+  # the evaluation from the point of view of the side to move
+  method : StaticEval() ~ Float {
+    s := @eval->Score(@pos);
+    if(@pos->Side() = 1) {
+      return 0.0 - s;
+    };
+    return s;
+  }
+
+  # negamax alpha-beta: the best score the side to move can force
+  method : Negamax(depth : Int, alpha : Float, beta : Float, ply : Int) ~ Float {
+    @nodes += 1;
+    if(@budget > 0 & @nodes > @budget) {
+      @aborted := true;
+      return 0.0;
+    };
+
+    list := @lists[ply];
+    @pos->Generate(list);
+    n := list->Count();
+    if(n = 0) {
+      return 0.0 - Win() + ply->As(Float);
+    };
+    if(@pos->Clock() >= CkGame->DrawPlies()) {
+      return 0.0;
+    };
+    # at the horizon keep going while a jump is forced: the position is not quiet
+    if(depth <= 0 & (list->Caps(0) = 0 | ply >= @max_ply)) {
+      return StaticEval();
+    };
+
+    base := ply * 256;
+    each(i : n) {
+      @order[base + i] := i;
+      if(list->Caps(i) <> 0) {
+        @keys[base + i] := 100000 + CkBits->Pop(list->Caps(i)) * 100;
+      }
+      else {
+        k := @hist[list->From(i) * 64 + list->To(i)];
+        if(@pos->Side() = 0 & list->To(i) / 8 = 0) {
+          k += 50000;
+        }
+        else if(@pos->Side() = 1 & list->To(i) / 8 = 7) {
+          k += 50000;
+        };
+        @keys[base + i] := k;
+      };
+    };
+
+    best := 0.0 - Win() - 1.0;
+    each(i : n) {
+      # selection sort, one step at a time: most searches stop after a few moves
+      pick := i;
+      for(j := i + 1; j < n; j += 1;) {
+        if(@keys[base + j] > @keys[base + pick]) {
+          pick := j;
+        };
+      };
+      if(pick <> i) {
+        t := @order[base + i];
+        @order[base + i] := @order[base + pick];
+        @order[base + pick] := t;
+        t := @keys[base + i];
+        @keys[base + i] := @keys[base + pick];
+        @keys[base + pick] := t;
+      };
+
+      idx := @order[base + i];
+      Save(ply);
+      @pos->Make(list->From(idx), list->To(idx), list->Caps(idx));
+      v := 0.0 - Negamax(depth - 1, 0.0 - beta, 0.0 - alpha, ply + 1);
+      Restore(ply);
+      if(@aborted) {
+        return 0.0;
+      };
+      if(v > best) {
+        best := v;
+      };
+      if(best > alpha) {
+        alpha := best;
+      };
+      if(alpha >= beta) {
+        if(list->Caps(idx) = 0 & depth > 0) {
+          @hist[list->From(idx) * 64 + list->To(idx)] += depth * depth;
+        };
+        break;
+      };
+    };
+    return best;
+  }
+}
+
+# A position seen through the System.AI.GameState interface, so the library's
+# Minimax and MonteCarloTreeSearch can play checkers. The moves it hands out are
+# the numbers 0, 1, 2 ... of the position's legal moves, best-looking first.
+class CkState implements GameState {
+  @pos : CkPos;
+  @eval : CkEval;
+  @list : CkMoveList;
+  @order : Int[];
+
+  New(pos : CkPos, eval : CkEval) {
+    @pos := pos;
+    @eval := eval;
+    @list := CkMoveList->New();
+    @pos->Generate(@list);
+    n := @list->Count();
+    @order := Int->New[n];
+    each(i : n) {
+      @order[i] := i;
+    };
+    # a little move ordering: jumps are already alone; among steps, crowning
+    # moves and moves toward the middle first (insertion sort on a cheap key)
+    keys := Int->New[n];
+    each(i : n) {
+      keys[i] := MoveKey(i);
+    };
+    each(i : n) {
+      j := i;
+      while(j > 0 & keys[j] > keys[j - 1]) {
+        t := keys[j]; keys[j] := keys[j - 1]; keys[j - 1] := t;
+        t := @order[j]; @order[j] := @order[j - 1]; @order[j - 1] := t;
+        j -= 1;
+      };
+    };
+  }
+
+  method : MoveKey(i : Int) ~ Int {
+    key := CkBits->Pop(@list->Caps(i)) * 100;
+    tsq := @list->To(i);
+    r := tsq / 8;
+    c := tsq % 8;
+    if(@pos->Side() = 0 & r = 0) {
+      key += 50;
+    }
+    else if(@pos->Side() = 1 & r = 7) {
+      key += 50;
+    };
+    d := c - 3;
+    if(c > 3) {
+      d := c - 4;
+    };
+    if(d < 0) {
+      d := 0 - d;
+    };
+    key += 3 - d;
+    return key;
+  }
+
+  function : Start(eval : CkEval) ~ CkState {
+    return CkState->New(CkPos->Start(), eval);
+  }
+
+  method : public : Pos() ~ CkPos {
+    return @pos;
+  }
+
+  # the moves, as the numbers 0 .. n-1 of GetMoveAt
+  method : public : GetMoves() ~ Int[] {
+    n := @order->Size();
+    moves := Int->New[n];
+    each(i : n) {
+      moves[i] := i;
+    };
+    return moves;
+  }
+
+  # the move number in the position's own list that GetMoves number m stands for
+  method : public : ListIndex(m : Int) ~ Int {
+    return @order[m];
+  }
+
+  method : public : Apply(move : Int) ~ System.AI.GameState {
+    idx := @order[move];
+    next := @pos->Copy();
+    next->Make(@list->From(idx), @list->To(idx), @list->Caps(idx));
+    return CkState->New(next, @eval);
+  }
+
+  method : public : IsTerminal() ~ Bool {
+    return @list->Count() = 0 | @pos->Clock() >= CkGame->DrawPlies();
+  }
+
+  # from Red's point of view, as GameState asks
+  method : public : Evaluate() ~ Float {
+    if(@list->Count() = 0) {
+      if(@pos->Side() = 0) {
+        return 0.0 - CkSearch->Win();
+      };
+      return CkSearch->Win();
+    };
+    if(@pos->Clock() >= CkGame->DrawPlies()) {
+      return 0.0;
+    };
+    return @eval->Score(@pos);
+  }
+
+  method : public : IsMaximizing() ~ Bool {
+    return @pos->Side() = 0;
+  }
+}
+
+# One of the ten levels. Every level is "how it thinks" plus "how careless":
+#
+#   1  plays any legal move                                       (random)
+#   2  greedy: the move with the best evaluation one move ahead   (+ slips)
+#   3  looks 2 plies ahead                                        (+ slips)
+#   4-6  the System.AI Minimax class at depth 3, 4 and 6
+#   7-8  our own alpha-beta search (move ordering, jump extension) at depth 7 and 9
+#   9-10 iterative deepening with the LEARNED evaluation: as deep as it gets
+#        inside a budget of 0.4 million (9) or 2.4 million (10) positions
+#
+# "Slips" means that with some probability the level plays a random legal move
+# instead; a jump is still always taken, because the rules force it.
+class CkPlayer {
+  @level : Int;
+  @eval : CkEval;      # the evaluation this level thinks with
+  @search : CkSearch;
+  @rand : CkRand;
+  @slip : Int;         # percent chance of a random legal move
+  @depth : Int;
+  @budget : Int;
+  @lib : Bool;         # use the System.AI Minimax class
+  @thinks : Int;       # nodes used by the last move
+
+  # hand: the hand-tuned evaluation; learned: the trained one (used by 9 and 10)
+  New(level : Int, hand : CkEval, learned : CkEval, seed : Int) {
+    @level := level;
+    @rand := CkRand->New(seed * 31 + level);
+    @eval := hand;
+    @slip := 0;
+    @depth := 1;
+    @budget := 0;
+    @lib := false;
+
+    if(level = 1) {
+      @slip := 100;
+    }
+    else if(level = 2) {
+      @depth := 1;
+      @slip := 40;
+    }
+    else if(level = 3) {
+      @depth := 2;
+      @slip := 22;
+    }
+    else if(level = 4) {
+      @depth := 3;
+      @lib := true;
+    }
+    else if(level = 5) {
+      @depth := 4;
+      @lib := true;
+    }
+    else if(level = 6) {
+      @depth := 6;
+      @lib := true;
+    }
+    else if(level = 7) {
+      @depth := 7;
+    }
+    else if(level = 8) {
+      @depth := 9;
+    }
+    else if(level = 9) {
+      @depth := 10;
+      @budget := 400000;
+      @eval := learned;
+    }
+    else {
+      @depth := 16;
+      @budget := 2400000;
+      @eval := learned;
+    };
+    @search := CkSearch->New(@eval);
+  }
+
+  # a player that is not one of the ten levels: any evaluation, a fixed search
+  # depth and no slips (the trainer plays these against each other)
+  New(eval : CkEval, depth : Int, seed : Int) {
+    @level := 0;
+    @rand := CkRand->New(seed);
+    @eval := eval;
+    @slip := 0;
+    @depth := depth;
+    @budget := 0;
+    @lib := false;
+    @search := CkSearch->New(eval);
+  }
+
+  method : public : Level() ~ Int {
+    return @level;
+  }
+
+  # how many nodes the last move took, and the depth the search finished
+  method : public : Nodes() ~ Int {
+    return @thinks;
+  }
+
+  method : public : DepthDone() ~ Int {
+    return @search->DepthDone();
+  }
+
+  method : public : Score() ~ Float {
+    return @search->Score();
+  }
+
+  # the number of the move to play in game->Legal(), or -1 if there is none
+  method : public : Choose(game : CkGame) ~ Int {
+    # positions already seen in this game that a winning side should not repeat
+    keys := Int->New[game->Entries() + 1];
+    kn := 0;
+    each(i : game->Entries()) {
+      keys[kn] := game->EntryKey(i);
+      kn += 1;
+    };
+    return ChoosePos(game->Pos(), keys, kn);
+  }
+
+  # the same from a bare position (what the thinking thread uses): keys are
+  # the positions to avoid repeating, kn how many of them there are
+  method : public : ChoosePos(pos : CkPos, keys : Int[], kn : Int) ~ Int {
+    list := CkMoveList->New();
+    pos->Generate(list);
+    n := list->Count();
+    @thinks := 0;
+    if(n = 0) {
+      return -1;
+    };
+    if(n = 1) {
+      return 0;
+    };
+    if(@slip > 0 & @rand->NextInt(100) < @slip) {
+      return @rand->NextInt(n);
+    };
+
+    if(@lib) {
+      state := CkState->New(pos->Copy(), @eval);
+      mm := Minimax->New(@depth);
+      m := mm->FindBestMove(state);
+      @thinks := mm->GetNodesSearched();
+      if(m < 0) {
+        return 0;
+      };
+      return state->ListIndex(m);
+    };
+
+    best := @search->Choose(pos, @depth, @budget, keys, kn);
+    @thinks := @search->Nodes();
+    if(best < 0) {
+      return 0;
+    };
+    return best;
+  }
+}
+
+# Games between two players with no window: the engine of the tournament, the
+# trainer and the tests.
+class CkMatch {
+  # Play one game. opening_plies random moves (chosen by seed) are played first
+  # so repeated games differ; the same seed gives the same opening for both
+  # colours. Returns 1 if Red won, 2 if White won, 0 for a draw.
+  function : Play(game : CkGame, red : CkPlayer, white : CkPlayer, opening_plies : Int, seed : Int) ~ Int {
+    game->Reset();
+    rand := CkRand->New(seed);
+    each(i : opening_plies) {
+      n := game->Legal()->Count();
+      if(n > 0) {
+        game->Play(rand->NextInt(n));
+      };
+    };
+
+    while(game->Status() = 0 & game->Entries() < 400) {
+      player := red;
+      if(game->Side() = 1) {
+        player := white;
+      };
+      m := player->Choose(game);
+      game->Play(m);
+    };
+
+    status := game->Status();
+    if(status = 1) {
+      return 1;
+    };
+    if(status = 2) {
+      return 2;
+    };
+    return 0;
+  }
+}
