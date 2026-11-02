@@ -164,14 +164,6 @@
 
     <h1 class="page-title">JSON, XML and regular expressions</h1>
     <p class="page-lead">Three libraries for reading structured text: <code>Data.JSON</code> (the <code>json</code> library), <code>Data.XML</code> (<code>xml</code>) and <code>Query.RegEx</code> (<code>regex</code>). This page shows each in a few lines, then what they do when the input is wrong, which changed in v2026.10.3.</p>
-    <div id="toc_container">
-     <h4>Contents</h4>
-     <ul>
-      <li><a href="#the-basics">The basics</a></li>
-      <li><a href="#when-the-input-is-wrong">When the input is wrong</a></li>
-      <li><a href="#where-next">Where next</a></li>
-     </ul>
-    </div>
 
 <pre class="cmd">obc -src program.obs -lib json,xml,regex</pre>
     <p>The shipped examples go further: <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/json_14.obs" target="_blank"><code>json_14.obs</code></a> (nested documents, <code>FindElements</code> paths, a streaming parser for large files), <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/xml_15.obs" target="_blank"><code>xml_15.obs</code></a>, <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/csv_16.obs" target="_blank"><code>csv_16.obs</code></a> and <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/regex_17.obs" target="_blank"><code>regex_17.obs</code></a>.</p>

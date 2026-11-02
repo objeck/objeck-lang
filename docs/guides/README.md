@@ -52,3 +52,15 @@ the program never uses directly.
 - [AI & ML developer guide](https://www.objeck.org/ai_guide.html) and [`docs/AI.md`](../AI.md).
 - [`docs/COLLECTIONS_GUIDE.md`](../COLLECTIONS_GUIDE.md) and
   [`docs/ERROR_CONVENTIONS.md`](../ERROR_CONVENTIONS.md).
+
+## Keeping the site in step
+
+The site pages `guides.html` and `guide_*.html` in [`docs/web`](../web/) are rendered
+from the Markdown in this folder, so edit the Markdown and run
+
+```text
+python tools/docs/guides_to_html.py          write the pages
+python tools/docs/guides_to_html.py --check  fail if a page is out of date
+```
+
+When you change a program, run it again and paste its new output into the guide that shows it.

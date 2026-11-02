@@ -208,6 +208,11 @@ obr collections_tour.obe</pre>
      <li><a href="https://www.objeck.org/ai_guide.html">AI &amp; ML developer guide</a> and <a href="https://github.com/objeck/objeck-lang/blob/master/docs/AI.md" target="_blank"><code>docs/AI.md</code></a>.</li>
      <li><a href="https://github.com/objeck/objeck-lang/blob/master/docs/COLLECTIONS_GUIDE.md" target="_blank"><code>docs/COLLECTIONS_GUIDE.md</code></a> and <a href="https://github.com/objeck/objeck-lang/blob/master/docs/ERROR_CONVENTIONS.md" target="_blank"><code>docs/ERROR_CONVENTIONS.md</code></a>.</li>
     </ul>
+    <h3 id="keeping-the-site-in-step">Keeping the site in step</h3>
+    <p>The site pages <code>guides.html</code> and <code>guide_*.html</code> in <a href="https://github.com/objeck/objeck-lang/tree/master/docs/web" target="_blank"><code>docs/web</code></a> are rendered from the Markdown in this folder, so edit the Markdown and run</p>
+<pre class="cmd">python tools/docs/guides_to_html.py          write the pages
+python tools/docs/guides_to_html.py --check  fail if a page is out of date</pre>
+    <p>When you change a program, run it again and paste its new output into the guide that shows it.</p>
 
    </div>
   </main>

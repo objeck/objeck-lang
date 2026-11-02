@@ -18,6 +18,10 @@ web/
     └── favicon.ico        # Favicon
 ```
 
+## The guides
+
+`guides.html` and `guide_*.html` are rendered from the Markdown in [`docs/guides`](../guides/) by `python tools/docs/guides_to_html.py` (add `--check` to see whether they are out of date). Edit the Markdown, not these pages.
+
 ## Deployment
 
 The site is static HTML/CSS hosted on GoDaddy, and nothing in CI deploys it: after changing these files, upload them via the GoDaddy file manager or FTP.
