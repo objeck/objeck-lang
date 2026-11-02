@@ -1,0 +1,173 @@
+# EXTRA_LIBS: regex
+#~
+Query.RegEx: the repeat bounds {least} and {least,most}.
+
+- a{99999999999} expanded the program at compile time and did not return in 60 s (the count
+  was an Int the compiler counted up to, one copy of the operand per step).
+- a{2,1} was accepted, and matched nothing.
+- Repeats multiply when they nest: ((a{1000}){1000}){1000} is a billion copies.
+
+A count is now at most 1000, least may not exceed most, and a pattern that expands past
+100000 instructions is not accepted. Each is a pattern that is not OK, and one that is not OK
+matches nothing, as every other bad pattern does.
+
+Each pattern is compiled on its own thread and the main thread waits up to 10 s for it, so a
+compile that only spins ends in a FAIL line. One that fills the heap, as the old a{99999999999}
+did, is ended by the test runner's own time limit.
+~#
+
+use Query.RegEx;
+
+class RegexRepeatBounds {
+	@failures : static : Int;
+
+	function : Check(ok : Bool, name : String) ~ Nil {
+		if(<>ok) {
+			"  [FAIL] {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# compiles the pattern, giving up after 10 s
+	function : Compile(pattern : String) ~ RegEx {
+		worker := CompileThread->New(pattern);
+		worker->Execute(Nil);
+
+		waited := 0;
+		while(<>worker->IsDone() & waited < 10000) {
+			System.Concurrency.Thread->Sleep(10);
+			waited += 10;
+		};
+
+		if(<>worker->IsDone()) {
+			"FAIL: compiling '{$pattern}' did not return in 10 s"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		return worker->GetRegEx();
+	}
+
+	function : Rejected(pattern : String) ~ Nil {
+		re := Compile(pattern);
+		Check(re <> Nil & <>re->IsOk(), "'{$pattern}' is not OK");
+		if(re <> Nil) {
+			Check(<>re->MatchExact("aaa"), "'{$pattern}' matches nothing (exact)");
+			Check(re->FindFirst("aaaa") = Nil, "'{$pattern}' matches nothing (find)");
+		};
+	}
+
+	function : Accepted(pattern : String) ~ RegEx {
+		re := Compile(pattern);
+		Check(re <> Nil & re->IsOk(), "'{$pattern}' is OK");
+		return re;
+	}
+
+	function : Repeat(c : String, count : Int) ~ String {
+		text := "";
+		each(i : count) {
+			text->Append(c);
+		};
+		return text;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		# the count is too large
+		Rejected("a{99999999999}");
+		Rejected("a{1001}");
+		Rejected("a{0,1001}");
+		Rejected("a{1,99999999999999999999999999}");
+
+		# least above most
+		Rejected("a{2,1}");
+		Rejected("a{1000,999}");
+
+		# nested repeats that expand past the program limit
+		Rejected("((a{1000}){1000}){1000}");
+		Rejected("(a{1000}){1000}");
+		Rejected("((a{100}){100}){100}");
+
+		# the bounds themselves, and what a repeat has always done
+		re := Accepted("a{1000}");
+		if(re <> Nil) {
+			Check(re->MatchExact(Repeat("a", 1000)), "a{1000} matches 1000 a");
+			Check(<>re->MatchExact(Repeat("a", 999)), "a{1000} does not match 999 a");
+		};
+
+		re := Accepted("a{0,1000}");
+		if(re <> Nil) {
+			Check(re->MatchExact(""), "a{0,1000} matches empty");
+			Check(re->MatchExact(Repeat("a", 1000)), "a{0,1000} matches 1000 a");
+			Check(<>re->MatchExact(Repeat("a", 1001)), "a{0,1000} does not match 1001 a");
+		};
+
+		re := Accepted("a{2,2}");
+		if(re <> Nil) {
+			Check(re->MatchExact("aa"), "a{2,2} matches aa");
+			Check(<>re->MatchExact("aaa"), "a{2,2} does not match aaa");
+		};
+
+		re := Accepted("a{3}");
+		if(re <> Nil) {
+			Check(re->MatchExact("aaa"), "a{3} matches aaa");
+			Check(<>re->MatchExact("aa"), "a{3} does not match aa");
+		};
+
+		re := Accepted("a{1,3}b");
+		if(re <> Nil) {
+			Check(re->MatchExact("ab") & re->MatchExact("aaab"), "a{1,3}b matches ab and aaab");
+			Check(<>re->MatchExact("b") & <>re->MatchExact("aaaab"), "a{1,3}b does not match b or aaaab");
+		};
+
+		re := Accepted("\\d{4}-\\d{2}-\\d{2}");
+		if(re <> Nil) {
+			Check(re->MatchExact("2025-06-15"), "a date still matches");
+		};
+
+		# nesting within the limit is accepted
+		re := Accepted("(ab{10}){10}");
+		if(re <> Nil) {
+			text := "";
+			each(i : 10) {
+				text->Append("a");
+				text->Append(Repeat("b", 10));
+			};
+			Check(re->MatchExact(text), "(ab{10}){10} matches its text");
+		};
+
+		re := Accepted("(a{100}){100}");
+		if(re <> Nil) {
+			Check(re->MatchExact(Repeat("a", 10000)), "(a{100}){100} matches 10000 a");
+		};
+
+		if(@failures > 0) {
+			"FAIL: regex_repeat_bounds, {$@failures} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: regex_repeat_bounds"->PrintLine();
+	}
+}
+
+class CompileThread from System.Concurrency.Thread {
+	@pattern : String;
+	@re : RegEx;
+	@done : Bool;
+
+	New(pattern : String) {
+		Parent();
+		@pattern := pattern;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		@re := RegEx->New(@pattern);
+		@done := true;
+	}
+
+	method : public : IsDone() ~ Bool {
+		return @done;
+	}
+
+	method : public : GetRegEx() ~ RegEx {
+		return @re;
+	}
+}

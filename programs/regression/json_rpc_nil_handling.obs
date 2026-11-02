@@ -112,11 +112,12 @@ class JsonRpcNilHandling {
 	function : TestClientErrorShapes() ~ Nil {
 		"-- client: replies whose error is partial --"->PrintLine();
 
+		# the client numbers its calls from 1 and checks that each reply echoes the id it sent
 		replies := String->New[5];
 		replies[0] := "{\"jsonrpc\":\"2.0\",\"error\":\"boom\",\"id\":1}";
-		replies[1] := "{\"jsonrpc\":\"2.0\",\"error\":{},\"id\":1}";
-		replies[2] := "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32601,\"message\":\"Method not found\"},\"id\":1}";
-		replies[3] := "{\"jsonrpc\":\"2.0\",\"error\":{\"message\":\"no code\"},\"id\":1}";
+		replies[1] := "{\"jsonrpc\":\"2.0\",\"error\":{},\"id\":2}";
+		replies[2] := "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32601,\"message\":\"Method not found\"},\"id\":3}";
+		replies[3] := "{\"jsonrpc\":\"2.0\",\"error\":{\"message\":\"no code\"},\"id\":4}";
 		replies[4] := "this is not json";
 
 		fake := TCPSocketServer->New(0);

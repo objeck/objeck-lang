@@ -20,7 +20,7 @@ bundle Query.RegEx {
 		<li>optional &#8208; ?</li>
 		<li>zero or more repetitions &#8208; *</li>
 		<li>one or more repetitions &#8208; +</li>
-		<li>repeat &#8208; {least} or {least, most}</li>
+		<li>repeat &#8208; {least} or {least, most}; a count is at most 1000, least may not exceed most, and a pattern that expands to more than 100000 instructions (nested repeats multiply) is not accepted: IsOk() is false</li>
 		<li>start of input &#8208; ^</li>
 		<li>end of input &#8208; $</li>
 		<li>(one|two|three) &#8208; numbered capture group, see Result-&gt;GetGroup</li>
@@ -370,6 +370,14 @@ result->PrintLine();
 			@program->AddBack(Instruction->NewOp(Instruction->Op->MATCH));
 		}
 
+		# repeats multiply when nested, ((a{1000}){1000}){1000} being a billion copies: a pattern
+		# that compiles to more than 100000 instructions is rejected rather than built
+		method : private : CheckProgramSize() ~ Nil {
+			if(@error = Nil & @program->Size() > 100000) {
+				@error := "pattern is too large";
+			};
+		}
+
 		method : private : CompileExprs(exprs : Vector<Expression>) ~ Nil {
 			each(i : exprs) {
 				CompileExpr(exprs->Get(i));
@@ -511,8 +519,9 @@ result->PrintLine();
 
 					# mandatory repetitions
 					i := 0;
-					while(i < least) {
+					while(i < least & @error = Nil) {
 						CompileExpr(inner);
+						CheckProgramSize();
 						i += 1;
 					};
 
@@ -535,7 +544,7 @@ result->PrintLine();
 					else {
 						# optional repetitions up to most
 						j := least;
-						while(j < most) {
+						while(j < most & @error = Nil) {
 							split := Instruction->NewSplit(0, 0);
 							split_pc := @program->Size();
 							@program->AddBack(split);
@@ -546,6 +555,7 @@ result->PrintLine();
 							after_pc := @program->Size();
 							@program->Get(split_pc)->SetTarget1(body_pc);
 							@program->Get(split_pc)->SetTarget2(after_pc);
+							CheckProgramSize();
 							j += 1;
 						};
 					};
@@ -1006,18 +1016,33 @@ result->PrintLine();
 					NextToken();
 
 					Whitespace();
-					least := Number()->ToInt();
+					least_text := Number();
 					if(@error <> Nil) {
 						return;
 					};
+					# bounded by the text, before ToInt: a count of many digits would overflow
+					if(least_text->Size() > 4 | least_text->ToInt() > 1000) {
+						@error := "repeat count exceeds 1000";
+						return;
+					};
+					least := least_text->ToInt();
 
 					Whitespace();
 					most := -1;
 					if(@token = ',') {
 						NextToken();
 						Whitespace();
-						most := Number()->ToInt();
+						most_text := Number();
 						if(@error <> Nil) {
+							return;
+						};
+						if(most_text->Size() > 4 | most_text->ToInt() > 1000) {
+							@error := "repeat count exceeds 1000";
+							return;
+						};
+						most := most_text->ToInt();
+						if(most < least) {
+							@error := "repeat range is reversed";
 							return;
 						};
 					};
