@@ -126,7 +126,12 @@ class Server:
 
     def _stderr(self, proc):
         for raw in iter(proc.stderr.readline, b""):
-            self.lines.append(raw.replace(b"\x00", b"").decode("utf-8", "replace").strip())
+            line = raw.replace(b"\x00", b"").decode("utf-8", "replace").strip()
+            self.lines.append(line)
+            # anything but the timing and cache reports is news: a stack trace, a
+            # connection thread that ended
+            if line and not line.startswith("[lsp-"):
+                print(f"  {self.name} stderr: {line}", flush=True)
 
     def alive(self):
         return self.clients[0].proc.poll() is None
@@ -411,19 +416,33 @@ def main():
             label = os.path.relpath(item[0], REPO_ROOT)
             seed = args.seed * 100003 + n
             began = time.time()
-            busy[i] = [label, began, ""]
+            busy[i] = [label, began, {}]
 
-            def note(server):
-                return lambda what: busy.get(i, [None, None, None]).__setitem__(2, f"{server} {what}")
-            want = session(ref.clients[i], item, args.edits, seed, note("reference"))
-            middle = time.time()
+            # Both servers at once. One after the other, a connection sat idle while
+            # the other server worked, and the VM gives an accepted socket a 30 s
+            # receive timeout: the server read the idle connection as closed and
+            # dropped it, and the client then waited for answers that never came.
+            results = {}
+            took = {}
+
+            def run(name, server, run_seed):
+                start = time.time()
+                where = busy[i][2]
+                results[name] = session(server.clients[i], item, args.edits, run_seed,
+                                        lambda what: where.__setitem__(name, what))
+                took[name] = time.time() - start
             # --control: the cached server gets another edit script
-            have = session(cached.clients[i], item, args.edits, seed + 7 if args.control else seed,
-                           note("cached"))
+            runs = [threading.Thread(target=run, args=("reference", ref, seed)),
+                    threading.Thread(target=run, args=("cached", cached, seed + 7 if args.control else seed))]
+            for t in runs:
+                t.start()
+            for t in runs:
+                t.join()
+            want, have = results["reference"], results["cached"]
             busy.pop(i, None)
             if time.time() - began > SLOW:
-                print(f"  slow: {label} reference {middle - began:.0f}s, "
-                      f"cached {time.time() - middle:.0f}s", flush=True)
+                print(f"  slow: {label} reference {took['reference']:.0f}s, "
+                      f"cached {took['cached']:.0f}s", flush=True)
             with lock:
                 done[0] += 1
                 for (step, w), (_, h) in zip(want, have):
@@ -447,7 +466,8 @@ def main():
         while not finished.wait(SLOW):
             for i, (label, began, where) in list(busy.items()):
                 if time.time() - began > SLOW:
-                    print(f"  still on: {label} for {time.time() - began:.0f}s (client {i}, {where}); "
+                    steps = ", ".join(f"{name}: {step}" for name, step in sorted(where.items()))
+                    print(f"  still on: {label} for {time.time() - began:.0f}s (client {i}; {steps}); "
                           f"reference alive {ref.alive()}, cached alive {cached.alive()}", flush=True)
     threading.Thread(target=watchdog, daemon=True).start()
 
