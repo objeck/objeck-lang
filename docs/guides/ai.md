@@ -1,0 +1,258 @@
+# Game AI with System.AI
+
+`System.AI` (the `ai` library) is classic, dependency-free artificial intelligence: game-tree
+search (`Minimax` with alpha-beta pruning, `MonteCarloTreeSearch`), graph search (`AStar`,
+`Dijkstra`, `BreadthFirst`, `DepthFirst`), tabular reinforcement learning (`QLearning`,
+`Sarsa`, `MarkovDecisionProcess`) and optimizers (`GeneticAlgorithm`, `SimulatedAnnealing`,
+`HillClimbing`). It is separate from the model-based AI in the [AI & ML developer
+guide](https://www.objeck.org/ai_guide.html) (OpenAI, Gemini, Ollama, ONNX, OpenCV).
+
+```text
+obc -src program.obs -lib ai
+```
+
+This page is about the two-player search. For A* on a grid and a Nim player, see the shipped
+[`ai_search_30.obs`](../../programs/deploy/ai_search_30.obs).
+
+## Describe the game once
+
+Both searchers work on any game you describe with the `GameState` interface:
+
+| Method | What it answers |
+|---|---|
+| `GetMoves()` | the legal moves, as an `Int[]` (empty when the game is over) |
+| `Apply(move)` | the position after a move, as a **new** object; the search keeps the old one |
+| `IsTerminal()` | whether the game is over |
+| `Evaluate()` | a score from the maximizing player's side: positive is good for it |
+| `IsMaximizing()` | whether the maximizing player moves next |
+
+A move is just an integer you choose: a square number, a column, an index into a table.
+
+## Two searchers on tic-tac-toe
+
+`Minimax->New(depth)` looks at every line of play to that many plies and assumes the opponent
+always replies well. `MonteCarloTreeSearch->New(playouts, exploration, seed)` plays that many
+random games from the choices available, steering towards the promising ones with the UCB1
+rule (an exploration constant of about 1.4 is typical), and returns the most-visited move; the
+seed makes a search repeatable. Both have `FindBestMove(state)`.
+
+The program plays minimax against itself, then the two searchers against each other with each
+one going first.
+
+<!-- code: programs/examples/guides/ai_tictactoe.obs -->
+```ruby
+use System.AI;
+
+class TicTacToe {
+  function : Main(args : String[]) ~ Nil {
+    # minimax can see all nine plies of a game, so it plays perfectly
+    "Minimax (X) against Minimax (O)"->PrintLine();
+    Play(Minimax->New(9), Minimax->New(9));
+
+    ""->PrintLine();
+    "Minimax (X) against Monte Carlo tree search (O, 2000 playouts)"->PrintLine();
+    Play(Minimax->New(9), MonteCarloTreeSearch->New(2000, 1.414, 7));
+
+    ""->PrintLine();
+    "Monte Carlo tree search (X, 2000 playouts) against Minimax (O)"->PrintLine();
+    Play(MonteCarloTreeSearch->New(2000, 1.414, 7), Minimax->New(9));
+  }
+
+  # x and o are each a Minimax or a MonteCarloTreeSearch; both have FindBestMove
+  function : Play(x : Base, o : Base) ~ Nil {
+    state := Board->New()->As(GameState);
+    while(<>state->IsTerminal()) {
+      move := -1;
+      if(state->IsMaximizing()) {
+        move := Choose(x, state);
+      }
+      else {
+        move := Choose(o, state);
+      };
+      state := state->Apply(move);
+    };
+
+    state->As(Board)->Show();
+    score := state->Evaluate();
+    if(score > 0.0) {
+      "  X wins"->PrintLine();
+    }
+    else if(score < 0.0) {
+      "  O wins"->PrintLine();
+    }
+    else {
+      "  a draw"->PrintLine();
+    };
+  }
+
+  function : Choose(player : Base, state : GameState) ~ Int {
+    if(player->TypeOf(Minimax)) {
+      return player->As(Minimax)->FindBestMove(state);
+    };
+    return player->As(MonteCarloTreeSearch)->FindBestMove(state);
+  }
+}
+
+# A tic-tac-toe position. The nine squares are numbered 0 to 8, row by row; a
+# move is the number of the square to take. X is the maximizer and moves first.
+class Board implements GameState {
+  @squares : Int[];     # 0 empty, 1 X, 2 O
+  @x_to_move : Bool;
+
+  New() {
+    @squares := Int->New[9];
+    @x_to_move := true;
+  }
+
+  New(squares : Int[], x_to_move : Bool) {
+    @squares := squares;
+    @x_to_move := x_to_move;
+  }
+
+  # the legal moves are the empty squares, none once somebody has won
+  method : public : GetMoves() ~ Int[] {
+    if(Winner() <> 0) {
+      return Int->New[0];
+    };
+
+    count := 0;
+    each(i : 9) {
+      if(@squares[i] = 0) {
+        count += 1;
+      };
+    };
+
+    moves := Int->New[count];
+    at := 0;
+    each(i : 9) {
+      if(@squares[i] = 0) {
+        moves[at] := i;
+        at += 1;
+      };
+    };
+    return moves;
+  }
+
+  # a move makes a NEW board; the search keeps the old one to try other moves
+  method : public : Apply(move : Int) ~ GameState {
+    next := Int->New[9];
+    each(i : 9) {
+      next[i] := @squares[i];
+    };
+    next[move] := @x_to_move ? 1 : 2;
+    return Board->New(next, <>@x_to_move);
+  }
+
+  method : public : IsTerminal() ~ Bool {
+    return GetMoves()->Size() = 0;
+  }
+
+  # +1 when X has won, -1 when O has, 0 otherwise
+  method : public : Evaluate() ~ Float {
+    winner := Winner();
+    if(winner = 1) {
+      return 1.0;
+    }
+    else if(winner = 2) {
+      return -1.0;
+    };
+    return 0.0;
+  }
+
+  method : public : IsMaximizing() ~ Bool {
+    return @x_to_move;
+  }
+
+  # 1 or 2 for the player with three in a row, 0 for nobody
+  method : Winner() ~ Int {
+    # the eight lines, three squares each, as one flat array
+    lines := [0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 3, 6, 1, 4, 7, 2, 5, 8, 0, 4, 8, 2, 4, 6];
+    for(i := 0; i < 24; i += 3;) {
+      a := @squares[lines[i]];
+      if(a <> 0 & a = @squares[lines[i + 1]] & a = @squares[lines[i + 2]]) {
+        return a;
+      };
+    };
+    return 0;
+  }
+
+  method : public : Show() ~ Nil {
+    marks := [".", "X", "O"];
+    each(r : 3) {
+      line := "  ";
+      each(c : 3) {
+        line += marks[@squares[r * 3 + c]];
+      };
+      line->PrintLine();
+    };
+  }
+}
+```
+
+```text
+obc -src ai_tictactoe.obs -lib ai
+obr ai_tictactoe.obe
+```
+
+```text
+Minimax (X) against Minimax (O)
+  XXO
+  OOX
+  XOX
+  a draw
+
+Minimax (X) against Monte Carlo tree search (O, 2000 playouts)
+  XXO
+  OOX
+  XXO
+  a draw
+
+Monte Carlo tree search (X, 2000 playouts) against Minimax (O)
+  OXO
+  XXO
+  XOX
+  a draw
+```
+
+Tic-tac-toe is a draw with correct play, and all three games are draws. Minimax at depth 9 sees
+the whole game from the first move; the Monte Carlo searcher, which only samples, held a draw
+on both sides here (with this seed and 2000 playouts). Ties between equally good moves resolve to the first
+in `GetMoves()` order, so a search with the same inputs always chooses the same move.
+
+Things to notice:
+
+- `Evaluate()` is only called on finished games here; the board scores `0.0` until somebody
+  wins. For a game too big to search to the end (chess, checkers), `Evaluate()` is where your
+  knowledge goes: count material, mobility, position.
+- `Minimax->GetNodesSearched()` reports how many positions the last search visited, which is
+  how you compare a depth setting against its cost.
+- Depth is the cost knob for `Minimax`, playouts for `MonteCarloTreeSearch`. Monte Carlo search
+  needs no evaluation function beyond who won, which is why it is the one to try first on a
+  game you have just described.
+
+## A complete game: checkers with ten levels
+
+[`programs/examples/checkers`](../../programs/examples/checkers/) is a full English-draughts
+game in an SDL2 window that uses this library. Levels 4 to 6 are the library's `Minimax` at 3,
+4 and 6 plies; levels 7 and 8 use the example's own alpha-beta search (move ordering, jump
+extension), and levels 9 and 10 add iterative deepening and an evaluation the program tuned by
+playing itself. The wrapper that lets the library search checkers is `CkState`, a
+`GameState`, and its tests check that `MonteCarloTreeSearch` takes a free piece. The move
+generator is checked against the published perft counts, and a headless 288-check test runs in
+the regression suite. The example also generates its music (hip-hop and modern-beat styles) as
+it plays. Its [README](../../programs/examples/checkers/README.md) has the rules, the table of
+levels, a tournament between neighbouring levels and how the learning works.
+
+```text
+cd programs/examples/checkers
+obc -src checkers_engine.obs,checkers_game.obs,checkers_ai.obs,checkers_logic.obs,checkers_draw.obs,checkers_chars.obs,checkers_fx.obs,checkers_music.obs,checkers_audio.obs,checkers.obs -lib sdl2,sdl_game,json,ai,gen_collect -dest checkers.obe
+obr checkers.obe
+```
+
+It opens a window, so it needs a display.
+
+## Where next
+
+- [`docs/AI.md`](../AI.md) and the [AI & ML developer guide](https://www.objeck.org/ai_guide.html)
+  for model-based AI.
+- The API reference for `System.AI` at <https://www.objeck.org/api/latest/>.

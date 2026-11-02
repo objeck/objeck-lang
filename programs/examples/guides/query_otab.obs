@@ -50,12 +50,12 @@ class QueryOtab {
     one := OtabFile->New(path);
     if(one->IsOpen()) {
       part := one->Read(["celsius"]);
-      "one column:  {$(one->GetBytesRead())} of {$(one->GetFileSize())} bytes read"->PrintLine();
+      "one column:  {$(part->Size())} rows, {$(one->GetBytesRead())} of {$(one->GetFileSize())} bytes read"->PrintLine();
     };
     all := OtabFile->New(path);
     if(all->IsOpen()) {
       part := all->Read();
-      "all columns: {$(all->GetBytesRead())} of {$(all->GetFileSize())} bytes read"->PrintLine();
+      "all columns: {$(part->Size())} rows, {$(all->GetBytesRead())} of {$(all->GetFileSize())} bytes read"->PrintLine();
     };
 
     # --- SQL names a table in a catalog; a loaded .otab goes in with Add ---

@@ -11,7 +11,7 @@
 #   - ReadFile returns Nil for a file it cannot read, and a parser built from
 #     Nil is simply a parser whose Parse() is false
 #   - TextToElement returns Nil for text that is not JSON
-#   - XmlParser->FindElements after a failed Parse is an empty vector
+#   - XmlParser->FindElements on text that did not parse is an empty vector
 #   - a pattern that is bad (Nil, a repeat count above 1000, {2,1}) is not OK
 #     and matches nothing
 #   - matching Nil text matches nothing

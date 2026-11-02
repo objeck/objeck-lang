@@ -1,0 +1,84 @@
+#~
+# compile: obc -src data_basics.obs -lib json,xml,regex
+# run:     obr data_basics.obe
+#
+# The same few facts, read three ways: a JSON document, an XML document and
+# a line of text. Each part parses, picks values out, and builds or rewrites
+# something. data_bad_input.obs shows what happens when the input is wrong.
+#
+# Guide: docs/guides/data_and_text.md
+~#
+
+use Data.JSON;
+use Data.XML;
+use Query.RegEx;
+
+class DataBasics {
+  function : Main(args : String[]) ~ Nil {
+    Json();
+    Xml();
+    Regex();
+  }
+
+  function : Json() ~ Nil {
+    "-- JSON --"->PrintLine();
+
+    # TextToElement parses text and returns the root, or Nil if it is not JSON
+    root := JsonParser->TextToElement("{\"city\": \"Oslo\", \"temps\": [-3.5, 0.0, 4.25], \"snow\": true}");
+    city := root->Get("city")->GetString();
+    snow := root->Get("snow")->GetBool();
+    temps := root->Get("temps");
+    "{$city}: snow {$snow}, {$(temps->Size())} readings, first {$(temps->Get(0)->GetFloat())}"->PrintLine();
+
+    # build a document and write it as text (object fields come out sorted)
+    doc := JsonElement->New(JsonElement->JsonType->OBJECT);
+    doc->Insert("name", "Ada");
+    doc->Insert("age", 36);
+    languages := JsonElement->New(JsonElement->JsonType->ARRAY);
+    languages->Add("en");
+    languages->Add("fr");
+    doc->Insert("languages", languages);
+    doc->ToString()->PrintLine();
+  }
+
+  function : Xml() ~ Nil {
+    "-- XML --"->PrintLine();
+
+    text := "<library><book year=\"1984\"><title>Neuromancer</title></book>";
+    text += "<book year=\"1992\"><title>Snow Crash</title></book></library>";
+    parser := XmlParser->New(text);
+    if(<>parser->Parse()) {
+      "parse error: {$(parser->GetError())}"->PrintLine();
+      return;
+    };
+
+    # a path names each level from the root; every match comes back
+    titles := parser->FindElements("/library/book/title");
+    each(i : titles) {
+      "  title: {$(titles->Get(i)->GetContent())}"->PrintLine();
+    };
+
+    # an attribute is read from its element
+    books := parser->GetRoot()->GetChildren("book");
+    year := books->Get(1)->GetAttribute("year")->GetValue();
+    "second book is from {$year}"->PrintLine();
+  }
+
+  function : Regex() ~ Nil {
+    "-- RegEx --"->PrintLine();
+
+    # a backslash in a pattern is written twice inside an Objeck string
+    pattern := RegEx->New("(\\d{4})-(\\d{2})-(\\d{2})");
+    text := "released 2026-10-31, patched 2026-11-02";
+    found := pattern->Find(text);
+    each(i : found) {
+      match := found->Get(i);
+      "  {$(match->GetValue())} -> month {$(match->GetGroup(2))}"->PrintLine();
+    };
+
+    # replace every match
+    digits := RegEx->New("\\d");
+    hidden := digits->ReplaceAll("call 555-0199", "#");
+    "  {$hidden}"->PrintLine();
+  }
+}
