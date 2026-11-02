@@ -210,6 +210,11 @@ bundle Web.Server {
 	    function : native : ParseMultipartEncoding(encoded : Byte[]) ~ Vector<ContentType> {
 	        multipart_content := Vector->New()<ContentType>;
 
+	        # no body at all, as from a request with no content
+	        if(encoded = Nil) {
+	            return Nil;
+	        };
+
 	        # read encoding string
 	        marker_bytes := ReadLine(0, encoded);
 	        if(marker_bytes = Nil) {
@@ -253,7 +258,11 @@ bundle Web.Server {
 	                    if(content_str_index > 0) {
 	                        header_name := content_str->SubString(content_str_index);
 	                        content_str_index += 2;
-	                        header_value := content_str->SubString(content_str_index, content_str->Size() - content_str_index);
+	                        # a header with nothing after the colon has no value
+	                        header_value := "";
+	                        if(content_str_index < content_str->Size()) {
+	                            header_value := content_str->SubString(content_str_index, content_str->Size() - content_str_index);
+	                        };
 	                        
 	                        if(<>header_name->IsEmpty() & <>header_value->IsEmpty()) {
 	                            headers->Insert(header_name, header_value);
@@ -274,6 +283,11 @@ bundle Web.Server {
 	            
 	            # read content
 	            content_size := marker_indexes[i + 1] - boundry_index - 2;
+
+	            # the next boundary comes before the content starts: a part cut short
+	            if(content_size < 0 | boundry_index + content_size > encoding_size) {
+	                return Nil;
+	            };
 	            
 	            content_bytes := Byte->New[content_size];
 	            Runtime->Copy(content_bytes, 0, encoded, boundry_index, content_size);

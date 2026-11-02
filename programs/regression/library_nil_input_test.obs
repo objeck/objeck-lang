@@ -1,0 +1,192 @@
+# EXTRA_LIBS: regex,rss,net,net_server,web_server
+#~
+Library entry points that take text must treat Nil, and a document that is not what it
+should be, as a failure the caller can test for, not as a Nil dereference. Offline: the
+inputs are literals and small files in the working directory.
+
+Nil is what FileReader->ReadFile returns for a file that cannot be read, so each of these
+ended the program with "Attempting to dereference a 'Nil' memory instance":
+- Data.JSON.JsonParser and Data.XML.XmlParser built from Nil (the String, Char[] and Byte[]
+  constructors), through the usual TextToElement(FileReader->ReadFile(path)).
+- Data.XML.XmlParser->FindElements on a parser whose Parse() had failed.
+- Query.RegEx.RegEx built from a Nil pattern, and its matching and replacing methods given
+  a Nil string (or a Nil replacement).
+- Data.RSS.RSSReader on an XML document with no RSS channel, or a channel without a title,
+  description or link: IsOk() was true, GetChannel() was Nil, and the documented
+  "if(reader->IsOk()) { reader->GetChannel()->GetTitle() }" ended the program.
+- Web.Server.Request->ParseMultipartEncoding on a Nil body, on a header with nothing after
+  its colon, and on a part whose content ends before it starts ("Array allocation size
+  overflow"), all reachable from a POST body.
+~#
+
+use Collection;
+use Data.JSON;
+use Data.XML;
+use Web.RSS;
+use Query.RegEx;
+use System.IO.Filesystem;
+use Web.Server;
+
+class LibraryNilInputTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(<>ok) {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+
+    TestJson();
+    TestXml();
+    TestRegEx();
+    TestRss();
+    TestMultipart();
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    "PASS: library nil input handling"->PrintLine();
+  }
+
+  function : TestJson() ~ Nil {
+    "-- JSON --"->PrintLine();
+
+    missing := FileReader->ReadFile("no_such_dir_zz/missing.json");
+    Check("an unreadable file gives Nil text", missing = Nil);
+    Check("TextToElement(Nil) is Nil", JsonParser->TextToElement(missing) = Nil);
+
+    parser := JsonParser->New(missing);
+    Check("Parse() of Nil text fails", <>parser->Parse());
+
+    Check("Parse() of Nil characters fails", <>JsonParser->New(Nil->As(Char[]))->Parse());
+    Check("Parse() of Nil bytes fails", <>JsonParser->New(Nil->As(Byte[]))->Parse());
+
+    # a document that is there still parses
+    root := JsonParser->TextToElement("{\"k\":1}");
+    Check("a valid document still parses", root <> Nil & root->Get("k")->GetInt() = 1);
+  }
+
+  function : TestXml() ~ Nil {
+    "-- XML --"->PrintLine();
+
+    missing := FileReader->ReadFile("no_such_dir_zz/missing.xml");
+    Check("TextToElement(Nil) is Nil", XmlParser->TextToElement(missing) = Nil);
+
+    parser := XmlParser->New(missing);
+    Check("Parse() of Nil text fails", <>parser->Parse());
+    Check("Parse() of Nil characters fails", <>XmlParser->New(Nil->As(Char[]))->Parse());
+
+    # searching a document that did not parse finds nothing
+    found := parser->FindElements("/a/b")<XmlElement>;
+    Check("FindElements on a failed parse is empty", found <> Nil & found->Size() = 0);
+
+    bad := XmlParser->New("<a><b></a>");
+    Check("malformed XML does not parse", <>bad->Parse());
+
+    good := XmlParser->New("<a><b>x</b></a>");
+    Check("valid XML parses", good->Parse());
+    found := good->FindElements("/a/b")<XmlElement>;
+    Check("FindElements still finds elements", found <> Nil & found->Size() = 1);
+  }
+
+  function : TestRegEx() ~ Nil {
+    "-- RegEx --"->PrintLine();
+
+    re := RegEx->New(Nil->As(String));
+    Check("a Nil pattern is not OK", <>re->IsOk());
+    Check("a Nil pattern matches nothing", <>re->MatchExact("abc"));
+    Check("a Nil pattern finds nothing", re->FindFirst("abc") = Nil);
+
+    digits := RegEx->New("\\d+");
+    Check("a valid pattern is OK", digits->IsOk());
+
+    text := Nil->As(String);
+    Check("MatchExact(Nil) is false", <>digits->MatchExact(text));
+    matched := digits->Match(text);
+    Check("Match(Nil) is the empty string", matched <> Nil & matched->IsEmpty());
+    Check("FindFirst(Nil) is Nil", digits->FindFirst(text) = Nil);
+    all := digits->Find(text)<Result>;
+    Check("Find(Nil) is empty", all <> Nil & all->Size() = 0);
+    Check("ReplaceFirst(Nil, x) is Nil", digits->ReplaceFirst(text, "x") = Nil);
+    Check("ReplaceAll(Nil, x) is Nil", digits->ReplaceAll(text, "x") = Nil);
+
+    # a Nil replacement removes the match
+    Check("ReplaceAll with a Nil replacement", digits->ReplaceAll("ab12", Nil->As(String))->Equals("ab"));
+    Check("ReplaceFirst with a Nil replacement", digits->ReplaceFirst("ab12", Nil->As(String))->Equals("ab"));
+
+    # and ordinary use is unchanged
+    Check("ReplaceAll", digits->ReplaceAll("a1b22", "#")->Equals("a#b#"));
+    Check("Find", digits->Find("a1b22")<Result>->Size() = 2);
+  }
+
+  function : TestRss() ~ Nil {
+    "-- RSS --"->PrintLine();
+
+    Write("nil_input_good.rss", "<rss><channel><title>T</title><description>D</description><link>L</link><item><title>i</title><description>d</description><link>l</link></item></channel></rss>");
+    Write("nil_input_no_title.rss", "<rss><channel><description>D</description><link>L</link></channel></rss>");
+    Write("nil_input_atom.rss", "<feed><title>T</title><entry><title>e</title></entry></feed>");
+    Write("nil_input_empty.rss", "");
+
+    good := RSSReader->New("nil_input_good.rss");
+    Check("a complete feed is OK", good->IsOk());
+    Check("a complete feed has a channel", good->GetChannel() <> Nil & good->GetChannel()->GetTitle()->Equals("T"));
+    Check("a complete feed has its post", good->GetPosts() <> Nil & good->GetPosts()->Size() = 1);
+
+    names := ["nil_input_no_title.rss", "nil_input_atom.rss", "nil_input_empty.rss", "no_such_dir_zz/missing.rss"];
+    each(i : names) {
+      reader := RSSReader->New(names[i]);
+      Check("{$names[i]} is not a loaded feed", <>reader->IsOk());
+      Check("{$names[i]} has no channel to read", reader->GetChannel() = Nil);
+      Check("{$names[i]} has no posts", reader->GetPosts() = Nil);
+
+      # the documented way to read a feed
+      if(reader->IsOk()) {
+        reader->GetChannel()->GetTitle()->PrintLine();
+      };
+    };
+
+    File->Delete("nil_input_good.rss");
+    File->Delete("nil_input_no_title.rss");
+    File->Delete("nil_input_atom.rss");
+    File->Delete("nil_input_empty.rss");
+  }
+
+  function : Write(name : String, text : String) ~ Nil {
+    writer := FileWriter->New(name);
+    writer->WriteString(text);
+    writer->Close();
+  }
+
+  function : Parts(text : String) ~ Vector<ContentType> {
+    return Request->ParseMultipartEncoding(text->ToByteArray())<ContentType>;
+  }
+
+  function : TestMultipart() ~ Nil {
+    "-- multipart --"->PrintLine();
+
+    Check("a Nil body is not multipart", Request->ParseMultipartEncoding(Nil->As(Byte[]))<ContentType> = Nil);
+
+    # a header with nothing after its colon
+    parts := Parts("--x\r\nA:\r\n\r\nhi\r\n--x--\r\n");
+    Check("a header without a value does not end the program", true);
+
+    # the next boundary comes at once, so the part has no room for its content
+    parts := Parts("--x\r\n\r\n--x--\r\n");
+    Check("a part cut short is rejected", parts = Nil);
+    parts := Parts("--x\r\nA: b\r\n\r\n--x--\r\n");
+    Check("a part with headers and no content is rejected", parts = Nil);
+
+    # a well-formed body still parses
+    parts := Parts("--x\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\nhello\r\n--x--\r\n");
+    Check("a well-formed body parses", parts <> Nil & parts->Size() = 1);
+    if(parts <> Nil & parts->Size() = 1) {
+      Check("its content is intact", String->New(parts->Get(0)->GetContent())->Equals("hello"));
+    };
+  }
+}
