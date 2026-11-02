@@ -600,10 +600,11 @@ class CkTests {
     Check(u->FromJson("{\"level\": 99, \"piece_set\": -4, \"volume\": 400, \"human\": \"x\"}"), "settings: odd values parse");
     Check(u->Level() = 10 & u->PieceSet() = 0 & u->Volume() = 100 & u->Human() = 0, "settings: out-of-range values are clamped");
     Check(u->FromJson("{}") & u->Level() = 10, "settings: an empty object keeps what it had");
-    u->SetPieceSet(7);
-    Check(u->PieceSet() = 7, "settings: eight piece sets, the last is number 7");
-    u->SetPieceSet(8);
-    Check(u->PieceSet() = 7 & CkSettings->SetNames()->Size() = 8, "settings: piece sets are clamped to the eight that exist");
+    u->SetPieceSet(9);
+    Check(u->PieceSet() = 9, "settings: ten piece sets, the last is number 9");
+    u->SetPieceSet(10);
+    Check(u->PieceSet() = 9 & CkSettings->SetNames()->Size() = 10, "settings: piece sets are clamped to the ten that exist");
+    Check(CkSettings->New()->PieceSet() = 8, "settings: the first neo set is the default");
 
     # saved to a file and read back
     path := "checkers_test_settings.json";

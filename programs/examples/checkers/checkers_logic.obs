@@ -26,7 +26,7 @@ class CkSettings {
   @view : Int;          # camera: 0 flat, 1 slanted (see CkView)
 
   New() {
-    @piece_set := 0;
+    @piece_set := 8;
     @level := 4;
     @human := 0;
     @flip := false;
@@ -41,7 +41,7 @@ class CkSettings {
   }
 
   function : SetNames() ~ String[] {
-    return ["Classic", "Glossy", "Engraved", "Modern", "Critters", "Monsters", "Snacks", "Space"];
+    return ["Classic", "Glossy", "Engraved", "Modern", "Critters", "Monsters", "Snacks", "Space", "Neo Duck", "Neo Glitch"];
   }
 
   method : public : PieceSet() ~ Int {
@@ -49,7 +49,7 @@ class CkSettings {
   }
 
   method : public : SetPieceSet(v : Int) ~ Nil {
-    @piece_set := Clamp(v, 0, 7);
+    @piece_set := Clamp(v, 0, 9);
   }
 
   method : public : Level() ~ Int {
@@ -789,6 +789,9 @@ class CkMenuLayout {
 
     # cards: four to a row
     @cols := 4;
+    if(cards > 8) {
+      @cols := 5;
+    };
     grid_rows := (cards + @cols - 1) / @cols;
     @card_w := (left_w - (@cols - 1) * @gap) / @cols;
     @card_h := @card_w * 70 / 100 + 20;

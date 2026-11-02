@@ -2121,7 +2121,7 @@ class CkSettings {
   @view : Int;          # camera: 0 flat, 1 slanted (see CkView)
 
   New() {
-    @piece_set := 0;
+    @piece_set := 8;
     @level := 4;
     @human := 0;
     @flip := false;
@@ -2136,7 +2136,7 @@ class CkSettings {
   }
 
   function : SetNames() ~ String[] {
-    return ["Classic", "Glossy", "Engraved", "Modern", "Critters", "Monsters", "Snacks", "Space"];
+    return ["Classic", "Glossy", "Engraved", "Modern", "Critters", "Monsters", "Snacks", "Space", "Neo Duck", "Neo Glitch"];
   }
 
   method : public : PieceSet() ~ Int {
@@ -2144,7 +2144,7 @@ class CkSettings {
   }
 
   method : public : SetPieceSet(v : Int) ~ Nil {
-    @piece_set := Clamp(v, 0, 7);
+    @piece_set := Clamp(v, 0, 9);
   }
 
   method : public : Level() ~ Int {
@@ -2884,6 +2884,9 @@ class CkMenuLayout {
 
     # cards: four to a row
     @cols := 4;
+    if(cards > 8) {
+      @cols := 5;
+    };
     grid_rows := (cards + @cols - 1) / @cols;
     @card_w := (left_w - (@cols - 1) * @gap) / @cols;
     @card_h := @card_w * 70 / 100 + 20;
@@ -5129,10 +5132,11 @@ class CkTests {
     Check(u->FromJson("{\"level\": 99, \"piece_set\": -4, \"volume\": 400, \"human\": \"x\"}"), "settings: odd values parse");
     Check(u->Level() = 10 & u->PieceSet() = 0 & u->Volume() = 100 & u->Human() = 0, "settings: out-of-range values are clamped");
     Check(u->FromJson("{}") & u->Level() = 10, "settings: an empty object keeps what it had");
-    u->SetPieceSet(7);
-    Check(u->PieceSet() = 7, "settings: eight piece sets, the last is number 7");
-    u->SetPieceSet(8);
-    Check(u->PieceSet() = 7 & CkSettings->SetNames()->Size() = 8, "settings: piece sets are clamped to the eight that exist");
+    u->SetPieceSet(9);
+    Check(u->PieceSet() = 9, "settings: ten piece sets, the last is number 9");
+    u->SetPieceSet(10);
+    Check(u->PieceSet() = 9 & CkSettings->SetNames()->Size() = 10, "settings: piece sets are clamped to the ten that exist");
+    Check(CkSettings->New()->PieceSet() = 8, "settings: the first neo set is the default");
 
     # saved to a file and read back
     path := "checkers_test_settings.json";

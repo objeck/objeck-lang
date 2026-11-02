@@ -134,12 +134,21 @@ class CkText {
 
 # The look of the game: palettes, the four piece sets, crowns, buttons.
 class CkDraw {
+  @pulse : static : Int;
+
   # ---- palettes ----
 
   # colours of a board theme, three numbers each (red, green, blue):
   # 0 light square, 1 dark square, 2 frame, 3 backdrop, 4 frame labels,
   # 5 panel, 6 accent
   function : Theme(set : Int) ~ Int[] {
+    if(set = 8) {
+      # glassy dark squares over a circuit board: cyan neon trim
+      return [44, 66, 108,  8, 14, 30,  8, 12, 24,  4, 6, 14,  110, 230, 255,  14, 24, 44,  40, 240, 255];
+    };
+    if(set = 9) {
+      return [62, 42, 108,  12, 8, 30,  12, 8, 28,  6, 4, 16,  255, 130, 230,  24, 16, 48,  255, 60, 210];
+    };
     if(set = 4) {
       return [250, 240, 214,  150, 190, 110,  70, 110, 50,  26, 40, 22,  214, 232, 180,  48, 74, 38,  255, 180, 70];
     };
@@ -493,8 +502,123 @@ class CkDraw {
     r->FilledPolygonColor(vx, vy, Col(red, green, blue, alpha));
   }
 
+
+  # ---- the tech-neo boards (sets 8 and 9): dark glass over a circuit board ----
+
+  # the time, in milliseconds, that the grid pulse runs on; 0 stops it (still boards)
+  function : SetPulse(ms : Int) ~ Nil {
+    @pulse := ms;
+  }
+
+  # is this one of the neon sets?
+  function : IsNeo(set : Int) ~ Bool {
+    return set >= 8;
+  }
+
+  # a line between two points of the board, in board coordinates, through the camera
+  function : BoardLine(r : Renderer, view : CkView, u0 : Float, v0 : Float, u1 : Float, v1 : Float, thick : Int, col : Color) ~ Nil {
+    r->ThickLineColor(view->X(u0, v0), view->Y(u0, v0), view->X(u1, v1), view->Y(u1, v1), thick, col);
+  }
+
+  # a rectangle of the board in neon: wide faint strokes under narrower bright ones, a bloom
+  function : NeonRect(r : Renderer, view : CkView, u0 : Float, v0 : Float, u1 : Float, v1 : Float, red : Int, green : Int, blue : Int, alpha : Int) ~ Nil {
+    each(k : 4) {
+      th := 9 - k * 2;
+      a := alpha * (12 + k * 22) / 255;
+      if(k = 3) {
+        a := alpha;
+        th := 1;
+      };
+      BoardLine(r, view, u0, v0, u1, v0, th, Col(red, green, blue, a));
+      BoardLine(r, view, u1, v0, u1, v1, th, Col(red, green, blue, a));
+      BoardLine(r, view, u1, v1, u0, v1, th, Col(red, green, blue, a));
+      BoardLine(r, view, u0, v1, u0, v0, th, Col(red, green, blue, a));
+    };
+  }
+
+  # the squares: glassy navy for the unused squares, a circuit board for the playing ones,
+  # a grid of neon hairlines, faint scanlines, and a slow wave of light that sweeps the rows
+  function : NeoSquares(r : Renderer, set : Int, view : CkView) ~ Nil {
+    t := Theme(set);
+    Region(r, view, 0.0, 0.0, 8.0, 8.0, t[3], t[4], t[5], 255);
+    each(sr : 8) {
+      each(sc : 8) {
+        if((sr + sc) % 2 = 0) {
+          # unused squares: smoked glass with a sheen along the top edge
+          Cell(r, view, sr, sc, 0.0, t[0], t[1], t[2], 255, true);
+          Cell(r, view, sr, sc, 0.06, t[0] + 10, t[1] + 12, t[2] + 18, 90, true);
+        }
+        else {
+          # playing squares: a few traces and a via, never the same two squares alike
+          Cell(r, view, sr, sc, 0.0, t[3] + 4, t[4] + 8, t[5] + 14, 255, true);
+          h := (sr * 7 + sc * 13) % 5;
+          u := sc->As(Float);
+          v := sr->As(Float);
+          trace := Col(t[18], t[19], t[20], 46);
+          if(h = 0) {
+            BoardLine(r, view, u + 0.15, v + 0.5, u + 0.55, v + 0.5, 2, trace);
+            BoardLine(r, view, u + 0.55, v + 0.5, u + 0.55, v + 0.85, 2, trace);
+            r->FilledCircleColor(view->X(u + 0.55, v + 0.85), view->Y(u + 0.55, v + 0.85), 3, Col(t[18], t[19], t[20], 70));
+          }
+          else if(h = 1) {
+            BoardLine(r, view, u + 0.5, v + 0.15, u + 0.5, v + 0.5, 2, trace);
+            BoardLine(r, view, u + 0.5, v + 0.5, u + 0.85, v + 0.5, 2, trace);
+            r->FilledCircleColor(view->X(u + 0.85, v + 0.5), view->Y(u + 0.85, v + 0.5), 3, Col(t[18], t[19], t[20], 70));
+          }
+          else if(h = 2) {
+            BoardLine(r, view, u + 0.2, v + 0.8, u + 0.5, v + 0.5, 2, trace);
+            BoardLine(r, view, u + 0.5, v + 0.5, u + 0.8, v + 0.8, 2, trace);
+          }
+          else if(h = 3) {
+            BoardLine(r, view, u + 0.15, v + 0.3, u + 0.85, v + 0.3, 2, trace);
+            r->FilledCircleColor(view->X(u + 0.15, v + 0.3), view->Y(u + 0.15, v + 0.3), 3, Col(t[18], t[19], t[20], 70));
+          };
+          # the wave of light: slow (a swell every four seconds or so), never a flash
+          if(@pulse > 0) {
+            wave := ((@pulse->As(Float) / 640.0) - sr->As(Float) * 0.7)->Sin();
+            if(wave > 0.0) {
+              Cell(r, view, sr, sc, 0.0, t[18], t[19], t[20], (22.0 * wave)->As(Int), true);
+            };
+          };
+        };
+        Cell(r, view, sr, sc, 0.0, t[18], t[19], t[20], 38, false);
+      };
+    };
+    # scanlines: faint dark lines, eight to a square
+    each(i : 64) {
+      v := i->As(Float) / 8.0;
+      r->LineColor(view->X(0.0, v), view->Y(0.0, v), view->X(8.0, v), view->Y(8.0, v), Col(0, 0, 0, 22));
+    };
+  }
+
+  # the frame: a dark slab with a neon edge, brighter at the playing area
+  function : NeoFrame(r : Renderer, set : Int, view : CkView) ~ Nil {
+    t := Theme(set);
+    e := 0.62;
+    th := view->Thick(8.0 + e);
+    vx := Int->New[4];
+    vy := Int->New[4];
+    vx[0] := view->X(0.0 - e, 8.0 + e);
+    vy[0] := view->Y(0.0 - e, 8.0 + e);
+    vx[1] := view->X(8.0 + e, 8.0 + e);
+    vy[1] := view->Y(8.0 + e, 8.0 + e);
+    vx[2] := vx[1];
+    vy[2] := vy[1] + th;
+    vx[3] := vx[0];
+    vy[3] := vy[0] + th;
+    r->FilledPolygonColor(vx, vy, Col(t[6] / 2, t[7] / 2, t[8] / 2, 255));
+    r->AAPolygonColor(vx, vy, Col(t[18], t[19], t[20], 120));
+    Region(r, view, 0.0 - e, 0.0 - e, 8.0 + e, 8.0 + e, t[6], t[7], t[8], 255);
+    NeonRect(r, view, 0.0 - e, 0.0 - e, 8.0 + e, 8.0 + e, t[18], t[19], t[20], 200);
+    NeonRect(r, view, -0.04, -0.04, 8.04, 8.04, t[18], t[19], t[20], 255);
+  }
+
   # the squares: the whole board in the dark colour, then the light squares on it
   function : SquaresV(r : Renderer, set : Int, view : CkView) ~ Nil {
+    if(set >= 8) {
+      NeoSquares(r, set, view);
+      return;
+    };
     t := Theme(set);
     Region(r, view, 0.0, 0.0, 8.0, 8.0, t[3], t[4], t[5], 255);
     each(sr : 8) {
@@ -508,6 +632,10 @@ class CkDraw {
 
   # the frame round the board and the thickness of the slab it sits on
   function : FrameV(r : Renderer, set : Int, view : CkView) ~ Nil {
+    if(set >= 8) {
+      NeoFrame(r, set, view);
+      return;
+    };
     t := Theme(set);
     e := 0.62;
     th := view->Thick(8.0 + e);

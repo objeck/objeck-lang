@@ -992,6 +992,12 @@ class CheckersApp {
   method : Draw() ~ Nil {
     @view->SetShift(@shake_x, @shake_y);
     set := @settings->PieceSet();
+    if(Fx()) {
+      CkDraw->SetPulse(@now + 1);
+    }
+    else {
+      CkDraw->SetPulse(0);
+    };
     t := CkDraw->Theme(set);
     @r->SetDrawColor(t[9], t[10], t[11], 255);
     @r->Clear();
@@ -1212,7 +1218,7 @@ class CheckersApp {
     top := BoardTop() + @shake_y;
     size := Size();
     flip := @ctl->Flipped();
-    if(@view->Tilted()) {
+    if(@view->Tilted() | CkDraw->IsNeo(set)) {
       CkDraw->FrameV(@r, set, @view);
       CkDraw->SquaresV(@r, set, @view);
     }
@@ -1292,8 +1298,13 @@ class CheckersApp {
   method : TintSquare(sq : Int, red : Int, green : Int, blue : Int, alpha : Int) ~ Nil {
     sr := CkController->ScreenRow(sq, @ctl->Flipped());
     sc := CkController->ScreenCol(sq, @ctl->Flipped());
-    if(@view->Tilted()) {
+    if(@view->Tilted() | CkDraw->IsNeo(@settings->PieceSet())) {
       CkDraw->Cell(@r, @view, sr, sc, 0.0, red, green, blue, alpha, true);
+      if(CkDraw->IsNeo(@settings->PieceSet())) {
+        # neon highlights glow: a bright hairline and a wider faint one round the wash
+        CkDraw->Cell(@r, @view, sr, sc, 0.02, red, green, blue, 235, false);
+        CkDraw->Cell(@r, @view, sr, sc, 0.07, red, green, blue, 110, false);
+      };
     }
     else {
       CkDraw->Tint(@r, BoardLeft() + @shake_x, BoardTop() + @shake_y, Size(), sr, sc, red, green, blue, alpha);
@@ -1304,7 +1315,7 @@ class CheckersApp {
   method : OutlineSquare(sq : Int, thick : Int, red : Int, green : Int, blue : Int, alpha : Int) ~ Nil {
     sr := CkController->ScreenRow(sq, @ctl->Flipped());
     sc := CkController->ScreenCol(sq, @ctl->Flipped());
-    if(@view->Tilted()) {
+    if(@view->Tilted() | CkDraw->IsNeo(@settings->PieceSet())) {
       each(i : thick) {
         CkDraw->Cell(@r, @view, sr, sc, 0.02 + 0.03 * i->As(Float), red, green, blue, alpha, false);
       };
