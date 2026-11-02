@@ -69,6 +69,12 @@ def scenarios():
           "main.obs": os.path.join(TESTS_DIR, "ws_multi_a", "main.obs")},
          {"files": ["types.obs", "main.obs"], "libs": ["gen_collect.obl"]},
          "main.obs", "AlphaShape->New"),
+        # the issue's second measurement: a small main.obs, edited, with one 2.5k-line
+        # file beside it in build.json
+        ("main_with_json", "6-line main.obs edited, lib_src/json.obs beside it in build.json, gen_collect",
+         {"main.obs": TINY_MAIN,
+          "json.obs": os.path.join(REPO_ROOT, "core", "compiler", "lib_src", "json.obs")},
+         {"files": ["json.obs", "main.obs"], "libs": ["gen_collect.obl"]}, "main.obs", "count :="),
         ("json_standalone", "lib_src/json.obs alone (2.5k lines, 13 default libraries)",
          {"json.obs": os.path.join(REPO_ROOT, "core", "compiler", "lib_src", "json.obs")},
          None, "json.obs", "class JsonElement"),

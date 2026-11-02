@@ -51,7 +51,146 @@
 #include "../shared/instrs.h"
 #include "../shared/version.h"
 
+#ifdef _DIAG_LIB
+#include <cstdio>
+#include <cstdlib>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <unordered_map>
+#endif
+
 using namespace instructions;
+
+#ifdef _DIAG_LIB
+/****************************
+ * Library loading in the language server (#1236, phase 1 of
+ * docs/INCREMENTAL_ANALYSIS_DESIGN.md)
+ *
+ * The diagnostics library analyzes a fresh program for every edit, and each
+ * analysis loaded lang.obl and every listed library again. Two things make that
+ * cheaper, and neither is compiled into obc:
+ *
+ * 1. Inflated bytes are cached per process, keyed by the library's path and
+ *    checked against its compressed bytes. A library is still read from disk on
+ *    every load, which is cheap, but inflated only when those bytes differ from
+ *    the cached ones, so a rebuilt library is never served stale whatever its
+ *    size or timestamp. Each load gets its own copy and frees it as before.
+ *
+ * 2. A library method's instructions are not built. They feed code generation
+ *    and nothing else (intermediate.cpp, which this library does not compile),
+ *    and building and freeing them was most of a library's load time. The
+ *    instructions are still read, so the reader keeps its place, but the names
+ *    they carry are skipped rather than decoded.
+ *
+ * OBJECK_LSP_NO_CACHE=1 turns both off, as it turns off the server's program
+ * cache, so that it gives the previous behaviour as a reference.
+ * OBJECK_LSP_LIB_CACHE_VERIFY=1 inflates again on every cache hit and reports
+ * any difference on stderr; with it or OBJECK_LSP_TIMING=1 every load is
+ * reported as an "[lsp-lib-cache]" line.
+ ****************************/
+namespace {
+  struct InflatedLibrary {
+    std::string compressed;
+    std::string inflated;
+  };
+
+  std::mutex inflated_mutex;
+  std::unordered_map<std::wstring, std::shared_ptr<const InflatedLibrary> > inflated_libraries;
+
+  // the first character of a variable's value; '\0' when it is unset or empty
+  char EnvFirst(const char* name)
+  {
+#ifdef _WIN32
+    size_t len = 0; char buf[64];
+    if(getenv_s(&len, buf, sizeof(buf), name) == 0 && len > 1) {
+      return buf[0];
+    }
+    return '\0';
+#else
+    const char* found = std::getenv(name);
+    return found ? found[0] : '\0';
+#endif
+  }
+
+  bool LibraryCacheEnabled()
+  {
+    static const bool enabled = EnvFirst("OBJECK_LSP_NO_CACHE") != '1';
+    return enabled;
+  }
+
+  bool LibraryCacheVerify()
+  {
+    static const bool verify = EnvFirst("OBJECK_LSP_LIB_CACHE_VERIFY") == '1';
+    return verify;
+  }
+
+  // as diags.cpp reads OBJECK_LSP_TIMING
+  bool LibraryCacheReport()
+  {
+    static const bool report = [] {
+      const char timing = EnvFirst("OBJECK_LSP_TIMING");
+      return LibraryCacheVerify() || (timing != '\0' && timing != '0');
+    }();
+    return report;
+  }
+
+  char* CopyOf(const std::string& bytes)
+  {
+    char* copy = static_cast<char*>(malloc(bytes.size() > 0 ? bytes.size() : 1));
+    if(copy && !bytes.empty()) {
+      memcpy(copy, bytes.data(), bytes.size());
+    }
+    return copy;
+  }
+}
+
+// Whether a library method's instructions are built (see above).
+static bool KeepLibraryInstructions()
+{
+  return !LibraryCacheEnabled();
+}
+#else
+static bool KeepLibraryInstructions()
+{
+  return true;
+}
+#endif
+
+/****************************
+ * Inflates a library file's bytes. The caller frees the result; nullptr if
+ * they do not inflate.
+ ****************************/
+static char* InflateLibrary(const char* buffer, size_t buffer_size, unsigned long& dest_len)
+{
+  // new format: [uncmp_size:4][zlib...]; old format: raw zlib (CMF byte = 0x78)
+  // When size LSB == 0x78, bytes[4..5] disambiguate: compress2(Z_BEST_COMPRESSION)
+  // always emits 0x78 0xDA; check (CMF*256+FLG)%31==0 to confirm valid zlib header.
+  uint32_t uncmp_hint = 0;
+  const char* src;
+  unsigned long src_size;
+  const bool zlib_at_4 = buffer_size >= 6 &&
+                          static_cast<uint8_t>(buffer[4]) == 0x78 &&
+                          (0x78u * 256u + static_cast<uint8_t>(buffer[5])) % 31u == 0u;
+  if(static_cast<uint8_t>(buffer[0]) == 0x78 && !zlib_at_4) {
+    src = buffer;
+    src_size = static_cast<unsigned long>(buffer_size);
+  } else {
+    memcpy(&uncmp_hint, buffer, sizeof(uncmp_hint));
+    src = buffer + sizeof(uncmp_hint);
+    src_size = static_cast<unsigned long>(buffer_size - sizeof(uncmp_hint));
+  }
+
+  dest_len = 0;
+  char* out = OutputStream::UncompressZlib(src, src_size, dest_len, uncmp_hint);
+#ifdef _DEBUG
+  if(out) {
+    GetLogger() << L"--- file in: compressed=" << buffer_size << L", uncompressed=" << dest_len << L" ---" << std::endl;
+  }
+#endif
+
+  return out;
+}
 
 /****************************
  * Creates associations with instructions
@@ -871,33 +1010,76 @@ char* Library::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
     // close file
     in.close();
 
-    // new format: [uncmp_size:4][zlib...]; old format: raw zlib (CMF byte = 0x78)
-    // When size LSB == 0x78, bytes[4..5] disambiguate: compress2(Z_BEST_COMPRESSION)
-    // always emits 0x78 0xDA; check (CMF*256+FLG)%31==0 to confirm valid zlib header.
-    uint32_t uncmp_hint = 0;
-    const char* src;
-    unsigned long src_size;
-    const bool zlib_at_4 = buffer_size >= 6 &&
-                            static_cast<uint8_t>(buffer[4]) == 0x78 &&
-                            (0x78u * 256u + static_cast<uint8_t>(buffer[5])) % 31u == 0u;
-    if(static_cast<uint8_t>(buffer[0]) == 0x78 && !zlib_at_4) {
-      src = buffer;
-      src_size = static_cast<unsigned long>(buffer_size);
-    } else {
-      memcpy(&uncmp_hint, buffer, sizeof(uncmp_hint));
-      src = buffer + sizeof(uncmp_hint);
-      src_size = static_cast<unsigned long>(buffer_size - sizeof(uncmp_hint));
+#ifdef _DIAG_LIB
+    if(LibraryCacheEnabled()) {
+      std::shared_ptr<const InflatedLibrary> cached;
+      {
+        std::lock_guard<std::mutex> lock(inflated_mutex);
+        std::unordered_map<std::wstring, std::shared_ptr<const InflatedLibrary> >::iterator found = inflated_libraries.find(filename);
+        if(found != inflated_libraries.end()) {
+          cached = found->second;
+        }
+      }
+
+      if(cached && cached->compressed.size() == buffer_size &&
+         memcmp(cached->compressed.data(), buffer, buffer_size) == 0) {
+        char* out = CopyOf(cached->inflated);
+        if(!out) {
+          free(buffer);
+          throw CompilerFatal(L"Unable to allocate memory for file: '" + filename + L"'");
+        }
+        if(LibraryCacheVerify()) {
+          // checks what is handed out, not the entry it was copied from
+          unsigned long fresh_len = 0;
+          char* fresh = InflateLibrary(buffer, buffer_size, fresh_len);
+          if(!fresh || fresh_len != cached->inflated.size() || memcmp(fresh, out, fresh_len) != 0) {
+            fwprintf(stderr, L"[lsp-lib-cache] MISMATCH %ls\n", filename.c_str());
+            if(fresh) {
+              free(out);
+              out = fresh;
+              fresh = nullptr;
+            }
+          }
+          free(fresh);
+        }
+        if(LibraryCacheReport()) {
+          fwprintf(stderr, L"[lsp-lib-cache] hit %ls\n", filename.c_str());
+          fflush(stderr);
+        }
+        free(buffer);
+        buffer = nullptr;
+        return out;
+      }
+
+      unsigned long dest_len = 0;
+      char* out = InflateLibrary(buffer, buffer_size, dest_len);
+      if(!out) {
+        free(buffer);
+        throw CompilerFatal(L"Unable to uncompress file: " + filename);
+      }
+      std::shared_ptr<InflatedLibrary> entry = std::make_shared<InflatedLibrary>();
+      entry->compressed.assign(buffer, buffer_size);
+      entry->inflated.assign(out, dest_len);
+      {
+        std::lock_guard<std::mutex> lock(inflated_mutex);
+        inflated_libraries[filename] = entry;
+      }
+      if(LibraryCacheReport()) {
+        fwprintf(stderr, L"[lsp-lib-cache] %ls %ls\n", cached ? L"changed" : L"miss", filename.c_str());
+        fflush(stderr);
+      }
+      free(buffer);
+      buffer = nullptr;
+      return out;
     }
+#endif
 
     unsigned long dest_len;
-    char* out = OutputStream::UncompressZlib(src, src_size, dest_len, uncmp_hint);
+    char* out = InflateLibrary(buffer, buffer_size, dest_len);
     if(!out) {
       free(buffer);
       throw CompilerFatal(L"Unable to uncompress file: " + filename);
     }
-#ifdef _DEBUG
-    GetLogger() << L"--- file in: compressed=" << buffer_size << L", uncompressed=" << dest_len << L" ---" << std::endl;
-#endif
 
     free(buffer);
     buffer = nullptr;
@@ -1308,7 +1490,25 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
 void Library::LoadStatements(LibraryMethod* method, bool is_debug)
 {
   std::vector<LibraryInstr*> instrs;
-  
+
+  // Every operand is read either way, so the reader keeps its place; only the
+  // language server's analysis skips building the instructions (see
+  // KeepLibraryInstructions).
+  const bool keep = KeepLibraryInstructions();
+  auto emit = [&instrs, keep](auto&&... operands) {
+    if(keep) {
+      instrs.push_back(new LibraryInstr(std::forward<decltype(operands)>(operands)...));
+    }
+  };
+  // a class or method name in an instruction: skipped, not decoded, when unused
+  auto operand_string = [this, keep]() {
+    if(keep) {
+      return ReadString();
+    }
+    ReadDummyString();
+    return std::wstring();
+  };
+
   int line_num = -1;
 
   const unsigned long num_instrs = ReadUnsigned();
@@ -1320,131 +1520,131 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     const int type = ReadByte();
     switch(type) {
     case LOAD_INT_LIT:
-      instrs.push_back(new LibraryInstr(line_num, LOAD_INT_LIT, ReadInt64()));
+      emit(line_num, LOAD_INT_LIT, ReadInt64());
       break;
       
     case LOAD_CHAR_LIT:
-      instrs.push_back(new LibraryInstr(line_num, LOAD_CHAR_LIT, (int)ReadChar()));
+      emit(line_num, LOAD_CHAR_LIT, (int)ReadChar());
       break;
       
     case SHL_INT:
-      instrs.push_back(new LibraryInstr(line_num, SHL_INT));
+      emit(line_num, SHL_INT);
       break;
 
     case SHR_INT:
-      instrs.push_back(new LibraryInstr(line_num, SHR_INT));
+      emit(line_num, SHR_INT);
       break;
 
     case LOAD_INT_VAR: {
       const INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, LOAD_INT_VAR, id, mem_context));
+      emit(line_num, LOAD_INT_VAR, id, mem_context);
     }
       break;
 
     case LOAD_FUNC_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, LOAD_FUNC_VAR, (int)id, mem_context));
+      emit(line_num, LOAD_FUNC_VAR, (int)id, mem_context);
     }
       break;
 
     case LOAD_FLOAT_VAR: {
       const INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, LOAD_FLOAT_VAR, id, mem_context));
+      emit(line_num, LOAD_FLOAT_VAR, id, mem_context);
     }
       break;
 
     case STOR_INT_VAR: {
       const INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, STOR_INT_VAR, id, mem_context));
+      emit(line_num, STOR_INT_VAR, id, mem_context);
     }
       break;
 
     case STOR_FUNC_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, STOR_FUNC_VAR, (int)id, mem_context));
+      emit(line_num, STOR_FUNC_VAR, (int)id, mem_context);
     }
       break;
 
     case STOR_FLOAT_VAR: {
       const INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, STOR_FLOAT_VAR, id, mem_context));
+      emit(line_num, STOR_FLOAT_VAR, id, mem_context);
     }
       break;
 
     case COPY_INT_VAR: {
       const INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, COPY_INT_VAR, id, mem_context));
+      emit(line_num, COPY_INT_VAR, id, mem_context);
     }
       break;
 
     case COPY_FLOAT_VAR: {
       const INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, COPY_FLOAT_VAR, id, mem_context));
+      emit(line_num, COPY_FLOAT_VAR, id, mem_context);
     }
       break;
 
     case NEW_INT_ARY: {
       const int dim = ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, NEW_INT_ARY, dim));
+      emit(line_num, NEW_INT_ARY, dim);
     }
       break;
 
     case NEW_OBJ_ARY: {
       const int dim = ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, NEW_OBJ_ARY, dim));
+      emit(line_num, NEW_OBJ_ARY, dim);
     }
       break;
 
     case NEW_FLOAT_ARY: {
       const int dim = ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, NEW_FLOAT_ARY, dim));
+      emit(line_num, NEW_FLOAT_ARY, dim);
     }
       break;
 
     case NEW_BYTE_ARY: {
       const int dim = ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, NEW_BYTE_ARY, dim));
+      emit(line_num, NEW_BYTE_ARY, dim);
 
     }
       break;
 
     case NEW_CHAR_ARY: {
       const int dim = ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, NEW_CHAR_ARY, dim));
+      emit(line_num, NEW_CHAR_ARY, dim);
       
     }
       break;
       
     case NEW_OBJ_INST: {
       const int obj_id = ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, NEW_OBJ_INST, obj_id));
+      emit(line_num, NEW_OBJ_INST, obj_id);
     }
       break;
 
     case NEW_FUNC_INST: {
       const int mem_size = ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, NEW_FUNC_INST, mem_size));
+      emit(line_num, NEW_FUNC_INST, mem_size);
     }
       break;
 
     case JMP: {
       const INT_VALUE label = ReadInt();
       const INT_VALUE cond = ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, JMP, label, cond));
+      emit(line_num, JMP, label, cond);
     }
       break;
 
     case LBL: {
       const int id = ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, LBL, id));
+      emit(line_num, LBL, id);
     }
       break;
 
@@ -1452,148 +1652,149 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       const INT_VALUE cls_id = ReadInt();
       const INT_VALUE mthd_id = ReadInt();
       const INT_VALUE is_native = ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, MTHD_CALL, cls_id, mthd_id, is_native));
+      emit(line_num, MTHD_CALL, cls_id, mthd_id, is_native);
     }
       break;
 
     case DYN_MTHD_CALL: {
       const INT_VALUE num_params = ReadInt();
       const INT_VALUE rtrn_type = ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, DYN_MTHD_CALL, num_params, rtrn_type));
+      emit(line_num, DYN_MTHD_CALL, num_params, rtrn_type);
     }
       break;
 
     case LIB_OBJ_INST_CAST: {
-      const std::wstring &cls_name = ReadString();
+      const std::wstring &cls_name = operand_string();
 #ifdef _DEBUG
       const std::wstring &msg = L"LIB_OBJ_INST_CAST: class=" + cls_name;
       Linker::Debug(msg, 0, 3);
 #endif
-      instrs.push_back(new LibraryInstr(line_num, LIB_OBJ_INST_CAST, cls_name));
+      emit(line_num, LIB_OBJ_INST_CAST, cls_name);
     }
       break;
 
     case LIB_NEW_OBJ_INST: {
-      const std::wstring &cls_name = ReadString();
+      const std::wstring &cls_name = operand_string();
 #ifdef _DEBUG
       const std::wstring &msg = L"LIB_NEW_OBJ_INST: class=" + cls_name;
       Linker::Debug(msg, 0, 3);
 #endif
-      instrs.push_back(new LibraryInstr(line_num, LIB_NEW_OBJ_INST, cls_name));
+      emit(line_num, LIB_NEW_OBJ_INST, cls_name);
     }
       break;
       
     case LIB_OBJ_TYPE_OF: {
-      const std::wstring &cls_name = ReadString();
+      const std::wstring &cls_name = operand_string();
 #ifdef _DEBUG
       const std::wstring &msg = L"LIB_OBJ_TYPE_OF: class=" + cls_name;
       Linker::Debug(msg, 0, 3);
 #endif
-      instrs.push_back(new LibraryInstr(line_num, LIB_OBJ_TYPE_OF, cls_name));
+      emit(line_num, LIB_OBJ_TYPE_OF, cls_name);
     }
       break;
       
     case LIB_MTHD_CALL: {
       const INT_VALUE is_native = ReadInt();
-      const std::wstring &cls_name = ReadString();
-      const std::wstring &mthd_name = ReadString();
+      const std::wstring &cls_name = operand_string();
+      const std::wstring &mthd_name = operand_string();
 #ifdef _DEBUG
       const std::wstring &msg = L"LIB_MTHD_CALL: class=" + cls_name + L", method=" + mthd_name;
       Linker::Debug(msg, 0, 3);
 #endif
-      instrs.push_back(new LibraryInstr(line_num, LIB_MTHD_CALL, is_native, cls_name, mthd_name));
+      emit(line_num, LIB_MTHD_CALL, is_native, cls_name, mthd_name);
     }
       break;
 
     case LIB_FUNC_DEF: {
-      const std::wstring &cls_name = ReadString();
-      const std::wstring &mthd_name = ReadString();
+      const std::wstring &cls_name = operand_string();
+      const std::wstring &mthd_name = operand_string();
 #ifdef _DEBUG
       const std::wstring &msg = L"LIB_FUNC_DEF: class=" + cls_name + L", method=" + mthd_name;
       Linker::Debug(msg, 0, 3);
 #endif
-      instrs.push_back(new LibraryInstr(line_num, LIB_FUNC_DEF, -1, cls_name, mthd_name));
+      emit(line_num, LIB_FUNC_DEF, -1, cls_name, mthd_name);
     }
       break;
 
     case OBJ_INST_CAST: {
       const int to_id = ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, OBJ_INST_CAST, to_id));
+      emit(line_num, OBJ_INST_CAST, to_id);
     }
       break;
 
     case OBJ_TYPE_OF: {
       const int check_id = ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, OBJ_TYPE_OF, check_id));
+      emit(line_num, OBJ_TYPE_OF, check_id);
     }
       break;
 
     case LOAD_BYTE_ARY_ELM: {
       const INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, LOAD_BYTE_ARY_ELM, dim, mem_context));
+      emit(line_num, LOAD_BYTE_ARY_ELM, dim, mem_context);
     }
       break;
 
     case LOAD_CHAR_ARY_ELM: {
       const INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, LOAD_CHAR_ARY_ELM, dim, mem_context));
+      emit(line_num, LOAD_CHAR_ARY_ELM, dim, mem_context);
     }
       break;
 
     case LOAD_INT_ARY_ELM: {
       const INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, LOAD_INT_ARY_ELM, dim, mem_context));
+      emit(line_num, LOAD_INT_ARY_ELM, dim, mem_context);
     }
       break;
 
     case LOAD_FLOAT_ARY_ELM: {
       const INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, LOAD_FLOAT_ARY_ELM, dim, mem_context));
+      emit(line_num, LOAD_FLOAT_ARY_ELM, dim, mem_context);
     }
       break;
 
     case STOR_BYTE_ARY_ELM: {
       const INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, STOR_BYTE_ARY_ELM, dim, mem_context));
+      emit(line_num, STOR_BYTE_ARY_ELM, dim, mem_context);
     }
       break;
 
     case STOR_CHAR_ARY_ELM: {
       const INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, STOR_CHAR_ARY_ELM, dim, mem_context));
+      emit(line_num, STOR_CHAR_ARY_ELM, dim, mem_context);
     }
       break;
       
     case STOR_INT_ARY_ELM: {
       const INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, STOR_INT_ARY_ELM, dim, mem_context));
+      emit(line_num, STOR_INT_ARY_ELM, dim, mem_context);
     }
       break;
 
     case STOR_FLOAT_ARY_ELM: {
       const INT_VALUE dim = ReadInt();
       const INT_VALUE mem_context = ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, STOR_FLOAT_ARY_ELM, dim, mem_context));
+      emit(line_num, STOR_FLOAT_ARY_ELM, dim, mem_context);
     }
       break;
 
     case RTRN:
-      instrs.push_back(new LibraryInstr(line_num, RTRN));
+      emit(line_num, RTRN);
       break;
 
     case TRAP:
-      instrs.push_back(new LibraryInstr(line_num, TRAP, ReadInt()));
+      emit(line_num, TRAP, ReadInt());
       break;
 
     case TRAP_RTRN: {
-      const INT64_VALUE id = instrs.back()->GetOperand7();
+      // links a copied literal to its string table, for code generation
+      const INT64_VALUE id = keep ? instrs.back()->GetOperand7() : -1;
       if(id == instructions::CPY_CHAR_STR_ARY) {
         LibraryInstr* cpy_instr = instrs[instrs.size() - 2];
         CharStringInstruction* str_instr = char_strings[cpy_instr->GetOperand7()];
@@ -1619,396 +1820,396 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
         FloatStringInstruction* str_instr = float_strings[cpy_instr->GetOperand7()];
         str_instr->instrs.push_back(cpy_instr);
       }
-      instrs.push_back(new LibraryInstr(line_num, TRAP_RTRN, ReadInt()));
+      emit(line_num, TRAP_RTRN, ReadInt());
       break;
     }
 
     case SWAP_INT:
-      instrs.push_back(new LibraryInstr(line_num, SWAP_INT));
+      emit(line_num, SWAP_INT);
       break;
 
     case POP_INT:
-      instrs.push_back(new LibraryInstr(line_num, POP_INT));
+      emit(line_num, POP_INT);
       break;
 
     case POP_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, POP_FLOAT));
+      emit(line_num, POP_FLOAT);
       break;
 
     case AND_INT:
-      instrs.push_back(new LibraryInstr(line_num, AND_INT));
+      emit(line_num, AND_INT);
       break;
 
     case OR_INT:
-      instrs.push_back(new LibraryInstr(line_num, OR_INT));
+      emit(line_num, OR_INT);
       break;
 
     case ADD_INT:
-      instrs.push_back(new LibraryInstr(line_num, ADD_INT));
+      emit(line_num, ADD_INT);
       break;
 
     case FLOR_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, FLOR_FLOAT));
+      emit(line_num, FLOR_FLOAT);
       break;
 
     case CPY_BYTE_ARY:
-      instrs.push_back(new LibraryInstr(line_num, CPY_BYTE_ARY));
+      emit(line_num, CPY_BYTE_ARY);
       break;
       
     case LOAD_ARY_SIZE:
-      instrs.push_back(new LibraryInstr(line_num, LOAD_ARY_SIZE));
+      emit(line_num, LOAD_ARY_SIZE);
       break;
       
     case CPY_CHAR_ARY:
-      instrs.push_back(new LibraryInstr(line_num, CPY_CHAR_ARY));
+      emit(line_num, CPY_CHAR_ARY);
       break;
       
     case CPY_INT_ARY:
-      instrs.push_back(new LibraryInstr(line_num, CPY_INT_ARY));
+      emit(line_num, CPY_INT_ARY);
       break;
 
     case CPY_FLOAT_ARY:
-      instrs.push_back(new LibraryInstr(line_num, CPY_FLOAT_ARY));
+      emit(line_num, CPY_FLOAT_ARY);
       break;
 
     case ZERO_BYTE_ARY:
-      instrs.push_back(new LibraryInstr(line_num, ZERO_BYTE_ARY));
+      emit(line_num, ZERO_BYTE_ARY);
       break;
 
     case ZERO_CHAR_ARY:
-      instrs.push_back(new LibraryInstr(line_num, ZERO_CHAR_ARY));
+      emit(line_num, ZERO_CHAR_ARY);
       break;
 
     case ZERO_INT_ARY:
-      instrs.push_back(new LibraryInstr(line_num, ZERO_INT_ARY));
+      emit(line_num, ZERO_INT_ARY);
       break;
 
     case ZERO_FLOAT_ARY:
-      instrs.push_back(new LibraryInstr(line_num, ZERO_FLOAT_ARY));
+      emit(line_num, ZERO_FLOAT_ARY);
       break;
 
     case CEIL_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, CEIL_FLOAT));
+      emit(line_num, CEIL_FLOAT);
       break;
 
     case TRUNC_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, TRUNC_FLOAT));
+      emit(line_num, TRUNC_FLOAT);
       break;
 
     case SIN_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, SIN_FLOAT));
+      emit(line_num, SIN_FLOAT);
       break;
 
     case COS_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, COS_FLOAT));
+      emit(line_num, COS_FLOAT);
       break;
 
     case TAN_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, TAN_FLOAT));
+      emit(line_num, TAN_FLOAT);
       break;
 
     case ASIN_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, ASIN_FLOAT));
+      emit(line_num, ASIN_FLOAT);
       break;
 
     case ACOS_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, ACOS_FLOAT));
+      emit(line_num, ACOS_FLOAT);
       break;
 
     case ATAN_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, ATAN_FLOAT));
+      emit(line_num, ATAN_FLOAT);
       break;
 
     case LOG2_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, LOG2_FLOAT));
+      emit(line_num, LOG2_FLOAT);
       break;
 
     case CBRT_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, CBRT_FLOAT));
+      emit(line_num, CBRT_FLOAT);
       break;
       
     case ATAN2_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, ATAN2_FLOAT));
+      emit(line_num, ATAN2_FLOAT);
       break;
 
     case ACOSH_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, ACOSH_FLOAT));
+      emit(line_num, ACOSH_FLOAT);
       break;
 
     case ASINH_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, ASINH_FLOAT));
+      emit(line_num, ASINH_FLOAT);
       break;
 
     case ATANH_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, ATANH_FLOAT));
+      emit(line_num, ATANH_FLOAT);
       break;
 
     case COSH_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, COSH_FLOAT));
+      emit(line_num, COSH_FLOAT);
       break;
 
     case SINH_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, SINH_FLOAT));
+      emit(line_num, SINH_FLOAT);
       break;
 
     case TANH_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, TANH_FLOAT));
+      emit(line_num, TANH_FLOAT);
       break;
 
     case MOD_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, MOD_FLOAT));
+      emit(line_num, MOD_FLOAT);
       break;
       
     case ROUND_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, ROUND_FLOAT));
+      emit(line_num, ROUND_FLOAT);
       break;
 
     case EXP_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, EXP_FLOAT));
+      emit(line_num, EXP_FLOAT);
       break;
 
     case LOG_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, LOG_FLOAT));
+      emit(line_num, LOG_FLOAT);
       break;
 
     case LOG10_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, LOG10_FLOAT));
+      emit(line_num, LOG10_FLOAT);
       break;
 
     case POW_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, POW_FLOAT));
+      emit(line_num, POW_FLOAT);
       break;
 
     case SQRT_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, SQRT_FLOAT));
+      emit(line_num, SQRT_FLOAT);
       break;
 
     case GAMMA_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, GAMMA_FLOAT));
+      emit(line_num, GAMMA_FLOAT);
       break;
 
     case NAN_INT:
-      instrs.push_back(new LibraryInstr(line_num, NAN_INT));
+      emit(line_num, NAN_INT);
       break;
 
     case INF_INT:
-      instrs.push_back(new LibraryInstr(line_num, INF_INT));
+      emit(line_num, INF_INT);
       break;
 
     case NEG_INF_INT:
-      instrs.push_back(new LibraryInstr(line_num, NEG_INF_INT));
+      emit(line_num, NEG_INF_INT);
       break;
 
     case NAN_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, NAN_FLOAT));
+      emit(line_num, NAN_FLOAT);
       break;
 
     case INF_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, INF_FLOAT));
+      emit(line_num, INF_FLOAT);
       break;
 
     case NEG_INF_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, NEG_INF_FLOAT));
+      emit(line_num, NEG_INF_FLOAT);
       break;
 
     case RAND_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, RAND_FLOAT));
+      emit(line_num, RAND_FLOAT);
       break;
 
     case F2I:
-      instrs.push_back(new LibraryInstr(line_num, F2I));
+      emit(line_num, F2I);
       break;
 
     case I2F:
-      instrs.push_back(new LibraryInstr(line_num, I2F));
+      emit(line_num, I2F);
       break;
 
     case S2I:
-      instrs.push_back(new LibraryInstr(line_num, S2I));
+      emit(line_num, S2I);
       break;
 
     case S2F:
-      instrs.push_back(new LibraryInstr(line_num, S2F));
+      emit(line_num, S2F);
       break;
       
     case I2S:
-      instrs.push_back(new LibraryInstr(line_num, I2S));
+      emit(line_num, I2S);
       break;
 
     case F2S:
-      instrs.push_back(new LibraryInstr(line_num, F2S)); 
+      emit(line_num, F2S);
       break;
       
     case LOAD_CLS_MEM:
-      instrs.push_back(new LibraryInstr(line_num, LOAD_CLS_MEM));
+      emit(line_num, LOAD_CLS_MEM);
       break;
 
     case LOAD_INST_MEM:
-      instrs.push_back(new LibraryInstr(line_num, LOAD_INST_MEM));
+      emit(line_num, LOAD_INST_MEM);
       break;
 
     case SUB_INT:
-      instrs.push_back(new LibraryInstr(line_num, SUB_INT));
+      emit(line_num, SUB_INT);
       break;
 
     case MUL_INT:
-      instrs.push_back(new LibraryInstr(line_num, MUL_INT));
+      emit(line_num, MUL_INT);
       break;
 
     case DIV_INT:
-      instrs.push_back(new LibraryInstr(line_num, DIV_INT));
+      emit(line_num, DIV_INT);
       break;
 
     case MOD_INT:
-      instrs.push_back(new LibraryInstr(line_num, MOD_INT));
+      emit(line_num, MOD_INT);
       break;
 
     case BIT_AND_INT:
-      instrs.push_back(new LibraryInstr(line_num, BIT_AND_INT));
+      emit(line_num, BIT_AND_INT);
       break;
 
     case BIT_OR_INT:
-      instrs.push_back(new LibraryInstr(line_num, BIT_OR_INT));
+      emit(line_num, BIT_OR_INT);
       break;
 
     case BIT_NOT_INT:
-      instrs.push_back(new LibraryInstr(line_num, BIT_NOT_INT));
+      emit(line_num, BIT_NOT_INT);
       break;
 
     case BIT_XOR_INT:
-      instrs.push_back(new LibraryInstr(line_num, BIT_XOR_INT));
+      emit(line_num, BIT_XOR_INT);
       break;
 
     case EQL_INT:
-      instrs.push_back(new LibraryInstr(line_num, EQL_INT));
+      emit(line_num, EQL_INT);
       break;
 
     case NEQL_INT:
-      instrs.push_back(new LibraryInstr(line_num, NEQL_INT));
+      emit(line_num, NEQL_INT);
       break;
 
     case LES_INT:
-      instrs.push_back(new LibraryInstr(line_num, LES_INT));
+      emit(line_num, LES_INT);
       break;
 
     case GTR_INT:
-      instrs.push_back(new LibraryInstr(line_num, GTR_INT));
+      emit(line_num, GTR_INT);
       break;
 
     case LES_EQL_INT:
-      instrs.push_back(new LibraryInstr(line_num, LES_EQL_INT));
+      emit(line_num, LES_EQL_INT);
       break;
 
     case GTR_EQL_INT:
-      instrs.push_back(new LibraryInstr(line_num, GTR_EQL_INT));
+      emit(line_num, GTR_EQL_INT);
       break;
 
     case ADD_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, ADD_FLOAT));
+      emit(line_num, ADD_FLOAT);
       break;
 
     case SUB_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, SUB_FLOAT));
+      emit(line_num, SUB_FLOAT);
       break;
 
     case MUL_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, MUL_FLOAT));
+      emit(line_num, MUL_FLOAT);
       break;
 
     case DIV_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, DIV_FLOAT));
+      emit(line_num, DIV_FLOAT);
       break;
 
     case EQL_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, EQL_FLOAT));
+      emit(line_num, EQL_FLOAT);
       break;
 
     case NEQL_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, NEQL_FLOAT));
+      emit(line_num, NEQL_FLOAT);
       break;
 
     case LES_EQL_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, LES_EQL_FLOAT));
+      emit(line_num, LES_EQL_FLOAT);
       break;
 
     case GTR_EQL_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, GTR_EQL_FLOAT));
+      emit(line_num, GTR_EQL_FLOAT);
       break;
 
     case LES_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, LES_FLOAT));
+      emit(line_num, LES_FLOAT);
       break;
 
     case GTR_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, GTR_FLOAT));
+      emit(line_num, GTR_FLOAT);
       break;
 
     case LOAD_FLOAT_LIT:
-      instrs.push_back(new LibraryInstr(line_num, LOAD_FLOAT_LIT, ReadDouble()));
+      emit(line_num, LOAD_FLOAT_LIT, ReadDouble());
       break;
 
     case ASYNC_MTHD_CALL: {
       const INT_VALUE cls_id = ReadInt();
       const INT_VALUE mthd_id = ReadInt();
       const INT_VALUE is_native = ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, ASYNC_MTHD_CALL, cls_id, mthd_id, is_native));
+      emit(line_num, ASYNC_MTHD_CALL, cls_id, mthd_id, is_native);
     }
       break;
 
     case EXT_LIB_LOAD:
-      instrs.push_back(new LibraryInstr(line_num, EXT_LIB_LOAD));
+      emit(line_num, EXT_LIB_LOAD);
       break;
 
     case EXT_LIB_UNLOAD:
-      instrs.push_back(new LibraryInstr(line_num, EXT_LIB_UNLOAD));
+      emit(line_num, EXT_LIB_UNLOAD);
       break;
 
     case EXT_LIB_FUNC_CALL:
-      instrs.push_back(new LibraryInstr(line_num, EXT_LIB_FUNC_CALL));
+      emit(line_num, EXT_LIB_FUNC_CALL);
       break;
 
     case THREAD_JOIN:
-      instrs.push_back(new LibraryInstr(line_num, THREAD_JOIN));
+      emit(line_num, THREAD_JOIN);
       break;
 
     case THREAD_SLEEP:
-      instrs.push_back(new LibraryInstr(line_num, THREAD_SLEEP));
+      emit(line_num, THREAD_SLEEP);
       break;
 
     case THREAD_MUTEX:
-      instrs.push_back(new LibraryInstr(line_num, THREAD_MUTEX));
+      emit(line_num, THREAD_MUTEX);
       break;
 
     case CRITICAL_START:
-      instrs.push_back(new LibraryInstr(line_num, CRITICAL_START));
+      emit(line_num, CRITICAL_START);
       break;
 
     case CRITICAL_END:
-      instrs.push_back(new LibraryInstr(line_num, CRITICAL_END));
+      emit(line_num, CRITICAL_END);
       break;
 
     case TRY_START: {
       const INT_VALUE handler = ReadInt();
       const INT_VALUE cond = ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, TRY_START, handler, cond));
+      emit(line_num, TRY_START, handler, cond);
     }
       break;
 
     case TRY_END:
-      instrs.push_back(new LibraryInstr(line_num, TRY_END));
+      emit(line_num, TRY_END);
       break;
 
     case JMP_TABLE: {
       const INT_VALUE base = ReadInt();
       const INT_VALUE range = ReadInt();
       const INT_VALUE default_label = ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, JMP_TABLE, base, range, default_label));
+      emit(line_num, JMP_TABLE, base, range, default_label);
     }
       break;
 
     case JMP_TABLE_SLOT: {
       const INT_VALUE target = ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, JMP_TABLE_SLOT, target));
+      emit(line_num, JMP_TABLE_SLOT, target);
     }
       break;
 
