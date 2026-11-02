@@ -414,7 +414,13 @@ if(doc <> Nil) {
 		@param stream_in JSON string to process
 		~#
 		New(stream_in : String) {
-			@input := stream_in->Trim()->ToCharArray();
+			# Nil, the text of a file that could not be read, is empty text: Parse() fails
+			if(stream_in = Nil) {
+				@input := Char->New[0];
+			}
+			else {
+				@input := stream_in->Trim()->ToCharArray();
+			};
 			@input_index := 0;
 
 			@tokens_max := 32;
@@ -427,7 +433,12 @@ if(doc <> Nil) {
 		@param stream_in JSON character stream
 		~#
 		New(stream_in : Char[]) {
-			@input := stream_in->ToString()->Trim()->ToCharArray();
+			if(stream_in = Nil) {
+				@input := Char->New[0];
+			}
+			else {
+				@input := stream_in->ToString()->Trim()->ToCharArray();
+			};
 			@input_index := 0;
 
 			@tokens_max := 32;
@@ -440,7 +451,12 @@ if(doc <> Nil) {
 		@param stream_in JSON byte stream
 		~#
 		New(stream_in : Byte[]) {
-			@input := stream_in->ToString()->Trim()->ToCharArray();
+			if(stream_in = Nil) {
+				@input := Char->New[0];
+			}
+			else {
+				@input := stream_in->ToString()->Trim()->ToCharArray();
+			};
 			@input_index := 0;
 
 			@tokens_max := 32;

@@ -1,0 +1,252 @@
+# EXTRA_LIBS: json_rpc,net
+#~
+Data.JSON.RPC.Client: every request carries its own id, and the reply must echo it.
+
+- The id was set to 1 and never incremented (the "if(@id > 512) reset" had no increment), so
+  every request carried id 1, and a reply for some other request could not be told apart.
+- It was a static field, shared by every client and reset by each new one.
+
+Now each call sends the next id (from 1, per client) and a reply is taken only when it echoes
+the id that was sent: a result needs the id, an error needs the id or a null one (the server
+cannot report the id of a request it could not read). A reply for another request is an error,
+-32600 "Invalid Response", and gives no result.
+
+A scripted fake server records the ids it receives. Both ends run in this process on a port
+the system chooses; nothing leaves the host.
+~#
+
+use Collection;
+use Data.JSON;
+use Data.JSON.RPC;
+use System.IO.Net;
+
+class JsonRpcClientId {
+	@failures : static : Int;
+
+	function : Check(ok : Bool, name : String) ~ Nil {
+		if(<>ok) {
+			"  [FAIL] {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Echo(params : JsonElement) ~ JsonElement {
+		return JsonElement->New(params->Size());
+	}
+
+	function : ExpectError(client : Client, result : JsonElement, code : Int, name : String) ~ Nil {
+		Check(result = Nil, "{$name}: no result");
+		error := client->GetLastError();
+		Check(error <> Nil, "{$name}: an error is recorded");
+		if(error <> Nil) {
+			got_code := error->GetFirst()->Get();
+			Check(got_code = code, "{$name}: code {$code}, got {$got_code}");
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		TestRealServer();
+		TestScriptedReplies();
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} JSON-RPC id check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: JSON-RPC client ids are numbered and echoed"->PrintLine();
+		Runtime->Exit(0);
+	}
+
+	# the library's own server echoes the id, so calls in a row all succeed
+	function : TestRealServer() ~ Nil {
+		"-- a real server: ids are echoed --"->PrintLine();
+
+		funcs := Hash->New()<String, Func2Ref<JsonElement, JsonElement>>;
+		funcs->Insert("count", Func2Ref->New(JsonRpcClientId->Echo(JsonElement) ~ JsonElement)<JsonElement, JsonElement>);
+
+		server := Server->New(funcs, 0);
+		port := server->GetPort();
+		thread := ServerThread->New(server);
+		thread->Execute(Nil);
+
+		waited := 0;
+		while(<>server->IsListening() & waited < 10000) {
+			System.Concurrency.Thread->Sleep(10);
+			waited += 10;
+		};
+		if(<>server->IsListening()) {
+			"FAIL: JSON-RPC server never listened on port {$port}"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		params := JsonElement->New(JsonElement->JsonType->OBJECT);
+		params->Insert("a", 1);
+
+		first := Client->New("127.0.0.1", port);
+		each(i : 4) {
+			result := first->Call("count", params);
+			Check(result <> Nil & result->GetInt() = 1, "call {$i} on the first client is answered");
+		};
+
+		# a second client numbers its own calls: it does not share, or reset, the first one's
+		second := Client->New("127.0.0.1", port);
+		result := second->Call("count", params);
+		Check(result <> Nil & result->GetInt() = 1, "the second client is answered");
+		result := first->Call("count", params);
+		Check(result <> Nil & result->GetInt() = 1, "the first client is still answered");
+
+		# an unknown method comes back with a null id and is still an error from the server
+		result := first->Call("nothing", params);
+		ExpectError(first, result, -32601, "an error with a null id");
+	}
+
+	function : TestScriptedReplies() ~ Nil {
+		"-- scripted replies: the id is sent, then checked --"->PrintLine();
+
+		# what each reply does with the id it was sent:
+		# 0 echoes it in a result, 1 answers with another id, 2 an error with a null id, 3 an error
+		# with another id, 4 a result with no id, 5 a result with a null id, 6 an error that echoes it
+		modes := Int->New[7];
+		each(i : 7) {
+			modes[i] := i;
+		};
+
+		fake := TCPSocketServer->New(0);
+		port := fake->GetPort();
+		if(<>fake->Listen(8)) {
+			"FAIL: the fake server cannot listen"->PrintLine();
+			Runtime->Exit(1);
+		};
+		thread := FakeServerThread->New(fake, modes);
+		thread->Execute(Nil);
+
+		client := Client->New("127.0.0.1", port);
+		params := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+		result := client->Call("m", params);
+		Check(result <> Nil & result->GetInt() = 42, "a result that echoes the id is taken");
+
+		result := client->Call("m", params);
+		ExpectError(client, result, -32600, "a result for another request");
+
+		result := client->Call("m", params);
+		ExpectError(client, result, -32601, "an error with a null id keeps its code");
+
+		result := client->Call("m", params);
+		ExpectError(client, result, -32600, "an error for another request");
+
+		result := client->Call("m", params);
+		ExpectError(client, result, -32600, "a result with no id");
+
+		result := client->Call("m", params);
+		ExpectError(client, result, -32600, "a result with a null id");
+
+		result := client->Call("m", params);
+		ExpectError(client, result, -32602, "an error that echoes the id keeps its code");
+
+		thread->Join();
+
+		# the ids the server saw: 1, 2, 3 ... one per call, from 1
+		seen := thread->GetSeen();
+		each(i : seen) {
+			want := i + 1;
+			got := seen[i];
+			Check(got = want, "request {$i} carried id {$want}, saw {$got}");
+		};
+	}
+}
+
+class ServerThread from System.Concurrency.Thread {
+	@server : Server;
+
+	New(server : Server) {
+		Parent();
+		@server := server;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		@server->Process();
+	}
+}
+
+# answers each connection as its mode says, and keeps the id each request carried
+class FakeServerThread from System.Concurrency.Thread {
+	@server : TCPSocketServer;
+	@modes : Int[];
+	@seen : Int[];
+
+	New(server : TCPSocketServer, modes : Int[]) {
+		Parent();
+		@server := server;
+		@modes := modes;
+		@seen := Int->New[modes->Size()];
+	}
+
+	method : public : GetSeen() ~ Int[] {
+		return @seen;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		each(i : @modes) {
+			client := @server->Accept();
+			line := client->ReadLine();
+
+			id := -1;
+			if(line <> Nil) {
+				request := JsonParser->TextToElement(line);
+				if(request <> Nil & request->Get("id") <> Nil) {
+					id := request->Get("id")->GetInt();
+				};
+			};
+			@seen[i] := id;
+
+			wrong := id + 100;
+			reply := "";
+			select(@modes[i]) {
+				label 0: {
+					reply := "{\"jsonrpc\":\"2.0\",\"result\":42,\"id\":";
+					reply->Append(id);
+					reply->Append("}");
+				}
+
+				label 1: {
+					reply := "{\"jsonrpc\":\"2.0\",\"result\":42,\"id\":";
+					reply->Append(wrong);
+					reply->Append("}");
+				}
+
+				label 2: {
+					reply := "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32601,\"message\":\"Method not found\"},\"id\":null}";
+				}
+
+				label 3: {
+					reply := "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32601,\"message\":\"Method not found\"},\"id\":";
+					reply->Append(wrong);
+					reply->Append("}");
+				}
+
+				label 4: {
+					reply := "{\"jsonrpc\":\"2.0\",\"result\":42}";
+				}
+
+				label 5: {
+					reply := "{\"jsonrpc\":\"2.0\",\"result\":42,\"id\":null}";
+				}
+
+				label 6: {
+					reply := "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32602,\"message\":\"Invalid params\"},\"id\":";
+					reply->Append(id);
+					reply->Append("}");
+				}
+			};
+
+			reply->Append("\r\n");
+			client->WriteString(reply);
+			# wait for the client to hang up first, as Data.JSON.RPC.Server does
+			client->ReadLine();
+			client->Close();
+		};
+	}
+}

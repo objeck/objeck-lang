@@ -358,6 +358,13 @@ bundle Web.HTTP.Server {
 			if(@server <> Nil) {
 				@server->Close();
 			};
+
+			# A program that runs this server and its own HttpClient keeps the client's
+			# idle connections open for reuse (#1443), and the threads serving them here
+			# wait in a read until the server's 30 s idle timeout: at the end of the
+			# program the VM then waits two seconds for them. Closing the client's idle
+			# connections ends those threads now.
+			Web.HTTP.HttpClient->CloseIdleConnections();
 		}
 		
 		function : Shutdown(id : Int) ~ Nil {

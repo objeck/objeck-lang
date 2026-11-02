@@ -32,9 +32,14 @@ if(reader->IsOk()) {
 			if(xml <> Nil & xml->Size() > 0) {
 				parser := XmlParser->New(xml);
 				if(parser->Parse()) {
+					# a document that is XML but has no RSS channel (an Atom feed, a channel
+					# without a title, description or link) is not a loaded feed: GetChannel()
+					# would be Nil for a reader that says it is OK
 					@channel := GetChannelData(parser);
-					@posts := GetPosts(parser)<RSSPost>;
-					@is_ok := true;
+					if(@channel <> Nil) {
+						@posts := GetPosts(parser)<RSSPost>;
+						@is_ok := true;
+					};
 				};
 			};
 		}

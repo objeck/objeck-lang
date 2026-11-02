@@ -110,8 +110,15 @@ bundle Data.JSON.RPC {
 									func_ref := funcs->Find(method_str);
 									if(func_ref <> Nil) {
 										func := func_ref->Get();
-									 	
-										result_params_json := func(response_json->Get("params"));
+
+										# "params" may be left out of a request (JSON-RPC 2.0): the handler
+										# gets an empty object, not Nil, so a handler that reads its
+										# parameters does not end the server with a Nil dereference
+										call_params := response_json->Get("params");
+										if(call_params = Nil) {
+											call_params := JsonElement->New(JsonElement->JsonType->OBJECT);
+										};
+										result_params_json := func(call_params);
 									 	result_id_json := response_json->Get("id");
 									 	if(result_params_json = Nil | result_id_json = Nil) {
 											client->WriteString("null\r\n");
@@ -175,7 +182,7 @@ bundle Data.JSON.RPC {
 		@address : String;
 		@port : Int;
 		@last_error : Collection.Tuple.Pair<IntRef, String>;
-		@id : static : Int;
+		@id : Int;
 
 		#~
 		Constructor
@@ -225,6 +232,10 @@ bundle Data.JSON.RPC {
 				buffer += "\r\n";
 				socket->WriteString(buffer);
 
+				# each call carries its own id, which the reply must echo; the ids cycle
+				# from 1 to 512, and a call is answered before the next one is sent
+				sent_id := @id;
+				@id += 1;
 				if(@id > 512) {
 					@id := 1;
 				};
@@ -235,16 +246,51 @@ bundle Data.JSON.RPC {
 				if(response_str <> Nil) {
 					response_json := JsonParser->TextToElement(response_str);
 					if(response_json <> Nil) {
+						# the reply is for this request: it echoes the id that was sent. An error
+						# reply may carry a null id (the server could not read the request's id)
+						reply_id := response_json->Get("id");
+						id_echoed := false;
+						id_null := reply_id = Nil;
+						if(reply_id <> Nil) {
+							id_null := reply_id->GetType() = JsonElement->JsonType->NULL;
+							id_echoed := reply_id->GetType() = JsonElement->JsonType->NUMBER & reply_id->GetInt() = sent_id;
+						};
+
 						result_json := response_json->Get("result");
 						if(result_json <> Nil) {
+							if(<>id_echoed) {
+								@last_error := Collection.Tuple.Pair->New(IntRef->New(-32600), "Invalid Response: the id does not match the request")<IntRef, String>;
+								return Nil;
+							};
 							return result_json;
 						};
 
 						error_json := response_json->Get("error");
 						if(error_json <> Nil) {
-							err_id := error_json->Get("code")->GetInt();
-							err_msg := error_json->Get("message")->GetString();
+							if(<>id_echoed & <>id_null) {
+								@last_error := Collection.Tuple.Pair->New(IntRef->New(-32600), "Invalid Response: the id does not match the request")<IntRef, String>;
+								return Nil;
+							};
+							# the server's error need not be an object with a code and a message
+							err_id := -32000;
+							err_msg := "Server error";
+							if(error_json->GetType() = JsonElement->JsonType->OBJECT) {
+								code_json := error_json->Get("code");
+								if(code_json <> Nil) {
+									err_id := code_json->GetInt();
+								};
+
+								message_json := error_json->Get("message");
+								if(message_json <> Nil) {
+									err_msg := message_json->GetString();
+								};
+							}
+							else if(error_json->GetType() = JsonElement->JsonType->STRING) {
+								err_msg := error_json->GetString();
+							};
+
 							@last_error := Collection.Tuple.Pair->New(err_id, err_msg)<IntRef, String>;
+							return Nil;
 						};
 					}
 					else {

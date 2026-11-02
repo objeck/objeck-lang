@@ -1,0 +1,517 @@
+#~
+# Checkers: everything the window does that is not drawing. Mouse clicks and key
+# presses are turned into intents here (select a piece, move it, change a
+# setting) with no SDL involved, so the regression test can exercise exactly the
+# logic the window uses. Needs checkers_engine.obs, checkers_game.obs and the
+# json library.
+~#
+
+use Data.JSON;
+use System.IO.Filesystem;
+
+# The choices that are remembered between runs, in a small JSON file in the
+# home folder (.checkers.json).
+class CkSettings {
+  @piece_set : Int;     # 0 classic, 1 glossy, 2 engraved, 3 modern, 4 critters, 5 monsters, 6 snacks, 7 space
+  @level : Int;         # 1 .. 10
+  @human : Int;         # 0 plays Red, 1 plays White, 2 watches the computer play itself
+  @flip : Bool;         # board turned around
+  @fun : Int;           # fun mode: 0 off, 1 levels 1-3, 2 every level
+  @anim : Bool;         # animations on
+  @reduced : Bool;      # reduced motion: no shaking, bouncing or flashing
+  @sound : Bool;
+  @volume : Int;        # 0 .. 100
+  @music : Int;         # music style: 0 hip-hop, 1 modern beats, 2 off
+  @shake : Bool;        # screen shake on
+
+  New() {
+    @piece_set := 0;
+    @level := 4;
+    @human := 0;
+    @flip := false;
+    @fun := 0;
+    @anim := true;
+    @reduced := false;
+    @sound := true;
+    @volume := 70;
+    @music := 0;
+    @shake := true;
+  }
+
+  function : SetNames() ~ String[] {
+    return ["Classic", "Glossy", "Engraved", "Modern", "Critters", "Monsters", "Snacks", "Space"];
+  }
+
+  method : public : PieceSet() ~ Int {
+    return @piece_set;
+  }
+
+  method : public : SetPieceSet(v : Int) ~ Nil {
+    @piece_set := Clamp(v, 0, 7);
+  }
+
+  method : public : Level() ~ Int {
+    return @level;
+  }
+
+  method : public : SetLevel(v : Int) ~ Nil {
+    @level := Clamp(v, 1, 10);
+  }
+
+  method : public : Human() ~ Int {
+    return @human;
+  }
+
+  method : public : SetHuman(v : Int) ~ Nil {
+    @human := Clamp(v, 0, 2);
+  }
+
+  method : public : Flip() ~ Bool {
+    return @flip;
+  }
+
+  method : public : SetFlip(v : Bool) ~ Nil {
+    @flip := v;
+  }
+
+  method : public : Fun() ~ Int {
+    return @fun;
+  }
+
+  method : public : SetFun(v : Int) ~ Nil {
+    @fun := Clamp(v, 0, 2);
+  }
+
+  method : public : Anim() ~ Bool {
+    return @anim;
+  }
+
+  method : public : SetAnim(v : Bool) ~ Nil {
+    @anim := v;
+  }
+
+  method : public : Reduced() ~ Bool {
+    return @reduced;
+  }
+
+  method : public : SetReduced(v : Bool) ~ Nil {
+    @reduced := v;
+  }
+
+  method : public : Sound() ~ Bool {
+    return @sound;
+  }
+
+  method : public : SetSound(v : Bool) ~ Nil {
+    @sound := v;
+  }
+
+  method : public : Volume() ~ Int {
+    return @volume;
+  }
+
+  method : public : Shake() ~ Bool {
+    return @shake;
+  }
+
+  method : public : SetShake(v : Bool) ~ Nil {
+    @shake := v;
+  }
+
+  method : public : MusicStyle() ~ Int {
+    return @music;
+  }
+
+  method : public : SetMusicStyle(v : Int) ~ Nil {
+    @music := Clamp(v, 0, 2);
+  }
+
+  method : public : SetVolume(v : Int) ~ Nil {
+    @volume := Clamp(v, 0, 100);
+  }
+
+  function : Clamp(v : Int, lo : Int, hi : Int) ~ Int {
+    if(v < lo) {
+      return lo;
+    };
+    if(v > hi) {
+      return hi;
+    };
+    return v;
+  }
+
+  # is fun mode in force at this level? Mode 1 is the "early levels" reading of
+  # "early on": only levels 1 to 3. Mode 2 applies at every level.
+  method : public : FunActive(level : Int) ~ Bool {
+    if(@fun = 2) {
+      return true;
+    };
+    return @fun = 1 & level <= 3;
+  }
+
+  # animations are used unless they are off or reduced motion is asked for
+  method : public : Lively() ~ Bool {
+    return @anim & <>@reduced;
+  }
+
+  method : public : ToJson() ~ String {
+    text := "{\n";
+    text += "  \"piece_set\": {$@piece_set},\n";
+    text += "  \"level\": {$@level},\n";
+    text += "  \"human\": {$@human},\n";
+    text += "  \"flip\": {$@flip},\n";
+    text += "  \"fun\": {$@fun},\n";
+    text += "  \"anim\": {$@anim},\n";
+    text += "  \"reduced_motion\": {$@reduced},\n";
+    text += "  \"sound\": {$@sound},\n";
+    text += "  \"volume\": {$@volume},\n";
+    text += "  \"music_style\": {$@music},\n";
+    text += "  \"shake\": {$@shake}\n";
+    text += "}\n";
+    return text;
+  }
+
+  # read the JSON written by ToJson; a missing or damaged field keeps its
+  # current value, and anything out of range is clamped
+  method : public : FromJson(text : String) ~ Bool {
+    if(text = Nil) {
+      return false;
+    };
+    parser := JsonParser->New(text);
+    if(<>parser->Parse() | parser->GetRoot() = Nil) {
+      return false;
+    };
+    root := parser->GetRoot();
+    if(root->GetType() <> JsonElement->JsonType->OBJECT) {
+      return false;
+    };
+    SetPieceSet(ReadInt(root, "piece_set", @piece_set));
+    SetLevel(ReadInt(root, "level", @level));
+    SetHuman(ReadInt(root, "human", @human));
+    SetFun(ReadInt(root, "fun", @fun));
+    SetVolume(ReadInt(root, "volume", @volume));
+    SetMusicStyle(ReadInt(root, "music_style", @music));
+    @flip := ReadBool(root, "flip", @flip);
+    @shake := ReadBool(root, "shake", @shake);
+    @anim := ReadBool(root, "anim", @anim);
+    @reduced := ReadBool(root, "reduced_motion", @reduced);
+    @sound := ReadBool(root, "sound", @sound);
+    return true;
+  }
+
+  function : ReadInt(root : JsonElement, name : String, fallback : Int) ~ Int {
+    v := root->Get(name);
+    if(v <> Nil & v->GetType() = JsonElement->JsonType->NUMBER) {
+      return v->GetInt();
+    };
+    return fallback;
+  }
+
+  function : ReadBool(root : JsonElement, name : String, fallback : Bool) ~ Bool {
+    v := root->Get(name);
+    if(v <> Nil & v->GetType() = JsonElement->JsonType->TRUE) {
+      return true;
+    };
+    if(v <> Nil & v->GetType() = JsonElement->JsonType->FALSE) {
+      return false;
+    };
+    return fallback;
+  }
+
+  method : public : Load(path : String) ~ Bool {
+    return FromJson(FileReader->ReadFile(path));
+  }
+
+  method : public : Save(path : String) ~ Bool {
+    return FileWriter->WriteFile(path, ToJson());
+  }
+}
+
+# The ten levels as people see them: a name, and one line saying how it plays.
+class CkLevels {
+  function : Name(level : Int) ~ String {
+    names := ["Dozy Dave", "Clumsy Clara", "Wobbly Walt", "Careful Kit", "Sly Sam",
+      "Professor Pawn", "Captain Crown", "Madame Minimax", "Deep Thinker", "Grandmaster Gizmo"];
+    return names[Index(level) - 1];
+  }
+
+  function : Index(level : Int) ~ Int {
+    if(level < 1) {
+      return 1;
+    };
+    if(level > 10) {
+      return 10;
+    };
+    return level;
+  }
+
+  function : Tagline(level : Int) ~ String {
+    lines := ["random legal moves", "greedy, 1 ply ahead", "2 plies ahead",
+      "Minimax, 3 plies", "Minimax, 4 plies", "Minimax, 6 plies", "alpha-beta, 7 plies",
+      "alpha-beta, 9 plies", "learned eval, deep", "learned eval, deepest"];
+    return lines[Index(level) - 1];
+  }
+}
+
+# What a click or a key press means, and the state the window needs to show it:
+# which piece is picked up, where it may go, which pieces must move.
+class CkController {
+  @game : CkGame;
+  @human : Int;        # 0 or 1, or 2 when watching
+  @flip : Bool;        # the screen shows White at the bottom
+  @selected : Int;     # picked-up square, or -1
+  @cursor : Int;       # keyboard cursor square (screen position is derived)
+
+  # what ClickSquare and friends answer
+  function : None() ~ Int {
+    return 0;
+  }
+
+  function : Selected() ~ Int {
+    return 1;
+  }
+
+  function : Deselected() ~ Int {
+    return 2;
+  }
+
+  function : Moved() ~ Int {
+    return 3;
+  }
+
+  function : MustCapture() ~ Int {
+    return 4;
+  }
+
+  New(game : CkGame, human : Int, flip : Bool) {
+    @game := game;
+    @human := human;
+    @flip := flip;
+    @selected := -1;
+    @cursor := 5 * 8 + 2;
+  }
+
+  method : public : Game() ~ CkGame {
+    return @game;
+  }
+
+  method : public : Human() ~ Int {
+    return @human;
+  }
+
+  method : public : SetHuman(human : Int) ~ Nil {
+    @human := human;
+    @selected := -1;
+  }
+
+  method : public : Flipped() ~ Bool {
+    return @flip;
+  }
+
+  method : public : SetFlipped(flip : Bool) ~ Nil {
+    @flip := flip;
+  }
+
+  method : public : Selection() ~ Int {
+    return @selected;
+  }
+
+  method : public : Clear() ~ Nil {
+    @selected := -1;
+  }
+
+  method : public : Cursor() ~ Int {
+    return @cursor;
+  }
+
+  # may the person move right now?
+  method : public : HumanToMove() ~ Bool {
+    return @human < 2 & @game->Side() = @human & <>@game->IsOver();
+  }
+
+  # the pieces of the side to move that have a legal move: when a jump is
+  # compulsory these are exactly the pieces that can jump
+  method : public : Movable() ~ Int {
+    mask := 0;
+    legal := @game->Legal();
+    each(i : legal->Count()) {
+      mask := mask or (1 << legal->From(i));
+    };
+    return mask;
+  }
+
+  # where the piece on sq may land
+  method : public : Destinations(sq : Int) ~ Int {
+    mask := 0;
+    legal := @game->Legal();
+    each(i : legal->Count()) {
+      if(legal->From(i) = sq) {
+        mask := mask or (1 << legal->To(i));
+      };
+    };
+    return mask;
+  }
+
+  # is the next move for the side to move a compulsory jump?
+  method : public : JumpIsForced() ~ Bool {
+    legal := @game->Legal();
+    return legal->Count() > 0 & legal->Caps(0) <> 0;
+  }
+
+  # The person clicked square sq. Answers one of None, Selected, Deselected,
+  # Moved (the move was played) or MustCapture (the piece cannot move because a
+  # jump is compulsory elsewhere).
+  method : public : ClickSquare(sq : Int) ~ Int {
+    if(sq < 0 | sq > 63 | <>HumanToMove()) {
+      return None();
+    };
+
+    movable := Movable();
+    bit := 1 << sq;
+    if(@selected >= 0) {
+      if(sq = @selected) {
+        @selected := -1;
+        return Deselected();
+      };
+      if((Destinations(@selected) and bit) <> 0) {
+        idx := @game->Legal()->Find(@selected, sq);
+        @selected := -1;
+        if(@game->Play(idx)) {
+          return Moved();
+        };
+        return None();
+      };
+      if((movable and bit) <> 0) {
+        @selected := sq;
+        return Selected();
+      };
+      @selected := -1;
+      return Deselected();
+    };
+
+    if((movable and bit) <> 0) {
+      @selected := sq;
+      return Selected();
+    };
+    if(((@game->Pos()->Pieces(@human) and bit) <> 0) & JumpIsForced()) {
+      return MustCapture();
+    };
+    return None();
+  }
+
+  # ---- the screen <-> board mapping ----
+
+  # the board square under pixel (x, y) of a board whose top-left corner is
+  # (left, top) with squares of the given size, or -1 outside the board
+  function : SquareAt(x : Int, y : Int, left : Int, top : Int, size : Int, flip : Bool) ~ Int {
+    if(x < left | y < top) {
+      return -1;
+    };
+    sc := (x - left) / size;
+    sr := (y - top) / size;
+    if(sc > 7 | sr > 7) {
+      return -1;
+    };
+    return ScreenToSquare(sr, sc, flip);
+  }
+
+  function : ScreenToSquare(sr : Int, sc : Int, flip : Bool) ~ Int {
+    if(flip) {
+      return (7 - sr) * 8 + (7 - sc);
+    };
+    return sr * 8 + sc;
+  }
+
+  # the screen row (0 = top) and column of a board square
+  function : ScreenRow(sq : Int, flip : Bool) ~ Int {
+    if(flip) {
+      return 7 - sq / 8;
+    };
+    return sq / 8;
+  }
+
+  function : ScreenCol(sq : Int, flip : Bool) ~ Int {
+    if(flip) {
+      return 7 - sq % 8;
+    };
+    return sq % 8;
+  }
+
+  # ---- keyboard ----
+
+  # move the keyboard cursor by rows and columns of the SCREEN, staying on the board
+  method : public : MoveCursor(drow : Int, dcol : Int) ~ Nil {
+    sr := ScreenRow(@cursor, @flip) + drow;
+    sc := ScreenCol(@cursor, @flip) + dcol;
+    if(sr < 0) {
+      sr := 0;
+    };
+    if(sr > 7) {
+      sr := 7;
+    };
+    if(sc < 0) {
+      sc := 0;
+    };
+    if(sc > 7) {
+      sc := 7;
+    };
+    @cursor := ScreenToSquare(sr, sc, @flip);
+  }
+
+  method : public : SetCursor(sq : Int) ~ Nil {
+    if(sq >= 0 & sq < 64) {
+      @cursor := sq;
+    };
+  }
+
+  # Enter or Space: the same as clicking the cursor square
+  method : public : Activate() ~ Int {
+    return ClickSquare(@cursor);
+  }
+}
+
+# A computer player thinking on its own thread, so the window keeps drawing
+# (and the pieces keep wobbling) while a deep search runs. Start it with
+# Execute(Nil); poll IsDone; then read Move.
+class CkThinker from System.Concurrency.Thread {
+  @player : CkPlayer;
+  @pos : CkPos;
+  @keys : Int[];
+  @kn : Int;
+  @move : Int;
+  @done : Bool;
+  @tag : Int;
+
+  New(player : CkPlayer, pos : CkPos, keys : Int[], kn : Int, tag : Int) {
+    Parent("checkers thinker");
+    @player := player;
+    @pos := pos;
+    @keys := keys;
+    @kn := kn;
+    @tag := tag;
+    @move := -1;
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    @move := @player->ChoosePos(@pos, @keys, @kn);
+    @done := true;
+  }
+
+  method : public : IsDone() ~ Bool {
+    return @done;
+  }
+
+  # the number of the chosen move in the position's legal list
+  method : public : Move() ~ Int {
+    return @move;
+  }
+
+  # whatever the caller stamped on the request (which game it belonged to)
+  method : public : Tag() ~ Int {
+    return @tag;
+  }
+
+  method : public : Nodes() ~ Int {
+    return @player->Nodes();
+  }
+}

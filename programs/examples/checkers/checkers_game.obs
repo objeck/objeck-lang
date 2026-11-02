@@ -1,0 +1,491 @@
+#~
+# Checkers: one whole game (history, undo, win and draw rules) and the optional
+# FUN MODE events. Needs checkers_engine.obs. Still no window or sound: the
+# game window, the trainer, the tournament and the regression test all play
+# through this class.
+~#
+
+# One FUN MODE event: a gesture of kindness or a natural disaster. It is only
+# a description (what, where, to whom); CkGame decides when one happens and
+# applies it, and the window announces it first and animates it.
+class CkEvent {
+  @kind : Int;      # 0 gift, 1 lightning, 2 earthquake, 3 wind
+  @sq : Int;        # the square it happens on
+  @side : Int;      # the side whose piece appears (gift) or disappears
+  @piece : Int;     # what the piece is (1 red man, 2 red king, 3 white man, 4 white king)
+  @text : String;
+
+  New(kind : Int, sq : Int, side : Int, piece : Int, text : String) {
+    @kind := kind;
+    @sq := sq;
+    @side := side;
+    @piece := piece;
+    @text := text;
+  }
+
+  method : public : Kind() ~ Int {
+    return @kind;
+  }
+
+  method : public : Square() ~ Int {
+    return @sq;
+  }
+
+  method : public : Side() ~ Int {
+    return @side;
+  }
+
+  method : public : Piece() ~ Int {
+    return @piece;
+  }
+
+  method : public : Text() ~ String {
+    return @text;
+  }
+
+  # true for the kinds that remove an opponent piece
+  method : public : IsDisaster() ~ Bool {
+    return @kind <> 0;
+  }
+
+  function : KindName(kind : Int) ~ String {
+    if(kind = 0) {
+      return "Gift";
+    };
+    if(kind = 1) {
+      return "Lightning";
+    };
+    if(kind = 2) {
+      return "Earthquake";
+    };
+    return "Gust of wind";
+  }
+}
+
+# A whole game: the position, every move played so far (so it can be undone),
+# the draw and win rules, and the optional fun-mode events.
+class CkGame {
+  @pos : CkPos;
+  @list : CkMoveList;
+  @list_ok : Bool;
+
+  # the history: for every entry the position BEFORE it, and what it was
+  @h_red : Int[];
+  @h_white : Int[];
+  @h_kings : Int[];
+  @h_side : Int[];
+  @h_clock : Int[];
+  @h_move : CkMove[];       # the move, or Nil for an event
+  @h_event : CkEvent[];     # the event, or Nil for a move
+  @h_text : String[];
+  @count : Int;
+
+  # fun mode (all off until SetFun)
+  @fun_on : Bool;
+  @fun_human : Int;
+  @fun_seed : Int;
+  @fun_window : Int;      # events only while fewer than this many moves per side have been played
+  @fun_max : Int;         # at most this many events in a game
+  @fun_chance : Int;      # one in this many qualifying captures
+
+  New() {
+    CkBits->Init();
+    @pos := CkPos->Start();
+    @list := CkMoveList->New();
+    @h_red := Int->New[4096];
+    @h_white := Int->New[4096];
+    @h_kings := Int->New[4096];
+    @h_side := Int->New[4096];
+    @h_clock := Int->New[4096];
+    @h_move := CkMove->New[4096];
+    @h_event := CkEvent->New[4096];
+    @h_text := String->New[4096];
+    @fun_window := 12;
+    @fun_max := 2;
+    @fun_chance := 3;
+    Reset();
+  }
+
+  # the 40 moves each (80 plies) without a capture or crowning that make a draw
+  function : DrawPlies() ~ Int {
+    return 80;
+  }
+
+  method : public : Reset() ~ Nil {
+    @pos->CopyFrom(CkPos->Start());
+    @count := 0;
+    @list_ok := false;
+    each(i : 4096) {
+      @h_move[i] := Nil;
+      @h_event[i] := Nil;
+    };
+  }
+
+  # start from some other position (a puzzle, a test)
+  method : public : SetPosition(p : CkPos) ~ Nil {
+    Reset();
+    @pos->CopyFrom(p);
+  }
+
+  method : public : Pos() ~ CkPos {
+    return @pos;
+  }
+
+  method : public : Side() ~ Int {
+    return @pos->Side();
+  }
+
+  # the legal moves now; the list is kept until the position changes
+  method : public : Legal() ~ CkMoveList {
+    if(<>@list_ok) {
+      @pos->Generate(@list);
+      @list_ok := true;
+    };
+    return @list;
+  }
+
+  # number of history entries (moves and events)
+  method : public : Entries() ~ Int {
+    return @count;
+  }
+
+  method : public : EntryMove(i : Int) ~ CkMove {
+    return @h_move[i];
+  }
+
+  method : public : EntryEvent(i : Int) ~ CkEvent {
+    return @h_event[i];
+  }
+
+  method : public : EntryText(i : Int) ~ String {
+    return @h_text[i];
+  }
+
+  # which side made history entry i (events belong to nobody: -1)
+  method : public : EntrySide(i : Int) ~ Int {
+    if(@h_move[i] = Nil) {
+      return -1;
+    };
+    return @h_side[i];
+  }
+
+  # the key (see CkPos->Key) of the position before history entry i
+  method : public : EntryKey(i : Int) ~ Int {
+    return @h_red[i] * 31 + @h_white[i] * 1000003 + @h_kings[i] * 7919 + @h_side[i];
+  }
+
+  # the position before history entry i
+  method : public : EntryPos(i : Int) ~ CkPos {
+    p := CkPos->New();
+    p->Set(@h_red[i], @h_white[i], @h_kings[i], @h_side[i], @h_clock[i]);
+    return p;
+  }
+
+  # how many moves (not events) have been played
+  method : public : Plies() ~ Int {
+    n := 0;
+    each(i : @count) {
+      if(@h_move[i] <> Nil) {
+        n += 1;
+      };
+    };
+    return n;
+  }
+
+  method : public : LastMove() ~ CkMove {
+    i := @count - 1;
+    while(i >= 0) {
+      if(@h_move[i] <> Nil) {
+        return @h_move[i];
+      };
+      i -= 1;
+    };
+    return Nil;
+  }
+
+  # pieces a side has lost so far (never below 0, even after a gift)
+  method : public : Lost(side : Int) ~ Int {
+    n := 12 - CkBits->Pop(@pos->Pieces(side));
+    if(n < 0) {
+      return 0;
+    };
+    return n;
+  }
+
+  method : Push(text : String, mv : CkMove, ev : CkEvent) ~ Nil {
+    @h_red[@count] := @pos->Red();
+    @h_white[@count] := @pos->White();
+    @h_kings[@count] := @pos->Kings();
+    @h_side[@count] := @pos->Side();
+    @h_clock[@count] := @pos->Clock();
+    @h_move[@count] := mv;
+    @h_event[@count] := ev;
+    @h_text[@count] := text;
+    @count += 1;
+  }
+
+  # play legal move number i of Legal()
+  method : public : Play(i : Int) ~ Bool {
+    legal := Legal();
+    if(i < 0 | i >= legal->Count() | @count >= 4090) {
+      return false;
+    };
+    mv := legal->Get(i);
+    Push(mv->ToString(), mv, Nil);
+    @pos->Make(mv->From(), mv->To(), mv->Caps());
+    @list_ok := false;
+    return true;
+  }
+
+  # play the legal move from -> to (the first one, if two jumps share both ends)
+  method : public : PlayFromTo(fsq : Int, tsq : Int) ~ Bool {
+    return Play(Legal()->Find(fsq, tsq));
+  }
+
+  # take back the last entry (a move or an event); false when there is none
+  method : public : Undo() ~ Bool {
+    if(@count = 0) {
+      return false;
+    };
+    @count -= 1;
+    @pos->Set(@h_red[@count], @h_white[@count], @h_kings[@count], @h_side[@count], @h_clock[@count]);
+    @h_move[@count] := Nil;
+    @h_event[@count] := Nil;
+    @list_ok := false;
+    return true;
+  }
+
+  # take back whole turns until it is the human's turn again, with the move the
+  # human made (and any event after it) undone: what the Undo button does
+  method : public : UndoTurn(human : Int) ~ Bool {
+    if(@count = 0) {
+      return false;
+    };
+    undone_move := false;
+    while(@count > 0 & (<>undone_move | @pos->Side() <> human)) {
+      if(@h_move[@count - 1] <> Nil) {
+        undone_move := true;
+      };
+      Undo();
+    };
+    return true;
+  }
+
+  # 0 playing, 1 red wins, 2 white wins, 3 draw by repetition, 4 draw (40 moves)
+  method : public : Status() ~ Int {
+    if(Legal()->Count() = 0) {
+      if(@pos->Side() = 0) {
+        return 2;
+      };
+      return 1;
+    };
+    if(@pos->Clock() >= DrawPlies()) {
+      return 4;
+    };
+    if(Repeats() >= 2) {
+      return 3;
+    };
+    return 0;
+  }
+
+  method : public : IsOver() ~ Bool {
+    return Status() <> 0;
+  }
+
+  # how many times the current position (same side to move) occurred before
+  method : public : Repeats() ~ Int {
+    n := 0;
+    lo := @count - @pos->Clock();
+    if(lo < 0) {
+      lo := 0;
+    };
+    for(i := @count - 1; i >= lo; i -= 1;) {
+      if(@h_red[i] = @pos->Red() & @h_white[i] = @pos->White() & @h_kings[i] = @pos->Kings() & @h_side[i] = @pos->Side()) {
+        n += 1;
+      };
+    };
+    return n;
+  }
+
+  # ---- fun mode ----
+
+  # human: the side the person plays; seed: this game's dice; window: moves
+  # per side during which events may happen; max_events: the most per game;
+  # chance: one in this many qualifying captures fires an event
+  method : public : SetFun(on : Bool, human : Int, seed : Int, window : Int, max_events : Int, chance : Int) ~ Nil {
+    @fun_on := on;
+    @fun_human := human;
+    @fun_seed := seed;
+    @fun_window := window;
+    @fun_max := max_events;
+    @fun_chance := chance;
+    if(@fun_chance < 1) {
+      @fun_chance := 1;
+    };
+  }
+
+  method : public : FunOn() ~ Bool {
+    return @fun_on;
+  }
+
+  method : public : Events() ~ Int {
+    n := 0;
+    each(i : @count) {
+      if(@h_event[i] <> Nil) {
+        n += 1;
+      };
+    };
+    return n;
+  }
+
+  # The event that happens right now, or Nil. It is a pure function of the
+  # position, the move count and the seed, so a replayed game gets the same
+  # events, and asking twice gives the same answer. It only ever considers the
+  # moment right after the opponent (not the human) captured, while the human
+  # has fewer pieces than the opponent, early in the game, below the cap.
+  method : public : PendingEvent() ~ CkEvent {
+    if(<>@fun_on | @count = 0) {
+      return Nil;
+    };
+    last := @h_move[@count - 1];
+    if(last = Nil | last->Caps() = 0) {
+      return Nil;
+    };
+
+    # the capture was made by the side that just moved: the one NOT to move now
+    opponent := 1 - @pos->Side();
+    human := @fun_human;
+    if(opponent = human) {
+      return Nil;
+    };
+    plies := Plies();
+    if(plies >= @fun_window * 2) {
+      return Nil;
+    };
+    events := Events();
+    if(events >= @fun_max) {
+      return Nil;
+    };
+    mine := CkBits->Pop(@pos->Pieces(human));
+    theirs := CkBits->Pop(@pos->Pieces(opponent));
+    if(mine >= theirs) {
+      return Nil;
+    };
+
+    if(CkRand->Hash(@fun_seed, plies, events) % @fun_chance <> 0) {
+      return Nil;
+    };
+
+    kind := CkRand->Hash(@fun_seed + 1, plies, events) % 4;
+    pick := CkRand->Hash(@fun_seed + 2, plies, events);
+    if(kind = 0) {
+      ev := Gift(human, pick);
+      if(ev <> Nil) {
+        return ev;
+      };
+      kind := 1 + pick % 3;
+    };
+    return Disaster(kind, opponent, pick);
+  }
+
+  # a man for the human, on a free dark square in the human's own three home rows
+  method : Gift(human : Int, pick : Int) ~ CkEvent {
+    rows := CkBits->RowMask(5) or CkBits->RowMask(6) or CkBits->RowMask(7);
+    if(human = 1) {
+      rows := CkBits->RowMask(0) or CkBits->RowMask(1) or CkBits->RowMask(2);
+    };
+    free := rows and (CkBits->DarkMask() xor (@pos->Red() or @pos->White()));
+    n := CkBits->Pop(free);
+    if(n = 0) {
+      return Nil;
+    };
+    sq := NthBit(free, pick % n);
+    piece := 1;
+    if(human = 1) {
+      piece := 3;
+    };
+    where := CkBits->Name(sq);
+    return CkEvent->New(0, sq, human, piece, "A kind soul gives you a man back on {$where}");
+  }
+
+  # remove one opponent piece: lightning anywhere, an earthquake in the middle
+  # of the board, a gust of wind from the edges (men first)
+  method : Disaster(kind : Int, opponent : Int, pick : Int) ~ CkEvent {
+    theirs := @pos->Pieces(opponent);
+    choice := theirs;
+    if(kind = 2) {
+      centre := 0x00003C3C3C3C0000;
+      if((theirs and centre) <> 0) {
+        choice := theirs and centre;
+      };
+    }
+    else if(kind = 3) {
+      edge := 0x0180018001800180;
+      men := theirs xor (theirs and @pos->Kings());
+      if((men and edge) <> 0) {
+        choice := men and edge;
+      }
+      else if(men <> 0) {
+        choice := men;
+      };
+    };
+    n := CkBits->Pop(choice);
+    if(n = 0) {
+      return Nil;
+    };
+    sq := NthBit(choice, pick % n);
+    piece := @pos->At(sq);
+    where := CkBits->Name(sq);
+    text := "Lightning strikes {$where}!";
+    if(kind = 2) {
+      text := "An earthquake topples the piece on {$where}!";
+    }
+    else if(kind = 3) {
+      text := "A gust of wind blows the piece on {$where} off the board!";
+    };
+    return CkEvent->New(kind, sq, opponent, piece, text);
+  }
+
+  # the square of the n-th (from 0) set bit of mask
+  function : NthBit(mask : Int, n : Int) ~ Int {
+    m := mask;
+    k := 0;
+    while(m <> 0) {
+      low := m and (0 - m);
+      if(k = n) {
+        return CkBits->Low(low);
+      };
+      m := m xor low;
+      k += 1;
+    };
+    return -1;
+  }
+
+  # make an event happen; it goes on the history so Undo can take it back
+  method : public : ApplyEvent(ev : CkEvent) ~ Bool {
+    if(ev = Nil | @count >= 4090) {
+      return false;
+    };
+    bit := 1 << ev->Square();
+    if(ev->Kind() = 0) {
+      if(((@pos->Red() or @pos->White()) and bit) <> 0) {
+        return false;
+      };
+    }
+    else if((@pos->Pieces(ev->Side()) and bit) = 0) {
+      return false;
+    };
+
+    text := "* " + ev->Text();
+    Push(text, Nil, ev);
+    if(ev->Kind() = 0) {
+      @pos->Put(ev->Square(), ev->Piece());
+    }
+    else {
+      @pos->Put(ev->Square(), 0);
+    };
+    @pos->Set(@pos->Red(), @pos->White(), @pos->Kings(), @pos->Side(), 0);
+    @list_ok := false;
+    return true;
+  }
+}

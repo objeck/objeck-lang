@@ -135,6 +135,68 @@ steps make a shared copy safe:
 Expected gain: the library share of the measured time, which is the whole cost for a small
 file in a large `libs` list.
 
+#### Phase 1 results (2026-11-02)
+
+Before step 2, the load was split further (Windows x64, Ryzen 9 7950X3D, a 6-line file with
+the 13 default libraries, ms per program):
+
+| part of `Linker::Load` | ms |
+|---|---:|
+| read the 13 files | 1.1 |
+| inflate them | 3.4 |
+| build every library method's instructions | 24 |
+| everything else: classes, methods, signatures, literal tables | 8 |
+| **total** | **36** |
+| and later, freeing that `Linker` with the program | 20 |
+
+The instructions were not in the plan, and they are two thirds of the load and most of the
+free. They feed code generation only (`intermediate.cpp`), which the diagnostics library
+does not compile. So phase 1 landed as step 1 plus a step the plan did not have:
+
+1. **The byte cache**, as planned, except for the key: a library is read from disk on every
+   load and compared with the cached compressed bytes, so a rebuilt library is never served
+   stale whatever its size or timestamp. Only the inflate is saved.
+2. **Instructions are read but not built** in the diagnostics library, and the class and
+   method names they carry are skipped rather than decoded.
+
+Both are compiled into the diagnostics library only (`_DIAG_LIB`); `obc` builds every
+library and program byte for byte as before. `OBJECK_LSP_NO_CACHE=1` turns both off, so it is
+still the from-scratch reference. After them the load is 1 ms read, 1 ms skipping the
+instructions and 9 ms for the rest, and the free about 4 ms.
+
+Measured with `bench_incremental.py`, six rounds alternating the diagnostics library built
+from master and from this phase (same tree, same server), medians in ms per edit. CPU load on
+the machine was 0 to 51% during the runs. `release` is the new timing line for freeing the
+programs an edit made stale; `main_with_json` is the issue's second workload, a 6-line
+`main.obs` with `json.obs` beside it in `build.json`:
+
+| workspace | parse+link+analyze before | after | release before | after | hover after edit before | after |
+|---|---:|---:|---:|---:|---:|---:|
+| tiny (6 lines, 13 default libraries) | 44.2 | 12.9 | 29.6 | 6.6 | 165 | 53 |
+| two_files (`ws_multi_a`, gen_collect) | 8.8 | 4.0 | 5.8 | 2.2 | 46 | 29 |
+| main_with_json (2.8k lines, gen_collect) | 92.2 | 83.4 | 7.8 | 4.4 | 168 | 151 |
+| json_standalone (2.8k lines, 13 default libraries) | 133.6 | 83.2 | 31.9 | 8.2 | 318 | 188 |
+| lsp_server (8.8k lines, 6 libraries) | 538.7 | 513.4 | 22.1 | 15.2 | 738 | 713 |
+
+`obc` is unchanged: the same 6-line program with the 13 libraries takes 136 ms before and 135
+after, and the server's 8.8k lines 898 and 899 (medians of ten, alternated).
+
+`tools/lsp/tests/validate_cached_analysis.py` checks the result against a from-scratch
+analysis: a second server with `OBJECK_LSP_NO_CACHE=1` answers the same requests over the
+language server's fixtures, the regression programs and the library sources, with a seeded,
+randomized edit script per file (comment lines, deleted and duplicated lines, stray
+characters, renamed identifiers, undo, revert). Diagnostics must be byte-identical and every
+hover, completion, symbol and definition answer equal. `--control` sends the cached server a
+different edit script and must fail, which shows the comparison can tell answers apart.
+
+**Step 2 is deferred.** What it could still save is the "everything else" row and most of the
+free: about 9 + 4 ms per program for the 13 default libraries, against the 36 + 20 this phase
+removed most of. It would also have to move more than the plan said: library signatures are
+`frontend::Type` objects made by the program's own `TypeFactory` (per program since #659), and
+the analyzer writes into library objects in several places besides `AddChild` (`SetCalled`,
+lazily cached user names, interface ids). Phase 4 is the larger prize for any program bigger
+than a few lines.
+
 ### Phase 2 — invalidate per folder, and skip unchanged folders
 
 (Built differently from this plan; see "Phase 2 as built" below.)
@@ -248,6 +310,8 @@ kind of result to a side table behind the existing accessors, with the suite and
 
 1. ~~Phase 0's timing switch and test, and the measured split recorded in this document.~~
    Done; see "Phase 0 results".
-2. One analysis per edit: share the `text` and `alt` programs when their texts are equal.
-3. Phase 1, step 1: the byte cache, behind a switch, compared with `OBJECK_LSP_NO_CACHE=1`.
+2. ~~One analysis per edit: share the `text` and `alt` programs when their texts are equal.~~
+   Done in #1437: a program is reused for the same texts and libraries under any key.
+3. ~~Phase 1, step 1: the byte cache, behind a switch, compared with `OBJECK_LSP_NO_CACHE=1`.~~
+   Done, with library instructions no longer built; see "Phase 1 results".
 4. Profile the superlinear 10k-line `obc` case and file what it finds as its own issue.
