@@ -2653,7 +2653,6 @@ void JitArm64::MarshalOutArgs(long params) {
 void JitArm64::EmitNativeCallSite(long instr_id, StackInstr* instr, long instr_index, long params) {
   static const long RECORD_KEY = (long)offsetof(JitVirtualRecord, key);
   static const long RECORD_ENTRY = (long)offsetof(JitVirtualRecord, entry);
-  static const long RECORD_TARGET = (long)offsetof(JitVirtualRecord, target);
   const bool funcref = virtual_site && virtual_site->funcref;
   const long callee_params = params - (funcref ? 2 : 1);
   const long SELF = out_base + callee_params * (long)sizeof(size_t);

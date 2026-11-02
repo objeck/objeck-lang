@@ -184,15 +184,15 @@ class Token {
     return int_lit;
   }
 
-  inline const FLOAT_VALUE GetFloatLit() {
+  inline FLOAT_VALUE GetFloatLit() {
     return double_lit;
   }
 
-  inline const char GetByteLit() {
+  inline char GetByteLit() {
     return byte_lit;
   }
 
-  inline const wchar_t GetCharLit() {
+  inline wchar_t GetCharLit() {
     return char_lit;
   }
 
@@ -200,7 +200,7 @@ class Token {
     return ident;
   }
 
-  inline const enum TokenType GetType() {
+  inline enum TokenType GetType() {
     return token_type;
   }
 

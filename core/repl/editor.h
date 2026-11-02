@@ -84,7 +84,7 @@ public:
     return line;
   }
 
-  const Line::Type GetType() {
+  Line::Type GetType() {
     return type;
   }
 
