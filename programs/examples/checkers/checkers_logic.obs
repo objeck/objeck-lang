@@ -12,7 +12,7 @@ use System.IO.Filesystem;
 # The choices that are remembered between runs, in a small JSON file in the
 # home folder (.checkers.json).
 class CkSettings {
-  @piece_set : Int;     # 0 classic, 1 glossy, 2 ring, 3 modern
+  @piece_set : Int;     # 0 classic, 1 glossy, 2 engraved, 3 modern, 4 critters, 5 monsters, 6 snacks, 7 space
   @level : Int;         # 1 .. 10
   @human : Int;         # 0 plays Red, 1 plays White, 2 watches the computer play itself
   @flip : Bool;         # board turned around
@@ -37,7 +37,7 @@ class CkSettings {
   }
 
   function : SetNames() ~ String[] {
-    return ["Classic", "Glossy", "Engraved", "Modern"];
+    return ["Classic", "Glossy", "Engraved", "Modern", "Critters", "Monsters", "Snacks", "Space"];
   }
 
   method : public : PieceSet() ~ Int {
@@ -45,7 +45,7 @@ class CkSettings {
   }
 
   method : public : SetPieceSet(v : Int) ~ Nil {
-    @piece_set := Clamp(v, 0, 3);
+    @piece_set := Clamp(v, 0, 7);
   }
 
   method : public : Level() ~ Int {

@@ -27,7 +27,7 @@
 # checkers_tournament.obs. There is a README.md next to this file.
 #
 # For pictures instead of play: --screenshot out.png [--scene start|play|capture|king|over]
-# [--set 0-3] [--level 1-10] saves one frame and exits; --demo [out_dir] lets
+# [--set 0-7] [--level 1-10] saves one frame and exits; --demo [out_dir] lets
 # the computer play itself for a few seconds (and saves frames to out_dir).
 #
 # output: a window titled "Checkers" (1040 x 700): a menu to pick the piece
@@ -101,6 +101,7 @@ class CheckersApp {
   @demo : Bool;
   @demo_dir : String;
   @over_frame : Int;
+  @cheer : Bool;        # the piece that just landed captured something
   @t_start : Int;
 
   # the playful layer: particles, words, the opponent's face, shaking
@@ -496,6 +497,7 @@ class CheckersApp {
       # the piece lands with a squash
       @land_sq := mv->To();
       @land_t0 := @now;
+      @cheer := captured;
 
       # a man that became a king dances and wears a crown that pops on
       was := @anim_pos->At(mv->From());
@@ -808,7 +810,7 @@ class CheckersApp {
 
   # what each button does
   method : Action(id : Int) ~ Nil {
-    if(id >= 100 & id < 104) {
+    if(id >= 100 & id < 108) {
       @settings->SetPieceSet(id - 100);
     }
     else if(id >= 200 & id < 211) {
@@ -941,18 +943,18 @@ class CheckersApp {
 
     # the four piece sets, each on its own board colours
     @text->Draw("Piece set", 70, 124, 2, 235, 235, 235, 0);
-    each(i : 4) {
-      x := 70 + i * 232;
-      y := 154;
-      DrawSetCard(i, x, y, 214, 128, i = set);
-      @text->Draw(CkDraw->SetName(i), x + 107, y + 100, 2, 245, 245, 245, 1);
+    each(i : 8) {
+      x := 70 + i * 118;
+      y := 156;
+      DrawSetCard(i, x, y, 106, 80, i = set);
+      @text->Draw(CkDraw->SetName(i), x + 53, y + 88, 1, 245, 245, 245, 1);
       if(@nrects < 80) {
         at := @nrects * 5;
         @rects[at] := 100 + i;
         @rects[at + 1] := x;
         @rects[at + 2] := y;
-        @rects[at + 3] := 214;
-        @rects[at + 4] := 128;
+        @rects[at + 3] := 106;
+        @rects[at + 4] := 108;
         @nrects += 1;
       };
     };
@@ -991,28 +993,32 @@ class CheckersApp {
   # a small board with a man and a king of one set, as a button face
   method : DrawSetCard(set : Int, x : Int, y : Int, w : Int, h : Int, chosen : Bool) ~ Nil {
     t := CkDraw->Theme(set);
-    @r->RoundedBoxColor(x - 6, y - 6, x + w + 5, y + h + 5, 12, Color->New(t[6], t[7], t[8], 255));
+    @r->RoundedBoxColor(x - 5, y - 5, x + w + 4, y + h + 24, 10, Color->New(t[6], t[7], t[8], 255));
     if(chosen) {
-      @r->RoundedRectangleColor(x - 6, y - 6, x + w + 5, y + h + 5, 12, Color->New(t[18], t[19], t[20], 255));
-      @r->RoundedRectangleColor(x - 7, y - 7, x + w + 6, y + h + 6, 12, Color->New(t[18], t[19], t[20], 255));
-      @r->RoundedRectangleColor(x - 8, y - 8, x + w + 7, y + h + 7, 12, Color->New(t[18], t[19], t[20], 255));
+      each(i : 3) {
+        @r->RoundedRectangleColor(x - 5 - i, y - 5 - i, x + w + 4 + i, y + h + 24 + i, 10, Color->New(t[18], t[19], t[20], 255));
+      };
     };
-    each(i : 6) {
+    each(i : 3) {
       each(j : 2) {
         px := x + i * 35;
-        py := y + j * 46;
+        py := y + j * 40;
         if((i + j) % 2 = 0) {
-          @r->BoxColor(px, py, px + 34, py + 45, Color->New(t[0], t[1], t[2], 255));
+          @r->BoxColor(px, py, px + 34, py + 39, Color->New(t[0], t[1], t[2], 255));
         }
         else {
-          @r->BoxColor(px, py, px + 34, py + 45, Color->New(t[3], t[4], t[5], 255));
+          @r->BoxColor(px, py, px + 34, py + 39, Color->New(t[3], t[4], t[5], 255));
         };
       };
     };
-    CkDraw->Piece(@r, set, x + 52, y + 23, 15, 0, false, 1.0, 1.0, 0, 255, 1.0);
-    CkDraw->Piece(@r, set, x + 87, y + 69, 15, 1, false, 1.0, 1.0, 0, 255, 1.0);
-    CkDraw->Piece(@r, set, x + 122, y + 23, 15, 0, true, 1.0, 1.0, 0, 255, 1.0);
-    CkDraw->Piece(@r, set, x + 157, y + 69, 15, 1, true, 1.0, 1.0, 0, 255, 1.0);
+    f := 0;
+    if(Fx() & @screen = 0) {
+      f := @frame + 1;
+    };
+    CkDraw->PieceX(@r, set, x + 17, y + 59, 13, 0, false, 1.0, 1.0, 0, 255, 1.0, 0, f, set);
+    CkDraw->PieceX(@r, set, x + 52, y + 21, 13, 1, false, 1.0, 1.0, 0, 255, 1.0, 0, f, set + 1);
+    CkDraw->PieceX(@r, set, x + 87, y + 21, 13, 0, true, 1.0, 1.0, 0, 255, 1.0, 0, f, set + 2);
+    CkDraw->PieceX(@r, set, x + 87, y + 59, 13, 1, true, 1.0, 1.0, 0, 255, 1.0, 0, f, set + 3);
   }
 
   # centre of a board square on the screen
@@ -1138,6 +1144,17 @@ class CheckersApp {
     };
 
     rad := Size() * 38 / 100;
+
+    # pieces the side to move could capture right now: the character sets look worried
+    threat := 0;
+    if(set >= 4 & <>@game->IsOver()) {
+      legal := @game->Legal();
+      if(legal->Count() > 0 & legal->Caps(0) <> 0) {
+        each(i : legal->Count()) {
+          threat := threat or legal->Caps(i);
+        };
+      };
+    };
     hover := -1;
     if(@kbd) {
       hover := @ctl->Cursor();
@@ -1265,8 +1282,32 @@ class CheckersApp {
             };
           };
 
+          # the creatures' faces: worried when they could be captured, cheering after a
+          # capture, dizzy while being captured, winking at a gift, shaken by a disaster
+          mood := 0;
+          if(set >= 4) {
+            if((threat and (1 << sq)) <> 0 & <>@anim_on) {
+              mood := 1;
+            };
+            if(sq = @land_sq & @now - @land_t0 < 1400 & @cheer) {
+              mood := 2;
+            };
+            if(@anim_on & (@anim_move->Caps() and (1 << sq)) <> 0) {
+              mood := 3;
+            };
+            if(sq = ev_sq & ev_kind = 0 & ev_t > 450) {
+              mood := 4;
+            };
+            if(ev_kind > 0 & ev_t >= 0 & ev_t < 1000) {
+              mood := 5;
+            };
+          };
+          idle := 0;
+          if(Fx()) {
+            idle := @frame + 1;
+          };
           if(alpha > 0) {
-            CkDraw->Piece(@r, set, cx, cy, rad, side, king, sx, sy, lift, alpha, crown);
+            CkDraw->PieceX(@r, set, cx, cy, rad, side, king, sx, sy, lift, alpha, crown, mood, idle, sq);
             if(eyes) {
               DrawEyes(cx, cy - lift, rad, king, blink);
             };
@@ -1411,7 +1452,11 @@ class CheckersApp {
     if(kind > 2) {
       side := 1;
     };
-    CkDraw->Piece(@r, set, x, y, rad, side, kind % 2 = 0, sx, sy, lift, 255, 1.0);
+    idle := 0;
+    if(Fx()) {
+      idle := @frame + 1;
+    };
+    CkDraw->PieceX(@r, set, x, y, rad, side, kind % 2 = 0, sx, sy, lift, 255, 1.0, 2, idle, mv->From());
   }
 
 

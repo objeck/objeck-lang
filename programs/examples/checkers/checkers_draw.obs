@@ -140,6 +140,18 @@ class CkDraw {
   # 0 light square, 1 dark square, 2 frame, 3 backdrop, 4 frame labels,
   # 5 panel, 6 accent
   function : Theme(set : Int) ~ Int[] {
+    if(set = 4) {
+      return [250, 240, 214,  150, 190, 110,  70, 110, 50,  26, 40, 22,  214, 232, 180,  48, 74, 38,  255, 180, 70];
+    };
+    if(set = 5) {
+      return [226, 214, 240,  128, 100, 170,  58, 40, 84,  24, 16, 36,  200, 180, 230,  46, 32, 66,  120, 240, 130];
+    };
+    if(set = 6) {
+      return [255, 244, 226,  214, 120, 100,  120, 60, 48,  44, 26, 22,  240, 204, 190,  74, 44, 36,  255, 200, 70];
+    };
+    if(set = 7) {
+      return [200, 208, 236,  96, 108, 170,  36, 40, 90,  14, 16, 40,  170, 180, 230,  30, 34, 72,  255, 226, 120];
+    };
     if(set = 1) {
       return [238, 238, 210,  118, 150, 86,  40, 70, 48,  22, 38, 28,  200, 220, 180,  36, 58, 44,  255, 214, 102];
     };
@@ -153,11 +165,13 @@ class CkDraw {
   }
 
   function : SetName(set : Int) ~ String {
-    names := ["Classic", "Glossy", "Engraved", "Modern"];
-    return names[set];
+    return CkChars->SetName(set);
   }
 
   function : SideName(set : Int, side : Int) ~ String {
+    if(set >= 4) {
+      return CkChars->SideName(set, side);
+    };
     if(set = 3) {
       if(side = 0) {
         return "Teal";
@@ -211,6 +225,23 @@ class CkDraw {
   # (the shadow stays behind); alpha fades it (255 solid); crown scales the
   # crown of a king (1.0 normal).
   function : Piece(r : Renderer, set : Int, cx : Int, cy : Int, rad : Int, side : Int, king : Bool,
+      sx : Float, sy : Float, lift : Int, alpha : Int, crown : Float) ~ Nil {
+    PieceX(r, set, cx, cy, rad, side, king, sx, sy, lift, alpha, crown, 0, 0, 0);
+  }
+
+  # the same, with a mood (0 calm, 1 worried, 2 cheering, 3 dizzy, 4 winking, 5 shaken)
+  # and an animation frame (0 = still) for the character sets; the four plain
+  # sets ignore both
+  function : PieceX(r : Renderer, set : Int, cx : Int, cy : Int, rad : Int, side : Int, king : Bool,
+      sx : Float, sy : Float, lift : Int, alpha : Int, crown : Float, mood : Int, frame : Int, seed : Int) ~ Nil {
+    if(set >= 4) {
+      CkChars->Piece(r, set, cx, cy, rad, side, king, sx, sy, lift, alpha, crown, mood, frame, seed);
+      return;
+    };
+    PieceFlat(r, set, cx, cy, rad, side, king, sx, sy, lift, alpha, crown);
+  }
+
+  function : PieceFlat(r : Renderer, set : Int, cx : Int, cy : Int, rad : Int, side : Int, king : Bool,
       sx : Float, sy : Float, lift : Int, alpha : Int, crown : Float) ~ Nil {
     c := PieceColors(set, side);
     rx := (rad->As(Float) * sx)->As(Int);

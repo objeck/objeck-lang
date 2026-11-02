@@ -2107,7 +2107,7 @@ class CkMatch {
 # The choices that are remembered between runs, in a small JSON file in the
 # home folder (.checkers.json).
 class CkSettings {
-  @piece_set : Int;     # 0 classic, 1 glossy, 2 ring, 3 modern
+  @piece_set : Int;     # 0 classic, 1 glossy, 2 engraved, 3 modern, 4 critters, 5 monsters, 6 snacks, 7 space
   @level : Int;         # 1 .. 10
   @human : Int;         # 0 plays Red, 1 plays White, 2 watches the computer play itself
   @flip : Bool;         # board turned around
@@ -2132,7 +2132,7 @@ class CkSettings {
   }
 
   function : SetNames() ~ String[] {
-    return ["Classic", "Glossy", "Engraved", "Modern"];
+    return ["Classic", "Glossy", "Engraved", "Modern", "Critters", "Monsters", "Snacks", "Space"];
   }
 
   method : public : PieceSet() ~ Int {
@@ -2140,7 +2140,7 @@ class CkSettings {
   }
 
   method : public : SetPieceSet(v : Int) ~ Nil {
-    @piece_set := Clamp(v, 0, 3);
+    @piece_set := Clamp(v, 0, 7);
   }
 
   method : public : Level() ~ Int {
@@ -4545,6 +4545,10 @@ class CkTests {
     Check(u->FromJson("{\"level\": 99, \"piece_set\": -4, \"volume\": 400, \"human\": \"x\"}"), "settings: odd values parse");
     Check(u->Level() = 10 & u->PieceSet() = 0 & u->Volume() = 100 & u->Human() = 0, "settings: out-of-range values are clamped");
     Check(u->FromJson("{}") & u->Level() = 10, "settings: an empty object keeps what it had");
+    u->SetPieceSet(7);
+    Check(u->PieceSet() = 7, "settings: eight piece sets, the last is number 7");
+    u->SetPieceSet(8);
+    Check(u->PieceSet() = 7 & CkSettings->SetNames()->Size() = 8, "settings: piece sets are clamped to the eight that exist");
 
     # saved to a file and read back
     path := "checkers_test_settings.json";
