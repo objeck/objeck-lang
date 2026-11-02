@@ -1,5 +1,5 @@
 #~
-# compile: obc -src checkers_engine.obs,checkers_game.obs,checkers_ai.obs,checkers_logic.obs,checkers_draw.obs,checkers.obs -lib sdl2,sdl_game,json,ai,gen_collect -dest checkers.obe
+# compile: obc -src checkers_engine.obs,checkers_game.obs,checkers_ai.obs,checkers_logic.obs,checkers_draw.obs,checkers_chars.obs,checkers_fx.obs,checkers_music.obs,checkers_audio.obs,checkers.obs -lib sdl2,sdl_game,json,ai,gen_collect -dest checkers.obe
 # run:     obr checkers.obe
 #
 # Checkers (English draughts) against a computer that thinks at ten levels, or
@@ -10,15 +10,23 @@
 # menu and Q to quit. Your choices (piece set, level, colour) are remembered in
 # a small JSON file, .checkers.json, in your home folder.
 #
-# Four piece sets are drawn with SDL2 shapes, so there is no artwork to license:
-# Classic, Glossy, Engraved and Modern.
+# Eight piece sets are drawn with SDL2 shapes, so there is no artwork to license:
+# Classic, Glossy, Engraved and Modern discs, and four crazy sets of little
+# creatures (Critters, Monsters, Snacks, Space). The music is made up while you
+# play, in a hip-hop or a modern-beats style, from formulas: no sound files.
+# S turns the sound on and off, E saves the music so far as a .mid file, B throws
+# a party.
 #
 # How it works, in the order you would read the files:
 #   checkers_engine.obs  the rules: the board as numbers (bitboards), legal moves
 #   checkers_game.obs    a whole game: history, undo, wins and draws
 #   checkers_ai.obs      the computer: evaluation, alpha-beta search, the 10 levels
 #   checkers_logic.obs   clicks and keys turned into moves (no graphics)
-#   checkers_draw.obs    the pictures: board, pieces, crowns, buttons
+#   checkers_draw.obs    the pictures: board, plain pieces, crowns, buttons
+#   checkers_chars.obs   the creature pieces and their faces
+#   checkers_fx.obs      particles, pop-up words, the opponent's face
+#   checkers_music.obs   the generated music: styles, Markov chains, MIDI, synthesizer
+#   checkers_audio.obs   playing it, and exporting the song
 #   checkers.obs         this file: the window, the 60 frames a second loop
 #
 # The computer thinks on its own thread, so the window never freezes: the
@@ -101,8 +109,16 @@ class CheckersApp {
   @demo : Bool;
   @demo_dir : String;
   @over_frame : Int;
+  @combo : Int;         # pieces taken so far in the move on show
+  @last_input : Int;    # when the person last did anything
+  @antic_sq : Int;
+  @antic_kind : Int;
+  @antic_t0 : Int;
+  @antic_next : Int;
+  @egg : Int;
   @cheer : Bool;        # the piece that just landed captured something
   @t_start : Int;
+  @work_ms : Int;
 
   # the playful layer: particles, words, the opponent's face, shaking
   @fx : CkParticles;
@@ -143,6 +159,7 @@ class CheckersApp {
     @pop := CkPopups->New();
     @land_sq := -1;
     @crown_sq := -1;
+    @antic_sq := -1;
   }
 
   # ---- layout ----
@@ -225,10 +242,14 @@ class CheckersApp {
 
     while(<>@quit) {
       @fw->FrameStart();
+      work0 := Timer->GetTicks();
       HandleEvents();
       Update();
       UpdateSound();
       Draw();
+      if(@demo & @frame >= 100 & @frame < 500) {
+        @work_ms += Timer->GetTicks() - work0;
+      };
       if(@shot_file <> Nil & @frame = @shot_frame) {
         ok := @r->SavePNG(@shot_file);
         if(ok) {
@@ -260,7 +281,7 @@ class CheckersApp {
       };
       if(@demo & @frame = 500) {
         ms := Timer->GetTicks() - @t_start;
-        "400 frames took {$ms} ms ({$(ms / 400)} ms each, 16 is the 60 fps budget)"->PrintLine();
+        "400 frames took {$ms} ms; update and drawing took {$@work_ms} ms in all, {$(@work_ms / 400)} ms a frame (the 60 fps budget is 16 ms)"->PrintLine();
       };
       @frame += 1;
       @now += 16;
@@ -432,6 +453,8 @@ class CheckersApp {
 
     @fx->Clear();
     @pop->Clear();
+    @antic_sq := -1;
+    @last_input := @now;
     @land_sq := -1;
     @crown_sq := -1;
     @over_seen := false;
@@ -444,6 +467,12 @@ class CheckersApp {
     @quip := Nil;
     if(human < 2) {
       SetMood(CkChar->Idle(), 3000, true);
+    };
+    # the tenth level is a boss, and says so
+    if(level = 10 & human < 2) {
+      @quip := "BOSS FIGHT! I have been waiting for you.";
+      @quip_until := @now + 4500;
+      @pop->Add("BOSS FIGHT!", BoardLeft() + Size() * 4, BoardTop() + 3 * Size(), 4, 255, 90, 70);
     };
   }
 
@@ -465,6 +494,7 @@ class CheckersApp {
     @anim_side := mover;
     @hint_move := Nil;
     @poofed := 0;
+    @combo := 0;
     PlaySound(0);
     @think_quip := false;
     @ctl->Clear();
@@ -476,7 +506,7 @@ class CheckersApp {
       if(hops < 1) {
         hops := 1;
       };
-      @anim_dur := 260 + 140 * hops;
+      @anim_dur := AnimTotal(@anim_move->Hops());
       @anim_t0 := @now;
       @anim_on := true;
     }
@@ -508,14 +538,9 @@ class CheckersApp {
         PlaySound(4);
         @fx->Sparkle(CenterX(mv->To()), CenterY(mv->To()), 26, 255, 214, 70);
         @pop->Add("KING ME!", CenterX(mv->To()), CenterY(mv->To()) - 40, 3, 255, 220, 80);
-      };
-      if(mv->Hops() >= 2) {
-        words := ["DOUBLE!", "TRIPLE!", "MEGA!", "ULTRA!", "INSANE!"];
-        w := mv->Hops() - 2;
-        if(w > 4) {
-          w := 4;
+        if(mv->Hops() >= 2) {
+          @fx->Confetti(Width(), 90);
         };
-        @pop->Add(words[w], BoardLeft() + Size() * 4, BoardTop() + Size() * 4 - 10, 4, 255, 120, 60);
       };
     };
 
@@ -542,6 +567,7 @@ class CheckersApp {
 
   method : Update() ~ Nil {
     StepFx();
+    AnticStep();
     if(@screen <> 1) {
       return;
     };
@@ -655,6 +681,9 @@ class CheckersApp {
   method : HandleEvents() ~ Nil {
     while(@event->Poll() <> 0) {
       type := @event->GetType();
+      if(type = EventType->SDL_MOUSEMOTION | type = EventType->SDL_MOUSEBUTTONDOWN | type = EventType->SDL_KEYDOWN) {
+        @last_input := @now;
+      };
       if(type = EventType->SDL_QUIT) {
         @quit := true;
       }
@@ -698,6 +727,11 @@ class CheckersApp {
     id := ButtonAt(x, y);
     if(id >= 0) {
       Action(id);
+      return;
+    };
+    # the opponent's face is a button too, if a silly one
+    if(@screen = 1 & x >= 704 & x < 704 + 96 & y >= 28 & y < 124) {
+      EasterEgg();
       return;
     };
 
@@ -752,6 +786,11 @@ class CheckersApp {
     }
     else if(code = Scancode->SDL_SCANCODE_E) {
       SaveSong();
+    }
+    else if(code = Scancode->SDL_SCANCODE_B) {
+      @pop->Add("PARTY TIME!", BoardLeft() + Size() * 4, BoardTop() + 150, 4, 255, 120, 220);
+      @fx->Confetti(Width(), 160);
+      PlaySound(5);
     }
     else if(code = Scancode->SDL_SCANCODE_N) {
       StartGame();
@@ -836,6 +875,9 @@ class CheckersApp {
       if(@settings->Sound()) {
         PlaySound(1);
       };
+    }
+    else if(id = 318) {
+      @settings->SetShake(<>@settings->Shake());
     }
     else if(id = 316) {
       @settings->SetMusicStyle((@settings->MusicStyle() + 1) % CkStyle->Count());
@@ -983,6 +1025,7 @@ class CheckersApp {
     Btn(315, "Volume {$@settings->Volume()}%", 830, 560, 180, 42, false);
 
     Btn(316, "Music: " + CkStyle->Name(@settings->MusicStyle()), 670, 612, 150, 42, @settings->MusicStyle() < 2);
+    Btn(318, OnOff("Screen shake", @settings->Shake()), 400, 560, 200, 42, @settings->Shake());
     Btn(317, "Save song (.mid)", 830, 612, 180, 42, false);
 
     Btn(320, "Play", Width() / 2 - 150, 600, 300, 54, true);
@@ -1122,10 +1165,7 @@ class CheckersApp {
     if(@anim_on) {
       pos := @anim_pos;
       skip := @anim_move->From();
-      progress := (@now - @anim_t0)->As(Float) / @anim_dur->As(Float);
-      if(progress > 1.0) {
-        progress := 1.0;
-      };
+      progress := AnimProgress(@now - @anim_t0);
       removed := CapturedSoFar(progress);
       PoofNewlyCaptured(removed);
     };
@@ -1230,6 +1270,39 @@ class CheckersApp {
                   sy := 0.9;
                   sx := 1.05;
                 };
+              };
+            };
+          };
+
+          # idle antics: one piece waves, yawns, sneezes (and nudges its neighbours) or peeks
+          if(@antic_sq >= 0 & Fx()) {
+            at := (@now - @antic_t0)->As(Float);
+            near := sq = @antic_sq;
+            if(near & @antic_kind = 0) {
+              lift := (7.0 * (at / 90.0)->Sin()->Abs())->As(Int);
+              sx := 1.0 + 0.06 * (at / 60.0)->Sin();
+            }
+            else if(near & @antic_kind = 1) {
+              sy := 1.0 + 0.18 * (at / 380.0)->Sin()->Abs();
+              sx := 1.0 - 0.08 * (at / 380.0)->Sin()->Abs();
+            }
+            else if(near & @antic_kind = 2) {
+              if(at > 700.0 & at < 900.0) {
+                sx := 1.2;
+                sy := 0.8;
+              };
+            }
+            else if(near & @antic_kind = 3) {
+              cx := cx + (9.0 * (at / 300.0)->Sin())->As(Int);
+              eyes := true;
+            };
+            # a sneeze blows the neighbours a little way off
+            if(<>near & @antic_kind = 2 & at > 700.0 & at < 1100.0) {
+              dr := sq / 8 - @antic_sq / 8;
+              dc := sq % 8 - @antic_sq % 8;
+              if(Int->Abs(dr) <= 1 & Int->Abs(dc) <= 1) {
+                cx := cx + dc * 6;
+                cy := cy + dr * 4;
               };
             };
           };
@@ -1354,6 +1427,8 @@ class CheckersApp {
   }
 
   # a puff of smoke and a comic word wherever a captured piece has just gone
+  # a puff of smoke and a word wherever a captured piece has just gone; a chain
+  # of jumps counts up (Double! Triple! ...) with a bigger shake each time
   method : PoofNewlyCaptured(removed : Int) ~ Nil {
     fresh := removed and (@poofed xor 0x7FFFFFFFFFFFFFFF);
     if(fresh = 0) {
@@ -1363,7 +1438,8 @@ class CheckersApp {
     if(<>Fx()) {
       return;
     };
-    words := ["POW!", "BAM!", "ZAP!", "BOOM!", "WHAM!", "POOF!", "GOTCHA!", "OOF!"];
+    words := CkFxTable->CaptureWords();
+    combos := CkFxTable->ComboWords();
     each(sq : 64) {
       if((fresh and (1 << sq)) <> 0) {
         side := 1 - @anim_side;
@@ -1375,15 +1451,33 @@ class CheckersApp {
           green := 230;
           blue := 215;
         };
-        @fx->Poof(CenterX(sq), CenterY(sq), red, green, blue);
+        @combo += 1;
         PlaySound(2);
-        w := (@game->Entries() * 7 + sq) % 8;
-        @pop->Add(words[w], CenterX(sq), CenterY(sq) - 24, 3, 255, 235, 120);
-        @shake := 5;
-        @shake_until := @now + 160;
+        @fx->Poof(CenterX(sq), CenterY(sq), red, green, blue);
+        if(@combo >= 2) {
+          w := @combo - 2;
+          if(w >= combos->Size()) {
+            w := combos->Size() - 1;
+          };
+          @pop->Add(combos[w], CenterX(sq), CenterY(sq) - 26, 3 + Int->Min(@combo - 2, 1), 255, 150 - w * 25, 70);
+          @fx->Sparkle(CenterX(sq), CenterY(sq), 8 * @combo, 255, 200, 80);
+          @shake := 3 + 2 * @combo;
+        }
+        else {
+          w := (@game->Entries() * 7 + sq) % words->Size();
+          @pop->Add(words[w], CenterX(sq), CenterY(sq) - 24, 3, 255, 235, 120);
+          @shake := 4;
+        };
+        if(@settings->Shake()) {
+          @shake_until := @now + 200;
+        }
+        else {
+          @shake_until := 0;
+        };
       };
     };
   }
+
 
 
   # the squares of captured pieces the moving piece has already passed over
@@ -1478,7 +1572,11 @@ class CheckersApp {
     if(human = 2) {
       name := "Computer duel";
     };
-    @text->Draw(name, px + 106, 32, 3, 245, 245, 245, 0);
+    name_size := 3;
+    if(name->Size() > 13) {
+      name_size := 2;
+    };
+    @text->Draw(name, px + 106, 32 + (3 - name_size) * 4, name_size, 245, 245, 245, 0);
     @text->Draw(CkLevels->Tagline(level), px + 106, 70, 1, t[12], t[13], t[14], 0);
     Btn(7, "-", px + 106, 94, 34, 28, false);
     Btn(8, "+", px + 146, 94, 34, 28, false);
@@ -1691,6 +1789,9 @@ class CheckersApp {
       @r->RoundedBoxColor(mid - 190, top, mid + 190, top + 108, 18, Color->New(16, 16, 20, 225));
       @r->RoundedRectangleColor(mid - 190, top, mid + 190, top + 108, 18, Color->New(t[18], t[19], t[20], 255));
       @text->Draw(text, mid, top + 18, 3, t[18], t[19], t[20], 1);
+      if(Fx() & @ctl->Human() < 2 & status - 1 = @ctl->Human()) {
+        Trophy(mid - 130, top + 74);
+      };
       @text->Draw("N: new game   Esc: menu", mid, top + 66, 1, 220, 220, 220, 1);
     };
 
@@ -1830,6 +1931,9 @@ class CheckersApp {
     };
     @fx->Update();
     @pop->Update();
+    if(<>@settings->Shake()) {
+      @shake := 0;
+    };
     if(@flash > 0) {
       @flash := @flash - 14;
       if(@flash < 0) {
@@ -1952,4 +2056,131 @@ class CheckersApp {
     @audio->SetMood(mood, intensity);
     @audio->Pump();
   }
+
+  # how long hop k of a move with n hops takes: a quick 200 ms each, but the last
+  # jump of a chain is shown in slow motion (360 ms)
+  method : HopMs(k : Int, n : Int) ~ Int {
+    if(n >= 2 & k = n - 1) {
+      return 360;
+    };
+    if(n = 0) {
+      return 280;
+    };
+    return 200;
+  }
+
+
+  method : AnimTotal(n : Int) ~ Int {
+    segs := n;
+    if(segs < 1) {
+      segs := 1;
+    };
+    total := 0;
+    each(k : segs) {
+      total += HopMs(k, n);
+    };
+    return total + 60;
+  }
+
+
+  # the animation clock turned into "how far through the hops": the whole number
+  # is the hop, the fraction how far along it, divided by the number of hops so
+  # that 1.0 is the end. This is what makes the last jump of a chain slow.
+  method : AnimProgress(elapsed : Int) ~ Float {
+    n := @anim_move->Hops();
+    segs := n;
+    if(segs < 1) {
+      segs := 1;
+    };
+    left := elapsed;
+    each(k : segs) {
+      d := HopMs(k, n);
+      if(left < d) {
+        return (k->As(Float) + left->As(Float) / d->As(Float)) / segs->As(Float);
+      };
+      left -= d;
+    };
+    return 1.0;
+  }
+
+
+  # Idle antics: when the person has not done anything for a while, one piece
+  # does something silly. Seeded by the frame counter, never blocks input: it is
+  # only an offset applied while drawing.
+  method : AnticStep() ~ Nil {
+    if(<>Fx() | @screen <> 1 | @anim_on | @fun_event <> Nil | @game->IsOver()) {
+      @antic_sq := -1;
+      return;
+    };
+    quiet := @now - @last_input;
+    if(@antic_sq >= 0) {
+      if(@now - @antic_t0 > 1500 | @now - @last_input < 500) {
+        @antic_sq := -1;
+        @antic_next := @now + 5000;
+      };
+      return;
+    };
+    if(quiet > 6000 & @now > @antic_next) {
+      rand := CkRand->New(@frame * 31 + @game->Entries());
+      pos := @game->Pos();
+      count := 0;
+      each(sq : 64) {
+        if(pos->At(sq) > 0) {
+          count += 1;
+        };
+      };
+      if(count > 0) {
+        pick := rand->NextInt(count);
+        each(sq : 64) {
+          if(pos->At(sq) > 0) {
+            if(pick = 0) {
+              @antic_sq := sq;
+            };
+            pick -= 1;
+          };
+        };
+        @antic_kind := rand->NextInt(4);
+        @antic_t0 := @now;
+        words := CkFxTable->AnticWords();
+        @pop->Add(words[@antic_kind], CenterX(@antic_sq), CenterY(@antic_sq) - 34, 2, 235, 235, 255);
+      };
+      @antic_next := @now + 7000;
+    };
+  }
+
+
+  # a golden cup that bounces on the board when the person wins
+  method : Trophy(mid : Int, top : Int) ~ Nil {
+    age := (@now - @over_t0)->As(Float);
+    bounce := (18.0 * (age / 220.0)->Sin()->Abs() * (-1.0 * age / 1800.0)->Exp())->As(Int);
+    y := top - bounce;
+    gold := Color->New(255, 205, 50, 255);
+    dark := Color->New(150, 100, 10, 255);
+    vx := [mid - 40, mid + 40, mid + 26, mid - 26];
+    vy := [y - 56, y - 56, y - 14, y - 14];
+    @r->FilledPolygonColor(vx, vy, gold);
+    @r->AAPolygonColor(vx, vy, dark);
+    @r->ThickLineColor(mid - 40, y - 48, mid - 54, y - 40, 4, gold);
+    @r->ThickLineColor(mid + 40, y - 48, mid + 54, y - 40, 4, gold);
+    @r->BoxColor(mid - 6, y - 14, mid + 6, y - 2, gold);
+    @r->BoxColor(mid - 24, y - 2, mid + 24, y + 8, dark);
+    @r->FilledCircleColor(mid - 12, y - 40, 5, Color->New(255, 250, 200, 200));
+  }
+
+
+  # clicking the opponent's face: it says something silly and the hat bounces
+  method : EasterEgg() ~ Nil {
+    @egg += 1;
+    lines := CkFxTable->EggLines();
+    @quip := lines[@egg % lines->Size()];
+    @quip_until := @now + 3500;
+    @mood := CkChar->Surprised();
+    @mood_until := @now + 1500;
+    if(Fx()) {
+      @fx->Sparkle(704 + 52, 76, 14, 255, 230, 120);
+      @pop->Add("Hey!", 704 + 120, 60, 2, 255, 240, 160);
+    };
+    PlaySound(1);
+  }
+
 }

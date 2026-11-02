@@ -2117,6 +2117,7 @@ class CkSettings {
   @sound : Bool;
   @volume : Int;        # 0 .. 100
   @music : Int;         # music style: 0 hip-hop, 1 modern beats, 2 off
+  @shake : Bool;        # screen shake on
 
   New() {
     @piece_set := 0;
@@ -2129,6 +2130,7 @@ class CkSettings {
     @sound := true;
     @volume := 70;
     @music := 0;
+    @shake := true;
   }
 
   function : SetNames() ~ String[] {
@@ -2203,6 +2205,14 @@ class CkSettings {
     return @volume;
   }
 
+  method : public : Shake() ~ Bool {
+    return @shake;
+  }
+
+  method : public : SetShake(v : Bool) ~ Nil {
+    @shake := v;
+  }
+
   method : public : MusicStyle() ~ Int {
     return @music;
   }
@@ -2250,7 +2260,8 @@ class CkSettings {
     text += "  \"reduced_motion\": {$@reduced},\n";
     text += "  \"sound\": {$@sound},\n";
     text += "  \"volume\": {$@volume},\n";
-    text += "  \"music_style\": {$@music}\n";
+    text += "  \"music_style\": {$@music},\n";
+    text += "  \"shake\": {$@shake}\n";
     text += "}\n";
     return text;
   }
@@ -2276,6 +2287,7 @@ class CkSettings {
     SetVolume(ReadInt(root, "volume", @volume));
     SetMusicStyle(ReadInt(root, "music_style", @music));
     @flip := ReadBool(root, "flip", @flip);
+    @shake := ReadBool(root, "shake", @shake);
     @anim := ReadBool(root, "anim", @anim);
     @reduced := ReadBool(root, "reduced_motion", @reduced);
     @sound := ReadBool(root, "sound", @sound);

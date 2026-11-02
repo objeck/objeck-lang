@@ -615,3 +615,27 @@ class CkChar {
     };
   }
 }
+
+# The words and lines the effects use, as data: adding a word is adding to a list.
+class CkFxTable {
+  # pops up on a capture
+  function : CaptureWords() ~ String[] {
+    return ["POW!", "BAM!", "ZAP!", "BOOM!", "WHAM!", "POOF!", "GOTCHA!", "OOF!"];
+  }
+
+  # a chain of jumps counts up, one word per extra piece
+  function : ComboWords() ~ String[] {
+    return ["DOUBLE!", "TRIPLE!", "KA-BOOM!", "MEGA!", "ULTRA!", "INSANE!"];
+  }
+
+  # the silly things a piece does when nothing has happened for a while:
+  # a wave, a yawn, a sneeze that nudges its neighbours, a peek
+  function : AnticWords() ~ String[] {
+    return ["Hi!", "Yaaawn...", "Achoo!", "Peek-a-boo"];
+  }
+
+  # what the opponent says when its face is clicked
+  function : EggLines() ~ String[] {
+    return ["Hey, that tickles!", "Eyes up here!", "Stop poking me!", "Is it my turn yet?", "I can see you looking at my hat.", "Press B for a party.", "Tee-hee."];
+  }
+}

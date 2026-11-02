@@ -9,7 +9,7 @@ from code: no pictures, no sound files, nothing to license.
 
 ```
 cd programs/examples/checkers
-obc -src checkers_engine.obs,checkers_game.obs,checkers_ai.obs,checkers_logic.obs,checkers_draw.obs,checkers_fx.obs,checkers_music.obs,checkers_audio.obs,checkers.obs -lib sdl2,sdl_game,json,ai,gen_collect -dest checkers.obe
+obc -src checkers_engine.obs,checkers_game.obs,checkers_ai.obs,checkers_logic.obs,checkers_draw.obs,checkers_chars.obs,checkers_fx.obs,checkers_music.obs,checkers_audio.obs,checkers.obs -lib sdl2,sdl_game,json,ai,gen_collect -dest checkers.obe
 obr checkers.obe
 ```
 
@@ -38,9 +38,25 @@ a capture or a crowning.
 
 ### Piece sets
 
-Four sets, all drawn with SDL2 shapes: **Classic** (flat discs with a rim), **Glossy**
-(gradient discs with a highlight), **Engraved** (grooved concentric rings) and **Modern**
-(flat teal against amber). Every set has its own board colours and a clear crown for kings.
+Eight sets, all drawn with SDL2 shapes, each with its own board colours. Four are plain
+discs: **Classic** (flat with a rim), **Glossy** (gradient with a highlight), **Engraved**
+(grooved concentric rings) and **Modern** (flat teal against amber), each with a clear crown
+for kings. Four are crazy fun characters, every piece a little creature (`checkers_chars.obs`):
+
+| Set | Side one | Side two |
+|---|---|---|
+| **Critters** | cats: cream, pointy ears, whiskers | dogs: brown, floppy ears, snout |
+| **Monsters** | one-eyed purple monsters with horns | square steel robots with an antenna |
+| **Snacks** | pizzas: round, pepperoni | burgers: stacked bun, patty, lettuce |
+| **Space** | suns: yellow with rays | moons: pale, craters, a sleepy cap |
+
+The two sides of a pair differ in outline (round and pointy against square, round against
+stacked, rays against craters) and strongly in lightness, so they stay apart for people who
+cannot tell colours apart, and at the smallest board size. The creatures blink, bob and sway
+their ears and antennae, and their faces react to the game: **worried** when they could be
+captured, **cheering** after a capture, **dizzy** (with stars) while being captured, **winking**
+at a gift, **shaken** in a disaster. A king is the same creature in a cape and a crown. With
+*Animations: off* the faces are still. The recipes are a table of numbers (`CkChars->Recipe`).
 
 ## The ten levels
 
@@ -177,16 +193,25 @@ levels**. Both only act in the opening window above.
 ## The playful layer
 
 Pieces squash and stretch as they hop, wobble when picked up and look at the pointer;
-captures go *poof* with a comic word, combos get bigger words, a crown pops on with a hop
-and sparkles, confetti falls on a win; each of the ten opponents has a face that follows the
-pointer, wears its own hat, sweats while thinking and has a line for every mood. **Animations:
+captures go *poof* with a comic word; a chain of jumps **counts up** (Double! Triple!
+Ka-boom! ...) with a bigger shake and more sparkles each time, and the last jump is shown in
+slow motion (a chain that makes a king throws confetti); a crown pops on with a hop and
+sparkles; a win gets confetti and a bouncing trophy. When nothing has happened for six
+seconds one piece does something silly (waves, yawns, sneezes and nudges its neighbours,
+peeks). Each of the ten opponents has a face that follows the pointer, wears its own hat,
+sweats while thinking and has a line for every mood; click it and it answers, press **B**
+for a party, and level 10 introduces itself as a boss. The words and lines are lists in
+`CkFxTable`, so adding one is adding a string. **Animations:
 off** shows every move instantly with no effects; **Reduced motion** keeps the move
-animation but turns off squash, particles, shaking and flashing. Both are saved in the
-settings file.
+animation but turns off squash, particles, shaking and flashing; **Screen shake** can be
+switched off on its own. All three are saved in the settings file. Nothing blinks or pulses
+faster than about twice a second, and a lightning flash lasts a quarter of a second once.
+The effects cost about 2.5 ms of the 16.7 ms frame with everything on (`--demo` measures it
+on your machine).
 
 ## Checking it without a human
 
-* `obr checkers.obe --screenshot out.png --scene start|play|capture|king|over|ev_zap|ev_gift|ev_quake|ev_wind --set 0-3 --level 1-10`
+* `obr checkers.obe --screenshot out.png --scene start|play|capture|king|over|ev_zap|ev_gift|ev_quake|ev_wind --set 0-7 --level 1-10`
   renders one frame (the scene scripted) and exits. `--frame N` picks the frame.
 * `obr checkers.obe --demo [dir]` lets the computer play itself for up to 25 seconds, saves
   a picture every 0.75 s to `dir`, and prints the frame time (about 16 ms with everything
@@ -227,8 +252,9 @@ it is stale. It covers:
 | `checkers_game.obs` | a whole game: history, undo, win and draw rules, fun-mode events |
 | `checkers_ai.obs` | evaluation, alpha-beta search, `GameState` wrapper, the ten levels |
 | `checkers_logic.obs` | clicks and keys as intents, settings, level names, the thinking thread |
-| `checkers_draw.obs` | board, piece sets, crowns, buttons, text |
-| `checkers_fx.obs` | particles, pop-up words, the ten faces |
+| `checkers_draw.obs` | board, plain piece sets, crowns, buttons, text |
+| `checkers_chars.obs` | the four creature piece sets |
+| `checkers_fx.obs` | particles, pop-up words, the ten faces, the lists of words |
 | `checkers_music.obs` | style table, Markov chains, note events, MIDI writer, synthesizer, effects |
 | `checkers_audio.obs` | playing it: the sound-card queue, MIDI fallback, song export |
 | `checkers.obs` | the window and the main loop |
