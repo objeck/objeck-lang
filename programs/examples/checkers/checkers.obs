@@ -1,5 +1,5 @@
 #~
-# compile: obc -src checkers_engine.obs,checkers_game.obs,checkers_ai.obs,checkers_logic.obs,checkers_draw.obs,checkers_chars.obs,checkers_fx.obs,checkers_music.obs,checkers_audio.obs,checkers.obs -lib sdl2,sdl_game,json,ai,gen_collect -dest checkers.obe
+# compile: obc -src checkers_engine.obs,checkers_game.obs,checkers_ai.obs,checkers_logic.obs,checkers_draw.obs,checkers_chars.obs,checkers_fx.obs,checkers_music.obs,checkers_audio.obs,checkers.obs -lib sdl2,sdl_game,ai,json,collect -dest checkers.obe
 # run:     obr checkers.obe
 #
 # Checkers (English draughts) against a computer that thinks at ten levels, or
@@ -109,6 +109,10 @@ class CheckersApp {
   @demo : Bool;
   @demo_dir : String;
   @over_frame : Int;
+  @lay : CkLayout;       # where the panels go, from the window size
+  @mlay : CkMenuLayout;  # where the menu's cards, levels and settings go
+  @win_w : Int;
+  @win_h : Int;
   @combo : Int;         # pieces taken so far in the move on show
   @last_input : Int;    # when the person last did anything
   @antic_sq : Int;
@@ -164,30 +168,62 @@ class CheckersApp {
 
   # ---- layout ----
 
-  function : Width() ~ Int {
-    return 1040;
+  method : Width() ~ Int {
+    return @lay->W();
   }
 
-  function : Height() ~ Int {
-    return 700;
+
+  method : Height() ~ Int {
+    return @lay->H();
   }
 
-  function : BoardLeft() ~ Int {
-    return 44;
+
+  method : BoardLeft() ~ Int {
+    return @lay->BoardLeft();
   }
 
-  function : BoardTop() ~ Int {
-    return 46;
+
+  method : BoardTop() ~ Int {
+    return @lay->BoardTop();
   }
 
-  function : Size() ~ Int {
-    return 76;
+
+  method : Size() ~ Int {
+    return @lay->Square();
   }
+
+  # the size of text that fits in width pixels: size, or the next sizes down
+  method : Fit(text : String, width : Int, size : Int) ~ Int {
+    s := size;
+    while(s > 0 & @text->Width(text, s) > width) {
+      s -= 1;
+    };
+    return s;
+  }
+
+  # draw text left-aligned (align 0), centred (1) or right-aligned (2) at x, shrinking
+  # the font and then cutting the text so it never runs out of its box of width pixels
+  method : Say(text : String, x : Int, y : Int, width : Int, size : Int, red : Int, green : Int, blue : Int, align : Int) ~ Nil {
+    s := Fit(text, width, size);
+    shown := text;
+    if(@text->Width(shown, s) > width) {
+      limit := width / 6;
+      shown := text->Truncate(limit, "...");
+    };
+    @text->Draw(shown, x, y, s, red, green, blue, align);
+  }
+
 
   # ---- start up ----
 
   method : Run(args : String[]) ~ Nil {
     ParseArgs(args);
+    if(@win_w <= 0) {
+      @win_w := 1040;
+      @win_h := 700;
+    };
+    @lay := CkLayout->New(@win_w, @win_h);
+    @mlay := CkMenuLayout->New(@lay->W(), @lay->H(), CkChars->SetCount(), 10);
 
     @fw := GameFramework->New(Width(), Height(), "Checkers");
     @r := @fw->GetRenderer();
@@ -316,6 +352,13 @@ class CheckersApp {
       }
       else if(a->Equals("--frame") & has_next) {
         @shot_frame := args[i + 1]->ToInt();
+      }
+      else if(a->Equals("--size") & has_next) {
+        dims := args[i + 1]->Split('x');
+        if(dims->Size() = 2) {
+          @win_w := dims[0]->ToInt();
+          @win_h := dims[1]->ToInt();
+        };
       }
       else if(a->Equals("--silent")) {
         @silent := true;
@@ -858,6 +901,9 @@ class CheckersApp {
     else if(id >= 300 & id < 303) {
       @settings->SetHuman(id - 300);
     }
+    else if(id = 303) {
+      @settings->SetHuman((@settings->Human() + 1) % 3);
+    }
     else if(id = 310) {
       @settings->SetFlip(<>@settings->Flip());
     }
@@ -979,90 +1025,118 @@ class CheckersApp {
     ar := t[18];
     ag := t[19];
     ab := t[20];
+    m := @mlay;
+    w := Width();
+    compact := Height() < 640;
 
-    @text->Draw("CHECKERS", Width() / 2, 22, 4, ar, ag, ab, 1);
-    @text->Draw("English draughts, with ten levels of computer opponent", Width() / 2, 84, 2, t[12], t[13], t[14], 1);
-
-    # the four piece sets, each on its own board colours
-    @text->Draw("Piece set", 70, 124, 2, 235, 235, 235, 0);
-    each(i : 8) {
-      x := 70 + i * 118;
-      y := 156;
-      DrawSetCard(i, x, y, 106, 80, i = set);
-      @text->Draw(CkDraw->SetName(i), x + 53, y + 88, 1, 245, 245, 245, 1);
-      if(@nrects < 80) {
-        at := @nrects * 5;
-        @rects[at] := 100 + i;
-        @rects[at + 1] := x;
-        @rects[at + 2] := y;
-        @rects[at + 3] := 106;
-        @rects[at + 4] := 108;
-        @nrects += 1;
-      };
+    if(compact) {
+      @text->Draw("CHECKERS", w / 2, 6, 3, ar, ag, ab, 1);
+      @text->Draw("English draughts, ten levels of computer opponent", w / 2, 42, 1, t[12], t[13], t[14], 1);
+    }
+    else {
+      @text->Draw("CHECKERS", w / 2, 10, 4, ar, ag, ab, 1);
+      @text->Draw("English draughts, with ten levels of computer opponent", w / 2, 68, 2, t[12], t[13], t[14], 1);
     };
 
-    @text->Draw("Level", 70, 306, 2, 235, 235, 235, 0);
+    # the piece sets, each on its own board colours
+    @text->Draw("Piece set", m->GridX(), m->GridY() - 24, 2, 235, 235, 235, 0);
+    count := CkChars->SetCount();
+    each(i : count) {
+      DrawSetCard(i, m->CardX(i), m->CardY(i), m->CardW(), m->CardH(), i = set);
+      Hit(100 + i, m->CardX(i), m->CardY(i), m->CardW(), m->CardH());
+    };
+
+    # the ten levels
+    @text->Draw("Level", m->GridX(), m->LevelLabelY(), 2, 235, 235, 235, 0);
     each(i : 10) {
-      Btn(201 + i, "{$(i + 1)}", 70 + i * 90, 334, 80, 42, i + 1 = @settings->Level());
+      Btn(201 + i, "{$(i + 1)}", m->LevelX(i), m->LevelY(), m->LevelW(), m->LevelH(), i + 1 = @settings->Level());
     };
     lvl := @settings->Level();
-    name := CkLevels->Name(lvl);
-    @text->Draw("{$name}: {$CkLevels->Tagline(lvl)}", 70, 384, 2, ar, ag, ab, 0);
+    Say("{$CkLevels->Name(lvl)}: {$CkLevels->Tagline(lvl)}", m->GridX(), m->InfoY(), m->RowX() - 36 - m->GridX(), 2, ar, ag, ab, 0);
 
-    @text->Draw("You play", 70, 428, 2, 235, 235, 235, 0);
-    Btn(300, CkDraw->SideName(set, 0) + " (first)", 70, 456, 170, 42, @settings->Human() = 0);
-    Btn(301, CkDraw->SideName(set, 1), 250, 456, 170, 42, @settings->Human() = 1);
-    Btn(302, "Watch the computer", 430, 456, 200, 42, @settings->Human() = 2);
-
-    @text->Draw("Options", 670, 428, 2, 235, 235, 235, 0);
-    Btn(310, OnOff("Flip board", @settings->Flip()), 670, 456, 150, 42, @settings->Flip());
+    # the settings, one per row
+    @text->Draw("Settings", m->RowX(), m->GridY() - 24, 2, 235, 235, 235, 0);
+    who := String->New[3];
+    first := CkDraw->SideName(set, 0);
+    second := CkDraw->SideName(set, 1);
+    who[0] := "You play: {$first} (first)";
+    who[1] := "You play: {$second}";
+    who[2] := "Watch the computer play";
     fun := ["Fun mode: off", "Fun mode: levels 1-3", "Fun mode: all levels"];
-    Btn(311, fun[@settings->Fun()], 830, 456, 200 - 20, 42, @settings->Fun() > 0);
-    Btn(312, OnOff("Animations", @settings->Anim()), 670, 508, 150, 42, @settings->Anim());
-    Btn(313, OnOff("Reduced motion", @settings->Reduced()), 830, 508, 180, 42, @settings->Reduced());
+    rx := m->RowX();
+    rw := m->RowW();
+    rh := m->RowH();
+    Btn(303, who[@settings->Human()], rx, m->RowY(0), rw, rh, @settings->Human() < 2);
+    Btn(310, OnOff("Flip board", @settings->Flip()), rx, m->RowY(1), rw, rh, @settings->Flip());
+    Btn(311, fun[@settings->Fun()], rx, m->RowY(2), rw, rh, @settings->Fun() > 0);
+    Btn(312, OnOff("Animations", @settings->Anim()), rx, m->RowY(3), rw, rh, @settings->Anim());
+    Btn(313, OnOff("Reduced motion", @settings->Reduced()), rx, m->RowY(4), rw, rh, @settings->Reduced());
+    Btn(318, OnOff("Screen shake", @settings->Shake()), rx, m->RowY(5), rw, rh, @settings->Shake());
+    Btn(314, OnOff("Sound", @settings->Sound()), rx, m->RowY(6), rw, rh, @settings->Sound());
+    Btn(315, "Volume {$@settings->Volume()}%", rx, m->RowY(7), rw, rh, false);
+    Btn(316, "Music: " + CkStyle->Name(@settings->MusicStyle()), rx, m->RowY(8), rw, rh, @settings->MusicStyle() < 2);
+    Btn(317, "Save song (.mid)", rx, m->RowY(9), rw, rh, false);
 
-    Btn(314, OnOff("Sound", @settings->Sound()), 670, 560, 150, 42, @settings->Sound());
-    Btn(315, "Volume {$@settings->Volume()}%", 830, 560, 180, 42, false);
-
-    Btn(316, "Music: " + CkStyle->Name(@settings->MusicStyle()), 670, 612, 150, 42, @settings->MusicStyle() < 2);
-    Btn(318, OnOff("Screen shake", @settings->Shake()), 400, 560, 200, 42, @settings->Shake());
-    Btn(317, "Save song (.mid)", 830, 612, 180, 42, false);
-
-    Btn(320, "Play", Width() / 2 - 150, 600, 300, 54, true);
-    Btn(321, "Quit", 70, 612, 120, 42, false);
-    @text->Draw("Enter starts a game, Esc quits", Width() / 2, 662, 1, t[12], t[13], t[14], 1);
+    Btn(320, "Play", m->PlayX(), m->PlayY(), m->PlayW(), m->PlayH(), true);
+    Btn(321, "Quit", 18, m->PlayY(), 120, m->PlayH(), false);
+    @text->Draw("Enter starts a game, Esc quits", w / 2, m->PlayY() + m->PlayH() + 2, 0, t[12], t[13], t[14], 1);
   }
 
+  # a clickable area that is not drawn as a button (the piece set cards)
+  method : Hit(id : Int, x : Int, y : Int, w : Int, h : Int) ~ Nil {
+    if(@nrects < 80) {
+      at := @nrects * 5;
+      @rects[at] := id;
+      @rects[at + 1] := x;
+      @rects[at + 2] := y;
+      @rects[at + 3] := w;
+      @rects[at + 4] := h;
+      @nrects += 1;
+    };
+  }
+
+
   # a small board with a man and a king of one set, as a button face
+  # a small board with a man and a king of one set, as a button face; the name of the
+  # set is written under it, inside the card's rectangle
   method : DrawSetCard(set : Int, x : Int, y : Int, w : Int, h : Int, chosen : Bool) ~ Nil {
     t := CkDraw->Theme(set);
-    @r->RoundedBoxColor(x - 5, y - 5, x + w + 4, y + h + 24, 10, Color->New(t[6], t[7], t[8], 255));
+    @r->RoundedBoxColor(x, y, x + w - 1, y + h - 1, 10, Color->New(t[6], t[7], t[8], 255));
     if(chosen) {
       each(i : 3) {
-        @r->RoundedRectangleColor(x - 5 - i, y - 5 - i, x + w + 4 + i, y + h + 24 + i, 10, Color->New(t[18], t[19], t[20], 255));
+        @r->RoundedRectangleColor(x - i, y - i, x + w - 1 + i, y + h - 1 + i, 10, Color->New(t[18], t[19], t[20], 255));
       };
     };
+    pad := 5;
+    cw := (w - 2 * pad) / 3;
+    face_h := h - 20 - pad;
+    ch := face_h / 2;
     each(i : 3) {
       each(j : 2) {
-        px := x + i * 35;
-        py := y + j * 40;
+        px := x + pad + i * cw;
+        py := y + pad + j * ch;
         if((i + j) % 2 = 0) {
-          @r->BoxColor(px, py, px + 34, py + 39, Color->New(t[0], t[1], t[2], 255));
+          @r->BoxColor(px, py, px + cw - 1, py + ch - 1, Color->New(t[0], t[1], t[2], 255));
         }
         else {
-          @r->BoxColor(px, py, px + 34, py + 39, Color->New(t[3], t[4], t[5], 255));
+          @r->BoxColor(px, py, px + cw - 1, py + ch - 1, Color->New(t[3], t[4], t[5], 255));
         };
       };
     };
+    rad := Int->Min(cw, ch) * 36 / 100;
     f := 0;
     if(Fx() & @screen = 0) {
       f := @frame + 1;
     };
-    CkDraw->PieceX(@r, set, x + 17, y + 59, 13, 0, false, 1.0, 1.0, 0, 255, 1.0, 0, f, set);
-    CkDraw->PieceX(@r, set, x + 52, y + 21, 13, 1, false, 1.0, 1.0, 0, 255, 1.0, 0, f, set + 1);
-    CkDraw->PieceX(@r, set, x + 87, y + 21, 13, 0, true, 1.0, 1.0, 0, 255, 1.0, 0, f, set + 2);
-    CkDraw->PieceX(@r, set, x + 87, y + 59, 13, 1, true, 1.0, 1.0, 0, 255, 1.0, 0, f, set + 3);
+    x0 := x + pad;
+    y0 := y + pad;
+    CkDraw->PieceX(@r, set, x0 + cw / 2, y0 + ch + ch / 2, rad, 0, false, 1.0, 1.0, 0, 255, 1.0, 0, f, set);
+    CkDraw->PieceX(@r, set, x0 + cw + cw / 2, y0 + ch / 2, rad, 1, false, 1.0, 1.0, 0, 255, 1.0, 0, f, set + 1);
+    CkDraw->PieceX(@r, set, x0 + 2 * cw + cw / 2, y0 + ch / 2, rad, 0, true, 1.0, 1.0, 0, 255, 1.0, 0, f, set + 2);
+    CkDraw->PieceX(@r, set, x0 + 2 * cw + cw / 2, y0 + ch + ch / 2, rad, 1, true, 1.0, 1.0, 0, 255, 1.0, 0, f, set + 3);
+    Say(CkDraw->SetName(set), x + w / 2, y + h - 18, w - 8, 1, 245, 245, 245, 1);
   }
+
 
   # centre of a board square on the screen
   method : CenterX(sq : Int) ~ Int {
@@ -1557,36 +1631,47 @@ class CheckersApp {
   method : DrawPanel() ~ Nil {
     set := @settings->PieceSet();
     t := CkDraw->Theme(set);
-    px := 704;
-    pw := Width() - px - 20;
     human := @ctl->Human();
     level := @settings->Level();
+    l := @lay;
 
-    # the opponent: a face that follows the pointer, and what it is saying
-    CkDraw->Panel(@r, px, 20, pw, 112, set);
-    ring := CkDraw->Theme(set);
-    @r->FilledCircleColor(px + 52, 76, 41, Color->New(ring[18], ring[19], ring[20], 255));
-    @r->FilledCircleColor(px + 52, 76, 38, Color->New(ring[15] + 10, ring[16] + 10, ring[17] + 10, 255));
-    CkChar->Face(@r, level, px + 52, 82, 27, CurrentMood(), @frame, @mx, @my, Fx());
+    # the opponent: a face that follows the pointer, and its name
+    cx := l->X(CkLayout->Card());
+    cy := l->Y(CkLayout->Card());
+    cw := l->PW(CkLayout->Card());
+    ch := l->PH(CkLayout->Card());
+    CkDraw->Panel(@r, cx, cy, cw, ch, set);
+    ring := ch / 2 - 10;
+    if(ring > 41) {
+      ring := 41;
+    };
+    fx := cx + 14 + ring;
+    fy := cy + 14 + ring;
+    @r->FilledCircleColor(fx, fy, ring, Color->New(t[18], t[19], t[20], 255));
+    @r->FilledCircleColor(fx, fy, ring - 3, Color->New(t[15] + 10, t[16] + 10, t[17] + 10, 255));
+    CkChar->Face(@r, level, fx, fy + 5, ring * 66 / 100, CurrentMood(), @frame, @mx, @my, Fx());
     name := CkLevels->Name(level);
     if(human = 2) {
       name := "Computer duel";
     };
-    name_size := 3;
-    if(name->Size() > 13) {
-      name_size := 2;
-    };
-    @text->Draw(name, px + 106, 32 + (3 - name_size) * 4, name_size, 245, 245, 245, 0);
-    @text->Draw(CkLevels->Tagline(level), px + 106, 70, 1, t[12], t[13], t[14], 0);
-    Btn(7, "-", px + 106, 94, 34, 28, false);
-    Btn(8, "+", px + 146, 94, 34, 28, false);
-    @text->Draw("level {$level}", px + 190, 98, 1, t[12], t[13], t[14], 0);
+    tx := fx + ring + 14;
+    tw := cx + cw - tx - 10;
+    Say(name, tx, cy + 10, tw, 3, 245, 245, 245, 0);
+    Say(CkLevels->Tagline(level), tx, cy + 10 + 34, tw, 1, t[12], t[13], t[14], 0);
+    by := cy + ch - 34;
+    Btn(7, "-", tx, by, 34, 26, false);
+    Btn(8, "+", tx + 40, by, 34, 26, false);
+    Say("level {$level}", tx + 82, by + 4, tw - 82, 1, t[12], t[13], t[14], 0);
 
     # speech bubble
-    DrawBubble(px, 138, pw, set);
+    DrawBubble(set);
 
     # whose turn
-    CkDraw->Panel(@r, px, 196, pw, 60, set);
+    tnx := l->X(CkLayout->Turn());
+    tny := l->Y(CkLayout->Turn());
+    tnw := l->PW(CkLayout->Turn());
+    tnh := l->PH(CkLayout->Turn());
+    CkDraw->Panel(@r, tnx, tny, tnw, tnh, set);
     side := @game->Side();
     status := @game->Status();
     line := "";
@@ -1615,53 +1700,79 @@ class CheckersApp {
     if(@anim_on) {
       shown := @anim_side;
     };
-    CkDraw->Piece(@r, set, px + 34, 226, 18, shown, false, 1.0, 1.0, 0, 255, 1.0);
-    @text->Draw(line, px + 70, 212, 2, 245, 245, 245, 0);
+    icon := tnh / 2 - 8;
+    CkDraw->Piece(@r, set, tnx + 14 + icon, tny + tnh / 2, icon, shown, false, 1.0, 1.0, 0, 255, 1.0);
+    Say(line, tnx + 28 + icon * 2, tny + tnh / 2 - 11, tnw - 40 - icon * 2, 2, 245, 245, 245, 0);
 
-    # pieces lost
-    CkDraw->Panel(@r, px, 264, pw, 58, set);
-    @text->Draw("Captured", px + 16, 268, 1, t[12], t[13], t[14], 0);
+    # pieces lost: a tray for each side
+    rx := l->X(CkLayout->Trays());
+    ry := l->Y(CkLayout->Trays());
+    rw := l->PW(CkLayout->Trays());
+    rh := l->PH(CkLayout->Trays());
+    CkDraw->Panel(@r, rx, ry, rw, rh, set);
+    @text->Draw("Captured", rx + 14, ry + 4, 0, t[12], t[13], t[14], 0);
+    pip := rh / 2 - 9;
+    if(pip > 11) {
+      pip := 11;
+    };
     each(s : 2) {
       lost := @game->Lost(1 - s);
-      base := px + 16 + s * (pw / 2);
-      CkDraw->Piece(@r, set, base + 12, 303, 11, s, false, 1.0, 1.0, 0, 255, 1.0);
-      @text->Draw("{$lost}", base + 32, 291, 2, 245, 245, 245, 0);
+      base := rx + 14 + s * (rw / 2);
+      CkDraw->Piece(@r, set, base + pip, ry + rh - pip - 8, pip, s, false, 1.0, 1.0, 0, 255, 1.0);
+      @text->Draw("{$lost}", base + pip * 2 + 8, ry + rh - 8 - pip - 11, 2, 245, 245, 245, 0);
     };
 
     # the moves so far
-    CkDraw->Panel(@r, px, 330, pw, 178, set);
-    @text->Draw("Moves", px + 16, 334, 1, t[12], t[13], t[14], 0);
-    DrawMoveList(px + 16, 356, pw - 32);
+    mx := l->X(CkLayout->Moves());
+    my := l->Y(CkLayout->Moves());
+    mw := l->PW(CkLayout->Moves());
+    mh := l->PH(CkLayout->Moves());
+    CkDraw->Panel(@r, mx, my, mw, mh, set);
+    @text->Draw("Moves", mx + 14, my + 4, 0, t[12], t[13], t[14], 0);
+    DrawMoveList(mx + 14, my + 22, mw - 28, (mh - 28) / 20);
 
-    # the buttons
-    bw := (pw - 10) / 2;
-    Btn(1, "New game", px, 518, bw, 36, false);
-    Btn(2, "Undo", px + bw + 10, 518, bw, 36, false);
-    Btn(3, "Hint", px, 560, bw, 36, false);
-    Btn(4, "Flip board", px + bw + 10, 560, bw, 36, false);
-    Btn(9, OnOff("Sound", @settings->Sound()), px, 602, bw, 36, false);
-    Btn(10, "Volume {$@settings->Volume()}%", px + bw + 10, 602, bw, 36, false);
-    Btn(5, "Menu", px, 644, bw, 36, false);
-    Btn(6, "Quit", px + bw + 10, 644, bw, 36, false);
+    # the buttons: two columns, four rows
+    bx := l->X(CkLayout->Buttons());
+    byy := l->Y(CkLayout->Buttons());
+    bww := l->PW(CkLayout->Buttons());
+    bhh := (l->PH(CkLayout->Buttons()) - 18) / 4;
+    bw := (bww - 6) / 2;
+    Btn(1, "New game", bx, byy, bw, bhh, false);
+    Btn(2, "Undo", bx + bw + 6, byy, bw, bhh, false);
+    Btn(3, "Hint", bx, byy + (bhh + 6), bw, bhh, false);
+    Btn(4, "Flip board", bx + bw + 6, byy + (bhh + 6), bw, bhh, false);
+    Btn(9, OnOff("Sound", @settings->Sound()), bx, byy + (bhh + 6) * 2, bw, bhh, false);
+    Btn(10, "Volume {$@settings->Volume()}%", bx + bw + 6, byy + (bhh + 6) * 2, bw, bhh, false);
+    Btn(5, "Menu", bx, byy + (bhh + 6) * 3, bw, bhh, false);
+    Btn(6, "Quit", bx + bw + 6, byy + (bhh + 6) * 3, bw, bhh, false);
   }
 
+
   # the opponent's speech bubble, two lines at most
-  method : DrawBubble(px : Int, y : Int, pw : Int, set : Int) ~ Nil {
+  # the opponent's speech bubble: two lines at most, in its own reserved rectangle
+  method : DrawBubble(set : Int) ~ Nil {
     if(@quip = Nil | @now > @quip_until) {
       return;
     };
-    lines := @quip->WrapLines(36);
+    l := @lay;
+    x := l->X(CkLayout->Bubble());
+    y := l->Y(CkLayout->Bubble());
+    w := l->PW(CkLayout->Bubble());
+    h := l->PH(CkLayout->Bubble());
+    chars := (w - 24) / 7;
+    lines := @quip->WrapLines(chars);
     n := lines->Size();
-    if(n > 2) {
-      n := 2;
+    maxl := (h - 10) / 18;
+    if(n > maxl) {
+      n := maxl;
     };
-    h := 14 + n * 20;
-    @r->RoundedBoxColor(px + 4, y + 8, px + pw - 5, y + 8 + h, 10, Color->New(250, 248, 240, 245));
-    @r->FilledTrigonColor(px + 40, y + 8, px + 62, y + 8, px + 48, y - 2, Color->New(250, 248, 240, 245));
+    @r->RoundedBoxColor(x, y + 6, x + w - 1, y + h - 1, 10, Color->New(250, 248, 240, 245));
+    @r->FilledTrigonColor(x + 30, y + 6, x + 52, y + 6, x + 38, y, Color->New(250, 248, 240, 245));
     each(i : n) {
-      @text->Draw(lines[i], px + 16, y + 14 + i * 20, 1, 40, 36, 30, 0);
+      @text->Draw(lines[i], x + 12, y + 10 + i * 18, 1, 40, 36, 30, 0);
     };
   }
+
 
   # the mood the face shows right now
   method : CurrentMood() ~ Int {
@@ -1715,7 +1826,8 @@ class CheckersApp {
   }
 
   # the last twelve lines of the game: "3. c3-d4  b6-a5"
-  method : DrawMoveList(x : Int, y : Int, w : Int) ~ Nil {
+  # the last lines of the game: "3. c3-d4  b6-a5"; show as many as fit (rows)
+  method : DrawMoveList(x : Int, y : Int, w : Int, rows : Int) ~ Nil {
     set := @settings->PieceSet();
     t := CkDraw->Theme(set);
     lines := String->New[400];
@@ -1741,21 +1853,23 @@ class CheckersApp {
       };
     };
 
-    first := n - 8;
+    first := n - rows;
     if(first < 0) {
       first := 0;
     };
+    chars := w / 7;
     row := 0;
     for(i := first; i < n; i += 1;) {
       if(@settings->Fun() > 0 & lines[i]->StartsWith("*")) {
-        @text->Draw(lines[i]->Truncate(34), x, y + row * 20, 1, t[18], t[19], t[20], 0);
+        @text->Draw(lines[i]->Truncate(chars), x, y + row * 20, 1, t[18], t[19], t[20], 0);
       }
       else {
-        @text->Draw(lines[i]->Truncate(34), x, y + row * 20, 1, 225, 225, 225, 0);
+        @text->Draw(lines[i]->Truncate(chars), x, y + row * 20, 1, 225, 225, 225, 0);
       };
       row += 1;
     };
   }
+
 
   # messages over the board: the compulsory-jump reminder, hints, results, events
   method : DrawBanner() ~ Nil {

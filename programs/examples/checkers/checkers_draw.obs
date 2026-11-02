@@ -432,11 +432,16 @@ class CkDraw {
     else {
       r->RoundedRectangleColor(x, y, x + w - 1, y + h - 1, 8, Col(255, 255, 255, 40));
     };
+    # a long caption drops to the smaller font rather than spill out of the button
+    size := 2;
+    if(text->Width(caption, 2) > w - 12) {
+      size := 1;
+    };
     if(enabled) {
-      text->Draw(caption, x + w / 2, y + h / 2 - 11, 2, 245, 245, 245, 1);
+      text->Draw(caption, x + w / 2, y + h / 2 - 3 - size * 4, size, 245, 245, 245, 1);
     }
     else {
-      text->Draw(caption, x + w / 2, y + h / 2 - 11, 2, 120, 120, 120, 1);
+      text->Draw(caption, x + w / 2, y + h / 2 - 3 - size * 4, size, 120, 120, 120, 1);
     };
   }
 

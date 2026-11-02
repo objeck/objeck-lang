@@ -515,3 +515,422 @@ class CkThinker from System.Concurrency.Thread {
     return @player->Nodes();
   }
 }
+
+# Where everything goes, worked out in ONE place from the window size so that no two
+# panels can overlap (the old window hard-coded each position and the speech bubble
+# ended up on top of the "your move" panel). Every rectangle is x, y, width, height.
+# This class has no graphics in it, so the regression test checks that, at several
+# window sizes, no two panels overlap and all of them stay inside the window.
+class CkLayout {
+  @w : Int;
+  @h : Int;
+  @sq : Int;           # side of one board square in pixels
+  @bx : Int;           # top-left corner of the board squares
+  @by : Int;
+  @rects : Int[];      # frame, card, bubble, turn, trays, moves, buttons: 4 numbers each
+
+  # the parts of the game screen
+  function : Frame() ~ Int {
+    return 0;
+  }
+
+  function : Card() ~ Int {
+    return 1;
+  }
+
+  function : Bubble() ~ Int {
+    return 2;
+  }
+
+  function : Turn() ~ Int {
+    return 3;
+  }
+
+  function : Trays() ~ Int {
+    return 4;
+  }
+
+  function : Moves() ~ Int {
+    return 5;
+  }
+
+  function : Buttons() ~ Int {
+    return 6;
+  }
+
+  function : Parts() ~ Int {
+    return 7;
+  }
+
+  # the smallest window the layout is designed for
+  function : MinWidth() ~ Int {
+    return 800;
+  }
+
+  function : MinHeight() ~ Int {
+    return 560;
+  }
+
+  New(w : Int, h : Int) {
+    if(w < MinWidth()) {
+      w := MinWidth();
+    };
+    if(h < MinHeight()) {
+      h := MinHeight();
+    };
+    @w := w;
+    @h := h;
+    @rects := Int->New[28];
+
+    # the board takes the height it can, but leaves 290 pixels for the panel column
+    margin := 14;
+    pad := 24;
+    sq := (h - 2 * margin - 2 * pad) / 8;
+    by_width := (w - 290 - 3 * margin - 2 * pad) / 8;
+    if(by_width < sq) {
+      sq := by_width;
+    };
+    @sq := sq;
+    side := 8 * sq + 2 * pad;
+    fy := (h - side) / 2;
+    Set(Frame(), margin, fy, side, side);
+    @bx := margin + pad;
+    @by := fy + pad;
+
+    # the panel column fills the rest of the width
+    px := margin + side + margin;
+    pw := w - px - margin;
+    gap := 8;
+    card := 112;
+    bubble := 52;
+    turn := 54;
+    trays := 54;
+    rows := 4;
+    bh := 36;
+    if(h < 640) {
+      card := 92;
+      bubble := 46;
+      turn := 44;
+      trays := 46;
+      bh := 30;
+    };
+    buttons := rows * bh + (rows - 1) * 6;
+    y := margin;
+    Set(Card(), px, y, pw, card);
+    y += card + gap;
+    Set(Bubble(), px, y, pw, bubble);
+    y += bubble + gap;
+    Set(Turn(), px, y, pw, turn);
+    y += turn + gap;
+    Set(Trays(), px, y, pw, trays);
+    y += trays + gap;
+    moves := h - margin - buttons - gap - y;
+    Set(Moves(), px, y, pw, moves);
+    y += moves + gap;
+    Set(Buttons(), px, y, pw, buttons);
+  }
+
+  method : Set(part : Int, x : Int, y : Int, w : Int, h : Int) ~ Nil {
+    @rects[part * 4] := x;
+    @rects[part * 4 + 1] := y;
+    @rects[part * 4 + 2] := w;
+    @rects[part * 4 + 3] := h;
+  }
+
+  method : public : W() ~ Int {
+    return @w;
+  }
+
+  method : public : H() ~ Int {
+    return @h;
+  }
+
+  method : public : Square() ~ Int {
+    return @sq;
+  }
+
+  method : public : BoardLeft() ~ Int {
+    return @bx;
+  }
+
+  method : public : BoardTop() ~ Int {
+    return @by;
+  }
+
+  method : public : X(part : Int) ~ Int {
+    return @rects[part * 4];
+  }
+
+  method : public : Y(part : Int) ~ Int {
+    return @rects[part * 4 + 1];
+  }
+
+  method : public : PW(part : Int) ~ Int {
+    return @rects[part * 4 + 2];
+  }
+
+  method : public : PH(part : Int) ~ Int {
+    return @rects[part * 4 + 3];
+  }
+
+  # do two rectangles (x, y, w, h each, at offsets a and b of list) overlap?
+  function : Overlap(list : Int[], a : Int, b : Int) ~ Bool {
+    return list[a] < list[b] + list[b + 2] & list[b] < list[a] + list[a + 2] &
+      list[a + 1] < list[b + 1] + list[b + 3] & list[b + 1] < list[a + 1] + list[a + 3];
+  }
+
+  # how many pairs of rectangles in list (4 numbers each) overlap
+  function : CountOverlaps(list : Int[]) ~ Int {
+    n := list->Size() / 4;
+    found := 0;
+    each(i : n) {
+      for(j := i + 1; j < n; j += 1;) {
+        if(Overlap(list, i * 4, j * 4)) {
+          found += 1;
+        };
+      };
+    };
+    return found;
+  }
+
+  # how many rectangles in list are not entirely inside a w x h window, or too small to use
+  function : CountOutside(list : Int[], w : Int, h : Int) ~ Int {
+    n := list->Size() / 4;
+    found := 0;
+    each(i : n) {
+      at := i * 4;
+      if(list[at] < 0 | list[at + 1] < 0 | list[at] + list[at + 2] > w | list[at + 1] + list[at + 3] > h |
+          list[at + 2] < 8 | list[at + 3] < 8) {
+        found += 1;
+      };
+    };
+    return found;
+  }
+
+  # every part of the game screen as one list
+  method : public : All() ~ Int[] {
+    return @rects;
+  }
+}
+
+# The menu screen's rectangles: a grid of piece-set cards and the level buttons on the
+# left, a column of setting rows on the right, then Play and Quit. Like CkLayout it is
+# plain arithmetic from the window size, and the regression test checks that nothing
+# overlaps and everything fits at several window sizes.
+class CkMenuLayout {
+  @w : Int;
+  @h : Int;
+  @cards : Int;
+  @rows : Int;
+  @all : Int[];        # every rectangle: cards, levels, rows, play, quit, level info
+  @cols : Int;
+  @card_w : Int;
+  @card_h : Int;
+  @gx : Int;           # left edge of the card grid
+  @gy : Int;
+  @gap : Int;
+  @lvl_y : Int;
+  @lvl_w : Int;
+  @lvl_h : Int;
+  @row_x : Int;
+  @row_y : Int;
+  @row_w : Int;
+  @row_h : Int;
+  @row_gap : Int;
+  @play_x : Int;
+  @play_y : Int;
+  @play_w : Int;
+  @play_h : Int;
+  @info_y : Int;
+
+  New(w : Int, h : Int, cards : Int, rows : Int) {
+    if(w < CkLayout->MinWidth()) {
+      w := CkLayout->MinWidth();
+    };
+    if(h < CkLayout->MinHeight()) {
+      h := CkLayout->MinHeight();
+    };
+    @w := w;
+    @h := h;
+    @cards := cards;
+    @rows := rows;
+    margin := 18;
+    @gap := 10;
+    compact := h < 640;
+    top := 92;
+    lab := 24;
+    if(compact) {
+      top := 66;
+      lab := 20;
+    };
+
+    # the right column of settings is a third of the window, at least 300 wide
+    right_w := w * 36 / 100;
+    if(right_w < 300) {
+      right_w := 300;
+    };
+    left_w := w - right_w - 3 * margin;
+    @row_x := margin + left_w + margin;
+    @row_w := right_w;
+    @gx := margin;
+    @gy := top + lab;
+
+    # cards: four to a row
+    @cols := 4;
+    grid_rows := (cards + @cols - 1) / @cols;
+    @card_w := (left_w - (@cols - 1) * @gap) / @cols;
+    @card_h := @card_w * 70 / 100 + 20;
+    if(compact) {
+      @card_h := @card_w * 56 / 100 + 18;
+    };
+
+    # levels sit under the cards
+    grid_h := grid_rows * @card_h + (grid_rows - 1) * @gap;
+    ly := @gy + grid_h + 16;
+    @lvl_y := ly + lab;
+    @lvl_h := 38;
+    if(compact) {
+      @lvl_h := 30;
+    };
+    @lvl_w := (left_w - 9 * 6) / 10;
+    @info_y := @lvl_y + @lvl_h + 8;
+
+    # settings rows fill the right column down to the Play button
+    @row_y := top + lab;
+    @play_h := 52;
+    if(compact) {
+      @play_h := 42;
+    };
+    @play_y := h - margin - @play_h - 18;
+    @play_w := 300;
+    @play_x := (w - @play_w) / 2;
+    avail := @play_y - 14 - @row_y;
+    @row_gap := 6;
+    @row_h := (avail - (rows - 1) * @row_gap) / rows;
+    if(@row_h > 40) {
+      @row_h := 40;
+    };
+    BuildAll();
+  }
+
+  method : BuildAll() ~ Nil {
+    n := @cards + 10 + @rows + 3;
+    @all := Int->New[n * 4];
+    at := 0;
+    each(i : @cards) {
+      Put(at, CardX(i), CardY(i), @card_w, @card_h);
+      at += 4;
+    };
+    each(i : 10) {
+      Put(at, LevelX(i), @lvl_y, @lvl_w, @lvl_h);
+      at += 4;
+    };
+    each(i : @rows) {
+      Put(at, @row_x, RowY(i), @row_w, @row_h);
+      at += 4;
+    };
+    Put(at, @play_x, @play_y, @play_w, @play_h);
+    at += 4;
+    # Quit sits at the left of the Play button row
+    Put(at, 18, @play_y, 120, @play_h);
+    at += 4;
+    # the one-line description of the chosen level
+    Put(at, @gx, @info_y, @row_x - 36 - @gx, 24);
+  }
+
+  method : Put(at : Int, x : Int, y : Int, w : Int, h : Int) ~ Nil {
+    @all[at] := x;
+    @all[at + 1] := y;
+    @all[at + 2] := w;
+    @all[at + 3] := h;
+  }
+
+  method : public : CardX(i : Int) ~ Int {
+    return @gx + (i % @cols) * (@card_w + @gap);
+  }
+
+  method : public : CardY(i : Int) ~ Int {
+    return @gy + (i / @cols) * (@card_h + @gap);
+  }
+
+  method : public : CardW() ~ Int {
+    return @card_w;
+  }
+
+  method : public : CardH() ~ Int {
+    return @card_h;
+  }
+
+  method : public : LevelX(i : Int) ~ Int {
+    return @gx + i * (@lvl_w + 6);
+  }
+
+  method : public : LevelY() ~ Int {
+    return @lvl_y;
+  }
+
+  method : public : LevelW() ~ Int {
+    return @lvl_w;
+  }
+
+  method : public : LevelH() ~ Int {
+    return @lvl_h;
+  }
+
+  method : public : InfoY() ~ Int {
+    return @info_y;
+  }
+
+  method : public : RowX() ~ Int {
+    return @row_x;
+  }
+
+  method : public : RowY(i : Int) ~ Int {
+    return @row_y + i * (@row_h + @row_gap);
+  }
+
+  method : public : RowW() ~ Int {
+    return @row_w;
+  }
+
+  method : public : RowH() ~ Int {
+    return @row_h;
+  }
+
+  method : public : PlayX() ~ Int {
+    return @play_x;
+  }
+
+  method : public : PlayY() ~ Int {
+    return @play_y;
+  }
+
+  method : public : PlayW() ~ Int {
+    return @play_w;
+  }
+
+  method : public : PlayH() ~ Int {
+    return @play_h;
+  }
+
+  method : public : GridY() ~ Int {
+    return @gy;
+  }
+
+  method : public : GridX() ~ Int {
+    return @gx;
+  }
+
+  method : public : LabelY(i : Int) ~ Int {
+    return 0;
+  }
+
+  # y of the "Level" heading, just above the level buttons
+  method : public : LevelLabelY() ~ Int {
+    return @lvl_y - 24;
+  }
+
+  method : public : All() ~ Int[] {
+    return @all;
+  }
+}

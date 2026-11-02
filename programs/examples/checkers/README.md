@@ -9,7 +9,7 @@ from code: no pictures, no sound files, nothing to license.
 
 ```
 cd programs/examples/checkers
-obc -src checkers_engine.obs,checkers_game.obs,checkers_ai.obs,checkers_logic.obs,checkers_draw.obs,checkers_chars.obs,checkers_fx.obs,checkers_music.obs,checkers_audio.obs,checkers.obs -lib sdl2,sdl_game,json,ai,gen_collect -dest checkers.obe
+obc -src checkers_engine.obs,checkers_game.obs,checkers_ai.obs,checkers_logic.obs,checkers_draw.obs,checkers_chars.obs,checkers_fx.obs,checkers_music.obs,checkers_audio.obs,checkers.obs -lib sdl2,sdl_game,ai,json,collect -dest checkers.obe
 obr checkers.obe
 ```
 

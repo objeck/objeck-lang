@@ -44,6 +44,7 @@ class CkTests {
     Settings();
     Weights();
     Music();
+    Layouts();
 
     if(@failures = 0) {
       "PASS: checkers ({$@checks} checks)"->PrintLine();
@@ -858,4 +859,29 @@ class CkTests {
     };
     Check(fx_ok, "music: all sound effects are audible, bounded and repeatable");
   }
+
+  # ---- the layout of the screens ----
+
+  # at several window sizes, no two panels overlap and every panel stays inside the window
+  function : Layouts() ~ Nil {
+    widths := [1040, 880, 800, 1280, 1920, 700];
+    heights := [700, 600, 560, 800, 1080, 400];
+    each(i : 6) {
+      lay := CkLayout->New(widths[i], heights[i]);
+      w := lay->W();
+      h := lay->H();
+      Check(CkLayout->CountOverlaps(lay->All()) = 0, "layout {$w}x{$h}: no two panels overlap");
+      Check(CkLayout->CountOutside(lay->All(), w, h) = 0, "layout {$w}x{$h}: every panel is inside the window");
+      Check(lay->Square() >= 40, "layout {$w}x{$h}: squares are at least 40 pixels (got {$lay->Square()})");
+      Check(lay->PH(CkLayout->Moves()) >= 60, "layout {$w}x{$h}: the move list has room (got {$lay->PH(CkLayout->Moves())})");
+      # the squares sit inside the board frame
+      frame_right := lay->X(CkLayout->Frame()) + lay->PW(CkLayout->Frame());
+      Check(lay->BoardLeft() + 8 * lay->Square() <= frame_right & lay->BoardLeft() >= lay->X(CkLayout->Frame()), "layout {$w}x{$h}: the squares are inside the frame");
+
+      menu := CkMenuLayout->New(w, h, 12, 12);
+      Check(CkLayout->CountOverlaps(menu->All()) = 0, "menu {$w}x{$h}: no two items overlap (card, level, setting, play, quit)");
+      Check(CkLayout->CountOutside(menu->All(), w, h) = 0, "menu {$w}x{$h}: every item is inside the window");
+    };
+  }
+
 }
