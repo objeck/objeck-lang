@@ -1,0 +1,66 @@
+#~
+# compile: obc -src checkers_engine.obs,checkers_music.obs,checkers_wav.obs -dest checkers_wav.obe
+# run:     obr checkers_wav.obe                  measure every style (markdown table)
+#          obr checkers_wav.obe 2 deep song.wav  write 8 bars of style 2 (Reggae) with deep bass
+#
+# Renders the generated music to samples with no window and no sound card, measures
+# it, and can save the result as a WAV file you can open in any audio program:
+#
+#   peak    the loudest sample (1.0 is the most a WAV can hold; clipping is above it)
+#   RMS     the average loudness
+#   bass    how much of the sound is below 120 Hz (the RMS left after a 12 dB per
+#           octave low-pass filter, divided by the RMS of everything): a measure of
+#           how deep the bass is
+#
+# With "deep" the deep-bass setting is on: the bass line an octave lower and louder.
+~#
+
+use System.IO.Filesystem;
+
+class CkWavTool {
+  function : Render(style : Int, deep : Bool, bars : Int, rate : Int) ~ Float[] {
+    beat := CkBeat->New(CkStyle->New(style), 21);
+    beat->SetDeep(deep);
+    song := CkSong->New();
+    moods := [1, 1, 0, 1, 1, 0, 1, 1];
+    each(b : bars) {
+      song->Append(beat->Bar(moods[b % 8], 0.8), b * 1920);
+    };
+    return CkSynth->Render(song, beat->Bpm(0.8, 0), rate);
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    rate := 22050;
+    if(args->Size() >= 3) {
+      style := args[0]->ToInt();
+      deep := args[1]->Equals("deep");
+      samples := Render(style, deep, 8, rate);
+      FileWriter->WriteFile(args[2], CkWave->Encode(samples, rate));
+      "wrote {$args[2]}: {$CkStyle->Name(style)}, {$samples->Size()} samples"->PrintLine();
+      return;
+    };
+
+    "| style | deep bass | seconds | peak | clipped | RMS | bass below 120 Hz |"->PrintLine();
+    "|---|---|---|---|---|---|---|"->PrintLine();
+    each(si : 5) {
+      each(d : 2) {
+        samples := Render(si, d = 1, 8, rate);
+        peak := CkMeasure->Peak(samples);
+        rms := CkMeasure->Rms(samples);
+        low := CkMeasure->LowRms(samples, rate, 120.0) / rms * 100.0;
+        secs := samples->Size()->As(Float) / rate->As(Float);
+        deep := "off";
+        if(d = 1) {
+          deep := "on";
+        };
+        secs_text := Float->ToString(secs, 1);
+        peak_text := Float->ToString(peak, 2);
+        clip_text := Float->ToString(CkMeasure->Clipped(samples) * 100.0, 2);
+        rms_text := Float->ToString(rms, 3);
+        low_text := Float->ToString(low, 1);
+        name := CkStyle->Name(si);
+        "| {$name} | {$deep} | {$secs_text} | {$peak_text} | {$clip_text}% | {$rms_text} | {$low_text}% |"->PrintLine();
+      };
+    };
+  }
+}

@@ -227,7 +227,7 @@ class CheckersApp {
       @win_h := 700;
     };
     @lay := CkLayout->New(@win_w, @win_h);
-    @mlay := CkMenuLayout->New(@lay->W(), @lay->H(), CkChars->SetCount(), 11);
+    @mlay := CkMenuLayout->New(@lay->W(), @lay->H(), CkChars->SetCount(), 12);
 
     @fw := GameFramework->New(Width(), Height(), "Checkers");
     @r := @fw->GetRenderer();
@@ -370,6 +370,12 @@ class CheckersApp {
       }
       else if(a->Equals("--view") & has_next) {
         @view_arg := args[i + 1]->ToInt() + 1;
+      }
+      else if(a->Equals("--music") & has_next) {
+        @settings->SetMusicStyle(args[i + 1]->ToInt());
+      }
+      else if(a->Equals("--deep")) {
+        @settings->SetDeepBass(true);
       }
       else if(a->Equals("--silent")) {
         @silent := true;
@@ -957,6 +963,9 @@ class CheckersApp {
     else if(id = 317) {
       SaveSong();
     }
+    else if(id = 322) {
+      @settings->SetDeepBass(<>@settings->DeepBass());
+    }
     else if(id = 315 | id = 10) {
       # volume goes 0, 20 ... 100 and round again
       v := (@settings->Volume() / 20 + 1) * 20;
@@ -1097,6 +1106,24 @@ class CheckersApp {
     lvl := @settings->Level();
     Say("{$CkLevels->Name(lvl)}: {$CkLevels->Tagline(lvl)}", m->GridX(), m->InfoY(), m->RowX() - 36 - m->GridX(), 2, ar, ag, ab, 0);
 
+    # a card of key hints in the room under the levels
+    hx := m->GridX();
+    hy := m->InfoY() + 40;
+    hw := m->RowX() - 36 - m->GridX();
+    hh := m->PlayY() - 18 - hy;
+    if(hh >= 90) {
+      CkDraw->Panel(@r, hx, hy, hw, hh, set);
+      @text->Draw("How to play", hx + 14, hy + 8, 1, ar, ag, ab, 0);
+      tips := ["Click a piece, then where it goes (or arrows + Enter)",
+        "Jumps are compulsory: the pieces that can jump glow",
+        "H hint   U undo   N new game   F flip   S sound   E save song",
+        "Esc menu   Q quit   click the opponent's face for a surprise"];
+      n := Int->Min(tips->Size(), (hh - 34) / 20);
+      each(i : n) {
+        Say(tips[i], hx + 14, hy + 32 + i * 20, hw - 28, 1, t[12], t[13], t[14], 0);
+      };
+    };
+
     # the settings, one per row
     @text->Draw("Settings", m->RowX(), m->GridY() - 24, 2, 235, 235, 235, 0);
     who := String->New[3];
@@ -1117,10 +1144,11 @@ class CheckersApp {
     Btn(318, OnOff("Screen shake", @settings->Shake()), rx, m->RowY(5), rw, rh, @settings->Shake());
     Btn(314, OnOff("Sound", @settings->Sound()), rx, m->RowY(6), rw, rh, @settings->Sound());
     Btn(315, "Volume {$@settings->Volume()}%", rx, m->RowY(7), rw, rh, false);
-    Btn(316, "Music: " + CkStyle->Name(@settings->MusicStyle()), rx, m->RowY(8), rw, rh, @settings->MusicStyle() < 2);
+    Btn(316, "Music: " + CkStyle->Name(@settings->MusicStyle()), rx, m->RowY(8), rw, rh, @settings->MusicStyle() < CkStyle->OffIndex());
+    Btn(322, OnOff("Deep bass", @settings->DeepBass()), rx, m->RowY(9), rw, rh, @settings->DeepBass());
     views := ["View: flat", "View: slanted"];
-    Btn(319, views[@settings->View()], rx, m->RowY(9), rw, rh, @settings->View() > 0);
-    Btn(317, "Save song (.mid)", rx, m->RowY(10), rw, rh, false);
+    Btn(319, views[@settings->View()], rx, m->RowY(10), rw, rh, @settings->View() > 0);
+    Btn(317, "Save song (.mid)", rx, m->RowY(11), rw, rh, false);
 
     Btn(320, "Play", m->PlayX(), m->PlayY(), m->PlayW(), m->PlayH(), true);
     Btn(321, "Quit", 18, m->PlayY(), 120, m->PlayH(), false);
@@ -2261,6 +2289,7 @@ class CheckersApp {
     };
     @audio->SetVolume(@settings->Volume());
     @audio->SetStyle(@settings->MusicStyle());
+    @audio->SetDeep(@settings->DeepBass());
     @audio->SetMusic(@settings->Sound());
     mood := 0;
     intensity := 0.2;

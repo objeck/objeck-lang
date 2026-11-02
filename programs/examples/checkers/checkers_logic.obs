@@ -24,6 +24,7 @@ class CkSettings {
   @music : Int;         # music style: 0 hip-hop, 1 modern beats, 2 off
   @shake : Bool;        # screen shake on
   @view : Int;          # camera: 0 flat, 1 slanted (see CkView)
+  @deep : Bool;         # deep bass: the bass line an octave lower and louder
 
   New() {
     @piece_set := 8;
@@ -128,12 +129,20 @@ class CkSettings {
     @shake := v;
   }
 
+  method : public : DeepBass() ~ Bool {
+    return @deep;
+  }
+
+  method : public : SetDeepBass(v : Bool) ~ Nil {
+    @deep := v;
+  }
+
   method : public : MusicStyle() ~ Int {
     return @music;
   }
 
   method : public : SetMusicStyle(v : Int) ~ Nil {
-    @music := Clamp(v, 0, 2);
+    @music := Clamp(v, 0, 5);
   }
 
   method : public : SetVolume(v : Int) ~ Nil {
@@ -176,6 +185,7 @@ class CkSettings {
     text += "  \"sound\": {$@sound},\n";
     text += "  \"volume\": {$@volume},\n";
     text += "  \"music_style\": {$@music},\n";
+    text += "  \"deep_bass\": {$@deep},\n";
     text += "  \"shake\": {$@shake},\n";
     text += "  \"view\": {$@view}\n";
     text += "}\n";
@@ -202,6 +212,7 @@ class CkSettings {
     SetFun(ReadInt(root, "fun", @fun));
     SetVolume(ReadInt(root, "volume", @volume));
     SetMusicStyle(ReadInt(root, "music_style", @music));
+    @deep := ReadBool(root, "deep_bass", @deep);
     SetView(ReadInt(root, "view", @view));
     @flip := ReadBool(root, "flip", @flip);
     @shake := ReadBool(root, "shake", @shake);

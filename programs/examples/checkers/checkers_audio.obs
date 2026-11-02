@@ -63,6 +63,7 @@ class CkAudio {
   @nvoices : Int;
   @midi : MixMusic;
   @engine : String;
+  @deep : Bool;
 
   New(seed : Int, style : Int) {
     @rate := 22050;
@@ -98,10 +99,19 @@ class CkAudio {
     return @engine;
   }
 
+  # the deep-bass setting: the bass an octave lower and at full level
+  method : public : SetDeep(on : Bool) ~ Nil {
+    @deep := on;
+    if(@beat <> Nil) {
+      @beat->SetDeep(on);
+    };
+  }
+
   method : public : SetStyle(style : Int) ~ Nil {
     if(@beat = Nil | style <> @style) {
       @style := style;
       @beat := CkBeat->New(CkStyle->New(style), @seed + style * 101);
+      @beat->SetDeep(@deep);
       @bar := Nil;
       @history := CkSong->New();
       @history_bars := 0;
@@ -150,7 +160,7 @@ class CkAudio {
     if(<>@ok) {
       return;
     };
-    if(@volume <= 0.0 | (@style = 2 & @nvoices = 0) | (<>@music_on & @nvoices = 0)) {
+    if(@volume <= 0.0 | (@style = CkStyle->OffIndex() & @nvoices = 0) | (<>@music_on & @nvoices = 0)) {
       @dev->Clear();
       return;
     };
@@ -240,7 +250,7 @@ class CkAudio {
 
   # no sample queue: try SDL_mixer's MIDI support with eight bars of the style
   method : StartMidi() ~ Nil {
-    if(@style >= 2) {
+    if(@style >= CkStyle->OffIndex()) {
       return;
     };
     song := CkSong->New();
@@ -255,6 +265,7 @@ class CkAudio {
       };
     };
     @beat := CkBeat->New(CkStyle->New(@style), @seed + @style * 101);
+    @beat->SetDeep(@deep);
   }
 
   # bytes still waiting in the sound card's queue

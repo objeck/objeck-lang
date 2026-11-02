@@ -698,6 +698,62 @@ class CkTests {
     return song;
   }
 
+  # three bars of a style, with or without the deep-bass setting, rendered to samples
+  function : Render8(style : Int, deep : Bool, rate : Int) ~ Float[] {
+    beat := CkBeat->New(CkStyle->New(style), 21);
+    beat->SetDeep(deep);
+    song := CkSong->New();
+    moods := [1, 1, 0];
+    each(b : 3) {
+      song->Append(beat->Bar(moods[b], 0.8), b * 1920);
+    };
+    return CkSynth->Render(song, beat->Bpm(0.8, 0), rate);
+  }
+
+  # offline measurements of the rendered audio: how deep the bass is, with and without
+  # the deep-bass setting, and that no style clips
+  function : DeepBass() ~ Nil {
+    rate := 5512;
+    ratios := Float->New[5];
+    each(si : 5) {
+      name := CkStyle->Name(si);
+      plain := Render8(si, false, rate);
+      deep := Render8(si, true, rate);
+      p_peak := CkMeasure->Peak(plain);
+      d_peak := CkMeasure->Peak(deep);
+      Check(p_peak > 0.1 & p_peak <= 1.0 & d_peak <= 1.0, "bass {$name}: audible, inside -1 to 1 (peaks {$p_peak}, {$d_peak})");
+      d_clip := CkMeasure->Clipped(deep);
+      Check(CkMeasure->Clipped(plain) < 0.005 & d_clip < 0.005, "bass {$name}: fewer than 0.5 percent of the samples are clipped ({$d_clip})");
+      p_low := CkMeasure->LowRms(plain, rate, 120.0);
+      d_low := CkMeasure->LowRms(deep, rate, 120.0);
+      p_all := CkMeasure->Rms(plain);
+      d_all := CkMeasure->Rms(deep);
+      Check(p_all > 0.01 & d_all > 0.01, "bass {$name}: measurable loudness (RMS {$p_all}, {$d_all})");
+      Check(d_low > p_low * 1.2, "bass {$name}: deep bass puts more energy below 120 Hz ({$d_low} against {$p_low})");
+      p_ratio := p_low / p_all;
+      ratios[si] := p_ratio;
+      d_ratio := d_low / d_all;
+      Check(d_ratio > p_ratio, "bass {$name}: a larger share of the sound is deep bass ({$d_ratio} against {$p_ratio})");
+    };
+    # a classical piece has far less deep bass than a techno one
+    classical := ratios[4];
+    techno := ratios[3];
+    Check(techno > classical, "bass: techno has a larger share of deep bass than classical ({$techno} against {$classical})");
+    # the measuring stick itself: a 60 Hz sine is all bass, a 2000 Hz sine is almost none
+    low := Float->New[rate];
+    high := Float->New[rate];
+    each(i : rate) {
+      low[i] := (6.2831853 * 60.0 * i->As(Float) / rate->As(Float))->Sin();
+      high[i] := (6.2831853 * 2000.0 * i->As(Float) / rate->As(Float))->Sin();
+    };
+    Check(CkMeasure->LowRms(low, rate, 120.0) / CkMeasure->Rms(low) > 0.6, "measure: a 60 Hz tone passes the bass filter");
+    Check(CkMeasure->LowRms(high, rate, 120.0) / CkMeasure->Rms(high) < 0.02, "measure: a 2000 Hz tone does not");
+    s := CkSettings->New();
+    s->SetDeepBass(true);
+    t := CkSettings->New();
+    Check(t->FromJson(s->ToJson()) & t->DeepBass() & <>CkSettings->New()->DeepBass(), "settings: deep bass survives a round trip and is off by default");
+  }
+
   function : Music() ~ Nil {
     # the Markov chains learned something, and their rows are probabilities
     beat0 := CkBeat->New(CkStyle->New(0), 1);
@@ -725,7 +781,7 @@ class CkTests {
     Check(seen_only, "music: the chain only picks transitions it saw in training");
 
     moods := [0, 1, 0, 1, 4, 0, 2, 3];
-    each(si : 2) {
+    each(si : 5) {
       style := CkStyle->New(si);
       name := style->Title();
       scale := style->Scale();
@@ -756,7 +812,7 @@ class CkTests {
             if(note <> 36 & note <> 38 & note <> 39 & note <> 42 & note <> 46 & note <> 45 & note <> 47 & note <> 49) {
               drum_ok := false;
             };
-            if(note = 36 & song->Tick(i) = 0) {
+            if(note = 36) {
               kick_on_one := true;
             };
             if(note = style->SnareNote() & song->Tick(i) >= 480 & song->Tick(i) <= 1500) {
@@ -769,7 +825,12 @@ class CkTests {
         };
       };
       Check(drum_ok, "music {$name}: every drum hit is a General MIDI drum note");
-      Check(kick_on_one & snare_there & hats > 40, "music {$name}: kick on the one, snare or clap in the bar, plenty of hats ({$hats})");
+      if(style->HasDrums()) {
+        Check(kick_on_one & snare_there & hats > 40, "music {$name}: a kick, snare or clap in the bar, plenty of hats ({$hats})");
+      }
+      else {
+        Check(<>kick_on_one & <>snare_there & hats = 0, "music {$name}: a style with no drums plays none");
+      };
 
       # every pitched note, of every track, is in the scale of the key it was written in
       in_key := true;
@@ -800,19 +861,24 @@ class CkTests {
       threat := CkBeat->New(style, 3)->Bar(1, 0.5);
       tense := CkBeat->New(style, 3);
       tense_bar := tense->Bar(0, 0.9);
-      Check(calm->TrackCount(0) > 0 & calm->TrackCount(1) = 0 & calm->TrackCount(2) + calm->TrackCount(4) = 0, "music {$name}: a calm position plays drums only");
+      if(style->HasDrums()) {
+        Check(calm->TrackCount(0) > 0 & calm->TrackCount(1) = 0 & calm->TrackCount(2) + calm->TrackCount(4) = 0, "music {$name}: a calm position plays drums only");
+      }
+      else {
+        Check(calm->TrackCount(0) = 0 & calm->TrackCount(1) = 0 & calm->TrackCount(2) + calm->TrackCount(4) > 0, "music {$name}: a calm position plays the keys only");
+      };
       Check(threat->TrackCount(1) > 0 & threat->TrackCount(2) + threat->TrackCount(4) > 0, "music {$name}: a threatened jump adds bass and keys");
       Check(tense_bar->TrackCount(3) > 0, "music {$name}: a tense position adds the lead");
       fill := false;
       each(bar : 4) {
         x := tense->Bar(0, 0.9);
         each(i : x->Count()) {
-          if(x->Note(i) = 49) {
+          if(x->Track(i) = 0 & x->Note(i) = 49) {
             fill := true;
           };
         };
       };
-      Check(fill, "music {$name}: a tense position gets a fill with a crash");
+      Check(fill = style->HasDrums(), "music {$name}: a tense position gets a fill with a crash (when there are drums)");
       outro := CkBeat->New(style, 3)->Bar(2, 0.8);
       Check(outro->TrackCount(3) = 0, "music {$name}: the outro drops the lead");
       before := CkBeat->New(style, 3);
@@ -847,7 +913,8 @@ class CkTests {
     };
 
     # a style table row for Off, and the effects
-    Check(CkStyle->Count() = 3 & CkStyle->Name(2)->Equals("Off") & CkStyle->Name(0)->Equals("Hip-hop") & CkStyle->Name(1)->Equals("Modern beats"), "music: the style names");
+    Check(CkStyle->Count() = 6 & CkStyle->OffIndex() = 5 & CkStyle->Name(5)->Equals("Off") & CkStyle->Name(0)->Equals("Hip-hop") & CkStyle->Name(1)->Equals("Modern beats") & CkStyle->Name(2)->Equals("Reggae") & CkStyle->Name(3)->Equals("Techno") & CkStyle->Name(4)->Equals("Classical"), "music: the style names");
+    DeepBass();
     junk := Byte->New[10];
     Check(<>CkWave->IsValid(junk, 22050) & <>CkWave->IsValid(Nil, 22050), "music: junk is not a WAV");
     fx_ok := true;

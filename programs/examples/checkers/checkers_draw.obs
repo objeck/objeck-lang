@@ -508,7 +508,7 @@ class CkDraw {
     if(set >= 8) {
       # dark glass: a faint wash on the top half, a hairline neon edge and a soft glow
       r->RoundedBoxColor(x, y, x + w - 1, y + h - 1, 12, Col(t[15], t[16], t[17], 255));
-      r->RoundedBoxColor(x + 2, y + 2, x + w - 3, y + h / 3, 10, Col(255, 255, 255, 8));
+      r->RoundedBoxColor(x + 3, y + 2, x + w - 4, y + Int->Min(h / 3, 7), 4, Col(255, 255, 255, 12));
       r->RoundedRectangleColor(x - 1, y - 1, x + w, y + h, 13, Col(t[18], t[19], t[20], 40));
       r->RoundedRectangleColor(x, y, x + w - 1, y + h - 1, 12, Col(t[18], t[19], t[20], 130));
       return;
@@ -638,12 +638,17 @@ class CkDraw {
             };
           };
         };
-        Cell(r, view, sr, sc, 0.0, t[18], t[19], t[20], 38, false);
       };
     };
-    # scanlines: faint dark lines, eight to a square
-    each(i : 64) {
-      v := i->As(Float) / 8.0;
+    # the grid: a neon hairline between the squares
+    each(k : 9) {
+      g := k->As(Float);
+      BoardLine(r, view, 0.0, g, 8.0, g, 1, Col(t[18], t[19], t[20], 40));
+      BoardLine(r, view, g, 0.0, g, 8.0, 1, Col(t[18], t[19], t[20], 40));
+    };
+    # scanlines: faint dark lines, four to a square
+    each(i : 32) {
+      v := i->As(Float) / 4.0;
       r->LineColor(view->X(0.0, v), view->Y(0.0, v), view->X(8.0, v), view->Y(8.0, v), Col(0, 0, 0, 22));
     };
   }
