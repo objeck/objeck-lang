@@ -9,6 +9,8 @@ the parts the native diagnostics library reports when OBJECK_LSP_TIMING=1:
   parse    Parser over every file of the program (diags.cpp diag_parse_*)
   link     loading lang.obl and every listed .obl (a Linker::Load timed alone)
   analyze  ContextAnalyzer::Analyze without its library load
+  release  freeing the programs an edit made stale, their libraries included
+           (diag_tree_release; not part of the parse+link+analyze total)
 
 and next to them the latency the client sees for a hover sent right after the
 edit, which also covers the Objeck side of the server (collecting texts, building
@@ -23,9 +25,10 @@ obc, and ../lib/native a libobjk_diags built from this tree (an older one prints
 no timing lines, and the script says so).
 
 The link column is measured by a second, standalone Linker that loads the same
-libraries right after the analysis, so it approximates (from below) the cost
-phase 1, a library cache, would remove. The analyze column is the analysis
-total minus that load.
+libraries right after the analysis. It loads them as the analysis does, through
+phase 1's library cache, so it is what loading still costs. The analyze column is
+the analysis total minus that load. OBJECK_LSP_NO_CACHE=1 in the environment
+measures without the caches (and without the server's program reuse).
 """
 import argparse
 import os
@@ -69,6 +72,12 @@ def scenarios():
           "main.obs": os.path.join(TESTS_DIR, "ws_multi_a", "main.obs")},
          {"files": ["types.obs", "main.obs"], "libs": ["gen_collect.obl"]},
          "main.obs", "AlphaShape->New"),
+        # the issue's second measurement: a small main.obs, edited, with one 2.5k-line
+        # file beside it in build.json
+        ("main_with_json", "6-line main.obs edited, lib_src/json.obs beside it in build.json, gen_collect",
+         {"main.obs": TINY_MAIN,
+          "json.obs": os.path.join(REPO_ROOT, "core", "compiler", "lib_src", "json.obs")},
+         {"files": ["json.obs", "main.obs"], "libs": ["gen_collect.obl"]}, "main.obs", "count :="),
         ("json_standalone", "lib_src/json.obs alone (2.5k lines, 13 default libraries)",
          {"json.obs": os.path.join(REPO_ROOT, "core", "compiler", "lib_src", "json.obs")},
          None, "json.obs", "class JsonElement"),
@@ -106,9 +115,12 @@ class TimedServer(LspClient):
 def split(events):
     """Sum one window's timing lines into parse/link/analyze."""
     out = {"parses": 0, "analyses": 0, "parse": 0.0, "link": 0.0, "analyze": 0.0,
-           "lines": 0, "failed": 0}
+           "release": 0.0, "lines": 0, "failed": 0}
     for kind, f in events:
-        if kind == "parse":
+        if kind == "release":
+            # freeing the programs the edit made stale, Linker included
+            out["release"] += float(f.get("ms", 0))
+        elif kind == "parse":
             out["parses"] += 1
             out["parse"] += float(f.get("ms", 0))
             out["lines"] = max(out["lines"], int(f.get("lines", 0)))
@@ -256,15 +268,16 @@ def report(results, args):
     out = []
     out.append(f"Edits per workspace: {args.edits} (body-only: a comment line). "
                "Times in ms; per-edit columns are medians.\n")
-    out.append("| workspace | lines | parse | link | analyze | parse+link+analyze | "
+    out.append("| workspace | lines | parse | link | analyze | parse+link+analyze | release | "
                "hover after edit | analyses/edit | open (to diagnostics) | obc |")
-    out.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+    out.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
     for r in results:
         e = r["edits"]
         native = med(e, "parse") + med(e, "link") + med(e, "analyze")
         obc = f"{r['obc']:.0f}" if r["obc"] is not None else "-"
         out.append(f"| {r['name']} | {r['open']['lines']} | {med(e, 'parse'):.1f} | "
                    f"{med(e, 'link'):.1f} | {med(e, 'analyze'):.1f} | {native:.1f} | "
+                   f"{med(e, 'release'):.1f} | "
                    f"{med(e, 'latency'):.1f} | {med(e, 'analyses'):.0f} | "
                    f"{r['open']['latency']:.0f} | {obc} |")
     out.append("")
