@@ -1,0 +1,101 @@
+# EXTRA_LIBS: net,net_server
+#~
+WebDownloader->Download fetches every URL it is given, however many groups it needs.
+
+The download loop advanced its position with "download_count += group_ending", the end
+of the group just fetched, instead of "download_count := group_ending". Past the first
+group the position overshot: with seven URLs and groups of three it went 0, 3, 9 and the
+seventh URL was never fetched (and a longer list lost a URL in every later group), so its
+result came back empty with no error. The test serves the URLs from an in-process loopback
+server on a port the system chooses.
+~#
+
+use Collection, Web.HTTP, Web.HTTP.Server;
+
+class NumberHandler from HttpRequestHandler {
+  New() { Parent(); }
+
+  # "/3" answers "body 3"
+  method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
+    path := request->GetPath();
+    response->SetCodeContent(200, "body {$path}");
+    return false;
+  }
+
+  method : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
+    response->SetCodeContent(200, "ok");
+    return false;
+  }
+}
+
+class WebDownloaderGroups {
+  @serve_returned : static : Bool;
+  @failures : static : Int;
+
+  function : ServeReturned() ~ Nil { @serve_returned := true; }
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(<>ok) {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+    @serve_returned := false;
+
+    # port 0: the system picks a free port, readable once the server listens
+    server_thread := System.Concurrency.Thread->New() {
+      New() { Parent(); }
+      method : public : Run(arg : System.Base) ~ Nil {
+        WebServer->Serve(NumberHandler->New()->GetClass(), 0, false);
+        WebDownloaderGroups->ServeReturned();
+      }
+    };
+    server_thread->Execute(Nil);
+
+    waited := 0;
+    while(<>@serve_returned & WebServer->GetBoundPort() = 0 & waited < 10000) {
+      System.Concurrency.Thread->Sleep(25);
+      waited += 25;
+    };
+    port := WebServer->GetBoundPort();
+    if(port < 1) {
+      "FAIL: the test server never listened"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    # 1 to 9 URLs: below, at and above each multiple of the group size (3)
+    for(count := 1; count <= 9; count += 1;) {
+      urls := Vector->New()<Url>;
+      each(i : count) {
+        urls->AddBack(Url->New("http://127.0.0.1:{$port}/{$i}"));
+      };
+
+      results := WebDownloader->Download(urls, Nil)<Pair<Url, ByteArrayRef>>;
+      Check("{$count} URLs give {$count} results", results <> Nil & results->Size() = count);
+
+      missing := 0;
+      if(results <> Nil) {
+        each(i : results) {
+          result := results->Get(i);
+          path := result->GetFirst()->GetPath();
+          content := result->GetSecond()->Get();
+          if(content = Nil | <>String->New(content)->Equals("body {$path}")) {
+            missing += 1;
+          };
+        };
+      };
+      Check("{$count} URLs: every one was fetched ({$missing} empty or wrong)", missing = 0);
+    };
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} WebDownloader check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    "PASS: WebDownloader fetches every URL"->PrintLine();
+    Runtime->Exit(0);
+  }
+}
