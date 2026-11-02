@@ -1,0 +1,110 @@
+#~
+# compile: obc -src data_bad_input.obs -lib json,xml,regex
+# run:     obr data_bad_input.obe
+#
+# What JSON, XML and RegEx do with input that is missing or wrong. Real
+# programs meet it all the time: a file that is not there, a reply that is
+# empty, a document cut off halfway, a pattern typed by a user. In
+# v2026.10.3 none of these ends the program; each one gives an answer you
+# can test:
+#
+#   - ReadFile returns Nil for a file it cannot read, and a parser built from
+#     Nil is simply a parser whose Parse() is false
+#   - TextToElement returns Nil for text that is not JSON
+#   - XmlParser->FindElements after a failed Parse is an empty vector
+#   - a pattern that is bad (Nil, a repeat count above 1000, {2,1}) is not OK
+#     and matches nothing
+#   - matching Nil text matches nothing
+#
+# Guide: docs/guides/data_and_text.md
+~#
+
+use Data.JSON;
+use Data.XML;
+use Query.RegEx;
+use System.IO.Filesystem;
+
+class DataBadInput {
+  function : Main(args : String[]) ~ Nil {
+    Json();
+    Xml();
+    Regex();
+  }
+
+  function : Json() ~ Nil {
+    "-- JSON --"->PrintLine();
+
+    # a file that does not exist: ReadFile gives Nil
+    text := FileReader->ReadFile("no_such_file.json");
+    "reading a missing file gives Nil: {$(text = Nil)}"->PrintLine();
+
+    parser := JsonParser->New(text);
+    "parsing Nil succeeds: {$(parser->Parse())}"->PrintLine();
+
+    # text that is not JSON
+    root := JsonParser->TextToElement("{\"name\": \"Ada\",");
+    "a document cut off halfway is Nil: {$(root = Nil)}"->PrintLine();
+
+    # the usual pattern: test, then use
+    root := JsonParser->TextToElement("{\"name\": \"Ada\", \"age\": 36}");
+    if(root <> Nil & root->Has("name")) {
+      name := root->Get("name")->GetString();
+      "name: {$name}"->PrintLine();
+    };
+    has_email := root->Has("email");
+    "has an 'email' field: {$has_email}"->PrintLine();
+  }
+
+  function : Xml() ~ Nil {
+    "-- XML --"->PrintLine();
+
+    # tags that do not match: Parse() is false and GetError says why
+    parser := XmlParser->New("<orders><order id=\"1\"></orders>");
+    "parsing mismatched tags succeeds: {$(parser->Parse())}"->PrintLine();
+    "error: {$(parser->GetError())}"->PrintLine();
+
+    # text with no XML in it at all: FindElements after the failed Parse used
+    # to dereference the missing root; it is an empty vector now
+    parser := XmlParser->New("this is not XML");
+    parsed := parser->Parse();
+    found := parser->FindElements("/orders/order");
+    "parsing plain text succeeds: {$parsed}, elements found: {$(found->Size())}"->PrintLine();
+
+    parser := XmlParser->New("<orders><order id=\"1\"/><order id=\"2\"/></orders>");
+    if(parser->Parse()) {
+      found := parser->FindElements("/orders/order");
+      "elements found in a good document: {$(found->Size())}"->PrintLine();
+    };
+
+    nothing : String := Nil;
+    parser := XmlParser->New(nothing);
+    "parsing Nil succeeds: {$(parser->Parse())}"->PrintLine();
+  }
+
+  function : Regex() ~ Nil {
+    "-- RegEx --"->PrintLine();
+
+    # a repeat count is at most 1000; this one used to fill the heap
+    huge := RegEx->New("a{99999999999}");
+    "a{99999999999} is OK: {$(huge->IsOk())}"->PrintLine();
+    matched := huge->MatchExact("aaa");
+    "  and matches 'aaa': {$matched}"->PrintLine();
+
+    backwards := RegEx->New("a{2,1}");
+    "a{2,1} is OK: {$(backwards->IsOk())}"->PrintLine();
+
+    fine := RegEx->New("a{2,4}");
+    "a{2,4} is OK: {$(fine->IsOk())}"->PrintLine();
+    three := fine->MatchExact("aaa");
+    five := fine->MatchExact("aaaaa");
+    "  matches 'aaa': {$three}, matches 'aaaaa': {$five}"->PrintLine();
+
+    # Nil as the pattern, and Nil as the text
+    nothing : String := Nil;
+    none := RegEx->New(nothing);
+    "a Nil pattern is OK: {$(none->IsOk())}"->PrintLine();
+    word := RegEx->New("\\w+");
+    "matching Nil text: {$(word->MatchExact(nothing))}"->PrintLine();
+    "finding in Nil text gives Nil: {$(word->FindFirst(nothing) = Nil)}"->PrintLine();
+  }
+}

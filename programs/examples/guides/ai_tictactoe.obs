@@ -1,0 +1,169 @@
+#~
+# compile: obc -src ai_tictactoe.obs -lib ai
+# run:     obr ai_tictactoe.obe
+#
+# Two ways for a computer to choose a move, both from System.AI, on the
+# smallest game that needs them: tic-tac-toe.
+#
+# You describe the game once, as a class that implements GameState: the legal
+# moves, what a move does (it must return a NEW position), whether the game
+# is over, and a score from the maximizing player's point of view. Then:
+#
+#   Minimax                 looks at every line of play to the depth you give
+#                           it and assumes the opponent always replies well
+#   MonteCarloTreeSearch    plays thousands of random games from each choice
+#                           and picks the move that came out best; the seed
+#                           makes a search repeatable
+#
+# X is the maximizer. The program plays Minimax against itself, then the two
+# searchers against each other, and prints each game and its result.
+#
+# Guide: docs/guides/ai.md
+~#
+
+use System.AI;
+
+class TicTacToe {
+  function : Main(args : String[]) ~ Nil {
+    # minimax can see all nine plies of a game, so it plays perfectly
+    "Minimax (X) against Minimax (O)"->PrintLine();
+    Play(Minimax->New(9), Minimax->New(9));
+
+    ""->PrintLine();
+    "Minimax (X) against Monte Carlo tree search (O, 2000 playouts)"->PrintLine();
+    Play(Minimax->New(9), MonteCarloTreeSearch->New(2000, 1.414, 7));
+
+    ""->PrintLine();
+    "Monte Carlo tree search (X, 2000 playouts) against Minimax (O)"->PrintLine();
+    Play(MonteCarloTreeSearch->New(2000, 1.414, 7), Minimax->New(9));
+  }
+
+  # x and o are each a Minimax or a MonteCarloTreeSearch; both have FindBestMove
+  function : Play(x : Base, o : Base) ~ Nil {
+    state := Board->New()->As(GameState);
+    while(<>state->IsTerminal()) {
+      move := -1;
+      if(state->IsMaximizing()) {
+        move := Choose(x, state);
+      }
+      else {
+        move := Choose(o, state);
+      };
+      state := state->Apply(move);
+    };
+
+    state->As(Board)->Show();
+    score := state->Evaluate();
+    if(score > 0.0) {
+      "  X wins"->PrintLine();
+    }
+    else if(score < 0.0) {
+      "  O wins"->PrintLine();
+    }
+    else {
+      "  a draw"->PrintLine();
+    };
+  }
+
+  function : Choose(player : Base, state : GameState) ~ Int {
+    if(player->TypeOf(Minimax)) {
+      return player->As(Minimax)->FindBestMove(state);
+    };
+    return player->As(MonteCarloTreeSearch)->FindBestMove(state);
+  }
+}
+
+# A tic-tac-toe position. The nine squares are numbered 0 to 8, row by row; a
+# move is the number of the square to take. X is the maximizer and moves first.
+class Board implements GameState {
+  @squares : Int[];     # 0 empty, 1 X, 2 O
+  @x_to_move : Bool;
+
+  New() {
+    @squares := Int->New[9];
+    @x_to_move := true;
+  }
+
+  New(squares : Int[], x_to_move : Bool) {
+    @squares := squares;
+    @x_to_move := x_to_move;
+  }
+
+  # the legal moves are the empty squares, none once somebody has won
+  method : public : GetMoves() ~ Int[] {
+    if(Winner() <> 0) {
+      return Int->New[0];
+    };
+
+    count := 0;
+    each(i : 9) {
+      if(@squares[i] = 0) {
+        count += 1;
+      };
+    };
+
+    moves := Int->New[count];
+    at := 0;
+    each(i : 9) {
+      if(@squares[i] = 0) {
+        moves[at] := i;
+        at += 1;
+      };
+    };
+    return moves;
+  }
+
+  # a move makes a NEW board; the search keeps the old one to try other moves
+  method : public : Apply(move : Int) ~ GameState {
+    next := Int->New[9];
+    each(i : 9) {
+      next[i] := @squares[i];
+    };
+    next[move] := @x_to_move ? 1 : 2;
+    return Board->New(next, <>@x_to_move);
+  }
+
+  method : public : IsTerminal() ~ Bool {
+    return GetMoves()->Size() = 0;
+  }
+
+  # +1 when X has won, -1 when O has, 0 otherwise
+  method : public : Evaluate() ~ Float {
+    winner := Winner();
+    if(winner = 1) {
+      return 1.0;
+    }
+    else if(winner = 2) {
+      return -1.0;
+    };
+    return 0.0;
+  }
+
+  method : public : IsMaximizing() ~ Bool {
+    return @x_to_move;
+  }
+
+  # 1 or 2 for the player with three in a row, 0 for nobody
+  method : Winner() ~ Int {
+    # the eight lines, three squares each, as one flat array
+    lines := [0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 3, 6, 1, 4, 7, 2, 5, 8, 0, 4, 8, 2, 4, 6];
+    for(i := 0; i < 24; i += 3;) {
+      a := @squares[lines[i]];
+      if(a <> 0 & a = @squares[lines[i + 1]] & a = @squares[lines[i + 2]]) {
+        return a;
+      };
+    };
+    return 0;
+  }
+
+  method : public : Show() ~ Nil {
+    marks := [".", "X", "O"];
+    each(r : 3) {
+      line := "  ";
+      each(c : 3) {
+        line += marks[@squares[r * 3 + c]];
+      };
+      line->PrintLine();
+    };
+  }
+}

@@ -1,0 +1,154 @@
+#~
+# compile: obc -src http_keepalive.obs -lib net,net_server,json,cipher
+# run:     obr http_keepalive.obe
+#
+# A web server and a client in one program, showing what v2026.10.3 changed:
+# HttpClient keeps a plain-HTTP connection open between requests when the
+# server allows it, instead of opening and closing one per request.
+#
+# The server makes one handler object for each connection it accepts, and
+# that handler serves every request that arrives on the connection. So a
+# static counter in the handler's constructor counts connections, and the
+# program can print how many requests were served on how many connections.
+#
+# Rules the client follows (see docs/guides/http.md): GET and DELETE reuse a
+# waiting connection; POST, PUT and PATCH never do; a connection waits at most
+# four seconds; CloseIdleConnections() closes the ones still waiting, and
+# WebServer->Stop() calls it for you.
+#
+# Guide: docs/guides/http.md
+~#
+
+use System.Concurrency;
+use System.IO.Filesystem;
+use Web.HTTP.Server;
+use Data.JSON;
+
+class CountingHandler from HttpRequestHandler {
+  @connections : static : Int;
+  @requests : static : Int;
+  @lock : static : ThreadMutex;
+
+  New() {
+    Parent();
+    critical(@lock) {
+      @connections += 1;
+    };
+  }
+
+  method : ProcessGet(request : Request, response : Response) ~ Bool {
+    critical(@lock) {
+      @requests += 1;
+    };
+
+    # /hello?name=Ada answers {"hello":"Ada"}
+    if(request->GetPath()->Equals("/hello")) {
+      name := request->GetParam("name");
+      if(name = Nil) {
+        name := "world";
+      };
+      response->SetCodeTypeContent(200, "application/json", "{\"hello\":\"{$name}\"}");
+    }
+    else {
+      response->SetCodeContent(404, "Not found");
+    };
+
+    return false;
+  }
+
+  # POST /total with a JSON array of numbers answers their sum
+  method : ProcessPost(request : Request, response : Response) ~ Bool {
+    critical(@lock) {
+      @requests += 1;
+    };
+
+    parser := JsonParser->New(request->GetContent());
+    if(<>parser->Parse()) {
+      response->SetCodeContent(400, "Not JSON");
+      return false;
+    };
+
+    sum := 0.0;
+    numbers := parser->GetRoot();
+    each(i : numbers->Size()) {
+      sum += numbers->Get(i)->GetFloat();
+    };
+    response->SetCodeTypeContent(200, "application/json", "{\"total\":{$sum}}");
+    return false;
+  }
+
+  function : Prepare() ~ Nil {
+    @lock := ThreadMutex->New("counting_handler");
+  }
+
+  function : GetConnections() ~ Int {
+    return @connections;
+  }
+
+  function : GetRequests() ~ Int {
+    return @requests;
+  }
+}
+
+class HttpKeepAlive {
+  function : Main(args : String[]) ~ Nil {
+    CountingHandler->Prepare();
+
+    # Serve() blocks, so it runs on its own thread; port 0 asks for any free port
+    server := Thread->New() {
+      New() {
+        Parent();
+      }
+
+      method : public : Run(arg : System.Base) ~ Nil {
+        WebServer->Serve(CountingHandler->New()->GetClass(), "127.0.0.1", 0);
+      }
+    };
+    server->Execute(Nil);
+
+    waited := 0;
+    while(WebServer->GetBoundPort() = 0 & waited < 10000) {
+      Thread->Sleep(25);
+      waited += 25;
+    };
+    port := WebServer->GetBoundPort();
+    if(port = 0) {
+      "The server did not start."->PrintLine();
+      return;
+    };
+    # the handler made to name the class counts as a connection; start from there
+    base := CountingHandler->GetConnections();
+
+    # --- twenty GETs from one client ---
+    client := Web.HTTP.HttpClient->New();
+    ok := 0;
+    each(i : 20) {
+      url := Web.HTTP.Url->New("http://127.0.0.1:{$port}/hello?name=n{$i}");
+      response := client->Get(url);
+      if(response <> Nil & response->GetCode() = 200) {
+        ok += 1;
+      };
+    };
+    "GET:  {$ok} of 20 answered, {$(CountingHandler->GetConnections() - base)} connection(s) used"->PrintLine();
+
+    # one body, to see what the server sends
+    response := client->Get(Web.HTTP.Url->New("http://127.0.0.1:{$port}/hello?name=Ada"));
+    "      {$(response->GetContent()->ToString())}"->PrintLine();
+
+    # --- three POSTs: each one opens its own connection ---
+    before := CountingHandler->GetConnections();
+    body := "[1.5, 2.5, 3]"->ToByteArray();
+    each(i : 3) {
+      response := client->Post(Web.HTTP.Url->New("http://127.0.0.1:{$port}/total"), body, "application/json");
+      if(i = 0) {
+        "POST: {$(response->GetContent()->ToString())}"->PrintLine();
+      };
+    };
+    "POST: 3 sent, {$(CountingHandler->GetConnections() - before)} new connection(s) used"->PrintLine();
+
+    # --- close what is still waiting, then stop the server ---
+    Web.HTTP.HttpClient->CloseIdleConnections();
+    WebServer->Stop();
+    "requests served: {$(CountingHandler->GetRequests())}"->PrintLine();
+  }
+}

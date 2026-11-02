@@ -1,0 +1,95 @@
+#~
+# compile: obc -src collections_tour.obs
+# run:     obr collections_tour.obe
+#
+# Five collections doing the five jobs they are most often picked for. The
+# choosing table, with the cost of each operation, is in
+# docs/COLLECTIONS_GUIDE.md; this program is the short version in code.
+#
+#   Hash        count how many times each word appears (order does not matter)
+#   Map         the same counts in key order, ready to print as a report
+#   Vector      sort pairs by their first value (fixed in v2026.10.3)
+#   Set         unique values and set algebra
+#   MultiHash   group values under a key
+#
+# Guide: docs/guides/collections.md
+~#
+
+use Collection;
+
+class CollectionsTour {
+  function : Main(args : String[]) ~ Nil {
+    text := "the quick brown fox jumps over the lazy dog the end";
+    words := text->Split(" ");
+
+    # --- Hash: count words; Find gives Nil when the key is not there yet ---
+    counts := Hash->New()<String, IntRef>;
+    each(i : words) {
+      word := words[i];
+      seen := counts->Find(word);
+      if(seen = Nil) {
+        counts->Insert(word, IntRef->New(1));
+      }
+      else {
+        seen->Set(seen->Get() + 1);
+      };
+    };
+    the := counts->Find("the")->Get();
+    "distinct words: {$(counts->Size())}, 'the' appears {$the} times"->PrintLine();
+
+    # --- Map: iterates in key order, so the report comes out sorted ---
+    ordered := Map->New()<String, IntRef>;
+    pairs := counts->GetKeyValues();
+    each(i : pairs) {
+      ordered->Insert(pairs->Get(i)->GetFirst(), pairs->Get(i)->GetSecond());
+    };
+    entries := ordered->GetKeyValues();
+    "in key order:"->Print();
+    each(i : entries) {
+      " {$(entries->Get(i)->GetFirst())}={$(entries->Get(i)->GetSecond()->Get())}"->Print();
+    };
+    ""->PrintLine();
+
+    # --- Vector of pairs: sort by the first value ---
+    # a CompareVector sorts; Collection.Pair compares by its first element,
+    # so (count, word) pairs sort by count
+    by_count := CompareVector->New()<Pair<IntRef, String>>;
+    each(i : pairs) {
+      by_count->AddBack(Pair->New(pairs->Get(i)->GetSecond(), pairs->Get(i)->GetFirst())<IntRef, String>);
+    };
+    by_count->Sort();
+    top := by_count->Get(by_count->Size() - 1);
+    "most common: '{$(top->GetSecond())}' x {$(top->GetFirst()->Get())}"->PrintLine();
+
+    # --- Set: unique values and set algebra ---
+    first := Set->New()<String>;
+    each(i : 4) {
+      first->Add(words[i]);          # the quick brown fox
+    };
+    second := Set->New()<String>;
+    second->Add("the");
+    second->Add("fox");
+    second->Add("cat");
+    shared := first->Intersect(second);
+    either := first->Union(second);
+    "in both sentences: {$(shared->Size())}, in either: {$(either->Size())}"->PrintLine();
+    "shared:"->Print();
+    keys := shared->GetKeys();
+    each(i : keys) {
+      " {$(keys->Get(i))}"->Print();
+    };
+    ""->PrintLine();
+
+    # --- MultiHash: several values under one key ---
+    by_length := MultiHash->New()<IntRef, String>;
+    each(i : words) {
+      by_length->Insert(IntRef->New(words[i]->Size()), words[i]);
+    };
+    fives := by_length->Find(IntRef->New(5));
+    "five-letter words:"->Print();
+    each(i : fives) {
+      " {$(fives->Get(i))}"->Print();
+    };
+    ""->PrintLine();
+  }
+}
