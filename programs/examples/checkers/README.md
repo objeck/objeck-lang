@@ -94,10 +94,10 @@ obr checkers_tournament.obe 10 2 10 checkers_weights.json 1
 | L4 vs L3 | 17 | 1 | 2 | 87.5% | 9.0/10 | 8.5/10 |
 | L5 vs L4 | 13 | 5 | 2 | 77.5% | 7.5/10 | 8.0/10 |
 | L6 vs L5 | 8 | 12 | 0 | 70.0% | 7.5/10 | 6.5/10 |
-| L7 vs L6 | 11 | 9 | 0 | 77.5% | 8.0/10 | 7.5/10 |
-| L8 vs L7 | 9 | 10 | 1 | 70.0% | 7.5/10 | 6.5/10 |
-| L9 vs L8 | (running) | | | | | |
-| L10 vs L9 | (running) | | | | | |
+| L7 vs L6 | 8 | 12 | 0 | 70.0% | 8.0/10 | 6.0/10 |
+| L8 vs L7 | 14 | 5 | 1 | 82.5% | 8.0/10 | 8.5/10 |
+| L9 vs L8 | 8 | 10 | 2 | 65.0% | 5.0/10 | 8.0/10 |
+| L10 vs L9 | 10 | 10 | 0 | 75.0% | 8.0/10 | 7.0/10 |
 
 ("N score" counts a win as 1 and a draw as half. The strong levels draw a lot: checkers is
 a drawish game.) Levels 4 to 6 use the library `Minimax` class over `CkState`, a
