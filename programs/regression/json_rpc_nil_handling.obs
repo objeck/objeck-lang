@@ -182,6 +182,9 @@ class FakeServerThread from System.Concurrency.Thread {
 			reply := String->New(@replies[i]);
 			reply->Append("\r\n");
 			client->WriteString(reply);
+			# wait for the client to hang up first, as Data.JSON.RPC.Server does: closing
+			# with unread data can reset the connection before the client has read the reply
+			client->ReadLine();
 			client->Close();
 		};
 	}
