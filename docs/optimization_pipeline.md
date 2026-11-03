@@ -90,7 +90,7 @@ The docs in the last column, all under `docs/`, record what was built and what i
 | A dense `select` becomes a jump table (F8) | yes | yes | `JIT_SELECT_TABLES_DESIGN.md` |
 | A compiled caller enters a compiled callee's native entry directly, with inline caches at `virtual` and func-ref sites (F7); the C++ bridge is the slow path | yes | yes | `JIT_CALLING_CONVENTION_DESIGN.md` |
 | A method with a loop compiles on its first call or entry, not its tenth | yes | yes | `JIT_ENTRY_COMPILE_DESIGN.md` |
-| Method inlining | no: `ProcessInlineMethod` exists but is never called | no | |
+| Method inlining | no: the unused `ProcessInlineMethod` was deleted in GC roots phase 5 (#1511); the compiler's `s3` pass inlines | no | |
 
 ## The optimization levels (`-opt`)
 

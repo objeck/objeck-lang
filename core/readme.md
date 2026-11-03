@@ -367,7 +367,7 @@ cd core/release
 
 ### Run Tests Locally
 
-#### Regression Suite (299 tests)
+#### Regression Suite (about 780 tests)
 ```bash
 cd programs/regression
 

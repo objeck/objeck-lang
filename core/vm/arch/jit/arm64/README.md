@@ -11,7 +11,7 @@ ARM64 opts each opcode *in* through its own `CanJitInstruction()` whitelist (`ji
 |---|---|---|
 | Local register cache | yes | `CacheLocalRegister` / `CacheLocalFpRegister` / `FlushLocalCache` |
 | Direct JIT→JIT calls | yes | since [#776](https://github.com/objeck/objeck-lang/pull/776) a compiled caller enters a compiled callee's native entry (`EmitNativeCallSite`, `EmitNativePrologue`: self, the caller's stack pointer and the end of its outgoing area in `X0`-`X2`, the result in `D0`), with inline caches at `virtual` and func-ref sites; anything else takes the callback bridge. Either way the caller reloads a **stale `self`** afterwards (a call may trigger GC, which can move young objects) |
-| Method inlining | **no** | the JIT inlines nothing (AMD64's inliner is switched off too) |
+| Method inlining | **no** | the JIT inlines nothing (AMD64's unused inliner was deleted in [#1511](https://github.com/objeck/objeck-lang/pull/1511)) |
 | Division by a constant | yes | any constant but `0`, `1` and `-1` is a multiply by a magic number (`EmitMagicDivision`, `smulh`), powers of two included; AMD64 shifts those instead |
 | Loop detection | yes | the pre-scan's backward jumps mark the loop headers that get a safepoint poll; no `detected_loops` list, so no loop locals in registers yet (AMD64's F3) |
 | `JMP_TABLE` codegen | yes | `ADR` base → `ADD` (index `LSL #2`) → `LDR` word → indirect `BR` |

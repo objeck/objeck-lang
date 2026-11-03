@@ -10,7 +10,7 @@ Collection of example programs, frameworks, tools, and tests demonstrating Objec
 | **[frameworks](frameworks)** | Framework integration prototypes and demos | OpenAI, Gemini, OpenCV, ONNX, SDL2, GTK, ODBC |
 | **[deploy](deploy)** | Example programs shipped in every release's `examples/` directory, plus release utilities | Numbered examples indexed in [deploy/README.md](deploy/README.md), release file renaming (`util/`) |
 | **[langs](langs)** | Mini languages and interpreters written in Objeck | Expression evaluators, DSLs, simple interpreters |
-| **[regression](regression)** | Regression test suite, run by CI on every platform | About 300 tests, listed in [regression/TESTS.md](regression/TESTS.md) |
+| **[regression](regression)** | Regression test suite, run by CI on every platform | About 780 tests, listed in [regression/TESTS.md](regression/TESTS.md) |
 | **[tests](tests)** | Unit tests, integration tests, and benchmarks | Language feature tests, performance benchmarks |
 | **[web-playground](web-playground)** | The browser playground at [playground.objeck.org](https://playground.objeck.org) | FastAPI backend, sandboxed runner image, frontend, demo programs |
 

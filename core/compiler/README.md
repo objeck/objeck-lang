@@ -31,28 +31,17 @@ obc -src hello.obs -dest hello.obe
 
 ## Architecture
 
-### Frontend
-- **Scanner & Parser**: Handwritten recursive-descent parser for complete control over error messages and performance
-- **Contextual Analyzer**: Implements type checking and semantic analysis, with special handling for primitives to act as objects
-- **Code Emitter**: Transforms the abstract syntax tree into intermediate bytecode blocks
+`Compile()` in `compiler.cpp` runs these stages in order; each is one source file. The whole map, with the file formats and the VM, is [docs/ARCHITECTURE_MAP.md](../../docs/ARCHITECTURE_MAP.md).
 
-### Backend
-- **Optimizer**: Multi-pass optimization pipeline (see below)
-- **Linker**: Resolves external library references and produces final bytecode
-- **Code Pruning**: Eliminates unreachable code and unused definitions
+| Stage | Source | Does |
+|---|---|---|
+| Scanner and parser | `scanner.cpp`, `parser.cpp`, `tree.h` | hand-written recursive descent into a `ParsedProgram` |
+| Context analyzer | `context.cpp`, `types.cpp` | type checking and name resolution. It first calls `Linker::Load` (`linker.cpp`), which reads the `.obl` libraries named by `-lib` (and `lang`, `gen_collect`), so library classes are known before analysis |
+| Intermediate emitter | `intermediate.cpp` | blocks of VM instructions (`../shared/instrs.h`) per method; pulls in the library classes the program calls |
+| Optimizer | `optimization.cpp` | `-opt s0` to `s3` (default `s3`); see [docs/optimization_pipeline.md](../../docs/optimization_pipeline.md) for the passes at each level |
+| File emitter | `emit.cpp` | writes the zlib-compressed `.obe` or `.obl` |
 
-### Optimization Pipeline
-
-The optimizer performs the following optimizations in order:
-
-1. **Jump optimizations** - Eliminates redundant jumps and unreachable code
-2. **Constant folding** - Evaluates constant expressions at compile time
-3. **Getter/Setter inlining** - Inlines simple property accessors
-4. **Dead store removal** - Removes unused variable assignments
-5. **Constant propagation** - Propagates constant values through the program
-6. **Method inlining** - Inlines small, frequently-called methods
-7. **Strength reduction** - Replaces expensive operations with cheaper equivalents
-8. **Instruction optimization** - Peephole optimizations on bytecode sequences
+The same sources are also built as the bootstrap compiler `sys_obc` (`-D_SYSTEM`, for `lib_src/lang.obs`), as `compiler.a` (`-D_MODULE`, for `core/module` and the REPL) and, with only the front end, as `libobjk_diags` for the language server.
 
 ### Generics Implementation
 
@@ -77,7 +66,7 @@ The compiler produces bytecode files in Objeck's compressed format:
 - **.obe files**: Executable programs
 - **.obl files**: Reusable libraries
 
-All bytecode is position-independent and portable across platforms.
+Both begin with the toolchain version (`VER_NUM`) and a magic number, and the VM and the linker refuse a file from another toolchain version. The bytecode is the same on every platform. Details: [docs/ARCHITECTURE_MAP.md](../../docs/ARCHITECTURE_MAP.md#file-formats).
 
 ## See Also
 

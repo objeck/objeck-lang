@@ -2,6 +2,8 @@
 
 An assessment of the language, compiler, runtime, JIT and collector, debugger, language server, standard library and the build, test and release machinery, as of master `5faaca629f` (v2026.10.3 in development).
 
+**Status: snapshot.** Several findings have been fixed since: 1.1 (the dead parser copy is gone), 2.3 (`VMContext` carries `abi_version` and `struct_size`), 2.2 (the loader returns an error instead of calling `exit(1)`; the compiler back end throws `CompilerFatal`, with one `exit(1)` left in `linker.cpp`), part of 2.1 (`Loader::Verify` exists; see [SECURITY_MODEL.md](SECURITY_MODEL.md)), 5.1 (the nightly workflow's cron is live) and 1.4, 3.1 and 3.2 (the shared frame-layout header, typed compiled-frame slots and the `Int[]` tag: phases 3, 4 and 6 of [GC_ROOTS_DESIGN.md](GC_ROOTS_DESIGN.md)). The tables below are left as they were written.
+
 ## How this was done
 
 Seven reviewers each read one component with no ability to build or run anything: compiler and language, VM runtime and native interface, JIT and garbage collector, debugger and command-line tools, language server, standard library, and build/test/release engineering. The coordinator then checked the claims below that could be checked cheaply, and ran one experiment of its own (the `Int[]` finding).

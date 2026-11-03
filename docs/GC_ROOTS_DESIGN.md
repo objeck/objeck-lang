@@ -2,8 +2,8 @@
 
 Written 2026-10-29 against master `c816f3f9ae`, before any implementation. It was prompted by two
 suspected JIT root bugs (`jit_stale_spill_slot`, `jit_inline_local_root`) and a run of collector fixes
-that each patched one consequence of the same assumption. This is a design for review, not a record of
-built work: nothing below has landed.
+that each patched one consequence of the same assumption. This was a design for review when it was
+written, and nothing below had landed. **Phases 0 to 6 have since merged (#1511 was the last); the status blocks that follow are the record of what was built and how it differs, and the rest of the page is the design they implemented.**
 
 **Status, 2026-10-30.** The user chose the full redesign over a targeted fix.
 - **Phase 0 is merged** (#1455): `--jit=off` now compiles nothing.

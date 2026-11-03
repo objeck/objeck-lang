@@ -18,7 +18,7 @@ There are two independent back-ends sharing the common driver in `jit_common.{h,
 | Instruction gating | **whitelist** — `CanJitInstruction()` opts each opcode in | **whitelist** — `CanJitInstruction()`, same shape; accepts one fewer opcode (`NEW_FUNC_INST`). Neither accepts `TRY_START`/`TRY_END`, so a method holding a `Try()` region always runs in the interpreter |
 | Local register cache | yes | yes |
 | Direct JIT→JIT calls | yes | yes |
-| Method inlining | **no** — `ProcessInlineMethod` exists but has no caller (`is_inlining` is never true); `CanInlineMethod` still runs and every compiled frame reserves stack for inlining that never happens | no (never implemented); since [#776](https://github.com/objeck/objeck-lang/pull/776) calls go through native call sites, as on AMD64 |
+| Method inlining | **no** — the dead `ProcessInlineMethod` and its helpers were deleted in GC roots phase 5 ([#1511](https://github.com/objeck/objeck-lang/pull/1511)); the compiler's `-opt s3` inliner is the only one | no (never implemented); since [#776](https://github.com/objeck/objeck-lang/pull/776) calls go through native call sites, as on AMD64 |
 | Division strength reduction | yes | yes (`EmitMagicDivision`) |
 | Loop detection (backward-jump scan) | yes | yes (scans backward jumps in the pre-scan; keeps no `detected_loops` list) |
 | `JMP_TABLE` native codegen | **yes** | **yes** — a dense `select` is a bounds check and an indirect jump through an inline table of 32-bit offsets (2026-09-09, F8) |
@@ -51,7 +51,7 @@ flowchart LR
 ### Key gains
 - **Local variable register cache** — values stored to a local are kept live in their register (`local_reg_cache` / `local_xreg_cache`); a later load of the same slot reuses the register instead of reloading from the stack. The cache is flushed at control flow and before any callback (`FlushLocalCache()`), since the callee may mutate memory.
 - **Direct JIT→JIT calling** — when a JIT'ed method calls another method that already has native code, it executes it directly via `JitRuntime::Execute()` instead of trampolining through the interpreter. The callee's `StackFrame` is still registered on the call stack so the GC can see it. Negative return status surfaces a diagnosable error (`-1` nil deref, `-2/-3` bounds, `-4` div-by-zero) instead of a silent crash.
-- **Method inlining (AMD64) — not active.** `ProcessInlineMethod()` is complete but never called (see the note at its `MTHD_CALL` site: constructor `INSTANCE_MEM` offsets need investigation). `CanInlineMethod()` / `ComputeInlineLocalSpace()` still run at compile time only to size `extra_inline_space`, so every compiled frame pays for a feature that is off. Either finish it or delete it; this README used to describe it as working.
+- **No JIT-level method inlining.** AMD64 once carried a complete but never-called inliner (`ProcessInlineMethod`); it was deleted in GC roots phase 5 ([#1511](https://github.com/objeck/objeck-lang/pull/1511)), together with the frame space it reserved. Inlining is done by the compiler at `-opt s3`.
 - **`JMP_TABLE` (a dense `select`) is compiled on both backends** since 2026-09-09: `sub`/`cmp`/`jae` (`b.hs`) to the default arm, then `lea`+`movsxd`+`jmp` (`adr`+`ldrsw`+`br`) through a table of 32-bit offsets placed inline after the jump. Until then neither backend whitelisted it and any method holding a `select` ran in the interpreter whole. Design: `docs/JIT_SELECT_TABLES_DESIGN.md`.
 
 ### Frame layout and the collector

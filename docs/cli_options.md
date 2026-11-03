@@ -140,5 +140,5 @@ used to be accepted and silently do nothing.
 ## Source
 
 - Compiler option parsing: `core/compiler/compiler.cpp`, usage string in `core/compiler/posix_main.cpp`
-- VM option parsing: `core/vm/win_main.cpp`, `core/vm/posix_main.cpp`
+- VM option parsing: `core/vm/vm_options.h` (one parser, called from `core/vm/win_main.cpp` and `core/vm/posix_main.cpp`)
 - JIT threshold tunables: `core/vm/arch/jit/jit_common.h`
