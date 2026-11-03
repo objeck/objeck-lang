@@ -6,6 +6,8 @@ name: RC Verify
 # signing, no publishing, nothing is tagged or released from here.
 
 on:
+  push:
+    branches: [ci/rc-verify-10-3]
   workflow_dispatch:
     inputs:
       sha:
@@ -51,7 +53,7 @@ jobs:
         shell: ${{ matrix.shell }}
 
     env:
-      VERSION: ${{ inputs.version }}
+      VERSION: ${{ inputs.version || '2026.10.3' }}
       # As ci-build.yml sets them on its regression steps: a test that cannot
       # reach the ODBC data source (or, off Windows, a GL context) FAILS instead
       # of printing SKIP.
@@ -62,13 +64,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.sha }}
+          ref: ${{ inputs.sha || '932696b4ec6481a4e48054e72a7a23608e94d824' }}
           fetch-depth: 1
 
       - name: Confirm the checkout is the requested commit
         shell: bash
         env:
-          WANT: ${{ inputs.sha }}
+          WANT: ${{ inputs.sha || '932696b4ec6481a4e48054e72a7a23608e94d824' }}
         run: |
           got=$(git rev-parse HEAD)
           echo "HEAD=$got want=$WANT"
