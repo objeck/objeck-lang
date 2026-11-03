@@ -1,0 +1,288 @@
+name: RC Verify
+
+# Release-candidate verification on GitHub-hosted runners, for the targets that
+# have no maintainer machine: windows-arm64 (native), macos-arm64, linux-arm64.
+# Runs tools/cicd/verify_platform.{sh,cmd} at an exact commit. No secrets, no
+# signing, no publishing, nothing is tagged or released from here.
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Exact commit to verify
+        default: 932696b4ec6481a4e48054e72a7a23608e94d824
+        required: true
+      version:
+        description: Release version the commit carries
+        default: 2026.10.3
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  verify:
+    name: Verify ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 150
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-arm64
+            os: windows-11-arm
+            arch: ARM64
+            shell: cmd
+          - platform: macos-arm64
+            os: macos-15
+            arch: arm64
+            shell: bash
+          - platform: linux-arm64
+            os: ubuntu-24.04-arm
+            arch: arm64
+            shell: bash
+
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+
+    env:
+      VERSION: ${{ inputs.version }}
+      # As ci-build.yml sets them on its regression steps: a test that cannot
+      # reach the ODBC data source (or, off Windows, a GL context) FAILS instead
+      # of printing SKIP.
+      OBJECK_REQUIRE_ODBC: "1"
+      OBJECK_GL_REQUIRED: ${{ matrix.platform != 'windows-arm64' && '1' || '' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.sha }}
+          fetch-depth: 1
+
+      - name: Confirm the checkout is the requested commit
+        shell: bash
+        env:
+          WANT: ${{ inputs.sha }}
+        run: |
+          got=$(git rev-parse HEAD)
+          echo "HEAD=$got want=$WANT"
+          [ "$got" = "$WANT" ] || { echo "::error::checked out $got, not $WANT"; exit 1; }
+
+      # ---------------- Linux (as ci-build.yml) ----------------
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libopencv-dev \
+            libmbedtls-dev \
+            unixodbc-dev \
+            libsqliteodbc \
+            libsdl2-dev \
+            libsdl2-image-dev \
+            libsdl2-ttf-dev \
+            libsdl2-mixer-dev \
+            libegl1 \
+            libegl-mesa0 \
+            libgl1-mesa-dri \
+            libreadline-dev \
+            libeigen3-dev \
+            libmp3lame-dev \
+            expect
+
+      - name: Configure ODBC test DSN (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          echo '[objeck_sqlite_test]' >> ~/.odbc.ini
+          echo 'Description=Objeck ODBC regression test DSN' >> ~/.odbc.ini
+          echo 'Driver=SQLite3' >> ~/.odbc.ini
+          echo 'Database=:memory:' >> ~/.odbc.ini
+
+      # ---------------- macOS (as ci-build.yml) ----------------
+      - name: Install macOS dependencies
+        if: runner.os == 'macOS'
+        run: |
+          rm -rf ~/Library/Caches/Homebrew/Backup
+          for pkg in \
+            cmake \
+            unixodbc \
+            sqliteodbc \
+            sdl2 \
+            sdl2_image \
+            sdl2_ttf \
+            sdl2_mixer \
+            readline \
+            eigen; do
+            if brew list --versions "$pkg" >/dev/null 2>&1; then
+              echo "✓ $pkg already installed — skipping"
+            else
+              brew install "$pkg"
+            fi
+          done
+          brew cleanup
+          export PATH="/opt/homebrew/bin:$PATH"
+          echo "/opt/homebrew/bin" >> $GITHUB_PATH
+
+      - name: Select Xcode 16.3+ (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          XCODE_PATH=$(ls -d /Applications/Xcode_16.[3-9]*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$XCODE_PATH" ]; then
+            XCODE_PATH=$(ls -d /Applications/Xcode_16.*.app 2>/dev/null | sort -V | tail -1)
+          fi
+          if [ -n "$XCODE_PATH" ]; then
+            sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
+            echo "Selected: $XCODE_PATH"
+          fi
+          xcodebuild -version
+
+      # ---------------- Windows ARM64 (as ci-build.yml) ----------------
+      - name: Setup Visual Studio (Windows)
+        if: runner.os == 'Windows'
+        uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57 # v3.0.0
+
+      - name: Setup MSVC Environment (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+        with:
+          arch: ${{ matrix.arch }}
+
+      - name: Cache SQLite ODBC downloads (Windows)
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: sqliteodbc-downloads
+          key: sqliteodbc-0.99991-sqlite-3540100-${{ matrix.arch }}
+
+      - name: Configure ODBC test DSN (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: ./tools/cicd/setup_sqlite_odbc.ps1 -Arch ${{ matrix.arch }} -Dir "$env:RUNNER_TEMP\sqliteodbc" -Downloads sqliteodbc-downloads
+
+      - name: Install Windows dependencies
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          function Install-VcpkgPackage([string]$pkg) {
+            $delays = @(15, 45, 120, 240)
+            $max = $delays.Count + 1
+            for($i = 1; $i -le $max; $i++) {
+              vcpkg install $pkg
+              if($LASTEXITCODE -eq 0) {
+                return
+              }
+              if($i -lt $max) {
+                $wait = $delays[$i - 1]
+                Write-Output "vcpkg install $pkg failed (attempt $i/$max); retrying in ${wait}s..."
+                Start-Sleep -Seconds $wait
+              }
+            }
+            throw "vcpkg install $pkg failed after $max attempts"
+          }
+          Install-VcpkgPackage "mbedtls:${{ matrix.arch }}-windows"
+          Install-VcpkgPackage "nghttp2:${{ matrix.arch }}-windows"
+          Install-VcpkgPackage "zlib:${{ matrix.arch }}-windows"
+          Install-VcpkgPackage "libjpeg-turbo:${{ matrix.arch }}-windows"
+          Install-VcpkgPackage "libpng:${{ matrix.arch }}-windows"
+          Install-VcpkgPackage "tiff:${{ matrix.arch }}-windows"
+          Install-VcpkgPackage "libwebp:${{ matrix.arch }}-windows"
+
+          $vcpkgRoot = "C:\vcpkg\installed\${{ matrix.arch }}-windows"
+          echo "INCLUDE=$vcpkgRoot\include;$env:INCLUDE" >> $env:GITHUB_ENV
+          echo "LIB=$vcpkgRoot\lib;$env:LIB" >> $env:GITHUB_ENV
+          echo "$vcpkgRoot\bin" >> $env:GITHUB_PATH
+
+      # verify_platform.cmd's own prerequisites (openssl, Python, 7-Zip). The
+      # workflows never needed these spelled out: the release builds arm64 on an
+      # x64 image that has 7-Zip, and ci-build.yml leaves openssl to whatever the
+      # image has. Report what is there; add only what is missing, at the END of
+      # PATH so nothing on the image is shadowed.
+      - name: Windows verify prerequisites
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          function Have([string]$n) { [bool](Get-Command $n -ErrorAction SilentlyContinue) }
+          "arch: $env:PROCESSOR_ARCHITECTURE; OS arch: $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)"
+          $git = "$env:ProgramFiles\Git"
+          if (-not (Have openssl)) {
+            $dir = @("$git\usr\bin", "$git\mingw64\bin", "$git\clangarm64\bin") | Where-Object { Test-Path "$_\openssl.exe" } | Select-Object -First 1
+            if ($dir) {
+              "openssl not on PATH; appending $dir"
+              "PATH=$env:PATH;$dir" >> $env:GITHUB_ENV
+            } else {
+              "openssl not found in Git for Windows; installing with choco"
+              choco install openssl -y --no-progress
+            }
+          }
+          $has7z = (Have 7z) -or (Test-Path "$env:ProgramFiles\7-Zip\7z.exe") -or (Test-Path "$env:ProgramW6432\7-Zip\7z.exe")
+          if (-not $has7z) {
+            "7-Zip not found; installing with choco"
+            choco install 7zip -y --no-progress
+          }
+          "---- inventory"
+          if (Have openssl) { openssl version } else { "openssl: via env PATH next step" }
+          python --version
+          Test-Path "$env:ProgramFiles\7-Zip\7z.exe"
+          where.exe 7z
+          exit 0
+
+      # ---------------- shared POSIX dependency builds ----------------
+      - name: QUIC dependencies
+        if: runner.os != 'Windows'
+        uses: ./.github/actions/quic-deps
+
+      - name: macOS bundled libraries
+        if: runner.os == 'macOS'
+        uses: ./.github/actions/macos-bundle-deps
+
+      - name: Configure ODBC test DSN (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          bash tools/cicd/setup_sqlite_odbc.sh
+          echo "ODBCINI=$HOME/.odbc.ini" >> "$GITHUB_ENV"
+
+      # ---------------- the verification ----------------
+      - name: Verify (POSIX)
+        if: runner.os != 'Windows'
+        run: bash tools/cicd/verify_platform.sh "$VERSION"
+
+      - name: Verify (Windows)
+        if: runner.os == 'Windows'
+        run: call tools\cicd\verify_platform.cmd %VERSION% arm64
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: rc-${{ matrix.platform }}
+          path: rc-results/**
+          if-no-files-found: error
+
+      - name: Result summary and verdict
+        if: always()
+        shell: pwsh
+        run: |
+          $f = "rc-results/$env:VERSION/${{ matrix.platform }}.txt"
+          if (-not (Test-Path $f)) {
+            "::error::no result file at $f"
+            exit 1
+          }
+          $text = Get-Content $f
+          "### ${{ matrix.platform }}" >> $env:GITHUB_STEP_SUMMARY
+          '```' >> $env:GITHUB_STEP_SUMMARY
+          $text >> $env:GITHUB_STEP_SUMMARY
+          '```' >> $env:GITHUB_STEP_SUMMARY
+          $text
+          $last = ($text | Where-Object { $_.Trim() -ne '' } | Select-Object -Last 1).Trim()
+          if ($last -ne 'verdict=PASS') {
+            "::error::last line is '$last', not verdict=PASS"
+            exit 1
+          }
