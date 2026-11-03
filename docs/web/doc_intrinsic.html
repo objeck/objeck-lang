@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Adding an intrinsic (a new trap) — Objeck Language</title>
+  <meta name="description" content="An intrinsic is a bare keyword that only the library sources may use, such as THREAD_IS_ALIVE; in core/compiler/lib_src/lang.obs. The compiler lowers it to a TRAP instruction whose operand-stack id names a C++ handler in the VM. This is how"/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Adding an intrinsic (a new trap)</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/ADDING_AN_INTRINSIC.md" target="_blank">docs/ADDING_AN_INTRINSIC.md on GitHub</a></div>
+    <p class="page-lead">An <em>intrinsic</em> is a bare keyword that only the library sources may use, such as <code>THREAD_IS_ALIVE;</code> in <code>core/compiler/lib_src/lang.obs</code>. The compiler lowers it to a <code>TRAP</code> instruction whose operand-stack id names a C++ handler in the VM. This is how <code>Runtime-&gt;GetProcessId()</code>, <code>Base-&gt;GetInstanceID()</code> and most of the system library reach the operating system. A user program cannot write one: the keywords exist only in the bootstrap compiler, <code>sys_obc</code>, which is built with <code>-D_SYSTEM</code> and compiles <code>lang.obs</code>.</p>
+    <div id="toc_container" class="plain">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#the-sites">The sites</a></li>
+      <li><a href="#what-goes-wrong-when-a-site-is-forgotten">What goes wrong when a site is forgotten</a></li>
+      <li><a href="#what-check_trap_handlerspy-does-and-does-not-cover">What <code>check_trap_handlers.py</code> does and does not cover</a></li>
+      <li><a href="#a-new-vm-instruction-is-a-different-larger-job">A new VM <em>instruction</em> is a different, larger job</a></li>
+     </ul>
+    </div>
+
+    <p>This page lists every site a new intrinsic touches, in the order to touch them, with <code>Runtime-&gt;TestAddressOf</code> (PR #1483, commit <code>e5b6a177da</code>, trap <code>GC_TEST_ADDRESS</code>) as the worked example, and what each omission looks like. <code>python3 tools/cicd/check_trap_handlers.py</code> checks the sites marked <strong>[checked]</strong>; CI runs it in the <code>tools</code> job and <code>tools/cicd/local_ci.py</code> runs it on your machine in under a second.</p>
+    <p>Sites are named by function, not line number, because line numbers rot.</p>
+    <h3 id="the-sites">The sites</h3>
+    <table class="ref-table">
+     <thead>
+      <tr><th>#</th><th>File</th><th>What to add</th><th><code>TestAddressOf</code></th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="#">1</td><td data-label="File"><code>core/shared/traps.h</code></td><td data-label="What to add">an enumerator at the <strong>end</strong> of <code>enum Traps</code></td><td data-label="TestAddressOf"><code>GC_TEST_ADDRESS</code> after <code>INST_STABLE_ID</code></td></tr>
+      <tr><td data-label="#">2</td><td data-label="File"><code>core/compiler/scanner.h</code></td><td data-label="What to add">the token, inside the <code>#ifdef _SYSTEM</code> part of <code>ScannerTokenType</code></td><td data-label="TestAddressOf"><code>GC_TEST_ADDRESS,</code> after <code>THREAD_IS_ALIVE</code></td></tr>
+      <tr><td data-label="#">3</td><td data-label="File"><code>core/compiler/scanner.cpp</code></td><td data-label="What to add"><code>ident_map[L"NAME"] = NAME;</code> in <code>Scanner::LoadKeywords</code>, inside its <code>#ifdef _SYSTEM</code> block <strong>[checked]</strong></td><td data-label="TestAddressOf"><code>ident_map[L"GC_TEST_ADDRESS"] = GC_TEST_ADDRESS;</code></td></tr>
+      <tr><td data-label="#">4</td><td data-label="File"><code>core/compiler/parser.cpp</code></td><td data-label="What to add">a <code>case NAME:</code> in <code>Parser::ParseStatement</code> that builds <code>MakeSystemStatement(..., instructions::NAME)</code>, then <code>NextToken()</code> <strong>[checked]</strong></td><td data-label="TestAddressOf">the new case after <code>THREAD_IS_ALIVE</code></td></tr>
+      <tr><td data-label="#">5</td><td data-label="File"><code>core/compiler/intermediate.cpp</code></td><td data-label="What to add">a <code>case instructions::NAME:</code> in <code>IntermediateEmitter::EmitSystemDirective</code> <strong>[checked]</strong></td><td data-label="TestAddressOf">loads the argument, writes the id, <code>TRAP_RTRN, 2L</code></td></tr>
+      <tr><td data-label="#">6</td><td data-label="File"><code>core/vm/common.cpp</code></td><td data-label="What to add">a <code>case NAME:</code> in <code>TrapProcessor::ProcessTrap</code> <strong>[checked]</strong></td><td data-label="TestAddressOf">the handler, which pops the argument and pushes the result</td></tr>
+      <tr><td data-label="#">7</td><td data-label="File"><code>core/compiler/lib_src/lang.obs</code> (or another <code>lib_src</code> file)</td><td data-label="What to add">the library method whose body is the bare keyword, with a doc comment</td><td data-label="TestAddressOf"><code>function : TestAddressOf(o : Base) ~ Int { GC_TEST_ADDRESS; }</code></td></tr>
+      <tr><td data-label="#">8</td><td data-label="File"><code>core/lib/lang.obl</code> (or the other <code>.obl</code> you changed)</td><td data-label="What to add">rebuild and commit it</td><td data-label="TestAddressOf">31 bytes larger</td></tr>
+      <tr><td data-label="#">9</td><td data-label="File"><code>programs/regression/</code></td><td data-label="What to add">a test that calls the new method</td><td data-label="TestAddressOf"><code>vm_flag_fixtures/gc_address_int_pending.obs</code>, run by section 28 of <code>run_vm_flag_tests.py</code></td></tr>
+     </tbody>
+    </table>
+    <h4 id="1-trapsh-append-never-insert">1. <code>traps.h</code>: append, never insert</h4>
+    <p>Only the first enumerator of <code>enum Traps</code> has an explicit value (<code>LOAD_CLS_INST_ID = -4000</code>); the rest count up from it, so an enumerator's position <strong>is</strong> its wire id, and that id is written into every compiled <code>.obl</code> and <code>.obe</code>. Insert one in the middle and every trap after it silently changes meaning. Put the new one last (after the comment that says so) and give it a comment naming the method. Never delete one either: that renumbers the rest. The two dead enumerators <code>LOAD_CLS_BY_NAME</code> and <code>FILE_LOGGER_DIR</code> are still there for that reason.</p>
+    <h4 id="2-and-3-the-scanner">2 and 3. The scanner</h4>
+    <p>The token enum and the keyword map are separate lists, and the map is the authority: a word that is missing from <code>ident_map</code> scans as an ordinary identifier. Keep the spelling in the map identical to the enumerator's name, which is what lets every other site be found with one <code>grep</code>.</p>
+    <h4 id="4-the-parser">4. The parser</h4>
+    <p><code>ParseStatement</code> has a long <code>#ifdef _SYSTEM</code> run of cases, one per intrinsic. Copy a neighbour and change <strong>both</strong> names: the <code>case</code> label and the <code>instructions::NAME</code> argument. A copy that keeps the neighbour's argument parses cleanly and then runs the neighbour's trap <strong>[checked]</strong>.</p>
+    <h4 id="5-the-emitter">5. The emitter</h4>
+    <p><code>EmitSystemDirective</code> turns the statement into instructions. The shape is fixed:</p>
+    <ol>
+     <li>push each argument, <code>LOAD_INT_VAR n, LOCL</code> (or <code>LOAD_FLOAT_VAR</code>, or <code>LOAD_INST_MEM</code> for <code>@self</code> when the method is an instance method), in the order the handler pops them in reverse;</li>
+     <li><code>MakeIntLitInstruction(..., instructions::NAME)</code>, the trap id;</li>
+     <li><code>TRAP, n</code> or <code>TRAP_RTRN, n</code>, where <code>n</code> counts the values pushed <strong>including the id</strong> (<code>TestAddressOf</code> pushes one argument and the id: <code>2L</code>).</li>
+    </ol>
+    <p><code>TRAP_RTRN</code> is the form for a handler that pushes a result word; <code>TRAP</code> is for one that pushes nothing. The JIT and the reference-map verifier (<code>core/vm/arch/ref_map.h</code>) model a plain <code>TRAP</code> as pushing nothing, so a value-returning trap written as <code>TRAP</code> is only safe as the last thing a method does before its return. Several older cases do exactly that; for a new one use <code>TRAP_RTRN</code>.</p>
+    <h4 id="6-the-vm-handler">6. The VM handler</h4>
+    <p><code>ProcessTrap</code> pops the id, then switches on it. It has <strong>no <code>default:</code></strong>: an id with no case falls out of the switch and returns false, <code>Handle_TRAP</code> (<code>core/vm/dispatch.cpp</code>) unwinds the stack and the process exits with status 1. The handler pops its arguments in reverse order of pushing and pushes the result. Remember:</p>
+    <ul>
+     <li>anything that reads or writes the interpreter's <code>frame</code>, or the instruction pointer <code>inst</code>, is a <em>frame-dependent</em> trap. Compiled code calls <code>ProcessTrap</code> with <code>frame == nullptr</code>, so such a trap must be listed in <code>HasFrameDependentTrap()</code> in <code>core/vm/arch/jit/jit_common.h</code>, which keeps the method out of the JIT;</li>
+     <li>a handler that holds an object across an allocation or a blocking call must keep it reachable for the collector (see <code>StdInString</code> in <code>common.cpp</code> for the pattern) and an object stored into another object needs the write barrier (<code>docs/native_interface.md</code>);</li>
+     <li>the handler is shared by the interpreter and by JIT-compiled code, so test both (<code>OBJECK_JIT_THRESHOLD=1</code>, which the Linux CI leg also runs).</li>
+    </ul>
+    <p><code>GC_TEST_ADDRESS</code> is deliberately inert unless <code>OBJECK_GC_TEST_HOOKS=1</code>; its <code>static const bool hooks</code> reads the variable once. A test-only trap should be gated like this so ordinary programs cannot reach it.</p>
+    <h4 id="7-the-library-method">7. The library method</h4>
+    <p>The method body is nothing but the keyword, with a trailing semicolon. Give it a doc comment (<code>#~ ... ~#</code>, ending any code fence it opens: <code>check_doc_fences.py</code> enforces that). A new public method also changes the editor API index; <code>tools/cicd/check_api_index.py</code> (run by CI against a built tree) fails when <code>tools/lsp/server/objk_apis.json</code> is stale, so regenerate it with <code>tools/lsp/server/doc_json/gen_json.sh</code>.</p>
+    <h4 id="8-rebuild-langobl-and-commit-it">8. Rebuild <code>lang.obl</code> and commit it</h4>
+    <p>The library is compiled by <code>sys_obc</code>, which only builds on Linux (use WSL2 on Windows):</p>
+<pre class="plain">cd core/compiler &amp;&amp; ./update_version.sh        # sys_obc, then lang.obl, then every other .obl</pre>
+    <p><code>core/lib/*.obl</code> are <strong>tracked</strong> and are copied, not rebuilt, into deploy trees. The Linux and macOS CI legs regenerate <code>lang.obl</code> from source, which hides a forgotten commit there, but the windows-x64 leg links the committed file: it fails (or, worse, passes with a library that lacks the method) if you did not commit the rebuilt one. For the same reason a local deploy tree may be stale: <code>cp core/lib/*.obl core/release/deploy*/lib/</code>.</p>
+    <h4 id="9-a-test">9. A test</h4>
+    <p>A regression test (<code>programs/regression/*.obs</code>, exit code 0 passes) or, for something that needs flags, a fixture and a section in <code>programs/regression/run_vm_flag_tests.py</code>. Run it interpreted and with <code>OBJECK_JIT_THRESHOLD=1</code>.</p>
+    <h3 id="what-goes-wrong-when-a-site-is-forgotten">What goes wrong when a site is forgotten</h3>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Forgotten</th><th>What you see</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Forgotten"><code>traps.h</code></td><td data-label="What you see">does not compile, which is the kind one</td></tr>
+      <tr><td data-label="Forgotten"><code>traps.h</code>, inserted mid-enum</td><td data-label="What you see"><strong>nothing now</strong>; every library built before the change misbehaves or exits</td></tr>
+      <tr><td data-label="Forgotten">scanner token / <code>ident_map</code></td><td data-label="What you see">the keyword scans as an identifier: a parse error naming the line in <code>lang.obs</code></td></tr>
+      <tr><td data-label="Forgotten">parser case</td><td data-label="What you see">the same parse error. The scanner and emitter are fine, so it looks as if the scanner were at fault. <code>SOCK_TCP_SSL_SRV_CERT</code> is in this state today: it has a scanner token, an emitter case and a VM handler, but the parser cannot build it, so no program can reach it <strong>[checked]</strong></td></tr>
+      <tr><td data-label="Forgotten">parser case names the wrong <code>instructions::</code></td><td data-label="What you see">the method silently runs another trap <strong>[checked]</strong></td></tr>
+      <tr><td data-label="Forgotten">emitter case</td><td data-label="What you see"><code>EmitSystemDirective</code> falls to its <code>default:</code>, which stops the build with "internal error: no code emitted for system directive N" (it used to compile to nothing: all 18 <code>SOCK_DTLS_*</code> traps were dead that way) <strong>[checked]</strong></td></tr>
+      <tr><td data-label="Forgotten"><code>ProcessTrap</code> case</td><td data-label="What you see">builds, links, passes every test that does not call it, then kills the program with exit status 1 and a stack unwind the first time it runs <strong>[checked]</strong></td></tr>
+      <tr><td data-label="Forgotten"><code>lang.obl</code> not rebuilt</td><td data-label="What you see">the new method does not exist in the shipped library; windows-x64 CI fails or the call is a compile error</td></tr>
+      <tr><td data-label="Forgotten"><code>HasFrameDependentTrap</code></td><td data-label="What you see">a JIT-compiled method crashes on a null frame, only when hot, only under <code>--jit</code></td></tr>
+      <tr><td data-label="Forgotten"><code>TRAP</code> where <code>TRAP_RTRN</code> belongs</td><td data-label="What you see">the interpreter works; the JIT or the verifier reports a missing return value</td></tr>
+     </tbody>
+    </table>
+    <p>The most expensive entry used to be an edit in the wrong place. <code>Parser</code> once carried a second copy of the whole intrinsic switch, <code>Parser::ParseSystemStatement</code>, about 1,900 lines that nothing called. The live cases are the inline <code>#ifdef _SYSTEM</code> run inside <code>ParseStatement</code>; a patch to the dead copy compiled, changed nothing, and printed no error. It was deleted when this page was written. If you find a second copy of any of these lists, assume one of them is dead and prove which before editing.</p>
+    <h3 id="what-check_trap_handlerspy-does-and-does-not-cover">What <code>check_trap_handlers.py</code> does and does not cover</h3>
+    <p>It parses <code>traps.h</code>, <code>scanner.cpp</code>, <code>ParseStatement</code>, <code>EmitSystemDirective</code> and <code>ProcessTrap</code> and fails when:</p>
+    <ul>
+     <li>a <code>Traps</code> enumerator has no <code>case</code> in <code>ProcessTrap</code> and is not on its allowlist (<code>NOT_VM_TRAPS</code>, each entry with a written reason: <em>dead</em> or <em>pseudo-op</em>);</li>
+     <li>an allowlist entry has gone stale (it gained a handler, the compiler started to emit it, something started to mention a "dead" one);</li>
+     <li>a <code>_SYSTEM</code> keyword has no parser case, or its parser case builds a different intrinsic, or it has no emitter case (<code>NOT_PARSED_INTRINSICS</code> is the allowlist);</li>
+     <li>the emitter writes a trap id the VM has no <code>case</code> for.</li>
+    </ul>
+    <p>Run <code>python3 tools/cicd/check_trap_handlers.py --test</code> to see the negative controls: the script mutates the real sources, one site at a time, and fails unless each break is reported.</p>
+    <p>It does <strong>not</strong> check: that the handler pops as many values as the emitter pushes, the <code>TRAP</code> operand count, <code>HasFrameDependentTrap</code>, the <code>lang.obs</code> method, or that <code>lang.obl</code> was rebuilt. Those are on you, and the regression suite is the oracle for the rest.</p>
+    <h3 id="a-new-vm-instruction-is-a-different-larger-job">A new VM <em>instruction</em> is a different, larger job</h3>
+    <p>An opcode such as <code>LOAD_ARY_SIZE</code> or <code>F2S</code> lives in <code>core/shared/instrs.h</code> (<code>enum InstructionType</code>) rather than <code>traps.h</code>, and also needs the interpreter (<code>core/vm/dispatch.cpp</code>), both JIT back ends, the loader (<code>core/vm/loader.cpp</code>), the assembler listing (<code>core/compiler/emit.cpp</code>) and the reference-map verifier. Prefer a trap unless the operation must be as cheap as a machine instruction.</p>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

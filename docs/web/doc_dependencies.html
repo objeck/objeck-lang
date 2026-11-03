@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Third-party dependencies: where each platform gets them, and how to check versions — Objeck Language</title>
+  <meta name="description" content="Objeck pins little itself. The HTTP/2 and HTTP/3 stack (nghttp2, ngtcp2, nghttp3, AWS-LC) is built from pinned sources by tools/deps/build_quic_deps.sh and linked statically on Linux and macOS. The TLS, audio, vision and inference libraries"/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Third-party dependencies: where each platform gets them, and how to check versions</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/third_party_dependencies.md" target="_blank">docs/third_party_dependencies.md on GitHub</a></div>
+    <p class="page-lead">Objeck pins little itself. The HTTP/2 and HTTP/3 stack (nghttp2, ngtcp2, nghttp3, AWS-LC) is built from pinned sources by <code>tools/deps/build_quic_deps.sh</code> and linked statically on Linux and macOS. The TLS, audio, vision and inference libraries come from each platform's package channel at build time, so security fixes arrive with that channel — and a channel that is behind is behind for every release built on it. This page records the provenance so an audit is a lookup, not an archaeology dig. The few versions the tree pins are in <code>tools/deps/build_quic_deps.sh</code> (AWS-LC), <code>tools/deps/build_macos_deps.sh</code> (the macOS static builds) and the <code>$opencvVersion</code> of the Windows OpenCV download in the three build workflows.</p>
+
+    <table class="ref-table">
+     <thead>
+      <tr><th>Library</th><th>Windows x64 / ARM64</th><th>Linux x64 / ARM64</th><th>macOS ARM64</th><th>Used by</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Library">mbedTLS</td><td data-label="Windows x64 / ARM64">vcpkg <code>mbedtls:&lt;arch&gt;-windows</code> (<code>ci-build.yml</code>, "Install Windows dependencies")</td><td data-label="Linux x64 / ARM64">apt <code>libmbedtls-dev</code></td><td data-label="macOS ARM64">3.6.4, static, <code>tools/deps/build_macos_deps.sh</code> (in-tree <code>mbedtls_config.h</code>)</td><td data-label="Used by">TLS sockets, HTTPS, <code>libobjk_crypto</code> hashes/ciphers</td></tr>
+      <tr><td data-label="Library">nghttp2</td><td data-label="Windows x64 / ARM64">vcpkg <code>nghttp2</code></td><td data-label="Linux x64 / ARM64">v1.70.0, static, <code>tools/deps/build_quic_deps.sh</code></td><td data-label="macOS ARM64">v1.70.0, static, same script</td><td data-label="Used by">HTTP/2 (<code>net_h2</code>)</td></tr>
+      <tr><td data-label="Library">ngtcp2 / nghttp3 / AWS-LC</td><td data-label="Windows x64 / ARM64">not used: HTTP/3 goes through WinHTTP (Windows 11 and later)</td><td data-label="Linux x64 / ARM64">ngtcp2 v1.25.0, nghttp3 v1.18.0, AWS-LC v5.8.0, static, <code>tools/deps/build_quic_deps.sh</code></td><td data-label="macOS ARM64">same versions, static, same script</td><td data-label="Used by">HTTP/3 (<code>net_quic</code>)</td></tr>
+      <tr><td data-label="Library">SDL2, SDL2_image, SDL2_mixer, SDL2_ttf</td><td data-label="Windows x64 / ARM64">DLLs vendored in <code>core/lib/sdl/lib/&lt;arch&gt;</code> and copied to <code>bin\</code> by <code>deploy_windows.cmd</code>; their version resources say SDL2 2.31.0, SDL2_image 2.9.0, SDL2_mixer 2.8.0, SDL2_ttf 2.25.0</td><td data-label="Linux x64 / ARM64">apt <code>libsdl2-*-dev</code></td><td data-label="macOS ARM64">brew <code>sdl2*</code></td><td data-label="Used by"><code>sdl2</code>, <code>sdl_game</code>, <code>sdl_gl</code></td></tr>
+      <tr><td data-label="Library">OpenCV</td><td data-label="Windows x64 / ARM64">x64: <code>opencv_world4120.dll</code> from the OpenCV 4.12.0 Windows release, pinned as <code>$opencvVersion</code> in the workflows that download it (<code>ci-build.yml</code>, <code>release-build.yml</code>, <code>release-publish.yml</code>); ARM64: the modular <code>opencv_*4.dll</code> from vcpkg <code>opencv4:arm64-windows</code> (4.12.0 committed in <code>core/lib/opencv/win/arm64</code>, reinstalled by <code>release-build.yml</code>), with its codec DLLs from vcpkg</td><td data-label="Linux x64 / ARM64">apt <code>libopencv-dev</code></td><td data-label="macOS ARM64">4.12.0, static, <code>tools/deps/build_macos_deps.sh</code></td><td data-label="Used by"><code>libobjk_opencv</code>, <code>libobjk_onnx</code> preprocessing</td></tr>
+      <tr><td data-label="Library">ONNX Runtime</td><td data-label="Windows x64 / ARM64">x64: NuGet <code>Microsoft.ML.OnnxRuntime.DirectML</code> 1.22.1 (<code>core/lib/onnx/vs/packages.config</code>); ARM64: a QNN build vendored in <code>core/lib/onnx/eq/qnn/win/onnx/arm64/bin</code></td><td data-label="Linux x64 / ARM64">x64: 1.19.0, a CPU-only build vendored in <code>core/lib/onnx/eq/cuda/lib/x64/lib</code>; ARM64: none, so no ONNX</td><td data-label="macOS ARM64">1.30.0 Microsoft prebuilt, shipped as <code>lib/native/libonnxruntime.1.dylib</code> (<code>tools/deps/build_macos_deps.sh</code>)</td><td data-label="Used by"><code>libobjk_onnx</code></td></tr>
+      <tr><td data-label="Library">LAME</td><td data-label="Windows x64 / ARM64"><code>libmp3lame.dll</code> shipped in <code>bin\</code></td><td data-label="Linux x64 / ARM64">apt <code>libmp3lame-dev</code></td><td data-label="macOS ARM64">3.100, shared (LGPL), shipped as <code>lib/native/libmp3lame.0.dylib</code> (<code>tools/deps/build_macos_deps.sh</code>)</td><td data-label="Used by"><code>libobjk_lame</code></td></tr>
+      <tr><td data-label="Library">ODBC</td><td data-label="Windows x64 / ARM64">Windows SDK</td><td data-label="Linux x64 / ARM64">apt <code>unixodbc-dev</code></td><td data-label="macOS ARM64">libiodbc 3.52.12, static, <code>tools/deps/build_macos_deps.sh</code></td><td data-label="Used by"><code>libobjk_odbc</code></td></tr>
+      <tr><td data-label="Library">zlib</td><td data-label="Windows x64 / ARM64">vendored (<code>core/lib/zlib</code>, see <code>windows_vcpkg_msbuild</code> for why the vcpkg one must not shadow it)</td><td data-label="Linux x64 / ARM64">vendored</td><td data-label="macOS ARM64">vendored</td><td data-label="Used by">compression traps</td></tr>
+      <tr><td data-label="Library">VC runtime</td><td data-label="Windows x64 / ARM64"><code>vcruntime140*.dll</code>, <code>msvcp140*.dll</code>, <code>concrt140.dll</code> copied from the toolset (<code>deploy_windows.cmd</code>)</td><td data-label="Linux x64 / ARM64">—</td><td data-label="macOS ARM64">—</td><td data-label="Used by">every Windows binary</td></tr>
+     </tbody>
+    </table>
+    <h3 id="checking-what-a-build-actually-used">Checking what a build actually used</h3>
+    <ul>
+     <li><strong>Windows</strong>: in the CI log's "Install Windows dependencies" step, <code>vcpkg install</code> names each port with its version (<code>mbedtls:x64-windows@&lt;version&gt;</code>). OpenCV x64's version is <code>$opencvVersion</code> in the workflows (and the <code>4120</code> in its DLL name); ONNX Runtime x64's is the NuGet version in <code>core/lib/onnx/vs/packages.config</code>. The vendored DLLs, SDL2 and the ARM64 QNN ONNX Runtime (1.23.0), carry theirs in their file-version resources (<code>(Get-Item SDL2.dll).VersionInfo</code>).</li>
+     <li><strong>Linux</strong>: <code>dpkg -l libmbedtls-dev libsdl2-dev libopencv-dev libmp3lame-dev</code> on the runner image (<code>ubuntu-24.04</code> — the image, not the tree, decides the version). The HTTP/2 and HTTP/3 versions are pinned in <code>tools/deps/build_quic_deps.sh</code> and recorded in its prefix's <code>.quic-deps-stamp</code>.</li>
+     <li><strong>macOS</strong>: every third-party library is pinned in <code>tools/deps/build_macos_deps.sh</code> (version and sha256) and recorded in its prefix's <code>macos-bundle/.macos-deps-stamp</code>; HTTP/2 and HTTP/3 as on Linux (<code>.quic-deps-stamp</code>). The licenses ship under each library's <code>licenses/</code>.</li>
+     <li><strong>Shipped tree</strong>: <code>ldd lib/native/libobjk_crypto.so</code> / <code>otool -L</code> / <code>dumpbin /dependents</code> names the exact runtime libraries a native module links, which is also what <code>verify_native_libs.sh|.ps1</code> checks resolve.</li>
+    </ul>
+    <h3 id="what-audit-means-here">What "audit" means here</h3>
+    <ol>
+     <li>For the two libraries with a security surface exposed to the network — mbedTLS and nghttp2 (plus ngtcp2/AWS-LC on POSIX) — compare the version the runner image installs, or the version pinned in the table above, against upstream's supported branches (mbedTLS 3.6 LTS at the time of writing; 4.x is not API-compatible and is a migration, not a bump).</li>
+     <li>For the Windows pins, OpenCV x64 (<code>$opencvVersion</code> and the cache keys in the three workflows, and the <code>4120</code> in the DLL and import-library names) and ONNX Runtime x64 (the NuGet version in <code>core/lib/onnx/vs/packages.config</code>, repeated in <code>vs/vs.vcxproj</code> and <code>deploy_windows.cmd</code>), compare the pinned version against the latest patch release and bump it everywhere it is named. The vendored SDL2 DLLs and ARM64 QNN runtime are bumped by replacing the files; ARM64 OpenCV follows vcpkg.</li>
+     <li>Anything vendored (zlib) is our responsibility to update by hand.</li>
+    </ol>
+    <p>A scheduled job that prints these versions into the CI summary would turn step 1 into a glance; it is not built yet.</p>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

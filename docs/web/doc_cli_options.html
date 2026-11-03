@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Objeck CLI Options — Objeck Language</title>
+  <meta name="description" content="See optimization_pipeline.md for what each -opt level enables."/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'loose',
+      themeVariables: { fontFamily: 'Inter, sans-serif', primaryColor: '#16223a', primaryBorderColor: '#6366f1',
+                        lineColor: '#7dd3fc', primaryTextColor: '#e8eef8' } });
+    await mermaid.run({ querySelector: 'pre.mermaid', suppressErrors: true });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Objeck CLI Options</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/cli_options.md" target="_blank">docs/cli_options.md on GitHub</a></div>
+    <p class="page-lead">See <a href="https://github.com/objeck/objeck-lang/blob/master/docs/optimization_pipeline.md" target="_blank">optimization_pipeline.md</a> for what each <code>-opt</code> level enables.</p>
+    <div id="toc_container" class="plain">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#compiler--obc">Compiler — <code>obc</code></a></li>
+      <li><a href="#virtual-machine--obr">Virtual machine — <code>obr</code></a></li>
+      <li><a href="#notes">Notes</a></li>
+      <li><a href="#source">Source</a></li>
+     </ul>
+    </div>
+
+    <div class="note">Command-line options for the two core tools: the compiler <strong><code>obc</code></strong> and the virtual machine <strong><code>obr</code></strong>.</div>
+<pre class="mermaid">graph TD
+    OBJECK["Objeck Toolchain"]
+
+    OBJECK --&gt; OBC["&lt;b&gt;obc&lt;/b&gt; — Compiler&lt;br/&gt;obc [options] &amp;lt;source&amp;gt;"]
+    OBJECK --&gt; OBR["&lt;b&gt;obr&lt;/b&gt; — Virtual Machine&lt;br/&gt;obr [options] &amp;lt;program.obe&amp;gt;"]
+
+    %% ---- Compiler ----
+    OBC --&gt; C_IN["&lt;b&gt;Input&lt;/b&gt;"]
+    C_IN --&gt; C_src["--source / -src / -s &amp;lt;files&amp;gt;&lt;br/&gt;comma-separated .obs (wildcards ok)"]
+    C_IN --&gt; C_inline["--inline / -in / -i &amp;lt;code&amp;gt;&lt;br/&gt;wrap statements in Main()"]
+
+    OBC --&gt; C_OUT["&lt;b&gt;Output&lt;/b&gt;"]
+    C_OUT --&gt; C_dest["--destination / -dest / -d &amp;lt;file&amp;gt;"]
+    C_OUT --&gt; C_tar["--target / -tar / -t  &amp;lt;exe | lib&amp;gt;&lt;br/&gt;default: exe (.obe / .obl)"]
+
+    OBC --&gt; C_BUILD["&lt;b&gt;Build&lt;/b&gt;"]
+    C_BUILD --&gt; C_lib["--library / -lib / -l &amp;lt;libs&amp;gt;"]
+    C_BUILD --&gt; C_strict["--strict&lt;br/&gt;exclude default libs (lang, gen_collect)"]
+    C_BUILD --&gt; C_opt["--optimize / -opt / -o &amp;lt;s0..s3&amp;gt;&lt;br/&gt;default: s3"]
+    C_BUILD --&gt; C_alt["--alt-syntax / -alt  (C-like syntax)"]
+
+    OBC --&gt; C_DIAG["&lt;b&gt;Diagnostics&lt;/b&gt;"]
+    C_DIAG --&gt; C_dbg["--debug / -D  (debug symbols)"]
+    C_DIAG --&gt; C_asm["--assembly / -asm / -a  (emit asm)"]
+    C_DIAG --&gt; C_ver["--version / -ver / -v"]
+
+    %% ---- VM ----
+    OBR --&gt; V_FLAGS["&lt;b&gt;Flags&lt;/b&gt; (consumed before program args)"]
+    V_FLAGS --&gt; V_gc["--gc-threshold=&amp;lt;n&amp;gt;(k|m|g)&lt;br/&gt;legacy: --GC_THRESHOLD="]
+    V_FLAGS --&gt; V_nursery["--nursery=&amp;lt;n&amp;gt;(k|m), 64k to 128m&lt;br/&gt;env: OBJECK_NURSERY"]
+    V_FLAGS --&gt; V_stdio["--objeck-stdio=binary|utf16|utf8&lt;br/&gt;acted on by Windows; accepted everywhere&lt;br/&gt;legacy: --OBJECK_STDIO="]
+    V_FLAGS --&gt; V_jit["--jit=off | --jit=&amp;lt;calls&amp;gt;&lt;br/&gt;env: OBJECK_JIT_DISABLE / OBJECK_JIT_THRESHOLD"]
+    V_FLAGS --&gt; V_lib["--lib-path=&amp;lt;dir&amp;gt;&lt;br/&gt;env: OBJECK_LIB_PATH"]
+
+    OBR --&gt; V_ENV["&lt;b&gt;Environment variables&lt;/b&gt;"]
+    V_ENV --&gt; E_lib["OBJECK_LIB_PATH  (library search path)"]
+    V_ENV --&gt; E_stdio["OBJECK_STDIO  (binary stdio mode)"]
+    V_ENV --&gt; E_jitd["OBJECK_JIT_DISABLE=1  (auto-JIT off)"]
+    V_ENV --&gt; E_jitt["OBJECK_JIT_THRESHOLD=N  (default 10)"]
+    V_ENV --&gt; E_nursery["OBJECK_NURSERY=&amp;lt;size&amp;gt;  (young-generation size)"]
+    V_ENV --&gt; E_gcstats["OBJECK_GC_STATS=1  (GC summary on stderr at exit)"]</pre>
+    <h3 id="compiler--obc">Compiler — <code>obc</code></h3>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Option</th><th>Aliases</th><th>Description</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Option"><code>--source</code></td><td data-label="Aliases"><code>-src</code>, <code>-s</code></td><td data-label="Description">Source files, comma-separated <code>.obs</code> (wildcards supported)</td></tr>
+      <tr><td data-label="Option"><code>--inline</code></td><td data-label="Aliases"><code>-in</code>, <code>-i</code></td><td data-label="Description">Inline code statements (wrapped in a generated <code>Main()</code>)</td></tr>
+      <tr><td data-label="Option"><code>--destination</code></td><td data-label="Aliases"><code>-dest</code>, <code>-d</code></td><td data-label="Description">Output file name</td></tr>
+      <tr><td data-label="Option"><code>--target</code></td><td data-label="Aliases"><code>-tar</code>, <code>-t</code></td><td data-label="Description"><code>exe</code> or <code>lib</code> (default: <code>exe</code>; produces <code>.obe</code> / <code>.obl</code>)</td></tr>
+      <tr><td data-label="Option"><code>--library</code></td><td data-label="Aliases"><code>-lib</code>, <code>-l</code></td><td data-label="Description">Linked libraries, comma-separated. An entry may be <code>@name</code>, a group from <code>configobjk.ini</code> — see <a href="#library-groups">Library groups</a></td></tr>
+      <tr><td data-label="Option"><code>--strict</code></td><td data-label="Aliases"></td><td data-label="Description">Exclude default libraries (<code>lang</code>, <code>gen_collect</code>)</td></tr>
+      <tr><td data-label="Option"><code>--optimize</code></td><td data-label="Aliases"><code>-opt</code>, <code>-o</code></td><td data-label="Description">Optimization level <code>s0</code>–<code>s3</code> (default: <code>s3</code>)</td></tr>
+      <tr><td data-label="Option"><code>--alt-syntax</code></td><td data-label="Aliases"><code>-alt</code></td><td data-label="Description">Use the alternative C-like syntax</td></tr>
+      <tr><td data-label="Option"><code>--debug</code></td><td data-label="Aliases"><code>-D</code></td><td data-label="Description">Include debug symbols</td></tr>
+      <tr><td data-label="Option"><code>--assembly</code></td><td data-label="Aliases"><code>-asm</code>, <code>-a</code></td><td data-label="Description">Emit an assembly file</td></tr>
+      <tr><td data-label="Option"><code>--version</code></td><td data-label="Aliases"><code>-ver</code>, <code>-v</code></td><td data-label="Description">Show version</td></tr>
+     </tbody>
+    </table>
+    <h4 id="library-groups">Library groups</h4>
+    <p>An entry in <code>--library</code> that begins with <code>@</code> is a <strong>group</strong>, expanded from <code>lib/configobjk.ini</code> beside the installed <code>.obl</code> files. <code>-lib @web</code> is shorthand for the seven libraries that group lists.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Group</th><th>Expands to</th><th>For</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Group"><code>@std</code></td><td data-label="Expands to"><code>json</code>, <code>json_stream</code>, <code>net</code>, <code>cipher</code></td><td data-label="For">everyday programs: JSON and HTTP</td></tr>
+      <tr><td data-label="Group"><code>@web</code></td><td data-label="Expands to"><code>net_h2</code>, <code>net_quic</code>, <code>web_server</code>, <code>json_rpc</code>, <code>net_server</code>, <code>net</code>, <code>json</code>, <code>cipher</code></td><td data-label="For">HTTP/2, HTTP/3, the embedded server, JSON-RPC</td></tr>
+      <tr><td data-label="Group"><code>@data</code></td><td data-label="Expands to"><code>xml</code>, <code>regex</code>, <code>csv</code>, <code>query</code>, <code>rss</code>, <code>misc</code>, <code>net</code>, <code>json</code>, <code>cipher</code></td><td data-label="For">parsing and querying structured data</td></tr>
+      <tr><td data-label="Group"><code>@ml</code></td><td data-label="Expands to"><code>gemini</code>, <code>openai</code>, <code>ollama</code>, <code>net_server</code>, <code>misc</code>, <code>net</code>, <code>json</code>, <code>cipher</code></td><td data-label="For">hosted-model API clients</td></tr>
+      <tr><td data-label="Group"><code>@ai</code></td><td data-label="Expands to"><code>ai</code>, <code>ml</code>, <code>ml_lab</code>, <code>nlp</code>, <code>csv</code>, <code>json</code></td><td data-label="For">local <code>System.ML</code> / <code>System.ML.Lab</code> / <code>System.AI</code> / <code>System.NLP</code></td></tr>
+      <tr><td data-label="Group"><code>@vision</code></td><td data-label="Expands to"><code>opencv</code>, <code>onnx</code>, <code>nlp_onnx</code>, <code>models</code>, <code>nlp</code>, <code>json</code>, <code>cipher</code></td><td data-label="For">OpenCV and ONNX inference, BERT text embeddings</td></tr>
+      <tr><td data-label="Group"><code>@game</code></td><td data-label="Expands to"><code>sdl2</code>, <code>sdl_game</code>, <code>sdl_gl</code>, <code>json</code>, <code>gen_collect</code></td><td data-label="For">SDL2, the 2D game and 3D OpenGL frameworks</td></tr>
+     </tbody>
+    </table>
+    <p>Groups and explicit names mix in any order, for either <code>--target</code>: <code>-lib @ai,json</code> and <code>-lib json,@ai</code> are the same. Listing a library twice is harmless.</p>
+    <p><strong>Adding your own.</strong> A section in <code>configobjk.ini</code> named <code>[@yourname]</code> is a group. It must be <em>closed under dependencies</em> — the linker loads exactly what the group lists and does not chase a member's own dependencies, so if a member was built against another <code>.obl</code> that one must be listed too. A group that misses a dependency fails on every use, including from a program that never touches it. <code>@web</code> shipped that way, omitting <code>net_server.obl</code>.</p>
+    <p>If a group name is not found, the compiler prints the config file's path and every group defined in it. If a class cannot be resolved, it names the library that would supply it:</p>
+<pre class="plain">Error: Unable to resolve external library class: 'Web.HTTP.Server.Request'.
+        Add it with '-lib net_server'</pre>
+    <h3 id="virtual-machine--obr">Virtual machine — <code>obr</code></h3>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Option</th><th>Legacy form</th><th>Description</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Option"><code>--gc-threshold=&lt;n&gt;(k|m|g)</code></td><td data-label="Legacy form"><code>--GC_THRESHOLD=</code></td><td data-label="Description">A fixed heap size at which a major collection runs, e.g. <code>512k</code>, <code>2m</code>, <code>1g</code>. Without it the threshold follows the program: after each major collection it is set to twice the live heap, and never below 8 MB. A given value suits stress testing (a small one collects often) or a program that knows its working set. It holds while a major collection leaves at least a quarter of it free; while more than three quarters of it survive, the next major waits for twice the live heap instead (it used to collect on nearly every allocation then), and the given value returns once the live heap fits under it again. <code>OBJECK_GC_TRACE</code> reports the first time that happens</td></tr>
+      <tr><td data-label="Option"><code>--nursery=&lt;n&gt;(k|m)</code></td><td data-label="Legacy form">env <code>OBJECK_NURSERY=&lt;n&gt;(k|m)</code></td><td data-label="Description">Young-generation (nursery) size, from <code>64k</code> to <code>128m</code> (default <code>128m</code>). A full nursery triggers a minor collection, so a smaller one collects more often. The 128 MB region stays reserved; this only lowers the limit. The flag wins over the variable, and a bad value in either is an error</td></tr>
+      <tr><td data-label="Option">—</td><td data-label="Legacy form">env <code>OBJECK_GC_STATS=1</code></td><td data-label="Description">At exit, print one line to stderr: <code>[gc-stats] minor= major= pauses= pause_p50_us= pause_p95_us= pause_max_us= promoted_objects= promoted_bytes= peak_rss_bytes=</code>. Pauses run from the collecting thread taking the collector lock until the world resumes, so they include the stop-the-world handshake and the minor GC's remembered-set scan</td></tr>
+      <tr><td data-label="Option"><code>--jit=off</code> / <code>--jit=&lt;calls&gt;</code></td><td data-label="Legacy form">env <code>OBJECK_JIT_DISABLE=1</code> / <code>OBJECK_JIT_THRESHOLD=N</code></td><td data-label="Description"><code>off</code> runs the interpreter only; a positive number is how many calls a method makes before it is compiled (default <code>10</code>)</td></tr>
+      <tr><td data-label="Option">—</td><td data-label="Legacy form">env <code>OBJECK_JIT_REPORT=1</code></td><td data-label="Description">Print, to stderr, every method the JIT hands back to the interpreter and why: an unsupported opcode (number per <code>obc -asm</code>), or the instruction at which compilation failed. Diagnostic; no effect on execution</td></tr>
+      <tr><td data-label="Option"><code>--lib-path=&lt;dir&gt;</code></td><td data-label="Legacy form">env <code>OBJECK_LIB_PATH</code></td><td data-label="Description">The Objeck <code>lib</code> root. <code>obc</code> reads the <code>.obl</code> files from it; <code>obr</code> loads the native libraries from <code>&lt;dir&gt;/native/</code> (`libobjk_*.dll</td><td data-label="">.so</td><td data-label="">.dylib<code>), reads </code>&lt;dir&gt;/cacert.pem<code> for TLS, and reports it as the </code>lib_dir<code> runtime property. On Windows the third-party runtime DLLs those libraries import (SDL2, onnxruntime, opencv, lame, the VC runtime) are resolved from </code>obr.exe<code>'s own directory, so </code>bin/<code> keeps them wherever </code>lib/` is</td></tr>
+      <tr><td data-label="Option"><code>--objeck-stdio=binary|utf16|utf8</code></td><td data-label="Legacy form"><code>--OBJECK_STDIO=</code></td><td data-label="Description">Console I/O mode. Acted on by <strong>Windows</strong>; accepted and ignored elsewhere so one script works on every platform</td></tr>
+     </tbody>
+    </table>
+    <p>Any other value for any of these is an error that names what was expected — <code>--objeck-stdio=1</code> used to be accepted and silently do nothing.</p>
+    <h4 id="environment-variables">Environment variables</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Variable</th><th>Effect</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Variable"><code>OBJECK_LIB_PATH</code></td><td data-label="Effect">Library search path</td></tr>
+      <tr><td data-label="Variable"><code>OBJECK_STDIO</code></td><td data-label="Effect">Binary STDIO mode</td></tr>
+      <tr><td data-label="Variable"><code>OBJECK_JIT_DISABLE=1</code></td><td data-label="Effect">Turn auto-JIT off entirely</td></tr>
+      <tr><td data-label="Variable"><code>OBJECK_JIT_THRESHOLD=N</code></td><td data-label="Effect">Call count before a method is auto-JIT'd (default <code>10</code>)</td></tr>
+      <tr><td data-label="Variable"><code>OBJECK_NURSERY=&lt;n&gt;(k|m)</code></td><td data-label="Effect">Nursery size, <code>64k</code> to <code>128m</code>; <code>--nursery</code> wins when both are set</td></tr>
+      <tr><td data-label="Variable"><code>OBJECK_GC_STATS=1</code></td><td data-label="Effect">One-line GC summary (counts, pause percentiles, promoted bytes, peak RSS) on stderr at exit</td></tr>
+     </tbody>
+    </table>
+    <h3 id="notes">Notes</h3>
+    <ul>
+     <li><strong>VM flag parsing is positional</strong> — <code>obr</code> consumes its own options before the program path, so VM options must come <em>before</em> the <code>.obe</code> and any program arguments.</li>
+     <li><strong><code>--objeck-stdio</code> only has an effect on Windows.</strong> Every platform accepts and consumes it, so a shared script does not have to know which one is running.</li>
+     <li><strong><code>--jit=off</code> is the first thing to try on a crash or a wrong answer</strong> — it asks whether the bug lives in the JIT or in the interpreter. The environment variables still work and the flag wins when both are set.</li>
+     <li>A <code>g</code> suffix on <code>--gc-threshold</code> is 2³⁰. Before v2026.9.1 it was 2⁴⁰, so <code>1g</code> asked for a terabyte.</li>
+     <li>Combining <code>--library</code> with <code>--strict</code> drops the implicit <code>lang,gen_collect</code> defaults.</li>
+    </ul>
+    <h3 id="source">Source</h3>
+    <ul>
+     <li>Compiler option parsing: <code>core/compiler/compiler.cpp</code>, usage string in <code>core/compiler/posix_main.cpp</code></li>
+     <li>VM option parsing: <code>core/vm/vm_options.h</code> (one parser, called from <code>core/vm/win_main.cpp</code> and <code>core/vm/posix_main.cpp</code>)</li>
+     <li>JIT threshold tunables: <code>core/vm/arch/jit/jit_common.h</code></li>
+    </ul>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

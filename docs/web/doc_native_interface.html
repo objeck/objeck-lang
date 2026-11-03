@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Writing native libraries for Objeck — Objeck Language</title>
+  <meta name="description" content="Objeck reaches C and C++ through shared libraries it loads at runtime. Every binding in the standard library works this way — SDL2 and OpenGL, ODBC, OpenCV, ONNX, mbedTLS, LAME, the diagnostics engine behind the language server. If you want"/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Writing native libraries for Objeck</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/native_interface.md" target="_blank">docs/native_interface.md on GitHub</a></div>
+    <p class="page-lead">Objeck reaches C and C++ through shared libraries it loads at runtime. Every binding in the standard library works this way — SDL2 and OpenGL, ODBC, OpenCV, ONNX, mbedTLS, LAME, the diagnostics engine behind the language server. If you want Objeck to call something the VM does not already know about, this is the mechanism, and it is the only one.</p>
+    <div id="toc_container" class="plain">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#the-shape-of-a-call">The shape of a call</a></li>
+      <li><a href="#the-c-side">The C++ side</a></li>
+      <li><a href="#memory-and-the-collector">Memory and the collector</a></li>
+      <li><a href="#errors">Errors</a></li>
+      <li><a href="#what-a-call-costs">What a call costs</a></li>
+      <li><a href="#building-and-shipping-a-library">Building and shipping a library</a></li>
+      <li><a href="#traps">Traps</a></li>
+      <li><a href="#is-this-a-good-design">Is this a good design?</a></li>
+     </ul>
+    </div>
+
+    <p>This document is the whole contract: what the VM guarantees, what your library must guarantee back, what the collector does with the memory you allocate, and what a call costs.</p>
+    <hr class="section-end">
+    <h3 id="the-shape-of-a-call">The shape of a call</h3>
+    <p>A native library is two halves that meet at a name.</p>
+    <p><strong>The Objeck half</strong> loads the library and calls into it by function name, passing an array of boxed values:</p>
+<pre class="line-numbers"><code class="language-cpp">use System.API;
+
+class Beep {
+	@proxy : static : DllProxy;
+	@fn_beep_play : static : String;
+
+	function : Play(hz : Int, ms : Int) ~ Bool {
+		if(@proxy = Nil) {
+			@proxy := DllProxy-&gt;New("libobjk_beep");
+		};
+
+		array_args := Base-&gt;New[3];
+		array_args[0] := IntRef-&gt;New();     # the result comes back here
+		array_args[1] := IntRef-&gt;New(hz);
+		array_args[2] := IntRef-&gt;New(ms);
+
+		if(@fn_beep_play = Nil) { @fn_beep_play := "beep_play"; };
+		@proxy-&gt;CallFunction(@fn_beep_play, array_args);
+
+		return array_args[0]-&gt;As(IntRef)-&gt;Get() &lt;&gt; 0;
+	}
+}
+</code></pre>
+    <p><strong>The C++ half</strong> exports a function of that name taking a <code>VMContext&amp;</code>:</p>
+<pre class="line-numbers"><code class="language-cpp">#include "../../vm/lib_api.h"
+
+extern "C" {
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void load_lib(VMContext&amp; context) { }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void unload_lib() { }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void beep_play(VMContext&amp; context) {
+    const size_t hz = APITools_GetIntValue(context, 1);
+    const size_t ms = APITools_GetIntValue(context, 2);
+
+    const bool ok = platform_beep(hz, ms);
+    APITools_SetIntValue(context, 0, ok ? 1 : 0);
+  }
+}
+</code></pre>
+    <p>There is no header generation, no IDL, no signature checking. The name is the only thing that ties the halves together, and the argument array is the only thing that crosses. If the two sides disagree about what index 2 holds, nothing tells you — you get a wrong number or a crash.</p>
+    <p>That bluntness is the trade. It also means the whole interface fits in one header, <code>core/vm/lib_api.h</code>, which is worth reading in full at least once.</p>
+    <h4 id="what-happens-between-them">What happens between them</h4>
+    <ol>
+     <li><code>DllProxy-&gt;New(name)</code> runs <code>EXT_LIB_LOAD</code>, which resolves <code>name</code> against the library directory, appends the platform's extension, loads it, and calls the library's <code>load_lib</code>.</li>
+     <li><code>CallFunction(name, args)</code> runs <code>EXT_LIB_FUNC_CALL</code>. The VM resolves <code>name</code> to a symbol, builds a <code>VMContext</code> around the argument array, and calls it.</li>
+     <li>Your function reads and writes the argument array in place. It does not return a value; there is no return channel other than the array.</li>
+     <li><code>Unload()</code> runs <code>EXT_LIB_UNLOAD</code>, which calls <code>unload_lib</code> and unloads.</li>
+    </ol>
+    <p>The library directory is <code>$OBJECK_LIB_PATH/native/</code>, falling back to <code>../lib/native/</code> relative to the working directory. The name you pass has no extension — the VM appends <code>.dll</code>, <code>.dylib</code> or <code>.so</code> — and by convention starts with <code>libobjk_</code>, which is what the deploy scripts name the built artifacts.</p>
+    <hr class="section-end">
+    <h3 id="the-c-side">The C++ side</h3>
+    <h4 id="the-three-exports">The three exports</h4>
+    <p>Every library must export <code>load_lib(VMContext&amp;)</code> and <code>unload_lib()</code>. The VM looks them up by name immediately after loading and <strong>exits the process</strong> if either is missing. Most libraries leave both empty; use them for one-time global setup and teardown that cannot be done lazily.</p>
+    <p>Then export one function per entry point, each <code>void f(VMContext&amp;)</code>.</p>
+    <p>All of it goes inside <code>extern "C"</code>, and on Windows each export needs <code>__declspec(dllexport)</code>. POSIX builds export by default.</p>
+    <h4 id="reading-arguments">Reading arguments</h4>
+    <p><code>context.data_array</code> is the Objeck <code>Base[]</code> you were passed. Never index it directly; the header's accessors know the layout.</p>
+<pre class="line-numbers"><code class="language-cpp">size_t         n   = APITools_GetArgumentCount(context);
+bool           b   = APITools_GetBoolValue(context, 1);
+size_t         i   = APITools_GetIntValue(context, 1);
+double         f   = APITools_GetFloatValue(context, 1);
+wchar_t        c   = APITools_GetCharValue(context, 1);
+unsigned char  y   = APITools_GetByteValue(context, 1);
+const wchar_t* s   = APITools_GetStringValue(context, 1);
+size_t*        obj = APITools_GetObjectValue(context, 1);
+</code></pre>
+    <p>Every one of these is bounds-checked against the argument count and returns a zero value (or <code>nullptr</code>) when the index is out of range or the slot is empty. That is a guard against a mismatched call, not a licence to skip checking: <code>APITools_GetStringValue</code> returns <code>nullptr</code> for a <code>Nil</code> string, and dereferencing it is your bug, not the VM's.</p>
+    <p>Arrays arrive as a <em>holder</em> — an <code>IntArrayRef</code>, <code>FloatArrayRef</code>, <code>ByteArrayRef</code> and so on — which is an object wrapping the array. So there are two steps:</p>
+<pre class="line-numbers"><code class="language-cpp">size_t* holder = APITools_GetArray(context, 1);      // the holder
+size_t* array  = (size_t*)holder[0];                 // the array itself
+size_t  count  = APITools_GetArraySize(array);
+double* values = (double*)APITools_GetArray(array);  // past the 3-word header
+</code></pre>
+    <p>An Objeck array is three header words (<code>size</code>, <code>dimension count</code>, then one length per dimension) followed by the elements, which is what <code>ARRAY_HEADER_OFFSET</code> is for. <code>APITools_GetArray(array)</code> returns the element pointer; cast it to the element type. The typed element accessors (<code>APITools_GetFloatArrayElement</code> and friends) do the same work one element at a time with bounds checks.</p>
+    <p><code>String[]</code> is the exception with a shortcut: <code>APITools_GetStringsValues(context, i)</code> returns a <code>std::vector&lt;std::wstring&gt;</code> directly.</p>
+    <h4 id="returning-values">Returning values</h4>
+    <p>You return by writing into the argument array. By convention index 0 is the result slot, and the Objeck side has already put a holder there for you.</p>
+<pre class="line-numbers"><code class="language-cpp">APITools_SetIntValue(context, 0, 42);
+APITools_SetFloatValue(context, 0, 3.5);
+APITools_SetStringValue(context, 0, L"done");
+APITools_SetObjectValue(context, 0, some_object);
+</code></pre>
+    <p>The primitive setters write <em>through</em> the holder the caller supplied — they mutate the <code>IntRef</code> that is already in the slot. <code>SetStringValue</code> and <code>SetObjectValue</code> allocate something new and replace the slot's contents.</p>
+    <p>To hand back a new array, allocate one and store it in the holder:</p>
+<pre class="line-numbers"><code class="language-cpp">size_t* holder = APITools_GetArray(context, 0);
+size_t* result = APITools_MakeByteArray(context, bytes.size());
+memcpy(result + ARRAY_HEADER_OFFSET, bytes.data(), bytes.size());
+holder[0] = (size_t)result;
+</code></pre>
+    <p><code>APITools_MakeIntArray</code>, <code>MakeFloatArray</code>, <code>MakeFloatMatrix</code>, <code>MakeCharArray</code> and <code>MakeByteArray</code> cover the cases. <code>APITools_CreateStringObject</code> builds a <code>System.String</code>; <code>APITools_CreateObject</code> builds an instance of any class by qualified name.</p>
+    <h4 id="calling-back-into-objeck">Calling back into Objeck</h4>
+<pre class="line-numbers"><code class="language-cpp">APITools_CallMethod(context, instance, L"MyClass:Handler:o.System.String,");
+APITools_CallMethod(context, instance, cls_id, mthd_id);
+</code></pre>
+    <p>The qualified-name form wants the full mangled signature, which is why the by-id form exists for anything called repeatedly.</p>
+    <p>Push the method's parameters on <code>context.op_stack</code> (advancing <code>*context.stack_pos</code>) before the call; its return value, if any, is left there for you to pop after.</p>
+    <p>A call back runs on the calling thread's own call stack and operand stack, so it is bounded like any other call: a recursion through your library and back -- native code calling an Objeck method that calls the native code again -- stops at the thread's call-depth limit (<code>--call-depth</code>) or when its native stack runs low, with <code>call stack bounds have been exceeded</code>. A <code>try</code> block <em>inside</em> the method you called recovers from an error the usual way. When the only handler is <em>outside</em> your native call, the callback returns to you with zero in place of its result (and any further call back on that thread does the same at once): return as soon as you can, and the error is raised at your native call, where that handler takes it. With no handler at all the program reports the error and ends. A thread the VM did not start has no call stack to share; a call back from one runs as it always did, unchecked. <code>programs/regression/native_callback/</code> holds a test library that exercises all of this (<code>run_vm_flag_tests.py</code> section 18).</p>
+    <p>Be aware that <strong>no shipped binding currently uses this</strong>, so it is the least exercised part of the interface. It also has a consequence for the memory rules below: calling back into Objeck runs a nested interpreter, whose allocations are ordinary Objeck allocations and <em>can</em> therefore trigger a collection.</p>
+    <hr class="section-end">
+    <h3 id="memory-and-the-collector">Memory and the collector</h3>
+    <p><strong>Everything a native library allocates lives in the old generation.</strong> That is the whole rule, and it is worth understanding why, because it is what makes the plain stores in <code>lib_api.h</code> safe.</p>
+    <p>Objeck's collector is generational. Objects are normally allocated in a nursery and promoted — which <strong>moves</strong> them — when they survive a collection. Moving is safe because the collector fixes up every reference afterwards, and it finds those references two ways: by tracing from roots, and, for references stored into old-generation objects, through a <em>write barrier</em> that records the object as dirty when the store happens. A minor collection marks an old object without recursing into it, so an old-to-young reference that the barrier never recorded is invisible to both the mark phase and the fixup phase.</p>
+    <p>Now look at how a library returns an object:</p>
+<pre class="line-numbers"><code class="language-cpp">void APITools_SetObjectValue(VMContext&amp; context, int index, size_t* obj) {
+  ...
+  data_array[index] = (size_t)obj;
+  APITools_WriteBarrier(context, context.data_array);
+}
+</code></pre>
+    <p>The barrier call is there now; it was not always. <code>lib_api.h</code> is compiled <em>into your library</em>, not into the VM, so it has no direct access to the collector — it reaches the barrier through a function pointer the VM puts on <code>VMContext</code> (<code>write_barrier</code>, added for #864). And the argument array is always an old-generation object, because <code>AllocateArray</code> never uses the nursery.</p>
+    <p>So the VM allocates on your behalf in the old generation instead. Old objects are never moved, so nothing needs fixing up, and a major collection recurses into old objects, so your value stays reachable through the argument array. The barrier is not needed because the hazard is not created.</p>
+    <p>This is enforced VM-side (<code>MemoryManager::AllocateObjectNative</code>), which means it covers every library already compiled, including yours, without a rebuild. You do not have to do anything. But you do have to know the rule, because it has one consequence you can feel: <strong>objects a native library allocates are reclaimed only by a major collection.</strong> A library that allocates a String per call in a hot loop grows the old generation. If you are returning many small values, return them through primitive holders, which allocate nothing at all.</p>
+    <p><code>programs/regression/native_gc_barrier_test.obs</code> is the test that holds this down. It fails — with a dangling reference, in practice an "Invalid object cast" abort — against a VM that allocates native objects in the nursery.</p>
+    <h5 id="why-both-and-not-just-one">Why both, and not just one</h5>
+    <p>The allocator rule came first and the barrier hook came second. Both are here, and they cover different halves.</p>
+    <p><strong>The allocator rule covers every library already compiled.</strong> <code>lib_api.h</code> compiles <em>into each library</em>, so a header-only fix reaches only libraries that are rebuilt. Allocating native objects old is VM-side, so it protects binaries nobody will ever rebuild. That was the right first move and it is still load bearing.</p>
+    <p><strong>The barrier hook covers what the allocator cannot: a store of an object the library did not allocate.</strong> For a while the guard there was a written rule — do not store a received object into anything — because a barrier the author must remember to call is a bug that can be reintroduced by omission, and allocating old makes the bug unrepresentable rather than merely absent.</p>
+    <p>The trouble is that the rule only makes the bug unrepresentable for values the library allocates. A received object is <em>not</em> one of those, so for that case the written rule was the entire enforcement — and it was being broken. <code>core/lib/onnx</code> stored a caller's label String into a natively-allocated result object at three sites, unbarriered, for as long as those entry points have existed (#864). It never bit, because callers happen to keep the labels array alive, but the rule was not holding anything down. A prohibition nothing checks is not a guard.</p>
+    <p>So: the store is now expressible and correct rather than forbidden, and <code>tools/cicd/check_native_write_barrier.py</code> checks the shape in CI, which is what the written rule never could.</p>
+    <p>One thing to keep in view. Allocating native objects old costs almost nothing today — measured at +11% old-generation bytes with <strong>no</strong> additional collections — but only because arrays are <em>already</em> old-generation, so all that moved was a small object header. <strong>If array nursery allocation is ever enabled, that trade flips</strong> and native returns become a real old-generation cost. The hook being in place is what makes revisiting that a change of one allocator argument rather than an ABI change.</p>
+    <h4 id="arrays-are-born-old-objects-are-born-young">Arrays are born old, objects are born young</h4>
+    <p>Worth stating separately, because it decides which stores are safe:</p>
+    <ul>
+     <li><code>AllocateArray</code> <strong>never</strong> uses the nursery. Every Objeck array is old-generation from the moment it exists.</li>
+     <li><code>AllocateObject</code> does use it — except through the native path above, which is the whole point of that change.</li>
+    </ul>
+    <p>No collection can run inside your function <em>as long as your function only allocates</em> — the API's allocators pass <code>collect=false</code>, which neither parks at a safepoint nor drives a collection, so nothing you allocate moves while you are still holding it.</p>
+    <p>The exception is calling back into Objeck. <code>APITools_CallMethod</code> runs a nested interpreter, and allocation inside it is ordinary Objeck allocation with <code>collect=true</code>. So a collection <em>can</em> run in the middle of your function there, and a raw <code>size_t*</code> you were holding across that call may have moved. Re-fetch anything you need after a callback rather than holding it across one.</p>
+    <p>The consequence for you: everything you allocate is old, and the argument array is old, so every store you make <strong>between</strong> them is old-to-old and needs no barrier.</p>
+    <p>The store that does need one is of an object <strong>you did not allocate</strong>:</p>
+<pre class="line-numbers"><code class="language-cpp">// a label that arrived as an argument, into a result object you built
+result_obj[1] = labels_objs[class_id];
+APITools_WriteBarrier(context, result_obj);   // &lt;- required
+</code></pre>
+    <p>Three kinds of value are "not yours": an object the caller gave you, anything you read out of one, and anything a callback returned. Any of them may be young, and every container you could put one in — an array, or an object you allocated — is old. <code>APITools_SetObjectValue</code> barriers on its own, so returning a value through the argument array is always safe; a direct store into an object is where you have to call it yourself.</p>
+    <p>Pass the <strong>container</strong> you stored into, not the value, and pass it as the allocator returned it — for an array that is the base pointer, where <code>[0]</code> is the element count. Calling the barrier when it was not needed is harmless: its fast path returns immediately when the container is young or already recorded. <code>APITools_WriteBarrier</code> is also a no-op against a VM too old to supply the pointer, so a library built against this header still loads on one.</p>
+    <p>This is not a hypothetical restriction — the VM's own traps had exactly this bug. A trap that returned <code>String[]</code> allocated the array (old), filled it with freshly created Strings (young), and ran no barrier; the next minor collection promoted the elements out from under an array the collector does not look inside. <code>Directory-&gt;List</code> followed by enough allocation to fill the nursery turned two thirds of a 393-entry listing into unreadable memory, and reading one segfaulted the VM. <code>programs/regression/trap_array_barrier_test.obs</code> guards it now.</p>
+    <h4 id="what-you-still-own">What you still own</h4>
+    <p>The collector manages what it allocated. It knows nothing about anything else.</p>
+    <ul>
+     <li>Memory you get from <code>malloc</code>/<code>new</code> is yours to free. Nothing collects it.</li>
+     <li>A native handle you stash in an <code>Int</code> (a texture id, a socket, a database connection) is invisible to the collector. The Objeck side has to release it explicitly, which is why so many classes in these bindings have a <code>Free</code>.</li>
+     <li>The <code>size_t*</code> pointers you hold during one call stay valid for that call. Native allocations do not trigger a collection and do not park at a safepoint, so nothing moves under you between two <code>APITools_</code> calls in the same function. Do not hold one past the call — store an Objeck-visible reference instead. The one thing that breaks this inside a single call is <code>APITools_CallMethod</code>, which can collect; treat a pointer held across a callback as stale.</li>
+    </ul>
+    <hr class="section-end">
+    <h3 id="errors">Errors</h3>
+    <p>There is no error channel. A native function returns <code>void</code>, and the VM has no notion of a failed call.</p>
+    <p><strong>Do not let an exception escape.</strong> The VM calls you through a raw function pointer, across a module boundary, from a frame that knows nothing about unwinding. Catch everything at the boundary.</p>
+    <p><strong>Do not call <code>exit()</code>,</strong> however tempting. Report the failure through the argument array and let Objeck decide.</p>
+    <p>The convention that has held up is a status in the result slot plus a last-error string the caller can ask for:</p>
+<pre class="line-numbers"><code class="language-cpp">void thing_do(VMContext&amp; context) {
+  try {
+    ...
+    APITools_SetIntValue(context, 0, 1);
+  }
+  catch(const std::exception&amp; e) {
+    last_error = BytesToUnicode(e.what());
+    APITools_SetIntValue(context, 0, 0);
+  }
+}
+</code></pre>
+    <p>The VM itself is less forgiving than this advice: a missing <code>load_lib</code>, a missing symbol, or a library that fails to load all print a message and <strong>exit the process</strong>. A typo in a function name is a hard stop at the first call, not an exception you can catch.</p>
+    <h4 id="threading">Threading</h4>
+    <p>Objeck threads call native functions concurrently, and nothing serialises them. A library with mutable global state needs its own locking. Several of the bindings here are single-threaded in practice only because their callers happen to be.</p>
+    <h4 id="which-vm-you-are-running-on">Which VM you are running on</h4>
+    <p><code>VMContext</code> only grows, at the end. A library compiled against an older <code>lib_api.h</code> reads the fields it knows at the offsets it knows, so it keeps working on a newer VM without a rebuild. The other direction is the hazard: a library built against a <em>newer</em> header, run by an <em>older</em> VM, is handed a shorter struct, and the fields past its end are whatever lies beyond it on that VM's stack.</p>
+    <p>Two markers make that detectable, and each field added since is guarded by one:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>field</th><th>present when</th><th>how to check</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="field"><code>write_barrier</code></td><td data-label="present when">set by every VM since #864; an older VM's struct ends before it, and no marker says so</td><td data-label="how to check"><code>APITools_WriteBarrier</code> no-ops on null only</td></tr>
+      <tr><td data-label="field"><code>blocking_abi</code>, <code>begin_blocking</code>, <code>end_blocking</code></td><td data-label="present when"><code>blocking_abi == APITOOLS_BLOCKING_ABI</code> ("OBJKPARK")</td><td data-label="how to check"><code>APITools_Parked</code> checks it</td></tr>
+      <tr><td data-label="field"><code>abi_version</code>, <code>struct_size</code></td><td data-label="present when"><code>APITools_GetAbiVersion(context) &gt;= 1</code></td><td data-label="how to check">it checks <code>blocking_abi</code>, then the "OBJK" tag in the high half of <code>abi_version</code></td></tr>
+     </tbody>
+    </table>
+    <p><code>abi_version</code> is <code>APITOOLS_ABI_TAG | APITOOLS_ABI_VERSION</code> and <code>struct_size</code> is <code>sizeof(VMContext)</code>, both as the VM was built; every construction site in <code>core/vm/interpreter.cpp</code> sets them. A field appended after <code>struct_size</code> is present exactly when it ends within <code>struct_size</code>:</p>
+<pre class="line-numbers"><code class="language-cpp">if(APITools_HasField(context, offsetof(VMContext, new_field) + sizeof(context.new_field))) {
+  // safe to read context.new_field
+}
+</code></pre>
+    <p><code>APITools_GetAbiVersion</code> returns 0 for any VM that predates the field, which says nothing about the fields before it: check those by their own markers. Whoever appends a field bumps <code>APITOOLS_ABI_VERSION</code> in the same change and adds a line for it to the comment beside the define. <code>run_vm_flag_tests.py</code> section 18 builds a library that reads both fields back and expects version 1 and a <code>struct_size</code> that covers the whole header.</p>
+    <p>The helpers in <code>lib_api.h</code> are all <code>inline</code>, so a library may include the header from more than one source file without duplicate-symbol errors.</p>
+    <hr class="section-end">
+    <h3 id="what-a-call-costs">What a call costs</h3>
+    <p>Measured on Windows x64, per call, against a native function that does nothing:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th></th><th>ns</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="">a call whose name is a string literal</td><td data-label="ns">~1,655</td></tr>
+      <tr><td data-label="">the same call, name held in a field</td><td data-label="ns">~130</td></tr>
+      <tr><td data-label="">a fully hoisted call with a reused argument buffer</td><td data-label="ns">~125</td></tr>
+     </tbody>
+    </table>
+    <p>The number that surprises people is the first one. <strong>An Objeck string literal is materialised into a fresh <code>String</code> every time it is evaluated</strong> — not once at load, not interned. A name written at the call site is therefore an allocation and a copy on every single call, and at ~1,525ns it is 92% of the cost of the call, spent in code that reads like a constant.</p>
+    <p>Two rules follow, and together they took a 500-box OpenGL frame from 15.02ms to 3.35ms.</p>
+    <h4 id="rule-1-hold-the-name-in-a-field">Rule 1: hold the name in a field</h4>
+<pre class="line-numbers"><code class="language-cpp"># Before -- allocates "sdl_gl_mesh_draw" on every draw.
+Proxy-&gt;GetDllProxy()-&gt;CallFunction("sdl_gl_mesh_draw", array_args);
+
+# After.
+@fn_sdl_gl_mesh_draw : static : String;
+...
+if(@fn_sdl_gl_mesh_draw = Nil) { @fn_sdl_gl_mesh_draw := "sdl_gl_mesh_draw"; };
+Proxy-&gt;GetDllProxy()-&gt;CallFunction(@fn_sdl_gl_mesh_draw, array_args);
+</code></pre>
+    <p>Static, because the names are class-wide constants and a <code>function :</code> cannot read an instance field. The lazy fill races harmlessly between threads: both write an equivalent String, one wins, the loser's allocation is discarded, and no one can observe a half-built value because the store is a pointer store.</p>
+    <p><code>tools/cicd/hoist_native_names.py</code> applies this across a file, and <code>--check</code> reports any call site that still writes a literal:</p>
+<pre class="plain">python tools/cicd/hoist_native_names.py --check core/compiler/lib_src/*.obs</pre>
+    <p>Worth knowing: <code>core/lib/sdl/code_gen</code> <strong>generates</strong> <code>sdl2.obs</code>, and its emitter writes the literal form. Regenerating it undoes the hoisting for all 353 call sites, and <code>--check</code> is how you find out.</p>
+    <h4 id="rule-2-reuse-the-argument-buffer">Rule 2: reuse the argument buffer</h4>
+    <p>The usual shape allocates a <code>Base[]</code> and a holder per element on every call:</p>
+<pre class="line-numbers"><code class="language-cpp">array_args := Base-&gt;New[3];
+array_args[0] := IntRef-&gt;New(mesh);
+array_args[1] := IntRef-&gt;New(mode);
+array_args[2] := IntRef-&gt;New(count);
+</code></pre>
+    <p>Holders are mutable, so on a hot path you can build the buffer once and refill it:</p>
+<pre class="line-numbers"><code class="language-cpp">if(@draw_args = Nil) {
+	@draw_mesh := IntRef-&gt;New(@mesh);
+	@draw_mode := IntRef-&gt;New(mode);
+	@draw_count := IntRef-&gt;New(count);
+	@draw_args := Base-&gt;New[3];
+	@draw_args[0] := @draw_mesh;
+	@draw_args[1] := @draw_mode;
+	@draw_args[2] := @draw_count;
+}
+else {
+	@draw_mesh-&gt;Set(@mesh);
+	@draw_mode-&gt;Set(mode);
+	@draw_count-&gt;Set(count);
+};
+Proxy-&gt;GetDllProxy()-&gt;CallFunction(@draw_name, @draw_args);
+</code></pre>
+    <p>This is worth 6-8% of a draw-heavy frame, and it introduces exactly one new way to be wrong: <strong>a buffer that is not refilled sends the previous call's values.</strong> That failure is invisible to most tests — draw the same thing twice and a stale buffer produces the correct picture — so a fixture has to pass two <em>different</em> values in succession and check that the second one landed.</p>
+    <p>There is a second hazard, and it is the reason to be careful about <em>what</em> you park in a reused buffer. A buffer holding a caller's array or object keeps it reachable for as long as the buffer lives, which is now forever. Release those slots after the call:</p>
+<pre class="line-numbers"><code class="language-cpp">Proxy-&gt;GetDllProxy()-&gt;CallFunction(@m4_name, @m4_args);
+@m4_args[1] := Nil;              # do not pin the caller's matrix
+@m4_matrix-&gt;Set(@m4_idle);
+</code></pre>
+    <p>Reuse buffers that carry primitives. Be deliberate about buffers that carry references.</p>
+    <h4 id="what-is-left-and-what-is-not-worth-chasing">What is left, and what is not worth chasing</h4>
+    <p>After both rules a call is ~125ns, nearly all of it spent before your C++ function is entered: building the argument array and dispatching the call.</p>
+    <p>It is tempting to blame the JIT for the rest. <code>CallFunction</code> contains <code>EXT_LIB_FUNC_CALL</code>, which is in neither JIT whitelist, so that method is always interpreted and every native call from JIT-compiled code crosses into the interpreter. That is true, and it costs nothing. Measured by running the same loop from a JIT-compiled caller and from an interpreted one — a method containing a native call cannot be compiled, which is how you get one of each — the compiled caller is <strong>faster by 155-270ns per call</strong>. The crossing is not a toll.</p>
+    <p>Nor is there much to win by making the opcode JIT-able. What that would remove is the interpreted method invocation, and that is <strong>~20ns</strong>: about 16% of a minimal call and under 2% of a call doing any real work. It would also mean restructuring how the opcode reads its operands, since it takes them from <code>frame-&gt;mem</code> and a JIT callback has no frame — the same frame dependency that <code>HasFrameDependentTrap</code> exists to reject. A 20ns ceiling is not worth that.</p>
+    <p>The practical consequence: <strong>batch at the boundary.</strong> One call that draws 500 instances beats 500 calls that draw one, by far more than any tuning of the call itself — and unlike the call overhead, batching has no ceiling.</p>
+    <hr class="section-end">
+    <h3 id="building-and-shipping-a-library">Building and shipping a library</h3>
+    <p>Naming matters more than it looks. The Objeck side passes an extensionless name to <code>DllProxy-&gt;New</code>, the VM appends the platform extension, and the deploy scripts are what actually produce a file with that name — the build output is usually named something else and renamed on the way into <code>lib/native/</code>.</p>
+    <ul>
+     <li><strong>POSIX</strong>: <code>core/lib/&lt;name&gt;/build_linux.sh &lt;name&gt;</code> builds <code>&lt;name&gt;.so</code>, and <code>core/release/deploy_posix.sh</code> copies it to <code>lib/native/libobjk_&lt;name&gt;.so</code>. Note that <code>matrix.so</code> ships as <code>libobjk_ml.so</code> — the names do not have to match, and one place decides.</li>
+     <li><strong>Windows</strong>: an MSVC solution per library under <code>core/lib/&lt;name&gt;/</code>, built <code>Release|x64</code> (ONNX is the exception, <code>Release-DML|x64</code>), with the output copied to <code>lib/native/</code>.</li>
+     <li><strong>macOS</strong>: an Xcode project, same idea.</li>
+    </ul>
+    <p>A new library needs to be added to each deploy script, to the CI build lists, and — if it has an Objeck-side <code>.obl</code> — to the library lists in <code>update_version.sh</code>, <code>update_version_arm.sh</code>, <code>code_doc64.in</code>, and the CI "Rebuild libraries" step. <code>tools/cicd/check_doc_lists.py</code> guards the doc lists.</p>
+    <p>One trap worth stating plainly, because it has bitten this repo: <strong>a library that CI compiles is not necessarily a library that ships.</strong> The <code>obu</code> updater was built and tested by CI for two releases while being packaged in no archive at all. Check the archive, not the build log.</p>
+    <hr class="section-end">
+    <h3 id="traps">Traps</h3>
+    <p>Collected from things that have actually gone wrong here.</p>
+    <ul>
+     <li><strong><code>.obs</code> files are marked binary in <code>.gitattributes</code>.</strong> <code>git diff</code> shows you nothing. Review by reading the file, and expect that two branches touching the same <code>.obs</code> cannot be merged in parallel — stack them.</li>
+     <li><strong>A changed <code>.obs</code> requires committing the rebuilt <code>.obl</code>.</strong> The <code>.obl</code> files under <code>core/lib/</code> are tracked, and a stale one fails on the platforms that do not rebuild it — usually as a pile of "undefined method" errors on macOS.</li>
+     <li><strong>Never widen an existing trap's arity.</strong> Append a new trap after <code>EXIT</code> instead. The bytecode is positional and the loader has its own parser.</li>
+     <li><strong><code>String[]</code> is indexed directly</strong>, without the <code>[0]</code> holder indirection the other array types need.</li>
+     <li><strong>A native handle in an <code>Int</code> is invisible to the collector.</strong> If it needs releasing, the Objeck side needs a <code>Free</code>.</li>
+     <li><strong>HTTP/1.1 serialises headers in Objeck; HTTP/2 and /3 do it natively.</strong> Any validation that must apply to all three belongs on the Objeck side.</li>
+     <li><strong>Silent failure is the default.</strong> A misspelled uniform, an unloaded entry point, an oversized texture and a rejected mesh were all silent in the GL bindings until each was deliberately given a way to report.</li>
+    </ul>
+    <hr class="section-end">
+    <h3 id="is-this-a-good-design">Is this a good design?</h3>
+    <p>It is a good design for what it is: a thin, uniform, dependency-free bridge that any C or C++ code can be reached through, with one header and no tooling. The VM stays out of the way, and there is nothing to regenerate when a signature changes.</p>
+    <p>The costs are real and worth naming. The name-based dispatch has no type checking whatsoever, so a mismatch between the two halves is a runtime corruption rather than a compile error. Errors have no channel and every library invents its own. Everything crosses as <code>size_t*</code>, and correctness rests on the caller and callee agreeing about a layout that nothing verifies. And per-call overhead is high enough that the interface rewards batching much more than it rewards micro-optimisation.</p>
+    <p>None of that argues for replacing it. It argues for the two habits this document keeps coming back to: <strong>batch at the boundary</strong>, and <strong>write the fixture that can tell the difference</strong> — because a native call that returns the previous call's answer, or a stale buffer that draws the right picture for the wrong reason, will pass any test that only asks whether something happened.</p>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

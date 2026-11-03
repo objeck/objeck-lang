@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Documentation — Objeck Language</title>
+  <meta name="description" content="Architecture, design notes, the language reference, performance and tooling for Objeck."/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Documentation</h1>
+    <p class="page-lead">How Objeck works inside, the language and library reference, and the tools around it. New to the language? Start with the <a href="getting_started.html">Quick Start</a> and the <a href="guides.html">guides</a>; the <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API reference</a> lists every class.</p>
+
+    <h3 id="how-it-works">How it works</h3>
+    <div class="boxes">
+     <a class="box" href="doc_architecture_map.html"><span class="box-icon">MP</span><b>Architecture map</b><span class="box-text">One page that shows how the compiler, file formats, VM, JIT, collector, libraries and tools fit together.</span></a>
+     <a class="box" href="doc_architecture.html"><span class="box-icon">AR</span><b>Objeck Language Architecture</b><span class="box-text">The compiler, file formats, VM, JIT, garbage collector, libraries and CI, with diagrams.</span></a>
+     <a class="box" href="doc_assessment.html"><span class="box-icon">AS</span><b>Architecture assessment, November 2026</b><span class="box-text">An honest assessment of the architecture: what is sound, what is risky, what to do next.</span></a>
+     <a class="box" href="doc_security.html"><span class="box-icon">SM</span><b>The Objeck VM trust model</b><span class="box-text">The VM trust model: an .obe is native code, what the loader checks and what it cannot.</span></a>
+     <a class="box" href="doc_performance.html"><span class="box-icon">PF</span><b>Objeck Performance</b><span class="box-text">Benchmarks, methodology and cross-language comparisons.</span></a>
+    </div>
+    <h3 id="language-and-libraries">Language and libraries</h3>
+    <div class="boxes">
+     <a class="box" href="doc_features.html"><span class="box-icon">LF</span><b>Objeck Language Features</b><span class="box-text">The language reference with examples: classes, generics, closures, errors, strings and more.</span></a>
+     <a class="box" href="doc_ai.html"><span class="box-icon">AI</span><b>Objeck AI &amp; ML Developer Guide</b><span class="box-text">OpenAI, Gemini, Ollama, ONNX, OpenCV, ML and NLP, with working code.</span></a>
+     <a class="box" href="doc_collections.html"><span class="box-icon">CO</span><b>Choosing a collection</b><span class="box-text">Choosing between Vector, Hash, Map, Set, Cache and the unboxed collections.</span></a>
+     <a class="box" href="doc_errors.html"><span class="box-icon">ER</span><b>Error reporting in the libraries: what exists, and one rule to adopt</b><span class="box-text">How library calls report failure: Nil, Raise, status codes, and what to test.</span></a>
+     <a class="box" href="doc_examples.html"><span class="box-icon">EX</span><b>Objeck Code Examples</b><span class="box-text">Practical code examples across the standard library.</span></a>
+     <a class="box" href="doc_models.html"><span class="box-icon">ML</span><b>AI Models for Objeck</b><span class="box-text">Which AI models Objeck can run, and where to get them.</span></a>
+    </div>
+    <h3 id="design-notes">Design notes</h3>
+    <div class="boxes">
+     <a class="box" href="doc_gc_roots.html"><span class="box-icon">GC</span><b>GC roots: a precise root model for the interpreter and both JITs</b><span class="box-text">How compiled code tells the collector which words are references, on x64 and ARM64.</span></a>
+     <a class="box" href="doc_incremental.html"><span class="box-icon">IA</span><b>Incremental Analysis for the Language Server — Design</b><span class="box-text">Per-file incremental analysis in the compiler, for a faster language server.</span></a>
+     <a class="box" href="doc_query_design.html"><span class="box-icon">QD</span><b>Query.Structured: a columnar, indexed in-memory query engine — Design</b><span class="box-text">Query.Structured: columns, zone maps, indexes, the planner and the .otab format.</span></a>
+     <a class="box" href="doc_ai_foundation.html"><span class="box-icon">AF</span><b>AI Foundation — Design (BERT is the first consumer)</b><span class="box-text">The tensor and model foundation under the ONNX, BERT and inference libraries.</span></a>
+     <a class="box" href="doc_ml_bert.html"><span class="box-icon">BE</span><b>BERT embeddings and a trainable head — Design</b><span class="box-text">BERT sentence embeddings over ONNX, and a trainable head.</span></a>
+     <a class="box" href="doc_ml_lab.html"><span class="box-icon">LB</span><b>`System.ML.Lab`: experiment support for a cybersecurity-ML lab</b><span class="box-text">System.ML.Lab: experiments, result tables and charts for an ML lab.</span></a>
+     <a class="box" href="doc_named_arguments.html"><span class="box-icon">NA</span><b>Named Arguments — Design</b><span class="box-text">How named arguments are parsed, checked and compiled.</span></a>
+     <a class="box" href="doc_method_generics.html"><span class="box-icon">MG</span><b>Method-Level Generics — Design</b><span class="box-text">Generics on methods, with bounds, inference and the checks they need.</span></a>
+     <a class="box" href="doc_reference_parameters.html"><span class="box-icon">RP</span><b>Reference Parameters — Design</b><span class="box-text">Reference parameters: semantics and the code the compiler emits.</span></a>
+     <a class="box" href="doc_recovered_errors.html"><span class="box-icon">RE</span><b>Reading a Recovered Error — Design</b><span class="box-text">Reading a recovered error: the API and what it reports.</span></a>
+     <a class="box" href="doc_jagged_arrays.html"><span class="box-icon">JA</span><b>Jagged Arrays — Design</b><span class="box-text">Jagged arrays: layout, access and bounds checks.</span></a>
+    </div>
+    <h3 id="reference">Reference</h3>
+    <div class="boxes">
+     <a class="box" href="doc_otab_format.html"><span class="box-icon">OT</span><b>The `.otab` table file format, versions 1 and 2</b><span class="box-text">Byte-exact specification of the .otab table file, versions 1 and 2.</span></a>
+     <a class="box" href="doc_cli_options.html"><span class="box-icon">CL</span><b>Objeck CLI Options</b><span class="box-text">Every command-line option of obc, obr, obd and the other tools.</span></a>
+     <a class="box" href="doc_native_interface.html"><span class="box-icon">NI</span><b>Writing native libraries for Objeck</b><span class="box-text">Write a native library: the C++ interface, the ABI version and parking for the collector.</span></a>
+     <a class="box" href="doc_dependencies.html"><span class="box-icon">TP</span><b>Third-party dependencies: where each platform gets them, and how to check versions</b><span class="box-text">Where each platform gets its dependencies, and how to check versions.</span></a>
+    </div>
+    <h3 id="contributing">Contributing</h3>
+    <div class="boxes">
+     <a class="box" href="doc_intrinsic.html"><span class="box-icon">IN</span><b>Adding an intrinsic (a new trap)</b><span class="box-text">Add a new built-in method to the compiler, VM and both JITs.</span></a>
+     <a class="box" href="doc_regression.html"><span class="box-icon">RG</span><b>Objeck Language Regression Test Suite</b><span class="box-text">The regression suite: how to run it and how to add a test.</span></a>
+     <a class="box" href="doc_fuzz.html"><span class="box-icon">FZ</span><b>Loader fuzz targets</b><span class="box-text">Fuzz targets for the loader, and how to run them.</span></a>
+    </div>
+    <h3 id="tools">Tools</h3>
+    <div class="boxes">
+     <a class="box" href="doc_editors.html"><span class="box-icon">ED</span><b>Editor &amp; IDE Support</b><span class="box-text">Syntax highlighting, build integration, language server and debugger for each editor.</span></a>
+     <a class="box" href="doc_lsp.html"><span class="box-icon">LS</span><b>Debian / Ubuntu</b><span class="box-text">The language server: features, installation and the editor clients.</span></a>
+     <a class="box" href="doc_sublime.html"><span class="box-icon">SB</span><b>Objeck LSP</b><span class="box-text">The Sublime Text client for the language server.</span></a>
+     <a class="box" href="doc_deploy_examples.html"><span class="box-icon">PR</span><b>Objeck example programs</b><span class="box-text">The numbered example programs that ship with every release, in learning order.</span></a>
+     <a class="box" href="doc_checkers.html"><span class="box-icon">CK</span><b>Checkers: a game, a thinking computer and a music box, all in Objeck</b><span class="box-text">A checkers game with ten AI levels, a learner, ten piece sets and generated music.</span></a>
+    </div>
+    <h3 id="releases">Releases</h3>
+    <div class="boxes">
+     <a class="box" href="doc_changelog.html"><span class="box-icon">CH</span><b>Changelog</b><span class="box-text">Every change in every release, in detail.</span></a>
+    </div>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

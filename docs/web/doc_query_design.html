@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Query.Structured: a columnar, indexed in-memory query engine — Design — Objeck Language</title>
+  <meta name="description" content="core/compiler/lib_src/query.obs, built into core/lib/query.obl. Pure Objeck; no native module. This builds on the correctness fixes in #1291 (numeric aggregates, CSV typing, a stable order by, parser precedence, deletes) and assumes it has "/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Query.Structured: a columnar, indexed in-memory query engine — Design</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/QUERY_DESIGN.md" target="_blank">docs/QUERY_DESIGN.md on GitHub</a></div>
+    <p class="page-lead"><code>core/compiler/lib_src/query.obs</code>, built into <code>core/lib/query.obl</code>. Pure Objeck; no native module. This builds on the correctness fixes in #1291 (numeric aggregates, CSV typing, a stable <code>order by</code>, parser precedence, deletes) and assumes it has merged.</p>
+    <div id="toc_container" class="plain">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#why">Why</a></li>
+      <li><a href="#goals">Goals</a></li>
+      <li><a href="#not-goals">Not goals</a></li>
+      <li><a href="#decision-a-pure-objeck-engine-not-one-backed-by-sqlite">Decision: a pure-Objeck engine, not one backed by SQLite</a></li>
+      <li><a href="#design">Design</a></li>
+      <li><a href="#testing">Testing</a></li>
+      <li><a href="#phases">Phases</a></li>
+      <li><a href="#as-built">As built</a></li>
+      <li><a href="#concurrent-readers">Concurrent readers</a></li>
+      <li><a href="#errors-per-thread">Errors per thread</a></li>
+      <li><a href="#one-catalog-many-threads">One catalog, many threads</a></li>
+      <li><a href="#one-cache-folder-many-processes">One cache folder, many processes</a></li>
+      <li><a href="#archives-and-workbooks-in-sql">Archives and workbooks in SQL</a></li>
+      <li><a href="#a-server-that-answers-at-once">A server that answers at once</a></li>
+      <li><a href="#indexes-in-otab-files">Indexes in .otab files</a></li>
+      <li><a href="#expressions-in-every-clause">Expressions in every clause</a></li>
+      <li><a href="#open-questions">Open questions</a></li>
+     </ul>
+    </div>
+
+    <h3 id="why">Why</h3>
+    <p><code>Query.Structured</code> exists to make structures that are not tables queryable as tables: a filesystem through <code>FromFilesystem</code> and <code>Finder</code>, a CSV file through <code>FromCsv</code>, and in intent other hierarchical or relational data (section 6). Research code needs the same thing: load a CSV or two, or a tree of result files, then filter, join, group, aggregate and hand a matrix to <code>System.ML</code>. Nothing in the standard library does that well. <code>Query.Structured</code> is the closest, and on 2026-10-22 it was timed at 100,000 rows × 3 columns (Windows x64, <code>-opt s3</code>, after the</p>
+    <p>#1291 fixes), against the same data in plain arrays:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Operation</th><th>Plain arrays</th><th><code>Query.Structured</code></th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Operation">Sum a column</td><td data-label="Plain arrays">0.001 s</td><td data-label="Query.Structured">0.051 s</td></tr>
+      <tr><td data-label="Operation"><code>where value &gt; 0.5</code> (≈50k rows)</td><td data-label="Plain arrays">0.003 s</td><td data-label="Query.Structured">0.558 s</td></tr>
+      <tr><td data-label="Operation"><code>where grp = 'g7'</code> (2k rows)</td><td data-label="Plain arrays">0.115 s</td><td data-label="Query.Structured">0.114 s</td></tr>
+      <tr><td data-label="Operation"><code>order by value</code></td><td data-label="Plain arrays">—</td><td data-label="Query.Structured">3.16 s</td></tr>
+      <tr><td data-label="Operation">Insert 100k rows</td><td data-label="Plain arrays">—</td><td data-label="Query.Structured">0.98 s</td></tr>
+      <tr><td data-label="Operation">10,000 <code>Get(pk)</code></td><td data-label="Plain arrays">—</td><td data-label="Query.Structured">0.032 s</td></tr>
+     </tbody>
+    </table>
+    <p>The costs are structural:</p>
+    <ol>
+     <li><strong>Every query copies its result.</strong> A <code>where</code> builds a new <code>Table</code>: a new primary key, a new map entry and a new <code>Compare[]</code> for every matching row, each cell set through a by-name lookup. That is about 10 µs a row and most of the 0.56 s.</li>
+     <li><strong>Every cell is an object.</strong> Numbers are boxed <code>IntRef</code>/<code>FloatRef</code> in a per-row <code>Compare[]</code>; each row is an object on a doubly linked list and a node in a tree map. <code>Sum</code> chases pointers and type-tests 100,000 times instead of looping over a <code>Float[]</code>, and the collector traces several objects per row.</li>
+     <li><strong>Queries are interpreted every time.</strong> The statement is re-parsed on each call, each row walks the expression tree through <code>Compare</code> dispatch, and with no indexes every equality filter scans the table.</li>
+    </ol>
+    <p>It is also only a single table: no joins, no <code>GROUP BY</code>, no <code>LIMIT</code>, no descending order.</p>
+    <h3 id="goals">Goals</h3>
+    <ul>
+     <li>Within a small factor (≤ 5×) of hand-written array loops for scans, filters and aggregates.</li>
+     <li>Joins, <code>GROUP BY</code>/<code>HAVING</code>, multi-key <code>ORDER BY</code> with <code>ASC</code>/<code>DESC</code>, <code>LIMIT</code>, and <code>INSERT</code>/<code>UPDATE</code>/<code>DELETE</code>.</li>
+     <li>Indexes: hash for equality and joins, sorted for ranges and order; a B+ tree as a later upgrade.</li>
+     <li>A method-chaining API as well as SQL strings, and prepared statements.</li>
+     <li>Zero-copy bridges to <code>System.ML</code> (<code>ToMatrix</code>, <code>FromMatrix</code>) and to <code>Data.CSV</code>/JSON.</li>
+     <li><strong>Speed first:</strong> dictionary-encoded strings, row groups with min/max statistics so whole groups are skipped, and batch evaluation (section 8).</li>
+     <li><strong>Persistence that is fast and safe for one process:</strong> a native columnar file format that saves and loads at near disk speed, reads only the columns and row groups a query needs, appends without rewriting, survives a crash mid-save, and keeps a change log between saves (section 9).</li>
+     <li><strong>Disk and network alike:</strong> any file source reads from an <code>https://</code> URL as well as a path; tables and query results can be served over HTTP and queried from another process (section 10).</li>
+     <li>Existing programs keep compiling and give the same answers.</li>
+    </ul>
+    <h3 id="not-goals">Not goals</h3>
+    <ul>
+     <li><strong>A multi-user database.</strong> Several processes writing one table file at once, transactions spanning tables, and a SQL server with users and permissions are SQLite's or a real database server's job. An <code>API.SQLite</code> binding (single public-domain C file, a native module like the others) is the route there, as a separate design. One writing process with any number of readers is in scope (section 9).</li>
+     <li><strong>Full SQL.</strong> No subqueries, no views, no cost-based planner, no transactions.</li>
+     <li><strong>Concurrent writers.</strong> Writes to a table are not locked; a program that writes a table while other threads use it orders them itself (<code>critical</code>). Any number of threads may query one table, or one catalog, at once ("Concurrent readers" and "One catalog, many threads" below).</li>
+    </ul>
+    <h3 id="decision-a-pure-objeck-engine-not-one-backed-by-sqlite">Decision: a pure-Objeck engine, not one backed by SQLite</h3>
+    <p>Running SQLite underneath the <code>Query.Structured</code> front end was considered and rejected (2026-10-23). It would have brought joins, grouping, B-tree indexes, transactions, persistence and full SQL at once, and removed most of the phases below. It was not chosen, for four reasons:</p>
+    <ul>
+     <li><strong>The use case is in-memory analytics that feeds <code>System.ML</code>.</strong> That is scans, filters and aggregates over loaded data. Typed column arrays do this faster than SQLite's row storage, and <code>ToMatrix</code> over a <code>FloatColumn</code> is nearly free, whereas every SQLite value crosses the native boundary twice: once loading the data in, once reading the result back.</li>
+     <li><strong>No native dependency.</strong> The engine runs wherever Objeck runs, with nothing to compile or ship for five platforms, and it is Objeck code the language server, debugger and JIT all see.</li>
+     <li><strong>Sources stay natural.</strong> SQLite's virtual-table interface, its fit for "sources", works by calling back from C into the program, which the native interface cannot do, so every source would have had to load into a SQLite table first.</li>
+     <li><strong>The cost of building an engine is contained.</strong> The differential test against a simple reference evaluator, the per-source tests and the performance gate catch the classic query-engine bugs. The SQL subset, and the absence of persistence, transactions and concurrency, keep the surface small.</li>
+    </ul>
+    <p>Choosing a pure-Objeck engine does not mean giving up persistence. Section 9 adds a native file format with fast save and load, partial reads, appends, crash-safe saves and a change log, which covers a research program's own data. SQLite remains the right tool where several processes write the same data, or where transactions must span tables, as a separate <code>API.SQLite</code> binding (see "Not goals"). It can later be attached as a source like any other.</p>
+    <h3 id="design">Design</h3>
+    <h4 id="1-storage-one-typed-column-per-field">1. Storage: one typed column per field</h4>
+<pre class="plain">Table
+  @columns : Column[]            # in declaration order
+  @names   : Hash&lt;String, IntRef&gt; # name -&gt; column index, resolved once per query, never per row
+  @size    : Int                 # rows ever appended
+  @deleted : Bitmap / Nil        # tombstones, Nil until the first delete
+  @indexes : Index[] per column  # see section 5</pre>
+    <p><code>Column</code> is abstract, with one subclass per storage type:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Column</th><th>Storage</th><th>Holds</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Column"><code>IntColumn</code></td><td data-label="Storage"><code>Int[]</code> + capacity</td><td data-label="Holds"><code>Int</code>, <code>Bool</code>, <code>Char</code>, <code>Byte</code></td></tr>
+      <tr><td data-label="Column"><code>FloatColumn</code></td><td data-label="Storage"><code>Float[]</code></td><td data-label="Holds"><code>Float</code></td></tr>
+      <tr><td data-label="Column"><code>StringColumn</code></td><td data-label="Storage"><code>String[]</code></td><td data-label="Holds"><code>String</code></td></tr>
+      <tr><td data-label="Column"><code>DateColumn</code></td><td data-label="Storage"><code>Int[]</code> of epoch seconds</td><td data-label="Holds"><code>Date</code></td></tr>
+      <tr><td data-label="Column"><code>ObjectColumn</code></td><td data-label="Storage"><code>Compare[]</code></td><td data-label="Holds">anything else that implements <code>Compare</code></td></tr>
+     </tbody>
+    </table>
+    <p>Every column has a null bitmap (<code>Int[]</code>, 64 rows a word) allocated only when the first <code>Nil</code> is stored. Arrays grow by doubling; <code>Compact()</code> trims them.</p>
+    <p><strong>Typing.</strong> A column is declared (<code>Table-&gt;New("t", ["id" : ColumnType-&gt;INT, ...])</code>, or the <code>AddColumn(name, type)</code> form) or inferred from its first non-Nil value. Storing an <code>Int</code> into a <code>FloatColumn</code> widens it; storing a <code>Float</code> into an <code>IntColumn</code> promotes the column to <code>FloatColumn</code> once (a single array conversion); anything else incompatible promotes to <code>ObjectColumn</code>. Promotion is recorded so a test can assert on it. <code>FromCsv</code> types each column by scanning it with the #1291 rules (a column of numbers is <code>IntColumn</code> or <code>FloatColumn</code>, otherwise <code>StringColumn</code>), not cell by cell.</p>
+    <p><strong>Why this is fast in Objeck specifically.</strong> A loop over <code>Float[]</code> is the code the JIT compiles best, with no allocation in the loop. Large arrays are allocated in the old generation, so a million-row column costs the collector one object, not a million. Boxed values appear only at the boundary (<code>Row-&gt;Get</code> returning <code>Compare</code>) and never inside scans.</p>
+    <h4 id="2-results-are-views">2. Results are views</h4>
+    <p>A query returns a <code>View</code>: the source table, the projected columns, and an <code>Int[]</code> of row numbers (or <code>Nil</code> for "all rows, in order"). Nothing is copied. Chaining (<code>Where</code> then <code>OrderBy</code> then <code>Limit</code>) only ever replaces the row-number array.</p>
+<pre class="plain">View
+  @table   : Table
+  @columns : Int[]   # projected column indexes
+  @rows    : Int[]   # selected row numbers, Nil = every live row</pre>
+    <p><code>View-&gt;ToTable()</code> materializes when the caller wants an independent copy; <code>Count()</code>, iteration, aggregates, <code>ToMatrix</code>, <code>ToCsv</code> and <code>ToJson</code> read through the view directly. A view taken before a mutation of its table is invalidated (a version counter on the table; the view refuses with an error rather than returning stale or out-of-range rows).</p>
+    <h4 id="3-compiled-predicates">3. Compiled predicates</h4>
+    <p>A <code>where</code> clause is parsed once into a tree of typed nodes that are resolved against the table before any row is read:</p>
+<pre class="plain">Predicate      Test(row : Int) ~ Bool
+  FloatCompare   column array + operator + constant   -&gt;  values[row] &gt; 0.5
+  IntCompare, StringCompare, DateCompare, Like, IsNull
+  And, Or, Not</pre>
+    <p>Column names, types and constants are resolved at compile time, so evaluating a row is an array read and a comparison: no name lookup, no boxing, no <code>Compare</code> dispatch. A comparison between a numeric column and a numeric constant of the other kind converts the constant once. Comparisons involving <code>Nil</code> follow one simple rule, kept from #1291: every comparison with <code>Nil</code> is false, and <code>IS NULL</code> / <code>IS NOT NULL</code> test for it (no three-valued logic).</p>
+    <p>Evaluation is column-at-a-time where possible: an <code>And</code> of simple comparisons filters the row-number array one comparison at a time, starting with the most selective index-backed term (section 5), so later terms see fewer rows.</p>
+    <p><strong>Prepared statements.</strong> <code>Table-&gt;Prepare(sql)</code> returns a <code>Statement</code> with <code>?</code> placeholders; <code>Bind(i, value)</code> then <code>Execute()</code> reuses the compiled tree. <code>Table-&gt;Query(sql)</code> is <code>Prepare</code> plus <code>Execute</code> with a small per-table cache of recent statements, so a query in a loop is parsed once.</p>
+    <p><strong>Method-chaining API.</strong> The same nodes are reachable without SQL, so the compiler checks column expressions and the language server can complete them:</p>
+<pre class="plain">rs := table-&gt;Where(Col("value")-&gt;Gt(0.5)-&gt;And(Col("grp")-&gt;Eq("g7")))
+           -&gt;OrderBy("value", Order-&gt;DESC)
+           -&gt;Limit(100)
+           -&gt;Select(["id", "value"]);</pre>
+    <h4 id="4-the-sql-subset">4. The SQL subset</h4>
+<pre class="plain">SELECT [DISTINCT] (* | expr [AS name], ...)
+FROM table [[INNER | LEFT] JOIN table ON condition ...]
+[WHERE predicate]
+[GROUP BY col, ... [HAVING predicate]]
+[ORDER BY col [ASC | DESC], ...]
+[LIMIT n [OFFSET m]]
+
+INSERT INTO table [(cols)] VALUES (...), ...
+UPDATE table SET col = value, ... [WHERE predicate]
+DELETE FROM table [WHERE predicate]
+CREATE TABLE name (col type, ...)
+CREATE INDEX ON table (col) [USING HASH | SORTED | BTREE]</pre>
+    <p><strong>Expressions in the select list.</strong> <code>expr</code> is a column, a number, or arithmetic over them: <code>+ - * / %</code>, with <code>*</code>, <code>/</code> and <code>%</code> binding tighter, unary minus and parentheses (<code>select id, score * 100 as pct, (hi - lo) / 2 from runs</code>). Values follow the aggregates' rule of reading numbers only:</p>
+    <ul>
+     <li>whole numbers stay whole under <code>+ - *</code> and <code>%</code>; <code>/</code> always gives a Float (<code>7 / 2</code> is 3.5), and a Float anywhere gives a Float (<code>%</code> of Floats keeps the dividend's sign);</li>
+     <li>an empty cell, a cell that is not a number, a zero divisor, and an Int result that does not fit in 64 bits give an empty cell rather than an error or a wrapped number (a Float division by zero would otherwise stop the program);</li>
+     <li>the default label is the expression as written (<code>n + 1</code>); <code>AS</code> names it, and <code>ORDER BY</code> can use that name or the position;</li>
+     <li><code>n -1</code> (a name, then a number with its sign) is a subtraction, as it reads.</li>
+    </ul>
+    <p>Expressions are computed after WHERE, over the rows that pass, before DISTINCT, ORDER BY and LIMIT. WHERE, ON, ORDER BY, GROUP BY, HAVING and a grouped query's select list take expressions too ("Expressions in every clause" below). Every statement that fails returns Nil with <code>GetError</code> set; a program that calls a method on that Nil gets the language's ordinary <code>NilError</code>, which a <code>?-&gt;</code> region recovers from.</p>
+    <p>Aggregates: <code>COUNT(*)</code>, <code>COUNT(col)</code>, <code>SUM</code>, <code>AVG</code>, <code>MIN</code>, <code>MAX</code>, plus <code>MEDIAN</code> and <code>STDDEV</code> because research code wants them; numeric aggregates skip non-numeric and <code>Nil</code> cells, as #1291 made them. Tables are named in a <code>Catalog</code> (<code>catalog-&gt;Add(table)</code>), which <code>Query</code> resolves <code>FROM</code> and <code>JOIN</code> against; a single table's own <code>Query</code> keeps working without one.</p>
+    <p><strong>Joins</strong> are hash joins on equality: build a hash of the smaller side's key column once, probe it with the other, emit pairs of row numbers. A join result is a <code>JoinView</code> holding two row-number arrays, not copied rows.</p>
+    <p><strong>Group by</strong> hashes the group columns to group ids in one pass, then runs each aggregate over an <code>Int[]</code> of group ids in a second pass: two linear scans, no per-group sub-tables.</p>
+    <p><strong>Order by</strong> sorts the row-number array with a stable merge sort over typed comparators (one per key column, resolved once), so it never compares boxed values. <code>LIMIT n</code> with <code>ORDER BY</code> uses a bounded heap instead of a full sort.</p>
+    <h4 id="5-indexes">5. Indexes</h4>
+    <p>Indexes are optional, per column, and always correct: every mutation updates them, or marks them stale to be rebuilt on the next query that uses them (the choice is per index kind, below).</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Kind</th><th>Structure</th><th>Serves</th><th>Maintenance</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Kind"><strong>Hash</strong></td><td data-label="Structure">value -&gt; row numbers</td><td data-label="Serves"><code>=</code>, <code>IN</code>, joins, <code>DISTINCT</code>, <code>GROUP BY</code></td><td data-label="Maintenance">updated on every insert, update and delete</td></tr>
+      <tr><td data-label="Kind"><strong>Sorted</strong></td><td data-label="Structure"><code>Int[]</code> of row numbers ordered by the column</td><td data-label="Serves"><code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code>, <code>BETWEEN</code>, <code>ORDER BY</code>, <code>MIN</code>/<code>MAX</code></td><td data-label="Maintenance">rebuilt lazily after mutations (an O(n log n) sort)</td></tr>
+      <tr><td data-label="Kind"><strong>B+ tree</strong> (phase 8)</td><td data-label="Structure">in-memory B+ tree, leaves are <code>Int[]</code> blocks of row numbers in key order</td><td data-label="Serves">the sorted index's queries, with O(log n) inserts</td><td data-label="Maintenance">updated on every mutation</td></tr>
+     </tbody>
+    </table>
+    <p>The <strong>sorted index</strong> is the right default for research data, which is mostly loaded once and queried many times: a binary search finds a range's start and end, and the range is already a row-number array in order, so it feeds a view with no further sort.</p>
+    <p>The <strong>B+ tree</strong> is in scope as the sorted index's upgrade, behind the same <code>Index</code> interface, for tables that take frequent inserts <em>mixed with</em> range queries, where re-sorting after every batch stops being cheap. In memory its advantage over the existing balanced <code>Collection.Map</code> is that leaves are contiguous <code>Int[]</code> blocks (fan-out around 64), so a range scan walks arrays rather than one tree node per entry, and the collector sees one object per block. It is built only when a benchmark shows a workload that needs it.</p>
+    <p>The planner is rule-based: for an <code>And</code> of terms, use the index of the most selective index-backed term (equality on a hash index, then a range on a sorted or B+ tree index), then filter the remaining terms over that candidate set. Without a usable index, scan.</p>
+    <h4 id="6-sources-making-other-structures-queryable">6. Sources: making other structures queryable</h4>
+    <p>This is the library's original purpose, and <code>Finder</code> and <code>FromFilesystem</code> are its first two instances: take a structure that is not a table, such as a directory tree, a document or a data file, and present it as tables the engine can query. Today they are two unrelated pieces. <code>FromFilesystem</code> lists one directory, without recursing, into six columns. <code>Finder</code> walks a tree matching a regular expression against full paths, but returns a <code>Vector&lt;String&gt;</code> instead of a table, so its results cannot be queried. <code>use Data.XML</code> is imported with no code behind it. The redesign makes sources one concept.</p>
+    <p><strong>The interface.</strong> A <code>Source</code> declares its tables and columns, then fills them:</p>
+<pre class="plain">interface Source {
+  method : virtual : public : GetTables() ~ TableSpec[];          # names, columns, types
+  method : virtual : public : Load(catalog : Catalog, hint : ScanHint) ~ Bool;
+}</pre>
+    <p><code>ScanHint</code> carries what the query already knows, so a source can push work down instead of materializing everything. Examples: the columns it needs (a filesystem source skips the owner lookup no query asked for), a filter it can apply cheaply (skip descending into directories a <code>path LIKE 'src/%'</code> excludes, or test the file name before calling <code>stat</code>), and a row limit. Pushdown is optional: a source that ignores the hint is still correct, because the engine applies the full predicate afterwards. Programs implement <code>Source</code> for their own structures; the library ships the common ones.</p>
+    <p><strong>Hierarchies become tables with parent keys.</strong> A tree maps to rows with <code>id</code>, <code>parent_id</code>, <code>depth</code> and <code>path</code> columns (an adjacency list plus a materialized path). Once phase 4 adds joins, parent and child questions become self-joins, and subtree questions become <code>path LIKE 'a/b/%'</code>. Nested repeated data goes into a child table keyed by its parent's <code>id</code>, so one document can become several related tables that join back together.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Source</th><th>Tables and columns</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Source"><code>FilesystemSource(root, recursive, max_depth)</code></td><td data-label="Tables and columns"><code>files</code>: id, parent_id, depth, name, path, ext, is_dir, size, modified, created, owner, is_readonly, is_hidden</td></tr>
+      <tr><td data-label="Source"><code>CsvSource(path[, delimiter])</code></td><td data-label="Tables and columns">one table, columns typed per section 1</td></tr>
+      <tr><td data-label="Source"><code>JsonSource(text or path)</code></td><td data-label="Tables and columns">an array of objects becomes one table, with nested objects flattened to dotted column names (<code>address.city</code>); nested arrays become child tables with <code>parent_id</code></td></tr>
+      <tr><td data-label="Source"><code>XmlSource(text or path, row_element)</code></td><td data-label="Tables and columns">each <code>row_element</code> becomes a row, its attributes and simple child elements become columns, and repeated child elements become child tables</td></tr>
+      <tr><td data-label="Source"><code>MatrixSource(m, names)</code></td><td data-label="Tables and columns">one <code>FloatColumn</code> table (the <code>FromMatrix</code> bridge below)</td></tr>
+     </tbody>
+    </table>
+    <p><strong>Query a file by naming it.</strong> CSV is the most common case, so a file path in <code>FROM</code> or <code>JOIN</code> is a table. Nothing has to be loaded or registered first:</p>
+<pre class="plain">rs := Catalog-&gt;Run("select name, avg(score) from 'results/run_*.csv' group by name");
+rs := Catalog-&gt;Run("select r.id, r.score, m.label from 'runs.csv' r join 'meta.csv' m on r.id = m.id");</pre>
+    <p><code>Catalog-&gt;Run(sql)</code> runs a statement against an empty catalog, so file tables are all it can see. <code>catalog-&gt;Query(sql)</code> does the same over a catalog the program has filled, so in-memory tables and files can be mixed in one statement.</p>
+    <ul>
+     <li><strong>The source follows the extension.</strong> <code>.csv</code>, <code>.tsv</code> and <code>.txt</code> read as delimited text, <code>.jsonl</code> and <code>.ndjson</code> as JSON Lines, and <code>.json</code> as JSON. A trailing <code>.gz</code> is decompressed first, with the gzip support already in <code>lang</code>. Archives and workbooks are named the same way, with a member or sheet after a dot: <code>from 'data.zip'.'sales/2024.csv'</code>, <code>from 'budget.xlsx'.'Q1'</code> ("Archives and workbooks in SQL" below).</li>
+     <li><strong>A glob matches several files with the same columns.</strong> They are read as one table, with an added <code>_file</code> column naming each row's file. That is the shape of most experiment output: one CSV per run.</li>
+     <li><strong>Options when the defaults are wrong:</strong> <code>from csv('data.txt', delimiter =&gt; ';', header =&gt; false)</code>. Delimiter, header and quoting go through <code>Data.CSV</code>, which follows RFC 4180 after #1289.</li>
+     <li><strong>Loaded once per query, cached by path and modification time,</strong> so repeating a query in a loop does not re-read an unchanged file. A changed file is re-read.</li>
+     <li><strong>Columns are typed</strong> per section 1, scanning each column rather than each cell.</li>
+     <li><code>Table-&gt;FromCsv(name, path)</code> keeps working and is the same source with a name attached.</li>
+    </ul>
+    <p><strong>More sources.</strong> Beyond the four above, the sources below are chosen for research use, ranked by value against the cost of building them on libraries the language already has.</p>
+    <p><em>Tier 1: in <code>query.obl</code>, built on libraries it already links or that are in <code>lang</code>.</em></p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Source</th><th>What becomes a table</th><th>Built on</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Source"><code>TextSource(path, pattern[, record_start])</code></td><td data-label="What becomes a table">Each line, or each multi-line record beginning at <code>record_start</code>, matched by a regular expression; named capture groups become columns, and lines that do not match are counted and optionally kept in a <code>_unmatched</code> table. Training logs, server logs, instrument output.</td><td data-label="Built on"><code>Query.RegEx</code> capture groups (#1290)</td></tr>
+      <tr><td data-label="Source"><code>JsonLinesSource(path)</code></td><td data-label="What becomes a table">One JSON object per line, mapped like <code>JsonSource</code>, with a record that fails to parse reported by line number. ML datasets, evaluation outputs, OpenAI batch files. It reads line by line, so it is also the first source that could stream.</td><td data-label="Built on"><code>Data.JSON</code></td></tr>
+      <tr><td data-label="Source">Compression</td><td data-label="What becomes a table"><code>.gz</code>, wrapping any file source above, transparently.</td><td data-label="Built on"><code>lang</code>'s gzip and zlib</td></tr>
+      <tr><td data-label="Source"><code>HttpJsonSource(url, records_path[, paging])</code></td><td data-label="What becomes a table">The array at <code>records_path</code> in a JSON response; paging follows a next-page link or an offset parameter, up to a row limit. Public datasets and REST services.</td><td data-label="Built on"><code>Web.HTTP</code>, <code>Data.JSON</code></td></tr>
+      <tr><td data-label="Source"><code>ObjectSource(objects, columns)</code></td><td data-label="What becomes a table">A <code>Vector&lt;T&gt;</code> of the program's own objects: one row per object, one column per named field, read through <code>System.Introspection</code>. Where reflection cannot reach a value, a column can be given as a function from the object to a value instead.</td><td data-label="Built on"><code>System.Introspection</code></td></tr>
+     </tbody>
+    </table>
+    <p><em>Tier 2: separate add-on libraries, because they need native modules the core should not load. A program that only queries CSV files must not need ODBC, ONNX Runtime or OpenCV installed, so each of these links <code>query</code> plus the library it adapts.</em></p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Library</th><th>Source</th><th>What becomes a table</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Library"><code>query_ml.obl</code></td><td data-label="Source"><code>MlResultSource</code></td><td data-label="What becomes a table"><code>System.ML</code> results: cross-validation folds and per-fold metrics, threshold sweeps, and predictions with their scores and true labels. Comparing runs becomes a <code>GROUP BY</code> and <code>ORDER BY</code>.</td></tr>
+      <tr><td data-label="Library"><code>query_odbc.obl</code></td><td data-label="Source"><code>OdbcSource(connection, sql)</code></td><td data-label="What becomes a table">The result of a query against a real database. With a scan hint, simple <code>where</code> terms are pushed into the SQL sent, so the database filters before anything is copied.</td></tr>
+      <tr><td data-label="Library"><code>query_vision.obl</code></td><td data-label="Source"><code>VisionSource(folder, detector)</code></td><td data-label="What becomes a table">Detections across a folder of images, one row each: image, label, score and box, from any <code>API.Onnx</code> detector. For example, the images where a person was found with a score above 0.9, grouped by camera.</td></tr>
+      <tr><td data-label="Library"><code>query.obl</code> (no native code)</td><td data-label="Source"><code>ArchiveSource(path)</code></td><td data-label="What becomes a table">Zip and tar contents as a tree, like <code>FilesystemSource</code>, and any member readable as a source, such as a CSV inside a zip. Tar and stored zip members need only <code>lang</code>; deflated zip members use <code>Byte-&gt;UncompressDeflate</code> (raw deflate, RFC 1951) from <code>lang</code>. Built in phase 7; see "As built".</td></tr>
+      <tr><td data-label="Library"><code>query.obl</code></td><td data-label="Source"><code>XlsxSource(path[, sheet])</code></td><td data-label="What becomes a table">Each worksheet as a table, with typed cells and the first row as the header. An <code>.xlsx</code> file is a zip of XML parts, so this builds on <code>ArchiveSource</code> and <code>XmlSource</code>. Built in phase 7; see "As built".</td></tr>
+     </tbody>
+    </table>
+    <p>Further sources fit the same interface without changing the engine, for example RSS through <code>Web.RSS</code>.</p>
+    <p><strong>Source tests.</strong> Every source has its own regression test, <code>programs/regression/query_source_&lt;name&gt;.obs</code>, and every test builds its input files at run time in a temporary directory and deletes them afterwards. No dataset is committed, so there are no fixture files to drift or to fall foul of ignore rules, and every edge case is visible in the test itself. Each source's test covers:</p>
+    <ul>
+     <li><strong>Schema and typing:</strong> the declared tables and columns, and column types as section 1 infers them, including a column that is numeric except for one cell.</li>
+     <li><strong>Round trip:</strong> a random in-memory table, written out in the source's format and read back, equals the original, cell for cell, including <code>Nil</code> cells and Unicode text. This extends the differential test to sources, for every writable format (CSV, TSV, JSON, JSON Lines, XML).</li>
+     <li><strong>Malformed input:</strong> each kind of bad record is rejected with an error naming the file and line, or row, and is never silently skipped. Examples: a CSV row with too many fields, a JSON Lines record that does not parse, an XML file that is not well formed.</li>
+     <li><strong>Edge cases:</strong> an empty file, a header-only file, CRLF line endings, a missing final newline, a byte-order mark, and very long lines.</li>
+     <li><strong>Pushdown equivalence:</strong> the same query with and without the scan hint returns the same rows. Pushdown may only ever change speed.</li>
+     <li><strong>Compression and globs:</strong> a gzipped file returns exactly what the uncompressed one does, and a glob over N files returns their rows with <code>_file</code> set.</li>
+     <li><strong>Caching:</strong> an unchanged file is not re-read on a second query, and a file changed between queries is re-read.</li>
+    </ul>
+    <p>Sources that reach outside the process are tested without the outside world:</p>
+    <ul>
+     <li><code>HttpJsonSource</code> runs against an in-process <code>Web.HTTP.Server</code> serving canned pages, including pagination, an error status and a truncated body. Windows loopback has dropped data when the sender tears down first, so the server must keep the connection until the client finishes.</li>
+     <li><code>OdbcSource</code> runs against SQLite through its ODBC driver, which the CI images already install. It prints <code>SKIP:</code> where no driver is present.</li>
+     <li><code>VisionSource</code> takes the detector as an interface, so its test supplies a fake detector with scripted boxes. A second, optional test runs a real model and skips when none is present, as the regression tree carries no models.</li>
+     <li><code>MlResultSource</code> runs a small, seeded cross-validation from <code>System.ML</code> and checks that the rows match the metrics read directly from the result objects.</li>
+    </ul>
+    <p><strong>Finder keeps its API and gains a table.</strong> <code>Finder-&gt;New(regex)-&gt;FindFiles(path)</code> keeps its signature and results, but becomes a query over <code>FilesystemSource</code>: <code>select path from files where is_dir = false and path MATCHES regex</code>. <code>MATCHES</code> is a new SQL operator backed by <code>Query.RegEx</code>, which gained character classes and capture groups in #1290. <code>Finder-&gt;FindTable(path)</code> returns the result as a <code>View</code>, so a file search can be filtered, sorted, grouped by extension or joined like any other table. <code>Table-&gt;FromFilesystem(name, path)</code> keeps its six columns and one-directory behaviour, and becomes <code>FilesystemSource</code> with <code>recursive</code> false.</p>
+    <h4 id="7-bridges">7. Bridges</h4>
+    <ul>
+     <li><code>View-&gt;ToMatrix(cols) ~ Float[,]</code> and <code>Table-&gt;FromMatrix(m, names)</code>: copies between <code>FloatColumn</code> arrays and <code>System.ML</code>'s matrices, with <code>Nil</code> cells reported (an error, or a fill value the caller passes).</li>
+     <li><code>ToCsv</code>, <code>FromCsv</code> (through <code>Data.CSV</code>, so quoting is RFC 4180 after #1289), <code>ToJson</code>, <code>FromJson</code> (an array of objects).</li>
+     <li><code>Describe()</code>: per-column count, nulls, min, max, mean, std, distinct count; the first thing a researcher asks of a new dataset.</li>
+    </ul>
+    <div class="note"><strong>As built (phase 4c):</strong> <code>ToCsv([delimiter])</code>, <code>WriteCsv(stream[, delimiter])</code>, <code>ToJson()</code>, <code>WriteJson(stream)</code> and <code>ToMatrix(names[, fill])</code> on both <code>View</code> and <code>Table</code>; <code>Table-&gt;FromCsvText(name, text)</code>, <code>Table-&gt;FromJson(name, text[, names])</code> and <code>Table-&gt;FromMatrix(name, matrix, names)</code>. Writers stream a line or an object at a time and check every write. Numbers are exact (a Float as its shortest round-trip text, via <code>Float-&gt;ToShortString</code>). CSV dates are <code>#MM/dd/yyyy hh:mm:ss#</code>, the form <code>CsvSource</code> reads back as dates; JSON dates are ISO 8601 with <code>Z</code> for GMT. What a format cannot carry is documented rather than invented: CSV has no Bool (it reads back as the text <code>true</code>/<code>false</code>) and no GMT flag; JSON has no NaN or infinity (written as <code>null</code>) and no member order (so <code>FromJson</code> takes the column order as an optional argument). <code>ToMatrix</code> reads INT, FLOAT and BOOL cells (and numbers in OBJECT columns); an empty or non-numeric cell is an error naming the column and row unless a fill value is given. <code>Describe()</code> already existed.</div>
+    <h4 id="8-making-it-fast">8. Making it fast</h4>
+    <p>Columns, views and compiled predicates remove the structural costs. These go further, in the order they pay off:</p>
+    <ul>
+     <li><strong>Dictionary-encoded strings.</strong> A <code>StringColumn</code> with few distinct values, such as a category, a label or a run name, stores each distinct string once and an <code>Int[]</code> of codes per row. An equality filter compares integers, <code>GROUP BY</code> and joins hash integers, and memory falls with the number of repeats. The column switches between plain and encoded storage by itself, at a distinct-value ratio fixed in phase 1 and recorded so tests can check it. In the benchmark above, <code>grp = 'g7'</code> is a string comparison per row and takes as long as the plain-array loop; on codes it becomes an integer comparison.</li>
+     <li><strong>Row groups and zone maps.</strong> Columns are stored in groups of 64K rows, each with its minimum, maximum and null count. A filter like <code>value &gt; 0.9</code> skips every group whose maximum is below 0.9 without reading it, which costs nothing for unsorted data and is decisive for data loaded in time or ID order, the common case for logs and experiment output. The same groups are the unit of the file format (section 9), so a query against a file reads only the groups it needs.</li>
+     <li><strong>Batch evaluation.</strong> Predicates run over a row group at a time and produce a selection vector, an <code>Int[]</code> of the rows that pass. Each predicate node is one tight loop over arrays instead of one call per row, which is the code the JIT compiles best.</li>
+     <li><strong>No allocation in the hot path.</strong> Selection vectors and scratch arrays are reused across groups. The only allocations during a query are its result arrays.</li>
+     <li><strong>Parallel scans, later.</strong> Row groups are independent, so a scan can split them across threads. This waits until a single-threaded engine meets its targets, and needs a check that the collector's multithreaded paths hold up under it. The repository's notes record earlier multithreaded-GC defects, so it gets its own stress test.</li>
+    </ul>
+    <h4 id="9-persistence-a-native-table-file">9. Persistence: a native table file</h4>
+    <p>Research programs need to keep what they computed: a cleaned dataset, a feature table, results across runs. CSV and JSON stay for interchange, but they are slow to parse and lose types. The engine gets its own file format, <code>.otab</code>, which stores exactly what the column storage holds.</p>
+    <div class="note"><strong>As built:</strong> <a href="doc_otab_format.html">OTAB_FORMAT.md</a> is the byte-exact specification of versions 1 and 2 (2 adds index definitions; see "Indexes in .otab files" below), and it differs from the plan below in four ways. The schema sits in the footer, not the header, so opening a file is one read at its end. The codecs are zlib at level 1 (<code>FAST</code>) and level 9 (<code>SMALL</code>); <code>lang</code>'s Brotli entry point turned out to be raw deflate. Each block carries its own dictionary of just the texts it uses. Delta and run-length encodings are not in version 1.</div>
+    <p><strong>Layout.</strong></p>
+<pre class="plain">header      magic "OTAB", format version, schema (names, types, dictionaries)
+row group   for each column: type, encoding, null bitmap, data block, min, max, CRC32
+row group   ...
+footer      offset of every row group and column block, row count, footer CRC32
+trailer     footer offset, magic</pre>
+    <ul>
+     <li><strong>Fast save and load.</strong> Numeric columns are written and read as whole arrays through <code>Serializer</code>, whose array writes are single VM instructions (<code>SERL_INT_ARY</code>, <code>SERL_FLOAT_ARY</code>), with no per-cell parsing. The target is save and load at a large fraction of disk speed: one million rows of three numeric columns in well under a second. The first commit of the phase measures the array paths; if they fall short, they are made faster in the VM rather than the target relaxed.</li>
+     <li><strong>Partial reads.</strong> The footer lets a reader seek straight to the blocks it needs. A query over <code>runs.otab</code> reads only the columns it names and only the row groups its zone maps cannot rule out. Opening a large file costs a footer read, not a load.</li>
+     <li><strong>Compression per block, never per file.</strong>
+    <ul>
+     <li><strong>Codecs:</strong> <code>lang</code> provides zlib (<code>CompressZlib</code>, with levels 0 to 9), gzip and raw deflate (<code>CompressDeflate</code>), each compressing a <code>Byte[]</code> in memory. All three are zlib's deflate underneath; there is no Brotli (the trap once named <code>CompressBr</code> was raw deflate, and a real Brotli codec would be a new native dependency). Each column block in each row group is compressed on its own and records its codec, so partial reads and HTTP range reads keep working.</li>
+     <li><strong>Choosing one:</strong> <code>Save(path)</code> stores blocks uncompressed, for speed; <code>Save(path, Compression-&gt;ZLIB)</code> is balanced, and a higher zlib level gives smaller files for archives and network transfer. Reading needs no option, since every block names its codec.</li>
+     <li><strong>Only when it helps:</strong> a block whose compressed form is not smaller is stored raw, as dense data such as random floats often is.</li>
+     <li><strong>Whole-file compression is transport only:</strong> a <code>runs.otab.gz</code> still opens through the general <code>.gz</code> handling, but is decompressed in full before reading.</li>
+    </ul>
+     </li>
+     <li><strong>Light encodings before compression,</strong> recorded per block:
+    <ul>
+     <li>dictionary codes for repetitive text;</li>
+     <li>delta encoding for sorted or nearly sorted integers and timestamps, so IDs and log times become small numbers that compress very well;</li>
+     <li>run-length encoding for long runs of one value.</li>
+    </ul>
+     </li>
+    </ul>
+    <p>Each is used only where it shrinks the block, and the format version allows more later.</p>
+    <ul>
+     <li><strong>Integrity.</strong> Every block and the footer carry a CRC32 (<code>lang</code> has one), computed over the bytes as stored, after compression, so corruption is caught before anything is decompressed. A truncated or corrupted file is reported with the block it failed on, never loaded as wrong data.</li>
+    </ul>
+    <p><strong>Saving safely.</strong> <code>table-&gt;Save(path)</code> writes a temporary file beside the target, flushes it, then renames it over the target, so a crash mid-save leaves the old file intact. One prerequisite: a rename over an existing file must replace it atomically on every platform. POSIX <code>rename</code> does; on Windows it needs <code>MoveFileEx</code> with <code>MOVEFILE_REPLACE_EXISTING</code>, so the VM's rename must be checked and fixed there first if it does not.</p>
+    <p><strong>Appending.</strong> <code>table-&gt;Append(path)</code> writes only the new rows as additional row groups and a new footer, without rewriting the existing groups. Loading a dataset that grows by a run a day costs one row group a day.</p>
+    <p><strong>A change log between saves.</strong> A table opened with <code>Table-&gt;Open(path)</code> records every insert, update and delete in a log file beside it (<code>runs.otab.log</code>), one length-prefixed and checksummed record per change, flushed per statement. Re-opening replays the log over the last save, so a crash loses at most the statement in progress. <code>Checkpoint()</code> folds the log into a new save and empties it. Durability is per statement; there are no multi-statement transactions.</p>
+    <div class="note"><strong>As built (phase 3b):</strong> <code>TableStore-&gt;New(path)</code> opens a table for writing and reports why it could not (<code>IsOpen</code>, <code>GetError</code>, <code>GetReplayed</code>); <code>Table-&gt;Open(path)</code> is the short form that answers Nil. A durable table's <code>Checkpoint()</code> and <code>Close()</code> act on its store, and <code>Save</code> of its own file is a checkpoint. Each log record stores its length twice (once inverted), so damage to a length is told apart from a crash's torn tail instead of dropping every later record; a durable table refuses an OBJECT value the log cannot record. The byte layout of the log and the lock is in <a href="doc_otab_format.html#the-change-log">OTAB_FORMAT.md</a>.</div>
+    <p><strong>One writer, many readers.</strong> A process that opens a table for writing takes a lock file. Others can open it read-only and see the state of the last save or checkpoint. A second writer is refused with an error naming the lock's holder, and a stale lock left by a crash is detected and cleared. Exclusive creation of the lock file needs an exclusive-create primitive (<code>O_EXCL</code> on POSIX, <code>CREATE_NEW</code> on Windows), which the file API does not offer today, so it is added as a new VM trap first (appended after the existing ones, never by widening one).</p>
+    <p><strong>Serialization.</strong> Tables, views and catalogs serialize in two ways, for two jobs:</p>
+    <ul>
+     <li><strong>With the language's own serializer.</strong> <code>Serializer-&gt;Write(table)</code> and <code>Deserializer-&gt;ReadObject()</code> already handle any object graph, so a table can travel inside another serialized object, such as a model that holds its feature table, or be sent over a socket, with no table-specific code. The design keeps this working on purpose:
+    <ul>
+     <li>no field holds anything the serializer cannot write, such as a native handle, a closure or a lock;</li>
+     <li>state that can be rebuilt is not trusted after a round trip, because the serializer has no custom hooks. Indexes, the statement cache and view version counters carry a generation number that marks them stale, and they rebuild on first use.</li>
+    </ul>
+     </li>
+    </ul>
+    <p>This form follows the classes' field layout, so it suits data passed between parts of one program, or between processes running the same build, and not files kept across library versions.</p>
+    <ul>
+     <li><strong>As versioned bytes.</strong> <code>table-&gt;ToBytes() ~ Byte[]</code> and <code>Table-&gt;FromBytes(bytes)</code> produce and read the <code>.otab</code> format in memory, and <code>Save</code>/<code>Load</code> write and read it to a file or any stream. This form is self-describing and versioned, so it survives library upgrades, reads only what a query needs, and is what to keep on disk or send to another program.</li>
+    </ul>
+    <p>Both round trips are tested: every column type, <code>Nil</code> cells, dictionary-encoded columns, deleted rows, views and catalogs, and, for the generic form, a table nested inside another object.</p>
+    <p><strong>Indexes are rebuilt on load</strong>, since hash and sorted indexes rebuild in one pass. The file keeps their definitions (format 2, "Indexes in .otab files" below), not their entries.</p>
+    <h4 id="10-network-reading-from-and-serving-to-other-machines">10. Network: reading from and serving to other machines</h4>
+    <ul>
+     <li><strong>Every file source reads URLs.</strong> A path that starts with <code>https://</code> or <code>http://</code> is fetched through <code>Web.HTTP</code> (with TLS verification on, the library's default) and read by the same source as a local file. That covers CSV, JSON Lines and the other formats, <code>.gz</code>, and <code>.otab</code>. So <code>from 'https://example.org/data/runs.csv'</code> works anywhere a path does.</li>
+     <li><strong>Downloads are cached</strong> under a cache directory, keyed by URL and revalidated with the server's <code>ETag</code> or <code>Last-Modified</code>, so a query repeated in a loop does not download again. <code>HttpJsonSource</code> (section 6) shares the same cache and paging.</li>
+     <li><strong>Partial reads over the network.</strong> For <code>.otab</code> on a server that supports HTTP range requests, the reader fetches the footer and then only the blocks the query needs, as it does on disk. Without range support it downloads the file once and reads it locally.</li>
+     <li><strong>Serving tables.</strong> <code>TableServer</code> publishes tables and a read-only query endpoint through <code>Web.HTTP.Server</code>. <code>GET /tables/runs</code> returns a table, and <code>GET /query?sql=...</code> returns a result, as CSV, JSON or <code>.otab</code> by the <code>Accept</code> header. It answers only <code>SELECT</code> (statements that change data are refused) and only for the tables it was given. It runs a statement with row and time limits, and it can be bound to localhost or put behind the library's existing auth. <code>RemoteSource(url)</code> on the client side queries a <code>TableServer</code> as if it were a local table, sending simple filters to the server so only matching rows cross the network.</li>
+     <li><strong>Writing to the network</strong> is export, not shared storage: <code>ToCsv</code>, <code>ToJson</code> and <code>Save</code> accept any stream, so a result can be uploaded or sent as a response. Two processes keeping one remote table in sync is out of scope, as a multi-user database is.</li>
+    </ul>
+    <h4 id="11-compatibility">11. Compatibility</h4>
+    <p>Almost nothing outside the library uses it today (<code>programs/tests/prgm193.obs</code> calls <code>FromFilesystem</code> and <code>Query</code>; two programs use <code>Finder</code>), so the cost of keeping old programs working is small, and they must keep working:</p>
+    <ul>
+     <li><code>Table-&gt;New(name, String[])</code>, <code>Insert() ~ Row</code>, <code>Row-&gt;Get/Set</code> by name or index, <code>Delete(pk)</code>, <code>Get(pk)</code>, <code>Sum/Average/Min/Max/Count/Unique</code>, <code>Query(sql) ~ Table</code>, <code>FromCsv</code>, <code>FromFilesystem</code> and <code>GetError</code> keep their signatures and results. <code>Row</code> becomes a cursor (table, row number) instead of an object holding values, so <code>Insert()</code> no longer allocates a row's worth of cells.</li>
+     <li>The hidden <code>pk</code> column stays: row numbers are primary keys, and <code>Get(pk)</code> becomes an array index (O(1)) instead of a tree lookup.</li>
+     <li><code>Query(sql)</code> keeps returning a <code>Table</code>: a <code>Table</code> that is backed by a view until it is mutated (copy on write), so the old API also stops copying.</li>
+     <li><code>Row-&gt;Next()/Prev()</code> iterate in row order, skipping deleted rows.</li>
+     <li><code>Query</code>, <code>Parser</code>, <code>Term</code> and <code>Token</code> are public classes today although they are implementation details. They stay for one release as deprecated shims over the new parser (their doc comments say so), then become private.</li>
+     <li><code>Finder</code> and <code>FromFilesystem</code> keep their signatures and results and are reimplemented over <code>FilesystemSource</code> (section 6). One latent oddity goes with the rewrite: <code>FromFilesystem</code>'s trailing-separator test reads <code>&lt;&gt;path-&gt;EndsWith('/')  &lt;&gt;path-&gt;EndsWith('\\')</code> with no operator between the two halves, and parses as a not-equal comparison that happens to give the right answer.</li>
+    </ul>
+    <h3 id="testing">Testing</h3>
+    <ul>
+     <li><strong>A differential test is the core of it.</strong> <code>programs/regression/query_differential.obs</code> generates random tables (mixed types, Nil cells, duplicate keys) and random queries from the grammar, and runs each through the engine and through a deliberately simple reference evaluator kept in the test (row-at-a-time, no indexes, no views). Results must match exactly, with and without indexes, for a fixed seed set that CI runs and a longer run for the nightly job.</li>
+     <li><strong>Each source has its own test</strong> of schema, round trip, malformed input, edge cases, pushdown, compression, globs and caching, with inputs generated at run time (section 6, "Source tests").</li>
+     <li><strong>Persistence is tested by breaking it</strong> (phase 3): interrupted saves at every step, truncated and corrupted files, log replay after a simulated crash, a refused second writer, and both serialization forms round-tripped, including a table nested inside another object.</li>
+     <li><strong>Network tests run offline</strong> against an in-process <code>Web.HTTP.Server</code> (phase 5), covering caching, revalidation, range and non-range servers, and the server's read-only limits.</li>
+     <li>Unit tests per phase: column typing and promotion, null bitmaps, view invalidation, each predicate node, each join and aggregate, each index kind against a linear scan, prepared statements and the statement cache, the compatibility API (the #1291 tests must keep passing unchanged).</li>
+     <li><strong>A performance gate.</strong> <code>programs/regression/query_bench.obs</code> (the benchmark above, at 100k rows) with thresholds as multiples of the plain-array baseline measured in the same run, so it is machine-independent: scan and aggregate ≤ 5×, <code>where</code> ≤ 5× plus result size, <code>order by</code> ≤ 0.3 s, and save and load of one million rows × three numeric columns well under a second. Whether it gates pull requests or runs only in the nightly job follows the repository's existing performance gate (<code>perf-results/PERF_GATE.md</code>); timing is noisy on shared runners, so the nightly job is the likelier home.</li>
+     <li>Every phase passes at <code>-opt s3</code>, with <code>OBJECK_JIT_THRESHOLD=1</code>, and at <code>-opt s0</code> with <code>--jit=off</code>.</li>
+    </ul>
+    <h3 id="phases">Phases</h3>
+    <p>Each phase lands as its own pull request, with its tests, a rebuilt <code>query.obl</code>, and the editor index regenerated for new classes.</p>
+    <ol>
+     <li><strong>Columnar storage.</strong>
+    <ul>
+     <li><strong>Storage:</strong> <code>Column</code> types, null bitmaps, typing and promotion, dictionary-encoded strings, and row groups with zone maps.</li>
+     <li><strong>Table API:</strong> <code>Row</code> as a cursor, O(1) <code>Get(pk)</code>, tombstone deletes with <code>Compact()</code>, the compatibility API on top, <code>Describe()</code>.</li>
+     <li><strong>Generic serialization:</strong> tables survive a <code>Serializer</code>/<code>Deserializer</code> round trip.</li>
+     <li><strong>Sources:</strong> the <code>Source</code> interface with <code>CsvSource</code>, <code>FilesystemSource</code> (flat) and <code>ObjectSource</code>, and <code>FromCsv</code>, <code>FromFilesystem</code> and <code>Finder</code> reimplemented over them.</li>
+    </ul>
+     </li>
+    </ol>
+    <p>Tests: storage unit tests, <code>query_serialize_generic</code>, <code>query_source_csv</code>, <code>query_source_filesystem</code>, <code>query_source_objects</code>, and the #1291 tests unchanged. Benchmark: insert, scan and aggregates.</p>
+    <ol start="2">
+     <li><strong>Views and compiled predicates.</strong> <code>View</code>, copy-on-write result tables, the typed predicate nodes with batch evaluation over row groups, zone-map skipping, prepared statements and the statement cache, and the method-chaining API. The differential test starts here. Also the single-file text sources, which need no joins: <code>TextSource</code>, <code>JsonLinesSource</code>, and transparent <code>.gz</code>. Tests: <code>query_source_text</code>, <code>query_source_jsonl</code>, <code>query_source_gzip</code>.</li>
+     <li><strong>Persistence.</strong>
+    <ul>
+     <li><strong>Prerequisites,</strong> each its own small VM pull request first: rename that replaces atomically on Windows, and an exclusive-create trap.</li>
+     <li><strong>The <code>.otab</code> format:</strong> <code>Save</code>, <code>Load</code>, <code>ToBytes</code>, <code>FromBytes</code>, stream variants, per-block compression and CRC32s, and partial reads by column and row group.</li>
+     <li><strong>Writing:</strong> <code>Append</code>, <code>Open</code> with the change log, <code>Checkpoint</code>, and the writer lock.</li>
+    </ul>
+     </li>
+    </ol>
+    <p>Tests:</p>
+    <ul>
+     <li><code>query_persist_roundtrip</code>: every type, <code>Nil</code> cells, dictionaries, deleted rows; bytes and files.</li>
+     <li><code>query_persist_partial</code>: only the needed blocks are read, counted by an instrumented reader.</li>
+     <li><code>query_persist_crash</code>: a save interrupted at each step, a truncated file, a corrupted block, a log replayed after a simulated crash.</li>
+     <li><code>query_persist_lock</code>: a second writer refused, a stale lock cleared, readers unaffected.</li>
+    </ul>
+    <p>Benchmark: save and load at one million rows.</p>
+    <ol start="4">
+     <li><strong>The relational layer.</strong>
+    <ul>
+     <li><strong>SQL:</strong> <code>Catalog</code>, hash joins (on dictionary codes where both sides share a dictionary), <code>GROUP BY</code>/<code>HAVING</code>, multi-key <code>ORDER BY</code> <code>ASC</code>/<code>DESC</code>, <code>LIMIT</code>/<code>OFFSET</code>, and <code>INSERT</code>/<code>UPDATE</code>/<code>DELETE</code>/<code>CREATE TABLE</code>.</li>
+     <li><strong>Bridges:</strong> <code>ToMatrix</code>, <code>FromMatrix</code>, CSV and JSON.</li>
+     <li><strong>Hierarchical sources,</strong> which need joins to be useful: <code>JsonSource</code> and <code>XmlSource</code> with child tables, the recursive <code>FilesystemSource</code> with parent keys, <code>MATCHES</code>, <code>Finder-&gt;FindTable</code>, and scan-hint pushdown.</li>
+     <li><strong>Files named in SQL:</strong> <code>FROM</code> and <code>JOIN</code> over CSV, TSV, JSON Lines, JSON, gzipped files and <code>.otab</code>, globs over several files, and the per-path cache.</li>
+    </ul>
+     </li>
+    </ol>
+    <p>Tests: <code>query_source_json</code>, <code>query_source_xml</code>, <code>query_source_tree</code> (the recursive filesystem with parent keys), and <code>query_source_files_in_sql</code> (globs, <code>_file</code>, the cache).</p>
+    <ol start="5">
+     <li><strong>Network.</strong>
+    <ul>
+     <li><strong>Reading:</strong> URLs in every file source, the download cache with <code>ETag</code> and <code>Last-Modified</code> revalidation, range-request reads of <code>.otab</code>, and <code>HttpJsonSource</code>.</li>
+     <li><strong>Serving:</strong> <code>TableServer</code> with its read-only query endpoint and limits, and <code>RemoteSource</code> with filter pushdown.</li>
+    </ul>
+     </li>
+    </ol>
+    <p>Tests, all against an in-process <code>Web.HTTP.Server</code>:</p>
+    <ul>
+     <li><code>query_net_read</code>: CSV and <code>.otab</code> by URL, cache hits, a changed file re-fetched, range and non-range servers.</li>
+     <li><code>query_net_serve</code>: tables and queries in each format, a change refused, limits enforced.</li>
+     <li><code>query_source_http</code>.</li>
+    </ul>
+    <ol start="6">
+     <li><strong>Hash and sorted indexes</strong> and the rule-based planner.</li>
+     <li><strong>Tier 2 sources</strong>, one pull request each, in this order:
+    <ol>
+     <li><code>query_ml.obl</code> with <code>MlResultSource</code></li>
+     <li><code>ArchiveSource</code> (tar first, then zip; raw deflate is <code>Byte-&gt;UncompressDeflate</code>)</li>
+     <li><code>XlsxSource</code></li>
+     <li><code>query_odbc.obl</code> with <code>OdbcSource</code> and its pushdown</li>
+     <li><code>query_vision.obl</code> with <code>VisionSource</code></li>
+    </ol>
+     </li>
+    </ol>
+    <p>Each comes with its own <code>query_source_&lt;name&gt;</code> test. Each add-on library also needs a line in <code>core/compiler/build_libs.sh</code> and in the other hard-coded library lists, all of which <code>tools/cicd/check_doc_lists.py</code> keeps in step.</p>
+    <ol start="8">
+     <li><strong>Conditional upgrades,</strong> each only when a benchmark shows the need, and behind interfaces that already exist, so nothing above changes:
+    <ul>
+     <li>a <strong>B+ tree index</strong>, for frequent inserts mixed with range queries that the sorted index serves badly;</li>
+     <li><strong>parallel scans</strong> across row groups, with a multithreaded GC stress test;</li>
+     <li><strong>index entries stored in <code>.otab</code></strong>, if rebuilding them on load proves slow (their definitions already are: format 2).</li>
+    </ul>
+     </li>
+    </ol>
+    <h3 id="as-built">As built</h3>
+    <p>What the implementation does where it differs from, or settles something left open in, the design above. Each phase adds its notes here.</p>
+    <p><strong>Phase 1 (#1298).</strong></p>
+    <ul>
+     <li><code>Table-&gt;FromCsv</code> keeps its per-cell typing by storing OBJECT columns, so its results are unchanged; <code>CsvSource</code> is the typed path.</li>
+     <li>An inferred INT column widens to FLOAT when a Float arrives; any other mix promotes to OBJECT, keeping every value. A declared column refuses the mismatch instead.</li>
+     <li>Dates are stored as epoch milliseconds of their calendar fields, read as UTC, which round-trips exactly and orders correctly.</li>
+    </ul>
+    <p><strong>Phase 2.</strong></p>
+    <ul>
+     <li>The predicate combinators are <code>AndAlso</code>, <code>OrElse</code> and <code>Negate</code>: <code>And</code>, <code>Or</code> and <code>Not</code> are reserved words in Objeck.</li>
+     <li><code>Table-&gt;Query</code> copies its result into a table with one bulk gather per column; <code>Where</code>, <code>OrderBy</code>, <code>Limit</code> and <code>Statement-&gt;ExecuteView</code> return views without copying.</li>
+     <li>Empty cells sort last in both directions.</li>
+     <li>A comparison with an empty cell is false; only <code>IS NULL</code> and <code>IS NOT NULL</code> test for one. There is no three-valued logic.</li>
+     <li>JSON Lines arrays are kept as their JSON text until phase 4 makes them child tables.</li>
+     <li><code>.gz</code> files are decompressed whole before reading, through <code>lang</code>'s gzip.</li>
+    </ul>
+    <p><strong>Phase 4.</strong></p>
+    <ul>
+     <li>The SQL front end is a new recursive-descent parser. Keywords are contextual, so a column named <code>left</code> or <code>values</code> still works where a column is expected. The public <code>Parser</code>, <code>Term</code> and <code>Token</code> classes are kept, and every old statement form still works, including the old engine's quirks: <code>from t where ...</code> with no SELECT, an unquoted word compared as a string, an unknown select column read as empty cells.</li>
+     <li>Joins are not hash joins: the right side's keyed rows are sorted once and probed by binary search, on whole numbers, numbers or text (an encoded column's dictionary is looked up once per code). This gives the same complexity as a hash join, with output in a fixed order: left rows in order, each with its matches in the right side's order. The result is a working table of only the columns the query reads, rather than a <code>JoinView</code>. A WHERE condition on one table is applied before the join, except on the right of a LEFT JOIN.</li>
+     <li>GROUP BY sorts the rows by the grouping columns (stable, typed) instead of hashing them, so groups come out in key order with empty keys last. Aggregates read numbers only. COUNT is INT; SUM, MIN and MAX of an INT column stay INT; the rest are FLOAT.</li>
+     <li>INSERT, UPDATE and DELETE apply in full or not at all. A bound Nil is NULL, and an unbound placeholder is an error.</li>
+     <li>A hierarchy's keys are <code>_id</code> and <code>_parent_id</code> rather than <code>id</code> and <code>parent_id</code>, so they cannot clobber a field of the same name in the data. A table has <code>_id</code> only when a child table refers to it. JSON object members come out alphabetically, as the JSON parser gives them.</li>
+     <li>XML attributes are <code>@name</code> columns and an element's own text is <code>_text</code>; the SQL lexer reads <code>@name</code> as a name.</li>
+     <li><code>MATCHES</code> is a whole-value match, as <code>Finder</code> has always used.</li>
+     <li>Files named in SQL are cached per <code>Catalog</code>, not process-wide, so the cache needs no lock and holds no global state. <code>Catalog-&gt;Run</code> is the stateless one-off form. Scan hints are not pushed into files named in SQL, because the cached table must serve later queries that need other columns.</li>
+    </ul>
+    <p><strong>Phase 5 (reading).</strong></p>
+    <ul>
+     <li>Downloads are kept under the system temporary folder in <code>objeck_query_cache</code>, revalidated with <code>If-None-Match</code> and <code>If-Modified-Since</code>. Without a validator, the content's size and CRC32 tell versions apart. Each URL has a folder of versions and a note naming the current one, which threads and processes share ("One cache folder, many processes" below).</li>
+    </ul>
+    <p><strong>Phase 5 (serving).</strong></p>
+    <ul>
+     <li><code>TableServer</code> lives in its own library, <code>query_server.obl</code> (bundle <code>Query.Structured.Server</code>), so a program that only queries does not link <code>Web.HTTP.Server</code>. It answers <code>GET /tables</code> (names, columns, row counts as JSON), <code>GET /tables/NAME</code>, and <code>GET /query?sql=</code> or <code>POST /query</code> with the statement as a UTF-8 body. The POST form exists because <code>Web.HTTP.Url</code>'s percent-encoding does not carry non-ASCII text intact.</li>
+     <li>Only a SELECT is answered (403 otherwise). Its catalog has file access turned off (<code>Catalog-&gt;SetFileAccess(false)</code>), so a query naming a file or a URL is refused (403): it would otherwise read the server's disk or make the server fetch an address for the client. A result over the row limit is refused (413) rather than cut short. Requests are answered at once, each on its own thread; the program changes a published table only between <code>BeginWrite</code> and <code>EndWrite</code> ("A server that answers at once" below). There is no time limit yet: the engine has no cancellation point to stop a running query at.</li>
+     <li><code>Web.HTTP.Server</code> runs one server per process, so one <code>TableServer</code> serves at a time. Binding to localhost only needs a listen address, which the server does not take yet.</li>
+     <li><code>RemoteSource</code> sends the scan hint's columns and limit and a condition given with <code>SetWhere</code>; it does not infer the condition from the local query, because sources are loaded before a query runs. The server applies the condition and the local query applies its own WHERE again, so pushdown never changes an answer. Results travel as <code>.otab</code>.</li>
+     <li><code>OtabFile-&gt;New(url)</code> reads with range requests: the header, then the footer, then only the blocks a <code>Read</code> names. A server that answers 200 instead is read from that one download.</li>
+     <li>Found on the way and fixed at the source: <code>Web.HTTP.Server</code>'s POST requests had no path or query string (<code>GetPath()</code> was Nil), so a POST handler could not route.</li>
+    </ul>
+    <p><strong>Phase 6 (indexes and the planner).</strong></p>
+    <ul>
+     <li>The API is <code>table-&gt;CreateIndex(column, IndexKind-&gt;HASH | SORTED)</code> (or with a name first), <code>DropIndex</code>, <code>HasIndex</code>, <code>GetIndexKind</code>, <code>GetIndexName</code> and <code>FindIndex(name)</code>; in SQL, <code>CREATE INDEX [name] ON t (col) [USING HASH | SORTED]</code> (SORTED when <code>USING</code> is left out, as section 5 recommends; <code>USING BTREE</code> is refused until phase 8 builds one) and <code>DROP INDEX name [ON t]</code>. An unnamed index is called <code>table_column</code>. A column has at most one index; creating another replaces it. <code>pk</code> needs none (<code>Get</code> finds a key directly).</li>
+     <li>The <strong>plan</strong> is reported, not just chosen: <code>View-&gt;GetPlan()</code>, <code>Statement-&gt;Explain()</code>, <code>Table-&gt;Explain(sql)</code> and <code>Catalog-&gt;Explain(sql)</code> give steps such as <code>where runs: HASH index runs_grp on grp (=)</code>, <code>where runs: SORTED index runs_value on value (&gt;= &lt;=)</code>, <code>where runs: union(...)</code>, <code>where runs: scan</code> and <code>order runs.value: SORTED index runs_value</code>. Explain runs a SELECT to find out; for UPDATE and DELETE it plans the WHERE clause and changes nothing.</li>
+     <li>The index lives in its <code>Column</code>, not the <code>Table</code>, so every path that writes a cell reaches it: <code>Column-&gt;Set</code> (the one cell-write path, used by <code>SetCell</code>, UPDATE, INSERT, <code>Row-&gt;Set</code> and log replay) and <code>CopyFrom</code> report each write; <code>Table-&gt;Delete</code> reports each delete. A <strong>hash</strong> index is updated in place (an <code>IntMap</code> from key to the first slot of a chain, linked through per-slot arrays, so adding or removing a slot touches only its neighbours). A <strong>sorted</strong> index is marked stale by any write and rebuilt by the next query that uses it; a delete does not make it stale, since lookups skip deleted slots. Anything that rewrites a column whole (Compact, Gather, Restore, the Fill paths, a promotion to FLOAT or OBJECT, a dictionary turning into plain text) marks either kind stale. <code>CreateIndex</code> builds at once.</li>
+     <li>Keys: INT, BOOL and DATE by value; an encoded STRING by dictionary code (codes are per column, and Compact keeps the dictionary, so they stay valid); a plain STRING by its hash; a FLOAT by a key under which equal numbers meet (<code>0.0</code> and <code>-0.0</code> together). Keys may collide: <strong>a lookup gives candidate slots, a superset of the matches, and the whole condition is then tested on the candidates in slot order.</strong> That is why results, and their order, are identical to a scan's by construction, and why an index can only change speed. The differential test (<code>query_index_differential</code>) checks it.</li>
+     <li>OBJECT columns are <strong>not indexable</strong>: their cells mix kinds with no one order or key. <code>CreateIndex</code> refuses one; a column promoted to OBJECT keeps its index, which serves nothing (the plan says scan) until it is dropped.</li>
+     <li>The planner, as section 5 says: for an AND, a term that reads no rows (a value no cell holds, a NULL value), then equality on a hash index, then the index probe reading fewest slots (exact for a sorted range: the binary search gives it); ranges on one sorted index are narrowed together, so <code>BETWEEN</code> is one range. An OR (so IN) uses indexes only when every alternative has one, as a union. NOT, <code>&lt;&gt;</code>, LIKE, MATCHES, IS [NOT] NULL, a value of another type and NaN always scan. Index probes are made only over a whole table; a view's <code>Where</code> filters its own rows. Prepared statements plan with the bound values.</li>
+     <li>A sorted index also gives <strong>ORDER BY</strong> (<code>View-&gt;OrderBy</code> and SQL, one key or the last-applied key of several), <strong>GROUP BY</strong>'s grouping order on one table, and <code>Table-&gt;Min</code>/<code>Max</code> of an INT or FLOAT column. Equal values keep row order and empty cells come last, as Sorter does. Joins, DISTINCT and SQL aggregates do not use indexes: the join's key matcher builds its own order across mixed key domains, and DISTINCT and grouping by hash would not keep the order the engine gives, so none of them is a clean fit yet.</li>
+     <li>Indexes were not stored in <code>.otab</code> files when phase 6 landed; their definitions are now (format 2, "Indexes in .otab files" below). Query results and other copies have none. The generic <code>Serializer</code> carries them with the table (they hold only arrays and an <code>IntMap</code>, and string hashes are computed from the text, so they stay valid).</li>
+     <li>A lazy rebuild writes the index; several threads may query a table at once, including right after a change, as "Concurrent readers" below describes.</li>
+     <li>Measured at 1,000,000 rows (<code>perf-results/libs/query_index_bench.obs</code>, Windows x64, <code>-opt s3</code>), per query, scan against index: equality on an Int with one row per value 73 ms against 0.02 ms; equality on text with 1,000 rows per value 47 ms against 0.7 ms; a 0.1% range 109 ms against 0.7 ms; a 10% range 54 ms against 16 ms; <code>ORDER BY value LIMIT 10</code> 2.8 s against 0.08 s. Building an index takes 0.2-0.6 s.</li>
+     <li>Defects found by the differential test and fixed at the source: zone maps kept Int bounds as Floats and skipped groups strictly, so <code>n &gt; 2^53</code> missed <code>2^53 + 1</code> (<code>query_zone_map_wide_ints</code>); and NaN compared equal to every number, so a NaN cell matched <code>=</code>, <code>&lt;=</code> and <code>&gt;=</code> against anything, or not, depending on zone-map skipping, a group whose first value was NaN was skipped for every comparison, and where NaN sorted depended on the sort's steps. NaN now satisfies only <code>&lt;&gt;</code>, like any value that cannot be ordered, zone maps ignore it, and it sorts after every number (<code>query_nan_compare</code>).</li>
+    </ul>
+    <p><strong>Phase 7 (<code>query_ml.obl</code>).</strong></p>
+    <ul>
+     <li><code>MlResultSource</code> lives in its own library, <code>query_ml.obl</code> (bundle <code>Query.Structured.ML</code>), so a program that only queries files does not load <code>System.ML</code>'s native module. It is filled with <code>Add</code> calls, each filed under a run name, and <code>Load</code> puts eight tables into a catalog, empty ones included: <code>folds</code>, <code>predictions</code> (row, fold, actual, score, predicted), <code>thresholds</code> (a full sweep from <code>Metrics-&gt;OperatingPoints</code>, or single <code>ThresholdResult</code>s), <code>confusion</code>, <code>features</code>, <code>intervals</code> (bootstrap), <code>groups</code> (<code>RecallByGroup</code>) and <code>metrics</code> (named numbers, including each cross-validation's fold means and spreads). A constructor prefix renames them all, for a catalog that already has a <code>folds</code> table.</li>
+     <li><code>CrossValResult</code> does not record which fold scored a row, so <code>AddCrossValidation(run, result, y, seed[, strata])</code> rebuilds the folds with <code>StratifiedKFold</code> from the same labels (or strata) and seed, which is how <code>Evaluate</code> assigned them. The test proves the rebuild by recomputing each fold's AUC from its own <code>predictions</code> rows.</li>
+     <li>System.ML reports a metric it cannot compute as -1.0 (a fold holding one class); that is an empty cell, not a number, so <code>AVG</code> skips it. A rate with no denominator is empty too.</li>
+     <li>System.ML has no feature importances, so <code>features</code> takes any per-feature numbers: a linear model's weights or importances computed elsewhere.</li>
+     <li>The matrix bridge back is <code>MlColumns</code>: <code>Labels</code> (a BOOL column as is, a number above 0.5 as <code>CrossValidation-&gt;ToBool</code> reads it, or text equal to a named positive class), <code>Values</code> and <code>Features</code> (<code>Table-&gt;ToMatrix</code>). An empty cell or text where a number is expected is an error naming the column and row, never a silent zero. These close the two seams that had every caller hand-writing the same glue: <code>Float[]</code> against <code>Bool[]</code> labels, and no way to pick a fold's rows (now <code>where fold = 2</code>).</li>
+    </ul>
+    <p><strong>Phase 7 (<code>query_vision.obl</code>).</strong></p>
+    <ul>
+     <li><code>VisionSource</code> lives in its own library, <code>query_vision.obl</code> (bundle <code>Query.Structured.Vision</code>), so a program that only queries files needs neither ONNX Runtime nor OpenCV. Linking it loads neither: a native module loads on the first call into it, so a folder can be listed with no model and no OpenCV installed.</li>
+     <li>Two tables. <code>images</code>: id, path, name, folder (the subfolder below the root, which is how a per-camera folder layout becomes a GROUP BY), format, width, height, channels, bytes, modified, detections (a count, empty with no detector) and error. <code>detections</code>: id, image_id, path, label, class_id, score, x, y, width, height and area, with the box in the image's own pixels. Files are taken by extension (.png, .jpg, .jpeg, .bmp, .gif, .webp), in name order, subfolders after their parent's files, hidden folders skipped.</li>
+     <li>Format, size and channels come from <code>ImageHeader</code>, a pure-Objeck reader of PNG, JPEG (the first start-of-frame segment), BMP (either row order), GIF and WebP (lossy, lossless and extended) headers, so metadata needs no decoder. A file whose bytes are not the image its name says, or that a detector fails on, is a row with an <code>error</code>, not a failed load.</li>
+     <li>The detector is the <code>Detector</code> interface, as the design says, so the test drives the source with a scripted detector. <code>YoloDetector</code> adapts <code>API.Onnx.YoloSession</code> (YOLO 8 and later); boxes come back in image pixels because the native code undoes its letterbox. The test runs it on the repository's sample photos when <code>OBJECK_YOLO_MODEL</code> and <code>OBJECK_YOLO_LABELS</code> name a model, and checks every box lies inside its image; where OpenCV is deployed it decodes the generated PNG and BMP and writes a JPEG and a WebP whose headers must agree.</li>
+     <li>A scan hint's row limit caps the images read; its columns are not used, since the two tables share column names.</li>
+    </ul>
+    <p><strong>Phase 7 (<code>ArchiveSource</code>).</strong></p>
+    <ul>
+     <li>One source reads <code>.zip</code>, <code>.tar</code> and gzipped tar (<code>.tar.gz</code>, <code>.tgz</code>), told apart by content (gzip magic, then a tar header whose checksum holds, then a zip end record), not by name. It reads from a file, a URL (through the download cache) or bytes in memory (<code>ArchiveSource-&gt;FromBytes</code>). It lives in <code>query.obl</code> with no new library.</li>
+     <li>Tables: a listing named after the archive (<code>results.zip</code> gives <code>results</code>; <code>SetName</code> changes it), and one table per member in a readable format, named by the member's full path (<code>data/runs.csv</code>), which SQL names in double quotes. A JSON or XML member's child tables follow its own rules (<code>meta.json_tags</code>). Formats follow the extension as files in SQL do, with two differences: <code>.txt</code> is not read as CSV (archives carry READMEs), and an XML member becomes a table only once <code>SetRowElement</code> names its row element. <code>SetPattern</code> (a glob over member paths) chooses which members become tables. <code>ReadBytes</code>, <code>ReadText</code> and <code>ReadTable</code> read single members.</li>
+     <li>Listing columns: FilesystemSource's tree columns (<code>id</code>, <code>parent_id</code>, <code>depth</code>, <code>name</code>, <code>path</code>, <code>ext</code>, <code>is_dir</code>) plus <code>type</code> (<code>file</code>, <code>dir</code>, <code>symlink</code>, <code>hardlink</code>, <code>other</code>), <code>size</code>, <code>compressed_size</code>, <code>method</code> and <code>crc32</code> (zip only), <code>modified</code> and <code>link</code>. A folder the archive implies but does not list gets a row, so every member has a parent; a tar's <code>./</code> root has none.</li>
+     <li>Modification times: a zip's MS-DOS time is local time with no zone and two-second steps; an extended timestamp field (0x5455), where present, is used instead and is UTC. Tar times are UTC, including a pax <code>mtime</code> (its fraction dropped).</li>
+     <li>Safety, since an archive is untrusted input. Nothing is extracted to disk. A member whose path is absolute (<code>/x</code>, <code>C:\x</code>) or contains a <code>..</code> part refuses the whole archive, naming it, as do duplicate names in a zip (the case behind several extraction exploits) and zip members whose data overlap (the "overlapping files" bomb). A tar may repeat a path, as appending does; the last copy is the table, and the listing shows both.</li>
+     <li>Zip bombs: each member is inflated with the new <code>Byte-&gt;UncompressDeflate(input, limit)</code>, limited to the size its central directory states, so a member that expands further is refused after producing at most that many bytes, and one that inflates to less is refused too. Every member is then checked against its CRC32. A member over 256 MB, or a read taking the archive's total past 1 GB, is refused (<code>SetLimits</code> changes both). A gzipped tar, or a gzipped member, is inflated with <code>Byte-&gt;UncompressGzip(input, limit)</code> within the total. Before these two overloads the VM's own 512 MB inflate buffer was the only bound.</li>
+     <li>Zip: stored and deflate members; ZIP64 end records and extra fields; a self-extracting prefix (offsets are found from where the central directory actually sits); data descriptors (the central directory's sizes are used). Refused with a reason: encryption, any other method (named: <code>bzip2</code>, <code>lzma</code>, <code>zstd</code>, ...), archives split across disks, a local header that names a different member, and ZIP64 values with no ZIP64 record.</li>
+     <li>Tar: POSIX ustar with its name prefix, pax extended headers (<code>path</code>, <code>linkpath</code>, <code>size</code>, <code>mtime</code>; global headers are skipped), GNU long names and link targets (<code>L</code>, <code>K</code>), base-256 sizes, and both checksum conventions. Links are listed with their targets and never followed. A tar cut at a block boundary has only lost its end marker and still reads; one cut inside a header or a member's data is an error.</li>
+     <li>Loading is all or nothing: a member that does not parse fails the load with the archive, member and reason, and nothing reaches the catalog. Scan hints are not pushed into members.</li>
+     <li>Not done at first: archives named in SQL, since added ("Archives and workbooks in SQL" below). Still not done: reading a member without holding the whole member in memory.</li>
+    </ul>
+    <p><strong>Phase 7 (<code>XlsxSource</code>).</strong></p>
+    <ul>
+     <li>Each worksheet becomes a table named after its sheet (<code>SetPrefix</code> prepends text, so two workbooks' <code>Sheet1</code> can share a catalog); <code>XlsxSource-&gt;New(path, sheet)</code> reads one. Chart and dialog sheets are skipped; hidden sheets are read. Parts are found through the package and workbook relationships, not by fixed names, and the zip is read with <code>ArchiveSource</code>'s reader, so its CRC32 checks and limits apply to every part.</li>
+     <li>Cells: shared strings (rich-text runs joined, phonetic runs skipped), inline strings and formula strings are text; whitespace is kept, through the new <code>XmlElement-&gt;GetDecodedText()</code> (<code>GetContent</code> trims, which lost <code>xml:space="preserve"</code> text). Booleans are <code>0</code>/<code>1</code>; error values (<code>#DIV/0!</code>) are their text; a formula cell is its cached value, and one with no value, or an empty one (openpyxl writes <code>&lt;v&gt;&lt;/v&gt;</code>), is an empty cell. ISO 8601 <code>d</code> cells are dates.</li>
+     <li>Dates are numbers whose cell format shows a date or time: built-in formats 14-22, 27-36, 45, 47 and 50-58, and custom codes with <code>d</code>, <code>m</code>, <code>y</code>, <code>h</code> or <code>s</code> outside quotes, escapes and brackets. Elapsed-time formats (<code>[h]:mm</code>, built-in 46) stay numbers of days, since they are durations. The 1904 system is honoured. In the 1900 system serials below 60 move a day to undo Lotus 1-2-3's phantom 29 February 1900, and 60 itself reads as 28 February 1900 (as openpyxl does). Times round to the nearest second; dates are wall-clock (not GMT).</li>
+     <li>Typing reads whole columns, as <code>CsvSource</code> does: whole numbers INT, other numbers FLOAT, dates DATE, booleans BOOL, anything else or any mix STRING, with each cell as it would display (<code>1.5</code>, <code>TRUE</code>, <code>2026-03-15</code>, <code>2026-03-15 10:20:30</code>).</li>
+     <li>Shape: the used range, from the first row holding a value (or <code>SetFirstRow</code>) to the last, and from the first used column to the last. A missing row or cell is empty, so table rows line up with sheet rows. The first row names the columns by default; an empty header cell is named by its column letter, and a repeated name gets <code>_2</code>, <code>_3</code>. <code>SetHeader(false)</code> names every column by letter. A range of more than 50 million cells is refused rather than allocated.</li>
+     <li>Merged cells: decided to keep Excel's storage by default (the value in the top-left cell, the rest empty), because filling changes column types and counts; <code>SetFillMerged(true)</code> copies the value across the range.</li>
+     <li>Errors name the workbook, sheet and cell: a missing part, malformed XML, a shared string index out of range, a cell reference outside its row or malformed, a number that is not one. Loading is all or nothing.</li>
+     <li>Not done: reading formulas themselves (only their values) and styles beyond date detection. <code>.xlsb</code> and the old <code>.xls</code> are other formats and are not read. Workbooks named in SQL were added later ("Archives and workbooks in SQL" below).</li>
+    </ul>
+    <p><strong>Phase 7 (<code>query_odbc.obl</code>).</strong></p>
+    <ul>
+     <li><code>OdbcSource</code> lives in its own library, <code>query_odbc.obl</code> (bundle <code>Query.Structured.Odbc</code>), so a program that only queries files does not load the ODBC native module. It reads a table (<code>New(connection, table)</code>, with <code>SetSchema</code>) or a query's result (<code>New(connection, name, sql)</code>).</li>
+     <li>Columns are typed from the driver's description (<code>SQLDescribeCol</code>), not by scanning values: integer types and NUMERIC/DECIMAL with no fraction digits (up to 18 digits) are INT; other numeric types FLOAT; BIT BOOL; DATE and TIMESTAMP DATE, to the second; TIME is text; binary columns are lowercase hexadecimal text (<code>OdbcSource-&gt;FromHex</code> turns it back into bytes, since the engine has no byte column); anything else is text of any length. NULL is an empty cell. A column the driver describes as text holds text even when it holds numbers.</li>
+     <li>Pushdown, the design's "simple <code>where</code> terms": the scan hint's columns (only those the result has, by name then ignoring case) and row limit, and a condition given with <code>SetWhere</code>, either raw SQL or with <code>?</code> placeholders and bound values. As with <code>RemoteSource</code>, the condition is not inferred from the local query, which applies its own WHERE again. Names are always quoted, with the closing quote doubled inside them (<code>SetQuotes</code> for `<code> </code> `<code> or </code>[]<code> styles), so a name cannot end its identifier; values go in as parameters, never as SQL text. The limit is </code>LIMIT n<code> by default, </code>TOP n<code> or </code>FETCH FIRST n ROWS ONLY<code> by </code>SetLimitSyntax<code>, and the reader stops at the limit either way. A query is wrapped as a derived table (</code>FROM (sql) q<code>) only when something is pushed into it, so its own ORDER BY and column names otherwise reach the table unchanged. </code>GetSql` shows what was sent.</li>
+     <li>Found on the way and fixed at the source, in <code>libobjk_odbc</code> and <code>odbc.obs</code>: text was read through one 8 KB buffer, so a longer value was silently cut short, and a NULL was converted from that buffer before anything was written to it; <code>GetBlob</code> cannot report a value's length, so <code>ResultSet-&gt;GetBytes</code> returns exactly the bytes; and a SELECT the database refused freed its statement with its diagnostic, so it read as an empty result with no reason. <code>ResultSet-&gt;IsOpen</code> now tells a refused statement apart, and its <code>GetLastError</code> gives the database's reason (<code>programs/regression/odbc_whole_values.obs</code>). A prepared statement that is run several times, and a blob with zero bytes bound by <code>SetBlob</code>, were fixed separately in #1337 (statement-owned maps and parameter copies).</li>
+    </ul>
+    <p>Toolchain defects found while building these phases were fixed at the source rather than worked around: gzip on small inputs (#1296), atomic rename on Windows (#1297), ten compiler defects (#1299), HTTP status codes and a TLS/collector deadlock (#1300), <code>XmlElement</code> attribute order, no way to bound how far deflate or gzip data inflates (phase 7: two new traps), and <code>XmlElement</code> text that could only be read trimmed (phase 7: <code>GetDecodedText</code>). Also in phase 7: the label merging at <code>-opt s2</code>/<code>s3</code> could give a merged label the id of another label in a linked library method, so adding classes to <code>query.obl</code> made a query loop forever.</p>
+    <h3 id="concurrent-readers">Concurrent readers</h3>
+    <p><strong>The contract.</strong> One thread writes a table, or several threads read it, never both at once: writes are not locked, and a program that mixes them must order them itself (as <code>TableServer</code> does with its readers-writer lock). Within that contract, any number of threads may query one table at the same time, including the first queries after a write, and every answer is the answer a scan gives on one thread. <code>Table-&gt;GetError</code> reports the calling thread's own last error ("Errors per thread" below), and a <code>Catalog</code> may be shared too ("One catalog, many threads").</p>
+    <p><strong>What a read writes.</strong> Three things a query may rebuild on a table it does not otherwise change, and each was a defect under concurrent readers:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>State</th><th>Made stale by</th><th>Defect before</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="State">A sorted index (and a hash index after a whole-column rewrite)</td><td data-label="Made stale by">a cell write; Compact, promotion and the other whole-column rewrites</td><td data-label="Defect before">two threads rebuilt it at once, each publishing its own copy; harmless only while the fields happen to be seen in program order</td></tr>
+      <tr><td data-label="State">A row group's zone map</td><td data-label="Made stale by">a cell write that replaces a value</td><td data-label="Defect before">the bounds were reset to "no values" and marked fresh <em>before</em> being recomputed, so a reader arriving meanwhile skipped the group and lost its rows (wrong answers, reproduced)</td></tr>
+      <tr><td data-label="State">A table's plan cache (<code>Table-&gt;Query</code>, <code>Execute</code>, <code>Prepare</code>)</td><td data-label="Made stale by">a statement not seen before</td><td data-label="Defect before">every thread that missed inserted into one <code>Map</code> at once, corrupting its tree: a crash or a query that never returns (reproduced)</td></tr>
+     </tbody>
+    </table>
+    <p><strong>The fix: one rebuild lock, taken only on the slow path.</strong> A <code>ThreadMutex</code> held in a class variable (<code>RebuildLock</code>), one per process. It cannot be a field of <code>Table</code>, <code>Column</code> or the index: the generic <code>Serializer</code> would copy its native handle (section 9 keeps every field serializable). It is created by the first <code>Table</code> constructor, before any table exists to be shared, so threads never race to create it.</p>
+    <ul>
+     <li>An index or zone map is checked without the lock. When stale, the thread takes the lock, checks again (another thread may have rebuilt it meanwhile), and rebuilds: the new state is built aside in locals, stored in its fields, and marked fresh last. A reader without the lock sees either a stale flag (and waits for the lock) or a whole state.</li>
+     <li>The plan cache is read and written under the lock; parsing a missed statement happens outside it, so two threads may parse the same text and the later insert wins (plans are immutable after parsing, so either serves).</li>
+     <li>One lock for all tables keeps the cost of a fresh read at zero and is held only while something is rebuilt; a thread rebuilding a large sorted index delays only other rebuilds.</li>
+    </ul>
+    <p><strong>The test.</strong> <code>query_index_concurrent</code> writes to a shared table, then starts four threads that meet at a barrier before each query (ranges, equality, ORDER BY and Min/Max through the indexes, ranges that scan with zone maps, and SQL through the plan cache) and compares every answer with one an unindexed twin gave on one thread. Before the fix it failed in every mode: short answers from skipped groups, a Nil dereference, or a hang in the plan cache's <code>Map</code>.</p>
+    <h3 id="errors-per-thread">Errors per thread</h3>
+    <p><strong>The gap.</strong> A table kept one <code>@error</code> for every thread querying it, and so did a catalog: <code>GetError</code> answered whichever thread failed last, and a thread whose query succeeded could read another thread's failure.</p>
+    <p><strong>The fix: each thread reads its own.</strong> <code>GetError</code> keeps its signature and its meaning on one thread; with several, it answers the calling thread's last error on that object. Alternatives weighed:</p>
+    <ul>
+     <li><em>Return the error with the result.</em> A failed query returns <code>Nil</code>, which carries nothing, and <code>GetError</code> would still have to work; it would also mean a second API for every call.</li>
+     <li><em>A thread-local slot in the VM.</em> Objeck had no thread-local storage and no way to name the calling thread at all (<code>Thread-&gt;GetExecuteID</code> names a <code>Thread</code> object, and the program's first thread has none), so something had to be added to the runtime either way.</li>
+    </ul>
+    <p>So the runtime gained the least it could, two functions on <code>System.Concurrency.Thread</code> (new traps <code>THREAD_CURRENT_ID</code> and <code>THREAD_IS_ALIVE</code>, appended after the others): <code>Thread-&gt;GetCurrentId()</code> gives the calling thread a number, counted up from 1 the first time it asks and never given to another thread, even after this one ends (an operating system's thread ids are reused); <code>Thread-&gt;IsAlive(id)</code> says whether that thread still runs (the VM keeps the numbers of running threads in a set a <code>thread_local</code>'s destructor leaves).</p>
+    <p>A table and a catalog hold a <code>ThreadErrors</code>: a <code>Map</code> from thread number to message, <code>Nil</code> while no thread has an error pending. A failed call sets the calling thread's entry, the next call that succeeds removes it, and the entries of threads that have ended are dropped whenever the map changes, so a thread that ends with an error unread leaves nothing behind for long. The common case costs one field read and no lock: a call that succeeds on an object with no pending errors sees the map is <code>Nil</code> and returns. That is safe without the lock because only a thread adds its own entry and the map goes back to <code>Nil</code> only when empty, so a thread that sees <code>Nil</code> has no entry. The lock, held only while the map is read or changed, is a class variable for the reason <code>RebuildLock</code> is one: the map is serializable, a lock is not.</p>
+    <p>A table or catalog carried through the generic <code>Serializer</code> carries its pending errors, as it carried its one error before; the numbers are this process's, so a copy read in another process may answer a stale error on a thread that has the same number until that thread's next call.</p>
+    <p><code>Statement</code>, <code>View</code>, <code>Query</code>, <code>OtabFile</code>, <code>TableStore</code> and the sources keep one error each: each is one thread's object (a statement holds its bound values; a view, a file and a source are made by the call that uses them), and "One catalog, many threads" says so where it matters.</p>
+    <p><strong>The test.</strong> <code>query_thread_errors</code>: four threads fail at once on one table and one catalog, each for its own reason (an unknown column or table named after the thread, a syntax error at a position of its own) while one of them succeeds, then read <code>GetError</code> after all have finished: each must see its own reason, the one that succeeded none, and the main thread, which never failed, none, over 40 rounds of new threads. Before the fix it failed in every mode: 640 of its 884 checks, or, in runs where the threads' statements corrupted the catalog's unlocked plan cache, a crash in <code>Map-&gt;Insert</code> or a hang.</p>
+    <h3 id="one-catalog-many-threads">One catalog, many threads</h3>
+    <p><strong>The gap.</strong> A catalog was one thread's: its table map, its plan cache and its file cache were <code>Map</code>s written without a lock, and a file named in SQL was read by every thread that missed the cache. Two threads querying through one catalog could corrupt a map (a crash in <code>Map-&gt;Insert</code>, a Nil dereference, or a query that never returns, all reproduced) and read the same file twice.</p>
+    <p><strong>The contract.</strong></p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Call</th><th>With other threads querying the catalog</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Call"><code>Query</code>, <code>Prepare</code>, <code>Explain</code>, <code>Get</code>, <code>Has</code>, <code>GetNames</code>, <code>GetFileReads</code>, <code>GetError</code>, and files, archives and workbooks named in SQL</td><td data-label="With other threads querying the catalog">safe; any number at once</td></tr>
+      <tr><td data-label="Call"><code>Add</code>, <code>AddNew</code>, <code>Remove</code>, <code>Load</code>, <code>CREATE TABLE</code></td><td data-label="With other threads querying the catalog">safe: a query sees the table map before or after the change; a query already running keeps the tables it found</td></tr>
+      <tr><td data-label="Call"><code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>, <code>CREATE INDEX</code>, <code>DROP INDEX</code> (through <code>Execute</code> or a statement)</td><td data-label="With other threads querying the catalog">they write a table, so the table's contract applies: no other thread may use that table meanwhile. Writing a table no other thread uses (one a thread created for itself) is safe</td></tr>
+      <tr><td data-label="Call"><code>SetFileAccess</code>, <code>SetArchiveLimits</code></td><td data-label="With other threads querying the catalog">apply to queries that start after them; a query running meanwhile may read either value. Set them before sharing the catalog</td></tr>
+      <tr><td data-label="Call">a <code>Statement</code> from <code>Prepare</code></td><td data-label="With other threads querying the catalog">belongs to the thread that binds it; each thread prepares its own (a plan cache hit, so cheap)</td></tr>
+     </tbody>
+    </table>
+    <p><strong>Locks, all on slow paths or held for a map operation only</strong> (<code>CatalogLocks</code>, class variables made by the first table or catalog, before there is one to share):</p>
+    <ul>
+     <li><em>The catalog lock</em>, one per process, held only while a map of any catalog is read or changed: a table lookup, a plan cache lookup or insert, a file cache lookup or insert, the read count. Parsing a statement and running a query happen outside it: two threads that miss the plan cache for one statement both parse it and the later insert wins, as in a table's cache. <code>CREATE TABLE</code> still refuses a name it finds, and then adds through <code>AddNew</code>, a check and an add in one step, so of threads creating one name at once exactly one succeeds and the others are refused, where before both passed the check and the second silently replaced the first.</li>
+     <li><em>Sixteen file locks</em>, chosen by a hash of the file's cache key (or of a URL), for single-flight loading. A query checks the file's stamp (its names, sizes and modification times) against the cache without a file lock; on a miss it takes the file's lock, checks the cache again, and only then reads, so threads that miss together read the file once and the rest find it cached when the lock comes free. A stamp tells the modification time in whole seconds, so a file rewritten within the second of its last read, to the same size, keeps its stamp; an entry read while its files were that recent (within a second: racy, as git calls its index entries) also keeps a digest of the files' bytes (size and CRC-32), taken before the read, and is served only while the files still digest the same. Once the files are a second older than the read, a later write lands in a later second and the stamp alone tells. Files that share a lock by their hash wait for each other's reads, which only costs time, and only when both are being read.</li>
+     <li><em>URLs.</em> The revalidating request (<code>If-None-Match</code>, <code>If-Modified-Since</code>) goes out with no lock held, so concurrent queries of one URL revalidate concurrently. Before, two threads downloading one URL wrote one <code>.part</code> file at once, and the loser's rename failed its query; this section first fixed that with the URL's file lock around the copy and its note, which kept threads apart but not processes. The download cache now needs no lock at all ("One cache folder, many processes" below): a fetch returns a version that never changes, with the stamp that belongs to it, and a catalog reads that version into a table under the URL's file lock only so that threads that miss together read it once.</li>
+    </ul>
+    <p>The locks cannot deadlock: nothing waits for a file lock while holding another lock, a thread holding a file lock may take only the catalog lock or an error lock, and those two take no other lock while held (an error lock asks the VM whether threads are alive, under the VM's own lock).</p>
+    <p>Two defects found on the way and fixed: an <code>INSERT</code> with no column list filled the column list of the cached statement with the table's columns on its first run, so after <code>AddColumn</code>, or with another table under that name, the same statement kept inserting into the old columns (now each run takes the table's columns as they are; <code>query_sql_relational</code> covers it); and the <code>CREATE TABLE</code> race above.</p>
+    <p><code>TableServer</code> answered one request at a time under its mutex until it, too, was made to answer at once ("A server that answers at once" below).</p>
+    <p><strong>The test.</strong> <code>query_catalog_concurrent</code>: six threads share one catalog over 30 rounds. Each round rewrites a CSV and a zip a little longer (so every thread misses the file cache for them at once), computes every answer alone with an oracle catalog, then the threads meet at a barrier before each statement: files in SQL (a CSV, a glob over three, members of a zip, a worksheet), joins of files with each other and with the catalog's tables, <code>GROUP BY</code> and <code>HAVING</code>, a statement new to the plan cache every round, statements that fail, a failure of each thread's own whose reason it must read back, prepared statements bound per thread, and a table each thread adds (<code>Add</code>) and creates and fills (<code>CREATE TABLE</code>, <code>INSERT</code>) while the others query. Every answer must equal the oracle's, and the shared catalog must read files exactly as often as the oracle did alone (once per changed file per round). Before the fix it crashed in <code>Map-&gt;Insert</code> or on a Nil, or hung, in every mode; it passes at <code>-opt s3</code> and <code>s0</code>, with and without the JIT, and with <code>OBJECK_JIT_THRESHOLD=1</code>. <code>query_net_read</code> adds the URL half: four threads sharing a catalog query a URL with no validator (so every query downloads it) and one that answers 304, over eight rounds that each change the first; every answer must be right and the changed file read once per round. Before the fix a thread's query failed with "cannot write its copy" in the first round of every run.</p>
+    <h3 id="one-cache-folder-many-processes">One cache folder, many processes</h3>
+    <p><strong>The gap.</strong> The download cache lives in one folder under the system's temporary folder, so every process on a machine shares it, and "One catalog, many threads" made it safe only within one process: the URL's file lock kept threads apart, and nothing kept processes apart. A URL had one copy and one note (its <code>ETag</code>, <code>Last-Modified</code> and stamp), each replaced by a rename, so two processes could:</p>
+    <ul>
+     <li><em>fail a query.</em> On Windows a rename cannot replace a file another process has open, and a reader holds the copy open while it reads it, so the writer's rename failed and so did its query ("cannot write its copy"). With six processes querying a changing file, about one query in ten failed.</li>
+     <li><em>pair a copy with another download's note.</em> The copy and the note were two renames. Two processes that downloaded different versions could leave one's copy beside the other's note, and a note's validators are what the next fetch sends: with the newer note beside the older copy, the server answers 304 and the older copy is served as current until the file changes again. A reader could also read a note, then a copy another process had replaced since.</li>
+    </ul>
+    <p><strong>The design: immutable versions and one small note, published by one rename.</strong> Each URL has a folder of its own (named by the URL's hash) holding:</p>
+    <ul>
+     <li><em>versions</em>: each download, under a name no other writer uses (<code>PID-THREAD-COUNT_name.csv</code>: the process id, the thread's number from <code>Thread-&gt;GetCurrentId</code>, and a count of this process's writes; a name a process with the same id left behind is skipped). A version is written once, whole, and never changed, so a reader never sees it change, and since no other writer uses its name, writing it cannot fail because another process reads something. The URL's own file name ends it, so its extension still says how to read it.</li>
+     <li><em>the note</em>, <code>current</code>: four lines, the <code>ETag</code>, the <code>Last-Modified</code>, the stamp of the version and the version's name. It is written under a name of the writer's own and renamed over the old note: one rename of one small file publishes a version together with its validators. A reader reads the note once and uses the version it names, so the validators it sends are always the version's own and a 304 answer means that version is current.</li>
+    </ul>
+    <p>A fetch reads the note, revalidates with its validators, and on a 304 returns the version the note named. On a 200 it reads the note again: if it names the same content (the same stamp: another process published it meanwhile, or a server without validators sent it again), it returns that version and writes nothing; otherwise it writes a new version, publishes it, and returns it. A fetch always returns the version it decided on, whether or not its note is the one left in place, so two processes that download at once each get a whole, correct answer, and the last note wins, which costs at most one more download if it names the older version.</p>
+    <p>The note is the only file ever replaced, and readers hold it open only for one small read. Where that collides on Windows, the writer tries the rename again for up to about a second, and a reader that cannot open the note while it is being replaced tries again for a few milliseconds; a note that still cannot be read counts as none (the file is downloaded again), and a note that cannot be published leaves the old one, which names a whole version too. Neither is an error.</p>
+    <p><strong>Collecting old versions without a lock.</strong> A reader learns a version's name from the note or by writing the version itself, and opens it at once. So a version the note no longer names can be in use only by a reader that read the note while it named that version, or that wrote it. The note's age bounds the first: while the note is older than the grace period (five minutes), every version it does not name was superseded at least that long ago. The version's own age bounds the second. A fetch therefore deletes, in its URL's folder, every file other than the note, the version the note names and the version it is returning that is older than the grace period, but only while the note is older than that too; it reads the note before its age, so a note replaced in between looks new and nothing is deleted. A file another process has open cannot be deleted on Windows, and a later fetch tries again. Versions a process wrote but never published, and notes left by a process that stopped mid-write, go the same way. No lock file is needed: nothing is ever read, changed and written back, and each step is one atomic rename or the creation of a new name.</p>
+    <p>The cache of earlier versions of the library (a copy <code>HASH_name</code> and a <code>.meta</code> beside it in the cache folder itself) is not read: the first fetch of a URL downloads it again into its own folder, and the old files stay until the temporary folder is cleaned.</p>
+    <p><strong>Within a process,</strong> the catalog keeps its URL file lock only for single-flight reading: a fetch returns a version and its stamp, and threads that miss the catalog's file cache for that stamp together read the version once. It no longer re-reads the note under the lock to find the stamp of a copy that might have changed, because a version cannot change.</p>
+    <p><strong>The test.</strong> <code>query_url_cache_processes</code> starts an in-process server whose file changes every 15 ms (two URLs: one with an <code>ETag</code>, one with no validator, so every fetch of it downloads), and in each of ten rounds starts six processes of its own program that point their cache at one shared folder and query the file 24 times each: through a catalog they keep, a new catalog each time, and a <code>CsvSource</code>. Every version of the file has a different number of rows, each naming the version, so an answer shows whether it read one whole version, and each query first asks the server which version it has, so an answer older than that is caught. After each round the server stops changing and the parent, sharing the folder, must read the current version. Before the fix it failed in every run on Windows, in every mode (133 to 184 of the 1,440 queries failed with "cannot write its copy"), and in most runs on Linux, where nothing fails but answers are wrong: two to five per run read a version older than the server had when the query began (a 304 for a note paired with an older copy), and some read a copy cut short. After it, none fail on either, at <code>-opt s3</code> and <code>s0</code>, with and without the JIT, and with <code>OBJECK_JIT_THRESHOLD=1</code>.</p>
+    <h3 id="archives-and-workbooks-in-sql">Archives and workbooks in SQL</h3>
+    <p><strong>The gap.</strong> Phase 7's <code>ArchiveSource</code> and <code>XlsxSource</code> could only be loaded into a catalog by code; a query could not name <code>results.zip</code> or <code>budget.xlsx</code> the way it names <code>runs.csv</code>.</p>
+    <p><strong>The syntax: a member after a dot, like a table after its schema.</strong> A quoted path is already a table in <code>FROM</code> and <code>JOIN</code>; a container's member follows it as a second quoted string:</p>
+<pre class="plain">select * from 'results.zip'                                  -- the archive's listing
+select * from 'results.zip'.'2026/runs.csv'                  -- a member, by its extension
+select * from csv('results.zip'.'notes.txt', delimiter =&gt; ';')    -- a member read a given way
+select * from xml('results.zip'.'feed.xml', row =&gt; 'item')
+select _member, count(*) from 'results.zip'.'2026/*.csv' group by _member
+select * from 'runs/*.tar.gz'.'metrics.csv'                  -- one member of each archive; _file
+select * from 'budget.xlsx'                                  -- the first worksheet
+select * from 'budget.xlsx'.'Q1 2026'                        -- a worksheet by name
+select _sheet, sum(amount) from 'budget.xlsx'.'Q*' group by _sheet
+select * from xlsx('budget.xlsx'.'Report', header =&gt; false, first_row =&gt; 3)</pre>
+    <p>Alternatives weighed: a separator inside the path (<code>'results.zip#runs.csv'</code>, <code>'results.zip!/ runs.csv'</code>) would make a legal file name mean something else and need escaping; a function argument (<code>zip('results.zip', member =&gt; 'runs.csv')</code>) reads well but repeats the format the extension already gives. The two-string form reuses the dotted reference SQL already has (<code>schema.table</code>), keeps each name a plain literal, and composes with the existing function forms, whose options then apply to the member. The lexer gained <code>.</code> as a symbol where it is neither inside a name (<code>t.col</code> stays one word) nor the start of a number; it was an error everywhere else before, so no statement that parsed changes meaning.</p>
+    <p><strong>What each form reads.</strong></p>
+    <ul>
+     <li>A path is an archive by its name: <code>.zip</code>, <code>.tar</code>, <code>.tar.gz</code>, <code>.tgz</code> (by name, as every file in SQL is read; <code>ArchiveSource</code> itself then tells zip from tar by content). <code>.xlsx</code> is a workbook, as is anything read with <code>xlsx(...)</code>.</li>
+     <li>An archive alone is <code>ArchiveSource</code>'s listing table. A member is read by its extension, exactly as <code>ArchiveSource</code> reads members (CSV, TSV, JSON Lines, JSON, <code>.otab</code>, gzipped forms; XML needs <code>xml(..., row =&gt; ...)</code>); a function form chooses the format and its options (<code>delimiter</code>, <code>header</code>, <code>row</code>), so a <code>.txt</code> member reads with <code>csv(...)</code>. A JSON or XML member's child tables are not reachable from SQL; load the source for those.</li>
+     <li>A workbook alone is its first worksheet; a sheet is named after the dot. <code>xlsx(...)</code> takes <code>header</code> and <code>first_row</code>, as <code>XlsxSource-&gt;SetHeader</code> and <code>SetFirstRow</code>.</li>
+     <li>A member or sheet with <code>*</code> or <code>?</code> reads every match as one table with a <code>_member</code> or <code>_sheet</code> column, in archive or workbook order; a glob over the archives' own names adds <code>_file</code>, as for any file. Both together give both columns.</li>
+     <li>The default table name is the member's base name (<code>runs</code> for <code>'2026/runs.csv'</code>) or the sheet's name; <code>AS</code> gives another.</li>
+    </ul>
+    <p><strong>Safety and access, unchanged.</strong> Everything goes through <code>ArchiveSource</code> and <code>XlsxSource</code>, so their checks apply: nothing is extracted, a member climbing out with <code>..</code>, an absolute path, duplicate or overlapping zip members, a zip bomb, a CRC32 mismatch and the decompression limits are all refused. <code>Catalog-&gt;SetFileAccess(false)</code> refuses archives and workbooks like any file (so <code>TableServer</code> never reads one), and the new <code>Catalog-&gt;SetArchiveLimits(member, total)</code> sets the limits for archives and workbooks named in its queries (256 MB and 1 GB by default, as the sources' own); a refusal names <code>SetArchiveLimits</code> rather than the source's <code>SetLimits</code>. A URL archive is fetched through the download cache like any URL file.</p>
+    <p><strong>Caching.</strong> As any file named in SQL: per catalog, keyed by path, member, format and options, and re-read when the archive's size or modification time changes.</p>
+    <p><strong>Errors</strong> name the archive and member or sheet: a missing member or sheet, a member in no table format, an XML member without its row element, a pattern that matches nothing, a function form on an archive with no member, a member named on a plain file, and an unquoted or empty member.</p>
+    <p><strong>Tests.</strong> <code>query_archives_in_sql</code>: a zip (deflated and stored members, a <code>.txt</code> read by <code>csv()</code>, XML by <code>xml()</code>), a <code>.tar.gz</code> and a <code>.tgz</code> (and a glob over both), a workbook (first sheet, a named sheet, a sheet pattern, <code>header =&gt; false</code>, <code>first_row</code>), joins across all three, the catalog cache, and every refusal above, each archive and workbook written by the test. Before the change every query fails at the lexer (<code>unexpected character '.'</code>).</p>
+    <h3 id="a-server-that-answers-at-once">A server that answers at once</h3>
+    <p><strong>The gap.</strong> <code>TableServer</code> answered one request at a time: every request took its mutex, from parsing the statement to writing the answer, because a catalog could not be queried by two threads at once. Once it could ("One catalog, many threads"), the mutex served only to keep a request from reading a table while it was written, and the server could not even do that: the program that publishes the tables writes them from its own threads, which never took the server's mutex, so a request could read a table half changed while every other request waited in line.</p>
+    <p><strong>What can write.</strong> Nothing over the wire: the server answers only <code>SELECT</code> (a statement that would change data, <code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>, <code>CREATE</code> and <code>DROP INDEX</code>, <code>CREATE TABLE</code>, is refused with 403, before it runs) and has file access off. Every request only reads. The writer is the program, through the <code>Table</code> objects it published.</p>
+    <p><strong>The design: a readers-writer lock, and an API for the program's writes.</strong></p>
+    <ul>
+     <li>Each request takes a read share for as long as it reads: from parsing to the last byte of its answer (a table sent as CSV, JSON or <code>.otab</code> is read while it is written out). Any number of requests hold read shares at once, each on the thread the web server gave its connection.</li>
+     <li><code>TableServer-&gt;BeginWrite()</code> waits until no request is being answered and holds new ones off until <code>EndWrite()</code>. A program changes a published table only between the two: <code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>, an index, a column, <code>Compact</code>, or anything else that writes a <code>Table</code>. The server's guarantee is exactly that: it keeps its own requests from overlapping the program's writes made inside <code>BeginWrite</code>/<code>EndWrite</code>, and nothing else; a write made outside them, or a table also read by other threads of the program, is the program's to order, as the table contract says ("Concurrent readers").</li>
+     <li>A waiting writer holds new readers off, so a steady stream of requests cannot keep a change waiting for ever; the requests already in finish first. The lock is not reentrant: a thread calls <code>EndWrite</code> before it calls <code>BeginWrite</code> again, and calls neither while answering a request.</li>
+     <li><code>Publish</code> and <code>Unpublish</code> need no lock: they are a catalog's <code>Add</code> and <code>Remove</code>, which are safe while threads query, and a request already being answered keeps the tables it found. The table list skips a table unpublished while it was being written.</li>
+     <li>The lock is a <code>ThreadMutex</code> and a <code>Condition</code> in the server (a waiting thread is parked for the collector). The count of answered requests has its own small lock.</li>
+    </ul>
+    <p>A callback form (<code>Write(change)</code>) was weighed and left out: the pair is the smallest API that lets a program hold the write across several statements, and Objeck has no exceptions that could skip the <code>EndWrite</code>.</p>
+    <p><strong>The test.</strong> <code>query_server_concurrent</code>: eight client threads meet at a barrier before each of nine requests (grouped and joined SELECTs, an ordered limit, <code>DISTINCT</code>, tables as JSON and <code>.otab</code>, and bad SQL), in CSV, JSON and <code>.otab</code>, over six rounds, and every answer must equal the one a catalog of the same tables gives on one thread. Then the program changes a published table sixty times between <code>BeginWrite</code> and <code>EndWrite</code>, cell by cell (every <code>a</code> is its row's id plus the changes so far and every <code>b</code> minus that, so a read during a change sees a sum or a range that is off), while four clients read it and another sends statements that would write, each of which must be refused with 403. On master the test does not compile (there is no <code>BeginWrite</code>); with the program's writes left unguarded, which is all master offered, 18 to 136 reads per run saw a change half done, in every mode. It passes at <code>-opt s3</code> and <code>s0</code>, with and without the JIT, and with <code>OBJECK_JIT_THRESHOLD=1</code>.</p>
+    <p><strong>Throughput.</strong> One SELECT (a <code>GROUP BY</code> over 20,000 rows) sent as fast as each client thread can, for six seconds, on this machine (Windows, 24 logical processors):</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>clients</th><th>before (mutex)</th><th>after</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="clients">1</td><td data-label="before (mutex)">37.8 req/s</td><td data-label="after">34.2 req/s</td></tr>
+      <tr><td data-label="clients">4</td><td data-label="before (mutex)">49.1 req/s</td><td data-label="after">86.7 req/s</td></tr>
+      <tr><td data-label="clients">8</td><td data-label="before (mutex)">48.2 req/s</td><td data-label="after">112.4 req/s</td></tr>
+     </tbody>
+    </table>
+    <h3 id="indexes-in-otab-files">Indexes in .otab files</h3>
+    <p><strong>The gap.</strong> Phase 6 left indexes out of the file, so a table lost them on every <code>Save</code> and <code>Load</code>, every <code>ToBytes</code> and <code>FromBytes</code>, and every <code>Open</code> of a durable table; a program had to remember which indexes it made and create them again.</p>
+    <p><strong>What is stored: the definition, not the entries.</strong> Each index's name, column and kind go in the footer. The entries are rebuilt from the column by the first query that uses the index, as a stale index is today. Storing the sorted order too was considered and left out:</p>
+    <ul>
+     <li>it is not cheap to keep right. A partial read renumbers nothing but drops columns, <code>Append</code> adds rows the stored order does not cover, and deleted rows are never saved, so slots shift; each case would need the order rewritten or thrown away.</li>
+     <li>it is not safe to trust. A stored order that disagrees with its column (a bug, or bytes damaged in a way the CRC32 misses) gives wrong answers silently, and checking it costs a pass over the column, about what rebuilding a hash index costs. Rebuilding is never wrong.</li>
+     <li>it is not slow to skip: phase 6 measured 0.2-0.6 s to build an index on a million rows, paid once per index and only if a query uses it. Phase 8 lists stored entries as an option if a workload shows the rebuild matters.</li>
+    </ul>
+    <p><strong>The format: version 2, written only when needed.</strong> OTAB_FORMAT.md's rules say a version 1 footer must be consumed exactly and that new content comes with a new version, which a version 1 reader refuses. So the definitions are a new last part of the footer in version 2, and the writer picks the lowest version that holds the table: <strong>version 1 for a table without indexes, byte for byte what it wrote before</strong>, and version 2 only for a table with indexes. Libraries before this change read every file they read before, and refuse an indexed table's file by its header ("an .otab file of format 2; this library reads format 1") rather than misread it. This library reads both. A version 2 index list is validated like the rest of the footer (a known kind, a data column, no repeated name or column, a count below the column count) and refused with the index it found wrong.</p>
+    <p><strong>Each path:</strong></p>
+    <ul>
+     <li><code>Save</code>, <code>ToBytes</code>, <code>Load</code>, <code>FromBytes</code>: definitions written and restored. Restored indexes are attached unbuilt, so loading stays a copy of arrays; the first query that uses one builds it, as after any change, and "Concurrent readers" above makes that first build safe when several threads query a just-loaded table.</li>
+     <li><code>OtabFile-&gt;Read(names)</code>, including range reads over HTTP: the definitions are in the footer, which opening reads anyway; a read restores the indexes of the columns it reads, and <code>GetIndexNames</code> and <code>GetFormatVersion</code> report what the file holds.</li>
+     <li><code>Append</code>: keeps the file's version and definitions (the copied prefix holds its header); the appending table's own indexes are not added.</li>
+     <li>Durable tables: <code>Open</code> restores the file's indexes, then replays the log through them, as any write reaches an index. <code>Checkpoint</code> saves the definitions. The log records rows, not indexes, and its format is left alone: <code>CreateIndex</code> and <code>DropIndex</code> on a durable table, and SQL <code>CREATE INDEX</code>/<code>DROP INDEX</code>, are saved by an immediate checkpoint (inside a statement, at its end, since a checkpoint replaces the log the statement is writing), with the compression the file already had. An index change is rare and a checkpoint is one save.</li>
+     <li><code>TableServer</code> sends tables as version 1 (<code>ToBytes(compression, false)</code>, new), so a client library of any age reads them; a remote reader has no use for the server's indexes.</li>
+     <li>The generic <code>Serializer</code> already carried indexes and is unchanged.</li>
+    </ul>
+    <p><strong>Tests.</strong> <code>query_persist_indexes</code>: every index kind on every indexable type through Save/Load, bytes, a compressed image and a partial read, each query through a restored index equal to a scan and naming the index in its plan; a table without indexes written byte for byte as an image made by master's library (kept in the test as hex) and that image read back; <code>Append</code> to version 1 and version 2 files; a durable table's indexes through Open, replay, <code>CreateIndex</code>, <code>DropIndex</code> and SQL; and footers whose index lists are wrong in each way above, each with a correct checksum so only the defect is refused. <code>query_net_range</code> reads the definitions over HTTP range requests; <code>query_net_serve</code> checks that served tables are version 1. <code>tools/otab/otab_dump.py</code> reads version 2.</p>
+    <h3 id="expressions-in-every-clause">Expressions in every clause</h3>
+    <p><strong>The gap.</strong> #1367 put arithmetic in the select list and nowhere else. <code>where price * qty &gt; 100</code>, <code>where a + b = c</code>, <code>group by x % 10</code>, <code>having sum(a) / count(*) &gt; 2</code>, <code>order by hi - lo</code>, <code>join u on t.n + 1 = u.n</code> and <code>select max(x) - min(x)</code> are each refused, so a research program computes a column in a first query and filters, groups or joins it in a second. These are the questions research code asks most, and the release v2026.10.2 includes the answer.</p>
+    <p><strong>What is added, and what is not.</strong> One expression grammar, the select list's, in every clause: WHERE, JOIN ... ON, GROUP BY, HAVING, ORDER BY, and inside and around aggregates. No scalar functions (<code>abs</code>, <code>round</code>, <code>coalesce</code>, <code>length</code>, <code>upper</code>, <code>lower</code>): nothing below needs one, each is a separate decision about types and empty cells, and the grammar leaves room for them later (a name followed by <code>(</code>, as the aggregates are written). No string concatenation, no date arithmetic, no <code>CASE</code>, no expressions in <code>UPDATE ... SET</code> or <code>INSERT ... VALUES</code>: values there stay literals and placeholders. The method-chaining API (<code>Col</code>, <code>Predicate</code>) is unchanged; no public class or method is added.</p>
+    <h4 id="grammar">Grammar</h4>
+<pre class="plain">condition  := or
+or         := and (OR and)*
+and        := not (AND not)*
+not        := NOT not | '(' condition ')' | test
+test       := expr cmp expr
+            | expr [NOT] BETWEEN expr AND expr
+            | expr [NOT] IN '(' expr (',' expr)* ')'
+            | expr [NOT] (LIKE | MATCHES) value
+            | expr IS [NOT] NULL
+cmp        := '=' | '&lt;&gt;' | '!=' | '&lt;' | '&lt;=' | '&gt;' | '&gt;='
+expr       := term (('+' | '-') term)*
+term       := unary (('*' | '/' | '%') unary)*
+unary      := '-' unary | primary
+primary    := number | name | '?' | '(' expr ')' | aggregate
+            | text | date | NULL | TRUE | FALSE           -- in a condition only
+aggregate  := COUNT '(' '*' ')' | func '(' expr ')'      -- func: COUNT SUM AVG MIN MAX MEDIAN STDDEV
+value      := text | '?' | word                          -- a LIKE or MATCHES pattern, as now</pre>
+    <ul>
+     <li><strong>Precedence</strong>, lowest first: <code>OR</code>, <code>AND</code>, <code>NOT</code>, the tests (<code>=</code>, <code>&lt;&gt;</code>, <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code>, <code>BETWEEN</code>, <code>IN</code>, <code>LIKE</code>, <code>MATCHES</code>, <code>IS</code>), <code>+ -</code>, <code>* / %</code>, unary minus. Arithmetic is left-associative (<code>a - b - c</code> is <code>(a - b) - c</code>); tests do not chain (<code>a &lt; b &lt; c</code> is a syntax error). <code>BETWEEN</code>'s <code>AND</code> belongs to it: <code>x between lo + 1 and hi and y &gt; 0</code> is <code>(x between lo + 1 and hi) and y &gt; 0</code>. <code>NOT</code> before a test negates the test: <code>not a + 1 &gt; 2</code> is <code>not ((a + 1) &gt; 2)</code>.</li>
+     <li><strong>A parenthesis in a condition</strong> opens a grouped condition when what it encloses parses as a condition and nothing after the <code>)</code> continues an expression or a test (<code>+ - * / %</code>, a comparison, <code>IS</code>, <code>BETWEEN</code>, <code>IN</code>, <code>LIKE</code>, <code>MATCHES</code>, or <code>NOT</code> before one of those); otherwise it opens a parenthesised expression. So <code>(a &gt; 1 or b &gt; 2) and c = 3</code> groups, and <code>(a + b) * 2 &gt; 10</code> and <code>(a) = 1</code> compute. When neither reading parses, the error reported is the one found furthest into the statement.</li>
+     <li><strong><code>n -1</code></strong> (a name, then a number with its sign) stays a subtraction, as #1367 made it, in every clause; <code>x &gt; -1</code> still compares with minus one.</li>
+     <li><strong>Words.</strong> <code>TRUE</code> and <code>FALSE</code> are the numbers 1 and 0 in a condition, as they always were, and <code>NULL</code> is an empty value; in the select list, ORDER BY and GROUP BY they stay names, as before. A word standing alone in a <strong>value position</strong> of a test (the right side of a comparison, a <code>BETWEEN</code> bound, an <code>IN</code> entry) is a column when one of the query's tables has a column of that name, and otherwise text, which keeps the old engine's unquoted strings (<code>where s = cat</code>) while letting <code>where a + b = c</code> compare with column <code>c</code>. This changes the meaning of an old statement only where the word names a column (<code>where a = b</code> compared <code>a</code> with the text <code>'b'</code>; it now compares two columns). Everywhere else a name is a column, and an unknown one is an error.</li>
+     <li><strong>Aggregates</strong> may appear in the select list, HAVING and ORDER BY, not in WHERE, ON, GROUP BY or inside another aggregate. An aggregate's argument is an expression (<code>sum(a * b)</code>).</li>
+     <li><strong>Placeholders</strong> (<code>?</code>) may stand for any operand. They are numbered in the order they appear in the statement, as now.</li>
+     <li><strong>ORDER BY</strong> entries: a lone whole number is a select-list position (as now; below 1 is an error); a lone name is a select-list label, else a column (as now); anything else is an expression. <strong>GROUP BY</strong> entries: a column, as now, or an expression that reads at least one column (<code>group by 1</code> and <code>group by 2 * 3</code> are refused rather than read as positions or as one group).</li>
+    </ul>
+    <h4 id="values">Values</h4>
+    <p>An expression produces, for each row, one of: a whole number (Int), a number (Float), text, a date, a Bool, another object (a cell of an OBJECT column that is none of these), or an empty value. Columns give their cells by their storage type; an OBJECT column's cell is classified by its class (<code>IntRef</code>, <code>FloatRef</code>, <code>String</code>, <code>Date</code>, <code>BoolRef</code>; any other class is an object). Literals: a number as written (a whole number is an Int, anything with a <code>.</code> or an exponent a Float, and so is a whole number of more than 18 digits, as a CSV cell is typed), text, a date, <code>TRUE</code>/<code>FALSE</code> as 1 and 0, <code>NULL</code> as empty. A placeholder has its bound value's kind.</p>
+    <p><strong>Arithmetic reads numbers only</strong> (#1367's rule, kept): an operand that is empty, text, a date, a Bool or an object makes the result empty.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Operation</th><th>Ints</th><th>With a Float</th><th>Empty result when</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Operation"><code>a + b</code>, <code>a - b</code>, <code>a * b</code></td><td data-label="Ints">Int</td><td data-label="With a Float">Float</td><td data-label="Empty result when">an Int result does not fit in 64 bits</td></tr>
+      <tr><td data-label="Operation"><code>a / b</code></td><td data-label="Ints">Float (<code>7 / 2</code> is 3.5)</td><td data-label="With a Float">Float</td><td data-label="Empty result when"><code>b</code> is zero (<code>0</code>, <code>0.0</code> or <code>-0.0</code>)</td></tr>
+      <tr><td data-label="Operation"><code>a % b</code></td><td data-label="Ints">Int, the sign of <code>a</code> (truncated); <code>a % -1</code> is 0</td><td data-label="With a Float">Float: <code>a - trunc(a / b) * b</code></td><td data-label="Empty result when"><code>b</code> is zero</td></tr>
+      <tr><td data-label="Operation"><code>-a</code></td><td data-label="Ints">Int</td><td data-label="With a Float">Float</td><td data-label="Empty result when"><code>a</code> is the smallest Int</td></tr>
+     </tbody>
+    </table>
+    <ul>
+     <li><strong>Overflow</strong> of Int arithmetic gives an empty cell, not a wrapped number (a change from #1367, which wrapped silently; the release that ships either is v2026.10.2, so no released behaviour changes). The checks cost a comparison or two per row. Float arithmetic follows IEEE 754: overflow gives an infinity, <code>inf - inf</code> and <code>0 * inf</code> give NaN, and NaN propagates; NaN and the infinities are values, not empty cells.</li>
+     <li><strong>A zero divisor</strong> gives an empty cell, as #1367 decided (a Float division by zero would stop the program, and an Int one would raise). <code>a % -1</code> is defined as 0 because the hardware instruction traps on the smallest Int.</li>
+     <li>An Int that meets a Float converts to a Float, rounding past 2^53, as everywhere in the engine.</li>
+     <li><strong>Constant folding.</strong> A part of an expression that reads no column (literals, and placeholders with their values) is computed once per run, before any row is read, by the same rules.</li>
+    </ul>
+    <h4 id="comparisons-and-why-indexes-and-zone-maps-keep-working">Comparisons, and why indexes and zone maps keep working</h4>
+    <p>A test compares the two sides row by row with one table of rules, which is the rule a column has always been compared with a constant (section 3, "Phase 2" and "Phase 6" in "As built"):</p>
+    <ol>
+     <li>If either side is empty, every test except <code>IS NULL</code> is false (<code>&lt;&gt;</code> included).</li>
+     <li>Two Ints compare exactly (so <code>2^53 + 1 &gt; 2^53</code>).</li>
+     <li>Two numbers otherwise compare as Floats; if either is NaN they cannot be ordered.</li>
+     <li>Two texts compare as text; two dates in time order.</li>
+     <li>Two Bools compare false before true; a Bool read from a BOOL column also compares with the whole numbers 0 and 1 (which is what <code>TRUE</code> and <code>FALSE</code> are), as those numbers.</li>
+     <li>Two other objects of the same class (cells of OBJECT columns and placeholders' values that are none of the kinds above) compare by that class's <code>Compare</code>, called on the left one, as <code>Cell-&gt;Compare</code> does.</li>
+     <li>Anything else cannot be ordered.</li>
+    </ol>
+    <p>Rule 5's asymmetry is the engine's today, kept on purpose: <code>flag = true</code> matches a BOOL column, while a <code>BoolRef</code> in an OBJECT column compared with the number 1 does not (<code>Cell-&gt;Compare</code>). With it, every pair of a column type and a constant compares exactly as the existing <code>Filter</code> compares them, which is what makes reduction (below) safe.</p>
+    <p>Values that cannot be ordered satisfy only <code>&lt;&gt;</code>. So NaN satisfies only <code>&lt;&gt;</code>, as it does today, and sorts after every number. <code>NOT</code> is the complement of a condition's rows, empty cells included (there is no three-valued logic, as before). <code>x IN (a, b)</code> is <code>x = a OR x = b</code>; <code>x BETWEEN a AND b</code> is <code>x &gt;= a AND x &lt;= b</code>. <code>LIKE</code> and <code>MATCHES</code> take part only when the operand is text (a number never matches, <code>NOT LIKE</code> included). <code>IS NULL</code> is true where the operand is empty, which for an expression includes an operand that is not a number and a zero divisor; NaN is not empty.</p>
+    <p><strong>Reduction.</strong> At the start of each run, with placeholders bound and constants folded, each test is reduced where it can be:</p>
+    <ul>
+     <li>a lone column against a constant (<code>price &gt; 100</code>, <code>100 &lt; price</code>, <code>price &gt; ? * 2</code>, <code>name = cat</code>), and <code>IS [NOT] NULL</code>, <code>LIKE</code> or <code>MATCHES</code> on a lone column, becomes the test the engine has always made, the column on the left (the operator flipped when it was on the right). It is the same <code>Filter</code> node as before, so it skips row groups by their zone maps, reads through a hash or sorted index, takes part in the planner's choice and in <code>BETWEEN</code>'s single range, exactly as a plain comparison does today;</li>
+     <li>a test with no column at all is decided once: it keeps every row or none (<code>where 1 = 0</code>);</li>
+     <li>anything else, an expression over columns on either side or two columns (<code>price * qty &gt; 100</code>, <code>a = b</code>), is an <strong>expression term</strong>: no zone maps and no index, rows tested by batch evaluation (below).</li>
+    </ul>
+    <p>There is no other rewriting: <code>x + 0 &gt; 5</code> is not <code>x &gt; 5</code> (on a text column the first is empty), and <code>-x &lt; -5</code> is not <code>x &gt; 5</code>. Because a reduced test is the node the engine already had, and the expression evaluator implements the same table of rules, reduction can only change speed, never an answer. In an AND, the planner reads the best index-backed term (section 5) and the expression terms are then tested on its candidates; an OR with an expression term scans, as an OR with any unindexed term does. A view's <code>GetPlan()</code> and <code>Explain</code> show what was chosen: a reduced term exactly as today (<code>where runs: SORTED index runs_score on score (&gt;)</code>), and expression terms as part of a scan (<code>where runs: scan</code>).</p>
+    <h4 id="where-each-kind-of-expression-is-evaluated">Where each kind of expression is evaluated</h4>
+    <ul>
+     <li><strong>WHERE</strong>, over the FROM table or the joined rows. Below a join, a term whose columns all come from one table is applied to that table before the join, as now (except on the right of a LEFT JOIN); a term over several tables is applied to the joined rows; a constant term is decided once.</li>
+     <li><strong>The select list</strong> of a query without grouping: after WHERE, over the rows that pass, into a computed column (#1367). The column is typed as any column is (section 1): INT when every result is an Int, FLOAT when any is a Float.</li>
+     <li><strong>ORDER BY</strong> an expression: computed the same way into a hidden column, then sorted as a column (stable; empty cells last in both directions; NaN after every number ascending and before them descending, as a FLOAT column already sorts). In ORDER BY a name inside an expression is a select-list label first, then a column, as a lone name already is (<code>select n * 10 as tens ... order by tens + n</code>). An entry whose text repeats a select-list expression uses that column.</li>
+     <li><strong>GROUP BY</strong> an expression: computed into a hidden column per row, then grouped exactly as a column is (rows sorted by the keys, groups in key order, empty keys last together). The default label of a select-list item that repeats a grouping expression is its text.</li>
+     <li><strong>A grouped query</strong> (GROUP BY, or any aggregate) evaluates in two layers:
+    <ol>
+     <li><em>per row:</em> grouping expressions and aggregate arguments (<code>sum(a * b)</code> sums the products; <code>count(e)</code> counts rows where <code>e</code> is not empty);</li>
+     <li><em>per group:</em> the select list, HAVING and ORDER BY are expressions over the group's keys and its aggregates (<code>sum(a) / count(*)</code>, <code>max(x) - min(x)</code>, <code>avg(x) * 2</code>, <code>k + 1</code> where <code>k</code> is grouped, <code>(x % 10) * 2</code> where <code>x % 10</code> is grouped). A column outside an aggregate must be a grouping column, or sit inside a sub-expression that repeats a grouping expression (matched by structure after names are resolved, not by spacing or redundant parentheses); otherwise the existing error: <code>column 'x' must be in GROUP BY or inside an aggregate</code>. In HAVING and ORDER BY a name is a select-list label first, as now.</li>
+    </ol>
+     </li>
+    </ul>
+    <p>Aggregates keep their rules ("Phase 4"): numbers only, empty when a group has none; COUNT is INT; SUM, MIN and MAX stay INT over whole numbers, which for an expression argument means every result of it is an Int (its computed column is INT); AVG, MEDIAN and STDDEV are FLOAT. (SUM of Ints is computed in Int arithmetic and wraps on overflow, as it does today; making it empty instead, like expression arithmetic, is left for a separate change.)</p>
+    <ul>
+     <li><strong>JOIN ... ON</strong> a condition over the tables joined so far and the new one:
+    <ul>
+     <li><em>Keys.</em> An AND-term of ON that is an equality whose one side reads only earlier tables and the other only the new table is a <strong>key equality</strong>. Keys match as the join has always matched them ("Phase 4"): as whole numbers when both sides are whole (INT, BOOL, DATE), as numbers when both are numbers (NaN matches nothing), otherwise by their text; empty keys never match. This applies to every key equality, so the order of the terms never matters; other tests in ON, an equality inside an OR or a NOT included, follow the comparison table above.</li>
+     <li><em>The fast path.</em> When the AND-terms of ON include a key equality, the first one is matched with the existing sorted key matcher: a side that is a column is used as it is, and a side that is an expression is computed once per row of its side (the new table's rows, or the rows joined so far) into a key column, typed as a computed column. The remaining terms are then tested on each matched pair. A term that reads only the new table filters that table's rows before matching (the same for INNER and LEFT joins: a right row that fails it never matches), through its indexes where it reduces.</li>
+     <li><em>Otherwise</em> (<code>on a.x &lt; b.y</code>, <code>on a.x + b.y = 10</code>, <code>on a.k = b.k or a.j = b.j</code>) every pair is tested, O(n·m), and the plan says so (<code>join u: every pair</code>). A join on two columns plans as it does today; a computed key adds <code>join u: key computed from t.n + 1</code>.</li>
+     <li><em>LEFT JOIN:</em> a left row with no pair that passes all of ON appears once, with empty cells on the right, before WHERE is applied. Output order stays the existing order: left rows in order, each with its matches in the right table's order.</li>
+    </ul>
+     </li>
+    </ul>
+    <h4 id="batch-evaluation-and-the-performance-contract">Batch evaluation and the performance contract</h4>
+    <p>Expressions are bound once per run (names to columns, placeholders to values, constants folded) into a tree of evaluator nodes, separate from the parsed statement. Each node evaluates a <strong>batch</strong> of up to 1,024 row numbers at once into scratch arrays it allocated when bound: a kind per row plus an <code>Int[]</code>, a <code>Float[]</code>, a <code>String[]</code> and a <code>Compare[]</code> for the values. A node is one loop over its children's arrays; a column node reads the column's own arrays (an encoded text column through its dictionary, a date as its stored milliseconds). An expression term compares two batches into the selection vector, chunk by chunk over the candidate rows, so its cost is a few array loops per 1,024 rows and <strong>no object is allocated per row</strong>: text and objects are references to the stored cells, numbers are never boxed. Computed columns are filled with <code>FillNumbers</code> from typed arrays rather than cell by cell. The only allocations in a query remain its result arrays and one set of scratch arrays per bound expression.</p>
+    <p>The bar: the select-list expression <code>price * qty</code> over 1,000,000 rows must not be slower than</p>
+    <p>#1367's row-at-a-time evaluator (which boxes every operand and result), and `where price * qty &gt;</p>
+    <p>100` must be within a small factor of the same loop written over plain arrays. Both are measured, with the numbers recorded here, at stage 1; no timing gate is added to the suite.</p>
+    <h4 id="thread-safety">Thread safety</h4>
+    <p>A parsed statement and its expression trees are built by the parser and never changed after: they are shared by every thread that finds the plan in a table's or catalog's cache. Name resolution makes new trees instead of renaming in place; binding makes evaluator nodes and scratch arrays that belong to one run. So a run writes nothing a cached plan holds, and the existing contracts ("Concurrent readers", "One catalog, many threads") cover expressions with no new lock. (#1367's select-list evaluator numbered its column references inside the parsed tree at parse time; that state moves into the per-run binding.)</p>
+    <h4 id="prepared-statements">Prepared statements</h4>
+    <p>A placeholder may stand anywhere an operand can, in any clause. Values are read at the start of each run, so constant folding and reduction use the bound values (<code>where price &gt; ? * 2</code> reads through a sorted index on <code>price</code>), and a statement bound again re-plans. An unbound placeholder is refused as now (<code>no value bound for placeholder N</code>). A bound value in arithmetic that is not a number gives empty results, by the rule above.</p>
+    <h4 id="errors">Errors</h4>
+    <p>Every refusal returns Nil with <code>GetError</code> set, never a silent empty result:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Statement</th><th>Error</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Statement"><code>select zz + 1 from t</code></td><td data-label="Error"><code>unknown column 'zz' in 'zz + 1'</code> (#1367)</td></tr>
+      <tr><td data-label="Statement"><code>where zz + 1 &gt; 0</code></td><td data-label="Error"><code>unknown column 'zz'</code></td></tr>
+      <tr><td data-label="Statement"><code>where sum(x) &gt; 1</code></td><td data-label="Error"><code>syntax error at position N: expected a column name (aggregates belong in HAVING, not WHERE), found 'sum'</code> (as now)</td></tr>
+      <tr><td data-label="Statement"><code>group by sum(x)</code></td><td data-label="Error"><code>GROUP BY cannot use an aggregate: 'sum(x)'</code></td></tr>
+      <tr><td data-label="Statement"><code>group by 1</code>, <code>group by 2 * 3</code></td><td data-label="Error"><code>GROUP BY needs a column or an expression over columns, not '1'</code></td></tr>
+      <tr><td data-label="Statement"><code>select sum(count(*))</code></td><td data-label="Error"><code>an aggregate cannot contain another aggregate: 'sum(count(*))'</code></td></tr>
+      <tr><td data-label="Statement"><code>on sum(t.x) = u.y</code></td><td data-label="Error"><code>aggregates are not allowed in ON: 'sum(t.x)'</code></td></tr>
+      <tr><td data-label="Statement"><code>select k, n + 1 from t group by k</code></td><td data-label="Error"><code>column 'n' must be in GROUP BY or inside an aggregate</code></td></tr>
+      <tr><td data-label="Statement"><code>where a &lt; b &lt; c</code></td><td data-label="Error"><code>syntax error at position N: expected ...</code> (the parser's usual form)</td></tr>
+      <tr><td data-label="Statement"><code>order by zz + 1</code></td><td data-label="Error"><code>unknown column 'zz' in ORDER BY 'zz + 1'</code></td></tr>
+     </tbody>
+    </table>
+    <p>Messages that exist today keep their text. Each stage replaces the refusals it lifts (#1367's <code>an expression in the select list of a grouped or aggregate query is not supported</code>, and the syntax errors that expressions in WHERE, ON, GROUP BY and HAVING meet today), and its test shows them before the change.</p>
+    <h4 id="stages">Stages</h4>
+    <p>Each stage is its own pull request, merged before the next starts, with <code>query.obl</code> and every library that links it rebuilt (<code>query_ml</code>, <code>query_odbc</code>, <code>query_server</code> and <code>query_vision</code> change only by class ids when classes are added to <code>query.obl</code>, which a decompressed comparison checks).</p>
+    <ol>
+     <li><strong>The expression core, WHERE and ORDER BY.</strong> The typed expression tree and its batch evaluator, used by the select list (replacing #1367's evaluator), WHERE (with reduction, UPDATE and DELETE included) and ORDER BY.</li>
+     <li><strong>Grouping.</strong> GROUP BY expressions, aggregates over expressions, expressions over aggregates in the select list, HAVING and ORDER BY.</li>
+     <li><strong>Joins.</strong> ON conditions: key equalities over expressions, other terms, and the every-pair path.</li>
+    </ol>
+    <h4 id="tests">Tests</h4>
+    <p>Every new or touched test runs at <code>-opt s3</code> and <code>-opt s0</code>, each under <code>obr</code>, <code>obr --jit=off</code> and <code>OBJECK_JIT_THRESHOLD=1</code>, on Windows and on Linux.</p>
+    <ul>
+     <li><strong>Differential</strong> (<code>query_expr_differential</code>, extended by each stage): random tables (INT with negatives and whole numbers past 2^53, FLOAT with NaN, infinities and -0.0, STRING with an encoded and a plain column, DATE, BOOL, an OBJECT column mixing numbers and text, empty cells, deleted rows) and random expression trees (columns, literals of every kind, placeholders, <code>+ - * / %</code>, unary minus, parentheses), in random conditions (every comparison, AND, OR, NOT, IN, BETWEEN, LIKE, IS [NOT] NULL), select lists, ORDER BY, and at stages 2 and 3 GROUP BY, aggregates, HAVING and joins. Each query runs through the engine and through a naive row-at-a-time evaluator written in the test from the rules above, and the rows and their order must be equal. Seeds come from the command line (a fixed default set for the suite), with many rounds per seed.</li>
+     <li><strong>Indexes and zone maps:</strong> each differential query also runs on a twin table carrying random hash and sorted indexes, and on tables large enough to span several 64K-row groups and several 1,024-row batches (sizes just under, at and over each boundary); the answers must be equal. Reduced terms must report index plans (<code>price &gt; ? * 2</code>, <code>100 &lt; price</code>).</li>
+     <li><strong>Prepared statements:</strong> placeholders in every clause, bound and re-bound, against the oracle.</li>
+     <li><strong>Concurrency</strong> (<code>query_expr_concurrent</code>): threads sharing a catalog meet at a barrier before each statement, with expressions in every clause and statements new to the plan cache each round; every answer must equal the one computed alone.</li>
+     <li><strong>Refusals</strong> with their exact messages (the table above), and the old refusals shown failing first.</li>
+     <li><strong>Explain</strong>: reduced terms name their index, expression terms scan, joins without a key say they test every pair.</li>
+     <li>The existing query tests, the full suite, and the libraries' decompressed comparison.</li>
+    </ul>
+    <h4 id="as-built-1">As built</h4>
+    <p><strong>Stage 1 (expression core, WHERE, ORDER BY).</strong></p>
+    <ul>
+     <li><code>SqlExpr</code> is the parsed tree (column, number, other literal, placeholder, bare word, <code>+ - * / %</code>, unary minus); <code>SqlEval</code> is a tree bound for one run, with a batch <code>Eval</code> into a kind array and typed arrays; <code>ExprPredicate</code>, a private subclass of <code>Predicate</code>, is the test the parser makes when a condition is not column-against-a-value. Conditions that were column-against-a- value still parse to exactly the <code>Predicate</code> they always did. #1367's per-row <code>SqlExpr-&gt;Eval</code> and its parse-time column numbering are gone; the select list uses <code>SqlEval</code> and fills its columns with <code>FillNumbers</code>.</li>
+     <li><code>Filter-&gt;BindExpr</code> does the reduction. One case is not flipped: a constant of a class other than a number, text, a date or a Bool, against an OBJECT column on the right, because such a class's <code>Compare</code> need not order both ways alike; it is tested as an expression.</li>
+     <li>Found by the differential test and fixed at the source: <code>Cell-&gt;Compare</code> ordered two Bools of an OBJECT column with <code>BoolRef-&gt;Compare</code>, which answers 1 for any two unequal values, so ORDER BY over such a column depended on the sort's steps and <code>&lt;</code>/<code>&gt;</code> against a Bool were wrong both ways. Two Bools now compare false before true, which is also rule 5's order, so rules 5 and 6 above need no Bool exception.</li>
+     <li>A whole number of more than 18 digits reads as a Float (<code>Cell-&gt;NumberKind</code>, unchanged), so <code>9223372036854775807</code> in a statement is a Float literal; the test's evaluator follows that.</li>
+     <li>Found while measuring: a method holding a Float <code>?:</code> was never JIT-compiled (the compiler stored the value through an Int temporary), which kept <code>SqlEval</code>'s arithmetic and <code>Filter-&gt;EvalExpr</code> interpreted; fixed in the compiler by #1397. Measured at 1,000,000 rows (Windows x64, <code>-opt s3</code>, best of three, <code>ExecuteView</code>), both with #1397's compiler:</li>
+    </ul>
+    <p>| Query | Before (master) | Stage 1 | |---|---|---| | <code>select price * qty</code> | 585 ms (#1367, row at a time) | 146 ms | | <code>where price * qty &gt; 100</code> (773k rows) | refused | 29 ms | | <code>where price * qty &gt; 1500</code> (28k rows) | refused | 23 ms | | the same filter over plain arrays | 9 ms | 9 ms | | <code>where price &gt; 50</code>, a scanned <code>Filter</code>, for scale | 29 ms | 28 ms |</p>
+    <p>So an expression term costs what a scanned column test does, about 3× a hand-written loop. Without #1397 the expression terms took 530-650 ms (interpreted). Once they were compiled, the differential test found the x64 JIT raising "Divide by zero" for a NaN divisor (its guard took an unordered compare as equal), fixed in the JIT by #1399.</p>
+    <ul>
+     <li>Tests: <code>query_expr_where</code> (59 checks), <code>query_expr_differential</code> (540 queries over 6 seeds by default, sized for the suite's time cap; 9,672 queries over 60 seeds, every seventh seed on a table of two 64K-row groups, checked once), <code>query_expr_zone_maps</code> (70,000 rows: group and batch boundaries, deletes next to them, a dictionary turned into plain strings, NaN, against a loop and an indexed twin), <code>query_expr_concurrent</code> (6 threads, 20 rounds, 1,920 checks). <code>query_aggregates</code>' check that a literal on the left is an error now checks that it compares.</li>
+    </ul>
+    <p><strong>Stage 2 (grouping).</strong></p>
+    <ul>
+     <li><code>SqlExpr</code> gained an aggregate node, so <code>sum(a * b)</code>, <code>count(x + 1)</code> and <code>sum(?)</code> parse; the select list, HAVING and ORDER BY parse every entry as an expression, and a lone column or a lone plain aggregate (<code>sum(x)</code>, <code>count(*)</code>) is still the item, test or entry it always was. GROUP BY takes expressions; a constant, a position and an aggregate are refused.</li>
+     <li>The per-row layer computes grouping expressions and aggregate arguments into columns of their own, indexed by row slot like the working table's (<code>FillComputedAt</code>), so nothing is copied; a key is either a working-table column (its sorted index still gives the grouping order) or such a column. The grouped result holds the select list, then each aggregate no plain item shows (labelled by its call written without surrounding parentheses, as HAVING and ORDER BY name a plain aggregate), then every key (<code>#groupN</code>); the select list's, HAVING's and ORDER BY's expressions are bound over it (<code>GroupExpr</code>). Two expressions are the same when their trees' keys are (<code>SqlExpr-&gt;Key</code>), after names are resolved, so spacing and redundant parentheses do not matter.</li>
+     <li>Changes beyond the design's letter, both widening: ORDER BY may name a grouping column the select list does not show (it was refused), and a bare word on the right of a HAVING test is a column of the grouped result when one has its name (it was always text).</li>
+     <li>Found by the differential test and fixed before landing: two aggregates written alike over different placeholders (<code>sum(?)</code> twice) got one label, and the second was read through the first's column (the grouped result's columns now have unique names; the labels shown are unchanged); a plain aggregate shown twice was computed once; and an aggregate inside parentheses was labelled with them, so HAVING could not find it.</li>
+     <li>Measured at 1,000,000 rows (Windows x64, <code>-opt s3</code>, best of three): <code>group by grp</code> with <code>sum(price)</code> 397 ms; <code>group by qty % 10</code> 462 ms; <code>sum(price * qty) / count(*)</code> by <code>grp</code> 888 ms (two aggregates: each of the engine's aggregates costs about 200-350 ms here, as before).</li>
+    </ul>
+    <p><strong>Stage 3 (joins).</strong></p>
+    <ul>
+     <li>ON is parsed as WHERE is, aggregates refused (<code>aggregates are not allowed in ON: 'sum(t.n)'</code>); <code>SqlJoin</code> keeps the condition. <code>a.col = b.col</code> alone is the key equality of two columns, read through <code>SqlKeyMatcher</code> exactly as before, with the same plan.</li>
+     <li><code>Join</code> splits each ON into its AND-terms: terms on the joined table alone join its WHERE filter (so they can read its indexes); the first key equality is matched, an expression side computed into a column indexed by row (the joined table's side over its rows, the earlier tables' side over the positions joined so far); with no key equality every pair is a candidate. The other terms are tested on a table of the candidate pairs (<code>TestPairs</code>) and the other key equalities with <code>SqlKeyMatcher-&gt;KeyEquals</code>. A LEFT JOIN keeps a left row none of whose pairs passed, once, with empty cells on the right. ON naming a table joined later is refused.</li>
+     <li>Plans add <code>join u: every pair</code> and <code>join u: key computed from &lt;expression&gt;</code>; a join of two columns plans as it always did.</li>
+     <li>Candidate pairs are kept in <code>Int[]</code> arrays, never boxed. Measured (Windows x64, <code>-opt s3</code>, best of three): 200,000 × 1,000 rows on <code>t.n = u.w</code> 29 ms (31 ms on master); on <code>t.n + 1 = u.w + 1</code> 62 ms; on <code>t.n = u.w and t.v &gt; u.lo</code> 41 ms; 2,000 × 1,000 rows on <code>s.n between u.lo and u.hi</code> (every pair, 2,000,000 pairs) 346 ms.</li>
+    </ul>
+    <h3 id="open-questions">Open questions</h3>
+    <ul>
+     <li>Whether <code>Date</code> should be a first-class column type in phase 1 or start as an <code>ObjectColumn</code>; the current engine compares dates, so phase 1 must at least keep that working.</li>
+     <li>Whether <code>ObjectColumn</code> should exist at all, or whether storing an incompatible value should be an error. It keeps today's "any <code>Compare</code>" behaviour, at the cost of a slow path.</li>
+     <li>Whether the SQL <code>Catalog</code> should be global (one per program) or explicit. Explicit is assumed above; it is simpler to test and has no hidden state.</li>
+     <li>Whether sources should load eagerly into columns (assumed above: simple, and fast once loaded) or also offer a streaming scan for structures too large to hold, such as a whole drive or a multi-gigabyte log. Eager loading with pushdown covers most research use; streaming would need a cursor-based plan and is left until a workload needs it.</li>
+     <li>Whether <code>ObjectSource</code> can read every field through <code>System.Introspection</code>, or only public ones, needs checking against the reflection API before phase 1; the function-per-column form covers whatever it cannot.</li>
+     <li>How a JSON or XML document with irregular structure (the same key holding an object in one record and a string in another) should map: promote the column to <code>ObjectColumn</code>, or split it.</li>
+    </ul>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

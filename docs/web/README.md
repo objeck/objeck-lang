@@ -18,9 +18,11 @@ web/
     └── favicon.ico        # Favicon
 ```
 
-## The guides
+## The guides and the documentation pages
 
-`guides.html` and `guide_*.html` are rendered from the Markdown in [`docs/guides`](../guides/) by `python tools/docs/guides_to_html.py` (add `--check` to see whether they are out of date). Edit the Markdown, not these pages.
+`guides.html` and `guide_*.html` are rendered from the Markdown in [`docs/guides`](../guides/), and `docs.html` and `doc_*.html` from the Markdown files the site links to (architecture, design notes, the language reference, performance, editors and the rest; the list is `DOCS` in the script), by `python tools/docs/guides_to_html.py`. Add `--check` to see whether any page is out of date. Edit the Markdown, not these pages. A relative link between two of those files becomes a link between their pages; a link to anything else in the repository goes to GitHub.
+
+All pages share `style/styles.css` (the dark, gradient theme, with CSS variables at the top) and copy their head, navigation and footer from `ai_guide.html`, so a new menu entry goes there and in the hand-written pages (`index.html`, `getting_started.html`, `readme.html`).
 
 ## Deployment
 

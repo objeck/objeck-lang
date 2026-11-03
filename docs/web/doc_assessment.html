@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Architecture assessment, November 2026 — Objeck Language</title>
+  <meta name="description" content="An assessment of the language, compiler, runtime, JIT and collector, debugger, language server, standard library and the build, test and release machinery, as of master 5faaca629f (v2026.10.3 in development)."/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Architecture assessment, November 2026</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/ARCHITECTURE_ASSESSMENT_2026_11.md" target="_blank">docs/ARCHITECTURE_ASSESSMENT_2026_11.md on GitHub</a></div>
+    <p class="page-lead">An assessment of the language, compiler, runtime, JIT and collector, debugger, language server, standard library and the build, test and release machinery, as of master <code>5faaca629f</code> (v2026.10.3 in development).</p>
+    <div id="toc_container" class="plain">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#how-this-was-done">How this was done</a></li>
+      <li><a href="#verdict">Verdict</a></li>
+      <li><a href="#what-is-well-done">What is well done</a></li>
+      <li><a href="#findings">Findings</a></li>
+      <li><a href="#roadmap">Roadmap</a></li>
+      <li><a href="#not-assessed">Not assessed</a></li>
+     </ul>
+    </div>
+
+    <p><strong>Status: snapshot.</strong> Several findings have been fixed since: 1.1 (the dead parser copy is gone), 2.3 (<code>VMContext</code> carries <code>abi_version</code> and <code>struct_size</code>), 2.2 (the loader returns an error instead of calling <code>exit(1)</code>; the compiler back end throws <code>CompilerFatal</code>, with one <code>exit(1)</code> left in <code>linker.cpp</code>), part of 2.1 (<code>Loader::Verify</code> exists; see <a href="doc_security.html">SECURITY_MODEL.md</a>), 5.1 (the nightly workflow's cron is live) and 1.4, 3.1 and 3.2 (the shared frame-layout header, typed compiled-frame slots and the <code>Int[]</code> tag: phases 3, 4 and 6 of <a href="doc_gc_roots.html">GC_ROOTS_DESIGN.md</a>). The tables below are left as they were written.</p>
+    <h3 id="how-this-was-done">How this was done</h3>
+    <p>Seven reviewers each read one component with no ability to build or run anything: compiler and language, VM runtime and native interface, JIT and garbage collector, debugger and command-line tools, language server, standard library, and build/test/release engineering. The coordinator then checked the claims below that could be checked cheaply, and ran one experiment of its own (the <code>Int[]</code> finding).</p>
+    <p>Every finding carries a tag:</p>
+    <ul>
+     <li><strong>V</strong>: verified against the code (or by running it) by the coordinator.</li>
+     <li><strong>R</strong>: reported by a reviewer who read the code and cited <code>path:line</code>; not independently re-checked.</li>
+     <li><strong>I</strong>: an inference the reviewer marked as such.</li>
+    </ul>
+    <p>Cost estimates are rough, from the reviewers. Nothing here was benchmarked except where stated. This is a static review: it can miss what only running the system shows.</p>
+    <h3 id="verdict">Verdict</h3>
+    <p>The design is sound where it matters most and disciplined about proving itself: the collector has named invariants and a verifier that can inject faults to show it notices; CI checks carry negative controls; the updater verifies a signature before trusting a byte of the manifest; the debugger's object-layout knowledge now lives in one header. The recurring weakness is not any single component but <strong>facts that must stay in agreement by hand</strong>: a new intrinsic touches about nine places, a version bump touches 58 files, frame-layout offsets must agree across five, and a dead copy of a parser function silently swallows edits. The second theme is <strong>trust and robustness at the edges</strong>: the VM treats an <code>.obe</code> as trusted native code, and library-load failures call <code>exit(1)</code> inside processes that embed the compiler (the language server, the REPL, the debugger).</p>
+    <p>None of this is alarming for a project of this size and age. The risk is that the same few classes of defect keep recurring (recent releases show stale-layout, stale-version and skipped-gate bugs), so the best investments are the ones that turn a convention into a check.</p>
+    <h3 id="what-is-well-done">What is well done</h3>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Area</th><th>Strength</th><th>Tag</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Area">GC</td><td data-label="Strength">Invariants A1 to C are named, tiered by cost, and checkable (<code>memory_verify.cpp</code>); <code>OBJECK_GC_VERIFY_INJECT</code> plants faults to prove the verifier catches them; the lock-order hazard is written down where it lives</td><td data-label="Tag">R</td></tr>
+      <tr><td data-label="Area">GC</td><td data-label="Strength"><code>OBJECK_GC_ROOTS=audit</code> checks the operand-stack maps against live stacks; interpreted frames no longer rely on a guess</td><td data-label="Tag">R</td></tr>
+      <tr><td data-label="Area">Testing</td><td data-label="Strength">Differential runs under five JIT and optimization configurations; checks that reduce coverage need a written reason; about 770 regression tests; skipped tests count as skipped</td><td data-label="Tag">R</td></tr>
+      <tr><td data-label="Area">CI</td><td data-label="Strength">About 20 build-free checks, several with "can still detect" negative controls; <code>runtime_deps.json</code> is one source of truth enforced in both directions</td><td data-label="Tag">R</td></tr>
+      <tr><td data-label="Area">Compiler</td><td data-label="Strength">Phases are separate units; AST nodes come from factories (thread-local), so ownership is leak-free by construction; version mismatches name both toolchains and say which side to upgrade</td><td data-label="Tag">R</td></tr>
+      <tr><td data-label="Area">VM</td><td data-label="Strength">Call and operand stacks reserve address space and commit on demand, with three checked limits; trap handlers allocate without collecting; process exit uses <code>_Exit</code> when other threads run (#877)</td><td data-label="Tag">R</td></tr>
+      <tr><td data-label="Area">Updater</td><td data-label="Strength">The signature is checked before the manifest is trusted; the swap is all-or-nothing with rollback and a health check; non-ASCII install paths are handled</td><td data-label="Tag">R</td></tr>
+      <tr><td data-label="Area">Debugger</td><td data-label="Strength">One header owns object-layout knowledge for both front ends; the DAP adapter reports honest errors and honors paging</td><td data-label="Tag">R</td></tr>
+      <tr><td data-label="Area">Query</td><td data-label="Strength">Per-block CRC32, write-then-rename, a framed change log that truncates a torn tail; a byte-level format document with an independent decoder</td><td data-label="Tag">R</td></tr>
+      <tr><td data-label="Area">LSP</td><td data-label="Strength">Content-keyed analysis caching, debounce, cancellation of queued requests, negotiated position encoding, per-window servers</td><td data-label="Tag">R</td></tr>
+     </tbody>
+    </table>
+    <h3 id="findings">Findings</h3>
+    <h4 id="1-facts-that-must-agree-by-hand">1. Facts that must agree by hand</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>#</th><th>Finding</th><th>Evidence</th><th>Tag</th><th>Recommendation (cost)</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="#">1.1</td><td data-label="Finding">A dead 1,891-line copy of the intrinsic parser. <code>Parser::ParseSystemStatement</code> has no caller; the live code is the inline <code>#ifdef _SYSTEM</code> block in <code>ParseStatement</code>. An edit to the dead copy has no effect and no error.</td><td data-label="Evidence"><code>parser.cpp:4510</code>, <code>parser.h:228</code>; <code>MakeSystemStatement</code> appears 626 times</td><td data-label="Tag">V</td><td data-label="Recommendation (cost)">Delete it (hours)</td></tr>
+      <tr><td data-label="#">1.2</td><td data-label="Finding">A new intrinsic or trap touches about nine places across six files, and nothing checks they agree. Three trap enumerators have no VM handler.</td><td data-label="Evidence"><code>traps.h</code>, <code>scanner.h/.cpp</code>, <code>parser.cpp</code> (two sites), <code>intermediate.cpp</code>, <code>lang.obs</code>, <code>common.cpp</code>, <code>common.h</code>; <code>LOAD_CLS_BY_NAME</code>, <code>FILE_LOGGER_DIR</code>, <code>LOAD_INST_UID</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">A CI check that every trap has a handler (hours); one table that generates the enum, scanner map and switch (about a week)</td></tr>
+      <tr><td data-label="#">1.3</td><td data-label="Finding">A version bump touches 58 files. The <code>.obl</code> set must be rebuilt through WSL/Linux and committed, and a <code>VER_NUM</code> mismatch surfaces only at run time or in a Windows CI failure.</td><td data-label="Evidence">the 2026.10.3 bump, commit <code>8b4f1c4d7b</code></td><td data-label="Tag">V</td><td data-label="Recommendation (cost)">Stamp every file from one script; assert each <code>.obl</code> header equals <code>VER_NUM</code> in CI (1 to 2 days)</td></tr>
+      <tr><td data-label="#">1.4</td><td data-label="Finding">JIT frame layout is spread over five places with almost no <code>static_assert</code>: about 50 hand-written offsets per ABI in the AMD64 header, about 40 in ARM64, the two <code>RegisterRoot</code> functions, and the collector's frame walkers (walk direction, a 16-word window). The design doc records an entry-zeroing count that went stale when the slots widened from six to ten.</td><td data-label="Evidence"><code>jit_amd_lp64.h:38-96</code>, <code>jit_arm_a64.h:41-83</code>, <code>memory.h:69</code>, <code>memory.cpp:1893-1899</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">One <code>JitFrameLayout</code> header with <code>static_assert</code>s (2 to 3 days)</td></tr>
+      <tr><td data-label="#">1.5</td><td data-label="Finding">The library list for API-doc generation is copied in five places; four build systems (MSBuild, Makefiles, Xcode, CMake for dependencies) have no cross-check of source lists.</td><td data-label="Evidence"><code>ci-build.yml</code>, <code>release-build.yml</code>, <code>code_doc64.in</code>, <code>gen_json.sh/.cmd</code></td><td data-label="Tag">R/I</td><td data-label="Recommendation (cost)">One list consumed by all (1 day)</td></tr>
+      <tr><td data-label="#">1.6</td><td data-label="Finding"><code>VER_NUM</code> is a release id used as a format version, so every point release invalidates every user <code>.obl</code> and <code>.obe</code>. It is the dotless concatenation of year, month and release, so it is not monotonic across ranges (<code>2026.1.10</code> and <code>2026.11.0</code> both give 2026110). Only equality is tested today.</td><td data-label="Evidence"><code>linker.cpp:924</code>, <code>loader.cpp:71</code></td><td data-label="Tag">V (the check) / I (the collision)</td><td data-label="Recommendation (cost)">A separate format version plus an instruction-set hash (2 to 3 days; creates a compatibility promise)</td></tr>
+     </tbody>
+    </table>
+    <h4 id="2-trust-and-robustness-at-the-edges">2. Trust and robustness at the edges</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>#</th><th>Finding</th><th>Evidence</th><th>Tag</th><th>Recommendation (cost)</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="#">2.1</td><td data-label="Finding">There is no bytecode verifier, no stated trust model and no sandbox hooks. The loader validates structure, not meaning (jump targets, local ids against frame size, trap ids and stack depth are not checked); the interpreter dereferences results that are null when out of range.</td><td data-label="Evidence"><code>interpreter.cpp:2439</code> and <code>:2655</code> chain <code>GetClass(...)-&gt;GetMethod(...)</code>; the loader checks counts and ids it stores</td><td data-label="Tag">V (the unchecked chain) / R (the rest)</td><td data-label="Recommendation (cost)">Write the trust model (a day); null-guard the chains; a libFuzzer target on <code>Loader::Load</code> (2 to 3 days); a verification pass (1 to 2 weeks)</td></tr>
+      <tr><td data-label="#">2.2</td><td data-label="Finding">Failures end the process: the loader calls <code>exit(1)</code> 16 times and the compiler back end 24 times (context 5, intermediate 3, linker 13, emit 3). Any embedding host (the language server, the REPL, the debugger) can be killed by a library-load failure.</td><td data-label="Evidence"><code>loader.cpp</code>, <code>linker.cpp:173-969</code></td><td data-label="Tag">V</td><td data-label="Recommendation (cost)">A fatal exception caught in <code>compiler.cpp</code>, and a diagnostics sink instead of formatted strings (3 to 5 days)</td></tr>
+      <tr><td data-label="#">2.3</td><td data-label="Finding">The native interface has no ABI version or size field, so a newer library reads past a shorter <code>VMContext</code> on an older VM. Parking around blocking calls is a convention, not enforced.</td><td data-label="Evidence"><code>lib_api.h</code> (no <code>abi_version</code> or <code>struct_size</code>)</td><td data-label="Tag">V</td><td data-label="Recommendation (cost)">Append <code>abi_version</code> and <code>struct_size</code> (a day); a scoped-blocking wrapper (1 to 2 days)</td></tr>
+      <tr><td data-label="#">2.4</td><td data-label="Finding">The language server runs analysis inside its own process; a native crash ends it, and many Objeck-side handlers dereference without Nil checks.</td><td data-label="Evidence"><code>diags.cpp:187-205</code> (an SEH guard under MSVC only), <code>server.obs:126</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">A Nil-safe parameter helper (a day); a child process for analysis (2 to 3 weeks)</td></tr>
+      <tr><td data-label="#">2.5</td><td data-label="Finding">The updater does not bind the downloaded version to the signature: the signed trusted comment is parsed but only printed, and the post-install health check runs <code>obc -v</code>, never <code>obr</code> against <code>lang.obl</code>.</td><td data-label="Evidence"><code>obu.cpp:1456</code>, <code>:1994-1998</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">Sign "version, asset" and compare to the tag; run a trivial program as the health check (2 days plus a key-rotation design)</td></tr>
+     </tbody>
+    </table>
+    <h4 id="3-the-collectors-root-model-work-in-progress">3. The collector's root model (work in progress)</h4>
+    <p>Phases 0 to 2 of <code>docs/GC_ROOTS_DESIGN.md</code> shipped in v2026.10.2: the interpreter's operand stacks are typed, so an <code>Int</code> is no longer rewritten there. Phases 3 to 6 (compiled frames, removal of the conservative scans, closure capture blocks) are under way.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>#</th><th>Finding</th><th>Evidence</th><th>Tag</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="#">3.1</td><td data-label="Finding">Compiled (JIT) frames are still scanned conservatively: an <code>Int</code> equal to a moved object's address, pending in a compiled method, is rewritten by a minor collection.</td><td data-label="Evidence">the fixture <code>vm_flag_fixtures/gc_address_int_pending.obs</code> fails 245 times with <code>--jit=1</code>; pinned as a known gap in <code>run_vm_flag_tests.py</code> section 28</td><td data-label="Tag">V</td></tr>
+      <tr><td data-label="#">3.2</td><td data-label="Finding"><strong>Not in the design's phase list.</strong> Heap <code>Int[]</code> shares <code>INT_TYPE</code> with object arrays, so an <code>Int[]</code> element equal to a moved object's address is rewritten by a minor collection, in default mode, interpreted and compiled alike. Measured: 242 of 2000 iterations.</td><td data-label="Evidence">see the reproduction below; <code>memory.cpp</code> around 2313-2398 and 2473-2490</td><td data-label="Tag">V</td></tr>
+      <tr><td data-label="#">3.3</td><td data-label="Finding">Four copies of the object-layout walker (<code>CheckMemory</code>, <code>ScanDirtyObject</code>, <code>FixupMemory</code>, the verifier's walk) must agree on field widths.</td><td data-label="Evidence"><code>memory.cpp:2352</code> ("mirroring CheckMemory and FixupMemory")</td><td data-label="Tag">R</td></tr>
+      <tr><td data-label="#">3.4</td><td data-label="Finding">Every allocation from every thread contends on one <code>young_offset</code> compare-and-swap; there are no thread-local allocation buffers. <code>CheckObject</code> takes <code>allocated_lock</code> per candidate word.</td><td data-label="Evidence"><code>memory.cpp:719-724</code>, <code>:2867-2874</code></td><td data-label="Tag">R/I (not measured)</td></tr>
+     </tbody>
+    </table>
+    <p><strong>Reproduction of 3.2</strong> (needs the test hook from PR 1483: <code>Runtime-&gt;TestAddressOf</code>, inert unless <code>OBJECK_GC_TEST_HOOKS=1</code>):</p>
+<pre class="plain">class Box { @v : Int; New(v : Int) { @v := v; } method : public : Get() ~ Int { return @v; } }
+class IntArrayAddr {
+  function : Main(args : String[]) ~ Nil {
+    changed := 0;
+    for(i := 0; i &lt; 2000; i += 1;) {
+      o := Box-&gt;New(i);
+      held := Int-&gt;New[2];
+      held[0] := Runtime-&gt;TestAddressOf(o);
+      before := held[0];
+      Churn();
+      if(held[0] &lt;&gt; before) { changed += 1; };
+    };
+    "Int[] element changed by a collection: {$changed} of 2000"-&gt;PrintLine();
+  }
+  function : Churn() ~ Int {
+    s := 0;
+    for(j := 0; j &lt; 200; j += 1;) { b := Box-&gt;New(j); s += b-&gt;Get(); };
+    return s;
+  }
+}</pre>
+    <p>Run with <code>OBJECK_GC_TEST_HOOKS=1 obr --nursery=64k</code>. Exposure today is low: since #1472 an Objeck program cannot produce an address-valued <code>Int</code> without the hook, and native handles live outside the nursery range. It is a hole in the model all the same. The fix is a distinct reference-array tag emitted by the compiler (a format change).</p>
+    <h4 id="4-concurrency-details">4. Concurrency details</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>#</th><th>Finding</th><th>Evidence</th><th>Tag</th><th>Recommendation (cost)</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="#">4.1</td><td data-label="Finding"><code>StackInstr::operand3</code> is plain data patched at run time from several threads (<code>CheckAutoJit</code>, <code>PatchCallSites</code>) while the method-level fields are atomic.</td><td data-label="Evidence"><code>common.h:818</code></td><td data-label="Tag">V (plain) / R (patched concurrently)</td><td data-label="Recommendation (cost)">Relaxed atomics if the cost is under 1% (2 days)</td></tr>
+      <tr><td data-label="#">4.2</td><td data-label="Finding">The DAP adapter's outgoing sequence number is a plain <code>int</code>, and its JSON dump has no <code>error_handler</code>, so non-UTF-8 program output can throw on a thread with no <code>try</code>.</td><td data-label="Evidence"><code>dap.h:64</code>; no <code>error_handler</code> in <code>dap.cpp</code></td><td data-label="Tag">V (both facts) / I (the crash)</td><td data-label="Recommendation (cost)">Atomic <code>seq</code>, <code>error_handler_t::replace</code>, carry partial UTF-8 across reads (half a day)</td></tr>
+      <tr><td data-label="#">4.3</td><td data-label="Finding">The debugger takes one global recursive mutex on every instruction of every thread, so threaded programs run effectively serialized under <code>obd</code>.</td><td data-label="Evidence"><code>debugger.cpp:391</code>, <code>:618</code></td><td data-label="Tag">V (the lock) / R (the effect)</td><td data-label="Recommendation (cost)">An atomic "something to do" fast path (about a week)</td></tr>
+      <tr><td data-label="#">4.4</td><td data-label="Finding">A worker thread has no top-level <code>catch</code>, so a <code>bad_alloc</code> there ends the process; signal handling builds an interpreter in signal context.</td><td data-label="Evidence"><code>interpreter.cpp</code> <code>AsyncMethodCall</code>; <code>common.cpp:191-322</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">A catch at thread entry (half a day)</td></tr>
+      <tr><td data-label="#">4.5</td><td data-label="Finding">Safepoint polls appear only at loop-header back edges, so deep compiled recursion with no loop may not poll.</td><td data-label="Evidence"><code>jit_amd_lp64.cpp:537-548</code></td><td data-label="Tag">I</td><td data-label="Recommendation (cost)">Check function prologues; add a poll if absent</td></tr>
+     </tbody>
+    </table>
+    <h4 id="5-test-and-ci-depth">5. Test and CI depth</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>#</th><th>Finding</th><th>Evidence</th><th>Tag</th><th>Recommendation (cost)</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="#">5.1</td><td data-label="Finding">The deepest test tier does not run on a schedule. The nightly workflow (differential regression, fuzzer, heap verifier, GC stress in both JIT modes) has its cron commented out; its first run after a gap produced 85 new failure signatures.</td><td data-label="Evidence"><code>nightly-hardening.yml:35-38</code></td><td data-label="Tag">V</td><td data-label="Recommendation (cost)">Enable the schedule (an hour)</td></tr>
+      <tr><td data-label="#">5.2</td><td data-label="Finding">No sanitizer or coverage job exists, and the compiler has no unit tests or golden AST/IR dumps; all coverage is whole-program.</td><td data-label="Evidence">no <code>asan</code>, <code>tsan</code> or <code>gcov</code> in the workflows; no test target in <code>core/compiler</code></td><td data-label="Tag">R / V</td><td data-label="Recommendation (cost)">A weekly ASAN/UBSAN or TSAN Linux build (1 to 2 days); <code>--dump-ast</code> and <code>--dump-ir</code> golden files (about a week)</td></tr>
+      <tr><td data-label="#">5.3</td><td data-label="Finding">Actions are pinned by mutable tag with mixed majors (checkout v4 and v5, upload-artifact v4 and v6); <code>ubuntu-latest</code> still appears in 18 workflow files (the linux-x64 legs were pinned in #1480). QUIC dependencies are cloned by tag, not commit; the Windows OpenCV download has no hash.</td><td data-label="Evidence"><code>.github/workflows/*.yml</code></td><td data-label="Tag">V (tags, runners) / R (rest)</td><td data-label="Recommendation (cost)">Pin by SHA with Dependabot, move to <code>ubuntu-24.04</code>, record hashes (about a day)</td></tr>
+      <tr><td data-label="#">5.4</td><td data-label="Finding">The release rebuilds from the tag instead of promoting the tested artifacts; <code>version.h</code> is regenerated by an inline heredoc that copies the magic numbers from <code>version.in</code> with no check that they agree.</td><td data-label="Evidence"><code>release-build.yml:61-90</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">Render from <code>version.in</code>; later promote the CI artifacts (hours to days)</td></tr>
+      <tr><td data-label="#">5.5</td><td data-label="Finding">After publish, Windows signing, the release body, the playground deploy and the API-docs upload are manual, and a release can be published with unsigned installers.</td><td data-label="Evidence"><code>docs/release_process.md:121</code>, <code>RELEASE_MANUAL_STEPS</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">A scheduled or tag-follow-up check that opens an issue (half a day)</td></tr>
+      <tr><td data-label="#">5.6</td><td data-label="Finding">The <code>threads_12</code> retry loop masks a race signature, against the project's own rule.</td><td data-label="Evidence"><code>ci-build.yml:825-838</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">Quarantine with a tracking issue, or fix the race</td></tr>
+     </tbody>
+    </table>
+    <h4 id="6-standard-library-and-api-design">6. Standard library and API design</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>#</th><th>Finding</th><th>Evidence</th><th>Tag</th><th>Recommendation (cost)</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="#">6.1</td><td data-label="Finding">There is no single error convention. A process-wide static last-error in the LLM clients (not per thread; the "none" value differs); instance <code>GetError()</code> in ML; per-thread <code>GetError()</code> in Query; <code>Raise(LabError)</code> in <code>ml_lab</code>. <code>System.Error</code> and <code>try</code>/<code>on</code> shipped, but no I/O or network library uses them. <code>Remove</code> returns Nil (List), the element (Vector) or Bool (Hash).</td><td data-label="Evidence"><code>openai.obs:6313</code>, <code>gemini.obs:2384</code>, <code>ml_outlier.obs:129</code>, <code>ml_lab.obs:453</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">One written rule (a doc, then incremental)</td></tr>
+      <tr><td data-label="#">6.2</td><td data-label="Finding">The LLM clients (OpenAI, Gemini, Ollama, inference) each carry their own endpoint, parsing and last-error scaffolding; OpenAI repeats the authorization header insert 50 times.</td><td data-label="Evidence"><code>openai.obs:6311</code>, <code>gemini.obs:2380</code>, <code>ollama.obs:14</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">A small <code>ChatClient</code> interface (3 to 5 days, additive)</td></tr>
+      <tr><td data-label="#">6.3</td><td data-label="Finding">A failed request dereferences Nil: <code>QuickGet(...)-&gt;GetContent()</code> with no check.</td><td data-label="Evidence"><code>openai.obs:4464</code></td><td data-label="Tag">V</td><td data-label="Recommendation (cost)">Check and return the library's failure value (hours)</td></tr>
+      <tr><td data-label="#">6.4</td><td data-label="Finding">"Durable" in Query means durable against a process crash only: there is no <code>fsync</code> or <code>FlushFileBuffers</code> anywhere in the VM, shared code or native libraries.</td><td data-label="Evidence">grep over <code>core/vm</code>, <code>core/shared</code>, <code>core/lib</code> returns nothing</td><td data-label="Tag">V</td><td data-label="Recommendation (cost)">A <code>File-&gt;Sync</code> and calls after write and rename (about a day)</td></tr>
+      <tr><td data-label="#">6.5</td><td data-label="Finding">Size and overlap: <code>query.obs</code> is one 24,590-line file; <code>Table</code> is a god class with internals made public; <code>Set</code>, <code>HashSet</code> and <code>SetHash</code> coexist, as do two <code>Pair</code> classes and <code>Map</code>/<code>Hash</code>.</td><td data-label="Evidence"><code>query.obs</code>, <code>gen_collect.obs:1430</code>, <code>:7465</code>, <code>:7894</code>, <code>:24</code>, <code>:1849</code></td><td data-label="Tag">V (existence, size) / R (rest)</td><td data-label="Recommendation (cost)">A "which to use" guide now; split <code>query.obs</code> into several source files later</td></tr>
+      <tr><td data-label="#">6.6</td><td data-label="Finding">Layering leaks: multipart encoding lives in the 5.4k-line <code>net_server</code>, so a pure client links the whole server; <code>misc.obs</code> is a grab-bag (a spinner and date utilities) that clients depend on.</td><td data-label="Evidence"><code>openai.obs:39-62</code>, <code>build_libs.sh</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">Move <code>Multipart*</code> to <code>net_common</code>; split a dependency-free <code>util</code> library (1 to 2 days)</td></tr>
+      <tr><td data-label="#">6.7</td><td data-label="Finding">Deprecated surface despite the no-deprecated rule: the OpenAI Assistants classes (about 1,300 lines) and a documented-deprecated <code>Data.JSON Decode</code>. Whether the Assistants API is being sunset was not checked.</td><td data-label="Evidence"><code>openai.obs:4471-5784</code>, <code>json.obs:1662</code></td><td data-label="Tag">R / I</td><td data-label="Recommendation (cost)">Confirm the sunset; remove or guard</td></tr>
+      <tr><td data-label="#">6.8</td><td data-label="Finding">Parameter names are public API since named arguments, but CI compares only the class set of the editor index, not signatures.</td><td data-label="Evidence"><code>ci-build.yml:1923-1938</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">Diff <code>objk_apis.json</code> between release tags (a day)</td></tr>
+     </tbody>
+    </table>
+    <h4 id="7-compiler-and-language">7. Compiler and language</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>#</th><th>Finding</th><th>Evidence</th><th>Tag</th><th>Recommendation (cost)</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="#">7.1</td><td data-label="Finding">Very long functions concentrate the defects: <code>ParseStatement</code> about 2,000 lines, <code>EmitSystemDirective</code> about 2,100, <code>AnalyzeCalculationCast</code> about 540. The defect history (call chains, closures, the s3 inliner) matches.</td><td data-label="Evidence"><code>parser.cpp</code>, <code>intermediate.cpp:1789</code>, <code>context.cpp</code></td><td data-label="Tag">R / I</td><td data-label="Recommendation (cost)">Split by node category (1 to 2 weeks, with the regression suite as oracle)</td></tr>
+      <tr><td data-label="#">7.2</td><td data-label="Finding">Class and library-class logic is duplicated: parallel <code>AnalyzeMethodCall</code> overloads for <code>Class*</code> and <code>LibraryClass*</code>, 311 references in <code>context.cpp</code> (14,183 lines). A fix to overload resolution must be made twice.</td><td data-label="Evidence"><code>context.cpp:5674</code>, <code>:6422</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">One resolver over a common interface (weeks, incremental)</td></tr>
+      <tr><td data-label="#">7.3</td><td data-label="Finding">The type system depends on stdlib spelling: about 30 literal checks for <code>System.String</code>, <code>System.Base</code>, <code>System.FuncRef</code> and the box classes, some matched both qualified and unqualified.</td><td data-label="Evidence"><code>context.cpp:1700</code>, <code>:3303-3315</code>, <code>:5538-5546</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">Intern well-known classes once (2 days)</td></tr>
+      <tr><td data-label="#">7.4</td><td data-label="Finding">Diagnostics are preformatted strings keyed by line, with no codes or ranges, and <code>ProcessError</code> is copied four times in the parser and three in the analyzer.</td><td data-label="Evidence"><code>context.h:255</code>, <code>parser.h:96</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">A <code>Diagnostic{code, range, message}</code> sink (3 to 5 days)</td></tr>
+      <tr><td data-label="#">7.5</td><td data-label="Finding">Back-end singletons are plain statics, unlike the thread-local tree and type factories.</td><td data-label="Evidence"><code>emit.h:249</code>, <code>:950</code></td><td data-label="Tag">R / I</td><td data-label="Recommendation (cost)">Make them thread-local or owned by the parsed program (a day)</td></tr>
+     </tbody>
+    </table>
+    <h4 id="8-debugger-repl-language-server">8. Debugger, REPL, language server</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>#</th><th>Finding</th><th>Evidence</th><th>Tag</th><th>Recommendation (cost)</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="#">8.1</td><td data-label="Finding"><code>obd</code> is a second build of the whole VM (<code>-D_DEBUGGER -D_NO_JIT</code>) with direct frame and heap access and hard-coded array and string layouts, so JIT-only bugs cannot be debugged and a layout change silently breaks display.</td><td data-label="Evidence"><code>debugger.vcxproj:188-224</code>, <code>interpreter.cpp:305-315</code>, <code>obj_layout.h:276-420</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">A small read-only <code>debug_view.h</code> over the VM (1 to 2 weeks)</td></tr>
+      <tr><td data-label="#">8.2</td><td data-label="Finding">There is no way to interrupt a running program: <code>pause</code> answers an error and the REPL has no Ctrl+C handling.</td><td data-label="Evidence"><code>dap.cpp:1642</code>; no <code>SIGINT</code> in <code>core/repl</code></td><td data-label="Tag">V (no SIGINT) / R</td><td data-label="Recommendation (cost)">A pause flag (1 to 2 days)</td></tr>
+      <tr><td data-label="#">8.3</td><td data-label="Finding">Expression evaluation uses a fork of the compiler's scanner and parser (2010 to 2013), with hand-re-added number scanning.</td><td data-label="Evidence"><code>core/debugger/scanner.cpp</code>, <code>parser.cpp</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">A shared literal-grammar test table (a day)</td></tr>
+      <tr><td data-label="#">8.4</td><td data-label="Finding">The REPL replays the whole buffer on every entry, so side effects repeat and cost grows with the session. Documented.</td><td data-label="Evidence"><code>core/repl/README.md:122</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">A warning for I/O now; a persistent VM later</td></tr>
+      <tr><td data-label="#">8.5</td><td data-label="Finding">The language server re-analyzes the whole program twice per edit and drops every cache on a single global generation; there is no mid-analysis cancellation and no "cached equals fresh" test.</td><td data-label="Evidence"><code>frameworks.obs:1347</code>, <code>server.obs:1065-1081</code>; <code>docs/INCREMENTAL_ANALYSIS_DESIGN.md</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">The design's phases (days to months)</td></tr>
+     </tbody>
+    </table>
+    <h3 id="roadmap">Roadmap</h3>
+    <p><strong>In flight (started with this document).</strong> Six workers each own one workstream and open their own PRs; the coordinator merges when CI is green.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Workstream</th><th>Covers</th><th>Findings</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Workstream">CI hygiene</td><td data-label="Covers">enable the nightly; <code>ubuntu-24.04</code> everywhere; actions pinned by SHA plus Dependabot; a check that every <code>.obl</code> carries <code>VER_NUM</code></td><td data-label="Findings">1.3, 5.1, 5.3</td></tr>
+      <tr><td data-label="Workstream">Compiler hygiene</td><td data-label="Covers">delete the dead parser copy; a trap-handler consistency check; an "adding an intrinsic" checklist</td><td data-label="Findings">1.1, 1.2</td></tr>
+      <tr><td data-label="Workstream">Runtime hardening</td><td data-label="Covers"><code>abi_version</code> and <code>struct_size</code>; null guards; a worker-thread catch; the operand3 question; the trust-model document</td><td data-label="Findings">2.1, 2.3, 4.1, 4.4</td></tr>
+      <tr><td data-label="Workstream">Debugger and DAP</td><td data-label="Covers">UTF-8 and <code>seq</code> fixes; unknown requests fail; breakpoint ids; <code>pause</code>; the per-instruction lock</td><td data-label="Findings">4.2, 4.3, 8.2</td></tr>
+      <tr><td data-label="Workstream">Library fixes and guides</td><td data-label="Covers">Nil-safety sweep; doc inaccuracies; a collections guide; an error-conventions proposal</td><td data-label="Findings">6.1, 6.3, 6.5</td></tr>
+      <tr><td data-label="Workstream">GC roots</td><td data-label="Covers"><code>JitFrameLayout</code>, then phase 3 (AMD64)</td><td data-label="Findings">1.4, 3.1</td></tr>
+     </tbody>
+    </table>
+    <p><strong>Next, in order of value (a week or more each).</strong></p>
+    <ol>
+     <li>The rest of the GC roots redesign: ARM64 typed slots (needs ARM64 hardware), removal of the conservative scans and the dead inliner, closure capture blocks, and a reference-array tag for finding 3.2.</li>
+     <li>One table that defines traps and intrinsics and generates the enum, scanner map, parser case and switch (finding 1.2).</li>
+     <li>A loader verification pass with a fuzz target, and trap-category deny flags (2.1).</li>
+     <li>A diagnostics sink and fatal exceptions in place of <code>exit(1)</code> (2.2, 7.4), which also helps the language server.</li>
+     <li><code>fsync</code> support and the LLM client interface (6.4, 6.2).</li>
+     <li>A weekly sanitizer build and golden AST/IR dumps (5.2).</li>
+     <li>Promote tested artifacts at release instead of rebuilding (5.4).</li>
+     <li><code>debug_view.h</code>, then the language server's analysis in a child process (8.1, 2.4).</li>
+    </ol>
+    <h3 id="not-assessed">Not assessed</h3>
+    <p>The JIT code-memory lifecycle beyond the README; lock contention and pause behavior (nothing was profiled); the correctness of generics rules, the optimizer's passes and the Query planner; numerical correctness of the ML and NLP libraries; the TLS, HTTP/2 and HTTP/3 handlers beyond sampling; macOS, Windows ARM64 and Linux arm64 specifics; the contents of CI secrets and variables.</p>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

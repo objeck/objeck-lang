@@ -2,7 +2,7 @@
 
 All notable changes to Objeck will be documented in this file.
 
-## [v2026.10.3] - UNRELEASED
+## [v2026.10.3] - 2026-11-03
 
 **A hardening release: the garbage collector now knows exactly which words of compiled code are references on x64 and ARM64, the loader is fuzzed and verifies programs before it runs them, errors are returned instead of ending the host process, and the HTTP client stops running Windows out of ports.**
 

@@ -15,11 +15,11 @@
 
       menu.addEventListener("click", (e) => {
         e.stopPropagation();
-        menuItems.style.display = menuItems.style.display === "block" ? "none" : "block";
+        menuItems.classList.toggle("open");
       });
 
       document.addEventListener("click", () => {
-        menuItems.style.display = "none";
+        menuItems.classList.remove("open");
       });
     });
   </script>
@@ -44,6 +44,7 @@
           <a href="getting_started.html">Quick Start</a>
           <a href="ai_guide.html">AI Guide</a>
           <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
           <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
           <a href="readme.html">Changelog</a>
           <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
@@ -66,11 +67,28 @@
     </div>
     <p style="font-size: 0.9rem; color: #9ca3af; margin: 0 0 2rem;">
       v2026.10.2 is the current release &mdash; see the
-      <a href="https://github.com/objeck/objeck-lang/blob/master/CHANGELOG.md">changelog</a>.
+      <a href="doc_changelog.html">changelog</a>.
     </p>
 
     <!-- Changelog -->
-    <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.10.2" style="color: inherit; text-decoration: none;">v2026.10.2</a></u></h3>
+   <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.10.3" style="color: inherit; text-decoration: none;">v2026.10.3</a></u></h3>
+    <ul>
+     <li><strong>Garbage collector roots, finished</strong> &mdash; compiled code now tells the collector exactly which stack slots hold references (typed slots on x64 and ARM64), and an <code>Int[]</code> has its own heap tag, so an <code>Int</code> or an <code>Int[]</code> element that happens to equal an object's address is never rewritten by a collection, interpreted or compiled (<a href="doc_gc_roots.html">design</a>)</li>
+     <li><strong>A hardened loader</strong> &mdash; a fuzz target on <code>Loader::Load</code> (hundreds of millions of executions) fixed a crash on a repeated class or method id, allocations of up to 16 GB from a corrupt count, an abort on a bad method signature, a silent exit on an unknown opcode and a read past the end of a short <code>.obe</code>; a verifier now checks jump targets, local and trap ids and class, method and field ids before anything runs (<a href="doc_security.html">trust model</a>)</li>
+     <li><strong>Errors no longer end the host</strong> &mdash; a fatal compiler error and a failed library load are returned instead of calling <code>exit(1)</code>, so the language server stays up, and parser and analyzer diagnostics share one record</li>
+     <li><strong>Debugger</strong> &mdash; output stays whole, messages are ordered, unknown requests are refused, you can pause, breakpoints keep their file and have their own ids, and a breakpoint-heavy run costs about 100&times; less in the hook (25 s to 0.25 s on four threads)</li>
+     <li><strong>Native library ABI is versioned</strong> &mdash; <code>VMContext</code> carries an ABI version and its own size, so a library can tell it was built for a different VM; an unresolved call target and an exception on a worker thread are reported, not crashes</li>
+     <li><strong><code>HttpClient</code> reuses connections</strong> &mdash; plain-HTTP connections wait in a pool when the server allows it and a <code>GET</code> or <code>DELETE</code> to the same host reuses one, so a program making many requests no longer runs Windows out of ports; <code>HttpClient-&gt;CloseIdleConnections()</code> closes the waiting ones (<a href="guide_http.html">guide</a>)</li>
+     <li><strong>Library fixes</strong> &mdash; a failed request, an empty reply or a missing file in the OpenAI, Gemini, misc, net, JSON, XML, RegEx, RSS and JSON-RPC libraries no longer dereferences <code>Nil</code>; <code>RegEx</code> repeat counts are bounded (<code>a{99999999999}</code> no longer fills the heap); sorting a vector of <code>Collection.Pair</code> works (<a href="guide_data.html">guide</a>)</li>
+     <li><strong>Language server</strong> &mdash; edits analyze faster (a hover after an edit in a small workspace: 165 ms to 53 ms on Windows) and a library that fails to load no longer takes the server down (<a href="guide_editors.html">guide</a>)</li>
+     <li><strong>Checkers example</strong> &mdash; an SDL2 game with ten AI levels built on <code>System.AI</code>, a self-play learner and generated music (<a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/checkers/"><code>programs/examples/checkers</code></a>, <a href="guide_ai.html">guide</a>)</li>
+     <li><strong>Tested more deeply</strong> &mdash; the nightly hardening run is scheduled, a local script runs the cloud checks on your own machine first, and four intermittently failing tests were traced to their causes and fixed (three TLS tests whose certificates were valid only from the second they were made, and a JSON-RPC test that picked a port still held by an earlier connection)</li>
+     <li><strong>Getting-started guides</strong> &mdash; <a href="guide_query.html">Query.Structured</a>, <a href="guide_http.html">HTTP</a>, <a href="guide_data.html">JSON, XML and RegEx</a>, <a href="guide_collections.html">collections</a>, <a href="guide_ai.html">game AI</a> and <a href="guide_editors.html">editor setup</a>, each with a program that was compiled and run, plus <a href="guide_whats_new.html">what is new in 10.3</a></li>
+     <li><strong>New docs</strong> &mdash; the <a href="doc_assessment.html">architecture assessment</a>, the VM trust model (an <code>.obe</code> is native code), a <a href="doc_collections.html">collections guide</a>, <a href="doc_errors.html">error conventions</a> and <a href="doc_intrinsic.html">how to add an intrinsic</a></li>
+     <li><strong>Upgrading</strong> &mdash; recompile your <code>.obe</code> files and rebuild your own <code>.obl</code> libraries: the file format changed, and a program or library built by an earlier version is refused with a message saying so</li>
+    </ul>
+
+    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.10.2" style="color: inherit; text-decoration: none;">v2026.10.2</a></h3>
      <ul>
       <li><strong>Query.Structured, a columnar engine</strong> &mdash; every column is a typed array with a null bitmap, text is dictionary-encoded, and 65,536-row groups carry zone maps so a filter skips what it cannot match. Queries return views with nothing copied, a <code>where</code> is compiled once into typed predicates, prepared statements take <code>?</code> placeholders, and a method-chaining API (<code>Col("value")-&gt;Gt(0.5)</code>) sits beside SQL. The SQL parser is new: <code>INNER</code>/<code>LEFT JOIN</code> through a <code>Catalog</code>, <code>GROUP BY</code> with <code>COUNT</code>/<code>SUM</code>/<code>AVG</code>/<code>MIN</code>/<code>MAX</code>/<code>MEDIAN</code>/<code>STDDEV</code> and <code>HAVING</code>, multi-key <code>ORDER BY ASC|DESC</code>, <code>LIMIT</code>/<code>OFFSET</code>, <code>DISTINCT</code>, <code>MATCHES</code>, <code>INSERT</code>/<code>UPDATE</code>/<code>DELETE</code>/<code>CREATE TABLE</code>, and SQL expressions in every clause (<code>score * 100 as pct</code>, <code>group by x % 10</code>, <code>having sum(a) / count(*) &gt; 2</code>, <code>on t.n + 1 = u.w</code>), evaluated 1,024 rows at a time and reduced to the ordinary filter where an index or zone map can serve it. The old API keeps its signatures and results. At 100,000 rows on Windows x64, a <code>where</code> went from 0.558 s to 0.023 s, <code>order by</code> from 3.16 s to 0.096 s and <code>Sum</code> from 0.051 s to 0.004 s (#1291, #1295, #1298, #1301, #1303, #1325, #1367, #1398, #1416, #1417)</li>
       <li><strong>Files and URLs are tables</strong> &mdash; a quoted path in <code>FROM</code> or <code>JOIN</code> is read by its extension (<code>.csv</code>, <code>.tsv</code>, <code>.json</code>, <code>.jsonl</code>, <code>.xml</code>, <code>.otab</code>, each also <code>.gz</code>), <code>csv('data.txt', delimiter =&gt; ';')</code> sets options, a glob reads several files as one table with a <code>_file</code> column, an <code>http(s)</code> path goes through a download cache revalidated with <code>ETag</code> and <code>Last-Modified</code>, and an archive member or worksheet follows the path after a dot: <code>from 'results.zip'.'2026/runs.csv'</code>, <code>from 'budget.xlsx'.'Q1 2026'</code>. <code>Catalog-&gt;SetFileAccess(false)</code> refuses them all. The URL download cache is correct across processes that share the temporary folder (one folder of immutable versions per URL and one small note, published by an atomic rename), and a file rewritten within the second of its last read is read again (#1303, #1366, #1384, #1391)</li>

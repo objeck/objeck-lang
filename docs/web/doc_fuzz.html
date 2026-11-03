@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Loader fuzz targets — Objeck Language</title>
+  <meta name="description" content="libFuzzer targets for the VM&#x27;s bytecode loader (Loader::Load, core/vm/loader.cpp), the code that reads an .obe before anything runs. An .obe is untrusted input to obr (see docs/SECURITY_MODEL.md): whatever its bytes, the loader must refuse "/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Loader fuzz targets</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/tools/fuzz/loader/README.md" target="_blank">tools/fuzz/loader/README.md on GitHub</a></div>
+    <p class="page-lead">libFuzzer targets for the VM's bytecode loader (<code>Loader::Load</code>, <code>core/vm/loader.cpp</code>), the code that reads an <code>.obe</code> before anything runs. An <code>.obe</code> is untrusted input to <code>obr</code> (see <a href="doc_security.html">docs/SECURITY_MODEL.md</a>): whatever its bytes, the loader must refuse it with a message, never crash, hang or allocate without bound.</p>
+
+    <table class="ref-table">
+     <thead>
+      <tr><th>file</th><th>role</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="file"><code>loader_fuzz.cpp</code></td><td data-label="role">the harness; built twice (below)</td></tr>
+      <tr><td data-label="file"><code>build.sh</code></td><td data-label="role">compiles the VM's sources with clang, AddressSanitizer, UBSan and libFuzzer coverage, links both targets</td></tr>
+      <tr><td data-label="file"><code>make_corpus.py</code></td><td data-label="role">the seed corpus: every regression program compiled by a deploy tree's <code>obc</code></td></tr>
+      <tr><td data-label="file"><code>obe_image.py</code></td><td data-label="role">reads a decompressed image; cuts small seeds out of big ones</td></tr>
+      <tr><td data-label="file"><code>make_regression_inputs.py</code></td><td data-label="role">writes the regression inputs (below)</td></tr>
+     </tbody>
+    </table>
+    <p>The two targets:</p>
+    <ul>
+     <li><code>loader_fuzz</code> takes a <strong>decompressed image</strong>, the bytes <code>Loader::Load</code> reads after the file layer has inflated them. This is where the work is done.</li>
+     <li><code>loader_file_fuzz</code> takes an <strong><code>.obe</code> file</strong> as <code>obc</code> writes it (<code>[uncompressed size:4][zlib]</code>, or raw zlib), decodes it with <code>Loader::DecodeImage</code> and loads what decodes.</li>
+    </ul>
+    <p>A refusal is a clean result: <code>Loader::Load</code> returns false with its message, which must not be empty. So is a method signature <code>StackMethod</code> cannot parse (a <code>std::runtime_error</code>, which <code>obr</code> reports as a load error). Anything else -- a sanitizer report, a leak, a signal, a timeout, an allocation over the limit -- is a finding. The image target runs the loader's verification pass too (<code>Loader::Verify</code>), so the checks that relate operands to the program are fuzzed with the rest.</p>
+    <h3 id="running-it-wsl2-ubuntu-2404">Running it (WSL2 Ubuntu 24.04)</h3>
+<pre class="plain">sudo apt install clang libclang-rt-18-dev zlib1g-dev libmbedtls-dev
+CXX=clang++ tools/fuzz/loader/build.sh ~/loader-fuzz/build
+
+# seeds: needs a built Linux deploy tree (tools/cicd/local_linux.sh makes one)
+python3 tools/fuzz/loader/make_corpus.py core/release/deploy/bin ~/loader-fuzz/seeds
+
+cd ~/loader-fuzz &amp;&amp; mkdir -p corpus art
+build/loader_fuzz -fork=24 -ignore_crashes=1 -ignore_ooms=1 \
+  -ignore_timeouts=1 -timeout=10 -rss_limit_mb=4096 -use_value_profile=1 -max_len=65536 \
+  -max_total_time=3600 -artifact_prefix=art/ corpus seeds/slices
+build/loader_file_fuzz -fork=4 -ignore_crashes=1 -ignore_ooms=1 \
+  -timeout=10 -max_total_time=3600 -artifact_prefix=art/ corpus_file seeds/files
+
+build/loader_fuzz art/crash-...          # replay one finding with its stack
+build/loader_fuzz -minimize_crash=1 -runs=100000 art/crash-...</pre>
+    <p><code>seeds/images</code> holds the whole decompressed programs (100 KB to 1.5 MB each: every program carries the standard library), which run at about 100 inputs a second. <code>seeds/slices</code> holds pieces cut from them by <code>obe_image.py</code> -- one to three classes, a few methods, string tables emptied -- at a few thousand inputs a second per worker, which is where mutation pays.</p>
+    <p>A refused load frees what it had read, so leak detection stays on (the commands above turn it off only to keep fork mode's jobs fast. Seeds carry the toolchain version they were compiled with; rebuild them after a version bump, or every input is refused at the version check.</p>
+    <h3 id="findings">Findings</h3>
+    <p>Every finding is fixed and has a case in <code>programs/regression/run_vm_flag_tests.py</code> (section 30), which runs <code>obr</code> on a reduced input and expects the loader's message and exit status 1. The inputs are in <code>programs/regression/vm_flag_fixtures/loader/</code>, written by <code>make_regression_inputs.py</code> from a small compiled program; the test stamps each with the current toolchain version before it runs, so a version bump does not turn them into version-mismatch refusals.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>input</th><th>before</th><th>fix</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="input">any refused or unparsable image</td><td data-label="before"><code>~StackProgram</code> freed fields its constructor never set (the fuzzer's first input, the empty one); in <code>obr</code>, an unparsable method signature reached that path</td><td data-label="fix"><code>StackProgram</code> and <code>StackClass</code> start every owned field empty</td></tr>
+      <tr><td data-label="input">class, method or interface count near 2^31</td><td data-label="before"><code>new[]</code> of up to 16 GB before a byte of the elements was read</td><td data-label="fix">counts are bounded by the bytes left (<code>ReadCount</code>)</td></tr>
+      <tr><td data-label="input">a repeated class or method id</td><td data-label="before">the slot it should have filled stayed unset, and <code>SetClasses</code>/<code>SetMethods</code> dereferenced it (SIGSEGV)</td><td data-label="fix">arrays zeroed; a repeated id is refused</td></tr>
+      <tr><td data-label="input">an unknown opcode</td><td data-label="before">release <code>obr</code> exited 1 with no message</td><td data-label="fix">the message is printed in every build</td></tr>
+      <tr><td data-label="input">an <code>.obe</code> shorter than 4 bytes</td><td data-label="before"><code>memcpy</code> read past the buffer and the zlib length underflowed</td><td data-label="fix">refused before decoding (found while splitting out <code>DecodeImage</code>)</td></tr>
+      <tr><td data-label="input">any refused image (fuzz build)</td><td data-label="before">everything read so far leaked; libFuzzer's RSS limit fired after a few minutes per job</td><td data-label="fix">partial loads free what they read; the targets run with leak detection on and report none</td></tr>
+     </tbody>
+    </table>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Named Arguments — Design — Objeck Language</title>
+  <meta name="description" content="Issue: #1244, split out of #1186 (Rosetta batch 3)."/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Named Arguments — Design</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/NAMED_ARGUMENTS_DESIGN.md" target="_blank">docs/NAMED_ARGUMENTS_DESIGN.md on GitHub</a></div>
+    <p class="page-lead">Issue: <a href="https://github.com/objeck/objeck-lang/issues/1244" target="_blank">#1244</a>, split out of #1186 (Rosetta batch 3).</p>
+    <div id="toc_container" class="plain">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#why">Why</a></li>
+      <li><a href="#decisions">Decisions</a></li>
+      <li><a href="#phase-1-plan">Phase 1 plan</a></li>
+      <li><a href="#note">Note</a></li>
+      <li><a href="#not-in-scope">Not in scope</a></li>
+     </ul>
+    </div>
+
+    <h3 id="why">Why</h3>
+    <p>Trailing default values already work:</p>
+<pre class="line-numbers"><code class="language-cpp">function : Train(data : Matrix, epochs : Int := 10, rate : Float := 0.01, verbose : Bool := false) ~ Model
+</code></pre>
+    <p>But a caller can only drop arguments from the end. To turn on <code>verbose</code> they must restate <code>epochs</code> and <code>rate</code>, and a reader of <code>Train(data, 10, 0.01, true)</code> cannot tell which number is which. Research code is full of calls like this: a model, an optimizer, a sampler, each with a handful of knobs that have sensible defaults. Named arguments fix both problems:</p>
+<pre class="line-numbers"><code class="language-cpp">Train(data, verbose: true);
+Train(data, rate: 0.1, epochs: 50);
+</code></pre>
+    <h3 id="decisions">Decisions</h3>
+    <h4 id="1-syntax-name-value">1. Syntax: <code>name: value</code></h4>
+    <p>The same form as Swift, Kotlin and C#. Spacing is free (<code>name : value</code> also parses).</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Rejected</th><th>Why</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Rejected"><code>name = value</code></td><td data-label="Why"><code>=</code> is equality in Objeck: <code>F(x = 1)</code> is already a valid Bool argument.</td></tr>
+      <tr><td data-label="Rejected"><code>name := value</code></td><td data-label="Why">Reads as an assignment to a variable called <code>name</code> in the caller.</td></tr>
+     </tbody>
+    </table>
+    <p>An argument that starts with a plain identifier followed by <code>:</code> has no meaning today. A ternary's <code>:</code> follows its <code>?</code> (<code>c ? a : b</code>), and a lambda's follows its <code>~ Type</code>. So the form is unambiguous: the parser checks one token of lookahead at the start of each argument. Instance variables (<code>@x:</code>) are not parameter names and are rejected.</p>
+    <h4 id="2-rules">2. Rules</h4>
+    <ul>
+     <li><strong>Order.</strong> Positional arguments come first and named ones follow. A positional argument after a named one is an error.</li>
+     <li><strong>Named arguments in any order</strong>, each parameter at most once. A parameter given both positionally and by name is an error.</li>
+     <li><strong>Any parameter may be named</strong>, including ones without a default (<code>Point-&gt;New(y: 2, x: 1)</code>). Every parameter without a default must be supplied, positionally or by name.</li>
+     <li><strong>Unknown names</strong> are an error that lists the method's parameter names.</li>
+     <li><strong>Evaluation order is the order written at the call site.</strong> Arguments are evaluated left to right as written and then bound to their parameters. Today's positional calls already evaluate left to right, and a reordering must not move a side effect.</li>
+    </ul>
+    <h4 id="3-overloads">3. Overloads</h4>
+    <p>For each overload of the name, the call is mapped onto its parameters by name. Overloads the call cannot be mapped onto (unknown name, missing required parameter) are dropped. The rest go through ordinary resolution, with the reordered arguments. More than one survivor that type-matches equally well is the existing ambiguity error.</p>
+    <p>Only <em>original</em> methods are mapped. The alternates generated for trailing defaults (below) share the original's parameter names, and mapping them as well would give one call several equivalent targets.</p>
+    <h4 id="4-skipping-a-parameter-that-has-a-default">4. Skipping a parameter that has a default</h4>
+    <p>Default values are implemented by <strong>alternates</strong>. <code>F(a, b := 1, c := 2)</code> also gets <code>F(a)</code> and <code>F(a, b)</code>. Each is a thin forwarder that assigns the missing defaults in the callee's own context and calls <code>F(a, b, c)</code> (<code>GenerateParameterMethods</code>, <code>IntermediateEmitter</code> for <code>IsAlt()</code>). A named call whose supplied set is a prefix (<code>F(a, b: 5)</code>) is just that alternate.</p>
+    <p>A call that skips a middle parameter (<code>F(a, c: 5)</code>) needs a forwarder for the set <code>{a, c}</code>, and a call that reorders (<code>F(c: 5, a: 1)</code>) needs its arguments put back in parameter order. Generating a forwarder for every subset is exponential, and same-typed subsets would collide as overloads. So:</p>
+    <ul>
+     <li>The parser records which method <strong>names</strong> are called with named arguments, and with which argument shape (positional count and named set).</li>
+     <li>Before analysis, for each program method of such a name, the compiler generates a forwarder for each recorded shape that maps onto it. The forwarder <strong>takes the arguments in the order the call writes them</strong>. Its body assigns the defaults it does not receive in the callee's context, as an alternate's does, and calls the original with every parameter in its place. So the call site pushes its arguments as written, and the written evaluation order holds without temporaries.</li>
+     <li>Every named call binds to a forwarder, even one that names its arguments in parameter order. The binding is the same for each overload, and the forwarder is one small frame that the s3 inliner can remove.</li>
+     <li>Forwarders get a name no source can spell (<code>F$n&lt;mask&gt;</code>). They never collide with an overload, and a stack trace shows the original name.</li>
+    </ul>
+    <p>A program with no named calls generates nothing, so every library and every existing program compiles <strong>byte-identically</strong>.</p>
+    <p>Defaults are still evaluated in the callee, as today. They are never copied to the call site, where names in a default expression would resolve against the caller.</p>
+    <h4 id="5-what-it-applies-to">5. What it applies to</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Target</th><th>Supported</th><th>Notes</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Target">Functions and methods of classes in the program being compiled</td><td data-label="Supported">yes (phase 1)</td><td data-label="Notes"></td></tr>
+      <tr><td data-label="Target">Constructors (<code>New</code>)</td><td data-label="Supported">yes (phase 1)</td><td data-label="Notes">the most common place for options</td></tr>
+      <tr><td data-label="Target">Library methods and constructors (<code>String-&gt;Pad</code>, <code>Hash-&gt;New</code>, ...)</td><td data-label="Supported">yes (phase 2)</td><td data-label="Notes">see below</td></tr>
+      <tr><td data-label="Target">Virtual and interface methods</td><td data-label="Supported"><strong>no</strong>: later</td><td data-label="Notes">they cannot have defaults; an interface cannot hold the concrete forwarder</td></tr>
+      <tr><td data-label="Target">Function values and lambdas</td><td data-label="Supported">no</td><td data-label="Notes">a function type has no parameter names</td></tr>
+      <tr><td data-label="Target">Primitive receivers (<code>v-&gt;Clamp(...)</code>)</td><td data-label="Supported">no</td><td data-label="Notes">library functions; parameter 0 is the receiver</td></tr>
+     </tbody>
+    </table>
+    <p>A named argument to a target that does not support it is a compile error that says why, not a silent positional call.</p>
+    <h4 id="6-phase-2-library-methods">6. Phase 2: library methods</h4>
+    <p>A release <code>.obl</code> kept a method's parameter <strong>types</strong> but not their names, and a caller cannot generate a forwarder inside another binary. Phase 2 (shipped) adds:</p>
+    <ol>
+     <li><strong>Parameter names in every <code>.obl</code>.</strong> After each method's entries, a library build writes the parameter count, then each parameter's bare name and whether it has a default (<code>IntermediateMethod::Write</code>). The library magic is now <code>0xffb7</code>. The compiler refuses a library with the old magic (<code>0xffb6</code>) and asks for it to be rebuilt. The VM accepts both, because an <code>.obe</code> never contains the names.</li>
+     <li><strong>One mask forwarder</strong> per library method with two or more defaults (<code>GenerateMaskForwarder</code>, library targets only). <code>F$m</code> takes every parameter plus an <code>Int</code> whose bit <em>j</em> says the caller gave parameter <em>j</em>. It assigns each default the caller skipped, under <code>if((mask and bit) = 0)</code>, in the callee's context, then calls <code>F</code>. That is one extra method per such method, not one per subset. Methods with more than 62 parameters get none.</li>
+     <li><strong>Binding at the call site</strong> (<code>BindNamedLibraryArguments</code>). The call shape is mapped onto each overload, in the receiver's class and its library parents, through the recorded names:
+    <ul>
+     <li>a call that skips nothing becomes a <strong>positional call</strong>, its arguments put in parameter order (a default alternate covers any trailing defaults it leaves out);</li>
+     <li>a call that skips a default calls <code>F$m</code>, with a typed placeholder (<code>Nil</code>, <code>false</code>, <code>'\0'</code>, <code>0</code> or <code>0.0</code>) for each skipped parameter, and the mask as a literal.</li>
+    </ul>
+     </li>
+    </ol>
+    <p>When the parameter order differs from the written order, each argument is evaluated in the order written into a hidden local, then loaded in parameter order (<code>EmitNamedArgumentTemps</code>, <code>EmitCallArgument</code>). This works in every chain form too. A function-typed parameter cannot be skipped or reordered by name, because it has no placeholder or local to hold it. The error asks for it to be passed in place.</p>
+    <p><strong>Standard-library parameter names are now public API</strong>: renaming one breaks named callers. That is accepted, as in Kotlin, C# and Swift. Library reviews should treat a parameter rename like a signature change.</p>
+    <p>Found on the way: <code>GenerateParameterMethods</code> used offset 0 to mean "no default found". When the <em>first</em> parameter had a default and a later one did too, it started at 1, so <code>F()</code> was never generated, in a program or a library. A library call that named a method only its parent class declared skipped the named-argument path. The chained form then bound the names by position, silently. A backstop in the library path now reports any names left unconsumed.</p>
+    <p>Tests: <code>named_arguments_library.obs</code> (standard-library methods: reordering, mixing, written order, all-defaults), <code>bad_named_argument_library.obs</code> (an unknown name lists the recorded ones), <code>bad_named_argument_primitive.obs</code>, and <code>check_lib_named_args.py</code>. That last one builds a library and links a program against it, covering a skipped middle default, constructors, inherited methods (on a variable and chained) and an unknown name, in three modes.</p>
+    <h3 id="phase-1-plan">Phase 1 plan</h3>
+    <ol>
+     <li><strong>Parser:</strong> <code>ParseExpressionList</code> (calling parameters only) accepts <code>IDENT ':' expression</code> and records the name next to the expression in the <code>ExpressionList</code>. It enforces positional before named. It records the call shape for forwarder generation.</li>
+     <li><strong>Context analysis:</strong>
+    <ul>
+     <li>In <code>AnalyzeMethodCall</code> (program classes), <code>BindNamedArguments</code> maps a named call onto each original overload and binds it to the forwarder for its shape. Several overloads taking one call is an ambiguity error that asks for positional arguments.</li>
+     <li>Give the errors above for function values and bad names (library targets were an error until phase 2). A guard in <code>AnalyzeMethodCall</code> reports any named call no path consumed, so names are never dropped silently.</li>
+    </ul>
+     </li>
+     <li><strong>Forwarder generation:</strong> <code>GenerateNamedForwarders</code> is <code>GenerateParameterMethods</code> generalized from "every suffix" to "this order". Each forwarder gets its own copy of each default assignment's variable: <code>Declaration::Copy()</code> shares the original's, which the alternates can afford because their slots match the original's and a forwarder's do not. The emitter loads the original's parameters from the forwarder's own slots.</li>
+     <li><strong>Tests:</strong> <code>named_arguments.obs</code> covers reordering, skipping, constructors, evaluation order, overloads and the JIT (three modes). A <code>bad_named_argument_*.obs</code> file covers each error. <code>rosetta_optional_parameters.obs</code> gets its header corrected and a named-argument form of the task.</li>
+     <li><strong>Docs:</strong> a FEATURES.md section.</li>
+    </ol>
+    <h3 id="note">Note</h3>
+    <p><code>reverse</code> is a keyword, so it cannot name a parameter (<code>reverse : Bool</code> is "Expected identifier"). Choose another name, such as <code>descending</code>, for a flag that callers will pass by name.</p>
+    <h3 id="not-in-scope">Not in scope</h3>
+    <ul>
+     <li>Variadic parameters (#1245).</li>
+     <li>Default values on non-trailing parameters. The existing rule ("only trailing parameters may have default values") stays: positional calls depend on it.</li>
+    </ul>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

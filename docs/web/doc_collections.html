@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Choosing a collection — Objeck Language</title>
+  <meta name="description" content="Which of the Collection classes to reach for, what each operation costs, and what each Remove hands back. Everything below was read from core/compiler/lib_src/gen_collect.obs (the line numbers are where the class starts); nothing here chang"/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Choosing a collection</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/COLLECTIONS_GUIDE.md" target="_blank">docs/COLLECTIONS_GUIDE.md on GitHub</a></div>
+    <p class="page-lead">Which of the <code>Collection</code> classes to reach for, what each operation costs, and what each <code>Remove</code> hands back. Everything below was read from <a href="https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gen_collect.obs" target="_blank"><code>core/compiler/lib_src/gen_collect.obs</code></a> (the line numbers are where the class starts); nothing here changes the API. Compile with <code>-lib gen_collect</code> (every build gets it; see <code>core/compiler/build_libs.sh</code>).</p>
+    <div id="toc_container" class="plain">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#at-a-glance">At a glance</a></li>
+      <li><a href="#what-remove-returns">What <code>Remove</code> returns</a></li>
+      <li><a href="#the-classes">The classes</a></li>
+      <li><a href="#recipes">Recipes</a></li>
+     </ul>
+    </div>
+
+    <h3 id="at-a-glance">At a glance</h3>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Need</th><th>Use</th><th>Why</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Need">A growable array, index access</td><td data-label="Use"><code>Vector</code></td><td data-label="Why">O(1) <code>Get</code>/<code>Set</code>/<code>AddBack</code>; also the type every <code>GetKeys</code>, <code>GetValues</code> and <code>Find</code> on a multi-map returns</td></tr>
+      <tr><td data-label="Need">A queue you add to and drop from both ends, or splice at a cursor</td><td data-label="Use"><code>List</code></td><td data-label="Why">O(1) at both ends and at the cursor; no index access</td></tr>
+      <tr><td data-label="Need">Key to value, keys in sorted order</td><td data-label="Use"><code>Map</code></td><td data-label="Why">O(log n); iteration is in key order</td></tr>
+      <tr><td data-label="Need">Key to value, order does not matter</td><td data-label="Use"><code>Hash</code></td><td data-label="Why">O(1) expected</td></tr>
+      <tr><td data-label="Need">Unique values, sorted</td><td data-label="Use"><code>Set</code></td><td data-label="Why"><code>Map</code> underneath, O(log n)</td></tr>
+      <tr><td data-label="Need">Unique values, order does not matter</td><td data-label="Use"><code>HashSet</code> (or <code>SetHash</code>)</td><td data-label="Why"><code>Hash</code> underneath, O(1) expected</td></tr>
+      <tr><td data-label="Need">Several values per key, keys sorted</td><td data-label="Use"><code>MultiMap</code></td><td data-label="Why">a <code>Map</code> of <code>Vector</code>s</td></tr>
+      <tr><td data-label="Need">Several values per key, keys unordered</td><td data-label="Use"><code>MultiHash</code></td><td data-label="Why">a <code>Hash</code> of <code>Vector</code>s</td></tr>
+      <tr><td data-label="Need">Two related values with no class of their own</td><td data-label="Use"><code>Collection.Tuple.Pair</code></td><td data-label="Why">immutable, any types</td></tr>
+      <tr><td data-label="Need">A pair that can sit in a sorted collection, or that you must change</td><td data-label="Use"><code>Collection.Pair</code></td><td data-label="Why">first element must be <code>Compare</code></td></tr>
+     </tbody>
+    </table>
+    <p>If you are unsure between a tree and a hash: take the <code>Hash</code> family unless you need the keys in order (<code>Map</code>, <code>Set</code>, <code>MultiMap</code>). A key class must implement <code>Compare</code> for either, and <code>HashID</code> should agree with <code>Compare</code> for the hash family (<code>String</code>, <code>IntRef</code> and the other reference types in <code>lang</code> do).</p>
+    <p><code>Stack</code>, <code>Queue</code> and <code>Heap</code> (a binary heap) are in the same file for the cases their names describe; <code>IntVector</code>, <code>FloatVector</code>, <code>IntMap</code>, <code>IntSet</code> and <code>BitSet</code> hold unboxed numbers.</p>
+    <h3 id="what-remove-returns">What <code>Remove</code> returns</h3>
+    <p>The three families disagree, and a caller that tests the result needs to know which it has.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Class</th><th>Method</th><th>Returns</th><th>When nothing was removed</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Class"><code>Vector</code></td><td data-label="Method"><code>Remove(i)</code></td><td data-label="Returns">the element removed</td><td data-label="When nothing was removed"><code>Nil</code> (index out of range)</td></tr>
+      <tr><td data-label="Class"><code>Vector</code></td><td data-label="Method"><code>RemoveBack()</code></td><td data-label="Returns">the element removed</td><td data-label="When nothing was removed"><code>Nil</code> (empty)</td></tr>
+      <tr><td data-label="Class"><code>List</code></td><td data-label="Method"><code>Remove()</code>, <code>RemoveFront()</code>, <code>RemoveBack()</code></td><td data-label="Returns"><code>Nil</code>, always</td><td data-label="When nothing was removed">no signal; check <code>IsEmpty()</code> first</td></tr>
+      <tr><td data-label="Class"><code>Map</code>, <code>Hash</code></td><td data-label="Method"><code>Remove(key)</code></td><td data-label="Returns"><code>Bool</code></td><td data-label="When nothing was removed"><code>false</code> (key not present, or <code>Nil</code>)</td></tr>
+      <tr><td data-label="Class"><code>Set</code>, <code>HashSet</code>, <code>SetHash</code></td><td data-label="Method"><code>Remove(value)</code></td><td data-label="Returns"><code>Bool</code></td><td data-label="When nothing was removed"><code>false</code></td></tr>
+      <tr><td data-label="Class"><code>MultiMap</code>, <code>MultiHash</code></td><td data-label="Method"><code>Remove(key)</code></td><td data-label="Returns"><code>Bool</code>; removes <strong>every</strong> value of the key</td><td data-label="When nothing was removed"><code>false</code></td></tr>
+     </tbody>
+    </table>
+    <p>Two consequences. A <code>Vector</code> hands you back what it removed, so <code>Remove</code> on a <code>Vector&lt;IntRef&gt;</code> cannot tell you "nothing there" from "a <code>Nil</code> was stored there"; use <code>Size()</code> or <code>Get</code> first when <code>Nil</code> is a legal element. And a <code>List</code> removes at its <em>cursor</em>: <code>RemoveFront</code> and <code>RemoveBack</code> move the cursor to that end first, so they disturb an iteration in progress that uses <code>Next()</code>/<code>Get()</code> on the same list (use <code>ForwardIterator()</code> for a traversal that must survive).</p>
+    <h3 id="the-classes">The classes</h3>
+    <h4 id="vector-gen_collectobs5113"><code>Vector&lt;H&gt;</code> (gen_collect.obs:5113)</h4>
+    <p>A growable array. It grows by half again (at least four slots) when full, so <code>AddBack</code> is amortised O(1).</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Operation</th><th>Cost</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Operation"><code>Get(i)</code>, <code>Set(v, i)</code>, <code>First()</code>, <code>Last()</code>, <code>Size()</code></td><td data-label="Cost">O(1); <code>Get</code> returns <code>Nil</code> and <code>Set</code> returns <code>false</code> for a bad index</td></tr>
+      <tr><td data-label="Operation"><code>AddBack(v)</code>, <code>RemoveBack()</code></td><td data-label="Cost">O(1) amortised</td></tr>
+      <tr><td data-label="Operation"><code>Remove(i)</code></td><td data-label="Cost">O(n): later elements are shifted down</td></tr>
+      <tr><td data-label="Operation"><code>FindFirst(f)</code>, <code>FindIndex(f)</code>, <code>Any</code>, <code>All</code>, <code>Count</code>, <code>Filter</code>, <code>Map</code>, <code>Reduce</code></td><td data-label="Cost">O(n)</td></tr>
+      <tr><td data-label="Operation"><code>Sort(compare)</code></td><td data-label="Cost">O(n log n), stable (merge sort)</td></tr>
+     </tbody>
+    </table>
+    <p>There is no insert-at-index and no <code>AddFront</code>; use a <code>List</code>, or build a new <code>Vector</code>, if you need either. <code>Reserve(n)</code> avoids regrowth when the size is known.</p>
+    <h4 id="list-gen_collectobs4350"><code>List&lt;H&gt;</code> (gen_collect.obs:4350)</h4>
+    <p>A doubly linked list with one built-in cursor (<code>Rewind</code>, <code>Forward</code>, <code>Next</code>, <code>Previous</code>, <code>More</code>, <code>Get</code>, <code>Set</code>) and independent <code>ForwardIterator()</code>/<code>BackwardIterator()</code> objects.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Operation</th><th>Cost</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Operation"><code>AddBack</code>, <code>AddFront</code>, <code>RemoveBack</code>, <code>RemoveFront</code>, <code>Front</code>, <code>Back</code>, <code>Size</code></td><td data-label="Cost">O(1)</td></tr>
+      <tr><td data-label="Operation"><code>Insert(v)</code> (after the cursor; returns <code>Bool</code>), <code>Remove()</code> (at the cursor)</td><td data-label="Cost">O(1)</td></tr>
+      <tr><td data-label="Operation"><code>Get()</code>, <code>Set(v)</code>, <code>Next()</code>, <code>Previous()</code></td><td data-label="Cost">O(1), at the cursor</td></tr>
+      <tr><td data-label="Operation">anything by position or by value</td><td data-label="Cost">not provided; walk it, O(n)</td></tr>
+     </tbody>
+    </table>
+    <h4 id="map-gen_collectobs6776"><code>Map&lt;K, V&gt;</code> (gen_collect.obs:6776)</h4>
+    <p>An AA tree (<code>Skew</code>/<code>Split</code> rebalancing on a level per node), so it stays balanced.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Operation</th><th>Cost</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Operation"><code>Insert</code>, <code>Find</code>, <code>Has</code>, <code>Remove</code></td><td data-label="Cost">O(log n)</td></tr>
+      <tr><td data-label="Operation"><code>GetKeys</code>, <code>GetValues</code>, <code>GetKeyValues</code>, <code>Each</code>, <code>ToString</code></td><td data-label="Cost">O(n), in ascending key order</td></tr>
+     </tbody>
+    </table>
+    <p><code>Insert</code> of an existing key replaces its value. <code>Find</code> returns the value, or <code>Nil</code> when absent (so it cannot tell a missing key from a stored <code>Nil</code>; use <code>Has</code>). A <code>Nil</code> key is ignored by <code>Insert</code>. The name is the usual trap: <code>Map</code> is the <em>ordered tree</em>. It is not a hash map.</p>
+    <h4 id="hash-gen_collectobs2020"><code>Hash&lt;K, V&gt;</code> (gen_collect.obs:2020)</h4>
+    <p>Open addressing with linear probing over parallel key, value and hash arrays. It doubles when it is 70% full and has no upper limit; <code>Remove</code> uses backward-shift deletion, so deletions leave no tombstones and do not slow later lookups.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Operation</th><th>Cost</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Operation"><code>Insert</code>, <code>InsertIfAbsent</code>, <code>Find</code>, <code>Has</code>, <code>Remove</code></td><td data-label="Cost">O(1) expected; an <code>Insert</code> that triggers the doubling is O(n)</td></tr>
+      <tr><td data-label="Operation"><code>GetKeys</code>, <code>GetValues</code>, <code>GetKeyValues</code> and the other whole-table calls</td><td data-label="Cost">O(capacity)</td></tr>
+     </tbody>
+    </table>
+    <p>Iteration order is unspecified, but <code>GetKeys</code>, <code>GetValues</code> and <code>GetKeyValues</code> agree with each other. Keys of different classes are never equal. <code>Find</code> returns <code>Nil</code> for a missing key. <code>InsertIfAbsent</code> returns <code>true</code> when it inserted. <code>SetCapacity</code>/<code>Resize</code> are hints for pre-sizing; the table grows on its own. A lookup changes nothing in the table, so concurrent readers are safe; a writer still needs a lock.</p>
+    <h4 id="set-gen_collectobs7465"><code>Set&lt;K&gt;</code> (gen_collect.obs:7465)</h4>
+    <p>A <code>Map&lt;K, Base&gt;</code> underneath, so it has the <code>Map</code> costs and ordering: <code>Add</code>, <code>Insert</code>, <code>Has</code> and <code>Remove</code> are O(log n) and <code>GetKeys</code>/<code>ToVector</code>/<code>ToArray</code> return ascending order. <code>Add</code> returns <code>true</code> when the value was new; <code>Insert</code> returns nothing. <code>Union</code>, <code>Intersect</code>, <code>Difference</code>, <code>SymmetricDifference</code>, <code>IsSubset</code> and <code>IsSuperset</code> return new sets and leave both operands alone.</p>
+    <h4 id="hashset-gen_collectobs1430-and-sethash-gen_collectobs7894"><code>HashSet&lt;H&gt;</code> (gen_collect.obs:1430) and <code>SetHash&lt;K&gt;</code> (gen_collect.obs:7894)</h4>
+    <p><code>HashSet</code> wraps a <code>Hash&lt;H, BoolRef&gt;</code>, so <code>Add</code>, <code>Has</code> and <code>Remove</code> are O(1) expected and the order is unspecified. <code>SetHash</code> wraps a <code>HashSet</code> and forwards to it, with the method names <code>Set</code> uses (<code>Insert</code>, <code>Add</code>, <code>Has</code>, <code>Remove</code>, the set algebra). They behave the same; <code>HashSet</code> also has <code>Insert</code> and <code>GetKeys</code> so code can move between the three. Pick one name and keep to it: <code>HashSet</code> is the implementation, <code>SetHash</code> is the spelling that parallels <code>Set</code>. Adding a <code>Nil</code> returns <code>false</code>.</p>
+    <h4 id="multimap-gen_collectobs8293-and-multihash-gen_collectobs8639"><code>MultiMap&lt;K, V&gt;</code> (gen_collect.obs:8293) and <code>MultiHash&lt;K, V&gt;</code> (gen_collect.obs:8639)</h4>
+    <p>A <code>Map</code> (or <code>Hash</code>) from key to <code>Vector&lt;V&gt;</code>. <code>Insert(k, v)</code> appends to the key's vector, creating it on the first value. Costs are those of the underlying map plus an O(1) append.</p>
+    <ul>
+     <li><code>Find(k)</code> returns <strong>the stored <code>Vector</code></strong>, not a copy, or <code>Nil</code> when the key has no values. Edits to it are edits to the multi-map.</li>
+     <li><code>Remove(k)</code> drops the key and all its values. There is no call that removes one value.</li>
+     <li><code>Size()</code> counts distinct keys; <code>TotalSize()</code> counts values and walks every key, O(keys).</li>
+    </ul>
+    <h4 id="the-two-pair-classes">The two <code>Pair</code> classes</h4>
+    <p>They share a name in different bundles, which is easy to mix up.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th></th><th><code>Collection.Tuple.Pair&lt;A, B&gt;</code> (gen_collect.obs:24)</th><th><code>Collection.Pair&lt;F : Compare, S&gt;</code> (gen_collect.obs:1849)</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="">Mutable</td><td data-label="Collection.Tuple.Pair&lt;A, B&gt; (gen_collect.obs:24)">no (<code>GetFirst</code>, <code>GetSecond</code> only)</td><td data-label="Collection.Pair&lt;F : Compare, S&gt; (gen_collect.obs:1849)">yes (<code>SetFirst</code>, <code>SetSecond</code>)</td></tr>
+      <tr><td data-label="">Element types</td><td data-label="Collection.Tuple.Pair&lt;A, B&gt; (gen_collect.obs:24)">any</td><td data-label="Collection.Pair&lt;F : Compare, S&gt; (gen_collect.obs:1849)">the first must implement <code>Compare</code></td></tr>
+      <tr><td data-label="">Implements <code>Compare</code> / <code>Stringify</code></td><td data-label="Collection.Tuple.Pair&lt;A, B&gt; (gen_collect.obs:24)">neither (so it cannot be a <code>Map</code> or <code>Hash</code> key or a <code>Set</code> member)</td><td data-label="Collection.Pair&lt;F : Compare, S&gt; (gen_collect.obs:1849)">both; <code>Compare</code> looks at the first element only</td></tr>
+      <tr><td data-label=""><code>ToString</code></td><td data-label="Collection.Tuple.Pair&lt;A, B&gt; (gen_collect.obs:24)"><code>[a,b]</code></td><td data-label="Collection.Pair&lt;F : Compare, S&gt; (gen_collect.obs:1849)"><code>{a,b}</code></td></tr>
+      <tr><td data-label="">Where the library uses it</td><td data-label="Collection.Tuple.Pair&lt;A, B&gt; (gen_collect.obs:24)"><code>Hash-&gt;Dict</code> and <code>Map-&gt;Dict</code> take a <code>Vector</code> of them; <code>Triplet</code>, <code>Quartet</code> and <code>Quintet</code> are the same family</td><td data-label="Collection.Pair&lt;F : Compare, S&gt; (gen_collect.obs:1849)">what <code>GetKeyValues()</code> on <code>Map</code> and <code>Hash</code> returns</td></tr>
+     </tbody>
+    </table>
+    <p><code>Collection.Pair-&gt;Compare(x)</code> compares its first element with <code>x</code>, so the documented call is <code>a-&gt;Compare(b-&gt;GetFirst())</code>. Its <code>HashID()</code> is the first element's instance ID rather than a hash of its value, so do not use a <code>Collection.Pair</code> as a <code>Hash</code> key and expect equal pairs to collide. For a value type that crosses a library boundary, define a small class instead.</p>
+    <h3 id="recipes">Recipes</h3>
+    <ul>
+     <li><strong>Counting words, order irrelevant:</strong> <code>Hash&lt;String, IntRef&gt;</code>; <code>Find</code> then <code>Insert</code> the new count.</li>
+     <li><strong>A report sorted by key:</strong> <code>Map</code>, then <code>GetKeyValues()</code> (already ascending).</li>
+     <li><strong>Unique ids you only test for membership:</strong> <code>HashSet&lt;IntRef&gt;</code>.</li>
+     <li><strong>Group rows by a column:</strong> <code>MultiHash&lt;String, Row&gt;</code>, then <code>Find(key)</code> for the group.</li>
+     <li><strong>A work queue:</strong> <code>List</code> (<code>AddBack</code>, then <code>Front</code> and <code>RemoveFront</code>), or <code>Queue</code>.</li>
+     <li><strong>Take the first n of a sorted result:</strong> <code>Vector-&gt;Sort(...)</code>, then <code>Limit(n)</code>.</li>
+    </ul>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

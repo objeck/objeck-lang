@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Method-Level Generics — Design — Objeck Language</title>
+  <meta name="description" content="Issue: #1242, split out of #1186."/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Method-Level Generics — Design</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/METHOD_GENERICS_DESIGN.md" target="_blank">docs/METHOD_GENERICS_DESIGN.md on GitHub</a></div>
+    <p class="page-lead">Issue: <a href="https://github.com/objeck/objeck-lang/issues/1242" target="_blank">#1242</a>, split out of #1186.</p>
+    <div id="toc_container" class="plain">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#why">Why</a></li>
+      <li><a href="#decisions">Decisions</a></li>
+      <li><a href="#phase-2-library-methods-shipped">Phase 2: library methods (shipped)</a></li>
+      <li><a href="#implementation">Implementation</a></li>
+      <li><a href="#tests">Tests</a></li>
+     </ul>
+    </div>
+
+    <h3 id="why">Why</h3>
+    <p>Type parameters existed only on classes. A generic helper needed a throwaway generic class, instantiated at every call with explicit type arguments (<code>Swapper-&gt;New()&lt;String&gt;-&gt;Swap(...)</code>). Research code is full of small generic helpers: argmax over a collection, swap, pick-first, map over a vector.</p>
+<pre class="line-numbers"><code class="language-cpp">function : Max&lt;T : Compare&gt;(values : Vector&lt;T&gt;) ~ T { ... }
+function : Swap&lt;T&gt;(a : T[], i : Int, j : Int) ~ Nil { ... }
+function : First&lt;T&gt;(a : T[]) ~ T { return a[0]; }
+
+best := Max(scores);        # T inferred: scores is a Vector&lt;IntRef&gt;, so best is an IntRef
+name := First(names);       # a String
+</code></pre>
+    <h3 id="decisions">Decisions</h3>
+    <h4 id="syntax">Syntax</h4>
+    <p>The type parameters follow the method name, exactly as on a class: <code>Name&lt;T, U : Bound&gt;(...)</code>. Bounds, compound bounds and F-bounds parse as they do for classes.</p>
+    <h4 id="inference-not-explicit-type-arguments">Inference, not explicit type arguments</h4>
+    <p>Type arguments are <strong>inferred from the call's arguments</strong>, which is what makes the feature worth having. A parameter typed <code>T</code>, <code>T[]</code> or <code>C&lt;..., T, ...&gt;</code> (any generic class) binds <code>T</code> to the argument's class.</p>
+    <ul>
+     <li>If a type parameter is bound twice, both bindings must be the same class.</li>
+     <li>A type parameter that no argument determines is its bound.</li>
+     <li>An explicit form such as <code>Max(v)&lt;IntRef&gt;</code> is left for later. It would mean deciding how it relates to the <code>&lt;...&gt;</code> suffix calls already use for class type arguments.</li>
+    </ul>
+    <h4 id="code-generation-erasure">Code generation: erasure</h4>
+    <p>The same model as class generics: one body, and the type parameters are erased.</p>
+    <ul>
+     <li><strong>Inside the method</strong>, <code>T</code> is its bound (the first one for a compound bound), or <code>System.Base</code> when it has none. So the body type-checks against exactly what the bound allows. The parser makes the substitution when it builds each type, and marks the type with the parameter it came from.</li>
+     <li><strong>At a call</strong>, the marked parameter and return types are re-instantiated with the inferred bindings:
+    <ul>
+     <li>the arguments are matched against <code>Vector&lt;IntRef&gt;</code>, not <code>Vector&lt;Compare&gt;</code>;</li>
+     <li>each binding is checked against its bound, so a non-<code>Compare</code> argument to <code>Max&lt;T : Compare&gt;</code> is a compile error;</li>
+     <li>the call's value has the return type with <code>T</code> substituted, so <code>best</code> above is an <code>IntRef</code> with no cast.</li>
+    </ul>
+     </li>
+     <li><strong>At run time</strong> nothing changes: the objects are the concrete ones, and the signature is the erased one.</li>
+    </ul>
+    <h4 id="scope-of-phase-1">Scope of phase 1</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Target</th><th>Phase 1</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Target">functions and methods of the program's own classes</td><td data-label="Phase 1">yes</td></tr>
+      <tr><td data-label="Target">type parameters on constructors</td><td data-label="Phase 1">no (a class's own type parameters cover that)</td></tr>
+      <tr><td data-label="Target">primitive arguments (<code>Max(3, 5)</code>)</td><td data-label="Phase 1">no: a type parameter takes an object, as class generics do (<code>IntRef</code>)</td></tr>
+      <tr><td data-label="Target">library methods (<code>Vector-&gt;Map&lt;R&gt;</code>)</td><td data-label="Phase 1"><strong>phase 2</strong> (shipped): the <code>.obl</code> keeps the type-parameter marks</td></tr>
+     </tbody>
+    </table>
+    <h3 id="phase-2-library-methods-shipped">Phase 2: library methods (shipped)</h3>
+    <p>A library's signatures carry the bound a type parameter was erased to (<code>Max&lt;T : Compare&gt;</code> reads <code>Max(o.Collection.Vector|o.System.Compare)</code>), not the parameter, so a caller in another binary could not infer anything: a library generic returned its bound.</p>
+    <ul>
+     <li><strong>The <code>.obl</code> keeps the marks.</strong> After each method's parameter names, a library writes where its own type parameters stand, as <code>(path, name)</code> pairs. <code>p&lt;i&gt;</code> is a parameter and <code>r</code> the return, followed by <code>.g&lt;i&gt;</code> for a generic argument, <code>.f&lt;i&gt;</code> for a function type's parameter, and <code>.r</code> for a function type's return (<code>Type::GetMethodGenericMarks</code>). The linker applies them to the parsed types (<code>LibraryMethod::SetGenericMarks</code>). Paths rather than positions mean a mark can never land on the wrong part of a type. The library magic is <code>0xffb8</code>, and a <code>0xffb7</code> library is refused with a rebuild message.</li>
+     <li><strong>Inference at a library call.</strong> <code>InferLibraryMethodGenerics</code> mirrors the program path, and <code>UnifyMethodGeneric</code> now matches function types: <code>(A, ..) ~ R</code> against the argument's function type, parameters and return.
+    <ul>
+     <li>A typed lambda gives its declared type, and so does a function value.</li>
+     <li>An inferred lambda has no type until it is built. <code>DerivedLambdaFunction</code> builds it with the parameter's bound, then binds the parameter from what the lambda's body returns (<code>LambdaResultType</code>). Such a lambda must return an object: a primitive is not boxed into the bound, as it is not in an assignment to a <code>Base</code>.</li>
+    </ul>
+     </li>
+     <li><strong>Matching.</strong> Resolving a class's own type arguments rebuilds a function type from its encoded name, which spells the bound. So the bindings are applied afterwards, walking the marked original alongside (<code>SubstituteAlong</code>), and the function type is re-encoded.</li>
+     <li><strong>The call's value</strong> has the return type with the bindings substituted, before the class's own type arguments are mapped. <code>words-&gt;Map(..)-&gt;Get(0)</code> therefore sees an <code>IntRef</code>.</li>
+     <li><strong>APIs:</strong> <code>Vector</code>, <code>List</code> and <code>CompareList</code> take <code>Map&lt;R&gt;((H) ~ R) ~ C&lt;R&gt;</code>; <code>CompareList</code>'s is <code>Map&lt;R : Compare&gt;</code>. A map that keeps the element type behaves as before. <code>Reduce</code> keeps its shape.</li>
+    </ul>
+    <p>Found on the way: 34 doc examples in <code>gen_collect.obs</code> used <code>\(x : T) ~ R { return e; }</code>, which does not parse. They are now <code>\(T) ~ R : (x) =&gt; e</code>, and every lambda example in the file compiles.</p>
+    <p>Tests: <code>method_generics_library.obs</code> (<code>Map&lt;R&gt;</code> with typed, inferred and function-value arguments, chained, in a loop), <code>bad_method_generic_library_bound.obs</code>, and <code>check_lib_generic_methods.py</code>, which builds a library of generic functions and methods and links a program against it in three modes.</p>
+    <h3 id="implementation">Implementation</h3>
+    <ol>
+     <li><strong>Parser:</strong>
+    <ul>
+     <li><code>ParseMethod</code> parses <code>&lt;...&gt;</code> after the name with the existing <code>ParseGenericClasses</code>.</li>
+     <li>While the method is parsed, <code>ParseType</code> maps each of those names to its bound type marked with the parameter name (<code>Type::SetMethodGeneric</code>). That covers the signature, locals, casts and generic arguments (<code>Vector&lt;T&gt;</code>).</li>
+    </ul>
+     </li>
+     <li><strong>Analyzer</strong> (<code>ResolveMethodCall</code>, program classes): for a candidate with marked types:
+    <ul>
+     <li>infer the bindings from the arguments (<code>InferMethodGenerics</code>);</li>
+     <li>substitute them into the parameter types the arguments are matched against;</li>
+     <li>check each binding against its bound.</li>
+    </ul>
+     </li>
+    </ol>
+    <p>The bindings stay on the call so that the call's value takes the substituted return type.</p>
+    <ol start="3">
+     <li><strong>Emitter:</strong> unchanged.</li>
+    </ol>
+    <h3 id="tests">Tests</h3>
+    <p><code>method_generics.obs</code> covers:</p>
+    <ul>
+     <li><code>T</code> from a plain argument, an array and a generic class;</li>
+     <li>a bound (<code>T : Compare</code>), and the inferred return type used without a cast;</li>
+     <li>two type parameters;</li>
+     <li>a generic method calling another;</li>
+     <li>instance and static methods;</li>
+     <li>a loop for the JIT, in three modes.</li>
+    </ul>
+    <p>The <code>bad_method_generic_*.obs</code> files cover:</p>
+    <ul>
+     <li>a bound the argument does not meet;</li>
+     <li>conflicting bindings;</li>
+     <li>a primitive argument.</li>
+    </ul>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

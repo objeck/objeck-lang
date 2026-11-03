@@ -20,11 +20,11 @@
 
       menu.addEventListener("click", (e) => {
         e.stopPropagation();
-        menuItems.style.display = menuItems.style.display === "block" ? "none" : "block";
+        menuItems.classList.toggle("open");
       });
 
       document.addEventListener("click", () => {
-        menuItems.style.display = "none";
+        menuItems.classList.remove("open");
       });
     });
   </script>
@@ -49,6 +49,7 @@
           <a href="getting_started.html">Quick Start</a>
           <a href="ai_guide.html">AI Guide</a>
           <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
           <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
           <a href="readme.html">Changelog</a>
           <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
@@ -1896,7 +1897,7 @@ region,total
 east,49.0
 west,32.0</pre>
          <p>
-          The <a href="guide_query.html">Query.Structured guide</a> goes on to joins, prepared statements and saving a table to disk, and the <a href="https://github.com/objeck/objeck-lang/blob/master/docs/QUERY_DESIGN.md">design document</a> covers the SQL subset, sources, indexes and the <code>.otab</code> file format.
+          The <a href="guide_query.html">Query.Structured guide</a> goes on to joins, prepared statements and saving a table to disk, and the <a href="doc_query_design.html">design document</a> covers the SQL subset, sources, indexes and the <code>.otab</code> file format.
          </p>
          <h2 id="funcs">
           Closures and Lambda Expressions
@@ -3268,7 +3269,7 @@ goodbye.</pre>
           <ol>
            <li>
             The 32 programs that ship in the <code>examples</code> folder of every release, in learning order, each with its compile and run lines and what it prints:
-            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/README.md">
+            <a href="doc_deploy_examples.html">
              example index
             </a>
            </li>

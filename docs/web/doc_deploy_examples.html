@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Objeck example programs — Objeck Language</title>
+  <meta name="description" content="The programs in this folder ship with every Objeck release, in the examples/ directory of the distribution. welcome.obs prints this same index at the terminal:"/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Objeck example programs</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/README.md" target="_blank">programs/deploy/README.md on GitHub</a></div>
+    <p class="page-lead">The programs in this folder ship with every Objeck release, in the <code>examples/</code> directory of the distribution. <code>welcome.obs</code> prints this same index at the terminal:</p>
+
+<pre class="plain">obc -src welcome.obs -lib json,net,cipher
+obr welcome.obe</pre>
+    <p>Each program is self-contained and opens with a comment giving its exact compile and run lines. Run them from this folder (or from <code>examples/</code> in an install): two of them read files from <code>data/</code>, which ships alongside.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Example</th><th>Libraries</th><th>What it shows</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/hello_0.obs" target="_blank"><code>hello_0.obs</code></a></td><td data-label="Libraries">none</td><td data-label="What it shows">a class, a function, Main, and one line of output</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/values_1.obs" target="_blank"><code>values_1.obs</code></a></td><td data-label="Libraries">none</td><td data-label="What it shows">types, literals, variables, interpolation and conversions</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/control_flow_2.obs" target="_blank"><code>control_flow_2.obs</code></a></td><td data-label="Libraries">none</td><td data-label="What it shows">if, select, while, do/while, for, each, break and continue</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/functions_3.obs" target="_blank"><code>functions_3.obs</code></a></td><td data-label="Libraries">none</td><td data-label="What it shows">functions, default and named arguments, ref parameters, recursion</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/classes_4.obs" target="_blank"><code>classes_4.obs</code></a></td><td data-label="Libraries">none</td><td data-label="What it shows">classes, inheritance, virtual methods, interfaces and Stringify</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/records_enums_5.obs" target="_blank"><code>records_enums_5.obs</code></a></td><td data-label="Libraries">none</td><td data-label="What it shows">records, readonly records, enums and consts</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/errors_6.obs" target="_blank"><code>errors_6.obs</code></a></td><td data-label="Libraries">none</td><td data-label="What it shows">custom errors, try/on/finally, built-in errors and ?-&gt; recovery</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/generics_7.obs" target="_blank"><code>generics_7.obs</code></a></td><td data-label="Libraries">none</td><td data-label="What it shows">generic classes, bounded generic functions, Vector and Map</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/closures_8.obs" target="_blank"><code>closures_8.obs</code></a></td><td data-label="Libraries">none</td><td data-label="What it shows">functions as values, lambdas and closures</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/arrays_9.obs" target="_blank"><code>arrays_9.obs</code></a></td><td data-label="Libraries">none</td><td data-label="What it shows">arrays: literals, 2-D, jagged, sorting, Fill and Copy</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/strings_10.obs" target="_blank"><code>strings_10.obs</code></a></td><td data-label="Libraries"><code>-lib cipher</code></td><td data-label="What it shows">string methods, comparison, formatting, SHA-256 and Base64</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/collections_11.obs" target="_blank"><code>collections_11.obs</code></a></td><td data-label="Libraries">none</td><td data-label="What it shows">Vector, List, Map, Hash, Set, Stack, Queue, unboxed collections</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/threads_12.obs" target="_blank"><code>threads_12.obs</code></a></td><td data-label="Libraries"><code>-lib concurrent</code></td><td data-label="What it shows">threads, critical sections and a CountDownLatch</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/files_13.obs" target="_blank"><code>files_13.obs</code></a></td><td data-label="Libraries">none</td><td data-label="What it shows">write, read, append and list files and folders</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/json_14.obs" target="_blank"><code>json_14.obs</code></a></td><td data-label="Libraries"><code>-lib json,json_stream</code></td><td data-label="What it shows">parse, walk, query and build JSON; stream a file</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/xml_15.obs" target="_blank"><code>xml_15.obs</code></a></td><td data-label="Libraries"><code>-lib xml</code></td><td data-label="What it shows">parse XML, walk elements and attributes, build XML</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/csv_16.obs" target="_blank"><code>csv_16.obs</code></a></td><td data-label="Libraries"><code>-lib csv</code></td><td data-label="What it shows">read CSV by row and column, quoted fields, write CSV</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/regex_17.obs" target="_blank"><code>regex_17.obs</code></a></td><td data-label="Libraries"><code>-lib regex</code></td><td data-label="What it shows">match, find all, capture groups, replace and split</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/sql_tables_18.obs" target="_blank"><code>sql_tables_18.obs</code></a></td><td data-label="Libraries"><code>-lib query,misc,net,json,regex,xml,csv,cipher</code></td><td data-label="What it shows">SQL over in-memory tables: group by, indexes, Explain</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/sql_files_19.obs" target="_blank"><code>sql_files_19.obs</code></a></td><td data-label="Libraries"><code>-lib query,misc,net,json,regex,xml,csv,cipher</code></td><td data-label="What it shows">SQL over CSV and JSON files and a folder, with a join</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/serialize_20.obs" target="_blank"><code>serialize_20.obs</code></a></td><td data-label="Libraries">none</td><td data-label="What it shows">save objects to a file and load them back</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/odbc_21.obs" target="_blank"><code>odbc_21.obs</code></a></td><td data-label="Libraries"><code>-lib odbc</code></td><td data-label="What it shows">a database through ODBC: prepared inserts and queries</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/http_client_22.obs" target="_blank"><code>http_client_22.obs</code></a></td><td data-label="Libraries"><code>-lib net,json,cipher</code></td><td data-label="What it shows">HTTPS GET: status, headers, JSON and failure handling</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/web_server_23.obs" target="_blank"><code>web_server_23.obs</code></a></td><td data-label="Libraries"><code>-lib net,net_server,json,cipher</code></td><td data-label="What it shows">a two-route web server that tests itself and stops</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/rss_reader_24.obs" target="_blank"><code>rss_reader_24.obs</code></a></td><td data-label="Libraries"><code>-lib rss,xml,net,cipher</code></td><td data-label="What it shows">fetch an RSS feed and list the latest headlines</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/ml_regression_25.obs" target="_blank"><code>ml_regression_25.obs</code></a></td><td data-label="Libraries"><code>-lib csv,ml</code></td><td data-label="What it shows">linear and logistic regression with a test split</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/ml_classify_26.obs" target="_blank"><code>ml_classify_26.obs</code></a></td><td data-label="Libraries"><code>-lib csv,ml</code></td><td data-label="What it shows">random forest, cross-validation and a confusion matrix</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/ml_outliers_27.obs" target="_blank"><code>ml_outliers_27.obs</code></a></td><td data-label="Libraries"><code>-lib csv,ml</code></td><td data-label="What it shows">anomaly detection with isolation forest and LOF</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/nlp_28.obs" target="_blank"><code>nlp_28.obs</code></a></td><td data-label="Libraries"><code>-lib nlp</code></td><td data-label="What it shows">tokenizing, stemming, sentiment and TF-IDF search</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/llm_29.obs" target="_blank"><code>llm_29.obs</code></a></td><td data-label="Libraries"><code>-lib gemini,net,net_server,json,misc,cipher</code></td><td data-label="What it shows">ask a large language model (Gemini) a question</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/ai_search_30.obs" target="_blank"><code>ai_search_30.obs</code></a></td><td data-label="Libraries"><code>-lib ai</code></td><td data-label="What it shows">A* pathfinding and minimax</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/game_31.obs" target="_blank"><code>game_31.obs</code></a></td><td data-label="Libraries"><code>-lib sdl2,sdl_game,json</code></td><td data-label="What it shows">an SDL2 game: collect gems, dodge spiders, keep a best score</td></tr>
+     </tbody>
+    </table>
+    <h3 id="building-all-of-them">Building all of them</h3>
+    <p><code>build_examples.py</code> beside this file reads the <strong>Libraries</strong> column above and compiles each example with exactly what it names:</p>
+<pre class="plain">python build_examples.py              compile every example, report
+python build_examples.py --only json  just the ones whose name matches
+python build_examples.py --keep       leave the .obe files behind</pre>
+    <p>It finds <code>obc</code> in <code>../bin</code> (an install) or the repo's deploy tree, and exits non-zero if any example fails. CI runs it on every change, so the table above is verified rather than merely written down: a wrong entry in the Libraries column fails the build.</p>
+    <h3 id="building-one">Building one</h3>
+    <p>With no libraries:</p>
+<pre class="plain">obc -src hello_0.obs
+obr hello_0.obe</pre>
+    <p>With them, naming the list from the table above:</p>
+<pre class="plain">obc -src json_14.obs -lib json,json_stream
+obr json_14.obe</pre>
+    <h3 id="notes">Notes</h3>
+    <ul>
+     <li>Read them in order: 0-13 teach the language, 14-21 work with data, 22-24 are networking, 25-30 are AI and machine learning, and 31 is a game.</li>
+     <li>Each program's header gives its compile and run lines and what it prints.</li>
+     <li><code>obc</code> does not pull in a library's own dependencies, so some <code>-lib</code> lists name libraries the program never uses directly: <code>ml</code> needs <code>csv</code>, and <code>query</code> needs the rest of its list.</li>
+     <li><code>game_31.obs</code> opens a window and needs a display; the rest run in a terminal.</li>
+     <li><code>odbc_21.obs</code> needs an ODBC data source (it explains how to set one up when it cannot connect), and <code>llm_29.obs</code> needs a Gemini API key.</li>
+     <li><code>http_client_22.obs</code> and <code>rss_reader_24.obs</code> need an internet connection.</li>
+    </ul>
+    <hr class="section-end">
+    <p><em>Generated from <code>welcome.obs</code> by <code>tools/cicd/gen_examples_readme.py</code>. Edit the arrays there, not this file, and regenerate.</em></p>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

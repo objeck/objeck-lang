@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Objeck LSP — Objeck Language</title>
+  <meta name="description" content="Sublime TCP client shim."/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Objeck LSP</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/clients/sublime/README.md" target="_blank">tools/lsp/clients/sublime/README.md on GitHub</a></div>
+    <p class="page-lead">Sublime TCP client shim.</p>
+
+    <h3 id="installation">Installation</h3>
+    <ul>
+     <li>Install syntax <a href="https://github.com/objeck/objeck-lang/tree/master/docs/syntax/sublime" target="_blank">highlighting</a></li>
+     <li>Install the Sublime <a href="https://lsp.sublimetext.io/language_servers/" target="_blank">LSP support</a></li>
+     <li>Open Preferences &gt; Package Settings &gt; LSP &gt; Settings and add the "objeck" client configuration to the "clients":</li>
+    </ul>
+    <p>Standard I/O</p>
+<pre class="plain">{
+	"clients": {
+		"objeck": {
+			"enabled": false,
+			"command": [
+				"&lt;objeck_path&gt;/bin/obr.exe",
+				"&lt;objeck_server_path&gt;/objeck_lsp.obe",
+				"&lt;objeck_server_path&gt;/objk_apis.json",
+				"stdio"
+			],
+			"env": {
+				"OBJECK_LIB_PATH": "&lt;objeck_path&gt;/lib",
+				"OBJECK_STDIO": "binary"
+			},
+			"selector": "source.objeck-obs"
+		}
+	}
+}</pre>
+    <p>TCP sockets</p>
+<pre class="plain">{
+	"clients": {
+		"objeck": {
+			"enabled": false,
+			"command": [
+				"&lt;objeck_path&gt;/bin/obr.exe",
+				"&lt;objeck_server_path&gt;/objeck_lsp.obe",
+				"&lt;objeck_server_path&gt;/objk_apis.json",
+				"6013"
+			],
+			"env": {
+				"OBJECK_LIB_PATH": "&lt;objeck_path&gt;/lib"
+			},
+			"selector": "source.objeck-obs",
+			"tcp_port": 6013
+		}
+	}
+}</pre>
+    <h3 id="running-client">Running client</h3>
+    <ul>
+     <li>Open Tools &gt; LSP &gt; Enable Language and select objeck</li>
+    </ul>
+    <h3 id="debugging-dap">Debugging (DAP)</h3>
+    <p>Sublime debugging uses the <a href="https://packagecontrol.io/packages/Debugger" target="_blank">Debugger</a> package by Dave Leroy. After installing it via Package Control:</p>
+    <ol>
+     <li>Copy <code>dap/objeck_dap_adapter.py</code> into your <code>Packages/Objeck/</code> directory (the <code>install.sh</code> / <code>install.cmd</code> script does this for you).</li>
+     <li>Create <code>Packages/User/Objeck.sublime-settings</code> pointing at your <code>obd</code> binary:</li>
+    </ol>
+<pre class="line-numbers"><code class="language-json">{
+    "obd_path": "C:\\Program Files\\Objeck\\bin\\obd.exe",
+    "objeck_lib_path": "C:\\Program Files\\Objeck\\lib"
+}
+</code></pre>
+    <ol start="3">
+     <li>Compile your source with debug symbols: <code>obc -src myprog.obs --debug -dest myprog.obe</code>. Skipping this is the most common mistake — the session starts but no breakpoint ever binds.</li>
+     <li>Add a debug configuration, either per project or globally (below).</li>
+     <li><strong>Debugger &gt; Start</strong>, pick the configuration, and click the gutter to set breakpoints.</li>
+    </ol>
+    <p>The adapter is registered on Sublime startup and runs <code>obd --dap</code> over stdio with <code>OBJECK_LIB_PATH</code> set per <code>Objeck.sublime-settings</code>.</p>
+    <h4 id="creating-a-debug-configuration">Creating a debug configuration</h4>
+    <p><strong>Per project</strong> — put a <code>debugger_configurations</code> block in a <code>.sublime-project</code> and open it with <em>Project &gt; Open Project</em>. Configurations are only read from an open project, not from a plain folder. See <a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/clients/sublime/dap/objeck.sublime-project.example" target="_blank"><code>dap/objeck.sublime-project.example</code></a>.</p>
+    <p><strong>Globally, without a project</strong> — the Debugger package normally insists on a sublime project and shows <em>"Debugger requires a sublime project"</em>. A non-empty <code>global_debugger_configurations</code> in <code>Packages/User/Debugger.sublime-settings</code> lifts that requirement and makes the configuration available in every window. See <a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/clients/sublime/dap/Debugger.sublime-settings.example" target="_blank"><code>dap/Debugger.sublime-settings.example</code></a>:</p>
+<pre class="line-numbers"><code class="language-json">{
+    "global_debugger_configurations": [
+        {
+            "name": "Objeck: debug current file",
+            "type": "objeck",
+            "request": "launch",
+            "program": "${file_path}/${file_base_name}.obe",
+            "sourceDir": "${file_path}"
+        }
+    ]
+}
+</code></pre>
+    <p><code>${file_path}</code> and <code>${file_base_name}</code> are expanded per window, so this one entry debugs whichever <code>.obs</code> file is open — provided the matching <code>.obe</code> sits beside it. Use <code>${folder}</code> instead only inside a project, since it has no meaning without one.</p>
+    <h4 id="troubleshooting">Troubleshooting</h4>
+    <ul>
+     <li><strong>"Add or select a configuration to begin debugging"</strong> — the Debugger package found no configurations. Either no <code>.sublime-project</code> is open, or it has no <code>debugger_configurations</code> block. Add a global configuration as above to sidestep projects entirely.</li>
+     <li><strong>Breakpoints never hit</strong> — the <code>.obe</code> was built without <code>--debug</code>, or it is stale relative to the source. Recompile after every edit; the debugger runs the bytecode, not the <code>.obs</code>.</li>
+     <li><strong><code>objeck</code> missing from the adapter list</strong> — the adapter registers at startup, so restart Sublime after installing it. <code>View &gt; Show Console</code> logs <code>[objeck-dap] registered adapter types:</code> and warns explicitly if registration failed.</li>
+    </ul>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

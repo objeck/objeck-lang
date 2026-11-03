@@ -8,12 +8,16 @@
   <link href="style/styles.css" rel="stylesheet"/>
   <link rel="icon" href="style/favicon.ico" type="image/x-icon"/>
   <style>
-    .perf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px; }
-    .perf-stat { text-align: center; padding: 22px 14px; background-color: #1a2332; border: 1px solid #2d3a4d; border-radius: 10px; }
-    .perf-num { font-family: 'JetBrains Mono', monospace; font-size: 1.45rem; font-weight: 700; color: #7dd3fc; white-space: nowrap; }
-    .perf-label { margin-top: 8px; font-size: 0.85rem; color: #9ca3af; line-height: 1.45; }
-    .perf-note { text-align: center; font-size: 0.8rem; color: #9ca3af; margin: 16px auto 0; max-width: 720px; line-height: 1.5; }
-    .platform-note { text-align: center; font-size: 0.85rem; color: #9ca3af; margin: 16px auto 0; max-width: 680px; line-height: 1.5; }
+    .perf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+    .perf-stat { text-align: center; padding: 24px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; transition: border-color 0.2s, transform 0.2s; }
+    .perf-stat:hover { border-color: rgba(125, 211, 252, 0.4); transform: translateY(-2px); }
+    .perf-num { font-family: var(--mono); font-size: 1.5rem; font-weight: 700; white-space: nowrap; background: var(--grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
+    .perf-label { margin-top: 8px; font-size: 0.85rem; color: var(--muted); line-height: 1.45; }
+    .perf-note { text-align: center; font-size: 0.8rem; color: var(--muted); margin: 16px auto 0; max-width: 720px; line-height: 1.5; }
+    .platform-note { text-align: center; font-size: 0.85rem; color: var(--muted); margin: 16px auto 0; max-width: 680px; line-height: 1.5; }
+    .doc-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 18px 0 0; }
+    .doc-links a { font-family: var(--mono); font-size: 0.78rem; color: var(--sky); text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 5px 14px; background: var(--card); }
+    .doc-links a:hover { border-color: rgba(125, 211, 252, 0.5); color: var(--cyan); }
   </style>
 
   <script>
@@ -23,11 +27,11 @@
 
       menu.addEventListener("click", (e) => {
         e.stopPropagation();
-        menuItems.style.display = menuItems.style.display === "block" ? "none" : "block";
+        menuItems.classList.toggle("open");
       });
 
       document.addEventListener("click", () => {
-        menuItems.style.display = "none";
+        menuItems.classList.remove("open");
       });
     });
 
@@ -59,6 +63,7 @@
           <a href="getting_started.html">Quick Start</a>
           <a href="ai_guide.html">AI Guide</a>
           <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
           <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
           <a href="readme.html">Changelog</a>
           <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
@@ -71,6 +76,7 @@
   <main id="main">
     <!-- Hero Section -->
     <section class="hero">
+      <a class="hero-badge" href="readme.html">v2026.10.3 &middot; JIT-compiled &middot; AI-native</a>
       <h1 class="hero-title">From Vibe to Silicon.</h1>
       <p class="hero-subtitle">
         Write AI, ML, and network apps in fewer lines. No external packages.
@@ -83,6 +89,15 @@
         <a class="btn btn-secondary" href="https://github.com/objeck/objeck-lang/releases/latest">
           Download Latest
         </a>
+        <a class="btn btn-secondary" href="getting_started.html">
+          Quick Start
+        </a>
+      </div>
+      <div class="hero-stats">
+        <span><b>5</b> platforms</span>
+        <span><b>0</b> external packages</span>
+        <span><b>350+</b> Rosetta solutions</span>
+        <span><b>7</b> editors with LSP</span>
       </div>
     </section>
 
@@ -197,6 +212,14 @@
             Rosetta Code examples compared with other languages.
           </span>
         </a>
+        <a class="box" href="docs.html">
+          <div class="box-icon">DOC</div>
+          <b>Documentation</b>
+          <hr/>
+          <span class="box-text">
+            Architecture, the language reference, design notes, performance and tools.
+          </span>
+        </a>
         <a class="box" href="readme.html">
           <div class="box-icon">CL</div>
           <b>Changelog</b>
@@ -284,7 +307,7 @@
       <p class="perf-note">
         Call costs on AMD64; benchmarks on an AMD Ryzen 9 7950X3D with Objeck v2026.9.1, median of three runs.
         Java and LuaJIT remain faster on several benchmarks &mdash;
-        <a href="https://github.com/objeck/objeck-lang/blob/master/docs/performance.md" target="_blank">full results and methodology</a>.
+        <a href="doc_performance.html" target="_blank">full results and methodology</a>.
       </p>
     </section>
 
@@ -312,7 +335,16 @@
       <a href="images/objeck-architecture.svg" target="_blank" title="Open the full-size diagram">
         <img src="images/objeck-architecture.svg" alt="Objeck toolchain architecture: editors and the language server, the obc compiler pipeline, the obr virtual machine and JIT, command-line tools, libraries, native modules, platforms, and the build and release pipeline" loading="lazy" style="display:block; width:100%; height:auto; background:#fff; border:1px solid #2d3a4d; border-radius:10px; padding:8px; box-sizing:border-box;">
       </a>
-      <p style="text-align:center; color:#9ca3af; margin-top:1rem; font-size:0.9rem;"><a href="https://github.com/objeck/objeck-lang/blob/master/docs/architecture.md" target="_blank">More diagrams: compiler, VM, JIT, memory, libraries and CI</a></p>
+      <p style="text-align:center; color:#9ca3af; margin-top:1rem; font-size:0.9rem;"><a href="doc_architecture.html">More diagrams: compiler, VM, JIT, memory, libraries and CI</a></p>
+      <div class="doc-links">
+        <a href="doc_architecture.html">Architecture</a>
+        <a href="doc_performance.html">Performance</a>
+        <a href="doc_gc_roots.html">GC roots</a>
+        <a href="doc_security.html">Security model</a>
+        <a href="doc_query_design.html">Query design</a>
+        <a href="doc_features.html">Language reference</a>
+        <a href="docs.html">All docs &rarr;</a>
+      </div>
     </section>
 
     <!-- Deep Dives -->

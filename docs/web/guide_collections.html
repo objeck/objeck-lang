@@ -3,7 +3,7 @@
  <head>
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-  <title>Collections Guide — Objeck Language</title>
+  <title>Collections — Objeck Language</title>
   <meta name="description" content="Hash, Map, Vector, Set and MultiHash in one short program."/>
   <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
   <link href="style/styles.css" rel="stylesheet" />
@@ -11,115 +11,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script>hljs.highlightAll();</script>
 
-  <style>
-    /* ── Page title ── */
-    .page-title {
-      font-size: 2rem;
-      font-weight: 700;
-      color: #f3f4f6;
-      margin: 0 0 0.4rem;
-      line-height: 1.2;
-    }
-    .page-lead {
-      color: #9ca3af;
-      font-size: 0.97rem;
-      margin-bottom: 1.75rem;
-      line-height: 1.7;
-      max-width: 700px;
-    }
-
-    /* ── Section headings with left accent ── */
-    .container h3 {
-      border-left: 3px solid #3b82f6;
-      padding-left: 12px;
-      margin-top: 3rem;
-    }
-    .container h3:first-of-type { margin-top: 1.25rem; }
-
-    /* ── Subsection (h4) spacing ── */
-    .container h4 {
-      margin-top: 1.75rem;
-      margin-bottom: 0.35rem;
-    }
-
-    /* ── Compile flag badge ── */
-    .lib-flag {
-      display: inline-block;
-      background: #151d28;
-      border: 1px solid #2d3a4d;
-      border-left: 3px solid #3b82f6;
-      border-radius: 4px 8px 8px 4px;
-      padding: 5px 14px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.78rem;
-      color: #7dd3fc;
-      margin: 0.5rem 0 1.1rem;
-      letter-spacing: 0.2px;
-    }
-    .lib-flag::before {
-      content: "obc flag: ";
-      color: #9ca3af;
-      font-size: 0.72rem;
-    }
-
-    /* ── Prose within sections ── */
-    .container p {
-      color: #d1d5db;
-      margin-bottom: 0.85rem;
-      line-height: 1.7;
-    }
-    .container > p:first-child {
-      color: #9ca3af;
-    }
-
-    /* ── Code block after cmd block ── */
-    pre.cmd + h4,
-    pre + h4,
-    pre + p { margin-top: 1.25rem; }
-
-    /* ── Callout note box ── */
-    .note {
-      background: #1a2332;
-      border-left: 3px solid #f59e0b;
-      border-radius: 0 6px 6px 0;
-      padding: 10px 14px;
-      font-size: 0.88rem;
-      color: #d1d5db;
-      margin: 0.75rem 0 1rem;
-    }
-    .note strong { color: #f59e0b; }
-
-    /* ── File tree listing ── */
-    .file-tree {
-      background: #151d28;
-      border: 1px solid #2d3a4d;
-      border-radius: 8px;
-      padding: 14px 18px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.78rem;
-      color: #9ca3af;
-      line-height: 2;
-      margin: 0.75rem 0 1.5rem;
-      overflow-x: auto;
-    }
-    .file-tree .dir  { color: #7dd3fc; font-weight: 600; }
-    .file-tree .file { color: #86efac; }
-
-    /* ── Quick reference table overrides ── */
-    .ref-table th { background-color: #151d28 !important; color: #a3cefd !important; }
-    .ref-table td { vertical-align: top; }
-    .ref-table tr:nth-child(even) td { background-color: #1a2332; }
-    .ref-table tr:nth-child(odd)  td { background-color: #151d28; }
-    .ref-table tr:hover td { background-color: #2d3a4d; }
-    .ref-table code { white-space: nowrap; }
-
-    /* ── Section separator visual ── */
-    .section-end {
-      border: none;
-      border-top: 1px solid #2d3a4d;
-      margin: 2.5rem 0 0;
-    }
-  </style>
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -127,9 +18,9 @@
       const menuItems = document.querySelector(".menu-items");
       menu.addEventListener("click", (e) => {
         e.stopPropagation();
-        menuItems.style.display = menuItems.style.display === "block" ? "none" : "block";
+        menuItems.classList.toggle("open");
       });
-      document.addEventListener("click", () => { menuItems.style.display = "none"; });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
     });
   </script>
  </head>
@@ -150,6 +41,7 @@
           <a href="getting_started.html">Quick Start</a>
           <a href="ai_guide.html">AI Guide</a>
           <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
           <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
           <a href="readme.html">Changelog</a>
           <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
@@ -165,7 +57,7 @@
     <h1 class="page-title">Collections</h1>
     <p class="page-lead">The <code>Collection</code> bundle (<code>gen_collect</code>, built into every compile, so no <code>-lib</code> flag) has vectors, lists, maps, hashes, sets, multi-maps, queues, stacks, heaps, pairs and unboxed <code>IntVector</code>, <code>FloatVector</code>, <code>IntMap</code>, <code>IntSet</code> and <code>BitSet</code>.</p>
 
-    <p>Which one to use, what each operation costs and what each <code>Remove</code> returns are in <strong><a href="https://github.com/objeck/objeck-lang/blob/master/docs/COLLECTIONS_GUIDE.md" target="_blank"><code>docs/COLLECTIONS_GUIDE.md</code></a></strong>; read that to choose. This page is the short tour in code: five collections doing the five jobs they are most often picked for.</p>
+    <p>Which one to use, what each operation costs and what each <code>Remove</code> returns are in <strong><a href="doc_collections.html"><code>docs/COLLECTIONS_GUIDE.md</code></a></strong>; read that to choose. This page is the short tour in code: five collections doing the five jobs they are most often picked for.</p>
 <pre class="cmd">obc -src collections_tour.obs
 obr collections_tour.obe</pre>
 <pre class="line-numbers"><code class="language-cpp">use Collection;
@@ -263,7 +155,7 @@ five-letter words: quick brown jumps</pre>
     </ul>
     <h3 id="where-next">Where next</h3>
     <ul>
-     <li><a href="https://github.com/objeck/objeck-lang/blob/master/docs/COLLECTIONS_GUIDE.md" target="_blank"><code>docs/COLLECTIONS_GUIDE.md</code></a>: the choosing table, costs and the <code>Remove</code> return values.</li>
+     <li><a href="doc_collections.html"><code>docs/COLLECTIONS_GUIDE.md</code></a>: the choosing table, costs and the <code>Remove</code> return values.</li>
      <li>The shipped <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/collections_11.obs" target="_blank"><code>collections_11.obs</code></a> covers <code>List</code>, <code>Stack</code>, <code>Queue</code> and the unboxed collections.</li>
      <li><a href="guide_query.html">Query.Structured</a>, when you want to filter, group and join rows with SQL.</li>
     </ul>
