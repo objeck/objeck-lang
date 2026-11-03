@@ -1268,10 +1268,6 @@ namespace frontend {
       chained_indices.push_back(c);
     }
 
-    void ClearChainedIndices() {
-      chained_indices.clear();
-    }
-
     ExpressionList* GetIndices() {
       return indices;
     }
@@ -1466,10 +1462,6 @@ namespace frontend {
 
     Expression* GetCondExpression() {
       return expression;
-    }
-
-    void SetElseExpression(Expression* e) {
-      else_expression = e;
     }
 
     Expression* GetElseExpression() {
@@ -2638,10 +2630,6 @@ namespace frontend {
       return encoded_name;
     }
 
-    const std::wstring GetParsedReturn() const {
-      return parsed_return;
-    }
-
     const std::wstring GetEncodedReturn() {
       if(encoded_return.size() == 0) {
         EncodeSignature();
@@ -2966,10 +2954,6 @@ namespace frontend {
       return is_readonly_record;
     }
 
-    void SetPublic(bool p) {
-      is_public = p;
-    }
-
     bool HasGenerics() {
       return !generic_classes.empty();
     }
@@ -3044,10 +3028,6 @@ namespace frontend {
 
     bool IsGeneric() {
       return is_generic;
-    }
-
-    std::vector<Class*> GetGenericNames() {
-      return generic_classes;
     }
 
     void AddStatement(Statement* s) {
@@ -3401,10 +3381,6 @@ namespace frontend {
       return call_type;
     }
 
-    void SetCallType(MethodCallType t) {
-      call_type = t;
-    }
-    
     Type* GetArrayType() {
       return array_type;
     }
@@ -3564,25 +3540,14 @@ namespace frontend {
       anonymous_klass = c;
     }
 
-    Class* GetAnonymousClass() {
-      return anonymous_klass;
-    }
-    
     void SetOriginalClass(Class* c) {
       original_klass = c;
-    }
-
-    Class* GetOriginalClass() {
-      return original_klass;
     }
 
     void SetOriginalLibraryClass(LibraryClass* c) {
       original_lib_klass = c;
     }
 
-    LibraryClass* GetOriginalLibraryClass() {
-      return original_lib_klass;
-    }
   };
 
   /*************************
@@ -4426,14 +4391,6 @@ namespace frontend {
       }
       
       return L"unknown";
-    }
-
-    void AddUse(const std::wstring &u, const std::wstring &f) {
-      std::vector<std::wstring> lib_uses;
-      lib_uses.push_back(u);
-
-      std::vector<Type*> static_uses;
-      AddUses(lib_uses, static_uses, f);
     }
 
     void AddUses(std::vector<std::wstring> &u, std::vector<Type*> &s, const std::wstring &f) {

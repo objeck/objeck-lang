@@ -177,8 +177,6 @@ class Parser {
     return str.str();
   }
 
-  static std::wstring RandomString(size_t len);
-
   std::wstring ParseBundleName();
 
   Declaration* AddDeclaration(IdentifierContext &context, Type* type, bool is_static, Declaration* child,

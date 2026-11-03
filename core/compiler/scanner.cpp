@@ -873,26 +873,6 @@ ScannerTokenType Scanner::PeekAfterParens(int index)
   return type;
 }
 
-std::wstring Scanner::RandomString(size_t len)
-{
-  std::random_device gen;
-  const wchar_t* values = L"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-  const size_t offset = len / 3;
-
-  std::wstring output = L"blob://";
-  for(size_t i = 0; i < len; ++i) {
-    if(i != 0 && i % offset == 0) {
-      output += L'-';
-    }
-    else {
-      const size_t index = gen() % wcslen(values);
-      output += values[index];
-    }
-  }
-
-  return output;
-}
-
 /****************************
  * Gets the next character.
  * Note, EOB is returned at

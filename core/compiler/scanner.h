@@ -707,9 +707,6 @@ class Scanner {
   void ParseToken(int index);
   // check identifier
   void CheckIdentifier(int index);
-  // create a random string
-  std::wstring RandomString(size_t len);
-
   // Everything ParseToken() changes: the read position, the start/end marks,
   // the three current characters, the line/column counters and the token it
   // fills (the last lookahead slot, when peeking). Keyword lookups do not
