@@ -1,0 +1,78 @@
+#~
+# compile: obc -src query_start.obs -lib query,misc,net,json,regex,xml,csv,cipher
+# run:     obr query_start.obe
+#
+# Getting started with Query.Structured, part 1: your first table.
+# A Table holds rows of named columns. You put rows in with Insert and Set,
+# ask questions with Query (plain SQL in a string), and read the answer, which
+# is another Table. A query that cannot run returns Nil and GetError says why,
+# so a typo in the SQL is a message and not a crash.
+#
+# The last step writes a small CSV file and queries it by its file name, with
+# no loading code at all.
+#
+# Guide: docs/guides/query.md
+~#
+
+use Query.Structured;
+use System.IO.Filesystem;
+
+class QueryStart {
+  function : Main(args : String[]) ~ Nil {
+    # a table has a name and a list of column names
+    people := Table->New("people", ["name", "age", "team"]);
+
+    # Insert makes an empty row; Set fills a cell by column name.
+    # Numbers go in as IntRef or FloatRef objects, text as plain strings.
+    Add(people, "Ada", 36, "compilers");
+    Add(people, "Grace", 45, "compilers");
+    Add(people, "Linus", 28, "kernels");
+    Add(people, "Barbara", 52, "kernels");
+    Add(people, "Ken", 61, "tools");
+    "rows: {$(people->Size())}"->PrintLine();
+
+    # --- ask a question; the answer is a Table ---
+    result := people->Query("select name, age from people where age > 40 order by age desc");
+    result->ToCsv()->Print();
+
+    # --- read the cells of an answer yourself ---
+    # LiveRows() lists the row numbers, RowAt() gets a row, Get(name) a cell;
+    # a cell comes back as an IntRef, FloatRef or String
+    rows := result->LiveRows();
+    each(i : rows) {
+      row := result->RowAt(rows[i]);
+      name := row->Get("name")->As(String);
+      age := row->Get("age")->As(IntRef)->Get();
+      "  {$name} is {$age}"->PrintLine();
+    };
+
+    # --- group, count and average ---
+    result := people->Query("select team, count(*) as people, avg(age) as average_age from people group by team order by team");
+    result->ToCsv()->Print();
+
+    # --- a quick look at a table: its columns and their types ---
+    people->Describe()->ToCsv()->Print();
+
+    # --- a mistake is a Nil answer and a message ---
+    result := people->Query("select nickname from people");
+    if(result = Nil) {
+      "error: {$(people->GetError())}"->PrintLine();
+    };
+
+    # --- a CSV file, queried by its name ---
+    writer := FileWriter->New("scores_guide.csv");
+    writer->WriteString("player,level,points\nada,3,1200\ngrace,5,3400\nada,4,2100\n");
+    writer->Close();
+
+    result := Catalog->Run("select player, sum(points) as total from 'scores_guide.csv' group by player order by total desc");
+    result->ToCsv()->Print();
+    File->Delete("scores_guide.csv");
+  }
+
+  function : Add(table : Table, name : String, age : Int, team : String) ~ Nil {
+    row := table->Insert();
+    row->Set("name", name);
+    row->Set("age", IntRef->New(age));
+    row->Set("team", team);
+  }
+}

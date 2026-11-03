@@ -1,0 +1,91 @@
+#~
+# compile: obc -src query_otab.obs -lib query,misc,net,json,regex,xml,csv,cipher
+# run:     obr query_otab.obe
+#
+# Getting started with Query.Structured, part 3: keeping a table on disk.
+# An .otab file stores a table column by column. Table->Save writes one,
+# Table->Load reads it back, OtabFile reads only the columns you name (and
+# tells you how many bytes that touched), and
+# TableStore keeps a table durable: every INSERT, UPDATE and DELETE is logged
+# before it returns, so a crash loses at most the statement in progress.
+#
+# The program makes its files in the current folder and deletes them.
+#
+# Guide: docs/guides/query.md
+~#
+
+use Query.Structured;
+use System.IO.Filesystem;
+
+class QueryOtab {
+  function : Main(args : String[]) ~ Nil {
+    path := "readings_guide.otab";
+
+    # --- 100,000 readings from four sensors ---
+    readings := Table->New("readings", ["sensor", "day", "celsius"],
+      [ColumnType->STRING, ColumnType->INT, ColumnType->FLOAT]);
+    sensors := ["north", "south", "east", "west"];
+    each(i : 100000) {
+      row := readings->Insert();
+      row->Set("sensor", sensors[i % 4]);
+      row->Set("day", IntRef->New(i / 4));
+      row->Set("celsius", FloatRef->New(10.0 + ((i * 37) % 200)->As(Float) / 10.0));
+    };
+    "rows in memory: {$(readings->Size())}"->PrintLine();
+
+    # --- save, load, and query what came back ---
+    if(<>readings->Save(path, Compression->SMALL)) {
+      "save failed: {$(readings->GetError())}"->PrintLine();
+      return;
+    };
+    "file size: {$(File->Size(path))} bytes"->PrintLine();
+
+    loaded := Table->Load(path);
+    "rows loaded: {$(loaded->Size())}"->PrintLine();
+    result := loaded->Query("select sensor, count(*) as n, min(celsius) as lowest, max(celsius) as highest from readings group by sensor order by sensor");
+    result->ToCsv()->Print();
+
+    # --- OtabFile reads only the columns you ask for ---
+    # (the row keys are always read too, so a narrow read is not a tiny one)
+    one := OtabFile->New(path);
+    if(one->IsOpen()) {
+      part := one->Read(["celsius"]);
+      "one column:  {$(part->Size())} rows, {$(one->GetBytesRead())} of {$(one->GetFileSize())} bytes read"->PrintLine();
+    };
+    all := OtabFile->New(path);
+    if(all->IsOpen()) {
+      part := all->Read();
+      "all columns: {$(part->Size())} rows, {$(all->GetBytesRead())} of {$(all->GetFileSize())} bytes read"->PrintLine();
+    };
+
+    # --- SQL names a table in a catalog; a loaded .otab goes in with Add ---
+    catalog := Catalog->New();
+    catalog->Add(loaded);
+    result := catalog->Query("select count(*) as hot_readings from readings where celsius > 29.5");
+    result->ToCsv()->Print();
+
+    # --- a durable table: changes survive closing and reopening ---
+    store := TableStore->New(path);
+    if(<>store->IsOpen()) {
+      "open failed: {$(store->GetError())}"->PrintLine();
+      return;
+    };
+    durable := store->GetTable();
+    durable->Execute("delete from readings where sensor = 'west'");
+    durable->Execute("update readings set celsius = 0.0 where day = 0");
+    "after changes: {$(durable->Size())} rows"->PrintLine();
+    store->Close();
+
+    reopened := TableStore->New(path);
+    if(reopened->IsOpen()) {
+      table := reopened->GetTable();
+      "reopened: {$(table->Size())} rows, {$(reopened->GetReplayed())} log records replayed"->PrintLine();
+      reopened->Checkpoint();
+      reopened->Close();
+    };
+
+    File->Delete(path);
+    File->Delete("{$path}.log");
+    File->Delete("{$path}.lock");
+  }
+}

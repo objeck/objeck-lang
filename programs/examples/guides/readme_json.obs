@@ -1,0 +1,29 @@
+#~
+# compile: obc -src readme_json.obs -lib json
+# run:     obr readme_json.obe
+#
+# The README's JSON sample: parse, read typed values, build, and text that
+# is not JSON.
+#
+# Guide: docs/guides/data_and_text.md
+~#
+
+use Data.JSON;
+
+class Json {
+  function : Main(args : String[]) ~ Nil {
+    root := JsonParser->TextToElement("{\"name\": \"Ada\", \"langs\": [\"en\", \"fr\"], \"age\": 36}");
+    name := root->Get("name")->GetString();
+    age := root->Get("age")->GetInt();
+    langs := root->Get("langs")->Size();
+    "{$name} is {$age} and speaks {$langs} languages"->PrintLine();
+
+    doc := JsonElement->New(JsonElement->JsonType->OBJECT);
+    doc->Insert("ok", true);
+    doc->Insert("count", 3);
+    doc->ToString()->PrintLine();
+
+    broken := JsonParser->TextToElement("{\"name\": ");
+    "broken text parses to Nil: {$(broken = Nil)}"->PrintLine();
+  }
+}

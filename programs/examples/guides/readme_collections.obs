@@ -1,0 +1,37 @@
+#~
+# compile: obc -src readme_collections.obs
+# run:     obr readme_collections.obe
+#
+# The README's collections sample: count words with a Hash, report them in
+# key order with a Map.
+#
+# Guide: docs/guides/collections.md
+~#
+
+use Collection;
+
+class Words {
+  function : Main(args : String[]) ~ Nil {
+    counts := Hash->New()<String, IntRef>;
+    words := "the cat and the hat and the bat"->Split(" ");
+    each(i : words) {
+      seen := counts->Find(words[i]);
+      if(seen = Nil) {
+        counts->Insert(words[i], IntRef->New(1));
+      }
+      else {
+        seen->Set(seen->Get() + 1);
+      };
+    };
+
+    ordered := Map->New()<String, IntRef>;
+    pairs := counts->GetKeyValues();
+    each(i : pairs) {
+      ordered->Insert(pairs->Get(i)->GetFirst(), pairs->Get(i)->GetSecond());
+    };
+    entries := ordered->GetKeyValues();
+    each(i : entries) {
+      "{$(entries->Get(i)->GetFirst())}: {$(entries->Get(i)->GetSecond()->Get())}"->PrintLine();
+    };
+  }
+}

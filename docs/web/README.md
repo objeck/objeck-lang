@@ -9,12 +9,18 @@ web/
 ├── index.html             # Landing page
 ├── getting_started.html   # Quick start guide
 ├── ai_guide.html          # AI & ML developer guide
+├── guides.html            # Index of the getting-started guides
+├── guide_*.html           # The guides (query, http, data, collections, ai, editors, whats_new)
 ├── readme.html            # Changelog
 └── style/
     ├── styles.css         # Shared stylesheet
     ├── objeck-logo.png    # Logo
     └── favicon.ico        # Favicon
 ```
+
+## The guides
+
+`guides.html` and `guide_*.html` are rendered from the Markdown in [`docs/guides`](../guides/) by `python tools/docs/guides_to_html.py` (add `--check` to see whether they are out of date). Edit the Markdown, not these pages.
 
 ## Deployment
 

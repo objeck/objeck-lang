@@ -4,6 +4,7 @@
 
 | | |
 |---|---|
+| [guides/](guides/README.md) | Getting-started guides: Query, HTTP, JSON/XML/RegEx, collections, game AI, editor setup, and what is new in 10.3 |
 | [FEATURES.md](FEATURES.md) | What the language has |
 | [EXAMPLES.md](EXAMPLES.md) | Code examples |
 | [cli_options.md](cli_options.md) | `obc` and `obr` command-line options, and the environment variables they read |

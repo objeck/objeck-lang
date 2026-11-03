@@ -1,0 +1,70 @@
+#~
+# compile: obc -src readme_tour.obs
+# run:     obr readme_tour.obe
+#
+# The README's language sample: a class hierarchy, a closure, a generic
+# collection and string interpolation, in one short program.
+#
+# Guide: README.md
+~#
+
+use Collection;
+
+class Shape {
+  @name : String;
+
+  New(name : String) {
+    @name := name;
+  }
+
+  method : virtual : public : Area() ~ Float;
+
+  method : public : Describe() ~ String {
+    return "{$@name}: area {$(Area()):.2}";
+  }
+}
+
+class Circle from Shape {
+  @radius : Float;
+
+  New(radius : Float) {
+    Parent("circle");
+    @radius := radius;
+  }
+
+  method : public : Area() ~ Float {
+    return Float->Pi() * @radius * @radius;
+  }
+}
+
+class Square from Shape {
+  @side : Float;
+
+  New(side : Float) {
+    Parent("square");
+    @side := side;
+  }
+
+  method : public : Area() ~ Float {
+    return @side * @side;
+  }
+}
+
+class Tour {
+  function : Main(args : String[]) ~ Nil {
+    shapes := Vector->New()<Shape>;
+    shapes->AddBack(Circle->New(1.5));
+    shapes->AddBack(Square->New(2.0));
+    each(i : shapes) {
+      shapes->Get(i)->Describe()->PrintLine();
+    };
+
+    # a function that returns a function (the closure remembers `factor`)
+    triple := Scaler(3);
+    "triple(14) = {$(triple(14))}"->PrintLine();
+  }
+
+  function : Scaler(factor : Int) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (x) => x * factor;
+  }
+}

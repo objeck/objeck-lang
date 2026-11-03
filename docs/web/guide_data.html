@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>JSON, XML and RegEx Guide — Objeck Language</title>
+  <meta name="description" content="Parse JSON, XML and regular expressions, and what they do with missing or malformed input."/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+  <style>
+    /* ── Page title ── */
+    .page-title {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #f3f4f6;
+      margin: 0 0 0.4rem;
+      line-height: 1.2;
+    }
+    .page-lead {
+      color: #9ca3af;
+      font-size: 0.97rem;
+      margin-bottom: 1.75rem;
+      line-height: 1.7;
+      max-width: 700px;
+    }
+
+    /* ── Section headings with left accent ── */
+    .container h3 {
+      border-left: 3px solid #3b82f6;
+      padding-left: 12px;
+      margin-top: 3rem;
+    }
+    .container h3:first-of-type { margin-top: 1.25rem; }
+
+    /* ── Subsection (h4) spacing ── */
+    .container h4 {
+      margin-top: 1.75rem;
+      margin-bottom: 0.35rem;
+    }
+
+    /* ── Compile flag badge ── */
+    .lib-flag {
+      display: inline-block;
+      background: #151d28;
+      border: 1px solid #2d3a4d;
+      border-left: 3px solid #3b82f6;
+      border-radius: 4px 8px 8px 4px;
+      padding: 5px 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      color: #7dd3fc;
+      margin: 0.5rem 0 1.1rem;
+      letter-spacing: 0.2px;
+    }
+    .lib-flag::before {
+      content: "obc flag: ";
+      color: #9ca3af;
+      font-size: 0.72rem;
+    }
+
+    /* ── Prose within sections ── */
+    .container p {
+      color: #d1d5db;
+      margin-bottom: 0.85rem;
+      line-height: 1.7;
+    }
+    .container > p:first-child {
+      color: #9ca3af;
+    }
+
+    /* ── Code block after cmd block ── */
+    pre.cmd + h4,
+    pre + h4,
+    pre + p { margin-top: 1.25rem; }
+
+    /* ── Callout note box ── */
+    .note {
+      background: #1a2332;
+      border-left: 3px solid #f59e0b;
+      border-radius: 0 6px 6px 0;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      color: #d1d5db;
+      margin: 0.75rem 0 1rem;
+    }
+    .note strong { color: #f59e0b; }
+
+    /* ── File tree listing ── */
+    .file-tree {
+      background: #151d28;
+      border: 1px solid #2d3a4d;
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      color: #9ca3af;
+      line-height: 2;
+      margin: 0.75rem 0 1.5rem;
+      overflow-x: auto;
+    }
+    .file-tree .dir  { color: #7dd3fc; font-weight: 600; }
+    .file-tree .file { color: #86efac; }
+
+    /* ── Quick reference table overrides ── */
+    .ref-table th { background-color: #151d28 !important; color: #a3cefd !important; }
+    .ref-table td { vertical-align: top; }
+    .ref-table tr:nth-child(even) td { background-color: #1a2332; }
+    .ref-table tr:nth-child(odd)  td { background-color: #151d28; }
+    .ref-table tr:hover td { background-color: #2d3a4d; }
+    .ref-table code { white-space: nowrap; }
+
+    /* ── Section separator visual ── */
+    .section-end {
+      border: none;
+      border-top: 1px solid #2d3a4d;
+      margin: 2.5rem 0 0;
+    }
+  </style>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.style.display = menuItems.style.display === "block" ? "none" : "block";
+      });
+      document.addEventListener("click", () => { menuItems.style.display = "none"; });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">JSON, XML and regular expressions</h1>
+    <p class="page-lead">Three libraries for reading structured text: <code>Data.JSON</code> (the <code>json</code> library), <code>Data.XML</code> (<code>xml</code>) and <code>Query.RegEx</code> (<code>regex</code>). This page shows each in a few lines, then what they do when the input is wrong, which changed in v2026.10.3.</p>
+
+<pre class="cmd">obc -src program.obs -lib json,xml,regex</pre>
+    <p>The shipped examples go further: <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/json_14.obs" target="_blank"><code>json_14.obs</code></a> (nested documents, <code>FindElements</code> paths, a streaming parser for large files), <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/xml_15.obs" target="_blank"><code>xml_15.obs</code></a>, <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/csv_16.obs" target="_blank"><code>csv_16.obs</code></a> and <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/regex_17.obs" target="_blank"><code>regex_17.obs</code></a>.</p>
+    <h3 id="the-basics">The basics</h3>
+<pre class="line-numbers"><code class="language-cpp">use Data.JSON;
+use Data.XML;
+use Query.RegEx;
+
+class DataBasics {
+  function : Main(args : String[]) ~ Nil {
+    Json();
+    Xml();
+    Regex();
+  }
+
+  function : Json() ~ Nil {
+    "-- JSON --"-&gt;PrintLine();
+
+    # TextToElement parses text and returns the root, or Nil if it is not JSON
+    root := JsonParser-&gt;TextToElement("{\"city\": \"Oslo\", \"temps\": [-3.5, 0.0, 4.25], \"snow\": true}");
+    city := root-&gt;Get("city")-&gt;GetString();
+    snow := root-&gt;Get("snow")-&gt;GetBool();
+    temps := root-&gt;Get("temps");
+    "{$city}: snow {$snow}, {$(temps-&gt;Size())} readings, first {$(temps-&gt;Get(0)-&gt;GetFloat())}"-&gt;PrintLine();
+
+    # build a document and write it as text (object fields come out sorted)
+    doc := JsonElement-&gt;New(JsonElement-&gt;JsonType-&gt;OBJECT);
+    doc-&gt;Insert("name", "Ada");
+    doc-&gt;Insert("age", 36);
+    languages := JsonElement-&gt;New(JsonElement-&gt;JsonType-&gt;ARRAY);
+    languages-&gt;Add("en");
+    languages-&gt;Add("fr");
+    doc-&gt;Insert("languages", languages);
+    doc-&gt;ToString()-&gt;PrintLine();
+  }
+
+  function : Xml() ~ Nil {
+    "-- XML --"-&gt;PrintLine();
+
+    text := "&lt;library&gt;&lt;book year=\"1984\"&gt;&lt;title&gt;Neuromancer&lt;/title&gt;&lt;/book&gt;";
+    text += "&lt;book year=\"1992\"&gt;&lt;title&gt;Snow Crash&lt;/title&gt;&lt;/book&gt;&lt;/library&gt;";
+    parser := XmlParser-&gt;New(text);
+    if(&lt;&gt;parser-&gt;Parse()) {
+      "parse error: {$(parser-&gt;GetError())}"-&gt;PrintLine();
+      return;
+    };
+
+    # a path names each level from the root; every match comes back
+    titles := parser-&gt;FindElements("/library/book/title");
+    each(i : titles) {
+      "  title: {$(titles-&gt;Get(i)-&gt;GetContent())}"-&gt;PrintLine();
+    };
+
+    # an attribute is read from its element
+    books := parser-&gt;GetRoot()-&gt;GetChildren("book");
+    year := books-&gt;Get(1)-&gt;GetAttribute("year")-&gt;GetValue();
+    "second book is from {$year}"-&gt;PrintLine();
+  }
+
+  function : Regex() ~ Nil {
+    "-- RegEx --"-&gt;PrintLine();
+
+    # a backslash in a pattern is written twice inside an Objeck string
+    pattern := RegEx-&gt;New("(\\d{4})-(\\d{2})-(\\d{2})");
+    text := "released 2026-10-31, patched 2026-11-02";
+    found := pattern-&gt;Find(text);
+    each(i : found) {
+      match := found-&gt;Get(i);
+      "  {$(match-&gt;GetValue())} -&gt; month {$(match-&gt;GetGroup(2))}"-&gt;PrintLine();
+    };
+
+    # replace every match
+    digits := RegEx-&gt;New("\\d");
+    hidden := digits-&gt;ReplaceAll("call 555-0199", "#");
+    "  {$hidden}"-&gt;PrintLine();
+  }
+}
+</code></pre>
+<pre class="cmd">obc -src data_basics.obs -lib json,xml,regex
+obr data_basics.obe</pre>
+<pre class="cmd">-- JSON --
+Oslo: snow true, 3 readings, first -3.500000
+{"age":36,"languages":["en","fr"],"name":"Ada"}
+-- XML --
+  title: Neuromancer
+  title: Snow Crash
+second book is from 1992
+-- RegEx --
+  2026-10-31 -&gt; month 10
+  2026-11-02 -&gt; month 11
+  call ###-####</pre>
+    <p>Things to notice:</p>
+    <ul>
+     <li><code>JsonParser-&gt;TextToElement(text)</code> is the short way to parse; <code>Get(name)</code> finds a field of an object, <code>Get(index)</code> an element of an array, and <code>GetString()</code>, <code>GetInt()</code>, <code>GetFloat()</code> and <code>GetBool()</code> read the value. Building is <code>Insert(name, value)</code> on an object and <code>Add(value)</code> on an array.</li>
+     <li>XML paths name each level from the root, and <code>FindElements</code> returns every match.</li>
+     <li>Inside an Objeck string a backslash is written twice: the regular expression <code>\d</code> is typed <code>"\\d"</code>.</li>
+     <li>A quote character inside <code>{$...}</code> is a compile error (<code>A quote inside '{$...}' ends the string early</code>); compute the value into a local and interpolate the local.</li>
+    </ul>
+    <h3 id="when-the-input-is-wrong">When the input is wrong</h3>
+    <p>Real input is missing, empty, cut off or mistyped. In v2026.10.3 none of the cases below ends the program; each gives an answer you can test.</p>
+<pre class="line-numbers"><code class="language-cpp">use Data.JSON;
+use Data.XML;
+use Query.RegEx;
+use System.IO.Filesystem;
+
+class DataBadInput {
+  function : Main(args : String[]) ~ Nil {
+    Json();
+    Xml();
+    Regex();
+  }
+
+  function : Json() ~ Nil {
+    "-- JSON --"-&gt;PrintLine();
+
+    # a file that does not exist: ReadFile gives Nil
+    text := FileReader-&gt;ReadFile("no_such_file.json");
+    "reading a missing file gives Nil: {$(text = Nil)}"-&gt;PrintLine();
+
+    parser := JsonParser-&gt;New(text);
+    "parsing Nil succeeds: {$(parser-&gt;Parse())}"-&gt;PrintLine();
+
+    # text that is not JSON
+    root := JsonParser-&gt;TextToElement("{\"name\": \"Ada\",");
+    "a document cut off halfway is Nil: {$(root = Nil)}"-&gt;PrintLine();
+
+    # the usual pattern: test, then use
+    root := JsonParser-&gt;TextToElement("{\"name\": \"Ada\", \"age\": 36}");
+    if(root &lt;&gt; Nil &amp; root-&gt;Has("name")) {
+      name := root-&gt;Get("name")-&gt;GetString();
+      "name: {$name}"-&gt;PrintLine();
+    };
+    has_email := root-&gt;Has("email");
+    "has an 'email' field: {$has_email}"-&gt;PrintLine();
+  }
+
+  function : Xml() ~ Nil {
+    "-- XML --"-&gt;PrintLine();
+
+    # tags that do not match: Parse() is false and GetError says why
+    parser := XmlParser-&gt;New("&lt;orders&gt;&lt;order id=\"1\"&gt;&lt;/orders&gt;");
+    "parsing mismatched tags succeeds: {$(parser-&gt;Parse())}"-&gt;PrintLine();
+    "error: {$(parser-&gt;GetError())}"-&gt;PrintLine();
+
+    # text with no XML in it at all: FindElements after the failed Parse used
+    # to dereference the missing root; it is an empty vector now
+    parser := XmlParser-&gt;New("this is not XML");
+    parsed := parser-&gt;Parse();
+    found := parser-&gt;FindElements("/orders/order");
+    "parsing plain text succeeds: {$parsed}, elements found: {$(found-&gt;Size())}"-&gt;PrintLine();
+
+    parser := XmlParser-&gt;New("&lt;orders&gt;&lt;order id=\"1\"/&gt;&lt;order id=\"2\"/&gt;&lt;/orders&gt;");
+    if(parser-&gt;Parse()) {
+      found := parser-&gt;FindElements("/orders/order");
+      "elements found in a good document: {$(found-&gt;Size())}"-&gt;PrintLine();
+    };
+
+    nothing : String := Nil;
+    parser := XmlParser-&gt;New(nothing);
+    "parsing Nil succeeds: {$(parser-&gt;Parse())}"-&gt;PrintLine();
+  }
+
+  function : Regex() ~ Nil {
+    "-- RegEx --"-&gt;PrintLine();
+
+    # a repeat count is at most 1000; this one used to fill the heap
+    huge := RegEx-&gt;New("a{99999999999}");
+    "a{99999999999} is OK: {$(huge-&gt;IsOk())}"-&gt;PrintLine();
+    matched := huge-&gt;MatchExact("aaa");
+    "  and matches 'aaa': {$matched}"-&gt;PrintLine();
+
+    backwards := RegEx-&gt;New("a{2,1}");
+    "a{2,1} is OK: {$(backwards-&gt;IsOk())}"-&gt;PrintLine();
+
+    fine := RegEx-&gt;New("a{2,4}");
+    "a{2,4} is OK: {$(fine-&gt;IsOk())}"-&gt;PrintLine();
+    three := fine-&gt;MatchExact("aaa");
+    five := fine-&gt;MatchExact("aaaaa");
+    "  matches 'aaa': {$three}, matches 'aaaaa': {$five}"-&gt;PrintLine();
+
+    # Nil as the pattern, and Nil as the text
+    nothing : String := Nil;
+    none := RegEx-&gt;New(nothing);
+    "a Nil pattern is OK: {$(none-&gt;IsOk())}"-&gt;PrintLine();
+    word := RegEx-&gt;New("\\w+");
+    "matching Nil text: {$(word-&gt;MatchExact(nothing))}"-&gt;PrintLine();
+    "finding in Nil text gives Nil: {$(word-&gt;FindFirst(nothing) = Nil)}"-&gt;PrintLine();
+  }
+}
+</code></pre>
+<pre class="cmd">obc -src data_bad_input.obs -lib json,xml,regex
+obr data_bad_input.obe</pre>
+<pre class="cmd">-- JSON --
+reading a missing file gives Nil: true
+parsing Nil succeeds: false
+a document cut off halfway is Nil: true
+name: Ada
+has an 'email' field: false
+-- XML --
+parsing mismatched tags succeeds: false
+error: Mismatch tag names...
+parsing plain text succeeds: false, elements found: 0
+elements found in a good document: 2
+parsing Nil succeeds: false
+-- RegEx --
+a{99999999999} is OK: false
+  and matches 'aaa': false
+a{2,1} is OK: false
+a{2,4} is OK: true
+  matches 'aaa': true, matches 'aaaaa': false
+a Nil pattern is OK: false
+matching Nil text: false
+finding in Nil text gives Nil: true</pre>
+    <p>What each line is telling you:</p>
+    <ul>
+     <li><strong>A missing file.</strong> <code>FileReader-&gt;ReadFile</code> returns <code>Nil</code> for a file it cannot read. A <code>JsonParser</code> or <code>XmlParser</code> built from <code>Nil</code> (a <code>String</code>, <code>Char[]</code> or <code>Byte[]</code>) is a parser over empty text: <code>Parse()</code> is <code>false</code>. Before 10.3 this ended the program in <code>Trim</code>.</li>
+     <li><strong>Bad JSON.</strong> <code>TextToElement</code> returns <code>Nil</code>. Test it, then use it; <code>Has(name)</code> tells you whether a field is there before you <code>Get</code> it.</li>
+     <li><strong>Bad XML.</strong> <code>Parse()</code> is <code>false</code> and <code>GetError()</code> says why. <code>FindElements</code> on text that did not parse is an empty vector (it dereferenced the missing root before 10.3). Note that for a document that is broken partway (the mismatched tags above) the parser may keep what it read, so check <code>Parse()</code> and do not rely on <code>FindElements</code> being empty.</li>
+     <li><strong>Bad patterns.</strong> A regular expression whose repeat count is above 1000 (<code>a{99999999999}</code> used to fill the heap while compiling and never returned), whose low bound is above its high bound (<code>a{2,1}</code>), or that expands past 100,000 instructions is not OK: <code>IsOk()</code> is <code>false</code> and it matches nothing. A <code>Nil</code> pattern is not OK either.</li>
+     <li><strong>Nil text.</strong> <code>MatchExact</code>, <code>Match</code>, <code>Find</code>, <code>FindFirst</code>, <code>ReplaceFirst</code> and <code>ReplaceAll</code> on a <code>Nil</code> string match nothing (<code>FindFirst</code> and the replace methods return <code>Nil</code>). A <code>Nil</code> replacement is the empty string.</li>
+    </ul>
+    <p>Two more 10.3 fixes in the same family, for programs that use them: the JSON-RPC client sends a fresh request id each call and rejects a reply that echoes another id, and a JSON-RPC request without <code>params</code> (allowed by the specification) reaches the handler as an empty object instead of ending the server.</p>
+    <h3 id="where-next">Where next</h3>
+    <ul>
+     <li><a href="guide_http.html">HTTP client and web server</a>: fetch the JSON you just learned to parse.</li>
+     <li><a href="guide_query.html">Query.Structured</a>: <code>from 'data.json'</code> reads a JSON file as a table, and the same works for CSV and XML.</li>
+     <li>The full list of fixes is in the <a href="https://github.com/objeck/objeck-lang/blob/master/CHANGELOG.md" target="_blank">CHANGELOG</a>.</li>
+    </ul>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

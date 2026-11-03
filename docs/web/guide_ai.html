@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Game AI Guide — Objeck Language</title>
+  <meta name="description" content="Minimax and Monte Carlo tree search with System.AI, on tic-tac-toe, and the checkers example."/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+  <style>
+    /* ── Page title ── */
+    .page-title {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #f3f4f6;
+      margin: 0 0 0.4rem;
+      line-height: 1.2;
+    }
+    .page-lead {
+      color: #9ca3af;
+      font-size: 0.97rem;
+      margin-bottom: 1.75rem;
+      line-height: 1.7;
+      max-width: 700px;
+    }
+
+    /* ── Section headings with left accent ── */
+    .container h3 {
+      border-left: 3px solid #3b82f6;
+      padding-left: 12px;
+      margin-top: 3rem;
+    }
+    .container h3:first-of-type { margin-top: 1.25rem; }
+
+    /* ── Subsection (h4) spacing ── */
+    .container h4 {
+      margin-top: 1.75rem;
+      margin-bottom: 0.35rem;
+    }
+
+    /* ── Compile flag badge ── */
+    .lib-flag {
+      display: inline-block;
+      background: #151d28;
+      border: 1px solid #2d3a4d;
+      border-left: 3px solid #3b82f6;
+      border-radius: 4px 8px 8px 4px;
+      padding: 5px 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      color: #7dd3fc;
+      margin: 0.5rem 0 1.1rem;
+      letter-spacing: 0.2px;
+    }
+    .lib-flag::before {
+      content: "obc flag: ";
+      color: #9ca3af;
+      font-size: 0.72rem;
+    }
+
+    /* ── Prose within sections ── */
+    .container p {
+      color: #d1d5db;
+      margin-bottom: 0.85rem;
+      line-height: 1.7;
+    }
+    .container > p:first-child {
+      color: #9ca3af;
+    }
+
+    /* ── Code block after cmd block ── */
+    pre.cmd + h4,
+    pre + h4,
+    pre + p { margin-top: 1.25rem; }
+
+    /* ── Callout note box ── */
+    .note {
+      background: #1a2332;
+      border-left: 3px solid #f59e0b;
+      border-radius: 0 6px 6px 0;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      color: #d1d5db;
+      margin: 0.75rem 0 1rem;
+    }
+    .note strong { color: #f59e0b; }
+
+    /* ── File tree listing ── */
+    .file-tree {
+      background: #151d28;
+      border: 1px solid #2d3a4d;
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      color: #9ca3af;
+      line-height: 2;
+      margin: 0.75rem 0 1.5rem;
+      overflow-x: auto;
+    }
+    .file-tree .dir  { color: #7dd3fc; font-weight: 600; }
+    .file-tree .file { color: #86efac; }
+
+    /* ── Quick reference table overrides ── */
+    .ref-table th { background-color: #151d28 !important; color: #a3cefd !important; }
+    .ref-table td { vertical-align: top; }
+    .ref-table tr:nth-child(even) td { background-color: #1a2332; }
+    .ref-table tr:nth-child(odd)  td { background-color: #151d28; }
+    .ref-table tr:hover td { background-color: #2d3a4d; }
+    .ref-table code { white-space: nowrap; }
+
+    /* ── Section separator visual ── */
+    .section-end {
+      border: none;
+      border-top: 1px solid #2d3a4d;
+      margin: 2.5rem 0 0;
+    }
+  </style>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.style.display = menuItems.style.display === "block" ? "none" : "block";
+      });
+      document.addEventListener("click", () => { menuItems.style.display = "none"; });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Game AI with System.AI</h1>
+    <p class="page-lead"><code>System.AI</code> (the <code>ai</code> library) is classic, dependency-free artificial intelligence: game-tree search (<code>Minimax</code> with alpha-beta pruning, <code>MonteCarloTreeSearch</code>), graph search (<code>AStar</code>, <code>Dijkstra</code>, <code>BreadthFirst</code>, <code>DepthFirst</code>), tabular reinforcement learning (<code>QLearning</code>, <code>Sarsa</code>, <code>MarkovDecisionProcess</code>) and optimizers (<code>GeneticAlgorithm</code>, <code>SimulatedAnnealing</code>, <code>HillClimbing</code>). It is separate from the model-based AI in the <a href="https://www.objeck.org/ai_guide.html">AI &amp; ML developer guide</a> (OpenAI, Gemini, Ollama, ONNX, OpenCV).</p>
+    <div id="toc_container">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#describe-the-game-once">Describe the game once</a></li>
+      <li><a href="#two-searchers-on-tic-tac-toe">Two searchers on tic-tac-toe</a></li>
+      <li><a href="#a-complete-game-checkers-with-ten-levels">A complete game: checkers with ten levels</a></li>
+      <li><a href="#where-next">Where next</a></li>
+     </ul>
+    </div>
+
+<pre class="cmd">obc -src program.obs -lib ai</pre>
+    <p>This page is about the two-player search. For A* on a grid and a Nim player, see the shipped <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/ai_search_30.obs" target="_blank"><code>ai_search_30.obs</code></a>.</p>
+    <h3 id="describe-the-game-once">Describe the game once</h3>
+    <p>Both searchers work on any game you describe with the <code>GameState</code> interface:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Method</th><th>What it answers</th></tr>
+     </thead>
+     <tbody>
+      <tr><td><code>GetMoves()</code></td><td>the legal moves, as an <code>Int[]</code> (empty when the game is over)</td></tr>
+      <tr><td><code>Apply(move)</code></td><td>the position after a move, as a <strong>new</strong> object; the search keeps the old one</td></tr>
+      <tr><td><code>IsTerminal()</code></td><td>whether the game is over</td></tr>
+      <tr><td><code>Evaluate()</code></td><td>a score from the maximizing player's side: positive is good for it</td></tr>
+      <tr><td><code>IsMaximizing()</code></td><td>whether the maximizing player moves next</td></tr>
+     </tbody>
+    </table>
+    <p>A move is just an integer you choose: a square number, a column, an index into a table.</p>
+    <h3 id="two-searchers-on-tic-tac-toe">Two searchers on tic-tac-toe</h3>
+    <p><code>Minimax-&gt;New(depth)</code> looks at every line of play to that many plies and assumes the opponent always replies well. <code>MonteCarloTreeSearch-&gt;New(playouts, exploration, seed)</code> plays that many random games from the choices available, steering towards the promising ones with the UCB1 rule (an exploration constant of about 1.4 is typical), and returns the most-visited move; the seed makes a search repeatable. Both have <code>FindBestMove(state)</code>.</p>
+    <p>The program plays minimax against itself, then the two searchers against each other with each one going first.</p>
+<pre class="line-numbers"><code class="language-cpp">use System.AI;
+
+class TicTacToe {
+  function : Main(args : String[]) ~ Nil {
+    # minimax can see all nine plies of a game, so it plays perfectly
+    "Minimax (X) against Minimax (O)"-&gt;PrintLine();
+    Play(Minimax-&gt;New(9), Minimax-&gt;New(9));
+
+    ""-&gt;PrintLine();
+    "Minimax (X) against Monte Carlo tree search (O, 2000 playouts)"-&gt;PrintLine();
+    Play(Minimax-&gt;New(9), MonteCarloTreeSearch-&gt;New(2000, 1.414, 7));
+
+    ""-&gt;PrintLine();
+    "Monte Carlo tree search (X, 2000 playouts) against Minimax (O)"-&gt;PrintLine();
+    Play(MonteCarloTreeSearch-&gt;New(2000, 1.414, 7), Minimax-&gt;New(9));
+  }
+
+  # x and o are each a Minimax or a MonteCarloTreeSearch; both have FindBestMove
+  function : Play(x : Base, o : Base) ~ Nil {
+    state := Board-&gt;New()-&gt;As(GameState);
+    while(&lt;&gt;state-&gt;IsTerminal()) {
+      move := -1;
+      if(state-&gt;IsMaximizing()) {
+        move := Choose(x, state);
+      }
+      else {
+        move := Choose(o, state);
+      };
+      state := state-&gt;Apply(move);
+    };
+
+    state-&gt;As(Board)-&gt;Show();
+    score := state-&gt;Evaluate();
+    if(score &gt; 0.0) {
+      "  X wins"-&gt;PrintLine();
+    }
+    else if(score &lt; 0.0) {
+      "  O wins"-&gt;PrintLine();
+    }
+    else {
+      "  a draw"-&gt;PrintLine();
+    };
+  }
+
+  function : Choose(player : Base, state : GameState) ~ Int {
+    if(player-&gt;TypeOf(Minimax)) {
+      return player-&gt;As(Minimax)-&gt;FindBestMove(state);
+    };
+    return player-&gt;As(MonteCarloTreeSearch)-&gt;FindBestMove(state);
+  }
+}
+
+# A tic-tac-toe position. The nine squares are numbered 0 to 8, row by row; a
+# move is the number of the square to take. X is the maximizer and moves first.
+class Board implements GameState {
+  @squares : Int[];     # 0 empty, 1 X, 2 O
+  @x_to_move : Bool;
+
+  New() {
+    @squares := Int-&gt;New[9];
+    @x_to_move := true;
+  }
+
+  New(squares : Int[], x_to_move : Bool) {
+    @squares := squares;
+    @x_to_move := x_to_move;
+  }
+
+  # the legal moves are the empty squares, none once somebody has won
+  method : public : GetMoves() ~ Int[] {
+    if(Winner() &lt;&gt; 0) {
+      return Int-&gt;New[0];
+    };
+
+    count := 0;
+    each(i : 9) {
+      if(@squares[i] = 0) {
+        count += 1;
+      };
+    };
+
+    moves := Int-&gt;New[count];
+    at := 0;
+    each(i : 9) {
+      if(@squares[i] = 0) {
+        moves[at] := i;
+        at += 1;
+      };
+    };
+    return moves;
+  }
+
+  # a move makes a NEW board; the search keeps the old one to try other moves
+  method : public : Apply(move : Int) ~ GameState {
+    next := Int-&gt;New[9];
+    each(i : 9) {
+      next[i] := @squares[i];
+    };
+    next[move] := @x_to_move ? 1 : 2;
+    return Board-&gt;New(next, &lt;&gt;@x_to_move);
+  }
+
+  method : public : IsTerminal() ~ Bool {
+    return GetMoves()-&gt;Size() = 0;
+  }
+
+  # +1 when X has won, -1 when O has, 0 otherwise
+  method : public : Evaluate() ~ Float {
+    winner := Winner();
+    if(winner = 1) {
+      return 1.0;
+    }
+    else if(winner = 2) {
+      return -1.0;
+    };
+    return 0.0;
+  }
+
+  method : public : IsMaximizing() ~ Bool {
+    return @x_to_move;
+  }
+
+  # 1 or 2 for the player with three in a row, 0 for nobody
+  method : Winner() ~ Int {
+    # the eight lines, three squares each, as one flat array
+    lines := [0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 3, 6, 1, 4, 7, 2, 5, 8, 0, 4, 8, 2, 4, 6];
+    for(i := 0; i &lt; 24; i += 3;) {
+      a := @squares[lines[i]];
+      if(a &lt;&gt; 0 &amp; a = @squares[lines[i + 1]] &amp; a = @squares[lines[i + 2]]) {
+        return a;
+      };
+    };
+    return 0;
+  }
+
+  method : public : Show() ~ Nil {
+    marks := [".", "X", "O"];
+    each(r : 3) {
+      line := "  ";
+      each(c : 3) {
+        line += marks[@squares[r * 3 + c]];
+      };
+      line-&gt;PrintLine();
+    };
+  }
+}
+</code></pre>
+<pre class="cmd">obc -src ai_tictactoe.obs -lib ai
+obr ai_tictactoe.obe</pre>
+<pre class="cmd">Minimax (X) against Minimax (O)
+  XXO
+  OOX
+  XOX
+  a draw
+
+Minimax (X) against Monte Carlo tree search (O, 2000 playouts)
+  XXO
+  OOX
+  XXO
+  a draw
+
+Monte Carlo tree search (X, 2000 playouts) against Minimax (O)
+  OXO
+  XXO
+  XOX
+  a draw</pre>
+    <p>Tic-tac-toe is a draw with correct play, and all three games are draws. Minimax at depth 9 sees the whole game from the first move; the Monte Carlo searcher, which only samples, held a draw on both sides here (with this seed and 2000 playouts). Ties between equally good moves resolve to the first in <code>GetMoves()</code> order, so a search with the same inputs always chooses the same move.</p>
+    <p>Things to notice:</p>
+    <ul>
+     <li><code>Evaluate()</code> is only called on finished games here; the board scores <code>0.0</code> until somebody wins. For a game too big to search to the end (chess, checkers), <code>Evaluate()</code> is where your knowledge goes: count material, mobility, position.</li>
+     <li><code>Minimax-&gt;GetNodesSearched()</code> reports how many positions the last search visited, which is how you compare a depth setting against its cost.</li>
+     <li>Depth is the cost knob for <code>Minimax</code>, playouts for <code>MonteCarloTreeSearch</code>. Monte Carlo search needs no evaluation function beyond who won, which is why it is the one to try first on a game you have just described.</li>
+    </ul>
+    <h3 id="a-complete-game-checkers-with-ten-levels">A complete game: checkers with ten levels</h3>
+    <p><a href="https://github.com/objeck/objeck-lang/tree/master/programs/examples/checkers" target="_blank"><code>programs/examples/checkers</code></a> is a full English-draughts game in an SDL2 window that uses this library. Levels 4 to 6 are the library's <code>Minimax</code> at 3, 4 and 6 plies; levels 7 and 8 use the example's own alpha-beta search (move ordering, jump extension), and levels 9 and 10 add iterative deepening and an evaluation the program tuned by playing itself. The wrapper that lets the library search checkers is <code>CkState</code>, a <code>GameState</code>, and its tests check that <code>MonteCarloTreeSearch</code> takes a free piece. The move generator is checked against the published perft counts, and a headless test of the engine, the players and the search runs in the regression suite. The example also generates its music as it plays. Its <a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/checkers/README.md" target="_blank">README</a> has the rules, the table of levels, a tournament between neighbouring levels and how the learning works.</p>
+    <p>The example's README has the exact <code>obc</code> and <code>obr</code> lines (it is built from several source files and needs the SDL2 libraries).</p>
+    <p>It opens a window, so it needs a display.</p>
+    <h3 id="where-next">Where next</h3>
+    <ul>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/docs/AI.md" target="_blank"><code>docs/AI.md</code></a> and the <a href="https://www.objeck.org/ai_guide.html">AI &amp; ML developer guide</a> for model-based AI.</li>
+     <li>The API reference for <code>System.AI</code> at <a href="https://www.objeck.org/api/latest/" target="_blank">https://www.objeck.org/api/latest/</a>.</li>
+    </ul>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>
