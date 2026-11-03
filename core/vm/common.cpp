@@ -6506,7 +6506,8 @@ static bool UdpAdvance(UdpEndpoint* ep, SocketError& error)
     struct sockaddr unspecified;
     memset(&unspecified, 0, sizeof(unspecified));
     unspecified.sa_family = AF_UNSPEC;
-    connect(ep->sock, &unspecified, sizeof(unspecified));
+    // best effort: if it fails the next connect reports the error that matters
+    (void)connect(ep->sock, &unspecified, sizeof(unspecified));
   }
 #endif
   for(size_t i = start; i < ep->candidates.size(); ++i) {
@@ -6528,7 +6529,8 @@ static bool UdpAdvance(UdpEndpoint* ep, SocketError& error)
       if(UdpValid(fresh)) {
         if(ep->family == AF_INET6) {
           int v6_only = 0;
-          setsockopt(fresh, IPPROTO_IPV6, IPV6_V6ONLY, (const char*)&v6_only, sizeof(v6_only));
+          // best effort: a refusal leaves the socket v6-only and the connect below fails as before
+          (void)setsockopt(fresh, IPPROTO_IPV6, IPV6_V6ONLY, (const char*)&v6_only, sizeof(v6_only));
         }
         if(connect(fresh, addr, ep->candidate_lens[i]) == 0 && dup2(fresh, ep->sock) >= 0) {
           close(fresh);

@@ -181,6 +181,7 @@ class MemoryManager {
   static std::mutex instance_ids_lock;
   static INT64_VALUE next_instance_id;
   static void RekeyInstanceIds();
+  // The caller holds instance_ids_lock (the old-generation sweep, once for all objects).
   static inline void ForgetInstanceId(size_t* mem) {
     if(!instance_ids.empty()) {
       instance_ids.erase(mem);
