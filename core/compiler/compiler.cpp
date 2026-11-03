@@ -277,10 +277,6 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
     std::wstring lib_value = GetCommandLineArgumentWithAliases(arguments, {L"library", L"lib", L"l"});
     if(!lib_value.empty()) {
       sys_lib_path = lib_value;
-      if(sys_lib_path.empty()) {
-        std::wcerr << usage << std::endl;
-        return COMMAND_ERROR;
-      }
       argument_options.remove(L"library");
       argument_options.remove(L"lib");
       argument_options.remove(L"l");
@@ -292,10 +288,6 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
     std::wstring lib_value = GetCommandLineArgumentWithAliases(arguments, {L"library", L"lib", L"l"});
     if(!lib_value.empty()) {
       std::wstring lib_path = lib_value;
-      if(lib_path.empty()) {
-        std::wcerr << usage << std::endl;
-        return COMMAND_ERROR;
-      }
 
       // Clean up library list: remove extensions, filter defaults, handle duplicates
       std::vector<std::wstring> libs;

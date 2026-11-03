@@ -141,7 +141,7 @@ namespace frontend {
       return float_value;
     }
 
-    virtual const ExpressionType GetExpressionType() = 0;
+    virtual ExpressionType GetExpressionType() = 0;
   };
 
   /****************************
@@ -220,7 +220,7 @@ namespace frontend {
     ~Command() {
     }
 
-    virtual const CommandType GetCommandType() = 0;
+    virtual CommandType GetCommandType() = 0;
   };
 
   /****************************
@@ -237,7 +237,7 @@ namespace frontend {
     ~BasicCommand() {
     }
 
-    const CommandType GetCommandType() {
+    CommandType GetCommandType() {
       return type;
     }
   };
@@ -323,7 +323,7 @@ namespace frontend {
       return mthd_name;
     }
 
-    const CommandType GetCommandType() {
+    CommandType GetCommandType() {
       return INFO_COMMAND;
     }
   };
@@ -346,7 +346,7 @@ namespace frontend {
       return expression;
     }
 
-    const CommandType GetCommandType() {
+    CommandType GetCommandType() {
       return PRINT_COMMAND;
     }
   };
@@ -369,7 +369,7 @@ namespace frontend {
       return frame_num;
     }
 
-    const CommandType GetCommandType() {
+    CommandType GetCommandType() {
       return FRAME_COMMAND;
     }
   };
@@ -398,7 +398,7 @@ namespace frontend {
       return value;
     }
 
-    const CommandType GetCommandType() {
+    CommandType GetCommandType() {
       return SET_COMMAND;
     }
   };
@@ -429,7 +429,7 @@ namespace frontend {
       return count;
     }
 
-    const CommandType GetCommandType() {
+    CommandType GetCommandType() {
       return type;
     }
   };
@@ -466,7 +466,7 @@ namespace frontend {
       return id;
     }
 
-    const CommandType GetCommandType() {
+    CommandType GetCommandType() {
       return type;
     }
   };
@@ -539,7 +539,7 @@ namespace frontend {
     }
 
   public:
-    const ExpressionType GetExpressionType() {
+    ExpressionType GetExpressionType() {
       return CHAR_STR_EXPR;
     }
 
@@ -575,7 +575,7 @@ namespace frontend {
     }
 
   public:
-    const ExpressionType GetExpressionType() {
+    ExpressionType GetExpressionType() {
       return type;
     }
 
@@ -611,7 +611,7 @@ namespace frontend {
     }
 
   public:
-    const ExpressionType GetExpressionType() {
+    ExpressionType GetExpressionType() {
       return BOOLEAN_LIT_EXPR;
     }
 
@@ -633,7 +633,7 @@ namespace frontend {
     }
 
   public:
-    const ExpressionType GetExpressionType() {
+    ExpressionType GetExpressionType() {
       return NIL_LIT_EXPR;
     }
   };
@@ -657,7 +657,7 @@ namespace frontend {
       return value;
     }
 
-    const ExpressionType GetExpressionType() {
+    ExpressionType GetExpressionType() {
       return CHAR_LIT_EXPR;
     }
   };
@@ -683,7 +683,7 @@ namespace frontend {
       return value;
     }
 
-    const ExpressionType GetExpressionType() {
+    ExpressionType GetExpressionType() {
       return INT_LIT_EXPR;
     }
   };
@@ -707,7 +707,7 @@ namespace frontend {
       return value;
     }
 
-    const ExpressionType GetExpressionType() {
+    ExpressionType GetExpressionType() {
       return FLOAT_LIT_EXPR;
     }
   };
@@ -773,7 +773,7 @@ namespace frontend {
       return indices;
     }
 
-    const ExpressionType GetExpressionType() {
+    ExpressionType GetExpressionType() {
       return REF_EXPR;
     }
 

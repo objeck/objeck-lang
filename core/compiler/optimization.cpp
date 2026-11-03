@@ -56,10 +56,8 @@ ItermediateOptimizer::ItermediateOptimizer(IntermediateProgram* p, int u, std::w
     else if(o == L"s2") {
       optimization_level = 2;
     }
-    else if(o == L"s3") {
-      optimization_level = 3;
-    }
     else {
+      // s3, and anything that is not s0..s2
       optimization_level = 3;
     }
   }
