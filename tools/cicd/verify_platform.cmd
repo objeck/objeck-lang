@@ -195,18 +195,30 @@ for %%t in (obc obr obd obi obb obu) do if not exist "%BIN%\%%t.exe" call :recor
 if "%VERDICT%"=="FAIL" goto finish
 pushd "%ROOT%\programs\regression"
 
+REM Each regression pass writes its OWN file and is judged by that file's
+REM "Results:" line, never by the exit code alone. On 2026-11-03 both Windows RC
+REM runs printed regression_jit1=PASS although the second pass never started: the
+REM shared log was still held open after the first, the redirect failed with "The
+REM process cannot access the file", and errorlevel read 0. A phase that cannot
+REM fail is not a check, so a pass that left no Results line now fails.
+set "STEP_OUT=%OUT%\%VP_PLATFORM%.step"
+set "REG1_OUT=%OUT%\%VP_PLATFORM%.reg_default.log"
+set "REG2_OUT=%OUT%\%VP_PLATFORM%.reg_jit1.log"
+del "%REG1_OUT%" "%REG2_OUT%" >nul 2>&1
+
 echo ---- regression (default JIT) >> "%LOG%"
-call "%ROOT%\programs\regression\run_regression.cmd" %ARCH% >> "%LOG%" 2>&1
-if errorlevel 1 (call :record regression FAIL) else (call :record regression PASS)
+call "%ROOT%\programs\regression\run_regression.cmd" %ARCH% > "%REG1_OUT%" 2>&1
+set "RC=%ERRORLEVEL%"
+call :regression_result regression "%REG1_OUT%"
 
 echo ---- regression (OBJECK_JIT_THRESHOLD=1) >> "%LOG%"
 set "OBJECK_JIT_THRESHOLD=1"
-call "%ROOT%\programs\regression\run_regression.cmd" %ARCH% >> "%LOG%" 2>&1
-if errorlevel 1 (call :record regression_jit1 FAIL) else (call :record regression_jit1 PASS)
+call "%ROOT%\programs\regression\run_regression.cmd" %ARCH% > "%REG2_OUT%" 2>&1
+set "RC=%ERRORLEVEL%"
 set "OBJECK_JIT_THRESHOLD="
+call :regression_result regression_jit1 "%REG2_OUT%"
 
 REM A step that reports it skipped its tests fails here even when it exits 0.
-set "STEP_OUT=%OUT%\%VP_PLATFORM%.step"
 
 echo ---- VM flag tests >> "%LOG%"
 %PY% run_vm_flag_tests.py "%BIN%" > "%STEP_OUT%" 2>&1
@@ -255,6 +267,33 @@ if not "%RC%"=="0" (
 %SYS32%\findstr.exe /i /c:"skipping" "%STEP_OUT%" >nul
 if not errorlevel 1 (
     call :record %~1 "FAIL (reported skipping its tests)"
+    exit /b 0
+)
+call :record %~1 PASS
+exit /b 0
+
+REM ---- regression_result <key> <file>: judge one regression pass from %RC% and its
+REM own output file, then append that file to the shared log. PASS needs exit 0 AND
+REM a "Results: N passed, N skipped, 0 failed" line; no Results line means the
+REM suite did not run to its summary, whatever the exit code said.
+:regression_result
+if exist "%~2" type "%~2" >> "%LOG%"
+if not exist "%~2" (
+    call :record %~1 "FAIL (no output file: the pass did not run)"
+    exit /b 0
+)
+%SYS32%\findstr.exe /r /c:"Results: [0-9]* passed, [0-9]* skipped, [0-9]* failed" "%~2" >nul
+if errorlevel 1 (
+    call :record %~1 "FAIL (no Results line: the suite did not run to its summary)"
+    exit /b 0
+)
+if not "%RC%"=="0" (
+    call :record %~1 "FAIL (exit %RC%)"
+    exit /b 0
+)
+%SYS32%\findstr.exe /r /c:"Results: [0-9]* passed, [0-9]* skipped, 0 failed" "%~2" >nul
+if errorlevel 1 (
+    call :record %~1 "FAIL (Results line reports failures)"
     exit /b 0
 )
 call :record %~1 PASS
