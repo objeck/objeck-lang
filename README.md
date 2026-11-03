@@ -13,7 +13,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://scan.coverity.com/projects/10314/badge.svg" alt="Coverity Scan Build Status"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.10.2-blue" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.10.3-blue" alt="Latest Release"></a>
 </p>
 
 ## Why Objeck?
@@ -37,12 +37,12 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Ubuntu 24.04: one package, system libraries included (-arm64 for ARM)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.10.2/objeck-ubuntu24.04-x64_2026.10.2.deb
-sudo apt install ./objeck-ubuntu24.04-x64_2026.10.2.deb
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.10.3/objeck-ubuntu24.04-x64_2026.10.3.deb
+sudo apt install ./objeck-ubuntu24.04-x64_2026.10.3.deb
 
 # Any other Linux, or macOS: the archive
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.10.2/objeck-linux-x64_2026.10.2.tgz
-tar xzf objeck-linux-x64_2026.10.2.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.10.3/objeck-linux-x64_2026.10.3.tgz
+tar xzf objeck-linux-x64_2026.10.3.tgz
 # Linux only: install the system libraries the toolchain links against
 # (mbedTLS, readline, SDL2/GL, OpenCV, unixODBC, LAME) --
 # obr does not start without them. --check reports without installing.
@@ -464,7 +464,7 @@ More: [all the guides](docs/guides/README.md), the 32 numbered programs in [`pro
 
 Full details for every release are in the [CHANGELOG](CHANGELOG.md).
 
-### v2026.10.3
+### v2026.10.3 ✅
   * **Garbage collector roots, finished** &mdash; compiled code now tells the collector exactly which stack slots hold references (typed slots on x64 and ARM64), and an `Int[]` has its own heap tag, so an `Int` or an `Int[]` element that happens to equal an object's address is never rewritten by a collection, interpreted or compiled ([design](docs/GC_ROOTS_DESIGN.md))
   * **A hardened loader** &mdash; a fuzz target on `Loader::Load` (hundreds of millions of executions) fixed a crash on a repeated class or method id, allocations of up to 16 GB from a corrupt count, an abort on a bad method signature, a silent exit on an unknown opcode and a read past the end of a short `.obe`; a verifier now checks jump targets, local and trap ids and class, method and field ids before anything runs ([trust model](docs/SECURITY_MODEL.md))
   * **Errors no longer end the host** &mdash; a fatal compiler error and a failed library load are returned instead of calling `exit(1)`, so the language server stays up, and parser and analyzer diagnostics share one record
@@ -479,7 +479,7 @@ Full details for every release are in the [CHANGELOG](CHANGELOG.md).
   * **New docs** &mdash; the [architecture assessment](docs/ARCHITECTURE_ASSESSMENT_2026_11.md), the VM trust model (an `.obe` is native code), a [collections guide](docs/COLLECTIONS_GUIDE.md), [error conventions](docs/ERROR_CONVENTIONS.md) and [how to add an intrinsic](docs/ADDING_AN_INTRINSIC.md)
   * **Upgrading** &mdash; recompile your `.obe` files and rebuild your own `.obl` libraries: the file format changed, and a program or library built by an earlier version is refused with a message saying so
 
-### v2026.10.2 ✅
+### v2026.10.2
   * **Query.Structured** &mdash; a columnar database in the standard library: SQL with joins, grouping, indexes and expressions; files, URLs, archive members and worksheets named in `FROM`; a crash-safe `.otab` file format; sources that read CSV, JSON, XML, text logs, filesystems, zip/tar, Excel, ODBC, ML results and image detections as tables ([design](docs/QUERY_DESIGN.md))
   * **ML and NLP lab** &mdash; kernel and one-class SVMs, outlier detectors and an autoencoder, `System.ML.Lab` for experiments, result tables and charts, and BERT sentence embeddings over ONNX
   * **Hugging Face models without Python** &mdash; `TextClassifier` runs a text classifier as `pipeline()` does, `HubClient` downloads models by name into a verified cache, `BpeTokenizer` matches RoBERTa's and GPT-2's tokenizer id for id, and `GetToFile` streams downloads of any size to disk
@@ -505,7 +505,7 @@ Full details for every release are in the [CHANGELOG](CHANGELOG.md).
 
 ## Downloads
 
-**Latest Release:** [v2026.10.2](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.10.3](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|
