@@ -39,14 +39,8 @@ jobs:
             os: windows-11-arm
             arch: ARM64
             shell: cmd
-          - platform: macos-arm64
-            os: macos-15
-            arch: arm64
-            shell: bash
-          - platform: linux-arm64
-            os: ubuntu-24.04-arm
-            arch: arm64
-            shell: bash
+          # macos-arm64 and linux-arm64 passed in run 41574159256; this
+          # re-run is only for the windows-arm64 JIT-threshold-1 phase.
 
     defaults:
       run:
@@ -252,39 +246,77 @@ jobs:
           echo "ODBCINI=$HOME/.odbc.ini" >> "$GITHUB_ENV"
 
       # ---------------- the verification ----------------
-      - name: Verify (POSIX)
-        if: runner.os != 'Windows'
-        run: bash tools/cicd/verify_platform.sh "$VERSION"
+      # ---------------- windows-arm64: the phase verify_platform.cmd lost ----------------
+      # verify_platform.cmd is NOT used here. Same build as it does (vcvarsall arm64,
+      # CI=1, deploy_windows.cmd arm64 from core\release), then each regression pass
+      # writes to its OWN log file, outside any shared log.
+      - name: Build deploy tree (Windows ARM64)
+        run: |
+          set "NoDefaultCurrentDirectoryInExePath="
+          set "VCVARS="
+          set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+          for /f "usebackq delims=" %%i in (`"%VSWHERE%" -latest -products * -property installationPath`) do set "VCVARS=%%i\VC\Auxiliary\Build\vcvarsall.bat"
+          echo vcvarsall: %VCVARS%
+          call "%VCVARS%" arm64 >nul 2>&1
+          if errorlevel 1 (echo vcvarsall arm64 failed & exit /b 1)
+          set "CI=1"
+          pushd core\release
+          call deploy_windows.cmd arm64 > "%RUNNER_TEMP%\deploy.log" 2>&1
+          set "RC=%ERRORLEVEL%"
+          popd
+          type "%RUNNER_TEMP%\deploy.log"
+          echo deploy exit %RC%
+          if not "%RC%"=="0" exit /b %RC%
+          for %%t in (obc obr obd obi obb obu) do if not exist "core\release\deploy-arm64\bin\%%t.exe" (echo missing %%t & exit /b 1)
 
-      - name: Verify (Windows)
-        if: runner.os == 'Windows'
-        run: call tools\cicd\verify_platform.cmd %VERSION% arm64
+      - name: Regression, default JIT (own log, diagnostic) + process listing
+        shell: pwsh
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'regression_default.log'
+          Push-Location programs\regression
+          cmd.exe /d /c "call run_regression.cmd arm64 > `"$log`" 2>&1"
+          $rc = $LASTEXITCODE
+          Pop-Location
+          "default-JIT regression exit code: $rc"
+          Select-String -Path $log -Pattern 'Results:' | ForEach-Object { $_.Line }
+          "---- processes right after the default pass (Get-Process obr,obc)"
+          $p = Get-Process obr,obc -ErrorAction SilentlyContinue
+          if ($p) { $p | Format-Table Id,ProcessName,StartTime,Path -AutoSize | Out-String -Width 300 } else { "none alive" }
+          "---- all processes whose command line mentions the workspace or deploy-arm64"
+          Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'deploy-arm64|objeck-lang' -and $_.ProcessId -ne $PID } |
+            Select-Object ProcessId,ParentProcessId,Name,CommandLine | Format-List | Out-String -Width 300
+          "---- any obr/obc/obd/obi/obb-named process"
+          Get-Process | Where-Object { $_.ProcessName -match '^(obr|obc|obd|obi|obe|obb)' } | Format-Table Id,ProcessName,StartTime -AutoSize | Out-String
+          if ($rc -ne 0) { "::error::default-JIT regression exited $rc"; exit 1 }
 
-      - name: Upload results
+      - name: Regression with OBJECK_JIT_THRESHOLD=1 (own log)
+        shell: pwsh
+        env:
+          OBJECK_JIT_THRESHOLD: "1"
+        run: |
+          "---- Get-Process obr,obc immediately before the jit1 run"
+          $p = Get-Process obr,obc -ErrorAction SilentlyContinue
+          if ($p) { $p | Format-Table Id,ProcessName,StartTime,Path -AutoSize | Out-String -Width 300 } else { "none alive" }
+          $log = Join-Path $env:RUNNER_TEMP 'regression_jit1.log'
+          Push-Location programs\regression
+          cmd.exe /d /c "call run_regression.cmd arm64 > `"$log`" 2>&1"
+          $rc = $LASTEXITCODE
+          Pop-Location
+          "jit1 regression exit code: $rc"
+          $res = Select-String -Path $log -Pattern 'Results:' | ForEach-Object { $_.Line.Trim() }
+          "jit1 Results line(s): $res"
+          "### windows-arm64 OBJECK_JIT_THRESHOLD=1: $res (exit $rc)" >> $env:GITHUB_STEP_SUMMARY
+          Select-String -Path $log -Pattern 'Banner|Running:' | Measure-Object | ForEach-Object { "jit1 tests run: $($_.Count)" }
+          if (-not $res) { "::error::no Results line in the jit1 log"; exit 1 }
+          if ($res -notmatch ' 0 failed') { "::error::jit1 pass has failures: $res"; exit 1 }
+          if ($rc -ne 0) { "::error::jit1 run_regression exited $rc"; exit 1 }
+
+      - name: Upload logs
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: rc-${{ matrix.platform }}
-          path: rc-results/**
-          if-no-files-found: error
-
-      - name: Result summary and verdict
-        if: always()
-        shell: pwsh
-        run: |
-          $f = "rc-results/$env:VERSION/${{ matrix.platform }}.txt"
-          if (-not (Test-Path $f)) {
-            "::error::no result file at $f"
-            exit 1
-          }
-          $text = Get-Content $f
-          "### ${{ matrix.platform }}" >> $env:GITHUB_STEP_SUMMARY
-          '```' >> $env:GITHUB_STEP_SUMMARY
-          $text >> $env:GITHUB_STEP_SUMMARY
-          '```' >> $env:GITHUB_STEP_SUMMARY
-          $text
-          $last = ($text | Where-Object { $_.Trim() -ne '' } | Select-Object -Last 1).Trim()
-          if ($last -ne 'verdict=PASS') {
-            "::error::last line is '$last', not verdict=PASS"
-            exit 1
-          }
+          name: rc-windows-arm64-jit1
+          path: |
+            ${{ runner.temp }}/regression_default.log
+            ${{ runner.temp }}/regression_jit1.log
+            ${{ runner.temp }}/deploy.log
