@@ -42,25 +42,6 @@ StackProgram* Loader::GetProgram() {
   return program;
 }
 
-void Loader::LoadConfiguration()
-{
-  std::ifstream in("obr.conf");
-  if(in.good()) {
-    std::string line;
-    do {
-      std::getline(in, line);
-      size_t pos = line.find('=');
-      if(pos != std::string::npos) {
-        std::string name = line.substr(0, pos);
-        std::string value = line.substr(pos + 1);
-        params.insert(std::pair<const std::wstring, int>(BytesToUnicode(name), atoi(value.c_str())));
-      }
-    }
-    while(!in.eof());
-  }
-  in.close();
-}
-
 bool Loader::Load()
 {
   error.str(L"");

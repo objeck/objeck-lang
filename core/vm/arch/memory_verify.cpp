@@ -224,8 +224,6 @@ public:
   //
   // Heap predicates
   //
-  static uint8_t* YoungStart() { return MemoryManager::young_region; }
-
   static bool InNurseryRange(size_t value) {
     const uint8_t* p = (uint8_t*)value;
     return p >= MemoryManager::young_region && p < MemoryManager::young_region + MemoryManager::young_region_size;

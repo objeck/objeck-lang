@@ -948,36 +948,6 @@ inline CommandLineParseResult ParseCommandLine(int argc, const char* argv[]) {
 }
 
 /**
- * Check if a command line argument exists
- */
-inline bool HasCommandLineArgument(
-    const std::map<const std::wstring, std::wstring>& args,
-    const std::wstring& key) {
-  return args.find(key) != args.end();
-}
-
-/**
- * Get command line argument with default value
- */
-inline std::wstring GetCommandLineArgument(
-    const std::map<const std::wstring, std::wstring>& args,
-    const std::wstring& key,
-    const std::wstring& default_value = L"") {
-  auto found = args.find(key);
-  return (found != args.end()) ? found->second : default_value;
-}
-
-/**
- * Check if argument is a boolean flag (present with empty value)
- */
-inline bool IsCommandLineFlag(
-    const std::map<const std::wstring, std::wstring>& args,
-    const std::wstring& key) {
-  auto found = args.find(key);
-  return (found != args.end() && found->second.empty());
-}
-
-/**
  * Get command line argument checking multiple aliases (for short/long form support)
  * Returns the value of the first matching alias, or default_value if none found
  */

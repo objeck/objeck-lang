@@ -123,10 +123,6 @@
       uint8_t elem;
     };
 
-    inline int DclrWords(ParamType type) {
-      return type == FUNC_PARM ? 2 : 1;
-    }
-
     inline SlotType DclrType(ParamType type) {
       switch(type) {
       case CHAR_PARM:

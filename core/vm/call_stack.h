@@ -349,11 +349,6 @@ namespace Runtime {
       return (uintptr_t)&probe < native_floor;
     }
 
-    // what this thread's frames and operand stack hold committed, in bytes
-    size_t CommittedBytes() const {
-      return frames_committed + op_committed;
-    }
-
     static CallStack* FromPos(long* call_stack_pos) {
       return reinterpret_cast<CallStack*>(call_stack_pos);
     }
