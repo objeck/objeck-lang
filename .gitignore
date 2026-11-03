@@ -24,6 +24,8 @@
 
 # Compiled Windows resources
 *.res
+# Visual Studio's resource-editor cache; it is rebuilt from the .rc on demand
+*.aps
 
 # C++ module interface
 *.ifc
