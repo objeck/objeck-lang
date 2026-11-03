@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Objeck Performance — Objeck Language</title>
+  <meta name="description" content="Classic Computer Language Benchmarks Game programs compiled with -opt s3."/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Objeck Performance</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/performance.md" target="_blank">docs/performance.md on GitHub</a></div>
+    <p class="page-lead">Classic <a href="https://benchmarksgame-team.pages.debian.net/benchmarksgame/" target="_blank">Computer Language Benchmarks Game</a> programs compiled with <code>-opt s3</code>.</p>
+    <div id="toc_container" class="plain">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#benchmark-results">Benchmark Results</a></li>
+      <li><a href="#cross-language-comparison">Cross-Language Comparison</a></li>
+      <li><a href="#the-native-keyword">The <code>native</code> Keyword</a></li>
+      <li><a href="#micro-benchmarks">Micro-Benchmarks</a></li>
+      <li><a href="#optimization-history">Optimization History</a></li>
+      <li><a href="#what-we-tried-and-reverted">What We Tried and Reverted</a></li>
+      <li><a href="#speedup-roadmap">Speedup Roadmap</a></li>
+     </ul>
+    </div>
+
+    <div class="note"><strong>Benchmark results and cross-language comparisons</strong></div>
+    <hr class="section-end">
+    <h3 id="benchmark-results">Benchmark Results</h3>
+    <h4 id="test-environment">Test Environment</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th></th><th></th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label=""><strong>CPU</strong></td><td data-label="">AMD Ryzen 9 7950X3D (16C/32T)</td></tr>
+      <tr><td data-label=""><strong>RAM</strong></td><td data-label="">128 GB (62 GB visible in Docker)</td></tr>
+      <tr><td data-label=""><strong>OS</strong></td><td data-label="">Ubuntu 24.04.4 in Docker (Windows 11 host)</td></tr>
+      <tr><td data-label=""><strong>Compiler</strong></td><td data-label="">Objeck <strong>v2026.9.1</strong> (<code>f6b3b09046</code>), built from source with the standard libraries rebuilt by that same compiler, <code>-opt s3</code></td></tr>
+      <tr><td data-label=""><strong>Methodology</strong></td><td data-label="">3 runs per benchmark, median reported</td></tr>
+      <tr><td data-label=""><strong>Date</strong></td><td data-label=""><strong>2026-09-12</strong> (unified Docker run)</td></tr>
+      <tr><td data-label=""><strong>Previous run</strong></td><td data-label="">2026-06-21 against v2026.6.2 — see Optimization History for what changed between them</td></tr>
+     </tbody>
+    </table>
+    <div class="note">All tables below come from a <strong>single unified Docker run</strong> (<code>perf-results/docker/Dockerfile</code>) on the box above, so the single-language and cross-language numbers are directly comparable. Note Docker's virtualized backend runs Objeck's <strong>interpreter</strong>-bound benchmarks ~30–50% slower than a native (bare-metal/WSL2) build, while JIT/<code>native</code> code is nearly unaffected — so the interpreter rows here are conservative.</div>
+    <h4 id="clbg-benchmarks">CLBG Benchmarks</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Benchmark</th><th>Input</th><th>Time (s)</th><th>Peak RSS</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Benchmark"><strong>mandelbrot</strong></td><td data-label="Input">4000</td><td data-label="Time (s)">0.72</td><td data-label="Peak RSS">13 MB</td></tr>
+      <tr><td data-label="Benchmark"><strong>nbody</strong></td><td data-label="Input">50M</td><td data-label="Time (s)">8.14</td><td data-label="Peak RSS">9 MB</td></tr>
+      <tr><td data-label="Benchmark"><strong>binarytrees</strong></td><td data-label="Input">17</td><td data-label="Time (s)">2.14</td><td data-label="Peak RSS">209 MB</td></tr>
+      <tr><td data-label="Benchmark"><strong>fannkuchredux</strong></td><td data-label="Input">12</td><td data-label="Time (s)">32.76</td><td data-label="Peak RSS">9 MB</td></tr>
+      <tr><td data-label="Benchmark"><strong>spectralnorm</strong></td><td data-label="Input">5500</td><td data-label="Time (s)">2.72</td><td data-label="Peak RSS">10 MB</td></tr>
+      <tr><td data-label="Benchmark"><strong>fasta</strong></td><td data-label="Input">25M</td><td data-label="Time (s)">7.07</td><td data-label="Peak RSS">9 MB</td></tr>
+     </tbody>
+    </table>
+    <div class="note">Measured: <strong>v2026.9.1</strong> (<code>f6b3b09046</code>), 2026-09-12 unified Docker run on the host above.</div>
+    <p><strong>mandelbrot</strong> and <strong>nbody</strong> benefit from <code>native</code>-annotated methods that JIT-compile to x64. <strong>binarytrees</strong> benefits from the young-gen bump allocator and auto-JIT for methods containing <code>MTHD_CALL</code>. <strong>mandelbrot</strong> is the noisiest row here: two runs on the same build the same afternoon gave 1.00s and 0.72s, so read it as unchanged from June's 0.87s rather than as movement in either direction.</p>
+    <p><strong>fasta appears for the first time, at 7.07s.</strong> It had been skipped by the harness in every previous run, June included, and silently: two defects hid it. Four float literals carried a <code>d</code> suffix, which Objeck has never accepted, so it failed to compile — and the harness discarded the compiler's stderr, reporting only <code>SKIP</code>. Fixing that exposed the second, a VM bug where <code>Console-&gt;WriteBuffer(Char[])</code> encoded its output twice and corrupted every later write. Both are fixed in v2026.9.1, so there is no June figure to compare against.</p>
+    <p><strong>spectralnorm fell from 44.86s to 2.72s (16.5x).</strong> The June page argued its ~45s was a JIT-warmup artifact and that the lever was threshold tuning; that argument is now gone rather than reduced. The v2026.9.1 calling convention (F7) made a closure call cost about what a bound call does, and the default threshold now returns <strong>2.72s</strong> — faster than the <strong>3.3s</strong> June reached by forcing compilation with <code>OBJECK_JIT_THRESHOLD=1</code>. There is no warmup gap left to tune.</p>
+    <p><strong>binarytrees fell from 8.53s to 2.14s (4.0x)</strong> and is no longer the weak spot the June page described: it now beats CPython, Ruby and LuaJIT on time. Its <strong>209 MB peak RSS</strong> remains an order of magnitude above every other row here, so allocation throughput is still the standing gap — on memory, not on time.</p>
+    <p><strong>fannkuchredux did not move</strong> (32.32s → 32.76s), which is worth stating plainly: it is call-bound, so the calling-convention work was expected to help and did not. Its cost is dominated by the permutation/flip inner loop rather than by call overhead.</p>
+    <hr class="section-end">
+    <h3 id="cross-language-comparison">Cross-Language Comparison</h3>
+    <p>All five languages measured in <strong>one Docker run on identical inputs</strong> (<code>perf-results/docker/Dockerfile</code>), so these times are directly comparable to each other. Median of 3 runs.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th></th><th></th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label=""><strong>Objeck</strong></td><td data-label=""><strong>v2026.9.1</strong> (<code>f6b3b09046</code>), libraries rebuilt by the same compiler, <code>-opt s3</code></td></tr>
+      <tr><td data-label=""><strong>Python</strong></td><td data-label="">3.12.3 (CPython)</td></tr>
+      <tr><td data-label=""><strong>Ruby</strong></td><td data-label="">3.2.3</td></tr>
+      <tr><td data-label=""><strong>LuaJIT</strong></td><td data-label="">2.1 (tracing JIT)</td></tr>
+      <tr><td data-label=""><strong>Java</strong></td><td data-label="">OpenJDK 21.0.12 (HotSpot, tiered JIT)</td></tr>
+      <tr><td data-label=""><strong>Host</strong></td><td data-label="">AMD Ryzen 9 7950X3D (16C/32T), Ubuntu 24.04.4 in Docker (32 vCPU / 62 GB)</td></tr>
+     </tbody>
+    </table>
+    <div class="note">Same unified Docker run as the single-language tables above, so every number on this page is directly comparable. As noted, Objeck's <em>interpreter</em>-bound benchmarks (e.g. spectralnorm) would run ~30–50% faster on a native build; JIT/<code>native</code> code is essentially unaffected by Docker.</div>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Benchmark</th><th>Input</th><th>Objeck</th><th>Python 3.12</th><th>Ruby 3.2</th><th>LuaJIT 2.1</th><th>Java 21</th><th>Best</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Benchmark"><strong>nbody</strong></td><td data-label="Input">50M</td><td data-label="Objeck">8.14s</td><td data-label="Python 3.12">134.93s</td><td data-label="Ruby 3.2">220.16s</td><td data-label="LuaJIT 2.1">4.37s</td><td data-label="Java 21"><strong>2.35s</strong></td><td data-label="Best">Java</td></tr>
+      <tr><td data-label="Benchmark"><strong>binarytrees</strong></td><td data-label="Input">17</td><td data-label="Objeck">2.14s</td><td data-label="Python 3.12">3.48s</td><td data-label="Ruby 3.2">3.70s</td><td data-label="LuaJIT 2.1">3.57s</td><td data-label="Java 21"><strong>0.26s</strong></td><td data-label="Best">Java</td></tr>
+      <tr><td data-label="Benchmark"><strong>spectralnorm</strong></td><td data-label="Input">5500</td><td data-label="Objeck">2.72s</td><td data-label="Python 3.12">127.14s</td><td data-label="Ruby 3.2">90.15s</td><td data-label="LuaJIT 2.1"><strong>1.12s</strong></td><td data-label="Java 21">1.18s</td><td data-label="Best">LuaJIT</td></tr>
+      <tr><td data-label="Benchmark"><strong>fannkuchredux</strong></td><td data-label="Input">12</td><td data-label="Objeck"><strong>32.76s</strong></td><td data-label="Python 3.12">430.56s</td><td data-label="Ruby 3.2">1201.74s</td><td data-label="LuaJIT 2.1">117.99s</td><td data-label="Java 21"><strong>20.70s</strong></td><td data-label="Best">Java</td></tr>
+     </tbody>
+    </table>
+    <h4 id="reading-the-table">Reading the table</h4>
+    <ul>
+     <li><strong>Java (HotSpot) still sets the ceiling — it wins 3 of 4</strong> (nbody, binarytrees, fannkuchredux); LuaJIT takes spectralnorm (1.12s vs Java's 1.18s). A mature tiered JIT with escape analysis and a generational GC is the bar a younger JIT is measured against.</li>
+     <li><strong>Objeck beats Python and Ruby on all four</strong>, by far wider margins than in June: nbody <strong>16.6x</strong> / <strong>27.0x</strong>, spectralnorm <strong>46.7x</strong> / <strong>33.1x</strong>, fannkuchredux <strong>13.1x</strong> / <strong>36.7x</strong>, binarytrees <strong>1.6x</strong> / <strong>1.7x</strong>.</li>
+     <li><strong>Objeck beats LuaJIT on fannkuchredux</strong> (32.76s vs 117.99s, <strong>3.6x faster</strong>) — the integer-array permutation/flip pattern is a poor fit for LuaJIT's tracing JIT and suits a method JIT well. June measured 3.8x; all three runs agree.</li>
+     <li><strong>binarytrees is no longer Objeck's weak spot on time</strong> — it now leads CPython, Ruby and LuaJIT. Java is still <strong>8.2x</strong> faster (0.26s vs 2.14s), and Objeck's <strong>209 MB</strong> peak RSS against everyone else's single digits is where the remaining gap lives. Allocation throughput stays the clearest improvement target (P1), now argued on memory rather than wall clock.</li>
+     <li><strong>spectralnorm's warmup story is over.</strong> June's 44.86s at the default threshold is now <strong>2.72s</strong> — better than the 3.3s June reached by forcing compilation. The v2026.9.1 calling convention removed the warmup gap rather than narrowing it, so there is no threshold left to tune here.</li>
+     <li><strong>fannkuchredux did not move</strong> (32.32s → 32.76s) despite being call-bound. Its inner loop, not call overhead, is what costs.</li>
+    </ul>
+    <h4 id="key-takeaways">Key Takeaways</h4>
+    <ol>
+     <li><strong>Against scripting peers, Objeck is decisively faster</strong> — and by much wider margins than in June. nbody is <strong>16.6x</strong> faster than CPython and <strong>27.0x</strong> faster than Ruby; spectralnorm <strong>46.7x</strong> and <strong>33.1x</strong>; fannkuchredux <strong>13.1x</strong> and <strong>36.7x</strong>.</li>
+     <li><strong>Objeck beats LuaJIT on fannkuchredux</strong> (32.76s vs 117.99s, <strong>3.6x faster</strong>) — the integer-array permutation/flip pattern suits a method JIT better than a tracing one. Java still leads it by 1.6x.</li>
+     <li><strong>binarytrees is no longer the weak spot on time.</strong> It now beats CPython (1.6x), Ruby (1.7x) and LuaJIT (1.7x). Java remains 8.2x faster, and Objeck's <strong>209 MB</strong> peak RSS against Java's generational GC is where the gap now lives — allocation throughput is still the highest-leverage work, but the case rests on memory rather than wall clock.</li>
+     <li><strong>Closure calls are no longer a category of weakness.</strong> The F7 calling convention took spectralnorm from 44.86s to 2.72s at the <em>default</em> threshold, beating what June achieved by forcing compilation. The warmup lever the June page described no longer exists.</li>
+     <li><strong>Float loops remain the gap against compiled-class JITs.</strong> nbody trails LuaJIT by 1.9x and Java by 3.5x; spectralnorm trails both by ~2.4x.</li>
+     <li><strong>Measurement environment matters.</strong> Objeck's interpreter is more sensitive to virtualization than its JIT; native (non-Docker) numbers would be meaningfully better than the Docker numbers shown here.</li>
+    </ol>
+    <hr class="section-end">
+    <h3 id="the-native-keyword">The <code>native</code> Keyword</h3>
+    <p>Methods marked <code>native</code> are JIT-compiled to x64 or ARM64 machine code. All other methods run in the interpreter unless auto-JIT compiles them after 10 calls.</p>
+    <div class="note">Measured: <strong>v2026.9.1</strong> (<code>f6b3b09046</code>), 2026-09-12 unified Docker run.</div>
+    <table class="ref-table">
+     <thead>
+      <tr><th>spectralnorm</th><th>Input</th><th>Time</th><th>Notes</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="spectralnorm">Auto-JIT, default threshold</td><td data-label="Input">5500</td><td data-label="Time"><strong>2.72s</strong></td><td data-label="Notes">v2026.6.2 took 44.86s here</td></tr>
+      <tr><td data-label="spectralnorm"><code>bench_spectralnorm_native</code> (hand-<code>native</code>)</td><td data-label="Input">2000</td><td data-label="Time">0.38s</td><td data-label="Notes">unchanged from June's 0.37s, as expected</td></tr>
+     </tbody>
+    </table>
+    <p>Methods marked <code>native</code> that contain <code>MTHD_CALL</code> are JIT-compiled via <code>ProcessStackCallback</code>. Auto-JIT also compiles hot methods automatically (default: after 10 calls). Closure/function-reference calls (<code>DYN_MTHD_CALL</code>) are auto-JIT'd as well, and since v2026.9.1 a compiled caller enters a compiled callee's native entry directly, with an inline cache at <code>virtual</code> and func-ref sites. A closure-heavy kernel therefore reaches native-level speed at the <strong>default</strong> threshold: spectralnorm no longer needs <code>OBJECK_JIT_THRESHOLD=1</code> to be fast, and the hand-<code>native</code> kernel is no longer meaningfully ahead of it.</p>
+    <hr class="section-end">
+    <h3 id="micro-benchmarks">Micro-Benchmarks</h3>
+    <p>Targeted benchmarks for specific optimization patterns (<code>programs/tests/perf/</code>). Compiled with <code>-opt s3</code>, median of 3 runs.</p>
+    <div class="note">Measured: <strong>v2026.9.1</strong> (<code>f6b3b09046</code>), 2026-09-12 unified Docker run. The June column is the 2026-06-21 run against v2026.6.2.</div>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Benchmark</th><th>Target</th><th>June (s)</th><th>Now (s)</th><th>Change</th><th>Peak RSS</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Benchmark"><code>bench_strength_ext</code></td><td data-label="Target">Non-power-of-2 multiply patterns</td><td data-label="June (s)">2.14</td><td data-label="Now (s)"><strong>0.04</strong></td><td data-label="Change">54x</td><td data-label="Peak RSS">9 MB</td></tr>
+      <tr><td data-label="Benchmark"><code>bench_dead_code</code></td><td data-label="Target">Unreachable assignments</td><td data-label="June (s)">1.68</td><td data-label="Now (s)"><strong>0.04</strong></td><td data-label="Change">42x</td><td data-label="Peak RSS">11 MB</td></tr>
+      <tr><td data-label="Benchmark"><code>bench_copy_prop</code></td><td data-label="Target">Variable copy chains</td><td data-label="June (s)">1.19</td><td data-label="Now (s)"><strong>0.03</strong></td><td data-label="Change">40x</td><td data-label="Peak RSS">9 MB</td></tr>
+      <tr><td data-label="Benchmark"><code>bench_array_intensive</code></td><td data-label="Target">Sequential array access patterns</td><td data-label="June (s)">2.40</td><td data-label="Now (s)"><strong>0.08</strong></td><td data-label="Change">30x</td><td data-label="Peak RSS">9 MB</td></tr>
+      <tr><td data-label="Benchmark"><code>bench_cse</code></td><td data-label="Target">Common subexpression elimination</td><td data-label="June (s)">0.25</td><td data-label="Now (s)"><strong>0.01</strong></td><td data-label="Change">25x</td><td data-label="Peak RSS">9 MB</td></tr>
+      <tr><td data-label="Benchmark"><code>bench_loop_invariant</code></td><td data-label="Target">Loop-invariant expressions (LICM)</td><td data-label="June (s)">0.24</td><td data-label="Now (s)"><strong>0.01</strong></td><td data-label="Change">24x</td><td data-label="Peak RSS">11 MB</td></tr>
+      <tr><td data-label="Benchmark"><code>bench_matrix_multiply</code></td><td data-label="Target">Nested loop float computation (n=500)</td><td data-label="June (s)">4.82</td><td data-label="Now (s)"><strong>0.28</strong></td><td data-label="Change">17x</td><td data-label="Peak RSS">15 MB</td></tr>
+      <tr><td data-label="Benchmark"><code>bench_method_dispatch</code></td><td data-label="Target">Repeated method calls on objects</td><td data-label="June (s)">2.96</td><td data-label="Now (s)"><strong>0.29</strong></td><td data-label="Change">10x</td><td data-label="Peak RSS">9 MB</td></tr>
+      <tr><td data-label="Benchmark"><code>bench_gc_churn</code></td><td data-label="Target">Rapid short-lived object allocation</td><td data-label="June (s)">0.64</td><td data-label="Now (s)"><strong>0.15</strong></td><td data-label="Change">4.3x</td><td data-label="Peak RSS">137 MB</td></tr>
+      <tr><td data-label="Benchmark"><code>bench_gc_large_heap</code></td><td data-label="Target">Large live set, GC sweep time</td><td data-label="June (s)">0.07</td><td data-label="Now (s)"><strong>0.02</strong></td><td data-label="Change">3.5x</td><td data-label="Peak RSS">58 MB</td></tr>
+      <tr><td data-label="Benchmark"><code>bench_tco</code></td><td data-label="Target">Tail-recursive accumulator (TCO, n=1M×200)</td><td data-label="June (s)">0.33</td><td data-label="Now (s)"><strong>0.11</strong></td><td data-label="Change">3.0x</td><td data-label="Peak RSS">9 MB</td></tr>
+      <tr><td data-label="Benchmark"><code>bench_spectralnorm_native</code></td><td data-label="Target">Float arrays with <code>native</code> JIT (n=2000)</td><td data-label="June (s)">0.37</td><td data-label="Now (s)">0.38</td><td data-label="Change">unchanged</td><td data-label="Peak RSS">9 MB</td></tr>
+     </tbody>
+    </table>
+    <p>The two fastest rows (<code>bench_cse</code>, <code>bench_loop_invariant</code>) now sit at 0.01 s, close enough to the harness's resolution that their ratios should be read as "too fast to distinguish" rather than as precise multiples. <code>bench_spectralnorm_native</code> is the control: it is hand-<code>native</code>, so it was already compiled before this work and comes back unchanged at 0.38 s — which is what makes the other rows credible. Because its kernel is <code>native</code>-annotated it is <em>always</em> compiled and never runs through the interpreter, so it is valid for comparing one build against another but must never be read as an interpreter measurement.</p>
+    <h4 id="running-benchmarks">Running Benchmarks</h4>
+<pre class="cmd"># Docker (recommended for reproducible results)
+docker build -t objeck-bench -f perf-results/docker/Dockerfile .
+docker run --rm -v "$(pwd)/perf-results/docker-results:/results" objeck-bench
+
+# Linux/WSL (using deploy directory)
+bash perf-results/run_benchmarks.sh &lt;deploy_dir&gt; &lt;output_dir&gt; [num_runs]</pre>
+    <hr class="section-end">
+    <h3 id="optimization-history">Optimization History</h3>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Version</th><th>Date</th><th>Key Optimization</th><th>Impact</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Version">Pre-2024</td><td data-label="Date">--</td><td data-label="Key Optimization">Stack-based VM, interpreter-only</td><td data-label="Impact">--</td></tr>
+      <tr><td data-label="Version">v2024.x</td><td data-label="Date">2024</td><td data-label="Key Optimization">JIT compilers (ARM64 + x64), basic bytecode optimizer</td><td data-label="Impact">--</td></tr>
+      <tr><td data-label="Version">v2026.2.0</td><td data-label="Date">Feb 2026</td><td data-label="Key Optimization">O(1) GC lookups, ARM64 JIT optimizations, instruction rewrite framework</td><td data-label="Impact">Foundation</td></tr>
+      <tr><td data-label="Version">v2026.2.1</td><td data-label="Date">Feb 2026</td><td data-label="Key Optimization">Inline limit 128-&gt;256, CSE, dead code elimination</td><td data-label="Impact"><strong>4.38x nbody</strong></td></tr>
+      <tr><td data-label="Version">v2026.2.1+</td><td data-label="Date">Mar 2026</td><td data-label="Key Optimization">JIT whitelist fix: 3 instructions had code generators but weren't enabled</td><td data-label="Impact"><strong>28.4x mandelbrot</strong></td></tr>
+      <tr><td data-label="Version">v2026.3.0</td><td data-label="Date">Apr 2026</td><td data-label="Key Optimization">Young-gen bump allocator, MTHD_CALL whitelist, direct JIT-to-JIT calling, atomic mark bits</td><td data-label="Impact"><strong>2.3x binarytrees</strong></td></tr>
+      <tr><td data-label="Version">v2026.4.2</td><td data-label="Date">Apr 2026</td><td data-label="Key Optimization">JIT local variable register cache, LTO (<code>-flto=auto</code>), ARM64 <code>-mcpu=native</code></td><td data-label="Impact"><strong>~3x all benchmarks</strong></td></tr>
+      <tr><td data-label="Version">v2026.5.3</td><td data-label="Date">May 2026</td><td data-label="Key Optimization">Jump table dispatch for dense integer <code>select</code> (O(1) vs O(log n) BST)</td><td data-label="Impact">select-heavy programs; no regression on existing benchmarks</td></tr>
+      <tr><td data-label="Version">v2026.6.0</td><td data-label="Date">May 2026</td><td data-label="Key Optimization">Auto-JIT for MTHD_CALL, 15 new interpreter fast-path opcodes, TCO, LICM</td><td data-label="Impact"><strong>matrix_multiply −14%, dead_code −15%, array_intensive −12%, binarytrees −7%, mandelbrot −6%</strong></td></tr>
+      <tr><td data-label="Version">v2026.6.2+</td><td data-label="Date">Jun 2026</td><td data-label="Key Optimization">ARM64 forced-JIT correctness hardening (PR #548, #551)</td><td data-label="Impact">Correctness, not speed — clears every ARM64 JIT miscompile that forced JIT exposes, <strong>unblocking a lower auto-JIT threshold</strong> (the auto-JIT trigger is still 10 calls; these fixes let it drop without miscompiling cold helpers). Full ARM64 suite green at <code>OBJECK_JIT_THRESHOLD=1</code>.</td></tr>
+      <tr><td data-label="Version">v2026.8.2</td><td data-label="Date">Aug 2026</td><td data-label="Key Optimization">Indexed call results (<code>GetItems()[0]-&gt;Name()</code>); <code>obu</code> updater packaged</td><td data-label="Impact">Language/tooling, not throughput</td></tr>
+      <tr><td data-label="Version">v2026.8.4</td><td data-label="Date">Aug 2026</td><td data-label="Key Optimization">Multithreaded GC fixes; UTF-8 locale correctness</td><td data-label="Impact">Correctness</td></tr>
+      <tr><td data-label="Version">v2026.9.0</td><td data-label="Date">Sep 2026</td><td data-label="Key Optimization">Loopback teardown (<code>CloseGracefully</code>), per-thread LSP analysis</td><td data-label="Impact">Correctness/concurrency, not throughput</td></tr>
+      <tr><td data-label="Version"><strong>v2026.9.1</strong></td><td data-label="Date"><strong>Sep 2026</strong></td><td data-label="Key Optimization"><strong>F7 calling convention — a compiled caller builds the callee's frame and enters its native entry directly, with inline caches for <code>virtual</code> and func-ref sites; dense <code>select</code> → jump table on both backends; <code>a-&gt;Size()</code> inlined, constant division by multiply, one-instruction array addressing, eight allocatable registers on AMD64</strong></td><td data-label="Impact"><strong>bound call 26.5 ns → 5.5 ns; <code>virtual</code> call 125 ns → 6.0 ns; <code>Fib(32)</code> 0.208 s → 0.043 s (AMD64). M4 Max: call 17.1 ns → 7.4 ns, <code>Fib(32)</code> 0.135 s → 0.050 s. Loops 2–8x (array-summing loop 8x, constant division 2.5x)</strong></td></tr>
+     </tbody>
+    </table>
+    <h4 id="v202630-detail">v2026.3.0 Detail</h4>
+    <p><strong>Headline: binarytrees (depth=17) from 65.8s to 28.7s.</strong> Young-gen bump allocator enabled with complete call stack fixup.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Optimization</th><th>Category</th><th>Impact</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Optimization">Auto-JIT operand3 dispatch fix</td><td data-label="Category">VM</td><td data-label="Impact"><strong>1.5x</strong> -- failed JIT methods were re-attempting <code>Compile()</code> on every call.</td></tr>
+      <tr><td data-label="Optimization">MTHD_CALL JIT whitelist (x64 + ARM64)</td><td data-label="Category">JIT</td><td data-label="Impact"><strong>1.2x</strong> -- methods containing method calls can now be JIT-compiled.</td></tr>
+      <tr><td data-label="Optimization">Direct JIT-to-JIT calling</td><td data-label="Category">JIT/VM</td><td data-label="Impact">Part of MTHD_CALL -- <code>JitStackCallback</code> calls callee native code directly, eliminating interpreter trampoline.</td></tr>
+      <tr><td data-label="Optimization">Atomic mark bits</td><td data-label="Category">GC</td><td data-label="Impact">~5% -- lock-free CAS replaces mutex across 3 parallel mark threads.</td></tr>
+      <tr><td data-label="Optimization">MEM_START_MAX 1 MB -&gt; 8 MB</td><td data-label="Category">GC</td><td data-label="Impact">Fewer early GC cycles; <code>old_generation.reserve</code> 4096 -&gt; 65536.</td></tr>
+      <tr><td data-label="Optimization">Young-gen bump allocator</td><td data-label="Category">GC</td><td data-label="Impact"><strong>1.5x</strong> (on top of above) -- <code>atomic_fetch_add</code> replaces mutex + hash-set insert. 128MB nursery; short-lived objects die without promotion. Fixed call stack fixup to include top frame pushed by direct JIT-to-JIT calls.</td></tr>
+     </tbody>
+    </table>
+    <p><strong>How it was found:</strong> GC profiling revealed only 18% of binarytrees runtime was in GC. The remaining 82% was per-object allocation overhead and interpreter dispatch -- contradicting the assumption that "GC is the #1 bottleneck."</p>
+    <h4 id="v202660-detail">v2026.6.0 Detail</h4>
+    <p><strong>Headline: broad 5–15% speedup across all interpreter and JIT benchmarks.</strong></p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Optimization</th><th>Category</th><th>Impact</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Optimization">Auto-JIT for MTHD_CALL</td><td data-label="Category">JIT</td><td data-label="Impact"><strong>−7% binarytrees, −6% mandelbrot</strong> — methods containing method calls now auto-JIT after 10 invocations, same <code>ProcessStackCallback</code> path as explicit <code>native</code>. Previously blocked due to false positives from library method interactions.</td></tr>
+      <tr><td data-label="Optimization">15 new interpreter fast-path inline opcodes</td><td data-label="Category">VM</td><td data-label="Impact"><strong>−10 to −15% micro-benchmarks</strong> — comparisons (<code>EQL/NEQL/LES/GTR/LES_EQL/GTR_EQL</code>), logical (<code>AND/OR</code>), bitwise (<code>BIT_AND/OR/XOR</code>), shifts (<code>SHL/SHR</code>), <code>LOAD_CHAR_LIT</code> added to the inline switch. Eliminates function-pointer dispatch overhead for the most common interpreter instructions.</td></tr>
+      <tr><td data-label="Optimization">Tail Call Optimization (TCO)</td><td data-label="Category">Compiler (<code>-opt s1+</code>)</td><td data-label="Impact">Self-recursive tail calls rewritten to <code>POP_INT</code> + param restores + <code>JMP</code> — eliminates call-frame growth. Stack overflow at n=1M without TCO; correct in O(1) stack space with it.</td></tr>
+      <tr><td data-label="Optimization">Loop-Invariant Code Motion (LICM)</td><td data-label="Category">Compiler (<code>-opt s2+</code>)</td><td data-label="Impact">Hoists <code>arr-&gt;Size()</code> reads and pure arithmetic statements out of loop bodies when inputs are loop-invariant.</td></tr>
+     </tbody>
+    </table>
+    <h4 id="v202662-detail-arm64-forced-jit-correctness">v2026.6.2+ Detail (ARM64 forced-JIT correctness)</h4>
+    <p><strong>Headline: no benchmark moves, but every ARM64 JIT miscompile that forced JIT (<code>OBJECK_JIT_THRESHOLD=1</code>) exposed is now fixed — a prerequisite for lowering the auto-JIT threshold below 10.</strong> These were latent because cold helper methods rarely reach the trigger, so they ran interpreted; forcing JIT surfaced them. Found with the JIT's <code>_DEBUG_JIT_JIT</code> codegen disassembly and lldb.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Fix</th><th>Category</th><th>Bug</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Fix">Cached-local float operands in transcendental/round ops (PR #548)</td><td data-label="Category">JIT (ARM64)</td><td data-label="Bug"><code>ProcessFloatOperation</code>/<code>Operation2</code>/<code>Round</code>/<code>SquareRoot</code> read a <code>REG_FLOAT</code> operand's register bookkeeping as a stack slot → garbage (e.g. <code>atan</code> got 0).</td></tr>
+      <tr><td data-label="Fix">libc float result dropped when holder ≠ D0 (PR #548)</td><td data-label="Category">JIT (ARM64)</td><td data-label="Bug">The result move used <code>move_freg_freg</code>'s GP-bridge (swapped FMOV opcodes), dropping an FP-only <code>pow</code>/<code>sin</code>/<code>exp</code> result. Now a true <code>fmov Dd,Dn</code>.</td></tr>
+      <tr><td data-label="Fix">Working-stack regs clobbered across inlined float libc calls (PR #548)</td><td data-label="Category">JIT (ARM64)</td><td data-label="Bug">An inlined <code>Float-&gt;Pow</code>'s <code>blr</code> clobbers caller-saved temps; pending working-stack ints are now spilled across the call (<code>Sum5</code>/<code>Int-&gt;Pow</code>).</td></tr>
+      <tr><td data-label="Fix">Unary float-op argument dropped when not in D0 (PR #551)</td><td data-label="Category">JIT (ARM64)</td><td data-label="Bug">Same GP-bridge bug on the <em>argument</em> load — <code>exp</code> inside <code>1/(1+exp(x))</code> got a stale arg, diverging LogisticRegression (<code>ml_phase1</code>).</td></tr>
+      <tr><td data-label="Fix"><code>imm19</code> not masked in error-handler branch backpatch (PR #551)</td><td data-label="Category">JIT (ARM64)</td><td data-label="Bug">A backward (negative) div-by-zero / bounds / null-deref branch sign-extended over the <code>b.cond</code> opcode → illegal instruction (<code>ml_gbt</code> SIGILL). Now masked to <code>&amp; 0x7FFFF</code>.</td></tr>
+      <tr><td data-label="Fix">Deferred local load stale after an overwriting store (PR #551)</td><td data-label="Category">JIT (ARM64)</td><td data-label="Bug">A TCO'd <code>return Gcd(b, a%b)</code> stored <code>b:=a%b</code> before the deferred <code>LOAD b</code> was consumed, so <code>a:=a%b</code> (GCD→0). <code>ProcessStore</code> now materializes pending refs to the slot first.</td></tr>
+      <tr><td data-label="Fix"><code>Int-&gt;MinSize()</code> returned <code>INT64_MAX</code> (PR #551)</td><td data-label="Category">Library</td><td data-label="Bug"><code>2-&gt;Pow(63)</code> computes <code>+2^63</code> in float and saturates on F2I; fixed to <code>1 &lt;&lt; 63</code>. (Not a JIT bug — failed interpreted too; was masked by exit-code-based tests that printed <code>FAIL</code> without <code>Runtime-&gt;Exit(1)</code>.)</td></tr>
+     </tbody>
+    </table>
+    <h4 id="v202691-detail-the-calling-convention">v2026.9.1 Detail (the calling convention)</h4>
+    <p><strong>Headline: a call between compiled methods no longer crosses the C++ bridge.</strong> Before this, a JIT'd method calling another JIT'd method went out through an eleven-argument bridge entry, took a pooled frame and released it. The caller now builds the callee's frame on its own stack and jumps straight to its native entry.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Measurement</th><th>Before</th><th>After</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Measurement">bound call (AMD64)</td><td data-label="Before">26.5 ns</td><td data-label="After"><strong>5.5 ns</strong></td></tr>
+      <tr><td data-label="Measurement"><code>virtual</code> call (AMD64)</td><td data-label="Before">125 ns</td><td data-label="After"><strong>6.0 ns</strong></td></tr>
+      <tr><td data-label="Measurement"><code>Fib(32)</code> (AMD64)</td><td data-label="Before">0.208 s</td><td data-label="After"><strong>0.043 s</strong></td></tr>
+      <tr><td data-label="Measurement">call (Apple M4 Max)</td><td data-label="Before">17.1 ns</td><td data-label="After"><strong>7.4 ns</strong></td></tr>
+      <tr><td data-label="Measurement"><code>Fib(32)</code> (Apple M4 Max)</td><td data-label="Before">0.135 s</td><td data-label="After"><strong>0.050 s</strong></td></tr>
+     </tbody>
+    </table>
+    <p><code>virtual</code> and func-ref sites carry inline caches keyed on the receiver's class word (or the func-ref word); a miss falls back to the resolver, and the slow path also serves a callee not yet compiled, a full call stack and a <code>Nil</code> receiver. A dense integer <code>select</code> compiles to a jump table on both backends.</p>
+    <p><strong>What this meant for the tables above, and what re-measuring found.</strong> The 2026-09-12 run settled it. <code>spectralnorm</code> fell <strong>16.5x</strong> (44.86s to 2.72s) and its "JIT warmup dominates" narrative is gone: the default threshold now beats what forcing compilation achieved in June. <code>binarytrees</code> fell <strong>4.0x</strong> (8.53s to 2.14s) and now leads all three scripting/JIT peers on time, leaving its 209 MB peak RSS as the real gap. <code>fannkuchredux</code>, despite being call-bound, did <strong>not</strong> move (32.32s to 32.76s) -- its permutation/flip inner loop dominates, not call overhead. The hand-<code>native</code> spectralnorm kernel was already compiled and comes back unchanged (0.37s to 0.38s), which is the run's own sanity check.</p>
+    <hr class="section-end">
+    <h3 id="what-we-tried-and-reverted">What We Tried and Reverted</h3>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Optimization</th><th>Result</th><th>Why</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Optimization">Extended strength reduction (x*3,5,7,9,15)</td><td data-label="Result">0.66x slower</td><td data-label="Why">Modern CPUs execute MUL in 3 cycles; shift+add has more dispatch overhead</td></tr>
+      <tr><td data-label="Optimization">Copy propagation</td><td data-label="Result">0.85x slower</td><td data-label="Why">Changed patterns the JIT register allocator expected</td></tr>
+      <tr><td data-label="Optimization">GC lock-free mark via snapshot</td><td data-label="Result">0.64x slower</td><td data-label="Why">Copying entire <code>allocated_memory</code> set before each mark phase was O(n)</td></tr>
+      <tr><td data-label="Optimization">Inline limit 512</td><td data-label="Result">0.91x slower</td><td data-label="Why">Exceeded JIT register allocator capacity</td></tr>
+      <tr><td data-label="Optimization">Auto-JIT MTHD_CALL via interpreter trampoline</td><td data-label="Result">0.5x slower</td><td data-label="Why">Per-call trampoline overhead exceeded interpreter cost. Fixed by adding direct JIT-to-JIT calling.</td></tr>
+      <tr><td data-label="Optimization">ProcessInlineMethod for MTHD_CALL</td><td data-label="Result">Miscompiles broadly</td><td data-label="Why">Wiring <code>ProcessInlineMethod</code> into the MTHD_CALL path fails 36 regression tests. Constructors lose the implicit new-instance result (popped into INSTANCE_MEM, never pushed back) — excluding them clears 24. But the rest persist <strong>even when restricted to pure, instance-memory-free leaf callees</strong>: the inliner's register/working-stack handling miscompiles small methods inlined into high-register-pressure callers (ML/network/collection code). The shared register allocator and working stack don't compose correctly across the inline boundary. Needs a rewrite of <code>ProcessInlineMethod</code>, not an incremental fix; left disabled (dead code). Direct JIT-to-JIT calling already removes most call overhead, so the payoff is small.</td></tr>
+      <tr><td data-label="Optimization">Monomorphic per-call-site dispatch cache</td><td data-label="Result">Net regression</td><td data-label="Why">Caching <code>(call-site, receiver-class) → method</code> on each <code>StackInstr</code> to skip <code>ResolveVirtualMethod</code>'s map lookup. Measured: monomorphic virtual 3.35s→3.53s, non-virtual 2.75s→2.83s, bimorphic flat — all worse or equal. The extra <code>StackInstr</code> fields (+50% size) cost more in dcache pressure than the saved lookup, and <code>virtual_methods</code> is already a hashed <code>unordered_map</code>. Reverted.</td></tr>
+     </tbody>
+    </table>
+    <hr class="section-end">
+    <h3 id="speedup-roadmap">Speedup Roadmap</h3>
+    <p>Prioritized by leverage, grounded in the cross-language run above. The single clearest signal: <strong>Objeck already beats Python/Ruby on JIT-friendly loops but loses to everything — including the interpreters — on allocation-bound work (binarytrees), and trails Java/LuaJIT on float loops.</strong> So the highest-value work is allocation throughput and float codegen, not more integer-loop tuning.</p>
+    <h4 id="p0--recover-the-gc-safepoint-regression-complete--both-arches">P0 — Recover the GC-safepoint regression <em>(complete — both arches)</em></h4>
+    <p>The cooperative stop-the-world work (v2026.6.2) emits an unconditional <code>call MemoryManager::SafePoint</code> at <strong>every JIT label</strong>, which regressed label-dense integer loops (fannkuchredux ~35s → ~59s; the call/ret + optimization barrier is paid every loop iteration) while barely touching float/call-dominated loops (spectralnorm_native +7%).</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Step</th><th>Status</th><th>Impact</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Step">Inline the flag test, call only when a collection is active (<code>cmp [stw_active],0; je skip</code>)</td><td data-label="Status"><strong>AMD64 done, validated</strong> (branch <code>perf/jit-safepoint-inline</code>); ARM64 mirror pending on-device test</td><td data-label="Impact">fannkuch 71.6s → 56.9s (<strong>−20%</strong>, recovers ~71% of the regression); GC/JIT + multithreaded-STW stress green</td></tr>
+      <tr><td data-label="Step">Cache <code>&amp;stw_active</code> in a callee-saved reg at the prologue</td><td data-label="Status"><strong>AMD64 done, validated</strong> (R12); <strong>ARM64 done, validated on Apple Silicon</strong> (X19)</td><td data-label="Impact">AMD64: each label's poll is now a 5-byte <code>cmp byte [r12],0</code> (was a 10-byte <code>movabs</code> + 3-byte <code>cmp</code>); fannkuch-12 38.4s → 34.7s (<strong>−10%</strong>, far less run-to-run variance). ARM64: each poll drops from a 2-instr const-pool address load + <code>ldarb</code> to just <code>ldarb W11,[X19]</code>; fannkuch-11 2.52s → 2.49s (<strong>~−1%</strong>, min-of-6 — smaller win since the ARM64 address load was already a cheap const-pool <code>ldr</code>, not AMD64's 10-byte <code>movabs</code>). The fully-packed RED_ZONE frame had no free fixed slot and <code>RegisterRoot</code> zeros the local region at entry, so X19 is saved in the one untouched spot: the top 8 bytes of the frame (<code>final_local_space - 8</code>, above the zeroed region and below the incoming args). 158/158 ARM64 regression × 3 + <code>core_thread_gc_stress</code>/<code>jit_gc_stress</code> × 5 clean (no STW deadlock)</td></tr>
+      <tr><td data-label="Step">Emit the poll only at true loop back-edges, not at if/else merges</td><td data-label="Status"><strong>AMD64 done, validated</strong>; <strong>ARM64 done, validated on Apple Silicon</strong></td><td data-label="Impact">reuses the back-edge pre-scan: a label gets a poll only if it is the target of a backward jump (loop header). AMD64 inlined callees carry no control flow (<code>CanInlineMethod</code> rejects <code>JMP</code>/<code>LBL</code>) and ARM64 has no inlining, so every loop is covered. AMD64 fannkuch-12 34.7s → 32.5s (<strong>−6%</strong> more); 157/158 regression pass with no STW deadlock (threading/GC tests green). ARM64 mirrors the same logic (note: ARM64 JMP operand is target-index + 1)</td></tr>
+     </tbody>
+    </table>
+    <h4 id="p1--allocation--gc-throughput-the-1-cross-language-gap">P1 — Allocation &amp; GC throughput <em>(the #1 cross-language gap)</em></h4>
+    <p>binarytrees is the one benchmark Objeck loses to <em>every</em> peer (Java 22x, even the interpreters ~2x). The young-gen bump allocator helped, but per-object allocation</p>
+    <ul>
+     <li>a call into the allocator still dominates.</li>
+    </ul>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Opportunity</th><th>Category</th><th>Expected Impact</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Opportunity"><strong>Escape analysis</strong> — stack-allocate objects that don't outlive their frame (tree nodes, short-lived temps)</td><td data-label="Category">Compiler/VM</td><td data-label="Expected Impact"><strong>HIGH</strong> — removes GC pressure entirely for non-escaping values; directly targets the binarytrees loss</td></tr>
+      <tr><td data-label="Opportunity"><strong>Inline the young-gen bump-alloc fast path into JIT'd code</strong></td><td data-label="Category">JIT</td><td data-label="Expected Impact"><strong>HIGH</strong> — replace the allocator <code>call</code> for nursery objects with an inline <code>atomic_fetch_add</code> + bounds check</td></tr>
+      <tr><td data-label="Opportunity"><strong>Thread-local allocation buffers (TLAB)</strong></td><td data-label="Category">GC</td><td data-label="Expected Impact">MED — cut <code>young_offset</code> CAS contention under multithreaded allocation</td></tr>
+     </tbody>
+    </table>
+    <h4 id="p2--close-jit-coverage-gaps">P2 — Close JIT coverage gaps</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Opportunity</th><th>Category</th><th>Expected Impact</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Opportunity">~~<strong>DYN_MTHD_CALL auto-JIT</strong> — closure / function-ref calls~~</td><td data-label="Category">JIT</td><td data-label="Expected Impact"><strong>DONE</strong> (v2026.6.2). Superseded by v2026.9.1's calling convention, which gives func-ref sites an inline cache and a direct native entry</td></tr>
+      <tr><td data-label="Opportunity"><strong>Float JIT codegen + float fast-path opcodes</strong> (<code>LOAD_FLOAT_LIT</code>, <code>ADD/SUB/MUL_FLOAT</code>)</td><td data-label="Category">JIT/VM</td><td data-label="Expected Impact"><strong>HIGH</strong> — Java and LuaJIT lead specifically on float loops (nbody, spectralnorm); the inline switch is integer-only today</td></tr>
+      <tr><td data-label="Opportunity"><strong>ProcessInlineMethod for MTHD_CALL</strong> — getter/ctor inlining inside JIT'd methods</td><td data-label="Category">JIT</td><td data-label="Expected Impact"><strong>LOW now</strong> — the trampoline it existed to remove is gone (v2026.9.1); a direct native-entry call is 5.5 ns, so inlining buys far less than when this was written. Still blocked by INSTANCE_MEM offset corruption in constructors</td></tr>
+      <tr><td data-label="Opportunity"><strong>Per-call-site monomorphic virtual dispatch cache</strong></td><td data-label="Category">VM</td><td data-label="Expected Impact">LOW — store the last (class→method) pointer in the instruction to skip the hash lookup in the common case</td></tr>
+      <tr><td data-label="Opportunity"><strong>Lower the auto-JIT threshold</strong> (currently 10 calls)</td><td data-label="Category">VM</td><td data-label="Expected Impact">MED — now <em>unblocked</em> on ARM64: the forced-JIT (<code>THRESHOLD=1</code>) correctness fixes above mean cold helpers JIT correctly, so the trigger can drop to compile warm code sooner. Measure the compile-time-vs-runtime trade-off before changing the default; re-validate x64 at the lower threshold first</td></tr>
+     </tbody>
+    </table>
+    <h4 id="p3--measurement--methodology">P3 — Measurement &amp; methodology</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Opportunity</th><th>Impact</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Opportunity">~~<strong>Re-run every table on v2026.9.1</strong>~~</td><td data-label="Impact"><strong>DONE</strong> (2026-09-12, <code>f6b3b09046</code>, same 7950X3D host). spectralnorm 16.5x, binarytrees 4.0x, nbody 2.3x, micro-benchmarks up to 54x; fannkuchredux flat and mandelbrot noise-dominated. <code>fasta</code> measured for the first time</td></tr>
+      <tr><td data-label="Opportunity">Stand up a <strong>native (non-Docker) cross-language harness</strong> so peer comparisons aren't muddied by the ~30–50% Docker interpreter overhead documented above</td><td data-label="Impact">gives bare-metal interpreter numbers; the current page is entirely Docker</td></tr>
+      <tr><td data-label="Opportunity">~~<strong>Add <code>fasta</code> to the measured set</strong>~~</td><td data-label="Impact"><strong>DONE</strong> — both causes fixed in v2026.9.1 (four <code>d</code>-suffixed float literals, and <code>Console-&gt;WriteBuffer(Char[])</code> encoding its output twice), and it is measured above at <strong>7.07s</strong>. It had been skipped silently since before June because the harness discarded the compiler's stderr</td></tr>
+      <tr><td data-label="Opportunity"><strong>A second cross-language table on current language releases</strong> — the run above uses Ubuntu 24.04's Python 3.12.3, Ruby 3.2.3 (pre-YJIT-by-default) and OpenJDK 21</td><td data-label="Impact">must be <em>additive</em>: swapping runtimes breaks comparison with this page's own history, so it belongs beside the like-for-like table, not instead of it</td></tr>
+      <tr><td data-label="Opportunity">Add <strong>Java + LuaJIT to the gating perf CI</strong> so regressions like the safepoint one are caught automatically</td><td data-label="Impact">the fannkuch regression shipped unnoticed because nothing compared releases head-to-head</td></tr>
+      <tr><td data-label="Opportunity">~~Record the <strong>Objeck version beside every table</strong>~~</td><td data-label="Impact"><strong>DONE</strong> — every measured table now carries the version and the commit it was taken at. This page went four releases without its numbers being re-measured and nothing in the tables said so; a stamp per table is what makes that visible next time</td></tr>
+     </tbody>
+    </table>
+    <hr class="section-end">
+    <p><em>Prose and measured tables last updated: <strong>September 12, 2026, 22:22 UTC</strong> — Objeck <strong>v2026.9.1</strong> (<code>f6b3b09046</code>), a unified Docker run on an AMD Ryzen 9 7950X3D (32 vCPU / 62 GB visible to Docker; the host has 128 GB). Median of 3 runs. Numbers are Docker: interpreter-bound rows run ~30–50% slower than a native build, while JIT/<code>native</code> code is largely unaffected.</em></p>
+    <p><em>The previous measured run was June 21, 2026 against v2026.6.2 and is retained only as the "June" column in the micro-benchmark table and as the before-figures quoted in the prose. Headline movement between the two: spectralnorm <strong>16.5x</strong>, binarytrees <strong>4.0x</strong>, nbody <strong>2.3x</strong>, micro-benchmarks up to <strong>54x</strong>; fannkuchredux flat, and mandelbrot noise-dominated rather than moved.</em></p>
+    <p><em>All six CLBG benchmarks are measured here; <code>fasta</code> joins the set for the first time, having been skipped silently in every previous run.</em></p>
+    <p><em>The measured commit is not the release tag, but it is the same engine. <code>f6b3b09046</code> precedes <code>v2026.9.1</code> (<code>ca5a3e19b9</code>) by five commits, and <code>git diff</code> between them over <code>core/vm</code>, <code>core/compiler</code>, <code>core/shared</code> and the committed <code>.obl</code> set is <strong>empty</strong> — the difference is documentation, examples and release tooling only. So these numbers describe the engine that shipped.</em></p>
+    <p><em>P0 safepoint roadmap: complete on both arches — AMD64 (all three steps) and ARM64 (back-edge + X19 register-cache, validated on Apple Silicon). The ARM64 forced-JIT correctness chain (PR #548, #551) is merged and the full ARM64 suite is green at <code>OBJECK_JIT_THRESHOLD=1</code>; as of v2026.9.1 every CI leg runs that pass, ARM64 included.</em></p>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

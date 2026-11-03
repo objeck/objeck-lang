@@ -464,7 +464,7 @@ More: [all the guides](docs/guides/README.md), the 32 numbered programs in [`pro
 
 Full details for every release are in the [CHANGELOG](CHANGELOG.md).
 
-### v2026.10.3 (in development)
+### v2026.10.3
   * **Garbage collector roots, finished** &mdash; compiled code now tells the collector exactly which stack slots hold references (typed slots on x64 and ARM64), and an `Int[]` has its own heap tag, so an `Int` or an `Int[]` element that happens to equal an object's address is never rewritten by a collection, interpreted or compiled ([design](docs/GC_ROOTS_DESIGN.md))
   * **A hardened loader** &mdash; a fuzz target on `Loader::Load` (hundreds of millions of executions) fixed a crash on a repeated class or method id, allocations of up to 16 GB from a corrupt count, an abort on a bad method signature, a silent exit on an unknown opcode and a read past the end of a short `.obe`; a verifier now checks jump targets, local and trap ids and class, method and field ids before anything runs ([trust model](docs/SECURITY_MODEL.md))
   * **Errors no longer end the host** &mdash; a fatal compiler error and a failed library load are returned instead of calling `exit(1)`, so the language server stays up, and parser and analyzer diagnostics share one record
@@ -502,12 +502,6 @@ Full details for every release are in the [CHANGELOG](CHANGELOG.md).
   * **Array literals hold expressions; jagged arrays**
   * **Language server rebuilt around LSP 3.17**
   * **Debian packages for Ubuntu 24.04**, plus fixes to the MSYS2 build, OpenCV 5 support and release verification
-
-### v2026.10.0
-  * **`Try()` and `?->` recover reliably inside JIT-compiled code**
-  * **Any ONNX model can be run**, and `API.Inference` reaches model servers over HTTP
-  * **Signed release manifests** that `obu` verifies
-  * **ML evaluation**: thresholds, bootstrap confidence intervals and per-group recall
 
 ## Downloads
 

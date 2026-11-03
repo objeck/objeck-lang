@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Reference Parameters — Design — Objeck Language</title>
+  <meta name="description" content="Issue: #1243, split out of #1186."/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Reference Parameters — Design</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/REFERENCE_PARAMETERS_DESIGN.md" target="_blank">docs/REFERENCE_PARAMETERS_DESIGN.md on GitHub</a></div>
+    <p class="page-lead">Issue: <a href="https://github.com/objeck/objeck-lang/issues/1243" target="_blank">#1243</a>, split out of #1186.</p>
+    <div id="toc_container" class="plain">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#why">Why</a></li>
+      <li><a href="#decisions">Decisions</a></li>
+      <li><a href="#found-on-the-way">Found on the way</a></li>
+      <li><a href="#tests">Tests</a></li>
+     </ul>
+    </div>
+
+    <h3 id="why">Why</h3>
+    <p>Every argument is passed by value, so no function can change a caller's local:</p>
+<pre class="line-numbers"><code class="language-cpp">a := 1; b := 2;
+Swap(a, b);   # cannot exchange a and b
+</code></pre>
+    <p>Code worked around this with holder objects (<code>IntRef</code>, a <code>Ref&lt;T&gt;</code> cell) or by returning a record. Research code wants it for the small cases: return a second result (<code>q := Divmod(a, b, ref r)</code>), update an accumulator in a helper, or swap two variables. A holder in each of those is noise.</p>
+    <h3 id="decisions">Decisions</h3>
+    <h4 id="syntax-ref-at-the-parameter-and-at-the-call">Syntax: <code>ref</code> at the parameter and at the call</h4>
+<pre class="line-numbers"><code class="language-cpp">function : Swap(ref a : Int, ref b : Int) ~ Nil {
+  t := a; a := b; b := t;
+}
+
+Swap(ref x, ref y);
+q := Divmod(17, 5, ref r);
+</code></pre>
+    <ul>
+     <li><strong>The call site says <code>ref</code> too, as C# requires.</strong> A reader sees which arguments a call may change without opening the callee.</li>
+     <li><strong><code>ref</code> is contextual.</strong> It means "by reference" only where it stands before a name in a parameter list (<code>ref name :</code>) or before an argument (<code>ref x</code>). A variable or parameter may still be called <code>ref</code>.</li>
+    </ul>
+    <h4 id="semantics-copy-in-copy-out">Semantics: copy in, copy out</h4>
+    <p>A <code>ref</code> argument's value goes into the call, and the callee's final value comes back into the caller's variable after the statement. That is how Swift's <code>inout</code> is defined, and the observable behaviour matches true aliasing for every program that does not pass one variable twice or read it again inside the same statement.</p>
+    <ul>
+     <li><strong>Why not a pointer into the caller's frame.</strong> It would need the VM, both JIT backends and the collector to learn a new kind of value: JIT locals live in native stack slots, and a reference to an object-typed local would have to be a GC root. Copy-in/copy-out needs none of that.</li>
+     <li><strong>How it works:</strong>
+    <ul>
+     <li><strong>Callee.</strong> A <code>ref a : T</code> parameter is a one-element <code>T[]</code>, a <em>cell</em>. Every use of <code>a</code> in the body, read or write, is element 0 of the cell (<code>ContextAnalyzer::AnalyzeVariable</code>). A lambda that captures <code>a</code> captures the cell, so it sees and makes the same changes.</li>
+     <li><strong>Caller.</strong> <code>F(ref x)</code> becomes three statements:
+    <ul>
+     <li>before the call, <code>#ref_N := [x]</code>;</li>
+     <li>the call takes <code>#ref_N</code>;</li>
+     <li>after the statement, <code>x := #ref_N[0]</code>.</li>
+    </ul>
+     </li>
+    </ul>
+     </li>
+    </ul>
+    <p>This is done by the parser (<code>ParseReferenceArgument</code>, <code>TakeTrailingStatements</code>).</p>
+    <ul>
+     <li><strong>Cost:</strong> one one-element array per <code>ref</code> argument per call, and no change at all on paths that do not use <code>ref</code>.</li>
+    </ul>
+    <h4 id="what-can-be-passed">What can be passed</h4>
+    <ul>
+     <li><strong>A local variable, a parameter or a field</strong> (<code>ref x</code>, <code>ref @count</code>), including a <code>ref</code> parameter passed on (<code>Inc(ref n)</code> inside a function whose <code>n</code> is <code>ref</code>). The copy back writes to the name, so only a name can be passed.</li>
+     <li><strong>Not an array element or an expression</strong> (<code>ref a[i]</code>, <code>ref F()</code>): a compile error. Writing back to <code>a[i]</code> would evaluate <code>i</code> twice.</li>
+     <li><strong>A <code>ref</code> parameter takes a single value:</strong> not an array and not a function type, and it cannot have a default.</li>
+    </ul>
+    <h4 id="where-a-call-with-ref-arguments-may-stand">Where a call with <code>ref</code> arguments may stand</h4>
+    <p>The copy back runs after the statement. A call with <code>ref</code> arguments must therefore be a statement of its own or the right side of an assignment or declaration. Inside an <code>if</code> or <code>while</code> condition, a <code>for</code> header or a <code>return</code>, the copy would come at the wrong time or never, so those are compile errors.</p>
+    <h4 id="overloads-libraries">Overloads, libraries</h4>
+    <ul>
+     <li><strong>Overloads.</strong> A <code>ref a : Int</code> parameter's signature is <code>Int[]</code>. A method that also takes a plain <code>Int[]</code> there clashes ("already overloaded"), and a <code>ref</code> argument is a <code>T[]</code> to overload resolution.</li>
+     <li><strong>Libraries.</strong> This needs no format change: a library method's <code>ref</code> parameter is recorded as <code>T[]</code>, its body is compiled with the cell rewrite, and a caller in another binary passes <code>ref x</code> as a <code>T[]</code> cell like any other.</li>
+     <li><strong>One thing is not checked.</strong> Passing <code>ref x</code> to a parameter that is a plain <code>T[]</code> is accepted: the cell goes in and its element is copied back.</li>
+     <li><strong>Types must match exactly.</strong> <code>ref s</code> of a <code>String</code> variable passes a <code>String[]</code>, which a <code>ref b : Base</code> parameter (<code>Base[]</code>) does not take. An exact match is what by-reference languages require, since the callee may store a value the caller's type cannot hold.</li>
+    </ul>
+    <h3 id="found-on-the-way">Found on the way</h3>
+    <p>An array literal with a subscripted element, <code>[a[i], a[2]]</code>, typed the element by the array's dimension, not the element's, and was rejected ("Invalid class type"). It is a single value now (<code>AnalyzeDynamicArray</code>). This was a #1245 gap, and the <code>ref</code> cell of a <code>ref</code> parameter passed on hit it.</p>
+    <h3 id="tests">Tests</h3>
+    <p><code>ref_parameters.obs</code> covers:</p>
+    <ul>
+     <li>swap of <code>Int</code>, <code>Float</code>, <code>String</code>, <code>Bool</code> and an object;</li>
+     <li>a field;</li>
+     <li><code>ref</code> passed on through two calls;</li>
+     <li>a second result through <code>ref</code> in an assignment and a declaration;</li>
+     <li>a lambda that changes a captured <code>ref</code> parameter;</li>
+     <li>recursion;</li>
+     <li>a loop for the JIT;</li>
+     <li>the subscripted array literal.</li>
+    </ul>
+    <p>All of it runs in three modes. The <code>bad_ref_*.obs</code> files cover:</p>
+    <ul>
+     <li>a default value;</li>
+     <li>an array parameter;</li>
+     <li>an expression argument;</li>
+     <li>a call in a condition;</li>
+     <li>a call in a return.</li>
+    </ul>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

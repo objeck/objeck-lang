@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Checkers: a game, a thinking computer and a music box, all in Objeck — Objeck Language</title>
+  <meta name="description" content="A complete checkers (English draughts) game in a few thousand lines of Objeck, built to show three things at once: game programming (a 60 frames-a-second SDL2 window, input, animation), classic AI (alpha-beta search, Monte Carlo tree search"/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Checkers: a game, a thinking computer and a music box, all in Objeck</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/checkers/README.md" target="_blank">programs/examples/checkers/README.md on GitHub</a></div>
+    <p class="page-lead">A complete checkers (English draughts) game in a few thousand lines of Objeck, built to show three things at once: <strong>game programming</strong> (a 60 frames-a-second SDL2 window, input, animation), <strong>classic AI</strong> (alpha-beta search, Monte Carlo tree search through the <code>System.AI</code> library) and <strong>learning</strong> (the computer tunes its own evaluation by playing itself, and its music learns habits from example phrases). Everything is drawn and played from code: no pictures, no sound files, nothing to license.</p>
+    <div id="toc_container" class="plain">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#playing">Playing</a></li>
+      <li><a href="#the-ten-levels">The ten levels</a></li>
+      <li><a href="#how-it-learns">How it learns</a></li>
+      <li><a href="#how-the-music-learns">How the music learns</a></li>
+      <li><a href="#fun-mode-off-by-default">Fun mode (off by default)</a></li>
+      <li><a href="#the-playful-layer">The playful layer</a></li>
+      <li><a href="#checking-it-without-a-human">Checking it without a human</a></li>
+      <li><a href="#the-files">The files</a></li>
+      <li><a href="#how-the-board-is-stored">How the board is stored</a></li>
+     </ul>
+    </div>
+
+<pre class="plain">cd programs/examples/checkers
+obc -src checkers_engine.obs,checkers_game.obs,checkers_ai.obs,checkers_logic.obs,checkers_draw.obs,checkers_chars.obs,checkers_fx.obs,checkers_music.obs,checkers_audio.obs,checkers.obs -lib sdl2,sdl_game,ai,json,collect -dest checkers.obe
+obr checkers.obe</pre>
+    <p>Run it from this folder so it finds <code>checkers_weights.json</code> (without it levels 9 and 10 use the weights built into the source, which are the same numbers).</p>
+    <h3 id="playing">Playing</h3>
+    <p>Click a piece, then click where it goes (or use the arrow keys and Enter). Jumping is compulsory, as in the real game: when you can jump, only the pieces that can are highlighted. Other keys: <strong>H</strong> hint, <strong>U</strong> take a move back, <strong>N</strong> new game, <strong>F</strong> flip the board, <strong>S</strong> sound on/off, <strong>E</strong> save the music so far as a <code>.mid</code> file, <strong>Esc</strong> menu, <strong>Q</strong> quit. The menu picks the piece set, the level (1 to 10), your colour (or <strong>Watch the computer</strong> play itself), flip, fun mode, animations, reduced motion, sound, volume and the music style. Your choices are remembered in <code>.checkers.json</code> in your home folder.</p>
+    <h4 id="rules">Rules</h4>
+    <p>English / American checkers on an 8 x 8 board: men move one square diagonally forward and capture by jumping forward over an enemy piece; a jump is <strong>mandatory</strong>, and a jump may continue with the same piece (a multi-jump is one move). A man that reaches the far row is crowned a king (a king moves and jumps in all four diagonal directions) and <strong>its move ends there</strong>, even if a further jump would be possible. You lose when you have no legal move. The game is drawn by threefold repetition, or after 40 moves each (80 plies) without a capture or a crowning.</p>
+    <h4 id="piece-sets">Piece sets</h4>
+    <p>Ten sets, all drawn with SDL2 shapes, each with its own board colours; the first neo set is what you get on a first run. Four are plain discs: <strong>Classic</strong> (flat with a rim), <strong>Glossy</strong> (gradient with a highlight), <strong>Engraved</strong> (grooved concentric rings) and <strong>Modern</strong> (flat teal against amber), each with a clear crown for kings. Four are crazy fun characters, every piece a little creature, and two are tech-neo gadgets (<code>checkers_chars.obs</code>):</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Set</th><th>Side one</th><th>Side two</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Set"><strong>Critters</strong></td><td data-label="Side one">cats: cream, pointy ears, whiskers</td><td data-label="Side two">dogs: brown, floppy ears, snout</td></tr>
+      <tr><td data-label="Set"><strong>Monsters</strong></td><td data-label="Side one">one-eyed purple monsters with horns</td><td data-label="Side two">square steel robots with an antenna</td></tr>
+      <tr><td data-label="Set"><strong>Snacks</strong></td><td data-label="Side one">pizzas: round, pepperoni</td><td data-label="Side two">burgers: stacked bun, patty, lettuce</td></tr>
+      <tr><td data-label="Set"><strong>Space</strong></td><td data-label="Side one">suns: yellow with rays</td><td data-label="Side two">moons: pale, craters, a sleepy cap</td></tr>
+      <tr><td data-label="Set"><strong>Neo Duck</strong></td><td data-label="Side one">rubber-duck debuggers: yellow, a beak that opens, a ladybird on the head</td><td data-label="Side two">coffee mugs: dark navy, neon cyan rim, steam, a handle</td></tr>
+      <tr><td data-label="Set"><strong>Neo Glitch</strong></td><td data-label="Side one">glitchy pixel ghosts: pale lavender, magenta rim, an RGB-split echo</td><td data-label="Side two">rebooting robots: charcoal, lime rim, a visor and a turning reload arrow</td></tr>
+     </tbody>
+    </table>
+    <p>The two sides of a pair differ in outline (round and pointy against square, round against stacked, rays against craters) and strongly in lightness, so they stay apart for people who cannot tell colours apart, and at the smallest board size. The creatures blink, bob and sway their ears and antennae, and their faces react to the game: <strong>worried</strong> when they could be captured, <strong>cheering</strong> after a capture, <strong>dizzy</strong> (with stars) while being captured, <strong>winking</strong> at a gift, <strong>shaken</strong> in a disaster. A king is the same creature in a cape and a crown. With <em>Animations: off</em> the faces are still. The recipes are a table of numbers (<code>CkChars-&gt;Recipe</code>).</p>
+    <p><strong>The neo sets</strong> add a look to match: the board is dark glass over a circuit board (traces and vias on the playing squares), with a neon frame whose glow is a few translucent strokes under a bright one, a hairline grid, faint scanlines and a slow wave of light that sweeps the rows about once every four seconds (never faster than 1 Hz, and still when Animations are off or Reduced motion is on). Every piece has a soft neon bloom in its outline colour. A king is the same gadget with a <strong>neon halo</strong> and a <strong>blinking antenna</strong> (twice a second). A captured gadget shows the <strong>blue screen of death</strong> (a sad smiley and lines of error text). The panels and buttons are dark glass with a neon edge that glows when pointed at. The two sides differ in lightness (yellow against navy, lavender against charcoal) <em>and</em> in outline colour and shape, so they stay apart without colour vision. The opponent's face has loading-spinner eyes while it thinks, and in the neo sets half its one-liners come from tech support ("Have you tried turning it off and on again?", "Error 404: your piece was not found.").</p>
+    <h3 id="the-ten-levels">The ten levels</h3>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Level</th><th>Name</th><th>How it plays</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Level">1</td><td data-label="Name">Dozy Dave</td><td data-label="How it plays">any legal move (but always takes a compulsory jump)</td></tr>
+      <tr><td data-label="Level">2</td><td data-label="Name">Clumsy Clara</td><td data-label="How it plays">the best move one ply ahead; 40% of the time a random one</td></tr>
+      <tr><td data-label="Level">3</td><td data-label="Name">Wobbly Walt</td><td data-label="How it plays">2 plies ahead; 22% random moves</td></tr>
+      <tr><td data-label="Level">4</td><td data-label="Name">Careful Kit</td><td data-label="How it plays">the library's <code>Minimax</code>, 3 plies</td></tr>
+      <tr><td data-label="Level">5</td><td data-label="Name">Sly Sam</td><td data-label="How it plays"><code>Minimax</code>, 4 plies</td></tr>
+      <tr><td data-label="Level">6</td><td data-label="Name">Professor Pawn</td><td data-label="How it plays"><code>Minimax</code>, 6 plies</td></tr>
+      <tr><td data-label="Level">7</td><td data-label="Name">Captain Crown</td><td data-label="How it plays">our alpha-beta (move ordering, jump extension), 6 plies</td></tr>
+      <tr><td data-label="Level">8</td><td data-label="Name">Madame Minimax</td><td data-label="How it plays">alpha-beta, 8 plies</td></tr>
+      <tr><td data-label="Level">9</td><td data-label="Name">Deep Thinker</td><td data-label="How it plays">iterative deepening with the <strong>learned</strong> evaluation, up to 10 plies / 2 million positions</td></tr>
+      <tr><td data-label="Level">10</td><td data-label="Name">Grandmaster Gizmo</td><td data-label="How it plays">the same, up to 13 plies / 6 million positions (several seconds a move)</td></tr>
+     </tbody>
+    </table>
+    <p>The computer thinks on its own thread, so the window never freezes: the pieces keep wobbling and the face keeps sweating while a deep search runs.</p>
+    <h4 id="does-a-higher-level-really-play-better-the-tournament">Does a higher level really play better? The tournament</h4>
+    <p><code>checkers_tournament.obs</code> plays level N against level N-1 for 10 random openings, each played twice with the colours swapped (20 games per pair, fun mode off). The openings are 4 random plies from a seeded generator, so the table below is exactly reproducible:</p>
+<pre class="plain">obc -src checkers_engine.obs,checkers_game.obs,checkers_ai.obs,checkers_tournament.obs -lib ai,json -dest checkers_tournament.obe
+obr checkers_tournament.obe 10 2 10 checkers_weights.json 1</pre>
+    <table class="ref-table">
+     <thead>
+      <tr><th>pair</th><th>N wins</th><th>draws</th><th>N losses</th><th>N score</th><th>as Red</th><th>as White</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="pair">L2 vs L1</td><td data-label="N wins">19</td><td data-label="draws">0</td><td data-label="N losses">1</td><td data-label="N score">95.0%</td><td data-label="as Red">10.0/10</td><td data-label="as White">9.0/10</td></tr>
+      <tr><td data-label="pair">L3 vs L2</td><td data-label="N wins">14</td><td data-label="draws">0</td><td data-label="N losses">6</td><td data-label="N score">70.0%</td><td data-label="as Red">8.0/10</td><td data-label="as White">6.0/10</td></tr>
+      <tr><td data-label="pair">L4 vs L3</td><td data-label="N wins">17</td><td data-label="draws">1</td><td data-label="N losses">2</td><td data-label="N score">87.5%</td><td data-label="as Red">9.0/10</td><td data-label="as White">8.5/10</td></tr>
+      <tr><td data-label="pair">L5 vs L4</td><td data-label="N wins">13</td><td data-label="draws">5</td><td data-label="N losses">2</td><td data-label="N score">77.5%</td><td data-label="as Red">7.5/10</td><td data-label="as White">8.0/10</td></tr>
+      <tr><td data-label="pair">L6 vs L5</td><td data-label="N wins">8</td><td data-label="draws">12</td><td data-label="N losses">0</td><td data-label="N score">70.0%</td><td data-label="as Red">7.5/10</td><td data-label="as White">6.5/10</td></tr>
+      <tr><td data-label="pair">L7 vs L6</td><td data-label="N wins">8</td><td data-label="draws">12</td><td data-label="N losses">0</td><td data-label="N score">70.0%</td><td data-label="as Red">8.0/10</td><td data-label="as White">6.0/10</td></tr>
+      <tr><td data-label="pair">L8 vs L7</td><td data-label="N wins">14</td><td data-label="draws">5</td><td data-label="N losses">1</td><td data-label="N score">82.5%</td><td data-label="as Red">8.0/10</td><td data-label="as White">8.5/10</td></tr>
+      <tr><td data-label="pair">L9 vs L8</td><td data-label="N wins">8</td><td data-label="draws">10</td><td data-label="N losses">2</td><td data-label="N score">65.0%</td><td data-label="as Red">5.0/10</td><td data-label="as White">8.0/10</td></tr>
+      <tr><td data-label="pair">L10 vs L9</td><td data-label="N wins">10</td><td data-label="draws">10</td><td data-label="N losses">0</td><td data-label="N score">75.0%</td><td data-label="as Red">8.0/10</td><td data-label="as White">7.0/10</td></tr>
+     </tbody>
+    </table>
+    <p>("N score" counts a win as 1 and a draw as half. The strong levels draw a lot: checkers is a drawish game.) Levels 4 to 6 use the library <code>Minimax</code> class over <code>CkState</code>, a <code>System.AI.GameState</code> wrapper of the position; the same wrapper lets the library's <code>MonteCarloTreeSearch</code> play, and the tests check that it takes a free piece.</p>
+    <h3 id="how-it-learns">How it learns</h3>
+    <p>The evaluation is a <strong>weighted sum of eight facts</strong> about a position, counted for Red minus White: men, kings, how far the men have advanced, men still on the home row, pieces on the eight central squares, men on the edge files, the number of simple moves available, and kings in the middle. A positive total is good for Red. Which weights are good is not obvious, so <code>checkers_train.obs</code> finds them by playing the game:</p>
+    <ol>
+     <li><strong>Hill climbing against the champion.</strong> The weights start as "just count the pieces" (men 100, kings 100, everything else 0). Each round makes a challenger by adding random noise to the champion's weights and plays it against the champion for 60 games (30 openings, both colours, 3 plies deep). A challenger that scores more than 56% becomes the new champion. It is evolution in miniature: a few hundred rounds take minutes.</li>
+     <li><strong>TD(lambda) self-play</strong> is available too (<code>obr checkers_train.obe 7 4000 ...</code>): the program plays itself and, after every move, nudges the weights so that a position predicts the positions that follow it (the idea behind TD-Gammon). On this problem it learned a defensive style that scored 17 to 29% against the hand-tuned weights, so the shipped weights come from the hill climb.</li>
+    </ol>
+    <p>Everything is seeded, so the same command always writes the same file:</p>
+<pre class="plain">obc -src checkers_engine.obs,checkers_game.obs,checkers_ai.obs,checkers_train.obs -lib ai,json -dest checkers_train.obe
+obr checkers_train.obe 7 0 300 checkers_weights.json 100</pre>
+    <p><strong>Result of the shipped run</strong> (seed 7, 300 rounds, about 8 minutes on a laptop-class core): men 100, kings 137, advancement -4.7, back row -1.6, centre 0.9, edge 8.2, mobility 2.3, king centre 17.2. Over fresh openings, at depth 4:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Match (120 to 200 games)</th><th>Score of the first</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Match (120 to 200 games)">piece-counting weights (where training starts) vs the hand-tuned weights</td><td data-label="Score of the first">30%</td></tr>
+      <tr><td data-label="Match (120 to 200 games)">trained weights vs the hand-tuned weights</td><td data-label="Score of the first">51% (200 games)</td></tr>
+      <tr><td data-label="Match (120 to 200 games)">trained weights vs piece counting with kings worth 1.5 men</td><td data-label="Score of the first">67%</td></tr>
+     </tbody>
+    </table>
+    <p>So starting from nothing but "count the pieces", the program learned by itself an evaluation as good as the one I tuned by hand (and clearly better than material alone). The hand-tuned weights are <code>CkEval-&gt;Hand</code>, used by levels 1 to 8; levels 9 and 10 use the learned ones. Honest summary: the learned weights match, they do not beat, the hand-tuned ones; the strength of the top levels comes mostly from search depth.</p>
+    <h3 id="how-the-music-learns">How the music learns</h3>
+    <p>The music is <strong>generated while you play</strong>, from formulas, as MIDI-style note events (track, note, velocity, time) that two back ends can play: a built-in software synthesizer, or a Standard MIDI File (format 1, drums on channel 10) that <strong>Save song</strong> writes to your home folder.</p>
+    <ul>
+     <li><strong>Music style</strong> is a table row (<code>CkStyle</code>; five styles and Off): <strong>Hip-hop</strong> is boom-bap at 80 to 95 BPM with swung sixteenths, a kick/snare/hat pattern with ghost snares and open hats, an 808 bass on the chord roots, minor-seventh chord stabs and a lead; <strong>Modern beats</strong> is trap at 132 to 144 BPM written half-time, a clap on the third beat, rolling hi-hats with occasional triplet bursts, a gliding 808 sub bass, a pad and a plucked arpeggio; <strong>Reggae</strong> is a one drop (kick and rim shot together on the third beat) at 68 to 80 BPM with a swing, steady hats, skank chords on the offbeats and a bass that walks between root and fifth; <strong>Techno</strong> is four on the floor at 124 to 134 BPM, claps on two and four, offbeat open hats, a pad and an arpeggio; <strong>Classical</strong> has no drums at all: a major scale, quarter-note chords, a bass and a singing lead at 66 to 96 BPM (its calm layer is the keys, not the drums). <strong>Off</strong> keeps the sound effects only. A sixth style is one more row.</li>
+     <li><strong>Deep bass</strong> (a menu setting, saved with the others) writes the bass line an octave lower at full velocity, and the synthesizer gives a full-velocity bass note a sub-bass boost.</li>
+     <li><strong>It follows the game.</strong> Drums alone while the position is calm; bass and keys when a jump is threatened; the lead and drum fills when the position is tense; a breakdown and a key change up a tone when a piece is crowned; an outro for a win or a loss. Captures, crowning, wins, losses and the fun-mode events have synthesized sound effects too.</li>
+     <li><strong>The learning part</strong> is <code>CkMarkov</code>, a Markov chain: a table that counts "after this note, which note came next?". It is trained, when the game starts, on ten short melodies and nine chord progressions written in <code>CkSeeds</code> (my own phrases, in the source). The chain then walks its table with dice to invent a four-note motif that has the <em>habits</em> of the seeds (it likes steps and thirds, it falls back to the tonic) but is new, picks the chord progression the same way, and rewrites one note of the motif every bar, so the lead keeps changing without ever leaving the scale.</li>
+     <li><strong>Where it plays.</strong> The synthesizer queues samples to the sound card. If that cannot be opened the game tries SDL_mixer's MIDI player with an eight-bar file; with no audio device at all it runs silently and without an error message. Check <code>obr checkers.obe --demo</code> prints <code>audio engine: synthesizer | midi | silent</code>.</li>
+    </ul>
+    <h4 id="measuring-the-music-offline">Measuring the music offline</h4>
+    <p>The music can be rendered with no window and no sound card, so it can be <em>measured</em>. <code>checkers_wav.obs</code> renders eight bars of every style with the deep-bass setting off and on and prints, for each, the peak sample, the share of samples at the limit (clipping), the RMS (average loudness) and how much of the sound is below 120 Hz (the RMS left after two one-pole low-pass filters, a 12 dB per octave slope, divided by the RMS of everything):</p>
+<pre class="plain">obc -src checkers_engine.obs,checkers_music.obs,checkers_wav.obs -dest checkers_wav.obe
+obr checkers_wav.obe                    # the table below
+obr checkers_wav.obe 2 deep reggae.wav  # style 2 (Reggae), deep bass, written as a WAV</pre>
+    <table class="ref-table">
+     <thead>
+      <tr><th>style</th><th>deep bass</th><th>seconds</th><th>peak</th><th>clipped</th><th>RMS</th><th>bass below 120 Hz</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="style">Hip-hop</td><td data-label="deep bass">off</td><td data-label="seconds">21.8</td><td data-label="peak">1.00</td><td data-label="clipped">0.00%</td><td data-label="RMS">0.192</td><td data-label="bass below 120 Hz">71.2%</td></tr>
+      <tr><td data-label="style">Hip-hop</td><td data-label="deep bass">on</td><td data-label="seconds">21.8</td><td data-label="peak">1.00</td><td data-label="clipped">0.08%</td><td data-label="RMS">0.291</td><td data-label="bass below 120 Hz">87.3%</td></tr>
+      <tr><td data-label="style">Modern beats</td><td data-label="deep bass">off</td><td data-label="seconds">14.4</td><td data-label="peak">1.00</td><td data-label="clipped">0.00%</td><td data-label="RMS">0.203</td><td data-label="bass below 120 Hz">71.8%</td></tr>
+      <tr><td data-label="style">Modern beats</td><td data-label="deep bass">on</td><td data-label="seconds">14.4</td><td data-label="peak">1.00</td><td data-label="clipped">0.05%</td><td data-label="RMS">0.305</td><td data-label="bass below 120 Hz">86.3%</td></tr>
+      <tr><td data-label="style">Reggae</td><td data-label="deep bass">off</td><td data-label="seconds">26.0</td><td data-label="peak">1.00</td><td data-label="clipped">0.00%</td><td data-label="RMS">0.160</td><td data-label="bass below 120 Hz">68.8%</td></tr>
+      <tr><td data-label="style">Reggae</td><td data-label="deep bass">on</td><td data-label="seconds">26.0</td><td data-label="peak">1.00</td><td data-label="clipped">0.00%</td><td data-label="RMS">0.245</td><td data-label="bass below 120 Hz">87.4%</td></tr>
+      <tr><td data-label="style">Techno</td><td data-label="deep bass">off</td><td data-label="seconds">15.4</td><td data-label="peak">1.00</td><td data-label="clipped">0.00%</td><td data-label="RMS">0.201</td><td data-label="bass below 120 Hz">73.1%</td></tr>
+      <tr><td data-label="style">Techno</td><td data-label="deep bass">on</td><td data-label="seconds">15.4</td><td data-label="peak">1.00</td><td data-label="clipped">0.04%</td><td data-label="RMS">0.242</td><td data-label="bass below 120 Hz">84.3%</td></tr>
+      <tr><td data-label="style">Classical</td><td data-label="deep bass">off</td><td data-label="seconds">21.8</td><td data-label="peak">0.64</td><td data-label="clipped">0.00%</td><td data-label="RMS">0.151</td><td data-label="bass below 120 Hz">69.0%</td></tr>
+      <tr><td data-label="style">Classical</td><td data-label="deep bass">on</td><td data-label="seconds">21.8</td><td data-label="peak">0.97</td><td data-label="clipped">0.00%</td><td data-label="RMS">0.244</td><td data-label="bass below 120 Hz">88.7%</td></tr>
+     </tbody>
+    </table>
+    <p>Deep bass makes every style louder in the bass (the RMS rises by a half or more and the bass share rises by 12 to 20 points) without clipping more than a tenth of a percent of the samples; classical has no drums to push its peak above 0.64 without it. The regression test makes the same measurements on three bars of every style and fails if deep bass does not add low-frequency energy, if more than half a percent of the samples clip, or if techno has less bass than classical. The measuring stick is itself tested with a 60 Hz and a 2000 Hz tone.</p>
+    <h3 id="fun-mode-off-by-default">Fun mode (off by default)</h3>
+    <p>Early in a game, when you have lost more pieces than the computer, a seeded dice roll after a computer capture (one chance in three) can bring either a <strong>gift</strong> (the computer "gives back" a man on a free square in your home rows) or a <strong>natural disaster</strong> (lightning, an earthquake, or a gust of wind removes one computer piece). Events are announced before they happen, appear in the move list marked with <code>*</code>, never remove your pieces, happen at most twice a game and only in your first 12 moves, are deterministic for the game's seed (so a replay gets the same events), and <strong>Undo</strong> takes them back. The engine tests cover all of that. The tournament and the training never use fun mode.</p>
+    <p>"Early on" can mean early in the game or at the early levels, so there is a menu setting with both readings: <strong>levels 1-3</strong> (the default when fun mode is switched on) and <strong>all levels</strong>. Both only act in the opening window above.</p>
+    <h3 id="the-playful-layer">The playful layer</h3>
+    <p>Pieces squash and stretch as they hop, wobble when picked up and look at the pointer; captures go <em>poof</em> with a comic word; a chain of jumps <strong>counts up</strong> (Double! Triple! Ka-boom! ...) with a bigger shake and more sparkles each time, and the last jump is shown in slow motion (a chain that makes a king throws confetti); a crown pops on with a hop and sparkles; a win gets confetti and a bouncing trophy. When nothing has happened for six seconds one piece does something silly (waves, yawns, sneezes and nudges its neighbours, peeks). Each of the ten opponents has a face that follows the pointer, wears its own hat, sweats while thinking and has a line for every mood; click it and it answers, press <strong>B</strong> for a party, and level 10 introduces itself as a boss. The words and lines are lists in <code>CkFxTable</code>, so adding one is adding a string. <strong>Animations: off</strong> shows every move instantly with no effects; <strong>Reduced motion</strong> keeps the move animation but turns off squash, particles, shaking and flashing; <strong>Screen shake</strong> can be switched off on its own. All three are saved in the settings file. Nothing blinks or pulses faster than about twice a second, and a lightning flash lasts a quarter of a second once. The effects cost about 2.5 ms of the 16.7 ms frame with everything on (<code>--demo</code> measures it on your machine).</p>
+    <h3 id="checking-it-without-a-human">Checking it without a human</h3>
+    <ul>
+     <li><code>obr checkers.obe --screenshot out.png --scene start|play|capture|king|over|think|ev_zap|ev_gift|ev_quake|ev_wind --set 0-9 --level 1-10</code> renders one frame (the scene scripted) and exits. <code>--frame N</code> picks the frame.</li>
+     <li><code>obr checkers.obe --demo [dir]</code> lets the computer play itself for up to 25 seconds, saves a picture every 0.75 s to <code>dir</code>, and prints the frame time (about 16 ms with everything on, the 60 fps budget) and which audio engine is in use. <code>--silent</code> turns sound off.</li>
+     <li>Clicks and keys are turned into intents by <code>CkController</code> (no graphics), so the regression test exercises the same code the window uses.</li>
+    </ul>
+    <h4 id="the-tests">The tests</h4>
+    <p><code>programs/regression/checkers_engine.obs</code> runs about 440 checks in a couple of seconds with no window and no sound. It is generated from the files in this folder by <code>make_regression_test.py</code> (the regression runners compile one file per test); CI fails when it is stale. It covers:</p>
+    <ul>
+     <li><strong>perft</strong>: the number of positions reachable in N moves from the start. The published English-draughts counts are 7, 49, 302, 1469, 7361, 36768, 179740 and 845931 (depths 1 to 8); the engine reproduces them all. Fifteen more positions with kings and multi-jumps were counted by a separate generator (plain 8 x 8 arrays, written from the rules) and agree to depth 4.</li>
+     <li>the rules: compulsory jumps, multi-jumps, a man crowned mid-jump stops, kings move both ways, men do not jump backwards, wins, the 40-move and repetition draws, undo;</li>
+     <li>fun mode: fires only under its conditions, respects the cap and the window, never builds an illegal board, undo restores the position, deterministic for a seed;</li>
+     <li>the players, the search (node budget, determinism), the <code>GameState</code> wrapper with the library <code>Minimax</code> and <code>MonteCarloTreeSearch</code>, the thinking thread;</li>
+     <li>the window logic (clicks, forced captures, flip, keyboard), the settings file, the weights file;</li>
+     <li>the music, for each of the five styles: deterministic for a seed, tempo in range, General MIDI drum numbers (36 kick, 38 snare, 39 clap, 42 and 46 hats), every pitched note in the scale, the layers following the mood, the key change, a Standard MIDI File parsed back (header, tracks, channel 10), identical WAV renders, and the offline measurements above.</li>
+    </ul>
+    <h3 id="the-files">The files</h3>
+    <table class="ref-table">
+     <thead>
+      <tr><th>File</th><th>What it is</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="File"><code>checkers_engine.obs</code></td><td data-label="What it is">bitboards, legal moves, make-move, perft (no graphics)</td></tr>
+      <tr><td data-label="File"><code>checkers_game.obs</code></td><td data-label="What it is">a whole game: history, undo, win and draw rules, fun-mode events</td></tr>
+      <tr><td data-label="File"><code>checkers_ai.obs</code></td><td data-label="What it is">evaluation, alpha-beta search, <code>GameState</code> wrapper, the ten levels</td></tr>
+      <tr><td data-label="File"><code>checkers_logic.obs</code></td><td data-label="What it is">clicks and keys as intents, settings, level names, the thinking thread</td></tr>
+      <tr><td data-label="File"><code>checkers_draw.obs</code></td><td data-label="What it is">board, plain piece sets, crowns, buttons, text</td></tr>
+      <tr><td data-label="File"><code>checkers_chars.obs</code></td><td data-label="What it is">the creature and gadget piece sets (critters, monsters, snacks, space, neo duck, neo glitch)</td></tr>
+      <tr><td data-label="File"><code>checkers_fx.obs</code></td><td data-label="What it is">particles, pop-up words, the ten faces, the lists of words</td></tr>
+      <tr><td data-label="File"><code>checkers_music.obs</code></td><td data-label="What it is">style table, Markov chains, note events, MIDI writer, synthesizer, effects, <code>CkMeasure</code></td></tr>
+      <tr><td data-label="File"><code>checkers_wav.obs</code></td><td data-label="What it is">renders and measures the music offline, writes WAV files</td></tr>
+      <tr><td data-label="File"><code>checkers_audio.obs</code></td><td data-label="What it is">playing it: the sound-card queue, MIDI fallback, song export</td></tr>
+      <tr><td data-label="File"><code>checkers.obs</code></td><td data-label="What it is">the window and the main loop</td></tr>
+      <tr><td data-label="File"><code>checkers_train.obs</code>, <code>checkers_tournament.obs</code></td><td data-label="What it is">the learner and the level tournament</td></tr>
+      <tr><td data-label="File"><code>checkers_tests.obs</code>, <code>make_regression_test.py</code></td><td data-label="What it is">the tests, and the generator of the regression file</td></tr>
+      <tr><td data-label="File"><code>checkers_weights.json</code></td><td data-label="What it is">the trained weights</td></tr>
+     </tbody>
+    </table>
+    <h3 id="how-the-board-is-stored">How the board is stored</h3>
+    <p>A bitboard is one 64-bit number in which bit <code>row*8+column</code> says whether that square holds a piece; checkers only uses the 32 dark squares. Red, White and "is a king" are three numbers. A step to the upper right is a shift by 7 bits; whether a piece can jump is a lookup in a small table of "the square two steps away"; a move is applied with a few ANDs and XORs and taken back by restoring five numbers, so the search never allocates. That is why a search visits about 750,000 positions a second even in this interpreted-and-JIT language.</p>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

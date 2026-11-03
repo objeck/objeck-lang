@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>System.ML.Lab: experiment support for a cybersecurity-ML lab — Objeck Language</title>
+  <meta name="description" content="Status: design, approved direction 2026-10-26 for v2026.10.2. Delivered in four stages after this document, each its own PR against master."/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title"><code>System.ML.Lab</code>: experiment support for a cybersecurity-ML lab</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/ML_LAB_SUPPORT_DESIGN.md" target="_blank">docs/ML_LAB_SUPPORT_DESIGN.md on GitHub</a></div>
+    <p class="page-lead"><strong>Status:</strong> design, approved direction 2026-10-26 for v2026.10.2. Delivered in four stages after this document, each its own PR against <code>master</code>.</p>
+    <div id="toc_container" class="plain">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#why">Why</a></li>
+      <li><a href="#where-it-lives">Where it lives</a></li>
+      <li><a href="#conventions-shared-by-every-class">Conventions shared by every class</a></li>
+      <li><a href="#stage-1-data-utilities">Stage 1: data utilities</a></li>
+      <li><a href="#stage-2-experiment-and-resulttable">Stage 2: <code>Experiment</code> and <code>ResultTable</code></a></li>
+      <li><a href="#stage-3-chart">Stage 3: <code>Chart</code></a></li>
+      <li><a href="#stage-4-the-end-to-end-example">Stage 4: the end-to-end example</a></li>
+      <li><a href="#testing">Testing</a></li>
+      <li><a href="#out-of-scope">Out of scope</a></li>
+      <li><a href="#release-note">Release note</a></li>
+      <li><a href="#what-landed-where">What landed where</a></li>
+     </ul>
+    </div>
+
+    <h3 id="why">Why</h3>
+    <p>A university cybersecurity-ML lab hands in a <em>table, screenshot or graph of results</em> for parameter sweeps: random-forest <code>n_estimators</code>, <code>max_depth</code> and <code>min_samples_leaf</code>; SVM kernel, <code>C</code> and <code>gamma</code>; anomaly-detector sensitivities; class-imbalance ratios; sequence lengths; learning rates. Each sweep compares accuracy, precision, recall, F1, false-positive rate, false negatives and <strong>training time</strong>, sometimes training against testing accuracy (an overfitting curve), and sometimes a training-loss plot.</p>
+    <p><code>System.ML</code> has the models, <code>TableEncoder</code>, <code>FeatureScaler</code>, <code>StratifiedKFold</code>, <code>CrossValidation-&gt;Evaluate</code> and both label- and score-based <code>Metrics</code>. What it does not have is the plumbing <em>around</em> a sweep, so today a student hand-writes all of it: a deterministic stratified hold-out split, a resampler that changes the training class ratio while leaving the test set alone, a wall-clock stopwatch, a loop that trains once per parameter value and gathers eight numbers per value, a table renderer, and a chart. That code is the same in every lab and is where the mistakes live (scaling fitted on the test split, a resampled test set, timing that includes prediction, a chart whose axis hides the result).</p>
+    <p>This document specifies that plumbing. Everything is library-level Objeck with one VM fix (the timer's clock); nothing needs a new native dependency.</p>
+    <h3 id="where-it-lives">Where it lives</h3>
+    <p>A <strong>new library, <code>ml_lab.obl</code></strong>, from <code>core/compiler/lib_src/ml_lab.obs</code>, declaring <code>bundle System.ML.Lab</code> and built with <code>-lib gen_collect,csv,json,ml</code>.</p>
+    <p>Why not inside <code>ml.obl</code>: the result table writes JSON through <code>Data.JSON</code>, and a library's link list is inherited by every program that links it -- the compiler refuses to load a <code>.obl</code> whose signatures mention a class from a library the program did not name (<code>Unable to resolve external library class: 'Data.JSON.JsonElement'. Add it with '-lib json'</code>), even when the program never touches that class (verified against the current compiler). Linking <code>json</code> into <code>ml.obl</code> would therefore break every existing <code>System.ML</code> program that compiles with <code>-lib ml,gen_collect,csv</code>. A separate library keeps that cost on the programs that want the lab support, exactly as <code>query_ml.obl</code> already layers on <code>ml.obl</code>. It also keeps <code>ml.obl</code>'s class table untouched while three other branches are adding classes to it.</p>
+    <p>Compile a lab program with <code>-lib ml,ml_lab,csv,json</code> (<code>gen_collect</code> is always supplied). The <code>[@ai]</code> alias group in <code>core/lib/configobjk.ini</code> gains <code>ml_lab.obl</code> and <code>json.obl</code>, so <code>-lib @ai</code> also works.</p>
+    <p>Dependents: nothing links <code>ml_lab.obl</code>. It links <code>ml.obl</code>, so like <code>query_ml.obl</code> it must be rebuilt whenever <code>ml.obl</code>'s class ids shift; <code>build_libs.sh</code> orders it after <code>ml</code>.</p>
+    <h4 id="lists-to-update">Lists to update</h4>
+    <p>Adding a source file to <code>lib_src</code> touches the five hard-coded doc lists that <code>tools/cicd/check_doc_lists.py</code> keeps in agreement (<code>release-build.yml</code>, <code>ci-build.yml</code>, <code>core/release/code_doc64.in</code>, <code>gen_json.cmd</code>, <code>gen_json.sh</code>), plus <code>core/compiler/build_libs.sh</code> (a new build line, after <code>ml</code>) and the LSP index <code>tools/lsp/server/objk_apis.json</code> with its VS Code copy. The deploy scripts copy <code>core/lib/*.obl</code> wholesale, so the tracked <code>core/lib/ml_lab.obl</code> is the only deployment change. Other branches are adding <code>ml_svm.obs</code>, <code>ml_outlier.obs</code> and an embedding pipeline to the same lists; conflicts are resolved by keeping every entry.</p>
+    <h3 id="conventions-shared-by-every-class">Conventions shared by every class</h3>
+    <ul>
+     <li><strong>Labels are <code>Bool[]</code></strong>, <code>true</code> for the positive class (the attack), matching every classifier <code>Fit</code>, <code>ScoreModel</code>, and <code>Metrics</code>. <code>CrossValidation-&gt;ToBool</code> and <code>ToFloat</code> convert to and from the <code>Float[]</code> that <code>TableEncoder</code> and <code>StratifiedKFold</code> use. Strata for splitting are <code>Float[]</code> codes so a split can be stratified by attack family rather than by the binary label.</li>
+     <li><strong>Determinism from a seed.</strong> Every function that shuffles or samples takes a seed and uses a local generator (<code>System.ML.Random</code>, MINSTD), never <code>Float-&gt;Random()</code>. The same inputs and seed give the same rows on every platform, which is what makes a hand-in reproducible and what the tests assert.</li>
+     <li><strong>Refusals raise.</strong> Bad input raises <code>System.ML.Lab.LabError</code> (from <code>System.Error</code>) with a message naming the problem, e.g. <em>stratum 2.0 has 1 row; at least 2 are needed to put one in each split</em>. Uncaught, the VM ends the program printing exactly that; a program can <code>try { } on(e : LabError) { }</code>. The rest of <code>System.ML</code> returns <code>Nil</code> on bad input, which in a lab is the silent failure that costs an afternoon; verified that a raise from a library function is caught in all four execution modes.</li>
+     <li><strong>Nothing here fits a scaler or encoder on anything but the training split.</strong> The split happens first; the resampler changes only the training half; <code>TableEncoder</code> and <code>FeatureScaler</code> are fitted on <code>GetTrainX()</code>.</li>
+    </ul>
+    <h3 id="stage-1-data-utilities">Stage 1: data utilities</h3>
+    <h4 id="partition"><code>Partition</code></h4>
+<pre class="line-numbers"><code class="language-cpp">split := Partition-&gt;TrainTest(X, y, 0.3, 42, true);          # stratified by y
+split := Partition-&gt;TrainTest(X, y, families, 0.3, 42);      # stratified by Float[] codes
+idx   := Partition-&gt;Indices(strata, 0.3, 42);                # the row indexes alone
+</code></pre>
+    <p>Named <code>Partition</code> rather than <code>Split</code>: <code>System.ML</code> already has a <code>Split</code> class (a tree's split point) and the compiler reports an ambiguous name as an error when both bundles are in use.</p>
+    <ul>
+     <li><code>function : TrainTest(X : Float[,], y : Bool[], test_fraction : Float, seed : Int, stratify : Bool) ~ DataSplit</code></li>
+     <li><code>function : TrainTest(X : Float[,], y : Bool[], strata : Float[], test_fraction : Float, seed : Int) ~ DataSplit</code></li>
+     <li><code>function : Indices(strata : Float[], test_fraction : Float, seed : Int) ~ IndexSplit</code> -- <code>strata</code> of one distinct value is an unstratified split</li>
+     <li><code>function : Take(X : Float[,], rows : Int[]) ~ Float[,]</code>, <code>Take(y : Bool[], rows : Int[]) ~ Bool[]</code>, <code>Take(y : Float[], rows : Int[]) ~ Float[]</code> -- gather rows, in order</li>
+     <li><code>DataSplit</code>: <code>GetTrainX()</code>, <code>GetTrainY()</code>, <code>GetTestX()</code>, <code>GetTestY()</code>, <code>GetTrainRows()</code>, <code>GetTestRows()</code>, <code>GetTrainSize()</code>, <code>GetTestSize()</code></li>
+     <li><code>IndexSplit</code>: <code>GetTrain()</code>, <code>GetTest()</code></li>
+    </ul>
+    <p>These result types are record-shaped (immutable, constructor plus getters) but written as classes rather than with the <code>record</code> keyword: the API-doc and LSP index generators index only doc-commented members, and a record's generated accessors have none, so a <code>record</code> would be invisible to hover, completion and the published reference.</p>
+    <p>Allocation is <strong>per stratum and exact</strong>: a stratum of <code>n_c</code> rows contributes <code>Float-&gt;Round(n_c * test_fraction)</code> rows to the test split, clamped to <code>[1, n_c - 1]</code> so every stratum appears in both halves. With 10 positives in 100 rows and <code>test_fraction</code> 0.2 the test split holds exactly 2 positives and 18 negatives, and the tests assert those counts rather than a tolerance. Within a stratum the rows are Fisher-Yates shuffled from the seed; the first <code>k</code> become test rows. Row indexes come back <strong>ascending</strong> in each half, so a row's position is independent of the shuffle and <code>GetTestRows()</code> can be used to join predictions back to the source table.</p>
+    <p>Refused (raises <code>LabError</code>): <code>test_fraction</code> outside <code>(0, 1)</code>; <code>X</code>, <code>y</code> or <code>strata</code> <code>Nil</code> or of different lengths; fewer than two rows; <strong>a stratum with fewer than 2 rows</strong> (it cannot be in both halves) -- the message names the stratum value and its count.</p>
+    <h4 id="resample"><code>Resample</code></h4>
+    <p>The lab's imbalance experiment trains at a positive ratio <code>POSRATIO</code> from 0.001 to 0.5 and must measure every run on the <em>same</em> test set. The API makes that the only possible order: split first, then resample the training half.</p>
+<pre class="line-numbers"><code class="language-cpp">split := Partition-&gt;TrainTest(X, y, 0.3, 42, true);
+each(r : ratios) {
+  train := Resample-&gt;ToPositiveRatio(split-&gt;GetTrainX(), split-&gt;GetTrainY(), ratios[r], 42);
+  # train-&gt;GetX(), train-&gt;GetY(); split-&gt;GetTestX() is untouched
+};
+</code></pre>
+    <ul>
+     <li><code>function : ToPositiveRatio(X : Float[,], y : Bool[], ratio : Float, seed : Int) ~ Sample</code> -- <strong>down-samples</strong> whichever class is over-represented: if the current positive ratio is above <code>ratio</code>, positives are dropped to <code>Round(ratio * negatives / (1 - ratio))</code>; otherwise negatives are dropped to <code>Round(positives * (1 - ratio) / ratio)</code>. The class that is kept is kept whole. The rows kept are chosen by a seeded shuffle.</li>
+     <li><code>function : ToPositiveRatio(X : Float[,], y : Bool[], ratio : Float, seed : Int, oversample : Bool) ~ Sample</code> -- with <code>oversample</code> true the <em>under</em>-represented class is duplicated by seeded sampling with replacement until the ratio holds, and nothing is dropped. Duplicates are visible in <code>GetRows()</code>.</li>
+     <li><code>function : PositiveRatio(y : Bool[]) ~ Float</code>, <code>function : CountPositives(y : Bool[]) ~ Int</code></li>
+     <li><code>Sample</code>: <code>GetX()</code>, <code>GetY()</code>, <code>GetRows()</code> (the source row of each sample row), <code>Size()</code>, <code>GetPositiveRatio()</code></li>
+    </ul>
+    <p>The achieved ratio is exact whenever the arithmetic allows (10 positives and 90 negatives at 0.5 keeps 10 of each) and otherwise within one row; <code>PositiveRatio</code> on the result reports what was achieved and the table carries that number, not the request. Refused: <code>ratio</code> outside <code>(0, 1)</code>; a class with no rows; a down-sample that would leave a class with zero rows (asking for 0.001 from 10 positives and 90 negatives would keep 0 positives; the message says so and suggests <code>oversample</code>).</p>
+    <h4 id="stopwatch"><code>Stopwatch</code></h4>
+<pre class="line-numbers"><code class="language-cpp">sw := Stopwatch-&gt;New();
+sw-&gt;Start();
+model-&gt;Fit(train_x, train_y);
+ms := sw-&gt;Stop();            # also returned by GetElapsedMs()
+</code></pre>
+    <p><code>Start()</code>, <code>Stop() ~ Float</code> (milliseconds), <code>Reset()</code>, <code>GetElapsedMs() ~ Float</code>, <code>GetElapsedSeconds() ~ Float</code>, <code>IsRunning() ~ Bool</code>. Accumulates across Start/Stop pairs until <code>Reset()</code>.</p>
+    <p>It wraps <code>System.Time.Timer</code>, <strong>whose clock is fixed in this stage</strong>: the VM implements <code>TIMER_START</code>/<code>TIMER_END</code>/<code>TIMER_ELAPSED</code> with C <code>clock()</code>, which on Windows is wall time at 1 ms granularity but on Linux and macOS is <em>process CPU time</em> -- a multi-threaded fit is over-counted and a sleep is not counted at all, so "training time" differs by platform. The fix (core/vm/common.cpp) stores <code>std::chrono::steady_clock</code> nanoseconds in the same instance slot; <code>Timer</code>'s API and its seconds-as-<code>Float</code> result are unchanged, resolution becomes sub-millisecond everywhere. A regression test times <code>Thread-&gt;Sleep(50)</code> and requires at least 0.04 s, which the CPU clock fails. Nothing in the tree relied on CPU time.</p>
+    <h4 id="labels-and-encoding">Labels and encoding</h4>
+    <p><code>TableEncoder</code> already handles the NSL-KDD shape: <code>protocol_type</code>, <code>service</code> and <code>flag</code> are detected as categorical (one non-numeric value makes a column categorical), one-hot encoded with a vocabulary fixed at <code>Fit</code>, and <code>TransformLabelsBinary(table, "normal")</code> maps the attack label to 0.0 for <code>normal</code> and 1.0 for everything else. <code>FeatureScaler-&gt;Fit</code> learns from whatever it is given; <code>CrossValidation-&gt;Evaluate</code> fits it on the training split only. A new regression test exercises exactly that path on a miniature NSL-KDD table (header, the three string columns among numeric ones, a test row with a service unseen in training) and asserts widths, column names, the binary mapping and that the test transform uses the training statistics.</p>
+    <p>What is missing is the label side when labels do not come through <code>TableEncoder</code> -- a <code>String[]</code> read some other way, or multi-class strata:</p>
+    <ul>
+     <li><code>Labels-&gt;ToBinary(values : String[], positive : String) ~ Bool[]</code></li>
+     <li><code>Labels-&gt;ToBinaryExcept(values : String[], negative : String) ~ Bool[]</code> -- <code>normal</code> against every attack name</li>
+     <li><code>Labels-&gt;Classes(values : String[]) ~ String[]</code> -- distinct values in first-seen order</li>
+     <li><code>Labels-&gt;ToIndices(values : String[], classes : String[]) ~ Float[]</code> -- class index per value, -1.0 for an unknown, ready for <code>Partition-&gt;Indices</code> strata or <code>StratifiedKFold</code></li>
+     <li><code>Labels-&gt;Column(table : CsvTable, name : String) ~ String[]</code> -- a data column (header skipped) as strings</li>
+    </ul>
+    <h3 id="stage-2-experiment-and-resulttable">Stage 2: <code>Experiment</code> and <code>ResultTable</code></h3>
+    <h4 id="the-callback">The callback</h4>
+    <p>An interface rather than a function reference, as <code>ScoreModel</code> and <code>ScoreMetric</code> are: it crosses the library boundary reliably and reads clearly in a lab write-up.</p>
+<pre class="line-numbers"><code class="language-cpp">interface Trial {
+  method : virtual : public : Run(value : Float, name : String, seed : Int) ~ TrialResult;
+}
+</code></pre>
+    <p><code>value</code> is the swept parameter's numeric value, <code>name</code> its display name (for a categorical sweep such as <code>kernel = linear | rbf | poly</code> the values are 0, 1, 2 and the names carry the meaning), <code>seed</code> the repetition's seed. The trial builds the model, fits it under the stopwatch, predicts on train and test and returns:</p>
+<pre class="line-numbers"><code class="language-cpp">class TrialResult {
+  New(train_pred : Bool[], train_y : Bool[], test_pred : Bool[], test_y : Bool[], fit_ms : Float)
+  New(..., loss : Float[])          # optional per-epoch training loss
+}
+</code></pre>
+    <p>Both label arrays travel with the predictions because a trial may have resampled its own training set (the imbalance sweep), so the runner cannot assume one <code>y</code>.</p>
+    <h4 id="experiment"><code>Experiment</code></h4>
+<pre class="line-numbers"><code class="language-cpp">exp := Experiment-&gt;New("Random forest: trees", "n_estimators");
+exp-&gt;SetValues([10.0, 50.0, 100.0, 200.0, 500.0]);
+exp-&gt;SetSeeds([1, 2, 3, 4, 5]);                 # optional: mean and std over seeds
+exp-&gt;AddSetting("max_depth", "8");               # footnote of fixed settings
+exp-&gt;AddSetting("dataset", "synthetic-2d v1, 70/30 stratified, seed 42");
+table := exp-&gt;Run(trial);
+</code></pre>
+    <ul>
+     <li><code>New(title : String, parameter : String)</code></li>
+     <li><code>SetValues(values : Float[])</code>, <code>SetValues(values : Float[], names : String[])</code></li>
+     <li><code>SetSeeds(seeds : Int[])</code> -- default one run with seed 0</li>
+     <li><code>AddSetting(name : String, value : String)</code> -- becomes the table's footnote</li>
+     <li><code>Run(trial : Trial) ~ ResultTable</code></li>
+    </ul>
+    <p>Per value the runner computes, from the trial's predictions: <code>train_accuracy</code>, <code>test_accuracy</code>, <code>precision</code>, <code>recall</code>, <code>f1</code>, <code>fpr</code>, <code>false_negatives</code> (a count), <code>fit_ms</code>. Test-set metrics use the test predictions; <code>train_accuracy</code> is the only training-set number, there for the overfitting curve. With several seeds each column holds the mean and the table carries a sample standard deviation per cell, which the renderers show as <code>mean ± std</code> and the chart draws as error bars. A single seed stores no deviations and the renderers omit them.</p>
+    <p>Counting is the four confusion cells from two <code>Bool[]</code>; the rates come from the existing <code>ThresholdResult</code> (<code>GetAccuracy</code>, <code>GetPrecision</code>, <code>GetRecall</code>, <code>GetFpr</code>), F1 from precision and recall, every ratio guarded (Objeck raises on a float division by zero, and a value that predicts nothing positive has no precision). The outlier-detection branch is adding a <code>ConfusionMatrix</code> class and <code>Metrics-&gt;FalsePositiveRate</code> to <code>ml_data.obs</code>; the runner's counting is one private helper that takes the four counts, so once that lands the helper delegates to it and nothing public changes. Neither <code>ConfusionMatrix</code> nor a sensitivity sweep is defined here.</p>
+    <p>As built (integration of the lab and outlier branches): the helper now returns <code>System.ML.ConfusionMatrix</code>, which counts the cells and supplies every rate, F1 included (<code>2TP / (2TP + FP + FN)</code>, equal to the harmonic mean of precision and recall); the lab library no longer counts or divides on its own.</p>
+    <p>Refused: no values; <code>names</code> of a different length; a trial that returns <code>Nil</code> or arrays of unequal length (the message names the value and seed).</p>
+    <h4 id="resulttable"><code>ResultTable</code></h4>
+    <p>A small, self-describing table: a title, one row per parameter value (display name plus numeric value), named numeric columns, optional per-cell standard deviations, a footnote.</p>
+    <ul>
+     <li><code>New(title : String, parameter : String)</code></li>
+     <li><code>AddColumn(name : String)</code>, <code>AddColumn(name : String, precision : Int)</code> -- decimals when rendered (4 by default; <code>Experiment</code> uses 0 for <code>false_negatives</code>, 1 for <code>fit_ms</code>)</li>
+     <li><code>AddRow(name : String, value : Float, cells : Float[])</code>, <code>AddRow(name : String, value : Float, cells : Float[], stds : Float[])</code></li>
+     <li><code>SetFootnote(text : String)</code>; accessors <code>GetTitle</code>, <code>GetParameter</code>, <code>GetFootnote</code>, <code>GetColumnNames</code>, <code>Size</code>, <code>GetRowName(r)</code>, <code>GetRowValue(r)</code>, <code>Get(r, c)</code>, <code>GetStd(r, c)</code>, <code>HasStds()</code>, <code>ColumnIndex(name)</code>, <code>GetColumn(name) ~ Float[]</code>, <code>GetColumnStds(name) ~ Float[]</code></li>
+     <li><code>ToText() ~ String</code> -- aligned columns, title above, footnote below</li>
+     <li><code>ToMarkdown() ~ String</code> -- a GitHub table under a <code>###</code> title, footnote in italics; pipes in names escaped</li>
+     <li><code>ToCsv() ~ String</code> -- RFC 4180 through <code>Data.CSV</code>'s <code>CsvTable-&gt;FormatRow</code> (a field holding a comma, quote or line break is quoted, quotes doubled); the header is <code>&lt;parameter&gt;,&lt;parameter&gt;_value,&lt;columns...&gt;</code> and, when the table holds deviations, <code>&lt;column&gt;_std</code> for each; the title and footnote are <em>not</em> in the CSV (a CSV is data; the Markdown and JSON carry the prose)</li>
+     <li><code>ToJson() ~ String</code> -- built with <code>Data.JSON.JsonElement</code>, so string escaping is the library's: <code>{"title","parameter","footnote","columns":[...],"precision":[...],"rows":[{"name","value","cells":{col: v},"stds":{col: s}}]}</code>. <code>FromJson</code> reads strings with <code>GetString()</code>, which returns decoded text once PR #1403 (<em>Data.JSON: decode strings on parse, escape once on output</em>) is in; on the current <code>master</code> the parser hands back the escaped text, so a title with a non-ASCII letter or a <code>/</code> does not round-trip until that lands. Stage 2 therefore merges after #1403, and its JSON golden is compared by structure (parsed back), not by bytes, because the serializer's escape choices belong to <code>Data.JSON</code>.</li>
+     <li><code>function : FromCsv(text : String) ~ ResultTable</code>, <code>function : FromJson(text : String) ~ ResultTable</code> -- round trip; numbers written with up to 10 decimals and trailing zeros trimmed, so a value survives the trip to within 1e-10</li>
+     <li><code>Save(path : String) ~ Bool</code> -- by extension: <code>.md</code>, <code>.csv</code>, <code>.json</code>, otherwise text</li>
+     <li><code>ToChart(metrics : String[]) ~ Chart</code> (Stage 3) -- one series per named column, x = the parameter values, error bars from the stds</li>
+    </ul>
+    <p>Rendering is deterministic: fixed decimals through <code>Float-&gt;ToString(v, p)</code>, which is <code>printf("%.*f")</code> and correctly rounded on every platform the tests run on, so the golden files are byte-comparable.</p>
+    <h3 id="stage-3-chart">Stage 3: <code>Chart</code></h3>
+    <p>Standalone <strong>SVG 1.1</strong> text with no script, no external font and no dependency, written by <code>Save(path)</code> or returned by <code>ToSvg()</code>. It opens in a browser, pastes into Word, and converts with any SVG tool.</p>
+<pre class="line-numbers"><code class="language-cpp">c := Chart-&gt;New("Recall vs C", "C", "recall");
+c-&gt;SetLogX(true);
+c-&gt;AddLine("rbf", cs, recall_rbf, recall_rbf_std);
+c-&gt;AddLine("linear", cs, recall_lin);
+c-&gt;Save("recall_vs_c.svg");
+</code></pre>
+    <ul>
+     <li><code>New(title : String, x_label : String, y_label : String)</code>; <code>SetSize(width : Int, height : Int)</code> (default 800 x 480); <code>SetLogX(on : Bool)</code>; <code>SetYRange(min : Float, max : Float)</code> (default: nice bounds from the data, and <code>[0, 1]</code> when every value is within it)</li>
+     <li><code>SetCategories(names : String[])</code> -- categorical x: ticks are the names at 0..n-1</li>
+     <li><code>AddLine(name : String, xs : Float[], ys : Float[])</code>, <code>AddLine(name, xs, ys, errs : Float[])</code> -- a polyline with markers; <code>errs</code> draws symmetric error bars</li>
+     <li><code>AddBars(name : String, ys : Float[])</code>, <code>AddBars(name, ys, errs)</code> -- grouped bars over the categories (one group per category, one bar per series)</li>
+     <li><code>function : LossCurve(title : String, names : String[], losses : Float[,]) ~ Chart</code> -- rows are series (one per learning rate), columns are epochs, x = epoch</li>
+     <li><code>ToSvg() ~ String</code>, <code>Save(path : String) ~ Bool</code>, <code>Size()</code> (series added)</li>
+     <li><code>ResultTable-&gt;ToChart(metrics : String[])</code> and <code>ToChart(metrics, log_x : Bool)</code>: x is the parameter value, or the row names as categories when a row's name is not its number; one line per named column (an empty array means every column); error bars from the deviations when the table holds them; y labelled with the metric names</li>
+    </ul>
+    <p>Layout: a title, axis titles, a legend in the top-right of the plot area on a translucent box (so it reads where it sits over a line), a light grid, tick labels from a 1-2-5 "nice step" rule (log x: powers of ten in range, labelled <code>0.001</code>, <code>0.01</code>, ...), <code>font-family="sans-serif"</code>, a fixed eight-colour palette, coordinates emitted with one decimal so the text is stable. A y range inside <code>[0, 1]</code> is drawn as the whole unit interval, so rate charts compare; any other range starts at 0 (bars, counts, milliseconds) and ends on a nice bound. Every text node is XML-escaped. An error bar is one <code>line</code> plus one <code>path</code> for its two caps. A series is held in a <code>ChartSeries</code> (name, xs, ys, errors, bars or line). Log x with a non-positive value is refused with a message.</p>
+    <p>The renderer is split into small methods (<code>Ranges</code>, <code>Grid</code>, <code>XTicks</code>, <code>Axes</code>, <code>LineSeries</code>, <code>BarSeries</code>, <code>Legend</code>): written as one method it exceeded the VM's local-variable frame ("Local space has been exceeded"), which is a limit worth knowing when writing a long formatter in Objeck.</p>
+    <p>Verification: the tests parse the SVG with <code>Data.XML</code> (well-formed, the root is <code>svg</code> with <code>xmlns</code>, <code>version</code> and <code>viewBox</code>; attribute values are read with <code>GetDecodedValue</code>, since the parser keeps a space as <code>&amp;#x20;</code>), count the elements a chart must have (one <code>polyline</code> per line series, one <code>circle</code> per point, one <code>rect</code> per bar, one error-bar <code>line</code> per point with a non-zero error, plus the grid and axis lines), check that every emitted coordinate lies inside the viewport, check that log-axis decades are equally spaced, and compare to golden files under <code>programs/regression/ml_lab_golden/</code>. <strong>There is no SVG rasterizer in the tree</strong> -- OpenCV's <code>Image-&gt;Load</code> does not read SVG and SDL has no SVG path -- so no PNG is produced here and none is added: a student opens the SVG in a browser or pastes it into Word. Where a rasterizer exists on the developer's machine (a browser), the goldens were eyeballed once; the tests guard structure and determinism, not pixels.</p>
+    <h3 id="stage-4-the-end-to-end-example">Stage 4: the end-to-end example</h3>
+    <p><code>programs/examples/ml/lab_sweeps.obs</code> builds a documented <strong>synthetic</strong> two-feature dataset from a fixed seed (two overlapping classes, 500 rows, 20 % positive -- the generator and its parameters are in the file header so the hand-in can cite them), splits it 70/30 stratified, fits a <code>FeatureScaler</code> on the training half, and runs two sweeps:</p>
+    <ol>
+     <li><code>RandomForestClassifier</code> over <code>n_estimators</code> 10, 50, 100, 200, 500 with the existing constructor (<code>max_depth</code>, <code>min_samples</code>, <code>seed</code> fixed and footnoted), two seeds, so the table shows <code>mean ± std</code> and the chart error bars. The 500-tree fits dominate: about 16 s each on a laptop, 50 s for the whole program (1,000 rows and three seeds took five and a half minutes, which is too long for an example; the <code>fit_ms</code> column is the point of the sweep). Those times predate #1415's sorted split sweep: with it, a 500-tree fit takes about 0.1 s and the whole program about a second (Windows x64);</li>
+     <li>the linear <code>SVM</code> over <code>lambda</code> (L2 strength, the inverse role of <code>C</code>) on a log axis, 1e-3 .. 10.</li>
+    </ol>
+    <p>It writes <code>rf_trees.md</code>, <code>rf_trees.csv</code>, <code>rf_trees.svg</code>, <code>rf_train_vs_test.svg</code>, <code>svm_lambda.md</code>, <code>svm_lambda.csv</code>, <code>svm_lambda.svg</code> to the directory named on the command line (default <code>lab_output</code>), and prints each path. It uses only classes on <code>master</code> today; the kernel-SVM and outlier-detector classes plug in through the same <code>Trial</code> interface when they land, and the docs show that.</p>
+    <h3 id="testing">Testing</h3>
+    <p>Every function gets a known-answer regression test in <code>programs/regression/</code> (<code>PASS:</code>/<code>FAIL:</code> lines, exit 1 on failure), each run compiled at <code>-opt s3</code> and <code>-opt s0</code>, under <code>obr</code>, <code>obr --jit=off</code>, and with <code>OBJECK_JIT_THRESHOLD=1</code>, on Windows and on a Linux native clone before cloud CI:</p>
+    <ul>
+     <li><code>time_timer_wall_clock</code> -- <code>Timer</code> measures a sleep (fails on the CPU clock)</li>
+     <li><code>ml_lab_split</code> -- exact per-stratum counts; every row in exactly one half; <strong>no leakage</strong> (labels stay a function of their own features through the split, the same construction <code>ml_experiment_runner</code> uses); same seed = same rows, different seed = different rows; unstratified path; refusals: fraction 0 and 1, a 1-row stratum, mismatched lengths</li>
+     <li><code>ml_lab_resample</code> -- 10/90 at 0.5 keeps 10+10; 0.1 keeps 10+90; oversample doubles the minority with duplicates visible in <code>GetRows()</code>; the test split object is untouched (same reference, same contents); seed determinism; refusals outside (0, 1) and the all-dropped case</li>
+     <li><code>ml_lab_labels_encoding</code> -- <code>Labels</code> functions; the miniature NSL-KDD table through <code>TableEncoder</code> and <code>FeatureScaler</code> fitted on train only</li>
+     <li><code>ml_lab_stopwatch</code> -- accumulates, resets, measures a sleep</li>
+     <li><code>ml_lab_result_table</code> -- text/Markdown/CSV/JSON against goldens; CSV and JSON round trips with a name holding a comma, a quote and non-ASCII (<code>naïve "rbf", γ=0.5</code>); <code>GetColumn</code></li>
+     <li><code>ml_lab_experiment</code> -- a trial whose predictions are chosen so every metric has a known value (tp=3, fp=1, fn=2, tn=4 gives accuracy 0.7, precision 0.75, recall 0.6, F1 2/3, fpr 0.2, fn 2); repeated seeds give the right mean and sample std; fit time is non-negative; a categorical sweep keeps its names; refusals</li>
+     <li><code>ml_lab_chart_svg</code> -- structural checks via <code>Data.XML</code>, coordinate bounds, goldens for a line chart with error bars, a log-x chart, a grouped bar chart and a loss curve; <code>ResultTable-&gt;ToChart</code></li>
+     <li>the example is not compiled by CI (<code>ci-build.yml</code> compiles the shipped <code>programs/deploy</code> set, not <code>programs/examples</code>), so it is run by hand on Windows and Linux before its stage merges and its outputs are opened in a browser; every library call it makes is covered by the tests above</li>
+    </ul>
+    <h3 id="out-of-scope">Out of scope</h3>
+    <p>Multi-class metrics (the lab is binary: benign vs attack); a PNG rasterizer; a grid search over two parameters at once (two sweeps or a nested trial cover the hand-ins listed); per-epoch loss from models that do not expose it (<code>NeuralNetwork</code> is unchanged; <code>LossCurve</code> charts whatever the student records).</p>
+    <h3 id="release-note">Release note</h3>
+    <div class="note"><strong><code>System.ML.Lab</code> (<code>ml_lab.obl</code>)</strong>: the plumbing a parameter sweep needs -- <code>Partition-&gt;TrainTest</code> (stratified, seeded, exact), <code>Resample-&gt;ToPositiveRatio</code> for class-imbalance runs against a fixed test set, <code>Stopwatch</code>, <code>Labels</code>, <code>Experiment</code> over any model through a <code>Trial</code>, a <code>ResultTable</code> with text, Markdown, CSV and JSON output, and <code>Chart</code> writing standalone SVG line, bar and loss-curve charts. <code>System.Time.Timer</code> now measures wall-clock time on every platform (it was process CPU time on Linux and macOS). The compiler no longer crashes on a subscript applied to a later link of a call chain (<code>v-&gt;Get(r)-&gt;Get()[c]</code>).</div>
+    <h3 id="what-landed-where">What landed where</h3>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Stage</th><th>PR</th><th>Contents</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Stage">0</td><td data-label="PR">#1402</td><td data-label="Contents">this document</td></tr>
+      <tr><td data-label="Stage">1</td><td data-label="PR">#1405</td><td data-label="Contents"><code>ml_lab.obl</code>: <code>Partition</code>, <code>Resample</code>, <code>Stopwatch</code>, <code>Labels</code>, <code>LabError</code>; the <code>Timer</code> clock fix; lists, alias group, LSP index, playground policy</td></tr>
+      <tr><td data-label="Stage">2</td><td data-label="PR">stage-2 PR</td><td data-label="Contents"><code>Experiment</code>, <code>Trial</code>, <code>TrialResult</code>, <code>ResultTable</code>; the chained-subscript compiler fix; merges after #1403</td></tr>
+      <tr><td data-label="Stage">3</td><td data-label="PR">stage-3 PR</td><td data-label="Contents"><code>Chart</code>, <code>ChartSeries</code>, <code>ResultTable-&gt;ToChart</code></td></tr>
+      <tr><td data-label="Stage">4</td><td data-label="PR">stage-4 PR</td><td data-label="Contents"><code>programs/examples/ml/lab_sweeps.obs</code>; <code>docs/AI.md</code> and <code>docs/cli_options.md</code></td></tr>
+     </tbody>
+    </table>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

@@ -1860,6 +1860,12 @@ jobs:
       - name: The link check can still detect a broken link
         run: python3 tools/cicd/check_doc_links.py --test
 
+      # The site pages under docs/web (the guides and the rendered docs) are
+      # generated from Markdown. Editing the Markdown and forgetting to run the
+      # script leaves objeck.org showing the old text; this fails until it is run.
+      - name: Site pages match their Markdown
+        run: python3 tools/docs/guides_to_html.py --check
+
       # Same class of guard, for both halves of what the benchmark harness does.
       # Every number on docs/performance.md was measured at the input printed
       # beside it, and perf-results/run_benchmarks.sh holds the input the harness

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Jagged Arrays — Design — Objeck Language</title>
+  <meta name="description" content="Issue: #1246, split out of #1186."/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Jagged Arrays — Design</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/JAGGED_ARRAYS_DESIGN.md" target="_blank">docs/JAGGED_ARRAYS_DESIGN.md on GitHub</a></div>
+    <p class="page-lead">Issue: <a href="https://github.com/objeck/objeck-lang/issues/1246" target="_blank">#1246</a>, split out of #1186.</p>
+    <div id="toc_container" class="plain">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#why">Why</a></li>
+      <li><a href="#decisions">Decisions</a></li>
+      <li><a href="#out-of-scope">Out of scope</a></li>
+      <li><a href="#tests">Tests</a></li>
+     </ul>
+    </div>
+
+    <h3 id="why">Why</h3>
+    <p>Rectangular arrays exist (<code>Int[,]</code>), but rows of different lengths could not be declared, built or passed. Code boxed each row (<code>IntArrayRef[]</code>, <code>Vector&lt;IntArrayRef&gt;</code>), which costs an object per row and an unwrap on every access. Ragged data is everyday work in research code: token sequences of different lengths, adjacency lists, triangles, batches.</p>
+<pre class="line-numbers"><code class="language-cpp">rows := Int[]-&gt;New[3];          # three rows, each Nil until set
+rows[0] := [1, 2, 3];
+rows[1] := Int-&gt;New[5];
+rows[2] := [x, y];
+total := rows[0][1] + rows[2][0];
+
+function : Sum(rows : Int[][]) ~ Int { ... }
+triangle := [[1], [1, 1], [1, 2, 1]];   # ragged, so Int[][]
+</code></pre>
+    <h3 id="decisions">Decisions</h3>
+    <h4 id="syntax">Syntax</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Form</th><th>Meaning</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Form"><code>T[][]</code></td><td data-label="Meaning">a one-dimensional array whose elements are <code>T[]</code></td></tr>
+      <tr><td data-label="Form"><code>T[][][]</code></td><td data-label="Meaning">an array of <code>T[][]</code>, and so on</td></tr>
+      <tr><td data-label="Form"><code>T[]-&gt;New[n]</code></td><td data-label="Meaning">allocate <code>n</code> rows, each <code>Nil</code></td></tr>
+      <tr><td data-label="Form"><code>rows[i]</code></td><td data-label="Meaning">a row, a <code>T[]</code></td></tr>
+      <tr><td data-label="Form"><code>rows[i][j]</code></td><td data-label="Meaning">an element</td></tr>
+      <tr><td data-label="Form"><code>[[1, 2, 3], [4]]</code></td><td data-label="Meaning">a ragged literal is a <code>T[][]</code>. A rectangular one stays <code>T[,]</code>, as today.</td></tr>
+      <tr><td data-label="Form"><code>[a, b]</code> with <code>a</code>, <code>b : T[]</code></td><td data-label="Meaning">a <code>T[][]</code> (array literals with expressions, #1245)</td></tr>
+     </tbody>
+    </table>
+    <p>Each level is one-dimensional in this phase. <code>Int[,][]</code> (rows that are themselves rectangular) is not supported: no task in the batch needs it, and it would tie the syntax to a choice about which bracket is outer.</p>
+    <h4 id="representation">Representation</h4>
+    <p>At run time a <code>T[][]</code> is an object array whose elements are <code>T[]</code> arrays. The VM, both JIT backends and the collector already handle this:</p>
+    <ul>
+     <li>An object-array local or field is <code>OBJ_ARY_PARM</code>, so the collector marks each element.</li>
+     <li>An element without a class mapping (an array) takes <code>CheckObject</code>'s array path. That path marks the array and, for an int or object array, scans its elements.</li>
+    </ul>
+    <p>So deeper nesting is covered too, and <strong>no VM change is needed</strong>.</p>
+    <p>In the compiler, a jagged type is a one-dimensional array of a <strong>row type</strong>, a class name that only the compiler uses: <code>Int[][]</code> is <code>$Int[]</code> with dimension 1, and <code>Int[][][]</code> is <code>$Int[][]</code> with dimension 1. Everything that already works for object arrays then works unchanged: allocation, <code>-&gt;Size()</code>, <code>each</code>, parameters, fields, return types, signature encoding (<code>o.$Int[]*</code>) and memory types. The row type turns back into the real array type in the few places an element is read or written:</p>
+    <ul>
+     <li><strong>Reading an element.</strong> <code>rows[i]</code> has the row type. <code>RowElementType</code> turns <code>$Int[]</code> back into <code>Int[]</code>, and <code>$Int[][]</code> into <code>$Int[]</code> with dimension 1.</li>
+     <li><strong>Writing an element.</strong> <code>rows[i] := arr</code> accepts a value whose type is the row's element type.</li>
+     <li><strong>Literals.</strong> A ragged literal, or one whose elements are arrays, has the row type as its element type.</li>
+    </ul>
+    <h4 id="assignment-through-two-subscripts">Assignment through two subscripts</h4>
+    <p><code>rows[i][j] := v</code> is rewritten by the parser to <code>#ary := rows[i]; #ary[j] := v</code>. This is the hidden-local form already used for an indexed call result as a target (<code>ParseCallElementOperation</code>). The row is read before <code>v</code> is evaluated.</p>
+    <h4 id="chained-indexing">Chained indexing</h4>
+    <p><code>rows[i][j]</code> is a variable with more than one index group. The groups are emitted innermost first, then the variable. Each element load then takes the next group's index from below the array it just loaded:</p>
+<pre class="plain">&lt;j&gt;  &lt;i&gt;  LOAD rows  LOAD_INT_ARY_ELM 1  LOAD_INT_ARY_ELM 1</pre>
+    <p>A store is the same with the value first: <code>&lt;v&gt; &lt;j&gt; &lt;i&gt; LOAD rows LOAD_INT_ARY_ELM 1 STOR_INT_ARY_ELM 1</code>. This means <strong>index expressions are evaluated innermost group first</strong> (<code>j</code> before <code>i</code>). That only shows when two index expressions have side effects, and it is documented. Keeping written order would need a temporary per group.</p>
+    <h3 id="out-of-scope">Out of scope</h3>
+    <ul>
+     <li>Serializing jagged arrays (<code>ObjectSerializer</code>). This phase does not cover or test it.</li>
+     <li><code>Int[,][]</code> and other rectangular levels.</li>
+     <li>Reflection's view of a jagged type: it reports the row type's name.</li>
+    </ul>
+    <h3 id="tests">Tests</h3>
+    <p><code>jagged_arrays.obs</code> covers declaration, allocation, ragged literals, chained reads and writes, rows of objects (<code>String[][]</code>), parameters and return values, <code>each</code>/<code>-&gt;Size()</code>, three levels, and a loop that allocates enough rows to collect (JIT, GC, three modes). It also checks that rows survive collection under <code>--gc-threshold</code>. The <code>bad_jagged_*.obs</code> files cover a wrong element type and a wrong number of index groups.</p>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

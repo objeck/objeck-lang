@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>AI Foundation — Design (BERT is the first consumer) — Objeck Language</title>
+  <meta name="description" content="Objeck is meant to be a language for AI research. Today it can run models (API.Onnx), call hosted models (API.OpenAI, API.Google, API.Ollama), and train small networks (System.ML). It cannot train or fine-tune a transformer, and every model"/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">AI Foundation — Design (BERT is the first consumer)</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/AI_FOUNDATION_DESIGN.md" target="_blank">docs/AI_FOUNDATION_DESIGN.md on GitHub</a></div>
+    <p class="page-lead">Objeck is meant to be a language for AI research. Today it can <em>run</em> models (<code>API.Onnx</code>), call hosted models (<code>API.OpenAI</code>, <code>API.Google</code>, <code>API.Ollama</code>), and train small networks (<code>System.ML</code>). It cannot train or fine-tune a transformer, and every model needs hand downloading and, often, Python.</p>
+    <div id="toc_container" class="plain">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#summary">Summary</a></li>
+      <li><a href="#1-goals-rules-and-non-goals">1. Goals, rules and non-goals</a></li>
+      <li><a href="#2-what-exists-and-what-happens-to-it">2. What exists, and what happens to it</a></li>
+      <li><a href="#3-dependency-status-primary-sources">3. Dependency status (primary sources)</a></li>
+      <li><a href="#4-what-future-ai-work-needs-from-the-foundation">4. What future AI work needs from the foundation</a></li>
+      <li><a href="#5-the-layers">5. The layers</a></li>
+      <li><a href="#6-language-and-vm-fit">6. Language and VM fit</a></li>
+      <li><a href="#7-phase-a--use-models-hub-tokenizers-pipelines-over-onnx">7. Phase A — use models: hub, tokenizers, pipelines (over ONNX)</a></li>
+      <li><a href="#8-phase-b--the-training-foundation-libtorch">8. Phase B — the training foundation (libtorch)</a></li>
+      <li><a href="#9-onnx-as-the-export-target-phase-e">9. ONNX as the export target (Phase E)</a></li>
+      <li><a href="#10-the-lab-end-to-end">10. The lab, end to end</a></li>
+      <li><a href="#11-phases">11. Phases</a></li>
+      <li><a href="#12-decisions-for-the-user">12. Decisions for the user</a></li>
+      <li><a href="#13-first-pr-and-follow-ups">13. First PR, and follow-ups</a></li>
+      <li><a href="#appendix-how-the-numbers-were-measured">Appendix: how the numbers were measured</a></li>
+     </ul>
+    </div>
+
+    <p>This document designs a foundation that closes that gap: tensors on CPU and GPU, autograd, <code>nn</code> modules, optimizers, data loading, <code>safetensors</code> and a Hugging Face hub cache, tokenizers, task pipelines, and ONNX as both a runtime and an export target. BERT, "like with Python's <code>transformers</code>", is the first thing built on it.</p>
+    <p>This is a design only. No library code changes with it. Target: the release <strong>after</strong> v2026.10.2.</p>
+    <p>Every number below marked <em>measured</em> was measured for this document on 2026-10-29 (method in the appendix). Everything else is labelled as an estimate or as something a phase must check.</p>
+    <h3 id="summary">Summary</h3>
+    <ul>
+     <li><strong>Two tracks that meet.</strong>
+    <ul>
+     <li><strong>Phase A, use models:</strong> download ONNX exports and tokenizers from the Hugging Face Hub, then run Python <code>pipeline()</code>-style tasks over the existing <code>API.Onnx</code>. It needs no new native dependency, and it ships value first.</li>
+     <li><strong>Phase B, the training foundation:</strong> a binding of <strong>libtorch</strong>, PyTorch's C++ library and the same engine PyTorch runs on. Transformer architectures are written <strong>in Objeck</strong> over tensors and autograd, and load Hugging Face <code>safetensors</code> directly, as Rust's candle does. The end state needs no Python at all.</li>
+    </ul>
+     </li>
+     <li><strong>No deprecated or unmaintained dependency, not even as a fallback.</strong>
+    <ul>
+     <li>Rejected: ONNX Runtime's training API, deprecated in 1.20.0, which is why the earlier design, PR #1449, is superseded.</li>
+     <li>Rejected: TorchScript, which PyTorch's own source marks deprecated, and <code>torch-directml</code>, whose last release was in 2024.</li>
+     <li>Each dependency has a status table with primary-source evidence (§3).</li>
+     <li>Where the rule leaves a gap, the gap is stated: GPU training on Windows arm64, and on AMD GPUs under Windows (§3.3).</li>
+    </ul>
+     </li>
+     <li><strong>Existing programs keep compiling.</strong>
+    <ul>
+     <li><code>System.ML</code>, <code>API.Onnx</code>, <code>System.NLP</code> and <code>System.NLP.Onnx</code> stay as they are.</li>
+     <li>New layers are new libraries. Old classes are kept, or gain a second backend behind the same API, and are never removed (§2).</li>
+    </ul>
+     </li>
+     <li><strong>The first end-to-end target is the user's lab model:</strong> DistilBERT fine-tuned as a malware classifier on Colab, run from Objeck through the Phase A <code>TextClassifier</code>. Later, the same model is fine-tuned in Objeck itself through Phase B.</li>
+     <li><strong>First PR:</strong> <code>TextClassifier</code> over a local model folder, with a tiny checked-in DistilBERT-shaped fixture and a parity test (§11). It is small and testable, and it serves the lab directly.</li>
+    </ul>
+    <h3 id="1-goals-rules-and-non-goals">1. Goals, rules and non-goals</h3>
+    <p><strong>Goals</strong></p>
+    <ol>
+     <li><strong>Use pretrained models by name</strong>, as in Python's <code>pipeline("text-classification", model=...)</code>: no hand downloads, no Python.</li>
+     <li><strong>Fine-tune and train transformers in Objeck</strong>, on CPU and GPU, with the results matching PyTorch.</li>
+     <li><strong>One set of layers for all future AI work.</strong> Decoder LLMs, vision, audio, embeddings and RAG, and reinforcement learning all build on the same tensor, <code>nn</code> and hub layers, not on one-off wrappers.</li>
+     <li><strong>Parity is the test oracle.</strong> Every task and every training step is checked against PyTorch, <code>transformers</code> or <code>tokenizers</code> on fixed inputs, with stated tolerances.</li>
+    </ol>
+    <p><strong>Rules</strong></p>
+    <ul>
+     <li><strong>No deprecated or unmaintained library</strong>, as primary dependency, fallback or optional path. Every dependency's status is cited from primary sources (§3).</li>
+     <li><strong>Python-free end state.</strong> Python is allowed only in test-fixture generators that a developer runs to refresh fixtures, never on a user's path.</li>
+     <li><strong>The project's own conventions:</strong>
+    <ul>
+     <li>a phased PR for each step;</li>
+     <li><code>objk_apis.json</code> regenerated when library classes are added;</li>
+     <li>all libraries rebuilt after any compiler change;</li>
+     <li><code>TESTS.md</code> never committed in a PR.</li>
+    </ul>
+     </li>
+    </ul>
+    <p><strong>Non-goals</strong></p>
+    <ul>
+     <li><strong>Writing tensor kernels or an autodiff engine in Objeck.</strong> That was ruled out before #1449, and it stays ruled out. libtorch supplies both.</li>
+     <li><strong>Distributed or multi-node training, and serving at scale.</strong></li>
+     <li><strong>Replacing hosted-model clients</strong> (OpenAI, Gemini, Ollama). They stay, and agents keep using them (§4).</li>
+    </ul>
+    <h3 id="2-what-exists-and-what-happens-to-it">2. What exists, and what happens to it</h3>
+    <p>Line counts are from the <code>master</code> checkout at <code>c816f3f9ae</code>.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Library (source)</th><th>What it is</th><th>Decision</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Library (source)"><code>System.ML</code> <code>ml_core.obs</code> (2,500 lines): <code>Matrix2D</code>, <code>NeuralNetwork</code>, <code>DenseNetwork</code>, <code>Random</code></td><td data-label="What it is">Pure-Objeck MLPs over <code>Float[,]</code>. <code>DenseNetwork</code> has PyTorch-matching Adam and deterministic seeding</td><td data-label="Decision"><strong>Keep unchanged.</strong> It needs no native library, which is right for teaching and small tabular work. A later, optional <code>DenseNetwork</code> backend on the tensor core gets the same API (Phase F)</td></tr>
+      <tr><td data-label="Library (source)"><code>System.ML</code> trees, SVM, Bayes, clustering, outliers (<code>ml_tree.obs</code>, <code>ml_svm.obs</code>, …)</td><td data-label="What it is">Classical ML</td><td data-label="Decision"><strong>Keep.</strong> They are outside this design. They interoperate through <code>Float[,]</code>, which the tensor core converts to and from (§6.3)</td></tr>
+      <tr><td data-label="Library (source)"><code>System.ML</code> <code>ml_embed.obs</code>: <code>EmbeddingClassifier</code> (<code>ScoreModel</code>)</td><td data-label="What it is">A trainable head over frozen embeddings</td><td data-label="Decision"><strong>Keep.</strong> It stays the frozen-encoder baseline. Phase B's fine-tuner also implements <code>ScoreModel</code>, so <code>Metrics</code> and <code>CrossValidation</code> accept both</td></tr>
+      <tr><td data-label="Library (source)"><code>API.Models</code> <code>models.obs</code>: <code>Tensor</code>, <code>TensorSpec</code>, <code>EndPoint</code></td><td data-label="What it is">The model I/O carrier: name, shape, flat <code>Float[]</code> / <code>Int[]</code>. Remote KServe/Triton endpoints</td><td data-label="Decision"><strong>Keep, and keep the name.</strong> It is the <em>interchange</em> type for named model inputs and outputs. The new compute tensor is a different class in a different bundle (<code>System.AI.Tensor.Tensor</code>), with converters both ways. The two have different jobs (§6.1)</td></tr>
+      <tr><td data-label="Library (source)"><code>API.Onnx</code> <code>onnx.obs</code> (3,136 lines): <code>Session</code>, <code>RunResult</code>, YOLO, ResNet, DeepLab, OpenPose, face, Phi-3</td><td data-label="What it is">ONNX Runtime inference</td><td data-label="Decision"><strong>Keep.</strong> It becomes the ONNX <em>runtime</em> layer of the foundation. Phase A's pipelines run on it, and Phase E's ONNX export targets it</td></tr>
+      <tr><td data-label="Library (source)"><code>System.NLP</code> <code>nlp.obs</code>: <code>WordPieceTokenizer</code>, <code>TokenEncoding</code>, <code>ApiSequenceTokenizer</code>, TF-IDF, …</td><td data-label="What it is">Pure-Objeck NLP</td><td data-label="Decision"><strong>Keep and extend.</strong> The <code>tokenizer.json</code> loader, BPE and Unigram are added here (Phase A3–A5). <code>TokenEncoding</code> gains offsets, word ids and sequence ids, as new fields and methods; existing constructors keep working</td></tr>
+      <tr><td data-label="Library (source)"><code>System.NLP.Onnx</code> <code>nlp_onnx.obs</code>: <code>BertEmbedder</code></td><td data-label="What it is">Sentence embeddings over ONNX</td><td data-label="Decision"><strong>Keep, and generalise behind the same API.</strong> The text pipelines join it. A runner interface lets each pipeline run on ONNX or, later, on the torch backend without changing the caller's code (§7.4)</td></tr>
+      <tr><td data-label="Library (source)"><code>Query.Structured.ML</code> / <code>.Vision</code> (<code>query_ml.obs</code>, <code>query_vision.obs</code>)</td><td data-label="What it is">Query sources over ML results and YOLO</td><td data-label="Decision"><strong>Keep.</strong> They gain an embedding source for RAG once the pipelines exist (§4)</td></tr>
+      <tr><td data-label="Library (source)"><code>System.AI</code> <code>ai_rl.obs</code>, <code>ai_search.obs</code>, …</td><td data-label="What it is">Tabular Q-learning, SARSA, MDPs, search</td><td data-label="Decision"><strong>Keep.</strong> Deep RL (a DQN or a policy gradient) builds on the tensor core as new classes (§4)</td></tr>
+      <tr><td data-label="Library (source)"><code>API.OpenAI</code>, <code>API.Google</code> (Gemini), <code>API.Ollama</code></td><td data-label="What it is">Hosted and local model clients</td><td data-label="Decision"><strong>Keep.</strong> Agents keep using them. The foundation adds local embeddings and rerankers beside them</td></tr>
+     </tbody>
+    </table>
+    <p><strong>The compatibility rule.</strong> No existing class changes its public signatures. Where a class gains a second backend, that is a new constructor or a new configuration key. Each phase's PR runs the existing ML, NLP and ONNX regression tests unchanged.</p>
+    <h3 id="3-dependency-status-primary-sources">3. Dependency status (primary sources)</h3>
+    <h4 id="31-proposed-dependencies">3.1 Proposed dependencies</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Dependency</th><th>Role</th><th>Status evidence</th><th>License</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Dependency"><strong>libtorch</strong> (PyTorch C++)</td><td data-label="Role">Tensor core, autograd, kernels, optimizers, devices (Phase B)</td><td data-label="Status evidence">GitHub release <strong>v2.15.0 on 2026-10-28</strong>. Earlier: v2.14.1 on 2026-09-30, v2.14.0 on 2026-09-02, then 2.13.0 (2026-07-08) and 2.12.0 (2026-05-13) on PyPI. That is a release about every 1–2 months. <code>libtorch-*-2.15.0</code> archives were published on download.pytorch.org on 2026-10-28 (HTTP <code>Last-Modified</code>). The C++ frontend docs (<code>docs/cpp/source/frontend.md</code>) carry no deprecation notice. The repository adds a <strong>Stable ABI</strong> C++ API (<code>docs/cpp/source/api/stable/index.md</code>, "guaranteed to remain stable across PyTorch versions")</td><td data-label="License">BSD-style (<code>LICENSE</code>: "Redistribution and use in source and binary forms…"). GitHub reports <code>NOASSERTION</code> because the file concatenates several notices. Compatible with redistribution</td></tr>
+      <tr><td data-label="Dependency"><strong>ONNX Runtime</strong> (already vendored, inference only)</td><td data-label="Role">ONNX runtime layer (Phase A, E)</td><td data-label="Status evidence"><strong>v1.31.1 on 2026-10-26</strong> and v1.30.1 on 2026-10-29 (GitHub releases). Inference is actively released</td><td data-label="License">MIT</td></tr>
+      <tr><td data-label="Dependency"><strong>safetensors</strong> (file format; no code dependency)</td><td data-label="Role">Weight I/O, read and written by Objeck (Phase B)</td><td data-label="Status evidence">The format is defined by <code>huggingface/safetensors</code>: v0.8.0 on 2026-06-09, v0.9.0-rc.1 on 2026-09-23, PyPI 0.8.0 on 2026-09-24. Objeck implements the format itself (an 8-byte little-endian header length, a JSON header, then raw bytes), so no library is linked</td><td data-label="License">Apache-2.0 (format reference)</td></tr>
+      <tr><td data-label="Dependency"><strong>Hugging Face <code>tokenizers</code></strong> (reference only, in fixture generators)</td><td data-label="Role">The parity oracle for the tokenizers</td><td data-label="Status evidence">v0.23.3 on 2026-10-09 (GitHub) and 2026-10-19 (PyPI); v1.0.0-rc.3 on 2026-10-19. <strong>Not linked.</strong> Objeck reimplements the algorithms</td><td data-label="License">Apache-2.0</td></tr>
+      <tr><td data-label="Dependency"><strong><code>transformers</code> / <code>torch</code></strong> (reference only, in fixture generators)</td><td data-label="Role">The parity oracle for the tasks and for training</td><td data-label="Status evidence"><code>torch</code> 2.15.0 on 2026-10-28; <code>transformers</code> 5.22.0 installed for the measurements. <strong>Never on a user's path</strong></td><td data-label="License">BSD / Apache-2.0</td></tr>
+      <tr><td data-label="Dependency"><strong>ONNX</strong> (the format)</td><td data-label="Role">The export target (Phase E). Objeck writes the protobuf itself</td><td data-label="Status evidence"><code>onnx/onnx</code> v1.23.2 on 2026-10-06. Not linked</td><td data-label="License">Apache-2.0</td></tr>
+     </tbody>
+    </table>
+    <h4 id="32-rejected">3.2 Rejected</h4>
+    <ul>
+     <li><strong>ONNX Runtime training API.</strong>
+    <ul>
+     <li><strong>Evidence:</strong> the v1.20.0 release notes say "All ONNX Runtime Training packages have been deprecated. ORT 1.19.2 was the last release…".</li>
+     <li><strong>Consequence:</strong> PR #1449, which used it, is superseded by this document.</li>
+    </ul>
+     </li>
+     <li><strong>TorchScript / <code>torch.jit</code>.</strong>
+    <ul>
+     <li><strong>Evidence:</strong> PyTorch's own docstrings in <code>torch/jit/__init__.py</code>, <code>torch/jit/_freeze.py</code>, <code>torch/jit/_fuser.py</code> and <code>torch/jit/_async.py</code> read "TorchScript is deprecated, please use <code>torch.compile</code> instead". <code>torch/csrc/jit/frontend/script_type_parser.cpp</code> adds "2024.08.14: Since we are starting to deprecate Torchscript usages".</li>
+     <li><strong>Consequence:</strong> no TorchScript models and no <code>torch::jit::load</code>. Architectures are defined in Objeck instead (§7).</li>
+    </ul>
+     </li>
+     <li><strong><code>torch-directml</code>.</strong>
+    <ul>
+     <li><strong>Evidence:</strong> its last PyPI release is 0.2.5.dev240914, on 2024-09-15. Its last GitHub pre-release is 2024-08-19. The <code>microsoft/DirectML</code> README opens with "DirectML is in maintenance mode" and points to Windows ML.</li>
+    </ul>
+     </li>
+     <li><strong>Python-side export tools on the user's path</strong> (<code>optimum</code>, <code>torch.onnx.export</code>).
+    <ul>
+     <li>They are maintained.</li>
+     <li><strong>Why rejected:</strong> they break the Python-free rule. Phase A downloads exports that already exist; Phase E writes ONNX from Objeck.</li>
+     <li>They stay acceptable for the lab's <em>own</em> Colab notebook, which is already Python (§9).</li>
+    </ul>
+     </li>
+    </ul>
+    <h4 id="33-gaps-the-rule-leaves-stated-plainly">3.3 Gaps the rule leaves, stated plainly</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Gap</th><th>Why</th><th>What users get</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Gap"><strong>GPU training on Windows arm64</strong></td><td data-label="Why">libtorch publishes only a CPU build for Windows arm64 (<code>libtorch-win-arm64-shared-with-deps-2.15.0+cpu.zip</code>). No CUDA, ROCm or XPU build exists for it</td><td data-label="What users get">CPU training on Windows arm64. GPU <em>inference</em> still works through ONNX Runtime (QNN on Snapdragon)</td></tr>
+      <tr><td data-label="Gap"><strong>GPU training on AMD GPUs under Windows</strong></td><td data-label="Why">ROCm libtorch is Linux-only (<code>rocm7.14</code>, <code>rocm10.0</code> builds are <code>manylinux_2_28_x86_64</code>). DirectML is excluded</td><td data-label="What users get">CPU on Windows. AMD GPU training on Linux through ROCm</td></tr>
+      <tr><td data-label="Gap"><strong>Linux arm64 has no libtorch zip</strong></td><td data-label="Why">download.pytorch.org has no <code>libtorch-*aarch64*.zip</code> (404). The CPU <strong>wheel</strong> for <code>manylinux_2_28_aarch64</code> carries the same libraries (<code>torch/lib/libtorch_cpu.so</code> and its dependencies, measured)</td><td data-label="What users get">The release pipeline takes the libraries from the wheel. That is a supported artifact, used as an archive, without running Python</td></tr>
+      <tr><td data-label="Gap"><strong>DeBERTa-v3-base weights as <code>safetensors</code></strong></td><td data-label="Why"><code>microsoft/deberta-v3-base</code> ships only <code>pytorch_model.bin</code> (a Python pickle). Objeck must never unpickle: loading a pickle can run arbitrary code</td><td data-label="What users get">Phase B's DeBERTa support loads only <code>safetensors</code> repos; many fine-tuned DeBERTa repos have them. ONNX inference of DeBERTa (Phase A) is unaffected</td></tr>
+      <tr><td data-label="Gap"><strong>Objeck's own Windows ONNX GPU path uses DirectML</strong></td><td data-label="Why">The DirectML README says it is in maintenance mode. Objeck ships the DirectML 1.22.1 ONNX Runtime build on Windows x64 and arm64</td><td data-label="What users get"><strong>Outside this design, but flagged:</strong> an existing dependency violates the new rule. A separate design should move Windows GPU inference to a maintained execution provider; ONNX Runtime publishes plugin EPs such as <code>plugin-ep-webgpu/v0.5.0</code> (2026-10-29). See the follow-ups (§13)</td></tr>
+     </tbody>
+    </table>
+    <h3 id="4-what-future-ai-work-needs-from-the-foundation">4. What future AI work needs from the foundation</h3>
+    <p>A short survey, to make sure the layers are the right ones. The foundation's job is to make each of these a library on top, not a new binding.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Area</th><th>What it needs</th><th>Layers it uses</th><th>Built on today's pieces</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Area"><strong>Decoder LLMs</strong> (GPT-style, Llama-style)</td><td data-label="What it needs">Causal attention; RoPE; a KV cache updated in place; sampling (top-k, top-p, temperature); BPE tokenizers; int8/int4 weights; <strong>LoRA</strong> adapters (a frozen base, small trainable matrices); bf16/fp16</td><td data-label="Layers it uses">tensor core (in-place <code>IndexCopy</code>, <code>Narrow</code>, dtypes), <code>nn</code> (Embedding, RMSNorm, Linear with an optional LoRA), autograd (parameters partly frozen), hub (sharded <code>safetensors</code> with <code>model.safetensors.index.json</code>), tokenizers (BPE)</td><td data-label="Built on today&#x27;s pieces"><code>Phi3Session</code> in <code>onnx.obs</code> keeps working for ONNX-exported decoders; the foundation adds native Objeck decoders that can also be trained</td></tr>
+      <tr><td data-label="Area"><strong>Vision</strong> (ViT, CNNs, detection)</td><td data-label="What it needs">Conv2d, pooling, BatchNorm, patch embedding, image tensors from OpenCV mats with no extra copy where possible</td><td data-label="Layers it uses">tensor core (<code>FromImage</code> from <code>API.OpenCV</code> pixel buffers), <code>nn</code> (Conv2d, BatchNorm2d), data (image datasets and augmentation)</td><td data-label="Built on today&#x27;s pieces"><code>opencv.obs</code> for I/O; <code>query_vision.obs</code> keeps YOLO-over-ONNX; a ViT classifier is §8.3</td></tr>
+      <tr><td data-label="Area"><strong>Audio</strong> (Whisper-style encoders, keyword spotting)</td><td data-label="What it needs">STFT / mel features, 1-D convolutions, encoder–decoder attention</td><td data-label="Layers it uses">tensor core (FFT via libtorch <code>torch::fft</code>), <code>nn</code> (Conv1d), data (WAV loading)</td><td data-label="Built on today&#x27;s pieces">The existing audio I/O (<code>lame.obs</code>, SDL mixer) is playback-oriented; a WAV reader goes in the data layer</td></tr>
+      <tr><td data-label="Area"><strong>Embeddings and RAG</strong></td><td data-label="What it needs">Sentence embeddings, rerankers, vector search over <code>Query.Structured</code></td><td data-label="Layers it uses">pipelines (<code>SentenceEmbedder</code>, <code>CrossEncoder</code>), tensor core (cosine top-k), <code>query_ml.obs</code> (an embedding column source)</td><td data-label="Built on today&#x27;s pieces"><code>BertEmbedder</code> today; Phase A adds sentence-transformers pooling configs and rerankers</td></tr>
+      <tr><td data-label="Area"><strong>Reinforcement learning</strong></td><td data-label="What it needs">Small MLP/CNN policies, autograd through custom losses, replay buffers, many small steps per second</td><td data-label="Layers it uses">tensor core, autograd, optimizers, data (replay buffer)</td><td data-label="Built on today&#x27;s pieces"><code>ai_rl.obs</code> keeps the tabular algorithms; DQN and PPO go beside it</td></tr>
+      <tr><td data-label="Area"><strong>Agents</strong></td><td data-label="What it needs">Tool calling against hosted LLMs, plus local embeddings, rerankers and small local models</td><td data-label="Layers it uses">pipelines; hub</td><td data-label="Built on today&#x27;s pieces"><code>openai.obs</code>, <code>gemini.obs</code>, <code>ollama.obs</code> stay the LLM clients. The foundation supplies the local parts</td></tr>
+     </tbody>
+    </table>
+    <p>What this asks of the core, beyond BERT:</p>
+    <ul>
+     <li><strong>dtypes:</strong> f32, f16, bf16, i64, i32, i8/u8 (quantized weights), and bool.</li>
+     <li><strong>In-place ops:</strong> the KV cache, optimizer updates.</li>
+     <li><strong>Views:</strong> <code>View</code>, <code>Narrow</code>, <code>Permute</code>, <code>Transpose</code>.</li>
+     <li><strong>Indexing.</strong></li>
+     <li><strong>FFT.</strong></li>
+     <li><strong>Frozen versus trainable parameters, per tensor.</strong></li>
+     <li><strong>Sharded <code>safetensors</code> files.</strong></li>
+    </ul>
+    <p>Every one of these is in libtorch. The binding must not paint them out: the native shim's tensor handle carries any dtype and device from day one, even though BERT needs only f32 and i64 (§6).</p>
+    <h3 id="5-the-layers">5. The layers</h3>
+    <p>Each layer is its own library, so a program links only what it uses. This follows the rule that made <code>nlp_onnx</code> a separate library: the compiler resolves every class a linked library names, so an inference-only program must never need libtorch.</p>
+<pre class="plain"> programs ─────────────────────────────────────────────────────────────────────────────
+   pipelines        System.NLP.Onnx   (nlp_onnx.obl)      TextClassifier, TokenClassifier, QuestionAnswerer,
+                                                          FillMask, SentenceEmbedder, CrossEncoder, BertEmbedder
+                    System.AI.Torch.Runner (ai_torch_runner.obl)   runs those pipelines on torch-defined models
+   model zoo        System.AI.Transformers (ai_transformers.obl)   Bert, DistilBert, Roberta, XlmRoberta, DebertaV2,
+                                                          Gpt (decoder), Vit; task heads; FineTuner
+   training         System.AI.Optim   (ai_optim.obl)       AdamW, SGD, LR schedules, gradient clipping, Trainer
+                    System.AI.Data    (ai_data.obl)        Dataset, DataLoader, samplers, collate, text/image/audio readers
+   modules          System.AI.NN      (ai_nn.obl)          Module, Parameter, Linear, Embedding, LayerNorm, RMSNorm,
+                                                          Dropout, MultiHeadAttention, Conv1d/2d, functional ops
+   core             System.AI.Tensor  (ai_tensor.obl  + libobjk_torch)  Tensor, DType, Device, autograd, Scope, Generator
+   I/O              System.AI.Hub     (ai_hub.obl)         HubClient, HubCache, SafeTensors, ModelConfig (config.json)
+                    System.NLP        (nlp.obl)            WordPiece, BPE, Unigram, TokenizerJson, TokenEncoding
+   runtime / export API.Onnx          (onnx.obl)           Session (existing); OnnxExporter (Phase E)
+   existing         System.ML, API.Models, Query.Structured.*, System.AI (RL, search), API.OpenAI/Google/Ollama</pre>
+    <p><strong>Dependency direction.</strong></p>
+    <ul>
+     <li><code>ai_hub</code> and <code>nlp</code> need no native compute library.</li>
+     <li><code>ai_tensor</code> is the only library that loads libtorch.</li>
+     <li><code>nlp_onnx</code>, the pipelines, needs ONNX and never libtorch. The torch runner lives in its own library, which depends on both. So a pipeline program links libtorch only when it asks for the torch backend.</li>
+    </ul>
+    <p><strong>Bundle names.</strong> The new bundles extend the existing <code>System.AI</code> family, which today holds the classic AI library: search, games, optimisation and RL. Decision D7 below.</p>
+    <h3 id="6-language-and-vm-fit">6. Language and VM fit</h3>
+    <h4 id="61-one-tensor-class-dtype-as-a-value">6.1 One <code>Tensor</code> class, dtype as a value</h4>
+    <p>The compute tensor is <code>System.AI.Tensor.Tensor</code>: a handle to a libtorch tensor, plus a reference to any Objeck array it views.</p>
+    <ul>
+     <li><strong>Dtype and device are values on the tensor</strong>, not type parameters. Code like <code>x-&gt;To(DType-&gt;F16)-&gt;To(Device-&gt;Cuda(0))</code> changes them at run time. A generic <code>Tensor&lt;T&gt;</code> would put the dtype into the static type and break that. PyTorch, candle and JAX all keep the dtype dynamic for the same reason.</li>
+     <li><strong>Generics still serve the layers above:</strong>
+    <ul>
+     <li><code>Module</code> holds <code>Vector&lt;Parameter&gt;</code>;</li>
+     <li><code>DataLoader&lt;T&gt;</code> yields a user's batch type;</li>
+     <li><code>Map&lt;String, Tensor&gt;</code> is the <code>safetensors</code> state dict.</li>
+    </ul>
+     </li>
+     <li><strong><code>API.Models.Tensor</code> stays the interchange type for named model I/O.</strong> The core tensor converts to and from it:</li>
+    </ul>
+<pre class="line-numbers"><code class="language-cpp">t := Tensor-&gt;From(api_tensor);
+api := t-&gt;ToModelTensor("logits");
+</code></pre>
+    <h4 id="62-no-operator-overloading-methods-chained">6.2 No operator overloading: methods, chained</h4>
+    <p>Objeck has no operator overloading (<code>docs/ROSETTA_HARDENING.md</code>: "Objeck has no operator overloading. Arithmetic types expose named methods."). The tensor API is therefore method-based and fluent:</p>
+<pre class="line-numbers"><code class="language-cpp">scores := q-&gt;MatMul(k-&gt;Transpose(-2, -1))-&gt;Mul(scale)-&gt;Add(mask);   # Python: q @ k.transpose(-2, -1) * scale + mask
+probs := scores-&gt;Softmax(-1);
+</code></pre>
+    <ul>
+     <li><strong>This is enough to write every architecture in §8.</strong></li>
+     <li><strong>Operator overloading is a language change, so it is decision L1:</strong> <code>a + b</code>, <code>a * b</code> and <code>a @ b</code> dispatching to <code>Add</code>, <code>Mul</code> and <code>MatMul</code> on any class that declares them. Recommended <strong>later</strong>, as its own design, once the tensor API exists and real model code shows where the method chains hurt. It is not a prerequisite for anything here.</li>
+    </ul>
+    <h4 id="63-memory-native-tensors-the-gc-and-zero-copy">6.3 Memory: native tensors, the GC, and zero-copy</h4>
+    <ul>
+     <li><strong>Tensor storage is native memory owned by libtorch.</strong> An Objeck <code>Tensor</code> object holds the handle as an <code>Int</code> and stores <strong>no object references inside C++</strong>, so no <code>WriteBarrier</code> is needed. Results that come back as Objeck arrays are allocated by the VM in the old generation (<code>docs/native_interface.md</code>, and the native-allocation rule since PR #650).</li>
+     <li><strong>Zero-copy from Objeck arrays is possible, but only for 64-bit types.</strong>
+    <ul>
+     <li>Objeck's <code>Float</code> is a 64-bit double and <code>Int</code> is 64-bit. <code>Tensor-&gt;View(values : Float[], shape)</code> wraps the array's memory as an <strong>f64</strong> tensor (<code>torch::from_blob</code>). <code>Int[]</code> becomes <strong>i64</strong>, which is exactly what token ids need.</li>
+     <li>This is safe because arrays are born in the old generation, and "old objects are never moved" (<code>docs/native_interface.md</code>). The Objeck <code>Tensor</code> keeps a reference to the array, so the array lives as long as the view.</li>
+    </ul>
+     </li>
+     <li><strong>f32, the dtype models train in, needs one conversion at the boundary.</strong> <code>Tensor-&gt;FromFloats(values, shape, DType-&gt;F32)</code> copies and narrows. <code>ToFloats()</code> widens back. Inside a model, nothing crosses the boundary: activations and weights stay native from load to result.</li>
+     <li><strong>Lifetime: no finalizers today.</strong>
+    <ul>
+     <li>Objeck has no <code>AutoCloseable</code> and no finalizers (<code>docs/INFERENCE_ENGINES_PLAN.md</code> §"Lifetime" asked the same question for ONNX sessions).</li>
+     <li>A forward pass creates hundreds of temporary tensors, so manual <code>Close()</code> per tensor is not workable. The design uses <strong>scopes</strong>: every tensor created inside a scope is freed when the scope ends, except the ones returned or marked to keep.</li>
+    </ul>
+     </li>
+    </ul>
+<pre class="line-numbers"><code class="language-cpp">loss := Tensor-&gt;Scope(\() =&gt; {
+  logits := model-&gt;Forward(batch);
+  return logits-&gt;CrossEntropy(batch-&gt;GetLabels());     # survives the scope
+});
+</code></pre>
+    <ul>
+     <li><strong>Owned outside scopes:</strong> parameters (by their <code>Module</code>), optimizer state (by the optimizer), and tensors explicitly kept.</li>
+     <li><strong>Native-side backstop:</strong> a debug counter of live handles, which the tests assert returns to the baseline after each step.</li>
+     <li><strong>Finalizers, or a <code>using</code>-style block, are decision L2:</strong> a VM change, recommended as a separate design that would let scopes become a convenience rather than a requirement.</li>
+    </ul>
+    <h4 id="64-autograd-lives-in-libtorch-closures-serve-the-training-loop">6.4 Autograd lives in libtorch; closures serve the training loop</h4>
+    <ul>
+     <li><strong>Gradients are recorded and computed by libtorch's autograd</strong>, the same engine as PyTorch:
+    <ul>
+     <li><code>loss-&gt;Backward()</code>, <code>Tensor-&gt;NoGrad(\() =&gt; ...)</code> and <code>param-&gt;RequiresGrad(false)</code> map directly onto it;</li>
+     <li>Objeck closures never implement a backward pass for built-in ops.</li>
+    </ul>
+     </li>
+     <li><strong>Where closures are used:</strong>
+    <ul>
+     <li>the bodies of <code>Scope</code> and <code>NoGrad</code>;</li>
+     <li><code>Trainer</code> callbacks (on step, on epoch, on evaluate);</li>
+     <li>data-loader transforms;</li>
+     <li>later, custom autograd functions (a forward and a backward written in Objeck, through libtorch's custom <code>Function</code>).</li>
+    </ul>
+     </li>
+    </ul>
+    <p>The FEATURES guide's lambda forms (<code>\() =&gt; body</code>, and the annotated <code>\(T) ~ R : (x) =&gt; body</code>) are enough for all of these.</p>
+    <h4 id="65-the-jit-and-native-call-overhead">6.5 The JIT and native-call overhead</h4>
+    <ul>
+     <li><strong>Every tensor op is one native call.</strong> A BERT-base forward is about 12 layers × ~25 ops ≈ 300 calls per batch, against about 1.5 s of compute for a batch of 32 at length 128 (measured, §10.2). Call overhead is noise at that scale.</li>
+     <li><strong>Where it matters:</strong> RL with tiny networks and many small steps. B0 measures the per-call cost under the JIT and under the interpreter. If it is significant, the shim adds fused calls for the hot paths (<code>Linear</code>, attention) rather than changing the VM.</li>
+     <li><strong>Threads:</strong> libtorch's intra-op pool does the parallel work. Objeck threads may each run their own models. A tensor shared across Objeck threads is the user's responsibility, as in PyTorch.</li>
+    </ul>
+    <h3 id="7-phase-a--use-models-hub-tokenizers-pipelines-over-onnx">7. Phase A — use models: hub, tokenizers, pipelines (over ONNX)</h3>
+    <h4 id="71-the-hub-has-the-models-measured">7.1 The Hub has the models (measured)</h4>
+    <p>Exports that already exist cover the common BERT family. Counted from the Hub API (<code>/api/models</code>, 2026-10-29):</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Pipeline tag</th><th>Repos tagged <code>onnx</code> (Hub-wide)</th><th><code>Xenova/*</code></th><th><code>onnx-community/*</code></th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Pipeline tag">text-classification</td><td data-label="Repos tagged onnx (Hub-wide)">1,877</td><td data-label="Xenova/">24</td><td data-label="onnx-community/">90</td></tr>
+      <tr><td data-label="Pipeline tag">token-classification</td><td data-label="Repos tagged onnx (Hub-wide)">1,648</td><td data-label="Xenova/">16</td><td data-label="onnx-community/">57</td></tr>
+      <tr><td data-label="Pipeline tag">question-answering</td><td data-label="Repos tagged onnx (Hub-wide)">218</td><td data-label="Xenova/">6</td><td data-label="onnx-community/">24</td></tr>
+      <tr><td data-label="Pipeline tag">fill-mask</td><td data-label="Repos tagged onnx (Hub-wide)">182</td><td data-label="Xenova/">40</td><td data-label="onnx-community/">35</td></tr>
+      <tr><td data-label="Pipeline tag">feature-extraction</td><td data-label="Repos tagged onnx (Hub-wide)">1,127</td><td data-label="Xenova/">108</td><td data-label="onnx-community/">47</td></tr>
+      <tr><td data-label="Pipeline tag">sentence-similarity</td><td data-label="Repos tagged onnx (Hub-wide)">1,019</td><td data-label="Xenova/">0</td><td data-label="onnx-community/">26</td></tr>
+      <tr><td data-label="Pipeline tag">zero-shot-classification</td><td data-label="Repos tagged onnx (Hub-wide)">167</td><td data-label="Xenova/">17</td><td data-label="onnx-community/">8</td></tr>
+      <tr><td data-label="Pipeline tag">text-ranking (rerankers)</td><td data-label="Repos tagged onnx (Hub-wide)">147</td><td data-label="Xenova/">2</td><td data-label="onnx-community/">1</td></tr>
+     </tbody>
+    </table>
+    <p>Specific models (<code>/api/models/{repo}?blobs=true</code> and each repo's <code>config.json</code>):</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Model</th><th>Ready ONNX export</th><th>Files</th><th><code>tokenizer.json</code></th><th>Labels in <code>config.json</code></th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Model">bert-base-uncased</td><td data-label="Ready ONNX export"><code>Xenova/bert-base-uncased</code>; also <code>google-bert/bert-base-uncased</code> (<code>model.onnx</code> at the root, 532 MB)</td><td data-label="Files"><code>onnx/model.onnx</code> 438 MB, <code>model_quantized.onnx</code> 111 MB, plus fp16, int8, uint8, q4, q4f16, bnb4</td><td data-label="tokenizer.json">yes</td><td data-label="Labels in config.json">— (fill-mask)</td></tr>
+      <tr><td data-label="Model">DistilBERT</td><td data-label="Ready ONNX export"><code>Xenova/distilbert-base-uncased</code>; the original repo has none</td><td data-label="Files">8 variants</td><td data-label="tokenizer.json">yes</td><td data-label="Labels in config.json">—</td></tr>
+      <tr><td data-label="Model">MiniLM (all-MiniLM-L6-v2)</td><td data-label="Ready ONNX export"><code>sentence-transformers/all-MiniLM-L6-v2</code> ships its own <code>onnx/</code> (fp32 90 MB; <code>qint8_arm64</code>, <code>qint8_avx512</code>, … 23 MB; O1–O4)</td><td data-label="Files">9 files</td><td data-label="tokenizer.json">yes</td><td data-label="Labels in config.json">—</td></tr>
+      <tr><td data-label="Model">RoBERTa</td><td data-label="Ready ONNX export"><code>Xenova/roberta-base</code>, <code>Xenova/distilroberta-base</code></td><td data-label="Files">model 499 / 329 MB, fp16, quantized</td><td data-label="tokenizer.json">yes (BPE)</td><td data-label="Labels in config.json">—</td></tr>
+      <tr><td data-label="Model">DeBERTa-v3</td><td data-label="Ready ONNX export"><strong>none</strong> for <code>microsoft/deberta-v3-base</code> (it has no <code>tokenizer.json</code> either, only <code>spm.model</code>). Fine-tuned DeBERTa-v3 repos do have exports: <code>Xenova/nli-deberta-v3-small</code>, <code>cross-encoder/nli-deberta-v3-base</code>, <code>mixedbread-ai/mxbai-rerank-xsmall-v1</code>, <code>protectai/deberta-v3-base-prompt-injection-v2</code></td><td data-label="Files">8 variants (Xenova)</td><td data-label="tokenizer.json">yes (Unigram)</td><td data-label="Labels in config.json">3 (NLI)</td></tr>
+      <tr><td data-label="Model">XLM-R</td><td data-label="Ready ONNX export"><code>Xenova/xlm-roberta-base</code> (model 1,114 MB)</td><td data-label="Files">fp32, fp16, quantized</td><td data-label="tokenizer.json">yes (Unigram, 17 MB)</td><td data-label="Labels in config.json">—</td></tr>
+      <tr><td data-label="Model">Classifier: SST-2</td><td data-label="Ready ONNX export"><code>Xenova/distilbert-base-uncased-finetuned-sst-2-english</code>; the original <code>distilbert/…</code> has <code>onnx/model.onnx</code> but no <code>tokenizer.json</code></td><td data-label="Files">8 variants</td><td data-label="tokenizer.json">yes</td><td data-label="Labels in config.json">2: NEGATIVE, POSITIVE</td></tr>
+      <tr><td data-label="Model">Classifiers: others</td><td data-label="Ready ONNX export"><code>Xenova/twitter-roberta-base-sentiment-latest</code> (3), <code>Xenova/bert-base-multilingual-uncased-sentiment</code> (5), <code>Xenova/toxic-bert</code> (6), <code>SamLowe/roberta-base-go_emotions-onnx</code> (28)</td><td data-label="Files"></td><td data-label="tokenizer.json">yes</td><td data-label="Labels in config.json">yes</td></tr>
+      <tr><td data-label="Model">NER</td><td data-label="Ready ONNX export"><code>Xenova/bert-base-NER</code>; <code>dslim/bert-base-NER</code> has <code>onnx/model.onnx</code> but no <code>tokenizer.json</code>; <code>Xenova/bert-base-multilingual-cased-ner-hrl</code></td><td data-label="Files">8 variants</td><td data-label="tokenizer.json">yes</td><td data-label="Labels in config.json">9 (<code>O</code>, <code>B-PER</code>, <code>I-PER</code>, …)</td></tr>
+      <tr><td data-label="Model">QA</td><td data-label="Ready ONNX export"><code>Xenova/distilbert-base-cased-distilled-squad</code>, <code>Xenova/distilbert-base-uncased-distilled-squad</code>, <code>onnx-community/roberta-base-squad2-ONNX</code></td><td data-label="Files">8 variants</td><td data-label="tokenizer.json">yes</td><td data-label="Labels in config.json">—</td></tr>
+      <tr><td data-label="Model">Rerankers</td><td data-label="Ready ONNX export"><code>cross-encoder/ms-marco-MiniLM-L6-v2</code> (own <code>onnx/</code>), <code>Xenova/bge-reranker-base</code> (XLM-R), <code>mixedbread-ai/mxbai-rerank-xsmall-v1</code> (DeBERTa)</td><td data-label="Files"></td><td data-label="tokenizer.json">yes</td><td data-label="Labels in config.json">1</td></tr>
+     </tbody>
+    </table>
+    <p><strong>The layout to support:</strong></p>
+    <ul>
+     <li><code>config.json</code>, <code>tokenizer.json</code> and <code>tokenizer_config.json</code> at the repo root;</li>
+     <li>the models under <code>onnx/</code>;</li>
+     <li>some repos (<code>google-bert/*</code>) with <code>model.onnx</code> at the root;</li>
+     <li>some repos with no <code>tokenizer.json</code>, only <code>vocab.txt</code> with <code>tokenizer_config.json</code> (<code>do_lower_case</code>). The WordPiece path must take that too.</li>
+    </ul>
+    <p><strong>Variant names:</strong></p>
+    <ul>
+     <li><code>model.onnx</code> (fp32);</li>
+     <li><code>model_quantized.onnx</code> and <code>model_int8</code> / <code>model_uint8</code> (dynamic int8 quantization);</li>
+     <li><code>model_fp16</code>, <code>model_q4</code>, <code>model_q4f16</code>, <code>model_bnb4</code>;</li>
+     <li>sentence-transformers' <code>model_O1</code>…<code>O4</code> and <code>model_qint8_*</code>.</li>
+    </ul>
+    <h4 id="72-model-signatures-measured-from-real-exports">7.2 Model signatures (measured from real exports)</h4>
+    <p>Read with the <code>onnx</code> package from the downloaded files:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Export</th><th>Inputs (all INT64 <code>[batch, sequence]</code>)</th><th>Outputs (FP32)</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Export">DistilBERT SST-2</td><td data-label="Inputs (all INT64 [batch, sequence])"><code>input_ids</code>, <code>attention_mask</code></td><td data-label="Outputs (FP32)"><code>logits [batch, 2]</code></td></tr>
+      <tr><td data-label="Export">bert-base-NER</td><td data-label="Inputs (all INT64 [batch, sequence])"><code>input_ids</code>, <code>attention_mask</code>, <code>token_type_ids</code></td><td data-label="Outputs (FP32)"><code>logits [batch, sequence, 9]</code></td></tr>
+      <tr><td data-label="Export">DistilBERT SQuAD</td><td data-label="Inputs (all INT64 [batch, sequence])"><code>input_ids</code>, <code>attention_mask</code></td><td data-label="Outputs (FP32)"><code>start_logits</code>, <code>end_logits [batch, sequence]</code></td></tr>
+      <tr><td data-label="Export">distilroberta-base (fill-mask)</td><td data-label="Inputs (all INT64 [batch, sequence])"><code>input_ids</code>, <code>attention_mask</code></td><td data-label="Outputs (FP32)"><code>logits [batch, sequence, 50265]</code></td></tr>
+      <tr><td data-label="Export">bert-base-uncased (fill-mask)</td><td data-label="Inputs (all INT64 [batch, sequence])"><code>input_ids</code>, <code>attention_mask</code>, <code>token_type_ids</code></td><td data-label="Outputs (FP32)"><code>logits [batch, sequence, 30522]</code></td></tr>
+      <tr><td data-label="Export">ms-marco cross-encoder</td><td data-label="Inputs (all INT64 [batch, sequence])"><code>input_ids</code>, <code>attention_mask</code>, <code>token_type_ids</code></td><td data-label="Outputs (FP32)"><code>logits [batch, 1]</code></td></tr>
+      <tr><td data-label="Export">mxbai-rerank (DeBERTa)</td><td data-label="Inputs (all INT64 [batch, sequence])"><code>input_ids</code>, <code>attention_mask</code></td><td data-label="Outputs (FP32)"><code>logits [batch, 1]</code></td></tr>
+      <tr><td data-label="Export">nli-deberta-v3-small</td><td data-label="Inputs (all INT64 [batch, sequence])"><code>input_ids</code>, <code>attention_mask</code></td><td data-label="Outputs (FP32)"><code>logits [batch, 3]</code></td></tr>
+      <tr><td data-label="Export">all-MiniLM-L6-v2</td><td data-label="Inputs (all INT64 [batch, sequence])"><code>input_ids</code>, <code>attention_mask</code>, <code>token_type_ids</code></td><td data-label="Outputs (FP32)"><code>last_hidden_state [batch, sequence, 384]</code></td></tr>
+     </tbody>
+    </table>
+    <p>All axes are dynamic. <strong>Only BERT-type exports declare <code>token_type_ids</code>.</strong> DistilBERT, RoBERTa and DeBERTa-v3 exports do not. The pipelines therefore do what <code>BertEmbedder</code> already does:</p>
+    <ul>
+     <li>build only the inputs the session declares;</li>
+     <li>ask only for the outputs they need.</li>
+    </ul>
+    <h4 id="73-hub-client-and-cache-systemaihub-ai_hubobl">7.3 Hub client and cache (<code>System.AI.Hub</code>, <code>ai_hub.obl</code>)</h4>
+    <p><strong>What the Hub answers (measured with raw HEAD requests, no redirects followed):</strong></p>
+    <ul>
+     <li><strong><code>GET https://huggingface.co/{repo}/resolve/{revision}/{path}</code></strong>
+    <ul>
+     <li><strong>Small (git) files:</strong> <code>307</code> with a <strong>relative</strong> <code>Location: /api/resolve-cache/models/{repo}/{commit}/{path}?…</code>.</li>
+     <li><strong>Large (LFS/Xet) files:</strong> <code>302</code> to an <strong>absolute, signed CDN URL</strong> (<code>https://us.aws.cdn.hf.co/xet-bridge-us/…&amp;Expires=…&amp;Signature=…</code>).</li>
+    </ul>
+     </li>
+     <li><strong>The first response carries the metadata:</strong>
+    <ul>
+     <li><code>X-Repo-Commit</code>, the commit the revision resolved to;</li>
+     <li><code>X-Linked-Size</code>;</li>
+     <li><code>X-Linked-Etag</code>, which is the file's <strong>SHA-256</strong> for LFS files (it matches the <code>lfs.sha256</code> that the API lists) and the <strong>git blob SHA-1</strong> for small files.</li>
+    </ul>
+     </li>
+     <li><strong>The CDN answers <code>Accept-Ranges: bytes</code></strong>, so interrupted downloads can resume.</li>
+    </ul>
+    <p><strong>What Objeck's HTTPS client does with that today</strong> (<code>core/compiler/lib_src/net_secure.obs</code>, <code>net_common.obs</code>):</p>
+    <ul>
+     <li><strong>Redirects work.</strong> It follows 301/302/303/307/308, and <code>BuildRedirectUrl</code> resolves a relative <code>Location</code> against the current host with <code>https://</code>.</li>
+     <li><strong>Large files fail.</strong>
+    <ul>
+     <li>The whole body is read into memory, and <code>WebCommon-&gt;ReadLength</code> returns <code>Nil</code> above 256 MB (<code>if(length &gt; 256*1048576)</code>).</li>
+     <li><strong>Every fp32 base model fails:</strong> bert-base 438 MB, RoBERTa 499 MB, XLM-R 1,114 MB.</li>
+    </ul>
+     </li>
+     <li><strong>Tokens would leak.</strong>
+    <ul>
+     <li><code>@request_headers</code> are re-sent on <strong>every</strong> hop, including a redirect to another host.</li>
+     <li>An <code>Authorization: Bearer</code> token for a gated repo would be sent to the CDN.</li>
+     <li><strong>This is a security bug to fix before any token support ships.</strong> Strip <code>Authorization</code> (and cookies) on a cross-origin redirect, as curl and browsers do.</li>
+    </ul>
+     </li>
+     <li><strong>Checksums need streaming.</strong> <code>Cipher.Hash-&gt;SHA256</code> takes one <code>Byte[]</code>, so a 1.1 GB file would have to sit in memory to be hashed.</li>
+    </ul>
+    <p><strong>Required changes, all in Phase A2:</strong></p>
+    <ul>
+     <li><strong><code>HttpsClient-&gt;GetToFile(url, path, headers)</code></strong> streams to a temporary file in chunks, follows redirects, and resumes with <code>Range: bytes=N-</code> when the server accepts ranges. It also gets <code>HttpClient</code> and HTTP/2 counterparts. No size cap: the cap exists to protect memory, and streaming removes the reason.</li>
+     <li><strong>The cross-origin <code>Authorization</code> strip</strong>, with a regression test against a local server that redirects to a second port.</li>
+     <li><strong>An incremental hash:</strong> <code>Cipher.Hash-&gt;Sha256Init/Update/Final</code>, or a <code>Hasher</code> object, over the native library behind <code>Cipher.Hash</code>. Git-blob SHA-1 for small files uses the existing <code>SHA1</code> on <code>"blob {size}\0" + content</code>.</li>
+    </ul>
+    <p><strong>The cache:</strong></p>
+<pre class="plain">$OBJECK_HUB_CACHE   (default: ~/.objeck/hub; Windows: %USERPROFILE%\.objeck\hub)
+  models--Xenova--distilbert-base-uncased-finetuned-sst-2-english/
+    refs/main                       → 0b6928efcb76139cae2c6881d49cda67fe119f42
+    snapshots/0b6928ef…/config.json
+    snapshots/0b6928ef…/tokenizer.json
+    snapshots/0b6928ef…/onnx/model_quantized.onnx
+    .incomplete/…                   (resumable partial downloads)
+    manifest.json                   (per file: size, sha256 or git-sha1, URL, time)</pre>
+    <ul>
+     <li><strong>The same naming as Python's <code>huggingface_hub</code> cache</strong>, but snapshots hold <strong>real files, not symlinks</strong>.
+    <ul>
+     <li>Python falls back to copies on Windows without developer mode anyway.</li>
+     <li>Symlinks are a known trap in this repository's Windows checkouts.</li>
+     <li>The cost: no de-duplication across revisions. Acceptable for a model cache.</li>
+    </ul>
+     </li>
+     <li><strong>Python's cache is read, never written.</strong> With <code>OBJECK_HUB_CACHE_PYTHON=1</code>, or when offline, a lookup that misses checks <code>$HF_HUB_CACHE</code> (or <code>~/.cache/huggingface/hub</code>). Models a user already downloaded with Python then work offline from Objeck. Decision D3.</li>
+     <li><strong>Integrity:</strong>
+    <ul>
+     <li>every file is hashed while it streams, and moved into <code>snapshots/</code> only on a match with <code>X-Linked-Etag</code>;</li>
+     <li>a mismatch deletes the partial file and fails with both hashes.</li>
+    </ul>
+     </li>
+     <li><strong>Offline:</strong>
+    <ul>
+     <li><code>OBJECK_HUB_OFFLINE=1</code>, or <code>HF_HUB_OFFLINE=1</code>, never touches the network;</li>
+     <li>revisions resolve through <code>refs/</code>;</li>
+     <li>a missing file fails with the exact command or URL that would fetch it.</li>
+    </ul>
+     </li>
+     <li><strong>Pinning:</strong> <code>Hub-&gt;Download(repo, path, revision)</code>. A commit hash is immutable and skips the <code>refs</code> lookup. Programs and tests should pin.</li>
+     <li><strong>Tokens:</strong>
+    <ul>
+     <li>read from <code>HF_TOKEN</code>, or from <code>OBJECK_HUB_TOKEN</code>;</li>
+     <li>sent only to <code>huggingface.co</code>, never logged.</li>
+    </ul>
+     </li>
+     <li><strong>Variant choice:</strong>
+    <ul>
+     <li><strong>default <code>model.onnx</code> (fp32)</strong>, for parity with PyTorch;</li>
+     <li><code>Variant-&gt;QUANTIZED</code> picks <code>model_quantized.onnx</code>, about 4× smaller (111 versus 438 MB for bert-base);</li>
+     <li>fp16, q4 and bnb4 are refused by name until a phase tests them. Decision D4.</li>
+    </ul>
+     </li>
+    </ul>
+<pre class="line-numbers"><code class="language-cpp">use System.AI.Hub;
+
+hub := HubClient-&gt;New();                                  # cache, token and offline mode from the environment
+dir := hub-&gt;Snapshot("Xenova/distilbert-base-uncased-finetuned-sst-2-english",
+                     ["config.json", "tokenizer.json", "tokenizer_config.json", "onnx/model.onnx"]);
+if(dir = Nil) { hub-&gt;GetError()-&gt;ErrorLine(); return; };
+</code></pre>
+    <h4 id="74-tokenizers-systemnlp-nlpobl">7.4 Tokenizers (<code>System.NLP</code>, <code>nlp.obl</code>)</h4>
+    <p><strong>What real <code>tokenizer.json</code> files contain</strong> (measured, from the downloaded files):</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Model</th><th><code>model</code></th><th>normalizer</th><th>pre_tokenizer</th><th>post_processor</th><th>decoder</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Model">BERT / DistilBERT / MiniLM / NER / QA</td><td data-label="model">WordPiece (<code>##</code>, max 100 chars), 28,996–30,522 tokens</td><td data-label="normalizer"><code>BertNormalizer</code> (<code>lowercase</code> true or false, <code>strip_accents</code> null)</td><td data-label="pre_tokenizer"><code>BertPreTokenizer</code></td><td data-label="post_processor"><code>TemplateProcessing</code></td><td data-label="decoder">WordPiece</td></tr>
+      <tr><td data-label="Model">RoBERTa / DistilRoBERTa</td><td data-label="model">BPE, 50,265 tokens, 50,000 merges</td><td data-label="normalizer">none</td><td data-label="pre_tokenizer"><code>ByteLevel</code> (<code>add_prefix_space</code> false, <code>use_regex</code> true)</td><td data-label="post_processor"><code>RobertaProcessing</code></td><td data-label="decoder">ByteLevel</td></tr>
+      <tr><td data-label="Model">DeBERTa-v3 (nli-small, mxbai)</td><td data-label="model">Unigram, 128,000 tokens</td><td data-label="normalizer"><code>Sequence[Strip, Precompiled, Replace]</code></td><td data-label="pre_tokenizer"><code>Metaspace</code> (<code>▁</code>, <code>prepend_scheme</code> "always")</td><td data-label="post_processor"><code>TemplateProcessing</code></td><td data-label="decoder">Metaspace</td></tr>
+      <tr><td data-label="Model">XLM-R</td><td data-label="model">Unigram, 250,002 tokens</td><td data-label="normalizer"><code>Precompiled</code></td><td data-label="pre_tokenizer"><code>Sequence[WhitespaceSplit, Metaspace]</code></td><td data-label="post_processor"><code>TemplateProcessing</code></td><td data-label="decoder">Metaspace</td></tr>
+     </tbody>
+    </table>
+    <p>Some files also carry <code>truncation</code> and <code>padding</code>: all-MiniLM-L6-v2 pads to a fixed 128, and mxbai truncates at 500. Those are defaults the loader honours and the caller can override.</p>
+    <p><strong>Design.</strong> <code>TokenizerJson-&gt;Load(path)</code> builds a pipeline object from the four stages. Each stage is a small class behind an interface, so new component types are added without touching the others:</p>
+    <ul>
+     <li><strong>Normalizers:</strong>
+    <ul>
+     <li><code>BertNormalizer</code> (the existing WordPiece text cleaning, moved behind the interface);</li>
+     <li><code>Lowercase</code>, <code>Strip</code>, <code>Replace</code>, <code>NFC</code>/<code>NFKC</code>, <code>Sequence</code>;</li>
+     <li><strong><code>Precompiled</code></strong>: SentencePiece's normalisation table, a base64 blob of 316,720 characters in both the DeBERTa and XLM-R files. It holds a double-array trie and its replacement strings. Objeck parses the blob itself, about 200 lines. Its parity is tested on a full sweep of the Unicode planes, not only on sample text.</li>
+    </ul>
+     </li>
+     <li><strong>Pre-tokenizers:</strong>
+    <ul>
+     <li><code>BertPreTokenizer</code>, <code>WhitespaceSplit</code>, <code>Metaspace</code>, <code>Sequence</code>;</li>
+     <li><strong><code>ByteLevel</code></strong>: the GPT-2 split pattern, letters <code>\p{L}+</code>, numbers <code>\p{N}+</code>, contractions, and space handling. It is written as a hand-coded scanner, not as a regex, so it does not depend on the regex library's <code>\p{…}</code> support. <code>WordPieceUnicode</code> already has generated punctuation, control, mark and case tables. A4 adds letter (<code>L*</code>) and number (<code>N*</code>) category tables generated the same way. The bytes→unicode map is GPT-2's fixed table.</li>
+    </ul>
+     </li>
+     <li><strong>Models:</strong>
+    <ul>
+     <li><code>WordPiece</code> (the existing algorithm);</li>
+     <li><strong><code>BPE</code></strong>: merge ranks, a per-word cache, and <code>continuing_subword_prefix</code> and <code>byte_fallback</code> handling;</li>
+     <li><strong><code>Unigram</code></strong>: Viterbi over the lattice of vocabulary pieces with their log-probabilities, and the <code>unk</code> score and <code>fuse_unk</code>.</li>
+    </ul>
+     </li>
+     <li><strong>Post-processors:</strong> <code>TemplateProcessing</code> (single and pair templates, special-token ids), <code>RobertaProcessing</code>, <code>BertProcessing</code>.</li>
+     <li><strong>Decoders:</strong> WordPiece, ByteLevel and Metaspace. Fill-mask needs them to print the token.</li>
+    </ul>
+    <p><strong><code>TokenEncoding</code> gains</strong> offsets (character start and end per token), word ids, sequence ids (0, 1, or none for specials), and overflow windows. NER and QA need the offsets to return character spans. New fields and methods are additive.</p>
+    <p><strong>Loading cost (measured):</strong> <code>Data.JSON.JsonParser</code> on the real files, under the interpreter, with the machine otherwise idle:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>File</th><th>Size</th><th>Parse time</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="File">DistilBERT <code>tokenizer.json</code></td><td data-label="Size">0.71 MB</td><td data-label="Parse time">0.62 s</td></tr>
+      <tr><td data-label="File">DistilRoBERTa</td><td data-label="Size">2.0 MB</td><td data-label="Parse time">0.28 s</td></tr>
+      <tr><td data-label="File">XLM-R</td><td data-label="Size">15.9 MB</td><td data-label="Parse time">2.7 s</td></tr>
+      <tr><td data-label="File"><strong>DeBERTa-v3 (nli-small)</strong></td><td data-label="Size"><strong>8.5 MB</strong></td><td data-label="Parse time"><strong>15.8 s</strong></td></tr>
+     </tbody>
+    </table>
+    <ul>
+     <li><strong>The DeBERTa time is an anomaly.</strong> The file is half XLM-R's size and holds the same 316,720-char charsmap string, yet takes 6× as long.</li>
+     <li><strong>Profile it in A5 before designing around it:</strong> run the sampling profiler first, per the project's rule. If it is the JSON parser, fix the parser. A binary sidecar cache of the vocabulary is the fallback only if the parser cannot be made fast enough.</li>
+    </ul>
+    <p><strong>Parity tests:</strong></p>
+    <ul>
+     <li><strong>Fixtures:</strong>
+    <ul>
+     <li><em>small, checked in:</em> a WordPiece, a BPE and a Unigram <code>tokenizer.json</code>, each trained with Python <code>tokenizers</code> on this repository's <code>docs/*.md</code> corpus, with vocabularies of about 2,000 (roughly 100 KB each);</li>
+     <li><em>expected outputs:</em> ids, tokens, offsets and word ids for the existing parity corpus plus multilingual and edge-case lines, as in <code>programs/regression/data/bert/gen_wordpiece_parity.py</code>.</li>
+    </ul>
+     </li>
+     <li><strong>The test is byte-exact.</strong> Every id and every offset must match, with no tolerance.</li>
+     <li><strong>Optional network job:</strong> the same corpus through the <em>real</em> <code>tokenizer.json</code> of each model in §7.1, against ids stored in a small fixture. It is non-gating, like the other network tests.</li>
+    </ul>
+    <h4 id="75-task-pipelines-systemnlponnx-nlp_onnxobl">7.5 Task pipelines (<code>System.NLP.Onnx</code>, <code>nlp_onnx.obl</code>)</h4>
+    <p><strong>Shared base.</strong> <code>TransformerTask</code> handles everything every task needs:</p>
+    <ul>
+     <li>it opens a model folder (a local path or a hub snapshot): <code>config.json</code>, the tokenizer and the ONNX file;</li>
+     <li>it reads the session's inputs and outputs, sending only declared inputs, as §7.2 requires;</li>
+     <li>it batches, sorting texts by length and padding each batch to its longest text. Truncating to the model's <code>max_position_embeddings</code> is the default;</li>
+     <li>it chooses the execution provider, with CPU fallback, as <code>BertEmbedder</code> does.</li>
+    </ul>
+<pre class="line-numbers"><code class="language-cpp">use System.NLP.Onnx;
+
+classifier := TextClassifier-&gt;New("Xenova/distilbert-base-uncased-finetuned-sst-2-english");  # a hub id or a folder
+results := classifier-&gt;Classify(["I loved it", "Not worth the ticket"]);     # Prediction[]: label, score
+results[0]-&gt;GetLabel()-&gt;PrintLine();                                          # POSITIVE
+
+ner := TokenClassifier-&gt;New("Xenova/bert-base-NER", TokenClassifier-&gt;Aggregation-&gt;SIMPLE);
+each(e : ner-&gt;Extract("Ada Lovelace worked with Charles Babbage in London.")) {
+  "{$e-&gt;GetGroup()} '{$e-&gt;GetWord()}' [{$e-&gt;GetStart()}, {$e-&gt;GetEnd()}) {$e-&gt;GetScore()}"-&gt;PrintLine();
+};
+
+qa := QuestionAnswerer-&gt;New("Xenova/distilbert-base-cased-distilled-squad");
+answer := qa-&gt;Answer("Where did she work?", long_context);     # Answer: text, score, start, end
+
+mask := FillMask-&gt;New("Xenova/bert-base-uncased");
+fills := mask-&gt;Fill("Paris is the [MASK] of France.", 5);      # MaskFill[]: token, text, score, sequence
+
+embedder := SentenceEmbedder-&gt;New("sentence-transformers/all-MiniLM-L6-v2");   # reads modules.json / 1_Pooling
+sims := embedder-&gt;Similarity(["a cat sits"], ["a kitten is sitting", "stock prices fell"]);
+
+reranker := CrossEncoder-&gt;New("cross-encoder/ms-marco-MiniLM-L6-v2");
+ranked := reranker-&gt;Rank("what is BERT?", passages);         # scored pairs, best first
+
+classify := Pipeline-&gt;Create("text-classification", "Xenova/toxic-bert");   # Python pipeline() spelling
+</code></pre>
+    <p><strong>How each task reads the model, matching <code>transformers</code> behaviour:</strong></p>
+    <ul>
+     <li><strong>Text classification.</strong>
+    <ul>
+     <li>Labels come from <code>config.json</code> <code>id2label</code>; <code>LABEL_n</code> when absent.</li>
+     <li>The score uses <strong>softmax</strong>, or <strong>sigmoid</strong> when <code>problem_type</code> is <code>multi_label_classification</code> or there is a single label, which is what <code>transformers</code>' <code>function_to_apply</code> does by default.</li>
+     <li><code>top_k</code> returns all labels sorted.</li>
+    </ul>
+     </li>
+     <li><strong>Token classification.</strong>
+    <ul>
+     <li>Per-token softmax over <code>logits [batch, sequence, labels]</code>.</li>
+     <li>The aggregation strategies are <code>NONE</code>, <code>SIMPLE</code>, <code>FIRST</code>, <code>AVERAGE</code> and <code>MAX</code>, with the same sub-word and B-/I- merging rules as <code>transformers</code>' <code>TokenClassificationPipeline</code>.</li>
+     <li>Character spans come from the offsets.</li>
+     <li>The default is <code>NONE</code>, as in Python.</li>
+    </ul>
+     </li>
+     <li><strong>Question answering.</strong>
+    <ul>
+     <li>Pairs are encoded question-first with <code>only_second</code> truncation, and <code>p_mask</code> excludes the question and the specials.</li>
+     <li>Answers are spans with start ≤ end and length ≤ <code>max_answer_len</code> (15).</li>
+     <li>The score is the product of the start and end probabilities.</li>
+     <li><code>handle_impossible_answer</code> is supported for SQuAD 2 models.</li>
+    </ul>
+     </li>
+     <li><strong>Fill-mask.</strong>
+    <ul>
+     <li>Softmax over the vocabulary at each mask position, <code>top_k</code> (5), and the decoder for the token text.</li>
+     <li>The output is <code>[batch, sequence, vocabulary]</code>, so about 15.6 MB of floats per text at length 128 for BERT. This is the one task where batching is capped by memory.</li>
+    </ul>
+     </li>
+     <li><strong>Sentence similarity.</strong>
+    <ul>
+     <li>The pooling mode comes from sentence-transformers' <code>modules.json</code> and <code>1_Pooling/config.json</code> (mean, CLS or max), and normalisation from <code>2_Normalize</code>.</li>
+     <li>Similarity is cosine.</li>
+     <li><code>BertEmbedder</code> stays as is for existing callers.</li>
+    </ul>
+     </li>
+     <li><strong>Cross-encoder reranking.</strong> Pair encoding, then the model's raw logit, with the activation that the model's sentence-transformers config names. The parity fixture pins the activation used for each model rather than assuming it.</li>
+     <li><strong>Zero-shot</strong> (stretch). The NLI-template method of <code>transformers</code>' zero-shot pipeline, over any NLI classifier (DeBERTa-v3 NLI).</li>
+    </ul>
+    <p><strong>Long text:</strong></p>
+    <ul>
+     <li><strong>Truncation</strong> is the default for classification and similarity, with a flag on the result: <code>TokenEncoding</code> already records <code>truncated</code>.</li>
+     <li><strong>Striding:</strong> NER and QA split long input into overlapping windows (<code>max_length</code>, <code>stride</code>/<code>doc_stride</code>).
+    <ul>
+     <li>NER keeps, for each token, the prediction from the window where the token is furthest from an edge, then aggregates.</li>
+     <li>QA takes the best span over all windows.</li>
+     <li>This matches <code>transformers</code> when <code>return_overflowing_tokens</code> is on.</li>
+    </ul>
+     </li>
+    </ul>
+    <p><strong>Runner interface.</strong> Each task calls an <code>EncoderRunner</code>:</p>
+<pre class="line-numbers"><code class="language-cpp">interface EncoderRunner {
+  method : virtual : public : Inputs() ~ String[];
+  method : virtual : public : Run(inputs : Vector&lt;API.Models.Tensor&gt;, outputs : String[]) ~ Vector&lt;API.Models.Tensor&gt;;
+}
+</code></pre>
+    <p><code>OnnxRunner</code> is the only implementation in Phase A. Phase B adds <code>TorchRunner</code> in its own library, so a model defined and fine-tuned in Objeck runs through the same <code>TextClassifier</code> (§8.1).</p>
+    <h4 id="76-parity-tests-for-the-pipelines">7.6 Parity tests for the pipelines</h4>
+    <p>Two tiers, following <code>programs/regression/data/bert/</code>.</p>
+    <p><strong>Tier 1: gating, offline, small checked-in fixtures.</strong></p>
+    <ul>
+     <li><strong>One tiny real-architecture model per task.</strong>
+    <ul>
+     <li>It is generated by a script with <code>transformers</code> from a scaled-down config: hidden 32, 2 layers, 2 heads.</li>
+     <li>Its weights are random but fixed by seed, and it is exported to ONNX once.</li>
+     <li>Each is 100–600 KB.</li>
+     <li>It uses the small tokenizers of §7.4.</li>
+    </ul>
+     </li>
+     <li><strong>The script also writes the expected outputs.</strong> It runs <strong>PyTorch</strong>, the oracle, and <strong>Python ONNX Runtime</strong> on the same file.</li>
+     <li><strong>Tolerances:</strong></li>
+    </ul>
+    <p>| Quantity | Against Python ONNX Runtime | Against PyTorch | |---|---|---| | Logits | ≤ 1e-5 | ≤ 1e-4 | | Probabilities | ≤ 1e-6 | — | | Labels, entity spans, answer spans, top-k orders | exact | — | | Mean-pooled embeddings | ≤ 1e-5 | — |</p>
+    <p><code>BertEmbedder</code> already matches Python to within 6e-7 on MiniLM.</p>
+    <ul>
+     <li><strong>Like the current tests,</strong> each fixture also includes a case the wrong code would fail:
+    <ul>
+     <li>DistilBERT's missing <code>token_type_ids</code>;</li>
+     <li>a padded batch;</li>
+     <li>a text longer than the window.</li>
+    </ul>
+     </li>
+    </ul>
+    <p><strong>Tier 2: optional, network.</strong></p>
+    <ul>
+     <li>Download the real quantized models of §7.1, about 650 MB in total, pinned by commit.</li>
+     <li>Compare against stored Python outputs (a few KB each) for fixed inputs, with the same tolerances.</li>
+     <li>Non-gating, and cached in Actions under its own key. This repository has hit the Actions cache ceiling before, so the job's budget is stated in the workflow.</li>
+    </ul>
+    <h3 id="8-phase-b--the-training-foundation-libtorch">8. Phase B — the training foundation (libtorch)</h3>
+    <h4 id="81-why-libtorch-compared-fairly">8.1 Why libtorch, compared fairly</h4>
+    <p>ONNX Runtime's training API is excluded (§3.2). The remaining credible, maintained routes:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th></th><th><strong>libtorch 2.15</strong></th><th><strong>candle</strong> (Rust, Hugging Face)</th><th><strong>burn</strong> (Rust)</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="">Maintenance (primary evidence)</td><td data-label="libtorch 2.15">releases 2026-09-02, 09-30, 10-28</td><td data-label="candle (Rust, Hugging Face)">pushed 2026-10-29; tags only, latest <code>0.11.0</code>; <strong>pre-1.0</strong></td><td data-label="burn (Rust)"><code>v0.23.0-pre.1</code> on 2026-10-29; <strong>pre-1.0</strong></td></tr>
+      <tr><td data-label="">Platforms (prebuilt)</td><td data-label="libtorch 2.15">Windows x64 and arm64 (CPU zips), Linux x64 (zip), Linux arm64 (from the wheel), macOS arm64 (zip)</td><td data-label="candle (Rust, Hugging Face)">built from source by us on every platform</td><td data-label="burn (Rust)">built from source by us</td></tr>
+      <tr><td data-label="">GPU</td><td data-label="libtorch 2.15">CUDA 13.2 / 13.4 (Windows x64 and Linux x64 as zips; Linux arm64 as wheels), ROCm (Linux x64), Intel XPU (Windows and Linux x64), MPS (macOS: to be confirmed for the C++ zip in B0)</td><td data-label="candle (Rust, Hugging Face)">CUDA, Metal</td><td data-label="burn (Rust)">CUDA, ROCm, Metal, wgpu (Vulkan/DX12/Metal)</td></tr>
+      <tr><td data-label="">Is it the PyTorch engine?</td><td data-label="libtorch 2.15"><strong>yes</strong>: the same kernels and autograd, so parity is natural</td><td data-label="candle (Rust, Hugging Face)">no</td><td data-label="burn (Rust)">no (it has a LibTorch backend through <code>tch</code>)</td></tr>
+      <tr><td data-label="">Runtime size</td><td data-label="libtorch 2.15">large: §8.4</td><td data-label="candle (Rust, Hugging Face)">small (no measurement here)</td><td data-label="burn (Rust)">small (no measurement here)</td></tr>
+      <tr><td data-label="">Python needed</td><td data-label="libtorch 2.15"><strong>no</strong></td><td data-label="candle (Rust, Hugging Face)">no</td><td data-label="burn (Rust)">no</td></tr>
+      <tr><td data-label="">Binding effort</td><td data-label="libtorch 2.15">C++ shim, linked against libtorch headers, in the same pattern as <code>libobjk_onnx</code></td><td data-label="candle (Rust, Hugging Face)">a Rust <code>cdylib</code> exposing a C ABI, which adds a Rust toolchain to every platform build</td><td data-label="burn (Rust)">the same as candle</td></tr>
+     </tbody>
+    </table>
+    <p><strong>Recommendation: libtorch.</strong></p>
+    <ul>
+     <li><strong>It is the only option that is both the reference engine and released on a fixed, frequent cadence</strong>, with prebuilt binaries for all five platforms.</li>
+     <li><strong>Parity with PyTorch is by construction</strong> rather than by testing alone.</li>
+     <li><strong>Its one real cost is size (§8.4).</strong> That is solved by packaging, not by choosing a lesser engine.</li>
+     <li><strong>Next durable option, if B0 finds a blocker</strong> such as a load conflict, a size that is unacceptable, or a license issue: <strong>candle</strong>. It is maintained, Apache-2.0, small, has training (backprop and AdamW), and already has BERT, DistilBERT and XLM-R implementations to cross-check against. Its costs are a pre-1.0 API and a Rust toolchain in the build.</li>
+    </ul>
+    <h4 id="82-the-native-shim-libobjk_torch">8.2 The native shim (<code>libobjk_torch</code>)</h4>
+    <ul>
+     <li><strong>libtorch has no general C API, so Objeck gets a C++ shim.</strong> It is built per platform against that platform's libtorch, exactly as <code>core/lib/onnx</code> builds <code>libobjk_onnx</code> against ONNX Runtime.</li>
+     <li><strong>The shim exposes the Objeck native-function convention:</strong>
+    <ul>
+     <li>tensors are opaque <code>int64</code> handles in a handle table;</li>
+     <li>every function returns a status, with the libtorch exception message on failure.</li>
+    </ul>
+     </li>
+     <li><strong>Its surface, grown by phase, starting with what BERT needs:</strong>
+    <ul>
+     <li>creation: <code>zeros</code>, <code>ones</code>, <code>randn</code>, <code>arange</code>, <code>from_blob</code>, <code>from_floats</code>;</li>
+     <li>dtype and device moves;</li>
+     <li>shape and views;</li>
+     <li>pointwise and reduction math;</li>
+     <li><code>matmul</code>/<code>bmm</code>;</li>
+     <li><code>softmax</code>, <code>log_softmax</code>, <code>gelu</code>, <code>tanh</code>, <code>relu</code>;</li>
+     <li><code>layer_norm</code>, <code>embedding</code>, <code>dropout</code>;</li>
+     <li><code>cross_entropy</code>, <code>binary_cross_entropy_with_logits</code>;</li>
+     <li><code>scaled_dot_product_attention</code>;</li>
+     <li>autograd: <code>backward</code>, <code>grad</code>, <code>requires_grad</code>, <code>no_grad</code>;</li>
+     <li><code>AdamW</code> / <code>SGD</code> steps over a parameter list;</li>
+     <li>a seeded RNG;</li>
+     <li>live-handle counts.</li>
+    </ul>
+     </li>
+     <li><strong>ABI choice (decision D8).</strong>
+    <ul>
+     <li><strong>Option 1, recommended:</strong> build against the regular C++ API, pinned to one libtorch version per Objeck release, and rebuild the shim on each upgrade, the way the ONNX binding pins its runtime.</li>
+     <li><strong>Option 2:</strong> PyTorch's new <strong>Stable ABI</strong> (<code>torch::stable</code>, "binary-compatible … across PyTorch versions"). It would let users drop in a newer libtorch, CUDA builds included, without rebuilding. B0 checks whether its op set covers the surface above. Its documented purpose is operator extensions, so the default assumption is that it does not yet cover autograd and optimizers.</li>
+    </ul>
+     </li>
+     <li><strong>Windows:</strong> MSVC, <code>/MD</code>, matching libtorch's CRT.</li>
+     <li><strong>Loading:</strong> the shim is loaded the way the ONNX library is loaded. B0 checks that <code>torch_cpu.dll</code> and <code>onnxruntime.dll</code> coexist in one Objeck process; both bring OpenMP or thread-pool runtimes.</li>
+    </ul>
+    <h4 id="83-architectures-in-objeck-weights-from-safetensors">8.3 Architectures in Objeck, weights from <code>safetensors</code></h4>
+    <p><code>System.AI.NN</code> provides the following building blocks, each with <code>Forward</code> and named parameters in Hugging Face's naming:</p>
+    <ul>
+     <li><code>Module</code>, <code>Parameter</code>;</li>
+     <li><code>Linear</code>, <code>Embedding</code>, <code>LayerNorm</code>, <code>RMSNorm</code>, <code>Dropout</code>;</li>
+     <li><code>MultiHeadAttention</code>, with an optional causal mask and an optional KV cache;</li>
+     <li><code>Conv1d</code>, <code>Conv2d</code>, <code>GELU</code>, <code>Sequential</code>.</li>
+    </ul>
+    <p>Because the parameter names match, <code>module-&gt;LoadState(SafeTensors-&gt;Read(path))</code> maps one-to-one onto a Hugging Face checkpoint.</p>
+    <p><strong>BERT, as it is written in <code>System.AI.Transformers</code></strong> (abridged):</p>
+<pre class="line-numbers"><code class="language-cpp">class BertLayer from Module {
+  @attention : MultiHeadAttention;    # attention.self.{query,key,value}, attention.output.dense
+  @attn_norm : LayerNorm;             # attention.output.LayerNorm
+  @intermediate : Linear;             # intermediate.dense
+  @output : Linear;                   # output.dense
+  @out_norm : LayerNorm;              # output.LayerNorm
+  @dropout : Dropout;
+
+  method : public : Forward(x : Tensor, mask : Tensor) ~ Tensor {
+    a := @attn_norm-&gt;Forward(x-&gt;Add(@dropout-&gt;Forward(@attention-&gt;Forward(x, mask))));
+    h := @intermediate-&gt;Forward(a)-&gt;Gelu();
+    return @out_norm-&gt;Forward(a-&gt;Add(@dropout-&gt;Forward(@output-&gt;Forward(h))));
+  }
+}
+
+class BertForSequenceClassification from Module {
+  @bert : BertModel;                  # embeddings + encoder.layer.N + pooler
+  @classifier : Linear;
+
+  function : FromPretrained(dir : String) ~ BertForSequenceClassification {
+    config := ModelConfig-&gt;Read(dir + "/config.json");            # hidden_size, num_attention_heads, id2label, …
+    model := BertForSequenceClassification-&gt;New(config);
+    model-&gt;LoadState(SafeTensors-&gt;Read(dir + "/model.safetensors"));   # strict: missing or unexpected names fail
+    return model;
+  }
+
+  method : public : Forward(ids : Tensor, mask : Tensor, types : Tensor) ~ Tensor {
+    return @classifier-&gt;Forward(@bert-&gt;Forward(ids, mask, types)-&gt;GetPooled());
+  }
+}
+</code></pre>
+    <p>The other two worked examples, abridged, show the same layers serving other models:</p>
+<pre class="line-numbers"><code class="language-cpp"># A small GPT-style decoder: the same Embedding, Linear and attention, with a causal mask and a KV cache.
+class GptBlock from Module {
+  method : public : Forward(x : Tensor, cache : KvCache) ~ Tensor {
+    h := x-&gt;Add(@attn-&gt;Forward(@ln1-&gt;Forward(x), true, cache));    # causal = true; the cache is updated in place
+    return h-&gt;Add(@mlp-&gt;Forward(@ln2-&gt;Forward(h)));
+  }
+}
+next := Sampler-&gt;TopP(gpt-&gt;Forward(last_token, cache)-&gt;Select(1, -1), 0.9, 0.8, rng);
+
+# A ViT: Conv2d patch embedding + the same encoder layers + a CLS head; images from OpenCV with no Objeck-side loop.
+patches := @patch_embed-&gt;Forward(Tensor-&gt;FromImage(mat)-&gt;Div(255.0))-&gt;Flatten(2)-&gt;Transpose(1, 2);
+logits := @head-&gt;Forward(@encoder-&gt;Forward(@cls-&gt;Concat(patches, 1)-&gt;Add(@pos))-&gt;Select(1, 0));
+</code></pre>
+    <p><strong>Weights and Python-freedom (measured):</strong></p>
+    <ul>
+     <li><code>model.safetensors</code> is present in <code>google-bert/bert-base-uncased</code>, <code>distilbert/distilbert-base-uncased</code>, <code>sentence-transformers/all-MiniLM-L6-v2</code>, <code>FacebookAI/roberta-base</code>, <code>FacebookAI/xlm-roberta-base</code>, <code>dslim/bert-base-NER</code> and <code>deepset/roberta-base-squad2</code>.</li>
+     <li><code>microsoft/deberta-v3-base</code> has only <code>pytorch_model.bin</code> (§3.3).</li>
+     <li>With the hub cache (§7.3), <code>config.json</code>, <code>tokenizer.json</code> and the Objeck architectures, a model goes from the Hub to fine-tuning <strong>without Python</strong>.</li>
+    </ul>
+    <p><strong>Saving.</strong></p>
+    <ul>
+     <li><code>model-&gt;Save(dir)</code> writes <code>config.json</code>, <code>model.safetensors</code> and <code>tokenizer.json</code> in Hugging Face's layout. A Python user can therefore <code>from_pretrained(dir)</code> an Objeck fine-tune. That is interop both ways, and it is also how parity is checked.</li>
+     <li>Inference on the fine-tuned model runs through <code>TorchRunner</code> in the same pipeline classes (§7.5).</li>
+     <li>ONNX export comes later (Phase E, §9).</li>
+    </ul>
+    <h4 id="84-size-and-packaging-measured">8.4 Size and packaging (measured)</h4>
+    <p>Runtime libraries in the official 2.15.0 archives, uncompressed. They were read from each zip's central directory over HTTP ranges, so nothing was downloaded in full:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Platform</th><th>Archive (compressed)</th><th>Runtime needed, uncompressed</th><th>Largest file</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Platform">Windows x64 CPU</td><td data-label="Archive (compressed)">204 MB</td><td data-label="Runtime needed, uncompressed">≈ 313 MB (the archive has each DLL twice, in <code>lib/</code> and <code>bin/</code>; <code>torch_python.dll</code> is not needed)</td><td data-label="Largest file"><code>torch_cpu.dll</code> 309.5 MB</td></tr>
+      <tr><td data-label="Platform">Windows arm64 CPU</td><td data-label="Archive (compressed)">109 MB</td><td data-label="Runtime needed, uncompressed">≈ 156 MB</td><td data-label="Largest file"><code>torch_cpu.dll</code> 116.2 MB, <code>armpl_lp64.dll</code> 37.8 MB</td></tr>
+      <tr><td data-label="Platform">Linux x64 CPU</td><td data-label="Archive (compressed)">129 MB</td><td data-label="Runtime needed, uncompressed">≈ 448 MB</td><td data-label="Largest file"><code>libtorch_cpu.so</code> 439.9 MB</td></tr>
+      <tr><td data-label="Platform">Linux arm64 CPU (wheel)</td><td data-label="Archive (compressed)">171 MB wheel</td><td data-label="Runtime needed, uncompressed">≈ 316 MB (without <code>libtorch_python.so</code>)</td><td data-label="Largest file"><code>libtorch_cpu.so</code> 265.7 MB, OpenBLAS 24.6 MB, Arm Compute 19 MB</td></tr>
+      <tr><td data-label="Platform">macOS arm64</td><td data-label="Archive (compressed)">114 MB</td><td data-label="Runtime needed, uncompressed">≈ 424 MB</td><td data-label="Largest file"><code>libtorch_cpu.dylib</code> 421.8 MB</td></tr>
+      <tr><td data-label="Platform">CUDA 13.2 (Windows / Linux x64)</td><td data-label="Archive (compressed)">4,167 / 1,965 MB</td><td data-label="Runtime needed, uncompressed">—</td><td data-label="Largest file">—</td></tr>
+      <tr><td data-label="Platform">ROCm (Linux x64)</td><td data-label="Archive (compressed)">about 1,965 MB</td><td data-label="Runtime needed, uncompressed">—</td><td data-label="Largest file">—</td></tr>
+     </tbody>
+    </table>
+    <p><strong>Today's Objeck release assets (v2026.10.1)</strong> are 20–48 MB per platform, so libtorch cannot go into the default download.</p>
+    <p><strong>Recommendation, decision D5:</strong></p>
+    <ul>
+     <li><strong>A separate, optional "Objeck AI runtime" archive per platform, CPU only.</strong> It holds the shim plus the libtorch runtime libraries. The upstream archives are 109–204 MB compressed, and the AI runtime archive drops their duplicates and Python libraries. It is built and checksummed by the release workflow.</li>
+     <li><strong>It installs over a deploy tree</strong>, and <code>obc</code>/<code>obr</code> find it the way they find the ONNX runtime.</li>
+     <li><strong>GPU:</strong>
+    <ul>
+     <li>the user installs the official CUDA, ROCm or XPU libtorch (2–4 GB) and sets <code>OBJECK_LIBTORCH</code> to it;</li>
+     <li>the shim is version-locked, so it checks the libtorch version at load and refuses a mismatch by name.</li>
+     <li><strong>A GPU build of the shim per CUDA major version</strong> is decided in B5, after B0 has shown whether one shim binary works across CPU and CUDA libtorch builds of the same version.</li>
+    </ul>
+     </li>
+     <li><strong>The release-pipeline costs:</strong>
+    <ul>
+     <li>one more asset per platform, with its <code>SHA256SUMS</code> line and Windows signing;</li>
+     <li>Actions cache space for the libtorch archives, which must stay well under the cache ceiling this repository has hit before.</li>
+    </ul>
+     </li>
+    </ul>
+    <h4 id="85-training-time-measured">8.5 Training time (measured)</h4>
+    <p>PyTorch 2.15.0 CPU, from Python. The Python layer is a thin wrapper here; the kernels and autograd are libtorch's, so a C++ shim should land close to these numbers. B0 checks that.</p>
+    <ul>
+     <li><strong>Hardware:</strong> AMD Ryzen AI 9 HX 370, 12 cores, 12 intra-op threads, 31 GB.</li>
+     <li><strong>Model:</strong> <code>*ForSequenceClassification</code> built from configs with random weights; cost does not depend on the weights.</li>
+     <li><strong>Step:</strong> sequence length 128, AdamW, a full fine-tuning step (forward, backward, optimizer).</li>
+     <li><strong>Runs:</strong> 2 warm-up steps and 5 timed.</li>
+     <li><strong>Caveat:</strong> a single-threaded Objeck JSON benchmark overlapped the first minute of the MiniLM run.</li>
+    </ul>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Model</th><th>Params</th><th>Train step, batch 32</th><th>per sequence</th><th>batch 16 per sequence</th><th>Inference per sequence</th><th>Train ÷ inference</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Model">MiniLM-L6-H384</td><td data-label="Params">22.7 M</td><td data-label="Train step, batch 32">1,970 ms</td><td data-label="per sequence"><strong>62 ms</strong></td><td data-label="batch 16 per sequence">63 ms</td><td data-label="Inference per sequence">10 ms</td><td data-label="Train ÷ inference">6.1×</td></tr>
+      <tr><td data-label="Model">MiniLM-L12-H384</td><td data-label="Params">33.4 M</td><td data-label="Train step, batch 32">3,964 ms</td><td data-label="per sequence"><strong>124 ms</strong></td><td data-label="batch 16 per sequence">139 ms</td><td data-label="Inference per sequence">16 ms</td><td data-label="Train ÷ inference">7.6×</td></tr>
+      <tr><td data-label="Model">DistilBERT-base</td><td data-label="Params">65.8 M</td><td data-label="Train step, batch 32">4,967 ms</td><td data-label="per sequence"><strong>155 ms</strong></td><td data-label="batch 16 per sequence">130 ms</td><td data-label="Inference per sequence">23 ms</td><td data-label="Train ÷ inference">6.7×</td></tr>
+      <tr><td data-label="Model">BERT-base</td><td data-label="Params">109.5 M</td><td data-label="Train step, batch 32">7,763 ms</td><td data-label="per sequence"><strong>243 ms</strong></td><td data-label="batch 16 per sequence">274 ms</td><td data-label="Inference per sequence">49 ms</td><td data-label="Train ÷ inference">4.9×</td></tr>
+     </tbody>
+    </table>
+    <p><strong>These are slower than #1449's estimates.</strong> That design assumed 3–4× inference and predicted 21–28 ms per sequence for MiniLM-L6 and 150–200 ms for bert-base. The measured ratios are 5–8×, because small models are dominated by the optimizer and kernel overhead.</p>
+    <p><strong>For the lab's grid</strong> (5,000 training rows, 3 epochs, about 15 runs at length 128, the experiment count from #1449 §5), on this CPU:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Model</th><th>Per run</th><th>Whole grid</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Model">MiniLM-L6</td><td data-label="Per run">about 16 min</td><td data-label="Whole grid">about 4 h</td></tr>
+      <tr><td data-label="Model">DistilBERT</td><td data-label="Per run">33–39 min</td><td data-label="Whole grid">8–10 h</td></tr>
+      <tr><td data-label="Model">bert-base</td><td data-label="Per run">about 61 min</td><td data-label="Whole grid">about 15 h</td></tr>
+     </tbody>
+    </table>
+    <p>That is why GPU support matters. The lab itself used Colab's GPU, which was not measured here. The example defaults to MiniLM-L6 or DistilBERT on CPU, prints its estimate before starting, and takes <code>--max-train</code>.</p>
+    <h4 id="86-training-api">8.6 Training API</h4>
+<pre class="line-numbers"><code class="language-cpp">use System.AI.Tensor;
+use System.AI.Transformers;
+use System.AI.Optim;
+use System.AI.Data;
+
+model := DistilBertForSequenceClassification-&gt;FromPretrained(hub-&gt;Snapshot("distilbert/distilbert-base-cased"), 2);
+model-&gt;To(Device-&gt;Best());                                    # CUDA / MPS / XPU when present, else CPU
+
+tokenizer := TokenizerJson-&gt;Load(dir + "/tokenizer.json");
+train := TextDataset-&gt;New(texts, labels, tokenizer, 128);     # pads to MAX_SEQ_LENGTH
+loader := DataLoader-&gt;New(train, 16, true, Generator-&gt;New(42));   # batch, shuffle, seed
+
+optimizer := AdamW-&gt;New(model-&gt;Parameters(), 2e-5, 0.01);     # lr, weight decay; no decay on bias / LayerNorm
+schedule := LinearSchedule-&gt;New(optimizer, warmup, total);
+
+trainer := Trainer-&gt;New(model, optimizer, schedule);
+trainer-&gt;SetClassWeights([1.0, 99.0]);                        # weighted cross-entropy for the lab's POSRATIO runs
+trainer-&gt;OnStep(\(StepInfo) ~ Nil : (s) =&gt; { s-&gt;GetLoss()-&gt;PrintLine(); });
+trainer-&gt;Fit(loader, 3);                                      # epochs
+
+model-&gt;Save("malware_distilbert");                            # config.json + model.safetensors + tokenizer.json
+classifier := TextClassifier-&gt;New(TorchRunner-&gt;New(model), tokenizer);   # the Phase A API, the torch backend
+</code></pre>
+    <p><code>FineTuner</code> is a convenience over these calls, and implements <code>ScoreModel</code>.</p>
+    <h3 id="9-onnx-as-the-export-target-phase-e">9. ONNX as the export target (Phase E)</h3>
+    <p>Every op an Objeck model runs goes through the tensor API, so the API can <strong>record</strong> a forward pass and write the ONNX graph:</p>
+    <ul>
+     <li><code>OnnxExporter-&gt;Export(model, example_inputs, path)</code>;</li>
+     <li>dynamic batch and sequence axes;</li>
+     <li><strong>each op in the shim's surface maps to one or a few standard ONNX ops</strong>;</li>
+     <li>the protobuf is written in Objeck;</li>
+     <li>the weights become initializers.</li>
+    </ul>
+    <p>A model fine-tuned in Objeck can then run in <code>API.Onnx</code>, on any execution provider ONNX Runtime has, including the NPUs and GPUs libtorch does not reach (§3.3). That narrows the GPU gaps for <em>inference</em>.</p>
+    <p><strong>The test:</strong> export, then run in Objeck's ONNX session, in Python ONNX Runtime and against the torch-backend logits, within 1e-5.</p>
+    <h3 id="10-the-lab-end-to-end">10. The lab, end to end</h3>
+    <p>The user's Lab 1 Part 4 fine-tunes <code>distilbert-base-cased</code> as a binary malware classifier over API-call sequences on Colab: <code>MAX_SEQ_LENGTH</code> 128, AdamW, linear warm-up. <code>part4_bert_malware.py</code> evaluates in PyTorch and <strong>does not save the model</strong> (no <code>save_pretrained</code> call).</p>
+    <h4 id="101-first-target-run-the-colab-model-from-objeck-phase-a1">10.1 First target: run the Colab model from Objeck (Phase A1)</h4>
+    <ol>
+     <li><strong>In the notebook</strong> (the user's code, Python, once):
+    <ul>
+     <li>give the model real labels with <code>model.config.id2label = {0: "benign", 1: "malware"}</code>;</li>
+     <li>save it with <code>model.save_pretrained(out)</code> and <code>tokenizer.save_pretrained(out)</code>;</li>
+     <li>export it with <code>optimum-cli export onnx --model out --task text-classification out/onnx</code>.</li>
+    </ul>
+     </li>
+     <li><strong>What the export will look like,</strong> going by the measured DistilBERT classifier signature (§7.2):
+    <ul>
+     <li>inputs <code>input_ids</code> and <code>attention_mask</code>, INT64 <code>[batch, sequence]</code>;</li>
+     <li>output <code>logits</code> FP32 <code>[batch, 2]</code>;</li>
+     <li>a cased WordPiece tokenizer (<code>lowercase</code> false).</li>
+    </ul>
+     </li>
+     <li><strong>In Objeck:</strong></li>
+    </ol>
+<pre class="line-numbers"><code class="language-cpp">classifier := TextClassifier-&gt;New("malware_distilbert");
+preds := classifier-&gt;Classify(test_sequences);
+</code></pre>
+    <p>Then compute precision, recall and F1 with <code>System.ML</code>'s existing metrics.</p>
+    <ol start="4">
+     <li><strong>The check:</strong>
+    <ul>
+     <li>Objeck's malware probability matches Python's softmax for the lab's fixed test set within 1e-5 (ONNX against ONNX) and 1e-4 (against PyTorch);</li>
+     <li>the predicted classes are identical, so the metrics are identical.</li>
+    </ul>
+     </li>
+    </ol>
+    <h4 id="102-second-target-fine-tune-it-in-objeck-phase-b2">10.2 Second target: fine-tune it in Objeck (Phase B2)</h4>
+    <ul>
+     <li>The same experiment runs with <code>Trainer</code> (§8.6): POSRATIO, unweighted and weighted, then <code>MAX_SEQ_LENGTH</code>, then learning rate.</li>
+     <li>On CPU it takes 33–39 minutes per run for DistilBERT at 5,000 rows (§8.5).</li>
+     <li><strong>The check:</strong> the loss trajectory over the first 20 steps matches PyTorch within 1e-4 relative, with the same initial <code>safetensors</code>, batch order and seed, dropout off for the parity run, and one thread.</li>
+     <li>Then the final metrics are within run-to-run noise of the Python lab.</li>
+    </ul>
+    <h3 id="11-phases">11. Phases</h3>
+    <p>Sizes are engineering days for one person, including tests and docs. They are estimates, except where an earlier phase measures them.</p>
+    <p><strong>Phase A: use models (no new native dependency)</strong></p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Phase</th><th>Content</th><th>Size</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Phase"><strong>A1 (first PR)</strong></td><td data-label="Content"><code>TextClassifier</code> over a <strong>local folder</strong>: <code>config.json</code> labels and <code>problem_type</code>; WordPiece from <code>tokenizer.json</code>'s WordPiece section or from <code>vocab.txt</code> with <code>tokenizer_config.json</code>; session-declared inputs; batching. A checked-in tiny DistilBERT-shaped classifier, with a BERT-shaped variant that has <code>token_type_ids</code>; parity against Python. Works for the lab's model</td><td data-label="Size">3–4</td></tr>
+      <tr><td data-label="Phase">A2</td><td data-label="Content">Streaming <code>GetToFile</code> with resume; the cross-origin <code>Authorization</code> strip (security); an incremental SHA-256; <code>HubClient</code> and cache, offline mode, pinning, tokens; <code>TextClassifier-&gt;New(hub_id)</code></td><td data-label="Size">6–8</td></tr>
+      <tr><td data-label="Phase">A3</td><td data-label="Content">The <code>TokenizerJson</code> pipeline (component interfaces, <code>TemplateProcessing</code>, decoders); offsets, word ids and windows on <code>TokenEncoding</code></td><td data-label="Size">4–5</td></tr>
+      <tr><td data-label="Phase">A4</td><td data-label="Content">ByteLevel BPE (RoBERTa), with byte-exact parity</td><td data-label="Size">4–5</td></tr>
+      <tr><td data-label="Phase">A5</td><td data-label="Content">Unigram, <code>Precompiled</code>, Metaspace (DeBERTa-v3, XLM-R), with byte-exact parity; profile and fix the 15.8 s JSON load</td><td data-label="Size">6–9</td></tr>
+      <tr><td data-label="Phase">A6</td><td data-label="Content"><code>TokenClassifier</code> (aggregations, striding) and <code>QuestionAnswerer</code> (striding, impossible answers)</td><td data-label="Size">6–8</td></tr>
+      <tr><td data-label="Phase">A7</td><td data-label="Content"><code>FillMask</code>, <code>SentenceEmbedder</code> (sentence-transformers configs), <code>CrossEncoder</code>, zero-shot, <code>Pipeline-&gt;Create</code></td><td data-label="Size">4–6</td></tr>
+      <tr><td data-label="Phase">A8</td><td data-label="Content">The Tier 2 network parity job; <code>docs/AI.md</code> and examples; <code>objk_apis.json</code></td><td data-label="Size">3</td></tr>
+      <tr><td data-label="Phase"><strong>Total</strong></td><td data-label="Content"></td><td data-label="Size"><strong>36–48</strong></td></tr>
+     </tbody>
+    </table>
+    <p><strong>Phase B: the training foundation</strong></p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Phase</th><th>Content</th><th>Size</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Phase"><strong>B0 (spike, no Objeck code)</strong></td><td data-label="Content">A C++ program against libtorch 2.15 CPU on Windows x64, then Linux x64 and macOS arm64. It loads bert-base and DistilBERT <code>safetensors</code>, writes their forward pass with libtorch ops (mirroring §8.3), runs 20 AdamW steps and compares losses with PyTorch (≤ 1e-4). It also measures: step time against §8.5; coexistence with <code>onnxruntime.dll</code> in one process; the per-call overhead through an Objeck native call; whether the Stable ABI covers autograd and optimizers; and whether the macOS zip has MPS</td><td data-label="Size">3–4</td></tr>
+      <tr><td data-label="Phase">B1</td><td data-label="Content"><code>libobjk_torch</code> + <code>System.AI.Tensor</code>: handles, dtypes, devices, views, math, autograd, <code>Scope</code>, zero-copy views of <code>Float[]</code>/<code>Int[]</code>, live-handle accounting; builds for 5 platforms</td><td data-label="Size">10–14</td></tr>
+      <tr><td data-label="Phase">B2</td><td data-label="Content"><code>System.AI.NN</code>, <code>System.AI.Optim</code>, <code>System.AI.Data</code>; <code>SafeTensors</code> read and write; <code>ModelConfig</code>; BERT and DistilBERT with classification heads; <code>Trainer</code>; the lab <code>--finetune</code>; training parity (§10.2)</td><td data-label="Size">10–14</td></tr>
+      <tr><td data-label="Phase">B3</td><td data-label="Content"><code>TorchRunner</code>: Phase A pipelines on torch models; <code>Save</code> in Hugging Face layout</td><td data-label="Size">3–4</td></tr>
+      <tr><td data-label="Phase">B4</td><td data-label="Content">RoBERTa, XLM-R, DeBERTa-v2 (disentangled attention is the hardest one); token-classification and QA heads</td><td data-label="Size">6–9</td></tr>
+      <tr><td data-label="Phase">B5</td><td data-label="Content">Packaging: the optional AI runtime archive per platform, the release workflow, <code>OBJECK_LIBTORCH</code> for GPU builds, version checks</td><td data-label="Size">5–7</td></tr>
+      <tr><td data-label="Phase"><strong>Total</strong></td><td data-label="Content"></td><td data-label="Size"><strong>37–52</strong></td></tr>
+     </tbody>
+    </table>
+    <p><strong>Later phases, each its own design when it starts</strong></p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Phase</th><th>Content</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Phase">C</td><td data-label="Content">GPT-style decoder with a KV cache, sampling and BPE; LoRA; int8 weights</td></tr>
+      <tr><td data-label="Phase">D</td><td data-label="Content">ViT and CNN blocks (Conv2d, BatchNorm), image datasets over OpenCV, <code>FromImage</code></td></tr>
+      <tr><td data-label="Phase">E</td><td data-label="Content">ONNX export by tracing (§9)</td></tr>
+      <tr><td data-label="Phase">F</td><td data-label="Content">Deep RL (DQN, PPO) beside <code>ai_rl.obs</code>; an optional <code>DenseNetwork</code> backend on the core</td></tr>
+      <tr><td data-label="Phase">G</td><td data-label="Content">Audio front-end (STFT/mel, WAV dataset)</td></tr>
+     </tbody>
+    </table>
+    <p><strong>Ordering.</strong></p>
+    <ul>
+     <li>A1 is first. B0 runs in parallel: it is a spike with no Objeck code.</li>
+     <li>A2–A8 and B1–B5 are independent tracks until B3, which joins them.</li>
+     <li>The lab's first target needs only A1. Its second target needs B2.</li>
+    </ul>
+    <h3 id="12-decisions-for-the-user">12. Decisions for the user</h3>
+    <table class="ref-table">
+     <thead>
+      <tr><th>#</th><th>Decision</th><th>Recommendation</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="#">D1</td><td data-label="Decision">PR #1449 (ORT training design)</td><td data-label="Recommendation"><strong>Close it as superseded by this document.</strong> Its lab mapping and class-weight loss design are carried over here (§8.6, §10.2). Its ORT-specific parts violate the no-deprecated rule. Also delete its <code>probe/ort-training-api</code> branch</td></tr>
+      <tr><td data-label="#">D2</td><td data-label="Decision">Fine-tuning engine</td><td data-label="Recommendation"><strong>libtorch</strong>, with candle as the documented next option if B0 finds a blocker (§8.1)</td></tr>
+      <tr><td data-label="#">D3</td><td data-label="Decision">Hub cache location</td><td data-label="Recommendation"><strong>Objeck's own <code>~/.objeck/hub</code></strong> (<code>OBJECK_HUB_CACHE</code>), in the same layout with real files; Python's cache <strong>read, never written</strong></td></tr>
+      <tr><td data-label="#">D4</td><td data-label="Decision">Default ONNX variant</td><td data-label="Recommendation"><strong>fp32 <code>model.onnx</code></strong> for parity; quantized as an explicit option; fp16/q4/bnb4 refused until tested</td></tr>
+      <tr><td data-label="#">D5</td><td data-label="Decision">libtorch delivery</td><td data-label="Recommendation"><strong>An optional CPU AI-runtime archive per platform</strong> from the release workflow. GPU builds are user-installed with <code>OBJECK_LIBTORCH</code></td></tr>
+      <tr><td data-label="#">D6</td><td data-label="Decision">Binding granularity</td><td data-label="Recommendation"><strong>A fine-grained tensor API</strong>, with architectures in Objeck (Python-free, as the goal says). B0 measures call overhead, and fused ops are added only where measured</td></tr>
+      <tr><td data-label="#">D7</td><td data-label="Decision">Bundle names</td><td data-label="Recommendation"><strong><code>System.AI.Tensor</code>, <code>.NN</code>, <code>.Optim</code>, <code>.Data</code>, <code>.Hub</code>, <code>.Transformers</code></strong>, extending the existing <code>System.AI</code> family. Text pipelines <strong>stay in <code>System.NLP.Onnx</code></strong>, so existing programs and docs are unchanged</td></tr>
+      <tr><td data-label="#">D8</td><td data-label="Decision">Shim ABI</td><td data-label="Recommendation"><strong>Regular C++ API, pinned per release.</strong> Revisit the Stable ABI after B0</td></tr>
+      <tr><td data-label="#">L1</td><td data-label="Decision">Operator overloading (a language change)</td><td data-label="Recommendation"><strong>Later, its own design</strong>, once real model code exists. Not a prerequisite</td></tr>
+      <tr><td data-label="#">L2</td><td data-label="Decision">Finalizers or a <code>using</code> block for native resources (a VM change)</td><td data-label="Recommendation"><strong>Its own design, after B1.</strong> <code>Scope</code> covers the need until then</td></tr>
+      <tr><td data-label="#">—</td><td data-label="Decision">The lab notebook adding <code>save_pretrained</code> + export (§10.1)</td><td data-label="Recommendation"><strong>Yes.</strong> It is the user's notebook, so the user's call</td></tr>
+     </tbody>
+    </table>
+    <h3 id="13-first-pr-and-follow-ups">13. First PR, and follow-ups</h3>
+    <p><strong>First PR: A1, <code>TextClassifier</code> over a local folder.</strong></p>
+    <ul>
+     <li><strong>Files:</strong>
+    <ul>
+     <li><code>core/compiler/lib_src/nlp_onnx.obs</code>: <code>TextClassifier</code>, <code>Prediction</code>, and the <code>EncoderRunner</code> interface with <code>OnnxRunner</code>;</li>
+     <li><code>core/compiler/lib_src/nlp.obs</code>: WordPiece configuration read from <code>tokenizer.json</code> / <code>tokenizer_config.json</code>;</li>
+     <li>rebuilt <code>nlp.obl</code> and <code>nlp_onnx.obl</code>;</li>
+     <li><code>objk_apis.json</code>.</li>
+    </ul>
+     </li>
+     <li><strong>Fixtures,</strong> in <code>programs/regression/data/bert/</code>:
+    <ul>
+     <li><code>gen_tiny_classifier.py</code>, which writes a DistilBERT-shaped and a BERT-shaped classifier (a few KB each, closed-form weights like <code>gen_tiny_bert.py</code>, so expected logits are exact);</li>
+     <li><code>config.json</code> with <code>id2label</code>;</li>
+     <li><code>tokenizer.json</code>;</li>
+     <li>expected outputs.</li>
+    </ul>
+     </li>
+     <li><strong>Test:</strong> <code>programs/regression/nlp_onnx_text_classifier.obs</code>, covering:
+    <ul>
+     <li>labels;</li>
+     <li>softmax against sigmoid;</li>
+     <li><code>top_k</code>;</li>
+     <li>an export without <code>token_type_ids</code>;</li>
+     <li>a padded batch, where the result must not depend on the batch;</li>
+     <li>truncation;</li>
+     <li>a folder with only <code>vocab.txt</code>.</li>
+    </ul>
+     </li>
+     <li><strong>It is done when:</strong>
+    <ul>
+     <li>the test passes on every CI leg;</li>
+     <li>existing <code>nlp_onnx</code> and ONNX tests are unchanged;</li>
+     <li>an optional local run against the lab's exported model reproduces Python's predictions (§10.1).</li>
+    </ul>
+     </li>
+    </ul>
+    <p><strong>Follow-ups outside this design:</strong></p>
+    <ul>
+     <li><strong>DirectML.</strong> Objeck's Windows ONNX GPU path depends on DirectML, which its README says is in maintenance mode (§3.3). It needs its own design for a maintained Windows execution provider.</li>
+     <li><strong>The <code>HttpsClient</code> header leak.</strong> Its <code>Authorization</code> forwarding on cross-origin redirects (§7.3) is a security fix worth landing on its own, before A2, because any current caller that sets <code>Authorization</code> and hits a redirect is affected.</li>
+    </ul>
+    <h3 id="appendix-how-the-numbers-were-measured">Appendix: how the numbers were measured</h3>
+    <p>All on 2026-10-29, on the Windows build box (AMD Ryzen AI 9 HX 370, 12 cores, 31 GB).</p>
+    <ul>
+     <li><strong>Hub counts and files:</strong>
+    <ul>
+     <li><code>GET https://huggingface.co/api/models?filter=onnx&amp;pipeline_tag=…</code>, paged with <code>Link</code>, and <code>?author=Xenova</code> and <code>?author=onnx-community</code>;</li>
+     <li>per repo, <code>/api/models/{repo}?blobs=true</code> (sizes, LFS SHA-256) and <code>config.json</code>.</li>
+    </ul>
+     </li>
+     <li><strong>Redirect behaviour:</strong> raw <code>HEAD</code> requests with <code>http.client</code>, without following redirects, on <code>Xenova/distilbert-base-uncased-finetuned-sst-2-english</code>: <code>config.json</code> and <code>tokenizer.json</code> (307, relative), and <code>onnx/model_quantized.onnx</code> (302, CDN).</li>
+     <li><strong>Signatures and tokenizer components:</strong>
+    <ul>
+     <li>the export files were downloaded, the quantized variants where they exist, since the signature does not depend on the variant;</li>
+     <li>each was read with <code>onnx</code> 1.23.1 (<code>load_external_data=False</code>), listing graph inputs that are not initializers;</li>
+     <li>each <code>tokenizer.json</code> was parsed with Python's <code>json</code>.</li>
+    </ul>
+     </li>
+     <li><strong>JSON parse times:</strong> an Objeck program (<code>JsonParser-&gt;New(text)-&gt;Parse()</code>, then <code>model.vocab</code>) compiled with the local <code>deploy-x64</code> <code>obc</code> and run with <code>obr</code>, after the training benchmark had finished.</li>
+     <li><strong>Training times:</strong>
+    <ul>
+     <li><code>torch</code> 2.15.0+cpu and <code>transformers</code> 5.22.0;</li>
+     <li><code>BertConfig</code> / <code>DistilBertConfig</code> at the stated sizes;</li>
+     <li>random ids, an all-ones mask, random labels;</li>
+     <li><code>AdamW(lr=2e-5)</code>;</li>
+     <li><code>zero_grad</code>, forward with labels, <code>backward</code>, <code>step</code>;</li>
+     <li>2 warm-up steps and 5 timed;</li>
+     <li>inference timed under <code>no_grad</code> in eval mode.</li>
+    </ul>
+     </li>
+     <li><strong>libtorch sizes:</strong> <code>HEAD</code> for archive sizes and <code>Last-Modified</code>; the zip central directory read with HTTP <code>Range</code> requests (Python <code>zipfile</code> over a ranged file object); runtime files are the <code>.dll</code>/<code>.so</code>/<code>.dylib</code> entries.</li>
+     <li><strong>Dependency status:</strong>
+    <ul>
+     <li>GitHub releases API (<code>gh api repos/{owner}/{repo}/releases</code>);</li>
+     <li>PyPI JSON (<code>/pypi/{name}/json</code>);</li>
+     <li><code>gh search code</code> for PyTorch's TorchScript deprecation strings;</li>
+     <li>the <code>microsoft/DirectML</code> README;</li>
+     <li>the ONNX Runtime v1.20.0 release body.</li>
+    </ul>
+     </li>
+    </ul>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Objeck Code Examples — Objeck Language</title>
+  <meta name="description" content="Collection of practical code examples demonstrating Objeck&#x27;s capabilities."/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Objeck Code Examples</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/EXAMPLES.md" target="_blank">docs/EXAMPLES.md on GitHub</a></div>
+    <p class="page-lead">Collection of practical code examples demonstrating Objeck's capabilities.</p>
+
+    <div class="note"><strong>AI developers:</strong> See the full <a href="doc_ai.html">AI &amp; ML Developer Guide</a> for comprehensive coverage of OpenAI, Gemini, Ollama, ONNX, OpenCV, and NLP.</div>
+    <h3 id="hello-world">Hello World</h3>
+    <h4 id="basic-hello-world">Basic Hello World</h4>
+<pre class="line-numbers"><code class="language-cpp">class Hello {
+  function : Main(args : String[]) ~ Nil {
+    "Hello World"-&gt;PrintLine();
+  }
+}
+</code></pre>
+    <h4 id="unicode-support">Unicode Support</h4>
+<pre class="line-numbers"><code class="language-cpp">class Hello {
+  function : Main(args : String[]) ~ Nil {
+    "Hello World"-&gt;PrintLine();
+    "Καλημέρα κόσμε"-&gt;PrintLine();
+    "こんにちは 世界"-&gt;PrintLine();
+  }
+}
+</code></pre>
+    <hr class="section-end">
+    <div class="raw"><a name="web--networking"></a>
+    ## Web & Networking</div>
+    <h4 id="http11-https-client">HTTP/1.1 HTTPS Client</h4>
+<pre class="line-numbers"><code class="language-cpp">use Web.HTTP;
+
+class HttpsExample {
+  function : Main(args : String[]) ~ Nil {
+    # Simple GET
+    resp := HttpsClient-&gt;QuickGet(Url-&gt;New("https://httpbin.org/get"));
+    if(resp &lt;&gt; Nil &amp; resp-&gt;GetCode() = 200) {
+      String-&gt;New(resp-&gt;GetContent())-&gt;PrintLine();
+    };
+
+    # POST with JSON
+    body := "{\"lang\":\"objeck\"}"-&gt;ToByteArray();
+    resp := HttpsClient-&gt;QuickPost(Url-&gt;New("https://httpbin.org/post"),
+                                   body, "application/json");
+    resp-&gt;GetCode()-&gt;PrintLine();   # 200
+  }
+}
+</code></pre>
+    <h4 id="http2-client">HTTP/2 Client</h4>
+<pre class="line-numbers"><code class="language-cpp">use Web.HTTP;
+
+class Http2Example {
+  function : Main(args : String[]) ~ Nil {
+    # Persistent connection — all requests share one TLS session
+    client := Http2Client-&gt;New("httpbin.org");
+    if(&lt;&gt;client-&gt;IsConnected()) {
+      "HTTP/2 unavailable"-&gt;ErrorLine();
+      return;
+    };
+
+    # GET
+    resp := client-&gt;Get("/get");
+    "GET status: {$resp-&gt;GetCode()}"-&gt;PrintLine();   # 200
+
+    # POST with JSON
+    body := "{\"lang\":\"objeck\"}"-&gt;ToByteArray();
+    resp := client-&gt;Post("/post", body, "application/json");
+    "POST status: {$resp-&gt;GetCode()}"-&gt;PrintLine();  # 200
+
+    # Custom header
+    client-&gt;AddHeader("x-client", "objeck");
+    resp := client-&gt;Get("/headers");
+    String-&gt;New(resp-&gt;GetContent())-&gt;PrintLine();
+
+    # Multiple requests reuse the same connection automatically
+    resp1 := client-&gt;Get("/ip");
+    resp2 := client-&gt;Get("/user-agent");
+
+    client-&gt;Close();
+
+    # One-liner for quick fire-and-forget requests
+    resp := Http2Client-&gt;QuickGet(Url-&gt;New("https://httpbin.org/get"));
+    resp-&gt;GetCode()-&gt;PrintLine();   # 200
+  }
+}
+</code></pre>
+    <h4 id="http3--quic-client">HTTP/3 / QUIC Client</h4>
+<pre class="line-numbers"><code class="language-cpp">use Web.HTTP;
+
+class Http3Example {
+  function : Main(args : String[]) ~ Nil {
+    # QUIC over UDP — zero round-trip on repeat connections
+    client := Http3Client-&gt;New("quic.nginx.org");
+    if(&lt;&gt;client-&gt;IsConnected()) {
+      "HTTP/3 unavailable"-&gt;ErrorLine();
+      return;
+    };
+
+    # GET
+    resp := client-&gt;Get("/");
+    "GET status: {$resp-&gt;GetCode()}"-&gt;PrintLine();   # 200
+
+    # POST
+    body := "hello=world"-&gt;ToByteArray();
+    resp := client-&gt;Post("/", body, "application/x-www-form-urlencoded");
+    "POST status: {$resp-&gt;GetCode()}"-&gt;PrintLine();
+
+    # Connection reuse — second request is free (no new handshake)
+    resp2 := client-&gt;Get("/");
+
+    client-&gt;Close();
+
+    # One-liner
+    resp := Http3Client-&gt;QuickGet(Url-&gt;New("https://quic.nginx.org/"));
+    resp-&gt;GetCode()-&gt;PrintLine();   # 200
+  }
+}
+</code></pre>
+    <hr class="section-end">
+    <div class="raw"><a name="ai-integration"></a>
+    ## AI Integration</div>
+    <h4 id="openai-realtime-api">OpenAI Realtime API</h4>
+<pre class="line-numbers"><code class="language-cpp"># OpenAI Realtime API - get text AND audio responses
+response := Realtime-&gt;Respond("How many James Bond movies have been made?",
+                              "gpt-4o-realtime-preview-2025-06-03", token);
+if(response &lt;&gt; Nil &amp; response-&gt;GetFirst() &lt;&gt; Nil &amp; response-&gt;GetSecond() &lt;&gt; Nil) {
+  # get text
+  text := response-&gt;GetFirst();
+  text_size := text-&gt;Size();
+  "text: size={$text_size}, text='{$text}'"-&gt;PrintLine();
+
+  # get audio
+  audio := response-&gt;GetSecond();
+  audio_bytes := audio-&gt;Get();
+  audio_bytes_size := audio_bytes-&gt;Size();
+  "audio: size={$audio_bytes_size}"-&gt;PrintLine();
+
+  # play audio
+  "---\nplaying..."-&gt;PrintLine();
+  Mixer-&gt;PlayPcm(audio_bytes, 22050, AudioFormat-&gt;SDL_AUDIO_S16LSB, 1);
+};
+</code></pre>
+    <h4 id="gemini-with-schema">Gemini with Schema</h4>
+<pre class="line-numbers"><code class="language-cpp"># Gemini generate w/ schema
+content := Content-&gt;New("user")-&gt;AddPart(TextPart-&gt;New("What are the top 5 cities average snowfall in the Eastern US by city for the past 5 years?"));
+
+# set schema
+schema_def := ParameterType-&gt;New(["year", "name", "inches"], true);
+schema_def-&gt;AddProp("year", ParameterType-&gt;New(ParameterType-&gt;Type-&gt;STRING));
+schema_def-&gt;AddProp("name", ParameterType-&gt;New(ParameterType-&gt;Type-&gt;STRING));
+schema_def-&gt;AddProp("inches", ParameterType-&gt;New(ParameterType-&gt;Type-&gt;INTEGER));
+resp_schema := Pair-&gt;New("application/json", schema_def)&lt;String, ParameterType&gt;;
+
+# make query
+candidates := Model-&gt;GenerateContent("models/gemini-2.5-flash-preview-05-20", content, resp_schema, EndPoint-&gt;GetApiKey());
+if(candidates &lt;&gt; Nil &amp; &lt;&gt;candidates-&gt;IsEmpty()) {
+  candidates-&gt;First()-&gt;GetAllText()-&gt;Trim()-&gt;PrintLine();
+};
+</code></pre>
+    <h4 id="openai-image-recognition">OpenAI Image Recognition</h4>
+<pre class="line-numbers"><code class="language-cpp"># OpenAI image identification
+bytes := System.IO.Filesystem.FileReader-&gt;ReadBinaryFile("../gemini/thirteen.png");
+bytes-&gt;Size()-&gt;PrintLine();
+
+image := API.OpenAI.ImageQuery-&gt;New("What number is this?", bytes, API.OpenAI.ImageQuery-&gt;MimeType-&gt;PNG);
+file_query := Collection.Pair-&gt;New("user", image)&lt;String, API.OpenAI.ImageQuery&gt;;
+
+response := Response-&gt;Respond("gpt-4o-mini", file_query, token);
+if(response = Nil) {
+  Response-&gt;GetLastError()-&gt;ErrorLine();
+  return;
+};
+
+response-&gt;GetText()-&gt;PrintLine();
+</code></pre>
+    <h4 id="openai-content-moderation">OpenAI Content Moderation</h4>
+<pre class="line-numbers"><code class="language-cpp"># Check text for policy violations — returns per-category flags and scores
+result := Moderation-&gt;Check("I love programming!", token);
+if(result &lt;&gt; Nil) {
+  "Flagged: {$result-&gt;IsFlagged()}"-&gt;PrintLine();
+  if(result-&gt;IsFlagged()) {
+    score := result-&gt;GetScore("violence");
+    "violence score: {$score}"-&gt;PrintLine();
+  };
+};
+</code></pre>
+    <h4 id="openai-batch-processing">OpenAI Batch Processing</h4>
+<pre class="line-numbers"><code class="language-cpp"># Submit a batch of requests (up to 50k) for async processing at 50% cost
+file_id := "file-abc123";   # upload a .jsonl of requests first
+job := Batch-&gt;Create(file_id, "/v1/chat/completions", token);
+if(job &lt;&gt; Nil) {
+  "batch id: {$job-&gt;GetId()}"-&gt;PrintLine();
+  "status: {$job-&gt;GetStatus()}"-&gt;PrintLine();   # "validating" → "in_progress" → "completed"
+};
+
+# Poll later
+job := Batch-&gt;Get(job-&gt;GetId(), token);
+if(job-&gt;IsComplete()) {
+  output_file_id := job-&gt;GetOutputFileId();
+  "output file: {$output_file_id}"-&gt;PrintLine();
+};
+</code></pre>
+    <h4 id="gemini-google-search-grounding">Gemini Google Search Grounding</h4>
+<pre class="line-numbers"><code class="language-cpp"># Ground the model's answer in live Google Search results
+content := Content-&gt;New("user")-&gt;AddPart(TextPart-&gt;New("What are the latest AI breakthroughs?"));
+candidates := Model-&gt;GenerateContentWithGrounding("models/gemini-2.0-flash", content, token);
+if(candidates &lt;&gt; Nil &amp; &lt;&gt;candidates-&gt;IsEmpty()) {
+  candidates-&gt;First()-&gt;GetAllText()-&gt;PrintLine();
+};
+</code></pre>
+    <h4 id="gemini-batch-embeddings">Gemini Batch Embeddings</h4>
+<pre class="line-numbers"><code class="language-cpp"># Embed multiple texts in one round-trip
+texts := Vector-&gt;New()&lt;String&gt;;
+texts-&gt;AddBack("Objeck is a JIT-compiled language");
+texts-&gt;AddBack("Python is popular for data science");
+texts-&gt;AddBack("Rust focuses on memory safety");
+
+embeddings := Model-&gt;BatchEmbedContent("models/text-embedding-004", texts, token);
+each(i : embeddings) {
+  emb := embeddings-&gt;Get(i);
+  dim := emb-&gt;Size();
+  "  [{$i}] dim={$dim}"-&gt;PrintLine();
+};
+</code></pre>
+    <h4 id="gemini-files-api">Gemini Files API</h4>
+<pre class="line-numbers"><code class="language-cpp"># Upload a file for use in model requests
+data := FileReader-&gt;ReadBinaryFile("document.pdf");
+file := FileManager-&gt;Upload("my-doc", data, "application/pdf", token);
+if(file &lt;&gt; Nil &amp; file-&gt;IsActive()) {
+  "URI: {$file-&gt;GetUri()}"-&gt;PrintLine();
+};
+
+# List and delete
+files := FileManager-&gt;List(token);
+each(f in files) {
+  FileManager-&gt;Delete(f-&gt;GetName(), token);
+};
+</code></pre>
+    <h4 id="gemini-context-caching">Gemini Context Caching</h4>
+<pre class="line-numbers"><code class="language-cpp"># Cache large content server-side to avoid re-tokenizing on every request
+content := Content-&gt;New("user")-&gt;AddPart(TextPart-&gt;New(large_system_prompt));
+item := CachedContent-&gt;Create("models/gemini-1.5-pro-001", content, 300, "my-cache", token);
+if(item &lt;&gt; Nil) {
+  "name: {$item-&gt;GetName()}"-&gt;PrintLine();
+  "tokens cached: {$item-&gt;GetTokenCount()}"-&gt;PrintLine();
+  "expires: {$item-&gt;GetExpireTime()}"-&gt;PrintLine();
+};
+</code></pre>
+    <hr class="section-end">
+    <div class="raw"><a name="computer-vision"></a>
+    ## Computer Vision</div>
+    <h4 id="face-detection-onnx--opencv">Face Detection (ONNX + OpenCV)</h4>
+<pre class="line-numbers"><code class="language-cpp">use API.OpenCV, API.Onnx, System.IO.Filesystem;
+
+# The OpenCV bundle has no cascade classifier: detect faces with the ONNX
+# FaceSession (compile with -lib models,onnx,opencv) and draw the boxes with OpenCV
+bytes   := FileReader-&gt;ReadBinaryFile("group.jpg");
+session := FaceSession-&gt;New("det_10g.onnx");
+faces   := session-&gt;Detect(bytes, 0.5);
+count   := faces-&gt;GetSize();
+"Faces: {$count}"-&gt;PrintLine();
+
+image := Image-&gt;Load(bytes);
+green := Scalar-&gt;New(0.0, 255.0, 0.0);
+detections := faces-&gt;GetDetections();
+each(face in detections) {
+    image := image-&gt;DrawRectangle(face-&gt;GetBounds(), green, 2);
+};
+image-&gt;Save("faces.jpg");
+session-&gt;Close();
+</code></pre>
+    <h4 id="opencv-image-processing">OpenCV Image Processing</h4>
+<pre class="line-numbers"><code class="language-cpp"># Load and process an image
+image := Image-&gt;Load("photo.jpg");
+gray := image-&gt;CvtColor(ColorConversionCodes-&gt;BGR2GRAY);
+blurred := gray-&gt;GaussianBlur(5, 5, 0.0);
+edges := blurred-&gt;Canny(50, 150);
+edges-&gt;Save("edges.jpg");
+</code></pre>
+    <hr class="section-end">
+    <div class="raw"><a name="graphics"></a>
+    ## Graphics & GC Visualization</div>
+    <h4 id="3d--walk-through-a-lit-shadowed-scene">3D — walk through a lit, shadowed scene</h4>
+    <p><code>gl_walkthrough.obs</code> is a first-person walk around a room built from boxes, with mouse look, sliding collision, one directional light and a shadow map. It uses <code>Game.OpenGL</code>, the 3D framework: OpenGL 3.3 core over SDL2, on Windows, Linux and macOS.</p>
+<pre class="plain">compile: obc -src gl_walkthrough.obs -lib sdl2,sdl_gl
+run:     obr gl_walkthrough        # WASD to move, mouse to look, escape to quit</pre>
+    <p>Or let the runner pick the deploy tree, check it is not stale, and pass each demo the assets it needs:</p>
+<pre class="plain">./run_gl.sh gl_walkthrough        # Linux, macOS
+.\run_gl.cmd gl_walkthrough       # Windows</pre>
+    <p>The other GL examples are <code>gl_clear</code> (the smallest thing that opens a window — 25 lines), <code>cube_gl</code> (one textured spinning cube), <code>gl_boing</code> (the Boing Ball in 3D, in a room, with a post-process pass) and <code>gl_model</code> (loads <code>gl_crystal.obj</code> and fits it to frame whatever scale it was authored at). <code>programs/examples/gl_fps.obs</code> ships in the distribution.</p>
+    <h4 id="objeck-range--a-first-person-shooting-gallery">Objeck Range — a first-person shooting gallery</h4>
+    <p><code>programs/examples/gl_fps.obs</code> is the framework used the way a game would use it: a lit, shadowed arena you walk around and shoot targets in, with nothing loaded from disk.</p>
+    <p>It exists to exercise the parts that only show up in combination. <code>Scene-&gt;Raycast</code> is the hitscan — a shot is a ray from the camera along the crosshair, and because it reports the <em>nearest</em> hit, a target behind a pillar is protected without the program knowing pillars exist. <code>Scene-&gt;SlideMove</code> makes walking into a wall slide along it. A <code>PropBatch</code> draws every post around the edge in one call. A gamepad works if one is plugged in and nothing changes if one is not.</p>
+    <p>Two traps it ran into, both worth knowing before building anything similar: <strong>mark floors and ceilings non-solid</strong> (collision is a plan-view test, so a solid floor spans every position in the room and the player cannot move at all), and keep <code>speed * 0.1</code> under the thickness of your thinnest wall, since <code>SlideMove</code> tests the destination rather than the path swept to reach it.</p>
+    <h4 id="boing-ball--live-gccpu-visualizer">Boing Ball — live GC/CPU visualizer</h4>
+    <p>The Amiga 1984 Boing Ball recreated with SDL2 (<code>programs/examples/boing_ball.obs</code>): an Amiga-style color-cycled checker sphere with real bounce physics, a Matrix-rain backdrop, a neon OBJECK wordmark, and a HUD reading the VM's live <code>runtime.*</code> monitors (FPS / memory / heap / GC / CPU). Asset-free (it synthesizes its own "boing" WAV) — and a hands-on way to <em>watch</em> the garbage collector work.</p>
+<pre class="plain">compile: obc -src boing_ball.obs -lib sdl2,sdl_game,json,gen_collect
+run:     obr boing_ball        # or: obr --gc-threshold=64M boing_ball</pre>
+    <h4 id="boing-ball-mt--multitasking-tuning-console">Boing Ball MT — multitasking tuning console</h4>
+    <p><code>boing_ball_mt.obs</code> adds structured concurrency: the ball animates on the main thread while <strong>SPACE / W</strong> spawn background worker tasks (<code>System.Concurrency.TaskScope</code>) that churn the heap, competing for the cooperative stop-the-world. The HUD shows live thread count, GC pauses, collection counts, and contention; on quit, <code>leaving { scope-&gt;JoinAll(); }</code> joins every worker cleanly. A nod to the Amiga demo that ran a terminal <em>while the ball bounced</em>.</p>
+<pre class="plain">compile: obc -src boing_ball_mt.obs -lib sdl2,sdl_game,json,gen_collect,concurrent
+run:     obr boing_ball_mt</pre>
+    <h4 id="checkers--a-game-a-thinking-computer-and-generated-music">Checkers — a game, a thinking computer and generated music</h4>
+    <p><code>programs/examples/checkers/</code> is a complete checkers game: an SDL2 window at 60 frames a second, ten piece sets drawn from shapes (four crazy creatures and two tech-neo gadget sets), ten computer levels (the library <code>Minimax</code> and <code>MonteCarloTreeSearch</code> play it through a <code>System.AI.GameState</code> wrapper), a hill-climbing learner that tunes the evaluation by self-play, a tournament that proves level N beats level N-1, playful animation, and music generated while you play (hip-hop, modern beats, reggae, techno or classical, with a deep-bass setting and a Markov chain that learns habits from seed phrases, played by a built-in synthesizer or exported as a Standard MIDI File). The engine is checked with perft against the published move counts. See its <a href="doc_checkers.html">README</a>.</p>
+<pre class="plain">cd programs/examples/checkers
+obc -src checkers_engine.obs,checkers_game.obs,checkers_ai.obs,checkers_logic.obs,checkers_draw.obs,checkers_chars.obs,checkers_fx.obs,checkers_music.obs,checkers_audio.obs,checkers.obs -lib sdl2,sdl_game,ai,json,collect -dest checkers.obe
+obr checkers.obe</pre>
+    <div class="raw"><a name="more-examples"></a>
+    ## More Examples</div>
+    <p>For complete working examples, visit:</p>
+    <ul>
+     <li><a href="https://github.com/objeck/objeck-lang/tree/master/programs/examples" target="_blank">Examples Directory</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/tree/master/programs/frameworks" target="_blank">Framework Examples</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/tree/master/programs/tests" target="_blank">Test Programs</a></li>
+    </ul>
+    <h4 id="additional-resources">Additional Resources</h4>
+    <ul>
+     <li><a href="https://www.objeck.org">API Documentation</a></li>
+     <li><a href="doc_features.html">Language Features</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/README.md" target="_blank">Back to README</a></li>
+    </ul>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

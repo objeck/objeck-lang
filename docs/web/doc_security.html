@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>The Objeck VM trust model — Objeck Language</title>
+  <meta name="description" content="Short version: running an .obe is equivalent to running native code with the privileges of the obr process. The VM checks that a program file is well formed enough to load; it does not check that the bytecode inside is safe to execute. Do n"/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">The Objeck VM trust model</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/SECURITY_MODEL.md" target="_blank">docs/SECURITY_MODEL.md on GitHub</a></div>
+    <p class="page-lead"><strong>Short version: running an <code>.obe</code> is equivalent to running native code with the privileges of the <code>obr</code> process.</strong> The VM checks that a program file is well formed enough to load; it does not check that the bytecode inside is safe to execute. Do not run an <code>.obe</code> you would not run as a native executable, and do not treat <code>obr</code> as a sandbox. Isolation, where it is needed, comes from the operating system around the VM -- as the playground does with Docker.</p>
+    <div id="toc_container" class="plain">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#who-can-do-what">Who can do what</a></li>
+      <li><a href="#what-the-loader-checks">What the loader checks</a></li>
+      <li><a href="#what-the-verification-pass-checks">What the verification pass checks</a></li>
+      <li><a href="#what-is-still-not-checked">What is still not checked</a></li>
+      <li><a href="#the-playground">The playground</a></li>
+      <li><a href="#planned">Planned</a></li>
+     </ul>
+    </div>
+
+    <p>This page says what the loader and interpreter check today, what they do not, what the web playground relies on, and what is planned. Every statement about the code cites the file and line it was read from (master, 2026-10-31); line numbers drift, so the function names are given as well.</p>
+    <p>Reporting a vulnerability is covered in <a href="https://github.com/objeck/objeck-lang/blob/master/SECURITY.md" target="_blank">SECURITY.md</a>.</p>
+    <hr class="section-end">
+    <h3 id="who-can-do-what">Who can do what</h3>
+    <p>There are two ways for a program to do something dangerous, and the VM stops neither.</p>
+    <ol>
+     <li><strong>By asking.</strong> A correct program compiled from ordinary source can read and write any file the process can, open sockets, run shell commands (<code>TrapProcessor::SysCmd</code> passes its argument to <code>_wsystem</code>/<code>system</code>, <code>core/vm/common.cpp:4195-4213</code>), and load native code: <code>DllProxy-&gt;New(name)</code> appends <code>name</code> to the native library directory with no check for path separators and loads the result (<code>StackInterpreter::SharedLibraryLoad</code>, <code>core/vm/interpreter.cpp:3080-3132</code> for <code>LoadLibraryW</code>, <code>:3198</code> for <code>dlopen</code>), so a name with <code>../</code> in it loads any file the process can read that carries the platform's library suffix, which the VM appends. A native library runs in-process with no restriction at all (see <a href="doc_native_interface.html">native_interface.md</a>).</li>
+     <li><strong>By lying.</strong> An <code>.obe</code> that was not produced by <code>obc</code> -- or was edited after -- can contain instructions the compiler never emits. The interpreter trusts instruction operands, so such a file can read and write memory outside the VM's own structures. That makes a crafted <code>.obe</code> equivalent to native code even with every library withheld.</li>
+    </ol>
+    <p>The first is the language working as designed. The second is the gap a bytecode verifier closes; the loader's verification pass closes part of it (below).</p>
+    <hr class="section-end">
+    <h3 id="what-the-loader-checks">What the loader checks</h3>
+    <p><code>Loader::Load</code> and friends (<code>core/vm/loader.cpp</code>, <code>core/vm/loader.h</code>) validate the file's <em>structure</em>:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>check</th><th>where</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="check">the toolchain version matches the VM's (<code>VER_NUM</code>), else refuse</td><td data-label="where"><code>loader.cpp:71</code></td></tr>
+      <tr><td data-label="check">the magic number names an executable, not a library or unknown file</td><td data-label="where"><code>loader.cpp:86</code></td></tr>
+      <tr><td data-label="check">every read stays inside the decompressed buffer (<code>EnsureBytes</code>)</td><td data-label="where"><code>loader.h:65</code></td></tr>
+      <tr><td data-label="check">counts and lengths that size an allocation are non-negative and no larger than the bytes left (<code>ReadCount</code>)</td><td data-label="where"><code>loader.h:84</code></td></tr>
+      <tr><td data-label="check">class count no larger than the bytes left; each class id in <code>[0, class count)</code> and stored once; an interface count no larger than the ids left</td><td data-label="where"><code>Loader::LoadClasses</code>, <code>loader.cpp:413</code>, <code>:436</code>, <code>:452</code></td></tr>
+      <tr><td data-label="check">method count no larger than the bytes left; each method id in <code>[0, method count)</code> and stored once</td><td data-label="where"><code>Loader::LoadMethods</code>, <code>loader.cpp:558</code>, <code>:570</code></td></tr>
+      <tr><td data-label="check">instruction count no larger than the bytes left</td><td data-label="where"><code>loader.cpp:598</code></td></tr>
+      <tr><td data-label="check">every opcode is known; library-only opcodes are refused in an executable</td><td data-label="where"><code>loader.cpp:945</code>, <code>:948</code></td></tr>
+     </tbody>
+    </table>
+    <p>The bounds check is off for the bundled-executable path, which loads from memory with no length (<code>buffer_end = nullptr</code>, <code>loader.h:194</code>).</p>
+    <p>These checks are fuzzed: <a href="doc_fuzz.html">tools/fuzz/loader</a> holds libFuzzer targets on <code>Loader::Load</code>, seeded with the compiled regression programs, and every input they found is a case in <code>run_vm_flag_tests.py</code> (section 30).</p>
+    <h3 id="what-the-verification-pass-checks">What the verification pass checks</h3>
+    <p>Once a program has loaded and before any of it runs, <code>Loader::Verify</code> (<code>core/vm/loader.cpp</code>) relates each operand to the program it is part of. A program that breaks a rule is refused with <code>&gt;&gt;&gt; Invalid bytecode: &lt;method&gt;, instruction &lt;n&gt;: &lt;rule&gt; &lt;&lt;&lt;</code> and status 1. Every rule holds for every program the toolchain compiles: the 849 compiled regression programs (each links the standard libraries; a quarter are compiled again with <code>-debug</code>) all pass.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>rule</th><th>what it closes</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="rule">every <code>JMP</code>, <code>TRY_START</code> and jump-table target is an instruction of the method; a <code>JMP_TABLE</code>'s <code>range</code> slots exist and are <code>JMP_TABLE_SLOT</code>s</td><td data-label="what it closes"><code>Handle_JMP</code> and <code>Handle_JMP_TABLE</code> (<code>core/vm/dispatch.cpp</code>) set the instruction pointer from these unchecked</td></tr>
+      <tr><td data-label="rule">the last instruction is <code>RTRN</code> or an unconditional <code>JMP</code></td><td data-label="what it closes">control running off the end reads past the instruction array</td></tr>
+      <tr><td data-label="rule">a local's id plus its width (two words for a function value) fits the frame: <code>id + width &lt;= mem_size + 1</code></td><td data-label="what it closes"><code>mem[id + 1]</code> (<code>interpreter.cpp</code>) on a frame of <code>mem_size + 2</code> words</td></tr>
+      <tr><td data-label="rule">a class variable fits the class's static memory; an instance variable fits the largest object any class makes</td><td data-label="what it closes"><code>cls_inst_mem[id]</code></td></tr>
+      <tr><td data-label="rule">a memory context is <code>LOCL</code>, <code>INST</code> or <code>CLS</code>; array dimensions and <code>NEW_*_ARY</code> dimensions are at least 1</td><td data-label="what it closes"></td></tr>
+      <tr><td data-label="rule"><code>MTHD_CALL</code> names a class and a method that exist; <code>NEW_OBJ_INST</code>, <code>OBJ_INST_CAST</code> and <code>OBJ_TYPE_OF</code> name a class that exists</td><td data-label="what it closes">the call paths dereferenced a null class or method</td></tr>
+      <tr><td data-label="rule">a parent id is a class or -1; an interface id is a class or -1 (not linked in)</td><td data-label="what it closes"></td></tr>
+      <tr><td data-label="rule">a declaration type is a <code>ParamType</code> (checked as it is read)</td><td data-label="what it closes">the collector walks frames and objects by these</td></tr>
+      <tr><td data-label="rule"><code>TRAP</code>/<code>TRAP_RTRN</code> directly follow the <code>LOAD_INT_LIT</code> that pushes a known trap id (the <code>Traps</code> enum, or <code>SET_SIGNAL</code>/<code>RAISE_SIGNAL</code>), and take at least one argument</td><td data-label="what it closes"><code>tools/cicd/check_trap_handlers.py</code> fails when a trap is added that this would refuse</td></tr>
+      <tr><td data-label="rule">the start method exists; with program arguments, String's constructor (method 2) does too</td><td data-label="what it closes">the initialization code calls both</td></tr>
+     </tbody>
+    </table>
+    <p><code>run_vm_flag_tests.py</code> section 30 changes one operand of a freshly compiled program for each rule and requires the refusal.</p>
+    <h3 id="what-is-still-not-checked">What is still not checked</h3>
+    <ul>
+     <li><strong>Operand-stack depth.</strong> Nothing computes a method's maximum stack depth or checks that each instruction has the operands it pops. <code>PushInt</code> and <code>PopInt</code> index the operand stack with no bound (<code>core/vm/interpreter.h</code>); the only limit is checked at a call (<code>PushFrame</code>). A trap pops as many words as its own id says, so a depth check needs a per-trap table the compiler and the VM do not share yet.</li>
+     <li><strong>Types.</strong> An instance variable is checked against the largest object, not the object on the stack: nothing proves which class that is. Likewise a trap trusts whatever words the program put on the stack as its arguments -- object pointers included.</li>
+     <li><strong>The bundled-executable path</strong> (<code>buffer_end = nullptr</code>) is verified but not bounds-checked while it is read.</li>
+    </ul>
+    <p>So the rule at the top of this page still stands: a crafted <code>.obe</code> can still corrupt memory through the stack or through a trap's arguments.</p>
+    <hr class="section-end">
+    <h3 id="the-playground">The playground</h3>
+    <p><a href="https://playground.objeck.org">playground.objeck.org</a> runs untrusted programs. It does not rely on the VM for isolation. Its backend (<code>programs/web-playground/backend</code>) compiles the visitor's <em>source</em> with <code>obc</code> -- it never accepts an <code>.obe</code> -- and then runs it in a Docker container (<code>app/services/sandbox.py:206-236</code>):</p>
+    <ul>
+     <li><code>network_mode="none"</code> (<code>sandbox.py:211</code>)</li>
+     <li>a read-only root file system, and a 10 MB <code>/tmp</code> tmpfs mounted <code>nosuid,nodev,noexec</code> (<code>sandbox.py:212</code>, <code>:215</code>; size in <code>app/config.py:22</code>)</li>
+     <li>128 MB of memory with no swap, half a CPU, and at most 32 processes (<code>sandbox.py:216-220</code>; values in <code>app/config.py:19-21</code>)</li>
+     <li>every capability dropped and <code>no-new-privileges</code> (<code>sandbox.py:227-228</code>)</li>
+     <li>a non-root <code>sandbox</code> user (<code>sandbox.py:235</code>)</li>
+     <li><code>timeout</code> on both the compile and the run (<code>container_command</code>, <code>sandbox.py:150-178</code>)</li>
+    </ul>
+    <p>Before that it refuses source that names bundles or calls the sandbox would not honour anyway -- <code>System.API</code>, <code>System.IO.Filesystem</code>, <code>System.IO.Net</code> (<code>app/services/libmap.py:61-65</code>), <code>DllProxy</code>, process and socket classes (<code>app/services/validator.py:86-101</code>) -- so a visitor gets a reason rather than a failure. That check is a lexical scan, by its own description "deliberately not a parser" (<code>app/services/source_scan.py:13</code>); it improves the error messages and is not the security boundary. The container is.</p>
+    <p>Anyone hosting Objeck for untrusted users should do the same: treat the VM process as hostile and contain it from outside.</p>
+    <hr class="section-end">
+    <h3 id="planned">Planned</h3>
+    <ul>
+     <li><strong>Stack-depth and type checks</strong>, completing the verifier: the operand-stack depth at each instruction consistent across every path into it, never negative and bounded, and the class of each object operand known. With them, "a crafted <code>.obe</code> is native code" becomes "a crafted <code>.obe</code> is refused".</li>
+     <li><strong>Deny flags</strong> on <code>obr</code>, for capabilities a program should not have even when it asks: native libraries (<code>DllProxy</code>), running commands, the file system, the network. Each would make the matching traps fail as a runtime error. Together with a complete verifier, they would let <code>obr</code> itself enforce what the playground currently enforces only with a container and a source scan.</li>
+    </ul>
+    <p>Until both exist, the rule at the top of this page stands.</p>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

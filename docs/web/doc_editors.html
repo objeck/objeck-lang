@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Editor &amp; IDE Support — Objeck Language</title>
+  <meta name="description" content="Objeck has syntax highlighting, build integration, LSP support, and DAP debugging across multiple editors."/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Editor &amp; IDE Support</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/editors.md" target="_blank">docs/editors.md on GitHub</a></div>
+    <p class="page-lead">Objeck has syntax highlighting, build integration, LSP support, and DAP debugging across multiple editors.</p>
+    <div id="toc_container" class="plain">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#vs-code-recommended">VS Code (Recommended)</a></li>
+      <li><a href="#sublime-text">Sublime Text</a></li>
+      <li><a href="#vim--gvim-90">Vim / GVim (9.0+)</a></li>
+      <li><a href="#neovim-011">Neovim (0.11+)</a></li>
+      <li><a href="#emacs-29">Emacs (29+)</a></li>
+      <li><a href="#kate">Kate</a></li>
+      <li><a href="#other-editors">Other Editors</a></li>
+      <li><a href="#command-line-debugger">Command-Line Debugger</a></li>
+     </ul>
+    </div>
+
+    <hr class="section-end">
+    <h3 id="vs-code-recommended">VS Code (Recommended)</h3>
+    <p>Full IDE experience with syntax highlighting, LSP autocomplete, and DAP debugging. Tested on Windows, Linux, and macOS.</p>
+    <h4 id="1-install-the-extension">1. Install the Extension</h4>
+    <p>Download <code>objeck-lsp_&lt;version&gt;.zip</code> from the <a href="https://github.com/objeck/objeck-lang/releases" target="_blank">Objeck releases</a> and unzip it; it contains <code>objeck-lsp.vsix</code> along with the other editor clients. Then (same command on all three platforms):</p>
+<pre class="plain">code --install-extension objeck-lsp.vsix</pre>
+    <p>Or in VS Code: <strong>Extensions</strong> (Ctrl+Shift+X on Windows/Linux, Cmd+Shift+X on macOS) &gt; <strong>...</strong> menu &gt; <strong>Install from VSIX...</strong></p>
+    <h4 id="2-configure-install-path">2. Configure Install Path</h4>
+    <p>Open VS Code Settings (Ctrl+, / Cmd+,) and set the install directory that matches your platform:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Platform</th><th>Setting</th><th>Example</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Platform"><strong>Windows</strong></td><td data-label="Setting"><code>objk.win.install.dir</code></td><td data-label="Example"><code>C:\Program Files\Objeck</code></td></tr>
+      <tr><td data-label="Platform"><strong>Linux</strong></td><td data-label="Setting"><code>objk.posix.install.dir</code></td><td data-label="Example"><code>/usr/local/objeck-lang</code></td></tr>
+      <tr><td data-label="Platform"><strong>macOS</strong></td><td data-label="Setting"><code>objk.posix.install.dir</code></td><td data-label="Example"><code>/usr/local/objeck-lang</code> or <code>/opt/homebrew/Cellar/objeck/&lt;version&gt;</code></td></tr>
+     </tbody>
+    </table>
+    <h4 id="3-debugging-with-dap">3. Debugging with DAP</h4>
+    <p>Compile with debug symbols:</p>
+<pre class="cmd">obc -src myprogram.obs -debug</pre>
+    <p>Create <code>.vscode/launch.json</code> in your workspace:</p>
+<pre class="line-numbers"><code class="language-json">{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "objeck",
+      "request": "launch",
+      "name": "Debug Objeck Program",
+      "program": "${workspaceFolder}/myprogram.obe",
+      "sourceDir": "${workspaceFolder}"
+    }
+  ]
+}
+</code></pre>
+    <p>Press <strong>F5</strong> to start debugging. Features:</p>
+    <ul>
+     <li>Breakpoints (click gutter or F9)</li>
+     <li>Conditional breakpoints (right-click breakpoint &gt; Edit Condition, e.g. <code>i &gt; 3</code>)</li>
+     <li>Function breakpoints (Breakpoints panel &gt; <strong>+</strong>, e.g. <code>Main-&gt;Factorial</code>, <code>Main.Factorial</code>, or a bare <code>Factorial</code>)</li>
+     <li>Logpoints (right-click gutter &gt; Add Logpoint — log a <code>{expr}</code>-interpolated message and keep running instead of stopping)</li>
+     <li>Exception breakpoints (Breakpoints panel &gt; <strong>Uncaught Runtime Errors</strong> — stop on an uncaught Objeck runtime error such as a <code>Nil</code> dereference)</li>
+     <li>Step Over (F10), Step Into (F11), Step Out (Shift+F11)</li>
+     <li>Variable inspection in the <strong>Variables</strong> panel; edit an <code>Int</code>/<code>Char</code>/<code>Float</code> local in place (double-click the value)</li>
+     <li>Call stack in the <strong>Call Stack</strong> panel</li>
+     <li>Restart (Ctrl+Shift+F5) re-runs the program in-process without relaunching the adapter</li>
+     <li>Expression evaluation in the <strong>Debug Console</strong></li>
+     <li>Program output (<code>PrintLine</code>, <code>Print</code>, stderr) appears in the <strong>Debug Console</strong> as DAP <code>output</code> events — <code>obd --dap</code> redirects the running program's stdout/stderr through capture pipes so the protocol stream stays clean.</li>
+    </ul>
+    <h4 id="4-lsp-features">4. LSP Features</h4>
+    <p>The language server implements the following, and every editor below gets all of them — the list is not VS Code specific:</p>
+    <p><strong>Navigation</strong></p>
+    <ul>
+     <li>Go to definition, declaration, type definition, and implementation</li>
+     <li>Find references</li>
+     <li>Document symbols and workspace symbols</li>
+     <li>Call hierarchy and type hierarchy</li>
+    </ul>
+    <p><strong>Reading</strong></p>
+    <ul>
+     <li>Hover information</li>
+     <li>Inlay hints (parameter names at call sites)</li>
+     <li>Semantic tokens (highlighting that knows classes from interfaces from enums)</li>
+     <li>Document highlight (every occurrence of the symbol at the cursor)</li>
+     <li>Folding ranges and expand-selection</li>
+    </ul>
+    <p><strong>Editing</strong></p>
+    <ul>
+     <li>Code completion with signature help</li>
+     <li>Rename</li>
+     <li>Code actions (quick fixes)</li>
+     <li>Document and range formatting</li>
+     <li>Diagnostics (compile errors and warnings) as you type</li>
+    </ul>
+    <hr class="section-end">
+    <h3 id="sublime-text">Sublime Text</h3>
+    <p>Tested on Windows, Linux, and macOS with Sublime Text 4.</p>
+    <h4 id="automated-setup-recommended">Automated Setup (Recommended)</h4>
+    <p>Download the <a href="https://github.com/objeck/objeck-lang/releases" target="_blank">Objeck release</a> and run the install script for your platform:</p>
+<pre class="cmd">:: Windows (Command Prompt)
+scripts\install.cmd "C:\Program Files\Objeck" sublime</pre>
+<pre class="cmd"># Linux
+./scripts/install.sh /usr/local/objeck sublime
+
+# macOS (Intel or Apple Silicon)
+./scripts/install.sh /usr/local/objeck sublime</pre>
+    <p>This installs the LSP server, syntax highlighting, the DAP adapter plugin, and configures Sublime automatically. Requires the <a href="https://packagecontrol.io/packages/LSP" target="_blank">LSP</a> package (installed automatically on Linux/macOS if git is available).</p>
+    <p>After install: <strong>Tools &gt; LSP &gt; Enable Language Server Globally &gt; select "objeck"</strong>.</p>
+    <h4 id="debugging-with-dap">Debugging with DAP</h4>
+    <p>The install script drops <code>objeck_dap_adapter.py</code> and a <code>.python-version</code> file (containing <code>3.8</code>) into <code>Packages/Objeck/</code>, and writes <code>Packages/User/Objeck.sublime-settings</code> with the path to <code>obd</code>. The <code>.python-version</code> is required: the Sublime <a href="https://packagecontrol.io/packages/Debugger" target="_blank">Debugger</a> package targets Python 3.8 and Sublime Text 4 defaults to Python 3.3 for plugins, so without it the adapter fails to load. See <a href="https://www.sublimetext.com/docs/api_environments.html" target="_blank">API Environments</a>.</p>
+    <p>To enable debugging:</p>
+    <ol>
+     <li>Install the <a href="https://packagecontrol.io/packages/Debugger" target="_blank">Debugger</a> package via Package Control.</li>
+     <li>Restart Sublime so the adapter is registered with Debugger's adapter registry.</li>
+     <li>Compile your source with debug symbols: <code>obc -src myprog.obs -debug</code>.</li>
+     <li>Add a <code>debugger_configurations</code> block to your <code>.sublime-project</code>:</li>
+    </ol>
+<pre class="line-numbers"><code class="language-json">{
+    "folders": [{ "path": "." }],
+    "debugger_configurations": [{
+        "name": "Debug current Objeck file",
+        "type": "objeck",
+        "request": "launch",
+        "program": "${folder}/${file_base_name}.obe",
+        "sourceDir": "${folder}"
+    }]
+}
+</code></pre>
+    <ol start="5">
+     <li>Open the project, then <strong>Debugger &gt; Start</strong> (or via the command palette: "Debugger: Start"). Set breakpoints by clicking the gutter; step with the Debugger panel buttons; inspect locals in the <strong>Variables</strong> view.</li>
+    </ol>
+    <p>The adapter spawns <code>obd --dap</code> over stdio with <code>OBJECK_LIB_PATH</code> set per <code>Objeck.sublime-settings</code>. The full example lives at <code>clients/sublime/dap/objeck.sublime-project.example</code> in the Objeck release.</p>
+    <h4 id="manual-setup">Manual Setup</h4>
+    <p>Copy syntax files from <code>docs/syntax/sublime/</code> to your Sublime packages directory:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Platform</th><th>Path</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Platform"><strong>Windows</strong></td><td data-label="Path"><code>%APPDATA%\Sublime Text\Packages\Objeck\</code></td></tr>
+      <tr><td data-label="Platform"><strong>macOS</strong></td><td data-label="Path"><code>~/Library/Application Support/Sublime Text/Packages/Objeck/</code></td></tr>
+      <tr><td data-label="Platform"><strong>Linux</strong></td><td data-label="Path"><code>~/.config/sublime-text/Packages/Objeck/</code></td></tr>
+     </tbody>
+    </table>
+    <p>Files:</p>
+    <ul>
+     <li><code>objeck.sublime-syntax</code> — syntax definitions</li>
+     <li><code>objeck.tmPreferences</code> — indentation rules</li>
+     <li><code>objeck.sublime-build</code> — build system (edit paths to match your install)</li>
+    </ul>
+    <p>For LSP, add to <strong>Preferences &gt; Package Settings &gt; LSP &gt; Settings</strong>:</p>
+<pre class="line-numbers"><code class="language-json">{
+  "clients": {
+    "objeck": {
+      "enabled": true,
+      "command": ["~/.objeck-lsp/bin/obr", "~/.objeck-lsp/objeck_lsp.obe", "~/.objeck-lsp/objk_apis.json", "stdio"],
+      "env": {
+        "OBJECK_LIB_PATH": "~/.objeck-lsp/lib",
+        "OBJECK_STDIO": "binary"
+      },
+      "selector": "source.objeck-obs"
+    }
+  }
+}
+</code></pre>
+    <hr class="section-end">
+    <h3 id="vim--gvim-90">Vim / GVim (9.0+)</h3>
+    <p>Full IDE setup with syntax highlighting, LSP (autocomplete / go-to-def / hover / diagnostics) via <a href="https://github.com/yegappan/lsp" target="_blank">yegappan/lsp</a>, and DAP debugging via <a href="https://github.com/puremourning/vimspector" target="_blank">vimspector</a>. Requires Vim 9.0+ with <code>+python3</code> (the gvim "Huge" build on Windows, <code>vim-gtk3</code> / <code>vim-gnome</code> on Linux, <code>brew install macvim</code> on macOS).</p>
+    <p>Tested on Windows (gvim "Huge" build), Linux, and macOS (MacVim).</p>
+    <h4 id="automated-setup-recommended-1">Automated Setup (Recommended)</h4>
+    <p>Download the <a href="https://github.com/objeck/objeck-lang/releases" target="_blank">Objeck release</a> and run the installer for your platform:</p>
+<pre class="cmd">:: Windows (Command Prompt)
+scripts\install.cmd "C:\Program Files\Objeck" vim</pre>
+<pre class="cmd"># Linux
+./scripts/install.sh /usr/local/objeck vim
+
+# macOS
+./scripts/install.sh /usr/local/objeck vim</pre>
+    <p>The script:</p>
+    <ul>
+     <li>Installs syntax + ftdetect into the Vim runtime dir — <code>%USERPROFILE%\vimfiles\</code> on Windows, <code>~/.vim/</code> on Linux/macOS</li>
+     <li>Clones <code>yegappan/lsp</code> and <code>puremourning/vimspector</code> into <code>&lt;vim-runtime&gt;/pack/objeck/start/</code></li>
+     <li>Drops <code>objeck.vim</code> into the auto-loaded <code>plugin/</code> dir with the LSP server registration and keybindings</li>
+    </ul>
+    <p>After install, open any <code>.obs</code> file in gvim / vim / MacVim — the LSP server starts automatically and these keybindings are active in Objeck buffers:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Key</th><th>Action</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Key"><code>gd</code></td><td data-label="Action">Go to definition</td></tr>
+      <tr><td data-label="Key"><code>gr</code></td><td data-label="Action">Show references</td></tr>
+      <tr><td data-label="Key"><code>K</code></td><td data-label="Action">Hover documentation</td></tr>
+      <tr><td data-label="Key"><code>&lt;leader&gt;rn</code></td><td data-label="Action">Rename symbol</td></tr>
+     </tbody>
+    </table>
+    <h4 id="debugging-with-dap-1">Debugging with DAP</h4>
+    <ol>
+     <li><strong>Compile with debug symbols</strong>:</li>
+    </ol>
+<pre class="cmd">obc -src myprog.obs -debug</pre>
+    <ol start="2">
+     <li><strong>Drop a <code>.vimspector.json</code> next to your sources</strong>. Vimspector walks up from the file being debugged looking for <code>.vimspector.json</code> — place it at your project root (not <code>~/</code>). It must contain <strong>both</strong> an <code>adapters</code> block (pointing at <code>obd</code>) and a <code>configurations</code> block:</li>
+    </ol>
+    <p><strong>Windows</strong> — note the doubled backslashes in JSON:</p>
+<pre class="line-numbers"><code class="language-json">{
+    "adapters": {
+        "objeck": {
+            "name": "objeck",
+            "command": [
+                "C:\\Program Files\\Objeck\\bin\\obd.exe",
+                "--dap"
+            ],
+            "env": {
+                "OBJECK_LIB_PATH": "C:\\Program Files\\Objeck\\lib"
+            }
+        }
+    },
+    "configurations": {
+        "Debug current Objeck file": {
+            "adapter": "objeck",
+            "configuration": {
+                "request": "launch",
+                "type": "objeck",
+                "program": "${workspaceRoot}/${fileBasenameNoExtension}.obe",
+                "sourceDir": "${workspaceRoot}"
+            }
+        }
+    }
+}
+</code></pre>
+    <p><strong>Linux / macOS</strong>:</p>
+<pre class="line-numbers"><code class="language-json">{
+    "adapters": {
+        "objeck": {
+            "name": "objeck",
+            "command": [
+                "/usr/local/objeck/bin/obd",
+                "--dap"
+            ],
+            "env": {
+                "OBJECK_LIB_PATH": "/usr/local/objeck/lib"
+            }
+        }
+    },
+    "configurations": {
+        "Debug current Objeck file": {
+            "adapter": "objeck",
+            "configuration": {
+                "request": "launch",
+                "type": "objeck",
+                "program": "${workspaceRoot}/${fileBasenameNoExtension}.obe",
+                "sourceDir": "${workspaceRoot}"
+            }
+        }
+    }
+}
+</code></pre>
+    <p>Adjust <code>command</code> and <code>OBJECK_LIB_PATH</code> to match your install prefix. On Homebrew macOS, that's typically <code>/opt/homebrew/Cellar/objeck/&lt;version&gt;/bin/obd</code> and <code>/opt/homebrew/Cellar/objeck/&lt;version&gt;/lib</code>.</p>
+    <ol start="3">
+     <li><strong>Open the <code>.obs</code> file in gvim</strong>, press <code>&lt;F9&gt;</code> on a line to set a breakpoint, then <code>&lt;F5&gt;</code>. Vimspector opens its tab layout (code / variables / watches / stack / output / console) and starts execution.</li>
+    </ol>
+    <p>Vimspector "HUMAN" key bindings:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Key</th><th>Action</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Key"><code>&lt;F5&gt;</code></td><td data-label="Action">Continue / start</td></tr>
+      <tr><td data-label="Key"><code>&lt;F9&gt;</code></td><td data-label="Action">Toggle breakpoint</td></tr>
+      <tr><td data-label="Key"><code>&lt;F10&gt;</code></td><td data-label="Action">Step over</td></tr>
+      <tr><td data-label="Key"><code>&lt;F11&gt;</code></td><td data-label="Action">Step into</td></tr>
+      <tr><td data-label="Key"><code>&lt;F12&gt;</code></td><td data-label="Action">Step out</td></tr>
+      <tr><td data-label="Key"><code>&lt;S-F5&gt;</code></td><td data-label="Action">Stop debugging</td></tr>
+      <tr><td data-label="Key"><code>&lt;leader&gt;di</code></td><td data-label="Action">Inspect variable under cursor (hover)</td></tr>
+     </tbody>
+    </table>
+    <p>In the Variables window, press <code>&lt;CR&gt;</code> on <code>Scope: Locals</code>, <code>Scope: Instance</code>, or <code>Scope: Class</code> to expand. Hovering a local object with <code>&lt;leader&gt;di</code> shows <code>ClassName { field=val, ... }</code> (one-level field expansion).</p>
+    <p>Program output (<code>PrintLine</code>, <code>Print</code>, stderr) appears in the vimspector output window — <code>obd --dap</code> redirects the running program's stdout/stderr through capture pipes so the protocol stream stays clean.</p>
+    <div class="note"><strong>Troubleshooting</strong> — if <code>&lt;F5&gt;</code> reports <em>"The specified adapter 'objeck' is not available. Did you forget to run 'Vimspector Install'?"</em>, your <code>.vimspector.json</code> is missing the <code>adapters</code> block shown above. Vimspector only reads adapter definitions from project-local <code>.vimspector.json</code> files (or <code>g:vimspector_adapters</code>); a <code>~/.vimspector.json</code> in your home directory will be ignored unless the file being debugged lives directly under <code>~/</code> with no closer project file.</div>
+    <h4 id="manual-setup-syntax-only-no-lspdap">Manual Setup (syntax only, no LSP/DAP)</h4>
+    <p>Copy from <code>docs/syntax/vim/</code>:</p>
+<pre class="cmd"># Linux / macOS
+mkdir -p ~/.vim/syntax ~/.vim/ftdetect
+cp docs/syntax/vim/objeck.vim ~/.vim/syntax/
+cp docs/syntax/vim/ftdetect/objeck.vim ~/.vim/ftdetect/</pre>
+<pre class="cmd">:: Windows (gvim)
+mkdir "%USERPROFILE%\vimfiles\syntax" "%USERPROFILE%\vimfiles\ftdetect"
+copy docs\syntax\vim\objeck.vim "%USERPROFILE%\vimfiles\syntax\"
+copy docs\syntax\vim\ftdetect\objeck.vim "%USERPROFILE%\vimfiles\ftdetect\"</pre>
+    <p>For build-from-vim without LSP, add to <code>.vimrc</code> / <code>_vimrc</code>:</p>
+<pre class="line-numbers"><code class="language-vim">autocmd FileType objeck setlocal makeprg=obc\ -src\ %\ -dest\ %:r.obe
+autocmd FileType objeck setlocal errorformat=%f:(%l\\,%c):\ %m
+</code></pre>
+    <p>Use <code>:make</code> to compile and <code>:copen</code> to see errors. <code>obc</code> must be on your <code>PATH</code>.</p>
+    <hr class="section-end">
+    <h3 id="neovim-011">Neovim (0.11+)</h3>
+    <h4 id="automated-setup-recommended-2">Automated Setup (Recommended)</h4>
+    <p>Download the <a href="https://github.com/objeck/objeck-lang/releases" target="_blank">Objeck release</a> and run:</p>
+<pre class="cmd"># Linux / macOS
+./scripts/install.sh /usr/local/objeck neovim</pre>
+    <p>This installs syntax highlighting, ftdetect, and the LSP client config to your Neovim config directory automatically.</p>
+    <h4 id="manual-setup-1">Manual Setup</h4>
+    <p>Copy from the <a href="https://github.com/objeck/objeck-lang" target="_blank">objeck-lang</a> repo's <code>clients/neovim/</code>:</p>
+<pre class="cmd">cp clients/neovim/objeck.lua ~/.config/nvim/lsp/
+cp clients/neovim/objeck.vim ~/.config/nvim/ftdetect/</pre>
+    <p>Or for syntax-only (no LSP), use the standalone files from <code>docs/syntax/vim/</code>:</p>
+<pre class="cmd">mkdir -p ~/.config/nvim/syntax ~/.config/nvim/ftdetect
+cp docs/syntax/vim/objeck.vim ~/.config/nvim/syntax/
+cp docs/syntax/vim/ftdetect/objeck.vim ~/.config/nvim/ftdetect/</pre>
+    <hr class="section-end">
+    <h3 id="emacs-29">Emacs (29+)</h3>
+    <h4 id="automated-setup-with-lsp-recommended">Automated Setup with LSP (Recommended)</h4>
+    <p>Download the <a href="https://github.com/objeck/objeck-lang/releases" target="_blank">Objeck release</a> and run:</p>
+<pre class="cmd">./scripts/install.sh /usr/local/objeck emacs</pre>
+    <p>This installs <code>objeck-mode.el</code> (with LSP integration via eglot) to your Emacs load-path.</p>
+    <h4 id="manual-setup-syntax-only">Manual Setup (syntax only)</h4>
+    <p>Copy from <code>docs/syntax/emacs/</code>:</p>
+<pre class="cmd">cp docs/syntax/emacs/objeck-mode.el ~/.emacs.d/</pre>
+    <p>Add to <code>~/.emacs</code> or <code>~/.emacs.d/init.el</code>:</p>
+<pre class="line-numbers"><code class="language-lisp">(load "~/.emacs.d/objeck-mode.el")
+</code></pre>
+    <p>Provides: syntax highlighting, auto-indentation (2-space), comment support, <code>.obs</code> file auto-detection.</p>
+    <h4 id="compile-from-emacs">Compile from Emacs</h4>
+<pre class="plain">M-x compile RET obc -src myprogram.obs RET</pre>
+    <p>Errors are parsed and navigable with <code>M-x next-error</code>.</p>
+    <hr class="section-end">
+    <h3 id="kate">Kate</h3>
+    <p>Copy <code>docs/syntax/kate/objeck.xml</code> to:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Platform</th><th>Path</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Platform"><strong>Linux</strong></td><td data-label="Path"><code>~/.local/share/katepart5/syntax/</code></td></tr>
+      <tr><td data-label="Platform"><strong>macOS</strong></td><td data-label="Path"><code>~/Library/Application Support/katepart5/syntax/</code></td></tr>
+     </tbody>
+    </table>
+    <p>LSP support available via Kate's built-in LSP client — see <a href="https://github.com/objeck/objeck-lang" target="_blank">objeck-lang</a> for configuration.</p>
+    <hr class="section-end">
+    <h3 id="other-editors">Other Editors</h3>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Editor</th><th>Files</th><th>Location</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Editor"><strong>Geany</strong></td><td data-label="Files"><code>docs/syntax/geany/filetypes.Objeck.conf</code></td><td data-label="Location">Copy to Geany config directory</td></tr>
+      <tr><td data-label="Editor"><strong>Notepad++</strong></td><td data-label="Files"><code>docs/syntax/notepadxx/objeck.xml</code></td><td data-label="Location">Import via Language &gt; User Defined Language</td></tr>
+      <tr><td data-label="Editor"><strong>JEdit</strong></td><td data-label="Files"><code>docs/syntax/jedit/objeck.xml</code></td><td data-label="Location">Copy to <code>~/.jedit/modes/</code></td></tr>
+      <tr><td data-label="Editor"><strong>Lite-XL</strong></td><td data-label="Files"><code>docs/syntax/lite-xl/language_objeck.lua</code></td><td data-label="Location">Copy to Lite-XL plugins</td></tr>
+      <tr><td data-label="Editor"><strong>TextAdept</strong></td><td data-label="Files"><code>docs/syntax/textadept/objeck.lua</code></td><td data-label="Location">Copy to TextAdept lexers</td></tr>
+     </tbody>
+    </table>
+    <hr class="section-end">
+    <h3 id="command-line-debugger">Command-Line Debugger</h3>
+    <p>For terminal-based debugging without an IDE, see the <a href="https://www.objeck.org/getting_started.html#debugger">Debugger Guide</a> or <code>core/debugger/README.md</code>.</p>
+<pre class="cmd">obc -src myapp.obs -debug       # compile with debug symbols
+obd -bin myapp.obe -src_dir .   # start debugger</pre>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

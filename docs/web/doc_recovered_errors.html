@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Reading a Recovered Error — Design — Objeck Language</title>
+  <meta name="description" content="Issue: #1247 (typed catch, finally, rethrow, and reading the error in a ?-&gt; handler), split out of #1186. This covers the issue&#x27;s smallest useful step: letting the code after a ?-&gt; read what went wrong."/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Reading a Recovered Error — Design</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/RECOVERED_ERRORS_DESIGN.md" target="_blank">docs/RECOVERED_ERRORS_DESIGN.md on GitHub</a></div>
+    <p class="page-lead">Issue: <a href="https://github.com/objeck/objeck-lang/issues/1247" target="_blank">#1247</a> (typed catch, finally, rethrow, and reading the error in a <code>?-&gt;</code> handler), split out of #1186. This covers the issue's <strong>smallest useful step</strong>: letting the code after a <code>?-&gt;</code> read what went wrong.</p>
+    <div id="toc_container" class="plain">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#why">Why</a></li>
+      <li><a href="#decisions">Decisions</a></li>
+      <li><a href="#not-in-this-step">Not in this step</a></li>
+      <li><a href="#implementation">Implementation</a></li>
+      <li><a href="#tests">Tests</a></li>
+     </ul>
+    </div>
+
+    <h3 id="why">Why</h3>
+    <p><code>?-&gt;</code> (<code>-&gt;Try()-&gt;</code>) turns any runtime error raised below a guarded call into Nil (or the <code>??</code> default), and execution continues. Every recovered error looks the same: the runtime prints the message only when nothing is guarding. Code that must react differently to a missing key and a divide by zero had to record a note in shared state before raising, and the test <code>rosetta_exceptions.obs</code> documents that workaround. Research code recovers from errors constantly (a bad sample, a failed parse, a timeout), and it needs to log <em>which</em> error and <em>why</em>.</p>
+<pre class="line-numbers"><code class="language-cpp">value := table-&gt;Get(key)?-&gt;Parse() ?? 0;
+if(Runtime-&gt;HasError()) {
+  kind := Runtime-&gt;GetErrorKind();      # Runtime-&gt;ErrorKind-&gt;INVALID_CAST, ...
+  "skipped {$key}: {$(Runtime-&gt;GetError())}"-&gt;ErrorLine();
+  Runtime-&gt;ClearError();
+};
+</code></pre>
+    <h3 id="decisions">Decisions</h3>
+    <ul>
+     <li><strong>The last recovered error, per thread.</strong> When a <code>?-&gt;</code> region recovers, the VM records the error's kind and message in the thread's state. It stays there until the next recovery replaces it or <code>Runtime-&gt;ClearError()</code> clears it. It is per thread because try handlers are already per thread. "Last" rather than a stack, because recovery is not nested from the program's point of view: the region that recovered is the one the code just ran.</li>
+     <li><strong>The kind is a small enum</strong>, matching the classes the JIT already reports as statuses:</li>
+    </ul>
+    <p>| <code>Runtime-&gt;ErrorKind</code> | raised by | |---|---| | <code>NONE</code> | no recovered error, or cleared | | <code>NIL_DEREFERENCE</code> | a method call or field access on Nil | | <code>INDEX_OUT_OF_BOUNDS</code> | an array index outside the array | | <code>DIVIDE_BY_ZERO</code> | integer or float division or modulo by zero | | <code>INVALID_CAST</code> | <code>-&gt;As(T)</code> on an object that is not a <code>T</code> | | <code>OTHER</code> | any other runtime error (a trap or native call) | | <code>RAISED</code> | <code>Runtime-&gt;Raise</code> (ERROR_HANDLING_DESIGN.md) |</p>
+    <ul>
+     <li><strong>The message is the text the runtime prints</strong> for an unguarded error, without the <code>&gt;&gt;&gt; &lt;&lt;&lt;</code> markers. One difference by mode: an index error raised in JIT-compiled code is reported by a guard stub that has only the status, so its message is "Index out of bounds" without the index and the size the interpreter includes. A cast error carries both class names in either mode, because the bridge callback records it while they are in hand.</li>
+     <li><strong>A Nil receiver is not an error.</strong> <code>x?-&gt;M()</code> with <code>x</code> Nil short-circuits to Nil without calling anything; that is the nil-safe operator's normal case, so nothing is recorded. A Nil dereference <em>inside</em> the call is recorded.</li>
+     <li><strong>Nothing is recorded when no handler exists.</strong> The program ends as before.</li>
+     <li><strong>Cost on the no-error path: none.</strong> Recording happens only inside recovery.</li>
+    </ul>
+    <h4 id="api-systemruntime-appended-traps">API (<code>System.Runtime</code>, appended traps)</h4>
+<pre class="line-numbers"><code class="language-cpp">function : HasError() ~ Bool         # a recovered error is recorded
+function : GetError() ~ String        # its message, or Nil
+function : GetErrorKind() ~ Runtime-&gt;ErrorKind
+function : ClearError() ~ Nil
+</code></pre>
+    <p>The four new traps are <strong>appended after the last existing trap</strong> (the memory rule: a trap's number and arity are never changed).</p>
+    <h3 id="not-in-this-step">Not in this step</h3>
+    <p>These are the rest of #1247 and stay open:</p>
+    <ul>
+     <li>user-defined error types and raising one (<code>throw</code>);</li>
+     <li>typed catch;</li>
+     <li><code>finally</code>, which <code>leaving { }</code> partly covers;</li>
+     <li>rethrow.</li>
+    </ul>
+    <p>They need syntax and their own design. This step makes them easier to judge, because code can now see the errors it recovers from.</p>
+    <h3 id="implementation">Implementation</h3>
+    <ol>
+     <li><strong>VM:</strong> a <code>RecoveredError</code> (kind and message) next to the per-thread <code>TryHandlerState</code>.
+    <ul>
+     <li><code>TryErrorRecovery(stack_pos, kind, message)</code> records it when it recovers. Its call sites already raise one error each, so each passes its own kind and text.</li>
+     <li>The bridge's status path maps the JIT statuses (−1 to −5) to kinds when it recovers for a compiled frame.</li>
+    </ul>
+     </li>
+     <li><strong>Traps:</strong> <code>RUNTIME_HAS_ERROR</code>, <code>RUNTIME_GET_ERROR</code>, <code>RUNTIME_GET_ERROR_KIND</code> and <code>RUNTIME_CLEAR_ERROR</code>, added to <code>traps.h</code>. Their handlers go in the trap processor, and <code>linker.cpp</code> needs nothing because traps are operands, not opcodes.</li>
+     <li><strong>lang.obs:</strong> the four functions and the <code>ErrorKind</code> enum on <code>Runtime</code>. lang.obl is rebuilt.</li>
+    </ol>
+    <h3 id="tests">Tests</h3>
+    <p><code>recovered_errors.obs</code> covers each kind:</p>
+    <ul>
+     <li>raised interpreted, and raised inside JIT-compiled code (three modes);</li>
+     <li>the message text;</li>
+     <li><code>ClearError</code>;</li>
+     <li>a later recovery replacing an earlier one;</li>
+     <li>no record after a call that succeeds.</li>
+    </ul>
+    <p><code>rosetta_exceptions.obs</code> keeps its shared-note workaround for now. Moving it to <code>Runtime-&gt;GetErrorKind()</code> belongs with typed catch, which would replace both.</p>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

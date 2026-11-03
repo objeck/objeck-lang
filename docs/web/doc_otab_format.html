@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>The .otab table file format, versions 1 and 2 — Objeck Language</title>
+  <meta name="description" content=".otab is the file format of Query.Structured tables: Table-&gt;Save, Append, ToBytes, Load, FromBytes and OtabFile. It stores what the column storage holds, column by column, so loading a table copies arrays rather than parsing text. A reader "/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">The <code>.otab</code> table file format, versions 1 and 2</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/OTAB_FORMAT.md" target="_blank">docs/OTAB_FORMAT.md on GitHub</a></div>
+    <p class="page-lead"><code>.otab</code> is the file format of <code>Query.Structured</code> tables: <code>Table-&gt;Save</code>, <code>Append</code>, <code>ToBytes</code>, <code>Load</code>, <code>FromBytes</code> and <code>OtabFile</code>. It stores what the column storage holds, column by column, so loading a table copies arrays rather than parsing text. A reader can open a file by reading only its last few hundred bytes, and then read just the columns it needs.</p>
+    <div id="toc_container" class="plain">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#at-a-glance">At a glance</a></li>
+      <li><a href="#primitive-values">Primitive values</a></li>
+      <li><a href="#header-12-bytes">Header (12 bytes)</a></li>
+      <li><a href="#trailer-the-last-28-bytes">Trailer (the last 28 bytes)</a></li>
+      <li><a href="#footer">Footer</a></li>
+      <li><a href="#type-codes">Type codes</a></li>
+      <li><a href="#row-groups-and-blocks">Row groups and blocks</a></li>
+      <li><a href="#codecs">Codecs</a></li>
+      <li><a href="#reading-a-file">Reading a file</a></li>
+      <li><a href="#writing-a-file">Writing a file</a></li>
+      <li><a href="#the-change-log">The change log</a></li>
+      <li><a href="#a-worked-example">A worked example</a></li>
+      <li><a href="#compatibility">Compatibility</a></li>
+     </ul>
+    </div>
+
+    <p>Version 2 differs from version 1 in one place: its footer ends with the table's <a href="#indexes-version-2">index definitions</a>. A writer uses version 2 only for a table that has indexes, so a table without any is written exactly as version 1 wrote it, and stays readable by every version 1 reader.</p>
+    <p>This document is the format's specification. The design and its reasons are in <a href="doc_query_design.html#9-persistence-a-native-table-file">QUERY_DESIGN.md §9</a>. An independent reader written from this page, <a href="https://github.com/objeck/objeck-lang/blob/master/tools/otab/otab_dump.py" target="_blank"><code>tools/otab/otab_dump.py</code></a>, decodes every byte of a file and prints an annotated layout; use it to check a writer, or to look inside a file.</p>
+    <h3 id="at-a-glance">At a glance</h3>
+<pre class="plain">offset 0      header    "OTAB", format version                                     12 bytes
+              blocks    row group 0: one block per column, key column first
+                        row group 1: ...
+footer_offset footer    table name, next key, schema, then per group:
+                        row count and, per column, where its block is and what it holds;
+                        version 2: then the index definitions
+              trailer   footer offset, footer size, footer CRC32, "OTAB"            28 bytes</pre>
+    <p>A reader starts at the end: the trailer gives the footer's place, the footer gives every block's place. Nothing between the header and the footer needs to be read to open a file.</p>
+    <h3 id="primitive-values">Primitive values</h3>
+    <p>Every number is 8 bytes, little-endian, whatever the platform:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Name</th><th>Encoding</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Name"><strong>Int</strong></td><td data-label="Encoding">64-bit two's complement</td></tr>
+      <tr><td data-label="Name"><strong>Float</strong></td><td data-label="Encoding">IEEE 754 binary64</td></tr>
+      <tr><td data-label="Name"><strong>Text</strong></td><td data-label="Encoding">an Int byte count, then that many bytes of UTF-8. A count of <code>-1</code> is Nil (an empty cell), with no bytes after it. <code>0</code> is the empty string.</td></tr>
+      <tr><td data-label="Name"><strong>Bits</strong></td><td data-label="Encoding">a run of Ints read as one bitmap: bit <code>i</code> is bit <code>i &amp; 63</code> of Int <code>i &gt;&gt; 6</code></td></tr>
+     </tbody>
+    </table>
+    <p>There is no padding anywhere: each field follows the one before it.</p>
+    <h3 id="header-12-bytes">Header (12 bytes)</h3>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Offset</th><th>Field</th><th>Value</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Offset">0</td><td data-label="Field">magic</td><td data-label="Value">the bytes <code>4F 54 41 42</code> (<code>"OTAB"</code>)</td></tr>
+      <tr><td data-label="Offset">4</td><td data-label="Field">version</td><td data-label="Value">Int, <code>1</code>, or <code>2</code> for a file whose footer holds index definitions</td></tr>
+     </tbody>
+    </table>
+    <p>A reader refuses a version below 1 or above the highest it knows. A version 1 reader therefore refuses a version 2 file by its header, before reading anything else, rather than misreading its footer.</p>
+    <h3 id="trailer-the-last-28-bytes">Trailer (the last 28 bytes)</h3>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Offset from the end</th><th>Field</th><th>Value</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Offset from the end">−28</td><td data-label="Field">footer offset</td><td data-label="Value">Int, where the footer starts</td></tr>
+      <tr><td data-label="Offset from the end">−20</td><td data-label="Field">footer size</td><td data-label="Value">Int, its length in bytes</td></tr>
+      <tr><td data-label="Offset from the end">−12</td><td data-label="Field">footer CRC32</td><td data-label="Value">Int, the CRC-32 of the footer bytes (zlib's <code>crc32</code>, unsigned, so <code>0</code> to <code>2^32 − 1</code>)</td></tr>
+      <tr><td data-label="Offset from the end">−4</td><td data-label="Field">magic</td><td data-label="Value"><code>"OTAB"</code> again</td></tr>
+     </tbody>
+    </table>
+    <p>A file is well formed only if <code>footer offset ≥ 12</code>, <code>footer size ≥ 0</code>, and <code>footer offset + footer size + 28</code> is exactly the file's size. A file cut short anywhere fails this test or the footer's CRC, so a truncated file is reported, never half-read.</p>
+    <h3 id="footer">Footer</h3>
+    <p>In order:</p>
+    <ol>
+     <li><strong>name</strong>: Text, the table's name.</li>
+     <li><strong>next key</strong>: Int, the key the next inserted row will get.</li>
+     <li><strong>column count</strong>: Int, <code>C ≥ 1</code>, counting the key column.</li>
+     <li><strong>columns</strong>, <code>C</code> times:
+    <ul>
+     <li><strong>name</strong>: Text;</li>
+     <li><strong>type</strong>: Int, one of the <a href="#type-codes">type codes</a>;</li>
+     <li><strong>declared</strong>: Int, <code>1</code> if the column's type was declared (so the table refuses values of other types), <code>0</code> if it was inferred from the data.</li>
+    </ul>
+     </li>
+     <li><strong>row group count</strong>: Int, <code>G ≥ 0</code>.</li>
+     <li><strong>row groups</strong>, <code>G</code> times:
+    <ul>
+     <li><strong>rows</strong>: Int, the number of rows in the group;</li>
+     <li><strong>block info</strong>, <code>C</code> times, in column order (see below).</li>
+    </ul>
+     </li>
+     <li><strong>indexes</strong>, version 2 only (see <a href="#indexes-version-2">Indexes</a>): Int, <code>I</code> with <code>0 ≤ I &lt; C</code>, then <code>I</code> index definitions.</li>
+    </ol>
+    <p>The footer must be consumed exactly: bytes left over make the file malformed.</p>
+    <p><strong>Column 0 is always the key column</strong>, named <code>pk</code>, type INT, declared. Its values are the rows' primary keys. The remaining columns are the table's own, in the table's order.</p>
+    <h4 id="indexes-version-2">Indexes (version 2)</h4>
+    <p>Each index definition is:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Field</th><th>Type</th><th>Meaning</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Field">name</td><td data-label="Type">Text</td><td data-label="Meaning">the index's name, not empty and not Nil</td></tr>
+      <tr><td data-label="Field">column</td><td data-label="Type">Int</td><td data-label="Meaning">the column's position in the footer's column list, <code>1 ≤ column &lt; C</code> (never the key column)</td></tr>
+      <tr><td data-label="Field">kind</td><td data-label="Type">Int</td><td data-label="Meaning"><code>1</code> HASH, <code>2</code> SORTED</td></tr>
+     </tbody>
+    </table>
+    <p>No two definitions share a name or a column. A reader refuses a footer that breaks any of these rules, or names a kind it does not know, as malformed, saying which index is wrong.</p>
+    <p>Only the definition is stored, not the index's entries: a reader that restores an index builds it from the column, which it has read anyway, so a damaged or stale index can never be loaded, and Append adds rows without rewriting anything. <code>Table-&gt;Load</code>, <code>FromBytes</code>, <code>OtabFile-&gt;Read</code> and <code>TableStore</code> restore the indexes of the columns they read, unbuilt; the first query that uses one builds it. A partial read restores only the indexes of the columns it reads.</p>
+    <p><code>Append</code> keeps the file's version and its definitions: it copies the header with the rest of the prefix, and writes the same definitions into the new footer. <code>TableServer</code> sends tables as version 1 (<code>ToBytes(compression, false)</code>), so clients of any version read them.</p>
+    <h4 id="block-info-72-bytes">Block info (72 bytes)</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Field</th><th>Type</th><th>Meaning</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Field">offset</td><td data-label="Type">Int</td><td data-label="Meaning">where the block starts in the file</td></tr>
+      <tr><td data-label="Field">stored</td><td data-label="Type">Int</td><td data-label="Meaning">the block's length in the file</td></tr>
+      <tr><td data-label="Field">raw</td><td data-label="Type">Int</td><td data-label="Meaning">its length after decompression</td></tr>
+      <tr><td data-label="Field">codec</td><td data-label="Type">Int</td><td data-label="Meaning">how it was compressed: see <a href="#codecs">Codecs</a></td></tr>
+      <tr><td data-label="Field">crc</td><td data-label="Type">Int</td><td data-label="Meaning">CRC-32 of the <strong>stored</strong> bytes, so damage is caught before decompressing</td></tr>
+      <tr><td data-label="Field">nulls</td><td data-label="Type">Int</td><td data-label="Meaning">how many cells in the block are empty</td></tr>
+      <tr><td data-label="Field">has zone</td><td data-label="Type">Int</td><td data-label="Meaning"><code>1</code> if <code>low</code> and <code>high</code> hold the group's range, else <code>0</code></td></tr>
+      <tr><td data-label="Field">low</td><td data-label="Type">Float</td><td data-label="Meaning">the smallest non-empty value in the group</td></tr>
+      <tr><td data-label="Field">high</td><td data-label="Type">Float</td><td data-label="Meaning">the largest</td></tr>
+     </tbody>
+    </table>
+    <p><strong>Zones</strong> are kept for INT, FLOAT and DATE columns (DATE as its milliseconds), and only when the group has at least one non-empty cell. A reader may use them to skip a group whose range cannot match a filter, without reading the block. They are Floats, so for an INT column they are exact only while every value's magnitude is at most <code>2^53</code>.</p>
+    <h3 id="type-codes">Type codes</h3>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Code</th><th>Type</th><th>Cell values</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Code">1</td><td data-label="Type">INT</td><td data-label="Cell values">Int</td></tr>
+      <tr><td data-label="Code">2</td><td data-label="Type">FLOAT</td><td data-label="Cell values">Float</td></tr>
+      <tr><td data-label="Code">3</td><td data-label="Type">STRING</td><td data-label="Cell values">text, dictionary-coded or plain</td></tr>
+      <tr><td data-label="Code">4</td><td data-label="Type">DATE</td><td data-label="Cell values">milliseconds, plus a GMT flag</td></tr>
+      <tr><td data-label="Code">5</td><td data-label="Type">BOOL</td><td data-label="Cell values">Int, <code>0</code> or <code>1</code></td></tr>
+      <tr><td data-label="Code">6</td><td data-label="Type">OBJECT</td><td data-label="Cell values">any of the above, tagged per cell</td></tr>
+     </tbody>
+    </table>
+    <p>A reader refuses a file with a type code it does not know, naming the column.</p>
+    <h3 id="row-groups-and-blocks">Row groups and blocks</h3>
+    <p>Rows are stored in <strong>row groups</strong> of at most 65,536 rows, in table order. Each group holds one <strong>block</strong> per column, the key column's first, laid out one after another in the file. Every block decodes on its own: nothing in a block refers to another block.</p>
+    <p><code>Save</code> writes full groups of 65,536 rows and a last, shorter one. <code>Append</code> adds groups after the existing ones without touching them, so groups of any size from 1 to 65,536 can follow each other. A reader must not assume any group is full.</p>
+    <p>A group's rows are its cells in order: the table's rows are the groups' rows concatenated, in group order. Deleted rows are never stored; a saved table has only live rows.</p>
+    <h4 id="block-contents-after-decompression">Block contents (after decompression)</h4>
+    <p>Every block starts with the column's empty cells for the group:</p>
+    <ol>
+     <li><strong>bitmap words</strong>: Int, <code>W = ceil(rows / 64)</code>;</li>
+     <li><strong>empty cells</strong>: Bits, <code>W</code> Ints. A set bit means the cell is empty (Nil). A writer leaves the bits past the group's last row 0, and a reader ignores them.</li>
+    </ol>
+    <p>The values follow, by type. Each type stores a value in <strong>every</strong> row, empty or not. A writer stores 0 for an empty cell (0.0, code 0, GMT bit clear), so a file never carries a value that was cleared, and two equal tables save to the same bytes. A reader ignores it.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Type</th><th>After the bitmap</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Type">INT, BOOL</td><td data-label="After the bitmap"><code>rows</code> Ints</td></tr>
+      <tr><td data-label="Type">FLOAT</td><td data-label="After the bitmap"><code>rows</code> Floats</td></tr>
+      <tr><td data-label="Type">DATE</td><td data-label="After the bitmap"><code>rows</code> Ints of milliseconds, then <code>W</code> Ints of Bits: a set bit marks a cell created as a GMT date</td></tr>
+      <tr><td data-label="Type">STRING</td><td data-label="After the bitmap">an Int <strong>encoding</strong>, then one of the two layouts below</td></tr>
+      <tr><td data-label="Type">OBJECT</td><td data-label="After the bitmap"><code>rows</code> tagged values: see below. Here an empty cell's tag is 0, not a placeholder value</td></tr>
+     </tbody>
+    </table>
+    <p><strong>STRING, encoding 1 (dictionary)</strong>: an Int dictionary size <code>D</code>, then <code>D</code> Texts, then <code>rows</code> Ints, each an index into this block's dictionary. The dictionary belongs to the block: a reader joining several groups maps each block's codes onto one dictionary of its own. A writer stores exactly the texts the block's non-empty cells use, in order of first use, so a text removed from the table is never saved and a group repeats none of another's. A reader accepts any dictionary that covers the block's codes, and ignores an empty cell's code.</p>
+    <p>A table keeps a STRING column dictionary-coded until it has 4,096 distinct texts <strong>and</strong> more distinct texts than half its non-empty cells; from then on it stores the texts plainly. The file records whichever the column used, block by block.</p>
+    <p><strong>STRING, encoding 0 (plain)</strong>: <code>rows</code> Texts, Nil (<code>-1</code>) for an empty cell.</p>
+    <p><strong>OBJECT</strong> cells start with an Int tag:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Tag</th><th>Cell</th><th>Followed by</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Tag">0</td><td data-label="Cell">empty</td><td data-label="Followed by">nothing</td></tr>
+      <tr><td data-label="Tag">1</td><td data-label="Cell"><code>IntRef</code></td><td data-label="Followed by">Int</td></tr>
+      <tr><td data-label="Tag">2</td><td data-label="Cell"><code>FloatRef</code></td><td data-label="Followed by">Float</td></tr>
+      <tr><td data-label="Tag">3</td><td data-label="Cell"><code>String</code></td><td data-label="Followed by">Text</td></tr>
+      <tr><td data-label="Tag">4</td><td data-label="Cell"><code>Date</code></td><td data-label="Followed by">Int milliseconds, Int GMT flag (<code>1</code> or <code>0</code>)</td></tr>
+      <tr><td data-label="Tag">5</td><td data-label="Cell"><code>BoolRef</code></td><td data-label="Followed by">Int, <code>0</code> or <code>1</code></td></tr>
+     </tbody>
+    </table>
+    <p>A table whose OBJECT column holds any other kind of value cannot be saved; <code>Save</code> reports the column instead of writing a file.</p>
+    <p><strong>DATE milliseconds</strong> encode a date's calendar fields, read as UTC: days since 1970-01-01 in the proleptic Gregorian calendar, times 86,400,000, plus the time of day. No time zone conversion is applied in either direction, so a date reads back with exactly the fields it was saved with, and ordering the numbers orders the dates. The GMT flag is kept separately and does not change the number.</p>
+    <p>A block must be consumed exactly, like the footer.</p>
+    <h3 id="codecs">Codecs</h3>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Code</th><th>Codec</th><th>Written by</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Code">0</td><td data-label="Codec">none: the stored bytes are the block</td><td data-label="Written by"><code>Compression-&gt;NONE</code> (the default), or when compressing would not help</td></tr>
+      <tr><td data-label="Code">1</td><td data-label="Codec">zlib stream (RFC 1950), compression level 1</td><td data-label="Written by"><code>Compression-&gt;FAST</code></td></tr>
+      <tr><td data-label="Code">2</td><td data-label="Codec">zlib stream (RFC 1950), compression level 9</td><td data-label="Written by"><code>Compression-&gt;SMALL</code></td></tr>
+     </tbody>
+    </table>
+    <p>Codes 1 and 2 decompress the same way; the code records how the block was written. Each block is compressed on its own, so a reader decompresses only the blocks it reads, and a byte range of the file is still meaningful.</p>
+    <p>A writer stores a block uncompressed, with codec 0, when the block is under 64 bytes or when compressing it would not make it smaller, so one file usually mixes codecs. After decompressing, a reader checks the length against <strong>raw</strong>.</p>
+    <h3 id="reading-a-file">Reading a file</h3>
+    <ol>
+     <li>Read the 12-byte header and check the magic and version.</li>
+     <li>Read the 28-byte trailer, check the magic and the size equation, and read the footer.</li>
+     <li>Check the footer's CRC, then parse it, refusing unknown type codes, a malformed index list (version 2) and leftover bytes.</li>
+     <li>For each column wanted, and for each group: read <code>stored</code> bytes at <code>offset</code>, check their CRC, decompress by <code>codec</code>, check the length against <code>raw</code>, and decode the block.</li>
+    </ol>
+    <p>Every failure names what it found: the column and row group of a damaged block, a footer that does not match its checksum, a file that ends early. A reader never returns partly read data.</p>
+    <p><code>OtabFile</code> does exactly this, reading only the footer when it opens a file and only the requested columns, plus the key column, on <code>Read(names)</code>.</p>
+    <h3 id="writing-a-file">Writing a file</h3>
+    <p><code>Save</code> and <code>Append</code> never write in place. They write the whole new file to <code>path.part</code>, then rename it over <code>path</code>, which replaces the old file in one step (POSIX <code>rename</code>; <code>MoveFileExW</code> with <code>MOVEFILE_REPLACE_EXISTING</code> on Windows). A reader therefore sees the old file or the new one, never a mix, and a crash during a save leaves the old file as it was.</p>
+    <p><code>Append(path)</code> copies the existing file's bytes up to its footer unchanged. It adds the new rows' groups after them and writes a new footer listing the old groups and the new ones. The new rows' keys continue from the old footer's <strong>next key</strong>. Their columns must match the file's in name, order and type.</p>
+    <h3 id="the-change-log">The change log</h3>
+    <p>A table opened for writing (<code>TableStore-&gt;New(path)</code> or <code>Table-&gt;Open(path)</code>) records every change in <code>path.log</code> beside the file, and reopening replays it over the last save. It uses the same primitive values as the file.</p>
+    <p><strong>Header (28 bytes):</strong></p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Offset</th><th>Field</th><th>Value</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Offset">0</td><td data-label="Field">magic</td><td data-label="Value"><code>"OLOG"</code></td></tr>
+      <tr><td data-label="Offset">4</td><td data-label="Field">version</td><td data-label="Value">Int, <code>1</code></td></tr>
+      <tr><td data-label="Offset">12</td><td data-label="Field">base CRC32</td><td data-label="Value">Int, the footer CRC32 of the save this log follows</td></tr>
+      <tr><td data-label="Offset">20</td><td data-label="Field">base size</td><td data-label="Value">Int, that file's size in bytes</td></tr>
+     </tbody>
+    </table>
+    <p>A log whose base does not match the file belongs to an earlier save: a checkpoint saved the file but crashed before writing the new, empty log. The file already holds those changes, so the log is skipped, never replayed twice.</p>
+    <p><strong>Records</strong>, one per statement, in order:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Field</th><th>Type</th><th>Meaning</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Field">length</td><td data-label="Type">Int</td><td data-label="Meaning">payload bytes</td></tr>
+      <tr><td data-label="Field">check</td><td data-label="Type">Int</td><td data-label="Meaning">the length with every bit inverted</td></tr>
+      <tr><td data-label="Field">CRC32</td><td data-label="Type">Int</td><td data-label="Meaning">of the payload</td></tr>
+      <tr><td data-label="Field">payload</td><td data-label="Type"></td><td data-label="Meaning">an Int count of changes, then the changes</td></tr>
+     </tbody>
+    </table>
+    <p>Each change starts with an Int kind:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Kind</th><th>Change</th><th>Followed by</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Kind">1</td><td data-label="Change">insert</td><td data-label="Followed by">Int key: the row the table's next key creates</td></tr>
+      <tr><td data-label="Kind">2</td><td data-label="Change">set a cell</td><td data-label="Followed by">Int key, Int column index, the value as an OBJECT cell (tag, then value; tag 0 empties it)</td></tr>
+      <tr><td data-label="Kind">3</td><td data-label="Change">delete</td><td data-label="Followed by">Int key</td></tr>
+      <tr><td data-label="Kind">4</td><td data-label="Change">add a column</td><td data-label="Followed by">Text name, Int type code</td></tr>
+     </tbody>
+    </table>
+    <p>A statement is everything one API call or one SQL statement changes; a SQL statement that fails is recorded with its rollback, so replay ends in the same state, keys included. The record is written and flushed before the call returns.</p>
+    <p><strong>Reading.</strong> A crash can only cut the log short, so a last record that ends early (fewer than 24 bytes left, or a length past the end) is a torn write: it is dropped and cut from the file. A length whose check disagrees, or a CRC32 that fails on a record that is not the last, is damage, and opening is refused with the byte offset. Replay that does not land on a live key, a known column or the expected next key is refused the same way.</p>
+    <p><strong>Checkpoint</strong> writes the table as a new save (by <code>path.part</code> and rename), then replaces the log with an empty one naming that save. <code>Save</code> of a durable table's own file is a checkpoint, and <code>Append</code> onto it is refused. The log records rows, not indexes, so creating or dropping an index on a durable table is saved by a checkpoint: at once, or, inside a SQL statement, when the statement ends. Opening restores the file's indexes before replaying the log, and the replayed changes reach them as any write does.</p>
+    <p><strong>The lock</strong>, <code>path.lock</code>, is created only if absent (<code>File-&gt;CreateNew</code>) and holds the writer's process id as text. A writer that finds it held by a running process is refused with that id. One held by a process that is gone, or left empty for a second (a writer that crashed between creating and writing it), is removed and taken. Readers (<code>Table-&gt;Load</code>) take no lock and see the last save or checkpoint. Two processes clearing the same stale lock at the same moment can both proceed; stale-lock recovery assumes that does not happen.</p>
+    <h3 id="a-worked-example">A worked example</h3>
+    <p>A table <code>t</code> with an INT column <code>n</code> and a STRING column <code>s</code>, and two rows, <code>(n = 7, s = "hi")</code> and <code>(n = empty, s = "hi")</code>, saved uncompressed (495 bytes). <code>python tools/otab/otab_dump.py t.otab</code> prints:</p>
+<pre class="plain">     0  4f 54 41 42                                          magic "OTAB"
+     4  01 00 00 00 00 00 00 00                              format version = 1
+        == row group 0: 2 rows
+        -- column pk (INT): 32 bytes stored, codec 0 (none), 32 raw
+    12  01 00 00 00 00 00 00 00                              bitmap words = 1
+    20  00 00 00 00 00 00 00 00                              empty cells: 0
+    28  00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00      values
+                                                             =&gt; [0, 1]
+        -- column n (INT): 32 bytes stored, codec 0 (none), 32 raw
+    44  01 00 00 00 00 00 00 00                              bitmap words = 1
+    52  02 00 00 00 00 00 00 00                              empty cells: 1
+    60  07 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00      values
+                                                             =&gt; [7, None]
+        -- column s (STRING): 58 bytes stored, codec 0 (none), 58 raw
+    76  01 00 00 00 00 00 00 00                              bitmap words = 1
+    84  00 00 00 00 00 00 00 00                              empty cells: 0
+    92  01 00 00 00 00 00 00 00                              encoding = 1 (dictionary)
+   100  01 00 00 00 00 00 00 00                              dictionary size = 1
+   108  02 00 00 00 00 00 00 00 68 69                        dictionary ['hi']
+   118  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00      codes
+                                                             =&gt; ['hi', 'hi']
+   134  01 00 00 00 00 00 00 00 74 02 00 00 00 00 00 00 ...  footer, 333 bytes
+                                                             name 't', next key 2
+                                                             column pk INT, declared
+                                                             column n INT, declared
+                                                             column s STRING, declared
+                                                             group 0 pk: offset 12, 0 empty, zone 0.0..1.0
+                                                             group 0 n: offset 44, 1 empty, zone 7.0..7.0
+                                                             group 0 s: offset 76, 0 empty
+   467  86 00 00 00 00 00 00 00                              footer offset = 134
+   475  4d 01 00 00 00 00 00 00                              footer size = 333
+   483  5b f5 90 ea 00 00 00 00                              footer CRC32 = 3935368539
+   491  4f 54 41 42                                          magic "OTAB"
+2 rows in 1 row groups, 3 columns, 495 bytes</pre>
+    <p>Row 1's <code>n</code> is empty: bit 1 of <code>n</code>'s bitmap is set (<code>02</code>), and its value slot holds 0. Both rows' <code>s</code> share the dictionary's one entry, code 0. The footer holds the name (<code>01 …</code> then <code>t</code>), next key 2, the three columns (all declared, since the table was created with declared types), one group of two rows, and three 72-byte block infos; <code>pk</code> and <code>n</code> have zones, <code>s</code> has none.</p>
+    <h3 id="compatibility">Compatibility</h3>
+    <ul>
+     <li>A reader must refuse a <strong>newer</strong> version rather than guess at it. Versions only grow; a version 1 file stays readable by every later reader, and a version 2 reader reads both.</li>
+     <li>New type codes, codecs, STRING encodings, OBJECT tags or index kinds come with a new version number, so a reader never meets one in a file it accepts. Inside a file of a version it knows, an unknown code means the file is malformed, and the reader says which column or index holds it.</li>
+     <li>A writer uses the lowest version that can hold the table: version 1 unless the table has indexes. So adding version 2 changed nothing for tables without indexes; their files are byte for byte what a version 1 writer makes (<code>query_persist_indexes</code> checks this against an image written before version 2 existed).</li>
+     <li>Version 2 added index definitions. Not yet in any version, though the design leaves room for them: delta and run-length encodings, and stored index entries.</li>
+    </ul>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

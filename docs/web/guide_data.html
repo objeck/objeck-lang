@@ -3,7 +3,7 @@
  <head>
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-  <title>JSON, XML and RegEx Guide — Objeck Language</title>
+  <title>JSON, XML and regular expressions — Objeck Language</title>
   <meta name="description" content="Parse JSON, XML and regular expressions, and what they do with missing or malformed input."/>
   <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
   <link href="style/styles.css" rel="stylesheet" />
@@ -11,115 +11,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script>hljs.highlightAll();</script>
 
-  <style>
-    /* ── Page title ── */
-    .page-title {
-      font-size: 2rem;
-      font-weight: 700;
-      color: #f3f4f6;
-      margin: 0 0 0.4rem;
-      line-height: 1.2;
-    }
-    .page-lead {
-      color: #9ca3af;
-      font-size: 0.97rem;
-      margin-bottom: 1.75rem;
-      line-height: 1.7;
-      max-width: 700px;
-    }
-
-    /* ── Section headings with left accent ── */
-    .container h3 {
-      border-left: 3px solid #3b82f6;
-      padding-left: 12px;
-      margin-top: 3rem;
-    }
-    .container h3:first-of-type { margin-top: 1.25rem; }
-
-    /* ── Subsection (h4) spacing ── */
-    .container h4 {
-      margin-top: 1.75rem;
-      margin-bottom: 0.35rem;
-    }
-
-    /* ── Compile flag badge ── */
-    .lib-flag {
-      display: inline-block;
-      background: #151d28;
-      border: 1px solid #2d3a4d;
-      border-left: 3px solid #3b82f6;
-      border-radius: 4px 8px 8px 4px;
-      padding: 5px 14px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.78rem;
-      color: #7dd3fc;
-      margin: 0.5rem 0 1.1rem;
-      letter-spacing: 0.2px;
-    }
-    .lib-flag::before {
-      content: "obc flag: ";
-      color: #9ca3af;
-      font-size: 0.72rem;
-    }
-
-    /* ── Prose within sections ── */
-    .container p {
-      color: #d1d5db;
-      margin-bottom: 0.85rem;
-      line-height: 1.7;
-    }
-    .container > p:first-child {
-      color: #9ca3af;
-    }
-
-    /* ── Code block after cmd block ── */
-    pre.cmd + h4,
-    pre + h4,
-    pre + p { margin-top: 1.25rem; }
-
-    /* ── Callout note box ── */
-    .note {
-      background: #1a2332;
-      border-left: 3px solid #f59e0b;
-      border-radius: 0 6px 6px 0;
-      padding: 10px 14px;
-      font-size: 0.88rem;
-      color: #d1d5db;
-      margin: 0.75rem 0 1rem;
-    }
-    .note strong { color: #f59e0b; }
-
-    /* ── File tree listing ── */
-    .file-tree {
-      background: #151d28;
-      border: 1px solid #2d3a4d;
-      border-radius: 8px;
-      padding: 14px 18px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.78rem;
-      color: #9ca3af;
-      line-height: 2;
-      margin: 0.75rem 0 1.5rem;
-      overflow-x: auto;
-    }
-    .file-tree .dir  { color: #7dd3fc; font-weight: 600; }
-    .file-tree .file { color: #86efac; }
-
-    /* ── Quick reference table overrides ── */
-    .ref-table th { background-color: #151d28 !important; color: #a3cefd !important; }
-    .ref-table td { vertical-align: top; }
-    .ref-table tr:nth-child(even) td { background-color: #1a2332; }
-    .ref-table tr:nth-child(odd)  td { background-color: #151d28; }
-    .ref-table tr:hover td { background-color: #2d3a4d; }
-    .ref-table code { white-space: nowrap; }
-
-    /* ── Section separator visual ── */
-    .section-end {
-      border: none;
-      border-top: 1px solid #2d3a4d;
-      margin: 2.5rem 0 0;
-    }
-  </style>
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -127,9 +18,9 @@
       const menuItems = document.querySelector(".menu-items");
       menu.addEventListener("click", (e) => {
         e.stopPropagation();
-        menuItems.style.display = menuItems.style.display === "block" ? "none" : "block";
+        menuItems.classList.toggle("open");
       });
-      document.addEventListener("click", () => { menuItems.style.display = "none"; });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
     });
   </script>
  </head>
@@ -150,6 +41,7 @@
           <a href="getting_started.html">Quick Start</a>
           <a href="ai_guide.html">AI Guide</a>
           <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
           <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
           <a href="readme.html">Changelog</a>
           <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
@@ -390,7 +282,7 @@ finding in Nil text gives Nil: true</pre>
     <ul>
      <li><a href="guide_http.html">HTTP client and web server</a>: fetch the JSON you just learned to parse.</li>
      <li><a href="guide_query.html">Query.Structured</a>: <code>from 'data.json'</code> reads a JSON file as a table, and the same works for CSV and XML.</li>
-     <li>The full list of fixes is in the <a href="https://github.com/objeck/objeck-lang/blob/master/CHANGELOG.md" target="_blank">CHANGELOG</a>.</li>
+     <li>The full list of fixes is in the <a href="doc_changelog.html">CHANGELOG</a>.</li>
     </ul>
 
    </div>

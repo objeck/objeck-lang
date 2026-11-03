@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>tools/lsp/README.md — Objeck Language</title>
+  <meta name="description" content="The Objeck LSP server brings code intelligence to the Objeck programming language &amp;mdash; diagnostics, completion, hover docs, go-to-definition, rename, formatting, and more. It runs on Windows, Linux, and macOS (AMD64 and ARM64)."/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'loose',
+      themeVariables: { fontFamily: 'Inter, sans-serif', primaryColor: '#16223a', primaryBorderColor: '#6366f1',
+                        lineColor: '#7dd3fc', primaryTextColor: '#e8eef8' } });
+    await mermaid.run({ querySelector: 'pre.mermaid', suppressErrors: true });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">tools/lsp/README.md</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/README.md" target="_blank">tools/lsp/README.md on GitHub</a></div>
+    <p class="page-lead">The Objeck LSP server brings code intelligence to the <a href="https://github.com/objeck/objeck-lang" target="_blank">Objeck</a> programming language &amp;mdash; diagnostics, completion, hover docs, go-to-definition, rename, formatting, and more. It runs on <strong>Windows</strong>, <strong>Linux</strong>, and <strong>macOS</strong> (AMD64 and ARM64).</p>
+    <div id="toc_container" class="plain">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#quick-start">Quick Start</a></li>
+      <li><a href="#supported-editors">Supported Editors</a></li>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#debugging-features">Debugging Features</a></li>
+      <li><a href="#architecture">Architecture</a></li>
+      <li><a href="#development">Development</a></li>
+      <li><a href="#resources">Resources</a></li>
+     </ul>
+    </div>
+
+    <div class="raw"><p align="center">
+    <strong>Objeck LSP</strong><br>
+    Language Server Protocol support for <a href="https://github.com/objeck/objeck-lang">Objeck</a><br>
+    Code intelligence for 7 editors across Windows, Linux, and macOS
+    </p></div>
+    <div class="raw"><hr/></div>
+    <div class="raw"><p align="center">
+      <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
+      <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/github/v/release/objeck/objeck-lang?sort=date" alt="Latest Release"></a>
+    </p></div>
+    <h3 id="quick-start">Quick Start</h3>
+    <p><strong>1. Install Objeck</strong> from <a href="https://github.com/objeck/objeck-lang/releases/latest" target="_blank">github.com/objeck/objeck-lang</a></p>
+    <p>On <strong>Linux</strong>, the Objeck runtime dynamically links mbedTLS for crypto/TLS; HTTP/2 and HTTP/3 are linked into it. Install mbedTLS first — the install script checks for it and stops with the same hint if it's missing. macOS and Windows releases need nothing extra:</p>
+<pre class="cmd"># Debian / Ubuntu
+sudo apt-get install libmbedtls-dev</pre>
+    <p><strong>2. Run the install script</strong> from the extracted release directory:</p>
+<pre class="cmd"># Windows - user install (no admin required)
+scripts\install.cmd C:\Users\you\objeck vscode
+
+# Windows - system-wide install
+scripts\install.cmd "C:\Program Files\Objeck" vscode
+
+# Linux / macOS - user install
+./scripts/install.sh ~/objeck vscode
+
+# Linux / macOS - system-wide install
+./scripts/install.sh /usr/local/objeck vscode</pre>
+    <p>This creates a self-contained deployment at <code>~/.objeck-lsp/</code> and configures your editor. Replace <code>vscode</code> with <code>sublime</code>, <code>neovim</code>, <code>emacs</code>, or <code>all</code>. The first argument is wherever you installed Objeck.</p>
+    <p><strong>3. Or configure manually</strong> &amp;mdash; pick your editor below, then see the <a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/docs/install_guide.html" target="_blank">Install Guide</a> for step-by-step instructions. Set environment variables (required for STDIO transport):</p>
+<pre class="cmd">export OBJECK_LIB_PATH=&lt;objeck_install_dir&gt;/lib
+export OBJECK_STDIO=binary</pre>
+    <p><strong>4. Create a workspace</strong> &amp;mdash; add a <code>build.json</code> to your project root for multi-file projects:</p>
+<pre class="line-numbers"><code class="language-json">{
+  "files": ["main.obs", "helper.obs"],
+  "libs": ["gen_collect.obl", "net.obl", "json.obl"],
+  "flags": ""
+}
+</code></pre>
+    <p>Open the folder in your editor and the LSP server handles the rest.</p>
+    <p><strong>5. To debug</strong> &amp;mdash; compile with debug symbols first, or no breakpoint will bind:</p>
+<pre class="cmd">obc -src myprog.obs --debug -dest myprog.obe</pre>
+    <p>Then add a launch configuration. In <strong>VS Code</strong> the extension contributes an <code>objeck</code> debug type, so <code>Run &gt; Add Configuration...</code> writes a <code>launch.json</code> entry for you. In <strong>Sublime</strong> put a <code>debugger_configurations</code> block in a <code>.sublime-project</code>, or a <code>global_debugger_configurations</code> block in <code>Packages/User/Debugger.sublime-settings</code> to debug without a project at all &amp;mdash; see <a href="doc_sublime.html"><code>clients/sublime/README.md</code></a> for both routes and their example files. The <code>.obe</code> is what runs, so recompile after every edit.</p>
+    <h3 id="supported-editors">Supported Editors</h3>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Editor</th><th>Transport</th><th>Setup</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Editor"><strong>VS Code</strong></td><td data-label="Transport">STDIO (one server per window)</td><td data-label="Setup">Install the <a href="https://github.com/objeck/objeck-lang/releases/latest" target="_blank"><code>.vsix</code> extension</a>, set install path in settings</td></tr>
+      <tr><td data-label="Editor"><strong>Sublime Text</strong></td><td data-label="Transport">STDIO</td><td data-label="Setup">Add config from <a href="https://github.com/objeck/objeck-lang/tree/master/tools/lsp/clients/sublime" target="_blank"><code>clients/sublime/</code></a> to LSP settings</td></tr>
+      <tr><td data-label="Editor"><strong>Kate</strong></td><td data-label="Transport">STDIO</td><td data-label="Setup">Add server entry in LSP Client settings (<a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/README.txt" target="_blank">instructions</a>)</td></tr>
+      <tr><td data-label="Editor"><strong>ecode</strong></td><td data-label="Transport">STDIO</td><td data-label="Setup">Add server to <a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/README.txt" target="_blank"><code>lspclient.json</code></a></td></tr>
+      <tr><td data-label="Editor"><strong>Neovim</strong> (0.11+)</td><td data-label="Transport">STDIO</td><td data-label="Setup">Copy <a href="https://github.com/objeck/objeck-lang/tree/master/tools/lsp/clients/neovim" target="_blank"><code>objeck.lua</code></a> + <a href="https://github.com/objeck/objeck-lang/tree/master/tools/lsp/clients/neovim" target="_blank"><code>objeck.vim</code></a> to nvim config</td></tr>
+      <tr><td data-label="Editor"><strong>Emacs</strong> (29+)</td><td data-label="Transport">STDIO</td><td data-label="Setup">Copy <a href="https://github.com/objeck/objeck-lang/tree/master/tools/lsp/clients/emacs" target="_blank"><code>objeck-mode.el</code></a> to your load-path (includes syntax highlighting)</td></tr>
+      <tr><td data-label="Editor"><strong>Helix</strong></td><td data-label="Transport">STDIO</td><td data-label="Setup">Merge <a href="https://github.com/objeck/objeck-lang/tree/master/tools/lsp/clients/helix" target="_blank"><code>clients/helix/languages.toml</code></a> into your config</td></tr>
+     </tbody>
+    </table>
+    <p>Install scripts (<code>scripts/install.cmd</code> and <code>scripts/install.sh</code>) automate setup for VS Code, Sublime, Neovim, and Emacs. Use <code>scripts/update_lsp</code> to refresh the runtime after rebuilding Objeck.</p>
+    <h3 id="features">Features</h3>
+    <ul>
+     <li><strong>Diagnostics</strong> &amp;mdash; Real-time error and warning reporting</li>
+     <li><strong>Code Completion</strong> &amp;mdash; Variables, methods, and functions with trigger characters (<code>@</code>, <code>.</code>, <code>&gt;</code>)</li>
+     <li><strong>Signature Help</strong> &amp;mdash; Method/function parameter hints</li>
+     <li><strong>Hover</strong> &amp;mdash; Bundle documentation on hover</li>
+     <li><strong>Go to Definition / Declaration</strong> &amp;mdash; Navigate to variables, classes, and methods</li>
+     <li><strong>Find References</strong> &amp;mdash; Locate all usages of a symbol</li>
+     <li><strong>Rename</strong> &amp;mdash; Project-wide variable and method renaming</li>
+     <li><strong>Document &amp; Workspace Symbols</strong> &amp;mdash; Outline and cross-file search</li>
+     <li><strong>Code Actions</strong> &amp;mdash; Quick fixes (add <code>use</code> statements, qualify references)</li>
+     <li><strong>Formatting</strong> &amp;mdash; Document and range formatting</li>
+     <li><strong>Multi-root Workspaces</strong> &amp;mdash; JSON-configured project support via <code>build.json</code></li>
+    </ul>
+    <h3 id="debugging-features">Debugging Features</h3>
+    <p>The debug adapter (<code>obd --dap</code>) is shared by every editor that speaks DAP.</p>
+    <ul>
+     <li><strong>Structured variable inspection</strong> &amp;mdash; objects expand into their instance fields, arrays into indexed elements, and <code>Vector</code>, <code>Map</code> and <code>Hash</code> into their contents. A <code>Map</code> shows <code>key → value</code> in key order rather than an address, and each child expands recursively</li>
+     <li><strong>Readable values</strong> &amp;mdash; strings show their text, boxed scalars (<code>IntRef</code>, <code>FloatRef</code>, …) show their value, and collections show <code>Vector(size=3)</code>. These are deliberately terminal: drilling into them would only expose backing storage</li>
+     <li><strong>Watch and hover</strong> &amp;mdash; expressions resolving to an object or collection expand exactly like the Variables pane</li>
+     <li><strong>Variable paging</strong> &amp;mdash; large arrays and collections report <code>indexedVariables</code> and honour <code>start</code>/<code>count</code>, so a client can page instead of pulling everything</li>
+     <li><strong>Breakpoint validation</strong> &amp;mdash; <code>breakpointLocations</code> reports only lines that carry an instruction, so editors stop offering breakpoints that cannot bind</li>
+     <li><strong>Data breakpoints</strong> &amp;mdash; break when a value <em>changes</em> rather than when a line is reached, which is how you find the one write among many that corrupts a field. Right-click a variable and choose "Break on Value Change"; the stop names the watch and reports the old &amp;rarr; new transition. Write/change only: the watch compares values after each instruction, so a read that leaves the value alone cannot be seen</li>
+     <li><strong>Debug console completion</strong> &amp;mdash; <code>completions</code> suggests the variables visible in the selected frame</li>
+     <li><strong>Also supported</strong> &amp;mdash; conditional breakpoints, function breakpoints, logpoints, exception breakpoints with <code>exceptionInfo</code>, <code>setVariable</code>/<code>setExpression</code>, <code>restart</code>, <code>terminate</code>, <code>modules</code> and <code>loadedSources</code></li>
+    </ul>
+    <p>Not supported: stepping backwards, and <code>goto</code>/<code>restartFrame</code> &amp;mdash; the last two would need the VM's interpreter loop to expose its program counter, which it currently passes to the debugger by value.</p>
+    <h3 id="architecture">Architecture</h3>
+<pre class="mermaid">graph LR
+    subgraph Editors
+        VSCode[VS Code]
+        Sublime[Sublime Text]
+        Kate[Kate]
+        ecode[ecode]
+        Neovim[Neovim]
+        Emacs[Emacs]
+        Helix[Helix]
+    end
+
+    subgraph Transport
+        STDIO[STDIO]
+        Pipe[Named Pipe]
+        Socket[TCP Socket]
+    end
+
+    subgraph Runtime["Objeck Runtime"]
+        Workspace[In-Memory Workspace]
+        Compiler[Analysis Compiler]
+        Detection[Issue Detection]
+        Navigation[Code Navigation &amp; Refactoring]
+        Docs[API Documentation]
+
+        Workspace --&gt; Compiler
+        Compiler --&gt; Detection
+        Compiler --&gt; Navigation
+        Compiler --&gt; Docs
+    end
+
+    VSCode --&gt; STDIO
+    Sublime --&gt; STDIO
+    Kate --&gt; STDIO
+    ecode --&gt; STDIO
+    Neovim --&gt; STDIO
+    Emacs --&gt; STDIO
+    Helix --&gt; STDIO
+
+    STDIO --&gt; Workspace
+    Pipe --&gt; Workspace
+    Socket --&gt; Workspace</pre>
+    <div class="raw"><details>
+    <summary><strong>LSP Protocol Coverage</strong></summary></div>
+    <h4 id="notifications">Notifications</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Event</th><th>Method</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Event">Initialized</td><td data-label="Method"><code>initialized</code></td></tr>
+      <tr><td data-label="Event">Cancel Request</td><td data-label="Method"><code>$/cancelRequest</code></td></tr>
+      <tr><td data-label="Event">File Open</td><td data-label="Method"><code>textDocument/didOpen</code></td></tr>
+      <tr><td data-label="Event">File Changed</td><td data-label="Method"><code>textDocument/didChange</code></td></tr>
+      <tr><td data-label="Event">File Save</td><td data-label="Method"><code>textDocument/didSave</code></td></tr>
+      <tr><td data-label="Event">File Close</td><td data-label="Method"><code>textDocument/didClose</code></td></tr>
+      <tr><td data-label="Event">Exit</td><td data-label="Method"><code>exit</code></td></tr>
+     </tbody>
+    </table>
+    <h4 id="requests">Requests</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Feature</th><th>Method</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Feature">Initialize</td><td data-label="Method"><code>initialize</code></td></tr>
+      <tr><td data-label="Feature">Shutdown</td><td data-label="Method"><code>shutdown</code></td></tr>
+      <tr><td data-label="Feature">Completion</td><td data-label="Method"><code>textDocument/completion</code>, <code>completionItem/resolve</code></td></tr>
+      <tr><td data-label="Feature">Hover</td><td data-label="Method"><code>textDocument/hover</code> (MarkupContent)</td></tr>
+      <tr><td data-label="Feature">Signature Help</td><td data-label="Method"><code>textDocument/signatureHelp</code></td></tr>
+      <tr><td data-label="Feature">Definition</td><td data-label="Method"><code>textDocument/definition</code></td></tr>
+      <tr><td data-label="Feature">Declaration</td><td data-label="Method"><code>textDocument/declaration</code></td></tr>
+      <tr><td data-label="Feature">Type Definition</td><td data-label="Method"><code>textDocument/typeDefinition</code></td></tr>
+      <tr><td data-label="Feature">Implementation</td><td data-label="Method"><code>textDocument/implementation</code></td></tr>
+      <tr><td data-label="Feature">References</td><td data-label="Method"><code>textDocument/references</code></td></tr>
+      <tr><td data-label="Feature">Document Highlight</td><td data-label="Method"><code>textDocument/documentHighlight</code></td></tr>
+      <tr><td data-label="Feature">Document Symbol</td><td data-label="Method"><code>textDocument/documentSymbol</code> (a tree for clients that take one)</td></tr>
+      <tr><td data-label="Feature">Rename</td><td data-label="Method"><code>textDocument/prepareRename</code>, <code>textDocument/rename</code></td></tr>
+      <tr><td data-label="Feature">Code Action</td><td data-label="Method"><code>textDocument/codeAction</code> (quick fixes, <code>source.organizeImports</code>)</td></tr>
+      <tr><td data-label="Feature">Diagnostics (pull)</td><td data-label="Method"><code>textDocument/diagnostic</code>, for clients that pull</td></tr>
+      <tr><td data-label="Feature">Code Lens</td><td data-label="Method"><code>textDocument/codeLens</code> (Run on <code>Main</code>)</td></tr>
+      <tr><td data-label="Feature">Document Link</td><td data-label="Method"><code>textDocument/documentLink</code> (<code>use</code> bundles to the API reference)</td></tr>
+      <tr><td data-label="Feature">Format Document</td><td data-label="Method"><code>textDocument/formatting</code></td></tr>
+      <tr><td data-label="Feature">Format Selection</td><td data-label="Method"><code>textDocument/rangeFormatting</code></td></tr>
+      <tr><td data-label="Feature">Folding Range</td><td data-label="Method"><code>textDocument/foldingRange</code></td></tr>
+      <tr><td data-label="Feature">Selection Range</td><td data-label="Method"><code>textDocument/selectionRange</code></td></tr>
+      <tr><td data-label="Feature">Inlay Hint</td><td data-label="Method"><code>textDocument/inlayHint</code></td></tr>
+      <tr><td data-label="Feature">Semantic Tokens</td><td data-label="Method"><code>textDocument/semanticTokens/full</code>, <code>/full/delta</code>, <code>/range</code></td></tr>
+      <tr><td data-label="Feature">Call Hierarchy</td><td data-label="Method"><code>textDocument/prepareCallHierarchy</code>, <code>callHierarchy/incomingCalls</code>, <code>callHierarchy/outgoingCalls</code></td></tr>
+      <tr><td data-label="Feature">Type Hierarchy</td><td data-label="Method"><code>textDocument/prepareTypeHierarchy</code>, <code>typeHierarchy/supertypes</code>, <code>typeHierarchy/subtypes</code></td></tr>
+     </tbody>
+    </table>
+    <h4 id="server-to-client">Server to client</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Feature</th><th>Method</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Feature">Diagnostics</td><td data-label="Method"><code>textDocument/publishDiagnostics</code> (push clients), <code>workspace/diagnostic/refresh</code> (pull clients)</td></tr>
+      <tr><td data-label="Feature">Log</td><td data-label="Method"><code>window/logMessage</code></td></tr>
+      <tr><td data-label="Feature">Progress</td><td data-label="Method"><code>window/workDoneProgress/create</code>, <code>$/progress</code></td></tr>
+      <tr><td data-label="Feature">Watch build.json</td><td data-label="Method"><code>client/registerCapability</code></td></tr>
+     </tbody>
+    </table>
+    <h4 id="workspace">Workspace</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Feature</th><th>Method</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Feature">Watch File Changes</td><td data-label="Method"><code>workspace/didChangeWatchedFiles</code></td></tr>
+      <tr><td data-label="Feature">Workspace Folder Changes</td><td data-label="Method"><code>workspace/didChangeWorkspaceFolders</code></td></tr>
+      <tr><td data-label="Feature">Find Symbol</td><td data-label="Method"><code>workspace/symbol</code></td></tr>
+     </tbody>
+    </table>
+    <div class="raw"></details></div>
+    <h3 id="development">Development</h3>
+    <p><strong>Building the VS Code extension:</strong></p>
+<pre class="cmd">npm install -g yo generator-code typescript @vscode/vsce
+cd clients/vscode &amp;&amp; npm run compile</pre>
+    <p><strong>Building the LSP server</strong> (requires <a href="https://github.com/objeck/objeck-lang" target="_blank">Objeck</a>):</p>
+<pre class="cmd">cd server
+obc -src frameworks.obs,proxy.obs,server.obs,format_code/scanner.obs,format_code/formatter.obs \
+    -lib diags,net,json,regex,cipher -dest objeck_lsp.obe</pre>
+    <p><strong>Testing the server:</strong> <code>python tests/run_lsp_tests.py &lt;objeck&gt;/bin [server_dir]</code>. The server keeps each parsed and analyzed program until a document changes; set <code>OBJECK_LSP_NO_CACHE=1</code> to parse afresh for every request instead, and compare the two when a result looks wrong.</p>
+    <h3 id="resources">Resources</h3>
+    <ul>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/docs/install_guide.html" target="_blank">Install Guide</a> &amp;mdash; detailed setup for all editors</li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/README.txt" target="_blank">README.txt</a> &amp;mdash; quick-reference setup instructions</li>
+     <li><a href="https://github.com/objeck/objeck-lang" target="_blank">Objeck Language</a> &amp;mdash; compiler, runtime, and documentation</li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues" target="_blank">Issues</a> &amp;mdash; bug reports and feature requests</li>
+    </ul>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

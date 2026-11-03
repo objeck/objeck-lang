@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>AI Models for Objeck — Objeck Language</title>
+  <meta name="description" content="Objeck supports two categories of AI model: Ollama (local LLMs via the Ollama server) and ONNX (on-device inference via ONNX Runtime). Neither category requires a cloud API key."/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">AI Models for Objeck</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/MODELS.md" target="_blank">docs/MODELS.md on GitHub</a></div>
+    <p class="page-lead">Objeck supports two categories of AI model: <strong>Ollama</strong> (local LLMs via the Ollama server) and <strong>ONNX</strong> (on-device inference via ONNX Runtime). Neither category requires a cloud API key.</p>
+
+    <hr class="section-end">
+    <h3 id="ollama-models">Ollama Models</h3>
+    <h4 id="1-install-ollama">1. Install Ollama</h4>
+    <p>Download and install from <strong>https://ollama.com/download</strong> (Windows, macOS, Linux).</p>
+    <p>After installation the Ollama server starts automatically. Verify it is running:</p>
+<pre class="plain">ollama list</pre>
+    <h4 id="2-pull-a-model">2. Pull a Model</h4>
+<pre class="cmd">ollama pull &lt;model-name&gt;</pre>
+    <h4 id="3-recommended-models">3. Recommended Models</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Task</th><th>Model</th><th>Pull Command</th><th>Size</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Task">General chat / reasoning</td><td data-label="Model"><code>llama3.2</code></td><td data-label="Pull Command"><code>ollama pull llama3.2</code></td><td data-label="Size">~2 GB</td></tr>
+      <tr><td data-label="Task">Lightweight / fast</td><td data-label="Model"><code>phi3</code></td><td data-label="Pull Command"><code>ollama pull phi3</code></td><td data-label="Size">~2.3 GB</td></tr>
+      <tr><td data-label="Task">Vision / multimodal</td><td data-label="Model"><code>llava</code></td><td data-label="Pull Command"><code>ollama pull llava</code></td><td data-label="Size">~4.7 GB</td></tr>
+      <tr><td data-label="Task">Code generation</td><td data-label="Model"><code>qwen2.5-coder</code></td><td data-label="Pull Command"><code>ollama pull qwen2.5-coder</code></td><td data-label="Size">~1.5 GB</td></tr>
+      <tr><td data-label="Task">Embeddings</td><td data-label="Model"><code>nomic-embed-text</code></td><td data-label="Pull Command"><code>ollama pull nomic-embed-text</code></td><td data-label="Size">~274 MB</td></tr>
+     </tbody>
+    </table>
+    <p>Browse the full library at <strong>https://ollama.com/library</strong>.</p>
+    <h4 id="4-verify-a-model-works">4. Verify a Model Works</h4>
+<pre class="cmd">ollama run llama3.2 "Say hello in one word"</pre>
+    <h4 id="5-use-in-objeck">5. Use in Objeck</h4>
+<pre class="line-numbers"><code class="language-cpp">use API.Ollama;
+
+response := Completion-&gt;Generate("llama3.2", "Why is the sky blue?");
+response-&gt;PrintLine();
+</code></pre>
+    <p>Compile with: <code>obc -src your.obs -lib net,json,cipher,misc,ollama</code></p>
+    <p>See the <a href="https://github.com/objeck/objeck-lang/tree/master/programs/frameworks/ollama" target="_blank">Ollama examples</a> and the <a href="https://www.objeck.org/ai_guide.html">AI Developer Guide</a>.</p>
+    <hr class="section-end">
+    <h3 id="onnx-models">ONNX Models</h3>
+    <p>ONNX models run fully on-device, on the accelerator the platform's build was compiled for (DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS) or on the CPU. The Linux x64 build is CPU-only, and the Linux ARM64 packages do not include ONNX. Models must be downloaded separately — they are too large for the repository.</p>
+    <h4 id="supported-models">Supported Models</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Session Class</th><th>Task</th><th>Model</th><th>Source</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Session Class"><code>Phi3Session</code></td><td data-label="Task">Text generation (SLM)</td><td data-label="Model">Phi-3 Mini 4K INT4</td><td data-label="Source"><a href="https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-onnx" target="_blank">Hugging Face</a></td></tr>
+      <tr><td data-label="Session Class"><code>Phi3VisionSession</code></td><td data-label="Task">Multimodal image+text</td><td data-label="Model">Phi-3 Vision 128K INT4</td><td data-label="Source"><a href="https://huggingface.co/microsoft/Phi-3-vision-128k-instruct-onnx-directml" target="_blank">Hugging Face</a></td></tr>
+      <tr><td data-label="Session Class"><code>YoloSession</code></td><td data-label="Task">Object detection</td><td data-label="Model">YOLOv11n</td><td data-label="Source"><a href="https://docs.ultralytics.com/models/yolo11/" target="_blank">Ultralytics</a></td></tr>
+      <tr><td data-label="Session Class"><code>ResNetSession</code></td><td data-label="Task">Image classification</td><td data-label="Model">ResNet-34</td><td data-label="Source"><a href="https://github.com/onnx/models/tree/main/validated/vision/classification/resnet" target="_blank">ONNX Model Zoo</a></td></tr>
+      <tr><td data-label="Session Class"><code>DeepLabSession</code></td><td data-label="Task">Semantic segmentation</td><td data-label="Model">DeepLabV3</td><td data-label="Source"><a href="https://github.com/onnx/models/tree/main/validated/vision/object_detection_segmentation" target="_blank">ONNX Model Zoo</a></td></tr>
+      <tr><td data-label="Session Class"><code>OpenPoseSession</code></td><td data-label="Task">Human pose estimation</td><td data-label="Model">OpenPose</td><td data-label="Source"><a href="https://github.com/CMU-Perceptual-Computing-Lab/openpose" target="_blank">CMU OpenPose</a></td></tr>
+      <tr><td data-label="Session Class"><code>FaceSession</code></td><td data-label="Task">Face detection + recognition</td><td data-label="Model">SCRFD + ArcFace R50</td><td data-label="Source"><a href="https://github.com/deepinsight/insightface/releases/tag/v0.7" target="_blank">InsightFace buffalo_l</a></td></tr>
+     </tbody>
+    </table>
+    <h4 id="hugging-face-models-by-name">Hugging Face models by name</h4>
+    <p>Text models published on the Hugging Face Hub with an ONNX export download by name, with no Python: <code>System.AI.Hub.HubClient</code> (<code>-lib net,ai_hub</code>) fetches a repository's files into <code>~/.objeck/hub</code> (or <code>OBJECK_HUB_CACHE</code>), checks each file's size and SHA-256 against the Hub, and works offline from the cache. <code>System.NLP.Onnx.TextClassifier</code> then opens the folder. See <a href="doc_ai.html#models-from-the-hugging-face-hub">AI.md</a>.</p>
+<pre class="line-numbers"><code class="language-cpp">folder := HubClient-&gt;New()-&gt;Snapshot("Xenova/distilbert-base-uncased-finetuned-sst-2-english",
+  ["config.json", "tokenizer.json", "tokenizer_config.json", "onnx/model.onnx"]);
+classifier := TextClassifier-&gt;New(folder);
+</code></pre>
+    <h4 id="download-models">Download Models</h4>
+    <p><strong>Phi-3 Mini (text generation, ~2 GB)</strong></p>
+<pre class="cmd">pip install huggingface_hub
+huggingface-cli download microsoft/Phi-3-mini-4k-instruct-onnx \
+  --include "directml/directml-int4-awq-block-128/*" \
+  --local-dir data/models/phi3</pre>
+    <p><strong>Phi-3 Vision (multimodal, ~2.5 GB)</strong></p>
+<pre class="cmd">huggingface-cli download microsoft/Phi-3-vision-128k-instruct-onnx-directml \
+  --include "directml-int4-rtn-block-32/*" \
+  --local-dir data/models/phi3v</pre>
+    <p><strong>Face recognition (~191 MB total)</strong></p>
+<pre class="cmd">curl -L -o buffalo_l.zip \
+  https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip
+unzip buffalo_l.zip det_10g.onnx w600k_r50.onnx -d data/models/</pre>
+    <p><strong>YOLO object detection</strong></p>
+<pre class="cmd">pip install ultralytics
+yolo export model=yolo11n.pt format=onnx
+# rename yolo11n.onnx → data/models/yolov11.onnx</pre>
+    <p><strong>ResNet-34 classification</strong></p>
+    <p>Download <code>resnet34-v1-7.onnx</code> from the <a href="https://github.com/onnx/models/tree/main/validated/vision/classification/resnet" target="_blank">ONNX Model Zoo</a>, rename to <code>resnet34.onnx</code>.</p>
+    <h4 id="expected-directory-layout">Expected Directory Layout</h4>
+<pre class="plain">data/models/
+  det_10g.onnx             # face detector (SCRFD)
+  w600k_r50.onnx           # face recognizer (ArcFace R50)
+  yolov11.onnx
+  resnet34.onnx
+  deeplabv3.onnx
+  openpose.onnx
+  phi3/
+    directml/directml-int4-awq-block-128/
+      model.onnx
+      model.onnx.data
+      tokenizer.json
+      genai_config.json
+  phi3v/
+    directml-int4-rtn-block-32/
+      phi-3-v-128k-instruct-vision.onnx + .data
+      phi-3-v-128k-instruct-text-embedding.onnx + .data
+      model.onnx + .data
+      tokenizer.json
+      genai_config.json</pre>
+    <h4 id="execution-providers">Execution Providers</h4>
+    <p>Each platform's library is compiled with one execution provider, and the <code>ep</code> key can only select that provider or the CPU. Naming any other provider is refused with an error, and no session is created. Leaving <code>ep</code> out uses the build's provider.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Platform</th><th>Accelerator</th><th>Provider flag</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Platform">Windows x64</td><td data-label="Accelerator">GPU via DirectML</td><td data-label="Provider flag"><code>"ep" → "dml"</code></td></tr>
+      <tr><td data-label="Platform">Windows ARM64</td><td data-label="Accelerator">Qualcomm GPU via QNN</td><td data-label="Provider flag"><code>"ep" → "qnn"</code></td></tr>
+      <tr><td data-label="Platform">Linux x64</td><td data-label="Accelerator">none (CPU-only build)</td><td data-label="Provider flag"><code>"ep" → "cpu"</code></td></tr>
+      <tr><td data-label="Platform">macOS</td><td data-label="Accelerator">Apple Neural Engine / GPU via CoreML</td><td data-label="Provider flag"><code>"ep" → "coreml"</code></td></tr>
+      <tr><td data-label="Platform">Any</td><td data-label="Accelerator">CPU fallback</td><td data-label="Provider flag"><code>"ep" → "cpu"</code></td></tr>
+     </tbody>
+    </table>
+    <h4 id="use-in-objeck">Use in Objeck</h4>
+<pre class="line-numbers"><code class="language-cpp">use API.Onnx, Collection;
+
+config := Map-&gt;New()&lt;String, String&gt;;
+config-&gt;Insert("ep", "dml");   # Windows x64; "qnn" or "coreml" on those builds, "cpu" anywhere
+session := Phi3Session-&gt;New("data/models/phi3/directml/directml-int4-awq-block-128/model.onnx", config);
+</code></pre>
+    <p>Compile with: <code>obc -src your.obs -lib models,net,json,cipher,opencv,onnx</code></p>
+    <p>See the <a href="https://github.com/objeck/objeck-lang/tree/master/programs/frameworks/opencv_onnx" target="_blank">ONNX examples</a>, the <a href="https://github.com/objeck/objeck-lang/blob/master/core/lib/onnx/MODELS.md" target="_blank">detailed model reference</a>, and the <a href="https://www.objeck.org/ai_guide.html">AI Developer Guide</a>.</p>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

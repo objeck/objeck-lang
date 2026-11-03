@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Error reporting in the libraries: what exists, and one rule to adopt — Objeck Language</title>
+  <meta name="description" content="Status: a proposal for the maintainer. The first half records, with file and line, the ways the libraries report failure today. The second half proposes a single rule for new code. Nothing here changes behaviour, and no library has been cha"/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Error reporting in the libraries: what exists, and one rule to adopt</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/ERROR_CONVENTIONS.md" target="_blank">docs/ERROR_CONVENTIONS.md on GitHub</a></div>
+    <p class="page-lead"><strong>Status: a proposal for the maintainer.</strong> The first half records, with file and line, the ways the libraries report failure today. The second half proposes a single rule for new code. Nothing here changes behaviour, and no library has been changed to follow it.</p>
+
+    <p>Lines refer to <code>core/compiler/lib_src/</code> as of this writing.</p>
+    <h3 id="what-is-in-use">What is in use</h3>
+    <h4 id="1-a-process-wide-last-error-string-openai-gemini-ollama-inference">1. A process-wide "last error" string: OpenAI, Gemini, Ollama, inference</h4>
+    <p>The failing call returns <code>Nil</code> or <code>false</code> and leaves the reason in a class variable that the next call overwrites.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Library</th><th>Where it is kept</th><th>Notes</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Library">OpenAI</td><td data-label="Where it is kept"><code>@last_message : static</code> (<code>openai.obs:6337</code>), <code>SetLastError</code> (<code>:6370</code>), <code>GetLastError</code> (<code>:6470</code>)</td><td data-label="Notes">returns the text <code>"&lt;none&gt;"</code> when nothing failed. <code>ParseBody</code> (<code>:6429</code>) records the reason for every parse failure</td></tr>
+      <tr><td data-label="Library">Gemini</td><td data-label="Where it is kept">two copies: <code>OAuthEndPoint</code> (<code>gemini.obs:15</code>, <code>GetLastError</code> <code>:97</code>) and <code>EndPoint</code> (<code>:2400</code>, <code>GetLastError</code> <code>:2523</code>)</td><td data-label="Notes">returns <code>Nil</code> when nothing failed. A call through the other class does not see the first one's error</td></tr>
+      <tr><td data-label="Library">Ollama</td><td data-label="Where it is kept"><code>@last_error : static</code> (<code>ollama.obs:17</code>), <code>GetLastError</code> (<code>:26</code>)</td><td data-label="Notes">returns <code>Nil</code> when nothing failed; <code>Content</code> (<code>:101</code>) turns "no response" into a recorded reason</td></tr>
+      <tr><td data-label="Library">Inference</td><td data-label="Where it is kept"><code>EndPoint-&gt;SetLastError</code> calls in <code>inference.obs</code> (21 of them; the first is <code>:50</code>)</td><td data-label="Notes">separate from <code>API.Models.EndPoint</code>, as its header says</td></tr>
+      <tr><td data-label="Library">Models, MCP server</td><td data-label="Where it is kept"><code>models.obs:351</code>, <code>net_server.obs:3121</code> (<code>McpServer-&gt;GetLastError</code>)</td><td data-label="Notes">the same shape again; ONNX has its own</td></tr>
+     </tbody>
+    </table>
+    <p>Because the string is shared by every thread, two threads that fail at once can read each other's message. The three AI libraries also differ on the "no error" value (<code>"&lt;none&gt;"</code> versus <code>Nil</code>), and until recently several legacy methods printed <code>### Error: ... ###</code> with <code>-&gt;ErrorLine()</code> and returned <code>Nil</code> without recording anything (<code>openai.obs:84</code>, <code>:172</code>; <code>gemini.obs</code> has 26 such lines). A caller of those cannot ask why.</p>
+    <h4 id="2-an-instance-error-ml-csv-json-xml-nlp-query-columns">2. An instance error: ML, CSV, JSON, XML, NLP, Query columns</h4>
+    <p>The object remembers why <em>its</em> last call failed; a failed call leaves the object usable.</p>
+    <ul>
+     <li>ML models: <code>GetError()</code> at <code>ml_core.obs:2360</code>, <code>ml_embed.obs:176</code>, <code>ml_outlier.obs</code> (several classes, <code>:889</code> and onwards). Returns <code>""</code> when the last call worked, per its comment.</li>
+     <li><code>json.obs:510</code>, <code>xml.obs:283</code>, <code>csv.obs:691</code>: <code>GetError()</code> after a parse.</li>
+     <li><code>ml_svm.obs:1813</code> and <code>:2472</code>, <code>odbc.obs:306</code>, <code>:1042</code>, <code>:1815</code>: <code>GetLastError()</code> per object.</li>
+     <li><code>IsOk()</code> after construction, with the reason held for the same object: <code>rss.obs:93</code>, <code>regex.obs:116</code>.</li>
+    </ul>
+    <p>This is safe with one thread per object. The "no error" value is <code>""</code> in ML and <code>Nil</code> in most others.</p>
+    <h4 id="3-a-per-thread-error-query-tables-sockets">3. A per-thread error: Query tables, sockets</h4>
+    <p><code>GetError()</code> answers for the calling thread's last call on the object, so several threads can share a <code>Table</code> or <code>Catalog</code>.</p>
+    <ul>
+     <li><code>ThreadErrors</code> (<code>query.obs:1440</code>), a map keyed by <code>Thread-&gt;GetCurrentId()</code>, absent when no thread has failed so the success path costs one field read. <code>Table-&gt;GetError()</code> is at <code>query.obs:4176</code>, <code>Catalog-&gt;GetError()</code> at <code>:18556</code>; design in <code>docs/QUERY_DESIGN.md</code>, "Errors per thread".</li>
+     <li>Sockets: <code>TCPSocket-&gt;GetLastError()</code> (<code>lang.obs:12572</code>) and its TLS, UDP, DTLS and server twins (<code>:12873</code>, <code>:13093</code>, <code>:13184</code>, <code>:13304</code>, <code>:13522</code>, <code>:13739</code>, <code>:13864</code>) keep the reason per thread and return <code>Nil</code> when the thread's latest socket call worked.</li>
+    </ul>
+    <p>This is the convention that is correct under threads, and the one the runtime's own sockets use.</p>
+    <h4 id="4-raising-runtime-raise-typed-tryon">4. Raising: <code>Runtime-&gt;Raise</code>, typed <code>try</code>/<code>on</code></h4>
+    <ul>
+     <li><code>System.Error</code> and its subclasses (<code>lang.obs:8150</code>, <code>NilError</code> <code>:8182</code>, <code>IndexError</code> <code>:8195</code>, <code>DivideByZeroError</code> <code>:8208</code>, <code>CastError</code> <code>:8221</code>, <code>RuntimeError</code> <code>:8235</code>), <code>Runtime-&gt;Raise(e)</code> (<code>:8318</code>) and <code>Runtime-&gt;GetLastError()</code> (<code>:8332</code>). A caller recovers with <code>try { } on(e : T) { } finally { }</code>. Design and status: <code>docs/ERROR_HANDLING_DESIGN.md</code> (phases 1 to 4 shipped).</li>
+     <li><code>ml_lab.obs</code> is the one library that uses it: <code>LabError from Error</code> (<code>:20</code>), raised from <code>Runtime-&gt;Raise(LabError-&gt;New(...))</code> for input it cannot act on (<code>:453</code>, <code>:784</code>, <code>:1033</code>, <code>:2012</code>, <code>:2259</code>, <code>:3021</code>). An uncaught one ends the program with its message.</li>
+    </ul>
+    <h4 id="5-return-value-only">5. Return value only</h4>
+    <p>Many small methods (<code>Vector-&gt;Set</code>, <code>Hash-&gt;Remove</code>) say only whether they worked. That is fine when there is exactly one way to fail.</p>
+    <h3 id="what-goes-wrong-with-the-mix">What goes wrong with the mix</h3>
+    <ul>
+     <li>A caller has to learn which of five mechanisms a library uses, and which of three "no error" values it returns (<code>"&lt;none&gt;"</code>, <code>Nil</code>, <code>""</code>).</li>
+     <li>The process-wide string is racy, and was the source of the unrecorded failures: a library with no obligation to set it tends not to.</li>
+     <li>Only conventions 3 and 4 are safe under threads, and only 4 can be ignored by mistake without anyone noticing: a <code>Nil</code> return that the caller then dereferences is the failure the library sweep for this document found in the OpenAI, Gemini, <code>misc</code> and <code>net</code> libraries.</li>
+     <li><code>ml_lab</code> raises where <code>ml</code>, which it builds on, returns a value and sets <code>GetError()</code>; a program using both handles two styles in one experiment.</li>
+    </ul>
+    <h3 id="proposed-rule">Proposed rule</h3>
+    <p>For new code, and for existing code the next time it is touched:</p>
+    <ol>
+     <li><strong>A failure the caller should expect (I/O, network, parsing untrusted input, a missing record): return the failure value and keep the reason per thread.</strong> The failure value is <code>Nil</code> for an object or a string, <code>false</code> for an action, and <code>-1</code> for a count or index. The reason is read with <code>GetError()</code>; it returns <code>Nil</code> when the calling thread's last call worked. Use the <code>ThreadErrors</code> shape in <code>query.obs:1440</code>, or the sockets' runtime-kept error, rather than a class variable. Never print and return.</li>
+     <li><strong>A failure that means the program is wrong (a precondition the caller broke: an empty training set, mismatched lengths, a fraction outside 0 to 1): <code>Runtime-&gt;Raise</code> an error that subclasses <code>System.Error</code>.</strong> Name it for the library (<code>LabError</code>), and document it on every function that can raise it. This is what <code>ml_lab</code> does today.</li>
+     <li><strong>New error classes subclass <code>System.Error</code></strong>, so a caller can name one <code>on(e : T)</code> clause for a whole library, and <code>finally</code> still runs.</li>
+     <li><strong>Do not mix the two for one condition.</strong> A function that can fail for a reason in rule 1 does not also raise for it; a function that raises (rule 2) never returns <code>Nil</code> to say the same thing.</li>
+     <li><strong>A doc comment names the failure value and where the reason is read</strong>, the way Ollama's does (<code>@return ... or Nil with the last error set</code>).</li>
+    </ol>
+    <h4 id="what-adopting-it-would-touch">What adopting it would touch</h4>
+    <p>Nothing in this change. When the maintainer decides:</p>
+    <ul>
+     <li>The OpenAI, Gemini and Ollama <code>GetLastError</code> become thin readers of a per-thread map (the <code>static</code> name stays, as a function, so callers do not change), and settle on <code>Nil</code>.</li>
+     <li>ML's <code>GetError()</code> returns <code>Nil</code> instead of <code>""</code> (a compatibility decision for callers that compare against <code>""</code>).</li>
+     <li>The <code>-&gt;ErrorLine()</code> lines that stand in for a recorded reason are replaced by <code>SetLastError</code>.</li>
+     <li>New libraries follow rules 1 to 5 from the start.</li>
+    </ul>
+    <p>Open questions for the maintainer: whether the <code>static</code> last-error functions are public API that a deprecation period must cover, and whether <code>ml</code> should raise like <code>ml_lab</code> or <code>ml_lab</code> should return like <code>ml</code>.</p>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

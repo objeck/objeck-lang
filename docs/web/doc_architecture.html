@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Objeck Language Architecture — Objeck Language</title>
+  <meta name="description" content="This document provides detailed architectural views of the Objeck programming language implementation, including the compiler, virtual machine, JIT compilation, and development tools."/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'loose',
+      themeVariables: { fontFamily: 'Inter, sans-serif', primaryColor: '#16223a', primaryBorderColor: '#6366f1',
+                        lineColor: '#7dd3fc', primaryTextColor: '#e8eef8' } });
+    await mermaid.run({ querySelector: 'pre.mermaid', suppressErrors: true });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Objeck Language Architecture</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/architecture.md" target="_blank">docs/architecture.md on GitHub</a></div>
+    <p class="page-lead">This document provides detailed architectural views of the Objeck programming language implementation, including the compiler, virtual machine, JIT compilation, and development tools.</p>
+    <div id="toc_container" class="plain">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#1-complete-system-overview">1. Complete System Overview</a></li>
+      <li><a href="#2-compiler-pipeline">2. Compiler Pipeline</a></li>
+      <li><a href="#3-virtual-machine-runtime">3. Virtual Machine Runtime</a></li>
+      <li><a href="#4-jit-compilation-architecture">4. JIT Compilation Architecture</a></li>
+      <li><a href="#5-library-ecosystem">5. Library Ecosystem</a></li>
+      <li><a href="#6-development-tools">6. Development Tools</a></li>
+      <li><a href="#7-cicd-pipeline">7. CI/CD Pipeline</a></li>
+      <li><a href="#8-memory-management">8. Memory Management</a></li>
+      <li><a href="#9-platform-abstraction">9. Platform Abstraction</a></li>
+      <li><a href="#10-runtime-errors">10. Runtime Errors</a></li>
+      <li><a href="#summary">Summary</a></li>
+     </ul>
+    </div>
+
+    <div class="note"><strong>Comprehensive technical architecture with interactive diagrams</strong></div>
+    <p><img src="https://raw.githubusercontent.com/objeck/objeck-lang/master/docs/images/objeck-architecture.svg" alt="Objeck toolchain architecture" loading="lazy"></p>
+    <p><em>The whole toolchain on one page (<a href="https://github.com/objeck/objeck-lang/blob/master/docs/images/objeck-architecture.svg" target="_blank">SVG</a>); the sections below go into each part. For a short written map with the invariants and the page that goes deeper on each part, see <a href="doc_architecture_map.html">ARCHITECTURE_MAP.md</a>.</em></p>
+    <hr class="section-end">
+    <h3 id="1-complete-system-overview">1. Complete System Overview</h3>
+    <p>The whole toolchain, from the editor to the five platforms a release ships to. Source is compiled by <code>obc</code> into an executable (<code>.obe</code>) or a library (<code>.obl</code>); <code>obr</code> runs it, interpreting until a method is hot and then compiling it to native code. The language server analyzes the same source with the compiler's own front end, linked into a native library.</p>
+<pre class="mermaid">flowchart LR
+    subgraph AUTHOR["Authoring"]
+        direction TB
+        EDITORS["Editors&lt;br/&gt;VS Code · Neovim · Vim · Emacs&lt;br/&gt;Helix · Sublime · Kate"]
+        LSP["Language server&lt;br/&gt;tools/lsp (Objeck)&lt;br/&gt;LSP 3.17: diagnostics, hover,&lt;br/&gt;completion, rename, symbols,&lt;br/&gt;semantic tokens, code lens"]
+        DIAGS["libobjk_diags&lt;br/&gt;compiler front end&lt;br/&gt;as a native library"]
+        EDITORS &lt;--&gt;|"JSON-RPC over stdio"| LSP
+        LSP --&gt; DIAGS
+    end
+
+    subgraph COMPILE["Compiler · obc"]
+        direction TB
+        SRC[".obs source"]
+        FRONT["Scanner → Parser&lt;br/&gt;→ Context analyzer&lt;br/&gt;types, generics, named and&lt;br/&gt;ref arguments, try/on/finally"]
+        BACK["Intermediate emitter&lt;br/&gt;→ Optimizer s0–s3&lt;br/&gt;(inlining, tail calls,&lt;br/&gt;constant folding)"]
+        LINK["Linker&lt;br/&gt;reads .obl libraries"]
+        OUT[".obe program&lt;br/&gt;.obl library"]
+        SRC --&gt; FRONT --&gt; BACK --&gt; OUT
+        LINK --&gt; FRONT
+    end
+
+    subgraph RUN["Virtual machine · obr"]
+        direction TB
+        LOAD["Loader"]
+        INTERP["Stack interpreter&lt;br/&gt;?-&gt; and try regions,&lt;br/&gt;error recovery"]
+        JIT["JIT compilers&lt;br/&gt;AMD64 · ARM64&lt;br/&gt;hot methods → native"]
+        GC["Memory manager&lt;br/&gt;generational GC,&lt;br/&gt;multithreaded"]
+        TRAPS["Trap processor&lt;br/&gt;I/O · sockets · threads&lt;br/&gt;time · native calls"]
+        LOAD --&gt; INTERP
+        INTERP &lt;--&gt;|"bridge, statuses"| JIT
+        INTERP &lt;--&gt; GC
+        JIT &lt;--&gt; GC
+        INTERP --&gt; TRAPS
+    end
+
+    subgraph LIBS["Libraries · 46 sources, .obl"]
+        direction TB
+        CORE["lang · collections · concurrency&lt;br/&gt;regex · math · misc"]
+        DOMAIN["Data · Networking · Web&lt;br/&gt;AI and ML · Media"]
+        NATIVE["Native modules&lt;br/&gt;.dll · .so · .dylib&lt;br/&gt;(see the library stack below)"]
+        DOMAIN --&gt; NATIVE
+    end
+
+    subgraph TOOLS["Command-line tools"]
+        direction TB
+        OBI["obi · REPL and editor"]
+        OBD["obd · debugger&lt;br/&gt;CLI and Debug Adapter Protocol"]
+        OBU["obu · updater&lt;br/&gt;signed release manifests"]
+        OBB["obb · app builder&lt;br/&gt;native launchers"]
+    end
+
+    subgraph PLAT["Platforms"]
+        direction TB
+        WIN["Windows x64 · ARM64"]
+        LNX["Linux x64 · ARM64"]
+        MAC["macOS ARM64"]
+    end
+
+    subgraph SHIP["Build, test and release"]
+        direction TB
+        CI["GitHub Actions&lt;br/&gt;CI on 5 platform legs&lt;br/&gt;regression suite ×3 JIT modes&lt;br/&gt;LSP, DAP, debugger tests"]
+        REL["Release build and publish&lt;br/&gt;MSI · ZIP · TGZ · signed .pkg&lt;br/&gt;.vsix · SHA256SUMS (minisign)"]
+        SITE["objeck.org API docs&lt;br/&gt;playground (sandboxed)"]
+        CI --&gt; REL --&gt; SITE
+    end
+
+    DIAGS -.-&gt;|"same front end"| FRONT
+    EDITORS --&gt;|"debug sessions"| OBD
+    OUT --&gt; LOAD
+    CORE --&gt; LINK
+    DOMAIN --&gt; LINK
+    NATIVE --&gt;|"loaded at run time"| TRAPS
+    OBI --&gt; FRONT
+    OBI --&gt; INTERP
+    OBD &lt;--&gt; INTERP
+    OBU --&gt; REL
+    TRAPS --&gt; PLAT
+    JIT --&gt; PLAT
+    COMPILE -.-&gt; CI
+    RUN -.-&gt; CI</pre>
+    <h4 id="the-library-stack">The library stack</h4>
+    <p>Most libraries are Objeck alone. The rest pair an Objeck interface with a C++ module that the VM loads when the program first calls it, and that module wraps the third-party code a release bundles or the platform supplies.</p>
+<pre class="mermaid">flowchart TB
+    subgraph OBJECK["Objeck libraries (.obl)"]
+        direction LR
+        L_CORE["lang · gen_collect&lt;br/&gt;concurrent · regex · misc"]
+        L_DATA["json · json_stream · xml&lt;br/&gt;csv · query · odbc"]
+        L_NET["net · net_h2 · net_quic&lt;br/&gt;net_server · web_server&lt;br/&gt;json_rpc · rss · cipher"]
+        L_AI["ml_* · ai_* · nlp · nlp_onnx&lt;br/&gt;ai_hub (Hugging Face Hub)&lt;br/&gt;openai · gemini · ollama&lt;br/&gt;models · inference"]
+        L_VISION["onnx · opencv"]
+        L_MEDIA["sdl2 · sdl_game · sdl_gl&lt;br/&gt;lame"]
+        L_TOOLS["diags"]
+    end
+
+    subgraph MODULES["Native modules (C++)"]
+        direction LR
+        M_CRYPTO["crypto"]
+        M_NET["net / TLS"]
+        M_ODBC["odbc"]
+        M_MATRIX["matrix"]
+        M_ONNX["onnx"]
+        M_CV["opencv"]
+        M_SDL["sdl"]
+        M_LAME["lame"]
+        M_DIAGS["diags"]
+    end
+
+    subgraph THIRD["Third-party and system code"]
+        direction LR
+        T_TLS["mbedTLS"]
+        T_HTTP["nghttp2 (HTTP/2)&lt;br/&gt;ngtcp2 + nghttp3 (HTTP/3, POSIX)"]
+        T_ODBC["ODBC driver manager"]
+        T_ORT["ONNX Runtime&lt;br/&gt;CPU · DirectML · QNN&lt;br/&gt;CUDA · CoreML"]
+        T_CV["OpenCV"]
+        T_SDL["SDL2 · image · mixer · ttf&lt;br/&gt;OpenGL 3.3 core"]
+        T_LAME["LAME (MP3)"]
+        T_ZLIB["zlib"]
+        T_CC["obc front end"]
+    end
+
+    L_NET --&gt; M_CRYPTO &amp; M_NET
+    L_DATA --&gt; M_ODBC
+    L_AI --&gt; M_MATRIX
+    L_AI --&gt;|"model inference"| M_ONNX
+    L_VISION --&gt; M_ONNX &amp; M_CV
+    L_MEDIA --&gt; M_SDL &amp; M_LAME
+    L_TOOLS --&gt; M_DIAGS
+    L_CORE --&gt;|"compression"| T_ZLIB
+
+    M_CRYPTO &amp; M_NET --&gt; T_TLS
+    M_NET --&gt; T_HTTP
+    M_ODBC --&gt; T_ODBC
+    M_ONNX --&gt; T_ORT
+    M_CV --&gt; T_CV
+    M_SDL --&gt; T_SDL
+    M_LAME --&gt; T_LAME
+    M_DIAGS --&gt; T_CC</pre>
+    <p><strong>Key components:</strong></p>
+    <ul>
+     <li><strong>Compiler (<code>obc</code>):</strong> scanner, parser and context analyzer, an intermediate emitter, an optimizer with four levels (s0–s3, s3 by default), and a linker that reads <code>.obl</code> libraries. Libraries record their methods' parameter names and type parameters, so named arguments and generic inference work across binaries.</li>
+     <li><strong>VM (<code>obr</code>):</strong> a stack interpreter that JIT-compiles hot methods for AMD64 and ARM64. Errors under <code>?-&gt;</code> or <code>try</code> recover in either mode; a compiled method reports a status the interpreter that owns the handler acts on.</li>
+     <li><strong>Memory:</strong> generational, multithreaded garbage collection; C++ code that stores into an old object takes a write barrier.</li>
+     <li><strong>Language server:</strong> written in Objeck (<code>tools/lsp</code>), analyzing with the compiler's own front end through <code>libobjk_diags</code>, so editor diagnostics match <code>obc</code>.</li>
+     <li><strong>Tools:</strong> <code>obi</code> (REPL and full-screen editor), <code>obd</code> (debugger, also a Debug Adapter Protocol server), <code>obu</code> (updater that verifies signed manifests), <code>obb</code> (builds a native launcher for a program).</li>
+     <li><strong>Libraries:</strong> 56 library sources; native modules wrap mbedTLS, nghttp2/ngtcp2, ODBC, ONNX Runtime, OpenCV, SDL2 and LAME.</li>
+     <li><strong>CI and release:</strong> five platform legs on every pull request, the regression suite in three JIT modes, LSP, DAP and debugger tests, and a release gate that verifies all five platforms at one commit before tagging.</li>
+    </ul>
+    <hr class="section-end">
+    <h3 id="2-compiler-pipeline">2. Compiler Pipeline</h3>
+    <p>Detailed compilation flow from source to bytecode with optimization stages.</p>
+<pre class="mermaid">flowchart LR
+    subgraph "Frontend"
+        A[Source .obs] --&gt; B[Scanner]
+        B --&gt; C[Parser]
+        C --&gt; D[AST]
+        D --&gt; E[Contextual Analyzer]
+    end
+
+    subgraph "Optimization Pipeline"
+        E --&gt; F[Intermediate Code]
+        F --&gt; G{Optimization Level?}
+
+        G --&gt;|s0 None| H[Skip Optimization]
+        G --&gt;|s1 Basic| I[Constant Folding&lt;br/&gt;Dead Code Removal]
+        G --&gt;|s2 Moderate| J[+ CSE, Loop-Invariant Motion&lt;br/&gt;+ Strength Reduction]
+        G --&gt;|s3 Aggressive| K[+ Method Inlining&lt;br/&gt;+ Instruction Replacement&lt;br/&gt;+ Peephole Optimization]
+
+        H --&gt; L[Bytecode]
+        I --&gt; L
+        J --&gt; L
+        K --&gt; L
+    end
+
+    subgraph "Backend"
+        L --&gt; M[Linker]
+        N[Libraries .obl] --&gt; M
+        M --&gt; O[Executable .obe]
+    end
+
+    style G fill:#fff4e1
+    style K fill:#e1ffe1</pre>
+    <h4 id="optimization-levels">Optimization Levels</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Level</th><th>Name</th><th>Optimizations</th><th>Use Case</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Level"><strong>s0</strong></td><td data-label="Name">None</td><td data-label="Optimizations">No optimization</td><td data-label="Use Case">Fast compilation, debugging</td></tr>
+      <tr><td data-label="Level"><strong>s1</strong></td><td data-label="Name">Basic</td><td data-label="Optimizations">Constant folding, dead code elimination</td><td data-label="Use Case">Development builds</td></tr>
+      <tr><td data-label="Level"><strong>s2</strong></td><td data-label="Name">Moderate</td><td data-label="Optimizations">+ Common-subexpression elimination, loop-invariant code motion, strength reduction</td><td data-label="Use Case">Testing</td></tr>
+      <tr><td data-label="Level"><strong>s3</strong></td><td data-label="Name">Aggressive</td><td data-label="Optimizations">+ Method inlining (not in libraries), instruction replacement, peephole optimization</td><td data-label="Use Case"><strong>Production (default)</strong></td></tr>
+     </tbody>
+    </table>
+    <h4 id="optimization-passes-s3">Optimization Passes (s3)</h4>
+    <p>In the order <code>ItermediateOptimizer</code> runs them on each method, once each; the method inliner runs last, after every method of the class has been through the rest.</p>
+<pre class="mermaid">graph TD
+    A[Intermediate Code] --&gt; B[Jump Cleanup]
+    B --&gt; C[Dead Block Elimination]
+    C --&gt; D[Tail Calls, Getter/Setter Inlining]
+    D --&gt; E[Constant Propagation]
+    E --&gt; F[Dead Store Removal]
+    F --&gt; G[CSE, Loop-Invariant Motion]
+    G --&gt; H[Constant Folding]
+    H --&gt; I[Strength Reduction]
+    I --&gt; J[Instruction Replacement, Peephole]
+    J --&gt; K[Dead Code Elimination]
+    K --&gt; L[Method Inlining]
+    L --&gt; M[Optimized Bytecode]
+
+    style A fill:#e1f5ff
+    style M fill:#e1ffe1</pre>
+    <p><strong>Performance Impact:</strong></p>
+    <ul>
+     <li>s0 → s3: ~30-40% faster execution</li>
+     <li>s0 → s3: ~10-15% smaller bytecode</li>
+     <li>Compilation time: s0 = 1x, s3 = 1.5x</li>
+    </ul>
+    <p><strong>Source Files:</strong></p>
+    <ul>
+     <li><code>core/compiler/optimization.h/cpp</code> - Optimization engine</li>
+     <li><code>core/compiler/intermediate.h/cpp</code> - IR generation</li>
+     <li><code>core/compiler/emit.h/cpp</code> - Bytecode emission</li>
+    </ul>
+    <hr class="section-end">
+    <h3 id="3-virtual-machine-runtime">3. Virtual Machine Runtime</h3>
+    <p>Execution model with interpreter and JIT compilation.</p>
+<pre class="mermaid">flowchart TB
+    subgraph "VM Initialization"
+        A[Load Bytecode .obe] --&gt; B[Parse Program Header]
+        B --&gt; C[Load Class Metadata]
+        C --&gt; D[Initialize Memory Manager]
+    end
+
+    subgraph "Execution Engine"
+        D --&gt; E[Runtime Interpreter]
+        E --&gt; F{Hot Code?}
+
+        F --&gt;|"not yet"| E
+        F --&gt;|"10th call, or first call&lt;br/&gt;of a method with a loop"| G[Compile Method]
+
+        G --&gt; H{Platform?}
+        H --&gt;|ARM64| I[ARM64 JIT Compiler]
+        H --&gt;|x64| J[AMD64 JIT Compiler]
+
+        I --&gt; K[JIT Code Cache]
+        J --&gt; K
+
+        K --&gt; L[Execute Native Code]
+        L --&gt; M{More Code?}
+        M --&gt;|Yes| F
+        M --&gt;|No| N[Exit]
+    end
+
+    subgraph "Memory Management"
+        O[Memory Manager]
+        O &lt;--&gt; E
+        O &lt;--&gt; I
+        O &lt;--&gt; J
+        O &lt;--&gt; L
+    end
+
+    subgraph "Host Interaction"
+        P[Host APIs]
+        E --&gt; P
+        L --&gt; P
+        P --&gt; Q[File I/O, Network, Graphics]
+    end
+
+    style F fill:#fff4e1
+    style K fill:#e1ffe1
+    style O fill:#ffe1e1</pre>
+    <h4 id="execution-modes">Execution Modes</h4>
+<pre class="mermaid">stateDiagram-v2
+    [*] --&gt; Interpreted
+    Interpreted --&gt; Counting: Called
+    Counting --&gt; JIT_Compiling: 10th call, or first call with a loop
+    JIT_Compiling --&gt; Interpreted: Pre-scan rejects the method
+    JIT_Compiling --&gt; Native_Execution: Compilation complete
+    Native_Execution --&gt; [*]: Method returns
+
+    note right of Counting
+        Call count tracked
+        per method; no
+        deoptimization
+    end note
+
+    note right of JIT_Compiling
+        Platform-specific
+        ARM64 or AMD64
+    end note</pre>
+    <h4 id="memory-layout">Memory Layout</h4>
+<pre class="mermaid">graph TB
+    subgraph "Memory Regions"
+        A[Operand and Call Stacks]
+        B[Nursery, bump-allocated]
+        C[Old Generation]
+    end
+
+    A --&gt;|"Roots: locals, frames"| F[Memory Manager]
+    B --&gt;|New objects| F
+    C --&gt;|"Promoted objects, arrays,&lt;br/&gt;native allocations"| F
+
+    F --&gt;|"O(1) membership"| G[Old-gen address set]
+    F --&gt;|GC| H["Minor: promote survivors&lt;br/&gt;Major: mark and sweep"]
+
+    style F fill:#ffe1e1
+    style G fill:#e1f5ff</pre>
+    <p><strong>Key Features:</strong></p>
+    <ul>
+     <li><strong>Tiered Execution:</strong> Interpreter → call counting → JIT</li>
+     <li><strong>Hot Code Detection:</strong> Automatic at 10 calls (default; configurable via <code>--jit=&lt;calls&gt;</code> or <code>OBJECK_JIT_THRESHOLD</code>). A method with a loop is compiled on its first call instead, which is how <code>Main</code> gets compiled, and a thread's <code>Run</code> with a loop on entry; see <code>docs/JIT_ENTRY_COMPILE_DESIGN.md</code></li>
+     <li><strong>Platform-Specific JIT:</strong> Separate compilers for ARM64/x64</li>
+     <li><strong>Efficient Memory:</strong> O(1) object lookups, generational GC</li>
+    </ul>
+    <h4 id="call-depth">Call Depth</h4>
+    <p>Each VM thread has its own call stack: an array of frame pointers, with the operand stack beside it (<code>core/vm/call_stack.h</code>). Calls may nest <strong>16,384 frames</strong> deep by default; <code>obr --call-depth=&lt;frames&gt;</code> (or <code>OBJECK_CALL_DEPTH</code>) sets it, from 256 to 1,048,576. Until 2026-10 the limit was a fixed 256 frames, which the Rosetta "Man or boy" test (647 frames at k=10) and a recursive-descent parser on input nested a few hundred deep both exceeded.</p>
+    <ul>
+     <li><strong>Reserved, then committed as it deepens.</strong> A thread reserves address space for the maximum -- 8 bytes a frame, and 8 operand-stack words a frame -- and commits it as the stack grows, so an idle thread holds a page of frame array and 32 KB of operand stack, not the maximum. Measured on Windows x64 with 1,000 threads: the working set per thread is unchanged (94 KB idle). Frames themselves come from a per-thread pool, as before.</li>
+     <li><strong>The operand stack is checked.</strong> An interpreted frame can leave values on it across a call (<code>Sum(n - 1) + n</code> keeps <code>n</code>), one word a frame for plain recursion. Nothing checked it when it was 768 words; each interpreted call now checks that 1,024 words are left.</li>
+     <li><strong>The native stack is checked.</strong> A compiled frame is on the machine stack (about 520 bytes for a small method on x64), and so is each interpreter a JIT bridge starts. The compiled call site compares the stack pointer with the thread's floor -- its stack's lowest address plus 1 MB -- as well as the depth with the committed limit; the bridge and the interpreter's call into compiled code test the floor too. So running out of native stack is the same <code>call stack bounds have been exceeded</code> error, and recovers the same way. On Windows a thread the VM starts reserves 16 MB of native stack (1 KB a frame plus 2 MB for a larger <code>--call-depth</code>), and <code>obr.exe</code> and <code>obi.exe</code> reserve 32 MB for the main thread, so compiled code reaches the maximum. On Linux and macOS a thread gets 8 MB (macOS's default was 512 KB), more only for a <code>--call-depth</code> above the default, and the main thread has what <code>ulimit -s</code> gives it, typically 8 MB: about 12,000 small compiled frames, so there a compiled recursion stops before the maximum -- with the same error. Bigger POSIX stacks are not free: where transparent huge pages are on for every mapping, 2 MB pages back thread stacks, and 100 idle threads measured 48 MB resident with 8 MB stacks and 86 MB with 18 MB ones.</li>
+     <li><strong>Full is a recoverable error.</strong> At the maximum, the error is a <code>RuntimeError</code> that <code>try</code>/<code>on</code> and <code>?-&gt;</code> recover from, compiled or interpreted (<code>core_call_depth_max.obs</code>). Unhandled, the listing shows the innermost 40 and outermost 10 frames and counts the rest.</li>
+     <li><code>Runtime-&gt;GetProperty("runtime.call.depth_max")</code> reports the maximum.</li>
+    </ul>
+    <p><strong>Source Files:</strong></p>
+    <ul>
+     <li><code>core/vm/interpreter.h/cpp</code> - Bytecode interpreter</li>
+     <li><code>core/vm/call_stack.h</code> - A thread's call and operand stacks, and the depth limits</li>
+     <li><code>core/vm/arch/jit/jit_common.h/cpp</code> - JIT infrastructure</li>
+     <li><code>core/vm/arch/memory.h/cpp</code> - Memory management</li>
+    </ul>
+    <hr class="section-end">
+    <h3 id="4-jit-compilation-architecture">4. JIT Compilation Architecture</h3>
+    <p>Platform-specific native code generation for ARM64 and AMD64.</p>
+<pre class="mermaid">graph TB
+    subgraph "JIT Compilation Flow"
+        A[Hot Method Detected] --&gt; B{Select Platform}
+
+        B --&gt;|ARM64| C1[ARM64 JIT Compiler]
+        B --&gt;|AMD64| C2[AMD64 JIT Compiler]
+
+        C1 --&gt; D1[AArch64 Register Allocation]
+        C2 --&gt; D2[x86-64 Register Allocation]
+
+        D1 --&gt; E1[ARM64 Instruction Selection]
+        D2 --&gt; E2[x64 Instruction Selection]
+
+        E1 --&gt; F1[Generate AArch64 Code]
+        E2 --&gt; F2[Generate x86-64 Code]
+
+        F1 --&gt; G[Link with Memory Manager]
+        F2 --&gt; G
+
+        G --&gt; H[Store in Code Cache]
+        H --&gt; I[Execute Native Code]
+    end
+
+    subgraph "ARM64 Specifics"
+        J1[30 General Purpose Registers]
+        J2[NEON SIMD Support]
+        J3[Conditional Select, csel]
+        J4[Fixed 32-bit Instructions]
+    end
+
+    subgraph "AMD64 Specifics"
+        K1[16 General Purpose Registers]
+        K2[SSE/AVX SIMD Support]
+        K3[Variable Length Instructions]
+        K4[Complex Addressing Modes]
+    end
+
+    C1 -.-&gt; J1 &amp; J2 &amp; J3 &amp; J4
+    C2 -.-&gt; K1 &amp; K2 &amp; K3 &amp; K4
+
+    style C1 fill:#e1f5ff
+    style C2 fill:#e1f5ff
+    style H fill:#e1ffe1</pre>
+    <p><strong>Calls between compiled methods.</strong> Since v2026.9.1 a compiled caller enters a compiled callee's <em>native entry</em> directly — arguments in the caller's outgoing area, the frame record built in the callee's own frame, the result in <code>XMM0</code> (<code>D0</code> on ARM64) — with an inline cache at <code>virtual</code> and func-ref sites. The C++ callback bridge remains the slow path (a callee not yet compiled, a full call stack, a <code>Nil</code> receiver, a megamorphic site) and the only path for allocation, traps and conversions. A bound call costs 5.5 ns rather than 26.5 ns as a result. The call path is drawn in <code>core/vm/arch/jit/README.md</code>; the design and its measurements are in <code>docs/JIT_CALLING_CONVENTION_DESIGN.md</code>.</p>
+    <h4 id="jit-frame-structure">JIT Frame Structure</h4>
+<pre class="mermaid">graph TD
+    subgraph "JIT Function Frame"
+        A[Prolog: Save registers]
+        B[Link with Memory Manager]
+        C[Store Local Variables]
+        D[Execute Generated Code]
+        E[Error Handling Routines]
+        F[Epilog: Restore registers]
+
+        A --&gt; B --&gt; C --&gt; D --&gt; E --&gt; F
+    end
+
+    subgraph "Memory Manager Integration"
+        G[GC Safepoints]
+        H[Object Allocation]
+        I[Write Barriers]
+    end
+
+    B -.-&gt; G &amp; H &amp; I
+    D -.-&gt; G &amp; H &amp; I
+
+    style B fill:#ffe1e1
+    style D fill:#e1ffe1</pre>
+    <h4 id="register-allocation-strategy">Register Allocation Strategy</h4>
+    <p>The registers each backend's allocator hands out; neither spills, so an expression that needs more falls back to the interpreter whole.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Platform</th><th>General Purpose</th><th>Float/Vector</th><th>Reserved</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Platform"><strong>ARM64</strong></td><td data-label="General Purpose">x0-x7, x12-x15 (12 regs)</td><td data-label="Float/Vector">d0-d15 (16 regs)</td><td data-label="Reserved">x9-x11 (scratch), x19 (safepoint flag's address), x29 (FP), x30 (LR)</td></tr>
+      <tr><td data-label="Platform"><strong>AMD64</strong></td><td data-label="General Purpose">rax, rbx, rcx, rdx, r8-r11 (8 regs; Windows adds rsi, rdi)</td><td data-label="Float/Vector">xmm10-xmm15 (6 regs)</td><td data-label="Reserved">r12 (safepoint flag's address), r13-r15 (pinned loop locals), rsp (SP), rbp (BP)</td></tr>
+     </tbody>
+    </table>
+    <p><strong>Source Files:</strong></p>
+    <ul>
+     <li><code>core/vm/arch/jit/arm64/jit_arm_a64.h/cpp</code> - ARM64 JIT</li>
+     <li><code>core/vm/arch/jit/amd64/jit_amd_lp64.h/cpp</code> - AMD64 JIT</li>
+     <li><code>core/vm/arch/jit/jit_common.h/cpp</code> - Shared JIT infrastructure</li>
+    </ul>
+    <hr class="section-end">
+    <h3 id="5-library-ecosystem">5. Library Ecosystem</h3>
+    <p>56 library sources providing comprehensive functionality.</p>
+<pre class="mermaid">mindmap
+    root((Objeck Libraries
+    56))
+        Core Runtime
+            lang: runtime, errors, strings
+            gen_collect: Vector, Map, Hash, List
+            concurrent: locks, Condition, Semaphore, Barrier
+            math: Rational, Complex
+            regex · misc · diags
+        Machine Learning
+            ml_core · ml_data
+            ml_linear · ml_tree · ml_bayes
+            ml_neighbors · ml_cluster · ml_svm · ml_outlier
+            nlp: tokenizers (WordPiece, BPE), TF-IDF, sentiment
+        AI
+            onnx: in-process inference, face detection and recognition
+            nlp_onnx: BERT embeddings, Hugging Face text classifiers
+            ai_hub: Hugging Face Hub downloads into a verified cache
+            inference: model server over HTTP
+            models: shared Tensor and Engine
+            openai · gemini · ollama
+            ai_search · ai_game · ai_optimize · ai_rl
+            opencv: computer vision
+        Web &amp; Networking
+            net · net_common · net_secure
+            net_h2 · net_quic
+            net_server · web_server
+            json_rpc · rss
+        Data Processing
+            json · json_stream · xml
+            csv · query · odbc
+            cipher: hashing and encryption via mbedTLS
+        Media &amp; Gaming
+            sdl2 · sdl_game · sdl_gl
+            lame: MP3 encoding</pre>
+    <h4 id="library-dependencies">Library Dependencies</h4>
+<pre class="mermaid">graph TB
+    subgraph "Core Dependencies"
+        A[lang.obl] --&gt; B[All Libraries]
+    end
+
+    subgraph "AI/ML Stack"
+        C[onnx.obl] --&gt; D[ONNX Runtime]
+        E[opencv.obl] --&gt; F[OpenCV 4.12]
+        G[ml_*.obl] --&gt; H[matrix module · Eigen3]
+        I[ollama.obl] --&gt; J[HTTP Client]
+        K[openai.obl] --&gt; J
+        L[gemini.obl] --&gt; J
+        HUB[ai_hub.obl] --&gt; J
+        NO[nlp_onnx.obl] --&gt; C
+    end
+
+    subgraph "Web Stack"
+        M[web_server.obl] --&gt; N[net_server.obl]
+        O[json_rpc.obl] --&gt; P[json.obl]
+        N --&gt; Q[net_secure.obl]
+        Q --&gt; R[mbedTLS 3.6]
+    end
+
+    subgraph "Data Stack"
+        S[json.obl]
+        T[xml.obl]
+        U[csv.obl]
+        V[query.obl] --&gt; S &amp; T &amp; U
+    end
+
+    subgraph "Media Stack"
+        W[sdl2.obl] --&gt; X[SDL2]
+        Y[sdl_game.obl] --&gt; W
+        Z[lame.obl] --&gt; AA[LAME 3.100]
+    end
+
+    style D fill:#e1f5ff
+    style F fill:#e1f5ff
+    style R fill:#ffe1e1
+    style X fill:#fff4e1</pre>
+    <h4 id="external-dependencies">External Dependencies</h4>
+    <p>Versions differ by platform (vcpkg, vendored DLLs, apt, Homebrew, static builds); the per-platform table, and how to check each one, is in <a href="doc_dependencies.html">third_party_dependencies.md</a>.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Category</th><th>Library</th><th>Purpose</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Category"><strong>Crypto</strong></td><td data-label="Library">mbedTLS 3.6 LTS</td><td data-label="Purpose">TLS, hashing, encryption</td></tr>
+      <tr><td data-label="Category"><strong>HTTP</strong></td><td data-label="Library">nghttp2; ngtcp2 + nghttp3 + AWS-LC (POSIX)</td><td data-label="Purpose">HTTP/2, HTTP/3</td></tr>
+      <tr><td data-label="Category"><strong>ML/AI</strong></td><td data-label="Library">ONNX Runtime (CPU, DirectML, QNN, CUDA, CoreML)</td><td data-label="Purpose">Neural network inference</td></tr>
+      <tr><td data-label="Category"><strong>Vision</strong></td><td data-label="Library">OpenCV 4.12</td><td data-label="Purpose">Computer vision, image processing</td></tr>
+      <tr><td data-label="Category"><strong>Math</strong></td><td data-label="Library">Eigen 3.4 (vendored)</td><td data-label="Purpose">Linear algebra, matrices</td></tr>
+      <tr><td data-label="Category"><strong>Graphics</strong></td><td data-label="Library">SDL2, SDL2_image, SDL2_mixer, SDL2_ttf</td><td data-label="Purpose">Cross-platform graphics/input/audio</td></tr>
+      <tr><td data-label="Category"><strong>Audio</strong></td><td data-label="Library">LAME 3.100</td><td data-label="Purpose">MP3 encoding</td></tr>
+      <tr><td data-label="Category"><strong>Database</strong></td><td data-label="Library">ODBC</td><td data-label="Purpose">System driver manager</td></tr>
+     </tbody>
+    </table>
+    <h4 id="face-recognition-example">Face Recognition Example</h4>
+<pre class="line-numbers"><code class="language-cpp">use API.OpenCV, API.Onnx;
+
+class FaceDemo {
+  function : Main(args : String[]) ~ Nil {
+    session := FaceSession-&gt;New("det_10g.onnx", "w600k_r50.onnx");
+
+    img1 := Image-&gt;Load("person_a.jpg")-&gt;Convert(Image-&gt;Format-&gt;JPEG);
+    img2 := Image-&gt;Load("person_b.jpg")-&gt;Convert(Image-&gt;Format-&gt;JPEG);
+
+    r1 := session-&gt;Recognize(img1, 0.5);
+    r2 := session-&gt;Recognize(img2, 0.5);
+
+    faces1 := r1-&gt;GetResults();
+    faces2 := r2-&gt;GetResults();
+    sim := FaceSession-&gt;Compare(faces1[0]-&gt;GetEmbedding(), faces2[0]-&gt;GetEmbedding());
+    "Similarity: {$sim}"-&gt;PrintLine();   # &gt;0.35 = same person
+    session-&gt;Close();
+  }
+}
+</code></pre>
+    <p>Uses SCRFD 10G-KPS detector + ArcFace R50 recognizer from InsightFace buffalo_l. Runs on DirectML (Windows), CPU/CUDA (Linux), CoreML (macOS).</p>
+    <p><strong>Source Files:</strong></p>
+    <ul>
+     <li><code>core/compiler/lib_src/*.obs</code> - Library source code (46 files)</li>
+     <li><code>core/lib/*.obl</code> - Compiled libraries, shipped in a release's <code>lib/</code></li>
+    </ul>
+    <hr class="section-end">
+    <h3 id="6-development-tools">6. Development Tools</h3>
+    <p>Interactive development environment with REPL, debugger, and LSP support.</p>
+<pre class="mermaid">graph TB
+    subgraph "REPL (Interactive Shell)"
+        A[User Input] --&gt; B[Command Parser]
+        B --&gt; C{Command Type?}
+
+        C --&gt;|Code| D[Scanner]
+        C --&gt;|File| E[Load File]
+        C --&gt;|Command| F[Execute Command]
+
+        D --&gt; G[Parser]
+        E --&gt; G
+        G --&gt; H[Contextual Analyzer]
+        H --&gt; I[Interpreter]
+        I --&gt; J[Display Result]
+
+        F --&gt; K[REPL Commands]
+        K --&gt; J
+    end
+
+    subgraph "Integrated Editor"
+        L[Syntax Highlighting]
+        M[Undo / Redo]
+        N[F5 Run Pane]
+    end
+
+    A -.-&gt; L &amp; M &amp; N
+
+    style I fill:#e1ffe1
+    style J fill:#fff4e1</pre>
+    <h4 id="debugger-architecture">Debugger Architecture</h4>
+<pre class="mermaid">sequenceDiagram
+    participant User
+    participant Debugger
+    participant VM
+    participant Memory
+
+    User-&gt;&gt;Debugger: Set breakpoint at line 42
+    Debugger-&gt;&gt;VM: Install breakpoint
+
+    User-&gt;&gt;Debugger: Run program
+    Debugger-&gt;&gt;VM: Start execution
+
+    VM-&gt;&gt;VM: Execute bytecode
+    VM-&gt;&gt;Debugger: Hit breakpoint at line 42
+
+    User-&gt;&gt;Debugger: Inspect variable 'x'
+    Debugger-&gt;&gt;VM: Get stack frame
+    VM-&gt;&gt;Memory: Lookup variable 'x'
+    Memory-&gt;&gt;VM: Return value
+    VM-&gt;&gt;Debugger: Variable value
+    Debugger-&gt;&gt;User: Display: x = 42
+
+    User-&gt;&gt;Debugger: Step over
+    Debugger-&gt;&gt;VM: Execute next instruction
+    VM-&gt;&gt;Debugger: Paused at line 43
+
+    User-&gt;&gt;Debugger: Continue
+    Debugger-&gt;&gt;VM: Resume execution
+    VM-&gt;&gt;VM: Run to completion</pre>
+    <h4 id="lsp-server-integration">LSP Server Integration</h4>
+<pre class="mermaid">graph LR
+    subgraph "Editors (tools/lsp/clients)"
+        A1[VS Code]
+        A2[Neovim]
+        A3[Vim]
+        A4[Emacs]
+        A5[Helix]
+        A6[Sublime Text]
+    end
+
+    subgraph "LSP Server (tools/lsp, LSP 3.17)"
+        B[Language Server Protocol]
+        C[Analysis, reused until the text changes]
+        D[Symbol Table]
+        E[Pull Diagnostics]
+    end
+
+    subgraph "Compiler Services (libobjk_diags)"
+        F[Scanner]
+        G[Parser]
+        H[Contextual Analyzer]
+    end
+
+    A1 &amp; A2 &amp; A3 &amp; A4 &amp; A5 &amp; A6 --&gt; B
+    B --&gt; C --&gt; F &amp; G &amp; H
+    C --&gt; D
+    C --&gt; E
+
+    style B fill:#e1f5ff
+    style D fill:#fff4e1</pre>
+    <p>An analyzed program is keyed by the exact texts of its files and its library list. Diagnostics analyze each edit; hover and completion work from the last program that analyzed cleanly. Since v2026.10.2 an edit retires programs rather than freeing them, and a request whose texts and libraries match a retired program reuses it, so each edit is analyzed once instead of twice (about 2× faster per edit). Unclaimed programs are freed at the next edit, and <code>OBJECK_LSP_NO_CACHE=1</code> turns all reuse off.</p>
+    <h4 id="repl-features">REPL Features</h4>
+    <ul>
+     <li><strong>Interactive Evaluation:</strong> Execute code line-by-line</li>
+     <li><strong>Syntax Highlighting:</strong> In the full-screen editor (<code>/e</code>); the line prompt colors only its prompt, status and errors</li>
+     <li><strong>No history or completion yet:</strong> the line prompt is plain line entry</li>
+     <li><strong>File Loading:</strong> Execute entire files</li>
+     <li><strong>Inline/File Modes:</strong> Switch between modes</li>
+    </ul>
+    <h4 id="full-screen-editor-e">Full-Screen Editor (<code>/e</code>)</h4>
+    <p>A terminal editor over the REPL buffer, header-only (<code>core/repl/{term,screen,keymap,tui_editor,highlight,child_run}.h</code>) so it adds no build-system changes on any platform. Raw-mode input and damage-diffed rendering work identically on Windows (VT console) and POSIX (termios), with display-width handling for CJK/wide characters.</p>
+    <ul>
+     <li><strong>Editing:</strong> movement, selection (Shift+arrows), undo/redo with coalesced typing, an internal clipboard (Ctrl+C/X/V)</li>
+     <li><strong>Run pane (F5):</strong> compiles the buffer with <code>obc</code> and runs it with <code>obr</code> as child processes, started from an argument vector with no shell, and streams their merged output into a pane; <strong>Esc</strong> cancels a run, <strong>F8</strong> jumps the cursor through compile errors. The in-process VM cannot run off the main thread, which is why the run is a child</li>
+     <li><strong>Binding profiles:</strong> a notepad-style default and an opt-in <code>vi</code> profile (F2) — a second binding table plus a mode field over the same actions, not a second editor</li>
+     <li><strong>Read-only shell:</strong> the REPL's class/function frame is dimmed and protected at both the view and model level</li>
+    </ul>
+    <h4 id="software-updater-obu">Software Updater (<code>obu</code>)</h4>
+    <p><code>core/utils/updater/obu.cpp</code> — in-place version upgrades without reinstalling. <code>obu check</code> compares the installed version against GitHub releases; <code>obu update</code>/<code>rollback</code> download the platform archive, <strong>verify a SHA-256 digest against the release's <code>SHA256SUMS</code> before touching disk</strong>, then perform an all-or-nothing staged swap with an <code>obc -v</code> post-install check and automatic rollback. No shell is used anywhere — curl/tar/obc run via argument vectors (<code>fork</code>/<code>execvp</code> on POSIX, <code>CreateProcess</code> on Windows), including the release-JSON fetch behind <code>obu check</code>. The flow is covered by an offline CI test (<code>test_update.py</code>) that runs on both Linux and Windows: <code>check</code> is exercised on every platform against fake releases, and the update/rollback swap plus a command-injection PoC wherever the swap is implemented. The Windows swap needs no re-exec dance: Windows forbids deleting a running image but allows renaming one, so the running <code>obu.exe</code> moves into <code>.previous</code> and keeps executing. Since v2026.10.0 a release's <code>SHA256SUMS</code> is itself signed with minisign, and <code>obu</code> refuses a manifest whose signature does not verify against the release key compiled into it, so a substituted archive cannot pass with a substituted manifest. Still outstanding (<code>docs/UPDATER_DESIGN.md</code>): reconciling an MSI-managed install's registry entries, and elevation against a real <code>Program Files</code> tree.</p>
+    <h4 id="debugger-features">Debugger Features</h4>
+    <ul>
+     <li><strong>Breakpoints:</strong> Set/remove at any line</li>
+     <li><strong>Step Execution:</strong> Step over, step into, step out</li>
+     <li><strong>Stack Inspection:</strong> View call stack at any depth</li>
+     <li><strong>Variable Viewing:</strong> Inspect locals and instance variables</li>
+     <li><strong>Expression Evaluation:</strong> Evaluate expressions in context</li>
+     <li><strong>Memory Inspection:</strong> View heap objects</li>
+    </ul>
+    <p><strong>Source Files:</strong></p>
+    <ul>
+     <li><code>core/repl/repl.h/cpp</code> - REPL implementation</li>
+     <li><code>core/repl/editor.h/cpp</code> - Integrated line editor</li>
+     <li><code>core/repl/{term,screen,keymap,tui_editor,highlight,child_run}.h</code> - full-screen editor</li>
+     <li><code>core/debugger/debugger.h/cpp</code> - Debugger core</li>
+     <li><code>core/debugger/obj_layout.h</code> - shared object/collection layout (CLI + DAP)</li>
+     <li><code>core/debugger/parser.h/cpp</code> - Debug command parser</li>
+     <li><code>core/utils/updater/obu.cpp</code> - software updater</li>
+    </ul>
+    <hr class="section-end">
+    <h3 id="7-cicd-pipeline">7. CI/CD Pipeline</h3>
+    <p>Automated multi-platform testing and build system.</p>
+<pre class="mermaid">graph TB
+    subgraph "GitHub Actions Trigger"
+        A[Push to master] --&gt; B[GitHub Actions]
+        C[Pull Request] --&gt; B
+    end
+
+    subgraph "Multi-Platform Matrix Build"
+        B --&gt; D{Platform Matrix}
+
+        D --&gt;|Linux x64| E1[Ubuntu Latest]
+        D --&gt;|Linux ARM64| E4[ubuntu-24.04-arm]
+        D --&gt;|macOS ARM64| E2[macos-15]
+        D --&gt;|Windows x64| E3[windows-2025-vs2026]
+        D --&gt;|Windows ARM64| E5[windows-11-arm]
+    end
+
+    subgraph "Build Process"
+        E1 &amp; E2 &amp; E3 &amp; E4 &amp; E5 --&gt; F[Install Dependencies]
+
+        F --&gt; G{Cache Hit?}
+        G --&gt;|Yes| H[Restore Cache]
+        G --&gt;|No| I[Download &amp; Install]
+
+        H &amp; I --&gt; J[Build Toolchain]
+        J --&gt; K[Compile Tests]
+    end
+
+    subgraph "Testing"
+        K --&gt; L[Run Deployment Tests]
+        L --&gt; M[Run Regression Suite]
+        M --&gt; N{All Tests Pass?}
+
+        N --&gt;|Yes| O[Upload Artifacts]
+        N --&gt;|No| P[Report Failure]
+    end
+
+    subgraph "Artifacts &amp; Reporting"
+        O --&gt; Q[Build Artifacts&lt;br/&gt;7-day retention]
+        O --&gt; R[Generate API Docs]
+        P --&gt; S[CI Status Badge]
+    end
+
+    style N fill:#fff4e1
+    style O fill:#e1ffe1
+    style P fill:#ffe1e1</pre>
+    <h4 id="platform-matrix">Platform Matrix</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Platform</th><th>Runner</th><th>Architecture</th><th>Compiler</th><th>Tests</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Platform"><strong>Linux</strong></td><td data-label="Runner"><code>ubuntu-24.04</code></td><td data-label="Architecture">x64</td><td data-label="Compiler">GCC</td><td data-label="Tests">529 regression</td></tr>
+      <tr><td data-label="Platform"><strong>Linux</strong></td><td data-label="Runner"><code>ubuntu-24.04-arm</code></td><td data-label="Architecture">ARM64</td><td data-label="Compiler">GCC</td><td data-label="Tests">529 regression</td></tr>
+      <tr><td data-label="Platform"><strong>macOS</strong></td><td data-label="Runner"><code>macos-15</code></td><td data-label="Architecture">ARM64 (Apple silicon)</td><td data-label="Compiler">Clang</td><td data-label="Tests">529 regression</td></tr>
+      <tr><td data-label="Platform"><strong>Windows</strong></td><td data-label="Runner"><code>windows-2025-vs2026</code></td><td data-label="Architecture">x64</td><td data-label="Compiler">MSVC (v145)</td><td data-label="Tests">529 regression</td></tr>
+      <tr><td data-label="Platform"><strong>Windows</strong></td><td data-label="Runner"><code>windows-11-arm</code></td><td data-label="Architecture">ARM64</td><td data-label="Compiler">MSVC (v143)</td><td data-label="Tests">529 regression</td></tr>
+     </tbody>
+    </table>
+    <p>Every leg builds natively and runs what it builds: the regression suite twice, at the default JIT threshold and with every method compiled on its first call (<code>OBJECK_JIT_THRESHOLD=1</code>), then the debugger, DAP and VM-flag tests. The Windows ARM64 leg used to be <strong>cross-compiled on an x64 host, which cannot execute what it builds</strong>, so its tests were skipped. That blind spot is how an ARM64-only miscompile reached six releases before anyone noticed. The release build still cross-compiles Windows ARM64 on the x64 image; CI's native leg is what tests it.</p>
+    <h4 id="caching-strategy">Caching Strategy</h4>
+<pre class="mermaid">graph LR
+    subgraph "Linux Cache"
+        A1[APT Packages] --&gt; B1[500MB]
+        A2[ccache Objects] --&gt; B2[500MB]
+    end
+
+    subgraph "macOS Cache"
+        C1[Homebrew Bottles] --&gt; D1[1GB]
+        C2[ccache Objects] --&gt; D2[500MB]
+    end
+
+    subgraph "Cache Management"
+        E[Cache Key: workflow + commit]
+        F[Restore Key: workflow]
+        G["GitHub evicts at the&lt;br/&gt;10 GB repo ceiling"]
+        H["codeql.yml prunes&lt;br/&gt;superseded entries"]
+    end
+
+    B1 &amp; B2 &amp; D1 &amp; D2 --&gt; E
+    E --&gt; F --&gt; G
+    H --&gt; G
+
+    style E fill:#e1ffe1
+    style H fill:#e1ffe1</pre>
+    <p><strong>The 10 GB ceiling is the constraint that matters.</strong> Actions caches are capped per repository, and past the cap GitHub evicts the oldest entries -- which is how a release build lost its dependency caches and gained about forty minutes. The families that grow without bound are the ones whose key embeds something that changes: CodeQL writes a ~460 MB TRAP cache per analysed <em>commit</em>, and the dependency caches re-key whenever their input hash moves. A superseded entry can never be hit again, because the key names it.</p>
+    <p>A <code>prune-caches</code> job in <code>codeql.yml</code> therefore keeps only the newest few of each family, taking <code>&lt;prefix&gt;:&lt;keep&gt;</code> pairs -- currently <code>codeql-trap:3 macOS-brew-downloads:2 Linux-x64-apt:2 Linux-arm64-apt:2</code>. It keeps several rather than one because these actions restore by key <em>prefix</em>, so a recent entry still warm-starts a new run; pruning to exactly one would trade the ceiling problem for a slower build.</p>
+    <h4 id="regression-test-suite">Regression Test Suite</h4>
+    <p>782 tests under <code>programs/regression/</code>, grouped by the prefix on each filename. The counts change with almost every pull request, so they are not repeated here: <code>programs/regression/TESTS.md</code> (generated) has the current number per category.</p>
+<pre class="mermaid">mindmap
+    root((Regression Tests
+    782 total))
+        Language core
+            core_*
+                Arithmetic, arrays, classes, generics, strings
+        Rejected programs
+            bad_*
+                Errors the compiler must refuse
+        JIT
+            jit_*
+                Native compilation, float paths, GC interaction
+        Machine learning
+            ml_*
+                System.ML models and inference
+        Fixed defects
+            fix_*
+                Regressions pinned to the bug that caused them
+        Collections
+            collect_*
+                Vector, Hash, Map, Set, Stack, Queue
+        Math and strings
+            math_* string_* func_*
+                Numerics, formatting, higher-order functions
+        ARM64 specific
+            arm64_*
+                Bitwise, char arrays, 64-bit immediates, multiply
+        Networking and web
+            http_* mcp_* xml_* json_* api_*
+                Clients, servers, serialisation
+        Rosetta Code tasks
+            rosetta_*
+                Programs from Rosetta Code, output checked
+        Remainder
+            closure_* try_* vm_* gc_* opt_* dap_* debugger_* onnx_* and others
+                Closures, error handling, the VM and its collector, AI bindings, debugger</pre>
+    <hr class="section-end">
+    <h3 id="8-memory-management">8. Memory Management</h3>
+    <h4 id="multithreaded-collection-cooperative-stop-the-world">Multithreaded Collection (Cooperative Stop-the-World)</h4>
+    <p>With multiple threads running, a collection cannot begin until every other thread has reached a known-safe point. Objeck uses a <strong>cooperative</strong> stop-the-world scheme rather than OS thread suspension:</p>
+    <ul>
+     <li><strong>Safepoints.</strong> The interpreter polls a safepoint every 1,024 instructions of its dispatch loop, and every allocation polls too. When a collection is requested, threads observe the request at their next safepoint and <strong>park</strong> until it completes. The AMD64 and ARM64 JITs emit the same poll at every loop header, so JIT-compiled code parks just as promptly; a compiled loop that starts with values still pending in registers spills them to the frame's scratch slots before it parks and reloads them after, because a register cannot be relocated.</li>
+     <li><strong>Blocking calls.</strong> A thread about to block in a syscall (thread <code>Join</code>/sleep, socket I/O) brackets the call with <em>begin/end-blocking</em> markers so it counts as already parked — a collection never waits on a thread stuck in a blocking read.</li>
+     <li><strong>Root scanning.</strong> Once all threads are parked, the collector marks from every thread's roots: static fields, each thread's full call stack <strong>including the currently-executing top-level frame</strong>, and each thread's operand stack. The set of roots scanned by the mark phase is exactly the set the fixup phase rewrites, so a live object can never be reclaimed while a reference to it survives in a parked thread's frame or operand stack.</li>
+     <li><strong>Typed and untyped roots.</strong> A frame's declared locals are walked by type, so only object slots are followed. Some frame words have no declaration and are scanned <em>conservatively</em>: a word is treated as a reference only if it is the address of a live object, and relocated only through a genuine forwarding address. These are the operand stacks, the JIT's scratch slots, and a method's <strong>and/or slot</strong>, where a conditional (<code>c ? a : b</code>) leaves its value between the branch that stores it and the load after the join. A collection can fall in that gap, so the slot is a root in interpreted and compiled frames alike; before v2026.10.2 it was walked over, and a promoted object could be read back through its old nursery address.</li>
+    </ul>
+    <p>The collector remains generational and non-OS-suspending; correctness comes from complete root coverage at the safepoint, not from freezing threads mid-instruction.</p>
+    <h4 id="old-generation-membership">Old-Generation Membership</h4>
+    <p>The collector must answer "is this address a live old-generation object?" for words taken from conservative scans — operand stacks and JIT temporaries — which may not be pointers at all. That rules out reading a flag from the candidate: the answer has to be decidable <strong>without dereferencing it</strong>. An object's header does carry <code>GC_OLD_BIT</code>, but reading it means trusting the address first.</p>
+    <p>So the old generation keeps a set of known-good addresses, <code>PtrSet</code> (<code>core/vm/arch/ptr_set.h</code>). It is open-addressed: keys live directly in one power-of-two array, probed linearly, with <code>nullptr</code> for an empty slot and an all-ones sentinel for a tombstone.</p>
+<pre class="mermaid">graph LR
+    subgraph "PtrSet -- open addressing"
+        A[Object address] --&gt; B["hash = address &gt;&gt; 3&lt;br/&gt;no mixing"]
+        B --&gt; C[index = hash &amp; mask]
+        C --&gt; D[Slot array]
+        D --&gt; E{Occupied?}
+
+        E --&gt;|"empty"| F[Not a member]
+        E --&gt;|"this key"| G[Member]
+        E --&gt;|"other key&lt;br/&gt;or tombstone"| H[probe i+1]
+        H --&gt; D
+    end
+
+    style B fill:#e1f5ff
+    style G fill:#e1ffe1</pre>
+    <p>Two properties are deliberate and easy to undo by accident:</p>
+    <ul>
+     <li><strong>The hash is unmixed.</strong> Allocator addresses arrive in rising runs, so an unmixed hash keeps objects allocated near each other in slots near each other and a probe reuses the cache line the last one pulled in. Fibonacci mixing scatters them and costs a miss per lookup: over 2M realistic addresses, insert 6.8 ns and lookup 4.0 ns unmixed against 9.4 ns and 8.2 ns mixed.</li>
+     <li><strong>There is no reference counting.</strong> Collection is generational mark-and-sweep. The header carries <code>GC_MARK_BIT</code>, <code>GC_OLD_BIT</code>, <code>GC_RSET_BIT</code> and <code>GC_TRACED_BIT</code>, and nothing counts references.</li>
+    </ul>
+    <p>This replaced a <code>std::unordered_set</code> in v2026.9.7. That container is node-based, so every insert was a separate heap allocation, and the old generation gains one entry per promoted object — a minor collection paid that allocation once per survivor, on top of the object's own. On Windows it cost 239.5 ns per insert against the allocation's 38.5 ns. Promotion cost tracks promoted bytes rather than collection count, so it dominated: <code>binarytrees(17)</code> went from 2.392 s to 1.789 s (−25.2%) with peak RSS 194.6 MB → 179.1 MB, closing a 3.5× gap against Linux on the same hardware. <code>ptr_set_test.cpp</code> pins the behaviour the collector relies on, including that <code>count()</code> never dereferences its argument.</p>
+    <h4 id="gc-algorithm-flow">GC Algorithm Flow</h4>
+<pre class="mermaid">sequenceDiagram
+    participant App as Application
+    participant MM as Memory Manager
+    participant YG as Young Gen
+    participant OG as Old Gen
+
+    App-&gt;&gt;MM: Allocate object
+    MM-&gt;&gt;YG: Allocate in young gen
+    YG-&gt;&gt;MM: Return pointer
+    MM-&gt;&gt;App: Object ready
+
+    Note over YG: Young gen fills up
+
+    YG-&gt;&gt;MM: Trigger GC (nursery full, or old generation past its threshold)
+    MM-&gt;&gt;App: Stop the World (every other thread parks)
+
+    MM-&gt;&gt;MM: Mark phase (from roots, and the dirty list on a minor GC)
+    MM-&gt;&gt;YG: Mark reachable objects
+    MM-&gt;&gt;OG: Mark reachable objects (major GC)
+
+    MM-&gt;&gt;MM: Promote survivors
+    YG-&gt;&gt;OG: Copy each marked young object, leave a forwarding address
+    MM-&gt;&gt;MM: Fix up roots and old objects to the new addresses
+    MM-&gt;&gt;YG: Reset the nursery (nothing in it is swept)
+
+    MM-&gt;&gt;OG: Major GC only: sweep unmarked old objects into the free lists
+
+    MM-&gt;&gt;App: Resume execution</pre>
+    <h4 id="memory-manager-improvements">Memory Manager Improvements</h4>
+<pre class="mermaid">mindmap
+    root((Memory Manager))
+        Constant-time lookups
+            Open-addressed old-gen set
+            No per-entry allocation
+            No linear scans
+        Generational collection
+            Young gen frequent and fast
+            Old gen infrequent and thorough
+            Survivors promoted with forwarding pointers
+        Old-gen sweeping in place
+            No old-object copying
+            Better cache locality</pre>
+    <h4 id="where-allocations-go">Where Allocations Go</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Region</th><th>What lands there</th><th>Collected by</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Region"><strong>Nursery</strong> (young)</td><td data-label="What lands there">Objects, bump-allocated in one contiguous region: 128 MB reserved (<code>YOUNG_REGION_SIZE</code>), its usable limit set by <code>--nursery</code> / <code>OBJECK_NURSERY</code>; on Windows only the limit is committed</td><td data-label="Collected by">Minor GC: survivors promoted to the old generation, references fixed up</td></tr>
+      <tr><td data-label="Region"><strong>Old generation</strong></td><td data-label="What lands there">Promoted objects, arrays, objects larger than the nursery limit, and every allocation a native library makes; each tracked in <code>PtrSet</code></td><td data-label="Collected by">Major GC: mark and sweep in place</td></tr>
+      <tr><td data-label="Region"><strong>Operand and call stacks</strong></td><td data-label="What lands there">Locals, frames, temporaries</td><td data-label="Collected by">Scanned as roots, never collected</td></tr>
+     </tbody>
+    </table>
+    <h4 id="when-collections-run">When Collections Run</h4>
+    <ul>
+     <li><strong>Minor</strong> collections run when the nursery fills.</li>
+     <li><strong>Major</strong> collections run when the old generation outgrows its threshold. After each major the next threshold is twice the live heap, never below 8 MB, so collection work stays proportional to allocation (before v2026.10.2 it grew only after eight majors in a row freed nothing, and a program holding a large table collected on nearly every array allocation).</li>
+     <li><strong><code>--gc-threshold</code></strong> sets the threshold. It holds as given while a major leaves at least a quarter of it free, which is what lets a stress run such as the nightly <code>--gc-threshold=64k</code> collect every 64 KB; once more than three quarters of it survive, it scales with the live heap like the default, and returns to the given value once the live heap fits under it again.</li>
+     <li><strong>Freed old-generation blocks</strong> go to one free list per size class, four classes per power of two from 16 bytes to 4 MB, so a reuse is a single pop rather than a search.</li>
+    </ul>
+    <p><strong>Key Characteristics:</strong></p>
+    <ul>
+     <li><strong>O(1) Membership:</strong> the old generation is an open-addressed address set; no linear scans</li>
+     <li><strong>Generational:</strong> a nursery that moves survivors (promote-and-forward with pointer fixup); an old generation swept in place</li>
+     <li><strong>Write barrier:</strong> a store of a young object into an old one is recorded on a lock-free dirty list, so a minor GC need not scan the whole old generation; C++ code that stores into an old object must call <code>WriteBarrier</code></li>
+     <li><strong>Stop-the-World:</strong> cooperative, at safepoints (above)</li>
+    </ul>
+    <p><strong>Source Files:</strong></p>
+    <ul>
+     <li><code>core/vm/arch/memory.h/cpp</code> - Memory manager: allocation, collection, write barrier</li>
+     <li><code>core/vm/arch/ptr_set.h</code> - Old-generation address set</li>
+     <li><code>core/vm/arch/memory_verify.cpp</code> - Heap verifier (<code>OBJECK_GC_VERIFY</code>)</li>
+    </ul>
+    <hr class="section-end">
+    <h3 id="9-platform-abstraction">9. Platform Abstraction</h3>
+    <p>Cross-platform system call abstraction for POSIX and Win32.</p>
+<pre class="mermaid">graph TB
+    subgraph "Application Layer"
+        A[Objeck Program]
+    end
+
+    subgraph "VM &amp; Libraries"
+        B[Runtime Interpreter]
+        C[JIT Compiled Code]
+        D[Standard Libraries]
+    end
+
+    subgraph "Host API Layer"
+        E[Host APIs&lt;br/&gt;Platform Abstraction]
+    end
+
+    subgraph "Platform Implementations"
+        F1[POSIX APIs]
+        F2[Win32 APIs]
+
+        G1[File I/O]
+        G2[Networking]
+        G3[Threading]
+        G4[Dynamic Loading]
+        G5[System Calls]
+
+        F1 --&gt; G1 &amp; G2 &amp; G3 &amp; G4 &amp; G5
+        F2 --&gt; G1 &amp; G2 &amp; G3 &amp; G4 &amp; G5
+    end
+
+    subgraph "Operating Systems"
+        H1[Linux]
+        H2[macOS]
+        H3[Windows]
+    end
+
+    A --&gt; B &amp; C &amp; D
+    B &amp; C &amp; D --&gt; E
+    E --&gt; F1 &amp; F2
+    G1 &amp; G2 &amp; G3 &amp; G4 &amp; G5 --&gt; H1 &amp; H2 &amp; H3
+
+    style E fill:#fff4e1
+    style F1 fill:#e1f5ff
+    style F2 fill:#e1f5ff</pre>
+    <h4 id="platform-specific-implementations">Platform-Specific Implementations</h4>
+<pre class="mermaid">graph LR
+    subgraph "File I/O"
+        A1[open/read/write] --&gt;|POSIX| B1[open/read/write syscalls]
+        A1 --&gt;|Win32| B2[CreateFile/ReadFile/WriteFile]
+    end
+
+    subgraph "Threading"
+        A2[Thread Create] --&gt;|POSIX| C1[pthread_create]
+        A2 --&gt;|Win32| C2[CreateThread]
+
+        A3[Mutex] --&gt;|POSIX| C3[pthread_mutex_*]
+        A3 --&gt;|Win32| C4[CreateMutex/WaitForSingleObject]
+    end
+
+    subgraph "Networking"
+        A4[Socket] --&gt;|POSIX| D1[socket/bind/listen]
+        A4 --&gt;|Win32| D2[WSASocket/bind/listen]
+        A6[HTTP/2] --&gt; D3[nghttp2 + mbedTLS/OpenSSL]
+        A7[HTTP/3] --&gt;|POSIX| D4[ngtcp2 + nghttp3 + AWS-LC, static]
+        A7 --&gt;|Win32| D5[WinHTTP over MsQuic]
+    end
+
+    subgraph "Dynamic Loading"
+        A5[Load Library] --&gt;|POSIX| E1[dlopen/dlsym]
+        A5 --&gt;|Win32| E2[LoadLibrary/GetProcAddress]
+    end
+
+    style A1 fill:#fff4e1
+    style A2 fill:#fff4e1
+    style A4 fill:#fff4e1
+    style A6 fill:#fff4e1
+    style A7 fill:#fff4e1
+    style A5 fill:#fff4e1</pre>
+    <h4 id="http-protocol-stack">HTTP Protocol Stack</h4>
+    <p>Three protocols, and they do <strong>not</strong> share a serialization path — which is the single most important thing to know before touching this code.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Protocol</th><th>Where the request is built</th><th>Engine</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Protocol">HTTP/1.1, HTTPS</td><td data-label="Where the request is built"><strong>Objeck</strong> (<code>net.obs</code>, <code>net_secure.obs</code>) — assembled as text</td><td data-label="Engine">sockets + mbedTLS/OpenSSL</td></tr>
+      <tr><td data-label="Protocol">HTTP/2</td><td data-label="Where the request is built"><strong>Native</strong> (<code>common.cpp</code>)</td><td data-label="Engine">nghttp2, all platforms</td></tr>
+      <tr><td data-label="Protocol">HTTP/3</td><td data-label="Where the request is built"><strong>Native</strong> (<code>common.cpp</code>)</td><td data-label="Engine">ngtcp2 + nghttp3 + AWS-LC on POSIX, linked statically (<code>tools/deps/build_quic_deps.sh</code>); <strong>WinHTTP over MsQuic</strong> on Windows 11 / Server 2022+</td></tr>
+     </tbody>
+    </table>
+    <p>Consequences that have each produced a real bug:</p>
+    <ul>
+     <li><strong>Request headers.</strong> HTTP/1.1 serializes headers in Objeck, so <code>AddHeader</code> worked there from the start. HTTP/2 and HTTP/3 hand off to a trap, and for a long time that trap had no headers argument — so <code>AddHeader</code> stored values that were silently dropped. They now travel as a <code>String[]</code> of alternating key/value through <code>HTTP2_REQUEST_HDRS</code> / <code>HTTP3_REQUEST_HDRS</code>.</li>
+     <li><strong>Header validation lives in Objeck</strong> (<code>Web.HTTP.HeaderCheck</code>), not in the trap, precisely because HTTP/1.1 never reaches native code. A trap-side check could not have covered the line-oriented protocol where injection is worst. The native validators are defence in depth for the two protocols that do cross into C++.</li>
+     <li><strong>HTTP/3 on Windows must assert the negotiated protocol.</strong> WinHTTP treats HTTP/3 as a <em>preference</em> and falls back to HTTP/2 or HTTP/1.1 transparently, so a 200 proves nothing. Every request checks <code>WINHTTP_OPTION_HTTP_PROTOCOL_USED</code> and fails unless HTTP/3 was really used. (Also non-obvious: <code>WINHTTP_OPTION_ENABLE_HTTP_PROTOCOL</code> must be set on the <strong>session</strong> handle before the request is created; setting it later is accepted and silently ignored.)</li>
+     <li><strong>Capability is reportable.</strong> The traps compile unconditionally, so the presence of <code>Http3Client</code> proves nothing about whether an engine is behind it. <code>Runtime-&gt;GetProperty("runtime.feature.http3")</code> (and <code>.http2</code>) returns <code>"1"</code> only when one is compiled in — which is how a caller, or a test, tells <em>unsupported</em> apart from <em>the network failed</em>. The msys2 Windows builds have no HTTP/3 engine and correctly report <code>"0"</code>.</li>
+    </ul>
+    <h4 id="threading-model">Threading Model</h4>
+<pre class="mermaid">sequenceDiagram
+    participant Main as Main Thread
+    participant VM as VM Thread Manager
+    participant T1 as Worker Thread 1
+    participant T2 as Worker Thread 2
+    participant GC as GC Thread
+
+    Main-&gt;&gt;VM: Create thread
+    VM-&gt;&gt;T1: Start execution
+
+    Main-&gt;&gt;VM: Create thread
+    VM-&gt;&gt;T2: Start execution
+
+    T1-&gt;&gt;T1: Execute bytecode
+    T2-&gt;&gt;T2: Execute bytecode
+
+    Note over T1,T2: GC triggered
+
+    VM-&gt;&gt;GC: Start GC
+    GC-&gt;&gt;T1: Suspend (safepoint)
+    GC-&gt;&gt;T2: Suspend (safepoint)
+
+    GC-&gt;&gt;GC: Mark &amp; Sweep
+
+    GC-&gt;&gt;T1: Resume
+    GC-&gt;&gt;T2: Resume
+
+    T1-&gt;&gt;VM: Thread complete
+    T2-&gt;&gt;VM: Thread complete</pre>
+    <h4 id="platform-detection">Platform Detection</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Platform</th><th>Macro</th><th>Compiler</th><th>ABI</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Platform"><strong>Linux x64</strong></td><td data-label="Macro"><code>__linux__</code> &amp;&amp; <code>__x86_64__</code></td><td data-label="Compiler">GCC/Clang</td><td data-label="ABI">System V AMD64</td></tr>
+      <tr><td data-label="Platform"><strong>Linux ARM64</strong></td><td data-label="Macro"><code>__linux__</code> &amp;&amp; <code>__aarch64__</code></td><td data-label="Compiler">GCC</td><td data-label="ABI">ARM64 AAPCS</td></tr>
+      <tr><td data-label="Platform"><strong>macOS ARM64</strong></td><td data-label="Macro"><code>__APPLE__</code> &amp;&amp; <code>__aarch64__</code></td><td data-label="Compiler">Clang</td><td data-label="ABI">ARM64 AAPCS</td></tr>
+      <tr><td data-label="Platform"><strong>Windows x64</strong></td><td data-label="Macro"><code>_WIN32</code> &amp;&amp; <code>_WIN64</code></td><td data-label="Compiler">MSVC</td><td data-label="ABI">Microsoft x64</td></tr>
+      <tr><td data-label="Platform"><strong>Windows ARM64</strong></td><td data-label="Macro"><code>_WIN32</code> &amp;&amp; <code>_M_ARM64</code></td><td data-label="Compiler">MSVC</td><td data-label="ABI">Microsoft ARM64</td></tr>
+     </tbody>
+    </table>
+    <p><strong>Source Files:</strong></p>
+    <ul>
+     <li><code>core/vm/arch/posix/posix.h</code> - POSIX abstractions</li>
+     <li><code>core/vm/arch/win32/win32.h/cpp</code> - Win32 abstractions</li>
+     <li><code>core/shared/sys.h/cpp</code> - Cross-platform utilities</li>
+    </ul>
+    <hr class="section-end">
+    <h3 id="10-runtime-errors">10. Runtime Errors</h3>
+    <p>Errors are objects. <code>System.Error</code> and its subclasses are raised with <code>Runtime-&gt;Raise</code> and caught by type with <code>try { } on(e : T) { } finally { }</code>; the runtime's own faults are raised the same way, as <code>NilError</code>, <code>IndexError</code>, <code>DivideByZeroError</code>, <code>CastError</code> and <code>RuntimeError</code>. <code>?-&gt;</code> still recovers from any error in a call chain, yielding <code>Nil</code>. An error nothing handles ends the program.</p>
+<pre class="line-numbers"><code class="language-cpp">try {
+  port := ParsePort(text, line);   # may Runtime-&gt;Raise(ConfigError-&gt;New(...))
+}
+on(e : ConfigError) {               # clauses are tested in order
+  "line {$(e-&gt;GetLine())}: {$(e-&gt;GetMessage())}"-&gt;PrintLine();
+}
+on(e : Error) {                     # a catch-all goes last
+  e-&gt;GetMessage()-&gt;PrintLine();
+}
+finally {                           # runs on every way out, return/break/continue included
+  "checked"-&gt;PrintLine();
+};
+</code></pre>
+<pre class="mermaid">flowchart TB
+    A["Error raised&lt;br/&gt;Runtime-&gt;Raise, or a runtime fault:&lt;br/&gt;Nil, index, divide by zero, cast"] --&gt; B{"Handler on this&lt;br/&gt;thread's handler stack?"}
+    B --&gt;|yes| C["TryErrorRecovery: pop frames back to&lt;br/&gt;the handler's, restore the operand stack"]
+    C --&gt; D{"Which construct?"}
+    D --&gt;|"?-&gt; / Try()"| E["The guarded chain yields Nil&lt;br/&gt;(?? may supply a default)"]
+    D --&gt;|"try / on"| F["First clause whose type matches runs;&lt;br/&gt;no match: the error goes on after finally"]
+    F --&gt; H["finally runs"]
+    B --&gt;|no| G["Message on stderr, the call stack,&lt;br/&gt;exit with status 1 (obd halts instead)"]
+
+    style E fill:#e1ffe1
+    style H fill:#e1ffe1
+    style G fill:#ffe1e1</pre>
+    <ul>
+     <li><strong><code>try</code>/<code>on</code>/<code>finally</code></strong> (<code>EmitTry</code>, design in <code>docs/ERROR_HANDLING_DESIGN.md</code>). The words are contextual, so no existing name stops compiling. The body runs in a <code>TRY_START</code>/<code>TRY_END</code> region; its handler fetches the error with <code>GetLastError</code> and tests each clause's type in order. The clauses run in a region of their own, so <code>finally</code> runs before an error raised in a clause goes on. An error no clause names is raised again after <code>finally</code>, so a typed <code>try</code> never swallows what it did not ask for. A <code>return</code>, <code>break</code> or <code>continue</code> that leaves the <code>try</code> closes its region and runs <code>finally</code> on the way out.</li>
+     <li><strong>Fatal unless handled.</strong> The interpreter prints one <code>&gt;&gt;&gt; ... &lt;&lt;&lt;</code> line, such as <code>&gt;&gt;&gt; Attempting to dereference a 'Nil' memory instance &lt;&lt;&lt;</code>, <code>&gt;&gt;&gt; Index out of bounds: &lt;index&gt;,&lt;size&gt; &lt;&lt;&lt;</code> or <code>&gt;&gt;&gt; Divide by zero &lt;&lt;&lt;</code>, then lists the methods on the call stack (<code>StackErrorUnwind</code>) and exits with status 1. An invalid cast (<code>&gt;&gt;&gt; Invalid object cast ... &lt;&lt;&lt;</code>) and a full call stack are recovered like the rest when they happen in interpreted code. An invalid cast is now recovered inside a JIT-compiled method too (#925): the handler stack is per-thread, so the bridge callback that raises the cast can see it, and the callback reports a status (-5) that compiled code tests and carries out through its epilogue, where the interpreter already recovers a guard stub's status. The diagnostic is printed only when no handler is active, so a recovered cast is as silent as it is in interpreted code. <strong>A full call stack is recovered in compiled code too</strong> (since 2026-10): compiled frames consume the real C stack, which used to run out first and end the process in the OS. The compiled call site now tests the native stack as well as the depth (two compares a call; see Call Depth in section 3), so the call that would overrun it fails as a full call stack does, with no compiled frame left mid-way.</li>
+     <li><strong><code>Try()</code> and <code>?-&gt;</code>.</strong> <code>a?-&gt;b()</code> is <code>a-&gt;Try()-&gt;b()</code>. The compiler brackets the rest of the chain with <code>TRY_START</code> and <code>TRY_END</code> (<code>EmitTryIntrinsic</code>); <code>TRY_START</code> pushes a handler, with the operand-stack position and call-stack depth to return to, on the thread's handler stack (which grows as needed). On a <code>Nil</code> dereference, a bad index or a zero divisor, <code>TryErrorRecovery</code> pops frames back to that depth, restores the operand stack and resumes at the handler, which stores <code>Nil</code> as the chain's value, and <code>Runtime-&gt;GetLastError()</code> says what it was. A compiled callee that returns one of those errors as its status is recovered the same way.</li>
+     <li><strong><code>Otherwise()</code> and <code>??</code>.</strong> <code>a ?? b</code> is <code>a-&gt;Otherwise(b)</code>: a <code>Nil</code> test, not a handler, so <code>b</code> is evaluated only when <code>a</code> is <code>Nil</code>.</li>
+     <li><strong>The JIT leaves try regions alone.</strong> <code>TRY_START</code> and <code>TRY_END</code> are in neither backend's whitelist, so a method that holds a <code>?-&gt;</code> or a <code>try</code> stays interpreted: recovery needs the interpreter's handler stack. Errors raised inside a compiled <em>callee</em> still reach it.</li>
+     <li><strong>Under the debugger</strong> (<code>obd</code>, built with <code>_NO_HALT</code>) an unguarded error halts the program instead of exiting, and DAP "uncaught" exception breakpoints stop there first (<code>Debugger::OnRuntimeError</code>).</li>
+     <li><strong>Faults in the VM itself</strong>, a C++ exception such as <code>std::bad_alloc</code>, are caught at the top of <code>Execute</code>, or by the JIT bridge under compiled code, and reported as <code>&gt;&gt;&gt; virtual machine: ... &lt;&lt;&lt;</code>.</li>
+    </ul>
+    <p><strong>Source Files:</strong></p>
+    <ul>
+     <li><code>core/compiler/intermediate.cpp</code> - <code>EmitTry</code>, <code>EmitTryIntrinsic</code>, <code>EmitOtherwiseIntrinsic</code></li>
+     <li><code>core/compiler/lib_src/lang.obs</code> - <code>System.Error</code> and its subclasses, <code>Runtime-&gt;Raise</code>, <code>Runtime-&gt;GetLastError</code></li>
+     <li><code>core/vm/interpreter.h</code> - the handler stack (<code>PushTryHandler</code>, <code>TryErrorRecovery</code>)</li>
+     <li><code>core/vm/dispatch.cpp</code> - <code>TRY_START</code>, <code>TRY_END</code></li>
+     <li><code>core/vm/interpreter.cpp</code> - error messages and <code>StackErrorUnwind</code></li>
+    </ul>
+    <hr class="section-end">
+    <h3 id="summary">Summary</h3>
+    <p>This architecture demonstrates a modern, multi-platform language implementation with:</p>
+    <p>✅ <strong>Multi-tiered Execution:</strong> Interpreter → call counting → JIT compilation ✅ <strong>Platform-Specific JIT:</strong> Optimized ARM64 and x64 code generation ✅ <strong>Efficient Memory Management:</strong> O(1) lookups, generational GC ✅ <strong>Structured Errors:</strong> <code>try</code>/<code>on</code>/<code>finally</code> over typed <code>Error</code> objects, plus <code>?-&gt;</code> recovery ✅ <strong>Rich Library Ecosystem:</strong> 46 libraries including AI/ML, web servers ✅ <strong>Modern Development Tools:</strong> REPL, debugger, LSP support ✅ <strong>Automated CI/CD:</strong> Multi-platform testing with caching ✅ <strong>Cross-Platform:</strong> Linux x64/ARM64, macOS ARM64 (Apple silicon), Windows x64/ARM64 ✅ <strong>Full Unicode:</strong> Emoji and supplementary plane characters on all platforms including Windows console</p>
+    <p><strong>For More Information:</strong></p>
+    <ul>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/core/readme.md" target="_blank">Core Implementation README</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/core/compiler/README.md" target="_blank">Compiler Details</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/core/vm/README.md" target="_blank">VM Architecture</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/jit/README.md" target="_blank">JIT Compilation</a></li>
+     <li><a href="doc_regression.html">Regression Tests</a></li>
+    </ul>
+    <p><strong>Contributing:</strong> See <a href="https://github.com/objeck/objeck-lang/blob/master/CONTRIBUTING.md" target="_blank">CONTRIBUTING.md</a> for guidelines on improving this architecture.</p>
+    <hr class="section-end">
+    <p><em>Last updated: October 2026 | Version: 2026.10.2</em></p>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

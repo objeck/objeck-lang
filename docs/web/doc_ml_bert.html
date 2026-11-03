@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>BERT embeddings and a trainable head — Design — Objeck Language</title>
+  <meta name="description" content="A frozen, pretrained BERT encoder run through API.Onnx, producing sentence embeddings, and a classification head trained in Objeck on top of them. Built for a university cybersecurity-ML lab (&quot;ML Chapter 3 — Building a BERT-Based Malware Cl"/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">BERT embeddings and a trainable head — Design</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/ML_BERT_DESIGN.md" target="_blank">docs/ML_BERT_DESIGN.md on GitHub</a></div>
+    <p class="page-lead">A frozen, pretrained BERT encoder run through <code>API.Onnx</code>, producing sentence embeddings, and a classification head trained in Objeck on top of them. Built for a university cybersecurity-ML lab ("ML Chapter 3 — Building a BERT-Based Malware Classifier"), and useful to anyone who wants text embeddings from Objeck.</p>
+    <div id="toc_container" class="plain">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#why-and-what-this-is-not">Why, and what this is not</a></li>
+      <li><a href="#what-an-exported-bert-looks-like">What an exported BERT looks like</a></li>
+      <li><a href="#api">API</a></li>
+      <li><a href="#test-plan">Test plan</a></li>
+      <li><a href="#stages">Stages</a></li>
+     </ul>
+    </div>
+
+    <h3 id="why-and-what-this-is-not">Why, and what this is not</h3>
+    <p>The lab fine-tunes BERT on API-call sequences and runs three experiments:</p>
+    <ol>
+     <li><strong>Class imbalance.</strong> Training sets with a positive ratio (POSRATIO) of 0.001, 0.01, 0.10 and 0.50, comparing precision, recall, F1 and false negatives, with the <strong>test</strong> set's class distribution held fixed.</li>
+     <li><strong>Sequence length.</strong> MAX_SEQ_LENGTH of 32, 64, 128, 256.</li>
+     <li><strong>Learning rate.</strong> 1e-5, 2e-5, 5e-5, with a plot of the training loss.</li>
+    </ol>
+    <p>Objeck has no transformer training: no autograd, no attention kernels, no optimizer over a 110M-parameter graph. Building that is a project of its own and is out of scope.</p>
+    <p>What is in scope is the honest, useful subset: <strong>the encoder frozen, the head trained.</strong></p>
+<pre class="plain"> text ──WordPieceTokenizer──▶ ids, mask, types ──API.Onnx (frozen BERT)──▶ last_hidden_state
+                                                                              │ pool: CLS or mean
+                                                                              ▼
+                                       Float[n, hidden] embeddings ──EmbeddingClassifier──▶ P(malware)
+                                                                     (trained here: Adam/SGD, BCE)</pre>
+    <p>All three experiments run on this variant. It is <strong>not</strong> the lab's fine-tuning, and every document and the example say so:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th></th><th>Lab (fine-tuning)</th><th>This (frozen encoder)</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="">Trained parameters</td><td data-label="Lab (fine-tuning)">all ~110M (encoder + head)</td><td data-label="This (frozen encoder)">the head only (hidden × 1 up to a few thousand)</td></tr>
+      <tr><td data-label="">Embedding of a sequence</td><td data-label="Lab (fine-tuning)">changes as training proceeds</td><td data-label="This (frozen encoder)">fixed; computed once per MAX_SEQ_LENGTH</td></tr>
+      <tr><td data-label="">Learning-rate experiment</td><td data-label="Lab (fine-tuning)">the encoder's learning rate (1e-5 … 5e-5 suit a pretrained transformer)</td><td data-label="This (frozen encoder)">the head's learning rate. The lab's values are far too small for a freshly initialised head with Adam over a few epochs; the example runs the lab's three values <strong>and</strong> a head-appropriate sweep (1e-3, 1e-2) so the loss curves show what the rate actually does</td></tr>
+      <tr><td data-label="">Imbalance and sequence-length experiments</td><td data-label="Lab (fine-tuning)">as in the lab</td><td data-label="This (frozen encoder)">as in the lab; the head is retrained per setting</td></tr>
+      <tr><td data-label="">Expected accuracy</td><td data-label="Lab (fine-tuning)">higher: the encoder adapts to API-call text</td><td data-label="This (frozen encoder)">lower or equal: BERT's pretraining saw English, not API traces</td></tr>
+     </tbody>
+    </table>
+    <p>What fine-tuning would add, for the record: back-propagation through 12 transformer layers (attention, layer norm, GELU, the embedding tables), an optimizer state of 2–3× the model's size, and mixed precision to make it affordable. ONNX Runtime has a training API (<code>onnxruntime-training</code>) that could be bound later; nothing here precludes it.</p>
+    <h3 id="what-an-exported-bert-looks-like">What an exported BERT looks like</h3>
+    <p>A Hugging Face export (<code>optimum-cli export onnx --model bert-base-uncased</code>, or <code>torch.onnx.export</code> with <code>dynamic_axes</code>) has:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Tensor</th><th>Element type</th><th>Shape</th><th>Notes</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Tensor"><code>input_ids</code></td><td data-label="Element type">INT64</td><td data-label="Shape">[batch, sequence]</td><td data-label="Notes">vocabulary ids</td></tr>
+      <tr><td data-label="Tensor"><code>attention_mask</code></td><td data-label="Element type">INT64</td><td data-label="Shape">[batch, sequence]</td><td data-label="Notes">1 for a real token, 0 for padding</td></tr>
+      <tr><td data-label="Tensor"><code>token_type_ids</code></td><td data-label="Element type">INT64</td><td data-label="Shape">[batch, sequence]</td><td data-label="Notes">segment: 0 for the first text, 1 for the second. <strong>Absent</strong> from DistilBERT exports</td></tr>
+      <tr><td data-label="Tensor"><code>last_hidden_state</code></td><td data-label="Element type">FP32</td><td data-label="Shape">[batch, sequence, hidden]</td><td data-label="Notes">hidden = 768 for base, 384 for MiniLM</td></tr>
+      <tr><td data-label="Tensor"><code>pooler_output</code></td><td data-label="Element type">FP32</td><td data-label="Shape">[batch, hidden]</td><td data-label="Notes">tanh(dense(CLS)). <strong>Optional</strong>: absent from DistilBERT and from exports of <code>AutoModel</code> heads that drop it</td></tr>
+     </tbody>
+    </table>
+    <p><code>Session-&gt;GetModelInfo()</code> reports each with its element type name (<code>"INT64"</code>, <code>"FP32"</code>) and its shape, with <strong>-1 for a dynamic axis</strong> (<code>batch</code>, <code>sequence</code>). An export made without <code>dynamic_axes</code> reports fixed numbers instead — <code>[1, 128]</code> is common.</p>
+    <p>Tensors cross the native boundary as <code>Float[]</code>, and the native side converts each input to the element type the <strong>model</strong> declares (#1047): the caller builds <code>Tensor-&gt;New("input_ids", shape, ids)</code> with <code>Int[]</code> ids and never names INT64. <code>Tensor-&gt;AsFloats</code> refuses a value past 2^53, far above any vocabulary id.</p>
+    <h3 id="api">API</h3>
+    <p>Three libraries, each where its dependencies already are.</p>
+    <h4 id="systemnlp-nlpobl-tokenizers--no-model-no-native-code"><code>System.NLP</code> (<code>nlp.obl</code>): tokenizers — no model, no native code</h4>
+<pre class="line-numbers"><code class="language-cpp">tokenizer := WordPieceTokenizer-&gt;New("vocab.txt");            # lowercase + strip accents (uncased BERT)
+cased := WordPieceTokenizer-&gt;New("vocab.txt", false, false);  # cased BERT
+
+pieces := tokenizer-&gt;Tokenize("unaffable");                   # ["un", "##aff", "##able"]
+enc := tokenizer-&gt;Encode("He's unaffable.", 16);              # TokenEncoding
+enc-&gt;GetIds();             # [CLS] he ' s un ##aff ##able . [SEP] [PAD]...  (16 ids)
+enc-&gt;GetAttentionMask();   # 1 x 9, then 0 x 7
+enc-&gt;GetTokenTypeIds();    # all 0
+pair := tokenizer-&gt;EncodePair("question", "context", 32);   # types 0 ... 0 1 ... 1
+text := tokenizer-&gt;Decode(enc-&gt;GetIds());                     # "he ' s unaffable ."
+</code></pre>
+    <ul>
+     <li><strong>BasicTokenizer</strong>, as BERT's: drop control characters and U+FFFD, map whitespace to a space, put spaces around CJK ideographs, split on whitespace, then per word lowercase (option), strip accents (option: NFD, then drop combining marks), and split off every punctuation character (ASCII 33–47, 58–64, 91–96, 123–126, and Unicode punctuation). The special tokens (<code>[CLS]</code>, <code>[SEP]</code>, <code>[PAD]</code>, <code>[MASK]</code>, <code>[UNK]</code>) are never split when they appear in the text.</li>
+     <li><strong>WordPiece</strong>: greedy longest-match-first over each word, continuation pieces prefixed <code>##</code>; a word with any unmatched remainder, or longer than 100 characters, becomes one <code>[UNK]</code>.</li>
+     <li><strong>Encode(text, max_len)</strong>: <code>[CLS] pieces [SEP]</code>, truncated to <code>max_len</code> (keeping the beginning), padded with <code>[PAD]</code> to exactly <code>max_len</code>. <strong>EncodePair</strong> truncates the longer of the two first, a token at a time (Hugging Face's <code>longest_first</code>), then lays out <code>[CLS] a [SEP] b [SEP]</code> with types 0 then 1.</li>
+     <li>Special-token ids are read from the vocabulary by name, never assumed: <code>[PAD]</code> is 0 and <code>[CLS]</code> 101 in Google's vocabularies, but not in every vocabulary.</li>
+     <li><strong>Unicode without a Unicode database.</strong> Objeck's <code>ToLower</code> is ASCII-only and there is no NFD table in the runtime, so the tokenizer carries its own tables, generated from Python's <code>unicodedata</code> (see "As built" below); Hangul syllables decompose algorithmically into jamo, as NFD does.</li>
+    </ul>
+<pre class="line-numbers"><code class="language-cpp">apis := ApiSequenceTokenizer-&gt;New();
+apis-&gt;Fit(training_sequences);                  # vocabulary from training data
+enc := apis-&gt;Encode("CreateFileW,ReadFile,CloseHandle", 64);
+words := apis-&gt;Split("CreateFileW ReadFile");   # ["CreateFileW", "ReadFile"]
+text := apis-&gt;ToText("CreateFileW,ReadFile", 62); # "CreateFileW ReadFile" -- for WordPiece
+</code></pre>
+    <ul>
+     <li>For the malware use case: a sequence is API names separated by commas, whitespace or semicolons. <code>Fit</code> builds a vocabulary <code>[PAD]</code>=0, <code>[UNK]</code>=1, <code>[CLS]</code>=2, <code>[SEP]</code>=3, then names by descending training frequency (ties by name, so it is deterministic), optionally with a minimum count. Names are case-sensitive unless asked otherwise (Windows export names are case-sensitive to <code>GetProcAddress</code>).</li>
+     <li><code>Encode</code> returns the same <code>TokenEncoding</code> as WordPiece: <code>[CLS] names [SEP]</code>, the first <code>max_len - 2</code> calls kept, padded.</li>
+     <li><strong>Which tokenizer feeds BERT.</strong> A pretrained BERT knows only its own WordPiece vocabulary; ids from a vocabulary built over API names mean nothing to it. So for the frozen encoder, the API sequence goes in as text — <code>ToText</code> normalises separators and truncates by call count — and WordPiece splits <code>CreateFileW</code> into <code>create ##file ##w</code>. <code>ApiSequenceTokenizer</code>'s own ids serve a model trained from scratch on API ids, and its vocabulary gives the example's bag-of-API baseline.</li>
+     <li><code>Save(path)</code> / <code>Load(path)</code> write and read the vocabulary one token per line, the <code>vocab.txt</code> layout.</li>
+    </ul>
+    <p><strong>As built (stage 1).</strong></p>
+    <ul>
+     <li>The Unicode tables (punctuation, control, nonspacing-mark ranges, lowercase runs, and the NFD-minus-marks decomposition of 2,061 characters) are generated from Python's <code>unicodedata</code> by <code>tools/nlp/gen_wordpiece_tables.py</code> into a marked block of <code>nlp.obs</code>, so coverage is every plane, not the Latin/Greek/Cyrillic subset planned above. Text is decoded to code points first (a surrogate pair is one code point where <code>Char</code> is UTF-16), so the same text tokenizes the same on Windows and elsewhere.</li>
+     <li><strong>Parity.</strong> <code>gen_wordpiece_parity.py</code> transcribes Hugging Face's slow <code>BertTokenizer</code> (BasicTokenizer, WordpieceTokenizer, and the special-token split <code>PreTrainedTokenizer</code> does first) against <code>unicodedata</code> and <code>str.lower()</code>, builds a 2,163-token vocabulary from the corpus, and records ids for three modes (uncased; cased; lowercase keeping accents). On every line of <code>docs/*.md</code> plus 28 multilingual and edge-case lines — 13,052 texts, 39,154 cases — the Objeck tokenizer gives identical ids. The committed fixture is a 234-text sample of the same (<code>nlp_wordpiece_parity.obs</code>); <code>--all</code> writes the full corpus for a local run. Two cases are left out of the fixture: no-strip modes on decomposed text, where Hugging Face's NFC step changes the answer and this tokenizer has none.</li>
+     <li><strong>Found on the way:</strong> <code>String-&gt;SubString</code> and <code>String-&gt;New(Char[])</code> end a string at U+0000 (both go through <code>New(array, false)</code>, which scans for a NUL), while <code>Append(Char)</code> keeps it. BERT drops NUL as text, not as an end, so the tokenizer works on code points throughout and never cuts the input with <code>SubString</code>; the inconsistency in <code>lang.obs</code> is reported, not changed here.</li>
+     <li><strong>Strings past U+FFFF.</strong> A <code>Char</code> value holds any code point on every platform; only <code>String</code> storage is UTF-16 on Windows, and <code>String-&gt;Append(Char)</code> writes a surrogate pair there (#1185). The tokenizer asks <code>String-&gt;IsUtf16Storage()</code> rather than probing a <code>Char</code>, which answers the wrong question.</li>
+     <li><code>Encode</code> stops splitting once it has more pieces than <code>max_len</code> can hold: truncation keeps the beginning, and an API trace of hundreds of calls was otherwise split in full to keep its first 126 pieces. The ids are the same; the time halves for long traces.</li>
+     <li>Throughput (Windows build box, <code>obr</code>, JIT on): the full parity corpus — 39,154 tokenizations of lines averaging ~60 characters, plus reading and comparing — in 5–7 s; <code>Encode</code> of a 200-call API trace in 1.4 ms at <code>max_len</code> 128 and 2.2 ms at 256.</li>
+    </ul>
+    <h4 id="systemnlponnx-new-nlp_onnxobl-the-embedder"><code>System.NLP.Onnx</code> (new <code>nlp_onnx.obl</code>): the embedder</h4>
+<pre class="line-numbers"><code class="language-cpp">embedder := BertEmbedder-&gt;New("model.onnx", "vocab.txt", 128);
+if(&lt;&gt;embedder-&gt;IsOpen()) {
+  EndPoint-&gt;GetLastError()-&gt;PrintLine();
+  return;
+};
+embedder-&gt;SetPooling(BertEmbedder-&gt;Pooling-&gt;MEAN);   # or CLS, or POOLER when the model has one
+embedder-&gt;SetBatchSize(16);
+X := embedder-&gt;Embed(texts);               # Float[texts-&gt;Size(), hidden]
+embedder-&gt;Close();
+</code></pre>
+    <ul>
+     <li><code>New(model, vocab, max_len)</code> and <code>New(model, tokenizer, max_len, config)</code>; the second takes a <code>WordPieceTokenizer</code> built with other options and the session configuration (<code>ep</code>).</li>
+     <li><strong>Pooling.</strong> <code>CLS</code> is the hidden state at position 0. <code>MEAN</code> is the mean over the positions whose attention mask is 1 — padding excluded, as sentence-transformers does it. <code>POOLER</code> is the model's <code>pooler_output</code>, available only when the model has it. The pooling functions are public functions over a flat <code>Float[]</code> (<code>MeanPool</code>, <code>ClsPool</code>) so they can be tested and reused without a model.</li>
+     <li><strong>Inputs from the signature.</strong> At open, <code>GetModelInfo</code> decides what to send: <code>input_ids</code> always (the open fails without it), <code>attention_mask</code> and <code>token_type_ids</code> only when the model declares them. It asks the run for the one output the pooling needs, by name (<code>last_hidden_state</code>, <code>pooler_output</code>), falling back to the first FP32 output of rank 3 or rank 2 respectively for an export that named them otherwise.</li>
+     <li><strong>Fixed axes.</strong> If the model fixes the sequence axis and it is not <code>max_len</code>, the open fails and says so — silently running a different length would change an experiment. A fixed batch axis caps the batch size at that number.</li>
+     <li><strong>Batching.</strong> Texts are encoded and run <code>batch_size</code> at a time (default 8), every row padded to <code>max_len</code>. Padding to <code>max_len</code> rather than to the longest text in the batch keeps a text's embedding independent of the other texts in its batch, so results do not depend on batch size or order. For long API traces, which reach <code>max_len</code> anyway, it costs nothing.</li>
+     <li><strong>Memory.</strong> A batch's <code>last_hidden_state</code> is batch × max_len × hidden numbers, held as 64-bit <code>Float</code>s once by the run and once more by the tensor it is split into: batch 8 × 256 × 768 is 1.6 M values, about 25 MB at peak. The embeddings returned are n × hidden.</li>
+     <li><code>EmbedEncoded(encodings : TokenEncoding[])</code> embeds pre-encoded rows — for a caller with its own tokenizer or a cached encoding.</li>
+    </ul>
+    <p><strong>Why a library of its own.</strong> The compiler resolves every external class a linked library references, eagerly — linking <code>onnx</code> without <code>json</code> fails with "Unable to resolve external library class: 'Data.JSON.JsonElement'" even for a program that never touches JSON. So a <code>BertEmbedder</code> in <code>onnx.obl</code> that names <code>WordPieceTokenizer</code> would make <strong>every</strong> ONNX program add <code>-lib nlp</code>, and one in <code>nlp.obl</code> would make every NLP program add ONNX Runtime. A bridge library is the precedent <code>query_vision.obl</code> set for the same reason. A program using it links:</p>
+<pre class="plain">obc -src lab.obs -lib models,opencv,cipher,json,onnx,nlp,nlp_onnx</pre>
+    <p>or <code>-lib @vision</code>, whose group now includes it.</p>
+    <p><strong>As built (stage 2).</strong></p>
+    <ul>
+     <li><code>Pooling</code> is an enum nested in the class, as <code>Client-&gt;Protocol</code> is in <code>API.Inference</code>: <code>BertEmbedder-&gt;Pooling-&gt;MEAN</code>. <code>Load(model, vocab, max_len)</code> is the function form of the three-argument constructor. An input the model declares other than the three is refused at open with its name, rather than left unfilled.</li>
+     <li>With no session options the build's own provider runs the model (DirectML on Windows, CoreML on macOS, CPU on Linux); <code>"ep" -&gt; "cpu"</code> in the options map forces the CPU. The test checks both give identical rows. When that default provider cannot open the model — the Windows CI runner has no display adapter, so DirectML refuses every session there, as it would on a laptop without a DirectX 12 GPU — and no options were given, the embedder opens it on the CPU instead and <code>IsCpuFallback()</code> says so. Options that name a provider are honoured exactly.</li>
+     <li><strong>Found on the way: <code>-lib @vision</code> had been broken since <code>onnx.obl</code> began linking <code>models.obl</code>.</strong> The group did not list <code>models.obl</code>, and the linker resolves every class a linked library names, so every compile using the alias failed ("Unable to resolve external library class: 'API.Models.TensorSpec'"), whatever the program used. The group now lists <code>models</code>, and <code>nlp_onnx</code> with <code>nlp</code>; <code>lib_alias_vision.obs</code> compiles against the alias on every platform so a group that is not closed fails the suite.</li>
+     <li><strong>Measured</strong> (Windows build box, <code>obr</code>, the build's default provider), embedding 512 API traces of 200 calls with MEAN pooling. A real BERT's encoder compute is not in these numbers: the model is the tiny one's graph widened to hidden 768 (an embedding lookup), so they are the cost of everything around the encoder — encoding, building the tensors, the native crossing both ways, splitting the result and pooling:</li>
+    </ul>
+    <p>| max_len | batch | per text | peak working set | |---|---|---|---| | 128 | 8 | 1.6 ms | 182 MB | | 256 | 1 | 4.9 ms | 120 MB | | 256 | 8 | 5.5 ms | 235 MB | | 256 | 32 | 2.1 ms | 458 MB |</p>
+    <p>Encoding the 512 traces with <code>EncodeBatch</code> took a further 0.7 s at 128 and 1.1 s at 256. A real BERT's encoder adds its own compute on top, which no model here measures. Peak memory grows with batch × max_len × hidden, as the table shows; the batch-8 row at 256 was slower than both batch 1 and batch 32 in repeated runs, so 32 is the better setting at that length when memory allows.</p>
+    <h4 id="systemml-mlobl-embeddingclassifier"><code>System.ML</code> (<code>ml.obl</code>): <code>EmbeddingClassifier</code></h4>
+<pre class="line-numbers"><code class="language-cpp">head := EmbeddingClassifier-&gt;New([64], 0.001, 20, 32, 42);   # hidden sizes, rate, epochs, batch, seed
+head-&gt;SetOptimizer(EmbeddingClassifier-&gt;Optimizer-&gt;ADAM);     # or SGD
+head-&gt;SetClassWeights(1.0, 99.0);                             # negative, positive
+head-&gt;Fit(X_train, y_train);                                  # Float[,], Bool[]
+loss := head-&gt;GetLossHistory();                               # Float[epochs]: mean training loss per epoch
+p := head-&gt;PredictProba(X_test);                              # Float[]
+yhat := head-&gt;PredictClass(X_test, 0.5);                      # Bool[]
+</code></pre>
+    <ul>
+     <li>A dense network: zero or more ReLU hidden layers (<code>[]</code> is logistic regression), one sigmoid output, <strong>binary cross-entropy</strong> loss, optionally class-weighted for imbalance (or <code>SetBalancedWeights()</code>: n / (2 n_class) per class).</li>
+     <li>Minibatch training, shuffled each epoch by the seeded <code>System.ML.Random</code>; He-initialised weights from the same generator. Adam (β₁ 0.9, β₂ 0.999, ε 1e-8) or plain SGD at the configured learning rate. Same seed, same data → the same weights, bit for bit, in every VM mode.</li>
+     <li>Inputs are standardised with the training set's mean and deviation, stored with the model. BERT's dimensions have very different scales, and an unscaled head trains far slower.</li>
+     <li><strong>The loss history</strong> is the mean weighted BCE over the training set after each epoch — one number per epoch, for the lab's training-loss plot.</li>
+     <li>Implements <code>ScoreModel</code>, so <code>CrossValidation</code> and the threshold tools in <code>Metrics</code> accept it.</li>
+     <li><strong>Reuse.</strong> The System.ML outlier work is adding a multi-layer dense network for its autoencoder. If it has landed on master when this stage starts, the head is built on it; if not, the head carries its own forward/backward pass and the duplication is noted for a later merge.</li>
+    </ul>
+    <p><strong>As built (stage 3).</strong></p>
+    <ul>
+     <li><strong>No reuse yet.</strong> The outlier work's <code>DenseNetwork</code> (docs/ML_OUTLIERS_DESIGN.md §2.5) is its stage 2 and had not reached master, so <code>EmbeddingClassifier</code> (<code>ml_embed.obs</code>) has its own dense forward and backward pass. The two overlap in the layer arithmetic and Adam, and differ where their jobs do: that network is trained on mean squared error with Glorot initialisation throughout; this head on class-weighted binary cross-entropy from the logit (a numerically stable <code>log(1 + e^-|z|)</code> form), He-uniform before each ReLU and Glorot before the sigmoid. Once <code>DenseNetwork</code> lands, the head's layers should become one with a sigmoid output and a BCE loss option; the public API here does not change.</li>
+     <li>Matrix products go through <code>Matrix2D-&gt;DotProduct</code> (Eigen, in <code>libobjk_ml</code>); the elementwise work and the optimizer are Objeck. <code>GetWeights(layer)</code> / <code>GetBias(layer)</code> return copies, for inspection and for the gradient test.</li>
+     <li><strong>The loss history</strong> is measured after each epoch on the whole training set with that epoch's final weights, class-weighted and without L2 — so it is a curve of the objective, not an average of minibatch losses taken while the weights moved. <code>Loss(X, y)</code> measures the same on any rows, for a validation curve.</li>
+     <li><strong>Found on the way: the AMD64 JIT refused the update method.</strong> With the SGD loops, the Adam loops and the bias loops in one method, <code>OBJECK_JIT_REPORT=1</code> showed "compile failed at instruction 231", and every update ran in the interpreter: 30 s to train a 768→64→1 head for 20 epochs on 2,000 rows. With one loop per method the same training takes 1.8 s, with identical results. The refusal is a JIT defect (a legal method should compile or spill, not fall back silently); a standalone reproduction is reported with this stage rather than fixed in it.</li>
+     <li><strong>Measured</strong> (Windows build box, <code>obr</code>, JIT on), 20 epochs, batch 32, Adam, balanced weights: 2,000 × 768 logistic 0.36 s; 2,000 × 768 → 64 → 1 1.8 s; 500 × 768 → 64 → 1 0.47 s (0.31 s with SGD).</li>
+    </ul>
+    <h4 id="the-lab-example-programsexamplesmlbert_malware_labobs">The lab example: <code>programs/examples/ml/bert_malware_lab.obs</code></h4>
+<pre class="plain">obr bert_malware_lab.obe --model model.onnx --vocab vocab.txt --data traces.csv
+obr bert_malware_lab.obe --synthetic            # no external data</pre>
+    <ul>
+     <li><strong>CSV format</strong>: a header row, then <code>api_sequence,label</code>; <code>api_sequence</code> is the API calls of one sample separated by spaces or semicolons (quoted if it contains commas), and <code>label</code> is <code>1</code>/<code>malware</code>/<code>true</code> or <code>0</code>/<code>benign</code>/<code>false</code>.</li>
+     <li><strong>Synthetic mode</strong> generates a labelled corpus whose malicious traces favour a few API families (process injection, registry persistence), and uses the tiny test model and vocabulary from <code>programs/regression/data/bert</code> when no model is given, so the program runs anywhere the ONNX library is deployed.</li>
+     <li>Embeddings are computed <strong>once per MAX_SEQ_LENGTH</strong> and reused across every head trained at that length.</li>
+     <li><strong>Experiment 1.</strong> The test set is split off first, stratified, and never changes. Each training set is drawn from the remaining data at the requested POSRATIO (all positives kept up to what the ratio allows, negatives sampled; at 0.001 that can mean one positive). A table of precision, recall, F1 and false negatives per ratio, unweighted and class-weighted.</li>
+     <li><strong>Experiment 2.</strong> The same split at each MAX_SEQ_LENGTH; the same table per length.</li>
+     <li><strong>Experiment 3.</strong> One length, the head retrained per learning rate; the per-epoch loss histories printed as columns (CSV-ready for plotting), with the final table.</li>
+    </ul>
+    <p><strong>As built (stage 4).</strong></p>
+    <ul>
+     <li>The CSV <code>api_sequence</code> field may separate calls with commas as well as spaces and semicolons (quoted), and CRLF files read as LF ones. A 300-row file mixing all three, with <code>1</code>/<code>malware</code>/<code>true</code> labels, loads with the right counts.</li>
+     <li>POSRATIO keeps every training negative and adds the positives the ratio calls for; when the pool has too few positives (0.50 usually), it keeps them all and drops negatives instead, and the table prints the training size and its positives so the reader sees which happened. At 0.001 the training set holds a single positive.</li>
+     <li>Experiments 2 and 3 train with balanced class weights; experiment 1 shows both.</li>
+     <li><strong>Measured</strong> with <code>--synthetic</code> and the tiny test model, 2,000 traces of 40–300 calls (Windows, <code>obr</code>): 22 s for all three experiments, most of it encoding (2,000 traces at four lengths). The tables show the effects in kind — recall collapsing at POSRATIO 0.001 and 0.01 without class weights; F1 rising with MAX_SEQ_LENGTH (0.27 at 32 to 0.77 at 256), since the synthetic malicious calls sometimes start late; the lab's three rates barely moving the loss in 20 epochs (0.85 → 0.79 at 1e-5) where 1e-3 and 1e-2 converge — but the tiny model is an embedding lookup, so the numbers say nothing about BERT.</li>
+     <li>The six VM modes (<code>-opt s3</code>/<code>s0</code> × JIT, <code>--jit=off</code>, <code>OBJECK_JIT_THRESHOLD=1</code>) print identical tables (<code>--samples 400 --epochs 6</code>).</li>
+    </ul>
+    <h3 id="test-plan">Test plan</h3>
+    <p>Correctness is the point. Every test is in <code>programs/regression</code>, exits non-zero on failure, and runs at <code>-opt s3</code> and <code>-opt s0</code>, under <code>obr</code>, <code>obr --jit=off</code> and with <code>OBJECK_JIT_THRESHOLD=1</code>, with identical output.</p>
+    <p><strong>The test model.</strong> A real BERT is hundreds of megabytes and the regression tree ships no model. What the tests need is BERT's <em>signature</em>, with numbers simple enough to recompute. <code>programs/regression/data/bert/gen_tiny_bert.py</code> (needs the <code>onnx</code> package; checks its output with <code>onnxruntime</code> when present) writes three models with the export signature above and hidden size 8:</p>
+<pre class="plain">last_hidden_state[b,s,j] = word[id,j] + type[tt,j] + pos[s,j] + 0.25 * attention_mask[b,s]
+pooler_output[b,j]       = tanh(sum_k last_hidden_state[b,0,k] * Wp[k,j] + bp[j])</pre>
+    <p>Every table is a closed form of its indices with values that are multiples of 1/32, exact in FP32, so a test recomputes every output itself, without numpy and without reading the model. The mask term wires <code>attention_mask</code> into the output and keeps padded positions non-zero, so a wrong mask, or a mean pool that forgets to exclude padding, gives a different answer.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>File</th><th>Inputs</th><th>Outputs</th><th>Stands in for</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="File"><code>tiny_bert.onnx</code></td><td data-label="Inputs">ids, mask, types <code>[-1,-1]</code></td><td data-label="Outputs"><code>last_hidden_state [-1,-1,8]</code>, <code>pooler_output [-1,8]</code></td><td data-label="Stands in for">BERT, dynamic axes</td></tr>
+      <tr><td data-label="File"><code>tiny_bert_nopool.onnx</code></td><td data-label="Inputs">ids, mask</td><td data-label="Outputs"><code>last_hidden_state</code></td><td data-label="Stands in for">DistilBERT</td></tr>
+      <tr><td data-label="File"><code>tiny_bert_fixed.onnx</code></td><td data-label="Inputs">ids, mask, types <code>[1,16]</code></td><td data-label="Outputs">both, fixed</td><td data-label="Stands in for">an export without <code>dynamic_axes</code></td></tr>
+     </tbody>
+    </table>
+    <p><code>vocab.txt</code> beside them (64 tokens: the specials, the BERT paper's <code>un ##aff ##able</code>, and pieces that split Windows API names) is the tests' vocabulary. <code>onnx_tiny_bert_model.obs</code> checks the assets alone, through the generic <code>Session</code>, on every platform's ONNX Runtime (1.19 Linux, 1.22 Windows, 1.30 macOS) before anything is built on them.</p>
+    <p><strong>Stage tests.</strong></p>
+    <ul>
+     <li><em>Tokenizer parity.</em> <code>transformers</code> is not installed here (and is not to be installed). The reference is therefore twofold: hand-computed ids for the BERT paper's examples and edge cases against the test vocabulary; and a transcription of Hugging Face's <code>BasicTokenizer</code> / <code>WordpieceTokenizer</code> in Python using <code>unicodedata</code> (true NFD and categories) run over a corpus — the repository's docs plus Unicode samples — whose (text, ids) pairs are committed as a fixture the Objeck test replays. Edge cases: empty text, whitespace only, punctuation only, a word over 100 characters, a text far past <code>max_len</code>, control characters, CJK, accents, Hangul, emoji, <code>max_len</code> of 2 and 3, pairs where either side is empty.</li>
+     <li><em>Pooling.</em> <code>ClsPool</code> and <code>MeanPool</code> against a reference loop in the test, padding included and excluded; the embedder end to end against the closed form, for all three models and all three poolings; <code>POOLER</code> refused on the model without one; a fixed-axis mismatch refused.</li>
+     <li><em>Batching and determinism.</em> The same texts embedded with batch sizes 1, 3 and 8 and in a shuffled order give identical rows; the same in all six VM modes.</li>
+     <li><em>Head.</em> Converges to 100% training accuracy on linearly separable embeddings; on a convex problem (no hidden layer, small rate) the per-epoch loss is non-increasing to within 1e-9 after the first epoch; class weights move the decision toward the rare class; Adam and SGD both reduce the loss; same seed → identical weights and probabilities; <code>PredictClass</code> thresholds; refusals for mismatched shapes and empty data.</li>
+     <li><em>Example.</em> Runs in synthetic mode in under a minute and prints the three tables.</li>
+    </ul>
+    <h3 id="stages">Stages</h3>
+    <p>Each is its own pull request against master, merged before the next.</p>
+    <ol start="0">
+     <li>This document; the tiny-model generator, the three models and the vocabulary; <code>onnx_tiny_bert_model.obs</code>.</li>
+     <li><code>WordPieceTokenizer</code>, <code>TokenEncoding</code>, <code>ApiSequenceTokenizer</code> in <code>nlp.obs</code>; the parity fixture and tests; <code>nlp.obl</code> rebuilt; the editor index.</li>
+     <li><code>nlp_onnx.obs</code> with <code>BertEmbedder</code>; every library list; tests; memory and throughput.</li>
+     <li><code>EmbeddingClassifier</code> in System.ML; tests.</li>
+     <li>The lab example and its documentation.</li>
+    </ol>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>

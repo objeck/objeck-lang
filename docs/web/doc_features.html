@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Objeck Language Features — Objeck Language</title>
+  <meta name="description" content="Comprehensive guide to Objeck&#x27;s language features with examples."/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">Objeck Language Features</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/FEATURES.md" target="_blank">docs/FEATURES.md on GitHub</a></div>
+    <p class="page-lead">Comprehensive guide to Objeck's language features with examples.</p>
+
+    <h3 id="object-oriented-programming">Object-Oriented Programming</h3>
+    <h4 id="inheritance">Inheritance</h4>
+<pre class="line-numbers"><code class="language-cpp">class Triangle from Shape {
+  New() {
+    Parent();
+  }
+}
+</code></pre>
+    <h4 id="interfaces">Interfaces</h4>
+<pre class="line-numbers"><code class="language-cpp">class Triangle from Shape implements Color {
+  New() {
+    Parent();
+  }
+
+  method : public : GetRgb() ~ Int {
+    return 0xadd8e6;
+  }
+}
+
+interface Color {
+  method : virtual : public : GetRgb() ~ Int;
+}
+</code></pre>
+    <h4 id="default-and-named-arguments">Default and Named Arguments</h4>
+    <p>Trailing parameters can have default values. An argument can be passed by name, <code>name: value</code>, after any positional ones. Named arguments may come in any order, and they may skip any parameter that has a default, not just the trailing ones:</p>
+<pre class="line-numbers"><code class="language-cpp">function : Train(data : Int[], epochs : Int := 10, rate : Float := 0.01, verbose : Bool := false) ~ Nil { ... }
+
+Train(data);                        # every default
+Train(data, verbose: true);         # skip epochs and rate
+Train(data, rate: 0.1, epochs: 50); # any order
+Point-&gt;New(y: 2, x: 1);             # constructors too
+</code></pre>
+    <p>Arguments are evaluated in the order written. Named arguments work for the functions, methods and constructors of the program being compiled, and for those of libraries, which record their parameter names:</p>
+<pre class="line-numbers"><code class="language-cpp">"abc"-&gt;Pad(num: 2, char: '*', is_left: true);  # "**abc"
+Int-&gt;Clamp(value: v, min: 0, max: 10);
+</code></pre>
+    <p>Virtual methods, function values and calls on a primitive value (<code>v-&gt;Clamp(...)</code>) do not take them: a call that tries is a compile error, never a silent positional call. A library's parameter names are part of its API. See <a href="doc_named_arguments.html">NAMED_ARGUMENTS_DESIGN.md</a>.</p>
+    <h4 id="reference-parameters">Reference Parameters</h4>
+    <p>A <code>ref</code> parameter lets a function change its caller's variable. The call site says <code>ref</code> too, so a reader sees which arguments a call may change:</p>
+<pre class="line-numbers"><code class="language-cpp">function : Swap(ref a : Int, ref b : Int) ~ Nil { t := a; a := b; b := t; }
+function : Divmod(a : Int, b : Int, ref remainder : Int) ~ Int { remainder := a % b; return a / b; }
+
+Swap(ref x, ref y);
+q := Divmod(17, 5, ref r);   # q is 3, r is 2
+</code></pre>
+    <p>The value is copied in and copied back after the statement, as Swift's <code>inout</code> is. A local, a parameter or a field can be passed. A call with <code>ref</code> arguments is a statement of its own or the right side of an assignment. See <a href="doc_reference_parameters.html">REFERENCE_PARAMETERS_DESIGN.md</a>.</p>
+    <h4 id="array-literals">Array Literals</h4>
+    <p>An array literal can hold expressions as well as constants; it is built when it is evaluated, the elements in the order written. Objects of several classes make a <code>Base[]</code>, and primitives among objects are boxed:</p>
+<pre class="line-numbers"><code class="language-cpp">x := 3;
+squares := [x, x * x, Square(x + 1)];  # Int[]
+row := ["id", x, 2.5, true];           # Base[]: String, IntRef, FloatRef, BoolRef
+PrintEach([name, title-&gt;ToUpper()]);   # the variadic idiom: an array at the call site
+</code></pre>
+    <h4 id="jagged-arrays">Jagged Arrays</h4>
+    <p><code>T[][]</code> is an array of <code>T[]</code> rows of any length, at any depth:</p>
+<pre class="line-numbers"><code class="language-cpp">rows := Int[]-&gt;New[3];               # three rows, each Nil until set
+rows[0] := [1, 2, 3];
+rows[1] := Int-&gt;New[5];
+rows[2] := [x, y];
+total := rows[0][1] + rows[2][0];     # rows[i] is an Int[]; rows[i][j] an Int
+triangle := [[1], [1, 1], [1, 2, 1]]; # a ragged literal is an Int[][]
+
+function : Sum(rows : Int[][]) ~ Int { ... }
+</code></pre>
+    <p>See <a href="doc_jagged_arrays.html">JAGGED_ARRAYS_DESIGN.md</a>.</p>
+    <h4 id="type-inference">Type Inference</h4>
+<pre class="line-numbers"><code class="language-cpp">value := "Hello World!";
+value-&gt;Size()-&gt;PrintLine();
+</code></pre>
+    <h4 id="nil-safety">Nil Safety</h4>
+    <p><code>?-&gt;</code> calls a method only when the receiver is non-<code>Nil</code>, yielding <code>Nil</code> instead of faulting. <code>??</code> supplies a value when the left side is <code>Nil</code>.</p>
+<pre class="line-numbers"><code class="language-cpp"># without them
+city := Nil;
+if(person &lt;&gt; Nil) {
+  address := person-&gt;GetAddress();
+  if(address &lt;&gt; Nil) {
+    city := address-&gt;GetCity();
+  };
+};
+
+# with them
+city := person?-&gt;GetAddress()?-&gt;GetCity();
+
+# '??' supplies a default; the right side is evaluated only when needed
+name := lookup ?? "(unknown)";
+port := config_port ?? ExpensiveDefault();
+</code></pre>
+    <p>A single <code>?-&gt;</code> guards the <strong>whole rest of the chain</strong>, so you do not need one at every step:</p>
+<pre class="line-numbers"><code class="language-cpp"># both calls are guarded by the one '?-&gt;'
+text := maybe?-&gt;Trim()-&gt;ToUpper();
+</code></pre>
+    <p>A chain that ends in a value type needs <code>??</code> to supply the result, since an <code>Int</code> cannot itself be <code>Nil</code>:</p>
+<pre class="line-numbers"><code class="language-cpp">size := maybe?-&gt;ToUpper()-&gt;Size() ?? -1;
+</code></pre>
+    <p>For a guarded value -- <code>Bool</code>, <code>Byte</code>, <code>Char</code> or <code>Int</code> -- the default replaces only a failure: <code>size</code> above is <code>-1</code> when <code>maybe</code> is <code>Nil</code> and <code>0</code> when it is <code>""</code>. For a guarded object, <code>??</code> takes the default when the chain failed or yielded <code>Nil</code>.</p>
+    <p>Both build on the <code>Try()</code>/<code>Otherwise()</code> intrinsics, so <code>a?-&gt;b()</code> is exactly <code>a-&gt;Try()-&gt;b()</code> and <code>a ?? b</code> is <code>a-&gt;Otherwise(b)</code>. One consequence worth knowing: <code>Try()</code> guards against most runtime errors in the chain, not only a <code>Nil</code> dereference — <code>a?-&gt;Get(999)</code> yields <code>Nil</code> on an out-of-range index rather than faulting. An invalid object cast is recovered too, in interpreted and in JIT-compiled code alike — the same program behaves the same way whether or not the failing method happened to be compiled. A call-stack overflow is recovered in interpreted code only: compiled frames consume the real C stack, so the process dies in the OS before any frame-count guard can fire.</p>
+    <p>A guarded call works as a statement too: <code>t?-&gt;Close();</code> runs <code>Close()</code> unless <code>t</code> is <code>Nil</code>, and recovers a runtime error inside it. A method that returns nothing yields <code>Nil</code> through the guard.</p>
+    <h4 id="reading-a-recovered-error">Reading a recovered error</h4>
+    <p>After a <code>?-&gt;</code> recovers, the error it took is recorded for the thread:</p>
+<pre class="line-numbers"><code class="language-cpp">value := table-&gt;Get(key)?-&gt;Parse() ?? 0;
+if(Runtime-&gt;HasError()) {
+  kind := Runtime-&gt;GetErrorKind();   # NIL_DEREFERENCE, INDEX_OUT_OF_BOUNDS,
+                                     # DIVIDE_BY_ZERO, INVALID_CAST, OTHER
+  "skipped {$key}: {$(Runtime-&gt;GetError())}"-&gt;ErrorLine();
+  Runtime-&gt;ClearError();
+};
+</code></pre>
+    <p>A Nil receiver is not an error: <code>x?-&gt;M()</code> with <code>x</code> Nil calls nothing. See <a href="doc_recovered_errors.html">RECOVERED_ERRORS_DESIGN.md</a>.</p>
+    <h4 id="errors-raise-try-on-finally">Errors: raise, try, on, finally</h4>
+    <p>An error is an object: <code>System.Error</code>, or a subclass of your own. <code>Runtime-&gt;Raise</code> raises one; a <code>try</code> block catches errors by type, and <code>finally</code> runs on every way out:</p>
+<pre class="line-numbers"><code class="language-cpp">class ParseError from Error {
+  New(message : String) { Parent(message); }
+}
+
+try {
+  rows := Load(path);
+  model := Fit(rows);
+}
+on(e : ParseError) {
+  "bad row: {$(e-&gt;GetMessage())}"-&gt;ErrorLine();
+}
+on(e : DivideByZeroError) {
+  model := Nil;
+}
+finally {
+  log-&gt;Close();
+};
+</code></pre>
+    <ul>
+     <li><code>on</code> clauses are tested in order; an error none of them names is raised again after <code>finally</code>, so a typed <code>try</code> never swallows what it did not ask for. <code>on(e : Error)</code> takes anything.</li>
+     <li>The runtime's own errors are <code>NilError</code>, <code>IndexError</code>, <code>DivideByZeroError</code>, <code>CastError</code> and <code>RuntimeError</code> (a failed <code>Runtime-&gt;Assert</code>, a failing library call).</li>
+     <li><code>Runtime-&gt;Raise(e)</code> in a handler passes the error on. An error raised in a handler still runs <code>finally</code> first.</li>
+     <li><code>return</code>, <code>break</code> and <code>continue</code> may leave a <code>try</code> body or a handler, through <code>finally</code>; they may not leave <code>finally</code> itself.</li>
+     <li><code>try</code>, <code>on</code> and <code>finally</code> are contextual: they can still be used as names.</li>
+     <li><code>?-&gt;</code> still recovers from any error below a guarded call, and <code>Runtime-&gt;GetLastError()</code> returns the one it took.</li>
+     <li>An error nothing catches ends the program with <code>Unhandled &lt;class&gt;: &lt;message&gt;</code>.</li>
+    </ul>
+    <p>A method with a <code>try</code> block runs interpreted (the JIT compiles its callees), as one with a <code>?-&gt;</code> does. See <a href="https://github.com/objeck/objeck-lang/blob/master/docs/ERROR_HANDLING_DESIGN.md" target="_blank">ERROR_HANDLING_DESIGN.md</a>.</p>
+    <h4 id="tail-calls">Tail calls</h4>
+    <p>A method's call to itself on <code>@self</code> in tail position (<code>Down(); }</code> or <code>return Down();</code>) is compiled as a jump at <code>-opt s1</code> and above, so unbounded tail recursion runs in constant stack. The transform is skipped for <code>Main</code>, constructors, virtual methods, methods containing <code>&amp;</code>/<code>|</code>, and methods with a <code>Try()</code> region of their own. A call on another instance of the class is a real call, and so is any call at <code>-opt s0</code>.</p>
+    <h4 id="anonymous-classes">Anonymous Classes</h4>
+<pre class="line-numbers"><code class="language-cpp">interface Greetings {
+  method : virtual : public : SayHi() ~ Nil;
+}
+
+class Hello {
+  function : Main(args : String[]) ~ Nil {
+    hey := Base-&gt;New() implements Greetings {
+      New() {}
+
+      method : public : SayHi() ~ Nil {
+        "Hey..."-&gt;PrintLine();
+      }
+    };
+  }
+}
+</code></pre>
+    <h4 id="reflection">Reflection</h4>
+<pre class="line-numbers"><code class="language-cpp">klass := "Hello World!"-&gt;GetClass();
+klass-&gt;GetName()-&gt;PrintLine();
+klass-&gt;GetMethodNumber()-&gt;PrintLine();
+</code></pre>
+    <h4 id="dependency-injection">Dependency Injection</h4>
+<pre class="line-numbers"><code class="language-cpp">value := Class-&gt;Instance("System.String")-&gt;As(String);
+value += "510";
+value-&gt;PrintLine();
+</code></pre>
+    <h4 id="generics">Generics</h4>
+<pre class="line-numbers"><code class="language-cpp">map := Collection.Map-&gt;New()&lt;IntRef, String&gt;;
+map-&gt;Insert(415, "San Francisco");
+map-&gt;Insert(510, "Oakland");
+map-&gt;Insert(408, "Sunnyvale");
+map-&gt;ToString()-&gt;PrintLine();
+</code></pre>
+    <h5 id="type-parameter-bounds">Type-parameter bounds</h5>
+    <p>A type parameter can require an interface bound (<code>T : Bound</code>); a concrete argument must implement it. Multiple bounds combine with <code>&amp;</code>, and a bound may be generic (F-bounded, e.g. self-comparable):</p>
+<pre class="line-numbers"><code class="language-cpp"># single bound
+class SortedBox&lt;T : Compare&gt; { ... }
+
+# compound bound: T must satisfy BOTH interfaces
+class Entry&lt;T : Compare &amp; Stringify&gt; { ... }
+
+# F-bounded: T must be comparable to itself
+class Sorter&lt;T : Compare&lt;T&gt;&gt; { ... }
+</code></pre>
+    <h5 id="variance-out--in">Variance (<code>out</code> / <code>in</code>)</h5>
+    <p>Declaration-site variance relaxes the default invariance. A covariant parameter (<code>out T</code>) lets <code>Producer&lt;Dog&gt;</code> be used where <code>Producer&lt;Animal&gt;</code> is expected; a contravariant parameter (<code>in T</code>) lets <code>Consumer&lt;Animal&gt;</code> be used where <code>Consumer&lt;Dog&gt;</code> is expected. Omitting the modifier keeps the safe, invariant default.</p>
+<pre class="line-numbers"><code class="language-cpp">class Animal {}
+class Dog from Animal { New() { Parent(); } }
+
+class Producer&lt;out T&gt; { @v : T; New() {}  method : public : Get() ~ T { return @v; } }
+
+class Test {
+  function : Use(p : Producer&lt;Animal&gt;) ~ Nil {}
+  function : Main(args : String[]) ~ Nil {
+    pd := Producer-&gt;New()&lt;Dog&gt;;
+    Use(pd);   # accepted: Producer&lt;Dog&gt; is a Producer&lt;Animal&gt;
+  }
+}
+</code></pre>
+    <h4 id="generic-methods">Generic Methods</h4>
+    <p>A function or method can declare its own type parameters, inferred from the arguments at each call:</p>
+<pre class="line-numbers"><code class="language-cpp">function : Max&lt;T : Compare&gt;(values : Vector&lt;T&gt;) ~ T { ... }
+function : Swap&lt;T&gt;(a : T[], i : Int, j : Int) ~ Nil { ... }
+
+best := Max(scores);   # scores is a Vector&lt;IntRef&gt;, so best is an IntRef
+Swap(names, 0, 2);     # T is String
+</code></pre>
+    <p>A type parameter takes an object (box primitives as <code>IntRef</code>, ...). Library methods take type parameters too: <code>Vector</code>, <code>List</code> and <code>CompareList</code> have <code>Map&lt;R&gt;((H) ~ R)</code>, so a map can change the element type:</p>
+<pre class="line-numbers"><code class="language-cpp">lengths := words-&gt;Map(\(String) ~ IntRef : (s) =&gt; IntRef-&gt;New(s-&gt;Size()));  # Vector&lt;IntRef&gt;
+upper := words-&gt;Map(\(s) =&gt; s-&gt;ToUpper());                                   # R from the body
+</code></pre>
+    <p>An inferred lambda for a type parameter must return an object. See <a href="doc_method_generics.html">METHOD_GENERICS_DESIGN.md</a>.</p>
+    <h4 id="type-boxing">Type Boxing</h4>
+<pre class="line-numbers"><code class="language-cpp">list := Collection.List-&gt;New()&lt;IntRef&gt;;
+list-&gt;AddBack(17);
+list-&gt;AddFront(4);
+(list-&gt;Back() + list-&gt;Front())-&gt;PrintLine();
+</code></pre>
+    <h4 id="static-import">Static Import</h4>
+<pre class="line-numbers"><code class="language-cpp">use function Int;
+
+class Test {
+  function : Main(args : String[]) ~ Nil {
+    Abs(-256)-&gt;Sqrt()-&gt;PrintLine();
+  }
+}
+</code></pre>
+    <h4 id="serialization">Serialization</h4>
+<pre class="line-numbers"><code class="language-cpp">serializer := System.IO.Serializer-&gt;New();
+serializer-&gt;Write(map);
+serializer-&gt;Write("Fin.");
+bytes := serializer-&gt;Serialize();
+bytes-&gt;Size()-&gt;PrintLine();
+</code></pre>
+    <hr class="section-end">
+    <div class="raw"><a name="functional"></a>
+    ## Functional Programming</div>
+    <h4 id="closures-and-lambda-expressions">Closures and Lambda Expressions</h4>
+    <p>A lambda is written one of two ways, and which you need depends on whether it takes parameters.</p>
+    <p><strong>No parameters — the shorthand <code>\() =&gt; body</code>.</strong> When the surrounding context expects a <code>FuncRef&lt;R&gt;</code> — an assignment target, a <code>return</code>, a method argument, or a collection element — the return type is inferred and the lambda <strong>auto-wraps</strong> into a <code>FuncRef&lt;R&gt;</code> (no explicit <code>FuncRef-&gt;New(...)&lt;R&gt;</code> or <code>~ R :</code> annotation). Call a <code>FuncRef</code> <strong>directly</strong> with <code>v()</code> — no <code>-&gt;Get()</code>/<code>-&gt;Call()</code> step — and chain on the result (<code>v()-&gt;Get()</code>).</p>
+    <p><strong>With parameters — the annotated form <code>\(types) ~ R : (names) =&gt; body</code></strong>, which targets a function type rather than a <code>FuncRef&lt;R&gt;</code>. <code>FuncRef&lt;R&gt;</code> wraps a <code>() ~ R</code> and has no parameter slots, so a lambda taking an argument cannot be a <code>FuncRef</code>. See <em>Lambdas with parameters</em> below.</p>
+<pre class="line-numbers"><code class="language-cpp"># bare lambda; return type inferred from the FuncRef&lt;IntRef&gt; target, called directly
+f : FuncRef&lt;IntRef&gt; := \() =&gt; IntRef-&gt;New(5);
+f()-&gt;Get()-&gt;PrintLine();          # 5
+
+# block body: an arbitrary statement list (inferred locals, loops) with a return
+sum := \() =&gt; {
+  acc := IntRef-&gt;New(0);
+  for(k := 0; k &lt; 5; k += 1;) { acc-&gt;Set(acc-&gt;Get() + k); };
+  return acc;
+};
+sum()-&gt;Get()-&gt;PrintLine();        # 0+1+2+3+4 = 10
+
+# auto-wraps when stored in a generic collection, then called directly
+funcs := Vector-&gt;New()&lt;FuncRef&lt;IntRef&gt;&gt;;
+each(i : 5) { funcs-&gt;AddBack(\() =&gt; IntRef-&gt;New(i * 7)); };
+each(i : funcs) {
+  f := funcs-&gt;Get(i);
+  f()-&gt;Get()-&gt;PrintLine();
+};
+</code></pre>
+    <p>A bare lambda also auto-wraps when returned or passed as an argument:</p>
+<pre class="line-numbers"><code class="language-cpp">function : Mk(n : Int) ~ FuncRef&lt;IntRef&gt; {
+  x := IntRef-&gt;New(n);
+  return \() =&gt; x;                # auto-wraps to FuncRef&lt;IntRef&gt;
+}
+</code></pre>
+    <p>The verbose form with an explicit annotation is still supported and equivalent: <code>FuncRef-&gt;New(\() ~ IntRef : () =&gt; x)&lt;IntRef&gt;</code>.</p>
+    <h5 id="lambdas-with-parameters">Lambdas with parameters</h5>
+    <p>The shorthand is zero-parameter only. A lambda that takes arguments uses the annotated form — parameter <strong>types</strong>, the return type, then parameter <strong>names</strong> — and targets a function type:</p>
+<pre class="line-numbers"><code class="language-cpp">f : (Int) ~ Int := \(Int) ~ Int : (x) =&gt; x + 1;
+f(41)-&gt;PrintLine();                                  # 42
+</code></pre>
+    <p>The two parenthesised groups are types and then names, in that order. Writing <code>\(x : Int) =&gt; ...</code> does not compile: the shorthand has no parameter list, and the error points at the parameter name rather than saying so.</p>
+    <p>A parameterised lambda captures exactly as a zero-parameter one does, so a function can return one and the captures travel with it — independently per lambda, with no shared state:</p>
+<pre class="line-numbers"><code class="language-cpp">function : MakeAdder(n : Int) ~ (Int) ~ Int {
+  return \(Int) ~ Int : (x) =&gt; x + n;
+}
+
+add3 := MakeAdder(3);
+add100 := MakeAdder(100);
+add3(10)-&gt;PrintLine();      # 13
+add100(10)-&gt;PrintLine();    # 110
+add3(10)-&gt;PrintLine();      # 13 — unaffected by the second
+</code></pre>
+    <p>This is what makes currying, partial application and function composition expressible; see <strong>First-Class Functions</strong> below for composition.</p>
+    <h5 id="what-a-lambda-can-capture">What a lambda can capture</h5>
+    <p>A lambda can use the locals and parameters of the method that creates it: values, strings, arrays, objects, function references and other <code>FuncRef</code>s. Inside the body you can call methods on a captured object (including virtual methods) and call a captured function or <code>FuncRef</code> directly.</p>
+<pre class="line-numbers"><code class="language-cpp">c := Counter-&gt;New();
+inc : FuncRef&lt;IntRef&gt; := \() =&gt; c-&gt;Inc();     # instance method on a captured object
+r : FuncRef&lt;IntRef&gt; := \() =&gt; IntRef-&gt;New(3);
+next : FuncRef&lt;IntRef&gt; := \() =&gt; IntRef-&gt;New(r()-&gt;Get() + 1);   # captured FuncRef called
+</code></pre>
+    <p>Captures are <strong>by copy</strong>, taken when the lambda is created:</p>
+    <ul>
+     <li>A later assignment to the captured local is not seen: with <code>n := 1;</code>, then a lambda that reads <code>n</code>, then <code>n := 2;</code>, the lambda still sees <code>1</code>. A loop variable captured in each iteration keeps that iteration's value.</li>
+     <li>An object is copied as a reference, so the lambda and the enclosing method share it: <code>c-&gt;Inc()</code> inside the lambda is visible as <code>c-&gt;Get()</code> outside. Rebinding the local (<code>c := Counter-&gt;New();</code>) does not change which object the lambda uses.</li>
+    </ul>
+    <p>Not available in lambda bodies yet: <code>self</code>, <code>@field</code> access, and calling an instance method of the enclosing class without a receiver (<code>Inc()</code>), which is rejected with "Cannot reference an instance method from this context". Capture the object in a local and call through it instead.</p>
+    <h4 id="first-class-functions">First-Class Functions</h4>
+    <p>A named function is passed as <code>Name(types) ~ Return</code>, and a function type is written the same way. Compose two by returning a <strong>parameterised lambda</strong>, which closes over them:</p>
+<pre class="line-numbers"><code class="language-cpp">function : Compose(f : (Int) ~ Int, g : (Int) ~ Int) ~ (Int) ~ Int {
+  return \(Int) ~ Int : (x) =&gt; f(g(x));
+}
+
+function : F(a : Int) ~ Int { return a + 14; }
+function : G(a : Int) ~ Int { return a + 15; }
+
+function : Main(args : String[]) ~ Nil {
+  compose := Compose(F(Int) ~ Int, G(Int) ~ Int);
+  compose(13)-&gt;PrintLine();                 # 42
+}
+</code></pre>
+    <p>Each call to <code>Compose</code> produces an independent function, so several may be live at once.</p>
+    <div class="note"><strong>Do not route the captures through static fields.</strong> It is the obvious way to write this without a lambda, because a plain function reference has nowhere to put <code>f</code> and <code>g</code> — and it is wrong:  ``<code>ruby @f : static : (Int) ~ Int; @g : static : (Int) ~ Int;  function : native : BadCompose(x : Int) ~ Int { return @f(@g(x)); }  function : BadComposer(f : (Int) ~ Int, g : (Int) ~ Int) ~ (Int) ~ Int { @f := f;  @g := g; return BadCompose(Int) ~ Int; } </code>`<code>  Every result refers to the same </code>BadCompose`, which reads whichever pair was stored last. Build two and the first silently changes meaning — no error, no warning, just a wrong number. Use the lambda above.</div>
+    <hr class="section-end">
+    <div class="raw"><a name="reserved"></a>
+    ## Reserved Words</div>
+    <p>These 40 words cannot be used as identifiers:</p>
+<pre class="plain">alias      and        break      bundle     class      consts     continue
+critical   do         each       else       enum       false      for
+from       function   if         implements in         interface  label
+leaving    method     native     not        or         other      private
+public     readonly   record     return     reverse    select     static
+true       use        virtual    while      xor</pre>
+    <p>Using one reports <code>Expected identifier</code> at that position, without naming the word. Four of them read as ordinary identifiers and are worth knowing about:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>word</th><th>reserved for</th><th>commonly wanted as</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="word"><code>other</code></td><td data-label="reserved for">the default label in <code>select</code></td><td data-label="commonly wanted as"><code>Equals(other)</code>, <code>Compare(other)</code>, <code>Add(other)</code></td></tr>
+      <tr><td data-label="word"><code>label</code></td><td data-label="reserved for"><code>select</code> case labels</td><td data-label="commonly wanted as">a caption, a graph vertex, a class label</td></tr>
+      <tr><td data-label="word"><code>from</code></td><td data-label="reserved for">the inheritance clause, <code>class X from Y</code></td><td data-label="commonly wanted as">a date range, a graph edge</td></tr>
+      <tr><td data-label="word"><code>reverse</code></td><td data-label="reserved for"><code>each(... reverse ...)</code></td><td data-label="commonly wanted as">a sort direction</td></tr>
+     </tbody>
+    </table>
+    <p><code>self</code>, <code>parent</code> and <code>value</code> are <strong>not</strong> reserved as identifiers.</p>
+    <hr class="section-end">
+    <div class="raw"><a name="integers"></a>
+    ## Integer Arithmetic</div>
+    <ul>
+     <li><strong>Width:</strong> <code>Int</code> is 64-bit two's-complement; <code>Byte</code> and <code>Char</code> widen to <code>Int</code>.</li>
+     <li><strong>Overflow:</strong> <code>+ - *</code> wrap and never trap.</li>
+     <li><strong>Shifts:</strong> use <code>n and 63</code>. <code>&gt;&gt;</code> sign-fills, <code>&gt;&gt;&gt;</code> zero-fills.</li>
+     <li><strong>Division:</strong> <code>/</code> truncates toward zero; <code>%</code> takes the dividend's sign.</li>
+     <li><strong>Traps:</strong> a zero divisor is the only integer trap; <code>MIN / -1 = MIN</code> and <code>MIN % -1 = 0</code>.</li>
+     <li><strong>Byte narrowing:</strong> a <code>Byte</code> is unsigned, 0 to 255. A value that lands in a scalar <code>Byte</code> -- a local, field or parameter, a <code>~ Byte</code> return, <code>-&gt;As(Byte)</code> or <code>Int-&gt;ToByte</code> -- keeps its low 8 bits, as a <code>Byte[]</code> element store does: <code>255 + 1</code> is 0, <code>0 - 1</code> is 255, 300 is 44. The arithmetic runs at <code>Int</code> width and wraps only where its result lands in a <code>Byte</code>: with <code>b</code> at 255, <code>b + 1 = 256</code> is true, but <code>(b + 1)-&gt;PrintLine()</code> prints 0, because <code>PrintLine</code> takes a <code>Byte</code> parameter.</li>
+     <li><strong>Char is not narrowed:</strong> a scalar <code>Char</code> holds a whole Unicode code point on every platform, so <code>0x1F600-&gt;As(Char)</code> keeps its value and <code>String-&gt;Append</code> writes the surrogate pair where strings are UTF-16 (Windows). Only a <code>Char[]</code> element store is limited to the platform's character width (16 bits on Windows, 32 elsewhere).</li>
+     <li><strong>Printing a Byte:</strong> always its decimal value. <code>ToString</code>, <code>Print</code>/<code>PrintLine</code>, interpolation, concatenation and <code>String-&gt;Append(Byte)</code> all give "65" for 65; use <code>b-&gt;As(Char)</code> for the character.</li>
+     <li><strong>Consistency:</strong> identical in the interpreter, both JITs and at every <code>-opt</code> level.</li>
+    </ul>
+<pre class="line-numbers"><code class="language-cpp">min := -9223372036854775807 - 1;
+(9223372036854775807 + 1 = min)-&gt;PrintLine(); # true: wraps
+(min / -1 = min)-&gt;PrintLine();                # true: no trap
+(1 &lt;&lt; 65)-&gt;PrintLine();                       # 2: the count is 65 and 63 = 1
+(-8 &gt;&gt;&gt; 64)-&gt;PrintLine();                     # -8: a count of 64 shifts by 0
+(-7 / 2)-&gt;PrintLine();                        # -3
+(-7 % 3)-&gt;PrintLine();                        # -1
+
+b : Byte := 255;
+b += 1;
+b-&gt;PrintLine();                               # 0: a Byte wraps on store
+Int-&gt;ToByte(300)-&gt;PrintLine();                # 44
+(b - 1 = -1)-&gt;PrintLine();                    # true: the arithmetic is Int-wide
+</code></pre>
+    <hr class="section-end">
+    <div class="raw"><a name="strings"></a>
+    ## Strings & Formatting</div>
+    <h4 id="interpolation">Interpolation</h4>
+    <p>Embed a value in a string literal with <code>{$...}</code>. The braces may hold any expression — a bare variable, a field, an arithmetic / comparison / logical expression, an array access, or a method call:</p>
+<pre class="line-numbers"><code class="language-cpp">name := "World";
+i := 41;
+"Hello, {$name}!"-&gt;PrintLine();             # Hello, World!
+"next = {$i + 1}"-&gt;PrintLine();             # next = 42
+"even? {$i % 2 = 0}"-&gt;PrintLine();          # even? false
+"upper = {$name-&gt;ToUpper()}"-&gt;PrintLine();  # upper = WORLD
+</code></pre>
+    <p>A String or object that is <code>Nil</code> interpolates as <code>Nil</code>, so a message can show a value that is missing: <code>s : String; "s={$s}"-&gt;PrintLine();</code> prints <code>s=Nil</code>. Only interpolation does this; <code>String-&gt;Append(Nil)</code> and <code>+</code> with a <code>Nil</code> operand still raise a Nil error.</p>
+    <p>Any object can be interpolated or concatenated. It prints through the nearest <code>ToString</code> in its class chain, ending at <code>System.Base-&gt;ToString</code>. That method prints a <code>Stringify</code> instance's own <code>ToString</code>, and for any other object the class name and instance ID (<code>Point@0x1f</code>). So a mixed <code>Base[]</code> prints without a cast. Methods with a body are bound statically. To make an object print its own way through a <code>Base</code> reference, implement <code>Stringify</code> rather than only declaring a <code>ToString</code>:</p>
+<pre class="line-numbers"><code class="language-cpp">class Point implements Stringify {
+  @x : Int; @y : Int;
+  New(x : Int, y : Int) { @x := x; @y := y; }
+  method : public : ToString() ~ String { return "({$@x}, {$@y})"; }
+}
+
+items := Base-&gt;New[2];
+items[0] := Point-&gt;New(1, 2);
+items[1] := "text";
+each(i : items) { items[i]-&gt;ToString()-&gt;PrintLine(); };  # (1, 2) / text
+</code></pre>
+    <h4 id="format-specifiers">Format specifiers</h4>
+    <p>Append <code>:spec</code> to an interpolated expression for precision, width, alignment, or radix (Python / .NET–style):</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Spec</th><th>Example</th><th>Result</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Spec"><code>.N</code> — precision</td><td data-label="Example"><code>"{$pi:.2}"</code></td><td data-label="Result"><code>3.14</code></td></tr>
+      <tr><td data-label="Spec"><code>N</code> — min width (right-justified)</td><td data-label="Example"><code>"[{$n:5}]"</code></td><td data-label="Result"><code>[   42]</code></td></tr>
+      <tr><td data-label="Spec"><code>0N</code> — zero-pad</td><td data-label="Example"><code>"{$n:05}"</code></td><td data-label="Result"><code>00042</code></td></tr>
+      <tr><td data-label="Spec"><code>&lt;N</code> — left-justify</td><td data-label="Example"><code>"[{$s:&lt;6}]"</code></td><td data-label="Result"><code>[hi    ]</code></td></tr>
+      <tr><td data-label="Spec"><code>&gt;N</code> — right-justify</td><td data-label="Example"><code>"[{$s:&gt;6}]"</code></td><td data-label="Result"><code>[    hi]</code></td></tr>
+      <tr><td data-label="Spec"><code>x</code> — hexadecimal</td><td data-label="Example"><code>"{$v:x}"</code></td><td data-label="Result"><code>0xff</code></td></tr>
+      <tr><td data-label="Spec"><code>b</code> — binary</td><td data-label="Example"><code>"{$v:b}"</code></td><td data-label="Result"><code>11111111</code></td></tr>
+      <tr><td data-label="Spec">width + precision</td><td data-label="Example"><code>"[{$pi:8.2}]"</code></td><td data-label="Result"><code>[    3.14]</code></td></tr>
+     </tbody>
+    </table>
+<pre class="line-numbers"><code class="language-cpp">pi := 3.14159; n := 42; v := 255;
+"pi  = {$pi:.2}"-&gt;PrintLine();   # pi  = 3.14
+"id  = {$n:05}"-&gt;PrintLine();    # id  = 00042
+"hex = {$v:x}"-&gt;PrintLine();     # hex = 0xff
+</code></pre>
+    <h4 id="string-format">String-&gt;Format</h4>
+    <p>For a positional template — handy when the format string is reused or built at runtime — use <code>String-&gt;Format</code>. Placeholders <code>{0}</code>, <code>{1}</code>, … are replaced by the matching argument's <code>ToString</code>; <code>{{</code> and <code>}}</code> produce literal braces:</p>
+<pre class="line-numbers"><code class="language-cpp">String-&gt;Format("{0} = {1}", "x", "y")-&gt;PrintLine();      # x = y
+String-&gt;Format("{1} before {0}", "a", "b")-&gt;PrintLine(); # b before a
+</code></pre>
+    <p>String and object arguments are passed directly; primitive values are boxed with their holder type (<code>IntRef</code>, <code>FloatRef</code>, …):</p>
+<pre class="line-numbers"><code class="language-cpp">use System;
+String-&gt;Format("n = {0}", IntRef-&gt;New(42))-&gt;PrintLine(); # n = 42
+</code></pre>
+    <div class="note">For mixing primitive values, string interpolation (<code>"{$x}"</code> / <code>"{$x:.2}"</code>) is usually more convenient than <code>Format</code>.</div>
+    <h4 id="building-strings-manually">Building strings manually</h4>
+    <p><code>String</code> also provides <code>Append</code>, <code>Pad</code> / <code>PadTo</code>, <code>Justify</code>, and <code>Truncate</code> for incremental construction:</p>
+<pre class="line-numbers"><code class="language-cpp">buffer := String-&gt;New();
+buffer-&gt;Append("count=");
+buffer-&gt;Append(7);
+buffer-&gt;ToString()-&gt;PrintLine();           # count=7
+"42"-&gt;PadTo(5, '0', true)-&gt;PrintLine();     # 00042
+</code></pre>
+    <hr class="section-end">
+    <div class="raw"><a name="platform"></a>
+    ## Platform Support</div>
+    <h4 id="unicode">Unicode</h4>
+<pre class="line-numbers"><code class="language-cpp">"Καλημέρα κόσμε"-&gt;PrintLine();
+"こんにちは 世界"-&gt;PrintLine();
+</code></pre>
+    <h4 id="file-system">File System</h4>
+<pre class="line-numbers"><code class="language-cpp">content := System.IO.Filesystem.FileReader-&gt;ReadFile(filename);
+content-&gt;Size()-&gt;PrintLine();
+System.IO.Filesystem.File-&gt;Size(filename)-&gt;PrintLine();
+</code></pre>
+    <h4 id="sockets">Sockets</h4>
+<pre class="line-numbers"><code class="language-cpp">socket-&gt;WriteString("GET / HTTP/1.1\nHost:google.com\nUser Agent: Mozilla/5.0 (compatible)\nConnection: Close\n\n");
+line := socket-&gt;ReadString();
+while(line &lt;&gt; Nil &amp; line-&gt;Size() &gt; 0) {
+  line-&gt;PrintLine();
+  line := socket-&gt;ReadString();
+};
+socket-&gt;Close();
+</code></pre>
+    <h4 id="named-pipes">Named Pipes</h4>
+<pre class="line-numbers"><code class="language-cpp">pipe := System.IO.Pipe-&gt;New("foobar", Pipe-&gt;Mode-&gt;CREATE);
+if(pipe-&gt;Connect()) {
+  pipe-&gt;ReadLine()-&gt;PrintLine();
+  pipe-&gt;WriteString("Hi Ya!");
+  pipe-&gt;Close();
+};
+</code></pre>
+    <h4 id="threading-with-mutexes">Threading with Mutexes</h4>
+<pre class="line-numbers"><code class="language-cpp">class CalculateThread from Thread {
+  ...
+  @inc_mutex : static : ThreadMutex;
+
+  New() {
+    @inc_mutex := ThreadMutex-&gt;New("inc_mutex");
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    Compute();
+  }
+
+  method : native : Compute() ~ Nil {
+    y : Int;
+
+    while(true) {
+      critical(@inc_mutex) {
+        y := @current_line;
+        @current_line+=1;
+      };
+      ...
+    };
+  }
+}
+</code></pre>
+    <h4 id="structured-concurrency">Structured Concurrency</h4>
+    <p>A <code>TaskScope</code> (nursery) spawns closures as worker <code>Thread</code>s. Wrapped in a <code>leaving { scope-&gt;JoinAll(); }</code> block it can never exit until every child has joined — the structured-concurrency invariant (no task outlives its scope), on any exit path (normal, early return, or unwind). Library: <code>System.Concurrency</code> (link <code>-lib gen_collect,concurrent</code>).</p>
+<pre class="line-numbers"><code class="language-cpp">use System.Concurrency;
+
+scope := TaskScope-&gt;New();
+leaving { scope-&gt;JoinAll(); }              # joins all children on every exit path
+a := scope-&gt;Spawn(FuncRef-&gt;New(\() ~ System.Base : () =&gt; { return Work(1); })&lt;System.Base&gt;);
+b := scope-&gt;Spawn(FuncRef-&gt;New(\() ~ System.Base : () =&gt; { return Work(2); })&lt;System.Base&gt;);
+# after the block: a-&gt;GetResult(), b-&gt;GetResult(); scope-&gt;Cancel() for boundary cancel
+</code></pre>
+    <p><code>TaskScope</code>: <code>Spawn(FuncRef&lt;System.Base&gt;)~Task</code>, <code>JoinAll()</code>, <code>Cancel()</code>, <code>IsCancelled()</code>, <code>Size()</code>. <code>Task</code>: <code>GetResult()~System.Base</code>, <code>IsDone()~Bool</code>, <code>DidRun()~Bool</code>. Each <code>Task</code> is a real <code>Thread</code>, so mutator register/unregister and the GC stop-the-world contract are handled for free. Cancellation is cooperative and <strong>boundary-only</strong> — a lambda body can call static functions but not instance methods, so it can't poll the scope; <code>Task.Run</code> checks cancellation before invoking the body.</p>
+    <h4 id="runtime-diagnostics">Runtime Diagnostics</h4>
+    <p><code>System.Concurrency.Monitor</code> gives typed access to live VM/GC/thread statistics (thin wrappers over <code>System.Runtime-&gt;GetProperty("runtime.*")</code>); all are lock-free reads that do not affect GC behavior.</p>
+<pre class="line-numbers"><code class="language-cpp">use System.Concurrency;
+
+Monitor-&gt;MajorCollections()-&gt;PrintLine();   # GC count
+Monitor-&gt;LastPauseMicros()-&gt;PrintLine();    # last stop-the-world pause (us)
+Monitor-&gt;ActiveThreads()-&gt;PrintLine();      # registered mutator threads
+Monitor-&gt;MemoryOverhead()-&gt;PrintLine();     # RSS - live heap (fragmentation gauge)
+</code></pre>
+    <p>Or read keys directly: <code>System.Runtime-&gt;GetProperty(key)-&gt;ToInt()</code>.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>key</th><th>meaning</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="key"><code>runtime.memory.used</code> / <code>.peak</code> / <code>.allocated</code> / <code>.max</code> / <code>.overhead</code></td><td data-label="meaning">process RSS / peak RSS / live heap / GC threshold / RSS−heap</td></tr>
+      <tr><td data-label="key"><code>runtime.gc.minor</code> / <code>.major</code> / <code>.total</code></td><td data-label="meaning">collection counts</td></tr>
+      <tr><td data-label="key"><code>runtime.gc.pause.last_us</code> / <code>.max_us</code> / <code>.avg_us</code></td><td data-label="meaning">stop-the-world pause times (µs)</td></tr>
+      <tr><td data-label="key"><code>runtime.gc.nursery.used</code> / <code>.capacity</code> / <code>.occupancy_permille</code></td><td data-label="meaning">young-generation fill / limit (<code>--nursery</code>)</td></tr>
+      <tr><td data-label="key"><code>runtime.gc.promoted.last</code> / <code>.total</code> / <code>.bytes</code> / <code>runtime.gc.old.bytes</code></td><td data-label="meaning">promotion rate (objects; real bytes copied) / old-gen size</td></tr>
+      <tr><td data-label="key"><code>runtime.gc.remembered</code> / <code>.contention</code></td><td data-label="meaning">cross-gen writes since minor GC / collector-lock contention</td></tr>
+      <tr><td data-label="key"><code>runtime.alloc.since_gc</code></td><td data-label="meaning">bytes allocated since the last collection</td></tr>
+      <tr><td data-label="key"><code>runtime.threads.active</code> / <code>.parked</code> / <code>.running</code></td><td data-label="meaning">mutator threads (<code>.parked</code> includes STW/blocked)</td></tr>
+      <tr><td data-label="key"><code>runtime.gc.stw</code></td><td data-label="meaning">1 while a collection is stopping the world</td></tr>
+      <tr><td data-label="key"><code>runtime.cpu.count</code> / <code>.time</code> / <code>runtime.uptime_ms</code></td><td data-label="meaning">logical cores / process CPU ms / uptime</td></tr>
+      <tr><td data-label="key"><code>runtime.call.depth_max</code></td><td data-label="meaning">the deepest calls may nest, in frames (<code>--call-depth</code>, default 16384)</td></tr>
+     </tbody>
+    </table>
+    <h4 id="datetime-handling">Date/Time Handling</h4>
+<pre class="line-numbers"><code class="language-cpp">yesterday := System.Time.Date-&gt;New();
+yesterday-&gt;AddDays(-1);
+yesterday-&gt;ToString()-&gt;PrintLine();
+</code></pre>
+    <hr class="section-end">
+    <h3 id="more-information">More Information</h3>
+    <ul>
+     <li><a href="https://www.objeck.org">API Documentation</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/tree/master/programs/examples" target="_blank">Code Examples</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/README.md" target="_blank">Back to README</a></li>
+    </ul>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>
