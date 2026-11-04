@@ -22,6 +22,13 @@ bundle Web.HTTP.Server {
 		# present: one server per process.
 		@bound_port : static : Int;
 
+		# Connections being served, and the most there may be (0 means the default, see
+		# RequestGuard->DefaultMaxConnections). One thread serves each connection, so
+		# without a limit a client that opens connections and stalls costs a thread apiece.
+		@active_connections : static : Int;
+		@max_connections : static : Int;
+		@connection_mutex : static : System.Concurrency.ThreadMutex;
+
 		#~
 		Starts a HTTPS server that listens for requests
 		@param filename configuration file (an <a href='https://github.com/objeck/objeck-web-server/blob/master/config/weather_config.json' target='_blank'>example</a>)
@@ -148,7 +155,7 @@ bundle Web.HTTP.Server {
 
 				while(<>@stop) {
 					secure_client := @secure_server->Accept();
-					if(<>@stop & secure_client <> Nil & secure_client->IsOpen()) {
+					if(<>@stop & secure_client <> Nil & secure_client->IsOpen() & <>RefuseSecure(secure_client)) {
 						# Accept owns the secure socket object. Move it once into a dedicated
 						# connection thread and run the handler there; launching the handler as
 						# another Thread would spend two threads per TLS connection.
@@ -230,6 +237,79 @@ bundle Web.HTTP.Server {
 		}
 
 		#~
+		Sets the most connections served at once; a connection beyond it is answered
+		503 and closed. Call before Serve. Zero, the default, allows 1024.
+		@param max most simultaneous connections
+		~#
+		function : SetMaxConnections(max : Int) ~ Nil {
+			@max_connections := max;
+		}
+
+		#~
+		Gets the number of connections being served now
+		@return connections being served
+		~#
+		function : GetActiveConnections() ~ Int {
+			return @active_connections;
+		}
+
+		# Called by the accept loop for each connection; false when the server is full.
+		# The handler's Run calls ConnectionClosed when it is done with the socket.
+		function : ConnectionOpened() ~ Bool {
+			if(@connection_mutex = Nil) {
+				@connection_mutex := System.Concurrency.ThreadMutex->New("web_connections");
+			};
+
+			limit := @max_connections;
+			if(limit < 1) {
+				limit := RequestGuard->DefaultMaxConnections();
+			};
+
+			admitted := false;
+			critical(@connection_mutex) {
+				if(@active_connections < limit) {
+					@active_connections += 1;
+					admitted := true;
+				};
+			};
+
+			return admitted;
+		}
+
+		function : ConnectionClosed() ~ Nil {
+			if(@connection_mutex = Nil) {
+				return;
+			};
+
+			critical(@connection_mutex) {
+				if(@active_connections > 0) {
+					@active_connections -= 1;
+				};
+			};
+		}
+
+		# A full server tells the client and drops the connection before a thread is spent on it
+		function : Refuse(client : TCPSocket) ~ Bool {
+			if(ConnectionOpened()) {
+				return false;
+			};
+
+			client->WriteString("HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+			client->Close();
+			return true;
+		}
+
+		function : RefuseSecure(client : TCPSecureSocket) ~ Bool {
+			if(ConnectionOpened()) {
+				return false;
+			};
+
+			client->WriteString("HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+			client->Close();
+			return true;
+		}
+
+		#~
 		Starts a HTTP server that listens for requests
 		@param callback class inherited from 'HttpRequestHandler'
 		@param port server port
@@ -304,7 +384,7 @@ bundle Web.HTTP.Server {
 
 				while(<>@stop) {
 					client := @server->Accept();
-					if(<>@stop & client <> Nil & client->IsOpen()) {
+					if(<>@stop & client <> Nil & client->IsOpen() & <>Refuse(client)) {
 						# A single Thread instance used to be created above this loop and
 						# re-executed for every connection. Execute() overwrites the thread's
 						# argument, so a connection accepted while the previous handler was
@@ -1796,6 +1876,247 @@ bundle Web.HTTP.Server {
 		}
 	}
 
+	# What a request must satisfy before a handler sees it. Shared by the HTTP and
+	# HTTPS request handlers. Every check answers a status code, 0 meaning accepted,
+	# so the handlers can refuse with the right one (400, 414, 431, 505).
+	class : private : RequestGuard {
+		# The socket's ReadLine returns at most 8191 characters and hands the rest of
+		# a longer line back as further "lines", so a line over this is truncated
+		# input, not a header that merely happens to be long.
+		function : MaxLine() ~ Int {
+			return 8000;
+		}
+
+		function : MaxHeaders() ~ Int {
+			return 100;
+		}
+
+		function : MaxHeaderBytes() ~ Int {
+			return 65536;
+		}
+
+		# The most simultaneous connections served, unless WebServer->SetMaxConnections
+		# says otherwise. A connection beyond it is answered 503 and closed.
+		function : DefaultMaxConnections() ~ Int {
+			return 1024;
+		}
+
+		# Sockets are given this long to produce the next piece of a request; the
+		# keep-alive wait between requests keeps its own, longer timeout.
+		function : RequestReadTimeoutMs() ~ Int {
+			return 10000;
+		}
+
+		# RFC 9110 sec. 5.6.2: a field name is a token
+		function : IsTokenChar(c : Char) ~ Bool {
+			if((c >= 'a' & c <= 'z') | (c >= 'A' & c <= 'Z') | (c >= '0' & c <= '9')) {
+				return true;
+			};
+
+			return "!#$%&'*+-.^_`|~"->Find(c) > -1;
+		}
+
+		# A field line is "name: value" with no space before the colon (RFC 9112
+		# sec. 5.1: a server MUST reject it, because a proxy in front may read it
+		# differently), no continuation line (obs-fold, sec. 5.2) and no control
+		# character other than a tab in the value.
+		function : CheckHeaderLine(line : String) ~ Int {
+			size := line->Size();
+			if(size > MaxLine()) {
+				return 431;
+			};
+
+			first := line->Get(0);
+			if(first = ' ' | first = '\t') {
+				return 400;
+			};
+
+			colon := line->Find(':');
+			if(colon < 1) {
+				return 400;
+			};
+
+			each(i : colon) {
+				if(<>IsTokenChar(line->Get(i))) {
+					return 400;
+				};
+			};
+
+			pos := colon + 1;
+			while(pos < size) {
+				n : Int := line->Get(pos);
+				if((n < 32 & n <> 9) | n = 127) {
+					return 400;
+				};
+				pos += 1;
+			};
+
+			return 0;
+		}
+
+		# The request line plus the headers read so far
+		function : CheckHeaderCount(count : Int, bytes : Int) ~ Int {
+			if(count > MaxHeaders() | bytes > MaxHeaderBytes()) {
+				return 431;
+			};
+
+			return 0;
+		}
+
+		function : IsSupportedVersion(version : String) ~ Bool {
+			return version->Equals("HTTP/1.1") | version->Equals("HTTP/1.0");
+		}
+
+		# HTTP/1.1 requires exactly one Host (RFC 9112 sec. 3.2); several arrive here
+		# joined with a comma, which no host name contains.
+		function : CheckHost(version : String, headers : Map<String, String>) ~ Int {
+			if(<>version->Equals("HTTP/1.1")) {
+				return 0;
+			};
+
+			host := headers->Find("host");
+			if(host = Nil | host->IsEmpty() | host->Find(',') > -1) {
+				return 400;
+			};
+
+			return 0;
+		}
+
+		# The path to match and serve, from the request target as it was sent: an
+		# absolute-form target ("GET http://host/path") is cut down to its path, as a
+		# server must accept it (RFC 9112 sec. 3.2.2). Nil when the target cannot be a
+		# path this server should hand to anything: control characters or a backslash,
+		# a broken %-escape, an encoded separator or NUL, or a ".." segment however
+		# many times it was escaped. The query string, after the "?", is not looked at.
+		function : Target(target : String) ~ String {
+			path := target;
+			if(path->StartsWith("http://") | path->StartsWith("https://")) {
+				slash := path->Find(path->Find("://") + 3, '/');
+				if(slash < 0) {
+					path := "/";
+				}
+				else {
+					path := path->SubString(slash, path->Size() - slash);
+				};
+			};
+
+			cut := path->Find('?');
+			if(cut < 0) {
+				cut := path->Find('#');
+			};
+			stage := path;
+			if(cut > -1) {
+				stage := path->SubString(cut);
+			};
+
+			# three rounds of decoding cover "%252e" and "%25252e"; whatever is left
+			# encoded after that is not a path any handler should be given
+			pass := 0;
+			while(pass < 4) {
+				if(HasBadCharacter(stage) | HasDotDotSegment(stage)) {
+					return Nil;
+				};
+
+				lowered := stage->ToLower();
+				if(lowered->Find("%2f") > -1 | lowered->Find("%5c") > -1 | lowered->Find("%00") > -1) {
+					return Nil;
+				};
+
+				if(stage->Find('%') < 0) {
+					return path;
+				};
+
+				stage := PercentDecode(stage);
+				if(stage = Nil) {
+					return Nil;
+				};
+				pass += 1;
+			};
+
+			return Nil;
+		}
+
+		# A control character (the request line cannot carry a raw one anyway, but a
+		# decoded %0a can), DEL or a backslash
+		function : HasBadCharacter(text : String) ~ Bool {
+			each(i : text) {
+				n : Int := text->Get(i);
+				if(n < 32 | n = 127 | n = 92) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		function : HasDotDotSegment(text : String) ~ Bool {
+			segments := text->Split("/");
+			each(i : segments) {
+				if(segments[i]->Equals("..")) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		# Nil on a "%" not followed by two hex digits
+		function : PercentDecode(text : String) ~ String {
+			decoded := String->New();
+			size := text->Size();
+			i := 0;
+			while(i < size) {
+				c := text->Get(i);
+				if(c = '%') {
+					if(i + 2 >= size) {
+						return Nil;
+					};
+
+					high := HexValue(text->Get(i + 1));
+					low := HexValue(text->Get(i + 2));
+					if(high < 0 | low < 0) {
+						return Nil;
+					};
+
+					n := high * 16 + low;
+					# 0xC0, 0xC1 and 0xF5 up never occur in UTF-8; "%c0%ae" is the overlong
+					# spelling of "." that older servers decoded into a traversal
+					if(n = 192 | n = 193 | n > 244) {
+						return Nil;
+					};
+					decoded->Append(n->As(Char));
+					i += 3;
+				}
+				else {
+					decoded->Append(c);
+					i += 1;
+				};
+			};
+
+			return decoded;
+		}
+
+		function : HexValue(c : Char) ~ Int {
+			n : Int := c;
+			if(c >= '0' & c <= '9') {
+				return n - 48;
+			}
+			else if(c >= 'a' & c <= 'f') {
+				return n - 87;
+			}
+			else if(c >= 'A' & c <= 'F') {
+				return n - 55;
+			};
+
+			return -1;
+		}
+
+		function : StatusText(code : Int) ~ String {
+			reason := ResponseFormat->ReasonPhrase(code);
+			return "{$code} {$reason}";
+		}
+	}
+
 	# Formats the status line and header block of a server response. Shared by
 	# the HTTP and HTTPS request handlers, so that every status code from 100 to
 	# 599 takes the same path: the handler's headers, cookies and body are sent
@@ -2453,6 +2774,7 @@ class RequestHandler from HttpsRequestHandler {
 		@server_config : WebServerConfig;
 		@is_debug : Bool;
 		@keep_alive : Bool;
+		@header_status : Int;
 
 		#~
 		Constructor
@@ -2501,6 +2823,7 @@ class RequestHandler from HttpsRequestHandler {
 				# session after the framed response. Waiting for the peer here deadlocks
 				# clients that correctly use EOF as their final framing fallback.
 				@client->Close();
+				WebServer->ConnectionClosed();
 			};
 		}
 
@@ -2509,10 +2832,20 @@ class RequestHandler from HttpsRequestHandler {
 		@return true if the connection should stay open for another request
 		~#
 		method : ServeOne(allow_persistence : Bool) ~ Bool {
-			# get request
+			# get request: the first byte of the next one may take the whole keep-alive idle time,
+			# but once it arrives the client has a shorter time between the pieces of the request
+			@client->SetRecvTimeout(30000);
 			request := @client->ReadLine();
+			if(request <> Nil & request->Size() > 0) {
+				@client->SetRecvTimeout(RequestGuard->RequestReadTimeoutMs());
+			};
 			if(request = Nil | request->Size() = 0) {
 				# peer closed, or the accepted socket's receive timeout expired
+				return false;
+			};
+			if(request->Size() > RequestGuard->MaxLine()) {
+				@keep_alive := false;
+				WriteEmptyResponse(RequestGuard->StatusText(414));
 				return false;
 			};
 			if(@is_debug) {
@@ -2533,6 +2866,11 @@ class RequestHandler from HttpsRequestHandler {
 
 			# get request headers
 			request_headers := GetHeaders();
+			if(request_headers = Nil) {
+				@keep_alive := false;
+				WriteEmptyResponse(RequestGuard->StatusText(@header_status));
+				return false;
+			};
 			if(request_verb = Nil | request_path = Nil | request_version = Nil) {
 				@keep_alive := false;
 				WriteEmptyResponse("400 Bad Request");
@@ -2543,6 +2881,26 @@ class RequestHandler from HttpsRequestHandler {
 				WriteEmptyResponse("400 Bad Request");
 				return false;
 			};
+
+			if(<>RequestGuard->IsSupportedVersion(request_version)) {
+				@keep_alive := false;
+				WriteEmptyResponse(RequestGuard->StatusText(505));
+				return false;
+			};
+			if(RequestGuard->CheckHost(request_version, request_headers) <> 0) {
+				@keep_alive := false;
+				WriteEmptyResponse(RequestGuard->StatusText(400));
+				return false;
+			};
+			# the path as it will be matched: an absolute-form target cut to its path, and nothing
+			# that is encoded, escaped or dotted its way out of the root (see RequestGuard->Target)
+			request_target := RequestGuard->Target(request_path);
+			if(request_target = Nil) {
+				@keep_alive := false;
+				WriteEmptyResponse(RequestGuard->StatusText(400));
+				return false;
+			};
+			request_path := request_target;
 
 			# Decided before the response is written, because ProcessResponse
 			# emits the Connection header from it.
@@ -2585,7 +2943,7 @@ class RequestHandler from HttpsRequestHandler {
 				# GET and HEAD request
 				if(request_verb->Equals("GET") | request_verb->Equals("HEAD")) {
 					# retrieve content
-					if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
+					if(request_path = Nil | request_path->Equals("/")) {
 						request_path := "/index.html";
 					};
 
@@ -2606,7 +2964,7 @@ class RequestHandler from HttpsRequestHandler {
 				# POST, PUT, PATCH, DELETE with body
 				else if(request_verb->Equals("POST") | request_verb->Equals("PUT") | request_verb->Equals("PATCH") | request_verb->Equals("DELETE")) {
 					# retrieve content
-					if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
+					if(request_path = Nil | request_path->Equals("/")) {
 						request_path := "/index.html";
 					};
 
@@ -2713,8 +3071,24 @@ class RequestHandler from HttpsRequestHandler {
 		method : public : GetHeaders() ~ Map<String, String> {
 			headers := Map->New()<String, String>;
 			
+			# a request that breaks a limit or a rule is refused whole: Nil, and the status to
+			# answer with in @header_status
+			@header_status := 0;
+			header_count := 0;
+			header_bytes := 0;
 			header := @client->ReadLine();
 			while(header <> Nil & header->Size() > 0) {
+				header_count += 1;
+				header_bytes += header->Size();
+				header_check := RequestGuard->CheckHeaderCount(header_count, header_bytes);
+				if(header_check = 0) {
+					header_check := RequestGuard->CheckHeaderLine(header);
+				};
+				if(header_check <> 0) {
+					@header_status := header_check;
+					return Nil;
+				};
+
 				if(@is_debug) {				
 					"header: {$header}"->PrintLine();
 				};
@@ -2791,6 +3165,7 @@ class RequestHandler from HttpsRequestHandler {
 		@server_config : WebServerConfig;
 		@is_debug : Bool;
 		@keep_alive : Bool;
+		@header_status : Int;
 		@wait_for_peer_close : Bool;
 
 		#~
@@ -2853,6 +3228,7 @@ class RequestHandler from HttpsRequestHandler {
 				else {
 					@client->Close();
 				};
+				WebServer->ConnectionClosed();
 			};
 		}
 
@@ -2862,10 +3238,20 @@ class RequestHandler from HttpsRequestHandler {
 		~#
 		method : ServeOne(allow_persistence : Bool) ~ Bool {
 			@wait_for_peer_close := false;
-			# get request
+			# get request: the first byte of the next one may take the whole keep-alive idle time,
+			# but once it arrives the client has a shorter time between the pieces of the request
+			@client->SetRecvTimeout(30000);
 			request := @client->ReadLine();
+			if(request <> Nil & request->Size() > 0) {
+				@client->SetRecvTimeout(RequestGuard->RequestReadTimeoutMs());
+			};
 			if(request = Nil | request->Size() = 0) {
 				# peer closed, or the accepted socket's receive timeout expired
+				return false;
+			};
+			if(request->Size() > RequestGuard->MaxLine()) {
+				@keep_alive := false;
+				WriteEmptyResponse(RequestGuard->StatusText(414));
 				return false;
 			};
 			if(@is_debug) {
@@ -2886,6 +3272,11 @@ class RequestHandler from HttpsRequestHandler {
 
 			# get request headers
 			request_headers := GetHeaders();
+			if(request_headers = Nil) {
+				@keep_alive := false;
+				WriteEmptyResponse(RequestGuard->StatusText(@header_status));
+				return false;
+			};
 			if(request_verb = Nil | request_path = Nil | request_version = Nil) {
 				@keep_alive := false;
 				WriteEmptyResponse("400 Bad Request");
@@ -2896,6 +3287,26 @@ class RequestHandler from HttpsRequestHandler {
 				WriteEmptyResponse("400 Bad Request");
 				return false;
 			};
+
+			if(<>RequestGuard->IsSupportedVersion(request_version)) {
+				@keep_alive := false;
+				WriteEmptyResponse(RequestGuard->StatusText(505));
+				return false;
+			};
+			if(RequestGuard->CheckHost(request_version, request_headers) <> 0) {
+				@keep_alive := false;
+				WriteEmptyResponse(RequestGuard->StatusText(400));
+				return false;
+			};
+			# the path as it will be matched: an absolute-form target cut to its path, and nothing
+			# that is encoded, escaped or dotted its way out of the root (see RequestGuard->Target)
+			request_target := RequestGuard->Target(request_path);
+			if(request_target = Nil) {
+				@keep_alive := false;
+				WriteEmptyResponse(RequestGuard->StatusText(400));
+				return false;
+			};
+			request_path := request_target;
 
 			# Decided before the response is written, because ProcessResponse
 			# emits the Connection header from it.
@@ -2938,7 +3349,7 @@ class RequestHandler from HttpsRequestHandler {
 				# GET and HEAD request
 				if(request_verb->Equals("GET") | request_verb->Equals("HEAD")) {
 					# retrieve content
-					if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
+					if(request_path = Nil | request_path->Equals("/")) {
 						request_path := "/index.html";
 					};
 
@@ -2959,7 +3370,7 @@ class RequestHandler from HttpsRequestHandler {
 				# POST, PUT, PATCH, DELETE with body
 				else if(request_verb->Equals("POST") | request_verb->Equals("PUT") | request_verb->Equals("PATCH") | request_verb->Equals("DELETE")) {
 					# retrieve content
-					if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
+					if(request_path = Nil | request_path->Equals("/")) {
 						request_path := "/index.html";
 					};
 
@@ -3068,8 +3479,24 @@ class RequestHandler from HttpsRequestHandler {
 		method : public : GetHeaders() ~ Map<String, String> {
 			headers := Map->New()<String, String>;
 			
+			# a request that breaks a limit or a rule is refused whole: Nil, and the status to
+			# answer with in @header_status
+			@header_status := 0;
+			header_count := 0;
+			header_bytes := 0;
 			header := @client->ReadLine();
 			while(header <> Nil & header->Size() > 0) {
+				header_count += 1;
+				header_bytes += header->Size();
+				header_check := RequestGuard->CheckHeaderCount(header_count, header_bytes);
+				if(header_check = 0) {
+					header_check := RequestGuard->CheckHeaderLine(header);
+				};
+				if(header_check <> 0) {
+					@header_status := header_check;
+					return Nil;
+				};
+
 				if(@is_debug) {				
 					"header: {$header}"->PrintLine();
 				};
