@@ -1419,7 +1419,10 @@ void* MemoryManager::CollectMemory(void* arg)
   [[maybe_unused]] const size_t prev_old_size = old_generation.size();
 
   if(!minor_gc_mode.load(std::memory_order_acquire)) {
-    // Major GC: free dead old-gen objects
+    // Major GC: free dead old-gen objects. One hold of the instance-ID lock covers the
+    // whole sweep (ForgetInstanceId needs it): every mutator is parked, and none parks
+    // holding it, so it is never contended and costs nothing per object.
+    std::lock_guard<std::mutex> instance_ids_guard(instance_ids_lock);
     for(auto iter = old_generation.begin(); iter != old_generation.end(); ) {
       size_t* mem = *iter;
       if(mem[MARKED_FLAG] & GC_MARK_BIT) {

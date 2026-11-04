@@ -180,7 +180,13 @@ namespace Runtime {
     // Maps 'bytes' of stack plus a guard page below it and sets it on 'attrs'.
     // Returns the mapping's base, or nullptr (attrs untouched: glibc allocates)
     static void* Allocate(pthread_attr_t* attrs, size_t bytes, size_t &mapped) {
-      const size_t page = (size_t)sysconf(_SC_PAGESIZE);
+      // sysconf answers -1 on failure; as a size_t that is a page of 2^64 - 1 bytes.
+      // Leave the stack to glibc (attrs untouched) rather than map from it.
+      const long page_size = sysconf(_SC_PAGESIZE);
+      if(page_size <= 0) {
+        return nullptr;
+      }
+      const size_t page = (size_t)page_size;
       bytes = (bytes + page - 1) / page * page;
       mapped = bytes + page;
       void* base = mmap(nullptr, mapped, PROT_READ | PROT_WRITE,

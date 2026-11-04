@@ -1076,8 +1076,9 @@ void ContextAnalyzer::GenerateNamedForwarders(ParsedBundle* bundle, Class* klass
     forwarder->SetForwardedParameters(forwarded_declarations, forwarded_defaults);
     bundle->GetSymbolTableManager()->PreviousParseScope(forwarder->GetParsedName());
 
-    // overloads with the same parameter types under one shape are one forwarder
-    klass->AddMethod(forwarder);
+    // overloads with the same parameter types under one shape are one forwarder: a
+    // refused duplicate is expected here, not an error to report
+    (void)klass->AddMethod(forwarder);
   }
 }
 

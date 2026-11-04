@@ -261,7 +261,7 @@
       std::vector<bool> seen;
       std::vector<long> worklist;
       // the lowest the stack goes inside the instruction being stepped
-      size_t min_height;
+      size_t min_height = 0;
 
       // locals by id
       std::vector<SlotType> locals;
