@@ -1,0 +1,270 @@
+# EXTRA_LIBS: net,net_server
+use Collection, System.IO.Net, Web.HTTP.Server;
+
+#~
+# Range requests, end to end
+#
+# Every response carried "Accept-Ranges: bytes", but no Range header was ever
+# read, so a player seeking in a video or a download resuming after a drop got the
+# whole body back with a 200 and no Content-Range. These requests pin the
+# behavior: a single satisfiable range is a 206 with the right slice and
+# Content-Range, an unsatisfiable one is a 416, and anything the server does not
+# handle (several ranges, another unit, a malformed value, If-Range, a compressed
+# body, a status other than 200) is answered with the unchanged response.
+~#
+class RangeHandler from HttpRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		path := request->GetPath();
+		if(path->Equals("/data")) {
+			response->SetHeader("X-Range-Test", "data");
+			response->SetCodeContent(200, "abcdefghij");
+		}
+		else if(path->Equals("/gzip")) {
+			response->SetCodeContent(200, "abcdefghijabcdefghijabcdefghij");
+			response->SetCompression(Response->Compression->GZIP);
+		}
+		else {
+			response->SetCodeContent(404, "missing-body");
+		};
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "post-body");
+		return false;
+	}
+}
+
+class RawResponse {
+	@status : String;
+	@headers : Map<String, String>;
+	@body : String;
+
+	New(status : String, headers : Map<String, String>, body : String) {
+		@status := status;
+		@headers := headers;
+		@body := body;
+	}
+
+	method : public : GetStatus() ~ String { return @status; }
+	method : public : GetHeader(name : String) ~ String { return @headers->Find(name); }
+	method : public : GetBody() ~ String { return @body; }
+}
+
+class HttpRangeRequestsTest {
+	@port : static : Int;
+	@passed : static : Bool;
+	@serve_returned : static : Bool;
+
+	function : ServeReturned() ~ Nil { @serve_returned := true; }
+
+	function : Fail(message : String) ~ Nil {
+		"  FAIL: {$message}"->PrintLine();
+		@passed := false;
+	}
+
+	# Port 0 and readiness from WebServer->GetBoundPort(), as in http_status_codes.
+	function : StartServer() ~ Bool {
+		@port := 0;
+		@serve_returned := false;
+		server_thread := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->Serve(RangeHandler->New()->GetClass(), 0, false);
+				HttpRangeRequestsTest->ServeReturned();
+			}
+		};
+		server_thread->Execute(Nil);
+
+		waited := 0;
+		while(<>@serve_returned & WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		@port := WebServer->GetBoundPort();
+		return @port > 0;
+	}
+
+	# Reads one response; the body only as far as Content-Length says, and not at
+	# all after a HEAD.
+	function : ReadResponse(socket : TCPSocket, read_body : Bool) ~ RawResponse {
+		headers := Map->New()<String, String>;
+		body := "";
+		buffer : Byte[];
+		offset : Int;
+		read : Int;
+
+		status := socket->ReadLine();
+		if(status = Nil) {
+			return RawResponse->New("", headers, body);
+		};
+
+		line := socket->ReadLine();
+		while(line <> Nil & line->Size() > 0) {
+			colon := line->Find(':');
+			if(colon > 0) {
+				name := line->SubString(colon)->ToLower();
+				value := line->SubString(colon + 1, line->Size() - colon - 1)->Trim();
+				headers->Insert(name, value);
+			};
+			line := socket->ReadLine();
+		};
+
+		length_text := headers->Find("content-length");
+		if(read_body & length_text <> Nil & length_text->IsNumeric() & length_text->ToInt() > 0) {
+			buffer := Byte->New[length_text->ToInt()];
+			offset := 0;
+			while(offset < buffer->Size()) {
+				read := socket->ReadBuffer(offset, buffer->Size() - offset, buffer);
+				if(read < 1) {
+					Fail("response body ended before Content-Length");
+					offset := buffer->Size();
+				}
+				else {
+					offset += read;
+				};
+			};
+			body := buffer->ToString();
+		};
+
+		return RawResponse->New(status, headers, body);
+	}
+
+	# extra is zero or more complete header lines, each ending in CRLF
+	function : Raw(socket : TCPSocket, verb : String, path : String, extra : String) ~ RawResponse {
+		socket->WriteString("{$verb} {$path} HTTP/1.1\r\nHost: localhost\r\n{$extra}\r\n");
+		return ReadResponse(socket, verb->Equals("HEAD") = false);
+	}
+
+	function : Expect(response : RawResponse, status : String, content_range : String,
+			length : String, body : String, context : String) ~ Nil {
+		actual := response->GetStatus();
+		if(actual->Equals(status) = false) {
+			Fail("{$context}: status line was '{$actual}', expected '{$status}'");
+		};
+
+		actual := response->GetHeader("content-range");
+		if(content_range = Nil) {
+			if(actual <> Nil) {
+				Fail("{$context}: unexpected Content-Range '{$actual}'");
+			};
+		}
+		else if(actual = Nil) {
+			Fail("{$context}: missing Content-Range, expected '{$content_range}'");
+		}
+		else if(actual->Equals(content_range) = false) {
+			Fail("{$context}: Content-Range was '{$actual}', expected '{$content_range}'");
+		};
+
+		actual := response->GetHeader("content-length");
+		if(actual = Nil | actual->Equals(length) = false) {
+			Fail("{$context}: Content-Length was '{$actual}', expected '{$length}'");
+		};
+
+		actual := response->GetBody();
+		if(actual->Equals(body) = false) {
+			Fail("{$context}: body was '{$actual}', expected '{$body}'");
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@passed := true;
+		host := "127.0.0.1";
+
+		if(StartServer() = false) {
+			Fail("test server never started listening");
+			Runtime->Exit(1);
+		};
+
+		socket := TCPSocket->New(host, @port);
+		if(socket->IsOpen() = false) {
+			Fail("could not connect to test server");
+			Runtime->Exit(1);
+		};
+		socket->SetRecvTimeout(5000);
+
+		# no Range: the whole body, and the capability still advertised
+		whole := Raw(socket, "GET", "/data", "");
+		Expect(whole, "HTTP/1.1 200 OK", Nil, "10", "abcdefghij", "no Range");
+		if(whole->GetHeader("accept-ranges")->Equals("bytes") = false) {
+			Fail("no Range: Accept-Ranges was not bytes");
+		};
+
+		# satisfiable single ranges
+		Expect(Raw(socket, "GET", "/data", "Range: bytes=2-4\r\n"),
+			"HTTP/1.1 206 Partial Content", "bytes 2-4/10", "3", "cde", "bytes=2-4");
+		Expect(Raw(socket, "GET", "/data", "Range: bytes=7-\r\n"),
+			"HTTP/1.1 206 Partial Content", "bytes 7-9/10", "3", "hij", "bytes=7-");
+		Expect(Raw(socket, "GET", "/data", "Range: bytes=-3\r\n"),
+			"HTTP/1.1 206 Partial Content", "bytes 7-9/10", "3", "hij", "bytes=-3");
+		Expect(Raw(socket, "GET", "/data", "Range: bytes=5-100\r\n"),
+			"HTTP/1.1 206 Partial Content", "bytes 5-9/10", "5", "fghij", "bytes=5-100 clamps to the end");
+		Expect(Raw(socket, "GET", "/data", "Range: bytes=-100\r\n"),
+			"HTTP/1.1 206 Partial Content", "bytes 0-9/10", "10", "abcdefghij", "suffix longer than the body");
+		Expect(Raw(socket, "GET", "/data", "Range: bytes=0-0\r\n"),
+			"HTTP/1.1 206 Partial Content", "bytes 0-0/10", "1", "a", "bytes=0-0");
+
+		# the one headers a 206 keeps from the handler
+		ranged := Raw(socket, "GET", "/data", "Range: bytes=1-2\r\n");
+		if(ranged->GetHeader("x-range-test") = Nil) {
+			Fail("bytes=1-2: the handler's header was dropped");
+		};
+		if(ranged->GetHeader("connection")->Equals("keep-alive") = false) {
+			Fail("bytes=1-2: connection was not kept alive");
+		};
+
+		# unsatisfiable: a 416 that names the size, and the connection stays usable
+		Expect(Raw(socket, "GET", "/data", "Range: bytes=10-\r\n"),
+			"HTTP/1.1 416 Range Not Satisfiable", "bytes */10", "0", "", "bytes=10-");
+		Expect(Raw(socket, "GET", "/data", "Range: bytes=50-60\r\n"),
+			"HTTP/1.1 416 Range Not Satisfiable", "bytes */10", "0", "", "bytes=50-60");
+		Expect(Raw(socket, "GET", "/data", "Range: bytes=-0\r\n"),
+			"HTTP/1.1 416 Range Not Satisfiable", "bytes */10", "0", "", "bytes=-0");
+		Expect(Raw(socket, "GET", "/data", ""),
+			"HTTP/1.1 200 OK", Nil, "10", "abcdefghij", "request after a 416");
+
+		# not handled: the unchanged 200
+		Expect(Raw(socket, "GET", "/data", "Range: bytes=4-2\r\n"),
+			"HTTP/1.1 200 OK", Nil, "10", "abcdefghij", "last before first");
+		Expect(Raw(socket, "GET", "/data", "Range: bytes=0-1,3-4\r\n"),
+			"HTTP/1.1 200 OK", Nil, "10", "abcdefghij", "two ranges");
+		Expect(Raw(socket, "GET", "/data", "Range: items=1-2\r\n"),
+			"HTTP/1.1 200 OK", Nil, "10", "abcdefghij", "another unit");
+		Expect(Raw(socket, "GET", "/data", "Range: bytes=abc-def\r\n"),
+			"HTTP/1.1 200 OK", Nil, "10", "abcdefghij", "not numbers");
+		Expect(Raw(socket, "GET", "/data", "Range: bytes=5\r\n"),
+			"HTTP/1.1 200 OK", Nil, "10", "abcdefghij", "no dash");
+		Expect(Raw(socket, "GET", "/data", "Range: bytes=2-4\r\nIf-Range: \"v1\"\r\n"),
+			"HTTP/1.1 200 OK", Nil, "10", "abcdefghij", "If-Range with no validator to match");
+
+		# a compressed body, and a status other than 200, are left alone
+		compressed := Raw(socket, "GET", "/gzip", "Range: bytes=2-4\r\n");
+		Expect(compressed, "HTTP/1.1 200 OK", Nil, compressed->GetHeader("content-length"), compressed->GetBody(), "compressed body");
+		if(compressed->GetHeader("content-encoding") = Nil) {
+			Fail("compressed body: Content-Encoding was dropped");
+		};
+		Expect(Raw(socket, "GET", "/nothing", "Range: bytes=2-4\r\n"),
+			"HTTP/1.1 404 Not Found", Nil, "12", "missing-body", "404 with a Range");
+
+		# HEAD describes the 206 the GET would send, with no body
+		head := Raw(socket, "HEAD", "/data", "Range: bytes=2-4\r\n");
+		Expect(head, "HTTP/1.1 206 Partial Content", "bytes 2-4/10", "3", "", "HEAD with a Range");
+		Expect(Raw(socket, "GET", "/data", "Range: bytes=3-3\r\n"),
+			"HTTP/1.1 206 Partial Content", "bytes 3-3/10", "1", "d", "request after HEAD");
+
+		# a Range on a POST is not a range request
+		Expect(Raw(socket, "POST", "/data", "Range: bytes=0-1\r\nContent-Length: 0\r\n"),
+			"HTTP/1.1 200 OK", Nil, "9", "post-body", "POST with a Range");
+
+		socket->Close();
+		WebServer->Stop();
+		if(@passed) {
+			"PASS: HTTP range requests"->PrintLine();
+		}
+		else {
+			Runtime->Exit(1);
+		};
+	}
+}

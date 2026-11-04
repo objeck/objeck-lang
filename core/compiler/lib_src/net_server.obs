@@ -1812,6 +1812,97 @@ bundle Web.HTTP.Server {
 			return code;
 		}
 
+		# Honors a single "Range: bytes=" request (RFC 9110 sec. 14) on a 200 response:
+		# the satisfiable part becomes a 206 with a Content-Range, an unsatisfiable one
+		# a 416. Every header Header() advertises ("Accept-Ranges: bytes") has to be
+		# true, and a player seeking in a video or resuming a download depends on it.
+		# Anything not handled here is left alone, and sending the whole 200 is always
+		# a valid answer: other units, several ranges, a malformed value, If-Range
+		# (there is no validator to compare it with), or a Content-Encoding (a range
+		# of a compressed body is not a range of the file the client asked about).
+		function : public : ApplyRange(request_headers : Map<String, String>, response : Response) ~ Nil {
+			if(request_headers = Nil | response->GetCode() <> 200 | response->HasHeader("Content-Encoding") | response->HasHeader("Content-Range")) {
+				return;
+			};
+
+			content := response->GetContent();
+			spec := request_headers->Find("range");
+			if(content = Nil | spec = Nil | request_headers->Has("if-range")) {
+				return;
+			};
+
+			spec := spec->Trim();
+			if(<>spec->StartsWith("bytes=")) {
+				return;
+			};
+			spec := spec->SubString(6, spec->Size() - 6);
+
+			dash := spec->Find('-');
+			if(dash < 0 | spec->Find(',') >= 0) {
+				return;
+			};
+			first := spec->SubString(dash)->Trim();
+			last := spec->SubString(dash + 1, spec->Size() - dash - 1)->Trim();
+
+			# more digits than any size here: not a range this server can answer
+			if(first->Size() > 15 | last->Size() > 15) {
+				return;
+			};
+
+			size := content->Size();
+			start := 0;
+			end := size - 1;
+			if(first->IsEmpty()) {
+				# bytes=-N is the last N bytes
+				if(<>last->IsNumeric()) {
+					return;
+				};
+				start := size - last->ToInt();
+				if(last->ToInt() = 0) {
+					start := size;
+				}
+				else if(start < 0) {
+					start := 0;
+				};
+			}
+			else {
+				if(<>first->IsNumeric()) {
+					return;
+				};
+				start := first->ToInt();
+				if(<>last->IsEmpty()) {
+					if(<>last->IsNumeric()) {
+						return;
+					};
+					end := last->ToInt();
+					if(end < start) {
+						return;
+					};
+					if(end > size - 1) {
+						end := size - 1;
+					};
+				};
+			};
+
+			if(start >= size) {
+				response->SetCode(416);
+				response->SetHeader("Content-Range", "bytes */{$size}");
+				empty : Byte[];
+				response->SetContent(empty);
+				return;
+			};
+
+			length := end - start + 1;
+			slice := Byte->New[length];
+			if(<>Runtime->Copy(slice, 0, content, start, length)) {
+				return;
+			};
+
+			response->SetCode(206);
+			response->SetHeader("Content-Range", "bytes {$start}-{$end}/{$size}");
+			response->SetContent(slice);
+		}
+
 		# 1xx, 204 and 304 responses carry neither a body nor a Content-Length
 		# (RFC 9110 sec. 8.6, RFC 9112 sec. 6.3). A peer reads no body after them,
 		# so bytes written there would be parsed as the next response.
@@ -2500,6 +2591,7 @@ class RequestHandler from HttpsRequestHandler {
 					if(ProcessGet(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
 						@server_config->ProcessGet(http_request, http_response);
 					};
+					ResponseFormat->ApplyRange(request_headers, http_response);
 					ProcessResponse(http_response, request_verb->Equals("HEAD"));
 				}
 				# POST, PUT, PATCH, DELETE with body
@@ -2852,6 +2944,7 @@ class RequestHandler from HttpsRequestHandler {
 					if(ProcessGet(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
 						@server_config->ProcessGet(http_request, http_response);
 					};
+					ResponseFormat->ApplyRange(request_headers, http_response);
 					ProcessResponse(http_response, request_verb->Equals("HEAD"));
 				}
 				# POST, PUT, PATCH, DELETE with body
