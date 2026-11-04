@@ -21,6 +21,10 @@ class RangeHandler from HttpRequestHandler {
 			response->SetHeader("X-Range-Test", "data");
 			response->SetCodeContent(200, "abcdefghij");
 		}
+		else if(path->Equals("/norange")) {
+			response->SetHeader("Accept-Ranges", "none");
+			response->SetCodeContent(200, "abcdefghij");
+		}
 		else if(path->Equals("/gzip")) {
 			response->SetCodeContent(200, "abcdefghijabcdefghijabcdefghij");
 			response->SetCompression(Response->Compression->GZIP);
@@ -238,6 +242,15 @@ class HttpRangeRequestsTest {
 			"HTTP/1.1 200 OK", Nil, "10", "abcdefghij", "no dash");
 		Expect(Raw(socket, "GET", "/data", "Range: bytes=2-4\r\nIf-Range: \"v1\"\r\n"),
 			"HTTP/1.1 200 OK", Nil, "10", "abcdefghij", "If-Range with no validator to match");
+
+		# a handler that sets Accept-Ranges itself opts out: no slicing, and its value
+		# is the only one sent
+		declined := Raw(socket, "GET", "/norange", "Range: bytes=2-4\r\n");
+		Expect(declined, "HTTP/1.1 200 OK", Nil, "10", "abcdefghij", "handler opted out");
+		advertised := declined->GetHeader("accept-ranges");
+		if(advertised = Nil | advertised->Equals("none") = false) {
+			Fail("handler opted out: Accept-Ranges was '{$advertised}', expected 'none'");
+		};
 
 		# a compressed body, and a status other than 200, are left alone
 		compressed := Raw(socket, "GET", "/gzip", "Range: bytes=2-4\r\n");

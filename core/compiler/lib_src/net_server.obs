@@ -1820,8 +1820,10 @@ bundle Web.HTTP.Server {
 		# a valid answer: other units, several ranges, a malformed value, If-Range
 		# (there is no validator to compare it with), or a Content-Encoding (a range
 		# of a compressed body is not a range of the file the client asked about).
+		# A handler that sets its own Accept-Ranges ("none", usually) opts out, and
+		# Header() then sends that value instead of "bytes".
 		function : public : ApplyRange(request_headers : Map<String, String>, response : Response) ~ Nil {
-			if(request_headers = Nil | response->GetCode() <> 200 | response->HasHeader("Content-Encoding") | response->HasHeader("Content-Range")) {
+			if(request_headers = Nil | response->GetCode() <> 200 | response->HasHeader("Content-Encoding") | response->HasHeader("Content-Range") | response->HasHeader("Accept-Ranges")) {
 				return;
 			};
 
@@ -1989,6 +1991,7 @@ bundle Web.HTTP.Server {
 			header += " {$reason}\r\n";
 
 			has_location := false;
+			has_accept_ranges := false;
 			key_values := response->GetHeaders()->GetKeyValues()<Pair<String, String>>;
 			each(i : key_values) {
 				key_value := key_values->Get(i);
@@ -1997,6 +2000,9 @@ bundle Web.HTTP.Server {
 				lowered_key := key->ToLower();
 				if(lowered_key->Equals("location")) {
 					has_location := true;
+				};
+				if(lowered_key->Equals("accept-ranges")) {
+					has_accept_ranges := true;
 				};
 				# Framing and persistence are owned by the transport. Allowing an
 				# application value here would emit contradictory duplicate fields.
@@ -2026,7 +2032,10 @@ bundle Web.HTTP.Server {
 			};
 
 			connection_value := keep_alive ? "keep-alive" : "close";
-			header += "Accept-Ranges: bytes\r\nConnection: {$connection_value}\r\n";
+			if(<>has_accept_ranges) {
+				header += "Accept-Ranges: bytes\r\n";
+			};
+			header += "Connection: {$connection_value}\r\n";
 
 			cookies := response->GetCookies()<Cookie>;
 			each(i : cookies) {
