@@ -29,6 +29,10 @@ bundle Web.HTTP.Server {
 		@max_connections : static : Int;
 		@connection_mutex : static : System.Concurrency.ThreadMutex;
 
+		# Half-second ticks since the first Serve, for request deadlines; see RequestGuard
+		@tick : static : Int;
+		@clock_thread : static : System.Concurrency.Thread;
+
 		#~
 		Starts a HTTPS server that listens for requests
 		@param filename configuration file (an <a href='https://github.com/objeck/objeck-web-server/blob/master/config/weather_config.json' target='_blank'>example</a>)
@@ -142,6 +146,7 @@ bundle Web.HTTP.Server {
 			if(@secure_server->Listen()) {
 				# the port the socket has: for a port of 0, the one the system chose
 				@bound_port := @secure_server->GetPort();
+				StartClock();
 				if(@is_debug) {
 					platform := Runtime->GetPlatform();
 					host := TCPSocket->HostName();
@@ -251,6 +256,35 @@ bundle Web.HTTP.Server {
 		~#
 		function : GetActiveConnections() ~ Int {
 			return @active_connections;
+		}
+
+		function : Tick() ~ Int {
+			return @tick;
+		}
+
+		# One thread counts the ticks for every connection
+		function : private : StartClock() ~ Nil {
+			if(@clock_thread = Nil) {
+				@clock_thread := System.Concurrency.Thread->New() {
+					New() { Parent(); }
+
+					method : public : Run(arg : System.Base) ~ Nil {
+						while(<>WebServer->IsStopped()) {
+							System.Concurrency.Thread->Sleep(500);
+							WebServer->Advance();
+						};
+					}
+				};
+				@clock_thread->Execute(Nil);
+			};
+		}
+
+		function : IsStopped() ~ Bool {
+			return @stop;
+		}
+
+		function : Advance() ~ Nil {
+			@tick += 1;
 		}
 
 		# Called by the accept loop for each connection; false when the server is full.
@@ -371,6 +405,7 @@ bundle Web.HTTP.Server {
 			if(@server->Listen(128)) {
 				# the port the socket has: for a port of 0, the one the system chose
 				@bound_port := @server->GetPort();
+				StartClock();
 				if(@is_debug) {
 					platform := Runtime->GetPlatform();
 					host := TCPSocket->HostName();
@@ -1904,7 +1939,7 @@ bundle Web.HTTP.Server {
 		# Sockets are given this long to produce the next piece of a request; the
 		# keep-alive wait between requests keeps its own, longer timeout.
 		function : RequestReadTimeoutMs() ~ Int {
-			return 10000;
+			return 5000;
 		}
 
 		# RFC 9110 sec. 5.6.2: a field name is a token
@@ -2109,6 +2144,92 @@ bundle Web.HTTP.Server {
 			};
 
 			return -1;
+		}
+
+		# A whole request, from its first byte to its last, has this long: 60 ticks of
+		# WebServer's half-second clock. A socket read timeout alone does not do it,
+		# because every byte that arrives starts the timeout over, so a client sending
+		# one byte every few seconds would hold its thread for as long as it liked.
+		function : RequestDeadlineTicks() ~ Int {
+			return 60;
+		}
+
+		# Reads one line, ended by LF with an optional CR before it, a byte at a time so
+		# that the clock is looked at between bytes. The deadline is clock[0]: zero until
+		# the request's first byte arrives, then the tick it must be finished by. Nil
+		# when the stream ends, a read times out, a NUL arrives or the deadline passes;
+		# a line past MaxLine() comes back cut at MaxLine() + 1 for the caller to refuse.
+		function : ReadLine(socket : System.IO.InputStream, clock : Int[]) ~ String {
+			line := Byte->New[MaxLine() + 2];
+			size := 0;
+			done := false;
+			while(<>done) {
+				value := socket->ReadByte();
+				n : Int := value;
+				if(n = 0) {
+					return Nil;
+				};
+
+				if(clock[0] = 0) {
+					clock[0] := WebServer->Tick() + RequestDeadlineTicks();
+				}
+				else if(WebServer->Tick() > clock[0]) {
+					return Nil;
+				};
+
+				if(n = 10) {
+					done := true;
+				}
+				else {
+					line[size] := value;
+					size += 1;
+					if(size > MaxLine()) {
+						done := true;
+					};
+				};
+			};
+
+			if(size > 0) {
+				last : Int := line[size - 1];
+				if(last = 13) {
+					size -= 1;
+				};
+			};
+
+			text := Byte->New[size];
+			if(size > 0) {
+				Runtime->Copy(text, 0, line, 0, size);
+			};
+
+			return text->ToString();
+		}
+
+		# The request body, under the same deadline as the rest of the request. Nil when
+		# the peer stops, times out or runs out the deadline before all of it arrives.
+		function : ReadBody(length : Int, socket : System.IO.InputStream, clock : Int[]) ~ Byte[] {
+			buffer := Byte->New[length];
+			temp := Byte->New[256 * 1024];
+			total := 0;
+			while(total < length) {
+				if(clock[0] > 0 & WebServer->Tick() > clock[0]) {
+					return Nil;
+				};
+
+				wanted := length - total;
+				if(wanted > temp->Size()) {
+					wanted := temp->Size();
+				};
+
+				read := socket->ReadBuffer(0, wanted, temp);
+				if(read < 1) {
+					return Nil;
+				};
+
+				Runtime->Copy(buffer, total, temp, 0, read);
+				total += read;
+			};
+
+			return buffer;
 		}
 
 		function : StatusText(code : Int) ~ String {
@@ -2775,6 +2896,7 @@ class RequestHandler from HttpsRequestHandler {
 		@is_debug : Bool;
 		@keep_alive : Bool;
 		@header_status : Int;
+		@clock : Int[];
 
 		#~
 		Constructor
@@ -2834,8 +2956,9 @@ class RequestHandler from HttpsRequestHandler {
 		method : ServeOne(allow_persistence : Bool) ~ Bool {
 			# get request: the first byte of the next one may take the whole keep-alive idle time,
 			# but once it arrives the client has a shorter time between the pieces of the request
+			@clock := Int->New[1];
 			@client->SetRecvTimeout(30000);
-			request := @client->ReadLine();
+			request := RequestGuard->ReadLine(@client, @clock);
 			if(request <> Nil & request->Size() > 0) {
 				@client->SetRecvTimeout(RequestGuard->RequestReadTimeoutMs());
 			};
@@ -2929,7 +3052,7 @@ class RequestHandler from HttpsRequestHandler {
 					return false;
 				};
 				if(content_length > 0) {
-					buffer := WebCommon->ReadPost(content_length, @client);
+					buffer := RequestGuard->ReadBody(content_length, @client, @clock);
 					if(buffer = Nil) {
 						@keep_alive := false;
 						WriteEmptyResponse("400 Bad Request");
@@ -3074,9 +3197,12 @@ class RequestHandler from HttpsRequestHandler {
 			# a request that breaks a limit or a rule is refused whole: Nil, and the status to
 			# answer with in @header_status
 			@header_status := 0;
+			if(@clock = Nil) {
+				@clock := Int->New[1];
+			};
 			header_count := 0;
 			header_bytes := 0;
-			header := @client->ReadLine();
+			header := RequestGuard->ReadLine(@client, @clock);
 			while(header <> Nil & header->Size() > 0) {
 				header_count += 1;
 				header_bytes += header->Size();
@@ -3107,9 +3233,14 @@ class RequestHandler from HttpsRequestHandler {
 					};
 				};
 
-				header := @client->ReadLine();
+				header := RequestGuard->ReadLine(@client, @clock);
 			};
 			
+			if(header = Nil) {
+				@header_status := 408;
+				return Nil;
+			};
+
 			return headers;
 		}
 
@@ -3166,6 +3297,7 @@ class RequestHandler from HttpsRequestHandler {
 		@is_debug : Bool;
 		@keep_alive : Bool;
 		@header_status : Int;
+		@clock : Int[];
 		@wait_for_peer_close : Bool;
 
 		#~
@@ -3240,8 +3372,9 @@ class RequestHandler from HttpsRequestHandler {
 			@wait_for_peer_close := false;
 			# get request: the first byte of the next one may take the whole keep-alive idle time,
 			# but once it arrives the client has a shorter time between the pieces of the request
+			@clock := Int->New[1];
 			@client->SetRecvTimeout(30000);
-			request := @client->ReadLine();
+			request := RequestGuard->ReadLine(@client, @clock);
 			if(request <> Nil & request->Size() > 0) {
 				@client->SetRecvTimeout(RequestGuard->RequestReadTimeoutMs());
 			};
@@ -3335,7 +3468,7 @@ class RequestHandler from HttpsRequestHandler {
 					return false;
 				};
 				if(content_length > 0) {
-					buffer := WebCommon->ReadPost(content_length, @client);
+					buffer := RequestGuard->ReadBody(content_length, @client, @clock);
 					if(buffer = Nil) {
 						@keep_alive := false;
 						WriteEmptyResponse("400 Bad Request");
@@ -3482,9 +3615,12 @@ class RequestHandler from HttpsRequestHandler {
 			# a request that breaks a limit or a rule is refused whole: Nil, and the status to
 			# answer with in @header_status
 			@header_status := 0;
+			if(@clock = Nil) {
+				@clock := Int->New[1];
+			};
 			header_count := 0;
 			header_bytes := 0;
-			header := @client->ReadLine();
+			header := RequestGuard->ReadLine(@client, @clock);
 			while(header <> Nil & header->Size() > 0) {
 				header_count += 1;
 				header_bytes += header->Size();
@@ -3515,9 +3651,14 @@ class RequestHandler from HttpsRequestHandler {
 					};
 				};
 
-				header := @client->ReadLine();
+				header := RequestGuard->ReadLine(@client, @clock);
 			};
 			
+			if(header = Nil) {
+				@header_status := 408;
+				return Nil;
+			};
+
 			return headers;
 		}
 
