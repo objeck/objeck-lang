@@ -65,6 +65,10 @@ class QueryNetRange {
 			return;
 		};
 
+		# the server ranges a plain 200 itself now; "none" is how a handler says it does not
+		if(<>@ranges) {
+			response->SetHeader("Accept-Ranges", "none");
+		};
 		response->SetCodeContent(200, @image);
 		@sent += @image->Size();
 	}
