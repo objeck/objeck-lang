@@ -43,7 +43,7 @@ using namespace frontend;
  * Parsers source files.
  ****************************/
 class Parser {
-  Scanner* scanner;
+  Scanner* scanner = nullptr;
   std::map<enum TokenType, std::wstring> error_msgs;
   std::vector<std::wstring> errors;
   // a quiet parser keeps its errors for GetErrors() instead of printing them
