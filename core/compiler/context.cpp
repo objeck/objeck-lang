@@ -889,7 +889,11 @@ void ContextAnalyzer::GenerateMaskForwarder(ParsedBundle* bundle, Class* klass, 
   forwarder->SetForwardedParameters(forwarded_declarations, forwarded_defaults);
   bundle->GetSymbolTableManager()->PreviousParseScope(forwarder->GetParsedName());
 
-  klass->AddMethod(forwarder);
+  // one forwarder per original method, so its parsed name cannot repeat; a refusal here is a
+  // compiler fault and would otherwise leave callers with a missing method
+  if(!klass->AddMethod(forwarder)) {
+    ProcessError(method, L"Mask forwarder already defined for '" + method->GetUserName() + L"'");
+  }
 }
 
 /****************************

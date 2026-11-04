@@ -3175,7 +3175,8 @@ namespace frontend {
     int mid_line_num;
     int mid_line_pos;
     bool is_try_intrinsic;
-    bool is_try_guarded;
+    // defaulted in-class: the constructor in tree.cpp that builds 'New' calls never set it
+    bool is_try_guarded = false;
     bool is_otherwise_intrinsic;
     // Subscript applied to the RESULT of this call, as in 'GetItems()[0]'.
     // Distinct from Variable::indices, which subscripts a named variable.
