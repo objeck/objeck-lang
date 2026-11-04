@@ -24,6 +24,21 @@ class SiteHandler from HttpRequestHandler {
 	}
 }
 
+# The same site over TLS: obr site_preview.obe docs 8443 cert.pem key.pem key_password
+class SiteSecureHandler from HttpsRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		SitePreview->Serve(request->GetPath(), response);
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(405, "Method Not Allowed");
+		return false;
+	}
+}
+
 class SitePreview {
 	@root : static : String;
 	@types : static : Map<String, String>;
@@ -109,7 +124,13 @@ class SitePreview {
 			@root := @root->SubString(@root->Size() - 1);
 		};
 
-		"Serving '{$@root}' on http://127.0.0.1:{$port}"->PrintLine();
-		WebServer->Serve(SiteHandler->New()->GetClass(), port, false);
+		if(args->Size() > 4) {
+			"Serving '{$@root}' on https://0.0.0.0:{$port}"->PrintLine();
+			WebServer->ServeSecure(SiteSecureHandler->New()->GetClass(), port, args[2], args[3], args[4]);
+		}
+		else {
+			"Serving '{$@root}' on http://127.0.0.1:{$port}"->PrintLine();
+			WebServer->Serve(SiteHandler->New()->GetClass(), port, false);
+		};
 	}
 }

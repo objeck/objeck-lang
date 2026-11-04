@@ -1,0 +1,159 @@
+# EXTRA_LIBS: net,net_server
+use Collection, System.IO.Filesystem, System.IO.Net, Web.HTTP.Server;
+
+#~
+# A TLS client that never speaks must not stop other clients
+#
+# TCPSecureSocketServer->Accept used to perform the TLS handshake itself, inside
+# the one accept loop. A peer that connected and then sent nothing held that loop
+# for as long as it stayed open, and no other client could be served: one idle
+# TCP connection was enough to take a ServeSecure server down. Accept now takes
+# the connection and sets up the session; the handshake runs on the connection's
+# own thread, under its receive timeout.
+~#
+class StalledHandshakeHandler from HttpsRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "ok");
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "ok");
+		return false;
+	}
+}
+
+class TlsStalledHandshakeTest {
+	@port : static : Int;
+	@passed : static : Bool;
+
+	function : Port() ~ Int { return @port; }
+
+	function : Fail(message : String) ~ Nil {
+		"  FAIL: {$message}"->PrintLine();
+		@passed := false;
+	}
+
+	# See https_persistence_test: a certificate valid from 2025, so a clock that steps
+	# back (WSL2 does, by seconds at a time) never sees one that is not valid yet.
+	function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+		dir := "{$cert}.ca";
+		Directory->Delete(dir);
+		File->Delete(cert);
+		File->Delete(key);
+		if(<>Directory->Create(dir)) {
+			return false;
+		};
+
+		cnf := FileWriter->New("{$dir}/openssl.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+		cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+		cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+		cnf->Close();
+		FileWriter->New("{$dir}/index.txt")->Close();
+		serial := FileWriter->New("{$dir}/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+
+		made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+		if(made) {
+			made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+		};
+
+		Directory->Delete(dir);
+		return made;
+	}
+
+	# One HTTPS request: a failure unless it is answered 200 within the limit
+	function : Check(cert : String, what : String, max_seconds : Float) ~ Nil {
+		client := Web.HTTP.HttpsClient->New();
+		timer := System.Time.Timer->New(true);
+		response := client->Get(Web.HTTP.Url->New("https://localhost:{$@port}/"), "text/plain", cert);
+		timer->End();
+		seconds := timer->GetElapsedTime();
+
+		if(response = Nil) {
+			Fail("{$what}: no response after {$seconds} s");
+			return;
+		};
+		if(response->GetCode() <> 200) {
+			Fail("{$what}: status {$response->GetCode()}");
+		};
+		if(seconds > max_seconds) {
+			Fail("{$what}: took {$seconds} s, limit {$max_seconds} s -- the accept loop is held by a silent peer");
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@passed := true;
+		@port := 0;
+		cert := "tls-stalled-{$Runtime->GetProcessId()}-cert.pem";
+		key := "tls-stalled-{$Runtime->GetProcessId()}-key.pem";
+		if(<>MakeServerCert(cert, key, "/CN=localhost", "DNS:localhost,IP:127.0.0.1")) {
+			Fail("openssl could not create the localhost TLS fixture -- is openssl on PATH?");
+			Runtime->Exit(1);
+		};
+
+		server_thread := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->ServeSecure(StalledHandshakeHandler->New()->GetClass(),
+					TlsStalledHandshakeTest->Port(), "tls-stalled-{$Runtime->GetProcessId()}-cert.pem",
+					"tls-stalled-{$Runtime->GetProcessId()}-key.pem", "", false);
+			}
+		};
+		server_thread->Execute(Nil);
+		waited := 0;
+		while(WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		@port := WebServer->GetBoundPort();
+		if(@port = 0) {
+			Fail("the TLS server never listened");
+			Runtime->Exit(1);
+		};
+
+		# control: the server answers before anything stalls
+		Check(cert, "before any silent connection", 5.0);
+
+		# TCP connections that never start a handshake
+		silent := Vector->New()<TCPSocket>;
+		each(i : 8) {
+			socket := TCPSocket->New("127.0.0.1", @port);
+			if(socket->IsOpen()) {
+				silent->AddBack(socket);
+			}
+			else {
+				Fail("silent connection {$i} could not be opened -- the server is not accepting");
+			};
+		};
+		silent_count := silent->Size();
+		if(silent_count < 8) {
+			Fail("only {$silent_count} of 8 silent connections were accepted");
+		};
+
+		# the real client is served while they are open
+		Check(cert, "with {$silent_count} silent connections open", 5.0);
+		Check(cert, "second request with the silent connections still open", 5.0);
+
+		each(i : silent) {
+			silent->Get(i)->Close();
+		};
+		Check(cert, "after the silent connections closed", 5.0);
+
+		File->Delete(cert);
+		File->Delete(key);
+		if(@passed) {
+			"PASS: a silent TLS peer does not block the server"->PrintLine();
+			# ServeSecure is blocked in accept on POSIX; end the isolated test process
+			Runtime->Exit(0);
+		}
+		else {
+			Runtime->Exit(1);
+		};
+	}
+}
