@@ -5719,11 +5719,12 @@ static SOCKET DtlsRebind(DtlsServerCtx* srv)
   }
 #endif
 
+  // best effort: the bind below is the call that has to succeed
   int on = 1;
   if(family == AF_INET6) {
-    setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, (const char*)&on, sizeof(on));
+    (void)setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, (const char*)&on, sizeof(on));
   }
-  setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&on, sizeof(on));
+  (void)setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&on, sizeof(on));
 
   if(::bind(sock, (const struct sockaddr*)srv->bound_addr, srv->bound_len) != 0) {
 #ifdef _WIN32
@@ -5774,9 +5775,9 @@ static int DtlsAccept(DtlsServerCtx* srv, mbedtls_net_context* client, unsigned 
       break;
     }
 
-    // not a hello: consume it and keep waiting
+    // not a hello: consume it and keep waiting (the loop reads again whatever this returns)
     char discard[1];
-    recvfrom(fd, discard, sizeof(discard), 0, nullptr, nullptr);
+    (void)recvfrom(fd, discard, sizeof(discard), 0, nullptr, nullptr);
   }
 
   if(connect(fd, (struct sockaddr*)&client_addr, addr_len) != 0) {
@@ -5816,7 +5817,7 @@ static int DtlsAccept(DtlsServerCtx* srv, mbedtls_net_context* client, unsigned 
     }
 
     char discard[1];
-    recvfrom(fd, discard, sizeof(discard), 0, nullptr, nullptr);
+    (void)recvfrom(fd, discard, sizeof(discard), 0, nullptr, nullptr);
   }
 
   // the connected socket is the client's now; listen again on a fresh one

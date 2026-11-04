@@ -632,7 +632,9 @@ void ContextAnalyzer::AnalyzeEnum(Enum* eenum, const int depth)
   Debug(msg, eenum->GetLineNumber(), depth);
 #endif
 
-  if(!HasProgramOrLibraryEnum(eenum->GetName())) {
+  // enums are analyzed before any class, so there is no current class: use the enum's own file
+  if(!SearchProgramEnums(eenum->GetName()) &&
+     !SearchLibraryEnums(eenum->GetName(), program->GetLibUses(eenum->GetFileName()))) {
     ProcessError(eenum, L"Undefined enum: '" + FormatTypeString(eenum->GetName()) + L"'"
                  L"\n\tEnsure the enum is declared or add a 'use' statement for external bundles.");
   }
@@ -887,7 +889,11 @@ void ContextAnalyzer::GenerateMaskForwarder(ParsedBundle* bundle, Class* klass, 
   forwarder->SetForwardedParameters(forwarded_declarations, forwarded_defaults);
   bundle->GetSymbolTableManager()->PreviousParseScope(forwarder->GetParsedName());
 
-  klass->AddMethod(forwarder);
+  // one forwarder per original method, so its parsed name cannot repeat; a refusal here is a
+  // compiler fault and would otherwise leave callers with a missing method
+  if(!klass->AddMethod(forwarder)) {
+    ProcessError(method, L"Mask forwarder already defined for '" + method->GetUserName() + L"'");
+  }
 }
 
 /****************************
@@ -2929,7 +2935,7 @@ void ContextAnalyzer::AnalyzeConditional(Cond* conditional, const int depth)
     // Such a conditional gets a hidden two-word local of its own instead.
     Type* value_type = conditional->GetEvalType();
     if(!conditional->GetFuncTemp() && value_type->GetType() == FUNC_TYPE && value_type->GetDimension() == 0 &&
-       current_method && current_table) {
+       current_table) {
       static int cond_tmp_id = 0;
       const std::wstring tmp_name = current_method->GetName() + L":#cond_tmp#" + std::to_wstring(cond_tmp_id++);
       SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(tmp_name, TypeFactory::Instance()->MakeType(value_type), false, true);
@@ -5962,7 +5968,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
       if(expr_type->HasGenerics()) {
         method_call->GetMethodCall()->SetReceiverGenerics(expr_type->GetGenerics());
       }
-      else if(eval_type && eval_type->GetName() == expr_type->GetName()) {
+      else if(eval_type->GetName() == expr_type->GetName()) {
         method_call->GetMethodCall()->SetReceiverGenerics(eval_type->GetGenerics());
       }
     }
