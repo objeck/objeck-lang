@@ -562,7 +562,10 @@ class IPSocket {
   }
 
   static char ReadByte(SOCKET sock, int &status, int& error) {
-    char value;
+    // zero when nothing was read: an orderly close (recv returns 0) leaves the byte
+    // untouched, and a caller that looks only at the value, as SockTcpInByte does,
+    // would otherwise read whatever was on the stack
+    char value = '\0';
     status = recv(sock, &value, 1, 0);
     if(status == SOCKET_ERROR) {
       error = WSAGetLastError();

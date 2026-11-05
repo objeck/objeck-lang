@@ -1,0 +1,154 @@
+# EXTRA_LIBS: net,net_server
+use Collection, System.IO.Filesystem, System.IO.Net, Web.HTTP.Server;
+
+#~
+# A full TLS server must not let a silent client stop it
+#
+# WebServer->SetMaxConnections turns a connection away once the limit is reached.
+# For a TLS client the turn-away used to be a "503" written to a session that had
+# not handshaken, which ran the handshake on the accept thread with no timeout: one
+# silent client that connected while the server was full held the only accept loop,
+# and nothing could be served again even after the other connections left. A TLS
+# client is now simply closed. The silent connection here arrives at the limit and
+# stays open while the others leave and a real HTTPS request must still be served.
+~#
+class CapHandler from HttpsRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "ok");
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "ok");
+		return false;
+	}
+}
+
+class TlsConnectionCapTest {
+	@port : static : Int;
+	@passed : static : Bool;
+
+	function : Port() ~ Int { return @port; }
+
+	function : Fail(message : String) ~ Nil {
+		"  FAIL: {$message}"->PrintLine();
+		@passed := false;
+	}
+
+	# See https_persistence_test: valid from 2025, so a clock that steps back never
+	# sees a certificate that is not valid yet.
+	function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+		dir := "{$cert}.ca";
+		Directory->Delete(dir);
+		File->Delete(cert);
+		File->Delete(key);
+		if(<>Directory->Create(dir)) {
+			return false;
+		};
+
+		cnf := FileWriter->New("{$dir}/openssl.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+		cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+		cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+		cnf->Close();
+		FileWriter->New("{$dir}/index.txt")->Close();
+		serial := FileWriter->New("{$dir}/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+
+		made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+		if(made) {
+			made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+		};
+
+		Directory->Delete(dir);
+		return made;
+	}
+
+	# One HTTPS request, true when it was answered 200
+	function : Served(cert : String) ~ Bool {
+		client := Web.HTTP.HttpsClient->New();
+		response := client->Get(Web.HTTP.Url->New("https://localhost:{$@port}/"), "text/plain", cert);
+		return response <> Nil & response->GetCode() = 200;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@passed := true;
+		@port := 0;
+		cert := "tls-cap-{$Runtime->GetProcessId()}-cert.pem";
+		key := "tls-cap-{$Runtime->GetProcessId()}-key.pem";
+		if(<>MakeServerCert(cert, key, "/CN=localhost", "DNS:localhost,IP:127.0.0.1")) {
+			Fail("openssl could not create the localhost TLS fixture -- is openssl on PATH?");
+			Runtime->Exit(1);
+		};
+
+		WebServer->SetMaxConnections(3);
+		server_thread := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->ServeSecure(CapHandler->New()->GetClass(),
+					TlsConnectionCapTest->Port(), "tls-cap-{$Runtime->GetProcessId()}-cert.pem",
+					"tls-cap-{$Runtime->GetProcessId()}-key.pem", "", false);
+			}
+		};
+		server_thread->Execute(Nil);
+		waited := 0;
+		while(WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		@port := WebServer->GetBoundPort();
+		if(@port = 0) {
+			Fail("the TLS server never listened");
+			Runtime->Exit(1);
+		};
+
+		if(<>Served(cert)) {
+			Fail("control: no response before the limit was reached");
+		};
+
+		# three silent connections fill the server
+		holders := Vector->New()<TCPSocket>;
+		each(i : 3) {
+			holders->AddBack(TCPSocket->New("127.0.0.1", @port));
+		};
+		System.Concurrency.Thread->Sleep(500);
+
+		# one more arrives at the limit and says nothing; it must be turned away without
+		# the accept thread waiting on it, and it stays open for the rest of the test
+		extra := TCPSocket->New("127.0.0.1", @port);
+		System.Concurrency.Thread->Sleep(500);
+
+		# the first three leave
+		each(i : holders) {
+			holders->Get(i)->Close();
+		};
+
+		# their slots come back as each handler notices; the accept thread has to be free
+		# to take a real client then
+		served := false;
+		attempt := 0;
+		while(<>served & attempt < 8) {
+			System.Concurrency.Thread->Sleep(500);
+			served := Served(cert);
+			attempt += 1;
+		};
+		if(<>served) {
+			Fail("no request was served after the connections left: the accept loop is held by a silent TLS client that arrived at the limit");
+		};
+
+		extra->Close();
+		File->Delete(cert);
+		File->Delete(key);
+		if(@passed) {
+			"PASS: a full TLS server is not stopped by a silent client"->PrintLine();
+			Runtime->Exit(0);
+		}
+		else {
+			Runtime->Exit(1);
+		};
+	}
+}

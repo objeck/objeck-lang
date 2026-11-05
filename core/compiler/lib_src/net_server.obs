@@ -333,12 +333,16 @@ bundle Web.HTTP.Server {
 			return true;
 		}
 
+		# A TLS client is dropped without a reply. Writing the 503 would run the TLS
+		# handshake here, on the accept thread, with no timeout on the socket: one silent
+		# client that connected while the server was full would stop every other client,
+		# which is what handshaking in Accept used to do. Close() on a session that never
+		# handshook sends nothing.
 		function : RefuseSecure(client : TCPSecureSocket) ~ Bool {
 			if(ConnectionOpened()) {
 				return false;
 			};
 
-			client->WriteString("HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
 			client->Close();
 			return true;
 		}
@@ -2025,9 +2029,19 @@ bundle Web.HTTP.Server {
 		# many times it was escaped. The query string, after the "?", is not looked at.
 		function : Target(target : String) ~ String {
 			path := target;
-			if(path->StartsWith("http://") | path->StartsWith("https://")) {
-				slash := path->Find(path->Find("://") + 3, '/');
-				if(slash < 0) {
+			# the scheme is case-insensitive (RFC 3986 sec. 3.1)
+			scheme := target->ToLower();
+			if(scheme->StartsWith("http://") | scheme->StartsWith("https://")) {
+				after := path->Find("://") + 3;
+				slash := path->Find(after, '/');
+				query := path->Find(after, '?');
+				if(query > -1 & (slash < 0 | query < slash)) {
+					# "http://host?x": no path, only a query
+					tail := path->SubString(query, path->Size() - query);
+					path := "/";
+					path += tail;
+				}
+				else if(slash < 0) {
 					path := "/";
 				}
 				else {
@@ -2035,17 +2049,22 @@ bundle Web.HTTP.Server {
 				};
 			};
 
-			cut := path->Find('?');
-			if(cut < 0) {
-				cut := path->Find('#');
+			# A fragment is never part of a request target (RFC 9112 sec. 3.2). One here
+			# is a way to hide the tail of the path from the checks below, since only
+			# the part before the "?" is looked at.
+			if(path->Find('#') > -1) {
+				return Nil;
 			};
+
+			cut := path->Find('?');
 			stage := path;
 			if(cut > -1) {
 				stage := path->SubString(cut);
 			};
 
-			# three rounds of decoding cover "%252e" and "%25252e"; whatever is left
-			# encoded after that is not a path any handler should be given
+			# Four rounds of decoding cover "%252e" and "%25252e"; whatever is left
+			# encoded after that is not a path any handler should be given. Each round
+			# is checked before it is decoded.
 			pass := 0;
 			while(pass < 4) {
 				if(HasBadCharacter(stage) | HasDotDotSegment(stage)) {
@@ -2061,14 +2080,105 @@ bundle Web.HTTP.Server {
 					return path;
 				};
 
-				stage := PercentDecode(stage);
-				if(stage = Nil) {
+				decoded := PercentDecode(stage);
+				if(decoded = Nil) {
+					# The target as sent must be well formed. A later round that is not is
+					# a literal "%" the round before produced from "%25" (a file named
+					# "100%.html"), which nothing can decode any further.
+					if(pass = 0) {
+						return Nil;
+					};
+
+					return path;
+				};
+
+				if(HasInvalidUtf8(decoded)) {
 					return Nil;
 				};
+
+				stage := decoded;
 				pass += 1;
 			};
 
 			return Nil;
+		}
+
+		# True when the bytes a percent-decode produced are not well-formed UTF-8: a stray
+		# continuation byte, 0xC0 and 0xC1, 0xF5 and up, or an overlong, surrogate or
+		# out-of-range form (0xE0 0x80 0xAE is an overlong ".", the kind of spelling a lax
+		# decoder further down turns into a traversal). Text with a character above 255 in
+		# it holds real characters, not escaped bytes, and is left to the caller.
+		function : HasInvalidUtf8(text : String) ~ Bool {
+			size := text->Size();
+			i := 0;
+			while(i < size) {
+				n : Int := text->Get(i);
+				if(n > 255) {
+					return false;
+				};
+
+				if(n < 128) {
+					i += 1;
+				}
+				else {
+					need := 0;
+					low := 128;
+					high := 191;
+					if(n >= 194 & n <= 223) {
+						need := 1;
+					}
+					else if(n = 224) {
+						need := 2;
+						low := 160;
+					}
+					else if(n >= 225 & n <= 236) {
+						need := 2;
+					}
+					else if(n = 237) {
+						need := 2;
+						high := 159;
+					}
+					else if(n >= 238 & n <= 239) {
+						need := 2;
+					}
+					else if(n = 240) {
+						need := 3;
+						low := 144;
+					}
+					else if(n >= 241 & n <= 243) {
+						need := 3;
+					}
+					else if(n = 244) {
+						need := 3;
+						high := 143;
+					}
+					else {
+						return true;
+					};
+
+					if(i + need > size - 1) {
+						return true;
+					};
+
+					second : Int := text->Get(i + 1);
+					if(second < low | second > high) {
+						return true;
+					};
+
+					j := 2;
+					while(j <= need) {
+						next : Int := text->Get(i + j);
+						if(next < 128 | next > 191) {
+							return true;
+						};
+						j += 1;
+					};
+
+					i += need + 1;
+				};
+			};
+
+			return false;
 		}
 
 		# A control character (the request line cannot carry a raw one anyway, but a
@@ -2159,8 +2269,10 @@ bundle Web.HTTP.Server {
 		# the request's first byte arrives, then the tick it must be finished by. Nil
 		# when the stream ends, a read times out, a NUL arrives or the deadline passes;
 		# a line past MaxLine() comes back cut at MaxLine() + 1 for the caller to refuse.
+		# Room is left for the CR and LF of a line of exactly MaxLine() characters, so
+		# that one is read whole and a longer one is cut before its end is reached.
 		function : ReadLine(socket : System.IO.InputStream, clock : Int[]) ~ String {
-			line := Byte->New[MaxLine() + 2];
+			line := Byte->New[MaxLine() + 3];
 			size := 0;
 			done := false;
 			while(<>done) {
@@ -2183,7 +2295,7 @@ bundle Web.HTTP.Server {
 				else {
 					line[size] := value;
 					size += 1;
-					if(size > MaxLine()) {
+					if(size > MaxLine() + 1) {
 						done := true;
 					};
 				};
@@ -2206,30 +2318,45 @@ bundle Web.HTTP.Server {
 
 		# The request body, under the same deadline as the rest of the request. Nil when
 		# the peer stops, times out or runs out the deadline before all of it arrives.
+		#
+		# One byte per read, on purpose. A read of more waits until all of them have
+		# arrived, and each byte that does arrive starts the socket timeout over, so a
+		# sender dripping one byte every few seconds would hold a read of 256 KB for
+		# days and the clock would never be looked at. Reading a byte at a time looks at
+		# it after every byte (about 2 MB/s, so the 16 MB limit fits in the deadline).
+		# ReadBuffer rather than ReadByte, because a body may hold a zero byte and
+		# ReadByte answers zero for end of stream too. The body is gathered as it
+		# arrives, so a Content-Length of 16 MB that never delivers costs nothing.
 		function : ReadBody(length : Int, socket : System.IO.InputStream, clock : Int[]) ~ Byte[] {
-			buffer := Byte->New[length];
-			temp := Byte->New[256 * 1024];
+			body := ByteBuffer->New();
+			piece := Byte->New[4096];
+			filled := 0;
 			total := 0;
 			while(total < length) {
 				if(clock[0] > 0 & WebServer->Tick() > clock[0]) {
 					return Nil;
 				};
 
-				wanted := length - total;
-				if(wanted > temp->Size()) {
-					wanted := temp->Size();
-				};
-
-				read := socket->ReadBuffer(0, wanted, temp);
+				read := socket->ReadBuffer(filled, 1, piece);
 				if(read < 1) {
 					return Nil;
 				};
 
-				Runtime->Copy(buffer, total, temp, 0, read);
-				total += read;
+				filled += 1;
+				total += 1;
+				if(filled = piece->Size()) {
+					body->Append(piece);
+					filled := 0;
+				};
 			};
 
-			return buffer;
+			if(filled > 0) {
+				tail := Byte->New[filled];
+				Runtime->Copy(tail, 0, piece, 0, filled);
+				body->Append(tail);
+			};
+
+			return body->ToByteArray();
 		}
 
 		function : StatusText(code : Int) ~ String {

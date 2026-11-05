@@ -392,6 +392,59 @@ def c_cap():
     return "FINDING", "cap not enforced: only %d of 600 refused" % refused
 
 
+def c_body_trickle():
+    """A body dripped one byte every 3 s: the per-read timeout never fires. Cut off by the request deadline?"""
+    s = socket.create_connection((HOST, PORT), 5)
+    s.sendall(b"POST /data HTTP/1.1\r\nHost: x\r\nContent-Length: 100000\r\n\r\n")
+    t0, ended = time.time(), None
+    try:
+        while time.time() - t0 < 50:
+            s.settimeout(3)
+            try:
+                s.sendall(b"a")
+                d = s.recv(100)
+                ended = time.time() - t0
+                break
+            except socket.timeout:
+                continue
+            except OSError:
+                ended = time.time() - t0
+                break
+    finally:
+        s.close()
+    if ended is not None and ended <= 40:
+        return "PASS", "a trickled body was cut off after %.0fs (deadline 30 s)" % ended
+    return "FINDING", "a body dripped one byte per 3 s held its thread %s" % ("%.0fs" % ended if ended else "for the full 50 s")
+
+
+def c_big_length_no_body():
+    """Many connections each promising a 16 MB body and sending none: memory must not follow the promise."""
+    import resource
+    socks = []
+    try:
+        for _ in range(100):
+            c = socket.create_connection((HOST, PORT), 5)
+            c.sendall(b"POST /data HTTP/1.1\r\nHost: x\r\nContent-Length: 16777216\r\n\r\n")
+            socks.append(c)
+        time.sleep(2)
+        rss_kb = 0
+        try:
+            with open("/proc/%d/status" % server.pid) as f:
+                for line in f:
+                    if line.startswith("VmRSS:"):
+                        rss_kb = int(line.split()[1])
+        except OSError:
+            pass
+        ok = probe()
+        mb = rss_kb / 1024.0
+        if ok and mb < 800:
+            return "PASS", "100 promised 16 MB bodies that never came: server at %.0f MB, still answering" % mb
+        return "FINDING", "100 promised 16 MB bodies: server at %.0f MB, answering=%s" % (mb, ok)
+    finally:
+        for c in socks:
+            c.close()
+
+
 def main():
     start()
     print("target up, pid", server.pid, flush=True)
@@ -430,6 +483,11 @@ def main():
     case("request line 9000 bytes", expect_status(b"GET /" + b"A" * 9000 + b" HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n", (414, 400), "request line over the limit", 10))
     case("one header value 2 MB", expect_status(get("/data", b"X-Big: " + b"A" * (2 << 20) + b"\r\n"), (431,), "oversized header", 10))
     case("one header value 9000 bytes", expect_status(get("/data", b"X-Big: " + b"A" * 9000 + b"\r\n"), (431,), "header line over the limit"))
+    case("header line of exactly 8000 chars", expect_status(get("/data", b"X-Edge: " + b"A" * 7992 + b"\r\n"), (200,), "at the limit"))
+    case("headers after an 8000-char line are read", expect_status(get("/data", b"X-Edge: " + b"A" * 7992 + b"\r\nX-Bad : v\r\n"), (400,), "no desync"))
+    case("header line of 8001 chars", expect_status(get("/data", b"X-Edge: " + b"A" * 7993 + b"\r\n"), (431,), "one over the limit"))
+    case("request line of exactly 8000 chars", expect_status(b"GET /" + b"A" * 7986 + b" HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n", (200,), "at the limit"))
+    case("request line of 8001 chars", expect_status(b"GET /" + b"A" * 7987 + b" HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n", (414,), "one over the limit"))
     case("header value 7000 bytes (allowed)", expect_status(get("/data", b"X-Ok: " + b"A" * 7000 + b"\r\n"), (200,), "under the limit"))
     case("20,000 headers", expect_status(b"GET /data HTTP/1.1\r\nHost: x\r\nConnection: close\r\n" + b"".join(b"X-%d: v\r\n" % i for i in range(20000)) + b"\r\n", (431,), "too many headers", 10))
     case("100 headers (allowed)", expect_status(b"GET /data HTTP/1.1\r\nHost: x\r\nConnection: close\r\n" + b"".join(b"X-%d: v\r\n" % i for i in range(96)) + b"\r\n", (200,), "under the count limit"))
@@ -450,7 +508,11 @@ def main():
             ("file name with two dots a..b", "/echo/a..b.html", True), ("three dots segment", "/echo/.../x", True),
             ("double slash", "//echo//x", True), ("dot segment /./", "/echo/./x", True),
             ("encoded space %20", "/echo/a%20b", True), ("encoded UTF-8 %C3%A4", "/echo/%C3%A4", True),
-            ("percent-encoded letters %65cho", "/%65cho/x", True)]:
+            ("percent-encoded letters %65cho", "/%65cho/x", True),
+            ("fragment hiding dot-dot", "/echo/#/../../etc/passwd", False), ("fragment", "/echo/a#b", False),
+            ("fragment after the query", "/echo?x=a#b", False), ("encoded percent %25", "/echo/100%25.html", True),
+            ("valid 3-byte UTF-8", "/echo/%E4%B8%AD", True), ("3-byte overlong dot", "/echo/%e0%80%ae/x", False),
+            ("4-byte overlong dot", "/echo/%f0%80%80%ae/x", False), ("encoded surrogate", "/echo/%ed%a0%80", False)]:
         case("path: " + label, c_path(path, ok, label))
 
     # Range (the new code)
@@ -464,6 +526,8 @@ def main():
     case("300 stalled partial requests", c_slowloris)
     case("600 connections against a cap of 400", c_cap)
     case("header trickled one byte per 3 s", c_trickle)
+    case("body trickled one byte per 3 s", c_body_trickle)
+    case("100 promised 16 MB bodies, none sent", c_big_length_no_body)
     case("350 concurrent requests (under the cap)", c_flood)
     case("client never reads a 5 MB response", c_slow_read)
 

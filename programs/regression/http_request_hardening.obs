@@ -137,6 +137,29 @@ class HttpRequestHardeningTest {
 		filler := Repeat("A", 7000);
 		Expect(Get("/long", "X-Long: {$filler}\r\n"), "{$ok}/long", "a 7000 character header is under the limit");
 
+		# found by an independent review of the first version of this change
+		Expect(Get("/100%25.html", ""), "{$ok}/100%25.html", "an encoded percent sign is a file name, not a broken escape");
+		Expect(Get("/%E4%B8%AD.html", ""), "{$ok}/%E4%B8%AD.html", "a valid three-byte UTF-8 character");
+		Expect(Get("/#/../../etc/passwd", ""), bad, "a fragment hiding dot-dot from the check");
+		Expect(Get("/a#b", ""), bad, "a fragment");
+		Expect(Get("/x?next=a#b", ""), bad, "a fragment after the query");
+		Expect(Get("/a/%e0%80%ae/b", ""), bad, "a three-byte overlong dot");
+		Expect(Get("/a/%f0%80%80%ae/b", ""), bad, "a four-byte overlong dot");
+		Expect(Get("/%ed%a0%80", ""), bad, "an encoded surrogate");
+		Expect(Send("GET HTTP://Other.example/up.html HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"),
+			"{$ok}/up.html", "an upper-case scheme in an absolute-form target");
+		Expect(Send("GET http://other.example?x=1 HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"),
+			"{$ok}/", "an absolute-form target with a query and no path");
+		edge_value := Repeat("A", 7992);
+		Expect(Get("/x", "X-Edge: {$edge_value}\r\n"), "{$ok}/x", "a header line of exactly 8000 characters");
+		Expect(Get("/x", "X-Edge: {$edge_value}\r\nX-Bad : v\r\n"), bad, "headers after an 8000 character line are still read");
+		over_value := Repeat("A", 7993);
+		Expect(Get("/x", "X-Edge: {$over_value}\r\n"), "HTTP/1.1 431", "a header line of 8001 characters");
+		line_filler := Repeat("A", 7986);
+		Expect(Get("/{$line_filler}", ""), "{$ok}/A", "a request line of exactly 8000 characters");
+		over_filler := Repeat("A", 7987);
+		Expect(Get("/{$over_filler}", ""), "HTTP/1.1 414", "a request line of 8001 characters");
+
 		# request targets
 		Expect(Get("/a/../../etc/passwd", ""), bad, "dot-dot");
 		Expect(Get("/a/%2e%2e/b", ""), bad, "encoded dot-dot");
