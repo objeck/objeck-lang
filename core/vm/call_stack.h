@@ -187,6 +187,11 @@ namespace Runtime {
         return nullptr;
       }
       const size_t page = (size_t)page_size;
+      // Refuse a size whose rounding or guard page would wrap size_t; the
+      // caller then leaves the stack to glibc, which reports the real error.
+      if(bytes == 0 || bytes > SIZE_MAX - 2 * page) {
+        return nullptr;
+      }
       bytes = (bytes + page - 1) / page * page;
       mapped = bytes + page;
       void* base = mmap(nullptr, mapped, PROT_READ | PROT_WRITE,
