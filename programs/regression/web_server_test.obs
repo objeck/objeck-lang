@@ -309,6 +309,21 @@ class WebServerTest {
 			CheckTrue("Redirect response", false);
 		};
 
+		# A path that climbs out of the document root is refused with a 400. It used
+		# to be silently answered with /index.html, which hid the attempt and let a
+		# handler that reads files from the path serve the wrong page.
+		climb := Get("/a/../b");
+		if(climb <> Nil) {
+			code := climb->GetCode();
+			CheckTrue("'..' path is a 400 (got {$code})", code = 400);
+		}
+		else {
+			CheckTrue("'..' path response", false);
+		};
+
+		# the ordinary path next to it still reaches the handler
+		Check("path without '..' still routed", BodyOf(Get("/url")), "/url");
+
 		if(@failures > 0) {
 			"---"->PrintLine();
 			failures := @failures;

@@ -9,7 +9,7 @@
 # EXTRA_LIBS: net,net_server,gen_collect
 ~#
 
-use System.IO.Filesystem, Collection, Web.HTTP.Server;
+use System.IO.Filesystem, Collection, Web.HTTP, Web.HTTP.Server;
 
 class SiteHandler from HttpRequestHandler {
 	root : static : String;
@@ -77,6 +77,8 @@ class SiteHandler from HttpRequestHandler {
 			path := "/";
 		};
 
+		# files with a space or other escaped character in their names
+		path := Url->Decode(path);
 		if(<>Safe(path)) {
 			response->SetCodeTypeContent(400, "text/plain", "Bad request");
 			return true;
@@ -104,8 +106,28 @@ class SiteHandler from HttpRequestHandler {
 			return true;
 		};
 
+		# a validator from the size and modification time, so a revisit costs a 304
+		modified := File->ModifiedTime(file, true);
+		etag := "\"{$content->Size()}-{$modified->GetYear()}{$modified->GetMonth()}{$modified->GetDay()}{$modified->GetHours()}{$modified->GetMinutes()}\"";
+		response->SetHeader("ETag", etag);
 		response->SetHeader("Cache-Control", "public, max-age=300");
-		response->SetCodeTypeContent(200, MimeFor(file), content);
+		response->SetHeader("Vary", "Accept-Encoding");
+
+		match := request->GetHeader("If-None-Match");
+		if(match <> Nil & match->Equals(etag)) {
+			response->SetCode(304);
+			return true;
+		};
+
+		type := MimeFor(file);
+		response->SetCodeTypeContent(200, type, content);
+
+		# Text compresses well; media is already compressed. A Range request is
+		# answered from the identity bytes, so it is never compressed.
+		accepts := request->GetHeader("Accept-Encoding");
+		if(accepts <> Nil & accepts->Has("gzip") & type->StartsWith("text/") & request->GetHeader("Range") = Nil) {
+			response->SetCompression(Web.HTTP.Server.Response->Compression->GZIP);
+		};
 		return true;
 	}
 
@@ -132,6 +154,6 @@ class SiteHandler from HttpRequestHandler {
 		};
 
 		"serving {$root} on {$address}:{$port}"->PrintLine();
-		WebServer->Serve(SiteHandler->New()->GetClass(), port, false);
+		WebServer->Serve(SiteHandler->New()->GetClass(), address, port);
 	}
 }
