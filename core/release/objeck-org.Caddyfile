@@ -1,0 +1,50 @@
+# objeck.org on the playground droplet. Append to /etc/caddy/Caddyfile beside the
+# playground.objeck.org block, then `caddy validate` and `systemctl reload caddy`.
+# Do that only AFTER the DNS records point at this host (Let's Encrypt needs them).
+#
+# Objeck serves the site (programs/examples/site_server.obs, run by
+# objeck-org-site.service on 127.0.0.1:8081); Caddy only terminates TLS, renews
+# certificates and compresses. The staging names used during the soak:
+#   staging.objeck.org   Caddy file_server   (the stable fallback)
+#   staging2.objeck.org  Objeck, via the proxy below
+#
+# The deploy user's ~/public_html is the web root, so core/release/deploy_website.sh
+# works unchanged: OBJECK_ORG_HOST=<droplet> OBJECK_ORG_USER=objeckorg.
+# Pages, api/latest/ and objeck-release.pub all live under it.
+
+objeck.org {
+	redir https://www.objeck.org{uri} permanent
+}
+
+www.objeck.org {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8081 {
+		# if the Objeck process is down, fail over to serving the files directly
+		# (see the handle_errors block) rather than returning a 502
+		fail_duration 10s
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+
+	handle_errors {
+		@upstream expression {http.error.status_code} in [502, 503, 504]
+		handle @upstream {
+			root * /home/objeckorg/public_html
+			rewrite * {http.request.uri.path}
+			file_server
+		}
+	}
+
+	log {
+		output file /var/log/caddy/objeck-org-access.log
+		format json
+	}
+}
+
+# Stable fallback for the whole setup: Caddy serving the files itself.
+# Swap this in for the reverse_proxy above to leave Objeck out of the path:
+#   root * /home/objeckorg/public_html
+#   file_server
