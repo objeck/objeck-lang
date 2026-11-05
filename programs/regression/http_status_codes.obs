@@ -49,6 +49,14 @@ class StatusHandler from HttpRequestHandler {
 		else if(path->Equals("/teapot")) {
 			response->SetCodeContent(418, "teapot-body");
 		}
+		else if(path->Equals("/hdr")) {
+			# asked for in mixed case; the request carries it in lower case
+			value := request->GetHeader("If-None-Match");
+			if(value = Nil) {
+				value := "<Nil>";
+			};
+			response->SetCodeContent(200, value);
+		}
 		else if(path->Equals("/boom")) {
 			response->SetCodeContent(500, "boom-body");
 		}
@@ -179,6 +187,14 @@ class HttpStatusCodesTest {
 	function : Raw(socket : TCPSocket, verb : String, path : String) ~ RawResponse {
 		socket->WriteString("{$verb} {$path} HTTP/1.1\r\nHost: localhost\r\n\r\n");
 		return ReadResponse(socket, verb->Equals("HEAD") = false);
+	}
+
+	function : RawWithHeader(socket : TCPSocket, path : String, header_line : String) ~ RawResponse {
+		socket->WriteString("GET {$path} HTTP/1.1
+Host: localhost
+{$header_line}
+");
+		return ReadResponse(socket, true);
 	}
 
 	function : ExpectStatus(response : RawResponse, status : String, context : String) ~ Nil {
@@ -334,6 +350,17 @@ class HttpStatusCodesTest {
 			ExpectStatus(found, "HTTP/1.1 302 Found", "raw 302");
 			ExpectHeader(found, "location", "/ok", "raw 302");
 			ExpectHeader(found, "connection", "keep-alive", "raw 302");
+
+			# Header names are case-insensitive: a handler asking for "If-None-Match"
+			# must see a request that sent "if-none-match", or "IF-NONE-MATCH".
+			lower := RawWithHeader(socket, "/hdr", "if-none-match: \"abc\"
+");
+			ExpectBody(lower, "\"abc\"", "GetHeader with a lower-case request header");
+			upper := RawWithHeader(socket, "/hdr", "IF-NONE-MATCH: \"xyz\"
+");
+			ExpectBody(upper, "\"xyz\"", "GetHeader with an upper-case request header");
+			absent := Raw(socket, "GET", "/hdr");
+			ExpectBody(absent, "<Nil>", "GetHeader of an absent header");
 
 			missing := Raw(socket, "GET", "/missing");
 			ExpectStatus(missing, "HTTP/1.1 404 Not Found", "raw 404");

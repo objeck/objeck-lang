@@ -1481,12 +1481,23 @@ bundle Web.HTTP.Server {
 		}
 
 		#~
-		Gets a request header
+		Gets a request header. Header names are case-insensitive (RFC 9110 sec. 5.1)
+		and the server stores them lowercased, so "If-None-Match" finds
+		"if-none-match"; a name stored exactly as given is found as well.
 		@param name header name
-		@return request header
+		@return request header, or Nil if the request has none
 		~#
 		method : public : GetHeader(name : String) ~ String {
-			return @request_headers->Find(name)<String>;
+			if(@request_headers = Nil | name = Nil) {
+				return Nil;
+			};
+
+			value := @request_headers->Find(name->ToLower())->As(String);
+			if(value = Nil) {
+				value := @request_headers->Find(name)->As(String);
+			};
+
+			return value;
 		}
 	}
 
