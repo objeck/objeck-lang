@@ -1,0 +1,159 @@
+#~
+# Static site server: serves a directory over HTTP with Web.HTTP.Server.
+#
+# Prototype for hosting objeck.org with Objeck itself. Run behind a TLS-terminating
+# proxy at first; it binds the given address, so "127.0.0.1" keeps it private.
+#
+#   obi site_server.obe <directory> [port] [address]
+#
+# EXTRA_LIBS: net,net_server,gen_collect
+~#
+
+use System.IO.Filesystem, Collection, Web.HTTP, Web.HTTP.Server;
+
+class SiteHandler from HttpRequestHandler {
+	root : static : String;
+	types : static : Map<String, String>;
+
+	New() {
+		Parent();
+	}
+
+	function : Init(dir : String) ~ Nil {
+		root := dir;
+		types := Map->New()<String, String>;
+		types->Insert("html", "text/html; charset=utf-8");
+		types->Insert("htm", "text/html; charset=utf-8");
+		types->Insert("css", "text/css; charset=utf-8");
+		types->Insert("js", "text/javascript; charset=utf-8");
+		types->Insert("json", "application/json");
+		types->Insert("txt", "text/plain; charset=utf-8");
+		types->Insert("md", "text/plain; charset=utf-8");
+		types->Insert("pub", "text/plain; charset=utf-8");
+		types->Insert("xml", "application/xml");
+		types->Insert("svg", "image/svg+xml");
+		types->Insert("png", "image/png");
+		types->Insert("jpg", "image/jpeg");
+		types->Insert("jpeg", "image/jpeg");
+		types->Insert("gif", "image/gif");
+		types->Insert("ico", "image/x-icon");
+		types->Insert("webp", "image/webp");
+		types->Insert("mp4", "video/mp4");
+		types->Insert("webm", "video/webm");
+		types->Insert("pdf", "application/pdf");
+		types->Insert("zip", "application/zip");
+		types->Insert("woff2", "font/woff2");
+	}
+
+	function : MimeFor(path : String) ~ String {
+		dot := path->FindLast('.');
+		if(dot > -1) {
+			ext := path->SubString(dot + 1, path->Size() - dot - 1)->ToLower();
+			found := types->Find(ext);
+			if(found <> Nil) {
+				return found;
+			};
+		};
+
+		return "application/octet-stream";
+	}
+
+	# a request path is served only if it has no '..' segment, no backslash and no NUL
+	function : Safe(path : String) ~ Bool {
+		if(path = Nil | path->Size() = 0 | path->Get(0) <> '/') {
+			return false;
+		};
+
+		if(path->Find('\\') > -1 | path->Find(0) > -1 | path->Find("..") > -1) {
+			return false;
+		};
+
+		return true;
+	}
+
+	method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
+		path := request->GetPath();
+		if(path = Nil) {
+			path := "/";
+		};
+
+		# files with a space or other escaped character in their names
+		path := Url->Decode(path);
+		if(<>Safe(path)) {
+			response->SetCodeTypeContent(400, "text/plain", "Bad request");
+			return true;
+		};
+
+		file := String->New(root);
+		file += path;
+		if(Directory->Exists(file)) {
+			if(<>path->EndsWith('/')) {
+				response->SetCode(301);
+				response->SetHeader("Location", String->New(path) + "/");
+				return true;
+			};
+			file += "index.html";
+		};
+
+		if(<>File->Exists(file)) {
+			response->SetCodeTypeContent(404, "text/plain", "Not found");
+			return true;
+		};
+
+		content := FileReader->ReadBinaryFile(file);
+		if(content = Nil) {
+			response->SetCodeTypeContent(404, "text/plain", "Not found");
+			return true;
+		};
+
+		# a validator from the size and modification time, so a revisit costs a 304
+		modified := File->ModifiedTime(file, true);
+		etag := "\"{$content->Size()}-{$modified->GetYear()}{$modified->GetMonth()}{$modified->GetDay()}{$modified->GetHours()}{$modified->GetMinutes()}\"";
+		response->SetHeader("ETag", etag);
+		response->SetHeader("Cache-Control", "public, max-age=300");
+		response->SetHeader("Vary", "Accept-Encoding");
+
+		match := request->GetHeader("If-None-Match");
+		if(match <> Nil & match->Equals(etag)) {
+			response->SetCode(304);
+			return true;
+		};
+
+		type := MimeFor(file);
+		response->SetCodeTypeContent(200, type, content);
+
+		# Text compresses well; media is already compressed. A Range request is
+		# answered from the identity bytes, so it is never compressed.
+		accepts := request->GetHeader("Accept-Encoding");
+		if(accepts <> Nil & accepts->Has("gzip") & type->StartsWith("text/") & request->GetHeader("Range") = Nil) {
+			response->SetCompression(Web.HTTP.Server.Response->Compression->GZIP);
+		};
+		return true;
+	}
+
+	method : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
+		response->SetCodeTypeContent(405, "text/plain", "Method not allowed");
+		return true;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() < 1) {
+			"usage: site_server <directory> [port] [address]"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		Init(args[0]);
+		port := 8081;
+		if(args->Size() > 1) {
+			port := args[1]->ToInt();
+		};
+
+		address := "127.0.0.1";
+		if(args->Size() > 2) {
+			address := args[2];
+		};
+
+		"serving {$root} on {$address}:{$port}"->PrintLine();
+		WebServer->Serve(SiteHandler->New()->GetClass(), address, port);
+	}
+}
