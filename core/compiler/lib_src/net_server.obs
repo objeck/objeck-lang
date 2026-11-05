@@ -1915,6 +1915,471 @@ bundle Web.HTTP.Server {
 		}
 	}
 
+	# One file held by StaticFiles: its content, the gzip form when it has one, and the
+	# size and modification stamp it was read at, which say whether it is still current
+	class : private : StaticEntry {
+		@size : Int;
+		@stamp : Int;
+		@content : Byte[];
+		@gzip : Byte[];
+
+		New(size : Int, stamp : Int, content : Byte[], gzip : Byte[]) {
+			@size := size;
+			@stamp := stamp;
+			@content := content;
+			@gzip := gzip;
+		}
+
+		method : public : Matches(size : Int, stamp : Int) ~ Bool {
+			return @size = size & @stamp = stamp;
+		}
+
+		method : public : GetContent() ~ Byte[] {
+			return @content;
+		}
+
+		method : public : GetGzip() ~ Byte[] {
+			return @gzip;
+		}
+
+		# memory held, for the cache budget
+		method : public : Bytes() ~ Int {
+			total := @content->Size();
+			if(@gzip <> Nil) {
+				total += @gzip->Size();
+			};
+
+			return total;
+		}
+	}
+
+	#~
+	Serves the files under a folder, for a site: content types from a whitelist of file
+	extensions (anything else is a 404), index.html for a folder, ETag and conditional
+	requests (304), gzip for text, and Range for large files. Small files are kept in a
+	memory cache with a total budget; large ones are read from disk for each request,
+	and a Range request reads only the slice it asks for. A file that changes on disk
+	is served fresh, since its size and modification time are checked on every request.
+
+	Refused as 404: dotfiles and anything in a dot folder, extensions not on the list,
+	names that are not plain ASCII. Folder listings are never produced. The request
+	target has already been checked by the server (no "..", encoded separators, NUL,
+	and so on) before a handler runs; this class checks it again. It does not follow
+	or detect symbolic links, so the folder it serves must not contain any.
+
+	```
+	class SiteHandler from HttpRequestHandler {
+	  New() { Parent(); }
+
+	  method : ProcessGet(request : Request, response : Response) ~ Bool {
+	    Site->Files()->Serve(request, response);
+	    return false;
+	  }
+
+	  method : ProcessPost(request : Request, response : Response) ~ Bool {
+	    return false;
+	  }
+	}
+	```
+	~#
+	class StaticFiles {
+		@root : String;
+		@total_limit : Int;
+		@small_limit : Int;
+		@large_in_flight : Int;
+		@cached_bytes : Int;
+		@cache : Map<String, StaticEntry>;
+		@order : Vector<String>;
+		@types : Map<String, String>;
+		@mutex : System.Concurrency.ThreadMutex;
+
+		#~
+		Constructor
+		@param root folder to serve
+		~#
+		New(root : String) {
+			@root := root;
+			while(@root->Size() > 1 & (@root->EndsWith('/') | @root->EndsWith('\\'))) {
+				@root := @root->SubString(@root->Size() - 1);
+			};
+
+			@total_limit := 64 * 1048576;
+			@small_limit := 1048576;
+			@cache := Map->New()<String, StaticEntry>;
+			@order := Vector->New()<String>;
+			@mutex := System.Concurrency.ThreadMutex->New("static_files");
+
+			@types := Map->New()<String, String>;
+			@types->Insert(".html", "text/html; charset=utf-8");
+			@types->Insert(".htm", "text/html; charset=utf-8");
+			@types->Insert(".css", "text/css; charset=utf-8");
+			@types->Insert(".js", "text/javascript; charset=utf-8");
+			@types->Insert(".mjs", "text/javascript; charset=utf-8");
+			@types->Insert(".json", "application/json");
+			@types->Insert(".txt", "text/plain; charset=utf-8");
+			@types->Insert(".md", "text/plain; charset=utf-8");
+			@types->Insert(".xml", "application/xml");
+			@types->Insert(".svg", "image/svg+xml");
+			@types->Insert(".png", "image/png");
+			@types->Insert(".jpg", "image/jpeg");
+			@types->Insert(".jpeg", "image/jpeg");
+			@types->Insert(".gif", "image/gif");
+			@types->Insert(".webp", "image/webp");
+			@types->Insert(".ico", "image/x-icon");
+			@types->Insert(".icns", "image/icns");
+			@types->Insert(".mp4", "video/mp4");
+			@types->Insert(".webm", "video/webm");
+			@types->Insert(".zip", "application/zip");
+			@types->Insert(".pdf", "application/pdf");
+			@types->Insert(".woff", "font/woff");
+			@types->Insert(".woff2", "font/woff2");
+		}
+
+		#~
+		Sets the memory the cache may use and the largest file it will hold. A file over
+		small_bytes is read from disk for every request.
+		@param total_bytes cache budget in bytes, 64 MB by default
+		@param small_bytes largest cached file in bytes, 1 MB by default
+		~#
+		method : public : SetCacheLimits(total_bytes : Int, small_bytes : Int) ~ Nil {
+			@total_limit := total_bytes;
+			@small_limit := small_bytes;
+		}
+
+		#~
+		Answers a request for a file: sets the response code, headers and content.
+		@param request the request
+		@param response the response
+		~#
+		method : public : Serve(request : Request, response : Response) ~ Nil {
+			verb := request->GetMethod();
+			if(verb <> Nil & <>verb->Equals("GET") & <>verb->Equals("HEAD")) {
+				response->SetHeader("Allow", "GET, HEAD");
+				response->SetCodeTypeContent(405, "text/plain; charset=utf-8", "Method Not Allowed");
+				return;
+			};
+
+			raw := request->GetPath();
+			path := FilePath(raw);
+			if(path = Nil) {
+				NotFound(response);
+				return;
+			};
+
+			if(path->EndsWith('/')) {
+				path := "{$path}index.html";
+			};
+
+			file := "{$@root}{$path}";
+			if(System.IO.Filesystem.Directory->Exists(file)) {
+				# a folder without its slash: send the client to it, so relative links resolve
+				response->SetHeader("Location", "{$raw}/");
+				response->SetCodeTypeContent(301, "text/plain; charset=utf-8", "Moved Permanently");
+				return;
+			};
+
+			extension := Extension(path);
+			type : String;
+			if(extension <> Nil) {
+				type := @types->Find(extension);
+			};
+			if(type = Nil | <>System.IO.Filesystem.File->Exists(file)) {
+				NotFound(response);
+				return;
+			};
+
+			size := System.IO.Filesystem.File->Size(file);
+			modified := System.IO.Filesystem.File->ModifiedTime(file, true);
+			if(size < 0 | modified = Nil) {
+				NotFound(response);
+				return;
+			};
+
+			stamp := Stamp(modified);
+			etag := "\"{$size}-{$stamp}\"";
+
+			match := request->GetHeader("if-none-match");
+			if(match <> Nil & (match->Equals("*") | match->Find(etag) > -1)) {
+				Standard(response, type, etag);
+				response->SetCode(304);
+				return;
+			};
+
+			if(size > @small_limit) {
+				ServeLarge(request, response, file, size, type, etag);
+				return;
+			};
+
+			entry := Lookup(file, size, stamp);
+			if(entry = Nil) {
+				content := System.IO.Filesystem.FileReader->ReadBinaryFile(file);
+				if(content = Nil | content->Size() <> size) {
+					NotFound(response);
+					return;
+				};
+
+				fresh_gzip : Byte[];
+				if(size >= 256 & Compressible(extension)) {
+					packed := content->CompressGzip();
+					if(packed <> Nil & packed->Size() < size) {
+						fresh_gzip := packed;
+					};
+				};
+
+				entry := StaticEntry->New(size, stamp, content, fresh_gzip);
+				Store(file, entry);
+			};
+
+			Standard(response, type, etag);
+			if(Compressible(extension)) {
+				response->SetHeader("Vary", "Accept-Encoding");
+			};
+
+			gzip := entry->GetGzip();
+			if(gzip <> Nil & AcceptsGzip(request)) {
+				response->SetHeader("Content-Encoding", "gzip");
+				response->SetCodeTypeContent(200, type, gzip);
+			}
+			else {
+				response->SetCodeTypeContent(200, type, entry->GetContent());
+			};
+		}
+
+		# A file over the cache limit: a Range request reads just its slice, in pieces of at
+		# most 8 MB (a client asking for the rest of a 1 GB file gets the next piece and asks
+		# again); a request for the whole file reads all of it, a few at a time.
+		method : ServeLarge(request : Request, response : Response, file : String, size : Int, type : String, etag : String) ~ Nil {
+			spec := request->GetHeader("range");
+			if(request->GetHeader("if-range") <> Nil) {
+				spec := Nil;
+			};
+
+			if(spec <> Nil) {
+				range := RangeParser->Parse(spec, size);
+				if(range[0] = 2) {
+					response->SetHeader("Content-Range", "bytes */{$size}");
+					response->SetCodeTypeContent(416, "text/plain; charset=utf-8", "Range Not Satisfiable");
+					return;
+				};
+
+				if(range[0] = 1) {
+					start := range[1];
+					end := range[2];
+					if(end - start + 1 > 8 * 1048576) {
+						end := start + 8 * 1048576 - 1;
+					};
+
+					slice := ReadSlice(file, start, end - start + 1);
+					if(slice = Nil) {
+						NotFound(response);
+						return;
+					};
+
+					Standard(response, type, etag);
+					response->SetHeader("Content-Range", "bytes {$start}-{$end}/{$size}");
+					response->SetCodeTypeContent(206, type, slice);
+					return;
+				};
+			};
+
+			if(<>EnterLarge()) {
+				response->SetHeader("Retry-After", "5");
+				response->SetCodeTypeContent(503, "text/plain; charset=utf-8", "Busy");
+				return;
+			};
+
+			whole := System.IO.Filesystem.FileReader->ReadBinaryFile(file);
+			LeaveLarge();
+			if(whole = Nil) {
+				NotFound(response);
+				return;
+			};
+
+			Standard(response, type, etag);
+			response->SetCodeTypeContent(200, type, whole);
+		}
+
+		method : ReadSlice(file : String, start : Int, count : Int) ~ Byte[] {
+			reader := System.IO.Filesystem.FileReader->New(file);
+			if(<>reader->IsOpen()) {
+				return Nil;
+			};
+
+			if(<>reader->Seek(start)) {
+				reader->Close();
+				return Nil;
+			};
+
+			slice := Byte->New[count];
+			got := 0;
+			while(got < count) {
+				read := reader->ReadBuffer(got, count - got, slice);
+				if(read < 1) {
+					reader->Close();
+					return Nil;
+				};
+				got += read;
+			};
+			reader->Close();
+
+			return slice;
+		}
+
+		# At most four whole-file reads of large files at once, so a handful of requests for a
+		# video cannot hold hundreds of megabytes each
+		method : EnterLarge() ~ Bool {
+			admitted := false;
+			critical(@mutex) {
+				if(@large_in_flight < 4) {
+					@large_in_flight += 1;
+					admitted := true;
+				};
+			};
+
+			return admitted;
+		}
+
+		method : LeaveLarge() ~ Nil {
+			critical(@mutex) {
+				if(@large_in_flight > 0) {
+					@large_in_flight -= 1;
+				};
+			};
+		}
+
+		# The path of the file below the root, decoded, or Nil when this class will not serve
+		# it: the checks the server made, again; anything but plain ASCII; any segment that
+		# starts with a dot
+		method : FilePath(raw : String) ~ String {
+			if(raw = Nil | RequestGuard->Target(raw) = Nil) {
+				return Nil;
+			};
+
+			decoded := RequestGuard->PercentDecode(raw);
+			if(decoded = Nil | decoded->IsEmpty()) {
+				return Nil;
+			};
+
+			each(i : decoded) {
+				n : Int := decoded->Get(i);
+				if(n > 126) {
+					return Nil;
+				};
+			};
+
+			if(RequestGuard->HasBadCharacter(decoded) | RequestGuard->HasDotDotSegment(decoded)) {
+				return Nil;
+			};
+
+			segments := decoded->Split("/");
+			each(i : segments) {
+				if(segments[i]->StartsWith('.')) {
+					return Nil;
+				};
+			};
+
+			return decoded;
+		}
+
+		# ".html" from "/a/b.html", in lower case, or Nil
+		method : Extension(path : String) ~ String {
+			slash := path->FindLast('/');
+			dot := path->FindLast('.');
+			if(dot < 0 | dot < slash) {
+				return Nil;
+			};
+
+			return path->SubString(dot, path->Size() - dot)->ToLower();
+		}
+
+		method : Compressible(extension : String) ~ Bool {
+			if(extension = Nil) {
+				return false;
+			};
+
+			return " .html .htm .css .js .mjs .json .txt .md .xml .svg "->Find(" {$extension} ") > -1;
+		}
+
+		method : AcceptsGzip(request : Request) ~ Bool {
+			value := request->GetHeader("accept-encoding");
+			if(value = Nil) {
+				return false;
+			};
+
+			lowered := value->ToLower();
+			return lowered->Find("gzip") > -1 & lowered->Find("gzip;q=0") < 0;
+		}
+
+		# A number that changes whenever the modification time does, to the second
+		method : Stamp(date : System.Time.Date) ~ Int {
+			day := (date->GetYear() * 100 + date->GetMonth()) * 100 + date->GetDay();
+			return day * 1000000 + date->GetHours() * 10000 + date->GetMinutes() * 100 + date->GetSeconds();
+		}
+
+		# Headers every answer for a file carries. HTML is revalidated each time (a request
+		# that costs one stat and, while it is current, a 304); everything else may be kept for
+		# a day.
+		method : Standard(response : Response, type : String, etag : String) ~ Nil {
+			response->SetHeader("ETag", etag);
+			response->SetHeader("X-Content-Type-Options", "nosniff");
+			if(type->StartsWith("text/html")) {
+				response->SetHeader("Cache-Control", "no-cache");
+			}
+			else {
+				response->SetHeader("Cache-Control", "public, max-age=86400");
+			};
+		}
+
+		method : NotFound(response : Response) ~ Nil {
+			response->SetHeader("X-Content-Type-Options", "nosniff");
+			response->SetCodeTypeContent(404, "text/plain; charset=utf-8", "Not found");
+		}
+
+		# The cached entry for a file when it was read at this size and time, else Nil
+		method : Lookup(file : String, size : Int, stamp : Int) ~ StaticEntry {
+			found : StaticEntry;
+			critical(@mutex) {
+				entry := @cache->Find(file);
+				if(entry <> Nil & entry->Matches(size, stamp)) {
+					found := entry;
+				};
+			};
+
+			return found;
+		}
+
+		# Holds an entry, dropping the oldest first until the budget is respected. An entry
+		# bigger than the whole budget is not kept.
+		method : Store(file : String, entry : StaticEntry) ~ Nil {
+			add := entry->Bytes();
+			if(add > @total_limit) {
+				return;
+			};
+
+			critical(@mutex) {
+				old := @cache->Find(file);
+				if(old <> Nil) {
+					@cached_bytes -= old->Bytes();
+					@cache->Remove(file);
+				};
+
+				while(@cached_bytes + add > @total_limit & <>@order->IsEmpty()) {
+					key := @order->Get(0);
+					@order->Remove(0);
+					dropped := @cache->Find(key);
+					if(dropped <> Nil) {
+						@cached_bytes -= dropped->Bytes();
+						@cache->Remove(key);
+					};
+				};
+
+				@cache->Insert(file, entry);
+				@order->AddBack(file);
+				@cached_bytes += add;
+			};
+		}
+	}
+
 	# What a request must satisfy before a handler sees it. Shared by the HTTP and
 	# HTTPS request handlers. Every check answers a status code, 0 meaning accepted,
 	# so the handlers can refuse with the right one (400, 414, 431, 505).
@@ -2365,6 +2830,84 @@ bundle Web.HTTP.Server {
 		}
 	}
 
+	# Parses the value of a "Range: bytes=" request header over a body of size bytes
+	# (RFC 9110 sec. 14), for the one place that slices an in-memory body (ApplyRange)
+	# and the one that reads a slice of a file (StaticFiles). Answers [kind, start, end]:
+	# kind 0 when it is not a range this server answers, so the whole body is sent,
+	# which is always a valid answer (another unit, several ranges, a malformed or
+	# absurdly long value); kind 1 when it is satisfiable, start and end inclusive and
+	# end already clamped to the body; kind 2 when it starts past the end (answered 416).
+	class : private : RangeParser {
+		function : Parse(value : String, size : Int) ~ Int[] {
+			result := Int->New[3];
+			if(value = Nil) {
+				return result;
+			};
+
+			spec := value->Trim();
+			if(<>spec->StartsWith("bytes=")) {
+				return result;
+			};
+			spec := spec->SubString(6, spec->Size() - 6);
+
+			dash := spec->Find('-');
+			if(dash < 0 | spec->Find(',') >= 0) {
+				return result;
+			};
+			first := spec->SubString(dash)->Trim();
+			last := spec->SubString(dash + 1, spec->Size() - dash - 1)->Trim();
+
+			# more digits than any size here: not a range this server can answer
+			if(first->Size() > 15 | last->Size() > 15) {
+				return result;
+			};
+
+			start := 0;
+			end := size - 1;
+			if(first->IsEmpty()) {
+				# bytes=-N is the last N bytes
+				if(<>last->IsNumeric()) {
+					return result;
+				};
+				start := size - last->ToInt();
+				if(last->ToInt() = 0) {
+					start := size;
+				}
+				else if(start < 0) {
+					start := 0;
+				};
+			}
+			else {
+				if(<>first->IsNumeric()) {
+					return result;
+				};
+				start := first->ToInt();
+				if(<>last->IsEmpty()) {
+					if(<>last->IsNumeric()) {
+						return result;
+					};
+					end := last->ToInt();
+					if(end < start) {
+						return result;
+					};
+					if(end > size - 1) {
+						end := size - 1;
+					};
+				};
+			};
+
+			if(start >= size) {
+				result[0] := 2;
+				return result;
+			};
+
+			result[0] := 1;
+			result[1] := start;
+			result[2] := end;
+			return result;
+		}
+	}
+
 	# Formats the status line and header block of a server response. Shared by
 	# the HTTP and HTTPS request handlers, so that every status code from 100 to
 	# 599 takes the same path: the handler's headers, cookies and body are sent
@@ -2397,65 +2940,13 @@ bundle Web.HTTP.Server {
 			};
 
 			content := response->GetContent();
-			spec := request_headers->Find("range");
-			if(content = Nil | spec = Nil | request_headers->Has("if-range")) {
-				return;
-			};
-
-			spec := spec->Trim();
-			if(<>spec->StartsWith("bytes=")) {
-				return;
-			};
-			spec := spec->SubString(6, spec->Size() - 6);
-
-			dash := spec->Find('-');
-			if(dash < 0 | spec->Find(',') >= 0) {
-				return;
-			};
-			first := spec->SubString(dash)->Trim();
-			last := spec->SubString(dash + 1, spec->Size() - dash - 1)->Trim();
-
-			# more digits than any size here: not a range this server can answer
-			if(first->Size() > 15 | last->Size() > 15) {
+			if(content = Nil | request_headers->Has("if-range")) {
 				return;
 			};
 
 			size := content->Size();
-			start := 0;
-			end := size - 1;
-			if(first->IsEmpty()) {
-				# bytes=-N is the last N bytes
-				if(<>last->IsNumeric()) {
-					return;
-				};
-				start := size - last->ToInt();
-				if(last->ToInt() = 0) {
-					start := size;
-				}
-				else if(start < 0) {
-					start := 0;
-				};
-			}
-			else {
-				if(<>first->IsNumeric()) {
-					return;
-				};
-				start := first->ToInt();
-				if(<>last->IsEmpty()) {
-					if(<>last->IsNumeric()) {
-						return;
-					};
-					end := last->ToInt();
-					if(end < start) {
-						return;
-					};
-					if(end > size - 1) {
-						end := size - 1;
-					};
-				};
-			};
-
-			if(start >= size) {
+			range := RangeParser->Parse(request_headers->Find("range"), size);
+			if(range[0] = 2) {
 				response->SetCode(416);
 				response->SetHeader("Content-Range", "bytes */{$size}");
 				empty : Byte[];
@@ -2463,15 +2954,19 @@ bundle Web.HTTP.Server {
 				return;
 			};
 
-			length := end - start + 1;
-			slice := Byte->New[length];
-			if(<>Runtime->Copy(slice, 0, content, start, length)) {
-				return;
-			};
+			if(range[0] = 1) {
+				start := range[1];
+				end := range[2];
+				length := end - start + 1;
+				slice := Byte->New[length];
+				if(<>Runtime->Copy(slice, 0, content, start, length)) {
+					return;
+				};
 
-			response->SetCode(206);
-			response->SetHeader("Content-Range", "bytes {$start}-{$end}/{$size}");
-			response->SetContent(slice);
+				response->SetCode(206);
+				response->SetHeader("Content-Range", "bytes {$start}-{$end}/{$size}");
+				response->SetContent(slice);
+			};
 		}
 
 		# 1xx, 204 and 304 responses carry neither a body nor a Content-Length

@@ -1,0 +1,354 @@
+# EXTRA_LIBS: net,net_server
+use Collection, System.IO.Filesystem, System.IO.Net, Web.HTTP.Server;
+
+#~
+# StaticFiles: serving a folder
+#
+# Index files, content types, ETag and conditional requests, gzip for text, Range on small
+# and large files, files that must not be served (dotfiles, extensions off the list,
+# anything that climbs out), a file changed on disk being served fresh, and a cache budget
+# that forces eviction without ever serving the wrong content.
+~#
+class SiteHandler from HttpRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		StaticFilesTest->Files()->Serve(request, response);
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		StaticFilesTest->Files()->Serve(request, response);
+		return false;
+	}
+}
+
+class RawResponse {
+	@status : String;
+	@headers : Map<String, String>;
+	@bytes : Byte[];
+
+	New(status : String, headers : Map<String, String>, bytes : Byte[]) {
+		@status := status;
+		@headers := headers;
+		@bytes := bytes;
+	}
+
+	method : public : GetStatus() ~ String { return @status; }
+	method : public : GetHeader(name : String) ~ String { return @headers->Find(name); }
+	method : public : GetBytes() ~ Byte[] { return @bytes; }
+
+	method : public : GetBody() ~ String {
+		if(@bytes = Nil) {
+			return "";
+		};
+		return @bytes->ToString();
+	}
+}
+
+class StaticFilesTest {
+	@port : static : Int;
+	@passed : static : Bool;
+	@serve_returned : static : Bool;
+	@files : static : StaticFiles;
+
+	function : Files() ~ StaticFiles { return @files; }
+
+	function : ServeReturned() ~ Nil { @serve_returned := true; }
+
+	function : Fail(message : String) ~ Nil {
+		"  FAIL: {$message}"->PrintLine();
+		@passed := false;
+	}
+
+	function : Write(path : String, content : String) ~ Nil {
+		writer := FileWriter->New(path);
+		writer->WriteString(content);
+		writer->Close();
+	}
+
+	function : Repeat(text : String, count : Int) ~ String {
+		out := "";
+		each(i : count) {
+			out += text;
+		};
+		return out;
+	}
+
+	function : StartServer() ~ Bool {
+		@port := 0;
+		@serve_returned := false;
+		server_thread := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->Serve(SiteHandler->New()->GetClass(), 0, false);
+				StaticFilesTest->ServeReturned();
+			}
+		};
+		server_thread->Execute(Nil);
+
+		waited := 0;
+		while(<>@serve_returned & WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		@port := WebServer->GetBoundPort();
+		return @port > 0;
+	}
+
+	function : ReadResponse(socket : TCPSocket, read_body : Bool) ~ RawResponse {
+		headers := Map->New()<String, String>;
+		status := socket->ReadLine();
+		if(status = Nil) {
+			return RawResponse->New("", headers, Nil);
+		};
+
+		line := socket->ReadLine();
+		while(line <> Nil & line->Size() > 0) {
+			colon := line->Find(':');
+			if(colon > 0) {
+				name := line->SubString(colon)->ToLower();
+				value := line->SubString(colon + 1, line->Size() - colon - 1)->Trim();
+				headers->Insert(name, value);
+			};
+			line := socket->ReadLine();
+		};
+
+		bytes : Byte[];
+		length_text := headers->Find("content-length");
+		if(read_body & length_text <> Nil & length_text->IsNumeric() & length_text->ToInt() > 0) {
+			bytes := Byte->New[length_text->ToInt()];
+			offset := 0;
+			while(offset < bytes->Size()) {
+				read := socket->ReadBuffer(offset, bytes->Size() - offset, bytes);
+				if(read < 1) {
+					Fail("response body ended before Content-Length");
+					offset := bytes->Size();
+				}
+				else {
+					offset += read;
+				};
+			};
+		};
+
+		return RawResponse->New(status, headers, bytes);
+	}
+
+	# one request on its own connection; extra is complete header lines
+	function : Raw(verb : String, path : String, extra : String) ~ RawResponse {
+		socket := TCPSocket->New("127.0.0.1", @port);
+		if(socket->IsOpen() = false) {
+			Fail("could not connect");
+			return RawResponse->New("", Map->New()<String, String>, Nil);
+		};
+		socket->SetRecvTimeout(5000);
+		socket->WriteString("{$verb} {$path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n{$extra}\r\n");
+		response := ReadResponse(socket, verb->Equals("HEAD") = false);
+		socket->Close();
+		return response;
+	}
+
+	function : Status(response : RawResponse, status : String, context : String) ~ Nil {
+		actual := response->GetStatus();
+		if(actual->StartsWith(status) = false) {
+			Fail("{$context}: status was '{$actual}', expected '{$status}'");
+		};
+	}
+
+	function : Header(response : RawResponse, name : String, value : String, context : String) ~ Nil {
+		actual := response->GetHeader(name);
+		if(value = Nil) {
+			if(actual <> Nil) {
+				Fail("{$context}: unexpected {$name} '{$actual}'");
+			};
+		}
+		else if(actual = Nil) {
+			Fail("{$context}: missing {$name}, expected '{$value}'");
+		}
+		else if(actual->Equals(value) = false) {
+			Fail("{$context}: {$name} was '{$actual}', expected '{$value}'");
+		};
+	}
+
+	function : Body(response : RawResponse, body : String, context : String) ~ Nil {
+		actual := response->GetBody();
+		if(actual->Equals(body) = false) {
+			shown := actual;
+			if(shown->Size() > 60) {
+				shown := shown->SubString(60);
+			};
+			Fail("{$context}: body was '{$shown}' ({$actual->Size()} bytes), expected {$body->Size()} bytes");
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@passed := true;
+		dir := "site-test-{$Runtime->GetProcessId()}";
+		Directory->Delete(dir);
+		if(<>Directory->Create(dir) | <>Directory->Create("{$dir}/sub") | <>Directory->Create("{$dir}/.hidden")) {
+			Fail("could not create the test folder");
+			Runtime->Exit(1);
+		};
+
+		filler := Repeat("abc ", 500);
+		index := "<html>root {$filler}</html>";
+		Write("{$dir}/index.html", index);
+		Write("{$dir}/style.css", "body{color:red}");
+		Write("{$dir}/sub/index.html", "sub index");
+		Write("{$dir}/sub/page.html", "sub page");
+		Write("{$dir}/.secret.txt", "secret");
+		Write("{$dir}/.hidden/inner.html", "hidden");
+		Write("{$dir}/notes.conf", "not on the list");
+		big := Repeat("0123456789", 600);
+		Write("{$dir}/big.txt", big);
+
+		@files := StaticFiles->New(dir);
+		# index.html (about 2000 bytes) is cached; big.txt (6000 bytes) is over the small
+		# limit and is read from disk
+		@files->SetCacheLimits(1048576, 3000);
+
+		if(StartServer() = false) {
+			Fail("test server never started listening");
+			Runtime->Exit(1);
+		};
+
+		# --- index files and folders
+		root := Raw("GET", "/index.html", "");
+		Status(root, "HTTP/1.1 200 OK", "index.html");
+		Header(root, "content-type", "text/html; charset=utf-8", "index.html");
+		Header(root, "cache-control", "no-cache", "index.html");
+		Header(root, "x-content-type-options", "nosniff", "index.html");
+		Body(root, index, "index.html");
+		etag := root->GetHeader("etag");
+		if(etag = Nil) {
+			Fail("index.html: no ETag");
+		};
+		Body(Raw("GET", "/", ""), index, "/ is the index");
+		Body(Raw("GET", "/sub/", ""), "sub index", "a folder with its slash");
+		moved := Raw("GET", "/sub", "");
+		Status(moved, "HTTP/1.1 301", "a folder without its slash");
+		Header(moved, "location", "/sub/", "a folder without its slash");
+		Body(Raw("GET", "/sub/page.html", ""), "sub page", "a file in a folder");
+
+		# --- types and caching headers
+		css := Raw("GET", "/style.css", "");
+		Status(css, "HTTP/1.1 200 OK", "style.css");
+		Header(css, "content-type", "text/css; charset=utf-8", "style.css");
+		Header(css, "cache-control", "public, max-age=86400", "style.css");
+
+		# --- conditional requests
+		if(etag <> Nil) {
+			not_modified := Raw("GET", "/index.html", "If-None-Match: {$etag}\r\n");
+			Status(not_modified, "HTTP/1.1 304", "matching If-None-Match");
+			Header(not_modified, "content-length", Nil, "matching If-None-Match");
+			Header(not_modified, "etag", etag, "matching If-None-Match");
+			Status(Raw("GET", "/index.html", "If-None-Match: \"other\"\r\n"), "HTTP/1.1 200 OK", "a different ETag");
+		};
+
+		# --- gzip
+		zipped := Raw("GET", "/index.html", "Accept-Encoding: gzip, deflate\r\n");
+		Status(zipped, "HTTP/1.1 200 OK", "gzip");
+		Header(zipped, "content-encoding", "gzip", "gzip");
+		Header(zipped, "vary", "Accept-Encoding", "gzip");
+		zipped_bytes := zipped->GetBytes();
+		if(zipped_bytes = Nil | zipped_bytes->Size() < 2) {
+			Fail("gzip: no body");
+		}
+		else {
+			first : Int := zipped_bytes[0];
+			second : Int := zipped_bytes[1];
+			if(first <> 31 | second <> 139) {
+				Fail("gzip: body does not start with the gzip magic bytes ({$first} {$second})");
+			};
+			if(zipped_bytes->Size() >= index->Size()) {
+				Fail("gzip: {$zipped_bytes->Size()} bytes is not smaller than the {$index->Size()} it was made from");
+			};
+		};
+		Header(Raw("GET", "/index.html", ""), "content-encoding", Nil, "no Accept-Encoding");
+		Header(Raw("GET", "/index.html", "Accept-Encoding: gzip;q=0\r\n"), "content-encoding", Nil, "gzip refused");
+		Header(Raw("GET", "/style.css", "Accept-Encoding: gzip\r\n"), "content-encoding", Nil, "a file under 256 bytes is not compressed");
+
+		# --- Range on a small (cached) file, answered by the library
+		small_range := Raw("GET", "/index.html", "Range: bytes=0-5\r\n");
+		Status(small_range, "HTTP/1.1 206", "Range on a cached file");
+		Body(small_range, index->SubString(0, 6), "Range on a cached file");
+
+		# --- Range on a large file, read from disk
+		whole := Raw("GET", "/big.txt", "");
+		Status(whole, "HTTP/1.1 200 OK", "large file");
+		Body(whole, big, "large file");
+		Header(whole, "accept-ranges", "bytes", "large file");
+		part := Raw("GET", "/big.txt", "Range: bytes=15-24\r\n");
+		Status(part, "HTTP/1.1 206", "large file Range");
+		Header(part, "content-range", "bytes 15-24/6000", "large file Range");
+		Body(part, "5678901234", "large file Range");
+		tail := Raw("GET", "/big.txt", "Range: bytes=5990-\r\n");
+		Status(tail, "HTTP/1.1 206", "large file open-ended Range");
+		Header(tail, "content-range", "bytes 5990-5999/6000", "large file open-ended Range");
+		Body(tail, "0123456789", "large file open-ended Range");
+		suffix := Raw("GET", "/big.txt", "Range: bytes=-5\r\n");
+		Header(suffix, "content-range", "bytes 5995-5999/6000", "large file suffix Range");
+		Body(suffix, "56789", "large file suffix Range");
+		past := Raw("GET", "/big.txt", "Range: bytes=6000-\r\n");
+		Status(past, "HTTP/1.1 416", "large file Range past the end");
+		Header(past, "content-range", "bytes */6000", "large file Range past the end");
+		Status(Raw("GET", "/big.txt", "Range: bytes=0-1,5-6\r\n"), "HTTP/1.1 200 OK", "large file with two ranges is sent whole");
+
+		# --- HEAD
+		head := Raw("HEAD", "/index.html", "");
+		Status(head, "HTTP/1.1 200 OK", "HEAD");
+		Header(head, "content-length", "{$index->Size()}", "HEAD");
+		if(head->GetBytes() <> Nil) {
+			Fail("HEAD: a body came back");
+		};
+
+		# --- what must not be served
+		Status(Raw("GET", "/missing.html", ""), "HTTP/1.1 404", "a missing file");
+		Status(Raw("GET", "/.secret.txt", ""), "HTTP/1.1 404", "a dotfile");
+		Status(Raw("GET", "/%2esecret.txt", ""), "HTTP/1.1 404", "an encoded dotfile");
+		Status(Raw("GET", "/.hidden/inner.html", ""), "HTTP/1.1 404", "a file in a dot folder");
+		Status(Raw("GET", "/notes.conf", ""), "HTTP/1.1 404", "an extension that is not on the list");
+		Status(Raw("GET", "/%C3%A4.html", ""), "HTTP/1.1 404", "a name that is not ASCII");
+		Status(Raw("GET", "/sub/../index.html", ""), "HTTP/1.1 400", "dot-dot");
+		Status(Raw("GET", "/%2e%2e/index.html", ""), "HTTP/1.1 400", "encoded dot-dot");
+		Status(Raw("GET", "/sub%2fpage.html", ""), "HTTP/1.1 400", "an encoded slash");
+		post := Raw("POST", "/index.html", "Content-Length: 0\r\n");
+		Status(post, "HTTP/1.1 405", "POST");
+		Header(post, "allow", "GET, HEAD", "POST");
+
+		# --- a file changed on disk is served fresh
+		Write("{$dir}/style.css", "body{color:blue;margin:0}");
+		Body(Raw("GET", "/style.css", ""), "body{color:blue;margin:0}", "a file changed on disk");
+		new_etag := Raw("GET", "/style.css", "")->GetHeader("etag");
+		old_etag := css->GetHeader("etag");
+		if(new_etag <> Nil & old_etag <> Nil & new_etag->Equals(old_etag)) {
+			Fail("a changed file kept its ETag {$new_etag}");
+		};
+
+		# --- a cache budget smaller than the working set: eviction must never serve the wrong file
+		@files->SetCacheLimits(4096, 1000);
+		pages := Vector->New()<String>;
+		each(i : 6) {
+			padding := Repeat("x", 800 + i);
+			Write("{$dir}/p{$i}.html", "page {$i} {$padding}");
+			pages->AddBack("p{$i}.html");
+		};
+		each(round : 3) {
+			each(i : pages->Size()) {
+				name := pages->Get(i);
+				padding := Repeat("x", 800 + i);
+				expected := "page {$i} {$padding}";
+				Body(Raw("GET", "/{$name}", ""), expected, "{$name} in round {$round} with a small cache");
+			};
+		};
+
+		Directory->Delete(dir);
+		WebServer->Stop();
+		if(@passed) {
+			"PASS: StaticFiles"->PrintLine();
+		}
+		else {
+			Runtime->Exit(1);
+		};
+	}
+}
