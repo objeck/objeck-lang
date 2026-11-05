@@ -150,7 +150,7 @@
    "deps": ["net", "json", "gen_collect", "cipher"],
    "bundles": {
     "System.IO.Net.OAuth": ["OAuthClient", "OAuthToken"],
-    "Web.HTTP.Server": ["HttpRequestHandler", "HttpsRequestHandler", "MultipartContent", "MultipartDecoder", "MultipartEncoder", "Request", "RequestPageHandler", "Response", "WebServer", "WebServerConfig"],
+    "Web.HTTP.Server": ["HttpRequestHandler", "HttpsRequestHandler", "MultipartContent", "MultipartDecoder", "MultipartEncoder", "Request", "RequestPageHandler", "Response", "StaticFiles", "WebServer", "WebServerConfig"],
     "Web.HTTP.Server.MCP": ["McpRequestHandler", "McpServer", "PromptArgument", "PromptItem", "PromptMessage", "ResourceContent", "ResourceItem", "ResourceTemplate", "ToolContent", "ToolItem"]
    }
   },
