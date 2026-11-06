@@ -9,15 +9,15 @@
   <link rel="icon" href="style/favicon.ico" type="image/x-icon"/>
   <style>
     .perf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
-    .perf-stat { text-align: center; padding: 24px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; transition: border-color 0.2s, transform 0.2s; }
-    .perf-stat:hover { border-color: rgba(125, 211, 252, 0.4); transform: translateY(-2px); }
-    .perf-num { font-family: var(--mono); font-size: 1.5rem; font-weight: 700; white-space: nowrap; background: var(--grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
+    .perf-stat { text-align: center; padding: 24px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 6px; transition: border-color 0.15s; }
+    .perf-stat:hover { border-color: var(--blue); }
+    .perf-num { font-family: var(--mono); font-size: 1.5rem; font-weight: 700; white-space: nowrap; color: var(--sky); }
     .perf-label { margin-top: 8px; font-size: 0.85rem; color: var(--muted); line-height: 1.45; }
     .perf-note { text-align: center; font-size: 0.8rem; color: var(--muted); margin: 16px auto 0; max-width: 720px; line-height: 1.5; }
     .platform-note { text-align: center; font-size: 0.85rem; color: var(--muted); margin: 16px auto 0; max-width: 680px; line-height: 1.5; }
     .doc-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 18px 0 0; }
-    .doc-links a { font-family: var(--mono); font-size: 0.78rem; color: var(--sky); text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 5px 14px; background: var(--card); }
-    .doc-links a:hover { border-color: rgba(125, 211, 252, 0.5); color: var(--cyan); }
+    .doc-links a { font-family: var(--mono); font-size: 0.78rem; color: var(--sky); text-decoration: none; border: 1px solid var(--line); border-radius: 3px; padding: 5px 12px; background: var(--card); }
+    .doc-links a:hover { border-color: var(--blue); color: var(--cyan); }
   </style>
 
   <script>
@@ -169,7 +169,7 @@
           <b>Web Playground</b>
           <hr/>
           <span class="box-text">
-            Write, compile, and run code in your browser. 34 demos across 7 categories.
+            Write, compile, and run code in your browser. 42 demos across 10 categories.
           </span>
         </a>
         <a class="box" href="getting_started.html">
@@ -386,6 +386,8 @@
 
   <footer class="footer">
     &copy; 2026 Randy Hollines. All Rights Reserved.
+    <br>
+    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
   </footer>
  </body>
 </html>

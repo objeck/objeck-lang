@@ -1,31 +1,35 @@
-@import "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap";
+@import "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap";
 
 /* ── Design tokens ──
-   One dark, AI-and-terminal look for every page. Text and muted text are both
-   AA on the page background (about 15:1 and 7:1). */
+   A plain graphite page with one accent, the blue in the logo. No gradients, glow,
+   glass or grid: it should read as documentation for a compiler, not a product page.
+   Text and muted text are both AA on the page background (about 14:1 and 6.5:1). */
 :root {
-  --bg: #070b14;
-  --bg-raised: #0d1424;
-  --card: rgba(17, 25, 43, 0.72);
-  --card-solid: #111a2b;
-  --code-bg: #0a101c;
-  --line: rgba(125, 155, 205, 0.18);
-  --line-strong: rgba(125, 155, 205, 0.32);
-  --text: #e8eef8;
-  --text-soft: #c4cfe0;
-  --muted: #93a1b8;
-  --cyan: #22d3ee;
-  --sky: #7dd3fc;
-  --blue: #3b82f6;
-  --indigo: #6366f1;
-  --violet: #a78bfa;
+  --bg: #101214;
+  --bg-raised: #16191c;
+  --card: #16191c;
+  --card-solid: #16191c;
+  --code-bg: #0b0d0f;
+  --line: rgba(255, 255, 255, 0.10);
+  --line-strong: rgba(255, 255, 255, 0.18);
+  --text: #ece9e2;
+  --text-soft: #cbc8c0;
+  --muted: #9a978f;
+  /* One accent: the blue of the check mark in the logo (#0894e0). The old names
+     stay because the pages and highlighters use them; they are all that blue now. */
+  --cyan: #3aa9ea;
+  --sky: #4db3ee;
+  --blue: #0894e0;
+  --indigo: #0894e0;
+  --violet: #b9a6d8;
   --green: #86efac;
   --amber: #fbbf24;
-  --grad: linear-gradient(90deg, #22d3ee 0%, #6366f1 55%, #a855f7 100%);
-  --glow: 0 0 0 1px rgba(99, 102, 241, 0.35), 0 8px 32px rgba(56, 189, 248, 0.14);
-  --mono: 'JetBrains Mono', Consolas, 'Liberation Mono', Menlo, monospace;
-  --sans: 'Inter', 'Segoe UI', Roboto, Helvetica, sans-serif;
-  --nav-h: 68px;
+  --grad: #0894e0;
+  --glow: 0 0 0 1px rgba(8, 148, 224, 0.6);
+  --mono: 'IBM Plex Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+  --sans: 'IBM Plex Sans', 'Segoe UI', Roboto, Helvetica, sans-serif;
+  --serif: 'IBM Plex Serif', Georgia, 'Times New Roman', serif;
+  --nav-h: 64px;
 }
 
 /* ── Reset ── */
@@ -44,13 +48,6 @@ html {
 body {
   font-family: var(--sans);
   background-color: var(--bg);
-  background-image:
-    radial-gradient(900px 480px at 12% -8%, rgba(34, 211, 238, 0.10), transparent 70%),
-    radial-gradient(800px 460px at 92% 4%, rgba(139, 92, 246, 0.13), transparent 70%),
-    linear-gradient(rgba(125, 155, 205, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(125, 155, 205, 0.045) 1px, transparent 1px);
-  background-size: auto, auto, 44px 44px, 44px 44px;
-  background-attachment: fixed;
   color: var(--text);
   line-height: 1.65;
   padding-top: var(--nav-h);
@@ -59,7 +56,7 @@ body {
 
 a {
   color: var(--sky);
-  text-decoration-color: rgba(125, 211, 252, 0.4);
+  text-decoration-color: rgba(77, 179, 238, 0.4);
   text-underline-offset: 3px;
 }
 
@@ -74,6 +71,8 @@ a:hover {
 }
 
 h1, h2, h3, h4 {
+  font-family: var(--serif);
+  font-weight: 600;
   color: var(--text);
   margin-top: 20px;
   letter-spacing: -0.01em;
@@ -95,7 +94,7 @@ ul li, ol li {
 }
 
 ::selection {
-  background: rgba(99, 102, 241, 0.45);
+  background: rgba(8, 148, 224, 0.45);
 }
 
 /* ── Banner / Header ── */
@@ -105,26 +104,13 @@ ul li, ol li {
   left: 0;
   width: 100%;
   height: var(--nav-h);
-  background: rgba(7, 11, 20, 0.78);
-  -webkit-backdrop-filter: saturate(160%) blur(14px);
-  backdrop-filter: saturate(160%) blur(14px);
+  background: var(--bg);
   padding: 0 28px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   z-index: 1000;
   border-bottom: 1px solid var(--line);
-}
-
-.banner::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 1px;
-  background: var(--grad);
-  opacity: 0.45;
 }
 
 .banner > a {
@@ -138,7 +124,7 @@ ul li, ol li {
 }
 
 /* ── Navigation ──
-   A visible bar on wide screens, the hamburger below 1140px. The markup is the
+   The hamburger at every width: the logo and one button, the links in the dropdown. The markup is the
    same on every page: .menu holds the three bars and the .menu-items links. */
 .menu {
   position: static;
@@ -169,14 +155,14 @@ ul li, ol li {
   font-size: 0.9rem;
   color: var(--muted);
   padding: 7px 12px;
-  border-radius: 8px;
+  border-radius: 4px;
   white-space: nowrap;
   transition: color 0.15s, background-color 0.15s;
 }
 
 .menu-items a:hover {
   color: var(--text);
-  background-color: rgba(125, 155, 205, 0.12);
+  background-color: rgba(255, 255, 255, 0.12);
 }
 
 .menu-items a[href*="playground"] {
@@ -191,7 +177,7 @@ ul li, ol li {
   filter: brightness(1.12);
 }
 
-@media screen and (max-width: 1140px) {
+@media screen {
   .banner {
     padding: 0 16px;
   }
@@ -202,8 +188,8 @@ ul li, ol li {
     height: 38px;
     background-color: var(--card-solid);
     border: 1px solid var(--line-strong);
-    border-radius: 8px;
-    padding: 8px;
+    border-radius: 4px;
+    padding: 9px 8px;
     cursor: pointer;
     flex-direction: column;
     justify-content: space-between;
@@ -213,9 +199,9 @@ ul li, ol li {
   .menu-bar {
     display: block;
     width: 100%;
-    height: 3px;
-    background: var(--grad);
-    border-radius: 2px;
+    height: 2px;
+    background: var(--text);
+    border-radius: 0;
   }
 
   .menu-items {
@@ -227,9 +213,9 @@ ul li, ol li {
     align-items: stretch;
     background-color: var(--card-solid);
     border: 1px solid var(--line-strong);
-    border-radius: 12px;
-    padding: 8px;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+    border-radius: 6px;
+    padding: 6px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
     z-index: 1001;
     min-width: 190px;
     gap: 0;
@@ -270,35 +256,23 @@ main {
   gap: 8px;
   font-family: var(--mono);
   font-size: 0.78rem;
-  color: var(--sky);
-  background: rgba(34, 211, 238, 0.08);
-  border: 1px solid rgba(34, 211, 238, 0.28);
-  border-radius: 999px;
-  padding: 5px 14px;
+  color: var(--text-soft);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  padding: 4px 12px;
   margin-bottom: 22px;
   text-decoration: none;
 }
 
-.hero-badge::before {
-  content: "";
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--cyan);
-  box-shadow: 0 0 10px var(--cyan);
-}
-
 .hero-title {
-  font-size: 3.6rem;
-  font-weight: 800;
-  line-height: 1.08;
-  letter-spacing: -0.035em;
+  font-family: var(--serif);
+  font-size: 3.3rem;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
   margin: 0 0 20px 0;
-  background: linear-gradient(100deg, #f4f8ff 0%, #7dd3fc 42%, #a78bfa 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
+  color: var(--text);
 }
 
 .hero-subtitle {
@@ -337,38 +311,34 @@ main {
   display: inline-block;
   font-size: 0.98rem;
   font-weight: 600;
-  border-radius: 10px;
+  border-radius: 4px;
   text-decoration: none;
-  padding: 11px 24px;
-  transition: transform 0.15s, box-shadow 0.2s, background-color 0.2s, border-color 0.2s;
-}
-
-.btn:hover {
-  transform: translateY(-1px);
+  padding: 10px 22px;
+  transition: background-color 0.15s, border-color 0.15s;
 }
 
 .btn-primary {
-  background: linear-gradient(90deg, #2563eb, #6366f1 60%, #8b5cf6);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 6px 24px rgba(99, 102, 241, 0.35);
+  background: #0894e0;
+  color: #04141f;
+  border: 1px solid #0894e0;
 }
 
 .btn-primary:hover {
-  color: #fff;
-  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.55);
+  color: #04141f;
+  background: #3aa9ea;
+  border-color: #3aa9ea;
 }
 
 .btn-secondary {
-  background-color: rgba(125, 155, 205, 0.06);
+  background-color: rgba(255, 255, 255, 0.06);
   color: var(--text);
   border: 1px solid var(--line-strong);
 }
 
 .btn-secondary:hover {
   color: var(--text);
-  background-color: rgba(125, 155, 205, 0.14);
-  border-color: rgba(125, 211, 252, 0.5);
+  background-color: rgba(255, 255, 255, 0.14);
+  border-color: rgba(77, 179, 238, 0.5);
 }
 
 /* ── Code Preview ── */
@@ -380,10 +350,9 @@ main {
 .code-preview pre {
   background: var(--code-bg);
   border: 1px solid var(--line-strong);
-  border-radius: 12px;
+  border-radius: 6px;
   padding: 20px 24px;
   overflow-x: auto;
-  box-shadow: var(--glow);
 }
 
 .code-preview code {
@@ -428,7 +397,7 @@ main {
 }
 
 .code-tab:hover {
-  background-color: rgba(125, 155, 205, 0.1);
+  background-color: rgba(255, 255, 255, 0.1);
   color: var(--text);
 }
 
@@ -459,38 +428,22 @@ main {
   position: relative;
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 6px;
   padding: 20px;
   text-align: left;
   font-size: 1rem;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  transition: border-color 0.15s;
   text-decoration: none;
   color: var(--sky);
   min-height: 132px;
   overflow: hidden;
 }
 
-.box::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 2px;
-  background: var(--grad);
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
 .box:hover {
-  border-color: rgba(125, 211, 252, 0.45);
-  box-shadow: var(--glow);
-  transform: translateY(-2px);
-}
-
-.box:hover::before {
-  opacity: 1;
+  border-color: var(--blue);
 }
 
 .box hr {
@@ -506,9 +459,9 @@ main {
   justify-content: center;
   width: 42px;
   height: 42px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(34, 211, 238, 0.16), rgba(139, 92, 246, 0.2));
-  border: 1px solid rgba(125, 211, 252, 0.28);
+  border-radius: 3px;
+  background: transparent;
+  border: 1px solid var(--line-strong);
   color: var(--sky);
   font-family: var(--mono);
   font-size: 0.75rem;
@@ -571,7 +524,7 @@ main {
 }
 
 .highlight-item:hover {
-  border-color: rgba(125, 211, 252, 0.4);
+  border-color: rgba(77, 179, 238, 0.4);
   transform: translateY(-2px);
 }
 
@@ -595,7 +548,7 @@ li code,
 td code {
   font-family: var(--mono);
   font-size: 0.82em;
-  background-color: rgba(125, 155, 205, 0.12);
+  background-color: rgba(255, 255, 255, 0.12);
   padding: 1px 6px;
   border-radius: 5px;
   color: var(--sky);
@@ -653,9 +606,27 @@ td code {
   left: 10%;
   right: 10%;
   height: 1px;
-  background: var(--grad);
-  opacity: 0.4;
+  background: var(--line);
 }
+
+/* "Powered by Objeck": the footer badge on every page (the site is served by Objeck itself).
+   The logo art is white, so the badge carries its own dark ground and reads in any theme. */
+.footer .powered {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #0b0d0f;
+  color: #cbc8c0;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.footer .powered:hover { border-color: rgba(77, 179, 238, 0.6); }
+.footer .powered img { height: 20px; width: auto; display: block; }
 
 /* ── Action Buttons (legacy, used on some pages) ── */
 .action-buttons {
@@ -665,16 +636,13 @@ td code {
 
 /* ── Page chrome shared by the guides, the AI guide and the rendered docs ── */
 .page-title {
+  font-family: var(--serif);
   font-size: 2.3rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   margin: 0 0 0.5rem;
   line-height: 1.15;
-  background: linear-gradient(100deg, #f4f8ff 0%, #7dd3fc 55%, #a78bfa 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
+  color: var(--text);
 }
 
 .page-lead {
@@ -686,8 +654,7 @@ td code {
 }
 
 .container h3 {
-  border-left: 3px solid transparent;
-  border-image: linear-gradient(180deg, #22d3ee, #8b5cf6) 1;
+  border-left: 3px solid var(--blue);
   padding-left: 12px;
   margin-top: 3rem;
   font-size: 1.35rem;
@@ -811,7 +778,7 @@ pre + p {
 }
 
 .doc-meta a:hover {
-  border-color: rgba(125, 211, 252, 0.5);
+  border-color: rgba(77, 179, 238, 0.5);
 }
 
 .container img {
@@ -1007,7 +974,7 @@ table {
 }
 
 table th {
-  background: rgba(125, 155, 205, 0.08);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--sky);
   font-family: var(--mono);
   font-size: 0.76rem;
@@ -1031,11 +998,11 @@ table tr:last-child td {
 }
 
 table tr:hover td {
-  background-color: rgba(125, 155, 205, 0.07);
+  background-color: rgba(255, 255, 255, 0.07);
 }
 
 .ref-table th {
-  background: rgba(125, 155, 205, 0.08) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
   color: var(--sky) !important;
 }
 
