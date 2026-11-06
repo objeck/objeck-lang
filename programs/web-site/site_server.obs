@@ -1,0 +1,74 @@
+use System.IO.Net, Web.HTTP.Server;
+
+#~
+# Serves a folder of files over plain HTTP, for a site: the objeck.org static pages.
+# Meant to sit behind a reverse proxy that owns TLS, compression and the public
+# timeouts, so it binds 127.0.0.1 unless told otherwise.
+#
+#   obc -src site_server.obs -lib net,net_server,json,cipher -dest site_server.obe
+#   obr site_server.obe <folder> [port] [address]
+#   obr site_server.obe docs/web 8080               # http://127.0.0.1:8080
+#
+# The folder must not contain symbolic links. The server library has already refused
+# a request that climbs out of the folder (".." in any spelling, encoded separators,
+# NUL, a fragment) before it gets here; StaticFiles refuses dotfiles, extensions that
+# are not on its list, and names that are not plain ASCII.
+~#
+class SiteHandler from HttpRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		SiteServer->Files()->Serve(request, response);
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		SiteServer->Files()->Serve(request, response);
+		return false;
+	}
+}
+
+class SiteServer {
+	@files : static : StaticFiles;
+
+	function : Files() ~ StaticFiles {
+		return @files;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() < 1) {
+			"usage: obr site_server.obe <folder> [port] [address]"->ErrorLine();
+			Runtime->Exit(2);
+		};
+
+		root := args[0];
+		port := 8080;
+		if(args->Size() > 1) {
+			port := args[1]->ToInt();
+		};
+
+		address := "127.0.0.1";
+		if(args->Size() > 2) {
+			address := args[2];
+		};
+
+		if(<>System.IO.Filesystem.Directory->Exists(root)) {
+			"not a folder: {$root}"->ErrorLine();
+			Runtime->Exit(2);
+		};
+
+		# StaticFiles cannot tell a symbolic link from a file, and one that points outside the
+		# folder would be served. On Linux and macOS refuse to start if there is any.
+		if(<>Runtime->GetPlatform()->StartsWith("Windows")) {
+			clean := Runtime->Command("test -z \"$(find '{$root}' -type l 2>/dev/null | head -n 1)\"") = 0;
+			if(<>clean) {
+				"refusing to start: '{$root}' contains a symbolic link (find '{$root}' -type l)"->ErrorLine();
+				Runtime->Exit(2);
+			};
+		};
+
+		@files := StaticFiles->New(root);
+		"Serving '{$root}' on http://{$address}:{$port}"->PrintLine();
+		WebServer->Serve(SiteHandler->New()->GetClass(), address, port);
+	}
+}

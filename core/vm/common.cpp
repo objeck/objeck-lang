@@ -6027,9 +6027,15 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
       // Accept raw TCP connection. accept() blocks indefinitely; park so STW GC
       // elsewhere can proceed. The instance ref is re-rooted on the op_stack so
       // promotion fixup relocates it (srv/client are C heap, safe across a park).
-      // The handshake blocks on the peer just as accept() does, so it stays
-      // inside the parked region: a peer that is a thread of this VM may need a
-      // collection to finish before it can send its next flight.
+      //
+      // The handshake is NOT done here. It used to be, and a peer that connected
+      // and then sent nothing held this call -- the only accept loop -- for as long
+      // as it liked, so one idle connection stopped every other client from being
+      // served. The session is set up and left in its initial state; mbedtls runs
+      // the handshake inside the first mbedtls_ssl_read or mbedtls_ssl_write, which
+      // is on the connection's own thread and under that socket's receive timeout.
+      // A handshake that fails now surfaces as that first read or write failing
+      // (status <= 0, recorded for GetLastError) rather than as a Nil from Accept.
       PushInt((size_t)instance, op_stack, stack_pos);
       MemoryManager::BeginBlocking();
       int ret = mbedtls_net_accept(&srv->listen_fd, &client->net, nullptr, 0, nullptr);
@@ -6038,13 +6044,6 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
         ret = mbedtls_ssl_setup(&client->ssl, &srv->conf);
         if(ret == 0) {
           mbedtls_ssl_set_bio(&client->ssl, &client->net, mbedtls_net_send, mbedtls_net_recv, nullptr);
-
-          // Perform handshake
-          while((ret = mbedtls_ssl_handshake(&client->ssl)) != 0) {
-            if(ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
-              break;
-            }
-          }
         }
       }
       MemoryManager::EndBlocking();

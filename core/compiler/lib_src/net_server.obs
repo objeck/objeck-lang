@@ -22,6 +22,17 @@ bundle Web.HTTP.Server {
 		# present: one server per process.
 		@bound_port : static : Int;
 
+		# Connections being served, and the most there may be (0 means the default, see
+		# RequestGuard->DefaultMaxConnections). One thread serves each connection, so
+		# without a limit a client that opens connections and stalls costs a thread apiece.
+		@active_connections : static : Int;
+		@max_connections : static : Int;
+		@connection_mutex : static : System.Concurrency.ThreadMutex;
+
+		# Half-second ticks since the first Serve, for request deadlines; see RequestGuard
+		@tick : static : Int;
+		@clock_thread : static : System.Concurrency.Thread;
+
 		#~
 		Starts a HTTPS server that listens for requests
 		@param filename configuration file (an <a href='https://github.com/objeck/objeck-web-server/blob/master/config/weather_config.json' target='_blank'>example</a>)
@@ -135,6 +146,7 @@ bundle Web.HTTP.Server {
 			if(@secure_server->Listen()) {
 				# the port the socket has: for a port of 0, the one the system chose
 				@bound_port := @secure_server->GetPort();
+				StartClock();
 				if(@is_debug) {
 					platform := Runtime->GetPlatform();
 					host := TCPSocket->HostName();
@@ -148,7 +160,7 @@ bundle Web.HTTP.Server {
 
 				while(<>@stop) {
 					secure_client := @secure_server->Accept();
-					if(<>@stop & secure_client <> Nil & secure_client->IsOpen()) {
+					if(<>@stop & secure_client <> Nil & secure_client->IsOpen() & <>RefuseSecure(secure_client)) {
 						# Accept owns the secure socket object. Move it once into a dedicated
 						# connection thread and run the handler there; launching the handler as
 						# another Thread would spend two threads per TLS connection.
@@ -230,6 +242,112 @@ bundle Web.HTTP.Server {
 		}
 
 		#~
+		Sets the most connections served at once; a connection beyond it is answered
+		503 and closed. Call before Serve. Zero, the default, allows 1024.
+		@param max most simultaneous connections
+		~#
+		function : SetMaxConnections(max : Int) ~ Nil {
+			@max_connections := max;
+		}
+
+		#~
+		Gets the number of connections being served now
+		@return connections being served
+		~#
+		function : GetActiveConnections() ~ Int {
+			return @active_connections;
+		}
+
+		function : Tick() ~ Int {
+			return @tick;
+		}
+
+		# One thread counts the ticks for every connection
+		function : private : StartClock() ~ Nil {
+			if(@clock_thread = Nil) {
+				@clock_thread := System.Concurrency.Thread->New() {
+					New() { Parent(); }
+
+					method : public : Run(arg : System.Base) ~ Nil {
+						while(<>WebServer->IsStopped()) {
+							System.Concurrency.Thread->Sleep(500);
+							WebServer->Advance();
+						};
+					}
+				};
+				@clock_thread->Execute(Nil);
+			};
+		}
+
+		function : IsStopped() ~ Bool {
+			return @stop;
+		}
+
+		function : Advance() ~ Nil {
+			@tick += 1;
+		}
+
+		# Called by the accept loop for each connection; false when the server is full.
+		# The handler's Run calls ConnectionClosed when it is done with the socket.
+		function : ConnectionOpened() ~ Bool {
+			if(@connection_mutex = Nil) {
+				@connection_mutex := System.Concurrency.ThreadMutex->New("web_connections");
+			};
+
+			limit := @max_connections;
+			if(limit < 1) {
+				limit := RequestGuard->DefaultMaxConnections();
+			};
+
+			admitted := false;
+			critical(@connection_mutex) {
+				if(@active_connections < limit) {
+					@active_connections += 1;
+					admitted := true;
+				};
+			};
+
+			return admitted;
+		}
+
+		function : ConnectionClosed() ~ Nil {
+			if(@connection_mutex = Nil) {
+				return;
+			};
+
+			critical(@connection_mutex) {
+				if(@active_connections > 0) {
+					@active_connections -= 1;
+				};
+			};
+		}
+
+		# A full server tells the client and drops the connection before a thread is spent on it
+		function : Refuse(client : TCPSocket) ~ Bool {
+			if(ConnectionOpened()) {
+				return false;
+			};
+
+			client->WriteString("HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+			client->Close();
+			return true;
+		}
+
+		# A TLS client is dropped without a reply. Writing the 503 would run the TLS
+		# handshake here, on the accept thread, with no timeout on the socket: one silent
+		# client that connected while the server was full would stop every other client,
+		# which is what handshaking in Accept used to do. Close() on a session that never
+		# handshook sends nothing.
+		function : RefuseSecure(client : TCPSecureSocket) ~ Bool {
+			if(ConnectionOpened()) {
+				return false;
+			};
+
+			client->Close();
+			return true;
+		}
+
+		#~
 		Starts a HTTP server that listens for requests
 		@param callback class inherited from 'HttpRequestHandler'
 		@param port server port
@@ -291,6 +409,7 @@ bundle Web.HTTP.Server {
 			if(@server->Listen(128)) {
 				# the port the socket has: for a port of 0, the one the system chose
 				@bound_port := @server->GetPort();
+				StartClock();
 				if(@is_debug) {
 					platform := Runtime->GetPlatform();
 					host := TCPSocket->HostName();
@@ -304,7 +423,7 @@ bundle Web.HTTP.Server {
 
 				while(<>@stop) {
 					client := @server->Accept();
-					if(<>@stop & client <> Nil & client->IsOpen()) {
+					if(<>@stop & client <> Nil & client->IsOpen() & <>Refuse(client)) {
 						# A single Thread instance used to be created above this loop and
 						# re-executed for every connection. Execute() overwrites the thread's
 						# argument, so a connection accepted while the previous handler was
@@ -1807,6 +1926,999 @@ bundle Web.HTTP.Server {
 		}
 	}
 
+	# One file held by StaticFiles: its content, the gzip form when it has one, and the
+	# size and modification stamp it was read at, which say whether it is still current
+	class : private : StaticEntry {
+		@size : Int;
+		@stamp : Int;
+		@content : Byte[];
+		@gzip : Byte[];
+
+		New(size : Int, stamp : Int, content : Byte[], gzip : Byte[]) {
+			@size := size;
+			@stamp := stamp;
+			@content := content;
+			@gzip := gzip;
+		}
+
+		method : public : Matches(size : Int, stamp : Int) ~ Bool {
+			return @size = size & @stamp = stamp;
+		}
+
+		method : public : GetContent() ~ Byte[] {
+			return @content;
+		}
+
+		method : public : GetGzip() ~ Byte[] {
+			return @gzip;
+		}
+
+		# memory held, for the cache budget
+		method : public : Bytes() ~ Int {
+			total := @content->Size();
+			if(@gzip <> Nil) {
+				total += @gzip->Size();
+			};
+
+			return total;
+		}
+	}
+
+	#~
+	Serves the files under a folder, for a site: content types from a whitelist of file
+	extensions (anything else is a 404), index.html for a folder, ETag and conditional
+	requests (304), gzip for text, and Range for large files. Small files are kept in a
+	memory cache with a total budget; large ones are read from disk for each request,
+	and a Range request reads only the slice it asks for. A file that changes on disk
+	is served fresh, since its size and modification time are checked on every request.
+
+	Refused as 404: dotfiles and anything in a dot folder, extensions not on the list,
+	names that are not plain ASCII. Folder listings are never produced. The request
+	target has already been checked by the server (no "..", encoded separators, NUL,
+	and so on) before a handler runs; this class checks it again. It does not follow
+	or detect symbolic links, so the folder it serves must not contain any.
+
+	```
+	class SiteHandler from HttpRequestHandler {
+	  New() { Parent(); }
+
+	  method : ProcessGet(request : Request, response : Response) ~ Bool {
+	    Site->Files()->Serve(request, response);
+	    return false;
+	  }
+
+	  method : ProcessPost(request : Request, response : Response) ~ Bool {
+	    return false;
+	  }
+	}
+	```
+	~#
+	class StaticFiles {
+		@root : String;
+		@total_limit : Int;
+		@small_limit : Int;
+		@large_in_flight : Int;
+		@cached_bytes : Int;
+		@cache : Map<String, StaticEntry>;
+		@order : Vector<String>;
+		@types : Map<String, String>;
+		@mutex : System.Concurrency.ThreadMutex;
+
+		#~
+		Constructor
+		@param root folder to serve
+		~#
+		New(root : String) {
+			@root := root;
+			while(@root->Size() > 1 & (@root->EndsWith('/') | @root->EndsWith('\\'))) {
+				@root := @root->SubString(@root->Size() - 1);
+			};
+
+			@total_limit := 64 * 1048576;
+			@small_limit := 1048576;
+			@cache := Map->New()<String, StaticEntry>;
+			@order := Vector->New()<String>;
+			@mutex := System.Concurrency.ThreadMutex->New("static_files");
+
+			@types := Map->New()<String, String>;
+			@types->Insert(".html", "text/html; charset=utf-8");
+			@types->Insert(".htm", "text/html; charset=utf-8");
+			@types->Insert(".css", "text/css; charset=utf-8");
+			@types->Insert(".js", "text/javascript; charset=utf-8");
+			@types->Insert(".mjs", "text/javascript; charset=utf-8");
+			@types->Insert(".json", "application/json");
+			@types->Insert(".txt", "text/plain; charset=utf-8");
+			@types->Insert(".md", "text/plain; charset=utf-8");
+			@types->Insert(".xml", "application/xml");
+			@types->Insert(".svg", "image/svg+xml");
+			@types->Insert(".png", "image/png");
+			@types->Insert(".jpg", "image/jpeg");
+			@types->Insert(".jpeg", "image/jpeg");
+			@types->Insert(".gif", "image/gif");
+			@types->Insert(".webp", "image/webp");
+			@types->Insert(".ico", "image/x-icon");
+			@types->Insert(".icns", "image/icns");
+			@types->Insert(".mp4", "video/mp4");
+			@types->Insert(".webm", "video/webm");
+			@types->Insert(".zip", "application/zip");
+			@types->Insert(".pdf", "application/pdf");
+			@types->Insert(".woff", "font/woff");
+			@types->Insert(".woff2", "font/woff2");
+		}
+
+		#~
+		Sets the memory the cache may use and the largest file it will hold. A file over
+		small_bytes is read from disk for every request.
+		@param total_bytes cache budget in bytes, 64 MB by default
+		@param small_bytes largest cached file in bytes, 1 MB by default
+		~#
+		method : public : SetCacheLimits(total_bytes : Int, small_bytes : Int) ~ Nil {
+			@total_limit := total_bytes;
+			@small_limit := small_bytes;
+		}
+
+		#~
+		Answers a request for a file: sets the response code, headers and content.
+		@param request the request
+		@param response the response
+		~#
+		method : public : Serve(request : Request, response : Response) ~ Nil {
+			verb := request->GetMethod();
+			if(verb <> Nil & <>verb->Equals("GET") & <>verb->Equals("HEAD")) {
+				response->SetHeader("Allow", "GET, HEAD");
+				response->SetCodeTypeContent(405, "text/plain; charset=utf-8", "Method Not Allowed");
+				return;
+			};
+
+			raw := request->GetPath();
+			path := FilePath(raw);
+			if(path = Nil) {
+				NotFound(response);
+				return;
+			};
+
+			if(path->EndsWith('/')) {
+				path := "{$path}index.html";
+			};
+
+			file := "{$@root}{$path}";
+			if(System.IO.Filesystem.Directory->Exists(file)) {
+				# a folder without its slash: send the client to it, so relative links resolve
+				response->SetHeader("Location", "{$raw}/");
+				response->SetCodeTypeContent(301, "text/plain; charset=utf-8", "Moved Permanently");
+				return;
+			};
+
+			extension := Extension(path);
+			type : String;
+			if(extension <> Nil) {
+				type := @types->Find(extension);
+			};
+			if(type = Nil | <>System.IO.Filesystem.File->Exists(file)) {
+				NotFound(response);
+				return;
+			};
+
+			size := System.IO.Filesystem.File->Size(file);
+			modified := System.IO.Filesystem.File->ModifiedTime(file, true);
+			if(size < 0 | modified = Nil) {
+				NotFound(response);
+				return;
+			};
+
+			stamp := Stamp(modified);
+			etag := "\"{$size}-{$stamp}\"";
+
+			match := request->GetHeader("if-none-match");
+			if(match <> Nil & (match->Equals("*") | match->Find(etag) > -1)) {
+				Standard(response, type, etag);
+				response->SetCode(304);
+				return;
+			};
+
+			if(size > @small_limit) {
+				ServeLarge(request, response, file, size, type, etag);
+				return;
+			};
+
+			entry := Lookup(file, size, stamp);
+			if(entry = Nil) {
+				content := System.IO.Filesystem.FileReader->ReadBinaryFile(file);
+				if(content = Nil | content->Size() <> size) {
+					NotFound(response);
+					return;
+				};
+
+				fresh_gzip : Byte[];
+				if(size >= 256 & Compressible(extension)) {
+					packed := content->CompressGzip();
+					if(packed <> Nil & packed->Size() < size) {
+						fresh_gzip := packed;
+					};
+				};
+
+				entry := StaticEntry->New(size, stamp, content, fresh_gzip);
+				Store(file, entry);
+			};
+
+			Standard(response, type, etag);
+			if(Compressible(extension)) {
+				response->SetHeader("Vary", "Accept-Encoding");
+			};
+
+			gzip := entry->GetGzip();
+			if(gzip <> Nil & AcceptsGzip(request)) {
+				response->SetHeader("Content-Encoding", "gzip");
+				response->SetCodeTypeContent(200, type, gzip);
+			}
+			else {
+				response->SetCodeTypeContent(200, type, entry->GetContent());
+			};
+		}
+
+		# A file over the cache limit: a Range request reads just its slice, in pieces of at
+		# most 8 MB (a client asking for the rest of a 1 GB file gets the next piece and asks
+		# again); a request for the whole file reads all of it, a few at a time.
+		method : ServeLarge(request : Request, response : Response, file : String, size : Int, type : String, etag : String) ~ Nil {
+			spec := request->GetHeader("range");
+			if(request->GetHeader("if-range") <> Nil) {
+				spec := Nil;
+			};
+
+			if(spec <> Nil) {
+				range := RangeParser->Parse(spec, size);
+				if(range[0] = 2) {
+					response->SetHeader("Content-Range", "bytes */{$size}");
+					response->SetCodeTypeContent(416, "text/plain; charset=utf-8", "Range Not Satisfiable");
+					return;
+				};
+
+				if(range[0] = 1) {
+					start := range[1];
+					end := range[2];
+					if(end - start + 1 > 8 * 1048576) {
+						end := start + 8 * 1048576 - 1;
+					};
+
+					slice := ReadSlice(file, start, end - start + 1);
+					if(slice = Nil) {
+						NotFound(response);
+						return;
+					};
+
+					Standard(response, type, etag);
+					response->SetHeader("Content-Range", "bytes {$start}-{$end}/{$size}");
+					response->SetCodeTypeContent(206, type, slice);
+					return;
+				};
+			};
+
+			if(<>EnterLarge()) {
+				response->SetHeader("Retry-After", "5");
+				response->SetCodeTypeContent(503, "text/plain; charset=utf-8", "Busy");
+				return;
+			};
+
+			whole := System.IO.Filesystem.FileReader->ReadBinaryFile(file);
+			LeaveLarge();
+			if(whole = Nil) {
+				NotFound(response);
+				return;
+			};
+
+			Standard(response, type, etag);
+			response->SetCodeTypeContent(200, type, whole);
+		}
+
+		method : ReadSlice(file : String, start : Int, count : Int) ~ Byte[] {
+			reader := System.IO.Filesystem.FileReader->New(file);
+			if(<>reader->IsOpen()) {
+				return Nil;
+			};
+
+			if(<>reader->Seek(start)) {
+				reader->Close();
+				return Nil;
+			};
+
+			slice := Byte->New[count];
+			got := 0;
+			while(got < count) {
+				read := reader->ReadBuffer(got, count - got, slice);
+				if(read < 1) {
+					reader->Close();
+					return Nil;
+				};
+				got += read;
+			};
+			reader->Close();
+
+			return slice;
+		}
+
+		# At most four whole-file reads of large files at once, so a handful of requests for a
+		# video cannot hold hundreds of megabytes each
+		method : EnterLarge() ~ Bool {
+			admitted := false;
+			critical(@mutex) {
+				if(@large_in_flight < 4) {
+					@large_in_flight += 1;
+					admitted := true;
+				};
+			};
+
+			return admitted;
+		}
+
+		method : LeaveLarge() ~ Nil {
+			critical(@mutex) {
+				if(@large_in_flight > 0) {
+					@large_in_flight -= 1;
+				};
+			};
+		}
+
+		# The path of the file below the root, decoded, or Nil when this class will not serve
+		# it: the checks the server made, again; anything but plain ASCII; any segment that
+		# starts with a dot
+		method : FilePath(raw : String) ~ String {
+			if(raw = Nil | RequestGuard->Target(raw) = Nil) {
+				return Nil;
+			};
+
+			decoded := RequestGuard->PercentDecode(raw);
+			if(decoded = Nil | decoded->IsEmpty()) {
+				return Nil;
+			};
+
+			each(i : decoded) {
+				n : Int := decoded->Get(i);
+				if(n > 126) {
+					return Nil;
+				};
+			};
+
+			if(RequestGuard->HasBadCharacter(decoded) | RequestGuard->HasDotDotSegment(decoded)) {
+				return Nil;
+			};
+
+			segments := decoded->Split("/");
+			each(i : segments) {
+				if(segments[i]->StartsWith('.')) {
+					return Nil;
+				};
+			};
+
+			return decoded;
+		}
+
+		# ".html" from "/a/b.html", in lower case, or Nil
+		method : Extension(path : String) ~ String {
+			slash := path->FindLast('/');
+			dot := path->FindLast('.');
+			if(dot < 0 | dot < slash) {
+				return Nil;
+			};
+
+			return path->SubString(dot, path->Size() - dot)->ToLower();
+		}
+
+		method : Compressible(extension : String) ~ Bool {
+			if(extension = Nil) {
+				return false;
+			};
+
+			return " .html .htm .css .js .mjs .json .txt .md .xml .svg "->Find(" {$extension} ") > -1;
+		}
+
+		method : AcceptsGzip(request : Request) ~ Bool {
+			value := request->GetHeader("accept-encoding");
+			if(value = Nil) {
+				return false;
+			};
+
+			lowered := value->ToLower();
+			return lowered->Find("gzip") > -1 & lowered->Find("gzip;q=0") < 0;
+		}
+
+		# A number that changes whenever the modification time does, to the second
+		method : Stamp(date : System.Time.Date) ~ Int {
+			day := (date->GetYear() * 100 + date->GetMonth()) * 100 + date->GetDay();
+			return day * 1000000 + date->GetHours() * 10000 + date->GetMinutes() * 100 + date->GetSeconds();
+		}
+
+		# Headers every answer for a file carries. HTML is revalidated each time (a request
+		# that costs one stat and, while it is current, a 304); everything else may be kept for
+		# a day.
+		method : Standard(response : Response, type : String, etag : String) ~ Nil {
+			response->SetHeader("ETag", etag);
+			response->SetHeader("X-Content-Type-Options", "nosniff");
+			if(type->StartsWith("text/html")) {
+				response->SetHeader("Cache-Control", "no-cache");
+			}
+			else {
+				response->SetHeader("Cache-Control", "public, max-age=86400");
+			};
+		}
+
+		method : NotFound(response : Response) ~ Nil {
+			response->SetHeader("X-Content-Type-Options", "nosniff");
+			response->SetCodeTypeContent(404, "text/plain; charset=utf-8", "Not found");
+		}
+
+		# The cached entry for a file when it was read at this size and time, else Nil
+		method : Lookup(file : String, size : Int, stamp : Int) ~ StaticEntry {
+			found : StaticEntry;
+			critical(@mutex) {
+				entry := @cache->Find(file);
+				if(entry <> Nil & entry->Matches(size, stamp)) {
+					found := entry;
+				};
+			};
+
+			return found;
+		}
+
+		# Holds an entry, dropping the oldest first until the budget is respected. An entry
+		# bigger than the whole budget is not kept.
+		method : Store(file : String, entry : StaticEntry) ~ Nil {
+			add := entry->Bytes();
+			if(add > @total_limit) {
+				return;
+			};
+
+			critical(@mutex) {
+				old := @cache->Find(file);
+				if(old <> Nil) {
+					@cached_bytes -= old->Bytes();
+					@cache->Remove(file);
+				};
+
+				while(@cached_bytes + add > @total_limit & <>@order->IsEmpty()) {
+					key := @order->Get(0);
+					@order->Remove(0);
+					dropped := @cache->Find(key);
+					if(dropped <> Nil) {
+						@cached_bytes -= dropped->Bytes();
+						@cache->Remove(key);
+					};
+				};
+
+				@cache->Insert(file, entry);
+				@order->AddBack(file);
+				@cached_bytes += add;
+			};
+		}
+	}
+
+	# What a request must satisfy before a handler sees it. Shared by the HTTP and
+	# HTTPS request handlers. Every check answers a status code, 0 meaning accepted,
+	# so the handlers can refuse with the right one (400, 414, 431, 505).
+	class : private : RequestGuard {
+		# The socket's ReadLine returns at most 8191 characters and hands the rest of
+		# a longer line back as further "lines", so a line over this is truncated
+		# input, not a header that merely happens to be long.
+		function : MaxLine() ~ Int {
+			return 8000;
+		}
+
+		function : MaxHeaders() ~ Int {
+			return 100;
+		}
+
+		function : MaxHeaderBytes() ~ Int {
+			return 65536;
+		}
+
+		# The most simultaneous connections served, unless WebServer->SetMaxConnections
+		# says otherwise. A connection beyond it is answered 503 and closed.
+		function : DefaultMaxConnections() ~ Int {
+			return 1024;
+		}
+
+		# Sockets are given this long to produce the next piece of a request; the
+		# keep-alive wait between requests keeps its own, longer timeout.
+		function : RequestReadTimeoutMs() ~ Int {
+			return 5000;
+		}
+
+		# RFC 9110 sec. 5.6.2: a field name is a token
+		function : IsTokenChar(c : Char) ~ Bool {
+			if((c >= 'a' & c <= 'z') | (c >= 'A' & c <= 'Z') | (c >= '0' & c <= '9')) {
+				return true;
+			};
+
+			return "!#$%&'*+-.^_`|~"->Find(c) > -1;
+		}
+
+		# A field line is "name: value" with no space before the colon (RFC 9112
+		# sec. 5.1: a server MUST reject it, because a proxy in front may read it
+		# differently), no continuation line (obs-fold, sec. 5.2) and no control
+		# character other than a tab in the value.
+		function : CheckHeaderLine(line : String) ~ Int {
+			size := line->Size();
+			if(size > MaxLine()) {
+				return 431;
+			};
+
+			first := line->Get(0);
+			if(first = ' ' | first = '\t') {
+				return 400;
+			};
+
+			colon := line->Find(':');
+			if(colon < 1) {
+				return 400;
+			};
+
+			each(i : colon) {
+				if(<>IsTokenChar(line->Get(i))) {
+					return 400;
+				};
+			};
+
+			pos := colon + 1;
+			while(pos < size) {
+				n : Int := line->Get(pos);
+				if((n < 32 & n <> 9) | n = 127) {
+					return 400;
+				};
+				pos += 1;
+			};
+
+			return 0;
+		}
+
+		# The request line plus the headers read so far
+		function : CheckHeaderCount(count : Int, bytes : Int) ~ Int {
+			if(count > MaxHeaders() | bytes > MaxHeaderBytes()) {
+				return 431;
+			};
+
+			return 0;
+		}
+
+		function : IsSupportedVersion(version : String) ~ Bool {
+			return version->Equals("HTTP/1.1") | version->Equals("HTTP/1.0");
+		}
+
+		# HTTP/1.1 requires exactly one Host (RFC 9112 sec. 3.2); several arrive here
+		# joined with a comma, which no host name contains.
+		function : CheckHost(version : String, headers : Map<String, String>) ~ Int {
+			if(<>version->Equals("HTTP/1.1")) {
+				return 0;
+			};
+
+			host := headers->Find("host");
+			if(host = Nil | host->IsEmpty() | host->Find(',') > -1) {
+				return 400;
+			};
+
+			return 0;
+		}
+
+		# The path to match and serve, from the request target as it was sent: an
+		# absolute-form target ("GET http://host/path") is cut down to its path, as a
+		# server must accept it (RFC 9112 sec. 3.2.2). Nil when the target cannot be a
+		# path this server should hand to anything: control characters or a backslash,
+		# a broken %-escape, an encoded separator or NUL, or a ".." segment however
+		# many times it was escaped. The query string, after the "?", is not looked at.
+		function : Target(target : String) ~ String {
+			path := target;
+			# the scheme is case-insensitive (RFC 3986 sec. 3.1)
+			scheme := target->ToLower();
+			if(scheme->StartsWith("http://") | scheme->StartsWith("https://")) {
+				after := path->Find("://") + 3;
+				slash := path->Find(after, '/');
+				query := path->Find(after, '?');
+				if(query > -1 & (slash < 0 | query < slash)) {
+					# "http://host?x": no path, only a query
+					tail := path->SubString(query, path->Size() - query);
+					path := "/";
+					path += tail;
+				}
+				else if(slash < 0) {
+					path := "/";
+				}
+				else {
+					path := path->SubString(slash, path->Size() - slash);
+				};
+			};
+
+			# A fragment is never part of a request target (RFC 9112 sec. 3.2). One here
+			# is a way to hide the tail of the path from the checks below, since only
+			# the part before the "?" is looked at.
+			if(path->Find('#') > -1) {
+				return Nil;
+			};
+
+			cut := path->Find('?');
+			stage := path;
+			if(cut > -1) {
+				stage := path->SubString(cut);
+			};
+
+			# Four rounds of decoding cover "%252e" and "%25252e"; whatever is left
+			# encoded after that is not a path any handler should be given. Each round
+			# is checked before it is decoded.
+			pass := 0;
+			while(pass < 4) {
+				if(HasBadCharacter(stage) | HasDotDotSegment(stage)) {
+					return Nil;
+				};
+
+				lowered := stage->ToLower();
+				if(lowered->Find("%2f") > -1 | lowered->Find("%5c") > -1 | lowered->Find("%00") > -1) {
+					return Nil;
+				};
+
+				if(stage->Find('%') < 0) {
+					return path;
+				};
+
+				decoded := PercentDecode(stage);
+				if(decoded = Nil) {
+					# The target as sent must be well formed. A later round that is not is
+					# a literal "%" the round before produced from "%25" (a file named
+					# "100%.html"), which nothing can decode any further.
+					if(pass = 0) {
+						return Nil;
+					};
+
+					return path;
+				};
+
+				if(HasInvalidUtf8(decoded)) {
+					return Nil;
+				};
+
+				stage := decoded;
+				pass += 1;
+			};
+
+			return Nil;
+		}
+
+		# True when the bytes a percent-decode produced are not well-formed UTF-8: a stray
+		# continuation byte, 0xC0 and 0xC1, 0xF5 and up, or an overlong, surrogate or
+		# out-of-range form (0xE0 0x80 0xAE is an overlong ".", the kind of spelling a lax
+		# decoder further down turns into a traversal). Text with a character above 255 in
+		# it holds real characters, not escaped bytes, and is left to the caller.
+		function : HasInvalidUtf8(text : String) ~ Bool {
+			size := text->Size();
+			i := 0;
+			while(i < size) {
+				n : Int := text->Get(i);
+				if(n > 255) {
+					return false;
+				};
+
+				if(n < 128) {
+					i += 1;
+				}
+				else {
+					need := 0;
+					low := 128;
+					high := 191;
+					if(n >= 194 & n <= 223) {
+						need := 1;
+					}
+					else if(n = 224) {
+						need := 2;
+						low := 160;
+					}
+					else if(n >= 225 & n <= 236) {
+						need := 2;
+					}
+					else if(n = 237) {
+						need := 2;
+						high := 159;
+					}
+					else if(n >= 238 & n <= 239) {
+						need := 2;
+					}
+					else if(n = 240) {
+						need := 3;
+						low := 144;
+					}
+					else if(n >= 241 & n <= 243) {
+						need := 3;
+					}
+					else if(n = 244) {
+						need := 3;
+						high := 143;
+					}
+					else {
+						return true;
+					};
+
+					if(i + need > size - 1) {
+						return true;
+					};
+
+					second : Int := text->Get(i + 1);
+					if(second < low | second > high) {
+						return true;
+					};
+
+					j := 2;
+					while(j <= need) {
+						next : Int := text->Get(i + j);
+						if(next < 128 | next > 191) {
+							return true;
+						};
+						j += 1;
+					};
+
+					i += need + 1;
+				};
+			};
+
+			return false;
+		}
+
+		# A control character (the request line cannot carry a raw one anyway, but a
+		# decoded %0a can), DEL or a backslash
+		function : HasBadCharacter(text : String) ~ Bool {
+			each(i : text) {
+				n : Int := text->Get(i);
+				if(n < 32 | n = 127 | n = 92) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		function : HasDotDotSegment(text : String) ~ Bool {
+			segments := text->Split("/");
+			each(i : segments) {
+				if(segments[i]->Equals("..")) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		# Nil on a "%" not followed by two hex digits
+		function : PercentDecode(text : String) ~ String {
+			decoded := String->New();
+			size := text->Size();
+			i := 0;
+			while(i < size) {
+				c := text->Get(i);
+				if(c = '%') {
+					if(i + 2 >= size) {
+						return Nil;
+					};
+
+					high := HexValue(text->Get(i + 1));
+					low := HexValue(text->Get(i + 2));
+					if(high < 0 | low < 0) {
+						return Nil;
+					};
+
+					n := high * 16 + low;
+					# 0xC0, 0xC1 and 0xF5 up never occur in UTF-8; "%c0%ae" is the overlong
+					# spelling of "." that older servers decoded into a traversal
+					if(n = 192 | n = 193 | n > 244) {
+						return Nil;
+					};
+					decoded->Append(n->As(Char));
+					i += 3;
+				}
+				else {
+					decoded->Append(c);
+					i += 1;
+				};
+			};
+
+			return decoded;
+		}
+
+		function : HexValue(c : Char) ~ Int {
+			n : Int := c;
+			if(c >= '0' & c <= '9') {
+				return n - 48;
+			}
+			else if(c >= 'a' & c <= 'f') {
+				return n - 87;
+			}
+			else if(c >= 'A' & c <= 'F') {
+				return n - 55;
+			};
+
+			return -1;
+		}
+
+		# A whole request, from its first byte to its last, has this long: 60 ticks of
+		# WebServer's half-second clock. A socket read timeout alone does not do it,
+		# because every byte that arrives starts the timeout over, so a client sending
+		# one byte every few seconds would hold its thread for as long as it liked.
+		function : RequestDeadlineTicks() ~ Int {
+			return 60;
+		}
+
+		# Reads one line, ended by LF with an optional CR before it, a byte at a time so
+		# that the clock is looked at between bytes. The deadline is clock[0]: zero until
+		# the request's first byte arrives, then the tick it must be finished by. Nil
+		# when the stream ends, a read times out, a NUL arrives or the deadline passes;
+		# a line past MaxLine() comes back cut at MaxLine() + 1 for the caller to refuse.
+		# Room is left for the CR and LF of a line of exactly MaxLine() characters, so
+		# that one is read whole and a longer one is cut before its end is reached.
+		function : ReadLine(socket : System.IO.InputStream, clock : Int[]) ~ String {
+			line := Byte->New[MaxLine() + 3];
+			size := 0;
+			done := false;
+			while(<>done) {
+				value := socket->ReadByte();
+				n : Int := value;
+				if(n = 0) {
+					return Nil;
+				};
+
+				if(clock[0] = 0) {
+					clock[0] := WebServer->Tick() + RequestDeadlineTicks();
+				}
+				else if(WebServer->Tick() > clock[0]) {
+					return Nil;
+				};
+
+				if(n = 10) {
+					done := true;
+				}
+				else {
+					line[size] := value;
+					size += 1;
+					if(size > MaxLine() + 1) {
+						done := true;
+					};
+				};
+			};
+
+			if(size > 0) {
+				last : Int := line[size - 1];
+				if(last = 13) {
+					size -= 1;
+				};
+			};
+
+			text := Byte->New[size];
+			if(size > 0) {
+				Runtime->Copy(text, 0, line, 0, size);
+			};
+
+			return text->ToString();
+		}
+
+		# The request body, under the same deadline as the rest of the request. Nil when
+		# the peer stops, times out or runs out the deadline before all of it arrives.
+		#
+		# One byte per read, on purpose. A read of more waits until all of them have
+		# arrived, and each byte that does arrive starts the socket timeout over, so a
+		# sender dripping one byte every few seconds would hold a read of 256 KB for
+		# days and the clock would never be looked at. Reading a byte at a time looks at
+		# it after every byte (about 2 MB/s, so the 16 MB limit fits in the deadline).
+		# ReadBuffer rather than ReadByte, because a body may hold a zero byte and
+		# ReadByte answers zero for end of stream too. The body is gathered as it
+		# arrives, so a Content-Length of 16 MB that never delivers costs nothing.
+		function : ReadBody(length : Int, socket : System.IO.InputStream, clock : Int[]) ~ Byte[] {
+			body := ByteBuffer->New();
+			piece := Byte->New[4096];
+			filled := 0;
+			total := 0;
+			while(total < length) {
+				if(clock[0] > 0 & WebServer->Tick() > clock[0]) {
+					return Nil;
+				};
+
+				read := socket->ReadBuffer(filled, 1, piece);
+				if(read < 1) {
+					return Nil;
+				};
+
+				filled += 1;
+				total += 1;
+				if(filled = piece->Size()) {
+					body->Append(piece);
+					filled := 0;
+				};
+			};
+
+			if(filled > 0) {
+				tail := Byte->New[filled];
+				Runtime->Copy(tail, 0, piece, 0, filled);
+				body->Append(tail);
+			};
+
+			return body->ToByteArray();
+		}
+
+		function : StatusText(code : Int) ~ String {
+			reason := ResponseFormat->ReasonPhrase(code);
+			return "{$code} {$reason}";
+		}
+	}
+
+	# Parses the value of a "Range: bytes=" request header over a body of size bytes
+	# (RFC 9110 sec. 14), for the one place that slices an in-memory body (ApplyRange)
+	# and the one that reads a slice of a file (StaticFiles). Answers [kind, start, end]:
+	# kind 0 when it is not a range this server answers, so the whole body is sent,
+	# which is always a valid answer (another unit, several ranges, a malformed or
+	# absurdly long value); kind 1 when it is satisfiable, start and end inclusive and
+	# end already clamped to the body; kind 2 when it starts past the end (answered 416).
+	class : private : RangeParser {
+		function : Parse(value : String, size : Int) ~ Int[] {
+			result := Int->New[3];
+			if(value = Nil) {
+				return result;
+			};
+
+			spec := value->Trim();
+			if(<>spec->StartsWith("bytes=")) {
+				return result;
+			};
+			spec := spec->SubString(6, spec->Size() - 6);
+
+			dash := spec->Find('-');
+			if(dash < 0 | spec->Find(',') >= 0) {
+				return result;
+			};
+			first := spec->SubString(dash)->Trim();
+			last := spec->SubString(dash + 1, spec->Size() - dash - 1)->Trim();
+
+			# more digits than any size here: not a range this server can answer
+			if(first->Size() > 15 | last->Size() > 15) {
+				return result;
+			};
+
+			start := 0;
+			end := size - 1;
+			if(first->IsEmpty()) {
+				# bytes=-N is the last N bytes
+				if(<>last->IsNumeric()) {
+					return result;
+				};
+				start := size - last->ToInt();
+				if(last->ToInt() = 0) {
+					start := size;
+				}
+				else if(start < 0) {
+					start := 0;
+				};
+			}
+			else {
+				if(<>first->IsNumeric()) {
+					return result;
+				};
+				start := first->ToInt();
+				if(<>last->IsEmpty()) {
+					if(<>last->IsNumeric()) {
+						return result;
+					};
+					end := last->ToInt();
+					if(end < start) {
+						return result;
+					};
+					if(end > size - 1) {
+						end := size - 1;
+					};
+				};
+			};
+
+			if(start >= size) {
+				result[0] := 2;
+				return result;
+			};
+
+			result[0] := 1;
+			result[1] := start;
+			result[2] := end;
+			return result;
+		}
+	}
+
 	# Formats the status line and header block of a server response. Shared by
 	# the HTTP and HTTPS request handlers, so that every status code from 100 to
 	# 599 takes the same path: the handler's headers, cookies and body are sent
@@ -1839,65 +2951,13 @@ bundle Web.HTTP.Server {
 			};
 
 			content := response->GetContent();
-			spec := request_headers->Find("range");
-			if(content = Nil | spec = Nil | request_headers->Has("if-range")) {
-				return;
-			};
-
-			spec := spec->Trim();
-			if(<>spec->StartsWith("bytes=")) {
-				return;
-			};
-			spec := spec->SubString(6, spec->Size() - 6);
-
-			dash := spec->Find('-');
-			if(dash < 0 | spec->Find(',') >= 0) {
-				return;
-			};
-			first := spec->SubString(dash)->Trim();
-			last := spec->SubString(dash + 1, spec->Size() - dash - 1)->Trim();
-
-			# more digits than any size here: not a range this server can answer
-			if(first->Size() > 15 | last->Size() > 15) {
+			if(content = Nil | request_headers->Has("if-range")) {
 				return;
 			};
 
 			size := content->Size();
-			start := 0;
-			end := size - 1;
-			if(first->IsEmpty()) {
-				# bytes=-N is the last N bytes
-				if(<>last->IsNumeric()) {
-					return;
-				};
-				start := size - last->ToInt();
-				if(last->ToInt() = 0) {
-					start := size;
-				}
-				else if(start < 0) {
-					start := 0;
-				};
-			}
-			else {
-				if(<>first->IsNumeric()) {
-					return;
-				};
-				start := first->ToInt();
-				if(<>last->IsEmpty()) {
-					if(<>last->IsNumeric()) {
-						return;
-					};
-					end := last->ToInt();
-					if(end < start) {
-						return;
-					};
-					if(end > size - 1) {
-						end := size - 1;
-					};
-				};
-			};
-
-			if(start >= size) {
+			range := RangeParser->Parse(request_headers->Find("range"), size);
+			if(range[0] = 2) {
 				response->SetCode(416);
 				response->SetHeader("Content-Range", "bytes */{$size}");
 				empty : Byte[];
@@ -1905,15 +2965,19 @@ bundle Web.HTTP.Server {
 				return;
 			};
 
-			length := end - start + 1;
-			slice := Byte->New[length];
-			if(<>Runtime->Copy(slice, 0, content, start, length)) {
-				return;
-			};
+			if(range[0] = 1) {
+				start := range[1];
+				end := range[2];
+				length := end - start + 1;
+				slice := Byte->New[length];
+				if(<>Runtime->Copy(slice, 0, content, start, length)) {
+					return;
+				};
 
-			response->SetCode(206);
-			response->SetHeader("Content-Range", "bytes {$start}-{$end}/{$size}");
-			response->SetContent(slice);
+				response->SetCode(206);
+				response->SetHeader("Content-Range", "bytes {$start}-{$end}/{$size}");
+				response->SetContent(slice);
+			};
 		}
 
 		# 1xx, 204 and 304 responses carry neither a body nor a Content-Length
@@ -2464,6 +3528,8 @@ class RequestHandler from HttpsRequestHandler {
 		@server_config : WebServerConfig;
 		@is_debug : Bool;
 		@keep_alive : Bool;
+		@header_status : Int;
+		@clock : Int[];
 
 		#~
 		Constructor
@@ -2512,6 +3578,7 @@ class RequestHandler from HttpsRequestHandler {
 				# session after the framed response. Waiting for the peer here deadlocks
 				# clients that correctly use EOF as their final framing fallback.
 				@client->Close();
+				WebServer->ConnectionClosed();
 			};
 		}
 
@@ -2520,10 +3587,21 @@ class RequestHandler from HttpsRequestHandler {
 		@return true if the connection should stay open for another request
 		~#
 		method : ServeOne(allow_persistence : Bool) ~ Bool {
-			# get request
-			request := @client->ReadLine();
+			# get request: the first byte of the next one may take the whole keep-alive idle time,
+			# but once it arrives the client has a shorter time between the pieces of the request
+			@clock := Int->New[1];
+			@client->SetRecvTimeout(30000);
+			request := RequestGuard->ReadLine(@client, @clock);
+			if(request <> Nil & request->Size() > 0) {
+				@client->SetRecvTimeout(RequestGuard->RequestReadTimeoutMs());
+			};
 			if(request = Nil | request->Size() = 0) {
 				# peer closed, or the accepted socket's receive timeout expired
+				return false;
+			};
+			if(request->Size() > RequestGuard->MaxLine()) {
+				@keep_alive := false;
+				WriteEmptyResponse(RequestGuard->StatusText(414));
 				return false;
 			};
 			if(@is_debug) {
@@ -2544,6 +3622,11 @@ class RequestHandler from HttpsRequestHandler {
 
 			# get request headers
 			request_headers := GetHeaders();
+			if(request_headers = Nil) {
+				@keep_alive := false;
+				WriteEmptyResponse(RequestGuard->StatusText(@header_status));
+				return false;
+			};
 			if(request_verb = Nil | request_path = Nil | request_version = Nil) {
 				@keep_alive := false;
 				WriteEmptyResponse("400 Bad Request");
@@ -2554,6 +3637,26 @@ class RequestHandler from HttpsRequestHandler {
 				WriteEmptyResponse("400 Bad Request");
 				return false;
 			};
+
+			if(<>RequestGuard->IsSupportedVersion(request_version)) {
+				@keep_alive := false;
+				WriteEmptyResponse(RequestGuard->StatusText(505));
+				return false;
+			};
+			if(RequestGuard->CheckHost(request_version, request_headers) <> 0) {
+				@keep_alive := false;
+				WriteEmptyResponse(RequestGuard->StatusText(400));
+				return false;
+			};
+			# the path as it will be matched: an absolute-form target cut to its path, and nothing
+			# that is encoded, escaped or dotted its way out of the root (see RequestGuard->Target)
+			request_target := RequestGuard->Target(request_path);
+			if(request_target = Nil) {
+				@keep_alive := false;
+				WriteEmptyResponse(RequestGuard->StatusText(400));
+				return false;
+			};
+			request_path := request_target;
 
 			# Decided before the response is written, because ProcessResponse
 			# emits the Connection header from it.
@@ -2582,7 +3685,7 @@ class RequestHandler from HttpsRequestHandler {
 					return false;
 				};
 				if(content_length > 0) {
-					buffer := WebCommon->ReadPost(content_length, @client);
+					buffer := RequestGuard->ReadBody(content_length, @client, @clock);
 					if(buffer = Nil) {
 						@keep_alive := false;
 						WriteEmptyResponse("400 Bad Request");
@@ -2596,12 +3699,6 @@ class RequestHandler from HttpsRequestHandler {
 				# GET and HEAD request
 				if(request_verb->Equals("GET") | request_verb->Equals("HEAD")) {
 					# retrieve content
-					# a path that climbs out of the document root is refused, not answered with another page
-					if(request_path <> Nil & request_path->Has("..")) {
-						@keep_alive := false;
-						WriteEmptyResponse("400 Bad Request");
-						return false;
-					};
 					if(request_path = Nil | request_path->Equals("/")) {
 						request_path := "/index.html";
 					};
@@ -2623,12 +3720,6 @@ class RequestHandler from HttpsRequestHandler {
 				# POST, PUT, PATCH, DELETE with body
 				else if(request_verb->Equals("POST") | request_verb->Equals("PUT") | request_verb->Equals("PATCH") | request_verb->Equals("DELETE")) {
 					# retrieve content
-					# a path that climbs out of the document root is refused, not answered with another page
-					if(request_path <> Nil & request_path->Has("..")) {
-						@keep_alive := false;
-						WriteEmptyResponse("400 Bad Request");
-						return false;
-					};
 					if(request_path = Nil | request_path->Equals("/")) {
 						request_path := "/index.html";
 					};
@@ -2736,8 +3827,27 @@ class RequestHandler from HttpsRequestHandler {
 		method : public : GetHeaders() ~ Map<String, String> {
 			headers := Map->New()<String, String>;
 			
-			header := @client->ReadLine();
+			# a request that breaks a limit or a rule is refused whole: Nil, and the status to
+			# answer with in @header_status
+			@header_status := 0;
+			if(@clock = Nil) {
+				@clock := Int->New[1];
+			};
+			header_count := 0;
+			header_bytes := 0;
+			header := RequestGuard->ReadLine(@client, @clock);
 			while(header <> Nil & header->Size() > 0) {
+				header_count += 1;
+				header_bytes += header->Size();
+				header_check := RequestGuard->CheckHeaderCount(header_count, header_bytes);
+				if(header_check = 0) {
+					header_check := RequestGuard->CheckHeaderLine(header);
+				};
+				if(header_check <> 0) {
+					@header_status := header_check;
+					return Nil;
+				};
+
 				if(@is_debug) {				
 					"header: {$header}"->PrintLine();
 				};
@@ -2756,9 +3866,14 @@ class RequestHandler from HttpsRequestHandler {
 					};
 				};
 
-				header := @client->ReadLine();
+				header := RequestGuard->ReadLine(@client, @clock);
 			};
 			
+			if(header = Nil) {
+				@header_status := 408;
+				return Nil;
+			};
+
 			return headers;
 		}
 
@@ -2814,6 +3929,8 @@ class RequestHandler from HttpsRequestHandler {
 		@server_config : WebServerConfig;
 		@is_debug : Bool;
 		@keep_alive : Bool;
+		@header_status : Int;
+		@clock : Int[];
 		@wait_for_peer_close : Bool;
 
 		#~
@@ -2876,6 +3993,7 @@ class RequestHandler from HttpsRequestHandler {
 				else {
 					@client->Close();
 				};
+				WebServer->ConnectionClosed();
 			};
 		}
 
@@ -2885,10 +4003,21 @@ class RequestHandler from HttpsRequestHandler {
 		~#
 		method : ServeOne(allow_persistence : Bool) ~ Bool {
 			@wait_for_peer_close := false;
-			# get request
-			request := @client->ReadLine();
+			# get request: the first byte of the next one may take the whole keep-alive idle time,
+			# but once it arrives the client has a shorter time between the pieces of the request
+			@clock := Int->New[1];
+			@client->SetRecvTimeout(30000);
+			request := RequestGuard->ReadLine(@client, @clock);
+			if(request <> Nil & request->Size() > 0) {
+				@client->SetRecvTimeout(RequestGuard->RequestReadTimeoutMs());
+			};
 			if(request = Nil | request->Size() = 0) {
 				# peer closed, or the accepted socket's receive timeout expired
+				return false;
+			};
+			if(request->Size() > RequestGuard->MaxLine()) {
+				@keep_alive := false;
+				WriteEmptyResponse(RequestGuard->StatusText(414));
 				return false;
 			};
 			if(@is_debug) {
@@ -2909,6 +4038,11 @@ class RequestHandler from HttpsRequestHandler {
 
 			# get request headers
 			request_headers := GetHeaders();
+			if(request_headers = Nil) {
+				@keep_alive := false;
+				WriteEmptyResponse(RequestGuard->StatusText(@header_status));
+				return false;
+			};
 			if(request_verb = Nil | request_path = Nil | request_version = Nil) {
 				@keep_alive := false;
 				WriteEmptyResponse("400 Bad Request");
@@ -2919,6 +4053,26 @@ class RequestHandler from HttpsRequestHandler {
 				WriteEmptyResponse("400 Bad Request");
 				return false;
 			};
+
+			if(<>RequestGuard->IsSupportedVersion(request_version)) {
+				@keep_alive := false;
+				WriteEmptyResponse(RequestGuard->StatusText(505));
+				return false;
+			};
+			if(RequestGuard->CheckHost(request_version, request_headers) <> 0) {
+				@keep_alive := false;
+				WriteEmptyResponse(RequestGuard->StatusText(400));
+				return false;
+			};
+			# the path as it will be matched: an absolute-form target cut to its path, and nothing
+			# that is encoded, escaped or dotted its way out of the root (see RequestGuard->Target)
+			request_target := RequestGuard->Target(request_path);
+			if(request_target = Nil) {
+				@keep_alive := false;
+				WriteEmptyResponse(RequestGuard->StatusText(400));
+				return false;
+			};
+			request_path := request_target;
 
 			# Decided before the response is written, because ProcessResponse
 			# emits the Connection header from it.
@@ -2947,7 +4101,7 @@ class RequestHandler from HttpsRequestHandler {
 					return false;
 				};
 				if(content_length > 0) {
-					buffer := WebCommon->ReadPost(content_length, @client);
+					buffer := RequestGuard->ReadBody(content_length, @client, @clock);
 					if(buffer = Nil) {
 						@keep_alive := false;
 						WriteEmptyResponse("400 Bad Request");
@@ -2961,12 +4115,6 @@ class RequestHandler from HttpsRequestHandler {
 				# GET and HEAD request
 				if(request_verb->Equals("GET") | request_verb->Equals("HEAD")) {
 					# retrieve content
-					# a path that climbs out of the document root is refused, not answered with another page
-					if(request_path <> Nil & request_path->Has("..")) {
-						@keep_alive := false;
-						WriteEmptyResponse("400 Bad Request");
-						return false;
-					};
 					if(request_path = Nil | request_path->Equals("/")) {
 						request_path := "/index.html";
 					};
@@ -2988,12 +4136,6 @@ class RequestHandler from HttpsRequestHandler {
 				# POST, PUT, PATCH, DELETE with body
 				else if(request_verb->Equals("POST") | request_verb->Equals("PUT") | request_verb->Equals("PATCH") | request_verb->Equals("DELETE")) {
 					# retrieve content
-					# a path that climbs out of the document root is refused, not answered with another page
-					if(request_path <> Nil & request_path->Has("..")) {
-						@keep_alive := false;
-						WriteEmptyResponse("400 Bad Request");
-						return false;
-					};
 					if(request_path = Nil | request_path->Equals("/")) {
 						request_path := "/index.html";
 					};
@@ -3103,8 +4245,27 @@ class RequestHandler from HttpsRequestHandler {
 		method : public : GetHeaders() ~ Map<String, String> {
 			headers := Map->New()<String, String>;
 			
-			header := @client->ReadLine();
+			# a request that breaks a limit or a rule is refused whole: Nil, and the status to
+			# answer with in @header_status
+			@header_status := 0;
+			if(@clock = Nil) {
+				@clock := Int->New[1];
+			};
+			header_count := 0;
+			header_bytes := 0;
+			header := RequestGuard->ReadLine(@client, @clock);
 			while(header <> Nil & header->Size() > 0) {
+				header_count += 1;
+				header_bytes += header->Size();
+				header_check := RequestGuard->CheckHeaderCount(header_count, header_bytes);
+				if(header_check = 0) {
+					header_check := RequestGuard->CheckHeaderLine(header);
+				};
+				if(header_check <> 0) {
+					@header_status := header_check;
+					return Nil;
+				};
+
 				if(@is_debug) {				
 					"header: {$header}"->PrintLine();
 				};
@@ -3123,9 +4284,14 @@ class RequestHandler from HttpsRequestHandler {
 					};
 				};
 
-				header := @client->ReadLine();
+				header := RequestGuard->ReadLine(@client, @clock);
 			};
 			
+			if(header = Nil) {
+				@header_status := 408;
+				return Nil;
+			};
+
 			return headers;
 		}
 

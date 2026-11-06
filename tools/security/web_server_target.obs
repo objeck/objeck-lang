@@ -1,0 +1,47 @@
+use System.IO.Net, Web.HTTP.Server;
+
+# Target for the local security harness: plain HTTP on port 8098.
+class SecHandler from HttpRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		path := request->GetPath();
+		if(path->StartsWith("/echo")) {
+			query := request->GetQuery();
+			response->SetCodeTypeContent(200, "text/plain", "path=[{$path}] query=[{$query}]");
+		}
+		else if(path->Equals("/reflect")) {
+			value := request->GetHeader("x-test");
+			if(value <> Nil) {
+				response->SetHeader("X-Reflect", value);
+			};
+			response->SetCodeContent(200, "reflect");
+		}
+		else if(path->Equals("/big")) {
+			big := Byte->New[5 * 1048576];
+			response->SetCodeContent(200, big);
+		}
+		else {
+			response->SetCodeContent(200, "abcdefghij");
+		};
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		content : String := request->GetContent();
+		size := 0;
+		if(content <> Nil) {
+			size := content->Size();
+		};
+		response->SetCodeContent(200, "post-size={$size}");
+		return false;
+	}
+}
+
+class SecTarget {
+	function : Main(args : String[]) ~ Nil {
+		# a small cap so the harness can reach it
+		WebServer->SetMaxConnections(400);
+		WebServer->Serve(SecHandler->New()->GetClass(), 8098, false);
+	}
+}

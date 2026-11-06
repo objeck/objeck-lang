@@ -1,0 +1,210 @@
+# EXTRA_LIBS: net,net_server
+use Collection, System.IO.Net, Web.HTTP.Server;
+
+#~
+# What the server refuses before a handler sees the request
+#
+# Header size and count limits (431), an oversized request line (414), malformed
+# header lines (400), an unsupported version (505), a missing Host (400), and
+# request targets that climb out of the root by any spelling: "..", an encoded
+# "..", encoded separators, a double-encoded form, a backslash, a NUL, an overlong
+# UTF-8 "." and a broken escape (400). The same request without the defect is
+# served, so a limit that refuses everything cannot pass.
+~#
+class HardeningHandler from HttpRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, request->GetPath());
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "post");
+		return false;
+	}
+}
+
+class HttpRequestHardeningTest {
+	@port : static : Int;
+	@passed : static : Bool;
+	@serve_returned : static : Bool;
+
+	function : ServeReturned() ~ Nil { @serve_returned := true; }
+
+	function : Fail(message : String) ~ Nil {
+		"  FAIL: {$message}"->PrintLine();
+		@passed := false;
+	}
+
+	function : StartServer() ~ Bool {
+		@port := 0;
+		@serve_returned := false;
+		server_thread := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->Serve(HardeningHandler->New()->GetClass(), 0, false);
+				HttpRequestHardeningTest->ServeReturned();
+			}
+		};
+		server_thread->Execute(Nil);
+
+		waited := 0;
+		while(<>@serve_returned & WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		@port := WebServer->GetBoundPort();
+		return @port > 0;
+	}
+
+	# Sends the request on its own connection and returns the status line and, when
+	# the response has one, the body.
+	function : Send(request : String) ~ String {
+		socket := TCPSocket->New("127.0.0.1", @port);
+		if(socket->IsOpen() = false) {
+			return "no connection";
+		};
+		socket->SetRecvTimeout(5000);
+		socket->WriteString(request);
+
+		status := socket->ReadLine();
+		if(status = Nil | status->Size() = 0) {
+			socket->Close();
+			return "closed";
+		};
+
+		length := 0;
+		line := socket->ReadLine();
+		while(line <> Nil & line->Size() > 0) {
+			colon := line->Find(':');
+			if(colon > 0 & line->SubString(colon)->ToLower()->Equals("content-length")) {
+				length := line->SubString(colon + 1, line->Size() - colon - 1)->Trim()->ToInt();
+			};
+			line := socket->ReadLine();
+		};
+
+		body := "";
+		if(length > 0) {
+			buffer := Byte->New[length];
+			read := socket->ReadBuffer(0, length, buffer);
+			if(read > 0) {
+				body := buffer->ToString();
+			};
+		};
+		socket->Close();
+
+		return "{$status}|{$body}";
+	}
+
+	function : Get(target : String, extra : String) ~ String {
+		return Send("GET {$target} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n{$extra}\r\n");
+	}
+
+	function : Expect(actual : String, wanted : String, context : String) ~ Nil {
+		if(actual->StartsWith(wanted) = false) {
+			Fail("{$context}: got '{$actual}', expected it to start '{$wanted}'");
+		};
+	}
+
+	function : Repeat(text : String, count : Int) ~ String {
+		out := "";
+		each(i : count) {
+			out += text;
+		};
+		return out;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@passed := true;
+		if(StartServer() = false) {
+			Fail("test server never started listening");
+			Runtime->Exit(1);
+		};
+
+		ok := "HTTP/1.1 200 OK|";
+		bad := "HTTP/1.1 400 Bad Request";
+
+		# controls: the same shapes without the defect are served
+		Expect(Get("/a/b.html", ""), "{$ok}/a/b.html", "plain path");
+		Expect(Get("/a..b.html", ""), "{$ok}/a..b.html", "a file name with two dots");
+		Expect(Get("/x?next=../../y", ""), "{$ok}/x", "dot-dot in the query only");
+		Expect(Get("/a%20b", ""), "{$ok}/a%20b", "an encoded space");
+		Expect(Get("/%C3%A4", ""), "{$ok}/%C3%A4", "an encoded UTF-8 letter");
+		Expect(Send("GET http://other.example/abs.html HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"),
+			"{$ok}/abs.html", "an absolute-form target is served by its path");
+		Expect(Send("GET /h10 HTTP/1.0\r\n\r\n"), "{$ok}/h10", "HTTP/1.0 needs no Host");
+		filler := Repeat("A", 7000);
+		Expect(Get("/long", "X-Long: {$filler}\r\n"), "{$ok}/long", "a 7000 character header is under the limit");
+
+		# found by an independent review of the first version of this change
+		Expect(Get("/100%25.html", ""), "{$ok}/100%25.html", "an encoded percent sign is a file name, not a broken escape");
+		Expect(Get("/%E4%B8%AD.html", ""), "{$ok}/%E4%B8%AD.html", "a valid three-byte UTF-8 character");
+		Expect(Get("/#/../../etc/passwd", ""), bad, "a fragment hiding dot-dot from the check");
+		Expect(Get("/a#b", ""), bad, "a fragment");
+		Expect(Get("/x?next=a#b", ""), bad, "a fragment after the query");
+		Expect(Get("/a/%e0%80%ae/b", ""), bad, "a three-byte overlong dot");
+		Expect(Get("/a/%f0%80%80%ae/b", ""), bad, "a four-byte overlong dot");
+		Expect(Get("/%ed%a0%80", ""), bad, "an encoded surrogate");
+		Expect(Send("GET HTTP://Other.example/up.html HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"),
+			"{$ok}/up.html", "an upper-case scheme in an absolute-form target");
+		Expect(Send("GET http://other.example?x=1 HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"),
+			"{$ok}/", "an absolute-form target with a query and no path");
+		edge_value := Repeat("A", 7992);
+		Expect(Get("/x", "X-Edge: {$edge_value}\r\n"), "{$ok}/x", "a header line of exactly 8000 characters");
+		Expect(Get("/x", "X-Edge: {$edge_value}\r\nX-Bad : v\r\n"), bad, "headers after an 8000 character line are still read");
+		over_value := Repeat("A", 7993);
+		Expect(Get("/x", "X-Edge: {$over_value}\r\n"), "HTTP/1.1 431", "a header line of 8001 characters");
+		line_filler := Repeat("A", 7986);
+		Expect(Get("/{$line_filler}", ""), "{$ok}/A", "a request line of exactly 8000 characters");
+		over_filler := Repeat("A", 7987);
+		Expect(Get("/{$over_filler}", ""), "HTTP/1.1 414", "a request line of 8001 characters");
+
+		# request targets
+		Expect(Get("/a/../../etc/passwd", ""), bad, "dot-dot");
+		Expect(Get("/a/%2e%2e/b", ""), bad, "encoded dot-dot");
+		Expect(Get("/a/.%2E/b", ""), bad, "half-encoded dot-dot");
+		Expect(Get("/a/%252e%252e/b", ""), bad, "double-encoded dot-dot");
+		Expect(Get("/a/x/..", ""), bad, "trailing dot-dot");
+		Expect(Get("/a%2fb", ""), bad, "encoded slash");
+		Expect(Get("/a%5cb", ""), bad, "encoded backslash");
+		Expect(Get("/a%252fb", ""), bad, "double-encoded slash");
+		Expect(Get("/a\\b", ""), bad, "backslash");
+		Expect(Get("/a/%c0%ae%c0%ae/b", ""), bad, "overlong UTF-8 dot");
+		Expect(Get("/a%00b", ""), bad, "encoded NUL");
+		Expect(Get("/a%0d%0ab", ""), bad, "encoded CRLF");
+		Expect(Get("/a%zzb", ""), bad, "broken escape");
+		Expect(Get("/a%4", ""), bad, "truncated escape");
+
+		# headers
+		Expect(Get("/x", "garbage\r\n"), bad, "header with no colon");
+		Expect(Get("/x", "X-A : v\r\n"), bad, "space before the colon");
+		Expect(Get("/x", "X-A: v\r\n  folded\r\n"), bad, "obs-fold continuation");
+		Expect(Get("/x", "X(A): v\r\n"), bad, "header name that is not a token");
+		Expect(Get("/x", ": v\r\n"), bad, "empty header name");
+		too_long := Repeat("A", 9000);
+		Expect(Get("/x", "X-Big: {$too_long}\r\n"), "HTTP/1.1 431", "a header line over the limit");
+		many := "";
+		each(i : 120) {
+			many += "X-{$i}: v\r\n";
+		};
+		Expect(Get("/x", many), "HTTP/1.1 431", "more headers than the limit");
+		Expect(Send("GET /x HTTP/1.1\r\nConnection: close\r\n\r\n"), bad, "HTTP/1.1 without Host");
+		Expect(Send("GET /x HTTP/1.1\r\nHost: a\r\nHost: b\r\nConnection: close\r\n\r\n"), bad, "two Host headers");
+
+		# request line
+		Expect(Send("GET /x HTTP/9.9\r\nHost: localhost\r\nConnection: close\r\n\r\n"), "HTTP/1.1 505", "an unsupported version");
+		Expect(Get("/{$too_long}", ""), "HTTP/1.1 414", "a request line over the limit");
+
+		# the server is still serving after all of that
+		Expect(Get("/after", ""), "{$ok}/after", "a request after the refusals");
+
+		WebServer->Stop();
+		if(@passed) {
+			"PASS: HTTP request hardening"->PrintLine();
+		}
+		else {
+			Runtime->Exit(1);
+		};
+	}
+}

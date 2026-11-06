@@ -346,6 +346,9 @@
 				},
 				"ParseErrorMessage": {
 					"descriptions": ["**Reads the message of an error response. The parser keeps a JSON string's escapes, so the message is JSON-unescaped here; an error without a message gives the error element's JSON text.**\n\n```function : ParseErrorMessage(response_json:JsonElement) ~ String```\n\n\n\nresponse_json: JsonElement\n\nreturn: String"]
+				},
+				"ResponseText": {
+					"descriptions": ["**Reads a response body as text. A reply with no body (an HTTP 204, a proxy error page without content) has no content bytes to read.**\n\n```function : ResponseText(response:Web.HTTP.Response) ~ String```\n\n\n\nresponse: Web.HTTP.Response\n\nreturn: String"]
 				}
 			}
 		},
@@ -1769,8 +1772,17 @@
 				"GetLastError": {
 					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
 				},
+				"NoReply": {
+					"descriptions": ["**Checks whether a request got an answer, recording the failure as the last error if not. A refused or dropped connection is a Nil response over HTTP and a response with status 0 and no content over HTTPS.**\n\n```function : NoReply(response:Web.HTTP.Response) ~ Bool```\n\n\n\nresponse: Web.HTTP.Response\n\nreturn: Bool"]
+				},
 				"ParseBody": {
 					"descriptions": ["**Parses a response body, recording a failure as the last error. A body that is not JSON, or that carries an 'error' object, yields Nil; an 'error' that is null (the Responses API sends one on success) is not a failure.**\n\n```function : ParseBody(body:String) ~ JsonElement```\n\n\n\nbody: String\n\nreturn: JsonElement"]
+				},
+				"ParseErrorMessage": {
+					"descriptions": ["**Reads the message of an error response. The 'error' member is an object with a 'message' on the documented path, but a gateway may send a plain string, an object without a 'message', or null.**\n\n```function : ParseErrorMessage(response_json:JsonElement) ~ String```\n\n\n\nresponse_json: JsonElement\n\nreturn: String"]
+				},
+				"ResponseText": {
+					"descriptions": ["**Reads a response body as text. A reply with no body (an HTTP 204, a proxy error page without content) has no content bytes to read.**\n\n```function : ResponseText(response:Web.HTTP.Response) ~ String```\n\n\n\nresponse: Web.HTTP.Response\n\nreturn: String"]
 				},
 				"SetApiKey": {
 					"descriptions": ["**Set the API file key path**\n\n```function : SetApiKey(api_key:String) ~ Nil```\n\n\n\napi_key: String\n\nreturn: Nil"]
@@ -3630,7 +3642,7 @@
 			"description": "Collection pair that implements Compare interface for use in sorted collections",
 			"functions": {
 				"Compare": {
-					"descriptions": ["**Compares two objects based upon first value**\n\n```method : public : Compare(first:System.Compare) ~ Int```\n\n\n\nfirst: System.Compare\n\nreturn: Int\n\n```\na := Collection.Pair->New(IntRef->New(1), \"one\")<IntRef, String>;\nb := Collection.Pair->New(IntRef->New(2), \"two\")<IntRef, String>;\na->Compare(b->GetFirst())->PrintLine(); # -1\n```"]
+					"descriptions": ["**Compares two objects based upon first value**\n\n```method : public : Compare(rhs:System.Compare) ~ Int```\n\n\n\nrhs: System.Compare\n\nreturn: Int\n\n```\na := Collection.Pair->New(IntRef->New(1), \"one\")<IntRef, String>;\nb := Collection.Pair->New(IntRef->New(2), \"two\")<IntRef, String>;\na->Compare(b->GetFirst())->PrintLine(); # -1\n```"]
 				},
 				"GetFirst": {
 					"descriptions": ["**Gets the first value**\n\n```method : public : GetFirst() ~ F```\n\n\n\nreturn: F\n\n```\npair := Collection.Pair->New(IntRef->New(7), \"seven\")<IntRef, String>;\npair->GetFirst()->PrintLine(); # 7\n```"]
@@ -4302,6 +4314,12 @@
 		"Data.JSON.RPC.Server": {
 			"description": "JSON RPC server",
 			"functions": {
+				"GetPort": {
+					"descriptions": ["**Gets the port the server is bound to: the port given to the constructor or, for a port of 0, the free one the system chose. A program that needs no fixed number (a test, say) binds port 0 and reads the port back here, so it cannot collide with a port another program, or an outgoing connection of its own, already holds. Whether the bind and listen worked is IsListening().**\n\n```method : public : GetPort() ~ Int```\n\n\n\nreturn: Int\n\n```\nserver := Data.JSON.RPC.Server->New(funcs, 0);\nport := server->GetPort(); # the port the system chose\n```"]
+				},
+				"IsListening": {
+					"descriptions": ["**Tells whether Process() is listening, so connections are accepted. False until Process() has begun listening, and for good if the port could not be bound or listened on. A caller that runs Process() in a thread waits on this, up to a deadline, rather than for a fixed time.**\n\n```method : public : IsListening() ~ Bool```\n\n\n\nreturn: Bool\n\n```\nthread->Execute(Nil); # runs server->Process()\nwaited := 0;\nwhile(<>server->IsListening() & waited < 10000) {\n  System.Concurrency.Thread->Sleep(10);\n  waited += 10;\n};\n```"]
+				},
 				"New": {
 					"descriptions": ["**Constructor**\n\n```New(funcs:Hash&lt;String,Func2Ref&lt;JsonElement,JsonElement&gt;&gt;)```\n\n\n\nfuncs: Hash&lt;String,Func2Ref&lt;JsonElement,JsonElement&gt;&gt;\n\n```\nfuncs := Hash->New()<String, Func2Ref<JsonElement, JsonElement>>;\n# register an \"add\" method\nfuncs->Insert(\"add\", Func2Ref->New(\\\n  method(params : JsonElement) ~ JsonElement {\n    a := params->Get(\"a\")->GetInt();\n    b := params->Get(\"b\")->GetInt();\n    return JsonElement->New(a + b);\n  }));\nserver := Data.JSON.RPC.Server->New(funcs, 9090);\nserver->Process(); # blocks, accepts connections\n```"]
 				},
@@ -9060,7 +9078,7 @@
 			}
 		},
 		"Query.RegEx.RegEx": {
-			"description": "Regular expression engine. A match is the leftmost-longest one; when several paths give that match, capture groups take their values from the greedy (highest-priority) path.\n\n<p>Support for following patterns:<p> <ul> <li>any &#8208; .</li> <li>optional &#8208; ?</li> <li>zero or more repetitions &#8208; *</li> <li>one or more repetitions &#8208; +</li> <li>repeat &#8208; {least} or {least, most}</li> <li>start of input &#8208; ^</li> <li>end of input &#8208; $</li> <li>(one|two|three) &#8208; numbered capture group, see Result-&gt;GetGroup</li> <li>(?:one|two) &#8208; non-capturing group</li> <li>[abc], [a-zA-Z0-9_], [.,;] &#8208; character class (several ranges and literal punctuation)</li> <li>[^abc] &#8208; negated character class</li> <li>inside a class: \\d \\w \\s \\D \\W \\S, \\] \\\\ \\- and other escaped literals; a leading or trailing '-' and a ']' first are literals</li> </ul>\n\n<p>Support for following special groups:<p> <ul> <li>word &#8208; \\w</li> <li>not word &#8208; \\W</li> <li>digit &#8208; \\d</li> <li>not digit &#8208; \\D</li> <li>white space &#8208; \\s</li> <li>not white space &#8208; \\S</li> <li>word boundary &#8208; \\b</li> <li>not a word boundary &#8208; \\B</li> <li>newline, carriage return, tab &#8208; \\n \\r \\t</li> </ul>",
+			"description": "Regular expression engine. A match is the leftmost-longest one; when several paths give that match, capture groups take their values from the greedy (highest-priority) path.\n\n<p>Support for following patterns:<p> <ul> <li>any &#8208; .</li> <li>optional &#8208; ?</li> <li>zero or more repetitions &#8208; *</li> <li>one or more repetitions &#8208; +</li> <li>repeat &#8208; {least} or {least, most}; a count is at most 1000, least may not exceed most, and a pattern that expands to more than 100000 instructions (nested repeats multiply) is not accepted: IsOk() is false</li> <li>start of input &#8208; ^</li> <li>end of input &#8208; $</li> <li>(one|two|three) &#8208; numbered capture group, see Result-&gt;GetGroup</li> <li>(?:one|two) &#8208; non-capturing group</li> <li>[abc], [a-zA-Z0-9_], [.,;] &#8208; character class (several ranges and literal punctuation)</li> <li>[^abc] &#8208; negated character class</li> <li>inside a class: \\d \\w \\s \\D \\W \\S, \\] \\\\ \\- and other escaped literals; a leading or trailing '-' and a ']' first are literals</li> </ul>\n\n<p>Support for following special groups:<p> <ul> <li>word &#8208; \\w</li> <li>not word &#8208; \\W</li> <li>digit &#8208; \\d</li> <li>not digit &#8208; \\D</li> <li>white space &#8208; \\s</li> <li>not white space &#8208; \\S</li> <li>word boundary &#8208; \\b</li> <li>not a word boundary &#8208; \\B</li> <li>newline, carriage return, tab &#8208; \\n \\r \\t</li> </ul>",
 			"functions": {
 				"Find": {
 					"descriptions": ["**Finds all non-empty, non-overlapping occurrences**\n\n```method : public : Find(stream_in:String) ~ Vector&lt;Result&gt;```\n\n\n\nstream_in: String\n\nreturn: Vector&lt;Result&gt;\n\n```\nre := RegEx->New(\"\\\\d+\");\nresults := re->Find(\"1 cat, 2 dogs, 3 birds\")<Result>;\neach(r := results) {\n  r->GetValue()->PrintLine();\n};\n```"]
@@ -11737,6 +11755,9 @@
 				},
 				"SetSignal": {
 					"descriptions": ["**Sets a system signal**\n\n```function : SetSignal(type:Runtime-&gt;Signal, func:(Int)~Nil) ~ Nil```\n\n\n\ntype: Runtime-&gt;Signal\n\nfunc: (Int)~Nil\n\nreturn: Nil"]
+				},
+				"TestAddressOf": {
+					"descriptions": ["**Test hook for the collector's regression tests, not for programs: the object's address as an Int, which a collection that moves the object changes. Returns 0 unless the VM runs with OBJECK_GC_TEST_HOOKS=1.**\n\n```function : TestAddressOf(o:Base) ~ Int```\n\n\n\no: Base\n\nreturn: Int"]
 				}
 			}
 		},
@@ -17239,6 +17260,9 @@
 				"AddHeader": {
 					"descriptions": ["**Adds a HTTP request header**\n\n```method : public : AddHeader(name:String, value:String) ~ Nil```\n\n\n\nname: String\n\nvalue: String\n\nreturn: Nil\n\n```\nclient := Web.HTTP.HttpClient->New();\nclient->AddHeader(\"Authorization\", \"Bearer my-token-123\");\nclient->AddHeader(\"Accept\", \"application/json\");\nresponse := client->Get(Web.HTTP.Url->New(\"https://api.example.com/data\"));\nif(response <> Nil) {\n  response->ToString()->PrintLine();\n};\n```"]
 				},
+				"CloseIdleConnections": {
+					"descriptions": ["**Closes the connections plain HTTP requests left open for reuse. A GET or DELETE whose response said keep-alive leaves its connection waiting, up to four seconds, for the next request to the same host and port. A program that also runs the server those connections reach can call this when it is done with them: the server's threads serving them then end. WebServer->Stop() calls it.**\n\n```function : CloseIdleConnections() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nWeb.HTTP.HttpClient->CloseIdleConnections();\n```"]
+				},
 				"Delete": {
 					"descriptions": ["**Performs a HTTP DELETE**\n\n```method : public : Delete(url:Web.HTTP.Url) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nreturn: Web.HTTP.Response\n\n```\nclient := Web.HTTP.HttpClient->New();\nresponse := client->Delete(Web.HTTP.Url->New(\"https://api.example.com/items/42\"));\nresponse->GetStatusCode()->PrintLine();  # 204\n```", "**Performs a HTTP DELETE**\n\n```method : public : Delete(url:Web.HTTP.Url, content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs a HTTP DELETE**\n\n```method : public : Delete(url:Web.HTTP.Url, data:Byte[]) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\nreturn: Web.HTTP.Response", "**Performs a HTTP DELETE**\n\n```method : public : Delete(url:Web.HTTP.Url, data:Byte[], content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nreturn: Web.HTTP.Response"]
 				},
@@ -17772,7 +17796,7 @@
 					"descriptions": ["**Gets cookies**\n\n```method : public : GetCookies() ~ Vector&lt;Cookie&gt;```\n\n\n\nreturn: Vector&lt;Cookie&gt;"]
 				},
 				"GetHeader": {
-					"descriptions": ["**Gets a request header**\n\n```method : public : GetHeader(name:String) ~ String```\n\n\n\nname: String\n\nreturn: String"]
+					"descriptions": ["**Gets a request header. Header names are case-insensitive (RFC 9110 sec. 5.1) and the server stores them lowercased, so \"If-None-Match\" finds \"if-none-match\"; a name stored exactly as given is found as well.**\n\n```method : public : GetHeader(name:String) ~ String```\n\n\n\nname: String\n\nreturn: String"]
 				},
 				"GetLocalPort": {
 					"descriptions": ["**Gets the port this server is bound to. This is the port passed to Serve, not a socket-level lookup of the accepted connection.**\n\n```method : public : GetLocalPort() ~ Int```\n\n\n\nreturn: Int"]
@@ -17933,9 +17957,26 @@
 				}
 			}
 		},
+		"Web.HTTP.Server.StaticFiles": {
+			"description": "Serves the files under a folder, for a site: content types from a whitelist of file extensions (anything else is a 404), index.html for a folder, ETag and conditional requests (304), gzip for text, and Range for large files. Small files are kept in a memory cache with a total budget; large ones are read from disk for each request, and a Range request reads only the slice it asks for. A file that changes on disk is served fresh, since its size and modification time are checked on every request.\n\nRefused as 404: dotfiles and anything in a dot folder, extensions not on the list, names that are not plain ASCII. Folder listings are never produced. The request target has already been checked by the server (no \"..\", encoded separators, NUL, and so on) before a handler runs; this class checks it again. It does not follow or detect symbolic links, so the folder it serves must not contain any.",
+			"functions": {
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(root:String)```\n\n\n\nroot: String"]
+				},
+				"Serve": {
+					"descriptions": ["**Answers a request for a file: sets the response code, headers and content.**\n\n```method : public : Serve(request:Request, response:Response) ~ Nil```\n\n\n\nrequest: Request\n\nresponse: Response\n\nreturn: Nil"]
+				},
+				"SetCacheLimits": {
+					"descriptions": ["**Sets the memory the cache may use and the largest file it will hold. A file over small_bytes is read from disk for every request.**\n\n```method : public : SetCacheLimits(total_bytes:Int, small_bytes:Int) ~ Nil```\n\n\n\ntotal_bytes: Int\n\nsmall_bytes: Int\n\nreturn: Nil"]
+				}
+			}
+		},
 		"Web.HTTP.Server.WebServer": {
 			"description": "HTTP and HTTP web server",
 			"functions": {
+				"GetActiveConnections": {
+					"descriptions": ["**Gets the number of connections being served now**\n\n```function : GetActiveConnections() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetBoundPort": {
 					"descriptions": ["**Gets the port this server is bound to. A server started on port 0 is bound to a port the system chose; once Serve has it listening this answers that port, so a program that starts the server in a thread can poll here instead of picking a port number.**\n\n```function : GetBoundPort() ~ Int```\n\n\n\nreturn: Int\n\n```\n# serve on a port the system chooses, then find out which\nthread := System.Concurrency.Thread->New() {\nNew() { Parent(); }\nmethod : public : Run(arg : System.Base) ~ Nil {\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), 0, false);\n}\n};\nthread->Execute(Nil);\nwhile(Web.HTTP.Server.WebServer->GetBoundPort() = 0) {\nSystem.Concurrency.Thread->Sleep(10);\n};\nport := Web.HTTP.Server.WebServer->GetBoundPort();\n```"]
 				},
@@ -17944,6 +17985,9 @@
 				},
 				"ServeSecure": {
 					"descriptions": ["**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(filename:String) ~ Nil```\n\n\n\nfilename: String\n\nreturn: Nil\n\n```\n# start an HTTPS server from a JSON config file\nWeb.HTTP.Server.WebServer->ServeSecure(\"config/server_config.json\");\n```", "**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(callback:Class, port:Int, cert:String, cert_key:String, cert_key_passwd:String) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nreturn: Nil", "**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(callback:Class, port:Int, cert:String, cert_key:String, cert_key_passwd:String, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nis_debug: Bool\n\nreturn: Nil", "**Starts a HTTPS server that listens for requests on one local address instead of every interface, e.g. \"127.0.0.1\" to take only clients on this machine. The address is read as by TCPSocketServer->New(address, port): a literal (\"127.0.0.1\", \"::1\") or a host name, of which the first IPv4 address (else the first IPv6 one) is bound, so \"localhost\" binds 127.0.0.1; an empty address binds every interface. An address that cannot be bound is reported on standard error and the call returns.**\n\n```function : ServeSecure(callback:Class, address:String, port:Int, cert:String, cert_key:String, cert_key_passwd:String) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nreturn: Nil", "**Starts a HTTPS server that listens for requests on one local address instead of every interface; see ServeSecure(callback, address, port, cert, cert_key, cert_key_passwd).**\n\n```function : ServeSecure(callback:Class, address:String, port:Int, cert:String, cert_key:String, cert_key_passwd:String, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nis_debug: Bool\n\nreturn: Nil"]
+				},
+				"SetMaxConnections": {
+					"descriptions": ["**Sets the most connections served at once; a connection beyond it is answered 503 and closed. Call before Serve. Zero, the default, allows 1024.**\n\n```function : SetMaxConnections(max:Int) ~ Nil```\n\n\n\nmax: Int\n\nreturn: Nil"]
 				},
 				"Stop": {
 					"descriptions": ["**Stops the server**\n\n```function : Stop() ~ Nil```\n\n\n\nreturn: Nil\n\n```\n# stop a running HTTP or HTTPS server\nWeb.HTTP.Server.WebServer->Stop();\n```"]
@@ -21453,6 +21497,12 @@
 			}
 		],
 		"RequestPageHandler": [
+			{
+				"bundle": "Web.HTTP.Server",
+				"file": ""
+			}
+		],
+		"StaticFiles": [
 			{
 				"bundle": "Web.HTTP.Server",
 				"file": ""
