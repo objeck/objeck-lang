@@ -1,0 +1,36 @@
+# objeck.org served by Objeck itself (programs/examples/site_server.obs).
+# Caddy terminates TLS and proxies to 127.0.0.1:8081; this process serves the
+# files under ~objeckorg/public_html and nothing else.
+#
+# Install: copy to /etc/systemd/system/, then
+#   systemctl daemon-reload && systemctl enable --now objeck-org-site
+# The toolchain and site_server.obe live under /opt/objeck-site (separate from
+# the playground's /opt/playground/repo tree, so neither can break the other).
+
+[Unit]
+Description=objeck.org static site served by Objeck
+After=network.target
+
+[Service]
+User=objeckorg
+Group=objeckorg
+Environment=OBJECK_LIB_PATH=/opt/objeck-site/deploy/lib
+Environment=OBJECK_JIT_THRESHOLD=10
+ExecStart=/opt/objeck-site/deploy/bin/obr /opt/objeck-site/site_server.obe /home/objeckorg/public_html 8081 127.0.0.1
+Restart=always
+RestartSec=2
+
+# the process needs to read the site and open one listening socket, little else
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=1G
+TasksMax=256
+
+[Install]
+WantedBy=multi-user.target
