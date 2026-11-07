@@ -32,6 +32,10 @@ bundle Web.HTTP.Server {
 		# Half-second ticks since the first Serve, for request deadlines; see RequestGuard
 		@tick : static : Int;
 		@clock_thread : static : System.Concurrency.Thread;
+		# finished connection threads waiting to be joined, and the one thread that joins them
+		@reap_mutex : static : System.Concurrency.ThreadMutex;
+		@reap_queue : static : Queue<System.Concurrency.Thread>;
+		@reaper : static : System.Concurrency.Thread;
 
 		#~
 		Starts a HTTPS server that listens for requests
@@ -147,6 +151,7 @@ bundle Web.HTTP.Server {
 				# the port the socket has: for a port of 0, the one the system chose
 				@bound_port := @secure_server->GetPort();
 				StartClock();
+				StartReaper();
 				if(@is_debug) {
 					platform := Runtime->GetPlatform();
 					host := TCPSocket->HostName();
@@ -179,6 +184,7 @@ bundle Web.HTTP.Server {
 
 						params := Collection.Tuple.Quartet->New(callback, secure_client, @server_config, BoolRef->New(@is_debug))<Class, TCPSecureSocket, WebServerConfig, BoolRef>;
 						thread->Execute(params);
+						Reap(thread);
 					};
 				};
 			}
@@ -277,6 +283,55 @@ bundle Web.HTTP.Server {
 				};
 				@clock_thread->Execute(Nil);
 			};
+		}
+
+		# A connection's thread keeps its stack, its handle and its bookkeeping until it is
+		# joined, and nothing joined them: a server leaked about 11 KB, and four memory
+		# mappings, per connection served, until the system's mapping limit (65,530 on Linux)
+		# ended the process after about 16,000 connections. One thread joins them all; the
+		# accept loop hands each connection thread to Reap().
+		function : private : StartReaper() ~ Nil {
+			if(@reaper = Nil) {
+				@reap_mutex := System.Concurrency.ThreadMutex->New("web_reaper");
+				@reap_queue := Queue->New()<System.Concurrency.Thread>;
+				@reaper := System.Concurrency.Thread->New() {
+					New() { Parent(); }
+
+					method : public : Run(arg : System.Base) ~ Nil {
+						done := false;
+						while(<>done) {
+							finished := WebServer->NextFinished();
+							if(finished <> Nil) {
+								finished->Join();
+							}
+							else {
+								if(WebServer->IsStopped()) {
+									done := true;
+								}
+								else {
+									System.Concurrency.Thread->Sleep(20);
+								};
+							};
+						};
+					}
+				};
+				@reaper->Execute(Nil);
+			};
+		}
+
+		function : Reap(thread : System.Concurrency.Thread) ~ Nil {
+			critical(@reap_mutex) {
+				@reap_queue->AddBack(thread);
+			};
+		}
+
+		function : NextFinished() ~ System.Concurrency.Thread {
+			next : System.Concurrency.Thread;
+			critical(@reap_mutex) {
+				next := @reap_queue->RemoveFront();
+			};
+
+			return next;
 		}
 
 		function : IsStopped() ~ Bool {
@@ -410,6 +465,7 @@ bundle Web.HTTP.Server {
 				# the port the socket has: for a port of 0, the one the system chose
 				@bound_port := @server->GetPort();
 				StartClock();
+				StartReaper();
 				if(@is_debug) {
 					platform := Runtime->GetPlatform();
 					host := TCPSocket->HostName();
@@ -444,12 +500,16 @@ bundle Web.HTTP.Server {
 
 								handler := callback->Instance(callback->GetName())->As(HttpRequestHandler);
 								handler->SetConfig(server_config, is_debug->Get());
-								handler->Execute(client);
+								# Run it here, in this connection's own thread. Execute() started a
+								# second thread for the handler (it is itself a Thread) that nothing
+								# joined; the TLS path below already runs the handler directly.
+								handler->Run(client);
 							}
 						};
 
 						params := Collection.Tuple.Quartet->New(callback, client, @server_config, BoolRef->New(@is_debug))<Class, TCPSocket, WebServerConfig, BoolRef>;
 						thread->Execute(params);
+						Reap(thread);
 					};
 				};
 			}
