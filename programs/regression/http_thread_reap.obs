@@ -1,0 +1,132 @@
+# EXTRA_LIBS: net,net_server
+use System.IO.Net, System.IO.Filesystem, Web.HTTP.Server;
+
+# A Web.HTTP.Server connection must not leave a thread behind. Every accepted connection
+# runs in a thread of its own; one that is never joined keeps its stack mapping (and a
+# second thread the handler used to start did the same), so a server held about 11 KB
+# and four memory mappings per connection and the system's mapping limit (65,530 on
+# Linux) ended it after about 16,000 connections. Found by the release soak.
+#
+# After a warm-up, serve 300 connections and require the process's mapping count to grow
+# by far less than one per connection. Linux only (it reads /proc/self/maps); elsewhere
+# the test reports itself skipped.
+class ReapHandler from HttpRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "ok");
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "ok");
+		return false;
+	}
+}
+
+class HttpThreadReapTest {
+	@serve_returned : static : Bool;
+
+	function : ServeReturned() ~ Nil { @serve_returned := true; }
+
+	# memory mappings of this process, or 0 where there is no /proc/self/maps
+	function : Mappings() ~ Int {
+		lines := 0;
+		reader := FileReader->New("/proc/self/maps");
+		if(reader->IsOpen()) {
+			line := reader->ReadLine();
+			while(line <> Nil) {
+				lines += 1;
+				line := reader->ReadLine();
+			};
+			reader->Close();
+		};
+
+		return lines;
+	}
+
+	function : StartServer() ~ Int {
+		@serve_returned := false;
+		server_thread := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->Serve(ReapHandler->New()->GetClass(), 0, false);
+				HttpThreadReapTest->ServeReturned();
+			}
+		};
+		server_thread->Execute(Nil);
+
+		waited := 0;
+		while(<>@serve_returned & WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+
+		return WebServer->GetBoundPort();
+	}
+
+	# one request on a connection of its own, read to the end
+	function : One(port : Int) ~ Bool {
+		socket := TCPSocket->New("127.0.0.1", port);
+		if(socket->IsOpen() = false) {
+			return false;
+		};
+
+		socket->SetRecvTimeout(5000);
+		socket->WriteString("GET /x HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+		status := socket->ReadLine();
+		ok := status <> Nil & status->Has("200");
+		# the rest of the headers; ReadLine answers an empty line at the end of them
+		line := socket->ReadLine();
+		while(line <> Nil & line->Size() > 0) {
+			line := socket->ReadLine();
+		};
+		socket->Close();
+
+		return ok;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		port := StartServer();
+		if(port = 0) {
+			"  FAIL: test server never started listening"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		failed := 0;
+		for(i := 0; i < 20; i += 1;) {
+			if(One(port) = false) { failed += 1; };
+		};
+		# the reaper joins in the background; give it a moment to catch up
+		System.Concurrency.Thread->Sleep(500);
+		before := Mappings();
+		if(before = 0) {
+			WebServer->Stop();
+			"SKIP: no /proc/self/maps on this platform"->PrintLine();
+			"PASS: HTTP connection threads (skipped)"->PrintLine();
+			return;
+		};
+
+		for(i := 0; i < 300; i += 1;) {
+			if(One(port) = false) { failed += 1; };
+		};
+		System.Concurrency.Thread->Sleep(1000);
+		after := Mappings();
+		grown := after - before;
+		"  mappings: {$before} -> {$after} (+{$grown}) over 300 connections"->PrintLine();
+
+		WebServer->Stop();
+		if(failed > 0) {
+			"  FAIL: {$failed} request(s) did not get a 200"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		# a leak is two to four mappings per connection, so 600 or more; allow slack
+		if(grown > 150) {
+			"  FAIL: connection threads are leaking mappings"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: HTTP connection threads are joined"->PrintLine();
+	}
+}
