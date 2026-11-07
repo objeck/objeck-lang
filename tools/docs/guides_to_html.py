@@ -434,7 +434,9 @@ def page_head(tpl_head, title, desc, mermaid=False):
 
 def page_tail():
     return ["", "   </div>", "  </main>", "", '  <footer class="footer">',
-            "    &copy; 2026 Randy Hollines. All Rights Reserved.", "  </footer>", " </body>", "</html>", ""]
+            "    &copy; 2026 Randy Hollines. All Rights Reserved.", "    <br>",
+            '    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck\'s own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>',
+            "  </footer>", " </body>", "</html>", ""]
 
 
 def build_page(tpl_head, md_rel, text, name, title_hint, desc, doc):
