@@ -1636,6 +1636,10 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
   // handle value itself never moves, so reading it first is enough.
 #ifdef _WIN32
   HANDLE vm_thread = (HANDLE)instance[0];
+  if(!vm_thread) {
+    // already joined: its handle was closed and cleared below
+    return;
+  }
 
   // Joining blocks in a syscall — count this thread as parked so a collection on
   // another thread doesn't wait forever for it to reach a safepoint.
@@ -1681,6 +1685,19 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
 #endif
 #endif
   MemoryManager::EndBlocking();
+
+#ifdef _WIN32
+  // The thread has finished and been joined. Close its handle, which nothing did: each
+  // thread a program started kept a kernel object for the life of the process. The Thread
+  // object is read again from the frame, because a collection may have moved it while this
+  // thread was parked (the note above), and its handle slot cleared so that a second Join
+  // returns instead of waiting on, or closing, a handle the system may have reused.
+  CloseHandle(vm_thread);
+  size_t* joined = (size_t*)(*stack_frame)->mem[0];
+  if(joined) {
+    joined[0] = 0;
+  }
+#endif
 }
 
 void StackInterpreter::ThreadMutex([[maybe_unused]] size_t* &op_stack, size_t* &stack_pos)
