@@ -189,11 +189,20 @@ namespace Runtime {
       const size_t page = (size_t)page_size;
       // Refuse a size whose rounding or guard page would wrap size_t; the
       // caller then leaves the stack to glibc, which reports the real error.
-      if(bytes == 0 || bytes > SIZE_MAX - 2 * page) {
+      // Each addition is checked where it happens (the compiler's overflow
+      // builtins), so no result is ever used after a wrap and the analyzers
+      // need not carry a bound from the test above through the rounding.
+      size_t rounded = 0;
+      size_t total = 0;
+      if(bytes == 0 || bytes > SIZE_MAX - 2 * page ||
+         __builtin_add_overflow(bytes, page - 1, &rounded)) {
         return nullptr;
       }
-      bytes = (bytes + page - 1) / page * page;
-      mapped = bytes + page;
+      bytes = rounded / page * page;
+      if(__builtin_add_overflow(bytes, page, &total)) {
+        return nullptr;
+      }
+      mapped = total;
       void* base = mmap(nullptr, mapped, PROT_READ | PROT_WRITE,
                         MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_NORESERVE, -1, 0);
       if(base == MAP_FAILED) {
