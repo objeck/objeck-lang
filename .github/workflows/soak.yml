@@ -1,0 +1,186 @@
+name: Soak
+
+# A long, mixed-load run of the binaries CI already built and tested: the objeck.org
+# site server under steady client load, beside a loop of the regression suite, GC
+# stress and the differential fuzzer (tools/cicd/soak.py). It is the release soak:
+# dispatch it on the commit you mean to tag, with the default 330 minutes, and read
+# each leg's summary. A failure ends the leg at once; restart the clock after any fix
+# to the VM, the JIT, sockets or the web server.
+#
+# GitHub-hosted jobs stop at 360 minutes, so one dispatch soaks for 5.5 hours.
+# 'minutes' can be set low (15) as a smoke test of the harness itself.
+on:
+  workflow_dispatch:
+    inputs:
+      ci_run_id:
+        description: 'ci-build.yml run whose objeck-<platform> artifacts to soak (default: latest successful push run on master)'
+        required: false
+        default: ''
+      minutes:
+        description: 'Minutes of soak per leg (the job limit is 360 including setup)'
+        required: false
+        default: '330'
+      seed:
+        description: 'Fuzzer and client seed (default: UTC date)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  resolve:
+    name: Resolve CI artifacts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      run_id: ${{ steps.pick.outputs.run_id }}
+      head_sha: ${{ steps.pick.outputs.head_sha }}
+      seed: ${{ steps.pick.outputs.seed }}
+    steps:
+      - name: Find the ci-build run to soak
+        id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_RUN_ID: ${{ inputs.ci_run_id }}
+          INPUT_SEED: ${{ inputs.seed }}
+        run: |
+          set -euo pipefail
+          if [ -n "$INPUT_RUN_ID" ]; then
+            RUN_ID="$INPUT_RUN_ID"
+          else
+            RUN_ID=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci-build.yml \
+              --branch master --event push --status success --limit 1 \
+              --json databaseId --jq '.[0].databaseId // empty')
+          fi
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::no successful ci-build.yml push run on master"
+            exit 1
+          fi
+          CONCLUSION=$(gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)
+          HEAD_SHA=$(gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" --json headSha --jq .headSha)
+          if [ "$CONCLUSION" != "success" ]; then
+            echo "::error::ci-build run $RUN_ID concluded '$CONCLUSION', not success"
+            exit 1
+          fi
+          LIVE=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts?per_page=100" \
+            --jq '[.artifacts[] | select((.name | startswith("objeck-")) and (.expired | not))] | length')
+          if [ "$LIVE" -lt 5 ]; then
+            echo "::error::ci-build run $RUN_ID has $LIVE unexpired objeck-* artifacts, need 5"
+            exit 1
+          fi
+          SEED="${INPUT_SEED:-$(date -u +%Y%m%d)}"
+          {
+            echo "run_id=$RUN_ID"
+            echo "head_sha=$HEAD_SHA"
+            echo "seed=$SEED"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "### Soak inputs"
+            echo ""
+            echo "- ci-build run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$RUN_ID"
+            echo "- commit: \`${HEAD_SHA:0:10}\`"
+            echo "- seed: \`$SEED\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  soak:
+    name: Soak ${{ matrix.platform }}
+    needs: resolve
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x64
+            # Pinned like ci-build.yml: ubuntu-latest moved to 26.04 on 2026-10-31.
+            os: ubuntu-24.04
+            arch: x64
+            py: python3
+          - platform: windows-x64
+            os: windows-2025-vs2026
+            arch: x64
+            py: python
+    defaults:
+      run:
+        shell: bash
+    env:
+      TREE: core/release/deploy-${{ matrix.arch }}
+      MINUTES: ${{ inputs.minutes || '330' }}
+      SEED: ${{ needs.resolve.outputs.seed }}
+    steps:
+      - name: Checkout the tested commit
+        timeout-minutes: 5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.resolve.outputs.head_sha }}
+
+      - name: Install Linux runtime dependencies
+        if: runner.os == 'Linux'
+        timeout-minutes: 10
+        run: |
+          # The same package set ci-build.yml tested these binaries with.
+          sudo apt-get update
+          sudo apt-get install -y \
+            libopencv-dev libmbedtls-dev unixodbc-dev libsqliteodbc \
+            libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev \
+            libegl1 libegl-mesa0 libgl1-mesa-dri libreadline-dev libeigen3-dev libmp3lame-dev
+          echo '[objeck_sqlite_test]' >> ~/.odbc.ini
+          echo 'Description=Objeck ODBC regression test DSN' >> ~/.odbc.ini
+          echo 'Driver=SQLite3' >> ~/.odbc.ini
+          echo 'Database=:memory:' >> ~/.odbc.ini
+
+      - name: Download the CI deploy tree
+        timeout-minutes: 10
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: objeck-${{ matrix.platform }}
+          run-id: ${{ needs.resolve.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ env.TREE }}
+
+      - name: Prepare the deploy tree
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          # Artifacts do not keep file modes.
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            chmod +x "$TREE"/bin/* 2>/dev/null || true
+          fi
+          "$TREE/bin/obc" --version
+
+      - name: Soak
+        # Leaves 15 minutes for setup and the artifact upload inside the 360.
+        timeout-minutes: 345
+        run: |
+          ${{ matrix.py }} tools/cicd/soak.py --tree "$TREE" --leg "${{ matrix.platform }}" \
+            --arch "${{ matrix.arch }}" --minutes "$MINUTES" --seed "$SEED" --out soak-results
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Soak ${{ matrix.platform }}"
+            echo ""
+            if [ -f soak-results/soak-summary.json ]; then
+              echo '```json'
+              grep -vE '^\s+"(step|iteration|rc|seconds)"|^\s+[{}],?$' soak-results/soak-summary.json | head -40
+              echo '```'
+            else
+              echo "no summary was written"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload results
+        if: always()
+        timeout-minutes: 5
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: soak-${{ matrix.platform }}
+          path: soak-results/
+          if-no-files-found: warn
+          retention-days: 14
