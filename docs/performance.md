@@ -13,10 +13,10 @@
 | **CPU** | AMD Ryzen 9 7950X3D (16C/32T) |
 | **RAM** | 128 GB (62 GB visible in Docker) |
 | **OS** | Ubuntu 24.04.4 in Docker (Windows 11 host) |
-| **Compiler** | Objeck **v2026.9.1** (`f6b3b09046`), built from source with the standard libraries rebuilt by that same compiler, `-opt s3` |
+| **Compiler** | Objeck **v2026.11.0** (`21393c2fbb`, master after the 2026.11.0 version bump), built from source with the standard libraries rebuilt by that same compiler, `-opt s3` |
 | **Methodology** | 3 runs per benchmark, median reported |
-| **Date** | **2026-09-12** (unified Docker run) |
-| **Previous run** | 2026-06-21 against v2026.6.2 — see Optimization History for what changed between them |
+| **Date** | **2026-11-07** (unified Docker run) |
+| **Previous runs** | 2026-09-12 against v2026.9.1, and 2026-06-21 against v2026.6.2 — see Optimization History for what changed between them |
 
 > All tables below come from a **single unified Docker run** (`perf-results/docker/Dockerfile`) on the box above, so the single-language and cross-language numbers are directly comparable. Note Docker's virtualized backend runs Objeck's **interpreter**-bound benchmarks ~30–50% slower than a native (bare-metal/WSL2) build, while JIT/`native` code is nearly unaffected — so the interpreter rows here are conservative.
 
@@ -26,25 +26,25 @@ Classic [Computer Language Benchmarks Game](https://benchmarksgame-team.pages.de
 
 | Benchmark | Input | Time (s) | Peak RSS |
 |-----------|-------|----------|----------|
-| **mandelbrot** | 4000 | 0.72 | 13 MB |
-| **nbody** | 50M | 8.14 | 9 MB |
-| **binarytrees** | 17 | 2.14 | 209 MB |
-| **fannkuchredux** | 12 | 32.76 | 9 MB |
-| **spectralnorm** | 5500 | 2.72 | 10 MB |
-| **fasta** | 25M | 7.07 | 9 MB |
+| **mandelbrot** | 4000 | 0.77 | 12 MB |
+| **nbody** | 50M | 9.02 | 9 MB |
+| **binarytrees** | 17 | 2.26 | 177 MB |
+| **fannkuchredux** | 12 | 36.01 | 9 MB |
+| **spectralnorm** | 5500 | 3.17 | 10 MB |
+| **fasta** | 25M | 7.56 | 10 MB |
 
 
-> Measured: **v2026.9.1** (`f6b3b09046`), 2026-09-12 unified Docker run on the host above.
+> Measured: **v2026.11.0** (`21393c2fbb`), 2026-11-07 unified Docker run on the host above.
 
-**mandelbrot** and **nbody** benefit from `native`-annotated methods that JIT-compile to x64. **binarytrees** benefits from the young-gen bump allocator and auto-JIT for methods containing `MTHD_CALL`. **mandelbrot** is the noisiest row here: two runs on the same build the same afternoon gave 1.00s and 0.72s, so read it as unchanged from June's 0.87s rather than as movement in either direction.
+**mandelbrot** and **nbody** benefit from `native`-annotated methods that JIT-compile to x64. **binarytrees** benefits from the young-gen bump allocator and auto-JIT for methods containing `MTHD_CALL`.
 
-**fasta appears for the first time, at 7.07s.** It had been skipped by the harness in every previous run, June included, and silently: two defects hid it. Four float literals carried a `d` suffix, which Objeck has never accepted, so it failed to compile — and the harness discarded the compiler's stderr, reporting only `SKIP`. Fixing that exposed the second, a VM bug where `Console->WriteBuffer(Char[])` encoded its output twice and corrupted every later write. Both are fixed in v2026.9.1, so there is no June figure to compare against.
+**Against the v2026.9.1 run (2026-09-12) every row is 6–17% slower in this pass,** and that is the first thing to say about these numbers rather than something to bury: mandelbrot 0.72 → 0.77 s, nbody 8.14 → 9.02 s, binarytrees 2.14 → 2.26 s, fannkuchredux 32.76 → 36.01 s, spectralnorm 2.72 → 3.17 s, fasta 7.07 → 7.56 s. Two things say this is mostly the host, not the engine. The hand-`native` control in the micro-benchmark table, which the page treats as immune to interpreter changes, also moved, 0.38 → 0.42 s. And a five-run repeat on the same image shortly afterwards, with nothing else changed, gave spectralnorm 2.91–2.98 s, nbody 8.25–8.49 s, binarytrees 1.95–2.08 s and mandelbrot 0.68–1.01 s, all closer to September than the suite pass is (the suite pass came right after Docker Desktop was started, on a desktop with other processes running). The residual of about 7% on spectralnorm in the repeat has not been attributed to a cause, and no engine change since v2026.9.1 was aimed at throughput. The CI perf gate passes on this commit. Read the table as "unchanged to slightly slower, ranking unchanged", not as a new speed.
 
-**spectralnorm fell from 44.86s to 2.72s (16.5x).** The June page argued its ~45s was a JIT-warmup artifact and that the lever was threshold tuning; that argument is now gone rather than reduced. The v2026.9.1 calling convention (F7) made a closure call cost about what a bound call does, and the default threshold now returns **2.72s** — faster than the **3.3s** June reached by forcing compilation with `OBJECK_JIT_THRESHOLD=1`. There is no warmup gap left to tune.
+**binarytrees peak RSS fell from 209 MB to 177 MB** (-15%) while its time stayed within the noise above. It is still an order of magnitude above every other row, so allocation memory remains the standing gap.
 
-**binarytrees fell from 8.53s to 2.14s (4.0x)** and is no longer the weak spot the June page described: it now beats CPython, Ruby and LuaJIT on time. Its **209 MB peak RSS** remains an order of magnitude above every other row here, so allocation throughput is still the standing gap — on memory, not on time.
+**fannkuchredux** is call-bound in structure, but its cost is dominated by the permutation/flip inner loop rather than call overhead, which is why the calling-convention work in v2026.9.1 did not move it (32.32 s in June, 32.76 s in September, 36.01 s here).
 
-**fannkuchredux did not move** (32.32s → 32.76s), which is worth stating plainly: it is call-bound, so the calling-convention work was expected to help and did not. Its cost is dominated by the permutation/flip inner loop rather than by call overhead.
+**Since June** (v2026.6.2, the comparison the page used to lead with): spectralnorm 44.86 s → 3.17 s (14.2x) and binarytrees 8.53 s → 2.26 s (3.8x). Those are the v2026.9.1 changes, measured again on a later build.
 
 ---
 
@@ -54,7 +54,7 @@ All five languages measured in **one Docker run on identical inputs** (`perf-res
 
 | | |
 |---|---|
-| **Objeck** | **v2026.9.1** (`f6b3b09046`), libraries rebuilt by the same compiler, `-opt s3` |
+| **Objeck** | **v2026.11.0** (`21393c2fbb`), libraries rebuilt by the same compiler, `-opt s3` |
 | **Python** | 3.12.3 (CPython) |
 | **Ruby** | 3.2.3 |
 | **LuaJIT** | 2.1 (tracing JIT) |
@@ -65,28 +65,28 @@ All five languages measured in **one Docker run on identical inputs** (`perf-res
 
 | Benchmark | Input | Objeck | Python 3.12 | Ruby 3.2 | LuaJIT 2.1 | Java 21 | Best |
 |-----------|-------|--------|-------------|----------|------------|---------|------|
-| **nbody** | 50M | 8.14s | 134.93s | 220.16s | 4.37s | **2.35s** | Java |
-| **binarytrees** | 17 | 2.14s | 3.48s | 3.70s | 3.57s | **0.26s** | Java |
-| **spectralnorm** | 5500 | 2.72s | 127.14s | 90.15s | **1.12s** | 1.18s | LuaJIT |
-| **fannkuchredux** | 12 | **32.76s** | 430.56s | 1201.74s | 117.99s | **20.70s** | Java |
+| **nbody** | 50M | 9.02s | 148.57s | 213.96s | 4.77s | **2.40s** | Java |
+| **binarytrees** | 17 | 2.26s | 4.04s | 3.90s | 5.51s | **0.31s** | Java |
+| **spectralnorm** | 5500 | 3.17s | 127.50s | 87.17s | 1.22s | **1.20s** | Java |
+| **fannkuchredux** | 12 | 36.01s | 434.56s | 1216.74s | 126.90s | **20.68s** | Java |
 
 ### Reading the table
 
-- **Java (HotSpot) still sets the ceiling — it wins 3 of 4** (nbody, binarytrees, fannkuchredux); LuaJIT takes spectralnorm (1.12s vs Java's 1.18s). A mature tiered JIT with escape analysis and a generational GC is the bar a younger JIT is measured against.
-- **Objeck beats Python and Ruby on all four**, by far wider margins than in June: nbody **16.6x** / **27.0x**, spectralnorm **46.7x** / **33.1x**, fannkuchredux **13.1x** / **36.7x**, binarytrees **1.6x** / **1.7x**.
-- **Objeck beats LuaJIT on fannkuchredux** (32.76s vs 117.99s, **3.6x faster**) — the integer-array permutation/flip pattern is a poor fit for LuaJIT's tracing JIT and suits a method JIT well. June measured 3.8x; all three runs agree.
-- **binarytrees is no longer Objeck's weak spot on time** — it now leads CPython, Ruby and LuaJIT. Java is still **8.2x** faster (0.26s vs 2.14s), and Objeck's **209 MB** peak RSS against everyone else's single digits is where the remaining gap lives. Allocation throughput stays the clearest improvement target (P1), now argued on memory rather than wall clock.
-- **spectralnorm's warmup story is over.** June's 44.86s at the default threshold is now **2.72s** — better than the 3.3s June reached by forcing compilation. The v2026.9.1 calling convention removed the warmup gap rather than narrowing it, so there is no threshold left to tune here.
-- **fannkuchredux did not move** (32.32s → 32.76s) despite being call-bound. Its inner loop, not call overhead, is what costs.
+- **Java (HotSpot) wins all four in this run.** LuaJIT is within 2% of it on spectralnorm (1.22s vs 1.20s; in September LuaJIT edged ahead by 0.06s, so that row is a tie, not a change). A mature tiered JIT with escape analysis and a generational GC is the bar a younger JIT is measured against.
+- **Objeck beats Python and Ruby on all four:** nbody **16.5x** / **23.7x**, spectralnorm **40.2x** / **27.5x**, fannkuchredux **12.1x** / **33.8x**, binarytrees **1.8x** / **1.7x**. These ratios are 5–15% lower than September's because Objeck's own times are higher in this pass (see above); Python's and Ruby's own times moved by -3% to +10% (CPython nbody 134.93s → 148.57s, Ruby nbody 220.16s → 213.96s), which is more evidence of run-to-run drift on this host.
+- **Objeck beats LuaJIT on fannkuchredux** (36.01s vs 126.90s, **3.5x faster**) — the integer-array permutation/flip pattern is a poor fit for LuaJIT's tracing JIT and suits a method JIT well. September measured 3.6x and June 3.8x.
+- **binarytrees is not Objeck's weak spot on time.** It leads CPython (1.8x), Ruby (1.7x) and LuaJIT (2.4x). Java is still **7.3x** faster (0.31s vs 2.26s), and Objeck's **177 MB** peak RSS against everyone else's single digits is where the remaining gap lives. Allocation throughput stays the clearest improvement target (P1), argued on memory rather than wall clock.
+- **spectralnorm's warmup story is over.** June's 44.86s at the default threshold is now 3.17s here (2.72s in September), better than the 3.3s June reached by forcing compilation. The v2026.9.1 calling convention removed the warmup gap rather than narrowing it, so there is no threshold left to tune.
+- **fannkuchredux did not move** with the calling-convention work (32.32s → 32.76s → 36.01s). Its inner loop, not call overhead, is what costs. Java is **1.7x** faster on it.
 
 ### Key Takeaways
 
-1. **Against scripting peers, Objeck is decisively faster** — and by much wider margins than in June. nbody is **16.6x** faster than CPython and **27.0x** faster than Ruby; spectralnorm **46.7x** and **33.1x**; fannkuchredux **13.1x** and **36.7x**.
-2. **Objeck beats LuaJIT on fannkuchredux** (32.76s vs 117.99s, **3.6x faster**) — the integer-array permutation/flip pattern suits a method JIT better than a tracing one. Java still leads it by 1.6x.
-3. **binarytrees is no longer the weak spot on time.** It now beats CPython (1.6x), Ruby (1.7x) and LuaJIT (1.7x). Java remains 8.2x faster, and Objeck's **209 MB** peak RSS against Java's generational GC is where the gap now lives — allocation throughput is still the highest-leverage work, but the case rests on memory rather than wall clock.
-4. **Closure calls are no longer a category of weakness.** The F7 calling convention took spectralnorm from 44.86s to 2.72s at the *default* threshold, beating what June achieved by forcing compilation. The warmup lever the June page described no longer exists.
-5. **Float loops remain the gap against compiled-class JITs.** nbody trails LuaJIT by 1.9x and Java by 3.5x; spectralnorm trails both by ~2.4x.
-6. **Measurement environment matters.** Objeck's interpreter is more sensitive to virtualization than its JIT; native (non-Docker) numbers would be meaningfully better than the Docker numbers shown here.
+1. **Against scripting peers, Objeck is decisively faster.** nbody is **16.5x** faster than CPython and **23.7x** faster than Ruby; spectralnorm **40.2x** and **27.5x**; fannkuchredux **12.1x** and **33.8x**.
+2. **Objeck beats LuaJIT on fannkuchredux** (36.01s vs 126.90s, **3.5x faster**) — the integer-array permutation/flip pattern suits a method JIT better than a tracing one. Java still leads it by 1.7x.
+3. **binarytrees is not the weak spot on time.** It beats CPython (1.8x), Ruby (1.7x) and LuaJIT (2.4x). Java remains 7.3x faster, and Objeck's **177 MB** peak RSS (209 MB in September) against Java's generational GC is where the gap now lives; allocation throughput is still the highest-leverage work, but the case rests on memory rather than wall clock.
+4. **Closure calls are no longer a category of weakness.** The F7 calling convention took spectralnorm from 44.86s to under 3.2s at the *default* threshold, beating what June achieved by forcing compilation.
+5. **Float loops remain the gap against compiled-class JITs.** nbody trails LuaJIT by 1.9x and Java by 3.8x; spectralnorm trails both by about 2.6x.
+6. **Measurement environment matters.** Objeck's interpreter is more sensitive to virtualization than its JIT, and this pass ran about 6–17% slower than September's on the same host and the same engine design; native (non-Docker) numbers would be meaningfully better than the Docker numbers shown here.
 
 ---
 
@@ -94,12 +94,12 @@ All five languages measured in **one Docker run on identical inputs** (`perf-res
 
 Methods marked `native` are JIT-compiled to x64 or ARM64 machine code. All other methods run in the interpreter unless auto-JIT compiles them after 10 calls.
 
-> Measured: **v2026.9.1** (`f6b3b09046`), 2026-09-12 unified Docker run.
+> Measured: **v2026.11.0** (`21393c2fbb`), 2026-11-07 unified Docker run.
 
 | spectralnorm | Input | Time | Notes |
 |-------------|-------|------|-------|
-| Auto-JIT, default threshold | 5500 | **2.72s** | v2026.6.2 took 44.86s here |
-| `bench_spectralnorm_native` (hand-`native`) | 2000 | 0.38s | unchanged from June's 0.37s, as expected |
+| Auto-JIT, default threshold | 5500 | **3.17s** | v2026.6.2 took 44.86s here; v2026.9.1 measured 2.72s |
+| `bench_spectralnorm_native` (hand-`native`) | 2000 | 0.42s | June 0.37s, v2026.9.1 0.38s; the same host-level drift as the other rows, see above |
 
 Methods marked `native` that contain `MTHD_CALL` are JIT-compiled via `ProcessStackCallback`. Auto-JIT also compiles hot methods automatically (default: after 10 calls). Closure/function-reference calls (`DYN_MTHD_CALL`) are auto-JIT'd as well, and since v2026.9.1 a compiled caller enters a compiled callee's native entry directly, with an inline cache at `virtual` and func-ref sites. A closure-heavy kernel therefore reaches native-level speed at the **default** threshold: spectralnorm no longer needs `OBJECK_JIT_THRESHOLD=1` to be fast, and the hand-`native` kernel is no longer meaningfully ahead of it.
 
@@ -109,29 +109,31 @@ Methods marked `native` that contain `MTHD_CALL` are JIT-compiled via `ProcessSt
 
 Targeted benchmarks for specific optimization patterns (`programs/tests/perf/`). Compiled with `-opt s3`, median of 3 runs.
 
-> Measured: **v2026.9.1** (`f6b3b09046`), 2026-09-12 unified Docker run. The June column is the 2026-06-21 run against v2026.6.2.
+> Measured: **v2026.11.0** (`21393c2fbb`), 2026-11-07 unified Docker run. The June column is the 2026-06-21 run against v2026.6.2 and the v2026.9.1 column is the 2026-09-12 run; the change is June to now.
 
-| Benchmark | Target | June (s) | Now (s) | Change | Peak RSS |
-|-----------|--------|---------:|--------:|--------|----------|
-| `bench_strength_ext` | Non-power-of-2 multiply patterns | 2.14 | **0.04** | 54x | 9 MB |
-| `bench_dead_code` | Unreachable assignments | 1.68 | **0.04** | 42x | 11 MB |
-| `bench_copy_prop` | Variable copy chains | 1.19 | **0.03** | 40x | 9 MB |
-| `bench_array_intensive` | Sequential array access patterns | 2.40 | **0.08** | 30x | 9 MB |
-| `bench_cse` | Common subexpression elimination | 0.25 | **0.01** | 25x | 9 MB |
-| `bench_loop_invariant` | Loop-invariant expressions (LICM) | 0.24 | **0.01** | 24x | 11 MB |
-| `bench_matrix_multiply` | Nested loop float computation (n=500) | 4.82 | **0.28** | 17x | 15 MB |
-| `bench_method_dispatch` | Repeated method calls on objects | 2.96 | **0.29** | 10x | 9 MB |
-| `bench_gc_churn` | Rapid short-lived object allocation | 0.64 | **0.15** | 4.3x | 137 MB |
-| `bench_gc_large_heap` | Large live set, GC sweep time | 0.07 | **0.02** | 3.5x | 58 MB |
-| `bench_tco` | Tail-recursive accumulator (TCO, n=1M×200) | 0.33 | **0.11** | 3.0x | 9 MB |
-| `bench_spectralnorm_native` | Float arrays with `native` JIT (n=2000) | 0.37 | 0.38 | unchanged | 9 MB |
+| Benchmark | Target | June (s) | v2026.9.1 (s) | Now (s) | Change | Peak RSS |
+|-----------|--------|---------:|--------------:|--------:|--------|----------|
+| `bench_strength_ext` | Non-power-of-2 multiply patterns | 2.14 | 0.04 | **0.05** | 43x | 8 MB |
+| `bench_dead_code` | Unreachable assignments | 1.68 | 0.04 | **0.04** | 42x | 8 MB |
+| `bench_copy_prop` | Variable copy chains | 1.19 | 0.03 | **0.04** | 30x | 8 MB |
+| `bench_array_intensive` | Sequential array access patterns | 2.40 | 0.08 | **0.08** | 30x | 8 MB |
+| `bench_cse` | Common subexpression elimination | 0.25 | 0.01 | **0.01** | 25x | 8 MB |
+| `bench_loop_invariant` | Loop-invariant expressions (LICM) | 0.24 | 0.01 | **0.01** | 24x | 7 MB |
+| `bench_matrix_multiply` | Nested loop float computation (n=500) | 4.82 | 0.28 | **0.31** | 16x | 13 MB |
+| `bench_method_dispatch` | Repeated method calls on objects | 2.96 | 0.29 | **0.32** | 9.3x | 9 MB |
+| `bench_gc_churn` | Rapid short-lived object allocation | 0.64 | 0.15 | **0.16** | 4.0x | 136 MB |
+| `bench_gc_large_heap` | Large live set, GC sweep time | 0.07 | 0.02 | **0.02** | 3.5x | 42 MB |
+| `bench_tco` | Tail-recursive accumulator (TCO, n=1M×200) | 0.33 | 0.11 | **0.12** | 2.8x | 8 MB |
+| `bench_spectralnorm_native` | Float arrays with `native` JIT (n=2000) | 0.37 | 0.38 | 0.42 | +14% | 7 MB |
 
 The two fastest rows (`bench_cse`, `bench_loop_invariant`) now sit at 0.01 s,
 close enough to the harness's resolution that their ratios should be read as
 "too fast to distinguish" rather than as precise multiples.
 `bench_spectralnorm_native` is the control: it is hand-`native`, so it was
-already compiled before this work and comes back unchanged at 0.38 s — which is
-what makes the other rows credible. Because its kernel is `native`-annotated it
+already compiled before this work and read 0.38 s in September. It reads **0.42 s** now,
+which is the clearest sign that this pass ran about 10% slow on the host rather than
+that the engine changed: the other rows moved by a similar fraction. A control that
+moves is what makes the other rows credible. Because its kernel is `native`-annotated it
 is *always* compiled and never runs through the interpreter, so it is valid for
 comparing one build against another but must never be read as an interpreter
 measurement.
@@ -302,21 +304,21 @@ interpreters ~2x). The young-gen bump allocator helped, but per-object allocatio
 
 | Opportunity | Impact |
 |-------------|--------|
-| ~~**Re-run every table on v2026.9.1**~~ | **DONE** (2026-09-12, `f6b3b09046`, same 7950X3D host). spectralnorm 16.5x, binarytrees 4.0x, nbody 2.3x, micro-benchmarks up to 54x; fannkuchredux flat and mandelbrot noise-dominated. `fasta` measured for the first time |
+| ~~**Re-run every table on v2026.11.0**~~ | **DONE** (2026-11-07, `21393c2fbb`, same 7950X3D host). Every row 6–17% slower than the v2026.9.1 pass, including the hand-`native` control, so read as host drift; binarytrees peak RSS 209 → 177 MB. Previously re-run on v2026.9.1 (2026-09-12, `f6b3b09046`): spectralnorm 16.5x, binarytrees 4.0x, nbody 2.3x versus June |
 | Stand up a **native (non-Docker) cross-language harness** so peer comparisons aren't muddied by the ~30–50% Docker interpreter overhead documented above | gives bare-metal interpreter numbers; the current page is entirely Docker |
-| ~~**Add `fasta` to the measured set**~~ | **DONE** — both causes fixed in v2026.9.1 (four `d`-suffixed float literals, and `Console->WriteBuffer(Char[])` encoding its output twice), and it is measured above at **7.07s**. It had been skipped silently since before June because the harness discarded the compiler's stderr |
+| ~~**Add `fasta` to the measured set**~~ | **DONE** — both causes fixed in v2026.9.1 (four `d`-suffixed float literals, and `Console->WriteBuffer(Char[])` encoding its output twice), and it is measured above at **7.56s** (7.07s in September). It had been skipped silently since before June because the harness discarded the compiler's stderr |
 | **A second cross-language table on current language releases** — the run above uses Ubuntu 24.04's Python 3.12.3, Ruby 3.2.3 (pre-YJIT-by-default) and OpenJDK 21 | must be *additive*: swapping runtimes breaks comparison with this page's own history, so it belongs beside the like-for-like table, not instead of it |
 | Add **Java + LuaJIT to the gating perf CI** so regressions like the safepoint one are caught automatically | the fannkuch regression shipped unnoticed because nothing compared releases head-to-head |
 | ~~Record the **Objeck version beside every table**~~ | **DONE** — every measured table now carries the version and the commit it was taken at. This page went four releases without its numbers being re-measured and nothing in the tables said so; a stamp per table is what makes that visible next time |
 
 ---
 
-*Prose and measured tables last updated: **September 12, 2026, 22:22 UTC** — Objeck **v2026.9.1** (`f6b3b09046`), a unified Docker run on an AMD Ryzen 9 7950X3D (32 vCPU / 62 GB visible to Docker; the host has 128 GB). Median of 3 runs. Numbers are Docker: interpreter-bound rows run ~30–50% slower than a native build, while JIT/`native` code is largely unaffected.*
+*Prose and measured tables last updated: **November 7, 2026, 14:09 UTC** — Objeck **v2026.11.0** (`21393c2fbb`), a unified Docker run on an AMD Ryzen 9 7950X3D (32 vCPU / 62 GB visible to Docker; the host has 128 GB). Median of 3 runs. Numbers are Docker: interpreter-bound rows run ~30–50% slower than a native build, while JIT/`native` code is largely unaffected.*
 
-*The previous measured run was June 21, 2026 against v2026.6.2 and is retained only as the "June" column in the micro-benchmark table and as the before-figures quoted in the prose. Headline movement between the two: spectralnorm **16.5x**, binarytrees **4.0x**, nbody **2.3x**, micro-benchmarks up to **54x**; fannkuchredux flat, and mandelbrot noise-dominated rather than moved.*
+*The earlier measured runs were September 12, 2026 (v2026.9.1, `f6b3b09046`) and June 21, 2026 (v2026.6.2). June is retained as the "June" column in the micro-benchmark table and as the before-figures quoted in the prose; September is the "v2026.9.1" column. Headline movement June to now: spectralnorm **14.2x**, binarytrees **3.8x**, micro-benchmarks up to **43x**; fannkuchredux flat. September to now: every row 6–17% slower, read as host drift (the hand-`native` control moved too), with binarytrees peak RSS 15% lower.*
 
-*All six CLBG benchmarks are measured here; `fasta` joins the set for the first time, having been skipped silently in every previous run.*
+*All six CLBG benchmarks are measured here, `fasta` included.*
 
-*The measured commit is not the release tag, but it is the same engine. `f6b3b09046` precedes `v2026.9.1` (`ca5a3e19b9`) by five commits, and `git diff` between them over `core/vm`, `core/compiler`, `core/shared` and the committed `.obl` set is **empty** — the difference is documentation, examples and release tooling only. So these numbers describe the engine that shipped.*
+*The measured commit is master after the 2026.11.0 version bump and the objeck.org site changes (`21393c2fbb`), not a release tag, because the tag does not exist yet. Between v2026.10.3 and this commit the runtime changed in web-server hardening, the TLS accept path, Coverity fixes and dead-code removal; none of it was aimed at throughput, and the CI perf gate passes on it.*
 
 *P0 safepoint roadmap: complete on both arches — AMD64 (all three steps) and ARM64 (back-edge + X19 register-cache, validated on Apple Silicon). The ARM64 forced-JIT correctness chain (PR #548, #551) is merged and the full ARM64 suite is green at `OBJECK_JIT_THRESHOLD=1`; as of v2026.9.1 every CI leg runs that pass, ARM64 included.*

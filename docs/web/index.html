@@ -296,16 +296,16 @@
           <div class="perf-label">A <code>virtual</code> call, through an inline cache</div>
         </div>
         <div class="perf-stat">
-          <div class="perf-num">16.5x</div>
-          <div class="perf-label">spectralnorm, from 44.86 s to 2.72 s between the June and September releases</div>
+          <div class="perf-num">14.2x</div>
+          <div class="perf-label">spectralnorm, from 44.86 s to 3.17 s between the June release and v2026.11.0</div>
         </div>
         <div class="perf-stat">
-          <div class="perf-num">13–47x</div>
+          <div class="perf-num">12–40x</div>
           <div class="perf-label">faster than CPython 3.12 on nbody, spectralnorm, and fannkuchredux</div>
         </div>
       </div>
       <p class="perf-note">
-        Call costs on AMD64; benchmarks on an AMD Ryzen 9 7950X3D with Objeck v2026.9.1, median of three runs.
+        Call costs on AMD64 as measured for v2026.9.1; benchmarks on an AMD Ryzen 9 7950X3D with Objeck v2026.11.0, median of three runs.
         Java and LuaJIT remain faster on several benchmarks &mdash;
         <a href="doc_performance.html" target="_blank">full results and methodology</a>.
       </p>
