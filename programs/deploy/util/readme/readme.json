@@ -1,15 +1,21 @@
 {
 	"version": {
-		"string": "2026.10.3",
+		"string": "2026.11.0",
 		"year": 2026
 	},
-	"title": "v2026.10.3 (in development)",
+	"title": "v2026.11.0 (in development)",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
 		"markdown_out": "readme.md"
 	},
 	"features": [
+		{
+			"version": "v2026.11.0",
+			"items": [
+				"In development: this version has no release notes yet. CHANGELOG.md lists what it will contain."
+			]
+		},
 		{
 			"version": "v2026.10.3",
 			"items": [
