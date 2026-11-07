@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# post_release.sh <VERSION> [--sign] [--body FILE] [--playground]
+# post_release.sh <VERSION> [--sign] [--body FILE] [--playground] [--site]
 #
 # ONE step for everything after release-publish.yml goes green. This used to be
 # four prose sections in .claude/skills/release (steps 9, 10, 11, 11b), which
@@ -25,20 +25,21 @@
 #     (hyphen) which is not an asset                the body against reality
 #   * the body linked compare/v...vX            -> reject unsubstituted markers
 #
-# Exit 0 only when every gate passes. Read-only unless --sign/--body/--playground
+# Exit 0 only when every gate passes. Read-only unless --sign/--body/--playground/--site
 # are given.
 set -uo pipefail
 
 VERSION="${1:-}"
-[ -n "$VERSION" ] || { echo "usage: post_release.sh <VERSION> [--sign] [--body FILE] [--playground]"; exit 2; }
+[ -n "$VERSION" ] || { echo "usage: post_release.sh <VERSION> [--sign] [--body FILE] [--playground] [--site]"; exit 2; }
 shift
 TAG="v${VERSION}"
 REPO="objeck/objeck-lang"
-DO_SIGN=0; DO_PLAYGROUND=0; BODY_FILE=""
+DO_SIGN=0; DO_PLAYGROUND=0; DO_SITE=0; BODY_FILE=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --sign)       DO_SIGN=1 ;;
     --playground) DO_PLAYGROUND=1 ;;
+    --site)       DO_SITE=1 ;;
     --body)       shift; BODY_FILE="${1:-}" ;;
     *) echo "unknown option: $1"; exit 2 ;;
   esac
@@ -303,6 +304,83 @@ else
   echo "  playground ENGINE is not $VERSION (the header can be right while this is wrong)"
   echo "  response: $(echo "$EV" | head -c 200)"
   [ "$DO_PLAYGROUND" -eq 1 ] && FAIL=1
+fi
+
+# ----------------------------------------------------------------- 7. site
+# objeck.org is served by Objeck itself (programs/examples/site_server.obs under
+# objeck-org-site.service, behind Caddy), so a release has TWO site jobs:
+#   * the pages and api/latest -- release-publish.yml runs core/release/deploy_website.sh
+#   * the engine that serves them -- the toolchain in /opt/objeck-site/deploy, which
+#     nothing refreshed: without this the site would keep running whatever build it
+#     was first installed with while the release it advertises moves on.
+# --site does the second job (swap the toolchain for the release's linux-x64 archive,
+# recompile site_server from the TAG's source, restart, wait for health). The checks
+# below it run either way, and look at the LIVE site, never at what was uploaded.
+echo
+echo "[7] site (objeck.org)"
+SITE_SSH="${SITE_HOST:-playground}"      # root@ the droplet; an ssh alias or a host name
+SITE_URL="${SITE_URL:-https://www.objeck.org}"
+if [ "$DO_SITE" -eq 1 ]; then
+  ( cd "$WORK" && gh release download "$TAG" -R "$REPO" --pattern "objeck-linux-x64_${VERSION}.tgz" --clobber >/dev/null 2>&1 )
+  if [ ! -s "$WORK/objeck-linux-x64_${VERSION}.tgz" ]; then
+    bad "cannot download objeck-linux-x64_${VERSION}.tgz for the site toolchain"
+  else
+    scp -q -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 \
+        "$WORK/objeck-linux-x64_${VERSION}.tgz" "root@$SITE_SSH:/tmp/objeck-site-toolchain.tgz" \
+      && curl -fsS "https://raw.githubusercontent.com/$REPO/$TAG/programs/examples/site_server.obs" \
+           -o "$WORK/site_server.obs" \
+      && scp -q -o ConnectTimeout=15 "$WORK/site_server.obs" "root@$SITE_SSH:/tmp/site_server.obs" \
+      && COPIED=1 || bad "cannot copy the toolchain or site_server.obs to $SITE_SSH"
+    if [ "${COPIED:-0}" -eq 1 ]; then
+      # Swap only after the new tree compiles site_server and the old one is kept as
+      # deploy.prev, so a bad archive costs a restart and never the site.
+      ssh -o ConnectTimeout=15 "root@$SITE_SSH" bash -s <<'REMOTE' 2>&1 | sed 's/^/  /'
+set -eu
+cd /opt/objeck-site
+rm -rf deploy.new && mkdir deploy.new
+tar -xzf /tmp/objeck-site-toolchain.tgz -C deploy.new --strip-components=1
+[ -x deploy.new/bin/obr ] && [ -x deploy.new/bin/obc ] || { echo "archive has no bin/obr + bin/obc (layout changed?)"; exit 1; }
+OBJECK_LIB_PATH=/opt/objeck-site/deploy.new/lib deploy.new/bin/obc \
+  -src /tmp/site_server.obs -lib net,net_server,json,cipher -dest /tmp/site_server.new.obe
+rm -rf deploy.prev && mv deploy deploy.prev && mv deploy.new deploy
+cp /tmp/site_server.obs site_server.obs && mv /tmp/site_server.new.obe site_server.obe
+chown -R root:root deploy && chmod -R go+rX deploy site_server.obe
+systemctl restart objeck-org-site
+for i in 1 2 3 4 5 6 7 8 9 10; do
+  curl -fsS -o /dev/null http://127.0.0.1:8081/ && { echo "service answers after restart (try $i)"; exit 0; }
+  sleep 1
+done
+echo "service did NOT answer after restart; rolling back to deploy.prev"
+systemctl stop objeck-org-site; rm -rf deploy; mv deploy.prev deploy; systemctl start objeck-org-site
+exit 1
+REMOTE
+      [ "${PIPESTATUS[0]}" -eq 0 ] || bad "site toolchain swap failed on $SITE_SSH (rolled back if the service did not answer)"
+    fi
+  fi
+fi
+
+# 7a. the pages: the Download button on the landing page names this release
+if curl -fsS --max-time 30 "$SITE_URL/readme.html" 2>/dev/null | grep -q "$TAG\|$VERSION"; then
+  note "$SITE_URL/readme.html names $TAG"
+else
+  bad "$SITE_URL/readme.html does not mention $VERSION (release-publish.yml's deploy_website.sh did not land, or the page is stale)"
+fi
+# 7b. the reference: every generated page prints the version it was built for
+STAMP=$(curl -fsS --max-time 30 "$SITE_URL/api/latest/index.html" 2>/dev/null | grep -o 'class="version">v[0-9.]*' | head -1 | sed 's/.*>//')
+if [ "$STAMP" = "$TAG" ]; then note "$SITE_URL/api/latest is stamped $STAMP"
+else bad "$SITE_URL/api/latest reports '${STAMP:-nothing}', expected '$TAG'"; fi
+# 7c. the engine: ask the box itself which toolchain runs the site, when we can reach it
+if [ "$DO_SITE" -eq 1 ]; then
+  SV=$(ssh -o ConnectTimeout=15 "root@$SITE_SSH" \
+        'T=$(mktemp -d); printf "class V { function : Main(args : String[]) ~ Nil { System.Runtime->GetVersion()->PrintLine(); } }" > $T/v.obs;
+         OBJECK_LIB_PATH=/opt/objeck-site/deploy/lib /opt/objeck-site/deploy/bin/obc -src $T/v.obs -dest $T/v.obe >/dev/null 2>&1 &&
+         OBJECK_LIB_PATH=/opt/objeck-site/deploy/lib /opt/objeck-site/deploy/bin/obr $T/v.obe; rm -rf $T' 2>/dev/null | tr -d '\r')
+  if echo "$SV" | grep -q "$VERSION"; then note "the site's engine executes $VERSION"
+  else bad "the site's engine reports '${SV:-nothing}', expected $VERSION"; fi
+  # the service is what visitors reach: it must be up with no restart storm
+  SS=$(ssh -o ConnectTimeout=15 "root@$SITE_SSH" 'systemctl is-active objeck-org-site; systemctl show objeck-org-site -p NRestarts --value' 2>/dev/null | tr '\n' ' ')
+  note "objeck-org-site: $SS"
+  echo "$SS" | grep -q '^active ' || bad "objeck-org-site is not active ($SS)"
 fi
 
 echo

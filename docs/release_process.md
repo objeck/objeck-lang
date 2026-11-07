@@ -204,7 +204,7 @@ Or use the GitHub Actions UI:
 
 ## Manual Steps
 
-These happen after `release-publish.yml` goes green. `tools/cicd/post_release.sh <VERSION>` checks the outcome of each (assets, binaries in every archive, signatures, `SHA256SUMS`, the release body, the playground). Without `--sign`, `--body` or `--playground` it changes nothing, except that it regenerates and re-uploads a `SHA256SUMS` that no longer matches the published files -- and then requests a re-signing, because regenerating the manifest invalidates its signature and `obu` refuses a manifest it cannot verify.
+These happen after `release-publish.yml` goes green. `tools/cicd/post_release.sh <VERSION>` checks the outcome of each (assets, binaries in every archive, signatures, `SHA256SUMS`, the release body, the playground, the site). Without `--sign`, `--body`, `--playground` or `--site` it changes nothing, except that it regenerates and re-uploads a `SHA256SUMS` that no longer matches the published files -- and then requests a re-signing, because regenerating the manifest invalidates its signature and `obu` refuses a manifest it cannot verify.
 
 ### 1. Sign the Windows installers
 
@@ -223,6 +223,12 @@ Run `programs/web-playground/deploy/update.sh <VERSION>` on the playground host 
 ### 3. Upload the API docs to objeck.org
 
 The tag build commits the generated docs to master as `docs/api.zip` (it is also the run's `api-docs` artifact). Upload the contents of its `api/` folder to objeck.org's `/api/latest/`, the only path the site serves; there are no per-version directories. It is done when https://objeck.org/api/latest/index.html shows `v<VERSION>` in its footer.
+
+### 4. Update the Objeck-served site
+
+objeck.org is served by Objeck itself: `programs/examples/site_server.obs` runs under `core/release/objeck-org-site.service` on the droplet (127.0.0.1:8081), with Caddy (`core/release/objeck-org.Caddyfile`) terminating TLS in front of it. A release therefore updates the site twice. The pages and `api/latest/` are uploaded by `release-publish.yml` through `core/release/deploy_website.sh` (step 3 above); the engine that serves them is the toolchain in `/opt/objeck-site/deploy`, which `post_release.sh <VERSION> --site` replaces with the release's own `objeck-linux-x64_<VERSION>.tgz` (the old tree stays as `deploy.prev`, `site_server` is recompiled from the tag, the service is restarted and rolled back if it does not answer). The same gate then reads the live site back: `readme.html` names the release, `api/latest` is stamped with it, and the engine on the box executes it. `SITE_HOST` (default `playground`, an ssh alias for root on the droplet) and `SITE_URL` (default `https://www.objeck.org`) override the target.
+
+After the DNS cutover the CI deploy secrets must point at the droplet: `OBJECK_ORG_USER=objeckorg` (the key authorized for that user); the host name `objeck.org` then resolves to the droplet by itself.
 
 Sourceforge is declared manual too, but needs nothing: it mirrors the GitHub release through a webhook.
 

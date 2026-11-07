@@ -614,10 +614,10 @@ one script. It used to be four prose sections here, which meant the commands wer
 retyped by hand every release -- and re-broken the same ways every release.
 
 ```bash
-tools/cicd/post_release.sh <VERSION> --sign --body /tmp/release_body.md --playground
+tools/cicd/post_release.sh <VERSION> --sign --body /tmp/release_body.md --playground --site
 ```
 
-Exit 0 only when all six gates pass. Read-only unless you pass the flags.
+Exit 0 only when all seven gates pass. Read-only unless you pass the flags.
 
 | Gate | What it proves | Why it exists |
 |---|---|---|
@@ -627,6 +627,7 @@ Exit 0 only when all six gates pass. Read-only unless you pass the flags.
 | 4 `SHA256SUMS` | manifest matches the published bytes; regenerates + re-proves if signing invalidated it | signing rewrites the MSIs, so v2026.8.3's manifest described pre-signing bytes and every user's verification would have FAILED |
 | 5 body | every advertised filename is a real asset; no `$VARS`, no `compare/v...`, no `[x]()` | the published body named `objeck-lsp-X.zip` (hyphen) when the asset is `objeck-lsp_X.zip`, and linked `compare/v...vX` |
 | 6 playground | `/api/health` reports the tag -- **and `/api/run` reports it too**; health is a label `git pull` moves on its own, so it flipped to v2026.9.0 over a 2026.8.4 engine | the version is a tracked constant the deploy does not auto-bump |
+| 7 site | with `--site`: the release's linux-x64 toolchain replaces the one serving objeck.org (`/opt/objeck-site/deploy` on the droplet, kept as `deploy.prev`, `site_server` recompiled from the TAG, service restarted, rolled back if it does not answer). Always: the LIVE site's `readme.html` names the release, `api/latest` is stamped with it, and (with `--site`) the engine on the box executes it | objeck.org is served by Objeck (`programs/examples/site_server.obs`, `core/release/objeck-org-site.service`); a release that updates the pages but not the engine leaves the site running an old build, and one that uploads pages without reading them back is the v2026.8.4 shape |
 
 `--sign` needs the SafeNet eToken plugged in and prompts for its password (once per MSI
 unless single-logon is on). Signing cannot happen in CI -- the key is non-exportable and a
