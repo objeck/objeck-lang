@@ -500,7 +500,10 @@ bundle Web.HTTP.Server {
 
 								handler := callback->Instance(callback->GetName())->As(HttpRequestHandler);
 								handler->SetConfig(server_config, is_debug->Get());
-								handler->Execute(client);
+								# Run it here, in this connection's own thread. Execute() started a
+								# second thread for the handler (it is itself a Thread) that nothing
+								# joined; the TLS path below already runs the handler directly.
+								handler->Run(client);
 							}
 						};
 
