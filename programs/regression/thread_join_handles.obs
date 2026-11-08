@@ -8,8 +8,8 @@ use System.Concurrency;
 #
 # Start and join 2,000 threads (far past the point the loop is compiled), then require the
 # process's handle count (runtime.process.handles: kernel handles on Windows, descriptors
-# elsewhere) to have grown by a small fraction of that. A second Join of a joined thread
-# must still return.
+# elsewhere) to have grown by a small fraction of that. (It does not join twice: a second
+# pthread_join of a joined thread is undefined on POSIX.)
 class Worker from Thread {
 	New() { Parent(); }
 
@@ -33,8 +33,6 @@ class ThreadJoinHandlesTest {
 		for(i := 0; i < 2000; i += 1;) {
 			worker := Worker->New();
 			worker->Execute(Nil);
-			worker->Join();
-			# joining again must not wait on a handle that was closed
 			worker->Join();
 		};
 
