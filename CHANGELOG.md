@@ -25,7 +25,7 @@ All notable changes to Objeck will be documented in this file.
 
 - **A six-hour release soak** ([#1567](https://github.com/objeck/objeck-lang/pull/1567), [#1568](https://github.com/objeck/objeck-lang/pull/1568); `.github/workflows/soak.yml`, `tools/cicd/soak.py`): the site server under client load beside the regression suite, the GC stress tests and the fuzzers, on Linux and Windows, sampling the server's memory, threads, mappings, descriptors and handles every 30 seconds and failing at its limits. It found both leaks above on its first runs. On the shipped build: 3.0 million requests on Linux with the server between 32 and 40 MB, and 2.6 million on Windows with handles going from 97 to 109.
 - **`verify_platform.cmd` judges each regression pass by its own `Results` line**, and `post_release.sh` gains a gate that updates and verifies the Objeck-served site.
-- **The site** ([#1562](https://github.com/objeck/objeck-lang/pull/1562), [#1564](https://github.com/objeck/objeck-lang/pull/1564)): a graphite theme using the logo's blue, a hamburger menu, a "Powered by Objeck" badge, and the performance figures re-measured on this version. The service unit and Caddy configuration that serve it are in `core/release`.
+- **The site** ([#1562](https://github.com/objeck/objeck-lang/pull/1562), [#1564](https://github.com/objeck/objeck-lang/pull/1564)): the Aurora Night look (a teal-black page under a slow aurora, a hamburger menu on the left with the logo centered, a teal accent), a "Powered by Objeck" badge, and the performance figures re-measured on this version. The service unit and Caddy configuration that serve it are in `core/release`.
 
 ## [v2026.10.3] - 2026-11-03
 

@@ -464,6 +464,14 @@ More: [all the guides](docs/guides/README.md), the 32 numbered programs in [`pro
 
 Full details for every release are in the [CHANGELOG](CHANGELOG.md).
 
+### v2026.11.0
+  * **A web server that serves a site** &mdash; `StaticFiles` serves a folder with content types from a whitelist of extensions, `index.html` for a folder, ETags and conditional requests (304), gzip for text and `Range` for large files (206 and 416), and refuses dotfiles, non-ASCII names and folder listings. `programs/examples/site_server.obs` is a complete server in about 160 lines, and objeck.org now runs on it behind Caddy.
+  * **Hostile clients are bounded** &mdash; the whole request has a deadline, so a client that trickles its headers cannot hold a connection open; a `..` path in any spelling answers 400; `Request.GetHeader` is case-insensitive; and one silent connection no longer blocks every TLS client, because `TCPSecureSocketServer->Accept` no longer does the handshake inside the accept call. `tools/security` is a black-box harness of 93 hostile requests, and it passes.
+  * **A long-running server no longer leaks a thread per connection** &mdash; connection threads were never joined and the plain-HTTP path started a second, unjoined thread, about 11 KB and four memory mappings per connection, until the OS mapping limit after roughly 16,000 connections. The handler now runs in the connection's thread and a reaper joins the finished ones.
+  * **A joined thread's handle is closed on Windows** &mdash; the VM never closed the handle of a thread it had joined, in the interpreter or in the compiled code, so every thread a program started kept a kernel handle for the life of the process (3,000 joined threads: 3,101 handles before, 110 after). The new `runtime.process.handles` property reports kernel handles on Windows and open descriptors elsewhere.
+  * **Checked, not assumed** &mdash; a six-hour release soak runs the site server under load beside the regression suite, the GC stress tests and the fuzzers on Linux and Windows and fails at resource limits; it found both leaks above. Thread stacks are overflow-checked (Coverity CID 1685914), two Coverity batches are fixed, and the release is verified on all five platforms by one script at one commit.
+  * **A new look for objeck.org** &mdash; a teal-black page under a slow aurora, a hamburger menu on the left with the logo centered, a Powered by Objeck badge, and the performance figures re-measured on this version.
+
 ### v2026.10.3 ✅
   * **Garbage collector roots, finished** &mdash; compiled code now tells the collector exactly which stack slots hold references (typed slots on x64 and ARM64), and an `Int[]` has its own heap tag, so an `Int` or an `Int[]` element that happens to equal an object's address is never rewritten by a collection, interpreted or compiled ([design](docs/GC_ROOTS_DESIGN.md))
   * **A hardened loader** &mdash; a fuzz target on `Loader::Load` (hundreds of millions of executions) fixed a crash on a repeated class or method id, allocations of up to 16 GB from a corrupt count, an abort on a bad method signature, a silent exit on an unknown opcode and a read past the end of a short `.obe`; a verifier now checks jump targets, local and trap ids and class, method and field ids before anything runs ([trust model](docs/SECURITY_MODEL.md))
@@ -495,13 +503,6 @@ Full details for every release are in the [CHANGELOG](CHANGELOG.md).
   * **32 new examples** &mdash; numbered in learning order, each with its compile and run lines and the output it prints, written for people new to the language
   * **Compiler and library fixes** &mdash; a quote inside `{$...}` is an error instead of a compiler hang; a bounded generic class returns its type argument and a literal in `{$...}` compiles; ambiguous names, numeric literals (`0o` is octal; `010` is an error), array literals; CSV, JSON (escapes are decoded on parse), regex, NLP, ML, Ollama, OpenAI, Gemini, SDL2 and ODBC, including a macOS driver manager that could load no driver
   * **Upgrading** &mdash; rebuild your own `.obl` libraries and recompile `.obe` files; a v2026.10.1 `obu` in a non-ASCII install directory cannot update itself, so install by hand; `Directory->List` drops `.` and `..` on Windows; `CompressBr` is `CompressDeflate`; `Byte[]->ToHexString` is a digest; `Hash` iteration order changes; stop calling `JsonElement->Decode` on parsed text; `TF_IDF->New()` smooths and normalizes by default; XML `FindElements` `[n]` is the n-th match, not the first n; `Query` returns `Nil` for an unknown column in a select list or `ORDER BY`; the full list is in the [CHANGELOG](CHANGELOG.md#v2026102---2026-10-31)
-
-### v2026.10.1
-  * **Typed errors** &mdash; `Runtime->Raise`, and `try`/`on`/`finally` that catch by error type
-  * **Named arguments, method-level generics and `ref` parameters**
-  * **Array literals hold expressions; jagged arrays**
-  * **Language server rebuilt around LSP 3.17**
-  * **Debian packages for Ubuntu 24.04**, plus fixes to the MSYS2 build, OpenCV 5 support and release verification
 
 ## Downloads
 
