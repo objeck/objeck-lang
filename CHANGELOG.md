@@ -2,6 +2,31 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [v2026.11.0] - 2026-11-08
+
+**A release about serving: `Web.HTTP.Server` is hardened and can serve a whole site, so objeck.org is now served by Objeck itself, and the six-hour release soak that proved it found and closed two leaks, one on every platform and one on Windows only.**
+
+### Web server
+
+- **A folder server and a site application** ([#1558](https://github.com/objeck/objeck-lang/pull/1558), [#1560](https://github.com/objeck/objeck-lang/pull/1560)): `StaticFiles` serves a folder with content types from a whitelist of extensions (anything else is a 404), `index.html` for a folder, ETags and conditional requests (304), gzip for text and `Range` for large files, and refuses dotfiles, non-ASCII names and folder listings; `programs/examples/site_server.obs` turns it into a complete server in about 160 lines. A `..` path, in any spelling, answers 400, and `Request.GetHeader` is case-insensitive.
+- **Range requests** ([#1556](https://github.com/objeck/objeck-lang/pull/1556)): a single `Range` is answered with 206, an unsatisfiable one with 416, and a handler that streams can opt out by sending its own `Accept-Ranges`.
+- **Hostile clients are bounded** ([#1560](https://github.com/objeck/objeck-lang/pull/1560)): the whole request has a deadline, so a client that trickles its headers can no longer hold a connection open, and an independent review's findings are fixed. `tools/security` is a black-box harness of 93 hostile requests (header and request-line limits, malformed headers, traversal in every spelling, `Range` abuse, connection floods, trickled requests), each followed by a check that the server still answers; it passes on the shipped build.
+- **One silent connection no longer blocks every TLS client** ([#1560](https://github.com/objeck/objeck-lang/pull/1560)): `TCPSecureSocketServer->Accept` did the TLS handshake inside the accept call, so a connection that said nothing stopped all others (70 seconds measured). The handshake now runs on the connection's own thread.
+- **A long-running server no longer leaks a thread per connection** ([#1565](https://github.com/objeck/objeck-lang/pull/1565)): connection threads were never joined, and the plain-HTTP path started a second, unjoined thread beside the handler, which is itself a thread. Each connection cost about 11 KB and four memory mappings, so a server reached the 65,530-mapping limit of the OS after about 16,000 connections. The handler now runs in the connection's thread and a reaper joins finished ones; a site server held flat at 25 to 30 MB over 117,000 requests.
+
+### Runtime
+
+- **A joined thread's handle is closed on Windows** ([#1566](https://github.com/objeck/objeck-lang/pull/1566), [#1569](https://github.com/objeck/objeck-lang/pull/1569)): the VM never called `CloseHandle` for a thread it had joined, so every thread a program started kept a kernel handle for the life of the process. The interpreter was fixed first, and the release soak then showed the compiled `THREAD_JOIN` had the same leak (a loop is compiled after its first few passes, so only the first joins ran the fixed code). Both paths now release the handle, a second `Join` of the same thread returns, and 3,000 joined threads went from 3,101 handles to 110. The new `runtime.process.handles` property reports kernel handles on Windows and open descriptors elsewhere.
+- **Thread stacks are overflow-checked** ([#1557](https://github.com/objeck/objeck-lang/pull/1557), [#1566](https://github.com/objeck/objeck-lang/pull/1566)): each `size_t` addition in `ThreadStacks::Allocate` is checked with the compiler's overflow builtins (Coverity CID 1685914).
+- **Static analysis, two batches** ([#1553](https://github.com/objeck/objeck-lang/pull/1553), [#1555](https://github.com/objeck/objeck-lang/pull/1555)): a page-size guard, an uninitialized `min_height` and `is_try_guarded`, a lock around the instance-ID counter, null-safe enum analysis, a refused mask forwarder reported instead of ignored, redundant checks removed, and best-effort socket calls marked as such.
+- **Dead code removed**: 22 unreferenced compiler functions and the unreferenced functions and never-wired `obr.conf` loader in the VM, the mechanical `-Wextra` and cppcheck warnings fixed, and the parts of the vendored Eigen tree the build never reads dropped.
+
+### Release process and site
+
+- **A six-hour release soak** ([#1567](https://github.com/objeck/objeck-lang/pull/1567), [#1568](https://github.com/objeck/objeck-lang/pull/1568); `.github/workflows/soak.yml`, `tools/cicd/soak.py`): the site server under client load beside the regression suite, the GC stress tests and the fuzzers, on Linux and Windows, sampling the server's memory, threads, mappings, descriptors and handles every 30 seconds and failing at its limits. It found both leaks above on its first runs. On the shipped build: 3.0 million requests on Linux with the server between 32 and 40 MB, and 2.6 million on Windows with handles going from 97 to 109.
+- **`verify_platform.cmd` judges each regression pass by its own `Results` line**, and `post_release.sh` gains a gate that updates and verifies the Objeck-served site.
+- **The site** ([#1562](https://github.com/objeck/objeck-lang/pull/1562), [#1564](https://github.com/objeck/objeck-lang/pull/1564)): a graphite theme using the logo's blue, a hamburger menu, a "Powered by Objeck" badge, and the performance figures re-measured on this version. The service unit and Caddy configuration that serve it are in `core/release`.
+
 ## [v2026.10.3] - 2026-11-03
 
 **A hardening release: the garbage collector now knows exactly which words of compiled code are references on x64 and ARM64, the loader is fuzzed and verifies programs before it runs them, errors are returned instead of ending the host process, and the HTTP client stops running Windows out of ports.**
