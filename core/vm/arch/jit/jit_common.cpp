@@ -856,9 +856,17 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 #ifdef _WIN32
     HANDLE vm_thread = (HANDLE)instance[0];
     if(!vm_thread) {
-      // already joined: its handle was closed and cleared below
+      // already joined: its handle was taken, and is closed below
       break;
     }
+
+    // The slot is cleared NOW, while 'instance' is still the live object: after the wait
+    // it may have been moved, and no frame of this callback reliably holds the Thread
+    // (a bound call reaches here without a frame of its own, so the frame below is the
+    // caller's -- writing through it cleared a field of the caller's object and broke
+    // TaskScope under --jit=1). A second Join of the thread then finds the slot empty and
+    // returns, instead of waiting on, or closing, a handle the system may have reused.
+    instance[0] = 0;
 
     // Joining blocks in a syscall — bracket with Begin/EndBlocking so this thread
     // counts as parked, otherwise a collection on another thread waits forever for
@@ -902,15 +910,8 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     // The thread has finished and been joined: close its handle, which this path never
     // did, so a program whose join loop was compiled kept one kernel object per thread it
     // started (the interpreter's THREAD_JOIN closes it; only the first few joins of a
-    // loop run there). The Thread object is read again from the compiled method's frame,
-    // because a collection may have moved it while this thread was parked and the local
-    // 'instance' is then stale; its handle slot is cleared so that a second Join returns
-    // instead of waiting on, or closing, a handle the system may have reused.
+    // loop run there).
     CloseHandle(vm_thread);
-    size_t* joined = (size_t*)call_stack[(*call_stack_pos) - 1]->mem[0];
-    if(joined) {
-      joined[0] = 0;
-    }
 #endif
   }
     break;
