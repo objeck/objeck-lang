@@ -166,12 +166,12 @@ jobs:
           {
             echo "### Soak ${{ matrix.platform }}"
             echo ""
-            if [ -f soak-results/soak-summary.json ]; then
-              echo '```json'
-              grep -vE '^\s+"(step|iteration|rc|seconds)"|^\s+[{}],?$' soak-results/soak-summary.json | head -40
+            if [ -f soak-results/soak.log ]; then
+              echo '```'
+              tail -n 6 soak-results/soak.log
               echo '```'
             else
-              echo "no summary was written"
+              echo "no log was written"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 

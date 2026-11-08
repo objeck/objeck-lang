@@ -41,6 +41,12 @@ SITE_LIBS = "net,net_server,json,cipher"  # what the droplet compiles site_serve
 PORT = 8123
 RSS_LIMIT_MB = 1024  # the systemd unit's MemoryMax on the droplet (--rss-limit-mb overrides)
 MAX_NET_ERROR_RATE = 0.002
+# A healthy site server holds about 200 mappings, 30-60 descriptors and under 500 handles. The
+# connection-thread leak added four mappings per connection; these catch that class of leak
+# long before the process dies.
+MAX_MAPPINGS = 5000
+MAX_DESCRIPTORS = 4000
+MAX_HANDLES = 10000
 
 
 def now():
@@ -71,7 +77,7 @@ class Soak:
         for var in ("PATH", "LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH"):
             self.env[var] = native + os.pathsep + self.env.get(var, "")
         self.stats = {"requests": 0, "net_errors": 0, "bad": 0, "iterations": 0,
-                      "rss_mb": [], "steps": []}
+                      "rss_mb": [], "samples": [], "steps": []}
         self.stats_lock = threading.Lock()
 
     def log(self, msg):
@@ -188,30 +194,58 @@ class Soak:
                 conn = None
                 time.sleep(0.2)
 
-    def rss_mb(self):
-        if IS_WINDOWS or sys.platform == "darwin":
-            return None
+    def sample(self):
+        """The site server's resources: memory, threads, and mappings/descriptors (Linux)
+        or handles (Windows). A key is left out where the platform does not report it."""
+        pid = self.server.pid
+        out = {}
+        if IS_WINDOWS:
+            try:
+                cmd = "$p = Get-Process -Id %d; '{0} {1} {2}' -f [int]($p.WorkingSet64 / 1MB), $p.HandleCount, $p.Threads.Count" % pid
+                p = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", cmd],
+                                   stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=30)
+                parts = p.stdout.decode("utf-8", "replace").split()
+                if len(parts) == 3:
+                    out = {"rss_mb": int(parts[0]), "handles": int(parts[1]), "threads": int(parts[2])}
+            except (OSError, subprocess.TimeoutExpired, ValueError):
+                pass
+            return out
+        if sys.platform == "darwin":
+            return out
         try:
-            with open("/proc/%d/status" % self.server.pid, encoding="utf-8") as f:
+            with open("/proc/%d/status" % pid, encoding="utf-8") as f:
                 for line in f:
                     if line.startswith("VmRSS:"):
-                        return int(line.split()[1]) // 1024
+                        out["rss_mb"] = int(line.split()[1]) // 1024
+                    elif line.startswith("Threads:"):
+                        out["threads"] = int(line.split()[1])
+            out["descriptors"] = len(os.listdir("/proc/%d/fd" % pid))
+            with open("/proc/%d/maps" % pid, "rb") as f:
+                out["mappings"] = sum(1 for _ in f)
         except OSError:
-            return None
-        return None
+            pass
+        return out
 
     def watch(self):
-        """Server liveness and memory, every 30 seconds."""
+        """Server liveness and resources, every 30 seconds."""
+        limits = (("rss_mb", self.args.rss_limit_mb, "resident memory (MB)"),
+                  ("mappings", MAX_MAPPINGS, "memory mappings"),
+                  ("descriptors", MAX_DESCRIPTORS, "file descriptors"),
+                  ("handles", MAX_HANDLES, "handles"))
         while not self.stop.wait(30):
             if self.server.poll() is not None:
                 self.fail("site server died, exit code %s" % self.server.returncode)
                 return
-            rss = self.rss_mb()
-            if rss is not None:
-                with self.stats_lock:
-                    self.stats["rss_mb"].append(rss)
-                if rss > self.args.rss_limit_mb:
-                    self.fail("site server resident memory %d MB passed the %d MB limit" % (rss, self.args.rss_limit_mb))
+            snap = self.sample()
+            if not snap:
+                continue
+            with self.stats_lock:
+                self.stats["samples"].append(dict(snap, minute=int((now() - self.start) / 60)))
+                if "rss_mb" in snap:
+                    self.stats["rss_mb"].append(snap["rss_mb"])
+            for key, limit, what in limits:
+                if key in snap and snap[key] > limit:
+                    self.fail("site server %s is %d, past the limit of %d" % (what, snap[key], limit))
                     return
 
     # ------------------------------------------------------------------ iterations
@@ -311,13 +345,22 @@ class Soak:
                    "minutes_planned": self.args.minutes, "iterations": s["iterations"],
                    "site_requests": ops, "site_net_errors": errs, "site_bad": s["bad"],
                    "rss_mb_first": rss[0] if rss else None, "rss_mb_max": max(rss) if rss else None,
-                   "rss_mb_last": rss[-1] if rss else None, "rss_mb_series": rss, "steps": s["steps"],
+                   "rss_mb_last": rss[-1] if rss else None, "rss_mb_series": rss, "resource_samples": s["samples"], "steps": s["steps"],
                    "result": "FAIL" if self.failure else "PASS", "failure": self.failure}
         with open(os.path.join(self.out, "soak-summary.json"), "w", encoding="utf-8") as f:
             json.dump(summary, f, indent=2)
         self.log("%s: %d iterations, %d site requests (%d network errors, %d bad), rss first/max/last %s/%s/%s MB"
                  % (summary["result"], s["iterations"], ops, errs, s["bad"],
                     summary["rss_mb_first"], summary["rss_mb_max"], summary["rss_mb_last"]))
+        peaks = {}
+        for snap in s["samples"]:
+            for key in ("threads", "mappings", "descriptors", "handles"):
+                if key in snap:
+                    peaks.setdefault(key, [snap[key], snap[key]])
+                    peaks[key][1] = max(peaks[key][1], snap[key])
+        if peaks:
+            self.log("site server resources first/peak: " +
+                     ", ".join("%s %d/%d" % (k, v[0], v[1]) for k, v in sorted(peaks.items())))
         return 1 if self.failure else 0
 
 
