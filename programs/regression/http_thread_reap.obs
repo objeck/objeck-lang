@@ -113,7 +113,8 @@ class HttpThreadReapTest {
 		System.Concurrency.Thread->Sleep(1000);
 		after := Mappings();
 		grown := after - before;
-		"  mappings: {$before} -> {$after} (+{$grown}) over 300 connections"->PrintLine();
+		# the counts differ run to run and between interpreter and JIT, so they are only printed on failure
+		# (stdout is compared across configurations by the differential runner)
 
 		WebServer->Stop();
 		if(failed > 0) {
@@ -123,7 +124,7 @@ class HttpThreadReapTest {
 
 		# a leak is two to four mappings per connection, so 600 or more; allow slack
 		if(grown > 150) {
-			"  FAIL: connection threads are leaking mappings"->PrintLine();
+			"  FAIL: connection threads are leaking mappings: {$before} -> {$after} (+{$grown}) over 300 connections"->PrintLine();
 			Runtime->Exit(1);
 		};
 
