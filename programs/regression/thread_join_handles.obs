@@ -1,0 +1,53 @@
+use System.Concurrency;
+
+# Joining a thread must release it. On Windows every thread a program started kept a kernel
+# handle for the life of the process: the interpreter's THREAD_JOIN closed it, but a loop
+# that joined many threads is compiled after its first few passes, and the compiled
+# THREAD_JOIN did not -- one handle per thread, so a web server held one per connection and
+# the release soak stopped it at its handle limit. Found by the soak.
+#
+# Start and join 2,000 threads (far past the point the loop is compiled), then require the
+# process's handle count (runtime.process.handles: kernel handles on Windows, descriptors
+# elsewhere) to have grown by a small fraction of that. A second Join of a joined thread
+# must still return.
+class Worker from Thread {
+	New() { Parent(); }
+
+	method : public : Run(arg : System.Base) ~ Nil {
+	}
+}
+
+class ThreadJoinHandlesTest {
+	function : Handles() ~ Int {
+		return Runtime->GetProperty("runtime.process.handles")->ToInt();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		before := Handles();
+		if(before = 0) {
+			"SKIP: runtime.process.handles is not available here"->PrintLine();
+			"PASS: thread join handles (skipped)"->PrintLine();
+			return;
+		};
+
+		for(i := 0; i < 2000; i += 1;) {
+			worker := Worker->New();
+			worker->Execute(Nil);
+			worker->Join();
+			# joining again must not wait on a handle that was closed
+			worker->Join();
+		};
+
+		after := Handles();
+		grown := after - before;
+		"  handles: {$before} -> {$after} (+{$grown}) over 2000 threads"->PrintLine();
+
+		# a leak is one handle per thread, so 2,000; allow slack for the runtime's own
+		if(grown > 200) {
+			"  FAIL: joined threads are leaking handles"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: joined threads release their handles"->PrintLine();
+	}
+}

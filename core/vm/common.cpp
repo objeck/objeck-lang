@@ -4657,6 +4657,32 @@ static size_t GetProcessCpuTimeMs()
 #endif
 }
 
+// Kernel handles (Windows) or open file descriptors (elsewhere) this process holds. A
+// program that starts and ends threads, or connections, can watch it for a leak: the
+// release soak found a handle left behind by every joined thread on Windows.
+static size_t CountProcessHandles()
+{
+#ifdef _WIN32
+  DWORD count = 0;
+  if(GetProcessHandleCount(GetCurrentProcess(), &count)) {
+    return (size_t)count;
+  }
+  return 0;
+#else
+#ifdef __linux__
+  const char* dir = "/proc/self/fd";
+#else
+  const char* dir = "/dev/fd";
+#endif
+  size_t count = 0;
+  std::error_code ec;
+  for(std::filesystem::directory_iterator it(dir, ec), end; !ec && it != end; it.increment(ec)) {
+    count++;
+  }
+  return count;
+#endif
+}
+
 // Live runtime/GC/CPU stats, surfaced through the 'runtime.*' property namespace so
 // Objeck code can read them via Runtime->GetProperty(...) with no new bytecode trap.
 // Returns false (and leaves 'out' untouched) for keys it doesn't handle, so the
@@ -4749,6 +4775,7 @@ static bool GetRuntimeStat(const std::wstring& key, std::wstring& out)
     { L"runtime.cpu.count",        []() -> size_t { return (size_t)std::thread::hardware_concurrency(); } },
     { L"runtime.cpu.time",         []() -> size_t { return GetProcessCpuTimeMs(); } },
     { L"runtime.uptime_ms",        []() -> size_t { return (size_t)MemoryManager::GetUptimeMs(); } },
+    { L"runtime.process.handles",  []() -> size_t { return CountProcessHandles(); } },
     // the deepest a call chain may go (--call-depth), in frames
     { L"runtime.call.depth_max",   []() -> size_t { return (size_t)Runtime::MaxCallDepth(); } },
   };
