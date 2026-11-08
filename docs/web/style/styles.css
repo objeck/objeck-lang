@@ -1,35 +1,34 @@
-@import "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap";
+@import "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap";
 
 /* ── Design tokens ──
-   A plain graphite page with one accent, the blue in the logo. No gradients, glow,
-   glass or grid: it should read as documentation for a compiler, not a product page.
-   Text and muted text are both AA on the page background (about 14:1 and 6.5:1). */
+   Aurora Night: a deep teal-black page under a slow aurora of teal, cyan and violet over a
+   starfield, with the logo's blue and a teal accent. Text and muted text are both AA on the
+   page background (about 15:1 and 7:1). The old token names stay because the pages and the
+   highlighters use them. */
 :root {
-  --bg: #101214;
-  --bg-raised: #16191c;
-  --card: #16191c;
-  --card-solid: #16191c;
-  --code-bg: #0b0d0f;
-  --line: rgba(255, 255, 255, 0.10);
-  --line-strong: rgba(255, 255, 255, 0.18);
-  --text: #ece9e2;
-  --text-soft: #cbc8c0;
-  --muted: #9a978f;
-  /* One accent: the blue of the check mark in the logo (#0894e0). The old names
-     stay because the pages and highlighters use them; they are all that blue now. */
-  --cyan: #3aa9ea;
-  --sky: #4db3ee;
-  --blue: #0894e0;
-  --indigo: #0894e0;
-  --violet: #b9a6d8;
-  --green: #86efac;
+  --bg: #060d12;
+  --bg-raised: #0a1a1f;
+  --card: rgba(10, 28, 32, 0.66);
+  --card-solid: #0a1a1f;
+  --code-bg: rgba(6, 16, 20, 0.86);
+  --line: rgba(120, 200, 190, 0.16);
+  --line-strong: rgba(120, 200, 190, 0.30);
+  --text: #ecf6f4;
+  --text-soft: #bdd3d0;
+  --muted: #86a3a2;
+  --cyan: #5eead4;
+  --sky: #7dd3fc;
+  --blue: #14b8a6;
+  --indigo: #6366f1;
+  --violet: #a78bfa;
+  --green: #bef264;
   --amber: #fbbf24;
-  --grad: #0894e0;
-  --glow: 0 0 0 1px rgba(8, 148, 224, 0.6);
-  --mono: 'IBM Plex Mono', Consolas, 'Liberation Mono', Menlo, monospace;
-  --sans: 'IBM Plex Sans', 'Segoe UI', Roboto, Helvetica, sans-serif;
-  --serif: 'IBM Plex Serif', Georgia, 'Times New Roman', serif;
-  --nav-h: 64px;
+  --grad: linear-gradient(90deg, #14b8a6, #22d3ee);
+  --glow: 0 8px 28px rgba(45, 212, 191, 0.35);
+  --mono: 'JetBrains Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+  --sans: 'Inter', 'Segoe UI', Roboto, Helvetica, sans-serif;
+  --serif: 'Sora', 'Inter', 'Segoe UI', sans-serif;
+  --nav-h: 84px;
 }
 
 /* ── Reset ── */
@@ -54,9 +53,44 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* The aurora and the stars: two fixed layers behind everything, drifting slowly. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -20%;
+  z-index: -2;
+  pointer-events: none;
+  filter: blur(46px);
+  background:
+    radial-gradient(40% 34% at 18% 22%, rgba(20, 184, 166, 0.50), transparent 70%),
+    radial-gradient(36% 30% at 78% 14%, rgba(56, 189, 248, 0.40), transparent 70%),
+    radial-gradient(34% 30% at 62% 52%, rgba(132, 204, 22, 0.18), transparent 70%),
+    radial-gradient(40% 30% at 30% 62%, rgba(99, 102, 241, 0.28), transparent 70%);
+  animation: aurora-drift 26s ease-in-out infinite alternate;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image:
+    radial-gradient(1px 1px at 20px 30px, #fff, transparent),
+    radial-gradient(1px 1px at 90px 120px, #cfe, transparent),
+    radial-gradient(1.5px 1.5px at 160px 60px, #fff, transparent);
+  background-size: 200px 160px;
+}
+
+@keyframes aurora-drift {
+  from { transform: translate3d(-2%, -1%, 0) scale(1); }
+  to   { transform: translate3d(3%, 2%, 0) scale(1.08); }
+}
+
 a {
   color: var(--sky);
-  text-decoration-color: rgba(77, 179, 238, 0.4);
+  text-decoration-color: rgba(125, 211, 252, 0.4);
   text-underline-offset: 3px;
 }
 
@@ -72,10 +106,10 @@ a:hover {
 
 h1, h2, h3, h4 {
   font-family: var(--serif);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
   margin-top: 20px;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 hr {
@@ -104,22 +138,35 @@ ul li, ol li {
   left: 0;
   width: 100%;
   height: var(--nav-h);
-  background: var(--bg);
+  background: rgba(6, 13, 18, 0.72);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
   padding: 0 28px;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   z-index: 1000;
   border-bottom: 1px solid var(--line);
 }
 
+/* the hamburger on the left, the logo centered; the markup lists the logo first */
 .banner > a {
+  grid-column: 2;
+  grid-row: 1;
   display: flex;
   align-items: center;
+  justify-content: center;
+}
+
+.banner > .menu {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
 }
 
 .logo {
-  height: 46px;
+  height: 66px;
+  width: auto;
   vertical-align: middle;
 }
 
@@ -166,14 +213,14 @@ ul li, ol li {
 }
 
 .menu-items a[href*="playground"] {
-  color: #04121c;
+  color: #04201f;
   background: var(--grad);
   font-weight: 600;
   margin: 0 6px;
 }
 
 .menu-items a[href*="playground"]:hover {
-  color: #04121c;
+  color: #04201f;
   filter: brightness(1.12);
 }
 
@@ -184,12 +231,12 @@ ul li, ol li {
 
   .menu {
     position: relative;
-    width: 38px;
-    height: 38px;
-    background-color: var(--card-solid);
+    width: 44px;
+    height: 44px;
+    background-color: rgba(10, 28, 32, 0.66);
     border: 1px solid var(--line-strong);
-    border-radius: 4px;
-    padding: 9px 8px;
+    border-radius: 10px;
+    padding: 13px 11px;
     cursor: pointer;
     flex-direction: column;
     justify-content: space-between;
@@ -201,23 +248,24 @@ ul li, ol li {
     width: 100%;
     height: 2px;
     background: var(--text);
-    border-radius: 0;
+    border-radius: 2px;
   }
 
   .menu-items {
     display: none !important;
     position: absolute;
-    top: 46px;
-    right: 0;
+    top: 54px;
+    left: 0;
+    right: auto;
     flex-direction: column;
     align-items: stretch;
     background-color: var(--card-solid);
     border: 1px solid var(--line-strong);
-    border-radius: 6px;
-    padding: 6px;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+    border-radius: 12px;
+    padding: 8px;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
     z-index: 1001;
-    min-width: 190px;
+    min-width: 220px;
     gap: 0;
   }
 
@@ -257,22 +305,27 @@ main {
   font-family: var(--mono);
   font-size: 0.78rem;
   color: var(--text-soft);
-  background: transparent;
+  background: rgba(10, 28, 32, 0.66);
   border: 1px solid var(--line-strong);
-  border-radius: 3px;
-  padding: 4px 12px;
+  border-radius: 999px;
+  padding: 6px 14px;
   margin-bottom: 22px;
   text-decoration: none;
 }
 
 .hero-title {
   font-family: var(--serif);
-  font-size: 3.3rem;
-  font-weight: 600;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
+  font-size: 3.6rem;
+  font-weight: 700;
+  line-height: 1.06;
+  letter-spacing: -0.04em;
   margin: 0 0 20px 0;
   color: var(--text);
+  text-wrap: balance;
+}
+
+.hero-title span {
+  color: var(--cyan);
 }
 
 .hero-subtitle {
@@ -311,34 +364,34 @@ main {
   display: inline-block;
   font-size: 0.98rem;
   font-weight: 600;
-  border-radius: 4px;
+  border-radius: 10px;
   text-decoration: none;
-  padding: 10px 22px;
-  transition: background-color 0.15s, border-color 0.15s;
+  padding: 12px 22px;
+  transition: background-color 0.15s, border-color 0.15s, filter 0.15s;
 }
 
 .btn-primary {
-  background: #0894e0;
-  color: #04141f;
-  border: 1px solid #0894e0;
+  background: var(--grad);
+  color: #04201f;
+  border: 1px solid transparent;
+  box-shadow: var(--glow);
 }
 
 .btn-primary:hover {
-  color: #04141f;
-  background: #3aa9ea;
-  border-color: #3aa9ea;
+  color: #04201f;
+  filter: brightness(1.1);
 }
 
 .btn-secondary {
-  background-color: rgba(255, 255, 255, 0.06);
+  background-color: rgba(10, 28, 32, 0.66);
   color: var(--text);
   border: 1px solid var(--line-strong);
 }
 
 .btn-secondary:hover {
   color: var(--text);
-  background-color: rgba(255, 255, 255, 0.14);
-  border-color: rgba(77, 179, 238, 0.5);
+  background-color: rgba(20, 60, 64, 0.7);
+  border-color: rgba(94, 234, 212, 0.55);
 }
 
 /* ── Code Preview ── */
@@ -1013,11 +1066,15 @@ table tr:hover td {
 /* ── Mobile Responsive ── */
 @media screen and (max-width: 768px) {
   :root {
-    --nav-h: 60px;
+    --nav-h: 68px;
   }
 
   .logo {
-    height: 40px;
+    height: 50px;
+  }
+
+  .menu-items {
+    top: 50px;
   }
 
   .hero {
@@ -1121,6 +1178,10 @@ table tr:hover td {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  body::before {
+    animation: none;
+  }
+
   html {
     scroll-behavior: auto;
   }
