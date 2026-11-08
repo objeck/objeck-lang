@@ -855,6 +855,18 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     // recycled nursery, so instance[0] would be whatever reused that memory (#874).
 #ifdef _WIN32
     HANDLE vm_thread = (HANDLE)instance[0];
+    if(!vm_thread) {
+      // already joined: its handle was taken, and is closed below
+      break;
+    }
+
+    // The slot is cleared NOW, while 'instance' is still the live object: after the wait
+    // it may have been moved, and no frame of this callback reliably holds the Thread
+    // (a bound call reaches here without a frame of its own, so the frame below is the
+    // caller's -- writing through it cleared a field of the caller's object and broke
+    // TaskScope under --jit=1). A second Join of the thread then finds the slot empty and
+    // returns, instead of waiting on, or closing, a handle the system may have reused.
+    instance[0] = 0;
 
     // Joining blocks in a syscall — bracket with Begin/EndBlocking so this thread
     // counts as parked, otherwise a collection on another thread waits forever for
@@ -893,6 +905,14 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 #endif
 #endif
     MemoryManager::EndBlocking();
+
+#ifdef _WIN32
+    // The thread has finished and been joined: close its handle, which this path never
+    // did, so a program whose join loop was compiled kept one kernel object per thread it
+    // started (the interpreter's THREAD_JOIN closes it; only the first few joins of a
+    // loop run there).
+    CloseHandle(vm_thread);
+#endif
   }
     break;
 
