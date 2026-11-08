@@ -38,11 +38,11 @@ class ThreadJoinHandlesTest {
 
 		after := Handles();
 		grown := after - before;
-		"  handles: {$before} -> {$after} (+{$grown}) over 2000 threads"->PrintLine();
+		# only printed on failure: stdout is compared across configurations by the differential runner
 
 		# a leak is one handle per thread, so 2,000; allow slack for the runtime's own
 		if(grown > 200) {
-			"  FAIL: joined threads are leaking handles"->PrintLine();
+			"  FAIL: joined threads are leaking handles: {$before} -> {$after} (+{$grown}) over 2000 threads"->PrintLine();
 			Runtime->Exit(1);
 		};
 
