@@ -3,13 +3,19 @@
 		"string": "@VERSION@",
 		"year": @YEAR@
 	},
-	"title": "v2026.11.0: a hardened web server that serves objeck.org, and two thread leaks found by the release soak",
+	"title": "v2026.11.1 (in development)",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
 		"markdown_out": "readme.md"
 	},
 	"features": [
+		{
+			"version": "v2026.11.1",
+			"items": [
+				"In development: this version has no release notes yet. CHANGELOG.md lists what it will contain."
+			]
+		},
 		{
 			"version": "v2026.11.0",
 			"items": [
