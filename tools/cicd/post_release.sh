@@ -360,7 +360,15 @@ REMOTE
 fi
 
 # 7a. the pages: the Download button on the landing page names this release
-if curl -fsS --max-time 30 "$SITE_URL/readme.html" 2>/dev/null | grep -q "$TAG\|$VERSION"; then
+# The page is read into a variable and matched without a pipe: `curl | grep -q` under pipefail
+# reports failure once the page is large enough for grep -q to quit on its first match while
+# curl is still writing (readme.html is ~126 KB), which failed this gate on a correct site.
+README_HTML="$(curl -fsS --max-time 30 "$SITE_URL/readme.html" 2>/dev/null || true)"
+case "$README_HTML" in
+  *"$TAG"*|*"$VERSION"*) README_NAMES_RELEASE=1 ;;
+  *) README_NAMES_RELEASE=0 ;;
+esac
+if [ "$README_NAMES_RELEASE" -eq 1 ]; then
   note "$SITE_URL/readme.html names $TAG"
 else
   bad "$SITE_URL/readme.html does not mention $VERSION (release-publish.yml's deploy_website.sh did not land, or the page is stale)"
