@@ -61,17 +61,27 @@
       AI, networking, and vision — built in. Every release moves the stack forward.
     </p>
     <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
-      <a class="btn btn-primary" href="https://github.com/objeck/objeck-lang/releases/latest">Download v2026.10.3</a>
+      <a class="btn btn-primary" href="https://github.com/objeck/objeck-lang/releases/latest">Download v2026.11.0</a>
       <a class="btn btn-secondary" href="getting_started.html">Quick Start</a>
       <a class="btn btn-secondary" href="https://github.com/objeck/objeck-lang">GitHub</a>
     </div>
     <p style="font-size: 0.9rem; color: #9ca3af; margin: 0 0 2rem;">
-      v2026.10.3 is the current release &mdash; see the
+      v2026.11.0 is the current release &mdash; see the
       <a href="doc_changelog.html">changelog</a>.
     </p>
 
     <!-- Changelog -->
-   <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.10.3" style="color: inherit; text-decoration: none;">v2026.10.3</a></u></h3>
+   <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.11.0" style="color: inherit; text-decoration: none;">v2026.11.0</a></u></h3>
+    <ul>
+     <li><strong>A web server that serves a site</strong> &mdash; <code>StaticFiles</code> serves a folder with content types from a whitelist of extensions, <code>index.html</code> for a folder, ETags and conditional requests (304), gzip for text and <code>Range</code> for large files (206 and 416), and refuses dotfiles, non-ASCII names and folder listings. <code>programs/examples/site_server.obs</code> is a complete server in about 160 lines, and objeck.org now runs on it behind Caddy.</li>
+     <li><strong>Hostile clients are bounded</strong> &mdash; the whole request has a deadline, so a client that trickles its headers cannot hold a connection open; a <code>..</code> path in any spelling answers 400; <code>Request.GetHeader</code> is case-insensitive; and one silent connection no longer blocks every TLS client, because <code>TCPSecureSocketServer-&gt;Accept</code> no longer does the handshake inside the accept call. <code>tools/security</code> is a black-box harness of 93 hostile requests, and it passes.</li>
+     <li><strong>A long-running server no longer leaks a thread per connection</strong> &mdash; connection threads were never joined and the plain-HTTP path started a second, unjoined thread, about 11 KB and four memory mappings per connection, until the OS mapping limit after roughly 16,000 connections. The handler now runs in the connection's thread and a reaper joins the finished ones.</li>
+     <li><strong>A joined thread's handle is closed on Windows</strong> &mdash; the VM never closed the handle of a thread it had joined, in the interpreter or in the compiled code, so every thread a program started kept a kernel handle for the life of the process (3,000 joined threads: 3,101 handles before, 110 after). The new <code>runtime.process.handles</code> property reports kernel handles on Windows and open descriptors elsewhere.</li>
+     <li><strong>Checked, not assumed</strong> &mdash; a six-hour release soak runs the site server under load beside the regression suite, the GC stress tests and the fuzzers on Linux and Windows and fails at resource limits; it found both leaks above. Thread stacks are overflow-checked (Coverity CID 1685914), two Coverity batches are fixed, and the release is verified on all five platforms by one script at one commit.</li>
+     <li><strong>A new look for objeck.org</strong> &mdash; a teal-black page under a slow aurora, a hamburger menu on the left with the logo centered, a Powered by Objeck badge, and the performance figures re-measured on this version.</li>
+    </ul>
+
+   <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.10.3" style="color: inherit; text-decoration: none;">v2026.10.3</a></h3>
     <ul>
      <li><strong>Garbage collector roots, finished</strong> &mdash; compiled code now tells the collector exactly which stack slots hold references (typed slots on x64 and ARM64), and an <code>Int[]</code> has its own heap tag, so an <code>Int</code> or an <code>Int[]</code> element that happens to equal an object's address is never rewritten by a collection, interpreted or compiled (<a href="doc_gc_roots.html">design</a>)</li>
      <li><strong>A hardened loader</strong> &mdash; a fuzz target on <code>Loader::Load</code> (hundreds of millions of executions) fixed a crash on a repeated class or method id, allocations of up to 16 GB from a corrupt count, an abort on a bad method signature, a silent exit on an unknown opcode and a read past the end of a short <code>.obe</code>; a verifier now checks jump targets, local and trap ids and class, method and field ids before anything runs (<a href="doc_security.html">trust model</a>)</li>

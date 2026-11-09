@@ -1,3 +1,15 @@
+v2026.11.0 (November 8, 2026)
+===
+A release about serving: Web.HTTP.Server is hardened and can serve a whole site, so objeck.org is now served by Objeck itself, and the six-hour release soak that proved it found and closed two leaks, one on every platform and one on Windows only.
+
+v2026.11.0
+- A web server that serves a site -- StaticFiles serves a folder with content types from a whitelist of extensions, index.html for a folder, ETags and conditional requests (304), gzip for text and Range for large files (206 and 416), and refuses dotfiles, non-ASCII names and folder listings. programs/examples/site_server.obs is a complete server in about 160 lines, and objeck.org now runs on it behind Caddy.
+- Hostile clients are bounded -- the whole request has a deadline, so a client that trickles its headers cannot hold a connection open; a .. path in any spelling answers 400; Request.GetHeader is case-insensitive; and one silent connection no longer blocks every TLS client, because TCPSecureSocketServer->Accept no longer does the handshake inside the accept call. tools/security is a black-box harness of 93 hostile requests, and it passes.
+- A long-running server no longer leaks a thread per connection -- connection threads were never joined and the plain-HTTP path started a second, unjoined thread, about 11 KB and four memory mappings per connection, until the OS mapping limit after roughly 16,000 connections. The handler now runs in the connection's thread and a reaper joins the finished ones.
+- A joined thread's handle is closed on Windows -- the VM never closed the handle of a thread it had joined, in the interpreter or in the compiled code, so every thread a program started kept a kernel handle for the life of the process (3,000 joined threads: 3,101 handles before, 110 after). The new runtime.process.handles property reports kernel handles on Windows and open descriptors elsewhere.
+- Checked, not assumed -- a six-hour release soak runs the site server under load beside the regression suite, the GC stress tests and the fuzzers on Linux and Windows and fails at resource limits; it found both leaks above. Thread stacks are overflow-checked (Coverity CID 1685914), two Coverity batches are fixed, and the release is verified on all five platforms by one script at one commit.
+- A new look for objeck.org -- a teal-black page under a slow aurora, a hamburger menu on the left with the logo centered, a Powered by Objeck badge, and the performance figures re-measured on this version.
+
 v2026.10.3 (November 3, 2026)
 ===
 A hardening release: the garbage collector now knows exactly which words of compiled code are references on x64 and ARM64, the loader is fuzzed and verifies programs before it runs them, errors are returned instead of ending the host process, and the HTTP client reuses connections so it stops running Windows out of ports. The language server analyzes edits faster, the debugger keeps its output whole, and there are getting-started guides, an architecture map and a checkers game. Every .obe and .obl is a new format: recompile your programs and rebuild your own libraries.
