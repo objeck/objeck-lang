@@ -212,16 +212,27 @@ ul li, ol li {
   background-color: rgba(255, 255, 255, 0.12);
 }
 
-.menu-items a[href*="playground"] {
-  color: #04201f;
-  background: var(--grad);
+/* The Playground link: a pill on the right of the header bar, opposite the hamburger. */
+.banner > .pill {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  font-size: 0.88rem;
   font-weight: 600;
-  margin: 0 6px;
+  white-space: nowrap;
+  text-decoration: none;
+  color: var(--text);
+  background-color: rgba(10, 28, 32, 0.66);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 9px 16px;
+  transition: border-color 0.15s, background-color 0.15s;
 }
 
-.menu-items a[href*="playground"]:hover {
-  color: #04201f;
-  filter: brightness(1.12);
+.banner > .pill:hover {
+  color: var(--text);
+  background-color: rgba(20, 60, 64, 0.7);
+  border-color: rgba(94, 234, 212, 0.55);
 }
 
 @media screen {
@@ -605,6 +616,68 @@ td code {
   padding: 1px 6px;
   border-radius: 5px;
   color: var(--sky);
+}
+
+/* ── Click-to-play video: YouTube loads only when it is played ── */
+.video-facade,
+.video-frame {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+}
+
+.video-facade {
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--text);
+  font-family: var(--sans);
+  background:
+    radial-gradient(60% 80% at 30% 20%, rgba(20, 184, 166, 0.35), transparent 70%),
+    radial-gradient(60% 80% at 80% 90%, rgba(99, 102, 241, 0.30), transparent 70%),
+    #08141a;
+  transition: border-color 0.15s;
+}
+
+.video-facade:hover {
+  border-color: rgba(94, 234, 212, 0.6);
+}
+
+.video-play {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--grad);
+  box-shadow: var(--glow);
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.video-play::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 54%;
+  transform: translate(-50%, -50%);
+  border-style: solid;
+  border-width: 11px 0 11px 18px;
+  border-color: transparent transparent transparent #04201f;
+}
+
+.video-title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.video-note {
+  font-size: 0.78rem;
+  color: var(--muted);
 }
 
 /* ── Platforms Section ── */
@@ -1075,6 +1148,11 @@ table tr:hover td {
 
   .menu-items {
     top: 50px;
+  }
+
+  .banner > .pill {
+    font-size: 0.8rem;
+    padding: 7px 12px;
   }
 
   .hero {

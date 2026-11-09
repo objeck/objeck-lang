@@ -171,6 +171,31 @@ def fix_image(url, srcdir):
     return "%s/%s" % (RAW, rel)
 
 
+def image_dims(url, srcdir):
+    """(width, height) of a repository image, or None: lets a lazy image reserve its space."""
+    if url.startswith(("http://", "https://", "data:")):
+        return None
+    path = os.path.join(ROOT, os.path.normpath(os.path.join(srcdir, url)))
+    try:
+        with open(path, "rb") as f:
+            head = f.read(65536)
+    except OSError:
+        return None
+    if head[:8] == b"\x89PNG\r\n\x1a\n" and len(head) >= 24:
+        return int.from_bytes(head[16:20], "big"), int.from_bytes(head[20:24], "big")
+    m = re.search(rb"<svg\b[^>]*>", head)
+    if m:
+        tag = m.group(0)
+        w = re.search(rb"\swidth=\"([0-9.]+)\"", tag)
+        h = re.search(rb"\sheight=\"([0-9.]+)\"", tag)
+        if w and h:
+            return int(float(w.group(1))), int(float(h.group(1)))
+        v = re.search(rb"viewBox=\"[0-9.\-]+[ ,]+[0-9.\-]+[ ,]+([0-9.]+)[ ,]+([0-9.]+)\"", tag)
+        if v:
+            return int(float(v.group(1))), int(float(v.group(2)))
+    return None
+
+
 ALLOWED_INLINE = re.compile(r"&lt;(/?)(br|kbd|sub|sup|b|i|em|strong)\s*/?&gt;")
 
 
@@ -189,7 +214,10 @@ def inline(text, srcdir):
     text = re.sub(r"(?<![\w*])\*([^*\s][^*]*)\*(?![\w*])", r"<em>\1</em>", text)
 
     def image(m):
-        return '<img src="%s" alt="%s" loading="lazy">' % (fix_image(html.unescape(m.group(2)), srcdir), m.group(1))
+        url = html.unescape(m.group(2))
+        dims = image_dims(url, srcdir)
+        size = ' width="%d" height="%d"' % dims if dims else ''
+        return '<img src="%s" alt="%s"%s loading="lazy">' % (fix_image(url, srcdir), m.group(1), size)
 
     text = re.sub(r"!\[([^\]]*)\]\(([^)\s]+)\)", image, text)
 
