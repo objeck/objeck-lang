@@ -618,6 +618,68 @@ td code {
   color: var(--sky);
 }
 
+/* ── Click-to-play video: YouTube loads only when it is played ── */
+.video-facade,
+.video-frame {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+}
+
+.video-facade {
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--text);
+  font-family: var(--sans);
+  background:
+    radial-gradient(60% 80% at 30% 20%, rgba(20, 184, 166, 0.35), transparent 70%),
+    radial-gradient(60% 80% at 80% 90%, rgba(99, 102, 241, 0.30), transparent 70%),
+    #08141a;
+  transition: border-color 0.15s;
+}
+
+.video-facade:hover {
+  border-color: rgba(94, 234, 212, 0.6);
+}
+
+.video-play {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--grad);
+  box-shadow: var(--glow);
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.video-play::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 54%;
+  transform: translate(-50%, -50%);
+  border-style: solid;
+  border-width: 11px 0 11px 18px;
+  border-color: transparent transparent transparent #04201f;
+}
+
+.video-title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.video-note {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
 /* ── Platforms Section ── */
 .platforms {
   margin: 44px 0 20px;
