@@ -12,11 +12,29 @@
 # works unchanged: OBJECK_ORG_HOST=<droplet> OBJECK_ORG_USER=objeckorg.
 # Pages, api/latest/ and objeck-release.pub all live under it.
 
+# Security headers shared by the sites below. A snippet must be defined BEFORE it is
+# imported, so this stays above them. The CSP is report-only: it logs in the browser console
+# what it would block and breaks nothing; to enforce it, rename the header to
+# Content-Security-Policy after the console stays clean. HSTS is short on purpose (one day)
+# and has no includeSubDomains, because cpanel, ftp, mail and admin live on another host.
+# The hosts are what the site loads: cdnjs (highlight.js), jsDelivr (mermaid), Google Fonts,
+# GitHub and shields.io images, and the YouTube player that loads only when played.
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=86400"
+		X-Frame-Options "SAMEORIGIN"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+		Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://raw.githubusercontent.com https://img.shields.io https://github.com; media-src 'self'; frame-src https://www.youtube-nocookie.com https://www.youtube.com; connect-src 'self' https://cdn.jsdelivr.net; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+	}
+}
+
 objeck.org {
+	import security_headers
 	redir https://www.objeck.org{uri} permanent
 }
 
 www.objeck.org {
+	import security_headers
 	encode zstd gzip
 	reverse_proxy 127.0.0.1:8081 {
 		# if the Objeck process is down, fail over to serving the files directly
