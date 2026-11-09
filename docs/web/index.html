@@ -345,7 +345,7 @@
         </div>
         <div class="highlight-item">
           <h3 style="margin-bottom:0.75rem;">Internals (v2026.9)</h3>
-          <button type="button" class="video-facade" id="internals-video" data-embed="https://www.youtube-nocookie.com/embed/jToZaCETby8?autoplay=1&amp;rel=0" aria-label="Play the video: Objeck Internals, v2026.9">
+          <button type="button" class="video-facade" id="internals-video" aria-label="Play the video: Objeck Internals, v2026.9">
             <span class="video-play" aria-hidden="true"></span>
             <span class="video-title">Play: Objeck Internals</span>
             <span class="video-note">Opens the YouTube player</span>
@@ -367,10 +367,11 @@
   </footer>
  <script>
    // The video loads YouTube only when played: no third-party requests until then.
+   var INTERNALS_EMBED = "https://www.youtube-nocookie.com/embed/jToZaCETby8?autoplay=1&rel=0";
    document.querySelectorAll(".video-facade").forEach(function (b) {
      b.addEventListener("click", function () {
        var f = document.createElement("iframe");
-       f.src = b.getAttribute("data-embed");
+       f.src = INTERNALS_EMBED;
        f.title = "Objeck: Internals, v2026.9 — video overview";
        f.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
        f.referrerPolicy = "strict-origin-when-cross-origin";
