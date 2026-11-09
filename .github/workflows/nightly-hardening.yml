@@ -225,7 +225,7 @@ jobs:
 
       - name: Download the CI deploy tree
         timeout-minutes: 10
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: objeck-${{ matrix.platform }}
           run-id: ${{ needs.resolve.outputs.run_id }}
@@ -385,7 +385,7 @@ jobs:
           python3 -m unittest discover -s tools/fuzz -p "test_run_fuzz.py"
 
       - name: Download leg results
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         continue-on-error: true
         with:
           pattern: nightly-*
@@ -483,7 +483,7 @@ jobs:
           sparse-checkout: .github/actions
 
       - name: Download triage
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: nightly-triage
           path: nightly-triage
