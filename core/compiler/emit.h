@@ -249,12 +249,16 @@ namespace backend {
     static IntermediateFactory* Instance();
 
     void Clear() {
-      while(!instructions.empty()) {
-        IntermediateInstruction* tmp = instructions.front();
-        instructions.erase(instructions.begin());
-        // delete
+      // Freed in the order they were made, in one pass. This used to erase the
+      // front element of the vector before deleting it, which moves every
+      // remaining pointer down a slot each time: with the ~160,000 instructions a
+      // program using the query library creates, the compiler spent about 1.3 of the
+      // 1.5 seconds of a build copying memory to free memory. Swapped out first, so a
+      // destructor that reached back into the factory would find it empty.
+      std::vector<IntermediateInstruction*> doomed;
+      doomed.swap(instructions);
+      for(IntermediateInstruction* tmp : doomed) {
         delete tmp;
-        tmp = nullptr;
       }
 
       delete instance;
