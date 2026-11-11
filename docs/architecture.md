@@ -542,7 +542,7 @@ mindmap
             ml_core · ml_data
             ml_linear · ml_tree · ml_bayes
             ml_neighbors · ml_cluster · ml_svm · ml_outlier
-            nlp: tokenizers (WordPiece, BPE), TF-IDF, sentiment
+            nlp: WordPiece and BPE tokenizers, TF-IDF, sentiment
         AI
             onnx: in-process inference, face detection and recognition
             nlp_onnx: BERT embeddings, Hugging Face text classifiers
@@ -552,7 +552,7 @@ mindmap
             openai · gemini · ollama
             ai_search · ai_game · ai_optimize · ai_rl
             opencv: computer vision
-        Web & Networking
+        Web and Networking
             net · net_common · net_secure
             net_h2 · net_quic
             net_server · web_server
@@ -561,7 +561,7 @@ mindmap
             json · json_stream · xml
             csv · query · odbc
             cipher: hashing and encryption via mbedTLS
-        Media & Gaming
+        Media and Gaming
             sdl2 · sdl_game · sdl_gl
             lame: MP3 encoding
 ```
