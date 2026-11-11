@@ -1472,6 +1472,87 @@ def check_fatal_library(obr, server_obe, apis_json, bin_dir):
         shutil.rmtree(work, ignore_errors=True)
 
 
+UNLINKED_MAIN = """use Query.Structured;
+
+class Main {
+	function : Main(args : String[]) ~ Nil {
+		table := Table->New("t", ["a"]);
+		table->Query("select a from t")->ToCsv()->Print();
+	}
+}
+"""
+
+
+def check_unlinked_bundle_hint(obr, server_obe, apis_json, bin_dir):
+    """A library the program needs but the build.json omits is named in the error.
+
+    'use Query.Structured;' with query.obl missing from the libs list used to
+    report "not defined in program or linked libraries" and a screenful of
+    cascading errors, with no word on what to add. It now says which library
+    supplies the bundle, as the command line does for an unresolved class.
+    """
+    work = tempfile.mkdtemp(prefix="objk-lsp-unlinked-")
+    try:
+        main_path = os.path.join(work, "main.obs")
+        with open(main_path, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(UNLINKED_MAIN)
+
+        def write_build(libs):
+            with open(os.path.join(work, "build.json"), "w", encoding="utf-8") as fh:
+                json.dump({"files": ["main.obs"], "libs": libs, "flags": ""}, fh)
+
+        write_build(["gen_collect.obl", "net.obl", "regex.obl", "csv.obl", "xml.obl", "json.obl", "misc.obl"])
+        root = path_to_uri(work)
+        main_uri = root + "/main.obs"
+
+        c = LspClient(obr, server_obe, apis_json, bin_dir)
+        try:
+            c.request("initialize", {
+                "processId": os.getpid(), "rootUri": root, "capabilities": {},
+                "workspaceFolders": [{"uri": root, "name": "unlinked"}]}, timeout=90)
+            c.notify("initialized", {})
+
+            def fresh_diagnostics(timeout=60):
+                end = time.time() + timeout
+                while time.time() < end:
+                    for n in c.notifications:
+                        if (n.get("method") == "textDocument/publishDiagnostics"
+                                and n["params"].get("uri", "").lower() == main_uri.lower()):
+                            c.notifications.remove(n)
+                            return n["params"].get("diagnostics", [])
+                    if c.proc.poll() is not None:
+                        return None
+                    c.drain(0.2)
+                return None
+
+            c.notify("textDocument/didOpen", {"textDocument": {
+                "uri": main_uri, "languageId": "objeck", "version": 1, "text": UNLINKED_MAIN}})
+            diags = fresh_diagnostics()
+            messages = [d.get("message", "") for d in diags or [] if d.get("severity") == 1]
+            log_result("unlinked: the undefined bundle is still reported",
+                       any("Query.Structured" in m and "not defined" in m for m in messages),
+                       f"diagnostics={diags}")
+            log_result("unlinked: and the error names the library to add",
+                       any("Add it with '-lib query'" in m for m in messages), f"{messages[:2]}")
+            log_result("unlinked: the server is still running", c.proc.poll() is None,
+                       f"exit code {c.proc.poll()}")
+
+            # list the library: the same document analyzes cleanly
+            write_build(["gen_collect.obl", "net.obl", "regex.obl", "csv.obl", "xml.obl", "json.obl", "misc.obl",
+                         "query.obl"])
+            c.notifications.clear()
+            c.notify("workspace/didChangeWatchedFiles", {"changes": [
+                {"uri": root + "/build.json", "type": 2}]})
+            mended = fresh_diagnostics()
+            errors = [d.get("message") for d in mended or [] if d.get("severity") == 1]
+            log_result("unlinked: after the library is listed the document analyzes cleanly",
+                       mended is not None and not errors, f"{errors[:2]}")
+        finally:
+            c.close()
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def check_multi_root(obr, server_obe, apis_json, bin_dir):
     """Each workspace folder is configured by its own build.json (#1232).
 
@@ -3052,6 +3133,7 @@ def main():
     check_other_folder_kept(obr, server_obe, apis_json, bin_dir)
     check_library_cache_invalidation(obr, server_obe, apis_json, bin_dir)
     check_fatal_library(obr, server_obe, apis_json, bin_dir)
+    check_unlinked_bundle_hint(obr, server_obe, apis_json, bin_dir)
     check_stdio_sessions(obr, server_obe, apis_json, bin_dir)
     check_progress_and_log(obr, server_obe, apis_json, bin_dir)
     check_pull_diagnostics(obr, server_obe, apis_json, bin_dir)
