@@ -188,6 +188,7 @@ jobs:
         run: |
           # The same package set ci-build.yml tested these binaries with.
           mkdir -p ~/apt-cache/partial
+          sudo bash tools/cicd/apt_harden.sh
           sudo apt-get update
           sudo apt-get install -y -o Dir::Cache::archives="$HOME/apt-cache" -o APT::Sandbox::User=root \
             libopencv-dev libmbedtls-dev unixodbc-dev libsqliteodbc \

@@ -70,6 +70,7 @@ CHECKS = [
     ("Native call names are held, not re-allocated",
      lambda: py("tools/cicd/hoist_native_names.py", "--check", *lib_sources())),
     ("Nightly workflow contract", lambda: py("tools/cicd/test_nightly_contract.py")),
+    ("CI package installs retry a network failure", lambda: ["bash", "tools/cicd/test_apt_harden.sh"]),
 ]
 
 

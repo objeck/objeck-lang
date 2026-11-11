@@ -209,6 +209,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           mkdir -p ~/apt-cache/partial
+          sudo bash tools/cicd/apt_harden.sh
           sudo apt-get update
           sudo apt-get install -y -o Dir::Cache::archives="$HOME/apt-cache" -o APT::Sandbox::User=root \
             build-essential \
@@ -902,6 +903,7 @@ jobs:
       - name: Install Linux dependencies
         run: |
           mkdir -p ~/apt-cache/partial
+          sudo bash tools/cicd/apt_harden.sh
           sudo apt-get update
           sudo apt-get install -y -o Dir::Cache::archives="$HOME/apt-cache" -o APT::Sandbox::User=root \
             build-essential \
@@ -1022,6 +1024,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          sudo bash tools/cicd/apt_harden.sh
           sudo apt-get update
           sudo apt-get install -y \
             build-essential \

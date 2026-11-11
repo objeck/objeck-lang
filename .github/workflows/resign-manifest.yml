@@ -83,6 +83,7 @@ jobs:
           WORK="$RUNNER_TEMP/resign"
           mkdir -p "$WORK"
 
+          sudo bash tools/cicd/apt_harden.sh
           sudo apt-get update -qq
           sudo apt-get install -y -qq minisign
 

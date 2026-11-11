@@ -104,6 +104,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         mkdir -p ~/apt-cache/partial
+        sudo bash tools/cicd/apt_harden.sh
         sudo apt-get update
         sudo apt-get install -y -o Dir::Cache::archives="$HOME/apt-cache" -o APT::Sandbox::User=root \
           build-essential \
@@ -690,6 +691,7 @@ jobs:
       if: matrix.platform == 'linux-arm64'
       shell: bash
       run: |
+        sudo bash tools/cicd/apt_harden.sh
         sudo apt-get install -y -q qemu-user >/dev/null 2>&1 || {
           sudo apt-get update -q >/dev/null && sudo apt-get install -y -q qemu-user >/dev/null; }
         TREE="$PWD/core/release/${{ steps.deploy-dir.outputs.dir }}"
@@ -1797,6 +1799,14 @@ jobs:
       - name: Generated files match their .in templates
         run: python3 tools/cicd/check_version_templates.py
 
+      # Every package install in these workflows goes through apt_harden.sh, which puts a
+      # retrying apt-get ahead of the real one (2026-11-11: the runners could not resolve the
+      # Ubuntu mirrors for hours and every job that installs packages failed, on PRs that had
+      # nothing to do with packages). These tests run the retry and mirror-fallback logic
+      # against a fake apt-get, so it is proven before a real outage has to prove it.
+      - name: CI package installs retry a network failure
+        run: bash tools/cicd/test_apt_harden.sh
+
       # The linker and the runtime refuse a library whose first integer is not
       # the toolchain's VER_NUM, so a version bump that does not rebuild and
       # commit every core/lib/*.obl ships a tree that cannot link (v2026.9.x,
@@ -1895,6 +1905,7 @@ jobs:
 
       - name: Install build deps
         run: |
+          sudo bash tools/cicd/apt_harden.sh
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential libmbedtls-dev zlib1g-dev libreadline-dev ccache
