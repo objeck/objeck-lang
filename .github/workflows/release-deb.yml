@@ -96,6 +96,7 @@ jobs:
       - name: Install the tarball's runtime libraries
         run: |
           set -euo pipefail
+          sudo bash tools/cicd/apt_harden.sh
           sudo apt-get update -qq
           sudo apt-get install -y -qq dpkg-dev
           mkdir -p tree && tar -xzf "dl/objeck-linux-${{ matrix.arch }}_$VERSION.tgz" -C tree

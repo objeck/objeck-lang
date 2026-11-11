@@ -391,6 +391,7 @@ jobs:
       - name: Sign SHA256SUMS
         if: env.MINISIGN_SECRET_KEY != ''
         run: |
+          sudo bash tools/cicd/apt_harden.sh
           sudo apt-get update -qq
           sudo apt-get install -y -qq minisign
 
