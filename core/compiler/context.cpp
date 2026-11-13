@@ -472,7 +472,29 @@ bool ContextAnalyzer::Analyze(bool is_lib)
   for(size_t i = 0; i < program_uses.size(); ++i) {
     const std::wstring &name = program_uses[i];
     if(!program->HasBundleName(name) && !linker->HasBundleName(name)) {
-      ProcessError(file_name, L"Bundle name '" + name + L"' not defined in program or linked libraries");
+      std::wstring message = L"Bundle name '" + name + L"' not defined in program or linked libraries";
+
+      // name the library that would supply it, as an unresolved class already does
+      std::vector<std::wstring> supplying;
+      try {
+        supplying = linker->LibrariesDefiningBundle(name);
+      }
+      catch(const CompilerFatal&) {
+        // a stale library in the path cannot be probed; the undefined bundle is still reported
+      }
+
+      if(!supplying.empty()) {
+        message += L"\n\tAdd it with '-lib ";
+        for(size_t j = 0; j < supplying.size(); ++j) {
+          if(j) {
+            message += L',';
+          }
+          message += supplying[j];
+        }
+        message += L"' (or to \"libs\" in build.json)";
+      }
+
+      ProcessError(file_name, message);
     }
   }
 
