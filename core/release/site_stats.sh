@@ -29,12 +29,16 @@
 #   * client addresses are counted but never printed in the report (the HOSTS panel is off);
 #   * downloads happen on GitHub, not here: count those from the release's own download numbers.
 #
-# Countries: set GEOIP_DB (default /var/lib/goaccess/geo.mmdb) to a country or city database in
-# MaxMind DB format (the free DB-IP "IP to Country Lite" works) and the report gains a country
-# panel. Without it the report is complete except for that panel. The droplet uses DB-IP's
-# database (CC BY 4.0, "IP Geolocation by DB-IP", https://db-ip.com), published monthly; refresh it
-# now and then (country data changes slowly) with, as root:
-#     m=$(date +%Y-%m); curl -fsSL "https://download.db-ip.com/free/dbip-country-lite-$m.mmdb.gz" | gunzip > /tmp/geo.mmdb && install -m 0644 /tmp/geo.mmdb /var/lib/goaccess/geo.mmdb
+# Places: set GEOIP_DB (default /var/lib/goaccess/geo.mmdb) to a city database in MaxMind DB
+# format and the summary lists visitors by country, state or province and city, and the HTML
+# report gains a country panel. The state and city lists need python3-maxminddb (apt-get install
+# python3-maxminddb); with only a country database, or without that package, the summary falls
+# back to GoAccess's country list. Without any database the report is complete except for places.
+# The droplet uses DB-IP's free "IP to City Lite" (CC BY 4.0, "IP Geolocation by DB-IP",
+# https://db-ip.com), published monthly; refresh it now and then with, as root:
+#     m=$(date +%Y-%m); curl -fsSL "https://download.db-ip.com/free/dbip-city-lite-$m.mmdb.gz" | gunzip > /tmp/geo.mmdb && install -m 0644 /tmp/geo.mmdb /var/lib/goaccess/geo.mmdb
+# A place comes from the visitor's IP address, so it is approximate (a mobile or VPN address can
+# be far from the person, and city is the weakest); only counts are kept, never addresses.
 #
 # Environment (for tests): LOG_DIR, LOG_NAME, OUT_DIR, OUT_OWNER, GEOIP_DB.
 
@@ -80,11 +84,21 @@ zcat -f "${logs[@]}" | sed -E "$own_site_referer" | goaccess - \
 	"${geo[@]}" \
 	-o "$work/report.html" -o "$work/report.json" || { echo "site_stats: goaccess failed" >&2; exit 1; }
 
-python3 - "$work/report.json" "$work/summary.txt" "${logs[@]}" <<'PY' || { echo "site_stats: could not summarise the report" >&2; exit 1; }
-import collections, gzip, json, sys
+python3 - "$work/report.json" "$work/summary.txt" "${geo[@]#--geoip-database=}" "${logs[@]}" <<'PY' || { echo "site_stats: could not summarise the report" >&2; exit 1; }
+import collections, datetime, gzip, json, sys
 d = json.load(open(sys.argv[1]))
 g = d["general"]
-logs = sys.argv[3:]
+# argv: report.json summary.txt [geoip database] log...   (the database is absent when there is none)
+rest = sys.argv[3:]
+geo_path = rest[0] if rest and rest[0].endswith(".mmdb") else None
+logs = rest[1:] if geo_path else rest
+reader = None
+if geo_path:
+    try:
+        import maxminddb
+        reader = maxminddb.open_database(geo_path)
+    except Exception as err:
+        print("site_stats: no place lookup (%s); using GoAccess's country list" % err, file=sys.stderr)
 out = []
 out.append("objeck.org visitors, %s to %s (%d log file%s)" % (
     g["start_date"], g["end_date"], len(logs), "" if len(logs) == 1 else "s"))
@@ -109,10 +123,35 @@ def top(section, title, n=8):
             out.append("  %6d  %s" % (r["visitors"]["count"], r["data"]))
 top("requests", "top pages (visitors)")
 top("referring_sites", "top referring sites (visitors)")
-top("geolocation", "top countries (visitors)")
+if reader is None:
+    top("geolocation", "top countries (visitors)")
 
-# the 404s, from the raw log: GoAccess was told to leave them out of everything above
+# One more pass over the raw log for what GoAccess does not give: where visitors are (country,
+# state or province, city) and the 404s it was told to leave out of everything above.
+BOTS = ("bot", "spider", "crawl", "slurp", "preview", "python-requests", "curl/", "wget", "go-http", "headless")
 miss = collections.Counter()
+seen = set()                      # one visitor = IP + user agent + day, as in the report above
+countries, regions, cities = collections.Counter(), collections.Counter(), collections.Counter()
+places = {}                       # IP -> (country, region, city), looked up once
+
+def place(ip):
+    if ip not in places:
+        rec = None
+        try:
+            rec = reader.get(ip) or {}
+        except Exception:
+            rec = {}
+        def name(x):
+            return ((x or {}).get("names") or {}).get("en")
+        country = name(rec.get("country")) or "unknown"
+        subs = rec.get("subdivisions") or []
+        region = name(subs[0]) if subs else None
+        city = name(rec.get("city"))
+        places[ip] = (country,
+                      "%s, %s" % (region, country) if region else None,
+                      "%s, %s" % (city, region or country) if city else None)
+    return places[ip]
+
 for path in logs:
     opener = gzip.open if path.endswith(".gz") else open
     with opener(path, "rt", errors="replace") as f:
@@ -121,12 +160,39 @@ for path in logs:
                 e = json.loads(line)
             except ValueError:
                 continue
-            if e.get("status") != 404:
+            r = e["request"]
+            agent = (r.get("headers", {}).get("User-Agent") or [""])[0].lower()
+            if any(k in agent for k in BOTS):
                 continue
-            agent = (e["request"].get("headers", {}).get("User-Agent") or [""])[0].lower()
-            if any(k in agent for k in ("bot", "spider", "crawl", "slurp")):
+            status = e.get("status")
+            if status == 404:
+                miss[r["uri"].split("?")[0][:70]] += 1
+            if reader is None or status in (0, 400, 404, 405):
                 continue
-            miss[e["request"]["uri"].split("?")[0][:70]] += 1
+            day = datetime.datetime.fromtimestamp(e["ts"], datetime.timezone.utc).date()
+            key = (r["remote_ip"], agent, day)
+            if key in seen:
+                continue
+            seen.add(key)
+            country, region, city = place(r["remote_ip"])
+            countries[country] += 1
+            if region:
+                regions[region] += 1
+            if city:
+                cities[city] += 1
+
+def listing(counter, title, n):
+    if counter:
+        out.append("")
+        out.append(title + ":")
+        for name, count in counter.most_common(n):
+            out.append("  %6d  %s" % (count, name))
+listing(countries, "top countries (visitors)", 10)
+listing(regions, "top states and provinces (visitors)", 12)
+listing(cities, "top cities (visitors)", 12)
+if reader is not None:
+    out.append("")
+    out.append("(places come from the visitor's IP address and are approximate, most of all for cities)")
 if miss:
     out.append("")
     out.append("most common 404s (requests, bots excluded):")
