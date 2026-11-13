@@ -1,0 +1,9 @@
+# Daily visitor report for www.objeck.org. Install on the droplet (see site_stats.sh):
+#
+#     sudo install -m 0755 core/release/site_stats.sh /usr/local/sbin/objeck-site-stats
+#     sudo install -m 0644 core/release/objeck-site-stats.cron /etc/cron.d/objeck-site-stats
+#
+# Runs as root because the access log is readable by the caddy user only.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+10 4 * * * root nice -n 10 /usr/local/sbin/objeck-site-stats --quiet
