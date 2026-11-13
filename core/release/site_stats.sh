@@ -31,7 +31,10 @@
 #
 # Countries: set GEOIP_DB (default /var/lib/goaccess/geo.mmdb) to a country or city database in
 # MaxMind DB format (the free DB-IP "IP to Country Lite" works) and the report gains a country
-# panel. Without it the report is complete except for that panel.
+# panel. Without it the report is complete except for that panel. The droplet uses DB-IP's
+# database (CC BY 4.0, "IP Geolocation by DB-IP", https://db-ip.com), published monthly; refresh it
+# now and then (country data changes slowly) with, as root:
+#     m=$(date +%Y-%m); curl -fsSL "https://download.db-ip.com/free/dbip-country-lite-$m.mmdb.gz" | gunzip > /tmp/geo.mmdb && install -m 0644 /tmp/geo.mmdb /var/lib/goaccess/geo.mmdb
 #
 # Environment (for tests): LOG_DIR, LOG_NAME, OUT_DIR, OUT_OWNER, GEOIP_DB.
 
@@ -95,6 +98,9 @@ for row in sorted(d["visitors"]["data"], key=lambda r: r["data"]):
         day[0:4], day[4:6], day[6:8], row["visitors"]["count"], row["hits"]["count"]))
 def top(section, title, n=8):
     rows = d.get(section, {}).get("data", [])
+    if section == "geolocation":
+        # GoAccess nests each country under its continent; list the countries
+        rows = [c for continent in rows for c in continent.get("items", [])]
     rows = sorted(rows, key=lambda r: -r["visitors"]["count"])[:n]
     if rows:
         out.append("")
