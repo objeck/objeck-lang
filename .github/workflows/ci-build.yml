@@ -1009,6 +1009,29 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python run_vm_flag_tests.py "%BIN%"
 
+    # Negative testing of the compiler front end. Valid programs are broken in sixteen ways and
+    # hostile files (deep nesting, random bytes, 20000 errors, a call nested 30 deep to a method
+    # that does not exist) are compiled: no crash, no hang, and the error must be on or beside
+    # the mutation without a cascade. Nesting used to overflow the compiler's stack and the
+    # nested call took exponential time; the gates are in the script's header.
+    - name: Compiler robustness, mutation and stress (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 run_compiler_robustness.py "$BIN"
+
+    - name: Compiler robustness, mutation and stress (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python run_compiler_robustness.py "%BIN%"
+
     # obi evaluates code in-process through the module build -- also the embedding
     # API -- a separate compilation of the VM sources with its own macros and link
     # line. It lacked HTTP/2 and HTTP/3 for as long as obr has had them, and nothing
