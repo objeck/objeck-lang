@@ -1,0 +1,13 @@
+# EXPECT_COMPILE_ERROR: Expected a name after '.'
+# EXPECT_ERROR_COUNT: 1
+#~
+A '.' with nothing after it used to stay on the end of the name, which then failed far from
+the cause as "Undefined variable: 'x.'". It is now reported where it is, once.
+~#
+class BadDotWithoutName {
+	function : Main(args : String[]) ~ Nil {
+		x := "a";
+		y := x.;
+		"after"->PrintLine();
+	}
+}

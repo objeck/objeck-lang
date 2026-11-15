@@ -830,6 +830,9 @@ class Scanner {
   std::vector<MultiLineString> multiline_strings;
   // tokens rejected so far: the first few get a source excerpt, a flood of them does not
   int reject_count = 0;
+  // NUL bytes in the source were replaced by U+2400 so the scanner, which reads NUL
+  // as the end of the file, does not stop at them without a word
+  bool nul_replaced = false;
   // the multi-line string that ends on 'line', or null
   const MultiLineString* FindMultiLineStringEndingOn(int line) const {
     for(size_t i = 0; i < multiline_strings.size(); ++i) {

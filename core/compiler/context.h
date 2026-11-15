@@ -378,7 +378,7 @@ std::vector<std::wstring> alt_error_method_names;
   }
 
   // returns true if a duplicate value is found in the list
-  bool DuplicateCaseItem(std::map<INT64_VALUE, StatementList*>label_statements, INT64_VALUE value);
+  bool DuplicateCaseItem(const std::map<INT64_VALUE, StatementList*>& label_statements, INT64_VALUE value);
 
   // returns true if method static context is not valid
   bool InvalidStatic(MethodCall* method_call, Method* method);

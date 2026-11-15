@@ -304,7 +304,13 @@ def stress_cases():
     add("whitespace_only", b" \t\r\n" * 50)
     add("bom_only", b"\xef\xbb\xbf")
     add("comment_only", b"# nothing here\n")
-    add("nul_bytes", b"\x00" * 100)
+    add("nul_bytes", b"\x00" * 100, True)
+    # a NUL used to end the source without a word on Windows (the rest was never read)
+    add("nul_mid_file", prog("x := 1;").encode() + b"\x00 y := ;\n", True)
+    add("nul_mid_statement", prog("x := 1;\n y\x00 := 2;").encode(), True)
+    # 'ab<ZWSP>cd' reads as one name and scanned as two
+    add("zero_width_in_name", prog("ab​cd := 1;"), True)
+    add("trailing_dot_in_name", prog("y := 1;\n x := y.;"), True)
     add("invalid_utf8", prog("x := 1;").encode() + b"\xff\xfe\xc3\x28\xa0\xa1")
     add("invalid_utf8_mid", b"class T {\n function : Main(a : String[]) ~ Nil {\n x := 1;\n \xff\n y := 2;\n }\n}\n", True)
     add("lone_cr", prog("x := 1;").replace("\n", "\r"))
@@ -359,6 +365,10 @@ def stress_cases():
     add("many_char_lits", prog("c := 'ab';\n" * 20000), True)
     # the parent-class retry used to analyze a call's arguments again: 2^n for a missing method
     add("nested_undefined_calls_30", prog("x := " + "Missing(" * 30 + "1" + ")" * 30 + ";"), True)
+    # size-scaling: each of these was quadratic (a dead store was looked up against every other
+    # one by value, and a select label copied the label map): 54 s and 37 s, now 5 s and 2 s
+    add("many_dead_stores_100000", prog("x := 1;\n" * 100000))
+    add("many_select_labels_50000", prog("x := 1; select(x) {" + "".join("label %d: {}\n" % i for i in range(50000)) + "}"))
     # confusing but small
     for name, body in (("class_in_method", "class Inner {}"), ("function_in_method", "function : G() ~ Nil {}"),
                        ("use_inside_body", "use System.IO;")):

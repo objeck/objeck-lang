@@ -1,0 +1,12 @@
+# EXPECT_COMPILE_ERROR: Invisible character
+# EXPECT_ERROR_COUNT: 1
+#~
+A zero-width space between two halves of a name (here U+200B after 'ab') looks like one word and
+scanned as two. A zero-width space beside white space is still ignored.
+~#
+class BadInvisibleInName {
+	function : Main(args : String[]) ~ Nil {
+		ab​cd := 1;
+		cd->PrintLine();
+	}
+}
