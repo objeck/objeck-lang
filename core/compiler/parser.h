@@ -113,6 +113,13 @@ class Parser {
   // the copies back after a statement with 'ref' arguments (#1243)
   std::vector<Statement*> trailing_statements;
   int hidden_local_id = 0;
+  // set once the scanner has rejected a token: the parse is skipped ahead to
+  // the next ';', and what it reports at the end of the file after that is
+  // the same mistake again (a skipped '{' or '}' leaves a block unbalanced)
+  bool lexical_error_seen = false;
+  // true from a lexical error until the next ';' is consumed: the errors raised
+  // while the parser finds its footing again are echoes of the first
+  bool lexical_recovery = false;
 
 #if defined(_DIAG_LIB) || defined(_MODULE)
   std::vector<Diagnostic> error_diagnostics;
@@ -120,6 +127,9 @@ class Parser {
 
   // gets the scanner token
   inline void NextToken() {
+    if(lexical_recovery && scanner->GetToken()->GetType() == TOKEN_SEMI_COLON) {
+      lexical_recovery = false;
+    }
     prev_token_line = scanner->GetToken()->GetLineNumber();
     scanner->NextToken();
     ++tokens_consumed;
@@ -188,6 +198,21 @@ class Parser {
   void ProcessError(const std::wstring &msg);
   void ProcessError(const std::wstring &msg, ParseNode * node);
   void ProcessError(const std::wstring &msg, const ScannerTokenType sync);
+  // reports the scanner's reason when the current token was rejected; true if it did
+  // 'panic' also holds back the errors that follow until the next ';' (for a parse that
+  // skips ahead); a parse that recovers on the spot passes false
+  bool ReportLexicalError(bool panic = true);
+  // a rejected token where an expression starts: the scanner's reason is reported and the
+  // parse goes on as if the token had been valid, so one mistake is one error
+  Expression* ParseRejectedToken(int depth, const std::wstring &file_name, int line_num, int line_pos);
+  // an "Expected X" message made specific: what was found instead, and at the end
+  // of the file, which '{' is still open
+  std::wstring Elaborate(const std::wstring &msg);
+  // true when an error here would only repeat a string that never ended
+  bool IsEchoOfLexicalError();
+  // A diagnosis the parser makes of a rejected token itself, in place of the scanner's
+  // reason: reported at the place the scanner found wrong, with the source line.
+  void ProcessTokenError(const std::wstring &msg, const ScannerTokenType sync);
   Expression* ParseBadNumericLiteral(bool negate, const std::wstring &file_name, const int line_num, const int line_pos);
   bool CheckErrors();
 
@@ -290,7 +315,10 @@ class Parser {
   }
 
   // Parses an expression from a text string (used for string interpolation)
-  static Expression* ParseExpressionText(const std::wstring& text, const std::wstring& filename, int line_num, int line_pos, Class* context_class = nullptr);
+  // Parses the text of a string interpolation. Null when it is not one expression; 'reason'
+  // then holds why when the scanner rejected a token in it (a malformed literal, say).
+  static Expression* ParseExpressionText(const std::wstring& text, const std::wstring& filename, int line_num, int line_pos, Class* context_class = nullptr,
+                                         std::wstring* reason = nullptr);
 
 #ifdef _MODULE
   std::vector<std::wstring> GetErrors();

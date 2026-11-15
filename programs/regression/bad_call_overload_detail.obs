@@ -1,0 +1,18 @@
+# EXPECT_COMPILE_ERROR: none of which takes those arguments
+# EXPECT_ERROR_COUNT: 1
+#~
+A call that matches no overload shows how it was called and the overloads there are.
+~#
+class BadCallOverloadDetail {
+	function : Add(a : Int, b : Int) ~ Int {
+		return a + b;
+	}
+
+	function : Add(a : Float, b : Float) ~ Float {
+		return a + b;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Add("a", 2)->PrintLine();
+	}
+}

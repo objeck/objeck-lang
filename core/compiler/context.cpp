@@ -247,7 +247,7 @@ static bool StructuralGenericEquals(frontend::Type* a, frontend::Type* b)
  ****************************/
 void ContextAnalyzer::ProcessError(ParseNode* node, const std::wstring &msg)
 {
-  diagnostics.Error(node->GetFileName(), node->GetLineNumber(), node->GetLinePosition(), msg);
+  diagnostics.Error(node->GetFileName(), node->GetLineNumber(), node->GetLinePosition(), Elaborate(node, msg));
 }
 
 /****************************
@@ -331,6 +331,496 @@ std::wstring ContextAnalyzer::BundleSuggestion(const std::wstring& name)
   }
 
   return message;
+}
+
+/****************************
+ * Name suggestions: the names that
+ * are one slip away from a misspelling
+ ****************************/
+static std::wstring LowerCase(std::wstring text)
+{
+  for(size_t i = 0; i < text.size(); ++i) {
+    text[i] = (wchar_t)towlower(text[i]);
+  }
+
+  return text;
+}
+
+// optimal string alignment distance: an insertion, a deletion, a substitution or
+// the swap of two neighbours each cost one
+static size_t EditDistance(const std::wstring& a, const std::wstring& b)
+{
+  const size_t n = a.size();
+  const size_t m = b.size();
+  std::vector<std::vector<size_t> > d(n + 1, std::vector<size_t>(m + 1, 0));
+  for(size_t i = 0; i <= n; ++i) {
+    d[i][0] = i;
+  }
+  for(size_t j = 0; j <= m; ++j) {
+    d[0][j] = j;
+  }
+
+  for(size_t i = 1; i <= n; ++i) {
+    for(size_t j = 1; j <= m; ++j) {
+      const size_t cost = a[i - 1] == b[j - 1] ? 0 : 1;
+      // (std::min) in parentheses: <windows.h> defines min and max as macros
+      size_t best = (std::min)((std::min)(d[i - 1][j] + 1, d[i][j - 1] + 1), d[i - 1][j - 1] + cost);
+      if(i > 1 && j > 1 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1]) {
+        best = (std::min)(best, d[i - 2][j - 2] + 1);
+      }
+      d[i][j] = best;
+    }
+  }
+
+  return d[n][m];
+}
+
+// every letter of 'shorter' appears in 'longer', in order: how an abbreviation reads
+static bool IsSubsequence(const std::wstring& shorter, const std::wstring& longer)
+{
+  size_t at = 0;
+  for(size_t i = 0; i < longer.size() && at < shorter.size(); ++i) {
+    if(longer[i] == shorter[at]) {
+      at++;
+    }
+  }
+
+  return at == shorter.size();
+}
+
+// up to three of the candidates that a misspelling of 'name' could be, closest first
+static std::vector<std::wstring> CloseNames(const std::wstring& name, const std::vector<std::wstring>& candidates)
+{
+  std::vector<std::pair<size_t, std::wstring> > scored;
+  const std::wstring lower_name = LowerCase(name);
+  for(size_t i = 0; i < candidates.size(); ++i) {
+    const std::wstring& candidate = candidates[i];
+    if(candidate.empty() || candidate == name) {
+      continue;
+    }
+
+    const std::wstring lower_candidate = LowerCase(candidate);
+    size_t score = 100;
+    if(lower_candidate == lower_name) {
+      score = 0;
+    }
+    else {
+      const size_t longest = (std::max)(name.size(), candidate.size());
+      const size_t limit = longest >= 8 ? 3 : longest >= 5 ? 2 : longest >= 3 ? 1 : 0;
+      const size_t distance = EditDistance(lower_name, lower_candidate);
+      const std::wstring& shorter = lower_name.size() < lower_candidate.size() ? lower_name : lower_candidate;
+      const std::wstring& longer = lower_name.size() < lower_candidate.size() ? lower_candidate : lower_name;
+      if(distance <= limit) {
+        score = distance;
+      }
+      // an abbreviation: 'cnt' for 'count'
+      else if(shorter.size() >= 2 && longer.size() - shorter.size() <= 3 && IsSubsequence(shorter, longer)) {
+        score = longer.size() - shorter.size() + 1;
+      }
+    }
+
+    if(score < 100) {
+      scored.push_back(std::make_pair(score, candidate));
+    }
+  }
+
+  std::sort(scored.begin(), scored.end());
+  std::vector<std::wstring> names;
+  for(size_t i = 0; i < scored.size() && names.size() < 3; ++i) {
+    if(std::find(names.begin(), names.end(), scored[i].second) == names.end()) {
+      names.push_back(scored[i].second);
+    }
+  }
+
+  return names;
+}
+
+static std::wstring FormatSuggestion(const std::wstring& name, const std::vector<std::wstring>& names)
+{
+  if(names.empty()) {
+    return L"";
+  }
+
+  if(names.size() == 1) {
+    if(LowerCase(names[0]) == LowerCase(name)) {
+      return L"\n\tDid you mean '" + names[0] + L"'? Names are case-sensitive.";
+    }
+    return L"\n\tDid you mean '" + names[0] + L"'?";
+  }
+
+  std::wstring list;
+  for(size_t i = 0; i < names.size(); ++i) {
+    list += (i > 0 ? L", '" : L"'") + names[i] + L"'";
+  }
+
+  return L"\n\tDid you mean one of: " + list + L"?";
+}
+
+// the method name of an encoded 'Class:Method:params' signature
+static std::wstring MethodNameOf(const std::wstring& encoded)
+{
+  const size_t first = encoded.find(L':');
+  if(first == std::wstring::npos) {
+    return encoded;
+  }
+
+  const size_t second = encoded.find(L':', first + 1);
+  return encoded.substr(first + 1, second == std::wstring::npos ? std::wstring::npos : second - first - 1);
+}
+
+// the name between the first pair of quotes in a message
+static std::wstring QuotedName(const std::wstring& msg)
+{
+  const size_t open = msg.find(L'\'');
+  if(open == std::wstring::npos) {
+    return L"";
+  }
+
+  const size_t close = msg.find(L'\'', open + 1);
+  return close == std::wstring::npos ? L"" : msg.substr(open + 1, close - open - 1);
+}
+
+static bool StartsWith(const std::wstring& text, const wchar_t* prefix)
+{
+  return text.compare(0, wcslen(prefix), prefix) == 0;
+}
+
+static std::wstring PlainTypeName(const std::wstring& name)
+{
+  return StartsWith(name, L"System.") ? name.substr(7) : name;
+}
+
+/****************************
+ * The variables in scope that a
+ * misspelled name could be
+ ****************************/
+std::wstring ContextAnalyzer::VariableSuggestion(const std::wstring& name)
+{
+  std::vector<std::wstring> names;
+  const bool wants_field = !name.empty() && name[0] == L'@';
+
+  if(current_table && current_method && !wants_field) {
+    const std::wstring prefix = current_method->GetName() + L':';
+    const std::vector<SymbolEntry*> entries = current_table->GetEntries();
+    for(size_t i = 0; i < entries.size(); ++i) {
+      const std::wstring& entry_name = entries[i]->GetName();
+      if(StartsWith(entry_name, prefix.c_str())) {
+        const std::wstring local = entry_name.substr(prefix.size());
+        if(!local.empty() && local[0] != L'#' && local[0] != L'@') {
+          names.push_back(local);
+        }
+      }
+    }
+  }
+
+  if(wants_field && current_class) {
+    SymbolTable* table = symbol_table->GetSymbolTable(current_class->GetName());
+    if(table) {
+      const std::wstring prefix = current_class->GetName() + L':';
+      const std::vector<SymbolEntry*> entries = table->GetEntries();
+      for(size_t i = 0; i < entries.size(); ++i) {
+        const std::wstring& entry_name = entries[i]->GetName();
+        if(StartsWith(entry_name, prefix.c_str())) {
+          const std::wstring field = entry_name.substr(prefix.size());
+          if(!field.empty() && field[0] == L'@') {
+            names.push_back(field);
+          }
+        }
+      }
+    }
+  }
+
+  return FormatSuggestion(name, CloseNames(name, names));
+}
+
+/****************************
+ * The classes a misspelled
+ * class name could be
+ ****************************/
+std::wstring ContextAnalyzer::ClassSuggestion(const std::wstring& name)
+{
+  if(name.empty() || name.find(L'.') != std::wstring::npos) {
+    return L"";
+  }
+
+  std::vector<std::wstring> names;
+  if(bundle) {
+    const std::vector<Class*> classes = bundle->GetClasses();
+    for(size_t i = 0; i < classes.size(); ++i) {
+      const std::wstring& full = classes[i]->GetName();
+      const size_t dot = full.find_last_of(L'.');
+      names.push_back(dot == std::wstring::npos ? full : full.substr(dot + 1));
+    }
+  }
+
+  if(linker) {
+    const std::unordered_map<std::wstring, LibraryClass*>& klasses = linker->GetAllClassesMap();
+    for(std::unordered_map<std::wstring, LibraryClass*>::const_iterator iter = klasses.begin(); iter != klasses.end(); ++iter) {
+      const std::wstring& full = iter->first;
+      const size_t dot = full.find_last_of(L'.');
+      names.push_back(dot == std::wstring::npos ? full : full.substr(dot + 1));
+    }
+  }
+
+  return FormatSuggestion(name, CloseNames(name, names));
+}
+
+/****************************
+ * The class a failed call was
+ * made on
+ ****************************/
+void ContextAnalyzer::DiagReceiver(Class*& klass, LibraryClass*& lib_klass)
+{
+  klass = diag_class;
+  lib_klass = diag_lib_class;
+  if(lib_klass && PlainTypeName(lib_klass->GetName()) == L"Base" && current_class) {
+    klass = current_class;
+    lib_klass = nullptr;
+  }
+}
+
+/****************************
+ * An error that only follows from
+ * an earlier one
+ ****************************/
+bool ContextAnalyzer::IsCascade(SymbolEntry* entry)
+{
+  if(!entry) {
+    return false;
+  }
+
+  if(poisoned_variables.find(entry->GetName()) != poisoned_variables.end()) {
+    return true;
+  }
+
+  return entry->GetType() && entry->GetType()->GetType() == VAR_TYPE && diagnostics.HasErrors();
+}
+
+/****************************
+ * The methods of the receiver
+ * that a misspelled call could mean
+ ****************************/
+std::wstring ContextAnalyzer::MethodSuggestion(const std::wstring& name)
+{
+  Class* receiver_class = nullptr;
+  LibraryClass* receiver_lib = nullptr;
+  DiagReceiver(receiver_class, receiver_lib);
+
+  std::vector<std::wstring> names;
+  if(receiver_class) {
+    const std::vector<Method*> methods = receiver_class->GetMethods();
+    for(size_t i = 0; i < methods.size(); ++i) {
+      names.push_back(MethodNameOf(methods[i]->GetName()));
+    }
+  }
+  else if(receiver_lib) {
+    const std::map<const std::wstring, LibraryMethod*>& methods = receiver_lib->GetMethods();
+    for(std::map<const std::wstring, LibraryMethod*>::const_iterator iter = methods.begin(); iter != methods.end(); ++iter) {
+      names.push_back(MethodNameOf(iter->first));
+    }
+  }
+
+  return FormatSuggestion(name, CloseNames(name, names));
+}
+
+/****************************
+ * How a type reads in a message
+ ****************************/
+std::wstring ContextAnalyzer::DescribeType(Type* type)
+{
+  if(!type) {
+    return L"?";
+  }
+
+  std::wstring text;
+  switch(type->GetType()) {
+  case NIL_TYPE: text = L"Nil"; break;
+  case BOOLEAN_TYPE: text = L"Bool"; break;
+  case BYTE_TYPE: text = L"Byte"; break;
+  case CHAR_TYPE: text = L"Char"; break;
+  case INT_TYPE: text = L"Int"; break;
+  case FLOAT_TYPE: text = L"Float"; break;
+  case CLASS_TYPE: text = PlainTypeName(FormatTypeString(type->GetName())); break;
+  case FUNC_TYPE: text = L"function"; break;
+  default: text = L"?"; break;
+  }
+
+  for(int i = 0; i < type->GetDimension(); ++i) {
+    text += L"[]";
+  }
+
+  return text;
+}
+
+/****************************
+ * A failed call: how it was made,
+ * and what the receiver offers
+ ****************************/
+std::wstring ContextAnalyzer::CallDetail(MethodCall* method_call)
+{
+  const std::wstring name = method_call->GetMethodName();
+  if(name.empty()) {
+    return L"";
+  }
+
+  Class* receiver_class = nullptr;
+  LibraryClass* receiver_lib = nullptr;
+  DiagReceiver(receiver_class, receiver_lib);
+
+  std::wstring receiver;
+  if(receiver_class) {
+    receiver = PlainTypeName(receiver_class->GetName());
+  }
+  else if(receiver_lib) {
+    receiver = PlainTypeName(receiver_lib->GetName());
+  }
+
+  // how it was called
+  std::wstring args;
+  ExpressionList* params = method_call->GetCallingParameters();
+  if(params) {
+    const std::vector<Expression*> expressions = params->GetExpressions();
+    for(size_t i = 0; i < expressions.size(); ++i) {
+      args += (i > 0 ? L", " : L"") + DescribeType(expressions[i]->GetEvalType());
+    }
+  }
+
+  std::wstring detail = L"\n\tCalled as " + (receiver.empty() ? L"" : receiver + L"->") + name + L"(" + args + L")";
+
+  // the overloads the receiver does have under that name
+  std::vector<std::wstring> overloads;
+  if(receiver_class) {
+    const std::vector<Method*> methods = receiver_class->GetMethods();
+    for(size_t i = 0; i < methods.size(); ++i) {
+      if(MethodNameOf(methods[i]->GetName()) == name) {
+        overloads.push_back(methods[i]->GetUserName());
+      }
+    }
+  }
+  else if(receiver_lib) {
+    const std::map<const std::wstring, LibraryMethod*>& methods = receiver_lib->GetMethods();
+    for(std::map<const std::wstring, LibraryMethod*>::const_iterator iter = methods.begin(); iter != methods.end(); ++iter) {
+      if(MethodNameOf(iter->first) == name) {
+        overloads.push_back(iter->second->GetUserName());
+      }
+    }
+  }
+
+  if(!overloads.empty()) {
+    detail += L"\n\t" + (receiver.empty() ? L"The" : receiver) + L" has " + std::to_wstring(overloads.size()) +
+              (overloads.size() == 1 ? L" method" : L" methods") + L" named '" + name + L"', none of which takes those arguments:";
+    for(size_t i = 0; i < overloads.size() && i < 6; ++i) {
+      detail += L"\n\t\t" + overloads[i];
+    }
+    if(overloads.size() > 6) {
+      detail += L"\n\t\t...";
+    }
+  }
+  else if(!receiver.empty()) {
+    detail += L"\n\t" + receiver + L" has no method named '" + name + L"'" + MethodSuggestion(name);
+  }
+
+  return detail;
+}
+
+/****************************
+ * Makes an error specific from what
+ * the analyzer knows when it raises it
+ ****************************/
+std::wstring ContextAnalyzer::Elaborate(ParseNode* node, const std::wstring& msg)
+{
+  if(msg.find(L"Did you mean") != std::wstring::npos) {
+    return msg;
+  }
+
+  if(StartsWith(msg, L"Undefined variable: '")) {
+    return msg + VariableSuggestion(QuotedName(msg));
+  }
+
+  if(StartsWith(msg, L"Undefined class: '") || StartsWith(msg, L"Undefined class or interface: '") ||
+     StartsWith(msg, L"Undefined class or enum: '")) {
+    // the class exists in a bundle that is not in use: that is the answer, not a lookalike
+    if(msg.find(L"is defined in bundle") != std::wstring::npos) {
+      return msg;
+    }
+    return msg + ClassSuggestion(QuotedName(msg));
+  }
+
+  if(StartsWith(msg, L"Undefined function/method call: '") && diag_call &&
+     node == static_cast<ParseNode*>(static_cast<Expression*>(diag_call))) {
+    std::wstring head = msg;
+    while(!head.empty() && head[head.size() - 1] == L'\n') {
+      head.erase(head.size() - 1);
+    }
+    return head + CallDetail(diag_call);
+  }
+
+  // an operator between a String and a number: say how to convert
+  if(StartsWith(msg, L"Invalid operation '") && msg.find(L'\n') == std::wstring::npos) {
+    const size_t between = msg.find(L"' between types: ");
+    if(between != std::wstring::npos) {
+      const std::wstring op = msg.substr(19, between - 19);
+      const std::wstring rest = msg.substr(between + 17);
+      const size_t split = rest.find(L" and ");
+      if(split != std::wstring::npos) {
+        const std::wstring left = PlainTypeName(rest.substr(0, split));
+        const std::wstring right = PlainTypeName(rest.substr(split + 5));
+        const bool left_text = left == L"String";
+        const bool right_text = right == L"String";
+        const bool left_number = left == L"Int" || left == L"Float" || left == L"Char" || left == L"Byte";
+        const bool right_number = right == L"Int" || right == L"Float" || right == L"Char" || right == L"Byte";
+        if((left_text && right_number) || (left_number && right_text)) {
+          const std::wstring number = left_text ? right : left;
+          const std::wstring article = number == L"Int" ? L"an " : L"a ";
+          if(op == L"+") {
+            return msg + L"\n\t'+' cannot add a String and " + article + number +
+                   L". To join them as text, convert the number: value->ToString(); to add numbers, convert the string: text->ToInt() or text->ToFloat()";
+          }
+          if(op == L"=" || op == L"<>" || op == L"<" || op == L">" || op == L"<=" || op == L">=") {
+            return msg + L"\n\t'" + op + L"' cannot compare a String with " + article + number +
+                   L". Convert one side to the other's type first: text->ToInt(), text->ToFloat() or number->ToString()";
+          }
+          return msg + L"\n\t'" + op + L"' cannot be applied to a String and " + article + number +
+                 L". Convert the string with text->ToInt() or text->ToFloat(), or the number with number->ToString()";
+        }
+      }
+    }
+  }
+
+  // a type mismatch says what was being assigned or returned
+  if(cast_kind != 0 && StartsWith(msg, L"Invalid cast with classes: ") && msg.find(L'\n') == std::wstring::npos) {
+    const std::wstring rest = msg.substr(27);
+    const size_t split = rest.find(L" and ");
+    if(split != std::wstring::npos) {
+      const std::wstring left = PlainTypeName(rest.substr(0, split));
+      const std::wstring right = PlainTypeName(rest.substr(split + 5));
+      std::wstring detail;
+      if(cast_kind == 1) {
+        detail = L"\n\tCannot assign a value of type " + right + L" to '" + cast_subject + L"', which is " + left + L".";
+      }
+      else {
+        detail = L"\n\t" + cast_subject + L" is declared to return " + left + L", but this returns " + right + L".";
+      }
+
+      // the conversions the language offers between the common types
+      if(left == L"Int" && right == L"String") {
+        detail += L"\n\tConvert the string explicitly, as in value->ToInt()";
+      }
+      else if(left == L"Float" && right == L"String") {
+        detail += L"\n\tConvert the string explicitly, as in value->ToFloat()";
+      }
+      else if(left == L"String" && (right == L"Int" || right == L"Float")) {
+        detail += L"\n\tConvert the number explicitly, as in value->ToString()";
+      }
+      else if((left == L"Int" && right == L"Float") || (left == L"Float" && right == L"Int")) {
+        detail += L"\n\tConvert explicitly, as in value->As(" + left + L")";
+      }
+
+      return msg + detail;
+    }
+  }
+
+  return msg;
 }
 
 /****************************
@@ -4149,12 +4639,12 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       if(method_call->GetVariable()) {
         bool is_enum_call = false;
         if(!AnalyzeExpressionMethodCall(method_call->GetVariable(), encoding,
-           klass, lib_klass, is_enum_call)) {
+           klass, lib_klass, is_enum_call) && !IsCascade(entry)) {
           ProcessError(static_cast<Expression*>(method_call), L"Invalid class type or assignment");
         }
       }
       else {
-        if(!AnalyzeExpressionMethodCall(entry, encoding, klass, lib_klass)) {
+        if(!AnalyzeExpressionMethodCall(entry, encoding, klass, lib_klass) && !IsCascade(entry)) {
           ProcessError(static_cast<Expression*>(method_call), L"Invalid class type or assignment");
         }
       }
@@ -4168,7 +4658,9 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       }
       else {
         if(!variable_name.empty()) {
-          ProcessError(static_cast<Expression*>(method_call), L"'" + variable_name + L"' does not resolve to a class; check its declared type");
+          if(!IsCascade(entry)) {
+            ProcessError(static_cast<Expression*>(method_call), L"'" + variable_name + L"' does not resolve to a class; check its declared type");
+          }
         }
         else {
           ProcessError(static_cast<Expression*>(method_call), L"Undefined class or method call: '" + method_call->GetMethodName() + L"'");
@@ -4177,7 +4669,16 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
     }
     else {
       if(!variable_name.empty()) {
-        ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + variable_name + L"'" + BundleSuggestion(variable_name));
+        // classes are written with a capital; a lower-case name before '->' is far
+        // more likely a variable that was misspelled or never declared
+        if(variable_name[0] == L'@' || !iswupper(variable_name[0])) {
+          ProcessError(static_cast<Expression*>(method_call), L"Undefined variable: '" + variable_name + L"'"
+                       L"\n\t'" + variable_name + L"' comes before '->', so it must be a variable or a class; no variable by that name is declared here and no class is defined with it" +
+                       VariableSuggestion(variable_name));
+        }
+        else {
+          ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + variable_name + L"'" + BundleSuggestion(variable_name));
+        }
         undefined_classes.insert(variable_name);
       }
       else {
@@ -5658,6 +6159,10 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
  ****************************/
 void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, bool is_expr, std::wstring &encoding, const int depth)
  {
+  diag_call = method_call;
+  diag_class = klass;
+  diag_lib_class = nullptr;
+
 #ifdef _DEBUG
   GetLogger() << L"Checking program class call: |" << klass->GetName() << L':' 
     << (method_call->GetMethodName().size() > 0 ? method_call->GetMethodName() : method_call->GetVariableName())
@@ -6407,6 +6912,9 @@ bool ContextAnalyzer::BindNamedLibraryArguments(LibraryClass* klass, MethodCall*
 void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_call, bool is_expr, 
                                         std::wstring &encoding, bool is_parent, const int depth)
 {
+  diag_call = method_call;
+  diag_class = nullptr;
+  diag_lib_class = klass;
 #ifdef _DEBUG
   GetLogger() << L"Checking library encoded name: |" << klass->GetName() << L':' << method_call->GetMethodName() << L"|" << std::endl;
 #endif
@@ -7863,7 +8371,10 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
       }
     }
     else {
+      cast_kind = 2;
+      cast_subject = L"Method '" + current_method->GetUserName() + L"'";
       Expression* box_expression = AnalyzeRightCast(mthd_type, expression, (IsScalar(expression) && mthd_type->GetDimension() == 0), depth + 1);
+      cast_kind = 0;
       if(box_expression) {
         AnalyzeExpression(box_expression, depth + 1);
         rtrn->SetExpression(box_expression);
@@ -7982,6 +8493,21 @@ void ContextAnalyzer::CheckImplicitDeclaration(Variable* variable, bool is_targe
 }
 
 void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType type, const int depth)
+{
+  const size_t errors_before = diagnostics.ErrorCount();
+  AnalyzeAssignmentBody(assignment, type, depth);
+
+  // A variable whose assignment failed has no type to speak of, and what the program
+  // later does with it is not a new mistake.
+  if(diagnostics.ErrorCount() > errors_before) {
+    Variable* variable = assignment->GetVariable();
+    if(variable && variable->GetEntry()) {
+      poisoned_variables.insert(variable->GetEntry()->GetName());
+    }
+  }
+}
+
+void ContextAnalyzer::AnalyzeAssignmentBody(Assignment* assignment, StatementType type, const int depth)
 {
 #ifdef _DEBUG
   Debug(L"assignment", assignment->GetLineNumber(), depth);
@@ -8351,7 +8877,10 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
     }
 
     if(check_right_cast) {
+      cast_kind = 1;
+      cast_subject = variable->GetName();
       Expression* box_expression = AnalyzeRightCast(variable, expression, (IsScalar(variable) && IsScalar(expression)), depth + 1);
+      cast_kind = 0;
       if(box_expression) {
         AnalyzeExpression(box_expression, depth + 1);
         assignment->SetExpression(box_expression);
@@ -11803,10 +12332,12 @@ void ContextAnalyzer::AnalyzeCharacterStringExpression(const std::wstring& expr_
   }
 
   // Parse expression with current class context for function resolution
+  std::wstring reason;
   Expression* expr = Parser::ParseExpressionText(unescaped_text, char_str->GetFileName(),
-                                                  char_str->GetLineNumber(), char_str->GetLinePosition(), current_class);
+                                                  char_str->GetLineNumber(), char_str->GetLinePosition(), current_class, &reason);
   if(!expr) {
-    ProcessError(char_str, L"Invalid expression in string interpolation: '" + expr_text + L"'");
+    ProcessError(char_str, L"Invalid expression in string interpolation: '" + expr_text + L"'" +
+                 (reason.empty() ? L"" : L"\n\t" + reason));
     return;
   }
 
@@ -12063,10 +12594,12 @@ void ContextAnalyzer::AnalyzeCharacterStringFormat(const std::wstring& expr_text
   // no radix/precision is given). The probe AST is discarded.
   Type* probe_type = nullptr;
   {
+    std::wstring reason;
     Expression* probe = Parser::ParseExpressionText(expr, char_str->GetFileName(),
-                                                    char_str->GetLineNumber(), char_str->GetLinePosition(), current_class);
+                                                    char_str->GetLineNumber(), char_str->GetLinePosition(), current_class, &reason);
     if(!probe) {
-      ProcessError(char_str, L"Invalid expression in string interpolation: '" + expr_text + L"'");
+      ProcessError(char_str, L"Invalid expression in string interpolation: '" + expr_text + L"'" +
+                   (reason.empty() ? L"" : L"\n\t" + reason));
       return;
     }
     AnalyzeExpression(probe, depth + 1);

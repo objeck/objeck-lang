@@ -1,4 +1,4 @@
-# EXPECT_COMPILE_ERROR: Invalid expression: unexpected token
+# EXPECT_COMPILE_ERROR: Unsigned suffix on a float literal
 #~
 The unsigned suffix is meaningless on a floating-point literal and must not
 be accepted silently.

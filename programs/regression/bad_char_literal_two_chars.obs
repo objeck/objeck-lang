@@ -1,0 +1,14 @@
+# EXPECT_COMPILE_ERROR: Character literal holds 2 characters: 'ab'
+# EXPECT_ERROR_COUNT: 1
+#~
+A character literal with more than one character used to be "Invalid expression:
+unexpected token", followed by an "Expected '}'" at the end of the file. The scanner
+now says what is wrong (the literal holds two characters), shows the line with a caret
+under the opening quote, and suggests a double-quoted string.
+~#
+class BadCharLiteralTwoChars {
+	function : Main(args : String[]) ~ Nil {
+		c := 'ab';
+		c->PrintLine();
+	}
+}

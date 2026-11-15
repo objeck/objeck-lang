@@ -1,0 +1,16 @@
+# EXPECT_COMPILE_ERROR: Expected ',' or ')' after this argument
+# EXPECT_ERROR_COUNT: 1
+#~
+A call missing its ')' produced four errors (Expected expression, twice; Expected ')';
+Expected '}'). It is now one, naming the '(' that was left open.
+~#
+class BadCallArgumentsUnclosed {
+	function : Add(a : Int, b : Int) ~ Int {
+		return a + b;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		x := Add(1, 2;
+		x->PrintLine();
+	}
+}

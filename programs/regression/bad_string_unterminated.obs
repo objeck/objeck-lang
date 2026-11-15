@@ -1,0 +1,13 @@
+# EXPECT_COMPILE_ERROR: Unterminated string literal
+# EXPECT_ERROR_COUNT: 1
+#~
+A string with no closing quote swallowed the rest of the file, and the only error was
+"Expected '}'" at its end. The error is now at the opening quote, says how far the string
+ran, shows the line, and the end-of-file errors it caused are not repeated.
+~#
+class BadStringUnterminated {
+	function : Main(args : String[]) ~ Nil {
+		s := "this string never ends;
+		s->PrintLine();
+	}
+}

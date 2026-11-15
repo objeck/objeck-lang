@@ -1,0 +1,12 @@
+# EXPECT_COMPILE_ERROR: cannot add a String and an Int
+# EXPECT_ERROR_COUNT: 1
+#~
+Adding a String and an Int says how to convert, and the variable that failed to get a
+type from the bad initializer is not reported again.
+~#
+class BadStringPlusIntAdvice {
+	function : Main(args : String[]) ~ Nil {
+		x := 5 + "a";
+		x->PrintLine();
+	}
+}

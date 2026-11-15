@@ -264,6 +264,26 @@ class ContextAnalyzer {
   // file + '\n' + name -> its candidates through that file's uses
   std::unordered_map<std::wstring, std::vector<std::wstring>> use_candidates;
   std::wstring BundleSuggestion(const std::wstring& name);
+  // "Did you mean ...?" for a name no declaration matches: the variables in scope,
+  // the classes the program and its libraries define
+  std::wstring VariableSuggestion(const std::wstring& name);
+  std::wstring ClassSuggestion(const std::wstring& name);
+  // the method names of the class a failed call was made on
+  std::wstring MethodSuggestion(const std::wstring& name);
+  // how a type reads in a message: Int, String, Int[], Vector<Int>
+  std::wstring DescribeType(Type* type);
+  // how a failed call was made, and what the receiver offers instead
+  std::wstring CallDetail(MethodCall* method_call);
+  // the class a failed call was made on. An unqualified call is made on the current
+  // class; the resolver also tries System.Base, which is not what the caller meant.
+  void DiagReceiver(Class*& klass, LibraryClass*& lib_klass);
+  // true for an error that only follows from an earlier one: a variable whose type
+  // was never resolved because its initializer already failed
+  bool IsCascade(SymbolEntry* entry);
+  // the variables whose assignment already reported an error
+  std::set<std::wstring> poisoned_variables;
+  // an error made specific from what the analyzer knows when it is raised
+  std::wstring Elaborate(ParseNode* node, const std::wstring& msg);
   // names already reported as undefined classes, so dependent
   // diagnostics about the same name can be suppressed
   std::set<std::wstring> undefined_classes;
@@ -289,6 +309,14 @@ std::vector<std::wstring> alt_error_method_names;
   // only place an undeclared name declares a variable (#1184)
   bool in_assignment_target = false;
   bool in_return;
+  // what a type-mismatch error is about, while the check runs: 1 = the assignment
+  // to cast_subject, 2 = the return of method cast_subject
+  int cast_kind = 0;
+  std::wstring cast_subject;
+  // the call being resolved and the class it was made on, for the detail of a failed call
+  MethodCall* diag_call = nullptr;
+  Class* diag_class = nullptr;
+  LibraryClass* diag_lib_class = nullptr;
   int expression_depth;
   int nested_call_depth;
   std::set<std::wstring> range_names;
@@ -665,6 +693,7 @@ std::vector<std::wstring> alt_error_method_names;
   bool CheckGenericEqualTypes(Type* left, Type* right, Expression* expression, bool check_only = false, bool left_is_target = true);
   void CheckImplicitDeclaration(Variable* variable, bool is_target);
   void AnalyzeAssignment(Assignment * assignment, StatementType type, const int depth);
+  void AnalyzeAssignmentBody(Assignment * assignment, StatementType type, const int depth);
   void AnalyzeSimpleStatement(SimpleStatement* simple, const int depth);
   void AnalyzeIf(If* if_stmt, const int depth);
   void AnalyzeDoWhile(DoWhile* do_while_stmt, const int depth);

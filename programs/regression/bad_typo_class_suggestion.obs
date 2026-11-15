@@ -1,0 +1,11 @@
+# EXPECT_COMPILE_ERROR: Did you mean 'String'?
+# EXPECT_ERROR_COUNT: 1
+#~
+A misspelled class name names the class it is closest to.
+~#
+class BadTypoClassSuggestion {
+	function : Main(args : String[]) ~ Nil {
+		s := Strng->New();
+		s->PrintLine();
+	}
+}

@@ -1,0 +1,12 @@
+# EXPECT_COMPILE_ERROR: Cannot assign a value of type String to 'x', which is Int
+# EXPECT_ERROR_COUNT: 1
+#~
+"Invalid cast with classes: Int and String" said neither that this was an assignment, nor
+to what, nor which type was on which side. It now does, and suggests the conversion.
+~#
+class BadAssignTypeDetail {
+	function : Main(args : String[]) ~ Nil {
+		x : Int := "hello";
+		x->PrintLine();
+	}
+}

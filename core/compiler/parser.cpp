@@ -130,11 +130,147 @@ void Parser::LoadErrorCodes()
 }
 
 /****************************
+ * When the current token is one
+ * the scanner rejected, the
+ * error is the scanner's own
+ * reason: a bad number, an
+ * unterminated string, an
+ * escape that does not exist.
+ ****************************/
+bool Parser::ReportLexicalError(bool panic)
+{
+  Token* token = scanner->GetToken();
+  const ScannerTokenType type = token->GetType();
+  if((type == TOKEN_UNKNOWN || type == TOKEN_BAD_CHAR_STRING_LIT) && !token->GetError().empty()) {
+    lexical_error_seen = true;
+    if(panic) {
+      lexical_recovery = true;
+    }
+    diagnostics.Error(token->GetFileName(), token->GetErrorLine(), token->GetErrorPos(), token->GetError());
+    return true;
+  }
+
+  return false;
+}
+
+/****************************
+ * A token the scanner rejected,
+ * where an expression starts. A
+ * bad literal stands in as a
+ * literal. A stray operator (the
+ * '!' of '!done') is skipped and
+ * what follows it is parsed, so
+ * the statement around it still
+ * parses: one mistake, one error.
+ ****************************/
+Expression* Parser::ParseRejectedToken(int depth, const std::wstring &file_name, int line_num, int line_pos)
+{
+  Token* token = scanner->GetToken();
+  const std::wstring source = scanner->GetSourceLine(token->GetErrorLine());
+  const int at = token->GetErrorPos() - 1;
+  const wchar_t first = at >= 0 && at < (int)source.size() ? source[at] : L' ';
+
+  if(!ReportLexicalError(false)) {
+    ProcessError(L"Invalid expression: unexpected token", TOKEN_SEMI_COLON);
+    return nullptr;
+  }
+
+  NextToken();
+
+  // what stands in for a literal is a literal; a skipped operator leaves its operand
+  const bool is_literal = iswdigit(first) || first == L'.' || first == L'\'' || first == L'"';
+  if(is_literal || Match(TOKEN_SEMI_COLON) || Match(TOKEN_CLOSED_PAREN) || Match(TOKEN_COMMA) ||
+     Match(TOKEN_CLOSED_BRACKET) || Match(TOKEN_END_OF_STREAM)) {
+    return TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 0);
+  }
+
+  return ParseSimpleExpression(depth + 1);
+}
+
+/****************************
+ * The parser's own diagnosis of a
+ * token the scanner rejected (a
+ * lambda written inside a string
+ * interpolation reads to the
+ * scanner as a bad escape). It is
+ * reported where the scanner found
+ * the fault, with the source line.
+ ****************************/
+void Parser::ProcessTokenError(const std::wstring &msg, const ScannerTokenType sync)
+{
+  Token* token = scanner->GetToken();
+  const int line = token->GetErrorLine();
+  const int pos = token->GetErrorPos();
+  lexical_error_seen = true;
+  lexical_recovery = true;
+  diagnostics.Error(token->GetFileName(), line, pos, msg + scanner->Excerpt(line, pos));
+
+  ScannerTokenType current = GetToken();
+  while(current != sync && current != TOKEN_END_OF_STREAM) {
+    NextToken();
+    current = GetToken();
+  }
+}
+
+/****************************
+ * True for an error that only
+ * repeats a lexical error
+ * already reported: one raised
+ * while the parser finds its
+ * footing after it, or at the
+ * end of a file whose structure
+ * that error disturbed.
+ ****************************/
+bool Parser::IsEchoOfLexicalError()
+{
+  return lexical_recovery || (lexical_error_seen && GetToken() == TOKEN_END_OF_STREAM);
+}
+
+/****************************
+ * Makes an "Expected X"
+ * message specific: names what
+ * was found instead, and at the
+ * end of the file the '{' that
+ * was never closed. Other
+ * messages are returned as given.
+ ****************************/
+std::wstring Parser::Elaborate(const std::wstring &msg)
+{
+  // only the short "Expected X" forms, and none that already carry detail
+  if(msg.compare(0, 8, L"Expected") != 0 || msg.size() > 48 || msg.find(L'\n') != std::wstring::npos) {
+    return msg;
+  }
+
+  std::wstring out = msg;
+  Token* token = scanner->GetToken();
+  const std::wstring found = scanner->DescribeToken(token);
+  if(!found.empty()) {
+    out += L", found " + found;
+  }
+
+  if(token->GetType() == TOKEN_END_OF_STREAM && msg == L"Expected '}'") {
+    const std::vector<Scanner::OpenBrace> open = scanner->FindUnclosedBraces();
+    if(!open.empty()) {
+      const Scanner::OpenBrace& brace = open.front();
+      out += L"\n\tThe '{' opened at line " + std::to_wstring(brace.line) + L", column " + std::to_wstring(brace.pos) +
+             L" is never closed:" + scanner->Excerpt(brace.line, brace.pos) + L"\n\tAdd a matching '}' (the indentation suggests that block";
+      out += open.size() > 1 ? L"; " + std::to_wstring(open.size()) + L" '{' in this file are unclosed, this is the likeliest)" : L")";
+    }
+  }
+
+  return out;
+}
+
+/****************************
  * Emits parsing error.
  ****************************/
 void Parser::ProcessError(ScannerTokenType type)
 {
-  diagnostics.Error(GetFileName(), GetLineNumber(), GetLinePosition(), error_msgs[type]);
+  if(ReportLexicalError() || IsEchoOfLexicalError()) {
+    return;
+  }
+
+  diagnostics.Error(GetFileName(), GetLineNumber(), GetLinePosition(), Elaborate(error_msgs[type]));
 }
 
 /****************************
@@ -142,7 +278,11 @@ void Parser::ProcessError(ScannerTokenType type)
  ****************************/
 void Parser::ProcessError(const std::wstring &msg)
 {
-  diagnostics.Error(GetFileName(), GetLineNumber(), GetLinePosition(), msg);
+  if(ReportLexicalError() || IsEchoOfLexicalError()) {
+    return;
+  }
+
+  diagnostics.Error(GetFileName(), GetLineNumber(), GetLinePosition(), Elaborate(msg));
 }
 
 /****************************
@@ -150,7 +290,10 @@ void Parser::ProcessError(const std::wstring &msg)
  ****************************/
 void Parser::ProcessError(const std::wstring &msg, ScannerTokenType sync)
 {
-  diagnostics.Error(GetFileName(), GetLineNumber(), GetLinePosition(), msg);
+  if(!ReportLexicalError() && !IsEchoOfLexicalError()) {
+    diagnostics.Error(GetFileName(), GetLineNumber(), GetLinePosition(), Elaborate(msg));
+  }
+
   ScannerTokenType token = GetToken();
   while(token != sync && token != TOKEN_END_OF_STREAM) {
     NextToken();
@@ -4585,7 +4728,9 @@ StaticArray* Parser::ParseStaticArray(int depth) {
 
         case TOKEN_BAD_CHAR_STRING_LIT:
           if(HasLambdaInInterpolation(scanner->GetToken()->GetIdentifier())) {
-            ProcessError(L"Lambdas are not allowed inside string interpolation; assign the lambda to a local first", TOKEN_SEMI_COLON);
+            ProcessTokenError(L"Lambdas are not allowed inside string interpolation; assign the lambda to a local first"
+                              L"\n\tIn a string a '\\' starts an escape sequence, so a lambda's '\\(' cannot be read inside '{$...}'."
+                              L" Assign the lambda to a local variable first, then use that variable in the interpolation", TOKEN_SEMI_COLON);
           }
           else {
             ProcessError(L"Invalid escaped std::string literal", TOKEN_SEMI_COLON);
@@ -5054,6 +5199,10 @@ ExpressionList* Parser::ParseExpressionList(int &end_pos, int depth, ScannerToke
 #endif
 
   ExpressionList* expressions = TreeFactory::Instance()->MakeExpressionList();
+  // where the list opens, so a missing close can name it
+  const int open_line = GetLineNumber();
+  const int open_pos = GetLinePosition();
+  bool list_broken = false;
   if(!Match(open)) {
     ProcessError(open);
   }
@@ -5107,18 +5256,36 @@ ExpressionList* Parser::ParseExpressionList(int &end_pos, int depth, ScannerToke
         NextToken();
         break;
       }
+      // Neither ',' nor the closing token follows the argument, so the list is
+      // broken here. Reading on for another argument only produces errors that
+      // are the same mistake again.
+      else if(!Match(closed) && !lexical_recovery) {
+        const std::wstring closing = closed == TOKEN_CLOSED_BRACKET ? L"']'" : L"')'";
+        const std::wstring opening = open == TOKEN_OPEN_BRACKET ? L"'['" : L"'('";
+        const std::wstring found = scanner->DescribeToken(scanner->GetToken());
+        ProcessError(L"Expected ',' or " + closing + L" after this argument" + (found.empty() ? L"" : L", found " + found) +
+                     L"\n\tThe " + opening + L" opened at line " + std::to_wstring(open_line) + L", column " + std::to_wstring(open_pos) +
+                     L" is not closed:" + scanner->Excerpt(open_line, open_pos) +
+                     L"\n\tSeparate arguments with ',' and close the list with " + closing);
+        list_broken = true;
+        break;
+      }
     }
     else {
       NextToken();
     }
   }
 
-  if(!Match(closed)) {
+  if(!list_broken && !Match(closed)) {
     ProcessError(closed);
   }
   end_pos = GetLinePosition() + 1;
 
-  NextToken();
+  // when the list is broken the current token belongs to the statement that
+  // follows (usually its ';'), so it is left for that statement
+  if(!list_broken) {
+    NextToken();
+  }
 
   return expressions;
 }
@@ -5866,7 +6033,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
 
     case TOKEN_UNKNOWN:
-      ProcessError(L"Invalid expression: unexpected token", TOKEN_SEMI_COLON);
+      expression = ParseRejectedToken(depth, file_name, line_num, line_pos);
       break;
 
     default:
@@ -5905,7 +6072,9 @@ Expression* Parser::ParseSimpleExpression(int depth)
 
     case TOKEN_BAD_CHAR_STRING_LIT:
       if(HasLambdaInInterpolation(scanner->GetToken()->GetIdentifier())) {
-        ProcessError(L"Lambdas are not allowed inside string interpolation; assign the lambda to a local first", TOKEN_SEMI_COLON);
+        ProcessTokenError(L"Lambdas are not allowed inside string interpolation; assign the lambda to a local first"
+                          L"\n\tIn a string a '\\' starts an escape sequence, so a lambda's '\\(' cannot be read inside '{$...}'."
+                          L" Assign the lambda to a local variable first, then use that variable in the interpolation", TOKEN_SEMI_COLON);
       }
       else {
         ProcessError(L"Invalid escaped string literal", TOKEN_SEMI_COLON);
@@ -5945,7 +6114,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
 
     case TOKEN_UNKNOWN:
-      ProcessError(L"Invalid expression: unexpected token", TOKEN_SEMI_COLON);
+      expression = ParseRejectedToken(depth, file_name, line_num, line_pos);
       break;
 
     default:
@@ -7638,7 +7807,8 @@ Type* Parser::ParseType(int depth)
  * Parses an expression from a text string.
  * Used for string interpolation expressions.
  ****************************/
-Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wstring& filename, [[maybe_unused]] int line_num, [[maybe_unused]] int line_pos, Class* context_class)
+Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wstring& filename, [[maybe_unused]] int line_num, [[maybe_unused]] int line_pos, Class* context_class,
+                                        std::wstring* reason)
 {
   // Create scanner on the expression text
   Scanner* expr_scanner = new Scanner(filename, false, text);
@@ -7666,6 +7836,21 @@ Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wst
 
   // Parse the expression
   Expression* result = expr_parser.ParseExpression(0);
+
+  // A token the scanner rejected is an error even where the parse recovered from it
+  // (a malformed literal stands in as a literal): the interpolation is not valid.
+  if(expr_parser.lexical_error_seen) {
+    if(reason) {
+      const std::vector<Diagnostic> errors = expr_parser.diagnostics.UniqueErrors();
+      if(!errors.empty()) {
+        *reason = errors[0].message;
+      }
+    }
+    delete expr_scanner;
+    expr_parser.scanner = nullptr;
+    expr_parser.program = nullptr;
+    return nullptr;
+  }
 
   // Check that we consumed the entire expression
   if(!expr_parser.Match(TOKEN_END_OF_STREAM)) {
