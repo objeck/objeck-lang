@@ -799,6 +799,10 @@ class Scanner {
   // line is not known.
   std::wstring Excerpt(int line, int pos) const;
 
+  // whether the source file was read, and how many characters it holds
+  bool HasSource() const { return buffer != nullptr; }
+  size_t SourceSize() const { return buffer ? buffer_size : 0; }
+
   // How a token reads in a message ("identifier 'x'", "';'", "keyword 'class'", "end of
   // file"); empty when there is nothing useful to say, so the caller adds nothing.
   std::wstring DescribeToken(Token* token) const;
@@ -814,6 +818,27 @@ class Scanner {
     int pos;
   };
   std::vector<OpenBrace> FindUnclosedBraces() const;
+
+  // A string literal that closed on a later line than it opened on. A missing closing
+  // quote often reads this way (the string runs on to the next quote in the file), and
+  // the errors that follow are then reported where the string ends, not where it should.
+  struct MultiLineString {
+    int line;
+    int pos;
+    int end_line;
+  };
+  std::vector<MultiLineString> multiline_strings;
+  // tokens rejected so far: the first few get a source excerpt, a flood of them does not
+  int reject_count = 0;
+  // the multi-line string that ends on 'line', or null
+  const MultiLineString* FindMultiLineStringEndingOn(int line) const {
+    for(size_t i = 0; i < multiline_strings.size(); ++i) {
+      if(multiline_strings[i].end_line == line) {
+        return &multiline_strings[i];
+      }
+    }
+    return nullptr;
+  }
 
   // The first string that opens on a line above 'before_line' and is not closed on
   // that line, as 1-based (line, column). Strings do not normally span lines, so

@@ -544,14 +544,16 @@ void Scanner::CheckString(int index, bool is_lit, bool is_valid)
 void Scanner::Reject(int index, const std::wstring& msg, int line, int pos)
 {
   tokens[index]->SetType(TOKEN_UNKNOWN);
+  tokens[index]->SetFileName(filename);
   if(line <= 0) {
     line = tok_line;
     pos = tok_pos;
   }
 
-  // the source line and a caret follow the first line, ahead of any advice
+  // the source line and a caret follow the first line, ahead of any advice; only the
+  // first few errors are shown, and finding a line in a large file is not free
   std::wstring text = msg;
-  if(text.find(L'^') == std::wstring::npos) {
+  if(text.find(L'^') == std::wstring::npos && ++reject_count <= 64) {
     const std::wstring excerpt = Excerpt(line, pos);
     if(!excerpt.empty()) {
       const size_t newline = text.find(L'\n');
@@ -1420,6 +1422,14 @@ void Scanner::ParseToken(int index)
     NextChar();
     CheckString(index, is_lit, is_valid && !unterminated);
 
+    if(!unterminated && last_line > tok_line) {
+      MultiLineString multi;
+      multi.line = tok_line;
+      multi.pos = tok_pos;
+      multi.end_line = last_line;
+      multiline_strings.push_back(multi);
+    }
+
     // The reasons are given at the character that is wrong, not where the
     // token ended: an unterminated string ends at the end of the file.
     if(unterminated) {
@@ -2128,14 +2138,24 @@ void Scanner::ParseToken(int index)
       break;
 
     case EOB:
-    case 0xfffd:
       tokens[index]->SetType(TOKEN_END_OF_STREAM);
+      break;
+
+    case 0xfffd:
+      // the decoder's stand-in for a byte sequence that is not UTF-8 (it used to read as the end of the file)
+      Reject(index, L"Invalid UTF-8: the source has a byte sequence that is not valid UTF-8 text (it reads as U+FFFD)\n\tSave the file as UTF-8");
+      NextChar();
       break;
 
     default: {
       std::wstring msg = L"Unexpected character " + DescribeChar(cur_char);
-      if(cur_char > 0x7e || cur_char < 0x20) {
-        msg = L"Unexpected character " + DescribeChar(cur_char);
+      // a character outside the 16-bit range arrives as two surrogate halves: one character, one error
+      bool surrogate_pair = false;
+      if(sizeof(wchar_t) == 2 && cur_char >= 0xD800 && cur_char <= 0xDBFF && nxt_char >= 0xDC00 && nxt_char <= 0xDFFF) {
+        wchar_t code[24];
+        swprintf(code, 24, L"U+%X", 0x10000 + (((unsigned int)cur_char - 0xD800) << 10) + ((unsigned int)nxt_char - 0xDC00));
+        msg = std::wstring(L"Unexpected character ") + code;
+        surrogate_pair = true;
       }
       switch(cur_char) {
       case 0x2018: case 0x2019:
@@ -2161,6 +2181,9 @@ void Scanner::ParseToken(int index)
       }
       Reject(index, msg);
       NextChar();
+      if(surrogate_pair) {
+        NextChar();
+      }
       break;
     }
     }

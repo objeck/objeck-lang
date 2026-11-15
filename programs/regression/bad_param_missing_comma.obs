@@ -1,0 +1,15 @@
+# EXPECT_COMPILE_ERROR: Expected ',' or ')'
+# EXPECT_ERROR_COUNT: 1
+#~
+A missing ',' between parameters skipped the parser to the next '}', the end of the whole
+body, and the rest of the file reported follow-on errors. It is now one error.
+~#
+class BadParamMissingComma {
+	function : Add(a : Int b : Int) ~ Int {
+		return a + b;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Add(1, 2)->PrintLine();
+	}
+}

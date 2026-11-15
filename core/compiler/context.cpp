@@ -399,6 +399,11 @@ static std::vector<std::wstring> CloseNames(const std::wstring& name, const std:
       continue;
     }
 
+    // a name more than three letters longer or shorter is no misspelling or abbreviation of this one
+    if(candidate.size() + 3 < name.size() || name.size() + 3 < candidate.size()) {
+      continue;
+    }
+
     const std::wstring lower_candidate = LowerCase(candidate);
     size_t score = 100;
     if(lower_candidate == lower_name) {
@@ -680,8 +685,13 @@ std::wstring ContextAnalyzer::CallDetail(MethodCall* method_call)
   ExpressionList* params = method_call->GetCallingParameters();
   if(params) {
     const std::vector<Expression*> expressions = params->GetExpressions();
-    for(size_t i = 0; i < expressions.size(); ++i) {
+    // a generated call can pass thousands: name the first few
+    const size_t shown = (std::min)(expressions.size(), (size_t)8);
+    for(size_t i = 0; i < shown; ++i) {
       args += (i > 0 ? L", " : L"") + DescribeType(expressions[i]->GetEvalType());
+    }
+    if(expressions.size() > shown) {
+      args += L", ... (" + std::to_wstring(expressions.size()) + L" arguments)";
     }
   }
 
@@ -730,6 +740,12 @@ std::wstring ContextAnalyzer::CallDetail(MethodCall* method_call)
 std::wstring ContextAnalyzer::Elaborate(ParseNode* node, const std::wstring& msg)
 {
   if(msg.find(L"Did you mean") != std::wstring::npos) {
+    return msg;
+  }
+
+  // Only the first few errors are ever shown, and a suggestion searches every name in scope:
+  // past this many a file of undefined names would spend its time on text nobody reads.
+  if(diagnostics.ErrorCount() >= 200) {
     return msg;
   }
 

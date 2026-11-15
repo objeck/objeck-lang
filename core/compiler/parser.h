@@ -120,6 +120,44 @@ class Parser {
   // true from a lexical error until the next ';' is consumed: the errors raised
   // while the parser finds its footing again are echoes of the first
   bool lexical_recovery = false;
+  // true from a syntax error until a declaration ('function', 'method', 'class'...)
+  // starts a line: once an error has broken the structure of a body, what the parser
+  // reports before it finds a declaration again is follow-on noise (a missing '{' or
+  // ')' makes every later line "unexpected"), so a broken declaration reports once
+  bool syntax_quiet = false;
+  // set by the first syntax error: a file that has lost its structure to it reads as garbage at
+  // the top level afterwards, and those "expected a class" complaints are all follow-ons
+  bool syntax_error_seen = false;
+
+  // The parser is recursive, so nesting that is deeper than the stack can hold
+  // (thousands of '(' or '{' in a row, a generated 'else if' ladder) would crash the
+  // compiler. Each level costs a different amount of stack (a call nests more heavily
+  // than a '('), so the limit is the stack itself: a parse that has used this much of
+  // it is an error instead. Real code nests a few dozen levels, far under it. The
+  // later passes recurse over the tree that the parse built, so they stay in bounds too.
+  static const size_t STACK_BUDGET = 400 * 1024;
+  // where the parse began, the high end of the stack it grows down from
+  const char* stack_base = nullptr;
+  static const int MAX_CHAIN_OPERATORS = 2000;
+  // operators chained in the statement being parsed ('a + b + c ...' builds a tree as deep as it is long)
+  int chain_operators = 0;
+  struct NestingTooDeep {};
+  // each statement counts its own chained operators (a lambda's body is a statement too)
+  struct ChainScope {
+    int& ref;
+    int saved;
+    explicit ChainScope(int& r) : ref(r), saved(r) { ref = 0; }
+    ~ChainScope() { ref = saved; }
+  };
+  void CheckDepth(int depth);
+  void CheckChain();
+
+  // true for a token that can only begin a declaration, never appear inside a body
+  static inline bool IsDeclarationStart(ScannerTokenType type) {
+    return type == TOKEN_FUNCTION_ID || type == TOKEN_METHOD_ID || type == TOKEN_CLASS_ID ||
+           type == TOKEN_INTERFACE_ID || type == TOKEN_ENUM_ID || type == TOKEN_CONSTS_ID ||
+           type == TOKEN_ALIAS_ID || type == TOKEN_BUNDLE_ID || type == TOKEN_USE_ID;
+  }
 
 #if defined(_DIAG_LIB) || defined(_MODULE)
   std::vector<Diagnostic> error_diagnostics;
@@ -133,6 +171,10 @@ class Parser {
     prev_token_line = scanner->GetToken()->GetLineNumber();
     scanner->NextToken();
     ++tokens_consumed;
+    if(syntax_quiet && IsDeclarationStart(scanner->GetToken()->GetType()) &&
+       scanner->GetToken()->GetLineNumber() > prev_token_line) {
+      syntax_quiet = false;
+    }
   }
   // returns true of scanner token matches 
   // expected token, false otherwise
@@ -208,8 +250,11 @@ class Parser {
   // an "Expected X" message made specific: what was found instead, and at the end
   // of the file, which '{' is still open
   std::wstring Elaborate(const std::wstring &msg);
+  std::wstring ElaborateExpected(const std::wstring &msg);
   // true when an error here would only repeat a string that never ended
   bool IsEchoOfLexicalError();
+  void EnterSyntaxQuiet();
+  void ReportSyntaxError(const std::wstring &msg);
   // A diagnosis the parser makes of a rejected token itself, in place of the scanner's
   // reason: reported at the place the scanner found wrong, with the source line.
   void ProcessTokenError(const std::wstring &msg, const ScannerTokenType sync);
