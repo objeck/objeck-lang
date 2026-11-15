@@ -1,0 +1,14 @@
+# EXPECT_COMPILE_ERROR: Undefined function/method call: 'Missing(..)'
+# EXPECT_ERROR_COUNT: 30
+#~
+A call to a method that does not exist, nested 30 deep, took exponential time: each call was
+tried on its parent class and its arguments analyzed again, doubling the work per level
+(20 levels took 3 s, 200 did not finish and grew to 15 GB). Arguments are now analyzed once.
+One error per call, 30 in all.
+~#
+class BadNestedUndefinedCalls {
+	function : Main(args : String[]) ~ Nil {
+		x := Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(Missing(1))))))))))))))))))))))))))))));
+		x->PrintLine();
+	}
+}

@@ -4435,6 +4435,26 @@ void ContextAnalyzer::AnalyzeCallIndices(MethodCall* method_call, const int dept
 }
 
 /****************************
+ * True once, for the parent-class attempt at a call whose
+ * arguments the class attempt analyzed (see params_analyzed)
+ ****************************/
+bool ContextAnalyzer::TakeParamsAnalyzed(MethodCall* method_call)
+{
+  const bool analyzed = params_analyzed == method_call;
+  params_analyzed = nullptr;
+  if(analyzed) {
+    const std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
+    for(size_t i = 0; i < expressions.size(); ++i) {
+      if(expressions[i]->GetExpressionType() == LAMBDA_EXPR) {
+        return false;
+      }
+    }
+  }
+
+  return analyzed;
+}
+
+/****************************
  * Analyzes a method call
  ****************************/
 void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth)
@@ -6191,7 +6211,9 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
   // lambda inferred type
   CheckLambdaInferredTypes(method_call, depth + 1);
 
-  AnalyzeExpressions(call_params, depth + 1);
+  if(!TakeParamsAnalyzed(method_call)) {
+    AnalyzeExpressions(call_params, depth + 1);
+  }
 
   // named arguments bind to the forwarder generated for the call's shape (#1244)
   if(call_params->HasNames() && !BindNamedArguments(klass, method_call)) {
@@ -6316,6 +6338,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
       Class* parent = klass->GetParent();
       method_call->SetOriginalClass(klass);
       std::wstring encoding;
+      params_analyzed = method_call;
       AnalyzeMethodCall(parent, method_call, is_expr, encoding, depth + 1);
       return;
     }
@@ -6323,6 +6346,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
       LibraryClass* lib_parent = klass->GetLibraryParent();
       method_call->SetOriginalClass(klass);
       std::wstring encoding;
+      params_analyzed = method_call;
       AnalyzeMethodCall(lib_parent, method_call, is_expr, encoding, true, depth + 1);
       return;
     }
@@ -6939,8 +6963,10 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
 
   // lambda inferred type
   CheckLambdaInferredTypes(method_call, depth + 1);
-  
-  AnalyzeExpressions(call_params, depth + 1);
+
+  if(!TakeParamsAnalyzed(method_call)) {
+    AnalyzeExpressions(call_params, depth + 1);
+  }
   // named arguments, through the parameter names the .obl records (#1244). The
   // method may be one this class inherits from a library parent.
   if(call_params->HasNames()) {

@@ -315,6 +315,13 @@ std::vector<std::wstring> alt_error_method_names;
   std::wstring cast_subject;
   // the call being resolved and the class it was made on, for the detail of a failed call
   MethodCall* diag_call = nullptr;
+  // A call that finds no method in its class is tried on the parent class, and its
+  // arguments were analyzed by the attempt before: analyzing them again at each parent
+  // made a call nested n deep cost 2^n when its method does not exist. Set for the
+  // parent attempt, which takes it (a lambda argument is inferred from the method it
+  // is passed to, so those are analyzed again).
+  MethodCall* params_analyzed = nullptr;
+  bool TakeParamsAnalyzed(MethodCall* method_call);
   Class* diag_class = nullptr;
   LibraryClass* diag_lib_class = nullptr;
   int expression_depth;
