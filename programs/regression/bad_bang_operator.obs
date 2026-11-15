@@ -1,4 +1,4 @@
-# EXPECT_COMPILE_ERROR: Objeck has no '!' operator
+# EXPECT_COMPILE_ERROR: For 'not equal' write '<>'
 # EXPECT_ERROR_COUNT: 1
 #~
 '!' is not an Objeck operator; the message says what to write instead ('<>' for not).
