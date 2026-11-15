@@ -510,7 +510,7 @@ void Scanner::CheckIdentifier(int index)
     tokens[index]->SetFileName(filename);
   }
   catch(const std::out_of_range&) {
-    tokens[index]->SetType(TOKEN_UNKNOWN);
+    Reject(index, L"The identifier could not be read");
     tokens[index]->SetLineNbr(line_nbr);
     tokens[index]->SetLinePos((int)(line_pos - 1));
     tokens[index]->SetFileName(filename);
@@ -537,11 +537,359 @@ void Scanner::CheckString(int index, bool is_lit, bool is_valid)
   tokens[index]->SetFileName(filename);
 }
 
+/****************************
+ * Marks a token the scanner
+ * cannot read, and says why
+ ****************************/
+void Scanner::Reject(int index, const std::wstring& msg, int line, int pos)
+{
+  tokens[index]->SetType(TOKEN_UNKNOWN);
+  tokens[index]->SetFileName(filename);
+  if(line <= 0) {
+    line = tok_line;
+    pos = tok_pos;
+  }
+
+  // the source line and a caret follow the first line, ahead of any advice; only the
+  // first few errors are shown, and finding a line in a large file is not free
+  std::wstring text = msg;
+  if(text.find(L'^') == std::wstring::npos && ++reject_count <= 64) {
+    const std::wstring excerpt = Excerpt(line, pos);
+    if(!excerpt.empty()) {
+      const size_t newline = text.find(L'\n');
+      text = newline == std::wstring::npos ? text + excerpt : text.substr(0, newline) + excerpt + text.substr(newline);
+    }
+  }
+
+  tokens[index]->SetError(text, line, pos);
+}
+
+/****************************
+ * The number being scanned,
+ * through the current character
+ ****************************/
+std::wstring Scanner::NumberText()
+{
+  if(buffer_pos <= start_pos) {
+    return L"";
+  }
+
+  // through the end of the word the number is part of ('1e3' is named whole, not as '1e')
+  size_t end = buffer_pos;
+  while(end < buffer_size && (iswalnum(buffer[end]) || buffer[end] == L'_' ||
+        (buffer[end] == L'.' && end + 1 < buffer_size && iswdigit(buffer[end + 1])))) {
+    end++;
+  }
+
+  return std::wstring(buffer, start_pos, end - start_pos);
+}
+
+/****************************
+ * A character as a message
+ * shows it: 'x' (U+0078)
+ ****************************/
+std::wstring Scanner::DescribeChar(wchar_t c)
+{
+  if(c == EOB) {
+    return L"the end of the file";
+  }
+
+  wchar_t hex[16];
+  swprintf(hex, 16, L"U+%04X", (unsigned int)c);
+  if(c >= 0x20 && c < 0x7f) {
+    return std::wstring(L"'") + c + L"' (" + hex + L")";
+  }
+
+  return hex;
+}
+
+/****************************
+ * One source line, no ending
+ ****************************/
+std::wstring Scanner::GetSourceLine(int line) const
+{
+  if(!buffer || line < 1) {
+    return L"";
+  }
+
+  size_t i = 0;
+  for(int n = 1; n < line && i < buffer_size; ++i) {
+    if(buffer[i] == L'\n') {
+      n++;
+    }
+  }
+
+  size_t end = i;
+  while(end < buffer_size && buffer[end] != L'\n' && buffer[end] != L'\r' && buffer[end] != EOB) {
+    end++;
+  }
+
+  return std::wstring(buffer, i, end - i);
+}
+
+/****************************
+ * The source line and a caret
+ * under the column, indented
+ * as a detail of a message
+ ****************************/
+std::wstring Scanner::Excerpt(int line, int pos) const
+{
+  std::wstring text = GetSourceLine(line);
+  if(text.empty()) {
+    return L"";
+  }
+
+  // a long line is cut to a window around the column
+  size_t shift = 0;
+  std::wstring head;
+  std::wstring tail;
+  if(text.size() > 110) {
+    if(pos > 60) {
+      shift = pos - 60;
+      head = L"...";
+    }
+    if(shift + 110 < text.size()) {
+      tail = L"...";
+    }
+    text = text.substr(shift, 110);
+  }
+
+  // The console may not be able to print a non-ASCII character, and a stream that
+  // fails on one drops everything after it: show '?' in its place (one column each,
+  // so the caret still lines up).
+  for(size_t i = 0; i < text.size(); ++i) {
+    if(text[i] > 0x7e || (text[i] < 0x20 && text[i] != L'	')) {
+      text[i] = L'?';
+    }
+  }
+
+  // the caret keeps tabs, so it lines up whatever the tab width
+  std::wstring pad;
+  for(int i = 0; i < pos - 1 - (int)shift && i < (int)text.size(); ++i) {
+    pad += text[i] == L'\t' ? L'\t' : L' ';
+  }
+  for(int i = (int)text.size(); i < pos - 1 - (int)shift; ++i) {
+    pad += L' ';
+  }
+
+  return L"\n\t    " + head + text + tail + L"\n\t    " + std::wstring(head.size(), L' ') + pad + L"^";
+}
+
+/****************************
+ * The '{' left open at the end
+ * of the file. Skips comments,
+ * strings and characters the
+ * way the scanner does. A '}'
+ * closes the nearest open '{' at
+ * its own indentation; any open
+ * '{' above that one lost its
+ * brace, and is the likely
+ * culprit.
+ ****************************/
+std::vector<Scanner::OpenBrace> Scanner::FindUnclosedBraces() const
+{
+  struct Open {
+    int line;
+    int pos;
+    int indent;
+  };
+
+  std::vector<OpenBrace> result;
+  if(!buffer) {
+    return result;
+  }
+
+  std::vector<Open> stack;
+  std::vector<Open> lost;
+  int line = 1;
+  int col = 1;
+  int cur_indent = 0;
+  int line_indent = 0;
+  bool seen_text = false;
+  size_t i = 0;
+  const size_t n = buffer_size;
+
+  // a new line starts: the indentation is measured again
+  #define NEW_LINE { line++; col = 1; cur_indent = 0; seen_text = false; }
+
+  while(i < n && buffer[i] != EOB) {
+    const wchar_t c = buffer[i];
+    const wchar_t d = i + 1 < n ? buffer[i + 1] : EOB;
+
+    // indentation of the line this character is on: what sits before its first
+    // non-blank character, a tab counting as four
+    bool first_on_line = false;
+    if(!seen_text) {
+      if(c == L' ') {
+        cur_indent++;
+      }
+      else if(c == L'\t') {
+        cur_indent += 4;
+      }
+      else if(c != L'\n' && c != L'\r') {
+        seen_text = true;
+        first_on_line = true;
+        line_indent = cur_indent;
+      }
+    }
+
+    // block comments: #~ ... ~#  and  /* ... */
+    if((c == L'#' && d == L'~') || (c == L'/' && d == L'*')) {
+      const wchar_t close_a = c == L'#' ? L'~' : L'*';
+      const wchar_t close_b = c == L'#' ? L'#' : L'/';
+      i += 2; col += 2;
+      while(i < n && buffer[i] != EOB && !(buffer[i] == close_a && i + 1 < n && buffer[i + 1] == close_b)) {
+        if(buffer[i] == L'\n') { NEW_LINE } else { col++; }
+        i++;
+      }
+      i += 2; col += 2;
+      continue;
+    }
+    // line comments: # and //
+    if(c == L'#' || (c == L'/' && d == L'/')) {
+      while(i < n && buffer[i] != L'\n' && buffer[i] != EOB) { i++; col++; }
+      continue;
+    }
+    // strings, which may span lines; a backslash skips the next character
+    if(c == L'"') {
+      i++; col++;
+      while(i < n && buffer[i] != EOB && buffer[i] != L'"') {
+        if(buffer[i] == L'\\' && i + 1 < n) {
+          i++; col++;
+        }
+        if(buffer[i] == L'\n') { NEW_LINE } else { col++; }
+        i++;
+      }
+      i++; col++;
+      continue;
+    }
+    // character literals stay on one line
+    if(c == L'\'') {
+      i++; col++;
+      if(i < n && buffer[i] == L'\\') { i++; col++; }
+      for(int k = 0; k < 8 && i < n && buffer[i] != EOB && buffer[i] != L'\'' && buffer[i] != L'\n'; ++k) { i++; col++; }
+      if(i < n && buffer[i] == L'\'') { i++; col++; }
+      continue;
+    }
+
+    if(c == L'{') {
+      Open open;
+      open.line = line;
+      open.pos = col;
+      open.indent = line_indent;
+      stack.push_back(open);
+    }
+    else if(c == L'}' && !stack.empty()) {
+      // a '}' that starts its line closes the block opened at the same indentation;
+      // the blocks opened after it never closed
+      size_t match = stack.size() - 1;
+      if(first_on_line) {
+        for(size_t k = stack.size(); k > 0; --k) {
+          if(stack[k - 1].indent == line_indent) {
+            match = k - 1;
+            break;
+          }
+        }
+      }
+
+      for(size_t k = match + 1; k < stack.size(); ++k) {
+        lost.push_back(stack[k]);
+      }
+      stack.resize(match);
+    }
+
+    if(c == L'\n') { NEW_LINE } else { col++; }
+    i++;
+  }
+  #undef NEW_LINE
+
+  // the likeliest culprit first: the earliest block that lost its brace to an
+  // indentation mismatch, else the innermost block still open at the end
+  for(size_t k = 0; k < lost.size(); ++k) {
+    OpenBrace brace;
+    brace.line = lost[k].line;
+    brace.pos = lost[k].pos;
+    result.push_back(brace);
+  }
+  for(size_t k = stack.size(); k > 0; --k) {
+    OpenBrace brace;
+    brace.line = stack[k - 1].line;
+    brace.pos = stack[k - 1].pos;
+    result.push_back(brace);
+  }
+
+  return result;
+}
+
+/****************************
+ * Where a string opened on a
+ * line and never closed there
+ ****************************/
+bool Scanner::FindUnpairedQuote(int before_line, int& line_out, int& pos_out) const
+{
+  if(!buffer) {
+    return false;
+  }
+
+  int line = 1;
+  size_t i = 0;
+  const size_t n = buffer_size;
+  while(i < n && line < before_line) {
+    bool in_string = false;
+    int string_col = 0;
+    size_t j = i;
+    for(; j < n && buffer[j] != L'\n' && buffer[j] != EOB; ++j) {
+      const wchar_t c = buffer[j];
+      if(in_string) {
+        if(c == L'\\') {
+          j++;
+        }
+        else if(c == L'"') {
+          in_string = false;
+        }
+      }
+      else if(c == L'#') {
+        break;
+      }
+      else if(c == L'\'') {
+        // a character literal such as '"' is skipped whole
+        size_t k = j + 1;
+        if(k < n && buffer[k] == L'\\') {
+          k++;
+        }
+        k++;
+        if(k < n && buffer[k] == L'\'') {
+          j = k;
+        }
+      }
+      else if(c == L'"') {
+        in_string = true;
+        string_col = (int)(j - i) + 1;
+      }
+    }
+
+    if(in_string) {
+      line_out = line;
+      pos_out = string_col;
+      return true;
+    }
+
+    while(j < n && buffer[j] != L'\n' && buffer[j] != EOB) {
+      j++;
+    }
+    i = j + 1;
+    line++;
+  }
+
+  return false;
+}
+
 void Scanner::ParseInteger(int index, int base /*= 0*/)
 {
   // copy string
   const size_t length = end_pos - start_pos;
   std::wstring ident(buffer, start_pos, length);
+  const std::wstring written = ident;
 
   // A 'u' suffix reads the literal across the whole unsigned range and keeps
   // its bit pattern. The value's type is unchanged -- the suffix affects how
@@ -555,8 +903,13 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
   // the digits after a '0b' or '0o' prefix; a bare prefix has none
   const bool is_prefixed = base == 2 || base == 8;
 
-  if(ident.back() == L'_' || (is_prefixed && ident.size() < 3)) {
-    tokens[index]->SetType(TOKEN_UNKNOWN);
+  if(ident.back() == L'_') {
+    Reject(index, L"Number ends with a digit separator: '" + written +
+                  L"'\n\tA '_' must sit between two digits, as in 1_000_000");
+  }
+  else if(is_prefixed && ident.size() < 3) {
+    Reject(index, std::wstring(base == 2 ? L"Binary" : L"Octal") + L" literal has no digits: '" + written +
+                  L"'\n\tWrite digits after the prefix, as in " + (base == 2 ? L"0b1010 (digits 0 and 1)" : L"0o17 (digits 0 to 7)"));
   }
   // A decimal literal with a leading zero ('010', '09'). It was read as
   // octal, so '010' compiled silently as 8 and '09' was an unknown token. It
@@ -609,8 +962,29 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
       }
       tokens[index]->SetInt64Lit(magnitude_marker);
     }
+    else if(base == 16 && written.size() <= 2) {
+      Reject(index, L"Hexadecimal literal has no digits: '" + written + L"' is followed by " + DescribeChar(cur_char) +
+                    L"\n\tWrite hex digits after the prefix, as in 0x1F");
+    }
     else if(errno == ERANGE || *ending) {
-      tokens[index]->SetType(TOKEN_UNKNOWN);
+      const wchar_t bad = *ending ? *ending : L'?';
+      const wchar_t* kind = base == 2 ? L"binary" : base == 8 ? L"octal" : base == 16 ? L"hexadecimal" : L"decimal";
+      std::wstring hint;
+      if(base == 2) {
+        hint = L"A binary literal has only the digits 0 and 1 after '0b'.";
+      }
+      else if(base == 8) {
+        hint = (bad == L'8' || bad == L'9') ? L"'8' and '9' are not octal digits; an octal literal uses 0 to 7 after '0o'." :
+                                              L"An octal literal has only the digits 0 to 7 after '0o'.";
+      }
+      else if(base == 16) {
+        hint = L"A hexadecimal literal has only 0-9 and A-F after '0x'.";
+      }
+      else {
+        hint = L"A decimal literal has only the digits 0-9 (with '_' separators and an optional 'u' suffix). "
+               L"Hex starts with '0x', binary with '0b', octal with '0o'. A name cannot start with a digit.";
+      }
+      Reject(index, L"Invalid digit " + DescribeChar(bad) + L" in " + kind + L" literal '" + written + L"'\n\t" + hint);
     }
     else {
       tokens[index]->SetType(TOKEN_INT_LIT);
@@ -642,9 +1016,11 @@ void Scanner::ParseDouble(int index)
   // copy string
   const size_t length = end_pos - start_pos;
   std::wstring ident(buffer, start_pos, length);
+  const std::wstring written = ident;
 
   if(ident.back() == L'_') {
-    tokens[index]->SetType(TOKEN_UNKNOWN);
+    Reject(index, L"Number ends with a digit separator: '" + written +
+                  L"'\n\tA '_' must sit between two digits, as in 1_000.5");
   }
   else {
     ident.erase(std::remove(ident.begin(), ident.end(), L'_'), ident.end());
@@ -654,7 +1030,15 @@ void Scanner::ParseDouble(int index)
     const double value = wcstod(ident.c_str(), &ending);
     tokens[index]->SetFloatLit(value);
     if(wcslen(ending)) {
-      tokens[index]->SetType(TOKEN_UNKNOWN);
+      if((ending[0] == L'e' || ending[0] == L'E' || ending[0] == L'+' || ending[0] == L'-') &&
+         (ending[1] == L'\0' || ((ending[1] == L'+' || ending[1] == L'-') && ending[2] == L'\0'))) {
+        Reject(index, L"Float literal ends in an exponent with no digits: '" + written +
+                      L"'\n\tWrite digits after the 'e', as in 1.5e3 or 1.5e-3");
+      }
+      else {
+        Reject(index, L"Invalid character " + DescribeChar(ending[0]) + L" in float literal '" + written +
+                      L"'\n\tA float is digits with one '.', optionally followed by an exponent such as e3, e-3 or e+3");
+      }
     }
     // A literal past the double range used to compile silently as infinity
     // (1.0e999), and one below it as zero (1.0e-999). The range is judged by
@@ -689,7 +1073,8 @@ void Scanner::ParseUnicodeChar(int index)
     tokens[index]->SetFileName(filename);
   }
   else {
-    tokens[index]->SetType(TOKEN_UNKNOWN);
+    Reject(index, L"Unicode escape has " + std::to_wstring(length) + L" hex digits: '\\u" +
+                  std::wstring(buffer, start_pos, length) + L"'\n\tA \\u escape takes at most 4 hex digits, as in '\\u00e9'");
     tokens[index]->SetLineNbr(line_nbr);
     tokens[index]->SetLinePos((int)(line_pos - length - 1));
     tokens[index]->SetFileName(filename);
@@ -966,6 +1351,10 @@ void Scanner::ParseToken(int index)
   // ignore comments
   Comments();
 
+  // where this token starts, for the errors that belong at its first character
+  tok_line = line_nbr;
+  tok_pos = (int)line_pos - 1;
+
   // character string
   if(cur_char == L'\"' || (cur_char == L'$' && nxt_char == L'\"')) {
     bool is_lit = false;
@@ -978,6 +1367,9 @@ void Scanner::ParseToken(int index)
     // mark
     start_pos = buffer_pos - 1;
     bool is_valid = true;
+    wchar_t bad_escape = 0;
+    int bad_line = 0;
+    int bad_pos = 0;
     while(cur_char != L'\"' && cur_char != EOB) {
       if(cur_char == L'\\') {
         NextChar();
@@ -1009,6 +1401,11 @@ void Scanner::ParseToken(int index)
             break;
 
           default:
+            if(is_valid) {
+              bad_escape = cur_char;
+              bad_line = line_nbr;
+              bad_pos = (int)line_pos - 2;
+            }
             is_valid = false;
             break;
           }
@@ -1019,9 +1416,48 @@ void Scanner::ParseToken(int index)
     }
     // mark
     end_pos = buffer_pos - 1;
+    const bool unterminated = cur_char == EOB;
+    const int last_line = line_nbr;
     // check string
     NextChar();
-    CheckString(index, is_lit, is_valid);
+    CheckString(index, is_lit, is_valid && !unterminated);
+
+    if(!unterminated && last_line > tok_line) {
+      MultiLineString multi;
+      multi.line = tok_line;
+      multi.pos = tok_pos;
+      multi.end_line = last_line;
+      multiline_strings.push_back(multi);
+    }
+
+    // The reasons are given at the character that is wrong, not where the
+    // token ended: an unterminated string ends at the end of the file.
+    if(unterminated) {
+      // a string that ran across lines swallows the next quote, so the quote the
+      // error lands on is often the one after the mistake: say where an earlier
+      // string was left open
+      std::wstring earlier;
+      int open_line = 0;
+      int open_pos = 0;
+      if(FindUnpairedQuote(tok_line, open_line, open_pos)) {
+        earlier = L"\n\tThe real mistake may be earlier: the string opened at line " + std::to_wstring(open_line) + L", column " +
+                  std::to_wstring(open_pos) + L" is not closed on its line, so it ran on to the next quote:" + Excerpt(open_line, open_pos);
+      }
+
+      const int lines = last_line - tok_line;
+      tokens[index]->SetError(L"Unterminated string literal: the closing '\"' is missing\n\tThe string opened at line " +
+                              std::to_wstring(tok_line) + L", column " + std::to_wstring(tok_pos) +
+                              (lines > 0 ? L" and ran " + std::to_wstring(lines) + (lines == 1 ? L" line" : L" lines") + L" to the end of the file"
+                                         : L" and ran to the end of the file") +
+                              L", so the rest of the file was read as text." + Excerpt(tok_line, tok_pos) +
+                              L"\n\tAdd the closing '\"' (or escape a quote inside the string as \\\")" + earlier, tok_line, tok_pos);
+    }
+    else if(!is_valid) {
+      tokens[index]->SetError(L"Invalid escape sequence '\\" + std::wstring(1, bad_escape) + L"' in a string literal" +
+                              Excerpt(bad_line, bad_pos) +
+                              L"\n\tValid escapes: \\\\ \\\" \\n \\r \\t \\b \\a \\e \\f \\$ \\0 \\uXXXX \\xXX and \\ followed by a digit."
+                              L" To write a literal backslash, double it: \\\\", bad_line, bad_pos);
+    }
     return;
   }
   // character
@@ -1039,8 +1475,12 @@ void Scanner::ParseToken(int index)
         }
         end_pos = buffer_pos - 1;
         ParseUnicodeChar(index);
-        if(cur_char != L'\'') {
-          tokens[index]->SetType(TOKEN_UNKNOWN);
+        if(cur_char != L'\'' && tokens[index]->GetType() != TOKEN_UNKNOWN) {
+          Reject(index, L"Character literal is not closed: expected ' after the unicode escape but found " + DescribeChar(cur_char) +
+                        Excerpt(tok_line, tok_pos), tok_line, tok_pos);
+        }
+        else if(cur_char != L'\'') {
+          tokens[index]->SetError(tokens[index]->GetError() + Excerpt(tok_line, tok_pos), tok_line, tok_pos);
         }
         NextChar();
         return;
@@ -1124,19 +1564,60 @@ void Scanner::ParseToken(int index)
           NextChar();
           NextChar();
           return;
+
+        // an escape the language does not have: consume it and the closing
+        // quote so the scan resumes after the literal
+        default: {
+          const wchar_t unknown = cur_char;
+          NextChar();
+          NextChar();
+          Reject(index, L"Unknown escape '\\" + std::wstring(1, unknown) + L"' in a character literal" + Excerpt(tok_line, tok_pos) +
+                        L"\n\tValid escapes: \\n \\r \\t \\b \\a \\e \\f \\v \\0 \\\\ \\' and \\uXXXX / \\xXX", tok_line, tok_pos);
+          return;
+        }
         }
       }
-      // error
+      // error: the escape is not followed by the closing quote
       else {
-        tokens[index]->SetType(TOKEN_UNKNOWN);
+        const wchar_t escaped = cur_char;
+        Reject(index, L"Character literal is not closed: expected ' after '\\" + std::wstring(1, escaped) + L"'" + Excerpt(tok_line, tok_pos) +
+                      L"\n\tA character literal holds one character; use double quotes for a string", tok_line, tok_pos);
         NextChar();
         return;
       }
     } else {
-      // error
+      // error: not exactly one character between the quotes
       if(nxt_char != L'\'') {
-        tokens[index]->SetType(TOKEN_UNKNOWN);
-        NextChar();
+        if(cur_char == L'\'') {
+          NextChar();
+          Reject(index, L"Empty character literal ''" + Excerpt(tok_line, tok_pos) +
+                        L"\n\tPut one character between the quotes, as in 'a'", tok_line, tok_pos);
+          return;
+        }
+
+        // find the closing quote on this line, so the whole literal is one error
+        size_t close = buffer_pos - 1;
+        while(close < buffer_size && buffer[close] != L'\'' && buffer[close] != L'\n' && buffer[close] != EOB) {
+          close++;
+        }
+
+        if(close < buffer_size && buffer[close] == L'\'') {
+          const std::wstring content(buffer, buffer_pos - 1, close - (buffer_pos - 1));
+          const size_t count = content.size();
+          for(size_t k = 0; k < count; ++k) {
+            NextChar();
+          }
+          // the closing quote
+          NextChar();
+          Reject(index, L"Character literal holds " + std::to_wstring(count) + L" characters: '" + content + L"'" +
+                        Excerpt(tok_line, tok_pos) + L"\n\tA character literal is exactly one character. For text use double quotes: \"" +
+                        content + L"\"", tok_line, tok_pos);
+        }
+        else {
+          Reject(index, L"Character literal is not closed: expected ' after " + DescribeChar(cur_char) + Excerpt(tok_line, tok_pos) +
+                        L"\n\tA character literal holds one character, as in 'a'; use double quotes for a string", tok_line, tok_pos);
+          NextChar();
+        }
         return;
       } else {
         tokens[index]->SetType(TOKEN_CHAR_LIT);
@@ -1175,6 +1656,8 @@ void Scanner::ParseToken(int index)
     int hex_state = 0;
     int bin_state = 0;
     bool oct_state = false;
+    // a slot is reused: drop any reason left from the token it held before
+    tokens[index]->SetError(L"");
 
     // mark
     start_pos = buffer_pos - 1;
@@ -1213,7 +1696,7 @@ void Scanner::ParseToken(int index)
       // unsigned suffix: terminates the literal, and is meaningless on a double
       if(cur_char == L'u' || cur_char == L'U') {
         if(double_state) {
-          tokens[index]->SetType(TOKEN_UNKNOWN);
+          Reject(index, L"Unsigned suffix on a float literal: '" + NumberText() + L"'\n\tThe 'u' suffix is for integers, as in 255u; a float is always signed");
         }
         NextChar();
         break;
@@ -1222,7 +1705,13 @@ void Scanner::ParseToken(int index)
       else if(cur_char == L'.') {
         // error
         if(double_state || hex_state || bin_state || oct_state) {
-          tokens[index]->SetType(TOKEN_UNKNOWN);
+          if(double_state) {
+            Reject(index, L"A second '.' in a number: '" + NumberText() + L"'\n\tA float has one decimal point, as in 1.5");
+          }
+          else {
+            Reject(index, std::wstring(L"A '.' in a ") + (hex_state ? L"hexadecimal" : bin_state ? L"binary" : L"octal") +
+                          L" literal: '" + NumberText() + L"'\n\tOnly a decimal literal can have a fractional part");
+          }
           NextChar();
           break;
         }
@@ -1231,7 +1720,12 @@ void Scanner::ParseToken(int index)
       else if(!hex_state && !bin_state && (cur_char == L'e' || cur_char == L'E')) {
         // error
         if(double_state != 1) {
-          tokens[index]->SetType(TOKEN_UNKNOWN);
+          if(double_state == 0) {
+            Reject(index, L"Exponent without a decimal point: '" + NumberText() + L"'\n\tWrite the number as a float, as in 1.0e3 (not 1e3)");
+          }
+          else {
+            Reject(index, L"A second exponent in a float literal: '" + NumberText() + L"'\n\tA float has one exponent, as in 1.5e3");
+          }
           NextChar();
           break;
         }
@@ -1244,7 +1738,7 @@ void Scanner::ParseToken(int index)
       else if(cur_char == L'x' || cur_char == L'X') {
         // error
         if(double_state) {
-          tokens[index]->SetType(TOKEN_UNKNOWN);
+          Reject(index, L"'x' in a float literal: '" + NumberText() + L"'\n\tA hexadecimal integer is written 0x1F, with no decimal point or exponent");
           NextChar();
           break;
         }
@@ -1260,7 +1754,7 @@ void Scanner::ParseToken(int index)
       else if(cur_char == L'b' || cur_char == L'B') {
         // error
         if(double_state) {
-          tokens[index]->SetType(TOKEN_UNKNOWN);
+          Reject(index, L"'b' in a float literal: '" + NumberText() + L"'\n\tA binary integer is written 0b1010, with no decimal point or exponent");
           NextChar();
           break;
         }
@@ -1279,7 +1773,11 @@ void Scanner::ParseToken(int index)
     // mark
     end_pos = buffer_pos - 1;
     // state 1, 2 or 3
-    if(oct_state) {
+    if(!tokens[index]->GetError().empty()) {
+      // the loop already said what is wrong with this number; parsing it would
+      // only replace that with a vaguer message
+    }
+    else if(oct_state) {
       // any stray letter or '.' is left for ParseInteger to reject
       ParseInteger(index, 8);
     }
@@ -1293,10 +1791,31 @@ void Scanner::ParseToken(int index)
       ParseInteger(index, 2);
     }
     else if(hex_state || bin_state || double_state) {
-      tokens[index]->SetType(TOKEN_UNKNOWN);
+      const std::wstring text(buffer, start_pos, end_pos - start_pos);
+      const size_t bad = text.find_first_not_of(L"0123456789_.");
+      if(bad != std::wstring::npos) {
+        Reject(index, L"Invalid character " + DescribeChar(text[bad]) + L" in number '" + text +
+                      L"'\n\tA name cannot start with a digit. Hex starts with '0x', binary with '0b', octal with '0o'; "
+                      L"a float is digits with one '.' and an optional exponent such as e3");
+      }
+      else {
+        Reject(index, L"Malformed number literal: '" + text +
+                      L"'\n\tA number is digits (decimal), 0x then hex digits, 0b then 0 and 1, 0o then 0 to 7, or a float such as 1.5e3");
+      }
     }
     else {
       ParseInteger(index);
+    }
+
+    // a rejected number is reported where it starts, whichever path rejected it, and is
+    // one token: what is left of the word it was in goes with it
+    if(!tokens[index]->GetError().empty()) {
+      while(iswalnum(cur_char) || cur_char == L'_' || (cur_char == L'.' && iswdigit(nxt_char))) {
+        NextChar();
+      }
+      tokens[index]->SetLineNbr(tok_line);
+      tokens[index]->SetLinePos(tok_pos);
+      tokens[index]->SetFileName(filename);
     }
     return;
   }
@@ -1352,7 +1871,7 @@ void Scanner::ParseToken(int index)
         NextChar();
       }
       else {
-        tokens[index]->SetType(TOKEN_UNKNOWN);
+        Reject(index, L"Unexpected '!': Objeck has no '!' operator\n\tFor 'not equal' write '<>' (a <> b); for logical not put '<>' in front of the value (<>done)");
         NextChar();
       }
       break;
@@ -1493,7 +2012,7 @@ void Scanner::ParseToken(int index)
       if(nxt_char == L'>') {
         NextChar();
         if(alt_syntax) {
-          tokens[index]->SetType(TOKEN_UNKNOWN);
+          Reject(index, L"Unexpected '<>' in the alternative syntax\n\tFor 'not equal' write '!=' here");
           NextChar();
         }
         else {
@@ -1619,15 +2138,111 @@ void Scanner::ParseToken(int index)
       break;
 
     case EOB:
-    case 0xfffd:
       tokens[index]->SetType(TOKEN_END_OF_STREAM);
       break;
 
-    default:
-      tokens[index]->SetType(TOKEN_UNKNOWN);
+    case 0xfffd:
+      // the decoder's stand-in for a byte sequence that is not UTF-8 (it used to read as the end of the file)
+      Reject(index, L"Invalid UTF-8: the source has a byte sequence that is not valid UTF-8 text (it reads as U+FFFD)\n\tSave the file as UTF-8");
       NextChar();
       break;
+
+    default: {
+      std::wstring msg = L"Unexpected character " + DescribeChar(cur_char);
+      // a character outside the 16-bit range arrives as two surrogate halves: one character, one error
+      bool surrogate_pair = false;
+      if(sizeof(wchar_t) == 2 && cur_char >= 0xD800 && cur_char <= 0xDBFF && nxt_char >= 0xDC00 && nxt_char <= 0xDFFF) {
+        wchar_t code[24];
+        swprintf(code, 24, L"U+%X", 0x10000 + (((unsigned int)cur_char - 0xD800) << 10) + ((unsigned int)nxt_char - 0xDC00));
+        msg = std::wstring(L"Unexpected character ") + code;
+        surrogate_pair = true;
+      }
+      switch(cur_char) {
+      case 0x2018: case 0x2019:
+        msg += L"\n\tThis is a typographic single quote; use a straight ' for a character literal";
+        break;
+      case 0x201C: case 0x201D:
+        msg += L"\n\tThis is a typographic double quote; use a straight \" for a string literal";
+        break;
+      case 0x00A0:
+        msg += L"\n\tThis is a non-breaking space; replace it with an ordinary space";
+        break;
+      case 0x2013: case 0x2014:
+        msg += L"\n\tThis is a typographic dash; use a plain '-' for subtraction";
+        break;
+      case L'`':
+        msg += L"\n\tObjeck has no backtick quoting; use double quotes for a string";
+        break;
+      case L'$':
+        msg += L"\n\t'$' is only valid directly before a string's opening quote, as in $\"text\"";
+        break;
+      default:
+        break;
+      }
+      Reject(index, msg);
+      NextChar();
+      if(surrogate_pair) {
+        NextChar();
+      }
+      break;
+    }
     }
     return;
   }
+}
+
+/****************************
+ * How a token reads in an
+ * error message
+ ****************************/
+std::wstring Scanner::DescribeToken(Token* token) const
+{
+  switch(token->GetType()) {
+  case TOKEN_END_OF_STREAM: return L"end of file";
+  case TOKEN_IDENT: return L"identifier '" + token->GetIdentifier() + L"'";
+  case TOKEN_INT_LIT: return L"integer literal";
+  case TOKEN_FLOAT_LIT: return L"float literal";
+  case TOKEN_CHAR_LIT: return L"character literal";
+  case TOKEN_CHAR_STRING_LIT: return L"string literal";
+  case TOKEN_OPEN_PAREN: return L"'('";
+  case TOKEN_CLOSED_PAREN: return L"')'";
+  case TOKEN_OPEN_BRACKET: return L"'['";
+  case TOKEN_CLOSED_BRACKET: return L"']'";
+  case TOKEN_OPEN_BRACE: return L"'{'";
+  case TOKEN_CLOSED_BRACE: return L"'}'";
+  case TOKEN_COLON: return L"':'";
+  case TOKEN_COMMA: return L"','";
+  case TOKEN_ASSIGN: return L"':='";
+  case TOKEN_SEMI_COLON: return L"';'";
+  case TOKEN_ASSESSOR: return L"'->'";
+  case TOKEN_TILDE: return L"'~'";
+  case TOKEN_PERIOD: return L"'.'";
+  case TOKEN_ADD: return L"'+'";
+  case TOKEN_SUB: return L"'-'";
+  case TOKEN_MUL: return L"'*'";
+  case TOKEN_DIV: return L"'/'";
+  case TOKEN_MOD: return L"'%'";
+  case TOKEN_EQL: return L"'='";
+  case TOKEN_NEQL: return L"'<>'";
+  case TOKEN_LES: return L"'<'";
+  case TOKEN_GTR: return L"'>'";
+  case TOKEN_LEQL: return L"'<='";
+  case TOKEN_GEQL: return L"'>='";
+  case TOKEN_LAMBDA: return L"'=>'";
+  case TOKEN_QUESTION: return L"'?'";
+  case TOKEN_UNKNOWN:
+  case TOKEN_BAD_CHAR_STRING_LIT:
+    return L"";
+  default:
+    break;
+  }
+
+  // a keyword is found by the word that scans to it
+  for(std::unordered_map<std::wstring, ScannerTokenType>::const_iterator iter = ident_map.begin(); iter != ident_map.end(); ++iter) {
+    if(iter->second == token->GetType()) {
+      return L"keyword '" + iter->first + L"'";
+    }
+  }
+
+  return L"";
 }

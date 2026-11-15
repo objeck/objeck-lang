@@ -1,0 +1,12 @@
+# EXPECT_COMPILE_ERROR: Unknown escape
+# EXPECT_ERROR_COUNT: 1
+#~
+An escape the language does not have in a character literal used to leave the token's
+type unset. It is now rejected with the escape named and the valid ones listed.
+~#
+class BadCharLiteralUnknownEscape {
+	function : Main(args : String[]) ~ Nil {
+		c := '\q';
+		c->PrintLine();
+	}
+}

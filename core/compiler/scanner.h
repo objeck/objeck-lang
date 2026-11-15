@@ -540,6 +540,13 @@ class Token {
   // token type, so the parser's many Match(TOKEN_ASSESSOR) sites keep working
   // unchanged and only the place that builds the call consults it.
   bool nil_safe = false;
+  // Why the scanner rejected this token (TOKEN_UNKNOWN, or a string it could not
+  // read), and where, when that is not the token's own position. Empty for a
+  // token that scanned cleanly. The parser reports it in place of a generic
+  // "unexpected token", so the cause is not lost between the two.
+  std::wstring error_msg;
+  int error_line = 0;
+  int error_pos = 0;
 
   union {
     INT64_VALUE int64_lit;
@@ -563,6 +570,27 @@ class Token {
     token_type = token->token_type;
     filename = token->filename;
     nil_safe = token->nil_safe;
+    error_msg = token->error_msg;
+    error_line = token->error_line;
+    error_pos = token->error_pos;
+  }
+
+  inline void SetError(const std::wstring& msg, int line = 0, int pos = 0) {
+    error_msg = msg;
+    error_line = line;
+    error_pos = pos;
+  }
+
+  inline const std::wstring& GetError() {
+    return error_msg;
+  }
+
+  inline int GetErrorLine() {
+    return error_line > 0 ? error_line : line_nbr;
+  }
+
+  inline int GetErrorPos() {
+    return error_line > 0 ? error_pos : line_pos;
   }
 
   inline bool IsNilSafe() {
@@ -646,6 +674,10 @@ class Token {
     // Tokens are reused as the scanner advances, so clear the nil-safe flag
     // here; the '?->' case sets it immediately after calling SetType.
     nil_safe = false;
+    // likewise a reason belongs to the token it was raised for, not the next
+    error_msg.clear();
+    error_line = 0;
+    error_pos = 0;
   }
 };
 
@@ -682,7 +714,16 @@ class Scanner {
   // line number
   int line_nbr;
   size_t line_pos;
+  // where the token being scanned starts (1-based), for errors that belong at its first character
+  int tok_line = 1;
+  int tok_pos = 1;
   
+  // marks a token the scanner cannot read, saying why (and where, if not at the token)
+  void Reject(int index, const std::wstring& msg, int line = 0, int pos = 0);
+  // the text of the number being scanned, from its first character to the current one
+  std::wstring NumberText();
+  // how a character is shown in a message: 'x' for a printable one, U+XXXX otherwise
+  static std::wstring DescribeChar(wchar_t c);
   // parsers a character string
   void CheckString(int index, bool is_lit, bool is_valid);
   // parse an integer
@@ -749,4 +790,58 @@ class Scanner {
   std::wstring GetFileName() {
     return filename;
   }
+
+  // The text of a 1-based source line, without its line ending; empty past the end.
+  std::wstring GetSourceLine(int line) const;
+
+  // That line with a caret under a 1-based column, laid out as an indented detail
+  // of a message (two indented lines: the text, then the caret); empty when the
+  // line is not known.
+  std::wstring Excerpt(int line, int pos) const;
+
+  // whether the source file was read, and how many characters it holds
+  bool HasSource() const { return buffer != nullptr; }
+  size_t SourceSize() const { return buffer ? buffer_size : 0; }
+
+  // How a token reads in a message ("identifier 'x'", "';'", "keyword 'class'", "end of
+  // file"); empty when there is nothing useful to say, so the caller adds nothing.
+  std::wstring DescribeToken(Token* token) const;
+
+  // The '{' that were opened and never closed: one pass over the source that skips
+  // comments, strings and character literals. A '}' closes the nearest open '{'
+  // that sits at the same indentation, so a missing brace is blamed on the block
+  // that lost it rather than on the outermost one. The most likely culprit comes
+  // first; the rest follow in source order. Used when the parser runs into the end
+  // of the file, so the message can name the opener.
+  struct OpenBrace {
+    int line;
+    int pos;
+  };
+  std::vector<OpenBrace> FindUnclosedBraces() const;
+
+  // A string literal that closed on a later line than it opened on. A missing closing
+  // quote often reads this way (the string runs on to the next quote in the file), and
+  // the errors that follow are then reported where the string ends, not where it should.
+  struct MultiLineString {
+    int line;
+    int pos;
+    int end_line;
+  };
+  std::vector<MultiLineString> multiline_strings;
+  // tokens rejected so far: the first few get a source excerpt, a flood of them does not
+  int reject_count = 0;
+  // the multi-line string that ends on 'line', or null
+  const MultiLineString* FindMultiLineStringEndingOn(int line) const {
+    for(size_t i = 0; i < multiline_strings.size(); ++i) {
+      if(multiline_strings[i].end_line == line) {
+        return &multiline_strings[i];
+      }
+    }
+    return nullptr;
+  }
+
+  // The first string that opens on a line above 'before_line' and is not closed on
+  // that line, as 1-based (line, column). Strings do not normally span lines, so
+  // this is where an unterminated string most likely began.
+  bool FindUnpairedQuote(int before_line, int& line, int& pos) const;
 };

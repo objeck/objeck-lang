@@ -1,0 +1,12 @@
+# EXPECT_COMPILE_ERROR: Did you mean 'count'?
+# EXPECT_ERROR_COUNT: 1
+#~
+A misspelled variable before '->' was "Undefined class: 'cnt'". It is an undefined
+variable, and the one in scope it most likely meant is named.
+~#
+class BadTypoVariableSuggestion {
+	function : Main(args : String[]) ~ Nil {
+		count := 5;
+		cnt->PrintLine();
+	}
+}

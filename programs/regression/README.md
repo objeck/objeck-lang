@@ -45,6 +45,7 @@ Other runners in this directory:
 - `run_debugger_tests.sh` / `run_debugger_tests.cmd` `[x64|arm64]` - `obd` command-line tests (the POSIX one needs `expect`)
 - `python3 run_dap_tests.py <bin_dir>` - Debug Adapter Protocol (`obd --dap`) tests
 - `python3 run_vm_flag_tests.py <bin_dir>` - `obr` flags, and interpreter/JIT equivalence
+- `python3 run_compiler_robustness.py <bin_dir>` - negative testing of the compiler front end: valid programs broken in sixteen ways, plus hostile files (deep nesting, random bytes, thousands of errors); fails on a crash, a hang, or a drop in how accurately and briefly errors are reported
 - `python3 run_differential.py <bin_dir>` - compiles every test at `-opt s0` and `-opt s3` and requires the same output with the JIT off, on by default and forced on; its header documents its markers
 
 ## Test Organization

@@ -113,6 +113,51 @@ class Parser {
   // the copies back after a statement with 'ref' arguments (#1243)
   std::vector<Statement*> trailing_statements;
   int hidden_local_id = 0;
+  // set once the scanner has rejected a token: the parse is skipped ahead to
+  // the next ';', and what it reports at the end of the file after that is
+  // the same mistake again (a skipped '{' or '}' leaves a block unbalanced)
+  bool lexical_error_seen = false;
+  // true from a lexical error until the next ';' is consumed: the errors raised
+  // while the parser finds its footing again are echoes of the first
+  bool lexical_recovery = false;
+  // true from a syntax error until a declaration ('function', 'method', 'class'...)
+  // starts a line: once an error has broken the structure of a body, what the parser
+  // reports before it finds a declaration again is follow-on noise (a missing '{' or
+  // ')' makes every later line "unexpected"), so a broken declaration reports once
+  bool syntax_quiet = false;
+  // set by the first syntax error: a file that has lost its structure to it reads as garbage at
+  // the top level afterwards, and those "expected a class" complaints are all follow-ons
+  bool syntax_error_seen = false;
+
+  // The parser is recursive, so nesting that is deeper than the stack can hold
+  // (thousands of '(' or '{' in a row, a generated 'else if' ladder) would crash the
+  // compiler. Each level costs a different amount of stack (a call nests more heavily
+  // than a '('), so the limit is the stack itself: a parse that has used this much of
+  // it is an error instead. Real code nests a few dozen levels, far under it. The
+  // later passes recurse over the tree that the parse built, so they stay in bounds too.
+  static const size_t STACK_BUDGET = 400 * 1024;
+  // where the parse began, the high end of the stack it grows down from
+  const char* stack_base = nullptr;
+  static const int MAX_CHAIN_OPERATORS = 2000;
+  // operators chained in the statement being parsed ('a + b + c ...' builds a tree as deep as it is long)
+  int chain_operators = 0;
+  struct NestingTooDeep {};
+  // each statement counts its own chained operators (a lambda's body is a statement too)
+  struct ChainScope {
+    int& ref;
+    int saved;
+    explicit ChainScope(int& r) : ref(r), saved(r) { ref = 0; }
+    ~ChainScope() { ref = saved; }
+  };
+  void CheckDepth(int depth);
+  void CheckChain();
+
+  // true for a token that can only begin a declaration, never appear inside a body
+  static inline bool IsDeclarationStart(ScannerTokenType type) {
+    return type == TOKEN_FUNCTION_ID || type == TOKEN_METHOD_ID || type == TOKEN_CLASS_ID ||
+           type == TOKEN_INTERFACE_ID || type == TOKEN_ENUM_ID || type == TOKEN_CONSTS_ID ||
+           type == TOKEN_ALIAS_ID || type == TOKEN_BUNDLE_ID || type == TOKEN_USE_ID;
+  }
 
 #if defined(_DIAG_LIB) || defined(_MODULE)
   std::vector<Diagnostic> error_diagnostics;
@@ -120,9 +165,16 @@ class Parser {
 
   // gets the scanner token
   inline void NextToken() {
+    if(lexical_recovery && scanner->GetToken()->GetType() == TOKEN_SEMI_COLON) {
+      lexical_recovery = false;
+    }
     prev_token_line = scanner->GetToken()->GetLineNumber();
     scanner->NextToken();
     ++tokens_consumed;
+    if(syntax_quiet && IsDeclarationStart(scanner->GetToken()->GetType()) &&
+       scanner->GetToken()->GetLineNumber() > prev_token_line) {
+      syntax_quiet = false;
+    }
   }
   // returns true of scanner token matches 
   // expected token, false otherwise
@@ -188,6 +240,24 @@ class Parser {
   void ProcessError(const std::wstring &msg);
   void ProcessError(const std::wstring &msg, ParseNode * node);
   void ProcessError(const std::wstring &msg, const ScannerTokenType sync);
+  // reports the scanner's reason when the current token was rejected; true if it did
+  // 'panic' also holds back the errors that follow until the next ';' (for a parse that
+  // skips ahead); a parse that recovers on the spot passes false
+  bool ReportLexicalError(bool panic = true);
+  // a rejected token where an expression starts: the scanner's reason is reported and the
+  // parse goes on as if the token had been valid, so one mistake is one error
+  Expression* ParseRejectedToken(int depth, const std::wstring &file_name, int line_num, int line_pos);
+  // an "Expected X" message made specific: what was found instead, and at the end
+  // of the file, which '{' is still open
+  std::wstring Elaborate(const std::wstring &msg);
+  std::wstring ElaborateExpected(const std::wstring &msg);
+  // true when an error here would only repeat a string that never ended
+  bool IsEchoOfLexicalError();
+  void EnterSyntaxQuiet();
+  void ReportSyntaxError(const std::wstring &msg);
+  // A diagnosis the parser makes of a rejected token itself, in place of the scanner's
+  // reason: reported at the place the scanner found wrong, with the source line.
+  void ProcessTokenError(const std::wstring &msg, const ScannerTokenType sync);
   Expression* ParseBadNumericLiteral(bool negate, const std::wstring &file_name, const int line_num, const int line_pos);
   bool CheckErrors();
 
@@ -290,7 +360,10 @@ class Parser {
   }
 
   // Parses an expression from a text string (used for string interpolation)
-  static Expression* ParseExpressionText(const std::wstring& text, const std::wstring& filename, int line_num, int line_pos, Class* context_class = nullptr);
+  // Parses the text of a string interpolation. Null when it is not one expression; 'reason'
+  // then holds why when the scanner rejected a token in it (a malformed literal, say).
+  static Expression* ParseExpressionText(const std::wstring& text, const std::wstring& filename, int line_num, int line_pos, Class* context_class = nullptr,
+                                         std::wstring* reason = nullptr);
 
 #ifdef _MODULE
   std::vector<std::wstring> GetErrors();

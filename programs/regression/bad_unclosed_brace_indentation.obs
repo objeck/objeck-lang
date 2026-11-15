@@ -1,0 +1,17 @@
+# EXPECT_COMPILE_ERROR: The '{' opened at line 12
+# EXPECT_ERROR_COUNT: 1
+#~
+A '}' missing inside a method was reported only as "Expected '}'" at the end of the file.
+The error now names the block that lost its brace, found by matching each '}' to the '{'
+at the same indentation (here the 'if' on line 12, not the class), and shows that line.
+~#
+class BadUnclosedBraceIndentation {
+	function : Main(args : String[]) ~ Nil {
+		i := 0;
+		while(i < 3) {
+			if(i = 1) {
+				"one"->PrintLine();
+			i += 1;
+		}
+	}
+}

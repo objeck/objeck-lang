@@ -136,6 +136,10 @@ namespace frontend {
       return !errors.empty();
     }
 
+    size_t ErrorCount() const {
+      return errors.size();
+    }
+
     bool HasWarnings() const {
       return !warnings.empty();
     }

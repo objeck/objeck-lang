@@ -130,11 +130,258 @@ void Parser::LoadErrorCodes()
 }
 
 /****************************
+ * When the current token is one
+ * the scanner rejected, the
+ * error is the scanner's own
+ * reason: a bad number, an
+ * unterminated string, an
+ * escape that does not exist.
+ ****************************/
+bool Parser::ReportLexicalError(bool panic)
+{
+  Token* token = scanner->GetToken();
+  const ScannerTokenType type = token->GetType();
+  if((type == TOKEN_UNKNOWN || type == TOKEN_BAD_CHAR_STRING_LIT) && !token->GetError().empty()) {
+    lexical_error_seen = true;
+    if(panic) {
+      lexical_recovery = true;
+    }
+    diagnostics.Error(token->GetFileName(), token->GetErrorLine(), token->GetErrorPos(), token->GetError());
+    return true;
+  }
+
+  return false;
+}
+
+/****************************
+ * A token the scanner rejected,
+ * where an expression starts. A
+ * bad literal stands in as a
+ * literal. A stray operator (the
+ * '!' of '!done') is skipped and
+ * what follows it is parsed, so
+ * the statement around it still
+ * parses: one mistake, one error.
+ ****************************/
+Expression* Parser::ParseRejectedToken(int depth, const std::wstring &file_name, int line_num, int line_pos)
+{
+  CheckDepth(depth);
+  Token* token = scanner->GetToken();
+  const std::wstring source = scanner->GetSourceLine(token->GetErrorLine());
+  const int at = token->GetErrorPos() - 1;
+  const wchar_t first = at >= 0 && at < (int)source.size() ? source[at] : L' ';
+
+  if(!ReportLexicalError(false)) {
+    ProcessError(L"Invalid expression: unexpected token", TOKEN_SEMI_COLON);
+    return nullptr;
+  }
+
+  NextToken();
+
+  // what stands in for a literal is a literal; a skipped operator leaves its operand
+  const bool is_literal = iswdigit(first) || first == L'.' || first == L'\'' || first == L'"';
+  if(is_literal || Match(TOKEN_SEMI_COLON) || Match(TOKEN_CLOSED_PAREN) || Match(TOKEN_COMMA) ||
+     Match(TOKEN_CLOSED_BRACKET) || Match(TOKEN_END_OF_STREAM)) {
+    return TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 0);
+  }
+
+  return ParseSimpleExpression(depth + 1);
+}
+
+/****************************
+ * The parser's own diagnosis of a
+ * token the scanner rejected (a
+ * lambda written inside a string
+ * interpolation reads to the
+ * scanner as a bad escape). It is
+ * reported where the scanner found
+ * the fault, with the source line.
+ ****************************/
+void Parser::ProcessTokenError(const std::wstring &msg, const ScannerTokenType sync)
+{
+  Token* token = scanner->GetToken();
+  const int line = token->GetErrorLine();
+  const int pos = token->GetErrorPos();
+  lexical_error_seen = true;
+  lexical_recovery = true;
+  diagnostics.Error(token->GetFileName(), line, pos, msg + scanner->Excerpt(line, pos));
+
+  ScannerTokenType current = GetToken();
+  while(current != sync && current != TOKEN_END_OF_STREAM) {
+    NextToken();
+    current = GetToken();
+  }
+}
+
+/****************************
+ * True for an error that only
+ * repeats a lexical error
+ * already reported: one raised
+ * while the parser finds its
+ * footing after it, or at the
+ * end of a file whose structure
+ * that error disturbed.
+ ****************************/
+bool Parser::IsEchoOfLexicalError()
+{
+  return lexical_recovery || syntax_quiet || (lexical_error_seen && GetToken() == TOKEN_END_OF_STREAM);
+}
+
+/****************************
+ * Stops a parse that nests
+ * deeper than the stack can
+ * hold: reports it, then
+ * unwinds out of the file.
+ ****************************/
+void Parser::CheckDepth([[maybe_unused]] int depth)
+{
+  char marker = 0;
+  if(stack_base) {
+    const char* here = &marker;
+    const size_t used = stack_base > here ? (size_t)(stack_base - here) : (size_t)(here - stack_base);
+    if(used > STACK_BUDGET) {
+      diagnostics.Error(GetFileName(), GetLineNumber(), GetLinePosition(),
+                        L"Nesting is too deep: parentheses, blocks, calls or types are nested more deeply here than the compiler can read"
+                        L"\n\tReal code rarely nests past a few dozen levels. Split this into methods or temporary variables");
+      throw NestingTooDeep();
+    }
+  }
+}
+
+void Parser::CheckChain()
+{
+  if(++chain_operators > MAX_CHAIN_OPERATORS) {
+    diagnostics.Error(GetFileName(), GetLineNumber(), GetLinePosition(),
+                      L"Expression is too long: more than " + std::to_wstring(MAX_CHAIN_OPERATORS) +
+                      L" chained operators in one statement. Split it into several statements");
+    throw NestingTooDeep();
+  }
+}
+
+/****************************
+ * Called after a syntax error
+ * is reported: the errors that
+ * follow, until the next
+ * declaration, are follow-ons.
+ * An error raised at a
+ * declaration's first token
+ * needs no quiet: the parser is
+ * already at a place to resume.
+ ****************************/
+void Parser::EnterSyntaxQuiet()
+{
+  Token* token = scanner->GetToken();
+  if(!(IsDeclarationStart(token->GetType()) && token->GetLineNumber() > prev_token_line)) {
+    syntax_quiet = true;
+  }
+}
+
+/****************************
+ * Makes an "Expected X"
+ * message specific: names what
+ * was found instead, and at the
+ * end of the file the '{' that
+ * was never closed. Other
+ * messages are returned as given.
+ ****************************/
+std::wstring Parser::Elaborate(const std::wstring &msg)
+{
+  std::wstring out = ElaborateExpected(msg);
+
+  // An error on the line where a multi-line string ends is very often a missing closing
+  // quote at its start: the string ran on to the next quote, and what follows is read wrong.
+  const Scanner::MultiLineString* multi = scanner->FindMultiLineStringEndingOn(GetLineNumber());
+  if(multi && out.find(L"string literal") == std::wstring::npos) {
+    out += L"\n\tNote: the string literal opened at line " + std::to_wstring(multi->line) + L", column " + std::to_wstring(multi->pos) +
+           L" runs " + std::to_wstring(multi->end_line - multi->line) + L" line(s) and ends on this line. If it should have ended on line " +
+           std::to_wstring(multi->line) + L", the closing '\"' is missing there:" + scanner->Excerpt(multi->line, multi->pos);
+  }
+
+  return out;
+}
+
+std::wstring Parser::ElaborateExpected(const std::wstring &msg)
+{
+  // only the short "Expected X" forms, and none that already carry detail
+  if(msg.compare(0, 8, L"Expected") != 0 || msg.size() > 48 || msg.find(L'\n') != std::wstring::npos) {
+    return msg;
+  }
+
+  std::wstring out = msg;
+  Token* token = scanner->GetToken();
+  const std::wstring found = scanner->DescribeToken(token);
+  if(!found.empty()) {
+    out += L", found " + found;
+  }
+
+  // a declaration keyword inside a body: the body above never closed
+  if(IsDeclarationStart(token->GetType()) && token->GetLineNumber() > prev_token_line && token->GetType() != TOKEN_USE_ID) {
+    out += L"\n\t" + scanner->DescribeToken(token) + L" begins a declaration, which cannot appear inside a method body: the block above is still open, so a closing '}' is missing before this line";
+    const std::vector<Scanner::OpenBrace> open = scanner->FindUnclosedBraces();
+    if(!open.empty()) {
+      out += L"\n\tThe indentation suggests the '{' opened at line " + std::to_wstring(open.front().line) + L", column " + std::to_wstring(open.front().pos) +
+             L" is the one never closed:" + scanner->Excerpt(open.front().line, open.front().pos);
+    }
+  }
+
+  if(token->GetType() == TOKEN_END_OF_STREAM && msg == L"Expected '}'") {
+    const std::vector<Scanner::OpenBrace> open = scanner->FindUnclosedBraces();
+    if(!open.empty()) {
+      const Scanner::OpenBrace& brace = open.front();
+      out += L"\n\tThe '{' opened at line " + std::to_wstring(brace.line) + L", column " + std::to_wstring(brace.pos) +
+             L" is never closed:" + scanner->Excerpt(brace.line, brace.pos) + L"\n\tAdd a matching '}' (the indentation suggests that block";
+      out += open.size() > 1 ? L"; " + std::to_wstring(open.size()) + L" '{' in this file are unclosed, this is the likeliest)" : L")";
+    }
+  }
+
+  return out;
+}
+
+/****************************
  * Emits parsing error.
  ****************************/
 void Parser::ProcessError(ScannerTokenType type)
 {
-  diagnostics.Error(GetFileName(), GetLineNumber(), GetLinePosition(), error_msgs[type]);
+  if(ReportLexicalError() || IsEchoOfLexicalError()) {
+    return;
+  }
+
+  ReportSyntaxError(error_msgs[type]);
+}
+
+/****************************
+ * Reports a syntax error where
+ * the parser stands, except a
+ * missing ';': that is at the
+ * end of the line it belongs to,
+ * not at the next token, which
+ * is on a later line.
+ ****************************/
+void Parser::ReportSyntaxError(const std::wstring &msg)
+{
+  // what a top-level parse says after an earlier error in this file is noise
+  if(syntax_error_seen && msg.compare(0, 14, L"Expected 'use'") != 0 && msg.compare(0, 16, L"Expected 'class'") != 0) {
+    // fall through: an ordinary error
+  }
+  else if(syntax_error_seen) {
+    return;
+  }
+  syntax_error_seen = true;
+
+  if(msg == L"Expected ';'" && prev_token_line > 0 && GetLineNumber() > prev_token_line && scanner->GetToken()->GetType() != TOKEN_END_OF_STREAM) {
+    std::wstring text = scanner->GetSourceLine(prev_token_line);
+    size_t end = text.find_last_not_of(L" \t\r");
+    if(end != std::wstring::npos) {
+      const std::wstring found = scanner->DescribeToken(scanner->GetToken());
+      diagnostics.Error(GetFileName(), prev_token_line, (int)end + 2, L"Expected ';' at the end of this line, before " + found +
+                        L" on line " + std::to_wstring(GetLineNumber()) + scanner->Excerpt(prev_token_line, (int)end + 1));
+      EnterSyntaxQuiet();
+      return;
+    }
+  }
+
+  diagnostics.Error(GetFileName(), GetLineNumber(), GetLinePosition(), Elaborate(msg));
+  EnterSyntaxQuiet();
 }
 
 /****************************
@@ -142,7 +389,11 @@ void Parser::ProcessError(ScannerTokenType type)
  ****************************/
 void Parser::ProcessError(const std::wstring &msg)
 {
-  diagnostics.Error(GetFileName(), GetLineNumber(), GetLinePosition(), msg);
+  if(ReportLexicalError() || IsEchoOfLexicalError()) {
+    return;
+  }
+
+  ReportSyntaxError(msg);
 }
 
 /****************************
@@ -150,7 +401,10 @@ void Parser::ProcessError(const std::wstring &msg)
  ****************************/
 void Parser::ProcessError(const std::wstring &msg, ScannerTokenType sync)
 {
-  diagnostics.Error(GetFileName(), GetLineNumber(), GetLinePosition(), msg);
+  if(!ReportLexicalError() && !IsEchoOfLexicalError()) {
+    ReportSyntaxError(msg);
+  }
+
   ScannerTokenType token = GetToken();
   while(token != sync && token != TOKEN_END_OF_STREAM) {
     NextToken();
@@ -331,7 +585,15 @@ void Parser::ParseFile(const std::wstring &file_name)
 {
   scanner = new Scanner(file_name, alt_syntax);
   NextToken();
-  ParseBundle(0);
+  char stack_mark = 0;
+  stack_base = &stack_mark;
+  try {
+    ParseBundle(0);
+  }
+  catch(const NestingTooDeep&) {
+    // reported where it was found; the rest of the file is not read
+  }
+  stack_base = nullptr;
   // clean up
   delete scanner;
   scanner = nullptr;
@@ -344,7 +606,15 @@ void Parser::ParseText(std::pair<std::wstring, std::wstring> &progam)
 {
   scanner = new Scanner(progam.first, alt_syntax, progam.second);
   NextToken();
-  ParseBundle(0);
+  char stack_mark = 0;
+  stack_base = &stack_mark;
+  try {
+    ParseBundle(0);
+  }
+  catch(const NestingTooDeep&) {
+    // reported where it was found; the rest of the text is not read
+  }
+  stack_base = nullptr;
   // clean up
   delete scanner;
   scanner = nullptr;
@@ -355,12 +625,21 @@ void Parser::ParseText(std::pair<std::wstring, std::wstring> &progam)
  ****************************/
 void Parser::ParseBundle(int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
 
   if(Match(TOKEN_END_OF_STREAM)) {
-    ProcessError(L"Unable to open source file: '" + file_name + L"'");
+    if(!scanner->HasSource()) {
+      ProcessError(L"Unable to open source file: '" + file_name + L"'\n\tThe file is missing or cannot be read, or its text is not valid UTF-8");
+    }
+    else if(scanner->SourceSize() == 0) {
+      ProcessError(L"Source file is empty: '" + file_name + L"'\n\tA program needs at least one class");
+    }
+    else {
+      ProcessError(L"Source file has no code: '" + file_name + L"'\n\tIt holds only comments and whitespace; a program needs at least one class");
+    }
     return;
   }
 
@@ -630,6 +909,7 @@ void Parser::ParseBundle(int depth)
  ****************************/
 Enum* Parser::ParseEnum(int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -720,6 +1000,7 @@ Enum* Parser::ParseEnum(int depth)
  ****************************/
 Alias* Parser::ParseLambdas(int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -791,6 +1072,7 @@ Alias* Parser::ParseLambdas(int depth)
  ****************************/
 Enum* Parser::ParseConsts(int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -961,6 +1243,7 @@ void Parser::CalculateConst(Expression* expression, std::stack<INT64_VALUE>& val
  ****************************/
 Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
 {
+  CheckDepth(depth);
   int line_num = GetLineNumber();
   int line_pos = GetLinePosition();
   const int class_line_num = line_num;
@@ -1316,6 +1599,7 @@ void Parser::GenerateRecordMethods(Class* klass, const std::wstring& file_name, 
  ****************************/
 Class* Parser::ParseInterface(const std::wstring &bundle_name, int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -1554,6 +1838,7 @@ Lambda* Parser::ParseLambda(int depth) {
  ****************************/
 Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -1808,6 +2093,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
  ****************************/
 StatementList* Parser::ParseStatementList(int depth)
 {
+  CheckDepth(depth);
 #ifdef _DEBUG
   Debug(L"Statement List", depth);
 #endif
@@ -1865,6 +2151,8 @@ StatementList* Parser::ParseStatementList(int depth)
  ****************************/
 Statement* Parser::ParseStatement(int depth, bool semi_colon)
 {
+  CheckDepth(depth);
+  ChainScope chain_scope(chain_operators);
 #ifdef _DEBUG
   Debug(L"Statement", depth);
 #endif
@@ -3881,6 +4169,7 @@ bool Parser::IsOperationAssignToken()
  ****************************/
 Statement* Parser::ParseVariableOperation(Variable* variable, int line_num, int line_pos, const std::wstring& file_name, int depth)
 {
+  CheckDepth(depth);
   Statement* statement = nullptr;
 
   // 'rows[i][j] := v' (#1246): the row is read into a hidden local, which takes
@@ -4004,6 +4293,7 @@ Statement* Parser::ParseVariableOperation(Variable* variable, int line_num, int 
  ****************************/
 Statement* Parser::ParseCallElementOperation(MethodCall* head, int line_num, int line_pos, const std::wstring& file_name, int depth)
 {
+  CheckDepth(depth);
   MethodCall* tail = head;
   while(tail->GetMethodCall()) {
     tail = tail->GetMethodCall();
@@ -4161,6 +4451,7 @@ void Parser::CheckStatementSeparator(Statement* statement)
  ****************************/
 Statement* Parser::ParseIdentifierStatement(const std::wstring& ident, int line_num, int line_pos, const std::wstring& file_name, int depth)
 {
+  CheckDepth(depth);
   Statement* statement = nullptr;
 
   switch(GetToken()) {
@@ -4337,6 +4628,7 @@ Statement* Parser::ParseIdentifierStatement(const std::wstring& ident, int line_
  ****************************/
 Statement* Parser::ParsePrefixOperatorStatement(int line_num, int line_pos, const std::wstring& file_name, int depth)
 {
+  CheckDepth(depth);
   Statement* statement = nullptr;
 
   switch(GetToken()) {
@@ -4389,6 +4681,7 @@ Statement* Parser::ParsePrefixOperatorStatement(int line_num, int line_pos, cons
  ****************************/
 Statement* Parser::ParseControlFlowStatement(int line_num, int line_pos, const std::wstring& file_name, int depth)
 {
+  CheckDepth(depth);
   Statement* statement = nullptr;
 
   switch(GetToken()) {
@@ -4585,7 +4878,9 @@ StaticArray* Parser::ParseStaticArray(int depth) {
 
         case TOKEN_BAD_CHAR_STRING_LIT:
           if(HasLambdaInInterpolation(scanner->GetToken()->GetIdentifier())) {
-            ProcessError(L"Lambdas are not allowed inside string interpolation; assign the lambda to a local first", TOKEN_SEMI_COLON);
+            ProcessTokenError(L"Lambdas are not allowed inside string interpolation; assign the lambda to a local first"
+                              L"\n\tIn a string a '\\' starts an escape sequence, so a lambda's '\\(' cannot be read inside '{$...}'."
+                              L" Assign the lambda to a local variable first, then use that variable in the interpolation", TOKEN_SEMI_COLON);
           }
           else {
             ProcessError(L"Invalid escaped std::string literal", TOKEN_SEMI_COLON);
@@ -4628,6 +4923,7 @@ StaticArray* Parser::ParseStaticArray(int depth) {
  ****************************/
 Variable* Parser::ParseVariable(IdentifierContext& context, int depth)
 {
+  CheckDepth(depth);
   const int line_num = context.GetLineNumber();
   const int line_pos = context.GetLinePosition();
   const std::wstring ident = context.GetIdentifier();
@@ -4657,6 +4953,7 @@ Variable* Parser::ParseVariable(IdentifierContext& context, int depth)
  ****************************/
 std::vector<Type*> Parser::ParseGenericTypes(int depth)
 {
+  CheckDepth(depth);
   std::vector<Type*> generic_types;
 
   if(Match(TOKEN_LES)) {
@@ -4726,6 +5023,7 @@ std::vector<Type*> Parser::ParseGenericTypes(int depth)
  ****************************/
 std::vector<Class*> Parser::ParseGenericClasses(const std::wstring &bundle_name, int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -4852,6 +5150,7 @@ std::vector<Class*> Parser::ParseGenericClasses(const std::wstring &bundle_name,
  ****************************/
 Declaration* Parser::ParseDeclaration(IdentifierContext& context, bool is_stmt, int depth)
 {
+  CheckDepth(depth);
   int line_num = GetLineNumber();
   int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -4979,6 +5278,7 @@ frontend::Declaration* Parser::AddDeclaration(IdentifierContext& context, Type* 
  ****************************/
 DeclarationList* Parser::ParseDecelerationList(int depth)
 {
+  CheckDepth(depth);
 #ifdef _DEBUG
   Debug(L"Declaration Parameters", depth);
 #endif
@@ -4989,6 +5289,7 @@ DeclarationList* Parser::ParseDecelerationList(int depth)
   NextToken();
 
   DeclarationList* declarations = TreeFactory::Instance()->MakeDeclarationList();
+  bool abandoned = false;
   while(!Match(TOKEN_CLOSED_PAREN) && !Match(TOKEN_END_OF_STREAM)) {
     if(!Match(TOKEN_IDENT)) {
       ProcessError(TOKEN_IDENT);
@@ -5032,9 +5333,23 @@ DeclarationList* Parser::ParseDecelerationList(int depth)
       }
     }
     else if(!Match(TOKEN_CLOSED_PAREN)) {
-      ProcessError(L"Expected ',' or ')'", TOKEN_CLOSED_BRACE);
-      NextToken();
+      ProcessError(L"Expected ',' or ')'");
+      // a missing ',' leaves the next parameter starting here; anything else is skipped
+      // to where the list ends or the method's body begins, not on through the body
+      if(!Match(TOKEN_IDENT)) {
+        while(!Match(TOKEN_CLOSED_PAREN) && !Match(TOKEN_TILDE) && !Match(TOKEN_OPEN_BRACE) && !Match(TOKEN_CLOSED_BRACE) &&
+              !Match(TOKEN_END_OF_STREAM) && !IsDeclarationStart(GetToken())) {
+          NextToken();
+        }
+        if(!Match(TOKEN_CLOSED_PAREN)) {
+          abandoned = true;
+          break;
+        }
+      }
     }
+  }
+  if(abandoned) {
+    return declarations;
   }
   if(!Match(TOKEN_CLOSED_PAREN)) {
     ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
@@ -5049,11 +5364,16 @@ DeclarationList* Parser::ParseDecelerationList(int depth)
  ****************************/
 ExpressionList* Parser::ParseExpressionList(int &end_pos, int depth, ScannerTokenType open, ScannerTokenType closed, bool allow_named)
 {
+  CheckDepth(depth);
 #ifdef _DEBUG
   Debug(L"Calling Parameters", depth);
 #endif
 
   ExpressionList* expressions = TreeFactory::Instance()->MakeExpressionList();
+  // where the list opens, so a missing close can name it
+  const int open_line = GetLineNumber();
+  const int open_pos = GetLinePosition();
+  bool list_broken = false;
   if(!Match(open)) {
     ProcessError(open);
   }
@@ -5107,18 +5427,36 @@ ExpressionList* Parser::ParseExpressionList(int &end_pos, int depth, ScannerToke
         NextToken();
         break;
       }
+      // Neither ',' nor the closing token follows the argument, so the list is
+      // broken here. Reading on for another argument only produces errors that
+      // are the same mistake again.
+      else if(!Match(closed) && !lexical_recovery) {
+        const std::wstring closing = closed == TOKEN_CLOSED_BRACKET ? L"']'" : L"')'";
+        const std::wstring opening = open == TOKEN_OPEN_BRACKET ? L"'['" : L"'('";
+        const std::wstring found = scanner->DescribeToken(scanner->GetToken());
+        ProcessError(L"Expected ',' or " + closing + L" after this argument" + (found.empty() ? L"" : L", found " + found) +
+                     L"\n\tThe " + opening + L" opened at line " + std::to_wstring(open_line) + L", column " + std::to_wstring(open_pos) +
+                     L" is not closed:" + scanner->Excerpt(open_line, open_pos) +
+                     L"\n\tSeparate arguments with ',' and close the list with " + closing);
+        list_broken = true;
+        break;
+      }
     }
     else {
       NextToken();
     }
   }
 
-  if(!Match(closed)) {
+  if(!list_broken && !Match(closed)) {
     ProcessError(closed);
   }
   end_pos = GetLinePosition() + 1;
 
-  NextToken();
+  // when the list is broken the current token belongs to the statement that
+  // follows (usually its ';'), so it is left for that statement
+  if(!list_broken) {
+    NextToken();
+  }
 
   return expressions;
 }
@@ -5132,6 +5470,7 @@ ExpressionList* Parser::ParseExpressionList(int &end_pos, int depth, ScannerToke
  ****************************/
 ExpressionList* Parser::ParseCallArguments(int &end_pos, int depth, const std::wstring &method_name)
 {
+  CheckDepth(depth);
   ExpressionList* expressions = ParseExpressionList(end_pos, depth, TOKEN_OPEN_PAREN, TOKEN_CLOSED_PAREN, true);
   if(expressions->HasNames() && program) {
     program->AddNamedCallShape(method_name, expressions->GetNames());
@@ -5144,6 +5483,7 @@ ExpressionList* Parser::ParseCallArguments(int &end_pos, int depth, const std::w
  ****************************/
 ExpressionList* Parser::ParseIndices(int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -5200,6 +5540,7 @@ ExpressionList* Parser::ParseIndices(int depth)
  ****************************/
 Expression* Parser::ParseExpression(int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -5282,6 +5623,7 @@ Expression* Parser::ParseExpression(int depth)
  ****************************/
 Expression* Parser::ParseLogic(int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -5343,6 +5685,7 @@ Expression* Parser::ParseLogic(int depth)
  ****************************/
 Expression* Parser::ParseMathLogic(int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -5399,6 +5742,7 @@ Expression* Parser::ParseMathLogic(int depth)
  ****************************/
 Expression* Parser::ParseTerm(int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -5418,6 +5762,7 @@ Expression* Parser::ParseTerm(int depth)
 
   CalculatedExpression* expression = nullptr;
   while((Match(TOKEN_ADD) || Match(TOKEN_SUB))) {
+    CheckChain();
     if(expression) {
       CalculatedExpression* right;
       if(Match(TOKEN_ADD)) {
@@ -5463,6 +5808,7 @@ Expression* Parser::ParseTerm(int depth)
  ****************************/
 Expression* Parser::ParseFactor(int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -5481,6 +5827,7 @@ Expression* Parser::ParseFactor(int depth)
   // the same chain as the calculated ones instead of binding tighter or looser.
   Expression* expression = left;
   while(IsFactorOperator()) {
+    CheckChain();
     if(Match(TOKEN_SHR_UNSIGNED)) {
       NextToken();
       ExpressionList* shift_args = TreeFactory::Instance()->MakeExpressionList();
@@ -5604,6 +5951,7 @@ Type* Parser::ExpressionToType(Expression* expression)
  ****************************/
 Expression* Parser::ParseSimpleExpression(int depth)
 {
+  CheckDepth(depth);
   int line_num = GetLineNumber();
   int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -5866,7 +6214,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
 
     case TOKEN_UNKNOWN:
-      ProcessError(L"Invalid expression: unexpected token", TOKEN_SEMI_COLON);
+      expression = ParseRejectedToken(depth, file_name, line_num, line_pos);
       break;
 
     default:
@@ -5905,7 +6253,9 @@ Expression* Parser::ParseSimpleExpression(int depth)
 
     case TOKEN_BAD_CHAR_STRING_LIT:
       if(HasLambdaInInterpolation(scanner->GetToken()->GetIdentifier())) {
-        ProcessError(L"Lambdas are not allowed inside string interpolation; assign the lambda to a local first", TOKEN_SEMI_COLON);
+        ProcessTokenError(L"Lambdas are not allowed inside string interpolation; assign the lambda to a local first"
+                          L"\n\tIn a string a '\\' starts an escape sequence, so a lambda's '\\(' cannot be read inside '{$...}'."
+                          L" Assign the lambda to a local variable first, then use that variable in the interpolation", TOKEN_SEMI_COLON);
       }
       else {
         ProcessError(L"Invalid escaped string literal", TOKEN_SEMI_COLON);
@@ -5945,7 +6295,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
 
     case TOKEN_UNKNOWN:
-      ProcessError(L"Invalid expression: unexpected token", TOKEN_SEMI_COLON);
+      expression = ParseRejectedToken(depth, file_name, line_num, line_pos);
       break;
 
     default:
@@ -5978,6 +6328,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
  ****************************/
 void Parser::ParseCastTypeOf(Expression* expression, int depth)
 {
+  CheckDepth(depth);
   if(Match(TOKEN_ASSESSOR)) {
     NextToken();
 
@@ -6031,6 +6382,7 @@ void Parser::ParseCastTypeOf(Expression* expression, int depth)
  ****************************/
 MethodCall* Parser::ParseMethodCall(int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -6052,6 +6404,7 @@ MethodCall* Parser::ParseMethodCall(int depth)
  ****************************/
 MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
 {
+  CheckDepth(depth);
   const int line_num = context.GetLineNumber();
   const int line_pos = context.GetLinePosition();
   const std::wstring ident = context.GetIdentifier();
@@ -6290,6 +6643,7 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
  ****************************/
 void Parser::ParseMethodCall(Expression* expression, int depth)
 {
+  CheckDepth(depth);
 #ifdef _DEBUG
   Debug(L"Method call", depth);
 #endif
@@ -6368,6 +6722,7 @@ void Parser::ParseMethodCall(Expression* expression, int depth)
  ****************************/
 MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -6455,6 +6810,7 @@ bool Parser::IsCurriableCall(MethodCall* method_call)
  ****************************/
 MethodCall* Parser::ParseCurriedCalls(MethodCall* method_call, int depth)
 {
+  CheckDepth(depth);
   while(Match(TOKEN_OPEN_PAREN)) {
     const std::wstring file_name = GetFileName();
     const int line_num = GetLineNumber();
@@ -6481,6 +6837,7 @@ MethodCall* Parser::ParseCurriedCalls(MethodCall* method_call, int depth)
  ****************************/
 void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -6628,6 +6985,7 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
  ****************************/
 If* Parser::ParseIf(int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -6676,6 +7034,7 @@ If* Parser::ParseIf(int depth)
  ****************************/
 DoWhile* Parser::ParseDoWhile(int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -6713,6 +7072,7 @@ DoWhile* Parser::ParseDoWhile(int depth)
  ****************************/
 While* Parser::ParseWhile(int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -6759,6 +7119,7 @@ While* Parser::ParseWhile(int depth)
  ****************************/
 Try* Parser::ParseTry(int depth)
 {
+  CheckDepth(depth);
   const std::wstring file_name = GetFileName();
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
@@ -6838,6 +7199,7 @@ Try* Parser::ParseTry(int depth)
 
 CriticalSection* Parser::ParseCritical(int depth)
 {
+  CheckDepth(depth);
   const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -6879,6 +7241,7 @@ CriticalSection* Parser::ParseCritical(int depth)
  ****************************/
 For* Parser::ParseEach(bool reverse, int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const std::wstring file_name = GetFileName();
 
@@ -7216,6 +7579,7 @@ Expression* Parser::HoistEachCollection(Expression* collection, const std::wstri
  ****************************/
 For* Parser::ParseFor(int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -7282,6 +7646,7 @@ For* Parser::ParseFor(int depth)
  ****************************/
 Select* Parser::ParseSelect(int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -7381,6 +7746,7 @@ Select* Parser::ParseSelect(int depth)
  ****************************/
 Return* Parser::ParseReturn(int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -7403,6 +7769,7 @@ Return* Parser::ParseReturn(int depth)
  ****************************/
 Leaving* Parser::ParseLeaving(int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -7424,6 +7791,7 @@ Leaving* Parser::ParseLeaving(int depth)
  ****************************/
 Assignment* Parser::ParseAssignment(Variable* variable, int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -7477,6 +7845,7 @@ Assignment* Parser::ParseAssignment(Variable* variable, int depth)
  ****************************/
 Type* Parser::ParseType(int depth)
 {
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -7638,7 +8007,8 @@ Type* Parser::ParseType(int depth)
  * Parses an expression from a text string.
  * Used for string interpolation expressions.
  ****************************/
-Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wstring& filename, [[maybe_unused]] int line_num, [[maybe_unused]] int line_pos, Class* context_class)
+Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wstring& filename, [[maybe_unused]] int line_num, [[maybe_unused]] int line_pos, Class* context_class,
+                                        std::wstring* reason)
 {
   // Create scanner on the expression text
   Scanner* expr_scanner = new Scanner(filename, false, text);
@@ -7666,6 +8036,21 @@ Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wst
 
   // Parse the expression
   Expression* result = expr_parser.ParseExpression(0);
+
+  // A token the scanner rejected is an error even where the parse recovered from it
+  // (a malformed literal stands in as a literal): the interpolation is not valid.
+  if(expr_parser.lexical_error_seen) {
+    if(reason) {
+      const std::vector<Diagnostic> errors = expr_parser.diagnostics.UniqueErrors();
+      if(!errors.empty()) {
+        *reason = errors[0].message;
+      }
+    }
+    delete expr_scanner;
+    expr_parser.scanner = nullptr;
+    expr_parser.program = nullptr;
+    return nullptr;
+  }
 
   // Check that we consumed the entire expression
   if(!expr_parser.Match(TOKEN_END_OF_STREAM)) {

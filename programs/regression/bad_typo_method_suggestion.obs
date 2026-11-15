@@ -1,0 +1,12 @@
+# EXPECT_COMPILE_ERROR: Did you mean 'Size'?
+# EXPECT_ERROR_COUNT: 1
+#~
+An undefined method says what it was called as, which class it was called on, and the
+method of that class it is closest to.
+~#
+class BadTypoMethodSuggestion {
+	function : Main(args : String[]) ~ Nil {
+		s := "abc";
+		s->Szie()->PrintLine();
+	}
+}

@@ -1,0 +1,15 @@
+# EXPECT_COMPILE_ERROR: runs 2 line(s) and ends on this line
+# EXPECT_ERROR_COUNT: 2
+#~
+A string missing its closing quote runs on to the next quote in the file, so the first error
+was reported lines below the mistake with no hint. The error now names the string and shows
+where it opened.
+~#
+class BadStringRunsOnNote {
+	function : Main(args : String[]) ~ Nil {
+		x := 5;
+		"FAIL: {$x}->PrintLine();
+		y := 6;
+		"done"->PrintLine();
+	}
+}

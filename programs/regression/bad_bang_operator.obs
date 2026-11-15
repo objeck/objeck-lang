@@ -1,0 +1,15 @@
+# EXPECT_COMPILE_ERROR: For 'not equal' write '<>'
+# EXPECT_ERROR_COUNT: 1
+#~
+'!' is not an Objeck operator; the message says what to write instead ('<>' for not).
+The statements after it are not reported again.
+~#
+class BadBangOperator {
+	function : Main(args : String[]) ~ Nil {
+		done := true;
+		if(!done) {
+			"not done"->PrintLine();
+		};
+		"after"->PrintLine();
+	}
+}

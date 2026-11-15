@@ -1,0 +1,18 @@
+# EXPECT_COMPILE_ERROR: Exponent without a decimal point: '1e3'
+# EXPECT_ERROR_COUNT: 6
+#~
+Each malformed number is its own error, said in its own words, at its own first
+character; one bad number does not hide the next. They were all "Invalid expression:
+unexpected token", or an error at a stale position.
+~#
+class BadNumberLiteralForms {
+	function : Main(args : String[]) ~ Nil {
+		a := 1e3;
+		b := 0o9;
+		c := 0b;
+		d := 12abc;
+		e := 1.2.3;
+		f := 1_000_;
+		(a + b + c + d + e + f)->PrintLine();
+	}
+}

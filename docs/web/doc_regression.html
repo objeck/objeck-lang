@@ -104,6 +104,7 @@ run_regression.cmd arm64    REM For ARM64 build</pre>
      <li><code>run_debugger_tests.sh</code> / <code>run_debugger_tests.cmd</code> <code>[x64|arm64]</code> - <code>obd</code> command-line tests (the POSIX one needs <code>expect</code>)</li>
      <li><code>python3 run_dap_tests.py &lt;bin_dir&gt;</code> - Debug Adapter Protocol (<code>obd --dap</code>) tests</li>
      <li><code>python3 run_vm_flag_tests.py &lt;bin_dir&gt;</code> - <code>obr</code> flags, and interpreter/JIT equivalence</li>
+     <li><code>python3 run_compiler_robustness.py &lt;bin_dir&gt;</code> - negative testing of the compiler front end: valid programs broken in sixteen ways, plus hostile files (deep nesting, random bytes, thousands of errors); fails on a crash, a hang, or a drop in how accurately and briefly errors are reported</li>
      <li><code>python3 run_differential.py &lt;bin_dir&gt;</code> - compiles every test at <code>-opt s0</code> and <code>-opt s3</code> and requires the same output with the JIT off, on by default and forced on; its header documents its markers</li>
     </ul>
     <h3 id="test-organization">Test Organization</h3>

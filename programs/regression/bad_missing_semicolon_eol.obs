@@ -1,0 +1,14 @@
+# EXPECT_COMPILE_ERROR: Expected ';' at the end of this line
+# EXPECT_ERROR_COUNT: 1
+#~
+A field declaration missing its ';' was reported at the NEXT line's first token, with a
+cascade after it. It is now one error at the end of the line that lacks the ';'.
+~#
+class BadMissingSemicolonEol {
+	@count : Int
+	@total : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		"ok"->PrintLine();
+	}
+}
