@@ -366,7 +366,7 @@ def stress_cases():
     # the parent-class retry used to analyze a call's arguments again: 2^n for a missing method
     add("nested_undefined_calls_30", prog("x := " + "Missing(" * 30 + "1" + ")" * 30 + ";"), True)
     # size-scaling: each of these was quadratic (a dead store was looked up against every other
-    # one by value, and a select label copied the label map): 54 s and 37 s, now 5 s and 2 s
+    # one by value, and a select label copied the label map): 54 s and 37 s; the scanner then made them quadratic again on POSIX (wcslen per token), now under 1 s
     add("many_dead_stores_100000", prog("x := 1;\n" * 100000))
     add("many_select_labels_50000", prog("x := 1; select(x) {" + "".join("label %d: {}\n" % i for i in range(50000)) + "}"))
     # confusing but small

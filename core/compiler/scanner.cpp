@@ -487,7 +487,7 @@ void Scanner::CheckIdentifier(int index)
   try {
     // copy string
     const size_t length = end_pos - start_pos;
-    std::wstring ident(buffer, start_pos, length);
+    std::wstring ident(buffer + start_pos, length);
 
     // The keyword map is authoritative. This used to be a 366-line switch that
     // restated every keyword the map already held -- a token had to be listed
@@ -521,7 +521,7 @@ void Scanner::CheckString(int index, bool is_lit, bool is_valid)
 {
   // copy string
   const size_t length = end_pos - start_pos;
-  std::wstring char_string(buffer, start_pos, length);
+  std::wstring char_string(buffer + start_pos, length);
   // set string
   if(is_valid) {
     tokens[index]->SetType(TOKEN_CHAR_STRING_LIT);
@@ -581,7 +581,7 @@ std::wstring Scanner::NumberText()
     end++;
   }
 
-  return std::wstring(buffer, start_pos, end - start_pos);
+  return std::wstring(buffer + start_pos, end - start_pos);
 }
 
 /****************************
@@ -624,7 +624,7 @@ std::wstring Scanner::GetSourceLine(int line) const
     end++;
   }
 
-  return std::wstring(buffer, i, end - i);
+  return std::wstring(buffer + i, end - i);
 }
 
 /****************************
@@ -888,7 +888,7 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
 {
   // copy string
   const size_t length = end_pos - start_pos;
-  std::wstring ident(buffer, start_pos, length);
+  std::wstring ident(buffer + start_pos, length);
   const std::wstring written = ident;
 
   // A 'u' suffix reads the literal across the whole unsigned range and keeps
@@ -1015,7 +1015,7 @@ void Scanner::ParseDouble(int index)
 {
   // copy string
   const size_t length = end_pos - start_pos;
-  std::wstring ident(buffer, start_pos, length);
+  std::wstring ident(buffer + start_pos, length);
   const std::wstring written = ident;
 
   if(ident.back() == L'_') {
@@ -1064,7 +1064,7 @@ void Scanner::ParseUnicodeChar(int index)
   // copy string
   const size_t length = end_pos - start_pos;
   if(length < 5) {
-    std::wstring ident(buffer, start_pos, length);
+    std::wstring ident(buffer + start_pos, length);
     // set token
     tokens[index]->SetType(TOKEN_CHAR_LIT);
     tokens[index]->SetCharLit((wchar_t)wcstol(ident.c_str(), nullptr, 16));
@@ -1074,7 +1074,7 @@ void Scanner::ParseUnicodeChar(int index)
   }
   else {
     Reject(index, L"Unicode escape has " + std::to_wstring(length) + L" hex digits: '\\u" +
-                  std::wstring(buffer, start_pos, length) + L"'\n\tA \\u escape takes at most 4 hex digits, as in '\\u00e9'");
+                  std::wstring(buffer + start_pos, length) + L"'\n\tA \\u escape takes at most 4 hex digits, as in '\\u00e9'");
     tokens[index]->SetLineNbr(line_nbr);
     tokens[index]->SetLinePos((int)(line_pos - length - 1));
     tokens[index]->SetFileName(filename);
@@ -1656,7 +1656,7 @@ void Scanner::ParseToken(int index)
       // 'ab<ZWSP>cd' looks like one name and scans as two; a zero-width space is
       // otherwise treated as white space, so only one between name characters is an error
       if((cur_char == 0x200b || cur_char == 0xfeff) && (iswalnum(nxt_char) || nxt_char == L'_')) {
-        const std::wstring written(buffer, start_pos, end_pos - start_pos);
+        const std::wstring written(buffer + start_pos, end_pos - start_pos);
         Reject(index, std::wstring(L"Invisible character ") + DescribeChar(cur_char) + L" inside a name, after '" + written +
                       L"'\n\tIt looks like one word but reads as two; delete it");
         // the rest of the word belongs to the same token, so it is not read again as a name
@@ -1810,7 +1810,7 @@ void Scanner::ParseToken(int index)
       ParseInteger(index, 2);
     }
     else if(hex_state || bin_state || double_state) {
-      const std::wstring text(buffer, start_pos, end_pos - start_pos);
+      const std::wstring text(buffer + start_pos, end_pos - start_pos);
       const size_t bad = text.find_first_not_of(L"0123456789_.");
       if(bad != std::wstring::npos) {
         Reject(index, L"Invalid character " + DescribeChar(text[bad]) + L" in number '" + text +
