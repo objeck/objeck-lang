@@ -38,6 +38,7 @@
 #include <string.h>
 #include <assert.h>
 #include <algorithm>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -1171,6 +1172,12 @@ public:
 
   // libraries in the path that define a class but were not linked
   std::vector<std::wstring> LibrariesDefining(const std::wstring& cls_name);
+
+  // libraries in the path that define a bundle (a 'use' name) but were not linked
+  std::vector<std::wstring> LibrariesDefiningBundle(const std::wstring& bundle_name);
+
+  // the unlinked libraries in the path that 'defines' accepts
+  std::vector<std::wstring> UnlinkedLibrariesWhere(const std::function<bool(Library&)>& defines);
 
   // reports an unresolvable class, naming what would supply it, by throwing CompilerFatal
   [[noreturn]] void ReportUnresolvedClass(const std::wstring& cls_name);

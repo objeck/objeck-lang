@@ -433,6 +433,9 @@ echo "Every Mach-O file in the tree loads on macOS 13.3 (ONNX Runtime: 14.0)"
 
 cd core/release
 
+# keep an installed language server (~/.objeck-lsp) in step with this build; a no-op where there is none
+bash ../../tools/lsp/scripts/refresh_local_lsp.sh "$(pwd)/deploy" || true
+
 # deploy
 if [ ! -z "$1" ] && [ "$1" = "deploy" ]; then
 	# Sign before archiving. The .tgz is built HERE, and until now the .pkg was

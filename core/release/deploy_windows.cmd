@@ -1104,6 +1104,8 @@ if exist %TARGET%\bin\DirectML.dll if not exist %TARGET%\doc\licenses\directml\L
 :installer
 
 REM finished
+REM keep an installed language server (~\.objeck-lsp) in step with this build; a no-op where there is none
+@call "%~dp0..\..\tools\lsp\scripts\refresh_local_lsp.cmd" "%~dp0%TARGET%"
 @if [%2] NEQ [deploy] call "%~dp0ui.cmd" :ui_ok "deploy complete"
 if [%2] NEQ [deploy] goto end
 	@call "%~dp0ui.cmd" :ui_step "package: msi + zip"

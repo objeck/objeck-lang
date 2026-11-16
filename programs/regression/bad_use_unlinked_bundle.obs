@@ -1,0 +1,15 @@
+# EXPECT_COMPILE_ERROR: Add it with '-lib query'
+#~
+A 'use' of a bundle whose library was not linked names that library. The undefined-bundle
+error used to stop at "not defined in program or linked libraries", so a program with the
+query library missing from -lib (or from build.json, in an editor) got a screenful of
+cascading errors and no hint what to add. The regression harness links cipher, collect, xml
+and json only, so query.obl is in the library path and not linked.
+~#
+use Query.Structured;
+
+class BadUseUnlinkedBundle {
+	function : Main(args : String[]) ~ Nil {
+		"unreachable"->PrintLine();
+	}
+}
