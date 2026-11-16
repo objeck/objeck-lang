@@ -1043,23 +1043,29 @@ inline wchar_t* LoadFileBuffer(const std::wstring &filename, size_t& buffer_size
 
   // convert Unicode
 #ifdef _WIN32
-  const int wsize = MultiByteToWideChar(CP_UTF8, 0, buffer, -1, nullptr, 0);
-  if(wsize == 0) {
+  // The byte count, not -1: a length of -1 reads to the first NUL byte, so a NUL
+  // in the middle of a source file silently dropped everything after it (the
+  // POSIX branch below always kept the whole file).
+  const int byte_count = (int)buffer_size;
+  const int wsize = byte_count > 0 ? MultiByteToWideChar(CP_UTF8, 0, buffer, byte_count, nullptr, 0) : 0;
+  if(byte_count > 0 && wsize == 0) {
     free(buffer);
     return nullptr;
   }
-  wchar_t* wbuffer = new wchar_t[wsize];
-  const int check = MultiByteToWideChar(CP_UTF8, 0, buffer, -1, wbuffer, wsize);
-  if(check == 0) {
-    delete[] wbuffer;
-    free(buffer);
-    return nullptr;
+  wchar_t* wbuffer = new wchar_t[wsize + 1];
+  if(wsize > 0) {
+    const int check = MultiByteToWideChar(CP_UTF8, 0, buffer, byte_count, wbuffer, wsize);
+    if(check == 0) {
+      delete[] wbuffer;
+      free(buffer);
+      return nullptr;
+    }
   }
-  // Report the wide-char count, excluding the terminating null that 'wsize'
-  // includes. Callers (Scanner::NextChar) read buffer_size elements out of
-  // 'wbuffer', so leaving the byte count here over-runs it for any multibyte
-  // source -- the same defect already fixed on the POSIX branch below.
-  buffer_size = (size_t)wsize - 1;
+  wbuffer[wsize] = L'\0';
+  // Report the wide-char count. Callers (Scanner::NextChar) read buffer_size
+  // elements out of 'wbuffer', so leaving the byte count here over-runs it for
+  // any multibyte source -- the same defect already fixed on the POSIX branch below.
+  buffer_size = (size_t)wsize;
 #else
   // Locale-independent UTF-8 decode of the source bytes. mbstowcs honors
   // LC_CTYPE and rejects every non-ASCII byte outside a UTF-8 locale (LANG

@@ -93,6 +93,16 @@ std::wstring Parser::ParseBundleName()
       if(Match(TOKEN_PERIOD)) {
         name += L'.';
         NextToken();
+        // 'x.;' left the '.' on the end of the name, which then failed later as an
+        // "Undefined variable: 'x.'" -- say what is actually wrong, where it is
+        if(!Match(TOKEN_IDENT)) {
+          ProcessError(L"Expected a name after '.'\n\tA dotted name such as System.IO needs an identifier after each '.'; "
+                       L"to call a method use '->', as in x->Method()", TOKEN_SEMI_COLON);
+          while(name.size() && name.back() == L'.') {
+            name.pop_back();
+          }
+          break;
+        }
       }
       else if(Match(TOKEN_IDENT)) {
         ProcessError(L"Expected '.'", TOKEN_SEMI_COLON);
@@ -171,7 +181,10 @@ Expression* Parser::ParseRejectedToken(int depth, const std::wstring &file_name,
   const int at = token->GetErrorPos() - 1;
   const wchar_t first = at >= 0 && at < (int)source.size() ? source[at] : L' ';
 
-  if(!ReportLexicalError(false)) {
+  // a rejected word (a name with an invisible character in it) is a whole operand that
+  // cannot be read, so what follows it on the statement is not reported a second time
+  const bool is_word = iswalpha(first) || first == L'_';
+  if(!ReportLexicalError(is_word)) {
     ProcessError(L"Invalid expression: unexpected token", TOKEN_SEMI_COLON);
     return nullptr;
   }
@@ -179,7 +192,7 @@ Expression* Parser::ParseRejectedToken(int depth, const std::wstring &file_name,
   NextToken();
 
   // what stands in for a literal is a literal; a skipped operator leaves its operand
-  const bool is_literal = iswdigit(first) || first == L'.' || first == L'\'' || first == L'"';
+  const bool is_literal = is_word || iswdigit(first) || first == L'.' || first == L'\'' || first == L'"';
   if(is_literal || Match(TOKEN_SEMI_COLON) || Match(TOKEN_CLOSED_PAREN) || Match(TOKEN_COMMA) ||
      Match(TOKEN_CLOSED_BRACKET) || Match(TOKEN_END_OF_STREAM)) {
     return TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 0);

@@ -31,6 +31,7 @@
 
 #include "optimization.h"
 #include <functional>
+#include <unordered_map>
 #include <tuple>
 
 using namespace backend;
@@ -1429,23 +1430,69 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
     }
   }
 
-  std::vector<std::pair<size_t, size_t>> dead_store_edits;
+  // A store is dead when the next thing that happens to its local is another store:
+  // no read, and no jump, label or return first (the old forward scan, from every
+  // store, was quadratic when a method held many distinct locals). One backward pass
+  // gives the same answer: 'after' holds, per local, what its first later event is.
+  // A jump, label or return forgets everything, which a generation count does in O(1).
+  const size_t instr_count = input_instrs.size();
+  std::vector<char> is_dead(instr_count, 0);
+  {
+    std::unordered_map<long, std::pair<bool, size_t> > after;
+    size_t generation = 0;
+    for(size_t i = instr_count; i-- > start_pos;) {
+      IntermediateInstruction* instr = input_instrs[i];
+      switch(instr->GetType()) {
+      case JMP:
+      case LBL:
+      case RTRN:
+        ++generation;
+        break;
 
-  for(size_t i = start_pos; i < input_instrs.size(); ++i) {
+      case LOAD_INT_VAR:
+      case LOAD_FLOAT_VAR:
+      case LOAD_FUNC_VAR:
+        if(instr->GetOperand2() == LOCL) {
+          after[instr->GetOperand()] = std::pair<bool, size_t>(false, generation);
+        }
+        break;
+
+      case STOR_INT_VAR:
+      case STOR_FLOAT_VAR:
+      case STOR_FUNC_VAR:
+        if(instr->GetOperand2() == LOCL) {
+          const auto found = after.find(instr->GetOperand());
+          is_dead[i] = found != after.end() && found->second.second == generation && found->second.first;
+          after[instr->GetOperand()] = std::pair<bool, size_t>(true, generation);
+        }
+        break;
+
+      default:
+        break;
+      }
+    }
+  }
+
+  // the instructions to drop, marked as they are found (a range per dead store)
+  std::vector<char> drop(instr_count, 0);
+
+  for(size_t i = start_pos; i < instr_count; ++i) {
     IntermediateInstruction* instr = input_instrs[i];
 
     switch(instr->GetType()) {
     case STOR_INT_VAR:
     case STOR_FLOAT_VAR:
     case STOR_FUNC_VAR:
-      if(instr->GetStatement() && IsDeadStore(instr, i, input_instrs)) {
+      if(instr->GetStatement() && is_dead[i]) {
         const std::pair<size_t, size_t> dead_store_edit = DeadStoreEdit(i, input_instrs);
         // Only the store is dead, not the expression: removing a statement
         // whose value has effects (a method call, an allocation, a trap, a
         // division that can fault) changed behaviour. `v0 := s->M(p0); v0 := 1;`
         // lost the call to M at s1+ (fuzzer, programs/regression/opt_dead_store_side_effects.obs).
         if(IsEffectFreeRange(dead_store_edit.first, dead_store_edit.second, input_instrs)) {
-          dead_store_edits.push_back(dead_store_edit);
+          for(size_t j = dead_store_edit.first; j <= dead_store_edit.second; ++j) {
+            drop[j] = 1;
+          }
         }
       }
       break;
@@ -1460,26 +1507,14 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
     outputs->AddInstructions(input_instrs);
   }
   else {
-    for(size_t i = 0; i < input_instrs.size(); ++i) {
-      if(!InDeadStoreRange(i, dead_store_edits)) {
+    for(size_t i = 0; i < instr_count; ++i) {
+      if(!drop[i]) {
         outputs->AddInstruction(input_instrs[i]);
       }
     }
   }
 
   return outputs;
-}
-
-bool ItermediateOptimizer::InDeadStoreRange(size_t pos, std::vector<std::pair<size_t, size_t>> dead_store_edits)
-{
-  for(size_t i = 0; i < dead_store_edits.size(); ++i) {
-    const std::pair<size_t, size_t> dead_store_edit = dead_store_edits[i];
-    if(pos >= dead_store_edit.first && pos <= dead_store_edit.second) {
-      return true;
-    }
-  }
-
-  return false;
 }
 // True when the instructions in [start_pos, end_pos) (the dead store's value,
 // excluding the store itself at end_pos) can be dropped without a visible
@@ -1569,41 +1604,6 @@ std::pair<size_t, size_t> ItermediateOptimizer::DeadStoreEdit(size_t start_pos, 
   }
 
   return std::pair<size_t, size_t>(end_pos, start_pos);
-}
-
-bool ItermediateOptimizer::IsDeadStore(IntermediateInstruction* check_instr, size_t check_pos, std::vector<IntermediateInstruction*>& input_instrs)
-{
-  for(size_t i = check_pos + 1; i < input_instrs.size(); ++i) {
-    IntermediateInstruction* instr = input_instrs[i];
-
-    switch(instr->GetType()) {
-    case JMP:
-    case LBL:
-    case RTRN:
-      return false;
-
-    case LOAD_INT_VAR:
-    case LOAD_FLOAT_VAR:
-    case LOAD_FUNC_VAR:
-      if(instr->GetOperand() == check_instr->GetOperand() && instr->GetOperand2() == LOCL && check_instr->GetOperand2() == LOCL) {
-        return false;
-      }
-      break;
-
-    case STOR_INT_VAR:
-    case STOR_FLOAT_VAR:
-    case STOR_FUNC_VAR:
-      if(instr->GetOperand() == check_instr->GetOperand() && instr->GetOperand2() == LOCL && check_instr->GetOperand2() == LOCL) {
-        return true;
-      }
-      break;
-     
-    default:
-      break;
-    }
-  }
-
-  return false;
 }
 
 IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)

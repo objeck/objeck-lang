@@ -11285,9 +11285,9 @@ bool ContextAnalyzer::DuplicateParentEntries(SymbolEntry* entry, Class* klass)
   return false;
 }
 
-bool ContextAnalyzer::DuplicateCaseItem(std::map<INT64_VALUE, StatementList*>label_statements, INT64_VALUE value)
+bool ContextAnalyzer::DuplicateCaseItem(const std::map<INT64_VALUE, StatementList*>& label_statements, INT64_VALUE value)
 {
-  std::map<INT64_VALUE, StatementList*>::iterator result = label_statements.find(value);
+  std::map<INT64_VALUE, StatementList*>::const_iterator result = label_statements.find(value);
   if(result != label_statements.end()) {
     return true;
   }
