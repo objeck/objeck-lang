@@ -40,4 +40,4 @@ The old code emitted x87 FPU instructions for transcendentals and got several wr
 ![JIT Code Layout](../../../../../docs/images/jit_design.svg "JIT Code Layout")
 
 ### Implementation
-C++ with STL. Sources: `jit_amd_lp64.h`, `jit_amd_lp64.cpp` (~8.7k lines). Shared driver: [`../jit_common.{h,cpp}`](../jit_common.h).
+C++ with STL. Sources: `jit_amd_lp64.h`, `jit_amd_lp64.cpp` (~9.0k lines). Shared driver: [`../jit_common.{h,cpp}`](../jit_common.h).

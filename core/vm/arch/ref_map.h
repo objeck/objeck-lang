@@ -82,6 +82,10 @@
   class RefMap {
   public:
     bool ok;
+    // set with a failure that makes the method unsafe to run (an empty operand stack
+    // popped, a join at two heights, a non-address read through), as opposed to one
+    // that only means the map cannot be built (an instruction it does not model)
+    bool refuse;
     std::wstring error;
     long error_ip;
     // per instruction: operand-stack height on entry, -1 where unreachable
@@ -94,13 +98,17 @@
     // per instruction: kind of the and/or slot on entry (RK_UNKNOWN when unset)
     std::vector<uint8_t> andor;
 
-    RefMap() : ok(false), error_ip(-1) {}
+    RefMap() : ok(false), refuse(false), error_ip(-1) {}
 
     inline uint8_t Kind(long ip, int depth) const {
       return kinds[offset[ip] + depth];
     }
 
-    static RefMap* Build(StackProgram* prgm, StackMethod* method);
+    // 'verify' builds the map for Loader::Verify rather than for the JIT: a local the
+    // method does not declare is an untyped slot rather than a failure (the frame bound
+    // the loader checks is what keeps it safe), and a non-zero integer literal read
+    // through as an array or object is a failure.
+    static RefMap* Build(StackProgram* prgm, StackMethod* method, bool verify = false);
   };
 
   namespace ref_map_detail {
@@ -166,7 +174,9 @@
     // pushes them)
     inline void ParamWords(StackMethod* method, std::vector<SlotType>& out) {
       out.clear();
-      const size_t words = (size_t)method->GetParamCount();
+      // a count below zero (a malformed image the loader should have refused) must not
+      // become a 2^64-word table
+      const size_t words = method->GetParamCount() > 0 ? (size_t)method->GetParamCount() : 0;
       StackDclr** dclrs = method->GetDeclarations();
       const long num_dclrs = method->GetNumberDeclarations();
       for(long i = 0; i < num_dclrs && out.size() < words; ++i) {
@@ -234,6 +244,7 @@
     class Builder {
       StackProgram* prgm;
       StackMethod* method;
+      bool verify;
       StackInstr* instrs;
       long count;
       RefMap* map;
@@ -254,6 +265,14 @@
       std::vector<uint8_t> use;
       std::vector<uint8_t> elem;
       std::vector<uint8_t> origin;
+      // Load-time verification (Loader::Verify), which does not change what the maps
+      // say: 'deref' marks a value some instruction needs to be a reference (an array
+      // or object it reads through, a call's receiver, a store to a reference local);
+      // 'lit_ip' is where a non-zero integer literal entered the value, -1 for none.
+      // Nil is the literal zero, so only a non-zero literal used as a reference is
+      // refused: it is an address nobody allocated.
+      std::vector<uint8_t> deref;
+      std::vector<long> lit_ip;
 
       // entry state per instruction
       std::vector<std::vector<int> > state;
@@ -284,6 +303,8 @@
         use.push_back(RK_UNKNOWN);
         elem.push_back(e);
         origin.push_back(o);
+        deref.push_back(0);
+        lit_ip.push_back(-1);
         return id;
       }
 
@@ -308,6 +329,15 @@
         if(origin[a] != origin[b]) {
           origin[a] = ORIGIN_MIXED;
         }
+        deref[a] |= deref[b];
+        if(lit_ip[a] < 0) {
+          lit_ip[a] = lit_ip[b];
+        }
+      }
+
+      // the value is read through as an object or array
+      void MarkRef(int v) {
+        deref[Find(v)] = 1;
       }
 
       // a use of the value as k (and, an array, with elements e)
@@ -342,9 +372,10 @@
         }
       }
 
-      bool Fail(long ip, const std::wstring& why) {
+      bool Fail(long ip, const std::wstring& why, bool unsafe = false) {
         if(map->ok) {
           map->ok = false;
+          map->refuse = unsafe;
           map->error = why;
           map->error_ip = ip;
         }
@@ -354,7 +385,7 @@
       // control reaches 'to' with 'stack' and 'andor'
       bool Flow(long from, long to, const std::vector<int>& stack, int andor) {
         if(to < 0 || to >= count) {
-          return Fail(from, L"a jump outside the method");
+          return Fail(from, L"a jump outside the method", true);
         }
         if(!seen[to]) {
           seen[to] = true;
@@ -366,7 +397,7 @@
         std::vector<int>& known = state[to];
         if(known.size() != stack.size()) {
           return Fail(to, L"stack heights differ where control flow joins (" +
-                      std::to_wstring(known.size()) + L" and " + std::to_wstring(stack.size()) + L")");
+                      std::to_wstring(known.size()) + L" and " + std::to_wstring(stack.size()) + L")", true);
         }
         for(size_t i = 0; i < stack.size(); ++i) {
           Union(known[i], stack[i]);
@@ -381,7 +412,7 @@
 
       bool Pop(std::vector<int>& stack, long ip, int& v) {
         if(stack.empty()) {
-          return Fail(ip, L"the operand stack runs out");
+          return Fail(ip, L"the operand stack runs out", true);
         }
         v = stack.back();
         stack.pop_back();
@@ -400,6 +431,20 @@
         return true;
       }
 
+      // a value read through as an array or an object: the same pop, and a non-zero
+      // integer literal reaching it is refused. A reference-typed local, a return or a
+      // parameter may hold an Int the program calls an object (an enum is one), so only
+      // a use that reads memory through it counts.
+      bool PopRef(std::vector<int>& stack, long ip, uint8_t e = RK_UNKNOWN) {
+        int v;
+        if(!Pop(stack, ip, v)) {
+          return false;
+        }
+        Constrain(v, RK_REF, e);
+        MarkRef(v);
+        return true;
+      }
+
       bool PopN(std::vector<int>& stack, long ip, long n, uint8_t k = RK_UNKNOWN) {
         for(long i = 0; i < n; ++i) {
           if(!PopKind(stack, ip, k)) {
@@ -415,8 +460,16 @@
         }
       }
 
+      bool AndOrLocal(long id) {
+        return id >= 0 && id < (long)local_is_andor.size() && local_is_andor[id];
+      }
+
       bool LocalType(long ip, long id, SlotType& out) {
         if(id < 0 || id >= (long)locals.size()) {
+          if(verify && id >= 0) {
+            out = { RK_UNKNOWN, RK_UNKNOWN };
+            return true;
+          }
           return Fail(ip, L"a local beyond the method's declarations (id " + std::to_wstring(id) + L")");
         }
         out = locals[id];
@@ -427,7 +480,7 @@
       void ResolveLinks();
 
     public:
-      Builder(StackProgram* p, StackMethod* m, RefMap* r) : prgm(p), method(m), map(r) {
+      Builder(StackProgram* p, StackMethod* m, RefMap* r, bool v = false) : prgm(p), method(m), map(r), verify(v) {
         instrs = m->GetInstructions();
         count = m->GetInstructionCount();
       }
@@ -448,8 +501,13 @@
       min_height = stack.size();
 
       switch(instr->GetType()) {
-      case LOAD_INT_LIT:
-        stack.push_back(NewValue(RK_LIT));
+      case LOAD_INT_LIT: {
+        const int lit = NewValue(RK_LIT);
+        if(instr->GetInt64Operand() != 0) {
+          lit_ip[lit] = ip;
+        }
+        stack.push_back(lit);
+      }
         break;
 
       case LOAD_CHAR_LIT:
@@ -465,7 +523,7 @@
 
       case LOAD_LOCL_INT_VAR:
         if(!LocalType(ip, op1, slot)) return false;
-        if(local_is_andor[op1]) {
+        if(AndOrLocal(op1)) {
           stack.push_back(andor);
         }
         else {
@@ -480,10 +538,10 @@
           if(!Pop(stack, ip, v)) return false;
         }
         else {
-          if(stack.empty()) return Fail(ip, L"the operand stack runs out");
+          if(stack.empty()) return Fail(ip, L"the operand stack runs out", true);
           v = stack.back();
         }
-        if(local_is_andor[op1]) {
+        if(AndOrLocal(op1)) {
           andor = v;
         }
         else {
@@ -494,6 +552,7 @@
       case LOAD_CLS_INST_INT_VAR: {
         int receiver;
         if(!Pop(stack, ip, receiver)) return false;
+        MarkRef(receiver);
         const int value = NewValue(RK_UNKNOWN);
         field_links.push_back({ receiver, op1, value, true });
         stack.push_back(value);
@@ -503,6 +562,7 @@
       case STOR_CLS_INST_INT_VAR: {
         int receiver;
         if(!Pop(stack, ip, receiver) || !Pop(stack, ip, v)) return false;
+        MarkRef(receiver);
         field_links.push_back({ receiver, op1, v, false });
       }
         break;
@@ -510,7 +570,8 @@
       case COPY_CLS_INST_INT_VAR: {
         int receiver;
         if(!Pop(stack, ip, receiver)) return false;
-        if(stack.empty()) return Fail(ip, L"the operand stack runs out");
+        MarkRef(receiver);
+        if(stack.empty()) return Fail(ip, L"the operand stack runs out", true);
         field_links.push_back({ receiver, op1, stack.back(), false });
       }
         break;
@@ -527,7 +588,7 @@
 
       case COPY_FLOAT_VAR:
         if(op2 != LOCL && !PopKind(stack, ip, RK_UNKNOWN)) return false;
-        if(stack.empty()) return Fail(ip, L"the operand stack runs out");
+        if(stack.empty()) return Fail(ip, L"the operand stack runs out", true);
         Constrain(stack.back(), RK_FLOAT);
         break;
 
@@ -553,12 +614,12 @@
 
       case LOAD_BYTE_ARY_ELM:
       case LOAD_CHAR_ARY_ELM:
-        if(!PopKind(stack, ip, RK_REF) || !PopN(stack, ip, op1, RK_INT)) return false;
+        if(!PopRef(stack, ip) || !PopN(stack, ip, op1, RK_INT)) return false;
         stack.push_back(NewValue(RK_INT));
         break;
 
       case LOAD_FLOAT_ARY_ELM:
-        if(!PopKind(stack, ip, RK_REF, RK_FLOAT) || !PopN(stack, ip, op1, RK_INT)) return false;
+        if(!PopRef(stack, ip, RK_FLOAT) || !PopN(stack, ip, op1, RK_INT)) return false;
         stack.push_back(NewValue(RK_FLOAT));
         break;
 
@@ -566,6 +627,7 @@
         int array;
         if(!Pop(stack, ip, array)) return false;
         Constrain(array, RK_REF);
+        MarkRef(array);
         if(!PopN(stack, ip, op1, RK_INT)) return false;
         const int value = NewValue(RK_UNKNOWN);
         elem_links.push_back({ array, value, true });
@@ -575,24 +637,25 @@
 
       case STOR_BYTE_ARY_ELM:
       case STOR_CHAR_ARY_ELM:
-        if(!PopKind(stack, ip, RK_REF) || !PopN(stack, ip, op1, RK_INT) || !PopKind(stack, ip, RK_INT)) return false;
+        if(!PopRef(stack, ip) || !PopN(stack, ip, op1, RK_INT) || !PopKind(stack, ip, RK_INT)) return false;
         break;
 
       case STOR_FLOAT_ARY_ELM:
-        if(!PopKind(stack, ip, RK_REF, RK_FLOAT) || !PopN(stack, ip, op1, RK_INT) || !PopKind(stack, ip, RK_FLOAT)) return false;
+        if(!PopRef(stack, ip, RK_FLOAT) || !PopN(stack, ip, op1, RK_INT) || !PopKind(stack, ip, RK_FLOAT)) return false;
         break;
 
       case STOR_INT_ARY_ELM: {
         int array;
         if(!Pop(stack, ip, array)) return false;
         Constrain(array, RK_REF);
+        MarkRef(array);
         if(!PopN(stack, ip, op1, RK_INT) || !Pop(stack, ip, v)) return false;
         elem_links.push_back({ array, v, false });
       }
         break;
 
       case LOAD_ARY_SIZE:
-        if(!PopKind(stack, ip, RK_REF)) return false;
+        if(!PopRef(stack, ip)) return false;
         stack.push_back(NewValue(RK_INT));
         break;
 
@@ -668,7 +731,9 @@
           return Fail(ip, L"a call to an unknown method");
         }
         // the receiver on top, then the arguments, the last one nearest it
-        if(!PopKind(stack, ip, RK_UNKNOWN)) return false;
+        int receiver_value;
+        if(!Pop(stack, ip, receiver_value)) return false;
+        MarkRef(receiver_value);
         std::vector<SlotType> params;
         ParamWords(callee, params);
         for(size_t i = params.size(); i > 0; --i) {
@@ -801,7 +866,7 @@
         break;
 
       case SWAP_INT: {
-        if(stack.size() < 2) return Fail(ip, L"the operand stack runs out");
+        if(stack.size() < 2) return Fail(ip, L"the operand stack runs out", true);
         std::swap(stack[stack.size() - 1], stack[stack.size() - 2]);
       }
         break;
@@ -976,6 +1041,15 @@
 
       ResolveLinks();
 
+      if(verify) {
+        for(size_t v = 0; v < parent.size(); ++v) {
+          if(Find(static_cast<int>(v)) == static_cast<int>(v) && deref[v] && lit_ip[v] >= 0) {
+            Fail(lit_ip[v], L"an integer literal used as a reference", true);
+            return;
+          }
+        }
+      }
+
       for(long ip = 0; ip < count; ++ip) {
         if(!seen[ip]) {
           continue;
@@ -993,9 +1067,9 @@
     }
   }
 
-  inline RefMap* RefMap::Build(StackProgram* prgm, StackMethod* method) {
+  inline RefMap* RefMap::Build(StackProgram* prgm, StackMethod* method, bool verify) {
     RefMap* map = new RefMap;
-    ref_map_detail::Builder builder(prgm, method, map);
+    ref_map_detail::Builder builder(prgm, method, map, verify);
     builder.Run();
     return map;
   }

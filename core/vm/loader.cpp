@@ -31,6 +31,7 @@
 
 #include "loader.h"
 #include "common.h"
+#include "arch/ref_map.h"
 #include "../shared/version.h"
 
 StackProgram* Loader::program;
@@ -610,6 +611,22 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
       // read type parameters
       const int num_dclrs = ReadCount();
       StackDclr** dclrs = LoadDeclarations(num_dclrs, is_debug);
+
+      // The parameters are the first declarations, a function-typed one taking two
+      // words, so the count is never negative and never beyond the words declared.
+      // The JIT sizes its parameter tables by it (found by the loader fuzzer: a
+      // count of -255 became a 2^64-entry vector and the process grew until it died).
+      long declared_words = num_dclrs;
+      for(int j = 0; j < num_dclrs; ++j) {
+        if(dclrs[j]->type == FUNC_PARM) {
+          ++declared_words;
+        }
+      }
+      if(params < 0 || params > declared_words) {
+        DeleteDeclarations(dclrs, num_dclrs);
+        error << L">>> Invalid bytecode: parameter count out of range <<<" << std::endl;
+        LoadFailed();
+      }
 
       // parse return
       MemoryType rtrn_type = NIL_TYPE;
@@ -1332,5 +1349,34 @@ void Loader::Verify()
   StackClass* string_cls = program->GetClass(string_cls_id);
   if(!arguments.empty() && (!string_cls || string_cls->GetMethodCount() < 3)) {
     VerifyFailed(nullptr, nullptr, -1, L"the String class id is out of range");
+  }
+
+  // The operand stack, per method. Every instruction above checked its own operands;
+  // none of that says what is on the stack when it runs. The reference map the JIT
+  // builds (arch/ref_map.h) walks every path of a method and refuses one that pops
+  // an empty stack, that reaches a join at two heights, or that reads through a
+  // non-zero integer literal as an array or object. The interpreter trusts the stack: an instruction that
+  // pops what was never pushed reads below the operand stack (found by the loader
+  // fuzzer: a STOR_FUNC_VAR, a conditional JMP and a two-index array load, each
+  // with the one operand changed).
+  for(long i = 0; i < num_classes; ++i) {
+    StackClass* cls = classes[i];
+    for(long j = 0; j < cls->GetMethodCount(); ++j) {
+      StackMethod* mthd = cls->GetMethod(j);
+      // an interface or virtual declaration has no body and is never entered
+      if(!mthd || mthd->GetInstructionCount() < 1) {
+        continue;
+      }
+      RefMap* map = RefMap::Build(program, mthd, true);
+      // only a failure that makes the method unsafe refuses the program; one that only
+      // means the map cannot be built (an instruction it does not model) is not a verdict
+      const bool refuse = !map->ok && map->refuse;
+      const std::wstring why = map->error;
+      const long where = map->error_ip;
+      delete map;
+      if(refuse) {
+        VerifyFailed(cls, mthd, where, why.c_str());
+      }
+    }
   }
 }
