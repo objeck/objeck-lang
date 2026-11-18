@@ -113,6 +113,10 @@
 
   namespace ref_map_detail {
 
+    // Words a method may push above its arguments: CallStack::OP_HEADROOM (1024)
+    // less a margin for the words one instruction pushes past its entry height
+    static const size_t MAX_OPERAND_GROWTH = 1000;
+
     inline uint8_t MergeKind(uint8_t a, uint8_t b) {
       if(a == b) return a;
       if(a == RK_UNKNOWN) return b;
@@ -1047,6 +1051,26 @@
             Fail(lit_ip[v], L"an integer literal used as a reference", true);
             return;
           }
+        }
+      }
+
+      // The operand stack has OP_HEADROOM (1024) words of room above a call's
+      // arguments, checked once at entry (call_stack.h), and nothing inside the
+      // method checks again. Joins at one height keep a loop from growing the stack,
+      // so the deepest entry height bounds the method; a body that pushes past the
+      // room writes beyond the reserved stack. The compiler cannot get near it (it
+      // refuses nesting far below the limit), so this only refuses a crafted image.
+      if(verify) {
+        size_t deepest = 0;
+        for(long ip = 0; ip < count; ++ip) {
+          if(seen[ip] && state[ip].size() > deepest) {
+            deepest = state[ip].size();
+          }
+        }
+        if(deepest > entry.size() + MAX_OPERAND_GROWTH) {
+          Fail(0, L"the operand stack grows to " + std::to_wstring(deepest - entry.size()) +
+                  L" words past the arguments, more than a call's room", true);
+          return;
         }
       }
 
