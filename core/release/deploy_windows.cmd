@@ -649,9 +649,17 @@ if [%1] == [arm64] (
 	REM release name produced by the installed vcpkg ports; the dependency-closure
 	REM verifier below is authoritative and fails if an exact imported name is
 	REM still absent, so a silently skipped optional spelling cannot ship.
-	for %%c in (z.dll jpeg62.dll libpng16.dll tiff.dll libwebp.dll libwebpdecoder.dll libwebpdemux.dll libwebpmux.dll liblzma.dll libsharpyuv.dll) do (
+	for %%c in (z.dll libz.dll jpeg62.dll libpng16.dll tiff.dll libwebp.dll libwebpdecoder.dll libwebpdemux.dll libwebpmux.dll liblzma.dll libsharpyuv.dll) do (
 		if exist "%VCPKG_DIR%\installed\%VCPKG_TRIPLET%\bin\%%c" copy /y "%VCPKG_DIR%\installed\%VCPKG_TRIPLET%\bin\%%c" ..\..\release\%TARGET%\bin
 	)
+
+	REM zlib 1.4 (vcpkg, runner images from 2026-11-18) names its DLL libz.dll, and
+	REM libpng/tiff built against it import libz.dll, while the committed OpenCV
+	REM modules still import z.dll. The exports are the same (zlib keeps its ABI),
+	REM so ship libz.dll for the codecs and, when no z.dll came with the port, the
+	REM same DLL under the name OpenCV asks for. Which one a runner gets depends on
+	REM the vcpkg checkout baked into its image, hence a failure on only some runs.
+	if not exist ..\..\release\%TARGET%\bin\z.dll if exist ..\..\release\%TARGET%\bin\libz.dll copy /y ..\..\release\%TARGET%\bin\libz.dll ..\..\release\%TARGET%\bin\z.dll
 
 	REM License texts: vcpkg's share\opencv4\copyright when this run built the
 	REM modules, otherwise the OpenCV 4.12.0 LICENSE committed beside the
