@@ -2,6 +2,8 @@
 
 Issue: [#1243](https://github.com/objeck/objeck-lang/issues/1243), split out of #1186.
 
+**Status:** implemented (commit `bfc4d7d71d`, #1243, v2026.10.1). It is copy-in/copy-out, not aliasing; the differences are listed under "Limitations".
+
 ## Why
 
 Every argument is passed by value, so no function can change a caller's local:
@@ -89,6 +91,23 @@ never, so those are compile errors.
 - **Types must match exactly.** `ref s` of a `String` variable passes a `String[]`, which a
   `ref b : Base` parameter (`Base[]`) does not take. An exact match is what by-reference
   languages require, since the callee may store a value the caller's type cannot hold.
+
+## Limitations
+
+- **Not true aliasing.** The callee works on a one-element cell; the caller's variable is
+  updated only after the statement. A program that passes one variable twice
+  (`F(ref x, ref x)`), or reads the variable again inside the same statement, can observe a
+  difference from by-reference semantics. The design accepts this; this document records no diagnostic for it.
+- Only a name can be passed: not `ref a[i]`, not an expression.
+- A `ref` parameter is a one-element array in the signature, so it overloads as a `T[]` and a
+  plain `T[]` parameter at the same position is "already overloaded"; passing `ref x` to a
+  plain `T[]` parameter is accepted (the cell goes in, its element is copied back).
+- Types must match exactly (`ref s` of a `String` does not fit a `Base` parameter).
+- A call with `ref` arguments cannot stand in a condition, a `for` header or a `return`.
+
+## How to check
+
+`obc -src programs/regression/ref_parameters.obs -dest t.obe && obr t.obe` (and `obr --jit=off t.obe`, `obr --jit=1 t.obe`); the `bad_ref_*.obs` files must fail to compile. `obc ... -asm` writes the lowered form (`#ref_N := [x]` before the call, `x := #ref_N[0]` after) to `t.obm`.
 
 ## Found on the way
 

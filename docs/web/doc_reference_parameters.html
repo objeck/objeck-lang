@@ -63,11 +63,14 @@
      <ul>
       <li><a href="#why">Why</a></li>
       <li><a href="#decisions">Decisions</a></li>
+      <li><a href="#limitations">Limitations</a></li>
+      <li><a href="#how-to-check">How to check</a></li>
       <li><a href="#found-on-the-way">Found on the way</a></li>
       <li><a href="#tests">Tests</a></li>
      </ul>
     </div>
 
+    <p><strong>Status:</strong> implemented (commit <code>bfc4d7d71d</code>, #1243, v2026.10.1). It is copy-in/copy-out, not aliasing; the differences are listed under "Limitations".</p>
     <h3 id="why">Why</h3>
     <p>Every argument is passed by value, so no function can change a caller's local:</p>
 <pre class="line-numbers"><code class="language-cpp">a := 1; b := 2;
@@ -123,6 +126,16 @@ q := Divmod(17, 5, ref r);
      <li><strong>One thing is not checked.</strong> Passing <code>ref x</code> to a parameter that is a plain <code>T[]</code> is accepted: the cell goes in and its element is copied back.</li>
      <li><strong>Types must match exactly.</strong> <code>ref s</code> of a <code>String</code> variable passes a <code>String[]</code>, which a <code>ref b : Base</code> parameter (<code>Base[]</code>) does not take. An exact match is what by-reference languages require, since the callee may store a value the caller's type cannot hold.</li>
     </ul>
+    <h3 id="limitations">Limitations</h3>
+    <ul>
+     <li><strong>Not true aliasing.</strong> The callee works on a one-element cell; the caller's variable is updated only after the statement. A program that passes one variable twice (<code>F(ref x, ref x)</code>), or reads the variable again inside the same statement, can observe a difference from by-reference semantics. The design accepts this; this document records no diagnostic for it.</li>
+     <li>Only a name can be passed: not <code>ref a[i]</code>, not an expression.</li>
+     <li>A <code>ref</code> parameter is a one-element array in the signature, so it overloads as a <code>T[]</code> and a plain <code>T[]</code> parameter at the same position is "already overloaded"; passing <code>ref x</code> to a plain <code>T[]</code> parameter is accepted (the cell goes in, its element is copied back).</li>
+     <li>Types must match exactly (<code>ref s</code> of a <code>String</code> does not fit a <code>Base</code> parameter).</li>
+     <li>A call with <code>ref</code> arguments cannot stand in a condition, a <code>for</code> header or a <code>return</code>.</li>
+    </ul>
+    <h3 id="how-to-check">How to check</h3>
+    <p><code>obc -src programs/regression/ref_parameters.obs -dest t.obe &amp;&amp; obr t.obe</code> (and <code>obr --jit=off t.obe</code>, <code>obr --jit=1 t.obe</code>); the <code>bad_ref_*.obs</code> files must fail to compile. <code>obc ... -asm</code> writes the lowered form (<code>#ref_N := [x]</code> before the call, <code>x := #ref_N[0]</code> after) to <code>t.obm</code>.</p>
     <h3 id="found-on-the-way">Found on the way</h3>
     <p>An array literal with a subscripted element, <code>[a[i], a[2]]</code>, typed the element by the array's dimension, not the element's, and was rejected ("Invalid class type"). It is a single value now (<code>AnalyzeDynamicArray</code>). This was a #1245 gap, and the <code>ref</code> cell of a <code>ref</code> parameter passed on hit it.</p>
     <h3 id="tests">Tests</h3>

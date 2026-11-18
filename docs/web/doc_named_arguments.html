@@ -63,12 +63,15 @@
      <ul>
       <li><a href="#why">Why</a></li>
       <li><a href="#decisions">Decisions</a></li>
+      <li><a href="#limitations">Limitations</a></li>
+      <li><a href="#how-to-check">How to check</a></li>
       <li><a href="#phase-1-plan">Phase 1 plan</a></li>
       <li><a href="#note">Note</a></li>
       <li><a href="#not-in-scope">Not in scope</a></li>
      </ul>
     </div>
 
+    <p><strong>Status:</strong> implemented. Phase 1 (program classes and constructors) is PR #1263 (<code>56515c1d79</code>); phase 2 (library methods, parameter names recorded in every <code>.obl</code>) is PR #1268 (<code>5ac6b6c404</code>); both are in v2026.10.1. <strong>Not implemented:</strong> named arguments for virtual and interface methods, function values and lambdas, and calls on a primitive receiver; each is a compile error with a message, never a silent positional call.</p>
     <h3 id="why">Why</h3>
     <p>Trailing default values already work:</p>
 <pre class="line-numbers"><code class="language-cpp">function : Train(data : Matrix, epochs : Int := 10, rate : Float := 0.01, verbose : Bool := false) ~ Model
@@ -130,7 +133,7 @@ Train(data, rate: 0.1, epochs: 50);
     <h4 id="6-phase-2-library-methods">6. Phase 2: library methods</h4>
     <p>A release <code>.obl</code> kept a method's parameter <strong>types</strong> but not their names, and a caller cannot generate a forwarder inside another binary. Phase 2 (shipped) adds:</p>
     <ol>
-     <li><strong>Parameter names in every <code>.obl</code>.</strong> After each method's entries, a library build writes the parameter count, then each parameter's bare name and whether it has a default (<code>IntermediateMethod::Write</code>). The library magic is now <code>0xffb7</code>. The compiler refuses a library with the old magic (<code>0xffb6</code>) and asks for it to be rebuilt. The VM accepts both, because an <code>.obe</code> never contains the names.</li>
+     <li><strong>Parameter names in every <code>.obl</code>.</strong> After each method's entries, a library build writes the parameter count, then each parameter's bare name and whether it has a default (<code>IntermediateMethod::Write</code>). The library magic became <code>0xffb7</code> for this change. The compiler refuses a library with the old magic (<code>0xffb6</code>, <code>MAGIC_NUM_LIB_NO_PARAM_NAMES</code>) and asks for it to be rebuilt. The magic has moved on since (<code>MAGIC_NUM_LIB</code> is now <code>0xffba</code>; <code>core/shared/version.in</code> says why each value changed).</li>
      <li><strong>One mask forwarder</strong> per library method with two or more defaults (<code>GenerateMaskForwarder</code>, library targets only). <code>F$m</code> takes every parameter plus an <code>Int</code> whose bit <em>j</em> says the caller gave parameter <em>j</em>. It assigns each default the caller skipped, under <code>if((mask and bit) = 0)</code>, in the callee's context, then calls <code>F</code>. That is one extra method per such method, not one per subset. Methods with more than 62 parameters get none.</li>
      <li><strong>Binding at the call site</strong> (<code>BindNamedLibraryArguments</code>). The call shape is mapped onto each overload, in the receiver's class and its library parents, through the recorded names:
     <ul>
@@ -143,6 +146,16 @@ Train(data, rate: 0.1, epochs: 50);
     <p><strong>Standard-library parameter names are now public API</strong>: renaming one breaks named callers. That is accepted, as in Kotlin, C# and Swift. Library reviews should treat a parameter rename like a signature change.</p>
     <p>Found on the way: <code>GenerateParameterMethods</code> used offset 0 to mean "no default found". When the <em>first</em> parameter had a default and a later one did too, it started at 1, so <code>F()</code> was never generated, in a program or a library. A library call that named a method only its parent class declared skipped the named-argument path. The chained form then bound the names by position, silently. A backstop in the library path now reports any names left unconsumed.</p>
     <p>Tests: <code>named_arguments_library.obs</code> (standard-library methods: reordering, mixing, written order, all-defaults), <code>bad_named_argument_library.obs</code> (an unknown name lists the recorded ones), <code>bad_named_argument_primitive.obs</code>, and <code>check_lib_named_args.py</code>. That last one builds a library and links a program against it, covering a skipped middle default, constructors, inherited methods (on a variable and chained) and an unknown name, in three modes.</p>
+    <h3 id="limitations">Limitations</h3>
+    <ul>
+     <li>Parameter names of the standard library are public API from this change on.</li>
+     <li>A function-typed parameter of a library method cannot be skipped or reordered by name.</li>
+     <li>A library method with more than 62 parameters gets no mask forwarder, so a named call that skips a default on it is not available (<code>GenerateMaskForwarder</code>, <code>context.cpp</code>).</li>
+     <li>Several overloads that one named call fits equally well are an ambiguity error that asks for positional arguments (<code>BindNamedArguments</code>).</li>
+     <li>A skipped default is evaluated in the callee's context, never at the call site.</li>
+    </ul>
+    <h3 id="how-to-check">How to check</h3>
+    <p><code>obc -src programs/regression/named_arguments.obs -dest t.obe &amp;&amp; obr t.obe</code> (and with <code>obr --jit=off t.obe</code>, <code>obr --jit=1 t.obe</code>); every <code>bad_named_argument_*.obs</code> must fail to compile. Library path: <code>python programs/regression/check_lib_named_args.py &lt;bin_dir&gt;</code> (builds a library, links a program against it, three modes).</p>
     <h3 id="phase-1-plan">Phase 1 plan</h3>
     <ol>
      <li><strong>Parser:</strong> <code>ParseExpressionList</code> (calling parameters only) accepts <code>IDENT ':' expression</code> and records the name next to the expression in the <code>ExpressionList</code>. It enforces positional before named. It records the call shape for forwarder generation.</li>

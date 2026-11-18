@@ -4,6 +4,8 @@ Issue: [#1247](https://github.com/objeck/objeck-lang/issues/1247) (typed catch, 
 rethrow, and reading the error in a `?->` handler), split out of #1186. This covers the
 issue's **smallest useful step**: letting the code after a `?->` read what went wrong.
 
+**Status:** implemented (PR #1267, `0f13a433a7`, v2026.10.1). It is the first step of #1247; the rest (user-defined error types, `Runtime->Raise`, typed `try`/`on`/`finally`, re-raise) shipped afterwards and is in [ERROR_HANDLING_DESIGN.md](ERROR_HANDLING_DESIGN.md). Since then `ErrorKind` gained `RAISED`, and the recorded error is also available as an object through `Runtime->GetLastError()`.
+
 ## Why
 
 `?->` (`->Try()->`) turns any runtime error raised below a guarded call into Nil (or the `??`
@@ -62,27 +64,22 @@ function : GetErrorKind() ~ Runtime->ErrorKind
 function : ClearError() ~ Nil
 ```
 
-The four new traps are **appended after the last existing trap** (the memory rule: a
+The three new traps (`RUNTIME_GET_ERROR`, `RUNTIME_GET_ERROR_KIND`, `RUNTIME_CLEAR_ERROR`) are **appended after the last existing trap at the time**; `HasError` is not a trap but `GetErrorKindNative() <> 0` in `lang.obs`. The rule is (the memory rule: a
 trap's number and arity are never changed).
 
-## Not in this step
+## Not in this step (all since shipped)
 
-These are the rest of #1247 and stay open:
-
-- user-defined error types and raising one (`throw`);
-- typed catch;
-- `finally`, which `leaving { }` partly covers;
-- rethrow.
-
-They need syntax and their own design. This step makes them easier to judge, because code
-can now see the errors it recovers from.
+These were the rest of #1247 when this step was written. They are now in
+[ERROR_HANDLING_DESIGN.md](ERROR_HANDLING_DESIGN.md): user-defined error types and
+`Runtime->Raise` (there is no `throw` keyword), typed catch (`try`/`on`), `finally`, and
+re-raise.
 
 ## Implementation
 
-1. **VM:** a `RecoveredError` (kind and message) next to the per-thread `TryHandlerState`.
+1. **VM:** a `RecoveredErrorState` (kind and message) next to the per-thread `TryHandlerState`.
    - `TryErrorRecovery(stack_pos, kind, message)` records it when it recovers. Its call
      sites already raise one error each, so each passes its own kind and text.
-   - The bridge's status path maps the JIT statuses (−1 to −5) to kinds when it recovers
+   - The bridge's status path maps the JIT statuses (−1 to −5 here; −6 and −7 were added by #1247) to kinds when it recovers
      for a compiled frame.
 2. **Traps:** `RUNTIME_HAS_ERROR`, `RUNTIME_GET_ERROR`, `RUNTIME_GET_ERROR_KIND` and
    `RUNTIME_CLEAR_ERROR`, added to `traps.h`. Their handlers go in the trap processor, and
@@ -99,5 +96,9 @@ can now see the errors it recovers from.
 - a later recovery replacing an earlier one;
 - no record after a call that succeeds.
 
-`rosetta_exceptions.obs` keeps its shared-note workaround for now. Moving it to
-`Runtime->GetErrorKind()` belongs with typed catch, which would replace both.
+`rosetta_exceptions.obs` was later rewritten with `try`/`on`/`finally`, and its shared-note workaround is gone.
+
+## How to check
+
+`obc -src programs/regression/recovered_errors.obs -dest t.obe && obr t.obe`, then with `obr --jit=off t.obe` and `obr --jit=1 t.obe` (interpreted and JIT-compiled raises).
+The traps are in `core/shared/traps.h`; `Runtime->ErrorKind` is in `core/compiler/lib_src/lang.obs`.

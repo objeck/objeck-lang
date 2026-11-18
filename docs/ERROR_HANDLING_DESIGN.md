@@ -9,6 +9,8 @@ document covers what the issue left open:
 - `finally`;
 - re-raising.
 
+**Status:** implemented. Phase 1 (`System.Error`, `Runtime->Raise`, `Runtime->GetLastError`) is PR #1273 (`2a3b38ecd0`); phases 2-4 (`try` / `on` / `finally`, re-raise) are `1210622d41`. Both are in v2026.10.1. Deviations from the proposal below are called out where they occur; the notable one is that `System.Error` has `GetMessage()` and `ToString()` but **no `GetKind()`** (read the kind with `Runtime->GetErrorKind()`). **Not implemented:** errors crossing threads (see the end).
+
 ## Why
 
 Research code raises and recovers constantly: a malformed record, a parse failure, a model
@@ -20,10 +22,10 @@ region.
 
 ## What the VM already has
 
-Measured, not assumed (file references as of 2026-10-20):
+Measured, not assumed (as of 2026-10-20; the handler state is now `TryHandlerState` in `core/vm/interpreter.h`):
 
 - **Regions, not just calls.** `TRY_START handler` / `TRY_END` push and pop a per-thread
-  handler (IP, operand-stack depth, call-stack depth; `interpreter.h:151-168`).
+  handler (IP, operand-stack depth, call-stack depth; `TryHandlerState`, `interpreter.h`).
   `TryErrorRecovery` unwinds frames down to the saved depth and resumes at the handler. The
   compiler only ever wraps one call chain in a region (`EmitTryIntrinsic`), but nothing in
   the VM requires that. A region around statements in the same method sees that method's
@@ -43,7 +45,7 @@ Two defects found while reading (fixed in phase 1, below):
 2. A failing trap goes straight to `VmExit(1)` (`Handle_TRAP`), never through
    `TryErrorRecovery`, although RECOVERED_ERRORS_DESIGN.md says `OTHER` covers traps.
 
-## Decisions (proposed)
+## Decisions (as designed; see the status line for what changed)
 
 ### 1. Errors are objects: `System.Error`
 
@@ -51,7 +53,7 @@ Two defects found while reading (fixed in phase 1, below):
 class Error {
   New(message : String);
   method : public : GetMessage() ~ String;
-  method : public : GetKind() ~ Runtime->ErrorKind;   # USER for a raised error
+  method : public : GetKind() ~ Runtime->ErrorKind;   # proposed; NOT shipped
 }
 class ParseError from Error { ... }                    # user-defined: just a subclass
 ```
@@ -66,8 +68,9 @@ nothing, as now), and `Runtime->GetLastError()` materializes the object when it 
 A library function, not a keyword. It is a trap that never returns.
 - Under a handler, it records the error (now the object, kept as a per-thread GC root) and
   recovers like any fault. `?->` recovers from it too, so existing code keeps working.
-- With no handler, it prints `Unhandled ParseError: <message>` plus the stack trace, and the
-  program exits, as an unguarded runtime fault does.
+- With no handler, it prints `>>> Unhandled <class name>: <message> <<<` to stderr
+  (`core/vm/common.cpp`) and the trap fails, as an unguarded runtime fault does. A raised
+  error's recorded kind is `ErrorKind->RAISED`.
 - From JIT-compiled code, the trap callback returns a new status (−7, raised), which travels
   outward like −1 to −6.
 
@@ -96,8 +99,8 @@ finally {
   order (`TypeOf`, the same test `->As` uses). An `on(e : Error)` catches everything.
 - **No clause matches → re-raise** (after `finally`). So a typed `try` never swallows an error
   it did not name. This is the difference from `?->`, which swallows every error, deliberately.
-- `try`, `on` and `finally` become keywords. A scan of lib_src and programs found them only in
-  comments.
+- `try`, `on` and `finally` were proposed as keywords. **As built they are contextual**
+  (see "Phases 2 to 4, as built"), because `on` is a parameter name in the standard library.
 
 ### 4. `finally`
 
@@ -206,7 +209,18 @@ finally {
 - **Checked errors (a `raises` clause):** heavy for research code, and nothing in the
   libraries would declare them. Not proposed.
 
+## Limitations that exist today
+
+- `System.Error` carries only a message; a user subclass adds its own fields, but the VM never reads them.
+- A method that contains a `?->` or `try` region is never JIT-compiled (`TRY_START`/`TRY_END` are not on the JIT whitelist, `jit_amd_lp64.cpp`); only its callees are.
+- `leaving { }` does not run when an error unwinds its method's frame; `finally` does.
+- A `finally` cannot `return`, and a `break`/`continue` may not leave it (compile errors).
+
+## How to check
+
+`programs/regression/error_raise.obs`, `try_blocks.obs` and the five `bad_try_*.obs`, `bad_error_raise_unhandled.obs`. For example `obc -src programs/regression/try_blocks.obs -dest t.obe && obr t.obe`, and again with `obr --jit=off t.obe` and `obr --jit=1 t.obe` (the three modes the tests name).
+
 ## Not in scope
 
 - Errors crossing threads (a joined thread re-raising in its joiner).
-- Recovering from a native C-stack overflow (TRY_IN_JIT_DESIGN.md leaves it unrecoverable).
+- Recovering from a native C-stack overflow. It was unrecoverable when this was written. Since v2026.10.2 compiled call sites check a native-stack floor as well as `--call-depth` (default 16,384 frames), so running out of either is an ordinary `RuntimeError` that `try`/`on` and `?->` recover from (commit `13daaacfb2`, `core_call_depth_max.obs`); this document's design did not need to change for it.

@@ -64,11 +64,13 @@
       <li><a href="#why">Why</a></li>
       <li><a href="#what-happens-on-an-edit-today">What happens on an edit today</a></li>
       <li><a href="#phases">Phases</a></li>
+      <li><a href="#how-to-check">How to check</a></li>
       <li><a href="#decisions">Decisions</a></li>
       <li><a href="#first-steps">First steps</a></li>
      </ul>
     </div>
 
+    <p><strong>Status:</strong> partly implemented. Phase 0 (timing, <code>OBJECK_LSP_TIMING=1</code>, #1435), "analyze once per edit" (#1437), Phase 1 step 1 (library byte cache, library instructions not built; commit <code>0011bc0806</code>) and Phase 2 (as built: keep programs, not generations) are shipped. <strong>Not implemented, design only:</strong> Phase 1 step 2 (shared library objects, deferred), Phase 3 (re-parse one file) and Phase 4 (repeatable, scoped analysis). So today an edit still re-parses the folder and re-analyzes the whole program once; the section "What happens on an edit today" describes the compiler side that remains true. Measured numbers below carry their date, machine and commit; they were not re-run for this revision.</p>
     <h3 id="why">Why</h3>
     <p>Every keystroke costs work proportional to the whole folder. Measured in the audit (Windows x64):</p>
     <ul>
@@ -78,12 +80,12 @@
     </ul>
     <p>Research code is often one large notebook-like file plus helpers. The editor should not slow down as the project grows.</p>
     <h3 id="what-happens-on-an-edit-today">What happens on an edit today</h3>
-    <p>Measured by reading the code (file references as of 2026-10-20):</p>
+    <p>Measured by reading the code on 2026-10-20. Line numbers drift, so each reference below also names the symbol; <code>grep -n</code> it. (The paragraph describes the state before phases 0-2; the compiler-side costs are unchanged, and phase 1 removed the library-instruction build in the diagnostics library only.)</p>
     <ol>
-     <li><strong>Everything is invalidated.</strong> <code>didChange</code> bumps one workspace-wide generation (<code>LspWorkspace::Invalidate</code>, frameworks.obs:1337). The next request drops every cached program in every folder (<code>GetProxy</code>, 1282).</li>
-     <li><strong>The whole folder is re-parsed.</strong> <code>LspFolder-&gt;GetTexts</code> sends every <code>build.json</code> file to <code>diag_parse_text</code>, which builds one <code>Parser</code> and one <code>ParsedProgram</code> over all of them (diags.cpp:306, parser.cpp:257). Bundles that span files are merged by name and share one symbol table.</li>
-     <li><strong>Every library is reloaded from disk.</strong> Each <code>ContextAnalyzer</code> makes a new <code>Linker</code>, which reads and inflates <code>lang.obl</code> and every listed <code>.obl</code> (linker.cpp:498, 854-895). Nothing is cached across programs.</li>
-     <li><strong>The whole program is analyzed, once.</strong> <code>ContextAnalyzer::Analyze</code> (context.cpp:381-551) works through the entire program:
+     <li><strong>Everything is invalidated.</strong> <code>didChange</code> bumps one workspace-wide generation (<code>Invalidate</code> in <code>tools/lsp/server/frameworks.obs</code>). The next request drops every cached program in every folder (<code>GetProxy</code>).</li>
+     <li><strong>The whole folder is re-parsed.</strong> <code>LspFolder-&gt;GetTexts</code> sends every <code>build.json</code> file to <code>diag_parse_text</code>, which builds one <code>Parser</code> and one <code>ParsedProgram</code> over all of them (<code>diag_parse_text</code> in <code>core/lib/diags/diags.cpp</code>, <code>Parser::Parse</code>). Bundles that span files are merged by name and share one symbol table.</li>
+     <li><strong>Every library is reloaded from disk.</strong> Each <code>ContextAnalyzer</code> makes a new <code>Linker</code>, which reads and inflates <code>lang.obl</code> and every listed <code>.obl</code> (<code>Linker::Load</code> and <code>Library::Load</code> in <code>core/compiler/linker.cpp</code>). Nothing is cached across programs.</li>
+     <li><strong>The whole program is analyzed, once.</strong> <code>ContextAnalyzer::Analyze</code> (<code>ContextAnalyzer::Analyze</code>, <code>context.cpp</code>) works through the entire program:
     <ul>
      <li>it resolves aliases in place;</li>
      <li>it runs a pre-pass that adds methods to classes (default alternates, named-argument forwarders driven by call sites in <em>any</em> file);</li>
@@ -92,7 +94,7 @@
     </ul>
      </li>
     </ol>
-    <p>Analysis mutates the tree (eval types, resolved methods, inserted casts, generated methods), so it cannot run twice on one tree: diags.cpp:68-74 and 210-216 record that a second <code>Analyze()</code> reports bogus errors. A new analysis needs a fresh parse.</p>
+    <p>Analysis mutates the tree (eval types, resolved methods, inserted casts, generated methods), so it cannot run twice on one tree: comments in <code>core/lib/diags/diags.cpp</code> record that a second <code>Analyze()</code> reports bogus errors. A new analysis needs a fresh parse.</p>
     <p>So the cost of an edit is parse(all) + link(all libraries) + analyze(all). The phases below take those costs out in order of cost and risk.</p>
     <h3 id="phases">Phases</h3>
     <h4 id="phase-0--measure">Phase 0 — measure</h4>
@@ -244,6 +246,12 @@
      <li><strong>Generated methods follow their inputs.</strong> Named-argument forwarders are keyed by call shape and regenerated when a call site's shape set changes; default alternates are regenerated when a signature changes.</li>
     </ul>
     <p>This touches every <code>Set*</code> the analyzer performs, so it is a series of PRs, each moving one kind of result to a side table behind the existing accessors, with the suite and <code>OBJECK_LSP_NO_CACHE=1</code> comparisons as the check.</p>
+    <h3 id="how-to-check">How to check</h3>
+    <ul>
+     <li>Timing split: <code>OBJECK_LSP_TIMING=1</code> makes <code>libobjk_diags</code> write the <code>[lsp-timing]</code> lines; <code>python tools/lsp/tests/bench_incremental.py &lt;bin_dir&gt; [server_dir]</code> runs the edit sequence and prints the tables above (needs a built <code>libobjk_diags</code> and the server; it is a measurement, not a pass/fail test).</li>
+     <li>Cached against fresh: <code>python tools/lsp/tests/validate_cached_analysis.py &lt;bin_dir&gt; [server_dir]</code> (see its <code>--help</code>); <code>OBJECK_LSP_NO_CACHE=1</code> is the from-scratch reference it compares against, and <code>--control</code> must fail.</li>
+     <li>The numbers were taken on the machines named in each table; expect different absolute values and read the shares.</li>
+    </ul>
     <h3 id="decisions">Decisions</h3>
     <ul>
      <li><strong>Correctness first</strong> (the LSP rule: correct-slow over fast-brittle). Every phase keeps <code>OBJECK_LSP_NO_CACHE=1</code> as a reference. A test compares cached against fresh diagnostics, hover and completion over the edit sequence, and they must agree exactly.</li>

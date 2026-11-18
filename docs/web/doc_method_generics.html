@@ -65,10 +65,13 @@
       <li><a href="#decisions">Decisions</a></li>
       <li><a href="#phase-2-library-methods-shipped">Phase 2: library methods (shipped)</a></li>
       <li><a href="#implementation">Implementation</a></li>
+      <li><a href="#limitations">Limitations</a></li>
+      <li><a href="#how-to-check">How to check</a></li>
       <li><a href="#tests">Tests</a></li>
      </ul>
     </div>
 
+    <p><strong>Status:</strong> implemented. Phase 1 (program classes) is PR #1266 (<code>ffffd5fc15</code>); phase 2 (library methods, <code>Vector</code>/<code>List</code>/<code>CompareList</code> <code>Map&lt;R&gt;</code>) is PR #1275 (<code>5c45b2ac6c</code>); both are in v2026.10.1. <strong>Not implemented:</strong> explicit type arguments at a call (<code>Max(v)&lt;IntRef&gt;</code>), type parameters on constructors, and primitive arguments for a type parameter. The model is erasure, so there is no per-instantiation code and no run-time type argument.</p>
     <h3 id="why">Why</h3>
     <p>Type parameters existed only on classes. A generic helper needed a throwaway generic class, instantiated at every call with explicit type arguments (<code>Swapper-&gt;New()&lt;String&gt;-&gt;Swap(...)</code>). Research code is full of small generic helpers: argmax over a collection, swap, pick-first, map over a vector.</p>
 <pre class="line-numbers"><code class="language-cpp">function : Max&lt;T : Compare&gt;(values : Vector&lt;T&gt;) ~ T { ... }
@@ -116,7 +119,7 @@ name := First(names);       # a String
     <h3 id="phase-2-library-methods-shipped">Phase 2: library methods (shipped)</h3>
     <p>A library's signatures carry the bound a type parameter was erased to (<code>Max&lt;T : Compare&gt;</code> reads <code>Max(o.Collection.Vector|o.System.Compare)</code>), not the parameter, so a caller in another binary could not infer anything: a library generic returned its bound.</p>
     <ul>
-     <li><strong>The <code>.obl</code> keeps the marks.</strong> After each method's parameter names, a library writes where its own type parameters stand, as <code>(path, name)</code> pairs. <code>p&lt;i&gt;</code> is a parameter and <code>r</code> the return, followed by <code>.g&lt;i&gt;</code> for a generic argument, <code>.f&lt;i&gt;</code> for a function type's parameter, and <code>.r</code> for a function type's return (<code>Type::GetMethodGenericMarks</code>). The linker applies them to the parsed types (<code>LibraryMethod::SetGenericMarks</code>). Paths rather than positions mean a mark can never land on the wrong part of a type. The library magic is <code>0xffb8</code>, and a <code>0xffb7</code> library is refused with a rebuild message.</li>
+     <li><strong>The <code>.obl</code> keeps the marks.</strong> After each method's parameter names, a library writes where its own type parameters stand, as <code>(path, name)</code> pairs. <code>p&lt;i&gt;</code> is a parameter and <code>r</code> the return, followed by <code>.g&lt;i&gt;</code> for a generic argument, <code>.f&lt;i&gt;</code> for a function type's parameter, and <code>.r</code> for a function type's return (<code>Type::GetMethodGenericMarks</code>). The linker applies them to the parsed types (<code>LibraryMethod::SetGenericMarks</code>). Paths rather than positions mean a mark can never land on the wrong part of a type. The library magic became <code>0xffb8</code> for this change, and a <code>0xffb7</code> library is refused with a rebuild message (<code>Library::LoadFile</code>, <code>linker.cpp</code>). The magic has moved on since: <code>MAGIC_NUM_LIB</code> is now <code>0xffba</code>, and <code>core/shared/version.in</code> lists why each value changed.</li>
      <li><strong>Inference at a library call.</strong> <code>InferLibraryMethodGenerics</code> mirrors the program path, and <code>UnifyMethodGeneric</code> now matches function types: <code>(A, ..) ~ R</code> against the argument's function type, parameters and return.
     <ul>
      <li>A typed lambda gives its declared type, and so does a function value.</li>
@@ -149,6 +152,15 @@ name := First(names);       # a String
     <ol start="3">
      <li><strong>Emitter:</strong> unchanged.</li>
     </ol>
+    <h3 id="limitations">Limitations</h3>
+    <ul>
+     <li><strong>Erasure, as class generics have.</strong> One body serves every instantiation, <code>T</code> inside it is its bound (or <code>System.Base</code>), and nothing about the type arguments exists at run time. The soundness limits of class generics apply to method generics too (see "Generics Implementation" in <a href="https://github.com/objeck/objeck-lang/blob/master/core/compiler/README.md" target="_blank">core/compiler/README.md</a>); this document does not claim more.</li>
+     <li>A type parameter that no argument determines is its bound, not an error.</li>
+     <li>An inferred lambda for a type parameter must return an object; a primitive is not boxed.</li>
+     <li>No explicit type arguments, so a call's bindings can only come from its arguments.</li>
+    </ul>
+    <h3 id="how-to-check">How to check</h3>
+    <p><code>obc -src programs/regression/method_generics.obs -dest t.obe &amp;&amp; obr t.obe</code> (and <code>obr --jit=off t.obe</code>, <code>obr --jit=1 t.obe</code>); each <code>bad_method_generic_*.obs</code> must fail to compile. The library path: <code>python programs/regression/check_lib_generic_methods.py</code> (see its header for arguments).</p>
     <h3 id="tests">Tests</h3>
     <p><code>method_generics.obs</code> covers:</p>
     <ul>
