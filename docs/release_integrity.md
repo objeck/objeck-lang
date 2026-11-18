@@ -1,13 +1,15 @@
 # Release integrity: what is verified today, and the signed manifest that would close the gap
 
-## What exists
+> **Status, checked 2026-11-18.** The signed manifest this document designs is built: phases 1 to 4 below are marked done, and the repository shows each piece. `release-publish.yml` signs `SHA256SUMS` with `minisign -S -l` and uploads `SHA256SUMS.minisig`; `resign-manifest.yml` signs it again after the Windows installers are re-signed locally; `obu update` verifies the signature against the key compiled into it before trusting a line of the manifest and `obu verify` runs the same check on a downloaded archive (`core/utils/updater/obu.cpp`); `core/release/objeck-release.pub` (113 bytes, sha256 `864c6a99...7a6c04`) is the committed key; `tools/cicd/test_obu_verify.py` holds the verifier to behaviour against a fixture signed with the real key; and `verify-signing-credentials.yml` runs weekly jobs (`manifest-key`, `published-key`) that check the stored secret still matches the committed key and that objeck.org still serves the same bytes. The sections "What exists" and "What is not covered" below describe the state **before** the signature and are kept as the problem statement; read the Phases section for what is current. The "Limits" section at the end lists what even the signed manifest does not establish.
+
+## What exists (before the signed manifest)
 
 | Layer | Mechanism | Verified by |
 |---|---|---|
 | Windows installers | Authenticode signature (SafeNet eToken, signed locally after publish by `tools/cicd/sign_release.cmd`) | `Get-AuthenticodeSignature`; the release body tells the user to check it |
 | macOS package | Developer ID signature + notarization, in CI | Gatekeeper |
 | Every asset | `SHA256SUMS`, regenerated after signing (PR #693) | `sha256sum -c`; `obu update` computes SHA-256 itself and refuses an asset that does not match the manifest |
-| Repository | `secret-scan.yml` (gitleaks), CodeQL, GitGuardian | CI |
+| Repository | `secret-scan.yml` (gitleaks), CodeQL (`codeql.yml`), GitGuardian (an external service: no configuration for it is in this repository, so its presence is not verified here) | CI |
 
 So a corrupted or truncated download is caught, and a Windows or macOS installer that was tampered with fails its platform's signature check.
 
@@ -119,3 +121,14 @@ the manual path has no such protection by construction, so it is the one to
 check by hand.
 
 The keypair generation and the secret's placement are maintainer actions; nothing in this design has an assistant or CI handle the secret key in the clear.
+
+## Limits: what the signed manifest does not establish
+
+- **One key, one secret.** Whoever holds `MINISIGN_SECRET_KEY` (a GitHub Actions secret, with the maintainer's password manager as fallback) can sign any manifest. A compromise of that secret, or of a workflow that has access to it, defeats the scheme; the weekly job only proves the secret still *matches* the committed key, not that it has not leaked.
+- **The out-of-band copy is one more web host.** `https://www.objeck.org/objeck-release.pub` is independent of GitHub, but a user who trusts neither the repository nor that site has nothing to compare against, and the published copy is uploaded by hand (the document says so), so it can lag a rotation.
+- **Platform signatures are separate.** Windows installers rely on Authenticode (checked by `signtool verify /pa`, which `release-publish.yml` only *reports*, it does not sign) and the macOS package on Developer ID plus notarization. The Linux `.tgz` archives and the macOS `.tgz`/`.zip` have no platform signature; the signed manifest is their only claim, and it protects only a user who goes through `obu` (or runs `obu verify`), not one who downloads with a browser and does not check.
+- **Freshness is not shown.** A manifest is signed for a file name and carries a signed timestamp in its trusted comment, but this repository shows no check in `obu` that refuses an older, validly signed manifest (a grep of `core/utils/updater/obu.cpp` finds none). An attacker who can serve old assets with their old signed manifest is therefore not shown to be stopped. This has not been tested here.
+- **Load-time integrity is out of scope** (see above): `obr` runs any `.obe` it is given; the loader's refusal of malformed files is a robustness property covered in [SECURITY_MODEL.md](SECURITY_MODEL.md) and fuzzed ([TESTING_AND_ASSURANCE.md](TESTING_AND_ASSURANCE.md)), not an integrity one.
+- **Reproducibility is not claimed.** Nothing here shows that two builds of the same tag produce the same bytes, so a user cannot independently rebuild and compare.
+
+**How to check it yourself.** Fetch `SHA256SUMS`, `SHA256SUMS.minisig` and an archive from a release, keep `SHA256SUMS.minisig` beside `SHA256SUMS`, then `obu verify <archive> SHA256SUMS` (it checks the manifest's signature first; exit 0 matches, 1 does not match, 2 could not check; the usage text in `obu` says so), and `minisign -V -p core/release/objeck-release.pub -m SHA256SUMS` as an independent verifier; compare `sha256sum core/release/objeck-release.pub` with the digest above and with what objeck.org serves.

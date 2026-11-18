@@ -13,6 +13,27 @@ python tools/fuzz/gen.py --seed 42 --features F2,F5      # print one program
 python -m unittest discover -s tools/fuzz -p "test_*.py"  # FUZZ_BIN=<bin> for the toolchain tests
 ```
 
+## Where it runs, and what it cannot find
+
+| mode | where | how |
+| --- | --- | --- |
+| `run_fuzz.py` (generated programs) | nightly, all five legs, `.github/workflows/nightly-hardening.yml` step "Fuzzer"; also one batch per iteration of the soak (`tools/cicd/soak.py`) | `--bin <deploy bin> --leg <leg> --count 200 --seed <UTC date YYYYMMDD>` against the binaries of the latest green master CI run; `--count` is the `fuzz_count` dispatch input (default 200) |
+| `emi.py` (mutated regression tests) | **not in any workflow**; run by hand | see the commands under EMI mode |
+| unit tests (`test_*.py`) | `test_known_schema.py` and `test_run_fuzz.py` in the nightly's triage job; the rest by hand (`test_toolchain.py` needs `FUZZ_BIN`) | `python -m unittest discover -s tools/fuzz -p "test_*.py"` |
+| the .obe loader fuzzer | `tools/fuzz/loader/` (its own [README](loader/README.md)): the nightly's `loader-fuzz` job (30 minutes) and an advisory 5-minute job in `ci-build.yml` | not a differential fuzzer: libFuzzer plus ASan/UBSan on `Loader::Load` |
+
+Run locally with the command at the top of this file. A nightly run is 200 programs per leg by default (a seed range of `seed .. seed+count-1`), and every leg gets the same seed (the workflow's `SEED`, the UTC date), so one night runs the same 200 programs on each platform, inside a 45-minute step budget (`timeout-minutes: 45`; the triage wrapper's `--timeout` is 2400 s). Each compile or run has a 30 s limit (`--timeout`, default 30.0).
+
+**What it finds.** A miscompile or JIT bug in the supported feature set that changes a printed digest or the exit status between `-opt s0` and `s3`, between `--jit=off`, the default threshold and `--jit=1`; a compiler or VM crash or hang on those programs; a JIT that silently stops compiling (the coverage gate below).
+
+**What it cannot find.**
+- Anything outside the generated language subset listed under Programs (F1 to F6): no threads, I/O, sockets, string operations beyond those in F4, exceptions, generics, parameterised lambdas or reflection, and floats are digested to an `Int` rather than printed. Library code is exercised only indirectly.
+- Bugs that need a collection to happen at a particular moment: the configurations set no nursery size, GC threshold or verifier, so GC-sensitive defects (the usual JIT-plus-GC class) are the job of the nightly's stress and verifier steps and the regression suite, not of this tool.
+- Bugs every configuration shares (the oracle is agreement between configurations; EMI mode's uniform-output rule narrows this for the programs it mutates, nothing else does), and wrong output that is deterministic and consistent across all five.
+- Undefined behaviour: the generator avoids it by construction (bounded magnitudes, masked indexes, non-zero divisors), so integer-overflow, shift-count and divide-by-zero semantics are not tested here.
+- Platform differences: each leg compares its own configurations with each other; no output is compared across platforms, and the same seed on two platforms is only the same program, not a cross-platform check.
+- `known.json` is empty today (`"known": []`), so any finding is new; findings are reproducers under `findings/`, not a coverage claim.
+
 ## Files
 
 | file | role |
@@ -24,7 +45,7 @@ python -m unittest discover -s tools/fuzz -p "test_*.py"  # FUZZ_BIN=<bin> for t
 | `emi.py` | EMI mode: mutates existing regression tests into variants that must print the same output |
 | `known.json` | suppressions: signature regexes of triaged findings |
 | `faults/` | a deliberately broken `obc` and `obr`, used to prove findings are caught |
-| `findings/` | reduced reproducers of real findings (`.obs` only); all are fixed and kept as guards, each also covered by a regression test |
+| `findings/` | reduced reproducers of real findings (`.obs` only); the file's own claim is that all are fixed and kept as guards, each also covered by a regression test (not re-verified file by file here) |
 | `test_*.py` | unit tests; `test_toolchain.py` drives a real deploy tree |
 
 ## Configurations
