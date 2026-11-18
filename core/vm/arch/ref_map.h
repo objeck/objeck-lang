@@ -166,7 +166,9 @@
     // pushes them)
     inline void ParamWords(StackMethod* method, std::vector<SlotType>& out) {
       out.clear();
-      const size_t words = (size_t)method->GetParamCount();
+      // a count below zero (a malformed image the loader should have refused) must not
+      // become a 2^64-word table
+      const size_t words = method->GetParamCount() > 0 ? (size_t)method->GetParamCount() : 0;
       StackDclr** dclrs = method->GetDeclarations();
       const long num_dclrs = method->GetNumberDeclarations();
       for(long i = 0; i < num_dclrs && out.size() < words; ++i) {

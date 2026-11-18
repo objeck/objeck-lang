@@ -611,6 +611,22 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
       const int num_dclrs = ReadCount();
       StackDclr** dclrs = LoadDeclarations(num_dclrs, is_debug);
 
+      // The parameters are the first declarations, a function-typed one taking two
+      // words, so the count is never negative and never beyond the words declared.
+      // The JIT sizes its parameter tables by it (found by the loader fuzzer: a
+      // count of -255 became a 2^64-entry vector and the process grew until it died).
+      long declared_words = num_dclrs;
+      for(int j = 0; j < num_dclrs; ++j) {
+        if(dclrs[j]->type == FUNC_PARM) {
+          ++declared_words;
+        }
+      }
+      if(params < 0 || params > declared_words) {
+        DeleteDeclarations(dclrs, num_dclrs);
+        error << L">>> Invalid bytecode: parameter count out of range <<<" << std::endl;
+        LoadFailed();
+      }
+
       // parse return
       MemoryType rtrn_type = NIL_TYPE;
       switch(rtrn_name[0]) {
