@@ -281,7 +281,7 @@
       <tr><th>Layer</th><th>Where</th><th>What it catches</th></tr>
      </thead>
      <tbody>
-      <tr><td data-label="Layer">Regression suite</td><td data-label="Where"><code>programs/regression/</code> (782 programs, see <code>TESTS.md</code>), <code>run_regression.sh</code> and <code>.cmd</code></td><td data-label="What it catches">language, library and compiler behaviour, including <code>bad_*</code> programs that must be rejected. Run again with <code>OBJECK_JIT_THRESHOLD=1</code></td></tr>
+      <tr><td data-label="Layer">Regression suite</td><td data-label="Where"><code>programs/regression/</code> (812 programs, see <code>TESTS.md</code>), <code>run_regression.sh</code> and <code>.cmd</code></td><td data-label="What it catches">language, library and compiler behaviour, including <code>bad_*</code> programs that must be rejected. Run again with <code>OBJECK_JIT_THRESHOLD=1</code></td></tr>
       <tr><td data-label="Layer">VM flag, loader and GC-fixture tests</td><td data-label="Where"><code>programs/regression/run_vm_flag_tests.py</code></td><td data-label="What it catches"><code>obr</code> options, interpreter and JIT equivalence, loader refusals, GC address fixtures</td></tr>
       <tr><td data-label="Layer">Debugger and DAP</td><td data-label="Where"><code>run_debugger_tests.*</code>, <code>run_dap_tests.py</code></td><td data-label="What it catches"><code>obd</code> and the adapter</td></tr>
       <tr><td data-label="Layer">Differential</td><td data-label="Where"><code>programs/regression/run_differential.py</code></td><td data-label="What it catches">the same program must print the same output at <code>-opt s0</code> and <code>s3</code>, JIT off and forced on</td></tr>

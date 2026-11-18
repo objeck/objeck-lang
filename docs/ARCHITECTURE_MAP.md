@@ -230,7 +230,7 @@ A method is compiled on its call count reaching the threshold (default 10, `--ji
 
 | Layer | Where | What it catches |
 |---|---|---|
-| Regression suite | `programs/regression/` (782 programs, see `TESTS.md`), `run_regression.sh` and `.cmd` | language, library and compiler behaviour, including `bad_*` programs that must be rejected. Run again with `OBJECK_JIT_THRESHOLD=1` |
+| Regression suite | `programs/regression/` (812 programs, see `TESTS.md`), `run_regression.sh` and `.cmd` | language, library and compiler behaviour, including `bad_*` programs that must be rejected. Run again with `OBJECK_JIT_THRESHOLD=1` |
 | VM flag, loader and GC-fixture tests | `programs/regression/run_vm_flag_tests.py` | `obr` options, interpreter and JIT equivalence, loader refusals, GC address fixtures |
 | Debugger and DAP | `run_debugger_tests.*`, `run_dap_tests.py` | `obd` and the adapter |
 | Differential | `programs/regression/run_differential.py` | the same program must print the same output at `-opt s0` and `s3`, JIT off and forced on |
