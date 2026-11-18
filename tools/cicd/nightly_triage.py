@@ -732,8 +732,12 @@ def match_known(entries, item):
     return known_schema.match(entries, item)
 
 
-def collect_results(results_dir, legs, steps):
-    """Yield (leg, step, result-or-None) for expected and discovered steps."""
+def collect_results(results_dir, legs, steps, extra=()):
+    """Yield (leg, step, result-or-None) for expected and discovered steps.
+
+    Every leg is expected to have every step. `extra` is a list of (leg, step)
+    pairs expected on top of that: a step one leg runs alone (the loader fuzz
+    job, on linux-x64), which must not read as missing on the other legs."""
     seen = set()
     found = []
     if os.path.isdir(results_dir):
@@ -759,13 +763,17 @@ def collect_results(results_dir, legs, steps):
         for step in steps:
             if (leg, step) not in seen:
                 found.append((leg, step, None))
-    order = {s: i for i, s in enumerate(steps)}
+    for leg, step in extra:
+        if (leg, step) not in seen:
+            seen.add((leg, step))
+            found.append((leg, step, None))
+    order = {s: i for i, s in enumerate(list(steps) + [e[1] for e in extra])}
     legorder = {l: i for i, l in enumerate(legs)}
     found.sort(key=lambda x: (legorder.get(x[0], 99), order.get(x[1], 99), x[0], x[1]))
     return found
 
 
-def classify(results_dir, known_path, legs, steps):
+def classify(results_dir, known_path, legs, steps, extra=()):
     entries, known_error = load_known(known_path)
     items = []
 
@@ -793,7 +801,7 @@ def classify(results_dir, known_path, legs, steps):
         add("nightly", "triage", "", make_failure("known.json", known_error), "", "new")
 
     counted = 0
-    for leg, step, result in collect_results(results_dir, legs, steps):
+    for leg, step, result in collect_results(results_dir, legs, steps, extra):
         if result is None:
             add(leg, step, "", make_failure(
                 "(step)", "no result file: the step did not run to completion "
@@ -1105,7 +1113,8 @@ def summary_markdown(report, run_url=""):
 def cmd_triage(args):
     legs = [l for l in args.legs.split(",") if l]
     steps = [s for s in args.steps.split(",") if s]
-    report = classify(args.results, args.known, legs, steps)
+    extra = [tuple(pair.split(":", 1)) for pair in args.extra_steps.split(",") if ":" in pair]
+    report = classify(args.results, args.known, legs, steps, extra)
     os.makedirs(os.path.join(args.out, "issues"), exist_ok=True)
 
     summary = summary_markdown(report, args.run_url)
@@ -1192,6 +1201,8 @@ def main(argv=None):
     t.add_argument("--known", required=True)
     t.add_argument("--legs", required=True)
     t.add_argument("--steps", required=True)
+    t.add_argument("--extra-steps", default="",
+                   help="leg:step pairs expected on top of legs x steps, e.g. linux-x64:loader-fuzz")
     t.add_argument("--out", required=True)
     t.add_argument("--run-url", default="")
     t.add_argument("--github-output", default="")
