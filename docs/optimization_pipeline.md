@@ -3,6 +3,8 @@
 > How Objeck optimizes code across three tiers: the **compiler** (ahead-of-time),
 > the **VM interpreter** (baseline), and the **JIT** backends (hot-method tier-2).
 
+**Status:** implemented as described. The compiler passes are in `core/compiler/optimization.cpp`; the JIT thresholds in `core/vm/arch/jit/jit_common.h`. Nothing here is planned-only except where a row says "not yet".
+
 Optimization in Objeck is not a single stage — it is split across three layers,
 each working on a different representation and at a different point in time.
 
@@ -101,6 +103,12 @@ The docs in the last column, all under `docs/`, record what was built and what i
 | `s2` | common-subexpression elimination (CSE), loop-invariant code motion (LICM), strength reduction, dead-code elimination |
 | `s3` | instruction replacement, peephole optimization, method inlining (after every other pass has run on the class's methods) |
 
+Three more things are keyed on the level or the build kind, not listed above:
+
+- `--debug` (`-D`) forces level 0 whatever `-opt` says (the constructor of `ItermediateOptimizer`), so a debug build is `s0`.
+- After the per-method passes, `Optimize()` runs two whole-program walks: `CleanLabelsLocation` at `s2` and above (library classes included), and `JumpToLocation` (rewrites jump targets to instruction offsets) on every non-library build at every level, `s0` included.
+- The default is `s3`, and an `-opt` value other than `s0`..`s3` is rejected by the option parser; the optimizer itself treats anything that is not `s0`..`s2` as `s3`.
+
 ### What `-tar lib` does and does not skip
 
 A **library build** stops after `DeadBlockElimination` (`is_lib` in the early return of
@@ -125,12 +133,19 @@ Measured: building every shipped library with the `is_lib` early return removed 
 277 of 282 regression programs and all 18 CLBG/perf benchmarks compiling to byte-identical
 `.obe` images. See #899.
 
+## How to check
+
+- Compare bytecode at two levels: `obc -src t.obs -dest t.obe -opt s0 -asm` versus `-opt s3 -asm` (`-asm` writes the post-optimization instruction listing to `t.obm` beside the output, `FileEmitter` in `emit.h`; see [cli_options.md](cli_options.md)).
+- See what the JIT did: `OBJECK_JIT_REPORT=1 obr t.obe` names every method it compiles and every one it hands back, with the reason.
+- Interpreter only, for a differential run: `obr --jit=off t.obe`; eager JIT: `obr --jit=1 t.obe`.
+- The "byte-identical `.obe`" and "27 methods" figures above come from the #899 investigation (commit `13d1f37f9f`); the repo does not carry a script that regenerates them, so treat them as reported, not re-checked here.
+
 ## Tunables (environment variables)
 
 | Variable | Effect |
 |----------|--------|
 | `OBJECK_JIT_THRESHOLD=N` | Call count before a method is auto-JIT'd (default `10`). At `10` or below, a method with a loop is compiled on its first call instead. `--jit=<calls>` does the same and wins |
-| `OBJECK_JIT_DISABLE=1` | Disable auto-JIT entirely (interpret everything but `native` methods); `--jit=off` does the same |
+| `OBJECK_JIT_DISABLE=1` | Disable auto-JIT entirely, **including** `native` methods, which are interpreted too (`TryAutoJitCompile` refuses every compile when the threshold is the disabled sentinel, `jit_common.cpp`); `--jit=off` does the same |
 | `OBJECK_JIT_REPORT=1` | Name every method the JIT compiles, and every one it hands back to the interpreter with the reason |
 | `OBJECK_JIT_PIN_MAX=n`, `OBJECK_JIT_PIN_SKIP=<substring>` | AMD64: cap the loop locals pinned per loop (`0` turns pinning off), or exempt matching methods |
 

@@ -12,6 +12,24 @@ exist. The HTTP client
 (`core/compiler/lib_src/inference.obs`, written 2026-10-03, 38 assertions) is
 written but **not registered as a library**, so nothing can `use` it yet.
 
+> **Update 2026-11-18, checked against `master`.** Everything this plan proposed
+> that was not dropped is delivered except P5:
+>
+> | Item | State | Commit |
+> |---|---|---|
+> | P1 generic ONNX run (`Session`, `onnx_run`, `onnx_model_info`) | done, v2026.10.0 | `c17a43dec3`, 2026-10-07 (#1047) |
+> | `API.Inference` registered as `inference.obl` (the sentence above is out of date) | done | `756da91b9d`, 2026-10-08 (#1051); `core/compiler/build_libs.sh` |
+> | P4 registration in the five lists | done; `tools/cicd/check_doc_lists.py` keeps them in step | #1051 |
+> | P3' vendor the aarch64 ONNX Runtime 1.19.0 | linux-arm64 half done, v2026.10.0 | `fc454eced8`, 2026-10-09 (#1060) |
+> | P3' vendor the x64 GPU package | **not done**: `eq/cuda/lib/x64/lib` is still the CPU-only build | |
+> | P2 `API.Models`, `Engine`, `OnnxEngine`, `HttpEngine` | done, v2026.10.0 | `f9d6df9ce8`, 2026-10-09 (#1062) |
+> | Engine and provider parity tests | done as local checks | `95f1d996fb`, 2026-10-09 (#1070) |
+> | P3 TF Lite | dropped 2026-10-07 | `794c0bde02` (#1049) |
+> | P5 per-family decoders over `Engine` | not started; no FastSAM code exists, only `FASTSAM_DESIGN.md` | |
+>
+> The `ONNX_CUDA_PLAN` items listed under "Overlap" are still open except the
+> `ep` validation that already existed; see that file's own update.
+
 ## Why
 
 No single inference backend covers the five platforms Objeck ships on. Measured

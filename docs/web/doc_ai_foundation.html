@@ -61,6 +61,7 @@
     <div id="toc_container" class="plain">
      <h4>Contents</h4>
      <ul>
+      <li><a href="#status-checked-against-master-on-2026-11-18">Status (checked against <code>master</code> on 2026-11-18)</a></li>
       <li><a href="#summary">Summary</a></li>
       <li><a href="#1-goals-rules-and-non-goals">1. Goals, rules and non-goals</a></li>
       <li><a href="#2-what-exists-and-what-happens-to-it">2. What exists, and what happens to it</a></li>
@@ -82,6 +83,35 @@
     <p>This document designs a foundation that closes that gap: tensors on CPU and GPU, autograd, <code>nn</code> modules, optimizers, data loading, <code>safetensors</code> and a Hugging Face hub cache, tokenizers, task pipelines, and ONNX as both a runtime and an export target. BERT, "like with Python's <code>transformers</code>", is the first thing built on it.</p>
     <p>This is a design only. No library code changes with it. Target: the release <strong>after</strong> v2026.10.2.</p>
     <p>Every number below marked <em>measured</em> was measured for this document on 2026-10-29 (method in the appendix). Everything else is labelled as an estimate or as something a phase must check.</p>
+    <h3 id="status-checked-against-master-on-2026-11-18">Status (checked against <code>master</code> on 2026-11-18)</h3>
+    <p>The design above is the 2026-10-29 text; this section records what the code has done with it. Phase A is partly built. Phase B and everything after it is design only.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Item</th><th>Status</th><th>Evidence</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Item">A1 <code>TextClassifier</code> over a local folder, <code>Prediction</code></td><td data-label="Status">Implemented, v2026.10.2</td><td data-label="Evidence">PR #1456, <code>1b845903e5</code>; <code>core/compiler/lib_src/nlp_onnx.obs</code>; test <code>programs/regression/nlp_onnx_text_classifier.obs</code></td></tr>
+      <tr><td data-label="Item">A2 streaming <code>GetToFile</code> (no 256 MB cap)</td><td data-label="Status">Implemented, v2026.10.2</td><td data-label="Evidence">PR #1459, <code>e32d5e1f2e</code>; test <code>http_stream_to_file.obs</code>. No resume with <code>Range</code>: <code>ai_hub.obs</code> never sends one</td></tr>
+      <tr><td data-label="Item">A2 credentials dropped on a cross-origin redirect</td><td data-label="Status">Implemented, v2026.10.2</td><td data-label="Evidence">PR #1453, <code>1af95be09c</code>; test <code>http_redirect_credentials.obs</code></td></tr>
+      <tr><td data-label="Item">A2 incremental SHA-256</td><td data-label="Status">Implemented as <code>Cipher.Hash-&gt;SHA256File</code> (a megabyte at a time), not as <code>Sha256Init/Update/Final</code></td><td data-label="Evidence"><code>core/compiler/lib_src/cipher.obs</code></td></tr>
+      <tr><td data-label="Item">A2 <code>HubClient</code> and cache</td><td data-label="Status">Implemented, v2026.10.2, with the deviations below</td><td data-label="Evidence">PR #1463, <code>8cbe15eda0</code>; <code>ai_hub.obs</code>; test <code>ai_hub_client.obs</code></td></tr>
+      <tr><td data-label="Item">A3 <code>TokenizerJson</code> pipeline (normalizer, pre-tokenizer, model, post-processor, decoder objects)</td><td data-label="Status">Not started. <code>nlp_onnx.obs</code> reads only the WordPiece section of a <code>tokenizer.json</code> (<code>FromTokenizerJson</code>)</td><td data-label="Evidence"></td></tr>
+      <tr><td data-label="Item">A4 byte-level BPE (<code>BpeTokenizer</code>)</td><td data-label="Status">Implemented, v2026.10.2</td><td data-label="Evidence">PR #1462, <code>52c003cf4b</code>; test <code>nlp_bpe_tokenizer.obs</code></td></tr>
+      <tr><td data-label="Item">A5 Unigram, <code>Precompiled</code>, Metaspace</td><td data-label="Status">Code exists only on the unmerged branch <code>origin/feat/unigram-tokenizer</code> (<code>4e1fcfe6f8</code>, 2026-10-30); not in <code>master</code></td><td data-label="Evidence"></td></tr>
+      <tr><td data-label="Item">A6 <code>TokenClassifier</code>, <code>QuestionAnswerer</code>; A7 <code>FillMask</code>, <code>SentenceEmbedder</code>, <code>CrossEncoder</code>, <code>Pipeline</code>; A8</td><td data-label="Status">Not started</td><td data-label="Evidence">no such class in <code>core/compiler/lib_src</code></td></tr>
+      <tr><td data-label="Item"><code>EncoderRunner</code> / <code>OnnxRunner</code></td><td data-label="Status">Not started; <code>TextClassifier</code> calls the ONNX session directly</td><td data-label="Evidence"></td></tr>
+      <tr><td data-label="Item">Phase B (libtorch shim, <code>System.AI.Tensor</code>, <code>NN</code>, <code>Optim</code>, <code>Data</code>, <code>Transformers</code>, <code>SafeTensors</code>), Phases C-G</td><td data-label="Status">Design only: no <code>ai_tensor</code>, <code>ai_nn</code> or <code>ai_optim</code> library in <code>core/compiler/build_libs.sh</code></td><td data-label="Evidence"></td></tr>
+      <tr><td data-label="Item">D1 close PR #1449</td><td data-label="Status">Done: closed 2026-10-30</td><td data-label="Evidence"><code>gh pr view 1449</code></td></tr>
+     </tbody>
+    </table>
+    <p>Where the shipped <code>HubClient</code> differs from section 7.3 (the source is <code>ai_hub.obs</code>):</p>
+    <ul>
+     <li>Python's cache is a fallback when the client is offline or the Hub cannot be reached, not a lookup gated by <code>OBJECK_HUB_CACHE_PYTHON</code>. It also honours <code>HF_HOME</code>.</li>
+     <li><code>HF_ENDPOINT</code> selects another Hub (a mirror).</li>
+     <li>A download goes to a partial file and is checked after it ends; it does not resume, and there is no <code>manifest.json</code>, no <code>.incomplete/</code> folder and no <code>Variant</code> selector. A caller names the file it wants, for example <code>onnx/model_quantized.onnx</code>.</li>
+     <li><code>Download(repo, file, revision)</code> and <code>Snapshot(repo, files, revision)</code> exist as designed.</li>
+    </ul>
+    <p>The section 7.4 measurement that DeBERTa's <code>tokenizer.json</code> takes 15.8 s to parse has not been re-checked.</p>
     <h3 id="summary">Summary</h3>
     <ul>
      <li><strong>Two tracks that meet.</strong>

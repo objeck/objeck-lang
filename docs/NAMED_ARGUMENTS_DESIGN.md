@@ -2,6 +2,8 @@
 
 Issue: [#1244](https://github.com/objeck/objeck-lang/issues/1244), split out of #1186 (Rosetta batch 3).
 
+**Status:** implemented. Phase 1 (program classes and constructors) is PR #1263 (`56515c1d79`); phase 2 (library methods, parameter names recorded in every `.obl`) is PR #1268 (`5ac6b6c404`); both are in v2026.10.1. **Not implemented:** named arguments for virtual and interface methods, function values and lambdas, and calls on a primitive receiver; each is a compile error with a message, never a silent positional call.
+
 ## Why
 
 Trailing default values already work:
@@ -113,9 +115,9 @@ generate a forwarder inside another binary. Phase 2 (shipped) adds:
 
 1. **Parameter names in every `.obl`.** After each method's entries, a library build writes
    the parameter count, then each parameter's bare name and whether it has a default
-   (`IntermediateMethod::Write`). The library magic is now `0xffb7`. The compiler refuses a
-   library with the old magic (`0xffb6`) and asks for it to be rebuilt. The VM accepts both,
-   because an `.obe` never contains the names.
+   (`IntermediateMethod::Write`). The library magic became `0xffb7` for this change. The compiler refuses a
+   library with the old magic (`0xffb6`, `MAGIC_NUM_LIB_NO_PARAM_NAMES`) and asks for it to be
+   rebuilt. The magic has moved on since (`MAGIC_NUM_LIB` is now `0xffba`; `core/shared/version.in` says why each value changed).
 2. **One mask forwarder** per library method with two or more defaults
    (`GenerateMaskForwarder`, library targets only). `F$m` takes every parameter plus an `Int`
    whose bit *j* says the caller gave parameter *j*. It assigns each default the caller skipped,
@@ -152,6 +154,20 @@ ones), `bad_named_argument_primitive.obs`, and `check_lib_named_args.py`. That l
 builds a library and links a program against it, covering a skipped middle default,
 constructors, inherited methods (on a variable and chained) and an unknown name, in three
 modes.
+
+## Limitations
+
+- Parameter names of the standard library are public API from this change on.
+- A function-typed parameter of a library method cannot be skipped or reordered by name.
+- A library method with more than 62 parameters gets no mask forwarder, so a named call that
+  skips a default on it is not available (`GenerateMaskForwarder`, `context.cpp`).
+- Several overloads that one named call fits equally well are an ambiguity error that asks for
+  positional arguments (`BindNamedArguments`).
+- A skipped default is evaluated in the callee's context, never at the call site.
+
+## How to check
+
+`obc -src programs/regression/named_arguments.obs -dest t.obe && obr t.obe` (and with `obr --jit=off t.obe`, `obr --jit=1 t.obe`); every `bad_named_argument_*.obs` must fail to compile. Library path: `python programs/regression/check_lib_named_args.py <bin_dir>` (builds a library, links a program against it, three modes).
 
 ## Phase 1 plan
 

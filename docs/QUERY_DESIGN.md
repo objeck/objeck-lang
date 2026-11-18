@@ -6,6 +6,53 @@ module. This builds on the correctness fixes in #1291 (numeric aggregates, CSV t
 
 ## Why
 
+**Status (checked 2026-11-18 against `master`): implemented and released in v2026.10.2, except
+phase 8.** The "As built" section and the sections after it record what each phase did where it
+differs from the plan; the plan text above them is the 2026-10-22 design and is left as written.
+
+| Phase | Commit (all 2026-10-22 to 2026-10-26) |
+|---|---|
+| 1 columnar storage and first sources | `48ee6c59b0` (#1298) |
+| 2 views, compiled predicates, text and JSON Lines sources | `106c78efe7` |
+| 3 `.otab` file; 3b change log and lock | `15f5448f52`; `489205d9d3` |
+| 4 joins, GROUP BY, DML; hierarchical sources and files in SQL; bridges | `c6fb1725cb`; `ea163e3246`; `e91dec5492` |
+| 5 URLs and download cache; table server and range reads | `98f29fbc30`; `e91dec5492` |
+| 6 hash and sorted indexes, rule-based planner | `539a01b22a` |
+| 7 `query_ml`, `ArchiveSource`, `XlsxSource`, `query_odbc`, `query_vision` | `8b8a95bbd9`, `f36b384f7d`, `4149a5d317`, `e40fb6d9b5`, `558baaac1c` |
+| Expressions in every clause, stages 1 to 3 | `a6185b5ac1`, `70ac8f3169`, `2f49c42d0e` |
+| `.otab` index definitions (format 2) | `94ae7c8e7c` |
+
+**Not built (phase 8):** the B+ tree index (`CREATE INDEX ... USING BTREE` is refused with "a B+
+tree index is not built yet", `query.obs`), parallel scans, and index entries stored in `.otab`.
+Also not built: delta and run-length block encodings, Brotli (the format has zlib codecs only),
+`ObjectColumn` and per-type column subclasses (see section 1), and scalar functions.
+
+**Planned tests that landed under another name or not at all:** `query_persist_partial` (partial
+reads are checked inside `query_persist_roundtrip.obs`), `query_source_jsonl` (JSON Lines is in
+`query_source_text.obs`, `query_source_gzip.obs` and `query_net_read.obs`), and the
+`query_bench.obs` performance gate (there is no such regression test; the measurement is
+`perf-results/libs/query_index_bench.obs`, run by `perf-results/libs/run_lib_bench.py` against
+`lib_baseline.json`, and is not a pull-request gate).
+
+**Validated by** the `programs/regression/query_*.obs` tests named in each section: the
+differential tests (`query_differential`, `query_index_differential`, `query_expr_differential`,
+each comparing the engine with a naive row-at-a-time evaluator written in the test), the
+persistence tests (`query_persist_*`), the concurrency tests (`query_index_concurrent`,
+`query_thread_errors`, `query_catalog_concurrent`, `query_expr_concurrent`,
+`query_server_concurrent`, `query_url_cache_processes`) and one `query_source_*` test per source.
+**How to check:**
+
+```
+cd programs/regression
+obc -src query_differential.obs -lib net,regex,csv,misc,query -dest query_differential.obe
+obr query_differential.obe
+```
+
+(each test's `# EXTRA_LIBS:` line gives its libraries). **Known limits:** one writer per table;
+no transactions across statements; no cancellation of a running query (so `TableServer` has no
+time limit); `TableServer` runs one server per process; the performance figures below were
+measured on one Windows x64 machine and are not re-checked here.
+
 `Query.Structured` exists to make structures that are not tables queryable as tables: a
 filesystem through `FromFilesystem` and `Finder`, a CSV file through `FromCsv`, and in intent
 other hierarchical or relational data (section 6). Research code needs the same thing: load a CSV
@@ -117,6 +164,12 @@ Table
 | `StringColumn` | `String[]` | `String` |
 | `DateColumn` | `Int[]` of epoch seconds | `Date` |
 | `ObjectColumn` | `Compare[]` | anything else that implements `Compare` |
+
+> **As built:** there is one concrete class, `Column`, holding an `Int[]`, `Float[]`, `String[]` or
+> `Compare[]` (plus a dictionary and zone maps) according to its `ColumnType`; there are no
+> `IntColumn`, `FloatColumn`, `StringColumn`, `DateColumn` or `ObjectColumn` subclasses, and the
+> index belongs to the `Column`, not the `Table` (see "Phase 6" in "As built"). A date is stored as
+> milliseconds, not epoch seconds ("Phase 1" in "As built").
 
 Every column has a null bitmap (`Int[]`, 64 rows a word) allocated only when the first `Nil` is
 stored. Arrays grow by doubling; `Compact()` trims them.

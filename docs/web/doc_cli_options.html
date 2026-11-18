@@ -71,6 +71,7 @@
       <li><a href="#compiler--obc">Compiler — <code>obc</code></a></li>
       <li><a href="#virtual-machine--obr">Virtual machine — <code>obr</code></a></li>
       <li><a href="#notes">Notes</a></li>
+      <li><a href="#how-to-check">How to check</a></li>
       <li><a href="#source">Source</a></li>
      </ul>
     </div>
@@ -107,6 +108,7 @@
     V_FLAGS --&gt; V_gc["--gc-threshold=&amp;lt;n&amp;gt;(k|m|g)&lt;br/&gt;legacy: --GC_THRESHOLD="]
     V_FLAGS --&gt; V_nursery["--nursery=&amp;lt;n&amp;gt;(k|m), 64k to 128m&lt;br/&gt;env: OBJECK_NURSERY"]
     V_FLAGS --&gt; V_stdio["--objeck-stdio=binary|utf16|utf8&lt;br/&gt;acted on by Windows; accepted everywhere&lt;br/&gt;legacy: --OBJECK_STDIO="]
+    V_FLAGS --&gt; V_depth["--call-depth=&amp;lt;frames&amp;gt;, 256 to 1048576&lt;br/&gt;default 16384; env: OBJECK_CALL_DEPTH"]
     V_FLAGS --&gt; V_jit["--jit=off | --jit=&amp;lt;calls&amp;gt;&lt;br/&gt;env: OBJECK_JIT_DISABLE / OBJECK_JIT_THRESHOLD"]
     V_FLAGS --&gt; V_lib["--lib-path=&amp;lt;dir&amp;gt;&lt;br/&gt;env: OBJECK_LIB_PATH"]
 
@@ -115,6 +117,7 @@
     V_ENV --&gt; E_stdio["OBJECK_STDIO  (binary stdio mode)"]
     V_ENV --&gt; E_jitd["OBJECK_JIT_DISABLE=1  (auto-JIT off)"]
     V_ENV --&gt; E_jitt["OBJECK_JIT_THRESHOLD=N  (default 10)"]
+    V_ENV --&gt; E_depth["OBJECK_CALL_DEPTH=&amp;lt;frames&amp;gt;  (call-nesting limit)"]
     V_ENV --&gt; E_nursery["OBJECK_NURSERY=&amp;lt;size&amp;gt;  (young-generation size)"]
     V_ENV --&gt; E_gcstats["OBJECK_GC_STATS=1  (GC summary on stderr at exit)"]</pre>
     <h3 id="compiler--obc">Compiler — <code>obc</code></h3>
@@ -131,13 +134,13 @@
       <tr><td data-label="Option"><code>--strict</code></td><td data-label="Aliases"></td><td data-label="Description">Exclude default libraries (<code>lang</code>, <code>gen_collect</code>)</td></tr>
       <tr><td data-label="Option"><code>--optimize</code></td><td data-label="Aliases"><code>-opt</code>, <code>-o</code></td><td data-label="Description">Optimization level <code>s0</code>–<code>s3</code> (default: <code>s3</code>)</td></tr>
       <tr><td data-label="Option"><code>--alt-syntax</code></td><td data-label="Aliases"><code>-alt</code></td><td data-label="Description">Use the alternative C-like syntax</td></tr>
-      <tr><td data-label="Option"><code>--debug</code></td><td data-label="Aliases"><code>-D</code></td><td data-label="Description">Include debug symbols</td></tr>
-      <tr><td data-label="Option"><code>--assembly</code></td><td data-label="Aliases"><code>-asm</code>, <code>-a</code></td><td data-label="Description">Emit an assembly file</td></tr>
+      <tr><td data-label="Option"><code>--debug</code></td><td data-label="Aliases"><code>-D</code></td><td data-label="Description">Include debug symbols. Also forces optimization level <code>s0</code>, whatever <code>--optimize</code> says (<code>ItermediateOptimizer</code> constructor, <code>optimization.cpp</code>)</td></tr>
+      <tr><td data-label="Option"><code>--assembly</code></td><td data-label="Aliases"><code>-asm</code>, <code>-a</code></td><td data-label="Description">Write a listing of the emitted (post-optimization) bytecode to a <code>.obm</code> file, the destination name with its extension replaced (<code>FileEmitter</code>, <code>emit.h</code>). The <code>.obe</code>/<code>.obl</code> is still written</td></tr>
       <tr><td data-label="Option"><code>--version</code></td><td data-label="Aliases"><code>-ver</code>, <code>-v</code></td><td data-label="Description">Show version</td></tr>
      </tbody>
     </table>
     <h4 id="library-groups">Library groups</h4>
-    <p>An entry in <code>--library</code> that begins with <code>@</code> is a <strong>group</strong>, expanded from <code>lib/configobjk.ini</code> beside the installed <code>.obl</code> files. <code>-lib @web</code> is shorthand for the seven libraries that group lists.</p>
+    <p>An entry in <code>--library</code> that begins with <code>@</code> is a <strong>group</strong>, expanded from <code>lib/configobjk.ini</code> beside the installed <code>.obl</code> files. <code>-lib @web</code> is shorthand for the eight libraries that group lists.</p>
     <table class="ref-table">
      <thead>
       <tr><th>Group</th><th>Expands to</th><th>For</th></tr>
@@ -165,8 +168,9 @@
      <tbody>
       <tr><td data-label="Option"><code>--gc-threshold=&lt;n&gt;(k|m|g)</code></td><td data-label="Legacy form"><code>--GC_THRESHOLD=</code></td><td data-label="Description">A fixed heap size at which a major collection runs, e.g. <code>512k</code>, <code>2m</code>, <code>1g</code>. Without it the threshold follows the program: after each major collection it is set to twice the live heap, and never below 8 MB. A given value suits stress testing (a small one collects often) or a program that knows its working set. It holds while a major collection leaves at least a quarter of it free; while more than three quarters of it survive, the next major waits for twice the live heap instead (it used to collect on nearly every allocation then), and the given value returns once the live heap fits under it again. <code>OBJECK_GC_TRACE</code> reports the first time that happens</td></tr>
       <tr><td data-label="Option"><code>--nursery=&lt;n&gt;(k|m)</code></td><td data-label="Legacy form">env <code>OBJECK_NURSERY=&lt;n&gt;(k|m)</code></td><td data-label="Description">Young-generation (nursery) size, from <code>64k</code> to <code>128m</code> (default <code>128m</code>). A full nursery triggers a minor collection, so a smaller one collects more often. The 128 MB region stays reserved; this only lowers the limit. The flag wins over the variable, and a bad value in either is an error</td></tr>
-      <tr><td data-label="Option">—</td><td data-label="Legacy form">env <code>OBJECK_GC_STATS=1</code></td><td data-label="Description">At exit, print one line to stderr: <code>[gc-stats] minor= major= pauses= pause_p50_us= pause_p95_us= pause_max_us= promoted_objects= promoted_bytes= peak_rss_bytes=</code>. Pauses run from the collecting thread taking the collector lock until the world resumes, so they include the stop-the-world handshake and the minor GC's remembered-set scan</td></tr>
-      <tr><td data-label="Option"><code>--jit=off</code> / <code>--jit=&lt;calls&gt;</code></td><td data-label="Legacy form">env <code>OBJECK_JIT_DISABLE=1</code> / <code>OBJECK_JIT_THRESHOLD=N</code></td><td data-label="Description"><code>off</code> runs the interpreter only; a positive number is how many calls a method makes before it is compiled (default <code>10</code>)</td></tr>
+      <tr><td data-label="Option">—</td><td data-label="Legacy form">env <code>OBJECK_GC_STATS=1</code></td><td data-label="Description">At exit, print one line to stderr: <code>[gc-stats] minor= major= pauses= pause_p50_us= pause_p95_us= pause_max_us= promoted_objects= promoted_bytes= peak_rss_bytes=</code>. Percentiles are nearest-rank over the first 1,048,576 recorded pauses (<code>GC_STATS_SAMPLE_MAX</code>); <code>pause_max_us</code> covers every collection. Pauses run from the collecting thread taking the collector lock until the world resumes, so they include the stop-the-world handshake and the minor GC's remembered-set scan</td></tr>
+      <tr><td data-label="Option"><code>--call-depth=&lt;frames&gt;</code></td><td data-label="Legacy form">env <code>OBJECK_CALL_DEPTH=&lt;frames&gt;</code></td><td data-label="Description">How deep calls may nest, from <code>256</code> to <code>1048576</code> (default <code>16384</code>). Past it the program stops with <code>call stack bounds have been exceeded</code>, which a <code>Try()</code> can recover from. Compiled code can reach the end of the native stack first and reports the same error. The flag wins over the variable; a bad value in either is an error. Changes the size of the threads' native stacks too (<code>call_stack.h</code>)</td></tr>
+      <tr><td data-label="Option"><code>--jit=off</code> / <code>--jit=&lt;calls&gt;</code></td><td data-label="Legacy form">env <code>OBJECK_JIT_DISABLE=1</code> / <code>OBJECK_JIT_THRESHOLD=N</code></td><td data-label="Description"><code>off</code> runs the interpreter only, <code>native</code> methods included; a positive number is how many calls a method makes before it is compiled (default <code>10</code>). A method with a loop is compiled on its first call or entry while the threshold is at or below the default, see <a href="https://github.com/objeck/objeck-lang/blob/master/docs/optimization_pipeline.md" target="_blank">optimization_pipeline.md</a></td></tr>
       <tr><td data-label="Option">—</td><td data-label="Legacy form">env <code>OBJECK_JIT_REPORT=1</code></td><td data-label="Description">Print, to stderr, every method the JIT hands back to the interpreter and why: an unsupported opcode (number per <code>obc -asm</code>), or the instruction at which compilation failed. Diagnostic; no effect on execution</td></tr>
       <tr><td data-label="Option"><code>--lib-path=&lt;dir&gt;</code></td><td data-label="Legacy form">env <code>OBJECK_LIB_PATH</code></td><td data-label="Description">The Objeck <code>lib</code> root. <code>obc</code> reads the <code>.obl</code> files from it; <code>obr</code> loads the native libraries from <code>&lt;dir&gt;/native/</code> (`libobjk_*.dll</td><td data-label="">.so</td><td data-label="">.dylib<code>), reads </code>&lt;dir&gt;/cacert.pem<code> for TLS, and reports it as the </code>lib_dir<code> runtime property. On Windows the third-party runtime DLLs those libraries import (SDL2, onnxruntime, opencv, lame, the VC runtime) are resolved from </code>obr.exe<code>'s own directory, so </code>bin/<code> keeps them wherever </code>lib/` is</td></tr>
       <tr><td data-label="Option"><code>--objeck-stdio=binary|utf16|utf8</code></td><td data-label="Legacy form"><code>--OBJECK_STDIO=</code></td><td data-label="Description">Console I/O mode. Acted on by <strong>Windows</strong>; accepted and ignored elsewhere so one script works on every platform</td></tr>
@@ -183,6 +187,7 @@
       <tr><td data-label="Variable"><code>OBJECK_STDIO</code></td><td data-label="Effect">Binary STDIO mode</td></tr>
       <tr><td data-label="Variable"><code>OBJECK_JIT_DISABLE=1</code></td><td data-label="Effect">Turn auto-JIT off entirely</td></tr>
       <tr><td data-label="Variable"><code>OBJECK_JIT_THRESHOLD=N</code></td><td data-label="Effect">Call count before a method is auto-JIT'd (default <code>10</code>)</td></tr>
+      <tr><td data-label="Variable"><code>OBJECK_CALL_DEPTH=&lt;frames&gt;</code></td><td data-label="Effect">Call-nesting limit, <code>256</code> to <code>1048576</code> (default <code>16384</code>); <code>--call-depth</code> wins</td></tr>
       <tr><td data-label="Variable"><code>OBJECK_NURSERY=&lt;n&gt;(k|m)</code></td><td data-label="Effect">Nursery size, <code>64k</code> to <code>128m</code>; <code>--nursery</code> wins when both are set</td></tr>
       <tr><td data-label="Variable"><code>OBJECK_GC_STATS=1</code></td><td data-label="Effect">One-line GC summary (counts, pause percentiles, promoted bytes, peak RSS) on stderr at exit</td></tr>
      </tbody>
@@ -194,6 +199,12 @@
      <li><strong><code>--jit=off</code> is the first thing to try on a crash or a wrong answer</strong> — it asks whether the bug lives in the JIT or in the interpreter. The environment variables still work and the flag wins when both are set.</li>
      <li>A <code>g</code> suffix on <code>--gc-threshold</code> is 2³⁰. Before v2026.9.1 it was 2⁴⁰, so <code>1g</code> asked for a terabyte.</li>
      <li>Combining <code>--library</code> with <code>--strict</code> drops the implicit <code>lang,gen_collect</code> defaults.</li>
+    </ul>
+    <h3 id="how-to-check">How to check</h3>
+    <ul>
+     <li><code>obr</code> with no arguments prints the usage text that this page mirrors (<code>VmUsage()</code> in <code>core/vm/vm_options.h</code>); <code>obc</code> with no arguments prints the compiler's (<code>posix_main.cpp</code>). If this page and the usage text disagree, trust the parsing code named under Source.</li>
+     <li>A bad value fails loudly: <code>obr --nursery=1g prog.obe</code>, <code>obr --call-depth=10 prog.obe</code> and <code>obr --objeck-stdio=1 prog.obe</code> each print what was expected.</li>
+     <li><code>OBJECK_GC_STATS=1 obr prog.obe</code> prints the <code>[gc-stats]</code> line to stderr at exit.</li>
     </ul>
     <h3 id="source">Source</h3>
     <ul>

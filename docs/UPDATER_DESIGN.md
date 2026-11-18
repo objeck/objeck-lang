@@ -27,6 +27,36 @@
 > The signature-verification layer (Authenticode/notarization) that the SHA-256
 > check deliberately does not provide is also still outstanding. The design
 > below is the full plan; the phasing section at the end tracks it.
+>
+> **Checked 2026-11-18 against master `3042a96eee`, where this page and the code now
+> differ:**
+> - **The manifest is signed, which this page does not say.** Since v2026.10.0 (#723;
+>   `833ef309f6` signs `SHA256SUMS` in the release, `c76c3a05c2` makes `obu` require
+>   the signature) every release's `SHA256SUMS` carries a minisign (Ed25519, legacy
+>   non-prehashed) signature, and `obu` refuses a manifest that does not verify
+>   against the release public key compiled into `core/utils/updater/obu.cpp`. That
+>   closes the "same channel as the assets" gap named under Risks for a substituted
+>   archive plus a substituted manifest. `obu verify` checks an existing download the
+>   same way. Re-signing after the Windows installers are signed is
+>   `resign-manifest.yml` (`9d28b1caff`, v2026.10.1).
+> - **Platform signature checks are not implemented.** Step 3's `WinVerifyTrust` and
+>   `spctl --assess` do not exist in `obu.cpp`. Trust rests on the signed manifest
+>   alone.
+> - **The post-check is `obc -v` only** (`obu.cpp`, "POST-CHECK"). Its own comment says
+>   `obr` has no version flag, so step 5's "`obr --version`" and "compile a one-liner"
+>   are not done; a tree whose `obr` or `lang.obl` is broken but whose `obc` prints a
+>   version passes the check.
+> - **Tier 2 download tracking is not built**; `--no-telemetry` and
+>   `OBJECK_UPDATE_NO_PING` do not exist. Tier 1 is `tools/release-stats/`
+>   (`snapshot_downloads.py`, `downloads.csv`, `release-stats.yml`).
+> - **Commands in this tree:** `check`, `update`, `rollback`, `verify`, with `--quiet`,
+>   `--channel <tag>` and `--force` (an explicit older tag is a downgrade and needs it).
+> - **Debian packages:** under apt the `/usr/bin/obu` wrapper refuses `update` and
+>   `rollback` ([DEB_PACKAGE_DESIGN.md](DEB_PACKAGE_DESIGN.md)).
+> **How to check:** `python core/utils/updater/test_update.py` runs the offline suite
+> against a fake release (it builds its own `obu` with test hooks, see
+> [ARCHITECTURE_ASSESSMENT_2026_11.md](ARCHITECTURE_ASSESSMENT_2026_11.md) finding 2.1's note on that
+> pattern); `obu verify` checks a download against the signed manifest.
 
 
 Upgrading Objeck today means downloading an installer and re-running it.

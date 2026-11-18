@@ -4,6 +4,18 @@ Defects found while auditing the libraries for Nil dereferences (the sweep in PR
 
 Sizes: S is under half a day, M is one to three days, L is more. They include the tests.
 
+## Status, checked 2026-11-18 against `master`
+
+| Entry | State |
+|---|---|
+| 1. A corrupt model file ends the program | **Open.** `Deserializer->New` still begins with `Byte->UncompressZlib(buffer)` (`lang.obs`, line 10674 now) and there is no `TryUncompressZlib` or `IsOk`. |
+| 2. Fit and Predict do not validate their arguments | **Open**, spot-checked only: `LinearRegression->Fit(X, y)` (`ml_linear.obs`, line 215) still forwards without a check. The other listed methods were not re-read. |
+| 3. Doc examples that chain on a Nil | **Open.** The chains are still in `xml.obs` (line 402, was 386), `json.obs` (for example line 494) and `onnx.obs` (lines 65 and 176). |
+| "Also found": `WebDownloader->Download` skipped URLs 7 and later | **Done**, PR #1535, `281425e163` (2026-11-02), v2026.10.3. |
+| "Also found": regular expression bounds, JSON-RPC client id | **Done**, PR #1534, `8b020f1112` (2026-11-02), libraries rebuilt in `c602e00d15`, v2026.10.3. |
+
+Line numbers in the entries below are from 2026-11-02 and have drifted; search by the quoted text.
+
 ## 1. A corrupt model file ends the program
 
 **What.** Every machine-learning `Load(filename)` handles a file that is missing (it returns Nil) but not one that exists and is not a model. The file's bytes go to `System.IO.Deserializer->New(data)`, whose first statement is `Byte->UncompressZlib(buffer)`. For data that is not a zlib stream the intrinsic raises a runtime error, `Invalid, truncated or oversized zlib data`, and the program ends. A truncated download, a file from another tool and a model written by an older format all land here.

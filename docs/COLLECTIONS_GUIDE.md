@@ -3,7 +3,8 @@
 Which of the `Collection` classes to reach for, what each operation costs, and what each
 `Remove` hands back. Everything below was read from
 [`core/compiler/lib_src/gen_collect.obs`](../core/compiler/lib_src/gen_collect.obs) (the
-line numbers are where the class starts); nothing here changes the API. Compile with
+line numbers are where the class starts, as of 2026-11-18; search for `class Name` if they have
+drifted); nothing here changes the API. Compile with
 `-lib gen_collect` (every build gets it; see `core/compiler/build_libs.sh`).
 
 ## At a glance
@@ -50,7 +51,7 @@ move the cursor to that end first, so they disturb an iteration in progress that
 
 ## The classes
 
-### `Vector<H>` (gen_collect.obs:5113)
+### `Vector<H>` (gen_collect.obs:5118)
 
 A growable array. It grows by half again (at least four slots) when full, so `AddBack` is
 amortised O(1).
@@ -66,7 +67,7 @@ amortised O(1).
 There is no insert-at-index and no `AddFront`; use a `List`, or build a new `Vector`, if you
 need either. `Reserve(n)` avoids regrowth when the size is known.
 
-### `List<H>` (gen_collect.obs:4350)
+### `List<H>` (gen_collect.obs:4355)
 
 A doubly linked list with one built-in cursor (`Rewind`, `Forward`, `Next`, `Previous`, `More`,
 `Get`, `Set`) and independent `ForwardIterator()`/`BackwardIterator()` objects.
@@ -78,7 +79,7 @@ A doubly linked list with one built-in cursor (`Rewind`, `Forward`, `Next`, `Pre
 | `Get()`, `Set(v)`, `Next()`, `Previous()` | O(1), at the cursor |
 | anything by position or by value | not provided; walk it, O(n) |
 
-### `Map<K, V>` (gen_collect.obs:6776)
+### `Map<K, V>` (gen_collect.obs:6781)
 
 An AA tree (`Skew`/`Split` rebalancing on a level per node), so it stays balanced.
 
@@ -91,7 +92,7 @@ An AA tree (`Skew`/`Split` rebalancing on a level per node), so it stays balance
 (so it cannot tell a missing key from a stored `Nil`; use `Has`). A `Nil` key is ignored by
 `Insert`. The name is the usual trap: `Map` is the *ordered tree*. It is not a hash map.
 
-### `Hash<K, V>` (gen_collect.obs:2020)
+### `Hash<K, V>` (gen_collect.obs:2025)
 
 Open addressing with linear probing over parallel key, value and hash arrays. It doubles when it
 is 70% full and has no upper limit; `Remove` uses backward-shift deletion, so deletions leave
@@ -108,14 +109,14 @@ other. Keys of different classes are never equal. `Find` returns `Nil` for a mis
 pre-sizing; the table grows on its own. A lookup changes nothing in the table, so concurrent
 readers are safe; a writer still needs a lock.
 
-### `Set<K>` (gen_collect.obs:7465)
+### `Set<K>` (gen_collect.obs:7470)
 
 A `Map<K, Base>` underneath, so it has the `Map` costs and ordering: `Add`, `Insert`, `Has` and
 `Remove` are O(log n) and `GetKeys`/`ToVector`/`ToArray` return ascending order. `Add` returns
 `true` when the value was new; `Insert` returns nothing. `Union`, `Intersect`, `Difference`,
 `SymmetricDifference`, `IsSubset` and `IsSuperset` return new sets and leave both operands alone.
 
-### `HashSet<H>` (gen_collect.obs:1430) and `SetHash<K>` (gen_collect.obs:7894)
+### `HashSet<H>` (gen_collect.obs:1430) and `SetHash<K>` (gen_collect.obs:7899)
 
 `HashSet` wraps a `Hash<H, BoolRef>`, so `Add`, `Has` and `Remove` are O(1) expected and the
 order is unspecified. `SetHash` wraps a `HashSet` and forwards to it, with the method names
@@ -124,7 +125,7 @@ also has `Insert` and `GetKeys` so code can move between the three. Pick one nam
 `HashSet` is the implementation, `SetHash` is the spelling that parallels `Set`. Adding a `Nil`
 returns `false`.
 
-### `MultiMap<K, V>` (gen_collect.obs:8293) and `MultiHash<K, V>` (gen_collect.obs:8639)
+### `MultiMap<K, V>` (gen_collect.obs:8298) and `MultiHash<K, V>` (gen_collect.obs:8644)
 
 A `Map` (or `Hash`) from key to `Vector<V>`. `Insert(k, v)` appends to the key's vector,
 creating it on the first value. Costs are those of the underlying map plus an O(1) append.
@@ -159,3 +160,21 @@ collide. For a value type that crosses a library boundary, define a small class 
 - **Group rows by a column:** `MultiHash<String, Row>`, then `Find(key)` for the group.
 - **A work queue:** `List` (`AddBack`, then `Front` and `RemoveFront`), or `Queue`.
 - **Take the first n of a sorted result:** `Vector->Sort(...)`, then `Limit(n)`.
+
+## How to check
+
+The classes here are covered by `programs/regression/collect_*.obs`: `collect_vector_ops`,
+`collect_map_ops`, `collect_hash_ops`, `collect_hash_open` (open addressing, growth past one
+million entries, deletes in collision runs, keys of different classes with one `HashID`),
+`collect_set_ops`, `collect_set_algebra`, `collect_pair_ops`, `collect_pair_compare`,
+`collect_queue_ops`, `collect_stack_ops`, `collect_hash_heap_sort`, `collect_primitive` and
+`collect_nested_ops`. Each prints failures and exits non-zero. `gen_collect` is linked by
+default, so no `-lib` is needed:
+
+```
+cd programs/regression
+obc -src collect_hash_open.obs -dest collect_hash_open.obe
+obr collect_hash_open.obe
+```
+
+The costs in the tables above are read from the source, not measured by these tests.

@@ -118,6 +118,13 @@ Things to notice:
   alone.
 - `MultiHash` stores a `Vector` per key; `Find(key)` returns that vector, not a copy.
 
+## How to check
+
+Compile and run the program above; the five output lines are what it printed when the page was
+written (not re-run for this review). The collections are covered by `programs/regression/collect_*.obs`
+(the list is at the end of [`docs/COLLECTIONS_GUIDE.md`](../COLLECTIONS_GUIDE.md)); the pair sort
+that the note above describes is `collect_pair_compare.obs` (`10da7f1c55`, 2026-11-02).
+
 ## Where next
 
 - [`docs/COLLECTIONS_GUIDE.md`](../COLLECTIONS_GUIDE.md): the choosing table, costs and the

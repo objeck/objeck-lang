@@ -5,6 +5,28 @@ classification head trained in Objeck on top of them. Built for a university
 cybersecurity-ML lab ("ML Chapter 3 — Building a BERT-Based Malware Classifier"), and useful to
 anyone who wants text embeddings from Objeck.
 
+**Status: implemented (stages 0 to 4), first released in v2026.10.2.** The tokenizers are
+`351a42f46f`, `BertEmbedder` is `d407b058ec`, `EmbeddingClassifier` is `18d09ca06e` and the lab
+example is `6af3af2c7c`, all 2026-10-26 (stage 0's design and tiny models are `261419b938`). The
+sections marked "As built" record what differed from the plan. Not built: fine-tuning the
+encoder (see [AI_FOUNDATION_DESIGN.md](AI_FOUNDATION_DESIGN.md)).
+
+**How to check.** Compile and run the regression tests this document names with the libraries in
+their `# EXTRA_LIBS:` line, for example:
+
+```
+cd programs/regression
+obc -src nlp_wordpiece_parity.obs -lib nlp -dest nlp_wordpiece_parity.obe
+obr nlp_wordpiece_parity.obe
+obc -src ml_embedding_classifier.obs -lib csv,ml -dest ml_embedding_classifier.obe
+obr ml_embedding_classifier.obe
+```
+
+`nlp_onnx_embedder.obs` and `onnx_tiny_bert_model.obs` need the ONNX native library and print
+`SKIP:` where it is not deployed. Known limits: the encoder is frozen, so accuracy on API
+traces is bounded by what BERT's English pretraining transfers; the measured throughput below
+used a stand-in model, not a real BERT.
+
 ## Why, and what this is not
 
 The lab fine-tunes BERT on API-call sequences and runs three experiments:
@@ -42,7 +64,10 @@ document and the example say so:
 What fine-tuning would add, for the record: back-propagation through 12 transformer layers
 (attention, layer norm, GELU, the embedding tables), an optimizer state of 2–3× the model's
 size, and mixed precision to make it affordable. ONNX Runtime has a training API
-(`onnxruntime-training`) that could be bound later; nothing here precludes it.
+(`onnxruntime-training`) that could be bound later; nothing here precludes it. *Update
+2026-11-18:* that route was rejected, because ONNX Runtime's training packages are deprecated
+(AI_FOUNDATION_DESIGN.md section 3.2); the proposed route to fine-tuning is a libtorch binding
+(its Phase B), which is design only.
 
 ## What an exported BERT looks like
 
@@ -283,7 +308,8 @@ yhat := head->PredictClass(X_test, 0.5);                      # Bool[]
 
 - **No reuse yet.** The outlier work's `DenseNetwork` (docs/ML_OUTLIERS_DESIGN.md §2.5) is its
   stage 2 and had not reached master, so `EmbeddingClassifier` (`ml_embed.obs`) has its own
-  dense forward and backward pass. The two overlap in the layer arithmetic and Adam, and
+  dense forward and backward pass. (`DenseNetwork` has since landed, in `ml_core.obs`;
+  `ml_embed.obs` still carries its own pass and does not use it, checked 2026-11-18.) The two overlap in the layer arithmetic and Adam, and
   differ where their jobs do: that network is trained on mean squared error with Glorot
   initialisation throughout; this head on class-weighted binary cross-entropy from the logit
   (a numerically stable `log(1 + e^-|z|)` form), He-uniform before each ReLU and Glorot before

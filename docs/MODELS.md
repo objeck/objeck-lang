@@ -57,7 +57,7 @@ See the [Ollama examples](../programs/frameworks/ollama/) and the [AI Developer 
 
 ## ONNX Models
 
-ONNX models run fully on-device, on the accelerator the platform's build was compiled for (DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS) or on the CPU. The Linux x64 build is CPU-only, and the Linux ARM64 packages do not include ONNX. Models must be downloaded separately — they are too large for the repository.
+ONNX models run fully on-device, on the accelerator the platform's build was compiled for (DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS) or on the CPU. The Linux x64 and ARM64 builds are CPU-only (each links a vendored ONNX Runtime 1.19.0 CPU build). Models must be downloaded separately — they are too large for the repository.
 
 ### Supported Models
 
@@ -76,10 +76,14 @@ ONNX models run fully on-device, on the accelerator the platform's build was com
 Text models published on the Hugging Face Hub with an ONNX export download by name, with no Python: `System.AI.Hub.HubClient` (`-lib net,ai_hub`) fetches a repository's files into `~/.objeck/hub` (or `OBJECK_HUB_CACHE`), checks each file's size and SHA-256 against the Hub, and works offline from the cache. `System.NLP.Onnx.TextClassifier` then opens the folder. See [AI.md](AI.md#models-from-the-hugging-face-hub).
 
 ```objeck
+use System.AI.Hub, System.NLP.Onnx;
+
 folder := HubClient->New()->Snapshot("Xenova/distilbert-base-uncased-finetuned-sst-2-english",
   ["config.json", "tokenizer.json", "tokenizer_config.json", "onnx/model.onnx"]);
 classifier := TextClassifier->New(folder);
 ```
+
+Compile with: `obc -src your.obs -lib models,opencv,cipher,json,onnx,nlp,nlp_onnx,net,ai_hub`. The tests that cover this path are `programs/regression/ai_hub_client.obs` (the cache, hash verification, token handling and offline rules, against two in-process servers that stand in for the Hub and its CDN) and `programs/regression/nlp_onnx_text_classifier.obs` (token ids exactly, logits within 1e-5 of ONNX Runtime and 1e-4 of PyTorch, on three tiny classifiers with fixtures in `programs/regression/data/bert/`).
 
 ### Download Models
 
@@ -153,7 +157,7 @@ Each platform's library is compiled with one execution provider, and the `ep` ke
 |----------|-------------|---------------|
 | Windows x64 | GPU via DirectML | `"ep" → "dml"` |
 | Windows ARM64 | Qualcomm GPU via QNN | `"ep" → "qnn"` |
-| Linux x64 | none (CPU-only build) | `"ep" → "cpu"` |
+| Linux x64, Linux ARM64 | none (CPU-only build) | `"ep" → "cpu"` |
 | macOS | Apple Neural Engine / GPU via CoreML | `"ep" → "coreml"` |
 | Any | CPU fallback | `"ep" → "cpu"` |
 

@@ -2,6 +2,8 @@
 
 Status: implemented. Shipped in PR #682 (merged 2026-08-30), which closed issue #654. Supersedes the native-bridge design for that issue. One follow-up is still open: option 1 under [GetLocalAddress](#getlocaladdress), a `getsockname` trap for TCP sockets, which does not exist yet.
 
+Line numbers below (`net_server.obs:2015`, `common.cpp:4537`) are those of the tree when the design was written, in August 2026. On the current tree the constructor call that threads the verb, peer address and bound port is `http_request->SetConnectionInfo(request_verb, @client->GetAddress(), WebServer->GetBoundPort())` in `net_server.obs`, and `SockTcpAccept` sets `sock_obj[1]` and `sock_obj[2]` at `common.cpp:5344-5345`. **How to check:** `programs/regression/web_server_test.obs` drives real HTTP through every adapter method, and `thread_accept_exit_test.obs` covers the teardown shape from #681. Later work on the web server (static files, hardening) is not described here; see `CHANGELOG.md`.
+
 ## Why this exists
 
 `Web.Server` shipped as `web_server.obl` in every release and could not be used

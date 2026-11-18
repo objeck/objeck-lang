@@ -15,6 +15,33 @@ This document is the format's specification. The design and its reasons are in
 from this page, [`tools/otab/otab_dump.py`](../tools/otab/otab_dump.py), decodes every byte of
 a file and prints an annotated layout; use it to check a writer, or to look inside a file.
 
+**Status: implemented, in v2026.10.2.** Version 1 shipped with phase 3 of `Query.Structured`
+(`15f5448f52`, 2026-10-23); version 2 (index definitions) with phase 6 (`539a01b22a`,
+2026-10-24). The writer and reader are `OtabWriter` and `OtabFile` in
+`core/compiler/lib_src/query.obs`. The codecs are zlib only (codecs 1 and 2); the design notes
+in QUERY_DESIGN.md also discuss gzip, Brotli and lighter encodings, which are not in the format.
+
+**How it is validated:** `programs/regression/query_persist_roundtrip.obs` (every column type,
+the three compression settings, more than 65,536 rows, `Append`, damaged and truncated files),
+`query_persist_indexes.obs` (version 2, and that an index-free table is byte for byte a
+version 1 file), `query_persist_log.obs`, `query_persist_crash.obs` and
+`query_persist_lock.obs` (the change log and the lock). The independent reader
+`tools/otab/otab_dump.py` is a second implementation of this page: it exits 0 only for a well
+formed file.
+
+**How to check:**
+
+```
+cd programs/regression
+obc -src query_persist_roundtrip.obs -lib net,regex,csv,xml,misc,query -dest query_persist_roundtrip.obe
+obr query_persist_roundtrip.obe
+python ../../tools/otab/otab_dump.py <any .otab file>
+```
+
+**Known limits:** no delta or run-length encodings and no stored index entries; a table whose
+OBJECT column holds a value other than the six tagged kinds cannot be saved; the lock's
+stale-recovery race in the last paragraph of "The change log" is accepted, not prevented.
+
 ## At a glance
 
 ```

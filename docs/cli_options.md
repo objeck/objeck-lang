@@ -35,6 +35,7 @@ graph TD
     V_FLAGS --> V_gc["--gc-threshold=&lt;n&gt;(k|m|g)<br/>legacy: --GC_THRESHOLD="]
     V_FLAGS --> V_nursery["--nursery=&lt;n&gt;(k|m), 64k to 128m<br/>env: OBJECK_NURSERY"]
     V_FLAGS --> V_stdio["--objeck-stdio=binary|utf16|utf8<br/>acted on by Windows; accepted everywhere<br/>legacy: --OBJECK_STDIO="]
+    V_FLAGS --> V_depth["--call-depth=&lt;frames&gt;, 256 to 1048576<br/>default 16384; env: OBJECK_CALL_DEPTH"]
     V_FLAGS --> V_jit["--jit=off | --jit=&lt;calls&gt;<br/>env: OBJECK_JIT_DISABLE / OBJECK_JIT_THRESHOLD"]
     V_FLAGS --> V_lib["--lib-path=&lt;dir&gt;<br/>env: OBJECK_LIB_PATH"]
 
@@ -43,6 +44,7 @@ graph TD
     V_ENV --> E_stdio["OBJECK_STDIO  (binary stdio mode)"]
     V_ENV --> E_jitd["OBJECK_JIT_DISABLE=1  (auto-JIT off)"]
     V_ENV --> E_jitt["OBJECK_JIT_THRESHOLD=N  (default 10)"]
+    V_ENV --> E_depth["OBJECK_CALL_DEPTH=&lt;frames&gt;  (call-nesting limit)"]
     V_ENV --> E_nursery["OBJECK_NURSERY=&lt;size&gt;  (young-generation size)"]
     V_ENV --> E_gcstats["OBJECK_GC_STATS=1  (GC summary on stderr at exit)"]
 ```
@@ -59,8 +61,8 @@ graph TD
 | `--strict` | | Exclude default libraries (`lang`, `gen_collect`) |
 | `--optimize` | `-opt`, `-o` | Optimization level `s0`–`s3` (default: `s3`) |
 | `--alt-syntax` | `-alt` | Use the alternative C-like syntax |
-| `--debug` | `-D` | Include debug symbols |
-| `--assembly` | `-asm`, `-a` | Emit an assembly file |
+| `--debug` | `-D` | Include debug symbols. Also forces optimization level `s0`, whatever `--optimize` says (`ItermediateOptimizer` constructor, `optimization.cpp`) |
+| `--assembly` | `-asm`, `-a` | Write a listing of the emitted (post-optimization) bytecode to a `.obm` file, the destination name with its extension replaced (`FileEmitter`, `emit.h`). The `.obe`/`.obl` is still written |
 | `--version` | `-ver`, `-v` | Show version |
 
 See [optimization_pipeline.md](optimization_pipeline.md) for what each `-opt` level enables.
@@ -69,7 +71,7 @@ See [optimization_pipeline.md](optimization_pipeline.md) for what each `-opt` le
 
 An entry in `--library` that begins with `@` is a **group**, expanded from
 `lib/configobjk.ini` beside the installed `.obl` files. `-lib @web` is shorthand for the
-seven libraries that group lists.
+eight libraries that group lists.
 
 | Group | Expands to | For |
 |-------|------------|-----|
@@ -104,8 +106,9 @@ Error: Unable to resolve external library class: 'Web.HTTP.Server.Request'.
 |--------|-------------|-------------|
 | `--gc-threshold=<n>(k\|m\|g)` | `--GC_THRESHOLD=` | A fixed heap size at which a major collection runs, e.g. `512k`, `2m`, `1g`. Without it the threshold follows the program: after each major collection it is set to twice the live heap, and never below 8 MB. A given value suits stress testing (a small one collects often) or a program that knows its working set. It holds while a major collection leaves at least a quarter of it free; while more than three quarters of it survive, the next major waits for twice the live heap instead (it used to collect on nearly every allocation then), and the given value returns once the live heap fits under it again. `OBJECK_GC_TRACE` reports the first time that happens |
 | `--nursery=<n>(k\|m)` | env `OBJECK_NURSERY=<n>(k\|m)` | Young-generation (nursery) size, from `64k` to `128m` (default `128m`). A full nursery triggers a minor collection, so a smaller one collects more often. The 128 MB region stays reserved; this only lowers the limit. The flag wins over the variable, and a bad value in either is an error |
-| — | env `OBJECK_GC_STATS=1` | At exit, print one line to stderr: `[gc-stats] minor= major= pauses= pause_p50_us= pause_p95_us= pause_max_us= promoted_objects= promoted_bytes= peak_rss_bytes=`. Pauses run from the collecting thread taking the collector lock until the world resumes, so they include the stop-the-world handshake and the minor GC's remembered-set scan |
-| `--jit=off` / `--jit=<calls>` | env `OBJECK_JIT_DISABLE=1` / `OBJECK_JIT_THRESHOLD=N` | `off` runs the interpreter only; a positive number is how many calls a method makes before it is compiled (default `10`) |
+| — | env `OBJECK_GC_STATS=1` | At exit, print one line to stderr: `[gc-stats] minor= major= pauses= pause_p50_us= pause_p95_us= pause_max_us= promoted_objects= promoted_bytes= peak_rss_bytes=`. Percentiles are nearest-rank over the first 1,048,576 recorded pauses (`GC_STATS_SAMPLE_MAX`); `pause_max_us` covers every collection. Pauses run from the collecting thread taking the collector lock until the world resumes, so they include the stop-the-world handshake and the minor GC's remembered-set scan |
+| `--call-depth=<frames>` | env `OBJECK_CALL_DEPTH=<frames>` | How deep calls may nest, from `256` to `1048576` (default `16384`). Past it the program stops with `call stack bounds have been exceeded`, which a `Try()` can recover from. Compiled code can reach the end of the native stack first and reports the same error. The flag wins over the variable; a bad value in either is an error. Changes the size of the threads' native stacks too (`call_stack.h`) |
+| `--jit=off` / `--jit=<calls>` | env `OBJECK_JIT_DISABLE=1` / `OBJECK_JIT_THRESHOLD=N` | `off` runs the interpreter only, `native` methods included; a positive number is how many calls a method makes before it is compiled (default `10`). A method with a loop is compiled on its first call or entry while the threshold is at or below the default, see [optimization_pipeline.md](optimization_pipeline.md) |
 | — | env `OBJECK_JIT_REPORT=1` | Print, to stderr, every method the JIT hands back to the interpreter and why: an unsupported opcode (number per `obc -asm`), or the instruction at which compilation failed. Diagnostic; no effect on execution |
 | `--lib-path=<dir>` | env `OBJECK_LIB_PATH` | The Objeck `lib` root. `obc` reads the `.obl` files from it; `obr` loads the native libraries from `<dir>/native/` (`libobjk_*.dll|.so|.dylib`), reads `<dir>/cacert.pem` for TLS, and reports it as the `lib_dir` runtime property. On Windows the third-party runtime DLLs those libraries import (SDL2, onnxruntime, opencv, lame, the VC runtime) are resolved from `obr.exe`'s own directory, so `bin/` keeps them wherever `lib/` is |
 | `--objeck-stdio=binary\|utf16\|utf8` | `--OBJECK_STDIO=` | Console I/O mode. Acted on by **Windows**; accepted and ignored elsewhere so one script works on every platform |
@@ -121,6 +124,7 @@ used to be accepted and silently do nothing.
 | `OBJECK_STDIO` | Binary STDIO mode |
 | `OBJECK_JIT_DISABLE=1` | Turn auto-JIT off entirely |
 | `OBJECK_JIT_THRESHOLD=N` | Call count before a method is auto-JIT'd (default `10`) |
+| `OBJECK_CALL_DEPTH=<frames>` | Call-nesting limit, `256` to `1048576` (default `16384`); `--call-depth` wins |
 | `OBJECK_NURSERY=<n>(k\|m)` | Nursery size, `64k` to `128m`; `--nursery` wins when both are set |
 | `OBJECK_GC_STATS=1` | One-line GC summary (counts, pause percentiles, promoted bytes, peak RSS) on stderr at exit |
 
@@ -136,6 +140,12 @@ used to be accepted and silently do nothing.
 - A `g` suffix on `--gc-threshold` is 2³⁰. Before v2026.9.1 it was 2⁴⁰, so `1g`
   asked for a terabyte.
 - Combining `--library` with `--strict` drops the implicit `lang,gen_collect` defaults.
+
+## How to check
+
+- `obr` with no arguments prints the usage text that this page mirrors (`VmUsage()` in `core/vm/vm_options.h`); `obc` with no arguments prints the compiler's (`posix_main.cpp`). If this page and the usage text disagree, trust the parsing code named under Source.
+- A bad value fails loudly: `obr --nursery=1g prog.obe`, `obr --call-depth=10 prog.obe` and `obr --objeck-stdio=1 prog.obe` each print what was expected.
+- `OBJECK_GC_STATS=1 obr prog.obe` prints the `[gc-stats]` line to stderr at exit.
 
 ## Source
 

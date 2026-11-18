@@ -57,9 +57,18 @@
 
     <h1 class="page-title">Editor setup and the language server</h1>
     <p class="page-lead">Objeck ships a language server (LSP) and a debug adapter (DAP) that work in VS Code, Sublime Text, Neovim, Emacs, Kate, ecode and Helix. Every editor gets the same server, so the features below do not depend on which one you use.</p>
+    <div id="toc_container">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#install">Install</a></li>
+      <li><a href="#how-to-check">How to check</a></li>
+      <li><a href="#what-you-get">What you get</a></li>
+      <li><a href="#what-changed-in-v2026-10-3">What changed in v2026.10.3</a></li>
+     </ul>
+    </div>
 
     <h3 id="install">Install</h3>
-    <p>Download <code>objeck-lsp_&lt;version&gt;.zip</code> from the <a href="https://github.com/objeck/objeck-lang/releases/latest" target="_blank">releases page</a> and unzip it. Then, from the unzipped folder, run the install script, giving the folder Objeck is installed in and the editor (<code>vscode</code>, <code>sublime</code>, <code>neovim</code>, <code>emacs</code> or <code>all</code>):</p>
+    <p>Download <code>objeck-lsp_&lt;version&gt;.zip</code> from the <a href="https://github.com/objeck/objeck-lang/releases/latest" target="_blank">releases page</a> and unzip it. Then, from the unzipped folder, run the install script, giving the folder Objeck is installed in and the editor (<code>vscode</code>, <code>sublime</code>, <code>neovim</code>, <code>emacs</code>, <code>helix</code>, <code>vim</code> or <code>all</code>):</p>
 <pre class="cmd">scripts\install.cmd "C:\Program Files\Objeck" vscode
 ./scripts/install.sh /usr/local/objeck vscode</pre>
     <p>The first line is for Windows and the second for Linux and macOS. VS Code can also install the extension directly:</p>
@@ -72,6 +81,8 @@
   "flags": ""
 }
 </code></pre>
+    <h3 id="how-to-check">How to check</h3>
+    <p><code>tools/lsp/tests/</code> holds the server's tests (<code>run_lsp_tests.py</code>), the timing harness <code>bench_incremental.py</code>, and <code>validate_cached_analysis.py</code>, which asks the cached and uncached servers the same questions and requires identical answers (the claim below), and <code>programs/regression/run_dap_tests.py &lt;bin_dir&gt;</code> drives the debug adapter (<code>obd --dap</code>). Running either needs a built deploy tree; neither was run for this review. The install steps above are the ones <code>tools/lsp/scripts/install.cmd</code> and <code>install.sh</code> implement.</p>
     <h3 id="what-you-get">What you get</h3>
     <p>Diagnostics as you type, completion with signature help, hover, go to definition, declaration, type definition and implementation, find references, rename, code actions, formatting, document and workspace symbols, call and type hierarchy, inlay hints, semantic tokens, folding and document highlight. The full list is in <a href="doc_editors.html#4-lsp-features"><code>docs/editors.md</code></a>.</p>
     <p>Debugging needs a program compiled with debug symbols, or no breakpoint will bind:</p>

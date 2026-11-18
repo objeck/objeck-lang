@@ -2,6 +2,8 @@
 
 Issue: [#1242](https://github.com/objeck/objeck-lang/issues/1242), split out of #1186.
 
+**Status:** implemented. Phase 1 (program classes) is PR #1266 (`ffffd5fc15`); phase 2 (library methods, `Vector`/`List`/`CompareList` `Map<R>`) is PR #1275 (`5c45b2ac6c`); both are in v2026.10.1. **Not implemented:** explicit type arguments at a call (`Max(v)<IntRef>`), type parameters on constructors, and primitive arguments for a type parameter. The model is erasure, so there is no per-instantiation code and no run-time type argument.
+
 ## Why
 
 Type parameters existed only on classes. A generic helper needed a throwaway generic class,
@@ -75,8 +77,8 @@ binary could not infer anything: a library generic returned its bound.
   return, followed by `.g<i>` for a generic argument, `.f<i>` for a function type's parameter,
   and `.r` for a function type's return (`Type::GetMethodGenericMarks`). The linker applies
   them to the parsed types (`LibraryMethod::SetGenericMarks`). Paths rather than positions mean a
-  mark can never land on the wrong part of a type. The library magic is `0xffb8`, and a
-  `0xffb7` library is refused with a rebuild message.
+  mark can never land on the wrong part of a type. The library magic became `0xffb8` for this change, and a
+  `0xffb7` library is refused with a rebuild message (`Library::LoadFile`, `linker.cpp`). The magic has moved on since: `MAGIC_NUM_LIB` is now `0xffba`, and `core/shared/version.in` lists why each value changed.
 - **Inference at a library call.** `InferLibraryMethodGenerics` mirrors the program path,
   and `UnifyMethodGeneric` now matches function types: `(A, ..) ~ R` against the argument's
   function type, parameters and return.
@@ -117,6 +119,21 @@ links a program against it in three modes.
 
    The bindings stay on the call so that the call's value takes the substituted return type.
 3. **Emitter:** unchanged.
+
+## Limitations
+
+- **Erasure, as class generics have.** One body serves every instantiation, `T` inside it is
+  its bound (or `System.Base`), and nothing about the type arguments exists at run time. The
+  soundness limits of class generics apply to method generics too (see "Generics
+  Implementation" in [core/compiler/README.md](../core/compiler/README.md)); this document
+  does not claim more.
+- A type parameter that no argument determines is its bound, not an error.
+- An inferred lambda for a type parameter must return an object; a primitive is not boxed.
+- No explicit type arguments, so a call's bindings can only come from its arguments.
+
+## How to check
+
+`obc -src programs/regression/method_generics.obs -dest t.obe && obr t.obe` (and `obr --jit=off t.obe`, `obr --jit=1 t.obe`); each `bad_method_generic_*.obs` must fail to compile. The library path: `python programs/regression/check_lib_generic_methods.py` (see its header for arguments).
 
 ## Tests
 

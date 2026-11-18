@@ -16,6 +16,39 @@ v2026.10.2.
 Every number below marked *measured* was measured for this document on 2026-10-29 (method in
 the appendix). Everything else is labelled as an estimate or as something a phase must check.
 
+## Status (checked against `master` on 2026-11-18)
+
+The design above is the 2026-10-29 text; this section records what the code has done with it.
+Phase A is partly built. Phase B and everything after it is design only.
+
+| Item | Status | Evidence |
+|---|---|---|
+| A1 `TextClassifier` over a local folder, `Prediction` | Implemented, v2026.10.2 | PR #1456, `1b845903e5`; `core/compiler/lib_src/nlp_onnx.obs`; test `programs/regression/nlp_onnx_text_classifier.obs` |
+| A2 streaming `GetToFile` (no 256 MB cap) | Implemented, v2026.10.2 | PR #1459, `e32d5e1f2e`; test `http_stream_to_file.obs`. No resume with `Range`: `ai_hub.obs` never sends one |
+| A2 credentials dropped on a cross-origin redirect | Implemented, v2026.10.2 | PR #1453, `1af95be09c`; test `http_redirect_credentials.obs` |
+| A2 incremental SHA-256 | Implemented as `Cipher.Hash->SHA256File` (a megabyte at a time), not as `Sha256Init/Update/Final` | `core/compiler/lib_src/cipher.obs` |
+| A2 `HubClient` and cache | Implemented, v2026.10.2, with the deviations below | PR #1463, `8cbe15eda0`; `ai_hub.obs`; test `ai_hub_client.obs` |
+| A3 `TokenizerJson` pipeline (normalizer, pre-tokenizer, model, post-processor, decoder objects) | Not started. `nlp_onnx.obs` reads only the WordPiece section of a `tokenizer.json` (`FromTokenizerJson`) | |
+| A4 byte-level BPE (`BpeTokenizer`) | Implemented, v2026.10.2 | PR #1462, `52c003cf4b`; test `nlp_bpe_tokenizer.obs` |
+| A5 Unigram, `Precompiled`, Metaspace | Code exists only on the unmerged branch `origin/feat/unigram-tokenizer` (`4e1fcfe6f8`, 2026-10-30); not in `master` | |
+| A6 `TokenClassifier`, `QuestionAnswerer`; A7 `FillMask`, `SentenceEmbedder`, `CrossEncoder`, `Pipeline`; A8 | Not started | no such class in `core/compiler/lib_src` |
+| `EncoderRunner` / `OnnxRunner` | Not started; `TextClassifier` calls the ONNX session directly | |
+| Phase B (libtorch shim, `System.AI.Tensor`, `NN`, `Optim`, `Data`, `Transformers`, `SafeTensors`), Phases C-G | Design only: no `ai_tensor`, `ai_nn` or `ai_optim` library in `core/compiler/build_libs.sh` | |
+| D1 close PR #1449 | Done: closed 2026-10-30 | `gh pr view 1449` |
+
+Where the shipped `HubClient` differs from section 7.3 (the source is `ai_hub.obs`):
+
+- Python's cache is a fallback when the client is offline or the Hub cannot be reached, not a
+  lookup gated by `OBJECK_HUB_CACHE_PYTHON`. It also honours `HF_HOME`.
+- `HF_ENDPOINT` selects another Hub (a mirror).
+- A download goes to a partial file and is checked after it ends; it does not resume, and there
+  is no `manifest.json`, no `.incomplete/` folder and no `Variant` selector. A caller names the
+  file it wants, for example `onnx/model_quantized.onnx`.
+- `Download(repo, file, revision)` and `Snapshot(repo, files, revision)` exist as designed.
+
+The section 7.4 measurement that DeBERTa's `tokenizer.json` takes 15.8 s to parse has not been
+re-checked.
+
 ## Summary
 
 - **Two tracks that meet.**

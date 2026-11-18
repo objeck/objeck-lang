@@ -216,6 +216,14 @@ Now `HttpClient` keeps plain-HTTP connections:
 If your program stops one server and starts another on the same port within four seconds, and
 relied on every request getting a fresh connection, wait for the old server to exit first.
 
+## How to check
+
+Connection reuse is covered by `programs/regression/http_client_reuse.obs`. The program above
+starts its own server on `127.0.0.1`, so it needs no network: compile it with the line shown under
+it and compare the output (the output block was not re-run for this review). The pool limits
+quoted above (16 connections, 4 seconds) are `HttpConnections->MaxIdle()` and the idle limit in
+`core/compiler/lib_src/net.obs`.
+
 ## Where next
 
 - The [CHANGELOG](../../CHANGELOG.md) entry for v2026.10.3 has the measurements behind connection

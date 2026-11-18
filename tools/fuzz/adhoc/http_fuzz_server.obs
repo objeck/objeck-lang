@@ -1,0 +1,38 @@
+use Collection, System.IO.Net, Web.HTTP.Server;
+use System.IO.Filesystem;
+
+class FuzzHandler from HttpRequestHandler {
+	New() { Parent(); }
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, request->GetPath());
+		return false;
+	}
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "post");
+		return false;
+	}
+}
+
+class FuzzServer {
+	function : Main(args : String[]) ~ Nil {
+		seconds := args[0]->ToInt();
+		t := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->Serve(FuzzHandler->New()->GetClass(), 0, false);
+			}
+		};
+		t->Execute(Nil);
+		waited := 0;
+		while(WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		port := WebServer->GetBoundPort();
+		w := FileWriter->New("port.txt");
+		w->WriteString("{$port}");
+		w->Close();
+		System.Concurrency.Thread->Sleep(seconds * 1000);
+		Runtime->Exit(0);
+	}
+}

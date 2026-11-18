@@ -1,7 +1,28 @@
 # `System.ML.Lab`: experiment support for a cybersecurity-ML lab
 
-**Status:** design, approved direction 2026-10-26 for v2026.10.2. Delivered in
-four stages after this document, each its own PR against `master`.
+**Status (checked 2026-11-18): implemented in full, released in v2026.10.2.** Delivered in
+four stages after this document, each its own PR against `master` (the commits are in the table
+at the end). Not built, by design: multi-class metrics, a PNG rasterizer, a two-parameter grid
+search. `ResultTable->FromJson` needs the JSON string decoding of #1403, which is on `master`.
+
+**Validated by** (all in `programs/regression/`, each compiled with
+`-lib ml,ml_lab,gen_collect,csv,json`): `ml_lab_split.obs`, `ml_lab_resample.obs`,
+`ml_lab_labels_encoding.obs`, `ml_lab_stopwatch.obs`, `ml_lab_result_table.obs`,
+`ml_lab_experiment.obs`, `ml_lab_chart_svg.obs` (byte-compared against the golden files in
+`programs/regression/ml_lab_golden/`) and `time_timer_wall_clock.obs` (the `Timer` clock fix).
+
+**How to check:**
+
+```
+cd programs/regression
+obc -src ml_lab_split.obs -lib ml,ml_lab,gen_collect,csv,json -dest ml_lab_split.obe
+obr ml_lab_split.obe
+```
+
+The end-to-end example is run by hand: `programs/examples/ml/lab_sweeps.obs`.
+
+**Known limits:** the SVG charts are checked for structure and determinism, not pixels (no
+rasterizer exists in the tree), and `lab_sweeps.obs` is not compiled by CI.
 
 ## Why
 
@@ -414,6 +435,8 @@ hand-ins listed); per-epoch loss from models that do not expose it
 |---|---|---|
 | 0 | #1402 | this document |
 | 1 | #1405 | `ml_lab.obl`: `Partition`, `Resample`, `Stopwatch`, `Labels`, `LabError`; the `Timer` clock fix; lists, alias group, LSP index, playground policy |
-| 2 | stage-2 PR | `Experiment`, `Trial`, `TrialResult`, `ResultTable`; the chained-subscript compiler fix; merges after #1403 |
-| 3 | stage-3 PR | `Chart`, `ChartSeries`, `ResultTable->ToChart` |
-| 4 | stage-4 PR | `programs/examples/ml/lab_sweeps.obs`; `docs/AI.md` and `docs/cli_options.md` |
+| 2 | `960d324c51` | `Experiment`, `Trial`, `TrialResult`, `ResultTable`; the chained-subscript compiler fix; merges after #1403 |
+| 3 | `e164785300` | `Chart`, `ChartSeries`, `ResultTable->ToChart` |
+| 4 | `ceccde6384` | `programs/examples/ml/lab_sweeps.obs`; `docs/AI.md` and `docs/cli_options.md` |
+
+Stage 1 is `b26ad6095c`. All four are dated 2026-10-26 and are in v2026.10.2.

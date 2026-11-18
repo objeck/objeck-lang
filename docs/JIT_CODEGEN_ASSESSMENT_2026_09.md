@@ -6,6 +6,13 @@
 > directory) and the shipped `obr`. ARM64 has no hardware in this loop, so its
 > findings come from reading `jit_arm_a64.cpp` against the same code paths; the
 > probe should be run on an ARM64 leg before any of the ARM64 claims are acted on.
+>
+> **Resolution status, 2026-11-18.** This file is a dated record and its findings are left as
+> written; section 9 at the end marks which later work resolved each one, with the commit, and
+> what is still open (F3 on ARM64, and the ARM64 `D8`-`D15` float pins). Two statements below are
+> known to have been wrong when written: section 5 says the ARM64 pool is twelve wide (it was
+> eight until #770, see section 8 and the handoff), and section 4's `F4` row quotes AMD64 line
+> numbers that have since moved.
 
 ## 1. Method
 
@@ -306,3 +313,39 @@ whole -- F4 on ARM64 followed the same night ([#770](https://github.com/objeck/o
 nested expression (`AnalyzeCalculation` analyzed every operand twice), fixed on its own branch.
 Then phase 3 and the native entry on ARM64 ([#776](https://github.com/objeck/objeck-lang/pull/776), the design's section 13): a compiled
 call 13.8 ns to 7.4 ns, `Fib(32)` 0.107 s to 0.050 s. Open on ARM64: F3 and the `D8`-`D15` pins.
+
+## 9. Resolution status of each finding (added 2026-11-18)
+
+Checked against the tree on 2026-11-18 (master `3042a96eee`); the findings above are unchanged.
+Every commit below is contained in the release named; `git tag --contains <commit>` reproduces it.
+
+| # | Finding | Resolved by | Where today |
+|---|---|---|---|
+| F1 | `LOAD_ARY_SIZE` through the callback | `702fdf5bc6` (PR #731), 2026-09-09, v2026.9.1 | both backends |
+| F2a | zero check on constant divisors | `702fdf5bc6` (PR #731), 2026-09-09, v2026.9.1 | both backends |
+| F2b | magic-number division | PR #732, 2026-09-09, v2026.9.1 (`0273aac06e`, found in batch 4, fixed a dividend-in-`RDX` bug in the AMD64 form) | both backends |
+| F3 | locals in memory across every block | AMD64 `e7778fd996` (PR #735, `R13`-`R15`) and `21c9d3019c` (PR #749, `XMM6`-`XMM9`, Windows only), 2026-09-09, v2026.9.1 | **ARM64 still open**: `jit_arm_a64.cpp` has no pin planner; see `JIT_LOOP_LOCALS_DESIGN.md` status table |
+| F4 | four-GPR AMD64 pool | PR #733 (`5555f2960b`, eight registers), 2026-09-09; Linux x64 `e57d5dd2ef`, 2026-09-10; ARM64 `46fc54250f` (pool eight to twelve), 2026-09-10 | AMD64 pool is `RAX RBX RCX RDX R8`-`R11`, plus `RSI`/`RDI` auxiliary on Windows only; ARM64 `X0`-`X7`, `X12`-`X15` |
+| F5 | array addressing | PR #732, 2026-09-09, v2026.9.1 | both backends |
+| F6 | boolean temporaries | `a8ad2c0d27`, 2026-09-09, v2026.9.1 (compiler; the `HasAndOr` slot-0 reservation is unchanged) | `EmitBranch` in `core/compiler/intermediate.cpp` |
+| F7 | method entry/exit and call marshalling | AMD64 `6df97705dd`..`c7862a6e36`, ARM64 `8a881b4786`..`c6c8e2a884`, 2026-09-10, v2026.9.1 | `JIT_CALLING_CONVENTION_DESIGN.md` |
+| F8 | `JMP_TABLE` not compiled | AMD64 `44ce48f32b`, ARM64 `fca3dffff8` (PR #738), 2026-09-09, v2026.9.1 | `JIT_SELECT_TABLES_DESIGN.md` |
+| F9 | silent whole-method fallback | `702fdf5bc6` (PR #731), 2026-09-09: `OBJECK_JIT_REPORT=1` | `JitReportEnabled()`; the report also prints one `compiled` line per method (`jit_common.cpp`) |
+
+Items in the text that later work resolved:
+
+- **Section 1 / 5b, the `native` fixture.** Resolved 2026-09-10 as sections 5b and 8 say. A related
+  trap was closed on 2026-10-29: `--jit=off` and `OBJECK_JIT_DISABLE=1` now also refuse the
+  `native` methods' compile path (`e2b4d3c818`, PR #1455, first in v2026.10.2), so
+  the statement in 5b that `native` "bypasses every JIT-disable switch" is no longer true of the
+  VM, and the interpreter column of any timing taken with a `native` kernel is now an
+  interpreter number.
+- **Section 4, F4 and section 5.** "ARM64 has twelve" was wrong when written; section 8 records
+  the correction (eight until #770, `46fc54250f`).
+- **Section 8, "Open: F3 on ARM64 (with `D8`-`D15` for floats), F7".** F7 is done on both
+  backends (above). F3 on ARM64 and the `D8`-`D15` pins remain open as of 2026-11-18.
+- **Section 8, `TRY_START`/`TRY_END`.** Still true: a method with a try region is not compiled,
+  on either backend (`CompileFailed(L"a try region")` on AMD64; absent from ARM64's whitelist).
+  Errors raised by compiled callees under a `Try()` now recover (`TRY_IN_JIT_DESIGN.md`).
+- **Section 8, the ARM64 timings "still unmeasured".** Measured the same day, section 5a.
+- **Section 7, items 1-3 and 4-6.** All six are done except F3 on ARM64 (item 5 on that backend).

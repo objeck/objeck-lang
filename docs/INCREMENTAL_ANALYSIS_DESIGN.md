@@ -5,6 +5,8 @@ Issue: [#1236](https://github.com/objeck/objeck-lang/issues/1236), item 15 of th
 (reuse across requests), which took the waste out of the server. What remains is the cost of
 the compiler's whole-program analysis.
 
+**Status:** partly implemented. Phase 0 (timing, `OBJECK_LSP_TIMING=1`, #1435), "analyze once per edit" (#1437), Phase 1 step 1 (library byte cache, library instructions not built; commit `0011bc0806`) and Phase 2 (as built: keep programs, not generations) are shipped. **Not implemented, design only:** Phase 1 step 2 (shared library objects, deferred), Phase 3 (re-parse one file) and Phase 4 (repeatable, scoped analysis). So today an edit still re-parses the folder and re-analyzes the whole program once; the section "What happens on an edit today" describes the compiler side that remains true. Measured numbers below carry their date, machine and commit; they were not re-run for this revision.
+
 ## Why
 
 Every keystroke costs work proportional to the whole folder. Measured in the audit (Windows
@@ -19,19 +21,19 @@ down as the project grows.
 
 ## What happens on an edit today
 
-Measured by reading the code (file references as of 2026-10-20):
+Measured by reading the code on 2026-10-20. Line numbers drift, so each reference below also names the symbol; `grep -n` it. (The paragraph describes the state before phases 0-2; the compiler-side costs are unchanged, and phase 1 removed the library-instruction build in the diagnostics library only.)
 
 1. **Everything is invalidated.** `didChange` bumps one workspace-wide generation
-   (`LspWorkspace::Invalidate`, frameworks.obs:1337). The next request drops every cached
-   program in every folder (`GetProxy`, 1282).
+   (`Invalidate` in `tools/lsp/server/frameworks.obs`). The next request drops every cached
+   program in every folder (`GetProxy`).
 2. **The whole folder is re-parsed.** `LspFolder->GetTexts` sends every `build.json` file
    to `diag_parse_text`, which builds one `Parser` and one `ParsedProgram` over all of them
-   (diags.cpp:306, parser.cpp:257). Bundles that span files are merged by name and share one
+   (`diag_parse_text` in `core/lib/diags/diags.cpp`, `Parser::Parse`). Bundles that span files are merged by name and share one
    symbol table.
 3. **Every library is reloaded from disk.** Each `ContextAnalyzer` makes a new `Linker`,
-   which reads and inflates `lang.obl` and every listed `.obl` (linker.cpp:498, 854-895).
+   which reads and inflates `lang.obl` and every listed `.obl` (`Linker::Load` and `Library::Load` in `core/compiler/linker.cpp`).
    Nothing is cached across programs.
-4. **The whole program is analyzed, once.** `ContextAnalyzer::Analyze` (context.cpp:381-551)
+4. **The whole program is analyzed, once.** `ContextAnalyzer::Analyze` (`ContextAnalyzer::Analyze`, `context.cpp`)
    works through the entire program:
    - it resolves aliases in place;
    - it runs a pre-pass that adds methods to classes (default alternates, named-argument
@@ -40,7 +42,7 @@ Measured by reading the code (file references as of 2026-10-20):
    - it analyzes every method.
 
    Analysis mutates the tree (eval types, resolved methods, inserted casts, generated
-   methods), so it cannot run twice on one tree: diags.cpp:68-74 and 210-216 record that a
+   methods), so it cannot run twice on one tree: comments in `core/lib/diags/diags.cpp` record that a
    second `Analyze()` reports bogus errors. A new analysis needs a fresh parse.
 
 So the cost of an edit is parse(all) + link(all libraries) + analyze(all). The phases below
@@ -288,6 +290,12 @@ edit can reach" needs:
 This touches every `Set*` the analyzer performs, so it is a series of PRs, each moving one
 kind of result to a side table behind the existing accessors, with the suite and
 `OBJECK_LSP_NO_CACHE=1` comparisons as the check.
+
+## How to check
+
+- Timing split: `OBJECK_LSP_TIMING=1` makes `libobjk_diags` write the `[lsp-timing]` lines; `python tools/lsp/tests/bench_incremental.py <bin_dir> [server_dir]` runs the edit sequence and prints the tables above (needs a built `libobjk_diags` and the server; it is a measurement, not a pass/fail test).
+- Cached against fresh: `python tools/lsp/tests/validate_cached_analysis.py <bin_dir> [server_dir]` (see its `--help`); `OBJECK_LSP_NO_CACHE=1` is the from-scratch reference it compares against, and `--control` must fail.
+- The numbers were taken on the machines named in each table; expect different absolute values and read the shares.
 
 ## Decisions
 

@@ -37,7 +37,7 @@ ls ~/objeck-deps/darwin-arm64/lib/libngtcp2_crypto_boringssl.a
 cd core/vm
 xcodebuild -project xcode/VM.xcodeproj clean build \
   CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
-cp xcode/build/Release/obr ../../release/deploy/bin/
+cp xcode/build/Release/obr ../release/deploy/bin/
 ```
 
 ## 4. Build the compiler
@@ -71,7 +71,7 @@ export OBJECK_LIB_PATH=../lib
 ### HTTP/2
 
 ```bash
-./obc -src ../../../programs/tests/prgm_http2.obs \
+./obc -src ../../../../programs/tests/prgm_http2.obs \
       -lib net,net_h2,gen_collect,cipher \
       -dest /tmp/prgm_http2.obe
 
@@ -93,7 +93,7 @@ Test 6: HTTP/2 QuickPost httpbin.org/post... PASS (status=200)
 ### HTTP/3
 
 ```bash
-./obc -src ../../../programs/tests/prgm_http3.obs \
+./obc -src ../../../../programs/tests/prgm_http3.obs \
       -lib net,net_quic,gen_collect,cipher \
       -dest /tmp/prgm_http3.obe
 
@@ -113,6 +113,12 @@ Test 5: HTTP/3 QuickPost quic.nginx.org/... PASS (status=405)
 
 ## Notes
 
+- The tests reach the network (`httpbin.org`, `quic.nginx.org`) and are in `programs/tests`, not
+  in the regression suite. `ci-build.yml` compiles both and runs them in a
+  non-gating network step that reports a `SKIP` as "protocol not exercised", so a green CI run is
+  not by itself a pass of these tests. The output above is what a passing run prints, not a
+  recorded result for this release. Paths in steps 3 to 6 are relative to the directory each step
+  starts in (`core/vm`, then `core/compiler`, then `core/release/deploy/bin`).
 - `SKIP (no network or ngtcp2 not built)` means the VM was not built with `OBJECK_HAS_NGTCP2`. Check that the Xcode project preprocessor defines include `OBJECK_HAS_NGTCP2` and `OBJECK_HAS_NGHTTP2`.
 - `otool -L obr` should list only `/usr/lib` and `/System` libraries. A path under `/opt/homebrew` means the build did not use the static libraries, and `deploy_macos_arm64.sh` fails on it: releases v2026.6.3 through v2026.9.2 shipped such an obr, and it could not start on a Mac without a hand-built ngtcp2 GnuTLS backend.
 - HTTP/3 test endpoint is `quic.nginx.org`. Cloudflare's QUIC implementation is incompatible with ngtcp2.

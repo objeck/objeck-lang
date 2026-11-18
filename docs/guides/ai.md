@@ -247,6 +247,16 @@ needs the SDL2 libraries).
 
 It opens a window, so it needs a display.
 
+## How to check
+
+The library's own tests are `programs/regression/ai_game_test.obs` (`Minimax`,
+`MonteCarloTreeSearch`), `ai_search_test.obs`, `ai_optimize_test.obs` and `ai_rl_test.obs`; the
+checkers example's engine, players and search are checked headlessly, perft counts included, by
+the generated `programs/regression/checkers_engine.obs`.
+To run the program on this page, compile and run it with the two lines above. Minimax is
+deterministic and the Monte Carlo searcher is seeded, so the printed games repeat exactly; the
+output shown was not re-run when this page was last reviewed.
+
 ## Where next
 
 - [`docs/AI.md`](../AI.md) and the [AI & ML developer guide](https://www.objeck.org/ai_guide.html)

@@ -65,15 +65,26 @@ The primitive cases sit between `# PRIMITIVE-BEGIN` and `# PRIMITIVE-END`; delet
 lines gives a program that compiles against a `gen_collect.obl` from before `IntMap` and
 friends existed, which is how the before/after Hash numbers were taken.
 
+## What the committed baseline is
+
+`lib_baseline.json` (commit `98feb7220c`, 2026-10-24): platform recorded as `Windows AMD64`, `runs` 5, `stat` `min`, on master's toolchain of that day. It holds 53 cases: 44 from `collections_bench.obs` and 9 from `runtime_bench.obs` (the `Int[]`/`Float[]` copy, fill and float-format cases). It has **no entry for any `query_index_bench.obs` case** (that benchmark arrived the same day in a different change), so those cases print as `new` and cannot warn or fail until `--update-baseline` is run with them present. The CPU model and the toolchain commit are not recorded in the file.
+
 ## Noise
 
 `lib_baseline.json` was measured with `--stat min` (so compare against it with `--stat min`)
 on a Windows x64 desktop that was running other builds and
 test suites at the same time. On that machine two back-to-back 5-run passes of the same
-build disagreed by more than 30% on 2-3 of 46 cases (with either statistic), mostly cases
+build disagreed by more than 30% on 2-3 of 46 cases (the case count at the time of that observation; the baseline now holds 53; with either statistic), mostly cases
 whose reference is a few milliseconds against a measured side 50-100 times longer, where
 the reference's own jitter decides the ratio. Treat a single WARN or FAIL as a prompt to
 rerun; trust a regression that repeats, or that shows up across a whole case family.
+
+## What this can and cannot find
+
+- It finds a change in a library's cost *relative to a plain-array loop in the same process*: a Hash or `IntMap` that got several times slower, a bulk `Copy` that stopped using the fast path, a `Query.Structured` index that stopped being used (the index cases' ratio is below 1.0 by design; they need a baseline first, see above).
+- It does not find absolute regressions that move the reference too (a JIT or GC change slows the reference loop as well and the ratio hides it), nothing outside the listed cases, nor cross-platform differences: the one committed baseline is Windows AMD64, so on Linux or ARM64 the ratios differ for reasons that are not regressions.
+- A reference under 2 ms yields no ratio, and the smaller cases repeat inside one run (counts in the Benchmarks table), so their seconds are sums, not single operations.
+- Medians or minima of 5 runs on a non-quiet machine: see Noise. There is no significance test; the 15% and 30% thresholds are rules of thumb, not statistics.
 
 ## CI
 

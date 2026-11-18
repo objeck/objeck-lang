@@ -1,6 +1,6 @@
 # Documentation coverage of the standard libraries
 
-Measured by `tools/cicd/doc_coverage.py` against `core/compiler/lib_src/` (last changed in `b5de3d6736`).
+Measured by `tools/cicd/doc_coverage.py` against `core/compiler/lib_src/` (last changed in `fcebbdab21`).
 This is a measurement only: no library source was edited. Writing the missing comments is a
 change to `core/compiler/lib_src/*.obs`, which is reviewed apart from this documentation work.
 (A comment-only edit does not change the compiled library: `obc -tar lib -opt s3` produced a
@@ -51,6 +51,7 @@ of undocumented declarations, most first.
 | `query_vision` | 5/5 | - | 24/24 | 3/20 | 5/5 | 37/54 (69%) | 17 |
 | `sdl_game` | 10/10 | - | 181/184 | 12/12 | 7/17 | 210/223 (94%) | 13 |
 | `ai_hub` | 1/1 | - | 13/13 | 0/12 | 2/2 | 16/28 (57%) | 12 |
+| `net_server` | 23/24 | 3/3 | 137/137 | 27/37 | 38/38 | 228/239 (95%) | 11 |
 | `nlp` | 11/11 | - | 63/64 | 24/33 | 11/11 | 109/119 (92%) | 10 |
 | `ai` | 19/19 | - | 40/47 | 4/4 | 9/11 | 72/81 (89%) | 9 |
 | `opencv` | 7/7 | 12/12 | 53/58 | 6/6 | 5/9 | 83/92 (90%) | 9 |
@@ -68,7 +69,6 @@ of undocumented declarations, most first.
 | `diags` | 3/3 | 1/1 | 35/35 | 2/2 | 0/2 | 41/43 (95%) | 2 |
 | `net_h2` | 1/1 | - | 9/9 | 13/15 | 1/1 | 24/26 (92%) | 2 |
 | `net_quic` | 1/1 | - | 9/9 | 13/15 | 1/1 | 24/26 (92%) | 2 |
-| `net_server` | 22/23 | 3/3 | 135/135 | 25/26 | 37/37 | 222/224 (99%) | 2 |
 | `json_stream` | 1/1 | 1/1 | 11/11 | 0/1 | 1/1 | 14/15 (93%) | 1 |
 | `misc` | 4/4 | - | 1/1 | 7/8 | 1/1 | 13/14 (93%) | 1 |
 | `nlp_onnx` | 3/3 | 2/2 | 41/41 | 3/4 | 5/5 | 54/55 (98%) | 1 |
@@ -79,7 +79,7 @@ of undocumented declarations, most first.
 | `math` | 3/3 | - | 65/65 | 14/14 | 3/3 | 85/85 (100%) | 0 |
 | `regex` | 2/2 | - | 15/15 | - | 3/3 | 20/20 (100%) | 0 |
 | `xml` | 4/4 | 1/1 | 47/47 | 4/4 | 9/9 | 65/65 (100%) | 0 |
-| **all** | 536/568 | 100/100 | 4198/4459 | 1256/1519 | 520/653 | **6610/7299 (91%)** | **689** |
+| **all** | 537/569 | 100/100 | 4200/4461 | 1258/1530 | 521/654 | **6616/7314 (90%)** | **698** |
 
 ## The ten worst gaps
 
@@ -96,8 +96,8 @@ which is where documentation work pays off first.
 | 6 | `query` | `OtabFile` | `query.obs` | 12 | 11 method, 1 function |
 | 7 | `gemini` | `Model` | `gemini.obs` | 11 | 11 function |
 | 8 | `net` | `WebCommon` | `net_common.obs` | 11 | 11 function |
-| 9 | `openai` | `Models` | `openai.obs` | 10 | 10 function |
-| 10 | `query_vision` | `ImageHeader` | `query_vision.obs` | 10 | 10 function |
+| 9 | `net_server` | `WebServer` | `net_server.obs` | 10 | 10 function |
+| 10 | `openai` | `Models` | `openai.obs` | 10 | 10 function |
 
 ## Reproduce
 

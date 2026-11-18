@@ -2,6 +2,8 @@
 
 Interactive shell for rapid prototyping and experimentation with Objeck. `obi` lets you write and run code immediately without creating source files, and doubles as a small line-oriented editor for the buffer it builds up.
 
+**Status:** implemented. The line-oriented REPL is the original; the full-screen editor (`/e`) shipped in v2026.8.2 (design: [EDITOR_DESIGN.md](EDITOR_DESIGN.md)). `obi` links the compiler and the VM into one process (`core/module/`), so it does not run the `obc` or `obr` executables, except that the editor's F5 run does, as child processes. The editor cannot be exercised in CI (no TTY); its manual test matrix is at the end of the design note.
+
 > **New to Objeck?** Start `obi` and type `/t` for a short, hands-on guided tutorial that walks you through expressions, variables, formatting, collections, and control flow one step at a time.
 
 ## How it works
@@ -116,6 +118,10 @@ All commands start with `/`.
 - **Editor**: the command loop, input classification (expression vs. statement vs. block), and multi-line handling
 - **ObjeckLang**: shared compiler front-end — compiles the buffer in memory and executes it on the VM
 - **Full-screen editor**: header-only (`term.h`, `screen.h`, `keymap.h`, `tui_editor.h`, `highlight.h`, `child_run.h`); its design is in `EDITOR_DESIGN.md`
+
+## How to check
+
+`obi --inline 'Int->New(42)->PrintLine();' --quit` runs one statement headlessly and exits, which is the path a script or CI can use. The interactive prompt and `/e` need a terminal.
 
 ## Limitations
 

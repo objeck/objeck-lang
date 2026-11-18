@@ -132,7 +132,7 @@ flowchart TD
 
 ### Loader and verifier
 
-`Loader::Load` returns false with a message instead of exiting (`LoadFailed` throws, `Load` catches), so the debugger, the REPL and the fuzz harness can survive a bad file. It checks structure (every read stays inside the buffer, counts are bounded by the bytes left, ids are in range, opcodes are known). `Loader::Verify` then relates operands to the program: jump targets, local and field offsets against frame and object sizes, class and method ids, trap ids. The full list, and what is still unchecked (operand-stack depth, types), is in [SECURITY_MODEL.md](SECURITY_MODEL.md).
+`Loader::Load` returns false with a message instead of exiting (`LoadFailed` throws, `Load` catches), so the debugger, the REPL and the fuzz harness can survive a bad file. It checks structure (every read stays inside the buffer, counts are bounded by the bytes left, ids are in range, opcodes are known). `Loader::Verify` then relates operands to the program: jump targets, local and field offsets against frame and object sizes, class and method ids, trap ids. Since PR #1598 (2026-11-18) it also runs the reference-map builder (`arch/ref_map.h`) over every method and refuses one that pops an empty operand stack, joins two paths at different heights, or reads through a non-zero integer literal as an array or object. The full list, and what is still unchecked (the stack's height bound, trap pop counts, types), is in [SECURITY_MODEL.md](SECURITY_MODEL.md).
 
 **Rule.** An `.obe` is native code with the privileges of `obr`. Do not describe `obr` as a sandbox; the playground isolates with a container.
 
@@ -169,6 +169,8 @@ A method is compiled on its call count reaching the threshold (default 10, `--ji
 - Every collection runs **stop-the-world** and cooperative: other threads park at safepoints (the dispatch loop, allocation, blocking calls).
 - **Roots.** Class statics, operand stacks, interpreter frames and compiled frames. The collector no longer guesses which words are references where it can know: reference maps (`arch/ref_map.h`) type the interpreter's operand stack, and compiled frames have typed spill slots (`TMP_REF_*` are scanned, `TMP_VAL_*` are not). Words no map types are still scanned conservatively (`OBJECK_GC_ROOTS=conservative` restores the old behaviour everywhere, as a negative control; `=audit` reports where maps and live stacks disagree).
 - **Checkers.** `OBJECK_GC_VERIFY` runs the heap verifier (`arch/memory_verify.cpp`); `OBJECK_GC_VERIFY_INJECT` plants faults to prove it notices; `OBJECK_GC_TRACE`, `OBJECK_GC_STATS` print what happened.
+
+**Status and limits.** All of the above is implemented and on by default; the generational collector has been enabled since v2026.6.3 (#574), the heap verifier since v2026.9.5, the typed roots since v2026.10.2 (interpreter) and v2026.10.3 (compiled frames, `Int[]` tag), per `git tag --contains`. It is stop-the-world with three parallel mark threads, so a major collection's pause grows with the old generation. It is conservative for operand-stack words the reference maps cannot type, so an integer equal to a live young object's address on such a stack can still retain or relocate it ([GC_ROOTS_DESIGN.md](GC_ROOTS_DESIGN.md), section 12). **How to check:** `OBJECK_GC_STATS=1 obr prog.obe` for what a run did; `OBJECK_GC_VERIFY=checkmark obr --nursery=64k prog.obe` for the invariants ([arch/README.md](../core/vm/arch/README.md)).
 
 **Rules.** Any new collection entry point must replicate the stop-the-world protocol of `CollectMajor` and `CollectMinor`; a minor collection that ran beside live threads corrupted memory once. The object-layout walkers (mark, fixup, dirty scan, verifier) must agree on field widths. Counters must not reach stdout (differential runs compare stdout). A teardown crash means earlier heap corruption: look upstream.
 
@@ -228,7 +230,7 @@ A method is compiled on its call count reaching the threshold (default 10, `--ji
 
 | Layer | Where | What it catches |
 |---|---|---|
-| Regression suite | `programs/regression/` (782 programs, see `TESTS.md`), `run_regression.sh` and `.cmd` | language, library and compiler behaviour, including `bad_*` programs that must be rejected. Run again with `OBJECK_JIT_THRESHOLD=1` |
+| Regression suite | `programs/regression/` (812 programs, see `TESTS.md`), `run_regression.sh` and `.cmd` | language, library and compiler behaviour, including `bad_*` programs that must be rejected. Run again with `OBJECK_JIT_THRESHOLD=1` |
 | VM flag, loader and GC-fixture tests | `programs/regression/run_vm_flag_tests.py` | `obr` options, interpreter and JIT equivalence, loader refusals, GC address fixtures |
 | Debugger and DAP | `run_debugger_tests.*`, `run_dap_tests.py` | `obd` and the adapter |
 | Differential | `programs/regression/run_differential.py` | the same program must print the same output at `-opt s0` and `s3`, JIT off and forced on |

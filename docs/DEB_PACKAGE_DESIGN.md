@@ -1,6 +1,6 @@
 # Debian packages for Linux
 
-Status: implemented for v2026.10.1 (`tools/packaging/build_deb.sh`, `.github/workflows/release-deb.yml`).
+Status: implemented (`tools/packaging/build_deb.sh`, `.github/workflows/release-deb.yml`; merged 2026-10-20 as `ca88dee178`, PR #1281). The changelog records the first packages as published beside v2026.10.1, built from that release's tarballs after it was published; the build script itself first appears in the v2026.10.2 tag. Not done, by decision: an apt repository, other distributions, a guard inside `obu` (section "Not now"). **How to check:** `tools/packaging/test_deb.sh` (the install test the workflow runs in a clean `ubuntu:24.04` container) and `dpkg-deb -I <package>.deb` for the computed Depends and Recommends.
 
 ## Why
 

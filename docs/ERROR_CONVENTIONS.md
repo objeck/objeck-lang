@@ -4,7 +4,7 @@
 ways the libraries report failure today. The second half proposes a single rule for new
 code. Nothing here changes behaviour, and no library has been changed to follow it.
 
-Lines refer to `core/compiler/lib_src/` as of this writing.
+Lines refer to `core/compiler/lib_src/` at the commit that last edited this file; they drift as the libraries change, so check a reference with `grep -n <symbol>` before relying on it. The `lang.obs`, `ml_lab.obs` and `query.obs` references were re-checked against master on 2026-11-18, the others were refreshed the same day.
 
 ## What is in use
 
@@ -15,17 +15,17 @@ next call overwrites.
 
 | Library | Where it is kept | Notes |
 |---|---|---|
-| OpenAI | `@last_message : static` (`openai.obs:6337`), `SetLastError` (`:6370`), `GetLastError` (`:6470`) | returns the text `"<none>"` when nothing failed. `ParseBody` (`:6429`) records the reason for every parse failure |
+| OpenAI | `@last_message : static` (`openai.obs:6331`), `SetLastError` (`:6364`), `GetLastError` (`:6481`) | returns the text `"<none>"` when nothing failed. `ParseBody` (`:6440`) records the reason for every parse failure |
 | Gemini | two copies: `OAuthEndPoint` (`gemini.obs:15`, `GetLastError` `:97`) and `EndPoint` (`:2400`, `GetLastError` `:2523`) | returns `Nil` when nothing failed. A call through the other class does not see the first one's error |
-| Ollama | `@last_error : static` (`ollama.obs:17`), `GetLastError` (`:26`) | returns `Nil` when nothing failed; `Content` (`:101`) turns "no response" into a recorded reason |
+| Ollama | `@last_error : static` (`ollama.obs:15`), `GetLastError` (`:26`) | returns `Nil` when nothing failed; `Content` (`:101`) turns "no response" into a recorded reason |
 | Inference | `EndPoint->SetLastError` calls in `inference.obs` (21 of them; the first is `:50`) | separate from `API.Models.EndPoint`, as its header says |
-| Models, MCP server | `models.obs:351`, `net_server.obs:3121` (`McpServer->GetLastError`) | the same shape again; ONNX has its own |
+| Models, MCP server | `models.obs:351`, `net_server.obs:4491` (`McpServer->GetLastError`) | the same shape again; ONNX has its own |
 
 Because the string is shared by every thread, two threads that fail at once can read each
 other's message. The three AI libraries also differ on the "no error" value (`"<none>"` versus
 `Nil`), and until recently several legacy methods printed `### Error: ... ###` with
-`->ErrorLine()` and returned `Nil` without recording anything (`openai.obs:84`, `:172`;
-`gemini.obs` has 26 such lines). A caller of those cannot ask why.
+`->ErrorLine()` and returned `Nil` without recording anything (`openai.obs:84`, `:170`;
+`grep -c '### Error'` finds 23 such lines in `gemini.obs` and 13 in `openai.obs`). A caller of those cannot ask why.
 
 ### 2. An instance error: ML, CSV, JSON, XML, NLP, Query columns
 
@@ -33,10 +33,10 @@ The object remembers why *its* last call failed; a failed call leaves the object
 
 - ML models: `GetError()` at `ml_core.obs:2360`, `ml_embed.obs:176`, `ml_outlier.obs` (several
   classes, `:889` and onwards). Returns `""` when the last call worked, per its comment.
-- `json.obs:510`, `xml.obs:283`, `csv.obs:691`: `GetError()` after a parse.
+- `json.obs:526`, `xml.obs:294`, `csv.obs:691`: `GetError()` after a parse.
 - `ml_svm.obs:1813` and `:2472`, `odbc.obs:306`, `:1042`, `:1815`: `GetLastError()` per object.
-- `IsOk()` after construction, with the reason held for the same object: `rss.obs:93`,
-  `regex.obs:116`.
+- `IsOk()` after construction, with the reason held for the same object: `rss.obs:98`,
+  `regex.obs:124`.
 
 This is safe with one thread per object. The "no error" value is `""` in ML and `Nil` in most
 others.
@@ -69,6 +69,8 @@ This is the convention that is correct under threads, and the one the runtime's 
 ### 5. Return value only
 
 Many small methods (`Vector->Set`, `Hash->Remove`) say only whether they worked. That is fine when there is exactly one way to fail.
+
+**How to check** any row above: `grep -n "GetLastError\|GetError" core/compiler/lib_src/<file>.obs`, and for raising, `grep -ln "Runtime->Raise" core/compiler/lib_src/*.obs` (today `lang.obs` and `ml_lab.obs` only).
 
 ## What goes wrong with the mix
 

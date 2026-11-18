@@ -70,6 +70,7 @@
 
     <p>This page lists every site a new intrinsic touches, in the order to touch them, with <code>Runtime-&gt;TestAddressOf</code> (PR #1483, commit <code>e5b6a177da</code>, trap <code>GC_TEST_ADDRESS</code>) as the worked example, and what each omission looks like. <code>python3 tools/cicd/check_trap_handlers.py</code> checks the sites marked <strong>[checked]</strong>; CI runs it in the <code>tools</code> job and <code>tools/cicd/local_ci.py</code> runs it on your machine in under a second.</p>
     <p>Sites are named by function, not line number, because line numbers rot.</p>
+    <p><strong>Status:</strong> the procedure is the one in use; every site below was re-checked against master (<code>3042a96eee</code>), and <code>python3 tools/cicd/check_trap_handlers.py</code> passes on it (268 traps, 265 handled by <code>ProcessTrap</code>, 3 allowlisted; 315 intrinsics scanned, parsed and lowered). <strong>How to check</strong> a claim in the failure table: make the omission on a scratch branch and run that script (<code>--test</code> runs its own negative controls).</p>
     <h3 id="the-sites">The sites</h3>
     <table class="ref-table">
      <thead>

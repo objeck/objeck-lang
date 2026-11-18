@@ -17,7 +17,9 @@ Each library typically consists of:
 - **gemini.obs** - Google Gemini API integration with schema support
 - **ollama.obs** - Ollama local LLM integration
 - **opencv.obs** - OpenCV computer vision library
-- **onnx.obs** - ONNX Runtime for cross-platform ML inference
+- **models.obs** - Backend-neutral inference types shared by `onnx` and `inference`: `Tensor`, `TensorSpec`, `EndPoint`, `Engine` (`API.Models`)
+- **onnx.obs** - ONNX Runtime for cross-platform ML inference (`API.Onnx`); build order puts `models` before it
+- **inference.obs** - Client for model servers over HTTP (KServe v2 / Triton, TensorFlow Serving) (`API.Inference`)
 - **ml_core.obs** - ML core: NeuralNetwork, DenseNetwork, Matrix2D, Random, MatrixReader
 - **ml_linear.obs** - Linear models: LinearRegression, Ridge, Lasso, ElasticNet, LogisticRegression, Perceptron, SVM
 - **ml_tree.obs** - Tree models: DecisionTree, RandomForest, AdaBoost, RegressionTree, GradientBoostedTrees
@@ -27,11 +29,15 @@ Each library typically consists of:
 - **ml_data.obs** - Data utilities: FeatureScaler, Metrics, ConfusionMatrix, CrossValidation, PCA
 - **ml_svm.obs** - Kernel support vector machines: KernelSVM (linear, RBF, polynomial, sigmoid) and OneClassSVM on a LIBSVM-style SMO solver
 - **ml_outlier.obs** - Anomaly detection: OutlierDetector, ZScoreDetector, IsolationForest, LocalOutlierFactor, EllipticEnvelope, DbscanDetector, AutoencoderDetector, OneClassSvmDetector, SensitivitySweep
+- **ml_embed.obs** - `EmbeddingClassifier`, a trainable head over fixed-size embeddings
+- **ml_lab.obs** - Experiment support for parameter sweeps (`System.ML.Lab`): splits, resampling, sweep runner, result tables, SVG charts. Its own library, `ml_lab.obl`
 - **ai_search.obs** - Graph search: Dijkstra, A*, BFS, DFS
 - **ai_game.obs** - Adversarial game search: Minimax, Monte Carlo Tree Search
 - **ai_optimize.obs** - Optimization: GeneticAlgorithm, SimulatedAnnealing, HillClimbing
 - **ai_rl.obs** - Reinforcement learning: QLearning, Sarsa, MDP value iteration
-- **nlp.obs** - Natural language processing
+- **nlp.obs** - Natural language processing: tokenizers (WordPiece, byte-level BPE), TF-IDF, sentiment, similarity
+- **nlp_onnx.obs** - Text embeddings and classification from BERT-family ONNX models (`BertEmbedder`, `TextClassifier`); links `nlp` and `onnx`
+- **ai_hub.obs** - Hugging Face Hub downloads into a verified local model cache (`HubClient`)
 
 ### Web & Networking
 - **net_secure.obs** - HTTPS client and secure WebSockets (TLS via mbedTLS)
@@ -49,7 +55,7 @@ Each library typically consists of:
 - **json_stream.obs** - Streaming JSON parser for large files
 - **xml.obs** - XML DOM parser
 - **csv.obs** - CSV file reader/writer
-- **query.obs** - In-memory SQL-like queries
+- **query.obs** - In-memory SQL-like queries; `query_server.obs` (read-only SQL endpoint over HTTP), `query_ml.obs` (System.ML results as tables), `query_vision.obs` (a folder of images and detector output as tables) and `query_odbc.obs` (ODBC tables) extend it, each its own library
 
 ### Data Storage
 - **odbc.obs** - ODBC database connectivity (SQL Server, PostgreSQL, MySQL, etc.)
@@ -61,6 +67,7 @@ Each library typically consists of:
 ### Utilities
 - **regex.obs** - Regular expression support
 - **concurrent.obs** - Structured concurrency (`TaskScope`, `Task`) and a runtime `Monitor` (`System.Concurrency`)
+- **math.obs** - Exact arithmetic: `BigInt`, `Rational`, `Complex` (`System.Math`)
 - **misc.obs** - Miscellaneous utilities
 - **lang.obs** - Core language runtime support
 
@@ -72,6 +79,8 @@ Each library typically consists of:
 
 ### Diagnostics
 - **diags.obs** - Static analysis and language-server support (diagnostics, symbols, completions)
+
+Several `.obs` files are compiled together into one library: `ml.obl` holds `ml_core`, `ml_linear`, `ml_tree`, `ml_bayes`, `ml_neighbors`, `ml_cluster`, `ml_data`, `ml_svm`, `ml_outlier` and `ml_embed`; `ai.obl` holds `ai_search`, `ai_game`, `ai_optimize` and `ai_rl`; `net.obl` holds `net_common`, `net` and `net_secure`. The exact recipe, with each library's dependencies, is `core/compiler/build_libs.sh`.
 
 ## Building Libraries
 

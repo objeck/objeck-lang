@@ -3,10 +3,30 @@
 `core/compiler/lib_src/nlp.obs`, built into `core/lib/nlp.obl` against `gen_collect` alone.
 Pure Objeck; no model, no native module, and this design keeps it that way.
 
+**Status (checked 2026-11-18): implemented, released in v2026.10.2** (all five phases, 2026-10-22:
+`b9c00fbeab` fixes, `06577d84bf` tokenizer and splitter, `ecc4995812` Porter, `02fdf01c56`
+sentiment, `4ba23d37e6` TF-IDF). The library has since gained the tokenizers of
+`ML_BERT_DESIGN.md` and a byte-level BPE tokenizer (`52c003cf4b`); those are not part of this
+design. References named in the text: Porter (1980) and Martin Porter's reference
+implementation for the stemmer; Hutto and Gilbert (2014), VADER, for the sentiment rules.
+
+**Validated by** `programs/regression/nlp_tokenize.obs`, `nlp_porter.obs`, `nlp_sentiment.obs` and
+`nlp_tfidf.obs`. **How to check:**
+
+```
+cd programs/regression
+obc -src nlp_porter.obs -lib nlp -dest nlp_porter.obe
+obr nlp_porter.obe
+```
+
+**Known limits:** the sentiment lexicon is about 600 words and, on the sentence-polarity corpus
+below, decides only 71 % of sentences; the splitter is list-based and misses a sentence that ends
+in an abbreviation; there is no part-of-speech tagging, entity recognition or lemmatization.
+
 ## Why
 
 A language aimed at AI research will have people reach for its NLP library early, and on
-2026-10-22 a probe of the shipped library (v2026.10.2) found it was not fit for real text:
+2026-10-22 a probe of the shipped library (v2026.10.1, released 2026-10-20) found it was not fit for real text:
 
 | Part | Probe result |
 |---|---|
@@ -123,7 +143,7 @@ VADER on the same sentences. "Decided" means a compound at or beyond ±0.05:
 
 | Analyzer | Accuracy (neutral counts wrong) | Decided | Accuracy where decided |
 |---|---|---|---|
-| v2026.10.2 (word counts) | not measured; 4 of 10 on the probe sentences | | |
+| v2026.10.1 (word counts) | not measured; 4 of 10 on the probe sentences | | |
 | This library, built-in lexicon | 0.526 | 0.712 | 0.731 |
 | This library, VADER's lexicon loaded | 0.558 | 0.843 | 0.652 |
 | NLTK VADER | 0.548 | 0.827 | 0.652 |
