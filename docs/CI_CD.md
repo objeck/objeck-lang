@@ -115,7 +115,11 @@ After publishing, the Windows installers are signed, the playground is deployed 
    - Formatter and LSP regression tests
    - VS Code extension install, compile and lint
 
-5. **Status Job:**
+5. **Loader Fuzz Job** (Linux, after the build, advisory):
+   - A 5-minute libFuzzer + ASan/UBSan run of the `.obe` loader against the linux-x64 tree this run built (`tools/fuzz/loader/run_nightly.py`)
+   - Never blocks a merge: the job is `continue-on-error`, is not in the Status Job's `needs`, and reports a finding as a warning annotation and in the job summary; any saved input is uploaded as `loader-fuzz-advisory`
+
+6. **Status Job:**
    - Aggregate results
    - Report overall CI status
    - On a `master` failure, open or update a tracking issue (and send a push notification when `NTFY_TOPIC` is set)
@@ -313,7 +317,7 @@ declare `System.ML` and produce `system.ml-*.html`.
 |----------|---------|--------------|
 | `perf-gate.yml` | Push to `master` and PRs touching `core/vm`, `core/compiler` or `core/shared`; manual | Objeck vs Java and LuaJIT time ratios against a committed baseline; report-only for now ([PERF_GATE.md](../perf-results/PERF_GATE.md)) |
 | `benchmark.yml` | Manual | Benchmarks on Linux x64 and ARM64, compared against a baseline release tag |
-| `nightly-hardening.yml` | Manual (schedule not yet enabled) | Differential regression, fuzzer, heap verifier and GC stress runs against CI's binaries, and a 30-minute libFuzzer run on the `.obe` loader (linux-x64) |
+| `nightly-hardening.yml` | Daily at 07:23 UTC, and manual | Differential regression, fuzzer, heap verifier and GC stress runs against CI's binaries, and a 30-minute libFuzzer run on the `.obe` loader (linux-x64) |
 | `stress-probe.yml` | Push to `probe/**` branches; manual | Loops the GC/JIT regression fixtures in four modes on all five platforms, against a CI build's binaries |
 | `verify-signing-credentials.yml` | Weekly (Monday) and manual | Imports the Apple signing certificates to prove the secrets still work |
 | `codeql.yml` | Push, PRs, weekly | CodeQL analysis |
@@ -673,7 +677,7 @@ Already done: automatic publishing after a successful tag build, CodeQL scanning
 
 1. **Continuous Deployment**
    - Deploy to test environment on every commit
-   - Automatic nightly builds (`nightly-hardening.yml` exists; its schedule is not enabled yet)
+   - Automatic nightly builds (`nightly-hardening.yml` runs daily at 07:23 UTC)
 
 2. **Enhanced Testing**
    - Enforce the perf gate, which is report-only today (see [PERF_GATE.md](../perf-results/PERF_GATE.md))
