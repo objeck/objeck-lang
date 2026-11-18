@@ -204,7 +204,7 @@ open core/vm/xcode/VM.xcodeproj
 
 ## Trust and verification
 
-An `.obe` is native-equivalent code: the VM does not sandbox it. After loading, `Loader::Verify` (PR #1512, 2026-11-01) checks jump targets, local and field ids, class and method ids, trap ids and that the last instruction ends the method; section 30 of `programs/regression/run_vm_flag_tests.py` mutates one operand per rule. It does **not** check operand-stack depth or types; a load-time stack check built on the reference-map builder (`arch/ref_map.h`) is in an open PR (#1598), not yet in this tree. See [SECURITY_MODEL.md](../../docs/SECURITY_MODEL.md).
+An `.obe` is native-equivalent code: the VM does not sandbox it. After loading, `Loader::Verify` (PR #1512, 2026-11-01) checks jump targets, local and field ids, class and method ids, trap ids and that the last instruction ends the method; section 30 of `programs/regression/run_vm_flag_tests.py` mutates one operand per rule. Since PR #1598 (2026-11-18) it also walks every method with the reference-map builder (`arch/ref_map.h`) and refuses one that pops an empty operand stack, joins two paths at different stack heights, or reads through a non-zero integer literal as an array or object. It does **not** bound how high the stack grows, check how many words a trap pops, or tell an `Int` from a reference in general. See [SECURITY_MODEL.md](../../docs/SECURITY_MODEL.md).
 
 ## Debugging
 
