@@ -88,22 +88,38 @@ standard libraries; a quarter are compiled again with `-debug`) all pass.
 | a declaration type is a `ParamType` (checked as it is read) | the collector walks frames and objects by these |
 | `TRAP`/`TRAP_RTRN` directly follow the `LOAD_INT_LIT` that pushes a known trap id (the `Traps` enum, or `SET_SIGNAL`/`RAISE_SIGNAL`), and take at least one argument | `tools/cicd/check_trap_handlers.py` fails when a trap is added that this would refuse |
 | the start method exists; with program arguments, String's constructor (method 2) does too | the initialization code calls both |
+| a method record's parameter count is between 0 and the words its declarations take (a function-typed parameter is two) | the JIT sized a table from it: a count of -255 grew it toward 2^64 entries until the process ran out of memory |
+| no path of a method pops an empty operand stack, and every path into an instruction reaches it at the same stack height. The reference-map builder (`core/vm/arch/ref_map.h`, the one the JIT compiles from) walks each method that has a body | `PopInt` and `PopFloat` index the operand stack with no bound: a store or conditional jump or two-index array load missing its operands read below the stack |
+| a non-zero integer literal is not read through as an array (a load, store or size) or as the receiver of a call or field access. A reference-typed local, return or parameter may hold one: an enum value is an `Int` typed as an object | the literal was dereferenced as an address nobody allocated |
 
 `run_vm_flag_tests.py` section 30 changes one operand of a freshly compiled
-program for each rule and requires the refusal.
+program for each rule and requires the refusal. The stack rules were also run
+over 684 regression programs and 613 example, deploy and test programs, each
+compiled with every library: none is refused. The builder is run in a lenient
+mode here (a local the declarations do not list is an untyped slot, and a method
+it cannot model, or an instruction it has no rule for, is not a verdict); only a
+failure that makes the method unsafe refuses the program.
+
+The interpreter also checks, when an array is indexed with more than one index,
+that the array has that many dimensions (`ArrayIndex`, `core/vm/interpreter.cpp`).
 
 ## What is still not checked
 
-- **Operand-stack depth.** Nothing computes a method's maximum stack depth or
-  checks that each instruction has the operands it pops. `PushInt` and `PopInt`
-  index the operand stack with no bound (`core/vm/interpreter.h`); the only
-  limit is checked at a call (`PushFrame`). A trap pops as many words as its own
-  id says, so a depth check needs a per-trap table the compiler and the VM do
-  not share yet.
-- **Types.** An instance variable is checked against the largest object, not
-  the object on the stack: nothing proves which class that is. Likewise a trap
-  trusts whatever words the program put on the stack as its arguments -- object
-  pointers included.
+- **Operand-stack height, beyond underflow.** The pass above refuses a method that
+  pops an empty stack or joins two paths at different heights. It does not bound
+  how high the stack grows: `PushInt` indexes the operand stack with no limit
+  (`core/vm/interpreter.h`), and the only limit is checked at a call
+  (`PushFrame`). And a trap pops as many words as its own id says, while the
+  builder takes the count from the instruction's operand, so a trap that
+  disagrees with its own id is not caught; a check needs a per-trap table the
+  compiler and the VM do not share yet.
+- **Types.** The builder infers what each stack word is from how it is used and lets
+  an `Int` and a reference meet in one value (`GetInstanceID()` is a reference
+  returned as an `Int`), so putting one where the other is expected goes
+  unnoticed; the only type rule is the non-zero literal above. An instance
+  variable is checked against the largest object, not the object on the stack:
+  nothing proves which class that is. Likewise a trap trusts whatever words the
+  program put on the stack as its arguments -- object pointers included.
 - **The bundled-executable path** (`buffer_end = nullptr`) is verified but not
   bounds-checked while it is read.
 
@@ -145,9 +161,10 @@ process as hostile and contain it from outside.
 
 ## Planned
 
-- **Stack-depth and type checks**, completing the verifier: the operand-stack
-  depth at each instruction consistent across every path into it, never
-  negative and bounded, and the class of each object operand known. With them,
+- **Stack-height bound and type checks**, completing the verifier: the operand
+  stack bounded as well as never negative (the join and underflow checks exist),
+  a per-trap pop count the compiler and VM share, and the class of each object
+  operand known. With them,
   "a crafted `.obe` is native code" becomes "a crafted `.obe` is refused".
 - **Deny flags** on `obr`, for capabilities a program should not have even when
   it asks: native libraries (`DllProxy`), running commands, the file system,

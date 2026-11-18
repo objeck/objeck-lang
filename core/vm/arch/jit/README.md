@@ -26,7 +26,7 @@ There are two independent back-ends sharing the common driver in `jit_common.{h,
 Both back-ends share the safety pre-scans: **frame-dependent-trap rejection** and **operand-kind compile guards** (below).
 
 ### Auto-JIT lifecycle
-Methods start interpreted. Every call increments a counter; once it crosses `JIT_AUTO_THRESHOLD` (default **10**, see `jit_common.h`) the method is compiled on its next entry. Two exceptions, both keyed on `HasLoop()` (a back-edge in the bytecode) and both active only while the threshold is at or below its default (`JitEagerLoops()`; the LSP server raises it to keep the JIT off): a method entered from the top -- a thread's `Run` -- is compiled on entry, and a callee with a loop is compiled on its *first* call, which is how `Main` gets compiled (the loader's classless `$Initialization$` routine calls it once). Design: `docs/JIT_ENTRY_COMPILE_DESIGN.md`. After a successful compile, every `MTHD_CALL` site that targets it is patched to `MTHD_CALL_JIT` (`PatchCallSites()`), so the interpreter's fast path — and other JIT'ed callers — dispatch straight to native code.
+Methods start interpreted. Every call increments a counter; once it crosses the auto-JIT threshold (`JIT_AUTO_THRESHOLD_DEFAULT`, **10**, in `jit_common.h`) the method is compiled on its next entry. Two exceptions, both keyed on `HasLoop()` (a back-edge in the bytecode) and both active only while the threshold is at or below its default (`JitEagerLoops()`; the LSP server raises it to keep the JIT off): a method entered from the top -- a thread's `Run` -- is compiled on entry, and a callee with a loop is compiled on its *first* call, which is how `Main` gets compiled (the loader's classless `$Initialization$` routine calls it once). Design: `docs/JIT_ENTRY_COMPILE_DESIGN.md`. After a successful compile, every `MTHD_CALL` site that targets it is patched to `MTHD_CALL_JIT` (`PatchCallSites()`), so the interpreter's fast path — and other JIT'ed callers — dispatch straight to native code.
 
 ```mermaid
 flowchart LR
@@ -60,6 +60,16 @@ A compiled frame's locals are laid out from the method's declarations (`ProcessI
 ### Safety pre-scans (both architectures)
 - **Frame-dependent-trap rejection** (`HasFrameDependentTrap()` in `jit_common.h`) — the callback passes `nullptr` for the interpreter frame and keeps locals in native stack slots, so any trap that reads/writes `frame->mem` (e.g. `SERL_*`, `SYS_TIME`, `GMT_TIME`, `FILE_*_TIME`, `LOAD_CLS_BY_INST`) would dereference null. Methods containing such traps are rejected from compilation and stay interpreted.
 - **Operand-kind compile guards** — if operand-stack tracking diverges from the expected kind (e.g. a float reaches an integer compare due to a front-end mismatch), the compile *fails cleanly* and the method falls back to the interpreter rather than emitting bad code.
+
+### Reference maps, and the load-time check built on them
+Both back-ends build a **reference map** of each method before they compile it (`RefMap::Build`, `arch/ref_map.h`). One forward pass over the bytecode follows every path and records, for each instruction, the height of the operand stack and the kind of each word on it (reference, `Int`, `Float`, or unknown), so the compiler knows which spilled values the collector must treat as references. The same pass is a stack-discipline check, which the loader now runs on every method that has a body (`Loader::Verify`, `core/vm/loader.cpp`) before anything executes. A program is refused with `>>> Invalid bytecode: <method>, instruction <i>: <reason> <<<` when a method:
+
+- pops an empty operand stack (`the operand stack runs out`), or reaches a join from two paths at different stack heights (`stack heights differ where control flow joins`);
+- names a local its declarations do not have, or calls a method that does not exist;
+- uses a **non-zero integer literal as a reference**: Nil is the literal zero, so any other literal that is later read through, stored to a reference local, or used as a call's receiver is an address nobody allocated (`an integer literal used as a reference`);
+- or holds an instruction the map does not model.
+
+What this does **not** check: it infers kinds from how values are used and tolerates an `Int` and a reference meeting in one value (`GetInstanceID()` is a reference returned as an `Int`), so a reference put where an `Int` is expected, and the reverse, still goes unnoticed; that is the remaining gap in `docs/SECURITY_MODEL.md`. Separately, the loader refuses a method record whose parameter count is negative or beyond its declared words (a function-typed parameter counts as two), and the JIT's `ParamWords` treats a negative count as zero. An empty interface or `virtual` declaration has no body and is skipped.
 
 ### Callback Bridge (`ProcessStackCallback` → `JitStackCallback`)
 For operations the back-end doesn't emit natively (allocation, non-JIT calls, traps, conversions, threading) the JIT'ed code calls back into the interpreter:
