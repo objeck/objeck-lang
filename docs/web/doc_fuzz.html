@@ -69,6 +69,7 @@
       <tr><td data-label="file"><code>make_corpus.py</code></td><td data-label="role">the seed corpus: every regression program compiled by a deploy tree's <code>obc</code></td></tr>
       <tr><td data-label="file"><code>obe_image.py</code></td><td data-label="role">reads a decompressed image; cuts small seeds out of big ones</td></tr>
       <tr><td data-label="file"><code>make_regression_inputs.py</code></td><td data-label="role">writes the regression inputs (below)</td></tr>
+      <tr><td data-label="file"><code>run_nightly.py</code></td><td data-label="role">the nightly driver: build, seed, fuzz, replay, report (below)</td></tr>
      </tbody>
     </table>
     <p>The two targets:</p>
@@ -77,6 +78,13 @@
      <li><code>loader_file_fuzz</code> takes an <strong><code>.obe</code> file</strong> as <code>obc</code> writes it (<code>[uncompressed size:4][zlib]</code>, or raw zlib), decodes it with <code>Loader::DecodeImage</code> and loads what decodes.</li>
     </ul>
     <p>A refusal is a clean result: <code>Loader::Load</code> returns false with its message, which must not be empty. So is a method signature <code>StackMethod</code> cannot parse (a <code>std::runtime_error</code>, which <code>obr</code> reports as a load error). Anything else -- a sanitizer report, a leak, a signal, a timeout, an allocation over the limit -- is a finding. The image target runs the loader's verification pass too (<code>Loader::Verify</code>), so the checks that relate operands to the program are fuzzed with the rest.</p>
+    <h3 id="nightly">Nightly</h3>
+    <p><code>.github/workflows/nightly-hardening.yml</code> runs both targets every night in its <code>loader-fuzz</code> job (linux-x64, 30 minutes) through <code>run_nightly.py</code>: it builds the targets, seeds them from the regression programs the CI tree's <code>obc</code> compiles, fuzzes (65% the image target in fork mode, 25% the file target, 10% a single process with leak detection on), replays every input libFuzzer saved and prints one `FAIL loader-fuzz:</p>
+    <div class="raw"><error> <function>` line per distinct finding, which the nightly triage reads like any other
+    failure. The name has no address, line number or input hash, so the same bug on another night
+    is the same signature (`known.json` can suppress it). The saved inputs are in the run's
+    `nightly-loader-fuzz` artifact under `linux-x64/loader-fuzz-out/`.</div>
+    <p><code>test_run_nightly.py</code> tests the runner against fake fuzz targets, no clang needed: <code>python3 -m unittest tools/fuzz/loader/test_run_nightly.py</code>.</p>
     <h3 id="running-it-wsl2-ubuntu-2404">Running it (WSL2 Ubuntu 24.04)</h3>
 <pre class="plain">sudo apt install clang libclang-rt-18-dev zlib1g-dev libmbedtls-dev
 CXX=clang++ tools/fuzz/loader/build.sh ~/loader-fuzz/build
