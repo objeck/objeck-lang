@@ -1852,6 +1852,17 @@ def verifier_cases(image):
     cases.append(("an unknown declaration type", "unknown declaration type", put(image, dclrs_at + 4, "<i", 7)))
     cases.append(("a start method that does not exist", "the start method does not exist",
                   put(image, obe_image.start_ids_at(image) + 4, "<i", 1000000)))
+    # A method record's parameter count sits after its two strings. -255 was a loader
+    # fuzz finding: the JIT turned it into a 2^64-entry table and ran out of memory.
+    method_at = next(m[1] for c in classes for m in c["methods"])
+    reader = obe_image.Reader(image, method_at)
+    reader.int()
+    reader.skip(3)
+    reader.string()
+    reader.string()
+    cases.append(("a negative parameter count", "parameter count out of range", put(image, reader.pos, "<i", -255)))
+    cases.append(("a parameter count beyond the declarations", "parameter count out of range",
+                  put(image, reader.pos, "<i", 100000)))
     return cases
 
 
