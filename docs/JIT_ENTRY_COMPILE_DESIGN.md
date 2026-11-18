@@ -1,8 +1,21 @@
 # JIT: compiling the entry method, and loops on their first call
 
 **Status:** implemented on both backends (the change is in the interpreter's dispatch, so it
-applies to AMD64 and ARM64 alike), 2026-09-09, batch 6 part 1. Not an item of
+applies to AMD64 and ARM64 alike), 2026-09-09, batch 6 part 1, commit `32612e2137`
+("compile Main, a thread's Run, and any once-called method with a loop"), merged as PR #744,
+first released in v2026.9.1. Not an item of
 `JIT_CODEGEN_ASSESSMENT_2026_09.md`; found while measuring batch 4.
+
+**Limitations that exist today.** (1) A method the JIT rejects is interpreted whatever its
+loops: on both backends that includes a method with a `Try()` region (`TRY_START`/`TRY_END`
+are not accepted; on AMD64 `CompileFailed(L"a try region")` in `jit_amd_lp64.cpp`), so a
+`Main` that wraps its hot loop in a `Try()` stays interpreted. `OBJECK_JIT_REPORT=1` names the
+rejection. (2) Neither rule exists in `_DEBUGGER` or `_NO_JIT` builds (`interpreter.cpp`
+guards the entry compile with `#if !defined(_DEBUGGER) && !defined(_NO_JIT)`). (3) The
+rules are loop-triggered only: a loop-free `Main` or once-called driver is still interpreted,
+by design (section 4). (4) The timings in section 5 are from one Windows x64 box and were
+not repeated on ARM64 in this document; the regression test `jit_entry_compiled.obs`
+(below) is the portable check.
 
 ## 1. The problem
 
@@ -65,6 +78,10 @@ re-checks `GetNativeCode()` itself, so this cannot send an uncompiled callee to 
 
 ## 5. Verification
 
+- **Reproduce:** compile and run `programs/regression/jit_entry_compiled.obs` (it needs the
+  JIT on, so it opts out of `--jit=off`). It prints the three timings to stderr and `PASS` or
+  `FAIL` to stdout; run it again with `OBJECK_JIT_THRESHOLD=999999999` to see the expected
+  failure.
 - `jit_entry_compiled.obs`: the same loop in a native helper, in `Main`, and in a thread's
   `Run`; each must run within a factor of ten (plus half a second) of the helper. Before:
   0.13 s / 3.65 s / 3.52 s, fail. After: 0.083 s / 0.084 s / 0.129 s, pass. With

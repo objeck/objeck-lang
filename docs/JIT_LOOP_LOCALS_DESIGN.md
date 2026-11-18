@@ -5,6 +5,24 @@ touch the most code: **F3**, locals that live in memory across every basic block
 connectives that round-trip through a temporary local. Written 2026-09-09 before implementation;
 section 6 records what was built and measured.
 
+**Status (checked against the tree 2026-11-18).**
+
+| part | state | commit |
+|---|---|---|
+| 4a, F6: `EmitBranch`, conditions branch directly | implemented (compiler; both backends benefit) | `a8ad2c0d27`, 2026-09-09 |
+| 4b, F3 on AMD64: up to three `Int`/`Char` locals per loop in `R13`-`R15` | implemented | `e7778fd996`, 2026-09-09 |
+| 4d, `Float` locals in `XMM6`-`XMM9` | implemented on **Windows x64 only** | `21c9d3019c`, 2026-09-09 |
+| 4c, F3 on ARM64 (`X20`-`X27`) | **not implemented**: `jit_arm_a64.cpp` has no pin planner, entry or write-back stubs | -- |
+| `D8`-`D15` float pins on ARM64; `RSI`/`RDI` as extra Windows pins; `HasAndOr` only for value-context connectives | **not implemented** (the compiler still sets the flag for any and/or connective, a ternary, a `select` or a lambda: `context.cpp`) | -- |
+
+So loop pinning exists on the AMD64 backend alone. On ARM64 a loop local is still loaded from
+and stored to its frame slot at every use; the ARM64 numbers elsewhere in these documents are
+measured without pinning. Sections 1 to 5 are the design as written before the change and
+use the present tense of a plan; section 6 and the table above are the record. The AMD64
+knobs for bisecting a pinning bug are `OBJECK_JIT_PIN_MAX=<n>` (cap per loop, `0` turns
+pinning off; it caps floats too when set) and `OBJECK_JIT_PIN_SKIP=<substring>` (leave
+methods whose name contains the text alone), both read in `PlanPinRegions`.
+
 ## 1. Where the time goes today
 
 Measured on this machine (Windows x64, `-opt s3`, `--jit=1`, master at `9b0014b0`), the two kernels
@@ -52,8 +70,10 @@ empty working stack at every label, so a value produced on two paths must be joi
 hence the temp, the store, the reload, and -- because the second operand's compare is followed by a
 `STOR` rather than a `JMP` -- the failed compare/branch fusion that leaves a four-instruction `cmov`
 sequence. Slot 0 is reserved method-wide (`Method::HasAndOr`, set in `context.cpp`), shifting every
-local id by one, and the bytecode inliner refuses to inline any method that has the flag
-(`optimization.cpp:2209`).
+local id by one, and the bytecode inliner refused to inline any method that has the flag.
+*(Update 2026-11-18: it inlines them now -- `fb9e052b18`, 2026-09-15, "inline an and/or callee's
+locals into the slots declared for them"; `TailCallOpt` in `optimization.cpp` still skips such
+methods.)*
 
 ### 2.2 The change
 
@@ -126,8 +146,8 @@ registers:
 | platform | pinning registers | why |
 |---|---|---|
 | Windows x64 | `R13`, `R14`, `R15` | callee-saved, unused by the backend today; pushed in the prologue and popped in the epilogue only when the method pins (two pushes keep the 16-byte alignment, the third pairs with the existing 8-byte filler) |
-| Linux/macOS x64 | `R13`, `R14`, `R15` | already saved by the prologue; removed from `aux_regs`, which keeps `R11`, `R10`, `R8` |
-| ARM64 | `X20`-`X27` | callee-saved, unused (`X19` holds `&stw_active`); saved to frame slots beside the `X19` save |
+| Linux/macOS x64 | `R13`, `R14`, `R15` | already saved by the prologue (it pushes `R12`-`R15` unconditionally); the planned `aux_regs` split is gone, the POSIX backend now has no auxiliary registers and an eight-register pool (`R8`-`R11` joined it, `e57d5dd2ef`) |
+| ARM64 | `X20`-`X27` | **planned, not built (4c)**: callee-saved, unused (`X19` holds `&stw_active`); would be saved to frame slots beside the `X19` save |
 
 Callee-saved is the whole safety argument: every path that leaves JIT code -- the interpreter
 callback, native and math calls, the write barrier's slow path, the safepoint's `SafePoint` call, a
@@ -161,7 +181,8 @@ nothing: the frame is gone and the epilogue restores the registers.
   the slot is impossible (pinned slots never enter the cache) and asserted so.
 - `COPY_INT_VAR` (store that keeps the value on the working stack): the same, leaving the value.
 - Everything else -- the cache, the working stack, spills to the `TMP_REF_n`/`TMP_VAL_n` slots, inlined callees whose
-  locals live in the inline area at other offsets, `ProcessParameters` at method entry, the
+  locals live in the inline area at other offsets (the AMD64 JIT-level inliner this refers to was
+  removed in `632e0702f7`), `ProcessParameters` at method entry, the
   self-recursive tail-call back-edge (which stores the new argument values before jumping to the
   header, an interior jump, so the registers already hold them) -- is unchanged.
 

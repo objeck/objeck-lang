@@ -5,6 +5,64 @@
 arguments through the VM stack"), measured here for the first time, on Windows x64 at master
 `26784fe1ab`. The fixture is `programs/tests/jit_call_probe.obs`.
 
+### Status record and the convention as built (checked against the tree 2026-11-18)
+
+Shipped in v2026.9.1 (release commit `433cf916cd`, 2026-09-11; the calling-convention
+work is the "JIT calls 5-20x faster" of its subject line). Commits, 2026-09-10:
+
+| step | AMD64 | ARM64 |
+|---|---|---|
+| phase 1, the bridge (section 6) | `6df97705dd` (shared C++) | same commit, plus a two-immediate emitter change |
+| phase 2, entry and exit (sections 7, 12) | `67f982d9d1` | `8a881b4786`, `7bc12f1cd7`, `be721579cb`, `6923d2eab9`, `eb7b0d0d59` (the PR #768 set) |
+| phase 3, direct native call (section 8) | `bd57d8bac0` | superseded by the native entry below |
+| `virtual` inline cache (section 9) | `781e8c110d` | in the native entry commit |
+| func-ref inline cache (section 10) | `846263d138` | in the native entry commit |
+| register-argument entry (sections 11, 13) | `c7862a6e36` | `c6c8e2a884` (PR #776) |
+
+**The convention as it exists in the code, for a reader who wants the facts without the
+history.** A compiled method has two entries over one body: the *bridge entry* at
+`NativeCode::code` (how the interpreter and the C++ bridge enter it) and the *native entry*,
+published as `StackMethod::native_entry` (an atomic word, null when the method has no native
+entry). Native entry, AMD64: `self` in `RCX` (Win64) / `RDI` (SysV), the caller's frame pointer
+in `RDX` / `RSI`, **every argument in memory** -- the caller's outgoing area, read by the callee
+at `NATIVE_ARGS` (104 Win64, 56 SysV) from its own frame pointer plus its parameter words, in
+operand-stack order with the receiver above the arguments, and a func-ref's packed word after
+them. The area is written at `OUT_ARGS` (`NATIVE_ARGS - 16`) from the caller's stack pointer.
+ARM64: `self` in `X0`, the caller's `SP` in `X1`, the end of the caller's outgoing area in `X2`
+(frames are `SP`-relative, so the end travels in a register). Return: status in `RAX` / `X0`
+(negative is an error, 0 is success); an `Int` result as its bits in `XMM0` / `D0`, a `Float` in
+the same register. The frame record the callee pushes lives in its own frame (`rec_base`,
+`REC_SIZE` 80 bytes, entry-kind word at `REC_KIND` 72, `mem` words at `REC_MEM` 56), all in
+`core/vm/arch/jit/jit_frame_layout.h`, which is the single definition shared with the
+collector. The word the plan below calls `ENTRY_KIND` is that `REC_KIND` word. Registers a
+method may use beyond the allocator's pool: `R12` (the safepoint flag), and when it pins
+loop locals `R13`-`R15` and, on Windows, `XMM6`-`XMM9` (AMD64 only; see
+`JIT_LOOP_LOCALS_DESIGN.md`).
+
+**Where the built design differs from the section 3 plan** (the plan is kept as written
+because its rationale is still the reason for the shape): arguments are not passed in the ABI's
+integer and float registers (section 11 says why); the callee's frame record is in its own
+frame, not in a per-thread `frames[]` array; `JitDirectCallError` was never built (an error
+status travels back out through each caller's teardown and the interpreter reports it, see
+`TRY_IN_JIT_DESIGN.md`, gap 3); the `ENTRY_KIND` word is `REC_KIND`; and
+`EmitNativeCallFastPath`, the section 8 sequence, no longer exists -- section 11's
+`EmitNativeCallSite` replaced it.
+
+**Limitations that exist today.** A method whose result is a func-ref (two words) has the
+bridge entry only, and a site whose callee returns one takes the bridge. A `virtual` or
+func-ref site that has seen more than four distinct receivers (`JitVirtualSite::RECORDS`) is
+megamorphic and stays on the bridge, as do a `Nil` receiver, a callee not yet compiled and a
+full call stack. A method with a `Try()` region is not compiled at all. The ARM64 backend
+refuses a frame past 32,000 bytes (every slot is a scaled 12-bit offset from `SP`) and has no
+spilling: an expression with more than twelve live temporaries sends the method to the
+interpreter whole. The measurements in this file are one box per backend (a Ryzen 9 7950X3D
+on Windows x64 and an Apple M4 Max), medians of three, taken on 2026-09-10 and since not
+repeated on the current tree; the ARM64 and AMD64 numbers are not comparable with each other.
+**To reproduce:** build the VM, compile `programs/tests/jit_call_probe.obs`, and run it with
+`--jit=off` and with the default setting (every kernel is a once-called method with a loop, so
+the default compiles it on entry); the per-call figures are `RealCall` minus `NoCall` over its
+iteration count, as section 1 defines them.
+
 ## 0. The shape of it
 
 Before and after, for `r := a->Add(i)` between two compiled methods:
@@ -41,9 +99,13 @@ common case no longer touches it.
 | phase 3 — direct native call | 7.0 ns | 7.5 ns | 0.071 s |
 | §11 — register-argument entry | **5.5 ns** | **6.0 ns** | **0.043 s** |
 
-End to end on the benchmark suite (`docs/performance.md`, 2026-09-12): spectralnorm
-**16.4x**, binarytrees **3.9x**, nbody **2.3x**. `fannkuchredux` did not move — it is
-call-bound but dominated by its permutation/flip inner loop.
+End to end on the benchmark suite, as `docs/performance.md` first reported it on 2026-09-12:
+spectralnorm **16.4x**, binarytrees **3.9x**, nbody **2.3x**. `fannkuchredux` did not move — it is
+call-bound but dominated by its permutation/flip inner loop. Read these as the whole of
+v2026.9.1 against v2026.6.2, not as this convention alone. That page's later, definitive
+run of the same comparison reads 16.5x, 4.0x and 2.3x (`0130f97b8d`), and its current text
+quotes spectralnorm 14.2x and binarytrees 3.8x against June, on a later build and a host it
+says ran 6-17% slower in that pass.
 
 ## 1. The measurement
 
@@ -131,6 +193,9 @@ path from ever calling a `virtual` declaration's empty body: nothing checks `IsV
 Each phase is a PR against `master`, measured on the fixture before and after, and useful on
 its own. The first two are days; the third is the convention itself.
 
+*Section 3 is the plan as written on 2026-09-10, before any phase was built; the status record
+above lists what changed. The "done" marks on its headings are current.*
+
 ### Phase 1: the bridge (C++ only, both backends, about two days) -- done, section 6
 
 1a. **Resolve `virtual` callees in the bridge and take the direct path.** When
@@ -192,7 +257,7 @@ mov  rdx, [rbp+MEM]; mov rdx,[rdx]; mov [rbp+INSTANCE_MEM], rdx    ; the reload 
 
 The caller's live temporaries spill to the typed `TMP_REF_*`/`TMP_VAL_*` slots around the call exactly as around a
 callback; they lie inside `jit_offset`, so the collector scans them. The pinned loop locals
-(`R13`-`R15`, `XMM6`-`XMM9`; ARM64 `X19`+ and `D8`-`D15` when the ARM64 pins land) are
+(`R13`-`R15`, `XMM6`-`XMM9`; ARM64 would use `X20`+ and `D8`-`D15`, but ARM64 loop pinning is not built) are
 callee-saved and the callee's prologue preserves them, so a pinned loop calls without spilling.
 
 **The callee's second entry.** Each compiled method gets two prologues over one body: the
@@ -215,6 +280,10 @@ today. The caller's `ProcessReturnParameters` takes the register instead of popp
 `JitCompiler::JitDirectCallError(status, method)`, which reports the way the bridge's
 JIT-to-JIT path reports today and exits. Today's path also exits without recovery on that
 route, and methods with try regions are not compiled, so nothing observable changes.
+*(As built, 2026-10-10: neither function exists. A native caller tests the returned status
+and leaves through its own teardown with it, so a `Try()` in an interpreted frame below can
+recover; see `TRY_IN_JIT_DESIGN.md`, gap 3, `71ef3165c8`. Methods with try regions are still
+not compiled.)*
 
 **What the collector sees.** The callee's frame is on the call stack, with `jit_mem` and
 `jit_offset` set, before any instruction that can park; the arguments go from registers into
@@ -404,7 +473,8 @@ park, so the record is never scanned half-built -- the bridge had the same windo
 `virtual` callees and func-ref calls still take the bridge (an inline cache is the follow-up).
 
 Two regression tests cover the two exits: `jit_native_call_error.obs` (a directly called
-callee dereferences Nil; the message names callee and caller) and
+callee dereferences Nil; the original message named callee and caller, which gap 3 removed,
+so the test now expects a runtime error and a non-zero exit) and
 `jit_native_call_depth.obs` (recursion past the call stack's limit, refused by the bridge).
 
 Alternated with the same master, phase 1 and phase 2 binaries, medians of three:
@@ -645,7 +715,9 @@ own alternation; the column below is the last one.
   trip: for the probe's `Acc:Add`, nineteen trips and about 135 instructions, two thirds of
   everything the callee executed outside its body. It is `stp xzr, xzr` pairs from `SP` now
   for up to 32 words of locals (`EmitZeroWords`), a three-instruction loop above that (the
-  entry-shapes test's 36-local method). The loop's range had also run through the `D8`-`D15`
+  entry-shapes test's 36-local method). *(Since GC roots phase 4 on ARM64, `ff7bde646e`, the
+zeroed range starts at `TMP_REF_0` and the straight-store form is used while the last store is
+within `stp`'s 504-byte displacement of `SP`; the 32-word figure was true on 2026-09-10.)* The loop's range had also run through the `D8`-`D15`
   save slots the prologue had just filled, so every compiled method handed zeros back in its
   caller's callee-saved float registers -- unnoticed because no C++ caller keeps a value there
   across the call. The two ranges zeroed now, the six spill slots and the locals, leave the save
@@ -719,7 +791,9 @@ Section 11's shape, built directly as the Mac handoff's section 4d step 2 asked,
 call sites, sized by a pre-scan for the widest call's arguments, receiver and func-ref word. The
 record starts at `local_space + 32`, past the last word the entry zeroing reaches, so neither
 block is zeroed or walked by the collector; the old 256 bytes stay above them, with `X19`'s save
-slot the frame's top word. `frame_size` replaces `local_space + RED_ZONE` in both prologues and
+slot the frame's top word. *(No longer so since `ff7bde646e`: `frame_size` is now
+`out_base` plus the outgoing bytes plus 16, the 256-byte slack is gone, and `X19`'s save slot
+is still the frame's top word.)* `frame_size` replaces `local_space + RED_ZONE` in both prologues and
 every epilogue, and a frame past 32,000 bytes (every slot is a scaled 12-bit offset from `SP`)
 is not compiled.
 

@@ -15,6 +15,23 @@ uses reads as positive. The branch never fired, the method carried on past a
 reported error with nothing pushed, and died on the next instruction. The three
 bridge entries return `int64_t`.
 
+Where it landed: steps 2 to 4 and the cast recovery in `aa04961734` (#1066, 2026-10-09), gap 3
+in `71ef3165c8` (#1072, 2026-10-10), the native-stack guard in `13daaacfb2` (2026-10). Design
+record: `5891ce1d05` (#1059). **What this does and does not cover, stated plainly:** a method
+that itself holds a `Try()` region is never compiled (`TRY_START`/`TRY_END` are absent from
+both backends' `CanJitInstruction` lists; on AMD64 the compile fails with "a try region"), so
+the handler always belongs to an *interpreted* frame. "Inside compiled code" means that an
+error raised by a compiled callee, directly or several compiled frames down, is recovered
+by the interpreted caller's `Try()`. The error kinds that recover are the guard-stub statuses
+(Nil dereference, index out of bounds, divide by zero), an invalid object cast, a native
+stack or call-stack overflow, and since #1171/#1247 a failed trap or `Runtime->Raise`
+(`JIT_STATUS_DEFERRED = -6`, `JIT_STATUS_TRAP_FAILED = -7` in `jit_common.h`). A C++ exception
+that escapes a bridge call is still fatal by design (`BridgeExceptionExit`). The text below
+is the design as written on 2026-10-08, with the later corrections marked; the file and line
+references in it date from that day and have since moved (for instance, the handler stack is
+`StackInterpreter::TryState()`, a `thread_local` struct, in `interpreter.h`, and the three
+temporary interpreters are at `jit_common.cpp` lines 340, 411 and 506).
+
 Original status: **design only, nothing built.** For
 [#925](https://github.com/objeck/objeck-lang/issues/925), which asks for a design
 before an implementation. Written 2026-10-08 against
@@ -47,8 +64,13 @@ returns it through the method's epilogue:
 | status | meaning |
 |---|---|
 | -1 | dereference of a `Nil` instance |
-| -2 | array index out of bounds |
+| -2 | array index under bounds |
+| -3 | array index over bounds |
 | -4 | divide by zero |
+| -5 | invalid object cast (added by this work, `JIT_STATUS_INVALID_CAST`) |
+
+(Later statuses, outside this design: -6 an interpreted callee's error deferred to a handler
+below the compiled frame, -7 a failed trap or `Runtime->Raise` under a `Try()`.)
 
 The interpreter's bridge reads that status and, since #900, recovers from it —
 which is why the test's own note says *"A compiled callee that reports a guard
@@ -214,6 +236,9 @@ frame left to return a status from. The bounds check at
 `jit_common.cpp:199` fires only for the *interpreter's* `call_stack[]`, and
 compiled frames consume the real C stack long before 256 of them exist.
 `bad_runtime_stack.obs` already documents this and opts out for it.
+*(Update: the call-stack bound of 256 in this paragraph is the 2026-10-08 number. The default
+depth is now 16,384 frames, `--call-depth` / `OBJECK_CALL_DEPTH` accept 256 to 1,048,576,
+`CALL_DEPTH_DEFAULT` in `core/vm/call_stack.h`.)*
 
 Recovering it needs a guard the compiled prologue emits — a stack-limit test per
 frame — which is a different piece of work with a per-call cost, and should be
@@ -233,6 +258,10 @@ Ackermann loop measured within noise. `bad_runtime_stack.obs` and
 recovers from the maximum in both modes.
 
 ## Verification plan
+
+*(Done in `aa04961734`: `try_recovers_cast_and_depth.obs` was split into `try_recovers_cast.obs`,
+`try_recovers_depth.obs` and `try_recovers_jit_call.obs` in `programs/regression/`, and none
+carries a JIT opt-out.)*
 
 The acceptance test is flipping `try_recovers_cast_and_depth.obs`'s JIT opt-out —
 but only for the cast half. Since the recursion half stays unrecoverable, the test
