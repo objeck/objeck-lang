@@ -9,7 +9,7 @@ not depend on which one you use.
 Download `objeck-lsp_<version>.zip` from the
 [releases page](https://github.com/objeck/objeck-lang/releases/latest) and unzip it. Then, from the
 unzipped folder, run the install script, giving the folder Objeck is installed in and the editor
-(`vscode`, `sublime`, `neovim`, `emacs` or `all`):
+(`vscode`, `sublime`, `neovim`, `emacs`, `helix`, `vim` or `all`):
 
 ```text
 scripts\install.cmd "C:\Program Files\Objeck" vscode
@@ -37,6 +37,15 @@ For a project of several files, put a `build.json` in the project folder that li
   "flags": ""
 }
 ```
+
+## How to check
+
+`tools/lsp/tests/` holds the server's tests (`run_lsp_tests.py`), the timing harness
+`bench_incremental.py`, and `validate_cached_analysis.py`, which asks the cached and uncached
+servers the same questions and requires identical answers (the claim below), and
+`programs/regression/run_dap_tests.py <bin_dir>` drives the debug adapter (`obd --dap`). Running
+either needs a built deploy tree; neither was run for this review. The install steps above are
+the ones `tools/lsp/scripts/install.cmd` and `install.sh` implement.
 
 ## What you get
 

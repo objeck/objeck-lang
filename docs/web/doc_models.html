@@ -93,7 +93,7 @@ response-&gt;PrintLine();
     <p>See the <a href="https://github.com/objeck/objeck-lang/tree/master/programs/frameworks/ollama" target="_blank">Ollama examples</a> and the <a href="https://www.objeck.org/ai_guide.html">AI Developer Guide</a>.</p>
     <hr class="section-end">
     <h3 id="onnx-models">ONNX Models</h3>
-    <p>ONNX models run fully on-device, on the accelerator the platform's build was compiled for (DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS) or on the CPU. The Linux x64 build is CPU-only, and the Linux ARM64 packages do not include ONNX. Models must be downloaded separately — they are too large for the repository.</p>
+    <p>ONNX models run fully on-device, on the accelerator the platform's build was compiled for (DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS) or on the CPU. The Linux x64 and ARM64 builds are CPU-only (each links a vendored ONNX Runtime 1.19.0 CPU build). Models must be downloaded separately — they are too large for the repository.</p>
     <h4 id="supported-models">Supported Models</h4>
     <table class="ref-table">
      <thead>
@@ -111,10 +111,13 @@ response-&gt;PrintLine();
     </table>
     <h4 id="hugging-face-models-by-name">Hugging Face models by name</h4>
     <p>Text models published on the Hugging Face Hub with an ONNX export download by name, with no Python: <code>System.AI.Hub.HubClient</code> (<code>-lib net,ai_hub</code>) fetches a repository's files into <code>~/.objeck/hub</code> (or <code>OBJECK_HUB_CACHE</code>), checks each file's size and SHA-256 against the Hub, and works offline from the cache. <code>System.NLP.Onnx.TextClassifier</code> then opens the folder. See <a href="doc_ai.html#models-from-the-hugging-face-hub">AI.md</a>.</p>
-<pre class="line-numbers"><code class="language-cpp">folder := HubClient-&gt;New()-&gt;Snapshot("Xenova/distilbert-base-uncased-finetuned-sst-2-english",
+<pre class="line-numbers"><code class="language-cpp">use System.AI.Hub, System.NLP.Onnx;
+
+folder := HubClient-&gt;New()-&gt;Snapshot("Xenova/distilbert-base-uncased-finetuned-sst-2-english",
   ["config.json", "tokenizer.json", "tokenizer_config.json", "onnx/model.onnx"]);
 classifier := TextClassifier-&gt;New(folder);
 </code></pre>
+    <p>Compile with: <code>obc -src your.obs -lib models,opencv,cipher,json,onnx,nlp,nlp_onnx,net,ai_hub</code>. The tests that cover this path are <code>programs/regression/ai_hub_client.obs</code> (the cache, hash verification, token handling and offline rules, against two in-process servers that stand in for the Hub and its CDN) and <code>programs/regression/nlp_onnx_text_classifier.obs</code> (token ids exactly, logits within 1e-5 of ONNX Runtime and 1e-4 of PyTorch, on three tiny classifiers with fixtures in <code>programs/regression/data/bert/</code>).</p>
     <h4 id="download-models">Download Models</h4>
     <p><strong>Phi-3 Mini (text generation, ~2 GB)</strong></p>
 <pre class="cmd">pip install huggingface_hub
@@ -165,7 +168,7 @@ yolo export model=yolo11n.pt format=onnx
      <tbody>
       <tr><td data-label="Platform">Windows x64</td><td data-label="Accelerator">GPU via DirectML</td><td data-label="Provider flag"><code>"ep" → "dml"</code></td></tr>
       <tr><td data-label="Platform">Windows ARM64</td><td data-label="Accelerator">Qualcomm GPU via QNN</td><td data-label="Provider flag"><code>"ep" → "qnn"</code></td></tr>
-      <tr><td data-label="Platform">Linux x64</td><td data-label="Accelerator">none (CPU-only build)</td><td data-label="Provider flag"><code>"ep" → "cpu"</code></td></tr>
+      <tr><td data-label="Platform">Linux x64, Linux ARM64</td><td data-label="Accelerator">none (CPU-only build)</td><td data-label="Provider flag"><code>"ep" → "cpu"</code></td></tr>
       <tr><td data-label="Platform">macOS</td><td data-label="Accelerator">Apple Neural Engine / GPU via CoreML</td><td data-label="Provider flag"><code>"ep" → "coreml"</code></td></tr>
       <tr><td data-label="Platform">Any</td><td data-label="Accelerator">CPU fallback</td><td data-label="Provider flag"><code>"ep" → "cpu"</code></td></tr>
      </tbody>

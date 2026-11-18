@@ -63,6 +63,7 @@
       <li><a href="#the-two-shipped-examples">The two shipped examples</a></li>
       <li><a href="#a-server-a-client-and-a-connection-count">A server, a client and a connection count</a></li>
       <li><a href="#connection-reuse-in-v2026-10-3">Connection reuse in v2026.10.3</a></li>
+      <li><a href="#how-to-check">How to check</a></li>
       <li><a href="#where-next">Where next</a></li>
      </ul>
     </div>
@@ -232,6 +233,8 @@ requests served: 24</pre>
      <li>The pool belongs to <code>HttpClient</code> (plain HTTP). <code>HttpsClient</code> does not use it.</li>
     </ul>
     <p>If your program stops one server and starts another on the same port within four seconds, and relied on every request getting a fresh connection, wait for the old server to exit first.</p>
+    <h3 id="how-to-check">How to check</h3>
+    <p>Connection reuse is covered by <code>programs/regression/http_client_reuse.obs</code>. The program above starts its own server on <code>127.0.0.1</code>, so it needs no network: compile it with the line shown under it and compare the output (the output block was not re-run for this review). The pool limits quoted above (16 connections, 4 seconds) are <code>HttpConnections-&gt;MaxIdle()</code> and the idle limit in <code>core/compiler/lib_src/net.obs</code>.</p>
     <h3 id="where-next">Where next</h3>
     <ul>
      <li>The <a href="doc_changelog.html">CHANGELOG</a> entry for v2026.10.3 has the measurements behind connection reuse.</li>

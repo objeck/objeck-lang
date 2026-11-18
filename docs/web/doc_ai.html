@@ -432,7 +432,7 @@ Model-&gt;Pull("phi3");
 </code></pre>
     <hr class="section-end">
     <h3 id="onnx-local-inference">ONNX Local Inference</h3>
-    <p>Run ML models locally using the ONNX Runtime. The Windows and macOS libraries are each built with one accelerator (DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS), with the CPU as the fallback. The Linux x64 library is CPU-only, and the Linux ARM64 packages include no ONNX library. See <a href="doc_models.html#execution-providers">execution providers</a> for the <code>ep</code> setting.</p>
+    <p>Run ML models locally using the ONNX Runtime. The Windows and macOS libraries are each built with one accelerator (DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS), with the CPU as the fallback. The Linux x64 and ARM64 libraries are CPU-only (each is linked with a vendored ONNX Runtime 1.19.0 CPU build). See <a href="doc_models.html#execution-providers">execution providers</a> for the <code>ep</code> setting.</p>
     <p><strong>Compile:</strong> <code>obc -src your.obs -lib models,net,json,cipher,opencv,onnx</code></p>
     <h4 id="face-recognition">Face Recognition</h4>
     <p>Uses <a href="https://github.com/deepinsight/insightface" target="_blank">InsightFace buffalo_l</a>: SCRFD 10G-KPS detector + ArcFace R50 (512-dim embeddings).</p>
@@ -533,7 +533,7 @@ conf := result-&gt;GetConfidence();
 session-&gt;Close();
 </code></pre>
     <h4 id="any-model-generic-run">Any Model (generic run)</h4>
-    <p>The six classes above each handle one model family. For anything they do not cover -- a model with several inputs, a text or audio model, or a model whose output you want to decode yourself -- <code>Session</code> runs any ONNX graph. Ask it what the model wants, build the tensors, run it:</p>
+    <p><code>YoloSession</code>, <code>ResNetSession</code>, <code>DeepLabSession</code>, <code>OpenPoseSession</code>, <code>Phi3Session</code>, <code>Phi3VisionSession</code> and <code>FaceSession</code> each handle one model family. For anything they do not cover -- a model with several inputs, a text or audio model, or a model whose output you want to decode yourself -- <code>Session</code> runs any ONNX graph. Ask it what the model wants, build the tensors, run it:</p>
 <pre class="line-numbers"><code class="language-cpp">use API.Onnx, API.Models, Collection;
 
 session := Session-&gt;New("model.onnx");
@@ -757,7 +757,7 @@ if(folder = Nil) {
 </code></pre>
     <hr class="section-end">
     <h3 id="machine-learning-systemml">Machine Learning (System.ML)</h3>
-    <p>Classical machine learning, pure standard library — no native model runtimes needed. Every estimator follows the same API: <code>Fit</code>, <code>Predict</code> (and <code>PredictClass</code> for classifiers), <code>Score</code>, <code>IsFitted</code>, and <code>Store</code>/<code>Load</code> for model persistence. Stochastic algorithms take a seed for reproducible results.</p>
+    <p>Classical machine learning, pure standard library — no native model runtimes needed. The estimators share a common shape: <code>Fit</code>, <code>Predict</code> (and <code>PredictClass</code> for classifiers), <code>Score</code>, <code>IsFitted</code>, and, for most of them, <code>Store</code>/<code>Load</code> for model persistence (see <a href="#model-persistence">Model Persistence</a>). Stochastic algorithms take a seed for reproducible results.</p>
 <pre class="plain">obc -src program.obs -lib ml,gen_collect,csv -dest program.obe</pre>
     <h4 id="regression">Regression</h4>
 <pre class="line-numbers"><code class="language-cpp">use System.ML;
@@ -899,7 +899,7 @@ probabilities := head-&gt;PredictProba(X_test);
 labels := head-&gt;PredictClass(X_test, 0.5);
 </code></pre>
     <h4 id="model-persistence">Model Persistence</h4>
-    <p>Every estimator round-trips through <code>Store</code>/<code>Load</code>; loaded models reproduce the original predictions exactly.</p>
+    <p><code>Store</code>/<code>Load</code> round-trip the linear models (<code>LinearRegression</code>, <code>RidgeRegression</code>, <code>ElasticNet</code>, <code>LassoRegression</code>, <code>LogisticRegression</code>, <code>Perceptron</code>, <code>SVM</code>), <code>GaussianNaiveBayes</code>, <code>GaussianMixture</code>, <code>PCA</code>, <code>NeuralNetwork</code>, <code>DecisionTree</code>, <code>RandomForest</code>, <code>AdaBoost</code>, <code>RegressionTree</code> and <code>GradientBoostedTrees</code>; loaded models reproduce the original predictions exactly. <code>KernelSVM</code>, <code>OneClassSVM</code>, <code>RandomForestClassifier</code>, <code>EmbeddingClassifier</code>, <code>KMeans</code>, <code>DBSCAN</code>, <code>KNearestNeighbors</code> and the outlier detectors have no <code>Store</code>/<code>Load</code>: refit them (they are seeded, so a refit is reproducible). <code>LassoRegression</code> loads back as an <code>ElasticNet</code>.</p>
 <pre class="line-numbers"><code class="language-cpp">model-&gt;Store("model.dat");
 loaded := LinearRegression-&gt;Load("model.dat");
 loaded-&gt;Predict(X);
@@ -1136,6 +1136,24 @@ opencv_onnx/  demo_face.obs    demo_yolo.obs    demo_resnet.obs
               demo_phi3_*.obs  demo_phi3v_*.obs</pre>
     <p><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/ml/bert_malware_lab.obs" target="_blank"><code>programs/examples/ml/bert_malware_lab.obs</code></a> runs a BERT malware-classification lab's three experiments — class imbalance with a fixed test set, MAX_SEQ_LENGTH, and learning rate with per-epoch loss curves — on a frozen BERT encoder and a trained <code>EmbeddingClassifier</code> head, from a CSV of API-call traces or a synthetic corpus (<code>--synthetic</code>). Its header says how this differs from the lab's end-to-end fine-tuning.</p>
     <p>A complete <code>System.ML.Lab</code> run -- two parameter sweeps with tables, CSVs and SVG charts -- is <a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/ml/lab_sweeps.obs" target="_blank"><code>programs/examples/ml/lab_sweeps.obs</code></a>.</p>
+    <h4 id="how-to-check">How to check</h4>
+    <p>The libraries in this guide are covered by the regression suite in <code>programs/regression/</code>:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Area</th><th>Tests</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Area"><code>System.ML</code></td><td data-label="Tests"><code>ml_*.obs</code>, e.g. <code>ml_kernel_svm_reference.obs</code> and <code>ml_one_class_svm_reference.obs</code> (against an independent reference, generated by <code>tools/ml/svm_reference/gen_reference_test.py</code>), <code>ml_outlier_*.obs</code>, <code>ml_lab_*.obs</code></td></tr>
+      <tr><td data-label="Area"><code>System.AI</code></td><td data-label="Tests"><code>ai_search_test.obs</code>, <code>ai_game_test.obs</code>, <code>ai_optimize_test.obs</code>, <code>ai_rl_test.obs</code></td></tr>
+      <tr><td data-label="Area"><code>System.NLP</code></td><td data-label="Tests"><code>nlp_*.obs</code>, e.g. <code>nlp_wordpiece_parity.obs</code>, <code>nlp_bpe_tokenizer.obs</code></td></tr>
+      <tr><td data-label="Area">ONNX, remote inference, Hub</td><td data-label="Tests"><code>onnx_*.obs</code>, <code>nlp_onnx_*.obs</code>, <code>inference_client_test.obs</code>, <code>ai_hub_client.obs</code></td></tr>
+     </tbody>
+    </table>
+    <p>A test passes when it exits 0 and is compiled with the libraries its <code># EXTRA_LIBS:</code> line names; a test that needs a model or a native library that is not deployed prints <code>SKIP:</code> instead. To run one:</p>
+<pre class="plain">cd programs/regression
+obc -src ml_kernel_svm_reference.obs -lib ml,gen_collect,csv -dest ml_kernel_svm_reference.obe
+obr ml_kernel_svm_reference.obe</pre>
+    <p><code>./run_regression.sh x64</code> (<code>run_regression.cmd x64</code> on Windows) runs the whole suite.</p>
 
    </div>
   </main>

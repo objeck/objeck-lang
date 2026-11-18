@@ -66,6 +66,7 @@
       <li><a href="#joins-expressions-and-prepared-statements">Joins, expressions and prepared statements</a></li>
       <li><a href="#keeping-a-table-on-disk">Keeping a table on disk</a></li>
       <li><a href="#other-sources">Other sources</a></li>
+      <li><a href="#how-to-check">How to check</a></li>
       <li><a href="#where-next">Where next</a></li>
      </ul>
     </div>
@@ -325,7 +326,7 @@ error: no table named 'nobody'</pre>
      <li><code>Table-&gt;New(name, names, types)</code> declares the types. <code>row-&gt;Set("qty", "lots")</code> returned <code>false</code> and stored nothing; with inferred types the column would have been promoted to hold both.</li>
      <li><code>left join</code> kept Linus, who has no orders, with an empty cell where the order would be.</li>
      <li><code>Prepare()</code> parses a statement once. <code>Bind(index, value)</code> fills the <code>?</code> placeholders, numbered from 1, and <code>Execute()</code> runs it as many times as you like with new values. A statement that changes rows runs with <code>ExecuteUpdate()</code>.</li>
-     <li>A join is a hash join on equality. <code>Explain(sql)</code> on a table or a catalog describes the plan without running the query.</li>
+     <li>A join on equality sorts the right side's keys once and finds each left row's matches by binary search (not a hash join; the output order is fixed: left rows in order, each with its matches in the right table's order). <code>Explain(sql)</code> on a table or a catalog describes the plan without running the query.</li>
     </ul>
     <h3 id="keeping-a-table-on-disk">Keeping a table on disk</h3>
     <p>An <code>.otab</code> file stores a table column by column. <code>Save</code> writes one (the write goes to a temporary file that is renamed over the old one, so a crash leaves the old file or the new one), <code>Load</code> reads it back, and <code>OtabFile</code> reads only the columns you name. <code>TableStore</code> goes further: it logs every <code>INSERT</code>, <code>UPDATE</code> and <code>DELETE</code> before the statement returns, so a crash loses at most the statement in progress.</p>
@@ -433,6 +434,8 @@ reopened: 75000 rows, 2 log records replayed</pre>
     <p>A quoted file name in <code>FROM</code> reads that file: <code>from 'runs.csv'</code>, <code>from 'weather.json'</code>. The format follows the extension (<code>.csv</code>, <code>.tsv</code>, <code>.json</code>, <code>.jsonl</code>, <code>.xml</code>, <code>.xlsx</code>, also compressed <code>.csv.gz</code>), and <code>csv('data.csv', header =&gt; false)</code> and its relatives set options. A <code>Catalog</code> can also load sources that make tables of other things: <code>CsvSource</code>, <code>JsonSource</code>, <code>XmlSource</code>, <code>TextSource</code> (log lines), <code>FilesystemSource</code> (a folder listing), <code>ArchiveSource</code> (zip and tar), <code>XlsxSource</code> (worksheets), <code>ObjectSource</code> (your own objects), and, in separate libraries, ODBC results, <code>System.ML</code> results and image detections.</p>
     <p>The shipped example <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/sql_files_19.obs" target="_blank"><code>sql_files_19.obs</code></a> queries CSV and JSON files and a folder, and joins them. <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/sql_tables_18.obs" target="_blank"><code>sql_tables_18.obs</code></a> is another tour of tables, indexes and <code>Explain</code>.</p>
     <p>A catalog that answers queries from other people (as <code>TableServer</code> does) should call <code>SetFileAccess(false)</code>: otherwise a query could read any file the process can, or fetch any URL.</p>
+    <h3 id="how-to-check">How to check</h3>
+    <p>The engine is covered by the <code>query_*.obs</code> tests in <code>programs/regression/</code>, listed in <a href="doc_query_design.html"><code>docs/QUERY_DESIGN.md</code></a> (the differential tests compare every query form with a naive evaluator; <code>query_persist_*.obs</code> cover the <code>.otab</code> file and the durable table). To check this page, compile each program with the line shown under it and compare the output; the output blocks were not re-run for this review, and the file size and bytes-read figures in the last one depend on the compressor's output.</p>
     <h3 id="where-next">Where next</h3>
     <ul>
      <li><a href="doc_query_design.html"><code>docs/QUERY_DESIGN.md</code></a>: the storage layout, the planner, indexes, the <code>.otab</code> format, sources, and the network server.</li>

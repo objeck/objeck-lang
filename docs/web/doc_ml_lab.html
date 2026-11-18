@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
   <title>System.ML.Lab: experiment support for a cybersecurity-ML lab — Objeck Language</title>
-  <meta name="description" content="Status: design, approved direction 2026-10-26 for v2026.10.2. Delivered in four stages after this document, each its own PR against master."/>
+  <meta name="description" content="Status (checked 2026-11-18): implemented in full, released in v2026.10.2. Delivered in four stages after this document, each its own PR against master (the commits are in the table at the end). Not built, by design: multi-class metrics, a P"/>
   <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
   <link href="style/styles.css" rel="stylesheet" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -57,7 +57,7 @@
 
     <h1 class="page-title"><code>System.ML.Lab</code>: experiment support for a cybersecurity-ML lab</h1>
     <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/ML_LAB_SUPPORT_DESIGN.md" target="_blank">docs/ML_LAB_SUPPORT_DESIGN.md on GitHub</a></div>
-    <p class="page-lead"><strong>Status:</strong> design, approved direction 2026-10-26 for v2026.10.2. Delivered in four stages after this document, each its own PR against <code>master</code>.</p>
+    <p class="page-lead"><strong>Status (checked 2026-11-18): implemented in full, released in v2026.10.2.</strong> Delivered in four stages after this document, each its own PR against <code>master</code> (the commits are in the table at the end). Not built, by design: multi-class metrics, a PNG rasterizer, a two-parameter grid search. <code>ResultTable-&gt;FromJson</code> needs the JSON string decoding of #1403, which is on <code>master</code>.</p>
     <div id="toc_container" class="plain">
      <h4>Contents</h4>
      <ul>
@@ -75,6 +75,13 @@
      </ul>
     </div>
 
+    <p><strong>Validated by</strong> (all in <code>programs/regression/</code>, each compiled with <code>-lib ml,ml_lab,gen_collect,csv,json</code>): <code>ml_lab_split.obs</code>, <code>ml_lab_resample.obs</code>, <code>ml_lab_labels_encoding.obs</code>, <code>ml_lab_stopwatch.obs</code>, <code>ml_lab_result_table.obs</code>, <code>ml_lab_experiment.obs</code>, <code>ml_lab_chart_svg.obs</code> (byte-compared against the golden files in <code>programs/regression/ml_lab_golden/</code>) and <code>time_timer_wall_clock.obs</code> (the <code>Timer</code> clock fix).</p>
+    <p><strong>How to check:</strong></p>
+<pre class="plain">cd programs/regression
+obc -src ml_lab_split.obs -lib ml,ml_lab,gen_collect,csv,json -dest ml_lab_split.obe
+obr ml_lab_split.obe</pre>
+    <p>The end-to-end example is run by hand: <code>programs/examples/ml/lab_sweeps.obs</code>.</p>
+    <p><strong>Known limits:</strong> the SVG charts are checked for structure and determinism, not pixels (no rasterizer exists in the tree), and <code>lab_sweeps.obs</code> is not compiled by CI.</p>
     <h3 id="why">Why</h3>
     <p>A university cybersecurity-ML lab hands in a <em>table, screenshot or graph of results</em> for parameter sweeps: random-forest <code>n_estimators</code>, <code>max_depth</code> and <code>min_samples_leaf</code>; SVM kernel, <code>C</code> and <code>gamma</code>; anomaly-detector sensitivities; class-imbalance ratios; sequence lengths; learning rates. Each sweep compares accuracy, precision, recall, F1, false-positive rate, false negatives and <strong>training time</strong>, sometimes training against testing accuracy (an overfitting curve), and sometimes a training-loss plot.</p>
     <p><code>System.ML</code> has the models, <code>TableEncoder</code>, <code>FeatureScaler</code>, <code>StratifiedKFold</code>, <code>CrossValidation-&gt;Evaluate</code> and both label- and score-based <code>Metrics</code>. What it does not have is the plumbing <em>around</em> a sweep, so today a student hand-writes all of it: a deterministic stratified hold-out split, a resampler that changes the training class ratio while leaving the test set alone, a wall-clock stopwatch, a loop that trains once per parameter value and gathers eight numbers per value, a table renderer, and a chart. That code is the same in every lab and is where the mistakes live (scaling fitted on the test split, a resampled test set, timing that includes prediction, a chart whose axis hides the result).</p>
@@ -245,11 +252,12 @@ c-&gt;Save("recall_vs_c.svg");
      <tbody>
       <tr><td data-label="Stage">0</td><td data-label="PR">#1402</td><td data-label="Contents">this document</td></tr>
       <tr><td data-label="Stage">1</td><td data-label="PR">#1405</td><td data-label="Contents"><code>ml_lab.obl</code>: <code>Partition</code>, <code>Resample</code>, <code>Stopwatch</code>, <code>Labels</code>, <code>LabError</code>; the <code>Timer</code> clock fix; lists, alias group, LSP index, playground policy</td></tr>
-      <tr><td data-label="Stage">2</td><td data-label="PR">stage-2 PR</td><td data-label="Contents"><code>Experiment</code>, <code>Trial</code>, <code>TrialResult</code>, <code>ResultTable</code>; the chained-subscript compiler fix; merges after #1403</td></tr>
-      <tr><td data-label="Stage">3</td><td data-label="PR">stage-3 PR</td><td data-label="Contents"><code>Chart</code>, <code>ChartSeries</code>, <code>ResultTable-&gt;ToChart</code></td></tr>
-      <tr><td data-label="Stage">4</td><td data-label="PR">stage-4 PR</td><td data-label="Contents"><code>programs/examples/ml/lab_sweeps.obs</code>; <code>docs/AI.md</code> and <code>docs/cli_options.md</code></td></tr>
+      <tr><td data-label="Stage">2</td><td data-label="PR"><code>960d324c51</code></td><td data-label="Contents"><code>Experiment</code>, <code>Trial</code>, <code>TrialResult</code>, <code>ResultTable</code>; the chained-subscript compiler fix; merges after #1403</td></tr>
+      <tr><td data-label="Stage">3</td><td data-label="PR"><code>e164785300</code></td><td data-label="Contents"><code>Chart</code>, <code>ChartSeries</code>, <code>ResultTable-&gt;ToChart</code></td></tr>
+      <tr><td data-label="Stage">4</td><td data-label="PR"><code>ceccde6384</code></td><td data-label="Contents"><code>programs/examples/ml/lab_sweeps.obs</code>; <code>docs/AI.md</code> and <code>docs/cli_options.md</code></td></tr>
      </tbody>
     </table>
+    <p>Stage 1 is <code>b26ad6095c</code>. All four are dated 2026-10-26 and are in v2026.10.2.</p>
 
    </div>
   </main>
