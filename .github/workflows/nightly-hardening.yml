@@ -2,8 +2,9 @@ name: Nightly Hardening
 
 # The long checks CI cannot afford on every push, run against the binaries CI
 # already built and tested: the differential regression, the program fuzzer,
-# the regression suite under the heap verifier in minor and major stress, and
-# loops of the GC stress tests in both JIT modes. A summary job sorts every
+# the regression suite under the heap verifier in minor and major stress, loops
+# of the GC stress tests in both JIT modes, and a libFuzzer run on the .obe
+# loader (its own job: linux-x64 only). A summary job sorts every
 # failure into infra / known / new (tools/cicd/nightly_triage.py) and reports
 # only the new ones as issues. Plan: docs/PLAN_2026_10_0_HARDENING.md, 1.6.
 #
@@ -359,11 +360,87 @@ jobs:
           retention-days: 14
 
   # ============================================
+  # Loader fuzz: the .obe loader under libFuzzer + ASan/UBSan (linux-x64 only)
+  # ============================================
+  # An .obe is untrusted input to obr (docs/SECURITY_MODEL.md). This builds the
+  # loader's fuzz targets from the checked-out sources, seeds them from the
+  # regression programs compiled by the CI tree's obc, fuzzes for 30 minutes
+  # and reports each distinct finding like any other nightly failure
+  # (tools/fuzz/loader/run_nightly.py). It is its own job because it builds with
+  # clang and runs on one leg; triage expects it through --extra-steps.
+  loader-fuzz:
+    name: Loader fuzz linux-x64
+    needs: resolve
+    runs-on: ubuntu-24.04
+    # Setup (apt, build, seeding) is about 15 minutes; the fuzz passes take 30;
+    # the wrapper --timeout (3300 s) ends inside the 60-minute step.
+    timeout-minutes: 80
+    defaults:
+      run:
+        shell: bash
+    env:
+      LEG: linux-x64
+      TREE: core/release/deploy-x64
+      RESULTS: nightly-results
+      TRIAGE: tools/cicd/nightly_triage.py
+      SEED: ${{ needs.resolve.outputs.seed }}
+    steps:
+      - name: Checkout the tested commit
+        timeout-minutes: 5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.use_dispatch_ref && github.sha || needs.resolve.outputs.head_sha }}
+
+      - name: Install the fuzz toolchain and runtime dependencies
+        timeout-minutes: 10
+        run: |
+          # clang and the libFuzzer runtime build the targets; obc needs the
+          # same packages the CI tree was tested with to compile the seeds.
+          sudo bash tools/cicd/apt_harden.sh
+          sudo apt-get update
+          sudo apt-get install -y clang libclang-rt-18-dev zlib1g-dev libmbedtls-dev             libopencv-dev unixodbc-dev libsqliteodbc             libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev             libegl1 libegl-mesa0 libgl1-mesa-dri libreadline-dev libeigen3-dev libmp3lame-dev
+
+      - name: Download the CI deploy tree
+        timeout-minutes: 10
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: objeck-linux-x64
+          run-id: ${{ needs.resolve.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ env.TREE }}
+
+      - name: Prepare the deploy tree
+        id: prep
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          chmod +x "$TREE"/bin/* 2>/dev/null || true
+          "$TREE/bin/obc" --version
+          mkdir -p "$RESULTS/$LEG"
+
+      - name: Fuzz the bytecode loader
+        if: ${{ !cancelled() && steps.prep.outcome == 'success' }}
+        timeout-minutes: 60
+        run: |
+          # --require: a checkout without the runner FAILS this step; it never skips.
+          python3 "$TRIAGE" run --leg "$LEG" --step loader-fuzz --out "$RESULTS"             --config "libfuzzer asan+ubsan" --timeout 3300 --parser generic --default-seed "$SEED"             --require tools/fuzz/loader/run_nightly.py             -- python3 tools/fuzz/loader/run_nightly.py --bin "$TREE/bin"                --work "$RUNNER_TEMP/loader-fuzz" --minutes 30 --seed "$SEED"                --out "$RESULTS/$LEG/loader-fuzz-out"
+
+      - name: Upload results
+        if: always()
+        timeout-minutes: 5
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: nightly-loader-fuzz
+          path: nightly-results/
+          if-no-files-found: warn
+          retention-days: 14
+
+  # ============================================
   # Triage and report
   # ============================================
   triage:
     name: Triage
-    needs: [resolve, harden]
+    needs: [resolve, harden, loader-fuzz]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -384,6 +461,7 @@ jobs:
           python3 -m unittest tools/cicd/test_nightly_triage.py tools/cicd/test_nightly_contract.py
           python3 -m unittest discover -s tools/fuzz -p "test_known_schema.py"
           python3 -m unittest discover -s tools/fuzz -p "test_run_fuzz.py"
+          python3 -m unittest discover -s tools/fuzz/loader -p "test_run_nightly.py"
 
       - name: Download leg results
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
@@ -399,7 +477,7 @@ jobs:
           python3 tools/cicd/nightly_triage.py triage \
             --results nightly-results --known tools/fuzz/known.json \
             --legs windows-x64,windows-arm64,linux-x64,linux-arm64,macos-arm64 \
-            --steps differential,fuzz,verify-minor,verify-major,stress \
+            --steps differential,fuzz,verify-minor,verify-major,stress             --extra-steps linux-x64:loader-fuzz \
             --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
             --out nightly-triage --github-output "$GITHUB_OUTPUT"
           cat nightly-triage/summary.md >> "$GITHUB_STEP_SUMMARY"

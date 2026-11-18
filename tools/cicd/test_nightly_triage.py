@@ -197,6 +197,25 @@ class ClassifyTests(unittest.TestCase):
         known = [i for i in rep["items"] if i["class"] == "known"][0]
         self.assertEqual(known["known"]["issue"], "#816")
 
+    def test_extra_step_is_expected_on_its_leg_only(self):
+        # A step one leg runs alone (loader-fuzz on linux-x64) is missing only there.
+        self.put(result("linux-x64", "stress"))
+        self.put(result("macos-arm64", "stress"))
+        legs = ["linux-x64", "macos-arm64"]
+        rep = nt.classify(self.results, self.known, legs, ["stress"], [("linux-x64", "loader-fuzz")])
+        missing = [(i["leg"], i["step"], i["class"]) for i in rep["items"]]
+        self.assertEqual(missing, [("linux-x64", "loader-fuzz", "infra")])
+        self.put(result("linux-x64", "loader-fuzz"))
+        rep = nt.classify(self.results, self.known, legs, ["stress"], [("linux-x64", "loader-fuzz")])
+        self.assertEqual(rep["status"], "green")
+
+    def test_extra_step_failure_is_classified_like_any_other(self):
+        self.put(result("linux-x64", "loader-fuzz", "fail", [nt.make_failure(
+            "loader-fuzz", "loader-fuzz: heap-buffer-overflow Loader::LoadMethods")]))
+        rep = nt.classify(self.results, self.known, ["linux-x64"], [], [("linux-x64", "loader-fuzz")])
+        self.assertEqual(rep["status"], "new")
+        self.assertEqual(rep["items"][0]["step"], "loader-fuzz")
+
     def test_known_needs_every_field(self):
         # Right message, wrong leg: still new.
         self.put(result("linux-x64", "stress", "fail", [nt.make_failure(

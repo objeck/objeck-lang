@@ -14,6 +14,7 @@ allocate without bound.
 | `make_corpus.py` | the seed corpus: every regression program compiled by a deploy tree's `obc` |
 | `obe_image.py` | reads a decompressed image; cuts small seeds out of big ones |
 | `make_regression_inputs.py` | writes the regression inputs (below) |
+| `run_nightly.py` | the nightly driver: build, seed, fuzz, replay, report (below) |
 
 The two targets:
 
@@ -30,6 +31,21 @@ a sanitizer report, a leak, a signal, a timeout, an allocation over the limit
 -- is a finding. The image target runs the loader's verification pass too
 (`Loader::Verify`), so the checks that relate operands to the program are
 fuzzed with the rest.
+
+## Nightly
+
+`.github/workflows/nightly-hardening.yml` runs both targets every night in its
+`loader-fuzz` job (linux-x64, 30 minutes) through `run_nightly.py`: it builds the
+targets, seeds them from the regression programs the CI tree's `obc` compiles, fuzzes
+(65% the image target in fork mode, 25% the file target, 10% a single process with leak
+detection on), replays every input libFuzzer saved and prints one `FAIL loader-fuzz:
+<error> <function>` line per distinct finding, which the nightly triage reads like any other
+failure. The name has no address, line number or input hash, so the same bug on another night
+is the same signature (`known.json` can suppress it). The saved inputs are in the run's
+`nightly-loader-fuzz` artifact under `linux-x64/loader-fuzz-out/`.
+
+`test_run_nightly.py` tests the runner against fake fuzz targets, no clang needed:
+`python3 -m unittest tools/fuzz/loader/test_run_nightly.py`.
 
 ## Running it (WSL2 Ubuntu 24.04)
 

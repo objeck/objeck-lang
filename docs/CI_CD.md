@@ -313,7 +313,7 @@ declare `System.ML` and produce `system.ml-*.html`.
 |----------|---------|--------------|
 | `perf-gate.yml` | Push to `master` and PRs touching `core/vm`, `core/compiler` or `core/shared`; manual | Objeck vs Java and LuaJIT time ratios against a committed baseline; report-only for now ([PERF_GATE.md](../perf-results/PERF_GATE.md)) |
 | `benchmark.yml` | Manual | Benchmarks on Linux x64 and ARM64, compared against a baseline release tag |
-| `nightly-hardening.yml` | Manual (schedule not yet enabled) | Differential regression, fuzzer, heap verifier and GC stress runs against CI's binaries |
+| `nightly-hardening.yml` | Manual (schedule not yet enabled) | Differential regression, fuzzer, heap verifier and GC stress runs against CI's binaries, and a 30-minute libFuzzer run on the `.obe` loader (linux-x64) |
 | `stress-probe.yml` | Push to `probe/**` branches; manual | Loops the GC/JIT regression fixtures in four modes on all five platforms, against a CI build's binaries |
 | `verify-signing-credentials.yml` | Weekly (Monday) and manual | Imports the Apple signing certificates to prove the secrets still work |
 | `codeql.yml` | Push, PRs, weekly | CodeQL analysis |
