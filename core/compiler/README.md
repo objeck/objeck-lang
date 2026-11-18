@@ -38,7 +38,7 @@ obc -src hello.obs -dest hello.obe
 | Scanner and parser | `scanner.cpp`, `parser.cpp`, `tree.h` | hand-written recursive descent into a `ParsedProgram` |
 | Context analyzer | `context.cpp`, `types.cpp` | type checking and name resolution. It first calls `Linker::Load` (`linker.cpp`), which reads the `.obl` libraries named by `-lib` (and `lang`, `gen_collect`), so library classes are known before analysis |
 | Intermediate emitter | `intermediate.cpp` | blocks of VM instructions (`../shared/instrs.h`) per method; pulls in the library classes the program calls |
-| Optimizer | `optimization.cpp` | `-opt s0` to `s3` (default `s3`); see [docs/optimization_pipeline.md](../../docs/optimization_pipeline.md) for the passes at each level |
+| Optimizer | `optimization.cpp` | `-opt s0` to `s3` (default `s3`; `--debug` forces `s0`); see [docs/optimization_pipeline.md](../../docs/optimization_pipeline.md) for the passes at each level. A `-tar lib` build optimizes little: library methods are optimized when a program links them, at that program's level |
 | File emitter | `emit.cpp` | writes the zlib-compressed `.obe` or `.obl` |
 
 The same sources are also built as the bootstrap compiler `sys_obc` (`-D_SYSTEM`, for `lib_src/lang.obs`), as `compiler.a` (`-D_MODULE`, for `core/module` and the REPL) and, with only the front end, as `libobjk_diags` for the language server.
@@ -53,6 +53,13 @@ Type parameters support:
 - **Compound bounds** — `T : A & B` requires the concrete argument to satisfy every bound.
 - **F-bounded constraints** — the bound may itself be generic and self-referential, e.g. `T : Compare<T>`. The constraint is enforced against the bound's raw interface (consistent with erasure).
 - **Declaration-site variance** — `out T` (covariant) and `in T` (contravariant) relax the default invariance during generic type-argument checking; `out` is recognized contextually so it remains usable as an ordinary identifier. Variance is sound in both directions and is preserved across the `.obl` library boundary.
+
+### Status and limits
+
+- Everything in this file describes code that is in the tree. Generics are **erased**: a type parameter is its upper bound (or `System.Base`) inside a body, and there are no run-time type arguments, so what is checked at run time is limited to the type checks the compiler inserts where necessary. Method-level generics are described in [docs/METHOD_GENERICS_DESIGN.md](../../docs/METHOD_GENERICS_DESIGN.md).
+- The compiler is not incremental: each run parses, analyzes and emits the whole program. The language server's incremental work is in [docs/INCREMENTAL_ANALYSIS_DESIGN.md](../../docs/INCREMENTAL_ANALYSIS_DESIGN.md) and is partly implemented.
+- Language-feature design notes (rationale and rejected alternatives): [named arguments](../../docs/NAMED_ARGUMENTS_DESIGN.md), [`ref` parameters](../../docs/REFERENCE_PARAMETERS_DESIGN.md), [array literals](../../docs/ARRAY_LITERALS_DESIGN.md), [jagged arrays](../../docs/JAGGED_ARRAYS_DESIGN.md), [method generics](../../docs/METHOD_GENERICS_DESIGN.md), [errors](../../docs/ERROR_HANDLING_DESIGN.md).
+- How to check the optimizer: `obc -src x.obs -dest x.obe -opt s0 -asm` and again with `-opt s3` write the bytecode listing to `x.obm`; diff them.
 
 ## Implementation
 

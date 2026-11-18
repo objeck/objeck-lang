@@ -59,7 +59,7 @@
     <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/ERROR_CONVENTIONS.md" target="_blank">docs/ERROR_CONVENTIONS.md on GitHub</a></div>
     <p class="page-lead"><strong>Status: a proposal for the maintainer.</strong> The first half records, with file and line, the ways the libraries report failure today. The second half proposes a single rule for new code. Nothing here changes behaviour, and no library has been changed to follow it.</p>
 
-    <p>Lines refer to <code>core/compiler/lib_src/</code> as of this writing.</p>
+    <p>Lines refer to <code>core/compiler/lib_src/</code> at the commit that last edited this file; they drift as the libraries change, so check a reference with <code>grep -n &lt;symbol&gt;</code> before relying on it. The <code>lang.obs</code>, <code>ml_lab.obs</code> and <code>query.obs</code> references were re-checked against master on 2026-11-18, the others were refreshed the same day.</p>
     <h3 id="what-is-in-use">What is in use</h3>
     <h4 id="1-a-process-wide-last-error-string-openai-gemini-ollama-inference">1. A process-wide "last error" string: OpenAI, Gemini, Ollama, inference</h4>
     <p>The failing call returns <code>Nil</code> or <code>false</code> and leaves the reason in a class variable that the next call overwrites.</p>
@@ -68,21 +68,21 @@
       <tr><th>Library</th><th>Where it is kept</th><th>Notes</th></tr>
      </thead>
      <tbody>
-      <tr><td data-label="Library">OpenAI</td><td data-label="Where it is kept"><code>@last_message : static</code> (<code>openai.obs:6337</code>), <code>SetLastError</code> (<code>:6370</code>), <code>GetLastError</code> (<code>:6470</code>)</td><td data-label="Notes">returns the text <code>"&lt;none&gt;"</code> when nothing failed. <code>ParseBody</code> (<code>:6429</code>) records the reason for every parse failure</td></tr>
+      <tr><td data-label="Library">OpenAI</td><td data-label="Where it is kept"><code>@last_message : static</code> (<code>openai.obs:6331</code>), <code>SetLastError</code> (<code>:6364</code>), <code>GetLastError</code> (<code>:6481</code>)</td><td data-label="Notes">returns the text <code>"&lt;none&gt;"</code> when nothing failed. <code>ParseBody</code> (<code>:6440</code>) records the reason for every parse failure</td></tr>
       <tr><td data-label="Library">Gemini</td><td data-label="Where it is kept">two copies: <code>OAuthEndPoint</code> (<code>gemini.obs:15</code>, <code>GetLastError</code> <code>:97</code>) and <code>EndPoint</code> (<code>:2400</code>, <code>GetLastError</code> <code>:2523</code>)</td><td data-label="Notes">returns <code>Nil</code> when nothing failed. A call through the other class does not see the first one's error</td></tr>
-      <tr><td data-label="Library">Ollama</td><td data-label="Where it is kept"><code>@last_error : static</code> (<code>ollama.obs:17</code>), <code>GetLastError</code> (<code>:26</code>)</td><td data-label="Notes">returns <code>Nil</code> when nothing failed; <code>Content</code> (<code>:101</code>) turns "no response" into a recorded reason</td></tr>
+      <tr><td data-label="Library">Ollama</td><td data-label="Where it is kept"><code>@last_error : static</code> (<code>ollama.obs:15</code>), <code>GetLastError</code> (<code>:26</code>)</td><td data-label="Notes">returns <code>Nil</code> when nothing failed; <code>Content</code> (<code>:101</code>) turns "no response" into a recorded reason</td></tr>
       <tr><td data-label="Library">Inference</td><td data-label="Where it is kept"><code>EndPoint-&gt;SetLastError</code> calls in <code>inference.obs</code> (21 of them; the first is <code>:50</code>)</td><td data-label="Notes">separate from <code>API.Models.EndPoint</code>, as its header says</td></tr>
-      <tr><td data-label="Library">Models, MCP server</td><td data-label="Where it is kept"><code>models.obs:351</code>, <code>net_server.obs:3121</code> (<code>McpServer-&gt;GetLastError</code>)</td><td data-label="Notes">the same shape again; ONNX has its own</td></tr>
+      <tr><td data-label="Library">Models, MCP server</td><td data-label="Where it is kept"><code>models.obs:351</code>, <code>net_server.obs:4491</code> (<code>McpServer-&gt;GetLastError</code>)</td><td data-label="Notes">the same shape again; ONNX has its own</td></tr>
      </tbody>
     </table>
-    <p>Because the string is shared by every thread, two threads that fail at once can read each other's message. The three AI libraries also differ on the "no error" value (<code>"&lt;none&gt;"</code> versus <code>Nil</code>), and until recently several legacy methods printed <code>### Error: ... ###</code> with <code>-&gt;ErrorLine()</code> and returned <code>Nil</code> without recording anything (<code>openai.obs:84</code>, <code>:172</code>; <code>gemini.obs</code> has 26 such lines). A caller of those cannot ask why.</p>
+    <p>Because the string is shared by every thread, two threads that fail at once can read each other's message. The three AI libraries also differ on the "no error" value (<code>"&lt;none&gt;"</code> versus <code>Nil</code>), and until recently several legacy methods printed <code>### Error: ... ###</code> with <code>-&gt;ErrorLine()</code> and returned <code>Nil</code> without recording anything (<code>openai.obs:84</code>, <code>:170</code>; <code>grep -c '### Error'</code> finds 23 such lines in <code>gemini.obs</code> and 13 in <code>openai.obs</code>). A caller of those cannot ask why.</p>
     <h4 id="2-an-instance-error-ml-csv-json-xml-nlp-query-columns">2. An instance error: ML, CSV, JSON, XML, NLP, Query columns</h4>
     <p>The object remembers why <em>its</em> last call failed; a failed call leaves the object usable.</p>
     <ul>
      <li>ML models: <code>GetError()</code> at <code>ml_core.obs:2360</code>, <code>ml_embed.obs:176</code>, <code>ml_outlier.obs</code> (several classes, <code>:889</code> and onwards). Returns <code>""</code> when the last call worked, per its comment.</li>
-     <li><code>json.obs:510</code>, <code>xml.obs:283</code>, <code>csv.obs:691</code>: <code>GetError()</code> after a parse.</li>
+     <li><code>json.obs:526</code>, <code>xml.obs:294</code>, <code>csv.obs:691</code>: <code>GetError()</code> after a parse.</li>
      <li><code>ml_svm.obs:1813</code> and <code>:2472</code>, <code>odbc.obs:306</code>, <code>:1042</code>, <code>:1815</code>: <code>GetLastError()</code> per object.</li>
-     <li><code>IsOk()</code> after construction, with the reason held for the same object: <code>rss.obs:93</code>, <code>regex.obs:116</code>.</li>
+     <li><code>IsOk()</code> after construction, with the reason held for the same object: <code>rss.obs:98</code>, <code>regex.obs:124</code>.</li>
     </ul>
     <p>This is safe with one thread per object. The "no error" value is <code>""</code> in ML and <code>Nil</code> in most others.</p>
     <h4 id="3-a-per-thread-error-query-tables-sockets">3. A per-thread error: Query tables, sockets</h4>
@@ -99,6 +99,7 @@
     </ul>
     <h4 id="5-return-value-only">5. Return value only</h4>
     <p>Many small methods (<code>Vector-&gt;Set</code>, <code>Hash-&gt;Remove</code>) say only whether they worked. That is fine when there is exactly one way to fail.</p>
+    <p><strong>How to check</strong> any row above: <code>grep -n "GetLastError\|GetError" core/compiler/lib_src/&lt;file&gt;.obs</code>, and for raising, <code>grep -ln "Runtime-&gt;Raise" core/compiler/lib_src/*.obs</code> (today <code>lang.obs</code> and <code>ml_lab.obs</code> only).</p>
     <h3 id="what-goes-wrong-with-the-mix">What goes wrong with the mix</h3>
     <ul>
      <li>A caller has to learn which of five mechanisms a library uses, and which of three "no error" values it returns (<code>"&lt;none&gt;"</code>, <code>Nil</code>, <code>""</code>).</li>

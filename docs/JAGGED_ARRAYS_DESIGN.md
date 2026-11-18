@@ -2,6 +2,8 @@
 
 Issue: [#1246](https://github.com/objeck/objeck-lang/issues/1246), split out of #1186.
 
+**Status:** implemented (PR #1265, `0f3b2f45ce`, #1246, v2026.10.1). **Not implemented** (see "Out of scope"): `Int[,][]`, serialization of jagged arrays, a reflection view that names the real array type.
+
 ## Why
 
 Rectangular arrays exist (`Int[,]`), but rows of different lengths could not be declared,
@@ -90,10 +92,21 @@ documented. Keeping written order would need a temporary per group.
 - `Int[,][]` and other rectangular levels.
 - Reflection's view of a jagged type: it reports the row type's name.
 
+## Limitations
+
+- A `T[][]` is an object array whose elements are `T[]` arrays, so every row is a separate heap object and a row is `Nil` until set.
+- Index expressions evaluate innermost group first (`j` before `i` in `rows[i][j]`), which is observable only when both have side effects.
+- Rows of the same literal must be one-dimensional and of one array type.
+- Reflection reports the row type's name (the compiler's internal `$Int[]` spelling), not `Int[][]`.
+
+## How to check
+
+`obc -src programs/regression/jagged_arrays.obs -dest t.obe && obr t.obe` (also with `obr --jit=off t.obe`, `obr --jit=1 t.obe` and `obr --gc-threshold=64k t.obe`); the four `bad_jagged_*.obs` files must fail to compile.
+
 ## Tests
 
 `jagged_arrays.obs` covers declaration, allocation, ragged literals, chained reads and
 writes, rows of objects (`String[][]`), parameters and return values, `each`/`->Size()`,
 three levels, and a loop that allocates enough rows to collect (JIT, GC, three modes). It
 also checks that rows survive collection under `--gc-threshold`. The `bad_jagged_*.obs`
-files cover a wrong element type and a wrong number of index groups.
+files (`mixed_rows`, `row_type`, `second_subscript`, `too_many_subscripts`) cover a wrong element type, mixed rows and a wrong number of index groups.

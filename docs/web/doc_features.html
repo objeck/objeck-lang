@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
   <title>Objeck Language Features — Objeck Language</title>
-  <meta name="description" content="Comprehensive guide to Objeck&#x27;s language features with examples."/>
+  <meta name="description" content="Guide to Objeck&#x27;s language features with examples. Each section is implemented in the current master unless it says otherwise; the design notes it links to give the rationale, the alternatives rejected and the known gaps. The language featu"/>
   <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
   <link href="style/styles.css" rel="stylesheet" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -57,7 +57,7 @@
 
     <h1 class="page-title">Objeck Language Features</h1>
     <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/FEATURES.md" target="_blank">docs/FEATURES.md on GitHub</a></div>
-    <p class="page-lead">Comprehensive guide to Objeck's language features with examples.</p>
+    <p class="page-lead">Guide to Objeck's language features with examples. Each section is implemented in the current master unless it says otherwise; the design notes it links to give the rationale, the alternatives rejected and the known gaps. The language features added in v2026.10.1 (named arguments, <code>ref</code> parameters, array literals with expressions, jagged arrays, method-level generics, <code>System.Error</code> with <code>try</code>/<code>on</code>/<code>finally</code>) each ship with a <code>programs/regression/&lt;feature&gt;*.obs</code> test and <code>bad_&lt;feature&gt;_*.obs</code> negative tests; to check one, compile and run it with <code>obc -src &lt;file&gt; -dest t.obe &amp;&amp; obr t.obe</code>, and again with <code>obr --jit=off t.obe</code>.</p>
 
     <h3 id="object-oriented-programming">Object-Oriented Programming</h3>
     <h4 id="inheritance">Inheritance</h4>
@@ -154,14 +154,15 @@ text := maybe?-&gt;Trim()-&gt;ToUpper();
 <pre class="line-numbers"><code class="language-cpp">size := maybe?-&gt;ToUpper()-&gt;Size() ?? -1;
 </code></pre>
     <p>For a guarded value -- <code>Bool</code>, <code>Byte</code>, <code>Char</code> or <code>Int</code> -- the default replaces only a failure: <code>size</code> above is <code>-1</code> when <code>maybe</code> is <code>Nil</code> and <code>0</code> when it is <code>""</code>. For a guarded object, <code>??</code> takes the default when the chain failed or yielded <code>Nil</code>.</p>
-    <p>Both build on the <code>Try()</code>/<code>Otherwise()</code> intrinsics, so <code>a?-&gt;b()</code> is exactly <code>a-&gt;Try()-&gt;b()</code> and <code>a ?? b</code> is <code>a-&gt;Otherwise(b)</code>. One consequence worth knowing: <code>Try()</code> guards against most runtime errors in the chain, not only a <code>Nil</code> dereference — <code>a?-&gt;Get(999)</code> yields <code>Nil</code> on an out-of-range index rather than faulting. An invalid object cast is recovered too, in interpreted and in JIT-compiled code alike — the same program behaves the same way whether or not the failing method happened to be compiled. A call-stack overflow is recovered in interpreted code only: compiled frames consume the real C stack, so the process dies in the OS before any frame-count guard can fire.</p>
+    <p>Both build on the <code>Try()</code>/<code>Otherwise()</code> intrinsics, so <code>a?-&gt;b()</code> is exactly <code>a-&gt;Try()-&gt;b()</code> and <code>a ?? b</code> is <code>a-&gt;Otherwise(b)</code>. One consequence worth knowing: <code>Try()</code> guards against most runtime errors in the chain, not only a <code>Nil</code> dereference — <code>a?-&gt;Get(999)</code> yields <code>Nil</code> on an out-of-range index rather than faulting. An invalid object cast is recovered too, in interpreted and in JIT-compiled code alike — the same program behaves the same way whether or not the failing method happened to be compiled. A call-stack overflow (more than <code>--call-depth</code> frames, default 16384) is recovered too, as a <code>RuntimeError</code> with the message <code>call stack bounds have been exceeded</code>, in interpreted and in JIT-compiled code: compiled call sites also check the native-stack floor (v2026.10.2; <code>core_call_depth_max.obs</code>).</p>
     <p>A guarded call works as a statement too: <code>t?-&gt;Close();</code> runs <code>Close()</code> unless <code>t</code> is <code>Nil</code>, and recovers a runtime error inside it. A method that returns nothing yields <code>Nil</code> through the guard.</p>
     <h4 id="reading-a-recovered-error">Reading a recovered error</h4>
     <p>After a <code>?-&gt;</code> recovers, the error it took is recorded for the thread:</p>
 <pre class="line-numbers"><code class="language-cpp">value := table-&gt;Get(key)?-&gt;Parse() ?? 0;
 if(Runtime-&gt;HasError()) {
   kind := Runtime-&gt;GetErrorKind();   # NIL_DEREFERENCE, INDEX_OUT_OF_BOUNDS,
-                                     # DIVIDE_BY_ZERO, INVALID_CAST, OTHER
+                                     # DIVIDE_BY_ZERO, INVALID_CAST, OTHER,
+                                     # RAISED (Runtime-&gt;Raise)
   "skipped {$key}: {$(Runtime-&gt;GetError())}"-&gt;ErrorLine();
   Runtime-&gt;ClearError();
 };
@@ -196,7 +197,7 @@ finally {
      <li><code>?-&gt;</code> still recovers from any error below a guarded call, and <code>Runtime-&gt;GetLastError()</code> returns the one it took.</li>
      <li>An error nothing catches ends the program with <code>Unhandled &lt;class&gt;: &lt;message&gt;</code>.</li>
     </ul>
-    <p>A method with a <code>try</code> block runs interpreted (the JIT compiles its callees), as one with a <code>?-&gt;</code> does. See <a href="https://github.com/objeck/objeck-lang/blob/master/docs/ERROR_HANDLING_DESIGN.md" target="_blank">ERROR_HANDLING_DESIGN.md</a>.</p>
+    <p>A method with a <code>try</code> block runs interpreted (the JIT compiles its callees), as one with a <code>?-&gt;</code> does. <code>System.Error</code> carries a message only: <code>GetMessage()</code> and <code>ToString()</code>; the recovered kind is read with <code>Runtime-&gt;GetErrorKind()</code>. See <a href="https://github.com/objeck/objeck-lang/blob/master/docs/ERROR_HANDLING_DESIGN.md" target="_blank">ERROR_HANDLING_DESIGN.md</a>.</p>
     <h4 id="tail-calls">Tail calls</h4>
     <p>A method's call to itself on <code>@self</code> in tail position (<code>Down(); }</code> or <code>return Down();</code>) is compiled as a jump at <code>-opt s1</code> and above, so unbounded tail recursion runs in constant stack. The transform is skipped for <code>Main</code>, constructors, virtual methods, methods containing <code>&amp;</code>/<code>|</code>, and methods with a <code>Try()</code> region of their own. A call on another instance of the class is a real call, and so is any call at <code>-opt s0</code>.</p>
     <h4 id="anonymous-classes">Anonymous Classes</h4>
@@ -397,7 +398,7 @@ true       use        virtual    while      xor</pre>
       <tr><td data-label="word"><code>reverse</code></td><td data-label="reserved for"><code>each(... reverse ...)</code></td><td data-label="commonly wanted as">a sort direction</td></tr>
      </tbody>
     </table>
-    <p><code>self</code>, <code>parent</code> and <code>value</code> are <strong>not</strong> reserved as identifiers.</p>
+    <p><code>self</code>, <code>parent</code> and <code>value</code> are <strong>not</strong> reserved as identifiers. The capitalized <code>Byte</code>, <code>Int</code>, <code>Float</code>, <code>Char</code>, <code>Bool</code>, <code>Nil</code>, <code>New</code>, <code>Parent</code>, <code>As</code> and <code>TypeOf</code> are keywords of the scanner too (<code>ident_map</code> in <code>scanner.cpp</code>), so they cannot name a variable either. <code>ref</code>, <code>try</code>, <code>on</code>, <code>finally</code> and <code>out</code> are <strong>contextual</strong>: a keyword only where the grammar expects it, so they remain usable as names.</p>
     <hr class="section-end">
     <div class="raw"><a name="integers"></a>
     ## Integer Arithmetic</div>
@@ -582,6 +583,7 @@ Monitor-&gt;MemoryOverhead()-&gt;PrintLine();     # RSS - live heap (fragmentati
       <tr><td data-label="key"><code>runtime.threads.active</code> / <code>.parked</code> / <code>.running</code></td><td data-label="meaning">mutator threads (<code>.parked</code> includes STW/blocked)</td></tr>
       <tr><td data-label="key"><code>runtime.gc.stw</code></td><td data-label="meaning">1 while a collection is stopping the world</td></tr>
       <tr><td data-label="key"><code>runtime.cpu.count</code> / <code>.time</code> / <code>runtime.uptime_ms</code></td><td data-label="meaning">logical cores / process CPU ms / uptime</td></tr>
+      <tr><td data-label="key"><code>runtime.process.handles</code></td><td data-label="meaning">kernel handles (Windows) or open file descriptors (elsewhere) the process holds</td></tr>
       <tr><td data-label="key"><code>runtime.call.depth_max</code></td><td data-label="meaning">the deepest calls may nest, in frames (<code>--call-depth</code>, default 16384)</td></tr>
      </tbody>
     </table>

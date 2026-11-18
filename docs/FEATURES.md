@@ -1,6 +1,13 @@
 # Objeck Language Features
 
-Comprehensive guide to Objeck's language features with examples.
+Guide to Objeck's language features with examples. Each section is implemented in the
+current master unless it says otherwise; the design notes it links to give the rationale,
+the alternatives rejected and the known gaps. The language features added in v2026.10.1
+(named arguments, `ref` parameters, array literals with expressions, jagged arrays,
+method-level generics, `System.Error` with `try`/`on`/`finally`) each ship with a
+`programs/regression/<feature>*.obs` test and `bad_<feature>_*.obs` negative tests; to
+check one, compile and run it with `obc -src <file> -dest t.obe && obr t.obe`, and again
+with `obr --jit=off t.obe`.
 
 ## Table of Contents
 - [Object-Oriented Programming](#oop)
@@ -159,8 +166,10 @@ knowing: `Try()` guards against most runtime errors in the chain, not only a
 than faulting. An invalid object cast is recovered too, in
 interpreted and in JIT-compiled code alike — the same program behaves the same
 way whether or not the failing method happened to be compiled. A call-stack
-overflow is recovered in interpreted code only: compiled frames consume the real
-C stack, so the process dies in the OS before any frame-count guard can fire.
+overflow (more than `--call-depth` frames, default 16384) is recovered too, as a
+`RuntimeError` with the message `call stack bounds have been exceeded`, in interpreted
+and in JIT-compiled code: compiled call sites also check the native-stack floor
+(v2026.10.2; `core_call_depth_max.obs`).
 
 A guarded call works as a statement too: `t?->Close();` runs `Close()` unless
 `t` is `Nil`, and recovers a runtime error inside it. A method that returns
@@ -172,7 +181,8 @@ After a `?->` recovers, the error it took is recorded for the thread:
 value := table->Get(key)?->Parse() ?? 0;
 if(Runtime->HasError()) {
   kind := Runtime->GetErrorKind();   # NIL_DEREFERENCE, INDEX_OUT_OF_BOUNDS,
-                                     # DIVIDE_BY_ZERO, INVALID_CAST, OTHER
+                                     # DIVIDE_BY_ZERO, INVALID_CAST, OTHER,
+                                     # RAISED (Runtime->Raise)
   "skipped {$key}: {$(Runtime->GetError())}"->ErrorLine();
   Runtime->ClearError();
 };
@@ -219,7 +229,8 @@ finally {
 - An error nothing catches ends the program with `Unhandled <class>: <message>`.
 
 A method with a `try` block runs interpreted (the JIT compiles its callees), as
-one with a `?->` does. See [ERROR_HANDLING_DESIGN.md](ERROR_HANDLING_DESIGN.md).
+one with a `?->` does. `System.Error` carries a message only: `GetMessage()` and
+`ToString()`; the recovered kind is read with `Runtime->GetErrorKind()`. See [ERROR_HANDLING_DESIGN.md](ERROR_HANDLING_DESIGN.md).
 
 ### Tail calls
 A method's call to itself on `@self` in tail position (`Down(); }` or
@@ -543,7 +554,11 @@ word. Four of them read as ordinary identifiers and are worth knowing about:
 | `from` | the inheritance clause, `class X from Y` | a date range, a graph edge |
 | `reverse` | `each(... reverse ...)` | a sort direction |
 
-`self`, `parent` and `value` are **not** reserved as identifiers.
+`self`, `parent` and `value` are **not** reserved as identifiers. The capitalized
+`Byte`, `Int`, `Float`, `Char`, `Bool`, `Nil`, `New`, `Parent`, `As` and `TypeOf` are
+keywords of the scanner too (`ident_map` in `scanner.cpp`), so they cannot name a
+variable either. `ref`, `try`, `on`, `finally` and `out` are **contextual**: a keyword
+only where the grammar expects it, so they remain usable as names.
 
 ---
 
@@ -789,6 +804,7 @@ Or read keys directly: `System.Runtime->GetProperty(key)->ToInt()`.
 | `runtime.threads.active` / `.parked` / `.running` | mutator threads (`.parked` includes STW/blocked) |
 | `runtime.gc.stw` | 1 while a collection is stopping the world |
 | `runtime.cpu.count` / `.time` / `runtime.uptime_ms` | logical cores / process CPU ms / uptime |
+| `runtime.process.handles` | kernel handles (Windows) or open file descriptors (elsewhere) the process holds |
 | `runtime.call.depth_max` | the deepest calls may nest, in frames (`--call-depth`, default 16384) |
 
 ### Date/Time Handling

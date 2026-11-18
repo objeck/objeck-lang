@@ -15,6 +15,8 @@ checks the sites marked **[checked]**; CI runs it in the `tools` job and
 
 Sites are named by function, not line number, because line numbers rot.
 
+**Status:** the procedure is the one in use; every site below was re-checked against master (`3042a96eee`), and `python3 tools/cicd/check_trap_handlers.py` passes on it (268 traps, 265 handled by `ProcessTrap`, 3 allowlisted; 315 intrinsics scanned, parsed and lowered). **How to check** a claim in the failure table: make the omission on a scratch branch and run that script (`--test` runs its own negative controls).
+
 ## The sites
 
 | # | File | What to add | `TestAddressOf` |

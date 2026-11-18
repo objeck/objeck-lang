@@ -64,10 +64,13 @@
       <li><a href="#why">Why</a></li>
       <li><a href="#decisions">Decisions</a></li>
       <li><a href="#out-of-scope">Out of scope</a></li>
+      <li><a href="#limitations">Limitations</a></li>
+      <li><a href="#how-to-check">How to check</a></li>
       <li><a href="#tests">Tests</a></li>
      </ul>
     </div>
 
+    <p><strong>Status:</strong> implemented (PR #1265, <code>0f3b2f45ce</code>, #1246, v2026.10.1). <strong>Not implemented</strong> (see "Out of scope"): <code>Int[,][]</code>, serialization of jagged arrays, a reflection view that names the real array type.</p>
     <h3 id="why">Why</h3>
     <p>Rectangular arrays exist (<code>Int[,]</code>), but rows of different lengths could not be declared, built or passed. Code boxed each row (<code>IntArrayRef[]</code>, <code>Vector&lt;IntArrayRef&gt;</code>), which costs an object per row and an unwrap on every access. Ragged data is everyday work in research code: token sequences of different lengths, adjacency lists, triangles, batches.</p>
 <pre class="line-numbers"><code class="language-cpp">rows := Int[]-&gt;New[3];          # three rows, each Nil until set
@@ -121,8 +124,17 @@ triangle := [[1], [1, 1], [1, 2, 1]];   # ragged, so Int[][]
      <li><code>Int[,][]</code> and other rectangular levels.</li>
      <li>Reflection's view of a jagged type: it reports the row type's name.</li>
     </ul>
+    <h3 id="limitations">Limitations</h3>
+    <ul>
+     <li>A <code>T[][]</code> is an object array whose elements are <code>T[]</code> arrays, so every row is a separate heap object and a row is <code>Nil</code> until set.</li>
+     <li>Index expressions evaluate innermost group first (<code>j</code> before <code>i</code> in <code>rows[i][j]</code>), which is observable only when both have side effects.</li>
+     <li>Rows of the same literal must be one-dimensional and of one array type.</li>
+     <li>Reflection reports the row type's name (the compiler's internal <code>$Int[]</code> spelling), not <code>Int[][]</code>.</li>
+    </ul>
+    <h3 id="how-to-check">How to check</h3>
+    <p><code>obc -src programs/regression/jagged_arrays.obs -dest t.obe &amp;&amp; obr t.obe</code> (also with <code>obr --jit=off t.obe</code>, <code>obr --jit=1 t.obe</code> and <code>obr --gc-threshold=64k t.obe</code>); the four <code>bad_jagged_*.obs</code> files must fail to compile.</p>
     <h3 id="tests">Tests</h3>
-    <p><code>jagged_arrays.obs</code> covers declaration, allocation, ragged literals, chained reads and writes, rows of objects (<code>String[][]</code>), parameters and return values, <code>each</code>/<code>-&gt;Size()</code>, three levels, and a loop that allocates enough rows to collect (JIT, GC, three modes). It also checks that rows survive collection under <code>--gc-threshold</code>. The <code>bad_jagged_*.obs</code> files cover a wrong element type and a wrong number of index groups.</p>
+    <p><code>jagged_arrays.obs</code> covers declaration, allocation, ragged literals, chained reads and writes, rows of objects (<code>String[][]</code>), parameters and return values, <code>each</code>/<code>-&gt;Size()</code>, three levels, and a loop that allocates enough rows to collect (JIT, GC, three modes). It also checks that rows survive collection under <code>--gc-threshold</code>. The <code>bad_jagged_*.obs</code> files (<code>mixed_rows</code>, <code>row_type</code>, <code>second_subscript</code>, <code>too_many_subscripts</code>) cover a wrong element type, mixed rows and a wrong number of index groups.</p>
 
    </div>
   </main>
