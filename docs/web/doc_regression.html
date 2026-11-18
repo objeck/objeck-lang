@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
   <title>Objeck Language Regression Test Suite — Objeck Language</title>
-  <meta name="description" content="This regression test suite validates the compiler, virtual machine, JIT and libraries after every change. It has about 780 tests; TESTS.md lists every one, by category, with what it checks. It covers:"/>
+  <meta name="description" content="This regression test suite validates the compiler, virtual machine, JIT and libraries after every change. It has 812 .obs files (the generated TESTS.md lists every one, by category, with what it checks; 128 files are named bad_*; 139 carry "/>
   <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
   <link href="style/styles.css" rel="stylesheet" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -57,7 +57,7 @@
 
     <h1 class="page-title">Objeck Language Regression Test Suite</h1>
     <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/programs/regression/README.md" target="_blank">programs/regression/README.md on GitHub</a></div>
-    <p class="page-lead">This regression test suite validates the compiler, virtual machine, JIT and libraries after every change. It has about 780 tests; <a href="https://github.com/objeck/objeck-lang/blob/master/programs/regression/TESTS.md" target="_blank">TESTS.md</a> lists every one, by category, with what it checks. It covers:</p>
+    <p class="page-lead">This regression test suite validates the compiler, virtual machine, JIT and libraries after every change. It has 812 <code>.obs</code> files (the generated <a href="https://github.com/objeck/objeck-lang/blob/master/programs/regression/TESTS.md" target="_blank">TESTS.md</a> lists every one, by category, with what it checks; 128 files are named <code>bad_*</code>; 139 carry an <code>EXPECT_COMPILE_ERROR</code> (116) or <code>EXPECT_RUNTIME_ERROR</code> (23) marker). The map of every other assurance mechanism in the repository (fuzzers, verifiers, nightly jobs, static analysis) is <a href="https://github.com/objeck/objeck-lang/blob/master/docs/TESTING_AND_ASSURANCE.md" target="_blank">docs/TESTING_AND_ASSURANCE.md</a>. It covers:</p>
     <div id="toc_container" class="plain">
      <h4>Contents</h4>
      <ul>
@@ -97,16 +97,37 @@ run_regression.cmd arm64    REM For ARM64 build</pre>
     <ul>
      <li><code>TEST_TIMEOUT</code> - seconds allowed per test run (the POSIX runner defaults to 60, the Windows runner to 300, the value the nightly runs use)</li>
      <li><code>OBJECK_VM_ARGS</code> - extra <code>obr</code> options for every test, e.g. <code>--gc-threshold=64k</code></li>
+     <li><code>OBJECK_GL_REQUIRED=1</code>, <code>OBJECK_REQUIRE_ODBC=1</code> - turn the OpenGL and ODBC tests' environment-dependent skips into failures (CI sets them on the legs that have a context and the <code>objeck_sqlite_test</code> data source)</li>
     </ul>
+    <p>Only the POSIX runner honors <code>REGRESSION_SHARD=i/n</code>, which runs every nth test starting at the ith (0-based) so the suite can run as n processes side by side (<code>tools/cicd/local_linux.sh</code> does).</p>
+    <p><strong>How a result is decided.</strong> Compile, then one run of <code>obr</code> with the default JIT:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Test kind</th><th>Passes when</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Test kind">ordinary</td><td data-label="Passes when"><code>obr</code> exits 0 and the output has no line starting <code>SKIP:</code> (such a test is counted as skipped)</td></tr>
+      <tr><td data-label="Test kind"><code># EXPECT_COMPILE_ERROR: &lt;message&gt;</code></td><td data-label="Passes when">the compile fails, the log is non-empty and contains <code>&lt;message&gt;</code> (case-sensitive, trimmed); with <code># EXPECT_ERROR_COUNT: &lt;n&gt;</code> the log must also hold exactly <code>n</code> error lines (lines naming a <code>.obs</code> position that are not warnings)</td></tr>
+      <tr><td data-label="Test kind"><code># EXPECT_RUNTIME_ERROR</code></td><td data-label="Passes when"><code>obr</code> exits non-zero with some output; neither the exit code nor the text is checked</td></tr>
+      <tr><td data-label="Test kind">any</td><td data-label="Passes when">a run longer than <code>TEST_TIMEOUT</code> fails, whatever the markers say</td></tr>
+     </tbody>
+    </table>
+    <p>The suite compiles at <code>-opt s3</code> only, with one fixed library list, and runs each test once, so it cannot by itself find a bug that needs the optimizer off, a particular threshold, a particular heap size or a particular interleaving. That is what the second CI pass (<code>OBJECK_JIT_THRESHOLD=1</code>) and the nightly runs below add.</p>
     <p><code>OBJECK_JIT_THRESHOLD=1</code> makes <code>obr</code> compile every method on its first call; CI runs the suite a second time with it.</p>
-    <p>Other runners in this directory:</p>
-    <ul>
-     <li><code>run_debugger_tests.sh</code> / <code>run_debugger_tests.cmd</code> <code>[x64|arm64]</code> - <code>obd</code> command-line tests (the POSIX one needs <code>expect</code>)</li>
-     <li><code>python3 run_dap_tests.py &lt;bin_dir&gt;</code> - Debug Adapter Protocol (<code>obd --dap</code>) tests</li>
-     <li><code>python3 run_vm_flag_tests.py &lt;bin_dir&gt;</code> - <code>obr</code> flags, and interpreter/JIT equivalence</li>
-     <li><code>python3 run_compiler_robustness.py &lt;bin_dir&gt;</code> - negative testing of the compiler front end: valid programs broken in sixteen ways, plus hostile files (deep nesting, random bytes, thousands of errors); fails on a crash, a hang, or a drop in how accurately and briefly errors are reported</li>
-     <li><code>python3 run_differential.py &lt;bin_dir&gt;</code> - compiles every test at <code>-opt s0</code> and <code>-opt s3</code> and requires the same output with the JIT off, on by default and forced on; its header documents its markers</li>
-    </ul>
+    <p>Other runners in this directory (run by <code>ci-build.yml</code> on every leg unless the last column says otherwise):</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Runner</th><th>What it checks</th><th>Where it runs</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Runner"><code>run_debugger_tests.sh</code> / <code>run_debugger_tests.cmd</code> <code>[x64|arm64]</code></td><td data-label="What it checks"><code>obd</code> command-line scenarios (the POSIX one needs <code>expect</code>)</td><td data-label="Where it runs">every CI leg</td></tr>
+      <tr><td data-label="Runner"><code>python3 run_dap_tests.py &lt;bin_dir&gt;</code></td><td data-label="What it checks">Debug Adapter Protocol (<code>obd --dap</code>) scenarios over stdio: breakpoints, variables, <code>setVariable</code>, logpoints, restart, non-ASCII names</td><td data-label="Where it runs">every CI leg</td></tr>
+      <tr><td data-label="Runner"><code>python3 run_vm_flag_tests.py &lt;bin_dir&gt;</code></td><td data-label="What it checks"><code>obr</code> flags, interpreter/JIT equivalence, the heap verifier and its fault injection, GC reference-map audits, loader refusals; numbered sections (1 to 31) described in the script's header. <code>--only gc_roots</code> runs the sections whose name matches; a full run takes about ten minutes per the header</td><td data-label="Where it runs">every CI leg</td></tr>
+      <tr><td data-label="Runner"><code>python3 run_compiler_robustness.py &lt;bin_dir&gt;</code></td><td data-label="What it checks">negative testing of the compiler front end: valid regression programs broken in sixteen ways, plus hostile files (deep nesting, random bytes, 20000 errors, a 2 MB string). Gates: no crash or hang, at least 80% of errors reported on or within two lines of the mutation, at most 5% cascading into more than four errors, at most 5% reported only far away, at most 15% compiled with no error. Seed and program count are fixed by default, so a failure reruns identically</td><td data-label="Where it runs">every CI leg</td></tr>
+      <tr><td data-label="Runner"><code>python3 run_differential.py &lt;bin_dir&gt;</code></td><td data-label="What it checks">compiles every test at <code>-opt s0</code> and <code>-opt s3</code> and requires the same stdout and success status under <code>s0/off</code>, <code>s3/off</code>, <code>s3/default</code>, <code>s3/jit1</code> (and <code>s0/jit1</code> with <code>--rotate</code>); its header documents its markers (<code>DIFF_CONFIGS</code>, <code>DIFF_REQUIRES_JIT</code>, <code>NONDETERMINISTIC_OUTPUT</code>, <code>DIFF_SERIAL</code>, <code>DIFF_TIMEOUT</code>)</td><td data-label="Where it runs">nightly only (<code>nightly-hardening.yml</code>); its unit test <code>test_run_differential.py</code> runs per push in the <code>tools</code> job</td></tr>
+     </tbody>
+    </table>
+    <p>None of the Python runners can find a bug outside the programs it feeds them: the robustness gates catch crashes, hangs and diagnostics that drift, not a wrong error message that happens to land near the mutation, and the differential runner finds divergence between configurations, not an error every configuration shares.</p>
     <h3 id="test-organization">Test Organization</h3>
     <p>The file-name prefix decides a test's category in <code>TESTS.md</code> (<code>core_</code>, <code>jit_</code>, <code>arm64_</code>, <code>bad_</code>, <code>collect_</code>, <code>ml_</code> and so on; the mapping is <code>CATS</code> in <code>gen_manifest.py</code>, and a name that matches none is filed under Other). Directives are comment lines starting at column 0:</p>
     <table class="ref-table">
@@ -118,7 +139,9 @@ run_regression.cmd arm64    REM For ARM64 build</pre>
       <tr><td data-label="Directive"><code># EXPECT_COMPILE_ERROR: &lt;message&gt;</code></td><td data-label="Effect">Passes only if compilation fails and the compiler output contains <code>&lt;message&gt;</code></td></tr>
       <tr><td data-label="Directive"><code># EXPECT_RUNTIME_ERROR</code></td><td data-label="Effect">Passes only if <code>obr</code> exits non-zero with output</td></tr>
       <tr><td data-label="Directive"><code># JIT_DISABLE</code></td><td data-label="Effect">Runs the test with the JIT off; the next line must be <code># reason: ...</code> (<code>tools/cicd/check_jit_optouts.py</code>)</td></tr>
-      <tr><td data-label="Directive"><code># VERIFY_SKIP</code>, <code># GC_STRESS_SKIP</code></td><td data-label="Effect">Skipped in the nightly heap-verifier and forced-GC-threshold runs; the next line must be <code># reason: ...</code> naming the run that failed</td></tr>
+      <tr><td data-label="Directive"><code># EXPECT_ERROR_COUNT: &lt;n&gt;</code></td><td data-label="Effect">With <code># EXPECT_COMPILE_ERROR</code>, the compiler log must hold exactly <code>n</code> error lines</td></tr>
+      <tr><td data-label="Directive"><code># VERIFY_SKIP</code>, <code># GC_STRESS_SKIP</code></td><td data-label="Effect">Skipped in the nightly heap-verifier and forced-GC-threshold runs; the next line must be <code># reason: ...</code> naming the run that failed (none carries <code>VERIFY_SKIP</code> today, two carry <code>GC_STRESS_SKIP</code>)</td></tr>
+      <tr><td data-label="Directive"><code># DIFF_CONFIGS</code>, <code># DIFF_REQUIRES_JIT</code>, <code># NONDETERMINISTIC_OUTPUT</code>, <code># DIFF_SERIAL</code>, <code># DIFF_TIMEOUT: &lt;s&gt;</code></td><td data-label="Effect">Read by <code>run_differential.py</code> only; each marker that removes coverage needs a <code># reason:</code> line (<code>tools/cicd/check_diff_markers.py</code>)</td></tr>
      </tbody>
     </table>
     <p>Data a test reads lives under <code>data/</code>, found relative to this directory (every runner runs tests from here). <code>data/bert/</code> holds three tiny BERT-shaped ONNX models, their vocabulary and <code>gen_tiny_bert.py</code>, which regenerates them byte-for-byte; <code>docs/ML_BERT_DESIGN.md</code> describes them.</p>
@@ -167,7 +190,7 @@ class MyTest {
      <li>Push to master</li>
      <li>Pull requests to master</li>
     </ul>
-    <p>It runs natively on all five platforms (Windows x64 and ARM64, Linux x64 and ARM64, macOS ARM64), twice on each: once as is and once with <code>OBJECK_JIT_THRESHOLD=1</code>. The same job runs the debugger, DAP and VM-flag tests from this directory, and CI's <code>tools</code> job lints the tests themselves (<code>check_test_exit_codes.py</code>, <code>check_jit_optouts.py</code>, <code>check_diff_markers.py</code> in <code>tools/cicd</code>). <code>.github/workflows/nightly-hardening.yml</code> (dispatched by hand for now) adds <code>run_differential.py</code> and runs the suite under the heap verifier and a forced GC threshold.</p>
+    <p>It runs natively on all five platforms (Windows x64 and ARM64, Linux x64 and ARM64, macOS ARM64), twice on each: once as is and once with <code>OBJECK_JIT_THRESHOLD=1</code>. The same job runs the debugger, DAP, VM-flag and compiler-robustness runners from this directory, and CI's <code>tools</code> job lints the tests themselves (<code>check_test_exit_codes.py</code>, <code>check_jit_optouts.py</code>, <code>check_diff_markers.py</code> in <code>tools/cicd</code>). <code>.github/workflows/nightly-hardening.yml</code> runs daily at 07:23 UTC and on dispatch, against the binaries of the latest green master CI run: <code>run_differential.py</code>, the program fuzzer (<code>tools/fuzz/run_fuzz.py</code>), this suite twice under the heap verifier (<code>OBJECK_NURSERY=256k OBJECK_GC_VERIFY=1</code>, then <code>OBJECK_VM_ARGS=--gc-threshold=64k OBJECK_GC_VERIFY=1</code>), loops of <code>minor_gc_stress</code>, <code>core_thread_gc_stress</code> and <code>jit_gc_stress</code> in both JIT modes, and a libFuzzer run on the .obe loader.</p>
     <p>See <code>.github/workflows/ci-build.yml</code> for CI configuration.</p>
     <h3 id="expected-output">Expected Output</h3>
     <p>From <code>run_regression.sh</code>; <code>run_regression.cmd</code> prints the same summary with slightly different per-test lines.</p>

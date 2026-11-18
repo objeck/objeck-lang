@@ -14,6 +14,24 @@ cannot be expressed at all is the most valuable result on the list.
 This document is the plan and the working discipline. It is written so that
 several sessions can work the list at once without colliding or duplicating.
 
+**Status, checked 2026-11-18 against the issue tracker and the tree:** every
+finding listed below is closed (dates in the tables), and `math.obl` shipped
+(`core/lib/math.obl`, with `BigInt`, `Rational` and `Complex`, covered by
+`programs/regression/math_bigint.obs`, `math_rational.obs` and `math_complex.obs`).
+Sections written before that, marked **(superseded)** or corrected inline, are kept
+for the record of how the work was decided.
+
+**For readers judging the method (what it can and cannot show).** This is
+exploratory defect-finding by hand-written programs, not a coverage-measured test
+suite. The yield figures quoted here are the authors' own counts of issues filed
+(each links to an issue); they are not controlled across task categories, no task
+was assigned to a category at random, and a task that compiled and ran correctly
+leaves no trace in the tracker, so the denominator (tasks tried) is only known
+for batch 3 (50 tasks). What it finds well: compiler and library defects reachable
+by ordinary programs in the three execution modes. What it cannot find: anything a
+task does not exercise, concurrency and GC races (a task runs once per mode), and
+platform-specific faults on platforms the author did not run.
+
 ---
 
 ## How to claim a task
@@ -93,7 +111,7 @@ findings have come from so far.
 
 | Cluster | Tasks | Why |
 |---|---|---|
-| Closures / functional | Currying, Partial function application, Function composition, Y combinator, Anonymous recursion | **Open, and the mechanism is proven.** A parameterised lambda both takes an argument and captures: `\(Int) ~ Int : (x) => x + n`. Two are independent, so currying and composition are correct and reentrant. Earlier text here called these blocked; that was wrong (see Findings) |
+| Closures / functional | Currying, Partial function application, Function composition, Y combinator, Anonymous recursion | **Written up in batch 3 (2026-10-15); the mechanism is proven.** A parameterised lambda both takes an argument and captures: `\(Int) ~ Int : (x) => x + n`. Two are independent, so currying and composition are correct and reentrant. Earlier text here called these blocked; that was wrong (see Findings) |
 | Exceptions | Exceptions, Exceptions/Catch an exception thrown in a nested call | Objeck has `Try()`/`Otherwise()` on chains and no `throw`. These tasks establish how far `Try()` reaches and document the gap |
 | Numeric edges | Integer overflow, Two's complement, Zero to the zero power, Extreme floating point values, Infinity, Detect division by zero | `FEATURES.md` states the semantics precisely (64-bit two's complement, `+ - *` wrap and never trap, a zero divisor is the only integer trap). These verify the documentation is true |
 | Arbitrary precision | Arbitrary-precision integers (included) | Needs the first and last 20 digits of 5^4^3^2, a 183,231-digit number. **Settles the BigInt question with a fact** |
@@ -129,22 +147,27 @@ Stated so nobody counts them as remaining work:
 
 | # | Finding | Status |
 |---|---|---|
-| [#1099](https://github.com/objeck/objeck-lang/issues/1099) | Unary minus rejects a parenthesised operand: `-(a + b)` does not parse, while `-x`, `-7`, `-F()` and `-@n` all do | open |
-| [#1100](https://github.com/objeck/objeck-lang/issues/1100) | The function-composition idiom in `FEATURES.md` silently returns wrong results when a second composer is built -- captures live in static fields, so both references compute the last pair. `add_then_add(2)` returns 60 instead of 5, with no diagnostic | open |
-| [#1101](https://github.com/objeck/objeck-lang/issues/1101) | `FuncRef<R>` has no parameter slots -- it is a thunk type -- but `FEATURES.md:209` documents lambdas as `\(params) => body`. Six spellings, six different errors | open |
-| [#1103](https://github.com/objeck/objeck-lang/issues/1103) | 35 words are reserved and none are documented; using one reports only `Expected identifier` without naming it. `other` -- the conventional parameter name for `Equals`/`Compare`/`Add` -- is `select`'s default label | open |
+| [#1099](https://github.com/objeck/objeck-lang/issues/1099) | Unary minus rejects a parenthesised operand: `-(a + b)` does not parse, while `-x`, `-7`, `-F()` and `-@n` all do | closed 2026-10-18 (the issue has no closing comment) |
+| [#1100](https://github.com/objeck/objeck-lang/issues/1100) | The function-composition idiom in `FEATURES.md` silently returns wrong results when a second composer is built -- captures live in static fields, so both references compute the last pair. `add_then_add(2)` returns 60 instead of 5, with no diagnostic | closed 2026-10-14 as a **documentation** fix (#1104): the defect in the documented idiom is real, the proposed language gap was not |
+| [#1101](https://github.com/objeck/objeck-lang/issues/1101) | `FuncRef<R>` has no parameter slots -- it is a thunk type -- but `FEATURES.md:209` documents lambdas as `\(params) => body`. Six spellings, six different errors | closed 2026-10-14 (#1104, `FEATURES.md` now documents the parameterised lambda form) |
+| [#1103](https://github.com/objeck/objeck-lang/issues/1103) | 35 words are reserved and none are documented; using one reports only `Expected identifier` without naming it. `other` -- the conventional parameter name for `Equals`/`Compare`/`Add` -- is `select`'s default label | closed 2026-10-14 (#1104 documents 40 reserved words; naming the word in the error was **not** done) |
 
-**#1100 and #1101 together block an entire cluster.** A lambda can close over
-state but cannot take an argument; a first-class function reference takes
-arguments but carries no environment. Nothing in the language today is both, so
-currying, partial application, composition and the Y combinator have no correct
-formulation. That is the most significant thing this effort has turned up, and
-it is a language feature decision rather than a bug fix.
+**(Superseded.)** The original text here said #1100 and #1101 together blocked an
+entire cluster: that a lambda can close over state but cannot take an argument and
+a function reference takes arguments but carries no environment, so currying,
+partial application, composition and the Y combinator had no correct formulation.
+That was wrong, and the issues' own closing comments say so: a parameterised
+lambda `\(Int) ~ Int : (x) => x + n` both takes an argument and captures, and
+the work was a documentation correction. It is recorded here because the wrong
+conclusion cost a round of planning and the correction came from a one-line probe,
+the discipline above.
 
 ### Batch 3 (2026-10-15): 50 tasks, ~60 findings
 
 Fifty tasks chosen by subsystem reach (#1118-#1167, tests in #1169), against
-the 48 arithmetic tasks before them, which found nothing. The yield is the
+the 48 arithmetic tasks before them, which found nothing (the count of 48 and
+"found nothing" are the authors' statement; those tasks are not itemised in the
+tracker). The yield is the
 argument for picking this way: the batch found nine compiler defects, all of
 them crashes or wrong values in every execution mode, fixed in #1168:
 - `+` and interpolation typed a call chain by its head
@@ -153,7 +176,8 @@ them crashes or wrong values in every execution mode, fixed in #1168:
 - closures overlapped a capture placed after a function value
 - function-value results lost their casts
 
-It also found the rest, filed by subsystem:
+It also found the rest, filed by subsystem (all closed as of 2026-11-18, between
+2026-10-16 and 2026-10-19):
 
 | # | Area |
 |---|---|
@@ -185,6 +209,9 @@ Two process notes:
 
 ### Completed
 
+Timings below (`~1s`, `Median 1.21s`) have **no recorded conditions** (machine,
+build, library path, `-opt` level); read them as order of magnitude.
+
 | Task | Notes |
 |---|---|
 | [Arithmetic/Rational](https://rosettacode.org/wiki/Arithmetic/Rational) | `Rational` with reduction, the six comparisons, flooring integer division and modulo, `Int` coercion, and detected overflow rather than silent wraparound. Verified: `6, 28, 496, 8128` in ~1s. Produced #1099 |
@@ -200,8 +227,10 @@ blocked only by the closure defect fixed in #1168.
 
 ## Library work required
 
-`math.obl` is **approved** (2026-10-14). These are permanent public API, so the
-shape is recorded here rather than decided inside a task.
+**(Superseded: done.)** `math.obl` was approved on 2026-10-14 and has shipped; the
+section below is the plan as written then, kept because its list of registration
+points is still the checklist for adding a library. These are permanent public
+API, so the shape was recorded here rather than decided inside a task.
 
 ### `math.obl` -- the work, and every place it has to be registered
 
@@ -278,8 +307,9 @@ adding one.
 
 ### Why `BigInt` needs no native code -- the measurement
 
-There is **no arbitrary-precision integer anywhere** in the 32 shipped
-libraries, and `cipher.obl` exposes no multi-precision internals to build on.
+At the time this was written there was **no arbitrary-precision integer anywhere**
+in the 32 shipped libraries (there are 42 `.obl` files in `core/lib/` now, `math.obl`
+among them), and `cipher.obl` exposes no multi-precision internals to build on.
 That blocks exact rationals, large factorials, and a long tail of numeric tasks.
 
 The open question was whether it would have to be native to be useful. **It does
@@ -313,8 +343,8 @@ there is nothing to detect and nothing to document.
 
 ## Things already verified, so nobody re-checks them
 
-- No `Rational`, `Complex` or `BigInt` in any of the 32 shipped `.obl`
-  libraries.
+- **(Superseded.)** There was no `Rational`, `Complex` or `BigInt` in any of the
+  32 `.obl` libraries shipped at the time; they are in `math.obl` now.
 - Lambdas capture by copy, taken at creation. An object is copied as a
   reference, so mutation through it is shared. `self`, `@field` and bare
   instance-method calls are unavailable in a lambda body.

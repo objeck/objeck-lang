@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This regression test suite validates the compiler, virtual machine, JIT and libraries after every change. It has about 780 tests; [TESTS.md](TESTS.md) lists every one, by category, with what it checks. It covers:
+This regression test suite validates the compiler, virtual machine, JIT and libraries after every change. It has 812 `.obs` files (the generated [TESTS.md](TESTS.md) lists every one, by category, with what it checks; 128 files are named `bad_*`; 139 carry an `EXPECT_COMPILE_ERROR` (116) or `EXPECT_RUNTIME_ERROR` (23) marker). The map of every other assurance mechanism in the repository (fuzzers, verifiers, nightly jobs, static analysis) is [docs/TESTING_AND_ASSURANCE.md](../../docs/TESTING_AND_ASSURANCE.md). It covers:
 
 - **Core language** - classes, generics, closures and lambdas, records, strings, collections, exceptions
 - **JIT** - AMD64 and ARM64 code generation (`jit_*`, `arm64_*`)
@@ -38,15 +38,34 @@ Each test is compiled with `obc -opt s3 -lib cipher,collect,xml,json` (plus any 
 Environment variables both runners honor:
 - `TEST_TIMEOUT` - seconds allowed per test run (the POSIX runner defaults to 60, the Windows runner to 300, the value the nightly runs use)
 - `OBJECK_VM_ARGS` - extra `obr` options for every test, e.g. `--gc-threshold=64k`
+- `OBJECK_GL_REQUIRED=1`, `OBJECK_REQUIRE_ODBC=1` - turn the OpenGL and ODBC tests' environment-dependent skips into failures (CI sets them on the legs that have a context and the `objeck_sqlite_test` data source)
+
+Only the POSIX runner honors `REGRESSION_SHARD=i/n`, which runs every nth test starting at the ith (0-based) so the suite can run as n processes side by side (`tools/cicd/local_linux.sh` does).
+
+**How a result is decided.** Compile, then one run of `obr` with the default JIT:
+
+| Test kind | Passes when |
+|---|---|
+| ordinary | `obr` exits 0 and the output has no line starting `SKIP:` (such a test is counted as skipped) |
+| `# EXPECT_COMPILE_ERROR: <message>` | the compile fails, the log is non-empty and contains `<message>` (case-sensitive, trimmed); with `# EXPECT_ERROR_COUNT: <n>` the log must also hold exactly `n` error lines (lines naming a `.obs` position that are not warnings) |
+| `# EXPECT_RUNTIME_ERROR` | `obr` exits non-zero with some output; neither the exit code nor the text is checked |
+| any | a run longer than `TEST_TIMEOUT` fails, whatever the markers say |
+
+The suite compiles at `-opt s3` only, with one fixed library list, and runs each test once, so it cannot by itself find a bug that needs the optimizer off, a particular threshold, a particular heap size or a particular interleaving. That is what the second CI pass (`OBJECK_JIT_THRESHOLD=1`) and the nightly runs below add.
 
 `OBJECK_JIT_THRESHOLD=1` makes `obr` compile every method on its first call; CI runs the suite a second time with it.
 
-Other runners in this directory:
-- `run_debugger_tests.sh` / `run_debugger_tests.cmd` `[x64|arm64]` - `obd` command-line tests (the POSIX one needs `expect`)
-- `python3 run_dap_tests.py <bin_dir>` - Debug Adapter Protocol (`obd --dap`) tests
-- `python3 run_vm_flag_tests.py <bin_dir>` - `obr` flags, and interpreter/JIT equivalence
-- `python3 run_compiler_robustness.py <bin_dir>` - negative testing of the compiler front end: valid programs broken in sixteen ways, plus hostile files (deep nesting, random bytes, thousands of errors); fails on a crash, a hang, or a drop in how accurately and briefly errors are reported
-- `python3 run_differential.py <bin_dir>` - compiles every test at `-opt s0` and `-opt s3` and requires the same output with the JIT off, on by default and forced on; its header documents its markers
+Other runners in this directory (run by `ci-build.yml` on every leg unless the last column says otherwise):
+
+| Runner | What it checks | Where it runs |
+|---|---|---|
+| `run_debugger_tests.sh` / `run_debugger_tests.cmd` `[x64\|arm64]` | `obd` command-line scenarios (the POSIX one needs `expect`) | every CI leg |
+| `python3 run_dap_tests.py <bin_dir>` | Debug Adapter Protocol (`obd --dap`) scenarios over stdio: breakpoints, variables, `setVariable`, logpoints, restart, non-ASCII names | every CI leg |
+| `python3 run_vm_flag_tests.py <bin_dir>` | `obr` flags, interpreter/JIT equivalence, the heap verifier and its fault injection, GC reference-map audits, loader refusals; numbered sections (1 to 31) described in the script's header. `--only gc_roots` runs the sections whose name matches; a full run takes about ten minutes per the header | every CI leg |
+| `python3 run_compiler_robustness.py <bin_dir>` | negative testing of the compiler front end: valid regression programs broken in sixteen ways, plus hostile files (deep nesting, random bytes, 20000 errors, a 2 MB string). Gates: no crash or hang, at least 80% of errors reported on or within two lines of the mutation, at most 5% cascading into more than four errors, at most 5% reported only far away, at most 15% compiled with no error. Seed and program count are fixed by default, so a failure reruns identically | every CI leg |
+| `python3 run_differential.py <bin_dir>` | compiles every test at `-opt s0` and `-opt s3` and requires the same stdout and success status under `s0/off`, `s3/off`, `s3/default`, `s3/jit1` (and `s0/jit1` with `--rotate`); its header documents its markers (`DIFF_CONFIGS`, `DIFF_REQUIRES_JIT`, `NONDETERMINISTIC_OUTPUT`, `DIFF_SERIAL`, `DIFF_TIMEOUT`) | nightly only (`nightly-hardening.yml`); its unit test `test_run_differential.py` runs per push in the `tools` job |
+
+None of the Python runners can find a bug outside the programs it feeds them: the robustness gates catch crashes, hangs and diagnostics that drift, not a wrong error message that happens to land near the mutation, and the differential runner finds divergence between configurations, not an error every configuration shares.
 
 ## Test Organization
 
@@ -58,7 +77,9 @@ The file-name prefix decides a test's category in `TESTS.md` (`core_`, `jit_`, `
 | `# EXPECT_COMPILE_ERROR: <message>` | Passes only if compilation fails and the compiler output contains `<message>` |
 | `# EXPECT_RUNTIME_ERROR` | Passes only if `obr` exits non-zero with output |
 | `# JIT_DISABLE` | Runs the test with the JIT off; the next line must be `# reason: ...` (`tools/cicd/check_jit_optouts.py`) |
-| `# VERIFY_SKIP`, `# GC_STRESS_SKIP` | Skipped in the nightly heap-verifier and forced-GC-threshold runs; the next line must be `# reason: ...` naming the run that failed |
+| `# EXPECT_ERROR_COUNT: <n>` | With `# EXPECT_COMPILE_ERROR`, the compiler log must hold exactly `n` error lines |
+| `# VERIFY_SKIP`, `# GC_STRESS_SKIP` | Skipped in the nightly heap-verifier and forced-GC-threshold runs; the next line must be `# reason: ...` naming the run that failed (none carries `VERIFY_SKIP` today, two carry `GC_STRESS_SKIP`) |
+| `# DIFF_CONFIGS`, `# DIFF_REQUIRES_JIT`, `# NONDETERMINISTIC_OUTPUT`, `# DIFF_SERIAL`, `# DIFF_TIMEOUT: <s>` | Read by `run_differential.py` only; each marker that removes coverage needs a `# reason:` line (`tools/cicd/check_diff_markers.py`) |
 
 Data a test reads lives under `data/`, found relative to this directory (every runner runs tests from here). `data/bert/` holds three tiny BERT-shaped ONNX models, their vocabulary and `gen_tiny_bert.py`, which regenerates them byte-for-byte; `docs/ML_BERT_DESIGN.md` describes them.
 
@@ -110,7 +131,7 @@ This test suite runs automatically in GitHub Actions on:
 - Push to master
 - Pull requests to master
 
-It runs natively on all five platforms (Windows x64 and ARM64, Linux x64 and ARM64, macOS ARM64), twice on each: once as is and once with `OBJECK_JIT_THRESHOLD=1`. The same job runs the debugger, DAP and VM-flag tests from this directory, and CI's `tools` job lints the tests themselves (`check_test_exit_codes.py`, `check_jit_optouts.py`, `check_diff_markers.py` in `tools/cicd`). `.github/workflows/nightly-hardening.yml` (dispatched by hand for now) adds `run_differential.py` and runs the suite under the heap verifier and a forced GC threshold.
+It runs natively on all five platforms (Windows x64 and ARM64, Linux x64 and ARM64, macOS ARM64), twice on each: once as is and once with `OBJECK_JIT_THRESHOLD=1`. The same job runs the debugger, DAP, VM-flag and compiler-robustness runners from this directory, and CI's `tools` job lints the tests themselves (`check_test_exit_codes.py`, `check_jit_optouts.py`, `check_diff_markers.py` in `tools/cicd`). `.github/workflows/nightly-hardening.yml` runs daily at 07:23 UTC and on dispatch, against the binaries of the latest green master CI run: `run_differential.py`, the program fuzzer (`tools/fuzz/run_fuzz.py`), this suite twice under the heap verifier (`OBJECK_NURSERY=256k OBJECK_GC_VERIFY=1`, then `OBJECK_VM_ARGS=--gc-threshold=64k OBJECK_GC_VERIFY=1`), loops of `minor_gc_stress`, `core_thread_gc_stress` and `jit_gc_stress` in both JIT modes, and a libFuzzer run on the .obe loader.
 
 See `.github/workflows/ci-build.yml` for CI configuration.
 

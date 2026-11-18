@@ -24,6 +24,31 @@ re-measure noted below). No benchmark is >5% slower on master at p<0.01.
 
 Negative = master faster. Everything else is within ±1%.
 
+All 18 benchmarks, from `baseline_summary.json` and `addendum_summary.json` (positive delta = master slower; `bench_matrix_multiply` is the 15-run sample that was later withdrawn, see below):
+
+| benchmark | master median (s) | v2026.9.4 median (s) | delta | p | runs |
+|---|---:|---:|---:|---:|---:|
+| nbody | 5.6610 | 5.6585 | +0.05% | 0.533829 | 15 |
+| binarytrees | 2.0160 | 2.0766 | -2.92% | 3e-06 | 15 |
+| spectralnorm | 2.8918 | 2.8893 | +0.09% | 0.678302 | 15 |
+| fannkuchredux | 37.3564 | 37.3008 | +0.15% | 0.229029 | 15 |
+| fasta | 11.4846 | 11.4754 | +0.08% | 0.648204 | 15 |
+| mandelbrot | 2.2122 | 2.2174 | -0.23% | 0.678302 | 15 |
+| bench_loop_invariant | 0.0139 | 0.0138 | +0.56% | 0.198506 | 15 |
+| bench_cse | 0.0176 | 0.0175 | +0.72% | 0.171069 | 15 |
+| bench_strength_ext | 0.0491 | 0.0487 | +0.90% | 0.051239 | 15 |
+| bench_gc_churn | 0.1699 | 0.1734 | -2.02% | 4.8e-05 | 15 |
+| bench_gc_large_heap | 0.0261 | 0.0268 | -2.30% | 3e-06 | 15 |
+| bench_array_intensive | 0.0845 | 0.0819 | +3.11% | 3e-06 | 15 |
+| bench_matrix_multiply | 0.2199 | 0.2018 | +8.95% | 0.042111 | 15 |
+| bench_method_dispatch | 0.3722 | 0.3722 | -0.01% | 0.340086 | 15 |
+| bench_copy_prop | 0.0580 | 0.0581 | -0.08% | 0.771551 | 15 |
+| bench_dead_code | 0.0512 | 0.0514 | -0.38% | 0.383733 | 15 |
+| bench_spectralnorm_native | 0.4881 | 0.4845 | +0.74% | 0.506915 | 15 |
+| bench_tco | 0.1450 | 0.1452 | -0.10% | 0.319506 | 15 |
+
+Inputs are the ones in `perf-results/run_benchmarks.sh` (nbody 50,000,000; binarytrees 17; spectralnorm 5500; fannkuchredux 12; fasta 25,000,000; mandelbrot 4000; `bench_gc_large_heap` 18; `bench_matrix_multiply` 500), copied into the driver's `CLBG` and `PERF` tables. The `p` column is `mann_whitney_p` in `perf-results/objeck_bench.py` (two-sided Mann-Whitney U, normal approximation with tie correction, on the two builds' per-run wall times); the delta is the difference of the medians over the v2026.9.4 median. Two warm-up runs per build are discarded and the two builds' runs alternate (ABAB).
+
 **A withdrawn result.** At n=15 bench_matrix_multiply read +8.95% (p=0.042); at n=60 it reads
 -1.58% (p=0.22), and master's own median moved 0.2199 -> 0.1979 between samples. Sub-second
 benchmarks are under-powered at 15 runs. The driver now sets
@@ -42,8 +67,8 @@ All three legs use the same method: tree `ad2c610bb0`, 4 sizes x 3 benchmarks x 
 | file | platform | driver |
 |---|---|---|
 | `nursery_sweep.csv` | macOS arm64, M4 Max | Mac driver (md5 5cc32ffc…) |
-| `nursery_sweep_linux_x64_docker.csv` | Linux x64, Docker on the 7950X3D | `objeck_bench.py` 5710c77800 |
-| `nursery_sweep_windows_x64.csv` | Windows x64 native, same 7950X3D | `objeck_bench.py` 5710c77800 |
+| `nursery_sweep_linux_x64_docker.csv` | Linux x64, Docker on the 7950X3D | `objeck_bench.py` at commit `5710c77800` (branch `hardening/bench-driver`) |
+| `nursery_sweep_windows_x64.csv` | Windows x64 native, same 7950X3D | `objeck_bench.py` at commit `5710c77800` (branch `hardening/bench-driver`) |
 
 Machine state for the x64 legs: `machine_state_nursery_linux_x64_docker.txt` and
 `machine_state_nursery_windows_x64.txt`. The x64 CSVs carry a `peak_rss_source` column: `gnu_time`
@@ -119,6 +144,25 @@ s0 and s3 x {--jit=off, default threshold, OBJECK_JIT_THRESHOLD=1} x {verifier o
 Not a hollow pass: `OBJECK_GC_STATS=1` shows minor=12 major=12 pauses=24 promoted_objects=484,
 one collection per GcBetween iteration. The verifier doubles pause p95 (6294 -> 12162us) with
 identical collection counts. So 42ac1763ec's "ARM64 mirrored, untested" is tested.
+
+## Limits of this evidence (threats to validity)
+
+- **One Apple M4 Max for sections 1, 3 and 4**, one 7950X3D for the x64 legs of section 2: no Linux x64 native, no x64 comparison of master against v2026.9.4, no ARM64 Linux or Windows.
+- **Section 1 compares two Objeck builds, not languages**, and says nothing about absolute speed relative to other runtimes. It can only show that master is not slower than v2026.9.4 on these 18 programs; two of them (`bench_spectralnorm_native`, `bench_tco`) and `bench_matrix_multiply` at n=60 come from the addendum files.
+- **Sub-second benchmarks are under-powered at 15 runs** (the withdrawn `bench_matrix_multiply` result is the example); the 0.014-0.05 s rows (`bench_loop_invariant`, `bench_cse`, `bench_strength_ext`) are close to the timer's resolution and their deltas of 0.5-0.9% should be read as ties, which is also how the table's p-values (0.05 to 0.2) read.
+- **Section 2's x64 legs ran 15 runs after 2 warm-ups with adaptive run counts off** (`machine_state_nursery_*.txt`), on machines recorded as idle apart from the interactive sessions named there (the Windows file records `adaptive off`, the Docker file does not say); the Docker leg's engine was upgraded during the setup and its image build restarted on the new engine (that file).
+- **Section 3 shows a fix holds on arm64; it is not a statement about x64**, and the README's own "Scope" paragraph says which hunks it does not exercise.
+- **Report-only**: nothing was committed to master with this data, and no CI job re-runs it. The benchmark inputs are not enforced against this driver by `check_benchmark_inputs.py` (that check reads `run_benchmarks.sh`).
+
+## Reproduce
+
+```
+python perf-results/objeck_bench.py baseline --master <deploy dir> --base <v2026.9.4 deploy dir> --repo <checkout> --out <dir>
+python perf-results/objeck_bench.py nursery  --master <deploy dir> --repo <checkout> --out <dir>
+python perf-results/objeck_bench.py stress   --master <deploy dir> --repo <checkout> --out <dir>
+```
+
+The driver in the tree is a later version than the one that produced these files (see Driver below), so a rerun is a comparable measurement, not a byte-identical one. Do not run it beside other work: `machine_state_*.txt` records the load average and running processes before and after each pass for that reason.
 
 ## Caveat on absolute numbers
 

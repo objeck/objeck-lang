@@ -1,9 +1,9 @@
 # Objeck Language CI/CD Architecture
 
-**Version:** 1.3
-**Last Updated:** 2026-10-24
+**Version:** 1.4
+**Last Updated:** 2026-11-18
 
-This document describes the technical architecture of the Objeck Language continuous integration and continuous deployment (CI/CD) system.
+This document describes the technical architecture of the Objeck Language continuous integration and continuous deployment (CI/CD) system. For what each *test, fuzzer and verifier* in that pipeline checks, with its input, where it runs, how to run it locally and what it cannot find, see [TESTING_AND_ASSURANCE.md](TESTING_AND_ASSURANCE.md); this page covers the workflows, secrets, runners and caching.
 
 ## 📋 Table of Contents
 
@@ -101,18 +101,20 @@ After publishing, the Windows installers are signed, the playground is deployed 
    - Register the `objeck_sqlite_test` ODBC data source the ODBC regression tests open: `libsqliteodbc` and `~/.odbc.ini` on Linux, `tools/cicd/setup_sqlite_odbc.sh` (Homebrew `sqliteodbc`, `~/.odbc.ini`) on macOS, `tools/cicd/setup_sqlite_odbc.ps1` on Windows (sqliteodbc 0.99991 pinned by checksum: unpacked from the upstream installer on x64, compiled from source on ARM64, which upstream does not ship; a per-user registry DSN). The regression steps set `OBJECK_REQUIRE_ODBC=1`, so a missing data source fails those tests instead of skipping them
    - Build compiler bootstrap (Linux x64 only)
    - Build full toolchain
-   - Run test suite
+   - Run the deploy examples: 4 programs compiled and run on every leg, 9 more on Linux x64 (`threads_12` must print its exact total)
    - Run regression tests twice: as is, then with `OBJECK_JIT_THRESHOLD=1` (every method compiled on its first call)
-   - Run the debugger, DAP and VM flag tests
+   - Run the debugger, DAP, VM flag and compiler robustness (mutation and stress) tests
+   - Run the `obi`/`obr` parity check, the library link and generics round trips, the updater tests, and the unit tests for the old-generation set and the free-block size classes
+   - Run the network tests and the ONNX face-detection test as non-gating steps (`continue-on-error`; Linux x64 and Windows x64 for the network tests)
    - Upload artifacts (7-day retention)
 
 3. **Linux x64 Only:**
    - Generate API documentation
    - Upload API docs artifact
 
-4. **Tools Job** (Linux, alongside the matrix):
-   - Consistency checks, among them: library lists, doc comments, documented dependencies, the examples index, regression-test markers and exit paths
-   - Formatter and LSP regression tests
+4. **Tools Job** (Linux, alongside the matrix, 30-minute cap):
+   - Build-free consistency checks, each one a step of `ci-build.yml` and each mirrored in `tools/cicd/local_ci.py` (run `python tools/cicd/local_ci.py` before pushing): library lists, doc-comment fences, regression-test exit paths, JIT opt-out and differential markers, trap handlers and intrinsics, the native write-barrier scan and its positive control, the API index, the examples index, `.in` templates against generated files, `.obl` version stamps, SHA256SUMS re-signing, the README's published release key, documented dependencies, Markdown links and anchors, site pages against their Markdown, and the benchmark set and inputs against `docs/performance.md`
+   - Formatter and LSP regression tests, built against a deploy tree assembled in the job
    - VS Code extension install, compile and lint
 
 5. **Loader Fuzz Job** (Linux, after the build, advisory):
@@ -125,13 +127,11 @@ After publishing, the Windows installers are signed, the playground is deployed 
    - On a `master` failure, open or update a tracking issue (and send a push notification when `NTFY_TOPIC` is set)
 
 **Optimization:**
-- Dependency caching (~80% cache hit rate)
-- ccache for C++ compilation (~60% speedup)
-- Parallel job execution (5 concurrent)
+- Dependency caching, ccache for C++ compilation and parallel jobs (5 platform legs plus the tools job). The hit rates and speedups quoted in [Cache Performance](#cache-performance) are estimates with no measurement behind them in this repository.
 
 **Fast Feedback:**
-- Typical time: about 30 minutes
-- Each platform job is capped at 60 minutes
+- Typical time: about 30 minutes (an estimate carried over from earlier versions of this page; not recorded by any workflow)
+- Each platform job is capped at 60 minutes (`timeout-minutes: 60` in `ci-build.yml`)
 
 ---
 
@@ -315,12 +315,19 @@ declare `System.ML` and produce `system.ml-*.html`.
 
 | Workflow | Trigger | What it does |
 |----------|---------|--------------|
-| `perf-gate.yml` | Push to `master` and PRs touching `core/vm`, `core/compiler` or `core/shared`; manual | Objeck vs Java and LuaJIT time ratios against a committed baseline; report-only for now ([PERF_GATE.md](../perf-results/PERF_GATE.md)) |
-| `benchmark.yml` | Manual | Benchmarks on Linux x64 and ARM64, compared against a baseline release tag |
-| `nightly-hardening.yml` | Daily at 07:23 UTC, and manual | Differential regression, fuzzer, heap verifier and GC stress runs against CI's binaries, and a 30-minute libFuzzer run on the `.obe` loader (linux-x64) |
+| `perf-gate.yml` | Push to `master` (paths `core/vm`, `core/compiler`, `core/shared`, `perf-results`, the workflow) and PRs touching `core/vm`, `core/compiler` or `core/shared`; manual | Objeck vs Java and LuaJIT time ratios against a committed baseline; report-only for now, so it always concludes `success` ([PERF_GATE.md](../perf-results/PERF_GATE.md)) |
+| `benchmark.yml` | Manual | Benchmarks on Linux x64 and ARM64 (3, 1 or 5 runs), compared against a baseline release tag |
+| `nightly-hardening.yml` | Daily at 07:23 UTC, and manual | Differential regression, program fuzzer, regression suite under the heap verifier (minor and major stress) and GC stress loops on all five platforms against CI's binaries, and a 30-minute libFuzzer run on the `.obe` loader (linux-x64); failures are triaged into infra, known and new and only new ones open issues |
+| `soak.yml` | Manual | The release soak: the site server under client load beside regression, GC stress and fuzzer loops, up to 330 minutes per leg, on binaries CI already built |
 | `stress-probe.yml` | Push to `probe/**` branches; manual | Loops the GC/JIT regression fixtures in four modes on all five platforms, against a CI build's binaries |
-| `verify-signing-credentials.yml` | Weekly (Monday) and manual | Imports the Apple signing certificates to prove the secrets still work |
-| `codeql.yml` | Push, PRs, weekly | CodeQL analysis |
+| `probe-gc-stress-arm64.yml` | Push to `probe/**` branches | The windows-arm64 `core_thread_gc_stress` probe behind the closed issue #1077 (builds the toolchain itself; 180-minute cap) |
+| `verify-platforms.yml` | Manual | The release gate run in the cloud: `tools/cicd/verify_platform.sh`/`.cmd` per platform, a verdict file per leg, passing only if every leg passes at the same commit |
+| `tests-manifest.yml` | Push to `master` touching `programs/regression/*.obs` or `gen_manifest.py`; manual | Regenerates and commits `programs/regression/TESTS.md` |
+| `playground-tests.yml` | PRs and pushes touching the playground, `build_libs.sh` or `lib_src` | The web playground's backend tests |
+| `release-deb.yml` | After Release Publish, manual, and PRs touching `tools/packaging` | Builds and tests Debian packages from a published release's tarballs, adds them to `SHA256SUMS` and re-signs |
+| `resign-manifest.yml` | Manual (also called by `release-deb.yml` and the release scripts) | Signs a published `SHA256SUMS` again with the Actions secret ([release_integrity.md](release_integrity.md)) |
+| `verify-signing-credentials.yml` | Weekly (Monday) and manual | Imports the Apple signing certificates to prove the secrets still work; the `manifest-key` job checks the stored minisign secret still matches the committed public key, and `published-key` that objeck.org serves the same key bytes |
+| `codeql.yml` | Push and PRs to `master`, weekly (Monday 13:39 UTC) | CodeQL analysis of C/C++ (manual build), JavaScript/TypeScript and Python |
 | `secret-scan.yml` | Push to `master`, PRs, weekly, manual | gitleaks secret scan |
 | `release-drafter.yml` | Push to `master`, PRs | Keeps a draft release's notes up to date from merged PRs |
 | `release-stats.yml` | Weekly and manual | Snapshots release download counts into `tools/release-stats/downloads.csv` |
@@ -430,7 +437,7 @@ cat objeck_sf_key
 
 **Linux (APT):** a user-owned archive directory, because restoring the root-owned `/var/cache/apt/archives` fails with permission errors
 ```yaml
-uses: actions/cache@v5
+uses: actions/cache@<sha> # v6.1.0 (every action in the workflows is pinned to a full commit SHA)
 with:
   path: ~/apt-cache
   key: ${{ runner.os }}-${{ matrix.arch }}-apt-${{ hashFiles('.github/workflows/**') }}
@@ -440,7 +447,7 @@ with:
 
 **macOS (Homebrew downloads):**
 ```yaml
-uses: actions/cache@v5
+uses: actions/cache@<sha> # v6.1.0
 with:
   path: ~/Library/Caches/Homebrew
   key: ${{ runner.os }}-brew-downloads-${{ hashFiles('.github/workflows/**') }}
@@ -450,7 +457,7 @@ with:
 
 **ccache (Compilation):**
 ```yaml
-uses: actions/cache@v5
+uses: actions/cache@<sha> # v6.1.0
 with:
   path: ~/.ccache
   key: ${{ runner.os }}-${{ matrix.arch }}-ccache-${{ github.sha }}
@@ -468,7 +475,7 @@ with:
 | Homebrew | ~75% | 5-8 min saved | 200-500 MB |
 | ccache | ~60% | 5-10 min saved | 200-400 MB |
 
-**Total cache usage:** ~500 MB per platform (well within 500 MB limit)
+*These figures are estimates carried over from the first version of this page; no workflow or script in the repository records hit rates or time saved (conditions not recorded). The one measured fact in the workflows is in `nightly-hardening.yml`: the repository cache was over GitHub's 10 GB per-repository cap at the time that file was written, which is why the nightly only restores caches and never saves. GitHub's cap is 10 GB for the repository, not the 500 MB this page used to state.*
 
 ### Cache Invalidation
 
@@ -529,7 +536,7 @@ GitHub Actions **automatically masks** secret values in logs:
 ### Dependency Security
 
 **Mitigation:**
-- Actions are pinned to **full commit SHAs** with a trailing version comment (e.g., `actions/checkout@<sha> # v5.1.0`); Dependabot (`.github/dependabot.yml`) proposes weekly updates
+- Actions are pinned to **full commit SHAs** with a trailing version comment (e.g., `actions/checkout@<sha> # v7.0.1`); Dependabot (`.github/dependabot.yml`) proposes weekly updates
 - Mostly official actions; the third-party ones are `ilammy/msvc-dev-cmd`, `gitleaks/gitleaks-action` and `release-drafter/release-drafter`
 - Regularly update action versions
 - Monitor GitHub Security Advisories
@@ -684,8 +691,8 @@ Already done: automatic publishing after a successful tag build, CodeQL scanning
    - Memory leak detection
 
 3. **Artifact Signing**
-   - Sign the Linux archives
-   - Sign `SHA256SUMS` so `obu` can detect a substituted manifest (design: [release_integrity.md](release_integrity.md))
+   - Sign the Linux archives (still open: they have no platform signature)
+   - ~~Sign `SHA256SUMS` so `obu` can detect a substituted manifest~~ **done** (`release-publish.yml` signs, `resign-manifest.yml` re-signs, `obu` verifies; [release_integrity.md](release_integrity.md))
 
 4. **Docker Images**
    - Publish Docker images to Docker Hub
@@ -713,6 +720,7 @@ Already done: automatic publishing after a successful tag build, CodeQL scanning
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.4 | 2026-11-18 | Every workflow in `.github/workflows` is listed with its trigger; the `tools` job, loader-fuzz job, nightly, soak and verification workflows described from the workflow files; cache and timing figures marked as estimates; the signed-manifest item moved to done; link to the assurance map |
 | 1.3 | 2026-10-24 | The ODBC regression tests run on every leg: the SQLite ODBC data source is set up on Windows and macOS too, and `OBJECK_REQUIRE_ODBC` turns a missing one into a failure |
 | 1.2 | 2026-09-19 | Windows signing moved out of CI (hardware token); publish is automatic; current runners, artifacts and timings; manual publish steps; other workflows |
 | 1.1 | 2026-04-05 | Apple signing and notarization secrets |

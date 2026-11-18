@@ -7,6 +7,17 @@ attack it in.
 
 Written 2026-10-11, after v2026.10.0.
 
+> **Status (checked 2026-11-18): the issue is closed, this file is the playbook if it comes back.**
+> #1077 was closed on 2026-10-13 at **0 failures in 1,500 runs** (two 750-run legs on the hosted
+> `windows-11-arm` runner, workflow runs 38308666674 and 38308671728, identical trees, each run under
+> `av_catch.py`, whose self-check against a deliberate access violation passed before each loop
+> started). The rule of three gives a 95% upper bound of 3/1500 = 0.2% on the failure rate of that
+> build on that runner; it does **not** say the original 0.8% defect (3 failures in 360 runs on the
+> older base) never existed or that it is fixed, only that it was not seen. The two `203
+> corruption(s)` failures of 2026-09-11 were real. Everything below is the original handoff text,
+> kept as written except where a line is marked **(updated)**; its "has never fired" statements
+> describe 2026-10-11, not today. This file is documentation of an investigation, not a test.
+
 ---
 
 ## Read this before doing anything, or you will redo it
@@ -25,7 +36,7 @@ that** — per worker: `walk_nodes`, `walk_bad`, `first_walk_bad`,
 `first_walk_pos`, `churn_errors`, `first_churn_iter`, `first_churn_sum`,
 `first_churn_v`, with the round and worker id.
 
-**And it has never once reported.** Across every probe run to date the diag
+**And it has never once reported (as of 2026-10-11; the later 1,500-run close-out recorded no failure of either build, so it still has not).** Across every probe run to date the diag
 build failed exactly once — `diag-default` run 20, `0xC0000005`, **empty
 output**, 0.7 s against a normal ~3.1 s. It died before printing. Both 203s were
 on the `orig` build, which prints only the total. **So the instrumentation is
@@ -73,13 +84,15 @@ against `201a + 2b + c` before anything else. Costs nothing and may end it.
 
 ### Phase 1 — cloud, because the probe already builds with symbols
 
-`probe-gc-stress-arm64.yml` runs **only** on `probe/**` branches, never on
-master, and already builds the Windows ARM64 toolchain the way `ci-build` does
-— which means `obr.pdb` exists in the job. `probe/gc-stress-arm64-oct` is
-already pointed at current master.
+`probe-gc-stress-arm64.yml` runs **only** on pushes to `probe/**` branches,
+never on master, and already builds the Windows ARM64 toolchain the way
+`ci-build` does — which means `obr.pdb` exists in the job. **(updated)**
+`probe/gc-stress-arm64-oct` was pointed at then-current master on 2026-10-11; in
+this checkout (master `3042a96eee`) it is 1,217 commits behind master, so rebase
+or recreate the branch before trusting a result from it.
 
-**This is done** — push `probe/gc-stress-arm64-oct` and read the artifact. The
-workflow now runs
+**This is done** (runs 38308666674 and 38308671728 are the result; see the status note above). To repeat it, push a probe branch and read the artifact. The
+workflow runs
 
 ```
 gc_stress_loop.ps1 -Bin ...\deploy-arm64\bin -Mode diag -Runs 300 -Catcher .\av_catch.py
@@ -214,20 +227,32 @@ A sixth of that family fits both symptoms.
   the `201`-node list is what makes the failure count mean something. Changing
   it silently changes the signature.
 - **Do not give either file the JIT opt-out marker, or quote it in a comment.**
-  The runners match the marker as a substring, so a comment that merely *names*
-  it opts the test out. That is how this test ran interpreted in CI from June to
-  September 2026 and #746 went unseen.
+  **(updated)** The runners used to match the marker as a substring, so a comment
+  that merely *named* it opted the test out; that is how this test ran interpreted
+  in CI from June to September 2026 and #746 went unseen. Since 2026-09-09 the
+  marker counts only as a whole line at column 0 and needs a `# reason:` line
+  (`run_regression.sh`, `tools/cicd/check_jit_optouts.py`), so a comment can no
+  longer opt a test out, but the advice to keep the marker out of these two files
+  stands: they must run with the JIT on.
 - **`gc_stress_diag.obs` avoids `&` and `|` in `Run` on purpose** — they set
   `HasAndOr`, which reserves a frame slot on ARM64 and would change the very
   frame layout under suspicion. Keep it that way.
-- **`probe/gc-stress-arm64` is ~610 commits behind master** (base `e034fae228`,
-  around #780). Its own two runs say nothing about the VM shipping today. Use
-  `probe/gc-stress-arm64-oct`.
+- **`probe/gc-stress-arm64` is far behind master** (base `e034fae228`, around
+  #780; ~610 commits behind when this was written, 1,840 in the checkout of
+  2026-11-18). Its own two runs say nothing about the VM shipping today. Use
+  `probe/gc-stress-arm64-oct`, rebased (see above).
 - **A clean run is not evidence of a fix.** 0/450 on master leaves a 95% upper
   bound (~0.66%) that overlaps the old estimate; reaching under 0.2% needs
-  roughly 1,500 runs.
+  roughly 1,500 runs (reached, 0/1500, on 2026-10-13: bound 0.2%, still a bound
+  on one runner and one build, not a proof).
 
 ---
+
+## Limits of the evidence in this file
+
+- Every rate here (about 0.8%, from 3 failures in 360 runs on the old base) comes from the hosted `windows-11-arm` runner, which has four cores; the same source gave 0 of 180 and then 3 of 180 on it, so the rate depends on the runner as much as on the code and cannot be transferred to other ARM64 hardware.
+- The `201a + 2b + c` decomposition and the stale-root hypothesis were never confirmed by a diag report, because the diag build did not fail again. They explain the two observed `203` counts; they are not an established root cause.
+- The mechanism lead (pinned loop locals and safepoint refresh) is circumstantial, as the section says, and the ARM64 `local_reg_cache` dead end was ruled out by reading the code, not by an experiment.
 
 ## What to report back
 
