@@ -30,6 +30,21 @@
 > builds `onnx.sln`, which compiles `eq/onnx.cpp`, and `vs/vs.vcxproj` defines
 > one `ONNX_EP_*` per configuration (`Release-DML|x64`, `Release-QNN|ARM64`,
 > ...), not all four. No deploy script or workflow builds the variant sources.
+>
+> **Checked again 2026-11-18 against `master`:** nothing in the "Still open" list
+> has been delivered. The provider is still fixed at compile time by the
+> `ONNX_EP_*` define (`eq/onnx.cpp`); `eq/cuda/onnx_cuda.cpp:67` still appends
+> `"DML"`; the four variant directories still exist; there is no `ep_fallback`
+> key and no `OBJECK_ONNX_EP` variable (a search of `eq/onnx.cpp`, `eq/common.h`
+> and `onnx.obs` finds neither); and no `Microsoft.ML.OnnxRuntime.Gpu` package or
+> CUDA runtime is vendored. The line references below have drifted: the
+> `use_kv_cache = false` line is `eq/common.h:2490` (this plan says 2413), and
+> the `ep` key is documented at `onnx.obs:2375` (this plan says 2119). Open
+> question 1 (does the CUDA provider avoid the DirectML GroupQueryAttention
+> bug?) has no recorded experiment. Delivered and relevant: the Linux runtime
+> is a CPU-only 1.19.0 build for x64 and, since v2026.10.0 (`fc454eced8`), for
+> arm64, so a Linux `cuda` build still refuses every session that does not ask
+> for `ep=cpu`; and `OnnxRuntime->GetProviders()` exists (`onnx.obs:45`).
 
 > **CORRECTION (same day, before review).** Two premises below were wrong and
 > are struck through in place. Verify claims against the tree, not against

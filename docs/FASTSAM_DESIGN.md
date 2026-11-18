@@ -27,6 +27,17 @@ Depends on: `INFERENCE_ENGINES_PLAN.md` P1 (the generic `onnx_run`) and P2 (the
 `Engine` interface). FastSAM is the intended first consumer of P5, and the one
 that demonstrates whether the decoder-over-Engine idea actually pays.
 
+**Checked 2026-11-18 against `master`: design only, nothing built.** Both prerequisites are
+delivered (P1 `c17a43dec3`, P2 `f9d6df9ce8`, both in v2026.10.0), so the decoder could now be
+written, but no FastSAM code, class, test or sample exists anywhere in the tree (a search of
+`core`, `programs` and `tools` finds this file and the references to it only). The threading
+keys of phase 3 (`intra_op_threads`, `inter_op_threads`) are not read by `eq/onnx.cpp` or
+`eq/common.h`. The "Ground truth" table below is the 2026-09-24 snapshot: `eq/onnx.cpp` is now
+354 lines and `eq/common.h` 3,774 (the table says 322 and 3,113), and `onnx_run` and
+`onnx_model_info` have been added to the entry points. The model facts (output shapes, decode
+recipe) come from the YOLOv8-seg family and were not re-verified against an exported FastSAM-s
+file in this tree. There is no way to check the design by running anything yet.
+
 Add promptable instance segmentation to `API.Onnx` by wrapping FastSAM-s, with
 the model handling, decode and mask assembly in C++ and a small Objeck surface
 that looks like the model families already there.

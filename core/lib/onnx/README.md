@@ -1,6 +1,6 @@
 # ONNX Support
 
-Cross-platform ONNX inference library for Objeck (`-lib models,onnx`). Wraps [ONNX Runtime](https://onnxruntime.ai/) with OpenCV for image preprocessing and exposes computer vision, language, and face recognition pipelines.
+Cross-platform ONNX inference library for Objeck (`-lib models,opencv,cipher,json,onnx`). Wraps [ONNX Runtime](https://onnxruntime.ai/) with OpenCV for image preprocessing and exposes computer vision, language, and face recognition pipelines.
 
 ## Supported Models
 
@@ -23,7 +23,7 @@ See [MODELS.md](MODELS.md) for download links, file layouts, and sizes.
 | Windows x64 | DirectML | GPU (any DX12 adapter) |
 | Windows ARM64 | QNN | Qualcomm GPU (the default `backend_type`) |
 | Linux x64 | CPU | CPU only: the vendored ONNX Runtime is a CPU-only build |
-| Linux ARM64 | none | not shipped: only an x64 ONNX Runtime is vendored |
+| Linux ARM64 | CPU | CPU only: the vendored aarch64 ONNX Runtime 1.19.0 is a CPU-only build (shipped since v2026.10.0, `fc454eced8`) |
 | macOS | CoreML | Apple Neural Engine / GPU |
 
 Every shipped library is built from `eq/onnx.cpp`, and the `ONNX_EP_*` define it is compiled with (none for the CPU build) fixes its provider. The `ep` session option can name only that provider or `cpu`; any other name is refused and no session is created (see [execution providers](../../../docs/MODELS.md#execution-providers)).
@@ -81,7 +81,7 @@ Located in `programs/frameworks/opencv_onnx/`:
 
 Compile any demo:
 ```
-obc -src demo_face.obs -lib models,lang,collect,opencv,onnx,json
+obc -src demo_face.obs -lib models,opencv,cipher,json,onnx
 obr demo_face.obe
 ```
 
@@ -101,11 +101,11 @@ cd eq
 ./build.sh cuda      # compiles the CUDA path only; see below
 ```
 
-Both modes link the vendored ONNX Runtime in `eq/cuda/lib/x64/lib`, which is a
+Both modes link the vendored ONNX Runtime in `eq/cuda/lib/<arch>/lib` (`x64` or `arm64`, chosen from `uname -m`), which is a
 CPU-only build, so a `cuda` library refuses every session that does not ask for
 `ep=cpu`. Running on CUDA needs a CUDA-enabled ONNX Runtime linked in its place
-(see [MODELS.md](MODELS.md)). Only x64 has a vendored runtime, so `build.sh` stops
-on ARM64. Requires `pkg-config` and an OpenCV development package (module `opencv4`,
+(see [MODELS.md](MODELS.md)). Both x64 and arm64 have a vendored
+runtime. Requires `pkg-config` and an OpenCV development package (module `opencv4`,
 `opencv5` or `opencv`).
 
 ### macOS

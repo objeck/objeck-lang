@@ -306,7 +306,7 @@ if(item &lt;&gt; Nil) {
 <pre class="line-numbers"><code class="language-cpp">use API.OpenCV, API.Onnx, System.IO.Filesystem;
 
 # The OpenCV bundle has no cascade classifier: detect faces with the ONNX
-# FaceSession (compile with -lib models,onnx,opencv) and draw the boxes with OpenCV
+# FaceSession (compile with -lib models,opencv,cipher,json,onnx, or -lib @vision) and draw the boxes with OpenCV
 bytes   := FileReader-&gt;ReadBinaryFile("group.jpg");
 session := FaceSession-&gt;New("det_10g.onnx");
 faces   := session-&gt;Detect(bytes, 0.5);
@@ -360,6 +360,7 @@ obc -src checkers_engine.obs,checkers_game.obs,checkers_ai.obs,checkers_logic.ob
 obr checkers.obe</pre>
     <div class="raw"><a name="more-examples"></a>
     ## More Examples</div>
+    <p>The OpenAI and Gemini snippets above call hosted services and need an API key (<code>openai_api_key.dat</code>, <code>gemini_api_key.dat</code>), so the regression suite does not run them; the same calls are in <code>programs/frameworks/openai</code> and <code>programs/frameworks/gemini</code>. The Checkers example has its own tests, <code>checkers_tests.obs</code> (see its README).</p>
     <p>For complete working examples, visit:</p>
     <ul>
      <li><a href="https://github.com/objeck/objeck-lang/tree/master/programs/examples" target="_blank">Examples Directory</a></li>

@@ -28,7 +28,7 @@ The script ships **inside the distribution**, at its root, so a downloaded
 release needs nothing else:
 
 ```bash
-tar xzf objeck-linux-x64_2026.9.2.tgz
+tar xzf objeck-linux-x64_<VERSION>.tgz        # e.g. objeck-linux-x64_2026.11.0.tgz
 cd objeck-lang
 ./install_deps.sh              # install what is missing (asks first)
 ./install_deps.sh --yes        # ...without the prompt
@@ -173,6 +173,22 @@ a HiDPI display); and shutting everything down in an order that works.
 | `Light`, `LightRig`, `Material` | Shading |
 | `ShadowMap`, `PointShadow`, `Frustum` | Shadows and culling |
 | `Overlay`, `Box` | 2D overlay and bounding volumes |
+| `Scene`, `PropBatch` | A scene of solids with raycasting and sliding movement (`Scene->Raycast`, `Scene->SlideMove`), and instanced props drawn in one call |
+
+### How it is validated, and how to check
+
+`programs/regression/gl_context_test.obs` (`# EXTRA_LIBS: sdl2,sdl_gl`) creates a real context and
+checks what it draws by reading pixels back, not by completing without a crash; it skips when
+there is no display. `programs/regression/gl_quaternion_test.obs` is pure arithmetic and runs
+anywhere. To run the first one against a deploy tree, with a missing GL counted as a failure:
+
+```bash
+programs/examples/run_gl.sh --verify
+```
+
+The pixel-level checks have not been run for this page; whether they pass on a given machine is
+what `--verify` tells you. Known limits: OpenGL 3.3 core only; the binding is coarse-grained by
+design, so there is no one-to-one wrapper of the GL API.
 
 ## Why the calls are coarse-grained
 

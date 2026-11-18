@@ -69,6 +69,14 @@
      </ul>
     </div>
 
+    <p><strong>Status: implemented (stages 0 to 4), first released in v2026.10.2.</strong> The tokenizers are <code>351a42f46f</code>, <code>BertEmbedder</code> is <code>d407b058ec</code>, <code>EmbeddingClassifier</code> is <code>18d09ca06e</code> and the lab example is <code>6af3af2c7c</code>, all 2026-10-26 (stage 0's design and tiny models are <code>261419b938</code>). The sections marked "As built" record what differed from the plan. Not built: fine-tuning the encoder (see <a href="doc_ai_foundation.html">AI_FOUNDATION_DESIGN.md</a>).</p>
+    <p><strong>How to check.</strong> Compile and run the regression tests this document names with the libraries in their <code># EXTRA_LIBS:</code> line, for example:</p>
+<pre class="plain">cd programs/regression
+obc -src nlp_wordpiece_parity.obs -lib nlp -dest nlp_wordpiece_parity.obe
+obr nlp_wordpiece_parity.obe
+obc -src ml_embedding_classifier.obs -lib csv,ml -dest ml_embedding_classifier.obe
+obr ml_embedding_classifier.obe</pre>
+    <p><code>nlp_onnx_embedder.obs</code> and <code>onnx_tiny_bert_model.obs</code> need the ONNX native library and print <code>SKIP:</code> where it is not deployed. Known limits: the encoder is frozen, so accuracy on API traces is bounded by what BERT's English pretraining transfers; the measured throughput below used a stand-in model, not a real BERT.</p>
     <h3 id="why-and-what-this-is-not">Why, and what this is not</h3>
     <p>The lab fine-tunes BERT on API-call sequences and runs three experiments:</p>
     <ol>
@@ -96,7 +104,7 @@
       <tr><td data-label="">Expected accuracy</td><td data-label="Lab (fine-tuning)">higher: the encoder adapts to API-call text</td><td data-label="This (frozen encoder)">lower or equal: BERT's pretraining saw English, not API traces</td></tr>
      </tbody>
     </table>
-    <p>What fine-tuning would add, for the record: back-propagation through 12 transformer layers (attention, layer norm, GELU, the embedding tables), an optimizer state of 2–3× the model's size, and mixed precision to make it affordable. ONNX Runtime has a training API (<code>onnxruntime-training</code>) that could be bound later; nothing here precludes it.</p>
+    <p>What fine-tuning would add, for the record: back-propagation through 12 transformer layers (attention, layer norm, GELU, the embedding tables), an optimizer state of 2–3× the model's size, and mixed precision to make it affordable. ONNX Runtime has a training API (<code>onnxruntime-training</code>) that could be bound later; nothing here precludes it. <em>Update 2026-11-18:</em> that route was rejected, because ONNX Runtime's training packages are deprecated (AI_FOUNDATION_DESIGN.md section 3.2); the proposed route to fine-tuning is a libtorch binding (its Phase B), which is design only.</p>
     <h3 id="what-an-exported-bert-looks-like">What an exported BERT looks like</h3>
     <p>A Hugging Face export (<code>optimum-cli export onnx --model bert-base-uncased</code>, or <code>torch.onnx.export</code> with <code>dynamic_axes</code>) has:</p>
     <table class="ref-table">
@@ -206,7 +214,7 @@ yhat := head-&gt;PredictClass(X_test, 0.5);                      # Bool[]
     </ul>
     <p><strong>As built (stage 3).</strong></p>
     <ul>
-     <li><strong>No reuse yet.</strong> The outlier work's <code>DenseNetwork</code> (docs/ML_OUTLIERS_DESIGN.md §2.5) is its stage 2 and had not reached master, so <code>EmbeddingClassifier</code> (<code>ml_embed.obs</code>) has its own dense forward and backward pass. The two overlap in the layer arithmetic and Adam, and differ where their jobs do: that network is trained on mean squared error with Glorot initialisation throughout; this head on class-weighted binary cross-entropy from the logit (a numerically stable <code>log(1 + e^-|z|)</code> form), He-uniform before each ReLU and Glorot before the sigmoid. Once <code>DenseNetwork</code> lands, the head's layers should become one with a sigmoid output and a BCE loss option; the public API here does not change.</li>
+     <li><strong>No reuse yet.</strong> The outlier work's <code>DenseNetwork</code> (docs/ML_OUTLIERS_DESIGN.md §2.5) is its stage 2 and had not reached master, so <code>EmbeddingClassifier</code> (<code>ml_embed.obs</code>) has its own dense forward and backward pass. (<code>DenseNetwork</code> has since landed, in <code>ml_core.obs</code>; <code>ml_embed.obs</code> still carries its own pass and does not use it, checked 2026-11-18.) The two overlap in the layer arithmetic and Adam, and differ where their jobs do: that network is trained on mean squared error with Glorot initialisation throughout; this head on class-weighted binary cross-entropy from the logit (a numerically stable <code>log(1 + e^-|z|)</code> form), He-uniform before each ReLU and Glorot before the sigmoid. Once <code>DenseNetwork</code> lands, the head's layers should become one with a sigmoid output and a BCE loss option; the public API here does not change.</li>
      <li>Matrix products go through <code>Matrix2D-&gt;DotProduct</code> (Eigen, in <code>libobjk_ml</code>); the elementwise work and the optimizer are Objeck. <code>GetWeights(layer)</code> / <code>GetBias(layer)</code> return copies, for inspection and for the gradient test.</li>
      <li><strong>The loss history</strong> is measured after each epoch on the whole training set with that epoch's final weights, class-weighted and without L2 — so it is a curve of the objective, not an average of minibatch losses taken while the weights moved. <code>Loss(X, y)</code> measures the same on any rows, for a validation curve.</li>
      <li><strong>Found on the way: the AMD64 JIT refused the update method.</strong> With the SGD loops, the Adam loops and the bias loops in one method, <code>OBJECK_JIT_REPORT=1</code> showed "compile failed at instruction 231", and every update ran in the interpreter: 30 s to train a 768→64→1 head for 20 epochs on 2,000 rows. With one loop per method the same training takes 1.8 s, with identical results. The refusal is a JIT defect (a legal method should compile or spill, not fall back silently); a standalone reproduction is reported with this stage rather than fixed in it.</li>

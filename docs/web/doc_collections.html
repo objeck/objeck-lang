@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
   <title>Choosing a collection — Objeck Language</title>
-  <meta name="description" content="Which of the Collection classes to reach for, what each operation costs, and what each Remove hands back. Everything below was read from core/compiler/lib_src/gen_collect.obs (the line numbers are where the class starts); nothing here chang"/>
+  <meta name="description" content="Which of the Collection classes to reach for, what each operation costs, and what each Remove hands back. Everything below was read from core/compiler/lib_src/gen_collect.obs (the line numbers are where the class starts, as of 2026-11-18; s"/>
   <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
   <link href="style/styles.css" rel="stylesheet" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -57,7 +57,7 @@
 
     <h1 class="page-title">Choosing a collection</h1>
     <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/COLLECTIONS_GUIDE.md" target="_blank">docs/COLLECTIONS_GUIDE.md on GitHub</a></div>
-    <p class="page-lead">Which of the <code>Collection</code> classes to reach for, what each operation costs, and what each <code>Remove</code> hands back. Everything below was read from <a href="https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gen_collect.obs" target="_blank"><code>core/compiler/lib_src/gen_collect.obs</code></a> (the line numbers are where the class starts); nothing here changes the API. Compile with <code>-lib gen_collect</code> (every build gets it; see <code>core/compiler/build_libs.sh</code>).</p>
+    <p class="page-lead">Which of the <code>Collection</code> classes to reach for, what each operation costs, and what each <code>Remove</code> hands back. Everything below was read from <a href="https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gen_collect.obs" target="_blank"><code>core/compiler/lib_src/gen_collect.obs</code></a> (the line numbers are where the class starts, as of 2026-11-18; search for <code>class Name</code> if they have drifted); nothing here changes the API. Compile with <code>-lib gen_collect</code> (every build gets it; see <code>core/compiler/build_libs.sh</code>).</p>
     <div id="toc_container" class="plain">
      <h4>Contents</h4>
      <ul>
@@ -65,6 +65,7 @@
       <li><a href="#what-remove-returns">What <code>Remove</code> returns</a></li>
       <li><a href="#the-classes">The classes</a></li>
       <li><a href="#recipes">Recipes</a></li>
+      <li><a href="#how-to-check">How to check</a></li>
      </ul>
     </div>
 
@@ -105,7 +106,7 @@
     </table>
     <p>Two consequences. A <code>Vector</code> hands you back what it removed, so <code>Remove</code> on a <code>Vector&lt;IntRef&gt;</code> cannot tell you "nothing there" from "a <code>Nil</code> was stored there"; use <code>Size()</code> or <code>Get</code> first when <code>Nil</code> is a legal element. And a <code>List</code> removes at its <em>cursor</em>: <code>RemoveFront</code> and <code>RemoveBack</code> move the cursor to that end first, so they disturb an iteration in progress that uses <code>Next()</code>/<code>Get()</code> on the same list (use <code>ForwardIterator()</code> for a traversal that must survive).</p>
     <h3 id="the-classes">The classes</h3>
-    <h4 id="vector-gen_collectobs5113"><code>Vector&lt;H&gt;</code> (gen_collect.obs:5113)</h4>
+    <h4 id="vector-gen_collectobs5118"><code>Vector&lt;H&gt;</code> (gen_collect.obs:5118)</h4>
     <p>A growable array. It grows by half again (at least four slots) when full, so <code>AddBack</code> is amortised O(1).</p>
     <table class="ref-table">
      <thead>
@@ -120,7 +121,7 @@
      </tbody>
     </table>
     <p>There is no insert-at-index and no <code>AddFront</code>; use a <code>List</code>, or build a new <code>Vector</code>, if you need either. <code>Reserve(n)</code> avoids regrowth when the size is known.</p>
-    <h4 id="list-gen_collectobs4350"><code>List&lt;H&gt;</code> (gen_collect.obs:4350)</h4>
+    <h4 id="list-gen_collectobs4355"><code>List&lt;H&gt;</code> (gen_collect.obs:4355)</h4>
     <p>A doubly linked list with one built-in cursor (<code>Rewind</code>, <code>Forward</code>, <code>Next</code>, <code>Previous</code>, <code>More</code>, <code>Get</code>, <code>Set</code>) and independent <code>ForwardIterator()</code>/<code>BackwardIterator()</code> objects.</p>
     <table class="ref-table">
      <thead>
@@ -133,7 +134,7 @@
       <tr><td data-label="Operation">anything by position or by value</td><td data-label="Cost">not provided; walk it, O(n)</td></tr>
      </tbody>
     </table>
-    <h4 id="map-gen_collectobs6776"><code>Map&lt;K, V&gt;</code> (gen_collect.obs:6776)</h4>
+    <h4 id="map-gen_collectobs6781"><code>Map&lt;K, V&gt;</code> (gen_collect.obs:6781)</h4>
     <p>An AA tree (<code>Skew</code>/<code>Split</code> rebalancing on a level per node), so it stays balanced.</p>
     <table class="ref-table">
      <thead>
@@ -145,7 +146,7 @@
      </tbody>
     </table>
     <p><code>Insert</code> of an existing key replaces its value. <code>Find</code> returns the value, or <code>Nil</code> when absent (so it cannot tell a missing key from a stored <code>Nil</code>; use <code>Has</code>). A <code>Nil</code> key is ignored by <code>Insert</code>. The name is the usual trap: <code>Map</code> is the <em>ordered tree</em>. It is not a hash map.</p>
-    <h4 id="hash-gen_collectobs2020"><code>Hash&lt;K, V&gt;</code> (gen_collect.obs:2020)</h4>
+    <h4 id="hash-gen_collectobs2025"><code>Hash&lt;K, V&gt;</code> (gen_collect.obs:2025)</h4>
     <p>Open addressing with linear probing over parallel key, value and hash arrays. It doubles when it is 70% full and has no upper limit; <code>Remove</code> uses backward-shift deletion, so deletions leave no tombstones and do not slow later lookups.</p>
     <table class="ref-table">
      <thead>
@@ -157,11 +158,11 @@
      </tbody>
     </table>
     <p>Iteration order is unspecified, but <code>GetKeys</code>, <code>GetValues</code> and <code>GetKeyValues</code> agree with each other. Keys of different classes are never equal. <code>Find</code> returns <code>Nil</code> for a missing key. <code>InsertIfAbsent</code> returns <code>true</code> when it inserted. <code>SetCapacity</code>/<code>Resize</code> are hints for pre-sizing; the table grows on its own. A lookup changes nothing in the table, so concurrent readers are safe; a writer still needs a lock.</p>
-    <h4 id="set-gen_collectobs7465"><code>Set&lt;K&gt;</code> (gen_collect.obs:7465)</h4>
+    <h4 id="set-gen_collectobs7470"><code>Set&lt;K&gt;</code> (gen_collect.obs:7470)</h4>
     <p>A <code>Map&lt;K, Base&gt;</code> underneath, so it has the <code>Map</code> costs and ordering: <code>Add</code>, <code>Insert</code>, <code>Has</code> and <code>Remove</code> are O(log n) and <code>GetKeys</code>/<code>ToVector</code>/<code>ToArray</code> return ascending order. <code>Add</code> returns <code>true</code> when the value was new; <code>Insert</code> returns nothing. <code>Union</code>, <code>Intersect</code>, <code>Difference</code>, <code>SymmetricDifference</code>, <code>IsSubset</code> and <code>IsSuperset</code> return new sets and leave both operands alone.</p>
-    <h4 id="hashset-gen_collectobs1430-and-sethash-gen_collectobs7894"><code>HashSet&lt;H&gt;</code> (gen_collect.obs:1430) and <code>SetHash&lt;K&gt;</code> (gen_collect.obs:7894)</h4>
+    <h4 id="hashset-gen_collectobs1430-and-sethash-gen_collectobs7899"><code>HashSet&lt;H&gt;</code> (gen_collect.obs:1430) and <code>SetHash&lt;K&gt;</code> (gen_collect.obs:7899)</h4>
     <p><code>HashSet</code> wraps a <code>Hash&lt;H, BoolRef&gt;</code>, so <code>Add</code>, <code>Has</code> and <code>Remove</code> are O(1) expected and the order is unspecified. <code>SetHash</code> wraps a <code>HashSet</code> and forwards to it, with the method names <code>Set</code> uses (<code>Insert</code>, <code>Add</code>, <code>Has</code>, <code>Remove</code>, the set algebra). They behave the same; <code>HashSet</code> also has <code>Insert</code> and <code>GetKeys</code> so code can move between the three. Pick one name and keep to it: <code>HashSet</code> is the implementation, <code>SetHash</code> is the spelling that parallels <code>Set</code>. Adding a <code>Nil</code> returns <code>false</code>.</p>
-    <h4 id="multimap-gen_collectobs8293-and-multihash-gen_collectobs8639"><code>MultiMap&lt;K, V&gt;</code> (gen_collect.obs:8293) and <code>MultiHash&lt;K, V&gt;</code> (gen_collect.obs:8639)</h4>
+    <h4 id="multimap-gen_collectobs8298-and-multihash-gen_collectobs8644"><code>MultiMap&lt;K, V&gt;</code> (gen_collect.obs:8298) and <code>MultiHash&lt;K, V&gt;</code> (gen_collect.obs:8644)</h4>
     <p>A <code>Map</code> (or <code>Hash</code>) from key to <code>Vector&lt;V&gt;</code>. <code>Insert(k, v)</code> appends to the key's vector, creating it on the first value. Costs are those of the underlying map plus an O(1) append.</p>
     <ul>
      <li><code>Find(k)</code> returns <strong>the stored <code>Vector</code></strong>, not a copy, or <code>Nil</code> when the key has no values. Edits to it are edits to the multi-map.</li>
@@ -192,6 +193,12 @@
      <li><strong>A work queue:</strong> <code>List</code> (<code>AddBack</code>, then <code>Front</code> and <code>RemoveFront</code>), or <code>Queue</code>.</li>
      <li><strong>Take the first n of a sorted result:</strong> <code>Vector-&gt;Sort(...)</code>, then <code>Limit(n)</code>.</li>
     </ul>
+    <h3 id="how-to-check">How to check</h3>
+    <p>The classes here are covered by <code>programs/regression/collect_*.obs</code>: <code>collect_vector_ops</code>, <code>collect_map_ops</code>, <code>collect_hash_ops</code>, <code>collect_hash_open</code> (open addressing, growth past one million entries, deletes in collision runs, keys of different classes with one <code>HashID</code>), <code>collect_set_ops</code>, <code>collect_set_algebra</code>, <code>collect_pair_ops</code>, <code>collect_pair_compare</code>, <code>collect_queue_ops</code>, <code>collect_stack_ops</code>, <code>collect_hash_heap_sort</code>, <code>collect_primitive</code> and <code>collect_nested_ops</code>. Each prints failures and exits non-zero. <code>gen_collect</code> is linked by default, so no <code>-lib</code> is needed:</p>
+<pre class="plain">cd programs/regression
+obc -src collect_hash_open.obs -dest collect_hash_open.obe
+obr collect_hash_open.obe</pre>
+    <p>The costs in the tables above are read from the source, not measured by these tests.</p>
 
    </div>
   </main>

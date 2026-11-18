@@ -79,6 +79,14 @@
 
     <p>Version 2 differs from version 1 in one place: its footer ends with the table's <a href="#indexes-version-2">index definitions</a>. A writer uses version 2 only for a table that has indexes, so a table without any is written exactly as version 1 wrote it, and stays readable by every version 1 reader.</p>
     <p>This document is the format's specification. The design and its reasons are in <a href="doc_query_design.html#9-persistence-a-native-table-file">QUERY_DESIGN.md §9</a>. An independent reader written from this page, <a href="https://github.com/objeck/objeck-lang/blob/master/tools/otab/otab_dump.py" target="_blank"><code>tools/otab/otab_dump.py</code></a>, decodes every byte of a file and prints an annotated layout; use it to check a writer, or to look inside a file.</p>
+    <p><strong>Status: implemented, in v2026.10.2.</strong> Version 1 shipped with phase 3 of <code>Query.Structured</code> (<code>15f5448f52</code>, 2026-10-23); version 2 (index definitions) with phase 6 (<code>539a01b22a</code>, 2026-10-24). The writer and reader are <code>OtabWriter</code> and <code>OtabFile</code> in <code>core/compiler/lib_src/query.obs</code>. The codecs are zlib only (codecs 1 and 2); the design notes in QUERY_DESIGN.md also discuss gzip, Brotli and lighter encodings, which are not in the format.</p>
+    <p><strong>How it is validated:</strong> <code>programs/regression/query_persist_roundtrip.obs</code> (every column type, the three compression settings, more than 65,536 rows, <code>Append</code>, damaged and truncated files), <code>query_persist_indexes.obs</code> (version 2, and that an index-free table is byte for byte a version 1 file), <code>query_persist_log.obs</code>, <code>query_persist_crash.obs</code> and <code>query_persist_lock.obs</code> (the change log and the lock). The independent reader <code>tools/otab/otab_dump.py</code> is a second implementation of this page: it exits 0 only for a well formed file.</p>
+    <p><strong>How to check:</strong></p>
+<pre class="plain">cd programs/regression
+obc -src query_persist_roundtrip.obs -lib net,regex,csv,xml,misc,query -dest query_persist_roundtrip.obe
+obr query_persist_roundtrip.obe
+python ../../tools/otab/otab_dump.py &lt;any .otab file&gt;</pre>
+    <p><strong>Known limits:</strong> no delta or run-length encodings and no stored index entries; a table whose OBJECT column holds a value other than the six tagged kinds cannot be saved; the lock's stale-recovery race in the last paragraph of "The change log" is accepted, not prevented.</p>
     <h3 id="at-a-glance">At a glance</h3>
 <pre class="plain">offset 0      header    "OTAB", format version                                     12 bytes
               blocks    row group 0: one block per column, key column first

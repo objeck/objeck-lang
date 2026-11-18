@@ -275,6 +275,14 @@ fresh request id each call and rejects a reply that echoes another id, and a JSO
 without `params` (allowed by the specification) reaches the handler as an empty object instead
 of ending the server.
 
+## How to check
+
+The behaviours in the second program are covered by `programs/regression/library_nil_input_test.obs`
+(Nil text and partial documents in JSON, XML and RegEx), `regex_repeat_bounds.obs` (the repeat
+count and `{2,1}` rules), `json_rpc_client_id.obs` and `json_rpc_nil_handling.obs` (the JSON-RPC
+changes). Compile either program on this page with the line shown under it and compare the
+output; the output blocks were not re-run for this review.
+
 ## Where next
 
 - [HTTP client and web server](http.md): fetch the JSON you just learned to parse.

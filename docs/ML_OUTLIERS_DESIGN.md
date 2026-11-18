@@ -3,6 +3,40 @@
 **Status:** approved direction (2026-10-26), for v2026.10.2. Written against `master`
 `8e7cc56257`. Code lands in three stages after this document, each its own PR.
 
+**Status (checked 2026-11-18): implemented in full, released in v2026.10.2.** Stage 1
+(`OutlierDetector`, `ZScoreDetector`, `IsolationForest`, `LocalOutlierFactor`, `EllipticEnvelope`,
+`DbscanDetector`) is `3a79962867`; stage 2 (`DenseNetwork`, `AutoencoderDetector`) is
+`e1dfa19555`; stage 3 (`ConfusionMatrix`, `Metrics->FalsePositiveRate`, `SensitivitySweep`,
+`programs/examples/ml/anomaly_sweep.obs`) is `7e4ef4ca70`, all 2026-10-26. Section 2.7 is also
+done, but not as written: One-Class SVM reaches the interface through an adapter class,
+`OneClassSvmDetector` (`43ed51286a`, `ml_outlier.obs`), not by `OneClassSVM` implementing
+`OutlierDetector` itself.
+
+**References.** Liu, Ting and Zhou (2008) for Isolation Forest, Breunig et al. (2000) for LOF,
+Rousseeuw and Van Driessen's FastMCD for `EllipticEnvelope`, as this document names them.
+
+**Validated by** (in `programs/regression/`, `# EXTRA_LIBS: ml,gen_collect,csv`):
+`ml_outlier_zscore.obs`, `ml_outlier_iforest.obs`, `ml_outlier_lof.obs`
+(against an independent brute-force reference), `ml_outlier_envelope.obs`, `ml_outlier_mcd.obs`,
+`ml_outlier_dbscan.obs`, `ml_outlier_autoencoder.obs`, `ml_outlier_ocsvm.obs` and
+`ml_outlier_sweep.obs`. The numpy/pure-Python references that produced the embedded fixtures are
+`programs/regression/ml_outlier_ref/outlier_ref.py` and `gen_fixtures.py`; scikit-learn itself is
+not run.
+
+**How to check:**
+
+```
+cd programs/regression
+obc -src ml_outlier_lof.obs -lib ml,gen_collect,csv -dest ml_outlier_lof.obe
+obr ml_outlier_lof.obe
+```
+
+**Known limits:** `LocalOutlierFactor` is Euclidean only and refuses `Predict` on new rows unless
+`novelty` is set; `EllipticEnvelope` refuses a singular support covariance instead of
+regularising it; `DbscanDetector` is O(n^2); the detectors have no `Store`/`Load`; NaN input is
+refused. The 10k and 100k row performance numbers promised in section 6 are not recorded in this
+file.
+
 ## Why
 
 A university cybersecurity-ML lab, *Anomaly Detection Sensitivity Across 7 Algorithms*, has

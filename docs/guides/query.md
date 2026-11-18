@@ -315,8 +315,10 @@ Things to notice:
 - `Prepare()` parses a statement once. `Bind(index, value)` fills the `?` placeholders, numbered
   from 1, and `Execute()` runs it as many times as you like with new values. A statement that
   changes rows runs with `ExecuteUpdate()`.
-- A join is a hash join on equality. `Explain(sql)` on a table or a catalog describes the plan
-  without running the query.
+- A join on equality sorts the right side's keys once and finds each left row's matches by binary
+  search (not a hash join; the output order is fixed: left rows in order, each with its matches in
+  the right table's order). `Explain(sql)` on a table or a catalog describes the plan without
+  running the query.
 
 ## Keeping a table on disk
 
@@ -457,6 +459,15 @@ tour of tables, indexes and `Explain`.
 
 A catalog that answers queries from other people (as `TableServer` does) should call
 `SetFileAccess(false)`: otherwise a query could read any file the process can, or fetch any URL.
+
+## How to check
+
+The engine is covered by the `query_*.obs` tests in `programs/regression/`, listed in
+[`docs/QUERY_DESIGN.md`](../QUERY_DESIGN.md) (the differential tests compare every query form
+with a naive evaluator; `query_persist_*.obs` cover the `.otab` file and the durable table). To
+check this page, compile each program with the line shown under it and compare the output; the
+output blocks were not re-run for this review, and the file size and bytes-read figures in the
+last one depend on the compressor's output.
 
 ## Where next
 

@@ -1,6 +1,6 @@
 # ONNX Models for Objeck
 
-This document lists the ONNX models used by the Objeck ONNX library (`-lib models,onnx`). Models are too large for the git repository and must be downloaded separately.
+This document lists the ONNX models used by the Objeck ONNX library (`-lib models,opencv,cipher,json,onnx`). Models are too large for the git repository and must be downloaded separately.
 
 ## Computer Vision Models
 
@@ -148,8 +148,7 @@ Runtime DLLs are provided in `core/lib/onnx/eq/lib/`:
 Large DLLs are compressed as `.7z` archives. Extract to the application directory or system PATH.
 
 ### Linux (CPU)
-- `libonnxruntime.so.1.19.0` (ONNX Runtime, a CPU-only build) ships inside the Linux x64 package, beside `libobjk_onnx.so` in `lib/native`; nothing to install. `eq/build.sh cpu` links the same copy, vendored in `eq/cuda/lib/x64/lib`.
-- Linux ARM64 packages include no ONNX library: only an x86-64 runtime is vendored.
+- `libonnxruntime.so.1.19.0` (ONNX Runtime, a CPU-only build) ships inside the Linux x64 and Linux ARM64 packages, beside `libobjk_onnx.so` in `lib/native`; nothing to install. `eq/build.sh cpu` links the same copy, vendored in `eq/cuda/lib/x64/lib` or `eq/cuda/lib/arm64/lib` (the aarch64 runtime was vendored in v2026.10.0, `fc454eced8`).
 
 ### Linux (CUDA)
 - Not shipped. The vendored runtime is CPU-only, so the Linux package is built with `eq/build.sh cpu`.
