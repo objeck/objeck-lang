@@ -16,6 +16,15 @@
   <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.11.0-blue" alt="Latest Release"></a>
 </p>
 
+<p align="center">
+  <a href="https://playground.objeck.org">Try it online</a> &middot;
+  <a href="#downloads">Download</a> &middot;
+  <a href="#quick-start">Quick start</a> &middot;
+  <a href="#libraries">Libraries</a> &middot;
+  <a href="https://www.objeck.org">Documentation</a> &middot;
+  <a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a>
+</p>
+
 ## Why Objeck?
 
 **Built for modern development:**
@@ -458,7 +467,7 @@ Monte Carlo takes 2 of 10 stones
 
 </details>
 
-More: [all the guides](docs/guides/README.md), the 32 numbered programs in [`programs/deploy`](programs/deploy/README.md) that ship with every release, and [what is new in v2026.10.3](docs/guides/whats_new_10_3.md).
+More: [all the guides](docs/guides/README.md), the 32 numbered programs in [`programs/deploy`](programs/deploy/README.md) that ship with every release, and [what is new in v2026.11.0](#whats-new).
 
 ## What's New
 
@@ -678,7 +687,7 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
 - [Ollama](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/ollama.obs) — local LLM chat, vision, and embeddings; recommended models: `llama3.2`, `phi3`, `llava` ([get models →](docs/MODELS.md#ollama-models))
 - [NLP](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/nlp.obs) — tokenization, TF-IDF, text similarity, sentiment analysis
 - [OpenCV](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/opencv.obs) — computer vision: detection, transforms, video
-- [ONNX Runtime](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/onnx.obs) — local ML inference: YOLO, ResNet, DeepLab, OpenPose, Phi-3, face recognition ([get models →](docs/MODELS.md#onnx-models))
+- [ONNX Runtime](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/onnx.obs) — local ML inference: YOLO, ResNet, DeepLab, OpenPose, Phi-3, face recognition ([get models →](docs/MODELS.md#onnx-models), [model reference](core/lib/onnx/MODELS.md))
 - [Face Recognition](https://github.com/objeck/objeck-lang/blob/master/core/lib/onnx/README.md) — SCRFD detector + ArcFace R50 (InsightFace buffalo_l)
 - [Phi-3 / Phi-3 Vision](https://github.com/objeck/objeck-lang/tree/master/programs/frameworks/opencv_onnx) — local SLM text and multimodal inference
 
