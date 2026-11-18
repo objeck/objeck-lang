@@ -3820,6 +3820,23 @@ INT64_VALUE Runtime::StackInterpreter::ArrayIndex(StackInstr* instr, size_t* arr
   INT64_VALUE index = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const long dim = instr->GetOperand();
 
+  // The sizes of dimensions 1 to dim - 1 are read from the array's header, which
+  // holds as many as the array has (array[-1]); a count beyond that reads the
+  // elements, or past the allocation, as sizes. A one-index access reads none.
+  if(dim > 1 && dim > (long)array[-1]) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_INDEX_OUT_OF_BOUNDS, L"Array accessed with more indices than it has dimensions")) {
+      return -1;
+    }
+    std::wcerr << L">>> Array accessed with more indices than it has dimensions <<<" << std::endl;
+    StackErrorUnwind();
+#ifdef _NO_HALT
+    halt = true;
+    return -1;
+#else
+    VmExit(1);
+#endif
+  }
+
   for(long i = 1; i < dim; ++i) {
     index *= (long)array[i];
     index += (INT64_VALUE)PopInt(op_stack, stack_pos);

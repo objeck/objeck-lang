@@ -1860,6 +1860,36 @@ def verifier_cases(image):
     reader.skip(3)
     reader.string()
     reader.string()
+    # The operand stack (Loader::Verify walks every method with the reference-map builder).
+    # Each is a one-operand change found by the loader fuzzer, made on the first place the
+    # control program offers it.
+    # A store that pops two words where one was pushed: a parameter store turned into a
+    # func-ref store (two words).
+    # The method's arguments are on the operand stack when it starts, and its leading
+    # parameter stores drain them; with exactly as many stores as parameters, turning
+    # the last one into a two-word store pops one word more than is there.
+    def leading_stores(m, code):
+        n = 0
+        while n < len(code) and code[n][0] == op["STOR_INT_VAR"]:
+            n += 1
+        r = obe_image.Reader(image, m[1])
+        r.int()
+        r.skip(3)
+        r.string()
+        r.string()
+        return n if n >= 1 and n == r.int() else 0
+
+    store_at = next(code[leading_stores(m, code) - 1][1] for m, (_, code) in codes if leading_stores(m, code))
+    cases.append(("a store that pops more than was pushed", "the operand stack runs out",
+                  put(image, store_at, "<B", op["STOR_FUNC_VAR"])))
+    # An array load given a second index nobody pushed.
+    _, at = first(lambda o, a, c, k: o == op["LOAD_CHAR_ARY_ELM"])[:2]
+    cases.append(("an array load that pops an index too many", "the operand stack runs out", put(image, at, "<i", 2)))
+    # A receiver replaced by an integer literal: a call through an address nobody allocated.
+    _, at, code, k = first(lambda o, a, c, k: o == op["LOAD_INT_VAR"] and operand(a, 1) == locl and
+                           k + 1 < len(c) and c[k + 1][0] == op["MTHD_CALL"])
+    cases.append(("an integer literal used as a call's receiver", "an integer literal used as a reference",
+                  put(image, code[k][1], "<B", op["LOAD_INT_LIT"])))
     cases.append(("a negative parameter count", "parameter count out of range", put(image, reader.pos, "<i", -255)))
     cases.append(("a parameter count beyond the declarations", "parameter count out of range",
                   put(image, reader.pos, "<i", 100000)))

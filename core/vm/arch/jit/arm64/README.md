@@ -20,7 +20,7 @@ ARM64 opts each opcode *in* through its own `CanJitInstruction()` whitelist (`ji
 ### Registers and Stack
 12 integer registers in the pool (`X0`-`X7`, then `X12`-`X15`); `X9`-`X11` are scratch and `X19` holds the safepoint flag's address. 16 floating-point registers (`D0`-`D15`, handed out from `D0`), so the callee-saved `D8`-`D15` are saved only by a method that reaches them. Neither pool spills: an expression that needs more falls back to the interpreter.
 
-Reference: [arm64 using gas on iOS](https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
+Reference: the [Procedure Call Standard for the Arm 64-bit Architecture](https://github.com/ARM-software/abi-aa/blob/main/aapcs64/aapcs64.rst) and, for the Apple differences (`X18` reserved), [Writing ARM64 code for Apple platforms](https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms):
 * X0-X7 — arguments and return value (volatile)
 * X8 — indirect result (struct) location, or temp
 * X9-X15 — temporary (volatile)
@@ -33,7 +33,7 @@ Reference: [arm64 using gas on iOS](https://stackoverflow.com/questions/28109826
 * V0-V7, V16-V31 — volatile NEON/FP registers
 * V8-V15 — callee-saved (non-volatile, used for temp vars)
 
-The processor stack grows **up**, and the memory manager was updated to accommodate (this also affects the direction the GC walks JIT locals — see [`../../README.md`](../../README.md)). Save the link register across any function call made out of JIT'ed code.
+Unlike AMD64's `RBP`-relative frame, whose locals and temps sit at negative offsets, a compiled ARM64 frame is laid out *upward* from `SP` (`jit_frame_layout.h`, `JIT_LAYOUT_ARM64`), and the collector walks JIT frames in that order (see [`../../README.md`](../../README.md)). The hardware stack itself still grows down. Save the link register across any function call made out of JIT'ed code.
 
 ### Security — W^X JIT memory on Apple platforms
 macOS 11+ enforces W^X for executable code. The back-end allocates and patches code accordingly:
@@ -45,7 +45,7 @@ macOS 11+ enforces W^X for executable code. The back-end allocates and patches c
     __clear_cache(temp, temp + byte_size);
     pthread_jit_write_protect_np(true);
     ```
-    [Caches and self-modifying code (Arm)](https://community.arm.com/developer/ip-products/processors/b/processors-ip-blog/posts/caches-and-self-modifying-code)
+    [Caches and self-modifying code (Arm)](https://developer.arm.com/community/arm-community-blogs/b/architectures-and-processors-blog/posts/caches-and-self-modifying-code)
 * Entitlements — for shipping, weigh "Allow Unsigned Executable Memory" vs. signing for code execution:
     ```
     <dict>
@@ -57,11 +57,11 @@ macOS 11+ enforces W^X for executable code. The back-end allocates and patches c
     ```
 
 ### Adding a runtime check or call to emitted code
-Lessons from the 2026 JIT heap-corruption hunt (the investigation itself is in git history as `docs/jit-malloc-corruption-investigation.md`):
+Lessons from the 2026 JIT heap-corruption hunt (the investigation itself was `docs/jit-malloc-corruption-investigation.md`, since deleted; `git show adb7127e04:docs/jit-malloc-corruption-investigation.md` recovers it):
 * Load a 64-bit helper address with raw `movz`/`movk` and call it with a raw `blr`. `move_imm_reg` falls back to the constant pool for a value with three or four non-zero 16-bit chunks, and that load (`ldr x9, [sp, #INT_CONSTS]`) reads the wrong slot while SP is shifted by a register-save block; `call_reg` spills LR to the `TMP_LR` frame slot.
 * Preserve **NZCV** around the call: it clobbers the flags, and a store can sit between a compare and its branch.
 * Do not emit a stub inside code that hand-encodes relative branches. The large-frame zeroing loop in `RegisterRoot` encodes `b.lt +4` and `b -4` directly, so anything inserted between them desyncs both.
 * When passing two registers as arguments, load both from their saved stack slots, not the live registers: `mov x0, base; mov x1, off` clobbers `off` when `off` is `x0`.
 
 ### Implementation
-C++ with STL. Sources: `jit_arm_a64.h`, `jit_arm_a64.cpp` (~6.6k lines). Shared driver: [`../jit_common.{h,cpp}`](../jit_common.h).
+C++ with STL. Sources: `jit_arm_a64.h`, `jit_arm_a64.cpp` (~6.9k lines). Shared driver: [`../jit_common.{h,cpp}`](../jit_common.h).
