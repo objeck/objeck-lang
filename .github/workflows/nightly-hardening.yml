@@ -394,11 +394,15 @@ jobs:
       - name: Install the fuzz toolchain and runtime dependencies
         timeout-minutes: 10
         run: |
-          # clang and the libFuzzer runtime build the targets; obc needs the
-          # same packages the CI tree was tested with to compile the seeds.
+          # Only what the fuzz build needs: clang, the libFuzzer runtime, and the two
+          # libraries obr links (zlib, mbedTLS). obc compiles the seeds against the
+          # .obl files in the CI tree and links nothing but zlib and libstdc++, so none
+          # of the native-library packages the harden legs install are needed here.
+          # The first dispatch (run 44229390408) installed that whole set and timed
+          # out after 10 minutes on a slow mirror, mostly in OpenCV's dependencies.
           sudo bash tools/cicd/apt_harden.sh
           sudo apt-get update
-          sudo apt-get install -y clang libclang-rt-18-dev zlib1g-dev libmbedtls-dev             libopencv-dev unixodbc-dev libsqliteodbc             libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev             libegl1 libegl-mesa0 libgl1-mesa-dri libreadline-dev libeigen3-dev libmp3lame-dev
+          sudo apt-get install -y --no-install-recommends clang libclang-rt-18-dev zlib1g-dev libmbedtls-dev
 
       - name: Download the CI deploy tree
         timeout-minutes: 10
