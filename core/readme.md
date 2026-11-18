@@ -32,7 +32,7 @@ graph TB
         Parser["Parser"]
         Analyzer["Contextual<br/>Analyzer"]
         IR["Intermediate<br/>Code Generation"]
-        Optimizer["Bytecode Optimizer<br/>━━━━━━━━━━━━━━━━<br/>Jump Reduction<br/>Constant Folding<br/>Method Inlining<br/>Dead Store Removal<br/>Constant Propagation<br/>Copy Propagation<br/>CSE<br/>Strength Reduction<br/>Dead Code Elimination<br/>Instruction Optimization"]
+        Optimizer["Bytecode Optimizer<br/>━━━━━━━━━━━━━━━━<br/>Jump Reduction<br/>Constant Folding<br/>Method Inlining<br/>Dead Store Removal<br/>Constant Propagation<br/>CSE<br/>LICM<br/>Tail Calls<br/>Strength Reduction<br/>Dead Code Elimination<br/>Instruction Optimization"]
         Emitter["Binary Code<br/>Emitter"]
         Linker["Linker"]
     end
@@ -62,7 +62,7 @@ graph TB
 
     subgraph "CI/CD"
         GHA["GitHub Actions<br/>Multi-Platform CI"]
-        Tests["Regression Tests<br/>(299 automated)"]
+        Tests["Regression Tests<br/>(see TESTS.md)"]
     end
 
     %% Compiler Flow
@@ -132,7 +132,7 @@ graph TB
 | **Debugger** | Interactive debugger with breakpoints | [core/debugger](debugger/) |
 | **REPL** | Interactive shell with a full-screen editor | [core/repl](repl/) |
 
-**Tech Stack:** C++17, x64/ARM64 assembly, GNU Make / Visual Studio
+**Tech Stack:** C++20 (`-std=c++20` in the Makefiles, `stdcpp20` in the Visual Studio projects), x64/ARM64 machine-code emitters, GNU Make / Visual Studio / Xcode
 
 ---
 
@@ -357,7 +357,7 @@ cd core/release
 
 **GitHub Actions** runs on every commit:
 - ✅ Linux x64/ARM64, macOS ARM64, Windows x64/ARM64, each built natively and tested on what it built
-- ✅ Sample programs from `programs/deploy` (4 on every leg, 11 on Linux x64), then the 299-test regression suite twice (at the default JIT threshold and with every method compiled), and the debugger, DAP and VM-flag tests
+- ✅ Sample programs from `programs/deploy` (4 on every leg, 11 on Linux x64), then the regression suite (`programs/regression/TESTS.md` has its size) twice (at the default JIT threshold and with every method compiled), and the debugger, DAP and VM-flag tests
 - ✅ Multi-platform builds with caching
 
 ```bash
@@ -560,9 +560,11 @@ Source (.obs) → Lexer → Parser → AST → Optimizer (s0-s3) → Bytecode (.
 
 **Optimization Levels:**
 - `s0` - No optimization (fastest compile)
-- `s1` - Basic (constant folding, dead code)
-- `s2` - Moderate (common subexpressions, loop-invariant code motion, strength reduction)
-- `s3` - Aggressive (all optimizations, including method inlining) ⭐ **default**
+- `s1` - Basic (dead blocks, tail calls, getter/setter inlining, constant propagation, dead stores, constant folding)
+- `s2` - Moderate (+ common subexpressions, loop-invariant code motion, strength reduction, dead code elimination)
+- `s3` - Aggressive (+ instruction replacement, peephole, method inlining) ⭐ **default**
+
+The authoritative pass list, and what a library build skips, is [optimization_pipeline.md](../docs/optimization_pipeline.md). (`CopyProp` exists in `optimization.cpp` but nothing calls it.)
 
 ### VM Execution Flow
 ```
@@ -572,19 +574,17 @@ Bytecode → Interpreter → Hot Code Detection → JIT → Native Code (ARM64/x
 **JIT Tiering:**
 1. First 10 calls: Interpreted (`OBJECK_JIT_THRESHOLD`); a method with a loop is compiled on its first call instead
 2. After threshold: Compile to native code
-3. Optimizations: Register allocation, instruction combining, branch prediction
+3. What the code generators do (register allocation, local register caching, constant folding, direct compiled-to-compiled calls) is listed in [vm/arch/jit/README.md](vm/arch/jit/README.md); there is no deoptimization and no recompilation at a higher tier
 
 ### Memory Management
 ```
 Stack: Local variables, call frames
-Heap: Objects, arrays (managed by GC)
-GC: Mark-and-sweep with generational collection
+Nursery: young objects, bump-allocated, moved on survival
+Old generation: promoted objects, every array, native allocations; swept in place
+GC: generational, stop-the-world, mark-and-sweep
 ```
 
-**GC Improvements (v2026.2):**
-- O(1) object lookups (hash-based)
-- In-place sweeping (reduced memory moves)
-- Improved ARM64 performance
+The old generation is an open-addressing address set (`PtrSet`), so "is this word an object?" is an O(1) lookup that never dereferences the word. The invariants, the heap verifier and the limits are in [vm/arch/README.md](vm/arch/README.md); the root model is in [GC_ROOTS_DESIGN.md](../docs/GC_ROOTS_DESIGN.md).
 
 ---
 
@@ -601,15 +601,6 @@ GC: Mark-and-sweep with generational collection
 
 ## Version Info
 
-**Latest release:** v2026.9.5 (September 2026)
+**Release:** see [CHANGELOG.md](../CHANGELOG.md) for the current version and the history; `obc --version` prints the one you built.
 **License:** BSD 3-Clause
-
-**Recent improvements:**
-- Compiler TCO (tail-call optimization) and LICM (loop-invariant code motion)
-- Auto-JIT for `MTHD_CALL` with extended interpreter fast-path
-- Three-tier `select` dispatch (direct compare / linear scan / native jump table)
-- AMD64 JIT trig/float correctness fixes
-- Multi-platform CI (Linux x64/ARM64, macOS ARM64, Windows x64/ARM64)
-
-See [CHANGELOG.md](../CHANGELOG.md) for full history.
 

@@ -6,6 +6,22 @@
 > The phasing section at the end is the work plan; the API sketch is the
 > contract to review before the first line of library code.
 
+> **Checked 2026-11-18 against master `3042a96eee`: still design only.** None of the
+> planned artifacts exists in the tree: no `core/compiler/lib_src/term.obs`, no
+> `core/lib/term.obl`, no `TERM_*` trap in `core/shared/traps.h` (the enum now ends
+> with `GC_TEST_ADDRESS`, so the "append after `HTTP3_REQUEST_HDRS`" instruction in
+> section 5 is out of date: append after the last enumerator), no `term_*` regression
+> test, and no `System.Terminal` class anywhere. The release this page planned for
+> (the one after v2026.9.1) shipped without it, as did every later one. The text below
+> is the proposal as written; its source line numbers (`parser.cpp` ~2451 and ~4571,
+> `common.cpp:184`) are stale, and the dead intrinsic-parser copy it implies
+> (`Parser::ParseSystemStatement`) was deleted in `f81cdfa892`, so a new intrinsic now
+> touches the sites listed in [ADDING_AN_INTRINSIC.md](ADDING_AN_INTRINSIC.md), which
+> `tools/cicd/check_trap_handlers.py` checks. The one terminal code that does exist is
+> C++ inside the REPL's full-screen editor (`core/repl/term.h`, `screen.h`, `keymap.h`),
+> not reachable from Objeck programs. No prototype or measurement is in the repository, so
+> the estimates in section 8 are guesses, not data.
+
 ## 1. Why
 
 Objeck has no terminal support at all. There is no ANSI helper in any library,

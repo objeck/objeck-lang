@@ -123,7 +123,7 @@
         INTERP --&gt; TRAPS
     end
 
-    subgraph LIBS["Libraries · 46 sources, .obl"]
+    subgraph LIBS["Libraries · 56 sources, .obl"]
         direction TB
         CORE["lang · collections · concurrency&lt;br/&gt;regex · math · misc"]
         DOMAIN["Data · Networking · Web&lt;br/&gt;AI and ML · Media"]
@@ -270,13 +270,14 @@
     style G fill:#fff4e1
     style K fill:#e1ffe1</pre>
     <h4 id="optimization-levels">Optimization Levels</h4>
+    <p>The authoritative per-level pass list is <a href="https://github.com/objeck/objeck-lang/blob/master/docs/optimization_pipeline.md" target="_blank">optimization_pipeline.md</a>; this table is the summary. A <code>-tar lib</code> build stops after dead-block elimination (<code>is_lib</code> in <code>ItermediateOptimizer::OptimizeMethod</code>, <code>core/compiler/optimization.cpp</code>), and <code>--debug</code> forces s0; library code that a program links is optimized when the program is compiled, at the program's level.</p>
     <table class="ref-table">
      <thead>
       <tr><th>Level</th><th>Name</th><th>Optimizations</th><th>Use Case</th></tr>
      </thead>
      <tbody>
-      <tr><td data-label="Level"><strong>s0</strong></td><td data-label="Name">None</td><td data-label="Optimizations">No optimization</td><td data-label="Use Case">Fast compilation, debugging</td></tr>
-      <tr><td data-label="Level"><strong>s1</strong></td><td data-label="Name">Basic</td><td data-label="Optimizations">Constant folding, dead code elimination</td><td data-label="Use Case">Development builds</td></tr>
+      <tr><td data-label="Level"><strong>s0</strong></td><td data-label="Name">None</td><td data-label="Optimizations">Jump cleanup and removal of useless instructions only</td><td data-label="Use Case">Fast compilation, debugging</td></tr>
+      <tr><td data-label="Level"><strong>s1</strong></td><td data-label="Name">Basic</td><td data-label="Optimizations">+ Dead-block elimination, tail calls, getter/setter inlining, constant propagation, dead-store removal, constant folding</td><td data-label="Use Case">Development builds</td></tr>
       <tr><td data-label="Level"><strong>s2</strong></td><td data-label="Name">Moderate</td><td data-label="Optimizations">+ Common-subexpression elimination, loop-invariant code motion, strength reduction</td><td data-label="Use Case">Testing</td></tr>
       <tr><td data-label="Level"><strong>s3</strong></td><td data-label="Name">Aggressive</td><td data-label="Optimizations">+ Method inlining (not in libraries), instruction replacement, peephole optimization</td><td data-label="Use Case"><strong>Production (default)</strong></td></tr>
      </tbody>
@@ -299,12 +300,7 @@
 
     style A fill:#e1f5ff
     style M fill:#e1ffe1</pre>
-    <p><strong>Performance Impact:</strong></p>
-    <ul>
-     <li>s0 → s3: ~30-40% faster execution</li>
-     <li>s0 → s3: ~10-15% smaller bytecode</li>
-     <li>Compilation time: s0 = 1x, s3 = 1.5x</li>
-    </ul>
+    <p><strong>Performance impact:</strong> the figures that used to stand here (about 30-40% faster, 10-15% smaller bytecode, 1.5x compile time for s0 to s3) have no benchmark in the repository that reproduces them and are withdrawn. To measure the effect on your own program, compile it at each level (<code>obc -opt s0 ...</code>, <code>-opt s3 ...</code>) and time <code>obr</code> on each <code>.obe</code>; <code>docs/performance.md</code> states the methodology the project's own benchmarks use.</p>
     <p><strong>Source Files:</strong></p>
     <ul>
      <li><code>core/compiler/optimization.h/cpp</code> - Optimization engine</li>
@@ -626,7 +622,7 @@ class FaceDemo {
     <p>Uses SCRFD 10G-KPS detector + ArcFace R50 recognizer from InsightFace buffalo_l. Runs on DirectML (Windows), CPU/CUDA (Linux), CoreML (macOS).</p>
     <p><strong>Source Files:</strong></p>
     <ul>
-     <li><code>core/compiler/lib_src/*.obs</code> - Library source code (46 files)</li>
+     <li><code>core/compiler/lib_src/*.obs</code> - Library source code (56 files)</li>
      <li><code>core/lib/*.obl</code> - Compiled libraries, shipped in a release's <code>lib/</code></li>
     </ul>
     <hr class="section-end">
@@ -772,7 +768,7 @@ class FaceDemo {
     subgraph "Multi-Platform Matrix Build"
         B --&gt; D{Platform Matrix}
 
-        D --&gt;|Linux x64| E1[Ubuntu Latest]
+        D --&gt;|Linux x64| E1[ubuntu-24.04]
         D --&gt;|Linux ARM64| E4[ubuntu-24.04-arm]
         D --&gt;|macOS ARM64| E2[macos-15]
         D --&gt;|Windows x64| E3[windows-2025-vs2026]
@@ -814,13 +810,14 @@ class FaceDemo {
       <tr><th>Platform</th><th>Runner</th><th>Architecture</th><th>Compiler</th><th>Tests</th></tr>
      </thead>
      <tbody>
-      <tr><td data-label="Platform"><strong>Linux</strong></td><td data-label="Runner"><code>ubuntu-24.04</code></td><td data-label="Architecture">x64</td><td data-label="Compiler">GCC</td><td data-label="Tests">529 regression</td></tr>
-      <tr><td data-label="Platform"><strong>Linux</strong></td><td data-label="Runner"><code>ubuntu-24.04-arm</code></td><td data-label="Architecture">ARM64</td><td data-label="Compiler">GCC</td><td data-label="Tests">529 regression</td></tr>
-      <tr><td data-label="Platform"><strong>macOS</strong></td><td data-label="Runner"><code>macos-15</code></td><td data-label="Architecture">ARM64 (Apple silicon)</td><td data-label="Compiler">Clang</td><td data-label="Tests">529 regression</td></tr>
-      <tr><td data-label="Platform"><strong>Windows</strong></td><td data-label="Runner"><code>windows-2025-vs2026</code></td><td data-label="Architecture">x64</td><td data-label="Compiler">MSVC (v145)</td><td data-label="Tests">529 regression</td></tr>
-      <tr><td data-label="Platform"><strong>Windows</strong></td><td data-label="Runner"><code>windows-11-arm</code></td><td data-label="Architecture">ARM64</td><td data-label="Compiler">MSVC (v143)</td><td data-label="Tests">529 regression</td></tr>
+      <tr><td data-label="Platform"><strong>Linux</strong></td><td data-label="Runner"><code>ubuntu-24.04</code></td><td data-label="Architecture">x64</td><td data-label="Compiler">GCC</td><td data-label="Tests">the regression suite</td></tr>
+      <tr><td data-label="Platform"><strong>Linux</strong></td><td data-label="Runner"><code>ubuntu-24.04-arm</code></td><td data-label="Architecture">ARM64</td><td data-label="Compiler">GCC</td><td data-label="Tests">the regression suite</td></tr>
+      <tr><td data-label="Platform"><strong>macOS</strong></td><td data-label="Runner"><code>macos-15</code></td><td data-label="Architecture">ARM64 (Apple silicon)</td><td data-label="Compiler">Clang</td><td data-label="Tests">the regression suite</td></tr>
+      <tr><td data-label="Platform"><strong>Windows</strong></td><td data-label="Runner"><code>windows-2025-vs2026</code></td><td data-label="Architecture">x64</td><td data-label="Compiler">MSVC (v145)</td><td data-label="Tests">the regression suite</td></tr>
+      <tr><td data-label="Platform"><strong>Windows</strong></td><td data-label="Runner"><code>windows-11-arm</code></td><td data-label="Architecture">ARM64</td><td data-label="Compiler">MSVC (v143)</td><td data-label="Tests">the regression suite</td></tr>
      </tbody>
     </table>
+    <p>The suite's size is in <code>programs/regression/TESTS.md</code> (generated).</p>
     <p>Every leg builds natively and runs what it builds: the regression suite twice, at the default JIT threshold and with every method compiled on its first call (<code>OBJECK_JIT_THRESHOLD=1</code>), then the debugger, DAP and VM-flag tests. The Windows ARM64 leg used to be <strong>cross-compiled on an x64 host, which cannot execute what it builds</strong>, so its tests were skipped. That blind spot is how an ARM64-only miscompile reached six releases before anyone noticed. The release build still cross-compiles Windows ARM64 on the x64 image; CI's native leg is what tests it.</p>
     <h4 id="caching-strategy">Caching Strategy</h4>
 <pre class="mermaid">graph LR
@@ -850,10 +847,10 @@ class FaceDemo {
     <p><strong>The 10 GB ceiling is the constraint that matters.</strong> Actions caches are capped per repository, and past the cap GitHub evicts the oldest entries -- which is how a release build lost its dependency caches and gained about forty minutes. The families that grow without bound are the ones whose key embeds something that changes: CodeQL writes a ~460 MB TRAP cache per analysed <em>commit</em>, and the dependency caches re-key whenever their input hash moves. A superseded entry can never be hit again, because the key names it.</p>
     <p>A <code>prune-caches</code> job in <code>codeql.yml</code> therefore keeps only the newest few of each family, taking <code>&lt;prefix&gt;:&lt;keep&gt;</code> pairs -- currently <code>codeql-trap:3 macOS-brew-downloads:2 Linux-x64-apt:2 Linux-arm64-apt:2</code>. It keeps several rather than one because these actions restore by key <em>prefix</em>, so a recent entry still warm-starts a new run; pruning to exactly one would trade the ceiling problem for a slower build.</p>
     <h4 id="regression-test-suite">Regression Test Suite</h4>
-    <p>782 tests under <code>programs/regression/</code>, grouped by the prefix on each filename. The counts change with almost every pull request, so they are not repeated here: <code>programs/regression/TESTS.md</code> (generated) has the current number per category.</p>
+    <p>812 tests under <code>programs/regression/</code> when this was last edited (the generated <code>TESTS.md</code> is the count that stays current), grouped by the prefix on each filename. The counts change with almost every pull request, so they are not repeated here: <code>programs/regression/TESTS.md</code> (generated) has the current number per category.</p>
 <pre class="mermaid">mindmap
     root((Regression Tests
-    782 total))
+    812 total))
         Language core
             core_*
                 Arithmetic, arrays, classes, generics, strings
@@ -892,10 +889,10 @@ class FaceDemo {
     <h4 id="multithreaded-collection-cooperative-stop-the-world">Multithreaded Collection (Cooperative Stop-the-World)</h4>
     <p>With multiple threads running, a collection cannot begin until every other thread has reached a known-safe point. Objeck uses a <strong>cooperative</strong> stop-the-world scheme rather than OS thread suspension:</p>
     <ul>
-     <li><strong>Safepoints.</strong> The interpreter polls a safepoint every 1,024 instructions of its dispatch loop, and every allocation polls too. When a collection is requested, threads observe the request at their next safepoint and <strong>park</strong> until it completes. The AMD64 and ARM64 JITs emit the same poll at every loop header, so JIT-compiled code parks just as promptly; a compiled loop that starts with values still pending in registers spills them to the frame's scratch slots before it parks and reloads them after, because a register cannot be relocated.</li>
+     <li><strong>Safepoints.</strong> The interpreter polls a safepoint every 1,024 instructions of its dispatch loop, and every allocation polls too. When a collection is requested, threads observe the request at their next safepoint and <strong>park</strong> until it completes. The AMD64 and ARM64 JITs emit the same poll at every loop header, so JIT-compiled code parks just as promptly; a compiled loop that starts with values still pending in registers spills them to the frame's typed spill slots before it parks and reloads them after, because a register cannot be relocated; a reference goes to a <code>TMP_REF_*</code> slot the collector reads and relocates, an <code>Int</code> the reference map proves to a <code>TMP_VAL_*</code> slot it never reads.</li>
      <li><strong>Blocking calls.</strong> A thread about to block in a syscall (thread <code>Join</code>/sleep, socket I/O) brackets the call with <em>begin/end-blocking</em> markers so it counts as already parked — a collection never waits on a thread stuck in a blocking read.</li>
      <li><strong>Root scanning.</strong> Once all threads are parked, the collector marks from every thread's roots: static fields, each thread's full call stack <strong>including the currently-executing top-level frame</strong>, and each thread's operand stack. The set of roots scanned by the mark phase is exactly the set the fixup phase rewrites, so a live object can never be reclaimed while a reference to it survives in a parked thread's frame or operand stack.</li>
-     <li><strong>Typed and untyped roots.</strong> A frame's declared locals are walked by type, so only object slots are followed. Some frame words have no declaration and are scanned <em>conservatively</em>: a word is treated as a reference only if it is the address of a live object, and relocated only through a genuine forwarding address. These are the operand stacks, the JIT's scratch slots, and a method's <strong>and/or slot</strong>, where a conditional (<code>c ? a : b</code>) leaves its value between the branch that stores it and the load after the join. A collection can fall in that gap, so the slot is a root in interpreted and compiled frames alike; before v2026.10.2 it was walked over, and a promoted object could be read back through its old nursery address.</li>
+     <li><strong>Typed and untyped roots.</strong> A frame's declared locals are walked by type, so only object slots are followed. Some words have no declaration. The operand stacks and a method's <strong>and/or slot</strong> (where a conditional <code>c ? a : b</code> leaves its value between the branch that stores it and the load after the join) are described instead by per-method <em>reference maps</em> computed from the bytecode (<code>core/vm/arch/ref_map.h</code>): a word the map proves <code>Int</code> or <code>Float</code> is not a root and is never relocated, and a word the map types as a reference, leaves unknown or types two ways is treated as a possible reference. Such a word is a root only if it is the address of a live object, and relocated only through a genuine forwarding address. A compiled frame is read through typed spill slots (<code>TMP_REF_*</code> scanned, <code>TMP_VAL_*</code> and scratch slots never). The reference maps shipped in v2026.10.2 (interpreter) and v2026.10.3 (compiled frames); words the maps leave unknown, and stack segments above the first compiled frame on a thread, are still scanned conservatively. Before v2026.10.2 the and/or slot was not a root at all, and a promoted object could be read back through its old nursery address. The residue and the proof obligations are in <a href="doc_gc_roots.html">GC_ROOTS_DESIGN.md</a>; check them with <code>OBJECK_GC_ROOTS=audit</code>.</li>
     </ul>
     <p>The collector remains generational and non-OS-suspending; correctness comes from complete root coverage at the safepoint, not from freezing threads mid-instruction.</p>
     <h4 id="old-generation-membership">Old-Generation Membership</h4>
@@ -981,7 +978,7 @@ class FaceDemo {
      <li><strong>Minor</strong> collections run when the nursery fills.</li>
      <li><strong>Major</strong> collections run when the old generation outgrows its threshold. After each major the next threshold is twice the live heap, never below 8 MB, so collection work stays proportional to allocation (before v2026.10.2 it grew only after eight majors in a row freed nothing, and a program holding a large table collected on nearly every array allocation).</li>
      <li><strong><code>--gc-threshold</code></strong> sets the threshold. It holds as given while a major leaves at least a quarter of it free, which is what lets a stress run such as the nightly <code>--gc-threshold=64k</code> collect every 64 KB; once more than three quarters of it survive, it scales with the live heap like the default, and returns to the given value once the live heap fits under it again.</li>
-     <li><strong>Freed old-generation blocks</strong> go to one free list per size class, four classes per power of two from 16 bytes to 4 MB, so a reuse is a single pop rather than a search.</li>
+     <li><strong>Freed old-generation blocks</strong> go to one free list per size class, four classes per power of two from 32 bytes to 4 MB (smaller blocks are not cached), so a reuse is a single pop rather than a search.</li>
     </ul>
     <p><strong>Key Characteristics:</strong></p>
     <ul>
@@ -1192,7 +1189,7 @@ finally {                           # runs on every way out, return/break/contin
     <hr class="section-end">
     <h3 id="summary">Summary</h3>
     <p>This architecture demonstrates a modern, multi-platform language implementation with:</p>
-    <p>✅ <strong>Multi-tiered Execution:</strong> Interpreter → call counting → JIT compilation ✅ <strong>Platform-Specific JIT:</strong> Optimized ARM64 and x64 code generation ✅ <strong>Efficient Memory Management:</strong> O(1) lookups, generational GC ✅ <strong>Structured Errors:</strong> <code>try</code>/<code>on</code>/<code>finally</code> over typed <code>Error</code> objects, plus <code>?-&gt;</code> recovery ✅ <strong>Rich Library Ecosystem:</strong> 46 libraries including AI/ML, web servers ✅ <strong>Modern Development Tools:</strong> REPL, debugger, LSP support ✅ <strong>Automated CI/CD:</strong> Multi-platform testing with caching ✅ <strong>Cross-Platform:</strong> Linux x64/ARM64, macOS ARM64 (Apple silicon), Windows x64/ARM64 ✅ <strong>Full Unicode:</strong> Emoji and supplementary plane characters on all platforms including Windows console</p>
+    <p>✅ <strong>Multi-tiered Execution:</strong> Interpreter → call counting → JIT compilation ✅ <strong>Platform-Specific JIT:</strong> Optimized ARM64 and x64 code generation ✅ <strong>Efficient Memory Management:</strong> O(1) lookups, generational GC ✅ <strong>Structured Errors:</strong> <code>try</code>/<code>on</code>/<code>finally</code> over typed <code>Error</code> objects, plus <code>?-&gt;</code> recovery ✅ <strong>Rich Library Ecosystem:</strong> 56 library sources including AI/ML, web servers ✅ <strong>Modern Development Tools:</strong> REPL, debugger, LSP support ✅ <strong>Automated CI/CD:</strong> Multi-platform testing with caching ✅ <strong>Cross-Platform:</strong> Linux x64/ARM64, macOS ARM64 (Apple silicon), Windows x64/ARM64 ✅ <strong>Full Unicode:</strong> Emoji and supplementary plane characters on all platforms including Windows console</p>
     <p><strong>For More Information:</strong></p>
     <ul>
      <li><a href="https://github.com/objeck/objeck-lang/blob/master/core/readme.md" target="_blank">Core Implementation README</a></li>
@@ -1203,7 +1200,7 @@ finally {                           # runs on every way out, return/break/contin
     </ul>
     <p><strong>Contributing:</strong> See <a href="https://github.com/objeck/objeck-lang/blob/master/CONTRIBUTING.md" target="_blank">CONTRIBUTING.md</a> for guidelines on improving this architecture.</p>
     <hr class="section-end">
-    <p><em>Last updated: October 2026 | Version: 2026.10.2</em></p>
+    <p><em>Last reviewed against the source: November 2026 (master <code>3042a96eee</code>)</em></p>
 
    </div>
   </main>

@@ -10,6 +10,8 @@ hundred lines of plain C with no VM involved:
 `programs/tests/win32_socket_close_race.cpp`. Tracked as
 [issue #669](https://github.com/objeck/objeck-lang/issues/669).
 
+**Status:** a documented platform behaviour with two mitigations in the library, both implemented: `TCPSocket->CloseGracefully(timeout_ms := 1000)` and `TCPSecureSocket->CloseGracefully` (`core/compiler/lib_src/lang.obs`; the drain stops on peer close, on the timeout, or after 16 reads), and connection reuse in `HttpClient` (`core/compiler/lib_src/net.obs`). There is no VM-side fix, on purpose (see "What does not fix it"). The measurements below were taken on one developer machine and one set of hosted runners; they are not re-measured by CI, and the issue is not reproduced on every Windows machine (next paragraph).
+
 **Not every Windows machine does this (measured 2026-11-02, #1443).** On GitHub's
 hosted Windows runners (x64 and arm64, plain Python sockets), a server that wrote
 its reply and closed first lost **0 of 30,000** replies, and a client that

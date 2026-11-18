@@ -5,6 +5,21 @@ suspected JIT root bugs (`jit_stale_spill_slot`, `jit_inline_local_root`) and a 
 that each patched one consequence of the same assumption. This was a design for review when it was
 written, and nothing below had landed. **Phases 0 to 6 have since merged (#1511 was the last); the status blocks that follow are the record of what was built and how it differs, and the rest of the page is the design they implemented.**
 
+**Where each phase landed (from `git log` on master):**
+
+| phase | merged | PR / commit | first release containing it (`git tag --contains`) |
+|---|---|---|---|
+| 0 `--jit=off` compiles nothing | 2026-10-30 | #1455 | v2026.10.2 |
+| 1 `RefMap` and `OBJECK_GC_ROOTS=audit` | 2026-10-30 | #1466 | v2026.10.2 |
+| 2 interpreter stacks typed by the maps | 2026-10-30 | #1470 (`368f94aff5`, issue #1452) | v2026.10.2 |
+| 3 AMD64 typed spill slots (layout header first) | 2026-11-01 | #1496 (layout), #1504 (`dbd77de2f3`) | v2026.10.3 |
+| 4 ARM64 typed spill slots | 2026-11-01 | #1506 (`ff7bde646e`) | v2026.10.3 |
+| 6 (heap side) `Int[]` tag | 2026-11-01 | #1510 (`882356fdcb`) | v2026.10.3 |
+| 5 (narrower than designed) | 2026-11-01 | #1511 (`632e0702f7`) | v2026.10.3 |
+| stable instance IDs | 2026-10-30 | #1472 (`8c3d0e2e56`) | v2026.10.2 |
+
+Phase 2 has no status block of its own below: it did what §7 says (the collector skips an interpreter operand-stack word, and an and/or slot, that the map types `Int` or `Float`, on a thread whose frames the maps account for; everything else is still marked and relocated). Two later fixes bear on it: `9054c5276e` (2026-10-31) stops typing the words above the first frame that compiled code sits under, and #1475/#1476 (section 27 of `run_vm_flag_tests.py`) corrected the maps for compiled code that calls back into the interpreter. **Two items the table-of-phases below promised did not land:** the randomized `gc_root_coverage` test (§9) was never written (`grep -r gc_root_coverage` finds only this page), and the `jit_inline_local_root` test was dropped, as §3.2 predicted. Neither the verifier modes nor the audit replace the first: the audit shows the maps agree with the live stacks on the regression suite, which is weaker than a generated adversarial program.
+
 **Status, 2026-10-30.** The user chose the full redesign over a targeted fix.
 - **Phase 0 is merged** (#1455): `--jit=off` now compiles nothing.
 - **Phase 1 is built**, on branch `gc-roots/phase1`. What changed against this document:
@@ -120,7 +135,9 @@ The untyped words are:
 - the interpreter's operand stacks;
 - the and/or slot;
 - a fixed window of `JIT_TMP_LOOK_BACK` (16) words beside every JIT frame, whether or not the frame
-  wrote them.
+  wrote them. (That constant no longer exists: the window survives only as
+  `JitFrameLayout::CONSERVATIVE_WINDOW` in `core/vm/arch/jit/jit_frame_layout.h`, scanned under
+  `OBJECK_GC_ROOTS=conservative`.)
 
 Neither JIT backend tells the collector which of those words hold a live reference at a safepoint.
 
@@ -200,8 +217,10 @@ In the test, `Leave()` spills the 32 MB array to `TMP_REG_0` across the `StaleSm
 returns. `Churn()` is then entered at the same frame pointer and never writes that slot, so every
 collection under `Churn()` finds the array there.
 
-Changing the count to `(offset >> 3) + 10` makes s0 pass. That one-line change is kept only as
-evidence, on the local branch `scratch/amd64-tmp-reg0-entry-zeroing-evidence`; it is not the fix. The
+Changing the count to `(offset >> 3) + 10` makes s0 pass. That one-line change was kept as
+evidence on a scratch branch and was **later merged** as `e029e13dc7` (2026-10-30, "JIT (AMD64): entry
+zeroes TMP_REG_0 too"), ahead of the layout header (`abc8c874c4`) that derives the count from the slot
+offsets; it is a fix of path 1 only. The
 main checkout's deploy build from 2026-10-22, which has the same count, passes the same test, so frame placement decides whether this path
 triggers. The 10-24 call-stack change (13daaacfb2) is the likely trigger; this was not bisected.
 
@@ -273,8 +292,14 @@ Run with `--nursery=64k`, 2,000 iterations, no `native`:
 With the default 128 MB nursery it passes, because no minor collection lands in the window. The
 2026-10-22 binary fails the same way, so this is not a regression of this cycle.
 
-A related but separate problem: an instance ID is an address, so it changes when the object is
-promoted. That is an identity-stability bug, out of scope here.
+A related but separate problem: an instance ID was an address, so it changed when the object was
+promoted. **Resolved after this page was written:** `GetInstanceID` now returns a number from a counter
+that never repeats, kept in a table the collector re-keys as it moves objects (`8c3d0e2e56`, PR #1472,
+2026-10-30; `MemoryManager::GetInstanceId`). A consequence for reading this section: Objeck code can no
+longer produce an `Int` equal to an object's address, so the reproducer above has no trigger on a
+current build. The property is tested with a test-only hook, `Runtime->TestAddressOf(o)`, live only when
+`OBJECK_GC_TEST_HOOKS=1` (PR #1473; `gc_address_int_pending.obs`, section 28 of
+`programs/regression/run_vm_flag_tests.py`).
 
 ## 4. The nine patches, traced to the assumption each worked around
 
@@ -342,14 +367,18 @@ collection happens. No word is ever relocated on a guess.
 
 ### 5.3 Conservative scanning afterwards
 
-There is none in frame or stack root discovery. The old scan survives in one place: the audit mode
+**As designed**, there is none in frame or stack root discovery. **As built it is not zero**: operand-stack
+words the maps type `unknown` or `conflict`, and the segments above the first compiled frame on a thread,
+are still scanned and relocated on a guess (see the phase 5 status block above), so the claim "no word is
+ever relocated on a guess" holds for declared locals, typed spill slots, the and/or temp and `Int[]`
+elements, not for every operand-stack word. The old scan survives in one place: the audit mode
 `OBJECK_GC_ROOTS=audit`, which runs the conservative scan beside the precise one and reports any
 allocated word the conservative scan would mark that the precise scan did not. That is the migration
 safety net. During phases 1-4 it reports, and it never changes what is marked.
 
 ## 6. How live references are reported
 
-### 6.1 One shared analysis: `RefMap` (in `jit_common`)
+### 6.1 One shared analysis: `RefMap` (built in `core/vm/arch/ref_map.h`; the heading kept the original plan's `jit_common`)
 
 The bytecode does not carry reference types on the stack. `LOAD_INT_VAR` loads objects and integers
 alike, and `Int[]` and object arrays share `INT_TYPE`. So the first piece is an abstract interpretation
@@ -412,13 +441,13 @@ tests (`gc_*_stress`, `jit_gc_stress`, `gc_mt_small_nursery_stress`, the nightly
 
 | phase | content | fixes | risk |
 |---|---|---|---|
-| **0** | Fix `--jit=off` so it disables `native` compilation too, or rename its meaning; the differential's `s0/off` depends on it. Add the measurement baseline (§8). | the evidence gap in §2.1 | low |
-| **1** | `RefMap` analysis (`core/vm/arch/ref_map.h`, header-only so no build file changes) plus the `OBJECK_GC_ROOTS=audit` report-only mode. Report how often `unknown` occurs per suite. No behaviour change. | nothing yet; measures the design | low |
-| **2** | Interpreter operand stacks and the interpreted and/or slot marked and relocated by `RefMap`; audit traps that hold references across allocations. Lands `gc_int_not_relocated` (interpreter configurations). | §3.3 in interpreted code; retires 9cdc656566's interpreter half | medium |
+| **0** | (merged, #1455) Fix `--jit=off` so it disables `native` compilation too, or rename its meaning; the differential's `s0/off` depends on it. Add the measurement baseline (§8). | the evidence gap in §2.1 | low |
+| **1** | (merged, #1466) `RefMap` analysis (`core/vm/arch/ref_map.h`, header-only so no build file changes) plus the `OBJECK_GC_ROOTS=audit` report-only mode. Report how often `unknown` occurs per suite. No behaviour change. | nothing yet; measures the design | low |
+| **2** | (merged, #1470) Interpreter operand stacks and the interpreted and/or slot marked and relocated by `RefMap`; audit traps that hold references across allocations. Lands `gc_int_not_relocated` (interpreter configurations). | §3.3 in interpreted code; retires 9cdc656566's interpreter half | medium |
 | **3** | AMD64: typed spill areas (`TMP_REF_*` / `TMP_VAL_*` / `TMP_SCR_*`), the kind read from `RefMap` at the spill site, clear after reload, entry zeroing of the reference slots; `CheckJitRoots`/`FixupRoots` walk them by type on x64. Lands `jit_stale_spill_slot` at s3 and the JIT configurations of `gc_address_int_pending`. **Built** (see the status note). | §3.1 paths 1 and 2, §3.3 compiled, on AMD64 | medium-high (frame constants) |
 | **4** | ARM64: the same. Compile-checked locally with `cl /Zs` and the cross toolchain; proven on CI's arm64 legs. **Built** (see the status note). | the same, on ARM64 | medium-high |
-| **5** | Remove `JIT_TMP_LOOK_BACK` and every `CheckUntypedSlot`/`FixupSlot` call on frame and stack words. Delete the dead JIT inliner (`ProcessInlineMethod`, `CanInlineMethod`, `extra_inline_space`). Remove the symptom code made redundant: the conservative and/or marking (9cdc656566) and the window spill comment paths in the loop safepoints (613e68a63f/8617fda009, now `TMP_REF_*`). Demote the conservative-word class validation (181d478f70) and the `FixupSelf` checks (4542ec7e41) to verifier assertions. | the whole class | medium |
-| **6** | Heap side: a reference type for closure capture blocks, retiring 193f076fdd's conservative dirty-block path. Separately, stable instance IDs. | 193f076fdd(b); ID identity | medium |
+| **5** | (merged, #1511, narrower: see the status block) Remove `JIT_TMP_LOOK_BACK` and every `CheckUntypedSlot`/`FixupSlot` call on frame and stack words. Delete the dead JIT inliner (`ProcessInlineMethod`, `CanInlineMethod`, `extra_inline_space`). Remove the symptom code made redundant: the conservative and/or marking (9cdc656566) and the window spill comment paths in the loop safepoints (613e68a63f/8617fda009, now `TMP_REF_*`). Demote the conservative-word class validation (181d478f70) and the `FixupSelf` checks (4542ec7e41) to verifier assertions. | the whole class | medium |
+| **6** | (heap side merged, #1510; stable instance IDs merged, #1472) Heap side: a reference type for closure capture blocks, retiring 193f076fdd's conservative dirty-block path. Separately, stable instance IDs. | 193f076fdd(b); ID identity | medium |
 
 5d92132687's `GC_TRACED_BIT` is kept either way. It makes typed tracing of a closure happen exactly once,
 which stays useful with precise roots.
@@ -462,8 +491,8 @@ pattern this design replaces. It stays on the evidence branch unless the user de
 |---|---|---|
 | `jit_stale_spill_slot` (rewritten without `native`, so `--jit=off` is a true control; checks both the s0 and s3 paths) | §3.1 | phase 3 (AMD64), extended in 4 |
 | `gc_int_not_relocated`, the §3.3 reproducer, all four configurations at `--nursery=64k` | §3.3 | phase 2 (interpreter), phase 3 (JIT) |
-| `jit_inline_local_root` | nothing today (§3.2) | not landed; phase 5 deletes the code it would test |
-| **`gc_root_coverage`, randomized** (below) | the whole class | phase 1 runs it report-only; it gates from phase 2 |
+| `jit_inline_local_root` | nothing today (§3.2) | not landed; phase 5 deleted the code it would test |
+| **`gc_root_coverage`, randomized** (below) | the whole class | **never written** (design only); the audit and the fixtures in `run_vm_flag_tests.py` sections 24 to 28 and 31 stand in |
 
 `gc_root_coverage` generates, from a seed (printed on failure, reproducible with `--seed`), methods
 that:
@@ -502,3 +531,41 @@ report zero differences across the suite before phase 2 starts.
   cannot reach it, because the array header is what lacks the type. It needs a distinct
   reference-array tag from the compiler, which is phase 6 territory (the heap side), and is not fixed
   in phases 1-5.
+
+## 11. How to check
+
+All of these are environment variables read once at start-up (`core/vm/arch/memory_verify.cpp`,
+`core/vm/arch/memory.cpp`); none changes program output.
+
+```
+OBJECK_GC_ROOTS=audit        obr --nursery=256k prog.obe   # at every collection, compare the maps with the live stacks
+OBJECK_GC_ROOTS=conservative obr prog.obe                  # the old guess: negative control for the fixtures below
+OBJECK_GC_ROOTS_DUMP=<name>  obr prog.obe                  # print the map of every method whose name contains <name>
+OBJECK_JIT_REPORT=1 obr --jit=1 prog.obe                   # per method: compiled, and spills sites= ref= val= unknown= mismatch=
+OBJECK_GC_VERIFY=checkmark   obr --nursery=64k prog.obe    # typed heap verifier (arch/README.md lists its invariants)
+python programs/regression/run_vm_flag_tests.py <bin_dir> --only gc_roots   # sections 24 to 28 and 31
+```
+
+The fixtures that make the claims above falsifiable are under `programs/regression/vm_flag_fixtures/`
+(`jit_stale_spill_slot`, `gc_address_int_pending`, `gc_address_int_array`) and `programs/regression/`
+(`gc_int_not_relocated`, `gc_roots_jit_bridge`, `gc_instance_id_stable`). Each is expected to fail under
+`OBJECK_GC_ROOTS=conservative` where the section says so. The numbers in the status blocks (771 tests,
+293,818 collections, 42 unknown words, and so on) were measured by the author on the dates given and are
+reproduced by running the audit over the suite with the settings named in each block; they are not
+re-measured by CI.
+
+## 12. Known limits of this design
+
+- `RefMap` is a type inference over bytecode, not a proof: a value nothing types stays `unknown` and a
+  value typed two ways is `conflict`, and the collector treats both as references. Soundness depends on
+  the maps never calling a reference an `Int`; the audit reports each word typed `Int` or `Float` that
+  points at an object; the suite-wide audit block above records that every such word was the
+  deliberate `gc_conservative_bad_class` case.
+- The stack effects in `ref_map.h` mirror the handlers in `dispatch.cpp` by hand. A handler that changes
+  its stack effect without a matching change there shifts every word above it; the audit's "segments add
+  up" check is what catches that, and only on programs that run under it.
+- A native library or a trap that holds a reference across an allocation must keep it on the operand
+  stack (§5.2 rule 9). Nothing enforces that; #1457 was three handlers that did not.
+- Compiled frames on a thread above the first compiled frame, and the words the maps leave `unknown`, are
+  scanned conservatively, so an address-valued integer there can still be retained or rewritten.
+

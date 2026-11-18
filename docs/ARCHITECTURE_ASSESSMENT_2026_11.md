@@ -4,6 +4,33 @@ An assessment of the language, compiler, runtime, JIT and collector, debugger, l
 
 **Status: snapshot.** Several findings have been fixed since: 1.1 (the dead parser copy is gone), 2.3 (`VMContext` carries `abi_version` and `struct_size`), 2.2 (the loader returns an error instead of calling `exit(1)`; the compiler back end throws `CompilerFatal`, with one `exit(1)` left in `linker.cpp`), part of 2.1 (`Loader::Verify` exists; see [SECURITY_MODEL.md](SECURITY_MODEL.md)), 5.1 (the nightly workflow's cron is live) and 1.4, 3.1 and 3.2 (the shared frame-layout header, typed compiled-frame slots and the `Int[]` tag: phases 3, 4 and 6 of [GC_ROOTS_DESIGN.md](GC_ROOTS_DESIGN.md)). The tables below are left as they were written.
 
+### Resolved since the snapshot
+
+Checked against master `3042a96eee` on 2026-11-18 with `git log`; the findings below are unchanged. Dates are commit dates. "Part" means the finding's recommendation was done in part and the remainder still applies.
+
+| Finding | State | Date and commit |
+|---|---|---|
+| 1.1 dead parser copy | fixed | 2026-10-31, `f81cdfa892` (PR #1486) |
+| 1.2 traps and intrinsics must agree by hand | part: a CI check that every trap has a handler and every intrinsic is parsed, and an "adding an intrinsic" page. The one-table generator was not built | 2026-10-31, `b3275aaf3d` |
+| 1.3 version bump | part: a check that every committed `.obl` carries `VER_NUM`. The bump still touches many files | 2026-10-31, `c39eed9c98` |
+| 1.4 JIT frame layout | fixed: one header with `static_assert`s | 2026-10-31, `abc8c874c4` (then `de8973ad4a`) |
+| 2.1 no bytecode verifier | part: `Loader::Verify` and a libFuzzer target on `Loader::Load`; the trust model is [SECURITY_MODEL.md](SECURITY_MODEL.md). Operand-stack depth and types are still unchecked; a stack check is in open PR #1598 | 2026-11-01, `6ec3d1fd10`, `44d81b8052` |
+| 2.2 `exit(1)` in the loader and compiler back end | fixed except one `exit(1)` in `linker.cpp` | 2026-11-01, `6ec3d1fd10` (loader), `fd4999d71d` (compiler, PR #1507) |
+| 2.3 no ABI version | fixed: `abi_version` and `struct_size` (the scoped parking wrapper `APITools_Parked` exists in `lib_api.h`) | 2026-10-31, `8b0f24cf68` |
+| 3.1 compiled frames scanned conservatively | fixed for typed spill slots on AMD64 and ARM64 (the ARM64 half was proven on CI, not locally) | 2026-10-31, `dbd77de2f3`; 2026-11-01, `ff7bde646e` |
+| 3.2 `Int[]` shares `INT_TYPE` | fixed for compiler-allocated `Int[]` (`NEW_INT_ARY`); an `Int[]` a native or trap allocates keeps `INT_TYPE` | 2026-11-01, `882356fdcb` (PR #1510) |
+| 4.1 `operand3` plain data | documented, not changed: the run-time patch protocol is written down in `common.h`; the fields are still plain | 2026-10-31, `d5fd9ea58c` |
+| 4.2 DAP `seq` and JSON dump | fixed: outgoing `seq` is stamped under a mutex and the dump uses `error_handler_t::replace` | 2026-10-31, `72fdc82fd7` |
+| 4.3 per-instruction debugger lock | fixed: a lock-free hook fast path; the same change added `pause` | 2026-10-31, `21326c2ce5` (PR #1495) |
+| 4.4 worker thread has no `catch` | fixed for worker-thread exceptions | 2026-10-31, `4e60675ef8` |
+| 5.1 nightly cron commented out | fixed: `cron: '23 7 * * *'` | 2026-10-31, `1eee910b34` |
+| 5.2 no sanitizer job | part: the `.obe` loader is fuzzed nightly under ASan and UBSan; there is still no sanitizer build of the compiler or VM and no golden AST/IR dumps | 2026-11-17, `53a9e0bbd3`, `7e3475ebee` |
+| 5.3 mutable action tags, `ubuntu-latest` | part: every action is pinned to a commit SHA and Dependabot covers actions; `ubuntu-latest` remains in 4 workflow files (`ci-build`, `nightly-hardening`, `release-build`, `soak`) | 2026-10-31, `0e7389ad87` |
+| 5.4 release `version.h` heredoc | part: `version.h` is generated from `version.in`; the release still rebuilds from the tag rather than promoting tested artifacts | 2026-11-02, `4280040bec` (PR #1538) |
+| 8.2 no way to interrupt a program | part: DAP `pause`; the REPL still has no Ctrl+C handling (no `SIGINT` in `core/repl`) | 2026-10-31, `21326c2ce5` |
+
+Not re-checked and so not marked: 1.5, 1.6, 2.4, 2.5, 3.3, 3.4, 4.5, 5.5, 5.6, and sections 6 to 8 other than 8.2.
+
 ## How this was done
 
 Seven reviewers each read one component with no ability to build or run anything: compiler and language, VM runtime and native interface, JIT and garbage collector, debugger and command-line tools, language server, standard library, and build/test/release engineering. The coordinator then checked the claims below that could be checked cheaply, and ran one experiment of its own (the `Int[]` finding).

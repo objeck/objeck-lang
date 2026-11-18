@@ -8,23 +8,24 @@ The Objeck Virtual Machine is a high-performance stack-based VM with JIT compila
 
 - **JIT Compilation**: Converts bytecode to native machine code for performance
 - **Stack-Based Architecture**: Simple, efficient execution model
-- **Garbage Collection**: Generational mark-and-sweep collector with optimization
+- **Garbage Collection**: generational (nursery + old generation), moving for young objects, stop-the-world, mark-and-sweep; see the soundness notes under [Memory Management](#memory-management)
 - **Cross-Platform**: Unified codebase for Windows, Linux, and macOS
-- **Multi-Architecture**: Native support for x64 and ARM64
+- **Multi-Architecture**: JIT back ends for x64 (AMD64) and ARM64
 - **Platform Integration**: Direct access to OS capabilities (networking, files, threading)
-- **Memory Safety**: Automatic memory management with no manual deallocation
+- **Automatic memory management**: no manual deallocation in Objeck code. This is not a safety guarantee against a hostile program: the VM trusts the `.obe` and native libraries (see [Trust and verification](#trust-and-verification))
 - **Runtime Errors**: an error prints its message and the call stack and ends the program, unless it happens inside a `Try()` (`?->`) chain, which yields `Nil` instead
 
 ## Supported Platforms
 
 | Platform | Architecture | Status |
 |----------|--------------|--------|
-| Windows | x64 (AMD64) | ✅ Supported |
-| Linux | x64 (AMD64) | ✅ Supported |
-| macOS | x64 (AMD64) | ✅ Supported |
-| Linux | ARM64 | ✅ Supported |
-| macOS | ARM64 (Apple Silicon) | ✅ Supported |
-| Raspberry Pi 3/4/5 | ARM64 | ✅ Supported |
+| Windows | x64 (AMD64) | Built and released |
+| Windows | ARM64 | Built and released (cross-compiled on an x64 runner; `release-build.yml`) |
+| Linux | x64 (AMD64) | Built and released |
+| Linux | ARM64 (including 64-bit Raspberry Pi) | Built and released |
+| macOS | ARM64 (Apple Silicon) | Built and released |
+
+There is no macOS x64 build: the release workflow has no such leg (`.github/workflows/release-build.yml`, platforms `windows-x64`, `windows-arm64`, `linux-x64`, `linux-arm64`, `macos-arm64`), and the changelog records that an advertised Intel macOS build "has never existed". The JIT back ends are AMD64 and ARM64 only; on any other target the VM stays an interpreter. **How to check:** `OBJECK_JIT_REPORT=1 obr prog.obe` reports, on stderr, each method the JIT compiled or handed back to the interpreter and why (`docs/cli_options.md`).
 
 ## Usage
 
@@ -41,8 +42,8 @@ obr -lib /path/to/libs myprogram.obe
 # Allow deeper recursion (default 16384 frames; `obr` with no arguments lists every option)
 obr --call-depth=100000 myprogram.obe
 
-# Display version
-obr --version
+# Display the toolchain version (obr has no version flag; the compiler does)
+obc --version
 ```
 
 ## Architecture
@@ -57,7 +58,7 @@ obr --version
 
 2. **JIT Compiler**
    - Converts hot methods to native machine code (auto-JIT by call count)
-   - Architecture-specific code generation (x64 whitelist, ARM64 blacklist)
+   - Architecture-specific code generation; each back end has a `CanJitInstruction` whitelist, and a method containing an opcode the whitelist lacks stays interpreted
    - Local register caching; direct JIT-to-JIT calls (method inlining is the compiler's `-opt s3` pass, not the JIT's)
    - Direct JIT-to-JIT calling via call-site patching (`MTHD_CALL` → `MTHD_CALL_JIT`)
    - See [JIT internals](arch/jit/README.md)
@@ -89,7 +90,7 @@ Bytecode → Interpreter → [Hot Path Detection] → JIT Compiler → Native Co
 The VM uses call-count-driven auto-JIT (no multi-tier recompilation):
 1. **Interpretation**: methods start in the bytecode interpreter
 2. **Counting**: each call increments a per-method counter
-3. **Compilation**: at the threshold (`OBJECK_JIT_THRESHOLD`, default 10) the method's next entry compiles to native code, after a `CanJitInstruction` pre-scan
+3. **Compilation**: at the threshold (`OBJECK_JIT_THRESHOLD`, default 10) the method's next entry compiles to native code, after a `CanJitInstruction` pre-scan. A method that contains a loop compiles on its first call instead, whenever the threshold is the default or lower (`JitEagerLoops` in `arch/jit/jit_common.h`); `main` is included
 4. **Patching**: call sites are rewritten to dispatch straight to native code (`MTHD_CALL` → `MTHD_CALL_JIT`)
 5. **Reuse**: compiled native code is cached on the method
 
@@ -105,13 +106,26 @@ The VM uses a generational mark-and-sweep collector:
 - **Minor vs. major GC**: minor collections scan the remembered set (via a write barrier) + roots and recycle the nursery; major collections sweep both generations
 - **Parallel mark**: root scanning fans out across threads with lock-free CAS mark bits. A collection is serialized against other collections (a `trylock` guards re-entry) and runs **cooperative stop-the-world**: other mutator threads park at safepoints (in the dispatch loop, at allocation, and across blocking syscalls such as thread join/sleep and socket I/O) for the duration of the collection
 
+**Status:** implemented and on by default. The two-generation collector first landed 2026-02-16 (`868eeb8dbf`); PR #574 (merged 2026-06-24, 2026.6.3) enabled minor collections together with the JIT write barriers; typed root maps for interpreted and compiled frames are PRs #1466 to #1511 (see [GC roots](../../docs/GC_ROOTS_DESIGN.md)). The 128 MB nursery default is `YOUNG_REGION_SIZE` in `arch/memory.h`; `--nursery=<size>` (64k to 128m) or `OBJECK_NURSERY` lowers the usable limit, and `--gc-threshold` fixes the old-generation trigger.
+
+**Invariants the collector relies on** (details and the evidence for each in [arch/README.md](arch/README.md)):
+- Every object is preceded by three header words, `mem[-1]` flags (mark, old, remembered-set, closure-traced bits), `mem[-2]` class pointer (arrays: byte size) and `mem[-3]` memory type; a young object also has a size word before them. `EXTRA_BUF_SIZE` is 3.
+- A collection runs only with every other mutator parked (cooperative stop-the-world); a thread that is mid-allocation is never parked, so the collector never sees a block between its bump and its header write.
+- Any store of a reference into an old object goes through a write barrier (interpreter and both JITs), or a minor collection can free a live young object.
+- Roots are exact for static memory, declared locals and fields. Operand-stack words are a **conservative** root set, narrowed by per-method reference maps: a word is skipped only when the map proves it `Int` or `Float`; a word the map leaves unknown or conflicting is treated as a possible reference.
+- Native libraries that hand an object back through an argument array allocate it in the old generation (`AllocateObjectNative`, `force_old`), because a plain store there runs no write barrier.
+
+**Limitations today:** arrays are never allocated in the nursery and never move; an `Int[]` that a native library or a trap allocates (rather than the compiler's `NEW_INT_ARY`) is still scanned conservatively; operand-stack words above the first compiled frame on a thread are still scanned conservatively. See [GC roots](../../docs/GC_ROOTS_DESIGN.md) for the exact residue.
+
+**How to check:** `OBJECK_GC_STATS=1 obr prog.obe` prints a summary at exit (minor and major counts, pause, promoted bytes); `OBJECK_GC_VERIFY=1 obr prog.obe` runs the heap verifier every collection (`checkmark` adds a mark-completeness check; `OBJECK_GC_VERIFY_INJECT=field|barrier|mark` plants a fault to show the verifier catches it); `OBJECK_GC_ROOTS=audit` checks the reference maps against the live stacks, and `OBJECK_GC_ROOTS=conservative` restores the old scan as a negative control; `--nursery=64k` makes collections frequent.
+
 ### Object Layout
 
 Objects are laid out in memory with:
-- Object header (type/class pointer, packed GC mark/generation/remembered-set bits)
-- Instance variables
-- Array data (for arrays)
-- Alignment padding
+- Size word (young objects only, used when promoting)
+- Three header words: flags (mark, old-generation, remembered-set, closure-traced bits), class pointer, memory type
+- Instance variables, one word each (two for a function reference); a zero-field class is padded to one word so the object's address stays inside its own block (`MemoryManager::ObjectBlockSize`)
+- For arrays: the element count, the dimension count and the dimension sizes, then the elements
 
 ## Threading Model
 
@@ -185,8 +199,12 @@ open core/vm/xcode/VM.xcodeproj
 
 - **Language**: C++ with STL
 - **Code Generation**: Custom assembler for x64 and ARM64
-- **Line Count**: ~50,000 lines of C++ code
+- **Line Count**: about 55,000 lines of C++ in `core/vm` (`wc -l` over the `.cpp` and `.h` files, JIT and collector included)
 - **External Dependencies**: mbedTLS (TLS/crypto); on Linux and macOS, static nghttp2 (HTTP/2) and ngtcp2+nghttp3+AWS-LC (HTTP/3) from `tools/deps/build_quic_deps.sh`
+
+## Trust and verification
+
+An `.obe` is native-equivalent code: the VM does not sandbox it. After loading, `Loader::Verify` (PR #1512, 2026-11-01) checks jump targets, local and field ids, class and method ids, trap ids and that the last instruction ends the method; section 30 of `programs/regression/run_vm_flag_tests.py` mutates one operand per rule. It does **not** check operand-stack depth or types; a load-time stack check built on the reference-map builder (`arch/ref_map.h`) is in an open PR (#1598), not yet in this tree. See [SECURITY_MODEL.md](../../docs/SECURITY_MODEL.md).
 
 ## Debugging
 

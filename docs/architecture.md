@@ -68,7 +68,7 @@ flowchart LR
         INTERP --> TRAPS
     end
 
-    subgraph LIBS["Libraries · 46 sources, .obl"]
+    subgraph LIBS["Libraries · 56 sources, .obl"]
         direction TB
         CORE["lang · collections · concurrency<br/>regex · math · misc"]
         DOMAIN["Data · Networking · Web<br/>AI and ML · Media"]
@@ -230,10 +230,12 @@ flowchart LR
 
 ### Optimization Levels
 
+The authoritative per-level pass list is [optimization_pipeline.md](optimization_pipeline.md); this table is the summary. A `-tar lib` build stops after dead-block elimination (`is_lib` in `ItermediateOptimizer::OptimizeMethod`, `core/compiler/optimization.cpp`), and `--debug` forces s0; library code that a program links is optimized when the program is compiled, at the program's level.
+
 | Level | Name | Optimizations | Use Case |
 |-------|------|---------------|----------|
-| **s0** | None | No optimization | Fast compilation, debugging |
-| **s1** | Basic | Constant folding, dead code elimination | Development builds |
+| **s0** | None | Jump cleanup and removal of useless instructions only | Fast compilation, debugging |
+| **s1** | Basic | + Dead-block elimination, tail calls, getter/setter inlining, constant propagation, dead-store removal, constant folding | Development builds |
 | **s2** | Moderate | + Common-subexpression elimination, loop-invariant code motion, strength reduction | Testing |
 | **s3** | Aggressive | + Method inlining (not in libraries), instruction replacement, peephole optimization | **Production (default)** |
 
@@ -261,10 +263,7 @@ graph TD
     style M fill:#e1ffe1
 ```
 
-**Performance Impact:**
-- s0 → s3: ~30-40% faster execution
-- s0 → s3: ~10-15% smaller bytecode
-- Compilation time: s0 = 1x, s3 = 1.5x
+**Performance impact:** the figures that used to stand here (about 30-40% faster, 10-15% smaller bytecode, 1.5x compile time for s0 to s3) have no benchmark in the repository that reproduces them and are withdrawn. To measure the effect on your own program, compile it at each level (`obc -opt s0 ...`, `-opt s3 ...`) and time `obr` on each `.obe`; `docs/performance.md` states the methodology the project's own benchmarks use.
 
 **Source Files:**
 - `core/compiler/optimization.h/cpp` - Optimization engine
@@ -655,7 +654,7 @@ class FaceDemo {
 Uses SCRFD 10G-KPS detector + ArcFace R50 recognizer from InsightFace buffalo_l. Runs on DirectML (Windows), CPU/CUDA (Linux), CoreML (macOS).
 
 **Source Files:**
-- `core/compiler/lib_src/*.obs` - Library source code (46 files)
+- `core/compiler/lib_src/*.obs` - Library source code (56 files)
 - `core/lib/*.obl` - Compiled libraries, shipped in a release's `lib/`
 
 ---
@@ -828,7 +827,7 @@ graph TB
     subgraph "Multi-Platform Matrix Build"
         B --> D{Platform Matrix}
 
-        D -->|Linux x64| E1[Ubuntu Latest]
+        D -->|Linux x64| E1[ubuntu-24.04]
         D -->|Linux ARM64| E4[ubuntu-24.04-arm]
         D -->|macOS ARM64| E2[macos-15]
         D -->|Windows x64| E3[windows-2025-vs2026]
@@ -870,11 +869,13 @@ graph TB
 
 | Platform | Runner | Architecture | Compiler | Tests |
 |----------|--------|--------------|----------|-------|
-| **Linux** | `ubuntu-24.04` | x64 | GCC | 529 regression |
-| **Linux** | `ubuntu-24.04-arm` | ARM64 | GCC | 529 regression |
-| **macOS** | `macos-15` | ARM64 (Apple silicon) | Clang | 529 regression |
-| **Windows** | `windows-2025-vs2026` | x64 | MSVC (v145) | 529 regression |
-| **Windows** | `windows-11-arm` | ARM64 | MSVC (v143) | 529 regression |
+| **Linux** | `ubuntu-24.04` | x64 | GCC | the regression suite |
+| **Linux** | `ubuntu-24.04-arm` | ARM64 | GCC | the regression suite |
+| **macOS** | `macos-15` | ARM64 (Apple silicon) | Clang | the regression suite |
+| **Windows** | `windows-2025-vs2026` | x64 | MSVC (v145) | the regression suite |
+| **Windows** | `windows-11-arm` | ARM64 | MSVC (v143) | the regression suite |
+
+The suite's size is in `programs/regression/TESTS.md` (generated).
 
 Every leg builds natively and runs what it builds: the regression suite twice, at the default
 JIT threshold and with every method compiled on its first call (`OBJECK_JIT_THRESHOLD=1`), then
@@ -929,12 +930,12 @@ the ceiling problem for a slower build.
 
 ### Regression Test Suite
 
-782 tests under `programs/regression/`, grouped by the prefix on each filename. The counts change with almost every pull request, so they are not repeated here: `programs/regression/TESTS.md` (generated) has the current number per category.
+812 tests under `programs/regression/` when this was last edited (the generated `TESTS.md` is the count that stays current), grouped by the prefix on each filename. The counts change with almost every pull request, so they are not repeated here: `programs/regression/TESTS.md` (generated) has the current number per category.
 
 ```mermaid
 mindmap
     root((Regression Tests
-    782 total))
+    812 total))
         Language core
             core_*
                 Arithmetic, arrays, classes, generics, strings
@@ -986,8 +987,9 @@ stop-the-world scheme rather than OS thread suspension:
   until it completes. The AMD64 and ARM64 JITs emit the same poll at every loop
   header, so JIT-compiled code parks just as promptly; a compiled loop that
   starts with values still pending in registers spills them to the frame's
-  scratch slots before it parks and reloads them after, because a register
-  cannot be relocated.
+  typed spill slots before it parks and reloads them after, because a register
+  cannot be relocated; a reference goes to a `TMP_REF_*` slot the collector reads and
+  relocates, an `Int` the reference map proves to a `TMP_VAL_*` slot it never reads.
 - **Blocking calls.** A thread about to block in a syscall (thread `Join`/sleep,
   socket I/O) brackets the call with *begin/end-blocking* markers so it counts as
   already parked — a collection never waits on a thread stuck in a blocking read.
@@ -998,15 +1000,22 @@ stop-the-world scheme rather than OS thread suspension:
   so a live object can never be reclaimed while a reference to it survives in a
   parked thread's frame or operand stack.
 - **Typed and untyped roots.** A frame's declared locals are walked by type, so
-  only object slots are followed. Some frame words have no declaration and are
-  scanned *conservatively*: a word is treated as a reference only if it is the
-  address of a live object, and relocated only through a genuine forwarding
-  address. These are the operand stacks, the JIT's scratch slots, and a method's
-  **and/or slot**, where a conditional (`c ? a : b`) leaves its value between
-  the branch that stores it and the load after the join. A collection can fall
-  in that gap, so the slot is a root in interpreted and compiled frames alike;
-  before v2026.10.2 it was walked over, and a promoted object could be read
-  back through its old nursery address.
+  only object slots are followed. Some words have no declaration. The operand
+  stacks and a method's **and/or slot** (where a conditional `c ? a : b` leaves its
+  value between the branch that stores it and the load after the join) are
+  described instead by per-method *reference maps* computed from the bytecode
+  (`core/vm/arch/ref_map.h`): a word the map proves `Int` or `Float` is not a root and
+  is never relocated, and a word the map types as a reference, leaves unknown or
+  types two ways is treated as a possible reference. Such a word is a root only if
+  it is the address of a live object, and relocated only through a genuine
+  forwarding address. A compiled frame is read through typed spill slots
+  (`TMP_REF_*` scanned, `TMP_VAL_*` and scratch slots never). The reference maps
+  shipped in v2026.10.2 (interpreter) and v2026.10.3 (compiled frames); words the
+  maps leave unknown, and stack segments above the first compiled frame on a thread,
+  are still scanned conservatively. Before v2026.10.2 the and/or slot was not a
+  root at all, and a promoted object could be read back through its old nursery
+  address. The residue and the proof obligations are in
+  [GC_ROOTS_DESIGN.md](GC_ROOTS_DESIGN.md); check them with `OBJECK_GC_ROOTS=audit`.
 
 The collector remains generational and non-OS-suspending; correctness comes from
 complete root coverage at the safepoint, not from freezing threads mid-instruction.
@@ -1136,7 +1145,7 @@ mindmap
   quarters of it survive, it scales with the live heap like the default, and
   returns to the given value once the live heap fits under it again.
 - **Freed old-generation blocks** go to one free list per size class, four
-  classes per power of two from 16 bytes to 4 MB, so a reuse is a single pop
+  classes per power of two from 32 bytes to 4 MB (smaller blocks are not cached), so a reuse is a single pop
   rather than a search.
 
 **Key Characteristics:**
@@ -1427,7 +1436,7 @@ This architecture demonstrates a modern, multi-platform language implementation 
 ✅ **Platform-Specific JIT:** Optimized ARM64 and x64 code generation
 ✅ **Efficient Memory Management:** O(1) lookups, generational GC
 ✅ **Structured Errors:** `try`/`on`/`finally` over typed `Error` objects, plus `?->` recovery
-✅ **Rich Library Ecosystem:** 46 libraries including AI/ML, web servers
+✅ **Rich Library Ecosystem:** 56 library sources including AI/ML, web servers
 ✅ **Modern Development Tools:** REPL, debugger, LSP support
 ✅ **Automated CI/CD:** Multi-platform testing with caching
 ✅ **Cross-Platform:** Linux x64/ARM64, macOS ARM64 (Apple silicon), Windows x64/ARM64
@@ -1445,4 +1454,4 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines on improving this archi
 
 ---
 
-*Last updated: October 2026 | Version: 2026.10.2*
+*Last reviewed against the source: November 2026 (master `3042a96eee`)*
