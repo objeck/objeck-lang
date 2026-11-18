@@ -1,6 +1,20 @@
 # JIT: `select` jump tables (F8)
 
-**Status:** implemented on both backends, 2026-09-09 (batch 5). Item F8 of `JIT_CODEGEN_ASSESSMENT_2026_09.md`.
+**Status:** implemented on both backends, 2026-09-09 (batch 5): AMD64 in `44ce48f32b`, ARM64
+in `fca3dffff8` (PR #738, first released in v2026.9.1). Item F8 of `JIT_CODEGEN_ASSESSMENT_2026_09.md`. Sections 1 and 2 are the
+design as written before the change; the "neither JIT whitelists `JMP_TABLE`" of section 1 is
+the problem it fixed, not today's state (both `CanJitInstruction` lists now accept
+`JMP_TABLE` and `JMP_TABLE_SLOT`).
+
+**Limitations that exist today.** The compiler emits the table only for a `select` whose labels
+all fit in 32 bits (`IsIntegerSelect`) and are dense (`IsDenseInt`: `range <= 2 * labels`,
+at most 65536 wide); a one-label `select` is a compare-and-jump and any other `select`
+becomes a binary-search tree of compares (`SelectArrayTree`) -- ordinary `JMP`s, which the
+JIT always compiled. The JIT refuses a table (and so the method) in three cases, each
+recorded as a compile-failure reason: a table that runs past the method, a missing slot,
+or a selector that is not an integer immediate, register or local. The table lives inline
+after the indirect jump, so every case body must follow it in code order; the compiler's
+output guarantees that.
 
 ## 1. The problem
 
@@ -26,7 +40,7 @@ instruction index (the instruction after a label), the same currency `JMP` uses.
 Neither JIT whitelists `JMP_TABLE`, so *any method containing a dense `select`* is
 left to the interpreter whole -- parsers, tokenizers, state machines and dispatch
 loops, which are exactly the code written with `select`. (A sparse `select`
-compiles to a compare chain of ordinary `JMP`s and always was compilable.)
+compiles to a binary-search tree of compares and ordinary `JMP`s and always was compilable.)
 
 ## 2. Native shape
 
@@ -82,8 +96,11 @@ the local write-through cache is flushed before it, as before any jump.
   inside to anywhere outside the region, makes the region ineligible. The common
   case (a `select` inside a loop whose cases are inside the loop) stays eligible; a
   `break` inside a case is a plain `JMP` and gets its stub as before.
-- **JIT-level inlining** rejects control flow (`JMP`/`LBL`); `JMP_TABLE` is rejected
-  the same way, since its targets are indices into the callee.
+- **JIT-level inlining** rejected control flow (`JMP`/`LBL`), and `JMP_TABLE` the same way,
+  since its targets are indices into the callee. *Update 2026-11-18:* that AMD64 inliner was
+  dead code and was removed in `632e0702f7` (2026-11-01), and ARM64 never had one; the
+  only inliner left is the compiler's bytecode inliner (`core/compiler/optimization.cpp`),
+  which relocates a pasted callee's `JMP_TABLE`/`JMP_TABLE_SLOT` operands.
 - **A `select` on a constant** still goes through the table; the compile-time
   shortcut is not worth a second path.
 - **The compare/jump fusion** (`skip_jump`) cannot be pending at a table -- the value

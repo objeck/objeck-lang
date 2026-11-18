@@ -9,6 +9,23 @@
 > (the assessment's section 5a); and the v2026.9.1 release section 6 planned, with 9.2 to 9.5
 > since. Current below: the check-in block's corrections, next steps, Windows ARM64 notes and
 > traps; sections 2, 4a-4c, 5 and 7; and the traps in 4d. The rest is history, marked as such.
+>
+> **Re-checked 2026-11-18 (master `3042a96eee`).** Nothing in the open list has moved:
+> `core/vm/arch/jit/arm64/jit_arm_a64.cpp` still has no pin planner, entry loads or write-back
+> stubs (4a, 4b), and `core/compiler/context.cpp` still calls `SetAndOr(true)` for every
+> and/or connective, ternary, `select` and lambda (4c). What did change under this file, and
+> what a reader of the sections below should adjust for: (1) the ARM64 frame layout was reworked
+> by GC roots phase 4 (`ff7bde646e`, first in v2026.10.3; `core/vm/arch/jit/jit_frame_layout.h`
+> is now the one definition): the integer temporaries are typed `TMP_SCR_*` / `TMP_VAL_*` /
+> `TMP_REF_*` slots, the 256-byte `RED_ZONE` slack above the outgoing area is gone, and so the
+> "112 bytes plus the outgoing area" frame-growth figure in the Windows ARM64 notes is
+> out of date; (2) the compiler's inliner now accepts and/or callees (`fb9e052b18`), so 4c's
+> motivation is smaller than written; (3) Try() recovery from errors raised in compiled
+> code landed on both backends (`aa04961734`, `71ef3165c8`; `TRY_IN_JIT_DESIGN.md`), and the
+> native call site's depth check now also tests a native-stack floor (`13daaacfb2`);
+> (4) the file `docs/HANDOFF_2026_09_10.md` named below was deleted in `a32b80a933`
+> (2026-09-19); it is in git history. `TRY_START`/`TRY_END` are still absent from ARM64's
+> whitelist, so a method with a try region is still not compiled there.
 
 **Audience:** the next working session on the macOS ARM64 machine (maintainer plus agent).
 **Why:** batches 1-5 of `JIT_CODEGEN_ASSESSMENT_2026_09.md` were built on a Windows x64 box,
@@ -30,7 +47,7 @@ fixes ([#772](https://github.com/objeck/objeck-lang/pull/772),
 [#778](https://github.com/objeck/objeck-lang/pull/778)) and the every-method-compiled pass on
 every CI leg ([#784](https://github.com/objeck/objeck-lang/pull/784)); the two windows-arm64
 `core_thread_gc_stress` failures did not reproduce in 180 runs on the hosted runner. Git
-history has the table, and `docs/HANDOFF_2026_09_10.md`, the day's full record. What follows
+history has the table, and `docs/HANDOFF_2026_09_10.md` (since deleted, `a32b80a933`), the day's full record. What follows
 is still current.
 
 **Corrections to what is written below.** The pool was eight general registers, `X0`-`X7`, not
@@ -88,9 +105,9 @@ The batches this track started from, all merged.
 
 | item | state |
 |---|---|
-| batch 1 (#731) | `Size()` inlined on both backends |
+| batch 1 (#731) | `Size()` inlined on both backends; also (commit `702fdf5bc6`) `XMM10`-`XMM15` saved on Windows and `OBJECK_JIT_REPORT=1`, which this table's batch 3 row lists -- the assessment's section 8 has them in #731 |
 | batch 2 (#732) | division by a constant is a multiply (magic numbers), both backends |
-| batch 3 (#733) | eight-register AMD64 pool (`R8`-`R11`), `XMM10`-`XMM15` saved on Windows, `OBJECK_JIT_REPORT=1` |
+| batch 3 (#733) | eight-register AMD64 pool (`R8`-`R11`, `5555f2960b`); a method with a try region is left to the interpreter on AMD64 (`026fe08871`). (The `XMM10`-`XMM15` save and `OBJECK_JIT_REPORT=1` were #731, see batch 1.) |
 | batch 4 (#735) | F6 short-circuit conditions (compiler); F3 loop locals in `R13`-`R15` (AMD64 only); six fixes: the loop-header safepoint poll that never fired, magic division with the dividend in `RDX`, 16-bit movers without REX, the `HasAndOr` slot-0 contract (ARM64 collector walk), an ARM64 float-register leak per fused compare, and the s3 inliner pasting `native` methods into interpreted callers (the "thread runs 55x slower" mystery) |
 | batch 5 (#738) | F8 `select` jump tables on both backends |
 
@@ -147,7 +164,10 @@ are in the failure artifact's `crash-reports/*.ips`, local ones in `~/Library/Lo
 
 ### 3a. Issue #722 is fixed -- but 27 tests still opt out of the JIT
 
-*Done: #745 merged; three opt-outs remain, each with a stated reason (`check_jit_optouts.py`).*
+*Done: #745 merged; three opt-outs remain, each with a stated reason (`check_jit_optouts.py`).
+As of 2026-11-18 three tests still carry a `# JIT_DISABLE` line (`interp_float_fastpath`,
+`opt_dead_store_first_instr`, `opt_dead_store_stack_balance`); `bad_runtime_stack` is no longer
+one of them, it runs compiled since the native-stack guard (`13daaacfb2`).*
 
 `http_persistence_test.obs` and `https_persistence_test.obs` used to carry `# JIT_DISABLE`
 because on ARM64 the JIT miscompiled `String->Equals` inside a virtual request-handler callback
