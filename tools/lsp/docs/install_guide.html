@@ -138,7 +138,7 @@ sudo apt-get install libmbedtls-dev</code></pre>
       <tr><td><code>OBJECK_STDIO</code></td><td><code>binary</code></td><td>Required when using stdio transport</td></tr>
     </table>
   </li>
-  <li><strong>Verify installation</strong> &mdash; run <code>obr --version</code> in a terminal. If the command is not found, add the Objeck <code>bin</code> directory to your <code>PATH</code>.</li>
+  <li><strong>Verify installation</strong> &mdash; run <code>obc -v</code> in a terminal. If the command is not found, add the Objeck <code>bin</code> directory to your <code>PATH</code>.</li>
 </ol>
 
 <div class="note">
@@ -344,7 +344,7 @@ vim.lsp.enable('objeck')</code></pre>
 
 <h3>Server does not start</h3>
 <ul>
-  <li>Verify <code>obr --version</code> works in a terminal.</li>
+  <li>Verify <code>obc -v</code> works in a terminal.</li>
   <li>Check that <code>OBJECK_LIB_PATH</code> points to the Objeck <code>lib</code> directory.</li>
   <li>When using stdio transport, ensure <code>OBJECK_STDIO=binary</code> is set.</li>
   <li>On Linux/macOS, confirm the server script has execute permission.</li>
