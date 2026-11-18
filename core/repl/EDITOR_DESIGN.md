@@ -31,6 +31,17 @@
 >
 > CI cannot exercise `/e` (no TTY); the gate is the
 > [manual test matrix](#manual-test-matrix) at the end of this note.
+>
+> **Further differences between this note and the tree (checked 2026-11-18):**
+> the four "units" under *Architecture* are header-only (`term.h`, `screen.h`,
+> `tui_editor.h`, `keymap.h`, plus `highlight.h` and `child_run.h`); there is no `.cpp`
+> for any of them, so the editor adds nothing to the build files. The binding
+> profile is switched with F2 and the code that would persist the choice, which
+> *Bindings* describes, was not found. The vi profile has no `/` search or `:`
+> commands (listed as deferred above), although *Bindings* names them. The first
+> release with the editor is v2026.8.2, per `git tag --contains`. There is no
+> automated test of the editor itself; `obi --inline` and `--file` are the headless
+> paths the non-TTY guard protects.
 
 `obi` today edits by line. `Document`/`Line` hold the buffer and `DoInsertLine`,
 `DoDeleteLine`, `DoReplaceLine`, `DoGotoLine`, `DoList` operate on it through an

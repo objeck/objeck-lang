@@ -10,6 +10,15 @@ This document is the whole contract: what the VM guarantees, what your library
 must guarantee back, what the collector does with the memory you allocate, and
 what a call costs.
 
+**Status:** implemented and in use by every binding under `core/lib/`. The
+interface is **unverified by design**: nothing checks a call's name, argument
+count or argument layout, and a library runs with the VM's full privileges
+(see [SECURITY_MODEL.md](SECURITY_MODEL.md)). Where the collector treats native
+code specially (old-generation allocation, the write-barrier hook, parking) the
+rules are stated below with the function that enforces them, so they can be
+checked against the source. `VMContext` is append-only and carries an ABI
+version (currently `APITOOLS_ABI_VERSION` 1 in `core/vm/lib_api.h`).
+
 ---
 
 ## The shape of a call
@@ -93,7 +102,9 @@ header, `core/vm/lib_api.h`, which is worth reading in full at least once.
 4. `Unload()` runs `EXT_LIB_UNLOAD`, which calls `unload_lib` and unloads.
 
 The library directory is `$OBJECK_LIB_PATH/native/`, falling back to
-`../lib/native/` relative to the working directory. The name you pass has no
+`../lib/native/` relative to the working directory (`core/vm/interpreter.cpp`,
+`EXT_LIB_LOAD`; the `$OBJECK_LIB_PATH` branch is compiled in by the
+`_OBJECK_NATIVE_LIB_PATH` define that every standard VM build passes). The name you pass has no
 extension — the VM appends `.dll`, `.dylib` or `.so` — and by convention starts
 with `libobjk_`, which is what the deploy scripts name the built artifacts.
 
@@ -213,8 +224,10 @@ A thread the VM did not start has no call stack to share; a call back from one
 runs as it always did, unchecked. `programs/regression/native_callback/` holds a
 test library that exercises all of this (`run_vm_flag_tests.py` section 18).
 
-Be aware that **no shipped binding currently uses this**, so it is the least
-exercised part of the interface. It also has a consequence for the memory rules
+Be aware that **no shipped binding currently uses this** (a search of
+`core/lib` for `APITools_CallMethod` finds none; only the test library in
+`programs/regression/native_callback/` does), so it is the least exercised part
+of the interface. It also has a consequence for the memory rules
 below: calling back into Objeck runs a nested interpreter, whose allocations are
 ordinary Objeck allocations and *can* therefore trigger a collection.
 
@@ -360,6 +373,32 @@ turned two thirds of a 393-entry listing into unreadable memory, and reading
 one segfaulted the VM. `programs/regression/trap_array_barrier_test.obs` guards
 it now.
 
+### An `Int[]` you allocate is scanned for references
+
+`APITools_MakeIntArray` allocates with the generic integer tag (`INT_TYPE`), the
+tag the collector marks through and relocates elements of, because an object array
+carries the same tag. Since GC roots phase 6 the compiler allocates a plain
+`Int[]` with a separate tag (`INT_ARY_TYPE`) that the collector never scans, but
+an array a native library makes keeps `INT_TYPE`
+([GC_ROOTS_DESIGN.md](GC_ROOTS_DESIGN.md), section 10 and the phase 6 status
+block). So an element of such an array that happens to equal the address of a
+young object may be treated as a reference to it. Do not store raw addresses in
+an `Int[]` you return; keep native pointers in a holder `Int` instead, or in
+your own memory.
+
+### Parking: long calls must not hold up the collector
+
+The collector is stop-the-world, and a thread inside a native call is not at a
+safepoint, so a collection started by another thread waits for your function to
+return. A call that blocks for a long time (a database round trip, waiting on a
+device, a long inference) should wrap the blocking part in
+`APITools_Parked parked(context);`, which calls the VM's `begin_blocking` and
+`end_blocking` (`MemoryManager::BeginBlocking` and `EndBlocking`). While parked,
+a collection can run and move young objects, so inside the scope do not touch
+anything the VM manages: read your arguments into C values first and set results
+after. `core/lib/odbc`, `core/lib/opencv` and `core/lib/sdl` use it. Against a VM
+that predates parking it does nothing.
+
 ### What you still own
 
 The collector manages what it allocated. It knows nothing about anything else.
@@ -503,8 +542,9 @@ python tools/cicd/hoist_native_names.py --check core/compiler/lib_src/*.obs
 ```
 
 Worth knowing: `core/lib/sdl/code_gen` **generates** `sdl2.obs`, and its emitter
-writes the literal form. Regenerating it undoes the hoisting for all 353 call
-sites, and `--check` is how you find out.
+writes the literal form. Regenerating it undoes the hoisting for every hoisted call
+site (361 lines in `sdl2.obs` use a `CallFunction(@fn_...` field today), and
+`--check` is how you find out.
 
 ### Rule 2: reuse the argument buffer
 
@@ -657,3 +697,34 @@ keeps coming back to: **batch at the boundary**, and **write the fixture that
 can tell the difference** — because a native call that returns the previous
 call's answer, or a stale buffer that draws the right picture for the wrong
 reason, will pass any test that only asks whether something happened.
+
+---
+
+## How to check
+
+- The collector's side of the rules: `OBJECK_GC_VERIFY=checkmark obr --nursery=64k prog.obe`
+  with a program that calls your library in a loop. The verifier
+  ([arch/README.md](../core/vm/arch/README.md)) reports an old object that holds a
+  nursery reference with no write barrier (invariant A2), which is what a missing
+  `APITools_WriteBarrier` produces. `OBJECK_GC_VERIFY_INJECT=barrier` shows it can fail.
+- The two regression tests named above, `programs/regression/native_gc_barrier_test.obs`
+  and `programs/regression/trap_array_barrier_test.obs`.
+- `python tools/cicd/check_native_write_barrier.py` (the CI check on store shapes in
+  `core/lib`) and `python tools/cicd/hoist_native_names.py --check <file.obs>`.
+- ABI and callback behaviour: `python programs/regression/run_vm_flag_tests.py <bin_dir> --only native_callback`
+  (section 18; builds `programs/regression/native_callback/callback_lib.cpp`).
+- Call cost: the table above is from one Windows x64 measurement and is not
+  re-measured by CI; reproduce it with a loop of `CallFunction` against an empty export.
+
+## Known limits
+
+- Nothing validates a native call: a wrong name, index or type is corruption or a
+  hard stop, never an exception.
+- A native function runs with no sandbox; a hostile library can do anything the
+  process can.
+- Native frames are not scanned by the collector. A `size_t*` held across
+  `APITools_CallMethod` (the only native-side operation that can collect) or inside
+  an `APITools_Parked` scope can be stale.
+- Native-allocated objects are reclaimed only by major collections (section
+  "Memory and the collector").
+

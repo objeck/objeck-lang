@@ -69,10 +69,13 @@
       <li><a href="#building-and-shipping-a-library">Building and shipping a library</a></li>
       <li><a href="#traps">Traps</a></li>
       <li><a href="#is-this-a-good-design">Is this a good design?</a></li>
+      <li><a href="#how-to-check">How to check</a></li>
+      <li><a href="#known-limits">Known limits</a></li>
      </ul>
     </div>
 
     <p>This document is the whole contract: what the VM guarantees, what your library must guarantee back, what the collector does with the memory you allocate, and what a call costs.</p>
+    <p><strong>Status:</strong> implemented and in use by every binding under <code>core/lib/</code>. The interface is <strong>unverified by design</strong>: nothing checks a call's name, argument count or argument layout, and a library runs with the VM's full privileges (see <a href="doc_security.html">SECURITY_MODEL.md</a>). Where the collector treats native code specially (old-generation allocation, the write-barrier hook, parking) the rules are stated below with the function that enforces them, so they can be checked against the source. <code>VMContext</code> is append-only and carries an ABI version (currently <code>APITOOLS_ABI_VERSION</code> 1 in <code>core/vm/lib_api.h</code>).</p>
     <hr class="section-end">
     <h3 id="the-shape-of-a-call">The shape of a call</h3>
     <p>A native library is two halves that meet at a name.</p>
@@ -135,7 +138,7 @@ extern "C" {
      <li>Your function reads and writes the argument array in place. It does not return a value; there is no return channel other than the array.</li>
      <li><code>Unload()</code> runs <code>EXT_LIB_UNLOAD</code>, which calls <code>unload_lib</code> and unloads.</li>
     </ol>
-    <p>The library directory is <code>$OBJECK_LIB_PATH/native/</code>, falling back to <code>../lib/native/</code> relative to the working directory. The name you pass has no extension — the VM appends <code>.dll</code>, <code>.dylib</code> or <code>.so</code> — and by convention starts with <code>libobjk_</code>, which is what the deploy scripts name the built artifacts.</p>
+    <p>The library directory is <code>$OBJECK_LIB_PATH/native/</code>, falling back to <code>../lib/native/</code> relative to the working directory (<code>core/vm/interpreter.cpp</code>, <code>EXT_LIB_LOAD</code>; the <code>$OBJECK_LIB_PATH</code> branch is compiled in by the <code>_OBJECK_NATIVE_LIB_PATH</code> define that every standard VM build passes). The name you pass has no extension — the VM appends <code>.dll</code>, <code>.dylib</code> or <code>.so</code> — and by convention starts with <code>libobjk_</code>, which is what the deploy scripts name the built artifacts.</p>
     <hr class="section-end">
     <h3 id="the-c-side">The C++ side</h3>
     <h4 id="the-three-exports">The three exports</h4>
@@ -184,7 +187,7 @@ APITools_CallMethod(context, instance, cls_id, mthd_id);
     <p>The qualified-name form wants the full mangled signature, which is why the by-id form exists for anything called repeatedly.</p>
     <p>Push the method's parameters on <code>context.op_stack</code> (advancing <code>*context.stack_pos</code>) before the call; its return value, if any, is left there for you to pop after.</p>
     <p>A call back runs on the calling thread's own call stack and operand stack, so it is bounded like any other call: a recursion through your library and back -- native code calling an Objeck method that calls the native code again -- stops at the thread's call-depth limit (<code>--call-depth</code>) or when its native stack runs low, with <code>call stack bounds have been exceeded</code>. A <code>try</code> block <em>inside</em> the method you called recovers from an error the usual way. When the only handler is <em>outside</em> your native call, the callback returns to you with zero in place of its result (and any further call back on that thread does the same at once): return as soon as you can, and the error is raised at your native call, where that handler takes it. With no handler at all the program reports the error and ends. A thread the VM did not start has no call stack to share; a call back from one runs as it always did, unchecked. <code>programs/regression/native_callback/</code> holds a test library that exercises all of this (<code>run_vm_flag_tests.py</code> section 18).</p>
-    <p>Be aware that <strong>no shipped binding currently uses this</strong>, so it is the least exercised part of the interface. It also has a consequence for the memory rules below: calling back into Objeck runs a nested interpreter, whose allocations are ordinary Objeck allocations and <em>can</em> therefore trigger a collection.</p>
+    <p>Be aware that <strong>no shipped binding currently uses this</strong> (a search of <code>core/lib</code> for <code>APITools_CallMethod</code> finds none; only the test library in <code>programs/regression/native_callback/</code> does), so it is the least exercised part of the interface. It also has a consequence for the memory rules below: calling back into Objeck runs a nested interpreter, whose allocations are ordinary Objeck allocations and <em>can</em> therefore trigger a collection.</p>
     <hr class="section-end">
     <h3 id="memory-and-the-collector">Memory and the collector</h3>
     <p><strong>Everything a native library allocates lives in the old generation.</strong> That is the whole rule, and it is worth understanding why, because it is what makes the plain stores in <code>lib_api.h</code> safe.</p>
@@ -224,6 +227,10 @@ APITools_WriteBarrier(context, result_obj);   // &lt;- required
     <p>Three kinds of value are "not yours": an object the caller gave you, anything you read out of one, and anything a callback returned. Any of them may be young, and every container you could put one in — an array, or an object you allocated — is old. <code>APITools_SetObjectValue</code> barriers on its own, so returning a value through the argument array is always safe; a direct store into an object is where you have to call it yourself.</p>
     <p>Pass the <strong>container</strong> you stored into, not the value, and pass it as the allocator returned it — for an array that is the base pointer, where <code>[0]</code> is the element count. Calling the barrier when it was not needed is harmless: its fast path returns immediately when the container is young or already recorded. <code>APITools_WriteBarrier</code> is also a no-op against a VM too old to supply the pointer, so a library built against this header still loads on one.</p>
     <p>This is not a hypothetical restriction — the VM's own traps had exactly this bug. A trap that returned <code>String[]</code> allocated the array (old), filled it with freshly created Strings (young), and ran no barrier; the next minor collection promoted the elements out from under an array the collector does not look inside. <code>Directory-&gt;List</code> followed by enough allocation to fill the nursery turned two thirds of a 393-entry listing into unreadable memory, and reading one segfaulted the VM. <code>programs/regression/trap_array_barrier_test.obs</code> guards it now.</p>
+    <h4 id="an-int-you-allocate-is-scanned-for-references">An <code>Int[]</code> you allocate is scanned for references</h4>
+    <p><code>APITools_MakeIntArray</code> allocates with the generic integer tag (<code>INT_TYPE</code>), the tag the collector marks through and relocates elements of, because an object array carries the same tag. Since GC roots phase 6 the compiler allocates a plain <code>Int[]</code> with a separate tag (<code>INT_ARY_TYPE</code>) that the collector never scans, but an array a native library makes keeps <code>INT_TYPE</code> (<a href="doc_gc_roots.html">GC_ROOTS_DESIGN.md</a>, section 10 and the phase 6 status block). So an element of such an array that happens to equal the address of a young object may be treated as a reference to it. Do not store raw addresses in an <code>Int[]</code> you return; keep native pointers in a holder <code>Int</code> instead, or in your own memory.</p>
+    <h4 id="parking-long-calls-must-not-hold-up-the-collector">Parking: long calls must not hold up the collector</h4>
+    <p>The collector is stop-the-world, and a thread inside a native call is not at a safepoint, so a collection started by another thread waits for your function to return. A call that blocks for a long time (a database round trip, waiting on a device, a long inference) should wrap the blocking part in <code>APITools_Parked parked(context);</code>, which calls the VM's <code>begin_blocking</code> and <code>end_blocking</code> (<code>MemoryManager::BeginBlocking</code> and <code>EndBlocking</code>). While parked, a collection can run and move young objects, so inside the scope do not touch anything the VM manages: read your arguments into C values first and set results after. <code>core/lib/odbc</code>, <code>core/lib/opencv</code> and <code>core/lib/sdl</code> use it. Against a VM that predates parking it does nothing.</p>
     <h4 id="what-you-still-own">What you still own</h4>
     <p>The collector manages what it allocated. It knows nothing about anything else.</p>
     <ul>
@@ -299,7 +306,7 @@ Proxy-&gt;GetDllProxy()-&gt;CallFunction(@fn_sdl_gl_mesh_draw, array_args);
     <p>Static, because the names are class-wide constants and a <code>function :</code> cannot read an instance field. The lazy fill races harmlessly between threads: both write an equivalent String, one wins, the loser's allocation is discarded, and no one can observe a half-built value because the store is a pointer store.</p>
     <p><code>tools/cicd/hoist_native_names.py</code> applies this across a file, and <code>--check</code> reports any call site that still writes a literal:</p>
 <pre class="plain">python tools/cicd/hoist_native_names.py --check core/compiler/lib_src/*.obs</pre>
-    <p>Worth knowing: <code>core/lib/sdl/code_gen</code> <strong>generates</strong> <code>sdl2.obs</code>, and its emitter writes the literal form. Regenerating it undoes the hoisting for all 353 call sites, and <code>--check</code> is how you find out.</p>
+    <p>Worth knowing: <code>core/lib/sdl/code_gen</code> <strong>generates</strong> <code>sdl2.obs</code>, and its emitter writes the literal form. Regenerating it undoes the hoisting for every hoisted call site (361 lines in <code>sdl2.obs</code> use a <code>CallFunction(@fn_...</code> field today), and <code>--check</code> is how you find out.</p>
     <h4 id="rule-2-reuse-the-argument-buffer">Rule 2: reuse the argument buffer</h4>
     <p>The usual shape allocates a <code>Base[]</code> and a holder per element on every call:</p>
 <pre class="line-numbers"><code class="language-cpp">array_args := Base-&gt;New[3];
@@ -363,6 +370,22 @@ Proxy-&gt;GetDllProxy()-&gt;CallFunction(@draw_name, @draw_args);
     <p>It is a good design for what it is: a thin, uniform, dependency-free bridge that any C or C++ code can be reached through, with one header and no tooling. The VM stays out of the way, and there is nothing to regenerate when a signature changes.</p>
     <p>The costs are real and worth naming. The name-based dispatch has no type checking whatsoever, so a mismatch between the two halves is a runtime corruption rather than a compile error. Errors have no channel and every library invents its own. Everything crosses as <code>size_t*</code>, and correctness rests on the caller and callee agreeing about a layout that nothing verifies. And per-call overhead is high enough that the interface rewards batching much more than it rewards micro-optimisation.</p>
     <p>None of that argues for replacing it. It argues for the two habits this document keeps coming back to: <strong>batch at the boundary</strong>, and <strong>write the fixture that can tell the difference</strong> — because a native call that returns the previous call's answer, or a stale buffer that draws the right picture for the wrong reason, will pass any test that only asks whether something happened.</p>
+    <hr class="section-end">
+    <h3 id="how-to-check">How to check</h3>
+    <ul>
+     <li>The collector's side of the rules: <code>OBJECK_GC_VERIFY=checkmark obr --nursery=64k prog.obe</code> with a program that calls your library in a loop. The verifier (<a href="https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/README.md" target="_blank">arch/README.md</a>) reports an old object that holds a nursery reference with no write barrier (invariant A2), which is what a missing <code>APITools_WriteBarrier</code> produces. <code>OBJECK_GC_VERIFY_INJECT=barrier</code> shows it can fail.</li>
+     <li>The two regression tests named above, <code>programs/regression/native_gc_barrier_test.obs</code> and <code>programs/regression/trap_array_barrier_test.obs</code>.</li>
+     <li><code>python tools/cicd/check_native_write_barrier.py</code> (the CI check on store shapes in <code>core/lib</code>) and <code>python tools/cicd/hoist_native_names.py --check &lt;file.obs&gt;</code>.</li>
+     <li>ABI and callback behaviour: <code>python programs/regression/run_vm_flag_tests.py &lt;bin_dir&gt; --only native_callback</code> (section 18; builds <code>programs/regression/native_callback/callback_lib.cpp</code>).</li>
+     <li>Call cost: the table above is from one Windows x64 measurement and is not re-measured by CI; reproduce it with a loop of <code>CallFunction</code> against an empty export.</li>
+    </ul>
+    <h3 id="known-limits">Known limits</h3>
+    <ul>
+     <li>Nothing validates a native call: a wrong name, index or type is corruption or a hard stop, never an exception.</li>
+     <li>A native function runs with no sandbox; a hostile library can do anything the process can.</li>
+     <li>Native frames are not scanned by the collector. A <code>size_t*</code> held across <code>APITools_CallMethod</code> (the only native-side operation that can collect) or inside an <code>APITools_Parked</code> scope can be stale.</li>
+     <li>Native-allocated objects are reclaimed only by major collections (section "Memory and the collector").</li>
+    </ul>
 
    </div>
   </main>
