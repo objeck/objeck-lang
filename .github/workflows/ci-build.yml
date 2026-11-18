@@ -2049,6 +2049,74 @@ jobs:
           npm run lint
 
   # ============================================
+  # Loader fuzz (advisory)
+  # ============================================
+
+  # A short libFuzzer + ASan/UBSan run of the .obe loader against the linux-x64
+  # deploy tree this run just built. ADVISORY: `continue-on-error` keeps the job
+  # green when it finds something, and it is deliberately not in the `status`
+  # job's `needs`, so it can never block a merge. A finding is reported as a
+  # warning annotation and in the job summary. The nightly (nightly-hardening.yml)
+  # runs the same driver for 30 minutes and files issues; this is the early look.
+  loader-fuzz:
+    name: Loader fuzz (advisory)
+    needs: build
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    timeout-minutes: 45
+    env:
+      TREE: core/release/deploy-x64
+    steps:
+      - name: Checkout
+        timeout-minutes: 5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install the fuzz toolchain
+        timeout-minutes: 10
+        run: |
+          sudo bash tools/cicd/apt_harden.sh
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang libclang-rt-18-dev zlib1g-dev libmbedtls-dev
+
+      - name: Download the deploy tree built by this run
+        timeout-minutes: 10
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: objeck-linux-x64
+          path: ${{ env.TREE }}
+
+      - name: Fuzz the bytecode loader (5 minutes)
+        timeout-minutes: 30
+        run: |
+          set -o pipefail
+          chmod +x "$TREE"/bin/* 2>/dev/null || true
+          rc=0
+          python3 tools/fuzz/loader/run_nightly.py --bin "$TREE/bin" --work "$RUNNER_TEMP/loader-fuzz" \
+            --minutes 5 --seed "$GITHUB_RUN_ID" --out loader-fuzz-out | tee loader-fuzz.log || rc=$?
+          if [ "$rc" != "0" ]; then
+            echo "::warning title=Loader fuzz::advisory run found something or failed (exit $rc); not blocking. See the job summary."
+            {
+              echo "### Loader fuzz (advisory): exit $rc"
+              echo '```'
+              grep -E '^(FAIL|  (seed|target|reduced):)' loader-fuzz.log || tail -20 loader-fuzz.log
+              echo '```'
+              echo "Reproduce with the saved input from the artifact; see tools/fuzz/loader/README.md."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit 0
+
+      - name: Upload any saved inputs
+        if: always()
+        timeout-minutes: 5
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: loader-fuzz-advisory
+          path: loader-fuzz-out/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # ============================================
   # Build Status Summary
   # ============================================
 
