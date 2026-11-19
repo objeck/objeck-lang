@@ -300,6 +300,10 @@ chat->Send("And at sunset?")->PrintLine();
 
 `SendReply(message, tools)` returns the whole `Reply`: `GetText()`, `GetThinking()`, `GetStopReason()`, `GetInputTokens()`, `GetOutputTokens()`, and the tool calls. Pass `Nil` as the message to send the history as it stands.
 
+`SetThinking(budget_tokens)` turns on extended thinking. The API needs a budget of at least 1024 tokens and a `SetMaxTokens` above it. While thinking is on the temperature is not sent, and `SendJson` leaves thinking off for its one request, because the API rejects a forced tool with thinking.
+
+What joins the history, so a chat never wedges: a reply that fails is dropped together with the message that asked for it; a refusal (`stop_reason` `refusal`) and an empty reply are returned to you but not kept, as the API advises; an empty text block is removed from a turn before it is replayed; thinking blocks, including redacted ones, are replayed whole.
+
 ### Tool use
 
 Describe each tool with a name, a description and a JSON schema. When a reply has tool uses, run them, return each result with `AddToolResult(use_id, text)` and send again. Results for one reply share one user message, as the API requires. Mark a failed tool with `AddToolResult(id, text, true)`.
@@ -341,7 +345,7 @@ answer->Get("city")->GetString()->PrintLine();
 
 ### Streaming
 
-`Stream(message, tools)` returns a `ReplyStream`. Read it piece by piece, then ask for the whole reply; the exchange joins the history when the stream ends.
+`Stream(message, tools)` returns a `ReplyStream`. Read it piece by piece; the exchange joins the history when the stream ends, whether or not you ask for the whole reply, and `GetReply()` can be called more than once. `Close()` before the end, an error event and a tool input that was cut off by `max_tokens` all drop the exchange from the history.
 
 ```ruby
 stream := chat->Stream("Write a haiku about rivers.", Nil);
@@ -351,7 +355,7 @@ while(stream <> Nil & stream->HasNext()) {
 reply := stream->GetReply();
 ```
 
-Streaming works over HTTPS only. A refused request (a bad key, a rate limit) returns `Nil` with the status in `GetLastError()`.
+Streaming works over HTTPS only. A refused request (a bad key, a rate limit) returns `Nil` with the status and what it usually means in `GetLastError()`; the body of a refused stream is not read, so the API's own message is not shown there.
 
 **Tested against a local mock, not the live service.** `anthropic_parse_test` replays recorded response bodies and event streams, and `anthropic_http_test` runs the client against a local HTTPS server that speaks the same message shapes, checking the `x-api-key` and `anthropic-version` headers, errors, a tool round trip, structured output and streaming. Neither calls api.anthropic.com. If a field or event the live API sends is not handled, the parse test is where to add a recorded case.
 
@@ -638,7 +642,9 @@ The keys are the provider clients' own: `ANTHROPIC_API_KEY` or `anthropic_api_ke
 
 ### Tools and the agent loop
 
-A `ToolSpec` is a name, a description and a JSON schema. The same object goes to every provider, each in its own wire format. When a turn has tool calls, run them, return each result with `AddToolResult(call->GetId(), call->GetName(), text)` and `Send(Nil, tools)` again. To report a failure, return the error as the result text.
+A `ToolSpec` is a name, a description and a JSON schema. The same object goes to every provider, each in its own wire format. When a turn has tool calls, run them, return each result with `AddToolResult(call->GetId(), call->GetName(), text)` and `Send(Nil, tools)` again. When a tool could not run, return that with `AddToolError(id, name, message)` instead: Anthropic gets an `is_error` result, Gemini an `error` field, and OpenAI and Ollama text that starts with `Error: `.
+
+A tool's schema is written once and adapted per provider. A tool with no arguments (`ToolSpec->New("ping", "...", Nil)`) is sent as an empty object schema, except to Gemini, which refuses an object with no properties, so its `parameters` is left out. OpenAI tools are always sent with `strict` off, so a schema with an optional argument is accepted. For Gemini, which takes only an OpenAPI subset of JSON Schema, the schema (for tools and for `SendJson`) is reduced first: `additionalProperties`, `$schema`, `$ref`, `$defs`, `default`, `allOf` and `examples` are dropped, `oneOf` becomes `anyOf`, `const` becomes a one-value `enum`, and a type list such as `["string","null"]` becomes the type plus `nullable`. A `$ref` is dropped, not resolved, so write a schema without references.
 
 ```ruby
 use API.LLM;
@@ -660,11 +666,11 @@ turn := Agent->Run(session, "What is the weather in Paris?", tools, Town->New(),
 turn->GetText()->PrintLine();
 ```
 
-`Agent->Run` is the whole loop, and it is short enough to write by hand against `Session` alone, which the `llm_agent_test` regression test does: the same loop runs unchanged on all four providers. A turn that still has tool calls when the round limit is hit is returned as it is, so `HasToolCalls()` tells a finished answer from a stopped loop.
+`Agent->Run` is the whole loop, and it is short enough to write by hand against `Session` alone, which the `llm_agent_test` regression test does: the same loop runs unchanged on all four providers. A call to a tool that is not in the list, or a handler that returns `Nil`, is answered with an error and the handler is not asked. A turn that still has tool calls when the round limit is hit is returned as it is, so `HasToolCalls()` tells a finished answer from a stopped loop; its calls are answered with an error first, because a provider refuses the next message while a call is unanswered, so the session can go on with another `Send`.
 
 ### JSON output
 
-`SendJson(question, name, schema)` returns an object in the shape you give, or `Nil`. The conversation so far is context; neither the question nor the answer joins it.
+`SendJson(question, name, schema)` returns an object in the shape you give, or `Nil`. The conversation so far is context; neither the question nor the answer joins it. Treat the shape as best effort, not a guarantee: OpenAI is asked with strict mode off, Gemini gets the reduced schema described above, and Anthropic checks a forced tool's input loosely. When the answer is missing the error says why where the provider told it (for example `finish reason MAX_TOKENS`: Gemini 2.5 counts its thinking tokens against `SetMaxTokens`, so a small limit can end the reply before any answer).
 
 ```ruby
 schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"},\"temp\":{\"type\":\"integer\"}},\"required\":[\"city\",\"temp\"]}");
@@ -682,7 +688,9 @@ while(stream <> Nil & stream->HasNext()) {
 turn := stream->GetTurn();    # the whole turn; the exchange joins the conversation
 ```
 
-Anthropic, OpenAI and Gemini stream as the model generates, over server-sent events. **Ollama does not stream here**: its stream gives the whole reply as one piece, so the same loop runs but nothing arrives early. A tool call streamed by OpenAI or Gemini arrives whole in `GetTurn()`, with no text pieces before it. Gemini sends no end-of-stream event, so the reader stops at the chunk that carries a finish reason (and asks the server to close the connection after the response).
+The exchange joins the conversation when the stream ends, whether or not you call `GetTurn()`. `Close()` before the end, a stream that fails midway, and a blocked prompt take the message back, as a failed `Send` does.
+
+Anthropic, OpenAI and Gemini stream as the model generates, over server-sent events. **Ollama does not stream here**: its stream gives the whole reply as one piece, so the same loop runs but nothing arrives early. A tool call streamed by OpenAI or Gemini arrives whole in `GetTurn()`, with no text pieces before it. Gemini sends no end-of-stream event, so the reader stops at the chunk that carries a finish reason, or at a blocked-prompt chunk (the request also sends `Connection: close`, but a stream that ends without either would wait on the connection). A refused stream (a bad key, say) is reported with the server's message: the stream itself shows only the status, so a 400, 401, 403 or 404 is repeated once without streaming to read the error body.
 
 ### How each provider is spoken to
 
@@ -692,11 +700,13 @@ Anthropic, OpenAI and Gemini stream as the model generates, over server-sent eve
 | Class | `AnthropicSession` (wraps `API.Anthropic.Chat`) | `OpenAISession` | `GeminiSession` | `OllamaSession` |
 | Key | `x-api-key` header | `Authorization: Bearer` | `x-goog-api-key` header | none |
 | Tool call id | the API's (`toolu_...`) | the API's (`call_id`) | the API's when it sends one, else made up | made up (`ollama_call_N`) |
-| Result goes back as | `tool_result` block, by id | `function_call_output` item, by `call_id` | `functionResponse` part, by name | `tool` message, by name |
+| Result goes back as | `tool_result` block, by id (`is_error` for an error) | `function_call_output` item, by `call_id` | `functionResponse` part, by name (`error` field for an error) | `tool` message, by name |
 | JSON output | a forced tool | `text.format` JSON schema | `responseSchema` | `format` JSON schema |
 | Streaming | yes | yes | yes | one piece |
 
 OpenAI and Gemini are spoken to directly over `HttpsClient`, because their clients above cannot do the round trip (`API.OpenAI.Responses` does not read function calls back, and Gemini's tool support dispatches callbacks itself). The session keeps the conversation and sends it whole on every call, replaying the model's own output items (OpenAI) or content (Gemini) as they came, so reasoning items and tool-call signatures survive. Ollama is also spoken to directly: `API.Ollama.Chat` takes a `Vector<Tool>`, and the compiler cannot tell that `Tool` from Anthropic's when one program uses both libraries.
+
+OpenAI replays its own output items, which carry ids (`rs_...`, `msg_...`, `fc_...`), and the request does not set `store`, so the default (stored responses) is assumed. An organisation with zero data retention, or a request with `store: false`, refuses those ids; this layer does not send `store: false` with encrypted reasoning items. OpenAI reasoning models reject `SetTemperature`: leave it unset for them.
 
 The Gemini key goes in the `x-goog-api-key` header rather than the `?key=` query the Gemini client uses, so it never appears in a URL or an error message.
 
@@ -707,8 +717,8 @@ The Gemini key goes in the `x-goog-api-key` header rather than the `?key=` query
 ### What it does not do
 
 - Images, audio, files and embeddings: use the provider's own client.
-- Schema strictness. Anthropic checks a forced tool's input loosely; OpenAI is asked for a JSON schema with `strict` off (a strict schema must list every property as required and forbid extras, which a general interface cannot assume); Gemini takes a subset of JSON Schema (no `additionalProperties`, for one); Ollama constrains the output to the schema. Check what you get back.
-- Tool results are not marked as errors on the wire; return the error text. Parallel tool calls come back together in one turn and all results must be added before the next `Send`, which the loop above does.
+- Schema strictness. Anthropic checks a forced tool's input loosely; OpenAI is asked for a JSON schema with `strict` off (a strict schema must list every property as required and forbid extras, which a general interface cannot assume); Gemini takes a reduced subset of JSON Schema; Ollama constrains the output to the schema. Check what you get back.
+- Parallel tool calls come back together in one turn and all results must be added before the next `Send`, which the loop above does.
 - Provider-specific options (prompt caching, thinking budgets, safety settings, Ollama `Options`) are not here; use the provider's client.
 
 **Tested against local mocks, not the live services.** `llm_parse_test` reads recorded response bodies for all four providers and checks the request each session builds; `llm_http_test` runs each session against a local HTTPS server (a plain HTTP one for Ollama) that answers a tool result only when it arrives in the provider's own shape; `llm_agent_test` runs one agent loop against all four. The wire formats follow the providers' public documentation as of this writing; nothing has been run against api.anthropic.com, api.openai.com, generativelanguage.googleapis.com or a real Ollama server, so a field the mocks do not exercise may differ.

@@ -142,7 +142,8 @@ class AgentMock from HttpsRequestHandler {
 		return false;
 	}
 
-	# 0: ask for the weather, 1: ask for the time, 2: answer; -1: the results are not what the loop should have sent
+	# 0: ask for the weather, 1: ask for the time, 2: answer; 3: the time call was answered with an error
+	# (the round limit), so say the errand stopped; -1: the results are not what the loop should have sent
 	function : Stage(results : String, first : String, second : String) ~ Int {
 		if(results->Size() = 0) {
 			return 0;
@@ -153,11 +154,17 @@ class AgentMock from HttpsRequestHandler {
 		if(results->Equals(first + "|18C and sunny;" + second + "|12:00;")) {
 			return 2;
 		};
+		if(results->StartsWith(first + "|18C and sunny;" + second + "|")) {
+			return 3;
+		};
 		return -1;
 	}
 
 	method : Anthropic(response : Response, body : String) ~ Bool {
 		stage := Stage(Probe->Anthropic(body), "toolu_1", "toolu_2");
+		if(stage = 3 & body->Find("\"is_error\":true") < 0) {
+			stage := -1;
+		};
 		if(stage = 0) {
 			response->SetCodeContent(200, "{\"id\":\"m1\",\"model\":\"m\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_1\",\"name\":\"get_weather\",\"input\":{\"city\":\"Paris\"}}],\"stop_reason\":\"tool_use\",\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}");
 		}
@@ -172,6 +179,9 @@ class AgentMock from HttpsRequestHandler {
 
 	method : OpenAI(response : Response, body : String) ~ Bool {
 		stage := Stage(Probe->OpenAI(body), "call_1", "call_2");
+		if(stage = 3 & Probe->OpenAI(body)->Find("|Error: ") < 0) {
+			stage := -1;
+		};
 		if(stage = 0) {
 			response->SetCodeContent(200, "{\"id\":\"r1\",\"model\":\"m\",\"status\":\"completed\",\"output\":[{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_1\",\"name\":\"get_weather\",\"arguments\":\"{\\\"city\\\":\\\"Paris\\\"}\"}],\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}");
 		}
@@ -186,6 +196,9 @@ class AgentMock from HttpsRequestHandler {
 
 	method : Gemini(response : Response, body : String) ~ Bool {
 		stage := Stage(Probe->Gemini(body), "get_weather", "get_time");
+		if(stage = 3 & body->Find("\"response\":{\"error\":") < 0) {
+			stage := -1;
+		};
 		if(stage = 0) {
 			response->SetCodeContent(200, "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"get_weather\",\"args\":{\"city\":\"Paris\"}}}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":1,\"candidatesTokenCount\":1}}");
 		}
@@ -201,7 +214,10 @@ class AgentMock from HttpsRequestHandler {
 	# the final answer, or a note that a result came back in the wrong shape
 	method : Answer(response : Response, stage : Int, template : String) ~ Nil {
 		text := "In Paris it is 18C at 12:00.";
-		if(stage < 0) {
+		if(stage = 3) {
+			text := "Stopped.";
+		}
+		else if(stage < 0) {
 			text := "BAD tool result shape";
 		};
 		response->SetCodeContent(200, template->ReplaceAll("@@", text));
@@ -224,6 +240,9 @@ class OllamaAgentMock from HttpRequestHandler {
 		};
 
 		stage := AgentMock->Stage(Probe->Ollama(body), "get_weather", "get_time");
+		if(stage = 3 & Probe->Ollama(body)->Find("|Error: ") < 0) {
+			stage := -1;
+		};
 		if(stage = 0) {
 			response->SetCodeContent(200, "{\"model\":\"m\",\"message\":{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[{\"function\":{\"name\":\"get_weather\",\"arguments\":{\"city\":\"Paris\"}}}]},\"done\":true,\"done_reason\":\"stop\",\"prompt_eval_count\":1,\"eval_count\":1}");
 		}
@@ -232,7 +251,10 @@ class OllamaAgentMock from HttpRequestHandler {
 		}
 		else {
 			text := "In Paris it is 18C at 12:00.";
-			if(stage < 0) {
+			if(stage = 3) {
+				text := "Stopped.";
+			}
+			else if(stage < 0) {
 				text := "BAD tool result shape";
 			};
 			response->SetCodeContent(200, "{\"model\":\"m\",\"message\":{\"role\":\"assistant\",\"content\":\"{$text}\"},\"done\":true,\"done_reason\":\"stop\",\"prompt_eval_count\":1,\"eval_count\":1}");
@@ -461,5 +483,10 @@ class LlmAgentTest {
 		session := Open(provider);
 		turn := Agent->Run(session, "What is the weather and the time in Paris?", Tools(), Town->New(), 1);
 		Check("{$provider}: a round limit of 1 stops on the second tool call", turn <> Nil & turn->HasToolCalls() & Same(turn->GetToolCalls()->Get(0)->GetName(), "get_time"));
+		follow := session->Send("Thanks, stop there.", Tools());
+		Check("{$provider}: the session goes on after the limit, the unanswered call having been answered with an error", follow <> Nil & Same(follow->GetText(), "Stopped."));
+		if(follow = Nil) {
+			("  error: " + session->GetLastError())->PrintLine();
+		};
 	}
 }

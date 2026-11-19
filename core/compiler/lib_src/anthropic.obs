@@ -95,6 +95,10 @@ bundle API.Anthropic {
 			value := System.IO.Filesystem.FileReader->ReadFile("anthropic_api_key.dat");
 			if(value <> Nil) {
 				value := value->Trim();
+				line_end := value->Find('\n');
+				if(line_end > -1) {
+					value := value->SubString(line_end)->Trim();
+				};
 				if(value->Size() > 0) {
 					@api_key := value;
 					return @api_key;
@@ -502,6 +506,7 @@ bundle API.Anthropic {
 		@tool_id : String;
 		@tool_name : String;
 		@signature : String;
+		@start : JsonElement;
 		@done : Bool;
 		@failed : Bool;
 
@@ -554,6 +559,7 @@ bundle API.Anthropic {
 			else if(event->Equals("content_block_start")) {
 				block := json->Get("content_block");
 				@kind := Field->Text(block, "type");
+				@start := block;
 				@text := "";
 				@json := "";
 				@signature := Nil;
@@ -615,6 +621,10 @@ bundle API.Anthropic {
 				if(message = Nil) {
 					message := "the stream carried an error";
 				};
+				kind := Field->Text(error_json, "type");
+				if(kind <> Nil) {
+					message := "{$kind}: {$message}";
+				};
 				EndPoint->SetLastError(message);
 				@failed := true;
 			};
@@ -630,6 +640,11 @@ bundle API.Anthropic {
 			block := JsonElement->New(JsonElement->JsonType->OBJECT);
 			block->Insert("type", @kind);
 			if(@kind->Equals("text")) {
+				# the API rejects an empty text block on replay, so a block that got no text is dropped
+				if(@text->Size() = 0) {
+					@kind := Nil;
+					return;
+				};
 				block->Insert("text", @text);
 			}
 			else if(@kind->Equals("thinking")) {
@@ -638,17 +653,26 @@ bundle API.Anthropic {
 					block->Insert("signature", @signature);
 				};
 			}
-			else if(@kind->Equals("tool_use")) {
-				block->Insert("id", @tool_id);
-				block->Insert("name", @tool_name);
+			else if(@kind->Equals("tool_use") | @kind->Equals("server_tool_use") | @kind->Equals("mcp_tool_use")) {
+				block := @start;
 				input : JsonElement;
 				if(@json->Size() > 0) {
 					input := JsonParser->TextToElement(@json);
-				};
-				if(input = Nil) {
+					if(input = Nil) {
+						EndPoint->SetLastError("a tool's input was cut off or is not JSON (was max_tokens reached?)");
+						@failed := true;
+						@kind := Nil;
+						return;
+					};
+				}
+				else {
 					input := JsonElement->New(JsonElement->JsonType->OBJECT);
 				};
 				block->Insert("input", input);
+			}
+			else if(@start <> Nil) {
+				# any other block (redacted_thinking and its data, a server tool result) is kept as it arrived
+				block := @start;
 			};
 
 			@blocks->AddBack(block);
@@ -706,6 +730,8 @@ reply := stream->GetReply();
 		@chat : Chat;
 		@pending : String;
 		@finished : Bool;
+		@settled : Bool;
+		@reply : Reply;
 
 		#~
 		@hidden
@@ -715,6 +741,7 @@ reply := stream->GetReply();
 			@chat := chat;
 			@assembler := StreamAssembler->New();
 			@finished := false;
+			@settled := false;
 		}
 
 		#~
@@ -744,6 +771,7 @@ reply := stream->GetReply();
 			};
 
 			Finish();
+			Settle();
 			return false;
 		}
 
@@ -762,14 +790,27 @@ reply := stream->GetReply();
 		method : public : GetReply() ~ Reply {
 			while(HasNext()) {
 			};
-			return @chat->FinishStream(@assembler);
+			Settle();
+			return @reply;
 		}
 
 		#~
-		Closes the connection early
+		Closes the connection early. The exchange is then dropped from the history, as a failed one is.
 		~#
 		method : public : Close() ~ Nil {
 			Finish();
+			if(<>@settled) {
+				@settled := true;
+				@chat->AbortStream();
+			};
+		}
+
+		# the exchange joins the history when the stream ends, whether or not the caller asks for the reply
+		method : Settle() ~ Nil {
+			if(<>@settled) {
+				@settled := true;
+				@reply := @chat->FinishStream(@assembler);
+			};
 		}
 
 		method : Finish() ~ Nil {
@@ -797,6 +838,8 @@ chat->Send("And at sunset?")->PrintLine();
 		@max_tokens : Int;
 		@temperature : Float;
 		@has_temperature : Bool;
+		@thinking_budget : Int;
+		@stream_added : Bool;
 		@messages : Vector<JsonElement>;
 		@last_reply : Reply;
 
@@ -811,6 +854,8 @@ chat->Send("And at sunset?")->PrintLine();
 			@key := key;
 			@max_tokens := 4096;
 			@has_temperature := false;
+			@thinking_budget := 0;
+			@stream_added := false;
 			@messages := Vector->New()<JsonElement>;
 		}
 
@@ -842,6 +887,18 @@ chat->Send("And at sunset?")->PrintLine();
 		method : public : SetTemperature(temperature : Float) ~ Chat {
 			@temperature := temperature;
 			@has_temperature := true;
+			return @self;
+		}
+
+		#~
+		Turns extended thinking on. The API needs a budget of at least 1024 tokens and a max_tokens above it,
+		so call SetMaxTokens too. While it is on, the temperature is not sent (the API rejects both together),
+		and SendJson leaves thinking off for its one request because a forced tool is rejected with it.
+		@param budget_tokens tokens the model may think with, 0 to turn thinking off
+		@return self for chaining
+		~#
+		method : public : SetThinking(budget_tokens : Int) ~ Chat {
+			@thinking_budget := budget_tokens;
 			return @self;
 		}
 
@@ -946,8 +1003,14 @@ chat->Send("And at sunset?")->PrintLine();
 			if(@system <> Nil) {
 				request->Insert("system", @system);
 			};
-			if(@has_temperature) {
+			if(@has_temperature & (@thinking_budget <= 0 | tool_choice <> Nil)) {
 				request->Insert("temperature", @temperature);
+			};
+			if(@thinking_budget > 0 & tool_choice = Nil) {
+				thinking := JsonElement->New(JsonElement->JsonType->OBJECT);
+				thinking->Insert("type", "enabled");
+				thinking->Insert("budget_tokens", @thinking_budget);
+				request->Insert("thinking", thinking);
 			};
 			if(stream) {
 				request->Insert("stream", true);
@@ -1044,7 +1107,13 @@ reply->GetText()->PrintLine();
 				return Nil;
 			};
 
-			AddReply(reply);
+			if(Keep(reply)) {
+				AddReply(reply);
+			}
+			else if(added) {
+				@messages->RemoveBack();
+			};
+			@last_reply := reply;
 			return reply;
 		}
 
@@ -1114,6 +1183,7 @@ reply->GetText()->PrintLine();
 				@messages->AddBack(TextMessage("user", message));
 				added := true;
 			};
+			@stream_added := added;
 
 			request := Build(@messages, tools, Nil, true);
 			client := HttpsClient->New();
@@ -1127,7 +1197,7 @@ reply->GetText()->PrintLine();
 			}
 			else if(events->GetStatusCode() <> 200) {
 				code := events->GetStatusCode();
-				SetLastError("the API answered HTTP {$code}");
+				SetLastError("the API answered HTTP {$code}{$HttpHint(code)}");
 				events->Close();
 				failed := true;
 			};
@@ -1136,6 +1206,7 @@ reply->GetText()->PrintLine();
 				if(added) {
 					@messages->RemoveBack();
 				};
+				@stream_added := false;
 				return Nil;
 			};
 
@@ -1147,17 +1218,73 @@ reply->GetText()->PrintLine();
 		~#
 		method : public : FinishStream(assembler : StreamAssembler) ~ Reply {
 			reply := assembler->GetReply();
-			if(reply <> Nil) {
+			if(reply <> Nil & Keep(reply)) {
 				AddReply(reply);
+			}
+			else {
+				AbortStream();
+			};
+			@stream_added := false;
+			if(reply <> Nil) {
+				@last_reply := reply;
 			};
 			return reply;
 		}
 
+		#~
+		@hidden
+		~#
+		method : public : AbortStream() ~ Nil {
+			if(@stream_added & @messages->Size() > 0) {
+				@messages->RemoveBack();
+			};
+			@stream_added := false;
+		}
+
+		# what the status of a refused stream means, since its body is not read
+		function : HttpHint(code : Int) ~ String {
+			if(code = 401) {
+				return " (authentication_error: check the API key)";
+			}
+			else if(code = 403) {
+				return " (permission_error)";
+			}
+			else if(code = 429) {
+				return " (rate_limit_error)";
+			}
+			else if(code = 529) {
+				return " (overloaded_error)";
+			};
+			return "";
+		}
+
+		# A reply joins the history unless the API would reject it on replay: a refusal (the docs say to
+		# drop that turn) and an empty reply are not kept; an empty text block is removed from one that is
+		method : Keep(reply : Reply) ~ Bool {
+			if(reply->GetStopReason() <> Nil & reply->GetStopReason()->Equals("refusal")) {
+				return false;
+			};
+			return reply->GetContent()->Size() > 0;
+		}
+
 		# keep the assistant turn, content blocks and all, as the API wants them replayed
 		method : AddReply(reply : Reply) ~ Nil {
+			content := JsonElement->New(JsonElement->JsonType->ARRAY);
+			blocks := reply->GetContent();
+			each(i : blocks) {
+				block := blocks->Get(i);
+				empty_text := Field->Is(block, "type", "text") & Field->Text(block, "text") <> Nil & Field->Text(block, "text")->Size() = 0;
+				if(<>empty_text) {
+					content->Add(block);
+				};
+			};
+
+			if(content->Size() = 0) {
+				return;
+			};
 			message := JsonElement->New(JsonElement->JsonType->OBJECT);
 			message->Insert("role", "assistant");
-			message->Insert("content", reply->GetContent());
+			message->Insert("content", content);
 			@messages->AddBack(message);
 			@last_reply := reply;
 		}

@@ -113,6 +113,105 @@ class Probe {
 	}
 }
 
+# The rules the real APIs enforce on a request that a mock cannot get from a recorded body: Gemini
+# refuses an object schema with no properties and keywords outside its schema subset, and OpenAI
+# is told per tool whether it is strict. A request that breaks one is answered with a 400.
+class Rules {
+	function : GeminiProblem(body : String) ~ String {
+		json := JsonParser->TextToElement(body);
+		if(json = Nil | json->GetType() <> JsonElement->JsonType->OBJECT) {
+			return "";
+		};
+
+		groups := Probe->List(json, "tools");
+		if(groups <> Nil) {
+			each(i : groups) {
+				declarations := Probe->List(groups->Get(i), "functionDeclarations");
+				if(declarations <> Nil) {
+					each(j : declarations) {
+						parameters := declarations->Get(j)->Get("parameters");
+						if(parameters <> Nil) {
+							properties := parameters->Get("properties");
+							if(properties = Nil | properties->GetType() <> JsonElement->JsonType->OBJECT | properties->Size() = 0) {
+								return "parameters.properties: should be non-empty for OBJECT type";
+							};
+
+							word := Forbidden(parameters);
+							if(word->Size() > 0) {
+								return "Unknown name {$word} at 'tools[0].function_declarations[{$j}].parameters'";
+							};
+						};
+					};
+				};
+			};
+		};
+
+		config := json->Get("generationConfig");
+		if(config <> Nil & config->GetType() = JsonElement->JsonType->OBJECT) {
+			word := Forbidden(config->Get("responseSchema"));
+			if(word->Size() > 0) {
+				return "Unknown name {$word} at 'generation_config.response_schema'";
+			};
+		};
+		return "";
+	}
+
+	# the first keyword Gemini's schema does not have, or ""; the keys under "properties" are names, not keywords
+	function : Forbidden(schema : JsonElement) ~ String {
+		if(schema = Nil | schema->GetType() <> JsonElement->JsonType->OBJECT) {
+			return "";
+		};
+
+		names := schema->GetNames();
+		each(i : names) {
+			name := names->Get(i);
+			if(name->Equals("additionalProperties") | name->Equals("$schema") | name->Equals("$ref") | name->Equals("$defs") |
+					name->Equals("default") | name->Equals("oneOf") | name->Equals("allOf") | name->Equals("const") | name->Equals("examples")) {
+				return name;
+			};
+
+			value := schema->Get(name);
+			if(name->Equals("properties") & value->GetType() = JsonElement->JsonType->OBJECT) {
+				keys := value->GetNames();
+				each(j : keys) {
+					found := Forbidden(value->Get(keys->Get(j)));
+					if(found->Size() > 0) {
+						return found;
+					};
+				};
+			}
+			else if(name->Equals("items")) {
+				found := Forbidden(value);
+				if(found->Size() > 0) {
+					return found;
+				};
+			}
+			else if(name->Equals("anyOf") & value->GetType() = JsonElement->JsonType->ARRAY) {
+				each(j : value) {
+					found := Forbidden(value->Get(j));
+					if(found->Size() > 0) {
+						return found;
+					};
+				};
+			};
+		};
+		return "";
+	}
+
+	function : OpenAIProblem(body : String) ~ String {
+		tools := Probe->List(JsonParser->TextToElement(body), "tools");
+		if(tools <> Nil) {
+			each(i : tools) {
+				strict := tools->Get(i)->Get("strict");
+				if(strict = Nil | strict->GetType() <> JsonElement->JsonType->FALSE) {
+					return "Missing 'strict' on tools[{$i}]: set it to false for a schema that is not strict";
+				};
+			};
+		};
+		return "";
+	}
+}
+
 class LlmMock from HttpsRequestHandler {
 	New() { Parent(); }
 
@@ -209,11 +308,24 @@ class LlmMock from HttpsRequestHandler {
 			return false;
 		};
 
+		problem := Rules->OpenAIProblem(body);
+		if(problem->Size() > 0) {
+			response->SetCodeContent(400, "{\"error\":{\"message\":\"{$problem}\",\"type\":\"invalid_request_error\"}}");
+			return false;
+		};
+
 		completed := "{\"id\":\"resp_s\",\"model\":\"gpt-5\",\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello\"}]}],\"usage\":{\"input_tokens\":7,\"output_tokens\":2}}";
 		call := "{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_w\",\"name\":\"get_weather\",\"arguments\":\"{\\\"city\\\":\\\"Paris\\\"}\",\"status\":\"completed\"}";
 
 		if(body->Find("\"stream\":true") > -1) {
 			events := "event: response.created\ndata: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_s\",\"status\":\"in_progress\"}}\n\n";
+			if(body->Find("fail-stream") > -1) {
+				events += "event: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"Hel\"}\n\n";
+				events += "event: response.failed\ndata: {\"type\":\"response.failed\",\"response\":{\"status\":\"failed\",\"error\":{\"message\":\"the model failed\",\"type\":\"server_error\"}}}\n\n";
+				Events(response, events);
+				return false;
+			};
+
 			if(body->Find("\"tools\"") > -1) {
 				completed := "{\"id\":\"resp_s\",\"model\":\"gpt-5\",\"status\":\"completed\",\"output\":[{$call}],\"usage\":{\"input_tokens\":7,\"output_tokens\":2}}";
 				events += "event: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"function_call\",\"call_id\":\"call_w\",\"name\":\"get_weather\"}}\n\n";
@@ -225,6 +337,11 @@ class LlmMock from HttpsRequestHandler {
 			};
 			events += "event: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{$completed}}\n\n";
 			Events(response, events);
+			return false;
+		};
+
+		if(body->Find("json_schema") > -1 & body->Find("truncate") > -1) {
+			response->SetCodeContent(200, "{\"id\":\"resp_j\",\"model\":\"gpt-5\",\"status\":\"incomplete\",\"incomplete_details\":{\"reason\":\"max_output_tokens\"},\"output\":[],\"usage\":{\"input_tokens\":3,\"output_tokens\":0}}");
 			return false;
 		};
 
@@ -273,16 +390,34 @@ class LlmMock from HttpsRequestHandler {
 			return false;
 		};
 
+		problem := Rules->GeminiProblem(body);
+		if(problem->Size() > 0) {
+			response->SetCodeContent(400, "{\"error\":{\"code\":400,\"message\":\"{$problem}\",\"status\":\"INVALID_ARGUMENT\"}}");
+			return false;
+		};
+
 		if(stream) {
 			events := "";
-			if(body->Find("functionDeclarations") > -1) {
+			if(body->Find("fail-stream") > -1) {
+				events += "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Hel\"}]}}]}\n\n";
+				events += "data: {\"error\":{\"code\":500,\"message\":\"backend exploded\",\"status\":\"INTERNAL\"}}\n\n";
+			}
+			else if(body->Find("blocked-stream") > -1) {
+				events += "data: {\"promptFeedback\":{\"blockReason\":\"SAFETY\"}}\n\n";
+			}
+			else if(body->Find("functionDeclarations") > -1) {
 				events += "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"get_weather\",\"args\":{\"city\":\"Paris\"}}}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":7,\"candidatesTokenCount\":2}}\n\n";
 			}
 			else {
-				events += "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Hel\"}]}}],\"usageMetadata\":{\"promptTokenCount\":7,\"candidatesTokenCount\":1}}\n\n";
+				events += "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Hel\",\"thoughtSignature\":\"sig-1\"}]}}],\"usageMetadata\":{\"promptTokenCount\":7,\"candidatesTokenCount\":1}}\n\n";
 				events += "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"lo\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":7,\"candidatesTokenCount\":2},\"modelVersion\":\"gemini-2.5-flash\"}\n\n";
 			};
 			Events(response, events);
+			return false;
+		};
+
+		if(body->Find("responseSchema") > -1 & body->Find("truncate") > -1) {
+			response->SetCodeContent(200, "{\"candidates\":[{\"finishReason\":\"MAX_TOKENS\"}],\"usageMetadata\":{\"promptTokenCount\":3,\"candidatesTokenCount\":0}}");
 			return false;
 		};
 
@@ -511,6 +646,8 @@ class LlmHttpTest {
 		TestStream();
 		TestStreamTools();
 		TestStreamErrors();
+		TestStreamSettling();
+		TestTruncated();
 		TestUnreachable();
 		TestKeys();
 
@@ -555,10 +692,12 @@ class LlmHttpTest {
 		return ["anthropic", "openai", "gemini", "ollama"];
 	}
 
+	# a tool with an optional argument and keywords only some providers take, and one with no arguments
 	function : Weather() ~ Vector<ToolSpec> {
-		schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}");
+		schema := JsonParser->TextToElement("{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"city\":{\"type\":\"string\"},\"units\":{\"type\":\"string\",\"default\":\"C\"}},\"required\":[\"city\"]}");
 		tools := Vector->New()<ToolSpec>;
 		tools->AddBack(ToolSpec->New("get_weather", "Get the weather", schema));
+		tools->AddBack(ToolSpec->New("ping", "Check the line; takes no arguments", Nil));
 		return tools;
 	}
 
@@ -669,7 +808,7 @@ class LlmHttpTest {
 	}
 
 	function : TestJson() ~ Nil {
-		schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"},\"temp\":{\"type\":\"integer\"}},\"required\":[\"city\",\"temp\"]}");
+		schema := JsonParser->TextToElement("{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"city\":{\"type\":\"string\"},\"temp\":{\"type\":\"integer\"}},\"required\":[\"city\",\"temp\"]}");
 		providers := Providers();
 		each(i : providers) {
 			provider := providers[i];
@@ -794,7 +933,86 @@ class LlmHttpTest {
 			if(<>provider->Equals("ollama")) {
 				Check("{$provider}: the HTTP status is reported", Has(err, "401") | Has(err, "400"));
 			};
+			if(provider->Equals("openai")) {
+				Check("openai: the server's message is reported, not only the status", Has(err, "invalid_request_error") & Has(err, "Incorrect API key"));
+			}
+			else if(provider->Equals("gemini")) {
+				Check("gemini: the server's message is reported, not only the status", Has(err, "INVALID_ARGUMENT") & Has(err, "API key not valid"));
+			};
 		};
+	}
+
+	function : Pieces(stream : TurnStream) ~ Int {
+		count := 0;
+		while(stream->HasNext()) {
+			count += 1;
+		};
+		return count;
+	}
+
+	function : TestStreamSettling() ~ Nil {
+		"-- a stream that is closed, abandoned, broken or blocked leaves the conversation consistent"->PrintLine();
+		url := "https://localhost:{$@port}";
+
+		openai := OpenAISession->New("gpt-5", "test-key");
+		openai->SetBaseUrl("{$url}/openai/v1")->SetCertificate(@pem);
+		stream := openai->Stream("hello", Nil);
+		stream->Close();
+		Check("openai: closing a stream early takes the message back", openai->GetInput()->Size() = 0);
+
+		stream := openai->Stream("hello", Nil);
+		Pieces(stream);
+		Check("openai: reading a stream to its end settles it without GetTurn", openai->GetInput()->Size() = 2);
+		Check("openai: GetTurn after that returns the same turn", stream->GetTurn() <> Nil & Same(stream->GetTurn()->GetText(), "Hello") & openai->GetInput()->Size() = 2);
+
+		openai := OpenAISession->New("gpt-5", "test-key");
+		openai->SetBaseUrl("{$url}/openai/v1")->SetCertificate(@pem);
+		stream := openai->Stream("fail-stream", Nil);
+		Pieces(stream);
+		Check("openai: a stream that fails midway gives no turn", stream->GetTurn() = Nil);
+		Check("openai: and reports the failure", Has(openai->GetLastError(), "the model failed"));
+		Check("openai: and the message is taken back, as Send does", openai->GetInput()->Size() = 0);
+
+		gemini := GeminiSession->New("gemini-2.5-flash", "test-key");
+		gemini->SetBaseUrl("{$url}/gemini/v1beta")->SetCertificate(@pem);
+		stream := gemini->Stream("hello", Nil);
+		stream->Close();
+		Check("gemini: closing a stream early takes the message back", gemini->GetContents()->Size() = 0);
+
+		stream := gemini->Stream("hello", Nil);
+		Pieces(stream);
+		Check("gemini: reading a stream to its end settles it without GetTurn", gemini->GetContents()->Size() = 2);
+		Check("gemini: a part that carries a thought signature is replayed whole", Has(gemini->GetContents()->ToString(), "\"thoughtSignature\":\"sig-1\""));
+		Check("gemini: the text around it is not lost", Has(gemini->GetContents()->ToString(), "\"text\":\"Hel\"") & Has(gemini->GetContents()->ToString(), "\"text\":\"lo\""));
+
+		gemini := GeminiSession->New("gemini-2.5-flash", "test-key");
+		gemini->SetBaseUrl("{$url}/gemini/v1beta")->SetCertificate(@pem);
+		stream := gemini->Stream("fail-stream", Nil);
+		Pieces(stream);
+		Check("gemini: a stream that fails midway gives no turn", stream->GetTurn() = Nil);
+		Check("gemini: and reports the failure", Has(gemini->GetLastError(), "backend exploded"));
+		Check("gemini: and the message is taken back", gemini->GetContents()->Size() = 0);
+
+		stream := gemini->Stream("blocked-stream", Nil);
+		Pieces(stream);
+		Check("gemini: a blocked prompt gives no turn", stream->GetTurn() = Nil);
+		Check("gemini: and says why", Has(gemini->GetLastError(), "blocked") & Has(gemini->GetLastError(), "SAFETY"));
+		Check("gemini: and the message is taken back", gemini->GetContents()->Size() = 0);
+	}
+
+	function : TestTruncated() ~ Nil {
+		"-- a JSON answer cut short says why"->PrintLine();
+		schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}}}");
+		url := "https://localhost:{$@port}";
+		openai := OpenAISession->New("gpt-5", "test-key");
+		openai->SetBaseUrl("{$url}/openai/v1")->SetCertificate(@pem);
+		Check("openai: a cut-off answer is Nil", openai->SendJson("truncate", "answer", schema) = Nil);
+		Check("openai: and the error names the stop word", Has(openai->GetLastError(), "requested shape") & Has(openai->GetLastError(), "max_output_tokens"));
+
+		gemini := GeminiSession->New("gemini-2.5-flash", "test-key");
+		gemini->SetBaseUrl("{$url}/gemini/v1beta")->SetCertificate(@pem);
+		Check("gemini: a cut-off answer is Nil", gemini->SendJson("truncate", "answer", schema) = Nil);
+		Check("gemini: and the error names the finish reason", Has(gemini->GetLastError(), "requested shape") & Has(gemini->GetLastError(), "MAX_TOKENS"));
 	}
 
 	function : TestUnreachable() ~ Nil {

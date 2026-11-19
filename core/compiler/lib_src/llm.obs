@@ -45,7 +45,11 @@ bundle API.LLM {
 			func_json := func->ToJson();
 			@schema := JsonElement->New(JsonElement->JsonType->OBJECT);
 			@schema->Insert("type", "object");
-			@schema->Insert("properties", func_json->Get("properties"));
+			properties_json := func_json->Get("properties");
+			if(properties_json = Nil) {
+				properties_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			};
+			@schema->Insert("properties", properties_json);
 			required_json := func_json->Get("required");
 			if(required_json <> Nil) {
 				@schema->Insert("required", required_json);
@@ -74,6 +78,15 @@ bundle API.LLM {
 		~#
 		method : public : GetSchema() ~ JsonElement {
 			return @schema;
+		}
+
+		#~
+		Check whether the tool takes any arguments
+		@return true when the schema lists at least one property
+		~#
+		method : public : HasProperties() ~ Bool {
+			properties := Js->Child(@schema, "properties");
+			return properties <> Nil & properties->GetType() = JsonElement->JsonType->OBJECT & properties->Size() > 0;
 		}
 	}
 
@@ -335,6 +348,17 @@ turn := stream->GetTurn();
 		method : virtual : public : AddToolResult(call_id : String, tool_name : String, content : String) ~ Nil;
 
 		#~
+		Adds a failed tool call's error to the conversation, marked as an error where the provider
+		has a way to say so: Anthropic's is_error flag, Gemini's "error" response field. OpenAI and
+		Ollama carry it as text that starts with "Error: ". Use it in place of AddToolResult when the
+		tool could not run, and send the conversation on as usual.
+		@param call_id the id from ToolInvocation->GetId()
+		@param tool_name the name from ToolInvocation->GetName()
+		@param message what went wrong
+		~#
+		method : virtual : public : AddToolError(call_id : String, tool_name : String, message : String) ~ Nil;
+
+		#~
 		Sends a message and streams the reply. Anthropic, OpenAI and Gemini stream as the model
 		generates; Ollama does not stream here, so its stream gives the whole reply as one piece.
 		@param message user message, or Nil to send the conversation as it stands
@@ -347,6 +371,9 @@ turn := stream->GetTurn();
 		Asks for an answer in a given shape. The conversation so far is context; neither the
 		question nor the answer joins it. How the shape is enforced is the provider's: a forced tool
 		(Anthropic), a JSON schema response format (OpenAI and Ollama) or a response schema (Gemini).
+		Treat it as best effort: OpenAI is asked with strict mode off, and Gemini accepts only a
+		subset of JSON Schema, so keywords it does not know are removed from the schema it is sent.
+		Check what comes back.
 		@param message the question
 		@param name a name for the shape, letters digits and underscores
 		@param schema JSON schema of the answer, an object
@@ -368,7 +395,7 @@ turn := stream->GetTurn();
 		#~
 		Runs one tool call
 		@param call the call to run
-		@return the result text; return an error message as text to tell the model it failed
+		@return the result text, or Nil when the tool failed (Agent reports that to the model as an error)
 		~#
 		method : virtual : public : Run(call : ToolInvocation) ~ String;
 	}
@@ -387,8 +414,11 @@ if(turn <> Nil) {
 	~#
 	class Agent {
 		#~
-		Runs the loop. A turn that still has tool calls when max_rounds rounds have run is returned
-		as it is, so check HasToolCalls() to tell a finished answer from a stopped loop.
+		Runs the loop. A call to a tool that is not in the list, or a handler that returns Nil, is
+		answered with an error (AddToolError) and the handler is not asked. A turn that still has
+		tool calls when max_rounds rounds have run is returned as it is, so check HasToolCalls() to
+		tell a finished answer from a stopped loop; its calls are answered with an error first, so
+		the session can go on with another Send.
 		@param session chat session
 		@param message the first user message
 		@param tools tool definitions
@@ -403,18 +433,47 @@ if(turn <> Nil) {
 				calls := turn->GetToolCalls();
 				each(i : calls) {
 					call := calls->Get(i);
-					result := handler->Run(call);
-					if(result = Nil) {
-						result := "error: the tool returned nothing";
+					if(<>Known(tools, call->GetName())) {
+						session->AddToolError(call->GetId(), call->GetName(), "there is no tool named {$call->GetName()}");
+					}
+					else {
+						result := handler->Run(call);
+						if(result = Nil) {
+							session->AddToolError(call->GetId(), call->GetName(), "the tool returned nothing");
+						}
+						else {
+							session->AddToolResult(call->GetId(), call->GetName(), result);
+						};
 					};
-					session->AddToolResult(call->GetId(), call->GetName(), result);
 				};
 
 				turn := session->Send(Nil, tools);
 				rounds += 1;
 			};
 
+			# calls left unanswered would make the next Send fail on every provider
+			if(turn <> Nil & turn->HasToolCalls()) {
+				calls := turn->GetToolCalls();
+				each(i : calls) {
+					call := calls->Get(i);
+					session->AddToolError(call->GetId(), call->GetName(), "the tool round limit was reached, so this call was not run");
+				};
+			};
+
 			return turn;
+		}
+
+		function : Known(tools : Vector<ToolSpec>, name : String) ~ Bool {
+			if(tools = Nil | name = Nil) {
+				return false;
+			};
+
+			each(i : tools) {
+				if(tools->Get(i)->GetName()->Equals(name)) {
+					return true;
+				};
+			};
+			return false;
 		}
 	}
 
@@ -614,11 +673,23 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 		@json : JsonElement;
 		@stream : SSEStream;
 		@error : String;
+		@code : Int;
 
 		New(json : JsonElement, stream : SSEStream, error : String) {
 			@json := json;
 			@stream := stream;
 			@error := error;
+			@code := 0;
+		}
+
+		New(error : String, code : Int) {
+			@error := error;
+			@code := code;
+		}
+
+		# the HTTP status behind an error, 0 when there was none
+		method : public : GetCode() ~ Int {
+			return @code;
 		}
 
 		method : public : IsOk() ~ Bool {
@@ -743,7 +814,7 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 			code := events->GetStatusCode();
 			if(code <> 200) {
 				events->Close();
-				return Outcome->New(Nil, Nil, "{$who} answered HTTP {$code}");
+				return Outcome->New("{$who} answered HTTP {$code}", code);
 			};
 
 			return Outcome->New(Nil, events, Nil);
@@ -817,6 +888,7 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 		~#
 		method : public : ParseBody(body : String) ~ Turn {
 			@last_error := Nil;
+			API.Anthropic.EndPoint->SetLastError(Nil);
 			reply := Reply->Parse(body);
 			if(reply = Nil) {
 				Fail(Reason());
@@ -835,6 +907,7 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 
 		method : public : Send(message : String, tools : Vector<ToolSpec>) ~ Turn {
 			@last_error := Nil;
+			API.Anthropic.EndPoint->SetLastError(Nil);
 			reply := @chat->SendReply(message, Convert(tools));
 			if(reply = Nil) {
 				Fail(Reason());
@@ -848,8 +921,13 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 			@chat->AddToolResult(call_id, content);
 		}
 
+		method : public : AddToolError(call_id : String, tool_name : String, message : String) ~ Nil {
+			@chat->AddToolResult(call_id, message, true);
+		}
+
 		method : public : Stream(message : String, tools : Vector<ToolSpec>) ~ TurnStream {
 			@last_error := Nil;
+			API.Anthropic.EndPoint->SetLastError(Nil);
 			stream := @chat->Stream(message, Convert(tools));
 			if(stream = Nil) {
 				Fail(Reason());
@@ -861,6 +939,7 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 
 		method : public : SendJson(message : String, name : String, schema : JsonElement) ~ JsonElement {
 			@last_error := Nil;
+			API.Anthropic.EndPoint->SetLastError(Nil);
 			answer := @chat->SendJson(message, name, schema);
 			if(answer = Nil) {
 				Fail(Reason());
@@ -971,6 +1050,7 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 		@temperature : Float;
 		@has_temperature : Bool;
 		@input : Vector<JsonElement>;
+		@pending : Bool;
 		@last_error : String;
 
 		#~
@@ -1094,6 +1174,9 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 						tool_json->Insert("description", tool->GetDescription());
 					};
 					tool_json->Insert("parameters", tool->GetSchema());
+					# a function tool is strict unless told otherwise on some models, and strict
+					# refuses a schema with an optional property or without additionalProperties:false
+					tool_json->Insert("strict", false);
 					tools_json->Add(tool_json);
 				};
 				request->Insert("tools", tools_json);
@@ -1169,6 +1252,10 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 			@input->AddBack(item);
 		}
 
+		method : public : AddToolError(call_id : String, tool_name : String, message : String) ~ Nil {
+			AddToolResult(call_id, tool_name, "Error: {$message}");
+		}
+
 		method : public : SendJson(message : String, name : String, schema : JsonElement) ~ JsonElement {
 			@last_error := Nil;
 			key := Key();
@@ -1203,7 +1290,7 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 
 			answer := JsonParser->TextToElement(turn->GetText());
 			if(<>Js->IsObject(answer)) {
-				@last_error := "the model did not return the requested shape";
+				@last_error := Shape(turn);
 				return Nil;
 			};
 			return answer;
@@ -1225,12 +1312,22 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 			outcome := Wire->Open(Endpoint(), Headers(key), Build(@input, tools, true, Nil), @pem, "the OpenAI API");
 			if(<>outcome->IsOk()) {
 				@last_error := outcome->GetError();
+				# the stream cannot show the error body; a client error is the same without streaming, so ask that way
+				code := outcome->GetCode();
+				if(code = 400 | code = 401 | code = 403 | code = 404) {
+					explained := Wire->Post(Endpoint(), Headers(key), Build(@input, tools, false, Nil), @pem, "the OpenAI API");
+					if(<>explained->IsOk()) {
+						@last_error := explained->GetError();
+					};
+				};
+
 				if(added) {
 					@input->RemoveBack();
 				};
 				return Nil;
 			};
 
+			@pending := added;
 			return OpenAIStream->New(outcome->GetStream(), @self);
 		}
 
@@ -1244,18 +1341,48 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 		#~
 		@hidden
 		~#
+		method : public : Abort() ~ Nil {
+			if(@pending) {
+				@input->RemoveBack();
+				@pending := false;
+			};
+		}
+
+		#~
+		@hidden
+		~#
 		method : public : Finish(response : JsonElement) ~ Turn {
+			turn : Turn;
 			if(response = Nil) {
 				Fail("the stream ended before the response completed");
-				return Nil;
+			}
+			else {
+				message := Wire->ErrorText(response);
+				if(message <> Nil) {
+					Fail(message);
+				}
+				else {
+					turn := Parse(response, true);
+				};
 			};
 
-			message := Wire->ErrorText(response);
-			if(message <> Nil) {
-				Fail(message);
-				return Nil;
+			if(turn = Nil) {
+				Abort();
+			}
+			else {
+				@pending := false;
 			};
-			return Parse(response, true);
+			return turn;
+		}
+
+		# why a JSON answer is missing, with the provider's stop word when there was one
+		method : Shape(turn : Turn) ~ String {
+			message := "the model did not return the requested shape";
+			if(turn->GetRawStopReason() <> Nil & <>Js->Same(turn->GetStopReason(), "end")) {
+				raw := turn->GetRawStopReason();
+				message += " (stopped: {$raw})";
+			};
+			return message;
 		}
 
 		# builds a turn from a Responses object; with keep, its output items join the conversation
@@ -1334,13 +1461,16 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 		@session : OpenAISession;
 		@pending : String;
 		@final : JsonElement;
+		@turn : Turn;
 		@finished : Bool;
+		@settled : Bool;
 		@failed : Bool;
 
 		New(events : SSEStream, session : OpenAISession) {
 			@events := events;
 			@session := session;
 			@finished := false;
+			@settled := false;
 			@failed := false;
 		}
 
@@ -1357,38 +1487,41 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 					kind := event->GetEvent();
 				};
 
-				if(kind->Equals("response.output_text.delta")) {
-					piece := Js->Text(json, "delta");
-					if(piece <> Nil & piece->Size() > 0) {
-						@pending := piece;
-						return true;
+				if(kind <> Nil) {
+					if(kind->Equals("response.output_text.delta")) {
+						piece := Js->Text(json, "delta");
+						if(piece <> Nil & piece->Size() > 0) {
+							@pending := piece;
+							return true;
+						};
+					}
+					else if(kind->Equals("response.completed") | kind->Equals("response.incomplete")) {
+						@final := Js->Child(json, "response");
+						break;
+					}
+					else if(kind->Equals("response.failed")) {
+						message := Wire->ErrorText(Js->Child(json, "response"));
+						if(message = Nil) {
+							message := "the response failed";
+						};
+						@session->Fail(message);
+						@failed := true;
+						break;
+					}
+					else if(kind->Equals("error")) {
+						message := Js->Text(json, "message");
+						if(message = Nil) {
+							message := "the stream carried an error";
+						};
+						@session->Fail(message);
+						@failed := true;
+						break;
 					};
-				}
-				else if(kind->Equals("response.completed") | kind->Equals("response.incomplete")) {
-					@final := Js->Child(json, "response");
-					break;
-				}
-				else if(kind->Equals("response.failed")) {
-					message := Wire->ErrorText(Js->Child(json, "response"));
-					if(message = Nil) {
-						message := "the response failed";
-					};
-					@session->Fail(message);
-					@failed := true;
-					break;
-				}
-				else if(kind->Equals("error")) {
-					message := Js->Text(json, "message");
-					if(message = Nil) {
-						message := "the stream carried an error";
-					};
-					@session->Fail(message);
-					@failed := true;
-					break;
 				};
 			};
 
-			Close();
+			End();
+			Settle();
 			return false;
 		}
 
@@ -1396,20 +1529,38 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 			return @pending;
 		}
 
+		# the stream is over: the exchange joins the conversation, or the message that began it is taken back
+		method : Settle() ~ Nil {
+			if(<>@settled) {
+				@settled := true;
+				if(@failed) {
+					@session->Abort();
+				}
+				else {
+					@turn := @session->Finish(@final);
+				};
+			};
+		}
+
 		method : public : GetTurn() ~ Turn {
 			while(HasNext()) {
 			};
-
-			if(@failed) {
-				return Nil;
-			};
-			return @session->Finish(@final);
+			Settle();
+			return @turn;
 		}
 
-		method : public : Close() ~ Nil {
+		method : End() ~ Nil {
 			if(<>@finished) {
 				@finished := true;
 				@events->Close();
+			};
+		}
+
+		method : public : Close() ~ Nil {
+			End();
+			if(<>@settled) {
+				@settled := true;
+				@session->Abort();
 			};
 		}
 	}
@@ -1431,6 +1582,7 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 		@temperature : Float;
 		@has_temperature : Bool;
 		@contents : Vector<JsonElement>;
+		@pending : Bool;
 		@last_error : String;
 
 		#~
@@ -1551,7 +1703,11 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 					if(tool->GetDescription() <> Nil) {
 						declaration->Insert("description", tool->GetDescription());
 					};
-					declaration->Insert("parameters", tool->GetSchema());
+					# Gemini refuses an object with no properties, and keywords outside its schema subset
+					parameters := GeminiSchema->Clean(tool->GetSchema());
+					if(GeminiSchema->HasProperties(parameters)) {
+						declaration->Insert("parameters", parameters);
+					};
 					declarations->Add(declaration);
 				};
 
@@ -1572,7 +1728,7 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 				};
 				if(schema <> Nil) {
 					config->Insert("responseMimeType", "application/json");
-					config->Insert("responseSchema", schema);
+					config->Insert("responseSchema", GeminiSchema->Clean(schema));
 				};
 				request->Insert("generationConfig", config);
 			};
@@ -1651,6 +1807,16 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 				response->Insert("result", content);
 			};
 
+			AddResponse(call_id, tool_name, response);
+		}
+
+		method : public : AddToolError(call_id : String, tool_name : String, message : String) ~ Nil {
+			response := Js->Object();
+			response->Insert("error", message);
+			AddResponse(call_id, tool_name, response);
+		}
+
+		method : AddResponse(call_id : String, tool_name : String, response : JsonElement) ~ Nil {
 			function_response := Js->Object();
 			function_response->Insert("name", tool_name);
 			function_response->Insert("response", response);
@@ -1703,7 +1869,7 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 
 			answer := JsonParser->TextToElement(turn->GetText());
 			if(<>Js->IsObject(answer)) {
-				@last_error := "the model did not return the requested shape";
+				@last_error := Shape(turn);
 				return Nil;
 			};
 			return answer;
@@ -1729,12 +1895,22 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 			outcome := Wire->Open(url, headers, Build(@contents, tools, Nil), @pem, "the Gemini API");
 			if(<>outcome->IsOk()) {
 				@last_error := outcome->GetError();
+				# the stream cannot show the error body; a client error is the same without streaming, so ask that way
+				code := outcome->GetCode();
+				if(code = 400 | code = 401 | code = 403 | code = 404) {
+					explained := Wire->Post(Endpoint("generateContent"), Headers(key), Build(@contents, tools, Nil), @pem, "the Gemini API");
+					if(<>explained->IsOk()) {
+						@last_error := explained->GetError();
+					};
+				};
+
 				if(added) {
 					@contents->RemoveBack();
 				};
 				return Nil;
 			};
 
+			@pending := added;
 			return GeminiStream->New(outcome->GetStream(), @self);
 		}
 
@@ -1748,8 +1924,36 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 		#~
 		@hidden
 		~#
+		method : public : Abort() ~ Nil {
+			if(@pending) {
+				@contents->RemoveBack();
+				@pending := false;
+			};
+		}
+
+		#~
+		@hidden
+		~#
 		method : public : Finish(response : JsonElement) ~ Turn {
-			return Parse(response, true);
+			turn := Parse(response, true);
+			if(turn = Nil) {
+				Abort();
+			}
+			else {
+				@pending := false;
+			};
+			return turn;
+		}
+
+		# why a JSON answer is missing, with the finish reason when there was one (Gemini 2.5 counts
+		# its thinking tokens against the limit, so a small limit can end the reply before any answer)
+		method : Shape(turn : Turn) ~ String {
+			message := "the model did not return the requested shape";
+			if(turn->GetRawStopReason() <> Nil & <>Js->Same(turn->GetStopReason(), "end")) {
+				raw := turn->GetRawStopReason();
+				message += " (finish reason {$raw})";
+			};
+			return message;
 		}
 
 		# builds a turn from a GenerateContentResponse; with keep, the model's content joins the conversation
@@ -1824,9 +2028,12 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 		@finish : String;
 		@usage : JsonElement;
 		@version : String;
+		@blocked : String;
+		@turn : Turn;
 		@seen : Bool;
 		@last : Bool;
 		@finished : Bool;
+		@settled : Bool;
 		@failed : Bool;
 
 		New(events : SSEStream, session : GeminiSession) {
@@ -1837,6 +2044,7 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 			@seen := false;
 			@last := false;
 			@finished := false;
+			@settled := false;
 			@failed := false;
 		}
 
@@ -1862,6 +2070,12 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 				if(version <> Nil) {
 					@version := version;
 				};
+				block := Js->Text(Js->Child(json, "promptFeedback"), "blockReason");
+				if(block <> Nil) {
+					# a blocked prompt is the whole answer; nothing follows it
+					@blocked := block;
+					@last := true;
+				};
 
 				candidates := Js->Child(json, "candidates");
 				if(Js->IsArray(candidates) & candidates->Size() > 0) {
@@ -1880,18 +2094,26 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 						each(i : parts) {
 							part := parts->Get(i);
 							text := Js->Text(part, "text");
-							if(text <> Nil & Js->Child(part, "functionCall") = Nil & <>Js->IsTrue(part, "thought")) {
-								@text += text;
+							if(Js->Child(part, "functionCall") <> Nil) {
+								Flush();
+								@parts->Add(part);
+							}
+							else if(text <> Nil & <>Js->IsTrue(part, "thought")) {
 								if(piece = Nil) {
 									piece := text;
 								}
 								else {
 									piece += text;
 								};
-							}
-							else if(Js->Child(part, "functionCall") <> Nil) {
-								Flush();
-								@parts->Add(part);
+
+								if(Js->Child(part, "thoughtSignature") <> Nil) {
+									# a part that carries a signature is replayed whole, not merged into its neighbours
+									Flush();
+									@parts->Add(part);
+								}
+								else {
+									@text += text;
+								};
 							};
 						};
 					};
@@ -1903,7 +2125,8 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 				};
 			};
 
-			Close();
+			End();
+			Settle();
 			return false;
 		}
 
@@ -1920,17 +2143,27 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 			return @pending;
 		}
 
-		method : public : GetTurn() ~ Turn {
-			while(HasNext()) {
+		# the stream is over: the exchange joins the conversation, or the message that began it is taken back
+		method : Settle() ~ Nil {
+			if(@settled) {
+				return;
 			};
+			@settled := true;
 
 			if(@failed) {
-				return Nil;
+				@session->Abort();
+				return;
 			};
 
 			if(<>@seen) {
-				@session->Fail("the stream ended without a candidate");
-				return Nil;
+				if(@blocked <> Nil) {
+					@session->Fail("the prompt was blocked: {$@blocked}");
+				}
+				else {
+					@session->Fail("the stream ended without a candidate");
+				};
+				@session->Abort();
+				return;
 			};
 
 			Flush();
@@ -1954,14 +2187,124 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 			if(@version <> Nil) {
 				assembled->Insert("modelVersion", @version);
 			};
-			return @session->Finish(assembled);
+			@turn := @session->Finish(assembled);
 		}
 
-		method : public : Close() ~ Nil {
+		method : public : GetTurn() ~ Turn {
+			while(HasNext()) {
+			};
+			Settle();
+			return @turn;
+		}
+
+		method : End() ~ Nil {
 			if(<>@finished) {
 				@finished := true;
 				@events->Close();
 			};
+		}
+
+		method : public : Close() ~ Nil {
+			End();
+			if(<>@settled) {
+				@settled := true;
+				@session->Abort();
+			};
+		}
+	}
+
+	# Reduces a JSON schema to the subset Gemini accepts (its Schema object, an OpenAPI subset): keywords
+	# it rejects are dropped (additionalProperties, $schema, $ref, default, allOf, ...), oneOf becomes anyOf,
+	# const becomes a one-value enum, and a type list such as ["string","null"] becomes the type plus nullable.
+	class : private : GeminiSchema {
+		function : Clean(schema : JsonElement) ~ JsonElement {
+			if(<>Js->IsObject(schema)) {
+				return schema;
+			};
+
+			clean := Js->Object();
+			names := schema->GetNames();
+			each(i : names) {
+				name := names->Get(i);
+				value := schema->Get(name);
+				if(name->Equals("type")) {
+					CleanType(clean, value);
+				}
+				else if(name->Equals("properties")) {
+					if(Js->IsObject(value)) {
+						properties := Js->Object();
+						keys := value->GetNames();
+						each(j : keys) {
+							properties->Insert(keys->Get(j), Clean(value->Get(keys->Get(j))));
+						};
+						clean->Insert("properties", properties);
+					};
+				}
+				else if(name->Equals("items")) {
+					clean->Insert("items", Clean(value));
+				}
+				else if(name->Equals("anyOf") | name->Equals("oneOf")) {
+					if(Js->IsArray(value) & <>clean->Has("anyOf")) {
+						options := Js->Array();
+						each(j : value) {
+							options->Add(Clean(value->Get(j)));
+						};
+						clean->Insert("anyOf", options);
+					};
+				}
+				else if(name->Equals("const")) {
+					if(<>schema->Has("enum")) {
+						values := Js->Array();
+						values->Add(value);
+						clean->Insert("enum", values);
+					};
+				}
+				else if(Allowed(name)) {
+					clean->Insert(name, value);
+				};
+			};
+
+			return clean;
+		}
+
+		# the keywords of Gemini's Schema that carry over unchanged
+		function : Allowed(name : String) ~ Bool {
+			return name->Equals("format") | name->Equals("title") | name->Equals("description") | name->Equals("nullable") |
+				name->Equals("enum") | name->Equals("required") | name->Equals("minItems") | name->Equals("maxItems") |
+				name->Equals("minimum") | name->Equals("maximum") | name->Equals("minLength") | name->Equals("maxLength") |
+				name->Equals("pattern") | name->Equals("propertyOrdering");
+		}
+
+		function : CleanType(clean : JsonElement, value : JsonElement) ~ Nil {
+			if(value = Nil) {
+				return;
+			};
+
+			if(value->GetType() = JsonElement->JsonType->STRING) {
+				clean->Insert("type", value);
+			}
+			else if(Js->IsArray(value)) {
+				nullable := false;
+				each(i : value) {
+					kind := Js->Text(value->Get(i));
+					if(kind <> Nil & kind->Equals("null")) {
+						nullable := true;
+					}
+					else if(kind <> Nil & <>clean->Has("type")) {
+						clean->Insert("type", kind);
+					};
+				};
+
+				if(nullable) {
+					clean->Insert("nullable", true);
+				};
+			};
+		}
+
+		# true when the schema lists at least one property
+		function : HasProperties(schema : JsonElement) ~ Bool {
+			properties := Js->Child(schema, "properties");
+			return Js->IsObject(properties) & properties->Size() > 0;
 		}
 	}
 
@@ -2209,6 +2552,10 @@ session := LLM->Open("gemini:gemini-2.5-flash");
 			message := Js->RoleText("tool", content);
 			message->Insert("tool_name", tool_name);
 			@messages->AddBack(message);
+		}
+
+		method : public : AddToolError(call_id : String, tool_name : String, message : String) ~ Nil {
+			AddToolResult(call_id, tool_name, "Error: {$message}");
 		}
 
 		method : public : Stream(message : String, tools : Vector<ToolSpec>) ~ TurnStream {

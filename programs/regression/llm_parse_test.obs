@@ -57,6 +57,10 @@ class ScriptSession implements Session {
     @results->AddBack("{$call_id}/{$tool_name}/{$content}");
   }
 
+  method : public : AddToolError(call_id : String, tool_name : String, message : String) ~ Nil {
+    @results->AddBack("{$call_id}/{$tool_name}/ERROR {$message}");
+  }
+
   method : public : GetSent() ~ Vector<String> { return @sent; }
   method : public : GetResults() ~ Vector<String> { return @results; }
 }
@@ -110,6 +114,8 @@ class LlmParseTest {
     TestGeminiRequest();
     TestOllama();
     TestOllamaRequest();
+    TestSchemas();
+    TestToolErrors();
     TestAgent();
 
     if(@failures > 0) {
@@ -396,12 +402,19 @@ class LlmParseTest {
     Check("options", Has(request, "\"num_predict\":256") & Has(request, "\"temperature\":0.5"));
   }
 
+  function : AgentTools() ~ Vector<ToolSpec> {
+    tools := Weather();
+    tools->AddBack(ToolSpec->New("broken", "A tool that always fails", Nil));
+    return tools;
+  }
+
   function : Turns() ~ Vector<Turn> {
     turns := Vector->New()<Turn>;
     calls := Vector->New()<ToolInvocation>;
     args := JsonParser->TextToElement("{\"city\":\"Paris\"}");
     calls->AddBack(ToolInvocation->New("id1", "get_weather", args));
     calls->AddBack(ToolInvocation->New("id2", "broken", Nil));
+    calls->AddBack(ToolInvocation->New("id3", "nosuch", Nil));
     turns->AddBack(Turn->New("", calls, "tool_calls", Nil, 1, 1, Nil));
     turns->AddBack(Turn->New("It is sunny.", Nil, "end", Nil, 2, 2, Nil));
     return turns;
@@ -411,12 +424,14 @@ class LlmParseTest {
     "-- the Agent loop"->PrintLine();
     session := ScriptSession->New(Turns());
     handler := EchoHandler->New();
-    turn := Agent->Run(session, "weather?", Weather(), handler, 5);
+    turn := Agent->Run(session, "weather?", AgentTools(), handler, 5);
     Check("the loop ends on the answer", turn <> Nil & Same(turn->GetText(), "It is sunny.") & <>turn->HasToolCalls());
-    Check("both calls were run", handler->GetCalls() = 2);
+    Check("only the tools in the list were run", handler->GetCalls() = 2);
     results := session->GetResults();
-    Check("each result goes back with its id and name", results->Size() = 2 & Same(results->Get(0), "id1/get_weather/sunny in Paris"));
-    Check("a handler that returns Nil reports an error", results->Size() = 2 & Has(results->Get(1), "id2/broken/error"));
+    Check("every call got an answer", results->Size() = 3);
+    Check("a result goes back with its id and name", results->Size() = 3 & Same(results->Get(0), "id1/get_weather/sunny in Paris"));
+    Check("a handler that returns Nil reports an error", results->Size() = 3 & Same(results->Get(1), "id2/broken/ERROR the tool returned nothing"));
+    Check("a tool that is not in the list is an error and is not run", results->Size() = 3 & Has(results->Get(2), "id3/nosuch/ERROR") & Has(results->Get(2), "no tool named nosuch"));
     sent := session->GetSent();
     Check("the first send carries the message, the second continues", sent->Size() = 2 & Same(sent->Get(0), "weather?") & Same(sent->Get(1), "(none)"));
 
@@ -429,11 +444,70 @@ class LlmParseTest {
     };
     session := ScriptSession->New(endless);
     handler := EchoHandler->New();
-    turn := Agent->Run(session, "again", Weather(), handler, 3);
+    turn := Agent->Run(session, "again", AgentTools(), handler, 3);
     Check("the round limit stops the loop", turn <> Nil & turn->HasToolCalls() & handler->GetCalls() = 3);
+    results := session->GetResults();
+    Check("the calls left over are answered with an error, so the session can go on", results->Size() = 4 & Has(results->Get(3), "x/get_weather/ERROR") & Has(results->Get(3), "round limit"));
+
+    session := ScriptSession->New(Turns());
+    turn := Agent->Run(session, "x", AgentTools(), EchoHandler->New(), 0);
+    Check("a limit of 0 answers the first calls with errors", turn <> Nil & turn->HasToolCalls() & session->GetResults()->Size() = 3 & Has(session->GetResults()->Get(0), "ERROR"));
 
     session := ScriptSession->New(Vector->New()<Turn>);
-    turn := Agent->Run(session, "x", Weather(), EchoHandler->New(), 3);
+    turn := Agent->Run(session, "x", AgentTools(), EchoHandler->New(), 3);
     Check("a failed first send returns Nil", turn = Nil);
+  }
+
+  function : TestSchemas() ~ Nil {
+    "-- tool schemas per provider"->PrintLine();
+    none := ToolSpec->New("ping", "No arguments", Nil);
+    Check("a tool with no schema has no properties", <>none->HasProperties());
+    Check("a tool with a schema has", Weather()->Get(0)->HasProperties());
+
+    tools := Vector->New()<ToolSpec>;
+    tools->AddBack(none);
+    gemini := GeminiSession->New("gemini-2.5-flash", "k")->BuildRequest(tools)->ToString();
+    Check("gemini: a parameterless tool has no parameters (the API rejects empty properties)", Has(gemini, "\"name\":\"ping\"") & <>Has(gemini, "parameters"));
+    openai := OpenAISession->New("gpt-5", "k")->BuildRequest(tools, false)->ToString();
+    Check("openai: a parameterless tool keeps its empty object schema", Has(openai, "\"parameters\":{\"properties\":{},\"type\":\"object\"}"));
+    ollama := OllamaSession->New("m")->BuildRequest(tools)->ToString();
+    Check("ollama: a parameterless tool keeps its empty object schema", Has(ollama, "\"parameters\":{\"properties\":{},\"type\":\"object\"}"));
+    Check("openai: every function tool is sent with strict off", Has(OpenAISession->New("gpt-5", "k")->BuildRequest(Weather(), false)->ToString(), "\"strict\":false"));
+
+    # a JSON Schema as a user writes it, with what Gemini does not take
+    rich := JsonParser->TextToElement("{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"default\":{\"type\":\"string\",\"default\":\"x\"},\"nick\":{\"type\":[\"string\",\"null\"]},\"mode\":{\"const\":\"fast\"},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"additionalProperties\":false},\"minItems\":1},\"pick\":{\"oneOf\":[{\"type\":\"integer\"},{\"type\":\"string\"}]},\"ref\":{\"$ref\":\"#/$defs/x\"}},\"required\":[\"default\"],\"$defs\":{\"x\":{\"type\":\"string\"}}}");
+    tools := Vector->New()<ToolSpec>;
+    tools->AddBack(ToolSpec->New("rich", "Rich schema", rich));
+    gemini := GeminiSession->New("gemini-2.5-flash", "k")->BuildRequest(tools)->ToString();
+    Check("gemini: $schema, additionalProperties, $ref, $defs and default values are removed", <>Has(gemini, "$schema") & <>Has(gemini, "additionalProperties") & <>Has(gemini, "$ref") & <>Has(gemini, "$defs") & <>Has(gemini, "\"default\":\"x\""));
+    Check("gemini: a property named like a keyword is kept", Has(gemini, "\"default\":{\"type\":\"string\"}"));
+    Check("gemini: a type list becomes the type plus nullable", Has(gemini, "\"nick\":{\"nullable\":true,\"type\":\"string\"}"));
+    Check("gemini: const becomes a one-value enum", Has(gemini, "\"mode\":{\"enum\":[\"fast\"]}"));
+    Check("gemini: oneOf becomes anyOf", Has(gemini, "\"anyOf\":[{\"type\":\"integer\"},{\"type\":\"string\"}]"));
+    Check("gemini: items and minItems are kept, nested keywords cleaned", Has(gemini, "\"items\":{\"type\":\"string\"}") & Has(gemini, "\"minItems\":1"));
+    Check("gemini: required is kept", Has(gemini, "\"required\":[\"default\"]"));
+    openai := OpenAISession->New("gpt-5", "k")->BuildRequest(tools, false)->ToString();
+    Check("openai: the schema goes through unchanged", Has(openai, "additionalProperties") & Has(openai, "$schema"));
+  }
+
+  function : TestToolErrors() ~ Nil {
+    "-- tool errors per provider"->PrintLine();
+    openai := OpenAISession->New("gpt-5", "k");
+    openai->AddToolError("call_1", "t", "boom");
+    Check("openai: an error is a function_call_output that says Error", Has(openai->GetInput()->ToString(), "\"output\":\"Error: boom\"") & Has(openai->GetInput()->ToString(), "function_call_output"));
+
+    gemini := GeminiSession->New("gemini-2.5-flash", "k");
+    gemini->AddToolError("gemini_call_1", "t", "boom");
+    Check("gemini: an error is the response's error field", Has(gemini->GetContents()->ToString(), "\"response\":{\"error\":\"boom\"}"));
+    gemini->AddToolResult("gemini_call_2", "u", "fine");
+    Check("gemini: an error and a result for one turn share a content", gemini->GetContents()->Size() = 1 & gemini->GetContents()->Get(0)->Get("parts")->Size() = 2);
+
+    ollama := OllamaSession->New("m");
+    ollama->AddToolError("ollama_call_1", "t", "boom");
+    Check("ollama: an error is a tool message that says Error", Has(ollama->GetMessages()->ToString(), "\"content\":\"Error: boom\"") & Has(ollama->GetMessages()->ToString(), "\"tool_name\":\"t\""));
+
+    anthropic := AnthropicSession->New("claude-sonnet-5-5", "k");
+    anthropic->AddToolError("toolu_1", "t", "boom");
+    Check("anthropic: an error is a tool_result with is_error", Has(anthropic->GetChat()->GetMessages()->ToString(), "\"is_error\":true") & Has(anthropic->GetChat()->GetMessages()->ToString(), "\"content\":\"boom\""));
   }
 }

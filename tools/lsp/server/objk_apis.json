@@ -42,6 +42,9 @@
 				"SetTemperature": {
 					"descriptions": ["**Sets the sampling temperature**\n\n```method : public : SetTemperature(temperature:Float) ~ Chat```\n\n\n\ntemperature: Float\n\nreturn: Chat"]
 				},
+				"SetThinking": {
+					"descriptions": ["**Turns extended thinking on. The API needs a budget of at least 1024 tokens and a max_tokens above it, so call SetMaxTokens too. While it is on, the temperature is not sent (the API rejects both together), and SendJson leaves thinking off for its one request because a forced tool is rejected with it.**\n\n```method : public : SetThinking(budget_tokens:Int) ~ Chat```\n\n\n\nbudget_tokens: Int\n\nreturn: Chat"]
+				},
 				"Stream": {
 					"descriptions": ["**Sends a message and streams the reply as it is generated**\n\n```method : public : Stream(message:String, tools:Vector&lt;Tool&gt;) ~ ReplyStream```\n\n\n\nmessage: String\n\ntools: Vector&lt;Tool&gt;\n\nreturn: ReplyStream"]
 				}
@@ -56,6 +59,9 @@
 				"GetBaseUrl": {
 					"descriptions": ["**Gets the API base URL**\n\n```function : GetBaseUrl() ~ String```\n\n\n\nreturn: String"]
 				},
+				"GetCertificate": {
+					"descriptions": ["**Gets the pinned certificate file**\n\n```function : GetCertificate() ~ String```\n\n\n\nreturn: String"]
+				},
 				"GetLastError": {
 					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
 				},
@@ -67,6 +73,9 @@
 				},
 				"SetBaseUrl": {
 					"descriptions": ["**Sets the API base URL (default https://api.anthropic.com/v1), for a gateway or proxy**\n\n```function : SetBaseUrl(base_url:String) ~ Nil```\n\n\n\nbase_url: String\n\nreturn: Nil"]
+				},
+				"SetCertificate": {
+					"descriptions": ["**Pins the certificate a gateway or test server presents, a PEM file used as the trust anchor in place of the system store. Leave it unset for api.anthropic.com.**\n\n```function : SetCertificate(pem:String) ~ Nil```\n\n\n\npem: String\n\nreturn: Nil"]
 				}
 			}
 		},
@@ -112,7 +121,7 @@
 			"description": "A streamed reply. Read it text first, then ask for the whole reply:",
 			"functions": {
 				"Close": {
-					"descriptions": ["**Closes the connection early**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+					"descriptions": ["**Closes the connection early. The exchange is then dropped from the history, as a failed one is.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"GetReply": {
 					"descriptions": ["**Reads any remaining events and returns the whole reply; the exchange then joins the chat history**\n\n```method : public : GetReply() ~ Reply```\n\n\n\nreturn: Reply"]
@@ -881,7 +890,7 @@
 			"description": "The agent loop, written once for every provider: send, run the tools the model asks for, send the results, repeat until the model answers.",
 			"functions": {
 				"Run": {
-					"descriptions": ["**Runs the loop. A turn that still has tool calls when max_rounds rounds have run is returned as it is, so check HasToolCalls() to tell a finished answer from a stopped loop.**\n\n```function : Run(session:Session, message:String, tools:Vector&lt;ToolSpec&gt;, handler:ToolHandler, max_rounds:Int) ~ Turn```\n\n\n\nsession: Session\n\nmessage: String\n\ntools: Vector&lt;ToolSpec&gt;\n\nhandler: ToolHandler\n\nmax_rounds: Int\n\nreturn: Turn"]
+					"descriptions": ["**Runs the loop. A call to a tool that is not in the list, or a handler that returns Nil, is answered with an error (AddToolError) and the handler is not asked. A turn that still has tool calls when max_rounds rounds have run is returned as it is, so check HasToolCalls() to tell a finished answer from a stopped loop; its calls are answered with an error first, so the session can go on with another Send.**\n\n```function : Run(session:Session, message:String, tools:Vector&lt;ToolSpec&gt;, handler:ToolHandler, max_rounds:Int) ~ Turn```\n\n\n\nsession: Session\n\nmessage: String\n\ntools: Vector&lt;ToolSpec&gt;\n\nhandler: ToolHandler\n\nmax_rounds: Int\n\nreturn: Turn"]
 				}
 			}
 		},
@@ -985,6 +994,9 @@
 		"API.LLM.Session": {
 			"description": "A chat session over one provider. It keeps the conversation, including tool calls and results. The four implementations are AnthropicSession, OpenAISession, GeminiSession and OllamaSession; LLM builds one by name.",
 			"functions": {
+				"AddToolError": {
+					"descriptions": ["**Adds a failed tool call's error to the conversation, marked as an error where the provider has a way to say so: Anthropic's is_error flag, Gemini's \"error\" response field. OpenAI and Ollama carry it as text that starts with \"Error: \". Use it in place of AddToolResult when the tool could not run, and send the conversation on as usual.**\n\n```method : public : virutal : AddToolError(call_id:String, tool_name:String, message:String) ~ Nil```\n\n\n\ncall_id: String\n\ntool_name: String\n\nmessage: String\n\nreturn: Nil"]
+				},
 				"AddToolResult": {
 					"descriptions": ["**Adds the result of a tool call to the conversation without sending it. Call it once per call in the turn, then Send(Nil, tools). To report a failure, return the error as the content.**\n\n```method : public : virutal : AddToolResult(call_id:String, tool_name:String, content:String) ~ Nil```\n\n\n\ncall_id: String\n\ntool_name: String\n\ncontent: String\n\nreturn: Nil"]
 				},
@@ -1001,7 +1013,7 @@
 					"descriptions": ["**Sends a message and returns the model's turn. When the turn has tool calls, run them, add each result with AddToolResult and call Send(Nil, tools) again.**\n\n```method : public : virutal : Send(message:String, tools:Vector&lt;ToolSpec&gt;) ~ Turn```\n\n\n\nmessage: String\n\ntools: Vector&lt;ToolSpec&gt;\n\nreturn: Turn"]
 				},
 				"SendJson": {
-					"descriptions": ["**Asks for an answer in a given shape. The conversation so far is context; neither the question nor the answer joins it. How the shape is enforced is the provider's: a forced tool (Anthropic), a JSON schema response format (OpenAI and Ollama) or a response schema (Gemini).**\n\n```method : public : virutal : SendJson(message:String, name:String, schema:JsonElement) ~ JsonElement```\n\n\n\nmessage: String\n\nname: String\n\nschema: JsonElement\n\nreturn: JsonElement"]
+					"descriptions": ["**Asks for an answer in a given shape. The conversation so far is context; neither the question nor the answer joins it. How the shape is enforced is the provider's: a forced tool (Anthropic), a JSON schema response format (OpenAI and Ollama) or a response schema (Gemini). Treat it as best effort: OpenAI is asked with strict mode off, and Gemini accepts only a subset of JSON Schema, so keywords it does not know are removed from the schema it is sent. Check what comes back.**\n\n```method : public : virutal : SendJson(message:String, name:String, schema:JsonElement) ~ JsonElement```\n\n\n\nmessage: String\n\nname: String\n\nschema: JsonElement\n\nreturn: JsonElement"]
 				},
 				"SetMaxTokens": {
 					"descriptions": ["**Sets the most tokens a reply may use**\n\n```method : public : virutal : SetMaxTokens(max_tokens:Int) ~ Session```\n\n\n\nmax_tokens: Int\n\nreturn: Session"]
@@ -1056,6 +1068,9 @@
 				},
 				"GetSchema": {
 					"descriptions": ["**Get the argument schema**\n\n```method : public : GetSchema() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"HasProperties": {
+					"descriptions": ["**Check whether the tool takes any arguments**\n\n```method : public : HasProperties() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
 					"descriptions": ["**Constructor**\n\n```New(name:String, description:String, schema:JsonElement)```\n\n\n\nname: String\n\ndescription: String\n\nschema: JsonElement", "**Constructor from a function definition, the form the other AI client libraries use**\n\n```New(func:FunctionType)```\n\n\n\nfunc: FunctionType"]
