@@ -26,13 +26,56 @@ See [MODELS.md](MODELS.md) for download links, file layouts, and sizes.
 | Linux ARM64 | CPU | CPU only: the vendored aarch64 ONNX Runtime 1.19.0 is a CPU-only build (shipped since v2026.10.0, `fc454eced8`) |
 | macOS | CoreML | Apple Neural Engine / GPU |
 
-Every shipped library is built from `eq/onnx.cpp`, and the `ONNX_EP_*` define it is compiled with (none for the CPU build) fixes its provider. The `ep` session option can name only that provider or `cpu`; any other name is refused and no session is created (see [execution providers](../../../docs/MODELS.md#execution-providers)).
+### Choosing the provider
 
-- Windows: `deploy_windows.cmd` builds `onnx.sln` (`vs/vs.vcxproj`) as `Release-DML|x64` or `Release-QNN|ARM64`.
+Every shipped library is built from the one source, `eq/onnx.cpp`. The `ONNX_EP_*` define it is compiled with (none for the CPU build) only sets the **default** provider, the one a session gets when the program names none. The program chooses per session with the `ep` option, `cpu`, `cuda`, `dml`, `qnn`, `vitisai` or `coreml`:
+
+```objeck
+use API.Onnx;
+
+config := Map->New()<String, String>;
+if(OnnxRuntime->HasProvider("cuda")) {
+  config->Insert("ep", "cuda");
+  config->Insert("device_id", "0");     # other keys are provider options
+};
+session := YoloSession->New("yolo11n.onnx", config);
+if(<>session->IsOpen()) {
+  "no session, see the message above"->PrintLine();
+};
+```
+
+The accelerator itself lives in the ONNX Runtime library loaded next to `libobjk_onnx`, so the native library asks ONNX Runtime what it was built with (`Ort::GetAvailableProviders()`) instead of assuming. A provider that is not there is **refused**: the session does not open and the message lists what is available, for example `ep=cuda` against the CPU-only runtime:
+
+```
+>>> ONNX: execution provider 'cuda' was requested, but the ONNX Runtime this library loaded does not provide it. Available: CPUExecutionProvider. Use ep=cpu, or put an ONNX Runtime that carries 'cuda' beside libobjk_onnx. <<<
+```
+
+A session never silently runs on the CPU in place of a provider that was asked for. (The one fallback left is macOS with no `ep` at all, where CoreML failing announces itself and uses the CPU; `ep=coreml` is strict.) A provider the runtime does carry can still fail to start, for instance CUDA without cuDNN or an unknown provider option, and that error from ONNX Runtime is printed with the runtime's provider list.
+
+The Objeck side, in `API.Onnx.OnnxRuntime`:
+
+| Call | Returns |
+|---|---|
+| `GetProviders()` | what the loaded runtime reports, as ONNX Runtime spells it (`CUDAExecutionProvider`, `DmlExecutionProvider`, `CPUExecutionProvider`, ...) |
+| `HasProvider(name)` | `Bool`; takes the short names `ep` takes, case-insensitive |
+| `GetDefaultProvider()` | the short name this build uses when `ep` is not set |
+
+### Builds
+
+- Windows: `deploy_windows.cmd` builds `onnx.sln` (`vs/vs.vcxproj`) as `Release-DML|x64` or `Release-QNN|ARM64`. `Release-CUDA|x64` is not part of any release; it builds the same library with `cuda` as the default (set `OnnxRuntimeLibDir` to link against a `Microsoft.ML.OnnxRuntime.Gpu` package).
 - Linux: `deploy_posix.sh` runs `eq/build.sh cpu`; the MSYS2 deploy scripts run the same.
 - macOS: `deploy_macos_arm64.sh` builds it with `core/lib/opencv/macos/CMakeLists.txt` (`ONNX_EP_COREML`).
 
-No deploy script or workflow builds the per-provider sources in `eq/dml`, `eq/cuda`, `eq/qnn` and `eq/vitis`, or their solutions such as `eq/dml/onnx_dml.sln`.
+The per-provider copies of the source (`eq/dml`, `eq/cuda/onnx_cuda.cpp`, `eq/qnn`, `eq/vitis`) are gone; one of them appended `"DML"` under a CUDA name. What stays under those directories is vendored runtime files and headers.
+
+### Using CUDA (not shipped)
+
+No release ships CUDA. It needs an ONNX Runtime built with the CUDA provider, the NVIDIA driver, CUDA 12 and cuDNN 9, all supplied by you.
+
+- **Windows x64:** copy a `Microsoft.ML.OnnxRuntime.Gpu` package's `onnxruntime.dll`, `onnxruntime_providers_cuda.dll` and `onnxruntime_providers_shared.dll` over the ones in `bin`, with the CUDA 12 runtime, cuBLAS, cuFFT and cuDNN 9 DLLs on the same path, then pass `ep=cuda`. The GPU runtime has no DirectML, so a program that leaves `ep` out (default `dml`) is refused rather than moved to the CPU.
+- **Linux x64:** the shipped library is linked to the vendored 1.19.0 symbol version (`VERS_1.19.0`), so it will not load a different runtime. Rebuild against yours: `ORT_ROOT=/opt/onnxruntime-gpu/lib ./build.sh cpu` (`cuda` also makes it the default provider), and run with that directory first on `LD_LIBRARY_PATH`.
+
+Measured on an RTX 4090 (YOLO11 fine-tune, 768x768, 40 MB, one 1080p photo, `ep=cpu` vs `ep=cuda`, see `docs/ONNX_CUDA_PLAN.md`): about 430 ms per image on the CPU and 37 ms on CUDA on Windows, 340 ms and 44 ms on Linux (WSL2).
 
 ## Quick Start
 

@@ -7,6 +7,120 @@ namespace fs = std::filesystem;
 #include <opencv2/core.hpp>
 #include <opencv2/core/utils/logger.hpp>
 #include <unordered_map>
+#include <thread>
+#include <memory>
+
+//
+// Execution provider selection. Every provider this library can request, as the
+// short name a program passes in "ep" and as ONNX Runtime spells it in
+// Ort::GetAvailableProviders(). One table, so the session code, the provider
+// query and the error messages can never disagree about a name.
+//
+struct EpName {
+   const char* name;
+   const char* ort_name;
+};
+
+static const EpName EP_NAMES[] = {
+   { "cpu", "CPUExecutionProvider" },
+   { "cuda", "CUDAExecutionProvider" },
+   { "dml", "DmlExecutionProvider" },
+   { "qnn", "QNNExecutionProvider" },
+   { "vitisai", "VitisAIExecutionProvider" },
+   { "coreml", "CoreMLExecutionProvider" }
+};
+
+// The provider a build uses when the program names none. Only the default is a
+// compile-time choice now; "ep" overrides it per session.
+#if defined(ONNX_EP_DML)
+static const char* const COMPILED_DEFAULT_EP = "dml";
+#elif defined(ONNX_EP_CUDA)
+static const char* const COMPILED_DEFAULT_EP = "cuda";
+#elif defined(ONNX_EP_QNN)
+static const char* const COMPILED_DEFAULT_EP = "qnn";
+#elif defined(ONNX_EP_VITIS)
+static const char* const COMPILED_DEFAULT_EP = "vitisai";
+#elif defined(ONNX_EP_COREML)
+static const char* const COMPILED_DEFAULT_EP = "coreml";
+#else
+static const char* const COMPILED_DEFAULT_EP = "cpu";
+#endif
+
+// "CUDA", " cuda ", "directml" and ORT's own "CUDAExecutionProvider" all name a provider.
+static std::string normalize_ep(std::string value) {
+   const size_t first = value.find_first_not_of(" 	");
+   const size_t last = value.find_last_not_of(" 	");
+   value = (first == std::string::npos) ? std::string() : value.substr(first, last - first + 1);
+   for(size_t i = 0; i < value.size(); ++i) {
+      value[i] = (char)tolower((unsigned char)value[i]);
+   }
+
+   static const std::string suffix = "executionprovider";
+   if(value.size() > suffix.size() && value.compare(value.size() - suffix.size(), suffix.size(), suffix) == 0) {
+      value.erase(value.size() - suffix.size());
+   }
+
+   if(value == "directml") {
+      return "dml";
+   }
+   if(value == "vitis") {
+      return "vitisai";
+   }
+   return value;
+}
+
+// ORT's name for a short provider name, or nullptr when it is not one we know.
+static const char* ort_provider_name(const std::string& ep) {
+   for(size_t i = 0; i < sizeof(EP_NAMES) / sizeof(EP_NAMES[0]); ++i) {
+      if(ep == EP_NAMES[i].name) {
+         return EP_NAMES[i].ort_name;
+      }
+   }
+   return nullptr;
+}
+
+static std::string known_ep_names() {
+   std::string list;
+   for(size_t i = 0; i < sizeof(EP_NAMES) / sizeof(EP_NAMES[0]); ++i) {
+      if(!list.empty()) {
+         list += ", ";
+      }
+      list += EP_NAMES[i].name;
+   }
+   return list;
+}
+
+// What the loaded ONNX Runtime reports, comma separated, for messages.
+static std::string available_ep_list() {
+   std::string list;
+   const std::vector<std::string> available = Ort::GetAvailableProviders();
+   for(size_t i = 0; i < available.size(); ++i) {
+      if(!list.empty()) {
+         list += ", ";
+      }
+      list += available[i];
+   }
+   return list;
+}
+
+// True when the loaded ONNX Runtime was built with this provider. The CPU
+// provider is always there.
+static bool ep_is_available(const std::string& ep) {
+   if(ep == "cpu") {
+      return true;
+   }
+   const char* ort_name = ort_provider_name(ep);
+   if(!ort_name) {
+      return false;
+   }
+   const std::vector<std::string> available = Ort::GetAvailableProviders();
+   for(size_t i = 0; i < available.size(); ++i) {
+      if(available[i] == ort_name) {
+         return true;
+      }
+   }
+   return false;
+}
 
 extern "C" {
    // initialize library
@@ -39,7 +153,26 @@ extern "C" {
       get_provider_names(context);
    }
 
-   // create an ONNX session with the configured execution provider
+   // The provider a session gets when the program names none (a short name:
+   // "cpu", "cuda", "dml", "qnn", "vitisai" or "coreml")
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_get_default_provider(VMContext& context) {
+      APITools_SetStringValue(context, 0, BytesToUnicode(COMPILED_DEFAULT_EP));
+   }
+
+   // Does the loaded ONNX Runtime provide this provider? Takes the short names
+   // the "ep" option takes. Slot 0 is set to 1 or 0; an unknown name is 0.
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_has_provider(VMContext& context) {
+      const std::string name = normalize_ep(UnicodeToBytes(APITools_GetStringValue(context, 1)));
+      APITools_SetIntValue(context, 0, ep_is_available(name) ? 1 : 0);
+   }
+
+   // create an ONNX session with the selected execution provider
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
@@ -78,31 +211,22 @@ extern "C" {
             }
          }
 
-         // The provider is fixed when this library is compiled, so "ep" can only
-         // mean: fall back to CPU, or name the provider that is already built in.
-         // Naming any other one is refused rather than silently ignored -- a
-         // request for a provider you are not getting must never look like success.
-#if defined(ONNX_EP_DML)
-         const std::string compiled_ep = "dml";
-#elif defined(ONNX_EP_CUDA)
-         const std::string compiled_ep = "cuda";
-#elif defined(ONNX_EP_QNN)
-         const std::string compiled_ep = "qnn";
-#elif defined(ONNX_EP_VITIS)
-         const std::string compiled_ep = "vitisai";
-#elif defined(ONNX_EP_COREML)
-         const std::string compiled_ep = "coreml";
-#else
-         const std::string compiled_ep = "cpu";
-#endif
+         // Pick the execution provider. The ONNX_EP_* define this library was
+         // compiled with is only the DEFAULT, used when the caller does not name
+         // one; "ep" selects at session creation, so one libobjk_onnx can serve
+         // cpu, cuda, dml, ... as long as the ONNX Runtime beside it carries the
+         // provider. What the runtime really carries is asked of ORT
+         // (Ort::GetAvailableProviders), never assumed, and a provider that is not
+         // there is refused with the list of what is -- never replaced by CPU.
+         const std::string default_ep = COMPILED_DEFAULT_EP;
+         const bool explicit_ep = !requested_ep.empty();
+         const std::string ep = explicit_ep ? normalize_ep(requested_ep) : default_ep;
 
-         const bool use_cpu = (requested_ep == "cpu");
-         if(!requested_ep.empty() && !use_cpu && requested_ep != compiled_ep) {
-            std::wcerr << L">>> ONNX: execution provider '" << BytesToUnicode(requested_ep)
-                       << L"' was requested, but this build provides '"
-                       << BytesToUnicode(compiled_ep)
-                       << L"'. Use ep=" << BytesToUnicode(compiled_ep)
-                       << L" or ep=cpu. <<<" << std::endl;
+         if(ort_provider_name(ep) == nullptr) {
+            std::wcerr << L">>> ONNX: unknown execution provider '" << BytesToUnicode(requested_ep)
+                       << L"'. Known names: " << BytesToUnicode(known_ep_names())
+                       << L". This ONNX Runtime provides: " << BytesToUnicode(available_ep_list())
+                       << L". <<<" << std::endl;
             // Write the refusal into the return slot. #1028 fixed the catch below but not this
             // path, which left slot 0 as the caller found it -- reading as failure only
             // because IntRef->New() defaults to 0.
@@ -110,95 +234,98 @@ extern "C" {
             return;
          }
 
+         // The shipped defaults for qnn, vitisai and coreml are not pre-checked: their
+         // behaviour is exactly what it was before "ep" became a runtime choice, and
+         // ORT's own error already names them. Everything else is checked here so the
+         // message can list what is available.
+         const bool is_plain_default = !explicit_ep || ep == default_ep;
+         const bool skip_availability_check = is_plain_default &&
+            (ep == "qnn" || ep == "vitisai" || ep == "coreml");
+         if(!skip_availability_check && !ep_is_available(ep)) {
+            std::wcerr << L">>> ONNX: execution provider '" << BytesToUnicode(ep)
+                       << L"' was requested, but the ONNX Runtime this library loaded does not provide it. Available: "
+                       << BytesToUnicode(available_ep_list())
+                       << L". Use ep=cpu, or put an ONNX Runtime that carries '"
+                       << BytesToUnicode(ep) << L"' beside libobjk_onnx. <<<" << std::endl;
+            APITools_SetIntValue(context, 0, 0);
+            return;
+         }
+
+         const bool use_cpu = (ep == "cpu");
+
          Ort::SessionOptions session_options;
 
-#if defined(ONNX_EP_DML)
-         if(provider_options.find("device_id") == provider_options.end()) {
-            provider_options["device_id"] = "0";
-         }
-         if(!use_cpu) session_options.AppendExecutionProvider("DML", provider_options);
-         session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
-         session_options.DisableMemPattern();
-         session_options.SetIntraOpNumThreads(std::thread::hardware_concurrency());
-
-#elif defined(ONNX_EP_CUDA)
-         if(!use_cpu) {
-            // Two separate traps here, both verified against the vendored
-            // runtime on Linux:
-            //
-            //  1. The GENERIC string form does not accept "CUDA". ORT only
-            //     recognises OPENVINO/SNPE/XNNPACK/QNN/WEBNN/AZURE there, so
-            //     AppendExecutionProvider("CUDA", ...) always threw -- and its
-            //     message does not even mention CUDA, which is why this went
-            //     unnoticed. CUDA requires the typed entry point.
-            //  2. The provider may not be compiled into the linked runtime at
-            //     all. The vendored libonnxruntime.so.1.19.0 reports only
-            //     CPUExecutionProvider despite living under cuda/lib.
-            //
-            // Check availability first so the error names the real problem, and
-            // fail rather than fall back: a session that quietly ran on CPU
-            // when CUDA was asked for is indistinguishable from success.
-            bool cuda_available = false;
-            std::string available_list;
-            const std::vector<std::string> avail = Ort::GetAvailableProviders();
-            for(size_t i = 0; i < avail.size(); ++i) {
-               if(avail[i] == "CUDAExecutionProvider") {
-                  cuda_available = true;
-               }
-               if(!available_list.empty()) {
-                  available_list += ", ";
-               }
-               available_list += avail[i];
+         // Append the provider that was asked for.
+         if(ep == "dml") {
+            if(provider_options.find("device_id") == provider_options.end()) {
+               provider_options["device_id"] = "0";
             }
-
-            if(!cuda_available) {
-               std::wcerr << L">>> ONNX: this build requests the CUDA execution provider, but the "
-                          << L"linked onnxruntime does not provide it. Available: "
-                          << BytesToUnicode(available_list)
-                          << L". Rebuild the native library with './build.sh cpu', or link a "
-                          << L"CUDA-enabled onnxruntime. <<<" << std::endl;
-               // As above: this refusal predates #1028 and was missed by it.
-               APITools_SetIntValue(context, 0, 0);
-               return;
+            session_options.AppendExecutionProvider("DML", provider_options);
+         }
+         else if(ep == "cuda") {
+            // The GENERIC string form does not accept "CUDA": ORT only recognises
+            // OPENVINO/SNPE/XNNPACK/QNN/WEBNN/AZURE there, so
+            // AppendExecutionProvider("CUDA", ...) always throws, and its message does
+            // not even mention CUDA. CUDA needs its own entry point; the V2 one takes
+            // string options (device_id, gpu_mem_limit, cudnn_conv_algo_search, ...).
+            // Unlike the legacy struct, whose zeroed defaults are not ORT's.
+            if(provider_options.find("device_id") == provider_options.end()) {
+               provider_options["device_id"] = "0";
             }
-
-            OrtCUDAProviderOptions cuda_options;
-            memset(&cuda_options, 0, sizeof(cuda_options));
-            cuda_options.device_id = atoi(provider_options["device_id"].c_str());
-            session_options.AppendExecutionProvider_CUDA(cuda_options);
+            const OrtApi& ort_api = Ort::GetApi();
+            OrtCUDAProviderOptionsV2* raw_cuda_options = nullptr;
+            Ort::ThrowOnError(ort_api.CreateCUDAProviderOptions(&raw_cuda_options));
+            std::unique_ptr<OrtCUDAProviderOptionsV2, decltype(ort_api.ReleaseCUDAProviderOptions)>
+               cuda_options(raw_cuda_options, ort_api.ReleaseCUDAProviderOptions);
+            std::vector<const char*> cuda_keys, cuda_values;
+            for(const auto& option : provider_options) {
+               cuda_keys.push_back(option.first.c_str());
+               cuda_values.push_back(option.second.c_str());
+            }
+            Ort::ThrowOnError(ort_api.UpdateCUDAProviderOptions(cuda_options.get(), cuda_keys.data(), cuda_values.data(), cuda_keys.size()));
+            session_options.AppendExecutionProvider_CUDA_V2(*cuda_options);
          }
-         session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
-         session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
-         session_options.DisableMemPattern();
-
-#elif defined(ONNX_EP_QNN)
-         if(provider_options.find("backend_type") == provider_options.end()) {
-            provider_options["backend_type"] = "gpu";
+         else if(ep == "qnn") {
+            if(provider_options.find("backend_type") == provider_options.end()) {
+               provider_options["backend_type"] = "gpu";
+            }
+            if(provider_options.find("qnn_context_cache_enable") == provider_options.end()) {
+               provider_options["qnn_context_cache_enable"] = "1";
+               provider_options["qnn_context_cache_path"] = "./qnn_cache";
+               provider_options["profiling_level"] = "off";
+               provider_options["ep.context_enable"] = "1";
+               provider_options["ep.context_file_pat"] = "./qnn_cache/model_ctx.onnx";
+               provider_options["ep.context_embed_mode"] = "1";
+            }
+            session_options.AppendExecutionProvider("QNN", provider_options);
          }
-         if(provider_options.find("qnn_context_cache_enable") == provider_options.end()) {
-            provider_options["qnn_context_cache_enable"] = "1";
-            provider_options["qnn_context_cache_path"] = "./qnn_cache";
-            provider_options["profiling_level"] = "off";
-            provider_options["ep.context_enable"] = "1";
-            provider_options["ep.context_file_pat"] = "./qnn_cache/model_ctx.onnx";
-            provider_options["ep.context_embed_mode"] = "1";
+         else if(ep == "vitisai") {
+            session_options.AppendExecutionProvider("VitisAI", provider_options);
          }
-         if(!use_cpu) session_options.AppendExecutionProvider("QNN", provider_options);
-         session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
+         // "coreml" is appended further down, where its CPU fallback lives; "cpu" appends nothing.
 
-#elif defined(ONNX_EP_VITIS)
-         if(!use_cpu) session_options.AppendExecutionProvider("VitisAI", provider_options);
-         session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
-
-#elif defined(ONNX_EP_COREML)
-         session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
-         session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
-
-#else
-         // CPU fallback
-         session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
-         session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
-#endif
+         // Session tuning follows the provider, except for CPU, which keeps the tuning of
+         // the build it runs in -- so a DirectML build asked for ep=cpu still behaves as
+         // it always did, and a CPU-only build is untouched.
+         const std::string tuning = use_cpu ? default_ep : ep;
+         if(tuning == "dml") {
+            session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
+            session_options.DisableMemPattern();
+            session_options.SetIntraOpNumThreads(std::thread::hardware_concurrency());
+         }
+         else if(tuning == "cuda") {
+            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+            session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
+            session_options.DisableMemPattern();
+         }
+         else if(tuning == "qnn" || tuning == "vitisai") {
+            session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
+         }
+         else {
+            // cpu, coreml
+            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+            session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
+         }
 
          if(!env) {
             env = new Ort::Env(ORT_LOGGING_LEVEL_WARNING, "onnx");
@@ -229,13 +356,18 @@ extern "C" {
          }
 
          // Try CoreML first, fall back to CPU if it fails
-         // (CoreML EP has issues with models using external data files)
+         // (CoreML EP has issues with models using external data files).
+         // The fallback is the macOS default and is announced; a caller that NAMED
+         // ep=coreml asked for CoreML specifically and gets the error instead.
          const Ort::Session* session = nullptr;
          try {
-            if(!use_cpu) session_options.AppendExecutionProvider("CoreML", provider_options);
+            if(ep == "coreml") session_options.AppendExecutionProvider("CoreML", provider_options);
             session = new Ort::Session(*env, model_path.c_str(), session_options);
          }
          catch(const std::exception& e) {
+            if(explicit_ep && ep == "coreml") {
+               throw;
+            }
             std::wcerr << L"=> CoreML session failed (" << BytesToUnicode(e.what())
                        << L"), falling back to CPU" << std::endl;
             Ort::SessionOptions cpu_options;
@@ -257,7 +389,8 @@ extern "C" {
          // failure signal depend on the caller's initialisation. Objeck reads 0
          // as "never opened" (API.Onnx.*Session->IsOpen) -- #1028.
          APITools_SetIntValue(context, 0, 0);
-         std::wcerr << L"Error creating ONNX session: " << BytesToUnicode(ex.what()) << std::endl;
+         std::wcerr << L"Error creating ONNX session: " << BytesToUnicode(ex.what())
+                    << L" (this ONNX Runtime provides: " << BytesToUnicode(available_ep_list()) << L")" << std::endl;
       }
    }
 

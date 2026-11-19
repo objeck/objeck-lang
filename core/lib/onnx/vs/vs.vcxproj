@@ -139,9 +139,17 @@
     <IncludePath>$(VC_IncludePath);..\..\opencv\win\include;..\..\openssl\win\include;..\..\zlib\win</IncludePath>
     <TargetName>libobjk_onnx</TargetName>
   </PropertyGroup>
-  <!-- CUDA paths (x64) -->
+  <!-- CUDA paths (x64). This configuration only makes cuda the DEFAULT provider: the library is
+       provider-agnostic at run time (ep=cuda / ep=dml / ep=cpu). eq\cuda\lib\x64\lib holds ELF
+       files, so the import library comes from the ONNX Runtime package the DML build already
+       restores. Any onnxruntime.lib exports the same OrtGetApiBase; which runtime really loads
+       is decided by the onnxruntime.dll beside the library, and for CUDA that must be a
+       CUDA-enabled build with the CUDA and cuDNN DLLs it needs. Set OnnxRuntimeLibDir to link a
+       Microsoft.ML.OnnxRuntime.Gpu package instead. No release script builds this configuration
+       and no release ships CUDA. -->
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-CUDA|x64'">
-    <LibraryPath>$(LibraryPath);..\..\opencv\win\x64\lib;..\eq\cuda\lib\x64\lib</LibraryPath>
+    <OnnxRuntimeLibDir Condition="'$(OnnxRuntimeLibDir)'==''">..\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native</OnnxRuntimeLibDir>
+    <LibraryPath>$(LibraryPath);..\..\opencv\win\x64\lib;$(OnnxRuntimeLibDir)</LibraryPath>
     <IncludePath>$(VC_IncludePath);..\eq\cuda\lib\include;..\..\opencv\win\include;..\..\openssl\win\include;..\..\zlib\win</IncludePath>
     <TargetName>libobjk_onnx</TargetName>
   </PropertyGroup>
