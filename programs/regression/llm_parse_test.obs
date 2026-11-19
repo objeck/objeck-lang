@@ -1,0 +1,439 @@
+# EXTRA_LIBS: llm,anthropic,openai,gemini,ollama,net,net_server,json,cipher,misc
+#~
+The provider-neutral chat layer (API.LLM) against recorded payloads, so no server or key is
+needed: each provider's response body read into a Turn (text, tool calls, normalized stop
+reason, token counts, the error object), the request body each session builds (system prompt,
+tools, token limit, the tool result items), what joins the conversation, LLM->Open, and the
+Agent loop against a scripted session. The bodies follow the providers' documented shapes.
+anthropic_parse_test, openai_parse_test, gemini_parse_test and ollama_parse_test cover the
+provider libraries themselves; llm_http_test covers the neutral layer over the wire.
+~#
+
+use API.LLM;
+use Data.JSON;
+use Collection;
+
+# a session that replays a script of turns, to run the Agent loop with no provider at all
+class ScriptSession implements Session {
+  @turns : Vector<Turn>;
+  @next : Int;
+  @sent : Vector<String>;
+  @results : Vector<String>;
+
+  New(turns : Vector<Turn>) {
+    @turns := turns;
+    @next := 0;
+    @sent := Vector->New()<String>;
+    @results := Vector->New()<String>;
+  }
+
+  method : public : GetProvider() ~ String { return "script"; }
+  method : public : GetModel() ~ String { return "script"; }
+  method : public : SetSystem(system : String) ~ Session { return @self; }
+  method : public : SetMaxTokens(max_tokens : Int) ~ Session { return @self; }
+  method : public : SetTemperature(temperature : Float) ~ Session { return @self; }
+  method : public : GetLastError() ~ String { return Nil; }
+  method : public : Stream(message : String, tools : Vector<ToolSpec>) ~ TurnStream { return Nil; }
+  method : public : SendJson(message : String, name : String, schema : JsonElement) ~ JsonElement { return Nil; }
+
+  method : public : Send(message : String, tools : Vector<ToolSpec>) ~ Turn {
+    if(message = Nil) {
+      @sent->AddBack("(none)");
+    }
+    else {
+      @sent->AddBack(message);
+    };
+
+    if(@next >= @turns->Size()) {
+      return Nil;
+    };
+
+    turn := @turns->Get(@next);
+    @next += 1;
+    return turn;
+  }
+
+  method : public : AddToolResult(call_id : String, tool_name : String, content : String) ~ Nil {
+    @results->AddBack("{$call_id}/{$tool_name}/{$content}");
+  }
+
+  method : public : GetSent() ~ Vector<String> { return @sent; }
+  method : public : GetResults() ~ Vector<String> { return @results; }
+}
+
+class EchoHandler implements ToolHandler {
+  @calls : Int;
+
+  New() { @calls := 0; }
+
+  method : public : Run(call : ToolInvocation) ~ String {
+    @calls += 1;
+    if(call->GetName()->Equals("broken")) {
+      return Nil;
+    };
+    city := call->GetArgument("city");
+    return "sunny in {$city}";
+  }
+
+  method : public : GetCalls() ~ Int { return @calls; }
+}
+
+class LlmParseTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Same(a : String, b : String) ~ Bool {
+    return a <> Nil & b <> Nil & a->Equals(b);
+  }
+
+  function : Has(text : String, part : String) ~ Bool {
+    return text <> Nil & text->Find(part) > -1;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+    TestTypes();
+    TestOpen();
+    TestAnthropic();
+    TestOpenAI();
+    TestOpenAIRequest();
+    TestGemini();
+    TestGeminiRequest();
+    TestOllama();
+    TestOllamaRequest();
+    TestAgent();
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+
+  function : Weather() ~ Vector<ToolSpec> {
+    schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}");
+    tools := Vector->New()<ToolSpec>;
+    tools->AddBack(ToolSpec->New("get_weather", "Get the weather", schema));
+    return tools;
+  }
+
+  function : TestTypes() ~ Nil {
+    "-- the neutral types"->PrintLine();
+    tool := ToolSpec->New("ping", Nil, Nil);
+    Check("a tool with no schema gets an empty object schema", Same(tool->GetSchema()->Get("type")->GetString(), "object"));
+    Check("tool name", Same(tool->GetName(), "ping"));
+    Check("no description is Nil", tool->GetDescription() = Nil);
+
+    call := ToolInvocation->New("id1", "ping", Nil);
+    Check("a call with no arguments gets an empty object", call->GetArguments()->Size() = 0);
+    Check("an absent argument is Nil", call->GetArgument("x") = Nil);
+
+    turn := Turn->New(Nil, Nil, "end", Nil, 1, 2, Nil);
+    Check("a Nil text is empty", turn->GetText()->Size() = 0);
+    Check("no calls", <>turn->HasToolCalls());
+  }
+
+  function : TestOpen() ~ Nil {
+    "-- LLM->Open"->PrintLine();
+    s := LLM->Open("anthropic:claude-sonnet-5-5");
+    Check("anthropic", s <> Nil & Same(s->GetProvider(), "anthropic") & Same(s->GetModel(), "claude-sonnet-5-5"));
+    s := LLM->Open("openai:gpt-5");
+    Check("openai", s <> Nil & Same(s->GetProvider(), "openai") & Same(s->GetModel(), "gpt-5"));
+    s := LLM->Open("gemini:gemini-2.5-flash");
+    Check("gemini", s <> Nil & Same(s->GetProvider(), "gemini") & Same(s->GetModel(), "gemini-2.5-flash"));
+    s := LLM->Open("gemini:models/gemini-2.5-flash");
+    Check("gemini accepts a models/ prefix", s <> Nil & Same(s->GetModel(), "gemini-2.5-flash"));
+    s := LLM->Open("ollama:llama3.2:3b");
+    Check("ollama keeps the colon in a tag", s <> Nil & Same(s->GetProvider(), "ollama") & Same(s->GetModel(), "llama3.2:3b"));
+    Check("an unknown provider is Nil", LLM->Open("bogus:x") = Nil);
+    Check("no colon is Nil", LLM->Open("gpt-5") = Nil);
+    Check("a leading colon is Nil", LLM->Open(":gpt-5") = Nil);
+    Check("Nil is Nil", LLM->Open(Nil) = Nil);
+  }
+
+  function : TestAnthropic() ~ Nil {
+    "-- Anthropic bodies"->PrintLine();
+    s := AnthropicSession->New("claude-sonnet-5-5", "k");
+    turn := s->ParseBody("{\"id\":\"msg_01\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"claude-sonnet-5-5\",\"content\":[{\"type\":\"text\",\"text\":\"Hello\"},{\"type\":\"text\",\"text\":\" world\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":12,\"output_tokens\":5}}");
+    Check("a text reply parses", turn <> Nil);
+    if(turn <> Nil) {
+      Check("text blocks join", Same(turn->GetText(), "Hello world"));
+      Check("end_turn is end", Same(turn->GetStopReason(), "end") & Same(turn->GetRawStopReason(), "end_turn"));
+      Check("tokens", turn->GetInputTokens() = 12 & turn->GetOutputTokens() = 5);
+      Check("model", Same(turn->GetModel(), "claude-sonnet-5-5"));
+      Check("no tool calls", <>turn->HasToolCalls());
+    };
+
+    turn := s->ParseBody("{\"id\":\"msg_02\",\"model\":\"m\",\"content\":[{\"type\":\"text\",\"text\":\"Checking.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01\",\"name\":\"get_weather\",\"input\":{\"city\":\"Paris\",\"days\":3}}],\"stop_reason\":\"tool_use\",\"usage\":{\"input_tokens\":50,\"output_tokens\":30}}");
+    Check("a tool use parses", turn <> Nil & turn->HasToolCalls());
+    if(turn <> Nil & turn->HasToolCalls()) {
+      call := turn->GetToolCalls()->Get(0);
+      Check("call id", Same(call->GetId(), "toolu_01"));
+      Check("call name", Same(call->GetName(), "get_weather"));
+      Check("string argument", Same(call->GetArgument("city"), "Paris"));
+      Check("number argument keeps its JSON form", Same(call->GetArgument("days"), "3"));
+      Check("tool_use is tool_calls", Same(turn->GetStopReason(), "tool_calls"));
+      Check("the text next to the call is kept", Same(turn->GetText(), "Checking."));
+    };
+
+    turn := s->ParseBody("{\"id\":\"m\",\"model\":\"m\",\"content\":[{\"type\":\"text\",\"text\":\"cut\"}],\"stop_reason\":\"max_tokens\",\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}");
+    Check("max_tokens is length", turn <> Nil & Same(turn->GetStopReason(), "length"));
+    turn := s->ParseBody("{\"id\":\"m\",\"model\":\"m\",\"content\":[],\"stop_reason\":\"refusal\",\"usage\":{\"input_tokens\":1,\"output_tokens\":0}}");
+    Check("refusal is filtered", turn <> Nil & Same(turn->GetStopReason(), "filtered"));
+    turn := s->ParseBody("{\"id\":\"m\",\"model\":\"m\",\"content\":[],\"stop_reason\":\"pause_turn\",\"usage\":{\"input_tokens\":1,\"output_tokens\":0}}");
+    Check("an unknown stop is other", turn <> Nil & Same(turn->GetStopReason(), "other") & Same(turn->GetRawStopReason(), "pause_turn"));
+
+    turn := s->ParseBody("{\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"}}");
+    Check("an error body is Nil", turn = Nil);
+    Check("the error names its type and message", Has(s->GetLastError(), "authentication_error") & Has(s->GetLastError(), "invalid x-api-key"));
+    turn := s->ParseBody("<html>");
+    Check("a non-JSON body is Nil", turn = Nil & s->GetLastError() <> Nil);
+  }
+
+  function : TestOpenAI() ~ Nil {
+    "-- OpenAI Responses bodies"->PrintLine();
+    s := OpenAISession->New("gpt-5", "k");
+    turn := s->ParseBody("{\"id\":\"resp_1\",\"object\":\"response\",\"model\":\"gpt-5\",\"status\":\"completed\",\"error\":null,\"incomplete_details\":null,\"output\":[{\"type\":\"reasoning\",\"id\":\"rs_1\",\"summary\":[]},{\"type\":\"message\",\"id\":\"msg_1\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello\",\"annotations\":[]}]}],\"usage\":{\"input_tokens\":12,\"output_tokens\":5,\"total_tokens\":17}}");
+    Check("a text reply parses (error:null is not an error)", turn <> Nil);
+    if(turn <> Nil) {
+      Check("text", Same(turn->GetText(), "Hello"));
+      Check("completed is end", Same(turn->GetStopReason(), "end") & Same(turn->GetRawStopReason(), "completed"));
+      Check("tokens", turn->GetInputTokens() = 12 & turn->GetOutputTokens() = 5);
+      Check("model", Same(turn->GetModel(), "gpt-5"));
+      Check("every output item joins the conversation (reasoning included)", s->GetInput()->Size() = 2);
+    };
+
+    s := OpenAISession->New("gpt-5", "k");
+    turn := s->ParseBody("{\"id\":\"resp_2\",\"model\":\"gpt-5\",\"status\":\"completed\",\"output\":[{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_abc\",\"name\":\"get_weather\",\"arguments\":\"{\\\"city\\\":\\\"Paris\\\",\\\"days\\\":3}\",\"status\":\"completed\"}],\"usage\":{\"input_tokens\":40,\"output_tokens\":20}}");
+    Check("a function_call parses", turn <> Nil & turn->HasToolCalls());
+    if(turn <> Nil & turn->HasToolCalls()) {
+      call := turn->GetToolCalls()->Get(0);
+      Check("the call_id is the id", Same(call->GetId(), "call_abc"));
+      Check("name", Same(call->GetName(), "get_weather"));
+      Check("the arguments string is read as JSON", Same(call->GetArgument("city"), "Paris") & Same(call->GetArgument("days"), "3"));
+      Check("function_call is tool_calls", Same(turn->GetStopReason(), "tool_calls"));
+      Check("the text is empty", turn->GetText()->Size() = 0);
+    };
+
+    s := OpenAISession->New("gpt-5", "k");
+    turn := s->ParseBody("{\"status\":\"completed\",\"output\":[{\"type\":\"function_call\",\"call_id\":\"c\",\"name\":\"n\",\"arguments\":\"not json\"}]}");
+    Check("unreadable arguments become an empty object", turn <> Nil & turn->HasToolCalls() & turn->GetToolCalls()->Get(0)->GetArguments()->Size() = 0);
+
+    s := OpenAISession->New("gpt-5", "k");
+    turn := s->ParseBody("{\"status\":\"incomplete\",\"incomplete_details\":{\"reason\":\"max_output_tokens\"},\"output\":[{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"cut\"}]}]}");
+    Check("max_output_tokens is length", turn <> Nil & Same(turn->GetStopReason(), "length") & Same(turn->GetRawStopReason(), "max_output_tokens"));
+    turn := s->ParseBody("{\"status\":\"incomplete\",\"incomplete_details\":{\"reason\":\"content_filter\"},\"output\":[]}");
+    Check("content_filter is filtered", turn <> Nil & Same(turn->GetStopReason(), "filtered"));
+    turn := s->ParseBody("{\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"refusal\",\"refusal\":\"I cannot help with that.\"}]}]}");
+    Check("a refusal part is filtered", turn <> Nil & Same(turn->GetStopReason(), "filtered") & turn->GetText()->Size() = 0);
+
+    turn := s->ParseBody("{\"error\":{\"message\":\"Incorrect API key provided\",\"type\":\"invalid_request_error\",\"code\":\"invalid_api_key\"}}");
+    Check("an error body is Nil", turn = Nil);
+    Check("the error names its type and message", Has(s->GetLastError(), "invalid_request_error") & Has(s->GetLastError(), "Incorrect API key"));
+    turn := s->ParseBody("{\"error\":\"gateway down\"}");
+    Check("a string error is read", turn = Nil & Same(s->GetLastError(), "gateway down"));
+    turn := s->ParseBody("{\"status\":\"completed\"}");
+    Check("a body without output is Nil", turn = Nil & Has(s->GetLastError(), "output"));
+    turn := s->ParseBody("");
+    Check("an empty body is Nil", turn = Nil & s->GetLastError() <> Nil);
+  }
+
+  function : TestOpenAIRequest() ~ Nil {
+    "-- OpenAI request"->PrintLine();
+    s := OpenAISession->New("gpt-5", "k");
+    first := s->BuildRequest(Nil, false)->ToString();
+    Check("no system, limit, temperature or tools when none are set", <>Has(first, "instructions") & <>Has(first, "max_output_tokens") & <>Has(first, "temperature") & <>Has(first, "\"tools\"") & <>Has(first, "\"stream\""));
+
+    s->SetSystem("Be brief.")->SetMaxTokens(256)->SetTemperature(0.5);
+    s->ParseBody("{\"status\":\"completed\",\"output\":[{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_abc\",\"name\":\"get_weather\",\"arguments\":\"{\\\"city\\\":\\\"Paris\\\"}\"}]}");
+    s->AddToolResult("call_abc", "get_weather", "18C");
+    request := s->BuildRequest(Weather(), true)->ToString();
+    Check("the model", Has(request, "\"model\":\"gpt-5\""));
+    Check("the system prompt is the instructions", Has(request, "\"instructions\":\"Be brief.\""));
+    Check("the token limit", Has(request, "\"max_output_tokens\":256"));
+    Check("the temperature", Has(request, "\"temperature\":0.5"));
+    Check("stream is on", Has(request, "\"stream\":true"));
+    Check("a flat function tool", Has(request, "\"type\":\"function\"") & Has(request, "\"name\":\"get_weather\"") & Has(request, "\"parameters\":{\"properties\":{\"city\""));
+    Check("the model's function_call is replayed", Has(request, "\"call_id\":\"call_abc\"") & Has(request, "\"type\":\"function_call\""));
+    Check("the result is a function_call_output", Has(request, "\"type\":\"function_call_output\"") & Has(request, "\"output\":\"18C\""));
+    Check("the conversation is two items", s->GetInput()->Size() = 2);
+  }
+
+  function : TestGemini() ~ Nil {
+    "-- Gemini bodies"->PrintLine();
+    s := GeminiSession->New("models/gemini-2.5-flash", "k");
+    turn := s->ParseBody("{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Hello\"},{\"text\":\" world\"}]},\"finishReason\":\"STOP\",\"index\":0}],\"usageMetadata\":{\"promptTokenCount\":9,\"candidatesTokenCount\":3,\"totalTokenCount\":12},\"modelVersion\":\"gemini-2.5-flash\"}");
+    Check("a text reply parses", turn <> Nil);
+    if(turn <> Nil) {
+      Check("parts join", Same(turn->GetText(), "Hello world"));
+      Check("STOP is end", Same(turn->GetStopReason(), "end") & Same(turn->GetRawStopReason(), "STOP"));
+      Check("tokens", turn->GetInputTokens() = 9 & turn->GetOutputTokens() = 3);
+      Check("model version", Same(turn->GetModel(), "gemini-2.5-flash"));
+      Check("the model content joins the conversation", s->GetContents()->Size() = 1);
+    };
+
+    s := GeminiSession->New("gemini-2.5-flash", "k");
+    turn := s->ParseBody("{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"get_weather\",\"args\":{\"city\":\"Paris\",\"days\":3}},\"thoughtSignature\":\"sig\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":20,\"candidatesTokenCount\":8}}");
+    Check("a functionCall parses", turn <> Nil & turn->HasToolCalls());
+    if(turn <> Nil & turn->HasToolCalls()) {
+      call := turn->GetToolCalls()->Get(0);
+      Check("name", Same(call->GetName(), "get_weather"));
+      Check("a call with no id gets a made-up one", call->GetId() <> Nil & call->GetId()->StartsWith("gemini_call_"));
+      Check("arguments", Same(call->GetArgument("city"), "Paris") & Same(call->GetArgument("days"), "3"));
+      Check("functionCall is tool_calls even though the finish reason is STOP", Same(turn->GetStopReason(), "tool_calls") & Same(turn->GetRawStopReason(), "STOP"));
+      Check("the thought signature is replayed with the content", Has(s->GetContents()->ToString(), "thoughtSignature"));
+    };
+
+    s := GeminiSession->New("gemini-2.5-flash", "k");
+    turn := s->ParseBody("{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"id\":\"fc-77\",\"name\":\"a\",\"args\":{}}},{\"functionCall\":{\"id\":\"fc-78\",\"name\":\"b\",\"args\":{}}}]},\"finishReason\":\"STOP\"}]}");
+    Check("two calls with ids", turn <> Nil & turn->GetToolCalls()->Size() = 2 & Same(turn->GetToolCalls()->Get(0)->GetId(), "fc-77") & Same(turn->GetToolCalls()->Get(1)->GetId(), "fc-78"));
+    s->AddToolResult("fc-77", "a", "{\"temp\":18}");
+    s->AddToolResult("fc-78", "b", "plain text");
+    contents := s->GetContents();
+    Check("results for one turn share one user content", contents->Size() = 2 & contents->Get(1)->Get("parts")->Size() = 2);
+    results := contents->ToString();
+    Check("a JSON object result is passed through", Has(results, "\"response\":{\"temp\":18}"));
+    Check("any other result is wrapped", Has(results, "\"response\":{\"result\":\"plain text\"}"));
+    Check("an id the API gave is echoed", Has(results, "\"id\":\"fc-77\""));
+
+    s := GeminiSession->New("gemini-2.5-flash", "k");
+    s->ParseBody("{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"a\",\"args\":{}}}]}}]}");
+    s->AddToolResult("gemini_call_1", "a", "ok");
+    Check("a made-up id is not echoed", <>Has(s->GetContents()->ToString(), "\"id\""));
+
+    s := GeminiSession->New("gemini-2.5-flash", "k");
+    turn := s->ParseBody("{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"pondering\",\"thought\":true},{\"text\":\"Answer\"}]},\"finishReason\":\"STOP\"}]}");
+    Check("thought text is not the answer", turn <> Nil & Same(turn->GetText(), "Answer"));
+    turn := s->ParseBody("{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"cut\"}]},\"finishReason\":\"MAX_TOKENS\"}]}");
+    Check("MAX_TOKENS is length", turn <> Nil & Same(turn->GetStopReason(), "length"));
+    turn := s->ParseBody("{\"candidates\":[{\"finishReason\":\"SAFETY\"}]}");
+    Check("SAFETY with no content is filtered", turn <> Nil & Same(turn->GetStopReason(), "filtered") & turn->GetText()->Size() = 0);
+    turn := s->ParseBody("{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"x\"}]},\"finishReason\":\"OTHER\"}]}");
+    Check("an unknown finish is other", turn <> Nil & Same(turn->GetStopReason(), "other") & Same(turn->GetRawStopReason(), "OTHER"));
+    turn := s->ParseBody("{\"promptFeedback\":{\"blockReason\":\"SAFETY\"}}");
+    Check("a blocked prompt is an error", turn = Nil & Has(s->GetLastError(), "blocked") & Has(s->GetLastError(), "SAFETY"));
+    turn := s->ParseBody("{\"error\":{\"code\":400,\"message\":\"API key not valid.\",\"status\":\"INVALID_ARGUMENT\"}}");
+    Check("an error body is Nil with status and message", turn = Nil & Has(s->GetLastError(), "INVALID_ARGUMENT") & Has(s->GetLastError(), "API key not valid"));
+    turn := s->ParseBody("{\"usageMetadata\":{}}");
+    Check("no candidates is an error", turn = Nil & Has(s->GetLastError(), "candidate"));
+  }
+
+  function : TestGeminiRequest() ~ Nil {
+    "-- Gemini request"->PrintLine();
+    s := GeminiSession->New("models/gemini-2.5-flash", "k");
+    Check("the models/ prefix is dropped", Same(s->GetModel(), "gemini-2.5-flash"));
+    first := s->BuildRequest(Nil)->ToString();
+    Check("no system, tools or generation config when none are set", <>Has(first, "systemInstruction") & <>Has(first, "\"tools\"") & <>Has(first, "generationConfig"));
+
+    s->SetSystem("Be brief.")->SetMaxTokens(256)->SetTemperature(0.5);
+    request := s->BuildRequest(Weather())->ToString();
+    Check("the system prompt", Has(request, "\"systemInstruction\":{\"parts\":[{\"text\":\"Be brief.\"}]}"));
+    Check("functionDeclarations", Has(request, "\"tools\":[{\"functionDeclarations\":[{") & Has(request, "\"name\":\"get_weather\"") & Has(request, "\"parameters\":{\"properties\":{\"city\""));
+    Check("the token limit and temperature", Has(request, "\"maxOutputTokens\":256") & Has(request, "\"temperature\":0.5"));
+    Check("no response schema on a plain request", <>Has(request, "responseSchema"));
+  }
+
+  function : TestOllama() ~ Nil {
+    "-- Ollama bodies"->PrintLine();
+    s := OllamaSession->New("llama3.2");
+    turn := s->ParseBody("{\"model\":\"llama3.2\",\"created_at\":\"2026-11-18T00:00:00Z\",\"message\":{\"role\":\"assistant\",\"content\":\"Hello\"},\"done\":true,\"done_reason\":\"stop\",\"prompt_eval_count\":11,\"eval_count\":4}");
+    Check("a text reply parses", turn <> Nil);
+    if(turn <> Nil) {
+      Check("text", Same(turn->GetText(), "Hello"));
+      Check("stop is end", Same(turn->GetStopReason(), "end") & Same(turn->GetRawStopReason(), "stop"));
+      Check("tokens come from the eval counts", turn->GetInputTokens() = 11 & turn->GetOutputTokens() = 4);
+      Check("model", Same(turn->GetModel(), "llama3.2"));
+    };
+
+    s := OllamaSession->New("llama3.2");
+    turn := s->ParseBody("{\"model\":\"llama3.2\",\"message\":{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[{\"function\":{\"name\":\"get_weather\",\"arguments\":{\"city\":\"Paris\",\"days\":3}}}]},\"done\":true,\"done_reason\":\"stop\"}");
+    Check("a tool call parses", turn <> Nil & turn->HasToolCalls());
+    if(turn <> Nil & turn->HasToolCalls()) {
+      call := turn->GetToolCalls()->Get(0);
+      Check("name", Same(call->GetName(), "get_weather"));
+      Check("Ollama has no ids, so one is made up", call->GetId() <> Nil & call->GetId()->StartsWith("ollama_call_"));
+      Check("arguments", Same(call->GetArgument("city"), "Paris") & Same(call->GetArgument("days"), "3"));
+      Check("tool calls win over done_reason stop", Same(turn->GetStopReason(), "tool_calls"));
+      Check("the assistant message keeps its tool_calls", Has(s->GetMessages()->ToString(), "\"tool_calls\":[{\"function\":{\"arguments\":{\"city\":\"Paris\",\"days\":3},\"name\":\"get_weather\""));
+    };
+
+    s := OllamaSession->New("llama3.2");
+    turn := s->ParseBody("{\"message\":{\"role\":\"assistant\",\"content\":\"cut\"},\"done\":true,\"done_reason\":\"length\"}");
+    Check("length is length", turn <> Nil & Same(turn->GetStopReason(), "length"));
+    turn := s->ParseBody("{\"message\":{\"role\":\"assistant\",\"content\":\"x\"},\"done\":true,\"done_reason\":\"load\"}");
+    Check("an unknown done_reason is other", turn <> Nil & Same(turn->GetStopReason(), "other"));
+    turn := s->ParseBody("{\"error\":\"model 'nope' not found\"}");
+    Check("an error body is Nil", turn = Nil & Has(s->GetLastError(), "not found"));
+    turn := s->ParseBody("{\"done\":true}");
+    Check("a body with no message is an error", turn = Nil & Has(s->GetLastError(), "message"));
+    turn := s->ParseBody("not json");
+    Check("a non-JSON body is Nil", turn = Nil);
+  }
+
+  function : TestOllamaRequest() ~ Nil {
+    "-- Ollama request"->PrintLine();
+    s := OllamaSession->New("llama3.2");
+    first := s->BuildRequest(Nil)->ToString();
+    Check("stream is off", Has(first, "\"stream\":false"));
+    Check("no options or tools when none are set", <>Has(first, "options") & <>Has(first, "\"tools\""));
+
+    s->SetSystem("Be brief.")->SetMaxTokens(256)->SetTemperature(0.5);
+    s->ParseBody("{\"message\":{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[{\"function\":{\"name\":\"get_weather\",\"arguments\":{\"city\":\"Paris\"}}}]},\"done\":true}");
+    s->AddToolResult("ollama_call_1", "get_weather", "18C");
+    request := s->BuildRequest(Weather())->ToString();
+    Check("the system prompt comes first", Has(request, "\"messages\":[{\"role\":\"system\",\"content\":\"Be brief.\"}") | Has(request, "\"messages\":[{\"content\":\"Be brief.\",\"role\":\"system\"}"));
+    Check("the tool message carries the tool name", Has(request, "\"tool_name\":\"get_weather\"") & Has(request, "\"content\":\"18C\""));
+    Check("a function tool", Has(request, "\"type\":\"function\"") & Has(request, "\"function\":{") & Has(request, "\"name\":\"get_weather\""));
+    Check("options", Has(request, "\"num_predict\":256") & Has(request, "\"temperature\":0.5"));
+  }
+
+  function : Turns() ~ Vector<Turn> {
+    turns := Vector->New()<Turn>;
+    calls := Vector->New()<ToolInvocation>;
+    args := JsonParser->TextToElement("{\"city\":\"Paris\"}");
+    calls->AddBack(ToolInvocation->New("id1", "get_weather", args));
+    calls->AddBack(ToolInvocation->New("id2", "broken", Nil));
+    turns->AddBack(Turn->New("", calls, "tool_calls", Nil, 1, 1, Nil));
+    turns->AddBack(Turn->New("It is sunny.", Nil, "end", Nil, 2, 2, Nil));
+    return turns;
+  }
+
+  function : TestAgent() ~ Nil {
+    "-- the Agent loop"->PrintLine();
+    session := ScriptSession->New(Turns());
+    handler := EchoHandler->New();
+    turn := Agent->Run(session, "weather?", Weather(), handler, 5);
+    Check("the loop ends on the answer", turn <> Nil & Same(turn->GetText(), "It is sunny.") & <>turn->HasToolCalls());
+    Check("both calls were run", handler->GetCalls() = 2);
+    results := session->GetResults();
+    Check("each result goes back with its id and name", results->Size() = 2 & Same(results->Get(0), "id1/get_weather/sunny in Paris"));
+    Check("a handler that returns Nil reports an error", results->Size() = 2 & Has(results->Get(1), "id2/broken/error"));
+    sent := session->GetSent();
+    Check("the first send carries the message, the second continues", sent->Size() = 2 & Same(sent->Get(0), "weather?") & Same(sent->Get(1), "(none)"));
+
+    # a model that never stops asking: the loop gives up after max_rounds and says so by returning the last turn
+    endless := Vector->New()<Turn>;
+    calls := Vector->New()<ToolInvocation>;
+    calls->AddBack(ToolInvocation->New("x", "get_weather", Nil));
+    each(i : 10) {
+      endless->AddBack(Turn->New("", calls, "tool_calls", Nil, 0, 0, Nil));
+    };
+    session := ScriptSession->New(endless);
+    handler := EchoHandler->New();
+    turn := Agent->Run(session, "again", Weather(), handler, 3);
+    Check("the round limit stops the loop", turn <> Nil & turn->HasToolCalls() & handler->GetCalls() = 3);
+
+    session := ScriptSession->New(Vector->New()<Turn>);
+    turn := Agent->Run(session, "x", Weather(), EchoHandler->New(), 3);
+    Check("a failed first send returns Nil", turn = Nil);
+  }
+}

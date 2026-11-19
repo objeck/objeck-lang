@@ -103,6 +103,12 @@
     "System.Time": ["Alarm", "Date", "Timer"]
    }
   },
+  "llm": {
+   "deps": ["openai", "gemini", "ollama", "anthropic", "json", "net", "net_server", "cipher", "misc"],
+   "bundles": {
+    "API.LLM": ["Agent", "AnthropicSession", "GeminiSession", "LLM", "OllamaSession", "OpenAISession", "Session", "ToolHandler", "ToolInvocation", "ToolSpec", "Turn", "TurnStream", "WholeStream"]
+   }
+  },
   "math": {
    "deps": [],
    "bundles": {

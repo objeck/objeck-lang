@@ -25,6 +25,12 @@ All AI and ML capabilities are **standard library** — no third-party packages,
   - [Files API](#files-api)
   - [Context Caching](#context-caching)
 - [Ollama (Local Models)](#ollama-local-models)
+- [One Chat Interface (API.LLM)](#one-chat-interface-apillm)
+  - [Open a session](#open-a-session)
+  - [Tools and the agent loop](#tools-and-the-agent-loop)
+  - [JSON output](#json-output)
+  - [Streaming](#streaming-1)
+  - [How each provider is spoken to](#how-each-provider-is-spoken-to)
 - [ONNX Local Inference](#onnx-local-inference)
   - [Face Recognition](#face-recognition)
   - [Object Detection (YOLO)](#object-detection-yolo)
@@ -597,6 +603,117 @@ each(m in models) {
 };
 Model->Pull("phi3");
 ```
+
+---
+
+## One Chat Interface (API.LLM)
+
+`API.LLM` is a provider-neutral layer over Anthropic, OpenAI, Gemini and Ollama. One `Session` interface covers a system prompt, chat, tool calling, streaming and JSON output, so an agent loop is written once and runs against any of them. The provider clients above keep their own features (images, thinking, embeddings, files); this layer is the common surface for chat. Compile with:
+
+```
+obc -src agent.obs -lib llm,anthropic,openai,gemini,ollama,net,net_server,json,cipher,misc
+```
+
+or `-lib @ml`, which expands to the same set. A failed call returns `Nil` and `session->GetLastError()` says why; nothing ends the program on bad input.
+
+### Open a session
+
+```ruby
+use API.LLM;
+
+session := LLM->Open("anthropic:claude-sonnet-5-5");   # or openai:gpt-5, gemini:gemini-2.5-flash, ollama:llama3.2
+session->SetSystem("Answer in one sentence.")->SetMaxTokens(512);
+turn := session->Send("Why is the sky blue?", Nil);
+if(turn = Nil) {
+  session->GetLastError()->ErrorLine();
+}
+else {
+  turn->GetText()->PrintLine();
+};
+```
+
+`Send(message, tools)` returns a `Turn`: `GetText()`, `GetToolCalls()`, `GetStopReason()`, `GetInputTokens()`, `GetOutputTokens()`. The stop reason is the same word for every provider: `end`, `tool_calls`, `length` (hit the token limit), `filtered` (refused or blocked) or `other`; `GetRawStopReason()` has the provider's own. The conversation is kept in the session, so a second `Send` continues it. A message that failed is not kept.
+
+The keys are the provider clients' own: `ANTHROPIC_API_KEY` or `anthropic_api_key.dat`, `openai_api_key.dat`, `gemini_api_key.dat`, or pass a key to the concrete class (`OpenAISession->New("gpt-5", key)`). Ollama needs none and uses `API.Ollama.EndPoint->SetHost(...)`.
+
+### Tools and the agent loop
+
+A `ToolSpec` is a name, a description and a JSON schema. The same object goes to every provider, each in its own wire format. When a turn has tool calls, run them, return each result with `AddToolResult(call->GetId(), call->GetName(), text)` and `Send(Nil, tools)` again. To report a failure, return the error as the result text.
+
+```ruby
+use API.LLM;
+use Collection, Data.JSON;
+
+class Town implements ToolHandler {
+  method : public : Run(call : ToolInvocation) ~ String {
+    city := call->GetArgument("city");
+    return "18C and sunny in {$city}";
+  }
+}
+
+schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}");
+tools := Vector->New()<ToolSpec>;
+tools->AddBack(ToolSpec->New("get_weather", "Get the weather for a city", schema));
+
+session := LLM->Open("openai:gpt-5");
+turn := Agent->Run(session, "What is the weather in Paris?", tools, Town->New(), 8);
+turn->GetText()->PrintLine();
+```
+
+`Agent->Run` is the whole loop, and it is short enough to write by hand against `Session` alone, which the `llm_agent_test` regression test does: the same loop runs unchanged on all four providers. A turn that still has tool calls when the round limit is hit is returned as it is, so `HasToolCalls()` tells a finished answer from a stopped loop.
+
+### JSON output
+
+`SendJson(question, name, schema)` returns an object in the shape you give, or `Nil`. The conversation so far is context; neither the question nor the answer joins it.
+
+```ruby
+schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"},\"temp\":{\"type\":\"integer\"}},\"required\":[\"city\",\"temp\"]}");
+answer := session->SendJson("Name a city where it is 18 degrees.", "answer", schema);
+answer->Get("city")->GetString()->PrintLine();
+```
+
+### Streaming
+
+```ruby
+stream := session->Stream("Write a haiku about rivers.", Nil);
+while(stream <> Nil & stream->HasNext()) {
+  stream->Next()->Print();
+};
+turn := stream->GetTurn();    # the whole turn; the exchange joins the conversation
+```
+
+Anthropic, OpenAI and Gemini stream as the model generates, over server-sent events. **Ollama does not stream here**: its stream gives the whole reply as one piece, so the same loop runs but nothing arrives early. A tool call streamed by OpenAI or Gemini arrives whole in `GetTurn()`, with no text pieces before it. Gemini sends no end-of-stream event, so the reader stops at the chunk that carries a finish reason (and asks the server to close the connection after the response).
+
+### How each provider is spoken to
+
+| | Anthropic | OpenAI | Gemini | Ollama |
+|---|---|---|---|---|
+| Endpoint | `/v1/messages` | `/v1/responses` | `models/{m}:generateContent` | `/api/chat` |
+| Class | `AnthropicSession` (wraps `API.Anthropic.Chat`) | `OpenAISession` | `GeminiSession` | `OllamaSession` |
+| Key | `x-api-key` header | `Authorization: Bearer` | `x-goog-api-key` header | none |
+| Tool call id | the API's (`toolu_...`) | the API's (`call_id`) | the API's when it sends one, else made up | made up (`ollama_call_N`) |
+| Result goes back as | `tool_result` block, by id | `function_call_output` item, by `call_id` | `functionResponse` part, by name | `tool` message, by name |
+| JSON output | a forced tool | `text.format` JSON schema | `responseSchema` | `format` JSON schema |
+| Streaming | yes | yes | yes | one piece |
+
+OpenAI and Gemini are spoken to directly over `HttpsClient`, because their clients above cannot do the round trip (`API.OpenAI.Responses` does not read function calls back, and Gemini's tool support dispatches callbacks itself). The session keeps the conversation and sends it whole on every call, replaying the model's own output items (OpenAI) or content (Gemini) as they came, so reasoning items and tool-call signatures survive. Ollama is also spoken to directly: `API.Ollama.Chat` takes a `Vector<Tool>`, and the compiler cannot tell that `Tool` from Anthropic's when one program uses both libraries.
+
+The Gemini key goes in the `x-goog-api-key` header rather than the `?key=` query the Gemini client uses, so it never appears in a URL or an error message.
+
+### Gateways and local test servers
+
+`OpenAISession` and `GeminiSession` take `SetBaseUrl(url)` (https, no trailing slash) and `SetCertificate(pem)` to pin the certificate a gateway or test server presents. `OpenAISession` falls back to `API.OpenAI.EndPoint->SetBaseUrl`. Anthropic and Ollama follow their own endpoints: `API.Anthropic.EndPoint->SetBaseUrl` / `SetCertificate`, `API.Ollama.EndPoint->SetHost`. `GetChat()` on `AnthropicSession` returns the wrapped client for what the neutral layer does not cover (extended thinking).
+
+### What it does not do
+
+- Images, audio, files and embeddings: use the provider's own client.
+- Schema strictness. Anthropic checks a forced tool's input loosely; OpenAI is asked for a JSON schema with `strict` off (a strict schema must list every property as required and forbid extras, which a general interface cannot assume); Gemini takes a subset of JSON Schema (no `additionalProperties`, for one); Ollama constrains the output to the schema. Check what you get back.
+- Tool results are not marked as errors on the wire; return the error text. Parallel tool calls come back together in one turn and all results must be added before the next `Send`, which the loop above does.
+- Provider-specific options (prompt caching, thinking budgets, safety settings, Ollama `Options`) are not here; use the provider's client.
+
+**Tested against local mocks, not the live services.** `llm_parse_test` reads recorded response bodies for all four providers and checks the request each session builds; `llm_http_test` runs each session against a local HTTPS server (a plain HTTP one for Ollama) that answers a tool result only when it arrives in the provider's own shape; `llm_agent_test` runs one agent loop against all four. The wire formats follow the providers' public documentation as of this writing; nothing has been run against api.anthropic.com, api.openai.com, generativelanguage.googleapis.com or a real Ollama server, so a field the mocks do not exercise may differ.
+
+Why it is built this way, and what was left out: [LLM_DESIGN.md](LLM_DESIGN.md).
 
 ---
 
@@ -1417,7 +1534,7 @@ obc -src program.obs -lib @ai -dest program.obe
 | `@std` | `json`, `json_stream`, `net`, `cipher` | everyday networked apps |
 | `@web` | `net_h2`, `net_quic`, `web_server`, `json_rpc`, `net_server`, `net`, `json`, `cipher` | HTTP/2, HTTP/3, the embedded server, JSON-RPC |
 | `@data` | `xml`, `regex`, `csv`, `query`, `rss`, `misc`, `net`, `json`, `cipher` | parsing and querying structured data |
-| `@ml` | `gemini`, `openai`, `ollama`, `net_server`, `misc`, `net`, `json`, `cipher` | LLM clients: OpenAI, Gemini, Ollama |
+| `@ml` | `gemini`, `openai`, `ollama`, `anthropic`, `llm`, `net_server`, `misc`, `net`, `json`, `cipher` | LLM clients (OpenAI, Gemini, Ollama, Anthropic) and the neutral chat layer over them |
 | `@ai` | `ai`, `ml`, `ml_lab`, `nlp`, `csv`, `json` | local System.ML / System.ML.Lab / System.AI / System.NLP work |
 | `@vision` | `opencv`, `onnx`, `nlp_onnx`, `models`, `nlp`, `json`, `cipher` | OpenCV and ONNX inference, BERT text embeddings |
 | `@game` | `sdl2`, `sdl_game`, `sdl_gl`, `json`, `gen_collect` | SDL games, 2D and OpenGL |
@@ -1456,6 +1573,7 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 | File upload | `FileManager` | `gemini` | Gemini |
 | Context caching | `CachedContent` | `gemini` | Gemini |
 | Local text gen | `Completion` / `Chat` | `ollama` | None |
+| Chat, tools, streaming over any of the four | `Session`, `Agent` | `llm` + the clients | Per provider |
 | Local embeddings | `Model::Embeddings` | `ollama` | None |
 | Face recognition | `FaceSession` | `onnx` | None |
 | Object detection | `YoloSession` | `onnx` | None |

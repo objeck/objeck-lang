@@ -1,0 +1,465 @@
+# EXTRA_LIBS: llm,anthropic,openai,gemini,ollama,net,net_server,json,cipher,misc
+#~
+One agent loop, run unchanged against all four providers. The mocks play a two-step errand:
+asked about the weather in Paris, the model calls get_weather; given 18C and sunny, it calls
+get_time; given 12:00, it answers "In Paris it is 18C at 12:00." Each mock only moves a step
+when the earlier result arrives in its provider's wire shape, with the id of the call it answers
+(Anthropic tool_result with the tool_use_id, OpenAI function_call_output with the call_id,
+Gemini functionResponse with the tool name, Ollama a tool message with the tool name), so a
+loop that returned results wrongly would stall on one provider and the check would fail. The
+loop is the library's Agent->Run, and a hand-written one that uses only the Session interface;
+both are checked against every provider. No key and no network beyond loopback.
+
+An HTTPS server (Anthropic, OpenAI, Gemini) and a plain HTTP server (Ollama), as in llm_http_test;
+the certificate is the same self-signed DNS:localhost fixture (openssl on PATH).
+~#
+use API.LLM;
+use Data.JSON;
+use Collection, System.IO.Filesystem, Web.HTTP.Server;
+
+# What a request carries as tool results, read from the provider's own shape as "id|content;"
+# per result: Anthropic tool_result blocks, OpenAI function_call_output items, Gemini
+# functionResponse parts (matched by name) and Ollama tool messages (matched by name).
+class Probe {
+	function : Str(elem : JsonElement, name : String) ~ String {
+		if(elem = Nil | elem->GetType() <> JsonElement->JsonType->OBJECT) {
+			return "";
+		};
+
+		value := elem->Get(name);
+		if(value = Nil | value->GetType() <> JsonElement->JsonType->STRING) {
+			return "";
+		};
+		return value->GetString();
+	}
+
+	function : List(json : JsonElement, name : String) ~ JsonElement {
+		if(json = Nil | json->GetType() <> JsonElement->JsonType->OBJECT) {
+			return Nil;
+		};
+
+		list := json->Get(name);
+		if(list = Nil | list->GetType() <> JsonElement->JsonType->ARRAY) {
+			return Nil;
+		};
+		return list;
+	}
+
+	function : OpenAI(body : String) ~ String {
+		found := "";
+		input := List(JsonParser->TextToElement(body), "input");
+		if(input <> Nil) {
+			each(i : input) {
+				item := input->Get(i);
+				if(Str(item, "type")->Equals("function_call_output")) {
+					found += Str(item, "call_id") + "|" + Str(item, "output") + ";";
+				};
+			};
+		};
+		return found;
+	}
+
+	function : Anthropic(body : String) ~ String {
+		found := "";
+		messages := List(JsonParser->TextToElement(body), "messages");
+		if(messages <> Nil) {
+			each(i : messages) {
+				content := List(messages->Get(i), "content");
+				if(content <> Nil) {
+					each(j : content) {
+						block := content->Get(j);
+						if(Str(block, "type")->Equals("tool_result")) {
+							found += Str(block, "tool_use_id") + "|" + Str(block, "content") + ";";
+						};
+					};
+				};
+			};
+		};
+		return found;
+	}
+
+	function : Gemini(body : String) ~ String {
+		found := "";
+		contents := List(JsonParser->TextToElement(body), "contents");
+		if(contents <> Nil) {
+			each(i : contents) {
+				parts := List(contents->Get(i), "parts");
+				if(parts <> Nil) {
+					each(j : parts) {
+						reply := parts->Get(j)->Get("functionResponse");
+						if(reply <> Nil) {
+							found += Str(reply, "name") + "|" + Str(reply->Get("response"), "result") + ";";
+						};
+					};
+				};
+			};
+		};
+		return found;
+	}
+
+	function : Ollama(body : String) ~ String {
+		found := "";
+		messages := List(JsonParser->TextToElement(body), "messages");
+		if(messages <> Nil) {
+			each(i : messages) {
+				message := messages->Get(i);
+				if(Str(message, "role")->Equals("tool")) {
+					found += Str(message, "tool_name") + "|" + Str(message, "content") + ";";
+				};
+			};
+		};
+		return found;
+	}
+}
+
+class AgentMock from HttpsRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(404, "not found");
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		body := request->GetContent();
+		if(body = Nil) {
+			response->SetCodeContent(400, "{\"error\":\"no body\"}");
+			return false;
+		};
+
+		path := request->GetPath();
+		if(path->Equals("/anthropic/v1/messages")) {
+			return Anthropic(response, body);
+		};
+		if(path->Equals("/openai/v1/responses")) {
+			return OpenAI(response, body);
+		};
+		if(path->StartsWith("/gemini/v1beta/models/m:generateContent")) {
+			return Gemini(response, body);
+		};
+
+		response->SetCodeContent(404, "not found");
+		return false;
+	}
+
+	# 0: ask for the weather, 1: ask for the time, 2: answer; -1: the results are not what the loop should have sent
+	function : Stage(results : String, first : String, second : String) ~ Int {
+		if(results->Size() = 0) {
+			return 0;
+		};
+		if(results->Equals(first + "|18C and sunny;")) {
+			return 1;
+		};
+		if(results->Equals(first + "|18C and sunny;" + second + "|12:00;")) {
+			return 2;
+		};
+		return -1;
+	}
+
+	method : Anthropic(response : Response, body : String) ~ Bool {
+		stage := Stage(Probe->Anthropic(body), "toolu_1", "toolu_2");
+		if(stage = 0) {
+			response->SetCodeContent(200, "{\"id\":\"m1\",\"model\":\"m\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_1\",\"name\":\"get_weather\",\"input\":{\"city\":\"Paris\"}}],\"stop_reason\":\"tool_use\",\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}");
+		}
+		else if(stage = 1) {
+			response->SetCodeContent(200, "{\"id\":\"m2\",\"model\":\"m\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_2\",\"name\":\"get_time\",\"input\":{\"city\":\"Paris\"}}],\"stop_reason\":\"tool_use\",\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}");
+		}
+		else {
+			Answer(response, stage, "{\"id\":\"m3\",\"model\":\"m\",\"content\":[{\"type\":\"text\",\"text\":\"@@\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}");
+		};
+		return false;
+	}
+
+	method : OpenAI(response : Response, body : String) ~ Bool {
+		stage := Stage(Probe->OpenAI(body), "call_1", "call_2");
+		if(stage = 0) {
+			response->SetCodeContent(200, "{\"id\":\"r1\",\"model\":\"m\",\"status\":\"completed\",\"output\":[{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_1\",\"name\":\"get_weather\",\"arguments\":\"{\\\"city\\\":\\\"Paris\\\"}\"}],\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}");
+		}
+		else if(stage = 1) {
+			response->SetCodeContent(200, "{\"id\":\"r2\",\"model\":\"m\",\"status\":\"completed\",\"output\":[{\"type\":\"function_call\",\"id\":\"fc_2\",\"call_id\":\"call_2\",\"name\":\"get_time\",\"arguments\":\"{\\\"city\\\":\\\"Paris\\\"}\"}],\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}");
+		}
+		else {
+			Answer(response, stage, "{\"id\":\"r3\",\"model\":\"m\",\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"@@\"}]}],\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}");
+		};
+		return false;
+	}
+
+	method : Gemini(response : Response, body : String) ~ Bool {
+		stage := Stage(Probe->Gemini(body), "get_weather", "get_time");
+		if(stage = 0) {
+			response->SetCodeContent(200, "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"get_weather\",\"args\":{\"city\":\"Paris\"}}}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":1,\"candidatesTokenCount\":1}}");
+		}
+		else if(stage = 1) {
+			response->SetCodeContent(200, "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"get_time\",\"args\":{\"city\":\"Paris\"}}}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":1,\"candidatesTokenCount\":1}}");
+		}
+		else {
+			Answer(response, stage, "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"@@\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":1,\"candidatesTokenCount\":1}}");
+		};
+		return false;
+	}
+
+	# the final answer, or a note that a result came back in the wrong shape
+	method : Answer(response : Response, stage : Int, template : String) ~ Nil {
+		text := "In Paris it is 18C at 12:00.";
+		if(stage < 0) {
+			text := "BAD tool result shape";
+		};
+		response->SetCodeContent(200, template->ReplaceAll("@@", text));
+	}
+}
+
+class OllamaAgentMock from HttpRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(404, "not found");
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		body := request->GetContent();
+		if(body = Nil | <>request->GetPath()->Equals("/api/chat")) {
+			response->SetCodeContent(400, "{\"error\":\"bad request\"}");
+			return false;
+		};
+
+		stage := AgentMock->Stage(Probe->Ollama(body), "get_weather", "get_time");
+		if(stage = 0) {
+			response->SetCodeContent(200, "{\"model\":\"m\",\"message\":{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[{\"function\":{\"name\":\"get_weather\",\"arguments\":{\"city\":\"Paris\"}}}]},\"done\":true,\"done_reason\":\"stop\",\"prompt_eval_count\":1,\"eval_count\":1}");
+		}
+		else if(stage = 1) {
+			response->SetCodeContent(200, "{\"model\":\"m\",\"message\":{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[{\"function\":{\"name\":\"get_time\",\"arguments\":{\"city\":\"Paris\"}}}]},\"done\":true,\"done_reason\":\"stop\",\"prompt_eval_count\":1,\"eval_count\":1}");
+		}
+		else {
+			text := "In Paris it is 18C at 12:00.";
+			if(stage < 0) {
+				text := "BAD tool result shape";
+			};
+			response->SetCodeContent(200, "{\"model\":\"m\",\"message\":{\"role\":\"assistant\",\"content\":\"{$text}\"},\"done\":true,\"done_reason\":\"stop\",\"prompt_eval_count\":1,\"eval_count\":1}");
+		};
+		return false;
+	}
+}
+
+# runs the errand's tools and remembers the order they were called in
+class Town implements ToolHandler {
+	@order : String;
+
+	New() { @order := ""; }
+
+	method : public : Run(call : ToolInvocation) ~ String {
+		@order += call->GetName() + ";";
+		city := call->GetArgument("city");
+		if(city = Nil | <>city->Equals("Paris")) {
+			return "error: unknown city";
+		};
+
+		if(call->GetName()->Equals("get_weather")) {
+			return "18C and sunny";
+		};
+		if(call->GetName()->Equals("get_time")) {
+			return "12:00";
+		};
+		return "error: unknown tool";
+	}
+
+	method : public : GetOrder() ~ String { return @order; }
+}
+
+class LlmAgentTest {
+	@port : static : Int;
+	@plain_port : static : Int;
+	@failures : static : Int;
+	@pem : static : String;
+
+	function : Port() ~ Int { return @port; }
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  [PASS] {$name}"->PrintLine();
+		}
+		else {
+			"  [FAIL] {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Same(a : String, b : String) ~ Bool {
+		return a <> Nil & b <> Nil & a->Equals(b);
+	}
+
+	# A self-signed certificate for the test's server, valid from 2025 rather than from the second
+	# it is made, so a clock that steps back (a VM resynchronizing, as WSL2 does) does not make it
+	# "not valid yet". Before OpenSSL 3.4 only `openssl ca` can set the start, so it signs the
+	# request, in a scratch directory removed afterwards.
+	function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+		dir := "{$cert}.ca";
+		Directory->Delete(dir);
+		File->Delete(cert);
+		File->Delete(key);
+		if(<>Directory->Create(dir)) {
+			return false;
+		};
+
+		cnf := FileWriter->New("{$dir}/openssl.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+		cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+		cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+		cnf->Close();
+		FileWriter->New("{$dir}/index.txt")->Close();
+		serial := FileWriter->New("{$dir}/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+
+		made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+		if(made) {
+			made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+		};
+
+		Directory->Delete(dir);
+		return made;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		@port := 0;
+		@pem := "llm-agent-{$Runtime->GetProcessId()}-cert.pem";
+		key := "llm-agent-{$Runtime->GetProcessId()}-key.pem";
+		File->Delete(@pem);
+		File->Delete(key);
+
+		if(<>MakeServerCert(@pem, key, "/CN=localhost", "DNS:localhost")) {
+			"  [FAIL] openssl could not create the TLS fixture -- is openssl on PATH?"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		server := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->ServeSecure(AgentMock->New()->GetClass(),
+					LlmAgentTest->Port(), "llm-agent-{$Runtime->GetProcessId()}-cert.pem", "llm-agent-{$Runtime->GetProcessId()}-key.pem", "", false);
+			}
+		};
+		server->Execute(Nil);
+		waited := 0;
+		while(WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		@port := WebServer->GetBoundPort();
+		if(@port = 0) {
+			"  [FAIL] the TLS server never listened"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		# both servers report through WebServer->GetBoundPort(), so wait for it to change
+		plain := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->Serve(OllamaAgentMock->New()->GetClass(), 0, false);
+			}
+		};
+		plain->Execute(Nil);
+		waited := 0;
+		while((WebServer->GetBoundPort() = 0 | WebServer->GetBoundPort() = @port) & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		@plain_port := WebServer->GetBoundPort();
+		if(@plain_port = 0 | @plain_port = @port) {
+			"  [FAIL] the plain HTTP server never listened"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		API.Anthropic.EndPoint->SetBaseUrl("https://localhost:{$@port}/anthropic/v1");
+		API.Anthropic.EndPoint->SetCertificate(@pem);
+		API.Ollama.EndPoint->SetHost("http://localhost:{$@plain_port}");
+
+		providers := ["anthropic", "openai", "gemini", "ollama"];
+		each(i : providers) {
+			TestProvider(providers[i]);
+		};
+
+		File->Delete(@pem);
+		File->Delete(key);
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS"->PrintLine();
+		# the servers block in accept; end the process after cleanup
+		Runtime->Exit(0);
+	}
+
+	function : Open(provider : String) ~ Session {
+		url := "https://localhost:{$@port}";
+		if(provider->Equals("anthropic")) {
+			return AnthropicSession->New("m", "test-key");
+		};
+		if(provider->Equals("openai")) {
+			return OpenAISession->New("m", "test-key")->SetBaseUrl("{$url}/openai/v1")->SetCertificate(@pem);
+		};
+		if(provider->Equals("gemini")) {
+			return GeminiSession->New("m", "test-key")->SetBaseUrl("{$url}/gemini/v1beta")->SetCertificate(@pem);
+		};
+		return OllamaSession->New("m");
+	}
+
+	function : Tools() ~ Vector<ToolSpec> {
+		schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}");
+		tools := Vector->New()<ToolSpec>;
+		tools->AddBack(ToolSpec->New("get_weather", "Get the weather for a city", schema));
+		tools->AddBack(ToolSpec->New("get_time", "Get the local time in a city", schema));
+		return tools;
+	}
+
+	# An agent loop that knows nothing of any provider: it holds a Session and nothing else.
+	function : HandLoop(session : Session, question : String, tools : Vector<ToolSpec>, town : Town) ~ String {
+		turn := session->Send(question, tools);
+		rounds := 0;
+		while(turn <> Nil & turn->HasToolCalls() & rounds < 6) {
+			calls := turn->GetToolCalls();
+			each(i : calls) {
+				call := calls->Get(i);
+				session->AddToolResult(call->GetId(), call->GetName(), town->Run(call));
+			};
+			turn := session->Send(Nil, tools);
+			rounds += 1;
+		};
+
+		if(turn = Nil) {
+			return Nil;
+		};
+		return turn->GetText();
+	}
+
+	function : TestProvider(provider : String) ~ Nil {
+		"-- {$provider}: the library's Agent->Run"->PrintLine();
+		session := Open(provider);
+		town := Town->New();
+		turn := Agent->Run(session, "What is the weather and the time in Paris?", Tools(), town, 6);
+		Check("{$provider}: the loop returns a turn", turn <> Nil);
+		if(turn = Nil) {
+			("  error: " + session->GetLastError())->PrintLine();
+		}
+		else {
+			Check("{$provider}: the final answer", Same(turn->GetText(), "In Paris it is 18C at 12:00."));
+			Check("{$provider}: it ended normally", Same(turn->GetStopReason(), "end") & <>turn->HasToolCalls());
+		};
+		Check("{$provider}: the tools ran in order, once each", Same(town->GetOrder(), "get_weather;get_time;"));
+
+		"-- {$provider}: a loop written against Session alone"->PrintLine();
+		session := Open(provider);
+		town := Town->New();
+		answer := HandLoop(session, "What is the weather and the time in Paris?", Tools(), town);
+		Check("{$provider}: the same answer", Same(answer, "In Paris it is 18C at 12:00."));
+		Check("{$provider}: the same order", Same(town->GetOrder(), "get_weather;get_time;"));
+
+		# a loop that stops early: one round allowed, so the turn still wants a tool
+		session := Open(provider);
+		turn := Agent->Run(session, "What is the weather and the time in Paris?", Tools(), Town->New(), 1);
+		Check("{$provider}: a round limit of 1 stops on the second tool call", turn <> Nil & turn->HasToolCalls() & Same(turn->GetToolCalls()->Get(0)->GetName(), "get_time"));
+	}
+}

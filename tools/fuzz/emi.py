@@ -133,7 +133,7 @@ KEYWORDS_BEFORE_EXPR = frozenset(("return", "leaving", "in", "and", "or", "not")
 
 # Whole underscore-separated name components, so runtime_* is not "time".
 NAME_EXCLUDE = re.compile(r"(?:^|_)(https?|socket|net|tls|web|websocket|mcp|dap|debugger|obd|api|thread|"
-                          r"timing|time|timer|bench|perf|stress|sdl|gl|opencv|onnx|ollama|openai|gemini|anthropic|"
+                          r"timing|time|timer|bench|perf|stress|sdl|gl|opencv|onnx|ollama|openai|gemini|anthropic|llm|"
                           r"clock|sleep|signal|process|console)(?=_|$)", re.I)
 SOURCE_EXCLUDE = re.compile(r"(System\.Time|Timer->|Date->New|GetTime|Thread->Sleep|System\.IO\.Net|"
                             r"Console->Read|GetEnv|System\.Concurrency|Web\.HTTP)")
