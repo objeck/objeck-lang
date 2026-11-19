@@ -4,8 +4,14 @@
 <rect x="0.0" y="0.0" width="560.0" height="480.0" fill="#ffffff" class="background"/>
 <line x1="64.0" y1="424.3" x2="544.0" y2="424.3" stroke="#dddddd" stroke-width="1.0" class="grid"/>
 <text x="56.0" y="428.3" fill="#333333" font-size="12" text-anchor="end" class="ytick">0</text>
-<line x1="64.0" y1="232.0" x2="544.0" y2="232.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
-<text x="56.0" y="236.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">0.5</text>
+<line x1="64.0" y1="347.4" x2="544.0" y2="347.4" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="351.4" fill="#333333" font-size="12" text-anchor="end" class="ytick">0.2</text>
+<line x1="64.0" y1="270.5" x2="544.0" y2="270.5" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="274.5" fill="#333333" font-size="12" text-anchor="end" class="ytick">0.4</text>
+<line x1="64.0" y1="193.5" x2="544.0" y2="193.5" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="197.5" fill="#333333" font-size="12" text-anchor="end" class="ytick">0.6</text>
+<line x1="64.0" y1="116.6" x2="544.0" y2="116.6" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="120.6" fill="#333333" font-size="12" text-anchor="end" class="ytick">0.8</text>
 <line x1="64.0" y1="39.7" x2="544.0" y2="39.7" stroke="#dddddd" stroke-width="1.0" class="grid"/>
 <text x="56.0" y="43.7" fill="#333333" font-size="12" text-anchor="end" class="ytick">1</text>
 <line x1="73.2" y1="32.0" x2="73.2" y2="432.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>

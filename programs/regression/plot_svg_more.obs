@@ -50,6 +50,16 @@ class PlotSvgMore {
 
 	function : Heat() ~ Bool {
 		ok := true;
+
+		# a tiny negative value rounds to zero and must not print as -0.00
+		tiny := Float->New[1, 2];
+		tiny[0, 0] := -0.001;
+		tiny[0, 1] := 1.0;
+		neg := Figure->New(400, 300);
+		neg->GetAxes()->Heatmap(tiny, Nil->As(String[]), Nil->As(String[]), true, 2);
+		nroot := Parse(neg->ToSvg());
+		ok := Report("heatmap: a value that rounds to zero prints as 0.00, not -0.00", nroot <> Nil & Texts(nroot)->Has("|0.00|") & Texts(nroot)->Has("|-0.00|") = false) & ok;
+
 		g := Grid();
 		fig := Figure->New(640, 420);
 		ax := fig->GetAxes();
@@ -107,6 +117,12 @@ class PlotSvgMore {
 		};
 		ok := Golden("confusion matrix matches plot_golden/confusion.svg", svg, "plot_golden/confusion.svg") & ok;
 
+		# counts 50, 10, 5, 35 in drawing order: the scale runs from 0, so 5 is not the darkest color
+		fills := Vector->New()<String>;
+		CellFills(root, fills);
+		ok := Report("confusion: four cells, the largest at the top of the scale", fills->Size() = 4 & fills->Get(0)->Equals("#fde725")) & ok;
+		ok := Report("confusion: the smallest count (5) is not the darkest color, because the scale starts at 0", fills->Get(2)->Equals("#440154") = false) & ok;
+
 		norm := Figure->New(520, 440);
 		norm->GetAxes()->ConfusionMatrix(counts, ["negative", "positive"], true);
 		nsvg := norm->ToSvg();
@@ -133,8 +149,23 @@ class PlotSvgMore {
 		return ok;
 	}
 
+	function : CellFills(e : XmlElement, fills : Vector<String>) ~ Nil {
+		if(e->GetName() <> Nil & e->GetName()->Equals("rect") & Attr(e, "class")->Equals("cell")) {
+			fills->AddBack(Attr(e, "fill"));
+		};
+		each(i : e->Size()) {
+			CellFills(e->Get(i), fills);
+		};
+	}
+
 	function : Boxes() ~ Bool {
 		ok := true;
+
+		# the quartile method is linear interpolation between ranks: Q1 of 1 .. 4 is 1.75
+		quad := Figure->New(300, 300);
+		quad->GetAxes()->Box("q", [1.0, 2.0, 3.0, 4.0]);
+		qs := quad->GetAxes()->GetArtist(0)->GetStats();
+		ok := Report("box: quartiles of 1 .. 4 are 1.75, 2.5 and 3.25 (numpy's default method)", Near(qs[2], 1.75) & Near(qs[3], 2.5) & Near(qs[4], 3.25)) & ok;
 		# n = 10: q1 = 3.25, median = 5.5, q3 = 7.75, fences -3.5 and 14.5, so 30 is an outlier
 		a := [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 30.0];
 		b := [10.0, 12.0, 13.0, 15.0, 18.0];
@@ -202,6 +233,7 @@ class PlotSvgMore {
 			ok := Report("roc: the legend carries the AUC that Metrics->AucRoc computes ({$text})", Texts(root)->Has(legend)) & ok;
 			ok := Report("roc: one curve and the dashed chance diagonal", CountClass(root, "polyline", "line") = 1 & CountClass(root, "line", "reference") = 1) & ok;
 			ok := Report("roc: axis titles default to the rates", Texts(root)->Has("|False positive rate|") & Texts(root)->Has("|True positive rate|")) & ok;
+			ok := Report("roc: the y axis has as many ticks as x (six, 0 .. 1 by 0.2)", CountClass(root, "text", "ytick") = 6 & CountClass(root, "text", "xtick") = 6) & ok;
 			ok := Report("roc: ticks every 0.2 from 0 to 1", Texts(root)->Has("|0|") & Texts(root)->Has("|1|") & Texts(root)->Has("|0.2|") & Texts(root)->Has("|0.8|")) & ok;
 			ok := Report("roc: every coordinate lies inside the viewport", InsideViewport(root, 560.0, 480.0)) & ok;
 		}
@@ -310,23 +342,26 @@ class PlotSvgMore {
 
 	function : Refusals() ~ Bool {
 		ok := true;
-		ok := Report("a heatmap beside another plot is refused", Refuses(1)) & ok;
-		ok := Report("heatmap labels of the wrong count are refused", Refuses(2)) & ok;
-		ok := Report("a NaN heatmap cell is refused", Refuses(3)) & ok;
-		ok := Report("a non-square confusion matrix is refused", Refuses(4)) & ok;
-		ok := Report("a negative confusion count is refused", Refuses(5)) & ok;
-		ok := Report("a Nil ROC curve (Metrics gave Nil) is refused", Refuses(6)) & ok;
-		ok := Report("a ROC rate above 1 is refused", Refuses(7)) & ok;
-		ok := Report("a box beside a scatter is refused", Refuses(8)) & ok;
-		ok := Report("an empty box is refused", Refuses(9)) & ok;
-		ok := Report("a ROC curve with a wrong column count is refused", Refuses(10)) & ok;
-		ok := Report("a non-finite annotation position is refused", Refuses(11)) & ok;
+		ok := Report("a heatmap beside another plot is refused", Refuses(1, "axes of its own")) & ok;
+		ok := Report("heatmap labels of the wrong count are refused", Refuses(2, "one row label per row")) & ok;
+		ok := Report("a NaN heatmap cell is refused", Refuses(3, "NaN or infinite")) & ok;
+		ok := Report("a non-square confusion matrix is refused", Refuses(4, "square")) & ok;
+		ok := Report("a negative confusion count is refused", Refuses(5, "negative count")) & ok;
+		ok := Report("a Nil ROC curve (Metrics gave Nil) is refused", Refuses(6, "needs a curve")) & ok;
+		ok := Report("a ROC rate above 1 is refused", Refuses(7, "rates between 0 and 1")) & ok;
+		ok := Report("a box beside a scatter is refused", Refuses(8, "cannot share axes")) & ok;
+		ok := Report("an empty box is refused", Refuses(9, "at least one value")) & ok;
+		ok := Report("a ROC curve with a wrong column count is refused", Refuses(10, "at least two rows")) & ok;
+		ok := Report("a non-finite annotation position is refused", Refuses(11, "finite coordinates")) & ok;
+		ok := Report("a Nil heatmap label is refused", Refuses(12, "is Nil")) & ok;
+		ok := Report("a one-point curve (all scores tied) is refused with the reason", Refuses(13, "single point")) & ok;
 
 		return ok;
 	}
 
-	function : Refuses(which : Int) ~ Bool {
-		refused := false;
+	# the case must raise a PlotError, and the message must say what was wrong
+	function : Refuses(which : Int, expected : String) ~ Bool {
+		message := "";
 		neg := -1.0;
 		not_a_number := Float->Sqrt(neg);
 		g := Float->New[2, 2];
@@ -349,13 +384,20 @@ class PlotSvgMore {
 				label 9: { ax->Box("b", Float->New[0]); }
 				label 10: { ax->RocCurve("m", Float->New[3, 2]); }
 				label 11: { ax->Annotate("t", 1.0, 1.0, not_a_number, 1.0); }
+				label 12: { rows := String->New[2]; rows[0] := "a"; ax->Heatmap(g, rows, no_names); }
+				label 13: { one := Float->New[1, 3]; ax->PrCurve("m", one); }
 			};
 		}
 		on(e : PlotError) {
-			refused := true;
+			message := e->GetMessage();
 		};
 
-		return refused;
+		if(message->Has(expected)) {
+			return true;
+		};
+		"  case {$which}: expected a message with '{$expected}', got '{$message}'"->PrintLine();
+
+		return false;
 	}
 
 	function : Near(a : Float, b : Float) ~ Bool {

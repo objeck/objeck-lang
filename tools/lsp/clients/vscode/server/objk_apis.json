@@ -17047,7 +17047,7 @@
 					"descriptions": ["**Adds a bar series over the categories: one bar per category, grouped with the other bar series. SetCategories must have been called.**\n\n```method : public : Bar(name:String, ys:Float[]) ~ Nil```\n\n\n\nname: String\n\nys: Float[]\n\nreturn: Nil"]
 				},
 				"Box": {
-					"descriptions": ["**Adds a box plot box: the median, the quartiles, whiskers to the furthest values within 1.5 times the interquartile range, and the values beyond as circles. Each call adds one box, left to right, labelled under the axis.**\n\n```method : public : Box(name:String, values:Float[]) ~ Nil```\n\n\n\nname: String\n\nvalues: Float[]\n\nreturn: Nil"]
+					"descriptions": ["**Adds a box plot box: the median, the quartiles, whiskers to the furthest values within 1.5 times the interquartile range, and the values beyond as circles. The quartiles are linear interpolation between ranks (numpy's default), so the first quartile of 1 .. 4 is 1.75, not 2. Each call adds one box, left to right, labelled under the axis.**\n\n```method : public : Box(name:String, values:Float[]) ~ Nil```\n\n\n\nname: String\n\nvalues: Float[]\n\nreturn: Nil"]
 				},
 				"ConfusionMatrix": {
 					"descriptions": ["**Adds a confusion matrix: a heatmap whose cells are annotated, with the actual class down the side and the predicted class along the bottom.**\n\n```method : public : ConfusionMatrix(counts:Int[,], classes:String[], normalize:Bool) ~ Nil```\n\n\n\ncounts: Int[,]\n\nclasses: String[]\n\nnormalize: Bool\n\nreturn: Nil"]
@@ -17099,6 +17099,9 @@
 				},
 				"ResetLimits": {
 					"descriptions": ["**Returns both ranges to being derived from the data.**\n\n```method : public : ResetLimits() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"ResetView": {
+					"descriptions": ["**Returns the view to what the figure chose: the limits given to SetXLim and SetYLim (a ROC plot's -0.02 .. 1.02, say), or the range of the data where none were given. It is what a window's R key does after zooming and panning; ResetLimits instead forgets the limits altogether.**\n\n```method : public : ResetView() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"RocCurve": {
 					"descriptions": ["**Adds a ROC curve with the chance diagonal, both axes 0 to 1, and the area under the curve (trapezoid rule) in the legend.**\n\n```method : public : RocCurve(name:String, curve:Float[,]) ~ Nil```\n\n\n\nname: String\n\ncurve: Float[,]\n\nreturn: Nil"]
@@ -17237,6 +17240,9 @@
 				"Color": {
 					"descriptions": ["**The categorical color of the i-th series: the matplotlib tab10 start, 8 colors.**\n\n```function : Color(i:Int) ~ String```\n\n\n\ni: Int\n\nreturn: String"]
 				},
+				"Decimals": {
+					"descriptions": ["**A number with a fixed count of decimals, always with a point (Float->ToString follows the C locale, which can write 12,3) and never as a negative zero (\"-0.00\").**\n\n```function : Decimals(v:Float, decimals:Int) ~ String```\n\n\n\nv: Float\n\ndecimals: Int\n\nreturn: String"]
+				},
 				"Escape": {
 					"descriptions": ["**XML-escapes text for an SVG element or attribute.**\n\n```function : Escape(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String"]
 				},
@@ -17245,6 +17251,9 @@
 				},
 				"FormatNumber": {
 					"descriptions": ["**A number as short text: no trailing zeros, no \"-0\".**\n\n```function : FormatNumber(value:Float) ~ String```\n\n\n\nvalue: Float\n\nreturn: String"]
+				},
+				"FormatTick": {
+					"descriptions": ["**A tick label: the value with as many decimals as the tick step needs and no more (0.2 steps give 0.2, 0.4; 1700000000.2 stays exact), and in scientific form when the step is below 1e-6, where decimals would print only zeros.**\n\n```function : FormatTick(value:Float, step:Float) ~ String```\n\n\n\nvalue: Float\n\nstep: Float\n\nreturn: String"]
 				},
 				"Hex2": {
 					"descriptions": ["**Two lower-case hex digits.**\n\n```function : Hex2(v:Int) ~ String```\n\n\n\nv: Int\n\nreturn: String"]
@@ -17267,11 +17276,14 @@
 				"Quantile": {
 					"descriptions": ["**A quantile by linear interpolation between the closest ranks, as numpy does by default.**\n\n```function : Quantile(sorted:Float[], q:Float) ~ Float```\n\n\n\nsorted: Float[]\n\nq: Float\n\nreturn: Float"]
 				},
+				"StripControl": {
+					"descriptions": ["**Removes the control characters XML 1.0 cannot hold (everything below space except tab, line feed and carriage return), so a stray character in a title or label cannot make the SVG invalid.**\n\n```function : StripControl(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String"]
+				},
 				"TextWidth": {
 					"descriptions": ["**A rough text width for layout, so legends and labels never depend on a font.**\n\n```function : TextWidth(text:String, size:Int) ~ Float```\n\n\n\ntext: String\n\nsize: Int\n\nreturn: Float"]
 				},
 				"Ticks": {
-					"descriptions": ["**Tick positions from lo to hi inclusive, snapped to the step.**\n\n```function : Ticks(lo:Float, hi:Float, step:Float) ~ Float[]```\n\n\n\nlo: Float\n\nhi: Float\n\nstep: Float\n\nreturn: Float[]"]
+					"descriptions": ["**Tick positions: the multiples of the step inside lo..hi. Each is computed as a whole number of steps, so there is no absolute rounding to collapse them on a range of 1e-9 or smear them on a range around 1e9; labels come from FormatTick, which prints the step's decimals.**\n\n```function : Ticks(lo:Float, hi:Float, step:Float) ~ Float[]```\n\n\n\nlo: Float\n\nhi: Float\n\nstep: Float\n\nreturn: Float[]"]
 				},
 				"Viridis": {
 					"descriptions": ["**A viridis-like sequential color map: dark purple, blue, teal, green, yellow.**\n\n```function : Viridis(t:Float) ~ String```\n\n\n\nt: Float\n\nreturn: String"]
@@ -17452,6 +17464,9 @@
 				"GetCloseType": {
 					"descriptions": ["**The event type that ends Run when it is pushed (Event->SetUser then Push), so another thread, or a test, can close the window.**\n\n```method : public : GetCloseType() ~ Int```\n\n\n\nreturn: Int"]
 				},
+				"GetNotice": {
+					"descriptions": ["**The last message from a frame that could not be drawn as asked, empty when the last frame was fine.**\n\n```method : public : GetNotice() ~ String```\n\n\n\nreturn: String"]
+				},
 				"GetReadout": {
 					"descriptions": ["**The last hover readout.**\n\n```method : public : GetReadout() ~ String```\n\n\n\nreturn: String"]
 				},
@@ -17480,7 +17495,7 @@
 					"descriptions": ["**Draws one frame: the scene, then the hover readout.**\n\n```method : public : RenderFrame() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"ResetView": {
-					"descriptions": ["**Returns every axes to the range of its data.**\n\n```method : public : ResetView() ~ Nil```\n\n\n\nreturn: Nil"]
+					"descriptions": ["**Returns every axes to the view the figure chose: its own limits where it set some (a ROC plot's -0.02 .. 1.02), the range of the data where it did not.**\n\n```method : public : ResetView() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"Run": {
 					"descriptions": ["**Opens the window and runs until it is closed.**\n\n```method : public : Run() ~ Bool```\n\n\n\nreturn: Bool"]

@@ -18,6 +18,8 @@ class PlotViewModel {
 		ok := LogAxes() & ok;
 		ok := NoZoomWhereMeaningless() & ok;
 		ok := Hit() & ok;
+		ok := NarrowAndLog() & ok;
+		ok := HomeView() & ok;
 		ok := Refusals() & ok;
 
 		if(<>ok) {
@@ -189,6 +191,104 @@ class PlotViewModel {
 		ok := Report("a pixel inside the bottom plot belongs to the bottom axes", fig->AxesAt(bottom[0] + 20.0, bottom[1] + 20.0) = fig->GetAxes(1, 0)) & ok;
 		ok := Report("a pixel in the margin belongs to none", fig->AxesAt(5.0, 5.0) = Nil) & ok;
 		ok := Report("the two plot areas do not overlap", top[3] < bottom[1]) & ok;
+
+		return ok;
+	}
+
+	function : Strictly(ticks : Float[]) ~ Bool {
+		gaps := ticks->Size() - 1;
+		each(i : gaps) {
+			if(ticks[i + 1] <= ticks[i]) {
+				return false;
+			};
+		};
+
+		return ticks->Size() >= 2;
+	}
+
+	# a zoom that would leave a range too narrow to draw, or a log axis whose low end would
+	# underflow to 0, is refused; before the fix the first collapsed the ticks and the second
+	# made the next draw raise PlotError, which ended a window's program
+	function : NarrowAndLog() ~ Bool {
+		ok := true;
+
+		# a range symmetric about zero is never "narrow relative to its magnitude"
+		sym := Figure->New(800, 480);
+		sym->GetAxes()->Scatter("s", [-0.000001, 0.000001], [-0.000001, 0.000001]);
+		sym->GetAxes()->SetXLim(-0.000001, 0.000001);
+		sym->GetAxes()->SetYLim(-0.000001, 0.000001);
+		sym->ToScene();
+		r := sym->GetAxes()->GetPlotRect();
+		px := (r[0] + r[2]) / 2.0;
+		py := (r[1] + r[3]) / 2.0;
+		changed := 0;
+		each(i : 80) {
+			if(sym->GetAxes()->Zoom(px, py, 1000000.0)) {
+				changed += 1;
+			};
+			sym->ToScene();
+		};
+		width := sym->GetAxes()->GetXAxis()->GetHi() - sym->GetAxes()->GetXAxis()->GetLo();
+		ok := Report("narrow: zooming a range about zero stops before 1e-200 wide", changed > 5 & changed < 80 & width > 1.0e-200) & ok;
+		ok := Report("narrow: and its ticks are still strictly increasing", Strictly(sym->GetAxes()->GetXAxis()->Ticks())) & ok;
+
+		# 1e-9 wide: ticks used to be rounded to 1e-9 and collapse
+		tiny := Figure->New(800, 480);
+		tiny->GetAxes()->Scatter("s", [0.0, 1.0], [0.0, 1.0]);
+		tiny->GetAxes()->SetXLim(0.0, 0.000000001);
+		tiny->ToScene();
+		ok := Report("narrow: ticks of a 1e-9 range are strictly increasing", Strictly(tiny->GetAxes()->GetXAxis()->Ticks())) & ok;
+
+		# a log axis zoomed out about its right edge: the low end heads to 10^-big and used to become 0
+		logfig := Figure->New(800, 480);
+		logfig->GetAxes()->SetLogX(true);
+		logfig->GetAxes()->Scatter("s", [0.001, 10.0], [1.0, 2.0]);
+		logfig->ToScene();
+		lr := logfig->GetAxes()->GetPlotRect();
+		survived := true;
+		refused := false;
+		each(i : 600) {
+			if(logfig->GetAxes()->Zoom(lr[2] - 1.0, (lr[1] + lr[3]) / 2.0, 0.5) = false) {
+				refused := true;
+			};
+			# every frame must still draw (this raised PlotError once the low end reached 0)
+			try {
+				logfig->ToScene();
+			}
+			on(e : PlotError) {
+				survived := false;
+			};
+		};
+		ok := Report("log: zooming out a long way is refused before the low end reaches 0", refused) & ok;
+		ok := Report("log: and every frame in between still draws", survived) & ok;
+		ok := Report("log: the low end is still positive", logfig->GetAxes()->GetXAxis()->GetLo() > -301.0) & ok;
+
+		return ok;
+	}
+
+	function : HomeView() ~ Bool {
+		ok := true;
+		fig := Figure->New(800, 480);
+		fig->GetAxes()->Scatter("s", [0.0, 1.0], [0.0, 1.0]);
+		fig->GetAxes()->SetXLim(-0.02, 1.02);
+		fig->GetAxes()->SetYLim(-0.02, 1.02);
+		fig->ToScene();
+		r := fig->GetAxes()->GetPlotRect();
+		fig->GetAxes()->Zoom(r[0] + 100.0, r[1] + 100.0, 4.0);
+		# a pan straight after a zoom, with no redraw between (a batch of events), starts from the zoomed view
+		fig->GetAxes()->Pan(30.0, 30.0);
+		fig->ToScene();
+		ok := Report("home: zooming then panning without a redraw in between keeps the zoom", fig->GetAxes()->GetXAxis()->GetHi() < 0.9) & ok;
+		fig->GetAxes()->ResetView();
+		fig->ToScene();
+		ok := Report("home: ResetView returns to the limits the figure chose (-0.02 .. 1.02), not to the data's 0 .. 1",
+			Near(fig->GetAxes()->GetXAxis()->GetLo(), -0.02) & Near(fig->GetAxes()->GetXAxis()->GetHi(), 1.02) & Near(fig->GetAxes()->GetYAxis()->GetLo(), -0.02)) & ok;
+		fig->GetAxes()->ResetLimits();
+		fig->ToScene();
+		ok := Report("home: ResetLimits forgets them (the data's nice range, 0 .. 1)", Near(fig->GetAxes()->GetXAxis()->GetLo(), 0.0) & Near(fig->GetAxes()->GetXAxis()->GetHi(), 1.0)) & ok;
+		fig->GetAxes()->ResetView();
+		fig->ToScene();
+		ok := Report("home: and ResetView after ResetLimits stays on the data", Near(fig->GetAxes()->GetXAxis()->GetLo(), 0.0)) & ok;
 
 		return ok;
 	}

@@ -22,6 +22,7 @@ bundle System.Plot.SDL {
 		@fonts : Map<IntRef, Font>;
 		@off_x : Int;
 		@off_y : Int;
+		@font_failed : Bool;
 
 		#~
 		Constructor
@@ -52,6 +53,7 @@ bundle System.Plot.SDL {
 		~#
 		method : public : SetFont(path : String) ~ Nil {
 			Release();
+			@font_failed := false;
 			@font_path := (path = Nil) ? "" : path;
 		}
 
@@ -63,7 +65,8 @@ bundle System.Plot.SDL {
 			return @font_path;
 		}
 
-		# lib/sdl/fonts/lato.ttf under OBJECK_LIB_PATH, or beside the toolchain's bin directory
+		# lib/sdl/fonts/lato.ttf under OBJECK_LIB_PATH, else ../lib/sdl/fonts/lato.ttf relative to the CURRENT
+		# directory (the toolchain's bin directory when run from there, as the regression runner does)
 		function : FindFont() ~ String {
 			root := Runtime->GetEnvironmentVariable("OBJECK_LIB_PATH");
 			if(root <> Nil & root->Size() > 0) {
@@ -181,6 +184,185 @@ bundle System.Plot.SDL {
 			return 0;
 		}
 
+		# SDL2_gfx takes 16-bit coordinates (Sint16), so a coordinate past 32767 or below -32768 wraps and
+		# draws somewhere else. Everything is clipped to this box, a margin around the canvas, in
+		# canvas coordinates first; a viewport's origin is then subtracted, which stays inside 16 bits for
+		# any canvas below 28000 pixels.
+		method : Margin() ~ Float {
+			return 2000.0;
+		}
+
+		# Liang-Barsky: the part of a segment inside the box [-m, w+m] x [-m, h+m], or Nil when none is
+		method : ClipSegment(x1 : Float, y1 : Float, x2 : Float, y2 : Float) ~ Float[] {
+			m := Margin();
+			left := 0.0 - m;
+			top := 0.0 - m;
+			right := @width->As(Float) + m;
+			bottom := @height->As(Float) + m;
+			dx := x2 - x1;
+			dy := y2 - y1;
+			t0 := 0.0;
+			t1 := 1.0;
+
+			# p, q for the four edges: left, right, top, bottom
+			ps := [0.0 - dx, dx, 0.0 - dy, dy];
+			qs := [x1 - left, right - x1, y1 - top, bottom - y1];
+			r : Float;
+			each(i : 4) {
+				if(ps[i] = 0.0) {
+					if(qs[i] < 0.0) {
+						return Nil;
+					};
+				}
+				else {
+					r := qs[i] / ps[i];
+					if(ps[i] < 0.0) {
+						if(r > t1) {
+							return Nil;
+						};
+						if(r > t0) {
+							t0 := r;
+						};
+					}
+					else {
+						if(r < t0) {
+							return Nil;
+						};
+						if(r < t1) {
+							t1 := r;
+						};
+					};
+				};
+			};
+
+			out := Float->New[4];
+			out[0] := x1 + t0 * dx;
+			out[1] := y1 + t0 * dy;
+			out[2] := x1 + t1 * dx;
+			out[3] := y1 + t1 * dy;
+
+			return out;
+		}
+
+		# Sutherland-Hodgman against the same box, for polygons: the clipped x, y pairs, or Nil when empty
+		method : ClipPolygon(pts : Float[]) ~ Float[] {
+			m := Margin();
+			current := pts;
+			each(edge : 4) {
+				if(current <> Nil) {
+					current := ClipEdge(current, edge, m);
+				};
+			};
+
+			return current;
+		}
+
+		method : ClipEdge(pts : Float[], edge : Int, m : Float) ~ Float[] {
+			count := pts->Size() / 2;
+			if(count = 0) {
+				return Nil;
+			};
+
+			kept := Vector->New()<FloatRef>;
+			px := pts[count * 2 - 2];
+			py := pts[count * 2 - 1];
+			cx : Float;
+			cy : Float;
+			inside_now : Bool;
+			inside_before : Bool;
+			cross : Float[];
+			each(i : count) {
+				cx := pts[i * 2];
+				cy := pts[i * 2 + 1];
+				inside_now := Inside(cx, cy, edge, m);
+				inside_before := Inside(px, py, edge, m);
+				if(inside_now) {
+					if(inside_before = false) {
+						cross := Cross(px, py, cx, cy, edge, m);
+						kept->AddBack(FloatRef->New(cross[0]));
+						kept->AddBack(FloatRef->New(cross[1]));
+					};
+					kept->AddBack(FloatRef->New(cx));
+					kept->AddBack(FloatRef->New(cy));
+				}
+				else if(inside_before) {
+					cross := Cross(px, py, cx, cy, edge, m);
+					kept->AddBack(FloatRef->New(cross[0]));
+					kept->AddBack(FloatRef->New(cross[1]));
+				};
+				px := cx;
+				py := cy;
+			};
+
+			if(kept->Size() < 6) {
+				return Nil;
+			};
+
+			out := Float->New[kept->Size()];
+			each(i : out) {
+				out[i] := kept->Get(i)->Get();
+			};
+
+			return out;
+		}
+
+		method : Inside(x : Float, y : Float, edge : Int, m : Float) ~ Bool {
+			if(edge = 0) {
+				return x >= 0.0 - m;
+			};
+			if(edge = 1) {
+				return x <= @width->As(Float) + m;
+			};
+			if(edge = 2) {
+				return y >= 0.0 - m;
+			};
+
+			return y <= @height->As(Float) + m;
+		}
+
+		method : Cross(x1 : Float, y1 : Float, x2 : Float, y2 : Float, edge : Int, m : Float) ~ Float[] {
+			out := Float->New[2];
+			bound : Float;
+			t : Float;
+			if(edge < 2) {
+				bound := 0.0 - m;
+				if(edge = 1) {
+					bound := @width->As(Float) + m;
+				};
+				t := (bound - x1) / (x2 - x1);
+				out[0] := bound;
+				out[1] := y1 + t * (y2 - y1);
+			}
+			else {
+				bound := 0.0 - m;
+				if(edge = 3) {
+					bound := @height->As(Float) + m;
+				};
+				t := (bound - y1) / (y2 - y1);
+				out[0] := x1 + t * (x2 - x1);
+				out[1] := bound;
+			};
+
+			return out;
+		}
+
+		method : Clamp(v : Float) ~ Int {
+			m := Margin();
+			low := 0.0 - m;
+			high := @width->As(Float) + m;
+			if(@height > @width) {
+				high := @height->As(Float) + m;
+			};
+			if(v < low) {
+				return Round(low);
+			};
+			if(v > high) {
+				return Round(high);
+			};
+
+			return Round(v);
+		}
+
 		method : DrawLine(x1 : Float, y1 : Float, x2 : Float, y2 : Float, stroke : String, width : Float, dash : String) ~ Nil {
 			if(stroke = Nil | stroke->Size() = 0) {
 				return;
@@ -192,14 +374,20 @@ bundle System.Plot.SDL {
 				return;
 			};
 
-			Segment(Round(x1), Round(y1), Round(x2), Round(y2), color, width);
+			Segment(x1, y1, x2, y2, color, width);
 		}
 
-		method : Segment(x1 : Int, y1 : Int, x2 : Int, y2 : Int, color : Color, width : Float) ~ Nil {
-			ax := x1 - @off_x;
-			ay := y1 - @off_y;
-			bx := x2 - @off_x;
-			by := y2 - @off_y;
+		# a segment given in canvas coordinates, clipped to the margin box, then drawn
+		method : Segment(x1 : Float, y1 : Float, x2 : Float, y2 : Float, color : Color, width : Float) ~ Nil {
+			clipped := ClipSegment(x1, y1, x2, y2);
+			if(clipped = Nil) {
+				return;
+			};
+
+			ax := Round(clipped[0]) - @off_x;
+			ay := Round(clipped[1]) - @off_y;
+			bx := Round(clipped[2]) - @off_x;
+			by := Round(clipped[3]) - @off_y;
 			if(width < 1.5) {
 				@renderer->AALineColor(ax, ay, bx, by, color);
 			}
@@ -208,8 +396,14 @@ bundle System.Plot.SDL {
 			};
 		}
 
-		# a dash pattern such as "6 4" along a line: draw, skip, draw, skip
+		# a dash pattern such as "6 4" along a line: draw, skip, draw, skip. The line is clipped
+		# first, so a segment a million pixels long costs only its visible dashes.
 		method : DrawDashed(x1 : Float, y1 : Float, x2 : Float, y2 : Float, color : Color, width : Float, dash : String) ~ Nil {
+			clipped := ClipSegment(x1, y1, x2, y2);
+			if(clipped = Nil) {
+				return;
+			};
+
 			parts := dash->Split(" ");
 			on := 6.0;
 			off := 4.0;
@@ -218,12 +412,14 @@ bundle System.Plot.SDL {
 				off := parts[1]->ToFloat();
 			};
 			if(on <= 0.0 | off < 0.0) {
-				Segment(Round(x1), Round(y1), Round(x2), Round(y2), color, width);
+				Segment(x1, y1, x2, y2, color, width);
 				return;
 			};
 
-			dx := x2 - x1;
-			dy := y2 - y1;
+			sx := clipped[0];
+			sy := clipped[1];
+			dx := clipped[2] - sx;
+			dy := clipped[3] - sy;
 			length := Float->Sqrt(dx * dx + dy * dy);
 			if(length < 0.5) {
 				return;
@@ -238,7 +434,7 @@ bundle System.Plot.SDL {
 				if(stop > length) {
 					stop := length;
 				};
-				Segment(Round(x1 + ux * at), Round(y1 + uy * at), Round(x1 + ux * stop), Round(y1 + uy * stop), color, width);
+				Segment(sx + ux * at, sy + uy * at, sx + ux * stop, sy + uy * stop, color, width);
 				at := stop + off;
 			};
 		}
@@ -253,12 +449,12 @@ bundle System.Plot.SDL {
 			count := pts->Size() / 2;
 			segments := count - 1;
 			each(i : segments) {
-				Segment(Round(pts[i * 2]), Round(pts[i * 2 + 1]), Round(pts[i * 2 + 2]), Round(pts[i * 2 + 3]), color, p->GetWidth());
+				Segment(pts[i * 2], pts[i * 2 + 1], pts[i * 2 + 2], pts[i * 2 + 3], color, p->GetWidth());
 			};
 		}
 
 		method : DrawPolygon(p : PlotPrimitive) ~ Nil {
-			pts := p->GetPoints();
+			pts := ClipPolygon(p->GetPoints());
 			if(pts = Nil) {
 				return;
 			};
@@ -279,41 +475,60 @@ bundle System.Plot.SDL {
 		}
 
 		method : DrawRect(p : PlotPrimitive) ~ Nil {
-			x := Round(p->GetX1()) - @off_x;
-			y := Round(p->GetY1()) - @off_y;
-			w := Round(p->GetX2());
-			h := Round(p->GetY2());
-			if(w < 1 & h < 1) {
+			# a rect with no width or no height draws nothing, as in SVG (it used to draw a line)
+			if(p->GetX2() < 0.5 | p->GetY2() < 0.5) {
 				return;
 			};
 
+			# clamp the edges, not the size, so a rect that runs off the canvas keeps its visible part
+			x0 := Clamp(p->GetX1());
+			y0 := Clamp(p->GetY1());
+			x1 := Clamp(p->GetX1() + p->GetX2()) - 1;
+			y1 := Clamp(p->GetY1() + p->GetY2()) - 1;
+			if(x1 < x0 | y1 < y0) {
+				return;
+			};
+
+			x0 -= @off_x;
+			y0 -= @off_y;
+			x1 -= @off_x;
+			y1 -= @off_y;
 			if(p->GetFill()->Size() > 0) {
-				@renderer->BoxColor(x, y, x + w - 1, y + h - 1, ParseColor(p->GetFill(), p->GetOpacity()));
+				@renderer->BoxColor(x0, y0, x1, y1, ParseColor(p->GetFill(), p->GetOpacity()));
 			};
 			if(p->GetStroke()->Size() > 0) {
-				@renderer->RectangleColor(x, y, x + w - 1, y + h - 1, ParseColor(p->GetStroke(), 1.0));
+				@renderer->RectangleColor(x0, y0, x1, y1, ParseColor(p->GetStroke(), 1.0));
 			};
 		}
 
 		method : DrawCircle(p : PlotPrimitive) ~ Nil {
-			x := Round(p->GetX1()) - @off_x;
-			y := Round(p->GetY1()) - @off_y;
-			r := Round(p->GetX2());
-			if(r < 1) {
-				r := 1;
+			m := Margin();
+			cx := p->GetX1();
+			cy := p->GetY1();
+			r := p->GetX2();
+			# entirely off the canvas and its margin, or too large for 16 bits: nothing to draw
+			if(cx + r < 0.0 - m | cy + r < 0.0 - m | cx - r > @width->As(Float) + m | cy - r > @height->As(Float) + m | r > 20000.0) {
+				return;
+			};
+
+			x := Round(cx) - @off_x;
+			y := Round(cy) - @off_y;
+			radius := Round(r);
+			if(radius < 1) {
+				radius := 1;
 			};
 
 			if(p->GetFill()->Size() > 0) {
-				@renderer->FilledCircleColor(x, y, r, ParseColor(p->GetFill(), p->GetOpacity()));
-				@renderer->AACircleColor(x, y, r, ParseColor(p->GetFill(), p->GetOpacity()));
+				@renderer->FilledCircleColor(x, y, radius, ParseColor(p->GetFill(), p->GetOpacity()));
+				@renderer->AACircleColor(x, y, radius, ParseColor(p->GetFill(), p->GetOpacity()));
 			};
 			if(p->GetStroke()->Size() > 0) {
-				@renderer->AACircleColor(x, y, r, ParseColor(p->GetStroke(), 1.0));
+				@renderer->AACircleColor(x, y, radius, ParseColor(p->GetStroke(), 1.0));
 			};
 		}
 
 		method : GetFontFor(size : Int, bold : Bool) ~ Font {
-			if(@font_path->Size() = 0) {
+			if(@font_path->Size() = 0 | @font_failed) {
 				return Nil;
 			};
 
@@ -328,6 +543,8 @@ bundle System.Plot.SDL {
 
 			font := Font->New(@font_path, size);
 			if(font->IsNull()) {
+				# not tried again on every text: the file is missing or not a font
+				@font_failed := true;
 				return Nil;
 			};
 			if(bold) {
@@ -340,7 +557,11 @@ bundle System.Plot.SDL {
 
 		method : DrawText(p : PlotPrimitive) ~ Nil {
 			text := p->GetText();
-			if(text->Size() = 0) {
+			if(text = Nil | text->Size() = 0) {
+				return;
+			};
+			# far off the canvas: nothing to draw, and nothing to overflow
+			if(p->GetX1() < -50000.0 | p->GetX1() > 50000.0 | p->GetY1() < -50000.0 | p->GetY1() > 50000.0) {
 				return;
 			};
 
@@ -462,6 +683,7 @@ PlotWindow->New(fig, "pts")->Run();
 		@visible : Bool;
 		@close_type : Int;
 		@running : Bool;
+		@notice : String;
 
 		#~
 		Constructor; the window opens in Run.
@@ -473,6 +695,7 @@ PlotWindow->New(fig, "pts")->Run();
 			@title := (title = Nil) ? "" : title;
 			@visible := true;
 			@readout := "";
+			@notice := "";
 			@close_type := Event->Registers(1);
 		}
 
@@ -487,6 +710,7 @@ PlotWindow->New(fig, "pts")->Run();
 			@title := (title = Nil) ? "" : title;
 			@visible := visible;
 			@readout := "";
+			@notice := "";
 			@close_type := Event->Registers(1);
 		}
 
@@ -563,16 +787,45 @@ PlotWindow->New(fig, "pts")->Run();
 		Draws one frame: the scene, then the hover readout.
 		~#
 		method : public : RenderFrame() ~ Nil {
-			scene := @figure->ToScene();
+			scene := BuildScene();
 			@canvas->Draw(scene);
-			if(@readout->Size() > 0) {
+			text := @readout;
+			if(@notice->Size() > 0) {
+				text := @notice;
+			};
+			if(text->Size() > 0) {
 				overlay := PlotScene->New(@width, @height);
-				width := PlotMath->TextWidth(@readout, 12) + 12.0;
+				width := PlotMath->TextWidth(text, 12) + 12.0;
 				overlay->Rect(6.0, @height->As(Float) - 24.0, width, 20.0, "#ffffff", "#999999", 1.0, 0.9, "readout");
-				overlay->Text(12.0, @height->As(Float) - 9.0, @readout, TextAnchor->START, 12, false, "#000000", 0.0, "readout");
+				overlay->Text(12.0, @height->As(Float) - 9.0, text, TextAnchor->START, 12, false, "#000000", 0.0, "readout");
 				@canvas->Overlay(overlay);
 			};
 			@renderer->Present();
+		}
+
+		# the figure's scene. A figure that cannot be drawn (a PlotError: a log axis meeting a
+		# non-positive limit, say) must not end the program with the window open, so the view is
+		# reset to the figure's own and, if that still fails, a blank canvas shows the message
+		method : BuildScene() ~ PlotScene {
+			scene : PlotScene;
+			try {
+				scene := @figure->ToScene();
+				return scene;
+			}
+			on(e : PlotError) {
+				@notice := "view reset: " + e->GetMessage();
+			};
+
+			ResetView();
+			try {
+				scene := @figure->ToScene();
+				return scene;
+			}
+			on(e : PlotError) {
+				@notice := "cannot draw: " + e->GetMessage();
+			};
+
+			return PlotScene->New(@width, @height);
 		}
 
 		#~
@@ -606,6 +859,7 @@ PlotWindow->New(fig, "pts")->Run();
 		@param notches wheel movement, positive zooms in
 		~#
 		method : public : OnWheel(x : Int, y : Int, notches : Int) ~ Nil {
+			@notice := "";
 			target := @figure->AxesAt(x->As(Float), y->As(Float));
 			if(target <> Nil & notches <> 0) {
 				target->Zoom(x->As(Float), y->As(Float), PlotView->WheelFactor(notches));
@@ -649,6 +903,7 @@ PlotWindow->New(fig, "pts")->Run();
 		@param scancode the key's scancode
 		~#
 		method : public : OnKey(scancode : Int) ~ Nil {
+			@notice := "";
 			if(scancode = Scancode->SDL_SCANCODE_ESCAPE) {
 				@running := false;
 			}
@@ -658,7 +913,7 @@ PlotWindow->New(fig, "pts")->Run();
 		}
 
 		#~
-		Returns every axes to the range of its data.
+		Returns every axes to the view the figure chose: its own limits where it set some (a ROC plot's -0.02 .. 1.02), the range of the data where it did not.
 		~#
 		method : public : ResetView() ~ Nil {
 			each(row : 8) {
@@ -666,19 +921,24 @@ PlotWindow->New(fig, "pts")->Run();
 					ResetAt(row, col);
 				};
 			};
+			@notice := "";
 		}
 
 		method : ResetAt(row : Int, col : Int) ~ Nil {
-			if(row = 0 & col = 0) {
-				@figure->GetAxes(0, 0)->ResetLimits();
-				return;
-			};
 			# a grid smaller than 8 x 8 refuses the position, which is not an error here
 			try {
-				@figure->GetAxes(row, col)->ResetLimits();
+				@figure->GetAxes(row, col)->ResetView();
 			}
 			on(e : PlotError) {
 			};
+		}
+
+		#~
+		The last message from a frame that could not be drawn as asked, empty when the last frame was fine.
+		@return the text
+		~#
+		method : public : GetNotice() ~ String {
+			return @notice;
 		}
 
 		#~
@@ -704,12 +964,21 @@ PlotWindow->New(fig, "pts")->Run();
 			@running := false;
 			if(@canvas <> Nil) {
 				@canvas->Release();
+				@canvas := Nil;
 			};
-			if(@renderer <> Nil & @renderer->IsNull() = false) {
-				@renderer->Destroy();
+			# Renderer->Destroy and Window->Destroy leave their handle set, so a second call (Close after
+			# Run, which closes) would destroy twice: the handles are dropped here instead
+			if(@renderer <> Nil) {
+				if(@renderer->IsNull() = false) {
+					@renderer->Destroy();
+				};
+				@renderer := Nil;
 			};
-			if(@window <> Nil & @window->IsNull() = false) {
-				@window->Destroy();
+			if(@window <> Nil) {
+				if(@window->IsNull() = false) {
+					@window->Destroy();
+				};
+				@window := Nil;
 			};
 		}
 	}
@@ -754,6 +1023,12 @@ PlotWindow->New(fig, "pts")->Run();
 			};
 
 			renderer := Renderer->CreateSoftwareRenderer(surface);
+			if(renderer->IsNull()) {
+				# drawing nothing would save a blank white PNG and report success
+				surface->Free();
+				return Surface->New(0);
+			};
+
 			canvas := SdlCanvas->New(renderer, scene->GetWidth(), scene->GetHeight());
 			canvas->Draw(scene);
 			canvas->Release();
