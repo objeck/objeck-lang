@@ -18,8 +18,8 @@ written to cnn_synthetic_history.csv.
            obr cnn_synthetic.obe --epochs 20 --size 64 --per-class 300 --threads 8
 
 Options: --epochs N (10), --size N (64), --per-class N (200: images of each class), --batch N (32),
---lr X (0.0001), --dropout X (0.1), --blocks N (3), --seed N (42), --threads N (default: the
-hardware threads, at most 8).
+--lr X (0.0001), --dropout X (0.1), --blocks N (3), --seed N (42), --threads N (8: a fixed
+count, because a run repeats bit for bit only at one thread count).
 ~#
 
 use System.ML.Cnn;
@@ -35,7 +35,7 @@ class CnnSynthetic {
 		dropout := 0.1;
 		blocks := 3;
 		seed := 42;
-		threads := 0;
+		threads := 8;
 		i := 0;
 		while(i + 1 < args->Size()) {
 			name := args[i];

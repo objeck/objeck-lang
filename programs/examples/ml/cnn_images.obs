@@ -26,7 +26,7 @@ wall time) and the test accuracy, precision, recall and F1, and writes the per-e
 Options: --size N (224), --blocks N (3), --dropout X (0.1), --lr X (0.0001), --batch N (64), --epochs N (10),
 --dense N (128), --augment (flip 0.5, rotation up to 10 degrees 0.3, brightness 0.8 to 1.2 at 0.3, on the
 training images only), --cache (keep decoded images in memory: fast epochs, size x size x 3 bytes per
-image), --threads N (the hardware threads, at most 8), --seed N (42), --limit N, --out PREFIX (cnn_run).
+image), --threads N (8: a fixed count, because a run repeats bit for bit only at one thread count), --seed N (42), --limit N, --out PREFIX (cnn_run).
 ~#
 
 use System.ML.Cnn;
@@ -48,7 +48,7 @@ class CnnImages {
 		epochs := 10;
 		seed := 42;
 		limit := 0;
-		threads := 0;
+		threads := 8;
 		augment := false;
 		cache := false;
 

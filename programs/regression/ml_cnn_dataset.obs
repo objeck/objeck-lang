@@ -456,7 +456,7 @@ class MlCnnDataset {
 
 		csv := h1->ToCsv();
 		lines := csv->Split("\n");
-		Report("the CSV has a header and 5 rows", lines->Size() >= 6 & lines[0]->Equals("epoch,train_loss,train_acc,val_loss,val_acc,seconds") & lines[5]->StartsWith("5,"));
+		Report("the CSV has a header and 5 rows", lines->Size() >= 6 & lines[0]->Equals("epoch,train_loss,train_accuracy,val_loss,val_accuracy,epoch_seconds") & lines[5]->StartsWith("5,"));
 		Report("SaveCsv writes it", h1->SaveCsv("ml_cnn_dataset_history.csv") & File->Exists("ml_cnn_dataset_history.csv") & h1->SaveCsv("") = false);
 		File->Delete("ml_cnn_dataset_history.csv");
 		table := h1->ToResultTable("history");
@@ -481,6 +481,24 @@ class MlCnnDataset {
 		r := e->GetRecall();
 		Report("F1 is the harmonic mean of the two", (p + r = 0.0 | Float->Abs(e->GetF1() - 2.0 * p * r / (p + r)) < 1.0e-12));
 		Report("the evaluation has a loss ({$e->GetLoss()})", e->GetLoss() > 0.0);
+		scores := e->GetScores();
+		actuals := e->GetActuals();
+		agrees := scores <> Nil & scores->Size() = test_count & actuals->Size() = test_count;
+		each(i : test_count) {
+			agrees := agrees & scores[i] >= 0.0 & scores[i] <= 1.0;
+		};
+		Report("GetScores gives one probability in [0, 1] per test image", agrees);
+		ok_actuals := true;
+		each(i : test_count) {
+			ok_actuals := ok_actuals & actuals[i] = (splits[2]->GetLabel(i) = 1);
+		};
+		Report("   GetActuals follows the subset order", ok_actuals);
+		auc := Metrics->AucRoc(scores, actuals);
+		Report("   and the pair feeds Metrics->AucRoc ({$auc})", auc >= 0.0 & auc <= 1.0);
+		er := e->ToResultTable("test");
+		Report("ToResultTable is one row with loss, accuracy, precision, recall, f1 and n", er->GetColumnNames()->Size() = 6 & Float->Abs(er->Get(0, 1) - e->GetAccuracy()) < 1.0e-12);
+		hist_cols := h1->ToResultTable("h")->GetColumnNames();
+		Report("the history columns use the Experiment names", hist_cols[1]->Equals("train_accuracy") & hist_cols[4]->Equals("epoch_seconds"));
 		Report("Evaluate of an empty subset is Nil", trainer->Evaluate(ImageDataset->New(16, 3)->All(false)) = Nil);
 		Report("Fit with 0 epochs is Nil", trainer->Fit(0) = Nil);
 		model->Close();

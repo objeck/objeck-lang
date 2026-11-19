@@ -16128,11 +16128,19 @@
 		"System.ML.Cnn.CnnEvaluation": {
 			"description": "The result of CnnTrainer.Evaluate on a subset, with class 1 as the positive class. Precision, recall and F1 are System.ML.Metrics, and the confusion matrix is its layout: [actual, predicted] with [0, 0] true negatives, [0, 1] false positives, [1, 0] false negatives and [1, 1] true positives.",
 			"functions": {
-
+				"GetActuals": {
+					"descriptions": ["**The true class of each scored image (true for class 1), in subset order.**\n\n```method : public : GetActuals() ~ Bool[]```\n\n\n\nreturn: Bool[]"]
+				},
+				"GetScores": {
+					"descriptions": ["**The probability of class 1 for each scored image, in subset order: what Metrics->AucRoc, Metrics->RocCurve and Axes->RocCurve take with GetActuals.**\n\n```method : public : GetScores() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"ToResultTable": {
+					"descriptions": ["**The metrics as a one-row System.ML.Lab ResultTable (columns loss, accuracy, precision, recall, f1, n), for the Lab text, Markdown, CSV and JSON output.**\n\n```method : public : ToResultTable(title:String) ~ ResultTable```\n\n\n\ntitle: String\n\nreturn: ResultTable"]
+				}
 			}
 		},
 		"System.ML.Cnn.CnnModel": {
-			"description": "A convolutional network for binary classification: a stack of layers, in NCHW float32, ending in one logit per image, trained with binary cross-entropy on logits and the Adam or SGD optimizer. Build it with the Add methods, then Compile.\n\nLayers: Conv (stride, VALID or SAME padding, bias; im2col and a matrix multiply), MaxPool, ReLU, Flatten, Dense and Dropout (inverted: the survivors are scaled by 1 / (1 - rate) in training, and evaluation is the identity). The last layer must give one value per image, so a model ends in AddDense(1). Predict returns sigmoid of that logit, the probability of class 1.\n\nImages are Float[] of whole images laid end to end, each channels x height x width (planes, not interleaved) with values in 0 .. 1; labels are 0.0 or 1.0. Nothing here ends the program on bad input: a method answers false, -1.0 or Nil (or 0 for a count), and GetError() says why.\n\nA model holds native memory, so call Close() when done with it. Not thread-safe: one thread at a time per model.",
+			"description": "A convolutional network for binary classification: a stack of layers, in NCHW float32, ending in one logit per image, trained with binary cross-entropy on logits and the Adam or SGD optimizer. Build it with the Add methods, then Compile.\n\nLayers: Conv (stride, VALID or SAME padding, bias; im2col and a matrix multiply), MaxPool, ReLU, Flatten, Dense and Dropout (inverted: the survivors are scaled by 1 / (1 - rate) in training, and evaluation is the identity). The last layer must give one value per image, so a model ends in AddDense(1). Predict returns sigmoid of that logit, the probability of class 1.\n\nImages are Float[] of whole images laid end to end, each channels x height x width (planes, not interleaved) with values in 0 .. 1; labels are 0.0 or 1.0. Nothing here ends the program on bad input: a method answers false, -1.0 or Nil (or 0 for a count), and GetError() says why.\n\nA model holds native memory, so call Close() when done with it (it is safe to call twice, and IsOpen() says whether the model is still alive). Not thread-safe: one thread at a time per model; the layers use the process-wide pool of CnnRuntime, whose thread count also decides whether a run repeats bit for bit.",
 			"functions": {
 				"AddConv": {
 					"descriptions": ["**Adds a 2D convolution (cross-correlation) with a square kernel and a bias per filter.**\n\n```method : public : AddConv(filters:Int, kernel:Int, stride:Int, padding:Padding) ~ Bool```\n\n\n\nfilters: Int\n\nkernel: Int\n\nstride: Int\n\npadding: Padding\n\nreturn: Bool", "**Adds a convolution with stride 1 and no padding.**\n\n```method : public : AddConv(filters:Int, kernel:Int) ~ Bool```\n\n\n\nfilters: Int\n\nkernel: Int\n\nreturn: Bool"]
@@ -16218,6 +16226,9 @@
 				"IsCompiled": {
 					"descriptions": ["**Is the model compiled?**\n\n```method : public : IsCompiled() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
+				"IsOpen": {
+					"descriptions": ["**Is the native model alive: created and not yet closed? The word BertEmbedder and Session use; the same as IsValid.**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"IsValid": {
 					"descriptions": ["**Is the model usable (was the native model created)?**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
@@ -16278,7 +16289,7 @@
 					"descriptions": ["**A seeded shuffle of 0 .. n - 1 (Fisher-Yates), the same on every platform.**\n\n```function : Permutation(n:Int, seed:Int) ~ Int[]```\n\n\n\nn: Int\n\nseed: Int\n\nreturn: Int[]"]
 				},
 				"SetThreads": {
-					"descriptions": ["**Sets how many threads the layers use (the batch is spread over them, one sample per task). The default is the number of hardware threads, at most 8.**\n\n```function : SetThreads(count:Int) ~ Int```\n\n\n\ncount: Int\n\nreturn: Int"]
+					"descriptions": ["**Sets how many threads the layers use (the batch is spread over them, one sample per task). The setting is process-wide: every model, on every Objeck thread, shares the one pool. The default is the number of hardware threads, at most 8, which differs between machines; a run repeats bit for bit only at a fixed thread count, so set it (to 1 or any fixed number) for a result that must be the same on another machine.**\n\n```function : SetThreads(count:Int) ~ Int```\n\n\n\ncount: Int\n\nreturn: Int"]
 				}
 			}
 		},
@@ -16328,6 +16339,9 @@
 				},
 				"GetLabel": {
 					"descriptions": ["**The class label of an image.**\n\n```method : public : GetLabel(index:Int) ~ Int```\n\n\n\nindex: Int\n\nreturn: Int"]
+				},
+				"GetPath": {
+					"descriptions": ["**The file path an image was added from.**\n\n```method : public : GetPath(index:Int) ~ String```\n\n\n\nindex: Int\n\nreturn: String"]
 				},
 				"GetSize": {
 					"descriptions": ["**The image side length.**\n\n```method : public : GetSize() ~ Int```\n\n\n\nreturn: Int"]
@@ -16409,7 +16423,7 @@
 					"descriptions": ["**Writes the CSV to a file.**\n\n```method : public : SaveCsv(path:String) ~ Bool```\n\n\n\npath: String\n\nreturn: Bool"]
 				},
 				"ToCsv": {
-					"descriptions": ["**The history as CSV text with a header row: epoch, train_loss, train_acc, val_loss, val_acc, seconds.**\n\n```method : public : ToCsv() ~ String```\n\n\n\nreturn: String"]
+					"descriptions": ["**The history as CSV text with a header row: epoch, train_loss, train_accuracy, val_loss, val_accuracy, epoch_seconds (the names of the System.ML.Lab Experiment tables).**\n\n```method : public : ToCsv() ~ String```\n\n\n\nreturn: String"]
 				},
 				"ToResultTable": {
 					"descriptions": ["**The history as a System.ML.Lab ResultTable, one row per epoch, for the Lab's text, Markdown, CSV, JSON and chart output.**\n\n```method : public : ToResultTable(title:String) ~ ResultTable```\n\n\n\ntitle: String\n\nreturn: ResultTable"]
