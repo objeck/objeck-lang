@@ -576,3 +576,9 @@ size_t* MatrixToPtr(Eigen::MatrixXd& matrix, size_t* matrix_data_ptr, VMContext&
 
   return result_obj;
 }
+
+//
+// Convolutional neural network layers (System.ML.Cnn). Header-only, so the
+// library's existing build files compile it without new entries.
+//
+#include "cnn_api.h"

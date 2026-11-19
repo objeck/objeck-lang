@@ -1,0 +1,103 @@
+#~
+Trains the baseline convolutional network of the deepfake-detection study (System.ML.Cnn) on a
+procedurally generated image set, so it needs no dataset and finishes in seconds.
+
+The images are 64 x 64 RGB sine textures on a coloured background with noise: class 0 has a low
+spatial frequency and class 1 a high one. The network is the baseline: three blocks of
+Conv(3x3) + ReLU + MaxPool(2) with 16, 32 and 64 filters, then Dense(128), dropout and one logit,
+trained with Adam (learning rate 1e-4) and binary cross-entropy. The images are split 70 / 15 / 15
+into training, validation and test sets by a seeded shuffle, and the training set is augmented as
+it is loaded (horizontal flip, a small rotation, brightness).
+
+It prints the parameter count, one line per epoch (training and validation loss and accuracy and
+the epoch's wall time), and the test accuracy, precision, recall and F1. The history is also
+written to cnn_synthetic_history.csv.
+
+  compile: obc -src cnn_synthetic.obs -lib ml_cnn,ml,ml_lab,opencv,csv,json,cipher,gen_collect
+  run:     obr cnn_synthetic.obe
+           obr cnn_synthetic.obe --epochs 20 --size 64 --per-class 300 --threads 8
+
+Options: --epochs N (10), --size N (64), --per-class N (200: images of each class), --batch N (32),
+--lr X (0.0001), --dropout X (0.1), --blocks N (3), --seed N (42), --threads N (default: the
+hardware threads, at most 8).
+~#
+
+use System.ML.Cnn;
+use System.ML.Lab;
+
+class CnnSynthetic {
+	function : Main(args : String[]) ~ Nil {
+		epochs := 10;
+		size := 64;
+		per_class := 200;
+		batch := 32;
+		lr := 0.0001;
+		dropout := 0.1;
+		blocks := 3;
+		seed := 42;
+		threads := 0;
+		i := 0;
+		while(i + 1 < args->Size()) {
+			name := args[i];
+			value := args[i + 1];
+			if(name->Equals("--epochs")) { epochs := value->ToInt(); }
+			else if(name->Equals("--size")) { size := value->ToInt(); }
+			else if(name->Equals("--per-class")) { per_class := value->ToInt(); }
+			else if(name->Equals("--batch")) { batch := value->ToInt(); }
+			else if(name->Equals("--lr")) { lr := value->ToFloat(); }
+			else if(name->Equals("--dropout")) { dropout := value->ToFloat(); }
+			else if(name->Equals("--blocks")) { blocks := value->ToInt(); }
+			else if(name->Equals("--seed")) { seed := value->ToInt(); }
+			else if(name->Equals("--threads")) { threads := value->ToInt(); };
+			i += 2;
+		};
+
+		if(threads > 0) {
+			CnnRuntime->SetThreads(threads);
+		};
+		"threads: {$CnnRuntime->GetThreads()}"->PrintLine();
+
+		data := ImageDataset->Synthetic(size, per_class, seed);
+		if(data = Nil) {
+			"bad --size or --per-class"->PrintLine();
+			Runtime->Exit(1);
+		};
+		splits := data->Split(0.7, 0.15, seed);
+		train := splits[0];
+		validation := splits[1];
+		test := splits[2];
+		"images: {$data->Count()}  train {$train->Count()}  validation {$validation->Count()}  test {$test->Count()}"->PrintLine();
+
+		# only the training subset is augmented
+		aug := Augmentation->New();
+		aug->SetSeed(seed);
+		aug->SetFlip(0.5);
+		aug->SetRotation(0.3, 10.0);
+		aug->SetBrightness(0.3, 0.8, 1.2);
+		train->SetAugmentation(aug);
+
+		model := CnnModel->Baseline(size, blocks, dropout, 128, lr, seed);
+		if(model = Nil) {
+			"the architecture does not fit a {$size} x {$size} image (try fewer --blocks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		model->GetSummary()->PrintLine();
+
+		trainer := CnnTrainer->New(model, train, validation, batch, seed);
+		trainer->SetVerbose(true);
+		history := trainer->Fit(epochs);
+		if(history = Nil | history->GetError()->Size() > 0) {
+			"training stopped: {$trainer->GetError()}"->PrintLine();
+			Runtime->Exit(1);
+		};
+		history->SaveCsv("cnn_synthetic_history.csv");
+		history->ToResultTable("Baseline CNN, synthetic textures")->ToText()->PrintLine();
+		"training time: {$history->GetTotalSeconds()} s"->PrintLine();
+
+		result := trainer->Evaluate(test);
+		"test: {$result->ToString()}"->PrintLine();
+		confusion := result->GetConfusion();
+		"confusion [actual, predicted]: TN {$confusion[0, 0]}  FP {$confusion[0, 1]}  FN {$confusion[1, 0]}  TP {$confusion[1, 1]}"->PrintLine();
+		model->Close();
+	}
+}
