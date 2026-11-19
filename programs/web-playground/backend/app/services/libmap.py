@@ -269,6 +269,7 @@ LIB_INFO: dict[str, tuple[str, str]] = {
     "query_ml": ("Query ML", "Models as query sources"),
     "ml": ("ML", "Machine learning and matrix math"),
     "ml_lab": ("ML Lab", "Stratified splits, imbalance resampling, parameter sweeps, result tables and SVG charts"),
+    "ml_vector": ("Vector Search", "A local vector index: exact cosine, dot and L2 nearest-neighbour search over embeddings"),
     "nlp": ("NLP", "Tokenizing, stemming and sentiment"),
     "ai": ("AI", "Search, games, optimization and reinforcement learning"),
     "math": ("Math", "Exact arithmetic"),

@@ -30,6 +30,8 @@ $OBC -src lib_src/regex.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/regex
 $OBC -src lib_src/csv.obs -tar lib -lib gen_collect -opt s3 -dest ../lib/csv.obl
 $OBC -src lib_src/ml_core.obs,lib_src/ml_linear.obs,lib_src/ml_tree.obs,lib_src/ml_bayes.obs,lib_src/ml_neighbors.obs,lib_src/ml_cluster.obs,lib_src/ml_data.obs,lib_src/ml_svm.obs,lib_src/ml_outlier.obs,lib_src/ml_embed.obs -lib gen_collect,csv -tar lib -opt s3 -dest ../lib/ml.obl
 $OBC -src lib_src/ml_lab.obs -lib gen_collect,csv,json,ml -tar lib -opt s3 -dest ../lib/ml_lab.obl
+# Local vector index (exact cosine / dot / L2 search). Needs only gen_collect, so it is built apart from ml.obl
+$OBC -src lib_src/ml_vector.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ml_vector.obl
 $OBC -src lib_src/ai_search.obs,lib_src/ai_game.obs,lib_src/ai_optimize.obs,lib_src/ai_rl.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ai.obl
 $OBC -src lib_src/nlp.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/nlp.obl
 # Text embeddings from BERT-family ONNX models. A library of its own, after both nlp

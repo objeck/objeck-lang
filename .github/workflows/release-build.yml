@@ -1135,6 +1135,7 @@ jobs:
             ../../../compiler/lib_src/ml_outlier.obs \
             ../../../compiler/lib_src/ml_embed.obs \
             ../../../compiler/lib_src/ml_lab.obs \
+            ../../../compiler/lib_src/ml_vector.obs \
             ../../../compiler/lib_src/ai_search.obs \
             ../../../compiler/lib_src/ai_game.obs \
             ../../../compiler/lib_src/ai_optimize.obs \

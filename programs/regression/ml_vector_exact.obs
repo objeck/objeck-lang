@@ -1,0 +1,282 @@
+# EXTRA_LIBS: ml_vector,gen_collect
+#~
+System.ML.VectorSearch VectorIndex: Search is exact. For cosine, dot and L2 the top-k ids
+and scores must match a brute-force reference written here (a plain sequential scan and a
+full sort by score then id), on data spanning several storage blocks, for k = 1, a middle
+k, k = n and k larger than n. Also checked: ties break by id whatever order the vectors
+were added in, ties at the edge of the top-k, replacing an id, and that Remove (which moves
+the last row into the hole) leaves the answers equal to the reference on what remains.
+~#
+use System.ML.VectorSearch;
+use Collection;
+
+class MlVectorExact {
+	@seed : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		# 384 floats per vector puts 170 rows in a block, so 500 vectors span 3 blocks
+		dims := [3, 384];
+		metrics := [VectorMetric->COSINE, VectorMetric->DOT, VectorMetric->L2];
+		each(d : dims) {
+			dim := dims[d];
+			each(m : metrics) {
+				metric := metrics[m];
+				name := Name(metric) + " dim " + dim->ToString();
+				@seed := 20261118 + dim;
+				n := 500;
+				vectors := Vector->New()<FloatArrayRef>;
+				index := VectorIndex->New(dim, metric);
+				each(i : n) {
+					v := RandomVector(dim);
+					vectors->AddBack(FloatArrayRef->New(v));
+					index->Add("id{$i}", v);
+				};
+				ok := Report(name + ": size is 500", index->Size() = 500) & ok;
+
+				queries := 6;
+				each(qi : queries) {
+					q := RandomVector(dim);
+					ks := [1, 10, 500, 501, 5000];
+					each(ki : ks) {
+						k := ks[ki];
+						ok := Report(name + ": top {$k} matches the reference", Matches(index, vectors, q, k, metric)) & ok;
+					};
+				};
+
+				# remove every third vector: rows move around, answers must not change
+				kept := Vector->New()<FloatArrayRef>;
+				removed_ok := true;
+				ids_kept := Vector->New()<String>;
+				each(i : n) {
+					if(i % 3 = 0) {
+						removed_ok := index->Remove("id{$i}") & removed_ok;
+					}
+					else {
+						kept->AddBack(vectors->Get(i));
+						ids_kept->AddBack("id{$i}");
+					};
+				};
+				ok := Report(name + ": removals succeed", removed_ok) & ok;
+				ok := Report(name + ": size after removal is 333", index->Size() = 333) & ok;
+				q := RandomVector(dim);
+				ok := Report(name + ": top 10 after removal matches the reference",
+					MatchesIds(index, kept, ids_kept, q, 10, metric)) & ok;
+				ok := Report(name + ": all 333 after removal match the reference",
+					MatchesIds(index, kept, ids_kept, q, 400, metric)) & ok;
+				ok := Report(name + ": a removed id is gone", index->Contains("id0") = false & index->Get("id0") = Nil) & ok;
+				ok := Report(name + ": removing it again says false", index->Remove("id0") = false) & ok;
+			};
+		};
+
+		ok := Ties() & ok;
+		ok := Replace() & ok;
+
+		if(ok = false) {
+			Runtime->Exit(1);
+		};
+		"ml_vector_exact: ok"->PrintLine();
+	}
+
+	# the same vector under four ids: ids come back in ascending order whatever the insert order
+	function : Ties() ~ Bool {
+		ok := true;
+		metrics := [VectorMetric->COSINE, VectorMetric->DOT, VectorMetric->L2];
+		each(m : metrics) {
+			metric := metrics[m];
+			name := "ties " + Name(metric);
+			index := VectorIndex->New(2, metric);
+			index->Add("d", [1.0, 2.0]);
+			index->Add("b", [1.0, 2.0]);
+			index->Add("a", [1.0, 2.0]);
+			index->Add("c", [1.0, 2.0]);
+			hits := index->Search([1.0, 2.0], 3);
+			ok := Report(name + ": three of four tied come back", hits->Size() = 3) & ok;
+			ok := Report(name + ": in id order a, b, c", hits->Get(0)->GetId()->Equals("a") & hits->Get(1)->GetId()->Equals("b") & hits->Get(2)->GetId()->Equals("c")) & ok;
+			ok := Report(name + ": and with equal scores", hits->Get(0)->GetScore() = hits->Get(2)->GetScore()) & ok;
+
+			# a tie for the last place in the top-k: the smaller id wins it (bit-identical vectors)
+			if(metric = VectorMetric->L2) {
+				index->Add("far1", [9.0, 9.0]);
+				index->Add("far0", [9.0, 9.0]);
+				hits := index->Search([9.0, 9.0], 2);
+				ok := Report(name + ": edge tie keeps the smaller id", hits->Get(0)->GetId()->Equals("far0") & hits->Get(1)->GetId()->Equals("far1")) & ok;
+			}
+			else {
+				# a parallel vector of larger length leads for dot. Under cosine it ties with the
+				# others only mathematically (acc * inv_norm * q_scale can differ in the last bit),
+				# so the test asks for the score, not for which of the tied ids comes first
+				index->Add("z", [3.0, 6.0]);
+				hits := index->Search([1.0, 2.0], 5);
+				ok := Report(name + ": all five come back", hits->Size() = 5) & ok;
+				if(metric = VectorMetric->COSINE) {
+					near_one := true;
+					each(h : hits) {
+						diff := hits->Get(h)->GetScore() - 1.0;
+						if(diff < 0.0) {
+							diff := -diff;
+						};
+						if(diff > 1.0e-12 | hits->Get(h)->GetScore() > 1.0) {
+							near_one := false;
+						};
+					};
+					ok := Report(name + ": parallel vectors all score 1 (never above it)", near_one) & ok;
+				}
+				else {
+					ok := Report(name + ": the longer parallel vector leads", hits->Get(0)->GetId()->Equals("z")) & ok;
+				};
+			};
+
+			# the reverse insert order gives the same ranking
+			rev := VectorIndex->New(2, metric);
+			rev->Add("c", [1.0, 2.0]);
+			rev->Add("a", [1.0, 2.0]);
+			rev->Add("b", [1.0, 2.0]);
+			rev->Add("d", [1.0, 2.0]);
+			h2 := rev->Search([1.0, 2.0], 4);
+			ok := Report(name + ": insert order does not matter",
+				h2->Get(0)->GetId()->Equals("a") & h2->Get(1)->GetId()->Equals("b") & h2->Get(2)->GetId()->Equals("c") & h2->Get(3)->GetId()->Equals("d")) & ok;
+		};
+
+		return ok;
+	}
+
+	function : Replace() ~ Bool {
+		ok := true;
+		index := VectorIndex->New(2, VectorMetric->DOT);
+		index->Add("a", [1.0, 0.0]);
+		index->Add("b", [0.0, 1.0]);
+		ok := Report("replace: a second Add of an id succeeds", index->Add("a", [5.0, 0.0])) & ok;
+		ok := Report("replace: the size does not grow", index->Size() = 2) & ok;
+		hits := index->Search([1.0, 0.0], 2);
+		ok := Report("replace: the new vector answers", hits->Get(0)->GetId()->Equals("a") & hits->Get(0)->GetScore() = 5.0) & ok;
+		got := index->Get("a");
+		ok := Report("replace: Get returns it", got <> Nil & got[0] = 5.0 & got[1] = 0.0) & ok;
+		# Get returns a copy and Add copies: neither can reach into the index
+		got[0] := 99.0;
+		src := [2.0, 2.0];
+		index->Add("c", src);
+		src[0] := -50.0;
+		ok := Report("copies: neither a returned nor an added array aliases the index",
+			index->Get("a")[0] = 5.0 & index->Get("c")[0] = 2.0) & ok;
+		return ok;
+	}
+
+	function : Name(metric : VectorMetric) ~ String {
+		if(metric = VectorMetric->DOT) {
+			return "dot";
+		}
+		else if(metric = VectorMetric->L2) {
+			return "l2";
+		};
+		return "cosine";
+	}
+
+	function : Matches(index : VectorIndex, vectors : Vector<FloatArrayRef>, q : Float[], k : Int, metric : VectorMetric) ~ Bool {
+		ids := Vector->New()<String>;
+		each(i : vectors) {
+			ids->AddBack("id{$i}");
+		};
+		return MatchesIds(index, vectors, ids, q, k, metric);
+	}
+
+	# brute force over vectors[i] named ids[i]: score every one, sort by (score, id), take k
+	function : MatchesIds(index : VectorIndex, vectors : Vector<FloatArrayRef>, ids : Vector<String>, q : Float[], k : Int, metric : VectorMetric) ~ Bool {
+		n := vectors->Size();
+		scores := Float->New[n];
+		each(i : n) {
+			scores[i] := Reference(vectors->Get(i)->Get(), q, metric);
+		};
+
+		# order[] holds indexes; insertion sort is plenty for a few hundred
+		order := Int->New[n];
+		each(i : n) {
+			order[i] := i;
+		};
+		for(i := 1; i < n; i += 1;) {
+			cur := order[i];
+			j := i - 1;
+			while(j >= 0 & Before(scores[cur], ids->Get(cur), scores[order[j]], ids->Get(order[j]), metric)) {
+				order[j + 1] := order[j];
+				j -= 1;
+			};
+			order[j + 1] := cur;
+		};
+
+		want := k;
+		if(want > n) {
+			want := n;
+		};
+		hits := index->Search(q, k);
+		if(hits->Size() <> want) {
+			"  expected {$want} hits, got {$hits->Size()}"->PrintLine();
+			return false;
+		};
+		each(i : want) {
+			if(hits->Get(i)->GetId()->Equals(ids->Get(order[i])) = false) {
+				"  rank {$i}: expected {$ids->Get(order[i])}, got {$hits->Get(i)->GetId()}"->PrintLine();
+				return false;
+			};
+			diff := hits->Get(i)->GetScore() - scores[order[i]];
+			if(diff < 0.0) {
+				diff := -diff;
+			};
+			if(diff > 1.0e-9) {
+				"  rank {$i}: score {$hits->Get(i)->GetScore()} vs {$scores[order[i]]}"->PrintLine();
+				return false;
+			};
+		};
+		return true;
+	}
+
+	function : Before(sa : Float, ida : String, sb : Float, idb : String, metric : VectorMetric) ~ Bool {
+		if(sa = sb) {
+			return ida->Compare(idb) < 0;
+		};
+		if(metric = VectorMetric->L2) {
+			return sa < sb;
+		};
+		return sa > sb;
+	}
+
+	function : Reference(a : Float[], b : Float[], metric : VectorMetric) ~ Float {
+		dot := 0.0;
+		na := 0.0;
+		nb := 0.0;
+		d2 := 0.0;
+		each(i : a) {
+			dot += a[i] * b[i];
+			na += a[i] * a[i];
+			nb += b[i] * b[i];
+			d2 += (a[i] - b[i]) * (a[i] - b[i]);
+		};
+		if(metric = VectorMetric->DOT) {
+			return dot;
+		}
+		else if(metric = VectorMetric->L2) {
+			return Float->Sqrt(d2);
+		};
+		return dot / (Float->Sqrt(na) * Float->Sqrt(nb));
+	}
+
+	# a small LCG, so the data is the same on every platform
+	function : RandomVector(dim : Int) ~ Float[] {
+		v := Float->New[dim];
+		each(i : dim) {
+			@seed := (@seed * 1103515245 + 12345) % 2147483648;
+			v[i] := (@seed / 65536 % 20001 - 10000)->As(Float) / 10000.0;
+		};
+		return v;
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+		return passed;
+	}
+}

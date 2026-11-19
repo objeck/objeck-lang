@@ -220,12 +220,19 @@ preds := forest->Predict(data);
 			};
 
 			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 			num_trees := deserializer->ReadInt();
 			max_depth := deserializer->ReadInt();
 			min_samples := deserializer->ReadInt();
 			seed := deserializer->ReadInt();
 
 			ntrees := deserializer->ReadInt();
+			if(num_trees < 1 | ntrees < 1) {
+				return Nil;
+			};
+
 			trees := Vector->New()<DecisionTree>;
 			each(t : ntrees) {
 				tree := DecisionTree->ReadFrom(deserializer);
@@ -233,6 +240,10 @@ preds := forest->Predict(data);
 					return Nil;
 				};
 				trees->AddBack(tree);
+			};
+
+			if(<>deserializer->IsOk()) {
+				return Nil;
 			};
 
 			return RandomForest->New(num_trees, max_depth, min_samples, seed, trees);
@@ -516,9 +527,12 @@ preds := booster->Predict(data);
 			};
 
 			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 			num_learners := deserializer->ReadInt();
 			learner_count := deserializer->ReadInt();
-			if(num_learners < 1 | learner_count < 1 | learner_count > num_learners) {
+			if(num_learners < 1 | learner_count < 1 | learner_count > num_learners | <>deserializer->Holds(num_learners)) {
 				return Nil;
 			};
 
@@ -529,6 +543,10 @@ preds := booster->Predict(data);
 				features[t] := deserializer->ReadInt();
 				polarities[t] := deserializer->ReadInt() = 1;
 				alphas[t] := deserializer->ReadFloat();
+			};
+
+			if(<>deserializer->IsOk()) {
+				return Nil;
 			};
 
 			return AdaBoost->New(num_learners, features, polarities, alphas, learner_count);
@@ -908,7 +926,17 @@ pred := tree->Predict([2.5]);
 				return Nil;
 			};
 
-			return ReadFrom(System.IO.Deserializer->New(data));
+			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
+
+			result := ReadFrom(deserializer);
+			if(result = Nil | <>deserializer->IsOk()) {
+				return Nil;
+			};
+
+			return result;
 		}
 
 		#~
@@ -954,6 +982,12 @@ pred := tree->Predict([2.5]);
 		}
 
 		function : ReadNode(deserializer : System.IO.Deserializer) ~ RegressionTreeNode {
+			# an exhausted stream reads as zeros, which would descend for ever; each
+			# node reads at least one tagged Int, 16 bytes
+			if(deserializer->Remaining() < 16) {
+				return Nil;
+			};
+
 			is_leaf := deserializer->ReadInt();
 			if(is_leaf = 1) {
 				return RegressionTreeNode->NewLeaf(deserializer->ReadFloat());
@@ -2072,6 +2106,9 @@ gbt->Fit(X, y);
 			};
 
 			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 			num_trees := deserializer->ReadInt();
 			learning_rate := deserializer->ReadFloat();
 			max_depth := deserializer->ReadInt();
@@ -2090,6 +2127,10 @@ gbt->Fit(X, y);
 					return Nil;
 				};
 				trees->AddBack(tree);
+			};
+
+			if(<>deserializer->IsOk()) {
+				return Nil;
 			};
 
 			return GradientBoostedTrees->New(num_trees, learning_rate, max_depth, min_samples, base, trees);
@@ -2349,7 +2390,17 @@ tree->Predict([true, true])->PrintLine();   # true
 				return Nil;
 			};
 
-			return ReadFrom(System.IO.Deserializer->New(data));
+			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
+
+			result := ReadFrom(deserializer);
+			if(result = Nil | <>deserializer->IsOk()) {
+				return Nil;
+			};
+
+			return result;
 		}
 
 		#~
@@ -2402,6 +2453,12 @@ tree->Predict([true, true])->PrintLine();   # true
 		}
 
 		function : ReadNode(deserializer : System.IO.Deserializer) ~ TreeNode {
+			# an exhausted stream reads as zeros, which would descend for ever; each
+			# node reads at least one tagged Int, 16 bytes
+			if(deserializer->Remaining() < 16) {
+				return Nil;
+			};
+
 			is_leaf := deserializer->ReadInt();
 			if(is_leaf = 1) {
 				return TreeNode->NewLeaf(deserializer->ReadInt() = 1);

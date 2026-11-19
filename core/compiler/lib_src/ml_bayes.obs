@@ -280,9 +280,12 @@ classes := gnb->PredictClass([[1.1], [7.9]]);   # [0, 1]
 			};
 
 			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 			num_classes := deserializer->ReadInt();
 			cols := deserializer->ReadInt();
-			if(num_classes < 1 | cols < 1) {
+			if(<>deserializer->Holds(num_classes, cols)) {
 				return Nil;
 			};
 
@@ -303,6 +306,10 @@ classes := gnb->PredictClass([[1.1], [7.9]]);   # [0, 1]
 				each(j : cols) {
 					variances[c,j] := deserializer->ReadFloat();
 				};
+			};
+
+			if(<>deserializer->IsOk()) {
+				return Nil;
 			};
 
 			return GaussianNaiveBayes->New(num_classes, priors, means, variances);

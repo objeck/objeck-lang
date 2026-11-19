@@ -1,0 +1,735 @@
+#~~
+# Objeck machine learning library: local vector index
+# Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+
+#~
+A local vector index for retrieval: store embedding vectors under string ids and ask for the nearest ones. Search is exact (a scan of every vector) for cosine similarity, dot product and Euclidean distance. Compile with -lib ml_vector,gen_collect; it needs nothing from System.ML. Design and measurements: docs/AI.md, "Local vector search".
+~#
+bundle System.ML.VectorSearch {
+	#~
+	How a VectorIndex ranks vectors against a query.
+	~#
+	enum VectorMetric {
+		COSINE,
+		DOT,
+		L2
+	}
+
+	#~
+	One search result: the id of a stored vector and its score. For COSINE and DOT a higher score is closer; for L2 the score is the Euclidean distance, so a lower score is closer. Hits come back closest first either way.
+	~#
+	class VectorHit {
+		@id : String;
+		@score : Float;
+
+		#~
+		Constructor
+		@param id id the vector was added under
+		@param score similarity (COSINE, DOT) or distance (L2)
+		~#
+		New(id : String, score : Float) {
+			@id := id;
+			@score := score;
+		}
+
+		#~
+		The id the vector was added under.
+		@return id
+		~#
+		method : public : GetId() ~ String {
+			return @id;
+		}
+
+		#~
+		The cosine similarity or dot product (higher is closer), or the Euclidean distance (lower is closer).
+		@return score
+		~#
+		method : public : GetScore() ~ Float {
+			return @score;
+		}
+
+		method : public : ToString() ~ String {
+			return "{$@id}: {$@score}";
+		}
+	}
+
+	#~
+	A fixed-size run of rows: the floats of each vector end to end, the id of each row and, for cosine, the reciprocal of each row's length. Rows are packed so a scan walks one array.
+	~#
+	class : private : VectorBlock {
+		@data : Float[];
+		@ids : String[];
+		@inv_norms : Float[];
+
+		New(rows : Int, dim : Int) {
+			@data := Float->New[rows * dim];
+			@ids := String->New[rows];
+			@inv_norms := Float->New[rows];
+		}
+
+		method : public : GetData() ~ Float[] { return @data; }
+		method : public : GetIds() ~ String[] { return @ids; }
+		method : public : GetInvNorms() ~ Float[] { return @inv_norms; }
+	}
+
+	#~
+	An exact nearest-neighbour index over Float vectors of one fixed dimension, each stored under a unique String id.
+
+	No call here ends the program on bad input. Add, Remove and Store return false, Search returns an empty vector and Get returns Nil, and GetError() on that index says why. Load is a function with no index to ask, so it returns Nil and gives no reason. An index made with a dimension below 1 is not valid (IsValid() is false) and refuses everything.
+
+	Values: NaN and infinity are refused, and so is any nonzero value whose magnitude is below 1e-100 or above 1e100 (zero is fine). Inside that range no square, sum of squares, difference or product can overflow or underflow, so every score is finite; outside it a norm would become infinity or zero and a cosine would silently read 0. Rescale such data before adding it.
+
+	A search scans every stored vector, so the cost is size x dimension; there is no approximate mode. Ties on the score are broken by id, smallest first, so results do not depend on the order vectors were added or removed in. That holds for bit-identical scores: two vectors that tie only mathematically (parallel vectors of different length under COSINE, say) can differ in the last bit and then rank by that bit and not by id. COSINE scores are clamped to [-1, 1].
+
+	Not thread-safe: Search records its refusals in the index, so concurrent calls on one index (or a call beside Add or Remove) need the caller's lock. Memory: 8 bytes per value; the first Add at the largest dimension (1,048,576) allocates a 128 MB block, and Load holds the file, its body and the decoded vectors at once, about three times the file size at its peak.
+
+```
+index := VectorIndex->New(3, VectorMetric->COSINE);
+index->Add("cat", [0.9, 0.1, 0.0]);
+index->Add("car", [0.0, 0.2, 0.9]);
+hits := index->Search([1.0, 0.0, 0.0], 1);
+hits->Get(0)->GetId()->PrintLine();   # cat
+index->Store("pets.vix");
+```
+	~#
+	class VectorIndex {
+		@dim : Int;
+		@metric : Int;
+		@rows : Int;
+		@blocks : Vector<VectorBlock>;
+		@count : Int;
+		@slots : Hash<String, IntRef>;
+		@error : String;
+
+		# the largest dimension accepted: a guard against a typo or a damaged file
+		consts Limits {
+			MAX_DIMENSION := 1048576
+		}
+
+		#~
+		Creates an empty index.
+		@param dim length of every vector, 1 or more
+		@param metric how vectors are ranked against a query
+		~#
+		New(dim : Int, metric : VectorMetric) {
+			@error := "";
+			@count := 0;
+			@dim := 0;
+			@metric := Code(metric);
+			if(dim < 1 | dim > Limits->MAX_DIMENSION) {
+				@error := "dimension must be between 1 and {$Limits->MAX_DIMENSION}, got {$dim}";
+			}
+			else {
+				@dim := dim;
+				# about 64K floats per block: a small index stays small, a large one is a few hundred blocks
+				@rows := 65536 / dim;
+				if(@rows < 16) {
+					@rows := 16;
+				};
+				@blocks := Vector->New()<VectorBlock>;
+				@slots := Hash->New()<String, IntRef>;
+			};
+		}
+
+		function : Code(metric : VectorMetric) ~ Int {
+			if(metric = VectorMetric->DOT) {
+				return 1;
+			}
+			else if(metric = VectorMetric->L2) {
+				return 2;
+			};
+
+			return 0;
+		}
+
+		#~
+		Whether the index was created with a usable dimension.
+		@return true if it accepts vectors
+		~#
+		method : public : IsValid() ~ Bool {
+			return @dim > 0;
+		}
+
+		#~
+		The message for the last call that refused its input, or an empty string.
+		@return reason
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Length of the vectors this index holds.
+		@return dimension, 0 for an invalid index
+		~#
+		method : public : GetDimension() ~ Int {
+			return @dim;
+		}
+
+		#~
+		The ranking this index was created with.
+		@return metric
+		~#
+		method : public : GetMetric() ~ VectorMetric {
+			if(@metric = 1) {
+				return VectorMetric->DOT;
+			}
+			else if(@metric = 2) {
+				return VectorMetric->L2;
+			};
+
+			return VectorMetric->COSINE;
+		}
+
+		#~
+		Number of vectors stored.
+		@return count
+		~#
+		method : public : Size() ~ Int {
+			return @count;
+		}
+
+		#~
+		Whether a vector is stored under an id.
+		@param id id to look for
+		@return true if present
+		~#
+		method : public : Contains(id : String) ~ Bool {
+			if(@dim < 1 | id = Nil) {
+				return false;
+			};
+
+			return @slots->Has(id);
+		}
+
+		#~
+		All stored ids, in no particular order.
+		@return ids, empty if the index is invalid
+		~#
+		method : public : GetIds() ~ Vector<String> {
+			if(@dim < 1) {
+				return Vector->New()<String>;
+			};
+
+			return @slots->GetKeys();
+		}
+
+		#~
+		A copy of the vector stored under an id.
+		@param id id to look up
+		@return the vector, or Nil if there is none
+		~#
+		method : public : Get(id : String) ~ Float[] {
+			if(@dim < 1 | id = Nil) {
+				return Nil;
+			};
+
+			found := @slots->Find(id);
+			if(found = Nil) {
+				return Nil;
+			};
+
+			slot := found->Get();
+			block := @blocks->Get(slot / @rows);
+			out := Float->New[@dim];
+			Float->Copy(out, 0, block->GetData(), (slot % @rows) * @dim, @dim);
+
+			return out;
+		}
+
+		#~
+		Stores a vector under an id; an id that is already present has its vector replaced. The vector is copied.
+		@param id unique id, not Nil or empty
+		@param vector vector of exactly the index's dimension; each value finite and zero or between 1e-100 and 1e100 in magnitude
+		@return true if stored, false if refused (GetError() says why)
+		~#
+		method : public : Add(id : String, vector : Float[]) ~ Bool {
+			if(@dim < 1) {
+				return Fail("the index has no valid dimension");
+			};
+
+			if(id = Nil) {
+				return Fail("id is Nil");
+			};
+
+			if(id->Size() = 0) {
+				return Fail("id is empty");
+			};
+
+			if(vector = Nil) {
+				return Fail("vector is Nil");
+			};
+
+			if(vector->Size() <> @dim) {
+				return Fail("vector has {$vector->Size()} values, the index holds {$@dim}");
+			};
+
+			norm2 := SumSquares(vector, "vector");
+			if(norm2 < 0.0) {
+				return false;
+			};
+
+			inv_norm := 0.0;
+			if(norm2 > 0.0) {
+				inv_norm := 1.0 / Float->Sqrt(norm2);
+			};
+
+			@error := "";
+			found := @slots->Find(id);
+			if(found <> Nil) {
+				SetRow(found->Get(), id, vector, inv_norm);
+				return true;
+			};
+
+			slot := @count;
+			if(slot / @rows >= @blocks->Size()) {
+				@blocks->AddBack(VectorBlock->New(@rows, @dim));
+			};
+			SetRow(slot, id, vector, inv_norm);
+			@slots->Insert(id, IntRef->New(slot));
+			@count += 1;
+
+			return true;
+		}
+
+		#~
+		Removes a vector.
+		@param id id to remove
+		@return true if it was present, false if not (or the id is Nil)
+		~#
+		method : public : Remove(id : String) ~ Bool {
+			if(@dim < 1) {
+				return Fail("the index has no valid dimension");
+			};
+
+			if(id = Nil) {
+				return Fail("id is Nil");
+			};
+
+			found := @slots->Find(id);
+			if(found = Nil) {
+				return Fail("no vector with id '{$id}'");
+			};
+
+			@error := "";
+			slot := found->Get();
+			last := @count - 1;
+			@slots->Remove(id);
+			if(slot <> last) {
+				# keep the rows dense: the last row takes the vacated place
+				src := @blocks->Get(last / @rows);
+				src_row := last % @rows;
+				moved := src->GetIds()[src_row];
+				row := Float->New[@dim];
+				Float->Copy(row, 0, src->GetData(), src_row * @dim, @dim);
+				SetRow(slot, moved, row, src->GetInvNorms()[src_row]);
+				@slots->Remove(moved);
+				@slots->Insert(moved, IntRef->New(slot));
+			};
+
+			tail := @blocks->Get(last / @rows);
+			tail->GetIds()[last % @rows] := Nil;
+			@count -= 1;
+			if(@count % @rows = 0) {
+				# the last block is empty now
+				@blocks->RemoveBack();
+			};
+
+			return true;
+		}
+
+		method : SetRow(slot : Int, id : String, vector : Float[], inv_norm : Float) ~ Nil {
+			block := @blocks->Get(slot / @rows);
+			row := slot % @rows;
+			Float->Copy(block->GetData(), row * @dim, vector, 0, @dim);
+			block->GetIds()[row] := id;
+			block->GetInvNorms()[row] := inv_norm;
+		}
+
+		# The sum of squares of a vector the index accepts, or -1.0 (with the reason in
+		# @error) when it holds a NaN, an infinity, or a nonzero value whose magnitude is
+		# outside [MIN_MAGNITUDE, MAX_MAGNITUDE]. Inside that range no square, sum of
+		# squares, difference or product of two accepted values can overflow or lose its
+		# scale, so every score is finite and the heap never sees a NaN.
+		method : SumSquares(v : Float[], what : String) ~ Float {
+			sum := 0.0;
+			x := 0.0;
+			mag := 0.0;
+			each(j : @dim) {
+				x := v[j];
+				# NaN is the only value unequal to itself; x - x is NaN for an infinity
+				if(x <> x | x - x <> 0.0) {
+					Fail("{$what} has a NaN or infinite value at {$j}");
+					return -1.0;
+				};
+				mag := x;
+				if(mag < 0.0) {
+					mag := -mag;
+				};
+				if(mag > 0.0 & (mag < 1.0e-100 | mag > 1.0e100)) {
+					Fail("{$what} value {$x} at {$j} is outside the supported magnitude, zero or 1e-100 to 1e100");
+					return -1.0;
+				};
+				sum += x * x;
+			};
+
+			return sum;
+		}
+
+		method : Fail(message : String) ~ Bool {
+			@error := message;
+			return false;
+		}
+
+		#~
+		The k closest vectors to a query, closest first. Fewer than k come back when the index holds fewer, and none when the query is refused (Nil, the wrong length, a NaN, an infinite or out-of-range value, k below 1) or the index is empty; GetError() says which. COSINE scores a vector or query of length zero as 0.
+		@param query vector of exactly the index's dimension
+		@param k how many results to return
+		@return hits, closest first; empty, never Nil
+		~#
+		method : public : Search(query : Float[], k : Int) ~ Vector<VectorHit> {
+			hits := Vector->New()<VectorHit>;
+			if(@dim < 1) {
+				Fail("the index has no valid dimension");
+				return hits;
+			};
+
+			if(query = Nil) {
+				Fail("query is Nil");
+				return hits;
+			};
+
+			if(query->Size() <> @dim) {
+				Fail("query has {$query->Size()} values, the index holds {$@dim}");
+				return hits;
+			};
+
+			if(k < 1) {
+				Fail("k must be 1 or more, got {$k}");
+				return hits;
+			};
+
+			q2 := SumSquares(query, "query");
+			if(q2 < 0.0) {
+				return hits;
+			};
+
+			@error := "";
+			n := @count;
+			if(n = 0) {
+				return hits;
+			};
+
+			want := k;
+			if(want > n) {
+				want := n;
+			};
+
+			q_scale := 1.0;
+			if(@metric = 0) {
+				q_scale := 0.0;
+				if(q2 > 0.0) {
+					q_scale := 1.0 / Float->Sqrt(q2);
+				};
+			};
+
+			# a heap of the best `want` rows so far, worst at the root; keys are
+			# higher-is-better (the negated squared distance for L2)
+			heap_keys := Float->New[want];
+			heap_slots := Int->New[want];
+			size := 0;
+			worst := 0.0;
+
+			dim := @dim;
+			rows := @rows;
+			metric := @metric;
+			block_count := @blocks->Size();
+			each(b : block_count) {
+				block := @blocks->Get(b);
+				data := block->GetData();
+				inv_norms := block->GetInvNorms();
+				in_block := n - b * rows;
+				if(in_block > rows) {
+					in_block := rows;
+				};
+
+				each(r : in_block) {
+					base := r * dim;
+					acc := 0.0;
+					key := 0.0;
+					if(metric = 2) {
+						d := 0.0;
+						for(j := 0; j < dim; j += 1;) {
+							d := data[base + j] - query[j];
+							acc += d * d;
+						};
+						key := -acc;
+					}
+					else {
+						for(j := 0; j < dim; j += 1;) {
+							acc += data[base + j] * query[j];
+						};
+						key := acc;
+						if(metric = 0) {
+							key := acc * inv_norms[r] * q_scale;
+							# rounding can leave a cosine a hair outside [-1, 1]
+							if(key > 1.0) {
+								key := 1.0;
+							}
+							else if(key < -1.0) {
+								key := -1.0;
+							};
+						};
+					};
+
+					if(size < want) {
+						slot := b * rows + r;
+						heap_keys[size] := key;
+						heap_slots[size] := slot;
+						size += 1;
+						SiftUp(heap_keys, heap_slots, size - 1);
+						if(size = want) {
+							worst := heap_keys[0];
+						};
+					}
+					else if(key >= worst) {
+						slot := b * rows + r;
+						if(key > worst | Worse(heap_keys[0], heap_slots[0], key, slot)) {
+							heap_keys[0] := key;
+							heap_slots[0] := slot;
+							SiftDown(heap_keys, heap_slots, size, 0);
+							worst := heap_keys[0];
+						};
+					};
+				};
+			};
+
+			# empty the heap worst first, filling the answer from the back
+			ordered := VectorHit->New[size];
+			for(i := size - 1; i >= 0; i -= 1;) {
+				slot := heap_slots[0];
+				ordered[i] := VectorHit->New(IdOf(slot), Report(heap_keys[0]));
+				size -= 1;
+				heap_keys[0] := heap_keys[size];
+				heap_slots[0] := heap_slots[size];
+				SiftDown(heap_keys, heap_slots, size, 0);
+			};
+
+			each(i : ordered) {
+				hits->AddBack(ordered[i]);
+			};
+
+			return hits;
+		}
+
+		# the score a caller sees for an internal key
+		method : Report(key : Float) ~ Float {
+			if(@metric = 2) {
+				return Float->Sqrt(-key);
+			};
+
+			return key;
+		}
+
+		# a copy of the vector in a slot
+		method : RowOf(slot : Int) ~ Float[] {
+			block := @blocks->Get(slot / @rows);
+			out := Float->New[@dim];
+			Float->Copy(out, 0, block->GetData(), (slot % @rows) * @dim, @dim);
+
+			return out;
+		}
+
+		method : IdOf(slot : Int) ~ String {
+			return @blocks->Get(slot / @rows)->GetIds()[slot % @rows];
+		}
+
+		# whether row a ranks below row b: a lower key, or an equal key and a larger id
+		method : Worse(key_a : Float, slot_a : Int, key_b : Float, slot_b : Int) ~ Bool {
+			if(key_a < key_b) {
+				return true;
+			};
+
+			if(key_a > key_b) {
+				return false;
+			};
+
+			return IdOf(slot_a)->Compare(IdOf(slot_b)) > 0;
+		}
+
+		method : SiftUp(keys : Float[], slots : Int[], pos : Int) ~ Nil {
+			key := keys[pos];
+			slot := slots[pos];
+			while(pos > 0) {
+				parent := (pos - 1) / 2;
+				if(Worse(key, slot, keys[parent], slots[parent])) {
+					keys[pos] := keys[parent];
+					slots[pos] := slots[parent];
+					pos := parent;
+				}
+				else {
+					break;
+				};
+			};
+
+			keys[pos] := key;
+			slots[pos] := slot;
+		}
+
+		method : SiftDown(keys : Float[], slots : Int[], size : Int, pos : Int) ~ Nil {
+			if(size < 2) {
+				return;
+			};
+
+			key := keys[pos];
+			slot := slots[pos];
+			done := false;
+			while(done = false) {
+				child := 2 * pos + 1;
+				if(child >= size) {
+					done := true;
+				}
+				else {
+					if(child + 1 < size & Worse(keys[child + 1], slots[child + 1], keys[child], slots[child])) {
+						child += 1;
+					};
+
+					if(Worse(keys[child], slots[child], key, slot)) {
+						keys[pos] := keys[child];
+						slots[pos] := slots[child];
+						pos := child;
+					}
+					else {
+						done := true;
+					};
+				};
+			};
+
+			keys[pos] := key;
+			slots[pos] := slot;
+		}
+
+		#~
+		Writes the index to a file: a 12-byte header (the tag OVIX, a format byte, three reserved zero bytes, a CRC32 of the body), then the body (dimension, metric, count, and each id with its vector) through System.IO.Serializer.
+		@param filename file to write
+		@return true if written, false if the index is invalid or the file cannot be written
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(@dim < 1) {
+				return Fail("the index has no valid dimension");
+			};
+
+			if(filename = Nil | filename->Size() = 0) {
+				return Fail("file name is Nil or empty");
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@dim);
+			serializer->Write(@metric);
+			serializer->Write(@count);
+			each(slot : @count) {
+				serializer->Write(IdOf(slot)->ToByteArray());
+				serializer->Write(RowOf(slot));
+			};
+
+			body := serializer->Serialize();
+			crc := Byte->CRC32(body);
+			file := Byte->New[12 + body->Size()];
+			file[0] := 'O'->As(Byte);
+			file[1] := 'V'->As(Byte);
+			file[2] := 'I'->As(Byte);
+			file[3] := 'X'->As(Byte);
+			file[4] := 1->As(Byte);
+			file[8] := ByteOf(crc, 24);
+			file[9] := ByteOf(crc, 16);
+			file[10] := ByteOf(crc, 8);
+			file[11] := ByteOf(crc, 0);
+			Byte->Copy(file, 12, body, 0, body->Size());
+
+			if(<>System.IO.Filesystem.FileWriter->WriteFile(filename, file)) {
+				return Fail("cannot write '{$filename}'");
+			};
+
+			@error := "";
+			return true;
+		}
+
+		function : ByteOf(value : Int, shift : Int) ~ Byte {
+			return ((value >>> shift) % 256)->As(Byte);
+		}
+
+		#~
+		Reads an index written by Store. A file that is missing, is not an index, is from a newer format, or fails its CRC32 (truncated, or damaged) gives Nil rather than ending the program.
+		@param filename file to read
+		@return the index, or Nil
+		~#
+		function : Load(filename : String) ~ VectorIndex {
+			if(filename = Nil | filename->Size() = 0) {
+				return Nil;
+			};
+
+			file := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(file = Nil | file->Size() < 13) {
+				return Nil;
+			};
+
+			if(file[0] <> 'O'->As(Byte) | file[1] <> 'V'->As(Byte) | file[2] <> 'I'->As(Byte) | file[3] <> 'X'->As(Byte) | file[4] <> 1->As(Byte) | file[5] <> 0->As(Byte) | file[6] <> 0->As(Byte) | file[7] <> 0->As(Byte)) {
+				return Nil;
+			};
+
+			body := Byte->New[file->Size() - 12];
+			Byte->Copy(body, 0, file, 12, body->Size());
+			crc := Byte->CRC32(body);
+			if(file[8] <> ByteOf(crc, 24) | file[9] <> ByteOf(crc, 16) | file[10] <> ByteOf(crc, 8) | file[11] <> ByteOf(crc, 0)) {
+				return Nil;
+			};
+
+			index : VectorIndex;
+			try {
+				index := Decode(body);
+			}
+			on(e : System.Error) {
+				index := Nil;
+			};
+
+			return index;
+		}
+
+		function : Decode(body : Byte[]) ~ VectorIndex {
+			deserializer := System.IO.Deserializer->New(body);
+			dim := deserializer->ReadInt();
+			code := deserializer->ReadInt();
+			count := deserializer->ReadInt();
+			if(dim < 1 | dim > Limits->MAX_DIMENSION | code < 0 | code > 2 | count < 0) {
+				return Nil;
+			};
+
+			metric := VectorMetric->COSINE;
+			if(code = 1) {
+				metric := VectorMetric->DOT;
+			}
+			else if(code = 2) {
+				metric := VectorMetric->L2;
+			};
+
+			index := VectorIndex->New(dim, metric);
+			each(i : count) {
+				id_bytes := deserializer->ReadByteArray();
+				vector := deserializer->ReadFloatArray();
+				if(id_bytes = Nil | vector = Nil | id_bytes->Size() = 0) {
+					return Nil;
+				};
+
+				id := String->New(id_bytes);
+				if(index->Contains(id) | <>index->Add(id, vector)) {
+					return Nil;
+				};
+			};
+
+			return index;
+		}
+	}
+}

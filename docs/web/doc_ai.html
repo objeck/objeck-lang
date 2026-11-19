@@ -1011,6 +1011,44 @@ c-&gt;Save("recall_vs_c.svg");
 loss := Chart-&gt;LossCurve("Training loss", ["lr=0.1", "lr=0.01"], losses);  # rows = series, columns = epochs
 </code></pre>
     <hr class="section-end">
+    <h4 id="local-vector-search-systemmlvectorsearch">Local vector search (System.ML.VectorSearch)</h4>
+    <p>A local index for retrieval over your own documents, with no hosted vector store: keep an embedding per document under a string id and ask for the closest ones to a query vector. It is <code>ml_vector.obl</code> (<code>-lib ml_vector,gen_collect</code> or <code>-lib @ai</code>) and needs nothing from <code>System.ML</code>. The vectors can come from anywhere that gives a <code>Float[]</code>: <code>BertEmbedder</code> (see <a href="#bert-tokens-and-sentence-embeddings">BERT tokens and sentence embeddings</a>), the OpenAI, Gemini and Ollama embedding calls, or a file.</p>
+<pre class="line-numbers"><code class="language-cpp">use System.ML.VectorSearch;
+
+index := VectorIndex-&gt;New(384, VectorMetric-&gt;COSINE);   # DOT and L2 too
+index-&gt;Add("doc-1", embedding_1);      # Float[] of exactly 384 values; false if refused
+index-&gt;Add("doc-2", embedding_2);
+
+hits := index-&gt;Search(query_embedding, 5);     # the 5 closest, closest first
+each(i : hits) {
+  "{$hits-&gt;Get(i)-&gt;GetId()}  {$hits-&gt;Get(i)-&gt;GetScore()}"-&gt;PrintLine();
+};
+
+index-&gt;Remove("doc-1");
+index-&gt;Store("docs.vix");
+loaded := VectorIndex-&gt;Load("docs.vix");       # Nil if the file is not a good index
+</code></pre>
+    <ul>
+     <li><strong>Metrics.</strong> <code>COSINE</code> and <code>DOT</code> score higher-is-closer (the cosine similarity or the dot product); <code>L2</code> scores the Euclidean distance, so lower is closer. <code>Search</code> returns the hits closest first for all three.</li>
+     <li><strong>Exact.</strong> A search scans every vector, so it always returns the true top k; there is no approximate mode. Ties on the score are broken by id, smallest first, so the answer does not depend on the order vectors were added or removed in. That holds for bit-identical scores: vectors that tie only mathematically (parallel vectors of different length under <code>COSINE</code>, say) can differ in the last bit and then rank by that bit, not by id. <code>COSINE</code> scores are clamped to [-1, 1]. <code>Add</code> of an id that is already there replaces its vector, and <code>Get</code> and <code>Add</code> copy, so the caller's arrays never alias the index.</li>
+     <li><strong>Bad input returns a value.</strong> A wrong-length, <code>Nil</code>, NaN or infinite vector, a <code>Nil</code> or empty id, <code>k</code> below 1 and an index created with a dimension below 1 never end the program: <code>Add</code>, <code>Remove</code> and <code>Store</code> return <code>false</code>, <code>Search</code> returns an empty <code>Vector</code> (never <code>Nil</code>) and <code>Get</code> returns <code>Nil</code>, and the index's <code>GetError()</code> says why. <code>Load</code> is a function with no index to ask, so it returns <code>Nil</code> and gives no reason. Cosine scores a zero-length vector as 0.</li>
+     <li><strong>Value range.</strong> A nonzero value must have a magnitude between 1e-100 and 1e100 (zero is fine); <code>Add</code> and <code>Search</code> refuse anything else, and say so. Past that range a squared length overflows or underflows, so a cosine would silently read 0 and a dot product could turn NaN and break the ranking. Rescale such data first. Inside the range every score is finite.</li>
+     <li><strong>Files.</strong> <code>Store</code> writes a small header (a format tag and a CRC32 of the body) and then the body through <code>System.IO.Serializer</code>, the path the <code>System.ML</code> models use. <code>Load</code> checks the tag, the three reserved header bytes (zero) and the CRC32 <em>before</em> it decompresses anything, so a missing, truncated, damaged or foreign file gives <code>Nil</code>. (The <code>System.ML</code> model loaders cannot do that yet: see <a href="https://github.com/objeck/objeck-lang/blob/master/docs/LIBRARY_BACKLOG_2026_11.md" target="_blank">LIBRARY_BACKLOG_2026_11.md</a> item 1.)</li>
+     <li><strong>Memory.</strong> Objeck's <code>Float</code> is 64 bits, so a vector of 384 values takes 3 KB: 100,000 of them take about 307 MB, plus the ids. The first <code>Add</code> at the largest dimension (1,048,576) allocates a 128 MB block, and <code>Load</code> holds the file, its body and the decoded vectors at once, about three times the file size at its peak.</li>
+     <li><strong>Threads.</strong> An index is not thread-safe: <code>Search</code> records a refusal in the index, so concurrent calls, or a search beside <code>Add</code> or <code>Remove</code>, need the caller's lock.</li>
+    </ul>
+    <p>Measured on a Ryzen 9 7950X3D (Windows, JIT on, <code>-opt s3</code>), random vectors of 384 values, one thread, 20 queries after a warm-up, top 10:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Vectors</th><th>Search (cosine, dot or L2)</th><th>Build by <code>Add</code></th><th><code>Store</code> / file</th><th><code>Load</code></th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Vectors">20,000</td><td data-label="Search (cosine, dot or L2)">8.8 ms</td><td data-label="Build by Add">0.27 s</td><td data-label="Store / file"></td><td data-label="Load"></td></tr>
+      <tr><td data-label="Vectors">100,000</td><td data-label="Search (cosine, dot or L2)">44 ms (about 23 queries/s)</td><td data-label="Build by Add">1.4 s</td><td data-label="Store / file">7.0 s / 295 MB</td><td data-label="Load">1.5 s</td></tr>
+     </tbody>
+    </table>
+    <p>The three metrics cost the same, and a four-accumulator unrolled inner loop was no faster: at 100,000 x 384 a search streams 307 MB, so it is limited by memory bandwidth (about 7 GB/s) and not by arithmetic. An approximate index (HNSW) was not built: 44 ms per query is fast enough for retrieval over a document collection of this size, and an approximate answer brings recall to measure, a second file format and a build step with it. If you need far more vectors or queries per second, the next step is HNSW or an inverted-file index, not a faster scan.</p>
+    <p>A complete run (a small corpus, embedded either with a BERT model or, with nothing to download, a hashed bag of words, then queried, saved and loaded) is <a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/ml/vector_search.obs" target="_blank"><code>programs/examples/ml/vector_search.obs</code></a>. It is tested by <code>ml_vector_exact.obs</code> (against a brute-force reference, ties, <code>k</code> past the end, removals), <code>ml_vector_edges.obs</code> (value range, block boundaries, emptying an index, near-ties), <code>ml_vector_validation.obs</code> and <code>ml_vector_persist.obs</code> (round trip and corrupt files).</p>
     <h3 id="classic-ai-systemai">Classic AI (System.AI)</h3>
     <p>Search, game playing, optimization and tabular reinforcement learning — <code>-lib ai</code> (or the <code>@ai</code> alias). All stochastic algorithms are seeded for reproducible runs.</p>
 <pre class="plain">obc -src program.obs -lib ai,gen_collect -dest program.obe</pre>
@@ -1099,7 +1137,7 @@ values := mdp-&gt;GetValues();
       <tr><td data-label="Alias"><code>@web</code></td><td data-label="Expands to"><code>net_h2</code>, <code>net_quic</code>, <code>web_server</code>, <code>json_rpc</code>, <code>net_server</code>, <code>net</code>, <code>json</code>, <code>cipher</code></td><td data-label="Use for">HTTP/2, HTTP/3, the embedded server, JSON-RPC</td></tr>
       <tr><td data-label="Alias"><code>@data</code></td><td data-label="Expands to"><code>xml</code>, <code>regex</code>, <code>csv</code>, <code>query</code>, <code>rss</code>, <code>misc</code>, <code>net</code>, <code>json</code>, <code>cipher</code></td><td data-label="Use for">parsing and querying structured data</td></tr>
       <tr><td data-label="Alias"><code>@ml</code></td><td data-label="Expands to"><code>gemini</code>, <code>openai</code>, <code>ollama</code>, <code>net_server</code>, <code>misc</code>, <code>net</code>, <code>json</code>, <code>cipher</code></td><td data-label="Use for">LLM clients: OpenAI, Gemini, Ollama</td></tr>
-      <tr><td data-label="Alias"><code>@ai</code></td><td data-label="Expands to"><code>ai</code>, <code>ml</code>, <code>ml_lab</code>, <code>nlp</code>, <code>csv</code>, <code>json</code></td><td data-label="Use for">local System.ML / System.ML.Lab / System.AI / System.NLP work</td></tr>
+      <tr><td data-label="Alias"><code>@ai</code></td><td data-label="Expands to"><code>ai</code>, <code>ml</code>, <code>ml_lab</code>, <code>ml_vector</code>, <code>nlp</code>, <code>csv</code>, <code>json</code></td><td data-label="Use for">local System.ML / System.ML.Lab / System.AI / System.NLP work</td></tr>
       <tr><td data-label="Alias"><code>@vision</code></td><td data-label="Expands to"><code>opencv</code>, <code>onnx</code>, <code>nlp_onnx</code>, <code>models</code>, <code>nlp</code>, <code>json</code>, <code>cipher</code></td><td data-label="Use for">OpenCV and ONNX inference, BERT text embeddings</td></tr>
       <tr><td data-label="Alias"><code>@game</code></td><td data-label="Expands to"><code>sdl2</code>, <code>sdl_game</code>, <code>sdl_gl</code>, <code>json</code>, <code>gen_collect</code></td><td data-label="Use for">SDL games, 2D and OpenGL</td></tr>
      </tbody>
@@ -1201,6 +1239,7 @@ opencv_onnx/  demo_face.obs    demo_yolo.obs    demo_resnet.obs
       <tr><th>Area</th><th>Tests</th></tr>
      </thead>
      <tbody>
+      <tr><td data-label="Area"><code>System.ML.VectorSearch</code></td><td data-label="Tests"><code>ml_vector_exact.obs</code>, <code>ml_vector_edges.obs</code>, <code>ml_vector_validation.obs</code>, <code>ml_vector_persist.obs</code></td></tr>
       <tr><td data-label="Area"><code>System.ML</code></td><td data-label="Tests"><code>ml_*.obs</code>, e.g. <code>ml_kernel_svm_reference.obs</code> and <code>ml_one_class_svm_reference.obs</code> (against an independent reference, generated by <code>tools/ml/svm_reference/gen_reference_test.py</code>), <code>ml_outlier_*.obs</code>, <code>ml_lab_*.obs</code></td></tr>
       <tr><td data-label="Area"><code>System.AI</code></td><td data-label="Tests"><code>ai_search_test.obs</code>, <code>ai_game_test.obs</code>, <code>ai_optimize_test.obs</code>, <code>ai_rl_test.obs</code></td></tr>
       <tr><td data-label="Area"><code>System.NLP</code></td><td data-label="Tests"><code>nlp_*.obs</code>, e.g. <code>nlp_wordpiece_parity.obs</code>, <code>nlp_bpe_tokenizer.obs</code></td></tr>
