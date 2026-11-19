@@ -1,0 +1,351 @@
+# EXTRA_LIBS: models,opencv,onnx,nlp,nlp_onnx
+#~
+# BertEmbedder layer pooling: the final layer (as always), the sum of the last four hidden
+# layers and their concatenation, each with CLS or MEAN pooling.
+#
+#   - PoolLayers, the pure arithmetic, on small tensors whose answers are worked out by hand
+#     (no model), and its refusals: too few layers, POOLER, Nil, a size that does not fit;
+#   - data/bert/tiny_bert_layers.onnx, which adds hidden_states.0 .. hidden_states.5 to the
+#     BERT-shaped tiny model (gen_tiny_bert.py: hidden_states.k = last_hidden_state +
+#     (5 - k) * (j + 1) / 8 on hidden dimension j, so the layers are unlike each other and
+#     hidden_states.5 is last_hidden_state): SUM_LAST_4 and CONCAT_LAST_4 with CLS and MEAN
+#     equal what this test computes from the formula alone, LAST still equals the old answer,
+#     and a layer strategy given per call or set on the embedder agree;
+#   - data/bert/tiny_bert.onnx, which has no hidden layers: HasHiddenLayers is false and a
+#     layer strategy other than LAST gives Nil with a reason instead of a crash.
+#
+# The models are found relative to the working directory, which every runner sets to this
+# directory.
+~#
+
+use API.Onnx;
+use API.Models;
+use Collection;
+use System.NLP;
+use System.NLP.Onnx;
+
+class NlpOnnxLayers {
+	@ok : Bool;
+	@tokenizer : WordPieceTokenizer;
+
+	function : Main(args : String[]) ~ Nil {
+		t := NlpOnnxLayers->New();
+		t->Run();
+	}
+
+	New() {
+		@ok := true;
+	}
+
+	method : Check(name : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	method : LibraryPresent() ~ Bool {
+		dir := Runtime->GetProperty("lib_dir");
+		if(dir = Nil) {
+			return false;
+		};
+
+		base := "{$dir}native/libobjk_onnx";
+		return System.IO.Filesystem.File->Exists("{$base}.dll") |
+			System.IO.Filesystem.File->Exists("{$base}.so") |
+			System.IO.Filesystem.File->Exists("{$base}.dylib");
+	}
+
+	method : Run() ~ Nil {
+		Arithmetic();
+
+		if(<>LibraryPresent()) {
+			"SKIP: libobjk_onnx is not deployed (model checks not run)"->PrintLine();
+			if(<>@ok) {
+				Runtime->Exit(1);
+			};
+			return;
+		};
+
+		@tokenizer := WordPieceTokenizer->New("data/bert/vocab.txt");
+		if(<>@tokenizer->IsLoaded()) {
+			"FAIL: data/bert/vocab.txt did not load; run from programs/regression"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		LayerModel();
+		PlainModel();
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	method : Same(got : Float[,], want : Float[], row : Int) ~ Bool {
+		each(j : want) {
+			if(got[row, j] <> want[j]) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	# --- no model: answers worked out by hand ---
+
+	method : Arithmetic() ~ Nil {
+		# 4 layers, batch 1, sequence 2, dim 2; each layer is the one before it times 10, the first is
+		# 1 2 / 3 4, so a layer's CLS is (10^l, 2 * 10^l) and its mean (2 * 10^l, 3 * 10^l)
+		stacked := [1.0, 2.0, 3.0, 4.0,
+			10.0, 20.0, 30.0, 40.0,
+			100.0, 200.0, 300.0, 400.0,
+			1000.0, 2000.0, 3000.0, 4000.0];
+		mask := [1, 1];
+		cls := BertEmbedder->Pooling->CLS;
+		mean := BertEmbedder->Pooling->MEAN;
+
+		last := BertEmbedder->PoolLayers(stacked, 4, 1, 2, 2, mask, cls, BertEmbedder->Layers->LAST);
+		Check("LAST + CLS is the final layer's first token (1000, 2000)", last <> Nil & last[0, 0] = 1000.0 & last[0, 1] = 2000.0);
+		last := BertEmbedder->PoolLayers(stacked, 4, 1, 2, 2, mask, mean, BertEmbedder->Layers->LAST);
+		Check("LAST + MEAN is the final layer's mean (2000, 3000)", last[0, 0] = 2000.0 & last[0, 1] = 3000.0);
+
+		sum := BertEmbedder->PoolLayers(stacked, 4, 1, 2, 2, mask, cls, BertEmbedder->Layers->SUM_LAST_4);
+		Check("SUM_LAST_4 + CLS is (1111, 2222)", sum[0, 0] = 1111.0 & sum[0, 1] = 2222.0);
+		sum := BertEmbedder->PoolLayers(stacked, 4, 1, 2, 2, mask, mean, BertEmbedder->Layers->SUM_LAST_4);
+		Check("SUM_LAST_4 + MEAN is (2222, 3333)", sum[0, 0] = 2222.0 & sum[0, 1] = 3333.0);
+
+		cat := BertEmbedder->PoolLayers(stacked, 4, 1, 2, 2, mask, cls, BertEmbedder->Layers->CONCAT_LAST_4);
+		dims := cat->Size();
+		Check("CONCAT_LAST_4 is 4 x dim wide", dims[0] = 1 & dims[1] = 8);
+		Check("CONCAT_LAST_4 + CLS is the layers' first tokens, oldest first",
+			cat[0, 0] = 1.0 & cat[0, 1] = 2.0 & cat[0, 2] = 10.0 & cat[0, 3] = 20.0 &
+			cat[0, 4] = 100.0 & cat[0, 5] = 200.0 & cat[0, 6] = 1000.0 & cat[0, 7] = 2000.0);
+		cat := BertEmbedder->PoolLayers(stacked, 4, 1, 2, 2, mask, mean, BertEmbedder->Layers->CONCAT_LAST_4);
+		Check("CONCAT_LAST_4 + MEAN is the layers' means, oldest first",
+			cat[0, 0] = 2.0 & cat[0, 1] = 3.0 & cat[0, 2] = 20.0 & cat[0, 3] = 30.0 &
+			cat[0, 4] = 200.0 & cat[0, 5] = 300.0 & cat[0, 6] = 2000.0 & cat[0, 7] = 3000.0);
+
+		# padding is excluded from the mean in every layer
+		padded := BertEmbedder->PoolLayers(stacked, 4, 1, 2, 2, [1, 0], mean, BertEmbedder->Layers->SUM_LAST_4);
+		Check("a padded token does not enter the mean: (1111, 2222)", padded[0, 0] = 1111.0 & padded[0, 1] = 2222.0);
+
+		# more than four layers: only the last four count
+		deep := [7.0, 7.0, 7.0, 7.0,
+			1.0, 2.0, 3.0, 4.0, 10.0, 20.0, 30.0, 40.0, 100.0, 200.0, 300.0, 400.0, 1000.0, 2000.0, 3000.0, 4000.0];
+		five := BertEmbedder->PoolLayers(deep, 5, 1, 2, 2, mask, cls, BertEmbedder->Layers->SUM_LAST_4);
+		Check("a fifth, older layer is ignored", five[0, 0] = 1111.0 & five[0, 1] = 2222.0);
+		final := BertEmbedder->PoolLayers(deep, 5, 1, 2, 2, mask, cls, BertEmbedder->Layers->LAST);
+		Check("LAST over five layers is the newest", final[0, 0] = 1000.0 & final[0, 1] = 2000.0);
+
+		# two rows
+		two := [1.0, 1.0, 2.0, 2.0,  3.0, 3.0, 4.0, 4.0,
+			5.0, 5.0, 6.0, 6.0,  7.0, 7.0, 8.0, 8.0,
+			9.0, 9.0, 10.0, 10.0,  11.0, 11.0, 12.0, 12.0,
+			13.0, 13.0, 14.0, 14.0,  15.0, 15.0, 16.0, 16.0];
+		rows := BertEmbedder->PoolLayers(two, 4, 2, 2, 2, [1, 1, 1, 0], cls, BertEmbedder->Layers->SUM_LAST_4);
+		# layers' first tokens: row 0 = 1 + 5 + 9 + 13 = 28; row 1 = 3 + 7 + 11 + 15 = 36
+		Check("two rows sum row by row", rows[0, 0] = 28.0 & rows[1, 1] = 36.0);
+
+		# refusals are Nil, never a crash
+		Check("three layers cannot make SUM_LAST_4", BertEmbedder->PoolLayers([1.0, 1.0, 1.0, 1.0, 1.0, 1.0], 3, 1, 1, 2, [1], cls, BertEmbedder->Layers->SUM_LAST_4) = Nil);
+		Check("three layers still make LAST", BertEmbedder->PoolLayers([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], 3, 1, 1, 2, [1], cls, BertEmbedder->Layers->LAST) <> Nil);
+		Check("POOLER is not a layer pooling", BertEmbedder->PoolLayers(stacked, 4, 1, 2, 2, mask, BertEmbedder->Pooling->POOLER, BertEmbedder->Layers->LAST) = Nil);
+		Check("a Nil tensor is refused", BertEmbedder->PoolLayers(Nil, 4, 1, 2, 2, mask, cls, BertEmbedder->Layers->LAST) = Nil);
+		Check("a tensor of the wrong size is refused", BertEmbedder->PoolLayers(stacked, 4, 1, 2, 3, mask, cls, BertEmbedder->Layers->LAST) = Nil);
+		Check("MEAN with no mask is refused", BertEmbedder->PoolLayers(stacked, 4, 1, 2, 2, Nil, mean, BertEmbedder->Layers->LAST) = Nil);
+		Check("zero layers is refused", BertEmbedder->PoolLayers(stacked, 0, 1, 2, 2, mask, cls, BertEmbedder->Layers->LAST) = Nil);
+	}
+
+	# --- the closed form of data/bert/gen_tiny_bert.py ---
+
+	function : WordValue(i : Int, j : Int) ~ Float {
+		return ((i * 7 + j * 3) % 17 - 8)->As(Float) / 8.0;
+	}
+
+	function : TypeValue(t : Int, j : Int) ~ Float {
+		return ((t * 5 + j) % 5 - 2)->As(Float) / 16.0;
+	}
+
+	function : PosValue(p : Int, j : Int) ~ Float {
+		return ((p * 3 + j * 5) % 13 - 6)->As(Float) / 32.0;
+	}
+
+	# hidden_states.k at position s: the final hidden state plus the layer's offset
+	function : Layer(e : TokenEncoding, k : Int, s : Int, j : Int) ~ Float {
+		ids := e->GetIds();
+		mask := e->GetAttentionMask();
+		types := e->GetTokenTypeIds();
+		v := WordValue(ids[s], j) + PosValue(s, j) + 0.25 * mask[s]->As(Float) + TypeValue(types[s], j);
+		return v + (5 - k)->As(Float) * (j + 1)->As(Float) / 8.0;
+	}
+
+	# a layer's pooled vector: CLS (0) or MEAN (1)
+	function : Pooled(e : TokenEncoding, k : Int, mean : Bool) ~ Float[] {
+		out := Float->New[8];
+		if(<>mean) {
+			for(j := 0; j < 8; j += 1;) {
+				out[j] := Layer(e, k, 0, j);
+			};
+			return out;
+		};
+
+		mask := e->GetAttentionMask();
+		real := 0;
+		each(s : mask) {
+			if(mask[s] = 1) {
+				real += 1;
+				for(j := 0; j < 8; j += 1;) {
+					out[j] += Layer(e, k, s, j);
+				};
+			};
+		};
+		for(j := 0; j < 8; j += 1;) {
+			out[j] := out[j] / real->As(Float);
+		};
+		return out;
+	}
+
+	# what a strategy should give for an encoding: 0 = LAST, 1 = SUM_LAST_4, 2 = CONCAT_LAST_4
+	function : Expected(e : TokenEncoding, strategy : Int, mean : Bool) ~ Float[] {
+		if(strategy = 0) {
+			return Pooled(e, 5, mean);
+		};
+
+		if(strategy = 1) {
+			out := Float->New[8];
+			for(k := 2; k <= 5; k += 1;) {
+				one := Pooled(e, k, mean);
+				for(j := 0; j < 8; j += 1;) {
+					out[j] += one[j];
+				};
+			};
+			return out;
+		};
+
+		out := Float->New[32];
+		for(k := 2; k <= 5; k += 1;) {
+			one := Pooled(e, k, mean);
+			for(j := 0; j < 8; j += 1;) {
+				out[(k - 2) * 8 + j] := one[j];
+			};
+		};
+		return out;
+	}
+
+	method : Worst(X : Float[,], encodings : TokenEncoding[], strategy : Int, mean : Bool) ~ Float {
+		if(X = Nil) {
+			return 1000.0;
+		};
+		width := 8;
+		if(strategy = 2) {
+			width := 32;
+		};
+		dims := X->Size();
+		if(dims[0] <> encodings->Size() | dims[1] <> width) {
+			return 1000.0;
+		};
+
+		worst := 0.0;
+		each(r : encodings) {
+			want := Expected(encodings[r], strategy, mean);
+			each(j : want) {
+				diff := (X[r, j] - want[j])->Abs();
+				if(diff > worst) {
+					worst := diff;
+				};
+			};
+		};
+		return worst;
+	}
+
+	method : LayerModel() ~ Nil {
+		embedder := BertEmbedder->New("data/bert/tiny_bert_layers.onnx", "data/bert/vocab.txt", 8);
+		Check("tiny_bert_layers.onnx opens", embedder->IsOpen());
+		if(<>embedder->IsOpen()) {
+			error := embedder->GetError();
+			"  {$error}"->PrintLine();
+			return;
+		};
+		Check("it exports its hidden layers", embedder->HasHiddenLayers());
+		Check("LAST is the default", embedder->GetLayers() = BertEmbedder->Layers->LAST);
+		Check("the embedding is 8 long, or 32 for CONCAT_LAST_4", embedder->GetEmbeddingSize(BertEmbedder->Layers->LAST) = 8 &
+			embedder->GetEmbeddingSize(BertEmbedder->Layers->SUM_LAST_4) = 8 & embedder->GetEmbeddingSize(BertEmbedder->Layers->CONCAT_LAST_4) = 32);
+
+		texts := ["", "hello", "He's unaffable", "The quick brown fox jumped over the lazy dog!"];
+		encodings := @tokenizer->EncodeBatch(texts, 8);
+
+		cls := BertEmbedder->Pooling->CLS;
+		mean := BertEmbedder->Pooling->MEAN;
+		strategies := [BertEmbedder->Layers->LAST, BertEmbedder->Layers->SUM_LAST_4, BertEmbedder->Layers->CONCAT_LAST_4];
+		names := ["LAST", "SUM_LAST_4", "CONCAT_LAST_4"];
+		each(s : strategies) {
+			X := embedder->Embed(texts, cls, strategies[s]);
+			worst := Worst(X, encodings, s, false);
+			Check("{$(names[s])} + CLS equals the formula ({$worst})", worst < 0.000001);
+			X := embedder->Embed(texts, mean, strategies[s]);
+			worst := Worst(X, encodings, s, true);
+			Check("{$(names[s])} + MEAN equals the formula ({$worst})", worst < 0.000001);
+		};
+
+		# the old calls are untouched: LAST, and a pair's token types still arrive
+		old := embedder->Embed(texts, mean);
+		new_way := embedder->Embed(texts, mean, BertEmbedder->Layers->LAST);
+		same := true;
+		each(r : texts) {
+			each(j : 8) {
+				if(old[r, j] <> new_way[r, j]) {
+					same := false;
+				};
+			};
+		};
+		Check("Embed(texts, pooling) is LAST", same);
+		pooler := embedder->Embed(texts, BertEmbedder->Pooling->POOLER);
+		Check("POOLER with LAST layers still works", pooler <> Nil);
+		Check("POOLER with another layer strategy is refused with a reason",
+			embedder->Embed(texts, BertEmbedder->Pooling->POOLER, BertEmbedder->Layers->SUM_LAST_4) = Nil & embedder->GetError() <> Nil);
+
+		# set on the embedder, with batches of every size
+		embedder->SetLayers(BertEmbedder->Layers->CONCAT_LAST_4);
+		embedder->SetPooling(mean);
+		Check("SetLayers is kept", embedder->GetLayers() = BertEmbedder->Layers->CONCAT_LAST_4);
+		many := ["hello", "the quick brown fox", "", "He's unaffable.", "dog"];
+		embedder->SetBatchSize(5);
+		whole := embedder->Embed(many);
+		embedder->SetBatchSize(2);
+		split := embedder->Embed(many);
+		agree := whole <> Nil & split <> Nil;
+		if(agree) {
+			each(r : many) {
+				each(j : 32) {
+					if(whole[r, j] <> split[r, j]) {
+						agree := false;
+					};
+				};
+			};
+		};
+		Check("the embedder's layers apply and batch sizes agree", agree);
+		embedder->Close();
+	}
+
+	method : PlainModel() ~ Nil {
+		embedder := BertEmbedder->New("data/bert/tiny_bert.onnx", "data/bert/vocab.txt", 8);
+		Check("tiny_bert.onnx opens", embedder->IsOpen());
+		if(<>embedder->IsOpen()) {
+			return;
+		};
+
+		Check("a standard export has no hidden layers", <>embedder->HasHiddenLayers());
+		Check("LAST still works on it", embedder->Embed(["hello"]) <> Nil);
+		X := embedder->Embed(["hello"], BertEmbedder->Pooling->MEAN, BertEmbedder->Layers->SUM_LAST_4);
+		Check("SUM_LAST_4 gives Nil, not a crash", X = Nil);
+		reason := embedder->GetError();
+		Check("with a reason that names the hidden layers", reason <> Nil & reason->Has("hidden"));
+		Check("CONCAT_LAST_4 gives Nil too", embedder->Embed(["hello"], BertEmbedder->Pooling->CLS, BertEmbedder->Layers->CONCAT_LAST_4) = Nil);
+
+		# the embedder is still usable after a refusal
+		Check("and it still embeds afterwards", embedder->Embed(["hello"]) <> Nil);
+		embedder->Close();
+	}
+}

@@ -25,6 +25,10 @@ Three models, the three shapes a real export comes in:
                          (BERT as transformers / optimum export it, dynamic axes)
   tiny_bert_nopool.onnx  input_ids, attention_mask -> last_hidden_state only
                          (the DistilBERT shape: no token types, no pooler; the type term is absent)
+  tiny_bert_layers.onnx  as tiny_bert.onnx plus six more outputs, hidden_states.0 .. hidden_states.5,
+                         the intermediate layers as an export with output_hidden_states names them:
+                         hidden_states.k = last_hidden_state + (5 - k) * layer_offset(j), so the
+                         last one is last_hidden_state itself and every other layer differs
   tiny_bert_fixed.onnx   as tiny_bert.onnx but every axis fixed at [1,16]
                          (an export made without dynamic_axes)
 
@@ -78,12 +82,19 @@ def pool_bias(j):
     return (j % 3 - 1) / 8.0
 
 
+LAYERS = 6  # hidden_states.0 .. hidden_states.5
+
+
+def layer_offset(k, j):
+    return (LAYERS - 1 - k) * (j + 1) / 8.0
+
+
 def table(name, rows, cols, fn):
     values = [fn(r, c) for r in range(rows) for c in range(cols)]
     return helper.make_tensor(name, TensorProto.FLOAT, [rows, cols], values)
 
 
-def build(name, with_types, with_pooler, fixed):
+def build(name, with_types, with_pooler, fixed, layers=False):
     batch, seq = (1, 16) if fixed else ("batch", "sequence")
     positions = 16 if fixed else POSITIONS
 
@@ -95,6 +106,10 @@ def build(name, with_types, with_pooler, fixed):
     outputs = [helper.make_tensor_value_info("last_hidden_state", TensorProto.FLOAT, [batch, seq, HIDDEN])]
     if with_pooler:
         outputs.append(helper.make_tensor_value_info("pooler_output", TensorProto.FLOAT, [batch, HIDDEN]))
+
+    if layers:
+        for k in range(LAYERS):
+            outputs.append(helper.make_tensor_value_info("hidden_states.%d" % k, TensorProto.FLOAT, [batch, seq, HIDDEN]))
 
     inits = [table("word_embeddings", VOCAB, HIDDEN, word_value),
              table("position_embeddings", positions, HIDDEN, pos_value),
@@ -123,6 +138,13 @@ def build(name, with_types, with_pooler, fixed):
     else:
         nodes.append(helper.make_node("Identity", ["word_pos"], ["embedded"]))
     nodes.append(helper.make_node("Add", ["embedded", "mask_term"], ["last_hidden_state"]))
+
+    if layers:
+        for k in range(LAYERS - 1):
+            inits.append(helper.make_tensor("layer_offset_%d" % k, TensorProto.FLOAT, [HIDDEN],
+                                            [layer_offset(k, j) for j in range(HIDDEN)]))
+            nodes.append(helper.make_node("Add", ["last_hidden_state", "layer_offset_%d" % k], ["hidden_states.%d" % k]))
+        nodes.append(helper.make_node("Identity", ["last_hidden_state"], ["hidden_states.%d" % (LAYERS - 1)]))
 
     if with_pooler:
         inits.append(table("pooler_weight", HIDDEN, HIDDEN, pool_weight))
@@ -156,7 +178,7 @@ def reference(ids, mask, types, with_types):
     return hidden
 
 
-def check_with_runtime(path, with_types, with_pooler, fixed):
+def check_with_runtime(path, with_types, with_pooler, fixed, layers=False):
     try:
         import numpy as np
         import onnxruntime as ort
@@ -183,20 +205,28 @@ def check_with_runtime(path, with_types, with_pooler, fixed):
             z = sum(want[0][k] * pool_weight(k, j) for k in range(HIDDEN)) + pool_bias(j)
             if abs(math.tanh(z) - float(outputs[1][0][j])) > 1e-6:
                 sys.exit("%s: pooler_output[%d] differs from the formula" % (path, j))
+    if layers:
+        for k in range(LAYERS):
+            worst = max(abs(float(outputs[2 + k][0][s][j]) - (want[s][j] + layer_offset(k, j)
+                        if k < LAYERS - 1 else want[s][j])) for s in range(seq) for j in range(HIDDEN))
+            if worst != 0.0:
+                sys.exit("%s: hidden_states.%d differs from the formula by %g" % (path, k, worst))
     print("  checked with onnxruntime %s: matches the formula" % ort.__version__)
 
 
 def main():
     variants = [("tiny_bert.onnx", True, True, False),
                 ("tiny_bert_nopool.onnx", False, False, False),
-                ("tiny_bert_fixed.onnx", True, True, True)]
-    for file_name, with_types, with_pooler, fixed in variants:
+                ("tiny_bert_fixed.onnx", True, True, True),
+                ("tiny_bert_layers.onnx", True, True, False, True)]
+    for file_name, with_types, with_pooler, fixed, *extra in variants:
+        layers = bool(extra and extra[0])
         path = os.path.join(HERE, file_name)
-        model = build(file_name[:-5], with_types, with_pooler, fixed)
+        model = build(file_name[:-5], with_types, with_pooler, fixed, layers)
         with open(path, "wb") as out:
             out.write(model.SerializeToString())
         print("%s: %d bytes" % (file_name, os.path.getsize(path)))
-        check_with_runtime(path, with_types, with_pooler, fixed)
+        check_with_runtime(path, with_types, with_pooler, fixed, layers)
 
     with open(os.path.join(HERE, "vocab.txt"), encoding="utf-8") as fh:
         lines = fh.read().split("\n")
