@@ -1,0 +1,249 @@
+# EXTRA_LIBS: ml_report,ml_lab,ml,stats,plot,csv,json,gen_collect
+#~
+System.ML.Report Replicates: the statistics a hand-in reports, against numpy, scipy and statsmodels.
+
+For six sample sizes and levels the mean, sample standard deviation, minimum, maximum, standard
+error and t interval of the mean, the paired t-test (t, df, p, mean difference, interval, d_z,
+Hedges' g) and Welch's test must match values computed independently of this library by
+tools/report/gen_report_reference.py (numpy, scipy.stats, statsmodels). Do not edit the numbers by
+hand: regenerate them. Group b is added in reverse order with explicit seeds, so a pairing by
+position instead of by seed would fail. Also checked: non-finite values and a missing-value marker
+are counted and left out, one seed has an undefined standard deviation, a zero-variance pair is an
+invalid test, and a refused call says why and "" otherwise.
+~#
+use System.ML.Report;
+use System.ML.Lab;
+use System.Stats;
+
+class MlReportReplicates {
+	function : A(i : Int) ~ Float {
+		return ((i * 37 + 11) % 101)->As(Float) / 100.0;
+	}
+
+	function : B(i : Int) ~ Float {
+		return ((i * 53 + 7) % 89)->As(Float) / 100.0 + 0.05;
+	}
+
+	function : Near(name : String, actual : Float, expected : Float, tol : Float) ~ Bool {
+		if(actual <> actual & expected <> expected) {
+			return true;
+		};
+		diff := actual - expected;
+		if(diff < 0.0) {
+			diff := -diff;
+		};
+		scale := expected < 0.0 ? -expected : expected;
+		if(scale < 1.0) {
+			scale := 1.0;
+		};
+		if(actual = actual & diff <= tol * scale) {
+			return true;
+		};
+
+		"FAIL: {$name}: got {$actual}, expected {$expected}"->PrintLine();
+		return false;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+
+	function : Fill(n : Int, level : Float) ~ Replicates {
+		rep := Replicates->New();
+		rep->SetConfidence(level);
+		each(i : n) {
+			rep->Add("a", "m", i, A(i));
+		};
+		for(i := n - 1; i >= 0; i -= 1;) {
+			rep->Add("b", "m", i, B(i));
+		};
+
+		return rep;
+	}
+
+	# e: mean, std, min, max, se, ci low, ci high
+	# p: paired diff, t, df, p, ci low, ci high, d_z, g
+	# w: Welch diff, t, df, p, ci low, ci high
+	function : Case(name : String, n : Int, level : Float, e : Float[], p : Float[], w : Float[]) ~ Bool {
+		ok := true;
+		rep := Fill(n, level);
+		tol := 1.0e-9;
+		ok := Report(name + ": count", rep->GetCount("a", "m") = n) & ok;
+		ok := Report(name + ": missing", rep->GetMissing("a", "m") = 0) & ok;
+		ok := Near(name + " mean", rep->GetMean("a", "m"), e[0], tol) & ok;
+		ok := Near(name + " std", rep->GetStd("a", "m"), e[1], tol) & ok;
+		ok := Near(name + " min", rep->GetMin("a", "m"), e[2], tol) & ok;
+		ok := Near(name + " max", rep->GetMax("a", "m"), e[3], tol) & ok;
+		ok := Near(name + " std error", rep->GetStdError("a", "m"), e[4], tol) & ok;
+		ok := Near(name + " ci low", rep->GetCiLow("a", "m"), e[5], tol) & ok;
+		ok := Near(name + " ci high", rep->GetCiHigh("a", "m"), e[6], tol) & ok;
+
+		ok := Report(name + ": paired count", rep->GetPairedCount("a", "b", "m") = n) & ok;
+		t := rep->Paired("a", "b", "m");
+		ok := Report(name + ": paired valid " + t->GetError(), t->IsValid()) & ok;
+		ok := Near(name + " paired diff", t->GetMeanDiff(), p[0], tol) & ok;
+		ok := Near(name + " paired t", t->GetT(), p[1], tol) & ok;
+		ok := Near(name + " paired df", t->GetDf(), p[2], tol) & ok;
+		ok := Near(name + " paired p", t->GetP(), p[3], tol) & ok;
+		ok := Near(name + " paired ci low", t->GetCiLow(), p[4], tol) & ok;
+		ok := Near(name + " paired ci high", t->GetCiHigh(), p[5], tol) & ok;
+		ok := Near(name + " paired d_z", t->GetCohenD(), p[6], tol) & ok;
+		ok := Near(name + " paired g", t->GetHedgesG(), p[7], tol) & ok;
+
+		u := rep->Welch("a", "b", "m");
+		ok := Report(name + ": welch valid " + u->GetError(), u->IsValid()) & ok;
+		ok := Near(name + " welch diff", u->GetMeanDiff(), w[0], tol) & ok;
+		ok := Near(name + " welch t", u->GetT(), w[1], tol) & ok;
+		ok := Near(name + " welch df", u->GetDf(), w[2], tol) & ok;
+		ok := Near(name + " welch p", u->GetP(), w[3], tol) & ok;
+		ok := Near(name + " welch ci low", u->GetCiLow(), w[4], tol) & ok;
+		ok := Near(name + " welch ci high", u->GetCiHigh(), w[5], tol) & ok;
+
+		# the tables carry the same numbers
+		table := rep->ToResultTable("m", "m", "setting");
+		ok := Report(name + ": table rows", table <> Nil & table->Size() = 2) & ok;
+		if(table <> Nil & table->Size() = 2) {
+			ok := Near(name + " table mean", table->Get(0, table->ColumnIndex("mean")), e[0], tol) & ok;
+			ok := Near(name + " table std", table->Get(0, table->ColumnIndex("std")), e[1], tol) & ok;
+			ok := Near(name + " table ci_low", table->Get(0, table->ColumnIndex("ci_low")), e[5], tol) & ok;
+			ok := Near(name + " table ci_high", table->Get(0, table->ColumnIndex("ci_high")), e[6], tol) & ok;
+			ok := Near(name + " table n", table->Get(0, table->ColumnIndex("n")), n->As(Float), tol) & ok;
+		};
+		cmp := ResultTables->FromComparison(rep, "a", "b", "cmp");
+		ok := Report(name + ": comparison table", cmp <> Nil & cmp->Size() = 1) & ok;
+		if(cmp <> Nil & cmp->Size() = 1) {
+			ok := Near(name + " comparison diff", cmp->Get(0, cmp->ColumnIndex("mean_diff")), p[0], tol) & ok;
+			ok := Near(name + " comparison t", cmp->Get(0, cmp->ColumnIndex("t")), p[1], tol) & ok;
+			ok := Near(name + " comparison p", cmp->Get(0, cmp->ColumnIndex("p_value")), p[3], tol) & ok;
+			ok := Near(name + " comparison d", cmp->Get(0, cmp->ColumnIndex("cohen_d")), p[6], tol) & ok;
+		};
+
+		return ok;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+@@CASES@@
+
+		# ---- non-finite values and a missing-value marker (numpy over the usable values) ----
+		rep := Replicates->New();
+		rep->Add("g", "m", 0, 0.5);
+		rep->Add("g", "m", 1, Float->NaN());
+		rep->Add("g", "m", 2, 0.7);
+		rep->Add("g", "m", 3, Float->Inf());
+		rep->Add("g", "m", 4, 0.9);
+		rep->Add("g", "m", 5, Float->NegInf());
+		ok := Report("non-finite: count is 3", rep->GetCount("g", "m") = 3) & ok;
+		ok := Report("non-finite: missing is 3", rep->GetMissing("g", "m") = 3) & ok;
+		ok := Report("non-finite: all six values are kept", rep->GetValues("g", "m")->Size() = 6) & ok;
+		ok := Near("non-finite mean", rep->GetMean("g", "m"), @@NF0@@, 1.0e-12) & ok;
+		ok := Near("non-finite std", rep->GetStd("g", "m"), @@NF1@@, 1.0e-12) & ok;
+		ok := Near("non-finite min", rep->GetMin("g", "m"), @@NF2@@, 1.0e-12) & ok;
+		ok := Near("non-finite max", rep->GetMax("g", "m"), @@NF3@@, 1.0e-12) & ok;
+		ok := Near("non-finite ci low", rep->GetCiLow("g", "m"), @@NF5@@, 1.0e-9) & ok;
+		ok := Near("non-finite ci high", rep->GetCiHigh("g", "m"), @@NF6@@, 1.0e-9) & ok;
+
+		sent := Replicates->New();
+		sent->SetMissing(-1.0);
+		sent->AddRun("s", 0, ["auc"], [0.8]);
+		sent->AddRun("s", 1, ["auc"], [-1.0]);
+		sent->AddRun("s", 2, ["auc"], [0.6]);
+		sent->AddRun("s", 3, ["auc"], [0.7]);
+		ok := Report("sentinel: count is 3", sent->GetCount("s", "auc") = 3) & ok;
+		ok := Report("sentinel: missing is 1", sent->GetMissing("s", "auc") = 1) & ok;
+		ok := Near("sentinel mean", sent->GetMean("s", "auc"), @@SE0@@, 1.0e-12) & ok;
+		ok := Near("sentinel std", sent->GetStd("s", "auc"), @@SE1@@, 1.0e-12) & ok;
+
+		# ---- one seed: the mean exists, the deviation and interval do not ----
+		one := Replicates->New();
+		one->Add("x", "m", 0, 0.25);
+		ok := Report("one seed: count", one->GetCount("x", "m") = 1) & ok;
+		ok := Near("one seed mean", one->GetMean("x", "m"), 0.25, 1.0e-12) & ok;
+		ok := Report("one seed: std is NaN", one->GetStd("x", "m") <> one->GetStd("x", "m")) & ok;
+		ok := Report("one seed: ci low is NaN", one->GetCiLow("x", "m") <> one->GetCiLow("x", "m")) & ok;
+		ok := Report("one seed: ci high is NaN", one->GetCiHigh("x", "m") <> one->GetCiHigh("x", "m")) & ok;
+		ok := Near("one seed min", one->GetMin("x", "m"), 0.25, 1.0e-12) & ok;
+		one->Add("y", "m", 0, 0.5);
+		bad := one->Paired("x", "y", "m");
+		ok := Report("one seed: a paired test is invalid, with a reason", <>bad->IsValid() & bad->GetError()->Size() > 0) & ok;
+
+		# ---- no values, unknown names ----
+		empty := Replicates->New();
+		ok := Report("empty: no groups", empty->GetGroups()->Size() = 0 & empty->GetMetrics()->Size() = 0) & ok;
+		ok := Report("empty: count 0", empty->GetCount("a", "m") = 0) & ok;
+		ok := Report("empty: mean is NaN", empty->GetMean("a", "m") <> empty->GetMean("a", "m")) & ok;
+		ok := Report("empty: min is NaN", empty->GetMin("a", "m") <> empty->GetMin("a", "m")) & ok;
+		ok := Report("empty: nil names count 0", empty->GetCount(Nil, Nil) = 0) & ok;
+		ok := Report("empty: no table", ResultTables->FromReplicates(empty, "m", "t", "p") = Nil & ResultTables->GetError()->Size() > 0) & ok;
+		ok := Report("empty: no means table", ResultTables->MeansFromReplicates(empty, "t", "p") = Nil) & ok;
+		ok := Report("nil: no table", ResultTables->FromReplicates(Nil, "m", "t", "p") = Nil) & ok;
+
+		# ---- failure values: "" when fine, a reason when refused ----
+		r := Replicates->New();
+		ok := Report("fine: GetError is empty", r->GetError()->Equals("")) & ok;
+		ok := Report("an empty group is refused", <>r->Add("", "m", 0, 1.0)) & ok;
+		ok := Report("a refusal says why", r->GetError()->Size() > 0) & ok;
+		ok := Report("a Nil metric is refused", <>r->Add("a", Nil, 0, 1.0)) & ok;
+		ok := Report("a good add clears the reason", r->Add("a", "m", 0, 1.0) & r->GetError()->Equals("")) & ok;
+		ok := Report("a repeated seed is refused", <>r->Add("a", "m", 0, 2.0)) & ok;
+		ok := Report("the repeat names the seed", r->GetError()->Has("seed 0")) & ok;
+		ok := Report("the first value stays", r->GetCount("a", "m") = 1 & r->GetValues("a", "m")[0] = 1.0) & ok;
+		ok := Report("a level of 1 is refused", <>r->SetConfidence(1.0)) & ok;
+		ok := Report("a level of 0 is refused", <>r->SetConfidence(0.0)) & ok;
+		ok := Report("a NaN level is refused", <>r->SetConfidence(Float->NaN())) & ok;
+		ok := Report("the level is unchanged", r->GetConfidence() = 0.95) & ok;
+		ok := Report("a run needs one value per metric", <>r->AddRun("a", 5, ["m", "n"], [1.0])) & ok;
+		auto := Replicates->New();
+		each(i : 4) {
+			auto->Add("a", "m", 10.0 * i->As(Float));
+		};
+		seeds := auto->GetSeeds("a", "m");
+		ok := Report("automatic seeds are 0 to 3", seeds[0] = 0 & seeds[3] = 3) & ok;
+
+		# ---- a zero-variance pair is an invalid test, not a crash ----
+		same := Replicates->New();
+		each(i : 3) {
+			same->Add("p", "m", i, 0.5);
+			same->Add("q", "m", i, 0.5);
+		};
+		zero := same->Paired("p", "q", "m");
+		ok := Report("zero variance: the test is invalid, with a reason", <>zero->IsValid() & zero->GetError()->Size() > 0) & ok;
+		zcmp := ResultTables->FromComparison(same, "p", "q", "c");
+		ok := Report("zero variance: the comparison table has NaN in t", zcmp <> Nil & zcmp->Get(0, zcmp->ColumnIndex("t")) <> zcmp->Get(0, zcmp->ColumnIndex("t"))) & ok;
+
+		# ---- many settings and metrics ----
+		big := Replicates->New();
+		each(g : 40) {
+			each(m : 12) {
+				each(s : 5) {
+					big->Add("g{$g}", "m{$m}", s, (g * 7 + m * 3 + s)->As(Float));
+				};
+			};
+		};
+		ok := Report("40 settings x 12 metrics", big->GetGroups()->Size() = 40 & big->GetMetrics()->Size() = 12) & ok;
+		ok := Near("big mean", big->GetMean("g39", "m11"), 39.0 * 7.0 + 33.0 + 2.0, 1.0e-12) & ok;
+		sweep := ResultTables->MeansFromReplicates(big, "sweep", "g");
+		ok := Report("the sweep table has 40 rows and 12 columns", sweep <> Nil & sweep->Size() = 40 & sweep->GetColumnNames()->Size() = 12) & ok;
+		if(sweep <> Nil) {
+			ok := Near("sweep cell", sweep->Get(5, 3), 5.0 * 7.0 + 9.0 + 2.0, 1.0e-12) & ok;
+			ok := Near("sweep deviation", sweep->GetStd(5, 3), 1.5811388300841898, 1.0e-12) & ok;
+		};
+
+		many := Replicates->New();
+		each(i : 20000) {
+			many->Add("a", "m", i, i->As(Float));
+		};
+		ok := Report("20000 seeds in one cell", many->GetCount("a", "m") = 20000) & ok;
+		ok := Near("20000 seeds mean", many->GetMean("a", "m"), 9999.5, 1.0e-12) & ok;
+
+		if(ok = false) {
+			Runtime->Exit(1);
+		};
+		"ml_report_replicates: ok"->PrintLine();
+	}
+}

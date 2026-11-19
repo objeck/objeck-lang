@@ -1634,6 +1634,7 @@ jobs:
           ../../../compiler/lib_src/ml_embed.obs \
           ../../../compiler/lib_src/ml_lab.obs \
           ../../../compiler/lib_src/ml_vector.obs \
+          ../../../compiler/lib_src/ml_report.obs \
           ../../../compiler/lib_src/plot.obs \
           ../../../compiler/lib_src/plot_sdl.obs \
           ../../../compiler/lib_src/stats.obs \

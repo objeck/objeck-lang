@@ -1,0 +1,578 @@
+# EXTRA_LIBS: ml_report,ml_lab,ml,stats,plot,csv,json,gen_collect
+#~
+System.ML.Report Report and ResultTables: escaping, numbering, tables, figures, files and the
+degenerate cases.
+
+Escaping: text with <, >, &, quotes, backticks, pipes, asterisks, underscores, brackets,
+newlines and a heading-like line start must come out inert in HTML (entities, no tag that was
+not written by the builder) and in Markdown (a backslash before every character that could be
+markup, a line break only as <br> inside a table cell). Structure: automatic numbers and
+labels ("Chapter 4 / Experiment 1"), table and figure numbering, the contents list and its
+anchors, the alignment of numeric columns. Figures: inline SVG with unique ids, active content
+refused, PNG as base64 (the encodings were produced by Python's base64 module). Files: Save
+picks the format by extension, writes the SVG figures beside a Markdown file, and says why when
+it cannot. Degenerate input: Nil, empty tables, a header-only table, NaN cells (n/a), a table of
+2000 rows, a report with nothing in it. A refused call returns false and GetError() says why;
+"" otherwise.
+~#
+use System.ML.Report;
+use System.ML.Lab;
+use System.Plot;
+use System.IO.Filesystem;
+
+class MlReportBuild {
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+
+	function : Has(name : String, text : String, fragment : String) ~ Bool {
+		if(text->Has(fragment)) {
+			return true;
+		};
+
+		"FAIL: {$name}: missing '{$fragment}'"->PrintLine();
+		return false;
+	}
+
+	function : Lacks(name : String, text : String, fragment : String) ~ Bool {
+		if(<>text->Has(fragment)) {
+			return true;
+		};
+
+		"FAIL: {$name}: found '{$fragment}'"->PrintLine();
+		return false;
+	}
+
+	function : Dim(grid : String[,], axis : Int) ~ Int {
+		dims := grid->Size();
+		return dims[axis];
+	}
+
+	function : Count(text : String, fragment : String) ~ Int {
+		return text->Count(fragment);
+	}
+
+	function : Same(name : String, actual : String, expected : String) ~ Bool {
+		if(actual->Equals(expected)) {
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		"--- actual ---"->PrintLine();
+		actual->PrintLine();
+		"--- expected ---"->PrintLine();
+		expected->PrintLine();
+		return false;
+	}
+
+	function : Escaping() ~ Bool {
+		ok := true;
+		hostile := "a < b & c > d \"q\" 'x' `tick` | pipe *star* _under_ [link](http://x) <script>alert(1)</script>";
+		r := Report->New("T <i>& \"title\"");
+		r->SetAuthor("Eve <eve@example.com>");
+		r->SetDate("2026 & later");
+		ok := Report("hostile paragraph accepted", r->AddParagraph(hostile)) & ok;
+		ok := Report("hostile section accepted", r->AddSection(1, "Ch <1>", "H & <b>bold</b>")) & ok;
+		ok := Report("hostile bullets accepted", r->AddBullets(["<li>x</li>", "a | b"])) & ok;
+		ok := Report("hostile code accepted", r->AddCode("</code></pre><script>x</script>\n```\n& done")) & ok;
+		ok := Report("hostile note accepted", r->AddNote("<img src=x onerror=alert(1)>")) & ok;
+		grid := String->New[3, 3];
+		grid[0, 0] := "name";
+		grid[0, 1] := "a|b";
+		grid[0, 2] := "<th>";
+		grid[1, 0] := "x\ny";
+		grid[1, 1] := "&amp; \"q\" 'a'";
+		grid[1, 2] := "`code` | pipe";
+		grid[2, 0] := "# not a heading";
+		grid[2, 1] := "1. not a list";
+		grid[2, 2] := "-5";
+		ok := Report("hostile table accepted", r->AddTable("cap <b> | & \"q\"", grid)) & ok;
+
+		html := r->ToHtml();
+		ok := Has("html: paragraph", html, "<p>a &lt; b &amp; c &gt; d &quot;q&quot; &#39;x&#39; `tick` | pipe *star* _under_ [link](http://x) &lt;script&gt;alert(1)&lt;/script&gt;</p>") & ok;
+		ok := Has("html: title", html, "<title>T &lt;i&gt;&amp; &quot;title&quot;</title>") & ok;
+		ok := Has("html: h1", html, "<h1 class=\"title\">T &lt;i&gt;&amp; &quot;title&quot;</h1>") & ok;
+		ok := Has("html: author", html, "<p class=\"author\">Eve &lt;eve@example.com&gt;</p>") & ok;
+		ok := Has("html: author meta", html, "<meta name=\"author\" content=\"Eve &lt;eve@example.com&gt;\">") & ok;
+		ok := Has("html: date", html, "<p class=\"date\">2026 &amp; later</p>") & ok;
+		ok := Has("html: heading", html, "<span class=\"num\">Ch &lt;1&gt;:</span> H &amp; &lt;b&gt;bold&lt;/b&gt;</h2>") & ok;
+		ok := Has("html: bullets", html, "<li>&lt;li&gt;x&lt;/li&gt;</li>") & ok;
+		ok := Has("html: code", html, "<pre><code>&lt;/code&gt;&lt;/pre&gt;&lt;script&gt;x&lt;/script&gt;\n```\n&amp; done</code></pre>") & ok;
+		ok := Has("html: note", html, "&lt;img src=x onerror=alert(1)&gt;") & ok;
+		ok := Has("html: table caption", html, "<caption>Table 1. cap &lt;b&gt; | &amp; &quot;q&quot;</caption>") & ok;
+		ok := Has("html: header cell with pipe", html, "<th scope=\"col\">a|b</th>") & ok;
+		ok := Has("html: header cell with tag", html, "<th scope=\"col\">&lt;th&gt;</th>") & ok;
+		ok := Has("html: newline in a cell", html, "<td>x<br>y</td>") & ok;
+		ok := Has("html: entity text stays text", html, "<td>&amp;amp; &quot;q&quot; &#39;a&#39;</td>") & ok;
+		ok := Has("html: backtick and pipe cell", html, "<td>`code` | pipe</td>") & ok;
+		ok := Has("html: heading-like cell", html, "<td># not a heading</td>") & ok;
+		ok := Lacks("html: no script element", html, "<script") & ok;
+		ok := Lacks("html: no raw img element", html, "<img") & ok;
+		ok := Lacks("html: no raw bold", html, "<b>") & ok;
+		ok := Lacks("html: no raw italic", html, "<i>") & ok;
+		ok := Report("html: one table", Count(html, "<table") = 1) & ok;
+
+		md := r->ToMarkdown();
+		ok := Has("md: title", md, "# T \\<i\\>\\& \"title\"\n") & ok;
+		ok := Has("md: author", md, "Eve \\<eve@example.com\\>\n") & ok;
+		ok := Has("md: paragraph", md, "a \\< b \\& c \\> d \"q\" 'x' \\`tick\\` \\| pipe \\*star\\* \\_under\\_ \\[link\\](http://x) \\<script\\>alert(1)\\</script\\>\n") & ok;
+		ok := Has("md: heading", md, "## Ch \\<1\\>: H \\& \\<b\\>bold\\</b\\>\n") & ok;
+		ok := Has("md: bullet", md, "- \\<li\\>x\\</li\\>\n- a \\| b\n") & ok;
+		ok := Has("md: code uses a longer fence", md, "````\n</code></pre><script>x</script>\n```\n& done\n````\n") & ok;
+		ok := Has("md: note", md, "> **Note.** \\<img src=x onerror=alert(1)\\>\n") & ok;
+		ok := Has("md: table header", md, "| name | a\\|b | \\<th\\> |\n") & ok;
+		ok := Has("md: cell with a newline", md, "| x<br>y | \\&amp; \"q\" 'a' | \\`code\\` \\| pipe |\n") & ok;
+		ok := Has("md: line-start markup", md, "| \\# not a heading | 1\\. not a list | -5 |\n") & ok;
+		ok := Has("md: caption", md, "**Table 1.** cap \\<b\\> \\| \\& \"q\"\n") & ok;
+		# without its code block (a fence shows < as it is), the only raw HTML in the Markdown is
+		# what the builder wrote: anchors and line breaks. Every other < has a backslash before it.
+		rm := Report->New("T <i>& \"title\"");
+		rm->AddParagraph(hostile);
+		rm->AddSection(1, "Ch <1>", "H & <b>bold</b>");
+		rm->AddBullets(["<li>x</li>", "a | b"]);
+		rm->AddNote("<img src=x onerror=alert(1)>");
+		rm->AddTable("cap <b> | & \"q\"", grid);
+		stripped := rm->ToMarkdown()->ReplaceAll("\\<", "")->ReplaceAll("<a id=\"sec-1\"></a>", "")->ReplaceAll("<a id=\"tbl-1\"></a>", "")->ReplaceAll("<br>", "");
+		ok := Lacks("md: every other < is escaped", stripped, "<") & ok;
+
+		# a paragraph that looks like a heading, a list, a quote, a rule or a setext underline
+		r2 := Report->New();
+		r2->AddParagraph("# h1\n- item\n+ plus\n> quote\n1. one\n2) two\n===\n---\n    indented\n3.5 fine");
+		md2 := r2->ToMarkdown();
+		ok := Same("md: block markup at line start is escaped", md2, "\\# h1\n\\- item\n\\+ plus\n\\> quote\n1\\. one\n2\\) two\n\\===\n\\---\nindented\n3.5 fine\n\n") & ok;
+		r3 := Report->New();
+		r3->AddParagraph("first\n\nsecond\r\nthird");
+		ok := Has("html: blank line splits paragraphs", r3->ToHtml(), "<p>first</p>\n<p>second third</p>\n") & ok;
+		ok := Same("md: blank line splits paragraphs", r3->ToMarkdown(), "first\n\nsecond\nthird\n\n") & ok;
+
+		return ok;
+	}
+
+	function : Numbering() ~ Bool {
+		ok := true;
+		r := Report->New("Hand-in");
+		ok := Report("section 1", r->AddSection(1, "Chapter 4", "Clustering")) & ok;
+		ok := Report("section 1.1", r->AddSection(2, "Experiment 1", "Choosing k")) & ok;
+		r->AddParagraph("Text.");
+		grid := [["a", "b"], ["1", "2"]];
+		r->AddTable("First", grid);
+		ok := Report("section 1.2", r->AddSection(2, "Experiment 2", "Seeds")) & ok;
+		r->AddTable("Second", grid);
+		ok := Report("section 2 without a label", r->AddSection(1, "Discussion")) & ok;
+		ok := Report("section 2.1 without a label", r->AddSection(2, "Limits")) & ok;
+		ok := Report("a level-3 section", r->AddSection(3, "Detail")) & ok;
+		ok := Report("section 3 labelled", r->AddSection(1, "Appendix A", "Data")) & ok;
+		ok := Report("a level-2 label under it", r->AddSection(2, "Part 1", "Raw")) & ok;
+		ok := Report("sections counted", r->GetSectionCount() = 8) & ok;
+		ok := Report("tables counted", r->GetTableCount() = 2) & ok;
+
+		md := r->ToMarkdown();
+		ok := Has("md: contents", md, "## Contents\n\n- [Chapter 4: Clustering](#sec-1)\n  - [Chapter 4 / Experiment 1: Choosing k](#sec-2)\n  - [Chapter 4 / Experiment 2: Seeds](#sec-3)\n- [2 Discussion](#sec-4)\n  - [2.1 Limits](#sec-5)\n    - [2.1.1 Detail](#sec-6)\n- [Appendix A: Data](#sec-7)\n  - [Appendix A / Part 1: Raw](#sec-8)\n") & ok;
+		ok := Has("md: h2", md, "## Chapter 4: Clustering\n") & ok;
+		ok := Has("md: h3", md, "### Chapter 4 / Experiment 1: Choosing k\n") & ok;
+		ok := Has("md: auto number", md, "## 2 Discussion\n") & ok;
+		ok := Has("md: auto number nested", md, "### 2.1 Limits\n") & ok;
+		ok := Has("md: auto number level 3", md, "#### 2.1.1 Detail\n") & ok;
+		ok := Has("md: table 1", md, "**Table 1.** First\n") & ok;
+		ok := Has("md: table 2", md, "**Table 2.** Second\n") & ok;
+		ok := Has("md: anchors", md, "<a id=\"sec-8\"></a>") & ok;
+
+		html := r->ToHtml();
+		ok := Has("html: contents", html, "<nav class=\"contents\">") & ok;
+		ok := Has("html: contents entry", html, "<li class=\"l2\"><a href=\"#sec-2\">Chapter 4 / Experiment 1: Choosing k</a></li>") & ok;
+		ok := Has("html: h2 id", html, "<h2 id=\"sec-1\"><span class=\"num\">Chapter 4:</span> Clustering</h2>") & ok;
+		ok := Has("html: h3 id", html, "<h3 id=\"sec-2\"><span class=\"num\">Chapter 4 / Experiment 1:</span> Choosing k</h3>") & ok;
+		ok := Has("html: h4 id", html, "<h4 id=\"sec-6\"><span class=\"num\">2.1.1</span> Detail</h4>") & ok;
+		ok := Has("html: link to a heading", html, "href=\"#sec-6\"") & ok;
+		ok := Has("html: caption 1", html, "<caption>Table 1. First</caption>") & ok;
+		ok := Has("html: caption 2", html, "<caption>Table 2. Second</caption>") & ok;
+		ok := Report("html: three level-1 headings", Count(html, "<h2 id=") = 3) & ok;
+
+		# the contents can be turned off, and are absent when there is no section
+		r->SetContents(false);
+		ok := Lacks("contents off", r->ToHtml(), "<nav") & ok;
+		ok := Lacks("contents off (md)", r->ToMarkdown(), "## Contents") & ok;
+		plain := Report->New("No sections");
+		plain->AddParagraph("x");
+		ok := Lacks("no sections, no contents", plain->ToHtml(), "<nav") & ok;
+
+		# a section is refused outside 1 to 4 and without a heading; nothing is added
+		bad := Report->New();
+		ok := Report("level 0 refused", <>bad->AddSection(0, "x")) & ok;
+		ok := Report("level 0 says why", bad->GetError()->Has("1 to 4")) & ok;
+		ok := Report("level 5 refused", <>bad->AddSection(5, "x")) & ok;
+		ok := Report("a Nil heading refused", <>bad->AddSection(1, Nil)) & ok;
+		ok := Report("a Nil label refused", <>bad->AddSection(1, Nil, "x")) & ok;
+		ok := Report("refusals added nothing", bad->GetSectionCount() = 0) & ok;
+		ok := Report("a good call clears the reason", bad->AddSection(1, "ok") & bad->GetError()->Equals("")) & ok;
+
+		# the first table and figure get numbers 1 in each family independently
+		f := Report->New();
+		f->AddTable("t", grid);
+		f->AddFigure("fig", "<svg viewBox=\"0 0 1 1\"></svg>");
+		f->AddTable("t2", grid);
+		ok := Has("figure numbering is its own", f->ToMarkdown(), "**Figure 1.** fig") & ok;
+		ok := Has("table numbering continues", f->ToMarkdown(), "**Table 2.** t2") & ok;
+
+		# two builds of the same report are the same bytes
+		ok := Report("deterministic HTML", r->ToHtml()->Equals(r->ToHtml())) & ok;
+		ok := Report("deterministic Markdown", r->ToMarkdown()->Equals(r->ToMarkdown())) & ok;
+
+		return ok;
+	}
+
+	function : Tables() ~ Bool {
+		ok := true;
+		# numeric alignment follows the cells
+		grid := [["name", "score", "note"], ["a", "0.5000", "fine"], ["b", "12 ± 0.3", "n/a"], ["c", "n/a", "3"]];
+		r := Report->New();
+		r->AddTable("Mixed", grid);
+		md := r->ToMarkdown();
+		ok := Has("md: alignment", md, "| :--- | ---: | :--- |\n") & ok;
+		html := r->ToHtml();
+		ok := Has("html: right-aligned header", html, "<th scope=\"col\" class=\"num\">score</th>") & ok;
+		ok := Has("html: left-aligned header", html, "<th scope=\"col\">note</th>") & ok;
+		ok := Has("html: numeric cell", html, "<td class=\"num\">12 ± 0.3</td>") & ok;
+		ok := Has("html: rows do not split across pages", html, "tr, figure, aside.note, nav.contents { break-inside: avoid;") & ok;
+		ok := Has("html: header repeats on each page", html, "thead { display: table-header-group; }") & ok;
+		ok := Has("html: figures scale", html, "figure svg, figure img { max-width: 100%; height: auto; }") & ok;
+		ok := Has("html: no external request", html, "<style>") & ok;
+		ok := Lacks("html: no external stylesheet", html, "<link") & ok;
+		ok := Lacks("html: no external script", html, "src=\"http") & ok;
+
+		# a ResultTable: the cells keep the column's decimals and the deviations; NaN reads n/a
+		table := ResultTable->New("Sweep", "depth");
+		table->AddColumn("acc");
+		table->AddColumn("fit_ms", 1);
+		nan := Float->NaN();
+		table->AddRow("2", 2.0, [0.81234, 12.34], [0.0123, 1.5]);
+		table->AddRow("4", 4.0, [nan, 7.0], [nan, 0.25]);
+		table->SetFootnote("seed | 1..5");
+		cells := ResultTables->ToCells(table);
+		ok := Report("ToCells: shape", cells <> Nil & Dim(cells, 0) = 3 & Dim(cells, 1) = 3) & ok;
+		ok := Same("ToCells: heading", cells[0, 0] + "/" + cells[0, 1] + "/" + cells[0, 2], "depth/acc/fit_ms") & ok;
+		ok := Same("ToCells: row 1", cells[1, 0] + "/" + cells[1, 1] + "/" + cells[1, 2], "2/0.8123 ± 0.0123/12.3 ± 1.5") & ok;
+		ok := Same("ToCells: NaN is n/a", cells[2, 0] + "/" + cells[2, 1] + "/" + cells[2, 2], "4/n/a ± n/a/7.0 ± 0.2") & ok;
+		ok := Report("ToCells(Nil) is Nil with a reason", ResultTables->ToCells(Nil) = Nil & ResultTables->GetError()->Size() > 0) & ok;
+		rt := Report->New();
+		ok := Report("AddTable(ResultTable) accepted", rt->AddTable("", table)) & ok;
+		tmd := rt->ToMarkdown();
+		ok := Has("md: caption defaults to the title", tmd, "**Table 1.** Sweep\n") & ok;
+		ok := Has("md: ResultTable row", tmd, "| 2 | 0.8123 ± 0.0123 | 12.3 ± 1.5 |\n") & ok;
+		ok := Has("md: ResultTable NaN", tmd, "| 4 | n/a ± n/a | 7.0 ± 0.2 |\n") & ok;
+		ok := Has("md: footnote", tmd, "*seed \\| 1..5*\n") & ok;
+		ok := Has("md: numeric alignment of a ResultTable", tmd, "| :--- | ---: | ---: |\n") & ok;
+		ok := Lacks("md: no nan spelling", tmd, "nan") & ok;
+		ok := Has("html: footnote", rt->ToHtml(), "<p class=\"tnote\">seed | 1..5</p>") & ok;
+
+		# a grid back to a table: numbers, deviations and NaN survive
+		back := ResultTables->FromCells("Back", cells);
+		ok := Report("FromCells: a table", back <> Nil) & ok;
+		if(back <> Nil) {
+			ok := Report("FromCells: size", back->Size() = 2 & back->GetColumnNames()->Size() = 2) & ok;
+			ok := Report("FromCells: value", back->Get(0, 0) = 0.8123 & back->GetStd(0, 0) = 0.0123 & back->Get(1, 1) = 7.0) & ok;
+			ok := Report("FromCells: NaN stays NaN", back->Get(1, 0) <> back->Get(1, 0)) & ok;
+			ok := Report("FromCells: the parameter is kept", back->GetParameter()->Equals("depth")) & ok;
+			ok := Report("FromCells: the row value is the number in the name", back->GetRowValue(1) = 4.0) & ok;
+		};
+		dup := [["p", "a", "a"], ["x", "1", "2"]];
+		ok := Report("FromCells: duplicate column refused", ResultTables->FromCells("d", dup) = Nil & ResultTables->GetError()->Has("twice")) & ok;
+		blank := [["p", "", "a"], ["x", "1", "2"]];
+		ok := Report("FromCells: unnamed column refused", ResultTables->FromCells("d", blank) = Nil) & ok;
+		narrow := [["only"], ["x"]];
+		ok := Report("FromCells: no value column refused", ResultTables->FromCells("d", narrow) = Nil) & ok;
+		ok := Report("FromCells: Nil refused", ResultTables->FromCells("d", Nil) = Nil) & ok;
+		words := [["p", "a"], ["x", "words"], ["y", ""]];
+		w := ResultTables->FromCells("w", words);
+		ok := Report("FromCells: words and blanks are NaN", w <> Nil & w->Get(0, 0) <> w->Get(0, 0) & w->Get(1, 0) <> w->Get(1, 0)) & ok;
+		ok := Report("a good conversion clears the reason", ResultTables->GetError()->Equals("")) & ok;
+
+		# a row name that cannot be parsed back out of the Markdown falls back to the getters
+		odd := ResultTable->New("Odd", "k");
+		odd->AddColumn("v");
+		odd->AddRow("two\nlines", 1.0, [0.5]);
+		odd->AddRow("a|b", 2.0, [0.25]);
+		oc := ResultTables->ToCells(odd);
+		ok := Report("ToCells with awkward row names", oc <> Nil & Dim(oc, 0) = 3) & ok;
+		if(oc <> Nil) {
+			ok := Same("awkward value 1", oc[1, 1], "0.5000") & ok;
+			ok := Same("awkward name 2", oc[2, 0], "a|b") & ok;
+			ok := Same("awkward value 2", oc[2, 1], "0.2500") & ok;
+		};
+
+		# a table with no rows, and a header-only grid
+		none := ResultTable->New("None", "k");
+		none->AddColumn("v");
+		rn := Report->New();
+		ok := Report("a table without rows is accepted", rn->AddTable("empty", none)) & ok;
+		nh := rn->ToHtml();
+		ok := Has("html: header of the empty table", nh, "<th scope=\"col\">v</th>") & ok;
+		ok := Has("html: empty body", nh, "<tbody>\n</tbody>") & ok;
+		ok := Has("md: header of the empty table", rn->ToMarkdown(), "| k | v |\n| :--- | :--- |\n") & ok;
+		onlyhead := [["a", "b"]];
+		ok := Report("a header-only grid is accepted", rn->AddTable("h", onlyhead)) & ok;
+		ok := Report("Nil grid refused", <>rn->AddTable("x", Nil->As(String[,]))) & ok;
+		ok := Report("Nil grid says why", rn->GetError()->Size() > 0) & ok;
+		ok := Report("Nil ResultTable refused", <>rn->AddTable("x", Nil->As(ResultTable))) & ok;
+		ok := Report("nothing was added by the refusals", rn->GetTableCount() = 2) & ok;
+
+		# a large table: every row is there once and the writer does not choke
+		big := String->New[2001, 8];
+		each(c : 8) {
+			big[0, c] := "col{$c}";
+		};
+		each(r : 2000) {
+			each(c : 8) {
+				big[r + 1, c] := "{$r}.{$c}";
+			};
+		};
+		rb := Report->New("Big");
+		ok := Report("2000 rows accepted", rb->AddTable("Big", big)) & ok;
+		bh := rb->ToHtml();
+		ok := Report("html: 2001 rows", Count(bh, "<tr>") = 2001) & ok;
+		ok := Has("html: last cell", bh, "<td class=\"num\">1999.7</td></tr>") & ok;
+		ok := Report("html: a long table does not claim to stay on one page", <>bh->Has("<table class=\"keep\"")) & ok;
+		ok := Report("md: 2003 lines for the table", Count(rb->ToMarkdown(), "\n| ") >= 2000) & ok;
+		return ok;
+	}
+
+	function : Figures() ~ Bool {
+		ok := true;
+		fig := Figure->New(400, 300);
+		fig->GetAxes()->SetTitle("A <title> & more");
+		fig->GetAxes()->Plot("line", [0.0, 1.0, 2.0], [0.0, 1.0, 0.5]);
+		r := Report->New("Figures");
+		ok := Report("a Plot figure is accepted", r->AddFigure("A line", fig)) & ok;
+		ok := Report("the same again is figure 2", r->AddFigure("Again", fig->ToSvg())) & ok;
+		html := r->ToHtml();
+		ok := Has("html: inline svg", html, "<svg xmlns=\"http://www.w3.org/2000/svg\"") & ok;
+		ok := Lacks("html: the XML declaration is dropped", html, "<?xml") & ok;
+		ok := Has("html: caption", html, "<figcaption><strong>Figure 1.</strong> A line</figcaption>") & ok;
+		ok := Has("html: second caption", html, "<figcaption><strong>Figure 2.</strong> Again</figcaption>") & ok;
+		ok := Has("html: figure id", html, "<figure id=\"fig-2\">") & ok;
+		ok := Report("html: two svg elements", Count(html, "</svg>") = 2) & ok;
+		ok := Has("md: figure reference", r->ToMarkdown(), "![Figure 1. A line](figure-1.svg)\n\n**Figure 1.** A line\n") & ok;
+		ok := Has("md: figure stem", r->ToMarkdown("hw3"), "](hw3-figure-2.svg)") & ok;
+
+		# ids inside an svg are made unique to the figure
+		ids := "<svg viewBox=\"0 0 1 1\"><defs><clipPath id=\"c\"><rect/></clipPath></defs><g clip-path=\"url(#c)\"/><use href=\"#c\"/></svg>";
+		ri := Report->New();
+		ri->AddFigure("one", ids);
+		ri->AddFigure("two", ids);
+		ih := ri->ToHtml();
+		ok := Has("svg ids: first figure", ih, "id=\"f1-c\"") & ok;
+		ok := Has("svg ids: second figure", ih, "id=\"f2-c\"") & ok;
+		ok := Has("svg references follow", ih, "url(#f2-c)") & ok;
+		ok := Has("svg href follows", ih, "href=\"#f2-c\"") & ok;
+
+		# refusals: not svg, script, handler, javascript link, Nil
+		ok := Report("text that is not svg refused", <>r->AddFigure("x", "hello")) & ok;
+		ok := Report("a refusal says why", r->GetError()->Has("svg")) & ok;
+		ok := Report("a script refused", <>r->AddFigure("x", "<svg><script>alert(1)</script></svg>")) & ok;
+		ok := Report("a handler refused", <>r->AddFigure("x", "<svg onload=\"alert(1)\"></svg>")) & ok;
+		ok := Report("a handler on its own line refused", <>r->AddFigure("x", "<svg\n  onclick = 'x'></svg>")) & ok;
+		ok := Report("a javascript link refused", <>r->AddFigure("x", "<svg><a href=\"javascript:alert(1)\"/></svg>")) & ok;
+		ok := Report("foreignObject refused", <>r->AddFigure("x", "<svg><foreignObject/></svg>")) & ok;
+		ok := Report("Nil svg refused", <>r->AddFigure("x", Nil->As(String))) & ok;
+		ok := Report("Nil figure refused", <>r->AddFigure("x", Nil->As(Figure))) & ok;
+		ok := Report("Nil chart refused", <>r->AddChart("x", Nil)) & ok;
+		ok := Report("the word 'one' is not a handler", r->AddFigure("fine", "<svg><text>one only</text></svg>")) & ok;
+		ok := Report("figures counted", r->GetFigureCount() = 3) & ok;
+
+		# a PNG: base64 of known bytes, by length mod 3
+		expected := ["iVBORw0KGgrI", "iVBORw0KGgrIyQ==", "iVBORw0KGgrIyco="];
+		each(k : 3) {
+			n := 9 + k;
+			data := Byte->New[n];
+			sig := [137, 80, 78, 71, 13, 10, 26, 10];
+			each(i : 8) {
+				data[i] := sig[i];
+			};
+			for(i := 8; i < n; i += 1;) {
+				data[i] := 200 + (i - 8);
+			};
+			path := "ml_report_test_{$n}.png";
+			out := FileWriter->New(path);
+			out->WriteBuffer(0, n, data);
+			out->Close();
+			rp := Report->New();
+			ok := Report("PNG of {$n} bytes accepted", rp->AddFigureFile("A <png>", path)) & ok;
+			ph := rp->ToHtml();
+			ok := Has("PNG {$n}: data uri", ph, "<img src=\"data:image/png;base64,{$expected[k]}\" alt=\"Figure 1. A &lt;png&gt;\">") & ok;
+			ok := Has("PNG {$n}: md reference", rp->ToMarkdown(), "![Figure 1. A \\<png\\>](" + path + ")") & ok;
+			File->Delete(path);
+		};
+
+		# bad figure files
+		bad := Report->New();
+		ok := Report("a missing file refused", <>bad->AddFigureFile("x", "no_such_figure.png")) & ok;
+		ok := Report("a Nil path refused", <>bad->AddFigureFile("x", Nil)) & ok;
+		ok := Report("a wrong extension refused", <>bad->AddFigureFile("x", "ml_report_build.obs")) & ok;
+		fake := "ml_report_test_fake.png";
+		FileWriter->WriteFile(fake, "this is not a png at all");
+		ok := Report("a file without the PNG signature refused", <>bad->AddFigureFile("x", fake)) & ok;
+		ok := Report("says why", bad->GetError()->Has("signature")) & ok;
+		File->Delete(fake);
+		svgfile := "ml_report_test_fig.svg";
+		FileWriter->WriteFile(svgfile, fig->ToSvg());
+		ok := Report("an svg file is accepted", bad->AddFigureFile("from file", svgfile)) & ok;
+		ok := Has("svg file inline", bad->ToHtml(), "<svg xmlns=") & ok;
+		File->Delete(svgfile);
+
+		# a chart of a ResultTable column, by System.Plot
+		table := ResultTable->New("Accuracy by depth", "depth");
+		table->AddColumn("acc");
+		table->AddColumn("f1");
+		table->AddRow("2", 2.0, [0.7, 0.6]);
+		table->AddRow("4", 4.0, [0.8, 0.75]);
+		table->AddRow("8", 8.0, [0.85, 0.8]);
+		rc := Report->New();
+		ok := Report("bar chart of one column", rc->AddResultTableChart("Bars", table, ["acc"], "bar")) & ok;
+		ok := Report("line chart of every column", rc->AddResultTableChart("Lines", table, Nil, "line")) & ok;
+		ok := Report("two figures", rc->GetFigureCount() = 2) & ok;
+		ch := rc->ToHtml();
+		ok := Has("chart: svg", ch, "<svg") & ok;
+		ok := Has("chart: title from the table", ch, "Accuracy by depth") & ok;
+		ok := Has("chart: series name in the legend", ch, ">f1<") & ok;
+		ok := Report("unknown column refused", <>rc->AddResultTableChart("x", table, ["nope"], "bar")) & ok;
+		ok := Report("unknown column says which", rc->GetError()->Has("nope")) & ok;
+		ok := Report("unknown kind refused", <>rc->AddResultTableChart("x", table, Nil, "pie")) & ok;
+		ok := Report("Nil table refused", <>rc->AddResultTableChart("x", Nil, Nil, "bar")) & ok;
+		empty := ResultTable->New("Empty", "k");
+		empty->AddColumn("v");
+		ok := Report("an empty table refused", <>rc->AddResultTableChart("x", empty, Nil, "bar")) & ok;
+		withnan := ResultTable->New("Nan", "k");
+		withnan->AddColumn("v");
+		withnan->AddRow("a", 1.0, [Float->NaN()]);
+		ok := Report("a NaN value refused", <>rc->AddResultTableChart("x", withnan, Nil, "bar")) & ok;
+		ok := Report("a NaN value says so", rc->GetError()->Has("finite")) & ok;
+		ok := Report("nothing was added by the refusals", rc->GetFigureCount() = 2) & ok;
+		# non-numeric row names fall back to 0, 1, 2 on a line chart
+		words := ResultTable->New("Words", "kind");
+		words->AddColumn("v");
+		words->AddRow("alpha", 0.0, [1.0]);
+		words->AddRow("beta", 0.0, [2.0]);
+		ok := Report("a line chart over word names", rc->AddResultTableChart("Words", words, Nil, "line")) & ok;
+
+		return ok;
+	}
+
+	function : Files() ~ Bool {
+		ok := true;
+		fig := Figure->New(300, 200);
+		fig->GetAxes()->Plot("l", [0.0, 1.0], [0.0, 1.0]);
+		r := Report->New("Saved");
+		r->AddSection(1, "One");
+		r->AddParagraph("Hello");
+		r->AddFigure("Fig", fig);
+		r->AddFigure("Fig two", fig);
+
+		ok := Report("Save .html", r->Save("ml_report_test.html")) & ok;
+		html := FileReader->ReadFile("ml_report_test.html");
+		ok := Report("the saved HTML is ToHtml", html <> Nil & html->ReplaceAll("\r", "")->Equals(r->ToHtml())) & ok;
+		ok := Report("Save .HTM (case blind)", r->Save("ml_report_test_upper.HTM")) & ok;
+		ok := Report("Save .md", r->Save("ml_report_test_doc.md")) & ok;
+		md := FileReader->ReadFile("ml_report_test_doc.md");
+		ok := Report("the saved Markdown names figures by the file stem", md <> Nil & md->Has("](ml_report_test_doc-figure-1.svg)") & md->Has("](ml_report_test_doc-figure-2.svg)")) & ok;
+		ok := Report("figure 1 was written beside it", File->Exists("ml_report_test_doc-figure-1.svg")) & ok;
+		ok := Report("figure 2 was written beside it", File->Exists("ml_report_test_doc-figure-2.svg")) & ok;
+		svg := FileReader->ReadFile("ml_report_test_doc-figure-1.svg");
+		ok := Report("the figure file is the svg", svg <> Nil & svg->StartsWith("<svg") & svg->Has("</svg>")) & ok;
+		ok := Report("Save .markdown", r->Save("ml_report_test_doc2.markdown")) & ok;
+		ok := Report("another extension refused", <>r->Save("ml_report_test.txt")) & ok;
+		ok := Report("the refusal says which extensions", r->GetError()->Has(".html")) & ok;
+		ok := Report("no extension refused", <>r->Save("ml_report_test")) & ok;
+		ok := Report("Nil path refused", <>r->Save(Nil)) & ok;
+		ok := Report("an empty path refused", <>r->Save("")) & ok;
+		ok := Report("an unwritable path refused", <>r->Save("no_such_directory_xyz/report.html")) & ok;
+		ok := Report("an unwritable path says so", r->GetError()->Has("cannot write")) & ok;
+		ok := Report("a good save clears the reason", r->Save("ml_report_test.html") & r->GetError()->Equals("")) & ok;
+
+		File->Delete("ml_report_test.html");
+		File->Delete("ml_report_test_upper.HTM");
+		File->Delete("ml_report_test_doc.md");
+		File->Delete("ml_report_test_doc2.markdown");
+		File->Delete("ml_report_test_doc-figure-1.svg");
+		File->Delete("ml_report_test_doc-figure-2.svg");
+		File->Delete("ml_report_test_doc2-figure-1.svg");
+		File->Delete("ml_report_test_doc2-figure-2.svg");
+
+		return ok;
+	}
+
+	function : Degenerate() ~ Bool {
+		ok := true;
+		empty := Report->New();
+		html := empty->ToHtml();
+		ok := Has("empty report: a whole document", html, "<!DOCTYPE html>") & ok;
+		ok := Has("empty report: closes", html, "</main>\n</body>\n</html>\n") & ok;
+		ok := Has("empty report: default title", html, "<title>Report</title>") & ok;
+		ok := Lacks("empty report: no heading", html, "<h1") & ok;
+		ok := Same("empty report: empty Markdown", empty->ToMarkdown(), "") & ok;
+
+		r := Report->New(Nil);
+		ok := Report("a Nil title is an empty title", r->ToMarkdown()->Equals("")) & ok;
+		ok := Report("a Nil paragraph refused", <>r->AddParagraph(Nil)) & ok;
+		ok := Report("an empty paragraph adds nothing", r->AddParagraph("") & r->AddParagraph("  \n ")) & ok;
+		ok := Report("a Nil bullet list refused", <>r->AddBullets(Nil)) & ok;
+		ok := Report("an empty bullet list refused", <>r->AddBullets(String->New[0])) & ok;
+		ok := Report("a Nil bullet refused", <>r->AddBullets(["a", Nil])) & ok;
+		ok := Report("Nil code refused", <>r->AddCode(Nil)) & ok;
+		ok := Report("Nil note refused", <>r->AddNote(Nil)) & ok;
+		ok := Report("an empty report after the refusals", r->ToMarkdown()->Equals("")) & ok;
+		ok := Report("Nil author and date are empty", true) & ok;
+		r->SetAuthor(Nil);
+		r->SetDate(Nil);
+		r->SetTitle(Nil);
+		ok := Same("Nil setters leave nothing behind", r->ToMarkdown(), "") & ok;
+
+		ok := Report("paper A4", r->SetPaper("A4")) & ok;
+		ok := Has("A4 in the print rules", r->ToHtml(), "@page { margin: 18mm; size: A4; }") & ok;
+		ok := Report("paper Letter", r->SetPaper("Letter")) & ok;
+		ok := Has("Letter in the print rules", r->ToHtml(), "size: Letter;") & ok;
+		ok := Report("paper unknown refused", <>r->SetPaper("A3")) & ok;
+		ok := Report("paper default", r->SetPaper("")) & ok;
+		ok := Lacks("no size by default", r->ToHtml(), "18mm; size") & ok;
+
+		one := Report->New("x");
+		one->AddNumbered(["first", "second\nline"]);
+		one->AddPageBreak();
+		ok := Has("md: numbered list", one->ToMarkdown(), "1. first\n2. second\n   line\n") & ok;
+		ok := Has("html: numbered list", one->ToHtml(), "<ol>\n<li>first</li>\n<li>second<br>line</li>\n</ol>") & ok;
+		ok := Has("html: page break", one->ToHtml(), "<div class=\"pagebreak\"></div>") & ok;
+
+		# the exact Markdown of a small report
+		s := Report->New("Small");
+		s->SetAuthor("Ann");
+		s->SetDate("2026-11-19");
+		s->AddSection(1, "Chapter 1", "Intro");
+		s->AddParagraph("Hello.");
+		s->AddTable("T", [["k", "v"], ["a", "1"]]);
+		s->AddCode("x");
+		s->AddNote("n");
+		expected := "# Small\n\nAnn\n\n2026-11-19\n\n## Contents\n\n- [Chapter 1: Intro](#sec-1)\n\n<a id=\"sec-1\"></a>\n\n## Chapter 1: Intro\n\nHello.\n\n<a id=\"tbl-1\"></a>\n\n**Table 1.** T\n\n| k | v |\n| :--- | ---: |\n| a | 1 |\n\n```\nx\n```\n\n> **Note.** n\n\n";
+		ok := Same("exact Markdown of a small report", s->ToMarkdown(), expected) & ok;
+
+		return ok;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		ok := Escaping() & ok;
+		ok := Numbering() & ok;
+		ok := Tables() & ok;
+		ok := Figures() & ok;
+		ok := Files() & ok;
+		ok := Degenerate() & ok;
+
+		if(ok = false) {
+			Runtime->Exit(1);
+		};
+		"ml_report_build: ok"->PrintLine();
+	}
+}

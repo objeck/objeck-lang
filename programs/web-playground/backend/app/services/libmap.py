@@ -270,6 +270,7 @@ LIB_INFO: dict[str, tuple[str, str]] = {
     "ml": ("ML", "Machine learning and matrix math"),
     "ml_lab": ("ML Lab", "Stratified splits, imbalance resampling, parameter sweeps, result tables and SVG charts"),
     "ml_vector": ("Vector Search", "A local vector index: exact cosine, dot and L2 nearest-neighbour search over embeddings"),
+    "ml_report": ("Reports", "Replicate statistics (mean, deviation, t interval, paired test) and a report builder that writes Markdown or one printable HTML file"),
     "stats": ("Statistics", "t-tests with confidence intervals and effect sizes, Pearson correlation, and an OLS regression summary with p-values"),
     "plot": ("Plot", "Scatter, histogram, line and bar charts and subplots as standalone SVG, no display needed"),
     "nlp": ("NLP", "Tokenizing, stemming and sentiment"),

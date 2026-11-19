@@ -1,0 +1,2644 @@
+#~~
+# Objeck machine learning library: replicate statistics and a report builder
+# Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+use System.Stats;
+use System.ML.Lab;
+use System.Plot;
+
+#~
+What a student needs to turn a study into a hand-in: Replicates collects the value of each metric per seed and per setting and reports the count, mean, sample standard deviation, range and a t confidence interval, with a paired comparison of two settings; ResultTables converts between a System.ML.Lab ResultTable and the other results (replicates, an OLS fit, t-tests, a grid of strings); Report builds one document with numbered sections, tables, figures, code and notes, written as Markdown or as one self-contained HTML file with a print stylesheet that prints cleanly to PDF from a browser.
+
+No call here ends the program on bad input: a call that cannot do what it was asked returns false (or Nil) and the object keeps the reason, read with GetError(), which is "" when there is nothing to report. Output is deterministic: the same calls give the same bytes, and nothing reads a clock. Compile with -lib ml_report,ml_lab,ml,stats,plot,csv,json,gen_collect.
+~#
+bundle System.ML.Report {
+	#~
+	Text helpers shared by the writers: escaping for HTML and Markdown, number formatting, Base64.
+	~#
+	class ReportText {
+		#~
+		True for NaN, +Inf and -Inf.
+		@param v the number
+		@return true when the number is not finite
+		~#
+		function : NotFinite(v : Float) ~ Bool {
+			return v <> v | v = Float->Inf() | v = Float->NegInf();
+		}
+
+		#~
+		A number with a fixed count of decimals; NaN is "n/a", infinities are "inf" and "-inf", and a negative zero is written without its sign.
+		@param v the number
+		@param decimals digits after the point
+		@return the text
+		~#
+		function : Number(v : Float, decimals : Int) ~ String {
+			if(v <> v) {
+				return "n/a";
+			};
+			if(v = Float->Inf()) {
+				return "inf";
+			};
+			if(v = Float->NegInf()) {
+				return "-inf";
+			};
+
+			text := Float->ToString(v, decimals < 0 ? 0 : decimals);
+			if(text->StartsWith('-')) {
+				zero := true;
+				each(i : text->Size()) {
+					c := text->Get(i);
+					if(c <> '-' & c <> '0' & c <> '.') {
+						zero := false;
+					};
+				};
+				if(zero) {
+					return text->SubString(1, text->Size() - 1);
+				};
+			};
+
+			return text;
+		}
+
+		#~
+		Replaces the spellings of NaN that a number formatter writes with "n/a".
+		@param text a formatted cell
+		@return the cell with NaN spelled n/a
+		~#
+		function : NormalizeNumbers(text : String) ~ String {
+			if(text = Nil) {
+				return "";
+			};
+
+			lower := text->ToLower();
+			if(<>lower->Has("nan")) {
+				return text;
+			};
+
+			out := String->New();
+			i := 0;
+			while(i < text->Size()) {
+				if(i + 2 < text->Size() & lower->Get(i) = 'n' & lower->Get(i + 1) = 'a' & lower->Get(i + 2) = 'n') {
+					# drop a sign before it and an "(ind)" or "(snan)" suffix after it
+					if(out->Size() > 0 & out->Get(out->Size() - 1) = '-') {
+						out := out->SubString(out->Size() - 1);
+					};
+					out->Append("n/a");
+					i += 3;
+					if(i < text->Size() & text->Get(i) = '(') {
+						close := lower->Find(")");
+						if(close > i) {
+							i := close + 1;
+						};
+					};
+				}
+				else {
+					out->Append(text->Get(i));
+					i += 1;
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		True when the text looks like a number, a number with a deviation or n/a, so a table column of them is right-aligned.
+		@param text a cell
+		@return true for numeric-looking text
+		~#
+		function : LooksNumeric(text : String) ~ Bool {
+			if(text = Nil) {
+				return false;
+			};
+
+			trimmed := text->Trim();
+			if(trimmed->Size() = 0) {
+				return false;
+			};
+			if(trimmed->Equals("n/a") | trimmed->Equals("inf") | trimmed->Equals("-inf")) {
+				return true;
+			};
+
+			digits := 0;
+			each(i : trimmed->Size()) {
+				c := trimmed->Get(i);
+				if(c >= '0' & c <= '9') {
+					digits += 1;
+				}
+				else if(c <> '.' & c <> '-' & c <> '+' & c <> 'e' & c <> 'E' & c <> ' ' & c <> '%' & c <> '/' & c <> 'n' & c <> 'a' & c->As(Int) <> 194 & c->As(Int) <> 177) {
+					return false;
+				};
+			};
+
+			return digits > 0 | trimmed->Has("n/a");
+		}
+
+		#~
+		Parses a plain decimal number; unlike String->ToFloat() it can tell that the text is not one.
+		@param text the text
+		@return true when the whole text is a number
+		~#
+		function : IsNumber(text : String) ~ Bool {
+			if(text = Nil) {
+				return false;
+			};
+
+			t := text->Trim();
+			n := t->Size();
+			if(n = 0) {
+				return false;
+			};
+
+			i := 0;
+			if(t->Get(0) = '-' | t->Get(0) = '+') {
+				i := 1;
+			};
+			digits := 0;
+			while(i < n & t->Get(i) >= '0' & t->Get(i) <= '9') {
+				digits += 1;
+				i += 1;
+			};
+			if(i < n & t->Get(i) = '.') {
+				i += 1;
+				while(i < n & t->Get(i) >= '0' & t->Get(i) <= '9') {
+					digits += 1;
+					i += 1;
+				};
+			};
+			if(digits = 0) {
+				return false;
+			};
+			if(i < n & (t->Get(i) = 'e' | t->Get(i) = 'E')) {
+				i += 1;
+				if(i < n & (t->Get(i) = '-' | t->Get(i) = '+')) {
+					i += 1;
+				};
+				exp := 0;
+				while(i < n & t->Get(i) >= '0' & t->Get(i) <= '9') {
+					exp += 1;
+					i += 1;
+				};
+				if(exp = 0) {
+					return false;
+				};
+			};
+
+			return i = n;
+		}
+
+		#~
+		Escapes text for HTML element content or a double-quoted attribute: & < > " and '.
+		@param text the text, Nil is ""
+		@return the escaped text
+		~#
+		function : Html(text : String) ~ String {
+			if(text = Nil) {
+				return "";
+			};
+
+			out := String->New();
+			each(i : text->Size()) {
+				c := text->Get(i);
+				if(c = '&') {
+					out->Append("&amp;");
+				}
+				else if(c = '<') {
+					out->Append("&lt;");
+				}
+				else if(c = '>') {
+					out->Append("&gt;");
+				}
+				else if(c = '"') {
+					out->Append("&quot;");
+				}
+				else if(c->As(Int) = 39) {
+					out->Append("&#39;");
+				}
+				else {
+					out->Append(c);
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		Escapes one line of text for Markdown so that nothing in it is read as markup: backslash, backtick, asterisk, underscore, brackets, braces, angle brackets, ampersand, pipe, tilde, dollar and caret anywhere, and # - + = or a number and a dot at the start of a line.
+		@param line one line, without a newline
+		@return the escaped line, without leading or trailing spaces
+		~#
+		function : MarkdownLine(line : String) ~ String {
+			if(line = Nil) {
+				return "";
+			};
+
+			text := line->Trim();
+			out := String->New();
+			n := text->Size();
+			backslash := 92->As(Char);
+			each(i : n) {
+				c := text->Get(i);
+				special := false;
+				if(c = '_' & i > 0 & i < n - 1 & ReportText->IsWordChar(text->Get(i - 1)) & ReportText->IsWordChar(text->Get(i + 1))) {
+					special := false;
+				}
+				else if(c = backslash | c = '`' | c = '*' | c = '_' | c = '[' | c = ']' | c = '{' | c = '}' | c = '<' | c = '>' | c = '&' | c = '|' | c = '~' | c = '$' | c = '^') {
+					special := true;
+				}
+				else if(i = 0 & (c = '#' | c = '-' | c = '+' | c = '=') & (i = n - 1 | text->Get(1) = ' ' | text->Get(1) = c)) {
+					special := true;
+				}
+				else if(c = '#' & i = n - 1) {
+					special := true;
+				}
+				else if(i > 0 & (c = '.' | c = ')') & (i = n - 1 | text->Get(i + 1) = ' ') & ReportText->AllDigits(text, i)) {
+					special := true;
+				};
+
+				if(special) {
+					out->Append(backslash);
+				};
+				out->Append(c);
+			};
+
+			return out;
+		}
+
+		#~
+		True when lower-case markup holds an attribute such as onload= or onclick=.
+		@param lower the text in lower case
+		@return true when an event handler attribute is present
+		~#
+		function : HasHandler(lower : String) ~ Bool {
+			n := lower->Size();
+			last_start := n - 3;
+			each(i : last_start) {
+				prev := (i = 0) ? ' ' : lower->Get(i - 1);
+				if(lower->Get(i) = 'o' & lower->Get(i + 1) = 'n' & (prev = ' ' | prev = '"' | prev->As(Int) = 39 | prev = '/' | prev = '
+' | prev = '	')) {
+					j := i + 2;
+					while(j < n & lower->Get(j) >= 'a' & lower->Get(j) <= 'z') {
+						j += 1;
+					};
+					while(j < n & lower->Get(j) = ' ') {
+						j += 1;
+					};
+					if(j > i + 2 & j < n & lower->Get(j) = '=') {
+						return true;
+					};
+				};
+			};
+
+			return false;
+		}
+
+		function : IsWordChar(c : Char) ~ Bool {
+			return (c >= '0' & c <= '9') | (c >= 'a' & c <= 'z') | (c >= 'A' & c <= 'Z');
+		}
+
+		function : AllDigits(text : String, end : Int) ~ Bool {
+			if(end = 0) {
+				return false;
+			};
+			each(i : end) {
+				c := text->Get(i);
+				if(c < '0' | c > '9') {
+					return false;
+				};
+			};
+
+			return true;
+		}
+
+		#~
+		Escapes a table cell or a heading for Markdown: every line escaped as MarkdownLine, joined with an HTML line break because a table row has one line.
+		@param text the text, Nil is ""
+		@return the escaped text
+		~#
+		function : MarkdownCell(text : String) ~ String {
+			lines := ReportText->Lines(text);
+			out := String->New();
+			each(i : lines) {
+				if(i > 0) {
+					out->Append("<br>");
+				};
+				out->Append(ReportText->MarkdownLine(lines[i]));
+			};
+
+			return out;
+		}
+
+		#~
+		Splits text into lines; CRLF, CR and LF all end a line. "" is one empty line and Nil is none.
+		@param text the text
+		@return the lines
+		~#
+		function : Lines(text : String) ~ String[] {
+			if(text = Nil) {
+				return String->New[0];
+			};
+
+			found := Vector->New()<String>;
+			line := String->New();
+			i := 0;
+			n := text->Size();
+			while(i < n) {
+				c := text->Get(i);
+				if(c = '\n' | c = '\r') {
+					found->AddBack(line);
+					line := String->New();
+					if(c = '\r' & i + 1 < n & text->Get(i + 1) = '\n') {
+						i += 1;
+					};
+				}
+				else {
+					line->Append(c);
+				};
+				i += 1;
+			};
+			found->AddBack(line);
+
+			return found->ToArray();
+		}
+
+		#~
+		Base64 of bytes, RFC 4648 with padding.
+		@param data the bytes
+		@return the encoding, "" for Nil
+		~#
+		function : Base64(data : Byte[]) ~ String {
+			if(data = Nil) {
+				return "";
+			};
+
+			alphabet := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+			n := data->Size();
+			chars := Char->New[((n + 2) / 3) * 4];
+			o := 0;
+			i := 0;
+			while(i < n) {
+				b0 := data[i]->As(Int);
+				b1 := 0;
+				b2 := 0;
+				if(i + 1 < n) {
+					b1 := data[i + 1]->As(Int);
+				};
+				if(i + 2 < n) {
+					b2 := data[i + 2]->As(Int);
+				};
+
+				chars[o] := alphabet->Get(b0 / 4);
+				chars[o + 1] := alphabet->Get((b0 % 4) * 16 + b1 / 16);
+				chars[o + 2] := (i + 1 < n) ? alphabet->Get((b1 % 16) * 4 + b2 / 64) : '=';
+				chars[o + 3] := (i + 2 < n) ? alphabet->Get(b2 % 64) : '=';
+				o += 4;
+				i += 3;
+			};
+
+			return String->New(chars);
+		}
+
+		#~
+		Percent-encodes the characters of a file path that end a Markdown link target: space, parentheses, angle brackets and percent. Backslashes become slashes.
+		@param path the path
+		@return the encoded path
+		~#
+		function : LinkPath(path : String) ~ String {
+			out := String->New();
+			each(i : path->Size()) {
+				c := path->Get(i);
+				if(c = ' ') {
+					out->Append("%20");
+				}
+				else if(c = '(') {
+					out->Append("%28");
+				}
+				else if(c = ')') {
+					out->Append("%29");
+				}
+				else if(c = '<') {
+					out->Append("%3C");
+				}
+				else if(c = '>') {
+					out->Append("%3E");
+				}
+				else if(c = '%') {
+					out->Append("%25");
+				}
+				else if(c->As(Int) = 92) {
+					out->Append('/');
+				}
+				else {
+					out->Append(c);
+				};
+			};
+
+			return out;
+		}
+	}
+
+	#~
+	The values one metric took under one setting, per seed.
+	~#
+	class ReplicateCell {
+		@values : Vector<FloatRef>;
+		@seeds : Vector<IntRef>;
+		@by_seed : Hash<String, FloatRef>;
+
+		New() {
+			@values := Vector->New()<FloatRef>;
+			@seeds := Vector->New()<IntRef>;
+			@by_seed := Hash->New()<String, FloatRef>;
+		}
+
+		method : public : HasSeed(seed : Int) ~ Bool {
+			return @by_seed->Find(seed->ToString()) <> Nil;
+		}
+
+		method : public : Add(seed : Int, value : Float) ~ Nil {
+			ref := FloatRef->New(value);
+			@values->AddBack(ref);
+			@seeds->AddBack(IntRef->New(seed));
+			@by_seed->Insert(seed->ToString(), ref);
+		}
+
+		method : public : Size() ~ Int {
+			return @values->Size();
+		}
+
+		method : public : GetValue(i : Int) ~ Float {
+			return @values->Get(i)->Get();
+		}
+
+		method : public : GetSeed(i : Int) ~ Int {
+			return @seeds->Get(i)->Get();
+		}
+
+		method : public : Lookup(seed : Int) ~ FloatRef {
+			return @by_seed->Find(seed->ToString());
+		}
+	}
+
+	#~
+	Per-seed values of named metrics under named settings (groups), with the summary a hand-in reports. Every statistic leaves out a value that is not finite (NaN, an infinity, or the value given to SetMissing) and says how many it left out; a statistic that needs more values than there are is NaN, never an error, so a one-seed run gives a mean and an undefined standard deviation.
+
+```
+rep := Replicates->New();
+each(seed : 5) {
+  rep->Add("depth 4", "test_accuracy", seed, 0.80 + seed * 0.01);
+};
+rep->GetMean("depth 4", "test_accuracy")->PrintLine();
+rep->GetCiHigh("depth 4", "test_accuracy")->PrintLine();
+```
+	~#
+	class Replicates {
+		@groups : Vector<String>;
+		@metrics : Vector<String>;
+		@group_seen : Hash<String, IntRef>;
+		@metric_seen : Hash<String, IntRef>;
+		@cells : Hash<String, ReplicateCell>;
+		@level : Float;
+		@has_missing : Bool;
+		@missing : Float;
+		@error : String;
+
+		#~
+		Constructor: a 95% confidence level and no missing-value marker.
+		~#
+		New() {
+			@groups := Vector->New()<String>;
+			@metrics := Vector->New()<String>;
+			@group_seen := Hash->New()<String, IntRef>;
+			@metric_seen := Hash->New()<String, IntRef>;
+			@cells := Hash->New()<String, ReplicateCell>;
+			@level := 0.95;
+			@has_missing := false;
+			@missing := 0.0;
+			@error := "";
+		}
+
+		#~
+		Sets the confidence level of the interval of the mean and of the paired comparison.
+		@param level strictly between 0 and 1
+		@return false, with GetError() saying why, when the level is not in (0, 1)
+		~#
+		method : public : SetConfidence(level : Float) ~ Bool {
+			@error := "";
+			if(level <> level | level <= 0.0 | level >= 1.0) {
+				@error := "the confidence level must be strictly between 0 and 1";
+				return false;
+			};
+
+			@level := level;
+			return true;
+		}
+
+		#~
+		The confidence level.
+		@return the level
+		~#
+		method : public : GetConfidence() ~ Float {
+			return @level;
+		}
+
+		#~
+		Treats one exact value as "no result", for a metric that reports a sentinel such as the -1.0 of Metrics->AucRoc when a class is missing. The value is kept, counted by GetMissing and left out of the statistics.
+		@param sentinel the marker value
+		~#
+		method : public : SetMissing(sentinel : Float) ~ Nil {
+			@has_missing := true;
+			@missing := sentinel;
+		}
+
+		method : Key(group : String, metric : String) ~ String {
+			return "{$group->Size()}:{$group}/{$metric}";
+		}
+
+		#~
+		Records one value.
+		@param group the setting, for example "depth 4" or "baseline"
+		@param metric the metric, for example "test_accuracy"
+		@param seed the seed, so that two settings can be paired by seed
+		@param value the value; NaN and infinities are kept and counted as missing
+		@return false, with GetError() saying why, for a Nil or empty name or a seed already recorded for that setting and metric
+		~#
+		method : public : Add(group : String, metric : String, seed : Int, value : Float) ~ Bool {
+			@error := "";
+			if(group = Nil | group->Size() = 0) {
+				@error := "a value needs a group name";
+				return false;
+			};
+			if(metric = Nil | metric->Size() = 0) {
+				@error := "a value needs a metric name";
+				return false;
+			};
+
+			key := Key(group, metric);
+			cell := @cells->Find(key);
+			if(cell = Nil) {
+				cell := ReplicateCell->New();
+				@cells->Insert(key, cell);
+			};
+			if(cell->HasSeed(seed)) {
+				@error := "seed {$seed} is already recorded for '{$group}' / '{$metric}'";
+				return false;
+			};
+
+			if(@group_seen->Find(group) = Nil) {
+				@group_seen->Insert(group, IntRef->New(@groups->Size()));
+				@groups->AddBack(group);
+			};
+			if(@metric_seen->Find(metric) = Nil) {
+				@metric_seen->Insert(metric, IntRef->New(@metrics->Size()));
+				@metrics->AddBack(metric);
+			};
+
+			cell->Add(seed, value);
+			return true;
+		}
+
+		#~
+		Records one value under the next free seed number of that setting and metric (0, 1, 2, ...).
+		@param group the setting
+		@param metric the metric
+		@param value the value
+		@return false when a name is Nil or empty
+		~#
+		method : public : Add(group : String, metric : String, value : Float) ~ Bool {
+			seed := 0;
+			if(group <> Nil & metric <> Nil) {
+				cell := @cells->Find(Key(group, metric));
+				if(cell <> Nil) {
+					seed := cell->Size();
+					while(cell->HasSeed(seed)) {
+						seed += 1;
+					};
+				};
+			};
+
+			return Add(group, metric, seed, value);
+		}
+
+		#~
+		Records one run: every metric of one seed under one setting.
+		@param group the setting
+		@param seed the seed
+		@param metrics the metric names
+		@param values one value per metric
+		@return false when the arrays differ in length or any value is refused; the values before a refused one stay recorded
+		~#
+		method : public : AddRun(group : String, seed : Int, metrics : String[], values : Float[]) ~ Bool {
+			@error := "";
+			if(metrics = Nil | values = Nil | metrics->Size() <> values->Size()) {
+				@error := "a run needs one value per metric";
+				return false;
+			};
+
+			each(i : metrics) {
+				if(<>Add(group, metrics[i], seed, values[i])) {
+					return false;
+				};
+			};
+
+			return true;
+		}
+
+		#~
+		Why the last call that returns Bool was refused.
+		@return the reason, "" when it succeeded
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		The setting names in the order they were first recorded.
+		@return the names
+		~#
+		method : public : GetGroups() ~ String[] {
+			return @groups->ToArray();
+		}
+
+		#~
+		The metric names in the order they were first recorded.
+		@return the names
+		~#
+		method : public : GetMetrics() ~ String[] {
+			return @metrics->ToArray();
+		}
+
+		#~
+		Every value recorded, non-finite ones included, in the order added.
+		@param group the setting
+		@param metric the metric
+		@return the values, empty when there are none
+		~#
+		method : public : GetValues(group : String, metric : String) ~ Float[] {
+			cell := Find(group, metric);
+			if(cell = Nil) {
+				return Float->New[0];
+			};
+
+			values := Float->New[cell->Size()];
+			each(i : values) {
+				values[i] := cell->GetValue(i);
+			};
+
+			return values;
+		}
+
+		#~
+		The seeds of GetValues, in the same order.
+		@param group the setting
+		@param metric the metric
+		@return the seeds, empty when there are none
+		~#
+		method : public : GetSeeds(group : String, metric : String) ~ Int[] {
+			cell := Find(group, metric);
+			if(cell = Nil) {
+				return Int->New[0];
+			};
+
+			seeds := Int->New[cell->Size()];
+			each(i : seeds) {
+				seeds[i] := cell->GetSeed(i);
+			};
+
+			return seeds;
+		}
+
+		method : Find(group : String, metric : String) ~ ReplicateCell {
+			if(group = Nil | metric = Nil) {
+				return Nil;
+			};
+
+			return @cells->Find(Key(group, metric));
+		}
+
+		method : IsMissing(v : Float) ~ Bool {
+			return ReportText->NotFinite(v) | (@has_missing & v = @missing);
+		}
+
+		#~
+		The values that count: the recorded ones without the missing.
+		@param group the setting
+		@param metric the metric
+		@return the usable values in the order added
+		~#
+		method : public : GetUsable(group : String, metric : String) ~ Float[] {
+			cell := Find(group, metric);
+			if(cell = Nil) {
+				return Float->New[0];
+			};
+
+			kept := Vector->New()<FloatRef>;
+			each(i : cell->Size()) {
+				v := cell->GetValue(i);
+				if(<>IsMissing(v)) {
+					kept->AddBack(FloatRef->New(v));
+				};
+			};
+
+			out := Float->New[kept->Size()];
+			each(i : out) {
+				out[i] := kept->Get(i)->Get();
+			};
+
+			return out;
+		}
+
+		#~
+		How many values were usable (finite and not the missing marker).
+		@param group the setting
+		@param metric the metric
+		@return the count, 0 for an unknown setting or metric
+		~#
+		method : public : GetCount(group : String, metric : String) ~ Int {
+			return GetUsable(group, metric)->Size();
+		}
+
+		#~
+		How many recorded values were left out as missing.
+		@param group the setting
+		@param metric the metric
+		@return the count
+		~#
+		method : public : GetMissing(group : String, metric : String) ~ Int {
+			cell := Find(group, metric);
+			if(cell = Nil) {
+				return 0;
+			};
+
+			return cell->Size() - GetCount(group, metric);
+		}
+
+		#~
+		The mean of the usable values.
+		@param group the setting
+		@param metric the metric
+		@return the mean, NaN when none is usable
+		~#
+		method : public : GetMean(group : String, metric : String) ~ Float {
+			x := GetUsable(group, metric);
+			if(x->Size() = 0) {
+				return Float->NaN();
+			};
+
+			return Stats->Mean(x);
+		}
+
+		#~
+		The sample standard deviation (divisor n - 1, two-pass) of the usable values.
+		@param group the setting
+		@param metric the metric
+		@return the deviation, NaN with fewer than 2 usable values
+		~#
+		method : public : GetStd(group : String, metric : String) ~ Float {
+			x := GetUsable(group, metric);
+			if(x->Size() < 2) {
+				return Float->NaN();
+			};
+
+			return Stats->StdDev(x);
+		}
+
+		#~
+		The standard error of the mean: the standard deviation over the square root of the count.
+		@param group the setting
+		@param metric the metric
+		@return the standard error, NaN with fewer than 2 usable values
+		~#
+		method : public : GetStdError(group : String, metric : String) ~ Float {
+			x := GetUsable(group, metric);
+			if(x->Size() < 2) {
+				return Float->NaN();
+			};
+
+			return Stats->StdDev(x) / Float->Sqrt(x->Size()->As(Float));
+		}
+
+		#~
+		The smallest usable value.
+		@param group the setting
+		@param metric the metric
+		@return the minimum, NaN when none is usable
+		~#
+		method : public : GetMin(group : String, metric : String) ~ Float {
+			x := GetUsable(group, metric);
+			if(x->Size() = 0) {
+				return Float->NaN();
+			};
+
+			low := x[0];
+			each(i : x) {
+				if(x[i] < low) {
+					low := x[i];
+				};
+			};
+
+			return low;
+		}
+
+		#~
+		The largest usable value.
+		@param group the setting
+		@param metric the metric
+		@return the maximum, NaN when none is usable
+		~#
+		method : public : GetMax(group : String, metric : String) ~ Float {
+			x := GetUsable(group, metric);
+			if(x->Size() = 0) {
+				return Float->NaN();
+			};
+
+			high := x[0];
+			each(i : x) {
+				if(x[i] > high) {
+					high := x[i];
+				};
+			};
+
+			return high;
+		}
+
+		method : Half(group : String, metric : String) ~ Float {
+			x := GetUsable(group, metric);
+			n := x->Size();
+			if(n < 2) {
+				return Float->NaN();
+			};
+
+			t := Dist->StudentQuantile(0.5 + @level / 2.0, (n - 1)->As(Float));
+			return t * Stats->StdDev(x) / Float->Sqrt(n->As(Float));
+		}
+
+		#~
+		The lower end of the t confidence interval of the mean (mean - t * s / sqrt(n), n - 1 degrees of freedom).
+		@param group the setting
+		@param metric the metric
+		@return the bound, NaN with fewer than 2 usable values
+		~#
+		method : public : GetCiLow(group : String, metric : String) ~ Float {
+			half := Half(group, metric);
+			if(half <> half) {
+				return half;
+			};
+
+			return GetMean(group, metric) - half;
+		}
+
+		#~
+		The upper end of the t confidence interval of the mean.
+		@param group the setting
+		@param metric the metric
+		@return the bound, NaN with fewer than 2 usable values
+		~#
+		method : public : GetCiHigh(group : String, metric : String) ~ Float {
+			half := Half(group, metric);
+			if(half <> half) {
+				return half;
+			};
+
+			return GetMean(group, metric) + half;
+		}
+
+		method : PairX(a : String, b : String, metric : String, first : Bool) ~ Float[] {
+			ca := Find(a, metric);
+			cb := Find(b, metric);
+			kept := Vector->New()<FloatRef>;
+			if(ca <> Nil & cb <> Nil) {
+				each(i : ca->Size()) {
+					partner := cb->Lookup(ca->GetSeed(i));
+					if(partner <> Nil) {
+						va := ca->GetValue(i);
+						vb := partner->Get();
+						if(<>IsMissing(va) & <>IsMissing(vb)) {
+							kept->AddBack(FloatRef->New(first ? va : vb));
+						};
+					};
+				};
+			};
+
+			out := Float->New[kept->Size()];
+			each(i : out) {
+				out[i] := kept->Get(i)->Get();
+			};
+
+			return out;
+		}
+
+		#~
+		How many seeds two settings share with a usable value in both: the n of the paired comparison.
+		@param a the first setting
+		@param b the second setting
+		@param metric the metric
+		@return the count
+		~#
+		method : public : GetPairedCount(a : String, b : String, metric : String) ~ Int {
+			return PairX(a, b, metric, true)->Size();
+		}
+
+		#~
+		Paired t-test of two settings over the seeds they share (System.Stats TTest->Paired): the mean of a minus b, its t statistic, degrees of freedom, two-sided p-value, confidence interval and effect sizes.
+		@param a the first setting
+		@param b the second setting
+		@param metric the metric
+		@return the result; IsValid() is false, with the reason in GetError(), with fewer than 2 shared seeds
+		~#
+		method : public : Paired(a : String, b : String, metric : String) ~ TTestResult {
+			return TTest->Paired(PairX(a, b, metric, true), PairX(a, b, metric, false), @level);
+		}
+
+		#~
+		Welch's unequal-variance t-test of two settings, which do not need to share seeds or counts.
+		@param a the first setting
+		@param b the second setting
+		@param metric the metric
+		@return the result; IsValid() is false with fewer than 2 usable values in either
+		~#
+		method : public : Welch(a : String, b : String, metric : String) ~ TTestResult {
+			return TTest->Welch(GetUsable(a, metric), GetUsable(b, metric), @level);
+		}
+
+		#~
+		One metric as a ResultTable with a row per setting and the columns mean, std, ci_low, ci_high, n and missing. See ResultTables->FromReplicates.
+		@param metric the metric
+		@param title the table title
+		@param parameter the heading of the first column
+		@return the table, Nil when the metric is unknown
+		~#
+		method : public : ToResultTable(metric : String, title : String, parameter : String) ~ ResultTable {
+			return ResultTables->FromReplicates(@self, metric, title, parameter);
+		}
+	}
+
+	#~
+	Conversions between System.ML.Lab's ResultTable and the rest: summaries of replicates, an OLS fit, a list of t-tests, and a grid of strings. A conversion that cannot be done returns Nil and GetError() says why ("" when the last one worked).
+	~#
+	class ResultTables {
+		@error : static : String;
+
+		function : Fail(message : String) ~ Nil {
+			@error := message;
+		}
+
+		#~
+		Why the last conversion returned Nil.
+		@return the reason, "" when it worked
+		~#
+		function : GetError() ~ String {
+			if(@error = Nil) {
+				return "";
+			};
+
+			return @error;
+		}
+
+		function : RowValue(name : String, index : Int) ~ Float {
+			if(ReportText->IsNumber(name)) {
+				return name->Trim()->ToFloat();
+			};
+
+			return index->As(Float);
+		}
+
+		#~
+		One metric of a Replicates as a table: a row per setting, the columns mean, std, ci_low, ci_high, n (usable values) and missing. A row whose setting name is a number carries it as the row value (so a chart can use it for x), otherwise the row number.
+		@param rep the replicates
+		@param metric the metric
+		@param title the title
+		@param parameter the heading of the first column, for example "max_depth"
+		@return the table, Nil when rep is Nil or the metric was never recorded
+		~#
+		function : FromReplicates(rep : Replicates, metric : String, title : String, parameter : String) ~ ResultTable {
+			@error := "";
+			if(rep = Nil) {
+				Fail("no replicates");
+				return Nil;
+			};
+			known := false;
+			metrics := rep->GetMetrics();
+			each(i : metrics) {
+				if(metrics[i]->Equals(metric)) {
+					known := true;
+				};
+			};
+			if(<>known) {
+				Fail("no metric named '{$metric}' was recorded");
+				return Nil;
+			};
+
+			table := ResultTable->New(title, parameter);
+			table->AddColumn("mean");
+			table->AddColumn("std");
+			table->AddColumn("ci_low");
+			table->AddColumn("ci_high");
+			table->AddColumn("n", 0);
+			table->AddColumn("missing", 0);
+			groups := rep->GetGroups();
+			each(g : groups) {
+				group := groups[g];
+				if(rep->GetValues(group, metric)->Size() > 0) {
+					cells := [rep->GetMean(group, metric), rep->GetStd(group, metric), rep->GetCiLow(group, metric), rep->GetCiHigh(group, metric), rep->GetCount(group, metric)->As(Float), rep->GetMissing(group, metric)->As(Float)];
+					table->AddRow(group, RowValue(group, g), cells);
+				};
+			};
+			level := (rep->GetConfidence() * 100.0)->As(Int);
+			table->SetFootnote("{$metric}: mean, sample standard deviation and {$level}% t interval over the usable seeds; n counts them");
+
+			return table;
+		}
+
+		#~
+		Every metric of a Replicates as one table in the sweep layout: a row per setting, a column per metric holding the mean, and the sample standard deviation as the cell's deviation, which renders as "mean ± std". A one-seed cell has an undefined deviation.
+		@param rep the replicates
+		@param title the title
+		@param parameter the heading of the first column
+		@return the table, Nil when rep is Nil or empty
+		~#
+		function : MeansFromReplicates(rep : Replicates, title : String, parameter : String) ~ ResultTable {
+			@error := "";
+			if(rep = Nil) {
+				Fail("no replicates");
+				return Nil;
+			};
+			metrics := rep->GetMetrics();
+			groups := rep->GetGroups();
+			if(metrics->Size() = 0 | groups->Size() = 0) {
+				Fail("the replicates hold no values");
+				return Nil;
+			};
+
+			table := ResultTable->New(title, parameter);
+			each(m : metrics) {
+				table->AddColumn(metrics[m]);
+			};
+			each(g : groups) {
+				means := Float->New[metrics->Size()];
+				stds := Float->New[metrics->Size()];
+				each(m : metrics) {
+					means[m] := rep->GetMean(groups[g], metrics[m]);
+					stds[m] := rep->GetStd(groups[g], metrics[m]);
+				};
+				table->AddRow(groups[g], RowValue(groups[g], g), means, stds);
+			};
+			table->SetFootnote("mean ± sample standard deviation over the usable seeds");
+
+			return table;
+		}
+
+		#~
+		A paired comparison of two settings across all metrics: a row per metric with the two means, their difference, its confidence interval, t, df, p_value, cohen_d and n_pairs. A metric with fewer than 2 shared seeds has NaN in the test columns.
+		@param rep the replicates
+		@param a the first setting
+		@param b the second setting
+		@param title the title
+		@return the table, Nil when rep is Nil or a setting is unknown
+		~#
+		function : FromComparison(rep : Replicates, a : String, b : String, title : String) ~ ResultTable {
+			@error := "";
+			if(rep = Nil) {
+				Fail("no replicates");
+				return Nil;
+			};
+			groups := rep->GetGroups();
+			seen_a := false;
+			seen_b := false;
+			each(i : groups) {
+				if(groups[i]->Equals(a)) {
+					seen_a := true;
+				};
+				if(groups[i]->Equals(b)) {
+					seen_b := true;
+				};
+			};
+			if(<>seen_a | <>seen_b) {
+				Fail("both settings must have recorded values");
+				return Nil;
+			};
+
+			table := ResultTable->New(title, "metric");
+			table->AddColumn("mean_a");
+			table->AddColumn("mean_b");
+			table->AddColumn("mean_diff");
+			table->AddColumn("ci_low");
+			table->AddColumn("ci_high");
+			table->AddColumn("t");
+			table->AddColumn("df", 2);
+			table->AddColumn("p_value");
+			table->AddColumn("cohen_d");
+			table->AddColumn("n_pairs", 0);
+			nan := Float->NaN();
+			metrics := rep->GetMetrics();
+			each(m : metrics) {
+				metric := metrics[m];
+				t := rep->Paired(a, b, metric);
+				cells := [rep->GetMean(a, metric), rep->GetMean(b, metric), nan, nan, nan, nan, nan, nan, nan, rep->GetPairedCount(a, b, metric)->As(Float)];
+				if(t->IsValid()) {
+					cells[2] := t->GetMeanDiff();
+					cells[3] := t->GetCiLow();
+					cells[4] := t->GetCiHigh();
+					cells[5] := t->GetT();
+					cells[6] := t->GetDf();
+					cells[7] := t->GetP();
+					cells[8] := t->GetCohenD();
+				};
+				table->AddRow(metric, m->As(Float), cells);
+			};
+			level := (rep->GetConfidence() * 100.0)->As(Int);
+			table->SetFootnote("a = {$a}, b = {$b}; paired t-test over shared seeds, {$level}% interval of the mean difference a - b");
+
+			return table;
+		}
+
+		#~
+		An OLS fit as a table: a row per coefficient with the columns coef, std_err, t, p_value, ci_low and ci_high (95%); the footnote carries n, R-squared and the F test.
+		@param fit the fit from System.Stats OLS->Fit
+		@param title the title
+		@return the table, Nil when the fit is Nil or not valid
+		~#
+		function : FromOls(fit : OLSResult, title : String) ~ ResultTable {
+			@error := "";
+			if(fit = Nil) {
+				Fail("no fit");
+				return Nil;
+			};
+			if(<>fit->IsValid()) {
+				Fail("the fit is not valid: {$fit->GetError()}");
+				return Nil;
+			};
+
+			table := ResultTable->New(title, "term");
+			table->AddColumn("coef");
+			table->AddColumn("std_err");
+			table->AddColumn("t");
+			table->AddColumn("p_value");
+			table->AddColumn("ci_low");
+			table->AddColumn("ci_high");
+			names := fit->GetNames();
+			coef := fit->GetCoefficients();
+			se := fit->GetStdErrors();
+			ts := fit->GetTStats();
+			ps := fit->GetPValues();
+			ci := fit->GetConfInt(0.95);
+			each(i : names) {
+				table->AddRow(names[i], i->As(Float), [coef[i], se[i], ts[i], ps[i], ci[i, 0], ci[i, 1]]);
+			};
+			r2 := ReportText->Number(fit->GetRSquared(), 4);
+			adj := ReportText->Number(fit->GetAdjustedRSquared(), 4);
+			f_stat := ReportText->Number(fit->GetFStat(), 3);
+			f_p := ReportText->Number(fit->GetFPValue(), 4);
+			nobs := fit->GetNObs();
+			note := "n = {$nobs}; R^2 = {$r2}; adjusted R^2 = {$adj}; F = {$f_stat}, p = {$f_p}; 95% intervals";
+			table->SetFootnote(note);
+
+			return table;
+		}
+
+		#~
+		A list of t-tests as a table: a row per test with mean_diff, t, df, p_value, ci_low, ci_high, cohen_d, hedges_g, n1 and n2. An invalid test is a row of NaN, and the footnote says why.
+		@param names one name per test
+		@param tests the results from System.Stats TTest
+		@param title the title
+		@return the table, Nil when the arrays are Nil or differ in length
+		~#
+		function : FromTTests(names : String[], tests : TTestResult[], title : String) ~ ResultTable {
+			@error := "";
+			if(names = Nil | tests = Nil | names->Size() <> tests->Size()) {
+				Fail("one name per test is needed");
+				return Nil;
+			};
+
+			table := ResultTable->New(title, "test");
+			table->AddColumn("mean_diff");
+			table->AddColumn("t");
+			table->AddColumn("df", 2);
+			table->AddColumn("p_value");
+			table->AddColumn("ci_low");
+			table->AddColumn("ci_high");
+			table->AddColumn("cohen_d");
+			table->AddColumn("hedges_g");
+			table->AddColumn("n1", 0);
+			table->AddColumn("n2", 0);
+			nan := Float->NaN();
+			reasons := String->New();
+			each(i : names) {
+				t := tests[i];
+				cells := [nan, nan, nan, nan, nan, nan, nan, nan, nan, nan];
+				if(t = Nil) {
+					reasons += "{$names[i]}: no result; ";
+				}
+				else if(<>t->IsValid()) {
+					reasons += "{$names[i]}: {$t->GetError()}; ";
+				}
+				else {
+					cells := [t->GetMeanDiff(), t->GetT(), t->GetDf(), t->GetP(), t->GetCiLow(), t->GetCiHigh(), t->GetCohenD(), t->GetHedgesG(), t->GetN1()->As(Float), t->GetN2()->As(Float)];
+				};
+				table->AddRow(names[i], i->As(Float), cells);
+			};
+			if(reasons->Size() > 0) {
+				table->SetFootnote("not computed: " + reasons->Trim());
+			};
+
+			return table;
+		}
+
+		#~
+		A ResultTable as a grid of text: row 0 is the heading (the parameter name, then the columns) and each further row is a row name then its cells, spelled as ResultTable->ToMarkdown() spells them (so the column's decimals and "mean ± std" are kept, and NaN reads n/a).
+		@param table the table
+		@return the grid, Nil when the table is Nil
+		~#
+		function : ToCells(table : ResultTable) ~ String[,] {
+			@error := "";
+			if(table = Nil) {
+				Fail("no table");
+				return Nil;
+			};
+
+			names := table->GetColumnNames();
+			cols := names->Size();
+			rows := table->Size();
+			grid := String->New[rows + 1, cols + 1];
+			grid[0, 0] := table->GetParameter();
+			each(c : cols) {
+				grid[0, c + 1] := names[c];
+			};
+
+			# the formatted cells come from the table's own Markdown, line by line, so
+			# the per-column decimals (which a table does not expose) are kept
+			lines := ReportText->Lines(table->ToMarkdown());
+			start := 0;
+			while(start < lines->Size() & <>lines[start]->StartsWith('|')) {
+				start += 1;
+			};
+			parsed := true;
+			if(start + 2 + rows > lines->Size()) {
+				parsed := false;
+			};
+			if(parsed) {
+				each(r : rows) {
+					fields := SplitRow(lines[start + 2 + r]);
+					width := cols + 1;
+					if(fields->Size() <> width) {
+						parsed := false;
+					}
+					else {
+						each(c : width) {
+							grid[r + 1, c] := ReportText->NormalizeNumbers(fields[c]);
+						};
+					};
+				};
+			};
+
+			if(<>parsed) {
+				# a row name with a line break or a lone backslash defeats the parse: format from the getters
+				each(r : rows) {
+					grid[r + 1, 0] := table->GetRowName(r);
+					each(c : cols) {
+						text := ReportText->Number(table->Get(r, c), 4);
+						if(table->HasStds()) {
+							spread := ReportText->Number(table->GetStd(r, c), 4);
+							text := "{$text} ± {$spread}";
+						};
+						grid[r + 1, c + 1] := text;
+					};
+				};
+			};
+
+			return grid;
+		}
+
+		function : SplitRow(line : String) ~ String[] {
+			fields := Vector->New()<String>;
+			cell := String->New();
+			text := line->Trim();
+			backslash := 92->As(Char);
+			i := 0;
+			n := text->Size();
+			if(n > 0 & text->Get(0) = '|') {
+				i := 1;
+			};
+			closed := false;
+			while(i < n) {
+				c := text->Get(i);
+				if(c = backslash & i + 1 < n & text->Get(i + 1) = '|') {
+					cell->Append('|');
+					i += 2;
+				}
+				else if(c = '|') {
+					fields->AddBack(cell->Trim());
+					cell := String->New();
+					closed := (i = n - 1);
+					i += 1;
+				}
+				else {
+					cell->Append(c);
+					i += 1;
+				};
+			};
+			if(<>closed) {
+				fields->AddBack(cell->Trim());
+			};
+
+			return fields->ToArray();
+		}
+
+		#~
+		A grid of text as a ResultTable: row 0 names the parameter (cell 0) and the columns, each further row is a name then one cell per column. A cell is read as a number; "mean ± std" gives the cell a deviation; anything else (n/a, empty, words) is NaN. Column names must be unique and not empty.
+		@param title the title
+		@param cells the grid, at least a heading row and one column
+		@return the table, Nil with the reason in GetError() when the grid cannot be a table
+		~#
+		function : FromCells(title : String, cells : String[,]) ~ ResultTable {
+			@error := "";
+			if(cells = Nil) {
+				Fail("no grid");
+				return Nil;
+			};
+			dims := cells->Size();
+			rows := dims[0];
+			cols := dims[1] - 1;
+			if(rows < 1 | cols < 1) {
+				Fail("the grid needs a heading row and at least one column besides the names");
+				return Nil;
+			};
+
+			names := Hash->New()<String, IntRef>;
+			each(c : cols) {
+				name := cells[0, c + 1];
+				if(name = Nil | name->Size() = 0) {
+					Fail("column {$c} has no name");
+					return Nil;
+				};
+				if(names->Find(name) <> Nil) {
+					Fail("column '{$name}' appears twice");
+					return Nil;
+				};
+				names->Insert(name, IntRef->New(c));
+			};
+
+			stds := false;
+			body_rows := rows - 1;
+			values := Float->New[rows, cols];
+			spread := Float->New[rows, cols];
+			nan := Float->NaN();
+			each(r : body_rows) {
+				each(c : cols) {
+					values[r, c] := nan;
+					spread[r, c] := nan;
+					text := cells[r + 1, c + 1];
+					if(text <> Nil) {
+						split := text->Find("±");
+						if(split > 0 & ReportText->IsNumber(text->SubString(split))) {
+							values[r, c] := text->SubString(split)->Trim()->ToFloat();
+							rest := text->SubString(split + 2, text->Size() - split - 2);
+							if(ReportText->IsNumber(rest)) {
+								spread[r, c] := rest->Trim()->ToFloat();
+								stds := true;
+							};
+						}
+						else if(ReportText->IsNumber(text)) {
+							values[r, c] := text->Trim()->ToFloat();
+						};
+					};
+				};
+			};
+
+			table := ResultTable->New(title, cells[0, 0]);
+			each(c : cols) {
+				table->AddColumn(cells[0, c + 1]);
+			};
+			each(r : body_rows) {
+				row := Float->New[cols];
+				sd := Float->New[cols];
+				each(c : cols) {
+					row[c] := values[r, c];
+					sd[c] := spread[r, c];
+				};
+				name := cells[r + 1, 0];
+				if(name = Nil) {
+					name := "";
+				};
+				table->AddRow(name, RowValue(name, r), row, stds ? sd : Nil->As(Float[]));
+			};
+
+			return table;
+		}
+	}
+
+	#~
+	One element of a Report: a section heading, paragraph, list, table, figure, code block, note or page break. Built by Report; not for direct use.
+	~#
+	class ReportBlock {
+		@kind : Int;
+		@text : String;
+		@marker : String;
+		@level : Int;
+		@anchor : String;
+		@items : String[];
+		@cells : String[,];
+		@numeric : Bool[];
+		@note : String;
+		@media : String;
+		@media_kind : Int;
+		@source : String;
+
+		New(kind : Int) {
+			@kind := kind;
+			@text := "";
+			@marker := "";
+			@level := 0;
+			@anchor := "";
+			@note := "";
+			@media := "";
+			@source := "";
+		}
+
+		method : public : GetKind() ~ Int { return @kind; }
+		method : public : GetText() ~ String { return @text; }
+		method : public : SetText(text : String) ~ Nil { @text := text; }
+		method : public : GetLabel() ~ String { return @marker; }
+		method : public : SetLabel(marker : String) ~ Nil { @marker := marker; }
+		method : public : GetLevel() ~ Int { return @level; }
+		method : public : SetLevel(level : Int) ~ Nil { @level := level; }
+		method : public : GetAnchor() ~ String { return @anchor; }
+		method : public : SetAnchor(anchor : String) ~ Nil { @anchor := anchor; }
+		method : public : GetItems() ~ String[] { return @items; }
+		method : public : SetItems(items : String[]) ~ Nil { @items := items; }
+		method : public : GetCells() ~ String[,] { return @cells; }
+		method : public : SetCells(cells : String[,]) ~ Nil { @cells := cells; }
+		method : public : GetNumeric() ~ Bool[] { return @numeric; }
+		method : public : SetNumeric(numeric : Bool[]) ~ Nil { @numeric := numeric; }
+		method : public : GetNote() ~ String { return @note; }
+		method : public : SetNote(note : String) ~ Nil { @note := note; }
+		method : public : GetMedia() ~ String { return @media; }
+		method : public : SetMedia(media : String) ~ Nil { @media := media; }
+		method : public : GetMediaKind() ~ Int { return @media_kind; }
+		method : public : SetMediaKind(kind : Int) ~ Nil { @media_kind := kind; }
+		method : public : GetSource() ~ String { return @source; }
+		method : public : SetSource(source : String) ~ Nil { @source := source; }
+	}
+
+	#~
+	A document builder for a hand-in. Add sections, paragraphs, lists, tables, figures, code and notes in order, then write Markdown or one self-contained HTML file.
+
+	Sections nest to four levels and are numbered automatically ("1", "1.2"), or labelled by you ("Chapter 4", then "Experiment 1" inside it, shown as "Chapter 4 / Experiment 1"). Tables and figures are numbered in order of appearance and captioned ("Table 2. ...", "Figure 1. ..."). The HTML has a table of contents, inline SVG or base64 PNG figures that scale to the page width, tables whose rows do not split across printed pages, and a print stylesheet: open it in a browser and choose Print, Save as PDF. Text is plain text; every character that could be markup is escaped in both formats, so cell and paragraph text can hold <, &, quotes, backticks and pipes.
+
+	Figures in Markdown are files beside the text: Save("report.md") writes report-figure-1.svg, and so on, next to it. A PNG file is referenced where it is.
+
+	Word: Word opens an HTML file but does not draw its inline SVG reliably; use PNG figures (AddFigureFile, with a PNG from System.Plot.SDL's PlotPng), or print the HTML to PDF from a browser, or convert the Markdown with an external tool such as pandoc. This library was not tested against Word.
+
+```
+report := Report->New("Assignment 3");
+report->SetAuthor("A. Student");
+report->AddSection(1, "Chapter 4", "Clustering");
+report->AddSection(2, "Experiment 1", "Choosing k");
+report->AddParagraph("Five seeds per setting.");
+report->AddTable("Silhouette by k", table);
+report->Save("report.html");
+```
+	~#
+	class Report {
+		@title : String;
+		@author : String;
+		@date : String;
+		@contents : Bool;
+		@paper : String;
+		@blocks : Vector<ReportBlock>;
+		@counters : Int[];
+		@paths : String[];
+		@tables : Int;
+		@figures : Int;
+		@sections : Int;
+		@error : String;
+
+		#~
+		Constructor
+		@param title the document title, "" for none
+		~#
+		New(title : String) {
+			Init(title);
+		}
+
+		method : Init(title : String) ~ Nil {
+			@title := (title = Nil) ? "" : title;
+			@author := "";
+			@date := "";
+			@contents := true;
+			@paper := "";
+			@blocks := Vector->New()<ReportBlock>;
+			@counters := Int->New[4];
+			@paths := String->New[4];
+			each(i : 4) {
+				@paths[i] := "";
+			};
+			@tables := 0;
+			@figures := 0;
+			@sections := 0;
+			@error := "";
+		}
+
+		#~
+		Constructor: an untitled report.
+		~#
+		New() {
+			Init("");
+		}
+
+		#~
+		Sets the title.
+		@param title the title
+		~#
+		method : public : SetTitle(title : String) ~ Nil {
+			@title := (title = Nil) ? "" : title;
+		}
+
+		#~
+		Sets the author line.
+		@param author the author
+		~#
+		method : public : SetAuthor(author : String) ~ Nil {
+			@author := (author = Nil) ? "" : author;
+		}
+
+		#~
+		Sets the date line; it is text you choose, so the output never depends on the clock.
+		@param date the date as written
+		~#
+		method : public : SetDate(date : String) ~ Nil {
+			@date := (date = Nil) ? "" : date;
+		}
+
+		#~
+		Turns the table of contents on (the default) or off. It is written only when there is a section.
+		@param on true for a table of contents
+		~#
+		method : public : SetContents(on : Bool) ~ Nil {
+			@contents := on;
+		}
+
+		#~
+		Sets the paper size of the printed HTML.
+		@param paper "A4", "Letter", or "" to let the print dialog decide (the default)
+		@return false for any other name
+		~#
+		method : public : SetPaper(paper : String) ~ Bool {
+			@error := "";
+			if(paper = Nil | paper->Size() = 0) {
+				@paper := "";
+				return true;
+			};
+			if(paper->Equals("A4") | paper->Equals("Letter")) {
+				@paper := paper;
+				return true;
+			};
+
+			@error := "the paper size must be A4 or Letter";
+			return false;
+		}
+
+		#~
+		Why the last call that returns Bool was refused; nothing is added by a refused call.
+		@return the reason, "" when it succeeded
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		method : Refuse(message : String) ~ Bool {
+			@error := message;
+			return false;
+		}
+
+		#~
+		Starts a section, numbered automatically: "1" for level 1, "1.1" for the first level 2 inside it.
+		@param level 1 to 4
+		@param heading the heading text
+		@return false when the level is outside 1 to 4 or the heading is Nil
+		~#
+		method : public : AddSection(level : Int, heading : String) ~ Bool {
+			return AddSection(level, "", heading);
+		}
+
+		#~
+		Starts a labelled section. A label such as "Chapter 4" replaces the number, and the labels of the sections it sits in come first, so level 2 "Experiment 1" under "Chapter 4" reads "Chapter 4 / Experiment 1".
+		@param level 1 to 4
+		@param label the label, "" for an automatic number
+		@param heading the heading text
+		@return false when the level is outside 1 to 4 or the heading or label is Nil
+		~#
+		method : public : AddSection(level : Int, marker : String, heading : String) ~ Bool {
+			@error := "";
+			if(level < 1 | level > 4) {
+				return Refuse("a section level is 1 to 4, not {$level}");
+			};
+			if(heading = Nil | marker = Nil) {
+				return Refuse("a section needs a heading and a label (use \"\" for none)");
+			};
+
+			@counters[level - 1] := @counters[level - 1] + 1;
+			for(i := level; i < 4; i += 1;) {
+				@counters[i] := 0;
+				@paths[i] := "";
+			};
+
+			number := String->New();
+			each(i : level) {
+				if(i > 0) {
+					number->Append('.');
+				};
+				number->Append(@counters[i]);
+			};
+
+			path := "";
+			if(marker->Size() > 0) {
+				parent := "";
+				k := level - 2;
+				while(k >= 0 & parent->Size() = 0) {
+					parent := @paths[k];
+					k -= 1;
+				};
+				path := (parent->Size() > 0) ? "{$parent} / {$marker}" : marker;
+			};
+			@paths[level - 1] := path;
+
+			@sections += 1;
+			block := ReportBlock->New(1);
+			block->SetLevel(level);
+			block->SetLabel(path->Size() > 0 ? path : number);
+			block->SetNote(path->Size() > 0 ? ":" : "");
+			block->SetText(heading);
+			block->SetAnchor("sec-{$@sections}");
+			@blocks->AddBack(block);
+
+			return true;
+		}
+
+		#~
+		Adds a paragraph. Blank lines in the text start new paragraphs; a single line break is a space.
+		@param text the text; "" adds nothing
+		@return false for Nil
+		~#
+		method : public : AddParagraph(text : String) ~ Bool {
+			@error := "";
+			if(text = Nil) {
+				return Refuse("a paragraph needs text");
+			};
+			if(text->Trim()->Size() = 0) {
+				return true;
+			};
+
+			block := ReportBlock->New(2);
+			block->SetText(text);
+			@blocks->AddBack(block);
+
+			return true;
+		}
+
+		#~
+		Adds a bulleted list.
+		@param items one text per bullet
+		@return false for Nil or an empty list
+		~#
+		method : public : AddBullets(items : String[]) ~ Bool {
+			return AddList(3, items);
+		}
+
+		#~
+		Adds a numbered list.
+		@param items one text per entry
+		@return false for Nil or an empty list
+		~#
+		method : public : AddNumbered(items : String[]) ~ Bool {
+			return AddList(4, items);
+		}
+
+		method : AddList(kind : Int, items : String[]) ~ Bool {
+			@error := "";
+			if(items = Nil | items->Size() = 0) {
+				return Refuse("a list needs at least one item");
+			};
+			copy := String->New[items->Size()];
+			each(i : items) {
+				if(items[i] = Nil) {
+					return Refuse("item {$i} of the list is Nil");
+				};
+				copy[i] := items[i];
+			};
+
+			block := ReportBlock->New(kind);
+			block->SetItems(copy);
+			@blocks->AddBack(block);
+
+			return true;
+		}
+
+		#~
+		Adds a table from a ResultTable, numbered and captioned. The cells read as ResultTable->ToMarkdown() spells them (the column's decimals, "mean ± std", NaN as n/a); the table's footnote is written under it.
+		@param caption the caption; "" uses the table's title
+		@param table the table
+		@return false for Nil
+		~#
+		method : public : AddTable(caption : String, table : ResultTable) ~ Bool {
+			@error := "";
+			if(table = Nil) {
+				return Refuse("the table is Nil");
+			};
+
+			grid := ResultTables->ToCells(table);
+			text := caption;
+			if(text = Nil | text->Size() = 0) {
+				text := table->GetTitle();
+			};
+			if(AddGrid(text, grid, false)) {
+				@blocks->Get(@blocks->Size() - 1)->SetNote(table->GetFootnote());
+				return true;
+			};
+
+			return false;
+		}
+
+		#~
+		Adds a table from a grid of text whose first row is the heading. A column whose cells all look like numbers is right-aligned.
+		@param caption the caption
+		@param cells rows by columns, at least a heading row and one column
+		@return false for Nil or an empty grid
+		~#
+		method : public : AddTable(caption : String, cells : String[,]) ~ Bool {
+			@error := "";
+			return AddGrid(caption, cells, true);
+		}
+
+		method : AddGrid(caption : String, cells : String[,], copy : Bool) ~ Bool {
+			if(cells = Nil) {
+				return Refuse("the table is Nil");
+			};
+			dims := cells->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows < 1 | cols < 1) {
+				return Refuse("a table needs a heading row and at least one column");
+			};
+
+			grid := String->New[rows, cols];
+			numeric := Bool->New[cols];
+			each(c : cols) {
+				body := 0;
+				all := true;
+				each(r : rows) {
+					text := cells[r, c];
+					if(text = Nil) {
+						text := "";
+					};
+					grid[r, c] := text;
+					if(r > 0) {
+						if(text->Trim()->Size() > 0) {
+							body += 1;
+							if(<>ReportText->LooksNumeric(text)) {
+								all := false;
+							};
+						};
+					};
+				};
+				numeric[c] := all & body > 0 & (copy | c > 0);
+			};
+
+			@tables += 1;
+			block := ReportBlock->New(5);
+			block->SetLabel("Table {$@tables}");
+			block->SetText(caption = Nil ? "" : caption);
+			block->SetCells(grid);
+			block->SetNumeric(numeric);
+			block->SetAnchor("tbl-{$@tables}");
+			@blocks->AddBack(block);
+
+			return true;
+		}
+
+		#~
+		Adds a figure from SVG text, numbered and captioned below. The text must be one <svg> document (an XML declaration before it is dropped); it is refused if it holds a script, a javascript: link or an event handler attribute. Ids inside it are made unique to the figure.
+		@param caption the caption
+		@param svg the SVG, for example Figure->ToSvg()
+		@return false for Nil, text that is not SVG, or SVG with active content
+		~#
+		method : public : AddFigure(caption : String, svg : String) ~ Bool {
+			@error := "";
+			if(svg = Nil) {
+				return Refuse("the figure is Nil");
+			};
+
+			start := svg->Find("<svg");
+			lower := svg->ToLower();
+			last := lower->FindLast("</svg>");
+			if(start < 0 | last < start) {
+				return Refuse("the figure is not an <svg> document");
+			};
+			body := svg->SubString(start, last + 6 - start);
+			lowered := body->ToLower();
+			if(lowered->Has("<script") | lowered->Has("javascript:") | lowered->Has("<foreignobject") | ReportText->HasHandler(lowered)) {
+				return Refuse("the figure holds a script, a javascript: link or an event handler");
+			};
+
+			@figures += 1;
+			if(body->Has("id=\"")) {
+				prefix := "f{$@figures}-";
+				body := body->ReplaceAll("id=\"", "id=\"{$prefix}");
+				body := body->ReplaceAll("url(#", "url(#{$prefix}");
+				body := body->ReplaceAll("href=\"#", "href=\"#{$prefix}");
+			};
+
+			block := ReportBlock->New(6);
+			block->SetLabel("Figure {$@figures}");
+			block->SetText(caption = Nil ? "" : caption);
+			block->SetMedia(body);
+			block->SetMediaKind(0);
+			block->SetAnchor("fig-{$@figures}");
+			@blocks->AddBack(block);
+
+			return true;
+		}
+
+		#~
+		Adds a System.Plot figure as inline SVG.
+		@param caption the caption
+		@param figure the figure
+		@return false for Nil
+		~#
+		method : public : AddFigure(caption : String, figure : Figure) ~ Bool {
+			@error := "";
+			if(figure = Nil) {
+				return Refuse("the figure is Nil");
+			};
+
+			return AddFigure(caption, figure->ToSvg());
+		}
+
+		#~
+		Adds a System.ML.Lab chart as inline SVG.
+		@param caption the caption
+		@param chart the chart, for example ResultTable->ToChart(...)
+		@return false for Nil
+		~#
+		method : public : AddChart(caption : String, chart : Chart) ~ Bool {
+			@error := "";
+			if(chart = Nil) {
+				return Refuse("the chart is Nil");
+			};
+
+			return AddFigure(caption, chart->ToSvg());
+		}
+
+		#~
+		Adds a figure from a file: a .svg file is read as AddFigure reads SVG, and a .png file is embedded in the HTML as a base64 data URI (and referenced by its path in Markdown).
+		@param caption the caption
+		@param path the file
+		@return false when the file is missing, empty, not a PNG or SVG by its extension, or a PNG without the PNG signature
+		~#
+		method : public : AddFigureFile(caption : String, path : String) ~ Bool {
+			@error := "";
+			if(path = Nil | <>System.IO.Filesystem.File->Exists(path)) {
+				return Refuse("the figure file does not exist");
+			};
+
+			lower := path->ToLower();
+			if(lower->EndsWith(".svg")) {
+				text := System.IO.Filesystem.FileReader->ReadFile(path);
+				if(text = Nil) {
+					return Refuse("the figure file cannot be read");
+				};
+
+				return AddFigure(caption, text);
+			};
+			if(<>lower->EndsWith(".png")) {
+				return Refuse("a figure file is .png or .svg");
+			};
+
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(path);
+			if(data = Nil | data->Size() < 8) {
+				return Refuse("the PNG file is empty or cannot be read");
+			};
+			sig := [137, 80, 78, 71, 13, 10, 26, 10];
+			each(i : 8) {
+				if(data[i]->As(Int) <> sig[i]) {
+					return Refuse("the file does not start with the PNG signature");
+				};
+			};
+
+			@figures += 1;
+			block := ReportBlock->New(6);
+			block->SetLabel("Figure {$@figures}");
+			block->SetText(caption = Nil ? "" : caption);
+			block->SetMedia("data:image/png;base64," + ReportText->Base64(data));
+			block->SetMediaKind(1);
+			block->SetSource(path);
+			block->SetAnchor("fig-{$@figures}");
+			@blocks->AddBack(block);
+
+			return true;
+		}
+
+		#~
+		Draws columns of a ResultTable with System.Plot and adds the chart as a figure: the row names are the categories of a bar chart ("bar"), or the row values are x of a line chart ("line", the row number where a row value is not a number or repeats).
+		@param caption the caption
+		@param table the table
+		@param columns the columns to draw; Nil or empty draws all of them
+		@param kind "bar" or "line"
+		@return false for a Nil or empty table, an unknown column or kind, or a value that is not finite
+		~#
+		method : public : AddResultTableChart(caption : String, table : ResultTable, columns : String[], kind : String) ~ Bool {
+			@error := "";
+			if(table = Nil) {
+				return Refuse("the table is Nil");
+			};
+			if(kind = Nil | (<>kind->Equals("bar") & <>kind->Equals("line"))) {
+				return Refuse("the chart kind is bar or line");
+			};
+			rows := table->Size();
+			if(rows = 0) {
+				return Refuse("the table has no rows");
+			};
+
+			names := columns;
+			if(names = Nil | names->Size() = 0) {
+				names := table->GetColumnNames();
+			};
+			if(names->Size() = 0) {
+				return Refuse("the table has no columns");
+			};
+			series := Vector->New()<FloatArrayRef>;
+			each(c : names) {
+				if(table->ColumnIndex(names[c]) < 0) {
+					return Refuse("the table has no column '{$names[c]}'");
+				};
+				values := table->GetColumn(names[c]);
+				each(r : values) {
+					if(ReportText->NotFinite(values[r])) {
+						return Refuse("column '{$names[c]}' has a value that is not finite (row {$r})");
+					};
+				};
+				series->AddBack(FloatArrayRef->New(values));
+			};
+
+			figure := Figure->New(760, 420);
+			axes := figure->GetAxes();
+			axes->SetTitle(table->GetTitle());
+			axes->SetXLabel(table->GetParameter());
+			if(kind->Equals("bar")) {
+				axes->SetCategories(table->GetRowNames());
+				each(c : names) {
+					axes->Bar(names[c], series->Get(c)->Get());
+				};
+			}
+			else {
+				xs := table->GetRowValues();
+				distinct := true;
+				each(r : rows) {
+					if(ReportText->NotFinite(xs[r]) | (r > 0 & xs[r] <= xs[r - 1])) {
+						distinct := false;
+					};
+				};
+				if(<>distinct) {
+					each(r : rows) {
+						xs[r] := r->As(Float);
+					};
+				};
+				each(c : names) {
+					axes->Plot(names[c], xs, series->Get(c)->Get());
+				};
+			};
+
+			return AddFigure(caption, figure->ToSvg());
+		}
+
+		#~
+		Adds a block of code or output, shown as written in a fixed-width font.
+		@param text the text, line breaks kept
+		@return false for Nil
+		~#
+		method : public : AddCode(text : String) ~ Bool {
+			@error := "";
+			if(text = Nil) {
+				return Refuse("the code is Nil");
+			};
+
+			block := ReportBlock->New(7);
+			block->SetText(text);
+			@blocks->AddBack(block);
+
+			return true;
+		}
+
+		#~
+		Adds a note set apart from the text, for a caveat or an assumption.
+		@param text the text
+		@return false for Nil
+		~#
+		method : public : AddNote(text : String) ~ Bool {
+			@error := "";
+			if(text = Nil) {
+				return Refuse("the note is Nil");
+			};
+			if(text->Trim()->Size() = 0) {
+				return true;
+			};
+
+			block := ReportBlock->New(8);
+			block->SetText(text);
+			@blocks->AddBack(block);
+
+			return true;
+		}
+
+		#~
+		Starts a new printed page here (HTML only; Markdown has no page).
+		~#
+		method : public : AddPageBreak() ~ Nil {
+			@blocks->AddBack(ReportBlock->New(9));
+		}
+
+		#~
+		How many tables have been added.
+		@return the count
+		~#
+		method : public : GetTableCount() ~ Int {
+			return @tables;
+		}
+
+		#~
+		How many figures have been added.
+		@return the count
+		~#
+		method : public : GetFigureCount() ~ Int {
+			return @figures;
+		}
+
+		#~
+		How many sections have been added.
+		@return the count
+		~#
+		method : public : GetSectionCount() ~ Int {
+			return @sections;
+		}
+
+		# ---- rendering -------------------------------------------------------
+
+		method : HeadingText(block : ReportBlock, markdown : Bool) ~ String {
+			marker := markdown ? ReportText->MarkdownLine(block->GetLabel()) : ReportText->Html(block->GetLabel());
+			text := markdown ? ReportText->MarkdownCell(block->GetText()) : ReportText->Html(block->GetText());
+			if(block->GetText()->Trim()->Size() = 0) {
+				return marker;
+			};
+
+			return "{$marker}{$block->GetNote()} {$text}";
+		}
+
+		#~
+		The report as Markdown (CommonMark with pipe tables). Figures are referenced as figure-1.svg, figure-2.svg, ... beside the text; Save writes them.
+		@return the Markdown
+		~#
+		method : public : ToMarkdown() ~ String {
+			return ToMarkdown("");
+		}
+
+		#~
+		The report as Markdown with a chosen file-name stem for the figure files: "name" gives name-figure-1.svg.
+		@param stem the stem, "" for figure-1.svg
+		@return the Markdown
+		~#
+		method : public : ToMarkdown(stem : String) ~ String {
+			out := String->New();
+			if(@title->Size() > 0) {
+				out->Append("# ");
+				out->Append(ReportText->MarkdownCell(@title));
+				out->Append("\n\n");
+			};
+			if(@author->Size() > 0) {
+				out->Append(ReportText->MarkdownCell(@author));
+				out->Append("\n\n");
+			};
+			if(@date->Size() > 0) {
+				out->Append(ReportText->MarkdownCell(@date));
+				out->Append("\n\n");
+			};
+
+			if(@contents & @sections > 0) {
+				out->Append("## Contents\n\n");
+				each(i : @blocks) {
+					block := @blocks->Get(i);
+					if(block->GetKind() = 1) {
+						indent := String->New();
+						indent_by := block->GetLevel() - 1;
+						each(k : indent_by) {
+							indent->Append("  ");
+						};
+						out->Append(indent);
+						out->Append("- [");
+						out->Append(HeadingText(block, true));
+						out->Append("](#");
+						out->Append(block->GetAnchor());
+						out->Append(")\n");
+					};
+				};
+				out->Append("\n");
+			};
+
+			each(i : @blocks) {
+				block := @blocks->Get(i);
+				kind := block->GetKind();
+				if(kind = 1) {
+					out->Append("<a id=\"");
+					out->Append(block->GetAnchor());
+					out->Append("\"></a>\n\n");
+					hashes := block->GetLevel() + 1;
+					each(k : hashes) {
+						out->Append('#');
+					};
+					out->Append(' ');
+					out->Append(HeadingText(block, true));
+					out->Append("\n\n");
+				}
+				else if(kind = 2) {
+					MarkdownParagraphs(out, block->GetText());
+				}
+				else if(kind = 3 | kind = 4) {
+					items := block->GetItems();
+					each(k : items) {
+						lines := ReportText->Lines(items[k]);
+						out->Append(kind = 3 ? "- " : "{$k + 1}. ");
+						each(l : lines) {
+							if(l > 0) {
+								out->Append("\n");
+								out->Append(kind = 3 ? "  " : "   ");
+							};
+							out->Append(ReportText->MarkdownLine(lines[l]));
+						};
+						out->Append("\n");
+					};
+					out->Append("\n");
+				}
+				else if(kind = 5) {
+					MarkdownTable(out, block);
+				}
+				else if(kind = 6) {
+					out->Append("<a id=\"");
+					out->Append(block->GetAnchor());
+					out->Append("\"></a>\n\n");
+					target := (block->GetMediaKind() = 1) ? ReportText->LinkPath(block->GetSource()) : FigureFile(stem, block);
+					alt_text := block->GetLabel();
+					if(block->GetText()->Size() > 0) {
+						alt_text := "{$alt_text}. {$block->GetText()}";
+					};
+					alt := ReportText->MarkdownCell(alt_text);
+					out->Append("![");
+					out->Append(alt);
+					out->Append("](");
+					out->Append(target);
+					out->Append(")\n\n**");
+					out->Append(block->GetLabel());
+					if(block->GetText()->Size() > 0) {
+						out->Append(".** ");
+						out->Append(ReportText->MarkdownCell(block->GetText()));
+					}
+					else {
+						out->Append("**");
+					};
+					out->Append("\n\n");
+				}
+				else if(kind = 7) {
+					text := block->GetText();
+					run := 0;
+					longest := 0;
+					each(k : text->Size()) {
+						if(text->Get(k) = '`') {
+							run += 1;
+							if(run > longest) {
+								longest := run;
+							};
+						}
+						else {
+							run := 0;
+						};
+					};
+					fence := String->New();
+					width := (longest < 3) ? 3 : longest + 1;
+					each(k : width) {
+						fence->Append('`');
+					};
+					out->Append(fence);
+					out->Append("\n");
+					out->Append(text);
+					if(text->Size() > 0 & <>text->EndsWith('\n')) {
+						out->Append("\n");
+					};
+					out->Append(fence);
+					out->Append("\n\n");
+				}
+				else if(kind = 8) {
+					lines := ReportText->Lines(block->GetText());
+					each(l : lines) {
+						out->Append("> ");
+						if(l = 0) {
+							out->Append("**Note.** ");
+						};
+						out->Append(ReportText->MarkdownLine(lines[l]));
+						out->Append("\n");
+					};
+					out->Append("\n");
+				};
+			};
+
+			return out;
+		}
+
+		method : FigureFile(stem : String, block : ReportBlock) ~ String {
+			prefix := (stem = Nil | stem->Size() = 0) ? "figure" : "{$stem}-figure";
+			index := block->GetLabel()->SubString(7, block->GetLabel()->Size() - 7);
+			return ReportText->LinkPath("{$prefix}-{$index}.svg");
+		}
+
+		method : MarkdownParagraphs(out : String, text : String) ~ Nil {
+			lines := ReportText->Lines(text);
+			open := false;
+			each(i : lines) {
+				if(lines[i]->Trim()->Size() = 0) {
+					if(open) {
+						out->Append("\n");
+						open := false;
+					};
+				}
+				else {
+					out->Append(ReportText->MarkdownLine(lines[i]));
+					out->Append("\n");
+					open := true;
+				};
+			};
+			out->Append("\n");
+		}
+
+		method : MarkdownTable(out : String, block : ReportBlock) ~ Nil {
+			cells := block->GetCells();
+			numeric := block->GetNumeric();
+			dims := cells->Size();
+			rows := dims[0];
+			cols := dims[1];
+			out->Append("<a id=\"");
+			out->Append(block->GetAnchor());
+			out->Append("\"></a>\n\n**");
+			out->Append(block->GetLabel());
+			if(block->GetText()->Size() > 0) {
+				out->Append(".** ");
+				out->Append(ReportText->MarkdownCell(block->GetText()));
+			}
+			else {
+				out->Append("**");
+			};
+			out->Append("\n\n");
+
+			each(r : rows) {
+				out->Append("|");
+				each(c : cols) {
+					out->Append(' ');
+					out->Append(ReportText->MarkdownCell(cells[r, c]));
+					out->Append(" |");
+				};
+				out->Append("\n");
+				if(r = 0) {
+					out->Append("|");
+					each(c : cols) {
+						out->Append(numeric[c] ? " ---: |" : " :--- |");
+					};
+					out->Append("\n");
+				};
+			};
+			if(rows = 1) {
+				# a header with no rows still needs its separator, which was written above
+			};
+			if(block->GetNote()->Size() > 0) {
+				out->Append("\n*");
+				out->Append(ReportText->MarkdownCell(block->GetNote()));
+				out->Append("*\n");
+			};
+			out->Append("\n");
+		}
+
+		method : Css() ~ String {
+			size := "";
+			if(@paper->Equals("A4")) {
+				size := " size: A4;";
+			}
+			else if(@paper->Equals("Letter")) {
+				size := " size: Letter;";
+			};
+
+			css := String->New();
+			css->Append("body { font-family: Georgia, 'Times New Roman', serif; line-height: 1.5; color: #1a1a1a; background: #fff; margin: 0; }\n");
+			css->Append("main { max-width: 46rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }\n");
+			css->Append("h1, h2, h3, h4, h5 { font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.25; margin: 1.6em 0 0.5em; }\n");
+			css->Append("h1.title { font-size: 1.9rem; margin-top: 0; }\n");
+			css->Append(".author, .date { margin: 0.1em 0; color: #444; }\n");
+			css->Append("h2 { font-size: 1.4rem; } h3 { font-size: 1.2rem; } h4 { font-size: 1.05rem; } h5 { font-size: 1rem; }\n");
+			css->Append("h2 .num, h3 .num, h4 .num, h5 .num { color: #555; font-weight: 600; }\n");
+			css->Append("p { margin: 0.7em 0; }\n");
+			css->Append("nav.contents { border: 1px solid #ccc; padding: 0.6rem 1.2rem; margin: 1.5rem 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 0.92rem; }\n");
+			css->Append("nav.contents h2 { font-size: 1.05rem; margin: 0 0 0.4rem; }\n");
+			css->Append("nav.contents ul { list-style: none; margin: 0; padding-left: 0; }\n");
+			css->Append("nav.contents li.l2 { padding-left: 1.2rem; } nav.contents li.l3 { padding-left: 2.4rem; } nav.contents li.l4 { padding-left: 3.6rem; }\n");
+			css->Append("a { color: #0b4f8a; }\n");
+			css->Append("table { border-collapse: collapse; margin: 0.4rem auto 1.2rem; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 0.9rem; font-variant-numeric: tabular-nums; max-width: 100%; }\n");
+			css->Append("caption { caption-side: top; text-align: left; font-weight: 600; padding: 0 0 0.4rem; }\n");
+			css->Append("thead tr { border-top: 2px solid #222; border-bottom: 1px solid #222; } tbody tr:last-child { border-bottom: 2px solid #222; }\n");
+			css->Append("th, td { padding: 0.25rem 0.7rem; text-align: left; vertical-align: top; } th.num, td.num { text-align: right; }\n");
+			css->Append("table.wide { font-size: 0.74rem; } table.wide th, table.wide td { padding: 0.2rem 0.35rem; }\n");
+			css->Append("p.tnote { font-size: 0.85rem; color: #444; margin: -0.8rem 0 1.2rem; text-align: center; }\n");
+			css->Append("figure { margin: 1.2rem 0; text-align: center; }\n");
+			css->Append("figure svg, figure img { max-width: 100%; height: auto; }\n");
+			css->Append("figcaption { font-size: 0.9rem; margin-top: 0.4rem; text-align: left; }\n");
+			css->Append("pre { background: #f5f5f5; border: 1px solid #ddd; padding: 0.7rem 0.9rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 0.85rem; }\n");
+			css->Append("code, pre { font-family: Consolas, 'Courier New', monospace; }\n");
+			css->Append("aside.note { border-left: 4px solid #999; background: #f7f7f7; padding: 0.4rem 0.9rem; margin: 1rem 0; }\n");
+			css->Append("aside.note p { margin: 0.3em 0; }\n");
+			css->Append(".pagebreak { break-after: page; page-break-after: always; height: 0; }\n");
+			css->Append("@page { margin: 18mm;{$size} }\n");
+			css->Append("@media print {\n");
+			css->Append("  body { font-size: 11pt; } main { max-width: none; padding: 0; }\n");
+			css->Append("  a { color: inherit; text-decoration: none; }\n");
+			css->Append("  h2, h3, h4, h5, caption { break-after: avoid; page-break-after: avoid; }\n");
+			css->Append("  tr, figure, aside.note, nav.contents { break-inside: avoid; page-break-inside: avoid; }\n");
+			css->Append("  table.keep { break-inside: avoid; page-break-inside: avoid; }\n");
+			css->Append("  thead { display: table-header-group; }\n");
+			css->Append("  figure svg, figure img { max-width: 100%; max-height: 22cm; }\n");
+			css->Append("}\n");
+
+			return css;
+		}
+
+		#~
+		The report as one self-contained HTML5 file: styles inline, SVG figures inline, PNG figures as data URIs, no script and no external request. Print it to PDF from a browser.
+		@return the HTML
+		~#
+		method : public : ToHtml() ~ String {
+			out := String->New();
+			out->Append("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n");
+			out->Append("<title>");
+			out->Append(@title->Size() > 0 ? ReportText->Html(@title) : "Report");
+			out->Append("</title>\n");
+			if(@author->Size() > 0) {
+				out->Append("<meta name=\"author\" content=\"");
+				out->Append(ReportText->Html(@author));
+				out->Append("\">\n");
+			};
+			out->Append("<style>\n");
+			out->Append(Css());
+			out->Append("</style>\n</head>\n<body>\n<main>\n");
+
+			if(@title->Size() > 0) {
+				out->Append("<h1 class=\"title\">");
+				out->Append(ReportText->Html(@title));
+				out->Append("</h1>\n");
+			};
+			if(@author->Size() > 0) {
+				out->Append("<p class=\"author\">");
+				out->Append(ReportText->Html(@author));
+				out->Append("</p>\n");
+			};
+			if(@date->Size() > 0) {
+				out->Append("<p class=\"date\">");
+				out->Append(ReportText->Html(@date));
+				out->Append("</p>\n");
+			};
+
+			if(@contents & @sections > 0) {
+				out->Append("<nav class=\"contents\">\n<h2>Contents</h2>\n<ul>\n");
+				each(i : @blocks) {
+					block := @blocks->Get(i);
+					if(block->GetKind() = 1) {
+						out->Append("<li class=\"l{$block->GetLevel()}\"><a href=\"#");
+						out->Append(block->GetAnchor());
+						out->Append("\">");
+						out->Append(HeadingText(block, false));
+						out->Append("</a></li>\n");
+					};
+				};
+				out->Append("</ul>\n</nav>\n");
+			};
+
+			each(i : @blocks) {
+				block := @blocks->Get(i);
+				kind := block->GetKind();
+				if(kind = 1) {
+					tag := "h{$block->GetLevel() + 1}";
+					out->Append("<{$tag} id=\"");
+					out->Append(block->GetAnchor());
+					out->Append("\">");
+					out->Append("<span class=\"num\">");
+					out->Append(ReportText->Html(block->GetLabel()));
+					out->Append(ReportText->Html(block->GetNote()));
+					out->Append("</span>");
+					if(block->GetText()->Trim()->Size() > 0) {
+						out->Append(' ');
+						out->Append(ReportText->Html(block->GetText()));
+					};
+					out->Append("</{$tag}>\n");
+				}
+				else if(kind = 2) {
+					HtmlParagraphs(out, block->GetText());
+				}
+				else if(kind = 3 | kind = 4) {
+					out->Append(kind = 3 ? "<ul>\n" : "<ol>\n");
+					items := block->GetItems();
+					each(k : items) {
+						out->Append("<li>");
+						out->Append(HtmlLines(items[k]));
+						out->Append("</li>\n");
+					};
+					out->Append(kind = 3 ? "</ul>\n" : "</ol>\n");
+				}
+				else if(kind = 5) {
+					HtmlTable(out, block);
+				}
+				else if(kind = 6) {
+					out->Append("<figure id=\"");
+					out->Append(block->GetAnchor());
+					out->Append("\">\n");
+					if(block->GetMediaKind() = 1) {
+						out->Append("<img src=\"");
+						out->Append(block->GetMedia());
+						out->Append("\" alt=\"");
+						out->Append(ReportText->Html(block->GetLabel() + ". " + block->GetText()));
+						out->Append("\">\n");
+					}
+					else {
+						out->Append(block->GetMedia());
+						out->Append("\n");
+					};
+					out->Append("<figcaption><strong>");
+					out->Append(block->GetLabel());
+					out->Append(".</strong> ");
+					out->Append(HtmlLines(block->GetText()));
+					out->Append("</figcaption>\n</figure>\n");
+				}
+				else if(kind = 7) {
+					out->Append("<pre><code>");
+					out->Append(ReportText->Html(block->GetText()));
+					out->Append("</code></pre>\n");
+				}
+				else if(kind = 8) {
+					out->Append("<aside class=\"note\"><p><strong>Note.</strong> ");
+					out->Append(HtmlLines(block->GetText()));
+					out->Append("</p></aside>\n");
+				}
+				else if(kind = 9) {
+					out->Append("<div class=\"pagebreak\"></div>\n");
+				};
+			};
+
+			out->Append("</main>\n</body>\n</html>\n");
+
+			return out;
+		}
+
+		method : HtmlLines(text : String) ~ String {
+			lines := ReportText->Lines(text);
+			out := String->New();
+			each(i : lines) {
+				if(i > 0) {
+					out->Append("<br>");
+				};
+				out->Append(ReportText->Html(lines[i]));
+			};
+
+			return out;
+		}
+
+		method : HtmlParagraphs(out : String, text : String) ~ Nil {
+			lines := ReportText->Lines(text);
+			para := String->New();
+			each(i : lines) {
+				if(lines[i]->Trim()->Size() = 0) {
+					if(para->Size() > 0) {
+						out->Append("<p>");
+						out->Append(para);
+						out->Append("</p>\n");
+						para := String->New();
+					};
+				}
+				else {
+					if(para->Size() > 0) {
+						para->Append(' ');
+					};
+					para->Append(ReportText->Html(lines[i]->Trim()));
+				};
+			};
+			if(para->Size() > 0) {
+				out->Append("<p>");
+				out->Append(para);
+				out->Append("</p>\n");
+			};
+		}
+
+		method : HtmlTable(out : String, block : ReportBlock) ~ Nil {
+			cells := block->GetCells();
+			numeric := block->GetNumeric();
+			dims := cells->Size();
+			rows := dims[0];
+			cols := dims[1];
+			kind := (rows <= 26) ? "keep" : "";
+			if(cols > 7) {
+				kind := (kind->Size() > 0) ? "keep wide" : "wide";
+			};
+			if(kind->Size() > 0) {
+				out->Append("<table class=\"{$kind}\" id=\"");
+			}
+			else {
+				out->Append("<table id=\"");
+			};
+			out->Append(block->GetAnchor());
+			out->Append("\">\n<caption>");
+			out->Append(block->GetLabel());
+			if(block->GetText()->Size() > 0) {
+				out->Append(". ");
+				out->Append(HtmlLines(block->GetText()));
+			};
+			out->Append("</caption>\n<thead><tr>");
+			each(c : cols) {
+				out->Append(numeric[c] ? "<th scope=\"col\" class=\"num\">" : "<th scope=\"col\">");
+				out->Append(HtmlLines(cells[0, c]));
+				out->Append("</th>");
+			};
+			out->Append("</tr></thead>\n<tbody>\n");
+			for(r := 1; r < rows; r += 1;) {
+				out->Append("<tr>");
+				each(c : cols) {
+					out->Append(numeric[c] ? "<td class=\"num\">" : "<td>");
+					out->Append(HtmlLines(cells[r, c]));
+					out->Append("</td>");
+				};
+				out->Append("</tr>\n");
+			};
+			out->Append("</tbody>\n</table>\n");
+			if(block->GetNote()->Size() > 0) {
+				out->Append("<p class=\"tnote\">");
+				out->Append(HtmlLines(block->GetNote()));
+				out->Append("</p>\n");
+			};
+		}
+
+		#~
+		Writes the report, choosing the format by the extension: .html or .htm for HTML, .md or .markdown for Markdown. For Markdown the SVG figures are written beside it as NAME-figure-1.svg, and so on.
+		@param path the file to write
+		@return false, with GetError() saying why, for another extension or a file that cannot be written
+		~#
+		method : public : Save(path : String) ~ Bool {
+			@error := "";
+			if(path = Nil | path->Size() = 0) {
+				return Refuse("no path");
+			};
+
+			lower := path->ToLower();
+			if(lower->EndsWith(".html") | lower->EndsWith(".htm")) {
+				if(<>System.IO.Filesystem.FileWriter->WriteFile(path, ToHtml())) {
+					return Refuse("cannot write '{$path}'");
+				};
+
+				return true;
+			};
+			if(<>(lower->EndsWith(".md") | lower->EndsWith(".markdown"))) {
+				return Refuse("the extension must be .html, .htm, .md or .markdown");
+			};
+
+			# the stem is the file name without its directory and extension
+			slash := -1;
+			each(i : path->Size()) {
+				c := path->Get(i);
+				if(c = '/' | c->As(Int) = 92) {
+					slash := i;
+				};
+			};
+			dir := slash >= 0 ? path->SubString(slash + 1) : "";
+			name := path->SubString(slash + 1, path->Size() - slash - 1);
+			dot := -1;
+			each(i : name->Size()) {
+				if(name->Get(i) = '.') {
+					dot := i;
+				};
+			};
+			stem := dot > 0 ? name->SubString(dot) : name;
+
+			if(<>System.IO.Filesystem.FileWriter->WriteFile(path, ToMarkdown(stem))) {
+				return Refuse("cannot write '{$path}'");
+			};
+			each(i : @blocks) {
+				block := @blocks->Get(i);
+				if(block->GetKind() = 6 & block->GetMediaKind() = 0) {
+					file := dir + "{$stem}-figure-{$block->GetLabel()->SubString(7, block->GetLabel()->Size() - 7)}.svg";
+					if(<>System.IO.Filesystem.FileWriter->WriteFile(file, block->GetMedia() + "\n")) {
+						return Refuse("cannot write '{$file}'");
+					};
+				};
+			};
+
+			return true;
+		}
+	}
+}

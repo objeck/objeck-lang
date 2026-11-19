@@ -128,6 +128,12 @@
     "System.ML.Lab": ["Chart", "ChartSeries", "DataSplit", "Experiment", "IndexSplit", "LabError", "Labels", "Partition", "Resample", "ResultTable", "Sample", "Stopwatch", "Trial", "TrialResult"]
    }
   },
+  "ml_report": {
+   "deps": ["gen_collect", "csv", "json", "ml", "ml_lab", "stats", "plot"],
+   "bundles": {
+    "System.ML.Report": ["ReplicateCell", "Replicates", "Report", "ReportBlock", "ReportText", "ResultTables"]
+   }
+  },
   "ml_vector": {
    "deps": ["gen_collect"],
    "bundles": {

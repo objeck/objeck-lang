@@ -16764,6 +16764,248 @@
 				}
 			}
 		},
+		"System.ML.Report.ReplicateCell": {
+			"description": "The values one metric took under one setting, per seed.",
+			"functions": {
+
+			}
+		},
+		"System.ML.Report.Replicates": {
+			"description": "Per-seed values of named metrics under named settings (groups), with the summary a hand-in reports. Every statistic leaves out a value that is not finite (NaN, an infinity, or the value given to SetMissing) and says how many it left out; a statistic that needs more values than there are is NaN, never an error, so a one-seed run gives a mean and an undefined standard deviation.",
+			"functions": {
+				"Add": {
+					"descriptions": ["**Records one value.**\n\n```method : public : Add(group:String, metric:String, seed:Int, value:Float) ~ Bool```\n\n\n\ngroup: String\n\nmetric: String\n\nseed: Int\n\nvalue: Float\n\nreturn: Bool", "**Records one value under the next free seed number of that setting and metric (0, 1, 2, ...).**\n\n```method : public : Add(group:String, metric:String, value:Float) ~ Bool```\n\n\n\ngroup: String\n\nmetric: String\n\nvalue: Float\n\nreturn: Bool"]
+				},
+				"AddRun": {
+					"descriptions": ["**Records one run: every metric of one seed under one setting.**\n\n```method : public : AddRun(group:String, seed:Int, metrics:String[], values:Float[]) ~ Bool```\n\n\n\ngroup: String\n\nseed: Int\n\nmetrics: String[]\n\nvalues: Float[]\n\nreturn: Bool"]
+				},
+				"GetCiHigh": {
+					"descriptions": ["**The upper end of the t confidence interval of the mean.**\n\n```method : public : GetCiHigh(group:String, metric:String) ~ Float```\n\n\n\ngroup: String\n\nmetric: String\n\nreturn: Float"]
+				},
+				"GetCiLow": {
+					"descriptions": ["**The lower end of the t confidence interval of the mean (mean - t * s / sqrt(n), n - 1 degrees of freedom).**\n\n```method : public : GetCiLow(group:String, metric:String) ~ Float```\n\n\n\ngroup: String\n\nmetric: String\n\nreturn: Float"]
+				},
+				"GetConfidence": {
+					"descriptions": ["**The confidence level.**\n\n```method : public : GetConfidence() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetCount": {
+					"descriptions": ["**How many values were usable (finite and not the missing marker).**\n\n```method : public : GetCount(group:String, metric:String) ~ Int```\n\n\n\ngroup: String\n\nmetric: String\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call that returns Bool was refused.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetGroups": {
+					"descriptions": ["**The setting names in the order they were first recorded.**\n\n```method : public : GetGroups() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetMax": {
+					"descriptions": ["**The largest usable value.**\n\n```method : public : GetMax(group:String, metric:String) ~ Float```\n\n\n\ngroup: String\n\nmetric: String\n\nreturn: Float"]
+				},
+				"GetMean": {
+					"descriptions": ["**The mean of the usable values.**\n\n```method : public : GetMean(group:String, metric:String) ~ Float```\n\n\n\ngroup: String\n\nmetric: String\n\nreturn: Float"]
+				},
+				"GetMetrics": {
+					"descriptions": ["**The metric names in the order they were first recorded.**\n\n```method : public : GetMetrics() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetMin": {
+					"descriptions": ["**The smallest usable value.**\n\n```method : public : GetMin(group:String, metric:String) ~ Float```\n\n\n\ngroup: String\n\nmetric: String\n\nreturn: Float"]
+				},
+				"GetMissing": {
+					"descriptions": ["**How many recorded values were left out as missing.**\n\n```method : public : GetMissing(group:String, metric:String) ~ Int```\n\n\n\ngroup: String\n\nmetric: String\n\nreturn: Int"]
+				},
+				"GetPairedCount": {
+					"descriptions": ["**How many seeds two settings share with a usable value in both: the n of the paired comparison.**\n\n```method : public : GetPairedCount(a:String, b:String, metric:String) ~ Int```\n\n\n\na: String\n\nb: String\n\nmetric: String\n\nreturn: Int"]
+				},
+				"GetSeeds": {
+					"descriptions": ["**The seeds of GetValues, in the same order.**\n\n```method : public : GetSeeds(group:String, metric:String) ~ Int[]```\n\n\n\ngroup: String\n\nmetric: String\n\nreturn: Int[]"]
+				},
+				"GetStd": {
+					"descriptions": ["**The sample standard deviation (divisor n - 1, two-pass) of the usable values.**\n\n```method : public : GetStd(group:String, metric:String) ~ Float```\n\n\n\ngroup: String\n\nmetric: String\n\nreturn: Float"]
+				},
+				"GetStdError": {
+					"descriptions": ["**The standard error of the mean: the standard deviation over the square root of the count.**\n\n```method : public : GetStdError(group:String, metric:String) ~ Float```\n\n\n\ngroup: String\n\nmetric: String\n\nreturn: Float"]
+				},
+				"GetUsable": {
+					"descriptions": ["**The values that count: the recorded ones without the missing.**\n\n```method : public : GetUsable(group:String, metric:String) ~ Float[]```\n\n\n\ngroup: String\n\nmetric: String\n\nreturn: Float[]"]
+				},
+				"GetValues": {
+					"descriptions": ["**Every value recorded, non-finite ones included, in the order added.**\n\n```method : public : GetValues(group:String, metric:String) ~ Float[]```\n\n\n\ngroup: String\n\nmetric: String\n\nreturn: Float[]"]
+				},
+				"New": {
+					"descriptions": ["**Constructor: a 95% confidence level and no missing-value marker.**\n\n```New()```\n\n"]
+				},
+				"Paired": {
+					"descriptions": ["**Paired t-test of two settings over the seeds they share (System.Stats TTest->Paired): the mean of a minus b, its t statistic, degrees of freedom, two-sided p-value, confidence interval and effect sizes.**\n\n```method : public : Paired(a:String, b:String, metric:String) ~ TTestResult```\n\n\n\na: String\n\nb: String\n\nmetric: String\n\nreturn: TTestResult"]
+				},
+				"SetConfidence": {
+					"descriptions": ["**Sets the confidence level of the interval of the mean and of the paired comparison.**\n\n```method : public : SetConfidence(level:Float) ~ Bool```\n\n\n\nlevel: Float\n\nreturn: Bool"]
+				},
+				"SetMissing": {
+					"descriptions": ["**Treats one exact value as \"no result\", for a metric that reports a sentinel such as the -1.0 of Metrics->AucRoc when a class is missing. The value is kept, counted by GetMissing and left out of the statistics.**\n\n```method : public : SetMissing(sentinel:Float) ~ Nil```\n\n\n\nsentinel: Float\n\nreturn: Nil"]
+				},
+				"ToResultTable": {
+					"descriptions": ["**One metric as a ResultTable with a row per setting and the columns mean, std, ci_low, ci_high, n and missing. See ResultTables->FromReplicates.**\n\n```method : public : ToResultTable(metric:String, title:String, parameter:String) ~ ResultTable```\n\n\n\nmetric: String\n\ntitle: String\n\nparameter: String\n\nreturn: ResultTable"]
+				},
+				"Welch": {
+					"descriptions": ["**Welch's unequal-variance t-test of two settings, which do not need to share seeds or counts.**\n\n```method : public : Welch(a:String, b:String, metric:String) ~ TTestResult```\n\n\n\na: String\n\nb: String\n\nmetric: String\n\nreturn: TTestResult"]
+				}
+			}
+		},
+		"System.ML.Report.Report": {
+			"description": "A document builder for a hand-in. Add sections, paragraphs, lists, tables, figures, code and notes in order, then write Markdown or one self-contained HTML file.\n\nSections nest to four levels and are numbered automatically (\"1\", \"1.2\"), or labelled by you (\"Chapter 4\", then \"Experiment 1\" inside it, shown as \"Chapter 4 / Experiment 1\"). Tables and figures are numbered in order of appearance and captioned (\"Table 2. ...\", \"Figure 1. ...\"). The HTML has a table of contents, inline SVG or base64 PNG figures that scale to the page width, tables whose rows do not split across printed pages, and a print stylesheet: open it in a browser and choose Print, Save as PDF. Text is plain text; every character that could be markup is escaped in both formats, so cell and paragraph text can hold <, &, quotes, backticks and pipes.\n\nFigures in Markdown are files beside the text: Save(\"report.md\") writes report-figure-1.svg, and so on, next to it. A PNG file is referenced where it is.\n\nWord: Word opens an HTML file but does not draw its inline SVG reliably; use PNG figures (AddFigureFile, with a PNG from System.Plot.SDL's PlotPng), or print the HTML to PDF from a browser, or convert the Markdown with an external tool such as pandoc. This library was not tested against Word.",
+			"functions": {
+				"AddBullets": {
+					"descriptions": ["**Adds a bulleted list.**\n\n```method : public : AddBullets(items:String[]) ~ Bool```\n\n\n\nitems: String[]\n\nreturn: Bool"]
+				},
+				"AddChart": {
+					"descriptions": ["**Adds a System.ML.Lab chart as inline SVG.**\n\n```method : public : AddChart(caption:String, chart:Chart) ~ Bool```\n\n\n\ncaption: String\n\nchart: Chart\n\nreturn: Bool"]
+				},
+				"AddCode": {
+					"descriptions": ["**Adds a block of code or output, shown as written in a fixed-width font.**\n\n```method : public : AddCode(text:String) ~ Bool```\n\n\n\ntext: String\n\nreturn: Bool"]
+				},
+				"AddFigure": {
+					"descriptions": ["**Adds a figure from SVG text, numbered and captioned below. The text must be one <svg> document (an XML declaration before it is dropped); it is refused if it holds a script, a javascript: link or an event handler attribute. Ids inside it are made unique to the figure.**\n\n```method : public : AddFigure(caption:String, svg:String) ~ Bool```\n\n\n\ncaption: String\n\nsvg: String\n\nreturn: Bool", "**Adds a System.Plot figure as inline SVG.**\n\n```method : public : AddFigure(caption:String, figure:Figure) ~ Bool```\n\n\n\ncaption: String\n\nfigure: Figure\n\nreturn: Bool"]
+				},
+				"AddFigureFile": {
+					"descriptions": ["**Adds a figure from a file: a .svg file is read as AddFigure reads SVG, and a .png file is embedded in the HTML as a base64 data URI (and referenced by its path in Markdown).**\n\n```method : public : AddFigureFile(caption:String, path:String) ~ Bool```\n\n\n\ncaption: String\n\npath: String\n\nreturn: Bool"]
+				},
+				"AddNote": {
+					"descriptions": ["**Adds a note set apart from the text, for a caveat or an assumption.**\n\n```method : public : AddNote(text:String) ~ Bool```\n\n\n\ntext: String\n\nreturn: Bool"]
+				},
+				"AddNumbered": {
+					"descriptions": ["**Adds a numbered list.**\n\n```method : public : AddNumbered(items:String[]) ~ Bool```\n\n\n\nitems: String[]\n\nreturn: Bool"]
+				},
+				"AddPageBreak": {
+					"descriptions": ["**Starts a new printed page here (HTML only; Markdown has no page).**\n\n```method : public : AddPageBreak() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"AddParagraph": {
+					"descriptions": ["**Adds a paragraph. Blank lines in the text start new paragraphs; a single line break is a space.**\n\n```method : public : AddParagraph(text:String) ~ Bool```\n\n\n\ntext: String\n\nreturn: Bool"]
+				},
+				"AddResultTableChart": {
+					"descriptions": ["**Draws columns of a ResultTable with System.Plot and adds the chart as a figure: the row names are the categories of a bar chart (\"bar\"), or the row values are x of a line chart (\"line\", the row number where a row value is not a number or repeats).**\n\n```method : public : AddResultTableChart(caption:String, table:ResultTable, columns:String[], kind:String) ~ Bool```\n\n\n\ncaption: String\n\ntable: ResultTable\n\ncolumns: String[]\n\nkind: String\n\nreturn: Bool"]
+				},
+				"AddSection": {
+					"descriptions": ["**Starts a section, numbered automatically: \"1\" for level 1, \"1.1\" for the first level 2 inside it.**\n\n```method : public : AddSection(level:Int, heading:String) ~ Bool```\n\n\n\nlevel: Int\n\nheading: String\n\nreturn: Bool", "**Starts a labelled section. A label such as \"Chapter 4\" replaces the number, and the labels of the sections it sits in come first, so level 2 \"Experiment 1\" under \"Chapter 4\" reads \"Chapter 4 / Experiment 1\".**\n\n```method : public : AddSection(level:Int, heading:String) ~ Bool```\n\n\n\nlevel: Int\n\nmarker: String\n\nheading: String\n\nreturn: Bool"]
+				},
+				"AddTable": {
+					"descriptions": ["**Adds a table from a ResultTable, numbered and captioned. The cells read as ResultTable->ToMarkdown() spells them (the column's decimals, \"mean \u00b1 std\", NaN as n/a); the table's footnote is written under it.**\n\n```method : public : AddTable(caption:String, table:ResultTable) ~ Bool```\n\n\n\ncaption: String\n\ntable: ResultTable\n\nreturn: Bool", "**Adds a table from a grid of text whose first row is the heading. A column whose cells all look like numbers is right-aligned.**\n\n```method : public : AddTable(caption:String, cells:String[,]) ~ Bool```\n\n\n\ncaption: String\n\ncells: String[,]\n\nreturn: Bool"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call that returns Bool was refused; nothing is added by a refused call.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetFigureCount": {
+					"descriptions": ["**How many figures have been added.**\n\n```method : public : GetFigureCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetSectionCount": {
+					"descriptions": ["**How many sections have been added.**\n\n```method : public : GetSectionCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetTableCount": {
+					"descriptions": ["**How many tables have been added.**\n\n```method : public : GetTableCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(title:String)```\n\n\n\ntitle: String", "**Constructor: an untitled report.**\n\n```New()```\n\n"]
+				},
+				"Save": {
+					"descriptions": ["**Writes the report, choosing the format by the extension: .html or .htm for HTML, .md or .markdown for Markdown. For Markdown the SVG figures are written beside it as NAME-figure-1.svg, and so on.**\n\n```method : public : Save(path:String) ~ Bool```\n\n\n\npath: String\n\nreturn: Bool"]
+				},
+				"SetAuthor": {
+					"descriptions": ["**Sets the author line.**\n\n```method : public : SetAuthor(author:String) ~ Nil```\n\n\n\nauthor: String\n\nreturn: Nil"]
+				},
+				"SetContents": {
+					"descriptions": ["**Turns the table of contents on (the default) or off. It is written only when there is a section.**\n\n```method : public : SetContents(on:Bool) ~ Nil```\n\n\n\non: Bool\n\nreturn: Nil"]
+				},
+				"SetDate": {
+					"descriptions": ["**Sets the date line; it is text you choose, so the output never depends on the clock.**\n\n```method : public : SetDate(date:String) ~ Nil```\n\n\n\ndate: String\n\nreturn: Nil"]
+				},
+				"SetPaper": {
+					"descriptions": ["**Sets the paper size of the printed HTML.**\n\n```method : public : SetPaper(paper:String) ~ Bool```\n\n\n\npaper: String\n\nreturn: Bool"]
+				},
+				"SetTitle": {
+					"descriptions": ["**Sets the title.**\n\n```method : public : SetTitle(title:String) ~ Nil```\n\n\n\ntitle: String\n\nreturn: Nil"]
+				},
+				"ToHtml": {
+					"descriptions": ["**The report as one self-contained HTML5 file: styles inline, SVG figures inline, PNG figures as data URIs, no script and no external request. Print it to PDF from a browser.**\n\n```method : public : ToHtml() ~ String```\n\n\n\nreturn: String"]
+				},
+				"ToMarkdown": {
+					"descriptions": ["**The report as Markdown (CommonMark with pipe tables). Figures are referenced as figure-1.svg, figure-2.svg, ... beside the text; Save writes them.**\n\n```method : public : ToMarkdown() ~ String```\n\n\n\nreturn: String", "**The report as Markdown with a chosen file-name stem for the figure files: \"name\" gives name-figure-1.svg.**\n\n```method : public : ToMarkdown(stem:String) ~ String```\n\n\n\nstem: String\n\nreturn: String"]
+				}
+			}
+		},
+		"System.ML.Report.ReportBlock": {
+			"description": "One element of a Report: a section heading, paragraph, list, table, figure, code block, note or page break. Built by Report; not for direct use.",
+			"functions": {
+
+			}
+		},
+		"System.ML.Report.ReportText": {
+			"description": "Text helpers shared by the writers: escaping for HTML and Markdown, number formatting, Base64.",
+			"functions": {
+				"Base64": {
+					"descriptions": ["**Base64 of bytes, RFC 4648 with padding.**\n\n```function : Base64(data:Byte[]) ~ String```\n\n\n\ndata: Byte[]\n\nreturn: String"]
+				},
+				"HasHandler": {
+					"descriptions": ["**True when lower-case markup holds an attribute such as onload= or onclick=.**\n\n```function : HasHandler(lower:String) ~ Bool```\n\n\n\nlower: String\n\nreturn: Bool"]
+				},
+				"Html": {
+					"descriptions": ["**Escapes text for HTML element content or a double-quoted attribute: & < > \" and '.**\n\n```function : Html(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String"]
+				},
+				"IsNumber": {
+					"descriptions": ["**Parses a plain decimal number; unlike String->ToFloat() it can tell that the text is not one.**\n\n```function : IsNumber(text:String) ~ Bool```\n\n\n\ntext: String\n\nreturn: Bool"]
+				},
+				"Lines": {
+					"descriptions": ["**Splits text into lines; CRLF, CR and LF all end a line. \"\" is one empty line and Nil is none.**\n\n```function : Lines(text:String) ~ String[]```\n\n\n\ntext: String\n\nreturn: String[]"]
+				},
+				"LinkPath": {
+					"descriptions": ["**Percent-encodes the characters of a file path that end a Markdown link target: space, parentheses, angle brackets and percent. Backslashes become slashes.**\n\n```function : LinkPath(path:String) ~ String```\n\n\n\npath: String\n\nreturn: String"]
+				},
+				"LooksNumeric": {
+					"descriptions": ["**True when the text looks like a number, a number with a deviation or n/a, so a table column of them is right-aligned.**\n\n```function : LooksNumeric(text:String) ~ Bool```\n\n\n\ntext: String\n\nreturn: Bool"]
+				},
+				"MarkdownCell": {
+					"descriptions": ["**Escapes a table cell or a heading for Markdown: every line escaped as MarkdownLine, joined with an HTML line break because a table row has one line.**\n\n```function : MarkdownCell(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String"]
+				},
+				"MarkdownLine": {
+					"descriptions": ["**Escapes one line of text for Markdown so that nothing in it is read as markup: backslash, backtick, asterisk, underscore, brackets, braces, angle brackets, ampersand, pipe, tilde, dollar and caret anywhere, and # - + = or a number and a dot at the start of a line.**\n\n```function : MarkdownLine(line:String) ~ String```\n\n\n\nline: String\n\nreturn: String"]
+				},
+				"NormalizeNumbers": {
+					"descriptions": ["**Replaces the spellings of NaN that a number formatter writes with \"n/a\".**\n\n```function : NormalizeNumbers(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String"]
+				},
+				"NotFinite": {
+					"descriptions": ["**True for NaN, +Inf and -Inf.**\n\n```function : NotFinite(v:Float) ~ Bool```\n\n\n\nv: Float\n\nreturn: Bool"]
+				},
+				"Number": {
+					"descriptions": ["**A number with a fixed count of decimals; NaN is \"n/a\", infinities are \"inf\" and \"-inf\", and a negative zero is written without its sign.**\n\n```function : Number(v:Float, decimals:Int) ~ String```\n\n\n\nv: Float\n\ndecimals: Int\n\nreturn: String"]
+				}
+			}
+		},
+		"System.ML.Report.ResultTables": {
+			"description": "Conversions between System.ML.Lab's ResultTable and the rest: summaries of replicates, an OLS fit, a list of t-tests, and a grid of strings. A conversion that cannot be done returns Nil and GetError() says why (\"\" when the last one worked).",
+			"functions": {
+				"FromCells": {
+					"descriptions": ["**A grid of text as a ResultTable: row 0 names the parameter (cell 0) and the columns, each further row is a name then one cell per column. A cell is read as a number; \"mean \u00b1 std\" gives the cell a deviation; anything else (n/a, empty, words) is NaN. Column names must be unique and not empty.**\n\n```function : FromCells(title:String, cells:String[,]) ~ ResultTable```\n\n\n\ntitle: String\n\ncells: String[,]\n\nreturn: ResultTable"]
+				},
+				"FromComparison": {
+					"descriptions": ["**A paired comparison of two settings across all metrics: a row per metric with the two means, their difference, its confidence interval, t, df, p_value, cohen_d and n_pairs. A metric with fewer than 2 shared seeds has NaN in the test columns.**\n\n```function : FromComparison(rep:Replicates, a:String, b:String, title:String) ~ ResultTable```\n\n\n\nrep: Replicates\n\na: String\n\nb: String\n\ntitle: String\n\nreturn: ResultTable"]
+				},
+				"FromOls": {
+					"descriptions": ["**An OLS fit as a table: a row per coefficient with the columns coef, std_err, t, p_value, ci_low and ci_high (95%); the footnote carries n, R-squared and the F test.**\n\n```function : FromOls(fit:OLSResult, title:String) ~ ResultTable```\n\n\n\nfit: OLSResult\n\ntitle: String\n\nreturn: ResultTable"]
+				},
+				"FromReplicates": {
+					"descriptions": ["**One metric of a Replicates as a table: a row per setting, the columns mean, std, ci_low, ci_high, n (usable values) and missing. A row whose setting name is a number carries it as the row value (so a chart can use it for x), otherwise the row number.**\n\n```function : FromReplicates(rep:Replicates, metric:String, title:String, parameter:String) ~ ResultTable```\n\n\n\nrep: Replicates\n\nmetric: String\n\ntitle: String\n\nparameter: String\n\nreturn: ResultTable"]
+				},
+				"FromTTests": {
+					"descriptions": ["**A list of t-tests as a table: a row per test with mean_diff, t, df, p_value, ci_low, ci_high, cohen_d, hedges_g, n1 and n2. An invalid test is a row of NaN, and the footnote says why.**\n\n```function : FromTTests(names:String[], tests:TTestResult[], title:String) ~ ResultTable```\n\n\n\nnames: String[]\n\ntests: TTestResult[]\n\ntitle: String\n\nreturn: ResultTable"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last conversion returned Nil.**\n\n```function : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"MeansFromReplicates": {
+					"descriptions": ["**Every metric of a Replicates as one table in the sweep layout: a row per setting, a column per metric holding the mean, and the sample standard deviation as the cell's deviation, which renders as \"mean \u00b1 std\". A one-seed cell has an undefined deviation.**\n\n```function : MeansFromReplicates(rep:Replicates, title:String, parameter:String) ~ ResultTable```\n\n\n\nrep: Replicates\n\ntitle: String\n\nparameter: String\n\nreturn: ResultTable"]
+				},
+				"ToCells": {
+					"descriptions": ["**A ResultTable as a grid of text: row 0 is the heading (the parameter name, then the columns) and each further row is a row name then its cells, spelled as ResultTable->ToMarkdown() spells them (so the column's decimals and \"mean \u00b1 std\" are kept, and NaN reads n/a).**\n\n```function : ToCells(table:ResultTable) ~ String[,]```\n\n\n\ntable: ResultTable\n\nreturn: String[,]"]
+				}
+			}
+		},
 		"System.NLP.ApiSequenceTokenizer": {
 			"description": "A tokenizer for sequences of API calls, as malware-analysis datasets record them: CreateFileW,ReadFile,CloseHandle or the same separated by spaces or semicolons.\n\nFit builds a vocabulary from training data: [PAD]=0, [UNK]=1, [CLS]=2, [SEP]=3, then each API name by descending frequency, ties by name, so the same data always gives the same ids. Encode gives a TokenEncoding like WordPieceTokenizer's: [CLS], the first max_len - 2 calls, [SEP], then [PAD]. Names are case-sensitive unless asked otherwise.\n\nIts ids are for a model trained on them. A pretrained BERT knows only its own WordPiece vocabulary, so for BERT pass the calls as text instead: ToText normalises the separators and truncates by call count, and WordPieceTokenizer splits \"CreateFileW\" into its pieces.",
 			"functions": {
@@ -22493,6 +22735,42 @@
 		"VectorIndex": [
 			{
 				"bundle": "System.ML.VectorSearch",
+				"file": ""
+			}
+		],
+		"ReplicateCell": [
+			{
+				"bundle": "System.ML.Report",
+				"file": ""
+			}
+		],
+		"Replicates": [
+			{
+				"bundle": "System.ML.Report",
+				"file": ""
+			}
+		],
+		"Report": [
+			{
+				"bundle": "System.ML.Report",
+				"file": ""
+			}
+		],
+		"ReportBlock": [
+			{
+				"bundle": "System.ML.Report",
+				"file": ""
+			}
+		],
+		"ReportText": [
+			{
+				"bundle": "System.ML.Report",
+				"file": ""
+			}
+		],
+		"ResultTables": [
+			{
+				"bundle": "System.ML.Report",
 				"file": ""
 			}
 		],

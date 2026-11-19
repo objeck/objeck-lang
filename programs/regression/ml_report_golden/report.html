@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assignment 3: tree depth and generalisation</title>
+<meta name="author" content="Example Student (synthetic results)">
+<style>
+body { font-family: Georgia, 'Times New Roman', serif; line-height: 1.5; color: #1a1a1a; background: #fff; margin: 0; }
+main { max-width: 46rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+h1, h2, h3, h4, h5 { font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.25; margin: 1.6em 0 0.5em; }
+h1.title { font-size: 1.9rem; margin-top: 0; }
+.author, .date { margin: 0.1em 0; color: #444; }
+h2 { font-size: 1.4rem; } h3 { font-size: 1.2rem; } h4 { font-size: 1.05rem; } h5 { font-size: 1rem; }
+h2 .num, h3 .num, h4 .num, h5 .num { color: #555; font-weight: 600; }
+p { margin: 0.7em 0; }
+nav.contents { border: 1px solid #ccc; padding: 0.6rem 1.2rem; margin: 1.5rem 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 0.92rem; }
+nav.contents h2 { font-size: 1.05rem; margin: 0 0 0.4rem; }
+nav.contents ul { list-style: none; margin: 0; padding-left: 0; }
+nav.contents li.l2 { padding-left: 1.2rem; } nav.contents li.l3 { padding-left: 2.4rem; } nav.contents li.l4 { padding-left: 3.6rem; }
+a { color: #0b4f8a; }
+table { border-collapse: collapse; margin: 0.4rem auto 1.2rem; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 0.9rem; font-variant-numeric: tabular-nums; max-width: 100%; }
+caption { caption-side: top; text-align: left; font-weight: 600; padding: 0 0 0.4rem; }
+thead tr { border-top: 2px solid #222; border-bottom: 1px solid #222; } tbody tr:last-child { border-bottom: 2px solid #222; }
+th, td { padding: 0.25rem 0.7rem; text-align: left; vertical-align: top; } th.num, td.num { text-align: right; }
+table.wide { font-size: 0.74rem; } table.wide th, table.wide td { padding: 0.2rem 0.35rem; }
+p.tnote { font-size: 0.85rem; color: #444; margin: -0.8rem 0 1.2rem; text-align: center; }
+figure { margin: 1.2rem 0; text-align: center; }
+figure svg, figure img { max-width: 100%; height: auto; }
+figcaption { font-size: 0.9rem; margin-top: 0.4rem; text-align: left; }
+pre { background: #f5f5f5; border: 1px solid #ddd; padding: 0.7rem 0.9rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 0.85rem; }
+code, pre { font-family: Consolas, 'Courier New', monospace; }
+aside.note { border-left: 4px solid #999; background: #f7f7f7; padding: 0.4rem 0.9rem; margin: 1rem 0; }
+aside.note p { margin: 0.3em 0; }
+.pagebreak { break-after: page; page-break-after: always; height: 0; }
+@page { margin: 18mm; }
+@media print {
+  body { font-size: 11pt; } main { max-width: none; padding: 0; }
+  a { color: inherit; text-decoration: none; }
+  h2, h3, h4, h5, caption { break-after: avoid; page-break-after: avoid; }
+  tr, figure, aside.note, nav.contents { break-inside: avoid; page-break-inside: avoid; }
+  table.keep { break-inside: avoid; page-break-inside: avoid; }
+  thead { display: table-header-group; }
+  figure svg, figure img { max-width: 100%; max-height: 22cm; }
+}
+</style>
+</head>
+<body>
+<main>
+<h1 class="title">Assignment 3: tree depth and generalisation</h1>
+<p class="author">Example Student (synthetic results)</p>
+<p class="date">2026-11-19</p>
+<nav class="contents">
+<h2>Contents</h2>
+<ul>
+<li class="l1"><a href="#sec-1">Chapter 3: Decision trees</a></li>
+<li class="l2"><a href="#sec-2">Chapter 3 / Exercise 1: Accuracy by tree depth</a></li>
+<li class="l2"><a href="#sec-3">Chapter 3 / Exercise 2: Is depth 8 better than depth 2?</a></li>
+<li class="l1"><a href="#sec-4">Chapter 4: Regression</a></li>
+<li class="l2"><a href="#sec-5">Chapter 4 / Experiment 1: Accuracy against label noise</a></li>
+</ul>
+</nav>
+<h2 id="sec-1"><span class="num">Chapter 3:</span> Decision trees</h2>
+<p>This hand-in shows the layout of a report built from code. Every number below is made up from a formula; a real study would fill the replicates from its own runs.</p>
+<p>Each setting was run with 5 seeds. Tables give the mean and the sample standard deviation over the seeds.</p>
+<h3 id="sec-2"><span class="num">Chapter 3 / Exercise 1:</span> Accuracy by tree depth</h3>
+<table class="keep" id="tbl-1">
+<caption>Table 1. Test accuracy and F1 by depth</caption>
+<thead><tr><th scope="col">depth</th><th scope="col" class="num">test_accuracy</th><th scope="col" class="num">f1</th></tr></thead>
+<tbody>
+<tr><td>depth 2</td><td class="num">0.7000 ± 0.0112</td><td class="num">0.6600 ± 0.0112</td></tr>
+<tr><td>depth 4</td><td class="num">0.7750 ± 0.0079</td><td class="num">0.7350 ± 0.0079</td></tr>
+<tr><td>depth 8</td><td class="num">0.8090 ± 0.0119</td><td class="num">0.7690 ± 0.0119</td></tr>
+</tbody>
+</table>
+<p class="tnote">mean ± sample standard deviation over the usable seeds</p>
+<table class="keep" id="tbl-2">
+<caption>Table 2. Test accuracy: mean, deviation and 95% t interval</caption>
+<thead><tr><th scope="col">depth</th><th scope="col" class="num">mean</th><th scope="col" class="num">std</th><th scope="col" class="num">ci_low</th><th scope="col" class="num">ci_high</th><th scope="col" class="num">n</th><th scope="col" class="num">missing</th></tr></thead>
+<tbody>
+<tr><td>depth 2</td><td class="num">0.7000</td><td class="num">0.0112</td><td class="num">0.6861</td><td class="num">0.7139</td><td class="num">5</td><td class="num">0</td></tr>
+<tr><td>depth 4</td><td class="num">0.7750</td><td class="num">0.0079</td><td class="num">0.7652</td><td class="num">0.7848</td><td class="num">5</td><td class="num">0</td></tr>
+<tr><td>depth 8</td><td class="num">0.8090</td><td class="num">0.0119</td><td class="num">0.7942</td><td class="num">0.8238</td><td class="num">5</td><td class="num">0</td></tr>
+</tbody>
+</table>
+<p class="tnote">test_accuracy: mean, sample standard deviation and 95% t interval over the usable seeds; n counts them</p>
+<figure id="fig-1">
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="760" height="420" viewBox="0 0 760 420" font-family="sans-serif" font-size="12">
+<title></title>
+<rect x="0.0" y="0.0" width="760.0" height="420.0" fill="#ffffff" class="background"/>
+<line x1="64.0" y1="372.0" x2="744.0" y2="372.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="376.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">0</text>
+<line x1="64.0" y1="304.0" x2="744.0" y2="304.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="308.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">0.2</text>
+<line x1="64.0" y1="236.0" x2="744.0" y2="236.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="240.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">0.4</text>
+<line x1="64.0" y1="168.0" x2="744.0" y2="168.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="172.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">0.6</text>
+<line x1="64.0" y1="100.0" x2="744.0" y2="100.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="104.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">0.8</text>
+<line x1="64.0" y1="32.0" x2="744.0" y2="32.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="36.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">1</text>
+<text x="177.3" y="390.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">depth 2</text>
+<text x="404.0" y="390.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">depth 4</text>
+<text x="630.7" y="390.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">depth 8</text>
+<clipPath id="f1-clip0"><rect x="64.0" y="32.0" width="680.0" height="340.0"/></clipPath>
+<g clip-path="url(#f1-clip0)">
+<rect x="98.0" y="134.0" width="158.7" height="238.0" fill="#1f77b4" class="bar"/>
+<rect x="324.7" y="108.5" width="158.7" height="263.5" fill="#1f77b4" class="bar"/>
+<rect x="551.3" y="96.9" width="158.7" height="275.1" fill="#1f77b4" class="bar"/>
+</g>
+<line x1="64.0" y1="32.0" x2="64.0" y2="372.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<line x1="64.0" y1="372.0" x2="744.0" y2="372.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<text x="404.0" y="408.0" fill="#000000" font-size="13" text-anchor="middle" class="xlabel">depth</text>
+<text x="404.0" y="22.0" fill="#000000" font-size="16" text-anchor="middle" font-weight="bold" class="title">Test accuracy with a 95% interval</text>
+<rect x="669.2" y="36.0" width="66.8" height="30.0" fill="#ffffff" fill-opacity="0.85" stroke="#cccccc" stroke-width="1.0" class="legend"/>
+<rect x="677.2" y="42.0" width="12.0" height="12.0" fill="#1f77b4" class="legend"/>
+<text x="695.2" y="52.0" fill="#333333" font-size="12" class="legend">mean</text>
+</svg>
+<figcaption><strong>Figure 1.</strong> Mean test accuracy by depth</figcaption>
+</figure>
+<h3 id="sec-3"><span class="num">Chapter 3 / Exercise 2:</span> Is depth 8 better than depth 2?</h3>
+<p>The same five seeds were used for both settings, so the comparison is paired by seed.</p>
+<table class="keep wide" id="tbl-3">
+<caption>Table 3. Paired comparison, depth 8 minus depth 2</caption>
+<thead><tr><th scope="col">metric</th><th scope="col" class="num">mean_a</th><th scope="col" class="num">mean_b</th><th scope="col" class="num">mean_diff</th><th scope="col" class="num">ci_low</th><th scope="col" class="num">ci_high</th><th scope="col" class="num">t</th><th scope="col" class="num">df</th><th scope="col" class="num">p_value</th><th scope="col" class="num">cohen_d</th><th scope="col" class="num">n_pairs</th></tr></thead>
+<tbody>
+<tr><td>test_accuracy</td><td class="num">0.8090</td><td class="num">0.7000</td><td class="num">0.1090</td><td class="num">0.0929</td><td class="num">0.1251</td><td class="num">18.8323</td><td class="num">4.00</td><td class="num">0.0000</td><td class="num">8.4221</td><td class="num">5</td></tr>
+<tr><td>f1</td><td class="num">0.7690</td><td class="num">0.6600</td><td class="num">0.1090</td><td class="num">0.0929</td><td class="num">0.1251</td><td class="num">18.8323</td><td class="num">4.00</td><td class="num">0.0000</td><td class="num">8.4221</td><td class="num">5</td></tr>
+</tbody>
+</table>
+<p class="tnote">a = depth 8, b = depth 2; paired t-test over shared seeds, 95% interval of the mean difference a - b</p>
+<pre><code>Paired t-test: t = 18.8323, df = 4.00, p = 4.682e-5, mean diff = 0.1090, 95.0% CI [0.0929, 0.1251], Cohen d = 8.4221, Hedges g = 6.7198</code></pre>
+<aside class="note"><p><strong>Note.</strong> Five seeds give a wide interval; treat the p-value as a rough guide, not a verdict.</p></aside>
+<h2 id="sec-4"><span class="num">Chapter 4:</span> Regression</h2>
+<h3 id="sec-5"><span class="num">Chapter 4 / Experiment 1:</span> Accuracy against label noise</h3>
+<p>Accuracy fell as label noise rose. A least-squares line through the five noise levels:</p>
+<table class="keep" id="tbl-4">
+<caption>Table 4. OLS of accuracy on label noise</caption>
+<thead><tr><th scope="col">term</th><th scope="col" class="num">coef</th><th scope="col" class="num">std_err</th><th scope="col" class="num">t</th><th scope="col" class="num">p_value</th><th scope="col" class="num">ci_low</th><th scope="col" class="num">ci_high</th></tr></thead>
+<tbody>
+<tr><td>const</td><td class="num">0.8150</td><td class="num">0.0061</td><td class="num">133.0889</td><td class="num">0.0000</td><td class="num">0.7955</td><td class="num">0.8345</td></tr>
+<tr><td>noise</td><td class="num">-0.8500</td><td class="num">0.0500</td><td class="num">-17.0000</td><td class="num">0.0004</td><td class="num">-1.0091</td><td class="num">-0.6909</td></tr>
+</tbody>
+</table>
+<p class="tnote">n = 5; R^2 = 0.9897; adjusted R^2 = 0.9863; F = 289.000, p = 0.0004; 95% intervals</p>
+<ul>
+<li>the intercept is the accuracy without noise</li>
+<li>the slope is the accuracy lost per unit of noise</li>
+</ul>
+</main>
+</body>
+</html>
