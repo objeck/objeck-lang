@@ -1628,11 +1628,11 @@ t->Save("rf_trees.csv");
 			each(r : Size()) {
 				fields := String->New[width];
 				fields[0] := @row_names->Get(r);
-				fields[1] := FormatNumber(@row_values->Get(r)->Get());
+				fields[1] := CsvNumber(@row_values->Get(r)->Get());
 				each(c : cols) {
-					fields[2 + c] := FormatNumber(@cells->Get(r)->Get()[c]);
+					fields[2 + c] := CsvNumber(@cells->Get(r)->Get()[c]);
 					if(@has_stds) {
-						fields[2 + cols + c] := FormatNumber(@stds->Get(r)->Get()[c]);
+						fields[2 + cols + c] := CsvNumber(@stds->Get(r)->Get()[c]);
 					};
 				};
 				out += CsvTable->FormatRow(fields);
@@ -1736,17 +1736,17 @@ t->Save("rf_trees.csv");
 				if(row <> Nil & row->Size() = width) {
 					cells := Float->New[metrics];
 					each(c : metrics) {
-						cells[c] := row->Get(2 + c)->ToFloat();
+						cells[c] := ReadCsvNumber(row->Get(2 + c));
 					};
 					if(has_stds) {
 						stds := Float->New[metrics];
 						each(c : metrics) {
-							stds[c] := row->Get(2 + metrics + c)->ToFloat();
+							stds[c] := ReadCsvNumber(row->Get(2 + metrics + c));
 						};
-						result->AddRow(row->Get(0), row->Get(1)->ToFloat(), cells, stds);
+						result->AddRow(row->Get(0), ReadCsvNumber(row->Get(1)), cells, stds);
 					}
 					else {
-						result->AddRow(row->Get(0), row->Get(1)->ToFloat(), cells);
+						result->AddRow(row->Get(0), ReadCsvNumber(row->Get(1)), cells);
 					};
 				};
 			};
@@ -1802,7 +1802,7 @@ t->Save("rf_trees.csv");
 				each(c : columns->Size()) {
 					name := columns->Get(c)->GetString();
 					if(cells <> Nil & cells->Has(name)) {
-						values[c] := cells->Get(name)->GetFloat();
+						values[c] := ReadJsonNumber(cells->Get(name));
 					};
 				};
 				if(row->Has("stds")) {
@@ -1811,13 +1811,13 @@ t->Save("rf_trees.csv");
 					each(c : columns->Size()) {
 						name := columns->Get(c)->GetString();
 						if(stds->Has(name)) {
-							spread[c] := stds->Get(name)->GetFloat();
+							spread[c] := ReadJsonNumber(stds->Get(name));
 						};
 					};
-					result->AddRow(TextOf(row, "name"), row->Get("value")->GetFloat(), values, spread);
+					result->AddRow(TextOf(row, "name"), ReadJsonNumber(row->Get("value")), values, spread);
 				}
 				else {
-					result->AddRow(TextOf(row, "name"), row->Get("value")->GetFloat(), values);
+					result->AddRow(TextOf(row, "name"), ReadJsonNumber(row->Get("value")), values);
 				};
 			};
 
@@ -1931,6 +1931,10 @@ t->Save("rf_trees.csv");
 		@return its text
 		~#
 		function : FormatNumber(value : Float) ~ String {
+			if(<>IsFinite(value)) {
+				return "n/a";
+			};
+
 			text := Float->ToString(value, 10);
 			if(text->Has('.')) {
 				last := text->Size() - 1;
@@ -1951,19 +1955,63 @@ t->Save("rf_trees.csv");
 
 		method : FormatCell(r : Int, c : Int, plus_minus : String) ~ String {
 			p := @precision->Get(c)->Get();
-			text := Float->ToString(@cells->Get(r)->Get()[c], p);
+			value := @cells->Get(r)->Get()[c];
+			if(<>IsFinite(value)) {
+				# a missing value is "n/a" whole: there is no spread to show beside it
+				return "n/a";
+			};
+
+			text := Float->ToString(value, p);
 			if(@has_stds) {
 				text += " ";
 				text += plus_minus;
 				text += " ";
-				text += Float->ToString(@stds->Get(r)->Get()[c], p);
+				spread := @stds->Get(r)->Get()[c];
+				text += IsFinite(spread) ? Float->ToString(spread, p) : "n/a";
 			};
 
 			return text;
 		}
 
 		function : Number(value : Float) ~ JsonElement {
+			if(<>IsFinite(value)) {
+				# JSON has no NaN or Infinity: a missing value is null
+				return JsonElement->New(JsonElement->JsonType->NULL);
+			};
+
 			return JsonElement->New(JsonElement->JsonType->NUMBER, FormatNumber(value));
+		}
+
+		#~
+		True when a value is a finite number: neither NaN nor positive or
+		negative infinity. A table cell, a deviation or a chart point that is
+		not finite is "missing": ToText and ToMarkdown write n/a, ToCsv an empty
+		field, ToJson null, and a Chart skips the point.
+		@param value the number
+		@return true for a finite number
+		~#
+		function : IsFinite(value : Float) ~ Bool {
+			return value = value & value <> Float->Inf() & value <> Float->NegInf();
+		}
+
+		function : CsvNumber(value : Float) ~ String {
+			return IsFinite(value) ? FormatNumber(value) : "";
+		}
+
+		function : ReadCsvNumber(text : String) ~ Float {
+			if(text = Nil | text->Size() = 0 | text->Equals("n/a")) {
+				return Float->NaN();
+			};
+
+			return text->ToFloat();
+		}
+
+		function : ReadJsonNumber(elem : JsonElement) ~ Float {
+			if(elem = Nil | elem->IsNull()) {
+				return Float->NaN();
+			};
+
+			return elem->GetFloat();
 		}
 
 		function : TextOf(elem : JsonElement, name : String) ~ String {
@@ -2619,6 +2667,9 @@ c->Save("recall_vs_c.svg");
 					s := @series->Get(i);
 					xs := s->GetXs();
 					each(p : xs) {
+						if(<>ResultTable->IsFinite(xs[p])) {
+							continue;
+						};
 						v := LogX(xs[p]);
 						if(first | v < r[0]) {
 							r[0] := v;
@@ -2658,17 +2709,15 @@ c->Save("recall_vs_c.svg");
 				ys := s->GetYs();
 				errs := s->GetErrors();
 				each(p : ys) {
-					v := ys[p];
-					if(errs <> Nil) {
-						v := ys[p] - errs[p];
+					if(<>ResultTable->IsFinite(ys[p])) {
+						continue;
 					};
+					e := Spread(errs, p);
+					v := ys[p] - e;
 					if(first | v < r[2]) {
 						r[2] := v;
 					};
-					v := ys[p];
-					if(errs <> Nil) {
-						v := ys[p] + errs[p];
-					};
+					v := ys[p] + e;
 					if(first | v > r[3]) {
 						r[3] := v;
 					};
@@ -2808,19 +2857,32 @@ c->Save("recall_vs_c.svg");
 			ys := s->GetYs();
 			errs := s->GetErrors();
 
+			# a point that is not finite is skipped, and the line breaks there
 			points := "";
+			out := "";
 			each(p : ys) {
-				if(p > 0) {
-					points += " ";
+				if(Plottable(xs[p], ys[p])) {
+					if(points->Size() > 0) {
+						points += " ";
+					};
+					points += Fmt(X(LogX(xs[p]), r)) + "," + Fmt(Y(ys[p], r));
+				}
+				else if(points->Size() > 0) {
+					out += Polyline(color, points);
+					points := "";
 				};
-				points += Fmt(X(LogX(xs[p]), r)) + "," + Fmt(Y(ys[p], r));
 			};
-			out := "<polyline fill=\"none\" stroke=\"" + color + "\" stroke-width=\"2\" points=\"" + points + "\"/>\n";
+			if(points->Size() > 0) {
+				out += Polyline(color, points);
+			};
 
 			out += "<g fill=\"" + color + "\" class=\"markers\">\n";
 			cx : String;
 			cy : String;
 			each(p : ys) {
+				if(<>Plottable(xs[p], ys[p])) {
+					continue;
+				};
 				cx := Fmt(X(LogX(xs[p]), r));
 				cy := Fmt(Y(ys[p], r));
 				out += "<circle cx=\"{$cx}\" cy=\"{$cy}\" r=\"3.5\"/>\n";
@@ -2830,7 +2892,7 @@ c->Save("recall_vs_c.svg");
 			if(errs <> Nil) {
 				out += "<g stroke=\"" + color + "\" stroke-width=\"1\" class=\"errorbars\">\n";
 				each(p : ys) {
-					if(errs[p] > 0.0) {
+					if(Plottable(xs[p], ys[p]) & Spread(errs, p) > 0.0) {
 						out += ErrorBar(X(LogX(xs[p]), r), Y(ys[p] - errs[p], r), Y(ys[p] + errs[p], r));
 					};
 				};
@@ -2860,6 +2922,9 @@ c->Save("recall_vs_c.svg");
 			rw := Fmt(bar_w);
 			rh : String;
 			each(p : ys) {
+				if(<>ResultTable->IsFinite(ys[p])) {
+					continue;
+				};
 				x0 := X(xs[p], r) - band * 0.35 + bar_index->As(Float) * bar_w;
 				y0 := Y(ys[p], r);
 				hgt := base - y0;
@@ -2877,7 +2942,7 @@ c->Save("recall_vs_c.svg");
 			if(errs <> Nil) {
 				out += "<g stroke=\"#333333\" stroke-width=\"1\" class=\"errorbars\">\n";
 				each(p : ys) {
-					if(errs[p] > 0.0) {
+					if(ResultTable->IsFinite(ys[p]) & Spread(errs, p) > 0.0) {
 						x0 := X(xs[p], r) - band * 0.35 + (bar_index->As(Float) + 0.5) * bar_w;
 						out += ErrorBar(x0, Y(ys[p] - errs[p], r), Y(ys[p] + errs[p], r));
 					};
@@ -2908,6 +2973,24 @@ c->Save("recall_vs_c.svg");
 			out += "</g>\n";
 
 			return out;
+		}
+
+		function : Polyline(color : String, points : String) ~ String {
+			return "<polyline fill=\"none\" stroke=\"" + color + "\" stroke-width=\"2\" points=\"" + points + "\"/>\n";
+		}
+
+		# a point is drawn only when both coordinates are finite
+		function : Plottable(x : Float, y : Float) ~ Bool {
+			return ResultTable->IsFinite(x) & ResultTable->IsFinite(y);
+		}
+
+		# an error half-height: 0 when there are no errors or this one is not finite
+		function : Spread(errs : Float[], p : Int) ~ Float {
+			if(errs = Nil | <>ResultTable->IsFinite(errs[p])) {
+				return 0.0;
+			};
+
+			return errs[p];
 		}
 
 		# a vertical error bar with caps: one line and one path
