@@ -12,6 +12,11 @@ All AI and ML capabilities are **standard library** — no third-party packages,
   - [Embeddings](#embeddings)
   - [Moderation](#moderation)
   - [Batch Processing](#batch-processing)
+- [Anthropic (Claude)](#anthropic-claude)
+  - [Chat and system prompts](#chat-and-system-prompts)
+  - [Tool use](#tool-use)
+  - [Structured JSON output](#structured-json-output)
+  - [Streaming](#streaming)
 - [Gemini](#gemini)
   - [Generate Content](#generate-content)
   - [Structured Output](#structured-output)
@@ -39,6 +44,7 @@ All AI and ML capabilities are **standard library** — no third-party packages,
   - [Clustering & Decomposition](#clustering--decomposition)
   - [Neural Network](#neural-network)
   - [Model Persistence](#model-persistence)
+  - [Local vector search (System.ML.VectorSearch)](#local-vector-search-systemmlvectorsearch)
 - [Classic AI (System.AI)](#classic-ai-systemai)
   - [Graph Search](#graph-search)
   - [Game Playing](#game-playing)
@@ -59,6 +65,9 @@ use API.OpenAI;
 
 token := EndPoint->GetApiKey();
 ```
+
+### Anthropic
+Set the `ANTHROPIC_API_KEY` environment variable, or create `anthropic_api_key.dat` in your working directory, or call `EndPoint->SetApiKey(key)`. `Chat->New(model, Nil)` reads the key with `EndPoint->GetApiKey()`; pass a key as the second argument to override it for one chat.
 
 ### Gemini
 Create `gemini_api_key.dat` in your working directory. Use the static helper:
@@ -264,6 +273,86 @@ each(j in jobs) {
 ```json
 {"custom_id":"r1","method":"POST","url":"/v1/chat/completions","body":{"model":"gpt-4o-mini","messages":[{"role":"user","content":"Hello"}]}}
 ```
+
+---
+
+## Anthropic (Claude)
+
+`API.Anthropic` is a client for the Anthropic Messages API: chat with a system prompt, tool use, streaming over server-sent events, structured output, and extended-thinking blocks. Compile with `-lib anthropic`. A failed call returns `Nil`, and `EndPoint->GetLastError()` says why, as in the other clients. Requests go over HTTPS; `EndPoint->SetBaseUrl` points the client at a gateway and `EndPoint->SetCertificate` pins its certificate.
+
+### Chat and system prompts
+
+A `Chat` keeps the message history. `SetSystem`, `SetMaxTokens` (default 4096) and `SetTemperature` return the chat, so they chain.
+
+```ruby
+use API.Anthropic;
+
+chat := Chat->New("claude-sonnet-5-5", Nil);
+chat->SetSystem("Answer in one sentence.");
+chat->Send("Why is the sky blue?")->PrintLine();
+chat->Send("And at sunset?")->PrintLine();
+```
+
+`SendReply(message, tools)` returns the whole `Reply`: `GetText()`, `GetThinking()`, `GetStopReason()`, `GetInputTokens()`, `GetOutputTokens()`, and the tool calls. Pass `Nil` as the message to send the history as it stands.
+
+`SetThinking(budget_tokens)` turns on extended thinking. The API needs a budget of at least 1024 tokens and a `SetMaxTokens` above it. While thinking is on the temperature is not sent, and `SendJson` leaves thinking off for its one request, because the API rejects a forced tool with thinking.
+
+What joins the history, so a chat never wedges: a reply that fails is dropped together with the message that asked for it; a refusal (`stop_reason` `refusal`) and an empty reply are returned to you but not kept, as the API advises; an empty text block is removed from a turn before it is replayed; thinking blocks, including redacted ones, are replayed whole.
+
+### Tool use
+
+Describe each tool with a name, a description and a JSON schema. When a reply has tool uses, run them, return each result with `AddToolResult(use_id, text)` and send again. Results for one reply share one user message, as the API requires. Mark a failed tool with `AddToolResult(id, text, true)`.
+
+```ruby
+use API.Anthropic;
+use Collection;
+use Data.JSON;
+
+schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}");
+tools := Vector->New()<Tool>;
+tools->AddBack(Tool->New("get_weather", "Get the weather for a city", schema));
+
+chat := Chat->New("claude-sonnet-5-5", Nil);
+reply := chat->SendReply("What is the weather in Paris?", tools);
+while(reply <> Nil & reply->HasToolUses()) {
+  uses := reply->GetToolUses();
+  each(i : uses) {
+    call := uses->Get(i);
+    city := call->GetArgument("city");
+    chat->AddToolResult(call->GetId(), "18C and sunny in {$city}");
+  };
+  reply := chat->SendReply(Nil, tools);
+};
+reply->GetText()->PrintLine();
+```
+
+`Tool->New(func)` also takes the `FunctionType` the other clients use.
+
+### Structured JSON output
+
+`SendJson(question, name, schema)` makes the model call a tool whose input schema is the one you give, and returns that input as JSON. It is one-shot: neither the question nor the answer joins the history.
+
+```ruby
+schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"},\"temp\":{\"type\":\"integer\"}},\"required\":[\"city\",\"temp\"]}");
+answer := chat->SendJson("Name a city where it is 18 degrees.", "answer", schema);
+answer->Get("city")->GetString()->PrintLine();
+```
+
+### Streaming
+
+`Stream(message, tools)` returns a `ReplyStream`. Read it piece by piece; the exchange joins the history when the stream ends, whether or not you ask for the whole reply, and `GetReply()` can be called more than once. `Close()` before the end, an error event and a tool input that was cut off by `max_tokens` all drop the exchange from the history.
+
+```ruby
+stream := chat->Stream("Write a haiku about rivers.", Nil);
+while(stream <> Nil & stream->HasNext()) {
+  stream->Next()->Print();
+};
+reply := stream->GetReply();
+```
+
+Streaming works over HTTPS only. A refused request (a bad key, a rate limit) returns `Nil` with the status and what it usually means in `GetLastError()`; the body of a refused stream is not read, so the API's own message is not shown there.
+
+**Tested against a local mock, not the live service.** `anthropic_parse_test` replays recorded response bodies and event streams, and `anthropic_http_test` runs the client against a local HTTPS server that speaks the same message shapes, checking the `x-api-key` and `anthropic-version` headers, errors, a tool round trip, structured output and streaming. Neither calls api.anthropic.com. If a field or event the live API sends is not handled, the parse test is where to add a recorded case.
 
 ---
 
@@ -1252,6 +1341,46 @@ loss := Chart->LossCurve("Training loss", ["lr=0.1", "lr=0.01"], losses);  # row
 
 ---
 
+### Local vector search (System.ML.VectorSearch)
+
+A local index for retrieval over your own documents, with no hosted vector store: keep an embedding per document under a string id and ask for the closest ones to a query vector. It is `ml_vector.obl` (`-lib ml_vector,gen_collect` or `-lib @ai`) and needs nothing from `System.ML`. The vectors can come from anywhere that gives a `Float[]`: `BertEmbedder` (see [BERT tokens and sentence embeddings](#bert-tokens-and-sentence-embeddings)), the OpenAI, Gemini and Ollama embedding calls, or a file.
+
+```ruby
+use System.ML.VectorSearch;
+
+index := VectorIndex->New(384, VectorMetric->COSINE);   # DOT and L2 too
+index->Add("doc-1", embedding_1);      # Float[] of exactly 384 values; false if refused
+index->Add("doc-2", embedding_2);
+
+hits := index->Search(query_embedding, 5);     # the 5 closest, closest first
+each(i : hits) {
+  "{$hits->Get(i)->GetId()}  {$hits->Get(i)->GetScore()}"->PrintLine();
+};
+
+index->Remove("doc-1");
+index->Store("docs.vix");
+loaded := VectorIndex->Load("docs.vix");       # Nil if the file is not a good index
+```
+
+- **Metrics.** `COSINE` and `DOT` score higher-is-closer (the cosine similarity or the dot product); `L2` scores the Euclidean distance, so lower is closer. `Search` returns the hits closest first for all three.
+- **Exact.** A search scans every vector, so it always returns the true top k; there is no approximate mode. Ties on the score are broken by id, smallest first, so the answer does not depend on the order vectors were added or removed in. That holds for bit-identical scores: vectors that tie only mathematically (parallel vectors of different length under `COSINE`, say) can differ in the last bit and then rank by that bit, not by id. `COSINE` scores are clamped to [-1, 1]. `Add` of an id that is already there replaces its vector, and `Get` and `Add` copy, so the caller's arrays never alias the index.
+- **Bad input returns a value.** A wrong-length, `Nil`, NaN or infinite vector, a `Nil` or empty id, `k` below 1 and an index created with a dimension below 1 never end the program: `Add`, `Remove` and `Store` return `false`, `Search` returns an empty `Vector` (never `Nil`) and `Get` returns `Nil`, and the index's `GetError()` says why. `Load` is a function with no index to ask, so it returns `Nil` and gives no reason. Cosine scores a zero-length vector as 0.
+- **Value range.** A nonzero value must have a magnitude between 1e-100 and 1e100 (zero is fine); `Add` and `Search` refuse anything else, and say so. Past that range a squared length overflows or underflows, so a cosine would silently read 0 and a dot product could turn NaN and break the ranking. Rescale such data first. Inside the range every score is finite.
+- **Files.** `Store` writes a small header (a format tag and a CRC32 of the body) and then the body through `System.IO.Serializer`, the path the `System.ML` models use. `Load` checks the tag, the three reserved header bytes (zero) and the CRC32 *before* it decompresses anything, so a missing, truncated, damaged or foreign file gives `Nil`. (The `System.ML` model loaders cannot do that yet: see [LIBRARY_BACKLOG_2026_11.md](LIBRARY_BACKLOG_2026_11.md) item 1.)
+- **Memory.** Objeck's `Float` is 64 bits, so a vector of 384 values takes 3 KB: 100,000 of them take about 307 MB, plus the ids. The first `Add` at the largest dimension (1,048,576) allocates a 128 MB block, and `Load` holds the file, its body and the decoded vectors at once, about three times the file size at its peak.
+- **Threads.** An index is not thread-safe: `Search` records a refusal in the index, so concurrent calls, or a search beside `Add` or `Remove`, need the caller's lock.
+
+Measured on a Ryzen 9 7950X3D (Windows, JIT on, `-opt s3`), random vectors of 384 values, one thread, 20 queries after a warm-up, top 10:
+
+| Vectors | Search (cosine, dot or L2) | Build by `Add` | `Store` / file | `Load` |
+|---|---|---|---|---|
+| 20,000 | 8.8 ms | 0.27 s | | |
+| 100,000 | 44 ms (about 23 queries/s) | 1.4 s | 7.0 s / 295 MB | 1.5 s |
+
+The three metrics cost the same, and a four-accumulator unrolled inner loop was no faster: at 100,000 x 384 a search streams 307 MB, so it is limited by memory bandwidth (about 7 GB/s) and not by arithmetic. An approximate index (HNSW) was not built: 44 ms per query is fast enough for retrieval over a document collection of this size, and an approximate answer brings recall to measure, a second file format and a build step with it. If you need far more vectors or queries per second, the next step is HNSW or an inverted-file index, not a faster scan.
+
+A complete run (a small corpus, embedded either with a BERT model or, with nothing to download, a hashed bag of words, then queried, saved and loaded) is [`programs/examples/ml/vector_search.obs`](../programs/examples/ml/vector_search.obs). It is tested by `ml_vector_exact.obs` (against a brute-force reference, ties, `k` past the end, removals), `ml_vector_edges.obs` (value range, block boundaries, emptying an index, near-ties), `ml_vector_validation.obs` and `ml_vector_persist.obs` (round trip and corrupt files).
+
 ## Classic AI (System.AI)
 
 Search, game playing, optimization and tabular reinforcement learning — `-lib ai` (or the `@ai` alias). All stochastic algorithms are seeded for reproducible runs.
@@ -1366,7 +1495,7 @@ obc -src program.obs -lib @ai -dest program.obe
 | `@web` | `net_h2`, `net_quic`, `web_server`, `json_rpc`, `net_server`, `net`, `json`, `cipher` | HTTP/2, HTTP/3, the embedded server, JSON-RPC |
 | `@data` | `xml`, `regex`, `csv`, `query`, `rss`, `misc`, `net`, `json`, `cipher` | parsing and querying structured data |
 | `@ml` | `gemini`, `openai`, `ollama`, `net_server`, `misc`, `net`, `json`, `cipher` | LLM clients: OpenAI, Gemini, Ollama |
-| `@ai` | `ai`, `ml`, `ml_lab`, `nlp`, `csv`, `json` | local System.ML / System.ML.Lab / System.AI / System.NLP work |
+| `@ai` | `ai`, `ml`, `ml_lab`, `ml_vector`, `nlp`, `csv`, `json` | local System.ML / System.ML.Lab / System.AI / System.NLP work |
 | `@vision` | `opencv`, `onnx`, `nlp_onnx`, `models`, `nlp`, `json`, `cipher` | OpenCV and ONNX inference, BERT text embeddings |
 | `@game` | `sdl2`, `sdl_game`, `sdl_gl`, `json`, `gen_collect` | SDL games, 2D and OpenGL |
 
@@ -1478,6 +1607,7 @@ The libraries in this guide are covered by the regression suite in `programs/reg
 
 | Area | Tests |
 |---|---|
+| `System.ML.VectorSearch` | `ml_vector_exact.obs`, `ml_vector_edges.obs`, `ml_vector_validation.obs`, `ml_vector_persist.obs` |
 | `System.ML` | `ml_*.obs`, e.g. `ml_kernel_svm_reference.obs` and `ml_one_class_svm_reference.obs` (against an independent reference, generated by `tools/ml/svm_reference/gen_reference_test.py`), `ml_outlier_*.obs`, `ml_lab_*.obs` |
 | `System.AI` | `ai_search_test.obs`, `ai_game_test.obs`, `ai_optimize_test.obs`, `ai_rl_test.obs` |
 | `System.NLP` | `nlp_*.obs`, e.g. `nlp_wordpiece_parity.obs`, `nlp_bpe_tokenizer.obs` |

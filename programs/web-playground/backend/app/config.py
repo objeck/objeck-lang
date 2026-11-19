@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     # image (docker/build-sandbox.sh copies it).
     allowed_libs: set[str] = {
         "gen_collect", "json", "xml", "regex", "cipher", "csv",
-        "query", "query_ml", "ml", "ml_lab", "nlp", "ai", "math", "misc", "diags",
+        "query", "query_ml", "ml", "ml_lab", "ml_vector", "nlp", "ai", "math", "misc", "diags",
         "concurrent",
     }
 
@@ -73,7 +73,7 @@ class Settings(BaseSettings):
     blocked_libs: set[str] = {
         "net_h2", "net_quic", "net_server", "web_server", "odbc", "query_odbc",
         "query_server", "query_vision", "sdl2", "sdl_game", "sdl_gl", "lame",
-        "json_rpc", "json_stream", "rss", "gemini", "ollama", "openai",
+        "json_rpc", "json_stream", "rss", "gemini", "ollama", "openai", "anthropic",
         "inference", "models", "onnx", "opencv", "nlp_onnx", "ai_hub",
     }
 

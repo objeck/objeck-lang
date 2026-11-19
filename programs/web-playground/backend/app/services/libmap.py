@@ -69,7 +69,7 @@ _BLOCK_REASONS: dict[str, str] = {}
 for _libs, _reason in (
     (("net", "net_h2", "net_quic", "net_server", "web_server", "json_rpc", "rss",
       "query_server", "ai_hub"), "the sandbox has no network access"),
-    (("openai", "gemini", "ollama", "inference"), "it needs network access to a hosted model"),
+    (("openai", "gemini", "ollama", "anthropic", "inference"), "it needs network access to a hosted model"),
     (("models", "onnx", "opencv", "query_vision"), "it needs model files and native vision libraries"),
     (("nlp_onnx",), "it needs a model file and the ONNX runtime"),
     (("odbc", "query_odbc"), "it needs a database driver and network access"),
@@ -269,6 +269,7 @@ LIB_INFO: dict[str, tuple[str, str]] = {
     "query_ml": ("Query ML", "Models as query sources"),
     "ml": ("ML", "Machine learning and matrix math"),
     "ml_lab": ("ML Lab", "Stratified splits, imbalance resampling, parameter sweeps, result tables and SVG charts"),
+    "ml_vector": ("Vector Search", "A local vector index: exact cosine, dot and L2 nearest-neighbour search over embeddings"),
     "nlp": ("NLP", "Tokenizing, stemming and sentiment"),
     "ai": ("AI", "Search, games, optimization and reinforcement learning"),
     "math": ("Math", "Exact arithmetic"),

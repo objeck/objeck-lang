@@ -15,6 +15,7 @@ Each library typically consists of:
 ### AI & Machine Learning
 - **openai.obs** - OpenAI API integration (GPT-4, GPT-5, DALL-E, Whisper, Realtime API)
 - **gemini.obs** - Google Gemini API integration with schema support
+- **anthropic.obs** - Anthropic Messages API client (Claude): chat, tool use, streaming, structured output
 - **ollama.obs** - Ollama local LLM integration
 - **opencv.obs** - OpenCV computer vision library
 - **models.obs** - Backend-neutral inference types shared by `onnx` and `inference`: `Tensor`, `TensorSpec`, `EndPoint`, `Engine` (`API.Models`)
@@ -31,6 +32,7 @@ Each library typically consists of:
 - **ml_outlier.obs** - Anomaly detection: OutlierDetector, ZScoreDetector, IsolationForest, LocalOutlierFactor, EllipticEnvelope, DbscanDetector, AutoencoderDetector, OneClassSvmDetector, SensitivitySweep
 - **ml_embed.obs** - `EmbeddingClassifier`, a trainable head over fixed-size embeddings
 - **ml_lab.obs** - Experiment support for parameter sweeps (`System.ML.Lab`): splits, resampling, sweep runner, result tables, SVG charts. Its own library, `ml_lab.obl`
+- **ml_vector.obs** - Local vector index (`System.ML.VectorSearch`): `VectorIndex` with exact cosine, dot and L2 top-k search, `Store`/`Load`. Its own library, `ml_vector.obl`, which needs only `gen_collect`
 - **ai_search.obs** - Graph search: Dijkstra, A*, BFS, DFS
 - **ai_game.obs** - Adversarial game search: Minimax, Monte Carlo Tree Search
 - **ai_optimize.obs** - Optimization: GeneticAlgorithm, SimulatedAnnealing, HillClimbing

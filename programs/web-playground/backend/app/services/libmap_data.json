@@ -14,6 +14,12 @@
     "System.AI.Hub": ["HubClient"]
    }
   },
+  "anthropic": {
+   "deps": ["net", "json", "cipher", "misc"],
+   "bundles": {
+    "API.Anthropic": ["Chat", "EndPoint", "Reply", "ReplyStream", "StreamAssembler", "Tool", "ToolUse"]
+   }
+  },
   "cipher": {
    "deps": [],
    "bundles": {
@@ -120,6 +126,12 @@
    "deps": ["gen_collect", "csv", "json", "ml"],
    "bundles": {
     "System.ML.Lab": ["Chart", "ChartSeries", "DataSplit", "Experiment", "IndexSplit", "LabError", "Labels", "Partition", "Resample", "ResultTable", "Sample", "Stopwatch", "Trial", "TrialResult"]
+   }
+  },
+  "ml_vector": {
+   "deps": ["gen_collect"],
+   "bundles": {
+    "System.ML.VectorSearch": ["VectorHit", "VectorIndex", "VectorMetric"]
    }
   },
   "models": {
