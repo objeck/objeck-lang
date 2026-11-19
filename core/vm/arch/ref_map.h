@@ -35,6 +35,7 @@
 #include "../common.h"
 #include <vector>
 #include <string>
+#include <utility>
 
 // The collector does not know which operand-stack words are references: the
 // interpreter pushes an object, an array and an Int the same way, so every word
@@ -281,6 +282,15 @@
       // entry state per instruction
       std::vector<std::vector<int> > state;
       std::vector<int> andor_state;
+      // Load-time verification only: the and/or slot is reused for unrelated
+      // temporaries (a select's selector, a lambda's closure), so its value meets at a
+      // join even where nothing reads it any more. Meeting a literal with a closure
+      // there put the literal's 'lit_ip' on a value read through as an object and
+      // refused valid programs. The meets are held back until the slot's liveness is
+      // known and made only where a path goes on to read it.
+      struct AndOrJoin { long to; int known; int arriving; };
+      std::vector<AndOrJoin> andor_joins;
+      std::vector<std::pair<long, long> > edges;
       std::vector<bool> seen;
       std::vector<long> worklist;
       // the lowest the stack goes inside the instruction being stepped
@@ -391,6 +401,9 @@
         if(to < 0 || to >= count) {
           return Fail(from, L"a jump outside the method", true);
         }
+        if(verify) {
+          edges.push_back({ from, to });
+        }
         if(!seen[to]) {
           seen[to] = true;
           state[to] = stack;
@@ -409,7 +422,12 @@
         // every path carries the slot's value (Run starts it as the zero the frame
         // is entered with), so it meets like a stack word
         if(andor >= 0 && andor_state[to] >= 0) {
-          Union(andor_state[to], andor);
+          if(verify) {
+            andor_joins.push_back({ to, andor_state[to], andor });
+          }
+          else {
+            Union(andor_state[to], andor);
+          }
         }
         return true;
       }
@@ -482,6 +500,47 @@
 
       bool Step(long ip);
       void ResolveLinks();
+
+      // the and/or slot's meets at the joins where it is read before it is written again
+      void MeetLiveAndOrJoins() {
+        if(andor_joins.empty()) {
+          return;
+        }
+        // backward liveness of the slot over the edges Flow saw
+        std::vector<char> live(count, 0);
+        bool changed = true;
+        while(changed) {
+          changed = false;
+          for(size_t i = edges.size(); i-- > 0; ) {
+            const long from = edges[i].first;
+            const long to = edges[i].second;
+            const StackInstr& in = instrs[from];
+            bool now;
+            if(in.GetType() == LOAD_LOCL_INT_VAR && AndOrLocal(in.GetOperand())) {
+              now = true;
+            }
+            else if((in.GetType() == STOR_LOCL_INT_VAR || in.GetType() == COPY_LOCL_INT_VAR) && AndOrLocal(in.GetOperand())) {
+              now = false;
+            }
+            else {
+              now = live[to] != 0;
+              // other edges out of this instruction (a jump has two) also count
+              if(!now) {
+                continue;
+              }
+            }
+            if(now && !live[from]) {
+              live[from] = 1;
+              changed = true;
+            }
+          }
+        }
+        for(size_t i = 0; i < andor_joins.size(); ++i) {
+          if(live[andor_joins[i].to]) {
+            Union(andor_joins[i].known, andor_joins[i].arriving);
+          }
+        }
+      }
 
     public:
       Builder(StackProgram* p, StackMethod* m, RefMap* r, bool v = false) : prgm(p), method(m), map(r), verify(v) {
@@ -1041,6 +1100,10 @@
       }
       if(!map->ok) {
         return;
+      }
+
+      if(verify) {
+        MeetLiveAndOrJoins();
       }
 
       ResolveLinks();
