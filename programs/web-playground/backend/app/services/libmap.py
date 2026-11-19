@@ -272,6 +272,7 @@ LIB_INFO: dict[str, tuple[str, str]] = {
     "ml_vector": ("Vector Search", "A local vector index: exact cosine, dot and L2 nearest-neighbour search over embeddings"),
     "plot": ("Plot", "Scatter, histogram, line and bar charts and subplots as standalone SVG, no display needed"),
     "nlp": ("NLP", "Tokenizing, stemming and sentiment"),
+    "nlp_topics": ("Topic Models", "LDA topic modeling: a BSON reader, dictionary, coherence metrics and an SVG topic report"),
     "ai": ("AI", "Search, games, optimization and reinforcement learning"),
     "math": ("Math", "Exact arithmetic"),
     "misc": ("Utilities", "Dates, parsing and formatting helpers"),

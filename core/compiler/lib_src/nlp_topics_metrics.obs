@@ -1,0 +1,540 @@
+#~~
+# Objeck topic-modeling library: topic quality metrics (coherence, diversity, overlap, stability)
+# Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+
+bundle System.NLP.Topics {
+	#~
+	Counts, over a list of "virtual documents", how many contain each of T target words and each pair of them: a flat T-by-T table whose diagonal is the single-word counts. Used for the probability estimates of the coherence measures.
+	~#
+	class : private : PairCounter {
+		@t : Int;
+		@co : Int[];
+		@stamp : Int[];
+		@present : Int[];
+		@n : Int;
+
+		New(t : Int) {
+			@t := t;
+			@co := Int->New[t * t];
+			@stamp := Int->New[t];
+			@present := Int->New[t];
+			@n := 0;
+			for(i := 0; i < t; i += 1;) {
+				@stamp[i] := -1;
+			};
+		}
+
+		method : public : Windows() ~ Int {
+			return @n;
+		}
+
+		method : public : Occ(i : Int) ~ Int {
+			return @co[i * @t + i];
+		}
+
+		method : public : Co(i : Int, j : Int) ~ Int {
+			return @co[i * @t + j];
+		}
+
+		# the window made of tid[first..stop), where tid maps each token to a target index or -1
+		method : public : AddWindow(tid : Int[], first : Int, stop : Int) ~ Nil {
+			np := 0;
+			win := @n;
+			for(i := first; i < stop; i += 1;) {
+				t := tid[i];
+				if(t >= 0) {
+					if(@stamp[t] <> win) {
+						@stamp[t] := win;
+						@present[np] := t;
+						np += 1;
+					};
+				};
+			};
+
+			Tally(np);
+			@n += 1;
+		}
+
+		# a document that holds the target indexes target[0..count), each at most once
+		method : public : AddSet(target : Int[], count : Int) ~ Nil {
+			for(i := 0; i < count; i += 1;) {
+				@present[i] := target[i];
+			};
+
+			Tally(count);
+			@n += 1;
+		}
+
+		method : private : Tally(np : Int) ~ Nil {
+			for(a := 0; a < np; a += 1;) {
+				row := @present[a] * @t;
+				for(b := 0; b < np; b += 1;) {
+					@co[row + @present[b]] += 1;
+				};
+			};
+		}
+	}
+
+	#~
+	Quality measures for topics, each documented with the exact variant it computes. All functions take the topics as a Vector of TopicTerms (what Lda.GetTopics returns), so the number of top words per topic is the one you asked GetTopics for, and none of them ends the program on bad input: a Nil argument, an empty list or a bad window gives Nil (or NaN for a single number).
+
+	Coherence measures, all after Roeder, Both and Hinneburg, "Exploring the space of topic coherence measures" (WSDM 2015) and Gensim's CoherenceModel; every one is the mean over a topic's word pairs, and the model value is the mean over topics (Mean):
+	- UMass: Mimno et al. 2011, document co-occurrence. For the top words w1..wN of a topic, best first, the mean over pairs (wi, wj) with j < i of log((D(wi,wj)/D + 1e-12) / (D(wj)/D)), D(.) counting the documents of the corpus that contain the word(s) and D the number of documents. Higher (closer to 0) is better; the values are negative. Needs the bag-of-words corpus. Equal to Gensim's coherence="u_mass".
+	- CNpmi: normalized pointwise mutual information over sliding windows, window size 10 by default in Gensim. For every pair of distinct top words, NPMI = log((p(wi,wj) + 1e-12) / (p(wi) p(wj))) / -log(p(wi,wj) + 1e-12), the probabilities being the share of windows holding the word(s). A text of at most `window` tokens is one window, longer texts give one window per position (length - window + 1), an empty text gives one empty window, as in Gensim. The value lies in [-1, 1], higher is better. A pair with a word that occurs in no window counts 0. Equal to Gensim's coherence="c_npmi".
+	- CV: the measure Gensim uses by default (coherence="c_v"), window 110. Each top word wi gets a vector holding NPMI(wi, wj) for every top word wj (itself included); the topic's context vector is the sum of those vectors; the score of the word is the cosine between its vector and that sum, and the topic's coherence is the mean over its words. Range [-1, 1], higher is better.
+
+	The windows are built over the token strings you pass in, so pass the same token lists the dictionary was built from (before or after rare-token filtering, your choice: tokens the model does not know still take up window positions, as they do in Gensim when it is given the raw texts).
+
+	Topic-diversity and overlap measures take the top-k words of each topic: Diversity (Dieng et al. 2020) is the number of distinct words in the union of the lists divided by topics times k, 1 when no word is shared; Overlap is the mean Jaccard similarity of all topic pairs, 0 when no word is shared. Stability compares two models, typically trained with different seeds.
+	~#
+	class TopicMetrics {
+		#~
+		U_mass coherence of each topic (see the class description).
+		@param topics topics with their top words
+		@param corpus the bag-of-words corpus
+		@return one value per topic (NaN for a topic with fewer than 2 words), or Nil for a Nil argument, an empty list or a word id outside the corpus vocabulary
+		~#
+		function : UMass(topics : Vector<TopicTerms>, corpus : TopicCorpus) ~ Float[] {
+			if(topics = Nil | corpus = Nil | topics->Size() < 1) {
+				return Nil;
+			};
+
+			vocab := corpus->GetVocabSize();
+			slot := Int->New[vocab];
+			for(i := 0; i < vocab; i += 1;) {
+				slot[i] := -1;
+			};
+
+			count := 0;
+			for(t := 0; t < topics->Size(); t += 1;) {
+				ids := topics->Get(t)->GetIds();
+				for(i := 0; i < ids->Size(); i += 1;) {
+					if(ids[i] < 0 | ids[i] >= vocab) {
+						return Nil;
+					};
+
+					if(slot[ids[i]] < 0) {
+						slot[ids[i]] := count;
+						count += 1;
+					};
+				};
+			};
+
+			counter := PairCounter->New(count);
+			offs := corpus->GetOffsets();
+			wid := corpus->GetIds();
+			found := Int->New[count + 1];
+			for(d := 0; d < corpus->GetNumDocs(); d += 1;) {
+				np := 0;
+				for(j := offs[d]; j < offs[d + 1]; j += 1;) {
+					at := slot[wid[j]];
+					if(at >= 0) {
+						found[np] := at;
+						np += 1;
+					};
+				};
+
+				counter->AddSet(found, np);
+			};
+
+			n := counter->Windows()->As(Float);
+			out := Float->New[topics->Size()];
+			for(t := 0; t < topics->Size(); t += 1;) {
+				ids := topics->Get(t)->GetIds();
+				pairs := 0;
+				sum := 0.0;
+				for(i := 1; i < ids->Size(); i += 1;) {
+					for(j := 0; j < i; j += 1;) {
+						star := counter->Occ(slot[ids[j]]);
+						pair := 0.0;
+						if(star > 0) {
+							co := counter->Co(slot[ids[i]], slot[ids[j]])->As(Float);
+							pair := Float->Log((co / n + 1.0e-12) / (star->As(Float) / n));
+						};
+
+						sum += pair;
+						pairs += 1;
+					};
+				};
+
+				if(pairs = 0) {
+					out[t] := Float->NaN();
+				}
+				else {
+					out[t] := sum / pairs->As(Float);
+				};
+			};
+
+			return out;
+		}
+
+		function : private : Slice(all : IntVector, start : Int, count : Int) ~ Int[] {
+			out := Int->New[count];
+			for(i := 0; i < count; i += 1;) {
+				out[i] := all->Get(start + i);
+			};
+
+			return out;
+		}
+
+		# NPMI of two words from window counts; 0 when a word never occurs
+		function : private : Npmi(co : Int, o1 : Int, o2 : Int, n : Int) ~ Float {
+			if(o1 = 0 | o2 = 0 | n = 0) {
+				return 0.0;
+			};
+
+			nf := n->As(Float);
+			p12 := co->As(Float) / nf + 1.0e-12;
+			numerator := Float->Log(p12 / ((o1->As(Float) / nf) * (o2->As(Float) / nf)));
+			denominator := 0.0 - Float->Log(p12);
+			if(denominator = 0.0) {
+				return 1.0;
+			};
+
+			return numerator / denominator;
+		}
+
+		# window counts of every distinct top word of every topic; returns the target index of each topic word in `index`
+		function : private : CountWindows(topics : Vector<TopicTerms>, texts : Vector<Vector<String>>, window : Int, index : IntVector) ~ PairCounter {
+			target := Hash->New()<String, IntRef>;
+			count := 0;
+			for(t := 0; t < topics->Size(); t += 1;) {
+				words := topics->Get(t)->GetWords();
+				for(i := 0; i < words->Size(); i += 1;) {
+					found := target->Find(words[i]);
+					if(found = Nil) {
+						target->Insert(words[i], IntRef->New(count));
+						index->AddBack(count);
+						count += 1;
+					}
+					else {
+						index->AddBack(found->Get());
+					};
+				};
+			};
+
+			counter := PairCounter->New(count);
+			for(d := 0; d < texts->Size(); d += 1;) {
+				tokens := texts->Get(d);
+				len := 0;
+				if(tokens <> Nil) {
+					len := tokens->Size();
+				};
+
+				tid := Int->New[len + 1];
+				for(i := 0; i < len; i += 1;) {
+					hit := target->Find(tokens->Get(i));
+					tid[i] := -1;
+					if(hit <> Nil) {
+						tid[i] := hit->Get();
+					};
+				};
+
+				if(len <= window) {
+					counter->AddWindow(tid, 0, len);
+				}
+				else {
+					for(s := 0; s + window <= len; s += 1;) {
+						counter->AddWindow(tid, s, s + window);
+					};
+				};
+			};
+
+			return counter;
+		}
+
+		#~
+		C_npmi coherence of each topic (see the class description).
+		@param topics topics with their top words
+		@param texts the token lists (one per document) the windows are cut from
+		@param window window size in tokens, 1 or more (Gensim's c_npmi default is 10)
+		@return one value per topic (NaN for a topic with fewer than 2 words), or Nil for a Nil argument, an empty list or a window below 1
+		~#
+		function : CNpmi(topics : Vector<TopicTerms>, texts : Vector<Vector<String>>, window : Int) ~ Float[] {
+			if(topics = Nil | texts = Nil | topics->Size() < 1 | window < 1) {
+				return Nil;
+			};
+
+			index := IntVector->New();
+			start := 0;
+			counter := CountWindows(topics, texts, window, index);
+			n := counter->Windows();
+			out := Float->New[topics->Size()];
+			for(t := 0; t < topics->Size(); t += 1;) {
+				ti := Slice(index, start, topics->Get(t)->Size());
+				start += ti->Size();
+				pairs := 0;
+				sum := 0.0;
+				for(i := 0; i < ti->Size(); i += 1;) {
+					for(j := 0; j < ti->Size(); j += 1;) {
+						if(i <> j) {
+							sum += Npmi(counter->Co(ti[i], ti[j]), counter->Occ(ti[i]), counter->Occ(ti[j]), n);
+							pairs += 1;
+						};
+					};
+				};
+
+				if(pairs = 0) {
+					out[t] := Float->NaN();
+				}
+				else {
+					out[t] := sum / pairs->As(Float);
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		C_v coherence of each topic (see the class description).
+		@param topics topics with their top words
+		@param texts the token lists (one per document) the windows are cut from
+		@param window window size in tokens, 1 or more (Gensim's c_v default is 110)
+		@return one value per topic (NaN for a topic with fewer than 2 words), or Nil for a Nil argument, an empty list or a window below 1
+		~#
+		function : CV(topics : Vector<TopicTerms>, texts : Vector<Vector<String>>, window : Int) ~ Float[] {
+			if(topics = Nil | texts = Nil | topics->Size() < 1 | window < 1) {
+				return Nil;
+			};
+
+			index := IntVector->New();
+			start := 0;
+			counter := CountWindows(topics, texts, window, index);
+			n := counter->Windows();
+			out := Float->New[topics->Size()];
+			for(t := 0; t < topics->Size(); t += 1;) {
+				ti := Slice(index, start, topics->Get(t)->Size());
+				start += ti->Size();
+				m := ti->Size();
+				if(m < 2) {
+					out[t] := Float->NaN();
+				}
+				else {
+					vec := Float->New[m * m];
+					total := Float->New[m];
+					for(i := 0; i < m; i += 1;) {
+						for(j := 0; j < m; j += 1;) {
+							vec[i * m + j] := Npmi(counter->Co(ti[i], ti[j]), counter->Occ(ti[i]), counter->Occ(ti[j]), n);
+							total[j] += vec[i * m + j];
+						};
+					};
+
+					norm_total := 0.0;
+					for(j := 0; j < m; j += 1;) {
+						norm_total += total[j] * total[j];
+					};
+					norm_total := Float->Sqrt(norm_total);
+
+					mean := 0.0;
+					for(i := 0; i < m; i += 1;) {
+						dot := 0.0;
+						norm_row := 0.0;
+						for(j := 0; j < m; j += 1;) {
+							dot += vec[i * m + j] * total[j];
+							norm_row += vec[i * m + j] * vec[i * m + j];
+						};
+
+						norm_row := Float->Sqrt(norm_row);
+						if(norm_row > 0.0 & norm_total > 0.0) {
+							mean += dot / (norm_row * norm_total);
+						};
+					};
+
+					out[t] := mean / m->As(Float);
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		The mean of a list of per-topic values, skipping NaN entries.
+		@param values per-topic values
+		@return the mean, or NaN when values is Nil or holds no number
+		~#
+		function : Mean(values : Float[]) ~ Float {
+			if(values = Nil) {
+				return Float->NaN();
+			};
+
+			sum := 0.0;
+			count := 0;
+			for(i := 0; i < values->Size(); i += 1;) {
+				if(values[i] = values[i]) {
+					sum += values[i];
+					count += 1;
+				};
+			};
+
+			if(count = 0) {
+				return Float->NaN();
+			};
+
+			return sum / count->As(Float);
+		}
+
+		#~
+		Topic diversity: distinct words in the union of every topic's top-k words, divided by topics times k. 1 means no word is shared between topics, values near 0 mean the topics repeat each other.
+		@param topics topics with their top words
+		@param top_k how many top words of each topic to use, 1 or more (a topic with fewer words counts the words it has, and the divisor then uses the words actually taken)
+		@return diversity in (0, 1], or NaN for a Nil argument, an empty list or top_k below 1
+		~#
+		function : Diversity(topics : Vector<TopicTerms>, top_k : Int) ~ Float {
+			if(topics = Nil | topics->Size() < 1 | top_k < 1) {
+				return Float->NaN();
+			};
+
+			seen := HashSet->New()<String>;
+			taken := 0;
+			for(t := 0; t < topics->Size(); t += 1;) {
+				words := topics->Get(t)->GetWords();
+				n := top_k;
+				if(n > words->Size()) {
+					n := words->Size();
+				};
+
+				for(i := 0; i < n; i += 1;) {
+					seen->Add(words[i]);
+					taken += 1;
+				};
+			};
+
+			if(taken = 0) {
+				return Float->NaN();
+			};
+
+			return seen->Size()->As(Float) / taken->As(Float);
+		}
+
+		#~
+		Jaccard similarity of the top-k word sets of every pair of topics: a flat topics-by-topics matrix, 1 on the diagonal.
+		@param topics topics with their top words
+		@param top_k how many top words of each topic to use, 1 or more
+		@return topics times topics values, or Nil for a Nil argument, an empty list or top_k below 1
+		~#
+		function : JaccardMatrix(topics : Vector<TopicTerms>, top_k : Int) ~ Float[] {
+			if(topics = Nil | topics->Size() < 1 | top_k < 1) {
+				return Nil;
+			};
+
+			k := topics->Size();
+			sets := Vector->New()<HashSet<String>>;
+			for(t := 0; t < k; t += 1;) {
+				words := topics->Get(t)->GetWords();
+				n := top_k;
+				if(n > words->Size()) {
+					n := words->Size();
+				};
+
+				set := HashSet->New()<String>;
+				for(i := 0; i < n; i += 1;) {
+					set->Add(words[i]);
+				};
+
+				sets->AddBack(set);
+			};
+
+			out := Float->New[k * k];
+			for(a := 0; a < k; a += 1;) {
+				for(b := 0; b < k; b += 1;) {
+					inter := sets->Get(a)->Intersect(sets->Get(b))->Size();
+					union := sets->Get(a)->Size() + sets->Get(b)->Size() - inter;
+					if(union = 0) {
+						out[a * k + b] := 1.0;
+					}
+					else {
+						out[a * k + b] := inter->As(Float) / union->As(Float);
+					};
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		Topic overlap: the mean Jaccard similarity over all pairs of different topics (see JaccardMatrix). 0 means no two topics share a top word, 1 means all lists are identical.
+		@param topics topics with their top words
+		@param top_k how many top words of each topic to use, 1 or more
+		@return overlap in [0, 1], or NaN for a Nil argument, fewer than 2 topics or top_k below 1
+		~#
+		function : Overlap(topics : Vector<TopicTerms>, top_k : Int) ~ Float {
+			matrix := JaccardMatrix(topics, top_k);
+			if(matrix = Nil | topics->Size() < 2) {
+				return Float->NaN();
+			};
+
+			k := topics->Size();
+			sum := 0.0;
+			pairs := 0;
+			for(a := 0; a < k; a += 1;) {
+				for(b := a + 1; b < k; b += 1;) {
+					sum += matrix[a * k + b];
+					pairs += 1;
+				};
+			};
+
+			return sum / pairs->As(Float);
+		}
+
+		#~
+		Topic stability between two models, for runs with different seeds: each topic's word distribution p(word | topic) is compared by cosine similarity with every topic of the other model and the best match is kept; the result is the mean of those best matches taken from a to b and from b to a, averaged. 1 means every topic of one run has an identical twin in the other; it is not a one-to-one matching, so two topics may share a best match.
+		@param a the first fitted model
+		@param b the second fitted model, with the same vocabulary size
+		@return stability in [0, 1], or NaN when either is Nil or unfitted or the vocabulary sizes differ
+		~#
+		function : Stability(a : Lda, b : Lda) ~ Float {
+			if(a = Nil | b = Nil | <>a->IsFitted() | <>b->IsFitted() | a->GetVocabSize() <> b->GetVocabSize()) {
+				return Float->NaN();
+			};
+
+			ab := BestMatch(a, b);
+			ba := BestMatch(b, a);
+			return 0.5 * (ab + ba);
+		}
+
+		function : private : BestMatch(a : Lda, b : Lda) ~ Float {
+			ka := a->GetNumTopics();
+			kb := b->GetNumTopics();
+			v := a->GetVocabSize();
+			rows_b := Float->New[kb * v];
+			for(j := 0; j < kb; j += 1;) {
+				row := b->GetTopicWord(j);
+				for(w := 0; w < v; w += 1;) {
+					rows_b[j * v + w] := row[w];
+				};
+			};
+
+			total := 0.0;
+			for(i := 0; i < ka; i += 1;) {
+				row_a := a->GetTopicWord(i);
+				norm_a := 0.0;
+				for(w := 0; w < v; w += 1;) {
+					norm_a += row_a[w] * row_a[w];
+				};
+				norm_a := Float->Sqrt(norm_a);
+
+				best := -1.0;
+				for(j := 0; j < kb; j += 1;) {
+					dot := 0.0;
+					norm_b := 0.0;
+					for(w := 0; w < v; w += 1;) {
+						dot += row_a[w] * rows_b[j * v + w];
+						norm_b += rows_b[j * v + w] * rows_b[j * v + w];
+					};
+
+					cosine := dot / (norm_a * Float->Sqrt(norm_b));
+					if(cosine > best) {
+						best := cosine;
+					};
+				};
+
+				total += best;
+			};
+
+			return total / ka->As(Float);
+		}
+	}
+}

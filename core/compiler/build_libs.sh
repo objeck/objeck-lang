@@ -34,6 +34,8 @@ $OBC -src lib_src/ml_lab.obs -lib gen_collect,csv,json,ml -tar lib -opt s3 -dest
 $OBC -src lib_src/ml_vector.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ml_vector.obl
 # Plotting: scatter, histogram, line and bar charts as SVG. Needs only gen_collect, no display, no SDL
 $OBC -src lib_src/plot.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/plot.obl
+# Topic modeling: BSON reader, dictionary, LDA, coherence and an SVG topic report. After json and plot, which it links
+$OBC -src lib_src/nlp_topics_text.obs,lib_src/nlp_topics_lda.obs,lib_src/nlp_topics_metrics.obs,lib_src/nlp_topics_viz.obs -lib gen_collect,json,plot -tar lib -opt s3 -dest ../lib/nlp_topics.obl
 $OBC -src lib_src/ai_search.obs,lib_src/ai_game.obs,lib_src/ai_optimize.obs,lib_src/ai_rl.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ai.obl
 $OBC -src lib_src/nlp.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/nlp.obl
 # Text embeddings from BERT-family ONNX models. A library of its own, after both nlp

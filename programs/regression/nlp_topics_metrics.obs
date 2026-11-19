@@ -1,0 +1,256 @@
+# EXTRA_LIBS: nlp_topics,json,plot,gen_collect
+#~
+System.NLP.Topics TopicMetrics: u_mass, c_npmi and c_v coherence, topic diversity, overlap and stability.
+
+Independent values. The coherence expectations come from nlp_topics_reference.py, which writes the three
+measures out from Roeder, Both and Hinneburg (2015) and the structure of Gensim's topic_coherence package
+(segmentation, boolean sliding-window probability estimation, confirmation measure, aggregation) in plain Python.
+Gensim was not installed, so none of these numbers was compared with a Gensim run. A two-word example is also
+worked by hand below. The fixed corpus is ten tiny texts (one of them empty) and three fixed word lists, so the
+numbers do not depend on the LDA model.
+
+Hand example, four documents a b | a b | a c | b c and the topic [a, b]:
+  u_mass:  D(a) = 3, D(a,b) = 2, 4 documents:   log((2/4) / (3/4)) = log(2/3) = -0.405465
+  c_npmi:  p(a) = p(b) = 3/4, p(a,b) = 2/4:     log2(0.5 / 0.5625) = log2(8/9)  = -0.169925
+  c_v:     n = -0.169925; the vectors are [1, n] and [n, 1], their sum is [1+n, 1+n], so each cosine is
+           (1+n) / (sqrt(2) sqrt(1+n^2)) = 0.578657
+~#
+use System.NLP.Topics;
+use Collection;
+
+class NlpTopicsMetrics {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		ok := Fixed() & ok;
+		ok := ByHand() & ok;
+		ok := SetMeasures() & ok;
+		ok := Stability() & ok;
+		ok := Degenerate() & ok;
+
+		if(ok = false) {
+			Runtime->Exit(1);
+		};
+		"nlp_topics_metrics: ok"->PrintLine();
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+		return passed;
+	}
+
+	function : Close(a : Float, b : Float, tol : Float) ~ Bool {
+		return Float->Abs(a - b) <= tol * (1.0 + Float->Abs(b));
+	}
+
+	function : Matches(values : Float[], expected : Float[]) ~ Bool {
+		if(values = Nil | values->Size() <> expected->Size()) {
+			return false;
+		};
+		each(i : expected) {
+			if(Close(values[i], expected[i], 0.000000001) = false) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	function : Texts() ~ Vector<Vector<String>> {
+		lines := ["malware ransomware encrypt files payload", "ransomware payment bitcoin encrypt", "phishing email link credentials malware", "phishing credentials login email", "patch vulnerability exploit cve", "exploit cve patch update vulnerability malware", "bitcoin payment ransomware", "email phishing link", "", "update patch"];
+		tok := TopicTokenizer->New();
+		docs := Vector->New()<Vector<String>>;
+		each(i : lines) {
+			docs->AddBack(tok->Tokenize(lines[i]));
+		};
+		return docs;
+	}
+
+	function : Terms(dict : TokenDictionary, topic : Int, words : String[]) ~ TopicTerms {
+		ids := Int->New[words->Size()];
+		weights := Float->New[words->Size()];
+		each(i : words) {
+			ids[i] := dict->GetId(words[i]);
+			weights[i] := 1.0 / (i + 1)->As(Float);
+		};
+		return TopicTerms->New(topic, ids, words, weights);
+	}
+
+	function : FixedTopics(dict : TokenDictionary) ~ Vector<TopicTerms> {
+		topics := Vector->New()<TopicTerms>;
+		topics->AddBack(Terms(dict, 0, ["ransomware", "malware", "encrypt", "payment"]));
+		topics->AddBack(Terms(dict, 1, ["phishing", "email", "credentials", "link"]));
+		topics->AddBack(Terms(dict, 2, ["patch", "vulnerability", "exploit", "cve"]));
+		return topics;
+	}
+
+	function : Fixed() ~ Bool {
+		ok := true;
+		texts := Texts();
+		dict := TokenDictionary->New();
+		dict->AddDocuments(texts);
+		corpus := dict->ToCorpus(texts);
+		topics := FixedTopics(dict);
+		ok := Report("fixture: 10 texts, one empty", texts->Size() = 10 & texts->Get(8)->Size() = 0 & corpus->GetNumDocs() = 10) & ok;
+
+		ok := Report("u_mass of 3 topics matches the reference", Matches(TopicMetrics->UMass(topics, corpus), [-5.021391714279, -0.385834602160, -0.202732554049])) & ok;
+		ok := Report("c_npmi, window 3, matches the reference", Matches(TopicMetrics->CNpmi(topics, texts, 3), [0.094948370749, 0.451478723435, 0.415696911626])) & ok;
+		ok := Report("c_npmi, window 10, matches the reference", Matches(TopicMetrics->CNpmi(topics, texts, 10), [0.210584617531, 0.731703577176, 0.874035181800])) & ok;
+		ok := Report("c_v, window 3, matches the reference", Matches(TopicMetrics->CV(topics, texts, 3), [0.592621647467, 0.909471009376, 0.894497987792])) & ok;
+		ok := Report("c_v, window 110, matches the reference", Matches(TopicMetrics->CV(topics, texts, 110), [0.643353716447, 0.978225230538, 0.994152174157])) & ok;
+
+		mean := TopicMetrics->Mean(TopicMetrics->CNpmi(topics, texts, 10));
+		ok := Report("the model value is the mean of the topics ({$mean})", Close(mean, (0.210584617531 + 0.731703577176 + 0.874035181800) / 3.0, 0.000000001)) & ok;
+
+		# window 1 makes every window a single token, so no two words ever meet: every pair has p(a,b) = 0 and the
+		# 1e-12 smoothing in the formula gives log(1e-12 / (p(a) p(b))) / -log(1e-12), about -0.8 here (not exactly -1)
+		ok := Report("c_npmi, window 1 (no pair ever meets), matches the reference", Matches(TopicMetrics->CNpmi(topics, texts, 1), [-0.8034789835208045, -0.8034789835208045, -0.7961418477268177])) & ok;
+		return ok;
+	}
+
+	function : ByHand() ~ Bool {
+		ok := true;
+		lines := ["a b", "a b", "a c", "b c"];
+		tok := TopicTokenizer->New();
+		tok->SetLengths(1, 5);
+		texts := Vector->New()<Vector<String>>;
+		each(i : lines) {
+			texts->AddBack(tok->Tokenize(lines[i]));
+		};
+		dict := TokenDictionary->New();
+		dict->AddDocuments(texts);
+		corpus := dict->ToCorpus(texts);
+		topics := Vector->New()<TopicTerms>;
+		topics->AddBack(Terms(dict, 0, ["a", "b"]));
+
+		ok := Report("hand-worked u_mass log(2/3) = -0.405465", Close(TopicMetrics->UMass(topics, corpus)[0], -0.4054651081, 0.00000001)) & ok;
+		ok := Report("hand-worked c_npmi log2(8/9) = -0.169925", Close(TopicMetrics->CNpmi(topics, texts, 10)[0], -0.1699250014, 0.00000001)) & ok;
+		ok := Report("hand-worked c_v = 0.578657", Close(TopicMetrics->CV(topics, texts, 10)[0], 0.5786568951, 0.00000001)) & ok;
+
+		absent := Vector->New()<TopicTerms>;
+		absent->AddBack(TopicTerms->New(0, [0, 1], ["zzz", "qqq"], [0.5, 0.5]));
+		ok := Report("words that occur nowhere count 0 for c_npmi", Close(TopicMetrics->CNpmi(absent, texts, 10)[0], 0.0, 0.000000001)) & ok;
+		return ok;
+	}
+
+	function : SetMeasures() ~ Bool {
+		ok := true;
+		topics := Vector->New()<TopicTerms>;
+		topics->AddBack(TopicTerms->New(0, [0, 1, 2], ["x", "y", "z"], [0.5, 0.3, 0.2]));
+		topics->AddBack(TopicTerms->New(1, [0, 3, 4], ["x", "w", "v"], [0.5, 0.3, 0.2]));
+		topics->AddBack(TopicTerms->New(2, [5, 6, 7], ["p", "q", "r"], [0.5, 0.3, 0.2]));
+
+		ok := Report("diversity, top 3: 8 distinct words of 9 = 0.888889", Close(TopicMetrics->Diversity(topics, 3), 8.0 / 9.0, 0.000000000001)) & ok;
+		ok := Report("diversity, top 1: x, x, p = 2 of 3", Close(TopicMetrics->Diversity(topics, 1), 2.0 / 3.0, 0.000000000001)) & ok;
+		ok := Report("diversity, top 10 uses the words that exist", Close(TopicMetrics->Diversity(topics, 10), 8.0 / 9.0, 0.000000000001)) & ok;
+		same := Vector->New()<TopicTerms>;
+		same->AddBack(topics->Get(0));
+		same->AddBack(topics->Get(0));
+		ok := Report("two identical topics: diversity 0.5, overlap 1", Close(TopicMetrics->Diversity(same, 3), 0.5, 0.000000000001) & Close(TopicMetrics->Overlap(same, 3), 1.0, 0.000000000001)) & ok;
+
+		ok := Report("overlap, top 3: Jaccard(0,1) = 1/5, the others 0, mean 1/15", Close(TopicMetrics->Overlap(topics, 3), 0.2 / 3.0, 0.000000000001)) & ok;
+		ok := Report("overlap, top 1: {x} against {x} is 1, so the mean is 1/3", Close(TopicMetrics->Overlap(topics, 1), 1.0 / 3.0, 0.000000000001)) & ok;
+		matrix := TopicMetrics->JaccardMatrix(topics, 3);
+		ok := Report("the Jaccard matrix is symmetric with a unit diagonal", matrix->Size() = 9 & matrix[0] = 1.0 & matrix[4] = 1.0 & matrix[8] = 1.0 & Close(matrix[1], 0.2, 0.000000000001) & matrix[1] = matrix[3] & matrix[2] = 0.0 & matrix[5] = 0.0) & ok;
+		return ok;
+	}
+
+	function : Model(seed : Int) ~ Lda {
+		lines := ["alpha beta alpha gamma beta", "beta gamma gamma alpha", "delta epsilon zeta delta", "epsilon zeta zeta delta epsilon", "alpha gamma beta", "zeta delta epsilon"];
+		tok := TopicTokenizer->New();
+		docs := Vector->New()<Vector<String>>;
+		each(i : lines) {
+			docs->AddBack(tok->Tokenize(lines[i]));
+		};
+		dict := TokenDictionary->New();
+		dict->AddDocuments(docs);
+		corpus := dict->ToCorpus(docs);
+		lda := Lda->New(2, 0.1, 0.01, 10, 30, seed);
+		lda->SetChunkSize(6);
+		lda->Fit(corpus, dict);
+		return lda;
+	}
+
+	function : Stability() ~ Bool {
+		ok := true;
+		a := Model(1);
+		b := Model(1);
+		c := Model(2);
+		ok := Report("the same seed: stability 1", Close(TopicMetrics->Stability(a, b), 1.0, 0.000000001)) & ok;
+		s := TopicMetrics->Stability(a, c);
+		ok := Report("another seed: stability in (0, 1] ({$s})", s > 0.0 & s <= 1.000000001) & ok;
+		ok := Report("stability is symmetric", Close(TopicMetrics->Stability(a, c), TopicMetrics->Stability(c, a), 0.000000000001)) & ok;
+
+		unfitted := Lda->New(2, 0.1, 0.01, 1, 10, 1);
+		nan_nil := TopicMetrics->Stability(Nil, a);
+		nan_nil2 := TopicMetrics->Stability(a, Nil);
+		nan_unfit := TopicMetrics->Stability(a, unfitted);
+		ok := Report("Nil and unfitted models give NaN", nan_nil <> nan_nil & nan_nil2 <> nan_nil2 & nan_unfit <> nan_unfit) & ok;
+
+		wide_lines := ["one two three four five six seven", "one two three", "four five six"];
+		tok := TopicTokenizer->New();
+		wide_docs := Vector->New()<Vector<String>>;
+		each(i : wide_lines) {
+			wide_docs->AddBack(tok->Tokenize(wide_lines[i]));
+		};
+		wide_dict := TokenDictionary->New();
+		wide_dict->AddDocuments(wide_docs);
+		wide := Lda->New(2, 0.1, 0.01, 3, 10, 1);
+		wide->Fit(wide_dict->ToCorpus(wide_docs), wide_dict);
+		mismatch := TopicMetrics->Stability(a, wide);
+		ok := Report("models with different vocabularies give NaN", mismatch <> mismatch) & ok;
+		return ok;
+	}
+
+	function : Degenerate() ~ Bool {
+		ok := true;
+		texts := Texts();
+		dict := TokenDictionary->New();
+		dict->AddDocuments(texts);
+		corpus := dict->ToCorpus(texts);
+		topics := FixedTopics(dict);
+		none := Vector->New()<TopicTerms>;
+
+		ok := Report("Nil arguments give Nil", TopicMetrics->UMass(Nil, corpus) = Nil & TopicMetrics->UMass(topics, Nil) = Nil & TopicMetrics->CNpmi(Nil, texts, 10) = Nil & TopicMetrics->CNpmi(topics, Nil, 10) = Nil & TopicMetrics->CV(Nil, texts, 10) = Nil & TopicMetrics->CV(topics, Nil, 10) = Nil) & ok;
+		ok := Report("an empty topic list gives Nil", TopicMetrics->UMass(none, corpus) = Nil & TopicMetrics->CNpmi(none, texts, 10) = Nil & TopicMetrics->CV(none, texts, 10) = Nil & TopicMetrics->JaccardMatrix(none, 3) = Nil) & ok;
+		ok := Report("a window below 1 gives Nil", TopicMetrics->CNpmi(topics, texts, 0) = Nil & TopicMetrics->CV(topics, texts, -5) = Nil) & ok;
+
+		nan_div := TopicMetrics->Diversity(Nil, 3);
+		nan_div2 := TopicMetrics->Diversity(topics, 0);
+		nan_over := TopicMetrics->Overlap(none, 3);
+		one_topic := Vector->New()<TopicTerms>;
+		one_topic->AddBack(topics->Get(0));
+		nan_over1 := TopicMetrics->Overlap(one_topic, 3);
+		nan_over2 := TopicMetrics->Overlap(topics, 0);
+		ok := Report("diversity and overlap: NaN for Nil, empty, top_k 0 and one topic", nan_div <> nan_div & nan_div2 <> nan_div2 & nan_over <> nan_over & nan_over1 <> nan_over1 & nan_over2 <> nan_over2) & ok;
+		ok := Report("JaccardMatrix top_k 0 is Nil", TopicMetrics->JaccardMatrix(topics, 0) = Nil) & ok;
+
+		wild := Vector->New()<TopicTerms>;
+		wild->AddBack(TopicTerms->New(0, [0, 9999], ["a", "b"], [0.5, 0.5]));
+		ok := Report("a word id outside the corpus vocabulary gives Nil for u_mass", TopicMetrics->UMass(wild, corpus) = Nil) & ok;
+
+		single := Vector->New()<TopicTerms>;
+		single->AddBack(TopicTerms->New(0, [0], ["malware"], [1.0]));
+		single->AddBack(topics->Get(1));
+		um := TopicMetrics->UMass(single, corpus);
+		cn := TopicMetrics->CNpmi(single, texts, 10);
+		cv := TopicMetrics->CV(single, texts, 10);
+		ok := Report("a one-word topic is NaN, the others still count", um[0] <> um[0] & cn[0] <> cn[0] & cv[0] <> cv[0] & um[1] = um[1] & cn[1] = cn[1] & cv[1] = cv[1]) & ok;
+		ok := Report("Mean skips NaN entries", Close(TopicMetrics->Mean(cn), cn[1], 0.000000000001)) & ok;
+		all_nan := TopicMetrics->Mean([Float->NaN(), Float->NaN()]);
+		nil_mean := TopicMetrics->Mean(Nil);
+		empty_mean := TopicMetrics->Mean(Float->New[0]);
+		ok := Report("Mean of nothing, of Nil and of only NaN is NaN", all_nan <> all_nan & nil_mean <> nil_mean & empty_mean <> empty_mean) & ok;
+
+		blank_texts := Vector->New()<Vector<String>>;
+		blank_texts->AddBack(Vector->New()<String>);
+		blank := TopicMetrics->CNpmi(topics, blank_texts, 5);
+		ok := Report("texts with no words at all: every pair counts 0", Close(blank[0], 0.0, 0.000000001) & Close(blank[2], 0.0, 0.000000001)) & ok;
+		no_texts := TopicMetrics->CNpmi(topics, Vector->New()<Vector<String>>, 5);
+		ok := Report("no texts at all: every pair counts 0", Close(no_texts[1], 0.0, 0.000000001)) & ok;
+		return ok;
+	}
+}

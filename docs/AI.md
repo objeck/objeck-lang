@@ -38,6 +38,7 @@ All AI and ML capabilities are **standard library** — no third-party packages,
   - [BERT tokens and sentence embeddings](#bert-tokens-and-sentence-embeddings)
   - [Text classification with a fine-tuned model](#text-classification-with-a-fine-tuned-model)
   - [Models from the Hugging Face Hub](#models-from-the-hugging-face-hub)
+  - [Topic modeling and BSON (System.NLP.Topics)](#topic-modeling-and-bson-systemnlptopics)
 - [Machine Learning (System.ML)](#machine-learning-systemml)
   - [Regression](#regression)
   - [Classification](#classification)
@@ -1085,6 +1086,45 @@ if(folder = Nil) {
 };
 ```
 
+### Topic modeling and BSON (System.NLP.Topics)
+
+LDA topic modeling for text, with the steps of a Gensim workflow: decode a MongoDB `.bson` dump, tokenize, drop stopwords, build a dictionary and filter infrequent tokens, train, read the topics, measure their quality and draw them. It is one library, `nlp_topics.obl` (`-lib nlp_topics,json,plot,gen_collect`, or `-lib @ai`; it needs `json` for the BSON documents and `plot` for the picture). It was written for the topic-modeling lab of "Extracting Cyber Threat Intelligence from X Using AI" (book chapter 11), but nothing in it is specific to that data.
+
+```ruby
+use System.NLP.Topics;
+
+texts := BsonReader->ReadStrings("CyberTweets.bson", "text");       # step 1: the "text" field of every document
+docs := TopicTokenizer->New(TopicStopwords->English()->Union(TopicStopwords->Cyber()))->TokenizeAll(texts);
+
+dict := TokenDictionary->New();                                       # step 2: Gensim's Dictionary
+dict->AddDocuments(docs);
+dict->FilterExtremes(5, 0.5, 0)->ToString()->PrintLine();             # size and % of token occurrences removed
+corpus := dict->ToCorpus(docs);
+
+lda := Lda->FitBest(corpus, dict, 10, 0.0, 0.0, 20, 50, 2000, 1, 5);  # step 3: 10 topics, best of 5 seeds
+lda->GetTopic(0, 10)->ToString()->PrintLine();                        # step 4: top words and mixtures
+mix := lda->GetDocumentTopics(corpus, 0);                             # Float[] that sums to 1
+"bound {$lda->LogPerplexityBound(corpus)}, perplexity {$lda->Perplexity(corpus)}"->PrintLine();
+
+cv := TopicMetrics->Mean(TopicMetrics->CV(lda->GetTopics(10), docs, 110));
+TopicPlots->SaveReport(lda, corpus, 0, 0.6, 15, "topics.svg");        # step 5: a static counterpart of pyLDAvis
+```
+
+- **BSON.** `BsonReader` decodes a `.bson` file (documents back to back, each starting with its own little-endian length) into `Data.JSON` elements, one at a time with `HasNext`/`Next` or all at once; `ExtractStrings("user.name")` takes one string field, by dotted path, from every document and counts the ones it skipped. Every type is mapped: strings, numbers, documents and arrays as themselves, an ObjectId as its 24 hex digits, a datetime as an ISO-8601 string, binary, timestamp, regular expression and min/max key as small `$`-objects, and decimal128 is kept as its 16 raw bytes (`{"$decimal128": hex}`) and not decoded. Bad input does not crash or hang the reader: every length is checked against the bytes left, nesting deeper than 100 levels (MongoDB's own limit) is refused, and a truncated or hostile file gives `Nil` and a message with the byte offset in `GetError()`. The class documentation lists the mapping in full.
+- **Tokens and stopwords.** `TopicTokenizer` lowercases, keeps runs of `a-z` and digits (so it suits English text; accented and non-Latin characters end a token), drops URLs and `@mentions`, keeps a hashtag's word and drops tokens that are too short, all digits or on the stopword list. It is its own tokenizer, and does not use `TextPreprocessor`, because tweets need the URL and mention handling and `TextPreprocessor` would add a dependency on `nlp.obl`; there is no stemming. The three stopword strategies of the lab are data: `TopicStopwords->New()` (none), `->English()` (the 179 words of NLTK's English list, embedded, so nothing is downloaded) and `->English()->Union(->Cyber())`. `Cyber()` is a small starting point, 28 words of Twitter noise and of words found in nearly every cybersecurity tweet, not a researched list; build your own with `FromArray`.
+- **Dictionary.** `TokenDictionary` is Gensim's `Dictionary`: token to id, document and collection frequencies, `FilterExtremes(no_below, no_above, keep_n)` with Gensim's semantics (`no_above` times the number of documents, truncated; `keep_n` keeps the most frequent, ties to the smaller id; ids are compacted in their old order) and `ToCorpus` for the bag-of-words `TopicCorpus`. `FilterExtremes` returns a `FilterReport`: the dictionary size before and after and the percentage of token occurrences removed (and of distinct tokens).
+- **LDA.** `Lda` is online variational Bayes, the algorithm of Hoffman, Blei and Bach and the one Gensim's `LdaModel` uses, with Gensim's parameters: `num_topics`, `alpha` (a number, or `SetAlphaMode("asymmetric")` or `"auto"`), `eta`, `passes`, `iterations`, a seed, plus `SetChunkSize`, `SetLearningRate` (offset and decay) and `SetGammaThreshold`. Passing 0 for `alpha` or `eta` means Gensim's default of `1/num_topics`. `GetTopic`/`GetTopics` give the top words with their probabilities, `GetDocumentTopics` the mixture of one document (a probability vector), `GetDocumentTopicMatrix` all of them, `GetLambda` the topic-word pseudo-counts in Gensim's layout, `Save`/`Load` the model in a file with a checksum. **It is comparable in kind to Gensim, not numerically identical**: the random generator differs (so a seed gives another, equally valid, model), the E step starts each document from gamma = 1 instead of a random draw, and summation order differs. The same seed gives the same model on every run and platform here.
+- **Local optima.** Variational Bayes starts from a random point and can end with two real topics merged and another split. On the planted-topic data of the tests roughly half of the seeds did, and the per-word bound of such a run is clearly lower. So train from several seeds and keep the best: `Lda->FitBest` does that, and `TopicMetrics->Stability` measures how alike two runs are.
+- **Bound and perplexity.** `LogPerplexityBound(corpus)` is Gensim's `log_perplexity`: a variational lower bound on the log likelihood **per word**. It is negative and higher is better. It is **not** perplexity; `Perplexity(corpus)` returns `exp(-bound)`, lower is better. The lab table in `topic_lab.obs` prints both and says which is which.
+- **Coherence.** `TopicMetrics` implements three measures after Roeder, Both and Hinneburg (2015), each the mean over a topic's word pairs, on the top-N words you pass in: `UMass` (document co-occurrence over the bag-of-words corpus, `log((D(wi,wj)/D + 1e-12) / (D(wj)/D))` over pairs with `j < i`; Gensim's `u_mass`), `CNpmi` (normalized PMI over sliding windows, Gensim's `c_npmi`, whose default window is 10) and `CV` (the NPMI context-vector cosine, Gensim's default `c_v`, window 110). The windows are cut from the token lists you pass in; a text no longer than the window is one window, an empty text one empty window, as in Gensim. `Diversity` (unique words among all topics' top-k, divided by topics times k), `Overlap` (mean pairwise Jaccard of the top-k sets) and `Stability` (mean best-match cosine between two models' topic-word vectors, taken both ways) complete the lab's metrics.
+- **Picture.** `TopicPlots` writes one SVG with an intertopic distance map (topics placed by classical MDS of the square roots of their Jensen-Shannon divergences, circle area proportional to prevalence) and the bar chart of a topic's most relevant terms (relevance with a lambda you choose, grey bar for the corpus frequency, colored bar for the part the topic explains). It is a simple static counterpart of pyLDAvis: no slider and no interactivity; the term ranking uses pyLDAvis's relevance formula. `Relevance` and `SalientTerms` return the numbers behind it.
+
+Measured on a Ryzen 9 7950X3D (Windows, JIT on) with a synthetic corpus of 20,000 documents of 12 tokens, a vocabulary of 10,000 and 15 topics: tokenizing 0.5 s, dictionary, filter and corpus 0.3 s, `Fit` 0.28 s per pass (2.8 s for 10 passes, 8.2 s for 30, since the E step stops early once documents converge), `LogPerplexityBound` 0.3 s, c_v coherence 0.06 s. A corpus of 50,000 such documents trained 5 passes in 3.5 s. Memory is a few arrays of vocabulary times topics doubles.
+
+Limits: one thread; text is English (ASCII tokens); `num_topics` times the vocabulary may not exceed 50 million; no live data was used, so the lab numbers in the example come from a planted synthetic corpus. What was checked against independent values is listed in the test headers: the model against a numpy/scipy port of the same algorithm, the coherence measures against Python written from the published definitions, the BSON decoder against hand-encoded `struct.pack` fixtures. Gensim itself was not available, so nothing was compared with a Gensim run.
+
+The whole lab, with the five experiments of the assignment (topics, minimum frequency, stopword strategy, passes, alpha) printed as `System.ML.Lab` tables on a synthetic corpus with planted topics, is [`programs/examples/ml/topic_lab.obs`](../programs/examples/ml/topic_lab.obs).
+
 ---
 
 ## Machine Learning (System.ML)
@@ -1601,7 +1641,7 @@ obc -src program.obs -lib @ai -dest program.obe
 | `@web` | `net_h2`, `net_quic`, `web_server`, `json_rpc`, `net_server`, `net`, `json`, `cipher` | HTTP/2, HTTP/3, the embedded server, JSON-RPC |
 | `@data` | `xml`, `regex`, `csv`, `query`, `rss`, `misc`, `net`, `json`, `cipher` | parsing and querying structured data |
 | `@ml` | `gemini`, `openai`, `ollama`, `net_server`, `misc`, `net`, `json`, `cipher` | LLM clients: OpenAI, Gemini, Ollama |
-| `@ai` | `ai`, `ml`, `ml_lab`, `ml_vector`, `plot`, `nlp`, `csv`, `json` | local System.ML / System.ML.Lab / System.Plot / System.AI / System.NLP work |
+| `@ai` | `ai`, `ml`, `ml_lab`, `ml_vector`, `plot`, `nlp`, `nlp_topics`, `csv`, `json` | local System.ML / System.ML.Lab / System.Plot / System.AI / System.NLP / System.NLP.Topics work |
 | `@plot` | `plot`, `plot_sdl`, `sdl2` | charts in a window or as PNG (SVG alone needs only `plot`) |
 | `@vision` | `opencv`, `onnx`, `nlp_onnx`, `models`, `nlp`, `json`, `cipher` | OpenCV and ONNX inference, BERT text embeddings |
 | `@game` | `sdl2`, `sdl_game`, `sdl_gl`, `json`, `gen_collect` | SDL games, 2D and OpenGL |
@@ -1719,6 +1759,7 @@ The libraries in this guide are covered by the regression suite in `programs/reg
 | `System.ML` | `ml_*.obs`, e.g. `ml_kernel_svm_reference.obs` and `ml_one_class_svm_reference.obs` (against an independent reference, generated by `tools/ml/svm_reference/gen_reference_test.py`), `ml_outlier_*.obs`, `ml_lab_*.obs` |
 | `System.AI` | `ai_search_test.obs`, `ai_game_test.obs`, `ai_optimize_test.obs`, `ai_rl_test.obs` |
 | `System.NLP` | `nlp_*.obs`, e.g. `nlp_wordpiece_parity.obs`, `nlp_bpe_tokenizer.obs` |
+| `System.NLP.Topics` | `nlp_topics_bson.obs`, `nlp_topics_dictionary.obs`, `nlp_topics_lda.obs`, `nlp_topics_metrics.obs`, `nlp_topics_plots.obs`; the reference values come from `nlp_topics_reference.py` and `nlp_topics_bson_fixtures.py` |
 | ONNX, remote inference, Hub | `onnx_*.obs`, `nlp_onnx_*.obs`, `inference_client_test.obs`, `ai_hub_client.obs` |
 
 A test passes when it exits 0 and is compiled with the libraries its `# EXTRA_LIBS:` line names; a test that needs a model or a native library that is not deployed prints `SKIP:` instead. To run one:

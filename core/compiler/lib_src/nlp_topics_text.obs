@@ -1,0 +1,1498 @@
+#~~
+# Objeck topic-modeling library: BSON reader, stopword lists, tokenizer, dictionary and bag-of-words corpus
+# Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+use Data.JSON;
+
+#~
+Topic modeling for text (System.NLP.Topics): the pieces that turn a MongoDB BSON dump or a list of strings into the bag-of-words corpus that the LDA model (nlp_topics_lda.obs) trains on, with the same steps as a Gensim workflow: decode, tokenize, remove stopwords, build a dictionary, filter infrequent tokens, build the corpus. Compile with -lib nlp_topics,json,plot,gen_collect.
+~#
+bundle System.NLP.Topics {
+	#~
+	Decodes MongoDB BSON (bsonspec.org version 1.1) into Data.JSON elements. A .bson dump from mongodump is a plain concatenation of documents, each starting with its own little-endian int32 total length; HasNext/Next walk it one document at a time without decoding the rest.
+
+	Nothing here ends the program on bad input. A truncated file, a length that runs past the data or past its parent document, a length below the 5-byte minimum, a missing terminator, an unknown or unsupported type byte, an unterminated name or string, a Boolean that is not 0 or 1 and nesting deeper than 100 levels (MongoDB's own limit) all make Next return Nil and set GetError() to a message with the byte offset; after an error HasNext is false, so a loop always ends. Every length is checked against the bytes that are left before it is used, so a hostile file cannot make the reader read out of range or loop without advancing.
+
+	How BSON types map onto JSON elements. Documents become objects and arrays become arrays; strings, int32 and int64 become strings and numbers; a double becomes a number, except NaN and the infinities, which become the strings "NaN", "Infinity" and "-Infinity" (JSON has no such numbers); true and false and null map to themselves, and the deprecated undefined is null. An ObjectId becomes its 24-character lowercase hex string. A UTC datetime becomes an ISO-8601 string with milliseconds ("2021-03-04T05:06:07.089Z"), or "ms:" and the number for a date outside years 0000 to 9999. Binary becomes {"$binary": hex, "$type": subtype}, a timestamp {"$timestamp": {"t": seconds, "i": increment}}, a regular expression {"$regex": pattern, "$options": flags}, JavaScript code and symbols plain strings, min and max keys {"$minKey": 1} and {"$maxKey": 1}. Decimal128 is NOT decoded: it becomes {"$decimal128": hex} holding its 16 raw bytes as stored (little-endian), so the value is kept and a program can tell it apart. DBPointer and code-with-scope are refused with an error. Strings are bytes as stored, UTF-8 is not validated; a repeated name in one document keeps the last value. Int64 values beyond what a JSON number text round-trips are still exact here, because numbers are carried as text.
+
+```
+reader := BsonReader->FromFile("cybertweets.bson");
+tweets := reader->ExtractStrings("text");
+"{$tweets->Size()} tweets"->PrintLine();
+```
+	~#
+	class BsonReader {
+		@data : Byte[];
+		@pos : Int;
+		@error : String;
+		@skipped : Int;
+
+		#~
+		Creates a reader over bytes already in memory. Nil bytes give a reader with an error and nothing to read.
+		@param data the BSON bytes (not copied; do not change them while reading)
+		~#
+		New(data : Byte[]) {
+			@error := "";
+			@pos := 0;
+			@skipped := 0;
+			if(data = Nil) {
+				@data := Byte->New[0];
+				@error := "data is Nil";
+			}
+			else {
+				@data := data;
+			};
+		}
+
+		#~
+		Reads a whole .bson file into memory and makes a reader over it.
+		@param path the file
+		@return the reader, or Nil when the file is missing or unreadable
+		~#
+		function : FromFile(path : String) ~ BsonReader {
+			if(path = Nil | path->Size() = 0) {
+				return Nil;
+			};
+
+			bytes := System.IO.Filesystem.FileReader->ReadBinaryFile(path);
+			if(bytes = Nil) {
+				return Nil;
+			};
+
+			return BsonReader->New(bytes);
+		}
+
+		#~
+		Why the last failure happened, or an empty string.
+		@return message with the byte offset, or ""
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Byte offset of the next document.
+		@return offset
+		~#
+		method : public : GetPosition() ~ Int {
+			return @pos;
+		}
+
+		#~
+		Number of documents ExtractStrings left out because the field was missing or not a string.
+		@return count from the last ExtractStrings call
+		~#
+		method : public : GetSkipped() ~ Int {
+			return @skipped;
+		}
+
+		#~
+		True while there is another document and no error has happened.
+		@return true if Next may be called
+		~#
+		method : public : HasNext() ~ Bool {
+			return @error->Size() = 0 & @pos < @data->Size();
+		}
+
+		#~
+		Decodes the next document.
+		@return the document as a JSON object, or Nil at the end of the data or on an error (see GetError)
+		~#
+		method : public : Next() ~ JsonElement {
+			if(<>HasNext()) {
+				return Nil;
+			};
+
+			doc := ReadDocument(0, false, @data->Size());
+			if(doc = Nil) {
+				@pos := @data->Size();
+				return Nil;
+			};
+
+			return doc;
+		}
+
+		#~
+		Decodes every remaining document. Unlike Next this is all or nothing: one bad document gives Nil.
+		@return the documents, or Nil on an error (see GetError)
+		~#
+		method : public : ReadAll() ~ Vector<JsonElement> {
+			docs := Vector->New()<JsonElement>;
+			while(HasNext()) {
+				doc := Next();
+				if(doc = Nil) {
+					return Nil;
+				};
+				docs->AddBack(doc);
+			};
+
+			if(@error->Size() > 0) {
+				return Nil;
+			};
+
+			return docs;
+		}
+
+		#~
+		Takes one string field from every remaining document, for example the tweet text. The field may be a dotted path into embedded documents ("user.description"). Documents without the field, or where it is not a string, are skipped and counted in GetSkipped().
+		@param field field name or dotted path
+		@return the strings in file order, or Nil when the field name is empty or a document is malformed (see GetError; the strings read before the error are dropped)
+		~#
+		method : public : ExtractStrings(field : String) ~ Vector<String> {
+			@skipped := 0;
+			if(field = Nil | field->Size() = 0) {
+				@error := "field name is Nil or empty";
+				return Nil;
+			};
+
+			names := SplitPath(field);
+			out := Vector->New()<String>;
+			while(HasNext()) {
+				doc := Next();
+				if(doc = Nil) {
+					return Nil;
+				};
+
+				cur := doc;
+				each(i : names) {
+					if(cur <> Nil) {
+						if(cur->GetType() = JsonElement->JsonType->OBJECT & cur->Has(names[i])) {
+							cur := cur->Get(names[i]);
+						}
+						else {
+							cur := Nil;
+						};
+					};
+				};
+
+				if(cur <> Nil & cur->GetType() = JsonElement->JsonType->STRING) {
+					out->AddBack(cur->GetString());
+				}
+				else {
+					@skipped += 1;
+				};
+			};
+
+			if(@error->Size() > 0) {
+				return Nil;
+			};
+
+			return out;
+		}
+
+		#~
+		One call for the common case: read a .bson file and take one string field from every document.
+		@param path the .bson file
+		@param field field name or dotted path
+		@return the strings, or Nil when the file is unreadable or malformed
+		~#
+		function : ReadStrings(path : String, field : String) ~ Vector<String> {
+			reader := BsonReader->FromFile(path);
+			if(reader = Nil) {
+				return Nil;
+			};
+
+			return reader->ExtractStrings(field);
+		}
+
+		function : private : SplitPath(field : String) ~ String[] {
+			parts := Vector->New()<String>;
+			start := 0;
+			n := field->Size();
+			for(i := 0; i <= n; i += 1;) {
+				if(i = n | field->Get(i) = '.') {
+					parts->AddBack(field->SubString(start, i - start));
+					start := i + 1;
+				};
+			};
+
+			return parts->ToArray();
+		}
+
+		method : private : Fail(message : String) ~ Nil {
+			if(@error->Size() = 0) {
+				@error := "{$message} (at byte {$@pos})";
+			};
+		}
+
+		# a little-endian int32 at an offset, sign-extended; the caller has checked the bytes exist
+		method : private : ReadInt32(at : Int) ~ Int {
+			value := @data[at]->As(Int) + @data[at + 1]->As(Int) * 256 + @data[at + 2]->As(Int) * 65536 + @data[at + 3]->As(Int) * 16777216;
+			if(value >= 2147483648) {
+				value -= 4294967296;
+			};
+
+			return value;
+		}
+
+		method : private : ReadUInt32(at : Int) ~ Int {
+			return @data[at]->As(Int) + @data[at + 1]->As(Int) * 256 + @data[at + 2]->As(Int) * 65536 + @data[at + 3]->As(Int) * 16777216;
+		}
+
+		method : private : ReadDocument(depth : Int, is_array : Bool, bound : Int) ~ JsonElement {
+			if(depth > 100) {
+				Fail("nesting is deeper than 100 levels");
+				return Nil;
+			};
+
+			start := @pos;
+			if(bound - start < 5) {
+				Fail("truncated document: fewer than 5 bytes left");
+				return Nil;
+			};
+
+			len := ReadInt32(start);
+			if(len < 5) {
+				Fail("document length {$len} is below the 5-byte minimum");
+				return Nil;
+			};
+
+			left := bound - start;
+			if(len > left) {
+				Fail("document length {$len} runs past the end ({$left} bytes left)");
+				return Nil;
+			};
+
+			stop := start + len;
+			if(@data[stop - 1] <> 0) {
+				Fail("document does not end with a 0 byte");
+				return Nil;
+			};
+
+			result : JsonElement;
+			if(is_array) {
+				result := JsonElement->New(JsonElement->JsonType->ARRAY);
+			}
+			else {
+				result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			};
+
+			limit := stop - 1;
+			@pos := start + 4;
+			while(@pos < limit) {
+				kind := @data[@pos]->As(Int);
+				@pos += 1;
+				if(kind = 0) {
+					Fail("a 0 type byte before the end of the document");
+					return Nil;
+				};
+
+				key_start := @pos;
+				while(@pos < limit & @data[@pos] <> 0) {
+					@pos += 1;
+				};
+
+				if(@pos >= limit) {
+					Fail("unterminated element name");
+					return Nil;
+				};
+
+				key := Slice(key_start, @pos - key_start);
+				@pos += 1;
+
+				value := ReadValue(kind, limit, depth);
+				if(value = Nil) {
+					return Nil;
+				};
+
+				if(is_array) {
+					result->Add(value);
+				}
+				else {
+					result->Insert(key, value);
+				};
+			};
+
+			@pos := stop;
+			return result;
+		}
+
+		# true when n bytes starting at the position fit before limit
+		method : private : Need(n : Int, limit : Int) ~ Bool {
+			if(n < 0 | n > limit - @pos) {
+				Fail("truncated value: {$n} bytes needed, {$limit - @pos} left in the document");
+				return false;
+			};
+
+			return true;
+		}
+
+		# the bytes from start as a string; String->New(bytes, offset, length) decodes the WHOLE array and stops at a 0 byte, so the slice is copied out first
+		method : private : Slice(start : Int, count : Int) ~ String {
+			if(count <= 0) {
+				return "";
+			};
+
+			part := Byte->New[count];
+			Byte->Copy(part, 0, @data, start, count);
+			return String->New(part);
+		}
+
+		method : private : ReadCString(limit : Int) ~ String {
+			begin := @pos;
+			while(@pos < limit & @data[@pos] <> 0) {
+				@pos += 1;
+			};
+
+			if(@pos >= limit) {
+				Fail("unterminated string");
+				return Nil;
+			};
+
+			text := Slice(begin, @pos - begin);
+			@pos += 1;
+			return text;
+		}
+
+		# a length-prefixed string (the length counts the closing 0 byte)
+		method : private : ReadString(limit : Int) ~ String {
+			if(<>Need(4, limit)) {
+				return Nil;
+			};
+
+			n := ReadInt32(@pos);
+			@pos += 4;
+			if(n < 1) {
+				Fail("string length {$n} is below 1");
+				return Nil;
+			};
+
+			if(<>Need(n, limit)) {
+				return Nil;
+			};
+
+			if(@data[@pos + n - 1] <> 0) {
+				Fail("string does not end with a 0 byte");
+				return Nil;
+			};
+
+			text := Slice(@pos, n - 1);
+			@pos += n;
+			return text;
+		}
+
+		method : private : ReadValue(kind : Int, limit : Int, depth : Int) ~ JsonElement {
+			if(kind = 1) {
+				if(<>Need(8, limit)) {
+					return Nil;
+				};
+
+				f := Byte->ToFloats(@data, @pos, 1)[0];
+				@pos += 8;
+				if((f - f) <> 0.0) {
+					if(f <> f) {
+						return JsonElement->New("NaN");
+					};
+					if(f > 0.0) {
+						return JsonElement->New("Infinity");
+					};
+					return JsonElement->New("-Infinity");
+				};
+
+				return JsonElement->New(f);
+			};
+
+			if(kind = 2 | kind = 13 | kind = 14) {
+				text := ReadString(limit);
+				if(text = Nil) {
+					return Nil;
+				};
+
+				return JsonElement->New(text);
+			};
+
+			if(kind = 3 | kind = 4) {
+				return ReadDocument(depth + 1, kind = 4, limit);
+			};
+
+			if(kind = 5) {
+				if(<>Need(5, limit)) {
+					return Nil;
+				};
+
+				n := ReadInt32(@pos);
+				subtype := @data[@pos + 4]->As(Int);
+				@pos += 5;
+				if(n < 0) {
+					Fail("binary length {$n} is negative");
+					return Nil;
+				};
+
+				if(<>Need(n, limit)) {
+					return Nil;
+				};
+
+				obj := JsonElement->New(JsonElement->JsonType->OBJECT);
+				obj->Insert("$binary", Hex(@data, @pos, n));
+				obj->Insert("$type", subtype);
+				@pos += n;
+				return obj;
+			};
+
+			if(kind = 6 | kind = 10) {
+				return JsonElement->New(JsonElement->JsonType->NULL);
+			};
+
+			if(kind = 7) {
+				if(<>Need(12, limit)) {
+					return Nil;
+				};
+
+				oid := Hex(@data, @pos, 12);
+				@pos += 12;
+				return JsonElement->New(oid);
+			};
+
+			if(kind = 8) {
+				if(<>Need(1, limit)) {
+					return Nil;
+				};
+
+				flag := @data[@pos]->As(Int);
+				@pos += 1;
+				if(flag = 1) {
+					return JsonElement->New(JsonElement->JsonType->TRUE);
+				};
+				if(flag = 0) {
+					return JsonElement->New(JsonElement->JsonType->FALSE);
+				};
+
+				Fail("Boolean byte is {$flag}, not 0 or 1");
+				return Nil;
+			};
+
+			if(kind = 9) {
+				if(<>Need(8, limit)) {
+					return Nil;
+				};
+
+				ms := Byte->ToInts(@data, @pos, 1)[0];
+				@pos += 8;
+				return JsonElement->New(IsoDate(ms));
+			};
+
+			if(kind = 11) {
+				pattern := ReadCString(limit);
+				if(pattern = Nil) {
+					return Nil;
+				};
+
+				options := ReadCString(limit);
+				if(options = Nil) {
+					return Nil;
+				};
+
+				obj := JsonElement->New(JsonElement->JsonType->OBJECT);
+				obj->Insert("$regex", pattern);
+				obj->Insert("$options", options);
+				return obj;
+			};
+
+			if(kind = 16) {
+				if(<>Need(4, limit)) {
+					return Nil;
+				};
+
+				i32 := ReadInt32(@pos);
+				@pos += 4;
+				return JsonElement->New(i32);
+			};
+
+			if(kind = 17) {
+				if(<>Need(8, limit)) {
+					return Nil;
+				};
+
+				inc := ReadUInt32(@pos);
+				secs := ReadUInt32(@pos + 4);
+				@pos += 8;
+				stamp := JsonElement->New(JsonElement->JsonType->OBJECT);
+				stamp->Insert("t", secs);
+				stamp->Insert("i", inc);
+				obj := JsonElement->New(JsonElement->JsonType->OBJECT);
+				obj->Insert("$timestamp", stamp);
+				return obj;
+			};
+
+			if(kind = 18) {
+				if(<>Need(8, limit)) {
+					return Nil;
+				};
+
+				i64 := Byte->ToInts(@data, @pos, 1)[0];
+				@pos += 8;
+				return JsonElement->New(i64);
+			};
+
+			if(kind = 19) {
+				if(<>Need(16, limit)) {
+					return Nil;
+				};
+
+				obj := JsonElement->New(JsonElement->JsonType->OBJECT);
+				obj->Insert("$decimal128", Hex(@data, @pos, 16));
+				@pos += 16;
+				return obj;
+			};
+
+			if(kind = 255 | kind = 127) {
+				obj := JsonElement->New(JsonElement->JsonType->OBJECT);
+				if(kind = 255) {
+					obj->Insert("$minKey", 1);
+				}
+				else {
+					obj->Insert("$maxKey", 1);
+				};
+				return obj;
+			};
+
+			@pos -= 1;
+			Fail("unsupported BSON type {$kind} (decimal type byte)");
+			return Nil;
+		}
+
+		function : private : Hex(bytes : Byte[], start : Int, count : Int) ~ String {
+			digits := "0123456789abcdef";
+			out := String->New();
+			for(i := 0; i < count; i += 1;) {
+				b := bytes[start + i]->As(Int);
+				out->Append(digits->Get(b / 16));
+				out->Append(digits->Get(b % 16));
+			};
+
+			return out;
+		}
+
+		function : private : Pad(value : Int, width : Int) ~ String {
+			text := value->ToString();
+			while(text->Size() < width) {
+				text := "0" + text;
+			};
+
+			return text;
+		}
+
+		# milliseconds since 1970-01-01 as an ISO-8601 UTC string (civil-from-days, proleptic Gregorian)
+		function : private : IsoDate(ms : Int) ~ String {
+			if(ms < -62167219200000 | ms > 253402300799999) {
+				return "ms:{$ms}";
+			};
+
+			secs := ms / 1000;
+			milli := ms % 1000;
+			if(milli < 0) {
+				milli += 1000;
+				secs -= 1;
+			};
+
+			days := secs / 86400;
+			rest := secs % 86400;
+			if(rest < 0) {
+				rest += 86400;
+				days -= 1;
+			};
+
+			z := days + 719468;
+			era := z / 146097;
+			if(z < 0) {
+				era := (z - 146096) / 146097;
+			};
+
+			doe := z - era * 146097;
+			yoe := (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+			year := yoe + era * 400;
+			doy := doe - (365 * yoe + yoe / 4 - yoe / 100);
+			mp := (5 * doy + 2) / 153;
+			day := doy - (153 * mp + 2) / 5 + 1;
+			month := mp + 3;
+			if(mp >= 10) {
+				month := mp - 9;
+			};
+
+			if(month <= 2) {
+				year += 1;
+			};
+
+			hour := rest / 3600;
+			minute := (rest % 3600) / 60;
+			second := rest % 60;
+			return Pad(year, 4) + "-" + Pad(month, 2) + "-" + Pad(day, 2) + "T" + Pad(hour, 2) + ":" + Pad(minute, 2) + ":" + Pad(second, 2) + "." + Pad(milli, 3) + "Z";
+		}
+	}
+
+	#~
+	Stopword lists as data, for the three strategies of the lab: none, standard English, and English plus a custom list. A list is a set of lowercase words; Union combines lists without changing either.
+	~#
+	class TopicStopwords {
+		@words : HashSet<String>;
+
+		#~
+		An empty list: the strategy "no stopword removal".
+		~#
+		New() {
+			@words := HashSet->New()<String>;
+		}
+
+		#~
+		A list of your own words (lowercased on the way in); Nil words are ignored.
+		@param words the words
+		@return the list
+		~#
+		function : FromArray(words : String[]) ~ TopicStopwords {
+			list := TopicStopwords->New();
+			if(words <> Nil) {
+				each(i : words) {
+					list->Add(words[i]);
+				};
+			};
+
+			return list;
+		}
+
+		#~
+		The standard English list: the 179 words of NLTK's stopwords corpus for English (nltk.corpus.stopwords.words("english"), as shipped with NLTK 3.x), which is a public-domain word list reproduced here so no download is needed. It contains contractions such as "don't" and their stems ("don", "t"); the tokenizer in this library splits on apostrophes, so the stems are what match.
+		@return the list
+		~#
+		function : English() ~ TopicStopwords {
+			return FromArray(["i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "you're", "you've", "you'll", "you'd", "your", "yours", "yourself", "yourselves", "he", "him", "his", "himself", "she", "she's", "her", "hers", "herself", "it", "it's", "its", "itself", "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom", "this", "that", "that'll", "these", "those", "am", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "having", "do", "does", "did", "doing", "a", "an", "the", "and", "but", "if", "or", "because", "as", "until", "while", "of", "at", "by", "for", "with", "about", "against", "between", "into", "through", "during", "before", "after", "above", "below", "to", "from", "up", "down", "in", "out", "on", "off", "over", "under", "again", "further", "then", "once", "here", "there", "when", "where", "why", "how", "all", "any", "both", "each", "few", "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", "s", "t", "can", "will", "just", "don", "don't", "should", "should've", "now", "d", "ll", "m", "o", "re", "ve", "y", "ain", "aren", "aren't", "couldn", "couldn't", "didn", "didn't", "doesn", "doesn't", "hadn", "hadn't", "hasn", "hasn't", "haven", "haven't", "isn", "isn't", "ma", "mightn", "mightn't", "mustn", "mustn't", "needn", "needn't", "shan", "shan't", "shouldn", "shouldn't", "wasn", "wasn't", "weren", "weren't", "won", "won't", "wouldn", "wouldn't"]);
+		}
+
+		#~
+		An OPTIONAL starting point for the "English plus custom cyber stoplist" strategy; it is small on purpose and is not a researched list. It holds generic Twitter noise (rt, via, amp, http, https, www, com, co, ly, bit, ...) and a few words that occur in nearly every cybersecurity tweet and so carry no topic ("cyber", "cybersecurity", "infosec", "security"). Edit it to taste: build your own with FromArray, or add words with Add.
+		@return the list
+		~#
+		function : Cyber() ~ TopicStopwords {
+			return FromArray(["rt", "via", "amp", "http", "https", "www", "com", "co", "ly", "bit", "goo", "gl", "ow", "t", "html", "htm", "php", "new", "today", "latest", "read", "check", "link", "click", "cyber", "cybersecurity", "infosec", "security"]);
+		}
+
+		#~
+		Adds a word (lowercased). Nil and empty words are ignored.
+		@param word the word
+		~#
+		method : public : Add(word : String) ~ Nil {
+			if(word <> Nil & word->Size() > 0) {
+				@words->Add(word->ToLower());
+			};
+		}
+
+		#~
+		Tells whether a word is on the list; the word is compared as given, so pass lowercase.
+		@param word the word
+		@return true when listed
+		~#
+		method : public : Has(word : String) ~ Bool {
+			if(word = Nil) {
+				return false;
+			};
+
+			return @words->Has(word);
+		}
+
+		#~
+		Number of words.
+		@return size
+		~#
+		method : public : Size() ~ Int {
+			return @words->Size();
+		}
+
+		#~
+		A new list with the words of both; either may be Nil.
+		@param extra another list
+		@return the combined list
+		~#
+		method : public : Union(extra : TopicStopwords) ~ TopicStopwords {
+			list := TopicStopwords->New();
+			keys := @words->ToArray();
+			each(i : keys) {
+				list->Add(keys[i]);
+			};
+
+			if(extra <> Nil) {
+				more := extra->ToArray();
+				each(i : more) {
+					list->Add(more[i]);
+				};
+			};
+
+			return list;
+		}
+
+		#~
+		The words, in no particular order.
+		@return a new array
+		~#
+		method : public : ToArray() ~ String[] {
+			return @words->ToArray();
+		}
+	}
+
+	#~
+	Splits tweets and other short texts into lowercase tokens for topic modeling: runs of the letters a-z and digits 0-9 (any other byte, including accented and non-Latin characters, ends a token, so this is meant for English text), so "don't" gives "don" and "t". It drops URLs (a word that has "://" or starts with "www."), @mentions, tokens shorter than the minimum length (default 2), tokens that are all digits (switchable) and the words of a TopicStopwords list. A hashtag keeps its word ("#malware" gives "malware"). This is its own tokenizer, not System.NLP.TextPreprocessor, because Twitter text needs the URL and mention handling and TextPreprocessor lives in a library (nlp.obl) this one does not otherwise need.
+	~#
+	class TopicTokenizer {
+		@stop : TopicStopwords;
+		@min_len : Int;
+		@max_len : Int;
+		@drop_numbers : Bool;
+
+		#~
+		A tokenizer that keeps every token of 2 or more characters.
+		~#
+		New() {
+			@stop := TopicStopwords->New();
+			@min_len := 2;
+			@max_len := 50;
+			@drop_numbers := true;
+		}
+
+		#~
+		A tokenizer that also drops the words of a stopword list.
+		@param stop the list, or Nil for none
+		~#
+		New(stop : TopicStopwords) {
+			@stop := stop;
+			if(stop = Nil) {
+				@stop := TopicStopwords->New();
+			};
+			@min_len := 2;
+			@max_len := 50;
+			@drop_numbers := true;
+		}
+
+		#~
+		Sets the shortest and longest token kept.
+		@param min shortest length, 1 or more
+		@param max longest length, at least min
+		@return true if accepted, false (nothing changed) otherwise
+		~#
+		method : public : SetLengths(min : Int, max : Int) ~ Bool {
+			if(min < 1 | max < min) {
+				return false;
+			};
+
+			@min_len := min;
+			@max_len := max;
+			return true;
+		}
+
+		#~
+		Chooses whether tokens made only of digits are dropped (the default).
+		@param drop true to drop them
+		~#
+		method : public : SetDropNumbers(drop : Bool) ~ Nil {
+			@drop_numbers := drop;
+		}
+
+		#~
+		Splits one text. A Nil or empty text gives an empty vector.
+		@param text the text
+		@return tokens in order
+		~#
+		method : public : Tokenize(text : String) ~ Vector<String> {
+			out := Vector->New()<String>;
+			if(text = Nil) {
+				return out;
+			};
+
+			n := text->Size();
+			chunk := String->New();
+			for(i := 0; i <= n; i += 1;) {
+				code := 32;
+				if(i < n) {
+					code := text->Get(i)->As(Int);
+				};
+
+				if(code <= 32) {
+					if(chunk->Size() > 0) {
+						Chunk(chunk, out);
+						chunk := String->New();
+					};
+				}
+				else {
+					chunk->Append(text->Get(i));
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		Splits many texts; a Nil text gives an empty document.
+		@param texts the texts
+		@return one token vector per text, or Nil when texts is Nil
+		~#
+		method : public : TokenizeAll(texts : Vector<String>) ~ Vector<Vector<String>> {
+			if(texts = Nil) {
+				return Nil;
+			};
+
+			docs := Vector->New()<Vector<String>>;
+			each(i : texts) {
+				docs->AddBack(Tokenize(texts->Get(i)));
+			};
+
+			return docs;
+		}
+
+		method : private : Chunk(chunk : String, out : Vector<String>) ~ Nil {
+			lower := chunk->ToLower();
+			if(lower->Has("://") | lower->StartsWith("www.")) {
+				return;
+			};
+
+			m := lower->Size();
+			run := String->New();
+			run_start := 0;
+			for(i := 0; i <= m; i += 1;) {
+				code := 32;
+				if(i < m) {
+					code := lower->Get(i)->As(Int);
+				};
+
+				if((code >= 97 & code <= 122) | (code >= 48 & code <= 57)) {
+					if(run->Size() = 0) {
+						run_start := i;
+					};
+					run->Append(lower->Get(i));
+				}
+				else if(run->Size() > 0) {
+					mention := run_start > 0 & lower->Get(run_start - 1) = '@';
+					if(<>mention) {
+						Emit(run, out);
+					};
+					run := String->New();
+				};
+			};
+		}
+
+		method : private : Emit(token : String, out : Vector<String>) ~ Nil {
+			n := token->Size();
+			if(n < @min_len | n > @max_len) {
+				return;
+			};
+
+			if(@drop_numbers & token->IsNumeric()) {
+				return;
+			};
+
+			if(@stop->Has(token)) {
+				return;
+			};
+
+			out->AddBack(token);
+		}
+	}
+
+	#~
+	What FilterExtremes removed: the dictionary size and the share of token occurrences lost, the two numbers the min-frequency experiment reports.
+	~#
+	class FilterReport {
+		@types_before : Int;
+		@types_after : Int;
+		@tokens_before : Int;
+		@tokens_after : Int;
+
+		New(types_before : Int, types_after : Int, tokens_before : Int, tokens_after : Int) {
+			@types_before := types_before;
+			@types_after := types_after;
+			@tokens_before := tokens_before;
+			@tokens_after := tokens_after;
+		}
+
+		#~
+		Distinct tokens before the filter.
+		@return count
+		~#
+		method : public : GetTypesBefore() ~ Int {
+			return @types_before;
+		}
+
+		#~
+		Distinct tokens left: the dictionary size.
+		@return count
+		~#
+		method : public : GetTypesAfter() ~ Int {
+			return @types_after;
+		}
+
+		#~
+		Token occurrences in the corpus before the filter.
+		@return count
+		~#
+		method : public : GetTokensBefore() ~ Int {
+			return @tokens_before;
+		}
+
+		#~
+		Token occurrences left.
+		@return count
+		~#
+		method : public : GetTokensAfter() ~ Int {
+			return @tokens_after;
+		}
+
+		#~
+		Percent of the token OCCURRENCES (not the distinct tokens) that were removed, 0 to 100; 0 when there were none.
+		@return percent
+		~#
+		method : public : GetTokensRemovedPercent() ~ Float {
+			if(@tokens_before = 0) {
+				return 0.0;
+			};
+
+			return 100.0 * (@tokens_before - @tokens_after)->As(Float) / @tokens_before->As(Float);
+		}
+
+		#~
+		Percent of the distinct tokens that were removed, 0 to 100; 0 when there were none.
+		@return percent
+		~#
+		method : public : GetTypesRemovedPercent() ~ Float {
+			if(@types_before = 0) {
+				return 0.0;
+			};
+
+			return 100.0 * (@types_before - @types_after)->As(Float) / @types_before->As(Float);
+		}
+
+		method : public : ToString() ~ String {
+			tr := GetTokensRemovedPercent();
+			yr := GetTypesRemovedPercent();
+			return "dictionary {$@types_before} -> {$@types_after} tokens ({$yr}% removed), occurrences {$@tokens_before} -> {$@tokens_after} ({$tr}% removed)";
+		}
+	}
+
+	#~
+	A bag-of-words corpus: for each document the ids of its distinct words and how often each occurs (Gensim's list of (id, count) pairs, stored flat for speed). Build one with TokenDictionary.ToCorpus, or from arrays with Build.
+	~#
+	class TopicCorpus {
+		@offsets : Int[];
+		@ids : Int[];
+		@counts : Float[];
+		@vocab_size : Int;
+		@num_words : Float;
+
+		New(offsets : Int[], ids : Int[], counts : Float[], vocab_size : Int) {
+			@offsets := offsets;
+			@ids := ids;
+			@counts := counts;
+			@vocab_size := vocab_size;
+			@num_words := 0.0;
+			each(i : counts) {
+				@num_words += counts[i];
+			};
+		}
+
+		#~
+		Builds a corpus from flat arrays: document d owns entries offsets[d] to offsets[d+1]-1 of ids and counts.
+		@param offsets one more entry than documents, starting at 0 and not decreasing
+		@param ids word ids, each in 0 to vocab_size-1 and distinct inside a document
+		@param counts how often each word occurs, 1 or more
+		@param vocab_size size of the vocabulary
+		@return the corpus, or Nil when the arrays are Nil, inconsistent or hold an id or count out of range
+		~#
+		function : Build(offsets : Int[], ids : Int[], counts : Float[], vocab_size : Int) ~ TopicCorpus {
+			if(offsets = Nil | ids = Nil | counts = Nil | vocab_size < 0 | offsets->Size() < 1) {
+				return Nil;
+			};
+
+			if(ids->Size() <> counts->Size() | offsets[0] <> 0 | offsets[offsets->Size() - 1] <> ids->Size()) {
+				return Nil;
+			};
+
+			for(d := 1; d < offsets->Size(); d += 1;) {
+				if(offsets[d] < offsets[d - 1]) {
+					return Nil;
+				};
+			};
+
+			for(i := 0; i < ids->Size(); i += 1;) {
+				if(ids[i] < 0 | ids[i] >= vocab_size | counts[i] < 1.0 | counts[i] <> counts[i]) {
+					return Nil;
+				};
+			};
+
+			return TopicCorpus->New(offsets, ids, counts, vocab_size);
+		}
+
+		#~
+		Number of documents, empty ones included.
+		@return count
+		~#
+		method : public : GetNumDocs() ~ Int {
+			return @offsets->Size() - 1;
+		}
+
+		#~
+		Vocabulary size the ids refer to.
+		@return size
+		~#
+		method : public : GetVocabSize() ~ Int {
+			return @vocab_size;
+		}
+
+		#~
+		Total word occurrences in the corpus.
+		@return count
+		~#
+		method : public : GetNumWords() ~ Float {
+			return @num_words;
+		}
+
+		#~
+		Word occurrences in one document.
+		@param doc document index
+		@return count, or -1 for an index out of range
+		~#
+		method : public : GetDocLength(doc : Int) ~ Float {
+			if(doc < 0 | doc >= GetNumDocs()) {
+				return -1.0;
+			};
+
+			total := 0.0;
+			for(i := @offsets[doc]; i < @offsets[doc + 1]; i += 1;) {
+				total += @counts[i];
+			};
+
+			return total;
+		}
+
+		#~
+		Distinct words in one document.
+		@param doc document index
+		@return count, or -1 for an index out of range
+		~#
+		method : public : GetNumUnique(doc : Int) ~ Int {
+			if(doc < 0 | doc >= GetNumDocs()) {
+				return -1;
+			};
+
+			return @offsets[doc + 1] - @offsets[doc];
+		}
+
+		#~
+		Word ids of one document (a copy).
+		@param doc document index
+		@return ids, or Nil for an index out of range
+		~#
+		method : public : GetWordIds(doc : Int) ~ Int[] {
+			if(doc < 0 | doc >= GetNumDocs()) {
+				return Nil;
+			};
+
+			n := @offsets[doc + 1] - @offsets[doc];
+			out := Int->New[n];
+			for(i := 0; i < n; i += 1;) {
+				out[i] := @ids[@offsets[doc] + i];
+			};
+
+			return out;
+		}
+
+		#~
+		Word counts of one document (a copy), in the order of GetWordIds.
+		@param doc document index
+		@return counts, or Nil for an index out of range
+		~#
+		method : public : GetWordCounts(doc : Int) ~ Float[] {
+			if(doc < 0 | doc >= GetNumDocs()) {
+				return Nil;
+			};
+
+			n := @offsets[doc + 1] - @offsets[doc];
+			out := Float->New[n];
+			for(i := 0; i < n; i += 1;) {
+				out[i] := @counts[@offsets[doc] + i];
+			};
+
+			return out;
+		}
+
+		#~
+		The offsets array itself, not a copy: for code that loops over the corpus fast. Do not change it.
+		@return offsets
+		~#
+		method : public : GetOffsets() ~ Int[] {
+			return @offsets;
+		}
+
+		#~
+		The word-id array itself, not a copy. Do not change it.
+		@return ids
+		~#
+		method : public : GetIds() ~ Int[] {
+			return @ids;
+		}
+
+		#~
+		The count array itself, not a copy. Do not change it.
+		@return counts
+		~#
+		method : public : GetCounts() ~ Float[] {
+			return @counts;
+		}
+
+		#~
+		How often each word occurs in the whole corpus.
+		@return one count per word id
+		~#
+		method : public : GetWordTotals() ~ Float[] {
+			totals := Float->New[@vocab_size];
+			for(i := 0; i < @ids->Size(); i += 1;) {
+				totals[@ids[i]] += @counts[i];
+			};
+
+			return totals;
+		}
+
+		#~
+		In how many documents each word occurs.
+		@return one count per word id
+		~#
+		method : public : GetDocFreqs() ~ Int[] {
+			dfs := Int->New[@vocab_size];
+			for(i := 0; i < @ids->Size(); i += 1;) {
+				dfs[@ids[i]] += 1;
+			};
+
+			return dfs;
+		}
+	}
+
+	#~
+	Token to id map with document and collection frequencies, equivalent to gensim.corpora.Dictionary: AddDocuments counts, FilterExtremes drops tokens that are too rare or too common (Gensim's filter_extremes, ids are compacted afterwards in their old order), ToCorpus turns token lists into a bag-of-words corpus. Tokens that are not in the dictionary are ignored by ToCorpus, as Gensim's doc2bow does.
+
+```
+tok := TopicTokenizer->New(TopicStopwords->English());
+docs := tok->TokenizeAll(texts);
+dict := TokenDictionary->New();
+dict->AddDocuments(docs);
+report := dict->FilterExtremes(5, 0.5, 100000);
+report->ToString()->PrintLine();
+corpus := dict->ToCorpus(docs);
+```
+	~#
+	class TokenDictionary {
+		@token2id : Hash<String, IntRef>;
+		@id2token : Vector<String>;
+		@dfs : IntVector;
+		@cfs : IntVector;
+		@last_doc : IntVector;
+		@num_docs : Int;
+		@error : String;
+
+		New() {
+			@token2id := Hash->New()<String, IntRef>;
+			@id2token := Vector->New()<String>;
+			@dfs := IntVector->New();
+			@cfs := IntVector->New();
+			@last_doc := IntVector->New();
+			@num_docs := 0;
+			@error := "";
+		}
+
+		#~
+		Why the last refused call was refused, or "".
+		@return message
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Counts one document: every token gets an id (new tokens take the next one), its collection frequency goes up by one per occurrence and its document frequency by one for the document. A Nil document counts as an empty one.
+		@param tokens the document's tokens
+		~#
+		method : public : AddDocument(tokens : Vector<String>) ~ Nil {
+			doc := @num_docs;
+			@num_docs += 1;
+			if(tokens = Nil) {
+				return;
+			};
+
+			for(t := 0; t < tokens->Size(); t += 1;) {
+				token := tokens->Get(t);
+				if(token <> Nil) {
+					found := @token2id->Find(token);
+					id := 0;
+					if(found = Nil) {
+						id := @id2token->Size();
+						@token2id->Insert(token, IntRef->New(id));
+						@id2token->AddBack(token);
+						@dfs->AddBack(0);
+						@cfs->AddBack(0);
+						@last_doc->AddBack(-1);
+					}
+					else {
+						id := found->Get();
+					};
+
+					@cfs->Set(@cfs->Get(id) + 1, id);
+					if(@last_doc->Get(id) <> doc) {
+						@last_doc->Set(doc, id);
+						@dfs->Set(@dfs->Get(id) + 1, id);
+					};
+				};
+			};
+		}
+
+		#~
+		Counts many documents.
+		@param docs token vectors
+		~#
+		method : public : AddDocuments(docs : Vector<Vector<String>>) ~ Nil {
+			if(docs = Nil) {
+				return;
+			};
+
+			each(d : docs) {
+				AddDocument(docs->Get(d));
+			};
+		}
+
+		#~
+		Number of distinct tokens: the dictionary size.
+		@return size
+		~#
+		method : public : Size() ~ Int {
+			return @id2token->Size();
+		}
+
+		#~
+		Documents counted (a filter does not change this, as in Gensim).
+		@return count
+		~#
+		method : public : GetNumDocs() ~ Int {
+			return @num_docs;
+		}
+
+		#~
+		Token occurrences counted and still in the dictionary.
+		@return count
+		~#
+		method : public : GetNumTokens() ~ Int {
+			return @cfs->Sum();
+		}
+
+		#~
+		The id of a token.
+		@param token the token
+		@return id, or -1 when unknown
+		~#
+		method : public : GetId(token : String) ~ Int {
+			if(token = Nil) {
+				return -1;
+			};
+
+			found := @token2id->Find(token);
+			if(found = Nil) {
+				return -1;
+			};
+
+			return found->Get();
+		}
+
+		#~
+		The token with an id.
+		@param id the id
+		@return the token, or Nil when out of range
+		~#
+		method : public : GetToken(id : Int) ~ String {
+			if(id < 0 | id >= @id2token->Size()) {
+				return Nil;
+			};
+
+			return @id2token->Get(id);
+		}
+
+		#~
+		In how many documents a token occurs.
+		@param id the id
+		@return document frequency, or -1 when out of range
+		~#
+		method : public : GetDocFreq(id : Int) ~ Int {
+			if(id < 0 | id >= @id2token->Size()) {
+				return -1;
+			};
+
+			return @dfs->Get(id);
+		}
+
+		#~
+		How often a token occurs.
+		@param id the id
+		@return collection frequency, or -1 when out of range
+		~#
+		method : public : GetCollFreq(id : Int) ~ Int {
+			if(id < 0 | id >= @id2token->Size()) {
+				return -1;
+			};
+
+			return @cfs->Get(id);
+		}
+
+		#~
+		All tokens by id (a copy), the vocabulary an Lda model labels its topics with.
+		@return tokens
+		~#
+		method : public : GetTokens() ~ String[] {
+			return @id2token->ToArray();
+		}
+
+		#~
+		Drops tokens like Gensim's filter_extremes(no_below, no_above, keep_n): a token stays when it occurs in at least no_below documents and in at most int(no_above * documents) of them; if more than keep_n remain, the keep_n with the highest document frequency stay (ties go to the smaller id). Ids are then compacted, keeping the old order. With no_below 1, no_above 1.0 and keep_n 0 nothing is removed.
+		@param no_below keep tokens in at least this many documents, 0 or more
+		@param no_above keep tokens in at most this fraction of the documents, above 0 and at most 1
+		@param keep_n keep at most this many tokens, or 0 for no limit
+		@return what was removed, or Nil (nothing changed, GetError says why) for a bad argument
+		~#
+		method : public : FilterExtremes(no_below : Int, no_above : Float, keep_n : Int) ~ FilterReport {
+			if(no_below < 0) {
+				@error := "no_below must be 0 or more";
+				return Nil;
+			};
+
+			if(no_above <> no_above | no_above <= 0.0 | no_above > 1.0) {
+				@error := "no_above must be above 0 and at most 1";
+				return Nil;
+			};
+
+			if(keep_n < 0) {
+				@error := "keep_n must be 0 or more";
+				return Nil;
+			};
+
+			@error := "";
+			size := @id2token->Size();
+			tokens_before := @cfs->Sum();
+			above_abs := (no_above * @num_docs->As(Float))->As(Int);
+
+			keep := Bool->New[size];
+			good := 0;
+			for(id := 0; id < size; id += 1;) {
+				df := @dfs->Get(id);
+				if(df >= no_below & df <= above_abs) {
+					keep[id] := true;
+					good += 1;
+				};
+			};
+
+			if(keep_n > 0 & good > keep_n) {
+				hist := Int->New[@num_docs + 2];
+				for(id := 0; id < size; id += 1;) {
+					if(keep[id]) {
+						hist[@dfs->Get(id)] += 1;
+					};
+				};
+
+				cum := 0;
+				level := @num_docs;
+				while(level >= 0 & cum + hist[level] < keep_n) {
+					cum += hist[level];
+					level -= 1;
+				};
+
+				room := keep_n - cum;
+				for(id := 0; id < size; id += 1;) {
+					if(keep[id]) {
+						df := @dfs->Get(id);
+						if(df < level) {
+							keep[id] := false;
+						}
+						else if(df = level) {
+							if(room > 0) {
+								room -= 1;
+							}
+							else {
+								keep[id] := false;
+							};
+						};
+					};
+				};
+			};
+
+			new_ids := Hash->New()<String, IntRef>;
+			new_tokens := Vector->New()<String>;
+			new_dfs := IntVector->New();
+			new_cfs := IntVector->New();
+			new_last := IntVector->New();
+			for(id := 0; id < size; id += 1;) {
+				if(keep[id]) {
+					token := @id2token->Get(id);
+					new_ids->Insert(token, IntRef->New(new_tokens->Size()));
+					new_tokens->AddBack(token);
+					new_dfs->AddBack(@dfs->Get(id));
+					new_cfs->AddBack(@cfs->Get(id));
+					new_last->AddBack(@last_doc->Get(id));
+				};
+			};
+
+			@token2id := new_ids;
+			@id2token := new_tokens;
+			@dfs := new_dfs;
+			@cfs := new_cfs;
+			@last_doc := new_last;
+			return FilterReport->New(size, new_tokens->Size(), tokens_before, @cfs->Sum());
+		}
+
+		#~
+		Turns token lists into a bag-of-words corpus over this dictionary; tokens the dictionary does not know are dropped, and a document left with no words stays in the corpus as an empty one.
+		@param docs token vectors, a Nil document counting as empty
+		@return the corpus, or Nil when docs is Nil
+		~#
+		method : public : ToCorpus(docs : Vector<Vector<String>>) ~ TopicCorpus {
+			if(docs = Nil) {
+				return Nil;
+			};
+
+			size := @id2token->Size();
+			nd := docs->Size();
+			offsets := Int->New[nd + 1];
+			ids := IntVector->New();
+			counts := IntVector->New();
+			slot := Int->New[size];
+			for(i := 0; i < size; i += 1;) {
+				slot[i] := -1;
+			};
+
+			for(d := 0; d < nd; d += 1;) {
+				start := ids->Size();
+				tokens := docs->Get(d);
+				if(tokens <> Nil) {
+					for(t := 0; t < tokens->Size(); t += 1;) {
+						found := @token2id->Find(tokens->Get(t));
+						if(found <> Nil) {
+							id := found->Get();
+							at := slot[id];
+							if(at < 0) {
+								slot[id] := ids->Size();
+								ids->AddBack(id);
+								counts->AddBack(1);
+							}
+							else {
+								counts->Set(counts->Get(at) + 1, at);
+							};
+						};
+					};
+				};
+
+				for(j := start; j < ids->Size(); j += 1;) {
+					slot[ids->Get(j)] := -1;
+				};
+
+				offsets[d + 1] := ids->Size();
+			};
+
+			id_array := ids->ToArray();
+			count_array := Float->New[id_array->Size()];
+			for(j := 0; j < id_array->Size(); j += 1;) {
+				count_array[j] := counts->Get(j)->As(Float);
+			};
+
+			return TopicCorpus->New(offsets, id_array, count_array, size);
+		}
+	}
+}

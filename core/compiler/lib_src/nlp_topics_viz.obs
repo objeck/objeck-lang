@@ -1,0 +1,604 @@
+#~~
+# Objeck topic-modeling library: static SVG topic report (intertopic distance map and salient terms)
+# Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+use System.Plot;
+
+bundle System.NLP.Topics {
+	#~
+	A static SVG counterpart of pyLDAvis for an Lda model: the intertopic distance map and the bar chart of the most relevant terms of one topic, drawn with System.Plot's scene and SVG writer into one standalone file (no browser scripting, no interactivity: it is not pyLDAvis and has no lambda slider, you pick lambda and the topic when you call it).
+
+	The map. Each topic is a circle. Its position comes from the Jensen-Shannon distances between the topics' word distributions: the distance is sqrt(JSD) with natural logs (a true metric), and the topics are placed in 2-D by classical multidimensional scaling of those distances (double centering, the two largest eigenvectors by the Jacobi method), which is pyLDAvis's default "mmds". The circle's AREA is proportional to the topic's prevalence, the share of all word occurrences assigned to it (sum over documents of document length times the topic's probability in the document, over the total length). Axes carry no units; only distances between circles mean anything, and they are approximate because 2-D cannot hold them all.
+
+	The bars. For a topic, terms are ranked by relevance (Sievert and Shirley 2014): r(w, k | lambda) = lambda * log p(w | k) + (1 - lambda) * log(p(w | k) / p(w)), where p(w) is the word's share of the corpus. lambda 1 ranks by probability inside the topic, lambda 0 by lift, and 0.6 is the value they suggest. Each term shows two bars: the grey one is its frequency in the whole corpus, the colored one the part of it the model attributes to the topic (p(w | k) times the topic's word count).
+
+	Salient terms across all topics (Chuang et al. 2012) are ranked by saliency(w) = p(w) * distinctiveness(w), distinctiveness(w) = sum over topics of p(k | w) log(p(k | w) / p(k)), where p(k | w) = p(w | k) p(k) / sum over j of p(w | j) p(j) and p(k) is the topic's prevalence as above. SalientTerms returns them as data.
+
+	Nothing here ends the program on bad input: a Nil or unfitted model, a corpus of another vocabulary size, a topic out of range or a lambda outside [0, 1] gives Nil (or false), never an exception.
+
+```
+svg := TopicPlots->ReportSvg(lda, corpus, 0, 0.6, 15);
+System.IO.Filesystem.FileWriter->WriteFile("topics.svg", svg);
+```
+	~#
+	class TopicPlots {
+		function : private : Usable(lda : Lda, corpus : TopicCorpus) ~ Bool {
+			return lda <> Nil & corpus <> Nil & lda->IsFitted() & corpus->GetVocabSize() = lda->GetVocabSize() & corpus->GetNumWords() >= 1.0;
+		}
+
+		#~
+		The prevalence of each topic: the share of all word occurrences in the corpus that the model assigns to it. Sums to 1.
+		@param lda a fitted model
+		@param corpus a corpus made with the same dictionary
+		@return one value per topic, or Nil for a Nil or unfitted model, a corpus with another vocabulary size or no words
+		~#
+		function : Prevalence(lda : Lda, corpus : TopicCorpus) ~ Float[] {
+			if(<>Usable(lda, corpus)) {
+				return Nil;
+			};
+
+			kk := lda->GetNumTopics();
+			theta := lda->GetDocumentTopicMatrix(corpus);
+			out := Float->New[kk];
+			total := 0.0;
+			for(d := 0; d < corpus->GetNumDocs(); d += 1;) {
+				len := corpus->GetDocLength(d);
+				for(k := 0; k < kk; k += 1;) {
+					out[k] += len * theta[d * kk + k];
+				};
+
+				total += len;
+			};
+
+			for(k := 0; k < kk; k += 1;) {
+				out[k] := out[k] / total;
+			};
+
+			return out;
+		}
+
+		#~
+		Distances between topics: sqrt of the Jensen-Shannon divergence (natural log) of their word distributions, flat topics-by-topics, 0 on the diagonal, symmetric, at most sqrt(ln 2).
+		@param lda a fitted model
+		@return the matrix, or Nil for a Nil or unfitted model
+		~#
+		function : JensenShannon(lda : Lda) ~ Float[] {
+			if(lda = Nil | <>lda->IsFitted()) {
+				return Nil;
+			};
+
+			kk := lda->GetNumTopics();
+			v := lda->GetVocabSize();
+			rows := Float->New[kk * v];
+			for(k := 0; k < kk; k += 1;) {
+				row := lda->GetTopicWord(k);
+				for(w := 0; w < v; w += 1;) {
+					rows[k * v + w] := row[w];
+				};
+			};
+
+			out := Float->New[kk * kk];
+			for(a := 0; a < kk; a += 1;) {
+				for(b := a + 1; b < kk; b += 1;) {
+					jsd := 0.0;
+					for(w := 0; w < v; w += 1;) {
+						p := rows[a * v + w];
+						q := rows[b * v + w];
+						m := 0.5 * (p + q);
+						if(p > 0.0) {
+							jsd += 0.5 * p * Float->Log(p / m);
+						};
+						if(q > 0.0) {
+							jsd += 0.5 * q * Float->Log(q / m);
+						};
+					};
+
+					if(jsd < 0.0) {
+						jsd := 0.0;
+					};
+
+					out[a * kk + b] := Float->Sqrt(jsd);
+					out[b * kk + a] := out[a * kk + b];
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		Classical multidimensional scaling to two dimensions: places n points so that their Euclidean distances approximate a distance matrix (double centering of the squared distances, then the two largest eigenvalues and eigenvectors by the Jacobi method; an eigenvalue at or below 0 gives a zero coordinate). Each axis is signed so that its largest coordinate is positive, so the result is the same on every run.
+		@param distances flat n-by-n symmetric matrix
+		@param n number of points, 1 or more
+		@return 2n values: x0, y0, x1, y1, ...; or Nil for a wrong size, a negative or non-finite distance
+		~#
+		function : Mds2D(distances : Float[], n : Int) ~ Float[] {
+			if(distances = Nil | n < 1 | distances->Size() <> n * n) {
+				return Nil;
+			};
+
+			for(i := 0; i < n * n; i += 1;) {
+				if(distances[i] <> distances[i] | distances[i] < 0.0 | (distances[i] - distances[i]) <> 0.0) {
+					return Nil;
+				};
+			};
+
+			out := Float->New[2 * n];
+			if(n = 1) {
+				return out;
+			};
+
+			sq := Float->New[n * n];
+			row_mean := Float->New[n];
+			grand := 0.0;
+			for(i := 0; i < n; i += 1;) {
+				for(j := 0; j < n; j += 1;) {
+					sq[i * n + j] := distances[i * n + j] * distances[i * n + j];
+					row_mean[i] += sq[i * n + j] / n->As(Float);
+				};
+
+				grand += row_mean[i] / n->As(Float);
+			};
+
+			# B = -1/2 J D^2 J; the matrix is symmetric, so the row means are also the column means
+			b := Float->New[n * n];
+			for(i := 0; i < n; i += 1;) {
+				for(j := 0; j < n; j += 1;) {
+					b[i * n + j] := -0.5 * (sq[i * n + j] - row_mean[i] - row_mean[j] + grand);
+				};
+			};
+
+			vectors := Float->New[n * n];
+			for(i := 0; i < n; i += 1;) {
+				vectors[i * n + i] := 1.0;
+			};
+
+			# cyclic Jacobi rotations until the off-diagonal part vanishes
+			sweep := 0;
+			converged := false;
+			while(<>converged & sweep < 60) {
+				off := 0.0;
+				for(i := 0; i < n; i += 1;) {
+					for(j := i + 1; j < n; j += 1;) {
+						off += b[i * n + j] * b[i * n + j];
+					};
+				};
+
+				if(off < 1.0e-24) {
+					converged := true;
+				}
+				else {
+					for(p := 0; p < n; p += 1;) {
+						for(q := p + 1; q < n; q += 1;) {
+							apq := b[p * n + q];
+							if(Float->Abs(apq) > 1.0e-300) {
+								theta := (b[q * n + q] - b[p * n + p]) / (2.0 * apq);
+								t := 1.0 / (Float->Abs(theta) + Float->Sqrt(theta * theta + 1.0));
+								if(theta < 0.0) {
+									t := 0.0 - t;
+								};
+
+								c := 1.0 / Float->Sqrt(t * t + 1.0);
+								s := t * c;
+								for(r := 0; r < n; r += 1;) {
+									brp := b[r * n + p];
+									brq := b[r * n + q];
+									b[r * n + p] := c * brp - s * brq;
+									b[r * n + q] := s * brp + c * brq;
+								};
+
+								for(r := 0; r < n; r += 1;) {
+									bpr := b[p * n + r];
+									bqr := b[q * n + r];
+									b[p * n + r] := c * bpr - s * bqr;
+									b[q * n + r] := s * bpr + c * bqr;
+								};
+
+								for(r := 0; r < n; r += 1;) {
+									vrp := vectors[r * n + p];
+									vrq := vectors[r * n + q];
+									vectors[r * n + p] := c * vrp - s * vrq;
+									vectors[r * n + q] := s * vrp + c * vrq;
+								};
+							};
+						};
+					};
+
+					sweep += 1;
+				};
+			};
+
+			first := -1;
+			second := -1;
+			for(i := 0; i < n; i += 1;) {
+				if(first < 0 | b[i * n + i] > b[first * n + first]) {
+					second := first;
+					first := i;
+				}
+				else if(second < 0 | b[i * n + i] > b[second * n + second]) {
+					second := i;
+				};
+			};
+
+			axes := [first, second];
+			for(axis := 0; axis < 2; axis += 1;) {
+				at := axes[axis];
+				lambda := b[at * n + at];
+				if(lambda > 1.0e-12) {
+					scale := Float->Sqrt(lambda);
+					big := 0;
+					for(i := 0; i < n; i += 1;) {
+						if(Float->Abs(vectors[i * n + at]) > Float->Abs(vectors[big * n + at])) {
+							big := i;
+						};
+					};
+
+					sign := 1.0;
+					if(vectors[big * n + at] < 0.0) {
+						sign := -1.0;
+					};
+
+					for(i := 0; i < n; i += 1;) {
+						out[2 * i + axis] := sign * scale * vectors[i * n + at];
+					};
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		The positions of the topics on the intertopic map: Mds2D of JensenShannon.
+		@param lda a fitted model
+		@return 2 * num_topics values x0, y0, x1, y1, ...; or Nil for a Nil or unfitted model
+		~#
+		function : TopicPositions(lda : Lda) ~ Float[] {
+			distances := JensenShannon(lda);
+			if(distances = Nil) {
+				return Nil;
+			};
+
+			return Mds2D(distances, lda->GetNumTopics());
+		}
+
+		#~
+		The most relevant terms of a topic for a lambda (see the class description).
+		@param lda a fitted model
+		@param corpus a corpus made with the same dictionary
+		@param topic topic index
+		@param lambda weight of the in-topic probability against lift, 0 to 1
+		@param top_n how many terms, 1 or more
+		@return the terms, best first, with the relevance score as weight; or Nil for a bad argument
+		~#
+		function : Relevance(lda : Lda, corpus : TopicCorpus, topic : Int, lambda : Float, top_n : Int) ~ TopicTerms {
+			if(<>Usable(lda, corpus) | topic < 0 | topic >= lda->GetNumTopics() | top_n < 1 | lambda <> lambda | lambda < 0.0 | lambda > 1.0) {
+				return Nil;
+			};
+
+			v := lda->GetVocabSize();
+			row := lda->GetTopicWord(topic);
+			totals := corpus->GetWordTotals();
+			all_words := corpus->GetNumWords();
+			scores := Float->New[v];
+			for(w := 0; w < v; w += 1;) {
+				pw := totals[w] / all_words;
+				if(pw > 0.0 & row[w] > 0.0) {
+					scores[w] := lambda * Float->Log(row[w]) + (1.0 - lambda) * Float->Log(row[w] / pw);
+				}
+				else {
+					scores[w] := -1.0e300;
+				};
+			};
+
+			return Best(lda, topic, scores, top_n);
+		}
+
+		# the top_n entries of a score array, best first, ties to the smaller id
+		function : private : Best(lda : Lda, topic : Int, scores : Float[], top_n : Int) ~ TopicTerms {
+			v := scores->Size();
+			n := top_n;
+			if(n > v) {
+				n := v;
+			};
+
+			best_w := Int->New[n];
+			best_v := Float->New[n];
+			filled := 0;
+			for(w := 0; w < v; w += 1;) {
+				val := scores[w];
+				pos := -1;
+				if(filled < n) {
+					pos := filled;
+					filled += 1;
+				}
+				else if(val > best_v[n - 1]) {
+					pos := n - 1;
+				};
+
+				if(pos >= 0) {
+					while(pos > 0 & best_v[pos - 1] < val) {
+						best_v[pos] := best_v[pos - 1];
+						best_w[pos] := best_w[pos - 1];
+						pos -= 1;
+					};
+
+					best_v[pos] := val;
+					best_w[pos] := w;
+				};
+			};
+
+			words := String->New[n];
+			for(i := 0; i < n; i += 1;) {
+				words[i] := lda->GetWord(best_w[i]);
+			};
+
+			return TopicTerms->New(topic, best_w, words, best_v);
+		}
+
+		#~
+		The most salient terms over all topics (see the class description).
+		@param lda a fitted model
+		@param corpus a corpus made with the same dictionary
+		@param top_n how many terms, 1 or more
+		@return the terms, best first, with the saliency as weight (topic index -1); or Nil for a bad argument
+		~#
+		function : SalientTerms(lda : Lda, corpus : TopicCorpus, top_n : Int) ~ TopicTerms {
+			if(<>Usable(lda, corpus) | top_n < 1) {
+				return Nil;
+			};
+
+			kk := lda->GetNumTopics();
+			v := lda->GetVocabSize();
+			prevalence := Prevalence(lda, corpus);
+			rows := Float->New[kk * v];
+			for(k := 0; k < kk; k += 1;) {
+				row := lda->GetTopicWord(k);
+				for(w := 0; w < v; w += 1;) {
+					rows[k * v + w] := row[w];
+				};
+			};
+
+			totals := corpus->GetWordTotals();
+			all_words := corpus->GetNumWords();
+			scores := Float->New[v];
+			for(w := 0; w < v; w += 1;) {
+				mass := 0.0;
+				for(k := 0; k < kk; k += 1;) {
+					mass += rows[k * v + w] * prevalence[k];
+				};
+
+				distinct := 0.0;
+				for(k := 0; k < kk; k += 1;) {
+					pk := rows[k * v + w] * prevalence[k] / mass;
+					if(pk > 0.0 & prevalence[k] > 0.0) {
+						distinct += pk * Float->Log(pk / prevalence[k]);
+					};
+				};
+
+				scores[w] := totals[w] / all_words * distinct;
+			};
+
+			return Best(lda, -1, scores, top_n);
+		}
+
+		# ---- drawing ----
+
+		function : private : Num(value : Float) ~ String {
+			return PlotMath->Decimals(value, 2);
+		}
+
+		#~
+		The intertopic distance map alone, as a standalone SVG document.
+		@param lda a fitted model
+		@param corpus a corpus made with the same dictionary
+		@param selected the topic to highlight, or -1 for none
+		@return SVG text, or Nil for a bad argument
+		~#
+		function : IntertopicMapSvg(lda : Lda, corpus : TopicCorpus, selected : Int) ~ String {
+			if(<>Usable(lda, corpus)) {
+				return Nil;
+			};
+
+			scene := PlotScene->New(600, 600);
+			scene->Rect(0.0, 0.0, 600.0, 600.0, "#ffffff", "", 0.0, 1.0, "background");
+			DrawMap(scene, lda, corpus, selected, 20.0, 20.0, 560.0, 560.0);
+			return SvgWriter->Render(scene, "Intertopic distance map");
+		}
+
+		#~
+		The bar chart of a topic's most relevant terms alone, as a standalone SVG document.
+		@param lda a fitted model
+		@param corpus a corpus made with the same dictionary
+		@param topic topic index
+		@param lambda relevance weight, 0 to 1
+		@param top_n how many terms, 1 to 50
+		@return SVG text, or Nil for a bad argument
+		~#
+		function : SalientBarsSvg(lda : Lda, corpus : TopicCorpus, topic : Int, lambda : Float, top_n : Int) ~ String {
+			if(top_n > 50) {
+				return Nil;
+			};
+
+			terms := Relevance(lda, corpus, topic, lambda, top_n);
+			if(terms = Nil) {
+				return Nil;
+			};
+
+			scene := PlotScene->New(620, 80 + 22 * terms->Size());
+			scene->Rect(0.0, 0.0, 620.0, 80.0 + 22.0 * terms->Size()->As(Float), "#ffffff", "", 0.0, 1.0, "background");
+			DrawBars(scene, lda, corpus, terms, lambda, 10.0, 10.0, 600.0);
+			return SvgWriter->Render(scene, "Most relevant terms");
+		}
+
+		#~
+		The two charts side by side in one SVG document: the intertopic map (the chosen topic highlighted) and the bars of that topic's most relevant terms.
+		@param lda a fitted model
+		@param corpus a corpus made with the same dictionary
+		@param topic topic to highlight and list
+		@param lambda relevance weight, 0 to 1 (0.6 is the pyLDAvis suggestion)
+		@param top_n how many terms, 1 to 50
+		@return SVG text, or Nil for a bad argument
+		~#
+		function : ReportSvg(lda : Lda, corpus : TopicCorpus, topic : Int, lambda : Float, top_n : Int) ~ String {
+			if(top_n > 50) {
+				return Nil;
+			};
+
+			terms := Relevance(lda, corpus, topic, lambda, top_n);
+			if(terms = Nil) {
+				return Nil;
+			};
+
+			height := 80 + 22 * terms->Size();
+			if(height < 600) {
+				height := 600;
+			};
+
+			scene := PlotScene->New(1240, height);
+			scene->Rect(0.0, 0.0, 1240.0, height->As(Float), "#ffffff", "", 0.0, 1.0, "background");
+			DrawMap(scene, lda, corpus, topic, 20.0, 20.0, 560.0, 560.0);
+			DrawBars(scene, lda, corpus, terms, lambda, 620.0, 20.0, 600.0);
+			return SvgWriter->Render(scene, "Topic report");
+		}
+
+		#~
+		Writes ReportSvg to a file.
+		@param lda a fitted model
+		@param corpus a corpus made with the same dictionary
+		@param topic topic to highlight and list
+		@param lambda relevance weight, 0 to 1
+		@param top_n how many terms, 1 to 50
+		@param path file to write
+		@return true on success, false for a bad argument or an unwritable file
+		~#
+		function : SaveReport(lda : Lda, corpus : TopicCorpus, topic : Int, lambda : Float, top_n : Int, path : String) ~ Bool {
+			if(path = Nil | path->Size() = 0) {
+				return false;
+			};
+
+			svg := ReportSvg(lda, corpus, topic, lambda, top_n);
+			if(svg = Nil) {
+				return false;
+			};
+
+			return System.IO.Filesystem.FileWriter->WriteFile(path, svg);
+		}
+
+		function : private : DrawMap(scene : PlotScene, lda : Lda, corpus : TopicCorpus, selected : Int, x0 : Float, y0 : Float, w : Float, h : Float) ~ Nil {
+			kk := lda->GetNumTopics();
+			pos := TopicPositions(lda);
+			prevalence := Prevalence(lda, corpus);
+
+			scene->Text(x0 + w / 2.0, y0 + 16.0, "Intertopic distance map (MDS of sqrt Jensen-Shannon distance)", TextAnchor->MIDDLE, 14, true, "#222222", 0.0, "title");
+			scene->Text(x0 + w / 2.0, y0 + 34.0, "circle area = topic prevalence; axes have no units", TextAnchor->MIDDLE, 11, false, "#666666", 0.0, "subtitle");
+
+			frame_x := x0 + 10.0;
+			frame_y := y0 + 50.0;
+			frame_w := w - 20.0;
+			frame_h := h - 70.0;
+			scene->Rect(frame_x, frame_y, frame_w, frame_h, "#fafafa", "#bbbbbb", 1.0, 1.0, "frame");
+			scene->Line(frame_x + frame_w / 2.0, frame_y, frame_x + frame_w / 2.0, frame_y + frame_h, "#dddddd", 1.0, "4,4", "grid");
+			scene->Line(frame_x, frame_y + frame_h / 2.0, frame_x + frame_w, frame_y + frame_h / 2.0, "#dddddd", 1.0, "4,4", "grid");
+			scene->Text(frame_x + frame_w - 4.0, frame_y + frame_h - 6.0, "PC1", TextAnchor->END, 11, false, "#888888", 0.0, "axis");
+			scene->Text(frame_x + 6.0, frame_y + 14.0, "PC2", TextAnchor->START, 11, false, "#888888", 0.0, "axis");
+
+			# one scale for both axes so distances are not stretched
+			lo_x := pos[0];
+			hi_x := pos[0];
+			lo_y := pos[1];
+			hi_y := pos[1];
+			top_share := prevalence[0];
+			for(k := 1; k < kk; k += 1;) {
+				if(pos[2 * k] < lo_x) { lo_x := pos[2 * k]; };
+				if(pos[2 * k] > hi_x) { hi_x := pos[2 * k]; };
+				if(pos[2 * k + 1] < lo_y) { lo_y := pos[2 * k + 1]; };
+				if(pos[2 * k + 1] > hi_y) { hi_y := pos[2 * k + 1]; };
+				if(prevalence[k] > top_share) { top_share := prevalence[k]; };
+			};
+
+			span_x := hi_x - lo_x;
+			span_y := hi_y - lo_y;
+			span := span_x;
+			if(span_y > span) {
+				span := span_y;
+			};
+
+			if(span < 1.0e-12) {
+				span := 1.0;
+			};
+
+			max_radius := 46.0;
+			margin := max_radius + 6.0;
+			scale := (frame_w - 2.0 * margin) / span;
+			other_scale := (frame_h - 2.0 * margin) / span;
+			if(other_scale < scale) {
+				scale := other_scale;
+			};
+
+			mid_x := (lo_x + hi_x) / 2.0;
+			mid_y := (lo_y + hi_y) / 2.0;
+			cx := 0.0;
+			cy := 0.0;
+			radius := 0.0;
+			stroke := "";
+			for(k := 0; k < kk; k += 1;) {
+				cx := frame_x + frame_w / 2.0 + (pos[2 * k] - mid_x) * scale;
+				cy := frame_y + frame_h / 2.0 - (pos[2 * k + 1] - mid_y) * scale;
+				radius := max_radius * Float->Sqrt(prevalence[k] / top_share);
+				if(radius < 3.0) {
+					radius := 3.0;
+				};
+
+				stroke := "#ffffff";
+				if(k = selected) {
+					stroke := "#000000";
+				};
+
+				scene->Circle(cx, cy, radius, PlotMath->Color(k), stroke, 0.7, "topic");
+				scene->Text(cx, cy + 4.0, (k + 1)->ToString(), TextAnchor->MIDDLE, 12, true, "#111111", 0.0, "label");
+			};
+
+			scene->Text(x0 + w / 2.0, y0 + h - 4.0, "Marginal topic distribution: " + Num(100.0 * top_share) + "% largest", TextAnchor->MIDDLE, 11, false, "#666666", 0.0, "footer");
+		}
+
+		function : private : DrawBars(scene : PlotScene, lda : Lda, corpus : TopicCorpus, terms : TopicTerms, lambda : Float, x0 : Float, y0 : Float, w : Float) ~ Nil {
+			topic := terms->GetTopic();
+			prevalence := Prevalence(lda, corpus);
+			row := lda->GetTopicWord(topic);
+			totals := corpus->GetWordTotals();
+			topic_words := prevalence[topic] * corpus->GetNumWords();
+			n := terms->Size();
+			ids := terms->GetIds();
+
+			scene->Text(x0 + w / 2.0, y0 + 16.0, "Top-" + n->ToString() + " most relevant terms for topic " + (topic + 1)->ToString(), TextAnchor->MIDDLE, 14, true, "#222222", 0.0, "title");
+			scene->Text(x0 + w / 2.0, y0 + 34.0, "relevance with lambda = " + Num(lambda) + "; grey = corpus frequency, colored = estimated frequency within the topic", TextAnchor->MIDDLE, 11, false, "#666666", 0.0, "subtitle");
+
+			biggest := 1.0;
+			for(i := 0; i < n; i += 1;) {
+				if(totals[ids[i]] > biggest) {
+					biggest := totals[ids[i]];
+				};
+			};
+
+			label_w := 150.0;
+			bar_x := x0 + label_w + 10.0;
+			bar_w := w - label_w - 20.0;
+			y := 0.0;
+			overall := 0.0;
+			inside := 0.0;
+			for(i := 0; i < n; i += 1;) {
+				y := y0 + 54.0 + 22.0 * i->As(Float);
+				overall := totals[ids[i]];
+				inside := row[ids[i]] * topic_words;
+				if(inside > overall) {
+					inside := overall;
+				};
+
+				scene->Text(x0 + label_w, y + 12.0, terms->GetWords()[i], TextAnchor->END, 12, false, "#222222", 0.0, "term");
+				scene->Rect(bar_x, y + 2.0, bar_w * overall / biggest, 7.0, "#c8c8c8", "", 0.0, 1.0, "bar-corpus");
+				scene->Rect(bar_x, y + 10.0, bar_w * inside / biggest, 7.0, PlotMath->Color(topic), "", 0.0, 1.0, "bar-topic");
+			};
+		}
+	}
+}

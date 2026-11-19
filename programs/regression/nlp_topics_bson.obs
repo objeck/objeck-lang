@@ -1,0 +1,387 @@
+# EXTRA_LIBS: nlp_topics,json,plot,gen_collect
+#~
+System.NLP.Topics BsonReader: the decoder, the streaming reader, field extraction, and what it does with bad bytes.
+
+The BSON fixtures are hex strings made by nlp_topics_bson_fixtures.py, which hand-encodes them with struct.pack
+from the bsonspec.org specification (neither the bson nor the pymongo package was available, so no driver
+produced them); the expected ISO dates come from Python's datetime module. This test decodes them and checks:
+  - every BSON type the reader maps (double, string, document, array, binary, undefined, ObjectId, Boolean,
+    datetime, null, regex, JavaScript, symbol, int32, timestamp, int64, decimal128, min and max key), including
+    UTF-8 text with a 4-byte character, NaN and the infinities, the extremes of int32, and an int64 beyond 2^53
+  - a three-tweet dump read one document at a time and by ExtractStrings (a dotted path, missing and non-string fields)
+  - a dump cut at every one of its 273 interior byte positions: the cut at a document boundary gives the documents
+    before it, every other cut gives an error with the documents before it still delivered, and none hangs
+  - 18 hostile inputs (a length past the data, 4, negative, a missing terminator, a string that overruns, a key with
+    no end, a Boolean of 2, an unknown type, DBPointer and code-with-scope, a negative binary length, an inner
+    document longer than its parent, a 0 type byte, a value cut short, nesting of 101 levels and one of 3000
+    levels) each give Nil, a message with a byte offset, and a reader that stops
+  - 100 levels of nesting is accepted (the limit) and 101 is not
+  - 6000 randomly damaged copies of the fixtures and 500 random byte strings: the reader always ends
+~#
+use System.NLP.Topics;
+use Data.JSON;
+use Collection;
+
+class NlpTopicsBson {
+	@seed : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@seed := 4242;
+		ok := true;
+		ok := AllTypes() & ok;
+		ok := Dump() & ok;
+		ok := Files() & ok;
+		ok := Truncations() & ok;
+		ok := Hostile() & ok;
+		ok := Nesting() & ok;
+		ok := Fuzz() & ok;
+		ok := NilAndEmpty() & ok;
+
+		if(ok = false) {
+			Runtime->Exit(1);
+		};
+		"nlp_topics_bson: ok"->PrintLine();
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+		return passed;
+	}
+
+	function : Nibble(c : Char) ~ Int {
+		code := c->As(Int);
+		if(code >= 97) {
+			return code - 87;
+		};
+		return code - 48;
+	}
+
+	function : Unhex(text : String) ~ Byte[] {
+		n := text->Size() / 2;
+		out := Byte->New[n];
+		for(i := 0; i < n; i += 1;) {
+			out[i] := (Nibble(text->Get(2 * i)) * 16 + Nibble(text->Get(2 * i + 1)))->As(Byte);
+		};
+		return out;
+	}
+
+	function : HexOf(bytes : Byte[]) ~ String {
+		digits := "0123456789abcdef";
+		out := "";
+		for(i := 0; i < bytes->Size(); i += 1;) {
+			b := bytes[i]->As(Int);
+			out += digits->SubString(b / 16, 1) + digits->SubString(b % 16, 1);
+		};
+		return out;
+	}
+
+	function : Rnd(n : Int) ~ Int {
+		@seed := (@seed * 48271) % 2147483647;
+		return @seed % n;
+	}
+
+	function : AllTypesHex() ~ String { return "bb01000001646f75626c65006e861bf0f92109400170696e6600000000000000f07f016e696e6600000000000000f0ff016e616e00000000000000f87f0274657874001600000068c3a96c6c6f20e29c9320747765657420f09f98800002656d70747900010000000003646f63001b00000003696e6e6572000f000000106465657000070000000000046172720025000000103000010000000231000400000074776f000132000000000000000c400a3300000562696e0003000000000001ff06756e64656600076f696400507f1f77bcf86cd799439011087965730001086e6f00000964740071faa0fb770100000964745f6f6c6400ffef196474ffffff0964745f65706f63680000000000000000000964745f687567650000dc1fd277e600000a6e756c000b7265005e612e2a62240069000d6a730004000000783d31000e73796d000200000073001069333200c01dfeff106933326d617800ffffff7f106933326d696e00000000801174730005000000bf6a406012693634000100000000002000126936346e656700ffffffffffffdfff1364656300101112131415161718191a1b1c1d1e1fff6d696e6b6579007f6d61786b65790000"; }
+	function : DumpHex() ~ String { return "64000000075f69640000000000000000000000000102746578740029000000466972737420236d616c776172652073616d706c652c2073656520687474703a2f2f742e636f2f780003757365720015000000026e616d650006000000616c69636500000033000000075f69640000000000000000000000000202626f647900130000006e6f2074657874206669656c642068657265000020000000075f6964000000000000000000000000031074657874002a000000005b000000075f69640000000000000000000000000402746578740022000000506174636820796f7572204356452d323032312d343432323820736572766572730003757365720013000000026e616d650004000000626f62000000"; }
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return Float->Abs(a - b) < 0.000001;
+	}
+
+	function : AllTypes() ~ Bool {
+		ok := true;
+		reader := BsonReader->New(Unhex(AllTypesHex()));
+		ok := Report("the all-types document is 443 bytes", Unhex(AllTypesHex())->Size() = 443) & ok;
+		doc := reader->Next();
+		ok := Report("it decodes", doc <> Nil) & ok;
+		if(doc = Nil) {
+			reader->GetError()->PrintLine();
+			return false;
+		};
+
+		ok := Report("no error and nothing left", reader->GetError()->Size() = 0 & reader->HasNext() = false) & ok;
+		ok := Report("the reader is at the end", reader->GetPosition() = 443) & ok;
+		ok := Report("it has 30 fields", doc->Size() = 30) & ok;
+
+		ok := Report("double 3.14159", Near(doc->Get("double")->GetFloat(), 3.14159)) & ok;
+		ok := Report("+infinity is the string Infinity", doc->Get("pinf")->GetString()->Equals("Infinity")) & ok;
+		ok := Report("-infinity is the string -Infinity", doc->Get("ninf")->GetString()->Equals("-Infinity")) & ok;
+		ok := Report("NaN is the string NaN", doc->Get("nan")->GetString()->Equals("NaN")) & ok;
+
+		text := doc->Get("text")->GetString();
+		ok := Report("UTF-8 text with a 4-byte character keeps its bytes", HexOf(text->ToByteArray())->Equals("68c3a96c6c6f20e29c9320747765657420f09f9880")) & ok;
+		ok := Report("the empty string is empty", doc->Get("empty")->GetString()->Size() = 0) & ok;
+		ok := Report("embedded documents nest", doc->Get("doc")->Get("inner")->Get("deep")->GetInt() = 7) & ok;
+
+		arr := doc->Get("arr");
+		ok := Report("an array has 4 elements", arr->GetType() = JsonElement->JsonType->ARRAY & arr->Size() = 4) & ok;
+		ok := Report("  int32 element", arr->Get(0)->GetInt() = 1) & ok;
+		ok := Report("  string element", arr->Get(1)->GetString()->Equals("two")) & ok;
+		ok := Report("  double element", Near(arr->Get(2)->GetFloat(), 3.5)) & ok;
+		ok := Report("  null element", arr->Get(3)->IsNull()) & ok;
+
+		bin := doc->Get("bin");
+		ok := Report("binary is hex and subtype", bin->Get("$binary")->GetString()->Equals("0001ff") & bin->Get("$type")->GetInt() = 0) & ok;
+		ok := Report("undefined is null", doc->Get("undef")->IsNull()) & ok;
+		ok := Report("ObjectId is 24 hex digits", doc->Get("oid")->GetString()->Equals("507f1f77bcf86cd799439011")) & ok;
+		ok := Report("true", doc->Get("yes")->GetType() = JsonElement->JsonType->TRUE & doc->Get("yes")->GetBool()) & ok;
+		ok := Report("false", doc->Get("no")->GetType() = JsonElement->JsonType->FALSE & doc->Get("no")->GetBool() = false) & ok;
+		ok := Report("datetime 2021", doc->Get("dt")->GetString()->Equals("2021-03-04T05:06:07.089Z")) & ok;
+		ok := Report("datetime before 1970", doc->Get("dt_old")->GetString()->Equals("1950-12-31T23:59:59.999Z")) & ok;
+		ok := Report("datetime at the epoch", doc->Get("dt_epoch")->GetString()->Equals("1970-01-01T00:00:00.000Z")) & ok;
+		ok := Report("datetime beyond year 9999 keeps the number", doc->Get("dt_huge")->GetString()->Equals("ms:253402300800000")) & ok;
+		ok := Report("null", doc->Get("nul")->IsNull()) & ok;
+		ok := Report("regex", doc->Get("re")->Get("$regex")->GetString()->Equals("^a.*b$") & doc->Get("re")->Get("$options")->GetString()->Equals("i")) & ok;
+		ok := Report("javascript is a string", doc->Get("js")->GetString()->Equals("x=1")) & ok;
+		ok := Report("symbol is a string", doc->Get("sym")->GetString()->Equals("s")) & ok;
+		ok := Report("int32", doc->Get("i32")->GetInt() = -123456) & ok;
+		ok := Report("int32 maximum", doc->Get("i32max")->GetInt() = 2147483647) & ok;
+		ok := Report("int32 minimum", doc->Get("i32min")->GetInt() = -2147483648) & ok;
+		ts := doc->Get("ts")->Get("$timestamp");
+		ok := Report("timestamp", ts->Get("t")->GetInt() = 1614834367 & ts->Get("i")->GetInt() = 5) & ok;
+		ok := Report("int64 beyond 2^53 is exact", doc->Get("i64")->GetValue()->Equals("9007199254740993")) & ok;
+		ok := Report("negative int64 beyond 2^53 is exact", doc->Get("i64neg")->GetValue()->Equals("-9007199254740993")) & ok;
+		ok := Report("decimal128 is kept as 16 raw bytes", doc->Get("dec")->Get("$decimal128")->GetString()->Equals("101112131415161718191a1b1c1d1e1f")) & ok;
+		ok := Report("min key", doc->Get("minkey")->Get("$minKey")->GetInt() = 1) & ok;
+		ok := Report("max key", doc->Get("maxkey")->Get("$maxKey")->GetInt() = 1) & ok;
+
+		# the same document after a JSON text round trip keeps its shape
+		parser := JsonParser->New(doc->ToString());
+		ok := Report("the decoded document is valid JSON text", parser->Parse()) & ok;
+		return ok;
+	}
+
+	function : Dump() ~ Bool {
+		ok := true;
+		bytes := Unhex(DumpHex());
+		ok := Report("the dump is 274 bytes", bytes->Size() = 274) & ok;
+
+		reader := BsonReader->New(bytes);
+		first := reader->Next();
+		second := reader->Next();
+		ok := Report("streaming: two documents, then the position is 151", first <> Nil & second <> Nil & reader->GetPosition() = 151 & reader->HasNext()) & ok;
+		ok := Report("streaming: the first has its text", first->Get("text")->GetString()->Equals("First #malware sample, see http://t.co/x")) & ok;
+		ok := Report("streaming: the second has no text", second->Has("text") = false & second->Has("body")) & ok;
+		third := reader->Next();
+		fourth := reader->Next();
+		ok := Report("streaming: 4 documents then the end", third <> Nil & fourth <> Nil & reader->HasNext() = false & reader->Next() = Nil & reader->GetError()->Size() = 0) & ok;
+
+		all := BsonReader->New(bytes)->ReadAll();
+		ok := Report("ReadAll returns 4 documents", all <> Nil & all->Size() = 4) & ok;
+
+		texts := BsonReader->New(bytes);
+		strings := texts->ExtractStrings("text");
+		ok := Report("ExtractStrings keeps the 2 string texts", strings <> Nil & strings->Size() = 2) & ok;
+		ok := Report("  skipped counts the missing and the non-string", texts->GetSkipped() = 2) & ok;
+		ok := Report("  in file order", strings->Get(0)->StartsWith("First") & strings->Get(1)->Equals("Patch your CVE-2021-44228 servers")) & ok;
+
+		names := BsonReader->New(bytes);
+		who := names->ExtractStrings("user.name");
+		ok := Report("a dotted path reaches into documents", who <> Nil & who->Size() = 2 & who->Get(0)->Equals("alice") & who->Get(1)->Equals("bob") & names->GetSkipped() = 2) & ok;
+
+		none := BsonReader->New(bytes)->ExtractStrings("no.such.field");
+		ok := Report("a field no document has gives an empty vector", none <> Nil & none->Size() = 0) & ok;
+
+		ok := Report("an empty field name is refused", BsonReader->New(bytes)->ExtractStrings("") = Nil) & ok;
+		return ok;
+	}
+
+	function : Files() ~ Bool {
+		ok := true;
+		path := "nlp_topics_bson_test.bson";
+		System.IO.Filesystem.FileWriter->WriteFile(path, Unhex(DumpHex()));
+		strings := BsonReader->ReadStrings(path, "text");
+		ok := Report("ReadStrings from a file", strings <> Nil & strings->Size() = 2) & ok;
+		reader := BsonReader->FromFile(path);
+		ok := Report("FromFile gives a reader at 0", reader <> Nil & reader->GetPosition() = 0 & reader->HasNext()) & ok;
+		System.IO.Filesystem.File->Delete(path);
+		ok := Report("a missing file gives Nil", BsonReader->FromFile("no_such_dir/none.bson") = Nil & BsonReader->ReadStrings("no_such_dir/none.bson", "text") = Nil) & ok;
+		return ok;
+	}
+
+	function : Truncations() ~ Bool {
+		ok := true;
+		bytes := Unhex(DumpHex());
+		bounds := [0, 100, 151, 183, 274];
+		bad := 0;
+		for(cut := 1; cut < bytes->Size(); cut += 1;) {
+			part := Byte->New[cut];
+			Byte->Copy(part, 0, bytes, 0, cut);
+			reader := BsonReader->New(part);
+			docs := 0;
+			guard := 0;
+			while(reader->HasNext() & guard < 10) {
+				if(reader->Next() <> Nil) {
+					docs += 1;
+				};
+				guard += 1;
+			};
+
+			expected := 0;
+			at_boundary := false;
+			for(b := 1; b < 5; b += 1;) {
+				if(bounds[b] <= cut) {
+					expected += 1;
+				};
+				if(bounds[b] = cut) {
+					at_boundary := true;
+				};
+			};
+
+			if(guard >= 10 | docs <> expected | (at_boundary & reader->GetError()->Size() > 0) | (at_boundary = false & reader->GetError()->Size() = 0)) {
+				bad += 1;
+			};
+		};
+
+		ok := Report("273 truncations behave: boundaries are clean, every other cut is an error, the documents before it are delivered", bad = 0) & ok;
+		return ok;
+	}
+
+	function : Refuses(name : String, hex : String, message : String) ~ Bool {
+		reader := BsonReader->New(Unhex(hex));
+		doc := reader->Next();
+		error := reader->GetError();
+		good := doc = Nil & error->Has(message) & error->Has("(at byte") & reader->HasNext() = false & reader->Next() = Nil;
+		if(good = false) {
+			"    got: '{$error}'"->PrintLine();
+		};
+		return Report(name + ": " + message, good);
+	}
+
+	function : Hostile() ~ Bool {
+		ok := true;
+		ok := Refuses("length past the data", "e80300001061000100000000", "runs past the end") & ok;
+		ok := Refuses("length 4", "040000000000000000000000", "below the 5-byte minimum") & ok;
+		ok := Refuses("negative length", "ffffffff0000000000000000", "below the 5-byte minimum") & ok;
+		ok := Refuses("no terminator", "0c0000001061000100000001", "does not end with a 0 byte") & ok;
+		ok := Refuses("string longer than the document", "0f0000000273006400000061620000", "truncated value") & ok;
+		ok := Refuses("string length 0", "0c0000000273000000000000", "below 1") & ok;
+		ok := Refuses("string without its 0", "0f0000000273000300000061626300", "does not end with a 0 byte") & ok;
+		ok := Refuses("key with no end", "0a000000106162636400", "unterminated element name") & ok;
+		ok := Refuses("Boolean of 2", "090000000862000200", "not 0 or 1") & ok;
+		ok := Refuses("unknown type", "0a000000997800000000", "unsupported BSON type") & ok;
+		ok := Refuses("DBPointer", "1b0000000c7000030000006e7300507f1f77bcf86cd79943901100", "unsupported BSON type") & ok;
+		ok := Refuses("code with scope", "170000000f63000c000000020000007800050000000000", "unsupported BSON type") & ok;
+		ok := Refuses("negative binary length", "0d000000056200fbffffff0000", "negative") & ok;
+		ok := Refuses("inner document longer than its parent", "14000000036400f4010000106100010000000000", "runs past the end") & ok;
+		ok := Refuses("0 type byte before the end", "0c0000000061000100000000", "0 type byte") & ok;
+		ok := Refuses("int64 cut short", "0b00000012710001020300", "truncated value") & ok;
+		ok := Refuses("101 levels of nesting", "37030000036e002f030000036e0027030000036e001f030000036e0017030000036e000f030000036e0007030000036e00ff020000036e00f7020000036e00ef020000036e00e7020000036e00df020000036e00d7020000036e00cf020000036e00c7020000036e00bf020000036e00b7020000036e00af020000036e00a7020000036e009f020000036e0097020000036e008f020000036e0087020000036e007f020000036e0077020000036e006f020000036e0067020000036e005f020000036e0057020000036e004f020000036e0047020000036e003f020000036e0037020000036e002f020000036e0027020000036e001f020000036e0017020000036e000f020000036e0007020000036e00ff010000036e00f7010000036e00ef010000036e00e7010000036e00df010000036e00d7010000036e00cf010000036e00c7010000036e00bf010000036e00b7010000036e00af010000036e00a7010000036e009f010000036e0097010000036e008f010000036e0087010000036e007f010000036e0077010000036e006f010000036e0067010000036e005f010000036e0057010000036e004f010000036e0047010000036e003f010000036e0037010000036e002f010000036e0027010000036e001f010000036e0017010000036e000f010000036e0007010000036e00ff000000036e00f7000000036e00ef000000036e00e7000000036e00df000000036e00d7000000036e00cf000000036e00c7000000036e00bf000000036e00b7000000036e00af000000036e00a7000000036e009f000000036e0097000000036e008f000000036e0087000000036e007f000000036e0077000000036e006f000000036e0067000000036e005f000000036e0057000000036e004f000000036e0047000000036e003f000000036e0037000000036e002f000000036e0027000000036e001f000000036e0017000000036e000f000000106c6561660001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", "deeper than 100") & ok;
+
+		# 3000 levels, built here: each level is {n: <inner>}
+		cur := Unhex("0c00000010" + "6c65616600" + "01000000" + "00");
+		for(level := 0; level < 3000; level += 1;) {
+			wrapped := Byte->New[cur->Size() + 8];
+			size := wrapped->Size();
+			wrapped[0] := (size % 256)->As(Byte);
+			wrapped[1] := ((size / 256) % 256)->As(Byte);
+			wrapped[2] := ((size / 65536) % 256)->As(Byte);
+			wrapped[3] := 0->As(Byte);
+			wrapped[4] := 3->As(Byte);
+			wrapped[5] := 'n'->As(Byte);
+			wrapped[6] := 0->As(Byte);
+			Byte->Copy(wrapped, 7, cur, 0, cur->Size());
+			wrapped[size - 1] := 0->As(Byte);
+			cur := wrapped;
+		};
+
+		reader := BsonReader->New(cur);
+		ok := Report("3000 levels of nesting: refused without a stack overflow", reader->Next() = Nil & reader->GetError()->Has("deeper than 100")) & ok;
+		return ok;
+	}
+
+	function : Nesting() ~ Bool {
+		ok := true;
+		reader := BsonReader->New(Unhex("2f030000036e0027030000036e001f030000036e0017030000036e000f030000036e0007030000036e00ff020000036e00f7020000036e00ef020000036e00e7020000036e00df020000036e00d7020000036e00cf020000036e00c7020000036e00bf020000036e00b7020000036e00af020000036e00a7020000036e009f020000036e0097020000036e008f020000036e0087020000036e007f020000036e0077020000036e006f020000036e0067020000036e005f020000036e0057020000036e004f020000036e0047020000036e003f020000036e0037020000036e002f020000036e0027020000036e001f020000036e0017020000036e000f020000036e0007020000036e00ff010000036e00f7010000036e00ef010000036e00e7010000036e00df010000036e00d7010000036e00cf010000036e00c7010000036e00bf010000036e00b7010000036e00af010000036e00a7010000036e009f010000036e0097010000036e008f010000036e0087010000036e007f010000036e0077010000036e006f010000036e0067010000036e005f010000036e0057010000036e004f010000036e0047010000036e003f010000036e0037010000036e002f010000036e0027010000036e001f010000036e0017010000036e000f010000036e0007010000036e00ff000000036e00f7000000036e00ef000000036e00e7000000036e00df000000036e00d7000000036e00cf000000036e00c7000000036e00bf000000036e00b7000000036e00af000000036e00a7000000036e009f000000036e0097000000036e008f000000036e0087000000036e007f000000036e0077000000036e006f000000036e0067000000036e005f000000036e0057000000036e004f000000036e0047000000036e003f000000036e0037000000036e002f000000036e0027000000036e001f000000036e0017000000036e000f000000106c65616600010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"));
+		doc := reader->Next();
+		ok := Report("100 levels of nesting is accepted", doc <> Nil & reader->GetError()->Size() = 0) & ok;
+		if(doc <> Nil) {
+			cur := doc;
+			depth := 0;
+			while(cur->Has("n")) {
+				cur := cur->Get("n");
+				depth += 1;
+			};
+			ok := Report("  all 100 levels are there and the leaf is 1", depth = 100 & cur->Get("leaf")->GetInt() = 1) & ok;
+		};
+		return ok;
+	}
+
+	function : Drain(bytes : Byte[]) ~ Int {
+		reader := BsonReader->New(bytes);
+		steps := 0;
+		while(reader->HasNext() & steps < 1000) {
+			reader->Next();
+			steps += 1;
+		};
+		return steps;
+	}
+
+	function : Fuzz() ~ Bool {
+		ok := true;
+		sources := [Unhex(AllTypesHex()), Unhex(DumpHex())];
+		hung := 0;
+		runs := 0;
+		for(round := 0; round < 3000; round += 1;) {
+			src := sources[round % 2];
+			copy := Byte->Copy(src);
+			hits := 1 + Rnd(4);
+			for(h := 0; h < hits; h += 1;) {
+				copy[Rnd(copy->Size())] := Rnd(256)->As(Byte);
+			};
+
+			if(Rnd(3) = 0) {
+				cut := Rnd(copy->Size());
+				shorter := Byte->New[cut];
+				Byte->Copy(shorter, 0, copy, 0, cut);
+				copy := shorter;
+			};
+
+			if(Drain(copy) >= 1000) {
+				hung += 1;
+			};
+			runs += 1;
+		};
+		ok := Report("3000 damaged copies of the fixtures all end ({$runs} runs)", hung = 0) & ok;
+
+		noise_hung := 0;
+		for(round := 0; round < 500; round += 1;) {
+			noise := Byte->New[Rnd(200)];
+			for(i := 0; i < noise->Size(); i += 1;) {
+				noise[i] := Rnd(256)->As(Byte);
+			};
+
+			# make half of them look like a document header so the parser goes deeper
+			if(noise->Size() > 8 & round % 2 = 0) {
+				noise[0] := (noise->Size() % 256)->As(Byte);
+				noise[1] := 0->As(Byte);
+				noise[2] := 0->As(Byte);
+				noise[3] := 0->As(Byte);
+			};
+
+			if(Drain(noise) >= 1000) {
+				noise_hung += 1;
+			};
+		};
+		ok := Report("500 random byte strings all end", noise_hung = 0) & ok;
+		return ok;
+	}
+
+	function : NilAndEmpty() ~ Bool {
+		ok := true;
+		reader := BsonReader->New(Nil->As(Byte[]));
+		ok := Report("Nil bytes: nothing to read, with a reason", reader->HasNext() = false & reader->Next() = Nil & reader->GetError()->Size() > 0) & ok;
+		empty := BsonReader->New(Byte->New[0]);
+		ok := Report("no bytes: nothing to read and no error", empty->HasNext() = false & empty->Next() = Nil & empty->GetError()->Size() = 0) & ok;
+		ok := Report("no bytes: ReadAll is an empty vector", BsonReader->New(Byte->New[0])->ReadAll()->Size() = 0) & ok;
+		ok := Report("Nil path gives Nil", BsonReader->FromFile(Nil) = Nil & BsonReader->ReadStrings(Nil, "text") = Nil) & ok;
+		minimal := BsonReader->New(Unhex("0500000000"));
+		doc := minimal->Next();
+		ok := Report("the 5-byte empty document is an empty object", doc <> Nil & doc->Size() = 0) & ok;
+		return ok;
+	}
+}
