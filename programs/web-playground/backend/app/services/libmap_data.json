@@ -218,6 +218,12 @@
     "System.Plot": ["Artist", "ArtistKind", "Axes", "Figure", "PlotAxis", "PlotError", "PlotMath", "PlotNote", "PlotPrimitive", "PlotScene", "PrimitiveKind", "SvgWriter", "TextAnchor"]
    }
   },
+  "plot_sdl": {
+   "deps": ["gen_collect", "plot", "sdl2"],
+   "bundles": {
+    "System.Plot.SDL": ["PlotPng", "PlotView", "PlotWindow", "SdlCanvas"]
+   }
+  },
   "query": {
    "deps": ["net", "regex", "csv", "xml", "json", "misc"],
    "bundles": {

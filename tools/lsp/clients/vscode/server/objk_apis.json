@@ -17234,11 +17234,20 @@
 				"ConfusionMatrix": {
 					"descriptions": ["**Adds a confusion matrix: a heatmap whose cells are annotated, with the actual class down the side and the predicted class along the bottom.**\n\n```method : public : ConfusionMatrix(counts:Int[,], classes:String[], normalize:Bool) ~ Nil```\n\n\n\ncounts: Int[,]\n\nclasses: String[]\n\nnormalize: Bool\n\nreturn: Nil"]
 				},
+				"Contains": {
+					"descriptions": ["**Whether a pixel is inside the plot area of the last Draw.**\n\n```method : public : Contains(px:Float, py:Float) ~ Bool```\n\n\n\npx: Float\n\npy: Float\n\nreturn: Bool"]
+				},
+				"DataAt": {
+					"descriptions": ["**The data position under a pixel of the last Draw.**\n\n```method : public : DataAt(px:Float, py:Float) ~ Float[]```\n\n\n\npx: Float\n\npy: Float\n\nreturn: Float[]"]
+				},
 				"Draw": {
 					"descriptions": ["**Draws the axes into a scene, inside a rectangle of the canvas.**\n\n```method : public : Draw(scene:PlotScene, x:Float, y:Float, width:Float, height:Float) ~ Nil```\n\n\n\nscene: PlotScene\n\nx: Float\n\ny: Float\n\nwidth: Float\n\nheight: Float\n\nreturn: Nil"]
 				},
 				"GetArtist": {
 					"descriptions": ["**One thing drawn on the axes.**\n\n```method : public : GetArtist(index:Int) ~ Artist```\n\n\n\nindex: Int\n\nreturn: Artist"]
+				},
+				"GetPlotRect": {
+					"descriptions": ["**The plot area of the last Draw, in the canvas's pixels.**\n\n```method : public : GetPlotRect() ~ Float[]```\n\n\n\nreturn: Float[]"]
 				},
 				"GetTitle": {
 					"descriptions": ["**The title.**\n\n```method : public : GetTitle() ~ String```\n\n\n\nreturn: String"]
@@ -17258,6 +17267,9 @@
 				"New": {
 					"descriptions": ["**Constructor; Figure creates its axes.**\n\n```New()```\n\n"]
 				},
+				"Pan": {
+					"descriptions": ["**Moves the view by a number of pixels, as a drag does: the data follows the pointer. Categorical axes and heatmaps do not pan.**\n\n```method : public : Pan(dx:Float, dy:Float) ~ Bool```\n\n\n\ndx: Float\n\ndy: Float\n\nreturn: Bool"]
+				},
 				"Plot": {
 					"descriptions": ["**Adds a line.**\n\n```method : public : Plot(name:String, xs:Float[], ys:Float[]) ~ Nil```\n\n\n\nname: String\n\nxs: Float[]\n\nys: Float[]\n\nreturn: Nil"]
 				},
@@ -17269,6 +17281,9 @@
 				},
 				"ResetLimits": {
 					"descriptions": ["**Returns both ranges to being derived from the data.**\n\n```method : public : ResetLimits() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"ResetView": {
+					"descriptions": ["**Returns the view to what the figure chose: the limits given to SetXLim and SetYLim (a ROC plot's -0.02 .. 1.02, say), or the range of the data where none were given. It is what a window's R key does after zooming and panning; ResetLimits instead forgets the limits altogether.**\n\n```method : public : ResetView() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"RocCurve": {
 					"descriptions": ["**Adds a ROC curve with the chance diagonal, both axes 0 to 1, and the area under the curve (trapezoid rule) in the legend.**\n\n```method : public : RocCurve(name:String, curve:Float[,]) ~ Nil```\n\n\n\nname: String\n\ncurve: Float[,]\n\nreturn: Nil"]
@@ -17314,12 +17329,18 @@
 				},
 				"Text": {
 					"descriptions": ["**Writes text at a position in data coordinates; text outside the plot area is not drawn.**\n\n```method : public : Text(x:Float, y:Float, text:String) ~ Nil```\n\n\n\nx: Float\n\ny: Float\n\ntext: String\n\nreturn: Nil"]
+				},
+				"Zoom": {
+					"descriptions": ["**Zooms both axes about a pixel of the last Draw, as a mouse wheel does: the data under the pixel stays under it. Categorical axes and heatmaps do not zoom.**\n\n```method : public : Zoom(px:Float, py:Float, factor:Float) ~ Bool```\n\n\n\npx: Float\n\npy: Float\n\nfactor: Float\n\nreturn: Bool"]
 				}
 			}
 		},
 		"System.Plot.Figure": {
 			"description": "A canvas of one or more Axes laid out in a grid, with an optional overall title.",
 			"functions": {
+				"AxesAt": {
+					"descriptions": ["**The axes whose plot area holds a pixel of the last ToScene.**\n\n```method : public : AxesAt(px:Float, py:Float) ~ Axes```\n\n\n\npx: Float\n\npy: Float\n\nreturn: Axes"]
+				},
 				"GetAxes": {
 					"descriptions": ["**The first (for a one-plot figure, the only) axes.**\n\n```method : public : GetAxes() ~ Axes```\n\n\n\nreturn: Axes", "**One axes of a subplot grid.**\n\n```method : public : GetAxes(row:Int, col:Int) ~ Axes```\n\n\n\nrow: Int\n\ncol: Int\n\nreturn: Axes"]
 				},
@@ -17352,6 +17373,9 @@
 				"GetLo": {
 					"descriptions": ["**Bottom of the range, as an exponent when logarithmic.**\n\n```method : public : GetLo() ~ Float```\n\n\n\nreturn: Float"]
 				},
+				"IsCategorical": {
+					"descriptions": ["**Whether the axis is categorical (names at 0, 1, 2, ...), which does not zoom.**\n\n```method : public : IsCategorical() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"IsLog": {
 					"descriptions": ["**Whether the axis is logarithmic.**\n\n```method : public : IsLog() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
@@ -17364,11 +17388,17 @@
 				"Pos": {
 					"descriptions": ["**Where a data value falls on the axis.**\n\n```method : public : Pos(v:Float) ~ Float```\n\n\n\nv: Float\n\nreturn: Float"]
 				},
+				"Shifted": {
+					"descriptions": ["**The data range after moving the view along the axis.**\n\n```method : public : Shifted(fraction:Float) ~ Float[]```\n\n\n\nfraction: Float\n\nreturn: Float[]"]
+				},
 				"Ticks": {
 					"descriptions": ["**Tick values in data space.**\n\n```method : public : Ticks() ~ Float[]```\n\n\n\nreturn: Float[]"]
 				},
 				"Value": {
 					"descriptions": ["**The data value at a position on the axis; the inverse of Pos.**\n\n```method : public : Value(f:Float) ~ Float```\n\n\n\nf: Float\n\nreturn: Float"]
+				},
+				"Zoomed": {
+					"descriptions": ["**The data range after zooming about a position on the axis; a log axis zooms in log space, so a decade stays a decade.**\n\n```method : public : Zoomed(f:Float, factor:Float) ~ Float[]```\n\n\n\nf: Float\n\nfactor: Float\n\nreturn: Float[]"]
 				}
 			}
 		},
@@ -17582,6 +17612,101 @@
 			"functions": {
 				"Render": {
 					"descriptions": ["**Renders a scene.**\n\n```function : Render(scene:PlotScene, title:String) ~ String```\n\n\n\nscene: PlotScene\n\ntitle: String\n\nreturn: String"]
+				}
+			}
+		},
+		"System.Plot.SDL.PlotPng": {
+			"description": "Writes a Figure as a PNG file, on a software surface: no window, no display and no GPU, so it works over SSH and in CI. Text uses the shipped font when it is found.",
+			"functions": {
+				"Render": {
+					"descriptions": ["**Renders a scene onto a new ARGB surface; the caller frees it.**\n\n```function : Render(scene:PlotScene) ~ Surface```\n\n\n\nscene: PlotScene\n\nreturn: Surface"]
+				},
+				"Save": {
+					"descriptions": ["**Renders a figure to a PNG file at the figure's size.**\n\n```function : Save(figure:Figure, path:String) ~ Bool```\n\n\n\nfigure: Figure\n\npath: String\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.Plot.SDL.PlotView": {
+			"description": "Zoom and pan state for a window, kept apart from SDL so it can be tested without one: how much one mouse-wheel notch zooms, and what a readout says.",
+			"functions": {
+				"Readout": {
+					"descriptions": ["**The text a hover shows for a data position.**\n\n```function : Readout(at:Float[]) ~ String```\n\n\n\nat: Float[]\n\nreturn: String"]
+				},
+				"WheelFactor": {
+					"descriptions": ["**The zoom factor of one mouse-wheel notch: 1.25 in, and the reciprocal out.**\n\n```function : WheelFactor(notches:Int) ~ Float```\n\n\n\nnotches: Int\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.Plot.SDL.PlotWindow": {
+			"description": "An interactive window over a Figure: the mouse wheel zooms about the pointer, dragging with the left button pans, hovering reads out the data position, R resets the view, Escape or closing the window ends it. Zoom and pan change the axes' limits and the scene is rebuilt, so ticks and labels stay crisp.",
+			"functions": {
+				"Close": {
+					"descriptions": ["**Closes the window and frees what Open made.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetCloseType": {
+					"descriptions": ["**The event type that ends Run when it is pushed (Event->SetUser then Push), so another thread, or a test, can close the window.**\n\n```method : public : GetCloseType() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetNotice": {
+					"descriptions": ["**The last message from a frame that could not be drawn as asked, empty when the last frame was fine.**\n\n```method : public : GetNotice() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetReadout": {
+					"descriptions": ["**The last hover readout.**\n\n```method : public : GetReadout() ~ String```\n\n\n\nreturn: String"]
+				},
+				"Handle": {
+					"descriptions": ["**Handles one SDL event: wheel zoom, drag pan, hover, keys, close.**\n\n```method : public : Handle(event:Event) ~ Nil```\n\n\n\nevent: Event\n\nreturn: Nil"]
+				},
+				"IsRunning": {
+					"descriptions": ["**Whether the loop is running.**\n\n```method : public : IsRunning() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor; the window opens in Run.**\n\n```New(figure:Figure, title:String)```\n\n\n\nfigure: Figure\n\ntitle: String", "**Constructor**\n\n```New(figure:Figure, title:String, visible:Bool)```\n\n\n\nfigure: Figure\n\ntitle: String\n\nvisible: Bool"]
+				},
+				"OnKey": {
+					"descriptions": ["**Handles a key: Escape ends the loop, R resets every axes to the data's range.**\n\n```method : public : OnKey(scancode:Int) ~ Nil```\n\n\n\nscancode: Int\n\nreturn: Nil"]
+				},
+				"OnMotion": {
+					"descriptions": ["**Handles the pointer moving: a drag with the left button down pans, otherwise the data position is read out.**\n\n```method : public : OnMotion(x:Int, y:Int, dx:Int, dy:Int, left_down:Bool) ~ Nil```\n\n\n\nx: Int\n\ny: Int\n\ndx: Int\n\ndy: Int\n\nleft_down: Bool\n\nreturn: Nil"]
+				},
+				"OnWheel": {
+					"descriptions": ["**Zooms the axes under a pixel.**\n\n```method : public : OnWheel(x:Int, y:Int, notches:Int) ~ Nil```\n\n\n\nx: Int\n\ny: Int\n\nnotches: Int\n\nreturn: Nil"]
+				},
+				"Open": {
+					"descriptions": ["**Creates the window and renderer without running the loop.**\n\n```method : public : Open() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"RenderFrame": {
+					"descriptions": ["**Draws one frame: the scene, then the hover readout.**\n\n```method : public : RenderFrame() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"ResetView": {
+					"descriptions": ["**Returns every axes to the view the figure chose: its own limits where it set some (a ROC plot's -0.02 .. 1.02), the range of the data where it did not.**\n\n```method : public : ResetView() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Run": {
+					"descriptions": ["**Opens the window and runs until it is closed.**\n\n```method : public : Run() ~ Bool```\n\n\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.Plot.SDL.SdlCanvas": {
+			"description": "Draws a PlotScene with an SDL2 Renderer: lines (anti-aliased, or thick, or dashed), polylines, polygons, rectangles with opacity, circles, and text. Text uses SDL_ttf when a font file is found (the shipped lib/sdl/fonts/lato.ttf, or the one given to SetFont) and falls back to SDL2_gfx's built-in 8x8 bitmap font, which cannot rotate or bold.",
+			"functions": {
+				"Draw": {
+					"descriptions": ["**Clears the target to white and draws a scene on it. Call Present (or save) afterwards.**\n\n```method : public : Draw(scene:PlotScene) ~ Nil```\n\n\n\nscene: PlotScene\n\nreturn: Nil"]
+				},
+				"GetFont": {
+					"descriptions": ["**The font file text will use.**\n\n```method : public : GetFont() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(renderer:Renderer, width:Int, height:Int)```\n\n\n\nrenderer: Renderer\n\nwidth: Int\n\nheight: Int"]
+				},
+				"Overlay": {
+					"descriptions": ["**Draws a scene over what is already there, without clearing, for readouts and labels.**\n\n```method : public : Overlay(scene:PlotScene) ~ Nil```\n\n\n\nscene: PlotScene\n\nreturn: Nil"]
+				},
+				"Release": {
+					"descriptions": ["**Frees the cached fonts. Call it when finished drawing, before Font->Quit.**\n\n```method : public : Release() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"SetFont": {
+					"descriptions": ["**Uses a font file for text instead of the shipped one.**\n\n```method : public : SetFont(path:String) ~ Nil```\n\n\n\npath: String\n\nreturn: Nil"]
+				},
+				"Start": {
+					"descriptions": ["**Starts what drawing needs: SDL_ttf and PNG support. Safe to call more than once.**\n\n```function : Start() ~ Bool```\n\n\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -22096,6 +22221,30 @@
 			{
 				"bundle": "System.Plot",
 				"file": "plot.obl"
+			}
+		],
+		"PlotPng": [
+			{
+				"bundle": "System.Plot.SDL",
+				"file": "plot_sdl.obl"
+			}
+		],
+		"PlotView": [
+			{
+				"bundle": "System.Plot.SDL",
+				"file": "plot_sdl.obl"
+			}
+		],
+		"PlotWindow": [
+			{
+				"bundle": "System.Plot.SDL",
+				"file": "plot_sdl.obl"
+			}
+		],
+		"SdlCanvas": [
+			{
+				"bundle": "System.Plot.SDL",
+				"file": "plot_sdl.obl"
 			}
 		],
 		"Alarm": [

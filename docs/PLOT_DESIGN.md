@@ -81,7 +81,19 @@ is `lib/sdl/fonts/lato.ttf`; when it is absent the backend falls back to `String
 2. **More charts** (stacked on #1610): heatmap and confusion matrix (annotated cells), box plot, text annotations, ROC
    and precision-recall helpers (`System.ML` PR #1607 adds the metrics; the helpers take the curve
    points as arrays, so they do not depend on it at link time).
-3. **SDL2 backend**: window with zoom/pan/hover, PNG export, headless test.
+3. **SDL2 backend** (stacked on #1612): `plot_sdl.obl` with `PlotWindow` (wheel zoom about the
+   pointer, drag to pan, hover readout, R to reset, Escape to close), `PlotPng` (software
+   surface, no display) and `SdlCanvas` (the scene walker). `Axes` gained `Zoom`, `Pan`, `DataAt`,
+   `GetPlotRect` and `Figure->AxesAt`, which are plain arithmetic and are tested without SDL
+   (`plot_view.obs`). Verified headless with the dummy driver: exact pixel colors per primitive,
+   clipping, text, a figure's marker, PNG signature, size and load-back, and a hidden window
+   driven through its handlers and closed by a user event (`plot_sdl.obs`).
+   A review of the three PRs found, and the tests now cover: coordinates past 16 bits wrapping in
+   SDL2_gfx (everything is clipped to the canvas plus a margin first), a log axis zoomed out until its
+   low end underflowed to 0 and the next frame raised (zoom is refused there, and a frame that
+   still cannot be drawn resets the view and shows the reason), `R` losing the figure's own limits
+   (`Axes->ResetView`), a pan straight after a zoom starting from the pre-zoom view, and a second
+   `Close`. PNG export uses `Image->SavePNG` (SDL_image); no encoder is written here.
 
 ## Risks
 

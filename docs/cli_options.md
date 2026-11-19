@@ -80,6 +80,7 @@ eight libraries that group lists.
 | `@data` | `xml`, `regex`, `csv`, `query`, `rss`, `misc`, `net`, `json`, `cipher` | parsing and querying structured data |
 | `@ml` | `gemini`, `openai`, `ollama`, `net_server`, `misc`, `net`, `json`, `cipher` | hosted-model API clients |
 | `@ai` | `ai`, `ml`, `ml_lab`, `ml_vector`, `plot`, `nlp`, `csv`, `json` | local `System.ML` / `System.ML.Lab` / `System.ML.VectorSearch` / `System.Plot` / `System.AI` / `System.NLP` |
+| `@plot` | `plot`, `plot_sdl`, `sdl2` | `System.Plot` charts in an SDL2 window or as PNG (SVG alone needs only `plot`) |
 | `@vision` | `opencv`, `onnx`, `nlp_onnx`, `models`, `nlp`, `json`, `cipher` | OpenCV and ONNX inference, BERT text embeddings |
 | `@game` | `sdl2`, `sdl_game`, `sdl_gl`, `json`, `gen_collect` | SDL2, the 2D game and 3D OpenGL frameworks |
 

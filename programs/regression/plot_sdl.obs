@@ -1,0 +1,477 @@
+# EXTRA_LIBS: plot_sdl,plot,sdl2,gen_collect
+#~
+System.Plot.SDL: the SDL2 backend, headless.
+
+SDL_VIDEODRIVER and SDL_AUDIODRIVER are set to "dummy" before SDL starts, so no display or
+sound card is needed (as in sdl2_bindings.obs). Drawing goes to a SOFTWARE renderer on a plain
+surface and is asserted by reading pixels back, never by "it did not crash": a filled rect has
+its exact color, a circle its center, a dashed line gaps, a clip cuts, a figure's marker is
+not white. PNG export is checked by size, signature and a load back. The interactive window
+is opened hidden under the dummy driver; its handlers are called directly, and Run is ended
+by the user event GetCloseType names, which is how another thread would close it.
+
+If SDL cannot initialise video even with the dummy driver this prints SKIP and exits 0 (which the runner counts as a skip). A deploy tree without the SDL natives fails at the library load, exactly as sdl2_bindings.obs and every other SDL test does: that error is raised by the VM before any Objeck code can catch it. Text
+pixels are checked only when the bundled font is found (otherwise the bitmap fallback is).
+~#
+use Game.SDL2;
+use System;
+use System.IO.Filesystem;
+use System.Plot;
+use System.Plot.SDL;
+
+class PlotSdlTest {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		PlotSdlTest->New()->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Run() ~ Nil {
+		Runtime->SetEnvironmentVariable("SDL_VIDEODRIVER", "dummy");
+		Runtime->SetEnvironmentVariable("SDL_AUDIODRIVER", "dummy");
+
+		if(Core->Init(SubsystemFlags->SDL_INIT_VIDEO or SubsystemFlags->SDL_INIT_EVENTS) <> 0) {
+			error := Core->GetError();
+			"SKIP: SDL video could not start with the dummy driver: {$error}"->PrintLine();
+			return;
+		};
+
+		CheckPrimitives();
+		CheckClip();
+		CheckText();
+		CheckFigure();
+		CheckPng();
+		CheckBigCoordinates();
+		CheckView();
+		CheckWindow();
+		CheckWindowSafety();
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: System.Plot.SDL (primitives, clip, text, figure, PNG, view, window)"->PrintLine();
+	}
+
+	method : Check(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			@failures += 1;
+			"  FAILED: {$name}"->PrintLine();
+		};
+
+		return ok;
+	}
+
+	method : Pixel(surface : Surface, x : Int, y : Int) ~ Int {
+		return surface->GetPixels()->Get(y * (surface->GetPitch() / 4) + x) and 0xffffff;
+	}
+
+	method : Same(a : Int, b : Int, tolerance : Int) ~ Bool {
+		dr := ((a >> 16) and 0xff) - ((b >> 16) and 0xff);
+		dg := ((a >> 8) and 0xff) - ((b >> 8) and 0xff);
+		db := (a and 0xff) - (b and 0xff);
+		if(dr < 0) {
+			dr := -dr;
+		};
+		if(dg < 0) {
+			dg := -dg;
+		};
+		if(db < 0) {
+			db := -db;
+		};
+
+		return dr <= tolerance & dg <= tolerance & db <= tolerance;
+	}
+
+	method : Render(scene : PlotScene) ~ Surface {
+		return PlotPng->Render(scene);
+	}
+
+	# --- primitives, with exact colors where there is no anti-aliasing ---
+	method : CheckPrimitives() ~ Nil {
+		scene := PlotScene->New(100, 60);
+		scene->Rect(10.0, 10.0, 20.0, 10.0, "#ff0000", "", 0.0, 1.0, "red");
+		scene->Circle(60.0, 30.0, 8.0, "#0000ff", "", 1.0, "blue");
+		scene->Line(5.0, 50.0, 95.0, 50.0, "#00aa00", 3.0, "", "green");
+		scene->Line(5.0, 40.0, 95.0, 40.0, "#000000", 1.0, "6 6", "dashed");
+		scene->Polygon([80.0, 5.0, 95.0, 5.0, 95.0, 20.0], "#ffff00", "", 1.0, 1.0, "tri");
+		scene->Rect(40.0, 5.0, 10.0, 10.0, "#000000", "", 0.0, 0.5, "half");
+		surface := Render(scene);
+		if(<>Check("a software surface renders the scene", <>surface->IsNull())) {
+			return;
+		};
+
+		Check("the canvas is cleared to white", Pixel(surface, 1, 1) = 0xffffff & Pixel(surface, 98, 58) = 0xffffff);
+		Check("a filled rect has its exact color inside", Pixel(surface, 15, 14) = 0xff0000 & Pixel(surface, 28, 18) = 0xff0000);
+		Check("and nothing outside it", Pixel(surface, 5, 14) = 0xffffff & Pixel(surface, 15, 25) = 0xffffff);
+		Check("a filled circle has its exact color at the center", Pixel(surface, 60, 30) = 0x0000ff);
+		Check("and is white well outside its radius", Pixel(surface, 60, 45) = 0xffffff & Pixel(surface, 75, 30) = 0xffffff);
+		Check("a thick line is its color along its length", Pixel(surface, 20, 50) = 0x00aa00 & Pixel(surface, 70, 50) = 0x00aa00);
+		Check("a polygon fills its interior", Pixel(surface, 90, 10) = 0xffff00);
+		half := Pixel(surface, 45, 10);
+		Check("a rect at 50% opacity blends with the white behind it (mid-gray)", Same(half, 0x7f7f7f, 3));
+
+		# a dash "6 6" along y = 40: some pixels dark, some white, along the same row
+		dark := 0;
+		light := 0;
+		each(x : 80) {
+			v := Pixel(surface, 10 + x, 40);
+			if(Same(v, 0x000000, 90)) {
+				dark += 1;
+			}
+			else if(v = 0xffffff) {
+				light += 1;
+			};
+		};
+		Check("a dashed line alternates drawn and empty runs", dark > 20 & light > 20);
+		surface->Free();
+	}
+
+	method : CheckClip() ~ Nil {
+		scene := PlotScene->New(80, 40);
+		scene->BeginClip(20.0, 10.0, 30.0, 20.0);
+		scene->Rect(0.0, 0.0, 80.0, 40.0, "#ff0000", "", 0.0, 1.0, "big");
+		scene->EndClip();
+		scene->Rect(0.0, 0.0, 6.0, 6.0, "#0000ff", "", 0.0, 1.0, "after");
+		surface := Render(scene);
+		if(<>Check("a clipped scene renders", <>surface->IsNull())) {
+			return;
+		};
+
+		Check("inside the clip rectangle is drawn", Pixel(surface, 30, 20) = 0xff0000 & Pixel(surface, 21, 11) = 0xff0000);
+		Check("outside it is not, though the rect covered the canvas", Pixel(surface, 5, 20) = 0xffffff & Pixel(surface, 60, 20) = 0xffffff & Pixel(surface, 30, 5) = 0xffffff & Pixel(surface, 30, 35) = 0xffffff);
+		Check("what follows the clip is drawn at its own position, unclipped", Pixel(surface, 3, 3) = 0x0000ff);
+		surface->Free();
+	}
+
+	method : CheckText() ~ Nil {
+		scene := PlotScene->New(160, 80);
+		scene->Text(10.0, 30.0, "Hello", TextAnchor->START, 20, false, "#000000", 0.0, "start");
+		scene->Text(150.0, 60.0, "Right", TextAnchor->END, 14, true, "#000000", 0.0, "end");
+		scene->Text(12.0, 70.0, "up", TextAnchor->MIDDLE, 12, false, "#000000", -90.0, "turned");
+		surface := Render(scene);
+		if(<>Check("a scene with text renders", <>surface->IsNull())) {
+			return;
+		};
+
+		Check("text puts dark pixels at its anchor", Ink(surface, 8, 5, 60, 30) > 20);
+		Check("an END anchor ends at x (ink left of it, none beyond)", Ink(surface, 100, 45, 50, 20) > 10 & Ink(surface, 152, 45, 8, 20) = 0);
+		Check("rotated text is drawn too", Ink(surface, 0, 50, 24, 30) > 5);
+		Check("and the empty corner stays empty", Ink(surface, 100, 0, 60, 30) = 0);
+
+		canvas := SdlCanvas->New(Renderer->CreateSoftwareRenderer(surface), 160, 80);
+		path := canvas->GetFont();
+		if(path->Size() = 0) {
+			"  note: the bundled font was not found, so the bitmap fallback drew the text"->PrintLine();
+		};
+		canvas->SetFont("");
+		Check("SetFont with an empty path selects the bitmap fallback", canvas->GetFont()->Size() = 0);
+		canvas->Release();
+		surface->Free();
+	}
+
+	# dark-ish pixels in a block
+	method : Ink(surface : Surface, x0 : Int, y0 : Int, w : Int, h : Int) ~ Int {
+		n := 0;
+		each(dy : h) {
+			each(dx : w) {
+				if(Pixel(surface, x0 + dx, y0 + dy) <> 0xffffff & Same(Pixel(surface, x0 + dx, y0 + dy), 0x000000, 160)) {
+					n += 1;
+				};
+			};
+		};
+
+		return n;
+	}
+
+	# a real figure: its first marker is where the scene says, and is not white
+	method : CheckFigure() ~ Nil {
+		fig := Figure->New(400, 300);
+		fig->GetAxes()->SetTitle("t");
+		fig->GetAxes()->Scatter("a", [0.0, 5.0, 10.0], [0.0, 5.0, 10.0]);
+		scene := fig->ToScene();
+		surface := Render(scene);
+		if(<>Check("a figure renders", <>surface->IsNull())) {
+			return;
+		};
+
+		# the middle marker, (5, 5), well away from the axis lines the corner marker sits under
+		marker : PlotPrimitive;
+		seen := 0;
+		each(i : scene->Size()) {
+			if(scene->Get(i)->GetTag()->Equals("marker")) {
+				seen += 1;
+				if(seen = 2) {
+					marker := scene->Get(i);
+				};
+			};
+		};
+		x := Float->Round(marker->GetX1())->As(Int);
+		y := Float->Round(marker->GetY1())->As(Int);
+		pixel := Pixel(surface, x, y);
+		blue := pixel and 0xff;
+		red := (pixel >> 16) and 0xff;
+		Check("the middle marker is bluish where the scene puts it (the series color over white)", pixel <> 0xffffff & blue > red);
+		Check("the plot area's corner is white", Pixel(surface, 70, 40) = 0xffffff);
+		Check("the y axis line is dark", Same(Pixel(surface, 64, 200), 0x333333, 40));
+		surface->Free();
+	}
+
+	method : CheckPng() ~ Nil {
+		fig := Figure->New(320, 240);
+		fig->GetAxes()->Plot("l", [0.0, 1.0, 2.0], [0.0, 1.0, 0.5]);
+		path := Runtime->GetTempDir() + "/plot_sdl_test.png";
+		File->Delete(path);
+
+		Check("PlotPng->Save writes a file", PlotPng->Save(fig, path) & File->Exists(path));
+		bytes := FileReader->ReadBinaryFile(path);
+		Check("it starts with the PNG signature", bytes <> Nil & bytes->Size() > 100 & bytes[0] = 0x89 & bytes[1] = 'P'->As(Byte) & bytes[2] = 'N'->As(Byte) & bytes[3] = 'G'->As(Byte));
+
+		loaded := Image->Load(path);
+		if(Check("and loads back", <>loaded->IsNull())) {
+			Check("at the figure's size", loaded->GetW() = 320 & loaded->GetH() = 240);
+			loaded->Free();
+		};
+		File->Delete(path);
+
+		Check("a Nil figure or path is refused", PlotPng->Save(Nil->As(Figure), path) = false & PlotPng->Save(fig, Nil->As(String)) = false);
+		Check("an unwritable path is refused", PlotPng->Save(fig, "no_such_directory_xyz/out.png") = false);
+	}
+
+	# SDL2_gfx takes 16-bit coordinates, so anything past +-32767 used to wrap and draw somewhere else
+	method : CheckBigCoordinates() ~ Nil {
+		scene := PlotScene->New(200, 100);
+		scene->Rect(-100000.0, 70.0, 200200.0, 20.0, "#ff0000", "", 0.0, 1.0, "wide");
+		scene->Line(-100000.0, 50.0, 100000.0, 50.0, "#000000", 3.0, "", "long");
+		scene->Line(-1000000000.0, 10.0, 1000000000.0, 10.0, "#0000ff", 1.0, "6 6", "dashed-long");
+		scene->Line(300000.0, 300000.0, 400000.0, 400000.0, "#000000", 1.0, "", "off-canvas");
+		scene->Circle(-90000.0, -90000.0, 5.0, "#000000", "", 1.0, "off");
+		surface := Render(scene);
+		if(<>Check("a scene with enormous coordinates renders (and a dashed line a billion pixels long finishes)", <>surface->IsNull())) {
+			return;
+		};
+
+		Check("a rect running from -100000 to +100000 covers the canvas row it is on", Pixel(surface, 5, 80) = 0xff0000 & Pixel(surface, 100, 80) = 0xff0000 & Pixel(surface, 195, 80) = 0xff0000);
+		Check("and not the rows beside it", Pixel(surface, 100, 65) <> 0xff0000 & Pixel(surface, 100, 95) <> 0xff0000);
+		Check("a 200000-pixel line is drawn across the canvas", Same(Pixel(surface, 100, 50), 0x000000, 20) & Same(Pixel(surface, 5, 50), 0x000000, 20));
+		poly := PlotScene->New(200, 100);
+		poly->Polygon([-100000.0, -100000.0, 100000.0, -100000.0, 0.0, 100000.0], "#00ff00", "", 1.0, 1.0, "huge");
+		ps := Render(poly);
+		Check("a polygon with 100000-pixel vertices fills the canvas", Pixel(ps, 100, 30) = 0x00ff00 & Pixel(ps, 3, 3) = 0x00ff00 & Pixel(ps, 197, 97) = 0x00ff00);
+		ps->Free();
+		blue := 0;
+		each(x : 200) {
+			if(Same(Pixel(surface, x, 10), 0x0000ff, 90)) {
+				blue += 1;
+			};
+		};
+		Check("the dashes of a billion-pixel line are drawn where they are visible", blue > 40);
+		Check("a line and a circle entirely off the canvas draw nothing", Pixel(surface, 0, 0) = 0xffffff);
+		surface->Free();
+
+		# one end on the canvas, one far off it: the old code truncated the far end to 16 bits, so the
+		# line ended up drawn the other way and the rect not at all (reproduced against the old library)
+		half := PlotScene->New(200, 100);
+		half->Line(100.0, 50.0, 100000.0, 50.0, "#000000", 3.0, "", "half");
+		half->Rect(100.0, 70.0, 100000.0, 20.0, "#ff0000", "", 0.0, 1.0, "rect");
+		hs := Render(half);
+		Check("a line from x=100 to x=100000 is drawn on its visible half, x=150", Pixel(hs, 150, 50) = 0x000000);
+		Check("and not on the side it never touched, x=50", Pixel(hs, 50, 50) = 0xffffff);
+		Check("a rect from x=100 to x=100100 covers x=150", Pixel(hs, 150, 80) = 0xff0000 & Pixel(hs, 50, 80) = 0xffffff);
+		hs->Free();
+
+		# a zero-height rect is nothing, as in SVG (it used to draw a line)
+		flat := PlotScene->New(60, 40);
+		flat->Rect(10.0, 10.0, 30.0, 0.0, "#ff0000", "", 0.0, 1.0, "flat");
+		flat->Rect(10.0, 20.0, 0.0, 10.0, "#ff0000", "", 0.0, 1.0, "thin");
+		fs := Render(flat);
+		Check("a rect with no height or no width draws nothing", Pixel(fs, 20, 10) = 0xffffff & Pixel(fs, 10, 25) = 0xffffff & Pixel(fs, 20, 11) = 0xffffff);
+		fs->Free();
+
+		# a Nil string (a Nil category label) must not crash the drawing
+		nils := PlotScene->New(60, 40);
+		nils->Text(10.0, 20.0, Nil->As(String), TextAnchor->START, 12, false, "#000000", 0.0, "nil");
+		nils->Text(10.0, 30.0, "", TextAnchor->START, 12, false, "#000000", 0.0, "empty");
+		ns := Render(nils);
+		Check("a Nil or empty text draws nothing and does not crash", <>ns->IsNull() & Pixel(ns, 12, 18) = 0xffffff);
+		ns->Free();
+
+		# zoomed 25 notches in about the middle of a line from (0, 0) to (10, 10): its pixels are
+		# ~190000 px apart, and the line still passes through the middle of the plot
+		fig := Figure->New(400, 300);
+		fig->GetAxes()->Plot("l", [0.0, 10.0], [0.0, 10.0]);
+		fig->ToScene();
+		r := fig->GetAxes()->GetPlotRect();
+		mx := (r[0] + r[2]) / 2.0;
+		my := (r[1] + r[3]) / 2.0;
+		each(i : 25) {
+			fig->GetAxes()->Zoom(mx, my, 1.25);
+		};
+		zoomed := Render(fig->ToScene());
+		ink := 0;
+		cx := Float->Round(mx)->As(Int);
+		cy := Float->Round(my)->As(Int);
+		each(dy : 7) {
+			each(dx : 7) {
+				if(Pixel(zoomed, cx - 3 + dx, cy - 3 + dy) <> 0xffffff) {
+					ink += 1;
+				};
+			};
+		};
+		Check("zoomed in 25 notches the line still passes through the middle (it wrapped at about 17)", ink >= 7);
+		zoomed->Free();
+	}
+
+	method : CheckView() ~ Nil {
+		Check("a wheel notch zooms 1.25x in and 0.8x out", Near(PlotView->WheelFactor(1), 1.25) & Near(PlotView->WheelFactor(-1), 0.8));
+		Check("two notches compound", Near(PlotView->WheelFactor(2), 1.5625) & Near(PlotView->WheelFactor(0), 1.0));
+		Check("a readout names both coordinates", PlotView->Readout([2.5, 0.125])->Equals("x = 2.500   y = 0.125"));
+		Check("no position, no readout", PlotView->Readout(Nil->As(Float[]))->Equals(""));
+	}
+
+	method : Near(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.0001;
+	}
+
+	# the interactive window, hidden, under the dummy driver
+	method : CheckWindow() ~ Nil {
+		fig := Figure->New(400, 300);
+		fig->GetAxes()->Scatter("a", [0.0, 10.0], [0.0, 10.0]);
+		win := PlotWindow->New(fig, "test", false);
+		if(<>Check("a hidden window opens under the dummy driver", win->Open())) {
+			return;
+		};
+
+		win->RenderFrame();
+		r := fig->GetAxes()->GetPlotRect();
+		mid_x := (r[0] + r[2]) / 2.0;
+		mid_y := (r[1] + r[3]) / 2.0;
+		Check("a frame draws, which gives the axes a plot rectangle", r <> Nil);
+
+		win->OnMotion(mid_x->As(Int), mid_y->As(Int), 0, 0, false);
+		Check("hovering reads out the data position", win->GetReadout()->Has("x = ") & win->GetReadout()->Has("y = "));
+		win->OnMotion(2, 2, 0, 0, false);
+		Check("and clears it outside every plot", win->GetReadout()->Size() = 0);
+
+		win->OnWheel(mid_x->As(Int), mid_y->As(Int), 2);
+		win->RenderFrame();
+		span := fig->GetAxes()->GetXAxis()->GetHi() - fig->GetAxes()->GetXAxis()->GetLo();
+		Check("the wheel zooms in about the pointer (a 10 span becomes 6.4)", Near(span, 10.0 / 1.5625));
+
+		lo := fig->GetAxes()->GetXAxis()->GetLo();
+		win->OnMotion(mid_x->As(Int), mid_y->As(Int), 0, 0, true);
+		win->OnMotion(mid_x->As(Int) + 36, mid_y->As(Int), 36, 0, true);
+		win->RenderFrame();
+		Check("dragging with the left button pans", fig->GetAxes()->GetXAxis()->GetLo() < lo - 0.0001);
+		before := fig->GetAxes()->GetXAxis()->GetLo();
+		win->OnMotion(mid_x->As(Int) + 60, mid_y->As(Int), 24, 0, false);
+		win->RenderFrame();
+		Check("moving with the button up does not", Near(fig->GetAxes()->GetXAxis()->GetLo(), before));
+
+		win->OnKey(Scancode->SDL_SCANCODE_R);
+		win->RenderFrame();
+		Check("R resets the view", Near(fig->GetAxes()->GetXAxis()->GetLo(), 0.0) & Near(fig->GetAxes()->GetXAxis()->GetHi(), 10.0));
+		win->Close();
+
+		# Run: open, loop, and end on the close event pushed beforehand
+		fig2 := Figure->New(300, 200);
+		fig2->GetAxes()->Scatter("a", [0.0, 1.0], [0.0, 1.0]);
+		win2 := PlotWindow->New(fig2, "run", false);
+		event := Event->New();
+		Check("the close event is a user event", event->SetUser(win2->GetCloseType(), 0, 0));
+		Check("it is pushed", event->Push() = 1);
+		event->Free();
+		Check("Run returns true after the close event ends it", win2->Run());
+		Check("and the loop is no longer running", win2->IsRunning() = false);
+
+		# Escape ends it too
+		win3 := PlotWindow->New(fig2, "esc", false);
+		win3->Open();
+		win3->OnKey(Scancode->SDL_SCANCODE_ESCAPE);
+		Check("Escape stops the loop flag", win3->IsRunning() = false);
+		win3->Close();
+	}
+
+	# what used to end the program with the window open, or crash on the way out
+	method : CheckWindowSafety() ~ Nil {
+		# Close twice, and after Run (which closes): Renderer->Destroy and Window->Destroy keep their handle
+		fig := Figure->New(300, 200);
+		fig->GetAxes()->Scatter("a", [0.0, 1.0], [0.0, 1.0]);
+		win := PlotWindow->New(fig, "close", false);
+		win->Open();
+		win->RenderFrame();
+		win->Close();
+		win->Close();
+		Check("Close twice does not destroy twice", true);
+
+		win2 := PlotWindow->New(fig, "run", false);
+		event := Event->New();
+		event->SetUser(win2->GetCloseType(), 0, 0);
+		event->Push();
+		event->Free();
+		Check("Run returns", win2->Run());
+		win2->Close();
+		Check("and Close after Run is safe", true);
+		PlotWindow->New(fig, "never", false)->Close();
+		Check("a window that was never opened closes safely too", true);
+
+		# a figure that cannot be drawn must not end the program: it resets the view and says why
+		bad := Figure->New(300, 200);
+		bad->GetAxes()->Scatter("a", [0.0, 1.0], [0.0, 1.0]);
+		bwin := PlotWindow->New(bad, "bad", false);
+		bwin->Open();
+		bwin->RenderFrame();
+		Check("a good frame leaves no notice", bwin->GetNotice()->Size() = 0);
+		bad->GetAxes()->Hist("h", [1.0, 2.0, 3.0], 2);
+		bad->GetAxes()->SetLogY(true);
+		bwin->RenderFrame();
+		Check("a figure that cannot be drawn does not raise out of a frame", true);
+		Check("it shows why instead", bwin->GetNotice()->Has("log y"));
+		bad->GetAxes()->SetLogY(false);
+		bwin->OnKey(Scancode->SDL_SCANCODE_R);
+		Check("the next key press clears the notice", bwin->GetNotice()->Size() = 0);
+		bwin->RenderFrame();
+		Check("and drawing works again once the figure can be drawn", bwin->GetNotice()->Size() = 0);
+		bwin->Close();
+
+		# wheeling a log axis out a long way used to end in a PlotError in the next frame
+		lg := Figure->New(400, 300);
+		lg->GetAxes()->SetLogX(true);
+		lg->GetAxes()->Scatter("s", [0.001, 10.0], [1.0, 2.0]);
+		lwin := PlotWindow->New(lg, "log", false);
+		lwin->Open();
+		lwin->RenderFrame();
+		lr := lg->GetAxes()->GetPlotRect();
+		lx := Float->Round(lr[2] - 1.0)->As(Int);
+		ly := Float->Round((lr[1] + lr[3]) / 2.0)->As(Int);
+		each(i : 400) {
+			lwin->OnWheel(lx, ly, -3);
+			lwin->RenderFrame();
+		};
+		Check("400 wheel-outs on a log axis never end the program, and never need the error notice", lwin->GetNotice()->Size() = 0);
+		lwin->Close();
+
+		# R returns to the limits the figure chose, not to the data's range
+		roc := Figure->New(400, 300);
+		roc->GetAxes()->Plot("roc", [0.0, 0.5, 1.0], [0.0, 0.7, 1.0]);
+		roc->GetAxes()->SetXLim(-0.02, 1.02);
+		roc->GetAxes()->SetYLim(-0.02, 1.02);
+		rwin := PlotWindow->New(roc, "roc", false);
+		rwin->Open();
+		rwin->RenderFrame();
+		rr := roc->GetAxes()->GetPlotRect();
+		rwin->OnWheel(Float->Round(rr[0] + 50.0)->As(Int), Float->Round(rr[1] + 50.0)->As(Int), 3);
+		rwin->RenderFrame();
+		rwin->OnKey(Scancode->SDL_SCANCODE_R);
+		rwin->RenderFrame();
+		Check("R after a zoom returns to -0.02 .. 1.02, the limits the figure set", Near(roc->GetAxes()->GetXAxis()->GetLo(), -0.02) & Near(roc->GetAxes()->GetXAxis()->GetHi(), 1.02));
+		rwin->Close();
+	}
+}

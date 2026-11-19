@@ -63,3 +63,5 @@ $OBC -src lib_src/ai_hub.obs -lib gen_collect,cipher,json,net -tar lib -opt s3 -
 $OBC -src lib_src/sdl2.obs -tar lib -dest ../lib/sdl2.obl
 $OBC -src lib_src/sdl_game.obs -lib gen_collect,json,sdl2 -tar lib -dest ../lib/sdl_game.obl
 $OBC -src lib_src/sdl_gl.obs -lib gen_collect,sdl2 -tar lib -dest ../lib/sdl_gl.obl
+# The SDL2 backend of System.Plot: an interactive window and PNG export. After plot and sdl2
+$OBC -src lib_src/plot_sdl.obs -lib gen_collect,plot,sdl2 -tar lib -opt s3 -dest ../lib/plot_sdl.obl

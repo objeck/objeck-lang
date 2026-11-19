@@ -1,0 +1,57 @@
+#~
+A figure in an interactive SDL2 window, and the same figure as a PNG file.
+
+The window: the mouse wheel zooms about the pointer, dragging with the left button pans, the
+pointer reads out the data position under it, R resets the view, Escape or closing the window
+ends it. Zoom and pan change the axes' limits and the figure is redrawn, so ticks and labels
+stay sharp at any zoom.
+
+The PNG needs no window and no display (it draws on a software surface), so it also works over
+SSH and in a script: `obr plot_window.obe --png-only`.
+
+  compile: obc -src plot_window.obs -lib @plot,gen_collect
+  run:     obr plot_window.obe             (window, then writes window.png when closed)
+           obr plot_window.obe --png-only  (no window)
+~#
+use System.Plot;
+use System.Plot.SDL;
+
+class PlotWindowDemo {
+	@seed : static : Int;
+
+	function : Next() ~ Float {
+		@seed := (@seed * 1103515245 + 12345) % 2147483648;
+		return @seed->As(Float) / 2147483648.0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@seed := 3;
+		n := 400;
+		xs := Float->New[n];
+		ys := Float->New[n];
+		score := Float->New[n];
+		each(i : n) {
+			xs[i] := Next() * 10.0;
+			ys[i] := Float->Sin(xs[i]) * 3.0 + (Next() - 0.5) * 2.0;
+			score[i] := Float->Abs(ys[i]);
+		};
+
+		fig := Figure->New(900, 600);
+		ax := fig->GetAxes();
+		ax->SetTitle("A noisy sine, colored by |y|");
+		ax->SetXLabel("x");
+		ax->SetYLabel("y");
+		ax->Scatter("", xs, ys, score, Nil->As(Float[]));
+
+		png_only := args->Size() > 0 & args[0]->Equals("--png-only");
+		if(png_only = false) {
+			if(PlotWindow->New(fig, "System.Plot")->Run() = false) {
+				"no window could be opened (is there a display?); writing the PNG only"->PrintLine();
+			};
+			# the limits are whatever you zoomed to; go back to the data's range for the file
+			ax->ResetLimits();
+		};
+
+		PlotPng->Save(fig, "window.png")->PrintLine();
+	}
+}

@@ -1016,6 +1016,54 @@ bundle System.Plot {
 		method : public : GetHi() ~ Float {
 			return @hi;
 		}
+
+		#~
+		Whether the axis is categorical (names at 0, 1, 2, ...), which does not zoom.
+		@return true when it has names
+		~#
+		method : public : IsCategorical() ~ Bool {
+			return @names <> Nil;
+		}
+
+		#~
+		The data range after zooming about a position on the axis; a log axis zooms in log
+		space, so a decade stays a decade.
+		@param f where the zoom is anchored: 0 at the low end, 1 at the high end
+		@param factor above 1 zooms in, below 1 zooms out
+		@return [low, high] in data space
+		~#
+		method : public : Zoomed(f : Float, factor : Float) ~ Float[] {
+			anchor := @lo + f * (@hi - @lo);
+			new_lo := anchor - (anchor - @lo) / factor;
+			new_hi := anchor + (@hi - anchor) / factor;
+
+			return ToData(new_lo, new_hi);
+		}
+
+		#~
+		The data range after moving the view along the axis.
+		@param fraction how far to move, as a fraction of the visible range; positive moves toward the high end
+		@return [low, high] in data space
+		~#
+		method : public : Shifted(fraction : Float) ~ Float[] {
+			delta := fraction * (@hi - @lo);
+
+			return ToData(@lo + delta, @hi + delta);
+		}
+
+		method : ToData(a : Float, b : Float) ~ Float[] {
+			out := Float->New[2];
+			if(@log) {
+				out[0] := Float->Pow(10.0, a);
+				out[1] := Float->Pow(10.0, b);
+			}
+			else {
+				out[0] := a;
+				out[1] := b;
+			};
+
+			return out;
+		}
 	}
 
 	#~
@@ -1345,10 +1393,17 @@ ax->SetLogX(true);
 		@grid : Bool;
 		@legend : Bool;
 		@legend_loc : String;
+		@x_home : Bool;
+		@x_home_min : Float;
+		@x_home_max : Float;
+		@y_home : Bool;
+		@y_home_min : Float;
+		@y_home_max : Float;
 		@heat_from_zero : Bool;
 		@notes : Vector<PlotNote>;
 		@xa : PlotAxis;
 		@ya : PlotAxis;
+		@plot_rect : Float[];
 
 		#~
 		Constructor; Figure creates its axes.
@@ -1417,6 +1472,9 @@ ax->SetLogX(true);
 			@x_fixed := true;
 			@x_min := min;
 			@x_max := max;
+			@x_home := true;
+			@x_home_min := min;
+			@x_home_max := max;
 		}
 
 		#~
@@ -1432,6 +1490,9 @@ ax->SetLogX(true);
 			@y_fixed := true;
 			@y_min := min;
 			@y_max := max;
+			@y_home := true;
+			@y_home_min := min;
+			@y_home_max := max;
 		}
 
 		#~
@@ -1440,6 +1501,36 @@ ax->SetLogX(true);
 		method : public : ResetLimits() ~ Nil {
 			@x_fixed := false;
 			@y_fixed := false;
+			@x_home := false;
+			@y_home := false;
+		}
+
+		#~
+		Returns the view to what the figure chose: the limits given to SetXLim and SetYLim
+		(a ROC plot's -0.02 .. 1.02, say), or the range of the data where none were given.
+		It is what a window's R key does after zooming and panning; ResetLimits instead
+		forgets the limits altogether.
+		~#
+		method : public : ResetView() ~ Nil {
+			@x_fixed := @x_home;
+			@x_min := @x_home_min;
+			@x_max := @x_home_max;
+			@y_fixed := @y_home;
+			@y_min := @y_home_min;
+			@y_max := @y_home_max;
+		}
+
+		# zoom and pan move the view, not the figure's own limits
+		method : SetViewX(min : Float, max : Float) ~ Nil {
+			@x_fixed := true;
+			@x_min := min;
+			@x_max := max;
+		}
+
+		method : SetViewY(min : Float, max : Float) ~ Nil {
+			@y_fixed := true;
+			@y_min := min;
+			@y_max := max;
 		}
 
 		#~
@@ -2123,6 +2214,123 @@ ax->SetLogX(true);
 		}
 
 		#~
+		The plot area of the last Draw, in the canvas's pixels.
+		@return [left, top, right, bottom], or Nil before the first Draw
+		~#
+		method : public : GetPlotRect() ~ Float[] {
+			return @plot_rect;
+		}
+
+		#~
+		Whether a pixel is inside the plot area of the last Draw.
+		@param px pixel x
+		@param py pixel y
+		@return true when inside
+		~#
+		method : public : Contains(px : Float, py : Float) ~ Bool {
+			if(@plot_rect = Nil) {
+				return false;
+			};
+
+			return px >= @plot_rect[0] & px <= @plot_rect[2] & py >= @plot_rect[1] & py <= @plot_rect[3];
+		}
+
+		#~
+		The data position under a pixel of the last Draw.
+		@param px pixel x
+		@param py pixel y
+		@return [x, y] in data space (category indexes on a categorical axis), or Nil before the first Draw
+		~#
+		method : public : DataAt(px : Float, py : Float) ~ Float[] {
+			if(@plot_rect = Nil | @xa = Nil | @ya = Nil) {
+				return Nil;
+			};
+
+			out := Float->New[2];
+			out[0] := @xa->Value((px - @plot_rect[0]) / (@plot_rect[2] - @plot_rect[0]));
+			out[1] := @ya->Value((@plot_rect[3] - py) / (@plot_rect[3] - @plot_rect[1]));
+
+			return out;
+		}
+
+		#~
+		Zooms both axes about a pixel of the last Draw, as a mouse wheel does: the data under
+		the pixel stays under it. Categorical axes and heatmaps do not zoom.
+		@param px pixel x of the anchor
+		@param py pixel y of the anchor
+		@param factor above 1 zooms in, below 1 zooms out
+		@return true when the view changed
+		~#
+		method : public : Zoom(px : Float, py : Float, factor : Float) ~ Bool {
+			if(@plot_rect = Nil | factor <= 0.0 | PlotMath->IsFinite(factor) = false | HasKind(ArtistKind->HEATMAP)) {
+				return false;
+			};
+
+			fx := (px - @plot_rect[0]) / (@plot_rect[2] - @plot_rect[0]);
+			fy := (@plot_rect[3] - py) / (@plot_rect[3] - @plot_rect[1]);
+			xr := @xa->Zoomed(fx, factor);
+			yr := @ya->Zoomed(fy, factor);
+			# stop where floats run out, so a long zoom can never produce a range SetXLim refuses
+			if((@xa->IsCategorical() = false & Usable(xr, @xa->IsLog()) = false) | Usable(yr, @ya->IsLog()) = false) {
+				return false;
+			};
+
+			if(@xa->IsCategorical() = false) {
+				SetViewX(xr[0], xr[1]);
+			};
+			SetViewY(yr[0], yr[1]);
+			# the next zoom or pan, in the same batch of events and before a redraw, starts from this view
+			Resolve();
+
+			return true;
+		}
+
+		#~
+		Moves the view by a number of pixels, as a drag does: the data follows the pointer.
+		Categorical axes and heatmaps do not pan.
+		@param dx pixels the pointer moved right
+		@param dy pixels the pointer moved down
+		@return true when the view changed
+		~#
+		method : public : Pan(dx : Float, dy : Float) ~ Bool {
+			if(@plot_rect = Nil | HasKind(ArtistKind->HEATMAP)) {
+				return false;
+			};
+
+			xr := @xa->Shifted(-dx / (@plot_rect[2] - @plot_rect[0]));
+			yr := @ya->Shifted(dy / (@plot_rect[3] - @plot_rect[1]));
+			if((@xa->IsCategorical() = false & Usable(xr, @xa->IsLog()) = false) | Usable(yr, @ya->IsLog()) = false) {
+				return false;
+			};
+
+			if(@xa->IsCategorical() = false) {
+				SetViewX(xr[0], xr[1]);
+			};
+			SetViewY(yr[0], yr[1]);
+			# the next zoom or pan, in the same batch of events and before a redraw, starts from this view
+			Resolve();
+
+			return true;
+		}
+
+		# a range worth drawing: finite and ordered, wide enough to tell its ends apart (a range
+		# whose width is below a billionth of its magnitude is float noise), no narrower than
+		# 1e-200 in absolute terms, and for a log axis wholly inside 1e-300 .. 1e300 so that
+		# zooming out cannot underflow the low end to 0, which a log axis refuses to draw
+		method : Usable(r : Float[], log : Bool) ~ Bool {
+			if(PlotMath->IsFinite(r[0]) = false | PlotMath->IsFinite(r[1]) = false) {
+				return false;
+			};
+			if(log & (r[0] < 1.0e-300 | r[1] > 1.0e300)) {
+				return false;
+			};
+			width := r[1] - r[0];
+			mag := r[0]->Abs() + r[1]->Abs();
+
+			return width > 0.0 & width > mag * 0.000000001 & width > 1.0e-200;
+		}
+
+		#~
 		One thing drawn on the axes.
 		@param index position from 0, in the order added
 		@return the artist
@@ -2190,6 +2398,12 @@ ax->SetLogX(true);
 			if(px1 - px0 < 40.0 | py1 - py0 < 40.0) {
 				Refuse("the plot area is too small to draw");
 			};
+
+			@plot_rect := Float->New[4];
+			@plot_rect[0] := px0;
+			@plot_rect[1] := py0;
+			@plot_rect[2] := px1;
+			@plot_rect[3] := py1;
 
 			DrawGrid(scene, px0, py0, px1, py1);
 			scene->BeginClip(px0, py0, px1 - px0, py1 - py0);
@@ -2784,6 +2998,22 @@ ax->SetLogX(true);
 			};
 
 			return @axes->Get(row * @cols + col);
+		}
+
+		#~
+		The axes whose plot area holds a pixel of the last ToScene.
+		@param px pixel x
+		@param py pixel y
+		@return the axes, or Nil when the pixel is outside every plot area
+		~#
+		method : public : AxesAt(px : Float, py : Float) ~ Axes {
+			each(i : @axes) {
+				if(@axes->Get(i)->Contains(px, py)) {
+					return @axes->Get(i);
+				};
+			};
+
+			return Nil;
 		}
 
 		#~
