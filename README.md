@@ -76,7 +76,7 @@ obc hello && obr hello
 |---|---|---|
 | Windows (x64, ARM64) | `.msi`, `.zip` | --- |
 | macOS (Apple silicon) | `.pkg`, `.tgz`, `.zip` | --- |
-| Ubuntu 24.04 (x64, ARM64) | `.deb`, `.tgz` | The `.deb` installs the dependencies. |
+| Ubuntu 24.04 (x64, ARM64) | `.deb`, `.tgz` | The `.deb` installs needed dependencies. |
 | Other Linux (x64, ARM64) | `.tgz` | glibc 2.38 or newer and libstdc++ 13 or newer, and the system libraries `install_deps.sh` lists (the mbedTLS 2.28 `.so.14` and OpenCV 4.6 `.so.406` sonames, among others). |
 
 
