@@ -76,8 +76,8 @@ obc hello && obr hello
 |---|---|---|
 | Ubuntu 24.04 (x64, ARM64) | `.deb`, `.tgz` | Nothing else: the `.deb` installs its own dependencies. |
 | Other Linux (x64, ARM64) | `.tgz` | glibc 2.38 or newer and libstdc++ 13 or newer, and the system libraries `install_deps.sh` lists (the mbedTLS 2.28 `.so.14` and OpenCV 4.6 `.so.406` sonames, among others). |
-| Windows (x64, ARM64) | `.msi`, `.zip` | |
-| macOS (Apple silicon) | `.pkg`, `.tgz`, `.zip` | |
+| Windows (x64, ARM64) | `.msi`, `.zip` | --- |
+| macOS (Apple silicon) | `.pkg`, `.tgz`, `.zip` | --- |
 
 The Linux release is built on Ubuntu 24.04, so **it runs as shipped on Ubuntu 24.04 and not on older distributions**: Debian 12 (and antiX 23, MX 23 and other distributions based on it) and Ubuntu 22.04 have a C library older than glibc 2.38, which installing packages cannot change, and `dpkg` refuses the `.deb` for that reason. Some newer distributions do not package the mbedTLS and OpenCV versions the release links against either (Debian 13, Fedora, Arch and openSUSE Leap, checked in September for v2026.9.2). `./objeck-lang/install_deps.sh --check` reports what is missing without installing anything.
 
