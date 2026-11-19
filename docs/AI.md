@@ -1422,23 +1422,30 @@ Classical statistics for the analysis that comes before (or instead of) a model:
 ```ruby
 use System.Stats;
 
-genuine := [52.0, 61.5, 48.2, 70.1, 55.3, 49.9, 66.0, 58.4];
-fake := [40.2, 45.8, 52.1, 38.9, 47.5, 44.0, 50.3, 41.7];
+class Demo {
+  function : Main(args : String[]) ~ Nil {
+    genuine := [52.0, 61.5, 48.2, 70.1, 55.3, 49.9, 66.0, 58.4];
+    fake := [40.2, 45.8, 52.1, 38.9, 47.5, 44.0, 50.3, 41.7];
 
-r := TTest->Welch(genuine, fake);          # unequal variances; the safer default
-r->ToString()->PrintLine();                # t, df, p, mean diff, 95% CI, Cohen d, Hedges g
-if(r->IsValid() & r->IsSignificant(0.05)) {
-  "difference {$r->GetMeanDiff()} (95% CI {$r->GetCiLow()} to {$r->GetCiHigh()}), g = {$r->GetHedgesG()}"->PrintLine();
-};
+    r := TTest->Welch(genuine, fake);          # unequal variances; the safer default
+    r->ToString()->PrintLine();                # t, df, p, mean diff, 95% CI, Cohen d, Hedges g
+    if(r->IsValid() & r->IsSignificant(0.05)) {
+      "difference {$r->GetMeanDiff()} (95% CI {$r->GetCiLow()} to {$r->GetCiHigh()}), g = {$r->GetHedgesG()}"->PrintLine();
+    };
 
-# regression with a categorical predictor: 0/1 columns, an intercept, then the summary table
-X := Design->HStack(Design->Column(length), Design->Dummies(category));
-fit := OLS->Fit(X, rating, true, ["length", "kind_b", "kind_c"]);
-fit->ToString()->PrintLine();              # coef, std err, t, P>|t|, 95% CI, R-squared, F, AIC, BIC
-fit->GetPValues();                         # Float[], one per coefficient
+    # regression with a categorical predictor: an intercept, a numeric column and 0/1 columns
+    length := [10.0, 25.0, 31.0, 12.0, 40.0, 22.0, 35.0, 18.0, 29.0, 44.0];
+    kind := ["a", "b", "c", "a", "b", "c", "a", "b", "c", "a"];
+    rating := [2.0, 3.1, 4.2, 2.4, 3.9, 3.8, 3.3, 3.0, 4.6, 4.1];
+    X := Design->HStack(Design->Column(length), Design->Dummies(kind));
+    fit := OLS->Fit(X, rating, true, ["length", "kind_b", "kind_c"]);
+    fit->ToString()->PrintLine();              # coef, std err, t, P>|t|, 95% CI, R-squared, F, AIC, BIC
+    fit->GetPValues()[1]->PrintLine();         # a Float[], one p-value per coefficient
+  }
+}
 ```
 
-Conventions worth knowing. The mean difference is the first group minus the second, and the confidence interval is for that difference (for a one-sample test, mean minus the hypothesised mean). Cohen's d divides by the pooled standard deviation (one-sample: the sample's; paired: that of the differences), and Hedges' g multiplies it by `1 - 3 / (4 df - 1)`; the Welch test reports the same pooled-sd d and g as the Student test. A regression with an intercept uses the centred total sum of squares and tests against the intercept-only model; without one it uses the uncentred sum and `df_model = k`, as `statsmodels` does, and AIC and BIC count `df_model + 1` parameters like `statsmodels`. Put every level of a categorical variable beside an intercept and the fit is refused as rank deficient (the dummy trap); `Design->Dummies` drops the first level for that reason.
+Conventions worth knowing. The mean difference is the first group minus the second, and the confidence interval is for that difference (for a one-sample test, mean minus the hypothesised mean). Cohen's d divides by the pooled standard deviation (one-sample: the sample's; paired: that of the differences), and Hedges' g multiplies it by the exact correction `Gamma(df/2) / (sqrt(df/2) * Gamma((df-1)/2))` (`Dist->HedgesJ`, about `1 - 3 / (4 df - 1)`); the Welch test reports the same pooled-sd d and g as the Student test. A regression with an intercept uses the centred total sum of squares and tests against the intercept-only model; without one it uses the uncentred sum and `df_model = k`, as `statsmodels` does, and AIC and BIC count one parameter per coefficient, also as `statsmodels` does. Put every level of a categorical variable beside an intercept and the fit is refused as rank deficient (the dummy trap); `Design->Dummies` drops the first level for that reason.
 
 The p-values come from the regularized incomplete beta function (continued fraction, Lentz), so they stay accurate in the far tail (`p = 7e-18` is `7e-18`, not 0) and for large degrees of freedom. Every distribution function is tested against `scipy` at small and large df.
 

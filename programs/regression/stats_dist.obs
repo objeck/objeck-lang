@@ -111,6 +111,14 @@ class StatsDist {
 		ok := Near("lgamma 100.5", Dist->LogGamma(100.5), 361.43554046777757, 1.0e-12) & ok;
 		ok := Near("lgamma 1000.0", Dist->LogGamma(1000.0), 5905.220423209181, 1.0e-12) & ok;
 		ok := Near("lgamma 100000.0", Dist->LogGamma(100000.0), 1051287.7089736569, 1.0e-12) & ok;
+		ok := Near("hedges J df=2.0", Dist->HedgesJ(2.0), 0.5641895835477564, 1.0e-11) & ok;
+		ok := Near("hedges J df=3.0", Dist->HedgesJ(3.0), 0.7236012545582676, 1.0e-11) & ok;
+		ok := Near("hedges J df=5.0", Dist->HedgesJ(5.0), 0.8407486824596893, 1.0e-11) & ok;
+		ok := Near("hedges J df=10.0", Dist->HedgesJ(10.0), 0.922745608053087, 1.0e-11) & ok;
+		ok := Near("hedges J df=30.0", Dist->HedgesJ(30.0), 0.9747543782143993, 1.0e-11) & ok;
+		ok := Near("hedges J df=100.0", Dist->HedgesJ(100.0), 0.9924780549814028, 1.0e-11) & ok;
+		ok := Near("hedges J df=3998.0", Dist->HedgesJ(3998.0), 0.9998123925146647, 1.0e-11) & ok;
+		ok := Near("hedges J at df 1 is 0", Dist->HedgesJ(1.0), 0.0, 1.0e-12) & ok;
 		ok := Report("Dist->StudentTwoSidedP(1.0, 0.0) is NaN", Dist->StudentTwoSidedP(1.0, 0.0) <> Dist->StudentTwoSidedP(1.0, 0.0)) & ok;
 		ok := Report("Dist->StudentQuantile(0.0, 5.0) is NaN", Dist->StudentQuantile(0.0, 5.0) <> Dist->StudentQuantile(0.0, 5.0)) & ok;
 		ok := Report("Dist->StudentQuantile(1.0, 5.0) is NaN", Dist->StudentQuantile(1.0, 5.0) <> Dist->StudentQuantile(1.0, 5.0)) & ok;

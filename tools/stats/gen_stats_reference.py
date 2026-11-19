@@ -2,17 +2,19 @@
 """
 Regenerates the reference values in programs/regression/stats_*.obs from scipy and numpy.
 
-The expected numbers in those tests are NOT computed by System.Stats: they come from
-scipy.stats (t, norm, chi2, f, ttest_ind, ttest_rel, ttest_1samp, pearsonr and their
-confidence_interval methods), scipy.special (betainc, gammainc, gammaln) and numpy.linalg
-(lstsq, inv). The OLS summary formulas (R2, adjusted R2, F, AIC, BIC) are written out
-here from the definitions statsmodels' RegressionResults uses. statsmodels itself was not
-installed when this was written, so the OLS expectations are numpy/scipy, not a
-statsmodels run.
+The expected numbers in those tests are NOT computed by System.Stats. They come from
+statsmodels (sm.OLS(...).fit(): params, bse, tvalues, pvalues, conf_int, rsquared,
+rsquared_adj, fvalue, f_pvalue, llf, aic, bic, scale, df_model, df_resid, cov_params;
+statsmodels.stats.weightstats ttest_ind / DescrStatsW.ttest_mean, cross-checked against
+scipy.stats.ttest_ind / ttest_rel / ttest_1samp, whose confidence_interval supplies the
+intervals), from scipy.stats / scipy.special (t, norm, chi2, f, betainc, gammainc, gammaln,
+pearsonr) and from closed forms for Cohen's d and Hedges' g (exact gamma-ratio correction
+J = Gamma(df/2) / (sqrt(df/2) * Gamma((df-1)/2))). Run it with an interpreter that has
+numpy, scipy and statsmodels.
 
     python tools/stats/gen_stats_reference.py          # rewrites the three test files
 
-Needs numpy and scipy. The datasets are integer formulas, so Objeck and Python build the
+Needs numpy, scipy and statsmodels. The datasets are integer formulas, so Objeck and Python build the
 very same numbers.
 """
 import math
@@ -20,6 +22,8 @@ import os
 import numpy as np
 from scipy import stats as st
 from scipy import special as sp
+import statsmodels.api as sm
+from statsmodels.stats import weightstats as sw
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 OUT = os.path.join(ROOT, "programs", "regression")
@@ -37,6 +41,16 @@ def num(v):
     elif "." not in text:
         text += ".0"
     return text
+
+
+def hedges_j(df):
+    """Exact Hedges' small-sample correction Gamma(df/2) / (sqrt(df/2) * Gamma((df-1)/2))."""
+    return math.exp(sp.gammaln(df / 2.0) - sp.gammaln((df - 1) / 2.0)) / math.sqrt(df / 2.0)
+
+
+def agree(a, b, what, tol=1e-9):
+    """Two independent references (statsmodels and scipy) must agree before either is trusted."""
+    assert abs(a - b) <= tol * max(1.0, abs(b)), "%s: %r vs %r" % (what, a, b)
 
 
 def seq(n, a, b, m, div):
@@ -135,6 +149,9 @@ def dist_test():
         t.near("gammainc a=%s x=%s" % (a, x), "Dist->GammaInc(%s, %s)" % (num(a), num(x)), sp.gammainc(a, x))
     for x in [0.1, 0.5, 1.0, 2.5, 10.0, 100.5, 1000.0, 1.0e5]:
         t.near("lgamma %s" % x, "Dist->LogGamma(%s)" % num(x), sp.gammaln(x), "1.0e-12")
+    for df in [2.0, 3.0, 5.0, 10.0, 30.0, 100.0, 3998.0]:
+        t.near("hedges J df=%s" % df, "Dist->HedgesJ(%s)" % num(df), hedges_j(df), "1.0e-11")
+    t.add('ok := Near("hedges J at df 1 is 0", Dist->HedgesJ(1.0), 0.0, 1.0e-12) & ok;')
     # domain errors are NaN, not crashes
     for expr in ["Dist->StudentTwoSidedP(1.0, 0.0)", "Dist->StudentQuantile(0.0, 5.0)", "Dist->StudentQuantile(1.0, 5.0)",
                  "Dist->NormalQuantile(1.5)", "Dist->BetaInc(1.5, 1.0, 1.0)", "Dist->FSf(-1.0, 2.0, 2.0)",
@@ -172,11 +189,20 @@ def ttest_test():
         v1, v2 = a.var(ddof=1), b.var(ddof=1)
         sp_ = math.sqrt(((n1 - 1) * v1 + (n2 - 1) * v2) / (n1 + n2 - 2))
         d = (m1 - m2) / sp_
-        g = d * (1 - 3 / (4 * (n1 + n2 - 2) - 1))
+        g = d * hedges_j(n1 + n2 - 2)
         for mode, ev, cls in [("student", True, "TwoSample"), ("welch", False, "Welch")]:
             for lvl in (0.95, 0.99):
                 r = st.ttest_ind(a, b, equal_var=ev)
                 ci = r.confidence_interval(lvl)
+                smt, smp, smdf = sw.ttest_ind(a, b, usevar="pooled" if ev else "unequal")
+                agree(smt, r.statistic, "ttest_ind t")
+                agree(smp, r.pvalue, "ttest_ind p")
+                agree(smdf, r.df, "ttest_ind df")
+                cm = sw.CompareMeans(sw.DescrStatsW(a), sw.DescrStatsW(b))
+                lo_, hi_ = cm.tconfint_diff(alpha=1 - lvl, usevar="pooled" if ev else "unequal")
+                agree(lo_, ci.low, "ci low")
+                agree(hi_, ci.high, "ci high")
+                ci = type("CI", (), {"low": lo_, "high": hi_})
                 nm = "%s %s level %s" % (key, mode, lvl)
                 t.add('r := TTest->%s(a, b, %s);' % (cls, num(lvl)))
                 t.add('ok := Report("%s: valid", r->IsValid()) & ok;' % nm)
@@ -195,6 +221,10 @@ def ttest_test():
         for mu in (0.0, round(float(m1), 1) + 0.3):
             r = st.ttest_1samp(a, mu)
             ci = r.confidence_interval(0.95)
+            smt, smp, smdf = sw.DescrStatsW(a).ttest_mean(mu)
+            agree(smt, r.statistic, "ttest_1samp t")
+            agree(smp, r.pvalue, "ttest_1samp p")
+            agree(smdf, r.df, "ttest_1samp df")
             nm = "%s one-sample mu=%s" % (key, mu)
             sd = a.std(ddof=1)
             t.add('r := TTest->OneSample(a, %s);' % num(mu))
@@ -205,12 +235,16 @@ def ttest_test():
             t.near(nm + " ci low", "r->GetCiLow()", ci.low - mu)
             t.near(nm + " ci high", "r->GetCiHigh()", ci.high - mu)
             t.near(nm + " d", "r->GetCohenD()", (m1 - mu) / sd)
-            t.near(nm + " g", "r->GetHedgesG()", (m1 - mu) / sd * (1 - 3 / (4 * (n1 - 1) - 1)))
+            t.near(nm + " g", "r->GetHedgesG()", (m1 - mu) / sd * hedges_j(n1 - 1))
         k = min(n1, n2)
         pa, pb = a[:k], b[:k]
         r = st.ttest_rel(pa, pb)
         ci = r.confidence_interval(0.95)
         dd = pa - pb
+        smt, smp, smdf = sw.DescrStatsW(dd).ttest_mean(0.0)
+        agree(smt, r.statistic, "ttest_rel t")
+        agree(smp, r.pvalue, "ttest_rel p")
+        agree(smdf, r.df, "ttest_rel df")
         nm = "%s paired" % key
         t.add('pa := Float->New[%d];' % k)
         t.add('pb := Float->New[%d];' % k)
@@ -292,25 +326,33 @@ def corr_ols_test():
     def ols(X, yv, const, label, expr_fit, names):
         k = X.shape[1]
         nn = len(yv)
-        beta, *_ = np.linalg.lstsq(X, yv, rcond=None)
-        res = yv - X @ beta
-        ssr = float(res @ res)
-        dfr = nn - k
-        s2 = ssr / dfr
-        cov = s2 * np.linalg.inv(X.T @ X)
-        se = np.sqrt(np.diag(cov))
-        tt = beta / se
-        pv = 2 * st.t.sf(abs(tt), dfr)
-        crit = st.t.ppf(0.975, dfr)
-        tss = float(((yv - yv.mean()) ** 2).sum()) if const else float((yv ** 2).sum())
-        r2 = 1 - ssr / tss
-        dfm = k - (1 if const else 0)
-        adj = 1 - (nn - (1 if const else 0)) / dfr * (1 - r2)
-        F = ((tss - ssr) / dfm) / (ssr / dfr)
-        fp = st.f.sf(F, dfm, dfr)
-        llf = -nn / 2 * math.log(2 * math.pi) - nn / 2 * math.log(ssr / nn) - nn / 2
-        aic = -2 * llf + 2 * (dfm + 1)
-        bic = -2 * llf + (dfm + 1) * math.log(nn)
+        beta_np, *_ = np.linalg.lstsq(X, yv, rcond=None)
+        fit = sm.OLS(yv, X).fit()
+        beta = np.asarray(fit.params)
+        assert np.allclose(beta, beta_np, rtol=1e-9, atol=1e-12), "statsmodels vs lstsq"
+        se = np.asarray(fit.bse)
+        tt = np.asarray(fit.tvalues)
+        pv = np.asarray(fit.pvalues)
+        cis = np.asarray(fit.conf_int(0.05))
+        cov = np.asarray(fit.cov_params())
+        dfr = int(fit.df_resid)
+        dfm = int(fit.df_model)
+        ssr = float(fit.ssr)
+        s2 = float(fit.scale)
+        r2 = float(fit.rsquared)
+        adj = float(fit.rsquared_adj)
+        F = float(fit.fvalue)
+        fp = float(fit.f_pvalue)
+        llf = float(fit.llf)
+        aic = float(fit.aic)
+        bic = float(fit.bic)
+        # the hand formulas must still agree with statsmodels
+        nn = len(yv)
+        agree(llf, -nn / 2 * math.log(2 * math.pi) - nn / 2 * math.log(ssr / nn) - nn / 2, "llf")
+        agree(aic, -2 * llf + 2 * X.shape[1], "aic")
+        agree(bic, -2 * llf + X.shape[1] * math.log(nn), "bic")
+        k = X.shape[1]
+        crit = None
         t.add('f := %s;' % expr_fit)
         t.add('ok := Report("%s: valid", f->IsValid()) & ok;' % label)
         t.add('ci := f->GetConfInt(0.95);')
@@ -324,8 +366,8 @@ def corr_ols_test():
             t.near("%s se %s" % (label, names[j]), "se[%d]" % j, se[j])
             t.near("%s t %s" % (label, names[j]), "ts[%d]" % j, tt[j])
             t.near("%s p %s" % (label, names[j]), "ps[%d]" % j, pv[j], "1.0e-8")
-            t.near("%s ci low %s" % (label, names[j]), "ci[%d, 0]" % j, beta[j] - crit * se[j])
-            t.near("%s ci high %s" % (label, names[j]), "ci[%d, 1]" % j, beta[j] + crit * se[j])
+            t.near("%s ci low %s" % (label, names[j]), "ci[%d, 0]" % j, cis[j, 0])
+            t.near("%s ci high %s" % (label, names[j]), "ci[%d, 1]" % j, cis[j, 1])
             t.add('ok := Report("%s name %d is %s", nm[%d]->Equals("%s")) & ok;' % (label, j, names[j], j, names[j]))
         t.near(label + " R2", "f->GetRSquared()", r2)
         t.near(label + " adj R2", "f->GetAdjustedRSquared()", adj)

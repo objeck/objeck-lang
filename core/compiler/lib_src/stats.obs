@@ -41,6 +41,22 @@ bundle System.Stats {
 		}
 
 		#~
+		Hedges' small-sample correction factor for Cohen's d, exactly: Gamma(df/2) / (sqrt(df/2) * Gamma((df-1)/2)). It is 0 at df = 1 (the limit), and close to 1 - 3 / (4 df - 1).
+		@param df degrees of freedom, 1 or more
+		@return the factor, NaN below 1
+		~#
+		function : HedgesJ(df : Float) ~ Float {
+			if(IsNaN(df) | df < 1.0) {
+				return Float->NaN();
+			};
+			if(df = 1.0) {
+				return 0.0;
+			};
+
+			return Float->Exp(LogGamma(df / 2.0) - LogGamma((df - 1.0) / 2.0)) / Float->Sqrt(df / 2.0);
+		}
+
+		#~
 		Natural log of the gamma function, for x above 0 (Lanczos approximation, about 15 digits).
 		@param x argument, above 0
 		@return log(gamma(x)), NaN when x is not above 0 or not finite
@@ -738,7 +754,7 @@ bundle System.Stats {
 		}
 
 		#~
-		Hedges' g: Cohen's d with the small-sample correction 1 - 3 / (4 df - 1).
+		Hedges' g: Cohen's d times the exact small-sample correction Gamma(df/2) / (sqrt(df/2) * Gamma((df-1)/2)) (see Dist->HedgesJ).
 		@return g
 		~#
 		method : public : GetHedgesG() ~ Float {
@@ -870,7 +886,7 @@ if(r->IsValid() & r->GetP() < 0.05) {
 			p := Dist->StudentTwoSidedP(t, df);
 			crit := Dist->StudentQuantile(1.0 - (1.0 - level) / 2.0, df);
 			d := diff / sd;
-			g := d * (1.0 - 3.0 / (4.0 * dfd - 1.0));
+			g := d * Dist->HedgesJ(dfd);
 
 			return TTestResult->New(mname, "", t, df, p, diff, se, diff - crit * se, diff + crit * se, level, d, g, n1, n2, m1, m2);
 		}
@@ -1411,7 +1427,7 @@ if(r->IsValid() & r->GetP() < 0.05) {
 	#~
 	An ordinary least squares fit with its summary statistics. A failed fit (IsValid() false) has Nil arrays and NaN numbers, and GetError() says why.
 
-	With an intercept, R-squared uses the centred total sum of squares and the F test is against the intercept-only model; without one they use the uncentred sum of squares, as statsmodels does. AIC and BIC come from the Gaussian log-likelihood and, like statsmodels, count df_model + 1 parameters (so the same number as the coefficient count when there is an intercept).
+	With an intercept, R-squared uses the centred total sum of squares and the F test is against the intercept-only model; without one they use the uncentred sum of squares, as statsmodels does. AIC and BIC come from the Gaussian log-likelihood and count one parameter per coefficient, as statsmodels does.
 	~#
 	class OLSResult {
 		@error : String;
@@ -1492,7 +1508,7 @@ if(r->IsValid() & r->GetP() < 0.05) {
 					@fp := Dist->FSf(@fstat, @df_model, @df_resid);
 				};
 				@llf := -nf / 2.0 * Float->Log(2.0 * Float->Pi()) - nf / 2.0 * Float->Log(@ssr / nf) - nf / 2.0;
-				kp := @df_model + 1.0;
+				kp := @k->As(Float);
 				@aic := -2.0 * @llf + 2.0 * kp;
 				@bic := -2.0 * @llf + kp * Float->Log(nf);
 			};
