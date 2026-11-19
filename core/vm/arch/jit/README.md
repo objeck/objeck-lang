@@ -64,7 +64,7 @@ A compiled frame's locals are laid out from the method's declarations (`ProcessI
 ### Reference maps, and the load-time check built on them
 Both back-ends build a **reference map** of each method before they compile it (`RefMap::Build`, `arch/ref_map.h`). One forward pass over the bytecode follows every path and records, for each instruction, the height of the operand stack and the kind of each word on it (reference, `Int`, `Float`, or unknown), so the compiler knows which spilled values the collector must treat as references. The same pass is a stack-discipline check, which the loader now runs on every method that has a body (`Loader::Verify`, `core/vm/loader.cpp`) before anything executes. A program is refused with `>>> Invalid bytecode: <method>, instruction <i>: <reason> <<<` when a method:
 
-- pops an empty operand stack (`the operand stack runs out`), or reaches a join from two paths at different stack heights (`stack heights differ where control flow joins`);
+- pops an empty operand stack (`the operand stack runs out`), or reaches a join from two paths at different stack heights (`stack heights differ where control flow joins`), or holds more than 1,000 words on the operand stack above its arguments (a call guarantees 1,024);
 - names a local its declarations do not have, or calls a method that does not exist;
 - uses a **non-zero integer literal as a reference**: Nil is the literal zero, so any other literal that is later read through, stored to a reference local, or used as a call's receiver is an address nobody allocated (`an integer literal used as a reference`);
 - or holds an instruction the map does not model.
