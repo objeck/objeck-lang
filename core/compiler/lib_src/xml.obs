@@ -399,7 +399,10 @@ if(parser->Parse()) {
 ```
 elem := XmlParser->TextToElement("<msg><body>Hello</body></msg>");
 if(elem <> Nil) {
-  elem->GetFirstChild("body")->GetContent()->PrintLine();
+  body := elem->GetFirstChild("body");   # Nil when there is no body
+  if(body <> Nil) {
+    body->GetContent()->PrintLine();
+  };
 };
 ```
                 ~#
@@ -1596,7 +1599,10 @@ if(parser->Parse()) {
 ```
 parser := XmlParser->New("<root><first/><second/></root>");
 if(parser->Parse()) {
-  parser->GetRoot()->Get(1)->GetName()->PrintLine();
+  second := parser->GetRoot()->Get(1);   # Nil when there is no such child
+  if(second <> Nil) {
+    second->GetName()->PrintLine();
+  };
 };
 ```
 		~#
@@ -1767,7 +1773,10 @@ if(parser->Parse()) {
 ```
 parser := XmlParser->New("<list><item>first</item><item>second</item></list>");
 if(parser->Parse()) {
-  parser->GetRoot()->GetFirstChild("item")->GetContent()->PrintLine();
+  item := parser->GetRoot()->GetFirstChild("item");   # Nil when there is none
+  if(item <> Nil) {
+    item->GetContent()->PrintLine();
+  };
 };
 ```
 		~#
@@ -1789,7 +1798,10 @@ if(parser->Parse()) {
 ```
 parser := XmlParser->New("<list><item>first</item><item>last</item></list>");
 if(parser->Parse()) {
-  parser->GetRoot()->GetLastChild("item")->GetContent()->PrintLine();
+  item := parser->GetRoot()->GetLastChild("item");   # Nil when there is none
+  if(item <> Nil) {
+    item->GetContent()->PrintLine();
+  };
 };
 ```
 		~#

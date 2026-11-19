@@ -63,8 +63,10 @@ bundle API.Onnx {
 	labels := ["person", "bicycle", "car"];
 	session := YoloSession->New("yolo11n.onnx");
 	result := session->Inference(image_bytes, 640, 640, 0.5, labels);
-	each(cls in result->GetClassifications()) {
-	  "{cls->GetName()}: {cls->GetConfidence()}"->PrintLine();
+	if(result <> Nil) {   # Nil when the image or the session is bad
+	  each(cls in result->GetClassifications()) {
+	    "{cls->GetName()}: {cls->GetConfidence()}"->PrintLine();
+	  };
 	};
 	session->Close();
 	```
@@ -174,8 +176,10 @@ labels := ["person", "car", "dog"];
 session := YoloSession->New("yolo11n.onnx");
 image := FileReader->ReadBinaryFile("photo.jpg");
 result := session->Inference(image, 640, 640, 0.5, labels);
-each(cls in result->GetClassifications()) {
-  "{$cls->GetName()}: {$cls->GetConfidence()}"->PrintLine();
+if(result <> Nil) {   # Nil when the image or the session is bad
+  each(cls in result->GetClassifications()) {
+    "{$cls->GetName()}: {$cls->GetConfidence()}"->PrintLine();
+  };
 };
 session->Close();
 ```
@@ -451,7 +455,9 @@ each(cls in result->GetClassifications()) {
 	labels := ["tabby cat", "golden retriever", "sports car"];
 	session := ResNetSession->New("resnet50.onnx");
 	result := session->Inference(image_bytes, 224, 224, labels);
-	"Top: {result->GetName()} ({result->GetConfidence()})"->PrintLine();
+	if(result <> Nil) {   # Nil when the image or the session is bad
+	  "Top: {result->GetName()} ({result->GetConfidence()})"->PrintLine();
+	};
 	session->Close();
 	```
 	~#
@@ -559,7 +565,9 @@ labels := ["cat", "dog", "bird"];
 session := ResNetSession->New("resnet50.onnx");
 image := FileReader->ReadBinaryFile("animal.jpg");
 result := session->Inference(image, 224, 224, labels);
-"Top class: {$result->GetName()} ({$result->GetConfidence()})"->PrintLine();
+if(result <> Nil) {   # Nil when the image or the session is bad
+  "Top class: {$result->GetName()} ({$result->GetConfidence()})"->PrintLine();
+};
 session->Close();
 ```
 		~#
@@ -700,8 +708,10 @@ session->Close();
 	labels := ["background", "person", "bicycle", "car"];
 	session := DeepLabSession->New("deeplabv3.onnx");
 	result := session->Inference(image_bytes, labels);
-	each(cls in result->GetClassifications()) {
-	  "{cls->GetName()}: {cls->GetConfidence()}%"->PrintLine();
+	if(result <> Nil) {   # Nil when the image or the session is bad
+	  each(cls in result->GetClassifications()) {
+	    "{cls->GetName()}: {cls->GetConfidence()}%"->PrintLine();
+	  };
 	};
 	session->Close();
 	```
@@ -810,8 +820,10 @@ labels := ["background", "person", "car"];
 session := DeepLabSession->New("deeplabv3.onnx");
 image := FileReader->ReadBinaryFile("scene.jpg");
 result := session->Inference(image, labels);
-each(cls in result->GetClassifications()) {
-  "{$cls->GetName()}: {$cls->GetConfidence()}%"->PrintLine();
+if(result <> Nil) {   # Nil when the image or the session is bad
+  each(cls in result->GetClassifications()) {
+    "{$cls->GetName()}: {$cls->GetConfidence()}%"->PrintLine();
+  };
 };
 session->Close();
 ```
@@ -1037,9 +1049,11 @@ session->Close();
 	  "left_knee", "right_knee", "left_ankle", "right_ankle"];
 	session := OpenPoseSession->New("openpose.onnx");
 	result := session->Inference(image_bytes, labels);
-	each(kp in result->GetClassifications()) {
-	  if(kp->GetConfidence() > 0) {
-	    "{kp->GetName()}: [{kp->GetNormalizedX()}, {kp->GetNormalizedY()}]"->PrintLine();
+	if(result <> Nil) {   # Nil when the image or the session is bad
+	  each(kp in result->GetClassifications()) {
+	    if(kp->GetConfidence() > 0) {
+	      "{kp->GetName()}: [{kp->GetNormalizedX()}, {kp->GetNormalizedY()}]"->PrintLine();
+	    };
 	  };
 	};
 	session->Close();
@@ -1151,9 +1165,11 @@ labels := ["nose", "left_eye", "right_eye", "left_ear", "right_ear",
 session := OpenPoseSession->New("openpose.onnx");
 image := FileReader->ReadBinaryFile("person.jpg");
 result := session->Inference(image, labels);
-each(kp in result->GetClassifications()) {
-  if(kp->GetConfidence() > 0) {
-    "{$kp->GetName()}: ({$kp->GetNormalizedX()},{$kp->GetNormalizedY()})"->PrintLine();
+if(result <> Nil) {   # Nil when the image or the session is bad
+  each(kp in result->GetClassifications()) {
+    if(kp->GetConfidence() > 0) {
+      "{$kp->GetName()}: ({$kp->GetNormalizedX()},{$kp->GetNormalizedY()})"->PrintLine();
+    };
   };
 };
 session->Close();

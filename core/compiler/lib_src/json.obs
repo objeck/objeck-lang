@@ -378,16 +378,20 @@ doc := Web.HTTP.HttpsClient->QuickGet(Web.HTTP.Url->New("https://dummyjson.com/c
 if(doc <> Nil) {
    parser := Data.JSON.JsonParser->New(String->New(doc));
    if(parser->Parse()) {
-      carts := parser->GetRoot()->Get("carts");
-      if(carts->Size() > 0) {
+      carts := parser->GetRoot()->Get("carts");   # Get is Nil for a missing member
+      if(carts <> Nil & carts->Size() > 0) {
          cart := carts->Get(Int->Random(carts->Size()));
-         cart_id := cart->Get("id")->GetInt();
-         "cart id={$cart_id}\n---"->PrintLine();
+         cart_id := cart->Get("id");
          products := cart->Get("products");
-         each(product := products) {
-            product_id := product->Get("id")->GetInt();
-            product_title := product->Get("title")->GetString();
-            "\tid={$product_id}, title: '{$product_title}'"->PrintLine();
+         if(cart_id <> Nil & products <> Nil) {
+            "cart id={$cart_id->GetInt()}\n---"->PrintLine();
+            each(product := products) {
+               product_id := product->Get("id");
+               product_title := product->Get("title");
+               if(product_id <> Nil & product_title <> Nil) {
+                  "\tid={$product_id->GetInt()}, title: '{$product_title->GetString()}'"->PrintLine();
+               };
+            };
          };
       };
    };
@@ -471,7 +475,12 @@ if(doc <> Nil) {
 
 		```
 		elem := Data.JSON.JsonParser->TextToElement("{\"k\":\"v\"}");
-		elem->Get("k")->GetString()->PrintLine();  # v
+		if(elem <> Nil) {
+		  k := elem->Get("k");   # Nil for a missing member
+		  if(k <> Nil) {
+		    k->GetString()->PrintLine();  # v
+		  };
+		};
 		```
 		~#
 		function : TextToElement(text : String) ~ JsonElement {
@@ -490,8 +499,10 @@ if(doc <> Nil) {
 		```
 		parser := Data.JSON.JsonParser->New("{\"name\":\"Alice\",\"age\":30}");
 		if(parser->Parse()) {
-		  root := parser->GetRoot();
-		  root->Get("name")->GetString()->PrintLine();
+		  name := parser->GetRoot()->Get("name");   # Nil for a missing member
+		  if(name <> Nil) {
+		    name->GetString()->PrintLine();
+		  };
 		} else {
 		  parser->GetError()->PrintLine();
 		};
@@ -533,9 +544,12 @@ if(doc <> Nil) {
 
 		```
 		parser := Data.JSON.JsonParser->New("{\"x\":1}");
-		parser->Parse();
-		root := parser->GetRoot();
-		root->Get("x")->GetInt()->PrintLine();  # 1
+		if(parser->Parse()) {
+		  x := parser->GetRoot()->Get("x");   # Nil for a missing member
+		  if(x <> Nil) {
+		    x->GetInt()->PrintLine();  # 1
+		  };
+		};
 		```
 		~#
 		method : public : GetRoot() ~ JsonElement {
@@ -1152,9 +1166,18 @@ if(doc <> Nil) {
 	JSON value element
 
 ```
-json := JsonParser->Parse("{\"name\": \"John\", \"age\": 30}");
-json->Get("name")->GetValue()->PrintLine();
-json->Get("age")->GetInt()->PrintLine();
+json := JsonParser->TextToElement("{\"name\": \"John\", \"age\": 30}");
+if(json <> Nil) {
+  name := json->Get("name");   # Nil for a missing member
+  if(name <> Nil) {
+    name->GetString()->PrintLine();
+  };
+
+  age := json->Get("age");
+  if(age <> Nil) {
+    age->GetInt()->PrintLine();
+  };
+};
 
 # create JSON programmatically
 obj := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -1346,7 +1369,10 @@ obj->ToString()->PrintLine();
 
 		```
 		root := Data.JSON.JsonParser->TextToElement("{\"city\":\"Oakland\"}");
-		root->Get("city")->GetString()->PrintLine();  # Oakland
+		city := root->Get("city");   # Nil for a missing member
+		if(city <> Nil) {
+		  city->GetString()->PrintLine();  # Oakland
+		};
 		```
 		~#
 		method : public : GetString() ~ String {
@@ -1363,7 +1389,10 @@ obj->ToString()->PrintLine();
 
 		```
 		root := Data.JSON.JsonParser->TextToElement("{\"port\":8080}");
-		root->Get("port")->GetInt()->PrintLine();  # 8080
+		port := root->Get("port");   # Nil for a missing member
+		if(port <> Nil) {
+		  port->GetInt()->PrintLine();  # 8080
+		};
 		```
 		~#
 		method : public : GetInt() ~ Int {
@@ -1386,7 +1415,10 @@ obj->ToString()->PrintLine();
 
 		```
 		root := Data.JSON.JsonParser->TextToElement("{\"pi\":3.14}");
-		root->Get("pi")->GetFloat()->PrintLine();  # 3.14
+		pi := root->Get("pi");   # Nil for a missing member
+		if(pi <> Nil) {
+		  pi->GetFloat()->PrintLine();  # 3.14
+		};
 		```
 		~#
 		method : public : GetFloat() ~ Float {
@@ -1403,7 +1435,10 @@ obj->ToString()->PrintLine();
 
 		```
 		root := Data.JSON.JsonParser->TextToElement("{\"active\":true}");
-		root->Get("active")->GetBool()->PrintLine();  # true
+		active := root->Get("active");   # Nil for a missing member
+		if(active <> Nil) {
+		  active->GetBool()->PrintLine();  # true
+		};
 		```
 		~#
 		method : public : GetBool() ~ Bool {
@@ -1448,7 +1483,10 @@ obj->ToString()->PrintLine();
 
 		```
 		obj := Data.JSON.JsonParser->TextToElement("{\"x\":42}");
-		obj->Get("x")->GetInt()->PrintLine();  # 42
+		x := obj->Get("x");   # Nil for a missing member
+		if(x <> Nil) {
+		  x->GetInt()->PrintLine();  # 42
+		};
 		```
 		~#
 		method : public : Get(name : String) ~ JsonElement {
