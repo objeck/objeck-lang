@@ -889,6 +889,7 @@ tree-&gt;Predict([true, true])-&gt;PrintLine();
 forest := RandomForest-&gt;New(16);       # bootstrap + majority vote
 forest-&gt;Fit(data);
 forest-&gt;Score(data)-&gt;PrintLine();
+scores := forest-&gt;PredictScore(data);  # votes_true / ntrees per row, for Metrics-&gt;AucRoc and RecallAtFpr
 
 booster := AdaBoost-&gt;New(16);          # boosted decision stumps
 booster-&gt;Fit(data);
@@ -961,6 +962,33 @@ labels := head-&gt;PredictClass(X_test, 0.5);
 <pre class="line-numbers"><code class="language-cpp">model-&gt;Store("model.dat");
 loaded := LinearRegression-&gt;Load("model.dat");
 loaded-&gt;Predict(X);
+</code></pre>
+    <p><code>Load</code> answers Nil for a file that is missing, not a zlib stream (a truncated download, a file from another tool) or not a model of that type, rather than ending the program. Check for Nil, as above. <code>System.IO.Deserializer</code> has the same two pieces for your own formats: <code>IsOk()</code> is false when the bytes were Nil, damaged or not zlib, and every read then answers its zero value; <code>Byte-&gt;TryUncompressZlib(bytes)</code> is <code>UncompressZlib</code> that returns Nil instead of ending the program.</p>
+    <h4 id="bad-input">Bad input</h4>
+    <p><code>Fit</code>, <code>Predict</code>, <code>Transform</code> and <code>Score</code> do not end the program on a Nil, an empty or a wrong-width matrix, or on targets that do not match its rows. They answer a failure value instead, as scikit-learn raises a <code>ValueError</code> you can catch. What that value is depends on the method:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Call</th><th>On bad input</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Call"><code>Fit</code> of the matrix models (the linear models, <code>GaussianNaiveBayes</code>, <code>PCA</code>, <code>FeatureScaler</code>, <code>GaussianMixture</code>, <code>DBSCAN</code>, the tree and boosting classes, <code>KernelSVM</code>, <code>OneClassSVM</code>, <code>AdaBoost</code>)</td><td data-label="On bad input"><code>false</code></td></tr>
+      <tr><td data-label="Call"><code>DenseNetwork-&gt;Fit</code></td><td data-label="On bad input">a Float below 0.0 (the loss otherwise)</td></tr>
+      <tr><td data-label="Call"><code>DecisionTree-&gt;Fit</code> and <code>RandomForest-&gt;Fit</code> (the <code>Bool[,]</code> ones)</td><td data-label="On bad input">Nil, as always: the failure shows in <code>IsFitted()</code></td></tr>
+      <tr><td data-label="Call"><code>Predict</code>, <code>PredictScore</code>, <code>PredictAll</code>, <code>Transform</code></td><td data-label="On bad input">Nil</td></tr>
+      <tr><td data-label="Call"><code>Score</code></td><td data-label="On bad input"><code>0.0</code></td></tr>
+      <tr><td data-label="Call"><code>Predict(row)</code> of <code>RegressionTree</code> and <code>DecisionTree</code>, whose result has no room for an error</td><td data-label="On bad input"><code>0.0</code> / <code>false</code>, for a row of another width than the tree was fitted on</td></tr>
+     </tbody>
+    </table>
+    <p><code>Score</code> returns <code>0.0</code> for bad input, which is also a real accuracy or R-squared. To tell them apart, call <code>Predict</code> on the same matrix first (it is Nil for bad input), or check <code>IsFitted()</code>. <code>Metrics-&gt;ThresholdAtFpr</code> has the same limit: it returns <code>0.0</code> for bad input and for a real threshold of 0.0; <code>Metrics-&gt;RecallAtFpr</code> returns -1.0 for the same input, so check that first.</p>
+    <p>A model remembers the width it was fitted on, so a feature matrix with a different column count at predict time (the usual mistake, and the one a changed CSV produces) gets Nil. A <code>Bool[,]</code> model takes the width of its training matrix, label column included, for <code>Score</code> and either that width or one less for <code>Predict</code>. A tree or forest read back from a file has no width on record, so only the shape is checked there.</p>
+    <p>A <code>Fit</code> that is refused for its arguments leaves most models as they were: the linear models, the trees and boosters, <code>GaussianNaiveBayes</code>, <code>GaussianMixture</code>, <code>PCA</code>, <code>FeatureScaler</code>, <code>DBSCAN</code>, <code>AdaBoost</code>, the <code>Bool[,]</code> trees and forests and <code>DenseNetwork</code> (which has no fitted flag, only its weights). <code>IsFitted()</code> stays true and <code>Predict</code> answers from the earlier fit, as scikit-learn leaves the old model when <code>fit</code> raises. <code>KernelSVM</code>, <code>OneClassSVM</code>, <code>EmbeddingClassifier</code> and the outlier detectors mark themselves unfitted at the start of <code>Fit</code>, so a refused refit leaves them unfitted, and so does a <code>Fit</code> that fails inside the solver (a singular system). Check the result of <code>Fit</code>, or <code>IsFitted()</code> on a model you meant to fit for the first time, rather than assuming either. <code>programs/regression/ml_input_validation.obs</code> runs every model against Nil, empty, wrong-width and mismatched-target inputs.</p>
+<pre class="line-numbers"><code class="language-cpp">if(&lt;&gt;model-&gt;Fit(X, y)) {
+  "could not fit: check that X and y have the same number of rows"-&gt;ErrorLine();
+};
+preds := model-&gt;Predict(X_new);
+if(preds = Nil) {
+  "X_new does not have the columns the model was fitted on"-&gt;ErrorLine();
+};
 </code></pre>
     <h4 id="lab-support-systemmllab">Lab support (System.ML.Lab)</h4>
     <p>The plumbing around a parameter sweep, in <code>ml_lab.obl</code> (<code>-lib ml,ml_lab,csv,json</code> or <code>-lib @ai</code>): a deterministic stratified hold-out split, class-ratio resampling of the training set against a fixed test set, a wall-clock stopwatch, a sweep runner that collects accuracy, precision, recall, F1, FPR, false negatives and fit time per value (mean and standard deviation over seeds), a result table that renders as text, Markdown, CSV and JSON, and standalone SVG charts. Bad input raises <code>LabError</code> with a message naming the problem. Design: <a href="doc_ml_lab.html">ML_LAB_SUPPORT_DESIGN.md</a>; a complete run is <a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/ml/lab_sweeps.obs" target="_blank"><code>programs/examples/ml/lab_sweeps.obs</code></a>.</p>
