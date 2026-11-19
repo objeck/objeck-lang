@@ -17269,6 +17269,394 @@
 				}
 			}
 		},
+		"System.NLP.Topics.BsonReader": {
+			"description": "Decodes MongoDB BSON (bsonspec.org version 1.1) into Data.JSON elements. A .bson dump from mongodump is a plain concatenation of documents, each starting with its own little-endian int32 total length; HasNext/Next walk it one document at a time without decoding the rest.\n\nNothing here ends the program on bad input. A truncated file, a length that runs past the data or past its parent document, a length below the 5-byte minimum, a missing terminator, an unknown or unsupported type byte, an unterminated name or string, a Boolean that is not 0 or 1 and nesting deeper than 100 levels (MongoDB's own limit) all make Next return Nil and set GetError() to a message with the byte offset; after an error HasNext is false, so a loop always ends. Every length is checked against the bytes that are left before it is used, so a hostile file cannot make the reader read out of range or loop without advancing.\n\nHow BSON types map onto JSON elements. Documents become objects and arrays become arrays; strings, int32 and int64 become strings and numbers; a double becomes a number, except NaN and the infinities, which become the strings \"NaN\", \"Infinity\" and \"-Infinity\" (JSON has no such numbers); true and false and null map to themselves, and the deprecated undefined is null. An ObjectId becomes its 24-character lowercase hex string. A UTC datetime becomes an ISO-8601 string with milliseconds (\"2021-03-04T05:06:07.089Z\"), or \"ms:\" and the number for a date outside years 0000 to 9999. Binary becomes {\"$binary\": hex, \"$type\": subtype}, a timestamp {\"$timestamp\": {\"t\": seconds, \"i\": increment}}, a regular expression {\"$regex\": pattern, \"$options\": flags}, JavaScript code and symbols plain strings, min and max keys {\"$minKey\": 1} and {\"$maxKey\": 1}. Decimal128 is NOT decoded: it becomes {\"$decimal128\": hex} holding its 16 raw bytes as stored (little-endian), so the value is kept and a program can tell it apart. DBPointer and code-with-scope are refused with an error. Strings are bytes as stored, UTF-8 is not validated; a repeated name in one document keeps the last value. Int64 values beyond what a JSON number text round-trips are still exact here, because numbers are carried as text.",
+			"functions": {
+				"ExtractStrings": {
+					"descriptions": ["**Takes one string field from every remaining document, for example the tweet text. The field may be a dotted path into embedded documents (\"user.description\"). Documents without the field, or where it is not a string, are skipped and counted in GetSkipped().**\n\n```method : public : ExtractStrings(field:String) ~ Vector&lt;String&gt;```\n\n\n\nfield: String\n\nreturn: Vector&lt;String&gt;"]
+				},
+				"FromFile": {
+					"descriptions": ["**Reads a whole .bson file into memory and makes a reader over it.**\n\n```function : FromFile(path:String) ~ BsonReader```\n\n\n\npath: String\n\nreturn: BsonReader"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last failure happened, or an empty string.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetPosition": {
+					"descriptions": ["**Byte offset of the next document.**\n\n```method : public : GetPosition() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetSkipped": {
+					"descriptions": ["**Number of documents ExtractStrings left out because the field was missing or not a string.**\n\n```method : public : GetSkipped() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"HasNext": {
+					"descriptions": ["**True while there is another document and no error has happened.**\n\n```method : public : HasNext() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Creates a reader over bytes already in memory. Nil bytes give a reader with an error and nothing to read.**\n\n```New(data:Byte[])```\n\n\n\ndata: Byte[]"]
+				},
+				"Next": {
+					"descriptions": ["**Decodes the next document.**\n\n```method : public : Next() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"ReadAll": {
+					"descriptions": ["**Decodes every remaining document. Unlike Next this is all or nothing: one bad document gives Nil.**\n\n```method : public : ReadAll() ~ Vector&lt;JsonElement&gt;```\n\n\n\nreturn: Vector&lt;JsonElement&gt;"]
+				},
+				"ReadStrings": {
+					"descriptions": ["**One call for the common case: read a .bson file and take one string field from every document.**\n\n```function : ReadStrings(path:String, field:String) ~ Vector&lt;String&gt;```\n\n\n\npath: String\n\nfield: String\n\nreturn: Vector&lt;String&gt;"]
+				}
+			}
+		},
+		"System.NLP.Topics.FilterReport": {
+			"description": "What FilterExtremes removed: the dictionary size and the share of token occurrences lost, the two numbers the min-frequency experiment reports.",
+			"functions": {
+				"GetTokensAfter": {
+					"descriptions": ["**Token occurrences left.**\n\n```method : public : GetTokensAfter() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetTokensBefore": {
+					"descriptions": ["**Token occurrences in the corpus before the filter.**\n\n```method : public : GetTokensBefore() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetTokensRemovedPercent": {
+					"descriptions": ["**Percent of the token OCCURRENCES (not the distinct tokens) that were removed, 0 to 100; 0 when there were none.**\n\n```method : public : GetTokensRemovedPercent() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetTypesAfter": {
+					"descriptions": ["**Distinct tokens left: the dictionary size.**\n\n```method : public : GetTypesAfter() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetTypesBefore": {
+					"descriptions": ["**Distinct tokens before the filter.**\n\n```method : public : GetTypesBefore() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetTypesRemovedPercent": {
+					"descriptions": ["**Percent of the distinct tokens that were removed, 0 to 100; 0 when there were none.**\n\n```method : public : GetTypesRemovedPercent() ~ Float```\n\n\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.NLP.Topics.Lda": {
+			"description": "An LDA topic model trained by online variational Bayes, the algorithm of Hoffman, Blei and Bach (2010) in the form Gensim's LdaModel uses it, so its parameters mean the same: num_topics, alpha (the document-topic prior), eta (the topic-word prior), passes over the corpus, iterations of the per-document E step, a random seed.\n\nHow it compares with Gensim. The updates, the learning-rate schedule rho = (offset + pass + chunks_seen) ^ -decay (offset 1, decay 0.5), the chunk size (2000), the E-step stopping rule (mean change of gamma under 0.001, at most iterations rounds), the per-word likelihood bound and 'auto' alpha follow Gensim's LdaModel. Results are comparable in kind but NOT numerically identical to Gensim's: the random number generator differs (so the same seed gives a different but equally valid model), the E step starts every document from gamma = 1 instead of a random draw (so inferring a document is deterministic), and floating-point summation order differs. Same seed and same inputs always give the same model here, on every platform.\n\nTraining touches the corpus in order, in chunks of GetChunkSize documents, one update of the topics per chunk; with passes above 1 the corpus is walked again. A corpus smaller than one chunk gets one update per pass, so give small corpora a smaller chunk size (SetChunkSize) or more passes.\n\nAlpha: a positive number is a symmetric prior; 0 means Gensim's default 1/num_topics. SetAlphaMode switches to \"asymmetric\" (alpha_k proportional to 1/(k + sqrt(num_topics)), scaled to sum to 1, as Gensim does) or \"auto\" (alpha is learned by Newton steps on the Dirichlet likelihood, starting from the symmetric value, as Gensim's alpha=\"auto\"). Eta: a positive number, or 0 for 1/num_topics.\n\nLikelihood bound and perplexity. LogPerplexityBound is Gensim's log_perplexity: the variational lower bound on the corpus log likelihood divided by the number of word occurrences. It is a per-word LOG LIKELIHOOD BOUND, negative, higher (closer to 0) is better; it is not perplexity. Perplexity = exp(-bound) (Perplexity computes it), lower is better. Both include the global topic-word term, so a bound on a held-out corpus is comparable between models but not to the training bound.\n\nNothing here ends the program on bad input: a bad setting is refused with a reason (Fit returns false, GetError says why), degenerate input gives false, Nil or NaN, never an exception. Not thread-safe.",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Trains the model on a corpus, replacing anything trained before. The seed is applied afresh, so two Fit calls with the same settings and corpus give the same model.**\n\n```method : public : Fit(corpus:TopicCorpus, dict:TokenDictionary) ~ Bool```\n\n\n\ncorpus: TopicCorpus\n\ndict: TokenDictionary\n\nreturn: Bool"]
+				},
+				"FitBest": {
+					"descriptions": ["**Trains the same model from several seeds and keeps the one with the best likelihood bound. Variational Bayes starts from a random point and can end in a local optimum (two real topics merged into one, another split in two), and the per-word bound on the training corpus tells such a run from a good one: it is clearly lower. Seeds first_seed, first_seed+1, ... are tried in turn, one after the other, so the cost is tries times one Fit.**\n\n```function : FitBest(corpus:TopicCorpus, dict:TokenDictionary, num_topics:Int, alpha:Float, eta:Float, passes:Int, iterations:Int, chunk:Int, first_seed:Int, tries:Int) ~ Lda```\n\n\n\ncorpus: TopicCorpus\n\ndict: TokenDictionary\n\nnum_topics: Int\n\nalpha: Float\n\neta: Float\n\npasses: Int\n\niterations: Int\n\nchunk: Int\n\nfirst_seed: Int\n\ntries: Int\n\nreturn: Lda"]
+				},
+				"GetAlpha": {
+					"descriptions": ["**The alpha vector in use: the symmetric or asymmetric prior, or the learned one after an \"auto\" Fit.**\n\n```method : public : GetAlpha() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetDocumentTopicMatrix": {
+					"descriptions": ["**The topic mixtures of every document, flat: document d's mixture is entries d*num_topics to d*num_topics+num_topics-1.**\n\n```method : public : GetDocumentTopicMatrix(corpus:TopicCorpus) ~ Float[]```\n\n\n\ncorpus: TopicCorpus\n\nreturn: Float[]"]
+				},
+				"GetDocumentTopicMatrix2D": {
+					"descriptions": ["**The topic mixtures of every document as a matrix, one row per document and one column per topic, the shape a classifier's Fit takes. The same numbers as GetDocumentTopicMatrix.**\n\n```method : public : GetDocumentTopicMatrix2D(corpus:TopicCorpus) ~ Float[,]```\n\n\n\ncorpus: TopicCorpus\n\nreturn: Float[,]"]
+				},
+				"GetDocumentTopics": {
+					"descriptions": ["**The topic mixture of one document: p(topic | document), summing to 1, from the E step run to convergence on the trained topics. A document with no words gets the normalized alpha. The result does not depend on which other documents were asked about before.**\n\n```method : public : GetDocumentTopics(corpus:TopicCorpus, doc:Int) ~ Float[]```\n\n\n\ncorpus: TopicCorpus\n\ndoc: Int\n\nreturn: Float[]"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed, or \"\".**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetEta": {
+					"descriptions": ["**The eta in use.**\n\n```method : public : GetEta() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetLambda": {
+					"descriptions": ["**The topic-word pseudo-counts lambda that the model learned, in Gensim's layout: lambda[k * vocabulary + w] belongs to topic k and word w (lambda = eta + expected counts). p(word | topic) is each row divided by its sum.**\n\n```method : public : GetLambda() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetLambda2D": {
+					"descriptions": ["**The topic-word pseudo-counts as a matrix, one row per topic and one column per word. The same numbers as GetLambda.**\n\n```method : public : GetLambda2D() ~ Float[,]```\n\n\n\nreturn: Float[,]"]
+				},
+				"GetTopic": {
+					"descriptions": ["**The highest-probability words of one topic.**\n\n```method : public : GetTopic(topic:Int, top_n:Int) ~ TopicTerms```\n\n\n\ntopic: Int\n\ntop_n: Int\n\nreturn: TopicTerms"]
+				},
+				"GetTopicWord": {
+					"descriptions": ["**The word distribution of one topic: p(word | topic) for every word id, summing to 1.**\n\n```method : public : GetTopicWord(topic:Int) ~ Float[]```\n\n\n\ntopic: Int\n\nreturn: Float[]"]
+				},
+				"GetTopics": {
+					"descriptions": ["**The top words of every topic.**\n\n```method : public : GetTopics(top_n:Int) ~ Vector&lt;TopicTerms&gt;```\n\n\n\ntop_n: Int\n\nreturn: Vector&lt;TopicTerms&gt;"]
+				},
+				"GetTrainSeconds": {
+					"descriptions": ["**Wall-clock seconds the last Fit took.**\n\n```method : public : GetTrainSeconds() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetWord": {
+					"descriptions": ["**The word with an id.**\n\n```method : public : GetWord(id:Int) ~ String```\n\n\n\nid: Int\n\nreturn: String"]
+				},
+				"IsFitted": {
+					"descriptions": ["**True after a successful Fit or Load.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsValid": {
+					"descriptions": ["**Whether the settings given to the constructor are usable; when false, Fit refuses and GetError says which setting.**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Load": {
+					"descriptions": ["**Reads a model written by Save. A file that is missing, is not a model, is from a newer format, fails its checksum or holds impossible values gives Nil rather than ending the program.**\n\n```function : Load(filename:String) ~ Lda```\n\n\n\nfilename: String\n\nreturn: Lda"]
+				},
+				"LogPerplexityBound": {
+					"descriptions": ["**The per-word likelihood bound of a corpus under the model: Gensim's LdaModel.log_perplexity. A negative number; higher (closer to 0) is better. This is NOT perplexity: Perplexity() = exp(-bound). See the class description.**\n\n```method : public : LogPerplexityBound(corpus:TopicCorpus) ~ Float```\n\n\n\ncorpus: TopicCorpus\n\nreturn: Float"]
+				},
+				"New": {
+					"descriptions": ["**Sets up a model; nothing is trained until Fit. A bad setting does not end the program: the model refuses Fit and GetError says which setting.**\n\n```New(num_topics:Int, alpha:Float, eta:Float, passes:Int, iterations:Int, seed:Int)```\n\n\n\nnum_topics: Int\n\nalpha: Float\n\neta: Float\n\npasses: Int\n\niterations: Int\n\nseed: Int"]
+				},
+				"Perplexity": {
+					"descriptions": ["**Perplexity of a corpus under the model: exp(-LogPerplexityBound(corpus)). Lower is better. It is derived from a bound, so it overstates the true perplexity.**\n\n```method : public : Perplexity(corpus:TopicCorpus) ~ Float```\n\n\n\ncorpus: TopicCorpus\n\nreturn: Float"]
+				},
+				"Restore": {
+					"descriptions": ["**Installs a decoded model's state. It is public only so that Load, a function, can reach it; call Load, not this.**\n\n```method : public : Restore() ~ Nil```\n\n\n\nmode: Int\n\nchunk: Int\n\ndecay: Float\n\noffset: Float\n\nthreshold: Float\n\nseconds: Float\n\nalpha: Float[]\n\nsstats: Float[]\n\nvocab: String[]\n\nv: Int\n\nreturn: Nil"]
+				},
+				"Save": {
+					"descriptions": ["**Writes the trained model (topics, priors, vocabulary, settings) to a file, with a checksum.**\n\n```method : public : Save(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
+				},
+				"SetAlphaMode": {
+					"descriptions": ["**Chooses how alpha is set: \"symmetric\" (the default), \"asymmetric\" or \"auto\".**\n\n```method : public : SetAlphaMode(mode:String) ~ Bool```\n\n\n\nmode: String\n\nreturn: Bool"]
+				},
+				"SetChunkSize": {
+					"descriptions": ["**Sets how many documents are processed between updates of the topics (default 2000).**\n\n```method : public : SetChunkSize(size:Int) ~ Bool```\n\n\n\nsize: Int\n\nreturn: Bool"]
+				},
+				"SetGammaThreshold": {
+					"descriptions": ["**Sets the E-step stopping threshold on the mean change of gamma (default 0.001).**\n\n```method : public : SetGammaThreshold(threshold:Float) ~ Bool```\n\n\n\nthreshold: Float\n\nreturn: Bool"]
+				},
+				"SetLearningRate": {
+					"descriptions": ["**Sets the learning-rate schedule rho = (offset + t) ^ -decay (defaults offset 1, decay 0.5).**\n\n```method : public : SetLearningRate(offset:Float, decay:Float) ~ Bool```\n\n\n\noffset: Float\n\ndecay: Float\n\nreturn: Bool"]
+				},
+				"Store": {
+					"descriptions": ["**The same as Save, under the name the System.ML models use (Store and Load).**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.NLP.Topics.TokenDictionary": {
+			"description": "Token to id map with document and collection frequencies, equivalent to gensim.corpora.Dictionary: AddDocuments counts, FilterExtremes drops tokens that are too rare or too common (Gensim's filter_extremes, ids are compacted afterwards in their old order), ToCorpus turns token lists into a bag-of-words corpus. Tokens that are not in the dictionary are ignored by ToCorpus, as Gensim's doc2bow does.",
+			"functions": {
+				"AddDocument": {
+					"descriptions": ["**Counts one document: every token gets an id (new tokens take the next one), its collection frequency goes up by one per occurrence and its document frequency by one for the document. A Nil document counts as an empty one.**\n\n```method : public : AddDocument(tokens:Vector&lt;String&gt;) ~ Nil```\n\n\n\ntokens: Vector&lt;String&gt;\n\nreturn: Nil"]
+				},
+				"AddDocuments": {
+					"descriptions": ["**Counts many documents.**\n\n```method : public : AddDocuments(docs:Vector&lt;Vector&lt;String&gt;&gt;) ~ Nil```\n\n\n\ndocs: Vector&lt;Vector&lt;String&gt;&gt;\n\nreturn: Nil"]
+				},
+				"FilterExtremes": {
+					"descriptions": ["**Drops tokens like Gensim's filter_extremes(no_below, no_above, keep_n): a token stays when it occurs in at least no_below documents and in at most int(no_above * documents) of them; if more than keep_n remain, the keep_n with the highest document frequency stay (ties go to the smaller id). Ids are then compacted, keeping the old order. With no_below 1, no_above 1.0 and keep_n 0 nothing is removed.**\n\n```method : public : FilterExtremes(no_below:Int, no_above:Float, keep_n:Int) ~ FilterReport```\n\n\n\nno_below: Int\n\nno_above: Float\n\nkeep_n: Int\n\nreturn: FilterReport"]
+				},
+				"GetCollFreq": {
+					"descriptions": ["**How often a token occurs.**\n\n```method : public : GetCollFreq(id:Int) ~ Int```\n\n\n\nid: Int\n\nreturn: Int"]
+				},
+				"GetDocFreq": {
+					"descriptions": ["**In how many documents a token occurs.**\n\n```method : public : GetDocFreq(id:Int) ~ Int```\n\n\n\nid: Int\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last refused call was refused, or \"\".**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetId": {
+					"descriptions": ["**The id of a token.**\n\n```method : public : GetId(token:String) ~ Int```\n\n\n\ntoken: String\n\nreturn: Int"]
+				},
+				"GetNumDocs": {
+					"descriptions": ["**Documents counted (a filter does not change this, as in Gensim).**\n\n```method : public : GetNumDocs() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetNumTokens": {
+					"descriptions": ["**Token occurrences counted and still in the dictionary.**\n\n```method : public : GetNumTokens() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetToken": {
+					"descriptions": ["**The token with an id.**\n\n```method : public : GetToken(id:Int) ~ String```\n\n\n\nid: Int\n\nreturn: String"]
+				},
+				"GetTokens": {
+					"descriptions": ["**All tokens by id (a copy), the vocabulary an Lda model labels its topics with.**\n\n```method : public : GetTokens() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"Size": {
+					"descriptions": ["**Number of distinct tokens: the dictionary size.**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"ToCorpus": {
+					"descriptions": ["**Turns token lists into a bag-of-words corpus over this dictionary; tokens the dictionary does not know are dropped, and a document left with no words stays in the corpus as an empty one.**\n\n```method : public : ToCorpus(docs:Vector&lt;Vector&lt;String&gt;&gt;) ~ TopicCorpus```\n\n\n\ndocs: Vector&lt;Vector&lt;String&gt;&gt;\n\nreturn: TopicCorpus"]
+				}
+			}
+		},
+		"System.NLP.Topics.TopicCorpus": {
+			"description": "A bag-of-words corpus: for each document the ids of its distinct words and how often each occurs (Gensim's list of (id, count) pairs, stored flat for speed). Build one with TokenDictionary.ToCorpus, or from arrays with Build.",
+			"functions": {
+				"Build": {
+					"descriptions": ["**Builds a corpus from flat arrays: document d owns entries offsets[d] to offsets[d+1]-1 of ids and counts.**\n\n```function : Build(offsets:Int[], ids:Int[], counts:Float[], vocab_size:Int) ~ TopicCorpus```\n\n\n\noffsets: Int[]\n\nids: Int[]\n\ncounts: Float[]\n\nvocab_size: Int\n\nreturn: TopicCorpus"]
+				},
+				"GetCounts": {
+					"descriptions": ["**The count array itself, not a copy. Do not change it.**\n\n```method : public : GetCounts() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetDocFreqs": {
+					"descriptions": ["**In how many documents each word occurs.**\n\n```method : public : GetDocFreqs() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetDocLength": {
+					"descriptions": ["**Word occurrences in one document.**\n\n```method : public : GetDocLength(doc:Int) ~ Float```\n\n\n\ndoc: Int\n\nreturn: Float"]
+				},
+				"GetIds": {
+					"descriptions": ["**The word-id array itself, not a copy. Do not change it.**\n\n```method : public : GetIds() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetNumDocs": {
+					"descriptions": ["**Number of documents, empty ones included.**\n\n```method : public : GetNumDocs() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetNumUnique": {
+					"descriptions": ["**Distinct words in one document.**\n\n```method : public : GetNumUnique(doc:Int) ~ Int```\n\n\n\ndoc: Int\n\nreturn: Int"]
+				},
+				"GetNumWords": {
+					"descriptions": ["**Total word occurrences in the corpus.**\n\n```method : public : GetNumWords() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetOffsets": {
+					"descriptions": ["**The offsets array itself, not a copy: for code that loops over the corpus fast. Do not change it.**\n\n```method : public : GetOffsets() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetVocabSize": {
+					"descriptions": ["**Vocabulary size the ids refer to.**\n\n```method : public : GetVocabSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetWordCounts": {
+					"descriptions": ["**Word counts of one document (a copy), in the order of GetWordIds.**\n\n```method : public : GetWordCounts(doc:Int) ~ Float[]```\n\n\n\ndoc: Int\n\nreturn: Float[]"]
+				},
+				"GetWordIds": {
+					"descriptions": ["**Word ids of one document (a copy).**\n\n```method : public : GetWordIds(doc:Int) ~ Int[]```\n\n\n\ndoc: Int\n\nreturn: Int[]"]
+				},
+				"GetWordTotals": {
+					"descriptions": ["**How often each word occurs in the whole corpus.**\n\n```method : public : GetWordTotals() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				}
+			}
+		},
+		"System.NLP.Topics.TopicMath": {
+			"description": "Special functions for the variational updates and the likelihood bound, written here because the language has only Gamma, which overflows near 171. Accurate to about 1e-12 for the arguments an LDA model produces (above 0).",
+			"functions": {
+				"Digamma": {
+					"descriptions": ["**The digamma function, the derivative of log Gamma.**\n\n```function : Digamma(x:Float) ~ Float```\n\n\n\nx: Float\n\nreturn: Float"]
+				},
+				"LogGamma": {
+					"descriptions": ["**The natural log of the gamma function.**\n\n```function : LogGamma(x:Float) ~ Float```\n\n\n\nx: Float\n\nreturn: Float"]
+				},
+				"Trigamma": {
+					"descriptions": ["**The trigamma function, the derivative of digamma.**\n\n```function : Trigamma(x:Float) ~ Float```\n\n\n\nx: Float\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.NLP.Topics.TopicMetrics": {
+			"description": "Quality measures for topics, each documented with the exact variant it computes. All functions take the topics as a Vector of TopicTerms (what Lda.GetTopics returns), so the number of top words per topic is the one you asked GetTopics for, and none of them ends the program on bad input: a Nil argument, an empty list or a bad window gives Nil (or NaN for a single number).\n\nCoherence measures, all after Roeder, Both and Hinneburg, \"Exploring the space of topic coherence measures\" (WSDM 2015) and Gensim's CoherenceModel; every one is the mean over a topic's word pairs, and the model value is the mean over topics (Mean):\n- UMass: Mimno et al. 2011, document co-occurrence. For the top words w1..wN of a topic, best first, the mean over pairs (wi, wj) with j < i of log((D(wi,wj)/D + 1e-12) / (D(wj)/D)), D(.) counting the documents of the corpus that contain the word(s) and D the number of documents. Higher (closer to 0) is better; the values are negative. Needs the bag-of-words corpus. Equal to Gensim's coherence=\"u_mass\".\n- CNpmi: normalized pointwise mutual information over sliding windows, window size 10 by default in Gensim. For every pair of distinct top words, NPMI = log((p(wi,wj) + 1e-12) / (p(wi) p(wj))) / -log(p(wi,wj) + 1e-12), the probabilities being the share of windows holding the word(s). A text of at most `window` tokens is one window, longer texts give one window per position (length - window + 1), an empty text gives one empty window, as in Gensim. GENSIM QUIRK, reproduced on purpose: when the window slides, Gensim removes the token that left from the set of words present even if the same word still occurs inside the window, so a word that repeats within a window is under-counted. This library does the same, so CNpmi and CV agree with Gensim's CoherenceModel to rounding error (1e-16 on the tests' corpora, including one of 40 texts longer than the window); a count that treated every window as a plain set differed by up to 0.18 on that corpus. The value lies in [-1, 1], higher is better. A pair with a word that occurs in no window counts 0. Equal to Gensim's coherence=\"c_npmi\".\n- CV: the measure Gensim uses by default (coherence=\"c_v\"), window 110. Each top word wi gets a vector holding NPMI(wi, wj) for every top word wj (itself included); the topic's context vector is the sum of those vectors; the score of the word is the cosine between its vector and that sum, and the topic's coherence is the mean over its words. Range [-1, 1], higher is better.\n\nThe windows are built over the token strings you pass in, so pass the same token lists the dictionary was built from (before or after rare-token filtering, your choice: tokens the model does not know still take up window positions, as they do in Gensim when it is given the raw texts).\n\nTopic-diversity and overlap measures take the top-k words of each topic: Diversity (Dieng et al. 2020) is the number of distinct words in the union of the lists divided by topics times k, 1 when no word is shared; Overlap is the mean Jaccard similarity of all topic pairs, 0 when no word is shared. Stability compares two models, typically trained with different seeds.",
+			"functions": {
+				"CNpmi": {
+					"descriptions": ["**C_npmi coherence of each topic (see the class description).**\n\n```function : CNpmi(topics:Vector&lt;TopicTerms&gt;, texts:Vector&lt;Vector&lt;String&gt;&gt;) ~ Float[]```\n\n\n\ntopics: Vector&lt;TopicTerms&gt;\n\ntexts: Vector&lt;Vector&lt;String&gt;&gt;\n\nreturn: Float[]"]
+				},
+				"CV": {
+					"descriptions": ["**C_v coherence of each topic (see the class description).**\n\n```function : CV(topics:Vector&lt;TopicTerms&gt;, texts:Vector&lt;Vector&lt;String&gt;&gt;) ~ Float[]```\n\n\n\ntopics: Vector&lt;TopicTerms&gt;\n\ntexts: Vector&lt;Vector&lt;String&gt;&gt;\n\nreturn: Float[]"]
+				},
+				"Diversity": {
+					"descriptions": ["**Topic diversity: distinct words in the union of every topic's top-k words, divided by topics times k. 1 means no word is shared between topics, values near 0 mean the topics repeat each other.**\n\n```function : Diversity(topics:Vector&lt;TopicTerms&gt;, top_k:Int) ~ Float```\n\n\n\ntopics: Vector&lt;TopicTerms&gt;\n\ntop_k: Int\n\nreturn: Float"]
+				},
+				"JaccardMatrix": {
+					"descriptions": ["**Jaccard similarity of the top-k word sets of every pair of topics: a flat topics-by-topics matrix, 1 on the diagonal.**\n\n```function : JaccardMatrix(topics:Vector&lt;TopicTerms&gt;, top_k:Int) ~ Float[]```\n\n\n\ntopics: Vector&lt;TopicTerms&gt;\n\ntop_k: Int\n\nreturn: Float[]"]
+				},
+				"JaccardMatrix2D": {
+					"descriptions": ["**JaccardMatrix as a topics-by-topics matrix.**\n\n```function : JaccardMatrix2D(topics:Vector&lt;TopicTerms&gt;, top_k:Int) ~ Float[,]```\n\n\n\ntopics: Vector&lt;TopicTerms&gt;\n\ntop_k: Int\n\nreturn: Float[,]"]
+				},
+				"Mean": {
+					"descriptions": ["**The mean of a list of per-topic values, skipping NaN entries.**\n\n```function : Mean(values:Float[]) ~ Float```\n\n\n\nvalues: Float[]\n\nreturn: Float"]
+				},
+				"Overlap": {
+					"descriptions": ["**Topic overlap: the mean Jaccard similarity over all pairs of different topics (see JaccardMatrix). 0 means no two topics share a top word, 1 means all lists are identical.**\n\n```function : Overlap(topics:Vector&lt;TopicTerms&gt;, top_k:Int) ~ Float```\n\n\n\ntopics: Vector&lt;TopicTerms&gt;\n\ntop_k: Int\n\nreturn: Float"]
+				},
+				"Stability": {
+					"descriptions": ["**Topic stability between two models, for runs with different seeds: each topic's word distribution p(word | topic) is compared by cosine similarity with every topic of the other model and the best match is kept; the result is the mean of those best matches taken from a to b and from b to a, averaged. 1 means every topic of one run has an identical twin in the other; it is not a one-to-one matching, so two topics may share a best match.**\n\n```function : Stability(a:Lda, b:Lda) ~ Float```\n\n\n\na: Lda\n\nb: Lda\n\nreturn: Float"]
+				},
+				"UMass": {
+					"descriptions": ["**U_mass coherence of each topic (see the class description).**\n\n```function : UMass(topics:Vector&lt;TopicTerms&gt;, corpus:TopicCorpus) ~ Float[]```\n\n\n\ntopics: Vector&lt;TopicTerms&gt;\n\ncorpus: TopicCorpus\n\nreturn: Float[]"]
+				}
+			}
+		},
+		"System.NLP.Topics.TopicPlots": {
+			"description": "A static SVG counterpart of pyLDAvis for an Lda model: the intertopic distance map and the bar chart of the most relevant terms of one topic, drawn with System.Plot's scene and SVG writer into one standalone file (no browser scripting, no interactivity: it is not pyLDAvis and has no lambda slider, you pick lambda and the topic when you call it).\n\nThe map. Each topic is a circle. Its position comes from the Jensen-Shannon distances between the topics' word distributions: the distance is sqrt(JSD) with natural logs (a true metric), and the topics are placed in 2-D by classical multidimensional scaling of those distances (double centering, the two largest eigenvectors by the Jacobi method), which is pyLDAvis's default \"mmds\". The circle's AREA is proportional to the topic's prevalence, the share of all word occurrences assigned to it (sum over documents of document length times the topic's probability in the document, over the total length). Axes carry no units; only distances between circles mean anything, and they are approximate because 2-D cannot hold them all.\n\nThe bars. For a topic, terms are ranked by relevance (Sievert and Shirley 2014): r(w, k | lambda) = lambda * log p(w | k) + (1 - lambda) * log(p(w | k) / p(w)), where p(w) is the word's share of the corpus. lambda 1 ranks by probability inside the topic, lambda 0 by lift, and 0.6 is the value they suggest. Each term shows two bars: the grey one is its frequency in the whole corpus, the colored one the part of it the model attributes to the topic (p(w | k) times the topic's word count).\n\nSalient terms across all topics (Chuang et al. 2012) are ranked by saliency(w) = p(w) * distinctiveness(w), distinctiveness(w) = sum over topics of p(k | w) log(p(k | w) / p(k)), where p(k | w) = p(w | k) p(k) / sum over j of p(w | j) p(j) and p(k) is the topic's prevalence as above. SalientTerms returns them as data.\n\nNothing here ends the program on bad input: a Nil or unfitted model, a corpus of another vocabulary size, a topic out of range or a lambda outside [0, 1] gives Nil (or false), never an exception.",
+			"functions": {
+				"IntertopicMapSvg": {
+					"descriptions": ["**The intertopic distance map alone, as a standalone SVG document.**\n\n```function : IntertopicMapSvg(lda:Lda, corpus:TopicCorpus, selected:Int) ~ String```\n\n\n\nlda: Lda\n\ncorpus: TopicCorpus\n\nselected: Int\n\nreturn: String"]
+				},
+				"JensenShannon": {
+					"descriptions": ["**Distances between topics: sqrt of the Jensen-Shannon divergence (natural log) of their word distributions, flat topics-by-topics, 0 on the diagonal, symmetric, at most sqrt(ln 2).**\n\n```function : JensenShannon(lda:Lda) ~ Float[]```\n\n\n\nlda: Lda\n\nreturn: Float[]"]
+				},
+				"Mds2D": {
+					"descriptions": ["**Classical multidimensional scaling to two dimensions: places n points so that their Euclidean distances approximate a distance matrix (double centering of the squared distances, then the two largest eigenvalues and eigenvectors by the Jacobi method; an eigenvalue at or below 0 gives a zero coordinate). Each axis is signed so that its largest coordinate is positive, so the result is the same on every run.**\n\n```function : Mds2D(distances:Float[], n:Int) ~ Float[]```\n\n\n\ndistances: Float[]\n\nn: Int\n\nreturn: Float[]"]
+				},
+				"Prevalence": {
+					"descriptions": ["**The prevalence of each topic: the share of all word occurrences in the corpus that the model assigns to it. Sums to 1.**\n\n```function : Prevalence(lda:Lda, corpus:TopicCorpus) ~ Float[]```\n\n\n\nlda: Lda\n\ncorpus: TopicCorpus\n\nreturn: Float[]"]
+				},
+				"Relevance": {
+					"descriptions": ["**The most relevant terms of a topic for a lambda (see the class description).**\n\n```function : Relevance(lda:Lda, corpus:TopicCorpus, topic:Int, lambda:Float, top_n:Int) ~ TopicTerms```\n\n\n\nlda: Lda\n\ncorpus: TopicCorpus\n\ntopic: Int\n\nlambda: Float\n\ntop_n: Int\n\nreturn: TopicTerms"]
+				},
+				"ReportSvg": {
+					"descriptions": ["**The two charts side by side in one SVG document: the intertopic map (the chosen topic highlighted) and the bars of that topic's most relevant terms.**\n\n```function : ReportSvg(lda:Lda, corpus:TopicCorpus, topic:Int, lambda:Float, top_n:Int) ~ String```\n\n\n\nlda: Lda\n\ncorpus: TopicCorpus\n\ntopic: Int\n\nlambda: Float\n\ntop_n: Int\n\nreturn: String"]
+				},
+				"SalientBarsSvg": {
+					"descriptions": ["**The bar chart of a topic's most relevant terms alone, as a standalone SVG document.**\n\n```function : SalientBarsSvg(lda:Lda, corpus:TopicCorpus, topic:Int, lambda:Float, top_n:Int) ~ String```\n\n\n\nlda: Lda\n\ncorpus: TopicCorpus\n\ntopic: Int\n\nlambda: Float\n\ntop_n: Int\n\nreturn: String"]
+				},
+				"SalientTerms": {
+					"descriptions": ["**The most salient terms over all topics (see the class description).**\n\n```function : SalientTerms(lda:Lda, corpus:TopicCorpus, top_n:Int) ~ TopicTerms```\n\n\n\nlda: Lda\n\ncorpus: TopicCorpus\n\ntop_n: Int\n\nreturn: TopicTerms"]
+				},
+				"SaveReport": {
+					"descriptions": ["**Writes ReportSvg to a file.**\n\n```function : SaveReport(lda:Lda, corpus:TopicCorpus, topic:Int, lambda:Float, top_n:Int, path:String) ~ Bool```\n\n\n\nlda: Lda\n\ncorpus: TopicCorpus\n\ntopic: Int\n\nlambda: Float\n\ntop_n: Int\n\npath: String\n\nreturn: Bool"]
+				},
+				"TopicPositions": {
+					"descriptions": ["**The positions of the topics on the intertopic map: Mds2D of JensenShannon.**\n\n```function : TopicPositions(lda:Lda) ~ Float[]```\n\n\n\nlda: Lda\n\nreturn: Float[]"]
+				}
+			}
+		},
+		"System.NLP.Topics.TopicStopwords": {
+			"description": "Stopword lists as data, for the three strategies of the lab: none, standard English, and English plus a custom list. A list is a set of lowercase words; Union combines lists without changing either.",
+			"functions": {
+				"Add": {
+					"descriptions": ["**Adds a word (lowercased). Nil and empty words are ignored.**\n\n```method : public : Add(word:String) ~ Nil```\n\n\n\nword: String\n\nreturn: Nil"]
+				},
+				"Cyber": {
+					"descriptions": ["**An OPTIONAL starting point for the \"English plus custom cyber stoplist\" strategy; it is small on purpose and is not a researched list. It holds generic Twitter noise (rt, via, amp, http, https, www, com, co, ly, bit, ...) and a few words that occur in nearly every cybersecurity tweet and so carry no topic (\"cyber\", \"cybersecurity\", \"infosec\", \"security\"). Edit it to taste: build your own with FromArray, or add words with Add.**\n\n```function : Cyber() ~ TopicStopwords```\n\n\n\nreturn: TopicStopwords"]
+				},
+				"English": {
+					"descriptions": ["**The standard English list: the 179 words of NLTK's stopwords corpus for English (nltk.corpus.stopwords.words(\"english\"), as shipped with NLTK 3.x), which is a public-domain word list reproduced here so no download is needed. It contains contractions such as \"don't\" and their stems (\"don\", \"t\"); the tokenizer in this library splits on apostrophes, so the stems are what match.**\n\n```function : English() ~ TopicStopwords```\n\n\n\nreturn: TopicStopwords"]
+				},
+				"FromArray": {
+					"descriptions": ["**A list of your own words (lowercased on the way in); Nil words are ignored.**\n\n```function : FromArray(words:String[]) ~ TopicStopwords```\n\n\n\nwords: String[]\n\nreturn: TopicStopwords"]
+				},
+				"Has": {
+					"descriptions": ["**Tells whether a word is on the list; the word is compared as given, so pass lowercase.**\n\n```method : public : Has(word:String) ~ Bool```\n\n\n\nword: String\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**An empty list: the strategy \"no stopword removal\".**\n\n```New()```\n\n"]
+				},
+				"Size": {
+					"descriptions": ["**Number of words.**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"ToArray": {
+					"descriptions": ["**The words, in no particular order.**\n\n```method : public : ToArray() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"Union": {
+					"descriptions": ["**A new list with the words of both; either may be Nil.**\n\n```method : public : Union(extra:TopicStopwords) ~ TopicStopwords```\n\n\n\nextra: TopicStopwords\n\nreturn: TopicStopwords"]
+				}
+			}
+		},
+		"System.NLP.Topics.TopicTerms": {
+			"description": "One topic as its top words: the word ids, the words, and each word's probability in the topic, best first.",
+			"functions": {
+				"GetIds": {
+					"descriptions": ["**Word ids, best first.**\n\n```method : public : GetIds() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetTopic": {
+					"descriptions": ["**Index of the topic.**\n\n```method : public : GetTopic() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetWeights": {
+					"descriptions": ["**The weights in the same order: p(word | topic) for GetTopics, the relevance score for TopicPlots.Relevance.**\n\n```method : public : GetWeights() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetWords": {
+					"descriptions": ["**The words, best first.**\n\n```method : public : GetWords() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"Size": {
+					"descriptions": ["**Number of words.**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				}
+			}
+		},
+		"System.NLP.Topics.TopicTokenizer": {
+			"description": "Splits tweets and other short texts into lowercase tokens for topic modeling: runs of the letters a-z and digits 0-9 (any other byte, including accented and non-Latin characters, ends a token, so this is meant for English text), so \"don't\" gives \"don\" and \"t\". It drops URLs (a word that has \"://\" or starts with \"www.\"),",
+			"functions": {
+				"New": {
+					"descriptions": ["**A tokenizer that keeps every token of 2 or more characters.**\n\n```New()```\n\n", "**A tokenizer that also drops the words of a stopword list.**\n\n```New(stop:TopicStopwords)```\n\n\n\nstop: TopicStopwords"]
+				},
+				"SetDropNumbers": {
+					"descriptions": ["**Chooses whether tokens made only of digits are dropped (the default).**\n\n```method : public : SetDropNumbers(drop:Bool) ~ Nil```\n\n\n\ndrop: Bool\n\nreturn: Nil"]
+				},
+				"SetLengths": {
+					"descriptions": ["**Sets the shortest and longest token kept.**\n\n```method : public : SetLengths(min:Int, max:Int) ~ Bool```\n\n\n\nmin: Int\n\nmax: Int\n\nreturn: Bool"]
+				},
+				"Tokenize": {
+					"descriptions": ["**Splits one text. A Nil or empty text gives an empty vector.**\n\n```method : public : Tokenize(text:String) ~ Vector&lt;String&gt;```\n\n\n\ntext: String\n\nreturn: Vector&lt;String&gt;"]
+				},
+				"TokenizeAll": {
+					"descriptions": ["**Splits many texts; a Nil text gives an empty document.**\n\n```method : public : TokenizeAll(texts:Vector&lt;String&gt;) ~ Vector&lt;Vector&lt;String&gt;&gt;```\n\n\n\ntexts: Vector&lt;String&gt;\n\nreturn: Vector&lt;Vector&lt;String&gt;&gt;"]
+				}
+			}
+		},
 		"System.Plot.Artist": {
 			"description": "One drawn thing on an Axes: its kind, legend name and data. Axes builds these.",
 			"functions": {
@@ -22595,6 +22983,72 @@
 		"TextClassifier": [
 			{
 				"bundle": "System.NLP.Onnx",
+				"file": ""
+			}
+		],
+		"BsonReader": [
+			{
+				"bundle": "System.NLP.Topics",
+				"file": ""
+			}
+		],
+		"FilterReport": [
+			{
+				"bundle": "System.NLP.Topics",
+				"file": ""
+			}
+		],
+		"Lda": [
+			{
+				"bundle": "System.NLP.Topics",
+				"file": ""
+			}
+		],
+		"TokenDictionary": [
+			{
+				"bundle": "System.NLP.Topics",
+				"file": ""
+			}
+		],
+		"TopicCorpus": [
+			{
+				"bundle": "System.NLP.Topics",
+				"file": ""
+			}
+		],
+		"TopicMath": [
+			{
+				"bundle": "System.NLP.Topics",
+				"file": ""
+			}
+		],
+		"TopicMetrics": [
+			{
+				"bundle": "System.NLP.Topics",
+				"file": ""
+			}
+		],
+		"TopicPlots": [
+			{
+				"bundle": "System.NLP.Topics",
+				"file": ""
+			}
+		],
+		"TopicStopwords": [
+			{
+				"bundle": "System.NLP.Topics",
+				"file": ""
+			}
+		],
+		"TopicTerms": [
+			{
+				"bundle": "System.NLP.Topics",
+				"file": ""
+			}
+		],
+		"TopicTokenizer": [
+			{
+				"bundle": "System.NLP.Topics",
 				"file": ""
 			}
 		],
