@@ -126,34 +126,78 @@ preds := forest->Predict(data);
 				return Nil;
 			};
 
-			dims := input->Size();
-			rows := dims[0];
-			cols := dims[1];
-
+			rows := input->Size()[0];
 			result := Bool->New[rows];
 			if(@trees = Nil) {
 				return result;
 			};
+
+			votes := CountVotes(input);
+			ntrees := @trees->Size();
+			for(i := 0; i < rows; i += 1;) {
+				result[i] := votes[i] * 2 >= ntrees;
+			};
+
+			return result;
+		}
+
+		#~
+		Scores each row by the share of trees that vote true: votes_true / ntrees, in
+		0.0 to 1.0 (0.0 when no tree does). Predict is this score thresholded at 0.5 (ties
+		to true). Unlike Predict's labels it can be swept over a threshold, so it feeds
+		Metrics->AucRoc, RocCurve, PrCurve and RecallAtFpr.
+		@param input matrix of feature rows (a trailing label column is ignored)
+		@return one score per row, or Nil if not fitted or the matrix is not the width fitted on
+
+```
+forest := RandomForest->New(16);
+forest->Fit(data);
+scores := forest->PredictScore(data);
+auc := Metrics->AucRoc(scores, labels);
+```
+		~#
+		method : public : PredictScore(input : Bool[,]) ~ Float[] {
+			if(<>IsFitted()) {
+				return Nil;
+			};
+
+			if(<>InputCheck->HasFeatures(input, @cols)) {
+				return Nil;
+			};
+
+			votes := CountVotes(input);
+			ntrees := @trees->Size()->As(Float);
+			result := Float->New[votes->Size()];
+			for(i := 0; i < result->Size(); i += 1;) {
+				result[i] := votes[i]->As(Float) / ntrees;
+			};
+
+			return result;
+		}
+
+		# the number of trees voting true for each row; the matrix has been checked
+		method : CountVotes(input : Bool[,]) ~ Int[] {
+			dims := input->Size();
+			rows := dims[0];
+			cols := dims[1];
 			ntrees := @trees->Size();
 
+			votes := Int->New[rows];
 			for(i := 0; i < rows; i += 1;) {
 				row := Bool->New[cols];
 				for(c := 0; c < cols; c += 1;) {
 					row[c] := input[i, c];
 				};
 
-				votes_true := 0;
 				for(t := 0; t < ntrees; t += 1;) {
 					tree := @trees->Get(t);
 					if(tree->Predict(row)) {
-						votes_true += 1;
+						votes[i] := votes[i] + 1;
 					};
 				};
-
-				result[i] := votes_true * 2 >= ntrees;
 			};
 
-			return result;
+			return votes;
 		}
 
 		#~

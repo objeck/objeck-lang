@@ -607,6 +607,7 @@ class MlInputValidation {
 			fitted := RandomForest->New(3);
 			fitted->Fit(@boolean);
 			ok := None(fitted->Predict(x)) & ok;
+			ok := None(fitted->PredictScore(x)) & ok;
 			ok := (fitted->Score(x) = 0.0) & ok;
 		};
 		return ok;
