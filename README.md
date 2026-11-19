@@ -49,7 +49,7 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.11.0/objeck-ubuntu24.04-x64_2026.11.0.deb
 sudo apt install ./objeck-ubuntu24.04-x64_2026.11.0.deb
 
-# Any other Linux, or macOS: the archive
+# Other Linux (see Platform support below), or macOS: the archive
 curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.11.0/objeck-linux-x64_2026.11.0.tgz
 tar xzf objeck-linux-x64_2026.11.0.tgz
 # Linux only: install the system libraries the toolchain links against
@@ -69,6 +69,19 @@ echo 'class Hello {
 # Compile and run (modern syntax)
 obc hello && obr hello
 ```
+
+### Platform support
+
+| Platform | Release files | Needs |
+|---|---|---|
+| Ubuntu 24.04 (x64, ARM64) | `.deb`, `.tgz` | Nothing else: the `.deb` installs its own dependencies. |
+| Other Linux (x64, ARM64) | `.tgz` | glibc 2.38 or newer and libstdc++ 13 or newer, and the system libraries `install_deps.sh` lists (the mbedTLS 2.28 `.so.14` and OpenCV 4.6 `.so.406` sonames, among others). |
+| Windows (x64, ARM64) | `.msi`, `.zip` | |
+| macOS (Apple silicon) | `.pkg`, `.tgz`, `.zip` | |
+
+The Linux release is built on Ubuntu 24.04, so **it runs as shipped on Ubuntu 24.04 and not on older distributions**: Debian 12 (and antiX 23, MX 23 and other distributions based on it) and Ubuntu 22.04 have a C library older than glibc 2.38, which installing packages cannot change, and `dpkg` refuses the `.deb` for that reason. Some newer distributions do not package the mbedTLS and OpenCV versions the release links against either (Debian 13, Fedora, Arch and openSUSE Leap, checked in September for v2026.9.2). `./objeck-lang/install_deps.sh --check` reports what is missing without installing anything.
+
+On an unsupported Linux, run the Ubuntu 24.04 release in a container (Docker, Podman or distrobox), or build from source with `core/release/deploy_posix.sh`, the path `install_deps.sh` itself points to (not checked on every distribution). A Linux build that runs on older distributions is planned.
 
 📖 **Full docs**: [objeck.org](https://www.objeck.org)
 💡 **Examples**: [github.com/objeck/objeck-lang/programs](https://github.com/objeck/objeck-lang/tree/master/programs)

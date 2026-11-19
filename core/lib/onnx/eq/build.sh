@@ -3,6 +3,20 @@
 # ONNX build script for Linux and MSYS2
 # Usage: ./build.sh <provider>
 # Providers: cuda, cpu
+#
+# <provider> only sets the DEFAULT execution provider: the one a session gets
+# when the program names no "ep". Any provider the ONNX Runtime loaded at run
+# time carries can still be chosen per session with ep=cuda / ep=dml / ep=cpu,
+# and one that is absent is refused with the list of those present, never
+# replaced by the CPU. So this library only becomes CUDA-capable by being run
+# against a CUDA-enabled ONNX Runtime; it does not contain one. The releases
+# build `cpu` against the vendored CPU-only runtime and ship no CUDA.
+#
+# ORT_ROOT=<dir> links a different ONNX Runtime than the vendored one: <dir> must
+# hold libonnxruntime.so. Use it to build against a GPU build of the runtime,
+# then run with that runtime's directory on LD_LIBRARY_PATH:
+#
+#   ORT_ROOT=/opt/onnxruntime-linux-x64-gpu-1.24.2/lib ./build.sh cpu
 
 PROVIDER=$1
 
@@ -34,7 +48,7 @@ case "$(uname -m)" in
 	aarch64|arm64) ORT_ARCH=arm64 ;;
 	*) ORT_ARCH=$(uname -m) ;;
 esac
-ORT_VENDORED="./cuda/lib/$ORT_ARCH/lib"
+ORT_VENDORED="${ORT_ROOT:-./cuda/lib/$ORT_ARCH/lib}"
 
 # cuda/lib/<arch>/lib holds ELF shared objects -- libonnxruntime.so.1.19.0 and
 # friends -- so under MSYS2 the link failed with `cannot find -lonnxruntime`
@@ -78,7 +92,11 @@ require_vendored_ort() {
 	# recognized; treating as linker script" -- two minutes into compiling
 	# onnx.cpp. The .so.1 link is needed to LOAD the result as well, so there is
 	# nothing to fall back to; the only thing worth adding is saying so up front.
-	for link in libonnxruntime.so libonnxruntime.so.1; do
+	# The vendored runtime also needs its .so.1 link to LOAD; a runtime named by
+	# ORT_ROOT is the caller's to arrange, and a GPU package ships only the bare name.
+	LINKS="libonnxruntime.so libonnxruntime.so.1"
+	[ -n "$ORT_ROOT" ] && LINKS="libonnxruntime.so"
+	for link in $LINKS; do
 		if [ ! -e "$ORT_VENDORED/$link" ]; then
 			echo "ERROR: vendored ONNX Runtime is incomplete: $ORT_VENDORED/$link is missing" >&2
 			exit 1
