@@ -1406,7 +1406,7 @@ A complete run (a small corpus, embedded either with a BERT model or, with nothi
 
 ### Convolutional networks (System.ML.Cnn)
 
-Convolutional networks for image classification, on the CPU: `Conv`, `MaxPool`, `ReLU`, `Flatten`, `Dense` and `Dropout` layers with forward and backward passes, the Adam and SGD optimizers, binary cross-entropy on logits, an image dataset with a seeded train / validation / test split and on-the-fly augmentation, and a training loop that records loss, accuracy and wall time for every epoch. The layers are native (`libobjk_ml`, plain C++ and Eigen, nothing platform-specific: no intrinsics, no OpenMP) and the library is `ml_cnn.obl`: `obc -lib ml_cnn,ml,ml_lab,opencv,csv,json,cipher,gen_collect` or `-lib @cnn,gen_collect`. It reads image files through `opencv`, scores with `System.ML.Metrics` and writes its history as a `System.ML.Lab.ResultTable`.
+Convolutional networks for image classification, on the CPU (and, optionally, on an NVIDIA GPU: see [the CUDA backend](#the-optional-cuda-backend) below): `Conv`, `MaxPool`, `ReLU`, `Flatten`, `Dense` and `Dropout` layers with forward and backward passes, the Adam and SGD optimizers, binary cross-entropy on logits, an image dataset with a seeded train / validation / test split and on-the-fly augmentation, and a training loop that records loss, accuracy and wall time for every epoch. The layers are native (`libobjk_ml`, plain C++ and Eigen, nothing platform-specific: no intrinsics, no OpenMP) and the library is `ml_cnn.obl`: `obc -lib ml_cnn,ml,ml_lab,opencv,csv,json,cipher,gen_collect` or `-lib @cnn,gen_collect`. It reads image files through `opencv`, scores with `System.ML.Metrics` and writes its history as a `System.ML.Lab.ResultTable`.
 
 ```ruby
 use System.ML.Cnn;
@@ -1463,7 +1463,7 @@ probabilities := model->Predict(images);        # sigmoid of the logit: P(class 
 | Initial weights | Glorot (Xavier) uniform, limit `sqrt(6 / (fan_in + fan_out))`, the Keras default; `SetInitializer(Initializer->KAIMING)` for He uniform, limit `sqrt(6 / fan_in)`. Biases start at 0. Drawn from the model seed with a portable generator, so a seed gives the same weights on every platform |
 | Threads | the batch is spread over a thread pool, default the hardware threads, at most 8 (`CnnRuntime->SetThreads(n)`). Work is split statically, so a run repeats bit for bit at a given thread count; different counts agree to rounding |
 | Save / Load | weights only, in a small binary file with a digest of the architecture; `Load` is bit-exact and refuses a file from another architecture, a truncated file or a foreign one, leaving the model unchanged |
-| Scope | binary classification (one logit per image), CPU. Layers are an interface over contiguous NCHW tensors (`core/lib/matrix/cnn.h`) so a CUDA backend can implement the same `Forward` / `Backward` |
+| Scope | binary classification (one logit per image). The default and the fallback is the CPU; an optional GPU backend (`model->SetDevice("cuda")`, below) implements the same layers. Layers are an interface over contiguous NCHW tensors (`core/lib/matrix/cnn.h`) |
 
 Nothing here ends the program on bad input: an empty batch, a Nil array, a wrong size, a model that is not compiled or a layer that does not fit answers `false`, `-1.0`, `0` or `Nil`, and `GetError()` gives the reason. A model holds native memory, so call `Close()` when done.
 
@@ -1509,6 +1509,68 @@ Both sides are float32 but sum in different orders, which costs a few units of 1
 At 143 images/s an epoch of 100,000 images at 224 x 224 takes about 11.7 minutes of training, plus about a minute to validate 20,000 images; ten epochs are about 2.1 hours. At 64 x 64 an epoch of 100,000 images is 42 seconds. The same code compiled with `/arch:AVX2` ran 1.7 times faster on one thread and about 1.3 times faster on eight (a standalone harness, not a shipped option), so the convolutions are limited by memory traffic (im2col, ReLU and pooling over tensors of tens of megabytes) as much as by arithmetic; a CUDA backend is the way to a large step.
 
 **Platforms.** Built and tested on Windows x64 (MSVC). The sources also compile cleanly with `g++ 13 -std=c++17 -O3 -Wall -Wextra` on Ubuntu 24.04 (WSL2), where a standalone harness gives the same losses to six digits as the Windows build (0.686856 at 64 x 64, 0.698541 at 224 x 224) and a gradient error of 2e-8. Linux and macOS (x64, arm64) and Windows arm64 were not built or run as part of this work; the code is standard C++14 with Eigen and `std::thread` and is built by the existing `libobjk_ml` project files and scripts, which is what CI exercises.
+
+#### The optional CUDA backend
+
+The same model can run on an NVIDIA GPU. It is **optional and is not shipped**: Objeck's releases and CI build no CUDA code, `libobjk_ml` links nothing from CUDA and does not need it to load, and without the extra library every model simply stays on the CPU, which is the default. The GPU code is a separate shared library, `libobjk_ml_cuda` (`core/lib/matrix/cuda/`: the kernels and the cuBLAS calls in `objk_ml_cuda.cu`, the C interface in `objk_ml_cuda.h`), that `libobjk_ml` loads on demand with `LoadLibrary` / `dlopen` the first time a `"cuda"` device is asked for.
+
+```ruby
+use System.ML.Cnn;
+
+CnnRuntime->GetDevices()->PrintLine();      # "cpu", "cuda:0 NVIDIA GeForce RTX 4090 (24563 MB, compute capability 8.9)"
+model := CnnModel->Baseline(224, 3, 0.1, 128, 0.0001, 42);
+if(model->SetDevice("cuda")) {              # or "cuda:1"; "cpu" moves it back
+  "on {$model->GetDevice()}"->PrintLine();
+}
+else {
+  "staying on the CPU: {$model->GetError()}"->PrintLine();   # no library, no GPU, out of memory ...
+};
+trainer := CnnTrainer->New(model, train, validation, 64, 42);  # unchanged: the same trainer, history and metrics
+```
+
+`CnnRuntime->HasCuda()`, `CudaDeviceCount()`, `CudaStatus()` (why not), `CudaFreeMemory(index)` and `GetDevices()` describe what is there; `CnnModel->SetDevice(name)`, `GetDevice()` and `GetDeviceMemory()` (the GPU bytes the model holds) place it. A refused `SetDevice` answers `false`, says why in `GetError()` and leaves the model where it was; nothing crashes. A model can move at any time and keeps its weights (the Adam moments restart from zero). `Save` and `Load` write the same bytes on both devices, so a model trained on the GPU loads on the CPU and the other way round. `programs/examples/ml/cnn_images.obs` takes `--device cuda`, and `programs/examples/ml/cnn_speed.obs` measures images per second.
+
+**What it needs.** An NVIDIA GPU of compute capability 7.5 or newer (Turing and later) with a current driver, and the CUDA Toolkit 12.x or 13.x to build it (nvcc and cuBLAS; **cuDNN is not used**). At run time `libobjk_ml_cuda` needs `cublas64_*.dll` (Windows, found through `CUDA_PATH`) or `libcublas.so` (Linux, on the loader path).
+
+**Building it.** By hand, never as part of the Objeck build:
+
+```
+core\lib\matrix\cuda\build_cuda.cmd [output-dir]     (Windows)
+core/lib/matrix/cuda/build_cuda.sh [output-dir]      (Linux)
+```
+
+then copy `libobjk_ml_cuda.dll` / `.so` next to `libobjk_ml` (for a release tree, `lib/native`), or set the environment variable `OBJK_CUDA_LIB` to its full path. The script builds machine code for compute capabilities 7.5 to 9.0 and 12.0 and PTX for newer GPUs (`CUDA_ARCHS` changes the list). Host compiler: CUDA 13.1 accepts only the Visual Studio 2019 and 2022 compilers (`_MSC_VER` below 1950) and refuses the v145 toolset of Visual Studio 2026 (`unsupported Microsoft Visual Studio version`). That IDE still installs the v143 toolset beside it, which is what `build_cuda.cmd` selects (`vcvarsall.bat amd64 -vcvars_ver=14.4`), so `-allow-unsupported-compiler` is not needed; `VC_TOOLSET` and `VCVARSALL` override the choice.
+
+**How it works.** The model keeps its weights, activations and gradients on the GPU between layers; per batch only the images and labels go in and the loss and logits come out. Convolution is an im2col kernel and `cublasSgemmStridedBatched` (one matrix multiply per image, launched as a batch), its input gradient a batched multiply and a gather (`col2im`), its weight gradient a batched multiply into per-image partial sums that a kernel adds in a fixed order; dense layers are `cublasSgemm`; max pooling, ReLU, bias, dropout, the loss and the Adam and SGD updates are small CUDA kernels. Nothing uses atomic additions on floats, so a run repeats bit for bit on the same GPU and driver. Dropout draws the CPU engine's counter-based mask (same seed, same forward-pass counter, same element index, compared in double), so a given seed drops the same activations on both devices. Everything is full FP32: cuBLAS runs in its default math mode, which does not use Tensor Cores. `SetDevice("cuda", true)` allows TF32 instead; it was measured to change the logits by 2e-3 and the gradients by up to 7e-2 (relative to the largest entry) and to give no speed-up on this network (the matrix multiplies are not the bottleneck), so it is not recommended.
+
+**Memory.** A model holds its parameters, gradients and optimizer state plus buffers for the largest batch it has seen: the baseline at 224 x 224 takes 1.1 GB at batch 32, 2.1 GB at 64, 4.2 GB at 128 and 8.2 GB at 256 (`GetDeviceMemory()`). A batch that does not fit answers `-1.0` and "out of GPU memory: a batch of N needs about X MB and Y MB are free" and leaves the model usable with a smaller one. `Close()`, `SetDevice("cpu")` or the end of the program give the memory back; a model left open is released when the library unloads.
+
+**Speed.** `TrainBatch` and `Predict` from Objeck on random images, batch 64, the baseline (3 blocks, Dense 128), RTX 4090, full FP32, Windows, CUDA 13.1; the CPU is the 8-thread engine above. PyTorch 2.11 (CUDA 12.8 build, cuDNN, TF32 off, Adam) on the same GPU and the same network is the reference. Images per second:
+
+| Image size | CPU train | GPU train (best batch) | PyTorch GPU train | GPU predict | PyTorch GPU predict |
+|---|---|---|---|---|---|
+| 64 x 64 | 2,393 | 50,181 (57,181 at batch 128) | 45,671 (90,287 at batch 128) | 99,585 | 191,913 |
+| 128 x 128 | 492 | 11,433 (11,907 at batch 32) | 27,244 | 20,461 | 81,671 |
+| 224 x 224 | 114 (143 in the table above) | 3,412 (batch 64) | 7,792 | 5,891 | 22,565 |
+
+Training 100,000 images takes about 2.0 s at 64 x 64, 8.7 s at 128 x 128 and 29 s at 224 x 224 on the GPU (batch 64), against 42 s, 3.4 minutes and 14.6 minutes on the CPU: 21 times faster at 64 x 64, 23 times at 128 and 30 times at 224. Training is 1.1 times as fast as PyTorch's cuDNN at 64 x 64 and about 2.4 times slower at 128 and 224 pixels, prediction 2 to 4 times slower; the layer timings show the three convolutions taking about 80% of a 224 x 224 step, which is the price of an im2col matrix multiply that writes a column tensor 9 times the size of the image, where cuDNN convolves directly. Prediction from `Float[]` is limited by the host: converting and copying 38 MB of doubles per batch of 64 takes about as long as the GPU does the forward pass, and training from 8-bit staged pixels is within 1% of training from `Float[]` at 224 x 224 (the "staged train" figure of `cnn_speed.obs`). Decoding and augmenting real image files (OpenCV) stays on the CPU and bounds a real epoch; `cnn_images.obs --cache` keeps decoded images in memory.
+
+**How the GPU backend was checked.** Three tests that print `SKIP` and exit 0 where there is no CUDA library or device (they are inert on CI), and one that runs only there.
+
+*Against PyTorch and the CPU engine.* `ml_cnn_cuda_parity.obs` runs the cases of `ml_cnn_parity.obs` (every layer type alone, the baseline at 32 x 32, 20 Adam steps) on the GPU and on the CPU engine and compares each with PyTorch and with each other, on the loss, the logits, every parameter gradient, the input gradient and each layer's output. Largest difference over the cases, `max |a - b| / max |b|` per tensor, in units of 1e-7 (float32 rounding is 1.2e-7):
+
+| | loss | logits | parameter gradients | input gradient | layer outputs |
+|---|---|---|---|---|---|
+| GPU vs PyTorch (CPU fixtures) | 0.8 | 4.6 | 7.2 | 2.3 | 6.5 |
+| GPU vs PyTorch on the GPU (`cnn_parity.py --device cuda`) | 0.9 | 3.8 | 7.0 | 2.0 | 5.4 |
+| GPU vs the CPU engine | 1.4 | 10.0 | 5.6 | 2.0 | 10.0 |
+| CPU engine vs PyTorch (for scale) | 1.1 | 8.3 | 8.1 | 2.3 | 8.3 |
+
+The GPU is as close to PyTorch as the CPU engine is. The test allows 2e-5 per layer and 5e-5 for the network, the tolerances of the CPU test, which are 100 to 400 times the measurement: float32 sums of up to 2,304 products in a different order (cuBLAS, Eigen, PyTorch) differ by a few ulps, and the GPU also fuses a multiply and an add that the CPU does not. The 20 Adam steps of `train_baseline32` agree with PyTorch to 9e-7 per step (loss) and 5e-5 in the final weights, and with the CPU engine to 1e-6 and 7e-5. At larger sizes (`cnn_parity.py --large --float64`, `ml_cnn_cuda_parity.obs <dir> large`, not committed: megabytes) the baseline at 64 x 64 agrees with PyTorch to 8e-7 (gradients) and at 224 x 224 to 2.1e-6 (gradients) and 1.4e-7 (input gradient). Against a float32 PyTorch reference the 224 x 224 gradients differ by 2.9e-3 and the input gradient by 6e-2, **for the CPU engine and the GPU alike**: PyTorch's own float32 run differs from its float64 run by exactly that much (a ReLU input within rounding of zero flips sign with the summation order, and over 800,000 activations per image a few do), so the float64 reference is the one to compare with. In a 20-step Adam run at 64 x 64 the GPU follows PyTorch to 8e-5 per step and 5e-3 in the weights, and the CPU engine to 4.2e-3 and 3.9e-2: Adam amplifies the float32 noise of near-zero gradients, and it is the CPU engine's trajectory that drifts there (not investigated further; it does not depend on the thread count).
+
+*Unit tests.* `ml_cnn_cuda.obs` compares the GPU with a CPU twin of the same seed for: the device list, selection, refusal and the move back; odd and non-square sizes, 1, 2 and 3 channels, a 1 x 1 image, a kernel as large as the image, stride 3, an even `SAME` kernel, overlapping pooling windows, batches of 1, 3 and 6 (worst 1.1e-6); dropout (the same seed gives the same mask on two GPU models and on the CPU, element for element, another seed another mask, `ResetDropout` replays, the rate and the scaling are right, training-mode gradients agree); 20 Adam steps from the same weights and batches following the CPU loss curve step by step (worst 8e-8 relative), SGD with momentum, `SetLearningRate`; two GPU models trained alike being identical bit for bit; `Save` and `Load` between devices in both directions (weights bit-identical, predictions equal to 1e-7); four models alive and trained in turn, each equal to its twin; memory returned to its baseline after repeated create, train and close cycles and after `SetDevice("cpu")`; a batch of 400 that needs 55 GB answering `-1.0` with a reason and leaving the model working; bad arguments refused as on the CPU; and a 20-epoch `CnnTrainer` run on the synthetic texture set that reaches 100% validation and test accuracy on both devices (3.0 s on the CPU, 0.4 s on the GPU). `ml_cnn_cuda_fallback.obs` is the other half and runs wherever CUDA is *absent*, CI included: no device is counted, the reason is given, `SetDevice("cuda")` is refused, and a model refused the GPU trains exactly as one that never asked.
+
+*Not verified.* The whole path through Objeck (tests, speed, parity) was run on Windows x64 with an RTX 4090 (compute capability 8.9, driver 621.24, CUDA 13.1) only. On Linux (Ubuntu 24.04 under WSL2, g++ 13, CUDA 13.1, the same GPU) `build_cuda.sh` builds the library and a standalone C++ program that loads it with `dlopen` trains the baseline through it next to the CPU engine, agreeing to 1.2e-4 over 20 Adam steps on random labels; `libobjk_ml`'s own loader compiles there but was not run, and macOS has no CUDA. No other GPU generation, no multi-GPU machine and no older toolkit were tried; TF32 was measured on one batch only.
 
 ### Plotting (System.Plot)
 
@@ -1823,7 +1885,7 @@ The libraries in this guide are covered by the regression suite in `programs/reg
 | Area | Tests |
 |---|---|
 | `System.Plot`, `System.Plot.SDL` | `plot_svg.obs`, `plot_svg_more.obs` (with goldens in `plot_golden/`), `plot_view.obs`, `plot_sdl.obs` |
-| `System.ML.Cnn` | `ml_cnn_gradcheck.obs` (finite differences, float64), `ml_cnn_parity.obs` (against PyTorch, data from `tools/ml/cnn_parity.py`), `ml_cnn_edges.obs`, `ml_cnn_dataset.obs`, `ml_cnn_train.obs` |
+| `System.ML.Cnn` | `ml_cnn_gradcheck.obs` (finite differences, float64), `ml_cnn_parity.obs` (against PyTorch, data from `tools/ml/cnn_parity.py`), `ml_cnn_edges.obs`, `ml_cnn_dataset.obs`, `ml_cnn_train.obs`, and for the optional GPU backend `ml_cnn_cuda.obs`, `ml_cnn_cuda_parity.obs` (both skip without a CUDA device) and `ml_cnn_cuda_fallback.obs` (runs only without one) |
 | `System.ML.VectorSearch` | `ml_vector_exact.obs`, `ml_vector_edges.obs`, `ml_vector_validation.obs`, `ml_vector_persist.obs` |
 | `System.ML` | `ml_*.obs`, e.g. `ml_kernel_svm_reference.obs` and `ml_one_class_svm_reference.obs` (against an independent reference, generated by `tools/ml/svm_reference/gen_reference_test.py`), `ml_outlier_*.obs`, `ml_lab_*.obs` |
 | `System.AI` | `ai_search_test.obs`, `ai_game_test.obs`, `ai_optimize_test.obs`, `ai_rl_test.obs` |

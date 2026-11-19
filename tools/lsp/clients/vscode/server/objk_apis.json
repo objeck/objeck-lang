@@ -16106,6 +16106,12 @@
 				"GetCorrect": {
 					"descriptions": ["**How many images of the last TrainBatch, EvaluateBatch, TrainStaged or EvaluateStaged call were classified correctly at the 0.5 threshold.**\n\n```method : public : GetCorrect() ~ Int```\n\n\n\nreturn: Int"]
 				},
+				"GetDevice": {
+					"descriptions": ["**Where the model runs.**\n\n```method : public : GetDevice() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetDeviceMemory": {
+					"descriptions": ["**The GPU memory this model holds (parameters, optimizer state, and the activation buffers of the largest batch it has seen). Grows with the batch size; all of it is given back by Close().**\n\n```method : public : GetDeviceMemory() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetError": {
 					"descriptions": ["**Why the last call answered false, -1.0 or Nil.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
 				},
@@ -16169,6 +16175,9 @@
 				"Save": {
 					"descriptions": ["**Writes the weights to a file: a header with the architecture's signature, then every value exactly as it is held, so Load gives back bit-identical weights. The optimizer's moments are not saved.**\n\n```method : public : Save(path:String) ~ Bool```\n\n\n\npath: String\n\nreturn: Bool"]
 				},
+				"SetDevice": {
+					"descriptions": ["**Chooses where the model runs: \"cpu\" (the default) or \"cuda\" / \"cuda:N\", the GPU backend. Call it before training, or at any time: the weights move with the model (the Adam moments start again from zero). The two devices share the weights file format, so a model saved on one loads on the other. A refusal (no GPU, no CUDA library, out of GPU memory) answers false, says why in GetError() and leaves the model where it was.**\n\n```method : public : SetDevice(device:String) ~ Bool```\n\n\n\ndevice: String\n\nreturn: Bool", "**Chooses where the model runs, optionally with TF32 (the GPU's Tensor Cores, about 10 bits of mantissa in the matrix multiplies: faster, results a few 1e-4 from the exact FP32 of the default). Ignored on the CPU.**\n\n```method : public : SetDevice(device:String, tf32:Bool) ~ Bool```\n\n\n\ndevice: String\n\ntf32: Bool\n\nreturn: Bool"]
+				},
 				"SetInitializer": {
 					"descriptions": ["**Chooses how the weights start. Call it before Compile; it has no effect afterwards.**\n\n```method : public : SetInitializer(init:Initializer) ~ Nil```\n\n\n\ninit: Initializer\n\nreturn: Nil"]
 				},
@@ -16195,8 +16204,23 @@
 		"System.ML.Cnn.CnnRuntime": {
 			"description": "Process-wide settings of the native layers and a seeded shuffle.",
 			"functions": {
+				"CudaDeviceCount": {
+					"descriptions": ["**How many CUDA devices the optional GPU library found. The library (libobjk_ml_cuda, built apart from Objeck, see docs/AI.md) is loaded on the first call; without it, or without an NVIDIA GPU and driver, the answer is 0 and CudaStatus() says why.**\n\n```function : CudaDeviceCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"CudaFreeMemory": {
+					"descriptions": ["**The memory that is free on a CUDA device right now.**\n\n```function : CudaFreeMemory(index:Int) ~ Int```\n\n\n\nindex: Int\n\nreturn: Int"]
+				},
+				"CudaStatus": {
+					"descriptions": ["**Why CUDA cannot be used.**\n\n```function : CudaStatus() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetDevices": {
+					"descriptions": ["**The devices a model can be placed on, as the names SetDevice takes: \"cpu\", then \"cuda:0\", \"cuda:1\" ... with the GPU's name and memory.**\n\n```function : GetDevices() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
 				"GetThreads": {
 					"descriptions": ["**The number of threads the layers use.**\n\n```function : GetThreads() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"HasCuda": {
+					"descriptions": ["**Is there a CUDA device a model can run on?**\n\n```function : HasCuda() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"Permutation": {
 					"descriptions": ["**A seeded shuffle of 0 .. n - 1 (Fisher-Yates), the same on every platform.**\n\n```function : Permutation(n:Int, seed:Int) ~ Int[]```\n\n\n\nn: Int\n\nseed: Int\n\nreturn: Int[]"]

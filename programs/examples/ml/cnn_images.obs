@@ -26,7 +26,9 @@ wall time) and the test accuracy, precision, recall and F1, and writes the per-e
 Options: --size N (224), --blocks N (3), --dropout X (0.1), --lr X (0.0001), --batch N (64), --epochs N (10),
 --dense N (128), --augment (flip 0.5, rotation up to 10 degrees 0.3, brightness 0.8 to 1.2 at 0.3, on the
 training images only), --cache (keep decoded images in memory: fast epochs, size x size x 3 bytes per
-image), --threads N (the hardware threads, at most 8), --seed N (42), --limit N, --out PREFIX (cnn_run).
+image), --threads N (the hardware threads, at most 8), --seed N (42), --limit N, --out PREFIX (cnn_run),
+--device cpu|cuda|cuda:N (cpu: the layers run on the optional CUDA backend when it is built and installed,
+see docs/AI.md; image decoding and augmentation stay on the CPU either way).
 ~#
 
 use System.ML.Cnn;
@@ -49,6 +51,7 @@ class CnnImages {
 		seed := 42;
 		limit := 0;
 		threads := 0;
+		device := "cpu";
 		augment := false;
 		cache := false;
 
@@ -74,6 +77,7 @@ class CnnImages {
 				else if(name->Equals("--seed")) { seed := value->ToInt(); }
 				else if(name->Equals("--limit")) { limit := value->ToInt(); }
 				else if(name->Equals("--threads")) { threads := value->ToInt(); }
+				else if(name->Equals("--device")) { device := value; }
 				else if(name->Equals("--out")) { out := value; }
 				else if(name->Equals("--real-name")) { real_name := value; }
 				else if(name->Equals("--fake-name")) { fake_name := value; }
@@ -135,7 +139,11 @@ class CnnImages {
 			"a {$blocks}-block network does not fit {$size} x {$size} images (try fewer --blocks or a larger --size)"->PrintLine();
 			Runtime->Exit(1);
 		};
-		"parameters: {$model->GetParameterCount()}  threads: {$CnnRuntime->GetThreads()}"->PrintLine();
+		if(<>model->SetDevice(device)) {
+			"cannot use the device '{$device}': {$model->GetError()}"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"parameters: {$model->GetParameterCount()}  device: {$model->GetDevice()}  threads: {$CnnRuntime->GetThreads()}"->PrintLine();
 
 		trainer := CnnTrainer->New(model, train, validation, batch, seed);
 		trainer->SetVerbose(true);
@@ -202,6 +210,6 @@ class CnnImages {
 	function : Usage(why : String) ~ Nil {
 		"{$why}"->PrintLine();
 		"usage: obr cnn_images.obe (--data ROOT | --real DIR --fake DIR) [--size N] [--blocks N] [--dropout X] [--lr X]"->PrintLine();
-		"       [--batch N] [--epochs N] [--dense N] [--augment] [--cache] [--threads N] [--seed N] [--limit N] [--out PREFIX]"->PrintLine();
+		"       [--batch N] [--epochs N] [--dense N] [--augment] [--cache] [--threads N] [--device D] [--seed N] [--limit N] [--out PREFIX]"->PrintLine();
 	}
 }
