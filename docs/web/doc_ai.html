@@ -1113,22 +1113,29 @@ loaded := VectorIndex-&gt;Load("docs.vix");       # Nil if the file is not a goo
     </table>
 <pre class="line-numbers"><code class="language-cpp">use System.Stats;
 
-genuine := [52.0, 61.5, 48.2, 70.1, 55.3, 49.9, 66.0, 58.4];
-fake := [40.2, 45.8, 52.1, 38.9, 47.5, 44.0, 50.3, 41.7];
+class Demo {
+  function : Main(args : String[]) ~ Nil {
+    genuine := [52.0, 61.5, 48.2, 70.1, 55.3, 49.9, 66.0, 58.4];
+    fake := [40.2, 45.8, 52.1, 38.9, 47.5, 44.0, 50.3, 41.7];
 
-r := TTest-&gt;Welch(genuine, fake);          # unequal variances; the safer default
-r-&gt;ToString()-&gt;PrintLine();                # t, df, p, mean diff, 95% CI, Cohen d, Hedges g
-if(r-&gt;IsValid() &amp; r-&gt;IsSignificant(0.05)) {
-  "difference {$r-&gt;GetMeanDiff()} (95% CI {$r-&gt;GetCiLow()} to {$r-&gt;GetCiHigh()}), g = {$r-&gt;GetHedgesG()}"-&gt;PrintLine();
-};
+    r := TTest-&gt;Welch(genuine, fake);          # unequal variances; the safer default
+    r-&gt;ToString()-&gt;PrintLine();                # t, df, p, mean diff, 95% CI, Cohen d, Hedges g
+    if(r-&gt;IsValid() &amp; r-&gt;IsSignificant(0.05)) {
+      "difference {$r-&gt;GetMeanDiff()} (95% CI {$r-&gt;GetCiLow()} to {$r-&gt;GetCiHigh()}), g = {$r-&gt;GetHedgesG()}"-&gt;PrintLine();
+    };
 
-# regression with a categorical predictor: 0/1 columns, an intercept, then the summary table
-X := Design-&gt;HStack(Design-&gt;Column(length), Design-&gt;Dummies(category));
-fit := OLS-&gt;Fit(X, rating, true, ["length", "kind_b", "kind_c"]);
-fit-&gt;ToString()-&gt;PrintLine();              # coef, std err, t, P&gt;|t|, 95% CI, R-squared, F, AIC, BIC
-fit-&gt;GetPValues();                         # Float[], one per coefficient
+    # regression with a categorical predictor: an intercept, a numeric column and 0/1 columns
+    length := [10.0, 25.0, 31.0, 12.0, 40.0, 22.0, 35.0, 18.0, 29.0, 44.0];
+    kind := ["a", "b", "c", "a", "b", "c", "a", "b", "c", "a"];
+    rating := [2.0, 3.1, 4.2, 2.4, 3.9, 3.8, 3.3, 3.0, 4.6, 4.1];
+    X := Design-&gt;HStack(Design-&gt;Column(length), Design-&gt;Dummies(kind));
+    fit := OLS-&gt;Fit(X, rating, true, ["length", "kind_b", "kind_c"]);
+    fit-&gt;ToString()-&gt;PrintLine();              # coef, std err, t, P&gt;|t|, 95% CI, R-squared, F, AIC, BIC
+    fit-&gt;GetPValues()[1]-&gt;PrintLine();         # a Float[], one p-value per coefficient
+  }
+}
 </code></pre>
-    <p>Conventions worth knowing. The mean difference is the first group minus the second, and the confidence interval is for that difference (for a one-sample test, mean minus the hypothesised mean). Cohen's d divides by the pooled standard deviation (one-sample: the sample's; paired: that of the differences), and Hedges' g multiplies it by <code>1 - 3 / (4 df - 1)</code>; the Welch test reports the same pooled-sd d and g as the Student test. A regression with an intercept uses the centred total sum of squares and tests against the intercept-only model; without one it uses the uncentred sum and <code>df_model = k</code>, as <code>statsmodels</code> does, and AIC and BIC count <code>df_model + 1</code> parameters like <code>statsmodels</code>. Put every level of a categorical variable beside an intercept and the fit is refused as rank deficient (the dummy trap); <code>Design-&gt;Dummies</code> drops the first level for that reason.</p>
+    <p>Conventions worth knowing. The mean difference is the first group minus the second, and the confidence interval is for that difference (for a one-sample test, mean minus the hypothesised mean). Cohen's d divides by the pooled standard deviation (one-sample: the sample's; paired: that of the differences), and Hedges' g multiplies it by the exact correction <code>Gamma(df/2) / (sqrt(df/2) * Gamma((df-1)/2))</code> (<code>Dist-&gt;HedgesJ</code>, about <code>1 - 3 / (4 df - 1)</code>); the Welch test reports the same pooled-sd d and g as the Student test. A regression with an intercept uses the centred total sum of squares and tests against the intercept-only model; without one it uses the uncentred sum and <code>df_model = k</code>, as <code>statsmodels</code> does, and AIC and BIC count one parameter per coefficient, also as <code>statsmodels</code> does. Put every level of a categorical variable beside an intercept and the fit is refused as rank deficient (the dummy trap); <code>Design-&gt;Dummies</code> drops the first level for that reason.</p>
     <p>The p-values come from the regularized incomplete beta function (continued fraction, Lentz), so they stay accurate in the far tail (<code>p = 7e-18</code> is <code>7e-18</code>, not 0) and for large degrees of freedom. Every distribution function is tested against <code>scipy</code> at small and large df.</p>
     <p>A complete run -- the review-length t-test at n = 100, 500 and 2000 per group on synthetic data, then the same comparison as a regression -- is <a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/ml/fake_review_ttest.obs" target="_blank"><code>programs/examples/ml/fake_review_ttest.obs</code></a>.</p>
     <h4 id="plotting-systemplot">Plotting (System.Plot)</h4>
