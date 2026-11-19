@@ -68,6 +68,53 @@ bundle System.NLP.Topics {
 			@n += 1;
 		}
 
+		# One text cut into windows of `window` tokens, counted the way Gensim's WordOccurrenceAccumulator counts them:
+		# a text no longer than the window is one window; for a longer text the first window is counted whole and each
+		# slide DROPS the token that left the window from the set of words present (even when the same word still occurs
+		# inside the window) and adds the token that entered. That drop is a quirk of Gensim: a word that repeats within
+		# a window is missed for the windows after its first copy leaves. It is reproduced here on purpose so the
+		# numbers match Gensim's; tid maps each token to a target index or -1.
+		method : public : AddText(tid : Int[], len : Int, window : Int) ~ Nil {
+			if(len <= window) {
+				AddWindow(tid, 0, len);
+				return;
+			};
+
+			inset := Bool->New[@t];
+			for(i := 0; i < window; i += 1;) {
+				if(tid[i] >= 0) {
+					inset[tid[i]] := true;
+				};
+			};
+
+			TallySet(inset);
+			@n += 1;
+			for(s := 1; s + window <= len; s += 1;) {
+				if(tid[s - 1] >= 0) {
+					inset[tid[s - 1]] := false;
+				};
+
+				if(tid[s + window - 1] >= 0) {
+					inset[tid[s + window - 1]] := true;
+				};
+
+				TallySet(inset);
+				@n += 1;
+			};
+		}
+
+		method : private : TallySet(inset : Bool[]) ~ Nil {
+			np := 0;
+			for(i := 0; i < @t; i += 1;) {
+				if(inset[i]) {
+					@present[np] := i;
+					np += 1;
+				};
+			};
+
+			Tally(np);
+		}
+
 		method : private : Tally(np : Int) ~ Nil {
 			for(a := 0; a < np; a += 1;) {
 				row := @present[a] * @t;
@@ -83,7 +130,7 @@ bundle System.NLP.Topics {
 
 	Coherence measures, all after Roeder, Both and Hinneburg, "Exploring the space of topic coherence measures" (WSDM 2015) and Gensim's CoherenceModel; every one is the mean over a topic's word pairs, and the model value is the mean over topics (Mean):
 	- UMass: Mimno et al. 2011, document co-occurrence. For the top words w1..wN of a topic, best first, the mean over pairs (wi, wj) with j < i of log((D(wi,wj)/D + 1e-12) / (D(wj)/D)), D(.) counting the documents of the corpus that contain the word(s) and D the number of documents. Higher (closer to 0) is better; the values are negative. Needs the bag-of-words corpus. Equal to Gensim's coherence="u_mass".
-	- CNpmi: normalized pointwise mutual information over sliding windows, window size 10 by default in Gensim. For every pair of distinct top words, NPMI = log((p(wi,wj) + 1e-12) / (p(wi) p(wj))) / -log(p(wi,wj) + 1e-12), the probabilities being the share of windows holding the word(s). A text of at most `window` tokens is one window, longer texts give one window per position (length - window + 1), an empty text gives one empty window, as in Gensim. The value lies in [-1, 1], higher is better. A pair with a word that occurs in no window counts 0. Equal to Gensim's coherence="c_npmi".
+	- CNpmi: normalized pointwise mutual information over sliding windows, window size 10 by default in Gensim. For every pair of distinct top words, NPMI = log((p(wi,wj) + 1e-12) / (p(wi) p(wj))) / -log(p(wi,wj) + 1e-12), the probabilities being the share of windows holding the word(s). A text of at most `window` tokens is one window, longer texts give one window per position (length - window + 1), an empty text gives one empty window, as in Gensim. GENSIM QUIRK, reproduced on purpose: when the window slides, Gensim removes the token that left from the set of words present even if the same word still occurs inside the window, so a word that repeats within a window is under-counted. This library does the same, so CNpmi and CV agree with Gensim's CoherenceModel to rounding error (1e-16 on the tests' corpora, including one of 40 texts longer than the window); a count that treated every window as a plain set differed by up to 0.18 on that corpus. The value lies in [-1, 1], higher is better. A pair with a word that occurs in no window counts 0. Equal to Gensim's coherence="c_npmi".
 	- CV: the measure Gensim uses by default (coherence="c_v"), window 110. Each top word wi gets a vector holding NPMI(wi, wj) for every top word wj (itself included); the topic's context vector is the sum of those vectors; the score of the word is the cosine between its vector and that sum, and the topic's coherence is the mean over its words. Range [-1, 1], higher is better.
 
 	The windows are built over the token strings you pass in, so pass the same token lists the dictionary was built from (before or after rare-token filtering, your choice: tokens the model does not know still take up window positions, as they do in Gensim when it is given the raw texts).
@@ -233,14 +280,7 @@ bundle System.NLP.Topics {
 					};
 				};
 
-				if(len <= window) {
-					counter->AddWindow(tid, 0, len);
-				}
-				else {
-					for(s := 0; s + window <= len; s += 1;) {
-						counter->AddWindow(tid, s, s + window);
-					};
-				};
+				counter->AddText(tid, len, window);
 			};
 
 			return counter;

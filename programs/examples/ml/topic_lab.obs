@@ -30,7 +30,7 @@ the 5-topic model should be the planted lists (they are: see the output).
   compile: obc -src topic_lab.obs -lib nlp_topics,ml_lab,ml,csv,json,plot,gen_collect
   run:     obr topic_lab.obe [output_dir]       (default: topic_output; writes the .bson and topic_report.svg)
 
-About 20-40 seconds. The numbers are deterministic: the same on every run and machine. Coherence here is
+About 12 seconds on a Ryzen 9 7950X3D. The numbers are deterministic: the same on every run and machine. Coherence here is
 computed on the tweets themselves (u_mass over documents, c_npmi with a window of 10 tokens, c_v with the
 Gensim default window of 110), top 10 words per topic. The likelihood bound is Gensim's log_perplexity, the
 per-word bound (higher is better); perplexity is exp(-bound), reported beside it.

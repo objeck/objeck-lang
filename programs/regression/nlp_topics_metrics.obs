@@ -5,7 +5,7 @@ System.NLP.Topics TopicMetrics: u_mass, c_npmi and c_v coherence, topic diversit
 Independent values. The coherence expectations come from nlp_topics_reference.py, which writes the three
 measures out from Roeder, Both and Hinneburg (2015) and the structure of Gensim's topic_coherence package
 (segmentation, boolean sliding-window probability estimation, confirmation measure, aggregation) in plain Python.
-Gensim was not installed, so none of these numbers was compared with a Gensim run. A two-word example is also
+The same values were then checked against gensim 4.4.0's CoherenceModel (nlp_topics_gensim_check.py): they agree to 1e-16, which includes a second corpus of long texts (Sliding below). A two-word example is also
 worked by hand below. The fixed corpus is ten tiny texts (one of them empty) and three fixed word lists, so the
 numbers do not depend on the LDA model.
 
@@ -22,6 +22,7 @@ class NlpTopicsMetrics {
 	function : Main(args : String[]) ~ Nil {
 		ok := true;
 		ok := Fixed() & ok;
+		ok := Sliding() & ok;
 		ok := ByHand() & ok;
 		ok := SetMeasures() & ok;
 		ok := Stability() & ok;
@@ -108,6 +109,75 @@ class NlpTopicsMetrics {
 		# window 1 makes every window a single token, so no two words ever meet: every pair has p(a,b) = 0 and the
 		# 1e-12 smoothing in the formula gives log(1e-12 / (p(a) p(b))) / -log(1e-12), about -0.8 here (not exactly -1)
 		ok := Report("c_npmi, window 1 (no pair ever meets), matches the reference", Matches(TopicMetrics->CNpmi(topics, texts, 1), [-0.8034789835208045, -0.8034789835208045, -0.7961418477268177])) & ok;
+		return ok;
+	}
+
+	# 40 random texts of 5 to 30 tokens over 15 words, longer than the windows, with repeated words: expected values
+	# from gensim.models.CoherenceModel (gensim 4.4.0, topn 5, processes 1), made by nlp_topics_gensim_check.py. They
+	# differ from a plain per-window set count by up to 0.18, because Gensim's sliding window drops the token that left
+	# even when it still occurs inside the window; TopicMetrics reproduces that on purpose.
+	function : Sliding() ~ Bool {
+		ok := true;
+		lines := [
+			"w2 w13 w14 w3 w3 w1 w3 w6 w4 w1 w1 w12 w0 w4 w1 w0 w1 w2 w4 w1 w1 w1 w14 w0",
+			"w6 w7 w9 w9 w7 w7 w7 w6 w6 w5 w5 w0 w8 w9 w7 w6",
+			"w3 w11 w7 w12 w4 w1 w12 w0 w10 w14 w11 w14 w12 w10 w12 w2 w1 w8 w0 w14 w12 w13 w10 w5",
+			"w4 w10 w6 w3 w0 w4 w4 w8 w3 w2 w2",
+			"w6 w9 w10 w13 w5 w9 w13 w5 w12 w9 w7 w7 w4 w11 w5 w9 w7 w7 w7 w9",
+			"w12 w12 w13 w11 w11 w12 w8 w11 w12 w7 w10 w11 w14 w9 w13 w14 w10 w10 w14 w11 w11 w10 w3 w11 w11",
+			"w0 w2 w4 w1 w2 w3 w13 w0 w4 w0 w2 w4 w4 w2 w6 w4 w2 w1 w4 w1",
+			"w7 w10 w5 w9 w7 w9 w8 w7 w8",
+			"w14 w14 w12 w13 w12 w12 w10 w14 w3 w11 w0 w14 w13 w3 w11 w4 w14",
+			"w4 w14 w1 w4 w9 w4 w2 w4 w0 w3 w0 w8 w3 w6 w3 w13 w3 w1 w7 w1",
+			"w11 w9 w8 w2 w9 w5 w8 w5 w6 w5 w10 w5 w1 w11",
+			"w10 w10 w2 w11 w2 w11 w11 w11 w10 w10 w14 w13 w2 w10 w14 w12 w5 w2 w11 w14",
+			"w8 w1 w4 w2 w1 w13 w3 w0 w0 w0 w0 w3 w3 w2",
+			"w0 w8 w6 w6 w6 w1 w10 w6",
+			"w6 w11 w14 w12 w11 w5 w13 w5 w14",
+			"w1 w0 w1 w0 w3 w2 w3 w4 w5 w0 w1 w3 w7 w2 w1 w10 w3 w5 w5 w0 w3 w1 w2",
+			"w6 w2 w5 w5 w7 w6 w7 w8 w6 w6 w10 w7 w5 w8",
+			"w14 w13 w12 w11 w13 w13 w11 w13 w10 w13",
+			"w0 w3 w4 w1 w0 w12 w4 w2 w1 w3 w3 w3 w1 w14 w11 w1 w1 w0 w4",
+			"w6 w8 w5 w9 w7 w6 w6 w14 w5 w7 w9 w7 w6 w8 w5 w11 w5",
+			"w8 w10 w11 w12 w10 w14 w10 w11 w6 w9 w14 w12 w12 w14 w11 w1 w14 w11 w13 w1 w13 w7 w11 w11 w13 w10 w13 w11 w0 w3",
+			"w5 w1 w1 w4 w1 w1 w10 w13 w3 w1 w1 w0 w3 w2 w3 w12 w3 w9 w1 w0",
+			"w9 w8 w5 w9 w8 w8 w9 w11",
+			"w14 w13 w14 w14 w12 w10 w9 w13 w10 w11 w10 w12 w11 w14 w9 w13 w10 w14 w10 w13 w14 w14",
+			"w3 w4 w2 w0 w2 w12 w1 w3 w3 w4 w4 w6 w3 w1 w2 w2 w0 w2 w4 w3 w4 w2 w0 w2 w1 w3",
+			"w6 w9 w7 w0 w6 w7 w9 w9 w11 w6 w14 w9 w5 w5 w7 w8 w11 w3 w9 w5 w9 w2 w8 w7 w1",
+			"w11 w0 w13 w12 w14 w11 w13 w10 w12 w10 w10 w11 w10 w10 w13 w8 w13 w1 w11 w0",
+			"w0 w4 w3 w1 w1 w3 w4 w2 w3 w0 w4 w4 w10 w4 w0 w3 w13 w14 w0 w12 w2 w1 w0 w3 w1 w3 w0 w0 w12",
+			"w8 w8 w3 w8 w9 w8 w7 w0 w8 w6 w5 w6 w9 w14 w1 w5 w7 w8 w8",
+			"w2 w14 w13 w13 w10 w11 w14 w3 w0 w3 w13 w12",
+			"w3 w0 w5 w2 w14",
+			"w6 w6 w5 w5 w8 w5 w4 w5 w2 w5 w9 w9 w5 w1 w6 w7 w7 w6 w4 w5 w8 w6 w9 w7",
+			"w14 w12 w10 w14 w10 w13 w14 w14 w14 w1",
+			"w4 w0 w4 w4 w1 w10 w1 w2 w2 w2 w3 w1 w2 w4 w0 w0 w3 w3 w1 w2 w3 w5 w2 w4 w4 w3 w1",
+			"w7 w4 w6 w7 w8 w5 w1 w5 w5 w4 w9 w9 w7 w4 w7 w4 w7 w8",
+			"w10 w10 w14 w6 w13 w13 w14",
+			"w0 w2 w1 w0 w1 w4 w4 w0 w4 w3 w4 w2 w1 w5 w11 w1 w3 w4 w9 w2 w2 w3",
+			"w1 w6 w5 w6 w6 w8 w8 w2 w7 w9 w10 w5 w9 w5 w9 w8 w8 w4 w5 w2 w7 w6 w6 w11 w8 w4 w6 w8 w9",
+			"w14 w14 w0 w13 w14 w12 w12 w14 w10 w2 w13 w13 w13 w11 w10 w11 w14 w14 w10 w14 w13 w11 w12 w10 w10 w11",
+			"w1 w3 w7 w4 w4 w4 w4 w3 w3 w11 w0 w0 w3 w3 w1 w6 w0 w11 w1 w3 w0 w4 w11 w2 w13 w3 w6 w14 w3"
+		];
+		tok := TopicTokenizer->New();
+		tok->SetLengths(1, 5);
+		texts := Vector->New()<Vector<String>>;
+		each(i : lines) {
+			texts->AddBack(tok->Tokenize(lines[i]));
+		};
+		dict := TokenDictionary->New();
+		dict->AddDocuments(texts);
+		corpus := dict->ToCorpus(texts);
+		topics := Vector->New()<TopicTerms>;
+		topics->AddBack(Terms(dict, 0, ["w0", "w1", "w2", "w3", "w4"]));
+		topics->AddBack(Terms(dict, 1, ["w5", "w6", "w7", "w8", "w9"]));
+		topics->AddBack(Terms(dict, 2, ["w10", "w11", "w12", "w13", "w14"]));
+		ok := Report("sliding corpus: u_mass equals Gensim", Matches(TopicMetrics->UMass(topics, corpus), [-0.325743979235, -0.446452776390, -0.372563220880])) & ok;
+		ok := Report("sliding corpus: c_npmi window 3 equals Gensim", Matches(TopicMetrics->CNpmi(topics, texts, 3), [0.051081296763, 0.108481443029, 0.103386579987])) & ok;
+		ok := Report("sliding corpus: c_npmi window 10 equals Gensim", Matches(TopicMetrics->CNpmi(topics, texts, 10), [0.134723823502, 0.189654952578, 0.133465819707])) & ok;
+		ok := Report("sliding corpus: c_v window 3 equals Gensim", Matches(TopicMetrics->CV(topics, texts, 3), [0.532687699465, 0.621433531576, 0.616860460176])) & ok;
+		ok := Report("sliding corpus: c_v window 110 equals Gensim", Matches(TopicMetrics->CV(topics, texts, 110), [0.889309035904, 0.841232400008, 0.812384294298])) & ok;
 		return ok;
 	}
 

@@ -209,25 +209,35 @@ def lda_reference():
 # ---------------------------------------------------------------- 3. coherence
 EPS = 1e-12
 
-def windows(text, size):
-    if len(text) <= size:
-        yield text
-    else:
-        for s in range(len(text) - size + 1):
-            yield text[s:s + size]
-
 def count_windows(texts, size, targets):
+    """Boolean sliding-window counts as Gensim's WordOccurrenceAccumulator makes them, including its quirk: when
+    the window slides, the token that left is removed from the set of words present even if the same word is
+    still inside the window. (Checked against gensim 4.4.0: with a plain set per window the values differ by up
+    to 0.18 on texts longer than the window; with this rule they agree to 1e-16. See nlp_topics_gensim_check.py.)"""
+    T = set(targets)
     occ = {w: 0 for w in targets}
     co = {}
     n = 0
     for text in texts:
-        for win in windows(text, size):
-            present = sorted(set(win) & set(targets))
-            for a in present:
-                occ[a] += 1
-                for b in present:
-                    if a < b:
-                        co[(a, b)] = co.get((a, b), 0) + 1
+        if len(text) <= size:
+            spans = [(0, len(text))]
+        else:
+            spans = [(s, s + size) for s in range(len(text) - size + 1)]
+        present = set()
+        for k, (a, b) in enumerate(spans):
+            win = text[a:b]
+            if k == 0:
+                present = set(win) & T
+            else:
+                present.discard(text[a - 1])
+                if win[-1] in T:
+                    present.add(win[-1])
+            p = sorted(present)
+            for x in p:
+                occ[x] += 1
+                for y in p:
+                    if x < y:
+                        co[(x, y)] = co.get((x, y), 0) + 1
             n += 1
     return occ, co, n
 
