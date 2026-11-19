@@ -1137,6 +1137,10 @@ jobs:
             ../../../compiler/lib_src/ml_lab.obs \
             ../../../compiler/lib_src/ml_vector.obs \
             ../../../compiler/lib_src/ml_cnn.obs \
+            ../../../compiler/lib_src/nlp_topics_text.obs \
+            ../../../compiler/lib_src/nlp_topics_lda.obs \
+            ../../../compiler/lib_src/nlp_topics_metrics.obs \
+            ../../../compiler/lib_src/nlp_topics_viz.obs \
             ../../../compiler/lib_src/plot.obs \
             ../../../compiler/lib_src/plot_sdl.obs \
             ../../../compiler/lib_src/stats.obs \

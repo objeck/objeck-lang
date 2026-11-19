@@ -1,0 +1,613 @@
+# EXTRA_LIBS: nlp_topics,json,plot,gen_collect
+#~
+System.NLP.Topics Lda: the model against independently computed values, planted-topic recovery, determinism,
+probability vectors, Save and Load, and refusal of bad input.
+
+Independent values. nlp_topics_reference.py is a second implementation of the same online variational Bayes in
+numpy and scipy (same random generator and update order, so the two must agree to rounding error), and the
+special functions come straight from scipy.special. Its output is pasted below: the bound, the perplexity,
+lambda entries, the top words and the document-topic vector of a 30-document corpus for symmetric,
+asymmetric and learned ("auto") alpha. Gensim was not installed when these were produced, so no value was
+compared with a Gensim run; what the check proves is that the Objeck code implements the written algorithm.
+
+Planted topics. 600 synthetic documents are drawn from 5 topics of 20 words each (80% of a document's words
+come from its topic, the rest from 30 background words); the model must put at least 95% of the documents under
+the right topic and every topic's top 10 words must come from one planted topic. Variational Bayes from a random
+start can end in a local optimum (roughly half the seeds on this data merge two planted topics, and the bound is
+clearly lower for those runs), so the test trains 6 seeds, checks that the best-bound run is a best-purity run and
+checks that one, as Lda.FitBest does.
+~#
+use System.NLP.Topics;
+use Collection;
+
+class NlpTopicsLda {
+	@seed : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@seed := 777;
+		ok := true;
+		ok := Special() & ok;
+		ok := Reference() & ok;
+		ok := PlantedRecovery() & ok;
+		ok := Determinism() & ok;
+		ok := Vectors() & ok;
+		ok := Bound() & ok;
+		ok := Persistence() & ok;
+		ok := Degenerate() & ok;
+
+		if(ok = false) {
+			Runtime->Exit(1);
+		};
+		"nlp_topics_lda: ok"->PrintLine();
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+		return passed;
+	}
+
+	function : Close(a : Float, b : Float, tol : Float) ~ Bool {
+		return Float->Abs(a - b) <= tol * (1.0 + Float->Abs(b));
+	}
+
+	function : Rnd(n : Int) ~ Int {
+		@seed := (@seed * 48271) % 2147483647;
+		return @seed % n;
+	}
+
+	# ---- special functions against scipy.special ----
+
+	function : Special() ~ Bool {
+		ok := true;
+		xs := [0.01, 0.5, 1.0, 2.5, 10.0, 123.456];
+		dg := [-100.560885457869, -1.96351002602142, -0.577215664901533, 0.703156640645243, 2.25175258906672, 4.81182932382899];
+		tg := [10001.6212135283, 4.93480220054468, 1.64493406684823, 0.490357756100235, 0.105166335681686, 0.00813294583427819];
+		lg := [4.59947987804202, 0.5723649429247, 0.0, 0.284682870472919, 12.8018274800815, 469.60554712993];
+		bad := 0;
+		for(i := 0; i < 6; i += 1;) {
+			if(Close(TopicMath->Digamma(xs[i]), dg[i], 0.0000000001) = false) {
+				bad += 1;
+			};
+			if(Close(TopicMath->Trigamma(xs[i]), tg[i], 0.0000000001) = false) {
+				bad += 1;
+			};
+			if(Close(TopicMath->LogGamma(xs[i]), lg[i], 0.0000000001) = false) {
+				bad += 1;
+			};
+		};
+		ok := Report("digamma, trigamma and log-gamma match scipy at 6 points to 1e-10", bad = 0) & ok;
+		nan := Float->NaN();
+		ok := Report("digamma(0), trigamma(-1) and log-gamma(NaN) give NaN", TopicMath->Digamma(0.0) <> TopicMath->Digamma(0.0) & TopicMath->Trigamma(-1.0) <> TopicMath->Trigamma(-1.0) & TopicMath->LogGamma(nan) <> TopicMath->LogGamma(nan)) & ok;
+		return ok;
+	}
+
+	# ---- the 30-document reference corpus ----
+
+	function : RefTexts() ~ Vector<String> {
+		lines := [
+			"w2 w2 w3 w2 w0 w9 w0 w11 w1 w0",
+			"w7 w5 w7 w9 w6 w7 w4 w6 w7 w6",
+			"w9 w11 w8 w8 w8 w11 w7 w11 w9 w10",
+			"w0 w1 w3 w0 w3 w2 w0 w3 w1 w0",
+			"w10 w5 w6 w5 w6 w6 w4 w4 w4 w7",
+			"w9 w10 w10 w3 w11 w11 w8 w8 w10 w8",
+			"w9 w0 w10 w5 w2 w3 w0 w3 w3 w6",
+			"w2 w6 w4 w7 w6 w5 w0 w9 w7 w5",
+			"w8 w9 w11 w10 w9 w7 w9 w8 w1 w8",
+			"w1 w0 w2 w2 w11 w3 w10 w1 w3 w3",
+			"w7 w9 w4 w6 w5 w6 w1 w5 w6 w7",
+			"w8 w8 w9 w9 w11 w9 w4 w9 w8 w11",
+			"w2 w2 w1 w3 w1 w1 w2 w3 w2 w3",
+			"w7 w8 w5 w6 w6 w5 w6 w7 w5 w9",
+			"w10 w11 w10 w2 w11 w9 w11 w11 w11 w8",
+			"w2 w1 w1 w8 w0 w1 w2 w1 w1 w1",
+			"w9 w4 w7 w7 w4 w6 w6 w5 w7 w5",
+			"w11 w8 w5 w8 w4 w3 w8 w10 w10 w11",
+			"w2 w3 w2 w2 w10 w1 w3 w0 w3 w3",
+			"w4 w11 w11 w7 w7 w11 w7 w4 w0 w5",
+			"w8 w11 w11 w8 w9 w8 w10 w1 w8 w8",
+			"w1 w1 w2 w5 w11 w1 w2 w0 w0 w1",
+			"w11 w7 w7 w6 w7 w7 w4 w2 w8 w7",
+			"w10 w8 w11 w11 w8 w11 w8 w11 w3 w7",
+			"w2 w2 w3 w1 w0 w2 w5 w0 w1 w0",
+			"w4 w7 w5 w6 w5 w6 w4 w4 w5 w7",
+			"w8 w10 w11 w9 w8 w8 w11 w11 w11 w8",
+			"w1 w0 w0 w0 w2 w0 w2 w4 w3 w0",
+			"w4 w4 w5 w0 w4 w4 w7 w9 w7 w6",
+			"w11 w11 w11 w10 w6 w11 w10 w10 w9 w11"
+		];
+		out := Vector->New()<String>;
+		each(i : lines) {
+			out->AddBack(lines[i]);
+		};
+		return out;
+	}
+
+	function : RefDocs() ~ Vector<Vector<String>> {
+		return TopicTokenizer->New()->TokenizeAll(RefTexts());
+	}
+
+	function : CheckTop(name : String, lda : Lda, topic : Int, words : String[], weights : Float[]) ~ Bool {
+		terms := lda->GetTopic(topic, 3);
+		good := terms <> Nil;
+		if(good) {
+			got_words := terms->GetWords();
+			got_weights := terms->GetWeights();
+			each(i : words) {
+				if(got_words[i]->Equals(words[i]) = false | Close(got_weights[i], weights[i], 0.000001) = false) {
+					good := false;
+				};
+			};
+		};
+		return Report(name + " topic {$topic}: top 3 words and weights", good);
+	}
+
+	function : CheckModel(name : String, lda : Lda, corpus : TopicCorpus, bound : Float, ppl : Float, lam0 : Float, lam_sum : Float, theta : Float[]) ~ Bool {
+		ok := true;
+		ok := Report(name + ": fitted", lda->IsFitted()) & ok;
+		b := lda->LogPerplexityBound(corpus);
+		ok := Report(name + ": per-word bound {$b} matches the reference {$bound}", Close(b, bound, 0.000001)) & ok;
+		p := lda->Perplexity(corpus);
+		ok := Report(name + ": perplexity {$p} matches the reference {$ppl}", Close(p, ppl, 0.000001)) & ok;
+		lambda := lda->GetLambda();
+		total := 0.0;
+		each(i : lambda) {
+			total += lambda[i];
+		};
+		ok := Report(name + ": lambda[0] and the sum of lambda", lambda->Size() = 36 & Close(lambda[0], lam0, 0.000001) & Close(total, lam_sum, 0.000001)) & ok;
+		mix := lda->GetDocumentTopics(corpus, 0);
+		ok := Report(name + ": document 0 mixture", Close(mix[0], theta[0], 0.000001) & Close(mix[1], theta[1], 0.000001) & Close(mix[2], theta[2], 0.000001)) & ok;
+		return ok;
+	}
+
+	function : Reference() ~ Bool {
+		ok := true;
+		dict := TokenDictionary->New();
+		docs := RefDocs();
+		dict->AddDocuments(docs);
+		corpus := dict->ToCorpus(docs);
+		ok := Report("reference corpus: 30 documents, 12 words, 300 occurrences", corpus->GetNumDocs() = 30 & dict->Size() = 12 & corpus->GetNumWords() = 300.0) & ok;
+
+		sym := Lda->New(3, 0.1, 0.01, 4, 50, 7);
+		sym->SetChunkSize(10);
+		ok := Report("symmetric: Fit", sym->Fit(corpus, dict)) & ok;
+		ok := CheckModel("symmetric", sym, corpus, -2.380308946741, 10.808241519, 0.010000165070, 300.36, [0.189257262550, 0.009709875155, 0.801032862295]) & ok;
+		ok := CheckTop("symmetric", sym, 0, ["w11", "w8", "w10"], [0.349291283, 0.296294874, 0.150446179]) & ok;
+		ok := CheckTop("symmetric", sym, 1, ["w7", "w4", "w6"], [0.271398793, 0.214491471, 0.210447666]) & ok;
+		ok := CheckTop("symmetric", sym, 2, ["w1", "w2", "w0"], [0.267154758, 0.250535177, 0.231849235]) & ok;
+
+		asym := Lda->New(3, 0.0, 0.0, 4, 50, 7);
+		asym->SetChunkSize(10);
+		ok := Report("asymmetric: SetAlphaMode accepted", asym->SetAlphaMode("asymmetric")) & ok;
+		ok := Report("asymmetric: Fit", asym->Fit(corpus, dict)) & ok;
+		alpha := asym->GetAlpha();
+		ok := Report("asymmetric: alpha is 1/(k + sqrt 3) scaled to sum 1", Close(alpha[0], 0.476627109439, 0.0000000001) & Close(alpha[1], 0.302169479252, 0.0000000001) & Close(alpha[2], 0.221203411309, 0.0000000001)) & ok;
+		ok := Report("asymmetric: eta defaults to 1/3", Close(asym->GetEta(), 0.3333333333333333, 0.000000000001)) & ok;
+		ok := CheckModel("asymmetric", asym, corpus, -2.446040701367, 11.542555704, 1.424055946946, 312.0, [0.207583761748, 0.770923558865, 0.021492679387]) & ok;
+		ok := CheckTop("asymmetric", asym, 1, ["w0", "w2", "w3"], [0.453793249, 0.228947978, 0.137902668]) & ok;
+
+		auto := Lda->New(3, 0.1, 0.01, 4, 50, 7);
+		auto->SetChunkSize(10);
+		ok := Report("auto: SetAlphaMode accepted", auto->SetAlphaMode("auto")) & ok;
+		ok := Report("auto: Fit", auto->Fit(corpus, dict)) & ok;
+		learned := auto->GetAlpha();
+		ok := Report("auto: the learned alpha matches the reference and moved from 0.1", Close(learned[0], 0.099728637465, 0.000001) & Close(learned[1], 0.075302735692, 0.000001) & Close(learned[2], 0.080335243268, 0.000001)) & ok;
+		ok := CheckModel("auto", auto, corpus, -2.381515369573, 10.821288697, 0.010000165070, 300.36, [0.189875233642, 0.007342805324, 0.802781961033]) & ok;
+		ok := CheckTop("auto", auto, 2, ["w1", "w2", "w0"], [0.267031395, 0.250450809, 0.231813688]) & ok;
+		return ok;
+	}
+
+	# ---- planted topics ----
+
+	function : Planted(nd : Int, topics : Int, per : Int, bg : Int, len : Int, truth : Int[]) ~ Vector<Vector<String>> {
+		docs := Vector->New()<Vector<String>>;
+		for(d := 0; d < nd; d += 1;) {
+			t := Rnd(topics);
+			truth[d] := t;
+			doc := Vector->New()<String>;
+			for(i := 0; i < len; i += 1;) {
+				if(Rnd(10) < 8) {
+					w := Rnd(per);
+					doc->AddBack("t{$t}w{$w}");
+				}
+				else {
+					w := Rnd(bg);
+					doc->AddBack("b{$w}");
+				};
+			};
+			docs->AddBack(doc);
+		};
+		return docs;
+	}
+
+	function : TopicOf(token : String) ~ Int {
+		if(token->StartsWith("b")) {
+			return -1;
+		};
+		return token->SubString(1, token->Find('w') - 1)->ToInt();
+	}
+
+	# the share of documents whose most probable topic is the majority planted topic of that learned topic
+	function : Purity(lda : Lda, corpus : TopicCorpus, truth : Int[], planted : Int) ~ Float {
+		k_count := lda->GetNumTopics();
+		nd := corpus->GetNumDocs();
+		theta := lda->GetDocumentTopicMatrix(corpus);
+		counts := Int->New[k_count * planted];
+		for(d := 0; d < nd; d += 1;) {
+			best := 0;
+			for(k := 1; k < k_count; k += 1;) {
+				if(theta[d * k_count + k] > theta[d * k_count + best]) {
+					best := k;
+				};
+			};
+			counts[best * planted + truth[d]] += 1;
+		};
+
+		agree := 0;
+		for(k := 0; k < k_count; k += 1;) {
+			most := 0;
+			for(t := 0; t < planted; t += 1;) {
+				if(counts[k * planted + t] > most) {
+					most := counts[k * planted + t];
+				};
+			};
+			agree += most;
+		};
+
+		return agree->As(Float) / nd->As(Float);
+	}
+
+	function : PlantedRecovery() ~ Bool {
+		ok := true;
+		truth := Int->New[600];
+		docs := Planted(600, 5, 20, 30, 20, truth);
+		dict := TokenDictionary->New();
+		dict->AddDocuments(docs);
+		corpus := dict->ToCorpus(docs);
+
+		# Variational Bayes from a random start can end in a local optimum (two planted topics merged, another split),
+		# so the lab practice is to train from several seeds and keep the best bound; the bound must also rank the
+		# runs correctly, which is checked against the known truth
+		models := Vector->New()<Lda>;
+		bounds := Float->New[6];
+		purities := Float->New[6];
+		best := 0;
+		for(i := 0; i < 6; i += 1;) {
+			lda := Lda->New(5, 0.1, 0.01, 30, 50, i + 1);
+			lda->SetChunkSize(600);
+			if(lda->Fit(corpus, dict) = false) {
+				ok := Report("planted: Fit with seed {$i}", false) & ok;
+			};
+			models->AddBack(lda);
+			bounds[i] := lda->LogPerplexityBound(corpus);
+			purities[i] := Purity(lda, corpus, truth, 5);
+			if(bounds[i] > bounds[best]) {
+				best := i;
+			};
+		};
+
+		best_purity := purities[best];
+		ok := Report("planted: the best-bound run of 6 seeds (seed {$best + 1}, bound {$bounds[best]}) has document purity {$best_purity} of at least 0.95", best_purity >= 0.95) & ok;
+		best_of_purity := 0;
+		for(i := 1; i < 6; i += 1;) {
+			if(purities[i] > purities[best_of_purity]) {
+				best_of_purity := i;
+			};
+		};
+		ok := Report("planted: the run with the best bound is a run with the best purity", purities[best] >= purities[best_of_purity] - 0.000001) & ok;
+
+		lda := models->Get(best);
+		pure_topics := 0;
+		seen_planted := Int->New[5];
+		for(k := 0; k < 5; k += 1;) {
+			terms := lda->GetTopic(k, 10);
+			words := terms->GetWords();
+			votes := Int->New[5];
+			for(i := 0; i < 10; i += 1;) {
+				t := TopicOf(words[i]);
+				if(t >= 0) {
+					votes[t] += 1;
+				};
+			};
+
+			top := 0;
+			for(t := 1; t < 5; t += 1;) {
+				if(votes[t] > votes[top]) {
+					top := t;
+				};
+			};
+
+			if(votes[top] = 10) {
+				pure_topics += 1;
+				seen_planted[top] += 1;
+			};
+		};
+		ok := Report("planted: every topic's top 10 words come from one planted topic", pure_topics = 5) & ok;
+		distinct := 0;
+		for(t := 0; t < 5; t += 1;) {
+			if(seen_planted[t] = 1) {
+				distinct += 1;
+			};
+		};
+		ok := Report("planted: and the 5 learned topics are the 5 planted ones, one each", distinct = 5) & ok;
+
+		# the two best-bound runs describe the same topics
+		second := -1;
+		for(i := 0; i < 6; i += 1;) {
+			if(i <> best & (second < 0 | bounds[i] > bounds[second])) {
+				second := i;
+			};
+		};
+		kept := Lda->FitBest(corpus, dict, 5, 0.1, 0.01, 30, 50, 600, 1, 6);
+		ok := Report("planted: FitBest of the same 6 seeds keeps the same winner (seed {$kept->GetSeed()}) with the same bound", kept <> Nil & kept->GetSeed() = best + 1 & kept->LogPerplexityBound(corpus) = bounds[best]) & ok;
+		ok := Report("planted: FitBest refuses tries 0 and chunk 0", Lda->FitBest(corpus, dict, 5, 0.1, 0.01, 3, 50, 600, 1, 0) = Nil & Lda->FitBest(corpus, dict, 5, 0.1, 0.01, 3, 50, 0, 1, 2) = Nil) & ok;
+		ok := Report("planted: FitBest returns Nil when every Fit is refused", Lda->FitBest(corpus, dict, 0, 0.1, 0.01, 3, 50, 600, 1, 2) = Nil & Lda->FitBest(Nil, dict, 5, 0.1, 0.01, 3, 50, 600, 1, 2) = Nil) & ok;
+		stable := TopicMetrics->Stability(models->Get(best), models->Get(second));
+		ok := Report("planted: the two best-bound runs (seeds {$best + 1} and {$second + 1}) are stable across seeds ({$stable} above 0.95)", stable > 0.95) & ok;
+		return ok;
+	}
+
+	function : PlantedCorpus(seed : Int, dict : TokenDictionary) ~ TopicCorpus {
+		@seed := seed;
+		truth := Int->New[300];
+		docs := Planted(300, 4, 15, 20, 18, truth);
+		dict->AddDocuments(docs);
+		return dict->ToCorpus(docs);
+	}
+
+	function : Determinism() ~ Bool {
+		ok := true;
+		dict := TokenDictionary->New();
+		corpus := PlantedCorpus(99, dict);
+		a := Lda->New(4, 0.1, 0.01, 8, 50, 5);
+		b := Lda->New(4, 0.1, 0.01, 8, 50, 5);
+		c := Lda->New(4, 0.1, 0.01, 8, 50, 6);
+		a->SetChunkSize(100);
+		b->SetChunkSize(100);
+		c->SetChunkSize(100);
+		a->Fit(corpus, dict);
+		b->Fit(corpus, dict);
+		c->Fit(corpus, dict);
+		la := a->GetLambda();
+		lb := b->GetLambda();
+		lc := c->GetLambda();
+		same := true;
+		differs := false;
+		each(i : la) {
+			if(la[i] <> lb[i]) {
+				same := false;
+			};
+			if(la[i] <> lc[i]) {
+				differs := true;
+			};
+		};
+		ok := Report("the same seed gives bit-identical topics", same) & ok;
+		ok := Report("a different seed gives different topics", differs) & ok;
+		ok := Report("the same seed gives the same bound", a->LogPerplexityBound(corpus) = b->LogPerplexityBound(corpus)) & ok;
+		a->Fit(corpus, dict);
+		again := a->GetLambda();
+		ok := Report("fitting the same object again reproduces it", again[0] = lb[0] & again[again->Size() - 1] = lb[lb->Size() - 1] & a->LogPerplexityBound(corpus) = b->LogPerplexityBound(corpus)) & ok;
+		first := b->GetDocumentTopics(corpus, 7);
+		b->GetDocumentTopics(corpus, 3);
+		second := b->GetDocumentTopics(corpus, 7);
+		ok := Report("a document's mixture does not depend on what was asked before", first[0] = second[0] & first[3] = second[3]) & ok;
+		stable := TopicMetrics->Stability(a, c);
+		ok := Report("two seeds give a stability strictly between 0 and 1 ({$stable})", stable > 0.0 & stable < 1.0) & ok;
+		ok := Report("a model is perfectly stable against itself", Close(TopicMetrics->Stability(a, b), 1.0, 0.000000001)) & ok;
+		return ok;
+	}
+
+	function : Vectors() ~ Bool {
+		ok := true;
+		dict := TokenDictionary->New();
+		docs := RefDocs();
+		docs->AddBack(Vector->New()<String>);
+		docs->AddBack(TopicTokenizer->New()->Tokenize("w0 w0 w1"));
+		dict->AddDocuments(docs);
+		corpus := dict->ToCorpus(docs);
+		lda := Lda->New(3, 0.1, 0.01, 4, 50, 7);
+		lda->SetChunkSize(10);
+		fitted := lda->Fit(corpus, dict);
+		ok := Report("a corpus with an empty document trains", fitted & corpus->GetNumUnique(30) = 0) & ok;
+
+		worst := 0.0;
+		for(d := 0; d < 32; d += 1;) {
+			mix := lda->GetDocumentTopics(corpus, d);
+			total := mix[0] + mix[1] + mix[2];
+			if(Float->Abs(total - 1.0) > worst) {
+				worst := Float->Abs(total - 1.0);
+			};
+			if(mix[0] < 0.0 | mix[1] < 0.0 | mix[2] < 0.0) {
+				worst := 1.0;
+			};
+		};
+		ok := Report("every document's topic vector sums to 1 (worst error {$worst})", worst < 0.000000000001) & ok;
+
+		empty := lda->GetDocumentTopics(corpus, 30);
+		ok := Report("an empty document gets the normalized alpha, here uniform", Close(empty[0], 1.0 / 3.0, 0.000000000001) & Close(empty[2], 1.0 / 3.0, 0.000000000001)) & ok;
+
+		matrix := lda->GetDocumentTopicMatrix(corpus);
+		one := lda->GetDocumentTopics(corpus, 5);
+		ok := Report("the matrix agrees with the single-document call", matrix->Size() = 32 * 3 & matrix[5 * 3 + 1] = one[1]) & ok;
+
+		worst_row := 0.0;
+		for(k := 0; k < 3; k += 1;) {
+			row := lda->GetTopicWord(k);
+			total := 0.0;
+			each(w : row) {
+				total += row[w];
+			};
+			if(Float->Abs(total - 1.0) > worst_row) {
+				worst_row := Float->Abs(total - 1.0);
+			};
+		};
+		ok := Report("every topic's word distribution sums to 1", worst_row < 0.000000000001) & ok;
+
+		terms := lda->GetTopic(0, 3);
+		weights := terms->GetWeights();
+		ok := Report("GetTopic: 3 words, best first, weights falling", terms->Size() = 3 & weights[0] >= weights[1] & weights[1] >= weights[2]) & ok;
+		ok := Report("GetTopic caps top_n at the vocabulary", lda->GetTopic(0, 1000)->Size() = 12) & ok;
+		all := lda->GetTopics(4);
+		ok := Report("GetTopics returns one list per topic", all->Size() = 3 & all->Get(1)->GetTopic() = 1 & all->Get(2)->Size() = 4) & ok;
+		ids := terms->GetIds();
+		words := terms->GetWords();
+		ok := Report("a word has an id and an id has a word", lda->GetWord(ids[0])->Equals(words[0]) & lda->GetWord(99) = Nil & lda->GetWord(-1) = Nil) & ok;
+
+		single := Lda->New(1, 0.0, 0.0, 3, 50, 1);
+		single->Fit(corpus, dict);
+		one_topic := single->GetDocumentTopics(corpus, 0);
+		ok := Report("one topic: every document is [1]", one_topic->Size() = 1 & Close(one_topic[0], 1.0, 0.000000000001)) & ok;
+		return ok;
+	}
+
+	function : Bound() ~ Bool {
+		ok := true;
+		dict := TokenDictionary->New();
+		corpus := PlantedCorpus(5, dict);
+		few := Lda->New(4, 0.1, 0.01, 1, 50, 3);
+		many := Lda->New(4, 0.1, 0.01, 25, 50, 3);
+		few->SetChunkSize(300);
+		many->SetChunkSize(300);
+		few->Fit(corpus, dict);
+		many->Fit(corpus, dict);
+		b1 := few->LogPerplexityBound(corpus);
+		b25 := many->LogPerplexityBound(corpus);
+		ok := Report("the bound is negative and finite ({$b1}, {$b25})", b1 < 0.0 & b25 < 0.0 & b1 = b1 & b25 = b25) & ok;
+		ok := Report("25 passes reach a higher (better) bound than 1 pass", b25 > b1) & ok;
+		ok := Report("Perplexity is exp(-bound)", Close(many->Perplexity(corpus), Float->Exp(-b25), 0.000000000001)) & ok;
+		ok := Report("perplexity falls as the bound rises", many->Perplexity(corpus) < few->Perplexity(corpus)) & ok;
+		ok := Report("a perplexity above 1 and below the vocabulary size", many->Perplexity(corpus) > 1.0 & many->Perplexity(corpus) < dict->Size()->As(Float)) & ok;
+		ok := Report("training seconds were measured", many->GetTrainSeconds() > 0.0 & many->GetTrainSeconds() < 120.0) & ok;
+		return ok;
+	}
+
+	function : Persistence() ~ Bool {
+		ok := true;
+		dict := TokenDictionary->New();
+		corpus := PlantedCorpus(21, dict);
+		lda := Lda->New(4, 0.2, 0.05, 5, 40, 13);
+		lda->SetChunkSize(100);
+		lda->SetAlphaMode("auto");
+		lda->Fit(corpus, dict);
+		path := "nlp_topics_lda_test.model";
+		ok := Report("Save", lda->Save(path)) & ok;
+		loaded := Lda->Load(path);
+		ok := Report("Load gives a fitted model", loaded <> Nil & loaded->IsFitted()) & ok;
+		if(loaded = Nil) {
+			return false;
+		};
+
+		ok := Report("  with the same settings", loaded->GetNumTopics() = 4 & loaded->GetVocabSize() = lda->GetVocabSize() & loaded->GetPasses() = 5 & loaded->GetIterations() = 40 & loaded->GetSeed() = 13 & loaded->GetEta() = 0.05) & ok;
+		la := lda->GetLambda();
+		lb := loaded->GetLambda();
+		same := true;
+		each(i : la) {
+			if(la[i] <> lb[i]) {
+				same := false;
+			};
+		};
+		ok := Report("  the same topics, bit for bit", same) & ok;
+		alpha_a := lda->GetAlpha();
+		alpha_b := loaded->GetAlpha();
+		ok := Report("  the same learned alpha", alpha_a[2] = alpha_b[2] & alpha_a[0] = alpha_b[0]) & ok;
+		ok := Report("  the same bound", lda->LogPerplexityBound(corpus) = loaded->LogPerplexityBound(corpus)) & ok;
+		mix_a := lda->GetDocumentTopics(corpus, 9);
+		mix_b := loaded->GetDocumentTopics(corpus, 9);
+		ok := Report("  the same words and document mixtures", lda->GetTopic(1, 5)->ToString()->Equals(loaded->GetTopic(1, 5)->ToString()) & mix_a[2] = mix_b[2]) & ok;
+
+		bytes := System.IO.Filesystem.FileReader->ReadBinaryFile(path);
+		damaged := Byte->Copy(bytes);
+		mid := bytes->Size() / 2;
+		damaged[mid] := (damaged[mid]->As(Int) + 1)->As(Byte);
+		System.IO.Filesystem.FileWriter->WriteFile("nlp_topics_lda_bad.model", damaged);
+		ok := Report("a flipped byte fails the checksum: Nil", Lda->Load("nlp_topics_lda_bad.model") = Nil) & ok;
+		cut := Byte->New[bytes->Size() - 9];
+		Byte->Copy(cut, 0, bytes, 0, cut->Size());
+		System.IO.Filesystem.FileWriter->WriteFile("nlp_topics_lda_bad.model", cut);
+		ok := Report("a truncated file: Nil", Lda->Load("nlp_topics_lda_bad.model") = Nil) & ok;
+		System.IO.Filesystem.FileWriter->WriteFile("nlp_topics_lda_bad.model", Byte->New[40]);
+		ok := Report("a file that is not a model: Nil", Lda->Load("nlp_topics_lda_bad.model") = Nil) & ok;
+		ok := Report("a missing file, a Nil and an empty name: Nil", Lda->Load("no_such_dir/none.model") = Nil & Lda->Load(Nil) = Nil & Lda->Load("") = Nil) & ok;
+		System.IO.Filesystem.File->Delete(path);
+		System.IO.Filesystem.File->Delete("nlp_topics_lda_bad.model");
+
+		ok := Report("Store is Save: the file loads back to the same topics", lda->Store(path) & Lda->Load(path)->GetTopic(1, 5)->ToString()->Equals(lda->GetTopic(1, 5)->ToString())) & ok;
+		System.IO.Filesystem.File->Delete(path);
+		matrix := lda->GetDocumentTopicMatrix(corpus);
+		matrix2 := lda->GetDocumentTopicMatrix2D(corpus);
+		dims := matrix2->Size();
+		ok := Report("GetDocumentTopicMatrix2D is documents by topics with the same numbers", dims[0] = corpus->GetNumDocs() & dims[1] = 4 & matrix2[7, 2] = matrix[7 * 4 + 2] & matrix2[0, 0] = matrix[0]) & ok;
+		lambda := lda->GetLambda();
+		lambda2 := lda->GetLambda2D();
+		ldims := lambda2->Size();
+		ok := Report("GetLambda2D is topics by words with the same numbers", ldims[0] = 4 & ldims[1] = lda->GetVocabSize() & lambda2[3, 5] = lambda[3 * lda->GetVocabSize() + 5]) & ok;
+		ok := Report("the 2D accessors give Nil for an unfitted model", Lda->New(2, 0.0, 0.0, 1, 10, 1)->GetLambda2D() = Nil & Lda->New(2, 0.0, 0.0, 1, 10, 1)->GetDocumentTopicMatrix2D(corpus) = Nil) & ok;
+		ok := Report("IsValid is true for good settings, false for bad ones, and GetError is empty, never Nil", lda->IsValid() & Lda->New(0, 0.1, 0.1, 1, 1, 1)->IsValid() = false & lda->GetError()->Size() = 0 & BsonReader->New(Byte->New[0])->GetError()->Size() = 0 & TokenDictionary->New()->GetError()->Size() = 0) & ok;
+
+		unfitted := Lda->New(2, 0.0, 0.0, 1, 10, 1);
+		ok := Report("Save of an unfitted model, with a Nil name and with an empty name is false", unfitted->Save("x.model") = false & lda->Save(Nil) = false & lda->Save("") = false) & ok;
+		return ok;
+	}
+
+	function : Degenerate() ~ Bool {
+		ok := true;
+		dict := TokenDictionary->New();
+		docs := RefDocs();
+		dict->AddDocuments(docs);
+		corpus := dict->ToCorpus(docs);
+
+		bad_topics := Lda->New(0, 0.1, 0.01, 1, 10, 1);
+		ok := Report("num_topics 0 is refused with a reason", bad_topics->Fit(corpus, dict) = false & bad_topics->GetError()->Has("num_topics")) & ok;
+		ok := Report("num_topics -3 and 100001 are refused", Lda->New(-3, 0.1, 0.01, 1, 10, 1)->Fit(corpus, dict) = false & Lda->New(100001, 0.1, 0.01, 1, 10, 1)->Fit(corpus, dict) = false) & ok;
+		ok := Report("negative alpha and NaN eta are refused", Lda->New(2, -0.5, 0.01, 1, 10, 1)->Fit(corpus, dict) = false & Lda->New(2, 0.1, Float->NaN(), 1, 10, 1)->Fit(corpus, dict) = false) & ok;
+		ok := Report("passes 0 and iterations 0 are refused", Lda->New(2, 0.1, 0.01, 0, 10, 1)->Fit(corpus, dict) = false & Lda->New(2, 0.1, 0.01, 1, 0, 1)->Fit(corpus, dict) = false) & ok;
+
+		lda := Lda->New(2, 0.1, 0.01, 1, 10, 1);
+		ok := Report("Fit(Nil) is refused", lda->Fit(Nil, dict) = false & lda->GetError()->Has("Nil")) & ok;
+		no_docs := dict->ToCorpus(Vector->New()<Vector<String>>);
+		ok := Report("a corpus of no documents is refused", lda->Fit(no_docs, dict) = false) & ok;
+		blank := Vector->New()<Vector<String>>;
+		blank->AddBack(Vector->New()<String>);
+		blank->AddBack(Vector->New()<String>);
+		blank_corpus := dict->ToCorpus(blank);
+		ok := Report("a corpus of only empty documents is refused", lda->Fit(blank_corpus, dict) = false & lda->GetError()->Has("no words")) & ok;
+		foreign := TokenDictionary->New();
+		foreign->AddDocument(TopicTokenizer->New()->Tokenize("aa bb"));
+		ok := Report("a dictionary of another size is refused", lda->Fit(corpus, foreign) = false & lda->GetError()->Has("does not match")) & ok;
+		huge := Lda->New(100000, 0.1, 0.01, 1, 10, 1);
+		wide := TopicCorpus->Build([0, 1], [0], [1.0], 600);
+		ok := Report("a model that would be too large is refused", huge->Fit(wide, Nil) = false & huge->GetError()->Has("50 million")) & ok;
+		ok := Report("a failed Fit leaves the model unfitted", lda->IsFitted() = false) & ok;
+
+		ok := Report("before Fit: no topics, no mixtures, no lambda, no alpha", lda->GetTopic(0, 3) = Nil & lda->GetTopics(3) = Nil & lda->GetDocumentTopics(corpus, 0) = Nil & lda->GetDocumentTopicMatrix(corpus) = Nil & lda->GetTopicWord(0) = Nil & lda->GetLambda() = Nil & lda->GetAlpha() = Nil) & ok;
+		unfit_bound := lda->LogPerplexityBound(corpus);
+		unfit_ppl := lda->Perplexity(corpus);
+		ok := Report("  the bound and perplexity are NaN", unfit_bound <> unfit_bound & unfit_ppl <> unfit_ppl) & ok;
+
+		ok := Report("setters refuse bad values", lda->SetAlphaMode("bogus") = false & lda->SetAlphaMode(Nil) = false & lda->SetChunkSize(0) = false & lda->SetLearningRate(0.0, 0.5) = false & lda->SetLearningRate(1.0, -1.0) = false & lda->SetGammaThreshold(0.0) = false & lda->SetGammaThreshold(Float->NaN()) = false) & ok;
+
+		good := Lda->New(3, 0.1, 0.01, 2, 20, 1);
+		good->SetChunkSize(15);
+		ok := Report("a good model fits", good->Fit(corpus, dict)) & ok;
+		ok := Report("topic -1 and 3, top_n 0: Nil", good->GetTopic(-1, 3) = Nil & good->GetTopic(3, 3) = Nil & good->GetTopic(0, 0) = Nil & good->GetTopics(0) = Nil & good->GetTopicWord(7) = Nil) & ok;
+		ok := Report("a document out of range, a Nil corpus: Nil", good->GetDocumentTopics(corpus, 30) = Nil & good->GetDocumentTopics(corpus, -1) = Nil & good->GetDocumentTopics(Nil, 0) = Nil & good->GetDocumentTopicMatrix(Nil) = Nil) & ok;
+		wrong := TopicCorpus->Build([0, 1], [0], [1.0], 5);
+		wrong_bound := good->LogPerplexityBound(wrong);
+		ok := Report("a corpus with another vocabulary size: Nil and NaN", good->GetDocumentTopics(wrong, 0) = Nil & wrong_bound <> wrong_bound & good->GetDocumentTopicMatrix(wrong) = Nil) & ok;
+		blank_bound := good->LogPerplexityBound(blank_corpus);
+		ok := Report("a corpus with no words: NaN bound", blank_bound <> blank_bound) & ok;
+		nil_bound := good->LogPerplexityBound(Nil);
+		ok := Report("Nil corpus: NaN bound", nil_bound <> nil_bound) & ok;
+
+		# a dictionary-free fit labels the words w0, w1, ...
+		anon := Lda->New(2, 0.1, 0.01, 2, 20, 1);
+		anon_fit := anon->Fit(corpus, Nil);
+		ok := Report("Fit without a dictionary labels the words w0, w1, ...", anon_fit & anon->GetWord(0)->Equals("w0")) & ok;
+		return ok;
+	}
+}

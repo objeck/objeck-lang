@@ -1,0 +1,4 @@
+model,model_value,p,t,p_std,t_std
+a,1,0.5,2,0.1,0.25
+b,2,,,,0.5
+c,3,,1.5,0.2,

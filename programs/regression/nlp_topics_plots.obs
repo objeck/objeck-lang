@@ -1,0 +1,310 @@
+# EXTRA_LIBS: nlp_topics,json,plot,gen_collect
+#~
+System.NLP.Topics TopicPlots: the data behind the static topic report and the SVG itself.
+
+Checked: classical MDS against configurations whose distances are known (four collinear points, a unit
+square), the Jensen-Shannon matrix (zero diagonal, symmetric, bounded by sqrt(ln 2)), topic prevalence
+(sums to 1, and circle area follows it), relevance (lambda 1 is the plain top-words order; lambda 0 is lift and
+puts a word that is rare overall but concentrated in the topic first), saliency, and the SVG documents: they
+are well-formed XML, hold one circle per topic and one term label per bar, the right topic is highlighted,
+and a file written by SaveReport reads back unchanged. Bad arguments give Nil or false.
+~#
+use System.NLP.Topics;
+use Data.XML;
+use Collection;
+
+class NlpTopicsPlots {
+	@seed : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@seed := 31337;
+		ok := true;
+		ok := Mds() & ok;
+		ok := ModelData() & ok;
+		ok := Documents() & ok;
+		ok := BadInput() & ok;
+
+		if(ok = false) {
+			Runtime->Exit(1);
+		};
+		"nlp_topics_plots: ok"->PrintLine();
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+		return passed;
+	}
+
+	function : Close(a : Float, b : Float, tol : Float) ~ Bool {
+		return Float->Abs(a - b) <= tol * (1.0 + Float->Abs(b));
+	}
+
+	function : Rnd(n : Int) ~ Int {
+		@seed := (@seed * 48271) % 2147483647;
+		return @seed % n;
+	}
+
+	function : Dist(xy : Float[], a : Int, b : Int) ~ Float {
+		dx := xy[2 * a] - xy[2 * b];
+		dy := xy[2 * a + 1] - xy[2 * b + 1];
+		return Float->Sqrt(dx * dx + dy * dy);
+	}
+
+	function : Mds() ~ Bool {
+		ok := true;
+		# points at 0, 1, 3 and 6 on a line
+		line := [0.0, 1.0, 3.0, 6.0, 1.0, 0.0, 2.0, 5.0, 3.0, 2.0, 0.0, 3.0, 6.0, 5.0, 3.0, 0.0];
+		xy := TopicPlots->Mds2D(line, 4);
+		ok := Report("MDS of 4 collinear points returns 8 numbers", xy <> Nil & xy->Size() = 8) & ok;
+		good := true;
+		for(a := 0; a < 4; a += 1;) {
+			for(b := 0; b < 4; b += 1;) {
+				if(Close(Dist(xy, a, b), line[a * 4 + b], 0.000000001) = false) {
+					good := false;
+				};
+			};
+		};
+		ok := Report("  every distance is reproduced", good) & ok;
+		ok := Report("  the second axis is flat (a line needs one dimension)", Close(xy[1], 0.0, 0.000000001) & Close(xy[3], 0.0, 0.000000001) & Close(xy[5], 0.0, 0.000000001) & Close(xy[7], 0.0, 0.000000001)) & ok;
+		ok := Report("  the largest coordinate of each axis is positive (fixed sign)", xy[6] > 0.0 | xy[0] > 0.0) & ok;
+
+		s2 := 1.4142135623730951;
+		square := [0.0, 1.0, s2, 1.0, 1.0, 0.0, 1.0, s2, s2, 1.0, 0.0, 1.0, 1.0, s2, 1.0, 0.0];
+		sq := TopicPlots->Mds2D(square, 4);
+		good_sq := true;
+		for(a := 0; a < 4; a += 1;) {
+			for(b := 0; b < 4; b += 1;) {
+				if(Close(Dist(sq, a, b), square[a * 4 + b], 0.000000001) = false) {
+					good_sq := false;
+				};
+			};
+		};
+		ok := Report("MDS of a unit square reproduces every distance", good_sq) & ok;
+		again := TopicPlots->Mds2D(square, 4);
+		same := true;
+		each(i : sq) {
+			if(sq[i] <> again[i]) {
+				same := false;
+			};
+		};
+		ok := Report("  and gives the same coordinates every time", same) & ok;
+
+		one := TopicPlots->Mds2D([0.0], 1);
+		two := TopicPlots->Mds2D([0.0, 2.0, 2.0, 0.0], 2);
+		ok := Report("one point is at the origin; two points are the right distance apart", one->Size() = 2 & one[0] = 0.0 & Close(Dist(two, 0, 1), 2.0, 0.000000001)) & ok;
+		ok := Report("a wrong size, a negative, a NaN and an infinite distance give Nil", TopicPlots->Mds2D([0.0, 1.0, 1.0], 2) = Nil & TopicPlots->Mds2D([0.0, -1.0, -1.0, 0.0], 2) = Nil & TopicPlots->Mds2D([0.0, Float->NaN(), Float->NaN(), 0.0], 2) = Nil & TopicPlots->Mds2D([0.0, Float->Inf(), Float->Inf(), 0.0], 2) = Nil & TopicPlots->Mds2D(Nil, 2) = Nil & TopicPlots->Mds2D([0.0], 0) = Nil) & ok;
+		return ok;
+	}
+
+	function : Planted(nd : Int, topics : Int, per : Int, bg : Int, len : Int) ~ Vector<Vector<String>> {
+		docs := Vector->New()<Vector<String>>;
+		for(d := 0; d < nd; d += 1;) {
+			t := Rnd(topics);
+			doc := Vector->New()<String>;
+			for(i := 0; i < len; i += 1;) {
+				if(Rnd(10) < 8) {
+					w := Rnd(per);
+					doc->AddBack("t{$t}w{$w}");
+				}
+				else {
+					w := Rnd(bg);
+					doc->AddBack("b{$w}");
+				};
+			};
+			docs->AddBack(doc);
+		};
+		return docs;
+	}
+
+	function : Count(text : String, part : String) ~ Int {
+		return text->Count(part);
+	}
+
+	function : ModelData() ~ Bool {
+		ok := true;
+		docs := Planted(300, 4, 12, 15, 16);
+		dict := TokenDictionary->New();
+		dict->AddDocuments(docs);
+		corpus := dict->ToCorpus(docs);
+		# FitBest: variational Bayes can end in a local optimum from one seed, so keep the best of 6
+		lda := Lda->FitBest(corpus, dict, 4, 0.1, 0.01, 20, 50, 300, 3, 6);
+
+		jsd := TopicPlots->JensenShannon(lda);
+		bound := Float->Sqrt(Float->Log(2.0)) + 0.0000001;
+		good := jsd <> Nil & jsd->Size() = 16;
+		for(a := 0; a < 4; a += 1;) {
+			if(jsd[a * 4 + a] <> 0.0) {
+				good := false;
+			};
+			for(b := 0; b < 4; b += 1;) {
+				if(jsd[a * 4 + b] <> jsd[b * 4 + a] | jsd[a * 4 + b] < 0.0 | jsd[a * 4 + b] > bound) {
+					good := false;
+				};
+			};
+		};
+		ok := Report("Jensen-Shannon: symmetric, zero diagonal, within [0, sqrt(ln 2)]", good) & ok;
+
+		prevalence := TopicPlots->Prevalence(lda, corpus);
+		total := 0.0;
+		each(i : prevalence) {
+			total += prevalence[i];
+		};
+		ok := Report("prevalence sums to 1 over 4 topics ({$total})", prevalence->Size() = 4 & Close(total, 1.0, 0.000000000001)) & ok;
+		each(i : prevalence) {
+			ok := Report("  topic {$i} holds {$prevalence[i]} of the words (about a quarter)", prevalence[i] > 0.1 & prevalence[i] < 0.5) & ok;
+		};
+
+		positions := TopicPlots->TopicPositions(lda);
+		ok := Report("positions are 2 numbers per topic and the topics are apart", positions->Size() = 8 & Dist(positions, 0, 1) > 0.0 & Dist(positions, 2, 3) > 0.0) & ok;
+
+		top := lda->GetTopic(0, 6);
+		by_prob := TopicPlots->Relevance(lda, corpus, 0, 1.0, 6);
+		same_order := true;
+		top_ids := top->GetIds();
+		prob_ids := by_prob->GetIds();
+		each(i : top_ids) {
+			if(top_ids[i] <> prob_ids[i]) {
+				same_order := false;
+			};
+		};
+		ok := Report("relevance with lambda 1 is the plain top-words order", same_order & by_prob->Size() = 6) & ok;
+
+		lift := TopicPlots->Relevance(lda, corpus, 0, 0.0, 6);
+		w := lift->GetWeights();
+		ok := Report("relevance is sorted, best first", w[0] >= w[1] & w[1] >= w[5]) & ok;
+		ok := Report("lambda 0.6 returns the requested number of terms and the topic index", TopicPlots->Relevance(lda, corpus, 2, 0.6, 9)->Size() = 9 & TopicPlots->Relevance(lda, corpus, 2, 0.6, 9)->GetTopic() = 2) & ok;
+		ok := Report("top_n beyond the vocabulary is capped", TopicPlots->Relevance(lda, corpus, 0, 0.6, 100000)->Size() = dict->Size()) & ok;
+
+		salient := TopicPlots->SalientTerms(lda, corpus, 8);
+		sw := salient->GetWeights();
+		sorted := true;
+		for(i := 1; i < 8; i += 1;) {
+			if(sw[i] > sw[i - 1]) {
+				sorted := false;
+			};
+		};
+		ok := Report("salient terms: 8, sorted, all non-negative", salient->Size() = 8 & sorted & sw[7] >= -0.000000000001 & salient->GetTopic() = -1) & ok;
+		salient_words := salient->GetWords();
+		first := salient_words[0];
+		ok := Report("  the most salient term belongs to a planted topic, not the background ({$first})", first->StartsWith("t")) & ok;
+		return ok;
+	}
+
+	function : WellFormed(svg : String) ~ Bool {
+		parser := XmlParser->New(svg);
+		if(<>parser->Parse()) {
+			"  xml error: {$parser->GetError()}"->PrintLine();
+			return false;
+		};
+		return true;
+	}
+
+	function : Documents() ~ Bool {
+		ok := true;
+		docs := Planted(200, 3, 10, 10, 14);
+		dict := TokenDictionary->New();
+		dict->AddDocuments(docs);
+		corpus := dict->ToCorpus(docs);
+		lda := Lda->FitBest(corpus, dict, 3, 0.1, 0.01, 15, 50, 200, 4, 6);
+
+		report := TopicPlots->ReportSvg(lda, corpus, 1, 0.6, 12);
+		ok := Report("ReportSvg returns an SVG document", report <> Nil & report->StartsWith("<?xml") & report->Has("<svg") & report->Has("</svg>")) & ok;
+		ok := Report("  that is well-formed XML", WellFormed(report)) & ok;
+		ok := Report("  with a circle for each of the 3 topics and a number in each", Count(report, "<circle") = 3 & Count(report, ">1<") >= 1 & Count(report, ">2<") >= 1 & Count(report, ">3<") >= 1) & ok;
+		ok := Report("  12 term labels and 24 bars (corpus and topic) besides the frames", Count(report, "<rect") >= 24) & ok;
+		ok := Report("  the title names topic 2 and lambda 0.60", report->Has("most relevant terms for topic 2") & report->Has("lambda = 0.60")) & ok;
+
+		terms := TopicPlots->Relevance(lda, corpus, 1, 0.6, 12);
+		all_there := true;
+		words := terms->GetWords();
+		each(i : words) {
+			if(report->Has(">" + words[i] + "<") = false) {
+				all_there := false;
+			};
+		};
+		ok := Report("  every one of those terms is in the picture", all_there) & ok;
+
+		map := TopicPlots->IntertopicMapSvg(lda, corpus, 0);
+		ok := Report("IntertopicMapSvg is well-formed with 3 circles", map <> Nil & WellFormed(map) & Count(map, "<circle") = 3) & ok;
+		bars := TopicPlots->SalientBarsSvg(lda, corpus, 2, 1.0, 5);
+		ok := Report("SalientBarsSvg is well-formed with no circles", bars <> Nil & WellFormed(bars) & Count(bars, "<circle") = 0) & ok;
+
+		# the area of a circle follows the prevalence: radius^2 / largest radius^2 = prevalence / largest prevalence (radii are
+		# written with one decimal, so compare within 3%, and skip a circle at the 3-pixel minimum size)
+		radii := Radii(map);
+		prevalence := TopicPlots->Prevalence(lda, corpus);
+		biggest := 0;
+		for(k := 1; k < 3; k += 1;) {
+			if(prevalence[k] > prevalence[biggest]) {
+				biggest := k;
+			};
+		};
+		area_ok := radii->Size() = 3;
+		if(area_ok) {
+			for(k := 0; k < 3; k += 1;) {
+				area := radii[k] * radii[k] / (radii[biggest] * radii[biggest]);
+				if(Close(area, prevalence[k] / prevalence[biggest], 0.03) = false & radii[k] > 10.0) {
+					area_ok := false;
+				};
+			};
+		};
+		ok := Report("circle area is proportional to prevalence", area_ok) & ok;
+
+		again := TopicPlots->ReportSvg(lda, corpus, 1, 0.6, 12);
+		ok := Report("the same call gives the same bytes", again->Equals(report)) & ok;
+
+		path := "nlp_topics_plots_test.svg";
+		saved := TopicPlots->SaveReport(lda, corpus, 0, 0.6, 10, path);
+		back := System.IO.Filesystem.FileReader->ReadFile(path);
+		expected := TopicPlots->ReportSvg(lda, corpus, 0, 0.6, 10);
+		ok := Report("SaveReport writes the report to a file that reads back the same", saved & back <> Nil & back->Equals(expected)) & ok;
+		System.IO.Filesystem.File->Delete(path);
+		return ok;
+	}
+
+	# the r attribute of every circle, in document order
+	function : Radii(svg : String) ~ Float[] {
+		found := FloatVector->New();
+		at := svg->Find("<circle");
+		while(at >= 0) {
+			r_at := svg->Find(at, "r=\"");
+			if(r_at < 0) {
+				return Nil;
+			};
+
+			start := r_at + 3;
+			stop := svg->Find(start, "\"");
+			found->AddBack(svg->SubString(start, stop - start)->ToFloat());
+			at := svg->Find(at + 7, "<circle");
+		};
+
+		return found->ToArray();
+	}
+
+	function : BadInput() ~ Bool {
+		ok := true;
+		docs := Planted(60, 2, 6, 6, 10);
+		dict := TokenDictionary->New();
+		dict->AddDocuments(docs);
+		corpus := dict->ToCorpus(docs);
+		lda := Lda->New(2, 0.1, 0.01, 5, 30, 1);
+		lda->SetChunkSize(60);
+		lda->Fit(corpus, dict);
+		unfitted := Lda->New(2, 0.1, 0.01, 5, 30, 1);
+		wrong := TopicCorpus->Build([0, 1], [0], [1.0], 3);
+
+		ok := Report("Nil and unfitted models give Nil", TopicPlots->ReportSvg(Nil, corpus, 0, 0.6, 5) = Nil & TopicPlots->ReportSvg(unfitted, corpus, 0, 0.6, 5) = Nil & TopicPlots->Prevalence(unfitted, corpus) = Nil & TopicPlots->JensenShannon(Nil) = Nil & TopicPlots->TopicPositions(unfitted) = Nil) & ok;
+		ok := Report("a Nil corpus and one of another vocabulary size give Nil", TopicPlots->ReportSvg(lda, Nil, 0, 0.6, 5) = Nil & TopicPlots->ReportSvg(lda, wrong, 0, 0.6, 5) = Nil & TopicPlots->IntertopicMapSvg(lda, wrong, 0) = Nil & TopicPlots->SalientTerms(lda, wrong, 3) = Nil) & ok;
+		ok := Report("a topic out of range gives Nil", TopicPlots->ReportSvg(lda, corpus, -1, 0.6, 5) = Nil & TopicPlots->ReportSvg(lda, corpus, 2, 0.6, 5) = Nil & TopicPlots->Relevance(lda, corpus, 9, 0.6, 5) = Nil & TopicPlots->SalientBarsSvg(lda, corpus, 9, 0.6, 5) = Nil) & ok;
+		ok := Report("lambda outside [0, 1] or NaN gives Nil", TopicPlots->Relevance(lda, corpus, 0, -0.1, 5) = Nil & TopicPlots->Relevance(lda, corpus, 0, 1.1, 5) = Nil & TopicPlots->Relevance(lda, corpus, 0, Float->NaN(), 5) = Nil) & ok;
+		ok := Report("top_n 0, and above 50 for a picture, gives Nil", TopicPlots->Relevance(lda, corpus, 0, 0.6, 0) = Nil & TopicPlots->ReportSvg(lda, corpus, 0, 0.6, 51) = Nil & TopicPlots->SalientBarsSvg(lda, corpus, 0, 0.6, 0) = Nil & TopicPlots->SalientTerms(lda, corpus, 0) = Nil) & ok;
+		ok := Report("an empty or Nil path: SaveReport is false", TopicPlots->SaveReport(lda, corpus, 0, 0.6, 5, "") = false & TopicPlots->SaveReport(lda, corpus, 0, 0.6, 5, Nil) = false) & ok;
+		ok := Report("an unwritable path: SaveReport is false", TopicPlots->SaveReport(lda, corpus, 0, 0.6, 5, "no_such_dir/x/report.svg") = false) & ok;
+		return ok;
+	}
+}

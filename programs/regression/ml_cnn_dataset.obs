@@ -16,6 +16,7 @@ System.ML.Cnn ImageDataset, Augmentation and CnnTrainer.
     evaluation agrees with the confusion matrix it reports.
 ~#
 
+use System.ML;
 use System.ML.Cnn;
 use System.IO.Filesystem;
 

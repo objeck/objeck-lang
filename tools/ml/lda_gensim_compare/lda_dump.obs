@@ -1,0 +1,80 @@
+#~
+Trains one System.NLP.Topics model on a corpus file (one document per line, tokens separated by spaces) and writes
+what tools/ml/lda_gensim_compare/compare.py needs to compare it with Gensim.
+
+  obc -src lda_dump.obs -lib nlp_topics,json,plot,gen_collect -dest lda_dump.obe
+  obr lda_dump.obe corpus.txt K alpha passes iterations chunk seed out.txt
+
+out.txt has lines: BOUND <per-word bound>, SECONDS <train time>, VOCAB <tokens by id>, PHI <K*V p(word|topic), topic-major>,
+THETA <docs*K p(topic|doc)>. alpha 0 means 1/K. eta is 1/K (Gensim's default).
+~#
+use System.NLP.Topics;
+use Collection;
+
+class LdaDump {
+	function : Row(values : Float[]) ~ String {
+		out := String->New();
+		for(i := 0; i < values->Size(); i += 1;) {
+			if(i > 0) {
+				out->Append(' ');
+			};
+			out->Append(values[i]->ToShortString());
+		};
+		return out;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() < 8) {
+			"usage: lda_dump corpus.txt K alpha passes iterations chunk seed out.txt"->PrintLine();
+			Runtime->Exit(2);
+		};
+
+		text := System.IO.Filesystem.FileReader->ReadFile(args[0]);
+		lines := Vector->New()<String>;
+		start := 0;
+		for(i := 0; i < text->Size(); i += 1;) {
+			if(text->Get(i) = '\n') {
+				lines->AddBack(text->SubString(start, i - start));
+				start := i + 1;
+			};
+		};
+
+		tok := TopicTokenizer->New();
+		docs := tok->TokenizeAll(lines);
+		dict := TokenDictionary->New();
+		dict->AddDocuments(docs);
+		corpus := dict->ToCorpus(docs);
+		k := args[1]->ToInt();
+		lda := Lda->New(k, args[2]->ToFloat(), 0.0, args[3]->ToInt(), args[4]->ToInt(), args[6]->ToInt());
+		lda->SetChunkSize(args[5]->ToInt());
+		if(lda->Fit(corpus, dict) = false) {
+			lda->GetError()->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		out := String->New();
+		out->Append("BOUND {$lda->LogPerplexityBound(corpus)->ToShortString()}\n");
+		out->Append("SECONDS {$lda->GetTrainSeconds()->ToShortString()}\n");
+		out->Append("VOCAB ");
+		for(w := 0; w < dict->Size(); w += 1;) {
+			if(w > 0) {
+				out->Append(' ');
+			};
+			out->Append(dict->GetToken(w));
+		};
+		out->Append("\n");
+		for(t := 0; t < k; t += 1;) {
+			out->Append("PHI {$Row(lda->GetTopicWord(t))}\n");
+		};
+		matrix := lda->GetDocumentTopicMatrix(corpus);
+		for(d := 0; d < corpus->GetNumDocs(); d += 1;) {
+			row := Float->New[k];
+			for(t := 0; t < k; t += 1;) {
+				row[t] := matrix[d * k + t];
+			};
+			out->Append("THETA {$Row(row)}\n");
+		};
+
+		System.IO.Filesystem.FileWriter->WriteFile(args[7], out->ToByteArray());
+	}
+}

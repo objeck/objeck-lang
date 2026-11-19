@@ -184,6 +184,12 @@
     "System.NLP.Onnx": ["BertEmbedder", "Prediction", "TextClassifier"]
    }
   },
+  "nlp_topics": {
+   "deps": ["gen_collect", "json", "plot"],
+   "bundles": {
+    "System.NLP.Topics": ["BsonReader", "FilterReport", "Lda", "TokenDictionary", "TopicCorpus", "TopicMath", "TopicMetrics", "TopicPlots", "TopicStopwords", "TopicTerms", "TopicTokenizer"]
+   }
+  },
   "odbc": {
    "deps": ["gen_collect"],
    "bundles": {

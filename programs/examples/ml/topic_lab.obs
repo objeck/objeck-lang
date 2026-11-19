@@ -1,0 +1,411 @@
+#~
+The topic-modeling lab of "Extracting Cyber Threat Intelligence from X Using AI" (book chapter 11), end to end
+with System.NLP.Topics, on a SYNTHETIC corpus whose topics are planted, so every result can be checked against
+the truth. No dataset is downloaded.
+
+The lab's five steps, and where each is here:
+  1. decode the dataset: the program writes 2000 made-up tweets as a MongoDB .bson dump (the format of the
+     CyberTweets file) and reads them back with BsonReader, exactly as it would read the real file
+     (replace the first lines of Main with BsonReader->ReadStrings("CyberTweets.bson", "text"))
+  2. tokenize, remove stopwords, filter rare tokens: TopicTokenizer, TopicStopwords, TokenDictionary.FilterExtremes
+  3. an LDA model with num_topics, alpha, eta, passes, iterations and a seed: Lda
+  4. interpret the topics (top words) and the per-document topic mixtures
+  5. visualize: an SVG with the intertopic distance map and the most relevant terms of a topic
+     (TopicPlots, a static counterpart of pyLDAvis)
+
+The five experiments of the assignment, each printed as a System.ML.Lab table:
+  A. num_topics 3, 5, 10, 15:   coherence (c_v, c_npmi, u_mass), topic overlap, topic diversity, bound
+  B. min token frequency 1, 2, 5, 10: dictionary size, % of tokens removed, coherence
+  C. stopwords none, English, English + custom cyber list: dictionary size, coherence
+  D. passes 1, 5, 10, 20: training time, coherence, per-word likelihood bound, perplexity
+  E. alpha 0.01, 0.1, 1.0: how concentrated the mixtures are, and the mixtures of the same three documents
+  then topic stability across five seeds.
+
+The planted truth. The five topics are ransomware, phishing, vulnerabilities, DDoS and data breaches. A tweet
+takes 60% of its words from its topic's list, 15% from words every topic shares (security, attack, new, ...),
+15% are English function words and 10% are noise tokens drawn from a pool of 700 (stand-ins for hashes and user ids, a few occurrences each), and
+some tweets carry an "RT @user:" prefix and a URL. So the top words of
+the 5-topic model should be the planted lists (they are: see the output).
+
+  compile: obc -src topic_lab.obs -lib nlp_topics,ml_lab,ml,csv,json,plot,gen_collect
+  run:     obr topic_lab.obe [output_dir]       (default: topic_output; writes the .bson and topic_report.svg)
+
+About 12 seconds on a Ryzen 9 7950X3D. The numbers are deterministic: the same on every run and machine. Coherence here is
+computed on the tweets themselves (u_mass over documents, c_npmi with a window of 10 tokens, c_v with the
+Gensim default window of 110), top 10 words per topic. The likelihood bound is Gensim's log_perplexity, the
+per-word bound (higher is better); perplexity is exp(-bound), reported beside it.
+
+Gensim comparison: LDA here is online variational Bayes in Gensim's form, so the settings mean the same, but the
+random generator differs, so topics and numbers are comparable in kind, not identical.
+~#
+use System.NLP.Topics;
+use System.ML.Lab;
+use Data.JSON;
+use Collection;
+
+class TopicLab {
+	@seed : static : Int;
+
+	function : Rnd(n : Int) ~ Int {
+		@seed := (@seed * 48271) % 2147483647;
+		return @seed % n;
+	}
+
+	function : Pools() ~ String[] {
+		pools := String->New[70];
+		names := [
+			"ransomware encrypt encrypted bitcoin ransom decrypt lockbit payment files extortion victims demand wallet locked",
+			"phishing email credentials login spoofed attachment click invoice password fake bank mfa lure sender",
+			"cve patch vulnerability exploit rce zeroday advisory update cvss log4j remote flaw affected versions",
+			"ddos botnet traffic mirai flood requests server bandwidth amplification mitigation outage packets layer saturate",
+			"breach leaked database records customers exposed stolen dump personal notified compromised credentials2 dataset sold"
+		];
+		tok := TopicTokenizer->New();
+		for(t := 0; t < 5; t += 1;) {
+			words := tok->Tokenize(names[t]);
+			for(w := 0; w < 14; w += 1;) {
+				pools[t * 14 + w] := words->Get(w);
+			};
+		};
+		return pools;
+	}
+
+	function : Tweet(pools : String[], topic : Int) ~ String {
+		shared := ["security", "attack", "new", "report", "users", "company", "hackers", "data", "researchers", "warns"];
+		function_words := ["the", "a", "of", "in", "to", "is", "and", "for", "on", "this", "that", "with", "was", "are", "by"];
+		text := "";
+		if(Rnd(5) = 0) {
+			text += "RT @user{$Rnd(500)}: ";
+		};
+
+		length := 8 + Rnd(7);
+		for(i := 0; i < length; i += 1;) {
+			roll := Rnd(100);
+			if(roll < 60) {
+				text += pools[topic * 14 + Rnd(14)] + " ";
+			}
+			else if(roll < 75) {
+				text += shared[Rnd(10)] + " ";
+			}
+			else if(roll < 90) {
+				text += function_words[Rnd(15)] + " ";
+			}
+			else {
+				text += "h{$Rnd(700)} ";
+			};
+		};
+
+		if(Rnd(10) < 3) {
+			text += "http://t.co/{$Rnd(100000)}";
+		};
+
+		return text;
+	}
+
+	# ---- a tiny BSON writer: one document {_id: ObjectId, text: string}, for the stand-in dump ----
+
+	function : Int32(value : Int) ~ Byte[] {
+		out := Byte->New[4];
+		out[0] := (value % 256)->As(Byte);
+		out[1] := ((value / 256) % 256)->As(Byte);
+		out[2] := ((value / 65536) % 256)->As(Byte);
+		out[3] := ((value / 16777216) % 256)->As(Byte);
+		return out;
+	}
+
+	function : TweetDocument(id : Int, text : String) ~ Byte[] {
+		body := text->ToByteArray();
+		size := 4 + (1 + 4 + 12) + (1 + 5 + 4 + body->Size() + 1) + 1;
+		doc := Byte->New[size];
+		Byte->Copy(doc, 0, Int32(size), 0, 4);
+		at := 4;
+		doc[at] := 7->As(Byte);
+		at += 1;
+		Byte->Copy(doc, at, "_id"->ToByteArray(), 0, 3);
+		at += 4;
+		for(i := 0; i < 12; i += 1;) {
+			doc[at + i] := 0->As(Byte);
+		};
+		Byte->Copy(doc, at, Int32(id), 0, 4);
+		at += 12;
+		doc[at] := 2->As(Byte);
+		at += 1;
+		Byte->Copy(doc, at, "text"->ToByteArray(), 0, 4);
+		at += 5;
+		Byte->Copy(doc, at, Int32(body->Size() + 1), 0, 4);
+		at += 4;
+		Byte->Copy(doc, at, body, 0, body->Size());
+		return doc;
+	}
+
+	function : WriteDump(path : String, tweets : Vector<String>) ~ Nil {
+		writer := System.IO.Filesystem.FileWriter->New(path);
+		each(i : tweets) {
+			writer->WriteBuffer(TweetDocument(i, tweets->Get(i)));
+		};
+		writer->Close();
+	}
+
+	# ---- the pipeline ----
+
+	function : Prepare(texts : Vector<String>, stop : TopicStopwords) ~ Vector<Vector<String>> {
+		return TopicTokenizer->New(stop)->TokenizeAll(texts);
+	}
+
+	# a trained model with its dictionary filled in (dict is filled here); variational Bayes from one seed can end in a
+	# local optimum, so every experiment keeps the best-bound model of 4 seeds, as Lda->FitBest does
+	function : Train(docs : Vector<Vector<String>>, min_freq : Int, topics : Int, alpha : Float, passes : Int, seed : Int, dict : TokenDictionary) ~ Lda {
+		dict->AddDocuments(docs);
+		dict->FilterExtremes(min_freq, 0.5, 0);
+		corpus := dict->ToCorpus(docs);
+		return Lda->FitBest(corpus, dict, topics, alpha, 0.0, passes, 50, 500, seed, 4);
+	}
+
+	function : Coherence(lda : Lda, dict : TokenDictionary, docs : Vector<Vector<String>>, kind : String) ~ Float {
+		topics := lda->GetTopics(10);
+		if(kind->Equals("u_mass")) {
+			return TopicMetrics->Mean(TopicMetrics->UMass(topics, dict->ToCorpus(docs)));
+		};
+		if(kind->Equals("c_npmi")) {
+			return TopicMetrics->Mean(TopicMetrics->CNpmi(topics, docs, 10));
+		};
+		return TopicMetrics->Mean(TopicMetrics->CV(topics, docs, 110));
+	}
+
+	function : Show(table : ResultTable) ~ Nil {
+		table->ToText()->PrintLine();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		out_dir := "topic_output";
+		if(args->Size() > 0) {
+			out_dir := args[0];
+		};
+		System.IO.Filesystem.Directory->Create(out_dir);
+
+		# ---- 1. the data: write a stand-in .bson dump, read it back ----
+		@seed := 20260;
+		pools := Pools();
+		made := Vector->New()<String>;
+		for(i := 0; i < 2000; i += 1;) {
+			made->AddBack(Tweet(pools, i % 5));
+		};
+
+		dump := out_dir + "/synthetic_cybertweets.bson";
+		WriteDump(dump, made);
+		reader := BsonReader->FromFile(dump);
+		texts := reader->ExtractStrings("text");
+		"1. decoded {$texts->Size()} tweets from {$dump} ({$reader->GetError()})"->PrintLine();
+		"   example: {$texts->Get(0)}"->PrintLine();
+
+		english_cyber := TopicStopwords->English()->Union(TopicStopwords->Cyber());
+		docs := Prepare(texts, english_cyber);
+		"2. tokenized with English + cyber stopwords: first tweet -> {$docs->Get(0)->ToString()}"->PrintLine();
+
+		# ---- the reference model: 5 topics, best of 5 seeds ----
+		dict := TokenDictionary->New();
+		dict->AddDocuments(docs);
+		report := dict->FilterExtremes(5, 0.5, 0);
+		"   dictionary after FilterExtremes(5, 0.5): {$report->ToString()}"->PrintLine();
+		corpus := dict->ToCorpus(docs);
+		lda := Lda->FitBest(corpus, dict, 5, 0.0, 0.0, 20, 50, 500, 1, 5);
+		"3. LDA: 5 topics, alpha and eta 1/5, 20 passes, best of 5 seeds (seed {$lda->GetSeed()}), trained in {$lda->GetTrainSeconds()} s"->PrintLine();
+		"   per-word bound {$lda->LogPerplexityBound(corpus)}, perplexity {$lda->Perplexity(corpus)}"->PrintLine();
+		"4. topics (top 10 words) and the mixtures of the first three tweets:"->PrintLine();
+		topics := lda->GetTopics(10);
+		each(t : topics) {
+			"   {$topics->Get(t)->ToString()}"->PrintLine();
+		};
+		for(d := 0; d < 3; d += 1;) {
+			mix := lda->GetDocumentTopics(corpus, d);
+			line := "   tweet {$d} (planted topic {$d % 5}):";
+			each(k : mix) {
+				line += " {$mix[k]->ToString()}";
+			};
+			line->PrintLine();
+		};
+
+		svg_path := out_dir + "/topic_report.svg";
+		if(TopicPlots->SaveReport(lda, corpus, 0, 0.6, 15, svg_path)) {
+			"5. wrote {$svg_path}: intertopic distance map and the most relevant terms of topic 0"->PrintLine();
+		};
+		salient := TopicPlots->SalientTerms(lda, corpus, 8);
+		"   most salient terms overall: {$salient->ToString()}"->PrintLine();
+		"\n"->Print();
+
+		ExperimentA(docs);
+		ExperimentB(docs);
+		ExperimentC(texts, english_cyber);
+		ExperimentD(docs);
+		ExperimentE(docs);
+		Stability(docs);
+	}
+
+	function : ExperimentA(docs : Vector<Vector<String>>) ~ Nil {
+		# ---- experiment A: num_topics ----
+		table_a := ResultTable->New("A. number of topics (alpha = eta = 1/K, 20 passes, best of 4 seeds)", "topics");
+		table_a->AddColumn("c_v", 3);
+		table_a->AddColumn("c_npmi", 3);
+		table_a->AddColumn("u_mass", 2);
+		table_a->AddColumn("overlap", 3);
+		table_a->AddColumn("diversity", 3);
+		table_a->AddColumn("bound", 3);
+		ks := [3, 5, 10, 15];
+		each(i : ks) {
+			d := TokenDictionary->New();
+			m := Train(docs, 5, ks[i], 0.0, 20, 1, d);
+			c := d->ToCorpus(docs);
+			t10 := m->GetTopics(10);
+			table_a->AddRow("K = {$ks[i]}", ks[i]->As(Float), [Coherence(m, d, docs, "c_v"), Coherence(m, d, docs, "c_npmi"), Coherence(m, d, docs, "u_mass"), TopicMetrics->Overlap(t10, 10), TopicMetrics->Diversity(t10, 10), m->LogPerplexityBound(c)]);
+		};
+		table_a->SetFootnote("overlap = mean pairwise Jaccard of the top-10 word sets (lower is better); diversity = unique share of all top-10 words (higher is better)");
+		Show(table_a);
+
+	}
+
+	function : ExperimentB(docs : Vector<Vector<String>>) ~ Nil {
+		# ---- experiment B: minimum token frequency ----
+		table_b := ResultTable->New("B. minimum token frequency (no_below), 5 topics, best of 4 seeds", "min_freq");
+		table_b->AddColumn("dict size", 0);
+		table_b->AddColumn("% tokens removed", 2);
+		table_b->AddColumn("c_v", 3);
+		table_b->AddColumn("c_npmi", 3);
+		freqs := [1, 2, 5, 10];
+		each(i : freqs) {
+			d := TokenDictionary->New();
+			d->AddDocuments(docs);
+			r := d->FilterExtremes(freqs[i], 0.5, 0);
+			d2 := TokenDictionary->New();
+			m := Train(docs, freqs[i], 5, 0.0, 20, 1, d2);
+			table_b->AddRow("min_freq = {$freqs[i]}", freqs[i]->As(Float), [r->GetTypesAfter()->As(Float), r->GetTokensRemovedPercent(), Coherence(m, d2, docs, "c_v"), Coherence(m, d2, docs, "c_npmi")]);
+		};
+		table_b->SetFootnote("% tokens removed counts token OCCURRENCES lost to the filter, not distinct tokens; no_above is 0.5 throughout. Coherence does not move here because the top words are the planted ones at every setting; on real tweets rare tokens can enter the top words and score high by chance, so read the words too");
+		Show(table_b);
+
+	}
+
+	function : ExperimentC(texts : Vector<String>, english_cyber : TopicStopwords) ~ Nil {
+		# ---- experiment C: stopword strategy ----
+		table_c := ResultTable->New("C. stopword strategy, 5 topics, min_freq 5, best of 4 seeds", "strategy");
+		table_c->AddColumn("dict size", 0);
+		table_c->AddColumn("tokens kept", 0);
+		table_c->AddColumn("c_v", 3);
+		table_c->AddColumn("c_npmi", 3);
+		table_c->AddColumn("diversity", 3);
+		strategies := [TopicStopwords->New(), TopicStopwords->English(), english_cyber];
+		labels := ["none", "English", "English + cyber"];
+		each(i : strategies) {
+			sdocs := Prepare(texts, strategies[i]);
+			d := TokenDictionary->New();
+			m := Train(sdocs, 5, 5, 0.0, 20, 1, d);
+			table_c->AddRow(labels[i], i->As(Float), [d->Size()->As(Float), d->GetNumTokens()->As(Float), Coherence(m, d, sdocs, "c_v"), Coherence(m, d, sdocs, "c_npmi"), TopicMetrics->Diversity(m->GetTopics(10), 10)]);
+		};
+		table_c->SetFootnote("the strategy column is an index only (0 none, 1 English, 2 English + cyber)");
+		Show(table_c);
+
+	}
+
+	function : ExperimentD(docs : Vector<Vector<String>>) ~ Nil {
+		# ---- experiment D: passes ----
+		table_d := ResultTable->New("D. passes over the corpus, 5 topics, best of 4 seeds", "passes");
+		table_d->AddColumn("seconds", 3);
+		table_d->AddColumn("c_v", 3);
+		table_d->AddColumn("bound", 4);
+		table_d->AddColumn("perplexity", 2);
+		passes := [1, 5, 10, 20];
+		each(i : passes) {
+			d := TokenDictionary->New();
+			m := Train(docs, 5, 5, 0.0, passes[i], 1, d);
+			c := d->ToCorpus(docs);
+			table_d->AddRow("passes = {$passes[i]}", passes[i]->As(Float), [m->GetTrainSeconds(), Coherence(m, d, docs, "c_v"), m->LogPerplexityBound(c), m->Perplexity(c)]);
+		};
+		table_d->SetFootnote("seconds = the winning fit alone; bound = per-word likelihood bound (Gensim log_perplexity, higher is better); perplexity = exp(-bound), lower is better");
+		Show(table_d);
+
+	}
+
+	function : ExperimentE(docs : Vector<Vector<String>>) ~ Nil {
+		# ---- experiment E: alpha ----
+		table_e := ResultTable->New("E. alpha (document-topic prior), 5 topics, 20 passes, best of 4 seeds", "alpha");
+		table_e->AddColumn("mean max p", 3);
+		table_e->AddColumn("mean entropy", 3);
+		table_e->AddColumn("active topics", 2);
+		table_e->AddColumn("bound", 3);
+		alphas := [0.01, 0.1, 1.0];
+		alpha_names := ["0.01", "0.1", "1.0"];
+		mixes := "";
+		each(i : alphas) {
+			d := TokenDictionary->New();
+			m := Train(docs, 5, 5, alphas[i], 20, 1, d);
+			c := d->ToCorpus(docs);
+			matrix := m->GetDocumentTopicMatrix(c);
+			nd := c->GetNumDocs();
+			sum_max := 0.0;
+			sum_entropy := 0.0;
+			active := 0;
+			for(doc := 0; doc < nd; doc += 1;) {
+				top := 0.0;
+				for(k := 0; k < 5; k += 1;) {
+					p := matrix[doc * 5 + k];
+					if(p > top) {
+						top := p;
+					};
+					if(p > 0.0) {
+						sum_entropy -= p * Float->Log(p);
+					};
+					if(p > 0.1) {
+						active += 1;
+					};
+				};
+				sum_max += top;
+			};
+
+			table_e->AddRow("alpha = " + alpha_names[i], alphas[i], [sum_max / nd->As(Float), sum_entropy / nd->As(Float), active->As(Float) / nd->As(Float), m->LogPerplexityBound(c)]);
+			mixes += "  alpha " + alpha_names[i] + ":";
+			for(doc := 0; doc < 3; doc += 1;) {
+				mix := m->GetDocumentTopics(c, doc);
+				mixes += "   tweet {$doc} [";
+				each(k : mix) {
+					shown := Decimals(mix[k]);
+					mixes += " {$shown}";
+				};
+				mixes += " ]";
+			};
+			mixes += "\n";
+		};
+		table_e->SetFootnote("mean max p = average probability of the document's top topic; active topics = topics with p > 0.1 per document; smaller alpha = sparser mixtures");
+		Show(table_e);
+		"The same three tweets under each alpha (a mixture over the 5 topics; topic numbers differ between runs):"->PrintLine();
+		mixes->Print();
+
+	}
+
+	function : Stability(docs : Vector<Vector<String>>) ~ Nil {
+		"
+Topic stability across seeds (5 topics, 20 passes, one fit per seed, no restarts; 1 = every topic has an identical twin):"->PrintLine();
+		dict := TokenDictionary->New();
+		dict->AddDocuments(docs);
+		dict->FilterExtremes(5, 0.5, 0);
+		corpus := dict->ToCorpus(docs);
+		models := Vector->New()<Lda>;
+		for(s := 1; s <= 5; s += 1;) {
+			lda := Lda->New(5, 0.0, 0.0, 20, 50, s);
+			lda->SetChunkSize(500);
+			lda->Fit(corpus, dict);
+			bound := lda->LogPerplexityBound(corpus);
+			"  seed {$s}: bound {$bound}"->PrintLine();
+			models->AddBack(lda);
+		};
+
+		for(s := 1; s < 5; s += 1;) {
+			stable := TopicMetrics->Stability(models->Get(0), models->Get(s));
+			"  seed 1 vs seed {$s + 1}: {$stable}"->PrintLine();
+		};
+		"A pair well below 1 means one of the runs ended in a local optimum (two topics merged, which the lower bound shows); keep the best-bound run, as Lda->FitBest does."->PrintLine();
+	}
+
+	function : Decimals(value : Float) ~ String {
+		scaled := (value * 100.0 + 0.5)->As(Int);
+		return "{$scaled / 100}.{$(scaled % 100) / 10}{$scaled % 10}";
+	}
+}

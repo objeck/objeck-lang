@@ -1,0 +1,1408 @@
+#~~
+# Objeck topic-modeling library: LDA topic model (online variational Bayes) and the special functions it needs
+# Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+
+bundle System.NLP.Topics {
+	#~
+	Special functions for the variational updates and the likelihood bound, written here because the language has only Gamma, which overflows near 171. Accurate to about 1e-12 for the arguments an LDA model produces (above 0).
+	~#
+	class TopicMath {
+		#~
+		The digamma function, the derivative of log Gamma.
+		@param x a positive number
+		@return psi(x), or NaN for x at or below 0 or NaN
+		~#
+		function : Digamma(x : Float) ~ Float {
+			if(x <> x | x <= 0.0) {
+				return Float->NaN();
+			};
+
+			result := 0.0;
+			while(x < 8.0) {
+				result -= 1.0 / x;
+				x += 1.0;
+			};
+
+			inv := 1.0 / x;
+			inv2 := inv * inv;
+			series := inv2 * (0.083333333333333333 - inv2 * (0.008333333333333333 - inv2 * (0.003968253968253968 - inv2 * (0.004166666666666667 - inv2 * 0.007575757575757576))));
+			return result + Float->Log(x) - 0.5 * inv - series;
+		}
+
+		#~
+		The trigamma function, the derivative of digamma.
+		@param x a positive number
+		@return psi'(x), or NaN for x at or below 0 or NaN
+		~#
+		function : Trigamma(x : Float) ~ Float {
+			if(x <> x | x <= 0.0) {
+				return Float->NaN();
+			};
+
+			result := 0.0;
+			while(x < 8.0) {
+				result += 1.0 / (x * x);
+				x += 1.0;
+			};
+
+			inv := 1.0 / x;
+			inv2 := inv * inv;
+			series := inv + 0.5 * inv2 + inv * inv2 * (0.16666666666666666 - inv2 * (0.03333333333333333 - inv2 * (0.023809523809523808 - inv2 * 0.03333333333333333)));
+			return result + series;
+		}
+
+		#~
+		The natural log of the gamma function.
+		@param x a positive number
+		@return log Gamma(x), or NaN for x at or below 0 or NaN
+		~#
+		function : LogGamma(x : Float) ~ Float {
+			if(x <> x | x <= 0.0) {
+				return Float->NaN();
+			};
+
+			shift := 0.0;
+			while(x < 8.0) {
+				shift += Float->Log(x);
+				x += 1.0;
+			};
+
+			inv := 1.0 / x;
+			inv2 := inv * inv;
+			series := inv * (0.08333333333333333 - inv2 * (0.002777777777777778 - inv2 * (0.0007936507936507937 - inv2 * 0.0005952380952380953)));
+			return (x - 0.5) * Float->Log(x) - x + 0.9189385332046727 + series - shift;
+		}
+	}
+
+	#~
+	One topic as its top words: the word ids, the words, and each word's probability in the topic, best first.
+	~#
+	class TopicTerms {
+		@topic : Int;
+		@ids : Int[];
+		@words : String[];
+		@weights : Float[];
+
+		New(topic : Int, ids : Int[], words : String[], weights : Float[]) {
+			@topic := topic;
+			@ids := ids;
+			@words := words;
+			@weights := weights;
+		}
+
+		#~
+		Index of the topic.
+		@return topic
+		~#
+		method : public : GetTopic() ~ Int {
+			return @topic;
+		}
+
+		#~
+		Word ids, best first.
+		@return ids
+		~#
+		method : public : GetIds() ~ Int[] {
+			return @ids;
+		}
+
+		#~
+		The words, best first.
+		@return words
+		~#
+		method : public : GetWords() ~ String[] {
+			return @words;
+		}
+
+		#~
+		The weights in the same order: p(word | topic) for GetTopics, the relevance score for TopicPlots.Relevance.
+		@return weights
+		~#
+		method : public : GetWeights() ~ Float[] {
+			return @weights;
+		}
+
+		#~
+		Number of words.
+		@return count
+		~#
+		method : public : Size() ~ Int {
+			return @words->Size();
+		}
+
+		method : public : ToString() ~ String {
+			out := "topic {$@topic}:";
+			for(i := 0; i < @words->Size(); i += 1;) {
+				out += " " + @words[i];
+			};
+
+			return out;
+		}
+	}
+
+	#~
+	An LDA topic model trained by online variational Bayes, the algorithm of Hoffman, Blei and Bach (2010) in the form Gensim's LdaModel uses it, so its parameters mean the same: num_topics, alpha (the document-topic prior), eta (the topic-word prior), passes over the corpus, iterations of the per-document E step, a random seed.
+
+	How it compares with Gensim. The updates, the learning-rate schedule rho = (offset + pass + chunks_seen) ^ -decay (offset 1, decay 0.5), the chunk size (2000), the E-step stopping rule (mean change of gamma under 0.001, at most iterations rounds), the per-word likelihood bound and 'auto' alpha follow Gensim's LdaModel. Results are comparable in kind but NOT numerically identical to Gensim's: the random number generator differs (so the same seed gives a different but equally valid model), the E step starts every document from gamma = 1 instead of a random draw (so inferring a document is deterministic), and floating-point summation order differs. Same seed and same inputs always give the same model here, on every platform.
+
+	Training touches the corpus in order, in chunks of GetChunkSize documents, one update of the topics per chunk; with passes above 1 the corpus is walked again. A corpus smaller than one chunk gets one update per pass, so give small corpora a smaller chunk size (SetChunkSize) or more passes.
+
+	Alpha: a positive number is a symmetric prior; 0 means Gensim's default 1/num_topics. SetAlphaMode switches to "asymmetric" (alpha_k proportional to 1/(k + sqrt(num_topics)), scaled to sum to 1, as Gensim does) or "auto" (alpha is learned by Newton steps on the Dirichlet likelihood, starting from the symmetric value, as Gensim's alpha="auto"). Eta: a positive number, or 0 for 1/num_topics.
+
+	Likelihood bound and perplexity. LogPerplexityBound is Gensim's log_perplexity: the variational lower bound on the corpus log likelihood divided by the number of word occurrences. It is a per-word LOG LIKELIHOOD BOUND, negative, higher (closer to 0) is better; it is not perplexity. Perplexity = exp(-bound) (Perplexity computes it), lower is better. Both include the global topic-word term, so a bound on a held-out corpus is comparable between models but not to the training bound.
+
+	Nothing here ends the program on bad input: a bad setting is refused with a reason (Fit returns false, GetError says why), degenerate input gives false, Nil or NaN, never an exception. Not thread-safe.
+
+```
+dict := TokenDictionary->New();
+dict->AddDocuments(docs);
+corpus := dict->ToCorpus(docs);
+lda := Lda->New(10, 0.1, 0.01, 10, 50, 42);
+lda->Fit(corpus, dict);
+lda->GetTopic(0, 10)->ToString()->PrintLine();
+lda->LogPerplexityBound(corpus)->PrintLine();
+```
+	~#
+	class Lda {
+		@k : Int;
+		@alpha_value : Float;
+		@alpha_mode : Int;
+		@alpha : Float[];
+		@eta_value : Float;
+		@eta : Float;
+		@passes : Int;
+		@iterations : Int;
+		@seed : Int;
+		@chunk : Int;
+		@decay : Float;
+		@offset : Float;
+		@threshold : Float;
+		@v : Int;
+		@sstats : Float[];
+		@eb : Float[];
+		@vocab : String[];
+		@fitted : Bool;
+		@config_error : String;
+		@error : String;
+		@seconds : Float;
+		@rng : Int;
+
+		#~
+		Sets up a model; nothing is trained until Fit. A bad setting does not end the program: the model refuses Fit and GetError says which setting.
+		@param num_topics number of topics, 1 or more
+		@param alpha document-topic prior: above 0, or 0 for 1/num_topics
+		@param eta topic-word prior: above 0, or 0 for 1/num_topics
+		@param passes passes over the corpus, 1 or more
+		@param iterations maximum E-step rounds per document, 1 or more
+		@param seed random seed, any integer
+		~#
+		New(num_topics : Int, alpha : Float, eta : Float, passes : Int, iterations : Int, seed : Int) {
+			@k := num_topics;
+			@alpha_value := alpha;
+			@alpha_mode := 0;
+			@eta_value := eta;
+			@passes := passes;
+			@iterations := iterations;
+			@seed := seed;
+			@chunk := 2000;
+			@decay := 0.5;
+			@offset := 1.0;
+			@threshold := 0.001;
+			@v := 0;
+			@fitted := false;
+			@error := "";
+			@seconds := 0.0;
+			@config_error := "";
+			if(num_topics < 1 | num_topics > 100000) {
+				@config_error := "num_topics must be between 1 and 100000";
+			}
+			else if(alpha <> alpha | alpha < 0.0) {
+				@config_error := "alpha must be 0 (the default 1/num_topics) or above";
+			}
+			else if(eta <> eta | eta < 0.0) {
+				@config_error := "eta must be 0 (the default 1/num_topics) or above";
+			}
+			else if(passes < 1) {
+				@config_error := "passes must be at least 1";
+			}
+			else if(iterations < 1) {
+				@config_error := "iterations must be at least 1";
+			};
+
+			@rng := 1;
+		}
+
+		#~
+		Chooses how alpha is set: "symmetric" (the default), "asymmetric" or "auto".
+		@param mode the mode
+		@return true if accepted, false (nothing changed) otherwise
+		~#
+		method : public : SetAlphaMode(mode : String) ~ Bool {
+			if(mode = Nil) {
+				return false;
+			};
+
+			if(mode->Equals("symmetric")) {
+				@alpha_mode := 0;
+				return true;
+			};
+
+			if(mode->Equals("asymmetric")) {
+				@alpha_mode := 1;
+				return true;
+			};
+
+			if(mode->Equals("auto")) {
+				@alpha_mode := 2;
+				return true;
+			};
+
+			return false;
+		}
+
+		#~
+		Sets how many documents are processed between updates of the topics (default 2000).
+		@param size chunk size, 1 or more
+		@return true if accepted
+		~#
+		method : public : SetChunkSize(size : Int) ~ Bool {
+			if(size < 1) {
+				return false;
+			};
+
+			@chunk := size;
+			return true;
+		}
+
+		#~
+		Sets the learning-rate schedule rho = (offset + t) ^ -decay (defaults offset 1, decay 0.5).
+		@param offset above 0 (default 1)
+		@param decay above 0 (default 0.5); the convergence guarantee of Hoffman et al. holds for (0.5, 1]
+		@return true if accepted
+		~#
+		method : public : SetLearningRate(offset : Float, decay : Float) ~ Bool {
+			if(offset <> offset | offset <= 0.0 | decay <> decay | decay <= 0.0) {
+				return false;
+			};
+
+			@offset := offset;
+			@decay := decay;
+			return true;
+		}
+
+		#~
+		Sets the E-step stopping threshold on the mean change of gamma (default 0.001).
+		@param threshold above 0
+		@return true if accepted
+		~#
+		method : public : SetGammaThreshold(threshold : Float) ~ Bool {
+			if(threshold <> threshold | threshold <= 0.0) {
+				return false;
+			};
+
+			@threshold := threshold;
+			return true;
+		}
+
+		#~
+		Why the last call failed, or "".
+		@return message
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		True after a successful Fit or Load.
+		@return true when the model can be used
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @fitted;
+		}
+
+		method : public : GetNumTopics() ~ Int {
+			return @k;
+		}
+
+		method : public : GetVocabSize() ~ Int {
+			return @v;
+		}
+
+		method : public : GetPasses() ~ Int {
+			return @passes;
+		}
+
+		method : public : GetIterations() ~ Int {
+			return @iterations;
+		}
+
+		method : public : GetSeed() ~ Int {
+			return @seed;
+		}
+
+		#~
+		Wall-clock seconds the last Fit took.
+		@return seconds
+		~#
+		method : public : GetTrainSeconds() ~ Float {
+			return @seconds;
+		}
+
+		#~
+		The alpha vector in use: the symmetric or asymmetric prior, or the learned one after an "auto" Fit.
+		@return one value per topic, or Nil before Fit
+		~#
+		method : public : GetAlpha() ~ Float[] {
+			if(@alpha = Nil) {
+				return Nil;
+			};
+
+			return Float->Copy(@alpha);
+		}
+
+		#~
+		The eta in use.
+		@return eta
+		~#
+		method : public : GetEta() ~ Float {
+			return @eta;
+		}
+
+		# ---- random numbers: Park-Miller "minimal standard" generator, fully portable ----
+
+		method : private : Uniform() ~ Float {
+			@rng := (@rng * 48271) % 2147483647;
+			return @rng->As(Float) / 2147483647.0;
+		}
+
+		# Marsaglia-Tsang, for a shape of 1 or more
+		method : private : Gamma(shape : Float, scale : Float) ~ Float {
+			d := shape - 0.3333333333333333;
+			c := 1.0 / Float->Sqrt(9.0 * d);
+			result := 0.0;
+			done := false;
+			while(<>done) {
+				u1 := Uniform();
+				u2 := Uniform();
+				x := Float->Sqrt(-2.0 * Float->Log(u1)) * Float->Cos(6.283185307179586 * u2);
+				t := 1.0 + c * x;
+				if(t > 0.0) {
+					v := t * t * t;
+					u := Uniform();
+					if(Float->Log(u) < 0.5 * x * x + d - d * v + d * Float->Log(v)) {
+						result := d * v * scale;
+						done := true;
+					};
+				};
+			};
+
+			return result;
+		}
+
+		# ---- model state ----
+
+		# eb[w*K+k] = exp(E[log beta_kw]) from the topic statistics
+		method : private : ComputeExpElogbeta() ~ Nil {
+			kk := @k;
+			vv := @v;
+			tot := Float->New[kk];
+			for(w := 0; w < vv; w += 1;) {
+				base := w * kk;
+				for(k := 0; k < kk; k += 1;) {
+					tot[k] += @sstats[base + k];
+				};
+			};
+
+			psi_tot := Float->New[kk];
+			for(k := 0; k < kk; k += 1;) {
+				psi_tot[k] := TopicMath->Digamma(tot[k] + vv->As(Float) * @eta);
+			};
+
+			if(@eb = Nil) {
+				@eb := Float->New[vv * kk];
+			};
+
+			for(w := 0; w < vv; w += 1;) {
+				base := w * kk;
+				for(k := 0; k < kk; k += 1;) {
+					@eb[base + k] := Float->Exp(TopicMath->Digamma(@sstats[base + k] + @eta) - psi_tot[k]);
+				};
+			};
+		}
+
+		# etheta[k] = exp(E[log theta_k]) for the Dirichlet parameters gamma[gofs..gofs+K)
+		method : private : ExpElogtheta(gamma : Float[], gofs : Int, etheta : Float[]) ~ Nil {
+			kk := @k;
+			total := 0.0;
+			for(k := 0; k < kk; k += 1;) {
+				total += gamma[gofs + k];
+			};
+
+			ps := TopicMath->Digamma(total);
+			for(k := 0; k < kk; k += 1;) {
+				etheta[k] := Float->Exp(TopicMath->Digamma(gamma[gofs + k]) - ps);
+			};
+		}
+
+		# the E step for one document; gamma gets its variational parameters and, when acc is not Nil,
+		# acc[w*K+k] gets the expected topic-word counts (still to be multiplied by eb)
+		method : private : InferDoc(corpus : TopicCorpus, d : Int, eb : Float[], gamma : Float[], gofs : Int, etheta : Float[], phinorm : Float[], tmp : Float[], acc : Float[]) ~ Nil {
+			kk := @k;
+			offs := corpus->GetOffsets();
+			wid := corpus->GetIds();
+			cnt := corpus->GetCounts();
+			s := offs[d];
+			n := offs[d + 1] - s;
+
+			if(n = 0) {
+				for(k := 0; k < kk; k += 1;) {
+					gamma[gofs + k] := @alpha[k];
+				};
+				return;
+			};
+
+			for(k := 0; k < kk; k += 1;) {
+				gamma[gofs + k] := 1.0;
+			};
+
+			ExpElogtheta(gamma, gofs, etheta);
+			for(j := 0; j < n; j += 1;) {
+				base := wid[s + j] * kk;
+				dot := 0.0;
+				for(k := 0; k < kk; k += 1;) {
+					dot += etheta[k] * eb[base + k];
+				};
+				phinorm[j] := dot + 1.0e-100;
+			};
+
+			running := true;
+			rounds := 0;
+			while(running & rounds < @iterations) {
+				for(k := 0; k < kk; k += 1;) {
+					tmp[k] := 0.0;
+				};
+
+				for(j := 0; j < n; j += 1;) {
+					coef := cnt[s + j] / phinorm[j];
+					base := wid[s + j] * kk;
+					for(k := 0; k < kk; k += 1;) {
+						tmp[k] += coef * eb[base + k];
+					};
+				};
+
+				change := 0.0;
+				for(k := 0; k < kk; k += 1;) {
+					fresh := @alpha[k] + etheta[k] * tmp[k];
+					change += Float->Abs(fresh - gamma[gofs + k]);
+					gamma[gofs + k] := fresh;
+				};
+
+				ExpElogtheta(gamma, gofs, etheta);
+				for(j := 0; j < n; j += 1;) {
+					base := wid[s + j] * kk;
+					dot := 0.0;
+					for(k := 0; k < kk; k += 1;) {
+						dot += etheta[k] * eb[base + k];
+					};
+					phinorm[j] := dot + 1.0e-100;
+				};
+
+				rounds += 1;
+				if(change / kk->As(Float) < @threshold) {
+					running := false;
+				};
+			};
+
+			if(acc <> Nil) {
+				for(j := 0; j < n; j += 1;) {
+					coef := cnt[s + j] / phinorm[j];
+					base := wid[s + j] * kk;
+					for(k := 0; k < kk; k += 1;) {
+						acc[base + k] += etheta[k] * coef;
+					};
+				};
+			};
+		}
+
+		# one Newton step on alpha (Gensim's update_dir_prior)
+		method : private : UpdateAlpha(gamma : Float[], nb : Int, rho : Float) ~ Nil {
+			kk := @k;
+			logphat := Float->New[kk];
+			for(d := 0; d < nb; d += 1;) {
+				total := 0.0;
+				for(k := 0; k < kk; k += 1;) {
+					total += gamma[d * kk + k];
+				};
+
+				ps := TopicMath->Digamma(total);
+				for(k := 0; k < kk; k += 1;) {
+					logphat[k] += TopicMath->Digamma(gamma[d * kk + k]) - ps;
+				};
+			};
+
+			nf := nb->As(Float);
+			sum_prior := 0.0;
+			for(k := 0; k < kk; k += 1;) {
+				logphat[k] := logphat[k] / nf;
+				sum_prior += @alpha[k];
+			};
+
+			psi_sum := TopicMath->Digamma(sum_prior);
+			c := nf * TopicMath->Trigamma(sum_prior);
+			gradf := Float->New[kk];
+			q := Float->New[kk];
+			sum_gq := 0.0;
+			sum_inv_q := 0.0;
+			for(k := 0; k < kk; k += 1;) {
+				gradf[k] := nf * (psi_sum - TopicMath->Digamma(@alpha[k]) + logphat[k]);
+				q[k] := -nf * TopicMath->Trigamma(@alpha[k]);
+				sum_gq += gradf[k] / q[k];
+				sum_inv_q += 1.0 / q[k];
+			};
+
+			b := sum_gq / (1.0 / c + sum_inv_q);
+			fresh := Float->New[kk];
+			ok := true;
+			for(k := 0; k < kk; k += 1;) {
+				fresh[k] := rho * (-(gradf[k] - b) / q[k]) + @alpha[k];
+				if(fresh[k] <> fresh[k] | fresh[k] <= 0.0) {
+					ok := false;
+				};
+			};
+
+			if(ok) {
+				for(k := 0; k < kk; k += 1;) {
+					@alpha[k] := fresh[k];
+				};
+			};
+		}
+
+		method : private : Refuse(message : String) ~ Bool {
+			@error := message;
+			return false;
+		}
+
+		#~
+		Trains the model on a corpus, replacing anything trained before. The seed is applied afresh, so two Fit calls with the same settings and corpus give the same model.
+		@param corpus the bag-of-words corpus
+		@param dict the dictionary the corpus was made with, used to label the topics' words; Nil labels them w0, w1, ...
+		@return true on success; false (GetError says why) for a bad setting, a Nil, empty or word-less corpus, a dictionary of another size or a model too large (num_topics times vocabulary above 50 million)
+		~#
+		method : public : Fit(corpus : TopicCorpus, dict : TokenDictionary) ~ Bool {
+			@fitted := false;
+			@error := "";
+			if(@config_error->Size() > 0) {
+				return Refuse(@config_error);
+			};
+
+			if(corpus = Nil) {
+				return Refuse("corpus is Nil");
+			};
+
+			nd := corpus->GetNumDocs();
+			vv := corpus->GetVocabSize();
+			if(nd < 1) {
+				return Refuse("corpus has no documents");
+			};
+
+			if(vv < 1 | corpus->GetNumWords() < 1.0) {
+				return Refuse("corpus has no words");
+			};
+
+			if(dict <> Nil & dict->Size() <> vv) {
+				return Refuse("dictionary size {$dict->Size()} does not match the corpus vocabulary {$vv}");
+			};
+
+			kk := @k;
+			if(kk * vv > 50000000) {
+				return Refuse("num_topics times vocabulary is above 50 million");
+			};
+
+			timer := System.Time.Timer->New();
+			timer->Start();
+
+			@v := vv;
+			@vocab := String->New[vv];
+			for(w := 0; w < vv; w += 1;) {
+				if(dict <> Nil) {
+					@vocab[w] := dict->GetToken(w);
+				}
+				else {
+					@vocab[w] := "w{$w}";
+				};
+			};
+
+			@eta := @eta_value;
+			if(@eta <= 0.0) {
+				@eta := 1.0 / kk->As(Float);
+			};
+
+			symmetric := @alpha_value;
+			if(symmetric <= 0.0) {
+				symmetric := 1.0 / kk->As(Float);
+			};
+
+			@alpha := Float->New[kk];
+			if(@alpha_mode = 1) {
+				total := 0.0;
+				root := Float->Sqrt(kk->As(Float));
+				for(k := 0; k < kk; k += 1;) {
+					@alpha[k] := 1.0 / (k->As(Float) + root);
+					total += @alpha[k];
+				};
+
+				for(k := 0; k < kk; k += 1;) {
+					@alpha[k] := @alpha[k] / total;
+				};
+			}
+			else {
+				for(k := 0; k < kk; k += 1;) {
+					@alpha[k] := symmetric;
+				};
+			};
+
+			@rng := @seed % 2147483646;
+			if(@rng < 0) {
+				@rng += 2147483646;
+			};
+			@rng += 1;
+
+			@sstats := Float->New[vv * kk];
+			for(i := 0; i < vv * kk; i += 1;) {
+				@sstats[i] := Gamma(100.0, 0.01);
+			};
+
+			@eb := Nil;
+			ComputeExpElogbeta();
+
+			offs := corpus->GetOffsets();
+			max_n := 1;
+			for(d := 0; d < nd; d += 1;) {
+				if(offs[d + 1] - offs[d] > max_n) {
+					max_n := offs[d + 1] - offs[d];
+				};
+			};
+
+			chunk := @chunk;
+			if(chunk > nd) {
+				chunk := nd;
+			};
+
+			etheta := Float->New[kk];
+			tmp := Float->New[kk];
+			phinorm := Float->New[max_n];
+			gamma := Float->New[chunk * kk];
+			batch := Float->New[vv * kk];
+			seen := 0;
+			total_cells := vv * kk;
+
+			# declared out here and assigned below: a new local inside nested loops whose initializer ignores
+			# the inner loop variable can read back 0 in some 2026.11 builds
+			ce := 0;
+			nb := 0;
+			rho := 0.0;
+			scale := 0.0;
+			keep := 0.0;
+			neg_decay := 0.0 - @decay;
+			for(pass := 0; pass < @passes; pass += 1;) {
+				cs := 0;
+				while(cs < nd) {
+					ce := cs + chunk;
+					if(ce > nd) {
+						ce := nd;
+					};
+
+					nb := ce - cs;
+					for(i := 0; i < total_cells; i += 1;) {
+						batch[i] := 0.0;
+					};
+
+					for(d := cs; d < ce; d += 1;) {
+						InferDoc(corpus, d, @eb, gamma, (d - cs) * kk, etheta, phinorm, tmp, batch);
+					};
+
+					rho := Float->Pow(@offset + pass->As(Float) + seen->As(Float) / chunk->As(Float), neg_decay);
+					if(@alpha_mode = 2) {
+						UpdateAlpha(gamma, nb, rho);
+					};
+
+					scale := rho * nd->As(Float) / nb->As(Float);
+					keep := 1.0 - rho;
+					for(i := 0; i < total_cells; i += 1;) {
+						@sstats[i] := keep * @sstats[i] + scale * batch[i] * @eb[i];
+					};
+
+					ComputeExpElogbeta();
+					seen += nb;
+					cs := ce;
+				};
+			};
+
+			timer->End();
+			@seconds := timer->GetElapsedTime();
+			@fitted := true;
+			return true;
+		}
+
+		#~
+		Trains the same model from several seeds and keeps the one with the best likelihood bound. Variational Bayes starts from a random point and can end in a local optimum (two real topics merged into one, another split in two), and the per-word bound on the training corpus tells such a run from a good one: it is clearly lower. Seeds first_seed, first_seed+1, ... are tried in turn, one after the other, so the cost is tries times one Fit.
+		@param corpus the bag-of-words corpus
+		@param dict the dictionary the corpus was made with, or Nil
+		@param num_topics number of topics, as in the constructor
+		@param alpha document-topic prior, as in the constructor (symmetric)
+		@param eta topic-word prior, as in the constructor
+		@param passes passes over the corpus
+		@param iterations E-step rounds per document
+		@param chunk chunk size, as SetChunkSize
+		@param first_seed first seed to try
+		@param tries how many seeds to try, 1 or more
+		@return the best fitted model (GetSeed says which seed won), or Nil when tries is below 1, the chunk is below 1 or every Fit was refused
+		~#
+		function : FitBest(corpus : TopicCorpus, dict : TokenDictionary, num_topics : Int, alpha : Float, eta : Float, passes : Int, iterations : Int, chunk : Int, first_seed : Int, tries : Int) ~ Lda {
+			if(tries < 1 | chunk < 1) {
+				return Nil;
+			};
+
+			best : Lda;
+			best_bound := 0.0;
+			for(t := 0; t < tries; t += 1;) {
+				model := Lda->New(num_topics, alpha, eta, passes, iterations, first_seed + t);
+				model->SetChunkSize(chunk);
+				if(model->Fit(corpus, dict)) {
+					bound := model->LogPerplexityBound(corpus);
+					if(best = Nil | bound > best_bound) {
+						best := model;
+						best_bound := bound;
+					};
+				};
+			};
+
+			return best;
+		}
+
+		# ---- reading the model ----
+
+		method : private : Ready() ~ Bool {
+			if(<>@fitted) {
+				@error := "the model is not fitted";
+				return false;
+			};
+
+			return true;
+		}
+
+		# p(word | topic) for every word: the topic's row of lambda, normalized
+		method : private : TopicWordRow(topic : Int) ~ Float[] {
+			vv := @v;
+			kk := @k;
+			row := Float->New[vv];
+			total := 0.0;
+			for(w := 0; w < vv; w += 1;) {
+				row[w] := @sstats[w * kk + topic] + @eta;
+				total += row[w];
+			};
+
+			for(w := 0; w < vv; w += 1;) {
+				row[w] := row[w] / total;
+			};
+
+			return row;
+		}
+
+		#~
+		The topic-word pseudo-counts lambda that the model learned, in Gensim's layout: lambda[k * vocabulary + w] belongs to topic k and word w (lambda = eta + expected counts). p(word | topic) is each row divided by its sum.
+		@return a new array of num_topics times vocabulary, or Nil when unfitted
+		~#
+		method : public : GetLambda() ~ Float[] {
+			if(<>Ready()) {
+				return Nil;
+			};
+
+			out := Float->New[@k * @v];
+			for(w := 0; w < @v; w += 1;) {
+				for(k := 0; k < @k; k += 1;) {
+					out[k * @v + w] := @sstats[w * @k + k] + @eta;
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		The word distribution of one topic: p(word | topic) for every word id, summing to 1.
+		@param topic topic index
+		@return a new array of vocabulary size, or Nil when unfitted or the index is out of range
+		~#
+		method : public : GetTopicWord(topic : Int) ~ Float[] {
+			if(<>Ready()) {
+				return Nil;
+			};
+
+			if(topic < 0 | topic >= @k) {
+				@error := "topic index out of range";
+				return Nil;
+			};
+
+			return TopicWordRow(topic);
+		}
+
+		#~
+		The highest-probability words of one topic.
+		@param topic topic index
+		@param top_n how many words, 1 or more (capped at the vocabulary size)
+		@return the words with their probabilities, best first (ties go to the smaller id), or Nil when unfitted, the index is out of range or top_n is below 1
+		~#
+		method : public : GetTopic(topic : Int, top_n : Int) ~ TopicTerms {
+			if(<>Ready()) {
+				return Nil;
+			};
+
+			if(topic < 0 | topic >= @k | top_n < 1) {
+				@error := "topic index out of range or top_n below 1";
+				return Nil;
+			};
+
+			return Top(topic, TopicWordRow(topic), top_n);
+		}
+
+		method : private : Top(topic : Int, row : Float[], top_n : Int) ~ TopicTerms {
+			n := top_n;
+			if(n > @v) {
+				n := @v;
+			};
+
+			best_w := Int->New[n];
+			best_v := Float->New[n];
+			filled := 0;
+			for(w := 0; w < @v; w += 1;) {
+				val := row[w];
+				pos := -1;
+				if(filled < n) {
+					pos := filled;
+					filled += 1;
+				}
+				else if(val > best_v[n - 1]) {
+					pos := n - 1;
+				};
+
+				if(pos >= 0) {
+					while(pos > 0 & best_v[pos - 1] < val) {
+						best_v[pos] := best_v[pos - 1];
+						best_w[pos] := best_w[pos - 1];
+						pos -= 1;
+					};
+
+					best_v[pos] := val;
+					best_w[pos] := w;
+				};
+			};
+
+			words := String->New[n];
+			for(i := 0; i < n; i += 1;) {
+				words[i] := @vocab[best_w[i]];
+			};
+
+			return TopicTerms->New(topic, best_w, words, best_v);
+		}
+
+		#~
+		The top words of every topic.
+		@param top_n how many words per topic, 1 or more
+		@return one TopicTerms per topic, or Nil when unfitted or top_n is below 1
+		~#
+		method : public : GetTopics(top_n : Int) ~ Vector<TopicTerms> {
+			if(<>Ready()) {
+				return Nil;
+			};
+
+			if(top_n < 1) {
+				@error := "top_n must be at least 1";
+				return Nil;
+			};
+
+			out := Vector->New()<TopicTerms>;
+			for(t := 0; t < @k; t += 1;) {
+				out->AddBack(Top(t, TopicWordRow(t), top_n));
+			};
+
+			return out;
+		}
+
+		#~
+		The word with an id.
+		@param id word id
+		@return the word, or Nil when unfitted or out of range
+		~#
+		method : public : GetWord(id : Int) ~ String {
+			if(<>@fitted | id < 0 | id >= @v) {
+				return Nil;
+			};
+
+			return @vocab[id];
+		}
+
+		#~
+		The topic mixture of one document: p(topic | document), summing to 1, from the E step run to convergence on the trained topics. A document with no words gets the normalized alpha. The result does not depend on which other documents were asked about before.
+		@param corpus a corpus made with the same dictionary
+		@param doc document index
+		@return one probability per topic, or Nil when unfitted, the corpus has another vocabulary size or the index is out of range
+		~#
+		method : public : GetDocumentTopics(corpus : TopicCorpus, doc : Int) ~ Float[] {
+			if(<>Ready()) {
+				return Nil;
+			};
+
+			if(corpus = Nil | corpus->GetVocabSize() <> @v) {
+				@error := "corpus is Nil or its vocabulary size differs from the model's";
+				return Nil;
+			};
+
+			if(doc < 0 | doc >= corpus->GetNumDocs()) {
+				@error := "document index out of range";
+				return Nil;
+			};
+
+			kk := @k;
+			gamma := Float->New[kk];
+			etheta := Float->New[kk];
+			tmp := Float->New[kk];
+			phinorm := Float->New[corpus->GetNumUnique(doc) + 1];
+			InferDoc(corpus, doc, @eb, gamma, 0, etheta, phinorm, tmp, Nil->As(Float[]));
+			total := 0.0;
+			for(k := 0; k < kk; k += 1;) {
+				total += gamma[k];
+			};
+
+			theta := Float->New[kk];
+			for(k := 0; k < kk; k += 1;) {
+				theta[k] := gamma[k] / total;
+			};
+
+			return theta;
+		}
+
+		#~
+		The topic mixtures of every document, flat: document d's mixture is entries d*num_topics to d*num_topics+num_topics-1.
+		@param corpus a corpus made with the same dictionary
+		@return documents times num_topics probabilities, or Nil when unfitted or the vocabulary size differs
+		~#
+		method : public : GetDocumentTopicMatrix(corpus : TopicCorpus) ~ Float[] {
+			if(<>Ready()) {
+				return Nil;
+			};
+
+			if(corpus = Nil | corpus->GetVocabSize() <> @v) {
+				@error := "corpus is Nil or its vocabulary size differs from the model's";
+				return Nil;
+			};
+
+			kk := @k;
+			nd := corpus->GetNumDocs();
+			out := Float->New[nd * kk];
+			gamma := Float->New[kk];
+			etheta := Float->New[kk];
+			tmp := Float->New[kk];
+			offs := corpus->GetOffsets();
+			max_n := 1;
+			for(d := 0; d < nd; d += 1;) {
+				if(offs[d + 1] - offs[d] > max_n) {
+					max_n := offs[d + 1] - offs[d];
+				};
+			};
+
+			phinorm := Float->New[max_n];
+			for(d := 0; d < nd; d += 1;) {
+				InferDoc(corpus, d, @eb, gamma, 0, etheta, phinorm, tmp, Nil->As(Float[]));
+				total := 0.0;
+				for(k := 0; k < kk; k += 1;) {
+					total += gamma[k];
+				};
+
+				for(k := 0; k < kk; k += 1;) {
+					out[d * kk + k] := gamma[k] / total;
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		The topic mixtures of every document as a matrix, one row per document and one column per topic, the shape a classifier's Fit takes. The same numbers as GetDocumentTopicMatrix.
+		@param corpus a corpus made with the same dictionary
+		@return documents by num_topics, or Nil when unfitted or the vocabulary size differs
+		~#
+		method : public : GetDocumentTopicMatrix2D(corpus : TopicCorpus) ~ Float[,] {
+			flat := GetDocumentTopicMatrix(corpus);
+			if(flat = Nil) {
+				return Nil;
+			};
+
+			kk := @k;
+			nd := corpus->GetNumDocs();
+			out := Float->New[nd, kk];
+			for(d := 0; d < nd; d += 1;) {
+				for(k := 0; k < kk; k += 1;) {
+					out[d, k] := flat[d * kk + k];
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		The topic-word pseudo-counts as a matrix, one row per topic and one column per word. The same numbers as GetLambda.
+		@return num_topics by vocabulary, or Nil when unfitted
+		~#
+		method : public : GetLambda2D() ~ Float[,] {
+			flat := GetLambda();
+			if(flat = Nil) {
+				return Nil;
+			};
+
+			out := Float->New[@k, @v];
+			for(k := 0; k < @k; k += 1;) {
+				for(w := 0; w < @v; w += 1;) {
+					out[k, w] := flat[k * @v + w];
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		Whether the settings given to the constructor are usable; when false, Fit refuses and GetError says which setting.
+		@return true when the configuration is valid
+		~#
+		method : public : IsValid() ~ Bool {
+			return @config_error->Size() = 0;
+		}
+
+		#~
+		The per-word likelihood bound of a corpus under the model: Gensim's LdaModel.log_perplexity. A negative number; higher (closer to 0) is better. This is NOT perplexity: Perplexity() = exp(-bound). See the class description.
+		@param corpus a corpus made with the same dictionary
+		@return the bound per word occurrence, or NaN when unfitted, the vocabulary size differs or the corpus has no words
+		~#
+		method : public : LogPerplexityBound(corpus : TopicCorpus) ~ Float {
+			if(<>Ready()) {
+				return Float->NaN();
+			};
+
+			if(corpus = Nil | corpus->GetVocabSize() <> @v) {
+				@error := "corpus is Nil or its vocabulary size differs from the model's";
+				return Float->NaN();
+			};
+
+			words := corpus->GetNumWords();
+			if(words < 1.0) {
+				@error := "corpus has no words";
+				return Float->NaN();
+			};
+
+			kk := @k;
+			vv := @v;
+			nd := corpus->GetNumDocs();
+			offs := corpus->GetOffsets();
+			wid := corpus->GetIds();
+			cnt := corpus->GetCounts();
+
+			tot := Float->New[kk];
+			for(w := 0; w < vv; w += 1;) {
+				for(k := 0; k < kk; k += 1;) {
+					tot[k] += @sstats[w * kk + k] + @eta;
+				};
+			};
+
+			psi_tot := Float->New[kk];
+			for(k := 0; k < kk; k += 1;) {
+				psi_tot[k] := TopicMath->Digamma(tot[k]);
+			};
+
+			elogbeta := Float->New[vv * kk];
+			for(w := 0; w < vv; w += 1;) {
+				for(k := 0; k < kk; k += 1;) {
+					elogbeta[w * kk + k] := TopicMath->Digamma(@sstats[w * kk + k] + @eta) - psi_tot[k];
+				};
+			};
+
+			sum_alpha := 0.0;
+			sum_lg_alpha := 0.0;
+			for(k := 0; k < kk; k += 1;) {
+				sum_alpha += @alpha[k];
+				sum_lg_alpha += TopicMath->LogGamma(@alpha[k]);
+			};
+
+			lg_sum_alpha := TopicMath->LogGamma(sum_alpha);
+
+			max_n := 1;
+			for(d := 0; d < nd; d += 1;) {
+				if(offs[d + 1] - offs[d] > max_n) {
+					max_n := offs[d + 1] - offs[d];
+				};
+			};
+
+			gamma := Float->New[kk];
+			etheta := Float->New[kk];
+			tmp := Float->New[kk];
+			elt := Float->New[kk];
+			vals := Float->New[kk];
+			phinorm := Float->New[max_n];
+
+			score := 0.0;
+			for(d := 0; d < nd; d += 1;) {
+				InferDoc(corpus, d, @eb, gamma, 0, etheta, phinorm, tmp, Nil->As(Float[]));
+				total := 0.0;
+				for(k := 0; k < kk; k += 1;) {
+					total += gamma[k];
+				};
+
+				ps := TopicMath->Digamma(total);
+				for(k := 0; k < kk; k += 1;) {
+					elt[k] := TopicMath->Digamma(gamma[k]) - ps;
+				};
+
+				for(j := offs[d]; j < offs[d + 1]; j += 1;) {
+					base := wid[j] * kk;
+					top := -1.0e300;
+					for(k := 0; k < kk; k += 1;) {
+						vals[k] := elt[k] + elogbeta[base + k];
+						if(vals[k] > top) {
+							top := vals[k];
+						};
+					};
+
+					sum_exp := 0.0;
+					for(k := 0; k < kk; k += 1;) {
+						sum_exp += Float->Exp(vals[k] - top);
+					};
+
+					score += cnt[j] * (top + Float->Log(sum_exp));
+				};
+
+				theta_term := 0.0;
+				for(k := 0; k < kk; k += 1;) {
+					theta_term += (@alpha[k] - gamma[k]) * elt[k] + TopicMath->LogGamma(gamma[k]);
+				};
+
+				score += theta_term - sum_lg_alpha + lg_sum_alpha - TopicMath->LogGamma(total);
+			};
+
+			vf := vv->As(Float);
+			lg_eta := TopicMath->LogGamma(@eta);
+			lg_veta := TopicMath->LogGamma(vf * @eta);
+			beta_term := 0.0;
+			for(k := 0; k < kk; k += 1;) {
+				beta_term += lg_veta - TopicMath->LogGamma(tot[k]);
+			};
+
+			for(w := 0; w < vv; w += 1;) {
+				for(k := 0; k < kk; k += 1;) {
+					lam := @sstats[w * kk + k] + @eta;
+					beta_term += (@eta - lam) * elogbeta[w * kk + k] + TopicMath->LogGamma(lam) - lg_eta;
+				};
+			};
+
+			return (score + beta_term) / words;
+		}
+
+		#~
+		Perplexity of a corpus under the model: exp(-LogPerplexityBound(corpus)). Lower is better. It is derived from a bound, so it overstates the true perplexity.
+		@param corpus a corpus made with the same dictionary
+		@return the perplexity, or NaN as LogPerplexityBound
+		~#
+		method : public : Perplexity(corpus : TopicCorpus) ~ Float {
+			bound := LogPerplexityBound(corpus);
+			if(bound <> bound) {
+				return bound;
+			};
+
+			return Float->Exp(-bound);
+		}
+
+		# ---- Save and Load ----
+
+		function : private : ByteOf(value : Int, shift : Int) ~ Byte {
+			return ((value >>> shift) % 256)->As(Byte);
+		}
+
+		#~
+		Writes the trained model (topics, priors, vocabulary, settings) to a file, with a checksum.
+		@param filename file to write
+		@return true on success; false when unfitted, the name is Nil or empty or the file cannot be written (GetError says why)
+		~#
+		method : public : Save(filename : String) ~ Bool {
+			if(<>Ready()) {
+				return false;
+			};
+
+			if(filename = Nil | filename->Size() = 0) {
+				return Refuse("file name is Nil or empty");
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@k);
+			serializer->Write(@v);
+			serializer->Write(@passes);
+			serializer->Write(@iterations);
+			serializer->Write(@seed);
+			serializer->Write(@alpha_mode);
+			serializer->Write(@chunk);
+			serializer->Write(@eta);
+			serializer->Write(@decay);
+			serializer->Write(@offset);
+			serializer->Write(@threshold);
+			serializer->Write(@seconds);
+			serializer->Write(@alpha);
+			serializer->Write(@sstats);
+			for(w := 0; w < @v; w += 1;) {
+				serializer->Write((" " + @vocab[w])->ToByteArray());
+			};
+
+			body := serializer->Serialize();
+			crc := Byte->CRC32(body);
+			file := Byte->New[12 + body->Size()];
+			file[0] := 'O'->As(Byte);
+			file[1] := 'L'->As(Byte);
+			file[2] := 'D'->As(Byte);
+			file[3] := 'A'->As(Byte);
+			file[4] := 1->As(Byte);
+			file[8] := ByteOf(crc, 24);
+			file[9] := ByteOf(crc, 16);
+			file[10] := ByteOf(crc, 8);
+			file[11] := ByteOf(crc, 0);
+			Byte->Copy(file, 12, body, 0, body->Size());
+
+			if(<>System.IO.Filesystem.FileWriter->WriteFile(filename, file)) {
+				return Refuse("cannot write '{$filename}'");
+			};
+
+			@error := "";
+			return true;
+		}
+
+		#~
+		The same as Save, under the name the System.ML models use (Store and Load).
+		@param filename file to write
+		@return true on success, false (GetError says why) otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			return Save(filename);
+		}
+
+		#~
+		Reads a model written by Save. A file that is missing, is not a model, is from a newer format, fails its checksum or holds impossible values gives Nil rather than ending the program.
+		@param filename file to read
+		@return the fitted model, or Nil
+		~#
+		function : Load(filename : String) ~ Lda {
+			if(filename = Nil | filename->Size() = 0) {
+				return Nil;
+			};
+
+			file := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(file = Nil | file->Size() < 13) {
+				return Nil;
+			};
+
+			if(file[0] <> 'O'->As(Byte) | file[1] <> 'L'->As(Byte) | file[2] <> 'D'->As(Byte) | file[3] <> 'A'->As(Byte) | file[4] <> 1->As(Byte) | file[5] <> 0->As(Byte) | file[6] <> 0->As(Byte) | file[7] <> 0->As(Byte)) {
+				return Nil;
+			};
+
+			body := Byte->New[file->Size() - 12];
+			Byte->Copy(body, 0, file, 12, body->Size());
+			crc := Byte->CRC32(body);
+			if(file[8] <> ByteOf(crc, 24) | file[9] <> ByteOf(crc, 16) | file[10] <> ByteOf(crc, 8) | file[11] <> ByteOf(crc, 0)) {
+				return Nil;
+			};
+
+			model : Lda;
+			try {
+				model := Decode(body);
+			}
+			on(e : System.Error) {
+				model := Nil;
+			};
+
+			return model;
+		}
+
+		function : private : Decode(body : Byte[]) ~ Lda {
+			reader := System.IO.Deserializer->New(body);
+			k := reader->ReadInt();
+			v := reader->ReadInt();
+			passes := reader->ReadInt();
+			iterations := reader->ReadInt();
+			seed := reader->ReadInt();
+			mode := reader->ReadInt();
+			chunk := reader->ReadInt();
+			eta := reader->ReadFloat();
+			decay := reader->ReadFloat();
+			offset := reader->ReadFloat();
+			threshold := reader->ReadFloat();
+			seconds := reader->ReadFloat();
+			alpha := reader->ReadFloatArray();
+			sstats := reader->ReadFloatArray();
+
+			if(k < 1 | k > 100000 | v < 1 | k * v > 50000000 | passes < 1 | iterations < 1 | mode < 0 | mode > 2 | chunk < 1) {
+				return Nil;
+			};
+
+			if(eta <> eta | eta <= 0.0 | decay <> decay | decay <= 0.0 | offset <> offset | offset <= 0.0 | threshold <> threshold | threshold <= 0.0) {
+				return Nil;
+			};
+
+			if(alpha = Nil | sstats = Nil | alpha->Size() <> k | sstats->Size() <> k * v) {
+				return Nil;
+			};
+
+			for(i := 0; i < k; i += 1;) {
+				if(alpha[i] <> alpha[i] | alpha[i] <= 0.0) {
+					return Nil;
+				};
+			};
+
+			for(i := 0; i < sstats->Size(); i += 1;) {
+				if(sstats[i] <> sstats[i] | sstats[i] < 0.0) {
+					return Nil;
+				};
+			};
+
+			vocab := String->New[v];
+			for(w := 0; w < v; w += 1;) {
+				bytes := reader->ReadByteArray();
+				if(bytes = Nil | bytes->Size() < 1) {
+					return Nil;
+				};
+
+				text := String->New(bytes);
+				vocab[w] := text->SubString(1, text->Size() - 1);
+			};
+
+			model := Lda->New(k, 0.0, eta, passes, iterations, seed);
+			model->Restore(mode, chunk, decay, offset, threshold, seconds, alpha, sstats, vocab, v);
+			return model;
+		}
+
+		#~
+		Installs a decoded model's state. It is public only so that Load, a function, can reach it; call Load, not this.
+		~#
+		method : public : Restore(mode : Int, chunk : Int, decay : Float, offset : Float, threshold : Float, seconds : Float, alpha : Float[], sstats : Float[], vocab : String[], v : Int) ~ Nil {
+			@alpha_mode := mode;
+			@chunk := chunk;
+			@decay := decay;
+			@offset := offset;
+			@threshold := threshold;
+			@seconds := seconds;
+			@alpha := alpha;
+			@sstats := sstats;
+			@vocab := vocab;
+			@v := v;
+			@eta := @eta_value;
+			@eb := Nil;
+			ComputeExpElogbeta();
+			@fitted := true;
+		}
+	}
+}
