@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="640" height="400" viewBox="0 0 640 400" font-family="sans-serif" font-size="12">
+<title></title>
+<rect x="0.0" y="0.0" width="640.0" height="400.0" fill="#ffffff" class="background"/>
+<line x1="64.0" y1="352.0" x2="624.0" y2="352.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="356.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">0</text>
+<line x1="64.0" y1="288.0" x2="624.0" y2="288.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="292.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">5</text>
+<line x1="64.0" y1="224.0" x2="624.0" y2="224.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="228.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">10</text>
+<line x1="64.0" y1="160.0" x2="624.0" y2="160.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="164.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">15</text>
+<line x1="64.0" y1="96.0" x2="624.0" y2="96.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="100.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">20</text>
+<line x1="64.0" y1="32.0" x2="624.0" y2="32.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="36.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">25</text>
+<line x1="64.0" y1="32.0" x2="64.0" y2="352.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="64.0" y="370.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">1</text>
+<line x1="204.0" y1="32.0" x2="204.0" y2="352.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="204.0" y="370.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">2</text>
+<line x1="344.0" y1="32.0" x2="344.0" y2="352.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="344.0" y="370.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">3</text>
+<line x1="484.0" y1="32.0" x2="484.0" y2="352.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="484.0" y="370.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">4</text>
+<line x1="624.0" y1="32.0" x2="624.0" y2="352.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="624.0" y="370.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">5</text>
+<clipPath id="clip0"><rect x="64.0" y="32.0" width="560.0" height="320.0"/></clipPath>
+<g clip-path="url(#clip0)">
+<polyline points="64.0,339.2 204.0,300.8 344.0,236.8 484.0,147.2 624.0,32.0" fill="none" stroke="#1f77b4" stroke-width="2.0" class="line"/>
+</g>
+<line x1="64.0" y1="32.0" x2="64.0" y2="352.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<line x1="64.0" y1="352.0" x2="624.0" y2="352.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<rect x="527.6" y="36.0" width="88.4" height="30.0" fill="#ffffff" fill-opacity="0.85" stroke="#cccccc" stroke-width="1.0" class="legend"/>
+<rect x="535.6" y="42.0" width="12.0" height="12.0" fill="#1f77b4" class="legend"/>
+<text x="553.6" y="52.0" fill="#333333" font-size="12" class="legend">squares</text>
+</svg>

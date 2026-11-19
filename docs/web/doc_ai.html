@@ -1066,6 +1066,43 @@ loaded := VectorIndex-&gt;Load("docs.vix");       # Nil if the file is not a goo
     </table>
     <p>The three metrics cost the same, and a four-accumulator unrolled inner loop was no faster: at 100,000 x 384 a search streams 307 MB, so it is limited by memory bandwidth (about 7 GB/s) and not by arithmetic. An approximate index (HNSW) was not built: 44 ms per query is fast enough for retrieval over a document collection of this size, and an approximate answer brings recall to measure, a second file format and a build step with it. If you need far more vectors or queries per second, the next step is HNSW or an inverted-file index, not a faster scan.</p>
     <p>A complete run (a small corpus, embedded either with a BERT model or, with nothing to download, a hashed bag of words, then queried, saved and loaded) is <a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/ml/vector_search.obs" target="_blank"><code>programs/examples/ml/vector_search.obs</code></a>. It is tested by <code>ml_vector_exact.obs</code> (against a brute-force reference, ties, <code>k</code> past the end, removals), <code>ml_vector_edges.obs</code> (value range, block boundaries, emptying an index, near-ties), <code>ml_vector_validation.obs</code> and <code>ml_vector_persist.obs</code> (round trip and corrupt files).</p>
+    <h4 id="plotting-systemplot">Plotting (System.Plot)</h4>
+    <p>A matplotlib-shaped plotting library that writes standalone SVG 1.1: no display, no native library, no script, no font file. It is <code>plot.obl</code> (<code>-lib plot,gen_collect</code> or <code>-lib @ai</code>) and needs nothing from <code>System.ML</code>, so a figure can come from any <code>Float[]</code>. A <code>Figure</code> holds one or more <code>Axes</code>; <code>fig-&gt;Save("a.svg")</code> writes the file and <code>fig-&gt;ToSvg()</code> returns the text. Every coordinate is written with one decimal and nothing depends on the clock, a locale or a font, so the same data gives the same bytes on every platform and a chart can be compared against a golden file in a test. <code>System.ML.Lab.Chart</code> (the line and bar writer behind <code>ResultTable-&gt;ToChart</code>) is unchanged and still the one-call API for experiment tables; <code>System.Plot</code> is the general one. Design: <a href="https://github.com/objeck/objeck-lang/blob/master/docs/PLOT_DESIGN.md" target="_blank"><code>docs/PLOT_DESIGN.md</code></a>.</p>
+<pre class="line-numbers"><code class="language-cpp">use System.Plot;
+
+# a scatter plot, one series per class; the legend lists the named series
+fig := Figure-&gt;New(800, 480);
+ax := fig-&gt;GetAxes();
+ax-&gt;SetTitle("Two classes");
+ax-&gt;SetXLabel("feature 1");
+ax-&gt;SetYLabel("feature 2");
+ax-&gt;Scatter("class A", xa, ya);
+ax-&gt;Scatter("class B", xb, yb);
+fig-&gt;Save("scatter.svg");
+
+# color the points by a third column (a color bar appears) and size them by a fourth
+ax-&gt;Scatter("", xs, ys, score, weight);       # Nil-&gt;As(Float[]) leaves either one out
+
+# a histogram: 20 bins, or 0 for Sturges' rule; the fourth argument true gives density
+ax-&gt;Hist("residuals", errors, 20);
+
+# lines, bars (grouped, over named categories), log axes, fixed limits
+ax-&gt;Plot("loss", epochs, loss);
+ax-&gt;SetCategories(["A", "B", "C"]);
+ax-&gt;Bar("2026", [4.0, 4.5, 6.0]);
+ax-&gt;SetLogX(true);
+ax-&gt;SetYLim(0.0, 1.0);
+
+# several plots on one canvas: a rows x cols grid, left to right and top to bottom
+board := Figure-&gt;New(900, 640);
+board-&gt;SetTitle("Dashboard");
+board-&gt;Subplots(2, 2);
+board-&gt;GetAxes(0, 0)-&gt;Scatter("A", xa, ya);
+board-&gt;GetAxes(0, 1)-&gt;Hist("", residuals, 12);
+board-&gt;Save("dashboard.svg");
+</code></pre>
+    <p>Bad input never produces a broken picture: a mismatched length, a NaN or infinite value, a non-positive value on a log axis, bars without categories, <code>Hist</code> or <code>Bar</code> on a log y axis (an empty bin has height 0, which has no log) or an empty axes raise <code>PlotError</code>, with a message that says what was wrong; control characters other than tab and line breaks are dropped from titles and labels so the SVG stays valid XML; numbers are always written with a decimal point whatever the C locale says; tick labels carry the decimals their step needs (so a 1-second range of epoch seconds reads 1700000000.2, not float noise) and switch to scientific form below 1e-6 (<code>try { } on(e : PlotError) { }</code>). A <code>Figure</code> draws into a <code>PlotScene</code>, an ordered list of pixel-space primitives (lines, polylines, polygons, rects, circles, text with an anchor), and <code>SvgWriter</code> turns that into text; <code>fig-&gt;ToScene()</code> is the hook a second backend would use. The library is allowed in the web playground, since SVG needs no display.</p>
+    <p>A complete run that writes four files is <a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/ml/plot_demo.obs" target="_blank"><code>programs/examples/ml/plot_demo.obs</code></a>. It is tested by <code>plot_svg.obs</code>, which checks structure (one circle per point, one bar per bin, a color bar only when points are colored), the histogram counts against hand-counted bins, the area of a density histogram, geometry (every coordinate inside the viewport) and a byte-for-byte golden per chart under <code>programs/regression/plot_golden/</code>; each golden has a control showing that one changed value changes the bytes.</p>
     <h3 id="classic-ai-systemai">Classic AI (System.AI)</h3>
     <p>Search, game playing, optimization and tabular reinforcement learning — <code>-lib ai</code> (or the <code>@ai</code> alias). All stochastic algorithms are seeded for reproducible runs.</p>
 <pre class="plain">obc -src program.obs -lib ai,gen_collect -dest program.obe</pre>
@@ -1154,7 +1191,7 @@ values := mdp-&gt;GetValues();
       <tr><td data-label="Alias"><code>@web</code></td><td data-label="Expands to"><code>net_h2</code>, <code>net_quic</code>, <code>web_server</code>, <code>json_rpc</code>, <code>net_server</code>, <code>net</code>, <code>json</code>, <code>cipher</code></td><td data-label="Use for">HTTP/2, HTTP/3, the embedded server, JSON-RPC</td></tr>
       <tr><td data-label="Alias"><code>@data</code></td><td data-label="Expands to"><code>xml</code>, <code>regex</code>, <code>csv</code>, <code>query</code>, <code>rss</code>, <code>misc</code>, <code>net</code>, <code>json</code>, <code>cipher</code></td><td data-label="Use for">parsing and querying structured data</td></tr>
       <tr><td data-label="Alias"><code>@ml</code></td><td data-label="Expands to"><code>gemini</code>, <code>openai</code>, <code>ollama</code>, <code>net_server</code>, <code>misc</code>, <code>net</code>, <code>json</code>, <code>cipher</code></td><td data-label="Use for">LLM clients: OpenAI, Gemini, Ollama</td></tr>
-      <tr><td data-label="Alias"><code>@ai</code></td><td data-label="Expands to"><code>ai</code>, <code>ml</code>, <code>ml_lab</code>, <code>ml_vector</code>, <code>nlp</code>, <code>csv</code>, <code>json</code></td><td data-label="Use for">local System.ML / System.ML.Lab / System.AI / System.NLP work</td></tr>
+      <tr><td data-label="Alias"><code>@ai</code></td><td data-label="Expands to"><code>ai</code>, <code>ml</code>, <code>ml_lab</code>, <code>ml_vector</code>, <code>plot</code>, <code>nlp</code>, <code>csv</code>, <code>json</code></td><td data-label="Use for">local System.ML / System.ML.Lab / System.Plot / System.AI / System.NLP work</td></tr>
       <tr><td data-label="Alias"><code>@vision</code></td><td data-label="Expands to"><code>opencv</code>, <code>onnx</code>, <code>nlp_onnx</code>, <code>models</code>, <code>nlp</code>, <code>json</code>, <code>cipher</code></td><td data-label="Use for">OpenCV and ONNX inference, BERT text embeddings</td></tr>
       <tr><td data-label="Alias"><code>@game</code></td><td data-label="Expands to"><code>sdl2</code>, <code>sdl_game</code>, <code>sdl_gl</code>, <code>json</code>, <code>gen_collect</code></td><td data-label="Use for">SDL games, 2D and OpenGL</td></tr>
      </tbody>
@@ -1256,6 +1293,7 @@ opencv_onnx/  demo_face.obs    demo_yolo.obs    demo_resnet.obs
       <tr><th>Area</th><th>Tests</th></tr>
      </thead>
      <tbody>
+      <tr><td data-label="Area"><code>System.Plot</code></td><td data-label="Tests"><code>plot_svg.obs</code> (with goldens in <code>plot_golden/</code>)</td></tr>
       <tr><td data-label="Area"><code>System.ML.VectorSearch</code></td><td data-label="Tests"><code>ml_vector_exact.obs</code>, <code>ml_vector_edges.obs</code>, <code>ml_vector_validation.obs</code>, <code>ml_vector_persist.obs</code></td></tr>
       <tr><td data-label="Area"><code>System.ML</code></td><td data-label="Tests"><code>ml_*.obs</code>, e.g. <code>ml_kernel_svm_reference.obs</code> and <code>ml_one_class_svm_reference.obs</code> (against an independent reference, generated by <code>tools/ml/svm_reference/gen_reference_test.py</code>), <code>ml_outlier_*.obs</code>, <code>ml_lab_*.obs</code></td></tr>
       <tr><td data-label="Area"><code>System.AI</code></td><td data-label="Tests"><code>ai_search_test.obs</code>, <code>ai_game_test.obs</code>, <code>ai_optimize_test.obs</code>, <code>ai_rl_test.obs</code></td></tr>

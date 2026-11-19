@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="640" height="420" viewBox="0 0 640 420" font-family="sans-serif" font-size="12">
+<title></title>
+<rect x="0.0" y="0.0" width="640.0" height="420.0" fill="#ffffff" class="background"/>
+<line x1="64.0" y1="372.0" x2="540.0" y2="372.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="376.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">2</text>
+<line x1="64.0" y1="258.7" x2="540.0" y2="258.7" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="262.7" fill="#333333" font-size="12" text-anchor="end" class="ytick">4</text>
+<line x1="64.0" y1="145.3" x2="540.0" y2="145.3" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="149.3" fill="#333333" font-size="12" text-anchor="end" class="ytick">6</text>
+<line x1="64.0" y1="32.0" x2="540.0" y2="32.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="36.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">8</text>
+<line x1="64.0" y1="32.0" x2="64.0" y2="372.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="64.0" y="390.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">0</text>
+<line x1="183.0" y1="32.0" x2="183.0" y2="372.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="183.0" y="390.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">2</text>
+<line x1="302.0" y1="32.0" x2="302.0" y2="372.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="302.0" y="390.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">4</text>
+<line x1="421.0" y1="32.0" x2="421.0" y2="372.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="421.0" y="390.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">6</text>
+<line x1="540.0" y1="32.0" x2="540.0" y2="372.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="540.0" y="390.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">8</text>
+<clipPath id="clip0"><rect x="64.0" y="32.0" width="476.0" height="340.0"/></clipPath>
+<g clip-path="url(#clip0)">
+<circle cx="64.0" cy="372.0" r="2.0" fill="#440154" fill-opacity="0.75" class="marker"/>
+<circle cx="153.2" cy="309.7" r="9.0" fill="#3f2f73" fill-opacity="0.75" class="marker"/>
+<circle cx="242.5" cy="247.3" r="7.7" fill="#375b8b" fill-opacity="0.75" class="marker"/>
+<circle cx="257.4" cy="255.8" r="6.0" fill="#287f8c" fill-opacity="0.75" class="marker"/>
+<circle cx="346.6" cy="193.5" r="2.0" fill="#32a180" fill-opacity="0.75" class="marker"/>
+<circle cx="361.5" cy="202.0" r="9.0" fill="#55c168" fill-opacity="0.75" class="marker"/>
+<circle cx="450.8" cy="139.7" r="7.7" fill="#a2d648" fill-opacity="0.75" class="marker"/>
+<circle cx="540.0" cy="77.3" r="6.0" fill="#fde725" fill-opacity="0.75" class="marker"/>
+</g>
+<line x1="64.0" y1="32.0" x2="64.0" y2="372.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<line x1="64.0" y1="372.0" x2="540.0" y2="372.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<text x="302.0" y="408.0" fill="#000000" font-size="13" text-anchor="middle" class="xlabel">x</text>
+<text x="18.0" y="202.0" fill="#000000" font-size="13" text-anchor="middle" transform="rotate(-90.0 18.0 202.0)" class="ylabel">y</text>
+<rect x="554.0" y="32.0" width="14.0" height="7.6" fill="#f6e628" class="colorbar"/>
+<rect x="554.0" y="39.1" width="14.0" height="7.6" fill="#e9e32d" class="colorbar"/>
+<rect x="554.0" y="46.2" width="14.0" height="7.6" fill="#dce132" class="colorbar"/>
+<rect x="554.0" y="53.2" width="14.0" height="7.6" fill="#cfde37" class="colorbar"/>
+<rect x="554.0" y="60.3" width="14.0" height="7.6" fill="#c1dc3c" class="colorbar"/>
+<rect x="554.0" y="67.4" width="14.0" height="7.6" fill="#b4d941" class="colorbar"/>
+<rect x="554.0" y="74.5" width="14.0" height="7.6" fill="#a7d746" class="colorbar"/>
+<rect x="554.0" y="81.6" width="14.0" height="7.6" fill="#9ad44b" class="colorbar"/>
+<rect x="554.0" y="88.7" width="14.0" height="7.6" fill="#8cd250" class="colorbar"/>
+<rect x="554.0" y="95.8" width="14.0" height="7.6" fill="#7fcf55" class="colorbar"/>
+<rect x="554.0" y="102.8" width="14.0" height="7.6" fill="#72cd5a" class="colorbar"/>
+<rect x="554.0" y="109.9" width="14.0" height="7.6" fill="#65ca5f" class="colorbar"/>
+<rect x="554.0" y="117.0" width="14.0" height="7.6" fill="#5bc764" class="colorbar"/>
+<rect x="554.0" y="124.1" width="14.0" height="7.6" fill="#56c267" class="colorbar"/>
+<rect x="554.0" y="131.2" width="14.0" height="7.6" fill="#51bd6b" class="colorbar"/>
+<rect x="554.0" y="138.2" width="14.0" height="7.6" fill="#4cb96e" class="colorbar"/>
+<rect x="554.0" y="145.3" width="14.0" height="7.6" fill="#47b472" class="colorbar"/>
+<rect x="554.0" y="152.4" width="14.0" height="7.6" fill="#42af75" class="colorbar"/>
+<rect x="554.0" y="159.5" width="14.0" height="7.6" fill="#3dab79" class="colorbar"/>
+<rect x="554.0" y="166.6" width="14.0" height="7.6" fill="#38a67c" class="colorbar"/>
+<rect x="554.0" y="173.7" width="14.0" height="7.6" fill="#33a180" class="colorbar"/>
+<rect x="554.0" y="180.8" width="14.0" height="7.6" fill="#2e9d83" class="colorbar"/>
+<rect x="554.0" y="187.8" width="14.0" height="7.6" fill="#299887" class="colorbar"/>
+<rect x="554.0" y="194.9" width="14.0" height="7.6" fill="#24938a" class="colorbar"/>
+<rect x="554.0" y="202.0" width="14.0" height="7.6" fill="#228e8c" class="colorbar"/>
+<rect x="554.0" y="209.1" width="14.0" height="7.6" fill="#24898c" class="colorbar"/>
+<rect x="554.0" y="216.2" width="14.0" height="7.6" fill="#26848c" class="colorbar"/>
+<rect x="554.0" y="223.2" width="14.0" height="7.6" fill="#297f8c" class="colorbar"/>
+<rect x="554.0" y="230.3" width="14.0" height="7.6" fill="#2b798c" class="colorbar"/>
+<rect x="554.0" y="237.4" width="14.0" height="7.6" fill="#2d748c" class="colorbar"/>
+<rect x="554.0" y="244.5" width="14.0" height="7.6" fill="#2f6f8b" class="colorbar"/>
+<rect x="554.0" y="251.6" width="14.0" height="7.6" fill="#316a8b" class="colorbar"/>
+<rect x="554.0" y="258.7" width="14.0" height="7.6" fill="#33648b" class="colorbar"/>
+<rect x="554.0" y="265.8" width="14.0" height="7.6" fill="#365f8b" class="colorbar"/>
+<rect x="554.0" y="272.8" width="14.0" height="7.6" fill="#385a8b" class="colorbar"/>
+<rect x="554.0" y="279.9" width="14.0" height="7.6" fill="#3a558b" class="colorbar"/>
+<rect x="554.0" y="287.0" width="14.0" height="7.6" fill="#3b4f89" class="colorbar"/>
+<rect x="554.0" y="294.1" width="14.0" height="7.6" fill="#3c4884" class="colorbar"/>
+<rect x="554.0" y="301.2" width="14.0" height="7.6" fill="#3d4180" class="colorbar"/>
+<rect x="554.0" y="308.2" width="14.0" height="7.6" fill="#3e3a7b" class="colorbar"/>
+<rect x="554.0" y="315.3" width="14.0" height="7.6" fill="#3e3476" class="colorbar"/>
+<rect x="554.0" y="322.4" width="14.0" height="7.6" fill="#3f2d72" class="colorbar"/>
+<rect x="554.0" y="329.5" width="14.0" height="7.6" fill="#40266d" class="colorbar"/>
+<rect x="554.0" y="336.6" width="14.0" height="7.6" fill="#411f69" class="colorbar"/>
+<rect x="554.0" y="343.7" width="14.0" height="7.6" fill="#411964" class="colorbar"/>
+<rect x="554.0" y="350.8" width="14.0" height="7.6" fill="#42125f" class="colorbar"/>
+<rect x="554.0" y="357.8" width="14.0" height="7.6" fill="#430b5b" class="colorbar"/>
+<rect x="554.0" y="364.9" width="14.0" height="7.6" fill="#440456" class="colorbar"/>
+<rect x="554.0" y="32.0" width="14.0" height="340.0" fill="none" stroke="#333333" stroke-width="1.0" class="colorbar"/>
+<line x1="568.0" y1="372.0" x2="572.0" y2="372.0" stroke="#333333" stroke-width="1.0" class="tick"/>
+<text x="576.0" y="376.0" fill="#333333" font-size="12" class="cbtick">0</text>
+<line x1="568.0" y1="274.9" x2="572.0" y2="274.9" stroke="#333333" stroke-width="1.0" class="tick"/>
+<text x="576.0" y="278.9" fill="#333333" font-size="12" class="cbtick">1</text>
+<line x1="568.0" y1="177.7" x2="572.0" y2="177.7" stroke="#333333" stroke-width="1.0" class="tick"/>
+<text x="576.0" y="181.7" fill="#333333" font-size="12" class="cbtick">2</text>
+<line x1="568.0" y1="80.6" x2="572.0" y2="80.6" stroke="#333333" stroke-width="1.0" class="tick"/>
+<text x="576.0" y="84.6" fill="#333333" font-size="12" class="cbtick">3</text>
+</svg>
