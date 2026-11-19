@@ -1,0 +1,261 @@
+# EXTRA_LIBS: anthropic,net,json,cipher,misc
+#~
+The Anthropic client's response handling, request building and stream assembly, run
+against recorded payloads so no server or key is needed: Reply->Parse, the error
+object, tool calls, the request body a Chat builds, tool results sharing one user
+message, and StreamAssembler replaying a recorded server-sent-event stream.
+~#
+
+use API.Anthropic;
+use Data.JSON;
+use Collection;
+
+class AnthropicParseTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Same(a : String, b : String) ~ Bool {
+    return a <> Nil & b <> Nil & a->Equals(b);
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+    TestText();
+    TestToolUse();
+    TestThinking();
+    TestErrors();
+    TestRequest();
+    TestToolResults();
+    TestStream();
+    TestStreamError();
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+
+  function : TestText() ~ Nil {
+    "-- plain text reply"->PrintLine();
+    body := "{\"id\":\"msg_01\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"claude-sonnet-5-5\",\"content\":[{\"type\":\"text\",\"text\":\"Hello\"},{\"type\":\"text\",\"text\":\" world\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"usage\":{\"input_tokens\":12,\"output_tokens\":5}}";
+    reply := Reply->Parse(body);
+    Check("the body parses", reply <> Nil);
+    if(reply = Nil) {
+      return;
+    };
+    Check("text blocks join", Same(reply->GetText(), "Hello world"));
+    Check("stop reason", Same(reply->GetStopReason(), "end_turn"));
+    Check("id", Same(reply->GetId(), "msg_01"));
+    Check("model", Same(reply->GetModel(), "claude-sonnet-5-5"));
+    Check("input tokens", reply->GetInputTokens() = 12);
+    Check("output tokens", reply->GetOutputTokens() = 5);
+    Check("no tool uses", <>reply->HasToolUses());
+    Check("no thinking", reply->GetThinking()->Size() = 0);
+  }
+
+  function : TestToolUse() ~ Nil {
+    "-- tool use"->PrintLine();
+    body := "{\"id\":\"msg_02\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"m\",\"content\":[{\"type\":\"text\",\"text\":\"Checking.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01\",\"name\":\"get_weather\",\"input\":{\"city\":\"Paris\",\"days\":3}}],\"stop_reason\":\"tool_use\",\"usage\":{\"input_tokens\":50,\"output_tokens\":30}}";
+    reply := Reply->Parse(body);
+    Check("the body parses", reply <> Nil);
+    if(reply = Nil) {
+      return;
+    };
+    Check("has tool uses", reply->HasToolUses());
+    Check("one tool use", reply->GetToolUses()->Size() = 1);
+    call := reply->GetToolUses()->Get(0);
+    Check("tool name", Same(call->GetName(), "get_weather"));
+    Check("tool use id", Same(call->GetId(), "toolu_01"));
+    Check("a string argument", Same(call->GetArgument("city"), "Paris"));
+    Check("a number argument keeps its JSON form", Same(call->GetArgument("days"), "3"));
+    Check("a missing argument is Nil", call->GetArgument("nope") = Nil);
+    Check("stop reason is tool_use", Same(reply->GetStopReason(), "tool_use"));
+    Check("the text beside the call is kept", Same(reply->GetText(), "Checking."));
+  }
+
+  function : TestThinking() ~ Nil {
+    "-- thinking"->PrintLine();
+    body := "{\"id\":\"msg_t\",\"model\":\"m\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"Let me see.\",\"signature\":\"sig\"},{\"type\":\"text\",\"text\":\"Done.\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":1,\"output_tokens\":2}}";
+    reply := Reply->Parse(body);
+    Check("the body parses", reply <> Nil);
+    if(reply = Nil) {
+      return;
+    };
+    Check("thinking text", Same(reply->GetThinking(), "Let me see."));
+    Check("answer text excludes thinking", Same(reply->GetText(), "Done."));
+    Check("both blocks are kept for replay", reply->GetContent()->Size() = 2);
+  }
+
+  function : TestErrors() ~ Nil {
+    "-- errors"->PrintLine();
+    EndPoint->SetLastError(Nil);
+    reply := Reply->Parse("{\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Overloaded\"}}");
+    Check("an error object yields Nil", reply = Nil);
+    err := EndPoint->GetLastError();
+    Check("the error names its type and message", err <> Nil & err->Find("overloaded_error") > -1 & err->Find("Overloaded") > -1);
+
+    EndPoint->SetLastError(Nil);
+    reply := Reply->Parse("this is not json");
+    Check("a non-JSON body yields Nil", reply = Nil);
+    Check("and sets the last error", EndPoint->GetLastError() <> Nil);
+
+    EndPoint->SetLastError(Nil);
+    reply := Reply->Parse(Nil);
+    Check("a Nil body yields Nil", reply = Nil);
+    Check("and sets the last error", EndPoint->GetLastError() <> Nil);
+
+    EndPoint->SetLastError(Nil);
+    reply := Reply->Parse("{\"id\":\"x\",\"type\":\"message\"}");
+    Check("a body without content yields Nil", reply = Nil);
+    Check("and sets the last error", EndPoint->GetLastError() <> Nil);
+
+    reply := Reply->Parse("[1,2,3]");
+    Check("a JSON array yields Nil without crashing", reply = Nil);
+  }
+
+  function : TestRequest() ~ Nil {
+    "-- request body"->PrintLine();
+    chat := Chat->New("claude-sonnet-5-5", "test-key");
+    chat->SetSystem("Be brief.")->SetMaxTokens(100)->SetTemperature(0.5);
+    chat->AddMessage("user", "hi");
+
+    request := chat->BuildRequest(Nil, false);
+    Check("model", Same(request->Get("model")->GetString(), "claude-sonnet-5-5"));
+    Check("max_tokens", request->Get("max_tokens")->GetInt() = 100);
+    Check("system prompt", Same(request->Get("system")->GetString(), "Be brief."));
+    Check("temperature", request->Has("temperature"));
+    Check("one message", request->Get("messages")->Size() = 1);
+    Check("message role", Same(request->Get("messages")->Get(0)->Get("role")->GetString(), "user"));
+    Check("message text", Same(request->Get("messages")->Get(0)->Get("content")->GetString(), "hi"));
+    Check("no stream flag by default", <>request->Has("stream"));
+    Check("no tools by default", <>request->Has("tools"));
+
+    schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}");
+    tools := Vector->New()<Tool>;
+    tools->AddBack(Tool->New("get_weather", "Get the weather", schema));
+    request := chat->BuildRequest(tools, true);
+    Check("stream flag", request->Has("stream"));
+    Check("tools are listed", request->Get("tools")->Size() = 1);
+    tool_json := request->Get("tools")->Get(0);
+    Check("tool name", Same(tool_json->Get("name")->GetString(), "get_weather"));
+    Check("tool description", Same(tool_json->Get("description")->GetString(), "Get the weather"));
+    Check("tool input_schema", Same(tool_json->Get("input_schema")->Get("type")->GetString(), "object"));
+
+    plain := Chat->New("m", "k");
+    request := plain->BuildRequest(Nil, false);
+    Check("no system prompt unless set", <>request->Has("system"));
+    Check("default max_tokens", request->Get("max_tokens")->GetInt() = 4096);
+  }
+
+  function : TestToolResults() ~ Nil {
+    "-- tool results share one user message"->PrintLine();
+    chat := Chat->New("m", "k");
+    chat->AddMessage("user", "weather in two cities");
+    chat->AddMessage("assistant", "calling");
+    chat->AddToolResult("toolu_a", "18C");
+    chat->AddToolResult("toolu_b", "could not reach the service", true);
+
+    messages := chat->GetMessages();
+    Check("user, assistant and one result message", messages->Size() = 3);
+    results := messages->Get(2);
+    Check("the result message is from the user", Same(results->Get("role")->GetString(), "user"));
+    blocks := results->Get("content");
+    Check("both results are in it", blocks->Size() = 2);
+    Check("first result type", Same(blocks->Get(0)->Get("type")->GetString(), "tool_result"));
+    Check("first result id", Same(blocks->Get(0)->Get("tool_use_id")->GetString(), "toolu_a"));
+    Check("first result is not an error", <>blocks->Get(0)->Has("is_error"));
+    Check("second result id", Same(blocks->Get(1)->Get("tool_use_id")->GetString(), "toolu_b"));
+    Check("second result is marked as an error", blocks->Get(1)->Has("is_error"));
+
+    chat->AddMessage("user", "thanks");
+    chat->AddToolResult("toolu_c", "late");
+    Check("a result after a plain message starts a new message", chat->GetMessages()->Size() = 5);
+  }
+
+  function : Feed(assembler : StreamAssembler, event : String, data : String, expected : String, what : String) ~ Nil {
+    text := assembler->Apply(event, data);
+    if(expected = Nil) {
+      Check(what, text = Nil);
+    }
+    else {
+      Check(what, Same(text, expected));
+    };
+  }
+
+  function : TestStream() ~ Nil {
+    "-- stream assembly"->PrintLine();
+    assembler := StreamAssembler->New();
+    Check("not done at the start", <>assembler->IsDone());
+    Check("no reply before the end", assembler->GetReply() = Nil);
+
+    assembler := StreamAssembler->New();
+    Feed(assembler, "message_start", "{\"type\":\"message_start\",\"message\":{\"id\":\"msg_03\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"m\",\"content\":[],\"stop_reason\":null,\"usage\":{\"input_tokens\":25,\"output_tokens\":1}}}", Nil, "message_start adds no text");
+    Feed(assembler, "content_block_start", "{\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}", Nil, "an empty text block start adds no text");
+    Feed(assembler, "ping", "{\"type\":\"ping\"}", Nil, "ping adds no text");
+    Feed(assembler, "content_block_delta", "{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hel\"}}", "Hel", "first text delta");
+    Feed(assembler, "content_block_delta", "{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"lo\"}}", "lo", "second text delta");
+    Feed(assembler, "content_block_stop", "{\"type\":\"content_block_stop\",\"index\":0}", Nil, "block stop adds no text");
+    Feed(assembler, "content_block_start", "{\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_02\",\"name\":\"get_weather\",\"input\":{}}}", Nil, "a tool block start adds no text");
+    Feed(assembler, "content_block_delta", "{\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"city\\\": \"}}", Nil, "partial JSON adds no text");
+    Feed(assembler, "content_block_delta", "{\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\"Rome\\\"}\"}}", Nil, "more partial JSON adds no text");
+    Feed(assembler, "content_block_stop", "{\"type\":\"content_block_stop\",\"index\":1}", Nil, "tool block stop");
+    Feed(assembler, "message_delta", "{\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\",\"stop_sequence\":null},\"usage\":{\"output_tokens\":40}}", Nil, "message_delta");
+    Check("not done before message_stop", <>assembler->IsDone());
+    Check("still no reply before message_stop", assembler->GetReply() = Nil);
+    Feed(assembler, "message_stop", "{\"type\":\"message_stop\"}", Nil, "message_stop");
+    Check("done after message_stop", assembler->IsDone());
+    Check("not failed", <>assembler->IsFailed());
+
+    reply := assembler->GetReply();
+    Check("the reply builds", reply <> Nil);
+    if(reply = Nil) {
+      return;
+    };
+    Check("reply text", Same(reply->GetText(), "Hello"));
+    Check("reply id", Same(reply->GetId(), "msg_03"));
+    Check("reply stop reason", Same(reply->GetStopReason(), "tool_use"));
+    Check("input tokens from message_start", reply->GetInputTokens() = 25);
+    Check("output tokens from message_delta", reply->GetOutputTokens() = 40);
+    Check("two content blocks", reply->GetContent()->Size() = 2);
+    Check("one tool use", reply->HasToolUses());
+    call := reply->GetToolUses()->Get(0);
+    Check("tool use id", Same(call->GetId(), "toolu_02"));
+    Check("tool use name", Same(call->GetName(), "get_weather"));
+    Check("tool input assembled from the fragments", Same(call->GetArgument("city"), "Rome"));
+
+    chat := Chat->New("m", "k");
+    chat->AddMessage("user", "weather?");
+    kept := chat->FinishStream(assembler);
+    Check("the finished stream joins the history", kept <> Nil & chat->GetMessages()->Size() = 2);
+    last := chat->GetMessages()->Get(1);
+    Check("as an assistant message", Same(last->Get("role")->GetString(), "assistant"));
+    Check("with its content blocks", last->Get("content")->Size() = 2);
+  }
+
+  function : TestStreamError() ~ Nil {
+    "-- stream error"->PrintLine();
+    EndPoint->SetLastError(Nil);
+    assembler := StreamAssembler->New();
+    Feed(assembler, "message_start", "{\"type\":\"message_start\",\"message\":{\"id\":\"m\",\"model\":\"m\",\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}}", Nil, "message_start");
+    Feed(assembler, "error", "{\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Overloaded\"}}", Nil, "an error event adds no text");
+    Check("failed", assembler->IsFailed());
+    Check("no reply", assembler->GetReply() = Nil);
+    err := EndPoint->GetLastError();
+    Check("the last error carries the message", err <> Nil & err->Find("Overloaded") > -1);
+
+    junk := StreamAssembler->New();
+    Check("an event with Nil data is ignored", junk->Apply("content_block_delta", Nil) = Nil);
+    Check("an event with non-JSON data is ignored", junk->Apply("content_block_delta", "not json") = Nil);
+    Check("a Nil event name is ignored", junk->Apply(Nil, "{}") = Nil);
+  }
+}

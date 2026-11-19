@@ -1,0 +1,292 @@
+# EXTRA_LIBS: anthropic,net,net_server,json,cipher,misc
+#~
+The Anthropic client over the wire, against a local HTTPS server that speaks the
+Messages API shape: the headers a request carries (x-api-key, anthropic-version),
+the JSON body, a plain reply, a 401 error object, a tool-use round trip, a forced
+tool for structured output, and a streamed reply read as server-sent events.
+anthropic_parse_test covers the parsing of recorded bodies; this covers the
+request path no recorded body can: that the client sends what the API requires and
+reads what it sends back, with no key and no network beyond loopback.
+
+The server presents a self-signed certificate for DNS:localhost, pinned with
+EndPoint->SetCertificate, the same fixture tls_verify_test uses (openssl on PATH).
+~#
+use API.Anthropic;
+use Data.JSON;
+use Collection, System.IO.Filesystem, Web.HTTP.Server;
+
+class AnthropicMock from HttpsRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(404, "not found");
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		if(<>request->GetPath()->Equals("/v1/messages")) {
+			response->SetCodeContent(404, "not found");
+			return false;
+		};
+
+		key := request->GetHeader("x-api-key");
+		version := request->GetHeader("anthropic-version");
+		if(key = Nil | key->Equals("bad-key")) {
+			response->SetCodeContent(401, "{\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"}}");
+			return false;
+		};
+
+		body := request->GetContent();
+		if(body = Nil) {
+			response->SetCodeContent(400, "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"no body\"}}");
+			return false;
+		};
+
+		if(body->Find("\"stream\"") > -1) {
+			events := "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_s\",\"model\":\"m\",\"usage\":{\"input_tokens\":7,\"output_tokens\":1}}}\n\n";
+			events += "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n";
+			events += "event: ping\ndata: {\"type\":\"ping\"}\n\n";
+			events += "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hel\"}}\n\n";
+			events += "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"lo\"}}\n\n";
+			events += "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n";
+			events += "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":2}}\n\n";
+			events += "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n";
+			response->SetCodeTypeContent(200, "text/event-stream", events->ToByteArray());
+			return false;
+		};
+
+		if(body->Find("\"tool_choice\"") > -1) {
+			response->SetCodeContent(200, "{\"id\":\"msg_j\",\"model\":\"m\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_j\",\"name\":\"answer\",\"input\":{\"city\":\"Rome\",\"temp\":18}}],\"stop_reason\":\"tool_use\",\"usage\":{\"input_tokens\":3,\"output_tokens\":4}}");
+			return false;
+		};
+
+		if(body->Find("tool_result") > -1) {
+			response->SetCodeContent(200, "{\"id\":\"msg_f\",\"model\":\"m\",\"content\":[{\"type\":\"text\",\"text\":\"The weather is 18C.\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":9,\"output_tokens\":6}}");
+			return false;
+		};
+
+		if(body->Find("\"tools\"") > -1) {
+			response->SetCodeContent(200, "{\"id\":\"msg_t\",\"model\":\"m\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_w\",\"name\":\"get_weather\",\"input\":{\"city\":\"Paris\"}}],\"stop_reason\":\"tool_use\",\"usage\":{\"input_tokens\":5,\"output_tokens\":8}}");
+			return false;
+		};
+
+		# a plain reply that reports what the request carried
+		text := "key={$key} version={$version}";
+		if(body->Find("\"system\":\"Be brief.\"") > -1) {
+			text += " system=yes";
+		};
+		response->SetCodeContent(200, "{\"id\":\"msg_p\",\"model\":\"m\",\"content\":[{\"type\":\"text\",\"text\":\"{$text}\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":2,\"output_tokens\":3}}");
+		return false;
+	}
+}
+
+class AnthropicHttpTest {
+	@port : static : Int;
+	@failures : static : Int;
+
+	function : Port() ~ Int { return @port; }
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  [PASS] {$name}"->PrintLine();
+		}
+		else {
+			"  [FAIL] {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Same(a : String, b : String) ~ Bool {
+		return a <> Nil & b <> Nil & a->Equals(b);
+	}
+
+	# A self-signed certificate for the test's servers, valid from 2025 rather than
+	# from the second it is made. `openssl req -x509` starts a certificate "now",
+	# and a clock that steps back after that -- a VM resynchronizing its time, as
+	# WSL2 does by seconds at a time -- sees a certificate that is not valid yet:
+	# the handshake fails "The certificate validity starts in the future". Before
+	# OpenSSL 3.4 only `openssl ca` can set the start, so it signs the request, in a
+	# scratch directory removed afterwards. The extensions are written out rather
+	# than left to each build's defaults.
+	function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+		dir := "{$cert}.ca";
+		Directory->Delete(dir);
+		File->Delete(cert);
+		File->Delete(key);
+		if(<>Directory->Create(dir)) {
+			return false;
+		};
+
+		cnf := FileWriter->New("{$dir}/openssl.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+		cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+		cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+		cnf->Close();
+		FileWriter->New("{$dir}/index.txt")->Close();
+		serial := FileWriter->New("{$dir}/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+
+		made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+		if(made) {
+			made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+		};
+
+		Directory->Delete(dir);
+		return made;
+	}
+
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		@port := 0;
+		cert := "anthropic-http-{$Runtime->GetProcessId()}-cert.pem";
+		key := "anthropic-http-{$Runtime->GetProcessId()}-key.pem";
+		File->Delete(cert);
+		File->Delete(key);
+
+		if(<>MakeServerCert(cert, key, "/CN=localhost", "DNS:localhost")) {
+			"  [FAIL] openssl could not create the TLS fixture -- is openssl on PATH?"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		server := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->ServeSecure(AnthropicMock->New()->GetClass(),
+					AnthropicHttpTest->Port(), "anthropic-http-{$Runtime->GetProcessId()}-cert.pem", "anthropic-http-{$Runtime->GetProcessId()}-key.pem", "", false);
+			}
+		};
+		server->Execute(Nil);
+		waited := 0;
+		while(WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		@port := WebServer->GetBoundPort();
+		if(@port = 0) {
+			"  [FAIL] the TLS server never listened"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		EndPoint->SetBaseUrl("https://localhost:{$@port}/v1");
+		EndPoint->SetCertificate(cert);
+
+		TestPlain();
+		TestError();
+		TestTools();
+		TestJson();
+		TestStream();
+		TestStreamError();
+
+		File->Delete(cert);
+		File->Delete(key);
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS"->PrintLine();
+		# ServeSecure blocks in accept; end the process after cleanup
+		Runtime->Exit(0);
+	}
+
+	function : TestPlain() ~ Nil {
+		"-- plain request: the headers and the body"->PrintLine();
+		chat := Chat->New("claude-sonnet-5-5", "test-key");
+		chat->SetSystem("Be brief.");
+		text := chat->Send("hello");
+		Check("a reply comes back", text <> Nil);
+		Check("the API key goes in x-api-key", text <> Nil & text->Find("key=test-key") > -1);
+		Check("the API version goes in anthropic-version", text <> Nil & text->Find("version=2023-06-01") > -1);
+		Check("the system prompt is in the body", text <> Nil & text->Find("system=yes") > -1);
+		reply := chat->GetLastReply();
+		Check("usage is read", reply <> Nil & reply->GetInputTokens() = 2 & reply->GetOutputTokens() = 3);
+		Check("the exchange is in the history", chat->GetMessages()->Size() = 2);
+		Check("a second turn works", chat->Send("again") <> Nil & chat->GetMessages()->Size() = 4);
+	}
+
+	function : TestError() ~ Nil {
+		"-- an error response"->PrintLine();
+		chat := Chat->New("claude-sonnet-5-5", "bad-key");
+		EndPoint->SetLastError(Nil);
+		text := chat->Send("hello");
+		Check("a 401 yields Nil", text = Nil);
+		err := EndPoint->GetLastError();
+		Check("the error names its type and message", err <> Nil & err->Find("authentication_error") > -1 & err->Find("invalid x-api-key") > -1);
+		Check("the failed message is not kept", chat->GetMessages()->Size() = 0);
+	}
+
+	function : TestTools() ~ Nil {
+		"-- tool use round trip"->PrintLine();
+		schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}");
+		tools := Vector->New()<Tool>;
+		tools->AddBack(Tool->New("get_weather", "Get the weather", schema));
+
+		chat := Chat->New("claude-sonnet-5-5", "test-key");
+		reply := chat->SendReply("weather in Paris?", tools);
+		Check("the first reply asks for a tool", reply <> Nil & reply->HasToolUses());
+		if(reply = Nil | <>reply->HasToolUses()) {
+			return;
+		};
+		call := reply->GetToolUses()->Get(0);
+		Check("the call names the tool and its input", Same(call->GetName(), "get_weather") & Same(call->GetArgument("city"), "Paris"));
+		Check("the stop reason is tool_use", Same(reply->GetStopReason(), "tool_use"));
+
+		chat->AddToolResult(call->GetId(), "18C and sunny");
+		final := chat->SendReply(Nil, tools);
+		Check("the tool result is sent and answered", final <> Nil & Same(final->GetText(), "The weather is 18C."));
+		Check("no more tool calls", final <> Nil & <>final->HasToolUses());
+		Check("history: user, assistant (tool_use), user (tool_result), assistant", chat->GetMessages()->Size() = 4);
+	}
+
+	function : TestJson() ~ Nil {
+		"-- structured output through a forced tool"->PrintLine();
+		schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"},\"temp\":{\"type\":\"integer\"}},\"required\":[\"city\",\"temp\"]}");
+		chat := Chat->New("claude-sonnet-5-5", "test-key");
+		answer := chat->SendJson("Where is it 18 degrees?", "answer", schema);
+		Check("the answer comes back as JSON", answer <> Nil);
+		if(answer = Nil) {
+			return;
+		};
+		Check("a string field", Same(answer->Get("city")->GetString(), "Rome"));
+		Check("a number field", answer->Get("temp")->GetInt() = 18);
+		Check("a one-shot question leaves the history alone", chat->GetMessages()->Size() = 0);
+	}
+
+	function : TestStream() ~ Nil {
+		"-- streaming"->PrintLine();
+		chat := Chat->New("claude-sonnet-5-5", "test-key");
+		stream := chat->Stream("hello", Nil);
+		Check("a stream opens", stream <> Nil);
+		if(stream = Nil) {
+			return;
+		};
+
+		pieces := "";
+		count := 0;
+		while(stream->HasNext()) {
+			pieces += stream->Next();
+			count += 1;
+		};
+		Check("the text arrives in pieces", count = 2);
+		Check("the pieces join into the reply", Same(pieces, "Hello"));
+		reply := stream->GetReply();
+		Check("the whole reply is available at the end", reply <> Nil & Same(reply->GetText(), "Hello"));
+		Check("with its stop reason", reply <> Nil & Same(reply->GetStopReason(), "end_turn"));
+		Check("and its token counts", reply <> Nil & reply->GetInputTokens() = 7 & reply->GetOutputTokens() = 2);
+		Check("the exchange joins the history", chat->GetMessages()->Size() = 2);
+	}
+
+	function : TestStreamError() ~ Nil {
+		"-- a stream refused with HTTP 401"->PrintLine();
+		chat := Chat->New("claude-sonnet-5-5", "bad-key");
+		EndPoint->SetLastError(Nil);
+		stream := chat->Stream("hello", Nil);
+		Check("no stream is returned", stream = Nil);
+		err := EndPoint->GetLastError();
+		Check("the status is reported", err <> Nil & err->Find("401") > -1);
+		Check("the message is not kept", chat->GetMessages()->Size() = 0);
+	}
+}

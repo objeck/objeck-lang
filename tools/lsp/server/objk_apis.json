@@ -1,5 +1,178 @@
 {
 	"class-details": {
+		"API.Anthropic.Chat": {
+			"description": "A chat session. It keeps the message history, including tool calls and results.",
+			"functions": {
+				"AddMessage": {
+					"descriptions": ["**Adds a message to the history without sending it**\n\n```method : public : AddMessage(role:String, content:String) ~ Chat```\n\n\n\nrole: String\n\ncontent: String\n\nreturn: Chat"]
+				},
+				"AddToolResult": {
+					"descriptions": ["**Adds the result of a tool call to the history. Results for one reply share one user message, as the API requires, so call this once per ToolUse and then SendReply(Nil, tools).**\n\n```method : public : AddToolResult(tool_use_id:String, content:String) ~ Chat```\n\n\n\ntool_use_id: String\n\ncontent: String\n\nreturn: Chat", "**Adds the result of a tool call, marking it as a failure when the tool could not run**\n\n```method : public : AddToolResult(tool_use_id:String, content:String, is_error:Bool) ~ Chat```\n\n\n\ntool_use_id: String\n\ncontent: String\n\nis_error: Bool\n\nreturn: Chat"]
+				},
+				"BuildRequest": {
+					"descriptions": ["**Builds the request body for the history as it stands, public so it can be inspected without a server**\n\n```method : public : BuildRequest(tools:Vector&lt;Tool&gt;, stream:Bool) ~ JsonElement```\n\n\n\ntools: Vector&lt;Tool&gt;\n\nstream: Bool\n\nreturn: JsonElement"]
+				},
+				"GetLastReply": {
+					"descriptions": ["**Get the last reply received**\n\n```method : public : GetLastReply() ~ Reply```\n\n\n\nreturn: Reply"]
+				},
+				"GetMessages": {
+					"descriptions": ["**Get the message history**\n\n```method : public : GetMessages() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"GetModel": {
+					"descriptions": ["**Get the model id**\n\n```method : public : GetModel() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(model:String, key:String)```\n\n\n\nmodel: String\n\nkey: String"]
+				},
+				"Send": {
+					"descriptions": ["**Sends a message and returns the reply text**\n\n```method : public : Send(message:String) ~ String```\n\n\n\nmessage: String\n\nreturn: String"]
+				},
+				"SendJson": {
+					"descriptions": ["**Asks for an answer in a given shape. The model is made to call a tool whose input schema is the one you give, and its input is the answer. One-shot: neither the question nor the answer joins the history.**\n\n```method : public : SendJson(message:String, name:String, schema:JsonElement) ~ JsonElement```\n\n\n\nmessage: String\n\nname: String\n\nschema: JsonElement\n\nreturn: JsonElement"]
+				},
+				"SendReply": {
+					"descriptions": ["**Sends a message and returns the full reply, including tool calls. When the reply has tool uses, run them, add each result with AddToolResult and call SendReply(Nil, tools) again.**\n\n```method : public : SendReply(message:String, tools:Vector&lt;Tool&gt;) ~ Reply```\n\n\n\nmessage: String\n\ntools: Vector&lt;Tool&gt;\n\nreturn: Reply\n\n```\ntools := Vector->New()<Tool>;\ntools->AddBack(Tool->New(\"get_weather\", \"Get the weather for a city\", JsonParser->TextToElement(\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"city\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"city\\\"]}\")));\n\nchat := Chat->New(\"claude-sonnet-5-5\", Nil);\nreply := chat->SendReply(\"What is the weather in Paris?\", tools);\nwhile(reply <> Nil & reply->HasToolUses()) {\n  uses := reply->GetToolUses();\n  each(i : uses) {\n    call := uses->Get(i);\n    city := call->GetArgument(\"city\");\n    chat->AddToolResult(call->GetId(), \"18C and sunny in {$city}\");\n  };\n  reply := chat->SendReply(Nil, tools);\n};\nreply->GetText()->PrintLine();\n```"]
+				},
+				"SetMaxTokens": {
+					"descriptions": ["**Sets the most tokens a reply may use (default 4096)**\n\n```method : public : SetMaxTokens(max_tokens:Int) ~ Chat```\n\n\n\nmax_tokens: Int\n\nreturn: Chat"]
+				},
+				"SetSystem": {
+					"descriptions": ["**Sets the system prompt**\n\n```method : public : SetSystem(system:String) ~ Chat```\n\n\n\nsystem: String\n\nreturn: Chat"]
+				},
+				"SetTemperature": {
+					"descriptions": ["**Sets the sampling temperature**\n\n```method : public : SetTemperature(temperature:Float) ~ Chat```\n\n\n\ntemperature: Float\n\nreturn: Chat"]
+				},
+				"Stream": {
+					"descriptions": ["**Sends a message and streams the reply as it is generated**\n\n```method : public : Stream(message:String, tools:Vector&lt;Tool&gt;) ~ ReplyStream```\n\n\n\nmessage: String\n\ntools: Vector&lt;Tool&gt;\n\nreturn: ReplyStream"]
+				}
+			}
+		},
+		"API.Anthropic.EndPoint": {
+			"description": "Anthropic endpoint settings, the API key and the last error",
+			"functions": {
+				"GetApiKey": {
+					"descriptions": ["**Gets the API key: the one set with SetApiKey, else the ANTHROPIC_API_KEY environment variable, else the first line of anthropic_api_key.dat in the working directory.**\n\n```function : GetApiKey() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetBaseUrl": {
+					"descriptions": ["**Gets the API base URL**\n\n```function : GetBaseUrl() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetLastError": {
+					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"ParseBody": {
+					"descriptions": ["**Parse a response body. Nil, with the last error set, when the body is not JSON or is an error object ({\"type\":\"error\",\"error\":{\"type\":...,\"message\":...}}).**\n\n```function : ParseBody(body:String) ~ JsonElement```\n\n\n\nbody: String\n\nreturn: JsonElement"]
+				},
+				"SetApiKey": {
+					"descriptions": ["**Sets the API key, overriding the environment and the key file**\n\n```function : SetApiKey(api_key:String) ~ Nil```\n\n\n\napi_key: String\n\nreturn: Nil"]
+				},
+				"SetBaseUrl": {
+					"descriptions": ["**Sets the API base URL (default https://api.anthropic.com/v1), for a gateway or proxy**\n\n```function : SetBaseUrl(base_url:String) ~ Nil```\n\n\n\nbase_url: String\n\nreturn: Nil"]
+				}
+			}
+		},
+		"API.Anthropic.Reply": {
+			"description": "A model reply: its text, tool calls, thinking, stop reason and token counts",
+			"functions": {
+				"GetContent": {
+					"descriptions": ["**Get the content blocks as the API returned them**\n\n```method : public : GetContent() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"GetId": {
+					"descriptions": ["**Get the message id**\n\n```method : public : GetId() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetInputTokens": {
+					"descriptions": ["**Get the tokens the prompt used**\n\n```method : public : GetInputTokens() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetModel": {
+					"descriptions": ["**Get the model that answered**\n\n```method : public : GetModel() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetOutputTokens": {
+					"descriptions": ["**Get the tokens the reply used**\n\n```method : public : GetOutputTokens() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetStopReason": {
+					"descriptions": ["**Get why the model stopped: end_turn, max_tokens, stop_sequence, tool_use or refusal**\n\n```method : public : GetStopReason() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetText": {
+					"descriptions": ["**Get the reply text, every text block joined**\n\n```method : public : GetText() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetThinking": {
+					"descriptions": ["**Get the thinking text, when extended thinking was on**\n\n```method : public : GetThinking() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetToolUses": {
+					"descriptions": ["**Get the tool calls**\n\n```method : public : GetToolUses() ~ Vector&lt;ToolUse&gt;```\n\n\n\nreturn: Vector&lt;ToolUse&gt;"]
+				},
+				"HasToolUses": {
+					"descriptions": ["**Check for tool calls**\n\n```method : public : HasToolUses() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Parse": {
+					"descriptions": ["**Parses a response body without a server, for tests and for replaying recorded responses**\n\n```function : Parse(body:String) ~ Reply```\n\n\n\nbody: String\n\nreturn: Reply"]
+				}
+			}
+		},
+		"API.Anthropic.ReplyStream": {
+			"description": "A streamed reply. Read it text first, then ask for the whole reply:",
+			"functions": {
+				"Close": {
+					"descriptions": ["**Closes the connection early**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetReply": {
+					"descriptions": ["**Reads any remaining events and returns the whole reply; the exchange then joins the chat history**\n\n```method : public : GetReply() ~ Reply```\n\n\n\nreturn: Reply"]
+				},
+				"HasNext": {
+					"descriptions": ["**Reads on until there is text to return**\n\n```method : public : HasNext() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Next": {
+					"descriptions": ["**Get the text HasNext() found**\n\n```method : public : Next() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"API.Anthropic.StreamAssembler": {
+			"description": "Builds a reply from the server-sent events of a streamed response. Feed every event to Apply; it returns the text that event added. Public so a recorded stream can be replayed without a server.",
+			"functions": {
+				"Apply": {
+					"descriptions": ["**Handles one event**\n\n```method : public : Apply(event:String, data:String) ~ String```\n\n\n\nevent: String\n\ndata: String\n\nreturn: String"]
+				},
+				"GetReply": {
+					"descriptions": ["**Builds the reply from what has been applied**\n\n```method : public : GetReply() ~ Reply```\n\n\n\nreturn: Reply"]
+				},
+				"IsDone": {
+					"descriptions": ["**Check for the end of the message**\n\n```method : public : IsDone() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsFailed": {
+					"descriptions": ["**Check for an error event**\n\n```method : public : IsFailed() ~ Bool```\n\n\n\nreturn: Bool"]
+				}
+			}
+		},
+		"API.Anthropic.Tool": {
+			"description": "A tool the model may call: a name, a description and a JSON schema for its input",
+			"functions": {
+				"GetName": {
+					"descriptions": ["**Get the tool name**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(name:String, description:String, schema:JsonElement)```\n\n\n\nname: String\n\ndescription: String\n\nschema: JsonElement", "**Constructor from a function definition, the form the other AI client libraries use**\n\n```New(func:FunctionType)```\n\n\n\nfunc: FunctionType"]
+				},
+				"ToJson": {
+					"descriptions": ["**Converts the tool to JSON for the request**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				}
+			}
+		},
+		"API.Anthropic.ToolUse": {
+			"description": "A tool call the model asked for. Run it, then return the result with Chat->AddToolResult using GetId().",
+			"functions": {
+				"GetArgument": {
+					"descriptions": ["**Get one input value as text (a number or boolean in its JSON form)**\n\n```method : public : GetArgument(name:String) ~ String```\n\n\n\nname: String\n\nreturn: String"]
+				},
+				"GetId": {
+					"descriptions": ["**Get the id the result must carry**\n\n```method : public : GetId() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetInput": {
+					"descriptions": ["**Get the call's input, an object keyed by parameter name**\n\n```method : public : GetInput() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"GetName": {
+					"descriptions": ["**Get the name of the tool to run**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
 		"API.Google.Gemini.AudioPart": {
 			"description": "Audio message part (Gemini 2.0+) Supports audio input and output for multimodal interactions",
 			"functions": {
@@ -18472,6 +18645,10 @@
 		],
 		"Chat": [
 			{
+				"bundle": "API.Anthropic",
+				"file": ""
+			},
+			{
 				"bundle": "API.Google.Gemini",
 				"file": ""
 			},
@@ -18497,6 +18674,10 @@
 			}
 		],
 		"EndPoint": [
+			{
+				"bundle": "API.Anthropic",
+				"file": ""
+			},
 			{
 				"bundle": "API.Google.Gemini",
 				"file": ""
@@ -18704,11 +18885,19 @@
 		],
 		"Reply": [
 			{
+				"bundle": "API.Anthropic",
+				"file": ""
+			},
+			{
 				"bundle": "API.Ollama",
 				"file": ""
 			}
 		],
 		"Tool": [
+			{
+				"bundle": "API.Anthropic",
+				"file": ""
+			},
 			{
 				"bundle": "API.Ollama",
 				"file": ""
@@ -21607,6 +21796,24 @@
 		"Handler": [
 			{
 				"bundle": "Web.Server",
+				"file": ""
+			}
+		],
+		"ReplyStream": [
+			{
+				"bundle": "API.Anthropic",
+				"file": ""
+			}
+		],
+		"StreamAssembler": [
+			{
+				"bundle": "API.Anthropic",
+				"file": ""
+			}
+		],
+		"ToolUse": [
+			{
+				"bundle": "API.Anthropic",
 				"file": ""
 			}
 		]
