@@ -1006,15 +1006,24 @@ detection. All are in `nlp.obl`; none needs a model.
 as scikit-learn's `TfidfVectorizer(ngram_range=(1, 2))` does; `(1, 3)` adds triples and
 `(2, 2)` is pairs only. Smoothed IDF and unit-length vectors follow scikit-learn (the
 regression test compares every IDF and vector entry with it). `min_df` drops terms found in
-fewer documents and `max_features` keeps the most frequent ones. An invalid setting
-(`min_n` below 1, `max_n` below `min_n`) does not crash: `IsValid()` is false, `GetError()`
-says why, and the vectorizer fits an empty vocabulary. Existing calls such as
-`TF_IDF->New(stem : true)` are unchanged.
+fewer documents and `max_features` keeps the most frequent ones. `Fit` returns `true` when it
+built a vocabulary. An invalid setting (`min_n` below 1, `max_n` below `min_n`), a Nil or empty
+corpus, or a corpus with no term left returns `false`: `IsValid()` is false for a bad setting
+and `GetError()` says why (it is `""`, never Nil, when there is nothing to report). Existing
+calls such as `TF_IDF->New(stem : true)` and a statement `tfidf->Fit(docs);` still compile.
+
+`TransformAll(texts)` and `FitTransform(texts)` give a `Float[,]`, a row per text, ready for a
+classifier, so no study writes the loop. The matrix is dense: 8 bytes times the vocabulary times
+the documents (40,000 documents at 20,000 terms is 6.4 GB). `EstimateDenseBytes(documents)`
+tells you before you ask, and `TransformAll` returns Nil with a reason rather than allocate
+more than `GetMaxDenseBytes()` (2 GiB; `SetMaxDenseBytes` changes it). Limit the vocabulary
+with `max_features` and `min_df`.
 
 ```ruby
 tfidf := TF_IDF->New(min_n : 1, max_n : 2, min_df : 2);
-tfidf->Fit(training_texts);
-x := tfidf->Transform("not worth the money");   # words and "not worth", "worth the", ...
+X_train := tfidf->FitTransform(training_texts);   # Nil, with tfidf->GetError(), when Fit fails
+X_test  := tfidf->TransformAll(test_texts);       # the test texts use the training vocabulary
+bytes   := tfidf->EstimateDenseBytes(100000);
 ```
 
 **Misspelling rate.** `SpellChecker` counts the tokens a word list does not know. No
@@ -1026,7 +1035,7 @@ over all tokens. `Suggest` returns words within a Levenshtein distance, nearest 
 with no words and a Nil text give -1 instead of failing.
 
 ```ruby
-checker := SpellChecker->New("words.txt");
+checker := SpellChecker->New("words.txt");   # checker->GetError() is "" when fine
 if(checker->IsLoaded()) {
     n    := checker->CountMisspelled("teh product is gud");
     rate := checker->MisspellingRate("teh product is gud");
@@ -1038,10 +1047,17 @@ if(checker->IsLoaded()) {
 `TextFeatures->Names()`): characters, tokens, average word length, type-token ratio,
 punctuation rate, uppercase ratio, sentence count and average sentence length. Each is also
 a function (`TokenCount`, `TypeTokenRatio`, ...). Empty text gives zeros and Nil gives
-Nil / -1.
+Nil / -1. `ExtractAll(texts)` takes a `Vector<String>` or `String[]` and gives a `Float[,]`, a
+row per text.
+
+For a fake-review study, `ExtractWith(checker, text)` returns the eight features followed by
+`misspelled_count` and `misspelling_rate` from a loaded `SpellChecker` (`NamesWith()` names
+the ten; `ExtractAllWith` gives the matrix). `Extract` is unchanged. A Nil text, or a checker
+that is not loaded, returns Nil, never a -1 entry that would enter a regression as data.
 
 ```ruby
 f := TextFeatures->Extract("Great product! Works perfectly. HIGHLY recommended!!!");
+X := TextFeatures->ExtractAllWith(checker, reviews);   # [reviews, 10]
 ```
 
 ### BERT tokens and sentence embeddings

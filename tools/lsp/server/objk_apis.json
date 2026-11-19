@@ -11875,8 +11875,20 @@
 				"Extract": {
 					"descriptions": ["**All the features of a text, in the order of Names.**\n\n```function : Extract(text:String) ~ Float[]```\n\n\n\ntext: String\n\nreturn: Float[]"]
 				},
+				"ExtractAll": {
+					"descriptions": ["**All the features of many texts, a row each: the matrix a classifier takes.**\n\n```function : ExtractAll(texts:Vector&lt;String&gt;) ~ Float[,]```\n\n\n\ntexts: Vector&lt;String&gt;\n\nreturn: Float[,]\n\n```\nX := TextFeatures->ExtractAll(reviews);\n```", "**All the features of many texts, a row each, from an array.**\n\n```function : ExtractAll(texts:String[]) ~ Float[,]```\n\n\n\ntexts: String[]\n\nreturn: Float[,]"]
+				},
+				"ExtractAllWith": {
+					"descriptions": ["**ExtractWith for many texts, a row each.**\n\n```function : ExtractAllWith(checker:SpellChecker, texts:Vector&lt;String&gt;) ~ Float[,]```\n\n\n\nchecker: SpellChecker\n\ntexts: Vector&lt;String&gt;\n\nreturn: Float[,]", "**ExtractWith for many texts, from an array.**\n\n```function : ExtractAllWith(checker:SpellChecker, texts:String[]) ~ Float[,]```\n\n\n\nchecker: SpellChecker\n\ntexts: String[]\n\nreturn: Float[,]"]
+				},
+				"ExtractWith": {
+					"descriptions": ["**The eight features of Extract followed by the count and the rate of misspelled tokens from a SpellChecker: the feature vector of a fake-review study in one call. Extract is unchanged.**\n\n```function : ExtractWith(checker:SpellChecker, text:String) ~ Float[]```\n\n\n\nchecker: SpellChecker\n\ntext: String\n\nreturn: Float[]\n\n```\nchecker := SpellChecker->New(\"words.txt\");\nf := TextFeatures->ExtractWith(checker, \"teh product is gud\");\n```"]
+				},
 				"Names": {
 					"descriptions": ["**The names of the values Extract returns, in order: characters, tokens, avg_word_length, type_token_ratio, punctuation_rate, uppercase_ratio, sentences, avg_sentence_length.**\n\n```function : Names() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"NamesWith": {
+					"descriptions": ["**The names of the values ExtractWith returns: the eight of Names, then misspelled_count and misspelling_rate.**\n\n```function : NamesWith() ~ String[]```\n\n\n\nreturn: String[]"]
 				},
 				"PunctuationRate": {
 					"descriptions": ["**The ASCII punctuation characters over all characters.**\n\n```function : PunctuationRate(text:String) ~ Float```\n\n\n\ntext: String\n\nreturn: Float"]
@@ -16918,14 +16930,23 @@
 		"System.NLP.TF_IDF": {
 			"description": "Term Frequency-Inverse Document Frequency (TF-IDF) vectorizer for document analysis. By default IDF is smoothed as scikit-learn's is, ln((1 + N) / (1 + df)) + 1, and vectors are scaled to unit length, so the cosine similarity of two of them is their dot product.\n\nA term is a word, or, with a min_n/max_n range as scikit-learn's ngram_range, a run of words joined by a space (\"not very good\"). Vocabulary, document frequencies, smoothed IDF and unit-length vectors follow TfidfVectorizer; two differences: words come from Tokenizer->WordTokenize (which keeps one-letter words) and the term frequency is a share of the document's terms rather than a raw count, which unit length cancels.",
 			"functions": {
+				"EstimateDenseBytes": {
+					"descriptions": ["**The memory a dense TransformAll of some documents needs: 8 bytes times the vocabulary times the documents. Ask before transforming a large corpus.**\n\n```method : public : EstimateDenseBytes(documents:Int) ~ Int```\n\n\n\ndocuments: Int\n\nreturn: Int"]
+				},
 				"Fit": {
-					"descriptions": ["**Fits the TF-IDF model on a corpus of documents, replacing any earlier fit**\n\n```method : public : Fit(documents:String[]) ~ Nil```\n\n\n\ndocuments: String[]\n\nreturn: Nil\n\n```\ndocs := [\"the cat sat on the mat\", \"the dog ran in the park\", \"cats and dogs are pets\"];\ntfidf := TF_IDF->New();\ntfidf->Fit(docs);\n\"Vocabulary size: {$tfidf->GetVocabularySize()}\"->PrintLine();\n\n# words and word pairs, as scikit-learn's ngram_range=(1, 2)\nbigrams := TF_IDF->New(min_n : 1, max_n : 2);\nbigrams->Fit(docs);\nbigrams->GetVocabulary()->Has(\"the cat\")->PrintLine();\n```"]
+					"descriptions": ["**Fits the TF-IDF model on a corpus of documents, replacing any earlier fit**\n\n```method : public : Fit(documents:String[]) ~ Bool```\n\n\n\ndocuments: String[]\n\nreturn: Bool\n\n```\ndocs := [\"the cat sat on the mat\", \"the dog ran in the park\", \"cats and dogs are pets\"];\ntfidf := TF_IDF->New();\nif(<>tfidf->Fit(docs)) {\n  tfidf->GetError()->PrintLine();\n};\n\"Vocabulary size: {$tfidf->GetVocabularySize()}\"->PrintLine();\n\n# words and word pairs, as scikit-learn's ngram_range=(1, 2)\nbigrams := TF_IDF->New(min_n : 1, max_n : 2);\nbigrams->Fit(docs);\nbigrams->GetVocabulary()->Has(\"the cat\")->PrintLine();\n```"]
+				},
+				"FitTransform": {
+					"descriptions": ["**Fits on a corpus and transforms the same corpus: one row per document.**\n\n```method : public : FitTransform(documents:String[]) ~ Float[,]```\n\n\n\ndocuments: String[]\n\nreturn: Float[,]\n\n```\nX := TF_IDF->New(min_n : 1, max_n : 2, min_df : 2)->FitTransform(texts);\n```"]
 				},
 				"GetError": {
-					"descriptions": ["**Why the vectorizer is not valid.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+					"descriptions": ["**Why the vectorizer is not valid, or why the last Fit or TransformAll failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetIdf": {
 					"descriptions": ["**Gets the inverse document frequency of each vocabulary word, indexed as the vocabulary is**\n\n```method : public : GetIdf() ~ Float[]```\n\n\n\nreturn: Float[]\n\n```\nidf := tfidf->GetIdf();\nidx := tfidf->GetVocabulary()->Find(\"cat\")->Get();\n\"IDF of cat: {$(idf[idx])}\"->PrintLine();\n```"]
+				},
+				"GetMaxDenseBytes": {
+					"descriptions": ["**The dense-matrix limit of TransformAll.**\n\n```method : public : GetMaxDenseBytes() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"GetMaxN": {
 					"descriptions": ["**The longest term, in words.**\n\n```method : public : GetMaxN() ~ Int```\n\n\n\nreturn: Int"]
@@ -16939,14 +16960,23 @@
 				"GetVocabularySize": {
 					"descriptions": ["**Gets the size of the vocabulary**\n\n```method : public : GetVocabularySize() ~ Int```\n\n\n\nreturn: Int"]
 				},
+				"IsFitted": {
+					"descriptions": ["**Whether the last Fit built a vocabulary.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"IsValid": {
-					"descriptions": ["**Whether the settings given to the constructor make sense: an n-gram range of min_n >= 1 and max_n >= min_n, a min_df of at least 1 and a max_features of at least 0. An invalid vectorizer fits an empty vocabulary and transforms to empty vectors; it does not crash.**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
+					"descriptions": ["**Whether the settings given to the constructor make sense: an n-gram range of min_n >= 1 and max_n >= min_n, a min_df of at least 1 and a max_features of at least 0. An invalid vectorizer does not crash and does not fit quietly: Fit returns false, GetError says why, the vocabulary stays empty and Transform gives empty vectors.**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
 					"descriptions": ["**Constructor. The last four parameters are optional and default to what this class always did: single words, every word kept.**\n\n```New(smooth_idf:Bool, l2_normalize:Bool, remove_stopwords:Bool, stem:Bool, min_n:Int, max_n:Int, min_df:Int, max_features:Int)```\n\n\n\nsmooth_idf: Bool\n\nl2_normalize: Bool\n\nremove_stopwords: Bool\n\nstem: Bool\n\nmin_n: Int\n\nmax_n: Int\n\nmin_df: Int\n\nmax_features: Int"]
 				},
+				"SetMaxDenseBytes": {
+					"descriptions": ["**Sets the largest dense matrix TransformAll will build.**\n\n```method : public : SetMaxDenseBytes(bytes:Int) ~ Bool```\n\n\n\nbytes: Int\n\nreturn: Bool"]
+				},
 				"Transform": {
 					"descriptions": ["**Transforms a document into a TF-IDF vector, one entry per vocabulary word; words the fit did not see are ignored**\n\n```method : public : Transform(document:String) ~ Float[]```\n\n\n\ndocument: String\n\nreturn: Float[]\n\n```\nvec := tfidf->Transform(\"the cat chased the dog\");\n\"Vector length: {$vec->Size()}\"->PrintLine();\n```"]
+				},
+				"TransformAll": {
+					"descriptions": ["**Transforms documents into one matrix, a row per document, so no study writes the loop. The matrix is dense: 8 bytes times the vocabulary times the documents (20,000 terms for 40,000 documents is 6.4 GB). Past the limit (SetMaxDenseBytes, 2 GiB by default) this returns Nil rather than exhausting memory; set max_features or min_df, or transform in batches.**\n\n```method : public : TransformAll(documents:String[]) ~ Float[,]```\n\n\n\ndocuments: String[]\n\nreturn: Float[,]"]
 				}
 			}
 		},

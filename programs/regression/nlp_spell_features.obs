@@ -33,6 +33,7 @@ class NlpSpellFeaturesTest {
 		@failures := 0;
 		Spelling();
 		Features();
+		ExtractWithChecker();
 
 		if(@failures > 0) {
 			"{$@failures} failure(s)"->PrintLine();
@@ -49,7 +50,7 @@ class NlpSpellFeaturesTest {
 
 		checker := SpellChecker->New(path);
 		File->Delete(path);
-		Check(checker->IsLoaded() & checker->GetError() = Nil, "the word list loads");
+		Check(checker->IsLoaded() & checker->GetError()->Size() = 0, "the word list loads, and its error is \"\", not Nil");
 		Check(checker->GetWordCount() = 11, "11 words: comments and blank lines skipped, spaces trimmed (got {$checker->GetWordCount()})");
 		Check(checker->Contains("CAT") & checker->Contains("sat") & <>checker->Contains("teh"), "lookups ignore case");
 
@@ -89,7 +90,7 @@ class NlpSpellFeaturesTest {
 
 		# failure values
 		missing := SpellChecker->New("no_such_word_list.tmp");
-		Check(<>missing->IsLoaded() & missing->GetError() <> Nil, "a missing file is not loaded, with a reason");
+		Check(<>missing->IsLoaded() & missing->GetError()->Size() > 0, "a missing file is not loaded, with a reason");
 		Check(missing->CountMisspelled("the cat") = -1 & Near(missing->MisspellingRate("the cat"), -1.0), "and counts -1, not 0");
 		Check(missing->Misspelled("the cat") = Nil & missing->Suggest("cat", 1, 1) = Nil, "and returns Nil lists");
 		Check(SpellChecker->New(Nil)->IsLoaded() = false, "a Nil path is not loaded");
@@ -100,7 +101,7 @@ class NlpSpellFeaturesTest {
 		blank->Close();
 		none := SpellChecker->New(empty_path);
 		File->Delete(empty_path);
-		Check(<>none->IsLoaded() & none->GetError() <> Nil, "a list with no words is not loaded");
+		Check(<>none->IsLoaded() & none->GetError()->Size() > 0, "a list with no words is not loaded");
 
 		# a list built in code
 		own := SpellChecker->New();
@@ -108,6 +109,69 @@ class NlpSpellFeaturesTest {
 		own->AddWord("Hello");
 		own->AddWord("world");
 		Check(own->IsLoaded() & own->CountMisspelled("hello wrold") = 1, "AddWord builds a list: 'wrold' is wrong");
+	}
+
+	function : ExtractWithChecker() ~ Nil {
+		path := "nlp_spell_words2.tmp";
+		writer := FileWriter->New(path);
+		writer->WriteString("the\ncat\nsat\ngood\nproduct\nis\n");
+		writer->Close();
+		checker := SpellChecker->New(path);
+		File->Delete(path);
+
+		names := TextFeatures->NamesWith();
+		Check(names->Size() = 10 & names[7]->Equals("avg_sentence_length") & names[8]->Equals("misspelled_count") & names[9]->Equals("misspelling_rate"), "NamesWith is the 8 names plus misspelled_count and misspelling_rate");
+
+		# "the cat sat teh" = 15 characters, 4 tokens; 'teh' is wrong: count 1, rate 1/4
+		text := "the cat sat teh";
+		f := TextFeatures->ExtractWith(checker, text);
+		plain := TextFeatures->Extract(text);
+		same := f <> Nil & f->Size() = 10;
+		if(same) {
+			each(i : 8) {
+				if(f[i] <> plain[i]) {
+					same := false;
+				};
+			};
+		};
+		Check(same & plain->Size() = 8, "ExtractWith starts with Extract's 8 values, which are unchanged");
+		Check(f[8] = 1.0 & Near(f[9], 0.25), "then misspelled count 1 and rate 1/4");
+		clean := TextFeatures->ExtractWith(checker, "good product");
+		Check(clean[8] = 0.0 & Near(clean[9], 0.0), "a clean text has count 0 and rate 0.0");
+		Check(Near(TextFeatures->ExtractWith(checker, "")[9], 0.0), "an empty text has rate 0.0, not -1");
+
+		# never a -1 entry: a failure is Nil
+		Check(TextFeatures->ExtractWith(checker, Nil) = Nil, "a Nil text gives Nil");
+		Check(TextFeatures->ExtractWith(Nil, text) = Nil, "a Nil checker gives Nil");
+		Check(TextFeatures->ExtractWith(SpellChecker->New("no_such_word_list.tmp"), text) = Nil, "a checker that is not loaded gives Nil, not -1 features");
+
+		# the matrices
+		texts := ["the cat sat teh", "good product", "cat"];
+		X := TextFeatures->ExtractAll(texts);
+		dims := X->Size();
+		Check(dims[0] = 3 & dims[1] = 8, "ExtractAll is [texts, 8]");
+		row_ok := true;
+		each(r : texts) {
+			one := TextFeatures->Extract(texts[r]);
+			each(c : 8) {
+				if(X[r, c] <> one[c]) {
+					row_ok := false;
+				};
+			};
+		};
+		Check(row_ok, "each row is Extract of that text");
+		v := Vector->New()<String>;
+		v->AddBack("the cat sat teh");
+		v->AddBack("good product");
+		V := TextFeatures->ExtractAll(v);
+		Check(V->Size()[0] = 2 & V->Size()[1] = 8 & V[0, 0] = X[0, 0] & V[1, 6] = X[1, 6], "ExtractAll takes a Vector<String> too");
+		W := TextFeatures->ExtractAllWith(checker, texts);
+		Check(W->Size()[0] = 3 & W->Size()[1] = 10 & W[0, 8] = 1.0 & Near(W[0, 9], 0.25) & W[1, 8] = 0.0 & W[0, 0] = X[0, 0], "ExtractAllWith is [texts, 10]");
+		Check(TextFeatures->ExtractAllWith(checker, v)->Size()[1] = 10, "ExtractAllWith takes a Vector<String> too");
+		Check(TextFeatures->ExtractAll(String->New[0])->Size()[0] = 0, "no texts give no rows");
+		no_texts : String[] := Nil;
+		Check(TextFeatures->ExtractAll(["a", Nil]) = Nil & TextFeatures->ExtractAll(no_texts) = Nil, "a Nil entry or Nil texts give Nil");
+		Check(TextFeatures->ExtractAllWith(Nil, texts) = Nil, "ExtractAllWith with a Nil checker gives Nil");
 	}
 
 	function : Features() ~ Nil {
