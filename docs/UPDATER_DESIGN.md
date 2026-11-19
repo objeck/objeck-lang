@@ -43,9 +43,9 @@
 >   `spctl --assess` do not exist in `obu.cpp`. Trust rests on the signed manifest
 >   alone.
 > - **The post-check is `obc -v` only** (`obu.cpp`, "POST-CHECK"). Its own comment says
->   `obr` has no version flag, so step 5's "`obr --version`" and "compile a one-liner"
->   are not done; a tree whose `obr` or `lang.obl` is broken but whose `obc` prints a
->   version passes the check.
+>   `obr` has no version flag, so a compile-and-run of a one-liner with the new tree
+>   (step 5's stronger form) is not done; a tree whose `obr` or `lang.obl` is broken
+>   but whose `obc` prints a version passes the check.
 > - **Tier 2 download tracking is not built**; `--no-telemetry` and
 >   `OBJECK_UPDATE_NO_PING` do not exist. Tier 1 is `tools/release-stats/`
 >   (`snapshot_downloads.py`, `downloads.csv`, `release-stats.yml`).
@@ -140,8 +140,9 @@ their own.
      entry; see the status note at the top.
    - `.previous` is kept until the next successful update — that is what
      `obu rollback` restores.
-5. **Post-check.** Run `<new>/bin/obr --version` (and compile a one-liner
-   with the new `obc`); on failure, automatic rollback. This is the same
+5. **Post-check.** Run `<new>/bin/obc -v`; on failure, automatic rollback.
+   (`obr` has no version flag, so a one-line compile and run with the new tree
+   is the stronger check this step should grow into; see the note at the top.) This is the same
    "verify by running it" rule the repo's CI applies.
 
 The version check compares the *deployed tree*, not just `obu`'s own build:
