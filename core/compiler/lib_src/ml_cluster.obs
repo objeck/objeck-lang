@@ -829,6 +829,9 @@ resp := gmm->Predict(X);                # soft responsibilities
 			};
 
 			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 			num_components := deserializer->ReadInt();
 			cols := deserializer->ReadInt();
 			if(num_components < 1 | cols < 1) {

@@ -1603,6 +1603,9 @@ else if(args->Size() = 1) {
 			};
 
 			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 			weight_inputs_hidden := ReadMatrix(deserializer);
 			weight_outputs_hidden := ReadMatrix(deserializer);
 			bias_hidden := ReadMatrix(deserializer);

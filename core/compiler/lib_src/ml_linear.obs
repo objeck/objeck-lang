@@ -504,6 +504,9 @@ each(c in coeffs) {
 			};
 
 			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 			fit_intercept := deserializer->ReadInt() = 1;
 
 			count := deserializer->ReadInt();
@@ -847,6 +850,9 @@ model->Fit(X, y);
 			};
 
 			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 			alpha := deserializer->ReadFloat();
 			fit_intercept := deserializer->ReadInt() = 1;
 
@@ -1225,6 +1231,9 @@ preds := model->Predict(X);
 			};
 
 			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 			alpha := deserializer->ReadFloat();
 			l1_ratio := deserializer->ReadFloat();
 			iterations := deserializer->ReadInt();
@@ -1656,6 +1665,9 @@ each(label in labels) {
 			};
 
 			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 			learning_rate := deserializer->ReadFloat();
 			iterations := deserializer->ReadInt();
 			l2 := deserializer->ReadFloat();
@@ -1926,6 +1938,9 @@ labels := model->PredictClass(X);
 			};
 
 			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 			learning_rate := deserializer->ReadFloat();
 			iterations := deserializer->ReadInt();
 			epochs_run := deserializer->ReadInt();
@@ -2199,6 +2214,9 @@ labels := model->PredictClass(X);
 			};
 
 			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 			lambda := deserializer->ReadFloat();
 			learning_rate := deserializer->ReadFloat();
 			iterations := deserializer->ReadInt();

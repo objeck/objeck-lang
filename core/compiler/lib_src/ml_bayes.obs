@@ -280,6 +280,9 @@ classes := gnb->PredictClass([[1.1], [7.9]]);   # [0, 1]
 			};
 
 			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 			num_classes := deserializer->ReadInt();
 			cols := deserializer->ReadInt();
 			if(num_classes < 1 | cols < 1) {

@@ -3154,6 +3154,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     return true;
   }
 
+  case UNCOMPRESS_ZLIB_TRY:
+    return TryUncompressZlibBytes(program, inst, op_stack, stack_pos, frame);
+
   case UNCOMPRESS_DEFLATE_LIMIT:
     return UncompressLimit(-MAX_WBITS, program, inst, op_stack, stack_pos, frame);
 
@@ -7577,6 +7580,40 @@ bool TrapProcessor::UncompressZlibBytes(StackProgram* program, size_t* inst, siz
   memcpy(byte_array_ptr, out, byte_array_size);
   free(out);
   out = nullptr;
+
+  PushInt((size_t)byte_array, op_stack, stack_pos);
+  return true;
+}
+
+// function : TryUncompressZlib(input : Byte[]) ~ Byte[]: UncompressZlib that answers Nil
+// for a Nil, damaged, truncated or oversized stream rather than raising
+bool TrapProcessor::TryUncompressZlibBytes(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
+{
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  if(!array) {
+    PushInt(0, op_stack, stack_pos);
+    return true;
+  }
+
+  const char* in = (char*)(array + 3);
+  const uLong in_len = (uLong)array[2];
+
+  uLong out_len;
+  char* out = OutputStream::UncompressZlib(in, in_len, out_len);
+  if(!out) {
+    PushInt(0, op_stack, stack_pos);
+    return true;
+  }
+
+  const long byte_array_size = (long)out_len;
+  const long byte_array_dim = 1;
+  size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(size_t)), BYTE_ARY_TYPE, op_stack, *stack_pos, false);
+  byte_array[0] = byte_array_size;
+  byte_array[1] = byte_array_dim;
+  byte_array[2] = byte_array_size;
+
+  memcpy((char*)(byte_array + 3), out, byte_array_size);
+  free(out);
 
   PushInt((size_t)byte_array, op_stack, stack_pos);
   return true;
