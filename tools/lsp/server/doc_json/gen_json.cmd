@@ -96,6 +96,7 @@ if %ERRORLEVEL% NEQ 0 (
 	%LIB_SRC%\openai.obs ^
 	%LIB_SRC%\gemini.obs ^
 	%LIB_SRC%\ollama.obs ^
+	%LIB_SRC%\anthropic.obs ^
 	%LIB_SRC%\models.obs ^
 	%LIB_SRC%\opencv.obs ^
 	%LIB_SRC%\onnx.obs %LIB_SRC%\inference.obs ^

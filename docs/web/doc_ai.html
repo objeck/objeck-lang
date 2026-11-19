@@ -63,6 +63,7 @@
      <ul>
       <li><a href="#authentication">Authentication</a></li>
       <li><a href="#openai-1">OpenAI</a></li>
+      <li><a href="#anthropic-claude">Anthropic (Claude)</a></li>
       <li><a href="#gemini-1">Gemini</a></li>
       <li><a href="#ollama-local-models">Ollama (Local Models)</a></li>
       <li><a href="#onnx-local-inference">ONNX Local Inference</a></li>
@@ -83,6 +84,8 @@
 
 token := EndPoint-&gt;GetApiKey();
 </code></pre>
+    <h4 id="anthropic">Anthropic</h4>
+    <p>Set the <code>ANTHROPIC_API_KEY</code> environment variable, or create <code>anthropic_api_key.dat</code> in your working directory, or call <code>EndPoint-&gt;SetApiKey(key)</code>. <code>Chat-&gt;New(model, Nil)</code> reads the key with <code>EndPoint-&gt;GetApiKey()</code>; pass a key as the second argument to override it for one chat.</p>
     <h4 id="gemini">Gemini</h4>
     <p>Create <code>gemini_api_key.dat</code> in your working directory. Use the static helper:</p>
 <pre class="line-numbers"><code class="language-cpp">use API.Google.Gemini;
@@ -238,6 +241,61 @@ each(j in jobs) {
     <p><strong>Request format</strong> (<code>requests.jsonl</code> — one JSON object per line):</p>
 <pre class="line-numbers"><code class="language-json">{"custom_id":"r1","method":"POST","url":"/v1/chat/completions","body":{"model":"gpt-4o-mini","messages":[{"role":"user","content":"Hello"}]}}
 </code></pre>
+    <hr class="section-end">
+    <h3 id="anthropic-claude">Anthropic (Claude)</h3>
+    <p><code>API.Anthropic</code> is a client for the Anthropic Messages API: chat with a system prompt, tool use, streaming over server-sent events, structured output, and extended-thinking blocks. Compile with <code>-lib anthropic</code>. A failed call returns <code>Nil</code>, and <code>EndPoint-&gt;GetLastError()</code> says why, as in the other clients. Requests go over HTTPS; <code>EndPoint-&gt;SetBaseUrl</code> points the client at a gateway and <code>EndPoint-&gt;SetCertificate</code> pins its certificate.</p>
+    <h4 id="chat-and-system-prompts">Chat and system prompts</h4>
+    <p>A <code>Chat</code> keeps the message history. <code>SetSystem</code>, <code>SetMaxTokens</code> (default 4096) and <code>SetTemperature</code> return the chat, so they chain.</p>
+<pre class="line-numbers"><code class="language-cpp">use API.Anthropic;
+
+chat := Chat-&gt;New("claude-sonnet-5-5", Nil);
+chat-&gt;SetSystem("Answer in one sentence.");
+chat-&gt;Send("Why is the sky blue?")-&gt;PrintLine();
+chat-&gt;Send("And at sunset?")-&gt;PrintLine();
+</code></pre>
+    <p><code>SendReply(message, tools)</code> returns the whole <code>Reply</code>: <code>GetText()</code>, <code>GetThinking()</code>, <code>GetStopReason()</code>, <code>GetInputTokens()</code>, <code>GetOutputTokens()</code>, and the tool calls. Pass <code>Nil</code> as the message to send the history as it stands.</p>
+    <p><code>SetThinking(budget_tokens)</code> turns on extended thinking. The API needs a budget of at least 1024 tokens and a <code>SetMaxTokens</code> above it. While thinking is on the temperature is not sent, and <code>SendJson</code> leaves thinking off for its one request, because the API rejects a forced tool with thinking.</p>
+    <p>What joins the history, so a chat never wedges: a reply that fails is dropped together with the message that asked for it; a refusal (<code>stop_reason</code> <code>refusal</code>) and an empty reply are returned to you but not kept, as the API advises; an empty text block is removed from a turn before it is replayed; thinking blocks, including redacted ones, are replayed whole.</p>
+    <h4 id="tool-use">Tool use</h4>
+    <p>Describe each tool with a name, a description and a JSON schema. When a reply has tool uses, run them, return each result with <code>AddToolResult(use_id, text)</code> and send again. Results for one reply share one user message, as the API requires. Mark a failed tool with <code>AddToolResult(id, text, true)</code>.</p>
+<pre class="line-numbers"><code class="language-cpp">use API.Anthropic;
+use Collection;
+use Data.JSON;
+
+schema := JsonParser-&gt;TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}");
+tools := Vector-&gt;New()&lt;Tool&gt;;
+tools-&gt;AddBack(Tool-&gt;New("get_weather", "Get the weather for a city", schema));
+
+chat := Chat-&gt;New("claude-sonnet-5-5", Nil);
+reply := chat-&gt;SendReply("What is the weather in Paris?", tools);
+while(reply &lt;&gt; Nil &amp; reply-&gt;HasToolUses()) {
+  uses := reply-&gt;GetToolUses();
+  each(i : uses) {
+    call := uses-&gt;Get(i);
+    city := call-&gt;GetArgument("city");
+    chat-&gt;AddToolResult(call-&gt;GetId(), "18C and sunny in {$city}");
+  };
+  reply := chat-&gt;SendReply(Nil, tools);
+};
+reply-&gt;GetText()-&gt;PrintLine();
+</code></pre>
+    <p><code>Tool-&gt;New(func)</code> also takes the <code>FunctionType</code> the other clients use.</p>
+    <h4 id="structured-json-output">Structured JSON output</h4>
+    <p><code>SendJson(question, name, schema)</code> makes the model call a tool whose input schema is the one you give, and returns that input as JSON. It is one-shot: neither the question nor the answer joins the history.</p>
+<pre class="line-numbers"><code class="language-cpp">schema := JsonParser-&gt;TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"},\"temp\":{\"type\":\"integer\"}},\"required\":[\"city\",\"temp\"]}");
+answer := chat-&gt;SendJson("Name a city where it is 18 degrees.", "answer", schema);
+answer-&gt;Get("city")-&gt;GetString()-&gt;PrintLine();
+</code></pre>
+    <h4 id="streaming">Streaming</h4>
+    <p><code>Stream(message, tools)</code> returns a <code>ReplyStream</code>. Read it piece by piece; the exchange joins the history when the stream ends, whether or not you ask for the whole reply, and <code>GetReply()</code> can be called more than once. <code>Close()</code> before the end, an error event and a tool input that was cut off by <code>max_tokens</code> all drop the exchange from the history.</p>
+<pre class="line-numbers"><code class="language-cpp">stream := chat-&gt;Stream("Write a haiku about rivers.", Nil);
+while(stream &lt;&gt; Nil &amp; stream-&gt;HasNext()) {
+  stream-&gt;Next()-&gt;Print();
+};
+reply := stream-&gt;GetReply();
+</code></pre>
+    <p>Streaming works over HTTPS only. A refused request (a bad key, a rate limit) returns <code>Nil</code> with the status and what it usually means in <code>GetLastError()</code>; the body of a refused stream is not read, so the API's own message is not shown there.</p>
+    <p><strong>Tested against a local mock, not the live service.</strong> <code>anthropic_parse_test</code> replays recorded response bodies and event streams, and <code>anthropic_http_test</code> runs the client against a local HTTPS server that speaks the same message shapes, checking the <code>x-api-key</code> and <code>anthropic-version</code> headers, errors, a tool round trip, structured output and streaming. Neither calls api.anthropic.com. If a field or event the live API sends is not handled, the parse test is where to add a recorded case.</p>
     <hr class="section-end">
     <h3 id="gemini-1">Gemini</h3>
     <p><strong>Compile:</strong> <code>obc -src your.obs -lib net,net_server,json,cipher,misc,gemini</code></p>
