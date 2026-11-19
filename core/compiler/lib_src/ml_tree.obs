@@ -119,19 +119,19 @@ preds := forest->Predict(data);
 		#~
 		Predicts class labels by majority vote across all trees (ties resolve to true).
 		@param input matrix of feature rows (a trailing label column is ignored)
-		@return per-row predicted classes
+		@return per-row predicted classes, or Nil if not fitted or the matrix is not the width fitted on
 		~#
 		method : public : Predict(input : Bool[,]) ~ Bool[] {
 			if(<>InputCheck->HasFeatures(input, @cols)) {
 				return Nil;
 			};
 
-			rows := input->Size()[0];
-			result := Bool->New[rows];
-			if(@trees = Nil) {
-				return result;
+			if(<>IsFitted()) {
+				return Nil;
 			};
 
+			rows := input->Size()[0];
+			result := Bool->New[rows];
 			votes := CountVotes(input);
 			ntrees := @trees->Size();
 			for(i := 0; i < rows; i += 1;) {
@@ -210,7 +210,8 @@ auc := Metrics->AucRoc(scores, labels);
 			if(<>IsFitted()) {
 				return 0.0;
 			};
-			if(<>InputCheck->HasFeatures(input, @cols)) {
+			# the label is read from the last column, so the width is the one fitted on
+			if(<>InputCheck->HasCols(input, @cols)) {
 				return 0.0;
 			};
 
@@ -525,7 +526,8 @@ preds := booster->Predict(data);
 			if(<>@is_fitted) {
 				return 0.0;
 			};
-			if(<>InputCheck->HasFeatures(input, @cols)) {
+			# the label is read from the last column, so the width is the one fitted on
+			if(<>InputCheck->HasCols(input, @cols)) {
 				return 0.0;
 			};
 
@@ -888,6 +890,12 @@ pred := tree->Predict([2.5]);
 		~#
 		method : public : Predict(row : Float[]) ~ Float {
 			if(row = Nil) {
+				return 0.0;
+			};
+
+			# a row of another width than the tree was fitted on (a tree read back from a
+			# file has no width on record, and is stopped by a short row below)
+			if(@cols > 0 & row->Size() <> @cols) {
 				return 0.0;
 			};
 
@@ -2399,6 +2407,11 @@ tree->Predict([true, true])->PrintLine();   # true
 				return false;
 			};
 
+			# the features, with or without the label column the tree was fitted with
+			if(@cols > 0 & row->Size() <> @cols & row->Size() <> @cols - 1) {
+				return false;
+			};
+
 			node := @root;
 			while(node <> Nil) {
 				if(node->IsLeaf()) {
@@ -2457,7 +2470,8 @@ tree->Predict([true, true])->PrintLine();   # true
 			if(<>IsFitted()) {
 				return 0.0;
 			};
-			if(<>InputCheck->HasFeatures(input, @cols)) {
+			# the label is read from the last column, so the width is the one fitted on
+			if(<>InputCheck->HasCols(input, @cols)) {
 				return 0.0;
 			};
 

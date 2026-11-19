@@ -1167,7 +1167,22 @@ loaded->Predict(X);
 
 ### Bad input
 
-`Fit`, `Predict`, `Transform` and `Score` do not end the program on a Nil, an empty or a wrong-width matrix, or on targets that do not match its rows. They answer the failure value instead, as scikit-learn raises a `ValueError` you can catch: `Fit` returns `false`, `Predict` and `Transform` return Nil, `Score` returns `0.0`. A model remembers the width it was fitted on, so a feature matrix with a different column count at predict time (the usual mistake, and the one a changed CSV produces) gets Nil. A tree or forest read back from a file has no width on record, so only the shape is checked there. `programs/regression/ml_input_validation.obs` runs every model against Nil, empty, wrong-width and mismatched-target inputs.
+`Fit`, `Predict`, `Transform` and `Score` do not end the program on a Nil, an empty or a wrong-width matrix, or on targets that do not match its rows. They answer a failure value instead, as scikit-learn raises a `ValueError` you can catch. What that value is depends on the method:
+
+| Call | On bad input |
+|---|---|
+| `Fit` of the matrix models (the linear models, `GaussianNaiveBayes`, `PCA`, `FeatureScaler`, `GaussianMixture`, `DBSCAN`, the tree and boosting classes, `KernelSVM`, `OneClassSVM`, `AdaBoost`) | `false` |
+| `DenseNetwork->Fit` | a Float below 0.0 (the loss otherwise) |
+| `DecisionTree->Fit` and `RandomForest->Fit` (the `Bool[,]` ones) | Nil, as always: the failure shows in `IsFitted()` |
+| `Predict`, `PredictScore`, `PredictAll`, `Transform` | Nil |
+| `Score` | `0.0` |
+| `Predict(row)` of `RegressionTree` and `DecisionTree`, whose result has no room for an error | `0.0` / `false`, for a row of another width than the tree was fitted on |
+
+`Score` returns `0.0` for bad input, which is also a real accuracy or R-squared. To tell them apart, call `Predict` on the same matrix first (it is Nil for bad input), or check `IsFitted()`. `Metrics->ThresholdAtFpr` has the same limit: it returns `0.0` for bad input and for a real threshold of 0.0; `Metrics->RecallAtFpr` returns -1.0 for the same input, so check that first.
+
+A model remembers the width it was fitted on, so a feature matrix with a different column count at predict time (the usual mistake, and the one a changed CSV produces) gets Nil. A `Bool[,]` model takes the width of its training matrix, label column included, for `Score` and either that width or one less for `Predict`. A tree or forest read back from a file has no width on record, so only the shape is checked there.
+
+A `Fit` that is refused for its arguments leaves most models as they were: the linear models, the trees and boosters, `GaussianNaiveBayes`, `GaussianMixture`, `PCA`, `FeatureScaler`, `DBSCAN`, `AdaBoost`, the `Bool[,]` trees and forests and `DenseNetwork` (which has no fitted flag, only its weights). `IsFitted()` stays true and `Predict` answers from the earlier fit, as scikit-learn leaves the old model when `fit` raises. `KernelSVM`, `OneClassSVM`, `EmbeddingClassifier` and the outlier detectors mark themselves unfitted at the start of `Fit`, so a refused refit leaves them unfitted, and so does a `Fit` that fails inside the solver (a singular system). Check the result of `Fit`, or `IsFitted()` on a model you meant to fit for the first time, rather than assuming either. `programs/regression/ml_input_validation.obs` runs every model against Nil, empty, wrong-width and mismatched-target inputs.
 
 ```ruby
 if(<>model->Fit(X, y)) {

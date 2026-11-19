@@ -1472,7 +1472,7 @@ r := Metrics->RecallAtFpr(scores, actuals, 0.001);
 		@param scores one score per instance; higher means more positive
 		@param actuals true where the instance really is positive
 		@param max_fpr the false-positive rate that must not be exceeded
-		@return the threshold to classify at, or 0.0 on bad input
+		@return the threshold to classify at; 0.0 on bad input, which is also a real threshold of 0.0, so check that RecallAtFpr is not -1.0 first
 		~#
 		function : ThresholdAtFpr(scores : Float[], actuals : Bool[], max_fpr : Float) ~ Float {
 			points := OperatingPoints(scores, actuals);

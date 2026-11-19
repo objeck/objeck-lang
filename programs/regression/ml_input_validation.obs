@@ -24,6 +24,8 @@ class MlInputValidation {
 
 	function : Main(args : String[]) ~ Nil {
 		Build();
+		BoolWidths();
+		Rows();
 
 		only_model := -1;
 		only_input := -1;
@@ -51,6 +53,98 @@ class MlInputValidation {
 				};
 			};
 		};
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Report(text : String, passed : Bool) ~ Bool {
+		verdict := "FAIL";
+		if(passed) {
+			verdict := "PASS";
+		};
+		"{$verdict}: {$text}"->PrintLine();
+		return passed;
+	}
+
+	# the three Bool models read the label from the last column of Score's matrix, so Score
+	# wants the width they were fitted on; Predict takes that width or one less
+	function : BoolWidths() ~ Nil {
+		Build();
+		ok := true;
+		narrow := Bool->New[8, 2];
+		wide := Bool->New[8, 4];
+
+		# the label is the first feature: a stump predicts it, which AdaBoost needs to fit anything
+		# (the shared matrix's label is not a function of its features), and a row of the right
+		# width is read correctly where a row of another width gets the default
+		simple := Bool->New[8, 3];
+		each(i : 8) {
+			simple[i, 0] := i % 2 = 0;
+			simple[i, 1] := (i / 2) % 2 = 0;
+			simple[i, 2] := simple[i, 0];
+		};
+
+		forest := RandomForest->New(3);
+		ok := Report("an unfitted RandomForest has no prediction for a good matrix", forest->Predict(@boolean) = Nil) & ok;
+		ok := Report("an unfitted RandomForest has no score", forest->PredictScore(@boolean) = Nil) & ok;
+		forest->Fit(@boolean);
+		ok := Report("RandomForest Score on the width fitted on is a number", forest->Score(@boolean) > 0.0) & ok;
+		ok := Report("RandomForest Score on one column less is 0.0", forest->Score(narrow) = 0.0) & ok;
+		ok := Report("RandomForest Score on one column more is 0.0", forest->Score(wide) = 0.0) & ok;
+		ok := Report("RandomForest Predict on one column less still predicts", forest->Predict(narrow) <> Nil) & ok;
+		ok := Report("RandomForest Predict on one column more is Nil", forest->Predict(wide) = Nil) & ok;
+
+		boost := AdaBoost->New(3);
+		ok := Report("AdaBoost fits a matrix whose label a stump predicts", boost->Fit(simple)) & ok;
+		ok := Report("AdaBoost Score on the width fitted on is a number", boost->Score(simple) > 0.0) & ok;
+		ok := Report("AdaBoost Score on one column less is 0.0", boost->Score(narrow) = 0.0) & ok;
+		ok := Report("AdaBoost Score on one column more is 0.0", boost->Score(wide) = 0.0) & ok;
+		ok := Report("AdaBoost Predict on one column less still predicts", boost->Predict(narrow) <> Nil) & ok;
+		ok := Report("AdaBoost Predict on one column more is Nil", boost->Predict(wide) = Nil) & ok;
+
+		tree := DecisionTree->New(3, 1);
+		tree->Fit(@boolean);
+		ok := Report("DecisionTree Score on the width fitted on is a number", tree->Score(@boolean) > 0.0) & ok;
+		ok := Report("DecisionTree Score on one column less is 0.0", tree->Score(narrow) = 0.0) & ok;
+		ok := Report("DecisionTree Score on one column more is 0.0", tree->Score(wide) = 0.0) & ok;
+		ok := Report("DecisionTree PredictAll on one column less still predicts", tree->PredictAll(narrow) <> Nil) & ok;
+		ok := Report("DecisionTree PredictAll on one column more is Nil", tree->PredictAll(wide) = Nil) & ok;
+
+		single := DecisionTree->New(3, 1);
+		single->Fit(simple);
+		ok := Report("DecisionTree Predict(row) of the features alone", single->Predict([true, false])) & ok;
+		ok := Report("DecisionTree Predict(row) of the features and the label", single->Predict([true, false, true])) & ok;
+		ok := Report("DecisionTree Predict(row) of one feature is false, not a partial walk", single->Predict([true]) = false) & ok;
+		ok := Report("DecisionTree Predict(row) of five columns is false", single->Predict([true, false, true, true, true]) = false) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	# RegressionTree->Predict(row) and the DecisionTreeClassifier row bounds
+	function : Rows() ~ Nil {
+		Build();
+		ok := true;
+
+		tree := RegressionTree->New(3, 1);
+		tree->Fit(@good, @reg);
+		ok := Report("RegressionTree Predict(row) of the width fitted on", tree->Predict([4.0, 2.0]) > 0.0) & ok;
+		ok := Report("RegressionTree Predict(row) of one column less is 0.0", tree->Predict([4.0]) = 0.0) & ok;
+		ok := Report("RegressionTree Predict(row) of one column more is 0.0", tree->Predict([4.0, 2.0, 1.0]) = 0.0) & ok;
+
+		# FitRows names the rows to fit; an index outside the matrix, an empty list and a Nil one are refused
+		classifier := DecisionTreeClassifier->New(3, 1);
+		none : Int[] := Nil;
+		ok := Report("FitRows with an index past the last row is false", classifier->FitRows(@good, @lab, [0, 1, 8]) = false) & ok;
+		ok := Report("FitRows with a negative index is false", classifier->FitRows(@good, @lab, [0, -1]) = false) & ok;
+		ok := Report("FitRows with no indexes is false", classifier->FitRows(@good, @lab, Int->New[0]) = false) & ok;
+		ok := Report("FitRows with a Nil list is false", classifier->FitRows(@good, @lab, none) = false) & ok;
+		ok := Report("a refused FitRows leaves the classifier unfitted", classifier->PredictScore(@good) = Nil) & ok;
+		ok := Report("FitRows with valid indexes fits", classifier->FitRows(@good, @lab, [0, 1, 2, 5, 6, 7, 7])) & ok;
+		ok := Report("and predicts", classifier->PredictScore(@good) <> Nil) & ok;
 
 		if(<>ok) {
 			Runtime->Exit(1);
@@ -213,6 +307,37 @@ class MlInputValidation {
 	}
 
 	function : Probe(m : Int, k : Int) ~ Bool {
+		ok := ProbeModel(m, k);
+		if(k >= 5) {
+			ok := BadTargets(m, k) & ok;
+		};
+		return ok;
+	}
+
+	# a fitted model asked to Score a good matrix against targets that do not match it
+	# answers 0.0, and still predicts for the good matrix
+	function : BadTargets(m : Int, k : Int) ~ Bool {
+		reg := Targets(k, @reg);
+		cls := Targets(k, @cls);
+		ok := true;
+		select(m) {
+			label 0: { model := LinearRegression->New(); model->Fit(@good, @reg); ok := (model->Score(@good, reg) = 0.0) & <>None(model->Predict(@good)); }
+			label 1: { model := RidgeRegression->New(0.1); model->Fit(@good, @reg); ok := (model->Score(@good, reg) = 0.0) & <>None(model->Predict(@good)); }
+			label 2: { model := ElasticNet->New(0.1, 0.5); model->Fit(@good, @reg); ok := (model->Score(@good, reg) = 0.0) & <>None(model->Predict(@good)); }
+			label 3: { model := LassoRegression->New(0.1); model->Fit(@good, @reg); ok := (model->Score(@good, reg) = 0.0) & <>None(model->Predict(@good)); }
+			label 4: { model := LogisticRegression->New(0.1, 20); model->Fit(@good, @cls); ok := (model->Score(@good, cls) = 0.0) & <>None(model->Predict(@good)); }
+			label 6: { model := Perceptron->New(0.1, 20); model->Fit(@good, @cls); ok := (model->Score(@good, cls) = 0.0) & <>None(model->Predict(@good)); }
+			label 7: { model := SVM->New(0.01, 0.1, 20); model->Fit(@good, @cls); ok := (model->Score(@good, cls) = 0.0) & <>None(model->Predict(@good)); }
+			label 8: { model := GaussianNaiveBayes->New(); model->Fit(@good, @cls); ok := (model->Score(@good, cls) = 0.0) & <>None(model->Predict(@good)); }
+			label 9: { model := RegressionTree->New(3, 1); model->Fit(@good, @reg); ok := (model->Score(@good, reg) = 0.0) & <>None(model->PredictAll(@good)); }
+			label 10: { model := GradientBoostedTrees->New(5, 0.3, 2, 1); model->Fit(@good, @reg); ok := (model->Score(@good, reg) = 0.0) & <>None(model->Predict(@good)); }
+			label 18: { model := KernelSVM->New(SvmKernel->RBF); model->Fit(@good, @lab); ok := (model->Score(@good, BoolTargets(k)) = 0.0) & <>None(model->DecisionFunction(@good)); }
+			other: { }
+		};
+		return ok;
+	}
+
+	function : ProbeModel(m : Int, k : Int) ~ Bool {
 		select(m) {
 			label 0: { return Linear(LinearRegression->New(), k); }
 			label 1: { return Linear(RidgeRegression->New(0.1), k); }
@@ -267,7 +392,7 @@ class MlInputValidation {
 
 		if(model->TypeOf(LinearRegression)) {
 			lin := model->As(LinearRegression);
-			if(FitMustFail(k)) { ok := (lin->Fit(x, y) = false) & ok; } else { lin->Fit(x, y); };
+			ok := (lin->Fit(x, y) = false) & ok;
 			if(k < 5) {
 				fitted := LinearRegression->New();
 				fitted->Fit(@good, @reg);
@@ -277,7 +402,7 @@ class MlInputValidation {
 		}
 		else if(model->TypeOf(RidgeRegression)) {
 			rr := model->As(RidgeRegression);
-			if(FitMustFail(k)) { ok := (rr->Fit(x, y) = false) & ok; } else { rr->Fit(x, y); };
+			ok := (rr->Fit(x, y) = false) & ok;
 			if(k < 5) {
 				fitted := RidgeRegression->New(0.1);
 				fitted->Fit(@good, @reg);
@@ -287,7 +412,7 @@ class MlInputValidation {
 		}
 		else if(model->TypeOf(LassoRegression)) {
 			la := model->As(LassoRegression);
-			if(FitMustFail(k)) { ok := (la->Fit(x, y) = false) & ok; } else { la->Fit(x, y); };
+			ok := (la->Fit(x, y) = false) & ok;
 			if(k < 5) {
 				fitted := LassoRegression->New(0.1);
 				fitted->Fit(@good, @reg);
@@ -297,7 +422,7 @@ class MlInputValidation {
 		}
 		else {
 			en := model->As(ElasticNet);
-			if(FitMustFail(k)) { ok := (en->Fit(x, y) = false) & ok; } else { en->Fit(x, y); };
+			ok := (en->Fit(x, y) = false) & ok;
 			if(k < 5) {
 				fitted := ElasticNet->New(0.1, 0.5);
 				fitted->Fit(@good, @reg);
@@ -314,7 +439,7 @@ class MlInputValidation {
 		y := Targets(k, @cls);
 		ok := true;
 		model := LogisticRegression->New(0.1, 20);
-		if(FitMustFail(k)) { ok := (model->Fit(x, y) = false) & ok; } else { model->Fit(x, y); };
+		ok := (model->Fit(x, y) = false) & ok;
 		if(k < 5) {
 			fitted := LogisticRegression->New(0.1, 20);
 			fitted->Fit(@good, @cls);
@@ -330,7 +455,7 @@ class MlInputValidation {
 		y := BoolTargets(k);
 		ok := true;
 		model := LogisticRegression->New(0.1, 20);
-		if(FitMustFail(k)) { ok := (model->Fit(x, y) = false) & ok; } else { model->Fit(x, y); };
+		ok := (model->Fit(x, y) = false) & ok;
 		if(k < 5) {
 			fitted := LogisticRegression->New(0.1, 20);
 			fitted->Fit(@good, @lab);
@@ -345,7 +470,7 @@ class MlInputValidation {
 		y := Targets(k, @cls);
 		ok := true;
 		model := Perceptron->New(0.1, 20);
-		if(FitMustFail(k)) { ok := (model->Fit(x, y) = false) & ok; } else { model->Fit(x, y); };
+		ok := (model->Fit(x, y) = false) & ok;
 		if(k < 5) {
 			fitted := Perceptron->New(0.1, 20);
 			fitted->Fit(@good, @cls);
@@ -361,7 +486,7 @@ class MlInputValidation {
 		y := Targets(k, @cls);
 		ok := true;
 		model := SVM->New(0.01, 0.1, 20);
-		if(FitMustFail(k)) { ok := (model->Fit(x, y) = false) & ok; } else { model->Fit(x, y); };
+		ok := (model->Fit(x, y) = false) & ok;
 		if(k < 5) {
 			fitted := SVM->New(0.01, 0.1, 20);
 			fitted->Fit(@good, @cls);
@@ -377,7 +502,7 @@ class MlInputValidation {
 		y := Targets(k, @cls);
 		ok := true;
 		model := GaussianNaiveBayes->New();
-		if(FitMustFail(k)) { ok := (model->Fit(x, y) = false) & ok; } else { model->Fit(x, y); };
+		ok := (model->Fit(x, y) = false) & ok;
 		if(k < 5) {
 			fitted := GaussianNaiveBayes->New();
 			fitted->Fit(@good, @cls);
@@ -393,7 +518,7 @@ class MlInputValidation {
 		y := Targets(k, @reg);
 		ok := true;
 		model := RegressionTree->New(3, 1);
-		if(FitMustFail(k)) { ok := (model->Fit(x, y) = false) & ok; } else { model->Fit(x, y); };
+		ok := (model->Fit(x, y) = false) & ok;
 		if(k < 5) {
 			fitted := RegressionTree->New(3, 1);
 			fitted->Fit(@good, @reg);
@@ -408,7 +533,7 @@ class MlInputValidation {
 		y := Targets(k, @reg);
 		ok := true;
 		model := GradientBoostedTrees->New(5, 0.3, 2, 1);
-		if(FitMustFail(k)) { ok := (model->Fit(x, y) = false) & ok; } else { model->Fit(x, y); };
+		ok := (model->Fit(x, y) = false) & ok;
 		if(k < 5) {
 			fitted := GradientBoostedTrees->New(5, 0.3, 2, 1);
 			fitted->Fit(@good, @reg);
@@ -423,7 +548,7 @@ class MlInputValidation {
 		y := BoolTargets(k);
 		ok := true;
 		model := DecisionTreeClassifier->New(3, 1);
-		if(FitMustFail(k)) { ok := (model->Fit(x, y) = false) & ok; } else { model->Fit(x, y); };
+		ok := (model->Fit(x, y) = false) & ok;
 		if(k < 5) {
 			fitted := DecisionTreeClassifier->New(3, 1);
 			fitted->Fit(@good, @lab);
@@ -438,7 +563,7 @@ class MlInputValidation {
 		y := BoolTargets(k);
 		ok := true;
 		model := RandomForestClassifier->New(4, 3, 1, 1);
-		if(FitMustFail(k)) { ok := (model->Fit(x, y) = false) & ok; } else { model->Fit(x, y); };
+		ok := (model->Fit(x, y) = false) & ok;
 		if(k < 5) {
 			fitted := RandomForestClassifier->New(4, 3, 1, 1);
 			fitted->Fit(@good, @lab);
@@ -453,7 +578,7 @@ class MlInputValidation {
 		y := BoolTargets(k);
 		ok := true;
 		model := GradientBoostedClassifier->New(4, 0.3, 2, 1);
-		if(FitMustFail(k)) { ok := (model->Fit(x, y) = false) & ok; } else { model->Fit(x, y); };
+		ok := (model->Fit(x, y) = false) & ok;
 		if(k < 5) {
 			fitted := GradientBoostedClassifier->New(4, 0.3, 2, 1);
 			fitted->Fit(@good, @lab);
@@ -469,7 +594,12 @@ class MlInputValidation {
 		ok := true;
 		if(k < 5) {
 			model := PCA->New(2);
-			if(FitMustFail(k)) { ok := (model->Fit(x) = false) & ok; } else { model->Fit(x); };
+			if(FitMustFail(k)) {
+				ok := (model->Fit(x) = false) & ok;
+			}
+			else if(model->Fit(x)) {
+				ok := None(model->Transform(@good)) & ok;
+			};
 			fitted := PCA->New(2);
 			fitted->Fit(@good);
 			ok := None(fitted->Transform(x)) & ok;
@@ -483,7 +613,12 @@ class MlInputValidation {
 		ok := true;
 		if(k < 5) {
 			model := FeatureScaler->New();
-			if(FitMustFail(k)) { ok := (model->Fit(x) = false) & ok; } else { model->Fit(x); };
+			if(FitMustFail(k)) {
+				ok := (model->Fit(x) = false) & ok;
+			}
+			else if(model->Fit(x)) {
+				ok := None(model->Transform(@good)) & ok;
+			};
 			fitted := FeatureScaler->New();
 			fitted->Fit(@good);
 			ok := None(fitted->Transform(x)) & ok;
@@ -499,7 +634,12 @@ class MlInputValidation {
 		ok := true;
 		if(k < 5) {
 			model := DBSCAN->New(1.5, 2);
-			if(FitMustFail(k)) { ok := (model->Fit(x) = false) & ok; } else { model->Fit(x); };
+			if(FitMustFail(k)) {
+				ok := (model->Fit(x) = false) & ok;
+			}
+			else {
+				ok := model->Fit(x) & ok;
+			};
 		};
 		return ok;
 	}
@@ -509,7 +649,12 @@ class MlInputValidation {
 		ok := true;
 		if(k < 5) {
 			model := GaussianMixture->New(2, 1);
-			if(FitMustFail(k)) { ok := (model->Fit(x) = false) & ok; } else { model->Fit(x); };
+			if(FitMustFail(k)) {
+				ok := (model->Fit(x) = false) & ok;
+			}
+			else if(model->Fit(x)) {
+				ok := None(model->Predict(@good)) & ok;
+			};
 			fitted := GaussianMixture->New(2, 1);
 			fitted->Fit(@good);
 			ok := None(fitted->Predict(x)) & ok;
@@ -523,7 +668,7 @@ class MlInputValidation {
 		y := BoolTargets(k);
 		ok := true;
 		model := KernelSVM->New(SvmKernel->RBF);
-		if(FitMustFail(k)) { ok := (model->Fit(x, y) = false) & ok; } else { model->Fit(x, y); };
+		ok := (model->Fit(x, y) = false) & ok;
 		if(k < 5) {
 			fitted := KernelSVM->New(SvmKernel->RBF);
 			fitted->Fit(@good, @lab);
@@ -538,7 +683,12 @@ class MlInputValidation {
 		ok := true;
 		if(k < 5) {
 			model := OneClassSVM->New(SvmKernel->RBF);
-			if(FitMustFail(k)) { ok := (model->Fit(x) = false) & ok; } else { model->Fit(x); };
+			if(FitMustFail(k)) {
+				ok := (model->Fit(x) = false) & ok;
+			}
+			else if(model->Fit(x)) {
+				ok := None(model->DecisionFunction(@good)) & ok;
+			};
 			fitted := OneClassSVM->New(SvmKernel->RBF);
 			fitted->Fit(@good);
 			ok := None(fitted->DecisionFunction(x)) & ok;
@@ -570,6 +720,9 @@ class MlInputValidation {
 			each(d : trained) {
 				if(FitMustFail(k)) {
 					ok := (untrained[d]->Fit(x) = false) & ok;
+				}
+				else if(untrained[d]->Fit(x)) {
+					ok := None(untrained[d]->Score(@good)) & ok;
 				};
 				trained[d]->Fit(@good);
 				ok := None(trained[d]->Score(x)) & ok;
@@ -586,7 +739,7 @@ class MlInputValidation {
 		ok := true;
 		sizes := [2, 3, 1];
 		model := DenseNetwork->New(sizes, DenseNetwork->Activation->TANH, DenseNetwork->Activation->LINEAR, 1);
-		if(FitMustFail(k)) { ok := (model->Fit(x, y, 2) < 0.0) & ok; } else { model->Fit(x, y, 2); };
+		ok := (model->Fit(x, y, 2) < 0.0) & ok;
 		if(k < 5) {
 			fitted := DenseNetwork->New(sizes, DenseNetwork->Activation->TANH, DenseNetwork->Activation->LINEAR, 1);
 			fitted->Fit(@good, @reg, 2);
@@ -603,6 +756,9 @@ class MlInputValidation {
 			model->Fit(x);
 			if(FitMustFail(k)) {
 				ok := (model->IsFitted() = false) & ok;
+			}
+			else {
+				ok := None(model->Predict(BoolMatrix(5))) & ok;
 			};
 			fitted := RandomForest->New(3);
 			fitted->Fit(@boolean);
@@ -620,6 +776,9 @@ class MlInputValidation {
 			model := AdaBoost->New(3);
 			if(FitMustFail(k)) {
 				ok := (model->Fit(x) = false) & ok;
+			}
+			else if(model->Fit(x)) {
+				ok := None(model->Predict(BoolMatrix(5))) & ok;
 			};
 			fitted := AdaBoost->New(3);
 			fitted->Fit(@boolean);
@@ -637,6 +796,9 @@ class MlInputValidation {
 			model->Fit(x);
 			if(FitMustFail(k)) {
 				ok := (model->IsFitted() = false) & ok;
+			}
+			else {
+				ok := None(model->PredictAll(BoolMatrix(5))) & ok;
 			};
 			fitted := DecisionTree->New(3, 1);
 			fitted->Fit(@boolean);
