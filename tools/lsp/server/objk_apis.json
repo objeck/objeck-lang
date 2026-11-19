@@ -17342,6 +17342,9 @@
 				"GetDocumentTopicMatrix": {
 					"descriptions": ["**The topic mixtures of every document, flat: document d's mixture is entries d*num_topics to d*num_topics+num_topics-1.**\n\n```method : public : GetDocumentTopicMatrix(corpus:TopicCorpus) ~ Float[]```\n\n\n\ncorpus: TopicCorpus\n\nreturn: Float[]"]
 				},
+				"GetDocumentTopicMatrix2D": {
+					"descriptions": ["**The topic mixtures of every document as a matrix, one row per document and one column per topic, the shape a classifier's Fit takes. The same numbers as GetDocumentTopicMatrix.**\n\n```method : public : GetDocumentTopicMatrix2D(corpus:TopicCorpus) ~ Float[,]```\n\n\n\ncorpus: TopicCorpus\n\nreturn: Float[,]"]
+				},
 				"GetDocumentTopics": {
 					"descriptions": ["**The topic mixture of one document: p(topic | document), summing to 1, from the E step run to convergence on the trained topics. A document with no words gets the normalized alpha. The result does not depend on which other documents were asked about before.**\n\n```method : public : GetDocumentTopics(corpus:TopicCorpus, doc:Int) ~ Float[]```\n\n\n\ncorpus: TopicCorpus\n\ndoc: Int\n\nreturn: Float[]"]
 				},
@@ -17353,6 +17356,9 @@
 				},
 				"GetLambda": {
 					"descriptions": ["**The topic-word pseudo-counts lambda that the model learned, in Gensim's layout: lambda[k * vocabulary + w] belongs to topic k and word w (lambda = eta + expected counts). p(word | topic) is each row divided by its sum.**\n\n```method : public : GetLambda() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetLambda2D": {
+					"descriptions": ["**The topic-word pseudo-counts as a matrix, one row per topic and one column per word. The same numbers as GetLambda.**\n\n```method : public : GetLambda2D() ~ Float[,]```\n\n\n\nreturn: Float[,]"]
 				},
 				"GetTopic": {
 					"descriptions": ["**The highest-probability words of one topic.**\n\n```method : public : GetTopic(topic:Int, top_n:Int) ~ TopicTerms```\n\n\n\ntopic: Int\n\ntop_n: Int\n\nreturn: TopicTerms"]
@@ -17371,6 +17377,9 @@
 				},
 				"IsFitted": {
 					"descriptions": ["**True after a successful Fit or Load.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsValid": {
+					"descriptions": ["**Whether the settings given to the constructor are usable; when false, Fit refuses and GetError says which setting.**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"Load": {
 					"descriptions": ["**Reads a model written by Save. A file that is missing, is not a model, is from a newer format, fails its checksum or holds impossible values gives Nil rather than ending the program.**\n\n```function : Load(filename:String) ~ Lda```\n\n\n\nfilename: String\n\nreturn: Lda"]
@@ -17401,6 +17410,9 @@
 				},
 				"SetLearningRate": {
 					"descriptions": ["**Sets the learning-rate schedule rho = (offset + t) ^ -decay (defaults offset 1, decay 0.5).**\n\n```method : public : SetLearningRate(offset:Float, decay:Float) ~ Bool```\n\n\n\noffset: Float\n\ndecay: Float\n\nreturn: Bool"]
+				},
+				"Store": {
+					"descriptions": ["**The same as Save, under the name the System.ML models use (Store and Load).**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -17520,6 +17532,9 @@
 				},
 				"JaccardMatrix": {
 					"descriptions": ["**Jaccard similarity of the top-k word sets of every pair of topics: a flat topics-by-topics matrix, 1 on the diagonal.**\n\n```function : JaccardMatrix(topics:Vector&lt;TopicTerms&gt;, top_k:Int) ~ Float[]```\n\n\n\ntopics: Vector&lt;TopicTerms&gt;\n\ntop_k: Int\n\nreturn: Float[]"]
+				},
+				"JaccardMatrix2D": {
+					"descriptions": ["**JaccardMatrix as a topics-by-topics matrix.**\n\n```function : JaccardMatrix2D(topics:Vector&lt;TopicTerms&gt;, top_k:Int) ~ Float[,]```\n\n\n\ntopics: Vector&lt;TopicTerms&gt;\n\ntop_k: Int\n\nreturn: Float[,]"]
 				},
 				"Mean": {
 					"descriptions": ["**The mean of a list of per-topic values, skipping NaN entries.**\n\n```function : Mean(values:Float[]) ~ Float```\n\n\n\nvalues: Float[]\n\nreturn: Float"]

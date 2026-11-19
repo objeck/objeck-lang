@@ -495,6 +495,29 @@ bundle System.NLP.Topics {
 		}
 
 		#~
+		JaccardMatrix as a topics-by-topics matrix.
+		@param topics topics with their top words
+		@param top_k how many top words of each topic to use, 1 or more
+		@return the matrix, or Nil as JaccardMatrix
+		~#
+		function : JaccardMatrix2D(topics : Vector<TopicTerms>, top_k : Int) ~ Float[,] {
+			flat := JaccardMatrix(topics, top_k);
+			if(flat = Nil) {
+				return Nil;
+			};
+
+			k := topics->Size();
+			out := Float->New[k, k];
+			for(a := 0; a < k; a += 1;) {
+				for(b := 0; b < k; b += 1;) {
+					out[a, b] := flat[a * k + b];
+				};
+			};
+
+			return out;
+		}
+
+		#~
 		Topic overlap: the mean Jaccard similarity over all pairs of different topics (see JaccardMatrix). 0 means no two topics share a top word, 1 means all lists are identical.
 		@param topics topics with their top words
 		@param top_k how many top words of each topic to use, 1 or more

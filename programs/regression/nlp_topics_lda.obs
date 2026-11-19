@@ -536,6 +536,19 @@ class NlpTopicsLda {
 		System.IO.Filesystem.File->Delete(path);
 		System.IO.Filesystem.File->Delete("nlp_topics_lda_bad.model");
 
+		ok := Report("Store is Save: the file loads back to the same topics", lda->Store(path) & Lda->Load(path)->GetTopic(1, 5)->ToString()->Equals(lda->GetTopic(1, 5)->ToString())) & ok;
+		System.IO.Filesystem.File->Delete(path);
+		matrix := lda->GetDocumentTopicMatrix(corpus);
+		matrix2 := lda->GetDocumentTopicMatrix2D(corpus);
+		dims := matrix2->Size();
+		ok := Report("GetDocumentTopicMatrix2D is documents by topics with the same numbers", dims[0] = corpus->GetNumDocs() & dims[1] = 4 & matrix2[7, 2] = matrix[7 * 4 + 2] & matrix2[0, 0] = matrix[0]) & ok;
+		lambda := lda->GetLambda();
+		lambda2 := lda->GetLambda2D();
+		ldims := lambda2->Size();
+		ok := Report("GetLambda2D is topics by words with the same numbers", ldims[0] = 4 & ldims[1] = lda->GetVocabSize() & lambda2[3, 5] = lambda[3 * lda->GetVocabSize() + 5]) & ok;
+		ok := Report("the 2D accessors give Nil for an unfitted model", Lda->New(2, 0.0, 0.0, 1, 10, 1)->GetLambda2D() = Nil & Lda->New(2, 0.0, 0.0, 1, 10, 1)->GetDocumentTopicMatrix2D(corpus) = Nil) & ok;
+		ok := Report("IsValid is true for good settings, false for bad ones, and GetError is empty, never Nil", lda->IsValid() & Lda->New(0, 0.1, 0.1, 1, 1, 1)->IsValid() = false & lda->GetError()->Size() = 0 & BsonReader->New(Byte->New[0])->GetError()->Size() = 0 & TokenDictionary->New()->GetError()->Size() = 0) & ok;
+
 		unfitted := Lda->New(2, 0.0, 0.0, 1, 10, 1);
 		ok := Report("Save of an unfitted model, with a Nil name and with an empty name is false", unfitted->Save("x.model") = false & lda->Save(Nil) = false & lda->Save("") = false) & ok;
 		return ok;

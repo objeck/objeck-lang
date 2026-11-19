@@ -1030,6 +1030,57 @@ lda->LogPerplexityBound(corpus)->PrintLine();
 		}
 
 		#~
+		The topic mixtures of every document as a matrix, one row per document and one column per topic, the shape a classifier's Fit takes. The same numbers as GetDocumentTopicMatrix.
+		@param corpus a corpus made with the same dictionary
+		@return documents by num_topics, or Nil when unfitted or the vocabulary size differs
+		~#
+		method : public : GetDocumentTopicMatrix2D(corpus : TopicCorpus) ~ Float[,] {
+			flat := GetDocumentTopicMatrix(corpus);
+			if(flat = Nil) {
+				return Nil;
+			};
+
+			kk := @k;
+			nd := corpus->GetNumDocs();
+			out := Float->New[nd, kk];
+			for(d := 0; d < nd; d += 1;) {
+				for(k := 0; k < kk; k += 1;) {
+					out[d, k] := flat[d * kk + k];
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		The topic-word pseudo-counts as a matrix, one row per topic and one column per word. The same numbers as GetLambda.
+		@return num_topics by vocabulary, or Nil when unfitted
+		~#
+		method : public : GetLambda2D() ~ Float[,] {
+			flat := GetLambda();
+			if(flat = Nil) {
+				return Nil;
+			};
+
+			out := Float->New[@k, @v];
+			for(k := 0; k < @k; k += 1;) {
+				for(w := 0; w < @v; w += 1;) {
+					out[k, w] := flat[k * @v + w];
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		Whether the settings given to the constructor are usable; when false, Fit refuses and GetError says which setting.
+		@return true when the configuration is valid
+		~#
+		method : public : IsValid() ~ Bool {
+			return @config_error->Size() = 0;
+		}
+
+		#~
 		The per-word likelihood bound of a corpus under the model: Gensim's LdaModel.log_perplexity. A negative number; higher (closer to 0) is better. This is NOT perplexity: Perplexity() = exp(-bound). See the class description.
 		@param corpus a corpus made with the same dictionary
 		@return the bound per word occurrence, or NaN when unfitted, the vocabulary size differs or the corpus has no words
@@ -1229,6 +1280,15 @@ lda->LogPerplexityBound(corpus)->PrintLine();
 
 			@error := "";
 			return true;
+		}
+
+		#~
+		The same as Save, under the name the System.ML models use (Store and Load).
+		@param filename file to write
+		@return true on success, false (GetError says why) otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			return Save(filename);
 		}
 
 		#~

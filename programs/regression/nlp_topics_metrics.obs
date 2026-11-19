@@ -225,6 +225,9 @@ class NlpTopicsMetrics {
 		ok := Report("overlap, top 1: {x} against {x} is 1, so the mean is 1/3", Close(TopicMetrics->Overlap(topics, 1), 1.0 / 3.0, 0.000000000001)) & ok;
 		matrix := TopicMetrics->JaccardMatrix(topics, 3);
 		ok := Report("the Jaccard matrix is symmetric with a unit diagonal", matrix->Size() = 9 & matrix[0] = 1.0 & matrix[4] = 1.0 & matrix[8] = 1.0 & Close(matrix[1], 0.2, 0.000000000001) & matrix[1] = matrix[3] & matrix[2] = 0.0 & matrix[5] = 0.0) & ok;
+		m2 := TopicMetrics->JaccardMatrix2D(topics, 3);
+		m2_dims := m2->Size();
+		ok := Report("JaccardMatrix2D is the same matrix, 3 by 3", m2_dims[0] = 3 & m2_dims[1] = 3 & m2[0, 1] = matrix[1] & m2[2, 2] = 1.0 & TopicMetrics->JaccardMatrix2D(Nil, 3) = Nil) & ok;
 		return ok;
 	}
 
