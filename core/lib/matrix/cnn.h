@@ -57,6 +57,9 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#ifdef OBJK_CNN_PROFILE
+#include <chrono>
+#endif
 
 #ifdef _WIN32
 #ifdef _MSYS2
@@ -109,18 +112,20 @@ class Pool {
   std::mutex call_mutex_;
   const std::function<void(long, int)>* job_;
   long total_;
-  std::atomic<long> next_;
   unsigned long generation_;
   int finished_;
   bool stop_;
   int threads_;
 
+  // Static partition: thread `tid` runs a fixed contiguous block of the indexes. Dynamic
+  // scheduling would balance better, but which thread runs which sample would change from run
+  // to run, and with it the order float32 partial sums are added in (the per-thread gradient
+  // accumulators), so training would not repeat bit for bit. Samples cost the same, so little
+  // is lost.
   void Work(int tid) {
-    for(;;) {
-      const long i = next_.fetch_add(1);
-      if(i >= total_) {
-        break;
-      }
+    const long threads = threads_;
+    const long lo = total_ * tid / threads, hi = total_ * (tid + 1) / threads;
+    for(long i = lo; i < hi; ++i) {
       (*job_)(i, tid);
     }
   }
@@ -160,7 +165,7 @@ class Pool {
   }
 
  public:
-  Pool() : job_(nullptr), total_(0), next_(0), generation_(0), finished_(0), stop_(false), threads_(1) {
+  Pool() : job_(nullptr), total_(0), generation_(0), finished_(0), stop_(false), threads_(1) {
     unsigned hw = std::thread::hardware_concurrency();
     SetThreads((int)std::min(8u, hw ? hw : 1u));
   }
@@ -170,6 +175,15 @@ class Pool {
   ~Pool() {}
 
   int Threads() const { return threads_; }
+
+  // Joins the workers. The VM calls unload_lib and then unloads the library, and a thread
+  // still waiting inside it would run unmapped code, so the library stops them first.
+  // Afterwards For runs everything on the calling thread.
+  void Shutdown() {
+    std::lock_guard<std::mutex> call_lock(call_mutex_);
+    Stop();
+    threads_ = 1;
+  }
 
   void SetThreads(int count) {
     std::lock_guard<std::mutex> call_lock(call_mutex_);
@@ -205,7 +219,6 @@ class Pool {
       std::lock_guard<std::mutex> lock(mutex_);
       job_ = &f;
       total_ = n;
-      next_.store(0);
       finished_ = 0;
       generation_++;
     }
@@ -839,6 +852,19 @@ class Sequential {
   int last_n_;
   int last_correct_;
   std::string error_;
+#ifdef OBJK_CNN_PROFILE
+ public:
+  std::vector<double> prof_fwd_ = std::vector<double>(64, 0.0), prof_bwd_ = std::vector<double>(64, 0.0);
+  static double ProfNow() {
+    return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+  }
+  void ProfDump() {
+    for(size_t i = 0; i < layers_.size(); ++i) {
+      std::printf("  layer %2zu %-22s fwd %8.4f s  bwd %8.4f s\n", i, layers_[i]->Describe().c_str(), prof_fwd_[i], prof_bwd_[i]);
+    }
+  }
+ private:
+#endif
 
   Layer<T>* Add(Layer<T>* layer) {
     std::unique_ptr<Layer<T>> own(layer);
@@ -855,12 +881,13 @@ class Sequential {
     return layers_.back().get();
   }
 
-  static T Sigmoid(T z) {
-    if(z >= 0) {
-      return (T)(1.0 / (1.0 + std::exp(-(double)z)));
+  // computed in double whatever T is, so a probability is exact to float32 at worst
+  static double Sigmoid(double z) {
+    if(z >= 0.0) {
+      return 1.0 / (1.0 + std::exp(-z));
     }
-    const double e = std::exp((double)z);
-    return (T)(e / (1.0 + e));
+    const double e = std::exp(z);
+    return e / (1.0 + e);
   }
 
   void Ensure(int n) {
@@ -983,7 +1010,13 @@ class Sequential {
     Pool& pool = Pool::Instance();
     const T* cur = x;
     for(size_t i = 0; i < layers_.size(); ++i) {
+#ifdef OBJK_CNN_PROFILE
+      const double t0 = ProfNow();
+#endif
       layers_[i]->Forward(cur, acts_[i].data(), n, training, pool);
+#ifdef OBJK_CNN_PROFILE
+      prof_fwd_[i] += ProfNow() - t0;
+#endif
       cur = acts_[i].data();
     }
     last_n_ = n;
@@ -1005,7 +1038,13 @@ class Sequential {
         }
         gin = input_grad_.data();
       }
+#ifdef OBJK_CNN_PROFILE
+      const double t0 = ProfNow();
+#endif
       layers_[i]->Backward(in, acts_[i].data(), grads_[i].data(), gin, n, pool);
+#ifdef OBJK_CNN_PROFILE
+      prof_bwd_[i] += ProfNow() - t0;
+#endif
     }
   }
 
@@ -1021,7 +1060,7 @@ class Sequential {
         correct++;
       }
       if(g) {
-        g[i] = (T)(((double)Sigmoid(logits[i]) - t) / n);
+        g[i] = (T)((Sigmoid((double)logits[i]) - t) / n);
       }
     }
     last_correct_ = correct;
@@ -1112,7 +1151,7 @@ class Sequential {
   void Probabilities(const T* logits, int n, std::vector<double>& out) {
     out.resize(n);
     for(int i = 0; i < n; ++i) {
-      out[i] = (double)Sigmoid(logits[i]);
+      out[i] = Sigmoid((double)logits[i]);
     }
   }
 

@@ -338,11 +338,21 @@ static int IntArg(VMContext& context, size_t index) {
   return v > 2000000000LL ? 2000000000 : (v < -2000000000LL ? -2000000000 : (int)v);
 }
 
+// "no result": the holder object the caller passed in (a FloatArrayRef or IntArrayRef)
+// stays, its array is left unset, and Get() on it answers Nil
 static void Nothing(VMContext& context) {
-  APITools_SetObjectValue(context, 0, 0);
+  size_t* holder = APITools_GetObjectValue(context, 0);
+  if(holder) {
+    holder[0] = 0;
+  }
 }
 
 }  // namespace objk_cnn_api
+
+// called from unload_lib (matrix.cpp): stops the worker threads before the library is unmapped
+void objk_cnn_shutdown() {
+  objk_cnn::Pool::Instance().Shutdown();
+}
 
 #ifdef _WIN32
 #define OBJK_CNN_EXPORT __declspec(dllexport)

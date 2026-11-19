@@ -7,7 +7,7 @@ float32 model compiled for double. In float32 a central difference cannot resolv
 better than about 1e-3 (the loss itself is only good to 6 digits), so a float32 check would have to
 be loose enough to hide a real bug; in float64, with step h = 1e-5, the truncation error is about
 h^2 (1e-10) and the rounding error about 1e-15 / h (1e-10), and a correct backward pass agrees to better than 1e-7 (measured: the worst of
-3,000 checked values is 9e-8).
+about 5,500 checked values is 9e-8).
 
 For each parameter p (all of them in the small networks, a random sample of 400 in the baseline)
 and for sampled input pixels the test computes (L(p + h) - L(p - h)) / 2h and compares it with the

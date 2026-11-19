@@ -1,0 +1,756 @@
+# EXTRA_LIBS: ml_cnn,ml,ml_lab,opencv,csv,gen_collect
+#~
+System.ML.Cnn edge cases and exact-value checks.
+
+  * parameter counts against the closed form (conv: filters x (channels x k x k) + filters, dense:
+    units x inputs + units), including the baseline at 224 x 224, which must be 5,561,633;
+  * odd image sizes, 1 and 3 channels, a batch of 1, output shapes;
+  * the loss against values worked out by hand (z = 0 gives ln 2, z = 2 gives log(1 + e^-2)) and its
+    stability for logits of +-30000;
+  * dropout: the same seed gives the same masks, a different seed does not, evaluation mode is the
+    identity, every survivor is scaled by 1 / (1 - rate), the dropped fraction is about the rate and
+    ResetDropout replays a mask;
+  * max pooling with ties sends the gradient to the first maximum of a window only;
+  * one SGD step is w - lr * g, and the first Adam step moves every weight by lr (the bias correction
+    cancels the moments), to within epsilon;
+  * Glorot and Kaiming uniform initial weights stay inside their limits, biases start at zero, and
+    the same seed gives the same weights;
+  * Save then Load is bit-exact, and a file of another architecture, a truncated or foreign file or a
+    missing one is refused and leaves the model as it was;
+  * bad input answers a failure value and never ends the program: Nil or empty batches, a wrong
+    size, a model that is not compiled, layers that do not fit, an invalid or closed model.
+~#
+
+use System.ML.Cnn;
+use System.IO.Filesystem;
+
+class MlCnnEdges {
+	@state : static : Int;
+	@fail : static : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		@state := 777;
+		@fail := false;
+
+		ParamCounts();
+		Shapes();
+		LossValues();
+		Dropout();
+		PoolTies();
+		Optimizers();
+		Initializers();
+		SaveLoad();
+		BadInput();
+		Determinism();
+
+		if(@fail) {
+			Runtime->Exit(1);
+		};
+		"ml_cnn_edges: ok"->PrintLine();
+	}
+
+	function : Report(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@fail := true;
+		};
+	}
+
+	function : Rand() ~ Float {
+		@state := (@state * 1103515245 + 12345) % 2147483648;
+		return @state->As(Float) / 2147483648.0;
+	}
+
+	function : Randoms(n : Int) ~ Float[] {
+		values := Float->New[n];
+		each(i : n) {
+			values[i] := Rand();
+		};
+
+		return values;
+	}
+
+	# the closed form: blocks of Conv(3x3) + ReLU + MaxPool(2) with 16, 32, ... filters, then Dense(dense) and Dense(1)
+	function : Expected(size : Int, blocks : Int, dense : Int, same : Bool) ~ Int {
+		total := 0;
+		c := 3;
+		f := 16;
+		s := size;
+		for(b := 0; b < blocks; b += 1;) {
+			total += f * (c * 3 * 3) + f;
+			if(same = false) {
+				s := s - 2;
+			};
+			s := s / 2;
+			c := f;
+			f := f * 2;
+		};
+		flat := c * s * s;
+		total += dense * flat + dense;
+		total += dense * 1 + 1;
+		return total;
+	}
+
+	function : ParamCounts() ~ Nil {
+		"parameter counts"->PrintLine();
+		# the baseline of the study: three blocks at 224 x 224, Dense(128). By hand: conv1 3->16 = 16 x 27 + 16 = 448;
+		# conv2 16->32 = 32 x 144 + 32 = 4,640; conv3 32->64 = 64 x 288 + 64 = 18,496; 224 -> 222 -> 111 -> 109 -> 54 -> 52 -> 26,
+		# so the flatten has 26 x 26 x 64 = 43,264 values; dense1 = 128 x 43,264 + 128 = 5,537,920; dense2 = 128 + 1 = 129
+		model := CnnModel->Baseline(224, 3, 0.1, 128, 0.0001, 1);
+		Report("baseline 224: model built", model <> Nil);
+		if(model <> Nil) {
+			Report("baseline 224: 5,561,633 parameters (448 + 4,640 + 18,496 + 5,537,920 + 129), got {$model->GetParameterCount()}", model->GetParameterCount() = 5561633);
+			Report("baseline 224: the closed form in the test agrees", Expected(224, 3, 128, false) = 5561633);
+			weights := model->GetWeights();
+			Report("baseline 224: GetWeights holds one value per parameter", weights <> Nil & weights->Size() = 5561633);
+			model->Close();
+		};
+
+		sizes := [64, 128, 224, 224, 224, 96];
+		blocks := [3, 3, 2, 3, 4, 2];
+		dense := [128, 128, 128, 64, 256, 32];
+		each(i : sizes) {
+			m := CnnModel->Baseline(sizes[i], blocks[i], 0.3, dense[i], 0.001, 2);
+			want := Expected(sizes[i], blocks[i], dense[i], false);
+			Report("baseline {$sizes[i]}, {$blocks[i]} blocks, dense {$dense[i]}: {$want} parameters", m <> Nil & m->GetParameterCount() = want);
+			if(m <> Nil) {
+				m->Close();
+			};
+		};
+
+		# 'same' padding keeps the size, so the flatten is larger
+		m := CnnModel->New(3, 32, 32, 3);
+		ok := m->AddConv(16, 3, 1, Padding->SAME) & m->AddReLU() & m->AddMaxPool(2) & m->AddConv(32, 3, 1, Padding->SAME) & m->AddReLU() & m->AddMaxPool(2);
+		ok := ok & m->AddFlatten() & m->AddDense(10) & m->AddDense(1) & m->Compile(0.001);
+		# 32 -> 16 -> 8, flatten 8 x 8 x 32 = 2048
+		want := (16 * 27 + 16) + (32 * 144 + 32) + (10 * 2048 + 10) + 11;
+		Report("same padding: {$want} parameters", ok & m->GetParameterCount() = want);
+		m->Close();
+
+		# a 1-channel input with a 5x5 kernel and stride 2
+		m := CnnModel->New(1, 15, 15, 3);
+		ok := m->AddConv(4, 5, 2, Padding->VALID) & m->AddFlatten() & m->AddDense(1) & m->Compile(0.001);
+		# (15 - 5) / 2 + 1 = 6, so 4 x 6 x 6 = 144 values
+		Report("1 channel, 5x5, stride 2: {$(4 * 25 + 4 + 144 + 1)} parameters", ok & m->GetParameterCount() = 4 * 25 + 4 + 144 + 1);
+		m->Close();
+	}
+
+	function : Shapes() ~ Nil {
+		"shapes and odd sizes"->PrintLine();
+		# 7 x 9, 1 channel: conv 3 valid -> 5 x 7, pool 2 -> 2 x 3 (the odd row and column are dropped)
+		m := CnnModel->New(1, 7, 9, 4);
+		ok := m->AddConv(3, 3, 1, Padding->VALID) & m->AddMaxPool(2) & m->AddFlatten() & m->AddDense(1) & m->Compile(0.001);
+		Report("odd size builds", ok);
+		x := Randoms(2 * 7 * 9);
+		p := m->Predict(x);
+		Report("two images give two probabilities in [0, 1]", p <> Nil & p->Size() = 2 & p[0] >= 0.0 & p[0] <= 1.0 & p[1] >= 0.0 & p[1] <= 1.0);
+		Report("conv output is 3 x 5 x 7 per image", m->GetActivation(0) <> Nil & m->GetActivation(0)->Size() = 2 * 3 * 5 * 7);
+		Report("pool output is 3 x 2 x 3 per image", m->GetActivation(1)->Size() = 2 * 3 * 2 * 3);
+		Report("flatten output is 18 per image", m->GetActivation(2)->Size() = 2 * 18);
+		one := Float->New[63];
+		each(i : one) {
+			one[i] := x[i];
+		};
+		q := m->Predict(one);
+		Report("a batch of 1 works and equals the first row of a batch of 2", q <> Nil & q->Size() = 1 & Float->Abs(q[0] - p[0]) < 1.0e-6);
+		Report("a batch of 1 trains", m->TrainBatch(one, [1.0]) > 0.0);
+		m->Close();
+
+		# 3 channels, 'same' padding, even kernel
+		m := CnnModel->New(3, 6, 5, 4);
+		ok := m->AddConv(2, 4, 1, Padding->SAME) & m->AddFlatten() & m->AddDense(1) & m->Compile(0.001);
+		Report("3-channel same padding with an even kernel keeps 6 x 5", ok & m->Predict(Randoms(90)) <> Nil);
+		Report("   and the conv output is 2 x 6 x 5", m->GetActivation(0)->Size() = 60);
+		m->Close();
+
+		# a 1 x 1 image
+		m := CnnModel->New(1, 1, 1, 4);
+		ok := m->AddFlatten() & m->AddDense(1) & m->Compile(0.001);
+		Report("a 1 x 1 image", ok & m->Predict([0.5]) <> Nil);
+		m->Close();
+	}
+
+	function : LossValues() ~ Nil {
+		"loss values"->PrintLine();
+		m := CnnModel->New(1, 1, 1, 5);
+		ok := m->AddFlatten() & m->AddDense(1) & m->Compile(0.001);
+		Report("tiny model", ok);
+		# z = w * x + b
+		m->SetWeights([0.0, 0.0]);
+		l1 := m->EvaluateBatch([0.5], [1.0]);
+		Report("z = 0, y = 1 gives ln 2 ({$l1})", Float->Abs(l1 - 0.6931471805599453) < 1.0e-12);
+		m->SetWeights([4.0, 0.0]);
+		l2 := m->EvaluateBatch([0.5], [1.0]);
+		Report("z = 2, y = 1 gives log(1 + e^-2) = 0.12692801104297263 ({$l2})", Float->Abs(l2 - 0.12692801104297263) < 1.0e-12);
+		l3 := m->EvaluateBatch([0.5], [0.0]);
+		Report("z = 2, y = 0 gives 2 + log(1 + e^-2) ({$l3})", Float->Abs(l3 - 2.12692801104297263) < 1.0e-12);
+		l4 := m->EvaluateBatch([0.5, 0.5], [1.0, 0.0]);
+		Report("a batch of two is the mean ({$l4})", Float->Abs(l4 - (l2 + l3) / 2.0) < 1.0e-12);
+		p := m->Predict([0.5]);
+		Report("sigmoid(2) = 0.8807970779778823 ({$p[0]})", Float->Abs(p[0] - 0.8807970779778823) < 1.0e-12);
+
+		m->SetWeights([30000.0, 0.0]);
+		hi := m->EvaluateBatch([1.0], [0.0]);
+		Report("z = 30000, y = 0: loss 30000, finite ({$hi})", Float->Abs(hi - 30000.0) < 1.0e-6);
+		ok_hi := m->EvaluateBatch([1.0], [1.0]);
+		Report("z = 30000, y = 1: loss 0, not NaN ({$ok_hi})", ok_hi >= 0.0 & ok_hi < 1.0e-12);
+		m->SetWeights([-30000.0, 0.0]);
+		lo := m->EvaluateBatch([1.0], [1.0]);
+		Report("z = -30000, y = 1: loss 30000 ({$lo})", Float->Abs(lo - 30000.0) < 1.0e-6);
+		pr := m->Predict([1.0]);
+		Report("sigmoid(-30000) is 0, not NaN ({$pr[0]})", pr[0] >= 0.0 & pr[0] < 1.0e-12);
+		m->Close();
+	}
+
+	function : Dropout() ~ Nil {
+		"dropout"->PrintLine();
+		# input 1 x 64 x 64 = 4096 values straight into dropout, then Dense(1): layer 1 is the dropout
+		n := 4096;
+		x := Randoms(n);
+		a := DropModel(0.5, 11);
+		b := DropModel(0.5, 11);
+		c := DropModel(0.5, 12);
+		a->SetTraining(true);
+		b->SetTraining(true);
+		c->SetTraining(true);
+		pa := a->Predict(x);
+		pb := b->Predict(x);
+		c->Predict(x);
+		ma := a->GetActivation(1);
+		mb := b->GetActivation(1);
+		mc := c->GetActivation(1);
+		Report("same seed: identical masks", Same(ma, mb));
+		Report("same seed: identical outputs", pa[0] = pb[0]);
+		Report("different seed: a different mask", Same(ma, mc) = false);
+
+		zeros := 0;
+		scaled := true;
+		each(i : n) {
+			if(ma[i] = 0.0) {
+				zeros += 1;
+			}
+			else if(Float->Abs(ma[i] - 2.0 * x[i]) > 1.0e-6) {
+				scaled := false;
+			};
+		};
+		fraction := zeros->As(Float) / n->As(Float);
+		Report("about half the activations are dropped ({$fraction})", fraction > 0.46 & fraction < 0.54);
+		Report("every survivor is scaled by 1 / (1 - 0.5) = 2", scaled);
+
+		a->Predict(x);
+		Report("the next forward pass draws a different mask", Same(a->GetActivation(1), ma) = false);
+		a->ResetDropout();
+		a->Predict(x);
+		Report("ResetDropout replays the first mask", Same(a->GetActivation(1), ma));
+
+		a->SetTraining(false);
+		a->Predict(x);
+		identity := a->GetActivation(1);
+		exact := true;
+		each(i : n) {
+			if(Float->Abs(identity[i] - x[i]) > 1.0e-6) {
+				exact := false;
+			};
+		};
+		Report("evaluation mode is the identity", exact);
+
+		# training-mode dropout 0.1: scale 1 / 0.9
+		d := DropModel(0.1, 13);
+		d->SetTraining(true);
+		d->Predict(x);
+		md := d->GetActivation(1);
+		kept := true;
+		dropped := 0;
+		each(i : n) {
+			if(md[i] = 0.0) {
+				dropped += 1;
+			}
+			else if(Float->Abs(md[i] - x[i] / 0.9) > 1.0e-5) {
+				kept := false;
+			};
+		};
+		Report("rate 0.1: survivors scaled by 1 / 0.9, {$dropped} of {$n} dropped", kept & dropped > 300 & dropped < 520);
+
+		z := DropModel(0.0, 14);
+		z->SetTraining(true);
+		z->Predict(x);
+		zero_out := z->GetActivation(1);
+		zero_exact := true;
+		each(i : n) {
+			zero_exact := zero_exact & Float->Abs(zero_out[i] - x[i]) < 1.0e-6;
+		};
+		Report("rate 0.0 is the identity even in training mode", zero_exact);
+
+		# the gradient through dropout is the incoming gradient times the mask: checked against finite
+		# differences in ml_cnn_gradcheck.obs (training mode, replayed mask)
+		g := DropModel(0.5, 15);
+		g->ResetDropout();
+		Report("a dropout model gives gradients in training mode", g->GradientsTraining(x, [1.0]) > 0.0 & g->GetGradients() <> Nil);
+
+		a->Close();
+		b->Close();
+		c->Close();
+		d->Close();
+		z->Close();
+		g->Close();
+		Report("bad rates are refused", CnnModel->New(1, 4, 4, 1)->AddDropout(1.0) = false & CnnModel->New(1, 4, 4, 1)->AddDropout(-0.1) = false);
+	}
+
+	function : DropModel(rate : Float, seed : Int) ~ CnnModel {
+		m := CnnModel->New(1, 64, 64, seed);
+		m->AddFlatten();
+		m->AddDropout(rate);
+		m->AddDense(1);
+		m->Compile(0.001);
+		return m;
+	}
+
+	function : Same(a : Float[], b : Float[]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : PoolTies() ~ Nil {
+		"max pooling with ties"->PrintLine();
+		# 1 x 4 x 4 of all equal values, pool 2 -> four windows, each a four-way tie; Dense with every weight 1
+		m := CnnModel->New(1, 4, 4, 6);
+		ok := m->AddMaxPool(2) & m->AddFlatten() & m->AddDense(1) & m->Compile(0.001);
+		Report("pool model", ok);
+		weights := Float->New[5];
+		each(i : 4) {
+			weights[i] := 1.0;
+		};
+		m->SetWeights(weights);
+		x := Float->New[16];
+		each(i : x) {
+			x[i] := 0.25;
+		};
+		loss := m->GradientsWithInput(x, [0.0]);
+		g := m->GetInputGradient();
+		Report("loss computed", loss > 0.0 & g <> Nil & g->Size() = 16);
+		first_only := true;
+		first := 0.0;
+		each(i : 16) {
+			row := i / 4;
+			col := i % 4;
+			at_first := row % 2 = 0 & col % 2 = 0;
+			if(at_first) {
+				first := g[i];
+				if(g[i] = 0.0) {
+					first_only := false;
+				};
+			}
+			else if(g[i] <> 0.0) {
+				first_only := false;
+			};
+		};
+		Report("the gradient reaches only the first element of each tied window ({$first})", first_only);
+		Report("the pooled output is the tied value", Float->Abs(m->GetActivation(0)[0] - 0.25) < 1.0e-7);
+
+		# a window whose maximum is in the last cell takes the whole gradient
+		y := Float->New[16];
+		y[3] := 1.0;
+		m->GradientsWithInput(y, [0.0]);
+		h := m->GetInputGradient();
+		Report("a unique maximum takes the gradient: its window's other cells get none", h[3] <> 0.0 & h[2] = 0.0 & h[6] = 0.0 & h[7] = 0.0);
+		m->Close();
+	}
+
+	function : Optimizers() ~ Nil {
+		"optimizers"->PrintLine();
+		x := Randoms(3 * 4 * 4 * 2);
+		y := [1.0, 0.0];
+
+		m := CnnModel->New(3, 4, 4, 8);
+		ok := m->AddConv(2, 3, 1, Padding->VALID) & m->AddFlatten() & m->AddDense(1) & m->CompileSgd(0.1, 0.0);
+		Report("SGD model", ok);
+		w0 := m->GetWeights();
+		m->Gradients(x, y);
+		g := m->GetGradients();
+		loss := m->TrainBatch(x, y);
+		w1 := m->GetWeights();
+		worst := 0.0;
+		each(i : w0) {
+			worst := Float->Max(worst, Float->Abs(w1[i] - (w0[i] - 0.1 * g[i])));
+		};
+		Report("one SGD step is w - lr * g (worst difference {$worst}, loss {$loss})", worst < 1.0e-6);
+		Report("SetLearningRate changes the step", m->SetLearningRate(0.2));
+		m->Gradients(x, y);
+		g2 := m->GetGradients();
+		w2 := m->GetWeights();
+		m->TrainBatch(x, y);
+		w3 := m->GetWeights();
+		worst := 0.0;
+		each(i : w2) {
+			worst := Float->Max(worst, Float->Abs(w3[i] - (w2[i] - 0.2 * g2[i])));
+		};
+		Report("   and the next step uses 0.2 (worst difference {$worst})", worst < 1.0e-6);
+		m->Close();
+
+		# Adam, first step: m = (1 - b1) g, v = (1 - b2) g^2, so mhat = g and vhat = g^2 and the step is lr * g / (|g| + eps)
+		a := CnnModel->New(3, 4, 4, 8);
+		ok := a->AddConv(2, 3, 1, Padding->VALID) & a->AddFlatten() & a->AddDense(1) & a->Compile(0.01);
+		a0 := a->GetWeights();
+		a->Gradients(x, y);
+		ga := a->GetGradients();
+		a->TrainBatch(x, y);
+		a1 := a->GetWeights();
+		worst := 0.0;
+		checked := 0;
+		each(i : a0) {
+			if(Float->Abs(ga[i]) > 1.0e-4) {
+				step := a0[i] - a1[i];
+				expected := 0.01 * ga[i] / (Float->Abs(ga[i]) + 1.0e-8);
+				worst := Float->Max(worst, Float->Abs(step - expected));
+				checked += 1;
+			};
+		};
+		Report("the first Adam step moves each weight by lr * sign(g) ({$checked} weights, worst difference {$worst})", checked > 10 & worst < 1.0e-6);
+		a->Close();
+
+		# training lowers the loss on a fixed batch, with each optimizer
+		each(kind : 3) {
+			t := CnnModel->New(3, 8, 8, 9);
+			built := t->AddConv(4, 3, 1, Padding->SAME) & t->AddReLU() & t->AddMaxPool(2) & t->AddFlatten() & t->AddDense(1);
+			if(kind = 0) {
+				built := built & t->Compile(0.01);
+			}
+			else if(kind = 1) {
+				built := built & t->CompileSgd(0.1, 0.0);
+			}
+			else {
+				built := built & t->CompileSgd(0.05, 0.9);
+			};
+			bx := Randoms(4 * 3 * 8 * 8);
+			by := [1.0, 0.0, 1.0, 0.0];
+			first := t->EvaluateBatch(bx, by);
+			each(s : 60) {
+				t->TrainBatch(bx, by);
+			};
+			last := t->EvaluateBatch(bx, by);
+			names := ["Adam", "SGD", "SGD with momentum"];
+			Report("{$names[kind]} overfits a fixed batch: loss {$first} -> {$last}", built & last < first * 0.5);
+			t->Close();
+		};
+	}
+
+	function : Initializers() ~ Nil {
+		"initializers"->PrintLine();
+		# conv 3 -> 16, 3x3: fan_in 27, fan_out 144, Glorot limit sqrt(6 / 171); Kaiming limit sqrt(6 / 27)
+		glorot := CnnModel->New(3, 8, 8, 21);
+		glorot->AddConv(16, 3, 1, Padding->VALID);
+		glorot->AddFlatten();
+		glorot->AddDense(1);
+		glorot->Compile(0.001);
+		w := glorot->GetWeights();
+		limit := Float->Sqrt(6.0 / 171.0);
+		inside := true;
+		peak := 0.0;
+		sum := 0.0;
+		each(i : 432) {
+			inside := inside & Float->Abs(w[i]) <= limit + 1.0e-7;
+			peak := Float->Max(peak, Float->Abs(w[i]));
+			sum += w[i];
+		};
+		Report("Glorot conv weights are within +-{$limit} (largest {$peak})", inside & peak > limit * 0.9);
+		Report("   with mean near 0 ({$(sum / 432.0)})", Float->Abs(sum / 432.0) < 0.03);
+		biases_zero := true;
+		each(i : 16) {
+			biases_zero := biases_zero & w[432 + i] = 0.0;
+		};
+		Report("conv biases start at 0", biases_zero);
+
+		kaiming := CnnModel->New(3, 8, 8, 21);
+		kaiming->SetInitializer(Initializer->KAIMING);
+		kaiming->AddConv(16, 3, 1, Padding->VALID);
+		kaiming->AddFlatten();
+		kaiming->AddDense(1);
+		kaiming->Compile(0.001);
+		k := kaiming->GetWeights();
+		klimit := Float->Sqrt(6.0 / 27.0);
+		kinside := true;
+		kpeak := 0.0;
+		each(i : 432) {
+			kinside := kinside & Float->Abs(k[i]) <= klimit + 1.0e-7;
+			kpeak := Float->Max(kpeak, Float->Abs(k[i]));
+		};
+		Report("Kaiming conv weights are within +-{$klimit} (largest {$kpeak})", kinside & kpeak > klimit * 0.9 & kpeak > peak);
+
+		again := CnnModel->New(3, 8, 8, 21);
+		again->AddConv(16, 3, 1, Padding->VALID);
+		again->AddFlatten();
+		again->AddDense(1);
+		again->Compile(0.001);
+		Report("the same seed gives the same weights", Same(w, again->GetWeights()));
+		other_seed := CnnModel->New(3, 8, 8, 22);
+		other_seed->AddConv(16, 3, 1, Padding->VALID);
+		other_seed->AddFlatten();
+		other_seed->AddDense(1);
+		other_seed->Compile(0.001);
+		Report("a different seed gives different weights", Same(w, other_seed->GetWeights()) = false);
+		glorot->Close();
+		kaiming->Close();
+		again->Close();
+		other_seed->Close();
+	}
+
+	function : Tiny(seed : Int) ~ CnnModel {
+		m := CnnModel->New(3, 10, 10, seed);
+		m->AddConv(4, 3, 1, Padding->VALID);
+		m->AddReLU();
+		m->AddMaxPool(2);
+		m->AddFlatten();
+		m->AddDense(5);
+		m->AddReLU();
+		m->AddDense(1);
+		m->Compile(0.01);
+		return m;
+	}
+
+	function : SaveLoad() ~ Nil {
+		"save and load"->PrintLine();
+		path := "ml_cnn_edges_weights.bin";
+		a := Tiny(31);
+		x := Randoms(3 * 3 * 10 * 10);
+		y := [1.0, 0.0, 1.0];
+		each(s : 5) {
+			a->TrainBatch(x, y);
+		};
+		Report("Save writes the file", a->Save(path) & File->Exists(path));
+
+		b := Tiny(99);
+		Report("a different seed starts with other weights", Same(a->GetWeights(), b->GetWeights()) = false);
+		Report("Load reads it back", b->Load(path));
+		Report("the weights are bit-identical after Load", Same(a->GetWeights(), b->GetWeights()));
+		Report("so are the predictions", Same(a->Predict(x), b->Predict(x)));
+
+		# another architecture
+		c := CnnModel->New(3, 10, 10, 1);
+		c->AddFlatten();
+		c->AddDense(1);
+		c->Compile(0.001);
+		before := c->GetWeights();
+		Report("a file of another architecture is refused", c->Load(path) = false);
+		Report("   and the model is unchanged", Same(before, c->GetWeights()));
+		Report("   with a reason ({$c->GetError()})", c->GetError()->Size() > 0);
+
+		# a truncated file
+		bytes := FileReader->ReadBinaryFile(path);
+		short := Byte->New[bytes->Size() - 7];
+		Byte->Copy(short, 0, bytes, 0, short->Size());
+		FileWriter->WriteFile("ml_cnn_edges_short.bin", short);
+		d := Tiny(5);
+		before := d->GetWeights();
+		Report("a truncated file is refused", d->Load("ml_cnn_edges_short.bin") = false);
+		Report("   and the model is unchanged", Same(before, d->GetWeights()));
+
+		# a foreign file and a missing one
+		FileWriter->WriteFile("ml_cnn_edges_text.bin", "this is not a weights file at all, just text");
+		Report("a foreign file is refused", d->Load("ml_cnn_edges_text.bin") = false);
+		Report("a missing file is refused", d->Load("ml_cnn_edges_missing.bin") = false);
+		Report("a Nil path is refused", d->Load(Nil) = false & d->Save(Nil) = false);
+		Report("an unwritable path is refused", a->Save("no_such_folder/ml_cnn_edges.bin") = false);
+
+		# a float64 model's file does not load into a float32 one
+		r := CnnModel->NewReference(3, 10, 10, 31);
+		r->AddConv(4, 3, 1, Padding->VALID);
+		r->AddReLU();
+		r->AddMaxPool(2);
+		r->AddFlatten();
+		r->AddDense(5);
+		r->AddReLU();
+		r->AddDense(1);
+		r->Compile(0.01);
+		Report("a float32 file does not load into a float64 model", r->Load(path) = false);
+
+		# Load into an uncompiled model
+		u := CnnModel->New(3, 10, 10, 1);
+		Report("loading into an uncompiled model is refused", u->Load(path) = false);
+
+		File->Delete(path);
+		File->Delete("ml_cnn_edges_short.bin");
+		File->Delete("ml_cnn_edges_text.bin");
+		a->Close();
+		b->Close();
+		c->Close();
+		d->Close();
+		r->Close();
+		u->Close();
+	}
+
+	function : BadInput() ~ Nil {
+		"bad input"->PrintLine();
+		m := Tiny(41);
+		x := Randoms(3 * 3 * 10 * 10);
+		Report("Nil images: TrainBatch -1.0", m->TrainBatch(Nil, [1.0]) < 0.0);
+		Report("Nil labels: TrainBatch -1.0", m->TrainBatch(x, Nil) < 0.0);
+		Report("an empty batch: TrainBatch -1.0", m->TrainBatch(Float->New[0], Float->New[0]) < 0.0);
+		Report("images that are not a whole number of images: -1.0", m->TrainBatch(Randoms(299), [1.0, 0.0, 1.0]) < 0.0);
+		Report("a label count that does not match: -1.0", m->TrainBatch(x, [1.0, 0.0]) < 0.0);
+		Report("   with a reason ({$m->GetError()})", m->GetError()->Size() > 0);
+		Report("EvaluateBatch with the wrong size: -1.0", m->EvaluateBatch(Randoms(10), [1.0]) < 0.0);
+		Report("Predict of Nil is Nil", m->Predict(Nil) = Nil);
+		Report("Predict of an empty array is Nil", m->Predict(Float->New[0]) = Nil);
+		Report("Predict of 299 values is Nil", m->Predict(Randoms(299)) = Nil);
+		Report("PredictLogits of Nil is Nil", m->PredictLogits(Nil) = Nil);
+		Report("SetWeights of the wrong length is false", m->SetWeights([1.0, 2.0]) = false);
+		Report("SetWeights of Nil is false", m->SetWeights(Nil) = false);
+		Report("GetActivation of a layer that does not exist is Nil", m->GetActivation(99) = Nil & m->GetActivation(-1) = Nil);
+		Report("SetLearningRate of 0 or less is refused", m->SetLearningRate(0.0) = false & m->SetLearningRate(-1.0) = false);
+		Report("the model still works after all that", m->TrainBatch(x, [1.0, 0.0, 1.0]) > 0.0);
+		Report("a layer cannot be added after Compile", m->AddDense(3) = false);
+		Report("Compile twice is refused", m->Compile(0.1) = false);
+
+		# not compiled
+		u := CnnModel->New(1, 8, 8, 1);
+		u->AddFlatten();
+		u->AddDense(1);
+		Report("an uncompiled model refuses TrainBatch", u->TrainBatch(Randoms(64), [1.0]) < 0.0);
+		Report("   Predict", u->Predict(Randoms(64)) = Nil);
+		Report("   GetWeights", u->GetWeights() = Nil);
+		Report("   and says why ({$u->GetError()})", u->GetError()->Size() > 0);
+		Report("Compile needs a positive learning rate", u->Compile(0.0) = false & u->Compile(-1.0) = false);
+		Report("an empty model cannot be compiled", CnnModel->New(1, 8, 8, 1)->Compile(0.1) = false);
+		w := CnnModel->New(1, 8, 8, 1);
+		w->AddFlatten();
+		w->AddDense(4);
+		Report("a model that does not end in one logit cannot be compiled", w->Compile(0.1) = false);
+		Report("   and the reason names the shape ({$w->GetError()})", w->GetError()->Has("4"));
+		Report("Compile with epsilon 0 is refused", u->CompileAdam(0.1, 0.9, 0.999, 0.0) = false);
+		Report("Compile with beta 1.0 is refused", u->CompileAdam(0.1, 1.0, 0.999, 1.0e-8) = false);
+		Report("Compile with momentum 1.0 is refused", u->CompileSgd(0.1, 1.0) = false);
+
+		# layers that do not fit
+		s := CnnModel->New(1, 4, 4, 1);
+		Report("a kernel larger than the image is refused", s->AddConv(2, 5, 1, Padding->VALID) = false);
+		Report("   with a reason ({$s->GetError()})", s->GetError()->Size() > 0);
+		Report("a 'same' kernel larger than the image is accepted", s->AddConv(2, 5, 1, Padding->SAME));
+		Report("a stride of 0 is refused", s->AddConv(2, 3, 0, Padding->VALID) = false);
+		Report("0 filters is refused", s->AddConv(0, 3, 1, Padding->VALID) = false);
+		Report("a kernel of 0 is refused", s->AddConv(2, 0, 1, Padding->VALID) = false);
+		Report("a pool larger than the image is refused", s->AddMaxPool(5) = false);
+		Report("a pool of 0 is refused", s->AddMaxPool(0) = false);
+		Report("0 dense units is refused", s->AddDense(0) = false);
+		Report("a model that stays usable after refusals", s->AddFlatten() & s->AddDense(1) & s->Compile(0.1));
+
+		# invalid models
+		Report("channels of 0 make an invalid model", CnnModel->New(0, 8, 8, 1)->IsValid() = false);
+		Report("a height of 0 makes an invalid model", CnnModel->New(1, 0, 8, 1)->IsValid() = false);
+		Report("a huge size makes an invalid model", CnnModel->New(3, 100000, 100000, 1)->IsValid() = false);
+		bad := CnnModel->New(0, 8, 8, 1);
+		Report("an invalid model refuses everything without a crash", bad->AddDense(1) = false & bad->Compile(0.1) = false & bad->TrainBatch(Randoms(4), [1.0]) < 0.0 & bad->Predict(Randoms(4)) = Nil & bad->GetParameterCount() = 0);
+		Report("   and says why ({$bad->GetError()})", bad->GetError()->Size() > 0);
+		bad->Close();
+		Report("Baseline that does not fit is Nil", CnnModel->Baseline(8, 3, 0.1, 128, 0.001, 1) = Nil);
+		Report("Baseline with 0 blocks is Nil", CnnModel->Baseline(64, 0, 0.1, 128, 0.001, 1) = Nil);
+		Report("Baseline with dropout 1.0 is Nil", CnnModel->Baseline(64, 3, 1.0, 128, 0.001, 1) = Nil);
+
+		# a closed model
+		c := Tiny(42);
+		c->Close();
+		Report("a closed model refuses everything", c->TrainBatch(x, [1.0, 0.0, 1.0]) < 0.0 & c->Predict(x) = Nil & c->IsValid() = false);
+		c->Close();
+		Report("Close twice is harmless", c->IsValid() = false);
+
+		# staging
+		t := Tiny(43);
+		Report("staging a Nil image is refused", t->StageImage(Nil, 10, 10, 0, 1, Nil, 0) = false);
+		Report("staging an image of the wrong size is refused", t->StageImage(Byte->New[8 * 8 * 3], 8, 8, 0, 1, Nil, 0) = false);
+		Report("staging bytes that do not fit rows x cols x channels is refused", t->StageImage(Byte->New[10 * 10 * 3 + 1], 10, 10, 0, 1, Nil, 0) = false);
+		Report("a slot outside the batch is refused", t->StageImage(Byte->New[300], 10, 10, 3, 3, Nil, 0) = false);
+		Report("training on staged images that were never staged is refused", t->TrainStaged([1.0]) < 0.0);
+		Report("a good image stages", t->StageImage(Byte->New[300], 10, 10, 0, 1, Nil, 0));
+		Report("a label count that differs from the staged count is refused", t->TrainStaged([1.0, 0.0]) < 0.0);
+		Report("the staged image trains", t->TrainStaged([1.0]) > 0.0);
+		Report("PredictStaged with a wrong count is Nil", t->PredictStaged(2, false) = Nil);
+		Report("PredictStaged gives one probability", t->PredictStaged(1, false) <> Nil);
+		t->Close();
+		m->Close();
+		u->Close();
+		w->Close();
+		s->Close();
+
+		# the sizes and split of a dataset
+		Report("an empty dataset cannot be split", ImageDataset->New(8, 3)->Split(0.7, 0.1, 1) = Nil);
+		Report("a Nil pixel array is refused", ImageDataset->New(8, 3)->AddPixels(Nil, 0) = false);
+		Report("a pixel array of the wrong size is refused", ImageDataset->New(8, 3)->AddPixels(Byte->New[100], 0) = false);
+		Report("a label other than 0 or 1 is refused", ImageDataset->New(8, 3)->AddPixels(Byte->New[192], 2) = false);
+		Report("a missing folder adds nothing", ImageDataset->New(8, 3)->AddDirectory("no_such_folder", 0) = 0);
+		Report("a Nil trainer model is refused", CnnTrainer->New(Nil, Nil, Nil, 8, 1)->Fit(1) = Nil);
+	}
+
+	function : Determinism() ~ Nil {
+		"determinism and threads"->PrintLine();
+		x := Randoms(8 * 3 * 10 * 10);
+		y := [1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 1.0];
+		a := Tiny(51);
+		b := Tiny(51);
+		same := true;
+		each(s : 10) {
+			same := same & a->TrainBatch(x, y) = b->TrainBatch(x, y);
+		};
+		Report("two models with one seed train identically, step for step", same & Same(a->GetWeights(), b->GetWeights()));
+
+		# one thread against several: the batch reduction sums in a different order, so near-equal, not bit-equal
+		CnnRuntime->SetThreads(1);
+		c := Tiny(51);
+		each(s : 10) {
+			c->TrainBatch(x, y);
+		};
+		CnnRuntime->SetThreads(8);
+		d := Tiny(51);
+		each(s : 10) {
+			d->TrainBatch(x, y);
+		};
+		wc := c->GetWeights();
+		wd := d->GetWeights();
+		worst := 0.0;
+		each(i : wc) {
+			worst := Float->Max(worst, Float->Abs(wc[i] - wd[i]));
+		};
+		Report("1 thread and 8 threads agree to 1e-4 after 10 Adam steps (worst difference {$worst})", worst < 1.0e-4);
+		Report("the thread count is reported", CnnRuntime->GetThreads() = 8 & CnnRuntime->SetThreads(3) = 3 & CnnRuntime->GetThreads() = 3);
+		CnnRuntime->SetThreads(8);
+		a->Close();
+		b->Close();
+		c->Close();
+		d->Close();
+
+		p1 := CnnRuntime->Permutation(10, 5);
+		p2 := CnnRuntime->Permutation(10, 5);
+		p3 := CnnRuntime->Permutation(10, 6);
+		seen := Bool->New[10];
+		each(i : p1) {
+			seen[p1[i]] := true;
+		};
+		complete := true;
+		each(i : seen) {
+			complete := complete & seen[i];
+		};
+		Report("a permutation holds each of 0 .. 9 once", p1->Size() = 10 & complete);
+		Report("the same seed gives the same permutation, another seed another", Same2(p1, p2) & Same2(p1, p3) = false);
+		Report("a permutation of 0 is Nil", CnnRuntime->Permutation(0, 1) = Nil);
+	}
+
+	function : Same2(a : Int[], b : Int[]) ~ Bool {
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+}

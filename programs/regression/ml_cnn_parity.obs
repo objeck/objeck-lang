@@ -18,10 +18,10 @@ Tolerance. Each comparison is max |ours - torch| divided by max |torch| over tha
 is relative to the tensor's scale and a gradient entry near zero does not dominate. Both sides
 work in float32, but they sum in different orders (Eigen's blocked matrix multiply against
 PyTorch's), which costs a few ulps (2e-7 each) per accumulation of up to 2304 products. A single
-layer is allowed 2e-5 and the whole network 2e-4. The training loss curve is allowed 1e-3 per
-step: Adam divides by sqrt(v), so a gradient entry that is tiny in both implementations can differ
-in sign-level noise and move the weights by more than the gradient difference, and the error of
-one step is the input of the next.
+layer is allowed 2e-5 and the whole network 5e-5 (measured: at most 8.3e-7, a few ulps). The
+training loss curve is allowed 1e-4 per step (measured 3.8e-7) and the final weights 1e-3 (measured
+2e-5): Adam divides by sqrt(v), so an entry whose gradient is tiny in both implementations moves by more than the
+gradient difference, and the error of one step is the input of the next.
 ~#
 
 use System.ML.Cnn;
@@ -34,12 +34,12 @@ class MlCnnParity {
 	function : Main(args : String[]) ~ Nil {
 		names := ["conv3_valid", "conv3_same", "conv4_same_even", "conv5_stride2", "conv1x1", "relu",
 			"maxpool2_odd", "maxpool3_stride2", "dense_stack", "dropout_eval", "baseline32"];
-		tols := [2.0e-5, 2.0e-5, 2.0e-5, 2.0e-5, 2.0e-5, 2.0e-5, 2.0e-5, 2.0e-5, 2.0e-5, 2.0e-5, 2.0e-4];
+		tols := [2.0e-5, 2.0e-5, 2.0e-5, 2.0e-5, 2.0e-5, 2.0e-5, 2.0e-5, 2.0e-5, 2.0e-5, 2.0e-5, 5.0e-5];
 		@fail := false;
 		each(i : names) {
 			Forward(names[i], tols[i]);
 		};
-		Train("train_baseline32", 1.0e-3, 1.0e-3);
+		Train("train_baseline32", 1.0e-4, 1.0e-3);
 
 		if(@fail) {
 			Runtime->Exit(1);

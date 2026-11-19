@@ -1152,6 +1152,19 @@ train->SetAugmentation(aug);
 			return added;
 		}
 
+		#~
+		The file path an image was added from.
+		@param index image index
+		@return the path, or an empty string for an image added as pixels or an index out of range
+		~#
+		method : public : GetPath(index : Int) ~ String {
+			if(index < 0 | index >= @paths->Size()) {
+				return "";
+			};
+
+			return @paths->Get(index);
+		}
+
 		# decoded pixels of image `index` at size x size, or Nil
 		method : public : GetPixels(index : Int) ~ Byte[] {
 			if(index < 0 | index >= @labels->Size()) {
@@ -1291,8 +1304,10 @@ train->SetAugmentation(aug);
 		@indexes : Int[];
 		@augment : Bool;
 		@aug : Augmentation;
+		@error : String;
 
 		New(data : ImageDataset, indexes : Int[], augment : Bool) {
+			@error := "";
 			@data := data;
 			@indexes := indexes;
 			@augment := augment;
@@ -1390,12 +1405,26 @@ train->SetAugmentation(aug);
 
 			pixels := @data->GetPixels(@indexes[position]);
 			if(pixels = Nil) {
+				@error := @data->GetError();
 				return false;
 			};
 
 			size := @data->GetSize();
 			aug : Augmentation := @augment ? @aug : Nil;
-			return model->StageImage(pixels, size, size, slot, total, aug, key);
+			if(model->StageImage(pixels, size, size, slot, total, aug, key) = false) {
+				@error := model->GetError();
+				return false;
+			};
+
+			return true;
+		}
+
+		#~
+		Why the last Stage call refused.
+		@return the reason
+		~#
+		method : public : GetError() ~ String {
+			return @error;
 		}
 	}
 
@@ -1652,7 +1681,7 @@ test_result->GetAccuracy()->PrintLine();
 			each(j : count) {
 				position := order[start + j];
 				if(<>subset->Stage(@model, position, j, count, key_base + position)) {
-					@error := "image {$subset->GetIndex(position)} could not be loaded: {$@model->GetError()}";
+					@error := "image {$subset->GetIndex(position)} could not be loaded: {$subset->GetError()}";
 					return Nil;
 				};
 				labels[j] := subset->GetLabel(position)->As(Float);

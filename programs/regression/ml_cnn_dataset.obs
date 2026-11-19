@@ -1,0 +1,496 @@
+# EXTRA_LIBS: ml_cnn,ml,ml_lab,opencv,csv,gen_collect
+#~
+System.ML.Cnn ImageDataset, Augmentation and CnnTrainer.
+
+  * the synthetic set is the same for one seed and different for another;
+  * Split deals disjoint train / validation / test subsets that together cover every image, the same
+    way for one seed, and only the training subset augments;
+  * a staged image is what it should be: BGR to RGB, scaled to 0 .. 1, grayscale replicated, BGRA
+    without its alpha, RGB to gray with the BT.601 weights;
+  * each augmentation does what it says (the flip mirrors, brightness multiplies and clips, a
+    rotation turns the image and fills the corners with zeros), is repeatable for a (seed, key) and
+    differs between keys, and fires about as often as its probability;
+  * image files (24-bit BMPs written here) load, are resized to the model's size and sorted by name,
+    and a corrupt file is counted by Check and refuses a batch instead of ending the program;
+  * the trainer records one row per epoch, writes the CSV, repeats exactly for one seed and its
+    evaluation agrees with the confusion matrix it reports.
+~#
+
+use System.ML.Cnn;
+use System.IO.Filesystem;
+
+class MlCnnDataset {
+	@fail : static : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		@fail := false;
+		Synthetic();
+		Splits();
+		Staging();
+		Augmentations();
+		Files();
+		Trainer();
+
+		if(@fail) {
+			Runtime->Exit(1);
+		};
+		"ml_cnn_dataset: ok"->PrintLine();
+	}
+
+	function : Report(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@fail := true;
+		};
+	}
+
+	function : SameBytes(a : Byte[], b : Byte[]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Synthetic() ~ Nil {
+		"synthetic set"->PrintLine();
+		a := ImageDataset->Synthetic(16, 10, 5);
+		b := ImageDataset->Synthetic(16, 10, 5);
+		c := ImageDataset->Synthetic(16, 10, 6);
+		Report("20 images, 10 of each class, alternating", a <> Nil & a->Count() = 20 & a->GetLabel(0) = 0 & a->GetLabel(1) = 1 & a->GetLabel(19) = 1);
+		same := true;
+		each(i : 20) {
+			same := same & SameBytes(a->GetPixels(i), b->GetPixels(i));
+		};
+		Report("the same seed gives the same pixels", same);
+		Report("another seed gives other pixels", SameBytes(a->GetPixels(0), c->GetPixels(0)) = false);
+		Report("an image is 16 x 16 x 3 bytes", a->GetPixels(0)->Size() = 768);
+		Report("size below 8 is Nil", ImageDataset->Synthetic(4, 10, 5) = Nil);
+		Report("0 images per class is Nil", ImageDataset->Synthetic(16, 0, 5) = Nil);
+		Report("GetLabel and GetPixels out of range answer -1 and Nil", a->GetLabel(20) = -1 & a->GetLabel(-1) = -1 & a->GetPixels(20) = Nil);
+	}
+
+	function : Splits() ~ Nil {
+		"splits"->PrintLine();
+		data := ImageDataset->Synthetic(8, 100, 3);
+		splits := data->Split(0.7, 0.15, 42);
+		Report("a 70 / 15 / 15 split of 200 images: 140, 30, 30 ({$splits[0]->Count()}, {$splits[1]->Count()}, {$splits[2]->Count()})", splits <> Nil & splits[0]->Count() = 140 & splits[1]->Count() = 30 & splits[2]->Count() = 30);
+
+		seen := Int->New[200];
+		each(s : 3) {
+			each(i : splits[s]->Count()) {
+				seen[splits[s]->GetIndex(i)] += 1;
+			};
+		};
+		covered := true;
+		each(i : 200) {
+			covered := covered & seen[i] = 1;
+		};
+		Report("the subsets are disjoint and cover every image once", covered);
+
+		again := data->Split(0.7, 0.15, 42);
+		same := true;
+		each(i : 140) {
+			same := same & splits[0]->GetIndex(i) = again[0]->GetIndex(i);
+		};
+		Report("the same seed gives the same split", same);
+		other_split := data->Split(0.7, 0.15, 43);
+		differs := false;
+		each(i : 140) {
+			differs := differs | splits[0]->GetIndex(i) <> other_split[0]->GetIndex(i);
+		};
+		Report("another seed gives another split", differs);
+		Report("the training subset holds both classes ({$splits[0]->CountPositives()} of 140 are class 1)", splits[0]->CountPositives() > 40 & splits[0]->CountPositives() < 100);
+
+		Report("only the training subset is marked augmented, once configured",
+			splits[0]->IsAugmented() = false & splits[1]->IsAugmented() = false & splits[2]->IsAugmented() = false);
+		aug := Augmentation->New();
+		aug->SetFlip(0.5);
+		splits[0]->SetAugmentation(aug);
+		splits[1]->SetAugmentation(aug);
+		Report("   configuring it augments train and not validation", splits[0]->IsAugmented() & splits[1]->IsAugmented() = false);
+
+		Report("fractions that sum above 1 are refused", data->Split(0.9, 0.2, 1) = Nil);
+		Report("a training fraction of 0 is refused", data->Split(0.0, 0.2, 1) = Nil);
+		Report("a negative validation fraction is refused", data->Split(0.5, -0.1, 1) = Nil);
+		all := data->All(false);
+		Report("All holds every image", all->Count() = 200 & all->GetIndex(199) = 199 & all->GetIndex(200) = -1);
+		tiny := ImageDataset->Synthetic(8, 1, 1)->Split(0.5, 0.0, 1);
+		Report("two images split 1 / 0 / 1", tiny <> Nil & tiny[0]->Count() = 1 & tiny[1]->Count() = 0 & tiny[2]->Count() = 1);
+	}
+
+	# an 8 x 8 image of BGR bytes: pixel (r, c) is (r, c, r + c) as (B, G, R)
+	function : Gradient8() ~ Byte[] {
+		pixels := Byte->New[8 * 8 * 3];
+		each(r : 8) {
+			each(c : 8) {
+				at := (r * 8 + c) * 3;
+				pixels[at] := (r * 10)->As(Byte);
+				pixels[at + 1] := (c * 10 + 5)->As(Byte);
+				pixels[at + 2] := ((r + c) * 10 + 100)->As(Byte);
+			};
+		};
+
+		return pixels;
+	}
+
+	# a model whose first layer after Flatten shows exactly what was staged: input channels x 8 x 8
+	function : Probe(channels : Int) ~ CnnModel {
+		m := CnnModel->New(channels, 8, 8, 1);
+		m->AddFlatten();
+		m->AddDense(1);
+		m->Compile(0.001);
+		return m;
+	}
+
+	function : Staged(m : CnnModel, pixels : Byte[], aug : Augmentation, key : Int) ~ Float[] {
+		if(m->StageImage(pixels, 8, 8, 0, 1, aug, key) = false) {
+			return Nil;
+		};
+		if(m->PredictStaged(1, true) = Nil) {
+			return Nil;
+		};
+
+		return m->GetActivation(0);
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return Float->Abs(a - b) < 1.0e-6;
+	}
+
+	function : Staging() ~ Nil {
+		"staging"->PrintLine();
+		m := Probe(3);
+		pixels := Gradient8();
+		v := Staged(m, pixels, Nil, 0);
+		Report("a staged image has 3 x 8 x 8 values", v <> Nil & v->Size() = 192);
+		# pixel (r = 2, c = 3): B = 20, G = 35, R = 150
+		r := 2 * 8 + 3;
+		Report("planes are R, G, B: R = 150 / 255 ({$v[r]})", Near(v[r], 150.0 / 255.0));
+		Report("   G = 35 / 255 ({$v[64 + r]})", Near(v[64 + r], 35.0 / 255.0));
+		Report("   B = 20 / 255 ({$v[128 + r]})", Near(v[128 + r], 20.0 / 255.0));
+
+		# grayscale source into a 3-channel model: replicated
+		gray := Byte->New[64];
+		each(i : 64) {
+			gray[i] := (i * 3)->As(Byte);
+		};
+		g := Staged(m, gray, Nil, 0);
+		Report("a gray image is replicated into 3 channels", g <> Nil & Near(g[10], 30.0 / 255.0) & Near(g[64 + 10], 30.0 / 255.0) & Near(g[128 + 10], 30.0 / 255.0));
+
+		# BGRA source: the alpha is ignored
+		bgra := Byte->New[64 * 4];
+		each(i : 64) {
+			bgra[i * 4] := 10->As(Byte);
+			bgra[i * 4 + 1] := 20->As(Byte);
+			bgra[i * 4 + 2] := 30->As(Byte);
+			bgra[i * 4 + 3] := 255->As(Byte);
+		};
+		f := Staged(m, bgra, Nil, 0);
+		Report("a BGRA image drops its alpha: R, G, B = 30, 20, 10", f <> Nil & Near(f[0], 30.0 / 255.0) & Near(f[64], 20.0 / 255.0) & Near(f[128], 10.0 / 255.0));
+
+		# a 1-channel model takes the BT.601 luma of an RGB source
+		one := Probe(1);
+		l := Staged(one, bgra, Nil, 0);
+		luma := 0.299 * 30.0 / 255.0 + 0.587 * 20.0 / 255.0 + 0.114 * 10.0 / 255.0;
+		Report("a 1-channel model gets 0.299 R + 0.587 G + 0.114 B ({$l[0]} against {$luma})", l <> Nil & l->Size() = 64 & Near(l[0], luma));
+		m->Close();
+		one->Close();
+	}
+
+	function : Augmentations() ~ Nil {
+		"augmentation"->PrintLine();
+		m := Probe(3);
+		pixels := Gradient8();
+		plain := Staged(m, pixels, Nil, 0);
+
+		# flip: every row reversed
+		flip := Augmentation->New();
+		flip->SetSeed(1);
+		flip->SetFlip(1.0);
+		v := Staged(m, pixels, flip, 0);
+		mirrored := true;
+		each(ch : 3) {
+			each(row : 8) {
+				each(col : 8) {
+					mirrored := mirrored & Near(v[ch * 64 + row * 8 + col], plain[ch * 64 + row * 8 + 7 - col]);
+				};
+			};
+		};
+		Report("a probability-1 flip mirrors every row", mirrored);
+
+		# brightness: multiply and clip
+		half := Augmentation->New();
+		half->SetBrightness(1.0, 0.5, 0.5);
+		h := Staged(m, pixels, half, 0);
+		halved := true;
+		each(i : 192) {
+			halved := halved & Near(h[i], plain[i] * 0.5);
+		};
+		Report("brightness 0.5 halves every value", halved);
+		bright := Augmentation->New();
+		bright->SetBrightness(1.0, 3.0, 3.0);
+		b := Staged(m, pixels, bright, 0);
+		clipped := true;
+		each(i : 192) {
+			expected := Float->Min(plain[i] * 3.0, 1.0);
+			clipped := clipped & Near(b[i], expected);
+		};
+		Report("brightness 3.0 multiplies and clips at 1.0", clipped);
+
+		# rotation: a constant image keeps its interior and zero-fills the corners
+		solid := Byte->New[192];
+		each(i : 192) {
+			solid[i] := 200->As(Byte);
+		};
+		rot := Augmentation->New();
+		rot->SetSeed(2);
+		rot->SetRotation(1.0, 30.0);
+		r := Staged(m, solid, rot, 4);
+		centre := r[3 * 8 + 3];
+		corner := r[0];
+		Report("rotating a constant image keeps the centre ({$centre}) and zero-fills a corner ({$corner})", Near(centre, 200.0 / 255.0) & corner < 0.5);
+		turned := Staged(m, pixels, rot, 4);
+		different := false;
+		each(i : 192) {
+			different := different | Float->Abs(turned[i] - plain[i]) > 1.0e-4;
+		};
+		Report("rotating a gradient image changes it", different);
+		zero := Augmentation->New();
+		zero->SetRotation(1.0, 0.0);
+		z := Staged(m, pixels, zero, 9);
+		unchanged := true;
+		each(i : 192) {
+			unchanged := unchanged & Near(z[i], plain[i]);
+		};
+		Report("rotation by at most 0 degrees leaves it unchanged", unchanged);
+
+		# repeatable for a (seed, key), different between keys
+		all := Augmentation->New();
+		all->SetSeed(7);
+		all->SetFlip(0.5);
+		all->SetRotation(0.5, 15.0);
+		all->SetBrightness(0.5, 0.7, 1.3);
+		a1 := Staged(m, pixels, all, 11);
+		a2 := Staged(m, pixels, all, 11);
+		same := true;
+		each(i : 192) {
+			same := same & a1[i] = a2[i];
+		};
+		Report("the same seed and key give the same augmented image", same);
+		moved := 0;
+		each(k : 40) {
+			ak := Staged(m, pixels, all, 100 + k);
+			d := false;
+			each(i : 192) {
+				d := d | ak[i] <> plain[i];
+			};
+			if(d) {
+				moved += 1;
+			};
+		};
+		Report("different keys give different images ({$moved} of 40 differ from the original)", moved > 25);
+
+		# how often a flip fires
+		half_flip := Augmentation->New();
+		half_flip->SetSeed(3);
+		half_flip->SetFlip(0.5);
+		flips := 0;
+		each(k : 400) {
+			fv := Staged(m, pixels, half_flip, k);
+			if(Near(fv[0], plain[7])) {
+				flips += 1;
+			};
+		};
+		Report("a flip of probability 0.5 fires about half the time ({$flips} of 400)", flips > 160 & flips < 240);
+		never := Augmentation->New();
+		never->SetFlip(0.0);
+		nv := Staged(m, pixels, never, 5);
+		same_never := true;
+		each(i : 192) {
+			same_never := same_never & Near(nv[i], plain[i]);
+		};
+		Report("a probability of 0 never fires", same_never);
+
+		# only the training subset augments, even when handed an augmentation
+		data := ImageDataset->New(8, 3);
+		data->AddPixels(pixels, 1);
+		data->AddPixels(pixels, 0);
+		train := data->All(true);
+		valid := data->All(false);
+		train->SetAugmentation(flip);
+		valid->SetAugmentation(flip);
+		train->Stage(m, 0, 0, 1, 0);
+		m->PredictStaged(1, true);
+		from_train := m->GetActivation(0);
+		valid->Stage(m, 0, 0, 1, 0);
+		m->PredictStaged(1, true);
+		from_valid := m->GetActivation(0);
+		train_flipped := true;
+		valid_plain := true;
+		each(i : 192) {
+			valid_plain := valid_plain & Near(from_valid[i], plain[i]);
+		};
+		each(row : 8) {
+			train_flipped := train_flipped & Near(from_train[row * 8], plain[row * 8 + 7]);
+		};
+		Report("the training subset flips and the validation subset does not, with the same Augmentation", train_flipped & valid_plain);
+		m->Close();
+	}
+
+	# a 24-bit BMP of width x height, every pixel the one colour (b, g, r); rows are bottom-up and padded to 4 bytes
+	function : WriteBmp(path : String, width : Int, height : Int, b : Int, g : Int, r : Int) ~ Bool {
+		row := width * 3;
+		pad := (4 - row % 4) % 4;
+		size := 54 + (row + pad) * height;
+		bytes := Byte->New[size];
+		bytes[0] := 'B'->As(Byte);
+		bytes[1] := 'M'->As(Byte);
+		Put32(bytes, 2, size);
+		Put32(bytes, 10, 54);
+		Put32(bytes, 14, 40);
+		Put32(bytes, 18, width);
+		Put32(bytes, 22, height);
+		bytes[26] := 1->As(Byte);
+		bytes[28] := 24->As(Byte);
+		Put32(bytes, 34, (row + pad) * height);
+		each(y : height) {
+			each(x : width) {
+				at := 54 + y * (row + pad) + x * 3;
+				bytes[at] := b->As(Byte);
+				bytes[at + 1] := g->As(Byte);
+				bytes[at + 2] := r->As(Byte);
+			};
+		};
+
+		return FileWriter->WriteFile(path, bytes);
+	}
+
+	function : Put32(bytes : Byte[], at : Int, value : Int) ~ Nil {
+		bytes[at] := (value % 256)->As(Byte);
+		bytes[at + 1] := ((value / 256) % 256)->As(Byte);
+		bytes[at + 2] := ((value / 65536) % 256)->As(Byte);
+		bytes[at + 3] := ((value / 16777216) % 256)->As(Byte);
+	}
+
+	function : Files() ~ Nil {
+		"image files"->PrintLine();
+		dir := "ml_cnn_dataset_tmp";
+		if(Directory->Exists(dir) = false) {
+			Directory->Create(dir);
+		};
+		# written out of name order on purpose; one wider than the model, one taller, one not an image
+		ok := WriteBmp("{$dir}/c_blue.bmp", 8, 8, 255, 0, 0);
+		ok := WriteBmp("{$dir}/a_red.bmp", 16, 12, 0, 0, 255) & ok;
+		ok := WriteBmp("{$dir}/b_green.bmp", 8, 8, 0, 255, 0) & ok;
+		ok := FileWriter->WriteFile("{$dir}/notes.txt", "not an image") & ok;
+		Report("test images written", ok);
+
+		data := ImageDataset->New(8, 3);
+		added := data->AddDirectory(dir, 1);
+		Report("AddDirectory adds the 3 images and skips notes.txt ({$added})", added = 3 & data->Count() = 3);
+		Report("   in name order: a_red first", data->GetPixels(0) <> Nil & data->GetPixels(0)[2] = 255->As(Byte) & data->GetPixels(0)[0] = 0->As(Byte));
+		Report("   the 16 x 12 image is resized to 8 x 8 x 3 = 192 bytes", data->GetPixels(0)->Size() = 192);
+		Report("   b_green second, c_blue third", data->GetPixels(1)[1] = 255->As(Byte) & data->GetPixels(2)[0] = 255->As(Byte));
+		Report("Check finds every file good", data->Check() = 0);
+
+		m := Probe(3);
+		data->All(false)->Stage(m, 0, 0, 1, 0);
+		m->PredictStaged(1, true);
+		v := m->GetActivation(0);
+		Report("a red file stages as R = 1, G = 0, B = 0 ({$v[0]}, {$v[64]}, {$v[128]})", Near(v[0], 1.0) & Near(v[64], 0.0) & Near(v[128], 0.0));
+
+		# a corrupt file
+		FileWriter->WriteFile("{$dir}/d_broken.bmp", "this is not a bitmap");
+		Report("AddFile accepts a path it has not read", data->AddFile("{$dir}/d_broken.bmp", 0));
+		Report("AddFile refuses a Nil path and a bad label", data->AddFile(Nil, 0) = false & data->AddFile("x.bmp", 2) = false);
+		Report("Check counts the broken file", data->Check() = 1);
+		Report("GetPixels of the broken file is Nil, with a reason ({$data->GetError()})", data->GetPixels(3) = Nil & data->GetError()->Size() > 0);
+
+		everything := data->All(false);
+		trainer := CnnTrainer->New(m, everything, Nil, 4, 1);
+		Report("Evaluate over a set with a broken file answers Nil, not a crash", trainer->Evaluate(everything) = Nil & trainer->GetError()->Size() > 0);
+		small := CnnModel->New(3, 8, 8, 2);
+		small->AddFlatten();
+		small->AddDense(1);
+		small->Compile(0.01);
+		fit := CnnTrainer->New(small, everything, Nil, 4, 1)->Fit(2);
+		Report("Fit over a set with a broken file stops with a reason ({$fit->GetError()}), after 0 epochs", fit <> Nil & fit->GetEpochs() = 0 & fit->GetError()->Size() > 0);
+
+		small->Close();
+		m->Close();
+		Directory->Delete(dir);
+	}
+
+	function : Trainer() ~ Nil {
+		"trainer"->PrintLine();
+		data := ImageDataset->Synthetic(16, 40, 9);
+		splits := data->Split(0.6, 0.2, 9);
+		h1 := Fit(splits, 5);
+		h2 := Fit(splits, 5);
+		Report("the history has one row per epoch ({$h1->GetEpochs()})", h1 <> Nil & h1->GetEpochs() = 5 & h1->GetError()->Size() = 0);
+		identical := true;
+		each(e : 5) {
+			identical := identical & h1->GetTrainLoss(e) = h2->GetTrainLoss(e) & h1->GetValidationLoss(e) = h2->GetValidationLoss(e) &
+				h1->GetTrainAccuracy(e) = h2->GetTrainAccuracy(e);
+		};
+		Report("two runs with one seed give identical losses and accuracies", identical);
+		sane := true;
+		each(e : 5) {
+			sane := sane & h1->GetTrainLoss(e) > 0.0 & h1->GetValidationLoss(e) > 0.0 & h1->GetTrainAccuracy(e) >= 0.0 & h1->GetTrainAccuracy(e) <= 1.0 &
+				h1->GetValidationAccuracy(e) >= 0.0 & h1->GetValidationAccuracy(e) <= 1.0 & h1->GetEpochSeconds(e) >= 0.0;
+		};
+		Report("every recorded value is in range", sane);
+		Report("epoch -1 and epoch 5 read as 0", h1->GetTrainLoss(-1) = 0.0 & h1->GetTrainLoss(5) = 0.0);
+		Report("the training loss falls over the 5 epochs ({$h1->GetTrainLoss(0)} -> {$h1->GetTrainLoss(4)})", h1->GetTrainLoss(4) < h1->GetTrainLoss(0));
+		Report("total time is the sum of the epochs", Float->Abs(h1->GetTotalSeconds() - (h1->GetEpochSeconds(0) + h1->GetEpochSeconds(1) + h1->GetEpochSeconds(2) + h1->GetEpochSeconds(3) + h1->GetEpochSeconds(4))) < 1.0e-9);
+
+		csv := h1->ToCsv();
+		lines := csv->Split("\n");
+		Report("the CSV has a header and 5 rows", lines->Size() >= 6 & lines[0]->Equals("epoch,train_loss,train_acc,val_loss,val_acc,seconds") & lines[5]->StartsWith("5,"));
+		Report("SaveCsv writes it", h1->SaveCsv("ml_cnn_dataset_history.csv") & File->Exists("ml_cnn_dataset_history.csv") & h1->SaveCsv("") = false);
+		File->Delete("ml_cnn_dataset_history.csv");
+		table := h1->ToResultTable("history");
+		Report("the ResultTable has 5 rows and 5 columns", table->GetColumnNames()->Size() = 5 & table->GetRowNames()->Size() = 5 & Float->Abs(table->Get(2, 0) - h1->GetTrainLoss(2)) < 1.0e-12);
+
+		# Evaluate against the confusion matrix it reports
+		model := CnnModel->Baseline(16, 2, 0.0, 16, 0.001, 9);
+		trainer := CnnTrainer->New(model, splits[0], splits[1], 8, 9);
+		trainer->Fit(3);
+		e := trainer->Evaluate(splits[2]);
+		cm := e->GetConfusion();
+		tn := cm[0, 0]->As(Float);
+		fp := cm[0, 1]->As(Float);
+		fn := cm[1, 0]->As(Float);
+		tp := cm[1, 1]->As(Float);
+		n := tn + fp + fn + tp;
+		test_count := splits[2]->Count();
+		Report("the confusion matrix counts every test image ({$n})", n = test_count->As(Float) & e->GetCount() = test_count);
+		Report("accuracy = (TN + TP) / n", Float->Abs(e->GetAccuracy() - (tn + tp) / n) < 1.0e-12);
+		Report("precision = TP / (TP + FP) and recall = TP / (TP + FN)", (tp + fp = 0.0 | Float->Abs(e->GetPrecision() - tp / (tp + fp)) < 1.0e-12) & (tp + fn = 0.0 | Float->Abs(e->GetRecall() - tp / (tp + fn)) < 1.0e-12));
+		p := e->GetPrecision();
+		r := e->GetRecall();
+		Report("F1 is the harmonic mean of the two", (p + r = 0.0 | Float->Abs(e->GetF1() - 2.0 * p * r / (p + r)) < 1.0e-12));
+		Report("the evaluation has a loss ({$e->GetLoss()})", e->GetLoss() > 0.0);
+		Report("Evaluate of an empty subset is Nil", trainer->Evaluate(ImageDataset->New(16, 3)->All(false)) = Nil);
+		Report("Fit with 0 epochs is Nil", trainer->Fit(0) = Nil);
+		model->Close();
+	}
+
+	function : Fit(splits : ImageSubset[], epochs : Int) ~ TrainingHistory {
+		model := CnnModel->Baseline(16, 2, 0.1, 16, 0.001, 21);
+		trainer := CnnTrainer->New(model, splits[0], splits[1], 8, 21);
+		history := trainer->Fit(epochs);
+		model->Close();
+		return history;
+	}
+}
