@@ -133,8 +133,8 @@ The table above is left as written. Each item, in the order of that table:
 
 | # | Item | Outcome | Commit, release |
 |---|---|---|---|
-| 1 | Forest vote-proportion score | Delivered on a new class: `RandomForestClassifier->PredictScore` returns the mean of its trees' leaf proportions over `Float[,]` rows. The original `Bool[,]` `RandomForest` still returns hard labels only (`ml_tree.obs`, `votes_true * 2 >= ntrees`) | `e8059105f0`, PR #986, 2026-09-24, v2026.10.0 |
-| 2 | Score-based metrics | Delivered: `Metrics->AucRoc`, `AveragePrecision`, `RocCurve`, `PrCurve`, `RecallAtFpr`, `ThresholdAtFpr` | `5a380e41f3`, PR #983, 2026-09-24, v2026.10.0 |
+| 1 | Forest vote-proportion score | Delivered on a new class: `RandomForestClassifier->PredictScore` returns the mean of its trees' leaf proportions over `Float[,]` rows. The original `Bool[,]` `RandomForest` now has `PredictScore` too: `votes_true / ntrees` per row, and `Predict` is that score thresholded at 0.5 | `e8059105f0`, PR #986, 2026-09-24, v2026.10.0; `RandomForest->PredictScore` 2026-11-18, `ml_forest_score_auc` |
+| 2 | Score-based metrics | Delivered: `Metrics->AucRoc`, `AveragePrecision`, `RocCurve`, `PrCurve`, `RecallAtFpr`, `ThresholdAtFpr`. All take scores, not labels; ties share one operating point. Re-verified 2026-11-18; `ml_forest_score_auc` adds the hand-computed cases `ml_score_metrics` lacked (inverted classifier, ties across the classes, the curve rows of a tied example, a pairwise cross-check) | `5a380e41f3`, PR #983, 2026-09-24, v2026.10.0 |
 | 3 | Streaming CSV to `Float[,]` encoder | Partly: `TableEncoder` (vocabulary fixed at `Fit`, train/test consistent) exists, but it takes a `CsvTable`, so it **does not stream**; the materialisation described under gap 4 is still how a CSV is read | `5747732b26`, PR #981, 2026-09-24, v2026.10.0 |
 | 4 | `StratifiedKFold` with a seed | Delivered as `CrossValidation->StratifiedKFold(labels, k, seed)` | `1ad31318a5`, PR #982, 2026-09-24, v2026.10.0 |
 | 5 | Continuous-feature tree splits | Delivered: `DecisionTreeClassifier` (Gini, continuous) and `RandomForestClassifier`; later `GradientBoostedClassifier` | `34f2df1da8` PR #984; `e8059105f0` PR #986; both v2026.10.0 |
@@ -145,8 +145,11 @@ The heap-sizing fix described under gap 4 (the `fix/gc-heap-sizing` branch) is o
 is `ScoreModel` in `ml_data.obs`, and the classes added since for the same workload (kernel SVMs,
 the forest sweep parameters, anomaly detectors, the lab plumbing) are in
 `docs/ML_KERNELS_DESIGN.md`, `docs/ML_OUTLIERS_DESIGN.md` and `docs/ML_LAB_SUPPORT_DESIGN.md`.
-Not checked: whether `Metrics` and each `Predict` now carry the doc comment the last section
-asks for.
+Checked 2026-11-18: gap 1 (for the `Bool[,]` forest) and gap 2 are closed as above. Gap 3 is
+closed by `DecisionTreeClassifier` and `RandomForestClassifier` (continuous splits); the `Bool[,]`
+`RandomForest` still takes booleans. Gap 4 is open: `TableEncoder` takes a `CsvTable`. The `Metrics`
+functions that take scores say so in their doc comments (`@param scores ... higher means more
+positive`). Not checked: whether each `Predict` doc comment names what it returns.
 
 ## What is explicitly *not* a gap
 
