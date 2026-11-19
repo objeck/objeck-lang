@@ -120,6 +120,7 @@ Written before the work, and kept afterwards as the record of why it looks the w
 | [ML_OUTLIERS_DESIGN.md](ML_OUTLIERS_DESIGN.md): `System.ML` anomaly detection | **built** (`ml_outlier.obs`) |
 | [ML_LAB_SUPPORT_DESIGN.md](ML_LAB_SUPPORT_DESIGN.md): `System.ML.Lab` splits, resampling, sweep runner | **built** (`ml_lab.obs`) |
 | [ML_BERT_DESIGN.md](ML_BERT_DESIGN.md): BERT embeddings and a trainable head | **built** (`nlp_onnx.obs`) |
+| [ML_API_CONVENTIONS.md](ML_API_CONVENTIONS.md): a review of `System.ML`, `System.Stats`, `System.NLP`, `System.NLP.Topics` and `System.ML.Cnn` for consistency, with conventions, small interfaces, a results-aggregation and report builder, and a plan | **proposed** (review of 2026-11-19; the four newer libraries were read from open pull requests #1627, #1628, #1630, #1631) |
 | [ML_TABULAR_GAPS.md](ML_TABULAR_GAPS.md): what `System.ML` lacked for a tabular classification study | **snapshot** (2026-09-12); several gaps since closed by the pages above |
 | [AI_FOUNDATION_DESIGN.md](AI_FOUNDATION_DESIGN.md): tensors, autograd, `nn`, a Hugging Face hub cache, task pipelines | **proposed**; only the hub client (`ai_hub.obs`, its section 7.3) exists |
 | [INFERENCE_ENGINES_PLAN.md](INFERENCE_ENGINES_PLAN.md): one `Engine` over ONNX and inference servers | **partly built**: P1 built, P3 (TF Lite) dropped, the rest proposed |

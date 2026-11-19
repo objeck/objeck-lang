@@ -1,0 +1,239 @@
+# EXTRA_LIBS: nlp_topics,json,plot,gen_collect
+#~
+System.NLP.Topics text side: stopword lists, the tokenizer, TokenDictionary (counts, FilterExtremes) and TopicCorpus.
+
+Every expected number is worked out by hand from this four-document corpus (letters stand for words):
+
+  D1 = a b c a      D2 = b c d      D3 = a c e      D4 = c c f
+
+  id:  a0 b1 c2 d3 e4 f5
+  document frequency:   a 2, b 2, c 4, d 1, e 1, f 1
+  collection frequency: a 3, b 2, c 5, d 1, e 1, f 1   (13 tokens in all)
+
+so, as Gensim's filter_extremes(no_below, no_above, keep_n) defines it,
+  (2, 1.0, 0):  keeps a b c; 3 of 6 types (50%) and 3 of 13 occurrences (23.0769%) go
+  (1, 0.5, 0):  no_above * 4 documents = 2, so c goes: 1 of 6 types and 5 of 13 occurrences (38.4615%)
+  (1, 1.0, 2):  the two highest document frequencies, c (4) and then a (2 ties with b, the smaller id wins)
+  (5, 1.0, 0):  nothing has 5 documents, so the dictionary empties
+~#
+use System.NLP.Topics;
+use Collection;
+
+class NlpTopicsDictionary {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		ok := Stopwords() & ok;
+		ok := Tokenizer() & ok;
+		ok := Counting() & ok;
+		ok := Filters() & ok;
+		ok := Corpora() & ok;
+		ok := BadInput() & ok;
+
+		if(ok = false) {
+			Runtime->Exit(1);
+		};
+		"nlp_topics_dictionary: ok"->PrintLine();
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+		return passed;
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return Float->Abs(a - b) < 0.0001;
+	}
+
+	function : Docs() ~ Vector<Vector<String>> {
+		tok := TopicTokenizer->New();
+		tok->SetLengths(1, 50);
+		texts := Vector->New()<String>;
+		texts->AddBack("a b c a");
+		texts->AddBack("b c d");
+		texts->AddBack("a c e");
+		texts->AddBack("c c f");
+		return tok->TokenizeAll(texts);
+	}
+
+	function : Joined(tokens : Vector<String>) ~ String {
+		out := "";
+		each(i : tokens) {
+			if(i > 0) {
+				out += " ";
+			};
+			out += tokens->Get(i);
+		};
+		return out;
+	}
+
+	function : Stopwords() ~ Bool {
+		ok := true;
+		english := TopicStopwords->English();
+		ok := Report("the English list has the 179 words of NLTK", english->Size() = 179) & ok;
+		ok := Report("  it has 'the', 'don', 'wouldn't' and not 'malware'", english->Has("the") & english->Has("don") & english->Has("wouldn't") & english->Has("malware") = false) & ok;
+		cyber := TopicStopwords->Cyber();
+		ok := Report("the cyber starter list has 28 words, 'rt' and 'https' among them", cyber->Size() = 28 & cyber->Has("rt") & cyber->Has("https")) & ok;
+		both := english->Union(cyber);
+		ok := Report("English + cyber is 206 words (only 't' is in both)", both->Size() = 206 & english->Size() = 179 & cyber->Size() = 28) & ok;
+		ok := Report("Union with Nil is a copy", english->Union(Nil)->Size() = 179) & ok;
+		ok := Report("the 'none' strategy is empty", TopicStopwords->New()->Size() = 0) & ok;
+		mine := TopicStopwords->FromArray(["Foo", "bar", "", "bar"]);
+		ok := Report("FromArray lowercases, drops empties and duplicates", mine->Size() = 2 & mine->Has("foo") & mine->Has("bar")) & ok;
+		ok := Report("FromArray(Nil) is empty and Has(Nil) is false", TopicStopwords->FromArray(Nil->As(String[]))->Size() = 0 & mine->Has(Nil) = false) & ok;
+		return ok;
+	}
+
+	function : Tokenizer() ~ Bool {
+		ok := true;
+		text := "RT @bob: New #Malware found http://t.co/xyz in the wild, don't panic 2021 www.x.com";
+		with_english := TopicTokenizer->New(TopicStopwords->English())->Tokenize(text);
+		ok := Report("English stopwords", Joined(with_english)->Equals("rt new malware found wild panic")) & ok;
+		with_both := TopicTokenizer->New(TopicStopwords->English()->Union(TopicStopwords->Cyber()))->Tokenize(text);
+		ok := Report("English + cyber stopwords", Joined(with_both)->Equals("malware found wild panic")) & ok;
+		with_none := TopicTokenizer->New()->Tokenize(text);
+		ok := Report("no stopwords", Joined(with_none)->Equals("rt new malware found in the wild don panic")) & ok;
+
+		plain := TopicTokenizer->New();
+		ok := Report("a mention in brackets is dropped", Joined(plain->Tokenize("(@alice) hi there"))->Equals("hi there")) & ok;
+		ok := Report("non-ASCII bytes end a token", Joined(plain->Tokenize("café naive"))->Equals("caf naive")) & ok;
+		ok := Report("digits inside a word stay, a number alone goes", Joined(plain->Tokenize("log4j 2021 x509"))->Equals("log4j x509")) & ok;
+		keep := TopicTokenizer->New();
+		keep->SetDropNumbers(false);
+		ok := Report("SetDropNumbers(false) keeps numbers", Joined(keep->Tokenize("cve 2021 44228"))->Equals("cve 2021 44228")) & ok;
+		lengths := TopicTokenizer->New();
+		ok := Report("SetLengths refuses 0 and max below min", lengths->SetLengths(0, 5) = false & lengths->SetLengths(5, 4) = false & lengths->SetLengths(3, 5)) & ok;
+		ok := Report("lengths 3 to 5", Joined(lengths->Tokenize("a ab abc abcd abcde abcdef"))->Equals("abc abcd abcde")) & ok;
+		ok := Report("upper case is lowered", Joined(plain->Tokenize("Ransomware LOCKBIT"))->Equals("ransomware lockbit")) & ok;
+		ok := Report("tabs and newlines separate", Joined(plain->Tokenize("one\ttwo\nthree\r\nfour"))->Equals("one two three four")) & ok;
+
+		ok := Report("a Nil text gives no tokens", plain->Tokenize(Nil)->Size() = 0 & plain->Tokenize("")->Size() = 0 & plain->Tokenize("   ")->Size() = 0) & ok;
+		ok := Report("TokenizeAll(Nil) is Nil, a Nil text inside is an empty document", plain->TokenizeAll(Nil) = Nil) & ok;
+		texts := Vector->New()<String>;
+		texts->AddBack("x1 y2");
+		texts->AddBack(Nil);
+		docs := plain->TokenizeAll(texts);
+		ok := Report("  one empty document", docs->Size() = 2 & docs->Get(0)->Size() = 2 & docs->Get(1)->Size() = 0) & ok;
+		return ok;
+	}
+
+	function : Counting() ~ Bool {
+		ok := true;
+		dict := TokenDictionary->New();
+		dict->AddDocuments(Docs());
+		ok := Report("6 tokens, 4 documents, 13 occurrences", dict->Size() = 6 & dict->GetNumDocs() = 4 & dict->GetNumTokens() = 13) & ok;
+		ok := Report("ids are in order of first appearance", dict->GetId("a") = 0 & dict->GetId("b") = 1 & dict->GetId("c") = 2 & dict->GetId("d") = 3 & dict->GetId("e") = 4 & dict->GetId("f") = 5) & ok;
+		ok := Report("document frequencies 2 2 4 1 1 1", dict->GetDocFreq(0) = 2 & dict->GetDocFreq(1) = 2 & dict->GetDocFreq(2) = 4 & dict->GetDocFreq(3) = 1 & dict->GetDocFreq(4) = 1 & dict->GetDocFreq(5) = 1) & ok;
+		ok := Report("collection frequencies 3 2 5 1 1 1", dict->GetCollFreq(0) = 3 & dict->GetCollFreq(1) = 2 & dict->GetCollFreq(2) = 5 & dict->GetCollFreq(3) = 1 & dict->GetCollFreq(4) = 1 & dict->GetCollFreq(5) = 1) & ok;
+		ok := Report("tokens by id", dict->GetToken(2)->Equals("c") & dict->GetToken(-1) = Nil & dict->GetToken(6) = Nil) & ok;
+		ok := Report("unknown, Nil and out-of-range lookups", dict->GetId("zzz") = -1 & dict->GetId(Nil) = -1 & dict->GetDocFreq(6) = -1 & dict->GetCollFreq(-1) = -1) & ok;
+		ok := Report("GetTokens is a copy of the vocabulary", dict->GetTokens()->Size() = 6) & ok;
+
+		dict->AddDocument(Nil);
+		ok := Report("a Nil document counts as an empty one", dict->GetNumDocs() = 5 & dict->Size() = 6) & ok;
+		return ok;
+	}
+
+	function : Filters() ~ Bool {
+		ok := true;
+
+		a := TokenDictionary->New();
+		a->AddDocuments(Docs());
+		report := a->FilterExtremes(2, 1.0, 0);
+		ok := Report("(2, 1.0, 0): 6 -> 3 types, 13 -> 10 occurrences", report <> Nil & report->GetTypesBefore() = 6 & report->GetTypesAfter() = 3 & report->GetTokensBefore() = 13 & report->GetTokensAfter() = 10) & ok;
+		ok := Report("  23.0769% of the occurrences and 50% of the types removed", Near(report->GetTokensRemovedPercent(), 23.076923) & Near(report->GetTypesRemovedPercent(), 50.0)) & ok;
+		ok := Report("  a b c keep ids 0 1 2, d e f are gone", a->Size() = 3 & a->GetId("c") = 2 & a->GetId("d") = -1 & a->GetNumDocs() = 4) & ok;
+		corpus := a->ToCorpus(Docs());
+		ok := Report("  its corpus has 10 words in 4 documents", corpus->GetNumDocs() = 4 & corpus->GetNumWords() = 10.0 & corpus->GetVocabSize() = 3) & ok;
+		d1_ids := corpus->GetWordIds(0);
+		d1_cnt := corpus->GetWordCounts(0);
+		d2_ids := corpus->GetWordIds(1);
+		d4_ids := corpus->GetWordIds(3);
+		d4_cnt := corpus->GetWordCounts(3);
+		ok := Report("  D1 = {a:2, b:1, c:1}", d1_ids->Size() = 3 & d1_ids[0] = 0 & d1_ids[1] = 1 & d1_ids[2] = 2 & d1_cnt[0] = 2.0 & d1_cnt[1] = 1.0 & d1_cnt[2] = 1.0) & ok;
+		ok := Report("  D2 = {b:1, c:1} (d is dropped)", d2_ids->Size() = 2 & d2_ids[0] = 1 & d2_ids[1] = 2) & ok;
+		ok := Report("  D4 = {c:2} (f is dropped)", d4_ids->Size() = 1 & d4_ids[0] = 2 & d4_cnt[0] = 2.0) & ok;
+		ok := Report("  document lengths 4 2 2 2", corpus->GetDocLength(0) = 4.0 & corpus->GetDocLength(1) = 2.0 & corpus->GetDocLength(2) = 2.0 & corpus->GetDocLength(3) = 2.0) & ok;
+
+		b := TokenDictionary->New();
+		b->AddDocuments(Docs());
+		report := b->FilterExtremes(1, 0.5, 0);
+		ok := Report("(1, 0.5, 0): c is too common: 6 -> 5 types, 13 -> 8 occurrences", report->GetTypesAfter() = 5 & report->GetTokensAfter() = 8 & Near(report->GetTokensRemovedPercent(), 38.461538) & Near(report->GetTypesRemovedPercent(), 16.666667)) & ok;
+		ok := Report("  ids are compacted in the old order: a0 b1 d2 e3 f4", b->GetId("a") = 0 & b->GetId("b") = 1 & b->GetId("d") = 2 & b->GetId("e") = 3 & b->GetId("f") = 4 & b->GetId("c") = -1) & ok;
+		ok := Report("  document frequencies follow the tokens", b->GetDocFreq(2) = 1 & b->GetCollFreq(0) = 3) & ok;
+
+		c := TokenDictionary->New();
+		c->AddDocuments(Docs());
+		report := c->FilterExtremes(1, 1.0, 2);
+		ok := Report("(1, 1.0, 2): keep_n keeps c and then a (tie with b goes to the smaller id)", report->GetTypesAfter() = 2 & c->GetId("a") = 0 & c->GetId("c") = 1 & c->GetId("b") = -1 & report->GetTokensAfter() = 8) & ok;
+
+		d := TokenDictionary->New();
+		d->AddDocuments(Docs());
+		report := d->FilterExtremes(5, 1.0, 0);
+		ok := Report("(5, 1.0, 0): the dictionary empties and the percentages say 100", d->Size() = 0 & Near(report->GetTokensRemovedPercent(), 100.0) & Near(report->GetTypesRemovedPercent(), 100.0)) & ok;
+		empty_corpus := d->ToCorpus(Docs());
+		ok := Report("  its corpus keeps 4 empty documents", empty_corpus->GetNumDocs() = 4 & empty_corpus->GetNumWords() = 0.0 & empty_corpus->GetVocabSize() = 0) & ok;
+
+		e := TokenDictionary->New();
+		e->AddDocuments(Docs());
+		report := e->FilterExtremes(1, 1.0, 0);
+		ok := Report("(1, 1.0, 0) removes nothing", report->GetTypesAfter() = 6 & Near(report->GetTokensRemovedPercent(), 0.0)) & ok;
+
+		f := TokenDictionary->New();
+		f->AddDocuments(Docs());
+		f->FilterExtremes(1, 0.99, 0);
+		ok := Report("no_above 0.99 of 4 documents is int(3.96) = 3, so c (4 documents) goes", f->GetId("c") = -1 & f->Size() = 5) & ok;
+		g := TokenDictionary->New();
+		g->AddDocuments(Docs());
+		g->FilterExtremes(1, 0.25, 0);
+		ok := Report("no_above 0.25 keeps the tokens in at most 1 document: d e f", g->Size() = 3 & g->GetId("d") = 0 & g->GetId("e") = 1 & g->GetId("f") = 2) & ok;
+
+		h := TokenDictionary->New();
+		ok := Report("an empty dictionary filters to nothing, with 0 percent", h->FilterExtremes(1, 1.0, 0)->GetTokensRemovedPercent() = 0.0) & ok;
+		return ok;
+	}
+
+	function : Corpora() ~ Bool {
+		ok := true;
+		dict := TokenDictionary->New();
+		dict->AddDocuments(Docs());
+		corpus := dict->ToCorpus(Docs());
+		dfs := corpus->GetDocFreqs();
+		totals := corpus->GetWordTotals();
+		ok := Report("document frequencies and word totals of the corpus", dfs[2] = 4 & dfs[3] = 1 & totals[2] = 5.0 & totals[0] = 3.0) & ok;
+
+		more := Vector->New()<Vector<String>>;
+		more->AddBack(TopicTokenizer->New()->Tokenize("zz yy"));
+		more->AddBack(Nil);
+		more->AddBack(TopicTokenizer->New()->Tokenize("ab"));
+		unknown := dict->ToCorpus(more);
+		ok := Report("unknown tokens and Nil documents give empty documents", unknown->GetNumDocs() = 3 & unknown->GetNumWords() = 0.0 & unknown->GetNumUnique(0) = 0 & unknown->GetNumUnique(1) = 0) & ok;
+
+		built := TopicCorpus->Build([0, 2, 3], [0, 1, 1], [2.0, 1.0, 3.0], 2);
+		ok := Report("Build makes a corpus from arrays", built <> Nil & built->GetNumDocs() = 2 & built->GetNumWords() = 6.0 & built->GetDocLength(1) = 3.0) & ok;
+		ok := Report("Build refuses Nil arrays", TopicCorpus->Build(Nil, [0], [1.0], 1) = Nil & TopicCorpus->Build([0, 1], Nil, [1.0], 1) = Nil & TopicCorpus->Build([0, 1], [0], Nil, 1) = Nil) & ok;
+		ok := Report("Build refuses offsets that do not start at 0, end at the size or grow", TopicCorpus->Build([1, 1], [0], [1.0], 1) = Nil & TopicCorpus->Build([0, 2], [0], [1.0], 1) = Nil & TopicCorpus->Build([0, 2, 1], [0], [1.0], 1) = Nil) & ok;
+		ok := Report("Build refuses an id outside the vocabulary, a count below 1 and mismatched arrays", TopicCorpus->Build([0, 1], [5], [1.0], 2) = Nil & TopicCorpus->Build([0, 1], [-1], [1.0], 2) = Nil & TopicCorpus->Build([0, 1], [0], [0.0], 2) = Nil & TopicCorpus->Build([0, 1], [0], [1.0, 1.0], 2) = Nil) & ok;
+		ok := Report("an index out of range gives -1 or Nil", built->GetDocLength(2) = -1.0 & built->GetNumUnique(-1) = -1 & built->GetWordIds(9) = Nil & built->GetWordCounts(-3) = Nil) & ok;
+		ok := Report("ToCorpus(Nil) is Nil", dict->ToCorpus(Nil) = Nil) & ok;
+		return ok;
+	}
+
+	function : BadInput() ~ Bool {
+		ok := true;
+		dict := TokenDictionary->New();
+		dict->AddDocuments(Docs());
+		ok := Report("FilterExtremes refuses no_below -1", dict->FilterExtremes(-1, 1.0, 0) = Nil & dict->GetError()->Size() > 0) & ok;
+		ok := Report("  no_above 0, 1.5 and NaN", dict->FilterExtremes(1, 0.0, 0) = Nil & dict->FilterExtremes(1, 1.5, 0) = Nil & dict->FilterExtremes(1, Float->NaN(), 0) = Nil) & ok;
+		ok := Report("  keep_n -1", dict->FilterExtremes(1, 1.0, -1) = Nil) & ok;
+		ok := Report("  and leaves the dictionary as it was", dict->Size() = 6 & dict->GetNumTokens() = 13) & ok;
+		ok := Report("AddDocuments(Nil) is harmless", TokenDictionary->New()->GetNumDocs() = 0) & ok;
+		dict->AddDocuments(Nil);
+		ok := Report("  and changes nothing", dict->GetNumDocs() = 4) & ok;
+		return ok;
+	}
+}

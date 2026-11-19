@@ -1,0 +1,186 @@
+# EXTRA_LIBS: ml,ml_lab,gen_collect,csv,json
+#~
+System.ML.Lab non-finite values: a NaN, +Infinity or -Infinity in a ResultTable
+cell, deviation or row value, and in a Chart point.
+
+System.Stats returns NaN by design (a degenerate fit has no p-value), so a
+p-value flows straight into a table. The old writers printed "nan", which is
+not JSON. The rule now: ToText and ToMarkdown write n/a, ToCsv an empty field,
+ToJson null, and a Chart skips the point. The four renderings are compared
+byte-for-byte against goldens under ml_lab_golden/; the JSON golden was also
+parsed with Python's json.loads when it was written. Finite output is covered
+(and unchanged) by ml_lab_result_table and ml_lab_chart_svg.
+~#
+use Data.JSON;
+use System.IO.Filesystem;
+use System.ML.Lab;
+
+class MlLabNonFinite {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		nan := Float->NaN();
+		inf := Float->Inf();
+		ninf := Float->NegInf();
+
+		ok := Report("IsFinite is true for numbers", ResultTable->IsFinite(0.0) & ResultTable->IsFinite(-3.5) & ResultTable->IsFinite(1.0e300)) & ok;
+		ok := Report("IsFinite is false for NaN, +Inf, -Inf",
+			<>ResultTable->IsFinite(nan) & <>ResultTable->IsFinite(inf) & <>ResultTable->IsFinite(ninf)) & ok;
+		ok := Report("FormatNumber writes n/a for a non-finite value",
+			ResultTable->FormatNumber(nan)->Equals("n/a") & ResultTable->FormatNumber(inf)->Equals("n/a") & ResultTable->FormatNumber(ninf)->Equals("n/a")) & ok;
+		ok := Report("FormatNumber of a finite value is unchanged", ResultTable->FormatNumber(0.25)->Equals("0.25")) & ok;
+
+		# a table with deviations: one finite row, one NaN / +Inf row, one -Inf / finite row
+		t := ResultTable->New("p-values", "model");
+		t->AddColumn("p", 3);
+		t->AddColumn("t", 2);
+		t->SetFootnote("missing = degenerate fit");
+		t->AddRow("a", 1.0, [0.5, 2.0], [0.1, 0.25]);
+		t->AddRow("b", 2.0, [nan, inf], [nan, 0.5]);
+		t->AddRow("c", 3.0, [ninf, 1.5], [0.2, inf]);
+
+		ok := Golden("ToText writes n/a", t->ToText(), "ml_lab_golden/result_table_nonfinite.txt") & ok;
+		ok := Golden("ToMarkdown writes n/a", t->ToMarkdown(), "ml_lab_golden/result_table_nonfinite.md") & ok;
+		ok := Golden("ToCsv writes an empty field", t->ToCsv(), "ml_lab_golden/result_table_nonfinite.csv") & ok;
+		json := t->ToJson();
+		ok := Golden("ToJson writes null", json, "ml_lab_golden/result_table_nonfinite.json") & ok;
+		ok := Report("the JSON carries no nan or inf token",
+			<>json->Has("nan") & <>json->Has("inf") & <>json->Has("Inf") & <>json->Has("NaN")) & ok;
+
+		# the JSON is valid: Data.JSON parses it and the missing cells are null
+		parser := JsonParser->New(json);
+		parsed := parser->Parse();
+		ok := Report("Data.JSON parses the JSON", parsed) & ok;
+		if(parsed) {
+			rows := parser->GetRoot()->Get("rows");
+			cells := rows->Get(1)->Get("cells");
+			ok := Report("a NaN cell is null", cells->Get("p")->IsNull()) & ok;
+			ok := Report("a +Inf cell is null", cells->Get("t")->IsNull()) & ok;
+			ok := Report("a -Inf cell is null", rows->Get(2)->Get("cells")->Get("p")->IsNull()) & ok;
+			ok := Report("a finite cell beside them is a number", rows->Get(0)->Get("cells")->Get("p")->GetFloat() = 0.5) & ok;
+			ok := Report("a non-finite deviation is null", rows->Get(1)->Get("stds")->Get("p")->IsNull() & rows->Get(2)->Get("stds")->Get("t")->IsNull()) & ok;
+		};
+
+		# read back: a missing cell returns as NaN (the infinities become NaN too)
+		from_json := ResultTable->FromJson(json);
+		ok := Report("FromJson reads a null as NaN",
+			Near(from_json->Get(0, 0), 0.5) & IsNan(from_json->Get(1, 0)) & IsNan(from_json->Get(1, 1)) & IsNan(from_json->Get(2, 0))
+			& Near(from_json->Get(2, 1), 1.5) & IsNan(from_json->GetStd(1, 0)) & Near(from_json->GetStd(1, 1), 0.5)) & ok;
+		from_csv := ResultTable->FromCsv(t->ToCsv());
+		ok := Report("FromCsv reads an empty field as NaN",
+			Near(from_csv->Get(0, 0), 0.5) & IsNan(from_csv->Get(1, 0)) & IsNan(from_csv->Get(1, 1)) & IsNan(from_csv->Get(2, 0))
+			& Near(from_csv->Get(2, 1), 1.5) & IsNan(from_csv->GetStd(1, 0)) & Near(from_csv->GetStd(1, 1), 0.5)) & ok;
+		ok := Report("a table without deviations round trips a NaN through JSON and CSV", RoundTripsNan()) & ok;
+
+		# a NaN row value is a missing x: n/a as its name, null in JSON, empty in CSV
+		x := ResultTable->New("", "x");
+		x->AddColumn("y");
+		x->AddRow(Nil, nan, [1.0]);
+		ok := Report("a NaN row value writes n/a as its name", x->GetRowName(0)->Equals("n/a")) & ok;
+		ok := Report("a NaN row value is null in JSON", x->ToJson()->Has("\"value\":null")) & ok;
+		ok := Report("a NaN row value is empty in CSV", x->ToCsv()->Equals("x,x_value,y\nn/a,,1\n")) & ok;
+
+		# charts skip a non-finite point and do not crash
+		c := Chart->New("gaps", "x", "y");
+		c->AddLine("gappy", [1.0, 2.0, 3.0, 4.0, 5.0], [0.1, nan, 0.5, inf, 0.9], [0.05, 0.05, nan, 0.05, 0.05]);
+		svg := c->ToSvg();
+		ok := Report("a line chart with NaN and Inf points renders", svg->Has("<svg ") & svg->EndsWith("</svg>\n")) & ok;
+		ok := Report("the SVG carries no nan or inf", <>svg->Has("nan") & <>svg->Has("inf")) & ok;
+		ok := Report("three of five points are drawn as markers", Count(svg, "<circle") = 3) & ok;
+		ok := Report("an isolated point draws a one-point segment each, never a line across a gap", Count(svg, "<polyline") = 3) & ok;
+		ok := Report("error bars are drawn for plottable points with a finite error only", Count(svg, "<path d=\"M") = 2) & ok;
+
+		g := Chart->New("two segments", "x", "y");
+		g->AddLine("s", [1.0, 2.0, 3.0, 4.0, 5.0], [0.1, 0.2, nan, 0.4, 0.5]);
+		ok := Report("a gap in the middle gives two segments", Count(g->ToSvg(), "<polyline") = 2) & ok;
+
+		all := Chart->New("all missing", "x", "y");
+		all->AddLine("s", [1.0, 2.0], [nan, ninf]);
+		all_svg := all->ToSvg();
+		ok := Report("a series with no finite point renders, draws nothing and writes no nan",
+			all_svg->EndsWith("</svg>\n") & Count(all_svg, "<circle") = 0 & Count(all_svg, "<polyline") = 0 & <>all_svg->Has("nan")) & ok;
+
+		lg := Chart->New("log", "x", "y");
+		lg->SetLogX(true);
+		lg->AddLine("s", [0.1, nan, 10.0, inf], [0.1, 0.2, 0.3, 0.4]);
+		ok := Report("a log chart skips a non-finite x without refusing", Count(lg->ToSvg(), "<circle") = 2) & ok;
+
+		finite_bars := Chart->New("bars", "c", "v");
+		finite_bars->SetCategories(["p", "q", "r"]);
+		finite_bars->AddBars("b", [0.4, 0.5, 0.8]);
+		bars := Chart->New("bars", "c", "v");
+		bars->SetCategories(["p", "q", "r"]);
+		bars->AddBars("b", [0.4, nan, 0.8], [0.1, 0.1, nan]);
+		bar_svg := bars->ToSvg();
+		ok := Report("a bar for a NaN value is skipped",
+			Count(finite_bars->ToSvg(), "<rect") - Count(bar_svg, "<rect") = 1) & ok;
+		ok := Report("a bar chart with NaN renders without nan", bar_svg->EndsWith("</svg>\n") & <>bar_svg->Has("nan")) & ok;
+
+		tc_svg := t->ToChart(Nil->As(String[]))->ToSvg();
+		ok := Report("a table with missing cells charts", tc_svg->EndsWith("</svg>\n") & <>tc_svg->Has("nan") & <>tc_svg->Has("inf")) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : RoundTripsNan() ~ Bool {
+		u := ResultTable->New("", "k");
+		u->AddColumn("m");
+		u->AddRow("r", 1.0, [Float->NaN()]);
+		u->AddRow("s", 2.0, [4.0]);
+		j := ResultTable->FromJson(u->ToJson());
+		c := ResultTable->FromCsv(u->ToCsv());
+		return IsNan(j->Get(0, 0)) & Near(j->Get(1, 0), 4.0) & IsNan(c->Get(0, 0)) & Near(c->Get(1, 0), 4.0);
+	}
+
+	function : Count(text : String, needle : String) ~ Int {
+		n := 0;
+		i := text->Find(needle);
+		while(i >= 0) {
+			n += 1;
+			i := text->Find(i + 1, needle);
+		};
+
+		return n;
+	}
+
+	function : IsNan(v : Float) ~ Bool {
+		return v <> v;
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.0000000001;
+	}
+
+	function : Golden(name : String, actual : String, path : String) ~ Bool {
+		expected := FileReader->ReadFile(path);
+		if(expected = Nil) {
+			"FAIL: {$name} (golden file missing)"->PrintLine();
+			return false;
+		};
+
+		# the goldens are LF; a checkout that gave them CRLF must not fail this
+		expected := expected->ReplaceAll("\r", "");
+		if(actual->Equals(expected)) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		"--- expected ---"->PrintLine();
+		expected->PrintLine();
+		"--- actual ---"->PrintLine();
+		actual->PrintLine();
+		return false;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}

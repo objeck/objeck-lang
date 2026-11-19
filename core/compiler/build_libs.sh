@@ -38,6 +38,8 @@ $OBC -src lib_src/ml_report.obs -lib gen_collect,csv,json,ml,ml_lab,stats,plot -
 $OBC -src lib_src/plot.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/plot.obl
 # Statistics: t-tests, correlation, OLS summary. Needs only gen_collect, so it is built apart from ml.obl
 $OBC -src lib_src/stats.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/stats.obl
+# Topic modeling: BSON reader, dictionary, LDA, coherence and an SVG topic report. After json and plot, which it links
+$OBC -src lib_src/nlp_topics_text.obs,lib_src/nlp_topics_lda.obs,lib_src/nlp_topics_metrics.obs,lib_src/nlp_topics_viz.obs -lib gen_collect,json,plot -tar lib -opt s3 -dest ../lib/nlp_topics.obl
 $OBC -src lib_src/ai_search.obs,lib_src/ai_game.obs,lib_src/ai_optimize.obs,lib_src/ai_rl.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ai.obl
 $OBC -src lib_src/nlp.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/nlp.obl
 # Text embeddings from BERT-family ONNX models. A library of its own, after both nlp
