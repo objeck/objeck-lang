@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="640" height="400" viewBox="0 0 640 400" font-family="sans-serif" font-size="12">
+<title></title>
+<rect x="0.0" y="0.0" width="640.0" height="400.0" fill="#ffffff" class="background"/>
+<line x1="64.0" y1="352.0" x2="624.0" y2="352.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="356.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">0</text>
+<line x1="64.0" y1="288.0" x2="624.0" y2="288.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="292.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">0.01</text>
+<line x1="64.0" y1="224.0" x2="624.0" y2="224.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="228.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">0.02</text>
+<line x1="64.0" y1="160.0" x2="624.0" y2="160.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="164.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">0.03</text>
+<line x1="64.0" y1="96.0" x2="624.0" y2="96.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="100.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">0.04</text>
+<line x1="64.0" y1="32.0" x2="624.0" y2="32.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="36.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">0.05</text>
+<line x1="64.0" y1="32.0" x2="64.0" y2="352.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="64.0" y="370.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">0</text>
+<line x1="176.0" y1="32.0" x2="176.0" y2="352.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="176.0" y="370.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">5</text>
+<line x1="288.0" y1="32.0" x2="288.0" y2="352.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="288.0" y="370.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">10</text>
+<line x1="400.0" y1="32.0" x2="400.0" y2="352.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="400.0" y="370.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">15</text>
+<line x1="512.0" y1="32.0" x2="512.0" y2="352.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="512.0" y="370.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">20</text>
+<line x1="624.0" y1="32.0" x2="624.0" y2="352.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="624.0" y="370.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">25</text>
+<clipPath id="clip0"><rect x="64.0" y="32.0" width="560.0" height="320.0"/></clipPath>
+<g clip-path="url(#clip0)">
+<rect x="64.0" y="36.0" width="56.7" height="316.0" fill="#1f77b4" fill-opacity="0.75" stroke="#ffffff" stroke-width="1.0" class="bar"/>
+<rect x="120.7" y="36.0" width="56.7" height="316.0" fill="#1f77b4" fill-opacity="0.75" stroke="#ffffff" stroke-width="1.0" class="bar"/>
+<rect x="177.4" y="36.0" width="56.7" height="316.0" fill="#1f77b4" fill-opacity="0.75" stroke="#ffffff" stroke-width="1.0" class="bar"/>
+<rect x="234.1" y="36.0" width="56.7" height="316.0" fill="#1f77b4" fill-opacity="0.75" stroke="#ffffff" stroke-width="1.0" class="bar"/>
+<rect x="290.8" y="36.0" width="56.7" height="316.0" fill="#1f77b4" fill-opacity="0.75" stroke="#ffffff" stroke-width="1.0" class="bar"/>
+<rect x="347.5" y="36.0" width="56.7" height="316.0" fill="#1f77b4" fill-opacity="0.75" stroke="#ffffff" stroke-width="1.0" class="bar"/>
+<rect x="404.2" y="36.0" width="56.7" height="316.0" fill="#1f77b4" fill-opacity="0.75" stroke="#ffffff" stroke-width="1.0" class="bar"/>
+<rect x="460.9" y="36.0" width="56.7" height="316.0" fill="#1f77b4" fill-opacity="0.75" stroke="#ffffff" stroke-width="1.0" class="bar"/>
+</g>
+<line x1="64.0" y1="32.0" x2="64.0" y2="352.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<line x1="64.0" y1="352.0" x2="624.0" y2="352.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<text x="18.0" y="192.0" fill="#000000" font-size="13" text-anchor="middle" transform="rotate(-90.0 18.0 192.0)" class="ylabel">density</text>
+<rect x="570.8" y="36.0" width="45.2" height="30.0" fill="#ffffff" fill-opacity="0.85" stroke="#cccccc" stroke-width="1.0" class="legend"/>
+<rect x="578.8" y="42.0" width="12.0" height="12.0" fill="#1f77b4" class="legend"/>
+<text x="596.8" y="52.0" fill="#333333" font-size="12" class="legend">d</text>
+</svg>

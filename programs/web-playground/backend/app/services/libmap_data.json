@@ -212,6 +212,12 @@
     "API.OpenCV": ["ColorConversionCodes", "ContourApproximationModes", "Font", "Image", "InterpolationFlags", "LineType", "MorphShapes", "MorphTypes", "Point", "Rect", "RetrievalModes", "Scalar", "Size", "ThresholdTypes", "VideoCapture", "VideoWriter"]
    }
   },
+  "plot": {
+   "deps": ["gen_collect"],
+   "bundles": {
+    "System.Plot": ["Artist", "ArtistKind", "Axes", "Figure", "PlotAxis", "PlotError", "PlotMath", "PlotPrimitive", "PlotScene", "PrimitiveKind", "SvgWriter", "TextAnchor"]
+   }
+  },
   "query": {
    "deps": ["net", "regex", "csv", "xml", "json", "misc"],
    "bundles": {

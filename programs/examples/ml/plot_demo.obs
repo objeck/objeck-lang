@@ -1,0 +1,106 @@
+#~
+Charts with System.Plot: a scatter plot, a scatter colored and sized by further columns,
+a histogram, and all of them on one canvas. Each is written as a standalone SVG file
+that opens in any browser. No display, no native library.
+
+  compile: obc -src plot_demo.obs -lib plot,gen_collect
+  run:     obr plot_demo.obe       (writes scatter.svg, scored.svg, hist.svg, dashboard.svg)
+~#
+use System.Plot;
+
+class PlotDemo {
+	@seed : static : Int;
+
+	# a small deterministic generator, so the pictures are the same on every run
+	function : Next() ~ Float {
+		@seed := (@seed * 1103515245 + 12345) % 2147483648;
+		return @seed->As(Float) / 2147483648.0;
+	}
+
+	# roughly normal: the sum of 12 uniforms minus 6
+	function : Normal(mean : Float, spread : Float) ~ Float {
+		total := 0.0;
+		each(i : 12) {
+			total += Next();
+		};
+
+		return mean + (total - 6.0) * spread;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@seed := 7;
+		n := 60;
+		xa := Float->New[n];
+		ya := Float->New[n];
+		xb := Float->New[n];
+		yb := Float->New[n];
+		each(i : n) {
+			xa[i] := Normal(2.0, 0.6);
+			ya[i] := Normal(3.0, 0.6);
+			xb[i] := Normal(4.5, 0.7);
+			yb[i] := Normal(1.5, 0.7);
+		};
+
+		# 1. two classes
+		fig := Figure->New(800, 480);
+		ax := fig->GetAxes();
+		ax->SetTitle("Two classes");
+		ax->SetXLabel("feature 1");
+		ax->SetYLabel("feature 2");
+		ax->Scatter("class A", xa, ya);
+		ax->Scatter("class B", xb, yb);
+		fig->Save("scatter.svg")->PrintLine();
+
+		# 2. color by a score column, size by a weight column
+		score := Float->New[n];
+		weight := Float->New[n];
+		each(i : n) {
+			score[i] := xa[i] * ya[i];
+			weight[i] := Next();
+		};
+		scored := Figure->New(800, 480);
+		scored->GetAxes()->SetTitle("Colored by score, sized by weight");
+		scored->GetAxes()->SetXLabel("feature 1");
+		scored->GetAxes()->SetYLabel("feature 2");
+		scored->GetAxes()->Scatter("", xa, ya, score, weight);
+		scored->Save("scored.svg")->PrintLine();
+
+		# 3. a histogram with the automatic bin count
+		residuals := Float->New[400];
+		each(i : 400) {
+			residuals[i] := Normal(0.0, 1.0);
+		};
+		hist := Figure->New(640, 400);
+		hist->GetAxes()->SetTitle("Residuals");
+		hist->GetAxes()->SetXLabel("error");
+		hist->GetAxes()->SetYLabel("count");
+		hist->GetAxes()->Hist("", residuals, 0);
+		hist->Save("hist.svg")->PrintLine();
+
+		# 4. everything on one canvas
+		board := Figure->New(900, 640);
+		board->SetTitle("Dashboard");
+		board->Subplots(2, 2);
+		board->GetAxes(0, 0)->SetTitle("scatter");
+		board->GetAxes(0, 0)->Scatter("A", xa, ya);
+		board->GetAxes(0, 0)->Scatter("B", xb, yb);
+		board->GetAxes(0, 1)->SetTitle("histogram");
+		board->GetAxes(0, 1)->Hist("", residuals, 12);
+		board->GetAxes(1, 0)->SetTitle("line");
+		board->GetAxes(1, 0)->Plot("score", Index(n), score);
+		board->GetAxes(1, 1)->SetTitle("bars");
+		board->GetAxes(1, 1)->SetCategories(["A", "B", "C"]);
+		board->GetAxes(1, 1)->Bar("2025", [3.0, 5.0, 4.0]);
+		board->GetAxes(1, 1)->Bar("2026", [4.0, 4.5, 6.0]);
+		board->Save("dashboard.svg")->PrintLine();
+	}
+
+	function : Index(count : Int) ~ Float[] {
+		v := Float->New[count];
+		each(i : count) {
+			v[i] := i->As(Float);
+		};
+
+		return v;
+	}
+}

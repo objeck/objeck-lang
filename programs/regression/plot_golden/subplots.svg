@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="800" height="600" viewBox="0 0 800 600" font-family="sans-serif" font-size="12">
+<title>Four views</title>
+<rect x="0.0" y="0.0" width="800.0" height="600.0" fill="#ffffff" class="background"/>
+<text x="400.0" y="26.0" fill="#000000" font-size="18" text-anchor="middle" font-weight="bold" class="figtitle">Four views</text>
+<line x1="64.0" y1="267.0" x2="384.0" y2="267.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="271.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">0</text>
+<line x1="64.0" y1="226.0" x2="384.0" y2="226.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="230.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">2</text>
+<line x1="64.0" y1="185.0" x2="384.0" y2="185.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="189.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">4</text>
+<line x1="64.0" y1="144.0" x2="384.0" y2="144.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="148.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">6</text>
+<line x1="64.0" y1="103.0" x2="384.0" y2="103.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="107.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">8</text>
+<line x1="64.0" y1="62.0" x2="384.0" y2="62.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="66.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">10</text>
+<line x1="64.0" y1="62.0" x2="64.0" y2="267.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="64.0" y="285.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">0</text>
+<line x1="117.3" y1="62.0" x2="117.3" y2="267.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="117.3" y="285.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">2</text>
+<line x1="170.7" y1="62.0" x2="170.7" y2="267.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="170.7" y="285.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">4</text>
+<line x1="224.0" y1="62.0" x2="224.0" y2="267.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="224.0" y="285.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">6</text>
+<line x1="277.3" y1="62.0" x2="277.3" y2="267.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="277.3" y="285.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">8</text>
+<line x1="330.7" y1="62.0" x2="330.7" y2="267.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="330.7" y="285.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">10</text>
+<line x1="384.0" y1="62.0" x2="384.0" y2="267.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="384.0" y="285.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">12</text>
+<clipPath id="clip0"><rect x="64.0" y="62.0" width="320.0" height="205.0"/></clipPath>
+<g clip-path="url(#clip0)">
+<circle cx="64.0" cy="246.5" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="104.0" cy="221.9" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="144.0" cy="197.3" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="150.7" cy="198.3" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="190.7" cy="173.7" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="197.3" cy="174.8" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="237.3" cy="150.2" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="277.3" cy="125.6" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="284.0" cy="126.6" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="324.0" cy="102.0" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="330.7" cy="103.0" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="370.7" cy="78.4" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+</g>
+<line x1="64.0" y1="62.0" x2="64.0" y2="267.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<line x1="64.0" y1="267.0" x2="384.0" y2="267.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<text x="224.0" y="52.0" fill="#000000" font-size="16" text-anchor="middle" font-weight="bold" class="title">scatter</text>
+<line x1="464.0" y1="267.0" x2="784.0" y2="267.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="456.0" y="271.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">0</text>
+<line x1="464.0" y1="226.0" x2="784.0" y2="226.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="456.0" y="230.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">2</text>
+<line x1="464.0" y1="185.0" x2="784.0" y2="185.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="456.0" y="189.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">4</text>
+<line x1="464.0" y1="144.0" x2="784.0" y2="144.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="456.0" y="148.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">6</text>
+<line x1="464.0" y1="103.0" x2="784.0" y2="103.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="456.0" y="107.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">8</text>
+<line x1="464.0" y1="62.0" x2="784.0" y2="62.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="456.0" y="66.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">10</text>
+<line x1="464.0" y1="62.0" x2="464.0" y2="267.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="464.0" y="285.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">0</text>
+<line x1="517.3" y1="62.0" x2="517.3" y2="267.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="517.3" y="285.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">2</text>
+<line x1="570.7" y1="62.0" x2="570.7" y2="267.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="570.7" y="285.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">4</text>
+<line x1="624.0" y1="62.0" x2="624.0" y2="267.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="624.0" y="285.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">6</text>
+<line x1="677.3" y1="62.0" x2="677.3" y2="267.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="677.3" y="285.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">8</text>
+<line x1="730.7" y1="62.0" x2="730.7" y2="267.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="730.7" y="285.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">10</text>
+<line x1="784.0" y1="62.0" x2="784.0" y2="267.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="784.0" y="285.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">12</text>
+<clipPath id="clip1"><rect x="464.0" y="62.0" width="320.0" height="205.0"/></clipPath>
+<g clip-path="url(#clip1)">
+<polyline points="464.0,246.5 504.0,221.9 544.0,197.3 550.7,198.3 590.7,173.7 597.3,174.8 637.3,150.2 677.3,125.6 684.0,126.6 724.0,102.0 730.7,103.0 770.7,78.4" fill="none" stroke="#1f77b4" stroke-width="2.0" class="line"/>
+</g>
+<line x1="464.0" y1="62.0" x2="464.0" y2="267.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<line x1="464.0" y1="267.0" x2="784.0" y2="267.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<text x="624.0" y="52.0" fill="#000000" font-size="16" text-anchor="middle" font-weight="bold" class="title">line</text>
+<line x1="64.0" y1="552.0" x2="384.0" y2="552.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="556.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">0</text>
+<line x1="64.0" y1="500.8" x2="384.0" y2="500.8" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="504.8" fill="#333333" font-size="12" text-anchor="end" class="ytick">1</text>
+<line x1="64.0" y1="449.5" x2="384.0" y2="449.5" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="453.5" fill="#333333" font-size="12" text-anchor="end" class="ytick">2</text>
+<line x1="64.0" y1="398.2" x2="384.0" y2="398.2" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="402.2" fill="#333333" font-size="12" text-anchor="end" class="ytick">3</text>
+<line x1="64.0" y1="347.0" x2="384.0" y2="347.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="351.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">4</text>
+<line x1="64.0" y1="347.0" x2="64.0" y2="552.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="64.0" y="570.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">0</text>
+<line x1="128.0" y1="347.0" x2="128.0" y2="552.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="128.0" y="570.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">2</text>
+<line x1="192.0" y1="347.0" x2="192.0" y2="552.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="192.0" y="570.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">4</text>
+<line x1="256.0" y1="347.0" x2="256.0" y2="552.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="256.0" y="570.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">6</text>
+<line x1="320.0" y1="347.0" x2="320.0" y2="552.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="320.0" y="570.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">8</text>
+<line x1="384.0" y1="347.0" x2="384.0" y2="552.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="384.0" y="570.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">10</text>
+<clipPath id="clip2"><rect x="64.0" y="347.0" width="320.0" height="205.0"/></clipPath>
+<g clip-path="url(#clip2)">
+<rect x="96.0" y="449.5" width="65.6" height="102.5" fill="#1f77b4" fill-opacity="0.75" stroke="#ffffff" stroke-width="1.0" class="bar"/>
+<rect x="161.6" y="347.0" width="65.6" height="205.0" fill="#1f77b4" fill-opacity="0.75" stroke="#ffffff" stroke-width="1.0" class="bar"/>
+<rect x="227.2" y="398.2" width="65.6" height="153.8" fill="#1f77b4" fill-opacity="0.75" stroke="#ffffff" stroke-width="1.0" class="bar"/>
+<rect x="292.8" y="398.2" width="65.6" height="153.8" fill="#1f77b4" fill-opacity="0.75" stroke="#ffffff" stroke-width="1.0" class="bar"/>
+</g>
+<line x1="64.0" y1="347.0" x2="64.0" y2="552.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<line x1="64.0" y1="552.0" x2="384.0" y2="552.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<text x="224.0" y="337.0" fill="#000000" font-size="16" text-anchor="middle" font-weight="bold" class="title">hist</text>
+<line x1="464.0" y1="552.0" x2="784.0" y2="552.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="456.0" y="556.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">0</text>
+<line x1="464.0" y1="483.7" x2="784.0" y2="483.7" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="456.0" y="487.7" fill="#333333" font-size="12" text-anchor="end" class="ytick">1</text>
+<line x1="464.0" y1="415.3" x2="784.0" y2="415.3" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="456.0" y="419.3" fill="#333333" font-size="12" text-anchor="end" class="ytick">2</text>
+<line x1="464.0" y1="347.0" x2="784.0" y2="347.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="456.0" y="351.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">3</text>
+<text x="544.0" y="570.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">a</text>
+<text x="704.0" y="570.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">b</text>
+<clipPath id="clip3"><rect x="464.0" y="347.0" width="320.0" height="205.0"/></clipPath>
+<g clip-path="url(#clip3)">
+<rect x="488.0" y="415.3" width="112.0" height="136.7" fill="#1f77b4" class="bar"/>
+<rect x="648.0" y="347.0" width="112.0" height="205.0" fill="#1f77b4" class="bar"/>
+</g>
+<line x1="464.0" y1="347.0" x2="464.0" y2="552.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<line x1="464.0" y1="552.0" x2="784.0" y2="552.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<text x="624.0" y="337.0" fill="#000000" font-size="16" text-anchor="middle" font-weight="bold" class="title">bars</text>
+</svg>
