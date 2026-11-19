@@ -11819,6 +11819,82 @@
 				}
 			}
 		},
+		"System.NLP.SpellChecker": {
+			"description": "Counts misspelled words against a word list the program supplies, for the misspelling feature of fake-review and fake-news detectors. No dictionary ships with Objeck: load a newline-delimited list of words, one per line, such as a Linux /usr/share/dict/words, the SCOWL / aspell word lists (http://wordlist.aspell.net) or the \"words_alpha.txt\" list of English words; check the licence of the list you pick. Matching ignores case.\n\nWords are found the way Tokenizer->WordTokenize finds them, so the same text gives the same tokens as TextPreprocessor and TF_IDF. A token that holds a digit (\"COVID-19\", \"3.14\") is never counted as misspelled, and a possessive (\"dog's\") is checked without its \"'s\". The rate is the misspelled tokens over all tokens, digit tokens included.\n\nA checker that is not loaded, and a Nil text, give -1 (count) or -1.0 (rate) rather than a crash; an empty text has no tokens and gives 0 and 0.0.",
+			"functions": {
+				"AddWord": {
+					"descriptions": ["**Adds one word to the list, e.g. a domain term.**\n\n```method : public : AddWord(word:String) ~ Nil```\n\n\n\nword: String\n\nreturn: Nil"]
+				},
+				"Contains": {
+					"descriptions": ["**Whether a word is in the list, ignoring case; a possessive (\"dog's\") passes when its stem does.**\n\n```method : public : Contains(word:String) ~ Bool```\n\n\n\nword: String\n\nreturn: Bool"]
+				},
+				"CountMisspelled": {
+					"descriptions": ["**The number of misspelled tokens in a text.**\n\n```method : public : CountMisspelled(text:String) ~ Int```\n\n\n\ntext: String\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the list did not load.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetWordCount": {
+					"descriptions": ["**The number of distinct words in the list.**\n\n```method : public : GetWordCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsLoaded": {
+					"descriptions": ["**Whether the list holds words, so counts mean something.**\n\n```method : public : IsLoaded() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Load": {
+					"descriptions": ["**Adds the words of a file to the list, case folded.**\n\n```method : public : Load(path:String) ~ Int```\n\n\n\npath: String\n\nreturn: Int"]
+				},
+				"Misspelled": {
+					"descriptions": ["**The misspelled tokens of a text, in order, case kept.**\n\n```method : public : Misspelled(text:String) ~ String[]```\n\n\n\ntext: String\n\nreturn: String[]"]
+				},
+				"MisspellingRate": {
+					"descriptions": ["**Misspelled tokens as a share of all tokens.**\n\n```method : public : MisspellingRate(text:String) ~ Float```\n\n\n\ntext: String\n\nreturn: Float"]
+				},
+				"New": {
+					"descriptions": ["**Constructor with an empty word list: add words with AddWord.**\n\n```New()```\n\n", "**Constructor that loads a word list.**\n\n```New(path:String)```\n\n\n\npath: String"]
+				},
+				"Suggest": {
+					"descriptions": ["**Words of the list within an edit distance (Levenshtein) of a word, nearest first and alphabetical within a distance. The list is scanned whole, so this is for the few misspellings a report shows, not for every token of a corpus.**\n\n```method : public : Suggest(word:String, max_distance:Int, max_count:Int) ~ String[]```\n\n\n\nword: String\n\nmax_distance: Int\n\nmax_count: Int\n\nreturn: String[]"]
+				},
+				"TokenCount": {
+					"descriptions": ["**The number of tokens a text has, as the rate counts them.**\n\n```function : TokenCount(text:String) ~ Int```\n\n\n\ntext: String\n\nreturn: Int"]
+				}
+			}
+		},
+		"System.NLP.TextFeatures": {
+			"description": "Small stylometric features of a text, the kind fake-review and fake-news detectors add to word counts: length, word length, vocabulary richness, punctuation, capitals and sentence length. Plain text in, numbers out; no model.\n\nDefinitions (words are Tokenizer->WordTokenize tokens, sentences Tokenizer->SentenceTokenize): characters is the text's length; tokens its word count; average word length the letters per token; type-token ratio the distinct lowercased tokens over tokens; punctuation rate the ASCII punctuation characters over characters; uppercase ratio the capital letters over letters; sentences the sentence count; average sentence length the tokens per sentence. A text with nothing to divide by gives 0.0. A Nil text gives -1 or -1.0 (Extract gives Nil).",
+			"functions": {
+				"AverageSentenceLength": {
+					"descriptions": ["**The word tokens per sentence.**\n\n```function : AverageSentenceLength(text:String) ~ Float```\n\n\n\ntext: String\n\nreturn: Float"]
+				},
+				"AverageWordLength": {
+					"descriptions": ["**The mean length of the word tokens in characters.**\n\n```function : AverageWordLength(text:String) ~ Float```\n\n\n\ntext: String\n\nreturn: Float"]
+				},
+				"CharacterCount": {
+					"descriptions": ["**The length of a text in characters.**\n\n```function : CharacterCount(text:String) ~ Int```\n\n\n\ntext: String\n\nreturn: Int"]
+				},
+				"Extract": {
+					"descriptions": ["**All the features of a text, in the order of Names.**\n\n```function : Extract(text:String) ~ Float[]```\n\n\n\ntext: String\n\nreturn: Float[]"]
+				},
+				"Names": {
+					"descriptions": ["**The names of the values Extract returns, in order: characters, tokens, avg_word_length, type_token_ratio, punctuation_rate, uppercase_ratio, sentences, avg_sentence_length.**\n\n```function : Names() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"PunctuationRate": {
+					"descriptions": ["**The ASCII punctuation characters over all characters.**\n\n```function : PunctuationRate(text:String) ~ Float```\n\n\n\ntext: String\n\nreturn: Float"]
+				},
+				"SentenceCount": {
+					"descriptions": ["**The number of sentences in a text.**\n\n```function : SentenceCount(text:String) ~ Int```\n\n\n\ntext: String\n\nreturn: Int"]
+				},
+				"TokenCount": {
+					"descriptions": ["**The number of word tokens in a text.**\n\n```function : TokenCount(text:String) ~ Int```\n\n\n\ntext: String\n\nreturn: Int"]
+				},
+				"TypeTokenRatio": {
+					"descriptions": ["**The distinct lowercased tokens over all tokens: 1.0 when no word repeats.**\n\n```function : TypeTokenRatio(text:String) ~ Float```\n\n\n\ntext: String\n\nreturn: Float"]
+				},
+				"UppercaseRatio": {
+					"descriptions": ["**The capital letters over all letters.**\n\n```function : UppercaseRatio(text:String) ~ Float```\n\n\n\ntext: String\n\nreturn: Float"]
+				}
+			}
+		},
 		"System.NilError": {
 			"description": "A method call or field access on Nil, recovered by a ?-> region",
 			"functions": {
@@ -16840,13 +16916,22 @@
 			}
 		},
 		"System.NLP.TF_IDF": {
-			"description": "Term Frequency-Inverse Document Frequency (TF-IDF) vectorizer for document analysis. By default IDF is smoothed as scikit-learn's is, ln((1 + N) / (1 + df)) + 1, and vectors are scaled to unit length, so the cosine similarity of two of them is their dot product.",
+			"description": "Term Frequency-Inverse Document Frequency (TF-IDF) vectorizer for document analysis. By default IDF is smoothed as scikit-learn's is, ln((1 + N) / (1 + df)) + 1, and vectors are scaled to unit length, so the cosine similarity of two of them is their dot product.\n\nA term is a word, or, with a min_n/max_n range as scikit-learn's ngram_range, a run of words joined by a space (\"not very good\"). Vocabulary, document frequencies, smoothed IDF and unit-length vectors follow TfidfVectorizer; two differences: words come from Tokenizer->WordTokenize (which keeps one-letter words) and the term frequency is a share of the document's terms rather than a raw count, which unit length cancels.",
 			"functions": {
 				"Fit": {
-					"descriptions": ["**Fits the TF-IDF model on a corpus of documents, replacing any earlier fit**\n\n```method : public : Fit(documents:String[]) ~ Nil```\n\n\n\ndocuments: String[]\n\nreturn: Nil\n\n```\ndocs := [\"the cat sat on the mat\", \"the dog ran in the park\", \"cats and dogs are pets\"];\ntfidf := TF_IDF->New();\ntfidf->Fit(docs);\n\"Vocabulary size: {$tfidf->GetVocabularySize()}\"->PrintLine();\n```"]
+					"descriptions": ["**Fits the TF-IDF model on a corpus of documents, replacing any earlier fit**\n\n```method : public : Fit(documents:String[]) ~ Nil```\n\n\n\ndocuments: String[]\n\nreturn: Nil\n\n```\ndocs := [\"the cat sat on the mat\", \"the dog ran in the park\", \"cats and dogs are pets\"];\ntfidf := TF_IDF->New();\ntfidf->Fit(docs);\n\"Vocabulary size: {$tfidf->GetVocabularySize()}\"->PrintLine();\n\n# words and word pairs, as scikit-learn's ngram_range=(1, 2)\nbigrams := TF_IDF->New(min_n : 1, max_n : 2);\nbigrams->Fit(docs);\nbigrams->GetVocabulary()->Has(\"the cat\")->PrintLine();\n```"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the vectorizer is not valid.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetIdf": {
 					"descriptions": ["**Gets the inverse document frequency of each vocabulary word, indexed as the vocabulary is**\n\n```method : public : GetIdf() ~ Float[]```\n\n\n\nreturn: Float[]\n\n```\nidf := tfidf->GetIdf();\nidx := tfidf->GetVocabulary()->Find(\"cat\")->Get();\n\"IDF of cat: {$(idf[idx])}\"->PrintLine();\n```"]
+				},
+				"GetMaxN": {
+					"descriptions": ["**The longest term, in words.**\n\n```method : public : GetMaxN() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetMinN": {
+					"descriptions": ["**The shortest term, in words.**\n\n```method : public : GetMinN() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"GetVocabulary": {
 					"descriptions": ["**Gets the vocabulary (word to index mapping)**\n\n```method : public : GetVocabulary() ~ Hash&lt;String,IntRef&gt;```\n\n\n\nreturn: Hash&lt;String,IntRef&gt;\n\n```\nvocab := tfidf->GetVocabulary();\nkeys := vocab->GetKeys()<String>;\neach(k in keys) {\n  k->PrintLine();\n};\n```"]
@@ -16854,8 +16939,11 @@
 				"GetVocabularySize": {
 					"descriptions": ["**Gets the size of the vocabulary**\n\n```method : public : GetVocabularySize() ~ Int```\n\n\n\nreturn: Int"]
 				},
+				"IsValid": {
+					"descriptions": ["**Whether the settings given to the constructor make sense: an n-gram range of min_n >= 1 and max_n >= min_n, a min_df of at least 1 and a max_features of at least 0. An invalid vectorizer fits an empty vocabulary and transforms to empty vectors; it does not crash.**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"New": {
-					"descriptions": ["**Constructor**\n\n```New(smooth_idf:Bool, l2_normalize:Bool, remove_stopwords:Bool, stem:Bool)```\n\n\n\nsmooth_idf: Bool\n\nl2_normalize: Bool\n\nremove_stopwords: Bool\n\nstem: Bool"]
+					"descriptions": ["**Constructor. The last four parameters are optional and default to what this class always did: single words, every word kept.**\n\n```New(smooth_idf:Bool, l2_normalize:Bool, remove_stopwords:Bool, stem:Bool, min_n:Int, max_n:Int, min_df:Int, max_features:Int)```\n\n\n\nsmooth_idf: Bool\n\nl2_normalize: Bool\n\nremove_stopwords: Bool\n\nstem: Bool\n\nmin_n: Int\n\nmax_n: Int\n\nmin_df: Int\n\nmax_features: Int"]
 				},
 				"Transform": {
 					"descriptions": ["**Transforms a document into a TF-IDF vector, one entry per vocabulary word; words the fit did not see are ignored**\n\n```method : public : Transform(document:String) ~ Float[]```\n\n\n\ndocument: String\n\nreturn: Float[]\n\n```\nvec := tfidf->Transform(\"the cat chased the dog\");\n\"Vector length: {$vec->Size()}\"->PrintLine();\n```"]
@@ -17029,19 +17117,25 @@
 					"descriptions": ["**CLS pooling: for each row, the vector of the first token.**\n\n```function : ClsPool(hidden:Float[], batch:Int, sequence:Int, dim:Int) ~ Float[,]```\n\n\n\nhidden: Float[]\n\nbatch: Int\n\nsequence: Int\n\ndim: Int\n\nreturn: Float[,]"]
 				},
 				"Embed": {
-					"descriptions": ["**Embeds texts with the configured pooling.**\n\n```method : public : Embed(texts:String[]) ~ Float[,]```\n\n\n\ntexts: String[]\n\nreturn: Float[,]", "**Embeds texts with a given pooling.**\n\n```method : public : Embed(texts:String[], pooling:BertEmbedder-&gt;Pooling) ~ Float[,]```\n\n\n\ntexts: String[]\n\npooling: BertEmbedder-&gt;Pooling\n\nreturn: Float[,]"]
+					"descriptions": ["**Embeds texts with the configured pooling.**\n\n```method : public : Embed(texts:String[]) ~ Float[,]```\n\n\n\ntexts: String[]\n\nreturn: Float[,]", "**Embeds texts with a given pooling.**\n\n```method : public : Embed(texts:String[], pooling:BertEmbedder-&gt;Pooling) ~ Float[,]```\n\n\n\ntexts: String[]\n\npooling: BertEmbedder-&gt;Pooling\n\nreturn: Float[,]", "**Embeds texts with a given pooling and layer strategy.**\n\n```method : public : Embed(texts:String[], pooling:BertEmbedder-&gt;Pooling, layers:BertEmbedder-&gt;Layers) ~ Float[,]```\n\n\n\ntexts: String[]\n\npooling: BertEmbedder-&gt;Pooling\n\nlayers: BertEmbedder-&gt;Layers\n\nreturn: Float[,]\n\n```\nX := embedder->Embed(texts, BertEmbedder->Pooling->MEAN, BertEmbedder->Layers->CONCAT_LAST_4);\nif(X = Nil) {\n  embedder->GetError()->PrintLine();\n};\n```"]
 				},
 				"EmbedEncoded": {
-					"descriptions": ["**Embeds texts already encoded, with the configured pooling: for a caller with its own tokenizer or cached encodings. Every encoding must be max_len long.**\n\n```method : public : EmbedEncoded(encodings:TokenEncoding[]) ~ Float[,]```\n\n\n\nencodings: TokenEncoding[]\n\nreturn: Float[,]", "**Embeds texts already encoded, with a given pooling.**\n\n```method : public : EmbedEncoded(encodings:TokenEncoding[], pooling:BertEmbedder-&gt;Pooling) ~ Float[,]```\n\n\n\nencodings: TokenEncoding[]\n\npooling: BertEmbedder-&gt;Pooling\n\nreturn: Float[,]"]
+					"descriptions": ["**Embeds texts already encoded, with the configured pooling: for a caller with its own tokenizer or cached encodings. Every encoding must be max_len long.**\n\n```method : public : EmbedEncoded(encodings:TokenEncoding[]) ~ Float[,]```\n\n\n\nencodings: TokenEncoding[]\n\nreturn: Float[,]", "**Embeds texts already encoded, with a given pooling.**\n\n```method : public : EmbedEncoded(encodings:TokenEncoding[], pooling:BertEmbedder-&gt;Pooling) ~ Float[,]```\n\n\n\nencodings: TokenEncoding[]\n\npooling: BertEmbedder-&gt;Pooling\n\nreturn: Float[,]", "**Embeds texts already encoded, with a given pooling and layer strategy.**\n\n```method : public : EmbedEncoded(encodings:TokenEncoding[], pooling:BertEmbedder-&gt;Pooling, layers:BertEmbedder-&gt;Layers) ~ Float[,]```\n\n\n\nencodings: TokenEncoding[]\n\npooling: BertEmbedder-&gt;Pooling\n\nlayers: BertEmbedder-&gt;Layers\n\nreturn: Float[,]"]
 				},
 				"GetBatchSize": {
 					"descriptions": ["**Texts run through the model at once.**\n\n```method : public : GetBatchSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetEmbeddingSize": {
+					"descriptions": ["**The length of each embedding for a layer strategy: the hidden size, or four times it for CONCAT_LAST_4.**\n\n```method : public : GetEmbeddingSize(layers:BertEmbedder-&gt;Layers) ~ Int```\n\n\n\nlayers: BertEmbedder-&gt;Layers\n\nreturn: Int"]
 				},
 				"GetError": {
 					"descriptions": ["**Why the embedder did not open, or why the last Embed returned Nil.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetHiddenSize": {
 					"descriptions": ["**The length of each embedding: the model's hidden size. A model whose hidden axis is symbolic reports it after the first Embed.**\n\n```method : public : GetHiddenSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetLayers": {
+					"descriptions": ["**The layer strategy Embed uses.**\n\n```method : public : GetLayers() ~ BertEmbedder-&gt;Layers```\n\n\n\nreturn: BertEmbedder-&gt;Layers"]
 				},
 				"GetMaxLength": {
 					"descriptions": ["**The sequence length every text is truncated and padded to.**\n\n```method : public : GetMaxLength() ~ Int```\n\n\n\nreturn: Int"]
@@ -17054,6 +17148,9 @@
 				},
 				"GetTokenizer": {
 					"descriptions": ["**The tokenizer, e.g. to inspect what a text becomes.**\n\n```method : public : GetTokenizer() ~ WordPieceTokenizer```\n\n\n\nreturn: WordPieceTokenizer"]
+				},
+				"HasHiddenLayers": {
+					"descriptions": ["**Whether the model exports its intermediate layers, so SUM_LAST_4 and CONCAT_LAST_4 are available: four or more FP32 outputs named hidden_states.N (or hidden_states_N, hidden_state_N), or one FP32 [layer, batch, sequence, hidden] output named hidden_states. A standard export does not have them; export with output_hidden_states=True and name the outputs so.**\n\n```method : public : HasHiddenLayers() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"HasPooler": {
 					"descriptions": ["**Whether the model has a pooler_output, so POOLER pooling is available.**\n\n```method : public : HasPooler() ~ Bool```\n\n\n\nreturn: Bool"]
@@ -17073,8 +17170,14 @@
 				"New": {
 					"descriptions": ["**Opens a model with the vocabulary of an uncased model: lowercase, strip accents.**\n\n```New(model_path:String, vocab_path:String, max_len:Int)```\n\n\n\nmodel_path: String\n\nvocab_path: String\n\nmax_len: Int", "**Opens a model with a tokenizer configured by the caller, and session options.**\n\n```New(model_path:String, tokenizer:WordPieceTokenizer, max_len:Int, config:Map&lt;String,String&gt;)```\n\n\n\nmodel_path: String\n\ntokenizer: WordPieceTokenizer\n\nmax_len: Int\n\nconfig: Map&lt;String,String&gt;"]
 				},
+				"PoolLayers": {
+					"descriptions": ["**Pools stacked hidden layers and combines them: for each of the layers, CLS or MEAN pooling as in ClsPool and MeanPool, then, for SUM_LAST_4, the element-wise sum of the layers' vectors (dim columns) or, for CONCAT_LAST_4, the layers' vectors one after another (layers x dim columns, the first layer first). LAST uses the final layer alone.**\n\n```function : PoolLayers(stacked:Float[], layer_count:Int, batch:Int, sequence:Int, dim:Int, mask:Int[], pooling:BertEmbedder-&gt;Pooling, layers:BertEmbedder-&gt;Layers) ~ Float[,]```\n\n\n\nstacked: Float[]\n\nlayer_count: Int\n\nbatch: Int\n\nsequence: Int\n\ndim: Int\n\nmask: Int[]\n\npooling: BertEmbedder-&gt;Pooling\n\nlayers: BertEmbedder-&gt;Layers\n\nreturn: Float[,]\n\n```\nX := BertEmbedder->PoolLayers(stacked, 4, 2, 128, 768, mask, BertEmbedder->Pooling->MEAN, BertEmbedder->Layers->SUM_LAST_4);\n```"]
+				},
 				"SetBatchSize": {
 					"descriptions": ["**Sets how many texts run through the model at once. Larger batches are faster per text and hold more memory: a batch's hidden states are batch x max_len x hidden numbers. A model with a fixed batch axis caps it.**\n\n```method : public : SetBatchSize(batch_size:Int) ~ Nil```\n\n\n\nbatch_size: Int\n\nreturn: Nil"]
+				},
+				"SetLayers": {
+					"descriptions": ["**Sets the layer strategy Embed uses; LAST by default. SUM_LAST_4 and CONCAT_LAST_4 need HasHiddenLayers; without it Embed returns Nil with a reason.**\n\n```method : public : SetLayers(layers:BertEmbedder-&gt;Layers) ~ Nil```\n\n\n\nlayers: BertEmbedder-&gt;Layers\n\nreturn: Nil"]
 				},
 				"SetPooling": {
 					"descriptions": ["**Sets the pooling Embed uses; CLS by default.**\n\n```method : public : SetPooling(pooling:BertEmbedder-&gt;Pooling) ~ Nil```\n\n\n\npooling: BertEmbedder-&gt;Pooling\n\nreturn: Nil"]
@@ -19597,6 +19700,326 @@
 					"descriptions": ["**Writes a string response to the message body**\n\n```method : public : WriteBody(data:String) ~ Int```\n\n\n\ndata: String\n\nreturn: Int\n\n```\nresponse->SetContentType(\"text/html\");\nbytes_sent := response->WriteBody(\"<html><body>Hello</body></html>\");\nbytes_sent->PrintLine();  # number of bytes written\n```", "**Writes a byte array response to the message body**\n\n```method : public : WriteBody(data:Byte[]) ~ Int```\n\n\n\ndata: Byte[]\n\nreturn: Int\n\n```\nimg_bytes := System.IO.Filesystem.FileReader->ReadBinaryFile(\"logo.png\");\nresponse->SetContentType(\"image/png\");\nresponse->WriteBody(img_bytes);\n```"]
 				}
 			}
+		},
+		"System.Stats.Correlation": {
+			"description": "Pearson correlation with a p-value and a confidence interval.\n\nFailures (IsValid() false): Nil, unequal lengths, fewer than 3 pairs, NaN or infinity in the data, a level outside (0, 1), and zero variance in either array.",
+			"functions": {
+				"Pearson": {
+					"descriptions": ["**Pearson correlation at the 95% level.**\n\n```function : Pearson(x:Float[], y:Float[]) ~ CorrelationResult```\n\n\n\nx: Float[]\n\ny: Float[]\n\nreturn: CorrelationResult", "**Pearson correlation. The p-value is the two-sided Student t test with n - 2 degrees of freedom; the interval is the Fisher z transform one.**\n\n```function : Pearson(x:Float[], y:Float[], level:Float) ~ CorrelationResult```\n\n\n\nx: Float[]\n\ny: Float[]\n\nlevel: Float\n\nreturn: CorrelationResult"]
+				}
+			}
+		},
+		"System.Stats.CorrelationResult": {
+			"description": "The outcome of a correlation test. A failed one (IsValid() false) has NaN in every number.",
+			"functions": {
+				"GetCiHigh": {
+					"descriptions": ["**Upper end of the Fisher-z confidence interval for r (NaN when n is 3 or less).**\n\n```method : public : GetCiHigh() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetCiLow": {
+					"descriptions": ["**Lower end of the Fisher-z confidence interval for r (NaN when n is 3 or less).**\n\n```method : public : GetCiLow() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetDf": {
+					"descriptions": ["**Degrees of freedom, n - 2.**\n\n```method : public : GetDf() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the test did not run, or an empty string.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetN": {
+					"descriptions": ["**Number of pairs.**\n\n```method : public : GetN() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetP": {
+					"descriptions": ["**Two-sided p-value for the null hypothesis of no correlation.**\n\n```method : public : GetP() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetR": {
+					"descriptions": ["**The correlation coefficient, between -1 and 1.**\n\n```method : public : GetR() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetT": {
+					"descriptions": ["**The t statistic r * sqrt((n - 2) / (1 - r^2)).**\n\n```method : public : GetT() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"IsValid": {
+					"descriptions": ["**Whether the test ran.**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.Stats.Design": {
+			"description": "Builds design matrices for OLS: an intercept column, 0/1 dummy columns for a categorical variable, and column joining.",
+			"functions": {
+				"AddIntercept": {
+					"descriptions": ["**Copies X with a leading column of ones.**\n\n```function : AddIntercept(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]"]
+				},
+				"Column": {
+					"descriptions": ["**A one-column matrix from an array.**\n\n```function : Column(v:Float[]) ~ Float[,]```\n\n\n\nv: Float[]\n\nreturn: Float[,]"]
+				},
+				"Dummies": {
+					"descriptions": ["**0/1 columns for a categorical variable, one per level after the first (the first sorted level is the reference, so an intercept does not make the matrix singular).**\n\n```function : Dummies(values:String[]) ~ Float[,]```\n\n\n\nvalues: String[]\n\nreturn: Float[,]"]
+				},
+				"DummiesFor": {
+					"descriptions": ["**0/1 columns for the levels after the first of an explicit level list (which names the reference level first).**\n\n```function : DummiesFor(values:String[], levels:String[]) ~ Float[,]```\n\n\n\nvalues: String[]\n\nlevels: String[]\n\nreturn: Float[,]"]
+				},
+				"HStack": {
+					"descriptions": ["**Joins two matrices with the same number of rows side by side.**\n\n```function : HStack(a:Float[,], b:Float[,]) ~ Float[,]```\n\n\n\na: Float[,]\n\nb: Float[,]\n\nreturn: Float[,]"]
+				},
+				"Levels": {
+					"descriptions": ["**The distinct values of a categorical variable, sorted.**\n\n```function : Levels(values:String[]) ~ String[]```\n\n\n\nvalues: String[]\n\nreturn: String[]"]
+				}
+			}
+		},
+		"System.Stats.Dist": {
+			"description": "Special functions and probability distributions. Every function takes plain Floats and returns NaN for arguments outside its domain, so a bad value shows up as NaN and never ends the program.",
+			"functions": {
+				"BetaInc": {
+					"descriptions": ["**The regularized incomplete beta function I_x(a, b).**\n\n```function : BetaInc(x:Float, a:Float, b:Float) ~ Float```\n\n\n\nx: Float\n\na: Float\n\nb: Float\n\nreturn: Float"]
+				},
+				"ChiSquareCdf": {
+					"descriptions": ["**Cumulative distribution function of the chi-square distribution.**\n\n```function : ChiSquareCdf(x:Float, df:Float) ~ Float```\n\n\n\nx: Float\n\ndf: Float\n\nreturn: Float"]
+				},
+				"ChiSquareSf": {
+					"descriptions": ["**Upper tail of the chi-square distribution, P(X >= x); the p-value of a chi-square statistic.**\n\n```function : ChiSquareSf(x:Float, df:Float) ~ Float```\n\n\n\nx: Float\n\ndf: Float\n\nreturn: Float"]
+				},
+				"Div": {
+					"descriptions": ["**Division that does not stop the program when the divisor is 0: a / 0 is +Inf or -Inf, and 0 / 0 is NaN.**\n\n```function : Div(a:Float, b:Float) ~ Float```\n\n\n\na: Float\n\nb: Float\n\nreturn: Float"]
+				},
+				"FCdf": {
+					"descriptions": ["**Cumulative distribution function of the F distribution.**\n\n```function : FCdf(f:Float, df1:Float, df2:Float) ~ Float```\n\n\n\nf: Float\n\ndf1: Float\n\ndf2: Float\n\nreturn: Float"]
+				},
+				"FSf": {
+					"descriptions": ["**Upper tail of the F distribution, P(F >= f); the p-value of an F statistic.**\n\n```function : FSf(f:Float, df1:Float, df2:Float) ~ Float```\n\n\n\nf: Float\n\ndf1: Float\n\ndf2: Float\n\nreturn: Float"]
+				},
+				"GammaInc": {
+					"descriptions": ["**The regularized lower incomplete gamma function P(a, x).**\n\n```function : GammaInc(a:Float, x:Float) ~ Float```\n\n\n\na: Float\n\nx: Float\n\nreturn: Float"]
+				},
+				"HedgesJ": {
+					"descriptions": ["**Hedges' small-sample correction factor for Cohen's d, exactly: Gamma(df/2) / (sqrt(df/2) * Gamma((df-1)/2)). It is 0 at df = 1 (the limit), and close to 1 - 3 / (4 df - 1).**\n\n```function : HedgesJ(df:Float) ~ Float```\n\n\n\ndf: Float\n\nreturn: Float"]
+				},
+				"LogGamma": {
+					"descriptions": ["**Natural log of the gamma function, for x above 0 (Lanczos approximation, about 15 digits).**\n\n```function : LogGamma(x:Float) ~ Float```\n\n\n\nx: Float\n\nreturn: Float"]
+				},
+				"NormalCdf": {
+					"descriptions": ["**Cumulative distribution function of the standard normal distribution.**\n\n```function : NormalCdf(x:Float) ~ Float```\n\n\n\nx: Float\n\nreturn: Float"]
+				},
+				"NormalQuantile": {
+					"descriptions": ["**Quantile (inverse CDF) of the standard normal distribution.**\n\n```function : NormalQuantile(p:Float) ~ Float```\n\n\n\np: Float\n\nreturn: Float"]
+				},
+				"NormalTwoSidedP": {
+					"descriptions": ["**Two-sided p-value of a standard normal statistic: P(|Z| >= |z|).**\n\n```function : NormalTwoSidedP(z:Float) ~ Float```\n\n\n\nz: Float\n\nreturn: Float"]
+				},
+				"StudentCdf": {
+					"descriptions": ["**Cumulative distribution function of the Student t distribution.**\n\n```function : StudentCdf(t:Float, df:Float) ~ Float```\n\n\n\nt: Float\n\ndf: Float\n\nreturn: Float"]
+				},
+				"StudentQuantile": {
+					"descriptions": ["**Quantile (inverse CDF) of the Student t distribution, found by bisection to full double precision.**\n\n```function : StudentQuantile(p:Float, df:Float) ~ Float```\n\n\n\np: Float\n\ndf: Float\n\nreturn: Float"]
+				},
+				"StudentTwoSidedP": {
+					"descriptions": ["**Two-sided p-value of a Student t statistic: P(|T| >= |t|).**\n\n```function : StudentTwoSidedP(t:Float, df:Float) ~ Float```\n\n\n\nt: Float\n\ndf: Float\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.Stats.OLS": {
+			"description": "Ordinary least squares by Householder QR (no normal equations, so near-collinear columns lose half as many digits).\n\nFailures (IsValid() false on the result): Nil input, X and y with different row counts, no columns, fewer rows than columns plus one, NaN or infinity in the data, and rank-deficient columns (a constant column beside an intercept, a column that repeats another, or all the dummy columns of a variable beside an intercept).",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Fits y on the columns of X, with names x1, x2, ...**\n\n```function : Fit(X:Float[,], y:Float[], add_intercept:Bool) ~ OLSResult```\n\n\n\nX: Float[,]\n\ny: Float[]\n\nadd_intercept: Bool\n\nreturn: OLSResult", "**Fits y on the columns of X with named columns.**\n\n```function : Fit(X:Float[,], y:Float[], add_intercept:Bool, names:String[]) ~ OLSResult```\n\n\n\nX: Float[,]\n\ny: Float[]\n\nadd_intercept: Bool\n\nnames: String[]\n\nreturn: OLSResult"]
+				}
+			}
+		},
+		"System.Stats.OLSResult": {
+			"description": "An ordinary least squares fit with its summary statistics. A failed fit (IsValid() false) has Nil arrays and NaN numbers, and GetError() says why.\n\nWith an intercept, R-squared uses the centred total sum of squares and the F test is against the intercept-only model; without one they use the uncentred sum of squares, as statsmodels does. AIC and BIC come from the Gaussian log-likelihood and count one parameter per coefficient, as statsmodels does.",
+			"functions": {
+				"GetAIC": {
+					"descriptions": ["**Akaike information criterion.**\n\n```method : public : GetAIC() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetAdjustedRSquared": {
+					"descriptions": ["**Adjusted R-squared.**\n\n```method : public : GetAdjustedRSquared() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetBIC": {
+					"descriptions": ["**Bayesian information criterion.**\n\n```method : public : GetBIC() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetCoefficients": {
+					"descriptions": ["**Coefficients, in column order.**\n\n```method : public : GetCoefficients() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetConfInt": {
+					"descriptions": ["**Confidence intervals of the coefficients.**\n\n```method : public : GetConfInt(level:Float) ~ Float[,]```\n\n\n\nlevel: Float\n\nreturn: Float[,]"]
+				},
+				"GetCovariance": {
+					"descriptions": ["**Covariance matrix of the coefficients: sigma^2 (X'X)^-1.**\n\n```method : public : GetCovariance() ~ Float[,]```\n\n\n\nreturn: Float[,]"]
+				},
+				"GetDfModel": {
+					"descriptions": ["**Model degrees of freedom: k, less 1 with an intercept.**\n\n```method : public : GetDfModel() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetDfResid": {
+					"descriptions": ["**Residual degrees of freedom, n - k.**\n\n```method : public : GetDfResid() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the fit failed, or an empty string.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetFPValue": {
+					"descriptions": ["**p-value of the F statistic.**\n\n```method : public : GetFPValue() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetFStat": {
+					"descriptions": ["**F statistic of the whole model against the intercept-only (or empty) model.**\n\n```method : public : GetFStat() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetFitted": {
+					"descriptions": ["**Fitted values.**\n\n```method : public : GetFitted() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetLogLikelihood": {
+					"descriptions": ["**Gaussian log-likelihood.**\n\n```method : public : GetLogLikelihood() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetNObs": {
+					"descriptions": ["**Number of observations.**\n\n```method : public : GetNObs() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetNParams": {
+					"descriptions": ["**Number of coefficients, the intercept included.**\n\n```method : public : GetNParams() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetNames": {
+					"descriptions": ["**Column names, in coefficient order (the intercept is \"const\").**\n\n```method : public : GetNames() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetPValues": {
+					"descriptions": ["**Two-sided p-values of the coefficients, from the t distribution with GetDfResid() degrees of freedom.**\n\n```method : public : GetPValues() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetRSquared": {
+					"descriptions": ["**R-squared.**\n\n```method : public : GetRSquared() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetResidualStdError": {
+					"descriptions": ["**Residual standard error: sqrt(SSR / (n - k)).**\n\n```method : public : GetResidualStdError() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetResiduals": {
+					"descriptions": ["**Residuals, y minus the fitted values.**\n\n```method : public : GetResiduals() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetSSR": {
+					"descriptions": ["**Residual sum of squares.**\n\n```method : public : GetSSR() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetStdErrors": {
+					"descriptions": ["**Standard errors of the coefficients.**\n\n```method : public : GetStdErrors() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetTStats": {
+					"descriptions": ["**t statistics of the coefficients (coefficient / standard error).**\n\n```method : public : GetTStats() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"HasIntercept": {
+					"descriptions": ["**Whether the fit has an intercept.**\n\n```method : public : HasIntercept() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsValid": {
+					"descriptions": ["**Whether the fit succeeded.**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Predict": {
+					"descriptions": ["**Predicts from new rows. Give the same columns the fit was given: an intercept column is added here when the fit added one.**\n\n```method : public : Predict(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"ToString": {
+					"descriptions": ["**A statsmodels-style summary: the fit statistics, then one row per coefficient with its standard error, t, p and 95% interval.**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"System.Stats.Stats": {
+			"description": "Descriptive statistics over a Float[]. Each function returns NaN when the array is Nil, too short for the statistic, or holds a NaN or infinity.",
+			"functions": {
+				"Covariance": {
+					"descriptions": ["**Sample covariance of two arrays of the same length.**\n\n```function : Covariance(x:Float[], y:Float[]) ~ Float```\n\n\n\nx: Float[]\n\ny: Float[]\n\nreturn: Float"]
+				},
+				"Mean": {
+					"descriptions": ["**Arithmetic mean.**\n\n```function : Mean(x:Float[]) ~ Float```\n\n\n\nx: Float[]\n\nreturn: Float"]
+				},
+				"Median": {
+					"descriptions": ["**Median: the middle value, or the mean of the two middle values.**\n\n```function : Median(x:Float[]) ~ Float```\n\n\n\nx: Float[]\n\nreturn: Float"]
+				},
+				"PopulationVariance": {
+					"descriptions": ["**Population variance (divides by n).**\n\n```function : PopulationVariance(x:Float[]) ~ Float```\n\n\n\nx: Float[]\n\nreturn: Float"]
+				},
+				"StdDev": {
+					"descriptions": ["**Sample standard deviation (divides by n - 1).**\n\n```function : StdDev(x:Float[]) ~ Float```\n\n\n\nx: Float[]\n\nreturn: Float"]
+				},
+				"StdError": {
+					"descriptions": ["**Standard error of the mean: the sample standard deviation over the square root of n.**\n\n```function : StdError(x:Float[]) ~ Float```\n\n\n\nx: Float[]\n\nreturn: Float"]
+				},
+				"Sum": {
+					"descriptions": ["**Sum of the values.**\n\n```function : Sum(x:Float[]) ~ Float```\n\n\n\nx: Float[]\n\nreturn: Float"]
+				},
+				"Variance": {
+					"descriptions": ["**Sample variance (divides by n - 1).**\n\n```function : Variance(x:Float[]) ~ Float```\n\n\n\nx: Float[]\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.Stats.StatsFormat": {
+			"description": "Number formatting shared by the summaries.",
+			"functions": {
+				"P": {
+					"descriptions": ["**Formats a p-value: fixed digits, or scientific below 0.0001 (when fixed digits would show 0).**\n\n```function : P(p:Float) ~ String```\n\n\n\np: Float\n\nreturn: String"]
+				}
+			}
+		},
+		"System.Stats.TTest": {
+			"description": "t-tests. Every test takes an optional confidence level (default 0.95) for the interval on the mean difference. All return a TTestResult; none can end the program.\n\nFailures (IsValid() false): Nil input, a sample too short (one-sample and paired need 2 values, two-sample needs 2 per group), unequal lengths for the paired test, NaN or infinity in the data, a level not strictly between 0 and 1, and zero variance (a standard error of 0 makes t undefined).",
+			"functions": {
+				"OneSample": {
+					"descriptions": ["**One-sample t-test of the mean of x against a hypothesised mean, at the 95% level.**\n\n```function : OneSample(x:Float[], mu:Float) ~ TTestResult```\n\n\n\nx: Float[]\n\nmu: Float\n\nreturn: TTestResult", "**One-sample t-test of the mean of x against a hypothesised mean.**\n\n```function : OneSample(x:Float[], mu:Float, level:Float) ~ TTestResult```\n\n\n\nx: Float[]\n\nmu: Float\n\nlevel: Float\n\nreturn: TTestResult"]
+				},
+				"Paired": {
+					"descriptions": ["**Paired t-test, at the 95% level.**\n\n```function : Paired(x:Float[], y:Float[]) ~ TTestResult```\n\n\n\nx: Float[]\n\ny: Float[]\n\nreturn: TTestResult", "**Paired t-test: a one-sample test of the differences x - y against 0. Cohen's d is d_z, the mean difference over the standard deviation of the differences.**\n\n```function : Paired(x:Float[], y:Float[], level:Float) ~ TTestResult```\n\n\n\nx: Float[]\n\ny: Float[]\n\nlevel: Float\n\nreturn: TTestResult"]
+				},
+				"TwoSample": {
+					"descriptions": ["**Student's two-sample t-test (equal variances assumed), at the 95% level.**\n\n```function : TwoSample(x:Float[], y:Float[]) ~ TTestResult```\n\n\n\nx: Float[]\n\ny: Float[]\n\nreturn: TTestResult", "**Student's two-sample t-test (equal variances assumed, pooled variance, df = n1 + n2 - 2).**\n\n```function : TwoSample(x:Float[], y:Float[], level:Float) ~ TTestResult```\n\n\n\nx: Float[]\n\ny: Float[]\n\nlevel: Float\n\nreturn: TTestResult"]
+				},
+				"Welch": {
+					"descriptions": ["**Welch's t-test (unequal variances, Welch-Satterthwaite degrees of freedom), at the 95% level.**\n\n```function : Welch(x:Float[], y:Float[]) ~ TTestResult```\n\n\n\nx: Float[]\n\ny: Float[]\n\nreturn: TTestResult", "**Welch's t-test (unequal variances). Cohen's d and Hedges' g use the pooled standard deviation, as for the Student test.**\n\n```function : Welch(x:Float[], y:Float[], level:Float) ~ TTestResult```\n\n\n\nx: Float[]\n\ny: Float[]\n\nlevel: Float\n\nreturn: TTestResult"]
+				}
+			}
+		},
+		"System.Stats.TTestResult": {
+			"description": "The outcome of a t-test. A failed test (IsValid() false) has NaN in every number and GetError() set.\n\nThe mean difference is the first group minus the second (or the sample mean minus the hypothesised mean for a one-sample test, or the mean of the pairwise differences for a paired one). The confidence interval is for that difference.",
+			"functions": {
+				"GetCiHigh": {
+					"descriptions": ["**Upper end of the confidence interval for the difference.**\n\n```method : public : GetCiHigh() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetCiLow": {
+					"descriptions": ["**Lower end of the confidence interval for the difference.**\n\n```method : public : GetCiLow() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetCohenD": {
+					"descriptions": ["**Cohen's d: the mean difference over the pooled standard deviation (two-sample), or over the standard deviation of the sample (one-sample) or of the differences (paired).**\n\n```method : public : GetCohenD() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetDf": {
+					"descriptions": ["**Degrees of freedom (fractional for the Welch test).**\n\n```method : public : GetDf() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the test did not run, or an empty string.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetHedgesG": {
+					"descriptions": ["**Hedges' g: Cohen's d times the exact small-sample correction Gamma(df/2) / (sqrt(df/2) * Gamma((df-1)/2)) (see Dist->HedgesJ).**\n\n```method : public : GetHedgesG() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetLevel": {
+					"descriptions": ["**Confidence level the interval was made at.**\n\n```method : public : GetLevel() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMean1": {
+					"descriptions": ["**Mean of the first sample.**\n\n```method : public : GetMean1() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMean2": {
+					"descriptions": ["**Mean of the second sample, or the hypothesised mean for a one-sample test.**\n\n```method : public : GetMean2() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMeanDiff": {
+					"descriptions": ["**Mean difference: first minus second.**\n\n```method : public : GetMeanDiff() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMethod": {
+					"descriptions": ["**Name of the test.**\n\n```method : public : GetMethod() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetN1": {
+					"descriptions": ["**Size of the first sample (or the only one).**\n\n```method : public : GetN1() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetN2": {
+					"descriptions": ["**Size of the second sample, 0 for a one-sample test.**\n\n```method : public : GetN2() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetP": {
+					"descriptions": ["**Two-sided p-value.**\n\n```method : public : GetP() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetStdError": {
+					"descriptions": ["**Standard error of the mean difference.**\n\n```method : public : GetStdError() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetT": {
+					"descriptions": ["**The t statistic.**\n\n```method : public : GetT() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"IsSignificant": {
+					"descriptions": ["**Whether the p-value is below a significance level.**\n\n```method : public : IsSignificant(alpha:Float) ~ Bool```\n\n\n\nalpha: Float\n\nreturn: Bool"]
+				},
+				"IsValid": {
+					"descriptions": ["**Whether the test ran.**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
+				}
+			}
 		}
 	},
 	"class-bundle-names": {
@@ -19719,6 +20142,18 @@
 		"Part": [
 			{
 				"bundle": "API.Google.Gemini",
+				"file": ""
+			}
+		],
+		"SpellChecker": [
+			{
+				"bundle": "System.NLP",
+				"file": ""
+			}
+		],
+		"TextFeatures": [
+			{
+				"bundle": "System.NLP",
 				"file": ""
 			}
 		],
@@ -22965,6 +23400,66 @@
 				"bundle": "API.Anthropic",
 				"file": ""
 			}
+		],
+		"Correlation": [
+			{
+				"bundle": "System.Stats",
+				"file": "stats.obl"
+			}
+		],
+		"CorrelationResult": [
+			{
+				"bundle": "System.Stats",
+				"file": "stats.obl"
+			}
+		],
+		"Design": [
+			{
+				"bundle": "System.Stats",
+				"file": "stats.obl"
+			}
+		],
+		"Dist": [
+			{
+				"bundle": "System.Stats",
+				"file": "stats.obl"
+			}
+		],
+		"OLS": [
+			{
+				"bundle": "System.Stats",
+				"file": "stats.obl"
+			}
+		],
+		"OLSResult": [
+			{
+				"bundle": "System.Stats",
+				"file": "stats.obl"
+			}
+		],
+		"Stats": [
+			{
+				"bundle": "System.Stats",
+				"file": "stats.obl"
+			}
+		],
+		"StatsFormat": [
+			{
+				"bundle": "System.Stats",
+				"file": "stats.obl"
+			}
+		],
+		"TTest": [
+			{
+				"bundle": "System.Stats",
+				"file": "stats.obl"
+			}
+		],
+		"TTestResult": [
+			{
+				"bundle": "System.Stats",
+				"file": "stats.obl"
+			}
 		]
 	},
 	"enum-details": {
@@ -24664,6 +25159,18 @@
 				{ "name": "TOP", "value": "1", "description": "" },
 				{ "name": "FETCH", "value": "2", "description": "" },
 				{ "name": "NONE", "value": "3", "description": "" }
+			]
+		},
+		"System.NLP.Onnx.BertEmbedder#Layers": {
+			"name": "Layers",
+			"bundle": "System.NLP.Onnx",
+			"class": "System.NLP.Onnx.BertEmbedder",
+			"kind": "enum",
+			"description": "Which hidden layers the token vectors are taken from. LAST is the final layer, as every earlier release did. The other two need a model exported with its intermediate layers as outputs (see HasHiddenLayers) and take the last four of them: the common recipe of Devlin et al. (2019) for feature-based use of BERT.",
+			"items": [
+				{ "name": "LAST", "value": "0", "description": "The final layer, last_hidden_state." },
+				{ "name": "SUM_LAST_4", "value": "1", "description": "The element-wise sum of the last four hidden layers, then pooled; the embedding is hidden-size long." },
+				{ "name": "CONCAT_LAST_4", "value": "2", "description": "The last four hidden layers side by side, each pooled; the embedding is four times the hidden size long, the oldest of the four first." }
 			]
 		},
 		"System.Number#Format": {

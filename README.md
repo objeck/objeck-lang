@@ -70,22 +70,30 @@ echo 'class Hello {
 obc hello && obr hello
 ```
 
+📖 **Full docs**: [objeck.org](https://www.objeck.org) &nbsp;·&nbsp; 💡 **Examples**: [github.com/objeck/objeck-lang/programs](https://github.com/objeck/objeck-lang/tree/master/programs)
+
 ### Platform support
 
-| Platform | Release files | Needs |
+| Platform | Install with | Notes |
 |---|---|---|
-| Windows (x64, ARM64) | `.msi`, `.zip` | --- |
-| macOS (Apple silicon) | `.pkg`, `.tgz`, `.zip` | --- |
-| Ubuntu 24.04 (x64, ARM64) | `.deb`, `.tgz` | The `.deb` installs needed dependencies. |
-| Other Linux (x64, ARM64) | `.tgz` | glibc 2.38 or newer and libstdc++ 13 or newer, and the system libraries `install_deps.sh` lists (the mbedTLS 2.28 `.so.14` and OpenCV 4.6 `.so.406` sonames, among others). |
+| Windows (x64, ARM64) | `.msi` or `.zip` | Nothing else needed |
+| macOS (Apple silicon) | `.pkg`, `.tgz` or `.zip` | Nothing else needed |
+| Ubuntu 24.04 (x64, ARM64) | `.deb` | Installs its own dependencies |
+| Other Linux (x64, ARM64) | `.tgz` | glibc 2.38 or newer, then `install_deps.sh` |
 
+<details>
+<summary>On an older Linux, such as Debian 12 or Ubuntu 22.04?</summary>
 
-The Linux release is built on Ubuntu 24.04, so **it runs as shipped on Ubuntu 24.04 and not on older distributions**: Debian 12 (and antiX 23, MX 23 and other distributions based on it) and Ubuntu 22.04 have a C library older than glibc 2.38, which installing packages cannot change, and `dpkg` refuses the `.deb` for that reason. Some newer distributions do not package the mbedTLS and OpenCV versions the release links against either (Debian 13, Fedora, Arch and openSUSE Leap, checked in September for v2026.9.2). `./objeck-lang/install_deps.sh --check` reports what is missing without installing anything.
+The Linux release is built on Ubuntu 24.04 and needs glibc 2.38 or newer, which Debian 12 (and antiX 23, MX 23 and other distributions based on it) and Ubuntu 22.04 do not have, so `dpkg` refuses the `.deb` there. Two ways to run Objeck on them:
 
-On an unsupported Linux, run the Ubuntu 24.04 release in a container (Docker, Podman or distrobox), or build from source with `core/release/deploy_posix.sh`, the path `install_deps.sh` itself points to (not checked on every distribution). A Linux build that runs on older distributions is planned.
+- **A container:** run the Ubuntu 24.04 release in Docker, Podman or distrobox.
+- **From source:** build with `core/release/deploy_posix.sh`, the path `install_deps.sh` itself points to (not checked on every distribution).
 
-📖 **Full docs**: [objeck.org](https://www.objeck.org)
-💡 **Examples**: [github.com/objeck/objeck-lang/programs](https://github.com/objeck/objeck-lang/tree/master/programs)
+A Linux build that runs on older distributions is planned.
+
+The toolchain also links the system libraries `install_deps.sh` lists, such as the mbedTLS 2.28 (`.so.14`) and OpenCV 4.6 (`.so.406`) sonames. Some newer distributions do not package those versions either (Debian 13, Fedora, Arch and openSUSE Leap, checked in September for v2026.9.2). `./objeck-lang/install_deps.sh --check` reports what is missing without installing anything.
+
+</details>
 
 ## Examples
 

@@ -74,12 +74,38 @@ embedder->Close();
 			POOLER
 		}
 
+		#~
+		Which hidden layers the token vectors are taken from. LAST is the final layer, as every
+		earlier release did. The other two need a model exported with its intermediate layers
+		as outputs (see HasHiddenLayers) and take the last four of them: the common recipe of
+		Devlin et al. (2019) for feature-based use of BERT.
+		~#
+		enum Layers {
+			#~
+			The final layer, last_hidden_state.
+			~#
+			LAST,
+			#~
+			The element-wise sum of the last four hidden layers, then pooled; the embedding is
+			hidden-size long.
+			~#
+			SUM_LAST_4,
+			#~
+			The last four hidden layers side by side, each pooled; the embedding is four times
+			the hidden size long, the oldest of the four first.
+			~#
+			CONCAT_LAST_4
+		}
+
 		@session : Session;
 		@tokenizer : WordPieceTokenizer;
 		@max_len : Int;
 		@batch_size : Int;
 		@batch_limit : Int;
 		@pooling : BertEmbedder->Pooling;
+		@layers : BertEmbedder->Layers;
+		@layer_names : String[];
+		@stacked_name : String;
 		@ids_name : String;
 		@mask_name : String;
 		@types_name : String;
@@ -128,6 +154,7 @@ embedder->Close();
 			@batch_size := 8;
 			@batch_limit := -1;
 			@pooling := BertEmbedder->Pooling->CLS;
+			@layers := BertEmbedder->Layers->LAST;
 			@hidden_size := -1;
 
 			if(tokenizer = Nil | <>tokenizer->IsLoaded()) {
@@ -213,13 +240,18 @@ embedder->Close();
 			each(spec in outputs) {
 				rank := spec->GetShape()->Size();
 				if(spec->GetDatatype()->Equals("FP32")) {
-					if(@hidden_name = Nil & rank = 3) {
+					if(@hidden_name = Nil & rank = 3 & <>spec->GetName()->StartsWith("hidden_state")) {
 						@hidden_name := spec->GetName();
 					}
 					else if(@pooler_name = Nil & rank = 2 & <>spec->GetName()->Equals(@hidden_name)) {
 						@pooler_name := spec->GetName();
 					};
 				};
+			};
+			FindHiddenLayers(outputs);
+			if(@hidden_name = Nil & @layer_names <> Nil) {
+				# an export with only its layers: the last of them is the final hidden state
+				@hidden_name := @layer_names[3];
 			};
 			if(@hidden_name = Nil) {
 				OpenFail("the model has no last_hidden_state output (FP32, rank 3)");
@@ -232,6 +264,64 @@ embedder->Close();
 			if(shape[2] > 0) {
 				@hidden_size := shape[2];
 			};
+		}
+
+		# Intermediate layers, as a Hugging Face export with output_hidden_states names them:
+		# FP32 rank-3 outputs 'hidden_states.N' (or hidden_states_N, hidden_state_N), N counting up
+		# from the embedding output, of which the four with the highest N are kept; or one FP32
+		# rank-4 output 'hidden_states' stacked as [layer, batch, sequence, hidden].
+		method : FindHiddenLayers(outputs : Vector<TensorSpec>) ~ Nil {
+			names := Vector->New()<String>;
+			numbers := IntVector->New();
+			each(spec in outputs) {
+				name := spec->GetName();
+				if(spec->GetDatatype()->Equals("FP32")) {
+					rank := spec->GetShape()->Size();
+					if(rank = 4 & name->Equals("hidden_states")) {
+						@stacked_name := name;
+					}
+					else if(rank = 3 & name->StartsWith("hidden_state")) {
+						number := LayerNumber(name);
+						if(number >= 0) {
+							names->AddBack(name);
+							numbers->AddBack(number);
+						};
+					};
+				};
+			};
+
+			if(names->Size() < 4) {
+				return;
+			};
+
+			# the four highest numbers, oldest first
+			top := String->New[4];
+			used := Bool->New[names->Size()];
+			for(slot := 3; slot >= 0; slot -= 1;) {
+				best := -1;
+				each(i : names->Size()) {
+					if(<>used[i] & (best < 0 | numbers->Get(i) > numbers->Get(best))) {
+						best := i;
+					};
+				};
+				used[best] := true;
+				top[slot] := names->Get(best);
+			};
+			@layer_names := top;
+		}
+
+		# the number a layer's name ends in, or -1 when it ends in none
+		function : LayerNumber(name : String) ~ Int {
+			end := name->Size();
+			start := end;
+			while(start > 0 & Char->IsDigit(name->Get(start - 1))) {
+				start -= 1;
+			};
+			if(start = end | end - start > 6) {
+				return -1;
+			};
+
+			return name->SubString(start, end - start)->ToInt();
 		}
 
 		# A fixed sequence axis must be max_len: running another length would change the
@@ -374,6 +464,52 @@ embedder->Close();
 		}
 
 		#~
+		The layer strategy Embed uses.
+		@return layers
+		~#
+		method : public : GetLayers() ~ BertEmbedder->Layers {
+			return @layers;
+		}
+
+		#~
+		Sets the layer strategy Embed uses; LAST by default. SUM_LAST_4 and CONCAT_LAST_4 need
+		HasHiddenLayers; without it Embed returns Nil with a reason.
+		@param layers LAST, SUM_LAST_4 or CONCAT_LAST_4
+		~#
+		method : public : SetLayers(layers : BertEmbedder->Layers) ~ Nil {
+			@layers := layers;
+		}
+
+		#~
+		Whether the model exports its intermediate layers, so SUM_LAST_4 and CONCAT_LAST_4 are
+		available: four or more FP32 outputs named hidden_states.N (or hidden_states_N,
+		hidden_state_N), or one FP32 [layer, batch, sequence, hidden] output named hidden_states.
+		A standard export does not have them; export with output_hidden_states=True and name the
+		outputs so.
+		@return true when the model has them
+		~#
+		method : public : HasHiddenLayers() ~ Bool {
+			return @layer_names <> Nil | @stacked_name <> Nil;
+		}
+
+		#~
+		The length of each embedding for a layer strategy: the hidden size, or four times it
+		for CONCAT_LAST_4.
+		@param layers the strategy
+		@return the length, or -1 when the hidden size is not yet known
+		~#
+		method : public : GetEmbeddingSize(layers : BertEmbedder->Layers) ~ Int {
+			if(@hidden_size < 0) {
+				return -1;
+			};
+			if(layers = BertEmbedder->Layers->CONCAT_LAST_4) {
+				return @hidden_size * 4;
+			};
+
+			return @hidden_size;
+		}
+
+		#~
 		The tokenizer, e.g. to inspect what a text becomes.
 		@return the tokenizer
 		~#
@@ -405,6 +541,24 @@ embedder->Close();
 		@return one row per text, hidden-size columns; Nil on failure (see GetError)
 		~#
 		method : public : Embed(texts : String[], pooling : BertEmbedder->Pooling) ~ Float[,] {
+			return Embed(texts, pooling, @layers);
+		}
+
+		#~
+		Embeds texts with a given pooling and layer strategy.
+		@param texts the texts
+		@param pooling CLS or MEAN (POOLER only with LAST)
+		@param layers LAST, SUM_LAST_4 or CONCAT_LAST_4
+		@return one row per text, GetEmbeddingSize columns; Nil on failure (see GetError), e.g. when the model has no hidden layers
+
+```
+X := embedder->Embed(texts, BertEmbedder->Pooling->MEAN, BertEmbedder->Layers->CONCAT_LAST_4);
+if(X = Nil) {
+  embedder->GetError()->PrintLine();
+};
+```
+		~#
+		method : public : Embed(texts : String[], pooling : BertEmbedder->Pooling, layers : BertEmbedder->Layers) ~ Float[,] {
 			if(texts = Nil) {
 				Fail("no texts");
 				return Nil;
@@ -423,7 +577,7 @@ embedder->Close();
 				};
 			};
 
-			return EmbedEncoded(encodings, pooling);
+			return EmbedEncoded(encodings, pooling, layers);
 		}
 
 		#~
@@ -443,8 +597,29 @@ embedder->Close();
 		@return one row per text, hidden-size columns; Nil on failure (see GetError)
 		~#
 		method : public : EmbedEncoded(encodings : TokenEncoding[], pooling : BertEmbedder->Pooling) ~ Float[,] {
+			return EmbedEncoded(encodings, pooling, @layers);
+		}
+
+		#~
+		Embeds texts already encoded, with a given pooling and layer strategy.
+		@param encodings the encoded texts, each max_len long
+		@param pooling CLS or MEAN (POOLER only with LAST)
+		@param layers LAST, SUM_LAST_4 or CONCAT_LAST_4
+		@return one row per text, GetEmbeddingSize columns; Nil on failure (see GetError)
+		~#
+		method : public : EmbedEncoded(encodings : TokenEncoding[], pooling : BertEmbedder->Pooling, layers : BertEmbedder->Layers) ~ Float[,] {
 			if(<>IsOpen()) {
 				return Nil;
+			};
+			if(layers <> BertEmbedder->Layers->LAST) {
+				if(<>HasHiddenLayers()) {
+					Fail("the model does not export its hidden layers (hidden_states.N outputs), so only LAST layers are available; re-export it with output_hidden_states");
+					return Nil;
+				};
+				if(pooling = BertEmbedder->Pooling->POOLER) {
+					Fail("POOLER pooling is the final layer's: use LAST layers with it");
+					return Nil;
+				};
 			};
 			if(encodings = Nil) {
 				Fail("no encodings");
@@ -470,16 +645,17 @@ embedder->Close();
 					rows := @batch_size;
 				};
 
-				pooled := RunBatch(encodings, start, rows, pooling);
+				pooled := RunBatch(encodings, start, rows, pooling, layers);
 				if(pooled = Nil) {
 					return Nil;
 				};
 
+				width := GetEmbeddingSize(layers);
 				if(out = Nil) {
-					out := Float->New[count, @hidden_size];
+					out := Float->New[count, width];
 				};
 				for(r := 0; r < rows; r += 1;) {
-					for(j := 0; j < @hidden_size; j += 1;) {
+					for(j := 0; j < width; j += 1;) {
 						out[start + r, j] := pooled[r, j];
 					};
 				};
@@ -487,7 +663,7 @@ embedder->Close();
 			};
 
 			if(out = Nil) {
-				size := @hidden_size;
+				size := GetEmbeddingSize(layers);
 				if(size < 0) {
 					size := 0;
 				};
@@ -497,7 +673,7 @@ embedder->Close();
 			return out;
 		}
 
-		method : RunBatch(encodings : TokenEncoding[], start : Int, rows : Int, pooling : BertEmbedder->Pooling) ~ Float[,] {
+		method : RunBatch(encodings : TokenEncoding[], start : Int, rows : Int, pooling : BertEmbedder->Pooling, layers : BertEmbedder->Layers) ~ Float[,] {
 			length := @max_len;
 			ids := Int->New[rows * length];
 			mask := Int->New[rows * length];
@@ -521,6 +697,10 @@ embedder->Close();
 			};
 			if(@types_name <> Nil) {
 				inputs->AddBack(Tensor->New(@types_name, [rows, length], types));
+			};
+
+			if(layers <> BertEmbedder->Layers->LAST) {
+				return RunLayers(inputs, rows, length, mask, pooling, layers);
 			};
 
 			wanted := String->New[1];
@@ -577,6 +757,159 @@ embedder->Close();
 				return MeanPool(values, rows, length, @hidden_size, mask);
 			};
 			return ClsPool(values, rows, length, @hidden_size);
+		}
+
+		# the last four hidden layers of a batch, pooled and combined by the layer strategy
+		method : RunLayers(inputs : Vector<Tensor>, rows : Int, length : Int, mask : Int[], pooling : BertEmbedder->Pooling, layers : BertEmbedder->Layers) ~ Float[,] {
+			wanted : String[];
+			if(@layer_names <> Nil) {
+				wanted := @layer_names;
+			}
+			else {
+				wanted := [@stacked_name];
+			};
+
+			outputs := @session->Run(inputs, wanted);
+			if(outputs = Nil | outputs->Size() <> wanted->Size()) {
+				reason := EndPoint->GetLastError();
+				Fail("the model run failed: {$reason}");
+				return Nil;
+			};
+
+			stacked : Float[];
+			dim := -1;
+			if(@layer_names <> Nil) {
+				first := outputs->Get(0)->GetShape();
+				if(first->Size() <> 3 | first[0] <> rows | first[1] <> length) {
+					got := outputs->Get(0)->ToString();
+					Fail("a hidden layer came back as {$got}, not [{$rows}, {$length}, hidden]");
+					return Nil;
+				};
+				dim := first[2];
+
+				each_size := rows * length * dim;
+				stacked := Float->New[4 * each_size];
+				each(l : 4) {
+					tensor := outputs->Get(l);
+					shape := tensor->GetShape();
+					if(shape->Size() <> 3 | shape[0] <> rows | shape[1] <> length | shape[2] <> dim) {
+						got := tensor->ToString();
+						Fail("hidden layer {$l} came back as {$got}, not [{$rows}, {$length}, {$dim}]");
+						return Nil;
+					};
+
+					values := tensor->GetFloats();
+					if(values = Nil) {
+						values := tensor->AsFloats();
+					};
+					each(i : each_size) {
+						stacked[l * each_size + i] := values[i];
+					};
+				};
+			}
+			else {
+				tensor := outputs->Get(0);
+				shape := tensor->GetShape();
+				if(shape->Size() <> 4 | shape[0] < 4 | shape[1] <> rows | shape[2] <> length) {
+					got := tensor->ToString();
+					Fail("hidden_states came back as {$got}, not [layers >= 4, {$rows}, {$length}, hidden]");
+					return Nil;
+				};
+				dim := shape[3];
+
+				values := tensor->GetFloats();
+				if(values = Nil) {
+					values := tensor->AsFloats();
+				};
+				each_size := rows * length * dim;
+				skip := (shape[0] - 4) * each_size;
+				stacked := Float->New[4 * each_size];
+				each(i : stacked->Size()) {
+					stacked[i] := values[skip + i];
+				};
+			};
+
+			if(<>KnowHidden(dim)) {
+				return Nil;
+			};
+
+			return PoolLayers(stacked, 4, rows, length, dim, mask, pooling, layers);
+		}
+
+		#~
+		Pools stacked hidden layers and combines them: for each of the layers, CLS or MEAN pooling
+		as in ClsPool and MeanPool, then, for SUM_LAST_4, the element-wise sum of the layers'
+		vectors (dim columns) or, for CONCAT_LAST_4, the layers' vectors one after another
+		(layers x dim columns, the first layer first). LAST uses the final layer alone.
+		@param stacked the layers, flat: [layer, batch, sequence, dim], oldest layer first
+		@param layer_count layers held in stacked, at least 1
+		@param batch rows
+		@param sequence tokens per row
+		@param dim length of each token vector
+		@param mask attention mask, flat: [batch, sequence]
+		@param pooling CLS or MEAN
+		@param layers the strategy
+		@return [batch, dim] (LAST, SUM_LAST_4) or [batch, 4 x dim] (CONCAT_LAST_4); Nil when the arguments do not fit
+
+```
+X := BertEmbedder->PoolLayers(stacked, 4, 2, 128, 768, mask, BertEmbedder->Pooling->MEAN, BertEmbedder->Layers->SUM_LAST_4);
+```
+		~#
+		function : PoolLayers(stacked : Float[], layer_count : Int, batch : Int, sequence : Int, dim : Int, mask : Int[], pooling : BertEmbedder->Pooling, layers : BertEmbedder->Layers) ~ Float[,] {
+			if(stacked = Nil | layer_count < 1 | batch < 0 | sequence < 1 | dim < 1 | pooling = BertEmbedder->Pooling->POOLER) {
+				return Nil;
+			};
+			each_size := batch * sequence * dim;
+			if(stacked->Size() <> layer_count * each_size) {
+				return Nil;
+			};
+			if(pooling = BertEmbedder->Pooling->MEAN & (mask = Nil | mask->Size() <> batch * sequence)) {
+				return Nil;
+			};
+
+			used := 1;
+			first := layer_count - 1;
+			if(layers <> BertEmbedder->Layers->LAST) {
+				if(layer_count < 4) {
+					return Nil;
+				};
+				used := 4;
+				first := layer_count - 4;
+			};
+
+			width := dim;
+			if(layers = BertEmbedder->Layers->CONCAT_LAST_4) {
+				width := 4 * dim;
+			};
+
+			out := Float->New[batch, width];
+			each(u : used) {
+				layer := Float->New[each_size];
+				each(i : each_size) {
+					layer[i] := stacked[(first + u) * each_size + i];
+				};
+
+				pooled : Float[,];
+				if(pooling = BertEmbedder->Pooling->MEAN) {
+					pooled := MeanPool(layer, batch, sequence, dim, mask);
+				}
+				else {
+					pooled := ClsPool(layer, batch, sequence, dim);
+				};
+
+				for(b := 0; b < batch; b += 1;) {
+					for(j := 0; j < dim; j += 1;) {
+						if(layers = BertEmbedder->Layers->CONCAT_LAST_4) {
+							out[b, u * dim + j] := pooled[b, j];
+						}
+						else {
+							out[b, j] := out[b, j] + pooled[b, j];
+						};
+					};
+				};
+			};
+
+			return out;
 		}
 
 		method : KnowHidden(size : Int) ~ Bool {

@@ -1640,6 +1640,7 @@ jobs:
           ../../../compiler/lib_src/nlp_topics_viz.obs \
           ../../../compiler/lib_src/plot.obs \
           ../../../compiler/lib_src/plot_sdl.obs \
+          ../../../compiler/lib_src/stats.obs \
           ../../../compiler/lib_src/ai_search.obs \
           ../../../compiler/lib_src/ai_game.obs \
           ../../../compiler/lib_src/ai_optimize.obs \
