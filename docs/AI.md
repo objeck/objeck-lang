@@ -12,6 +12,11 @@ All AI and ML capabilities are **standard library** — no third-party packages,
   - [Embeddings](#embeddings)
   - [Moderation](#moderation)
   - [Batch Processing](#batch-processing)
+- [Anthropic (Claude)](#anthropic-claude)
+  - [Chat and system prompts](#chat-and-system-prompts)
+  - [Tool use](#tool-use)
+  - [Structured JSON output](#structured-json-output)
+  - [Streaming](#streaming)
 - [Gemini](#gemini)
   - [Generate Content](#generate-content)
   - [Structured Output](#structured-output)
@@ -61,6 +66,9 @@ use API.OpenAI;
 
 token := EndPoint->GetApiKey();
 ```
+
+### Anthropic
+Set the `ANTHROPIC_API_KEY` environment variable, or create `anthropic_api_key.dat` in your working directory, or call `EndPoint->SetApiKey(key)`. `Chat->New(model, Nil)` reads the key with `EndPoint->GetApiKey()`; pass a key as the second argument to override it for one chat.
 
 ### Gemini
 Create `gemini_api_key.dat` in your working directory. Use the static helper:
@@ -266,6 +274,86 @@ each(j in jobs) {
 ```json
 {"custom_id":"r1","method":"POST","url":"/v1/chat/completions","body":{"model":"gpt-4o-mini","messages":[{"role":"user","content":"Hello"}]}}
 ```
+
+---
+
+## Anthropic (Claude)
+
+`API.Anthropic` is a client for the Anthropic Messages API: chat with a system prompt, tool use, streaming over server-sent events, structured output, and extended-thinking blocks. Compile with `-lib anthropic`. A failed call returns `Nil`, and `EndPoint->GetLastError()` says why, as in the other clients. Requests go over HTTPS; `EndPoint->SetBaseUrl` points the client at a gateway and `EndPoint->SetCertificate` pins its certificate.
+
+### Chat and system prompts
+
+A `Chat` keeps the message history. `SetSystem`, `SetMaxTokens` (default 4096) and `SetTemperature` return the chat, so they chain.
+
+```ruby
+use API.Anthropic;
+
+chat := Chat->New("claude-sonnet-5-5", Nil);
+chat->SetSystem("Answer in one sentence.");
+chat->Send("Why is the sky blue?")->PrintLine();
+chat->Send("And at sunset?")->PrintLine();
+```
+
+`SendReply(message, tools)` returns the whole `Reply`: `GetText()`, `GetThinking()`, `GetStopReason()`, `GetInputTokens()`, `GetOutputTokens()`, and the tool calls. Pass `Nil` as the message to send the history as it stands.
+
+`SetThinking(budget_tokens)` turns on extended thinking. The API needs a budget of at least 1024 tokens and a `SetMaxTokens` above it. While thinking is on the temperature is not sent, and `SendJson` leaves thinking off for its one request, because the API rejects a forced tool with thinking.
+
+What joins the history, so a chat never wedges: a reply that fails is dropped together with the message that asked for it; a refusal (`stop_reason` `refusal`) and an empty reply are returned to you but not kept, as the API advises; an empty text block is removed from a turn before it is replayed; thinking blocks, including redacted ones, are replayed whole.
+
+### Tool use
+
+Describe each tool with a name, a description and a JSON schema. When a reply has tool uses, run them, return each result with `AddToolResult(use_id, text)` and send again. Results for one reply share one user message, as the API requires. Mark a failed tool with `AddToolResult(id, text, true)`.
+
+```ruby
+use API.Anthropic;
+use Collection;
+use Data.JSON;
+
+schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}");
+tools := Vector->New()<Tool>;
+tools->AddBack(Tool->New("get_weather", "Get the weather for a city", schema));
+
+chat := Chat->New("claude-sonnet-5-5", Nil);
+reply := chat->SendReply("What is the weather in Paris?", tools);
+while(reply <> Nil & reply->HasToolUses()) {
+  uses := reply->GetToolUses();
+  each(i : uses) {
+    call := uses->Get(i);
+    city := call->GetArgument("city");
+    chat->AddToolResult(call->GetId(), "18C and sunny in {$city}");
+  };
+  reply := chat->SendReply(Nil, tools);
+};
+reply->GetText()->PrintLine();
+```
+
+`Tool->New(func)` also takes the `FunctionType` the other clients use.
+
+### Structured JSON output
+
+`SendJson(question, name, schema)` makes the model call a tool whose input schema is the one you give, and returns that input as JSON. It is one-shot: neither the question nor the answer joins the history.
+
+```ruby
+schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"},\"temp\":{\"type\":\"integer\"}},\"required\":[\"city\",\"temp\"]}");
+answer := chat->SendJson("Name a city where it is 18 degrees.", "answer", schema);
+answer->Get("city")->GetString()->PrintLine();
+```
+
+### Streaming
+
+`Stream(message, tools)` returns a `ReplyStream`. Read it piece by piece; the exchange joins the history when the stream ends, whether or not you ask for the whole reply, and `GetReply()` can be called more than once. `Close()` before the end, an error event and a tool input that was cut off by `max_tokens` all drop the exchange from the history.
+
+```ruby
+stream := chat->Stream("Write a haiku about rivers.", Nil);
+while(stream <> Nil & stream->HasNext()) {
+  stream->Next()->Print();
+};
+reply := stream->GetReply();
+```
+
+Streaming works over HTTPS only. A refused request (a bad key, a rate limit) returns `Nil` with the status and what it usually means in `GetLastError()`; the body of a refused stream is not read, so the API's own message is not shown there.
+
+**Tested against a local mock, not the live service.** `anthropic_parse_test` replays recorded response bodies and event streams, and `anthropic_http_test` runs the client against a local HTTPS server that speaks the same message shapes, checking the `x-api-key` and `anthropic-version` headers, errors, a tool round trip, structured output and streaming. Neither calls api.anthropic.com. If a field or event the live API sends is not handled, the parse test is where to add a recorded case.
 
 ---
 

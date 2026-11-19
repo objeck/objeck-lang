@@ -364,6 +364,9 @@ namespace instructions {
     INST_STABLE_ID,
     // Runtime->TestAddressOf(o): the object's current address, for the collector's
     // regression tests; 0 unless OBJECK_GC_TEST_HOOKS=1
-    GC_TEST_ADDRESS
+    GC_TEST_ADDRESS,
+    // Byte->TryUncompressZlib(input): UncompressZlib that answers Nil for a
+    // Nil, damaged, truncated or oversized stream instead of ending the program
+    UNCOMPRESS_ZLIB_TRY
   };
 }
