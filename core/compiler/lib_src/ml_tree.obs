@@ -242,6 +242,10 @@ preds := forest->Predict(data);
 				trees->AddBack(tree);
 			};
 
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
+
 			return RandomForest->New(num_trees, max_depth, min_samples, seed, trees);
 		}
 	}
@@ -528,7 +532,7 @@ preds := booster->Predict(data);
 			};
 			num_learners := deserializer->ReadInt();
 			learner_count := deserializer->ReadInt();
-			if(num_learners < 1 | learner_count < 1 | learner_count > num_learners) {
+			if(num_learners < 1 | learner_count < 1 | learner_count > num_learners | <>deserializer->Holds(num_learners)) {
 				return Nil;
 			};
 
@@ -539,6 +543,10 @@ preds := booster->Predict(data);
 				features[t] := deserializer->ReadInt();
 				polarities[t] := deserializer->ReadInt() = 1;
 				alphas[t] := deserializer->ReadFloat();
+			};
+
+			if(<>deserializer->IsOk()) {
+				return Nil;
 			};
 
 			return AdaBoost->New(num_learners, features, polarities, alphas, learner_count);
@@ -923,7 +931,12 @@ pred := tree->Predict([2.5]);
 				return Nil;
 			};
 
-			return ReadFrom(deserializer);
+			result := ReadFrom(deserializer);
+			if(result = Nil | <>deserializer->IsOk()) {
+				return Nil;
+			};
+
+			return result;
 		}
 
 		#~
@@ -2116,6 +2129,10 @@ gbt->Fit(X, y);
 				trees->AddBack(tree);
 			};
 
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
+
 			return GradientBoostedTrees->New(num_trees, learning_rate, max_depth, min_samples, base, trees);
 		}
 	}
@@ -2378,7 +2395,12 @@ tree->Predict([true, true])->PrintLine();   # true
 				return Nil;
 			};
 
-			return ReadFrom(deserializer);
+			result := ReadFrom(deserializer);
+			if(result = Nil | <>deserializer->IsOk()) {
+				return Nil;
+			};
+
+			return result;
 		}
 
 		#~

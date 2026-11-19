@@ -10697,11 +10697,45 @@ bundle System.IO {
 		}
 
 		#~
-		Checks that the constructor was given a readable stream
-		@return false if the input was Nil, damaged, truncated or not zlib data
+		Checks that the stream has been readable so far: false if the input was Nil,
+		damaged, truncated or not zlib data, and false from the first read that found the
+		stream too short, an array that declares more than the stream holds, or a value of
+		another type than the read asked for. Check it after the last read, as the reads
+		themselves answer their zero value.
+		@return false once any read has failed
 		~#
 		method : public : IsOk() ~ Bool {
 			return @is_ok;
+		}
+
+		#~
+		Whether count values of 8 bytes or more could still be read: the bound to apply
+		to a count read from the stream before allocating an array of that size, so a
+		file that claims a billion values does not get them.
+		@param count number of values
+		@return true if count is not negative and the bytes left could hold that many
+		~#
+		method : public : Holds(count : Int) ~ Bool {
+			if(count < 0) {
+				return false;
+			};
+
+			return count <= Remaining() / 8;
+		}
+
+		#~
+		Whether rows x cols values of 8 bytes or more could still be read, without
+		multiplying them (the product of two counts from a file can overflow).
+		@param rows number of rows
+		@param cols number of columns
+		@return true if both are positive and the bytes left could hold that many
+		~#
+		method : public : Holds(rows : Int, cols : Int) ~ Bool {
+			if(rows < 1 | cols < 1) {
+				return false;
+			};
+
+			return rows <= Remaining() / 8 / cols;
 		}
 
 		#~

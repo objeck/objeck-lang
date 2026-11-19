@@ -2084,6 +2084,17 @@ inline size_t* TrapProcessor::DeserializeArray(ParamType type, size_t* inst, siz
     const long dest_array_dim = (long)dest_array_dim64;
     const long dest_array_dim_size = (long)dest_array_dim_size64;
 
+    // The elements must be in the stream, so a few bytes cannot ask for a
+    // 16 GB array: 8 bytes each for Int and Float, one for the rest (an object
+    // takes at least one byte). This is the check ReadSerializedBytes makes, made
+    // before the allocation instead of after it.
+    const long elem_bytes = (type == INT_ARY_PARM || type == FLOAT_ARY_PARM) ? (long)sizeof(size_t) : 1;
+    const long left = (long)src_array[0] - (long)inst[1];
+    if(left < 0 || dest_array_size > left / elem_bytes) {
+      DeserializeFailed(inst);
+      return nullptr;
+    }
+
     size_t* dest_array;
     if(type == BYTE_ARY_PARM) {
       dest_array = MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) * sizeof(size_t)),
@@ -2134,6 +2145,7 @@ inline size_t* TrapProcessor::DeserializeArray(ParamType type, size_t* inst, siz
     return dest_array;
   }
 
+  DeserializeFailed(inst);
   return nullptr;
 }
 
@@ -2204,6 +2216,7 @@ char TrapProcessor::DeserializeByte(size_t* inst)
     return value;
   }
 
+  DeserializeFailed(inst);
   return 0;
 }
 
@@ -2260,6 +2273,7 @@ wchar_t TrapProcessor::DeserializeChar(size_t* inst)
     return out;
   }
 
+  DeserializeFailed(inst);
   return 0;
 }
 
@@ -2298,6 +2312,7 @@ INT64_VALUE TrapProcessor::DeserializeInt(size_t* inst)
     return value;
   }
 
+  DeserializeFailed(inst);
   return 0;
 }
 
@@ -2325,7 +2340,10 @@ FLOAT_VALUE TrapProcessor::DeserializeFloat(size_t* inst)
   size_t* byte_array = (size_t*)inst[0];
   const long dest_pos = (long)inst[1];
 
-  if(byte_array && dest_pos < (long)byte_array[0]) {
+  // all eight bytes, not just the first: a stream that ends mid-value was read
+  // past its end
+  if(byte_array && dest_pos >= 0 && dest_pos <= (long)byte_array[0] &&
+     (long)sizeof(FLOAT_VALUE) <= (long)byte_array[0] - dest_pos) {
     const char* byte_array_ptr = (char*)(byte_array + 3);
     FLOAT_VALUE value;
     memcpy(&value, byte_array_ptr + dest_pos, sizeof(value));
@@ -2333,6 +2351,7 @@ FLOAT_VALUE TrapProcessor::DeserializeFloat(size_t* inst)
     return value;
   }
 
+  DeserializeFailed(inst);
   return 0.0;
 }
 
@@ -7339,6 +7358,7 @@ bool TrapProcessor::DeserlChar(StackProgram* program, size_t* inst, size_t* &op_
     PushInt(DeserializeChar(inst), op_stack, stack_pos);
   }
   else {
+    DeserializeFailed(inst);
     PushInt(0, op_stack, stack_pos);
   }
 
@@ -7354,6 +7374,7 @@ bool TrapProcessor::DeserlInt(StackProgram* program, size_t* inst, size_t* &op_s
     PushInt(DeserializeInt(inst), op_stack, stack_pos);
   }
   else {
+    DeserializeFailed(inst);
     PushInt(0, op_stack, stack_pos);
   }
 
@@ -7369,6 +7390,7 @@ bool TrapProcessor::DeserlFloat(StackProgram* program, size_t* inst, size_t* &op
     PushFloat(DeserializeFloat(inst), op_stack, stack_pos);
   }
   else {
+    DeserializeFailed(inst);
     PushFloat(0.0, op_stack, stack_pos);
   }
 
@@ -7391,6 +7413,7 @@ bool TrapProcessor::DeserlByteAry(StackProgram* program, size_t* inst, size_t* &
     PushInt((size_t)DeserializeArray(BYTE_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
   }
   else {
+    DeserializeFailed(inst);
     PushInt(0, op_stack, stack_pos);
   }
 
@@ -7431,6 +7454,7 @@ bool TrapProcessor::DeserlBoolAry(StackProgram* program, size_t* inst, size_t* &
     return true;
   }
 
+  DeserializeFailed(inst);
   PushInt(0, op_stack, stack_pos);
   return true;
 }
@@ -7444,6 +7468,7 @@ bool TrapProcessor::DeserlCharAry(StackProgram* program, size_t* inst, size_t* &
     PushInt((size_t)DeserializeArray(CHAR_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
   }
   else {
+    DeserializeFailed(inst);
     PushInt(0, op_stack, stack_pos);
   }
 
@@ -7459,6 +7484,7 @@ bool TrapProcessor::DeserlIntAry(StackProgram* program, size_t* inst, size_t* &o
     PushInt((size_t)DeserializeArray(INT_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
   }
   else {
+    DeserializeFailed(inst);
     PushInt(0, op_stack, stack_pos);
   }
 
@@ -7474,6 +7500,7 @@ bool TrapProcessor::DeserlObjAry(StackProgram* program, size_t* inst, size_t* &o
     PushInt((size_t)DeserializeArray(OBJ_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
   }
   else {
+    DeserializeFailed(inst);
     PushInt(0, op_stack, stack_pos);
   }
 
@@ -7489,6 +7516,7 @@ bool TrapProcessor::DeserlFloatAry(StackProgram* program, size_t* inst, size_t* 
     PushInt((size_t)DeserializeArray(FLOAT_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
   }
   else {
+    DeserializeFailed(inst);
     PushInt(0, op_stack, stack_pos);
   }
 

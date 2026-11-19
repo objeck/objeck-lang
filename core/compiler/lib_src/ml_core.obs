@@ -1615,6 +1615,10 @@ else if(args->Size() = 1) {
 				return Nil;
 			};
 
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
+
 			return NeuralNetwork->New(weight_inputs_hidden, weight_outputs_hidden, bias_hidden, bias_output);
 		}
 
@@ -1664,7 +1668,7 @@ else if(args->Size() = 1) {
 		function : ReadMatrix(deserializer : System.IO.Deserializer) ~ Float[,] {
 			height := deserializer->ReadInt();
 			width := deserializer->ReadInt();
-			if(height < 1 | width < 1) {
+			if(<>deserializer->Holds(height, width)) {
 				return Nil;
 			};
 
