@@ -292,7 +292,7 @@ labels := scanner->GetLabels();   # cluster id per row; -1 = noise
 		@return true if clustering succeeded
 		~#
 		method : public : Fit(X : Float[,]) ~ Bool {
-			if(X = Nil) {
+			if(<>InputCheck->Valid(X)) {
 				return false;
 			};
 
@@ -487,7 +487,7 @@ resp := gmm->Predict(X);                # soft responsibilities
 		@return true if fitting succeeded
 		~#
 		method : public : Fit(X : Float[,]) ~ Bool {
-			if(X = Nil) {
+			if(<>InputCheck->Valid(X)) {
 				return false;
 			};
 
@@ -682,7 +682,10 @@ resp := gmm->Predict(X);                # soft responsibilities
 		@return rows x components responsibility matrix, or Nil if not fitted
 		~#
 		method : public : Predict(X : Float[,]) ~ Float[,] {
-			if(<>@is_fitted | X = Nil) {
+			if(<>@is_fitted) {
+				return Nil;
+			};
+			if(<>InputCheck->HasCols(X, @means->Size()[1])) {
 				return Nil;
 			};
 

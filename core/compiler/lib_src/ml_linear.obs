@@ -236,7 +236,7 @@ model->Fit(X, y, true);       # intercept ~ 1, slope ~ 2
 ```
 		~#
 		method : public : Fit(X : Float[,], y : Float[,], fit_intercept : Bool) ~ Bool {
-			if(X = Nil | y = Nil) {
+			if(<>InputCheck->Pair(X, y)) {
 				return false;
 			};
 
@@ -321,6 +321,15 @@ model->Fit(X, y, true);       # intercept ~ 1, slope ~ 2
 			return sum;
 		}
 
+		# the feature count the model was fitted on
+		method : Cols() ~ Int {
+			if(@fit_intercept) {
+				return @coefficients->Size() - 1;
+			};
+
+			return @coefficients->Size();
+		}
+
 		# Returns a copy of X with a leading column of 1.0s (intercept design column).
 		method : PrependOnes(X : Float[,]) ~ Float[,] {
 			x_dims := X->Size();
@@ -351,7 +360,10 @@ each(i : preds->Size()[0]) {
 ```
 		~#
 		method : public : Predict(X : Float[,]) ~ Float[,] {
-			if(<>@is_fitted | X = Nil) {
+			if(<>@is_fitted) {
+				return Nil;
+			};
+			if(<>InputCheck->HasCols(X, Cols())) {
 				return Nil;
 			};
 
@@ -425,7 +437,10 @@ each(c in coeffs) {
 		@return R-squared, or 0.0 if not fitted or inputs are invalid
 		~#
 		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
-			if(<>@is_fitted | X = Nil | y = Nil) {
+			if(<>@is_fitted) {
+				return 0.0;
+			};
+			if(<>InputCheck->Pair(X, Cols(), y)) {
 				return 0.0;
 			};
 
@@ -594,7 +609,7 @@ model->Fit(X, y);
 		@return true if fitting succeeded (false on a singular system)
 		~#
 		method : public : Fit(X : Float[,], y : Float[,], fit_intercept : Bool) ~ Bool {
-			if(X = Nil | y = Nil) {
+			if(<>InputCheck->Pair(X, y)) {
 				return false;
 			};
 
@@ -691,6 +706,15 @@ model->Fit(X, y);
 			return sum;
 		}
 
+		# the feature count the model was fitted on
+		method : Cols() ~ Int {
+			if(@fit_intercept) {
+				return @coefficients->Size() - 1;
+			};
+
+			return @coefficients->Size();
+		}
+
 		method : PrependOnes(X : Float[,]) ~ Float[,] {
 			x_dims := X->Size();
 			rows := x_dims[0];
@@ -713,7 +737,10 @@ model->Fit(X, y);
 		@return prediction matrix, or Nil if not fitted
 		~#
 		method : public : Predict(X : Float[,]) ~ Float[,] {
-			if(<>@is_fitted | X = Nil) {
+			if(<>@is_fitted) {
+				return Nil;
+			};
+			if(<>InputCheck->HasCols(X, Cols())) {
 				return Nil;
 			};
 
@@ -775,7 +802,10 @@ model->Fit(X, y);
 		@return R-squared, or 0.0 if not fitted or inputs are invalid
 		~#
 		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
-			if(<>@is_fitted | X = Nil | y = Nil) {
+			if(<>@is_fitted) {
+				return 0.0;
+			};
+			if(<>InputCheck->Pair(X, Cols(), y)) {
 				return 0.0;
 			};
 
@@ -958,7 +988,7 @@ preds := model->Predict(X);
 		@return true if fitting succeeded
 		~#
 		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
-			if(X = Nil | y = Nil) {
+			if(<>InputCheck->Pair(X, y)) {
 				return false;
 			};
 
@@ -1102,7 +1132,10 @@ preds := model->Predict(X);
 		@return prediction matrix, or Nil if not fitted
 		~#
 		method : public : Predict(X : Float[,]) ~ Float[,] {
-			if(<>@is_fitted | X = Nil) {
+			if(<>@is_fitted) {
+				return Nil;
+			};
+			if(<>InputCheck->HasCols(X, @coefficients->Size())) {
 				return Nil;
 			};
 
@@ -1164,7 +1197,10 @@ preds := model->Predict(X);
 		@return R-squared, or 0.0 if not fitted or inputs are invalid
 		~#
 		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
-			if(<>@is_fitted | X = Nil | y = Nil) {
+			if(<>@is_fitted) {
+				return 0.0;
+			};
+			if(<>InputCheck->Pair(X, @coefficients->Size(), y)) {
 				return 0.0;
 			};
 
@@ -1390,7 +1426,7 @@ model->Fit(X, y);
 ```
 		~#
 		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
-			if(X = Nil | y = Nil) {
+			if(<>InputCheck->Pair(X, y)) {
 				return false;
 			};
 
@@ -1455,7 +1491,10 @@ probs := model->Predict([[2.0, 3.0]]);
 ```
 		~#
 		method : public : Predict(X : Float[,]) ~ Float[] {
-			if(<>@is_fitted | X = Nil) {
+			if(<>@is_fitted) {
+				return Nil;
+			};
+			if(<>InputCheck->HasCols(X, @weights->Size())) {
 				return Nil;
 			};
 
@@ -1501,7 +1540,7 @@ each(label in labels) {
 		@return true when the fit succeeded
 		~#
 		method : public : Fit(X : Float[,], y : Bool[]) ~ Bool {
-			if(X = Nil | y = Nil) {
+			if(<>InputCheck->Pair(X, y)) {
 				return false;
 			};
 
@@ -1580,7 +1619,10 @@ each(label in labels) {
 		~#
 		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
 			preds := PredictClass(X);
-			if(preds = Nil | y = Nil) {
+			if(preds = Nil) {
+				return 0.0;
+			};
+			if(<>InputCheck->Targets(y, preds->Size())) {
 				return 0.0;
 			};
 
@@ -1754,7 +1796,7 @@ labels := model->PredictClass(X);
 		@return true if fitting succeeded
 		~#
 		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
-			if(X = Nil | y = Nil) {
+			if(<>InputCheck->Pair(X, y)) {
 				return false;
 			};
 
@@ -1814,7 +1856,10 @@ labels := model->PredictClass(X);
 		@return decision value array, or Nil if not fitted
 		~#
 		method : public : Predict(X : Float[,]) ~ Float[] {
-			if(<>@is_fitted | X = Nil) {
+			if(<>@is_fitted) {
+				return Nil;
+			};
+			if(<>InputCheck->HasCols(X, @weights->Size())) {
 				return Nil;
 			};
 
@@ -1886,7 +1931,10 @@ labels := model->PredictClass(X);
 		~#
 		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
 			preds := PredictClass(X);
-			if(preds = Nil | y = Nil) {
+			if(preds = Nil) {
+				return 0.0;
+			};
+			if(<>InputCheck->Targets(y, preds->Size())) {
 				return 0.0;
 			};
 
@@ -2034,7 +2082,7 @@ labels := model->PredictClass(X);
 		@return true if fitting succeeded
 		~#
 		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
-			if(X = Nil | y = Nil) {
+			if(<>InputCheck->Pair(X, y)) {
 				return false;
 			};
 
@@ -2103,7 +2151,10 @@ labels := model->PredictClass(X);
 		@return decision value array, or Nil if not fitted
 		~#
 		method : public : Predict(X : Float[,]) ~ Float[] {
-			if(<>@is_fitted | X = Nil) {
+			if(<>@is_fitted) {
+				return Nil;
+			};
+			if(<>InputCheck->HasCols(X, @weights->Size())) {
 				return Nil;
 			};
 
@@ -2166,7 +2217,10 @@ labels := model->PredictClass(X);
 		~#
 		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
 			preds := PredictClass(X);
-			if(preds = Nil | y = Nil) {
+			if(preds = Nil) {
+				return 0.0;
+			};
+			if(<>InputCheck->Targets(y, preds->Size())) {
 				return 0.0;
 			};
 

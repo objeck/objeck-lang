@@ -58,7 +58,7 @@ ratios := pca->GetExplainedVarianceRatio();
 		@return true if fitting succeeded
 		~#
 		method : public : Fit(X : Float[,]) ~ Bool {
-			if(X = Nil) {
+			if(<>InputCheck->Valid(X)) {
 				return false;
 			};
 
@@ -209,7 +209,10 @@ ratios := pca->GetExplainedVarianceRatio();
 		@return projected matrix (rows x num_components), or Nil if not fitted
 		~#
 		method : public : Transform(X : Float[,]) ~ Float[,] {
-			if(<>@is_fitted | X = Nil) {
+			if(<>@is_fitted) {
+				return Nil;
+			};
+			if(<>InputCheck->HasCols(X, @mean->Size())) {
 				return Nil;
 			};
 
@@ -237,7 +240,10 @@ ratios := pca->GetExplainedVarianceRatio();
 		@return reconstruction (rows x features), or Nil if not fitted
 		~#
 		method : public : InverseTransform(Z : Float[,]) ~ Float[,] {
-			if(<>@is_fitted | Z = Nil) {
+			if(<>@is_fitted) {
+				return Nil;
+			};
+			if(<>InputCheck->HasCols(Z, @num_components)) {
 				return Nil;
 			};
 
@@ -426,7 +432,7 @@ test_z := scaler->Transform(test);
 ```
 		~#
 		method : public : Fit(X : Float[,]) ~ Bool {
-			if(X = Nil) {
+			if(<>InputCheck->Valid(X)) {
 				return false;
 			};
 
@@ -478,7 +484,10 @@ if(test_z = Nil) {
 ```
 		~#
 		method : public : Transform(X : Float[,]) ~ Float[,] {
-			if(<>@fitted | X = Nil) {
+			if(<>@fitted) {
+				return Nil;
+			};
+			if(<>InputCheck->HasCols(X, @means->Size())) {
 				return Nil;
 			};
 

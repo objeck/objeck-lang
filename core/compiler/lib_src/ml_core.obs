@@ -25,6 +25,112 @@ bundle System.ML {
 		}
 	}
 
+	# The shape checks the models share, so that Fit, Predict, Transform and Score
+	# answer false, Nil or 0.0 for a Nil, an empty or a wrong-width matrix, as
+	# scikit-learn raises a ValueError, instead of ending the program with "Index over
+	# bounds" or "Divide by zero". Each costs two dimension reads and a few compares.
+	# A cols of 0 means the width the model was fitted on is not known (a model read
+	# back from a file, say), and only the shape is checked.
+	class : private : InputCheck {
+		# at least one row and one column
+		function : Valid(X : Float[,]) ~ Bool {
+			if(X = Nil) {
+				return false;
+			};
+
+			dims := X->Size();
+			return dims[0] > 0 & dims[1] > 0;
+		}
+
+		function : Valid(X : Bool[,]) ~ Bool {
+			if(X = Nil) {
+				return false;
+			};
+
+			dims := X->Size();
+			return dims[0] > 0 & dims[1] > 0;
+		}
+
+		# a valid matrix of exactly cols columns
+		function : HasCols(X : Float[,], cols : Int) ~ Bool {
+			if(<>Valid(X)) {
+				return false;
+			};
+
+			return cols < 1 | X->Size()[1] = cols;
+		}
+
+		function : HasCols(X : Bool[,], cols : Int) ~ Bool {
+			if(<>Valid(X)) {
+				return false;
+			};
+
+			return cols < 1 | X->Size()[1] = cols;
+		}
+
+		# a valid boolean matrix of the width the model was fitted on, with or without
+		# the trailing label column its Fit took
+		function : HasFeatures(X : Bool[,], cols : Int) ~ Bool {
+			if(<>Valid(X)) {
+				return false;
+			};
+
+			width := X->Size()[1];
+			return cols < 1 | width = cols | width = cols - 1;
+		}
+
+		# one target per row: a valid matrix and as many targets as it has rows
+		function : Pair(X : Float[,], y : Float[,]) ~ Bool {
+			if(<>Valid(X)) {
+				return false;
+			};
+
+			return Targets(y, X->Size()[0]);
+		}
+
+		function : Pair(X : Float[,], y : Bool[]) ~ Bool {
+			if(<>Valid(X)) {
+				return false;
+			};
+
+			return Targets(y, X->Size()[0]);
+		}
+
+		function : Pair(X : Float[,], cols : Int, y : Float[,]) ~ Bool {
+			if(<>HasCols(X, cols)) {
+				return false;
+			};
+
+			return Targets(y, X->Size()[0]);
+		}
+
+		function : Pair(X : Float[,], cols : Int, y : Bool[]) ~ Bool {
+			if(<>HasCols(X, cols)) {
+				return false;
+			};
+
+			return Targets(y, X->Size()[0]);
+		}
+
+		# exactly rows targets (a matrix of targets needs a column)
+		function : Targets(y : Float[,], rows : Int) ~ Bool {
+			if(y = Nil) {
+				return false;
+			};
+
+			dims := y->Size();
+			return dims[0] = rows & dims[1] > 0;
+		}
+
+		function : Targets(y : Bool[], rows : Int) ~ Bool {
+			if(y = Nil) {
+				return false;
+			};
+
+			return y->Size() = rows;
+		}
+	}
+
 	#~
 	Deterministic, seedable pseudo-random number generator (MINSTD linear
 	congruential generator). Use this instead of `Float->Random()` when you need

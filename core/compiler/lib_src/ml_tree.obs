@@ -31,6 +31,7 @@ matched_perc := (matched / possible * 100.0)->As(Int);
 		@max_depth : Int;
 		@min_samples : Int;
 		@seed : Int;
+		@cols : Int;
 		@trees : Vector<DecisionTree>;
 
 		#~
@@ -84,12 +85,20 @@ preds := forest->Predict(data);
 ```
 		~#
 		method : public : Fit(input : Bool[,]) ~ Nil {
+			if(<>InputCheck->Valid(input)) {
+				return;
+			};
+			if(input->Size()[1] < 2) {
+				return;
+			};
+
 			@trees := Vector->New()<DecisionTree>;
 			rand := Random->New(@seed);
 
 			dims := input->Size();
 			rows := dims[0];
 			cols := dims[1];
+			@cols := cols;
 			ntrees := @num_trees;
 
 			for(t := 0; t < ntrees; t += 1;) {
@@ -113,6 +122,10 @@ preds := forest->Predict(data);
 		@return per-row predicted classes
 		~#
 		method : public : Predict(input : Bool[,]) ~ Bool[] {
+			if(<>InputCheck->HasFeatures(input, @cols)) {
+				return Nil;
+			};
+
 			dims := input->Size();
 			rows := dims[0];
 			cols := dims[1];
@@ -150,7 +163,10 @@ preds := forest->Predict(data);
 		@return fraction of correctly classified rows, or 0.0 if not fitted
 		~#
 		method : public : Score(input : Bool[,]) ~ Float {
-			if(<>IsFitted() | input = Nil) {
+			if(<>IsFitted()) {
+				return 0.0;
+			};
+			if(<>InputCheck->HasFeatures(input, @cols)) {
 				return 0.0;
 			};
 
@@ -270,6 +286,7 @@ preds := booster->Predict(data);
 		@polarities : Bool[];
 		@alphas : Float[];
 		@learner_count : Int;
+		@cols : Int;
 		@is_fitted : Bool;
 
 		#~
@@ -297,7 +314,7 @@ preds := booster->Predict(data);
 		@return true if fitting succeeded
 		~#
 		method : public : Fit(input : Bool[,]) ~ Bool {
-			if(input = Nil) {
+			if(<>InputCheck->Valid(input)) {
 				return false;
 			};
 
@@ -402,6 +419,7 @@ preds := booster->Predict(data);
 				};
 			};
 
+			@cols := cols;
 			@is_fitted := @learner_count > 0;
 			return @is_fitted;
 		}
@@ -412,7 +430,10 @@ preds := booster->Predict(data);
 		@return per-row predicted classes, or Nil if not fitted
 		~#
 		method : public : Predict(input : Bool[,]) ~ Bool[] {
-			if(<>@is_fitted | input = Nil) {
+			if(<>@is_fitted) {
+				return Nil;
+			};
+			if(<>InputCheck->HasFeatures(input, @cols)) {
 				return Nil;
 			};
 
@@ -457,7 +478,10 @@ preds := booster->Predict(data);
 		@return fraction of correctly classified rows, or 0.0 if not fitted
 		~#
 		method : public : Score(input : Bool[,]) ~ Float {
-			if(<>@is_fitted | input = Nil) {
+			if(<>@is_fitted) {
+				return 0.0;
+			};
+			if(<>InputCheck->HasFeatures(input, @cols)) {
 				return 0.0;
 			};
 
@@ -630,6 +654,7 @@ pred := tree->Predict([2.5]);
 	class RegressionTree {
 		@max_depth : Int;
 		@min_samples : Int;
+		@cols : Int;
 		@root : RegressionTreeNode;
 
 		#~
@@ -655,7 +680,7 @@ pred := tree->Predict([2.5]);
 		@return true if fitting succeeded
 		~#
 		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
-			if(X = Nil | y = Nil) {
+			if(<>InputCheck->Pair(X, y)) {
 				return false;
 			};
 
@@ -676,6 +701,7 @@ pred := tree->Predict([2.5]);
 				indexes[i] := i;
 			};
 
+			@cols := x_dims[1];
 			@root := BuildNode(X, targets, indexes, rows, 0);
 			return true;
 		}
@@ -817,10 +843,19 @@ pred := tree->Predict([2.5]);
 		@return predicted target
 		~#
 		method : public : Predict(row : Float[]) ~ Float {
+			if(row = Nil) {
+				return 0.0;
+			};
+
 			node := @root;
 			while(node <> Nil) {
 				if(node->IsLeaf()) {
 					return node->GetValue();
+				};
+
+				# a row too short for the feature the node tests
+				if(node->GetFeature() >= row->Size()) {
+					return 0.0;
 				};
 
 				if(row[node->GetFeature()] <= node->GetThreshold()) {
@@ -840,7 +875,10 @@ pred := tree->Predict([2.5]);
 		@return prediction matrix (rows x 1), or Nil if not fitted
 		~#
 		method : public : PredictAll(X : Float[,]) ~ Float[,] {
-			if(<>IsFitted() | X = Nil) {
+			if(<>IsFitted()) {
+				return Nil;
+			};
+			if(<>InputCheck->HasCols(X, @cols)) {
 				return Nil;
 			};
 
@@ -868,7 +906,10 @@ pred := tree->Predict([2.5]);
 		~#
 		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
 			preds := PredictAll(X);
-			if(preds = Nil | y = Nil) {
+			if(preds = Nil) {
+				return 0.0;
+			};
+			if(<>InputCheck->Targets(y, preds->Size()[0])) {
 				return 0.0;
 			};
 
@@ -1180,7 +1221,7 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 		@return true when the tree was built, false when the inputs do not line up
 		~#
 		method : public : Fit(X : Float[,], y : Bool[]) ~ Bool {
-			if(X = Nil | y = Nil) {
+			if(<>InputCheck->Pair(X, y)) {
 				return false;
 			};
 
@@ -1238,7 +1279,7 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 		@return true when the tree was built
 		~#
 		method : public : FitRows(X : Float[,], y : Bool[], rows_idx : Int[]) ~ Bool {
-			if(X = Nil | y = Nil | rows_idx = Nil) {
+			if(<>InputCheck->Pair(X, y) | rows_idx = Nil) {
 				return false;
 			};
 
@@ -1430,7 +1471,10 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 		@return one leaf index per row, or Nil when unfitted
 		~#
 		method : public : Apply(X : Float[,]) ~ Int[] {
-			if(<>@fitted | X = Nil) {
+			if(<>@fitted) {
+				return Nil;
+			};
+			if(<>InputCheck->HasCols(X, @importance->Size())) {
 				return Nil;
 			};
 
@@ -1513,7 +1557,10 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 		@return one score per row, or Nil when unfitted or the shape does not match
 		~#
 		method : public : PredictScore(X : Float[,]) ~ Float[] {
-			if(<>@fitted | X = Nil) {
+			if(<>@fitted) {
+				return Nil;
+			};
+			if(<>InputCheck->HasCols(X, @importance->Size())) {
 				return Nil;
 			};
 
@@ -1740,7 +1787,7 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 		@return true when every tree was built
 		~#
 		method : public : Fit(X : Float[,], y : Bool[]) ~ Bool {
-			if(X = Nil | y = Nil | @num_trees < 1) {
+			if(<>InputCheck->Pair(X, y) | @num_trees < 1) {
 				return false;
 			};
 
@@ -1819,7 +1866,10 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 		@return one score per row, or Nil when unfitted
 		~#
 		method : public : PredictScore(X : Float[,]) ~ Float[] {
-			if(<>@fitted | X = Nil | @trees = Nil | @trees->Size() = 0) {
+			if(<>@fitted | @trees = Nil | @trees->Size() = 0) {
+				return Nil;
+			};
+			if(<>InputCheck->HasCols(X, @importance->Size())) {
 				return Nil;
 			};
 
@@ -1904,6 +1954,7 @@ gbt->Fit(X, y);
 		@learning_rate : Float;
 		@max_depth : Int;
 		@min_samples : Int;
+		@cols : Int;
 		@base : Float;
 		@trees : Vector<RegressionTree>;
 		@is_fitted : Bool;
@@ -1940,7 +1991,7 @@ gbt->Fit(X, y);
 		@return true if fitting succeeded
 		~#
 		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
-			if(X = Nil | y = Nil | @num_trees < 1) {
+			if(<>InputCheck->Pair(X, y) | @num_trees < 1) {
 				return false;
 			};
 
@@ -1981,6 +2032,7 @@ gbt->Fit(X, y);
 				};
 			};
 
+			@cols := x_dims[1];
 			@is_fitted := true;
 			return true;
 		}
@@ -1991,7 +2043,10 @@ gbt->Fit(X, y);
 		@return prediction matrix (rows x 1), or Nil if not fitted
 		~#
 		method : public : Predict(X : Float[,]) ~ Float[,] {
-			if(<>@is_fitted | X = Nil) {
+			if(<>@is_fitted) {
+				return Nil;
+			};
+			if(<>InputCheck->HasCols(X, @cols)) {
 				return Nil;
 			};
 
@@ -2036,7 +2091,10 @@ gbt->Fit(X, y);
 		~#
 		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
 			preds := Predict(X);
-			if(preds = Nil | y = Nil) {
+			if(preds = Nil) {
+				return 0.0;
+			};
+			if(<>InputCheck->Targets(y, preds->Size()[0])) {
 				return 0.0;
 			};
 
@@ -2238,6 +2296,7 @@ label := tree->Predict(row);
 		@root : TreeNode;
 		@max_depth : Int;
 		@min_samples : Int;
+		@cols : Int;
 
 		#~
 		Creates an (unfitted) decision tree classifier.
@@ -2278,6 +2337,11 @@ tree->Predict([true, true])->PrintLine();   # true
 ```
 		~#
 		method : public : Fit(input : Bool[,]) ~ Nil {
+			if(<>InputCheck->Valid(input)) {
+				return;
+			};
+
+			@cols := input->Size()[1];
 			@root := BuildNode(input, 0);
 		}
 
@@ -2287,6 +2351,10 @@ tree->Predict([true, true])->PrintLine();   # true
 		@return predicted class
 		~#
 		method : public : Predict(row : Bool[]) ~ Bool {
+			if(row = Nil) {
+				return false;
+			};
+
 			node := @root;
 			while(node <> Nil) {
 				if(node->IsLeaf()) {
@@ -2294,6 +2362,10 @@ tree->Predict([true, true])->PrintLine();   # true
 				};
 
 				f := node->GetFeature();
+				if(f >= row->Size()) {
+					return false;
+				};
+
 				if(row[f]) {
 					node := node->GetRight();
 				}
@@ -2311,6 +2383,10 @@ tree->Predict([true, true])->PrintLine();   # true
 		@return per-row predictions
 		~#
 		method : public : PredictAll(input : Bool[,]) ~ Bool[] {
+			if(<>InputCheck->HasFeatures(input, @cols)) {
+				return Nil;
+			};
+
 			dims := input->Size();
 			rows := dims[0];
 			cols := dims[1];
@@ -2334,7 +2410,10 @@ tree->Predict([true, true])->PrintLine();   # true
 		@return fraction of correctly classified rows, or 0.0 if not fitted
 		~#
 		method : public : Score(input : Bool[,]) ~ Float {
-			if(<>IsFitted() | input = Nil) {
+			if(<>IsFitted()) {
+				return 0.0;
+			};
+			if(<>InputCheck->HasFeatures(input, @cols)) {
 				return 0.0;
 			};
 
@@ -2915,6 +2994,7 @@ tree->Predict([true, true])->PrintLine();   # true
 		@learning_rate : Float;
 		@max_depth : Int;
 		@min_samples : Int;
+		@cols : Int;
 		@base : Float;
 		@trees : Vector<RegressionTree>;
 		@fitted : Bool;
@@ -2941,7 +3021,7 @@ tree->Predict([true, true])->PrintLine();   # true
 		@return true when every stage was fitted
 		~#
 		method : public : Fit(X : Float[,], y : Bool[]) ~ Bool {
-			if(X = Nil | y = Nil | @num_trees < 1) {
+			if(<>InputCheck->Pair(X, y) | @num_trees < 1) {
 				return false;
 			};
 
@@ -3012,6 +3092,7 @@ tree->Predict([true, true])->PrintLine();   # true
 				};
 			};
 
+			@cols := dims[1];
 			@fitted := true;
 
 			return true;
@@ -3025,7 +3106,10 @@ tree->Predict([true, true])->PrintLine();   # true
 		@return one score per row, or Nil when unfitted
 		~#
 		method : public : PredictRaw(X : Float[,]) ~ Float[] {
-			if(<>@fitted | X = Nil | @trees = Nil) {
+			if(<>@fitted | @trees = Nil) {
+				return Nil;
+			};
+			if(<>InputCheck->HasCols(X, @cols)) {
 				return Nil;
 			};
 
