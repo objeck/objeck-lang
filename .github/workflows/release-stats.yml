@@ -25,26 +25,11 @@ jobs:
         run: |
           python3 tools/release-stats/snapshot_downloads.py --token "$GH_TOKEN"
 
-      # GitHub keeps 14 days of traffic and the built-in GITHUB_TOKEN cannot read it, so this
-      # needs a repository secret TRAFFIC_TOKEN (see tools/release-stats/README.md). Without
-      # it the step says so and the rest of the job still runs. Weekly runs over 14-day
-      # windows see every day twice, so a single missed run loses nothing.
-      - name: Snapshot repository traffic
-        env:
-          TRAFFIC_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}
-        run: |
-          if [ -z "$TRAFFIC_TOKEN" ]; then
-            echo "::notice::TRAFFIC_TOKEN is not set, so the traffic snapshot is skipped (tools/release-stats/README.md says how to add it)"
-          else
-            python3 tools/release-stats/snapshot_traffic.py --token "$TRAFFIC_TOKEN"
-          fi
-
       - name: Commit updated CSV
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add tools/release-stats/downloads.csv
-          [ -f tools/release-stats/traffic.csv ] && git add tools/release-stats/traffic.csv tools/release-stats/referrers.csv
-          git diff --cached --quiet && echo "stats unchanged" || \
-            git commit -m "chore: weekly release download and traffic stats snapshot [skip ci]"
+          git diff --cached --quiet && echo "downloads.csv unchanged" || \
+            git commit -m "chore: weekly release download-stats snapshot [skip ci]"
           git push origin master || echo "Push skipped (no changes)"

@@ -4,9 +4,11 @@
 GitHub's traffic API answers with one entry per day for the last 14 days (views
 and clones, each with a total and a unique count) and a top-ten list of
 referrers and of pages for the same window. Nothing older can be asked for, so
-this script merges what the API returns into two CSV files that grow:
+this script merges what the API returns into two CSV files that grow, in a PRIVATE
+folder outside the repository ($OBJECK_STATS_DIR, or ~/.objeck-stats when that is
+unset), so referrer names and page paths are not published:
 
-  traffic.csv    date,views,view_uniques,clones,clone_uniques
+  traffic.csv   date,views,view_uniques,clones,clone_uniques
                  one row per day; a day that is already there is replaced, because
                  the newest day in a response is partial and later fills in
   referrers.csv  snapshot_utc,kind,name,count,uniques
@@ -15,16 +17,17 @@ this script merges what the API returns into two CSV files that grow:
 
 Run weekly, every day appears in two snapshots, so one missed run loses nothing.
 
-The traffic endpoints need push access to the repository. The workflow's built-in
-GITHUB_TOKEN cannot read them: pass a token that can (a fine-grained token with
-read access to "Administration" on this repository, or a classic token with the
-"repo" scope) through --token, or run it with the GitHub CLI logged in as someone
-who can (--gh). Standard library only.
+The traffic endpoints need push access to the repository, which a workflow's built-in
+GITHUB_TOKEN does not have. Run it as someone who has it: with the GitHub CLI logged in
+(--gh), or pass a token (a fine-grained token with read access to "Administration" on
+this repository, or a classic token with the "repo" scope) through --token. Standard
+library only.
 """
 
 import argparse
 import csv
 import json
+import os
 import subprocess
 import sys
 import urllib.error
@@ -34,7 +37,7 @@ from pathlib import Path
 
 REPO = "objeck/objeck-lang"
 API = "https://api.github.com/repos/" + REPO + "/traffic/"
-HERE = Path(__file__).parent
+HERE = Path(os.environ.get("OBJECK_STATS_DIR") or (Path.home() / ".objeck-stats"))
 DAILY_COLUMNS = ["date", "views", "view_uniques", "clones", "clone_uniques"]
 TOP_COLUMNS = ["snapshot_utc", "kind", "name", "count", "uniques"]
 TOP_LIMIT = 10
@@ -148,6 +151,9 @@ def main():
     except RuntimeError as error:
         print("error: " + str(error), file=sys.stderr)
         return 1
+
+    for target in (args.daily, args.top):
+        Path(target).parent.mkdir(parents=True, exist_ok=True)
 
     new = daily_rows(views, clones)
     merged = merge_daily(read_daily(args.daily), new)
