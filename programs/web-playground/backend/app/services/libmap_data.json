@@ -14,6 +14,12 @@
     "System.AI.Hub": ["HubClient"]
    }
   },
+  "anthropic": {
+   "deps": ["net", "json", "cipher", "misc"],
+   "bundles": {
+    "API.Anthropic": ["Chat", "EndPoint", "Reply", "ReplyStream", "StreamAssembler", "Tool", "ToolUse"]
+   }
+  },
   "cipher": {
    "deps": [],
    "bundles": {
