@@ -773,6 +773,24 @@ each(t in tokens) {
 sim := TextSimilarity-&gt;CosineSimilarity(tfidf-&gt;Transform("cats are pets"), tfidf-&gt;Transform("dogs are pets"));
 "Similarity: {$sim}"-&gt;PrintLine();
 </code></pre>
+    <h4 id="n-grams-spelling-and-style-features">N-grams, spelling and style features</h4>
+    <p>These are the features of text-classification chapters such as fake-review and fake-news detection. All are in <code>nlp.obl</code>; none needs a model.</p>
+    <p><strong>TF-IDF over word n-grams.</strong> <code>TF_IDF-&gt;New(min_n : 1, max_n : 2)</code> counts words and word pairs as scikit-learn's <code>TfidfVectorizer(ngram_range=(1, 2))</code> does; <code>(1, 3)</code> adds triples and <code>(2, 2)</code> is pairs only. Smoothed IDF and unit-length vectors follow scikit-learn (the regression test compares every IDF and vector entry with it). <code>min_df</code> drops terms found in fewer documents and <code>max_features</code> keeps the most frequent ones. An invalid setting (<code>min_n</code> below 1, <code>max_n</code> below <code>min_n</code>) does not crash: <code>IsValid()</code> is false, <code>GetError()</code> says why, and the vectorizer fits an empty vocabulary. Existing calls such as <code>TF_IDF-&gt;New(stem : true)</code> are unchanged.</p>
+<pre class="line-numbers"><code class="language-cpp">tfidf := TF_IDF-&gt;New(min_n : 1, max_n : 2, min_df : 2);
+tfidf-&gt;Fit(training_texts);
+x := tfidf-&gt;Transform("not worth the money");   # words and "not worth", "worth the", ...
+</code></pre>
+    <p><strong>Misspelling rate.</strong> <code>SpellChecker</code> counts the tokens a word list does not know. No dictionary ships with Objeck: load a newline-delimited list yourself, for example <code>/usr/share/dict/words</code> on Linux, the SCOWL / aspell lists (http://wordlist.aspell.net) or <code>words_alpha.txt</code>, and check its licence. Tokens are <code>Tokenizer-&gt;WordTokenize</code>'s, matching is case-insensitive, tokens with digits are never misspelled, and the rate is misspelled tokens over all tokens. <code>Suggest</code> returns words within a Levenshtein distance, nearest first. A checker with no words and a Nil text give -1 instead of failing.</p>
+<pre class="line-numbers"><code class="language-cpp">checker := SpellChecker-&gt;New("words.txt");
+if(checker-&gt;IsLoaded()) {
+    n    := checker-&gt;CountMisspelled("teh product is gud");
+    rate := checker-&gt;MisspellingRate("teh product is gud");
+    near := checker-&gt;Suggest("gud", 1, 3);
+};
+</code></pre>
+    <p><strong>Stylometric features.</strong> <code>TextFeatures-&gt;Extract(text)</code> returns eight numbers (names in <code>TextFeatures-&gt;Names()</code>): characters, tokens, average word length, type-token ratio, punctuation rate, uppercase ratio, sentence count and average sentence length. Each is also a function (<code>TokenCount</code>, <code>TypeTokenRatio</code>, ...). Empty text gives zeros and Nil gives Nil / -1.</p>
+<pre class="line-numbers"><code class="language-cpp">f := TextFeatures-&gt;Extract("Great product! Works perfectly. HIGHLY recommended!!!");
+</code></pre>
     <h4 id="bert-tokens-and-sentence-embeddings">BERT tokens and sentence embeddings</h4>
     <p><code>WordPieceTokenizer</code> is BERT's tokenizer (Hugging Face's <code>BertTokenizer</code>, checked id for id on a 13,000-line corpus); it reads a model's <code>vocab.txt</code> and gives the <code>input_ids</code>, <code>attention_mask</code> and <code>token_type_ids</code> a BERT-family ONNX model takes. <code>ApiSequenceTokenizer</code> builds a vocabulary of API names from malware traces. <code>BpeTokenizer</code> is RoBERTa's and GPT-2's byte-level BPE (checked id for id and offset for offset against Hugging Face's <code>tokenizers</code>, with DistilRoBERTa's own 50,265-token vocabulary). Both implement <code>SubwordTokenizer</code>, and their encodings carry each token's character offsets (<code>GetOffsets</code>, BPE). <code>BertEmbedder</code> (library <code>nlp_onnx</code>) runs an exported BERT through ONNX Runtime and pools its output into one vector per text — CLS, mean over the real tokens, or the model's pooler. The encoder is frozen: train a classifier on the embeddings. Design and limits: <a href="doc_ml_bert.html">docs/ML_BERT_DESIGN.md</a>.</p>
     <p><strong>Compile:</strong> <code>obc -src your.obs -lib models,opencv,cipher,json,onnx,nlp,nlp_onnx</code> (or <code>-lib @vision</code>)</p>
@@ -789,6 +807,11 @@ if(embedder-&gt;IsOpen()) {
     X := embedder-&gt;Embed(["CreateFileW ReadFile CloseHandle", "RegOpenKeyExA RegSetValueExA"]);
     embedder-&gt;Close();
 };
+</code></pre>
+    <p><strong>Layers.</strong> By default the final layer is pooled. <code>SetLayers</code> (or the three-argument <code>Embed</code>) can pool the sum of the last four hidden layers (<code>SUM_LAST_4</code>, <code>Embed</code> gives <code>hidden</code> columns) or concatenate them (<code>CONCAT_LAST_4</code>, <code>4 x hidden</code> columns, oldest layer first), each with CLS or mean pooling. A model has to export its intermediate layers for this: four or more FP32 outputs named <code>hidden_states.N</code> (also <code>hidden_states_N</code>, <code>hidden_state_N</code>), or one FP32 <code>[layer, batch, sequence, hidden]</code> output named <code>hidden_states</code>. A standard export does not have them (export with <code>output_hidden_states=True</code> and name the outputs). When the model does not, <code>HasHiddenLayers()</code> is false and <code>Embed</code> with another layer strategy returns Nil and <code>GetError()</code> says so. <code>POOLER</code> pooling is the final layer's only.</p>
+<pre class="line-numbers"><code class="language-cpp">embedder-&gt;SetLayers(BertEmbedder-&gt;Layers-&gt;CONCAT_LAST_4);
+embedder-&gt;SetPooling(BertEmbedder-&gt;Pooling-&gt;MEAN);
+X := embedder-&gt;Embed(texts);   # 4 x hidden columns, or Nil with GetError() when the model lacks the layers
 </code></pre>
     <h4 id="text-classification-with-a-fine-tuned-model">Text classification with a fine-tuned model</h4>
     <p><code>TextClassifier</code> (library <code>nlp_onnx</code>) runs a fine-tuned BERT-family classifier the way Python's <code>pipeline("text-classification")</code> does. Point it at the model's folder: what <code>save_pretrained</code> writes, with an ONNX export beside it, or a Hub repository's files as downloaded.</p>
@@ -1301,6 +1324,7 @@ values := mdp-&gt;GetValues();
       <tr><td data-label="Capability">Either, behind one interface</td><td data-label="Class"><code>Engine</code>, <code>OnnxEngine</code>, <code>HttpEngine</code></td><td data-label="Library"><code>models</code> + one backend</td><td data-label="Key">None</td></tr>
       <tr><td data-label="Capability">Computer vision</td><td data-label="Class"><code>Image</code>, <code>VideoCapture</code></td><td data-label="Library"><code>opencv</code></td><td data-label="Key">None</td></tr>
       <tr><td data-label="Capability">Sentiment / TF-IDF</td><td data-label="Class"><code>SentimentAnalyzer</code>, <code>TF_IDF</code></td><td data-label="Library"><code>nlp</code></td><td data-label="Key">None</td></tr>
+      <tr><td data-label="Capability">Spelling and style features</td><td data-label="Class"><code>SpellChecker</code>, <code>TextFeatures</code></td><td data-label="Library"><code>nlp</code></td><td data-label="Key">None</td></tr>
       <tr><td data-label="Capability">BERT tokenization</td><td data-label="Class"><code>WordPieceTokenizer</code>, <code>ApiSequenceTokenizer</code></td><td data-label="Library"><code>nlp</code></td><td data-label="Key">None</td></tr>
       <tr><td data-label="Capability">Sentence embeddings (BERT)</td><td data-label="Class"><code>BertEmbedder</code></td><td data-label="Library"><code>nlp_onnx</code> + <code>models</code>, <code>onnx</code>, <code>nlp</code></td><td data-label="Key">None</td></tr>
       <tr><td data-label="Capability">Text classification (fine-tuned BERT)</td><td data-label="Class"><code>TextClassifier</code>, <code>Prediction</code></td><td data-label="Library"><code>nlp_onnx</code> + <code>models</code>, <code>onnx</code>, <code>nlp</code></td><td data-label="Key">None</td></tr>
