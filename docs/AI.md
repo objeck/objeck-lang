@@ -40,6 +40,7 @@ All AI and ML capabilities are **standard library** — no third-party packages,
   - [Neural Network](#neural-network)
   - [Model Persistence](#model-persistence)
   - [Local vector search (System.ML.VectorSearch)](#local-vector-search-systemmlvectorsearch)
+  - [Plotting (System.Plot)](#plotting-systemplot)
 - [Classic AI (System.AI)](#classic-ai-systemai)
   - [Graph Search](#graph-search)
   - [Game Playing](#game-playing)
@@ -1261,6 +1262,49 @@ The three metrics cost the same, and a four-accumulator unrolled inner loop was 
 
 A complete run (a small corpus, embedded either with a BERT model or, with nothing to download, a hashed bag of words, then queried, saved and loaded) is [`programs/examples/ml/vector_search.obs`](../programs/examples/ml/vector_search.obs). It is tested by `ml_vector_exact.obs` (against a brute-force reference, ties, `k` past the end, removals), `ml_vector_edges.obs` (value range, block boundaries, emptying an index, near-ties), `ml_vector_validation.obs` and `ml_vector_persist.obs` (round trip and corrupt files).
 
+### Plotting (System.Plot)
+
+A matplotlib-shaped plotting library that writes standalone SVG 1.1: no display, no native library, no script, no font file. It is `plot.obl` (`-lib plot,gen_collect` or `-lib @ai`) and needs nothing from `System.ML`, so a figure can come from any `Float[]`. A `Figure` holds one or more `Axes`; `fig->Save("a.svg")` writes the file and `fig->ToSvg()` returns the text. Every coordinate is written with one decimal and nothing depends on the clock, a locale or a font, so the same data gives the same bytes on every platform and a chart can be compared against a golden file in a test. `System.ML.Lab.Chart` (the line and bar writer behind `ResultTable->ToChart`) is unchanged and still the one-call API for experiment tables; `System.Plot` is the general one. Design: [`docs/PLOT_DESIGN.md`](PLOT_DESIGN.md).
+
+```ruby
+use System.Plot;
+
+# a scatter plot, one series per class; the legend lists the named series
+fig := Figure->New(800, 480);
+ax := fig->GetAxes();
+ax->SetTitle("Two classes");
+ax->SetXLabel("feature 1");
+ax->SetYLabel("feature 2");
+ax->Scatter("class A", xa, ya);
+ax->Scatter("class B", xb, yb);
+fig->Save("scatter.svg");
+
+# color the points by a third column (a color bar appears) and size them by a fourth
+ax->Scatter("", xs, ys, score, weight);       # Nil->As(Float[]) leaves either one out
+
+# a histogram: 20 bins, or 0 for Sturges' rule; the fourth argument true gives density
+ax->Hist("residuals", errors, 20);
+
+# lines, bars (grouped, over named categories), log axes, fixed limits
+ax->Plot("loss", epochs, loss);
+ax->SetCategories(["A", "B", "C"]);
+ax->Bar("2026", [4.0, 4.5, 6.0]);
+ax->SetLogX(true);
+ax->SetYLim(0.0, 1.0);
+
+# several plots on one canvas: a rows x cols grid, left to right and top to bottom
+board := Figure->New(900, 640);
+board->SetTitle("Dashboard");
+board->Subplots(2, 2);
+board->GetAxes(0, 0)->Scatter("A", xa, ya);
+board->GetAxes(0, 1)->Hist("", residuals, 12);
+board->Save("dashboard.svg");
+```
+
+Bad input never produces a broken picture: a mismatched length, a NaN or infinite value, a non-positive value on a log axis, bars without categories or an empty axes raise `PlotError` (`try { } on(e : PlotError) { }`). A `Figure` draws into a `PlotScene`, an ordered list of pixel-space primitives (lines, polylines, polygons, rects, circles, text with an anchor), and `SvgWriter` turns that into text; `fig->ToScene()` is the hook a second backend would use. The library is allowed in the web playground, since SVG needs no display.
+
+A complete run that writes four files is [`programs/examples/ml/plot_demo.obs`](../programs/examples/ml/plot_demo.obs). It is tested by `plot_svg.obs`, which checks structure (one circle per point, one bar per bin, a color bar only when points are colored), the histogram counts against hand-counted bins, the area of a density histogram, geometry (every coordinate inside the viewport) and a byte-for-byte golden per chart under `programs/regression/plot_golden/`; each golden has a control showing that one changed value changes the bytes.
+
 ## Classic AI (System.AI)
 
 Search, game playing, optimization and tabular reinforcement learning — `-lib ai` (or the `@ai` alias). All stochastic algorithms are seeded for reproducible runs.
@@ -1375,7 +1419,7 @@ obc -src program.obs -lib @ai -dest program.obe
 | `@web` | `net_h2`, `net_quic`, `web_server`, `json_rpc`, `net_server`, `net`, `json`, `cipher` | HTTP/2, HTTP/3, the embedded server, JSON-RPC |
 | `@data` | `xml`, `regex`, `csv`, `query`, `rss`, `misc`, `net`, `json`, `cipher` | parsing and querying structured data |
 | `@ml` | `gemini`, `openai`, `ollama`, `net_server`, `misc`, `net`, `json`, `cipher` | LLM clients: OpenAI, Gemini, Ollama |
-| `@ai` | `ai`, `ml`, `ml_lab`, `ml_vector`, `nlp`, `csv`, `json` | local System.ML / System.ML.Lab / System.AI / System.NLP work |
+| `@ai` | `ai`, `ml`, `ml_lab`, `ml_vector`, `plot`, `nlp`, `csv`, `json` | local System.ML / System.ML.Lab / System.Plot / System.AI / System.NLP work |
 | `@vision` | `opencv`, `onnx`, `nlp_onnx`, `models`, `nlp`, `json`, `cipher` | OpenCV and ONNX inference, BERT text embeddings |
 | `@game` | `sdl2`, `sdl_game`, `sdl_gl`, `json`, `gen_collect` | SDL games, 2D and OpenGL |
 
@@ -1487,6 +1531,7 @@ The libraries in this guide are covered by the regression suite in `programs/reg
 
 | Area | Tests |
 |---|---|
+| `System.Plot` | `plot_svg.obs` (with goldens in `plot_golden/`) |
 | `System.ML.VectorSearch` | `ml_vector_exact.obs`, `ml_vector_edges.obs`, `ml_vector_validation.obs`, `ml_vector_persist.obs` |
 | `System.ML` | `ml_*.obs`, e.g. `ml_kernel_svm_reference.obs` and `ml_one_class_svm_reference.obs` (against an independent reference, generated by `tools/ml/svm_reference/gen_reference_test.py`), `ml_outlier_*.obs`, `ml_lab_*.obs` |
 | `System.AI` | `ai_search_test.obs`, `ai_game_test.obs`, `ai_optimize_test.obs`, `ai_rl_test.obs` |

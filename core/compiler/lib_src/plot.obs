@@ -1,0 +1,2054 @@
+#~~
+# Objeck plotting library: scatter, histogram, line and bar charts as standalone SVG
+# Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+
+#~
+A matplotlib-like plotting library: scatter, histogram, line and bar charts, subplots, as standalone SVG. A Figure holds one or more Axes; drawing the figure builds a PlotScene, an ordered list of pixel-space drawing primitives (lines, polylines, polygons, rects, circles, text), and a backend turns the scene into output. The SVG backend writes SVG 1.1 with no script and no external font, one decimal for every coordinate, so the same data gives the same bytes on every platform. Compile with -lib plot,gen_collect; it needs nothing else and draws without a display. Design: docs/PLOT_DESIGN.md. Examples: docs/AI.md, "Plotting".
+~#
+bundle System.Plot {
+	#~
+	Raised by every System.Plot function that is handed input it cannot draw, with a
+	message naming the problem. Uncaught, the program ends printing it; catch it with
+	try { } on(e : PlotError) { }.
+	~#
+	class PlotError from Error {
+		#~
+		Constructor
+		@param message what was refused and why
+		~#
+		New(message : String) {
+			Parent(message);
+		}
+	}
+
+	#~
+	The kinds of drawing primitive in a PlotScene.
+	~#
+	enum PrimitiveKind {
+		LINE,
+		POLYLINE,
+		POLYGON,
+		RECT,
+		CIRCLE,
+		TEXT,
+		CLIP_BEGIN,
+		CLIP_END
+	}
+
+	#~
+	Where a text primitive sits relative to its x.
+	~#
+	enum TextAnchor {
+		START,
+		MIDDLE,
+		END
+	}
+
+	#~
+	One drawing primitive in pixel space. Colors are CSS strings such as "#1f77b4";
+	an empty string means none. Which fields are meaningful depends on the kind:
+	LINE uses x1, y1, x2, y2; POLYLINE and POLYGON use the x, y pairs of GetPoints();
+	RECT uses x1, y1 as the corner and x2, y2 as the width and height; CIRCLE uses x1,
+	y1 as the center and x2 as the radius; TEXT uses x1, y1 as the anchor point;
+	CLIP_BEGIN uses the same corner, width and height as RECT and clips what follows
+	until the matching CLIP_END.
+	~#
+	class PlotPrimitive {
+		@kind : PrimitiveKind;
+		@x1 : Float;
+		@y1 : Float;
+		@x2 : Float;
+		@y2 : Float;
+		@points : Float[];
+		@stroke : String;
+		@fill : String;
+		@width : Float;
+		@opacity : Float;
+		@text : String;
+		@anchor : TextAnchor;
+		@size : Int;
+		@bold : Bool;
+		@rotation : Float;
+		@dash : String;
+		@tag : String;
+
+		#~
+		Constructor; PlotScene builds primitives, so most programs never call it.
+		@param kind what to draw
+		@param x1 first x
+		@param y1 first y
+		@param x2 second x, or width, or radius
+		@param y2 second y or height
+		@param points x, y pairs for a polyline or polygon, or Nil
+		@param stroke outline color, or empty
+		@param fill fill color, or empty
+		@param width stroke width in pixels
+		@param opacity fill opacity from 0 to 1
+		@param text the string of a text primitive
+		@param anchor text anchor
+		@param size text size in pixels
+		@param bold true for bold text
+		@param rotation text rotation in degrees about its anchor
+		@param dash SVG dash pattern such as "4 3", or empty
+		@param tag what the primitive is (marker, bar, grid, ...), for tests and backends
+		~#
+		New(kind : PrimitiveKind, x1 : Float, y1 : Float, x2 : Float, y2 : Float, points : Float[], stroke : String, fill : String, width : Float, opacity : Float, text : String, anchor : TextAnchor, size : Int, bold : Bool, rotation : Float, dash : String, tag : String) {
+			@kind := kind;
+			@x1 := x1;
+			@y1 := y1;
+			@x2 := x2;
+			@y2 := y2;
+			@points := points;
+			@stroke := stroke;
+			@fill := fill;
+			@width := width;
+			@opacity := opacity;
+			@text := text;
+			@anchor := anchor;
+			@size := size;
+			@bold := bold;
+			@rotation := rotation;
+			@dash := dash;
+			@tag := tag;
+		}
+
+		#~
+		What the primitive draws.
+		@return the kind
+		~#
+		method : public : GetKind() ~ PrimitiveKind {
+			return @kind;
+		}
+
+		#~
+		First x, the corner or center x or the text anchor x.
+		@return x
+		~#
+		method : public : GetX1() ~ Float {
+			return @x1;
+		}
+
+		#~
+		First y.
+		@return y
+		~#
+		method : public : GetY1() ~ Float {
+			return @y1;
+		}
+
+		#~
+		Second x of a line, the width of a rect or the radius of a circle.
+		@return the value
+		~#
+		method : public : GetX2() ~ Float {
+			return @x2;
+		}
+
+		#~
+		Second y of a line or the height of a rect.
+		@return the value
+		~#
+		method : public : GetY2() ~ Float {
+			return @y2;
+		}
+
+		#~
+		The x, y pairs of a polyline or polygon.
+		@return alternating x and y, or Nil
+		~#
+		method : public : GetPoints() ~ Float[] {
+			return @points;
+		}
+
+		#~
+		Outline color.
+		@return a CSS color, or an empty string for none
+		~#
+		method : public : GetStroke() ~ String {
+			return @stroke;
+		}
+
+		#~
+		Fill color, or the text color.
+		@return a CSS color, or an empty string for none
+		~#
+		method : public : GetFill() ~ String {
+			return @fill;
+		}
+
+		#~
+		Stroke width.
+		@return pixels
+		~#
+		method : public : GetWidth() ~ Float {
+			return @width;
+		}
+
+		#~
+		Fill opacity.
+		@return 0 to 1
+		~#
+		method : public : GetOpacity() ~ Float {
+			return @opacity;
+		}
+
+		#~
+		The string of a text primitive.
+		@return the text
+		~#
+		method : public : GetText() ~ String {
+			return @text;
+		}
+
+		#~
+		Text anchor.
+		@return where the text sits relative to x
+		~#
+		method : public : GetAnchor() ~ TextAnchor {
+			return @anchor;
+		}
+
+		#~
+		Text size.
+		@return pixels
+		~#
+		method : public : GetSize() ~ Int {
+			return @size;
+		}
+
+		#~
+		Whether text is bold.
+		@return true for bold
+		~#
+		method : public : IsBold() ~ Bool {
+			return @bold;
+		}
+
+		#~
+		Text rotation about the anchor.
+		@return degrees, counter-clockwise negative as in SVG
+		~#
+		method : public : GetRotation() ~ Float {
+			return @rotation;
+		}
+
+		#~
+		Dash pattern.
+		@return an SVG dash array such as "4 3", or an empty string for solid
+		~#
+		method : public : GetDash() ~ String {
+			return @dash;
+		}
+
+		#~
+		What the primitive is: marker, bar, grid, tick, legend, and so on.
+		@return the tag
+		~#
+		method : public : GetTag() ~ String {
+			return @tag;
+		}
+	}
+
+	#~
+	An ordered list of pixel-space primitives: everything a backend needs to draw a
+	figure. Later primitives draw over earlier ones.
+	~#
+	class PlotScene {
+		@width : Int;
+		@height : Int;
+		@prims : Vector<PlotPrimitive>;
+
+		#~
+		Constructor
+		@param width canvas width in pixels
+		@param height canvas height in pixels
+		~#
+		New(width : Int, height : Int) {
+			@width := width;
+			@height := height;
+			@prims := Vector->New()<PlotPrimitive>;
+		}
+
+		#~
+		Canvas width.
+		@return pixels
+		~#
+		method : public : GetWidth() ~ Int {
+			return @width;
+		}
+
+		#~
+		Canvas height.
+		@return pixels
+		~#
+		method : public : GetHeight() ~ Int {
+			return @height;
+		}
+
+		#~
+		Number of primitives.
+		@return the count
+		~#
+		method : public : Size() ~ Int {
+			return @prims->Size();
+		}
+
+		#~
+		One primitive.
+		@param index position from 0, in drawing order
+		@return the primitive
+		~#
+		method : public : Get(index : Int) ~ PlotPrimitive {
+			return @prims->Get(index);
+		}
+
+		#~
+		Number of primitives carrying a tag.
+		@param tag the tag, such as "marker"
+		@return how many
+		~#
+		method : public : Count(tag : String) ~ Int {
+			n := 0;
+			each(i : @prims) {
+				if(@prims->Get(i)->GetTag()->Equals(tag)) {
+					n += 1;
+				};
+			};
+
+			return n;
+		}
+
+		#~
+		Adds a straight line.
+		@param x1 start x
+		@param y1 start y
+		@param x2 end x
+		@param y2 end y
+		@param stroke color
+		@param width stroke width
+		@param dash dash pattern or empty
+		@param tag what it is
+		~#
+		method : public : Line(x1 : Float, y1 : Float, x2 : Float, y2 : Float, stroke : String, width : Float, dash : String, tag : String) ~ Nil {
+			@prims->AddBack(PlotPrimitive->New(PrimitiveKind->LINE, x1, y1, x2, y2, Nil->As(Float[]), stroke, "", width, 1.0, "", TextAnchor->START, 0, false, 0.0, dash, tag));
+		}
+
+		#~
+		Adds an open polyline.
+		@param points x, y pairs
+		@param stroke color
+		@param width stroke width
+		@param tag what it is
+		~#
+		method : public : Polyline(points : Float[], stroke : String, width : Float, tag : String) ~ Nil {
+			@prims->AddBack(PlotPrimitive->New(PrimitiveKind->POLYLINE, 0.0, 0.0, 0.0, 0.0, points, stroke, "", width, 1.0, "", TextAnchor->START, 0, false, 0.0, "", tag));
+		}
+
+		#~
+		Adds a closed polygon.
+		@param points x, y pairs
+		@param fill fill color, or empty
+		@param stroke outline color, or empty
+		@param width stroke width
+		@param opacity fill opacity
+		@param tag what it is
+		~#
+		method : public : Polygon(points : Float[], fill : String, stroke : String, width : Float, opacity : Float, tag : String) ~ Nil {
+			@prims->AddBack(PlotPrimitive->New(PrimitiveKind->POLYGON, 0.0, 0.0, 0.0, 0.0, points, stroke, fill, width, opacity, "", TextAnchor->START, 0, false, 0.0, "", tag));
+		}
+
+		#~
+		Adds a rectangle.
+		@param x left
+		@param y top
+		@param width width
+		@param height height
+		@param fill fill color, or empty
+		@param stroke outline color, or empty
+		@param stroke_width outline width
+		@param opacity fill opacity
+		@param tag what it is
+		~#
+		method : public : Rect(x : Float, y : Float, width : Float, height : Float, fill : String, stroke : String, stroke_width : Float, opacity : Float, tag : String) ~ Nil {
+			@prims->AddBack(PlotPrimitive->New(PrimitiveKind->RECT, x, y, width, height, Nil->As(Float[]), stroke, fill, stroke_width, opacity, "", TextAnchor->START, 0, false, 0.0, "", tag));
+		}
+
+		#~
+		Adds a circle.
+		@param cx center x
+		@param cy center y
+		@param radius radius
+		@param fill fill color, or empty
+		@param stroke outline color, or empty
+		@param opacity fill opacity
+		@param tag what it is
+		~#
+		method : public : Circle(cx : Float, cy : Float, radius : Float, fill : String, stroke : String, opacity : Float, tag : String) ~ Nil {
+			@prims->AddBack(PlotPrimitive->New(PrimitiveKind->CIRCLE, cx, cy, radius, 0.0, Nil->As(Float[]), stroke, fill, 1.0, opacity, "", TextAnchor->START, 0, false, 0.0, "", tag));
+		}
+
+		#~
+		Adds text.
+		@param x anchor x
+		@param y baseline y
+		@param text the string
+		@param anchor where the text sits relative to x
+		@param size size in pixels
+		@param bold true for bold
+		@param fill text color
+		@param rotation degrees about the anchor
+		@param tag what it is
+		~#
+		method : public : Text(x : Float, y : Float, text : String, anchor : TextAnchor, size : Int, bold : Bool, fill : String, rotation : Float, tag : String) ~ Nil {
+			@prims->AddBack(PlotPrimitive->New(PrimitiveKind->TEXT, x, y, 0.0, 0.0, Nil->As(Float[]), "", fill, 1.0, 1.0, text, anchor, size, bold, rotation, "", tag));
+		}
+
+		#~
+		Starts clipping to a rectangle; everything until EndClip is cut at its edge.
+		@param x left
+		@param y top
+		@param width width
+		@param height height
+		~#
+		method : public : BeginClip(x : Float, y : Float, width : Float, height : Float) ~ Nil {
+			@prims->AddBack(PlotPrimitive->New(PrimitiveKind->CLIP_BEGIN, x, y, width, height, Nil->As(Float[]), "", "", 1.0, 1.0, "", TextAnchor->START, 0, false, 0.0, "", "clip"));
+		}
+
+		#~
+		Ends the clip started by BeginClip.
+		~#
+		method : public : EndClip() ~ Nil {
+			@prims->AddBack(PlotPrimitive->New(PrimitiveKind->CLIP_END, 0.0, 0.0, 0.0, 0.0, Nil->As(Float[]), "", "", 1.0, 1.0, "", TextAnchor->START, 0, false, 0.0, "", "clip"));
+		}
+	}
+
+	#~
+	Numbers, ticks, colors and text helpers shared by the plotting classes.
+	~#
+	class PlotMath {
+		#~
+		A 1-2-5 tick step for a range.
+		@param range the axis extent
+		@param target roughly how many steps
+		@return the step
+		~#
+		function : NiceStep(range : Float, target : Int) ~ Float {
+			if(range <= 0.0) {
+				return 1.0;
+			};
+
+			raw := range / target->As(Float);
+			mag := Float->Pow(10.0, Float->Floor(Float->Log10(raw)));
+			frac := raw / mag;
+			if(frac <= 1.0) {
+				return mag;
+			};
+			if(frac <= 2.0) {
+				return 2.0 * mag;
+			};
+			if(frac <= 5.0) {
+				return 5.0 * mag;
+			};
+
+			return 10.0 * mag;
+		}
+
+		#~
+		A 1-2-5 range enclosing lo..hi.
+		@param lo smallest value
+		@param hi largest value
+		@param target roughly how many steps
+		@return [nice low, nice high, step]
+		~#
+		function : NiceRange(lo : Float, hi : Float, target : Int) ~ Float[] {
+			step := NiceStep(hi - lo, target);
+			out := Float->New[3];
+			out[0] := Float->Floor(lo / step) * step;
+			out[1] := Float->Ceil(hi / step) * step;
+			out[2] := step;
+			if(out[1] <= out[0]) {
+				out[1] := out[0] + step;
+			};
+
+			return out;
+		}
+
+		#~
+		Tick positions from lo to hi inclusive, snapped to the step.
+		@param lo first tick
+		@param hi last tick
+		@param step distance between ticks
+		@return the ticks (at most 50)
+		~#
+		function : Ticks(lo : Float, hi : Float, step : Float) ~ Float[] {
+			count := ((hi - lo) / step + 0.5)->As(Int) + 1;
+			if(count < 2) {
+				count := 2;
+			};
+			if(count > 50) {
+				count := 50;
+			};
+
+			out := Float->New[count];
+			each(i : count) {
+				# snap, so 0.30000000000000004 prints as 0.3
+				out[i] := Float->Round((lo + i->As(Float) * step) * 1.0e9) / 1.0e9;
+			};
+
+			return out;
+		}
+
+		#~
+		A number as short text: no trailing zeros, no "-0".
+		@param value the number
+		@return its text
+		~#
+		function : FormatNumber(value : Float) ~ String {
+			text := Float->ToString(value, 10);
+			if(text->Has('.')) {
+				last := text->Size() - 1;
+				while(last > 0 & text->Get(last) = '0') {
+					last -= 1;
+				};
+				if(text->Get(last) = '.') {
+					last -= 1;
+				};
+				text := text->SubString(0, last + 1);
+			};
+			if(text->Equals("-0")) {
+				return "0";
+			};
+
+			return text;
+		}
+
+		#~
+		A coordinate with one decimal, so the same data gives the same bytes everywhere.
+		@param v the value
+		@return the text, never "-0.0"
+		~#
+		function : Fmt(v : Float) ~ String {
+			text := Float->ToString(v, 1);
+			if(text->Equals("-0.0")) {
+				return "0.0";
+			};
+
+			return text;
+		}
+
+		#~
+		XML-escapes text for an SVG element or attribute.
+		@param text raw text
+		@return text with the five XML special characters escaped
+		~#
+		function : Escape(text : String) ~ String {
+			if(text = Nil) {
+				return "";
+			};
+
+			return text->ReplaceAll("&", "&amp;")->ReplaceAll("<", "&lt;")->ReplaceAll(">", "&gt;")->ReplaceAll("\"", "&quot;")->ReplaceAll("'", "&apos;");
+		}
+
+		#~
+		The categorical color of the i-th series: the matplotlib tab10 start, 8 colors.
+		@param i series index
+		@return a "#rrggbb" color
+		~#
+		function : Color(i : Int) ~ String {
+			select(i % 8) {
+				label 0: { return "#1f77b4"; }
+				label 1: { return "#ff7f0e"; }
+				label 2: { return "#2ca02c"; }
+				label 3: { return "#d62728"; }
+				label 4: { return "#9467bd"; }
+				label 5: { return "#8c564b"; }
+				label 6: { return "#e377c2"; }
+				other: { return "#17becf"; }
+			};
+		}
+
+		#~
+		A viridis-like sequential color map: dark purple, blue, teal, green, yellow.
+		@param t position from 0 to 1 (clamped)
+		@return a "#rrggbb" color
+		~#
+		function : Viridis(t : Float) ~ String {
+			if(t < 0.0) {
+				t := 0.0;
+			};
+			if(t > 1.0) {
+				t := 1.0;
+			};
+
+			# five anchors at 0, .25, .5, .75, 1
+			rs := [68.0, 59.0, 33.0, 94.0, 253.0];
+			gs := [1.0, 82.0, 145.0, 201.0, 231.0];
+			bs := [84.0, 139.0, 140.0, 98.0, 37.0];
+			pos := t * 4.0;
+			seg := pos->As(Int);
+			if(seg > 3) {
+				seg := 3;
+			};
+			f := pos - seg->As(Float);
+			r := rs[seg] + (rs[seg + 1] - rs[seg]) * f;
+			g := gs[seg] + (gs[seg + 1] - gs[seg]) * f;
+			b := bs[seg] + (bs[seg + 1] - bs[seg]) * f;
+
+			return "#" + Hex2(Float->Round(r)->As(Int)) + Hex2(Float->Round(g)->As(Int)) + Hex2(Float->Round(b)->As(Int));
+		}
+
+		#~
+		Two lower-case hex digits.
+		@param v 0 to 255
+		@return the digits
+		~#
+		function : Hex2(v : Int) ~ String {
+			digits := "0123456789abcdef";
+			hi := digits->SubString(v / 16, 1);
+			lo := digits->SubString(v % 16, 1);
+
+			return hi + lo;
+		}
+
+		#~
+		A rough text width for layout, so legends and labels never depend on a font.
+		@param text the string
+		@param size font size in pixels
+		@return pixels
+		~#
+		function : TextWidth(text : String, size : Int) ~ Float {
+			return text->Size()->As(Float) * size->As(Float) * 0.6;
+		}
+
+		#~
+		Smallest of the values.
+		@param v values, not empty
+		@return the minimum
+		~#
+		function : MinOf(v : Float[]) ~ Float {
+			m := v[0];
+			each(i : v) {
+				if(v[i] < m) {
+					m := v[i];
+				};
+			};
+
+			return m;
+		}
+
+		#~
+		Largest of the values.
+		@param v values, not empty
+		@return the maximum
+		~#
+		function : MaxOf(v : Float[]) ~ Float {
+			m := v[0];
+			each(i : v) {
+				if(v[i] > m) {
+					m := v[i];
+				};
+			};
+
+			return m;
+		}
+
+		#~
+		Whether a number is finite: not NaN and not infinite.
+		@param x the number
+		@return true when finite
+		~#
+		function : IsFinite(x : Float) ~ Bool {
+			# NaN is the only value unequal to itself; x - x is NaN for an infinity
+			return x = x & x - x = 0.0;
+		}
+
+		#~
+		Equal-width bin edges.
+		@param lo lowest edge
+		@param hi highest edge, above lo
+		@param bins number of bins
+		@return bins + 1 edges
+		~#
+		function : BinEdges(lo : Float, hi : Float, bins : Int) ~ Float[] {
+			edges := Float->New[bins + 1];
+			each(i : edges) {
+				edges[i] := lo + (hi - lo) * i->As(Float) / bins->As(Float);
+			};
+			edges[bins] := hi;
+
+			return edges;
+		}
+
+		#~
+		Counts values into equal-width bins; a value equal to the top edge falls in the
+		last bin and values outside the edges are not counted.
+		@param values the data
+		@param edges bin edges, ascending
+		@return one count per bin
+		~#
+		function : BinCounts(values : Float[], edges : Float[]) ~ Int[] {
+			bins := edges->Size() - 1;
+			counts := Int->New[bins];
+			lo := edges[0];
+			hi := edges[bins];
+			width := (hi - lo) / bins->As(Float);
+			v : Float;
+			b : Int;
+			each(i : values) {
+				v := values[i];
+				if(v >= lo & v <= hi) {
+					b := ((v - lo) / width)->As(Int);
+					if(b >= bins) {
+						b := bins - 1;
+					};
+					# the division can land a hair across an edge; settle it against the edges
+					if(b > 0 & v < edges[b]) {
+						b -= 1;
+					};
+					if(b < bins - 1 & v >= edges[b + 1]) {
+						b += 1;
+					};
+					counts[b] += 1;
+				};
+			};
+
+			return counts;
+		}
+	}
+
+	#~
+	One resolved axis: its range (on the log10 scale when logarithmic), tick step and,
+	for a categorical axis, the names.
+	~#
+	class PlotAxis {
+		@log : Bool;
+		@lo : Float;
+		@hi : Float;
+		@step : Float;
+		@names : String[];
+
+		#~
+		Constructor
+		@param log true for a base-10 log axis; lo and hi are then exponents
+		@param lo bottom of the range
+		@param hi top of the range, above lo
+		@param step tick step (ignored for log and categorical axes)
+		@param names category names, or Nil
+		~#
+		New(log : Bool, lo : Float, hi : Float, step : Float, names : String[]) {
+			@log := log;
+			@lo := lo;
+			@hi := hi;
+			@step := step;
+			@names := names;
+		}
+
+		#~
+		Where a data value falls on the axis.
+		@param v the data value (positive on a log axis)
+		@return 0 at the low end, 1 at the high end
+		~#
+		method : public : Pos(v : Float) ~ Float {
+			t := v;
+			if(@log) {
+				t := Float->Log10(v);
+			};
+
+			return (t - @lo) / (@hi - @lo);
+		}
+
+		#~
+		The data value at a position on the axis; the inverse of Pos.
+		@param f 0 at the low end, 1 at the high end
+		@return the data value
+		~#
+		method : public : Value(f : Float) ~ Float {
+			t := @lo + f * (@hi - @lo);
+			if(@log) {
+				return Float->Pow(10.0, t);
+			};
+
+			return t;
+		}
+
+		#~
+		Tick values in data space.
+		@return the ticks
+		~#
+		method : public : Ticks() ~ Float[] {
+			if(@names <> Nil) {
+				ts := Float->New[@names->Size()];
+				each(i : ts) {
+					ts[i] := i->As(Float);
+				};
+				return ts;
+			};
+			if(@log) {
+				count := @hi->As(Int) - @lo->As(Int) + 1;
+				ts := Float->New[count];
+				each(i : ts) {
+					ts[i] := Float->Pow(10.0, @lo->As(Int) + i);
+				};
+				return ts;
+			};
+
+			return PlotMath->Ticks(@lo, @hi, @step);
+		}
+
+		#~
+		The label of a tick.
+		@param v a value from Ticks
+		@return text
+		~#
+		method : public : Label(v : Float) ~ String {
+			if(@names <> Nil) {
+				idx := v->As(Int);
+				return @names[idx];
+			};
+
+			return PlotMath->FormatNumber(v);
+		}
+
+		#~
+		Whether the axis is logarithmic.
+		@return true for log
+		~#
+		method : public : IsLog() ~ Bool {
+			return @log;
+		}
+
+		#~
+		Bottom of the range, as an exponent when logarithmic.
+		@return the low end
+		~#
+		method : public : GetLo() ~ Float {
+			return @lo;
+		}
+
+		#~
+		Top of the range, as an exponent when logarithmic.
+		@return the high end
+		~#
+		method : public : GetHi() ~ Float {
+			return @hi;
+		}
+	}
+
+	#~
+	What an Artist draws.
+	~#
+	enum ArtistKind {
+		LINE,
+		SCATTER,
+		BARS,
+		HIST
+	}
+
+	#~
+	One drawn thing on an Axes: its kind, legend name and data. Axes builds these.
+	~#
+	class Artist {
+		@kind : ArtistKind;
+		@name : String;
+		@xs : Float[];
+		@ys : Float[];
+		@colors : Float[];
+		@sizes : Float[];
+		@edges : Float[];
+
+		#~
+		Constructor
+		@param kind what it draws
+		@param name legend entry, or empty
+		@param xs x values, or category indexes, or bar centers
+		@param ys y values or bar heights
+		@param colors values mapped to the color scale (scatter), or Nil
+		@param sizes values mapped to marker area (scatter), or Nil
+		@param edges histogram bin edges, or Nil
+		~#
+		New(kind : ArtistKind, name : String, xs : Float[], ys : Float[], colors : Float[], sizes : Float[], edges : Float[]) {
+			@kind := kind;
+			@name := name;
+			@xs := xs;
+			@ys := ys;
+			@colors := colors;
+			@sizes := sizes;
+			@edges := edges;
+		}
+
+		#~
+		What it draws.
+		@return the kind
+		~#
+		method : public : GetKind() ~ ArtistKind {
+			return @kind;
+		}
+
+		#~
+		Legend entry.
+		@return the name, possibly empty
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		x values.
+		@return the values
+		~#
+		method : public : GetXs() ~ Float[] {
+			return @xs;
+		}
+
+		#~
+		y values.
+		@return the values
+		~#
+		method : public : GetYs() ~ Float[] {
+			return @ys;
+		}
+
+		#~
+		Color-scale values.
+		@return one per point, or Nil
+		~#
+		method : public : GetColors() ~ Float[] {
+			return @colors;
+		}
+
+		#~
+		Size values.
+		@return one per point, or Nil
+		~#
+		method : public : GetSizes() ~ Float[] {
+			return @sizes;
+		}
+
+		#~
+		Histogram bin edges.
+		@return the edges, or Nil
+		~#
+		method : public : GetEdges() ~ Float[] {
+			return @edges;
+		}
+	}
+
+	#~
+	A plot area with axes, a title, ticks, a legend and the things drawn in it.
+
+```
+ax->Scatter("class A", xs, ys);
+ax->Scatter("by score", xs, ys, score, Nil->As(Float[]));  # color by a third column
+ax->Hist("residuals", errors, 20);
+ax->SetLogX(true);
+```
+	~#
+	class Axes {
+		@title : String;
+		@x_label : String;
+		@y_label : String;
+		@artists : Vector<Artist>;
+		@categories : String[];
+		@log_x : Bool;
+		@log_y : Bool;
+		@x_fixed : Bool;
+		@x_min : Float;
+		@x_max : Float;
+		@y_fixed : Bool;
+		@y_min : Float;
+		@y_max : Float;
+		@grid : Bool;
+		@legend : Bool;
+		@xa : PlotAxis;
+		@ya : PlotAxis;
+
+		#~
+		Constructor; Figure creates its axes.
+		~#
+		New() {
+			@title := "";
+			@x_label := "";
+			@y_label := "";
+			@artists := Vector->New()<Artist>;
+			@grid := true;
+			@legend := true;
+		}
+
+		#~
+		Sets the title above the plot.
+		@param title the text
+		~#
+		method : public : SetTitle(title : String) ~ Nil {
+			@title := (title = Nil) ? "" : title;
+		}
+
+		#~
+		Sets the x-axis title.
+		@param text the label
+		~#
+		method : public : SetXLabel(text : String) ~ Nil {
+			@x_label := (text = Nil) ? "" : text;
+		}
+
+		#~
+		Sets the y-axis title.
+		@param text the label
+		~#
+		method : public : SetYLabel(text : String) ~ Nil {
+			@y_label := (text = Nil) ? "" : text;
+		}
+
+		#~
+		Draws x on a base-10 log scale; every x must then be positive.
+		@param on true for a log axis
+		~#
+		method : public : SetLogX(on : Bool) ~ Nil {
+			@log_x := on;
+		}
+
+		#~
+		Draws y on a base-10 log scale; every y must then be positive.
+		@param on true for a log axis
+		~#
+		method : public : SetLogY(on : Bool) ~ Nil {
+			@log_y := on;
+		}
+
+		#~
+		Fixes the x range instead of deriving it from the data.
+		@param min left end
+		@param max right end, above min
+		~#
+		method : public : SetXLim(min : Float, max : Float) ~ Nil {
+			if(max <= min | PlotMath->IsFinite(min) = false | PlotMath->IsFinite(max) = false) {
+				Refuse("the x range must be finite with max above min");
+			};
+
+			@x_fixed := true;
+			@x_min := min;
+			@x_max := max;
+		}
+
+		#~
+		Fixes the y range instead of deriving it from the data.
+		@param min bottom
+		@param max top, above min
+		~#
+		method : public : SetYLim(min : Float, max : Float) ~ Nil {
+			if(max <= min | PlotMath->IsFinite(min) = false | PlotMath->IsFinite(max) = false) {
+				Refuse("the y range must be finite with max above min");
+			};
+
+			@y_fixed := true;
+			@y_min := min;
+			@y_max := max;
+		}
+
+		#~
+		Returns both ranges to being derived from the data.
+		~#
+		method : public : ResetLimits() ~ Nil {
+			@x_fixed := false;
+			@y_fixed := false;
+		}
+
+		#~
+		Turns the grid lines on or off (on by default).
+		@param on true to draw the grid
+		~#
+		method : public : SetGrid(on : Bool) ~ Nil {
+			@grid := on;
+		}
+
+		#~
+		Turns the legend on or off (on by default; it lists the named things only).
+		@param on true to draw the legend
+		~#
+		method : public : SetLegend(on : Bool) ~ Nil {
+			@legend := on;
+		}
+
+		#~
+		Makes x categorical: ticks are these names at positions 0, 1, 2, ..., and bar
+		series are grouped by them.
+		@param names one per category
+		~#
+		method : public : SetCategories(names : String[]) ~ Nil {
+			if(names = Nil | names->Size() = 0) {
+				Refuse("at least one category is needed");
+			};
+
+			@categories := names;
+		}
+
+		#~
+		Adds a line.
+		@param name legend entry, or empty
+		@param xs x values
+		@param ys y values, one per x
+		~#
+		method : public : Plot(name : String, xs : Float[], ys : Float[]) ~ Nil {
+			CheckPairs("Plot", xs, ys);
+			@artists->AddBack(Artist->New(ArtistKind->LINE, Name(name), xs, ys, Nil->As(Float[]), Nil->As(Float[]), Nil->As(Float[])));
+		}
+
+		#~
+		Adds a scatter plot of one color.
+		@param name legend entry, or empty
+		@param xs x values
+		@param ys y values, one per x
+		~#
+		method : public : Scatter(name : String, xs : Float[], ys : Float[]) ~ Nil {
+			Scatter(name, xs, ys, Nil->As(Float[]), Nil->As(Float[]));
+		}
+
+		#~
+		Adds a scatter plot whose points can be colored and sized by further columns.
+		A color column adds a color bar on the right of the plot.
+		@param name legend entry, or empty
+		@param xs x values
+		@param ys y values, one per x
+		@param colors one value per point mapped onto the color scale, or Nil for one color
+		@param sizes one value per point mapped onto marker area, or Nil for one size
+		~#
+		method : public : Scatter(name : String, xs : Float[], ys : Float[], colors : Float[], sizes : Float[]) ~ Nil {
+			CheckPairs("Scatter", xs, ys);
+			if(colors <> Nil) {
+				CheckColumn("Scatter colors", colors, xs->Size());
+			};
+			if(sizes <> Nil) {
+				CheckColumn("Scatter sizes", sizes, xs->Size());
+			};
+
+			@artists->AddBack(Artist->New(ArtistKind->SCATTER, Name(name), xs, ys, colors, sizes, Nil->As(Float[])));
+		}
+
+		#~
+		Adds a histogram with equal-width bins over the range of the data.
+		@param name legend entry, or empty
+		@param values the data
+		@param bins number of bins, or 0 for Sturges' rule
+		~#
+		method : public : Hist(name : String, values : Float[], bins : Int) ~ Nil {
+			Hist(name, values, bins, false);
+		}
+
+		#~
+		Adds a histogram, optionally normalised so its area is 1.
+		@param name legend entry, or empty
+		@param values the data
+		@param bins number of bins, or 0 for Sturges' rule
+		@param density true for density instead of counts
+		~#
+		method : public : Hist(name : String, values : Float[], bins : Int, density : Bool) ~ Nil {
+			if(values = Nil | values->Size() = 0) {
+				Refuse("Hist needs at least one value");
+			};
+			CheckColumn("Hist values", values, values->Size());
+			if(bins < 0 | bins > 1000) {
+				Refuse("Hist bins must be between 1 and 1000, or 0 for the automatic rule");
+			};
+
+			n := values->Size();
+			if(bins = 0) {
+				bins := Float->Ceil(Float->Log2(n->As(Float)))->As(Int) + 1;
+			};
+
+			lo := PlotMath->MinOf(values);
+			hi := PlotMath->MaxOf(values);
+			if(hi = lo) {
+				lo -= 0.5;
+				hi += 0.5;
+			};
+
+			edges := PlotMath->BinEdges(lo, hi, bins);
+			counts := PlotMath->BinCounts(values, edges);
+			heights := Float->New[bins];
+			scale := 1.0;
+			if(density) {
+				scale := 1.0 / (n->As(Float) * (hi - lo) / bins->As(Float));
+			};
+			each(i : heights) {
+				heights[i] := counts[i]->As(Float) * scale;
+			};
+
+			@artists->AddBack(Artist->New(ArtistKind->HIST, Name(name), Nil->As(Float[]), heights, Nil->As(Float[]), Nil->As(Float[]), edges));
+		}
+
+		#~
+		Adds a bar series over the categories: one bar per category, grouped with the
+		other bar series. SetCategories must have been called.
+		@param name legend entry, or empty
+		@param ys one height per category
+		~#
+		method : public : Bar(name : String, ys : Float[]) ~ Nil {
+			if(@categories = Nil) {
+				Refuse("call SetCategories before Bar");
+			};
+			if(ys = Nil | ys->Size() <> @categories->Size()) {
+				Refuse("Bar needs one value per category");
+			};
+			CheckColumn("Bar heights", ys, ys->Size());
+
+			xs := Float->New[ys->Size()];
+			each(i : xs) {
+				xs[i] := i->As(Float);
+			};
+			@artists->AddBack(Artist->New(ArtistKind->BARS, Name(name), xs, ys, Nil->As(Float[]), Nil->As(Float[]), Nil->As(Float[])));
+		}
+
+		#~
+		Things drawn so far.
+		@return the count
+		~#
+		method : public : Size() ~ Int {
+			return @artists->Size();
+		}
+
+		#~
+		One thing drawn on the axes.
+		@param index position from 0, in the order added
+		@return the artist
+		~#
+		method : public : GetArtist(index : Int) ~ Artist {
+			if(index < 0 | index >= @artists->Size()) {
+				Refuse("there is no artist at index {$index}");
+			};
+
+			return @artists->Get(index);
+		}
+
+		#~
+		The title.
+		@return the text
+		~#
+		method : public : GetTitle() ~ String {
+			return @title;
+		}
+
+		#~
+		The resolved x axis of the last Draw.
+		@return the axis, or Nil before the first Draw
+		~#
+		method : public : GetXAxis() ~ PlotAxis {
+			return @xa;
+		}
+
+		#~
+		The resolved y axis of the last Draw.
+		@return the axis, or Nil before the first Draw
+		~#
+		method : public : GetYAxis() ~ PlotAxis {
+			return @ya;
+		}
+
+		#~
+		Draws the axes into a scene, inside a rectangle of the canvas.
+		@param scene the scene to add primitives to
+		@param x left of the rectangle
+		@param y top of the rectangle
+		@param width width of the rectangle
+		@param height height of the rectangle
+		~#
+		method : public : Draw(scene : PlotScene, x : Float, y : Float, width : Float, height : Float) ~ Nil {
+			if(@artists->Size() = 0) {
+				Refuse("nothing to draw: add a plot, scatter, histogram or bars first");
+			};
+
+			Resolve();
+
+			bar_w := ColorbarWidth();
+			px0 := x + 64.0;
+			px1 := x + width - 16.0 - bar_w;
+			py0 := y + 32.0;
+			py1 := y + height - 48.0;
+			if(px1 - px0 < 40.0 | py1 - py0 < 40.0) {
+				Refuse("the plot area is too small to draw");
+			};
+
+			DrawGrid(scene, px0, py0, px1, py1);
+			scene->BeginClip(px0, py0, px1 - px0, py1 - py0);
+			bar_series := 0;
+			each(i : @artists) {
+				if(@artists->Get(i)->GetKind() = ArtistKind->BARS) {
+					bar_series += 1;
+				};
+			};
+			bar_index := 0;
+			a : Artist;
+			each(i : @artists) {
+				a := @artists->Get(i);
+				if(a->GetKind() = ArtistKind->LINE) {
+					DrawLine(scene, a, i, px0, py0, px1, py1);
+				}
+				else if(a->GetKind() = ArtistKind->SCATTER) {
+					DrawScatter(scene, a, i, px0, py0, px1, py1);
+				}
+				else if(a->GetKind() = ArtistKind->BARS) {
+					DrawBars(scene, a, i, bar_index, bar_series, px0, py0, px1, py1);
+					bar_index += 1;
+				}
+				else {
+					DrawHist(scene, a, i, px0, py0, px1, py1);
+				};
+			};
+			scene->EndClip();
+
+			DrawFrame(scene, x, y, width, height, px0, py0, px1, py1);
+			if(@legend) {
+				DrawLegend(scene, px1, py0);
+			};
+			if(bar_w > 0.0) {
+				DrawColorbar(scene, px1 + 14.0, py0, py1);
+			};
+		}
+
+		method : ColorbarWidth() ~ Float {
+			each(i : @artists) {
+				if(@artists->Get(i)->GetKind() = ArtistKind->SCATTER & @artists->Get(i)->GetColors() <> Nil) {
+					return 84.0;
+				};
+			};
+
+			return 0.0;
+		}
+
+		# the first scatter that has a color column sets the scale of the color bar
+		method : ColorRange() ~ Float[] {
+			r := Float->New[2];
+			first := true;
+			c : Float[];
+			each(i : @artists) {
+				if(@artists->Get(i)->GetKind() = ArtistKind->SCATTER) {
+					c := @artists->Get(i)->GetColors();
+					if(c <> Nil) {
+						each(p : c) {
+							if(first | c[p] < r[0]) {
+								r[0] := c[p];
+							};
+							if(first | c[p] > r[1]) {
+								r[1] := c[p];
+							};
+							first := false;
+						};
+					};
+				};
+			};
+			if(r[1] = r[0]) {
+				r[0] -= 0.5;
+				r[1] += 0.5;
+			};
+
+			return r;
+		}
+
+		# resolve both axes from the data, the limits and the scale choices
+		method : Resolve() ~ Nil {
+			@xa := ResolveX();
+			@ya := ResolveY();
+		}
+
+		method : ResolveX() ~ PlotAxis {
+			if(@categories <> Nil) {
+				return PlotAxis->New(false, -0.5, @categories->Size()->As(Float) - 0.5, 1.0, @categories);
+			};
+
+			lo := 0.0;
+			hi := 0.0;
+			first := true;
+			if(@x_fixed) {
+				lo := @x_min;
+				hi := @x_max;
+				first := false;
+			}
+			else {
+				a : Artist;
+				v : Float[];
+				each(i : @artists) {
+					a := @artists->Get(i);
+					if(a->GetKind() = ArtistKind->HIST) {
+						v := a->GetEdges();
+					}
+					else {
+						v := a->GetXs();
+					};
+					each(p : v) {
+						if(first | v[p] < lo) {
+							lo := v[p];
+						};
+						if(first | v[p] > hi) {
+							hi := v[p];
+						};
+						first := false;
+					};
+				};
+			};
+
+			return MakeAxis(@log_x, lo, hi, @x_fixed, 6, "x");
+		}
+
+		method : ResolveY() ~ PlotAxis {
+			lo := 0.0;
+			hi := 0.0;
+			first := true;
+			if(@y_fixed) {
+				lo := @y_min;
+				hi := @y_max;
+				first := false;
+			}
+			else {
+				a : Artist;
+				v : Float[];
+				zero : Bool;
+				each(i : @artists) {
+					a := @artists->Get(i);
+					v := a->GetYs();
+					zero := a->GetKind() = ArtistKind->BARS | a->GetKind() = ArtistKind->HIST;
+					if(zero & @log_y = false) {
+						# bars and counts start at zero
+						if(first | 0.0 < lo) {
+							lo := 0.0;
+						};
+						if(first | 0.0 > hi) {
+							hi := 0.0;
+						};
+						first := false;
+					};
+					each(p : v) {
+						if(first | v[p] < lo) {
+							lo := v[p];
+						};
+						if(first | v[p] > hi) {
+							hi := v[p];
+						};
+						first := false;
+					};
+				};
+			};
+
+			return MakeAxis(@log_y, lo, hi, @y_fixed, 5, "y");
+		}
+
+		method : MakeAxis(log : Bool, lo : Float, hi : Float, fixed : Bool, target : Int, which : String) ~ PlotAxis {
+			if(log) {
+				if(lo <= 0.0) {
+					Refuse("a log {$which} axis needs positive values, got {$lo}");
+				};
+				llo := Float->Log10(lo);
+				lhi := Float->Log10(hi);
+				if(fixed = false) {
+					llo := Float->Floor(llo);
+					lhi := Float->Ceil(lhi);
+				};
+				if(lhi <= llo) {
+					lhi := llo + 1.0;
+				};
+
+				return PlotAxis->New(true, llo, lhi, 1.0, Nil->As(String[]));
+			};
+
+			if(hi = lo) {
+				lo -= 0.5;
+				hi += 0.5;
+			};
+			if(fixed) {
+				return PlotAxis->New(false, lo, hi, PlotMath->NiceStep(hi - lo, target), Nil->As(String[]));
+			};
+
+			nice := PlotMath->NiceRange(lo, hi, target);
+
+			return PlotAxis->New(false, nice[0], nice[1], nice[2], Nil->As(String[]));
+		}
+
+		# data to pixels
+		method : PX(v : Float, px0 : Float, px1 : Float) ~ Float {
+			return px0 + @xa->Pos(v) * (px1 - px0);
+		}
+
+		method : PY(v : Float, py0 : Float, py1 : Float) ~ Float {
+			return py1 - @ya->Pos(v) * (py1 - py0);
+		}
+
+		method : DrawGrid(scene : PlotScene, px0 : Float, py0 : Float, px1 : Float, py1 : Float) ~ Nil {
+			yt := @ya->Ticks();
+			sy : Float;
+			each(t : yt) {
+				sy := PY(yt[t], py0, py1);
+				if(sy >= py0 - 0.01 & sy <= py1 + 0.01) {
+					if(@grid) {
+						scene->Line(px0, sy, px1, sy, "#dddddd", 1.0, "", "grid");
+					};
+					scene->Text(px0 - 8.0, sy + 4.0, @ya->Label(yt[t]), TextAnchor->END, 12, false, "#333333", 0.0, "ytick");
+				};
+			};
+
+			xt := @xa->Ticks();
+			sx : Float;
+			each(t : xt) {
+				sx := PX(xt[t], px0, px1);
+				if(sx >= px0 - 0.01 & sx <= px1 + 0.01) {
+					if(@grid & @categories = Nil) {
+						scene->Line(sx, py0, sx, py1, "#eeeeee", 1.0, "", "grid");
+					};
+					scene->Text(sx, py1 + 18.0, @xa->Label(xt[t]), TextAnchor->MIDDLE, 12, false, "#333333", 0.0, "xtick");
+				};
+			};
+		}
+
+		method : DrawFrame(scene : PlotScene, x : Float, y : Float, width : Float, height : Float, px0 : Float, py0 : Float, px1 : Float, py1 : Float) ~ Nil {
+			scene->Line(px0, py0, px0, py1, "#333333", 1.5, "", "axis");
+			scene->Line(px0, py1, px1, py1, "#333333", 1.5, "", "axis");
+
+			if(@x_label->Size() > 0) {
+				scene->Text((px0 + px1) / 2.0, y + height - 12.0, @x_label, TextAnchor->MIDDLE, 13, false, "#000000", 0.0, "xlabel");
+			};
+			if(@y_label->Size() > 0) {
+				cy := (py0 + py1) / 2.0;
+				cx := x + 18.0;
+				scene->Text(cx, cy, @y_label, TextAnchor->MIDDLE, 13, false, "#000000", -90.0, "ylabel");
+			};
+			if(@title->Size() > 0) {
+				scene->Text((px0 + px1) / 2.0, y + 22.0, @title, TextAnchor->MIDDLE, 16, true, "#000000", 0.0, "title");
+			};
+		}
+
+		method : DrawLine(scene : PlotScene, a : Artist, index : Int, px0 : Float, py0 : Float, px1 : Float, py1 : Float) ~ Nil {
+			xs := a->GetXs();
+			ys := a->GetYs();
+			pts := Float->New[ys->Size() * 2];
+			each(p : ys) {
+				pts[p * 2] := PX(xs[p], px0, px1);
+				pts[p * 2 + 1] := PY(ys[p], py0, py1);
+			};
+			scene->Polyline(pts, PlotMath->Color(index), 2.0, "line");
+		}
+
+		method : DrawScatter(scene : PlotScene, a : Artist, index : Int, px0 : Float, py0 : Float, px1 : Float, py1 : Float) ~ Nil {
+			xs := a->GetXs();
+			ys := a->GetYs();
+			cs := a->GetColors();
+			ss := a->GetSizes();
+			base := PlotMath->Color(index);
+
+			clo := 0.0;
+			chi := 1.0;
+			if(cs <> Nil) {
+				cr := ColorRange();
+				clo := cr[0];
+				chi := cr[1];
+			};
+			slo := 0.0;
+			shi := 1.0;
+			if(ss <> Nil) {
+				slo := PlotMath->MinOf(ss);
+				shi := PlotMath->MaxOf(ss);
+			};
+
+			cx : Float;
+			cy : Float;
+			radius : Float;
+			fill : String;
+			each(p : ys) {
+				cx := PX(xs[p], px0, px1);
+				cy := PY(ys[p], py0, py1);
+				if(cx >= px0 & cx <= px1 & cy >= py0 & cy <= py1) {
+					radius := 3.5;
+					if(ss <> Nil) {
+						# marker area grows with the value: radius from 2 to 9 pixels
+						radius := 4.5;
+						if(shi > slo) {
+							radius := 2.0 + 7.0 * Float->Sqrt((ss[p] - slo) / (shi - slo));
+						};
+					};
+					fill := base;
+					if(cs <> Nil) {
+						fill := PlotMath->Viridis((cs[p] - clo) / (chi - clo));
+					};
+					scene->Circle(cx, cy, radius, fill, "", 0.75, "marker");
+				};
+			};
+		}
+
+		method : DrawBars(scene : PlotScene, a : Artist, index : Int, bar_index : Int, bar_series : Int, px0 : Float, py0 : Float, px1 : Float, py1 : Float) ~ Nil {
+			xs := a->GetXs();
+			ys := a->GetYs();
+			band := (px1 - px0) / @categories->Size()->As(Float);
+			bar_w := band * 0.7 / bar_series->As(Float);
+			base := PY(0.0, py0, py1);
+			if(base > py1) {
+				base := py1;
+			};
+
+			color := PlotMath->Color(index);
+			x0 : Float;
+			y0 : Float;
+			hgt : Float;
+			each(p : ys) {
+				x0 := PX(xs[p], px0, px1) - band * 0.35 + bar_index->As(Float) * bar_w;
+				y0 := PY(ys[p], py0, py1);
+				hgt := base - y0;
+				if(hgt < 0.0) {
+					y0 := base;
+					hgt := -hgt;
+				};
+				scene->Rect(x0, y0, bar_w, hgt, color, "", 0.0, 1.0, "bar");
+			};
+		}
+
+		method : DrawHist(scene : PlotScene, a : Artist, index : Int, px0 : Float, py0 : Float, px1 : Float, py1 : Float) ~ Nil {
+			edges := a->GetEdges();
+			ys := a->GetYs();
+			base := PY(0.0, py0, py1);
+			if(base > py1) {
+				base := py1;
+			};
+
+			color := PlotMath->Color(index);
+			x0 : Float;
+			x1 : Float;
+			y0 : Float;
+			hgt : Float;
+			each(p : ys) {
+				x0 := PX(edges[p], px0, px1);
+				x1 := PX(edges[p + 1], px0, px1);
+				y0 := PY(ys[p], py0, py1);
+				hgt := base - y0;
+				if(hgt < 0.0) {
+					y0 := base;
+					hgt := -hgt;
+				};
+				scene->Rect(x0, y0, x1 - x0, hgt, color, "#ffffff", 1.0, 0.75, "bar");
+			};
+		}
+
+		method : DrawLegend(scene : PlotScene, px1 : Float, py0 : Float) ~ Nil {
+			names := Vector->New()<String>;
+			colors := Vector->New()<String>;
+			each(i : @artists) {
+				if(@artists->Get(i)->GetName()->Size() > 0) {
+					names->AddBack(@artists->Get(i)->GetName());
+					colors->AddBack(PlotMath->Color(i));
+				};
+			};
+			if(names->Size() = 0) {
+				return;
+			};
+
+			widest := 0.0;
+			w : Float;
+			each(i : names) {
+				w := PlotMath->TextWidth(names->Get(i), 12);
+				if(w > widest) {
+					widest := w;
+				};
+			};
+			box_w := widest + 38.0;
+			box_h := 12.0 + names->Size()->As(Float) * 18.0;
+			bx := px1 - box_w - 8.0;
+			by := py0 + 4.0;
+			scene->Rect(bx, by, box_w, box_h, "#ffffff", "#cccccc", 1.0, 0.85, "legend");
+			ly : Float;
+			each(i : names) {
+				ly := by + 6.0 + i->As(Float) * 18.0;
+				scene->Rect(bx + 8.0, ly, 12.0, 12.0, colors->Get(i), "", 0.0, 1.0, "legend");
+				scene->Text(bx + 26.0, ly + 10.0, names->Get(i), TextAnchor->START, 12, false, "#333333", 0.0, "legend");
+			};
+		}
+
+		method : DrawColorbar(scene : PlotScene, bx : Float, py0 : Float, py1 : Float) ~ Nil {
+			cr := ColorRange();
+			steps := 48;
+			cell_h := (py1 - py0) / steps->As(Float);
+			t : Float;
+			each(i : steps) {
+				# the top of the bar is the high end
+				t := 1.0 - (i->As(Float) + 0.5) / steps->As(Float);
+				scene->Rect(bx, py0 + i->As(Float) * cell_h, 14.0, cell_h + 0.5, PlotMath->Viridis(t), "", 0.0, 1.0, "colorbar");
+			};
+			scene->Rect(bx, py0, 14.0, py1 - py0, "", "#333333", 1.0, 1.0, "colorbar");
+
+			nice := PlotMath->NiceRange(cr[0], cr[1], 5);
+			ticks := PlotMath->Ticks(nice[0], nice[1], nice[2]);
+			f : Float;
+			ty : Float;
+			each(i : ticks) {
+				if(ticks[i] >= cr[0] - 0.000001 & ticks[i] <= cr[1] + 0.000001) {
+					f := (ticks[i] - cr[0]) / (cr[1] - cr[0]);
+					ty := py1 - f * (py1 - py0);
+					scene->Line(bx + 14.0, ty, bx + 18.0, ty, "#333333", 1.0, "", "tick");
+					scene->Text(bx + 22.0, ty + 4.0, PlotMath->FormatNumber(ticks[i]), TextAnchor->START, 12, false, "#333333", 0.0, "cbtick");
+				};
+			};
+		}
+
+		method : Name(name : String) ~ String {
+			return (name = Nil) ? "" : name;
+		}
+
+		method : CheckPairs(what : String, xs : Float[], ys : Float[]) ~ Nil {
+			if(xs = Nil | ys = Nil | xs->Size() <> ys->Size() | ys->Size() = 0) {
+				Refuse("{$what} needs matching, non-empty xs and ys");
+			};
+			CheckColumn(what, xs, xs->Size());
+			CheckColumn(what, ys, xs->Size());
+		}
+
+		method : CheckColumn(what : String, v : Float[], count : Int) ~ Nil {
+			if(v->Size() <> count) {
+				Refuse("{$what} must have one value per point");
+			};
+			each(i : v) {
+				if(PlotMath->IsFinite(v[i]) = false) {
+					Refuse("{$what} has a NaN or infinite value at {$i}");
+				};
+			};
+		}
+
+		function : Refuse(message : String) ~ Nil {
+			Runtime->Raise(PlotError->New("Plot: " + message));
+		}
+	}
+
+	#~
+	A canvas of one or more Axes laid out in a grid, with an optional overall title.
+	~#
+	class Figure {
+		@width : Int;
+		@height : Int;
+		@title : String;
+		@rows : Int;
+		@cols : Int;
+		@axes : Vector<Axes>;
+
+		#~
+		Constructor: a figure with a single Axes.
+		@param width width in pixels, at least 200
+		@param height height in pixels, at least 150
+		~#
+		New(width : Int, height : Int) {
+			if(width < 200 | height < 150) {
+				Axes->Refuse("the size must be at least 200 x 150");
+			};
+
+			@width := width;
+			@height := height;
+			@title := "";
+			@axes := Vector->New()<Axes>;
+			Subplots(1, 1);
+		}
+
+		#~
+		Sets a title above all the axes.
+		@param title the text
+		~#
+		method : public : SetTitle(title : String) ~ Nil {
+			@title := (title = Nil) ? "" : title;
+		}
+
+		#~
+		Replaces the axes with a rows x cols grid, left to right, top to bottom.
+		@param rows number of rows, 1 to 8
+		@param cols number of columns, 1 to 8
+		~#
+		method : public : Subplots(rows : Int, cols : Int) ~ Nil {
+			if(rows < 1 | rows > 8 | cols < 1 | cols > 8) {
+				Axes->Refuse("a subplot grid is 1 to 8 rows and 1 to 8 columns");
+			};
+
+			@rows := rows;
+			@cols := cols;
+			@axes := Vector->New()<Axes>;
+			cells := rows * cols;
+			each(i : cells) {
+				@axes->AddBack(Axes->New());
+			};
+		}
+
+		#~
+		The first (for a one-plot figure, the only) axes.
+		@return the axes
+		~#
+		method : public : GetAxes() ~ Axes {
+			return @axes->Get(0);
+		}
+
+		#~
+		One axes of a subplot grid.
+		@param row row from 0
+		@param col column from 0
+		@return the axes
+		~#
+		method : public : GetAxes(row : Int, col : Int) ~ Axes {
+			if(row < 0 | row >= @rows | col < 0 | col >= @cols) {
+				Axes->Refuse("there is no subplot at that row and column");
+			};
+
+			return @axes->Get(row * @cols + col);
+		}
+
+		#~
+		Builds the drawing primitives for the whole figure.
+		@return the scene; raises PlotError when an axes has nothing to draw
+		~#
+		method : public : ToScene() ~ PlotScene {
+			scene := PlotScene->New(@width, @height);
+			scene->Rect(0.0, 0.0, @width->As(Float), @height->As(Float), "#ffffff", "", 0.0, 1.0, "background");
+
+			top := 0.0;
+			if(@title->Size() > 0) {
+				scene->Text(@width->As(Float) / 2.0, 26.0, @title, TextAnchor->MIDDLE, 18, true, "#000000", 0.0, "figtitle");
+				top := 30.0;
+			};
+
+			cell_w := @width->As(Float) / @cols->As(Float);
+			cell_h := (@height->As(Float) - top) / @rows->As(Float);
+			r : Int;
+			c : Int;
+			each(i : @axes) {
+				r := i / @cols;
+				c := i % @cols;
+				@axes->Get(i)->Draw(scene, c->As(Float) * cell_w, top + r->As(Float) * cell_h, cell_w, cell_h);
+			};
+
+			return scene;
+		}
+
+		#~
+		Renders the figure as SVG 1.1.
+		@return the SVG text
+		~#
+		method : public : ToSvg() ~ String {
+			return SvgWriter->Render(ToScene(), @title);
+		}
+
+		#~
+		Writes the SVG to a file.
+		@param path file to write
+		@return true when written
+		~#
+		method : public : Save(path : String) ~ Bool {
+			if(path = Nil) {
+				return false;
+			};
+
+			return System.IO.Filesystem.FileWriter->WriteFile(path, ToSvg());
+		}
+	}
+
+	#~
+	The SVG backend: turns a PlotScene into standalone SVG 1.1 text.
+	~#
+	class SvgWriter {
+		#~
+		Renders a scene.
+		@param scene what to draw
+		@param title the document title shown by viewers, may be empty
+		@return SVG 1.1 text
+		~#
+		function : Render(scene : PlotScene, title : String) ~ String {
+			w := scene->GetWidth();
+			h := scene->GetHeight();
+			out := "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+			out += "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"{$w}\" height=\"{$h}\" viewBox=\"0 0 {$w} {$h}\" font-family=\"sans-serif\" font-size=\"12\">\n";
+			esc := PlotMath->Escape(title);
+			out += "<title>" + esc + "</title>\n";
+
+			clip := 0;
+			open_clips := 0;
+			p : PlotPrimitive;
+			each(i : scene->Size()) {
+				p := scene->Get(i);
+				out += Element(p, clip);
+				if(p->GetKind() = PrimitiveKind->CLIP_BEGIN) {
+					clip += 1;
+					open_clips += 1;
+				}
+				else if(p->GetKind() = PrimitiveKind->CLIP_END) {
+					open_clips -= 1;
+				};
+			};
+			each(i : open_clips) {
+				out += "</g>\n";
+			};
+			out += "</svg>\n";
+
+			return out;
+		}
+
+		function : Element(p : PlotPrimitive, clip : Int) ~ String {
+			kind := p->GetKind();
+			if(kind = PrimitiveKind->LINE) {
+				return LineElement(p);
+			};
+			if(kind = PrimitiveKind->POLYLINE) {
+				return PolyElement(p, "polyline");
+			};
+			if(kind = PrimitiveKind->POLYGON) {
+				return PolyElement(p, "polygon");
+			};
+			if(kind = PrimitiveKind->RECT) {
+				return RectElement(p);
+			};
+			if(kind = PrimitiveKind->CIRCLE) {
+				return CircleElement(p);
+			};
+			if(kind = PrimitiveKind->TEXT) {
+				return TextElement(p);
+			};
+			if(kind = PrimitiveKind->CLIP_BEGIN) {
+				x := PlotMath->Fmt(p->GetX1());
+				y := PlotMath->Fmt(p->GetY1());
+				w := PlotMath->Fmt(p->GetX2());
+				h := PlotMath->Fmt(p->GetY2());
+				out := "<clipPath id=\"clip{$clip}\"><rect x=\"{$x}\" y=\"{$y}\" width=\"{$w}\" height=\"{$h}\"/></clipPath>\n";
+				out += "<g clip-path=\"url(#clip{$clip})\">\n";
+				return out;
+			};
+
+			return "</g>\n";
+		}
+
+		function : Common(p : PlotPrimitive) ~ String {
+			out := "";
+			tag := p->GetTag();
+			if(tag->Size() > 0) {
+				out += " class=\"" + tag + "\"";
+			};
+
+			return out;
+		}
+
+		function : LineElement(p : PlotPrimitive) ~ String {
+			x1 := PlotMath->Fmt(p->GetX1());
+			y1 := PlotMath->Fmt(p->GetY1());
+			x2 := PlotMath->Fmt(p->GetX2());
+			y2 := PlotMath->Fmt(p->GetY2());
+			stroke := p->GetStroke();
+			sw := PlotMath->Fmt(p->GetWidth());
+			out := "<line x1=\"{$x1}\" y1=\"{$y1}\" x2=\"{$x2}\" y2=\"{$y2}\" stroke=\"{$stroke}\" stroke-width=\"{$sw}\"";
+			if(p->GetDash()->Size() > 0) {
+				dash := p->GetDash();
+				out += " stroke-dasharray=\"{$dash}\"";
+			};
+			out += Common(p);
+			out += "/>\n";
+
+			return out;
+		}
+
+		function : PolyElement(p : PlotPrimitive, name : String) ~ String {
+			pts := p->GetPoints();
+			points := "";
+			each(i : pts) {
+				if(i > 0) {
+					if(i % 2 = 0) {
+						points += " ";
+					}
+					else {
+						points += ",";
+					};
+				};
+				points += PlotMath->Fmt(pts[i]);
+			};
+
+			out := "<" + name + " points=\"" + points + "\"";
+			if(p->GetFill()->Size() > 0) {
+				fill := p->GetFill();
+				out += " fill=\"{$fill}\"";
+				if(p->GetOpacity() < 1.0) {
+					fo := Float->ToString(p->GetOpacity(), 2);
+					out += " fill-opacity=\"{$fo}\"";
+				};
+			}
+			else {
+				out += " fill=\"none\"";
+			};
+			if(p->GetStroke()->Size() > 0) {
+				stroke := p->GetStroke();
+				sw := PlotMath->Fmt(p->GetWidth());
+				out += " stroke=\"{$stroke}\" stroke-width=\"{$sw}\"";
+			};
+			out += Common(p);
+			out += "/>\n";
+
+			return out;
+		}
+
+		function : RectElement(p : PlotPrimitive) ~ String {
+			x := PlotMath->Fmt(p->GetX1());
+			y := PlotMath->Fmt(p->GetY1());
+			w := PlotMath->Fmt(p->GetX2());
+			h := PlotMath->Fmt(p->GetY2());
+			out := "<rect x=\"{$x}\" y=\"{$y}\" width=\"{$w}\" height=\"{$h}\"";
+			out += FillStroke(p);
+			out += Common(p);
+			out += "/>\n";
+
+			return out;
+		}
+
+		function : CircleElement(p : PlotPrimitive) ~ String {
+			cx := PlotMath->Fmt(p->GetX1());
+			cy := PlotMath->Fmt(p->GetY1());
+			r := PlotMath->Fmt(p->GetX2());
+			out := "<circle cx=\"{$cx}\" cy=\"{$cy}\" r=\"{$r}\"";
+			out += FillStroke(p);
+			out += Common(p);
+			out += "/>\n";
+
+			return out;
+		}
+
+		function : FillStroke(p : PlotPrimitive) ~ String {
+			out := "";
+			if(p->GetFill()->Size() > 0) {
+				fill := p->GetFill();
+				out += " fill=\"{$fill}\"";
+				if(p->GetOpacity() < 1.0) {
+					fo := Float->ToString(p->GetOpacity(), 2);
+					out += " fill-opacity=\"{$fo}\"";
+				};
+			}
+			else {
+				out += " fill=\"none\"";
+			};
+			if(p->GetStroke()->Size() > 0) {
+				stroke := p->GetStroke();
+				sw := PlotMath->Fmt(p->GetWidth());
+				out += " stroke=\"{$stroke}\" stroke-width=\"{$sw}\"";
+			};
+
+			return out;
+		}
+
+		function : TextElement(p : PlotPrimitive) ~ String {
+			x := PlotMath->Fmt(p->GetX1());
+			y := PlotMath->Fmt(p->GetY1());
+			fill := p->GetFill();
+			size := p->GetSize();
+			out := "<text x=\"{$x}\" y=\"{$y}\" fill=\"{$fill}\" font-size=\"{$size}\"";
+			anchor := p->GetAnchor();
+			if(anchor = TextAnchor->MIDDLE) {
+				out += " text-anchor=\"middle\"";
+			}
+			else if(anchor = TextAnchor->END) {
+				out += " text-anchor=\"end\"";
+			};
+			if(p->IsBold()) {
+				out += " font-weight=\"bold\"";
+			};
+			if(p->GetRotation() <> 0.0) {
+				rot := PlotMath->Fmt(p->GetRotation());
+				out += " transform=\"rotate({$rot} {$x} {$y})\"";
+			};
+			out += Common(p);
+			content := PlotMath->Escape(p->GetText());
+			out += ">" + content + "</text>\n";
+
+			return out;
+		}
+	}
+}

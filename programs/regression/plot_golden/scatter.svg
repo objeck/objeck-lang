@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="800" height="480" viewBox="0 0 800 480" font-family="sans-serif" font-size="12">
+<title></title>
+<rect x="0.0" y="0.0" width="800.0" height="480.0" fill="#ffffff" class="background"/>
+<line x1="64.0" y1="432.0" x2="784.0" y2="432.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="436.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">0</text>
+<line x1="64.0" y1="332.0" x2="784.0" y2="332.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="336.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">2</text>
+<line x1="64.0" y1="232.0" x2="784.0" y2="232.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="236.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">4</text>
+<line x1="64.0" y1="132.0" x2="784.0" y2="132.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="136.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">6</text>
+<line x1="64.0" y1="32.0" x2="784.0" y2="32.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="36.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">8</text>
+<line x1="64.0" y1="32.0" x2="64.0" y2="432.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="64.0" y="450.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">0</text>
+<line x1="208.0" y1="32.0" x2="208.0" y2="432.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="208.0" y="450.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">2</text>
+<line x1="352.0" y1="32.0" x2="352.0" y2="432.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="352.0" y="450.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">4</text>
+<line x1="496.0" y1="32.0" x2="496.0" y2="432.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="496.0" y="450.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">6</text>
+<line x1="640.0" y1="32.0" x2="640.0" y2="432.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="640.0" y="450.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">8</text>
+<line x1="784.0" y1="32.0" x2="784.0" y2="432.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="784.0" y="450.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">10</text>
+<clipPath id="clip0"><rect x="64.0" y="32.0" width="720.0" height="400.0"/></clipPath>
+<g clip-path="url(#clip0)">
+<circle cx="64.0" cy="382.0" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="172.0" cy="332.0" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="280.0" cy="282.0" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="298.0" cy="294.5" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="406.0" cy="244.5" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="424.0" cy="257.0" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="532.0" cy="207.0" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="640.0" cy="157.0" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="658.0" cy="169.5" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="766.0" cy="119.5" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="64.0" cy="132.0" r="3.5" fill="#ff7f0e" fill-opacity="0.75" class="marker"/>
+<circle cx="172.0" cy="127.0" r="3.5" fill="#ff7f0e" fill-opacity="0.75" class="marker"/>
+<circle cx="280.0" cy="122.0" r="3.5" fill="#ff7f0e" fill-opacity="0.75" class="marker"/>
+<circle cx="298.0" cy="179.5" r="3.5" fill="#ff7f0e" fill-opacity="0.75" class="marker"/>
+<circle cx="406.0" cy="174.5" r="3.5" fill="#ff7f0e" fill-opacity="0.75" class="marker"/>
+<circle cx="424.0" cy="232.0" r="3.5" fill="#ff7f0e" fill-opacity="0.75" class="marker"/>
+<circle cx="532.0" cy="227.0" r="3.5" fill="#ff7f0e" fill-opacity="0.75" class="marker"/>
+<circle cx="640.0" cy="222.0" r="3.5" fill="#ff7f0e" fill-opacity="0.75" class="marker"/>
+<circle cx="658.0" cy="279.5" r="3.5" fill="#ff7f0e" fill-opacity="0.75" class="marker"/>
+<circle cx="766.0" cy="274.5" r="3.5" fill="#ff7f0e" fill-opacity="0.75" class="marker"/>
+</g>
+<line x1="64.0" y1="32.0" x2="64.0" y2="432.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<line x1="64.0" y1="432.0" x2="784.0" y2="432.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<text x="424.0" y="468.0" fill="#000000" font-size="13" text-anchor="middle" class="xlabel">feature 1</text>
+<text x="18.0" y="232.0" fill="#000000" font-size="13" text-anchor="middle" transform="rotate(-90.0 18.0 232.0)" class="ylabel">feature 2</text>
+<text x="424.0" y="22.0" fill="#000000" font-size="16" text-anchor="middle" font-weight="bold" class="title">Two clusters</text>
+<rect x="687.6" y="36.0" width="88.4" height="48.0" fill="#ffffff" fill-opacity="0.85" stroke="#cccccc" stroke-width="1.0" class="legend"/>
+<rect x="695.6" y="42.0" width="12.0" height="12.0" fill="#1f77b4" class="legend"/>
+<text x="713.6" y="52.0" fill="#333333" font-size="12" class="legend">class A</text>
+<rect x="695.6" y="60.0" width="12.0" height="12.0" fill="#ff7f0e" class="legend"/>
+<text x="713.6" y="70.0" fill="#333333" font-size="12" class="legend">class B</text>
+</svg>

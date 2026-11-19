@@ -16984,6 +16984,333 @@
 				}
 			}
 		},
+		"System.Plot.Artist": {
+			"description": "One drawn thing on an Axes: its kind, legend name and data. Axes builds these.",
+			"functions": {
+				"GetColors": {
+					"descriptions": ["**Color-scale values.**\n\n```method : public : GetColors() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetEdges": {
+					"descriptions": ["**Histogram bin edges.**\n\n```method : public : GetEdges() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetKind": {
+					"descriptions": ["**What it draws.**\n\n```method : public : GetKind() ~ ArtistKind```\n\n\n\nreturn: ArtistKind"]
+				},
+				"GetName": {
+					"descriptions": ["**Legend entry.**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetSizes": {
+					"descriptions": ["**Size values.**\n\n```method : public : GetSizes() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetXs": {
+					"descriptions": ["**x values.**\n\n```method : public : GetXs() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetYs": {
+					"descriptions": ["**y values.**\n\n```method : public : GetYs() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(kind:ArtistKind, name:String, xs:Float[], ys:Float[], colors:Float[], sizes:Float[], edges:Float[])```\n\n\n\nkind: ArtistKind\n\nname: String\n\nxs: Float[]\n\nys: Float[]\n\ncolors: Float[]\n\nsizes: Float[]\n\nedges: Float[]"]
+				}
+			}
+		},
+		"System.Plot.Axes": {
+			"description": "A plot area with axes, a title, ticks, a legend and the things drawn in it.",
+			"functions": {
+				"Bar": {
+					"descriptions": ["**Adds a bar series over the categories: one bar per category, grouped with the other bar series. SetCategories must have been called.**\n\n```method : public : Bar(name:String, ys:Float[]) ~ Nil```\n\n\n\nname: String\n\nys: Float[]\n\nreturn: Nil"]
+				},
+				"Draw": {
+					"descriptions": ["**Draws the axes into a scene, inside a rectangle of the canvas.**\n\n```method : public : Draw(scene:PlotScene, x:Float, y:Float, width:Float, height:Float) ~ Nil```\n\n\n\nscene: PlotScene\n\nx: Float\n\ny: Float\n\nwidth: Float\n\nheight: Float\n\nreturn: Nil"]
+				},
+				"GetArtist": {
+					"descriptions": ["**One thing drawn on the axes.**\n\n```method : public : GetArtist(index:Int) ~ Artist```\n\n\n\nindex: Int\n\nreturn: Artist"]
+				},
+				"GetTitle": {
+					"descriptions": ["**The title.**\n\n```method : public : GetTitle() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetXAxis": {
+					"descriptions": ["**The resolved x axis of the last Draw.**\n\n```method : public : GetXAxis() ~ PlotAxis```\n\n\n\nreturn: PlotAxis"]
+				},
+				"GetYAxis": {
+					"descriptions": ["**The resolved y axis of the last Draw.**\n\n```method : public : GetYAxis() ~ PlotAxis```\n\n\n\nreturn: PlotAxis"]
+				},
+				"Hist": {
+					"descriptions": ["**Adds a histogram with equal-width bins over the range of the data.**\n\n```method : public : Hist(name:String, values:Float[], bins:Int) ~ Nil```\n\n\n\nname: String\n\nvalues: Float[]\n\nbins: Int\n\nreturn: Nil", "**Adds a histogram, optionally normalised so its area is 1.**\n\n```method : public : Hist(name:String, values:Float[], bins:Int, density:Bool) ~ Nil```\n\n\n\nname: String\n\nvalues: Float[]\n\nbins: Int\n\ndensity: Bool\n\nreturn: Nil"]
+				},
+				"New": {
+					"descriptions": ["**Constructor; Figure creates its axes.**\n\n```New()```\n\n"]
+				},
+				"Plot": {
+					"descriptions": ["**Adds a line.**\n\n```method : public : Plot(name:String, xs:Float[], ys:Float[]) ~ Nil```\n\n\n\nname: String\n\nxs: Float[]\n\nys: Float[]\n\nreturn: Nil"]
+				},
+				"ResetLimits": {
+					"descriptions": ["**Returns both ranges to being derived from the data.**\n\n```method : public : ResetLimits() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Scatter": {
+					"descriptions": ["**Adds a scatter plot of one color.**\n\n```method : public : Scatter(name:String, xs:Float[], ys:Float[]) ~ Nil```\n\n\n\nname: String\n\nxs: Float[]\n\nys: Float[]\n\nreturn: Nil", "**Adds a scatter plot whose points can be colored and sized by further columns. A color column adds a color bar on the right of the plot.**\n\n```method : public : Scatter(name:String, xs:Float[], ys:Float[], colors:Float[], sizes:Float[]) ~ Nil```\n\n\n\nname: String\n\nxs: Float[]\n\nys: Float[]\n\ncolors: Float[]\n\nsizes: Float[]\n\nreturn: Nil"]
+				},
+				"SetCategories": {
+					"descriptions": ["**Makes x categorical: ticks are these names at positions 0, 1, 2, ..., and bar series are grouped by them.**\n\n```method : public : SetCategories(names:String[]) ~ Nil```\n\n\n\nnames: String[]\n\nreturn: Nil"]
+				},
+				"SetGrid": {
+					"descriptions": ["**Turns the grid lines on or off (on by default).**\n\n```method : public : SetGrid(on:Bool) ~ Nil```\n\n\n\non: Bool\n\nreturn: Nil"]
+				},
+				"SetLegend": {
+					"descriptions": ["**Turns the legend on or off (on by default; it lists the named things only).**\n\n```method : public : SetLegend(on:Bool) ~ Nil```\n\n\n\non: Bool\n\nreturn: Nil"]
+				},
+				"SetLogX": {
+					"descriptions": ["**Draws x on a base-10 log scale; every x must then be positive.**\n\n```method : public : SetLogX(on:Bool) ~ Nil```\n\n\n\non: Bool\n\nreturn: Nil"]
+				},
+				"SetLogY": {
+					"descriptions": ["**Draws y on a base-10 log scale; every y must then be positive.**\n\n```method : public : SetLogY(on:Bool) ~ Nil```\n\n\n\non: Bool\n\nreturn: Nil"]
+				},
+				"SetTitle": {
+					"descriptions": ["**Sets the title above the plot.**\n\n```method : public : SetTitle(title:String) ~ Nil```\n\n\n\ntitle: String\n\nreturn: Nil"]
+				},
+				"SetXLabel": {
+					"descriptions": ["**Sets the x-axis title.**\n\n```method : public : SetXLabel(text:String) ~ Nil```\n\n\n\ntext: String\n\nreturn: Nil"]
+				},
+				"SetXLim": {
+					"descriptions": ["**Fixes the x range instead of deriving it from the data.**\n\n```method : public : SetXLim(min:Float, max:Float) ~ Nil```\n\n\n\nmin: Float\n\nmax: Float\n\nreturn: Nil"]
+				},
+				"SetYLabel": {
+					"descriptions": ["**Sets the y-axis title.**\n\n```method : public : SetYLabel(text:String) ~ Nil```\n\n\n\ntext: String\n\nreturn: Nil"]
+				},
+				"SetYLim": {
+					"descriptions": ["**Fixes the y range instead of deriving it from the data.**\n\n```method : public : SetYLim(min:Float, max:Float) ~ Nil```\n\n\n\nmin: Float\n\nmax: Float\n\nreturn: Nil"]
+				},
+				"Size": {
+					"descriptions": ["**Things drawn so far.**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				}
+			}
+		},
+		"System.Plot.Figure": {
+			"description": "A canvas of one or more Axes laid out in a grid, with an optional overall title.",
+			"functions": {
+				"GetAxes": {
+					"descriptions": ["**The first (for a one-plot figure, the only) axes.**\n\n```method : public : GetAxes() ~ Axes```\n\n\n\nreturn: Axes", "**One axes of a subplot grid.**\n\n```method : public : GetAxes(row:Int, col:Int) ~ Axes```\n\n\n\nrow: Int\n\ncol: Int\n\nreturn: Axes"]
+				},
+				"New": {
+					"descriptions": ["**Constructor: a figure with a single Axes.**\n\n```New(width:Int, height:Int)```\n\n\n\nwidth: Int\n\nheight: Int"]
+				},
+				"Save": {
+					"descriptions": ["**Writes the SVG to a file.**\n\n```method : public : Save(path:String) ~ Bool```\n\n\n\npath: String\n\nreturn: Bool"]
+				},
+				"SetTitle": {
+					"descriptions": ["**Sets a title above all the axes.**\n\n```method : public : SetTitle(title:String) ~ Nil```\n\n\n\ntitle: String\n\nreturn: Nil"]
+				},
+				"Subplots": {
+					"descriptions": ["**Replaces the axes with a rows x cols grid, left to right, top to bottom.**\n\n```method : public : Subplots(rows:Int, cols:Int) ~ Nil```\n\n\n\nrows: Int\n\ncols: Int\n\nreturn: Nil"]
+				},
+				"ToScene": {
+					"descriptions": ["**Builds the drawing primitives for the whole figure.**\n\n```method : public : ToScene() ~ PlotScene```\n\n\n\nreturn: PlotScene"]
+				},
+				"ToSvg": {
+					"descriptions": ["**Renders the figure as SVG 1.1.**\n\n```method : public : ToSvg() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"System.Plot.PlotAxis": {
+			"description": "One resolved axis: its range (on the log10 scale when logarithmic), tick step and, for a categorical axis, the names.",
+			"functions": {
+				"GetHi": {
+					"descriptions": ["**Top of the range, as an exponent when logarithmic.**\n\n```method : public : GetHi() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetLo": {
+					"descriptions": ["**Bottom of the range, as an exponent when logarithmic.**\n\n```method : public : GetLo() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"IsLog": {
+					"descriptions": ["**Whether the axis is logarithmic.**\n\n```method : public : IsLog() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Label": {
+					"descriptions": ["**The label of a tick.**\n\n```method : public : Label(v:Float) ~ String```\n\n\n\nv: Float\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(log:Bool, lo:Float, hi:Float, step:Float, names:String[])```\n\n\n\nlog: Bool\n\nlo: Float\n\nhi: Float\n\nstep: Float\n\nnames: String[]"]
+				},
+				"Pos": {
+					"descriptions": ["**Where a data value falls on the axis.**\n\n```method : public : Pos(v:Float) ~ Float```\n\n\n\nv: Float\n\nreturn: Float"]
+				},
+				"Ticks": {
+					"descriptions": ["**Tick values in data space.**\n\n```method : public : Ticks() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"Value": {
+					"descriptions": ["**The data value at a position on the axis; the inverse of Pos.**\n\n```method : public : Value(f:Float) ~ Float```\n\n\n\nf: Float\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.Plot.PlotError": {
+			"description": "Raised by every System.Plot function that is handed input it cannot draw, with a message naming the problem. Uncaught, the program ends printing it; catch it with try { } on(e : PlotError) { }.",
+			"functions": {
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(message:String)```\n\n\n\nmessage: String"]
+				}
+			}
+		},
+		"System.Plot.PlotMath": {
+			"description": "Numbers, ticks, colors and text helpers shared by the plotting classes.",
+			"functions": {
+				"BinCounts": {
+					"descriptions": ["**Counts values into equal-width bins; a value equal to the top edge falls in the last bin and values outside the edges are not counted.**\n\n```function : BinCounts(values:Float[], edges:Float[]) ~ Int[]```\n\n\n\nvalues: Float[]\n\nedges: Float[]\n\nreturn: Int[]"]
+				},
+				"BinEdges": {
+					"descriptions": ["**Equal-width bin edges.**\n\n```function : BinEdges(lo:Float, hi:Float, bins:Int) ~ Float[]```\n\n\n\nlo: Float\n\nhi: Float\n\nbins: Int\n\nreturn: Float[]"]
+				},
+				"Color": {
+					"descriptions": ["**The categorical color of the i-th series: the matplotlib tab10 start, 8 colors.**\n\n```function : Color(i:Int) ~ String```\n\n\n\ni: Int\n\nreturn: String"]
+				},
+				"Escape": {
+					"descriptions": ["**XML-escapes text for an SVG element or attribute.**\n\n```function : Escape(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String"]
+				},
+				"Fmt": {
+					"descriptions": ["**A coordinate with one decimal, so the same data gives the same bytes everywhere.**\n\n```function : Fmt(v:Float) ~ String```\n\n\n\nv: Float\n\nreturn: String"]
+				},
+				"FormatNumber": {
+					"descriptions": ["**A number as short text: no trailing zeros, no \"-0\".**\n\n```function : FormatNumber(value:Float) ~ String```\n\n\n\nvalue: Float\n\nreturn: String"]
+				},
+				"Hex2": {
+					"descriptions": ["**Two lower-case hex digits.**\n\n```function : Hex2(v:Int) ~ String```\n\n\n\nv: Int\n\nreturn: String"]
+				},
+				"IsFinite": {
+					"descriptions": ["**Whether a number is finite: not NaN and not infinite.**\n\n```function : IsFinite(x:Float) ~ Bool```\n\n\n\nx: Float\n\nreturn: Bool"]
+				},
+				"MaxOf": {
+					"descriptions": ["**Largest of the values.**\n\n```function : MaxOf(v:Float[]) ~ Float```\n\n\n\nv: Float[]\n\nreturn: Float"]
+				},
+				"MinOf": {
+					"descriptions": ["**Smallest of the values.**\n\n```function : MinOf(v:Float[]) ~ Float```\n\n\n\nv: Float[]\n\nreturn: Float"]
+				},
+				"NiceRange": {
+					"descriptions": ["**A 1-2-5 range enclosing lo..hi.**\n\n```function : NiceRange(lo:Float, hi:Float, target:Int) ~ Float[]```\n\n\n\nlo: Float\n\nhi: Float\n\ntarget: Int\n\nreturn: Float[]"]
+				},
+				"NiceStep": {
+					"descriptions": ["**A 1-2-5 tick step for a range.**\n\n```function : NiceStep(range:Float, target:Int) ~ Float```\n\n\n\nrange: Float\n\ntarget: Int\n\nreturn: Float"]
+				},
+				"TextWidth": {
+					"descriptions": ["**A rough text width for layout, so legends and labels never depend on a font.**\n\n```function : TextWidth(text:String, size:Int) ~ Float```\n\n\n\ntext: String\n\nsize: Int\n\nreturn: Float"]
+				},
+				"Ticks": {
+					"descriptions": ["**Tick positions from lo to hi inclusive, snapped to the step.**\n\n```function : Ticks(lo:Float, hi:Float, step:Float) ~ Float[]```\n\n\n\nlo: Float\n\nhi: Float\n\nstep: Float\n\nreturn: Float[]"]
+				},
+				"Viridis": {
+					"descriptions": ["**A viridis-like sequential color map: dark purple, blue, teal, green, yellow.**\n\n```function : Viridis(t:Float) ~ String```\n\n\n\nt: Float\n\nreturn: String"]
+				}
+			}
+		},
+		"System.Plot.PlotPrimitive": {
+			"description": "One drawing primitive in pixel space. Colors are CSS strings such as \"#1f77b4\"; an empty string means none. Which fields are meaningful depends on the kind: LINE uses x1, y1, x2, y2; POLYLINE and POLYGON use the x, y pairs of GetPoints(); RECT uses x1, y1 as the corner and x2, y2 as the width and height; CIRCLE uses x1, y1 as the center and x2 as the radius; TEXT uses x1, y1 as the anchor point; CLIP_BEGIN uses the same corner, width and height as RECT and clips what follows until the matching CLIP_END.",
+			"functions": {
+				"GetAnchor": {
+					"descriptions": ["**Text anchor.**\n\n```method : public : GetAnchor() ~ TextAnchor```\n\n\n\nreturn: TextAnchor"]
+				},
+				"GetDash": {
+					"descriptions": ["**Dash pattern.**\n\n```method : public : GetDash() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetFill": {
+					"descriptions": ["**Fill color, or the text color.**\n\n```method : public : GetFill() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetKind": {
+					"descriptions": ["**What the primitive draws.**\n\n```method : public : GetKind() ~ PrimitiveKind```\n\n\n\nreturn: PrimitiveKind"]
+				},
+				"GetOpacity": {
+					"descriptions": ["**Fill opacity.**\n\n```method : public : GetOpacity() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetPoints": {
+					"descriptions": ["**The x, y pairs of a polyline or polygon.**\n\n```method : public : GetPoints() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetRotation": {
+					"descriptions": ["**Text rotation about the anchor.**\n\n```method : public : GetRotation() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetSize": {
+					"descriptions": ["**Text size.**\n\n```method : public : GetSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetStroke": {
+					"descriptions": ["**Outline color.**\n\n```method : public : GetStroke() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTag": {
+					"descriptions": ["**What the primitive is: marker, bar, grid, tick, legend, and so on.**\n\n```method : public : GetTag() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetText": {
+					"descriptions": ["**The string of a text primitive.**\n\n```method : public : GetText() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetWidth": {
+					"descriptions": ["**Stroke width.**\n\n```method : public : GetWidth() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetX1": {
+					"descriptions": ["**First x, the corner or center x or the text anchor x.**\n\n```method : public : GetX1() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetX2": {
+					"descriptions": ["**Second x of a line, the width of a rect or the radius of a circle.**\n\n```method : public : GetX2() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetY1": {
+					"descriptions": ["**First y.**\n\n```method : public : GetY1() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetY2": {
+					"descriptions": ["**Second y of a line or the height of a rect.**\n\n```method : public : GetY2() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"IsBold": {
+					"descriptions": ["**Whether text is bold.**\n\n```method : public : IsBold() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor; PlotScene builds primitives, so most programs never call it.**\n\n```New(kind:PrimitiveKind, x1:Float, y1:Float, x2:Float, y2:Float, points:Float[], stroke:String, fill:String, width:Float, opacity:Float, text:String, anchor:TextAnchor, size:Int, bold:Bool, rotation:Float, dash:String, tag:String)```\n\n\n\nkind: PrimitiveKind\n\nx1: Float\n\ny1: Float\n\nx2: Float\n\ny2: Float\n\npoints: Float[]\n\nstroke: String\n\nfill: String\n\nwidth: Float\n\nopacity: Float\n\ntext: String\n\nanchor: TextAnchor\n\nsize: Int\n\nbold: Bool\n\nrotation: Float\n\ndash: String\n\ntag: String"]
+				}
+			}
+		},
+		"System.Plot.PlotScene": {
+			"description": "An ordered list of pixel-space primitives: everything a backend needs to draw a figure. Later primitives draw over earlier ones.",
+			"functions": {
+				"BeginClip": {
+					"descriptions": ["**Starts clipping to a rectangle; everything until EndClip is cut at its edge.**\n\n```method : public : BeginClip(x:Float, y:Float, width:Float, height:Float) ~ Nil```\n\n\n\nx: Float\n\ny: Float\n\nwidth: Float\n\nheight: Float\n\nreturn: Nil"]
+				},
+				"Circle": {
+					"descriptions": ["**Adds a circle.**\n\n```method : public : Circle(cx:Float, cy:Float, radius:Float, fill:String, stroke:String, opacity:Float, tag:String) ~ Nil```\n\n\n\ncx: Float\n\ncy: Float\n\nradius: Float\n\nfill: String\n\nstroke: String\n\nopacity: Float\n\ntag: String\n\nreturn: Nil"]
+				},
+				"Count": {
+					"descriptions": ["**Number of primitives carrying a tag.**\n\n```method : public : Count(tag:String) ~ Int```\n\n\n\ntag: String\n\nreturn: Int"]
+				},
+				"EndClip": {
+					"descriptions": ["**Ends the clip started by BeginClip.**\n\n```method : public : EndClip() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Get": {
+					"descriptions": ["**One primitive.**\n\n```method : public : Get(index:Int) ~ PlotPrimitive```\n\n\n\nindex: Int\n\nreturn: PlotPrimitive"]
+				},
+				"GetHeight": {
+					"descriptions": ["**Canvas height.**\n\n```method : public : GetHeight() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetWidth": {
+					"descriptions": ["**Canvas width.**\n\n```method : public : GetWidth() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Line": {
+					"descriptions": ["**Adds a straight line.**\n\n```method : public : Line(x1:Float, y1:Float, x2:Float, y2:Float, stroke:String, width:Float, dash:String, tag:String) ~ Nil```\n\n\n\nx1: Float\n\ny1: Float\n\nx2: Float\n\ny2: Float\n\nstroke: String\n\nwidth: Float\n\ndash: String\n\ntag: String\n\nreturn: Nil"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(width:Int, height:Int)```\n\n\n\nwidth: Int\n\nheight: Int"]
+				},
+				"Polygon": {
+					"descriptions": ["**Adds a closed polygon.**\n\n```method : public : Polygon(points:Float[], fill:String, stroke:String, width:Float, opacity:Float, tag:String) ~ Nil```\n\n\n\npoints: Float[]\n\nfill: String\n\nstroke: String\n\nwidth: Float\n\nopacity: Float\n\ntag: String\n\nreturn: Nil"]
+				},
+				"Polyline": {
+					"descriptions": ["**Adds an open polyline.**\n\n```method : public : Polyline(points:Float[], stroke:String, width:Float, tag:String) ~ Nil```\n\n\n\npoints: Float[]\n\nstroke: String\n\nwidth: Float\n\ntag: String\n\nreturn: Nil"]
+				},
+				"Rect": {
+					"descriptions": ["**Adds a rectangle.**\n\n```method : public : Rect(x:Float, y:Float, width:Float, height:Float, fill:String, stroke:String, stroke_width:Float, opacity:Float, tag:String) ~ Nil```\n\n\n\nx: Float\n\ny: Float\n\nwidth: Float\n\nheight: Float\n\nfill: String\n\nstroke: String\n\nstroke_width: Float\n\nopacity: Float\n\ntag: String\n\nreturn: Nil"]
+				},
+				"Size": {
+					"descriptions": ["**Number of primitives.**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Text": {
+					"descriptions": ["**Adds text.**\n\n```method : public : Text(x:Float, y:Float, text:String, anchor:TextAnchor, size:Int, bold:Bool, fill:String, rotation:Float, tag:String) ~ Nil```\n\n\n\nx: Float\n\ny: Float\n\ntext: String\n\nanchor: TextAnchor\n\nsize: Int\n\nbold: Bool\n\nfill: String\n\nrotation: Float\n\ntag: String\n\nreturn: Nil"]
+				}
+			}
+		},
+		"System.Plot.SvgWriter": {
+			"description": "The SVG backend: turns a PlotScene into standalone SVG 1.1 text.",
+			"functions": {
+				"Render": {
+					"descriptions": ["**Renders a scene.**\n\n```function : Render(scene:PlotScene, title:String) ~ String```\n\n\n\nscene: PlotScene\n\ntitle: String\n\nreturn: String"]
+				}
+			}
+		},
 		"System.Time.Alarm": {
 			"description": "Provides a system timer",
 			"functions": {
@@ -21421,6 +21748,60 @@
 				"file": ""
 			}
 		],
+		"Artist": [
+			{
+				"bundle": "System.Plot",
+				"file": "plot.obl"
+			}
+		],
+		"Axes": [
+			{
+				"bundle": "System.Plot",
+				"file": "plot.obl"
+			}
+		],
+		"Figure": [
+			{
+				"bundle": "System.Plot",
+				"file": "plot.obl"
+			}
+		],
+		"PlotAxis": [
+			{
+				"bundle": "System.Plot",
+				"file": "plot.obl"
+			}
+		],
+		"PlotError": [
+			{
+				"bundle": "System.Plot",
+				"file": "plot.obl"
+			}
+		],
+		"PlotMath": [
+			{
+				"bundle": "System.Plot",
+				"file": "plot.obl"
+			}
+		],
+		"PlotPrimitive": [
+			{
+				"bundle": "System.Plot",
+				"file": "plot.obl"
+			}
+		],
+		"PlotScene": [
+			{
+				"bundle": "System.Plot",
+				"file": "plot.obl"
+			}
+		],
+		"SvgWriter": [
+			{
+				"bundle": "System.Plot",
+				"file": "plot.obl"
+			}
+		],
 		"Alarm": [
 			{
 				"bundle": "System.Time",
@@ -23557,6 +23938,48 @@
 				{ "name": "SOFTMAX", "value": "0", "description": "Probabilities over the labels, summing to 1: single-label classification." },
 				{ "name": "SIGMOID", "value": "1", "description": "An independent probability per label: multi-label classification, or one label." },
 				{ "name": "NONE", "value": "2", "description": "The raw logits." }
+			]
+		},
+		"System.Plot.ArtistKind": {
+			"name": "ArtistKind",
+			"bundle": "System.Plot",
+			"class": "",
+			"kind": "enum",
+			"description": "What an Artist draws.",
+			"items": [
+				{ "name": "LINE", "value": "0", "description": "" },
+				{ "name": "SCATTER", "value": "1", "description": "" },
+				{ "name": "BARS", "value": "2", "description": "" },
+				{ "name": "HIST", "value": "3", "description": "" }
+			]
+		},
+		"System.Plot.PrimitiveKind": {
+			"name": "PrimitiveKind",
+			"bundle": "System.Plot",
+			"class": "",
+			"kind": "enum",
+			"description": "The kinds of drawing primitive in a PlotScene.",
+			"items": [
+				{ "name": "LINE", "value": "0", "description": "" },
+				{ "name": "POLYLINE", "value": "1", "description": "" },
+				{ "name": "POLYGON", "value": "2", "description": "" },
+				{ "name": "RECT", "value": "3", "description": "" },
+				{ "name": "CIRCLE", "value": "4", "description": "" },
+				{ "name": "TEXT", "value": "5", "description": "" },
+				{ "name": "CLIP_BEGIN", "value": "6", "description": "" },
+				{ "name": "CLIP_END", "value": "7", "description": "" }
+			]
+		},
+		"System.Plot.TextAnchor": {
+			"name": "TextAnchor",
+			"bundle": "System.Plot",
+			"class": "",
+			"kind": "enum",
+			"description": "Where a text primitive sits relative to its x.",
+			"items": [
+				{ "name": "START", "value": "0", "description": "" },
+				{ "name": "MIDDLE", "value": "1", "description": "" },
+				{ "name": "END", "value": "2", "description": "" }
 			]
 		},
 		"Web.HTTP.HttpClient#Task": {

@@ -1,0 +1,591 @@
+# EXTRA_LIBS: plot,gen_collect
+#~
+System.Plot: scatter, histogram, line and bar charts as standalone SVG.
+
+Four kinds of check. Structure: the SVG parses with Data.XML and holds what the data
+implies (one circle per in-range point, one bar rect per bin, a color bar only when
+points are colored). Numbers: histogram counts against hand-counted bins, the area of
+a density histogram, the bins chosen by the automatic rule. Geometry: every coordinate
+lies inside the viewport. Determinism: the text matches the golden files under
+plot_golden/, byte for byte, so a layout change is a deliberate golden update. A golden
+that could not fail proves nothing, so each chart also has a control: the same chart
+with one data value changed must produce different bytes.
+
+Run with --update from programs/regression to rewrite the goldens after a deliberate
+change, and read the diff.
+~#
+use Collection;
+use Data.XML;
+use System.IO.Filesystem;
+use System.Plot;
+
+class PlotSvg {
+	@update : static : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		@update := args->Size() > 0 & args[0]->Equals("--update");
+		ok := true;
+
+		ok := Scatter() & ok;
+		ok := ScatterColorSize() & ok;
+		ok := Histogram() & ok;
+		ok := Density() & ok;
+		ok := LineAndBars() & ok;
+		ok := LogAxes() & ok;
+		ok := Subplots() & ok;
+		ok := SceneModel() & ok;
+		ok := Refusals() & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Series(count : Int, slope : Float, offset : Float) ~ Float[] {
+		v := Float->New[count];
+		each(i : count) {
+			v[i] := offset + slope * i->As(Float) + ((i * 7) % 5)->As(Float) * 0.25;
+		};
+
+		return v;
+	}
+
+	function : Scatter() ~ Bool {
+		ok := true;
+		xs := Series(10, 1.0, 0.0);
+		ya := Series(10, 0.5, 1.0);
+		yb := Series(10, -0.4, 6.0);
+
+		fig := Figure->New(800, 480);
+		ax := fig->GetAxes();
+		ax->SetTitle("Two clusters");
+		ax->SetXLabel("feature 1");
+		ax->SetYLabel("feature 2");
+		ax->Scatter("class A", xs, ya);
+		ax->Scatter("class B", xs, yb);
+		svg := fig->ToSvg();
+
+		root := Parse(svg);
+		ok := Report("scatter: the SVG parses as XML", root <> Nil) & ok;
+		if(root <> Nil) {
+			ok := Report("scatter: root is svg in the SVG namespace with a viewBox",
+				root->GetName()->Equals("svg") & Attr(root, "xmlns")->Equals("http://www.w3.org/2000/svg") & Attr(root, "viewBox")->Equals("0 0 800 480")) & ok;
+			ok := Report("scatter: one circle per point (20)", CountClass(root, "circle", "marker") = 20) & ok;
+			ok := Report("scatter: no color bar without a color column", CountClass(root, "rect", "colorbar") = 0) & ok;
+			ok := Report("scatter: the legend names both series", Texts(root)->Has("|class A|") & Texts(root)->Has("|class B|")) & ok;
+			ok := Report("scatter: the titles are present", Texts(root)->Has("|Two clusters|") & Texts(root)->Has("|feature 1|") & Texts(root)->Has("|feature 2|")) & ok;
+			ok := Report("scatter: every coordinate lies inside the viewport", InsideViewport(root, 800.0, 480.0)) & ok;
+		};
+		ok := Golden("scatter matches plot_golden/scatter.svg", svg, "plot_golden/scatter.svg") & ok;
+		ok := Report("scatter: the same data renders the same bytes", fig->ToSvg()->Equals(svg)) & ok;
+
+		# control: one changed value must change the bytes, so the golden can fail
+		yc := Series(10, 0.5, 1.0);
+		yc[4] := yc[4] + 1.0;
+		fig2 := Figure->New(800, 480);
+		fig2->GetAxes()->SetTitle("Two clusters");
+		fig2->GetAxes()->SetXLabel("feature 1");
+		fig2->GetAxes()->SetYLabel("feature 2");
+		fig2->GetAxes()->Scatter("class A", xs, yc);
+		fig2->GetAxes()->Scatter("class B", xs, yb);
+		ok := Report("scatter: control: a changed point changes the bytes", <>fig2->ToSvg()->Equals(svg)) & ok;
+
+		return ok;
+	}
+
+	function : ScatterColorSize() ~ Bool {
+		ok := true;
+		xs := Series(8, 1.0, 0.0);
+		ys := Series(8, 0.6, 2.0);
+		score := Float->New[8];
+		area := Float->New[8];
+		each(i : 8) {
+			score[i] := i->As(Float) * 0.5;
+			area[i] := ((i * 3) % 4)->As(Float);
+		};
+
+		fig := Figure->New(640, 420);
+		ax := fig->GetAxes();
+		ax->SetXLabel("x");
+		ax->SetYLabel("y");
+		ax->Scatter("", xs, ys, score, area);
+		svg := fig->ToSvg();
+
+		root := Parse(svg);
+		if(root <> Nil) {
+			ok := Report("scatter c/s: one circle per point", CountClass(root, "circle", "marker") = 8) & ok;
+			ok := Report("scatter c/s: a color bar of 48 steps plus its frame", CountClass(root, "rect", "colorbar") = 49) & ok;
+			ok := Report("scatter c/s: the color bar is labelled with the score range", Texts(root)->Has("|0|") & Texts(root)->Has("|3|")) & ok;
+			ok := Report("scatter c/s: no legend box for an unnamed series", CountClass(root, "rect", "legend") = 0) & ok;
+			ok := Report("scatter c/s: every coordinate lies inside the viewport", InsideViewport(root, 640.0, 420.0)) & ok;
+			radii := Radii(root);
+			ok := Report("scatter c/s: marker radius follows the size column (2 to 9 px)", radii->Has("|2.0|") & radii->Has("|9.0|")) & ok;
+		}
+		else {
+			ok := false;
+		};
+		ok := Golden("scatter c/s matches plot_golden/scatter_color_size.svg", svg, "plot_golden/scatter_color_size.svg") & ok;
+
+		score[3] := 9.0;
+		fig2 := Figure->New(640, 420);
+		fig2->GetAxes()->SetXLabel("x");
+		fig2->GetAxes()->SetYLabel("y");
+		fig2->GetAxes()->Scatter("", xs, ys, score, area);
+		ok := Report("scatter c/s: control: a changed color value changes the bytes", <>fig2->ToSvg()->Equals(svg)) & ok;
+
+		return ok;
+	}
+
+	function : Histogram() ~ Bool {
+		ok := true;
+		# 15 values; five bins over [1, 5] have edges 1, 1.8, 2.6, 3.4, 4.2, 5
+		values := [1.0, 2.0, 2.0, 3.0, 3.0, 3.0, 4.0, 4.0, 4.0, 4.0, 5.0, 5.0, 5.0, 5.0, 5.0];
+
+		edges := PlotMath->BinEdges(1.0, 5.0, 5);
+		counts := PlotMath->BinCounts(values, edges);
+		ok := Report("hist: counts are 1, 2, 3, 4, 5 (the top edge is in the last bin)",
+			counts[0] = 1 & counts[1] = 2 & counts[2] = 3 & counts[3] = 4 & counts[4] = 5) & ok;
+		ok := Report("hist: the last edge is exactly the maximum", edges[5] = 5.0) & ok;
+
+		out := [0.0, 9.0, 3.0];
+		oc := PlotMath->BinCounts(out, edges);
+		total := oc[0] + oc[1] + oc[2] + oc[3] + oc[4];
+		ok := Report("hist: values outside the edges are not counted", total = 1) & ok;
+
+		fig := Figure->New(640, 400);
+		ax := fig->GetAxes();
+		ax->SetTitle("Values");
+		ax->SetXLabel("value");
+		ax->SetYLabel("count");
+		ax->Hist("data", values, 5);
+		svg := fig->ToSvg();
+
+		root := Parse(svg);
+		if(root <> Nil) {
+			ok := Report("hist: one rect per bin", CountClass(root, "rect", "bar") = 5) & ok;
+			ok := Report("hist: every coordinate lies inside the viewport", InsideViewport(root, 640.0, 400.0)) & ok;
+		}
+		else {
+			ok := false;
+		};
+		heights := ax->GetArtist(0)->GetYs();
+		ok := Report("hist: the artist holds the counts as heights", heights[0] = 1.0 & heights[4] = 5.0) & ok;
+		ok := Golden("hist matches plot_golden/hist.svg", svg, "plot_golden/hist.svg") & ok;
+
+		changed := [1.0, 2.0, 2.0, 3.0, 3.0, 3.0, 4.0, 4.0, 4.0, 4.0, 5.0, 5.0, 5.0, 5.0, 1.0];
+		fig2 := Figure->New(640, 400);
+		fig2->GetAxes()->SetTitle("Values");
+		fig2->GetAxes()->SetXLabel("value");
+		fig2->GetAxes()->SetYLabel("count");
+		fig2->GetAxes()->Hist("data", changed, 5);
+		ok := Report("hist: control: a moved value changes the bytes", <>fig2->ToSvg()->Equals(svg)) & ok;
+
+		# the automatic rule is Sturges: ceil(log2 n) + 1 bins, so 16 values give 5
+		sixteen := Series(16, 1.0, 0.0);
+		auto := Figure->New(400, 300);
+		auto->GetAxes()->Hist("", sixteen, 0);
+		ok := Report("hist: bins = 0 uses Sturges' rule (16 values -> 5 bins)", auto->GetAxes()->GetArtist(0)->GetYs()->Size() = 5) & ok;
+
+		same := [2.0, 2.0, 2.0];
+		flat := Figure->New(400, 300);
+		flat->GetAxes()->Hist("", same, 3);
+		fc := flat->GetAxes()->GetArtist(0)->GetYs();
+		ok := Report("hist: identical values still draw (the range is widened)", fc[0] + fc[1] + fc[2] = 3.0) & ok;
+
+		return ok;
+	}
+
+	function : Density() ~ Bool {
+		ok := true;
+		values := Series(40, 0.5, 0.0);
+		fig := Figure->New(640, 400);
+		ax := fig->GetAxes();
+		ax->SetYLabel("density");
+		ax->Hist("d", values, 8, true);
+		art := ax->GetArtist(0);
+		h := art->GetYs();
+		e := art->GetEdges();
+		area := 0.0;
+		each(i : h) {
+			area += h[i] * (e[i + 1] - e[i]);
+		};
+		ok := Report("density: the histogram's area is 1", (area - 1.0)->Abs() < 0.000000001) & ok;
+		ok := Golden("density matches plot_golden/hist_density.svg", fig->ToSvg(), "plot_golden/hist_density.svg") & ok;
+
+		return ok;
+	}
+
+	function : LineAndBars() ~ Bool {
+		ok := true;
+		names := ["Mon", "Tue", "Wed", "Thu"];
+		a := [3.0, 5.0, 4.0, 6.0];
+		b := [2.0, 4.5, 5.0, 3.0];
+
+		fig := Figure->New(640, 400);
+		ax := fig->GetAxes();
+		ax->SetTitle("Sales");
+		ax->SetYLabel("units");
+		ax->SetCategories(names);
+		ax->Bar("north", a);
+		ax->Bar("south", b);
+		svg := fig->ToSvg();
+
+		root := Parse(svg);
+		if(root <> Nil) {
+			ok := Report("bars: one rect per bar per series (8)", CountClass(root, "rect", "bar") = 8) & ok;
+			ok := Report("bars: the categories are the x ticks", Texts(root)->Has("|Mon|") & Texts(root)->Has("|Thu|")) & ok;
+			ok := Report("bars: every coordinate lies inside the viewport", InsideViewport(root, 640.0, 400.0)) & ok;
+		}
+		else {
+			ok := false;
+		};
+		ok := Golden("bars match plot_golden/bars.svg", svg, "plot_golden/bars.svg") & ok;
+
+		a2 := [3.0, 5.0, 4.0, 7.0];
+		fig2 := Figure->New(640, 400);
+		fig2->GetAxes()->SetTitle("Sales");
+		fig2->GetAxes()->SetYLabel("units");
+		fig2->GetAxes()->SetCategories(names);
+		fig2->GetAxes()->Bar("north", a2);
+		fig2->GetAxes()->Bar("south", b);
+		ok := Report("bars: control: a changed height changes the bytes", <>fig2->ToSvg()->Equals(svg)) & ok;
+
+		xs := [1.0, 2.0, 3.0, 4.0, 5.0];
+		ys := [1.0, 4.0, 9.0, 16.0, 25.0];
+		fl := Figure->New(640, 400);
+		fl->GetAxes()->Plot("squares", xs, ys);
+		lroot := Parse(fl->ToSvg());
+		ok := Report("line: one polyline for one series", lroot <> Nil & CountClass(lroot, "polyline", "line") = 1) & ok;
+		ok := Golden("line matches plot_golden/line.svg", fl->ToSvg(), "plot_golden/line.svg") & ok;
+
+		return ok;
+	}
+
+	function : LogAxes() ~ Bool {
+		ok := true;
+		xs := [0.001, 0.01, 0.1, 1.0, 10.0];
+		ys := [3.0, 30.0, 300.0, 3000.0, 30000.0];
+
+		fig := Figure->New(640, 400);
+		ax := fig->GetAxes();
+		ax->SetLogX(true);
+		ax->SetLogY(true);
+		ax->SetXLabel("C");
+		ax->SetYLabel("time");
+		ax->Scatter("runs", xs, ys);
+		svg := fig->ToSvg();
+
+		root := Parse(svg);
+		if(root <> Nil) {
+			ok := Report("log: x ticks are the decades", Texts(root)->Has("|0.001|") & Texts(root)->Has("|10|")) & ok;
+			ok := Report("log: y ticks are the decades", Texts(root)->Has("|1000|") & Texts(root)->Has("|100000|")) & ok;
+			ok := Report("log: the markers are evenly spaced (equal ratios)", EvenlySpaced(root)) & ok;
+			ok := Report("log: every coordinate lies inside the viewport", InsideViewport(root, 640.0, 400.0)) & ok;
+		}
+		else {
+			ok := false;
+		};
+		ok := Golden("log axes match plot_golden/log.svg", svg, "plot_golden/log.svg") & ok;
+
+		return ok;
+	}
+
+	function : Subplots() ~ Bool {
+		ok := true;
+		xs := Series(12, 1.0, 0.0);
+		ys := Series(12, 0.7, 1.0);
+
+		fig := Figure->New(800, 600);
+		fig->SetTitle("Four views");
+		fig->Subplots(2, 2);
+		fig->GetAxes(0, 0)->SetTitle("scatter");
+		fig->GetAxes(0, 0)->Scatter("", xs, ys);
+		fig->GetAxes(0, 1)->SetTitle("line");
+		fig->GetAxes(0, 1)->Plot("", xs, ys);
+		fig->GetAxes(1, 0)->SetTitle("hist");
+		fig->GetAxes(1, 0)->Hist("", ys, 4);
+		fig->GetAxes(1, 1)->SetTitle("bars");
+		fig->GetAxes(1, 1)->SetCategories(["a", "b"]);
+		fig->GetAxes(1, 1)->Bar("", [2.0, 3.0]);
+		svg := fig->ToSvg();
+
+		root := Parse(svg);
+		if(root <> Nil) {
+			ok := Report("subplots: four clip regions, one per axes", Count(root, "clipPath") = 4) & ok;
+			ok := Report("subplots: the figure title and all four axes titles are present",
+				Texts(root)->Has("|Four views|") & Texts(root)->Has("|scatter|") & Texts(root)->Has("|line|") & Texts(root)->Has("|hist|") & Texts(root)->Has("|bars|")) & ok;
+			ok := Report("subplots: every coordinate lies inside the viewport", InsideViewport(root, 800.0, 600.0)) & ok;
+		}
+		else {
+			ok := false;
+		};
+		ok := Golden("subplots match plot_golden/subplots.svg", svg, "plot_golden/subplots.svg") & ok;
+
+		return ok;
+	}
+
+	# the scene is what a second backend would draw
+	function : SceneModel() ~ Bool {
+		ok := true;
+		xs := [1.0, 2.0, 3.0];
+		ys := [1.0, 2.0, 3.0];
+		fig := Figure->New(400, 300);
+		fig->GetAxes()->Scatter("s", xs, ys);
+		scene := fig->ToScene();
+
+		ok := Report("scene: it carries the canvas size", scene->GetWidth() = 400 & scene->GetHeight() = 300) & ok;
+		ok := Report("scene: three markers", scene->Count("marker") = 3) & ok;
+		ok := Report("scene: the first primitive is the background rect", scene->Get(0)->GetKind() = PrimitiveKind->RECT & scene->Get(0)->GetTag()->Equals("background")) & ok;
+
+		begins := 0;
+		ends := 0;
+		each(i : scene->Size()) {
+			if(scene->Get(i)->GetKind() = PrimitiveKind->CLIP_BEGIN) {
+				begins += 1;
+			};
+			if(scene->Get(i)->GetKind() = PrimitiveKind->CLIP_END) {
+				ends += 1;
+			};
+		};
+		ok := Report("scene: clip begins and ends balance", begins = 1 & ends = 1) & ok;
+
+		path := Runtime->GetTempDir() + "/plot_svg_test.svg";
+		ok := Report("Save writes the SVG", fig->Save(path) & FileReader->ReadFile(path)->Equals(fig->ToSvg())) & ok;
+		File->Delete(path);
+
+		escaped := Figure->New(300, 200);
+		escaped->GetAxes()->SetTitle("a<b & \"c\"");
+		escaped->GetAxes()->Plot("", xs, ys);
+		text := escaped->ToSvg();
+		ok := Report("text is XML-escaped", text->Has("a&lt;b &amp; &quot;c&quot;") & Parse(text) <> Nil) & ok;
+
+		return ok;
+	}
+
+	function : Refusals() ~ Bool {
+		ok := true;
+		ok := Report("an empty axes is refused", Refuses(1)) & ok;
+		ok := Report("mismatched xs and ys are refused", Refuses(2)) & ok;
+		ok := Report("a NaN value is refused", Refuses(3)) & ok;
+		ok := Report("a log axis with a non-positive value is refused", Refuses(4)) & ok;
+		ok := Report("bars without categories are refused", Refuses(5)) & ok;
+		ok := Report("a color column of the wrong length is refused", Refuses(6)) & ok;
+		ok := Report("a tiny figure is refused", Refuses(7)) & ok;
+		ok := Report("an empty histogram is refused", Refuses(8)) & ok;
+		ok := Report("an inverted axis limit is refused", Refuses(9)) & ok;
+		ok := Report("a subplot outside the grid is refused", Refuses(10)) & ok;
+		ok := Report("an infinite value is refused", Refuses(11)) & ok;
+
+		return ok;
+	}
+
+	function : Refuses(which : Int) ~ Bool {
+		refused := false;
+		xs := [0.0, 1.0];
+		neg := -1.0;
+		not_a_number := Float->Sqrt(neg);
+		big := 1.0e308;
+		infinity := big * 10.0;
+		try {
+			fig := Figure->New(400, 300);
+			ax := fig->GetAxes();
+			select(which) {
+				label 1: { fig->ToSvg(); }
+				label 2: { ax->Plot("s", xs, [1.0, 2.0, 3.0]); }
+				label 3: { ax->Scatter("s", xs, [1.0, not_a_number]); }
+				label 4: { ax->SetLogX(true); ax->Plot("s", xs, xs); fig->ToSvg(); }
+				label 5: { ax->Bar("s", xs); }
+				label 6: { ax->Scatter("s", xs, xs, [1.0], Nil->As(Float[])); }
+				label 7: { Figure->New(10, 10); }
+				label 8: { ax->Hist("s", Float->New[0], 3); }
+				label 9: { ax->SetXLim(2.0, 1.0); }
+				label 10: { fig->GetAxes(3, 3); }
+				label 11: { ax->Plot("s", xs, [1.0, infinity]); }
+			};
+		}
+		on(e : PlotError) {
+			refused := true;
+		};
+
+		return refused;
+	}
+
+	function : Parse(svg : String) ~ XmlElement {
+		parser := XmlParser->New(svg);
+		if(<>parser->Parse()) {
+			err := parser->GetError();
+			"  xml error: {$err}"->PrintLine();
+			return Nil;
+		};
+
+		return parser->GetRoot();
+	}
+
+	# decoded: the parser keeps attribute values encoded (a space is "&#x20;")
+	function : Attr(e : XmlElement, name : String) ~ String {
+		a := e->GetAttribute(name);
+		if(a = Nil) {
+			return "";
+		};
+
+		return a->GetDecodedValue();
+	}
+
+	function : Count(e : XmlElement, name : String) ~ Int {
+		n := 0;
+		if(e->GetName() <> Nil & e->GetName()->Equals(name)) {
+			n += 1;
+		};
+		each(i : e->Size()) {
+			n += Count(e->Get(i), name);
+		};
+
+		return n;
+	}
+
+	function : CountClass(e : XmlElement, name : String, class_name : String) ~ Int {
+		n := 0;
+		if(e->GetName() <> Nil & e->GetName()->Equals(name) & Attr(e, "class")->Equals(class_name)) {
+			n += 1;
+		};
+		each(i : e->Size()) {
+			n += CountClass(e->Get(i), name, class_name);
+		};
+
+		return n;
+	}
+
+	# every text node's content, each wrapped in bars, so a label can be looked for
+	function : Texts(e : XmlElement) ~ String {
+		out := "";
+		if(e->GetName() <> Nil & (e->GetName()->Equals("text") | e->GetName()->Equals("title")) & e->GetContent() <> Nil) {
+			out += "|";
+			out += e->GetContent();
+			out += "|";
+		};
+		each(i : e->Size()) {
+			out += Texts(e->Get(i));
+		};
+
+		return out;
+	}
+
+	# the r of every marker, each wrapped in bars
+	function : Radii(e : XmlElement) ~ String {
+		out := "";
+		if(e->GetName() <> Nil & e->GetName()->Equals("circle")) {
+			out += "|";
+			out += Attr(e, "r");
+			out += "|";
+		};
+		each(i : e->Size()) {
+			out += Radii(e->Get(i));
+		};
+
+		return out;
+	}
+
+	# marker x positions on a log axis whose points are 10x apart must be equally spaced
+	function : EvenlySpaced(root : XmlElement) ~ Bool {
+		xs := Vector->New()<FloatRef>;
+		Gather(root, xs);
+		if(xs->Size() < 3) {
+			return false;
+		};
+
+		step := xs->Get(1)->Get() - xs->Get(0)->Get();
+		gaps := xs->Size() - 1;
+		each(i : gaps) {
+			if(((xs->Get(i + 1)->Get() - xs->Get(i)->Get()) - step)->Abs() > 0.2) {
+				return false;
+			};
+		};
+
+		return step > 50.0;
+	}
+
+	function : Gather(e : XmlElement, xs : Vector<FloatRef>) ~ Nil {
+		if(e->GetName() <> Nil & e->GetName()->Equals("circle")) {
+			xs->AddBack(FloatRef->New(Attr(e, "cx")->ToFloat()));
+		};
+		each(i : e->Size()) {
+			Gather(e->Get(i), xs);
+		};
+	}
+
+	function : InsideViewport(e : XmlElement, w : Float, h : Float) ~ Bool {
+		ok := true;
+		name := e->GetName();
+		if(name <> Nil) {
+			if(name->Equals("circle")) {
+				ok := Within(Attr(e, "cx"), 0.0, w) & Within(Attr(e, "cy"), 0.0, h);
+			}
+			else if(name->Equals("rect")) {
+				# bars may run past the clip, which cuts them; the page-level rects must fit
+				ok := Within(Attr(e, "x"), -1.0e9, 1.0e9) & Within(Attr(e, "width"), 0.0, 1.0e9);
+			}
+			else if(name->Equals("line")) {
+				ok := Within(Attr(e, "x1"), 0.0, w) & Within(Attr(e, "x2"), 0.0, w) &
+					Within(Attr(e, "y1"), 0.0, h) & Within(Attr(e, "y2"), 0.0, h);
+			}
+			else if(name->Equals("text")) {
+				ok := Within(Attr(e, "x"), 0.0, w) & Within(Attr(e, "y"), 0.0, h);
+			};
+			if(<>ok) {
+				"  outside the viewport: {$name}"->PrintLine();
+			};
+		};
+
+		each(i : e->Size()) {
+			if(<>InsideViewport(e->Get(i), w, h)) {
+				ok := false;
+			};
+		};
+
+		return ok;
+	}
+
+	function : Within(text : String, lo : Float, hi : Float) ~ Bool {
+		if(text = Nil | text->Size() = 0) {
+			return false;
+		};
+
+		v := text->ToFloat();
+		return v >= lo & v <= hi;
+	}
+
+	function : Golden(name : String, actual : String, path : String) ~ Bool {
+		if(@update) {
+			FileWriter->WriteFile(path, actual);
+			"UPDATED: {$path}"->PrintLine();
+			return true;
+		};
+
+		expected := FileReader->ReadFile(path);
+		if(expected = Nil) {
+			"FAIL: {$name} (golden file missing)"->PrintLine();
+			return false;
+		};
+
+		expected := expected->ReplaceAll("\r", "");
+		if(actual->Equals(expected)) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		"--- actual ---"->PrintLine();
+		actual->PrintLine();
+		return false;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}

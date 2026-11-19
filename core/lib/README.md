@@ -32,6 +32,7 @@ Each library typically consists of:
 - **ml_embed.obs** - `EmbeddingClassifier`, a trainable head over fixed-size embeddings
 - **ml_lab.obs** - Experiment support for parameter sweeps (`System.ML.Lab`): splits, resampling, sweep runner, result tables, SVG charts. Its own library, `ml_lab.obl`
 - **ml_vector.obs** - Local vector index (`System.ML.VectorSearch`): `VectorIndex` with exact cosine, dot and L2 top-k search, `Store`/`Load`. Its own library, `ml_vector.obl`, which needs only `gen_collect`
+- **plot.obs** - Plotting (`System.Plot`): `Figure` and `Axes` with scatter (colored and sized by columns), histogram, line, bar, log axes and subplots, written as standalone deterministic SVG. Its own library, `plot.obl`, which needs only `gen_collect` and no display
 - **ai_search.obs** - Graph search: Dijkstra, A*, BFS, DFS
 - **ai_game.obs** - Adversarial game search: Minimax, Monte Carlo Tree Search
 - **ai_optimize.obs** - Optimization: GeneticAlgorithm, SimulatedAnnealing, HillClimbing
