@@ -42,6 +42,9 @@ def main():
         print("# --- %s %s: %d terms, corpus %r" % (name, kw, len(terms), docs))
         print("terms_%s := %s;" % (name, lit(terms, lambda t: '"%s"' % t)))
         print("idf_%s := %s;" % (name, lit(v.idf_, lambda x: repr(float(x)))))
+        # fit_transform of the corpus itself, row-major: what FitTransform must give
+        rows = v.transform(docs).toarray().flatten()
+        print("rows_%s := %s;" % (name, lit(rows, lambda x: repr(float(x)))))
         for qi, q in enumerate(QUERIES):
             row = v.transform([q]).toarray()[0]
             print("vec%d_%s := %s;" % (qi, name, lit(row, lambda x: repr(float(x)))))
