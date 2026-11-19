@@ -1,0 +1,9 @@
+p-values
+========
+model                p              t
+-----  ---------------  -------------
+a      0.500 +/- 0.100  2.00 +/- 0.25
+b                  n/a            n/a
+c                  n/a   1.50 +/- n/a
+
+missing = degenerate fit

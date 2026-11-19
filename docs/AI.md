@@ -1465,6 +1465,8 @@ c->Save("recall_vs_c.svg");
 loss := Chart->LossCurve("Training loss", ["lr=0.1", "lr=0.01"], losses);  # rows = series, columns = epochs
 ```
 
+A cell, a deviation or a chart point that is NaN or infinite is a missing value, not a number: `System.Stats` returns NaN by design (a degenerate fit has no p-value), and it can flow straight into a `ResultTable`. `ToText` and `ToMarkdown` write `n/a`, `ToCsv` writes an empty field, `ToJson` writes `null` (so the document is valid JSON), and `FromCsv` and `FromJson` read an empty field or `null` back as NaN (an infinity does not come back: it becomes NaN). A `Chart` skips a point whose x or y is not finite, breaks the line there, and draws no error bar for a non-finite error; a series with no finite point draws nothing. Finite values are written exactly as before. `ResultTable->IsFinite(v)` is the test.
+
 ---
 
 ### Local vector search (System.ML.VectorSearch)

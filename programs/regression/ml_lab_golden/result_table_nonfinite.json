@@ -1,0 +1,1 @@
+{"columns":["p","t"],"footnote":"missing = degenerate fit","parameter":"model","precision":[3,2],"rows":[{"cells":{"p":0.5,"t":2},"name":"a","stds":{"p":0.1,"t":0.25},"value":1},{"cells":{"p":null,"t":null},"name":"b","stds":{"p":null,"t":0.5},"value":2},{"cells":{"p":null,"t":1.5},"name":"c","stds":{"p":0.2,"t":null},"value":3}],"title":"p-values"}
