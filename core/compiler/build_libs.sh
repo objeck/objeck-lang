@@ -32,6 +32,8 @@ $OBC -src lib_src/ml_core.obs,lib_src/ml_linear.obs,lib_src/ml_tree.obs,lib_src/
 $OBC -src lib_src/ml_lab.obs -lib gen_collect,csv,json,ml -tar lib -opt s3 -dest ../lib/ml_lab.obl
 # Local vector index (exact cosine / dot / L2 search). Needs only gen_collect, so it is built apart from ml.obl
 $OBC -src lib_src/ml_vector.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ml_vector.obl
+# Plotting: scatter, histogram, line and bar charts as SVG. Needs only gen_collect, no display, no SDL
+$OBC -src lib_src/plot.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/plot.obl
 $OBC -src lib_src/ai_search.obs,lib_src/ai_game.obs,lib_src/ai_optimize.obs,lib_src/ai_rl.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ai.obl
 $OBC -src lib_src/nlp.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/nlp.obl
 # Text embeddings from BERT-family ONNX models. A library of its own, after both nlp

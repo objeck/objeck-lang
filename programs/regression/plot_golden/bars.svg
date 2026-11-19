@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="640" height="400" viewBox="0 0 640 400" font-family="sans-serif" font-size="12">
+<title></title>
+<rect x="0.0" y="0.0" width="640.0" height="400.0" fill="#ffffff" class="background"/>
+<line x1="64.0" y1="352.0" x2="624.0" y2="352.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="356.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">0</text>
+<line x1="64.0" y1="245.3" x2="624.0" y2="245.3" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="249.3" fill="#333333" font-size="12" text-anchor="end" class="ytick">2</text>
+<line x1="64.0" y1="138.7" x2="624.0" y2="138.7" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="142.7" fill="#333333" font-size="12" text-anchor="end" class="ytick">4</text>
+<line x1="64.0" y1="32.0" x2="624.0" y2="32.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="36.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">6</text>
+<text x="134.0" y="370.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">Mon</text>
+<text x="274.0" y="370.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">Tue</text>
+<text x="414.0" y="370.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">Wed</text>
+<text x="554.0" y="370.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">Thu</text>
+<clipPath id="clip0"><rect x="64.0" y="32.0" width="560.0" height="320.0"/></clipPath>
+<g clip-path="url(#clip0)">
+<rect x="85.0" y="192.0" width="49.0" height="160.0" fill="#1f77b4" class="bar"/>
+<rect x="225.0" y="85.3" width="49.0" height="266.7" fill="#1f77b4" class="bar"/>
+<rect x="365.0" y="138.7" width="49.0" height="213.3" fill="#1f77b4" class="bar"/>
+<rect x="505.0" y="32.0" width="49.0" height="320.0" fill="#1f77b4" class="bar"/>
+<rect x="134.0" y="245.3" width="49.0" height="106.7" fill="#ff7f0e" class="bar"/>
+<rect x="274.0" y="112.0" width="49.0" height="240.0" fill="#ff7f0e" class="bar"/>
+<rect x="414.0" y="85.3" width="49.0" height="266.7" fill="#ff7f0e" class="bar"/>
+<rect x="554.0" y="192.0" width="49.0" height="160.0" fill="#ff7f0e" class="bar"/>
+</g>
+<line x1="64.0" y1="32.0" x2="64.0" y2="352.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<line x1="64.0" y1="352.0" x2="624.0" y2="352.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<text x="18.0" y="192.0" fill="#000000" font-size="13" text-anchor="middle" transform="rotate(-90.0 18.0 192.0)" class="ylabel">units</text>
+<text x="344.0" y="22.0" fill="#000000" font-size="16" text-anchor="middle" font-weight="bold" class="title">Sales</text>
+<rect x="542.0" y="36.0" width="74.0" height="48.0" fill="#ffffff" fill-opacity="0.85" stroke="#cccccc" stroke-width="1.0" class="legend"/>
+<rect x="550.0" y="42.0" width="12.0" height="12.0" fill="#1f77b4" class="legend"/>
+<text x="568.0" y="52.0" fill="#333333" font-size="12" class="legend">north</text>
+<rect x="550.0" y="60.0" width="12.0" height="12.0" fill="#ff7f0e" class="legend"/>
+<text x="568.0" y="70.0" fill="#333333" font-size="12" class="legend">south</text>
+</svg>
