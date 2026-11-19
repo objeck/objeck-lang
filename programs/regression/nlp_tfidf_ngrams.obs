@@ -1,0 +1,241 @@
+# EXTRA_LIBS: nlp,gen_collect
+#~
+System.NLP TF_IDF n-grams, min_df and max_features, checked against scikit-learn.
+
+The expected vocabularies, IDF values and TF-IDF vectors were computed by scikit-learn's
+TfidfVectorizer (token_pattern r"(?u)\b\w+\b", default smooth_idf and L2 norm) in
+data/nlp/gen_tfidf_expected.py, whose output is pasted below; the generator documents the
+scikit-learn version. For each configuration (unigrams, unigrams+bigrams, unigrams+trigrams,
+bigrams only, min_df 2, max_features 2) the test fits the same corpus and compares every term's
+IDF and every entry of the transform of two query documents, plus the vocabulary size (so no
+extra term is kept and none is missing). Then the degenerate inputs: an invalid n-gram range
+(min_n > max_n, min_n < 1), a Nil or empty corpus, Nil and empty documents, and the older
+constructor calls, which must behave as before.
+~#
+use System.NLP, Collection;
+
+class NlpTfIdfNgrams {
+	@failures : static : Int;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			@failures += 1;
+			"FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return Float->Abs(a - b) < 0.000000001;
+	}
+
+	function : Norm2(v : Float[]) ~ Float {
+		sum := 0.0;
+		each(i : v) {
+			sum += v[i] * v[i];
+		};
+		return sum;
+	}
+
+	function : Docs() ~ String[] {
+		return ["the cat sat on the mat", "the dog sat on the log", "cats and dogs are pets", "the cat and the dog"];
+	}
+
+	function : MaxDocs() ~ String[] {
+		return ["a a a b b c", "a b d", "a e"];
+	}
+
+	# one configuration against scikit-learn's numbers
+	function : Verify(name : String, t : TF_IDF, docs : String[], terms : String[], idf : Float[], v0 : Float[], v1 : Float[]) ~ Nil {
+		Check(t->IsValid(), "{$name}: the settings are valid");
+		t->Fit(docs);
+		vocab := t->GetVocabulary();
+		Check(t->GetVocabularySize() = terms->Size(), "{$name}: vocabulary has {$terms->Size()} terms (got {$t->GetVocabularySize()})");
+
+		got_idf := t->GetIdf();
+		q0 := t->Transform("The cat sat, the dog sat!");
+		q1 := t->Transform("a cat and a dog on the mat today");
+		Check(q0->Size() = terms->Size() & q1->Size() = terms->Size(), "{$name}: vectors have one entry per term");
+
+		missing := 0;
+		idf_bad := 0;
+		v0_bad := 0;
+		v1_bad := 0;
+		each(i : terms) {
+			slot := vocab->Find(terms[i]);
+			if(slot = Nil) {
+				missing += 1;
+			}
+			else {
+				at := slot->Get();
+				if(<>Near(got_idf[at], idf[i])) {
+					idf_bad += 1;
+				};
+				if(<>Near(q0[at], v0[i])) {
+					v0_bad += 1;
+				};
+				if(<>Near(q1[at], v1[i])) {
+					v1_bad += 1;
+				};
+			};
+		};
+		Check(missing = 0, "{$name}: every scikit-learn term is in the vocabulary ({$missing} missing)");
+		Check(idf_bad = 0, "{$name}: IDF matches scikit-learn ({$idf_bad} differ)");
+		Check(v0_bad = 0, "{$name}: first query vector matches scikit-learn ({$v0_bad} differ)");
+		Check(v1_bad = 0, "{$name}: second query vector matches scikit-learn ({$v1_bad} differ)");
+	}
+
+	# --- unigrams ('ngram_range': (1, 1)): 12 terms, corpus ['the cat sat on the mat', 'the dog sat on the log', 'cats and dogs are pets', 'the cat and the dog']
+	function : Config_unigrams() ~ Nil {
+		terms_unigrams := ["and", "are", "cat", "cats", "dog", "dogs", "log", "mat", "on", "pets", "sat", "the"];
+		idf_unigrams := [1.5108256237659907, 1.916290731874155, 1.5108256237659907, 1.916290731874155, 1.5108256237659907, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.5108256237659907, 1.916290731874155, 1.5108256237659907, 1.2231435513142097];
+		vec0_unigrams := [0.0, 0.0, 0.3405673922742962, 0.0, 0.3405673922742962, 0.0, 0.0, 0.0, 0.0, 0.0, 0.6811347845485924, 0.5514373109582936];
+		vec1_unigrams := [0.39954636119280595, 0.0, 0.39954636119280595, 0.0, 0.39954636119280595, 0.0, 0.0, 0.5067738969102946, 0.39954636119280595, 0.0, 0.0, 0.32346721385745636];
+		Verify("unigrams", TF_IDF->New(), Docs(), terms_unigrams, idf_unigrams, vec0_unigrams, vec1_unigrams);
+	}
+
+	# --- bigrams ('ngram_range': (1, 2)): 26 terms, corpus ['the cat sat on the mat', 'the dog sat on the log', 'cats and dogs are pets', 'the cat and the dog']
+	function : Config_bigrams() ~ Nil {
+		terms_bigrams := ["and", "and dogs", "and the", "are", "are pets", "cat", "cat and", "cat sat", "cats", "cats and", "dog", "dog sat", "dogs", "dogs are", "log", "mat", "on", "on the", "pets", "sat", "sat on", "the", "the cat", "the dog", "the log", "the mat"];
+		idf_bigrams := [1.5108256237659907, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.5108256237659907, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.5108256237659907, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.5108256237659907, 1.5108256237659907, 1.916290731874155, 1.5108256237659907, 1.5108256237659907, 1.2231435513142097, 1.5108256237659907, 1.5108256237659907, 1.916290731874155, 1.916290731874155];
+		vec0_bigrams := [0.0, 0.0, 0.0, 0.0, 0.0, 0.26880884874922956, 0.0, 0.34094993982157645, 0.0, 0.0, 0.26880884874922956, 0.34094993982157645, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5376176974984591, 0.0, 0.43524786012597166, 0.26880884874922956, 0.26880884874922956, 0.0, 0.0];
+		vec1_bigrams := [0.3088753689510832, 0.0, 0.0, 0.0, 0.0, 0.3088753689510832, 0.39176924028450855, 0.0, 0.0, 0.0, 0.3088753689510832, 0.0, 0.0, 0.0, 0.0, 0.39176924028450855, 0.3088753689510832, 0.3088753689510832, 0.0, 0.0, 0.0, 0.25006123125618324, 0.0, 0.0, 0.0, 0.39176924028450855];
+		Verify("bigrams", TF_IDF->New(min_n : 1, max_n : 2), Docs(), terms_bigrams, idf_bigrams, vec0_bigrams, vec1_bigrams);
+	}
+
+	# --- trigrams ('ngram_range': (1, 3)): 39 terms, corpus ['the cat sat on the mat', 'the dog sat on the log', 'cats and dogs are pets', 'the cat and the dog']
+	function : Config_trigrams() ~ Nil {
+		terms_trigrams := ["and", "and dogs", "and dogs are", "and the", "and the dog", "are", "are pets", "cat", "cat and", "cat and the", "cat sat", "cat sat on", "cats", "cats and", "cats and dogs", "dog", "dog sat", "dog sat on", "dogs", "dogs are", "dogs are pets", "log", "mat", "on", "on the", "on the log", "on the mat", "pets", "sat", "sat on", "sat on the", "the", "the cat", "the cat and", "the cat sat", "the dog", "the dog sat", "the log", "the mat"];
+		idf_trigrams := [1.5108256237659907, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.5108256237659907, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.5108256237659907, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.5108256237659907, 1.5108256237659907, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.5108256237659907, 1.5108256237659907, 1.5108256237659907, 1.2231435513142097, 1.5108256237659907, 1.916290731874155, 1.916290731874155, 1.5108256237659907, 1.916290731874155, 1.916290731874155, 1.916290731874155];
+		vec0_trigrams := [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.24213145001803563, 0.0, 0.0, 0.30711304221080593, 0.0, 0.0, 0.0, 0.0, 0.24213145001803563, 0.30711304221080593, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.48426290003607125, 0.0, 0.0, 0.3920525532545391, 0.24213145001803563, 0.0, 0.30711304221080593, 0.24213145001803563, 0.30711304221080593, 0.0, 0.0];
+		vec1_trigrams := [0.2875925635990262, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.2875925635990262, 0.3647747003436467, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.2875925635990262, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3647747003436467, 0.2875925635990262, 0.2875925635990262, 0.0, 0.3647747003436467, 0.0, 0.0, 0.0, 0.0, 0.23283096608808587, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3647747003436467];
+		Verify("trigrams", TF_IDF->New(min_n : 1, max_n : 3), Docs(), terms_trigrams, idf_trigrams, vec0_trigrams, vec1_trigrams);
+	}
+
+	# --- only_bigrams ('ngram_range': (2, 2)): 14 terms, corpus ['the cat sat on the mat', 'the dog sat on the log', 'cats and dogs are pets', 'the cat and the dog']
+	function : Config_only_bigrams() ~ Nil {
+		terms_only_bigrams := ["and dogs", "and the", "are pets", "cat and", "cat sat", "cats and", "dog sat", "dogs are", "on the", "sat on", "the cat", "the dog", "the log", "the mat"];
+		idf_only_bigrams := [1.916290731874155, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.916290731874155, 1.5108256237659907, 1.5108256237659907, 1.5108256237659907, 1.5108256237659907, 1.916290731874155, 1.916290731874155];
+		vec0_only_bigrams := [0.0, 0.0, 0.0, 0.0, 0.5552826649411127, 0.0, 0.5552826649411127, 0.0, 0.0, 0.0, 0.43779123108611473, 0.43779123108611473, 0.0, 0.0];
+		vec1_only_bigrams := [0.0, 0.0, 0.0, 0.6176143709756019, 0.0, 0.0, 0.0, 0.0, 0.48693426407352264, 0.0, 0.0, 0.0, 0.0, 0.6176143709756019];
+		Verify("only_bigrams", TF_IDF->New(min_n : 2, max_n : 2), Docs(), terms_only_bigrams, idf_only_bigrams, vec0_only_bigrams, vec1_only_bigrams);
+	}
+
+	# --- min_df_2 ('ngram_range': (1, 2), 'min_df': 2): 10 terms, corpus ['the cat sat on the mat', 'the dog sat on the log', 'cats and dogs are pets', 'the cat and the dog']
+	function : Config_min_df_2() ~ Nil {
+		terms_min_df_2 := ["and", "cat", "dog", "on", "on the", "sat", "sat on", "the", "the cat", "the dog"];
+		idf_min_df_2 := [1.5108256237659907, 1.5108256237659907, 1.5108256237659907, 1.5108256237659907, 1.5108256237659907, 1.5108256237659907, 1.5108256237659907, 1.2231435513142097, 1.5108256237659907, 1.5108256237659907];
+		vec0_min_df_2 := [0.0, 0.30683337200536664, 0.30683337200536664, 0.0, 0.0, 0.6136667440107333, 0.0, 0.4968161174826459, 0.30683337200536664, 0.30683337200536664];
+		vec1_min_df_2 := [0.4205011544490418, 0.4205011544490418, 0.4205011544490418, 0.4205011544490418, 0.4205011544490418, 0.0, 0.0, 0.34043192496461805, 0.0, 0.0];
+		Verify("min_df_2", TF_IDF->New(min_n : 1, max_n : 2, min_df : 2), Docs(), terms_min_df_2, idf_min_df_2, vec0_min_df_2, vec1_min_df_2);
+	}
+
+	# --- max_features_2 ('ngram_range': (1, 1), 'max_features': 2): 2 terms, corpus ['a a a b b c', 'a b d', 'a e']
+	function : Config_max_features_2() ~ Nil {
+		terms_max_features_2 := ["a", "b"];
+		idf_max_features_2 := [1.0, 1.2876820724517808];
+		vec0_max_features_2 := [0.0, 0.0];
+		vec1_max_features_2 := [1.0, 0.0];
+		Verify("max_features_2", TF_IDF->New(max_features : 2), MaxDocs(), terms_max_features_2, idf_max_features_2, vec0_max_features_2, vec1_max_features_2);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		Config_unigrams();
+		Config_bigrams();
+		Config_trigrams();
+		Config_only_bigrams();
+		Config_min_df_2();
+		Config_max_features_2();
+		Hand();
+		Degenerate();
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"All TF-IDF n-gram checks passed"->PrintLine();
+	}
+
+	# worked by hand, independent of scikit-learn: 2 documents, bigrams
+	function : Hand() ~ Nil {
+		t := TF_IDF->New(min_n : 1, max_n : 2, l2_normalize : false, smooth_idf : false);
+		t->Fit(["a b", "a c"]);
+		# terms: a b c, "a b", "a c"; N = 2; df: a 2, b 1, c 1, "a b" 1, "a c" 1; raw idf ln(N/df)
+		vocab := t->GetVocabulary();
+		Check(t->GetVocabularySize() = 5, "hand: 3 words and 2 bigrams");
+		idf := t->GetIdf();
+		Check(Near(idf[vocab->Find("a")->Get()], 0.0), "hand: a word in every document has IDF ln(2/2) = 0");
+		Check(Near(idf[vocab->Find("a b")->Get()], Float->Log(2.0)), "hand: a bigram in one document has IDF ln 2");
+		v := t->Transform("a b");
+		# terms of "a b": a, b, "a b"; each has a term share of 1/3
+		Check(Near(v[vocab->Find("b")->Get()], Float->Log(2.0) / 3.0), "hand: b weighs ln 2 / 3");
+		Check(Near(v[vocab->Find("a b")->Get()], Float->Log(2.0) / 3.0), "hand: 'a b' weighs ln 2 / 3");
+		Check(Near(v[vocab->Find("a")->Get()], 0.0), "hand: a weighs 0");
+		Check(Near(v[vocab->Find("a c")->Get()], 0.0), "hand: a bigram the document lacks weighs 0");
+
+		# stemming happens before the n-grams are joined; stopwords go first
+		s := TF_IDF->New(stem : true, min_n : 1, max_n : 2);
+		s->Fit(["Cats and dogs"]);
+		Check(s->GetVocabulary()->Has("cat") & s->GetVocabulary()->Has("cat and") & s->GetVocabulary()->Has("and dog"), "stemmed words are joined into bigrams");
+		w := TF_IDF->New(remove_stopwords : true, min_n : 2, max_n : 2);
+		w->Fit(["the cat sat on the mat"]);
+		Check(w->GetVocabularySize() = 2 & w->GetVocabulary()->Has("cat sat") & w->GetVocabulary()->Has("sat mat"), "stopwords are removed before bigrams: 'cat sat', 'sat mat'");
+		Check(Near(Norm2(w->Transform("cat sat mat")), 1.0), "bigram vectors are unit length");
+
+		# the older constructor calls
+		a := TF_IDF->New();
+		Check(a->IsValid() & a->GetMinN() = 1 & a->GetMaxN() = 1 & a->GetError() = Nil, "the default is single words");
+		b := TF_IDF->New(false, false, true, true);
+		Check(b->IsValid(), "the four-flag constructor still works");
+		c := TF_IDF->New(stem : true);
+		c->Fit(["cats and dogs", "a cat"]);
+		Check(c->GetVocabularySize() = 4 & c->GetVocabulary()->Has("cat") & c->GetVocabulary()->Has("dog"), "TF_IDF->New(stem : true) is unchanged");
+	}
+
+	function : Degenerate() ~ Nil {
+		bad := TF_IDF->New(min_n : 2, max_n : 1);
+		Check(<>bad->IsValid() & bad->GetError() <> Nil, "min_n > max_n is invalid, with a reason");
+		bad->Fit(Docs());
+		Check(bad->GetVocabularySize() = 0 & bad->GetIdf()->Size() = 0, "an invalid range fits an empty vocabulary");
+		Check(bad->Transform("the cat")->Size() = 0, "and transforms to an empty vector");
+
+		zero := TF_IDF->New(min_n : 0, max_n : 2);
+		zero->Fit(Docs());
+		Check(<>zero->IsValid() & zero->GetVocabularySize() = 0, "min_n = 0 is invalid");
+		Check(<>TF_IDF->New(min_df : 0)->IsValid(), "min_df = 0 is invalid");
+		Check(<>TF_IDF->New(max_features : -1)->IsValid(), "a negative max_features is invalid");
+
+		t := TF_IDF->New(min_n : 1, max_n : 3);
+		t->Fit(String->New[0]);
+		Check(t->GetVocabularySize() = 0, "an empty corpus has no terms");
+		t->Fit(Nil);
+		Check(t->GetVocabularySize() = 0 & t->Transform("anything")->Size() = 0, "a Nil corpus has no terms");
+
+		t->Fit(["one", "two words", ""]);
+		Check(t->GetVocabularySize() = 4, "short and empty documents: one, two, words, 'two words'");
+		Check(t->Transform(Nil)->Size() = 4 & Near(Norm2(t->Transform(Nil)), 0.0), "a Nil document is a zero vector");
+		Check(Near(Norm2(t->Transform("")), 0.0), "an empty document is a zero vector");
+		Check(Near(Norm2(t->Transform("unseen terms only")), 0.0), "unseen terms are a zero vector");
+		# a document shorter than the n-gram size just has fewer terms
+		Check(Near(Norm2(t->Transform("two")), 1.0), "a one-word document with trigrams on still has its word");
+
+		# a range wider than any document, and a min_df no term meets
+		w := TF_IDF->New(min_n : 1, max_n : 10);
+		w->Fit(["a b c"]);
+		Check(w->GetVocabularySize() = 6, "max_n beyond the document length stops at the document: a b c, 'a b', 'b c', 'a b c'... = 6");
+		m := TF_IDF->New(min_df : 5);
+		m->Fit(Docs());
+		Check(m->GetVocabularySize() = 0 & Near(Norm2(m->Transform("the cat")), 0.0), "a min_df nothing meets leaves an empty vocabulary");
+		x := TF_IDF->New(max_features : 100);
+		x->Fit(Docs());
+		Check(x->GetVocabularySize() = 12, "max_features above the vocabulary size keeps everything");
+
+		# refit forgets the earlier vocabulary
+		x->Fit(["new words"]);
+		Check(x->GetVocabularySize() = 2 & <>x->GetVocabulary()->Has("cat"), "a refit starts over");
+	}
+}

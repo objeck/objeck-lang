@@ -996,6 +996,53 @@ sim := TextSimilarity->CosineSimilarity(tfidf->Transform("cats are pets"), tfidf
 "Similarity: {$sim}"->PrintLine();
 ```
 
+### N-grams, spelling and style features
+
+These are the features of text-classification chapters such as fake-review and fake-news
+detection. All are in `nlp.obl`; none needs a model.
+
+**TF-IDF over word n-grams.** `TF_IDF->New(min_n : 1, max_n : 2)` counts words and word pairs
+as scikit-learn's `TfidfVectorizer(ngram_range=(1, 2))` does; `(1, 3)` adds triples and
+`(2, 2)` is pairs only. Smoothed IDF and unit-length vectors follow scikit-learn (the
+regression test compares every IDF and vector entry with it). `min_df` drops terms found in
+fewer documents and `max_features` keeps the most frequent ones. An invalid setting
+(`min_n` below 1, `max_n` below `min_n`) does not crash: `IsValid()` is false, `GetError()`
+says why, and the vectorizer fits an empty vocabulary. Existing calls such as
+`TF_IDF->New(stem : true)` are unchanged.
+
+```ruby
+tfidf := TF_IDF->New(min_n : 1, max_n : 2, min_df : 2);
+tfidf->Fit(training_texts);
+x := tfidf->Transform("not worth the money");   # words and "not worth", "worth the", ...
+```
+
+**Misspelling rate.** `SpellChecker` counts the tokens a word list does not know. No
+dictionary ships with Objeck: load a newline-delimited list yourself, for example
+`/usr/share/dict/words` on Linux, the SCOWL / aspell lists (http://wordlist.aspell.net) or
+`words_alpha.txt`, and check its licence. Tokens are `Tokenizer->WordTokenize`'s, matching is
+case-insensitive, tokens with digits are never misspelled, and the rate is misspelled tokens
+over all tokens. `Suggest` returns words within a Levenshtein distance, nearest first. A checker
+with no words and a Nil text give -1 instead of failing.
+
+```ruby
+checker := SpellChecker->New("words.txt");
+if(checker->IsLoaded()) {
+    n    := checker->CountMisspelled("teh product is gud");
+    rate := checker->MisspellingRate("teh product is gud");
+    near := checker->Suggest("gud", 1, 3);
+};
+```
+
+**Stylometric features.** `TextFeatures->Extract(text)` returns eight numbers (names in
+`TextFeatures->Names()`): characters, tokens, average word length, type-token ratio,
+punctuation rate, uppercase ratio, sentence count and average sentence length. Each is also
+a function (`TokenCount`, `TypeTokenRatio`, ...). Empty text gives zeros and Nil gives
+Nil / -1.
+
+```ruby
+f := TextFeatures->Extract("Great product! Works perfectly. HIGHLY recommended!!!");
+```
+
 ### BERT tokens and sentence embeddings
 
 `WordPieceTokenizer` is BERT's tokenizer (Hugging Face's `BertTokenizer`, checked id for id on
@@ -1025,6 +1072,22 @@ if(embedder->IsOpen()) {
     X := embedder->Embed(["CreateFileW ReadFile CloseHandle", "RegOpenKeyExA RegSetValueExA"]);
     embedder->Close();
 };
+```
+
+**Layers.** By default the final layer is pooled. `SetLayers` (or the three-argument `Embed`) can
+pool the sum of the last four hidden layers (`SUM_LAST_4`, `Embed` gives `hidden` columns) or
+concatenate them (`CONCAT_LAST_4`, `4 x hidden` columns, oldest layer first), each with CLS or
+mean pooling. A model has to export its intermediate layers for this: four or more FP32 outputs
+named `hidden_states.N` (also `hidden_states_N`, `hidden_state_N`), or one FP32
+`[layer, batch, sequence, hidden]` output named `hidden_states`. A standard export does not have
+them (export with `output_hidden_states=True` and name the outputs). When the model does not,
+`HasHiddenLayers()` is false and `Embed` with another layer strategy returns Nil and `GetError()`
+says so. `POOLER` pooling is the final layer's only.
+
+```ruby
+embedder->SetLayers(BertEmbedder->Layers->CONCAT_LAST_4);
+embedder->SetPooling(BertEmbedder->Pooling->MEAN);
+X := embedder->Embed(texts);   # 4 x hidden columns, or Nil with GetError() when the model lacks the layers
 ```
 
 ### Text classification with a fine-tuned model
@@ -1652,6 +1715,7 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 | Either, behind one interface | `Engine`, `OnnxEngine`, `HttpEngine` | `models` + one backend | None |
 | Computer vision | `Image`, `VideoCapture` | `opencv` | None |
 | Sentiment / TF-IDF | `SentimentAnalyzer`, `TF_IDF` | `nlp` | None |
+| Spelling and style features | `SpellChecker`, `TextFeatures` | `nlp` | None |
 | BERT tokenization | `WordPieceTokenizer`, `ApiSequenceTokenizer` | `nlp` | None |
 | Sentence embeddings (BERT) | `BertEmbedder` | `nlp_onnx` + `models`, `onnx`, `nlp` | None |
 | Text classification (fine-tuned BERT) | `TextClassifier`, `Prediction` | `nlp_onnx` + `models`, `onnx`, `nlp` | None |

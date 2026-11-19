@@ -169,7 +169,7 @@
   "nlp": {
    "deps": ["gen_collect"],
    "bundles": {
-    "System.NLP": ["ApiSequenceTokenizer", "BpeTokenizer", "SentimentAnalyzer", "SentimentResult", "SubwordTokenizer", "TF_IDF", "TextPreprocessor", "TextSimilarity", "TokenEncoding", "Tokenizer", "WordPieceTokenizer"]
+    "System.NLP": ["ApiSequenceTokenizer", "BpeTokenizer", "SentimentAnalyzer", "SentimentResult", "SpellChecker", "SubwordTokenizer", "TF_IDF", "TextFeatures", "TextPreprocessor", "TextSimilarity", "TokenEncoding", "Tokenizer", "WordPieceTokenizer"]
    }
   },
   "nlp_onnx": {
