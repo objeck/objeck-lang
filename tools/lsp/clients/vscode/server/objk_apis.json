@@ -17159,6 +17159,9 @@
 				"Color": {
 					"descriptions": ["**The categorical color of the i-th series: the matplotlib tab10 start, 8 colors.**\n\n```function : Color(i:Int) ~ String```\n\n\n\ni: Int\n\nreturn: String"]
 				},
+				"Decimals": {
+					"descriptions": ["**A number with a fixed count of decimals, always with a point (Float->ToString follows the C locale, which can write 12,3) and never as a negative zero (\"-0.00\").**\n\n```function : Decimals(v:Float, decimals:Int) ~ String```\n\n\n\nv: Float\n\ndecimals: Int\n\nreturn: String"]
+				},
 				"Escape": {
 					"descriptions": ["**XML-escapes text for an SVG element or attribute.**\n\n```function : Escape(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String"]
 				},
@@ -17167,6 +17170,9 @@
 				},
 				"FormatNumber": {
 					"descriptions": ["**A number as short text: no trailing zeros, no \"-0\".**\n\n```function : FormatNumber(value:Float) ~ String```\n\n\n\nvalue: Float\n\nreturn: String"]
+				},
+				"FormatTick": {
+					"descriptions": ["**A tick label: the value with as many decimals as the tick step needs and no more (0.2 steps give 0.2, 0.4; 1700000000.2 stays exact), and in scientific form when the step is below 1e-6, where decimals would print only zeros.**\n\n```function : FormatTick(value:Float, step:Float) ~ String```\n\n\n\nvalue: Float\n\nstep: Float\n\nreturn: String"]
 				},
 				"Hex2": {
 					"descriptions": ["**Two lower-case hex digits.**\n\n```function : Hex2(v:Int) ~ String```\n\n\n\nv: Int\n\nreturn: String"]
@@ -17186,11 +17192,14 @@
 				"NiceStep": {
 					"descriptions": ["**A 1-2-5 tick step for a range.**\n\n```function : NiceStep(range:Float, target:Int) ~ Float```\n\n\n\nrange: Float\n\ntarget: Int\n\nreturn: Float"]
 				},
+				"StripControl": {
+					"descriptions": ["**Removes the control characters XML 1.0 cannot hold (everything below space except tab, line feed and carriage return), so a stray character in a title or label cannot make the SVG invalid.**\n\n```function : StripControl(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String"]
+				},
 				"TextWidth": {
 					"descriptions": ["**A rough text width for layout, so legends and labels never depend on a font.**\n\n```function : TextWidth(text:String, size:Int) ~ Float```\n\n\n\ntext: String\n\nsize: Int\n\nreturn: Float"]
 				},
 				"Ticks": {
-					"descriptions": ["**Tick positions from lo to hi inclusive, snapped to the step.**\n\n```function : Ticks(lo:Float, hi:Float, step:Float) ~ Float[]```\n\n\n\nlo: Float\n\nhi: Float\n\nstep: Float\n\nreturn: Float[]"]
+					"descriptions": ["**Tick positions: the multiples of the step inside lo..hi. Each is computed as a whole number of steps, so there is no absolute rounding to collapse them on a range of 1e-9 or smear them on a range around 1e9; labels come from FormatTick, which prints the step's decimals.**\n\n```function : Ticks(lo:Float, hi:Float, step:Float) ~ Float[]```\n\n\n\nlo: Float\n\nhi: Float\n\nstep: Float\n\nreturn: Float[]"]
 				},
 				"Viridis": {
 					"descriptions": ["**A viridis-like sequential color map: dark purple, blue, teal, green, yellow.**\n\n```function : Viridis(t:Float) ~ String```\n\n\n\nt: Float\n\nreturn: String"]

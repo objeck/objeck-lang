@@ -1,0 +1,335 @@
+# EXTRA_LIBS: plot,gen_collect
+#~
+System.Plot edge cases found by an independent review, each reproduced before it was fixed.
+
+The goldens in plot_svg.obs are produced by the code under test, so they cannot say a layout is
+right; these checks are worked out by hand instead:
+
+  * tick positions and labels on very narrow and very large ranges (no duplicates, no float noise)
+  * XML validity with control characters in titles and labels
+  * numbers written with a '.' whatever the C locale says
+  * a log axis narrower than a decade still has ticks
+  * Hist and Bar on a log y axis are refused with a reason (an empty bin has height 0)
+  * a histogram whose values are too close together for their size is refused
+  * an empty subplot cell is left blank instead of failing the whole figure
+  * a Nil category name is refused, and a refusal says what was wrong (the message is checked)
+~#
+use Collection;
+use Data.XML;
+use System.Plot;
+
+class PlotEdgeCases {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		ok := NarrowRange() & ok;
+		ok := LargeMagnitude() & ok;
+		ok := ControlCharacters() & ok;
+		ok := LocaleIndependent() & ok;
+		ok := LogWithinADecade() & ok;
+		ok := LogYRefusals() & ok;
+		ok := HistogramEdges() & ok;
+		ok := EmptySubplot() & ok;
+		ok := NilNames() & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Near(a : Float, b : Float, tol : Float) ~ Bool {
+		return (a - b)->Abs() <= tol;
+	}
+
+	function : Basic(lo : Float, hi : Float) ~ Figure {
+		fig := Figure->New(640, 400);
+		fig->GetAxes()->Scatter("s", [lo, hi], [0.0, 1.0]);
+		fig->GetAxes()->SetXLim(lo, hi);
+
+		return fig;
+	}
+
+	# the text of every tick label of one class (xtick or ytick), in drawing order
+	function : Labels(root : XmlElement, class_name : String) ~ Vector<String> {
+		found := Vector->New()<String>;
+		Gather(root, class_name, found);
+
+		return found;
+	}
+
+	function : Gather(e : XmlElement, class_name : String, found : Vector<String>) ~ Nil {
+		if(e->GetName() <> Nil & e->GetName()->Equals("text") & Attr(e, "class")->Equals(class_name) & e->GetContent() <> Nil) {
+			found->AddBack(e->GetContent());
+		};
+		each(i : e->Size()) {
+			Gather(e->Get(i), class_name, found);
+		};
+	}
+
+	function : Contains(v : Vector<String>, text : String) ~ Bool {
+		each(i : v) {
+			if(v->Get(i)->Equals(text)) {
+				return true;
+			};
+		};
+
+		return false;
+	}
+
+	function : Distinct(v : Vector<String>) ~ Bool {
+		each(i : v) {
+			each(j : v) {
+				if(i < j & v->Get(i)->Equals(v->Get(j))) {
+					return false;
+				};
+			};
+		};
+
+		return true;
+	}
+
+	# 1. a range of 1e-9: ticks used to be rounded to 1e-9, so they collapsed to 0, 0, 0, 1e-9
+	function : NarrowRange() ~ Bool {
+		ok := true;
+		fig := Basic(0.0, 0.000000001);
+		svg := fig->ToSvg();
+		xticks := fig->GetAxes()->GetXAxis()->Ticks();
+		strictly := true;
+		gaps := xticks->Size() - 1;
+		each(i : gaps) {
+			if(xticks[i + 1] <= xticks[i]) {
+				strictly := false;
+			};
+		};
+		ok := Report("narrow: a range of 1e-9 has strictly increasing ticks", strictly & xticks->Size() >= 4) & ok;
+		ok := Report("narrow: its tick step is 2e-10", Near(xticks[1] - xticks[0], 0.0000000002, 0.00000000000001)) & ok;
+
+		root := Parse(svg);
+		labels := Labels(root, "xtick");
+		ok := Report("narrow: the tick labels are all different", Distinct(labels) & labels->Size() >= 4) & ok;
+
+		wide := Basic(-0.0000000005, 0.0000000005);
+		wide->ToSvg();
+		ok := Report("narrow: a range symmetric about zero also has distinct ticks", Distinct(Labels(Parse(wide->ToSvg()), "xtick"))) & ok;
+
+		# the same range as a y axis
+		yfig := Figure->New(640, 400);
+		yfig->GetAxes()->Scatter("s", [0.0, 1.0], [0.0, 1.0]);
+		yfig->GetAxes()->SetYLim(0.0, 0.000000001);
+		ok := Report("narrow: and as a y axis", Distinct(Labels(Parse(yfig->ToSvg()), "ytick"))) & ok;
+
+		return ok;
+	}
+
+	# 2. epoch seconds with a fractional step: labels used to print float noise
+	function : LargeMagnitude() ~ Bool {
+		ok := true;
+		fig := Basic(1700000000.0, 1700000001.0);
+		labels := Labels(Parse(fig->ToSvg()), "xtick");
+		ok := Report("large: ticks on a 1-second range of epoch seconds exist", labels->Size() >= 4) & ok;
+		noisy := false;
+		each(i : labels) {
+			dot := labels->Get(i)->Find('.');
+			if(dot >= 0 & labels->Get(i)->Size() - dot - 1 > 2) {
+				noisy := true;
+			};
+		};
+		ok := Report("large: no label carries float noise (at most the step's decimals)", noisy = false) & ok;
+		ok := Report("large: the labels are 1700000000.2, .4, ...", Contains(labels, "1700000000.2") | Contains(labels, "1700000000.4")) & ok;
+
+		return ok;
+	}
+
+	# 3. control characters other than tab, LF and CR are not valid in XML 1.0
+	function : ControlCharacters() ~ Bool {
+		ok := true;
+		text := "a";
+		text->Append(1->As(Char));
+		text->Append("b");
+		text->Append(27->As(Char));
+		text->Append("c\td");
+		fig := Figure->New(400, 300);
+		fig->GetAxes()->SetTitle(text);
+		fig->GetAxes()->SetXLabel(text);
+		fig->GetAxes()->Scatter(text, [0.0, 1.0], [0.0, 1.0]);
+		svg := fig->ToSvg();
+		ok := Report("control: the SVG still parses as XML", Parse(svg) <> Nil) & ok;
+		clean := true;
+		each(i : svg->Size()) {
+			c := svg->Get(i)->As(Int);
+			if(c < 32 & c <> 9 & c <> 10 & c <> 13) {
+				clean := false;
+			};
+		};
+		ok := Report("control: no control character is written", clean) & ok;
+		ok := Report("control: the printable text and the tab survive", svg->Has("abc") & svg->Has("c\td")) & ok;
+
+		return ok;
+	}
+
+	# 4. Float->ToString follows the C locale, so "12.3" became "12,3" under de_DE
+	function : LocaleIndependent() ~ Bool {
+		ok := true;
+		Runtime->SetLocale("de_DE");
+		probe := Float->ToString(12.5, 1);
+		took_effect := probe->Has(',');
+
+		fig := Figure->New(400, 300);
+		fig->GetAxes()->Scatter("s", [0.0, 1.5, 2.5], [0.25, 1.5, 3.0], [0.5, 1.0, 2.0], [1.0, 2.0, 3.0]);
+		fig->GetAxes()->SetTitle("t");
+		svg := fig->ToSvg();
+		Runtime->SetLocale("C");
+
+		if(took_effect = false) {
+			"  note: the de_DE locale was not available here, so this run could not show the bug"->PrintLine();
+		};
+		comma := false;
+		last := svg->Size() - 2;
+		each(i : last) {
+			if(svg->Get(i + 1) = ',' & IsDigit(svg->Get(i)) & IsDigit(svg->Get(i + 2))) {
+				comma := true;
+			};
+		};
+		ok := Report("locale: no number is written with a decimal comma", comma = false) & ok;
+		ok := Report("locale: a fractional coordinate uses a point", svg->Has("cx=\"") & svg->Has(".5\"") | svg->Has(".0\"")) & ok;
+
+		return ok;
+	}
+
+	function : IsDigit(c : Char) ~ Bool {
+		return c >= '0' & c <= '9';
+	}
+
+	# a fixed log range narrower than a decade used to have no tick inside it
+	function : LogWithinADecade() ~ Bool {
+		ok := true;
+		fig := Figure->New(640, 400);
+		fig->GetAxes()->SetLogX(true);
+		fig->GetAxes()->Scatter("s", [2.0, 8.0], [1.0, 2.0]);
+		fig->GetAxes()->SetXLim(2.0, 8.0);
+		labels := Labels(Parse(fig->ToSvg()), "xtick");
+		ok := Report("log: 2 .. 8 has ticks at 2 and 5", Contains(labels, "2") & Contains(labels, "5")) & ok;
+		ok := Report("log: and at no tick outside the range (1, 10)", Contains(labels, "1") = false & Contains(labels, "10") = false) & ok;
+
+		wide := Figure->New(640, 400);
+		wide->GetAxes()->SetLogX(true);
+		wide->GetAxes()->Scatter("s", [0.001, 10.0], [1.0, 2.0]);
+		wl := Labels(Parse(wide->ToSvg()), "xtick");
+		ok := Report("log: whole decades are unchanged (0.001 .. 10)", Contains(wl, "0.001") & Contains(wl, "0.01") & Contains(wl, "0.1") & Contains(wl, "1") & Contains(wl, "10") & wl->Size() = 5) & ok;
+
+		tiny := Figure->New(640, 400);
+		tiny->GetAxes()->SetLogX(true);
+		tiny->GetAxes()->Scatter("s", [0.00000001, 0.001], [1.0, 2.0]);
+		tl := Labels(Parse(tiny->ToSvg()), "xtick");
+		ok := Report("log: decades below 1e-6 are written in scientific form, not as zeros", Contains(tl, "1e-8") & Contains(tl, "1e-3") = false | Contains(tl, "0.001")) & ok;
+
+		return ok;
+	}
+
+	function : LogYRefusals() ~ Bool {
+		ok := true;
+		ok := Report("log y with a histogram is refused, and the message says why",
+			RefusedWith(1, "log y")) & ok;
+		ok := Report("log y with bars is refused, and the message says why", RefusedWith(2, "log y")) & ok;
+
+		return ok;
+	}
+
+	function : HistogramEdges() ~ Bool {
+		ok := true;
+		ok := Report("hist: values too close together for their size are refused with a reason", RefusedWith(3, "too close")) & ok;
+
+		# 1e15 still has room: 0.5 on either side is representable, so it must keep working
+		fig := Figure->New(400, 300);
+		fig->GetAxes()->Hist("h", [1000000000000000.0, 1000000000000000.0], 2);
+		heights := fig->GetAxes()->GetArtist(0)->GetYs();
+		ok := Report("hist: identical values at 1e15 still draw", heights[0] + heights[1] = 2.0) & ok;
+
+		return ok;
+	}
+
+	function : EmptySubplot() ~ Bool {
+		ok := true;
+		fig := Figure->New(800, 400);
+		fig->Subplots(1, 2);
+		fig->GetAxes(0, 0)->Scatter("a", [0.0, 1.0], [0.0, 1.0]);
+		svg := fig->ToSvg();
+		root := Parse(svg);
+		ok := Report("subplots: an empty cell does not fail the figure", root <> Nil) & ok;
+		clips := 0;
+		each(i : root->Size()) {
+			if(root->Get(i)->GetName() <> Nil & root->Get(i)->GetName()->Equals("clipPath")) {
+				clips += 1;
+			};
+		};
+		ok := Report("subplots: only the filled cell is drawn", clips = 1) & ok;
+
+		blank := Figure->New(400, 300);
+		blank->Subplots(1, 2);
+		ok := Report("subplots: a figure with every cell empty is still refused", RefusedWith(4, "nothing to draw")) & ok;
+
+		return ok;
+	}
+
+	function : NilNames() ~ Bool {
+		ok := true;
+		ok := Report("a Nil category name is refused, naming the problem", RefusedWith(5, "category")) & ok;
+
+		return ok;
+	}
+
+	# runs a case that must raise a PlotError whose message holds the text
+	function : RefusedWith(which : Int, expected : String) ~ Bool {
+		message := "";
+		try {
+			fig := Figure->New(400, 300);
+			ax := fig->GetAxes();
+			select(which) {
+				label 1: { ax->SetLogY(true); ax->Hist("h", [1.0, 2.0, 3.0], 2); fig->ToSvg(); }
+				label 2: { ax->SetLogY(true); ax->SetCategories(["a", "b"]); ax->Bar("b", [1.0, 2.0]); fig->ToSvg(); }
+				label 3: { ax->Hist("h", [100000000000000000.0, 100000000000000000.0], 3); }
+				label 4: { fig->Subplots(1, 2); fig->ToSvg(); }
+				label 5: { names := String->New[2]; names[0] := "a"; ax->SetCategories(names); }
+			};
+		}
+		on(e : PlotError) {
+			message := e->GetMessage();
+		};
+
+		if(message->Has(expected)) {
+			return true;
+		};
+		"  case {$which}: expected a message with '{$expected}', got '{$message}'"->PrintLine();
+
+		return false;
+	}
+
+	function : Parse(svg : String) ~ XmlElement {
+		parser := XmlParser->New(svg);
+		if(<>parser->Parse()) {
+			err := parser->GetError();
+			"  xml error: {$err}"->PrintLine();
+			return Nil;
+		};
+
+		return parser->GetRoot();
+	}
+
+	function : Attr(e : XmlElement, name : String) ~ String {
+		a := e->GetAttribute(name);
+		if(a = Nil) {
+			return "";
+		};
+
+		return a->GetDecodedValue();
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}

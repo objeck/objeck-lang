@@ -477,16 +477,25 @@ bundle System.Plot {
 		}
 
 		#~
-		Tick positions from lo to hi inclusive, snapped to the step.
-		@param lo first tick
-		@param hi last tick
+		Tick positions: the multiples of the step inside lo..hi. Each is computed as a whole
+		number of steps, so there is no absolute rounding to collapse them on a range of 1e-9
+		or smear them on a range around 1e9; labels come from FormatTick, which prints the
+		step's decimals.
+		@param lo low end of the range
+		@param hi high end of the range
 		@param step distance between ticks
-		@return the ticks (at most 50)
+		@return the ticks (at least 2, at most 50)
 		~#
 		function : Ticks(lo : Float, hi : Float, step : Float) ~ Float[] {
-			count := ((hi - lo) / step + 0.5)->As(Int) + 1;
+			first := Float->Ceil(lo / step - 0.000001);
+			last := Float->Floor(hi / step + 0.000001);
+			count := (last - first)->As(Int) + 1;
 			if(count < 2) {
-				count := 2;
+				# a range narrower than a step: its two ends
+				out := Float->New[2];
+				out[0] := lo;
+				out[1] := hi;
+				return out;
 			};
 			if(count > 50) {
 				count := 50;
@@ -494,8 +503,7 @@ bundle System.Plot {
 
 			out := Float->New[count];
 			each(i : count) {
-				# snap, so 0.30000000000000004 prints as 0.3
-				out[i] := Float->Round((lo + i->As(Float) * step) * 1.0e9) / 1.0e9;
+				out[i] := (first + i->As(Float)) * step;
 			};
 
 			return out;
@@ -526,17 +534,91 @@ bundle System.Plot {
 		}
 
 		#~
+		A number with a fixed count of decimals, always with a point (Float->ToString follows
+		the C locale, which can write 12,3) and never as a negative zero ("-0.00").
+		@param v the value
+		@param decimals digits after the point
+		@return the text
+		~#
+		function : Decimals(v : Float, decimals : Int) ~ String {
+			text := Float->ToString(v, decimals)->ReplaceAll(",", ".");
+			if(text->Size() > 1 & text->Get(0) = '-') {
+				zero := true;
+				each(i : text->Size()) {
+					c := text->Get(i);
+					if(i > 0 & c <> '0' & c <> '.') {
+						zero := false;
+					};
+				};
+				if(zero) {
+					return text->SubString(1, text->Size() - 1);
+				};
+			};
+
+			return text;
+		}
+
+		#~
 		A coordinate with one decimal, so the same data gives the same bytes everywhere.
 		@param v the value
 		@return the text, never "-0.0"
 		~#
 		function : Fmt(v : Float) ~ String {
-			text := Float->ToString(v, 1);
-			if(text->Equals("-0.0")) {
-				return "0.0";
+			return Decimals(v, 1);
+		}
+
+		#~
+		A tick label: the value with as many decimals as the tick step needs and no more
+		(0.2 steps give 0.2, 0.4; 1700000000.2 stays exact), and in scientific form when
+		the step is below 1e-6, where decimals would print only zeros.
+		@param value the tick
+		@param step the distance between ticks, or the value itself for a log axis
+		@return the text
+		~#
+		function : FormatTick(value : Float, step : Float) ~ String {
+			if(step <= 0.0 | value = 0.0) {
+				return "0";
 			};
 
-			return text;
+			decimals := 0;
+			if(step < 1.0) {
+				decimals := Float->Ceil(0.0 - Float->Log10(step) - 0.000001)->As(Int);
+			};
+
+			if(decimals > 6) {
+				# 2e-10 steps: 1.2e-9
+				exponent := Float->Floor(Float->Log10(value->Abs()) + 0.000001)->As(Int);
+				step_exponent := Float->Floor(Float->Log10(step) + 0.000001)->As(Int);
+				mantissa_decimals := exponent - step_exponent;
+				if(mantissa_decimals < 0) {
+					mantissa_decimals := 0;
+				};
+				if(mantissa_decimals > 12) {
+					mantissa_decimals := 12;
+				};
+				mantissa := Trim(Decimals(value / Float->Pow(10.0, exponent), mantissa_decimals));
+
+				return mantissa + "e" + exponent->ToString();
+			};
+
+			return Trim(Decimals(value, decimals));
+		}
+
+		# drops trailing zeros after a decimal point, and the point itself when nothing follows
+		function : Trim(text : String) ~ String {
+			if(text->Has('.') = false) {
+				return text;
+			};
+
+			last := text->Size() - 1;
+			while(last > 0 & text->Get(last) = '0') {
+				last -= 1;
+			};
+			if(text->Get(last) = '.') {
+				last -= 1;
+			};
+
+			return text->SubString(0, last + 1);
 		}
 
 		#~
@@ -549,7 +631,41 @@ bundle System.Plot {
 				return "";
 			};
 
+			text := StripControl(text);
+
 			return text->ReplaceAll("&", "&amp;")->ReplaceAll("<", "&lt;")->ReplaceAll(">", "&gt;")->ReplaceAll("\"", "&quot;")->ReplaceAll("'", "&apos;");
+		}
+
+		#~
+		Removes the control characters XML 1.0 cannot hold (everything below space except
+		tab, line feed and carriage return), so a stray character in a title or label cannot
+		make the SVG invalid.
+		@param text raw text
+		@return the text without them
+		~#
+		function : StripControl(text : String) ~ String {
+			size := text->Size();
+			found := false;
+			each(i : size) {
+				c := text->Get(i)->As(Int);
+				if(c < 32 & c <> 9 & c <> 10 & c <> 13) {
+					found := true;
+				};
+			};
+			if(found = false) {
+				return text;
+			};
+
+			out := "";
+			c : Int;
+			each(i : size) {
+				c := text->Get(i)->As(Int);
+				if(c >= 32 | c = 9 | c = 10 | c = 13) {
+					out += text->SubString(i, 1);
+				};
+			};
+
+			return out;
 		}
 
 		#~
@@ -787,12 +903,7 @@ bundle System.Plot {
 				return ts;
 			};
 			if(@log) {
-				count := @hi->As(Int) - @lo->As(Int) + 1;
-				ts := Float->New[count];
-				each(i : ts) {
-					ts[i] := Float->Pow(10.0, @lo->As(Int) + i);
-				};
-				return ts;
+				return LogTicks();
 			};
 
 			return PlotMath->Ticks(@lo, @hi, @step);
@@ -809,7 +920,58 @@ bundle System.Plot {
 				return @names[idx];
 			};
 
-			return PlotMath->FormatNumber(v);
+			if(@log) {
+				return PlotMath->FormatTick(v, v);
+			};
+
+			return PlotMath->FormatTick(v, @step);
+		}
+
+		# a tick at every whole decade inside the range; when fewer than two fit (a fixed range
+		# narrower than a decade), at 1, 2 and 5 times each power of ten inside it instead
+		method : LogTicks() ~ Float[] {
+			first := Float->Ceil(@lo - 0.000001)->As(Int);
+			last := Float->Floor(@hi + 0.000001)->As(Int);
+			if(last - first >= 1) {
+				count := last - first + 1;
+				ts := Float->New[count];
+				each(i : ts) {
+					ts[i] := Float->Pow(10.0, first + i);
+				};
+				return ts;
+			};
+
+			low := Float->Pow(10.0, @lo);
+			high := Float->Pow(10.0, @hi);
+			found := Vector->New()<FloatRef>;
+			mults := [1.0, 2.0, 5.0];
+			first_exp := Float->Floor(@lo)->As(Int);
+			last_exp := Float->Ceil(@hi)->As(Int);
+			v : Float;
+			decades := last_exp - first_exp + 1;
+			each(e : decades) {
+				each(m : mults) {
+					v := mults[m] * Float->Pow(10.0, first_exp + e);
+					if(v >= low * 0.999999 & v <= high * 1.000001) {
+						found->AddBack(FloatRef->New(v));
+					};
+				};
+			};
+
+			if(found->Size() = 0) {
+				# nothing of 1-2-5 inside: label the two ends
+				ts := Float->New[2];
+				ts[0] := low;
+				ts[1] := high;
+				return ts;
+			};
+
+			ts := Float->New[found->Size()];
+			each(i : ts) {
+				ts[i] := found->Get(i)->Get();
+			};
+
+			return ts;
 		}
 
 		#~
@@ -1080,6 +1242,11 @@ ax->SetLogX(true);
 			if(names = Nil | names->Size() = 0) {
 				Refuse("at least one category is needed");
 			};
+			each(i : names) {
+				if(names[i] = Nil) {
+					Refuse("category name {$i} is Nil");
+				};
+			};
 
 			@categories := names;
 		}
@@ -1165,6 +1332,11 @@ ax->SetLogX(true);
 			};
 
 			edges := PlotMath->BinEdges(lo, hi, bins);
+			each(i : bins) {
+				if(edges[i + 1] <= edges[i]) {
+					Refuse("Hist values are too close together for their size to make {$bins} bins (at 1e16 and above a bin of width 1 is not representable)");
+				};
+			};
 			counts := PlotMath->BinCounts(values, edges);
 			heights := Float->New[bins];
 			scale := 1.0;
@@ -1258,6 +1430,10 @@ ax->SetLogX(true);
 				Refuse("nothing to draw: add a plot, scatter, histogram or bars first");
 			};
 
+			if(@log_y & HasBarsOrHist()) {
+				Refuse("Hist and Bar cannot be drawn on a log y axis (an empty bin or a zero bar has height 0, which has no log); use a linear y axis");
+			};
+
 			Resolve();
 
 			bar_w := ColorbarWidth();
@@ -1304,6 +1480,16 @@ ax->SetLogX(true);
 			if(bar_w > 0.0) {
 				DrawColorbar(scene, px1 + 14.0, py0, py1);
 			};
+		}
+
+		method : HasBarsOrHist() ~ Bool {
+			each(i : @artists) {
+				if(@artists->Get(i)->GetKind() = ArtistKind->BARS | @artists->Get(i)->GetKind() = ArtistKind->HIST) {
+					return true;
+				};
+			};
+
+			return false;
 		}
 
 		method : ColorbarWidth() ~ Float {
@@ -1429,7 +1615,13 @@ ax->SetLogX(true);
 				};
 			};
 
-			return MakeAxis(@log_y, lo, hi, @y_fixed, 5, "y");
+			target := 5;
+			if(@y_fixed) {
+				# a fixed range such as -0.02 .. 1.02 gets the density x gets, not 3 ticks
+				target := 6;
+			};
+
+			return MakeAxis(@log_y, lo, hi, @y_fixed, target, "y");
 		}
 
 		method : MakeAxis(log : Bool, lo : Float, hi : Float, fixed : Bool, target : Int, which : String) ~ PlotAxis {
@@ -1679,7 +1871,7 @@ ax->SetLogX(true);
 					f := (ticks[i] - cr[0]) / (cr[1] - cr[0]);
 					ty := py1 - f * (py1 - py0);
 					scene->Line(bx + 14.0, ty, bx + 18.0, ty, "#333333", 1.0, "", "tick");
-					scene->Text(bx + 22.0, ty + 4.0, PlotMath->FormatNumber(ticks[i]), TextAnchor->START, 12, false, "#333333", 0.0, "cbtick");
+					scene->Text(bx + 22.0, ty + 4.0, PlotMath->FormatTick(ticks[i], nice[2]), TextAnchor->START, 12, false, "#333333", 0.0, "cbtick");
 				};
 			};
 		}
@@ -1807,10 +1999,17 @@ ax->SetLogX(true);
 			cell_h := (@height->As(Float) - top) / @rows->As(Float);
 			r : Int;
 			c : Int;
+			drawn := 0;
 			each(i : @axes) {
 				r := i / @cols;
 				c := i % @cols;
-				@axes->Get(i)->Draw(scene, c->As(Float) * cell_w, top + r->As(Float) * cell_h, cell_w, cell_h);
+				if(@axes->Get(i)->Size() > 0) {
+					drawn += 1;
+					@axes->Get(i)->Draw(scene, c->As(Float) * cell_w, top + r->As(Float) * cell_h, cell_w, cell_h);
+				};
+			};
+			if(drawn = 0) {
+				Axes->Refuse("nothing to draw: add a plot, scatter, histogram or bars first");
 			};
 
 			return scene;
@@ -1959,7 +2158,7 @@ ax->SetLogX(true);
 				fill := p->GetFill();
 				out += " fill=\"{$fill}\"";
 				if(p->GetOpacity() < 1.0) {
-					fo := Float->ToString(p->GetOpacity(), 2);
+					fo := PlotMath->Decimals(p->GetOpacity(), 2);
 					out += " fill-opacity=\"{$fo}\"";
 				};
 			}
@@ -2008,7 +2207,7 @@ ax->SetLogX(true);
 				fill := p->GetFill();
 				out += " fill=\"{$fill}\"";
 				if(p->GetOpacity() < 1.0) {
-					fo := Float->ToString(p->GetOpacity(), 2);
+					fo := PlotMath->Decimals(p->GetOpacity(), 2);
 					out += " fill-opacity=\"{$fo}\"";
 				};
 			}
