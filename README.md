@@ -679,6 +679,7 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
 - [OpenAI](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/openai.obs) — chat, vision, realtime audio, image generation, embeddings, moderation, batch
 - [Gemini](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gemini.obs) — chat, vision, search grounding, files, context caching, batch embeddings
 - [Anthropic](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/anthropic.obs) — Claude chat with system prompts, tool use, streaming and structured output; tested against recorded responses and a local mock server, not the live API
+- [LLM](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/llm.obs) — one chat interface over Anthropic, OpenAI, Gemini and Ollama: tool calling, streaming and JSON output, so an agent loop is written once; tested against local mock servers, not the live APIs
 - [Ollama](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/ollama.obs) — local LLM chat, vision, and embeddings; recommended models: `llama3.2`, `phi3`, `llava` ([get models →](docs/MODELS.md#ollama-models))
 - [NLP](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/nlp.obs) — tokenization, TF-IDF, text similarity, sentiment analysis
 - [OpenCV](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/opencv.obs) — computer vision: detection, transforms, video

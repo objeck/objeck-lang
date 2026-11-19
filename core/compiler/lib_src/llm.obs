@@ -1,0 +1,2626 @@
+#~~
+Copyright (c) 2026 Randy Hollines
+~~#
+
+use Web.HTTP, Collection, Data.JSON, Data.JSON.Scheme, API.Anthropic;
+
+#~
+A provider-neutral chat layer over Anthropic, OpenAI, Gemini and Ollama. One Session interface covers a system prompt, chat, tool calling, streaming and JSON output, so an agent loop is written once and runs against any of them. Each provider keeps its own client library for its own features; this one is the common surface. Errors follow the other AI client libraries: a failed call returns Nil and Session->GetLastError() says why. Compile with -lib llm,anthropic,openai,gemini,ollama (and the libraries those need).
+~#
+bundle API.LLM {
+	#~
+	A tool the model may call: a name, a description and a JSON schema for its arguments. The same
+	object is sent to every provider; each one gets it in its own wire format.
+	~#
+	class ToolSpec {
+		@name : String;
+		@description : String;
+		@schema : JsonElement;
+
+		#~
+		Constructor
+		@param name tool name, letters digits and underscores
+		@param description what the tool does, for the model
+		@param schema JSON schema of the arguments, an object: {"type":"object","properties":{...},"required":[...]}
+		~#
+		New(name : String, description : String, schema : JsonElement) {
+			@name := name;
+			@description := description;
+			@schema := schema;
+			if(@schema = Nil) {
+				@schema := JsonElement->New(JsonElement->JsonType->OBJECT);
+				@schema->Insert("type", "object");
+				@schema->Insert("properties", JsonElement->New(JsonElement->JsonType->OBJECT));
+			};
+		}
+
+		#~
+		Constructor from a function definition, the form the other AI client libraries use
+		@param func function definition
+		~#
+		New(func : FunctionType) {
+			@name := func->GetName();
+			@description := func->GetDesc();
+
+			func_json := func->ToJson();
+			@schema := JsonElement->New(JsonElement->JsonType->OBJECT);
+			@schema->Insert("type", "object");
+			properties_json := func_json->Get("properties");
+			if(properties_json = Nil) {
+				properties_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			};
+			@schema->Insert("properties", properties_json);
+			required_json := func_json->Get("required");
+			if(required_json <> Nil) {
+				@schema->Insert("required", required_json);
+			};
+		}
+
+		#~
+		Get the tool name
+		@return tool name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Get the description
+		@return description, or Nil
+		~#
+		method : public : GetDescription() ~ String {
+			return @description;
+		}
+
+		#~
+		Get the argument schema
+		@return JSON schema
+		~#
+		method : public : GetSchema() ~ JsonElement {
+			return @schema;
+		}
+
+		#~
+		Check whether the tool takes any arguments
+		@return true when the schema lists at least one property
+		~#
+		method : public : HasProperties() ~ Bool {
+			properties := Js->Child(@schema, "properties");
+			return properties <> Nil & properties->GetType() = JsonElement->JsonType->OBJECT & properties->Size() > 0;
+		}
+	}
+
+	#~
+	A tool call the model asked for. Run it, then return the result with Session->AddToolResult
+	using GetId() and GetName().
+	~#
+	class ToolInvocation {
+		@id : String;
+		@name : String;
+		@arguments : JsonElement;
+
+		#~
+		Constructor
+		@param id the id the result must carry (Ollama and older Gemini replies carry none; one is made up)
+		@param name tool name
+		@param arguments call arguments, an object keyed by parameter name
+		~#
+		New(id : String, name : String, arguments : JsonElement) {
+			@id := id;
+			@name := name;
+			@arguments := arguments;
+			if(@arguments = Nil) {
+				@arguments := JsonElement->New(JsonElement->JsonType->OBJECT);
+			};
+		}
+
+		#~
+		Get the id the result must carry
+		@return call id
+		~#
+		method : public : GetId() ~ String {
+			return @id;
+		}
+
+		#~
+		Get the name of the tool to run
+		@return tool name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Get the call's arguments, an object keyed by parameter name
+		@return arguments
+		~#
+		method : public : GetArguments() ~ JsonElement {
+			return @arguments;
+		}
+
+		#~
+		Get one argument as text (a number or boolean in its JSON form)
+		@param name parameter name
+		@return value text, or Nil if absent
+		~#
+		method : public : GetArgument(name : String) ~ String {
+			return Js->Text(@arguments, name);
+		}
+	}
+
+	#~
+	One model turn: the text, the tool calls, why it stopped and the token counts. The stop reason is
+	the same set of words for every provider: "end" (finished), "tool_calls" (wants tools run),
+	"length" (hit the token limit), "filtered" (refused or blocked) and "other".
+	~#
+	class Turn {
+		@text : String;
+		@tool_calls : Vector<ToolInvocation>;
+		@stop_reason : String;
+		@raw_stop_reason : String;
+		@input_tokens : Int;
+		@output_tokens : Int;
+		@model : String;
+
+		#~
+		Constructor
+		@param text reply text, empty when the reply is only tool calls
+		@param tool_calls tool calls, or Nil
+		@param stop_reason end, tool_calls, length, filtered or other
+		@param raw_stop_reason the provider's own word for it, or Nil
+		@param input_tokens tokens the prompt used
+		@param output_tokens tokens the reply used
+		@param model the model that answered, or Nil
+		~#
+		New(text : String, tool_calls : Vector<ToolInvocation>, stop_reason : String, raw_stop_reason : String, input_tokens : Int, output_tokens : Int, model : String) {
+			@text := text;
+			if(@text = Nil) {
+				@text := "";
+			};
+			@tool_calls := tool_calls;
+			if(@tool_calls = Nil) {
+				@tool_calls := Vector->New()<ToolInvocation>;
+			};
+			@stop_reason := stop_reason;
+			@raw_stop_reason := raw_stop_reason;
+			@input_tokens := input_tokens;
+			@output_tokens := output_tokens;
+			@model := model;
+		}
+
+		#~
+		Get the reply text
+		@return text, empty when the reply is only tool calls
+		~#
+		method : public : GetText() ~ String {
+			return @text;
+		}
+
+		#~
+		Check for tool calls
+		@return true when the model asked for tools
+		~#
+		method : public : HasToolCalls() ~ Bool {
+			return @tool_calls->Size() > 0;
+		}
+
+		#~
+		Get the tool calls
+		@return tool calls
+		~#
+		method : public : GetToolCalls() ~ Vector<ToolInvocation> {
+			return @tool_calls;
+		}
+
+		#~
+		Get why the model stopped: end, tool_calls, length, filtered or other
+		@return stop reason
+		~#
+		method : public : GetStopReason() ~ String {
+			return @stop_reason;
+		}
+
+		#~
+		Get the provider's own stop word (end_turn, completed, STOP, stop, ...)
+		@return raw stop reason, or Nil
+		~#
+		method : public : GetRawStopReason() ~ String {
+			return @raw_stop_reason;
+		}
+
+		#~
+		Get the tokens the prompt used
+		@return input tokens, 0 when the provider did not say
+		~#
+		method : public : GetInputTokens() ~ Int {
+			return @input_tokens;
+		}
+
+		#~
+		Get the tokens the reply used
+		@return output tokens, 0 when the provider did not say
+		~#
+		method : public : GetOutputTokens() ~ Int {
+			return @output_tokens;
+		}
+
+		#~
+		Get the model that answered
+		@return model name, or Nil
+		~#
+		method : public : GetModel() ~ String {
+			return @model;
+		}
+	}
+
+	#~
+	A streamed turn. Read it text first, then ask for the whole turn:
+
+```
+stream := session->Stream("Write a haiku about rivers.", Nil);
+while(stream <> Nil & stream->HasNext()) {
+  stream->Next()->Print();
+};
+turn := stream->GetTurn();
+```
+	~#
+	interface TurnStream {
+		#~
+		Reads on until there is text to return
+		@return true when Next() has text; false at the end of the stream or on an error
+		~#
+		method : virtual : public : HasNext() ~ Bool;
+
+		#~
+		Get the text HasNext() found
+		@return the next piece of text
+		~#
+		method : virtual : public : Next() ~ String;
+
+		#~
+		Reads any remaining events and returns the whole turn; the exchange then joins the history
+		@return turn, or Nil with the session's last error set
+		~#
+		method : virtual : public : GetTurn() ~ Turn;
+
+		#~
+		Closes the connection early
+		~#
+		method : virtual : public : Close() ~ Nil;
+	}
+
+	#~
+	A chat session over one provider. It keeps the conversation, including tool calls and results.
+	The four implementations are AnthropicSession, OpenAISession, GeminiSession and OllamaSession; LLM
+	builds one by name.
+	~#
+	interface Session {
+		#~
+		Get the provider: anthropic, openai, gemini or ollama
+		@return provider name
+		~#
+		method : virtual : public : GetProvider() ~ String;
+
+		#~
+		Get the model id
+		@return model id
+		~#
+		method : virtual : public : GetModel() ~ String;
+
+		#~
+		Sets the system prompt. Set it before the first message; Ollama has no separate system
+		field, so a prompt set later joins the conversation as a further system message.
+		@param system system prompt
+		@return self for chaining
+		~#
+		method : virtual : public : SetSystem(system : String) ~ Session;
+
+		#~
+		Sets the most tokens a reply may use
+		@param max_tokens token limit
+		@return self for chaining
+		~#
+		method : virtual : public : SetMaxTokens(max_tokens : Int) ~ Session;
+
+		#~
+		Sets the sampling temperature, left to the model when never called
+		@param temperature temperature
+		@return self for chaining
+		~#
+		method : virtual : public : SetTemperature(temperature : Float) ~ Session;
+
+		#~
+		Sends a message and returns the model's turn. When the turn has tool calls, run them,
+		add each result with AddToolResult and call Send(Nil, tools) again.
+		@param message user message, or Nil to send the conversation as it stands
+		@param tools tool definitions, or Nil
+		@return turn, or Nil with the last error set (the message is then not kept)
+		~#
+		method : virtual : public : Send(message : String, tools : Vector<ToolSpec>) ~ Turn;
+
+		#~
+		Adds the result of a tool call to the conversation without sending it. Call it once per
+		call in the turn, then Send(Nil, tools). To report a failure, return the error as the content.
+		@param call_id the id from ToolInvocation->GetId()
+		@param tool_name the name from ToolInvocation->GetName() (Ollama and Gemini match results by name)
+		@param content the tool's result
+		~#
+		method : virtual : public : AddToolResult(call_id : String, tool_name : String, content : String) ~ Nil;
+
+		#~
+		Adds a failed tool call's error to the conversation, marked as an error where the provider
+		has a way to say so: Anthropic's is_error flag, Gemini's "error" response field. OpenAI and
+		Ollama carry it as text that starts with "Error: ". Use it in place of AddToolResult when the
+		tool could not run, and send the conversation on as usual.
+		@param call_id the id from ToolInvocation->GetId()
+		@param tool_name the name from ToolInvocation->GetName()
+		@param message what went wrong
+		~#
+		method : virtual : public : AddToolError(call_id : String, tool_name : String, message : String) ~ Nil;
+
+		#~
+		Sends a message and streams the reply. Anthropic, OpenAI and Gemini stream as the model
+		generates; Ollama does not stream here, so its stream gives the whole reply as one piece.
+		@param message user message, or Nil to send the conversation as it stands
+		@param tools tool definitions, or Nil
+		@return stream, or Nil with the last error set
+		~#
+		method : virtual : public : Stream(message : String, tools : Vector<ToolSpec>) ~ TurnStream;
+
+		#~
+		Asks for an answer in a given shape. The conversation so far is context; neither the
+		question nor the answer joins it. How the shape is enforced is the provider's: a forced tool
+		(Anthropic), a JSON schema response format (OpenAI and Ollama) or a response schema (Gemini).
+		Treat it as best effort: OpenAI is asked with strict mode off, and Gemini accepts only a
+		subset of JSON Schema, so keywords it does not know are removed from the schema it is sent.
+		Check what comes back.
+		@param message the question
+		@param name a name for the shape, letters digits and underscores
+		@param schema JSON schema of the answer, an object
+		@return the answer as JSON, or Nil with the last error set
+		~#
+		method : virtual : public : SendJson(message : String, name : String, schema : JsonElement) ~ JsonElement;
+
+		#~
+		Get the last error
+		@return error text, or Nil when the last call succeeded
+		~#
+		method : virtual : public : GetLastError() ~ String;
+	}
+
+	#~
+	Runs a tool for Agent: given a call, return the tool's result as text.
+	~#
+	interface ToolHandler {
+		#~
+		Runs one tool call
+		@param call the call to run
+		@return the result text, or Nil when the tool failed (Agent reports that to the model as an error)
+		~#
+		method : virtual : public : Run(call : ToolInvocation) ~ String;
+	}
+
+	#~
+	The agent loop, written once for every provider: send, run the tools the model asks for, send
+	the results, repeat until the model answers.
+
+```
+session := LLM->Open("anthropic:claude-sonnet-5-5");
+turn := Agent->Run(session, "What is the weather in Paris?", tools, handler, 8);
+if(turn <> Nil) {
+  turn->GetText()->PrintLine();
+};
+```
+	~#
+	class Agent {
+		#~
+		Runs the loop. A call to a tool that is not in the list, or a handler that returns Nil, is
+		answered with an error (AddToolError) and the handler is not asked. A turn that still has
+		tool calls when max_rounds rounds have run is returned as it is, so check HasToolCalls() to
+		tell a finished answer from a stopped loop; its calls are answered with an error first, so
+		the session can go on with another Send.
+		@param session chat session
+		@param message the first user message
+		@param tools tool definitions
+		@param handler runs the tools
+		@param max_rounds most tool rounds to run
+		@return the last turn, or Nil with the session's last error set
+		~#
+		function : Run(session : Session, message : String, tools : Vector<ToolSpec>, handler : ToolHandler, max_rounds : Int) ~ Turn {
+			turn := session->Send(message, tools);
+			rounds := 0;
+			while(turn <> Nil & turn->HasToolCalls() & rounds < max_rounds) {
+				calls := turn->GetToolCalls();
+				each(i : calls) {
+					call := calls->Get(i);
+					if(<>Known(tools, call->GetName())) {
+						session->AddToolError(call->GetId(), call->GetName(), "there is no tool named {$call->GetName()}");
+					}
+					else {
+						result := handler->Run(call);
+						if(result = Nil) {
+							session->AddToolError(call->GetId(), call->GetName(), "the tool returned nothing");
+						}
+						else {
+							session->AddToolResult(call->GetId(), call->GetName(), result);
+						};
+					};
+				};
+
+				turn := session->Send(Nil, tools);
+				rounds += 1;
+			};
+
+			# calls left unanswered would make the next Send fail on every provider
+			if(turn <> Nil & turn->HasToolCalls()) {
+				calls := turn->GetToolCalls();
+				each(i : calls) {
+					call := calls->Get(i);
+					session->AddToolError(call->GetId(), call->GetName(), "the tool round limit was reached, so this call was not run");
+				};
+			};
+
+			return turn;
+		}
+
+		function : Known(tools : Vector<ToolSpec>, name : String) ~ Bool {
+			if(tools = Nil | name = Nil) {
+				return false;
+			};
+
+			each(i : tools) {
+				if(tools->Get(i)->GetName()->Equals(name)) {
+					return true;
+				};
+			};
+			return false;
+		}
+	}
+
+	#~
+	Builds sessions
+
+```
+session := LLM->Open("ollama:llama3.2");
+session := LLM->Open("gemini:gemini-2.5-flash");
+```
+	~#
+	class LLM {
+		#~
+		Opens a session from "provider:model", where the provider is anthropic, openai, gemini or ollama
+		@param spec provider and model, i.e. "openai:gpt-5" or "ollama:llama3.2:3b"
+		@return session, or Nil when the provider is not known
+		~#
+		function : Open(spec : String) ~ Session {
+			if(spec = Nil) {
+				return Nil;
+			};
+
+			colon := spec->Find(':');
+			if(colon < 1) {
+				return Nil;
+			};
+
+			provider := spec->SubString(colon);
+			model := spec->SubString(colon + 1, spec->Size() - colon - 1);
+			if(provider->Equals("anthropic")) {
+				return Anthropic(model);
+			};
+			if(provider->Equals("openai")) {
+				return OpenAI(model);
+			};
+			if(provider->Equals("gemini")) {
+				return Gemini(model);
+			};
+			if(provider->Equals("ollama")) {
+				return Ollama(model);
+			};
+
+			return Nil;
+		}
+
+		#~
+		Opens an Anthropic session; the key comes from the API.Anthropic EndPoint
+		@param model model id
+		@return session
+		~#
+		function : Anthropic(model : String) ~ Session {
+			return AnthropicSession->New(model, Nil);
+		}
+
+		#~
+		Opens an OpenAI session over the Responses API; the key comes from the API.OpenAI EndPoint
+		@param model model id
+		@return session
+		~#
+		function : OpenAI(model : String) ~ Session {
+			return OpenAISession->New(model, Nil);
+		}
+
+		#~
+		Opens a Gemini session; the key comes from the API.Google.Gemini EndPoint
+		@param model model id, i.e. gemini-2.5-flash
+		@return session
+		~#
+		function : Gemini(model : String) ~ Session {
+			return GeminiSession->New(model, Nil);
+		}
+
+		#~
+		Opens an Ollama session on the host the API.Ollama EndPoint names
+		@param model model name
+		@return session
+		~#
+		function : Ollama(model : String) ~ Session {
+			return OllamaSession->New(model);
+		}
+	}
+
+	# Reads fields out of parsed JSON
+	class : private : Js {
+		# decoded string value, or Nil when absent or null
+		function : Text(elem : JsonElement) ~ String {
+			if(elem = Nil | elem->IsNull()) {
+				return Nil;
+			};
+
+			if(elem->GetType() = JsonElement->JsonType->STRING) {
+				return elem->GetString();
+			};
+
+			return elem->ToString();
+		}
+
+		function : Text(json : JsonElement, name : String) ~ String {
+			if(json = Nil | json->GetType() <> JsonElement->JsonType->OBJECT) {
+				return Nil;
+			};
+			return Text(json->Get(name));
+		}
+
+		function : Child(json : JsonElement, name : String) ~ JsonElement {
+			if(json = Nil | json->GetType() <> JsonElement->JsonType->OBJECT) {
+				return Nil;
+			};
+			return json->Get(name);
+		}
+
+		function : IntOf(json : JsonElement, name : String) ~ Int {
+			elem := Child(json, name);
+			if(elem = Nil | elem->GetType() <> JsonElement->JsonType->NUMBER) {
+				return 0;
+			};
+			return elem->GetInt();
+		}
+
+		# true when the element is an array
+		function : IsArray(elem : JsonElement) ~ Bool {
+			return elem <> Nil & elem->GetType() = JsonElement->JsonType->ARRAY;
+		}
+
+		function : IsObject(elem : JsonElement) ~ Bool {
+			return elem <> Nil & elem->GetType() = JsonElement->JsonType->OBJECT;
+		}
+
+		function : IsTrue(json : JsonElement, name : String) ~ Bool {
+			elem := Child(json, name);
+			return elem <> Nil & elem->GetType() = JsonElement->JsonType->TRUE;
+		}
+
+		function : Same(a : String, b : String) ~ Bool {
+			return a <> Nil & b <> Nil & a->Equals(b);
+		}
+
+		function : Object() ~ JsonElement {
+			return JsonElement->New(JsonElement->JsonType->OBJECT);
+		}
+
+		function : Array() ~ JsonElement {
+			return JsonElement->New(JsonElement->JsonType->ARRAY);
+		}
+
+		# an object {"role": ..., "content": text}
+		function : RoleText(role : String, content : String) ~ JsonElement {
+			item := Object();
+			item->Insert("role", role);
+			item->Insert("content", content);
+			return item;
+		}
+
+		# a JSON array of the elements of a vector
+		function : ArrayOf(items : Vector<JsonElement>) ~ JsonElement {
+			array := Array();
+			each(i : items) {
+				array->Add(items->Get(i));
+			};
+			return array;
+		}
+
+		# a copy of a vector, so a one-shot request can add to it
+		function : Copy(items : Vector<JsonElement>) ~ Vector<JsonElement> {
+			copy := Vector->New()<JsonElement>;
+			each(i : items) {
+				copy->AddBack(items->Get(i));
+			};
+			return copy;
+		}
+
+		# parses a tool-call argument string, an empty object when it is not an object
+		function : Arguments(text : String) ~ JsonElement {
+			if(text <> Nil & text->Size() > 0) {
+				json := JsonParser->TextToElement(text);
+				if(IsObject(json)) {
+					return json;
+				};
+			};
+			return Object();
+		}
+	}
+
+	# Made-up ids for tool calls the provider does not number
+	class : private : Ids {
+		@next : static : Int;
+
+		function : Next(prefix : String) ~ String {
+			@next += 1;
+			count := @next;
+			return "{$prefix}{$count}";
+		}
+	}
+
+	# The outcome of a request: a parsed JSON body, an open stream, or an error message
+	class : private : Outcome {
+		@json : JsonElement;
+		@stream : SSEStream;
+		@error : String;
+		@code : Int;
+
+		New(json : JsonElement, stream : SSEStream, error : String) {
+			@json := json;
+			@stream := stream;
+			@error := error;
+			@code := 0;
+		}
+
+		New(error : String, code : Int) {
+			@error := error;
+			@code := code;
+		}
+
+		# the HTTP status behind an error, 0 when there was none
+		method : public : GetCode() ~ Int {
+			return @code;
+		}
+
+		method : public : IsOk() ~ Bool {
+			return @error = Nil;
+		}
+
+		method : public : GetJson() ~ JsonElement {
+			return @json;
+		}
+
+		method : public : GetStream() ~ SSEStream {
+			return @stream;
+		}
+
+		method : public : GetError() ~ String {
+			return @error;
+		}
+	}
+
+	# HTTPS requests for the providers that are spoken to directly
+	class : private : Wire {
+		# the message of an error body ({"error":{"message":...,"type"|"status":...}} or {"error":"..."}), or Nil
+		function : ErrorText(json : JsonElement) ~ String {
+			if(<>Js->IsObject(json)) {
+				return Nil;
+			};
+
+			error_json := json->Get("error");
+			if(error_json = Nil | error_json->IsNull()) {
+				return Nil;
+			};
+
+			if(error_json->GetType() = JsonElement->JsonType->STRING) {
+				return error_json->GetString();
+			};
+
+			message := Js->Text(error_json, "message");
+			kind := Js->Text(error_json, "type");
+			if(kind = Nil) {
+				kind := Js->Text(error_json, "status");
+			};
+
+			if(message = Nil) {
+				message := "the API returned an error";
+			};
+			if(kind <> Nil) {
+				message := "{$kind}: {$message}";
+			};
+			return message;
+		}
+
+		# a response body read as a JSON object, or the error it carries
+		function : Body(text : String) ~ Outcome {
+			json : JsonElement;
+			if(text <> Nil & text->Size() > 0) {
+				json := JsonParser->TextToElement(text);
+			};
+
+			if(<>Js->IsObject(json)) {
+				return Outcome->New(Nil, Nil, "the response was not JSON");
+			};
+
+			message := ErrorText(json);
+			if(message <> Nil) {
+				return Outcome->New(Nil, Nil, message);
+			};
+			return Outcome->New(json, Nil, Nil);
+		}
+
+		# POST a JSON body; headers holds name, value, name, value, ...
+		function : Post(url : String, headers : Vector<String>, body : JsonElement, pem : String, who : String) ~ Outcome {
+			client := HttpsClient->New();
+			AddHeaders(client, headers);
+
+			response := client->Post(Url->New(url), body->ToString()->ToByteArray(), "application/json", pem);
+			if(response = Nil | response->GetCode() = 0) {
+				return Outcome->New(Nil, Nil, "no response from {$who}");
+			};
+
+			code := response->GetCode();
+			text : String;
+			content := response->GetContent();
+			if(content <> Nil) {
+				text := content->ToString();
+			};
+
+			json : JsonElement;
+			if(text <> Nil & text->Size() > 0) {
+				json := JsonParser->TextToElement(text);
+			};
+
+			if(code < 200 | code > 299) {
+				message := ErrorText(json);
+				if(message = Nil) {
+					return Outcome->New(Nil, Nil, "{$who} answered HTTP {$code}");
+				};
+				return Outcome->New(Nil, Nil, "HTTP {$code}, {$message}");
+			};
+
+			if(<>Js->IsObject(json)) {
+				return Outcome->New(Nil, Nil, "the response was not JSON (HTTP {$code})");
+			};
+
+			message := ErrorText(json);
+			if(message <> Nil) {
+				return Outcome->New(Nil, Nil, message);
+			};
+
+			return Outcome->New(json, Nil, Nil);
+		}
+
+		# POST a JSON body and open the response as a server-sent-event stream
+		function : Open(url : String, headers : Vector<String>, body : JsonElement, pem : String, who : String) ~ Outcome {
+			client := HttpsClient->New();
+			AddHeaders(client, headers);
+
+			events := client->StreamPost(Url->New(url), body->ToString()->ToByteArray(), "application/json", pem);
+			if(events = Nil) {
+				return Outcome->New(Nil, Nil, "could not open the stream to {$who}");
+			};
+
+			code := events->GetStatusCode();
+			if(code <> 200) {
+				events->Close();
+				return Outcome->New("{$who} answered HTTP {$code}", code);
+			};
+
+			return Outcome->New(Nil, events, Nil);
+		}
+
+		function : AddHeaders(client : HttpsClient, headers : Vector<String>) ~ Nil {
+			i := 0;
+			while(i + 1 < headers->Size()) {
+				client->AddHeader(headers->Get(i), headers->Get(i + 1));
+				i += 2;
+			};
+		}
+	}
+
+	#~
+	A session over the Anthropic Messages API; it wraps API.Anthropic.Chat. The base URL and pinned
+	certificate are the API.Anthropic.EndPoint ones, and so is the key.
+	~#
+	class AnthropicSession implements Session {
+		@chat : API.Anthropic.Chat;
+		@last_error : String;
+
+		#~
+		Constructor
+		@param model model id, i.e. claude-sonnet-5-5
+		@param key API key, or Nil to use API.Anthropic.EndPoint->GetApiKey()
+		~#
+		New(model : String, key : String) {
+			@chat := API.Anthropic.Chat->New(model, key);
+		}
+
+		method : public : GetProvider() ~ String {
+			return "anthropic";
+		}
+
+		method : public : GetModel() ~ String {
+			return @chat->GetModel();
+		}
+
+		method : public : SetSystem(system : String) ~ Session {
+			@chat->SetSystem(system);
+			return @self;
+		}
+
+		method : public : SetMaxTokens(max_tokens : Int) ~ Session {
+			@chat->SetMaxTokens(max_tokens);
+			return @self;
+		}
+
+		method : public : SetTemperature(temperature : Float) ~ Session {
+			@chat->SetTemperature(temperature);
+			return @self;
+		}
+
+		method : public : GetLastError() ~ String {
+			return @last_error;
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : Fail(message : String) ~ Nil {
+			@last_error := message;
+		}
+
+		#~
+		Reads a response body without a server, for tests and for replaying recorded responses.
+		The turn does not join the conversation.
+		@param body response text
+		@return turn, or Nil with the last error set
+		~#
+		method : public : ParseBody(body : String) ~ Turn {
+			@last_error := Nil;
+			API.Anthropic.EndPoint->SetLastError(Nil);
+			reply := Reply->Parse(body);
+			if(reply = Nil) {
+				Fail(Reason());
+				return Nil;
+			};
+			return Wrap(reply);
+		}
+
+		#~
+		Get the wrapped client, for what the neutral layer does not cover (extended thinking, ...)
+		@return Anthropic chat
+		~#
+		method : public : GetChat() ~ API.Anthropic.Chat {
+			return @chat;
+		}
+
+		method : public : Send(message : String, tools : Vector<ToolSpec>) ~ Turn {
+			@last_error := Nil;
+			API.Anthropic.EndPoint->SetLastError(Nil);
+			reply := @chat->SendReply(message, Convert(tools));
+			if(reply = Nil) {
+				Fail(Reason());
+				return Nil;
+			};
+
+			return Wrap(reply);
+		}
+
+		method : public : AddToolResult(call_id : String, tool_name : String, content : String) ~ Nil {
+			@chat->AddToolResult(call_id, content);
+		}
+
+		method : public : AddToolError(call_id : String, tool_name : String, message : String) ~ Nil {
+			@chat->AddToolResult(call_id, message, true);
+		}
+
+		method : public : Stream(message : String, tools : Vector<ToolSpec>) ~ TurnStream {
+			@last_error := Nil;
+			API.Anthropic.EndPoint->SetLastError(Nil);
+			stream := @chat->Stream(message, Convert(tools));
+			if(stream = Nil) {
+				Fail(Reason());
+				return Nil;
+			};
+
+			return AnthropicStream->New(stream, @self);
+		}
+
+		method : public : SendJson(message : String, name : String, schema : JsonElement) ~ JsonElement {
+			@last_error := Nil;
+			API.Anthropic.EndPoint->SetLastError(Nil);
+			answer := @chat->SendJson(message, name, schema);
+			if(answer = Nil) {
+				Fail(Reason());
+			};
+			return answer;
+		}
+
+		method : Reason() ~ String {
+			error := API.Anthropic.EndPoint->GetLastError();
+			if(error = Nil) {
+				error := "the request to the Anthropic API failed";
+			};
+			return error;
+		}
+
+		function : Convert(tools : Vector<ToolSpec>) ~ Vector<Tool> {
+			if(tools = Nil | tools->Size() = 0) {
+				return Nil;
+			};
+
+			converted := Vector->New()<Tool>;
+			each(i : tools) {
+				tool := tools->Get(i);
+				converted->AddBack(Tool->New(tool->GetName(), tool->GetDescription(), tool->GetSchema()));
+			};
+			return converted;
+		}
+
+		#~
+		@hidden
+		~#
+		function : Wrap(reply : API.Anthropic.Reply) ~ Turn {
+			calls := Vector->New()<ToolInvocation>;
+			uses := reply->GetToolUses();
+			each(i : uses) {
+				use_call := uses->Get(i);
+				calls->AddBack(ToolInvocation->New(use_call->GetId(), use_call->GetName(), use_call->GetInput()));
+			};
+
+			raw := reply->GetStopReason();
+			stop := "other";
+			if(calls->Size() > 0 | Js->Same(raw, "tool_use")) {
+				stop := "tool_calls";
+			}
+			else if(Js->Same(raw, "end_turn") | Js->Same(raw, "stop_sequence")) {
+				stop := "end";
+			}
+			else if(Js->Same(raw, "max_tokens")) {
+				stop := "length";
+			}
+			else if(Js->Same(raw, "refusal")) {
+				stop := "filtered";
+			};
+
+			return Turn->New(reply->GetText(), calls, stop, raw, reply->GetInputTokens(), reply->GetOutputTokens(), reply->GetModel());
+		}
+	}
+
+	class : private : AnthropicStream implements TurnStream {
+		@stream : API.Anthropic.ReplyStream;
+		@session : AnthropicSession;
+
+		New(stream : API.Anthropic.ReplyStream, session : AnthropicSession) {
+			@stream := stream;
+			@session := session;
+		}
+
+		method : public : HasNext() ~ Bool {
+			return @stream->HasNext();
+		}
+
+		method : public : Next() ~ String {
+			return @stream->Next();
+		}
+
+		method : public : GetTurn() ~ Turn {
+			reply := @stream->GetReply();
+			if(reply = Nil) {
+				error := API.Anthropic.EndPoint->GetLastError();
+				if(error = Nil) {
+					error := "the stream failed";
+				};
+				@session->Fail(error);
+				return Nil;
+			};
+
+			return AnthropicSession->Wrap(reply);
+		}
+
+		method : public : Close() ~ Nil {
+			@stream->Close();
+		}
+	}
+
+	#~
+	A session over the OpenAI Responses API (POST /responses). The conversation is kept here and
+	sent as input items on every call, with the model's output items replayed as they came, so a
+	tool call's id survives the round trip. The API key and base URL default to API.OpenAI.EndPoint's;
+	SetBaseUrl and SetCertificate change them for this session. The base URL must be https.
+	~#
+	class OpenAISession implements Session {
+		@model : String;
+		@key : String;
+		@system : String;
+		@base_url : String;
+		@pem : String;
+		@max_tokens : Int;
+		@temperature : Float;
+		@has_temperature : Bool;
+		@input : Vector<JsonElement>;
+		@pending : Bool;
+		@last_error : String;
+
+		#~
+		Constructor
+		@param model model id, i.e. gpt-5
+		@param key API key, or Nil to use API.OpenAI.EndPoint->GetApiKey()
+		~#
+		New(model : String, key : String) {
+			@model := model;
+			@key := key;
+			@input := Vector->New()<JsonElement>;
+		}
+
+		#~
+		Sets the API base URL for this session, in place of API.OpenAI.EndPoint's (https://api.openai.com/v1)
+		@param base_url base URL without a trailing slash; it must be https
+		@return self for chaining
+		~#
+		method : public : SetBaseUrl(base_url : String) ~ OpenAISession {
+			@base_url := base_url;
+			return @self;
+		}
+
+		#~
+		Pins the certificate a gateway or test server presents, a PEM file used as the trust anchor
+		@param pem PEM file, or Nil to use the system store
+		@return self for chaining
+		~#
+		method : public : SetCertificate(pem : String) ~ OpenAISession {
+			@pem := pem;
+			return @self;
+		}
+
+		method : public : GetProvider() ~ String {
+			return "openai";
+		}
+
+		method : public : GetModel() ~ String {
+			return @model;
+		}
+
+		method : public : SetSystem(system : String) ~ Session {
+			@system := system;
+			return @self;
+		}
+
+		method : public : SetMaxTokens(max_tokens : Int) ~ Session {
+			@max_tokens := max_tokens;
+			return @self;
+		}
+
+		method : public : SetTemperature(temperature : Float) ~ Session {
+			@temperature := temperature;
+			@has_temperature := true;
+			return @self;
+		}
+
+		method : public : GetLastError() ~ String {
+			return @last_error;
+		}
+
+		#~
+		Get the conversation as the input items of the next request
+		@return JSON array
+		~#
+		method : public : GetInput() ~ JsonElement {
+			return Js->ArrayOf(@input);
+		}
+
+		#~
+		Reads a response body without a server, for tests and for replaying recorded responses. The
+		output items join the conversation, as they do after a real call.
+		@param body response text
+		@return turn, or Nil with the last error set
+		~#
+		method : public : ParseBody(body : String) ~ Turn {
+			@last_error := Nil;
+			outcome := Wire->Body(body);
+			if(<>outcome->IsOk()) {
+				@last_error := outcome->GetError();
+				return Nil;
+			};
+			return Parse(outcome->GetJson(), true);
+		}
+
+		#~
+		Builds the request body for the conversation as it stands, public so it can be inspected without a server
+		@param tools tool definitions, or Nil
+		@param stream true to ask for a streamed response
+		@return request JSON
+		~#
+		method : public : BuildRequest(tools : Vector<ToolSpec>, stream : Bool) ~ JsonElement {
+			return Build(@input, tools, stream, Nil);
+		}
+
+		method : Build(input : Vector<JsonElement>, tools : Vector<ToolSpec>, stream : Bool, text_format : JsonElement) ~ JsonElement {
+			request := Js->Object();
+			request->Insert("model", @model);
+			request->Insert("input", Js->ArrayOf(input));
+			if(@system <> Nil) {
+				request->Insert("instructions", @system);
+			};
+			if(@max_tokens > 0) {
+				request->Insert("max_output_tokens", @max_tokens);
+			};
+			if(@has_temperature) {
+				request->Insert("temperature", @temperature);
+			};
+			if(stream) {
+				request->Insert("stream", true);
+			};
+
+			if(tools <> Nil & tools->Size() > 0) {
+				tools_json := Js->Array();
+				each(i : tools) {
+					tool := tools->Get(i);
+					tool_json := Js->Object();
+					tool_json->Insert("type", "function");
+					tool_json->Insert("name", tool->GetName());
+					if(tool->GetDescription() <> Nil) {
+						tool_json->Insert("description", tool->GetDescription());
+					};
+					tool_json->Insert("parameters", tool->GetSchema());
+					# a function tool is strict unless told otherwise on some models, and strict
+					# refuses a schema with an optional property or without additionalProperties:false
+					tool_json->Insert("strict", false);
+					tools_json->Add(tool_json);
+				};
+				request->Insert("tools", tools_json);
+			};
+
+			if(text_format <> Nil) {
+				text_json := Js->Object();
+				text_json->Insert("format", text_format);
+				request->Insert("text", text_json);
+			};
+
+			return request;
+		}
+
+		method : Key() ~ String {
+			if(@key = Nil) {
+				@key := API.OpenAI.EndPoint->GetApiKey();
+			};
+			if(@key = Nil) {
+				@last_error := "no API key: pass one, call API.OpenAI.EndPoint->SetApiKey, or create openai_api_key.dat";
+			};
+			return @key;
+		}
+
+		method : Endpoint() ~ String {
+			base := @base_url;
+			if(base = Nil) {
+				base := API.OpenAI.EndPoint->GetBaseUrl();
+			};
+			return base + "/responses";
+		}
+
+		method : Headers(key : String) ~ Vector<String> {
+			headers := Vector->New()<String>;
+			headers->AddBack("Authorization");
+			headers->AddBack("Bearer {$key}");
+			return headers;
+		}
+
+		method : public : Send(message : String, tools : Vector<ToolSpec>) ~ Turn {
+			@last_error := Nil;
+			key := Key();
+			if(key = Nil) {
+				return Nil;
+			};
+
+			added := false;
+			if(message <> Nil) {
+				@input->AddBack(Js->RoleText("user", message));
+				added := true;
+			};
+
+			outcome := Wire->Post(Endpoint(), Headers(key), Build(@input, tools, false, Nil), @pem, "the OpenAI API");
+			turn : Turn;
+			if(outcome->IsOk()) {
+				turn := Parse(outcome->GetJson(), true);
+			}
+			else {
+				@last_error := outcome->GetError();
+			};
+
+			if(turn = Nil & added) {
+				@input->RemoveBack();
+			};
+			return turn;
+		}
+
+		method : public : AddToolResult(call_id : String, tool_name : String, content : String) ~ Nil {
+			item := Js->Object();
+			item->Insert("type", "function_call_output");
+			item->Insert("call_id", call_id);
+			item->Insert("output", content);
+			@input->AddBack(item);
+		}
+
+		method : public : AddToolError(call_id : String, tool_name : String, message : String) ~ Nil {
+			AddToolResult(call_id, tool_name, "Error: {$message}");
+		}
+
+		method : public : SendJson(message : String, name : String, schema : JsonElement) ~ JsonElement {
+			@last_error := Nil;
+			key := Key();
+			if(key = Nil) {
+				return Nil;
+			};
+
+			input := Js->Copy(@input);
+			input->AddBack(Js->RoleText("user", message));
+
+			format := Js->Object();
+			format->Insert("type", "json_schema");
+			format->Insert("name", name);
+			format->Insert("schema", schema);
+			format->Insert("strict", false);
+
+			outcome := Wire->Post(Endpoint(), Headers(key), Build(input, Nil, false, format), @pem, "the OpenAI API");
+			if(<>outcome->IsOk()) {
+				@last_error := outcome->GetError();
+				return Nil;
+			};
+
+			turn := Parse(outcome->GetJson(), false);
+			if(turn = Nil) {
+				return Nil;
+			};
+
+			if(Js->Same(turn->GetStopReason(), "filtered")) {
+				@last_error := "the model refused to answer";
+				return Nil;
+			};
+
+			answer := JsonParser->TextToElement(turn->GetText());
+			if(<>Js->IsObject(answer)) {
+				@last_error := Shape(turn);
+				return Nil;
+			};
+			return answer;
+		}
+
+		method : public : Stream(message : String, tools : Vector<ToolSpec>) ~ TurnStream {
+			@last_error := Nil;
+			key := Key();
+			if(key = Nil) {
+				return Nil;
+			};
+
+			added := false;
+			if(message <> Nil) {
+				@input->AddBack(Js->RoleText("user", message));
+				added := true;
+			};
+
+			outcome := Wire->Open(Endpoint(), Headers(key), Build(@input, tools, true, Nil), @pem, "the OpenAI API");
+			if(<>outcome->IsOk()) {
+				@last_error := outcome->GetError();
+				# the stream cannot show the error body; a client error is the same without streaming, so ask that way
+				code := outcome->GetCode();
+				if(code = 400 | code = 401 | code = 403 | code = 404) {
+					explained := Wire->Post(Endpoint(), Headers(key), Build(@input, tools, false, Nil), @pem, "the OpenAI API");
+					if(<>explained->IsOk()) {
+						@last_error := explained->GetError();
+					};
+				};
+
+				if(added) {
+					@input->RemoveBack();
+				};
+				return Nil;
+			};
+
+			@pending := added;
+			return OpenAIStream->New(outcome->GetStream(), @self);
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : Fail(message : String) ~ Nil {
+			@last_error := message;
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : Abort() ~ Nil {
+			if(@pending) {
+				@input->RemoveBack();
+				@pending := false;
+			};
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : Finish(response : JsonElement) ~ Turn {
+			turn : Turn;
+			if(response = Nil) {
+				Fail("the stream ended before the response completed");
+			}
+			else {
+				message := Wire->ErrorText(response);
+				if(message <> Nil) {
+					Fail(message);
+				}
+				else {
+					turn := Parse(response, true);
+				};
+			};
+
+			if(turn = Nil) {
+				Abort();
+			}
+			else {
+				@pending := false;
+			};
+			return turn;
+		}
+
+		# why a JSON answer is missing, with the provider's stop word when there was one
+		method : Shape(turn : Turn) ~ String {
+			message := "the model did not return the requested shape";
+			if(turn->GetRawStopReason() <> Nil & <>Js->Same(turn->GetStopReason(), "end")) {
+				raw := turn->GetRawStopReason();
+				message += " (stopped: {$raw})";
+			};
+			return message;
+		}
+
+		# builds a turn from a Responses object; with keep, its output items join the conversation
+		method : Parse(json : JsonElement, keep : Bool) ~ Turn {
+			output := json->Get("output");
+			if(<>Js->IsArray(output)) {
+				@last_error := "the response did not contain an output list";
+				return Nil;
+			};
+
+			text := "";
+			refused := false;
+			calls := Vector->New()<ToolInvocation>;
+			each(i : output) {
+				item := output->Get(i);
+				kind := Js->Text(item, "type");
+				if(kind <> Nil) {
+					if(kind->Equals("message")) {
+						parts := Js->Child(item, "content");
+						if(Js->IsArray(parts)) {
+							each(j : parts) {
+								part := parts->Get(j);
+								part_kind := Js->Text(part, "type");
+								if(Js->Same(part_kind, "output_text")) {
+									piece := Js->Text(part, "text");
+									if(piece <> Nil) {
+										text += piece;
+									};
+								}
+								else if(Js->Same(part_kind, "refusal")) {
+									refused := true;
+								};
+							};
+						};
+					}
+					else if(kind->Equals("function_call")) {
+						calls->AddBack(ToolInvocation->New(Js->Text(item, "call_id"), Js->Text(item, "name"), Js->Arguments(Js->Text(item, "arguments"))));
+					};
+				};
+
+				if(keep) {
+					@input->AddBack(item);
+				};
+			};
+
+			status := Js->Text(json, "status");
+			raw := status;
+			stop := "end";
+			if(calls->Size() > 0) {
+				stop := "tool_calls";
+			}
+			else if(Js->Same(status, "incomplete")) {
+				raw := Js->Text(Js->Child(json, "incomplete_details"), "reason");
+				stop := "other";
+				if(Js->Same(raw, "max_output_tokens")) {
+					stop := "length";
+				}
+				else if(Js->Same(raw, "content_filter")) {
+					stop := "filtered";
+				};
+			}
+			else if(refused) {
+				stop := "filtered";
+			}
+			else if(status <> Nil & <>status->Equals("completed")) {
+				stop := "other";
+			};
+
+			usage := Js->Child(json, "usage");
+			return Turn->New(text, calls, stop, raw, Js->IntOf(usage, "input_tokens"), Js->IntOf(usage, "output_tokens"), Js->Text(json, "model"));
+		}
+	}
+
+	class : private : OpenAIStream implements TurnStream {
+		@events : SSEStream;
+		@session : OpenAISession;
+		@pending : String;
+		@final : JsonElement;
+		@turn : Turn;
+		@finished : Bool;
+		@settled : Bool;
+		@failed : Bool;
+
+		New(events : SSEStream, session : OpenAISession) {
+			@events := events;
+			@session := session;
+			@finished := false;
+			@settled := false;
+			@failed := false;
+		}
+
+		method : public : HasNext() ~ Bool {
+			if(@finished) {
+				return false;
+			};
+
+			while(@events->HasNext()) {
+				event := @events->Next();
+				json := JsonParser->TextToElement(event->GetData());
+				kind := Js->Text(json, "type");
+				if(kind = Nil) {
+					kind := event->GetEvent();
+				};
+
+				if(kind <> Nil) {
+					if(kind->Equals("response.output_text.delta")) {
+						piece := Js->Text(json, "delta");
+						if(piece <> Nil & piece->Size() > 0) {
+							@pending := piece;
+							return true;
+						};
+					}
+					else if(kind->Equals("response.completed") | kind->Equals("response.incomplete")) {
+						@final := Js->Child(json, "response");
+						break;
+					}
+					else if(kind->Equals("response.failed")) {
+						message := Wire->ErrorText(Js->Child(json, "response"));
+						if(message = Nil) {
+							message := "the response failed";
+						};
+						@session->Fail(message);
+						@failed := true;
+						break;
+					}
+					else if(kind->Equals("error")) {
+						message := Js->Text(json, "message");
+						if(message = Nil) {
+							message := "the stream carried an error";
+						};
+						@session->Fail(message);
+						@failed := true;
+						break;
+					};
+				};
+			};
+
+			End();
+			Settle();
+			return false;
+		}
+
+		method : public : Next() ~ String {
+			return @pending;
+		}
+
+		# the stream is over: the exchange joins the conversation, or the message that began it is taken back
+		method : Settle() ~ Nil {
+			if(<>@settled) {
+				@settled := true;
+				if(@failed) {
+					@session->Abort();
+				}
+				else {
+					@turn := @session->Finish(@final);
+				};
+			};
+		}
+
+		method : public : GetTurn() ~ Turn {
+			while(HasNext()) {
+			};
+			Settle();
+			return @turn;
+		}
+
+		method : End() ~ Nil {
+			if(<>@finished) {
+				@finished := true;
+				@events->Close();
+			};
+		}
+
+		method : public : Close() ~ Nil {
+			End();
+			if(<>@settled) {
+				@settled := true;
+				@session->Abort();
+			};
+		}
+	}
+
+	#~
+	A session over the Gemini API (generateContent and streamGenerateContent). The conversation is
+	kept here as contents; the model's own content is replayed as it came, so tool-call signatures
+	survive the round trip. The key is sent in the x-goog-api-key header, not the URL. The key
+	defaults to API.Google.Gemini.EndPoint's; SetBaseUrl and SetCertificate change the host for this
+	session. The base URL must be https.
+	~#
+	class GeminiSession implements Session {
+		@model : String;
+		@key : String;
+		@system : String;
+		@base_url : String;
+		@pem : String;
+		@max_tokens : Int;
+		@temperature : Float;
+		@has_temperature : Bool;
+		@contents : Vector<JsonElement>;
+		@pending : Bool;
+		@last_error : String;
+
+		#~
+		Constructor
+		@param model model id, i.e. gemini-2.5-flash (a leading "models/" is accepted)
+		@param key API key, or Nil to use API.Google.Gemini.EndPoint->GetApiKey()
+		~#
+		New(model : String, key : String) {
+			@model := model;
+			if(@model <> Nil & @model->StartsWith("models/")) {
+				@model := @model->SubString(7, @model->Size() - 7);
+			};
+			@key := key;
+			@contents := Vector->New()<JsonElement>;
+		}
+
+		#~
+		Sets the API base URL for this session (default https://generativelanguage.googleapis.com/v1beta)
+		@param base_url base URL without a trailing slash; it must be https
+		@return self for chaining
+		~#
+		method : public : SetBaseUrl(base_url : String) ~ GeminiSession {
+			@base_url := base_url;
+			return @self;
+		}
+
+		#~
+		Pins the certificate a gateway or test server presents, a PEM file used as the trust anchor
+		@param pem PEM file, or Nil to use the system store
+		@return self for chaining
+		~#
+		method : public : SetCertificate(pem : String) ~ GeminiSession {
+			@pem := pem;
+			return @self;
+		}
+
+		method : public : GetProvider() ~ String {
+			return "gemini";
+		}
+
+		method : public : GetModel() ~ String {
+			return @model;
+		}
+
+		method : public : SetSystem(system : String) ~ Session {
+			@system := system;
+			return @self;
+		}
+
+		method : public : SetMaxTokens(max_tokens : Int) ~ Session {
+			@max_tokens := max_tokens;
+			return @self;
+		}
+
+		method : public : SetTemperature(temperature : Float) ~ Session {
+			@temperature := temperature;
+			@has_temperature := true;
+			return @self;
+		}
+
+		method : public : GetLastError() ~ String {
+			return @last_error;
+		}
+
+		#~
+		Get the conversation as the contents of the next request
+		@return JSON array
+		~#
+		method : public : GetContents() ~ JsonElement {
+			return Js->ArrayOf(@contents);
+		}
+
+		#~
+		Reads a response body without a server, for tests and for replaying recorded responses. The
+		model's content joins the conversation, as it does after a real call.
+		@param body response text
+		@return turn, or Nil with the last error set
+		~#
+		method : public : ParseBody(body : String) ~ Turn {
+			@last_error := Nil;
+			outcome := Wire->Body(body);
+			if(<>outcome->IsOk()) {
+				@last_error := outcome->GetError();
+				return Nil;
+			};
+			return Parse(outcome->GetJson(), true);
+		}
+
+		#~
+		Builds the request body for the conversation as it stands, public so it can be inspected without a server
+		@param tools tool definitions, or Nil
+		@return request JSON
+		~#
+		method : public : BuildRequest(tools : Vector<ToolSpec>) ~ JsonElement {
+			return Build(@contents, tools, Nil);
+		}
+
+		method : Build(contents : Vector<JsonElement>, tools : Vector<ToolSpec>, schema : JsonElement) ~ JsonElement {
+			request := Js->Object();
+			request->Insert("contents", Js->ArrayOf(contents));
+
+			if(@system <> Nil) {
+				part := Js->Object();
+				part->Insert("text", @system);
+				parts := Js->Array();
+				parts->Add(part);
+				instruction := Js->Object();
+				instruction->Insert("parts", parts);
+				request->Insert("systemInstruction", instruction);
+			};
+
+			if(tools <> Nil & tools->Size() > 0) {
+				declarations := Js->Array();
+				each(i : tools) {
+					tool := tools->Get(i);
+					declaration := Js->Object();
+					declaration->Insert("name", tool->GetName());
+					if(tool->GetDescription() <> Nil) {
+						declaration->Insert("description", tool->GetDescription());
+					};
+					# Gemini refuses an object with no properties, and keywords outside its schema subset
+					parameters := GeminiSchema->Clean(tool->GetSchema());
+					if(GeminiSchema->HasProperties(parameters)) {
+						declaration->Insert("parameters", parameters);
+					};
+					declarations->Add(declaration);
+				};
+
+				group := Js->Object();
+				group->Insert("functionDeclarations", declarations);
+				groups := Js->Array();
+				groups->Add(group);
+				request->Insert("tools", groups);
+			};
+
+			if(@max_tokens > 0 | @has_temperature | schema <> Nil) {
+				config := Js->Object();
+				if(@max_tokens > 0) {
+					config->Insert("maxOutputTokens", @max_tokens);
+				};
+				if(@has_temperature) {
+					config->Insert("temperature", @temperature);
+				};
+				if(schema <> Nil) {
+					config->Insert("responseMimeType", "application/json");
+					config->Insert("responseSchema", GeminiSchema->Clean(schema));
+				};
+				request->Insert("generationConfig", config);
+			};
+
+			return request;
+		}
+
+		method : Key() ~ String {
+			if(@key = Nil) {
+				@key := API.Google.Gemini.EndPoint->GetApiKey();
+			};
+			if(@key = Nil) {
+				@last_error := "no API key: pass one, call API.Google.Gemini.EndPoint->SetApiKey, or create gemini_api_key.dat";
+			};
+			return @key;
+		}
+
+		method : Endpoint(action : String) ~ String {
+			base := @base_url;
+			if(base = Nil) {
+				base := "https://generativelanguage.googleapis.com/v1beta";
+			};
+			return "{$base}/models/{$@model}:{$action}";
+		}
+
+		method : Headers(key : String) ~ Vector<String> {
+			headers := Vector->New()<String>;
+			headers->AddBack("x-goog-api-key");
+			headers->AddBack(key);
+			return headers;
+		}
+
+		method : UserText(message : String) ~ JsonElement {
+			part := Js->Object();
+			part->Insert("text", message);
+			parts := Js->Array();
+			parts->Add(part);
+			content := Js->Object();
+			content->Insert("role", "user");
+			content->Insert("parts", parts);
+			return content;
+		}
+
+		method : public : Send(message : String, tools : Vector<ToolSpec>) ~ Turn {
+			@last_error := Nil;
+			key := Key();
+			if(key = Nil) {
+				return Nil;
+			};
+
+			added := false;
+			if(message <> Nil) {
+				@contents->AddBack(UserText(message));
+				added := true;
+			};
+
+			outcome := Wire->Post(Endpoint("generateContent"), Headers(key), Build(@contents, tools, Nil), @pem, "the Gemini API");
+			turn : Turn;
+			if(outcome->IsOk()) {
+				turn := Parse(outcome->GetJson(), true);
+			}
+			else {
+				@last_error := outcome->GetError();
+			};
+
+			if(turn = Nil & added) {
+				@contents->RemoveBack();
+			};
+			return turn;
+		}
+
+		method : public : AddToolResult(call_id : String, tool_name : String, content : String) ~ Nil {
+			response := JsonParser->TextToElement(content);
+			if(<>Js->IsObject(response)) {
+				response := Js->Object();
+				response->Insert("result", content);
+			};
+
+			AddResponse(call_id, tool_name, response);
+		}
+
+		method : public : AddToolError(call_id : String, tool_name : String, message : String) ~ Nil {
+			response := Js->Object();
+			response->Insert("error", message);
+			AddResponse(call_id, tool_name, response);
+		}
+
+		method : AddResponse(call_id : String, tool_name : String, response : JsonElement) ~ Nil {
+			function_response := Js->Object();
+			function_response->Insert("name", tool_name);
+			function_response->Insert("response", response);
+			if(call_id <> Nil & <>call_id->StartsWith("gemini_call_")) {
+				function_response->Insert("id", call_id);
+			};
+
+			part := Js->Object();
+			part->Insert("functionResponse", function_response);
+
+			# results for one turn share one user content
+			last_index := @contents->Size() - 1;
+			if(last_index >= 0) {
+				last := @contents->Get(last_index);
+				parts := last->Get("parts");
+				if(Js->Same(Js->Text(last, "role"), "user") & Js->IsArray(parts) & parts->Size() > 0 & Js->Child(parts->Get(0), "functionResponse") <> Nil) {
+					parts->Add(part);
+					return;
+				};
+			};
+
+			parts := Js->Array();
+			parts->Add(part);
+			user := Js->Object();
+			user->Insert("role", "user");
+			user->Insert("parts", parts);
+			@contents->AddBack(user);
+		}
+
+		method : public : SendJson(message : String, name : String, schema : JsonElement) ~ JsonElement {
+			@last_error := Nil;
+			key := Key();
+			if(key = Nil) {
+				return Nil;
+			};
+
+			contents := Js->Copy(@contents);
+			contents->AddBack(UserText(message));
+
+			outcome := Wire->Post(Endpoint("generateContent"), Headers(key), Build(contents, Nil, schema), @pem, "the Gemini API");
+			if(<>outcome->IsOk()) {
+				@last_error := outcome->GetError();
+				return Nil;
+			};
+
+			turn := Parse(outcome->GetJson(), false);
+			if(turn = Nil) {
+				return Nil;
+			};
+
+			answer := JsonParser->TextToElement(turn->GetText());
+			if(<>Js->IsObject(answer)) {
+				@last_error := Shape(turn);
+				return Nil;
+			};
+			return answer;
+		}
+
+		method : public : Stream(message : String, tools : Vector<ToolSpec>) ~ TurnStream {
+			@last_error := Nil;
+			key := Key();
+			if(key = Nil) {
+				return Nil;
+			};
+
+			added := false;
+			if(message <> Nil) {
+				@contents->AddBack(UserText(message));
+				added := true;
+			};
+
+			url := Endpoint("streamGenerateContent") + "?alt=sse";
+			headers := Headers(key);
+			headers->AddBack("Connection");
+			headers->AddBack("close");
+			outcome := Wire->Open(url, headers, Build(@contents, tools, Nil), @pem, "the Gemini API");
+			if(<>outcome->IsOk()) {
+				@last_error := outcome->GetError();
+				# the stream cannot show the error body; a client error is the same without streaming, so ask that way
+				code := outcome->GetCode();
+				if(code = 400 | code = 401 | code = 403 | code = 404) {
+					explained := Wire->Post(Endpoint("generateContent"), Headers(key), Build(@contents, tools, Nil), @pem, "the Gemini API");
+					if(<>explained->IsOk()) {
+						@last_error := explained->GetError();
+					};
+				};
+
+				if(added) {
+					@contents->RemoveBack();
+				};
+				return Nil;
+			};
+
+			@pending := added;
+			return GeminiStream->New(outcome->GetStream(), @self);
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : Fail(message : String) ~ Nil {
+			@last_error := message;
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : Abort() ~ Nil {
+			if(@pending) {
+				@contents->RemoveBack();
+				@pending := false;
+			};
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : Finish(response : JsonElement) ~ Turn {
+			turn := Parse(response, true);
+			if(turn = Nil) {
+				Abort();
+			}
+			else {
+				@pending := false;
+			};
+			return turn;
+		}
+
+		# why a JSON answer is missing, with the finish reason when there was one (Gemini 2.5 counts
+		# its thinking tokens against the limit, so a small limit can end the reply before any answer)
+		method : Shape(turn : Turn) ~ String {
+			message := "the model did not return the requested shape";
+			if(turn->GetRawStopReason() <> Nil & <>Js->Same(turn->GetStopReason(), "end")) {
+				raw := turn->GetRawStopReason();
+				message += " (finish reason {$raw})";
+			};
+			return message;
+		}
+
+		# builds a turn from a GenerateContentResponse; with keep, the model's content joins the conversation
+		method : Parse(json : JsonElement, keep : Bool) ~ Turn {
+			candidates := json->Get("candidates");
+			if(<>Js->IsArray(candidates) | candidates->Size() = 0) {
+				reason := Js->Text(Js->Child(json, "promptFeedback"), "blockReason");
+				if(reason <> Nil) {
+					@last_error := "the prompt was blocked: {$reason}";
+				}
+				else {
+					@last_error := "the response did not contain a candidate";
+				};
+				return Nil;
+			};
+
+			candidate := candidates->Get(0);
+			content := Js->Child(candidate, "content");
+			text := "";
+			calls := Vector->New()<ToolInvocation>;
+			parts := Js->Child(content, "parts");
+			if(Js->IsArray(parts)) {
+				each(i : parts) {
+					part := parts->Get(i);
+					call_json := Js->Child(part, "functionCall");
+					if(call_json <> Nil) {
+						id := Js->Text(call_json, "id");
+						if(id = Nil) {
+							id := Ids->Next("gemini_call_");
+						};
+						calls->AddBack(ToolInvocation->New(id, Js->Text(call_json, "name"), Js->Child(call_json, "args")));
+					}
+					else if(<>Js->IsTrue(part, "thought")) {
+						piece := Js->Text(part, "text");
+						if(piece <> Nil) {
+							text += piece;
+						};
+					};
+				};
+
+				if(keep & parts->Size() > 0) {
+					@contents->AddBack(content);
+				};
+			};
+
+			raw := Js->Text(candidate, "finishReason");
+			stop := "other";
+			if(calls->Size() > 0) {
+				stop := "tool_calls";
+			}
+			else if(raw = Nil | raw->Equals("STOP")) {
+				stop := "end";
+			}
+			else if(raw->Equals("MAX_TOKENS")) {
+				stop := "length";
+			}
+			else if(raw->Equals("SAFETY") | raw->Equals("RECITATION") | raw->Equals("BLOCKLIST") | raw->Equals("PROHIBITED_CONTENT") | raw->Equals("SPII") | raw->Equals("IMAGE_SAFETY")) {
+				stop := "filtered";
+			};
+
+			usage := Js->Child(json, "usageMetadata");
+			return Turn->New(text, calls, stop, raw, Js->IntOf(usage, "promptTokenCount"), Js->IntOf(usage, "candidatesTokenCount"), Js->Text(json, "modelVersion"));
+		}
+	}
+
+	class : private : GeminiStream implements TurnStream {
+		@events : SSEStream;
+		@session : GeminiSession;
+		@pending : String;
+		@parts : JsonElement;
+		@text : String;
+		@finish : String;
+		@usage : JsonElement;
+		@version : String;
+		@blocked : String;
+		@turn : Turn;
+		@seen : Bool;
+		@last : Bool;
+		@finished : Bool;
+		@settled : Bool;
+		@failed : Bool;
+
+		New(events : SSEStream, session : GeminiSession) {
+			@events := events;
+			@session := session;
+			@parts := Js->Array();
+			@text := "";
+			@seen := false;
+			@last := false;
+			@finished := false;
+			@settled := false;
+			@failed := false;
+		}
+
+		method : public : HasNext() ~ Bool {
+			if(@finished) {
+				return false;
+			};
+
+			while(<>@last & @events->HasNext()) {
+				json := JsonParser->TextToElement(@events->Next()->GetData());
+				message := Wire->ErrorText(json);
+				if(message <> Nil) {
+					@session->Fail(message);
+					@failed := true;
+					break;
+				};
+
+				usage := Js->Child(json, "usageMetadata");
+				if(usage <> Nil) {
+					@usage := usage;
+				};
+				version := Js->Text(json, "modelVersion");
+				if(version <> Nil) {
+					@version := version;
+				};
+				block := Js->Text(Js->Child(json, "promptFeedback"), "blockReason");
+				if(block <> Nil) {
+					# a blocked prompt is the whole answer; nothing follows it
+					@blocked := block;
+					@last := true;
+				};
+
+				candidates := Js->Child(json, "candidates");
+				if(Js->IsArray(candidates) & candidates->Size() > 0) {
+					@seen := true;
+					candidate := candidates->Get(0);
+					reason := Js->Text(candidate, "finishReason");
+					if(reason <> Nil) {
+						# the last chunk: Gemini sends no end-of-stream event, so stop here rather than wait for the connection to close
+						@finish := reason;
+						@last := true;
+					};
+
+					parts := Js->Child(Js->Child(candidate, "content"), "parts");
+					piece : String;
+					if(Js->IsArray(parts)) {
+						each(i : parts) {
+							part := parts->Get(i);
+							text := Js->Text(part, "text");
+							if(Js->Child(part, "functionCall") <> Nil) {
+								Flush();
+								@parts->Add(part);
+							}
+							else if(text <> Nil & <>Js->IsTrue(part, "thought")) {
+								if(piece = Nil) {
+									piece := text;
+								}
+								else {
+									piece += text;
+								};
+
+								if(Js->Child(part, "thoughtSignature") <> Nil) {
+									# a part that carries a signature is replayed whole, not merged into its neighbours
+									Flush();
+									@parts->Add(part);
+								}
+								else {
+									@text += text;
+								};
+							};
+						};
+					};
+
+					if(piece <> Nil & piece->Size() > 0) {
+						@pending := piece;
+						return true;
+					};
+				};
+			};
+
+			End();
+			Settle();
+			return false;
+		}
+
+		method : Flush() ~ Nil {
+			if(@text->Size() > 0) {
+				part := Js->Object();
+				part->Insert("text", @text);
+				@parts->Add(part);
+				@text := "";
+			};
+		}
+
+		method : public : Next() ~ String {
+			return @pending;
+		}
+
+		# the stream is over: the exchange joins the conversation, or the message that began it is taken back
+		method : Settle() ~ Nil {
+			if(@settled) {
+				return;
+			};
+			@settled := true;
+
+			if(@failed) {
+				@session->Abort();
+				return;
+			};
+
+			if(<>@seen) {
+				if(@blocked <> Nil) {
+					@session->Fail("the prompt was blocked: {$@blocked}");
+				}
+				else {
+					@session->Fail("the stream ended without a candidate");
+				};
+				@session->Abort();
+				return;
+			};
+
+			Flush();
+			content := Js->Object();
+			content->Insert("role", "model");
+			content->Insert("parts", @parts);
+
+			candidate := Js->Object();
+			candidate->Insert("content", content);
+			if(@finish <> Nil) {
+				candidate->Insert("finishReason", @finish);
+			};
+			candidates := Js->Array();
+			candidates->Add(candidate);
+
+			assembled := Js->Object();
+			assembled->Insert("candidates", candidates);
+			if(@usage <> Nil) {
+				assembled->Insert("usageMetadata", @usage);
+			};
+			if(@version <> Nil) {
+				assembled->Insert("modelVersion", @version);
+			};
+			@turn := @session->Finish(assembled);
+		}
+
+		method : public : GetTurn() ~ Turn {
+			while(HasNext()) {
+			};
+			Settle();
+			return @turn;
+		}
+
+		method : End() ~ Nil {
+			if(<>@finished) {
+				@finished := true;
+				@events->Close();
+			};
+		}
+
+		method : public : Close() ~ Nil {
+			End();
+			if(<>@settled) {
+				@settled := true;
+				@session->Abort();
+			};
+		}
+	}
+
+	# Reduces a JSON schema to the subset Gemini accepts (its Schema object, an OpenAPI subset): keywords
+	# it rejects are dropped (additionalProperties, $schema, $ref, default, allOf, ...), oneOf becomes anyOf,
+	# const becomes a one-value enum, and a type list such as ["string","null"] becomes the type plus nullable.
+	class : private : GeminiSchema {
+		function : Clean(schema : JsonElement) ~ JsonElement {
+			if(<>Js->IsObject(schema)) {
+				return schema;
+			};
+
+			clean := Js->Object();
+			names := schema->GetNames();
+			each(i : names) {
+				name := names->Get(i);
+				value := schema->Get(name);
+				if(name->Equals("type")) {
+					CleanType(clean, value);
+				}
+				else if(name->Equals("properties")) {
+					if(Js->IsObject(value)) {
+						properties := Js->Object();
+						keys := value->GetNames();
+						each(j : keys) {
+							properties->Insert(keys->Get(j), Clean(value->Get(keys->Get(j))));
+						};
+						clean->Insert("properties", properties);
+					};
+				}
+				else if(name->Equals("items")) {
+					clean->Insert("items", Clean(value));
+				}
+				else if(name->Equals("anyOf") | name->Equals("oneOf")) {
+					if(Js->IsArray(value) & <>clean->Has("anyOf")) {
+						options := Js->Array();
+						each(j : value) {
+							options->Add(Clean(value->Get(j)));
+						};
+						clean->Insert("anyOf", options);
+					};
+				}
+				else if(name->Equals("const")) {
+					if(<>schema->Has("enum")) {
+						values := Js->Array();
+						values->Add(value);
+						clean->Insert("enum", values);
+					};
+				}
+				else if(Allowed(name)) {
+					clean->Insert(name, value);
+				};
+			};
+
+			return clean;
+		}
+
+		# the keywords of Gemini's Schema that carry over unchanged
+		function : Allowed(name : String) ~ Bool {
+			return name->Equals("format") | name->Equals("title") | name->Equals("description") | name->Equals("nullable") |
+				name->Equals("enum") | name->Equals("required") | name->Equals("minItems") | name->Equals("maxItems") |
+				name->Equals("minimum") | name->Equals("maximum") | name->Equals("minLength") | name->Equals("maxLength") |
+				name->Equals("pattern") | name->Equals("propertyOrdering");
+		}
+
+		function : CleanType(clean : JsonElement, value : JsonElement) ~ Nil {
+			if(value = Nil) {
+				return;
+			};
+
+			if(value->GetType() = JsonElement->JsonType->STRING) {
+				clean->Insert("type", value);
+			}
+			else if(Js->IsArray(value)) {
+				nullable := false;
+				each(i : value) {
+					kind := Js->Text(value->Get(i));
+					if(kind <> Nil & kind->Equals("null")) {
+						nullable := true;
+					}
+					else if(kind <> Nil & <>clean->Has("type")) {
+						clean->Insert("type", kind);
+					};
+				};
+
+				if(nullable) {
+					clean->Insert("nullable", true);
+				};
+			};
+		}
+
+		# true when the schema lists at least one property
+		function : HasProperties(schema : JsonElement) ~ Bool {
+			properties := Js->Child(schema, "properties");
+			return Js->IsObject(properties) & properties->Size() > 0;
+		}
+	}
+
+	#~
+	A session over a local Ollama server (POST /api/chat). The conversation is kept here as chat
+	messages and sent whole on every call; the host is API.Ollama.EndPoint's. API.Ollama.Chat itself
+	is not wrapped: its tool list is a Vector<Tool>, and the compiler cannot tell that Tool from
+	Anthropic's when one program uses both libraries.
+	Ollama has no tool call ids, so one is made up for each call and the result is matched by tool
+	name. Ollama is not streamed here: Stream returns the whole reply as one piece.
+	~#
+	class OllamaSession implements Session {
+		@model : String;
+		@system : String;
+		@max_tokens : Int;
+		@temperature : Float;
+		@has_temperature : Bool;
+		@messages : Vector<JsonElement>;
+		@last_error : String;
+
+		#~
+		Constructor; it does not contact the server
+		@param model model name, i.e. llama3.2
+		~#
+		New(model : String) {
+			@model := model;
+			@messages := Vector->New()<JsonElement>;
+		}
+
+		method : public : GetProvider() ~ String {
+			return "ollama";
+		}
+
+		method : public : GetModel() ~ String {
+			return @model;
+		}
+
+		method : public : SetSystem(system : String) ~ Session {
+			@system := system;
+			return @self;
+		}
+
+		method : public : SetMaxTokens(max_tokens : Int) ~ Session {
+			@max_tokens := max_tokens;
+			return @self;
+		}
+
+		method : public : SetTemperature(temperature : Float) ~ Session {
+			@temperature := temperature;
+			@has_temperature := true;
+			return @self;
+		}
+
+		method : public : GetLastError() ~ String {
+			return @last_error;
+		}
+
+		#~
+		Get the conversation as the messages of the next request, the system prompt first
+		@return JSON array
+		~#
+		method : public : GetMessages() ~ JsonElement {
+			return Js->ArrayOf(All(@messages));
+		}
+
+		#~
+		Reads a response body without a server, for tests and for replaying recorded responses. The
+		reply joins the conversation, as it does after a real call.
+		@param body response text
+		@return turn, or Nil with the last error set
+		~#
+		method : public : ParseBody(body : String) ~ Turn {
+			@last_error := Nil;
+			outcome := Wire->Body(body);
+			if(<>outcome->IsOk()) {
+				@last_error := outcome->GetError();
+				return Nil;
+			};
+
+			if(<>Js->IsObject(outcome->GetJson()->Get("message"))) {
+				@last_error := "the response did not contain a message";
+				return Nil;
+			};
+			return Keep(outcome->GetJson());
+		}
+
+		#~
+		Builds the /api/chat request body for the conversation as it stands, public so it can be inspected without a server
+		@param tools tool definitions, or Nil
+		@return request JSON
+		~#
+		method : public : BuildRequest(tools : Vector<ToolSpec>) ~ JsonElement {
+			return Build(@messages, tools, Nil);
+		}
+
+		# the system prompt, when there is one, and then the messages
+		method : All(messages : Vector<JsonElement>) ~ Vector<JsonElement> {
+			all := Vector->New()<JsonElement>;
+			if(@system <> Nil) {
+				all->AddBack(Js->RoleText("system", @system));
+			};
+			each(i : messages) {
+				all->AddBack(messages->Get(i));
+			};
+			return all;
+		}
+
+		method : Build(messages : Vector<JsonElement>, tools : Vector<ToolSpec>, format : JsonElement) ~ JsonElement {
+			request := Js->Object();
+			request->Insert("model", @model);
+			request->Insert("messages", Js->ArrayOf(All(messages)));
+			request->Insert("stream", false);
+
+			if(tools <> Nil & tools->Size() > 0) {
+				tools_json := Js->Array();
+				each(i : tools) {
+					tool := tools->Get(i);
+					function_json := Js->Object();
+					function_json->Insert("name", tool->GetName());
+					if(tool->GetDescription() <> Nil) {
+						function_json->Insert("description", tool->GetDescription());
+					};
+					function_json->Insert("parameters", tool->GetSchema());
+
+					tool_json := Js->Object();
+					tool_json->Insert("type", "function");
+					tool_json->Insert("function", function_json);
+					tools_json->Add(tool_json);
+				};
+				request->Insert("tools", tools_json);
+			};
+
+			if(format <> Nil) {
+				request->Insert("format", format);
+			};
+
+			if(@max_tokens > 0 | @has_temperature) {
+				options := Js->Object();
+				if(@max_tokens > 0) {
+					options->Insert("num_predict", @max_tokens);
+				};
+				if(@has_temperature) {
+					options->Insert("temperature", @temperature);
+				};
+				request->Insert("options", options);
+			};
+
+			return request;
+		}
+
+		# POST to /api/chat and read the reply object; Nil with the last error set
+		method : Exchange(request : JsonElement) ~ JsonElement {
+			host := API.Ollama.EndPoint->GetHost();
+			response := HttpClient->QuickPost(Url->New("{$host}/api/chat"), request->ToString()->ToByteArray(), "application/json");
+			if(response = Nil) {
+				@last_error := "no response from {$host}";
+				return Nil;
+			};
+
+			text : String;
+			content := response->GetContent();
+			if(content <> Nil) {
+				text := content->ToString();
+			};
+
+			json : JsonElement;
+			if(text <> Nil & text->Size() > 0) {
+				json := JsonParser->TextToElement(text);
+			};
+
+			if(<>Js->IsObject(json)) {
+				code := response->GetCode();
+				@last_error := "the response was not JSON (HTTP {$code})";
+				return Nil;
+			};
+
+			message := Wire->ErrorText(json);
+			if(message <> Nil) {
+				@last_error := message;
+				return Nil;
+			};
+
+			if(<>Js->IsObject(json->Get("message"))) {
+				@last_error := "the response did not contain a message";
+				return Nil;
+			};
+			return json;
+		}
+
+		method : public : Send(message : String, tools : Vector<ToolSpec>) ~ Turn {
+			@last_error := Nil;
+			added := false;
+			if(message <> Nil) {
+				@messages->AddBack(Js->RoleText("user", message));
+				added := true;
+			};
+
+			reply := Exchange(Build(@messages, tools, Nil));
+			if(reply = Nil) {
+				if(added) {
+					@messages->RemoveBack();
+				};
+				return Nil;
+			};
+
+			return Keep(reply);
+		}
+
+		# records the reply as an assistant message, with its tool calls, and makes the turn
+		method : Keep(reply : JsonElement) ~ Turn {
+			message := reply->Get("message");
+			text := Js->Text(message, "content");
+			if(text = Nil) {
+				text := "";
+			};
+
+			assistant := Js->RoleText("assistant", text);
+			calls := Vector->New()<ToolInvocation>;
+			made := Js->Child(message, "tool_calls");
+			if(Js->IsArray(made) & made->Size() > 0) {
+				assistant->Insert("tool_calls", made);
+				each(i : made) {
+					function_json := Js->Child(made->Get(i), "function");
+					calls->AddBack(ToolInvocation->New(Ids->Next("ollama_call_"), Js->Text(function_json, "name"), Js->Child(function_json, "arguments")));
+				};
+			};
+			@messages->AddBack(assistant);
+
+			raw := Js->Text(reply, "done_reason");
+			stop := "other";
+			if(calls->Size() > 0) {
+				stop := "tool_calls";
+			}
+			else if(raw = Nil | raw->Equals("stop")) {
+				stop := "end";
+			}
+			else if(raw->Equals("length")) {
+				stop := "length";
+			};
+
+			return Turn->New(text, calls, stop, raw, Js->IntOf(reply, "prompt_eval_count"), Js->IntOf(reply, "eval_count"), Js->Text(reply, "model"));
+		}
+
+		method : public : AddToolResult(call_id : String, tool_name : String, content : String) ~ Nil {
+			message := Js->RoleText("tool", content);
+			message->Insert("tool_name", tool_name);
+			@messages->AddBack(message);
+		}
+
+		method : public : AddToolError(call_id : String, tool_name : String, message : String) ~ Nil {
+			AddToolResult(call_id, tool_name, "Error: {$message}");
+		}
+
+		method : public : Stream(message : String, tools : Vector<ToolSpec>) ~ TurnStream {
+			turn := Send(message, tools);
+			if(turn = Nil) {
+				return Nil;
+			};
+
+			return WholeStream->New(turn);
+		}
+
+		method : public : SendJson(message : String, name : String, schema : JsonElement) ~ JsonElement {
+			@last_error := Nil;
+			messages := Js->Copy(@messages);
+			messages->AddBack(Js->RoleText("user", message));
+
+			reply := Exchange(Build(messages, Nil, schema));
+			if(reply = Nil) {
+				return Nil;
+			};
+
+			answer := JsonParser->TextToElement(Js->Text(reply->Get("message"), "content"));
+			if(<>Js->IsObject(answer)) {
+				@last_error := "the model did not return the requested shape";
+				return Nil;
+			};
+			return answer;
+		}
+	}
+
+	#~
+	A stream over a turn that is already complete: it gives the whole text as one piece. Ollama's
+	stream is one of these.
+	~#
+	class WholeStream implements TurnStream {
+		@turn : Turn;
+		@sent : Bool;
+
+		#~
+		Constructor
+		@param turn the finished turn
+		~#
+		New(turn : Turn) {
+			@turn := turn;
+			@sent := false;
+		}
+
+		method : public : HasNext() ~ Bool {
+			if(@sent | @turn->GetText()->Size() = 0) {
+				return false;
+			};
+
+			@sent := true;
+			return true;
+		}
+
+		method : public : Next() ~ String {
+			return @turn->GetText();
+		}
+
+		method : public : GetTurn() ~ Turn {
+			return @turn;
+		}
+
+		method : public : Close() ~ Nil {
+		}
+	}
+}

@@ -1,0 +1,1059 @@
+# EXTRA_LIBS: llm,anthropic,openai,gemini,ollama,net,net_server,json,cipher,misc
+#~
+The provider-neutral chat layer (API.LLM) over the wire, against local servers that speak each
+provider's API shape: a local HTTPS server for Anthropic, OpenAI and Gemini and a plain HTTP
+server for Ollama. For each provider, through the one Session interface: the headers and body
+a request carries (key, system prompt, token limit, temperature), a plain reply, an error
+object, a tool round trip (the call's id comes back with the result), JSON output in a given
+shape, streaming (and a streamed tool call for OpenAI and Gemini), a refused stream, and a
+failed connection. The mocks answer a tool result only when the request carries it in the
+provider's wire shape, so a client that sends it wrongly gets a wrong answer and the check fails.
+
+llm_parse_test covers the parsing of recorded bodies; llm_agent_test runs one agent loop against
+all four. Nothing here needs a key or a network beyond loopback. The HTTPS server presents a
+self-signed certificate for DNS:localhost, pinned with the sessions' SetCertificate, the same
+fixture anthropic_http_test uses (openssl on PATH).
+~#
+use API.LLM;
+use Data.JSON;
+use Collection, System.IO.Filesystem, Web.HTTP.Server;
+
+# What a request carries as tool results, read from the provider's own shape as "id|content;"
+# per result: Anthropic tool_result blocks, OpenAI function_call_output items, Gemini
+# functionResponse parts (matched by name) and Ollama tool messages (matched by name).
+class Probe {
+	function : Str(elem : JsonElement, name : String) ~ String {
+		if(elem = Nil | elem->GetType() <> JsonElement->JsonType->OBJECT) {
+			return "";
+		};
+
+		value := elem->Get(name);
+		if(value = Nil | value->GetType() <> JsonElement->JsonType->STRING) {
+			return "";
+		};
+		return value->GetString();
+	}
+
+	function : List(json : JsonElement, name : String) ~ JsonElement {
+		if(json = Nil | json->GetType() <> JsonElement->JsonType->OBJECT) {
+			return Nil;
+		};
+
+		list := json->Get(name);
+		if(list = Nil | list->GetType() <> JsonElement->JsonType->ARRAY) {
+			return Nil;
+		};
+		return list;
+	}
+
+	function : OpenAI(body : String) ~ String {
+		found := "";
+		input := List(JsonParser->TextToElement(body), "input");
+		if(input <> Nil) {
+			each(i : input) {
+				item := input->Get(i);
+				if(Str(item, "type")->Equals("function_call_output")) {
+					found += Str(item, "call_id") + "|" + Str(item, "output") + ";";
+				};
+			};
+		};
+		return found;
+	}
+
+	function : Anthropic(body : String) ~ String {
+		found := "";
+		messages := List(JsonParser->TextToElement(body), "messages");
+		if(messages <> Nil) {
+			each(i : messages) {
+				content := List(messages->Get(i), "content");
+				if(content <> Nil) {
+					each(j : content) {
+						block := content->Get(j);
+						if(Str(block, "type")->Equals("tool_result")) {
+							found += Str(block, "tool_use_id") + "|" + Str(block, "content") + ";";
+						};
+					};
+				};
+			};
+		};
+		return found;
+	}
+
+	function : Gemini(body : String) ~ String {
+		found := "";
+		contents := List(JsonParser->TextToElement(body), "contents");
+		if(contents <> Nil) {
+			each(i : contents) {
+				parts := List(contents->Get(i), "parts");
+				if(parts <> Nil) {
+					each(j : parts) {
+						reply := parts->Get(j)->Get("functionResponse");
+						if(reply <> Nil) {
+							found += Str(reply, "name") + "|" + Str(reply->Get("response"), "result") + ";";
+						};
+					};
+				};
+			};
+		};
+		return found;
+	}
+
+	function : Ollama(body : String) ~ String {
+		found := "";
+		messages := List(JsonParser->TextToElement(body), "messages");
+		if(messages <> Nil) {
+			each(i : messages) {
+				message := messages->Get(i);
+				if(Str(message, "role")->Equals("tool")) {
+					found += Str(message, "tool_name") + "|" + Str(message, "content") + ";";
+				};
+			};
+		};
+		return found;
+	}
+}
+
+# The rules the real APIs enforce on a request that a mock cannot get from a recorded body: Gemini
+# refuses an object schema with no properties and keywords outside its schema subset, and OpenAI
+# is told per tool whether it is strict. A request that breaks one is answered with a 400.
+class Rules {
+	function : GeminiProblem(body : String) ~ String {
+		json := JsonParser->TextToElement(body);
+		if(json = Nil | json->GetType() <> JsonElement->JsonType->OBJECT) {
+			return "";
+		};
+
+		groups := Probe->List(json, "tools");
+		if(groups <> Nil) {
+			each(i : groups) {
+				declarations := Probe->List(groups->Get(i), "functionDeclarations");
+				if(declarations <> Nil) {
+					each(j : declarations) {
+						parameters := declarations->Get(j)->Get("parameters");
+						if(parameters <> Nil) {
+							properties := parameters->Get("properties");
+							if(properties = Nil | properties->GetType() <> JsonElement->JsonType->OBJECT | properties->Size() = 0) {
+								return "parameters.properties: should be non-empty for OBJECT type";
+							};
+
+							word := Forbidden(parameters);
+							if(word->Size() > 0) {
+								return "Unknown name {$word} at 'tools[0].function_declarations[{$j}].parameters'";
+							};
+						};
+					};
+				};
+			};
+		};
+
+		config := json->Get("generationConfig");
+		if(config <> Nil & config->GetType() = JsonElement->JsonType->OBJECT) {
+			word := Forbidden(config->Get("responseSchema"));
+			if(word->Size() > 0) {
+				return "Unknown name {$word} at 'generation_config.response_schema'";
+			};
+		};
+		return "";
+	}
+
+	# the first keyword Gemini's schema does not have, or ""; the keys under "properties" are names, not keywords
+	function : Forbidden(schema : JsonElement) ~ String {
+		if(schema = Nil | schema->GetType() <> JsonElement->JsonType->OBJECT) {
+			return "";
+		};
+
+		names := schema->GetNames();
+		each(i : names) {
+			name := names->Get(i);
+			if(name->Equals("additionalProperties") | name->Equals("$schema") | name->Equals("$ref") | name->Equals("$defs") |
+					name->Equals("default") | name->Equals("oneOf") | name->Equals("allOf") | name->Equals("const") | name->Equals("examples")) {
+				return name;
+			};
+
+			value := schema->Get(name);
+			if(name->Equals("properties") & value->GetType() = JsonElement->JsonType->OBJECT) {
+				keys := value->GetNames();
+				each(j : keys) {
+					found := Forbidden(value->Get(keys->Get(j)));
+					if(found->Size() > 0) {
+						return found;
+					};
+				};
+			}
+			else if(name->Equals("items")) {
+				found := Forbidden(value);
+				if(found->Size() > 0) {
+					return found;
+				};
+			}
+			else if(name->Equals("anyOf") & value->GetType() = JsonElement->JsonType->ARRAY) {
+				each(j : value) {
+					found := Forbidden(value->Get(j));
+					if(found->Size() > 0) {
+						return found;
+					};
+				};
+			};
+		};
+		return "";
+	}
+
+	function : OpenAIProblem(body : String) ~ String {
+		tools := Probe->List(JsonParser->TextToElement(body), "tools");
+		if(tools <> Nil) {
+			each(i : tools) {
+				strict := tools->Get(i)->Get("strict");
+				if(strict = Nil | strict->GetType() <> JsonElement->JsonType->FALSE) {
+					return "Missing 'strict' on tools[{$i}]: set it to false for a schema that is not strict";
+				};
+			};
+		};
+		return "";
+	}
+}
+
+class LlmMock from HttpsRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(404, "not found");
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		path := request->GetPath();
+		body := request->GetContent();
+		if(body = Nil) {
+			response->SetCodeContent(400, "{\"error\":\"no body\"}");
+			return false;
+		};
+
+		if(path->Equals("/anthropic/v1/messages")) {
+			return Anthropic(request, response, body);
+		};
+		if(path->Equals("/openai/v1/responses")) {
+			return OpenAI(request, response, body);
+		};
+		if(path->StartsWith("/gemini/v1beta/models/gemini-2.5-flash:")) {
+			return Gemini(request, response, body, path->Find("streamGenerateContent") > -1);
+		};
+
+		response->SetCodeContent(404, "not found");
+		return false;
+	}
+
+	method : Events(response : Response, events : String) ~ Nil {
+		response->SetCodeTypeContent(200, "text/event-stream", events->ToByteArray());
+	}
+
+	# ---- Anthropic
+	method : Anthropic(request : Request, response : Response, body : String) ~ Bool {
+		key := request->GetHeader("x-api-key");
+		if(key = Nil | key->Equals("bad-key")) {
+			response->SetCodeContent(401, "{\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"}}");
+			return false;
+		};
+
+		if(body->Find("\"stream\"") > -1) {
+			events := "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_s\",\"model\":\"m\",\"usage\":{\"input_tokens\":7,\"output_tokens\":1}}}\n\n";
+			events += "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n";
+			events += "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hel\"}}\n\n";
+			events += "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"lo\"}}\n\n";
+			events += "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n";
+			events += "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":2}}\n\n";
+			events += "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n";
+			Events(response, events);
+			return false;
+		};
+
+		if(body->Find("\"tool_choice\"") > -1) {
+			response->SetCodeContent(200, "{\"id\":\"msg_j\",\"model\":\"m\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_j\",\"name\":\"answer\",\"input\":{\"city\":\"Rome\",\"temp\":18}}],\"stop_reason\":\"tool_use\",\"usage\":{\"input_tokens\":3,\"output_tokens\":4}}");
+			return false;
+		};
+
+		if(body->Find("tool_result") > -1) {
+			text := "The weather is 18C.";
+			if(<>Probe->Anthropic(body)->Equals("toolu_w|18C and sunny;")) {
+				text := "BAD tool result";
+			};
+			response->SetCodeContent(200, "{\"id\":\"msg_f\",\"model\":\"m\",\"content\":[{\"type\":\"text\",\"text\":\"{$text}\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":9,\"output_tokens\":6}}");
+			return false;
+		};
+
+		if(body->Find("\"tools\"") > -1) {
+			response->SetCodeContent(200, "{\"id\":\"msg_t\",\"model\":\"m\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_w\",\"name\":\"get_weather\",\"input\":{\"city\":\"Paris\"}}],\"stop_reason\":\"tool_use\",\"usage\":{\"input_tokens\":5,\"output_tokens\":8}}");
+			return false;
+		};
+
+		version := request->GetHeader("anthropic-version");
+		text := "anthropic key={$key} version={$version}";
+		if(body->Find("\"system\":\"Be brief.\"") > -1) {
+			text += " system=yes";
+		};
+		if(body->Find("\"max_tokens\":256") > -1) {
+			text += " limit=yes";
+		};
+		if(body->Find("\"temperature\":0.5") > -1) {
+			text += " temp=yes";
+		};
+		response->SetCodeContent(200, "{\"id\":\"msg_p\",\"model\":\"m\",\"content\":[{\"type\":\"text\",\"text\":\"{$text}\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":2,\"output_tokens\":3}}");
+		return false;
+	}
+
+	# ---- OpenAI Responses
+	method : OpenAI(request : Request, response : Response, body : String) ~ Bool {
+		auth := request->GetHeader("Authorization");
+		if(auth = Nil | auth->Equals("Bearer bad-key")) {
+			response->SetCodeContent(401, "{\"error\":{\"message\":\"Incorrect API key provided\",\"type\":\"invalid_request_error\",\"code\":\"invalid_api_key\"}}");
+			return false;
+		};
+
+		problem := Rules->OpenAIProblem(body);
+		if(problem->Size() > 0) {
+			response->SetCodeContent(400, "{\"error\":{\"message\":\"{$problem}\",\"type\":\"invalid_request_error\"}}");
+			return false;
+		};
+
+		completed := "{\"id\":\"resp_s\",\"model\":\"gpt-5\",\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello\"}]}],\"usage\":{\"input_tokens\":7,\"output_tokens\":2}}";
+		call := "{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_w\",\"name\":\"get_weather\",\"arguments\":\"{\\\"city\\\":\\\"Paris\\\"}\",\"status\":\"completed\"}";
+
+		if(body->Find("\"stream\":true") > -1) {
+			events := "event: response.created\ndata: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_s\",\"status\":\"in_progress\"}}\n\n";
+			if(body->Find("fail-stream") > -1) {
+				events += "event: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"Hel\"}\n\n";
+				events += "event: response.failed\ndata: {\"type\":\"response.failed\",\"response\":{\"status\":\"failed\",\"error\":{\"message\":\"the model failed\",\"type\":\"server_error\"}}}\n\n";
+				Events(response, events);
+				return false;
+			};
+
+			if(body->Find("\"tools\"") > -1) {
+				completed := "{\"id\":\"resp_s\",\"model\":\"gpt-5\",\"status\":\"completed\",\"output\":[{$call}],\"usage\":{\"input_tokens\":7,\"output_tokens\":2}}";
+				events += "event: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"function_call\",\"call_id\":\"call_w\",\"name\":\"get_weather\"}}\n\n";
+				events += "event: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\"{\\\"city\\\"\"}\n\n";
+			}
+			else {
+				events += "event: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"Hel\"}\n\n";
+				events += "event: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"lo\"}\n\n";
+			};
+			events += "event: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{$completed}}\n\n";
+			Events(response, events);
+			return false;
+		};
+
+		if(body->Find("json_schema") > -1 & body->Find("truncate") > -1) {
+			response->SetCodeContent(200, "{\"id\":\"resp_j\",\"model\":\"gpt-5\",\"status\":\"incomplete\",\"incomplete_details\":{\"reason\":\"max_output_tokens\"},\"output\":[],\"usage\":{\"input_tokens\":3,\"output_tokens\":0}}");
+			return false;
+		};
+
+		if(body->Find("json_schema") > -1) {
+			text := "{\\\"city\\\":\\\"Rome\\\",\\\"temp\\\":18}";
+			if(body->Find("\"name\":\"answer\"") < 0) {
+				text := "BAD format name";
+			};
+			response->SetCodeContent(200, "{\"id\":\"resp_j\",\"model\":\"gpt-5\",\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"{$text}\"}]}],\"usage\":{\"input_tokens\":3,\"output_tokens\":4}}");
+			return false;
+		};
+
+		if(body->Find("function_call_output") > -1) {
+			text := "The weather is 18C.";
+			if(<>Probe->OpenAI(body)->Equals("call_w|18C and sunny;") | body->Find("\"type\":\"function_call\"") < 0) {
+				text := "BAD tool result";
+			};
+			response->SetCodeContent(200, "{\"id\":\"resp_f\",\"model\":\"gpt-5\",\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"{$text}\"}]}],\"usage\":{\"input_tokens\":9,\"output_tokens\":6}}");
+			return false;
+		};
+
+		if(body->Find("\"tools\"") > -1) {
+			response->SetCodeContent(200, "{\"id\":\"resp_t\",\"model\":\"gpt-5\",\"status\":\"completed\",\"output\":[{$call}],\"usage\":{\"input_tokens\":5,\"output_tokens\":8}}");
+			return false;
+		};
+
+		text := "openai auth={$auth}";
+		if(body->Find("\"instructions\":\"Be brief.\"") > -1) {
+			text += " system=yes";
+		};
+		if(body->Find("\"max_output_tokens\":256") > -1) {
+			text += " limit=yes";
+		};
+		if(body->Find("\"temperature\":0.5") > -1) {
+			text += " temp=yes";
+		};
+		response->SetCodeContent(200, "{\"id\":\"resp_p\",\"model\":\"gpt-5\",\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"{$text}\"}]}],\"usage\":{\"input_tokens\":2,\"output_tokens\":3}}");
+		return false;
+	}
+
+	# ---- Gemini
+	method : Gemini(request : Request, response : Response, body : String, stream : Bool) ~ Bool {
+		key := request->GetHeader("x-goog-api-key");
+		if(key = Nil | key->Equals("bad-key")) {
+			response->SetCodeContent(400, "{\"error\":{\"code\":400,\"message\":\"API key not valid. Please pass a valid API key.\",\"status\":\"INVALID_ARGUMENT\"}}");
+			return false;
+		};
+
+		problem := Rules->GeminiProblem(body);
+		if(problem->Size() > 0) {
+			response->SetCodeContent(400, "{\"error\":{\"code\":400,\"message\":\"{$problem}\",\"status\":\"INVALID_ARGUMENT\"}}");
+			return false;
+		};
+
+		if(stream) {
+			events := "";
+			if(body->Find("fail-stream") > -1) {
+				events += "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Hel\"}]}}]}\n\n";
+				events += "data: {\"error\":{\"code\":500,\"message\":\"backend exploded\",\"status\":\"INTERNAL\"}}\n\n";
+			}
+			else if(body->Find("blocked-stream") > -1) {
+				events += "data: {\"promptFeedback\":{\"blockReason\":\"SAFETY\"}}\n\n";
+			}
+			else if(body->Find("functionDeclarations") > -1) {
+				events += "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"get_weather\",\"args\":{\"city\":\"Paris\"}}}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":7,\"candidatesTokenCount\":2}}\n\n";
+			}
+			else {
+				events += "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Hel\",\"thoughtSignature\":\"sig-1\"}]}}],\"usageMetadata\":{\"promptTokenCount\":7,\"candidatesTokenCount\":1}}\n\n";
+				events += "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"lo\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":7,\"candidatesTokenCount\":2},\"modelVersion\":\"gemini-2.5-flash\"}\n\n";
+			};
+			Events(response, events);
+			return false;
+		};
+
+		if(body->Find("responseSchema") > -1 & body->Find("truncate") > -1) {
+			response->SetCodeContent(200, "{\"candidates\":[{\"finishReason\":\"MAX_TOKENS\"}],\"usageMetadata\":{\"promptTokenCount\":3,\"candidatesTokenCount\":0}}");
+			return false;
+		};
+
+		if(body->Find("responseSchema") > -1) {
+			text := "{\\\"city\\\":\\\"Rome\\\",\\\"temp\\\":18}";
+			if(body->Find("\"responseMimeType\":\"application/json\"") < 0) {
+				text := "BAD mime type";
+			};
+			response->SetCodeContent(200, "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"{$text}\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":3,\"candidatesTokenCount\":4}}");
+			return false;
+		};
+
+		if(body->Find("functionResponse") > -1) {
+			text := "The weather is 18C.";
+			if(<>Probe->Gemini(body)->Equals("get_weather|18C and sunny;") | body->Find("\"functionCall\"") < 0) {
+				text := "BAD tool result";
+			};
+			response->SetCodeContent(200, "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"{$text}\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":9,\"candidatesTokenCount\":6}}");
+			return false;
+		};
+
+		if(body->Find("functionDeclarations") > -1) {
+			response->SetCodeContent(200, "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"get_weather\",\"args\":{\"city\":\"Paris\"}}}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":5,\"candidatesTokenCount\":8}}");
+			return false;
+		};
+
+		text := "gemini key={$key}";
+		query := request->GetQuery();
+		if(query <> Nil & query->Find("key=") > -1) {
+			text += " keyinurl=yes";
+		};
+		if(body->Find("\"systemInstruction\":{\"parts\":[{\"text\":\"Be brief.\"}]}") > -1) {
+			text += " system=yes";
+		};
+		if(body->Find("\"maxOutputTokens\":256") > -1) {
+			text += " limit=yes";
+		};
+		if(body->Find("\"temperature\":0.5") > -1) {
+			text += " temp=yes";
+		};
+		response->SetCodeContent(200, "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"{$text}\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":2,\"candidatesTokenCount\":3}}");
+		return false;
+	}
+}
+
+class OllamaMock from HttpRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(404, "not found");
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		if(<>request->GetPath()->Equals("/api/chat")) {
+			response->SetCodeContent(404, "not found");
+			return false;
+		};
+
+		body := request->GetContent();
+		if(body = Nil) {
+			response->SetCodeContent(400, "{\"error\":\"no body\"}");
+			return false;
+		};
+
+		if(body->Find("\"model\":\"bad-model\"") > -1) {
+			response->SetCodeContent(404, "{\"error\":\"model 'bad-model' not found\"}");
+			return false;
+		};
+
+		if(body->Find("\"format\":{") > -1) {
+			response->SetCodeContent(200, "{\"model\":\"llama3.2\",\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"city\\\":\\\"Rome\\\",\\\"temp\\\":18}\"},\"done\":true,\"done_reason\":\"stop\",\"prompt_eval_count\":3,\"eval_count\":4}");
+			return false;
+		};
+
+		if(body->Find("\"tool_name\"") > -1) {
+			text := "The weather is 18C.";
+			if(<>Probe->Ollama(body)->Equals("get_weather|18C and sunny;") | body->Find("\"tool_calls\"") < 0) {
+				text := "BAD tool result";
+			};
+			response->SetCodeContent(200, "{\"model\":\"llama3.2\",\"message\":{\"role\":\"assistant\",\"content\":\"{$text}\"},\"done\":true,\"done_reason\":\"stop\",\"prompt_eval_count\":9,\"eval_count\":6}");
+			return false;
+		};
+
+		if(body->Find("\"tools\"") > -1) {
+			response->SetCodeContent(200, "{\"model\":\"llama3.2\",\"message\":{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[{\"function\":{\"name\":\"get_weather\",\"arguments\":{\"city\":\"Paris\"}}}]},\"done\":true,\"done_reason\":\"stop\",\"prompt_eval_count\":5,\"eval_count\":8}");
+			return false;
+		};
+
+		text := "ollama";
+		if(body->Find("\"role\":\"system\"") > -1) {
+			text += " system=yes";
+		};
+		if(body->Find("\"num_predict\":256") > -1) {
+			text += " limit=yes";
+		};
+		if(body->Find("\"temperature\":0.5") > -1) {
+			text += " temp=yes";
+		};
+		if(body->Find("\"stream\":false") > -1) {
+			text += " stream=off";
+		};
+		response->SetCodeContent(200, "{\"model\":\"llama3.2\",\"message\":{\"role\":\"assistant\",\"content\":\"{$text}\"},\"done\":true,\"done_reason\":\"stop\",\"prompt_eval_count\":2,\"eval_count\":3}");
+		return false;
+	}
+}
+
+class LlmHttpTest {
+	@port : static : Int;
+	@plain_port : static : Int;
+	@failures : static : Int;
+	@pem : static : String;
+
+	function : Port() ~ Int { return @port; }
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  [PASS] {$name}"->PrintLine();
+		}
+		else {
+			"  [FAIL] {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Same(a : String, b : String) ~ Bool {
+		return a <> Nil & b <> Nil & a->Equals(b);
+	}
+
+	function : Has(text : String, part : String) ~ Bool {
+		return text <> Nil & text->Find(part) > -1;
+	}
+
+	# A self-signed certificate for the test's server, valid from 2025 rather than from the second
+	# it is made, so a clock that steps back (a VM resynchronizing, as WSL2 does) does not make it
+	# "not valid yet". Before OpenSSL 3.4 only `openssl ca` can set the start, so it signs the
+	# request, in a scratch directory removed afterwards.
+	function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+		dir := "{$cert}.ca";
+		Directory->Delete(dir);
+		File->Delete(cert);
+		File->Delete(key);
+		if(<>Directory->Create(dir)) {
+			return false;
+		};
+
+		cnf := FileWriter->New("{$dir}/openssl.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+		cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+		cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+		cnf->Close();
+		FileWriter->New("{$dir}/index.txt")->Close();
+		serial := FileWriter->New("{$dir}/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+
+		made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+		if(made) {
+			made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+		};
+
+		Directory->Delete(dir);
+		return made;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		@port := 0;
+		@pem := "llm-http-{$Runtime->GetProcessId()}-cert.pem";
+		key := "llm-http-{$Runtime->GetProcessId()}-key.pem";
+		File->Delete(@pem);
+		File->Delete(key);
+
+		if(<>MakeServerCert(@pem, key, "/CN=localhost", "DNS:localhost")) {
+			"  [FAIL] openssl could not create the TLS fixture -- is openssl on PATH?"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		server := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->ServeSecure(LlmMock->New()->GetClass(),
+					LlmHttpTest->Port(), "llm-http-{$Runtime->GetProcessId()}-cert.pem", "llm-http-{$Runtime->GetProcessId()}-key.pem", "", false);
+			}
+		};
+		server->Execute(Nil);
+		waited := 0;
+		while(WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		@port := WebServer->GetBoundPort();
+		if(@port = 0) {
+			"  [FAIL] the TLS server never listened"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		# the plain HTTP server for Ollama; both report through WebServer->GetBoundPort(), so wait for it to change
+		plain := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->Serve(OllamaMock->New()->GetClass(), 0, false);
+			}
+		};
+		plain->Execute(Nil);
+		waited := 0;
+		while((WebServer->GetBoundPort() = 0 | WebServer->GetBoundPort() = @port) & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		@plain_port := WebServer->GetBoundPort();
+		if(@plain_port = 0 | @plain_port = @port) {
+			"  [FAIL] the plain HTTP server never listened"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		API.Anthropic.EndPoint->SetBaseUrl("https://localhost:{$@port}/anthropic/v1");
+		API.Anthropic.EndPoint->SetCertificate(@pem);
+		API.Ollama.EndPoint->SetHost("http://localhost:{$@plain_port}");
+
+		TestPlain();
+		TestErrors();
+		TestTools();
+		TestJson();
+		TestStream();
+		TestStreamTools();
+		TestStreamErrors();
+		TestStreamSettling();
+		TestTruncated();
+		TestUnreachable();
+		TestKeys();
+
+		File->Delete(@pem);
+		File->Delete(key);
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS"->PrintLine();
+		# the servers block in accept; end the process after cleanup
+		Runtime->Exit(0);
+	}
+
+	# a session on each provider, pointed at the mocks; bad is true for one whose key the mocks refuse
+	function : Open(provider : String, bad : Bool) ~ Session {
+		key := "test-key";
+		if(bad) {
+			key := "bad-key";
+		};
+
+		url := "https://localhost:{$@port}";
+		if(provider->Equals("anthropic")) {
+			return AnthropicSession->New("claude-sonnet-5-5", key);
+		};
+		if(provider->Equals("openai")) {
+			return OpenAISession->New("gpt-5", key)->SetBaseUrl("{$url}/openai/v1")->SetCertificate(@pem);
+		};
+		if(provider->Equals("gemini")) {
+			return GeminiSession->New("gemini-2.5-flash", key)->SetBaseUrl("{$url}/gemini/v1beta")->SetCertificate(@pem);
+		};
+
+		model := "llama3.2";
+		if(bad) {
+			model := "bad-model";
+		};
+		return OllamaSession->New(model);
+	}
+
+	function : Providers() ~ String[] {
+		return ["anthropic", "openai", "gemini", "ollama"];
+	}
+
+	# a tool with an optional argument and keywords only some providers take, and one with no arguments
+	function : Weather() ~ Vector<ToolSpec> {
+		schema := JsonParser->TextToElement("{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"city\":{\"type\":\"string\"},\"units\":{\"type\":\"string\",\"default\":\"C\"}},\"required\":[\"city\"]}");
+		tools := Vector->New()<ToolSpec>;
+		tools->AddBack(ToolSpec->New("get_weather", "Get the weather", schema));
+		tools->AddBack(ToolSpec->New("ping", "Check the line; takes no arguments", Nil));
+		return tools;
+	}
+
+	function : TestPlain() ~ Nil {
+		providers := Providers();
+		each(i : providers) {
+			provider := providers[i];
+			"-- {$provider}: a plain request"->PrintLine();
+			s := Open(provider, false);
+			s->SetSystem("Be brief.")->SetMaxTokens(256)->SetTemperature(0.5);
+			turn := s->Send("hello", Nil);
+			Check("{$provider}: a turn comes back", turn <> Nil);
+			if(turn = Nil) {
+				("  error: " + s->GetLastError())->PrintLine();
+			}
+			else {
+				text := turn->GetText();
+				Check("{$provider}: the system prompt is in the request", Has(text, "system=yes"));
+				Check("{$provider}: the token limit is in the request", Has(text, "limit=yes"));
+				Check("{$provider}: the temperature is in the request", Has(text, "temp=yes"));
+				Check("{$provider}: the turn ended normally", Same(turn->GetStopReason(), "end"));
+				Check("{$provider}: token counts are read", turn->GetInputTokens() = 2 & turn->GetOutputTokens() = 3);
+				if(provider->Equals("anthropic")) {
+					Check("anthropic: the key goes in x-api-key with the version header", Has(text, "key=test-key") & Has(text, "version=2023-06-01"));
+				}
+				else if(provider->Equals("openai")) {
+					Check("openai: the key goes in a bearer Authorization header", Has(text, "auth=Bearer test-key"));
+				}
+				else if(provider->Equals("gemini")) {
+					Check("gemini: the key goes in x-goog-api-key, not the URL", Has(text, "key=test-key") & <>Has(text, "keyinurl"));
+				}
+				else {
+					Check("ollama: the request is not streamed", Has(text, "stream=off"));
+				};
+			};
+
+			Check("{$provider}: a second turn works", s->Send("again", Nil) <> Nil);
+			Check("{$provider}: no error after success", s->GetLastError() = Nil);
+		};
+	}
+
+	function : TestErrors() ~ Nil {
+		providers := Providers();
+		each(i : providers) {
+			provider := providers[i];
+			"-- {$provider}: an error response"->PrintLine();
+			s := Open(provider, true);
+			turn := s->Send("hello", Nil);
+			Check("{$provider}: an error gives Nil", turn = Nil);
+			err := s->GetLastError();
+			Check("{$provider}: the error is reported", err <> Nil);
+			if(provider->Equals("anthropic")) {
+				Check("anthropic: the error names its type and message", Has(err, "authentication_error") & Has(err, "invalid x-api-key"));
+			}
+			else if(provider->Equals("openai")) {
+				Check("openai: the error names the status, type and message", Has(err, "401") & Has(err, "invalid_request_error") & Has(err, "Incorrect API key"));
+			}
+			else if(provider->Equals("gemini")) {
+				Check("gemini: the error names the status and message", Has(err, "400") & Has(err, "INVALID_ARGUMENT") & Has(err, "API key not valid"));
+			}
+			else {
+				Check("ollama: the error is the server's", Has(err, "model 'bad-model' not found"));
+			};
+
+			Check("{$provider}: the same session can try again", s->Send("hello", Nil) = Nil & s->GetLastError() <> Nil);
+			Check("{$provider}: SendJson reports the error too", s->SendJson("q", "answer", JsonParser->TextToElement("{\"type\":\"object\"}")) = Nil & s->GetLastError() <> Nil);
+		};
+
+		# a failed message is not kept: the conversation stays as it was
+		openai := OpenAISession->New("gpt-5", "bad-key");
+		openai->SetBaseUrl("https://localhost:{$@port}/openai/v1")->SetCertificate(@pem);
+		openai->Send("hello", Nil);
+		Check("openai: the failed message is not kept", openai->GetInput()->Size() = 0);
+		gemini := GeminiSession->New("gemini-2.5-flash", "bad-key");
+		gemini->SetBaseUrl("https://localhost:{$@port}/gemini/v1beta")->SetCertificate(@pem);
+		gemini->Send("hello", Nil);
+		Check("gemini: the failed message is not kept", gemini->GetContents()->Size() = 0);
+		ollama := OllamaSession->New("bad-model");
+		ollama->Send("hello", Nil);
+		Check("ollama: the failed message is not kept", ollama->GetMessages()->Size() = 0);
+	}
+
+	function : TestTools() ~ Nil {
+		providers := Providers();
+		each(i : providers) {
+			provider := providers[i];
+			"-- {$provider}: a tool round trip"->PrintLine();
+			tools := Weather();
+			s := Open(provider, false);
+			turn := s->Send("weather in Paris?", tools);
+			Check("{$provider}: the first turn asks for a tool", turn <> Nil & turn->HasToolCalls());
+			if(turn = Nil | <>turn->HasToolCalls()) {
+				continue;
+			};
+
+			call := turn->GetToolCalls()->Get(0);
+			Check("{$provider}: the call names the tool and its argument", Same(call->GetName(), "get_weather") & Same(call->GetArgument("city"), "Paris"));
+			Check("{$provider}: the call has an id", call->GetId() <> Nil & call->GetId()->Size() > 0);
+			Check("{$provider}: the stop reason is tool_calls", Same(turn->GetStopReason(), "tool_calls"));
+			Check("{$provider}: the turn has no text", turn->GetText()->Size() = 0);
+
+			s->AddToolResult(call->GetId(), call->GetName(), "18C and sunny");
+			final := s->Send(Nil, tools);
+			Check("{$provider}: the result is sent in the provider's shape and answered", final <> Nil & Same(final->GetText(), "The weather is 18C."));
+			Check("{$provider}: no more tool calls", final <> Nil & <>final->HasToolCalls());
+			Check("{$provider}: the stop reason is end", final <> Nil & Same(final->GetStopReason(), "end"));
+		};
+	}
+
+	function : TestJson() ~ Nil {
+		schema := JsonParser->TextToElement("{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"city\":{\"type\":\"string\"},\"temp\":{\"type\":\"integer\"}},\"required\":[\"city\",\"temp\"]}");
+		providers := Providers();
+		each(i : providers) {
+			provider := providers[i];
+			"-- {$provider}: JSON output"->PrintLine();
+			s := Open(provider, false);
+			answer := s->SendJson("Where is it 18 degrees?", "answer", schema);
+			Check("{$provider}: the answer comes back as JSON", answer <> Nil);
+			if(answer = Nil) {
+				("  error: " + s->GetLastError())->PrintLine();
+				continue;
+			};
+
+			Check("{$provider}: a string field", Same(answer->Get("city")->GetString(), "Rome"));
+			Check("{$provider}: a number field", answer->Get("temp")->GetInt() = 18);
+		};
+
+		# a one-shot question leaves the conversation alone
+		openai := OpenAISession->New("gpt-5", "test-key");
+		openai->SetBaseUrl("https://localhost:{$@port}/openai/v1")->SetCertificate(@pem);
+		openai->SendJson("q", "answer", schema);
+		Check("openai: the question is not kept", openai->GetInput()->Size() = 0);
+		gemini := GeminiSession->New("gemini-2.5-flash", "test-key");
+		gemini->SetBaseUrl("https://localhost:{$@port}/gemini/v1beta")->SetCertificate(@pem);
+		gemini->SendJson("q", "answer", schema);
+		Check("gemini: the question is not kept", gemini->GetContents()->Size() = 0);
+		ollama := OllamaSession->New("llama3.2");
+		ollama->SendJson("q", "answer", schema);
+		Check("ollama: the question is not kept", ollama->GetMessages()->Size() = 0);
+		anthropic := AnthropicSession->New("claude-sonnet-5-5", "test-key");
+		anthropic->SendJson("q", "answer", schema);
+		Check("anthropic: the question is not kept", anthropic->GetChat()->GetMessages()->Size() = 0);
+	}
+
+	function : TestStream() ~ Nil {
+		providers := Providers();
+		each(i : providers) {
+			provider := providers[i];
+			"-- {$provider}: streaming"->PrintLine();
+			s := Open(provider, false);
+			stream := s->Stream("hello", Nil);
+			Check("{$provider}: a stream opens", stream <> Nil);
+			if(stream = Nil) {
+				("  error: " + s->GetLastError())->PrintLine();
+				continue;
+			};
+
+			pieces := "";
+			count := 0;
+			while(stream->HasNext()) {
+				pieces += stream->Next();
+				count += 1;
+			};
+
+			if(provider->Equals("ollama")) {
+				Check("ollama: the whole reply is one piece", count = 1 & Has(pieces, "ollama"));
+			}
+			else {
+				Check("{$provider}: the text arrives in pieces", count = 2);
+				Check("{$provider}: the pieces join into the reply", Same(pieces, "Hello"));
+			};
+
+			turn := stream->GetTurn();
+			Check("{$provider}: the whole turn is available at the end", turn <> Nil);
+			if(turn <> Nil) {
+				Check("{$provider}: its text is the pieces", Same(turn->GetText(), pieces));
+				Check("{$provider}: its stop reason is end", Same(turn->GetStopReason(), "end"));
+				if(<>provider->Equals("ollama")) {
+					Check("{$provider}: its token counts are read", turn->GetInputTokens() = 7 & turn->GetOutputTokens() = 2);
+				};
+			};
+
+			# the exchange joined the conversation: a second turn on the same session works
+			Check("{$provider}: the session goes on after a stream", s->Send("again", Nil) <> Nil);
+		};
+	}
+
+	function : TestStreamTools() ~ Nil {
+		providers := Providers();
+		each(i : providers) {
+			provider := providers[i];
+			if(provider->Equals("ollama") | provider->Equals("anthropic")) {
+				continue;
+			};
+
+			"-- {$provider}: a streamed tool call"->PrintLine();
+			tools := Weather();
+			s := Open(provider, false);
+			stream := s->Stream("weather in Paris?", tools);
+			Check("{$provider}: a stream opens", stream <> Nil);
+			if(stream = Nil) {
+				continue;
+			};
+
+			count := 0;
+			while(stream->HasNext()) {
+				count += 1;
+			};
+			Check("{$provider}: a tool call has no text pieces", count = 0);
+			turn := stream->GetTurn();
+			Check("{$provider}: the turn carries the call", turn <> Nil & turn->HasToolCalls() & Same(turn->GetToolCalls()->Get(0)->GetName(), "get_weather") & Same(turn->GetToolCalls()->Get(0)->GetArgument("city"), "Paris"));
+			if(turn = Nil | <>turn->HasToolCalls()) {
+				continue;
+			};
+
+			call := turn->GetToolCalls()->Get(0);
+			s->AddToolResult(call->GetId(), call->GetName(), "18C and sunny");
+			final := s->Send(Nil, tools);
+			Check("{$provider}: the call from the stream is answered in the provider's shape", final <> Nil & Same(final->GetText(), "The weather is 18C."));
+		};
+	}
+
+	function : TestStreamErrors() ~ Nil {
+		providers := Providers();
+		each(i : providers) {
+			provider := providers[i];
+			"-- {$provider}: a refused stream"->PrintLine();
+			s := Open(provider, true);
+			stream := s->Stream("hello", Nil);
+			Check("{$provider}: no stream is returned", stream = Nil);
+			err := s->GetLastError();
+			Check("{$provider}: the error is reported", err <> Nil);
+			if(<>provider->Equals("ollama")) {
+				Check("{$provider}: the HTTP status is reported", Has(err, "401") | Has(err, "400"));
+			};
+			if(provider->Equals("openai")) {
+				Check("openai: the server's message is reported, not only the status", Has(err, "invalid_request_error") & Has(err, "Incorrect API key"));
+			}
+			else if(provider->Equals("gemini")) {
+				Check("gemini: the server's message is reported, not only the status", Has(err, "INVALID_ARGUMENT") & Has(err, "API key not valid"));
+			};
+		};
+	}
+
+	function : Pieces(stream : TurnStream) ~ Int {
+		count := 0;
+		while(stream->HasNext()) {
+			count += 1;
+		};
+		return count;
+	}
+
+	function : TestStreamSettling() ~ Nil {
+		"-- a stream that is closed, abandoned, broken or blocked leaves the conversation consistent"->PrintLine();
+		url := "https://localhost:{$@port}";
+
+		openai := OpenAISession->New("gpt-5", "test-key");
+		openai->SetBaseUrl("{$url}/openai/v1")->SetCertificate(@pem);
+		stream := openai->Stream("hello", Nil);
+		stream->Close();
+		Check("openai: closing a stream early takes the message back", openai->GetInput()->Size() = 0);
+
+		stream := openai->Stream("hello", Nil);
+		Pieces(stream);
+		Check("openai: reading a stream to its end settles it without GetTurn", openai->GetInput()->Size() = 2);
+		Check("openai: GetTurn after that returns the same turn", stream->GetTurn() <> Nil & Same(stream->GetTurn()->GetText(), "Hello") & openai->GetInput()->Size() = 2);
+
+		openai := OpenAISession->New("gpt-5", "test-key");
+		openai->SetBaseUrl("{$url}/openai/v1")->SetCertificate(@pem);
+		stream := openai->Stream("fail-stream", Nil);
+		Pieces(stream);
+		Check("openai: a stream that fails midway gives no turn", stream->GetTurn() = Nil);
+		Check("openai: and reports the failure", Has(openai->GetLastError(), "the model failed"));
+		Check("openai: and the message is taken back, as Send does", openai->GetInput()->Size() = 0);
+
+		gemini := GeminiSession->New("gemini-2.5-flash", "test-key");
+		gemini->SetBaseUrl("{$url}/gemini/v1beta")->SetCertificate(@pem);
+		stream := gemini->Stream("hello", Nil);
+		stream->Close();
+		Check("gemini: closing a stream early takes the message back", gemini->GetContents()->Size() = 0);
+
+		stream := gemini->Stream("hello", Nil);
+		Pieces(stream);
+		Check("gemini: reading a stream to its end settles it without GetTurn", gemini->GetContents()->Size() = 2);
+		Check("gemini: a part that carries a thought signature is replayed whole", Has(gemini->GetContents()->ToString(), "\"thoughtSignature\":\"sig-1\""));
+		Check("gemini: the text around it is not lost", Has(gemini->GetContents()->ToString(), "\"text\":\"Hel\"") & Has(gemini->GetContents()->ToString(), "\"text\":\"lo\""));
+
+		gemini := GeminiSession->New("gemini-2.5-flash", "test-key");
+		gemini->SetBaseUrl("{$url}/gemini/v1beta")->SetCertificate(@pem);
+		stream := gemini->Stream("fail-stream", Nil);
+		Pieces(stream);
+		Check("gemini: a stream that fails midway gives no turn", stream->GetTurn() = Nil);
+		Check("gemini: and reports the failure", Has(gemini->GetLastError(), "backend exploded"));
+		Check("gemini: and the message is taken back", gemini->GetContents()->Size() = 0);
+
+		stream := gemini->Stream("blocked-stream", Nil);
+		Pieces(stream);
+		Check("gemini: a blocked prompt gives no turn", stream->GetTurn() = Nil);
+		Check("gemini: and says why", Has(gemini->GetLastError(), "blocked") & Has(gemini->GetLastError(), "SAFETY"));
+		Check("gemini: and the message is taken back", gemini->GetContents()->Size() = 0);
+	}
+
+	function : TestTruncated() ~ Nil {
+		"-- a JSON answer cut short says why"->PrintLine();
+		schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}}}");
+		url := "https://localhost:{$@port}";
+		openai := OpenAISession->New("gpt-5", "test-key");
+		openai->SetBaseUrl("{$url}/openai/v1")->SetCertificate(@pem);
+		Check("openai: a cut-off answer is Nil", openai->SendJson("truncate", "answer", schema) = Nil);
+		Check("openai: and the error names the stop word", Has(openai->GetLastError(), "requested shape") & Has(openai->GetLastError(), "max_output_tokens"));
+
+		gemini := GeminiSession->New("gemini-2.5-flash", "test-key");
+		gemini->SetBaseUrl("{$url}/gemini/v1beta")->SetCertificate(@pem);
+		Check("gemini: a cut-off answer is Nil", gemini->SendJson("truncate", "answer", schema) = Nil);
+		Check("gemini: and the error names the finish reason", Has(gemini->GetLastError(), "requested shape") & Has(gemini->GetLastError(), "MAX_TOKENS"));
+	}
+
+	function : TestUnreachable() ~ Nil {
+		"-- nothing listening"->PrintLine();
+		openai := OpenAISession->New("gpt-5", "k");
+		openai->SetBaseUrl("https://localhost:1/v1")->SetCertificate(@pem);
+		Check("openai: a refused connection gives Nil", openai->Send("hello", Nil) = Nil);
+		Check("openai: and an error", openai->GetLastError() <> Nil);
+		Check("openai: a refused stream gives Nil", openai->Stream("hello", Nil) = Nil & openai->GetLastError() <> Nil);
+		Check("openai: the messages are not kept", openai->GetInput()->Size() = 0);
+
+		gemini := GeminiSession->New("gemini-2.5-flash", "k");
+		gemini->SetBaseUrl("https://localhost:1/v1beta")->SetCertificate(@pem);
+		Check("gemini: a refused connection gives Nil", gemini->Send("hello", Nil) = Nil & gemini->GetLastError() <> Nil);
+		Check("gemini: a refused stream gives Nil", gemini->Stream("hello", Nil) = Nil & gemini->GetLastError() <> Nil);
+		Check("gemini: the messages are not kept", gemini->GetContents()->Size() = 0);
+
+		saved := API.Ollama.EndPoint->GetHost();
+		API.Ollama.EndPoint->SetHost("http://localhost:1");
+		ollama := OllamaSession->New("llama3.2");
+		Check("ollama: a refused connection gives Nil", ollama->Send("hello", Nil) = Nil & ollama->GetLastError() <> Nil);
+		API.Ollama.EndPoint->SetHost(saved);
+	}
+
+	function : TestKeys() ~ Nil {
+		"-- no key"->PrintLine();
+		anthropic := AnthropicSession->New("claude-sonnet-5-5", Nil);
+		if(System.Runtime->GetEnvironmentVariable("ANTHROPIC_API_KEY") = Nil & FileReader->ReadFile("anthropic_api_key.dat") = Nil) {
+			Check("anthropic: no key gives Nil", anthropic->Send("hello", Nil) = Nil & Has(anthropic->GetLastError(), "API key"));
+		};
+
+		openai := OpenAISession->New("gpt-5", Nil);
+		openai->SetBaseUrl("https://localhost:{$@port}/openai/v1")->SetCertificate(@pem);
+		if(FileReader->ReadFile("openai_api_key.dat") = Nil) {
+			Check("openai: no key gives Nil", openai->Send("hello", Nil) = Nil & Has(openai->GetLastError(), "API key"));
+		};
+
+		gemini := GeminiSession->New("gemini-2.5-flash", Nil);
+		gemini->SetBaseUrl("https://localhost:{$@port}/gemini/v1beta")->SetCertificate(@pem);
+		if(FileReader->ReadFile("gemini_api_key.dat") = Nil) {
+			Check("gemini: no key gives Nil", gemini->Send("hello", Nil) = Nil & Has(gemini->GetLastError(), "API key"));
+		};
+	}
+}

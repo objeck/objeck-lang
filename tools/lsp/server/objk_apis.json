@@ -886,6 +886,254 @@
 				}
 			}
 		},
+		"API.LLM.Agent": {
+			"description": "The agent loop, written once for every provider: send, run the tools the model asks for, send the results, repeat until the model answers.",
+			"functions": {
+				"Run": {
+					"descriptions": ["**Runs the loop. A call to a tool that is not in the list, or a handler that returns Nil, is answered with an error (AddToolError) and the handler is not asked. A turn that still has tool calls when max_rounds rounds have run is returned as it is, so check HasToolCalls() to tell a finished answer from a stopped loop; its calls are answered with an error first, so the session can go on with another Send.**\n\n```function : Run(session:Session, message:String, tools:Vector&lt;ToolSpec&gt;, handler:ToolHandler, max_rounds:Int) ~ Turn```\n\n\n\nsession: Session\n\nmessage: String\n\ntools: Vector&lt;ToolSpec&gt;\n\nhandler: ToolHandler\n\nmax_rounds: Int\n\nreturn: Turn"]
+				}
+			}
+		},
+		"API.LLM.AnthropicSession": {
+			"description": "A session over the Anthropic Messages API; it wraps API.Anthropic.Chat. The base URL and pinned certificate are the API.Anthropic.EndPoint ones, and so is the key.",
+			"functions": {
+				"GetChat": {
+					"descriptions": ["**Get the wrapped client, for what the neutral layer does not cover (extended thinking, ...)**\n\n```method : public : GetChat() ~ API.Anthropic.Chat```\n\n\n\nreturn: API.Anthropic.Chat"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(model:String, key:String)```\n\n\n\nmodel: String\n\nkey: String"]
+				},
+				"ParseBody": {
+					"descriptions": ["**Reads a response body without a server, for tests and for replaying recorded responses. The turn does not join the conversation.**\n\n```method : public : ParseBody(body:String) ~ Turn```\n\n\n\nbody: String\n\nreturn: Turn"]
+				}
+			}
+		},
+		"API.LLM.GeminiSession": {
+			"description": "A session over the Gemini API (generateContent and streamGenerateContent). The conversation is kept here as contents; the model's own content is replayed as it came, so tool-call signatures survive the round trip. The key is sent in the x-goog-api-key header, not the URL. The key defaults to API.Google.Gemini.EndPoint's; SetBaseUrl and SetCertificate change the host for this session. The base URL must be https.",
+			"functions": {
+				"BuildRequest": {
+					"descriptions": ["**Builds the request body for the conversation as it stands, public so it can be inspected without a server**\n\n```method : public : BuildRequest(tools:Vector&lt;ToolSpec&gt;) ~ JsonElement```\n\n\n\ntools: Vector&lt;ToolSpec&gt;\n\nreturn: JsonElement"]
+				},
+				"GetContents": {
+					"descriptions": ["**Get the conversation as the contents of the next request**\n\n```method : public : GetContents() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(model:String, key:String)```\n\n\n\nmodel: String\n\nkey: String"]
+				},
+				"ParseBody": {
+					"descriptions": ["**Reads a response body without a server, for tests and for replaying recorded responses. The model's content joins the conversation, as it does after a real call.**\n\n```method : public : ParseBody(body:String) ~ Turn```\n\n\n\nbody: String\n\nreturn: Turn"]
+				},
+				"SetBaseUrl": {
+					"descriptions": ["**Sets the API base URL for this session (default https://generativelanguage.googleapis.com/v1beta)**\n\n```method : public : SetBaseUrl(base_url:String) ~ GeminiSession```\n\n\n\nbase_url: String\n\nreturn: GeminiSession"]
+				},
+				"SetCertificate": {
+					"descriptions": ["**Pins the certificate a gateway or test server presents, a PEM file used as the trust anchor**\n\n```method : public : SetCertificate(pem:String) ~ GeminiSession```\n\n\n\npem: String\n\nreturn: GeminiSession"]
+				}
+			}
+		},
+		"API.LLM.LLM": {
+			"description": "Builds sessions",
+			"functions": {
+				"Anthropic": {
+					"descriptions": ["**Opens an Anthropic session; the key comes from the API.Anthropic EndPoint**\n\n```function : Anthropic(model:String) ~ Session```\n\n\n\nmodel: String\n\nreturn: Session"]
+				},
+				"Gemini": {
+					"descriptions": ["**Opens a Gemini session; the key comes from the API.Google.Gemini EndPoint**\n\n```function : Gemini(model:String) ~ Session```\n\n\n\nmodel: String\n\nreturn: Session"]
+				},
+				"Ollama": {
+					"descriptions": ["**Opens an Ollama session on the host the API.Ollama EndPoint names**\n\n```function : Ollama(model:String) ~ Session```\n\n\n\nmodel: String\n\nreturn: Session"]
+				},
+				"Open": {
+					"descriptions": ["**Opens a session from \"provider:model\", where the provider is anthropic, openai, gemini or ollama**\n\n```function : Open(spec:String) ~ Session```\n\n\n\nspec: String\n\nreturn: Session"]
+				},
+				"OpenAI": {
+					"descriptions": ["**Opens an OpenAI session over the Responses API; the key comes from the API.OpenAI EndPoint**\n\n```function : OpenAI(model:String) ~ Session```\n\n\n\nmodel: String\n\nreturn: Session"]
+				}
+			}
+		},
+		"API.LLM.OllamaSession": {
+			"description": "A session over a local Ollama server (POST /api/chat). The conversation is kept here as chat messages and sent whole on every call; the host is API.Ollama.EndPoint's. API.Ollama.Chat itself is not wrapped: its tool list is a Vector<Tool>, and the compiler cannot tell that Tool from Anthropic's when one program uses both libraries. Ollama has no tool call ids, so one is made up for each call and the result is matched by tool name. Ollama is not streamed here: Stream returns the whole reply as one piece.",
+			"functions": {
+				"BuildRequest": {
+					"descriptions": ["**Builds the /api/chat request body for the conversation as it stands, public so it can be inspected without a server**\n\n```method : public : BuildRequest(tools:Vector&lt;ToolSpec&gt;) ~ JsonElement```\n\n\n\ntools: Vector&lt;ToolSpec&gt;\n\nreturn: JsonElement"]
+				},
+				"GetMessages": {
+					"descriptions": ["**Get the conversation as the messages of the next request, the system prompt first**\n\n```method : public : GetMessages() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"New": {
+					"descriptions": ["**Constructor; it does not contact the server**\n\n```New(model:String)```\n\n\n\nmodel: String"]
+				},
+				"ParseBody": {
+					"descriptions": ["**Reads a response body without a server, for tests and for replaying recorded responses. The reply joins the conversation, as it does after a real call.**\n\n```method : public : ParseBody(body:String) ~ Turn```\n\n\n\nbody: String\n\nreturn: Turn"]
+				}
+			}
+		},
+		"API.LLM.OpenAISession": {
+			"description": "A session over the OpenAI Responses API (POST /responses). The conversation is kept here and sent as input items on every call, with the model's output items replayed as they came, so a tool call's id survives the round trip. The API key and base URL default to API.OpenAI.EndPoint's; SetBaseUrl and SetCertificate change them for this session. The base URL must be https.",
+			"functions": {
+				"BuildRequest": {
+					"descriptions": ["**Builds the request body for the conversation as it stands, public so it can be inspected without a server**\n\n```method : public : BuildRequest(tools:Vector&lt;ToolSpec&gt;, stream:Bool) ~ JsonElement```\n\n\n\ntools: Vector&lt;ToolSpec&gt;\n\nstream: Bool\n\nreturn: JsonElement"]
+				},
+				"GetInput": {
+					"descriptions": ["**Get the conversation as the input items of the next request**\n\n```method : public : GetInput() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(model:String, key:String)```\n\n\n\nmodel: String\n\nkey: String"]
+				},
+				"ParseBody": {
+					"descriptions": ["**Reads a response body without a server, for tests and for replaying recorded responses. The output items join the conversation, as they do after a real call.**\n\n```method : public : ParseBody(body:String) ~ Turn```\n\n\n\nbody: String\n\nreturn: Turn"]
+				},
+				"SetBaseUrl": {
+					"descriptions": ["**Sets the API base URL for this session, in place of API.OpenAI.EndPoint's (https://api.openai.com/v1)**\n\n```method : public : SetBaseUrl(base_url:String) ~ OpenAISession```\n\n\n\nbase_url: String\n\nreturn: OpenAISession"]
+				},
+				"SetCertificate": {
+					"descriptions": ["**Pins the certificate a gateway or test server presents, a PEM file used as the trust anchor**\n\n```method : public : SetCertificate(pem:String) ~ OpenAISession```\n\n\n\npem: String\n\nreturn: OpenAISession"]
+				}
+			}
+		},
+		"API.LLM.Session": {
+			"description": "A chat session over one provider. It keeps the conversation, including tool calls and results. The four implementations are AnthropicSession, OpenAISession, GeminiSession and OllamaSession; LLM builds one by name.",
+			"functions": {
+				"AddToolError": {
+					"descriptions": ["**Adds a failed tool call's error to the conversation, marked as an error where the provider has a way to say so: Anthropic's is_error flag, Gemini's \"error\" response field. OpenAI and Ollama carry it as text that starts with \"Error: \". Use it in place of AddToolResult when the tool could not run, and send the conversation on as usual.**\n\n```method : public : virutal : AddToolError(call_id:String, tool_name:String, message:String) ~ Nil```\n\n\n\ncall_id: String\n\ntool_name: String\n\nmessage: String\n\nreturn: Nil"]
+				},
+				"AddToolResult": {
+					"descriptions": ["**Adds the result of a tool call to the conversation without sending it. Call it once per call in the turn, then Send(Nil, tools). To report a failure, return the error as the content.**\n\n```method : public : virutal : AddToolResult(call_id:String, tool_name:String, content:String) ~ Nil```\n\n\n\ncall_id: String\n\ntool_name: String\n\ncontent: String\n\nreturn: Nil"]
+				},
+				"GetLastError": {
+					"descriptions": ["**Get the last error**\n\n```method : public : virutal : GetLastError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetModel": {
+					"descriptions": ["**Get the model id**\n\n```method : public : virutal : GetModel() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetProvider": {
+					"descriptions": ["**Get the provider: anthropic, openai, gemini or ollama**\n\n```method : public : virutal : GetProvider() ~ String```\n\n\n\nreturn: String"]
+				},
+				"Send": {
+					"descriptions": ["**Sends a message and returns the model's turn. When the turn has tool calls, run them, add each result with AddToolResult and call Send(Nil, tools) again.**\n\n```method : public : virutal : Send(message:String, tools:Vector&lt;ToolSpec&gt;) ~ Turn```\n\n\n\nmessage: String\n\ntools: Vector&lt;ToolSpec&gt;\n\nreturn: Turn"]
+				},
+				"SendJson": {
+					"descriptions": ["**Asks for an answer in a given shape. The conversation so far is context; neither the question nor the answer joins it. How the shape is enforced is the provider's: a forced tool (Anthropic), a JSON schema response format (OpenAI and Ollama) or a response schema (Gemini). Treat it as best effort: OpenAI is asked with strict mode off, and Gemini accepts only a subset of JSON Schema, so keywords it does not know are removed from the schema it is sent. Check what comes back.**\n\n```method : public : virutal : SendJson(message:String, name:String, schema:JsonElement) ~ JsonElement```\n\n\n\nmessage: String\n\nname: String\n\nschema: JsonElement\n\nreturn: JsonElement"]
+				},
+				"SetMaxTokens": {
+					"descriptions": ["**Sets the most tokens a reply may use**\n\n```method : public : virutal : SetMaxTokens(max_tokens:Int) ~ Session```\n\n\n\nmax_tokens: Int\n\nreturn: Session"]
+				},
+				"SetSystem": {
+					"descriptions": ["**Sets the system prompt. Set it before the first message; Ollama has no separate system field, so a prompt set later joins the conversation as a further system message.**\n\n```method : public : virutal : SetSystem(system:String) ~ Session```\n\n\n\nsystem: String\n\nreturn: Session"]
+				},
+				"SetTemperature": {
+					"descriptions": ["**Sets the sampling temperature, left to the model when never called**\n\n```method : public : virutal : SetTemperature(temperature:Float) ~ Session```\n\n\n\ntemperature: Float\n\nreturn: Session"]
+				},
+				"Stream": {
+					"descriptions": ["**Sends a message and streams the reply. Anthropic, OpenAI and Gemini stream as the model generates; Ollama does not stream here, so its stream gives the whole reply as one piece.**\n\n```method : public : virutal : Stream(message:String, tools:Vector&lt;ToolSpec&gt;) ~ TurnStream```\n\n\n\nmessage: String\n\ntools: Vector&lt;ToolSpec&gt;\n\nreturn: TurnStream"]
+				}
+			}
+		},
+		"API.LLM.ToolHandler": {
+			"description": "Runs a tool for Agent: given a call, return the tool's result as text.",
+			"functions": {
+				"Run": {
+					"descriptions": ["**Runs one tool call**\n\n```method : public : virutal : Run(call:ToolInvocation) ~ String```\n\n\n\ncall: ToolInvocation\n\nreturn: String"]
+				}
+			}
+		},
+		"API.LLM.ToolInvocation": {
+			"description": "A tool call the model asked for. Run it, then return the result with Session->AddToolResult using GetId() and GetName().",
+			"functions": {
+				"GetArgument": {
+					"descriptions": ["**Get one argument as text (a number or boolean in its JSON form)**\n\n```method : public : GetArgument(name:String) ~ String```\n\n\n\nname: String\n\nreturn: String"]
+				},
+				"GetArguments": {
+					"descriptions": ["**Get the call's arguments, an object keyed by parameter name**\n\n```method : public : GetArguments() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"GetId": {
+					"descriptions": ["**Get the id the result must carry**\n\n```method : public : GetId() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetName": {
+					"descriptions": ["**Get the name of the tool to run**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(id:String, name:String, arguments:JsonElement)```\n\n\n\nid: String\n\nname: String\n\narguments: JsonElement"]
+				}
+			}
+		},
+		"API.LLM.ToolSpec": {
+			"description": "A tool the model may call: a name, a description and a JSON schema for its arguments. The same object is sent to every provider; each one gets it in its own wire format.",
+			"functions": {
+				"GetDescription": {
+					"descriptions": ["**Get the description**\n\n```method : public : GetDescription() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetName": {
+					"descriptions": ["**Get the tool name**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetSchema": {
+					"descriptions": ["**Get the argument schema**\n\n```method : public : GetSchema() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"HasProperties": {
+					"descriptions": ["**Check whether the tool takes any arguments**\n\n```method : public : HasProperties() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(name:String, description:String, schema:JsonElement)```\n\n\n\nname: String\n\ndescription: String\n\nschema: JsonElement", "**Constructor from a function definition, the form the other AI client libraries use**\n\n```New(func:FunctionType)```\n\n\n\nfunc: FunctionType"]
+				}
+			}
+		},
+		"API.LLM.Turn": {
+			"description": "One model turn: the text, the tool calls, why it stopped and the token counts. The stop reason is the same set of words for every provider: \"end\" (finished), \"tool_calls\" (wants tools run), \"length\" (hit the token limit), \"filtered\" (refused or blocked) and \"other\".",
+			"functions": {
+				"GetInputTokens": {
+					"descriptions": ["**Get the tokens the prompt used**\n\n```method : public : GetInputTokens() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetModel": {
+					"descriptions": ["**Get the model that answered**\n\n```method : public : GetModel() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetOutputTokens": {
+					"descriptions": ["**Get the tokens the reply used**\n\n```method : public : GetOutputTokens() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetRawStopReason": {
+					"descriptions": ["**Get the provider's own stop word (end_turn, completed, STOP, stop, ...)**\n\n```method : public : GetRawStopReason() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetStopReason": {
+					"descriptions": ["**Get why the model stopped: end, tool_calls, length, filtered or other**\n\n```method : public : GetStopReason() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetText": {
+					"descriptions": ["**Get the reply text**\n\n```method : public : GetText() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetToolCalls": {
+					"descriptions": ["**Get the tool calls**\n\n```method : public : GetToolCalls() ~ Vector&lt;ToolInvocation&gt;```\n\n\n\nreturn: Vector&lt;ToolInvocation&gt;"]
+				},
+				"HasToolCalls": {
+					"descriptions": ["**Check for tool calls**\n\n```method : public : HasToolCalls() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(text:String, tool_calls:Vector&lt;ToolInvocation&gt;, stop_reason:String, raw_stop_reason:String, input_tokens:Int, output_tokens:Int, model:String)```\n\n\n\ntext: String\n\ntool_calls: Vector&lt;ToolInvocation&gt;\n\nstop_reason: String\n\nraw_stop_reason: String\n\ninput_tokens: Int\n\noutput_tokens: Int\n\nmodel: String"]
+				}
+			}
+		},
+		"API.LLM.TurnStream": {
+			"description": "A streamed turn. Read it text first, then ask for the whole turn:",
+			"functions": {
+				"Close": {
+					"descriptions": ["**Closes the connection early**\n\n```method : public : virutal : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetTurn": {
+					"descriptions": ["**Reads any remaining events and returns the whole turn; the exchange then joins the history**\n\n```method : public : virutal : GetTurn() ~ Turn```\n\n\n\nreturn: Turn"]
+				},
+				"HasNext": {
+					"descriptions": ["**Reads on until there is text to return**\n\n```method : public : virutal : HasNext() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Next": {
+					"descriptions": ["**Get the text HasNext() found**\n\n```method : public : virutal : Next() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"API.LLM.WholeStream": {
+			"description": "A stream over a turn that is already complete: it gives the whole text as one piece. Ollama's stream is one of these.",
+			"functions": {
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(turn:Turn)```\n\n\n\nturn: Turn"]
+				}
+			}
+		},
 		"API.Models.EndPoint": {
 			"description": "Why the last call returned Nil.\n\nEvery backend here reports failure the same way -- Nil, with the reason available afterwards -- because the alternatives are worse: an exception the caller must know to guard, or a message on stderr the caller cannot act on.",
 			"functions": {
@@ -19105,6 +19353,10 @@
 		],
 		"Session": [
 			{
+				"bundle": "API.LLM",
+				"file": ""
+			},
+			{
 				"bundle": "API.Onnx",
 				"file": ""
 			}
@@ -21896,6 +22148,78 @@
 		"ToolUse": [
 			{
 				"bundle": "API.Anthropic",
+				"file": ""
+			}
+		],
+		"Agent": [
+			{
+				"bundle": "API.LLM",
+				"file": ""
+			}
+		],
+		"AnthropicSession": [
+			{
+				"bundle": "API.LLM",
+				"file": ""
+			}
+		],
+		"GeminiSession": [
+			{
+				"bundle": "API.LLM",
+				"file": ""
+			}
+		],
+		"LLM": [
+			{
+				"bundle": "API.LLM",
+				"file": ""
+			}
+		],
+		"OllamaSession": [
+			{
+				"bundle": "API.LLM",
+				"file": ""
+			}
+		],
+		"OpenAISession": [
+			{
+				"bundle": "API.LLM",
+				"file": ""
+			}
+		],
+		"ToolHandler": [
+			{
+				"bundle": "API.LLM",
+				"file": ""
+			}
+		],
+		"ToolInvocation": [
+			{
+				"bundle": "API.LLM",
+				"file": ""
+			}
+		],
+		"ToolSpec": [
+			{
+				"bundle": "API.LLM",
+				"file": ""
+			}
+		],
+		"Turn": [
+			{
+				"bundle": "API.LLM",
+				"file": ""
+			}
+		],
+		"TurnStream": [
+			{
+				"bundle": "API.LLM",
+				"file": ""
+			}
+		],
+		"WholeStream": [
+			{
+				"bundle": "API.LLM",
 				"file": ""
 			}
 		]

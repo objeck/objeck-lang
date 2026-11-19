@@ -66,6 +66,7 @@
       <li><a href="#anthropic-claude">Anthropic (Claude)</a></li>
       <li><a href="#gemini-1">Gemini</a></li>
       <li><a href="#ollama-local-models">Ollama (Local Models)</a></li>
+      <li><a href="#one-chat-interface-apillm">One Chat Interface (API.LLM)</a></li>
       <li><a href="#onnx-local-inference">ONNX Local Inference</a></li>
       <li><a href="#remote-inference-servers">Remote Inference Servers</a></li>
       <li><a href="#computer-vision-opencv">Computer Vision (OpenCV)</a></li>
@@ -488,6 +489,92 @@ each(m in models) {
 };
 Model-&gt;Pull("phi3");
 </code></pre>
+    <hr class="section-end">
+    <h3 id="one-chat-interface-apillm">One Chat Interface (API.LLM)</h3>
+    <p><code>API.LLM</code> is a provider-neutral layer over Anthropic, OpenAI, Gemini and Ollama. One <code>Session</code> interface covers a system prompt, chat, tool calling, streaming and JSON output, so an agent loop is written once and runs against any of them. The provider clients above keep their own features (images, thinking, embeddings, files); this layer is the common surface for chat. Compile with:</p>
+<pre class="plain">obc -src agent.obs -lib llm,anthropic,openai,gemini,ollama,net,net_server,json,cipher,misc</pre>
+    <p>or <code>-lib @ml</code>, which expands to the same set. A failed call returns <code>Nil</code> and <code>session-&gt;GetLastError()</code> says why; nothing ends the program on bad input.</p>
+    <h4 id="open-a-session">Open a session</h4>
+<pre class="line-numbers"><code class="language-cpp">use API.LLM;
+
+session := LLM-&gt;Open("anthropic:claude-sonnet-5-5");   # or openai:gpt-5, gemini:gemini-2.5-flash, ollama:llama3.2
+session-&gt;SetSystem("Answer in one sentence.")-&gt;SetMaxTokens(512);
+turn := session-&gt;Send("Why is the sky blue?", Nil);
+if(turn = Nil) {
+  session-&gt;GetLastError()-&gt;ErrorLine();
+}
+else {
+  turn-&gt;GetText()-&gt;PrintLine();
+};
+</code></pre>
+    <p><code>Send(message, tools)</code> returns a <code>Turn</code>: <code>GetText()</code>, <code>GetToolCalls()</code>, <code>GetStopReason()</code>, <code>GetInputTokens()</code>, <code>GetOutputTokens()</code>. The stop reason is the same word for every provider: <code>end</code>, <code>tool_calls</code>, <code>length</code> (hit the token limit), <code>filtered</code> (refused or blocked) or <code>other</code>; <code>GetRawStopReason()</code> has the provider's own. The conversation is kept in the session, so a second <code>Send</code> continues it. A message that failed is not kept.</p>
+    <p>The keys are the provider clients' own: <code>ANTHROPIC_API_KEY</code> or <code>anthropic_api_key.dat</code>, <code>openai_api_key.dat</code>, <code>gemini_api_key.dat</code>, or pass a key to the concrete class (<code>OpenAISession-&gt;New("gpt-5", key)</code>). Ollama needs none and uses <code>API.Ollama.EndPoint-&gt;SetHost(...)</code>.</p>
+    <h4 id="tools-and-the-agent-loop">Tools and the agent loop</h4>
+    <p>A <code>ToolSpec</code> is a name, a description and a JSON schema. The same object goes to every provider, each in its own wire format. When a turn has tool calls, run them, return each result with <code>AddToolResult(call-&gt;GetId(), call-&gt;GetName(), text)</code> and <code>Send(Nil, tools)</code> again. When a tool could not run, return that with <code>AddToolError(id, name, message)</code> instead: Anthropic gets an <code>is_error</code> result, Gemini an <code>error</code> field, and OpenAI and Ollama text that starts with <code>Error: </code>.</p>
+    <p>A tool's schema is written once and adapted per provider. A tool with no arguments (<code>ToolSpec-&gt;New("ping", "...", Nil)</code>) is sent as an empty object schema, except to Gemini, which refuses an object with no properties, so its <code>parameters</code> is left out. OpenAI tools are always sent with <code>strict</code> off, so a schema with an optional argument is accepted. For Gemini, which takes only an OpenAPI subset of JSON Schema, the schema (for tools and for <code>SendJson</code>) is reduced first: <code>additionalProperties</code>, <code>$schema</code>, <code>$ref</code>, <code>$defs</code>, <code>default</code>, <code>allOf</code> and <code>examples</code> are dropped, <code>oneOf</code> becomes <code>anyOf</code>, <code>const</code> becomes a one-value <code>enum</code>, and a type list such as <code>["string","null"]</code> becomes the type plus <code>nullable</code>. A <code>$ref</code> is dropped, not resolved, so write a schema without references.</p>
+<pre class="line-numbers"><code class="language-cpp">use API.LLM;
+use Collection, Data.JSON;
+
+class Town implements ToolHandler {
+  method : public : Run(call : ToolInvocation) ~ String {
+    city := call-&gt;GetArgument("city");
+    return "18C and sunny in {$city}";
+  }
+}
+
+schema := JsonParser-&gt;TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}");
+tools := Vector-&gt;New()&lt;ToolSpec&gt;;
+tools-&gt;AddBack(ToolSpec-&gt;New("get_weather", "Get the weather for a city", schema));
+
+session := LLM-&gt;Open("openai:gpt-5");
+turn := Agent-&gt;Run(session, "What is the weather in Paris?", tools, Town-&gt;New(), 8);
+turn-&gt;GetText()-&gt;PrintLine();
+</code></pre>
+    <p><code>Agent-&gt;Run</code> is the whole loop, and it is short enough to write by hand against <code>Session</code> alone, which the <code>llm_agent_test</code> regression test does: the same loop runs unchanged on all four providers. A call to a tool that is not in the list, or a handler that returns <code>Nil</code>, is answered with an error and the handler is not asked. A turn that still has tool calls when the round limit is hit is returned as it is, so <code>HasToolCalls()</code> tells a finished answer from a stopped loop; its calls are answered with an error first, because a provider refuses the next message while a call is unanswered, so the session can go on with another <code>Send</code>.</p>
+    <h4 id="json-output">JSON output</h4>
+    <p><code>SendJson(question, name, schema)</code> returns an object in the shape you give, or <code>Nil</code>. The conversation so far is context; neither the question nor the answer joins it. Treat the shape as best effort, not a guarantee: OpenAI is asked with strict mode off, Gemini gets the reduced schema described above, and Anthropic checks a forced tool's input loosely. When the answer is missing the error says why where the provider told it (for example <code>finish reason MAX_TOKENS</code>: Gemini 2.5 counts its thinking tokens against <code>SetMaxTokens</code>, so a small limit can end the reply before any answer).</p>
+<pre class="line-numbers"><code class="language-cpp">schema := JsonParser-&gt;TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"},\"temp\":{\"type\":\"integer\"}},\"required\":[\"city\",\"temp\"]}");
+answer := session-&gt;SendJson("Name a city where it is 18 degrees.", "answer", schema);
+answer-&gt;Get("city")-&gt;GetString()-&gt;PrintLine();
+</code></pre>
+    <h4 id="streaming-1">Streaming</h4>
+<pre class="line-numbers"><code class="language-cpp">stream := session-&gt;Stream("Write a haiku about rivers.", Nil);
+while(stream &lt;&gt; Nil &amp; stream-&gt;HasNext()) {
+  stream-&gt;Next()-&gt;Print();
+};
+turn := stream-&gt;GetTurn();    # the whole turn; the exchange joins the conversation
+</code></pre>
+    <p>The exchange joins the conversation when the stream ends, whether or not you call <code>GetTurn()</code>. <code>Close()</code> before the end, a stream that fails midway, and a blocked prompt take the message back, as a failed <code>Send</code> does.</p>
+    <p>Anthropic, OpenAI and Gemini stream as the model generates, over server-sent events. <strong>Ollama does not stream here</strong>: its stream gives the whole reply as one piece, so the same loop runs but nothing arrives early. A tool call streamed by OpenAI or Gemini arrives whole in <code>GetTurn()</code>, with no text pieces before it. Gemini sends no end-of-stream event, so the reader stops at the chunk that carries a finish reason, or at a blocked-prompt chunk (the request also sends <code>Connection: close</code>, but a stream that ends without either would wait on the connection). A refused stream (a bad key, say) is reported with the server's message: the stream itself shows only the status, so a 400, 401, 403 or 404 is repeated once without streaming to read the error body.</p>
+    <h4 id="how-each-provider-is-spoken-to">How each provider is spoken to</h4>
+    <table class="ref-table">
+     <thead>
+      <tr><th></th><th>Anthropic</th><th>OpenAI</th><th>Gemini</th><th>Ollama</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="">Endpoint</td><td data-label="Anthropic"><code>/v1/messages</code></td><td data-label="OpenAI"><code>/v1/responses</code></td><td data-label="Gemini"><code>models/{m}:generateContent</code></td><td data-label="Ollama"><code>/api/chat</code></td></tr>
+      <tr><td data-label="">Class</td><td data-label="Anthropic"><code>AnthropicSession</code> (wraps <code>API.Anthropic.Chat</code>)</td><td data-label="OpenAI"><code>OpenAISession</code></td><td data-label="Gemini"><code>GeminiSession</code></td><td data-label="Ollama"><code>OllamaSession</code></td></tr>
+      <tr><td data-label="">Key</td><td data-label="Anthropic"><code>x-api-key</code> header</td><td data-label="OpenAI"><code>Authorization: Bearer</code></td><td data-label="Gemini"><code>x-goog-api-key</code> header</td><td data-label="Ollama">none</td></tr>
+      <tr><td data-label="">Tool call id</td><td data-label="Anthropic">the API's (<code>toolu_...</code>)</td><td data-label="OpenAI">the API's (<code>call_id</code>)</td><td data-label="Gemini">the API's when it sends one, else made up</td><td data-label="Ollama">made up (<code>ollama_call_N</code>)</td></tr>
+      <tr><td data-label="">Result goes back as</td><td data-label="Anthropic"><code>tool_result</code> block, by id (<code>is_error</code> for an error)</td><td data-label="OpenAI"><code>function_call_output</code> item, by <code>call_id</code></td><td data-label="Gemini"><code>functionResponse</code> part, by name (<code>error</code> field for an error)</td><td data-label="Ollama"><code>tool</code> message, by name</td></tr>
+      <tr><td data-label="">JSON output</td><td data-label="Anthropic">a forced tool</td><td data-label="OpenAI"><code>text.format</code> JSON schema</td><td data-label="Gemini"><code>responseSchema</code></td><td data-label="Ollama"><code>format</code> JSON schema</td></tr>
+      <tr><td data-label="">Streaming</td><td data-label="Anthropic">yes</td><td data-label="OpenAI">yes</td><td data-label="Gemini">yes</td><td data-label="Ollama">one piece</td></tr>
+     </tbody>
+    </table>
+    <p>OpenAI and Gemini are spoken to directly over <code>HttpsClient</code>, because their clients above cannot do the round trip (<code>API.OpenAI.Responses</code> does not read function calls back, and Gemini's tool support dispatches callbacks itself). The session keeps the conversation and sends it whole on every call, replaying the model's own output items (OpenAI) or content (Gemini) as they came, so reasoning items and tool-call signatures survive. Ollama is also spoken to directly: <code>API.Ollama.Chat</code> takes a <code>Vector&lt;Tool&gt;</code>, and the compiler cannot tell that <code>Tool</code> from Anthropic's when one program uses both libraries.</p>
+    <p>OpenAI replays its own output items, which carry ids (<code>rs_...</code>, <code>msg_...</code>, <code>fc_...</code>), and the request does not set <code>store</code>, so the default (stored responses) is assumed. An organisation with zero data retention, or a request with <code>store: false</code>, refuses those ids; this layer does not send <code>store: false</code> with encrypted reasoning items. OpenAI reasoning models reject <code>SetTemperature</code>: leave it unset for them.</p>
+    <p>The Gemini key goes in the <code>x-goog-api-key</code> header rather than the <code>?key=</code> query the Gemini client uses, so it never appears in a URL or an error message.</p>
+    <h4 id="gateways-and-local-test-servers">Gateways and local test servers</h4>
+    <p><code>OpenAISession</code> and <code>GeminiSession</code> take <code>SetBaseUrl(url)</code> (https, no trailing slash) and <code>SetCertificate(pem)</code> to pin the certificate a gateway or test server presents. <code>OpenAISession</code> falls back to <code>API.OpenAI.EndPoint-&gt;SetBaseUrl</code>. Anthropic and Ollama follow their own endpoints: <code>API.Anthropic.EndPoint-&gt;SetBaseUrl</code> / <code>SetCertificate</code>, <code>API.Ollama.EndPoint-&gt;SetHost</code>. <code>GetChat()</code> on <code>AnthropicSession</code> returns the wrapped client for what the neutral layer does not cover (extended thinking).</p>
+    <h4 id="what-it-does-not-do">What it does not do</h4>
+    <ul>
+     <li>Images, audio, files and embeddings: use the provider's own client.</li>
+     <li>Schema strictness. Anthropic checks a forced tool's input loosely; OpenAI is asked for a JSON schema with <code>strict</code> off (a strict schema must list every property as required and forbid extras, which a general interface cannot assume); Gemini takes a reduced subset of JSON Schema; Ollama constrains the output to the schema. Check what you get back.</li>
+     <li>Parallel tool calls come back together in one turn and all results must be added before the next <code>Send</code>, which the loop above does.</li>
+     <li>Provider-specific options (prompt caching, thinking budgets, safety settings, Ollama <code>Options</code>) are not here; use the provider's client.</li>
+    </ul>
+    <p><strong>Tested against local mocks, not the live services.</strong> <code>llm_parse_test</code> reads recorded response bodies for all four providers and checks the request each session builds; <code>llm_http_test</code> runs each session against a local HTTPS server (a plain HTTP one for Ollama) that answers a tool result only when it arrives in the provider's own shape; <code>llm_agent_test</code> runs one agent loop against all four. The wire formats follow the providers' public documentation as of this writing; nothing has been run against api.anthropic.com, api.openai.com, generativelanguage.googleapis.com or a real Ollama server, so a field the mocks do not exercise may differ.</p>
+    <p>Why it is built this way, and what was left out: <a href="https://github.com/objeck/objeck-lang/blob/master/docs/LLM_DESIGN.md" target="_blank">LLM_DESIGN.md</a>.</p>
     <hr class="section-end">
     <h3 id="onnx-local-inference">ONNX Local Inference</h3>
     <p>Run ML models locally using the ONNX Runtime. The Windows and macOS libraries are each built with one accelerator (DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS), with the CPU as the fallback. The Linux x64 and ARM64 libraries are CPU-only (each is linked with a vendored ONNX Runtime 1.19.0 CPU build). See <a href="doc_models.html#execution-providers">execution providers</a> for the <code>ep</code> setting.</p>
@@ -1136,7 +1223,7 @@ values := mdp-&gt;GetValues();
       <tr><td data-label="Alias"><code>@std</code></td><td data-label="Expands to"><code>json</code>, <code>json_stream</code>, <code>net</code>, <code>cipher</code></td><td data-label="Use for">everyday networked apps</td></tr>
       <tr><td data-label="Alias"><code>@web</code></td><td data-label="Expands to"><code>net_h2</code>, <code>net_quic</code>, <code>web_server</code>, <code>json_rpc</code>, <code>net_server</code>, <code>net</code>, <code>json</code>, <code>cipher</code></td><td data-label="Use for">HTTP/2, HTTP/3, the embedded server, JSON-RPC</td></tr>
       <tr><td data-label="Alias"><code>@data</code></td><td data-label="Expands to"><code>xml</code>, <code>regex</code>, <code>csv</code>, <code>query</code>, <code>rss</code>, <code>misc</code>, <code>net</code>, <code>json</code>, <code>cipher</code></td><td data-label="Use for">parsing and querying structured data</td></tr>
-      <tr><td data-label="Alias"><code>@ml</code></td><td data-label="Expands to"><code>gemini</code>, <code>openai</code>, <code>ollama</code>, <code>net_server</code>, <code>misc</code>, <code>net</code>, <code>json</code>, <code>cipher</code></td><td data-label="Use for">LLM clients: OpenAI, Gemini, Ollama</td></tr>
+      <tr><td data-label="Alias"><code>@ml</code></td><td data-label="Expands to"><code>gemini</code>, <code>openai</code>, <code>ollama</code>, <code>anthropic</code>, <code>llm</code>, <code>net_server</code>, <code>misc</code>, <code>net</code>, <code>json</code>, <code>cipher</code></td><td data-label="Use for">LLM clients (OpenAI, Gemini, Ollama, Anthropic) and the neutral chat layer over them</td></tr>
       <tr><td data-label="Alias"><code>@ai</code></td><td data-label="Expands to"><code>ai</code>, <code>ml</code>, <code>ml_lab</code>, <code>ml_vector</code>, <code>nlp</code>, <code>csv</code>, <code>json</code></td><td data-label="Use for">local System.ML / System.ML.Lab / System.AI / System.NLP work</td></tr>
       <tr><td data-label="Alias"><code>@vision</code></td><td data-label="Expands to"><code>opencv</code>, <code>onnx</code>, <code>nlp_onnx</code>, <code>models</code>, <code>nlp</code>, <code>json</code>, <code>cipher</code></td><td data-label="Use for">OpenCV and ONNX inference, BERT text embeddings</td></tr>
       <tr><td data-label="Alias"><code>@game</code></td><td data-label="Expands to"><code>sdl2</code>, <code>sdl_game</code>, <code>sdl_gl</code>, <code>json</code>, <code>gen_collect</code></td><td data-label="Use for">SDL games, 2D and OpenGL</td></tr>
@@ -1170,6 +1257,7 @@ values := mdp-&gt;GetValues();
       <tr><td data-label="Capability">File upload</td><td data-label="Class"><code>FileManager</code></td><td data-label="Library"><code>gemini</code></td><td data-label="Key">Gemini</td></tr>
       <tr><td data-label="Capability">Context caching</td><td data-label="Class"><code>CachedContent</code></td><td data-label="Library"><code>gemini</code></td><td data-label="Key">Gemini</td></tr>
       <tr><td data-label="Capability">Local text gen</td><td data-label="Class"><code>Completion</code> / <code>Chat</code></td><td data-label="Library"><code>ollama</code></td><td data-label="Key">None</td></tr>
+      <tr><td data-label="Capability">Chat, tools, streaming over any of the four</td><td data-label="Class"><code>Session</code>, <code>Agent</code></td><td data-label="Library"><code>llm</code> + the clients</td><td data-label="Key">Per provider</td></tr>
       <tr><td data-label="Capability">Local embeddings</td><td data-label="Class"><code>Model::Embeddings</code></td><td data-label="Library"><code>ollama</code></td><td data-label="Key">None</td></tr>
       <tr><td data-label="Capability">Face recognition</td><td data-label="Class"><code>FaceSession</code></td><td data-label="Library"><code>onnx</code></td><td data-label="Key">None</td></tr>
       <tr><td data-label="Capability">Object detection</td><td data-label="Class"><code>YoloSession</code></td><td data-label="Library"><code>onnx</code></td><td data-label="Key">None</td></tr>
