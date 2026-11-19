@@ -1,0 +1,121 @@
+# EXTRA_LIBS: ml_vector,gen_collect
+#~
+System.ML.VectorSearch VectorIndex: bad arguments return a value and never end the
+program. Checked: a wrong-dimension or Nil or empty or non-finite vector on Add and on
+Search, Nil and empty ids, k of zero and below, an empty index, an index created with a
+dimension that is not usable, Remove and Get of unknown and Nil ids, and that after every
+refusal the index still works and GetError() says something. A refused Add leaves the
+index exactly as it was.
+~#
+use System.ML.VectorSearch;
+use Collection;
+
+class MlVectorValidation {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		nan := Float->NaN();
+		inf := Float->Inf();
+
+		index := VectorIndex->New(3, VectorMetric->COSINE);
+		ok := Report("a fresh index is valid and empty", index->IsValid() & index->Size() = 0 & index->GetDimension() = 3) & ok;
+		ok := Report("it reports its metric", index->GetMetric() = VectorMetric->COSINE) & ok;
+
+		# empty index
+		hits := index->Search([1.0, 2.0, 3.0], 5);
+		ok := Report("empty index: search gives an empty result, not Nil", hits <> Nil & hits->Size() = 0) & ok;
+		ok := Report("empty index: that is not an error", index->GetError()->Size() = 0) & ok;
+		ok := Report("empty index: Get is Nil", index->Get("x") = Nil) & ok;
+		ok := Report("empty index: Remove is false", index->Remove("x") = false) & ok;
+		ok := Report("empty index: no ids", index->GetIds()->Size() = 0) & ok;
+
+		# Add refusals
+		ok := Report("Add with a Nil id is false", index->Add(Nil, [1.0, 2.0, 3.0]) = false) & ok;
+		ok := Report("  and says why", index->GetError()->Size() > 0) & ok;
+		ok := Report("Add with an empty id is false", index->Add("", [1.0, 2.0, 3.0]) = false) & ok;
+		ok := Report("Add with a Nil vector is false", index->Add("a", Nil) = false) & ok;
+		ok := Report("Add with too few values is false", index->Add("a", [1.0, 2.0]) = false) & ok;
+		ok := Report("  and names both lengths", index->GetError()->Has("2") & index->GetError()->Has("3")) & ok;
+		ok := Report("Add with too many values is false", index->Add("a", [1.0, 2.0, 3.0, 4.0]) = false) & ok;
+		ok := Report("Add with a NaN is false", index->Add("a", [1.0, nan, 3.0]) = false) & ok;
+		ok := Report("Add with +Inf is false", index->Add("a", [1.0, 2.0, inf]) = false) & ok;
+		ok := Report("Add with -Inf is false", index->Add("a", [-inf, 2.0, 3.0]) = false) & ok;
+		ok := Report("nothing was stored by the refusals", index->Size() = 0 & index->Contains("a") = false) & ok;
+
+		# the index still works afterwards
+		ok := Report("a good Add works after the refusals", index->Add("a", [1.0, 2.0, 3.0])) & ok;
+		ok := Report("  and clears the error", index->GetError()->Size() = 0) & ok;
+		ok := Report("a refused replacement leaves the old vector", index->Add("a", [1.0, nan, 3.0]) = false & index->Get("a")[1] = 2.0) & ok;
+		index->Add("b", [3.0, 2.0, 1.0]);
+
+		# Search refusals
+		ok := Report("Search with a Nil query is empty", index->Search(Nil, 2)->Size() = 0) & ok;
+		ok := Report("  and says why", index->GetError()->Size() > 0) & ok;
+		ok := Report("Search with the wrong length is empty", index->Search([1.0, 2.0], 2)->Size() = 0) & ok;
+		ok := Report("Search with a NaN is empty", index->Search([nan, 0.0, 0.0], 2)->Size() = 0) & ok;
+		ok := Report("Search with Inf is empty", index->Search([0.0, inf, 0.0], 2)->Size() = 0) & ok;
+		ok := Report("k = 0 is empty", index->Search([1.0, 2.0, 3.0], 0)->Size() = 0) & ok;
+		ok := Report("k = -3 is empty", index->Search([1.0, 2.0, 3.0], -3)->Size() = 0) & ok;
+		ok := Report("a good Search still works", index->Search([1.0, 2.0, 3.0], 5)->Size() = 2) & ok;
+		ok := Report("  and finds the identical vector first", index->Search([1.0, 2.0, 3.0], 1)->Get(0)->GetId()->Equals("a")) & ok;
+
+		# Get / Remove / Contains with odd ids
+		ok := Report("Get(Nil) is Nil", index->Get(Nil) = Nil) & ok;
+		ok := Report("Get of an unknown id is Nil", index->Get("zzz") = Nil) & ok;
+		ok := Report("Remove(Nil) is false", index->Remove(Nil) = false) & ok;
+		ok := Report("Contains(Nil) is false", index->Contains(Nil) = false) & ok;
+		ok := Report("Remove of an unknown id is false", index->Remove("zzz") = false & index->Size() = 2) & ok;
+
+		# zero vectors: cosine has no direction, so they score 0 rather than failing
+		zero := VectorIndex->New(2, VectorMetric->COSINE);
+		zero->Add("zero", [0.0, 0.0]);
+		zero->Add("unit", [1.0, 0.0]);
+		zh := zero->Search([1.0, 0.0], 2);
+		ok := Report("cosine: a zero vector scores 0 and sorts last", zh->Size() = 2 & zh->Get(0)->GetId()->Equals("unit") & zh->Get(1)->GetScore() = 0.0) & ok;
+		zq := zero->Search([0.0, 0.0], 2);
+		ok := Report("cosine: a zero query scores everything 0, ids in order", zq->Size() = 2 & zq->Get(0)->GetScore() = 0.0 & zq->Get(0)->GetId()->Equals("unit") & zq->Get(1)->GetId()->Equals("zero")) & ok;
+
+		# an index that cannot be used
+		ok := Report("dimension 0 index is not valid", VectorIndex->New(0, VectorMetric->DOT)->IsValid() = false) & ok;
+		ok := Report("negative dimension is not valid", VectorIndex->New(-4, VectorMetric->DOT)->IsValid() = false) & ok;
+		ok := Report("a huge dimension is not valid", VectorIndex->New(2000000000, VectorMetric->DOT)->IsValid() = false) & ok;
+		bad := VectorIndex->New(0, VectorMetric->L2);
+		ok := Report("an invalid index says why", bad->GetError()->Size() > 0) & ok;
+		ok := Report("an invalid index refuses Add", bad->Add("a", [1.0]) = false) & ok;
+		ok := Report("an invalid index searches to empty", bad->Search([1.0], 1)->Size() = 0) & ok;
+		ok := Report("an invalid index refuses Remove", bad->Remove("a") = false) & ok;
+		ok := Report("an invalid index has no Get", bad->Get("a") = Nil) & ok;
+		ok := Report("an invalid index will not Store", bad->Store(Runtime->GetTempDir() + "/ml_vector_invalid.vix") = false) & ok;
+		ok := Report("it has no ids", bad->GetIds()->Size() = 0 & bad->Size() = 0) & ok;
+
+		# dimension 1 and a big dimension both work
+		one := VectorIndex->New(1, VectorMetric->L2);
+		one->Add("five", [5.0]);
+		one->Add("two", [2.0]);
+		oh := one->Search([3.0], 2);
+		ok := Report("dimension 1 works: nearest of 5 and 2 to 3", oh->Get(0)->GetId()->Equals("two") & oh->Get(0)->GetScore() = 1.0 & oh->Get(1)->GetScore() = 2.0) & ok;
+		wide := VectorIndex->New(5000, VectorMetric->DOT);
+		wv := Float->New[5000];
+		wv[4999] := 2.0;
+		wide->Add("w", wv);
+		wh := wide->Search(wv, 1);
+		ok := Report("dimension 5000 works", wh->Size() = 1 & wh->Get(0)->GetScore() = 4.0) & ok;
+
+		# a hit prints
+		ok := Report("a hit has a readable form", hits <> Nil & index->Search([1.0, 2.0, 3.0], 1)->Get(0)->ToString()->StartsWith("a: ")) & ok;
+
+		if(ok = false) {
+			Runtime->Exit(1);
+		};
+		"ml_vector_validation: ok"->PrintLine();
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+		return passed;
+	}
+}

@@ -31,6 +31,7 @@ Each library typically consists of:
 - **ml_outlier.obs** - Anomaly detection: OutlierDetector, ZScoreDetector, IsolationForest, LocalOutlierFactor, EllipticEnvelope, DbscanDetector, AutoencoderDetector, OneClassSvmDetector, SensitivitySweep
 - **ml_embed.obs** - `EmbeddingClassifier`, a trainable head over fixed-size embeddings
 - **ml_lab.obs** - Experiment support for parameter sweeps (`System.ML.Lab`): splits, resampling, sweep runner, result tables, SVG charts. Its own library, `ml_lab.obl`
+- **ml_vector.obs** - Local vector index (`System.ML.VectorSearch`): `VectorIndex` with exact cosine, dot and L2 top-k search, `Store`/`Load`. Its own library, `ml_vector.obl`, which needs only `gen_collect`
 - **ai_search.obs** - Graph search: Dijkstra, A*, BFS, DFS
 - **ai_game.obs** - Adversarial game search: Minimax, Monte Carlo Tree Search
 - **ai_optimize.obs** - Optimization: GeneticAlgorithm, SimulatedAnnealing, HillClimbing

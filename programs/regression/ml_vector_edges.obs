@@ -1,0 +1,250 @@
+# EXTRA_LIBS: ml_vector,gen_collect
+#~
+System.ML.VectorSearch VectorIndex edges that the reference-comparison test does not reach.
+
+Magnitudes: values outside 1e-100 .. 1e100 (and NaN or infinity) are refused with a
+reason, because past that range a squared length overflows or underflows and a cosine
+reads 0 or a dot product turns NaN. The refusal happens on Add and on Search, and the
+values on the edge of the range are accepted and score finitely.
+
+Block boundaries: at dimension 3 a block holds 21845 rows, so 43691 vectors fill two
+blocks and put one row in a third. Searches across the boundaries, a Remove that empties
+the last block, an Add after that shrink, a Remove followed by an Add of the same id, and
+removing every row (then searching and saving an index of size 0).
+
+A near-tie at the top-k edge: scores one ulp apart rank by score, not by id.
+~#
+use System.ML.VectorSearch;
+use Collection;
+
+class MlVectorEdges {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		ok := Magnitudes() & ok;
+		ok := Blocks() & ok;
+		ok := Shrink() & ok;
+		ok := RemoveAll() & ok;
+		ok := NearTie() & ok;
+
+		if(ok = false) {
+			Runtime->Exit(1);
+		};
+		"ml_vector_edges: ok"->PrintLine();
+	}
+
+	function : Magnitudes() ~ Bool {
+		ok := true;
+		metrics := [VectorMetric->COSINE, VectorMetric->DOT, VectorMetric->L2];
+		each(m : metrics) {
+			metric := metrics[m];
+			index := VectorIndex->New(2, metric);
+			name := "magnitude " + metric->As(Int)->ToString();
+			ok := Report(name + ": 1e200 is refused", index->Add("big", [1.0e200, 1.0]) = false) & ok;
+			ok := Report(name + ":   and the reason names the limit", index->GetError()->Has("1e100")) & ok;
+			ok := Report(name + ": -1e200 is refused", index->Add("big", [1.0, -1.0e200]) = false) & ok;
+			ok := Report(name + ": 1e-200 is refused", index->Add("tiny", [1.0e-200, 1.0]) = false) & ok;
+			ok := Report(name + ": -1e-200 is refused", index->Add("tiny", [1.0, -1.0e-200]) = false) & ok;
+			ok := Report(name + ": nothing was stored", index->Size() = 0) & ok;
+
+			ok := Report(name + ": 1e100 is accepted", index->Add("hi", [1.0e100, 1.0e100])) & ok;
+			ok := Report(name + ": 1e-100 is accepted", index->Add("lo", [1.0e-100, 1.0e-100])) & ok;
+			ok := Report(name + ": zero is accepted", index->Add("zero", [0.0, 0.0])) & ok;
+			# a vector that would make the dot product +Inf + -Inf = NaN if it were allowed
+			ok := Report(name + ": 1e100 and -1e100 together are accepted", index->Add("opp", [1.0e100, -1.0e100])) & ok;
+
+			ok := Report(name + ": a 1e200 query gives an empty result", index->Search([1.0e200, 1.0e200], 3)->Size() = 0) & ok;
+			ok := Report(name + ":   with a reason", index->GetError()->Has("1e100")) & ok;
+			ok := Report(name + ": a 1e-200 query gives an empty result", index->Search([1.0e-200, 1.0], 3)->Size() = 0) & ok;
+
+			hits := index->Search([1.0e100, 1.0e100], 4);
+			ok := Report(name + ": a query on the edge of the range answers", hits->Size() = 4) & ok;
+			finite := true;
+			each(h : hits) {
+				sc := hits->Get(h)->GetScore();
+				if(sc <> sc | sc - sc <> 0.0) {
+					finite := false;
+				};
+			};
+			ok := Report(name + ": every score is finite", finite) & ok;
+			if(metric = VectorMetric->COSINE) {
+				ok := Report(name + ": hi and lo are the same direction, so 'hi' scores 1", hits->Get(0)->GetScore() = 1.0 | hits->Get(0)->GetScore() > 0.999999999999) & ok;
+			}
+			else if(metric = VectorMetric->DOT) {
+				ok := Report(name + ": hi scores 2e200", hits->Get(0)->GetId()->Equals("hi") & hits->Get(0)->GetScore() > 1.99e200) & ok;
+				ok := Report(name + ": and 'opp' (1e200 - 1e200) scores 0, not NaN", FindScore(hits, "opp") = 0.0) & ok;
+			}
+			else {
+				ok := Report(name + ": the nearest to (1e100, 1e100) is 'hi', at distance 0", hits->Get(0)->GetId()->Equals("hi") & hits->Get(0)->GetScore() = 0.0) & ok;
+			};
+
+			# a search after the refusals still ranks correctly
+			ok := Report(name + ": the index is still usable", index->Search([1.0, 1.0], 1)->Size() = 1) & ok;
+		};
+		return ok;
+	}
+
+	function : FindScore(hits : Vector<VectorHit>, id : String) ~ Float {
+		each(h : hits) {
+			if(hits->Get(h)->GetId()->Equals(id)) {
+				return hits->Get(h)->GetScore();
+			};
+		};
+		return -1.0;
+	}
+
+	# vector i is [i, 1, 0]; searching L2 for [x, 1, 0] must find id x first
+	function : Blocks() ~ Bool {
+		ok := true;
+		rows := 21845;
+		n := 2 * rows + 1;
+		index := VectorIndex->New(3, VectorMetric->L2);
+		each(i : n) {
+			index->Add("{$i}", [i->As(Float), 1.0, 0.0]);
+		};
+		ok := Report("blocks: {$n} vectors indexed", index->Size() = n) & ok;
+
+		probes := [0, 1, rows - 1, rows, rows + 1, 2 * rows - 1, 2 * rows];
+		found := true;
+		each(p : probes) {
+			x := probes[p];
+			hits := index->Search([x->As(Float), 1.0, 0.0], 3);
+			if(hits->Size() <> 3 | hits->Get(0)->GetId()->Equals("{$x}") = false | hits->Get(0)->GetScore() <> 0.0) {
+				found := false;
+				"  probe {$x} found {$hits->Get(0)->GetId()}"->PrintLine();
+			};
+		};
+		ok := Report("blocks: ids on both sides of each block boundary are found", found) & ok;
+
+		# the neighbours of a boundary row come from both blocks
+		hits := index->Search([rows->As(Float) - 0.4, 1.0, 0.0], 2);
+		ok := Report("blocks: the two nearest to a boundary come from both blocks",
+			hits->Get(0)->GetId()->Equals("{$rows}") & hits->Get(1)->GetId()->Equals("{$(rows - 1)}")) & ok;
+
+		# DOT over the same rows: the largest first coordinate wins
+		dot := VectorIndex->New(3, VectorMetric->DOT);
+		each(i : n) {
+			dot->Add("{$i}", [i->As(Float), 1.0, 0.0]);
+		};
+		top := dot->Search([1.0, 0.0, 0.0], 3);
+		ok := Report("blocks: dot finds the last rows, in the third block",
+			top->Get(0)->GetId()->Equals("{$(n - 1)}") & top->Get(1)->GetId()->Equals("{$(n - 2)}") & top->Get(2)->GetId()->Equals("{$(n - 3)}")) & ok;
+
+		# removing id 5 moves the last row (the only one in block three) into its slot
+		# and leaves block three empty, so it is dropped
+		ok := Report("blocks: Remove succeeds", index->Remove("5")) & ok;
+		ok := Report("blocks: size is one less", index->Size() = n - 1) & ok;
+		moved := index->Search([(n - 1)->As(Float), 1.0, 0.0], 1);
+		ok := Report("blocks: the moved row is still found by its own id", moved->Get(0)->GetId()->Equals("{$(n - 1)}") & moved->Get(0)->GetScore() = 0.0) & ok;
+		gone := index->Search([5.0, 1.0, 0.0], 1);
+		ok := Report("blocks: the removed id is not found, a neighbour is", gone->Get(0)->GetId()->Equals("5") = false & gone->Get(0)->GetScore() = 1.0) & ok;
+		ok := Report("blocks: Get(moved) is its vector", index->Get("{$(n - 1)}")[0] = (n - 1)->As(Float)) & ok;
+
+		# Add after the shrink: a new row opens the third block again
+		ok := Report("blocks: Add after the shrink", index->Add("new", [5.0, 1.0, 0.0]) & index->Size() = n) & ok;
+		again := index->Search([5.0, 1.0, 0.0], 2);
+		ok := Report("blocks: the new id answers at the old place", again->Get(0)->GetId()->Equals("new") & again->Get(0)->GetScore() = 0.0) & ok;
+
+		# Remove then re-Add the same id with a different vector
+		ok := Report("blocks: Remove then Add of one id", index->Remove("100") & index->Add("100", [-7.0, 1.0, 0.0])) & ok;
+		back := index->Search([-7.0, 1.0, 0.0], 1);
+		ok := Report("blocks: the re-added id has its new vector", back->Get(0)->GetId()->Equals("100") & back->Get(0)->GetScore() = 0.0) & ok;
+		old_place := index->Search([100.0, 1.0, 0.0], 1);
+		ok := Report("blocks: and nothing is left at the old one", old_place->Get(0)->GetId()->Equals("100") = false) & ok;
+		ok := Report("blocks: the size is unchanged by it", index->Size() = n) & ok;
+		return ok;
+	}
+
+	# shrink one row at a time across a block boundary: a block is dropped only when it is empty
+	function : Shrink() ~ Bool {
+		ok := true;
+		rows := 21845;
+		n := rows + 3;
+		index := VectorIndex->New(3, VectorMetric->L2);
+		each(i : n) {
+			index->Add("{$i}", [i->As(Float), 1.0, 0.0]);
+		};
+		removed := index->Remove("{$(n - 1)}") & index->Remove("{$(n - 2)}");
+		ok := Report("shrink: two removals leave one row in the second block", removed & index->Size() = rows + 1) & ok;
+		h := index->Search([rows->As(Float), 1.0, 0.0], 1);
+		ok := Report("shrink: that lone row is found", h->Get(0)->GetId()->Equals("{$rows}") & h->Get(0)->GetScore() = 0.0) & ok;
+		ok := Report("shrink: its vector reads back", index->Get("{$rows}")[0] = rows->As(Float)) & ok;
+		ok := Report("shrink: removing it empties the second block", index->Remove("{$rows}") & index->Size() = rows) & ok;
+		h := index->Search([(rows - 1)->As(Float), 1.0, 0.0], 1);
+		ok := Report("shrink: the full first block still answers", h->Get(0)->GetId()->Equals("{$(rows - 1)}") & h->Get(0)->GetScore() = 0.0) & ok;
+		ok := Report("shrink: a later Add opens the block again", index->Add("again", [3.5, 1.0, 0.0]) & index->Size() = rows + 1) & ok;
+		h := index->Search([3.5, 1.0, 0.0], 1);
+		ok := Report("shrink: and is found", h->Get(0)->GetId()->Equals("again") & h->Get(0)->GetScore() = 0.0) & ok;
+		return ok;
+	}
+
+	function : RemoveAll() ~ Bool {
+		ok := true;
+		dir := Runtime->GetTempDir();
+		index := VectorIndex->New(4, VectorMetric->COSINE);
+		each(i : 300) {
+			index->Add("v{$i}", [(i + 1)->As(Float), 2.0, 3.0, 4.0]);
+		};
+		removed := true;
+		# front to back, back to front, and from the middle
+		each(i : 100) {
+			removed := index->Remove("v{$i}") & removed;
+		};
+		for(i := 299; i >= 200; i -= 1;) {
+			removed := index->Remove("v{$i}") & removed;
+		};
+		for(i := 100; i < 200; i += 1;) {
+			removed := index->Remove("v{$i}") & removed;
+		};
+		ok := Report("remove all: every Remove succeeded", removed) & ok;
+		ok := Report("remove all: the size is 0", index->Size() = 0) & ok;
+		hits := index->Search([1.0, 2.0, 3.0, 4.0], 5);
+		ok := Report("remove all: a search gives an empty result", hits <> Nil & hits->Size() = 0) & ok;
+		ok := Report("remove all:   and that is not an error", index->GetError()->Size() = 0) & ok;
+		ok := Report("remove all: no ids are left", index->GetIds()->Size() = 0) & ok;
+
+		path := dir + "/ml_vector_empty.vix";
+		ok := Report("remove all: an empty index stores", index->Store(path)) & ok;
+		loaded := VectorIndex->Load(path);
+		ok := Report("remove all: and loads back as an empty, valid index", loaded <> Nil & loaded->Size() = 0 & loaded->IsValid() & loaded->GetDimension() = 4) & ok;
+		ok := Report("remove all: it takes new vectors", loaded->Add("x", [1.0, 0.0, 0.0, 0.0]) & loaded->Search([1.0, 0.0, 0.0, 0.0], 1)->Size() = 1) & ok;
+		ok := Report("remove all: so does the emptied original", index->Add("again", [1.0, 0.0, 0.0, 0.0]) & index->Size() = 1) & ok;
+		return ok;
+	}
+
+	# two vectors one ulp apart on the first coordinate: the larger dot product wins the
+	# last place even though its id sorts after the tied pair's
+	function : NearTie() ~ Bool {
+		ok := true;
+		up := 1.0 + 2.220446049250313e-16;
+		ok := Report("near tie: the test's two values differ", up > 1.0) & ok;
+		index := VectorIndex->New(2, VectorMetric->DOT);
+		index->Add("a", [1.0, 0.0]);
+		index->Add("b", [1.0, 0.0]);
+		index->Add("z", [up, 0.0]);
+		hits := index->Search([1.0, 0.0], 2);
+		ok := Report("near tie: z (one ulp ahead) takes the first place", hits->Get(0)->GetId()->Equals("z")) & ok;
+		ok := Report("near tie: a (the smaller id of the exact tie) takes the second", hits->Get(1)->GetId()->Equals("a")) & ok;
+		one := index->Search([1.0, 0.0], 1);
+		ok := Report("near tie: k = 1 returns z", one->Get(0)->GetId()->Equals("z")) & ok;
+
+		l2 := VectorIndex->New(2, VectorMetric->L2);
+		l2->Add("a", [1.0, 0.0]);
+		l2->Add("b", [1.0, 0.0]);
+		l2->Add("c", [1.0, 0.0]);
+		l2->Add("far", [1.0 + 4.0e-16, 0.0]);
+		lh := l2->Search([1.0, 0.0], 3);
+		ok := Report("near tie: L2, three exact ties in id order before the nearly-tied one",
+			lh->Get(0)->GetId()->Equals("a") & lh->Get(1)->GetId()->Equals("b") & lh->Get(2)->GetId()->Equals("c")) & ok;
+		return ok;
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+		return passed;
+	}
+}

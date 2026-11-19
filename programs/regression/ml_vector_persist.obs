@@ -1,0 +1,270 @@
+# EXTRA_LIBS: ml_vector,gen_collect
+#~
+System.ML.VectorSearch VectorIndex Store and Load. A saved index must load back to an
+index that answers every query identically (all three metrics, after removals, over
+several storage blocks), and every kind of bad file must give Nil instead of ending the
+program: missing, empty, not an index, wrong format tag, truncated at several lengths,
+one flipped bit in the header and in the body, and files whose header and CRC32 are right
+but whose body is not a usable index (not zlib data, a count larger than the data, a
+vector of the wrong length, a repeated id, a NaN).
+~#
+use System.ML.VectorSearch;
+use Collection;
+
+class MlVectorPersist {
+	@seed : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		dir := Runtime->GetTempDir();
+
+		metrics := [VectorMetric->COSINE, VectorMetric->DOT, VectorMetric->L2];
+		each(m : metrics) {
+			metric := metrics[m];
+			ok := RoundTrip(dir, metric) & ok;
+		};
+
+		ok := Corrupt(dir) & ok;
+		ok := Crafted(dir) & ok;
+
+		ok := Report("Store to an unwritable path is false", VectorIndex->New(2, VectorMetric->DOT)->Store(dir + "/no_such_dir_xyz/a/b.vix") = false) & ok;
+		ok := Report("Store with a Nil name is false", VectorIndex->New(2, VectorMetric->DOT)->Store(Nil) = false) & ok;
+		ok := Report("Load of a Nil name is Nil", VectorIndex->Load(Nil) = Nil) & ok;
+
+		if(ok = false) {
+			Runtime->Exit(1);
+		};
+		"ml_vector_persist: ok"->PrintLine();
+	}
+
+	function : RoundTrip(dir : String, metric : VectorMetric) ~ Bool {
+		ok := true;
+		name := "round trip " + metric->As(Int)->ToString();
+		dim := 40;
+		@seed := 77 + metric->As(Int);
+		index := VectorIndex->New(dim, metric);
+		each(i : 700) {
+			index->Add("doc-{$i}", RandomVector(dim));
+		};
+		# a few ids with non-ASCII text, removals, and a replacement
+		index->Add("café ☃", RandomVector(dim));
+		each(i : 700) {
+			if(i % 5 = 0) {
+				index->Remove("doc-{$i}");
+			};
+		};
+		index->Add("doc-1", RandomVector(dim));
+
+		path := dir + "/ml_vector_roundtrip_{$metric->As(Int)}.vix";
+		ok := Report(name + ": Store succeeds", index->Store(path)) & ok;
+		loaded := VectorIndex->Load(path);
+		ok := Report(name + ": Load returns an index", loaded <> Nil) & ok;
+		if(loaded = Nil) {
+			return false;
+		};
+
+		ok := Report(name + ": same size, dimension, metric",
+			loaded->Size() = index->Size() & loaded->GetDimension() = dim & loaded->GetMetric() = metric) & ok;
+		same := true;
+		ids := index->GetIds();
+		each(i : ids) {
+			a := index->Get(ids->Get(i));
+			b := loaded->Get(ids->Get(i));
+			if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+				same := false;
+			}
+			else {
+				each(j : a) {
+					if(a[j] <> b[j]) {
+						same := false;
+					};
+				};
+			};
+		};
+		ok := Report(name + ": every vector is bit-identical", same) & ok;
+		ok := Report(name + ": the non-ASCII id survived", loaded->Contains("café ☃")) & ok;
+
+		answers := true;
+		each(t : 10) {
+			q := RandomVector(dim);
+			h1 := index->Search(q, 25);
+			h2 := loaded->Search(q, 25);
+			if(h1->Size() <> h2->Size()) {
+				answers := false;
+			}
+			else {
+				each(i : h1) {
+					if(h1->Get(i)->GetId()->Equals(h2->Get(i)->GetId()) = false | h1->Get(i)->GetScore() <> h2->Get(i)->GetScore()) {
+						answers := false;
+					};
+				};
+			};
+		};
+		ok := Report(name + ": searches return identical ids and scores", answers) & ok;
+
+		# the loaded index is a working index: it takes more vectors and removals
+		ok := Report(name + ": the loaded index accepts Add and Remove",
+			loaded->Add("fresh", RandomVector(dim)) & loaded->Remove("doc-2") & loaded->Size() = index->Size()) & ok;
+		return ok;
+	}
+
+	# every one of these must come back Nil and let the program continue
+	function : Corrupt(dir : String) ~ Bool {
+		ok := true;
+		good_path := dir + "/ml_vector_good.vix";
+		index := VectorIndex->New(8, VectorMetric->COSINE);
+		@seed := 5;
+		each(i : 300) {
+			index->Add("v{$i}", RandomVector(8));
+		};
+		index->Store(good_path);
+		good := System.IO.Filesystem.FileReader->ReadBinaryFile(good_path);
+		ok := Report("the good file loads", good <> Nil & VectorIndex->Load(good_path) <> Nil) & ok;
+		n := good->Size();
+
+		ok := Report("a missing file is Nil", VectorIndex->Load(dir + "/ml_vector_no_such_file.vix") = Nil) & ok;
+		one := Byte->New[1];
+		one[0] := 79->As(Byte);
+		ok := Report("a file of one byte is Nil", LoadBytes(dir, one) = Nil) & ok;
+		ok := Report("a text file is Nil", LoadBytes(dir, "this is not a vector index at all, just some text"->ToByteArray()) = Nil) & ok;
+		ok := Report("a zero-filled file is Nil", LoadBytes(dir, Byte->New[200]) = Nil) & ok;
+
+		cuts := [12, 13, 20, n / 4, n / 2, n - 1];
+		each(c : cuts) {
+			cut := Byte->New[cuts[c]];
+			Byte->Copy(cut, 0, good, 0, cuts[c]);
+			ok := Report("truncated to {$cuts[c]} of {$n} bytes is Nil", LoadBytes(dir, cut) = Nil) & ok;
+		};
+
+		# one changed byte at a time: the tag, the version, the reserved bytes, the CRC, early and late body
+		spots := [0, 3, 4, 5, 6, 7, 8, 11, 12, 13, 40, n / 2, n - 1];
+		each(s : spots) {
+			bad := Byte->Copy(good);
+			bad[spots[s]] := (bad[spots[s]]->As(Int) + 1)->As(Byte);
+			ok := Report("a changed byte at {$spots[s]} is Nil", LoadBytes(dir, bad) = Nil) & ok;
+		};
+
+		# extra bytes after the body change the CRC
+		longer := Byte->New[n + 5];
+		Byte->Copy(longer, 0, good, 0, n);
+		ok := Report("trailing bytes are Nil", LoadBytes(dir, longer) = Nil) & ok;
+
+		# the program is still alive and the good file still loads
+		ok := Report("the good file still loads", VectorIndex->Load(good_path) <> Nil) & ok;
+		return ok;
+	}
+
+	# a header with the right tag and the right CRC32 around a body that is not an index
+	function : Crafted(dir : String) ~ Bool {
+		ok := true;
+
+		ok := Report("a CRC-correct body that is not zlib data is Nil", LoadBytes(dir, Envelope("not zlib at all, just text"->ToByteArray())) = Nil) & ok;
+
+		s := System.IO.Serializer->New();
+		s->Write(2);
+		s->Write(0);
+		s->Write(1000000);
+		s->Write("a"->ToByteArray());
+		s->Write([1.0, 2.0]);
+		ok := Report("a count larger than the data is Nil", LoadBytes(dir, Envelope(s->Serialize())) = Nil) & ok;
+
+		s := System.IO.Serializer->New();
+		s->Write(2);
+		s->Write(0);
+		s->Write(1);
+		s->Write("a"->ToByteArray());
+		s->Write([1.0, 2.0, 3.0]);
+		ok := Report("a vector of the wrong length is Nil", LoadBytes(dir, Envelope(s->Serialize())) = Nil) & ok;
+
+		s := System.IO.Serializer->New();
+		s->Write(2);
+		s->Write(0);
+		s->Write(2);
+		s->Write("a"->ToByteArray());
+		s->Write([1.0, 2.0]);
+		s->Write("a"->ToByteArray());
+		s->Write([3.0, 4.0]);
+		ok := Report("a repeated id is Nil", LoadBytes(dir, Envelope(s->Serialize())) = Nil) & ok;
+
+		s := System.IO.Serializer->New();
+		s->Write(2);
+		s->Write(0);
+		s->Write(1);
+		s->Write("a"->ToByteArray());
+		s->Write([1.0, Float->NaN()]);
+		ok := Report("a NaN in a vector is Nil", LoadBytes(dir, Envelope(s->Serialize())) = Nil) & ok;
+
+		s := System.IO.Serializer->New();
+		s->Write(0);
+		s->Write(0);
+		s->Write(0);
+		ok := Report("dimension 0 is Nil", LoadBytes(dir, Envelope(s->Serialize())) = Nil) & ok;
+
+		s := System.IO.Serializer->New();
+		s->Write(2);
+		s->Write(7);
+		s->Write(0);
+		ok := Report("an unknown metric is Nil", LoadBytes(dir, Envelope(s->Serialize())) = Nil) & ok;
+
+		s := System.IO.Serializer->New();
+		s->Write(2);
+		s->Write(0);
+		s->Write(-1);
+		ok := Report("a negative count is Nil", LoadBytes(dir, Envelope(s->Serialize())) = Nil) & ok;
+
+		# the control: the same construction with a sound body does load, so the
+		# refusals above are about the bodies and not about this helper
+		s := System.IO.Serializer->New();
+		s->Write(2);
+		s->Write(0);
+		s->Write(1);
+		s->Write("a"->ToByteArray());
+		s->Write([1.0, 2.0]);
+		good := LoadBytes(dir, Envelope(s->Serialize()));
+		ok := Report("control: a sound body in a hand-built envelope loads", good <> Nil & good->Size() = 1 & good->Contains("a")) & ok;
+		return ok;
+	}
+
+	# the file layout VectorIndex->Store writes: "OVIX", format 1, three zero bytes,
+	# the body's CRC32 big-endian, then the body
+	function : Envelope(body : Byte[]) ~ Byte[] {
+		crc := Byte->CRC32(body);
+		file := Byte->New[12 + body->Size()];
+		file[0] := 'O'->As(Byte);
+		file[1] := 'V'->As(Byte);
+		file[2] := 'I'->As(Byte);
+		file[3] := 'X'->As(Byte);
+		file[4] := 1->As(Byte);
+		file[8] := ((crc >>> 24) % 256)->As(Byte);
+		file[9] := ((crc >>> 16) % 256)->As(Byte);
+		file[10] := ((crc >>> 8) % 256)->As(Byte);
+		file[11] := (crc % 256)->As(Byte);
+		Byte->Copy(file, 12, body, 0, body->Size());
+		return file;
+	}
+
+	function : LoadBytes(dir : String, bytes : Byte[]) ~ VectorIndex {
+		path := dir + "/ml_vector_probe.vix";
+		System.IO.Filesystem.FileWriter->WriteFile(path, bytes);
+		return VectorIndex->Load(path);
+	}
+
+	function : RandomVector(dim : Int) ~ Float[] {
+		v := Float->New[dim];
+		each(i : dim) {
+			@seed := (@seed * 1103515245 + 12345) % 2147483648;
+			v[i] := (@seed / 65536 % 20001 - 10000)->As(Float) / 10000.0;
+		};
+		return v;
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+		return passed;
+	}
+}

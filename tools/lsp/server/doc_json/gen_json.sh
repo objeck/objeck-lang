@@ -76,6 +76,7 @@ rm -f *.obe
 	$LIB_SRC/ml_outlier.obs \
 	$LIB_SRC/ml_embed.obs \
 	$LIB_SRC/ml_lab.obs \
+	$LIB_SRC/ml_vector.obs \
 	$LIB_SRC/ai_search.obs \
 	$LIB_SRC/ai_game.obs \
 	$LIB_SRC/ai_optimize.obs \
