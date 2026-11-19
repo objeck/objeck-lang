@@ -122,6 +122,24 @@ static bool ep_is_available(const std::string& ep) {
    return false;
 }
 
+// Reads a String[] argument. Unlike APITools_GetStringsValues, which answers a Nil
+// element with an EMPTY vector -- indistinguishable from "no options" -- this says so,
+// so a caller can refuse instead of quietly dropping every option it was given.
+static bool read_string_array(VMContext& context, size_t index, std::vector<std::wstring>& out) {
+   out.clear();
+   size_t* array = APITools_GetArrayAddress(APITools_GetObjectValue(context, index));
+   const size_t size = APITools_GetArraySize(array);
+   for(size_t i = 0; i < size; ++i) {
+      const wchar_t* value = APITools_GetStringValue(array, i);
+      if(!value) {
+         out.clear();
+         return false;
+      }
+      out.push_back(value);
+   }
+   return true;
+}
+
 extern "C" {
    // initialize library
 #ifdef _WIN32
@@ -168,8 +186,13 @@ extern "C" {
    __declspec(dllexport)
 #endif
    void onnx_has_provider(VMContext& context) {
-      const std::string name = normalize_ep(UnicodeToBytes(APITools_GetStringValue(context, 1)));
-      APITools_SetIntValue(context, 0, ep_is_available(name) ? 1 : 0);
+      const wchar_t* name = APITools_GetStringValue(context, 1);
+      if(!name) {
+         // a Nil name: no provider, rather than a null pointer into UnicodeToBytes
+         APITools_SetIntValue(context, 0, 0);
+         return;
+      }
+      APITools_SetIntValue(context, 0, ep_is_available(normalize_ep(UnicodeToBytes(name))) ? 1 : 0);
    }
 
    // create an ONNX session with the selected execution provider
@@ -177,13 +200,31 @@ extern "C" {
    __declspec(dllexport)
 #endif
    void onnx_new_session(VMContext& context) {
-      std::vector<std::wstring> keys = APITools_GetStringsValues(context, 1);
-      std::vector<std::wstring> values = APITools_GetStringsValues(context, 2);
+      // A Nil key or value, or keys and values of different lengths, is a malformed
+      // option set. Dropping it would drop "ep" with it and open the session on the
+      // default provider -- the quiet substitution this layer refuses everywhere else.
+      std::vector<std::wstring> keys;
+      std::vector<std::wstring> values;
+      const bool keys_ok = read_string_array(context, 1, keys);
+      const bool values_ok = read_string_array(context, 2, values);
+      if(!keys_ok || !values_ok || keys.size() != values.size()) {
+         std::wcerr << L">>> ONNX: the session options are malformed (a Nil key or value, or keys "
+                    << L"and values of different lengths); no session was created. <<<" << std::endl;
+         APITools_SetIntValue(context, 0, 0);
+         return;
+      }
+
+      const wchar_t* model_arg = APITools_GetStringValue(context, 3);
+      if(!model_arg) {
+         std::wcerr << L">>> ONNX: the model path is Nil; no session was created. <<<" << std::endl;
+         APITools_SetIntValue(context, 0, 0);
+         return;
+      }
 
 #ifdef _WIN32
-      const std::wstring model_path = APITools_GetStringValue(context, 3);
+      const std::wstring model_path = model_arg;
 #else
-      const std::string model_path = UnicodeToBytes(APITools_GetStringValue(context, 3));
+      const std::string model_path = UnicodeToBytes(model_arg);
 #endif
 
       try {
@@ -193,21 +234,22 @@ extern "C" {
          // this layer, not an ORT provider option -- forwarding it to
          // AppendExecutionProvider makes ORT reject the whole option set, and the
          // catch below then returns without setting slot 0, so the caller gets a
-         // silently null session. Shipped demos pass ep=cpu and ep=dml today.
+         // silently null session. Shipped demos pass ep=cpu and ep=dml today. The
+         // key is matched without regard to case, so "EP" selects too instead of
+         // travelling to the provider as an option it would ignore.
          std::string requested_ep;
-         if(!keys.empty() && keys.size() == values.size()) {
-            for(size_t i = 0; i < keys.size(); ++i) {
-               const std::string key = UnicodeToBytes(keys[i]);
-               std::string value = UnicodeToBytes(values[i]);
-               if(key == "ep") {
-                  for(size_t c = 0; c < value.size(); ++c) {
-                     value[c] = (char)tolower((unsigned char)value[c]);
-                  }
-                  requested_ep = value;
-               }
-               else {
-                  provider_options[key] = value;
-               }
+         for(size_t i = 0; i < keys.size(); ++i) {
+            std::string key = UnicodeToBytes(keys[i]);
+            std::string value = UnicodeToBytes(values[i]);
+            std::string folded_key = key;
+            for(size_t c = 0; c < folded_key.size(); ++c) {
+               folded_key[c] = (char)tolower((unsigned char)folded_key[c]);
+            }
+            if(folded_key == "ep") {
+               requested_ep = value;
+            }
+            else {
+               provider_options[key] = value;
             }
          }
 
@@ -252,6 +294,17 @@ extern "C" {
          }
 
          const bool use_cpu = (ep == "cpu");
+
+         // The CPU provider takes no options. Say so rather than let a program
+         // believe device_id or a memory limit applied: a wrong provider name is
+         // refused, but a setting that is silently dropped looks like success.
+         if(use_cpu && !provider_options.empty()) {
+            std::wcerr << L">>> ONNX: the cpu provider takes no options; ignoring:";
+            for(const auto& option : provider_options) {
+               std::wcerr << L" " << BytesToUnicode(option.first);
+            }
+            std::wcerr << L" <<<" << std::endl;
+         }
 
          Ort::SessionOptions session_options;
 

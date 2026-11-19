@@ -24,7 +24,7 @@
 >   `OnnxRuntime->HasProvider(name)` and `OnnxRuntime->GetDefaultProvider()`.
 > - The per-provider copies of the source (`eq/dml`, `eq/cuda/onnx_cuda.cpp`,
 >   `eq/qnn`, `eq/vitis`), including the one that appended `"DML"` under a CUDA
->   name, are removed. The vendored runtimes and headers under those directories
+>   name (`onnx_cuda.cpp:67`), are removed. The vendored runtimes and headers under those directories
 >   stay where the deploy scripts read them; the directories are **not renamed**.
 > - Earlier: the typed CUDA entry point and the refusal when CUDA is absent
 >   (01b30f2f8e, 1f187887f1); `ep` no longer forwarded to ORT as a provider
@@ -97,6 +97,11 @@
 >
 > ### Not tested
 >
+> `ep=dml`, the provider the shipped demos pass, has no automated coverage on a
+> runner without a display adapter: `onnx_provider_select.obs` deliberately does
+> not assert it (a CI runner cannot open a DirectML session). It was exercised by
+> hand on this machine.
+>
 > Windows ARM64 (QNN), Linux ARM64 and macOS (CoreML): the QNN, VitisAI and
 > CoreML branches compile (`-fsyntax-only` with each `ONNX_EP_*` on Linux) but
 > never ran. The shipped QNN, VitisAI and CoreML defaults skip the new
@@ -138,7 +143,7 @@
 > `deploy_windows.cmd` copies `x64\Release-DML\libobjk_onnx.dll`. So the EP is
 > chosen by *which source file you build*.
 >
-> And the decisive part: **`eq/cuda/onnx_cuda.cpp:64` appends `"DML"`**, under a
+> And the decisive part: **`eq/cuda/onnx_cuda.cpp:67` appends `"DML"`** (line 64 when this correction was first written; 67 on `master` before the file was removed), under a
 > comment reading *"Create session options with DML execution provider"*. It is
 > an unconverted copy of the DML variant. **CUDA is not implemented anywhere in
 > the tree** — correction 1 above was itself too generous.
