@@ -457,6 +457,7 @@ enum ScannerTokenType {
   THREAD_CURRENT_ID,
   THREAD_IS_ALIVE,
   GC_TEST_ADDRESS,
+  UNCOMPRESS_ZLIB_TRY,
   // serialization
   SERL_CHAR,
   SERL_INT,

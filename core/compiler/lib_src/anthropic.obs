@@ -1,0 +1,1292 @@
+#~~
+Copyright (c) 2026 Randy Hollines
+~~#
+
+use Web.HTTP, Collection, Data.JSON, Data.JSON.Scheme;
+
+#~
+Anthropic Messages API client (Claude). Plain and multi-turn chat with a system prompt, tool use, streaming over server-sent events, structured (JSON) output through a forced tool, and extended-thinking blocks. Responses and errors follow the other AI client libraries: a failed call returns Nil and EndPoint->GetLastError() says why. The key comes from SetApiKey, the ANTHROPIC_API_KEY environment variable, or anthropic_api_key.dat in the working directory. Requests go over HTTPS. Compile with -lib anthropic.
+~#
+bundle API.Anthropic {
+	#~
+	Anthropic endpoint settings, the API key and the last error
+	~#
+	class EndPoint {
+		@last_error : static : String;
+		@api_key : static : String;
+		@base_url : static : String;
+		@pem : static : String;
+
+		function : SetLastError(last_error : String) ~ Nil {
+			@last_error := last_error;
+		}
+
+		#~
+		Get the last error
+		@return last error, or Nil when the last call succeeded
+		~#
+		function : GetLastError() ~ String {
+			return @last_error;
+		}
+
+		#~
+		Sets the API base URL (default https://api.anthropic.com/v1), for a gateway or proxy
+		@param base_url base URL without a trailing slash; it must be https
+		~#
+		function : SetBaseUrl(base_url : String) ~ Nil {
+			@base_url := base_url;
+		}
+
+		#~
+		Gets the API base URL
+		@return base URL
+		~#
+		function : GetBaseUrl() ~ String {
+			if(@base_url = Nil) {
+				@base_url := "https://api.anthropic.com/v1";
+			};
+			return @base_url;
+		}
+
+		#~
+		Pins the certificate a gateway or test server presents, a PEM file used as the trust
+		anchor in place of the system store. Leave it unset for api.anthropic.com.
+		@param pem PEM file, or Nil to use the system store
+		~#
+		function : SetCertificate(pem : String) ~ Nil {
+			@pem := pem;
+		}
+
+		#~
+		Gets the pinned certificate file
+		@return PEM file, or Nil
+		~#
+		function : GetCertificate() ~ String {
+			return @pem;
+		}
+
+		#~
+		Sets the API key, overriding the environment and the key file
+		@param api_key API key
+		~#
+		function : SetApiKey(api_key : String) ~ Nil {
+			@api_key := api_key;
+		}
+
+		#~
+		Gets the API key: the one set with SetApiKey, else the ANTHROPIC_API_KEY
+		environment variable, else the first line of anthropic_api_key.dat in the working directory.
+		@return API key, or Nil with the last error set
+		~#
+		function : GetApiKey() ~ String {
+			if(@api_key <> Nil) {
+				return @api_key;
+			};
+
+			value := System.Runtime->GetEnvironmentVariable("ANTHROPIC_API_KEY");
+			if(value <> Nil) {
+				value := value->Trim();
+				if(value->Size() > 0) {
+					@api_key := value;
+					return @api_key;
+				};
+			};
+
+			value := System.IO.Filesystem.FileReader->ReadFile("anthropic_api_key.dat");
+			if(value <> Nil) {
+				value := value->Trim();
+				line_end := value->Find('\n');
+				if(line_end > -1) {
+					value := value->SubString(line_end)->Trim();
+				};
+				if(value->Size() > 0) {
+					@api_key := value;
+					return @api_key;
+				};
+			};
+
+			SetLastError("no API key: call SetApiKey, set ANTHROPIC_API_KEY, or create anthropic_api_key.dat");
+			return Nil;
+		}
+
+		#~
+		Parse a response body. Nil, with the last error set, when the body is not JSON
+		or is an error object ({"type":"error","error":{"type":...,"message":...}}).
+		@param body response text
+		@return parsed element, or Nil
+		~#
+		function : ParseBody(body : String) ~ JsonElement {
+			if(body = Nil) {
+				SetLastError("empty response");
+				return Nil;
+			};
+
+			json := JsonParser->TextToElement(body);
+			if(json = Nil) {
+				SetLastError("response was not JSON");
+				return Nil;
+			};
+
+			if(Field->Is(json, "type", "error")) {
+				error_json := json->Get("error");
+				message := Field->Text(error_json, "message");
+				kind := Field->Text(error_json, "type");
+				if(message = Nil) {
+					message := "the API returned an error";
+				};
+				if(kind <> Nil) {
+					message := "{$kind}: {$message}";
+				};
+				SetLastError(message);
+				return Nil;
+			};
+
+			return json;
+		}
+
+		# POST a JSON body to /messages; the response text, or Nil with the last error set
+		function : Post(request : JsonElement, key : String) ~ String {
+			SetLastError(Nil);
+			url := Url->New(GetBaseUrl() + "/messages");
+			client := HttpsClient->New();
+			client->AddHeader("x-api-key", key);
+			client->AddHeader("anthropic-version", "2023-06-01");
+			response := client->Post(url, request->ToString()->ToByteArray(), "application/json", GetCertificate());
+			if(response = Nil) {
+				SetLastError("no response from the Anthropic API");
+				return Nil;
+			};
+
+			content := response->GetContent();
+			if(content = Nil) {
+				code := response->GetCode();
+				SetLastError("empty response (HTTP {$code})");
+				return Nil;
+			};
+
+			return content->ToString();
+		}
+	}
+
+	# Reads fields out of parsed responses
+	class : private : Field {
+		# decoded string value, or Nil when absent or null
+		function : Text(elem : JsonElement) ~ String {
+			if(elem = Nil | elem->IsNull()) {
+				return Nil;
+			};
+
+			if(elem->GetType() = JsonElement->JsonType->STRING) {
+				return elem->GetString();
+			};
+
+			return elem->ToString();
+		}
+
+		function : Text(json : JsonElement, name : String) ~ String {
+			if(json = Nil) {
+				return Nil;
+			};
+			return Text(json->Get(name));
+		}
+
+		# true when the named field is the given text
+		function : Is(json : JsonElement, name : String, value : String) ~ Bool {
+			text := Text(json, name);
+			return text <> Nil & text->Equals(value);
+		}
+
+		# the named child, or Nil when json is Nil
+		function : Child(json : JsonElement, name : String) ~ JsonElement {
+			if(json = Nil) {
+				return Nil;
+			};
+			return json->Get(name);
+		}
+
+		function : IntOf(json : JsonElement, name : String) ~ Int {
+			if(json = Nil) {
+				return 0;
+			};
+
+			elem := json->Get(name);
+			if(elem = Nil | elem->GetType() <> JsonElement->JsonType->NUMBER) {
+				return 0;
+			};
+			return elem->GetInt();
+		}
+	}
+
+	#~
+	A tool the model may call: a name, a description and a JSON schema for its input
+	~#
+	class Tool {
+		@name : String;
+		@description : String;
+		@schema : JsonElement;
+
+		#~
+		Constructor
+		@param name tool name
+		@param description what the tool does, for the model
+		@param schema JSON schema of the input, an object: {"type":"object","properties":{...},"required":[...]}
+		~#
+		New(name : String, description : String, schema : JsonElement) {
+			@name := name;
+			@description := description;
+			@schema := schema;
+		}
+
+		#~
+		Constructor from a function definition, the form the other AI client libraries use
+		@param func function definition
+		~#
+		New(func : FunctionType) {
+			@name := func->GetName();
+			@description := func->GetDesc();
+
+			func_json := func->ToJson();
+			@schema := JsonElement->New(JsonElement->JsonType->OBJECT);
+			@schema->Insert("type", "object");
+			@schema->Insert("properties", func_json->Get("properties"));
+			required_json := func_json->Get("required");
+			if(required_json <> Nil) {
+				@schema->Insert("required", required_json);
+			};
+		}
+
+		#~
+		Get the tool name
+		@return tool name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Converts the tool to JSON for the request
+		@return JSON element
+		~#
+		method : public : ToJson() ~ JsonElement {
+			tool_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			tool_json->Insert("name", @name);
+			if(@description <> Nil) {
+				tool_json->Insert("description", @description);
+			};
+			tool_json->Insert("input_schema", @schema);
+			return tool_json;
+		}
+	}
+
+	#~
+	A tool call the model asked for. Run it, then return the result with Chat->AddToolResult
+	using GetId().
+	~#
+	class ToolUse {
+		@id : String;
+		@name : String;
+		@input : JsonElement;
+
+		#~
+		@hidden
+		~#
+		New(block : JsonElement) {
+			@id := Field->Text(block, "id");
+			@name := Field->Text(block, "name");
+			@input := block->Get("input");
+			if(@input = Nil) {
+				@input := JsonElement->New(JsonElement->JsonType->OBJECT);
+			};
+		}
+
+		#~
+		Get the id the result must carry
+		@return tool use id
+		~#
+		method : public : GetId() ~ String {
+			return @id;
+		}
+
+		#~
+		Get the name of the tool to run
+		@return tool name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Get the call's input, an object keyed by parameter name
+		@return input
+		~#
+		method : public : GetInput() ~ JsonElement {
+			return @input;
+		}
+
+		#~
+		Get one input value as text (a number or boolean in its JSON form)
+		@param name parameter name
+		@return value text, or Nil if absent
+		~#
+		method : public : GetArgument(name : String) ~ String {
+			return Field->Text(@input, name);
+		}
+	}
+
+	#~
+	A model reply: its text, tool calls, thinking, stop reason and token counts
+	~#
+	class Reply {
+		@id : String;
+		@model : String;
+		@stop_reason : String;
+		@text : String;
+		@thinking : String;
+		@tool_uses : Vector<ToolUse>;
+		@content : JsonElement;
+		@input_tokens : Int;
+		@output_tokens : Int;
+
+		#~
+		Parses a response body without a server, for tests and for replaying recorded responses
+		@param body response text
+		@return reply, or Nil with the last error set
+		~#
+		function : Parse(body : String) ~ Reply {
+			json := EndPoint->ParseBody(body);
+			if(json = Nil) {
+				return Nil;
+			};
+			return FromJson(json);
+		}
+
+		#~
+		@hidden
+		~#
+		function : FromJson(json : JsonElement) ~ Reply {
+			content := json->Get("content");
+			if(content = Nil | content->GetType() <> JsonElement->JsonType->ARRAY) {
+				EndPoint->SetLastError("response did not contain a content list");
+				return Nil;
+			};
+			return Reply->New(json, content);
+		}
+
+		New(json : JsonElement, content : JsonElement) {
+			@id := Field->Text(json, "id");
+			@model := Field->Text(json, "model");
+			@stop_reason := Field->Text(json, "stop_reason");
+			@content := content;
+			@tool_uses := Vector->New()<ToolUse>;
+			@text := "";
+			@thinking := "";
+
+			each(i : content) {
+				block := content->Get(i);
+				kind := Field->Text(block, "type");
+				if(kind <> Nil) {
+					if(kind->Equals("text")) {
+						part := Field->Text(block, "text");
+						if(part <> Nil) {
+							@text += part;
+						};
+					}
+					else if(kind->Equals("thinking")) {
+						part := Field->Text(block, "thinking");
+						if(part <> Nil) {
+							@thinking += part;
+						};
+					}
+					else if(kind->Equals("tool_use")) {
+						@tool_uses->AddBack(ToolUse->New(block));
+					};
+				};
+			};
+
+			usage := json->Get("usage");
+			@input_tokens := Field->IntOf(usage, "input_tokens");
+			@output_tokens := Field->IntOf(usage, "output_tokens");
+		}
+
+		#~
+		Get the message id
+		@return id
+		~#
+		method : public : GetId() ~ String {
+			return @id;
+		}
+
+		#~
+		Get the model that answered
+		@return model name
+		~#
+		method : public : GetModel() ~ String {
+			return @model;
+		}
+
+		#~
+		Get why the model stopped: end_turn, max_tokens, stop_sequence, tool_use or refusal
+		@return stop reason
+		~#
+		method : public : GetStopReason() ~ String {
+			return @stop_reason;
+		}
+
+		#~
+		Get the reply text, every text block joined
+		@return text, empty when the reply is only tool calls
+		~#
+		method : public : GetText() ~ String {
+			return @text;
+		}
+
+		#~
+		Get the thinking text, when extended thinking was on
+		@return thinking text, empty when there is none
+		~#
+		method : public : GetThinking() ~ String {
+			return @thinking;
+		}
+
+		#~
+		Check for tool calls
+		@return true when the model asked for tools
+		~#
+		method : public : HasToolUses() ~ Bool {
+			return @tool_uses->Size() > 0;
+		}
+
+		#~
+		Get the tool calls
+		@return tool calls
+		~#
+		method : public : GetToolUses() ~ Vector<ToolUse> {
+			return @tool_uses;
+		}
+
+		#~
+		Get the content blocks as the API returned them
+		@return JSON array
+		~#
+		method : public : GetContent() ~ JsonElement {
+			return @content;
+		}
+
+		#~
+		Get the tokens the prompt used
+		@return input tokens
+		~#
+		method : public : GetInputTokens() ~ Int {
+			return @input_tokens;
+		}
+
+		#~
+		Get the tokens the reply used
+		@return output tokens
+		~#
+		method : public : GetOutputTokens() ~ Int {
+			return @output_tokens;
+		}
+	}
+
+	#~
+	Builds a reply from the server-sent events of a streamed response. Feed every event to Apply;
+	it returns the text that event added. Public so a recorded stream can be replayed without a server.
+	~#
+	class StreamAssembler {
+		@id : String;
+		@model : String;
+		@stop_reason : String;
+		@input_tokens : Int;
+		@output_tokens : Int;
+		@blocks : Vector<JsonElement>;
+		@kind : String;
+		@text : String;
+		@json : String;
+		@tool_id : String;
+		@tool_name : String;
+		@signature : String;
+		@start : JsonElement;
+		@done : Bool;
+		@failed : Bool;
+
+		New() {
+			@blocks := Vector->New()<JsonElement>;
+			@text := "";
+			@json := "";
+			@done := false;
+			@failed := false;
+		}
+
+		#~
+		Check for the end of the message
+		@return true after message_stop
+		~#
+		method : public : IsDone() ~ Bool {
+			return @done;
+		}
+
+		#~
+		Check for an error event
+		@return true when the stream carried an error; EndPoint->GetLastError() says which
+		~#
+		method : public : IsFailed() ~ Bool {
+			return @failed;
+		}
+
+		#~
+		Handles one event
+		@param event event name (message_start, content_block_delta, ...)
+		@param data event data, JSON text
+		@return the text this event added, or Nil
+		~#
+		method : public : Apply(event : String, data : String) ~ String {
+			if(event = Nil | data = Nil) {
+				return Nil;
+			};
+
+			json := JsonParser->TextToElement(data);
+			if(json = Nil) {
+				return Nil;
+			};
+
+			if(event->Equals("message_start")) {
+				message := json->Get("message");
+				@id := Field->Text(message, "id");
+				@model := Field->Text(message, "model");
+				@input_tokens := Field->IntOf(Field->Child(message, "usage"), "input_tokens");
+			}
+			else if(event->Equals("content_block_start")) {
+				block := json->Get("content_block");
+				@kind := Field->Text(block, "type");
+				@start := block;
+				@text := "";
+				@json := "";
+				@signature := Nil;
+				@tool_id := Field->Text(block, "id");
+				@tool_name := Field->Text(block, "name");
+				if(@kind <> Nil & @kind->Equals("text")) {
+					start := Field->Text(block, "text");
+					if(start <> Nil & start->Size() > 0) {
+						@text += start;
+						return start;
+					};
+				};
+			}
+			else if(event->Equals("content_block_delta")) {
+				delta := json->Get("delta");
+				kind := Field->Text(delta, "type");
+				if(kind <> Nil) {
+					if(kind->Equals("text_delta")) {
+						part := Field->Text(delta, "text");
+						if(part <> Nil) {
+							@text += part;
+							return part;
+						};
+					}
+					else if(kind->Equals("thinking_delta")) {
+						part := Field->Text(delta, "thinking");
+						if(part <> Nil) {
+							@text += part;
+						};
+					}
+					else if(kind->Equals("input_json_delta")) {
+						part := Field->Text(delta, "partial_json");
+						if(part <> Nil) {
+							@json += part;
+						};
+					}
+					else if(kind->Equals("signature_delta")) {
+						@signature := Field->Text(delta, "signature");
+					};
+				};
+			}
+			else if(event->Equals("content_block_stop")) {
+				CloseBlock();
+			}
+			else if(event->Equals("message_delta")) {
+				delta := json->Get("delta");
+				reason := Field->Text(delta, "stop_reason");
+				if(reason <> Nil) {
+					@stop_reason := reason;
+				};
+				@output_tokens := Field->IntOf(Field->Child(json, "usage"), "output_tokens");
+			}
+			else if(event->Equals("message_stop")) {
+				@done := true;
+			}
+			else if(event->Equals("error")) {
+				error_json := json->Get("error");
+				message := Field->Text(error_json, "message");
+				if(message = Nil) {
+					message := "the stream carried an error";
+				};
+				kind := Field->Text(error_json, "type");
+				if(kind <> Nil) {
+					message := "{$kind}: {$message}";
+				};
+				EndPoint->SetLastError(message);
+				@failed := true;
+			};
+
+			return Nil;
+		}
+
+		method : CloseBlock() ~ Nil {
+			if(@kind = Nil) {
+				return;
+			};
+
+			block := JsonElement->New(JsonElement->JsonType->OBJECT);
+			block->Insert("type", @kind);
+			if(@kind->Equals("text")) {
+				# the API rejects an empty text block on replay, so a block that got no text is dropped
+				if(@text->Size() = 0) {
+					@kind := Nil;
+					return;
+				};
+				block->Insert("text", @text);
+			}
+			else if(@kind->Equals("thinking")) {
+				block->Insert("thinking", @text);
+				if(@signature <> Nil) {
+					block->Insert("signature", @signature);
+				};
+			}
+			else if(@kind->Equals("tool_use") | @kind->Equals("server_tool_use") | @kind->Equals("mcp_tool_use")) {
+				block := @start;
+				input : JsonElement;
+				if(@json->Size() > 0) {
+					input := JsonParser->TextToElement(@json);
+					if(input = Nil) {
+						EndPoint->SetLastError("a tool's input was cut off or is not JSON (was max_tokens reached?)");
+						@failed := true;
+						@kind := Nil;
+						return;
+					};
+				}
+				else {
+					input := JsonElement->New(JsonElement->JsonType->OBJECT);
+				};
+				block->Insert("input", input);
+			}
+			else if(@start <> Nil) {
+				# any other block (redacted_thinking and its data, a server tool result) is kept as it arrived
+				block := @start;
+			};
+
+			@blocks->AddBack(block);
+			@kind := Nil;
+		}
+
+		#~
+		Builds the reply from what has been applied
+		@return reply, or Nil with the last error set when the stream failed or has not finished
+		~#
+		method : public : GetReply() ~ Reply {
+			if(@failed) {
+				return Nil;
+			};
+
+			if(<>@done) {
+				EndPoint->SetLastError("the stream ended before message_stop");
+				return Nil;
+			};
+
+			message := JsonElement->New(JsonElement->JsonType->OBJECT);
+			if(@id <> Nil) {
+				message->Insert("id", @id);
+			};
+			if(@model <> Nil) {
+				message->Insert("model", @model);
+			};
+			if(@stop_reason <> Nil) {
+				message->Insert("stop_reason", @stop_reason);
+			};
+
+			usage := JsonElement->New(JsonElement->JsonType->OBJECT);
+			usage->Insert("input_tokens", @input_tokens);
+			usage->Insert("output_tokens", @output_tokens);
+			message->Insert("usage", usage);
+			message->Insert("content", JsonElement->New(@blocks));
+			return Reply->FromJson(message);
+		}
+	}
+
+	#~
+	A streamed reply. Read it text first, then ask for the whole reply:
+
+```
+stream := chat->Stream("Write a haiku about rivers.", Nil);
+while(stream <> Nil & stream->HasNext()) {
+  stream->Next()->Print();
+};
+reply := stream->GetReply();
+```
+	~#
+	class ReplyStream {
+		@events : SSEStream;
+		@assembler : StreamAssembler;
+		@chat : Chat;
+		@pending : String;
+		@finished : Bool;
+		@settled : Bool;
+		@reply : Reply;
+
+		#~
+		@hidden
+		~#
+		New(events : SSEStream, chat : Chat) {
+			@events := events;
+			@chat := chat;
+			@assembler := StreamAssembler->New();
+			@finished := false;
+			@settled := false;
+		}
+
+		#~
+		Reads on until there is text to return
+		@return true when Next() has text; false at the end of the stream or on an error
+		~#
+		method : public : HasNext() ~ Bool {
+			if(@finished) {
+				return false;
+			};
+
+			while(@events->HasNext()) {
+				event := @events->Next();
+				text := @assembler->Apply(event->GetEvent(), event->GetData());
+				if(@assembler->IsFailed()) {
+					break;
+				};
+
+				if(text <> Nil) {
+					@pending := text;
+					return true;
+				};
+
+				if(@assembler->IsDone()) {
+					break;
+				};
+			};
+
+			Finish();
+			Settle();
+			return false;
+		}
+
+		#~
+		Get the text HasNext() found
+		@return the next piece of text
+		~#
+		method : public : Next() ~ String {
+			return @pending;
+		}
+
+		#~
+		Reads any remaining events and returns the whole reply; the exchange then joins the chat history
+		@return reply, or Nil with the last error set
+		~#
+		method : public : GetReply() ~ Reply {
+			while(HasNext()) {
+			};
+			Settle();
+			return @reply;
+		}
+
+		#~
+		Closes the connection early. The exchange is then dropped from the history, as a failed one is.
+		~#
+		method : public : Close() ~ Nil {
+			Finish();
+			if(<>@settled) {
+				@settled := true;
+				@chat->AbortStream();
+			};
+		}
+
+		# the exchange joins the history when the stream ends, whether or not the caller asks for the reply
+		method : Settle() ~ Nil {
+			if(<>@settled) {
+				@settled := true;
+				@reply := @chat->FinishStream(@assembler);
+			};
+		}
+
+		method : Finish() ~ Nil {
+			if(<>@finished) {
+				@finished := true;
+				@events->Close();
+			};
+		}
+	}
+
+	#~
+	A chat session. It keeps the message history, including tool calls and results.
+
+```
+chat := Chat->New("claude-sonnet-5-5", Nil);
+chat->SetSystem("Answer in one sentence.");
+chat->Send("Why is the sky blue?")->PrintLine();
+chat->Send("And at sunset?")->PrintLine();
+```
+	~#
+	class Chat from EndPoint {
+		@model : String;
+		@key : String;
+		@system : String;
+		@max_tokens : Int;
+		@temperature : Float;
+		@has_temperature : Bool;
+		@thinking_budget : Int;
+		@stream_added : Bool;
+		@messages : Vector<JsonElement>;
+		@last_reply : Reply;
+
+		#~
+		Constructor
+		@param model model id
+		@param key API key, or Nil to use GetApiKey()
+		~#
+		New(model : String, key : String) {
+			Parent();
+			@model := model;
+			@key := key;
+			@max_tokens := 4096;
+			@has_temperature := false;
+			@thinking_budget := 0;
+			@stream_added := false;
+			@messages := Vector->New()<JsonElement>;
+		}
+
+		#~
+		Sets the system prompt
+		@param system system prompt
+		@return self for chaining
+		~#
+		method : public : SetSystem(system : String) ~ Chat {
+			@system := system;
+			return @self;
+		}
+
+		#~
+		Sets the most tokens a reply may use (default 4096)
+		@param max_tokens token limit
+		@return self for chaining
+		~#
+		method : public : SetMaxTokens(max_tokens : Int) ~ Chat {
+			@max_tokens := max_tokens;
+			return @self;
+		}
+
+		#~
+		Sets the sampling temperature
+		@param temperature temperature between 0 and 1
+		@return self for chaining
+		~#
+		method : public : SetTemperature(temperature : Float) ~ Chat {
+			@temperature := temperature;
+			@has_temperature := true;
+			return @self;
+		}
+
+		#~
+		Turns extended thinking on. The API needs a budget of at least 1024 tokens and a max_tokens above it,
+		so call SetMaxTokens too. While it is on, the temperature is not sent (the API rejects both together),
+		and SendJson leaves thinking off for its one request because a forced tool is rejected with it.
+		@param budget_tokens tokens the model may think with, 0 to turn thinking off
+		@return self for chaining
+		~#
+		method : public : SetThinking(budget_tokens : Int) ~ Chat {
+			@thinking_budget := budget_tokens;
+			return @self;
+		}
+
+		#~
+		Get the model id
+		@return model id
+		~#
+		method : public : GetModel() ~ String {
+			return @model;
+		}
+
+		#~
+		Adds a message to the history without sending it
+		@param role "user" or "assistant"
+		@param content message text
+		@return self for chaining
+		~#
+		method : public : AddMessage(role : String, content : String) ~ Chat {
+			@messages->AddBack(TextMessage(role, content));
+			return @self;
+		}
+
+		#~
+		Adds the result of a tool call to the history. Results for one reply share one user
+		message, as the API requires, so call this once per ToolUse and then SendReply(Nil, tools).
+		@param tool_use_id the id from ToolUse->GetId()
+		@param content the tool's result
+		@return self for chaining
+		~#
+		method : public : AddToolResult(tool_use_id : String, content : String) ~ Chat {
+			return AddToolResult(tool_use_id, content, false);
+		}
+
+		#~
+		Adds the result of a tool call, marking it as a failure when the tool could not run
+		@param tool_use_id the id from ToolUse->GetId()
+		@param content the tool's result or error text
+		@param is_error true when the tool failed
+		@return self for chaining
+		~#
+		method : public : AddToolResult(tool_use_id : String, content : String, is_error : Bool) ~ Chat {
+			result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			result->Insert("type", "tool_result");
+			result->Insert("tool_use_id", tool_use_id);
+			result->Insert("content", content);
+			if(is_error) {
+				result->Insert("is_error", true);
+			};
+
+			last_index := @messages->Size() - 1;
+			if(last_index >= 0) {
+				last := @messages->Get(last_index);
+				existing := last->Get("content");
+				if(Field->Is(last, "role", "user") & existing <> Nil & existing->GetType() = JsonElement->JsonType->ARRAY & existing->Size() > 0) {
+					if(Field->Is(existing->Get(0), "type", "tool_result")) {
+						existing->Add(result);
+						return @self;
+					};
+				};
+			};
+
+			blocks := JsonElement->New(JsonElement->JsonType->ARRAY);
+			blocks->Add(result);
+			message := JsonElement->New(JsonElement->JsonType->OBJECT);
+			message->Insert("role", "user");
+			message->Insert("content", blocks);
+			@messages->AddBack(message);
+			return @self;
+		}
+
+		#~
+		Get the message history
+		@return messages, as sent in the request
+		~#
+		method : public : GetMessages() ~ JsonElement {
+			return JsonElement->New(@messages);
+		}
+
+		#~
+		Get the last reply received
+		@return last reply, or Nil
+		~#
+		method : public : GetLastReply() ~ Reply {
+			return @last_reply;
+		}
+
+		#~
+		Builds the request body for the history as it stands, public so it can be inspected without a server
+		@param tools tool definitions, or Nil
+		@param stream true to ask for a streamed response
+		@return request JSON
+		~#
+		method : public : BuildRequest(tools : Vector<Tool>, stream : Bool) ~ JsonElement {
+			return Build(@messages, tools, Nil, stream);
+		}
+
+		method : Build(messages : Vector<JsonElement>, tools : Vector<Tool>, tool_choice : JsonElement, stream : Bool) ~ JsonElement {
+			request := JsonElement->New(JsonElement->JsonType->OBJECT);
+			request->Insert("model", @model);
+			request->Insert("max_tokens", @max_tokens);
+			request->Insert("messages", JsonElement->New(messages));
+			if(@system <> Nil) {
+				request->Insert("system", @system);
+			};
+			if(@has_temperature & (@thinking_budget <= 0 | tool_choice <> Nil)) {
+				request->Insert("temperature", @temperature);
+			};
+			if(@thinking_budget > 0 & tool_choice = Nil) {
+				thinking := JsonElement->New(JsonElement->JsonType->OBJECT);
+				thinking->Insert("type", "enabled");
+				thinking->Insert("budget_tokens", @thinking_budget);
+				request->Insert("thinking", thinking);
+			};
+			if(stream) {
+				request->Insert("stream", true);
+			};
+
+			if(tools <> Nil & tools->Size() > 0) {
+				tools_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(i : tools) {
+					tools_json->Add(tools->Get(i)->ToJson());
+				};
+				request->Insert("tools", tools_json);
+			};
+			if(tool_choice <> Nil) {
+				request->Insert("tool_choice", tool_choice);
+			};
+
+			return request;
+		}
+
+		method : Key() ~ String {
+			if(@key = Nil) {
+				@key := GetApiKey();
+			};
+			return @key;
+		}
+
+		function : TextMessage(role : String, content : String) ~ JsonElement {
+			message := JsonElement->New(JsonElement->JsonType->OBJECT);
+			message->Insert("role", role);
+			message->Insert("content", content);
+			return message;
+		}
+
+		#~
+		Sends a message and returns the reply text
+		@param message user message
+		@return reply text, or Nil with the last error set
+		~#
+		method : public : Send(message : String) ~ String {
+			reply := SendReply(message, Nil);
+			if(reply = Nil) {
+				return Nil;
+			};
+			return reply->GetText();
+		}
+
+		#~
+		Sends a message and returns the full reply, including tool calls. When the reply has
+		tool uses, run them, add each result with AddToolResult and call SendReply(Nil, tools) again.
+		@param message user message, or Nil to send the history as it stands
+		@param tools tool definitions, or Nil
+		@return reply, or Nil with the last error set (the message is then not kept in the history)
+
+```
+tools := Vector->New()<Tool>;
+tools->AddBack(Tool->New("get_weather", "Get the weather for a city", JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}")));
+
+chat := Chat->New("claude-sonnet-5-5", Nil);
+reply := chat->SendReply("What is the weather in Paris?", tools);
+while(reply <> Nil & reply->HasToolUses()) {
+  uses := reply->GetToolUses();
+  each(i : uses) {
+    call := uses->Get(i);
+    city := call->GetArgument("city");
+    chat->AddToolResult(call->GetId(), "18C and sunny in {$city}");
+  };
+  reply := chat->SendReply(Nil, tools);
+};
+reply->GetText()->PrintLine();
+```
+		~#
+		method : public : SendReply(message : String, tools : Vector<Tool>) ~ Reply {
+			key := Key();
+			if(key = Nil) {
+				return Nil;
+			};
+
+			added := false;
+			if(message <> Nil) {
+				@messages->AddBack(TextMessage("user", message));
+				added := true;
+			};
+
+			body := Post(Build(@messages, tools, Nil, false), key);
+			reply : Reply;
+			if(body <> Nil) {
+				reply := Reply->Parse(body);
+			};
+
+			if(reply = Nil) {
+				if(added) {
+					@messages->RemoveBack();
+				};
+				return Nil;
+			};
+
+			if(Keep(reply)) {
+				AddReply(reply);
+			}
+			else if(added) {
+				@messages->RemoveBack();
+			};
+			@last_reply := reply;
+			return reply;
+		}
+
+		#~
+		Asks for an answer in a given shape. The model is made to call a tool whose input schema is
+		the one you give, and its input is the answer. One-shot: neither the question nor the answer joins the history.
+		@param message the question
+		@param name a name for the shape, letters and underscores
+		@param schema JSON schema of the answer, an object
+		@return the answer as JSON, or Nil with the last error set
+		~#
+		method : public : SendJson(message : String, name : String, schema : JsonElement) ~ JsonElement {
+			key := Key();
+			if(key = Nil) {
+				return Nil;
+			};
+
+			messages := Vector->New()<JsonElement>;
+			each(i : @messages) {
+				messages->AddBack(@messages->Get(i));
+			};
+			messages->AddBack(TextMessage("user", message));
+
+			tools := Vector->New()<Tool>;
+			tools->AddBack(Tool->New(name, "Return the answer in this shape.", schema));
+			choice := JsonElement->New(JsonElement->JsonType->OBJECT);
+			choice->Insert("type", "tool");
+			choice->Insert("name", name);
+
+			body := Post(Build(messages, tools, choice, false), key);
+			if(body = Nil) {
+				return Nil;
+			};
+
+			reply := Reply->Parse(body);
+			if(reply = Nil) {
+				return Nil;
+			};
+
+			uses := reply->GetToolUses();
+			each(i : uses) {
+				call := uses->Get(i);
+				if(call->GetName() <> Nil & call->GetName()->Equals(name)) {
+					return call->GetInput();
+				};
+			};
+
+			SetLastError("the model did not return the requested shape");
+			return Nil;
+		}
+
+		#~
+		Sends a message and streams the reply as it is generated
+		@param message user message, or Nil to send the history as it stands
+		@param tools tool definitions, or Nil
+		@return stream, or Nil with the last error set
+		~#
+		method : public : Stream(message : String, tools : Vector<Tool>) ~ ReplyStream {
+			key := Key();
+			if(key = Nil) {
+				return Nil;
+			};
+
+			SetLastError(Nil);
+			added := false;
+			if(message <> Nil) {
+				@messages->AddBack(TextMessage("user", message));
+				added := true;
+			};
+			@stream_added := added;
+
+			request := Build(@messages, tools, Nil, true);
+			client := HttpsClient->New();
+			client->AddHeader("x-api-key", key);
+			client->AddHeader("anthropic-version", "2023-06-01");
+			events := client->StreamPost(Url->New(GetBaseUrl() + "/messages"), request->ToString()->ToByteArray(), "application/json", GetCertificate());
+
+			failed := events = Nil;
+			if(failed) {
+				SetLastError("could not open the stream to the Anthropic API");
+			}
+			else if(events->GetStatusCode() <> 200) {
+				code := events->GetStatusCode();
+				SetLastError("the API answered HTTP {$code}{$HttpHint(code)}");
+				events->Close();
+				failed := true;
+			};
+
+			if(failed) {
+				if(added) {
+					@messages->RemoveBack();
+				};
+				@stream_added := false;
+				return Nil;
+			};
+
+			return ReplyStream->New(events, @self);
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : FinishStream(assembler : StreamAssembler) ~ Reply {
+			reply := assembler->GetReply();
+			if(reply <> Nil & Keep(reply)) {
+				AddReply(reply);
+			}
+			else {
+				AbortStream();
+			};
+			@stream_added := false;
+			if(reply <> Nil) {
+				@last_reply := reply;
+			};
+			return reply;
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : AbortStream() ~ Nil {
+			if(@stream_added & @messages->Size() > 0) {
+				@messages->RemoveBack();
+			};
+			@stream_added := false;
+		}
+
+		# what the status of a refused stream means, since its body is not read
+		function : HttpHint(code : Int) ~ String {
+			if(code = 401) {
+				return " (authentication_error: check the API key)";
+			}
+			else if(code = 403) {
+				return " (permission_error)";
+			}
+			else if(code = 429) {
+				return " (rate_limit_error)";
+			}
+			else if(code = 529) {
+				return " (overloaded_error)";
+			};
+			return "";
+		}
+
+		# A reply joins the history unless the API would reject it on replay: a refusal (the docs say to
+		# drop that turn) and an empty reply are not kept; an empty text block is removed from one that is
+		method : Keep(reply : Reply) ~ Bool {
+			if(reply->GetStopReason() <> Nil & reply->GetStopReason()->Equals("refusal")) {
+				return false;
+			};
+			return reply->GetContent()->Size() > 0;
+		}
+
+		# keep the assistant turn, content blocks and all, as the API wants them replayed
+		method : AddReply(reply : Reply) ~ Nil {
+			content := JsonElement->New(JsonElement->JsonType->ARRAY);
+			blocks := reply->GetContent();
+			each(i : blocks) {
+				block := blocks->Get(i);
+				empty_text := Field->Is(block, "type", "text") & Field->Text(block, "text") <> Nil & Field->Text(block, "text")->Size() = 0;
+				if(<>empty_text) {
+					content->Add(block);
+				};
+			};
+
+			if(content->Size() = 0) {
+				return;
+			};
+			message := JsonElement->New(JsonElement->JsonType->OBJECT);
+			message->Insert("role", "assistant");
+			message->Insert("content", content);
+			@messages->AddBack(message);
+			@last_reply := reply;
+		}
+	}
+}

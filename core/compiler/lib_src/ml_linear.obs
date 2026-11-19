@@ -504,10 +504,13 @@ each(c in coeffs) {
 			};
 
 			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 			fit_intercept := deserializer->ReadInt() = 1;
 
 			count := deserializer->ReadInt();
-			if(count < 1) {
+			if(count < 1 | <>deserializer->Holds(count)) {
 				return Nil;
 			};
 
@@ -520,6 +523,10 @@ each(c in coeffs) {
 			adj_r_squared := deserializer->ReadFloat();
 			mse := deserializer->ReadFloat();
 			rmse := deserializer->ReadFloat();
+
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 
 			return LinearRegression->New(coefficients, fit_intercept, r_squared, adj_r_squared, mse, rmse);
 		}
@@ -847,11 +854,14 @@ model->Fit(X, y);
 			};
 
 			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 			alpha := deserializer->ReadFloat();
 			fit_intercept := deserializer->ReadInt() = 1;
 
 			count := deserializer->ReadInt();
-			if(count < 1) {
+			if(count < 1 | <>deserializer->Holds(count)) {
 				return Nil;
 			};
 
@@ -864,6 +874,10 @@ model->Fit(X, y);
 			adj_r_squared := deserializer->ReadFloat();
 			mse := deserializer->ReadFloat();
 			rmse := deserializer->ReadFloat();
+
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 
 			return RidgeRegression->New(alpha, coefficients, fit_intercept, r_squared, adj_r_squared, mse, rmse);
 		}
@@ -1225,13 +1239,16 @@ preds := model->Predict(X);
 			};
 
 			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 			alpha := deserializer->ReadFloat();
 			l1_ratio := deserializer->ReadFloat();
 			iterations := deserializer->ReadInt();
 			tolerance := deserializer->ReadFloat();
 
 			count := deserializer->ReadInt();
-			if(count < 1) {
+			if(count < 1 | <>deserializer->Holds(count)) {
 				return Nil;
 			};
 
@@ -1244,6 +1261,10 @@ preds := model->Predict(X);
 			r_squared := deserializer->ReadFloat();
 			mse := deserializer->ReadFloat();
 			rmse := deserializer->ReadFloat();
+
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 
 			return ElasticNet->New(alpha, l1_ratio, iterations, tolerance, coefficients, intercept, r_squared, mse, rmse);
 		}
@@ -1656,12 +1677,15 @@ each(label in labels) {
 			};
 
 			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 			learning_rate := deserializer->ReadFloat();
 			iterations := deserializer->ReadInt();
 			l2 := deserializer->ReadFloat();
 
 			count := deserializer->ReadInt();
-			if(count < 1) {
+			if(count < 1 | <>deserializer->Holds(count)) {
 				return Nil;
 			};
 
@@ -1672,6 +1696,10 @@ each(label in labels) {
 
 			bias := deserializer->ReadFloat();
 			loss := deserializer->ReadFloat();
+
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 
 			return LogisticRegression->New(learning_rate, iterations, l2, weights, bias, loss);
 		}
@@ -1926,12 +1954,15 @@ labels := model->PredictClass(X);
 			};
 
 			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 			learning_rate := deserializer->ReadFloat();
 			iterations := deserializer->ReadInt();
 			epochs_run := deserializer->ReadInt();
 
 			count := deserializer->ReadInt();
-			if(count < 1) {
+			if(count < 1 | <>deserializer->Holds(count)) {
 				return Nil;
 			};
 
@@ -1941,6 +1972,10 @@ labels := model->PredictClass(X);
 			};
 
 			bias := deserializer->ReadFloat();
+
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 
 			return Perceptron->New(learning_rate, iterations, weights, bias, epochs_run);
 		}
@@ -2199,12 +2234,15 @@ labels := model->PredictClass(X);
 			};
 
 			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 			lambda := deserializer->ReadFloat();
 			learning_rate := deserializer->ReadFloat();
 			iterations := deserializer->ReadInt();
 
 			count := deserializer->ReadInt();
-			if(count < 1) {
+			if(count < 1 | <>deserializer->Holds(count)) {
 				return Nil;
 			};
 
@@ -2214,6 +2252,10 @@ labels := model->PredictClass(X);
 			};
 
 			bias := deserializer->ReadFloat();
+
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 
 			return SVM->New(lambda, learning_rate, iterations, weights, bias);
 		}
