@@ -1,50 +1,109 @@
 # CUDA execution provider for ONNX — design
 
-> **Status: PLAN, partly implemented.** Written for review before any code, on
-> the pattern that made the HTTP/3-on-Windows work cheap: three reviewers
-> rejected the expensive route before it cost anything.
+> **Status: provider selection IMPLEMENTED (2026-11-18); CUDA is not shipped.**
+> Written as a plan for review before any code; the sections below the status
+> block are the original reasoning and corrections, kept as history.
 >
-> **Landed** in `core/lib/onnx/eq/onnx.cpp`, the source every shipped
+> **Delivered** in `core/lib/onnx/eq/onnx.cpp`, the one source every shipped
 > `libobjk_onnx` is built from:
 >
-> - `ep` is no longer forwarded to ONNX Runtime as a provider option
->   (f8d4735c76). It is checked against the provider the library was compiled
->   with: that provider or `cpu` is accepted, and any other name is refused
->   with an error naming both, rather than silently ignored.
-> - The CUDA branch calls the typed `AppendExecutionProvider_CUDA` instead of
->   the string form, which rejected `"CUDA"` on every call, and first checks
->   `Ort::GetAvailableProviders()`, refusing the session rather than running on
->   CPU when CUDA is absent (01b30f2f8e, moved into place by 1f187887f1). The
->   vendored Linux runtime is CPU-only, so the Linux and MSYS2 deploys build
->   `./build.sh cpu`, and no release ships CUDA.
+> - `ep` selects the provider **per session**: `cpu`, `cuda`, `dml`, `qnn`,
+>   `vitisai` or `coreml` (case-insensitive; ORT's own `CUDAExecutionProvider`
+>   spelling is accepted). The `ONNX_EP_*` define is now only the **default**,
+>   used when a program names none.
+> - The requested provider is checked against `Ort::GetAvailableProviders()` of
+>   the runtime that is actually loaded. One that is absent is refused with an
+>   error listing what is available, and the session does not open. There is no
+>   implicit fallback and no `ep_fallback` key. (The one fallback left is macOS
+>   with no `ep` at all, where a CoreML failure is announced and uses the CPU;
+>   `ep=coreml` is strict.)
+> - CUDA uses the V2 provider options, so `device_id`, `gpu_mem_limit`,
+>   `cudnn_conv_algo_search` and the rest reach the provider; an unknown option
+>   is an error, not silently dropped.
+> - `OnnxRuntime->GetProviders()` (already there), plus new
+>   `OnnxRuntime->HasProvider(name)` and `OnnxRuntime->GetDefaultProvider()`.
+> - The per-provider copies of the source (`eq/dml`, `eq/cuda/onnx_cuda.cpp`,
+>   `eq/qnn`, `eq/vitis`), including the one that appended `"DML"` under a CUDA
+>   name, are removed. The vendored runtimes and headers under those directories
+>   stay where the deploy scripts read them; the directories are **not renamed**.
+> - Earlier: the typed CUDA entry point and the refusal when CUDA is absent
+>   (01b30f2f8e, 1f187887f1); `ep` no longer forwarded to ORT as a provider
+>   option (f8d4735c76).
 >
-> **Still open:**
+> **Not changed:** what any release packages. The vendored Linux runtime is
+> CPU-only, the Linux and MSYS2 deploys build `./build.sh cpu`, Windows x64
+> ships DirectML, and no release ships CUDA, cuDNN or a GPU `onnxruntime`.
 >
-> - choosing the provider at runtime: it is still fixed at compile time, by the
->   `ONNX_EP_*` define a build sets (none means CPU);
-> - `eq/cuda/onnx_cuda.cpp:67` still appends `"DML"`;
-> - merging the per-provider variants (`eq/dml`, `eq/cuda`, `eq/qnn`,
->   `eq/vitis`) into `eq/onnx.cpp`.
+> **Still open:** open question 1 below (does the CUDA provider avoid the
+> DirectML GroupQueryAttention bug that keeps `use_kv_cache = false` in the
+> Phi-3-V path?) has no recorded experiment: no Phi-3 model was at hand. A
+> Linux runtime swap needs a rebuild (below). A `Release-CUDA|x64` Windows
+> configuration exists in `vs/vs.vcxproj` and now builds, but links DirectML's
+> import library by default and is not built by any release script.
 >
-> CORRECTION 2 below is wrong about which source ships: `deploy_windows.cmd`
-> builds `onnx.sln`, which compiles `eq/onnx.cpp`, and `vs/vs.vcxproj` defines
-> one `ONNX_EP_*` per configuration (`Release-DML|x64`, `Release-QNN|ARM64`,
-> ...), not all four. No deploy script or workflow builds the variant sources.
+> ## Verified on an RTX 4090 (2026-11-18)
 >
-> **Checked again 2026-11-18 against `master`:** nothing in the "Still open" list
-> has been delivered. The provider is still fixed at compile time by the
-> `ONNX_EP_*` define (`eq/onnx.cpp`); `eq/cuda/onnx_cuda.cpp:67` still appends
-> `"DML"`; the four variant directories still exist; there is no `ep_fallback`
-> key and no `OBJECK_ONNX_EP` variable (a search of `eq/onnx.cpp`, `eq/common.h`
-> and `onnx.obs` finds neither); and no `Microsoft.ML.OnnxRuntime.Gpu` package or
-> CUDA runtime is vendored. The line references below have drifted: the
-> `use_kv_cache = false` line is `eq/common.h:2490` (this plan says 2413), and
-> the `ep` key is documented at `onnx.obs:2375` (this plan says 2119). Open
-> question 1 (does the CUDA provider avoid the DirectML GroupQueryAttention
-> bug?) has no recorded experiment. Delivered and relevant: the Linux runtime
-> is a CPU-only 1.19.0 build for x64 and, since v2026.10.0 (`fc454eced8`), for
-> arm64, so a Linux `cuda` build still refuses every session that does not ask
-> for `ep=cpu`; and `OnnxRuntime->GetProviders()` exists (`onnx.obs:45`).
+> Hardware: NVIDIA GeForce RTX 4090 24 GB, driver 621.24, CUDA UMD 13.5, Windows
+> 11 and WSL2 Ubuntu 24.04 with the same GPU. Runtime: `Microsoft.ML.OnnxRuntime.Gpu`
+> 1.24.4 (Windows) and 1.24.2 (Linux), CUDA 12 and cuDNN 9 libraries. Model: a
+> fine-tuned YOLO11 (768x768, 40 MB) through `YoloSession`, one 1080p photo,
+> 40 timed runs after a warm-up, `ep=cpu` against `ep=cuda`:
+>
+> | | Windows x64 | Linux x64 (WSL2) |
+> |---|---|---|
+> | providers the runtime reports | `Tensorrt, CUDA, CPU` | `Tensorrt, CUDA, CPU` |
+> | `ep=cpu`, mean per image | 463-499 ms (min 373-411) | 342-512 ms |
+> | `ep=cuda`, mean per image | 41.5-43.6 ms (min 36.2-36.6) | 44.2 ms |
+> | `ep=cuda`, first image (cuDNN/kernel warm-up) | 2.1-2.2 s | 1.4 s |
+> | `ep=dml` (the Windows default), mean per image | 28.0-28.3 ms (min 26.7), first image 0.04 s | n/a |
+> | detections, top box | same (truck, conf 0.56548 CPU / 0.56536 CUDA and DML) | same |
+>
+> On this model DirectML was faster than the CUDA provider (28 ms against 42 ms,
+> with a 2 s warm-up the DML session does not have; `cudnn_conv_algo_search=HEURISTIC`
+> gave 37 ms). The plan assumed CUDA would be materially faster on NVIDIA parts; for
+> this YOLO that does not hold, so the case for CUDA rests on the KV-cache question
+> and on hardware that has no DirectML, not on speed. DirectML ran on the adapter
+> `device_id=0` picked on this machine, which was not recorded.
+>
+> The timing includes JPEG decode, preprocessing and result decoding, which stay
+> on the CPU. During a run `nvidia-smi` listed `obr.exe` as a compute process and
+> GPU memory rose from 3.0 to 3.7 GiB. The detections agree to about 1e-4 in
+> confidence and one pixel in the boxes, the usual CPU/GPU float difference.
+>
+> What was exercised, all with no model download (the GPU runtime and CUDA
+> libraries were already in the local NuGet cache and the machine's CUDA install):
+>
+> - `ep=cuda` against a CUDA runtime: opens, runs on the GPU.
+> - `ep=cuda`, `ep=dml`, `ep=vitisai` against a runtime without them: refused,
+>   session closed, message lists the providers present. `ep=dml` against the CUDA
+>   runtime, and a DirectML-default build against the CUDA runtime with no `ep`,
+>   are refused the same way: no CPU fallback.
+> - Failures of a provider the runtime does carry are loud and specific: a missing
+>   `cudnn64_9.dll` ("depends on cudnn64_9.dll which is missing"), `device_id=7`
+>   ("Invalid device ID"), an unknown option name ("Unknown provider option").
+> - `cudnn_conv_algo_search=HEURISTIC` reaches the provider and works.
+> - A `Release-CUDA|x64` build makes `cuda` the default provider; against the CUDA
+>   runtime a session with no `ep` runs on the GPU, against the DirectML runtime
+>   it is refused.
+>
+> ### Linux: a runtime swap needs a rebuild
+>
+> `libobjk_onnx.so` is linked against the vendored 1.19.0 runtime and records its
+> ELF symbol version, so a newer `libonnxruntime.so.1` on `LD_LIBRARY_PATH` is
+> refused by the loader (`version 'VERS_1.19.0' not found`). To use CUDA on Linux,
+> rebuild against your runtime with `ORT_ROOT=<dir holding libonnxruntime.so>
+> ./build.sh cpu`, as was done for the numbers above. A 1.19.x GPU runtime would
+> load without a rebuild; none was available here.
+>
+> ### Not tested
+>
+> Windows ARM64 (QNN), Linux ARM64 and macOS (CoreML): the QNN, VitisAI and
+> CoreML branches compile (`-fsyntax-only` with each `ONNX_EP_*` on Linux) but
+> never ran. The shipped QNN, VitisAI and CoreML defaults skip the new
+> availability pre-check, so their behaviour is as before. Any DirectML
+> adapter other than the one `device_id=0` selected here (question 4 is
+> unanswered: which adapter DirectML used was not recorded). TensorRT is listed by
+> the GPU runtime but is not a provider this library requests.
 
 > **CORRECTION (same day, before review).** Two premises below were wrong and
 > are struck through in place. Verify claims against the tree, not against

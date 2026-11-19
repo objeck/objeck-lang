@@ -519,7 +519,27 @@ Model->Pull("phi3");
 
 ## ONNX Local Inference
 
-Run ML models locally using the ONNX Runtime. The Windows and macOS libraries are each built with one accelerator (DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS), with the CPU as the fallback. The Linux x64 and ARM64 libraries are CPU-only (each is linked with a vendored ONNX Runtime 1.19.0 CPU build). See [execution providers](MODELS.md#execution-providers) for the `ep` setting.
+Run ML models locally using the ONNX Runtime. The execution provider is a per-session choice (`ep`: `cpu`, `cuda`, `dml`, `qnn`, `vitisai`, `coreml`) among those the loaded ONNX Runtime carries. Without `ep` a session uses the build's default: DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS, and the CPU on Linux x64 and ARM64 (each linked with a vendored ONNX Runtime 1.19.0 CPU-only build). No release ships CUDA; with an ONNX Runtime you supply that carries it, `ep=cuda` runs on an NVIDIA GPU. See [execution providers](MODELS.md#execution-providers) for the setting and [core/lib/onnx/README.md](../core/lib/onnx/README.md) for how to set CUDA up.
+
+A provider the runtime does not carry is refused with an error that lists the ones it does, and the session does not open; it is never quietly run on the CPU. Ask first:
+
+```objeck
+use API.Onnx, Collection;
+
+each(provider in OnnxRuntime->GetProviders()) {       # what the runtime reports, e.g. CUDAExecutionProvider
+  provider->PrintLine();
+};
+OnnxRuntime->GetDefaultProvider()->PrintLine();       # "dml", "qnn", "coreml" or "cpu": what a session gets without ep
+
+config := Map->New()<String, String>;
+if(OnnxRuntime->HasProvider("cuda")) {
+  config->Insert("ep", "cuda");                       # other keys, such as "device_id", are provider options
+};
+session := YoloSession->New("yolo11n.onnx", config);
+if(<>session->IsOpen()) {
+  "session did not open, the reason was printed above"->PrintLine();
+};
+```
 
 **Compile:** `obc -src your.obs -lib models,net,json,cipher,opencv,onnx`
 

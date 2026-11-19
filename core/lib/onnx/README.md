@@ -75,7 +75,7 @@ No release ships CUDA. It needs an ONNX Runtime built with the CUDA provider, th
 - **Windows x64:** copy a `Microsoft.ML.OnnxRuntime.Gpu` package's `onnxruntime.dll`, `onnxruntime_providers_cuda.dll` and `onnxruntime_providers_shared.dll` over the ones in `bin`, with the CUDA 12 runtime, cuBLAS, cuFFT and cuDNN 9 DLLs on the same path, then pass `ep=cuda`. The GPU runtime has no DirectML, so a program that leaves `ep` out (default `dml`) is refused rather than moved to the CPU.
 - **Linux x64:** the shipped library is linked to the vendored 1.19.0 symbol version (`VERS_1.19.0`), so it will not load a different runtime. Rebuild against yours: `ORT_ROOT=/opt/onnxruntime-gpu/lib ./build.sh cpu` (`cuda` also makes it the default provider), and run with that directory first on `LD_LIBRARY_PATH`.
 
-Measured on an RTX 4090 (YOLO11 fine-tune, 768x768, 40 MB, one 1080p photo, `ep=cpu` vs `ep=cuda`, see `docs/ONNX_CUDA_PLAN.md`): about 430 ms per image on the CPU and 37 ms on CUDA on Windows, 340 ms and 44 ms on Linux (WSL2).
+Measured on an RTX 4090 (YOLO11 fine-tune, 768x768, 40 MB, one 1080p photo, `ep=cpu` vs `ep=cuda`, see `docs/ONNX_CUDA_PLAN.md`): about 460-500 ms per image on the CPU and 42 ms on CUDA on Windows (roughly 11x), 340-510 ms and 44 ms on Linux under WSL2. The time includes JPEG decoding, preprocessing and decoding the detections, which stay on the CPU.
 
 ## Quick Start
 
