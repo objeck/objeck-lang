@@ -55,7 +55,7 @@ classes := gnb->PredictClass([[1.1], [7.9]]);   # [0, 1]
 		@return true if fitting succeeded
 		~#
 		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
-			if(X = Nil | y = Nil) {
+			if(<>InputCheck->Pair(X, y)) {
 				return false;
 			};
 
@@ -136,7 +136,10 @@ classes := gnb->PredictClass([[1.1], [7.9]]);   # [0, 1]
 		@return rows x classes matrix of log-joint scores, or Nil if not fitted
 		~#
 		method : public : Predict(X : Float[,]) ~ Float[,] {
-			if(<>@is_fitted | X = Nil) {
+			if(<>@is_fitted) {
+				return Nil;
+			};
+			if(<>InputCheck->HasCols(X, @means->Size()[1])) {
 				return Nil;
 			};
 
@@ -205,7 +208,10 @@ classes := gnb->PredictClass([[1.1], [7.9]]);   # [0, 1]
 		~#
 		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
 			preds := PredictClass(X);
-			if(preds = Nil | y = Nil) {
+			if(preds = Nil) {
+				return 0.0;
+			};
+			if(<>InputCheck->Targets(y, preds->Size())) {
 				return 0.0;
 			};
 

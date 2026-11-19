@@ -1,0 +1,40 @@
+#~
+Load-time verifier false refusal: the and/or slot reused for a closure and a literal.
+
+The compiler keeps one scratch slot (the "and/or" slot, local 0) and reuses it
+for unrelated temporaries. Here it holds a lambda's closure inside an `if` in a
+do-while loop, then the constant-folded selector of a `select` (the literal -9).
+At the loop's join the verifier met the slot's two values although nothing
+reads the slot there (it is rewritten before every use), so the literal looked
+like the closure that is read through as an object, and the load was refused:
+"Invalid bytecode: ... an integer literal used as a reference" (-opt s3 only).
+The nightly differential fuzzer found it in about 10% of its programs.
+~#
+
+class VerifierAndOrSlotClosure {
+  function : F0(p0 : Int) ~ Int {
+    w0 := 0;
+    do {
+      if(w0 < 3) {
+        k0 := FuncRef->New(\() ~ IntRef : () => IntRef->New(p0))<IntRef>;
+      };
+      select(((0 - 9) % 41)) {
+        label -13: {
+        }
+        label 19: {
+        }
+      };
+      w0 += 1;
+    } while(w0 < 8);
+    return p0 + w0;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    r := F0(5);
+    if(r <> 13) {
+      "FAIL"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}

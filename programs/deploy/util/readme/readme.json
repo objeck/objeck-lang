@@ -3,7 +3,7 @@
 		"string": "2026.11.1",
 		"year": 2026
 	},
-	"title": "v2026.11.1 (in development)",
+	"title": "v2026.11.1",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -13,7 +13,19 @@
 		{
 			"version": "v2026.11.1",
 			"items": [
-				"In development: this version has no release notes yet. CHANGELOG.md lists what it will contain."
+				"Compiler errors that say what is wrong: the scanner gives each rejected token a concrete reason with a source excerpt and caret, the parser says \"Expected X, found Y\" and names the opener of an unclosed (, and the analyzer suggests \"Did you mean ...\" for an undefined variable, class or method.",
+				"Large programs compile faster: a 100,000-statement program took 54 s to compile at -opt s3 and now takes 5 s; 20,000 select labels went from 6 s to 0.6 s; a program that uses the query library compiles in 0.7 s instead of 1.4 s.",
+				"API.Anthropic, a client for the Claude Messages API with tool use, streaming, forced-tool JSON output and thinking blocks (tested against recorded responses and a local HTTPS server, not yet the live API).",
+				"System.ML.VectorSearch, a local exact vector index: Add, Remove, Search(query, k) for COSINE, DOT or L2, and checksummed Store and Load.",
+				"System.Plot draws scatter, histogram, line and grouped bar charts, with log axes, legends and subplots, as deterministic SVG with no SDL dependency.",
+				"ML: Load on a corrupt, truncated or foreign model file returns Nil instead of ending the program; Fit, Predict, Transform and Score on a Nil, empty or wrong-width matrix return a failure value; RandomForest->PredictScore gives the vote fraction.",
+				"ONNX: choose the execution provider per session with ep=cuda, ep=dml or ep=cpu; a provider the loaded runtime lacks is refused with the list it has, never replaced by the CPU. No release ships CUDA.",
+				"The loader checks the operand stack: obr refuses an .obe whose method pops an empty operand stack, joins two paths at different stack heights, uses a non-zero integer literal as an array or object, declares a parameter count out of range, or holds more than 1,000 operand words. Fuzzing found five crashes and a hang, and the same 30,000 mutants now give none; the .obe loader is fuzzed nightly and on every pull request.",
+				"The verifier no longer refuses valid programs compiled at -opt s3 that reuse one scratch slot for unrelated temporaries.",
+				"GC marking threads return instead of calling pthread_exit, which aborted a Linux build that links libgcc statically.",
+				"Windows ARM64 deploy fix: the deploy ships libz.dll, and the same DLL as z.dll when vcpkg provides none, so the OpenCV codecs load.",
+				"Documentation: a reading path for compiler, runtime and research readers, a Testing and assurance map, the fuzz report, JIT READMEs checked against the code, and a README Platform support section (the Linux release needs glibc 2.38 or newer).",
+				"Tooling and site: a private GitHub traffic snapshot (tools/release-stats), a language-server test flake fixed, and objeck.org gains a Playground pill, a click-to-play Internals video, security headers and a daily visitor report."
 			]
 		},
 		{

@@ -160,24 +160,32 @@ yolo export model=yolo11n.pt format=onnx
       tokenizer.json
       genai_config.json</pre>
     <h4 id="execution-providers">Execution Providers</h4>
-    <p>Each platform's library is compiled with one execution provider, and the <code>ep</code> key can only select that provider or the CPU. Naming any other provider is refused with an error, and no session is created. Leaving <code>ep</code> out uses the build's provider.</p>
+    <p>The execution provider is chosen <strong>per session</strong> with the <code>ep</code> key: <code>cpu</code>, <code>cuda</code>, <code>dml</code>, <code>qnn</code>, <code>vitisai</code> or <code>coreml</code> (case-insensitive). The provider has to be in the ONNX Runtime the library loaded: that runtime is what carries the accelerator, and the native library only asks for it. A provider the runtime does not carry is refused with an error that lists the providers it does carry, and no session is created. A session is never quietly run on the CPU instead.</p>
+    <p>Leaving <code>ep</code> out uses the build's default provider (<code>OnnxRuntime-&gt;GetDefaultProvider()</code>):</p>
     <table class="ref-table">
      <thead>
-      <tr><th>Platform</th><th>Accelerator</th><th>Provider flag</th></tr>
+      <tr><th>Platform</th><th>Default accelerator</th><th>Shipped runtime carries</th></tr>
      </thead>
      <tbody>
-      <tr><td data-label="Platform">Windows x64</td><td data-label="Accelerator">GPU via DirectML</td><td data-label="Provider flag"><code>"ep" → "dml"</code></td></tr>
-      <tr><td data-label="Platform">Windows ARM64</td><td data-label="Accelerator">Qualcomm GPU via QNN</td><td data-label="Provider flag"><code>"ep" → "qnn"</code></td></tr>
-      <tr><td data-label="Platform">Linux x64, Linux ARM64</td><td data-label="Accelerator">none (CPU-only build)</td><td data-label="Provider flag"><code>"ep" → "cpu"</code></td></tr>
-      <tr><td data-label="Platform">macOS</td><td data-label="Accelerator">Apple Neural Engine / GPU via CoreML</td><td data-label="Provider flag"><code>"ep" → "coreml"</code></td></tr>
-      <tr><td data-label="Platform">Any</td><td data-label="Accelerator">CPU fallback</td><td data-label="Provider flag"><code>"ep" → "cpu"</code></td></tr>
+      <tr><td data-label="Platform">Windows x64</td><td data-label="Default accelerator">GPU via DirectML (<code>dml</code>)</td><td data-label="Shipped runtime carries">DirectML, CPU</td></tr>
+      <tr><td data-label="Platform">Windows ARM64</td><td data-label="Default accelerator">Qualcomm GPU via QNN (<code>qnn</code>)</td><td data-label="Shipped runtime carries">QNN, CPU</td></tr>
+      <tr><td data-label="Platform">Linux x64, Linux ARM64</td><td data-label="Default accelerator">none (<code>cpu</code>)</td><td data-label="Shipped runtime carries">CPU only</td></tr>
+      <tr><td data-label="Platform">macOS</td><td data-label="Default accelerator">Apple Neural Engine / GPU via CoreML (<code>coreml</code>)</td><td data-label="Shipped runtime carries">CoreML, CPU</td></tr>
      </tbody>
     </table>
+    <p>No release ships CUDA. <code>ep=cuda</code> works when you provide an ONNX Runtime built with the CUDA provider, plus the NVIDIA driver, CUDA 12 and cuDNN 9 it needs: put that runtime's <code>onnxruntime</code> library beside <code>libobjk_onnx</code> (Windows: replace <code>bin\onnxruntime.dll</code> and add <code>onnxruntime_providers_cuda.dll</code> and its dependencies). On Linux <code>libobjk_onnx</code> is linked to one runtime version, so rebuild it against yours with <code>ORT_ROOT=&lt;dir&gt; ./build.sh cpu</code> (see <a href="https://github.com/objeck/objeck-lang/blob/master/core/lib/onnx/README.md" target="_blank">core/lib/onnx/README.md</a>). Which providers a runtime carries:</p>
+<pre class="line-numbers"><code class="language-cpp">use API.Onnx;
+
+OnnxRuntime-&gt;GetProviders();            # e.g. ["CUDAExecutionProvider", "CPUExecutionProvider"]
+OnnxRuntime-&gt;HasProvider("cuda");       # Bool, takes the names "ep" takes
+OnnxRuntime-&gt;GetDefaultProvider();      # the provider a session gets without "ep"
+</code></pre>
+    <p>Other keys in the same map are provider options and go to the provider (<code>device_id</code>, and for CUDA <code>gpu_mem_limit</code>, <code>cudnn_conv_algo_search</code>, ...). An option the provider does not know is an error, not ignored.</p>
     <h4 id="use-in-objeck">Use in Objeck</h4>
 <pre class="line-numbers"><code class="language-cpp">use API.Onnx, Collection;
 
 config := Map-&gt;New()&lt;String, String&gt;;
-config-&gt;Insert("ep", "dml");   # Windows x64; "qnn" or "coreml" on those builds, "cpu" anywhere
+config-&gt;Insert("ep", "dml");   # Windows x64; "qnn" or "coreml" on those builds, "cuda" with a CUDA runtime, "cpu" anywhere
 session := Phi3Session-&gt;New("data/models/phi3/directml/directml-int4-awq-block-128/model.onnx", config);
 </code></pre>
     <p>Compile with: <code>obc -src your.obs -lib models,net,json,cipher,opencv,onnx</code></p>

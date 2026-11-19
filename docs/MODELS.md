@@ -151,15 +151,28 @@ data/models/
 
 ### Execution Providers
 
-Each platform's library is compiled with one execution provider, and the `ep` key can only select that provider or the CPU. Naming any other provider is refused with an error, and no session is created. Leaving `ep` out uses the build's provider.
+The execution provider is chosen **per session** with the `ep` key: `cpu`, `cuda`, `dml`, `qnn`, `vitisai` or `coreml` (case-insensitive). The provider has to be in the ONNX Runtime the library loaded: that runtime is what carries the accelerator, and the native library only asks for it. A provider the runtime does not carry is refused with an error that lists the providers it does carry, and no session is created. A session is never quietly run on the CPU instead.
 
-| Platform | Accelerator | Provider flag |
-|----------|-------------|---------------|
-| Windows x64 | GPU via DirectML | `"ep" → "dml"` |
-| Windows ARM64 | Qualcomm GPU via QNN | `"ep" → "qnn"` |
-| Linux x64, Linux ARM64 | none (CPU-only build) | `"ep" → "cpu"` |
-| macOS | Apple Neural Engine / GPU via CoreML | `"ep" → "coreml"` |
-| Any | CPU fallback | `"ep" → "cpu"` |
+Leaving `ep` out uses the build's default provider (`OnnxRuntime->GetDefaultProvider()`):
+
+| Platform | Default accelerator | Shipped runtime carries |
+|----------|---------------------|-------------------------|
+| Windows x64 | GPU via DirectML (`dml`) | DirectML, CPU |
+| Windows ARM64 | Qualcomm GPU via QNN (`qnn`) | QNN, CPU |
+| Linux x64, Linux ARM64 | none (`cpu`) | CPU only |
+| macOS | Apple Neural Engine / GPU via CoreML (`coreml`) | CoreML, CPU |
+
+No release ships CUDA. `ep=cuda` works when you provide an ONNX Runtime built with the CUDA provider, plus the NVIDIA driver, CUDA 12 and cuDNN 9 it needs: put that runtime's `onnxruntime` library beside `libobjk_onnx` (Windows: replace `bin\onnxruntime.dll` and add `onnxruntime_providers_cuda.dll` and its dependencies). On Linux `libobjk_onnx` is linked to one runtime version, so rebuild it against yours with `ORT_ROOT=<dir> ./build.sh cpu` (see [core/lib/onnx/README.md](../core/lib/onnx/README.md)). Which providers a runtime carries:
+
+```objeck
+use API.Onnx;
+
+OnnxRuntime->GetProviders();            # e.g. ["CUDAExecutionProvider", "CPUExecutionProvider"]
+OnnxRuntime->HasProvider("cuda");       # Bool, takes the names "ep" takes
+OnnxRuntime->GetDefaultProvider();      # the provider a session gets without "ep"
+```
+
+Other keys in the same map are provider options and go to the provider (`device_id`, and for CUDA `gpu_mem_limit`, `cudnn_conv_algo_search`, ...). An option the provider does not know is an error, not ignored.
 
 ### Use in Objeck
 
@@ -167,7 +180,7 @@ Each platform's library is compiled with one execution provider, and the `ep` ke
 use API.Onnx, Collection;
 
 config := Map->New()<String, String>;
-config->Insert("ep", "dml");   # Windows x64; "qnn" or "coreml" on those builds, "cpu" anywhere
+config->Insert("ep", "dml");   # Windows x64; "qnn" or "coreml" on those builds, "cuda" with a CUDA runtime, "cpu" anywhere
 session := Phi3Session->New("data/models/phi3/directml/directml-int4-awq-block-128/model.onnx", config);
 ```
 

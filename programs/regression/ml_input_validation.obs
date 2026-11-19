@@ -1,0 +1,810 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+Fit, Predict, Transform and Score on a Nil, an empty or a wrong-width matrix, or on
+targets that do not match the matrix, must answer a failure value (false, Nil or 0.0)
+and let the program go on: they used to end it with "Index over bounds", "Divide by
+zero" or a Nil dereference, which a scikit-learn user would catch as a ValueError.
+
+One table of models, each probed with the same eight inputs. A model that still ends
+the program stops this test at its line, so the last line printed names it.
+
+Run with a model number and an input number to try one case:
+  obr ml_input_validation.obe 3 5
+~#
+use Collection;
+use System.ML;
+
+class MlInputValidation {
+	@models : static : String[];
+	@good : static : Float[,];
+	@reg : static : Float[,];
+	@cls : static : Float[,];
+	@lab : static : Bool[];
+	@boolean : static : Bool[,];
+
+	function : Main(args : String[]) ~ Nil {
+		Build();
+		BoolWidths();
+		Rows();
+
+		only_model := -1;
+		only_input := -1;
+		if(args->Size() > 0) {
+			only_model := args[0]->ToInt();
+		};
+		if(args->Size() > 1) {
+			only_input := args[1]->ToInt();
+		};
+
+		ok := true;
+		each(m : @models) {
+			if(only_model < 0 | only_model = m) {
+				for(k := 0; k < 8; k += 1;) {
+					if(only_input < 0 | only_input = k) {
+						passed := Probe(m, k);
+						verdict := "FAIL";
+						if(passed) {
+							verdict := "PASS";
+						};
+						name := @models[m];
+						"{$verdict}: {$name} input {$k}"->PrintLine();
+						ok := passed & ok;
+					};
+				};
+			};
+		};
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Report(text : String, passed : Bool) ~ Bool {
+		verdict := "FAIL";
+		if(passed) {
+			verdict := "PASS";
+		};
+		"{$verdict}: {$text}"->PrintLine();
+		return passed;
+	}
+
+	# the three Bool models read the label from the last column of Score's matrix, so Score
+	# wants the width they were fitted on; Predict takes that width or one less
+	function : BoolWidths() ~ Nil {
+		Build();
+		ok := true;
+		narrow := Bool->New[8, 2];
+		wide := Bool->New[8, 4];
+
+		# the label is the first feature: a stump predicts it, which AdaBoost needs to fit anything
+		# (the shared matrix's label is not a function of its features), and a row of the right
+		# width is read correctly where a row of another width gets the default
+		simple := Bool->New[8, 3];
+		each(i : 8) {
+			simple[i, 0] := i % 2 = 0;
+			simple[i, 1] := (i / 2) % 2 = 0;
+			simple[i, 2] := simple[i, 0];
+		};
+
+		forest := RandomForest->New(3);
+		ok := Report("an unfitted RandomForest has no prediction for a good matrix", forest->Predict(@boolean) = Nil) & ok;
+		ok := Report("an unfitted RandomForest has no score", forest->PredictScore(@boolean) = Nil) & ok;
+		forest->Fit(@boolean);
+		ok := Report("RandomForest Score on the width fitted on is a number", forest->Score(@boolean) > 0.0) & ok;
+		ok := Report("RandomForest Score on one column less is 0.0", forest->Score(narrow) = 0.0) & ok;
+		ok := Report("RandomForest Score on one column more is 0.0", forest->Score(wide) = 0.0) & ok;
+		ok := Report("RandomForest Predict on one column less still predicts", forest->Predict(narrow) <> Nil) & ok;
+		ok := Report("RandomForest Predict on one column more is Nil", forest->Predict(wide) = Nil) & ok;
+
+		boost := AdaBoost->New(3);
+		ok := Report("AdaBoost fits a matrix whose label a stump predicts", boost->Fit(simple)) & ok;
+		ok := Report("AdaBoost Score on the width fitted on is a number", boost->Score(simple) > 0.0) & ok;
+		ok := Report("AdaBoost Score on one column less is 0.0", boost->Score(narrow) = 0.0) & ok;
+		ok := Report("AdaBoost Score on one column more is 0.0", boost->Score(wide) = 0.0) & ok;
+		ok := Report("AdaBoost Predict on one column less still predicts", boost->Predict(narrow) <> Nil) & ok;
+		ok := Report("AdaBoost Predict on one column more is Nil", boost->Predict(wide) = Nil) & ok;
+
+		tree := DecisionTree->New(3, 1);
+		tree->Fit(@boolean);
+		ok := Report("DecisionTree Score on the width fitted on is a number", tree->Score(@boolean) > 0.0) & ok;
+		ok := Report("DecisionTree Score on one column less is 0.0", tree->Score(narrow) = 0.0) & ok;
+		ok := Report("DecisionTree Score on one column more is 0.0", tree->Score(wide) = 0.0) & ok;
+		ok := Report("DecisionTree PredictAll on one column less still predicts", tree->PredictAll(narrow) <> Nil) & ok;
+		ok := Report("DecisionTree PredictAll on one column more is Nil", tree->PredictAll(wide) = Nil) & ok;
+
+		single := DecisionTree->New(3, 1);
+		single->Fit(simple);
+		ok := Report("DecisionTree Predict(row) of the features alone", single->Predict([true, false])) & ok;
+		ok := Report("DecisionTree Predict(row) of the features and the label", single->Predict([true, false, true])) & ok;
+		ok := Report("DecisionTree Predict(row) of one feature is false, not a partial walk", single->Predict([true]) = false) & ok;
+		ok := Report("DecisionTree Predict(row) of five columns is false", single->Predict([true, false, true, true, true]) = false) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	# RegressionTree->Predict(row) and the DecisionTreeClassifier row bounds
+	function : Rows() ~ Nil {
+		Build();
+		ok := true;
+
+		tree := RegressionTree->New(3, 1);
+		tree->Fit(@good, @reg);
+		ok := Report("RegressionTree Predict(row) of the width fitted on", tree->Predict([4.0, 2.0]) > 0.0) & ok;
+		ok := Report("RegressionTree Predict(row) of one column less is 0.0", tree->Predict([4.0]) = 0.0) & ok;
+		ok := Report("RegressionTree Predict(row) of one column more is 0.0", tree->Predict([4.0, 2.0, 1.0]) = 0.0) & ok;
+
+		# FitRows names the rows to fit; an index outside the matrix, an empty list and a Nil one are refused
+		classifier := DecisionTreeClassifier->New(3, 1);
+		none : Int[] := Nil;
+		ok := Report("FitRows with an index past the last row is false", classifier->FitRows(@good, @lab, [0, 1, 8]) = false) & ok;
+		ok := Report("FitRows with a negative index is false", classifier->FitRows(@good, @lab, [0, -1]) = false) & ok;
+		ok := Report("FitRows with no indexes is false", classifier->FitRows(@good, @lab, Int->New[0]) = false) & ok;
+		ok := Report("FitRows with a Nil list is false", classifier->FitRows(@good, @lab, none) = false) & ok;
+		ok := Report("a refused FitRows leaves the classifier unfitted", classifier->PredictScore(@good) = Nil) & ok;
+		ok := Report("FitRows with valid indexes fits", classifier->FitRows(@good, @lab, [0, 1, 2, 5, 6, 7, 7])) & ok;
+		ok := Report("and predicts", classifier->PredictScore(@good) <> Nil) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Build() ~ Nil {
+		@models := String->New[25];
+		@models[0] := "LinearRegression";
+		@models[1] := "RidgeRegression";
+		@models[2] := "ElasticNet";
+		@models[3] := "LassoRegression";
+		@models[4] := "LogisticRegression (matrix targets)";
+		@models[5] := "LogisticRegression (Bool targets)";
+		@models[6] := "Perceptron";
+		@models[7] := "SVM";
+		@models[8] := "GaussianNaiveBayes";
+		@models[9] := "RegressionTree";
+		@models[10] := "GradientBoostedTrees";
+		@models[11] := "DecisionTreeClassifier";
+		@models[12] := "RandomForestClassifier";
+		@models[13] := "GradientBoostedClassifier";
+		@models[14] := "PCA";
+		@models[15] := "FeatureScaler";
+		@models[16] := "DBSCAN";
+		@models[17] := "GaussianMixture";
+		@models[18] := "KernelSVM";
+		@models[19] := "OneClassSVM";
+		@models[20] := "RandomForest (Bool)";
+		@models[21] := "AdaBoost (Bool)";
+		@models[22] := "DecisionTree (Bool)";
+		@models[23] := "DenseNetwork";
+		@models[24] := "OutlierDetector (7 detectors)";
+
+		# 8 rows, 2 features
+		@good := Float->New[8, 2];
+		@reg := Float->New[8, 1];
+		@cls := Float->New[8, 1];
+		@lab := Bool->New[8];
+		each(i : 8) {
+			@good[i, 0] := i->As(Float);
+			@good[i, 1] := ((i * 3) % 5)->As(Float);
+			@reg[i, 0] := @good[i, 0] * 2.0 + @good[i, 1] + 1.0;
+			if(i >= 4) {
+				@cls[i, 0] := 1.0;
+				@lab[i] := true;
+			};
+		};
+
+		# 8 rows, 2 features and a label column, for the Bool models
+		@boolean := Bool->New[8, 3];
+		each(i : 8) {
+			@boolean[i, 0] := i % 2 = 0;
+			@boolean[i, 1] := (i / 2) % 2 = 0;
+			@boolean[i, 2] := i >= 4;
+		};
+	}
+
+	# The matrix under test. 0 to 4 are bad on their own; 5 to 7 are a good matrix whose
+	# targets are bad (see Targets and BoolTargets).
+	function : Matrix(k : Int) ~ Float[,] {
+		select(k) {
+			label 0: {
+				return Nil;
+			}
+
+			label 1: {
+				return Float->New[0, 0];
+			}
+
+			label 2: {
+				return Float->New[0, 2];
+			}
+
+			label 3: {
+				return Float->New[3, 5];
+			}
+
+			label 4: {
+				return Float->New[3, 0];
+			}
+
+			other: {
+				return @good;
+			}
+		};
+	}
+
+	function : Targets(k : Int, good : Float[,]) ~ Float[,] {
+		select(k) {
+			label 5: {
+				return Nil;
+			}
+
+			label 6: {
+				return Float->New[0, 1];
+			}
+
+			label 7: {
+				return Float->New[3, 1];
+			}
+
+			other: {
+				return good;
+			}
+		};
+	}
+
+	function : BoolTargets(k : Int) ~ Bool[] {
+		select(k) {
+			label 5: {
+				return Nil;
+			}
+
+			label 6: {
+				return Bool->New[0];
+			}
+
+			label 7: {
+				return Bool->New[3];
+			}
+
+			other: {
+				return @lab;
+			}
+		};
+	}
+
+	function : BoolMatrix(k : Int) ~ Bool[,] {
+		select(k) {
+			label 0: {
+				return Nil;
+			}
+
+			label 1: {
+				return Bool->New[0, 0];
+			}
+
+			label 2: {
+				return Bool->New[0, 3];
+			}
+
+			label 3: {
+				return Bool->New[3, 9];
+			}
+
+			label 4: {
+				return Bool->New[3, 0];
+			}
+
+			other: {
+				return @boolean;
+			}
+		};
+	}
+
+	# a Fit that must refuse: the matrix or the targets are bad on their own
+	function : FitMustFail(k : Int) ~ Bool {
+		return k <> 3;
+	}
+
+	function : Probe(m : Int, k : Int) ~ Bool {
+		ok := ProbeModel(m, k);
+		if(k >= 5) {
+			ok := BadTargets(m, k) & ok;
+		};
+		return ok;
+	}
+
+	# a fitted model asked to Score a good matrix against targets that do not match it
+	# answers 0.0, and still predicts for the good matrix
+	function : BadTargets(m : Int, k : Int) ~ Bool {
+		reg := Targets(k, @reg);
+		cls := Targets(k, @cls);
+		ok := true;
+		select(m) {
+			label 0: { model := LinearRegression->New(); model->Fit(@good, @reg); ok := (model->Score(@good, reg) = 0.0) & <>None(model->Predict(@good)); }
+			label 1: { model := RidgeRegression->New(0.1); model->Fit(@good, @reg); ok := (model->Score(@good, reg) = 0.0) & <>None(model->Predict(@good)); }
+			label 2: { model := ElasticNet->New(0.1, 0.5); model->Fit(@good, @reg); ok := (model->Score(@good, reg) = 0.0) & <>None(model->Predict(@good)); }
+			label 3: { model := LassoRegression->New(0.1); model->Fit(@good, @reg); ok := (model->Score(@good, reg) = 0.0) & <>None(model->Predict(@good)); }
+			label 4: { model := LogisticRegression->New(0.1, 20); model->Fit(@good, @cls); ok := (model->Score(@good, cls) = 0.0) & <>None(model->Predict(@good)); }
+			label 6: { model := Perceptron->New(0.1, 20); model->Fit(@good, @cls); ok := (model->Score(@good, cls) = 0.0) & <>None(model->Predict(@good)); }
+			label 7: { model := SVM->New(0.01, 0.1, 20); model->Fit(@good, @cls); ok := (model->Score(@good, cls) = 0.0) & <>None(model->Predict(@good)); }
+			label 8: { model := GaussianNaiveBayes->New(); model->Fit(@good, @cls); ok := (model->Score(@good, cls) = 0.0) & <>None(model->Predict(@good)); }
+			label 9: { model := RegressionTree->New(3, 1); model->Fit(@good, @reg); ok := (model->Score(@good, reg) = 0.0) & <>None(model->PredictAll(@good)); }
+			label 10: { model := GradientBoostedTrees->New(5, 0.3, 2, 1); model->Fit(@good, @reg); ok := (model->Score(@good, reg) = 0.0) & <>None(model->Predict(@good)); }
+			label 18: { model := KernelSVM->New(SvmKernel->RBF); model->Fit(@good, @lab); ok := (model->Score(@good, BoolTargets(k)) = 0.0) & <>None(model->DecisionFunction(@good)); }
+			other: { }
+		};
+		return ok;
+	}
+
+	function : ProbeModel(m : Int, k : Int) ~ Bool {
+		select(m) {
+			label 0: { return Linear(LinearRegression->New(), k); }
+			label 1: { return Linear(RidgeRegression->New(0.1), k); }
+			label 2: { return Linear(ElasticNet->New(0.1, 0.5), k); }
+			label 3: { return Linear(LassoRegression->New(0.1), k); }
+			label 4: { return LogisticMatrix(k); }
+			label 5: { return LogisticBool(k); }
+			label 6: { return PerceptronProbe(k); }
+			label 7: { return SvmProbe(k); }
+			label 8: { return BayesProbe(k); }
+			label 9: { return RegressionTreeProbe(k); }
+			label 10: { return BoostedProbe(k); }
+			label 11: { return TreeClassifierProbe(k); }
+			label 12: { return ForestClassifierProbe(k); }
+			label 13: { return BoostedClassifierProbe(k); }
+			label 14: { return PcaProbe(k); }
+			label 15: { return ScalerProbe(k); }
+			label 16: { return DbscanProbe(k); }
+			label 17: { return MixtureProbe(k); }
+			label 18: { return KernelSvmProbe(k); }
+			label 19: { return OneClassProbe(k); }
+			label 20: { return ForestBoolProbe(k); }
+			label 21: { return AdaBoostProbe(k); }
+			label 22: { return TreeBoolProbe(k); }
+			label 23: { return DenseProbe(k); }
+			label 24: { return OutlierProbe(k); }
+			other: { return false; }
+		};
+	}
+
+	function : None(a : Float[,]) ~ Bool {
+		return a = Nil | a->Size()[0] = 0;
+	}
+
+	function : None(a : Float[]) ~ Bool {
+		return a = Nil | a->Size() = 0;
+	}
+
+	function : None(a : Bool[]) ~ Bool {
+		return a = Nil | a->Size() = 0;
+	}
+
+	function : None(a : Int[]) ~ Bool {
+		return a = Nil | a->Size() = 0;
+	}
+
+	# LinearRegression, RidgeRegression, ElasticNet and LassoRegression share Fit/Predict/Score
+	function : Linear(model : Base, k : Int) ~ Bool {
+		x := Matrix(k);
+		y := Targets(k, @reg);
+		ok := true;
+
+		if(model->TypeOf(LinearRegression)) {
+			lin := model->As(LinearRegression);
+			ok := (lin->Fit(x, y) = false) & ok;
+			if(k < 5) {
+				fitted := LinearRegression->New();
+				fitted->Fit(@good, @reg);
+				ok := None(fitted->Predict(x)) & ok;
+				ok := (fitted->Score(x, @reg) = 0.0) & ok;
+			};
+		}
+		else if(model->TypeOf(RidgeRegression)) {
+			rr := model->As(RidgeRegression);
+			ok := (rr->Fit(x, y) = false) & ok;
+			if(k < 5) {
+				fitted := RidgeRegression->New(0.1);
+				fitted->Fit(@good, @reg);
+				ok := None(fitted->Predict(x)) & ok;
+				ok := (fitted->Score(x, @reg) = 0.0) & ok;
+			};
+		}
+		else if(model->TypeOf(LassoRegression)) {
+			la := model->As(LassoRegression);
+			ok := (la->Fit(x, y) = false) & ok;
+			if(k < 5) {
+				fitted := LassoRegression->New(0.1);
+				fitted->Fit(@good, @reg);
+				ok := None(fitted->Predict(x)) & ok;
+				ok := (fitted->Score(x, @reg) = 0.0) & ok;
+			};
+		}
+		else {
+			en := model->As(ElasticNet);
+			ok := (en->Fit(x, y) = false) & ok;
+			if(k < 5) {
+				fitted := ElasticNet->New(0.1, 0.5);
+				fitted->Fit(@good, @reg);
+				ok := None(fitted->Predict(x)) & ok;
+				ok := (fitted->Score(x, @reg) = 0.0) & ok;
+			};
+		};
+
+		return ok;
+	}
+
+	function : LogisticMatrix(k : Int) ~ Bool {
+		x := Matrix(k);
+		y := Targets(k, @cls);
+		ok := true;
+		model := LogisticRegression->New(0.1, 20);
+		ok := (model->Fit(x, y) = false) & ok;
+		if(k < 5) {
+			fitted := LogisticRegression->New(0.1, 20);
+			fitted->Fit(@good, @cls);
+			ok := None(fitted->Predict(x)) & ok;
+			ok := None(fitted->PredictClass(x)) & ok;
+			ok := (fitted->Score(x, @cls) = 0.0) & ok;
+		};
+		return ok;
+	}
+
+	function : LogisticBool(k : Int) ~ Bool {
+		x := Matrix(k);
+		y := BoolTargets(k);
+		ok := true;
+		model := LogisticRegression->New(0.1, 20);
+		ok := (model->Fit(x, y) = false) & ok;
+		if(k < 5) {
+			fitted := LogisticRegression->New(0.1, 20);
+			fitted->Fit(@good, @lab);
+			ok := None(fitted->PredictScore(x)) & ok;
+			ok := None(fitted->PredictClass(x)) & ok;
+		};
+		return ok;
+	}
+
+	function : PerceptronProbe(k : Int) ~ Bool {
+		x := Matrix(k);
+		y := Targets(k, @cls);
+		ok := true;
+		model := Perceptron->New(0.1, 20);
+		ok := (model->Fit(x, y) = false) & ok;
+		if(k < 5) {
+			fitted := Perceptron->New(0.1, 20);
+			fitted->Fit(@good, @cls);
+			ok := None(fitted->Predict(x)) & ok;
+			ok := None(fitted->PredictClass(x)) & ok;
+			ok := (fitted->Score(x, @cls) = 0.0) & ok;
+		};
+		return ok;
+	}
+
+	function : SvmProbe(k : Int) ~ Bool {
+		x := Matrix(k);
+		y := Targets(k, @cls);
+		ok := true;
+		model := SVM->New(0.01, 0.1, 20);
+		ok := (model->Fit(x, y) = false) & ok;
+		if(k < 5) {
+			fitted := SVM->New(0.01, 0.1, 20);
+			fitted->Fit(@good, @cls);
+			ok := None(fitted->Predict(x)) & ok;
+			ok := None(fitted->PredictClass(x)) & ok;
+			ok := (fitted->Score(x, @cls) = 0.0) & ok;
+		};
+		return ok;
+	}
+
+	function : BayesProbe(k : Int) ~ Bool {
+		x := Matrix(k);
+		y := Targets(k, @cls);
+		ok := true;
+		model := GaussianNaiveBayes->New();
+		ok := (model->Fit(x, y) = false) & ok;
+		if(k < 5) {
+			fitted := GaussianNaiveBayes->New();
+			fitted->Fit(@good, @cls);
+			ok := None(fitted->Predict(x)) & ok;
+			ok := None(fitted->PredictClass(x)) & ok;
+			ok := (fitted->Score(x, @cls) = 0.0) & ok;
+		};
+		return ok;
+	}
+
+	function : RegressionTreeProbe(k : Int) ~ Bool {
+		x := Matrix(k);
+		y := Targets(k, @reg);
+		ok := true;
+		model := RegressionTree->New(3, 1);
+		ok := (model->Fit(x, y) = false) & ok;
+		if(k < 5) {
+			fitted := RegressionTree->New(3, 1);
+			fitted->Fit(@good, @reg);
+			ok := None(fitted->PredictAll(x)) & ok;
+			ok := (fitted->Score(x, @reg) = 0.0) & ok;
+		};
+		return ok;
+	}
+
+	function : BoostedProbe(k : Int) ~ Bool {
+		x := Matrix(k);
+		y := Targets(k, @reg);
+		ok := true;
+		model := GradientBoostedTrees->New(5, 0.3, 2, 1);
+		ok := (model->Fit(x, y) = false) & ok;
+		if(k < 5) {
+			fitted := GradientBoostedTrees->New(5, 0.3, 2, 1);
+			fitted->Fit(@good, @reg);
+			ok := None(fitted->Predict(x)) & ok;
+			ok := (fitted->Score(x, @reg) = 0.0) & ok;
+		};
+		return ok;
+	}
+
+	function : TreeClassifierProbe(k : Int) ~ Bool {
+		x := Matrix(k);
+		y := BoolTargets(k);
+		ok := true;
+		model := DecisionTreeClassifier->New(3, 1);
+		ok := (model->Fit(x, y) = false) & ok;
+		if(k < 5) {
+			fitted := DecisionTreeClassifier->New(3, 1);
+			fitted->Fit(@good, @lab);
+			ok := None(fitted->PredictScore(x)) & ok;
+			ok := None(fitted->Predict(x)) & ok;
+		};
+		return ok;
+	}
+
+	function : ForestClassifierProbe(k : Int) ~ Bool {
+		x := Matrix(k);
+		y := BoolTargets(k);
+		ok := true;
+		model := RandomForestClassifier->New(4, 3, 1, 1);
+		ok := (model->Fit(x, y) = false) & ok;
+		if(k < 5) {
+			fitted := RandomForestClassifier->New(4, 3, 1, 1);
+			fitted->Fit(@good, @lab);
+			ok := None(fitted->PredictScore(x)) & ok;
+			ok := None(fitted->Predict(x)) & ok;
+		};
+		return ok;
+	}
+
+	function : BoostedClassifierProbe(k : Int) ~ Bool {
+		x := Matrix(k);
+		y := BoolTargets(k);
+		ok := true;
+		model := GradientBoostedClassifier->New(4, 0.3, 2, 1);
+		ok := (model->Fit(x, y) = false) & ok;
+		if(k < 5) {
+			fitted := GradientBoostedClassifier->New(4, 0.3, 2, 1);
+			fitted->Fit(@good, @lab);
+			ok := None(fitted->PredictRaw(x)) & ok;
+			ok := None(fitted->PredictScore(x)) & ok;
+			ok := None(fitted->Predict(x)) & ok;
+		};
+		return ok;
+	}
+
+	function : PcaProbe(k : Int) ~ Bool {
+		x := Matrix(k);
+		ok := true;
+		if(k < 5) {
+			model := PCA->New(2);
+			if(FitMustFail(k)) {
+				ok := (model->Fit(x) = false) & ok;
+			}
+			else if(model->Fit(x)) {
+				ok := None(model->Transform(@good)) & ok;
+			};
+			fitted := PCA->New(2);
+			fitted->Fit(@good);
+			ok := None(fitted->Transform(x)) & ok;
+			ok := None(fitted->InverseTransform(x)) & ok;
+		};
+		return ok;
+	}
+
+	function : ScalerProbe(k : Int) ~ Bool {
+		x := Matrix(k);
+		ok := true;
+		if(k < 5) {
+			model := FeatureScaler->New();
+			if(FitMustFail(k)) {
+				ok := (model->Fit(x) = false) & ok;
+			}
+			else if(model->Fit(x)) {
+				ok := None(model->Transform(@good)) & ok;
+			};
+			fitted := FeatureScaler->New();
+			fitted->Fit(@good);
+			ok := None(fitted->Transform(x)) & ok;
+			if(FitMustFail(k)) {
+				ok := None(FeatureScaler->New()->FitTransform(x)) & ok;
+			};
+		};
+		return ok;
+	}
+
+	function : DbscanProbe(k : Int) ~ Bool {
+		x := Matrix(k);
+		ok := true;
+		if(k < 5) {
+			model := DBSCAN->New(1.5, 2);
+			if(FitMustFail(k)) {
+				ok := (model->Fit(x) = false) & ok;
+			}
+			else {
+				ok := model->Fit(x) & ok;
+			};
+		};
+		return ok;
+	}
+
+	function : MixtureProbe(k : Int) ~ Bool {
+		x := Matrix(k);
+		ok := true;
+		if(k < 5) {
+			model := GaussianMixture->New(2, 1);
+			if(FitMustFail(k)) {
+				ok := (model->Fit(x) = false) & ok;
+			}
+			else if(model->Fit(x)) {
+				ok := None(model->Predict(@good)) & ok;
+			};
+			fitted := GaussianMixture->New(2, 1);
+			fitted->Fit(@good);
+			ok := None(fitted->Predict(x)) & ok;
+			ok := None(fitted->PredictClass(x)) & ok;
+		};
+		return ok;
+	}
+
+	function : KernelSvmProbe(k : Int) ~ Bool {
+		x := Matrix(k);
+		y := BoolTargets(k);
+		ok := true;
+		model := KernelSVM->New(SvmKernel->RBF);
+		ok := (model->Fit(x, y) = false) & ok;
+		if(k < 5) {
+			fitted := KernelSVM->New(SvmKernel->RBF);
+			fitted->Fit(@good, @lab);
+			ok := None(fitted->DecisionFunction(x)) & ok;
+			ok := None(fitted->PredictClass(x)) & ok;
+		};
+		return ok;
+	}
+
+	function : OneClassProbe(k : Int) ~ Bool {
+		x := Matrix(k);
+		ok := true;
+		if(k < 5) {
+			model := OneClassSVM->New(SvmKernel->RBF);
+			if(FitMustFail(k)) {
+				ok := (model->Fit(x) = false) & ok;
+			}
+			else if(model->Fit(x)) {
+				ok := None(model->DecisionFunction(@good)) & ok;
+			};
+			fitted := OneClassSVM->New(SvmKernel->RBF);
+			fitted->Fit(@good);
+			ok := None(fitted->DecisionFunction(x)) & ok;
+			ok := None(fitted->Predict(x)) & ok;
+			ok := None(fitted->IsOutlier(x)) & ok;
+		};
+		return ok;
+	}
+
+	function : Detectors() ~ OutlierDetector[] {
+		all := OutlierDetector->New[7];
+		all[0] := ZScoreDetector->New();
+		all[1] := IsolationForest->New();
+		all[2] := LocalOutlierFactor->New(3, 0.1, true);
+		all[3] := EllipticEnvelope->New();
+		all[4] := DbscanDetector->New(1.5, 2);
+		all[5] := AutoencoderDetector->New();
+		all[6] := OneClassSvmDetector->New();
+		return all;
+	}
+
+	# the seven outlier detectors share one interface
+	function : OutlierProbe(k : Int) ~ Bool {
+		x := Matrix(k);
+		ok := true;
+		if(k < 5) {
+			untrained := Detectors();
+			trained := Detectors();
+			each(d : trained) {
+				if(FitMustFail(k)) {
+					ok := (untrained[d]->Fit(x) = false) & ok;
+				}
+				else if(untrained[d]->Fit(x)) {
+					ok := None(untrained[d]->Score(@good)) & ok;
+				};
+				trained[d]->Fit(@good);
+				ok := None(trained[d]->Score(x)) & ok;
+				ok := None(trained[d]->Predict(x)) & ok;
+				ok := None(trained[d]->DecisionFunction(x)) & ok;
+			};
+		};
+		return ok;
+	}
+
+	function : DenseProbe(k : Int) ~ Bool {
+		x := Matrix(k);
+		y := Targets(k, @reg);
+		ok := true;
+		sizes := [2, 3, 1];
+		model := DenseNetwork->New(sizes, DenseNetwork->Activation->TANH, DenseNetwork->Activation->LINEAR, 1);
+		ok := (model->Fit(x, y, 2) < 0.0) & ok;
+		if(k < 5) {
+			fitted := DenseNetwork->New(sizes, DenseNetwork->Activation->TANH, DenseNetwork->Activation->LINEAR, 1);
+			fitted->Fit(@good, @reg, 2);
+			ok := None(fitted->Predict(x)) & ok;
+		};
+		return ok;
+	}
+
+	function : ForestBoolProbe(k : Int) ~ Bool {
+		x := BoolMatrix(k);
+		ok := true;
+		if(k < 5) {
+			model := RandomForest->New(3);
+			model->Fit(x);
+			if(FitMustFail(k)) {
+				ok := (model->IsFitted() = false) & ok;
+			}
+			else {
+				ok := None(model->Predict(BoolMatrix(5))) & ok;
+			};
+			fitted := RandomForest->New(3);
+			fitted->Fit(@boolean);
+			ok := None(fitted->Predict(x)) & ok;
+			ok := None(fitted->PredictScore(x)) & ok;
+			ok := (fitted->Score(x) = 0.0) & ok;
+		};
+		return ok;
+	}
+
+	function : AdaBoostProbe(k : Int) ~ Bool {
+		x := BoolMatrix(k);
+		ok := true;
+		if(k < 5) {
+			model := AdaBoost->New(3);
+			if(FitMustFail(k)) {
+				ok := (model->Fit(x) = false) & ok;
+			}
+			else if(model->Fit(x)) {
+				ok := None(model->Predict(BoolMatrix(5))) & ok;
+			};
+			fitted := AdaBoost->New(3);
+			fitted->Fit(@boolean);
+			ok := None(fitted->Predict(x)) & ok;
+			ok := (fitted->Score(x) = 0.0) & ok;
+		};
+		return ok;
+	}
+
+	function : TreeBoolProbe(k : Int) ~ Bool {
+		x := BoolMatrix(k);
+		ok := true;
+		if(k < 5) {
+			model := DecisionTree->New(3, 1);
+			model->Fit(x);
+			if(FitMustFail(k)) {
+				ok := (model->IsFitted() = false) & ok;
+			}
+			else {
+				ok := None(model->PredictAll(BoolMatrix(5))) & ok;
+			};
+			fitted := DecisionTree->New(3, 1);
+			fitted->Fit(@boolean);
+			ok := None(fitted->PredictAll(x)) & ok;
+			ok := (fitted->Score(x) = 0.0) & ok;
+		};
+		return ok;
+	}
+}

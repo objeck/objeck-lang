@@ -1675,11 +1675,6 @@ void* MemoryManager::CheckStack(void* arg)
     }
   }
 
-#ifndef _WIN32
-#ifndef _GC_SERIAL
-  pthread_exit(nullptr);
-#endif
-#endif
     
   return 0;  
 }
@@ -1971,9 +1966,6 @@ void* MemoryManager::CheckJitRoots([[maybe_unused]] void* arg)
 
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&jit_frame_lock);
-#ifndef _WIN32
-  pthread_exit(nullptr);
-#endif
 #endif
 
   return 0;
@@ -2222,7 +2214,6 @@ void* MemoryManager::CheckPdaRoots([[maybe_unused]] void* arg)
     std::wcerr << L"Unable to join garbage collection threads!" << std::endl;
     VmExit(-1);
   }
-  pthread_exit(nullptr);
 #endif
 #endif
 
