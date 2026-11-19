@@ -1,0 +1,116 @@
+# EXTRA_LIBS: ml_cnn,ml,ml_lab,opencv,csv,gen_collect
+#~
+System.ML.Cnn against PyTorch in float64, at 64 x 64, over 20 Adam steps.
+
+The float32 parity test (ml_cnn_parity.obs) runs at 32 x 32. At 64 x 64 a float32 training curve
+drifts from any other float32 implementation: in PyTorch itself, float32 differs from float64 by
+5e-4 after 20 steps here and by 6% at 128 x 128, while this engine's float32 run differs from
+float64 by 4e-3 at 64 x 64 and 2e-4 at 128 x 128. Which side is nearer the truth changes with the
+size and the data, because Adam divides by sqrt(v): an entry whose gradient is near zero, or a ReLU
+input within rounding of zero, flips with the order of a float32 sum and the flip is amplified at
+every later step. That noise says nothing about the code, so a float32 comparison at this size
+cannot be a test. What can: the float64 build of this engine (CnnModel->NewReference) is the same
+code, so it must reproduce PyTorch float64 to rounding, and any wrong formula (Adam epsilon
+placement, bias correction, a gradient, the loss reduction) shows up as a difference of 1e-3 or
+more. The 20 losses below come from tools/ml/cnn_f64_reference.py (PyTorch float64); weights,
+inputs and labels come from an integer generator that both sides implement, so no data file is
+needed. The test also checks that the float32 model stays within 2e-2 of the float64 curve, which
+is a loose bound (measured 1e-7 on this data, 4e-3 on other data) that still catches a broken float32 path.
+~#
+
+use System.ML.Cnn;
+
+class MlCnnParity64 {
+	@state : static : Int;
+
+	function : Draw() ~ Float {
+		@state := (@state * 1103515245 + 12345) % 2147483648;
+		return @state->As(Float) / 2147483648.0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		expected := [0.8393535472079767, 0.7123382551193478, 0.689809156048004, 0.7137717543947347, 0.671548181641192, 0.701905312061874, 0.6617446681324084, 0.6814993034171679, 0.6580223637906478, 0.6598069268665565, 0.6546221995301252, 0.63574950073469, 0.6474301584867758, 0.6165691839128301, 0.6328013615202852, 0.5989968020027847, 0.5945040546243381, 0.5940207438199464, 0.5531037865988753, 0.5745260906015535];
+		f64 := Run(true);
+		f32 := Run(false);
+		worst64 := 0.0;
+		worst32 := 0.0;
+		each(s : 20) {
+			worst64 := Float->Max(worst64, Float->Abs(f64[s] - expected[s]) / expected[s]);
+			worst32 := Float->Max(worst32, Float->Abs(f32[s] - expected[s]) / expected[s]);
+		};
+		"  float64 engine against PyTorch float64: worst relative loss difference {$(worst64 * 1.0e12)}e-12"->PrintLine();
+		"  float32 engine against PyTorch float64: worst relative loss difference {$(worst32 * 1.0e6)}e-6"->PrintLine();
+		ok := worst64 < 1.0e-7 & worst32 < 2.0e-2;
+		if(ok = false) {
+			"  FAIL: the float64 engine must match PyTorch float64 to 1e-7, the float32 engine to 2e-2"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"ml_cnn_parity64: ok"->PrintLine();
+	}
+
+	function : Run(reference : Bool) ~ Float[] {
+		@state := 4242;
+		model := CnnModel->New(3, 64, 64, 1, reference);
+		ok := true;
+		filters := [16, 32, 64];
+		each(b : 3) {
+			ok := ok & model->AddConv(filters[b], 3, 1, Padding->VALID) & model->AddReLU() & model->AddMaxPool(2);
+		};
+		ok := ok & model->AddFlatten() & model->AddDense(16) & model->AddReLU() & model->AddDense(1) & model->Compile(0.001);
+		if(ok = false) {
+			"  FAIL: cannot build: {$model->GetError()}"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		# weights: uniform within the Glorot limit, biases within 0.1, drawn layer by layer
+		counts := [432, 4608, 18432, 36864, 16];
+		fan_in := [27, 144, 288, 2304, 16];
+		fan_out := [144, 288, 576, 16, 1];
+		biases := [16, 32, 64, 16, 1];
+		weights := Float->New[model->GetParameterCount()];
+		at := 0;
+		each(g : 5) {
+			scale := 2.0 * Float->Sqrt(6.0 / (fan_in[g] + fan_out[g])->As(Float));
+			each(i : counts[g]) {
+				weights[at] := (Draw() - 0.5) * scale;
+				at += 1;
+			};
+			each(i : biases[g]) {
+				weights[at] := (Draw() - 0.5) * 0.2;
+				at += 1;
+			};
+		};
+		model->SetWeights(weights);
+
+		xs := Float->New[2, 4 * 3 * 64 * 64];
+		ys := Float->New[2, 4];
+		each(b : 2) {
+			each(k : 4) {
+				shift := (Draw() - 0.5) * 0.5;
+				ys[b, k] := shift > 0.0 ? 1.0 : 0.0;
+				each(i : 12288) {
+					v := Draw() + shift;
+					col := k * 3 * 64 * 64 + i;
+					xs[b, col] := Float->Min(Float->Max(v, 0.0), 1.0);
+				};
+			};
+		};
+
+		losses := Float->New[20];
+		each(s : 20) {
+			b := s % 2;
+			x := Float->New[4 * 3 * 64 * 64];
+			y := Float->New[4];
+			each(i : x) {
+				x[i] := xs[b, i];
+			};
+			each(i : y) {
+				y[i] := ys[b, i];
+			};
+			losses[s] := model->TrainBatch(x, y);
+		};
+		model->Close();
+
+		return losses;
+	}
+}
