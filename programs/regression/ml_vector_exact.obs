@@ -96,7 +96,7 @@ class MlVectorExact {
 			ok := Report(name + ": in id order a, b, c", hits->Get(0)->GetId()->Equals("a") & hits->Get(1)->GetId()->Equals("b") & hits->Get(2)->GetId()->Equals("c")) & ok;
 			ok := Report(name + ": and with equal scores", hits->Get(0)->GetScore() = hits->Get(2)->GetScore()) & ok;
 
-			# a tie for the last place in the top-k: the smaller id wins it
+			# a tie for the last place in the top-k: the smaller id wins it (bit-identical vectors)
 			if(metric = VectorMetric->L2) {
 				index->Add("far1", [9.0, 9.0]);
 				index->Add("far0", [9.0, 9.0]);
@@ -104,14 +104,28 @@ class MlVectorExact {
 				ok := Report(name + ": edge tie keeps the smaller id", hits->Get(0)->GetId()->Equals("far0") & hits->Get(1)->GetId()->Equals("far1")) & ok;
 			}
 			else {
-				# a parallel vector of larger length leads for dot; cosine ties all of them, so id order rules
+				# a parallel vector of larger length leads for dot. Under cosine it ties with the
+				# others only mathematically (acc * inv_norm * q_scale can differ in the last bit),
+				# so the test asks for the score, not for which of the tied ids comes first
 				index->Add("z", [3.0, 6.0]);
 				hits := index->Search([1.0, 2.0], 5);
-				first := "z";
+				ok := Report(name + ": all five come back", hits->Size() = 5) & ok;
 				if(metric = VectorMetric->COSINE) {
-					first := "a";
+					near_one := true;
+					each(h : hits) {
+						diff := hits->Get(h)->GetScore() - 1.0;
+						if(diff < 0.0) {
+							diff := -diff;
+						};
+						if(diff > 1.0e-12 | hits->Get(h)->GetScore() > 1.0) {
+							near_one := false;
+						};
+					};
+					ok := Report(name + ": parallel vectors all score 1 (never above it)", near_one) & ok;
+				}
+				else {
+					ok := Report(name + ": the longer parallel vector leads", hits->Get(0)->GetId()->Equals("z")) & ok;
 				};
-				ok := Report(name + ": leader is " + first, hits->Get(0)->GetId()->Equals(first)) & ok;
 			};
 
 			# the reverse insert order gives the same ranking

@@ -136,8 +136,8 @@ class MlVectorPersist {
 			ok := Report("truncated to {$cuts[c]} of {$n} bytes is Nil", LoadBytes(dir, cut) = Nil) & ok;
 		};
 
-		# one flipped bit at a time: the tag, the version, the CRC, early and late body
-		spots := [0, 3, 4, 8, 11, 12, 13, 40, n / 2, n - 1];
+		# one changed byte at a time: the tag, the version, the reserved bytes, the CRC, early and late body
+		spots := [0, 3, 4, 5, 6, 7, 8, 11, 12, 13, 40, n / 2, n - 1];
 		each(s : spots) {
 			bad := Byte->Copy(good);
 			bad[spots[s]] := (bad[spots[s]]->As(Int) + 1)->As(Byte);

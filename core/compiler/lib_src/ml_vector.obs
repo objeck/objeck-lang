@@ -78,9 +78,13 @@ bundle System.ML.VectorSearch {
 	#~
 	An exact nearest-neighbour index over Float vectors of one fixed dimension, each stored under a unique String id.
 
-	No call here ends the program on bad input. Add, Remove and Store return false, Search returns an empty vector, Get returns Nil and Load returns Nil; GetError() then says why. An index made with a dimension below 1 is not valid (IsValid() is false) and refuses everything.
+	No call here ends the program on bad input. Add, Remove and Store return false, Search returns an empty vector and Get returns Nil, and GetError() on that index says why. Load is a function with no index to ask, so it returns Nil and gives no reason. An index made with a dimension below 1 is not valid (IsValid() is false) and refuses everything.
 
-	A search scans every stored vector, so the cost is size x dimension; there is no approximate mode. Ties on the score are broken by id, smallest first, so results do not depend on the order vectors were added or removed in. NaN and infinite values are refused.
+	Values: NaN and infinity are refused, and so is any nonzero value whose magnitude is below 1e-100 or above 1e100 (zero is fine). Inside that range no square, sum of squares, difference or product can overflow or underflow, so every score is finite; outside it a norm would become infinity or zero and a cosine would silently read 0. Rescale such data before adding it.
+
+	A search scans every stored vector, so the cost is size x dimension; there is no approximate mode. Ties on the score are broken by id, smallest first, so results do not depend on the order vectors were added or removed in. That holds for bit-identical scores: two vectors that tie only mathematically (parallel vectors of different length under COSINE, say) can differ in the last bit and then rank by that bit and not by id. COSINE scores are clamped to [-1, 1].
+
+	Not thread-safe: Search records its refusals in the index, so concurrent calls on one index (or a call beside Add or Remove) need the caller's lock. Memory: 8 bytes per value; the first Add at the largest dimension (1,048,576) allocates a 128 MB block, and Load holds the file, its body and the decoded vectors at once, about three times the file size at its peak.
 
 ```
 index := VectorIndex->New(3, VectorMetric->COSINE);
@@ -239,7 +243,7 @@ index->Store("pets.vix");
 		#~
 		Stores a vector under an id; an id that is already present has its vector replaced. The vector is copied.
 		@param id unique id, not Nil or empty
-		@param vector vector of exactly the index's dimension, all values finite
+		@param vector vector of exactly the index's dimension; each value finite and zero or between 1e-100 and 1e100 in magnitude
 		@return true if stored, false if refused (GetError() says why)
 		~#
 		method : public : Add(id : String, vector : Float[]) ~ Bool {
@@ -263,24 +267,14 @@ index->Store("pets.vix");
 				return Fail("vector has {$vector->Size()} values, the index holds {$@dim}");
 			};
 
-			norm2 := 0.0;
-			v := 0.0;
-			each(j : @dim) {
-				v := vector[j];
-				# NaN is the only value unequal to itself; v - v is NaN for an infinity
-				if(v <> v | v - v <> 0.0) {
-					return Fail("vector has a NaN or infinite value at {$j}");
-				};
-				norm2 += v * v;
+			norm2 := SumSquares(vector, "vector");
+			if(norm2 < 0.0) {
+				return false;
 			};
 
 			inv_norm := 0.0;
 			if(norm2 > 0.0) {
-				len := Float->Sqrt(norm2);
-				# a squared length that overflowed or underflowed leaves no usable direction
-				if(len > 0.0 & len - len = 0.0) {
-					inv_norm := 1.0 / len;
-				};
+				inv_norm := 1.0 / Float->Sqrt(norm2);
 			};
 
 			@error := "";
@@ -355,13 +349,43 @@ index->Store("pets.vix");
 			block->GetInvNorms()[row] := inv_norm;
 		}
 
+		# The sum of squares of a vector the index accepts, or -1.0 (with the reason in
+		# @error) when it holds a NaN, an infinity, or a nonzero value whose magnitude is
+		# outside [MIN_MAGNITUDE, MAX_MAGNITUDE]. Inside that range no square, sum of
+		# squares, difference or product of two accepted values can overflow or lose its
+		# scale, so every score is finite and the heap never sees a NaN.
+		method : SumSquares(v : Float[], what : String) ~ Float {
+			sum := 0.0;
+			x := 0.0;
+			mag := 0.0;
+			each(j : @dim) {
+				x := v[j];
+				# NaN is the only value unequal to itself; x - x is NaN for an infinity
+				if(x <> x | x - x <> 0.0) {
+					Fail("{$what} has a NaN or infinite value at {$j}");
+					return -1.0;
+				};
+				mag := x;
+				if(mag < 0.0) {
+					mag := -mag;
+				};
+				if(mag > 0.0 & (mag < 1.0e-100 | mag > 1.0e100)) {
+					Fail("{$what} value {$x} at {$j} is outside the supported magnitude, zero or 1e-100 to 1e100");
+					return -1.0;
+				};
+				sum += x * x;
+			};
+
+			return sum;
+		}
+
 		method : Fail(message : String) ~ Bool {
 			@error := message;
 			return false;
 		}
 
 		#~
-		The k closest vectors to a query, closest first. Fewer than k come back when the index holds fewer, and none when the query is refused (Nil, the wrong length, a NaN or infinite value, k below 1) or the index is empty; GetError() says which. COSINE scores a vector or query of length zero as 0.
+		The k closest vectors to a query, closest first. Fewer than k come back when the index holds fewer, and none when the query is refused (Nil, the wrong length, a NaN, an infinite or out-of-range value, k below 1) or the index is empty; GetError() says which. COSINE scores a vector or query of length zero as 0.
 		@param query vector of exactly the index's dimension
 		@param k how many results to return
 		@return hits, closest first; empty, never Nil
@@ -388,15 +412,9 @@ index->Store("pets.vix");
 				return hits;
 			};
 
-			q2 := 0.0;
-			v := 0.0;
-			each(j : @dim) {
-				v := query[j];
-				if(v <> v | v - v <> 0.0) {
-					Fail("query has a NaN or infinite value at {$j}");
-					return hits;
-				};
-				q2 += v * v;
+			q2 := SumSquares(query, "query");
+			if(q2 < 0.0) {
+				return hits;
 			};
 
 			@error := "";
@@ -413,9 +431,8 @@ index->Store("pets.vix");
 			q_scale := 1.0;
 			if(@metric = 0) {
 				q_scale := 0.0;
-				len := Float->Sqrt(q2);
-				if(len > 0.0 & len - len = 0.0) {
-					q_scale := 1.0 / len;
+				if(q2 > 0.0) {
+					q_scale := 1.0 / Float->Sqrt(q2);
 				};
 			};
 
@@ -458,6 +475,13 @@ index->Store("pets.vix");
 						key := acc;
 						if(metric = 0) {
 							key := acc * inv_norms[r] * q_scale;
+							# rounding can leave a cosine a hair outside [-1, 1]
+							if(key > 1.0) {
+								key := 1.0;
+							}
+							else if(key < -1.0) {
+								key := -1.0;
+							};
 						};
 					};
 
@@ -589,7 +613,7 @@ index->Store("pets.vix");
 		}
 
 		#~
-		Writes the index to a file: a header with a format tag and a CRC32 of the body, then the body (dimension, metric, count, and each id with its vector) through System.IO.Serializer.
+		Writes the index to a file: a 12-byte header (the tag OVIX, a format byte, three reserved zero bytes, a CRC32 of the body), then the body (dimension, metric, count, and each id with its vector) through System.IO.Serializer.
 		@param filename file to write
 		@return true if written, false if the index is invalid or the file cannot be written
 		~#
@@ -652,7 +676,7 @@ index->Store("pets.vix");
 				return Nil;
 			};
 
-			if(file[0] <> 'O'->As(Byte) | file[1] <> 'V'->As(Byte) | file[2] <> 'I'->As(Byte) | file[3] <> 'X'->As(Byte) | file[4] <> 1->As(Byte)) {
+			if(file[0] <> 'O'->As(Byte) | file[1] <> 'V'->As(Byte) | file[2] <> 'I'->As(Byte) | file[3] <> 'X'->As(Byte) | file[4] <> 1->As(Byte) | file[5] <> 0->As(Byte) | file[6] <> 0->As(Byte) | file[7] <> 0->As(Byte)) {
 				return Nil;
 			};
 

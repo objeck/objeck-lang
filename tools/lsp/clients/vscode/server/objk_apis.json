@@ -16223,7 +16223,7 @@
 			}
 		},
 		"System.ML.VectorSearch.VectorIndex": {
-			"description": "An exact nearest-neighbour index over Float vectors of one fixed dimension, each stored under a unique String id.\n\nNo call here ends the program on bad input. Add, Remove and Store return false, Search returns an empty vector, Get returns Nil and Load returns Nil; GetError() then says why. An index made with a dimension below 1 is not valid (IsValid() is false) and refuses everything.\n\nA search scans every stored vector, so the cost is size x dimension; there is no approximate mode. Ties on the score are broken by id, smallest first, so results do not depend on the order vectors were added or removed in. NaN and infinite values are refused.",
+			"description": "An exact nearest-neighbour index over Float vectors of one fixed dimension, each stored under a unique String id.\n\nNo call here ends the program on bad input. Add, Remove and Store return false, Search returns an empty vector and Get returns Nil, and GetError() on that index says why. Load is a function with no index to ask, so it returns Nil and gives no reason. An index made with a dimension below 1 is not valid (IsValid() is false) and refuses everything.\n\nValues: NaN and infinity are refused, and so is any nonzero value whose magnitude is below 1e-100 or above 1e100 (zero is fine). Inside that range no square, sum of squares, difference or product can overflow or underflow, so every score is finite; outside it a norm would become infinity or zero and a cosine would silently read 0. Rescale such data before adding it.\n\nA search scans every stored vector, so the cost is size x dimension; there is no approximate mode. Ties on the score are broken by id, smallest first, so results do not depend on the order vectors were added or removed in. That holds for bit-identical scores: two vectors that tie only mathematically (parallel vectors of different length under COSINE, say) can differ in the last bit and then rank by that bit and not by id. COSINE scores are clamped to [-1, 1].\n\nNot thread-safe: Search records its refusals in the index, so concurrent calls on one index (or a call beside Add or Remove) need the caller's lock. Memory: 8 bytes per value; the first Add at the largest dimension (1,048,576) allocates a 128 MB block, and Load holds the file, its body and the decoded vectors at once, about three times the file size at its peak.",
 			"functions": {
 				"Add": {
 					"descriptions": ["**Stores a vector under an id; an id that is already present has its vector replaced. The vector is copied.**\n\n```method : public : Add(id:String, vector:Float[]) ~ Bool```\n\n\n\nid: String\n\nvector: Float[]\n\nreturn: Bool"]
@@ -16259,13 +16259,13 @@
 					"descriptions": ["**Removes a vector.**\n\n```method : public : Remove(id:String) ~ Bool```\n\n\n\nid: String\n\nreturn: Bool"]
 				},
 				"Search": {
-					"descriptions": ["**The k closest vectors to a query, closest first. Fewer than k come back when the index holds fewer, and none when the query is refused (Nil, the wrong length, a NaN or infinite value, k below 1) or the index is empty; GetError() says which. COSINE scores a vector or query of length zero as 0.**\n\n```method : public : Search(query:Float[], k:Int) ~ Vector&lt;VectorHit&gt;```\n\n\n\nquery: Float[]\n\nk: Int\n\nreturn: Vector&lt;VectorHit&gt;"]
+					"descriptions": ["**The k closest vectors to a query, closest first. Fewer than k come back when the index holds fewer, and none when the query is refused (Nil, the wrong length, a NaN, an infinite or out-of-range value, k below 1) or the index is empty; GetError() says which. COSINE scores a vector or query of length zero as 0.**\n\n```method : public : Search(query:Float[], k:Int) ~ Vector&lt;VectorHit&gt;```\n\n\n\nquery: Float[]\n\nk: Int\n\nreturn: Vector&lt;VectorHit&gt;"]
 				},
 				"Size": {
 					"descriptions": ["**Number of vectors stored.**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"Store": {
-					"descriptions": ["**Writes the index to a file: a header with a format tag and a CRC32 of the body, then the body (dimension, metric, count, and each id with its vector) through System.IO.Serializer.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
+					"descriptions": ["**Writes the index to a file: a 12-byte header (the tag OVIX, a format byte, three reserved zero bytes, a CRC32 of the body), then the body (dimension, metric, count, and each id with its vector) through System.IO.Serializer.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
 				}
 			}
 		},
