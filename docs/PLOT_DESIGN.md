@@ -78,7 +78,13 @@ is `lib/sdl/fonts/lato.ttf`; when it is absent the backend falls back to `String
 2. **More charts** (stacked on #1610): heatmap and confusion matrix (annotated cells), box plot, text annotations, ROC
    and precision-recall helpers (`System.ML` PR #1607 adds the metrics; the helpers take the curve
    points as arrays, so they do not depend on it at link time).
-3. **SDL2 backend**: window with zoom/pan/hover, PNG export, headless test.
+3. **SDL2 backend** (stacked on #1612): `plot_sdl.obl` with `PlotWindow` (wheel zoom about the
+   pointer, drag to pan, hover readout, R to reset, Escape to close), `PlotPng` (software
+   surface, no display) and `SdlCanvas` (the scene walker). `Axes` gained `Zoom`, `Pan`, `DataAt`,
+   `GetPlotRect` and `Figure->AxesAt`, which are plain arithmetic and are tested without SDL
+   (`plot_view.obs`). Verified headless with the dummy driver: exact pixel colors per primitive,
+   clipping, text, a figure's marker, PNG signature, size and load-back, and a hidden window
+   driven through its handlers and closed by a user event (`plot_sdl.obs`).
 
 ## Risks
 

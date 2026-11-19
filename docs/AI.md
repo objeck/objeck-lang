@@ -41,6 +41,7 @@ All AI and ML capabilities are **standard library** — no third-party packages,
   - [Model Persistence](#model-persistence)
   - [Local vector search (System.ML.VectorSearch)](#local-vector-search-systemmlvectorsearch)
   - [Plotting (System.Plot)](#plotting-systemplot)
+    - [In a window, or as a PNG (System.Plot.SDL)](#in-a-window-or-as-a-png-systemplotsdl)
 - [Classic AI (System.AI)](#classic-ai-systemai)
   - [Graph Search](#graph-search)
   - [Game Playing](#game-playing)
@@ -1323,9 +1324,27 @@ board->GetAxes(0, 1)->Hist("", residuals, 12);
 board->Save("dashboard.svg");
 ```
 
-Bad input never produces a broken picture: a mismatched length, a NaN or infinite value, a non-positive value on a log axis, bars without categories or an empty axes raise `PlotError` (`try { } on(e : PlotError) { }`). A `Figure` draws into a `PlotScene`, an ordered list of pixel-space primitives (lines, polylines, polygons, rects, circles, text with an anchor), and `SvgWriter` turns that into text; `fig->ToScene()` is the hook a second backend would use. The library is allowed in the web playground, since SVG needs no display.
+Bad input never produces a broken picture: a mismatched length, a NaN or infinite value, a non-positive value on a log axis, bars without categories or an empty axes raise `PlotError` (`try { } on(e : PlotError) { }`). A `Figure` draws into a `PlotScene`, an ordered list of pixel-space primitives (lines, polylines, polygons, rects, circles, text with an anchor), and `SvgWriter` turns that into text; `fig->ToScene()` is the hook a second backend would use. The library is allowed in the web playground, since SVG needs no display. For a window or a raster file there is a second library, `plot_sdl.obl` (below).
 
 A heatmap owns its axes and a box plot cannot share axes with other plots; both refuse otherwise. `RocCurve` and `PrCurve` take the matrix as it is, so `System.Plot` does not link `System.ML` (compile with `-lib ml,plot,gen_collect,csv` only when you call `Metrics`; `PrCurve` is in `System.ML` from the scores PR on). Two complete runs: [`programs/examples/ml/plot_demo.obs`](../programs/examples/ml/plot_demo.obs) writes four files (scatter, colored scatter, histogram, a dashboard), and [`programs/examples/ml/plot_evaluation.obs`](../programs/examples/ml/plot_evaluation.obs) writes the confusion matrix, the ROC curve and a three-panel classifier report. The tests are `plot_svg.obs` (scatter, histogram, line, bars, log axes, subplots) and `plot_svg_more.obs` (box statistics against a hand-worked sample, the legend's AUC against `Metrics->AucRoc`, annotation text, refusals). They check structure (one circle per point, one bar per bin, one box per group, a color bar only when points are colored), the histogram counts against hand-counted bins, the area of a density histogram, geometry (every coordinate inside the viewport) and a byte-for-byte golden per chart under `programs/regression/plot_golden/`; each golden has a control showing that one changed value changes the bytes.
+
+#### In a window, or as a PNG (System.Plot.SDL)
+
+`plot_sdl.obl` draws the same `PlotScene` with SDL2 (`-lib @plot,gen_collect`, which is `plot`, `plot_sdl` and `sdl2`). It is separate from `plot.obl` so that SVG-only programs, the web playground and headless CI never need SDL.
+
+```ruby
+use System.Plot;
+use System.Plot.SDL;
+
+# an interactive window: the wheel zooms about the pointer, dragging with the left button pans,
+# the pointer reads out the data position, R resets the view, Escape or closing ends it
+PlotWindow->New(fig, "my plot")->Run();      # false when there is no display
+
+# a PNG, with no window and no display: it draws on a software surface
+PlotPng->Save(fig, "plot.png");
+```
+
+Zoom and pan change the axes' limits (`Axes->Zoom`, `Axes->Pan`, `Axes->DataAt`, `Axes->ResetLimits`) and the scene is rebuilt, so ticks and labels stay sharp; a log axis zooms in log space, so a decade stays a decade; categorical axes and heatmaps do not zoom; a zoom stops short of the float limit instead of failing. Text uses SDL_ttf with the shipped `lib/sdl/fonts/lato.ttf` (or `SdlCanvas->SetFont`) and falls back to SDL2_gfx's 8x8 bitmap font when no font file is found. A PNG is not byte-identical across SDL, FreeType and SDL2_gfx versions the way the SVG is, which is why the SVG is the format the golden tests use; the PNG is tested by reading pixels back. A window needs a display; `SDL_VIDEODRIVER=dummy` runs the whole backend without one, which is how it is tested. A complete run is [`programs/examples/ml/plot_window.obs`](../programs/examples/ml/plot_window.obs), tested by `plot_sdl.obs` (exact pixel colors for each primitive, a clip, text, a figure's marker, PNG signature and size, a hidden window driven through zoom, pan, hover, reset and a user close event) and `plot_view.obs` (the zoom and pan arithmetic, with no SDL).
 
 ## Classic AI (System.AI)
 
@@ -1442,6 +1461,7 @@ obc -src program.obs -lib @ai -dest program.obe
 | `@data` | `xml`, `regex`, `csv`, `query`, `rss`, `misc`, `net`, `json`, `cipher` | parsing and querying structured data |
 | `@ml` | `gemini`, `openai`, `ollama`, `net_server`, `misc`, `net`, `json`, `cipher` | LLM clients: OpenAI, Gemini, Ollama |
 | `@ai` | `ai`, `ml`, `ml_lab`, `ml_vector`, `plot`, `nlp`, `csv`, `json` | local System.ML / System.ML.Lab / System.Plot / System.AI / System.NLP work |
+| `@plot` | `plot`, `plot_sdl`, `sdl2` | charts in a window or as PNG (SVG alone needs only `plot`) |
 | `@vision` | `opencv`, `onnx`, `nlp_onnx`, `models`, `nlp`, `json`, `cipher` | OpenCV and ONNX inference, BERT text embeddings |
 | `@game` | `sdl2`, `sdl_game`, `sdl_gl`, `json`, `gen_collect` | SDL games, 2D and OpenGL |
 
@@ -1553,7 +1573,7 @@ The libraries in this guide are covered by the regression suite in `programs/reg
 
 | Area | Tests |
 |---|---|
-| `System.Plot` | `plot_svg.obs`, `plot_svg_more.obs` (with goldens in `plot_golden/`) |
+| `System.Plot`, `System.Plot.SDL` | `plot_svg.obs`, `plot_svg_more.obs` (with goldens in `plot_golden/`), `plot_view.obs`, `plot_sdl.obs` |
 | `System.ML.VectorSearch` | `ml_vector_exact.obs`, `ml_vector_edges.obs`, `ml_vector_validation.obs`, `ml_vector_persist.obs` |
 | `System.ML` | `ml_*.obs`, e.g. `ml_kernel_svm_reference.obs` and `ml_one_class_svm_reference.obs` (against an independent reference, generated by `tools/ml/svm_reference/gen_reference_test.py`), `ml_outlier_*.obs`, `ml_lab_*.obs` |
 | `System.AI` | `ai_search_test.obs`, `ai_game_test.obs`, `ai_optimize_test.obs`, `ai_rl_test.obs` |

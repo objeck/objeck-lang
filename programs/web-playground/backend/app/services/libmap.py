@@ -73,7 +73,7 @@ for _libs, _reason in (
     (("models", "onnx", "opencv", "query_vision"), "it needs model files and native vision libraries"),
     (("nlp_onnx",), "it needs a model file and the ONNX runtime"),
     (("odbc", "query_odbc"), "it needs a database driver and network access"),
-    (("sdl2", "sdl_game", "sdl_gl", "lame"), "it needs a display or audio device"),
+    (("sdl2", "sdl_game", "sdl_gl", "plot_sdl", "lame"), "it needs a display or audio device"),
     (("json_stream",), "it streams from files"),
 ):
     for _l in _libs:

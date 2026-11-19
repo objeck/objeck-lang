@@ -1,0 +1,249 @@
+# EXTRA_LIBS: plot,gen_collect
+#~
+System.Plot interaction model: what a window does with the mouse, tested without one.
+
+Zoom and pan change an Axes' limits, and the scene is rebuilt from them, so everything an
+interactive window needs from System.Plot is arithmetic that can be checked here: the data
+under the pointer stays under it when zooming, a drag moves the data with the pointer, a log
+axis zooms in log space so a decade stays a decade, categorical axes and heatmaps do not
+zoom, ResetLimits returns to the data's range, and a pixel maps to the axes that own it.
+~#
+use System.Plot;
+
+class PlotViewModel {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		ok := ZoomKeepsThePointer() & ok;
+		ok := PanFollowsTheDrag() & ok;
+		ok := LogAxes() & ok;
+		ok := NoZoomWhereMeaningless() & ok;
+		ok := Hit() & ok;
+		ok := Refusals() & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.0001;
+	}
+
+	# a figure whose data runs 0..10 on both axes, so the nice range is exactly 0..10
+	function : Basic() ~ Figure {
+		fig := Figure->New(800, 480);
+		fig->GetAxes()->Scatter("pts", [0.0, 10.0], [0.0, 10.0]);
+		fig->ToScene();
+
+		return fig;
+	}
+
+	function : ZoomKeepsThePointer() ~ Bool {
+		ok := true;
+		fig := Basic();
+		ax := fig->GetAxes();
+		r := ax->GetPlotRect();
+		ok := Report("the plot rectangle is known after a draw (64, 32, 784, 432)", Near(r[0], 64.0) & Near(r[1], 32.0) & Near(r[2], 784.0) & Near(r[3], 432.0)) & ok;
+
+		# a quarter of the way across, half way down: data (2.5, 5.0)
+		px := r[0] + (r[2] - r[0]) * 0.25;
+		py := r[1] + (r[3] - r[1]) * 0.5;
+		at := ax->DataAt(px, py);
+		ok := Report("DataAt reads (2.5, 5) there", Near(at[0], 2.5) & Near(at[1], 5.0)) & ok;
+
+		ok := Report("zooming in reports a change", ax->Zoom(px, py, 2.0)) & ok;
+		fig->ToScene();
+		xa := ax->GetXAxis();
+		ya := ax->GetYAxis();
+		ok := Report("x is now 1.25 .. 6.25 (half the range around the pointer)", Near(xa->GetLo(), 1.25) & Near(xa->GetHi(), 6.25)) & ok;
+		ok := Report("y is now 2.5 .. 7.5", Near(ya->GetLo(), 2.5) & Near(ya->GetHi(), 7.5)) & ok;
+		after := ax->DataAt(px, py);
+		ok := Report("the data under the pointer did not move", Near(after[0], 2.5) & Near(after[1], 5.0)) & ok;
+
+		ax->Zoom(px, py, 0.5);
+		fig->ToScene();
+		ok := Report("zooming out by the reciprocal returns to 0 .. 10", Near(ax->GetXAxis()->GetLo(), 0.0) & Near(ax->GetXAxis()->GetHi(), 10.0)) & ok;
+
+		ax->Zoom(px, py, 4.0);
+		ax->ResetLimits();
+		fig->ToScene();
+		ok := Report("ResetLimits returns to the data's range", Near(ax->GetXAxis()->GetLo(), 0.0) & Near(ax->GetXAxis()->GetHi(), 10.0) & Near(ax->GetYAxis()->GetHi(), 10.0)) & ok;
+
+		ok := Report("a zero or negative factor is refused", ax->Zoom(px, py, 0.0) = false & ax->Zoom(px, py, -2.0) = false) & ok;
+
+		# a wheel notch is 1.25
+		ok := Report("a wheel notch is 1.25 in and 0.8 out", Near(Wheel(1), 1.25) & Near(Wheel(-1), 0.8) & Near(Wheel(2), 1.5625) & Near(Wheel(0), 1.0)) & ok;
+
+		return ok;
+	}
+
+	function : Wheel(notches : Int) ~ Float {
+		factor := 1.0;
+		steps := notches;
+		if(steps < 0) {
+			steps := -steps;
+		};
+		each(i : steps) {
+			factor *= 1.25;
+		};
+		if(notches < 0) {
+			return 1.0 / factor;
+		};
+
+		return factor;
+	}
+
+	function : PanFollowsTheDrag() ~ Bool {
+		ok := true;
+		fig := Basic();
+		ax := fig->GetAxes();
+		r := ax->GetPlotRect();
+		px := r[0] + 10.0;
+		py := r[1] + 10.0;
+		ax->Zoom(px, py, 2.0);
+		fig->ToScene();
+		lo := ax->GetXAxis()->GetLo();
+		hi := ax->GetXAxis()->GetHi();
+		ylo := ax->GetYAxis()->GetLo();
+
+		# drag 72 px right (a tenth of the 720 px plot): the data moves right, so the view moves left
+		ok := Report("a pan reports a change", ax->Pan(72.0, 0.0)) & ok;
+		fig->ToScene();
+		span := hi - lo;
+		ok := Report("dragging right shows data a tenth of a span lower", Near(ax->GetXAxis()->GetLo(), lo - span * 0.1) & Near(ax->GetXAxis()->GetHi(), hi - span * 0.1)) & ok;
+		ok := Report("the span is unchanged by a pan", Near(ax->GetXAxis()->GetHi() - ax->GetXAxis()->GetLo(), span)) & ok;
+		ok := Report("a horizontal drag leaves y alone", Near(ax->GetYAxis()->GetLo(), ylo)) & ok;
+
+		# drag 40 px down (a tenth of the 400 px plot): the view moves up
+		yspan := ax->GetYAxis()->GetHi() - ylo;
+		ax->Pan(0.0, 40.0);
+		fig->ToScene();
+		ok := Report("dragging down shows data a tenth of a span higher", Near(ax->GetYAxis()->GetLo(), ylo + yspan * 0.1)) & ok;
+
+		return ok;
+	}
+
+	function : LogAxes() ~ Bool {
+		ok := true;
+		fig := Figure->New(800, 480);
+		ax := fig->GetAxes();
+		ax->SetLogX(true);
+		ax->Scatter("s", [0.001, 10.0], [1.0, 2.0]);
+		fig->ToScene();
+		r := ax->GetPlotRect();
+		ok := Report("a log axis spans four decades (exponents -3 .. 1)", Near(ax->GetXAxis()->GetLo(), -3.0) & Near(ax->GetXAxis()->GetHi(), 1.0)) & ok;
+
+		# the middle of the plot is 10^-1 = 0.1; zoom 2x about it: 0.01 .. 1
+		px := (r[0] + r[2]) / 2.0;
+		py := (r[1] + r[3]) / 2.0;
+		at := ax->DataAt(px, py);
+		ok := Report("the middle of a log axis is a decade, not an average", Near(at[0], 0.1)) & ok;
+		ax->Zoom(px, py, 2.0);
+		fig->ToScene();
+		ok := Report("zooming in 2x leaves two decades, 0.01 .. 1", Near(ax->GetXAxis()->GetLo(), -2.0) & Near(ax->GetXAxis()->GetHi(), 0.0)) & ok;
+		after := ax->DataAt(px, py);
+		ok := Report("and the decade under the pointer is still under it", Near(after[0], 0.1)) & ok;
+
+		return ok;
+	}
+
+	function : NoZoomWhereMeaningless() ~ Bool {
+		ok := true;
+
+		bars := Figure->New(600, 400);
+		bars->GetAxes()->SetCategories(["a", "b", "c"]);
+		bars->GetAxes()->Bar("s", [1.0, 2.0, 3.0]);
+		bars->ToScene();
+		r := bars->GetAxes()->GetPlotRect();
+		bars->GetAxes()->Zoom(r[0] + 100.0, r[1] + 100.0, 2.0);
+		bars->ToScene();
+		ok := Report("a categorical x axis does not zoom (y does)",
+			Near(bars->GetAxes()->GetXAxis()->GetLo(), -0.5) & Near(bars->GetAxes()->GetXAxis()->GetHi(), 2.5) & bars->GetAxes()->GetYAxis()->GetHi() < 3.5) & ok;
+
+		g := Float->New[2, 2];
+		heat := Figure->New(600, 400);
+		heat->GetAxes()->Heatmap(g, Nil->As(String[]), Nil->As(String[]));
+		heat->ToScene();
+		hr := heat->GetAxes()->GetPlotRect();
+		ok := Report("a heatmap does not zoom or pan", heat->GetAxes()->Zoom(hr[0] + 50.0, hr[1] + 50.0, 2.0) = false & heat->GetAxes()->Pan(10.0, 10.0) = false) & ok;
+
+		fresh := Figure->New(600, 400);
+		fresh->GetAxes()->Scatter("s", [0.0, 1.0], [0.0, 1.0]);
+		ok := Report("before the first draw there is nothing to zoom, read or hit",
+			fresh->GetAxes()->Zoom(10.0, 10.0, 2.0) = false & fresh->GetAxes()->GetPlotRect() = Nil & fresh->GetAxes()->DataAt(10.0, 10.0) = Nil & fresh->GetAxes()->Contains(10.0, 10.0) = false) & ok;
+
+		return ok;
+	}
+
+	function : Hit() ~ Bool {
+		ok := true;
+		fig := Figure->New(800, 600);
+		fig->Subplots(2, 1);
+		fig->GetAxes(0, 0)->Scatter("a", [0.0, 1.0], [0.0, 1.0]);
+		fig->GetAxes(1, 0)->Scatter("b", [0.0, 1.0], [0.0, 1.0]);
+		fig->ToScene();
+		top := fig->GetAxes(0, 0)->GetPlotRect();
+		bottom := fig->GetAxes(1, 0)->GetPlotRect();
+
+		ok := Report("a pixel inside the top plot belongs to the top axes", fig->AxesAt(top[0] + 20.0, top[1] + 20.0) = fig->GetAxes(0, 0)) & ok;
+		ok := Report("a pixel inside the bottom plot belongs to the bottom axes", fig->AxesAt(bottom[0] + 20.0, bottom[1] + 20.0) = fig->GetAxes(1, 0)) & ok;
+		ok := Report("a pixel in the margin belongs to none", fig->AxesAt(5.0, 5.0) = Nil) & ok;
+		ok := Report("the two plot areas do not overlap", top[3] < bottom[1]) & ok;
+
+		return ok;
+	}
+
+	function : Refusals() ~ Bool {
+		ok := true;
+		refused := false;
+		fig := Basic();
+		try {
+			fig->GetAxes()->SetXLim(5.0, 5.0);
+		}
+		on(e : PlotError) {
+			refused := true;
+		};
+		ok := Report("a degenerate limit is still refused (so a zoom can never produce one)", refused) & ok;
+
+		# zooming in until floats run out is refused instead of raising, so a long wheel spin is safe
+		ax := fig->GetAxes();
+		r := ax->GetPlotRect();
+		changed := 0;
+		each(i : 40) {
+			if(ax->Zoom(r[0] + 100.0, r[1] + 100.0, 8.0)) {
+				changed += 1;
+			};
+			fig->ToScene();
+		};
+		ok := Report("forty 8x zooms stop short of the float limit and leave an ordered range", changed > 5 & changed < 40 & ax->GetXAxis()->GetHi() > ax->GetXAxis()->GetLo()) & ok;
+		ok := Report("a huge zoom out is refused once the range would overflow", ZoomOutForever(fig)) & ok;
+
+		return ok;
+	}
+
+	function : ZoomOutForever(fig : Figure) ~ Bool {
+		ax := fig->GetAxes();
+		ax->ResetLimits();
+		fig->ToScene();
+		r := ax->GetPlotRect();
+		refused := false;
+		each(i : 400) {
+			if(refused = false & ax->Zoom(r[0] + 100.0, r[1] + 100.0, 0.01) = false) {
+				refused := true;
+			};
+			fig->ToScene();
+		};
+
+		return refused;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}

@@ -1,0 +1,765 @@
+#~~
+# Objeck plotting library: the SDL2 backend (interactive window and PNG export)
+# Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+use Game.SDL2;
+use System.Plot;
+
+#~
+The SDL2 backend of System.Plot: it draws the same PlotScene the SVG writer does, to a window you can zoom, pan and hover, or to a PNG file. Compile with -lib plot_sdl,plot,sdl2,gen_collect. Saving a PNG needs no window and no display; a window needs one. Not available in the web playground. Design: docs/PLOT_DESIGN.md.
+~#
+bundle System.Plot.SDL {
+	#~
+	Draws a PlotScene with an SDL2 Renderer: lines (anti-aliased, or thick, or dashed), polylines, polygons, rectangles with opacity, circles, and text. Text uses SDL_ttf when a font file is found (the shipped lib/sdl/fonts/lato.ttf, or the one given to SetFont) and falls back to SDL2_gfx's built-in 8x8 bitmap font, which cannot rotate or bold.
+	~#
+	class SdlCanvas {
+		@renderer : Renderer;
+		@width : Int;
+		@height : Int;
+		@font_path : String;
+		@fonts : Map<IntRef, Font>;
+		@off_x : Int;
+		@off_y : Int;
+
+		#~
+		Constructor
+		@param renderer the renderer to draw on
+		@param width width of the render target in pixels
+		@param height height of the render target in pixels
+		~#
+		New(renderer : Renderer, width : Int, height : Int) {
+			@renderer := renderer;
+			@width := width;
+			@height := height;
+			@fonts := Map->New()<IntRef, Font>;
+			@font_path := FindFont();
+		}
+
+		#~
+		Starts what drawing needs: SDL_ttf and PNG support. Safe to call more than once.
+		@return true when SDL_ttf started (text then uses a real font); false means drawing still works with the bitmap font
+		~#
+		function : Start() ~ Bool {
+			Image->Init(ImageFlags->IMG_INIT_PNG);
+			return Font->Init() = 0;
+		}
+
+		#~
+		Uses a font file for text instead of the shipped one.
+		@param path a TrueType font file, or empty for the bitmap fallback
+		~#
+		method : public : SetFont(path : String) ~ Nil {
+			Release();
+			@font_path := (path = Nil) ? "" : path;
+		}
+
+		#~
+		The font file text will use.
+		@return the path, or an empty string for the bitmap fallback
+		~#
+		method : public : GetFont() ~ String {
+			return @font_path;
+		}
+
+		# lib/sdl/fonts/lato.ttf under OBJECK_LIB_PATH, or beside the toolchain's bin directory
+		function : FindFont() ~ String {
+			root := Runtime->GetEnvironmentVariable("OBJECK_LIB_PATH");
+			if(root <> Nil & root->Size() > 0) {
+				path := root + "/sdl/fonts/lato.ttf";
+				if(System.IO.Filesystem.File->Exists(path)) {
+					return path;
+				};
+			};
+
+			path := "../lib/sdl/fonts/lato.ttf";
+			if(System.IO.Filesystem.File->Exists(path)) {
+				return path;
+			};
+
+			return "";
+		}
+
+		#~
+		Frees the cached fonts. Call it when finished drawing, before Font->Quit.
+		~#
+		method : public : Release() ~ Nil {
+			keys := @fonts->GetKeys()<IntRef>;
+			each(i : keys) {
+				@fonts->Find(keys->Get(i))->Free();
+			};
+			@fonts->Empty();
+		}
+
+		#~
+		Clears the target to white and draws a scene on it. Call Present (or save) afterwards.
+		@param scene what to draw
+		~#
+		method : public : Draw(scene : PlotScene) ~ Nil {
+			@renderer->SetDrawBlendMode(BlendMode->SDL_BLENDMODE_BLEND);
+			@renderer->SetDrawColor(255, 255, 255, 255);
+			@renderer->Clear();
+			Overlay(scene);
+		}
+
+		#~
+		Draws a scene over what is already there, without clearing, for readouts and labels.
+		@param scene what to draw
+		~#
+		method : public : Overlay(scene : PlotScene) ~ Nil {
+			@off_x := 0;
+			@off_y := 0;
+			p : PlotPrimitive;
+			each(i : scene->Size()) {
+				p := scene->Get(i);
+				kind := p->GetKind();
+				if(kind = PrimitiveKind->LINE) {
+					DrawLine(p->GetX1(), p->GetY1(), p->GetX2(), p->GetY2(), p->GetStroke(), p->GetWidth(), p->GetDash());
+				}
+				else if(kind = PrimitiveKind->POLYLINE) {
+					DrawPolyline(p);
+				}
+				else if(kind = PrimitiveKind->POLYGON) {
+					DrawPolygon(p);
+				}
+				else if(kind = PrimitiveKind->RECT) {
+					DrawRect(p);
+				}
+				else if(kind = PrimitiveKind->CIRCLE) {
+					DrawCircle(p);
+				}
+				else if(kind = PrimitiveKind->TEXT) {
+					DrawText(p);
+				}
+				else if(kind = PrimitiveKind->CLIP_BEGIN) {
+					# a viewport clips, and moves the origin to its corner
+					@off_x := Round(p->GetX1());
+					@off_y := Round(p->GetY1());
+					@renderer->SetViewport(Rect->New(@off_x, @off_y, Round(p->GetX2()), Round(p->GetY2())));
+				}
+				else {
+					@renderer->SetViewport(Rect->New(0, 0, @width, @height));
+					@off_x := 0;
+					@off_y := 0;
+				};
+			};
+		}
+
+		function : Round(v : Float) ~ Int {
+			return Float->Round(v)->As(Int);
+		}
+
+		# "#rrggbb" and an opacity from 0 to 1 as an SDL color
+		function : ParseColor(css : String, opacity : Float) ~ Color {
+			alpha := Round(opacity * 255.0);
+			if(alpha < 0) {
+				alpha := 0;
+			};
+			if(alpha > 255) {
+				alpha := 255;
+			};
+			if(css = Nil | css->Size() <> 7 | css->Get(0) <> '#') {
+				return Color->New(0, 0, 0, alpha);
+			};
+
+			return Color->New(Hex(css->Get(1)) * 16 + Hex(css->Get(2)), Hex(css->Get(3)) * 16 + Hex(css->Get(4)), Hex(css->Get(5)) * 16 + Hex(css->Get(6)), alpha);
+		}
+
+		function : Hex(c : Char) ~ Int {
+			v := c->As(Int);
+			if(v >= 48 & v <= 57) {
+				return v - 48;
+			};
+			if(v >= 97 & v <= 102) {
+				return v - 87;
+			};
+			if(v >= 65 & v <= 70) {
+				return v - 55;
+			};
+
+			return 0;
+		}
+
+		method : DrawLine(x1 : Float, y1 : Float, x2 : Float, y2 : Float, stroke : String, width : Float, dash : String) ~ Nil {
+			if(stroke = Nil | stroke->Size() = 0) {
+				return;
+			};
+
+			color := ParseColor(stroke, 1.0);
+			if(dash <> Nil & dash->Size() > 0) {
+				DrawDashed(x1, y1, x2, y2, color, width, dash);
+				return;
+			};
+
+			Segment(Round(x1), Round(y1), Round(x2), Round(y2), color, width);
+		}
+
+		method : Segment(x1 : Int, y1 : Int, x2 : Int, y2 : Int, color : Color, width : Float) ~ Nil {
+			ax := x1 - @off_x;
+			ay := y1 - @off_y;
+			bx := x2 - @off_x;
+			by := y2 - @off_y;
+			if(width < 1.5) {
+				@renderer->AALineColor(ax, ay, bx, by, color);
+			}
+			else {
+				@renderer->ThickLineColor(ax, ay, bx, by, Round(width), color);
+			};
+		}
+
+		# a dash pattern such as "6 4" along a line: draw, skip, draw, skip
+		method : DrawDashed(x1 : Float, y1 : Float, x2 : Float, y2 : Float, color : Color, width : Float, dash : String) ~ Nil {
+			parts := dash->Split(" ");
+			on := 6.0;
+			off := 4.0;
+			if(parts->Size() >= 2) {
+				on := parts[0]->ToFloat();
+				off := parts[1]->ToFloat();
+			};
+			if(on <= 0.0 | off < 0.0) {
+				Segment(Round(x1), Round(y1), Round(x2), Round(y2), color, width);
+				return;
+			};
+
+			dx := x2 - x1;
+			dy := y2 - y1;
+			length := Float->Sqrt(dx * dx + dy * dy);
+			if(length < 0.5) {
+				return;
+			};
+
+			ux := dx / length;
+			uy := dy / length;
+			at := 0.0;
+			stop : Float;
+			while(at < length) {
+				stop := at + on;
+				if(stop > length) {
+					stop := length;
+				};
+				Segment(Round(x1 + ux * at), Round(y1 + uy * at), Round(x1 + ux * stop), Round(y1 + uy * stop), color, width);
+				at := stop + off;
+			};
+		}
+
+		method : DrawPolyline(p : PlotPrimitive) ~ Nil {
+			pts := p->GetPoints();
+			if(pts = Nil | p->GetStroke()->Size() = 0) {
+				return;
+			};
+
+			color := ParseColor(p->GetStroke(), 1.0);
+			count := pts->Size() / 2;
+			segments := count - 1;
+			each(i : segments) {
+				Segment(Round(pts[i * 2]), Round(pts[i * 2 + 1]), Round(pts[i * 2 + 2]), Round(pts[i * 2 + 3]), color, p->GetWidth());
+			};
+		}
+
+		method : DrawPolygon(p : PlotPrimitive) ~ Nil {
+			pts := p->GetPoints();
+			if(pts = Nil) {
+				return;
+			};
+
+			count := pts->Size() / 2;
+			vx := Int->New[count];
+			vy := Int->New[count];
+			each(i : count) {
+				vx[i] := Round(pts[i * 2]) - @off_x;
+				vy[i] := Round(pts[i * 2 + 1]) - @off_y;
+			};
+			if(p->GetFill()->Size() > 0) {
+				@renderer->FilledPolygonColor(vx, vy, ParseColor(p->GetFill(), p->GetOpacity()));
+			};
+			if(p->GetStroke()->Size() > 0) {
+				@renderer->AAPolygonColor(vx, vy, ParseColor(p->GetStroke(), 1.0));
+			};
+		}
+
+		method : DrawRect(p : PlotPrimitive) ~ Nil {
+			x := Round(p->GetX1()) - @off_x;
+			y := Round(p->GetY1()) - @off_y;
+			w := Round(p->GetX2());
+			h := Round(p->GetY2());
+			if(w < 1 & h < 1) {
+				return;
+			};
+
+			if(p->GetFill()->Size() > 0) {
+				@renderer->BoxColor(x, y, x + w - 1, y + h - 1, ParseColor(p->GetFill(), p->GetOpacity()));
+			};
+			if(p->GetStroke()->Size() > 0) {
+				@renderer->RectangleColor(x, y, x + w - 1, y + h - 1, ParseColor(p->GetStroke(), 1.0));
+			};
+		}
+
+		method : DrawCircle(p : PlotPrimitive) ~ Nil {
+			x := Round(p->GetX1()) - @off_x;
+			y := Round(p->GetY1()) - @off_y;
+			r := Round(p->GetX2());
+			if(r < 1) {
+				r := 1;
+			};
+
+			if(p->GetFill()->Size() > 0) {
+				@renderer->FilledCircleColor(x, y, r, ParseColor(p->GetFill(), p->GetOpacity()));
+				@renderer->AACircleColor(x, y, r, ParseColor(p->GetFill(), p->GetOpacity()));
+			};
+			if(p->GetStroke()->Size() > 0) {
+				@renderer->AACircleColor(x, y, r, ParseColor(p->GetStroke(), 1.0));
+			};
+		}
+
+		method : GetFontFor(size : Int, bold : Bool) ~ Font {
+			if(@font_path->Size() = 0) {
+				return Nil;
+			};
+
+			key := size * 2;
+			if(bold) {
+				key += 1;
+			};
+			handle := IntRef->New(key);
+			if(@fonts->Has(handle)) {
+				return @fonts->Find(handle);
+			};
+
+			font := Font->New(@font_path, size);
+			if(font->IsNull()) {
+				return Nil;
+			};
+			if(bold) {
+				font->SetStyle(FontStyle->TTF_STYLE_BOLD);
+			};
+			@fonts->Insert(handle, font);
+
+			return font;
+		}
+
+		method : DrawText(p : PlotPrimitive) ~ Nil {
+			text := p->GetText();
+			if(text->Size() = 0) {
+				return;
+			};
+
+			x := Round(p->GetX1());
+			y := Round(p->GetY1());
+			color := ParseColor(p->GetFill(), 1.0);
+			font := GetFontFor(p->GetSize(), p->IsBold());
+			if(font = Nil) {
+				DrawBitmapText(text, x, y, p->GetAnchor(), color);
+				return;
+			};
+
+			surface := font->RenderUTF8Blended(text, color);
+			if(surface->IsNull()) {
+				return;
+			};
+
+			w := surface->GetW();
+			h := surface->GetH();
+			texture := surface->CreateTexture(@renderer);
+			surface->Free();
+			if(texture->IsNull()) {
+				return;
+			};
+
+			if(p->GetRotation() = 0.0) {
+				left := x;
+				if(p->GetAnchor() = TextAnchor->MIDDLE) {
+					left := x - w / 2;
+				}
+				else if(p->GetAnchor() = TextAnchor->END) {
+					left := x - w;
+				};
+				@renderer->Copy(texture, Nil->As(Rect), Rect->New(left - @off_x, y - font->GetAscent() - @off_y, w, h));
+			}
+			else {
+				# turned about its middle, which is put where the text's anchor and baseline would be
+				cx := x - h / 3;
+				@renderer->CopyEx(texture, Nil->As(Rect), Rect->New(cx - w / 2 - @off_x, y - h / 2 - @off_y, w, h), p->GetRotation(), Nil->As(Point), RendererFlip->SDL_FLIP_NONE);
+			};
+			texture->Destroy();
+		}
+
+		# the built-in 8x8 font: no rotation, one weight
+		method : DrawBitmapText(text : String, x : Int, y : Int, anchor : TextAnchor, color : Color) ~ Nil {
+			w := text->Size() * 8;
+			left := x;
+			if(anchor = TextAnchor->MIDDLE) {
+				left := x - w / 2;
+			}
+			else if(anchor = TextAnchor->END) {
+				left := x - w;
+			};
+			@renderer->StringColor(left - @off_x, y - 8 - @off_y, text, color);
+		}
+	}
+
+	#~
+	Zoom and pan state for a window, kept apart from SDL so it can be tested without one: how much one mouse-wheel notch zooms, and what a readout says.
+	~#
+	class PlotView {
+		#~
+		The zoom factor of one mouse-wheel notch: 1.25 in, and the reciprocal out.
+		@param notches wheel movement, positive zooms in
+		@return the factor to hand to Axes->Zoom
+		~#
+		function : WheelFactor(notches : Int) ~ Float {
+			factor := 1.0;
+			steps := notches;
+			if(steps < 0) {
+				steps := -steps;
+			};
+			each(i : steps) {
+				factor *= 1.25;
+			};
+			if(notches < 0) {
+				return 1.0 / factor;
+			};
+
+			return factor;
+		}
+
+		#~
+		The text a hover shows for a data position.
+		@param at [x, y] as Axes->DataAt returns it
+		@return for example "x = 2.5   y = 0.31"
+		~#
+		function : Readout(at : Float[]) ~ String {
+			if(at = Nil) {
+				return "";
+			};
+
+			x := Float->ToString(at[0], 3);
+			y := Float->ToString(at[1], 3);
+
+			return "x = " + x + "   y = " + y;
+		}
+	}
+
+	#~
+	An interactive window over a Figure: the mouse wheel zooms about the pointer, dragging with the left button pans, hovering reads out the data position, R resets the view, Escape or closing the window ends it. Zoom and pan change the axes' limits and the scene is rebuilt, so ticks and labels stay crisp.
+
+```
+fig := Figure->New(900, 600);
+fig->GetAxes()->Scatter("pts", xs, ys);
+PlotWindow->New(fig, "pts")->Run();
+```
+	~#
+	class PlotWindow {
+		@figure : Figure;
+		@title : String;
+		@window : Window;
+		@renderer : Renderer;
+		@canvas : SdlCanvas;
+		@width : Int;
+		@height : Int;
+		@readout : String;
+		@dragging : Bool;
+		@visible : Bool;
+		@close_type : Int;
+		@running : Bool;
+
+		#~
+		Constructor; the window opens in Run.
+		@param figure what to show
+		@param title the window title
+		~#
+		New(figure : Figure, title : String) {
+			@figure := figure;
+			@title := (title = Nil) ? "" : title;
+			@visible := true;
+			@readout := "";
+			@close_type := Event->Registers(1);
+		}
+
+		#~
+		Constructor
+		@param figure what to show
+		@param title the window title
+		@param visible false opens the window hidden, for tests
+		~#
+		New(figure : Figure, title : String, visible : Bool) {
+			@figure := figure;
+			@title := (title = Nil) ? "" : title;
+			@visible := visible;
+			@readout := "";
+			@close_type := Event->Registers(1);
+		}
+
+		#~
+		The event type that ends Run when it is pushed (Event->SetUser then Push), so another thread, or a test, can close the window.
+		@return a user event type
+		~#
+		method : public : GetCloseType() ~ Int {
+			return @close_type;
+		}
+
+		#~
+		Opens the window and runs until it is closed.
+		@return false when the window could not be opened (no display, or SDL missing)
+		~#
+		method : public : Run() ~ Bool {
+			if(Open() = false) {
+				return false;
+			};
+
+			event := Event->New();
+			@running := true;
+			while(@running) {
+				while(@running & event->Poll() = 1) {
+					Handle(event);
+				};
+				RenderFrame();
+				Timer->Delay(10);
+			};
+			event->Free();
+			Close();
+
+			return true;
+		}
+
+		#~
+		Creates the window and renderer without running the loop.
+		@return true when opened
+		~#
+		method : public : Open() ~ Bool {
+			if(Core->Init(SubsystemFlags->SDL_INIT_VIDEO or SubsystemFlags->SDL_INIT_EVENTS) <> 0) {
+				return false;
+			};
+
+			scene := @figure->ToScene();
+			@width := scene->GetWidth();
+			@height := scene->GetHeight();
+			flags : Int;
+			flags := WindowFlags->SDL_WINDOW_SHOWN;
+			if(@visible = false) {
+				flags := WindowFlags->SDL_WINDOW_HIDDEN;
+			};
+			@window := Window->New(@title, WindowFlags->SDL_WINDOWPOS_UNDEFINED, WindowFlags->SDL_WINDOWPOS_UNDEFINED, @width, @height, flags);
+			if(@window->IsNull()) {
+				return false;
+			};
+
+			@renderer := Renderer->New(@window, -1, RendererFlags->SDL_RENDERER_ACCELERATED);
+			if(@renderer->IsNull()) {
+				@renderer := Renderer->New(@window, -1, RendererFlags->SDL_RENDERER_SOFTWARE);
+			};
+			if(@renderer->IsNull()) {
+				@window->Destroy();
+				return false;
+			};
+
+			SdlCanvas->Start();
+			@canvas := SdlCanvas->New(@renderer, @width, @height);
+
+			return true;
+		}
+
+		#~
+		Draws one frame: the scene, then the hover readout.
+		~#
+		method : public : RenderFrame() ~ Nil {
+			scene := @figure->ToScene();
+			@canvas->Draw(scene);
+			if(@readout->Size() > 0) {
+				overlay := PlotScene->New(@width, @height);
+				width := PlotMath->TextWidth(@readout, 12) + 12.0;
+				overlay->Rect(6.0, @height->As(Float) - 24.0, width, 20.0, "#ffffff", "#999999", 1.0, 0.9, "readout");
+				overlay->Text(12.0, @height->As(Float) - 9.0, @readout, TextAnchor->START, 12, false, "#000000", 0.0, "readout");
+				@canvas->Overlay(overlay);
+			};
+			@renderer->Present();
+		}
+
+		#~
+		Handles one SDL event: wheel zoom, drag pan, hover, keys, close.
+		@param event the event just polled
+		~#
+		method : public : Handle(event : Event) ~ Nil {
+			type := event->GetType();
+			if(type = EventType->SDL_QUIT | type = @close_type) {
+				@running := false;
+			}
+			else if(type = EventType->SDL_MOUSEWHEEL) {
+				mouse_x := IntRef->New();
+				mouse_y := IntRef->New();
+				Cursor->GetMouseState(mouse_x, mouse_y);
+				OnWheel(mouse_x->Get(), mouse_y->Get(), event->GetMouseWheel()->GetY());
+			}
+			else if(type = EventType->SDL_MOUSEMOTION) {
+				motion := event->GetMouseMotion();
+				OnMotion(motion->GetX(), motion->GetY(), motion->GetRelX(), motion->GetRelY(), (motion->GetState() and 1) <> 0);
+			}
+			else if(type = EventType->SDL_KEYDOWN) {
+				OnKey(event->GetKey()->GetKeysym()->GetScancode());
+			};
+		}
+
+		#~
+		Zooms the axes under a pixel.
+		@param x pixel x
+		@param y pixel y
+		@param notches wheel movement, positive zooms in
+		~#
+		method : public : OnWheel(x : Int, y : Int, notches : Int) ~ Nil {
+			target := @figure->AxesAt(x->As(Float), y->As(Float));
+			if(target <> Nil & notches <> 0) {
+				target->Zoom(x->As(Float), y->As(Float), PlotView->WheelFactor(notches));
+			};
+		}
+
+		#~
+		Handles the pointer moving: a drag with the left button down pans, otherwise the data position is read out.
+		@param x pixel x
+		@param y pixel y
+		@param dx pixels moved right since the last event
+		@param dy pixels moved down since the last event
+		@param left_down whether the left button is held
+		~#
+		method : public : OnMotion(x : Int, y : Int, dx : Int, dy : Int, left_down : Bool) ~ Nil {
+			target := @figure->AxesAt(x->As(Float), y->As(Float));
+			if(left_down & @dragging = false) {
+				@dragging := target <> Nil;
+			}
+			else if(left_down = false) {
+				@dragging := false;
+			};
+
+			if(@dragging) {
+				drag := @figure->AxesAt((x - dx)->As(Float), (y - dy)->As(Float));
+				if(drag <> Nil) {
+					drag->Pan(dx->As(Float), dy->As(Float));
+				};
+			};
+
+			if(target = Nil) {
+				@readout := "";
+			}
+			else {
+				@readout := PlotView->Readout(target->DataAt(x->As(Float), y->As(Float)));
+			};
+		}
+
+		#~
+		Handles a key: Escape ends the loop, R resets every axes to the data's range.
+		@param scancode the key's scancode
+		~#
+		method : public : OnKey(scancode : Int) ~ Nil {
+			if(scancode = Scancode->SDL_SCANCODE_ESCAPE) {
+				@running := false;
+			}
+			else if(scancode = Scancode->SDL_SCANCODE_R) {
+				ResetView();
+			};
+		}
+
+		#~
+		Returns every axes to the range of its data.
+		~#
+		method : public : ResetView() ~ Nil {
+			each(row : 8) {
+				each(col : 8) {
+					ResetAt(row, col);
+				};
+			};
+		}
+
+		method : ResetAt(row : Int, col : Int) ~ Nil {
+			if(row = 0 & col = 0) {
+				@figure->GetAxes(0, 0)->ResetLimits();
+				return;
+			};
+			# a grid smaller than 8 x 8 refuses the position, which is not an error here
+			try {
+				@figure->GetAxes(row, col)->ResetLimits();
+			}
+			on(e : PlotError) {
+			};
+		}
+
+		#~
+		Whether the loop is running.
+		@return true while Run is looping
+		~#
+		method : public : IsRunning() ~ Bool {
+			return @running;
+		}
+
+		#~
+		The last hover readout.
+		@return the text, empty when the pointer is outside every plot
+		~#
+		method : public : GetReadout() ~ String {
+			return @readout;
+		}
+
+		#~
+		Closes the window and frees what Open made.
+		~#
+		method : public : Close() ~ Nil {
+			@running := false;
+			if(@canvas <> Nil) {
+				@canvas->Release();
+			};
+			if(@renderer <> Nil & @renderer->IsNull() = false) {
+				@renderer->Destroy();
+			};
+			if(@window <> Nil & @window->IsNull() = false) {
+				@window->Destroy();
+			};
+		}
+	}
+
+	#~
+	Writes a Figure as a PNG file, on a software surface: no window, no display and no GPU, so it works over SSH and in CI. Text uses the shipped font when it is found.
+	~#
+	class PlotPng {
+		#~
+		Renders a figure to a PNG file at the figure's size.
+		@param figure what to draw
+		@param path file to write
+		@return true when written
+		~#
+		function : Save(figure : Figure, path : String) ~ Bool {
+			if(figure = Nil | path = Nil) {
+				return false;
+			};
+
+			scene := figure->ToScene();
+			surface := Render(scene);
+			if(surface->IsNull()) {
+				return false;
+			};
+
+			result := Image->SavePNG(surface, path);
+			surface->Free();
+
+			return result = 0;
+		}
+
+		#~
+		Renders a scene onto a new ARGB surface; the caller frees it.
+		@param scene what to draw
+		@return the surface, which IsNull when SDL could not make one
+		~#
+		function : Render(scene : PlotScene) ~ Surface {
+			SdlCanvas->Start();
+			surface := Surface->New(0, scene->GetWidth(), scene->GetHeight(), 32, PixelValue->SDL_PIXELFORMAT_ARGB8888);
+			if(surface->IsNull()) {
+				return surface;
+			};
+
+			renderer := Renderer->CreateSoftwareRenderer(surface);
+			canvas := SdlCanvas->New(renderer, scene->GetWidth(), scene->GetHeight());
+			canvas->Draw(scene);
+			canvas->Release();
+			renderer->Destroy();
+
+			return surface;
+		}
+	}
+}

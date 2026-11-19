@@ -87,6 +87,7 @@ if %ERRORLEVEL% NEQ 0 (
 	%LIB_SRC%\ml_lab.obs ^
 	%LIB_SRC%\ml_vector.obs ^
 	%LIB_SRC%\plot.obs ^
+	%LIB_SRC%\plot_sdl.obs ^
 	%LIB_SRC%\ai_search.obs ^
 	%LIB_SRC%\ai_game.obs ^
 	%LIB_SRC%\ai_optimize.obs ^
