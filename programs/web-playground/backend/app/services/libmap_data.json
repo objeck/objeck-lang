@@ -175,7 +175,7 @@
   "nlp": {
    "deps": ["gen_collect"],
    "bundles": {
-    "System.NLP": ["ApiSequenceTokenizer", "BpeTokenizer", "SentimentAnalyzer", "SentimentResult", "SubwordTokenizer", "TF_IDF", "TextPreprocessor", "TextSimilarity", "TokenEncoding", "Tokenizer", "WordPieceTokenizer"]
+    "System.NLP": ["ApiSequenceTokenizer", "BpeTokenizer", "SentimentAnalyzer", "SentimentResult", "SpellChecker", "SubwordTokenizer", "TF_IDF", "TextFeatures", "TextPreprocessor", "TextSimilarity", "TokenEncoding", "Tokenizer", "WordPieceTokenizer"]
    }
   },
   "nlp_onnx": {
@@ -288,6 +288,12 @@
    "deps": ["gen_collect", "sdl2"],
    "bundles": {
     "Game.OpenGL": ["BlendFactor", "Box", "Camera", "Capability", "ClearBit", "CompareFunc", "CullMode", "DrawMode", "Easing", "ErrorCode", "Freeable", "Frustum", "GL", "GLWindow", "IntHolder", "Light", "LightKind", "LightRig", "Material", "Matrix4", "Mesh", "Overlay", "Particles", "PointShadow", "Prop", "PropBatch", "Quaternion", "RayHit", "RenderTarget", "Scene", "Shader", "ShaderSource", "ShadowMap", "Skybox", "StencilOp", "Texture2D", "TextureFilter", "TextureWrap", "Track", "Transform", "Vector3"]
+   }
+  },
+  "stats": {
+   "deps": ["gen_collect"],
+   "bundles": {
+    "System.Stats": ["Correlation", "CorrelationResult", "Design", "Dist", "OLS", "OLSResult", "Stats", "StatsFormat", "TTest", "TTestResult"]
    }
   },
   "web_server": {

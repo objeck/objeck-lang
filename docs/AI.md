@@ -46,6 +46,7 @@ All AI and ML capabilities are **standard library** — no third-party packages,
   - [Model Persistence](#model-persistence)
   - [Local vector search (System.ML.VectorSearch)](#local-vector-search-systemmlvectorsearch)
   - [Convolutional networks (System.ML.Cnn)](#convolutional-networks-systemmlcnn)
+  - [Statistics (System.Stats)](#statistics-systemstats)
   - [Plotting (System.Plot)](#plotting-systemplot)
     - [In a window, or as a PNG (System.Plot.SDL)](#in-a-window-or-as-a-png-systemplotsdl)
 - [Classic AI (System.AI)](#classic-ai-systemai)
@@ -997,6 +998,53 @@ sim := TextSimilarity->CosineSimilarity(tfidf->Transform("cats are pets"), tfidf
 "Similarity: {$sim}"->PrintLine();
 ```
 
+### N-grams, spelling and style features
+
+These are the features of text-classification chapters such as fake-review and fake-news
+detection. All are in `nlp.obl`; none needs a model.
+
+**TF-IDF over word n-grams.** `TF_IDF->New(min_n : 1, max_n : 2)` counts words and word pairs
+as scikit-learn's `TfidfVectorizer(ngram_range=(1, 2))` does; `(1, 3)` adds triples and
+`(2, 2)` is pairs only. Smoothed IDF and unit-length vectors follow scikit-learn (the
+regression test compares every IDF and vector entry with it). `min_df` drops terms found in
+fewer documents and `max_features` keeps the most frequent ones. An invalid setting
+(`min_n` below 1, `max_n` below `min_n`) does not crash: `IsValid()` is false, `GetError()`
+says why, and the vectorizer fits an empty vocabulary. Existing calls such as
+`TF_IDF->New(stem : true)` are unchanged.
+
+```ruby
+tfidf := TF_IDF->New(min_n : 1, max_n : 2, min_df : 2);
+tfidf->Fit(training_texts);
+x := tfidf->Transform("not worth the money");   # words and "not worth", "worth the", ...
+```
+
+**Misspelling rate.** `SpellChecker` counts the tokens a word list does not know. No
+dictionary ships with Objeck: load a newline-delimited list yourself, for example
+`/usr/share/dict/words` on Linux, the SCOWL / aspell lists (http://wordlist.aspell.net) or
+`words_alpha.txt`, and check its licence. Tokens are `Tokenizer->WordTokenize`'s, matching is
+case-insensitive, tokens with digits are never misspelled, and the rate is misspelled tokens
+over all tokens. `Suggest` returns words within a Levenshtein distance, nearest first. A checker
+with no words and a Nil text give -1 instead of failing.
+
+```ruby
+checker := SpellChecker->New("words.txt");
+if(checker->IsLoaded()) {
+    n    := checker->CountMisspelled("teh product is gud");
+    rate := checker->MisspellingRate("teh product is gud");
+    near := checker->Suggest("gud", 1, 3);
+};
+```
+
+**Stylometric features.** `TextFeatures->Extract(text)` returns eight numbers (names in
+`TextFeatures->Names()`): characters, tokens, average word length, type-token ratio,
+punctuation rate, uppercase ratio, sentence count and average sentence length. Each is also
+a function (`TokenCount`, `TypeTokenRatio`, ...). Empty text gives zeros and Nil gives
+Nil / -1.
+
+```ruby
+f := TextFeatures->Extract("Great product! Works perfectly. HIGHLY recommended!!!");
+```
+
 ### BERT tokens and sentence embeddings
 
 `WordPieceTokenizer` is BERT's tokenizer (Hugging Face's `BertTokenizer`, checked id for id on
@@ -1026,6 +1074,22 @@ if(embedder->IsOpen()) {
     X := embedder->Embed(["CreateFileW ReadFile CloseHandle", "RegOpenKeyExA RegSetValueExA"]);
     embedder->Close();
 };
+```
+
+**Layers.** By default the final layer is pooled. `SetLayers` (or the three-argument `Embed`) can
+pool the sum of the last four hidden layers (`SUM_LAST_4`, `Embed` gives `hidden` columns) or
+concatenate them (`CONCAT_LAST_4`, `4 x hidden` columns, oldest layer first), each with CLS or
+mean pooling. A model has to export its intermediate layers for this: four or more FP32 outputs
+named `hidden_states.N` (also `hidden_states_N`, `hidden_state_N`), or one FP32
+`[layer, batch, sequence, hidden]` output named `hidden_states`. A standard export does not have
+them (export with `output_hidden_states=True` and name the outputs). When the model does not,
+`HasHiddenLayers()` is false and `Embed` with another layer strategy returns Nil and `GetError()`
+says so. `POOLER` pooling is the final layer's only.
+
+```ruby
+embedder->SetLayers(BertEmbedder->Layers->CONCAT_LAST_4);
+embedder->SetPooling(BertEmbedder->Pooling->MEAN);
+X := embedder->Embed(texts);   # 4 x hidden columns, or Nil with GetError() when the model lacks the layers
 ```
 
 ### Text classification with a fine-tuned model
@@ -1461,15 +1525,15 @@ probabilities := model->Predict(images);        # sigmoid of the logit: P(class 
 | Loss | binary cross-entropy on the logit, `max(z, 0) - z y + log(1 + e^-|z|)`, stable for logits of any size (a logit of 30,000 gives 30,000 or 0, not NaN) |
 | Optimizers | Adam as `torch.optim.Adam` (bias-corrected moments, `eps` outside the square root), and SGD with optional momentum |
 | Initial weights | Glorot (Xavier) uniform, limit `sqrt(6 / (fan_in + fan_out))`, the Keras default; `SetInitializer(Initializer->KAIMING)` for He uniform, limit `sqrt(6 / fan_in)`. Biases start at 0. Drawn from the model seed with a portable generator, so a seed gives the same weights on every platform |
-| Threads | the batch is spread over a thread pool, default the hardware threads, at most 8 (`CnnRuntime->SetThreads(n)`). Work is split statically, so a run repeats bit for bit at a given thread count; different counts agree to rounding |
+| Threads | the batch is spread over a thread pool, default the hardware threads, at most 8 (`CnnRuntime->SetThreads(n)`). Work is split statically, so a run repeats bit for bit at a given thread count; different counts agree to rounding. The setting is process-wide (all models share one pool), and the default is the machine's hardware threads, so call `CnnRuntime->SetThreads(n)` with a fixed `n` when a result must be the same on another machine (the examples use 8) |
 | Save / Load | weights only, in a small binary file with a digest of the architecture; `Load` is bit-exact and refuses a file from another architecture, a truncated file or a foreign one, leaving the model unchanged |
 | Scope | binary classification (one logit per image). The default and the fallback is the CPU; an optional GPU backend (`model->SetDevice("cuda")`, below) implements the same layers. Layers are an interface over contiguous NCHW tensors (`core/lib/matrix/cnn.h`) |
 
-Nothing here ends the program on bad input: an empty batch, a Nil array, a wrong size, a model that is not compiled or a layer that does not fit answers `false`, `-1.0`, `0` or `Nil`, and `GetError()` gives the reason. A model holds native memory, so call `Close()` when done.
+Nothing here ends the program on bad input: an empty batch, a Nil array, a wrong size, a model that is not compiled or a layer that does not fit answers `false`, `-1.0`, `0` or `Nil`, and `GetError()` gives the reason. A model holds native memory, so call `Close()` when done (twice is harmless; `IsOpen()` says whether the model is alive). `GetError()` returns `""`, never `Nil`, when nothing went wrong. A model is not thread-safe: one thread at a time.
 
 **Images.** `ImageDataset` holds file paths (decoded and resized when a batch needs them, or kept with `SetCache(true)`) and in-memory pixels. `AddDirectory` takes the `.jpg`, `.jpeg`, `.png` and `.bmp` files of a folder in name order, so the same folder always gives the same indexes; `Check()` decodes every file once and counts the ones that fail. `Split(train, validation, seed)` deals three `ImageSubset`s by a seeded shuffle (the rest is the test set); when the data is already in folders, make one dataset per folder and use `All(augment)`. Augmentation (`Augmentation`: flip, rotation by a random angle with bilinear interpolation, brightness factor) is applied as an image is staged for a batch and only on a subset made for training; whether each fires, and its value, is a function of the seed and the image's position in the epoch, so training repeats exactly. `ImageDataset->Synthetic(size, per_class, seed)` makes a procedural two-class set (low against high spatial frequency) for demos and tests with no files.
 
-**Metrics.** `CnnTrainer->Fit(epochs)` returns a `TrainingHistory`: per epoch the training loss and accuracy (running means over the epoch's batches in training mode, as Keras reports them), the validation loss and accuracy (evaluation mode, after the epoch) and the wall time; `ToCsv()`, `SaveCsv(path)` and `ToResultTable(title)` write it out. `Evaluate(subset)` returns a `CnnEvaluation` with loss, accuracy, precision, recall, F1 (`System.ML.Metrics`, class 1 positive, threshold 0.5) and the confusion matrix. `GetParameterCount()` gives the parameter count: for a convolution `filters x (channels x k x k) + filters`, for a dense layer `units x inputs + units`. For the baseline at 224 x 224 that is 448 + 4,640 + 18,496 for the three convolutions, a flatten of 26 x 26 x 64 = 43,264 values, 128 x 43,264 + 128 = 5,537,920 for the hidden dense layer and 129 for the output: **5,561,633**. The baseline takes `CnnModel->Baseline(image_size, conv_blocks, dropout, dense_units, learning_rate, seed)`, so the experiments of the study (2, 3 or 4 blocks; dropout 0, 0.1, 0.3, 0.5; image size 64, 128, 224; learning rate 1e-3, 1e-4, 1e-5) are one-argument changes.
+**Metrics.** `CnnTrainer->Fit(epochs)` returns a `TrainingHistory`: per epoch the training loss and accuracy (running means over the epoch's batches in training mode, as Keras reports them), the validation loss and accuracy (evaluation mode, after the epoch) and the wall time; `ToCsv()`, `SaveCsv(path)` and `ToResultTable(title)` write it out, with the column names of the `System.ML.Lab` experiment tables (`train_loss`, `train_accuracy`, `val_loss`, `val_accuracy`, `epoch_seconds`). `Evaluate(subset)` returns a `CnnEvaluation` with loss, accuracy, precision, recall, F1 (`System.ML.Metrics`, class 1 positive, threshold 0.5) the confusion matrix, `GetScores()` (the class-1 probability of each image) with `GetActuals()` for `Metrics->AucRoc` and ROC curves, and `ToResultTable(title)`. `GetParameterCount()` gives the parameter count: for a convolution `filters x (channels x k x k) + filters`, for a dense layer `units x inputs + units`. For the baseline at 224 x 224 that is 448 + 4,640 + 18,496 for the three convolutions, a flatten of 26 x 26 x 64 = 43,264 values, 128 x 43,264 + 128 = 5,537,920 for the hidden dense layer and 129 for the output: **5,561,633**. The baseline takes `CnnModel->Baseline(image_size, conv_blocks, dropout, dense_units, learning_rate, seed)`, so the experiments of the study (2, 3 or 4 blocks; dropout 0, 0.1, 0.3, 0.5; image size 64, 128, 224; learning rate 1e-3, 1e-4, 1e-5) are one-argument changes.
 
 **Complete runs.** [`programs/examples/ml/cnn_synthetic.obs`](../programs/examples/ml/cnn_synthetic.obs) trains the baseline on a generated 64 x 64 set in seconds, with no data. [`programs/examples/ml/cnn_images.obs`](../programs/examples/ml/cnn_images.obs) reads image folders (`--data ROOT` for the `train/`, `valid/`, `test/` layout of the 140k Real and Fake Faces dataset, or `--real DIR --fake DIR` for a seeded split) and takes the study's settings as options: `--blocks`, `--dropout`, `--lr`, `--size`, `--batch`, `--epochs` and `--augment`. It prints the parameter count, one line per epoch and the test metrics, and writes the history to a CSV file.
 
@@ -1495,7 +1559,7 @@ Nothing here ends the program on bad input: an empty batch, a Nil array, a wrong
 
 Both sides are float32 but sum in different orders, which costs a few units of 1.2e-7 per accumulation (up to 2,304 products here), so the differences are a few ulps. The test allows 2e-5 per layer and 5e-5 for the whole network. Dropout is compared in evaluation mode only, since PyTorch's random numbers are not ours; its mask, scaling and backward are checked by the gradient check and by exact-value tests (`ml_cnn_edges.obs`).
 
-*Training curve.* `train_baseline32` starts PyTorch and `ml_cnn` from the same weights, feeds both the same batches in the same order and takes 20 Adam steps (learning rate 1e-3). The loss falls from 0.721750 to 0.156777 in both; the worst per-step difference is 3.8e-7 (relative), and the weights after the 20 steps differ by 2.0e-5 relative to their scale (Adam divides by `sqrt(v)`, so entries with a tiny gradient move by more than the gradient difference). The test allows 1e-4 for the loss and 1e-3 for the weights.
+*Training curve.* `train_baseline32` starts PyTorch and `ml_cnn` from the same weights, feeds both the same batches in the same order and takes 20 Adam steps (learning rate 1e-3). The loss falls from 0.721750 to 0.156777 in both; the worst per-step difference is 3.8e-7 (relative), and the weights after the 20 steps differ by 2.0e-5 relative to their scale (Adam divides by `sqrt(v)`, so entries with a tiny gradient move by more than the gradient difference). The test allows 1e-4 for the loss and 1e-3 for the weights. At 64 x 64 and above a float32 curve is not a fair comparison, because Adam amplifies rounding: in an experiment with identical weights and batches, PyTorch float32 differed from PyTorch float64 by 5e-4 after 20 steps at 64 x 64 and by 6% at 128 x 128, while this engine's float32 run differed from float64 by 4e-3 and 2e-4 respectively, and this engine's float64 build matched PyTorch float64 to 4e-16. So `ml_cnn_parity64.obs` compares the float64 build against PyTorch float64 (any wrong formula shows), with a loose bound for float32.
 
 *Edge cases.* `ml_cnn_edges.obs`: parameter counts against the closed form (including the 5,561,633 above and variants at 64, 96, 128 and 224 pixels, 2 to 4 blocks, `SAME` padding), odd sizes, 1 and 3 channels, a batch of 1, loss values worked out by hand, dropout (same seed same masks, scaling, rate, identity in evaluation, replay), max-pool ties, one SGD step and the first Adam step, initializer limits, bit-exact `Save` / `Load`, and a list of bad inputs that must answer a failure value. `ml_cnn_dataset.obs`: the dataset, split, staging and augmentation (a flip mirrors, brightness multiplies, a rotation fills the corners with zeros, each fires at about its probability and repeats for a seed and key), BMP files, a corrupt file, and the trainer's history and metrics. `ml_cnn_train.obs`: the baseline on the synthetic set reaches at least 95% on the validation and the test sets (it reaches 100%).
 
@@ -1571,6 +1635,53 @@ The GPU is as close to PyTorch as the CPU engine is. The test allows 2e-5 per la
 *Unit tests.* `ml_cnn_cuda.obs` compares the GPU with a CPU twin of the same seed for: the device list, selection, refusal and the move back; odd and non-square sizes, 1, 2 and 3 channels, a 1 x 1 image, a kernel as large as the image, stride 3, an even `SAME` kernel, overlapping pooling windows, batches of 1, 3 and 6 (worst 1.1e-6); dropout (the same seed gives the same mask on two GPU models and on the CPU, element for element, another seed another mask, `ResetDropout` replays, the rate and the scaling are right, training-mode gradients agree); 20 Adam steps from the same weights and batches following the CPU loss curve step by step (worst 8e-8 relative), SGD with momentum, `SetLearningRate`; two GPU models trained alike being identical bit for bit; `Save` and `Load` between devices in both directions (weights bit-identical, predictions equal to 1e-7); four models alive and trained in turn, each equal to its twin; memory returned to its baseline after repeated create, train and close cycles and after `SetDevice("cpu")`; a batch of 400 that needs 55 GB answering `-1.0` with a reason and leaving the model working; bad arguments refused as on the CPU; and a 20-epoch `CnnTrainer` run on the synthetic texture set that reaches 100% validation and test accuracy on both devices (3.0 s on the CPU, 0.4 s on the GPU). `ml_cnn_cuda_fallback.obs` is the other half and runs wherever CUDA is *absent*, CI included: no device is counted, the reason is given, `SetDevice("cuda")` is refused, and a model refused the GPU trains exactly as one that never asked.
 
 *Not verified.* The whole path through Objeck (tests, speed, parity) was run on Windows x64 with an RTX 4090 (compute capability 8.9, driver 621.24, CUDA 13.1) only. On Linux (Ubuntu 24.04 under WSL2, g++ 13, CUDA 13.1, the same GPU) `build_cuda.sh` builds the library and a standalone C++ program that loads it with `dlopen` trains the baseline through it next to the CPU engine, agreeing to 1.2e-4 over 20 Adam steps on random labels; `libobjk_ml`'s own loader compiles there but was not run, and macOS has no CUDA. No other GPU generation, no multi-GPU machine and no older toolkit were tried; TF32 was measured on one batch only.
+
+### Statistics (System.Stats)
+
+Classical statistics for the analysis that comes before (or instead of) a model: descriptive statistics, t-tests with confidence intervals and effect sizes, Pearson correlation with a p-value, and an ordinary least squares fit with the full `statsmodels`-style summary. It is `stats.obl` (`-lib stats,gen_collect` or `-lib @ai`) and needs nothing from `System.ML`. No call ends the program on bad input: a `Float` function returns NaN, and a result object comes back with `IsValid()` false and `GetError()` saying why (Nil, a single value, zero variance, mismatched lengths, NaN or infinity, a confidence level outside (0, 1), a rank-deficient design).
+
+| Class | What it does |
+|---|---|
+| `Stats` | `Mean`, `Variance` (n - 1), `PopulationVariance`, `StdDev`, `StdError`, `Covariance`, `Median`, `Sum` |
+| `TTest` | `OneSample(x, mu)`, `TwoSample(x, y)` (Student, pooled variance), `Welch(x, y)`, `Paired(x, y)`; each takes an optional confidence level (default 0.95) and returns a `TTestResult` |
+| `TTestResult` | `GetT`, `GetDf`, `GetP` (two-sided), `GetMeanDiff`, `GetCiLow`, `GetCiHigh`, `GetCohenD`, `GetHedgesG`, `GetN1`, `GetN2`, `IsSignificant(alpha)`, `ToString` |
+| `Correlation` | `Pearson(x, y)` with a p-value (Student t, n - 2 df) and a Fisher-z interval, as a `CorrelationResult` |
+| `OLS` | `Fit(X, y, add_intercept)` and `Fit(X, y, add_intercept, names)` by Householder QR, as an `OLSResult` |
+| `OLSResult` | `GetCoefficients`, `GetStdErrors`, `GetTStats`, `GetPValues`, `GetConfInt(level)`, `GetRSquared`, `GetAdjustedRSquared`, `GetResidualStdError`, `GetFStat`, `GetFPValue`, `GetAIC`, `GetBIC`, `GetLogLikelihood`, `GetResiduals`, `GetFitted`, `GetCovariance`, `Predict(X)`, `ToString` (the summary table) |
+| `Design` | `AddIntercept`, `Column`, `HStack`, `Levels`, `Dummies` (0/1 columns, first sorted level is the reference) and `DummiesFor` (explicit level order) |
+| `Dist` | the building blocks: `StudentTwoSidedP`, `StudentCdf`, `StudentQuantile`, `NormalCdf`, `NormalQuantile`, `ChiSquareCdf`/`Sf`, `FCdf`/`Sf`, `BetaInc`, `GammaInc`, `LogGamma` |
+
+```ruby
+use System.Stats;
+
+class Demo {
+  function : Main(args : String[]) ~ Nil {
+    genuine := [52.0, 61.5, 48.2, 70.1, 55.3, 49.9, 66.0, 58.4];
+    fake := [40.2, 45.8, 52.1, 38.9, 47.5, 44.0, 50.3, 41.7];
+
+    r := TTest->Welch(genuine, fake);          # unequal variances; the safer default
+    r->ToString()->PrintLine();                # t, df, p, mean diff, 95% CI, Cohen d, Hedges g
+    if(r->IsValid() & r->IsSignificant(0.05)) {
+      "difference {$r->GetMeanDiff()} (95% CI {$r->GetCiLow()} to {$r->GetCiHigh()}), g = {$r->GetHedgesG()}"->PrintLine();
+    };
+
+    # regression with a categorical predictor: an intercept, a numeric column and 0/1 columns
+    length := [10.0, 25.0, 31.0, 12.0, 40.0, 22.0, 35.0, 18.0, 29.0, 44.0];
+    kind := ["a", "b", "c", "a", "b", "c", "a", "b", "c", "a"];
+    rating := [2.0, 3.1, 4.2, 2.4, 3.9, 3.8, 3.3, 3.0, 4.6, 4.1];
+    X := Design->HStack(Design->Column(length), Design->Dummies(kind));
+    fit := OLS->Fit(X, rating, true, ["length", "kind_b", "kind_c"]);
+    fit->ToString()->PrintLine();              # coef, std err, t, P>|t|, 95% CI, R-squared, F, AIC, BIC
+    fit->GetPValues()[1]->PrintLine();         # a Float[], one p-value per coefficient
+  }
+}
+```
+
+Conventions worth knowing. The mean difference is the first group minus the second, and the confidence interval is for that difference (for a one-sample test, mean minus the hypothesised mean). Cohen's d divides by the pooled standard deviation (one-sample: the sample's; paired: that of the differences), and Hedges' g multiplies it by the exact correction `Gamma(df/2) / (sqrt(df/2) * Gamma((df-1)/2))` (`Dist->HedgesJ`, about `1 - 3 / (4 df - 1)`); the Welch test reports the same pooled-sd d and g as the Student test. A regression with an intercept uses the centred total sum of squares and tests against the intercept-only model; without one it uses the uncentred sum and `df_model = k`, as `statsmodels` does, and AIC and BIC count one parameter per coefficient, also as `statsmodels` does. Put every level of a categorical variable beside an intercept and the fit is refused as rank deficient (the dummy trap); `Design->Dummies` drops the first level for that reason.
+
+The p-values come from the regularized incomplete beta function (continued fraction, Lentz), so they stay accurate in the far tail (`p = 7e-18` is `7e-18`, not 0) and for large degrees of freedom. Every distribution function is tested against `scipy` at small and large df.
+
+A complete run -- the review-length t-test at n = 100, 500 and 2000 per group on synthetic data, then the same comparison as a regression -- is [`programs/examples/ml/fake_review_ttest.obs`](../programs/examples/ml/fake_review_ttest.obs).
 
 ### Plotting (System.Plot)
 
@@ -1770,7 +1881,7 @@ obc -src program.obs -lib @ai -dest program.obe
 | `@web` | `net_h2`, `net_quic`, `web_server`, `json_rpc`, `net_server`, `net`, `json`, `cipher` | HTTP/2, HTTP/3, the embedded server, JSON-RPC |
 | `@data` | `xml`, `regex`, `csv`, `query`, `rss`, `misc`, `net`, `json`, `cipher` | parsing and querying structured data |
 | `@ml` | `gemini`, `openai`, `ollama`, `net_server`, `misc`, `net`, `json`, `cipher` | LLM clients: OpenAI, Gemini, Ollama |
-| `@ai` | `ai`, `ml`, `ml_lab`, `ml_vector`, `plot`, `nlp`, `csv`, `json` | local System.ML / System.ML.Lab / System.Plot / System.AI / System.NLP work |
+| `@ai` | `ai`, `ml`, `ml_lab`, `ml_vector`, `stats`, `plot`, `nlp`, `csv`, `json` | local System.ML / System.ML.Lab / System.Stats / System.Plot / System.AI / System.NLP work |
 | `@plot` | `plot`, `plot_sdl`, `sdl2` | charts in a window or as PNG (SVG alone needs only `plot`) |
 | `@vision` | `opencv`, `onnx`, `nlp_onnx`, `models`, `nlp`, `json`, `cipher` | OpenCV and ONNX inference, BERT text embeddings |
 | `@cnn` | `ml_cnn`, `ml`, `ml_lab`, `opencv`, `csv`, `json`, `cipher` | `System.ML.Cnn` convolutional networks, image loading and history tables |
@@ -1822,6 +1933,7 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 | Either, behind one interface | `Engine`, `OnnxEngine`, `HttpEngine` | `models` + one backend | None |
 | Computer vision | `Image`, `VideoCapture` | `opencv` | None |
 | Sentiment / TF-IDF | `SentimentAnalyzer`, `TF_IDF` | `nlp` | None |
+| Spelling and style features | `SpellChecker`, `TextFeatures` | `nlp` | None |
 | BERT tokenization | `WordPieceTokenizer`, `ApiSequenceTokenizer` | `nlp` | None |
 | Sentence embeddings (BERT) | `BertEmbedder` | `nlp_onnx` + `models`, `onnx`, `nlp` | None |
 | Text classification (fine-tuned BERT) | `TextClassifier`, `Prediction` | `nlp_onnx` + `models`, `onnx`, `nlp` | None |
@@ -1885,7 +1997,9 @@ The libraries in this guide are covered by the regression suite in `programs/reg
 | Area | Tests |
 |---|---|
 | `System.Plot`, `System.Plot.SDL` | `plot_svg.obs`, `plot_svg_more.obs` (with goldens in `plot_golden/`), `plot_view.obs`, `plot_sdl.obs` |
-| `System.ML.Cnn` | `ml_cnn_gradcheck.obs` (finite differences, float64), `ml_cnn_parity.obs` (against PyTorch, data from `tools/ml/cnn_parity.py`), `ml_cnn_edges.obs`, `ml_cnn_dataset.obs`, `ml_cnn_train.obs`, and for the optional GPU backend `ml_cnn_cuda.obs`, `ml_cnn_cuda_parity.obs` (both skip without a CUDA device) and `ml_cnn_cuda_fallback.obs` (runs only without one) |
+| `System.ML.Cnn` | `ml_cnn_gradcheck.obs` (finite differences, float64), `ml_cnn_parity.obs` (against PyTorch, data from `tools/ml/cnn_parity.py`), `ml_cnn_parity64.obs` (float64 engine against PyTorch float64 at 64 x 64, 20 Adam steps), `ml_cnn_edges.obs`, `ml_cnn_dataset.obs`, `ml_cnn_train.obs`, and for the optional GPU backend `ml_cnn_cuda.obs`, `ml_cnn_cuda_parity.obs` (both skip without a CUDA device) and `ml_cnn_cuda_fallback.obs` (runs only without one) |
+
+| `System.Stats` | `stats_dist.obs`, `stats_ttest.obs`, `stats_corr_ols.obs`, `stats_degenerate.obs` (expected values from scipy / numpy, generated by `tools/stats/gen_stats_reference.py`) |
 | `System.ML.VectorSearch` | `ml_vector_exact.obs`, `ml_vector_edges.obs`, `ml_vector_validation.obs`, `ml_vector_persist.obs` |
 | `System.ML` | `ml_*.obs`, e.g. `ml_kernel_svm_reference.obs` and `ml_one_class_svm_reference.obs` (against an independent reference, generated by `tools/ml/svm_reference/gen_reference_test.py`), `ml_outlier_*.obs`, `ml_lab_*.obs` |
 | `System.AI` | `ai_search_test.obs`, `ai_game_test.obs`, `ai_optimize_test.obs`, `ai_rl_test.obs` |

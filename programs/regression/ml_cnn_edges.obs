@@ -662,7 +662,10 @@ class MlCnnEdges {
 		c->Close();
 		Report("a closed model refuses everything", c->TrainBatch(x, [1.0, 0.0, 1.0]) < 0.0 & c->Predict(x) = Nil & c->IsValid() = false);
 		c->Close();
-		Report("Close twice is harmless", c->IsValid() = false);
+		Report("Close twice is harmless", c->IsValid() = false & c->IsOpen() = false);
+		open_model := Tiny(44);
+		Report("an open model is IsOpen, and GetError is empty (not Nil) when nothing went wrong", open_model->IsOpen() & open_model->GetError()->Size() = 0);
+		open_model->Close();
 
 		# staging
 		t := Tiny(43);

@@ -50,7 +50,7 @@ bundle System.ML.Cnn {
 		@fn_ml_cnn_cuda_text : static : String;
 
 		#~
-		Sets how many threads the layers use (the batch is spread over them, one sample per task). The default is the number of hardware threads, at most 8.
+		Sets how many threads the layers use (the batch is spread over them, one sample per task). The setting is process-wide: every model, on every Objeck thread, shares the one pool. The default is the number of hardware threads, at most 8, which differs between machines; a run repeats bit for bit only at a fixed thread count, so set it (to 1 or any fixed number) for a result that must be the same on another machine.
 		@param count threads, 1 to 64
 		@return the thread count now in force
 		~#
@@ -267,7 +267,7 @@ aug->SetBrightness(0.3, 0.8, 1.2);  # 30% are scaled by 0.8 .. 1.2
 
 	Images are Float[] of whole images laid end to end, each channels x height x width (planes, not interleaved) with values in 0 .. 1; labels are 0.0 or 1.0. Nothing here ends the program on bad input: a method answers false, -1.0 or Nil (or 0 for a count), and GetError() says why.
 
-	A model holds native memory, so call Close() when done with it. Not thread-safe: one thread at a time per model.
+	A model holds native memory, so call Close() when done with it (it is safe to call twice, and IsOpen() says whether the model is still alive). Not thread-safe: one thread at a time per model; the layers use the process-wide pool of CnnRuntime, whose thread count also decides whether a run repeats bit for bit.
 
 ```
 model := CnnModel->New(3, 64, 64, 42);
@@ -397,6 +397,14 @@ probabilities := model->Predict(images);
 		@return true if valid
 		~#
 		method : public : IsValid() ~ Bool {
+			return @handle <> 0;
+		}
+
+		#~
+		Is the native model alive: created and not yet closed? The word BertEmbedder and Session use; the same as IsValid.
+		@return true if open
+		~#
+		method : public : IsOpen() ~ Bool {
 			return @handle <> 0;
 		}
 
@@ -1696,10 +1704,10 @@ train->SetAugmentation(aug);
 		method : public : ToResultTable(title : String) ~ ResultTable {
 			table := ResultTable->New(title, "epoch");
 			table->AddColumn("train_loss", 6);
-			table->AddColumn("train_acc", 4);
+			table->AddColumn("train_accuracy", 4);
 			table->AddColumn("val_loss", 6);
-			table->AddColumn("val_acc", 4);
-			table->AddColumn("seconds", 2);
+			table->AddColumn("val_accuracy", 4);
+			table->AddColumn("epoch_seconds", 2);
 			each(i : @epochs) {
 				cells := [@train_loss[i], @train_accuracy[i], @validation_loss[i], @validation_accuracy[i], @seconds[i]];
 				table->AddRow("{$(i + 1)}", (i + 1)->As(Float), cells);
@@ -1709,11 +1717,11 @@ train->SetAugmentation(aug);
 		}
 
 		#~
-		The history as CSV text with a header row: epoch, train_loss, train_acc, val_loss, val_acc, seconds.
+		The history as CSV text with a header row: epoch, train_loss, train_accuracy, val_loss, val_accuracy, epoch_seconds (the names of the System.ML.Lab Experiment tables).
 		@return the text
 		~#
 		method : public : ToCsv() ~ String {
-			out := "epoch,train_loss,train_acc,val_loss,val_acc,seconds\n";
+			out := "epoch,train_loss,train_accuracy,val_loss,val_accuracy,epoch_seconds\n";
 			each(i : @epochs) {
 				out += "{$(i + 1)},{$@train_loss[i]},{$@train_accuracy[i]},{$@validation_loss[i]},{$@validation_accuracy[i]},{$@seconds[i]}\n";
 			};
@@ -1746,8 +1754,20 @@ train->SetAugmentation(aug);
 		@recall : Float;
 		@f1 : Float;
 		@confusion : Int[,];
+		@scores : Float[];
+		@actuals : Bool[];
 
 		New(count : Int, loss : Float, predictions : Bool[], actuals : Bool[]) {
+			Init(count, loss, predictions, actuals, Nil);
+		}
+
+		New(count : Int, loss : Float, predictions : Bool[], actuals : Bool[], scores : Float[]) {
+			Init(count, loss, predictions, actuals, scores);
+		}
+
+		method : Init(count : Int, loss : Float, predictions : Bool[], actuals : Bool[], scores : Float[]) ~ Nil {
+			@scores := scores;
+			@actuals := actuals;
 			@count := count;
 			@loss := loss;
 			@accuracy := Metrics->Accuracy(predictions, actuals);
@@ -1764,6 +1784,36 @@ train->SetAugmentation(aug);
 		method : public : GetRecall() ~ Float { return @recall; }
 		method : public : GetF1() ~ Float { return @f1; }
 		method : public : GetConfusion() ~ Int[,] { return @confusion; }
+
+		#~
+		The probability of class 1 for each scored image, in subset order: what Metrics->AucRoc, Metrics->RocCurve and Axes->RocCurve take with GetActuals.
+		@return the scores, one per image
+		~#
+		method : public : GetScores() ~ Float[] { return @scores; }
+
+		#~
+		The true class of each scored image (true for class 1), in subset order.
+		@return the labels
+		~#
+		method : public : GetActuals() ~ Bool[] { return @actuals; }
+
+		#~
+		The metrics as a one-row System.ML.Lab ResultTable (columns loss, accuracy, precision, recall, f1, n), for the Lab text, Markdown, CSV and JSON output.
+		@param title table title
+		@return the table
+		~#
+		method : public : ToResultTable(title : String) ~ ResultTable {
+			table := ResultTable->New(title, "set");
+			table->AddColumn("loss", 6);
+			table->AddColumn("accuracy", 4);
+			table->AddColumn("precision", 4);
+			table->AddColumn("recall", 4);
+			table->AddColumn("f1", 4);
+			table->AddColumn("n", 0);
+			table->AddRow("test", 0.0, [@loss, @accuracy, @precision, @recall, @f1, @count->As(Float)]);
+
+			return table;
+		}
 
 		method : public : ToString() ~ String {
 			return "n={$@count} loss={$@loss} accuracy={$@accuracy} precision={$@precision} recall={$@recall} f1={$@f1}";
@@ -1918,6 +1968,7 @@ test_result->GetAccuracy()->PrintLine();
 
 			predictions := Bool->New[n];
 			actuals := Bool->New[n];
+			scores := Float->New[n];
 			loss_sum := 0.0;
 			for(start := 0; start < n; start += @batch;) {
 				count := Int->Min(@batch, n - start);
@@ -1937,12 +1988,13 @@ test_result->GetAccuracy()->PrintLine();
 					y := labels[j];
 					# the numerically stable binary cross-entropy on a logit
 					loss_sum += Float->Max(z, 0.0) - z * y + Float->Log(1.0 + Float->Exp(0.0 - Float->Abs(z)));
+					scores[start + j] := z >= 0.0 ? 1.0 / (1.0 + Float->Exp(0.0 - z)) : Float->Exp(z) / (1.0 + Float->Exp(z));
 					predictions[start + j] := z > 0.0;
 					actuals[start + j] := y > 0.5;
 				};
 			};
 
-			return CnnEvaluation->New(n, loss_sum / n->As(Float), predictions, actuals);
+			return CnnEvaluation->New(n, loss_sum / n->As(Float), predictions, actuals, scores);
 		}
 	}
 }
