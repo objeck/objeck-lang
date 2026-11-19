@@ -42,6 +42,30 @@ class AnthropicMock from HttpsRequestHandler {
 			return false;
 		};
 
+		if(key->Equals("refuse-key")) {
+			response->SetCodeContent(200, "{\"id\":\"msg_x\",\"model\":\"m\",\"content\":[],\"stop_reason\":\"refusal\",\"usage\":{\"input_tokens\":1,\"output_tokens\":0}}");
+			return false;
+		};
+
+		if(key->Equals("empty-key")) {
+			response->SetCodeContent(200, "{\"id\":\"msg_e\",\"model\":\"m\",\"content\":[{\"type\":\"text\",\"text\":\"\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":1,\"output_tokens\":0}}");
+			return false;
+		};
+
+		if(key->Equals("mid-fail") & body->Find("\"stream\"") > -1) {
+			events := "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_m\",\"model\":\"m\",\"usage\":{\"input_tokens\":7,\"output_tokens\":1}}}\n\n";
+			events += "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n";
+			events += "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hel\"}}\n\n";
+			events += "event: error\ndata: {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Overloaded\"}}\n\n";
+			response->SetCodeTypeContent(200, "text/event-stream", events->ToByteArray());
+			return false;
+		};
+
+		if(body->Find("\"tool_choice\"") > -1 & body->Find("\"thinking\"") > -1) {
+			response->SetCodeContent(400, "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"thinking may not be enabled when tool_choice forces tool use\"}}");
+			return false;
+		};
+
 		if(body->Find("\"stream\"") > -1) {
 			events := "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_s\",\"model\":\"m\",\"usage\":{\"input_tokens\":7,\"output_tokens\":1}}}\n\n";
 			events += "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n";
@@ -179,6 +203,9 @@ class AnthropicHttpTest {
 		TestJson();
 		TestStream();
 		TestStreamError();
+		TestStreamHistory();
+		TestRefusedAndEmpty();
+		TestThinking();
 
 		File->Delete(cert);
 		File->Delete(key);
@@ -287,6 +314,71 @@ class AnthropicHttpTest {
 		Check("no stream is returned", stream = Nil);
 		err := EndPoint->GetLastError();
 		Check("the status is reported", err <> Nil & err->Find("401") > -1);
+		Check("with what it means, since the refused body is not read", err <> Nil & err->Find("authentication_error") > -1);
 		Check("the message is not kept", chat->GetMessages()->Size() = 0);
+	}
+
+	function : TestStreamHistory() ~ Nil {
+		"-- a stream settles into the history by itself"->PrintLine();
+		chat := Chat->New("claude-sonnet-5-5", "test-key");
+		stream := chat->Stream("hello", Nil);
+		count := 0;
+		while(stream <> Nil & stream->HasNext()) {
+			count += 1;
+		};
+		Check("reading the text to the end joins the exchange without asking for the reply", chat->GetMessages()->Size() = 2);
+		first := stream->GetReply();
+		second := stream->GetReply();
+		Check("GetReply is idempotent", first <> Nil & Same(first->GetText(), "Hello") & second <> Nil & Same(second->GetText(), "Hello"));
+		Check("and does not add the assistant turn twice", chat->GetMessages()->Size() = 2);
+
+		"-- a stream that fails part-way"->PrintLine();
+		chat := Chat->New("claude-sonnet-5-5", "mid-fail");
+		EndPoint->SetLastError(Nil);
+		stream := chat->Stream("hello", Nil);
+		Check("it opens", stream <> Nil);
+		if(stream = Nil) {
+			return;
+		};
+		pieces := "";
+		while(stream->HasNext()) {
+			pieces += stream->Next();
+		};
+		Check("the text before the error arrives", Same(pieces, "Hel"));
+		Check("GetReply is Nil after an error event", stream->GetReply() = Nil);
+		err := EndPoint->GetLastError();
+		Check("the error carries its type", err <> Nil & err->Find("overloaded_error") > -1);
+		Check("the user message is rolled back", chat->GetMessages()->Size() = 0);
+
+		"-- a stream closed early"->PrintLine();
+		chat := Chat->New("claude-sonnet-5-5", "test-key");
+		stream := chat->Stream("hello", Nil);
+		if(stream <> Nil) {
+			stream->HasNext();
+			stream->Close();
+		};
+		Check("an early close drops the exchange", chat->GetMessages()->Size() = 0);
+	}
+
+	function : TestRefusedAndEmpty() ~ Nil {
+		"-- a refusal and an empty reply"->PrintLine();
+		chat := Chat->New("claude-sonnet-5-5", "refuse-key");
+		reply := chat->SendReply("do the bad thing", Nil);
+		Check("the refusal is returned", reply <> Nil & Same(reply->GetStopReason(), "refusal"));
+		Check("and neither turn is kept, so the chat is not wedged", chat->GetMessages()->Size() = 0);
+
+		chat := Chat->New("claude-sonnet-5-5", "empty-key");
+		reply := chat->SendReply("say nothing", Nil);
+		Check("an empty reply is returned", reply <> Nil);
+		Check("and not kept, since the API rejects an empty turn on replay", chat->GetMessages()->Size() = 1);
+	}
+
+	function : TestThinking() ~ Nil {
+		"-- thinking and a forced tool"->PrintLine();
+		schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"},\"temp\":{\"type\":\"integer\"}},\"required\":[\"city\",\"temp\"]}");
+		chat := Chat->New("claude-sonnet-5-5", "test-key");
+		chat->SetMaxTokens(3000)->SetThinking(2000);
+		answer := chat->SendJson("Where is it 18 degrees?", "answer", schema);
+		Check("SendJson leaves thinking off for its request, which the API would reject", answer <> Nil & Same(answer->Get("city")->GetString(), "Rome"));
 	}
 }

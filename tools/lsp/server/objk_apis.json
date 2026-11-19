@@ -42,6 +42,9 @@
 				"SetTemperature": {
 					"descriptions": ["**Sets the sampling temperature**\n\n```method : public : SetTemperature(temperature:Float) ~ Chat```\n\n\n\ntemperature: Float\n\nreturn: Chat"]
 				},
+				"SetThinking": {
+					"descriptions": ["**Turns extended thinking on. The API needs a budget of at least 1024 tokens and a max_tokens above it, so call SetMaxTokens too. While it is on, the temperature is not sent (the API rejects both together), and SendJson leaves thinking off for its one request because a forced tool is rejected with it.**\n\n```method : public : SetThinking(budget_tokens:Int) ~ Chat```\n\n\n\nbudget_tokens: Int\n\nreturn: Chat"]
+				},
 				"Stream": {
 					"descriptions": ["**Sends a message and streams the reply as it is generated**\n\n```method : public : Stream(message:String, tools:Vector&lt;Tool&gt;) ~ ReplyStream```\n\n\n\nmessage: String\n\ntools: Vector&lt;Tool&gt;\n\nreturn: ReplyStream"]
 				}
@@ -56,6 +59,9 @@
 				"GetBaseUrl": {
 					"descriptions": ["**Gets the API base URL**\n\n```function : GetBaseUrl() ~ String```\n\n\n\nreturn: String"]
 				},
+				"GetCertificate": {
+					"descriptions": ["**Gets the pinned certificate file**\n\n```function : GetCertificate() ~ String```\n\n\n\nreturn: String"]
+				},
 				"GetLastError": {
 					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
 				},
@@ -67,6 +73,9 @@
 				},
 				"SetBaseUrl": {
 					"descriptions": ["**Sets the API base URL (default https://api.anthropic.com/v1), for a gateway or proxy**\n\n```function : SetBaseUrl(base_url:String) ~ Nil```\n\n\n\nbase_url: String\n\nreturn: Nil"]
+				},
+				"SetCertificate": {
+					"descriptions": ["**Pins the certificate a gateway or test server presents, a PEM file used as the trust anchor in place of the system store. Leave it unset for api.anthropic.com.**\n\n```function : SetCertificate(pem:String) ~ Nil```\n\n\n\npem: String\n\nreturn: Nil"]
 				}
 			}
 		},
@@ -112,7 +121,7 @@
 			"description": "A streamed reply. Read it text first, then ask for the whole reply:",
 			"functions": {
 				"Close": {
-					"descriptions": ["**Closes the connection early**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+					"descriptions": ["**Closes the connection early. The exchange is then dropped from the history, as a failed one is.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"GetReply": {
 					"descriptions": ["**Reads any remaining events and returns the whole reply; the exchange then joins the chat history**\n\n```method : public : GetReply() ~ Reply```\n\n\n\nreturn: Reply"]

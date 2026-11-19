@@ -294,6 +294,10 @@ chat->Send("And at sunset?")->PrintLine();
 
 `SendReply(message, tools)` returns the whole `Reply`: `GetText()`, `GetThinking()`, `GetStopReason()`, `GetInputTokens()`, `GetOutputTokens()`, and the tool calls. Pass `Nil` as the message to send the history as it stands.
 
+`SetThinking(budget_tokens)` turns on extended thinking. The API needs a budget of at least 1024 tokens and a `SetMaxTokens` above it. While thinking is on the temperature is not sent, and `SendJson` leaves thinking off for its one request, because the API rejects a forced tool with thinking.
+
+What joins the history, so a chat never wedges: a reply that fails is dropped together with the message that asked for it; a refusal (`stop_reason` `refusal`) and an empty reply are returned to you but not kept, as the API advises; an empty text block is removed from a turn before it is replayed; thinking blocks, including redacted ones, are replayed whole.
+
 ### Tool use
 
 Describe each tool with a name, a description and a JSON schema. When a reply has tool uses, run them, return each result with `AddToolResult(use_id, text)` and send again. Results for one reply share one user message, as the API requires. Mark a failed tool with `AddToolResult(id, text, true)`.
@@ -335,7 +339,7 @@ answer->Get("city")->GetString()->PrintLine();
 
 ### Streaming
 
-`Stream(message, tools)` returns a `ReplyStream`. Read it piece by piece, then ask for the whole reply; the exchange joins the history when the stream ends.
+`Stream(message, tools)` returns a `ReplyStream`. Read it piece by piece; the exchange joins the history when the stream ends, whether or not you ask for the whole reply, and `GetReply()` can be called more than once. `Close()` before the end, an error event and a tool input that was cut off by `max_tokens` all drop the exchange from the history.
 
 ```ruby
 stream := chat->Stream("Write a haiku about rivers.", Nil);
@@ -345,7 +349,7 @@ while(stream <> Nil & stream->HasNext()) {
 reply := stream->GetReply();
 ```
 
-Streaming works over HTTPS only. A refused request (a bad key, a rate limit) returns `Nil` with the status in `GetLastError()`.
+Streaming works over HTTPS only. A refused request (a bad key, a rate limit) returns `Nil` with the status and what it usually means in `GetLastError()`; the body of a refused stream is not read, so the API's own message is not shown there.
 
 **Tested against a local mock, not the live service.** `anthropic_parse_test` replays recorded response bodies and event streams, and `anthropic_http_test` runs the client against a local HTTPS server that speaks the same message shapes, checking the `x-api-key` and `anthropic-version` headers, errors, a tool round trip, structured output and streaming. Neither calls api.anthropic.com. If a field or event the live API sends is not handled, the parse test is where to add a recorded case.
 

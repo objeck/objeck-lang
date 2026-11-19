@@ -37,6 +37,9 @@ class AnthropicParseTest {
     TestToolResults();
     TestStream();
     TestStreamError();
+    TestStreamReplay();
+    TestThinkingRequest();
+    TestHistoryRules();
 
     if(@failures > 0) {
       "FAIL: {$@failures} check(s) failed"->PrintLine();
@@ -257,5 +260,84 @@ class AnthropicParseTest {
     Check("an event with Nil data is ignored", junk->Apply("content_block_delta", Nil) = Nil);
     Check("an event with non-JSON data is ignored", junk->Apply("content_block_delta", "not json") = Nil);
     Check("a Nil event name is ignored", junk->Apply(Nil, "{}") = Nil);
+  }
+
+  function : TestStreamReplay() ~ Nil {
+    "-- streamed blocks replay as they arrived"->PrintLine();
+    assembler := StreamAssembler->New();
+    Feed(assembler, "message_start", "{\"type\":\"message_start\",\"message\":{\"id\":\"msg_r\",\"model\":\"m\",\"usage\":{\"input_tokens\":4,\"output_tokens\":1}}}", Nil, "message_start");
+    Feed(assembler, "content_block_start", "{\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"redacted_thinking\",\"data\":\"EmwKAhgB\"}}", Nil, "a redacted_thinking block starts");
+    Feed(assembler, "content_block_stop", "{\"type\":\"content_block_stop\",\"index\":0}", Nil, "and stops");
+    Feed(assembler, "content_block_start", "{\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}", Nil, "an empty text block starts");
+    Feed(assembler, "content_block_stop", "{\"type\":\"content_block_stop\",\"index\":1}", Nil, "and gets no text");
+    Feed(assembler, "content_block_start", "{\"type\":\"content_block_start\",\"index\":2,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}", Nil, "a text block starts");
+    Feed(assembler, "content_block_delta", "{\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hi\"}}", "Hi", "it gets text");
+    Feed(assembler, "content_block_stop", "{\"type\":\"content_block_stop\",\"index\":2}", Nil, "and stops");
+    Feed(assembler, "message_delta", "{\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":3}}", Nil, "message_delta");
+    Feed(assembler, "message_stop", "{\"type\":\"message_stop\"}", Nil, "message_stop");
+    reply := assembler->GetReply();
+    Check("the reply builds", reply <> Nil);
+    if(reply = Nil) {
+      return;
+    };
+    content := reply->GetContent();
+    Check("the empty text block is dropped, the other two are kept", content->Size() = 2);
+    Check("the redacted_thinking block keeps its type", Same(content->Get(0)->Get("type")->GetString(), "redacted_thinking"));
+    Check("and its data, which the API needs on replay", content->Get(0)->Has("data") & Same(content->Get(0)->Get("data")->GetString(), "EmwKAhgB"));
+    Check("the answer text is Hi", Same(reply->GetText(), "Hi"));
+
+    "-- a cut-off tool input fails the stream"->PrintLine();
+    EndPoint->SetLastError(Nil);
+    cut := StreamAssembler->New();
+    Feed(cut, "content_block_start", "{\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_x\",\"name\":\"t\",\"input\":{}}}", Nil, "a tool block starts");
+    Feed(cut, "content_block_delta", "{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"city\\\": \\\"Ro\"}}", Nil, "half of its input arrives");
+    Feed(cut, "content_block_stop", "{\"type\":\"content_block_stop\",\"index\":0}", Nil, "and the block stops");
+    Check("the stream is marked failed", cut->IsFailed());
+    err := EndPoint->GetLastError();
+    Check("the error says the input was cut off", err <> Nil & err->Find("cut off") > -1);
+
+    "-- a streamed error keeps its type"->PrintLine();
+    EndPoint->SetLastError(Nil);
+    typed := StreamAssembler->New();
+    Feed(typed, "error", "{\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Overloaded\"}}", Nil, "an error event");
+    err := EndPoint->GetLastError();
+    Check("the message carries the error type", err <> Nil & err->Find("overloaded_error") > -1 & err->Find("Overloaded") > -1);
+  }
+
+  function : TestThinkingRequest() ~ Nil {
+    "-- extended thinking in the request"->PrintLine();
+    chat := Chat->New("m", "k");
+    chat->SetMaxTokens(3000)->SetTemperature(0.5)->SetThinking(2000);
+    chat->AddMessage("user", "hi");
+    request := chat->BuildRequest(Nil, false);
+    Check("thinking is enabled with its budget", request->Has("thinking") & Same(request->Get("thinking")->Get("type")->GetString(), "enabled") & request->Get("thinking")->Get("budget_tokens")->GetInt() = 2000);
+    Check("temperature is not sent beside thinking", <>request->Has("temperature"));
+    chat->SetThinking(0);
+    request := chat->BuildRequest(Nil, false);
+    Check("thinking off sends no thinking field", <>request->Has("thinking"));
+    Check("and the temperature comes back", request->Has("temperature"));
+  }
+
+  function : TestHistoryRules() ~ Nil {
+    "-- what joins the history"->PrintLine();
+    chat := Chat->New("m", "k");
+    chat->AddMessage("user", "q");
+    refused := StreamAssembler->New();
+    Feed(refused, "message_start", "{\"type\":\"message_start\",\"message\":{\"id\":\"a\",\"model\":\"m\",\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}}", Nil, "message_start");
+    Feed(refused, "message_delta", "{\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"refusal\"},\"usage\":{\"output_tokens\":1}}", Nil, "a refusal");
+    Feed(refused, "message_stop", "{\"type\":\"message_stop\"}", Nil, "stop");
+    reply := chat->FinishStream(refused);
+    Check("a refused reply is returned", reply <> Nil & Same(reply->GetStopReason(), "refusal"));
+    Check("and not kept in the history", chat->GetMessages()->Size() = 1);
+
+    chat := Chat->New("m", "k");
+    chat->AddMessage("user", "q");
+    empty := StreamAssembler->New();
+    Feed(empty, "message_start", "{\"type\":\"message_start\",\"message\":{\"id\":\"b\",\"model\":\"m\",\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}}", Nil, "message_start");
+    Feed(empty, "message_delta", "{\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":0}}", Nil, "an empty turn");
+    Feed(empty, "message_stop", "{\"type\":\"message_stop\"}", Nil, "stop");
+    reply := chat->FinishStream(empty);
+    Check("an empty reply is returned", reply <> Nil);
+    Check("and not kept, since the API rejects an empty turn on replay", chat->GetMessages()->Size() = 1);
   }
 }
