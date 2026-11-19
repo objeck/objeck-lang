@@ -11819,6 +11819,99 @@
 				}
 			}
 		},
+		"System.ML.Lab.MetricRun": {
+			"description": "Everything a metric sweep measured: for each setting (a row) and each seed, every metric the MetricTrial returned plus trial_ms, the wall-clock time of the trial, and for every failed trial the reason. Nothing is averaged away: GetValues returns the per-seed values (for a paired test between two settings), GetSummary the mean, deviation, minimum, maximum, count and confidence interval, and three ResultTables render it:\n\n- ToTable: one row per setting, one column per metric, mean and sample standard deviation (just the mean when there is a single seed)\n- ToSummaryTable: one row per setting and metric, columns mean, std, min, max, n, ci_low, ci_high\n- ToRawTable: one row per setting and seed, one column per metric\n\nEach is a ResultTable, so ToText, ToMarkdown, ToCsv, ToJson, Save and ToChart work, and a NaN cell (a failed trial, a one-seed deviation) renders as n/a, an empty CSV field and a JSON null.",
+			"functions": {
+				"ColumnIndex": {
+					"descriptions": ["**The index of a metric.**\n\n```method : public : ColumnIndex(name:String) ~ Int```\n\n\n\nname: String\n\nreturn: Int"]
+				},
+				"GetColumns": {
+					"descriptions": ["**The metric names in order, the trial's own followed by trial_ms.**\n\n```method : public : GetColumns() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetFailureCount": {
+					"descriptions": ["**The number of trials that failed (returned Nil or raised an Error).**\n\n```method : public : GetFailureCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetFailures": {
+					"descriptions": ["**One line per failed trial: the setting, the seed and the reason.**\n\n```method : public : GetFailures() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetRowCount": {
+					"descriptions": ["**The number of settings.**\n\n```method : public : GetRowCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetSeeds": {
+					"descriptions": ["**The seeds, in the order they were run.**\n\n```method : public : GetSeeds() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetSummary": {
+					"descriptions": ["**The summary of one metric of one setting over its seeds.**\n\n```method : public : GetSummary(row:Int, column:String) ~ SeedSummary```\n\n\n\nrow: Int\n\ncolumn: String\n\nreturn: SeedSummary"]
+				},
+				"GetValues": {
+					"descriptions": ["**The per-seed values of one metric of one setting, in seed order, NaN where the trial failed or had no value.**\n\n```method : public : GetValues(row:Int, column:String) ~ Float[]```\n\n\n\nrow: Int\n\ncolumn: String\n\nreturn: Float[]"]
+				},
+				"IsFailed": {
+					"descriptions": ["**Whether the trial of a setting and a seed failed.**\n\n```method : public : IsFailed(row:Int, seed_index:Int) ~ Bool```\n\n\n\nrow: Int\n\nseed_index: Int\n\nreturn: Bool"]
+				},
+				"Set": {
+					"descriptions": ["**Records one trial. Called by Experiment->Replicate.**\n\n```method : public : Set(row:Int, seed_index:Int, results:Float[], ms:Float, failure:String) ~ Nil```\n\n\n\nrow: Int\n\nseed_index: Int\n\nresults: Float[]\n\nms: Float\n\nfailure: String\n\nreturn: Nil"]
+				},
+				"SetFootnote": {
+					"descriptions": ["**Replaces the footnote of the tables. Called by Experiment->Replicate.**\n\n```method : public : SetFootnote(text:String) ~ Nil```\n\n\n\ntext: String\n\nreturn: Nil"]
+				},
+				"ToRawTable": {
+					"descriptions": ["**One row per setting and seed, named \"setting | seed\", one column per metric: every value the sweep measured, unaveraged. A failed trial is a row of NaN.**\n\n```method : public : ToRawTable() ~ ResultTable```\n\n\n\nreturn: ResultTable"]
+				},
+				"ToSummaryTable": {
+					"descriptions": ["**One row per setting and metric, named \"setting | metric\", with the columns mean, std, min, max, n (usable values), ci_low and ci_high (the confidence interval of the mean, at the experiment level).**\n\n```method : public : ToSummaryTable() ~ ResultTable```\n\n\n\nreturn: ResultTable"]
+				},
+				"ToTable": {
+					"descriptions": ["**One row per setting, one column per metric: the mean over the seeds and, with more than one seed, the sample standard deviation. The footnote names the fixed settings, the seeds and any failures.**\n\n```method : public : ToTable() ~ ResultTable```\n\n\n\nreturn: ResultTable"]
+				}
+			}
+		},
+		"System.ML.Lab.MetricTrial": {
+			"description": "One trial of a metric sweep: given a parameter value and a seed, fit and score anything (an OLS, a CNN, an LDA, a BERT head) and return one number per named column. The columns belong to the trial, so a sweep is not tied to the eight fixed metrics of a binary classifier. Experiment->RunMetrics runs it over every value and every seed.\n\nReturn NaN for a metric the trial could not compute: it is left out of that cell's mean and SeedSummary->GetCount says so. Return Nil, or raise an Error, when the whole trial failed: the failure is recorded, the run continues, and every metric of that trial is missing.\n\nAn interface rather than a function reference, as Trial is. Interfaces cannot be generic and cannot extend one another, so this is one flat interface: GetColumns names what Run returns, in order.",
+			"functions": {
+				"GetColumns": {
+					"descriptions": ["**The column names, fixed for the whole sweep: what Run returns, in order. Names must be non-empty and distinct, and not \"trial_ms\", which the experiment adds itself (the wall-clock time of each Run).**\n\n```method : public : virutal : GetColumns() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"Run": {
+					"descriptions": ["**Runs one trial.**\n\n```method : public : virutal : Run(value:Float, name:String, seed:Int) ~ Float[]```\n\n\n\nvalue: Float\n\nname: String\n\nseed: Int\n\nreturn: Float[]"]
+				}
+			}
+		},
+		"System.ML.Lab.SeedSummary": {
+			"description": "Summary statistics of one metric over the seeds of one setting: how many values were usable, their mean, sample standard deviation (n - 1), minimum, maximum and a Student t confidence interval for the mean. A value that is NaN or infinite is a missing value and is left out; GetCount says how many were used, so a mean of four seeds is never mistaken for one of five.\n\nWith no usable value everything but the count is NaN; with one, the deviation and the interval are NaN (a spread needs two). The interval is mean +/- t * std / sqrt(n), t the two-sided critical value of the t distribution with n - 1 degrees of freedom (12.706 for n = 2 at 95%), found here by inverting the tail of the t distribution, so ml_lab needs no other library.",
+			"functions": {
+				"GetCiHigh": {
+					"descriptions": ["**Upper end of the confidence interval for the mean.**\n\n```method : public : GetCiHigh() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetCiLow": {
+					"descriptions": ["**Lower end of the confidence interval for the mean.**\n\n```method : public : GetCiLow() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetCount": {
+					"descriptions": ["**How many values were used.**\n\n```method : public : GetCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetLevel": {
+					"descriptions": ["**The confidence level of the interval.**\n\n```method : public : GetLevel() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMax": {
+					"descriptions": ["**The largest value.**\n\n```method : public : GetMax() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMean": {
+					"descriptions": ["**The mean.**\n\n```method : public : GetMean() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMin": {
+					"descriptions": ["**The smallest value.**\n\n```method : public : GetMin() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetStd": {
+					"descriptions": ["**The sample standard deviation (divides by n - 1).**\n\n```method : public : GetStd() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"Of": {
+					"descriptions": ["**Summarizes values.**\n\n```function : Of(values:Float[], level:Float) ~ SeedSummary```\n\n\n\nvalues: Float[]\n\nlevel: Float\n\nreturn: SeedSummary"]
+				},
+				"TCritical": {
+					"descriptions": ["**The two-sided critical value of the t distribution: the t for which the probability of |T| > t is 1 - level.**\n\n```function : TCritical(df:Int, level:Float) ~ Float```\n\n\n\ndf: Int\n\nlevel: Float\n\nreturn: Float"]
+				}
+			}
+		},
 		"System.NLP.SpellChecker": {
 			"description": "Counts misspelled words against a word list the program supplies, for the misspelling feature of fake-review and fake-news detectors. No dictionary ships with Objeck: load a newline-delimited list of words, one per line, such as a Linux /usr/share/dict/words, the SCOWL / aspell word lists (http://wordlist.aspell.net) or the \"words_alpha.txt\" list of English words; check the licence of the list you pick. Matching ignores case.\n\nWords are found the way Tokenizer->WordTokenize finds them, so the same text gives the same tokens as TextPreprocessor and TF_IDF. A token that holds a digit (\"COVID-19\", \"3.14\") is never counted as misspelled, and a possessive (\"dog's\") is checked without its \"'s\". The rate is the misspelled tokens over all tokens, digit tokens included.\n\nA checker that is not loaded, and a Nil text, give -1 (count) or -1.0 (rate) rather than a crash; an empty text has no tokens and gives 0 and 0.0.",
 			"functions": {
@@ -16213,8 +16306,17 @@
 				"New": {
 					"descriptions": ["**Constructor**\n\n```New(title:String, parameter:String)```\n\n\n\ntitle: String\n\nparameter: String"]
 				},
+				"Replicate": {
+					"descriptions": ["**Runs a metric sweep and keeps everything: every value of every metric for every setting and seed (including trial_ms), and the reason for each failed trial. The result renders three ResultTables (means, a summary with min, max, n and a confidence interval, and the raw per-seed rows).**\n\n```method : public : Replicate(trial:MetricTrial) ~ MetricRun```\n\n\n\ntrial: MetricTrial\n\nreturn: MetricRun"]
+				},
 				"Run": {
 					"descriptions": ["**Runs the sweep.**\n\n```method : public : Run(trial:Trial) ~ ResultTable```\n\n\n\ntrial: Trial\n\nreturn: ResultTable"]
+				},
+				"RunMetrics": {
+					"descriptions": ["**Runs a metric sweep and returns its mean over the seeds: one row per value, one column per metric of the trial plus trial_ms (the wall-clock time of each trial), mean and sample standard deviation per cell. Use Replicate for the per-seed values, the minimum, maximum, count and confidence interval. Run and its eight classifier metrics are unchanged; this is the route for any other model or measure.\n\nTo change one parameter at a time, make one Experiment per parameter, with the same seeds and a trial that builds the same split from the seed (or captures one split), and AddSetting for the parameters held fixed.\n\nA trial that returns Nil or raises an Error is recorded, not fatal: its metrics are missing for that seed, the run continues, and the footnote and MetricRun->GetFailures say so.**\n\n```method : public : RunMetrics(trial:MetricTrial) ~ ResultTable```\n\n\n\ntrial: MetricTrial\n\nreturn: ResultTable"]
+				},
+				"SetConfidence": {
+					"descriptions": ["**The confidence level of the interval RunMetrics and Replicate report for the mean over the seeds. The default is 0.95.**\n\n```method : public : SetConfidence(level:Float) ~ Nil```\n\n\n\nlevel: Float\n\nreturn: Nil"]
 				},
 				"SetSeeds": {
 					"descriptions": ["**Seeds for repeated runs; each value is run once per seed and the table reports the mean and sample standard deviation. The default is one run with seed 0.**\n\n```method : public : SetSeeds(seeds:Int[]) ~ Nil```\n\n\n\nseeds: Int[]\n\nreturn: Nil"]
@@ -16353,6 +16455,9 @@
 				},
 				"HasStds": {
 					"descriptions": ["**Whether any row carries standard deviations.**\n\n```method : public : HasStds() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsFinite": {
+					"descriptions": ["**True when a value is a finite number: neither NaN nor positive or negative infinity. A table cell, a deviation or a chart point that is not finite is \"missing\": ToText and ToMarkdown write n/a, ToCsv an empty field, ToJson null, and a Chart skips the point.**\n\n```function : IsFinite(value:Float) ~ Bool```\n\n\n\nvalue: Float\n\nreturn: Bool"]
 				},
 				"New": {
 					"descriptions": ["**Constructor**\n\n```New(title:String, parameter:String)```\n\n\n\ntitle: String\n\nparameter: String"]
@@ -19750,6 +19855,18 @@
 				"file": ""
 			}
 		],
+		"MetricRun": [
+			{
+				"bundle": "System.ML.Lab",
+				"file": ""
+			}
+		],
+		"MetricTrial": [
+			{
+				"bundle": "System.ML.Lab",
+				"file": ""
+			}
+		],
 		"Model": [
 			{
 				"bundle": "API.Google.Gemini",
@@ -19769,6 +19886,12 @@
 		"Part": [
 			{
 				"bundle": "API.Google.Gemini",
+				"file": ""
+			}
+		],
+		"SeedSummary": [
+			{
+				"bundle": "System.ML.Lab",
 				"file": ""
 			}
 		],

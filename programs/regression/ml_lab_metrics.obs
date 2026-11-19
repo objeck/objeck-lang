@@ -1,0 +1,365 @@
+# EXTRA_LIBS: ml,ml_lab,gen_collect,csv,json
+#~
+System.ML.Lab MetricTrial, Experiment->RunMetrics / Replicate, MetricRun and
+SeedSummary: a sweep over any metric, with every per-seed value kept and the
+mean, standard deviation, minimum, maximum, count and a t confidence interval
+over the seeds.
+
+Every expected statistic below was computed by scipy and numpy, not by Objeck:
+ml_lab_golden/metrics_expected.py prints them (t.ppf for the critical values and
+the intervals, ddof=1 for the deviation). The trials are closed-form
+(a = 10 * value + seed, b = value + seed^2) so the per-seed values are known
+without running anything. The regression port is ml_lab_metrics_ols.
+~#
+use Data.JSON;
+use System.ML.Lab;
+
+class MlLabMetrics {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		nan := Float->NaN();
+
+		# --- the t critical value against scipy.stats.t.ppf ---
+		ok := Report("TCritical(1, 0.95) = 12.706", Rel(SeedSummary->TCritical(1, 0.95), 12.706204736174694)) & ok;
+		ok := Report("TCritical(2, 0.95)", Rel(SeedSummary->TCritical(2, 0.95), 4.302652729749462)) & ok;
+		ok := Report("TCritical(3, 0.95)", Rel(SeedSummary->TCritical(3, 0.95), 3.1824463052837078)) & ok;
+		ok := Report("TCritical(4, 0.95)", Rel(SeedSummary->TCritical(4, 0.95), 2.7764451051977934)) & ok;
+		ok := Report("TCritical(9, 0.95)", Rel(SeedSummary->TCritical(9, 0.95), 2.262157162798205)) & ok;
+		ok := Report("TCritical(29, 0.95)", Rel(SeedSummary->TCritical(29, 0.95), 2.045229642132704)) & ok;
+		ok := Report("TCritical(120, 0.95)", Rel(SeedSummary->TCritical(120, 0.95), 1.9799304050824402)) & ok;
+		ok := Report("TCritical(1000, 0.95)", Rel(SeedSummary->TCritical(1000, 0.95), 1.9623390808264083)) & ok;
+		ok := Report("TCritical(4, 0.99)", Rel(SeedSummary->TCritical(4, 0.99), 4.604094871349992)) & ok;
+		ok := Report("TCritical(4, 0.90)", Rel(SeedSummary->TCritical(4, 0.9), 2.1318467863266495)) & ok;
+		ok := Report("TCritical(2, 0.999)", Rel(SeedSummary->TCritical(2, 0.999), 31.599054576445365)) & ok;
+		ok := Report("TCritical(1, 0.5) = 1", Rel(SeedSummary->TCritical(1, 0.5), 1.0)) & ok;
+		ok := Report("TCritical refuses nothing: an invalid df or level is NaN",
+			IsNan(SeedSummary->TCritical(0, 0.95)) & IsNan(SeedSummary->TCritical(3, 1.0)) & IsNan(SeedSummary->TCritical(3, 0.0))) & ok;
+
+		# --- SeedSummary against scipy ---
+		s := SeedSummary->Of([0.91, 0.93, 0.92, 0.95, 0.90], 0.95);
+		ok := Report("five values: n, mean, std, min, max",
+			s->GetCount() = 5 & Close(s->GetMean(), 0.922) & Close(s->GetStd(), 0.019235384061671322) & Close(s->GetMin(), 0.9) & Close(s->GetMax(), 0.95)) & ok;
+		ok := Report("five values: the 95% t interval", Close(s->GetCiLow(), 0.8981161161190002) & Close(s->GetCiHigh(), 0.9458838838809999) & Close(s->GetLevel(), 0.95)) & ok;
+		s := SeedSummary->Of([1.0, 2.0, 4.0, 8.0], 0.95);
+		ok := Report("four values (skewed)", Close(s->GetMean(), 3.75) & Close(s->GetStd(), 3.095695936834452)
+			& Close(s->GetCiLow(), -1.1759430482302937) & Close(s->GetCiHigh(), 8.675943048230295)) & ok;
+		s := SeedSummary->Of([1.0, nan, 3.0, Float->Inf()], 0.95);
+		ok := Report("NaN and Infinity are skipped and the count says so",
+			s->GetCount() = 2 & Close(s->GetMean(), 2.0) & Close(s->GetStd(), 1.4142135623730951) & Close(s->GetCiLow(), -10.706204736174694) & Close(s->GetCiHigh(), 14.706204736174694)) & ok;
+		s := SeedSummary->Of([3.0, 3.0, 3.0], 0.95);
+		ok := Report("a constant has std 0 and a zero-width interval", s->GetStd() = 0.0 & s->GetCiLow() = 3.0 & s->GetCiHigh() = 3.0) & ok;
+		s := SeedSummary->Of([7.5], 0.95);
+		ok := Report("one value: std and interval are NaN, the rest defined",
+			s->GetCount() = 1 & s->GetMean() = 7.5 & s->GetMin() = 7.5 & s->GetMax() = 7.5 & IsNan(s->GetStd()) & IsNan(s->GetCiLow()) & IsNan(s->GetCiHigh())) & ok;
+		s := SeedSummary->Of(Float->New[0], 0.95);
+		ok := Report("no values: count 0 and everything else NaN",
+			s->GetCount() = 0 & IsNan(s->GetMean()) & IsNan(s->GetStd()) & IsNan(s->GetMin()) & IsNan(s->GetMax()) & IsNan(s->GetCiLow())) & ok;
+		s := SeedSummary->Of([nan, nan], 0.95);
+		ok := Report("only NaN: count 0", s->GetCount() = 0 & IsNan(s->GetMean())) & ok;
+		s := SeedSummary->Of([2.0, 5.0, 10.0], 0.99);
+		ok := Report("the 99% interval", Close(s->GetCiLow(), -17.49130080214267) & Close(s->GetCiHigh(), 28.824634135476007)) & ok;
+		s := SeedSummary->Of([2.0, 5.0, 10.0], 0.9);
+		ok := Report("the 90% interval", Close(s->GetCiLow(), -1.146633020825357) & Close(s->GetCiHigh(), 12.479966354158691)) & ok;
+		ok := Report("a level outside (0, 1) and Nil values are refused",
+			Refuses(1) & Refuses(2) & Refuses(3)) & ok;
+
+		# --- a closed-form sweep: 3 values x 3 seeds ---
+		exp := Experiment->New("closed form", "v");
+		exp->SetValues([1.0, 2.0, 3.0]);
+		exp->SetSeeds([1, 2, 3]);
+		exp->AddSetting("fixed", "yes");
+		trial := FixedTrial->New(0);
+		run := exp->Replicate(trial);
+		ok := Report("the trial ran once per value and seed, values outer and seeds inner",
+			trial->GetLog()->Equals("1:1 1:2 1:3 2:1 2:2 2:3 3:1 3:2 3:3 ")) & ok;
+		ok := Report("the columns are the trial's own plus trial_ms",
+			run->GetColumns()->Size() = 3 & run->GetColumns()[0]->Equals("a") & run->GetColumns()[1]->Equals("b") & run->GetColumns()[2]->Equals("trial_ms")
+			& run->ColumnIndex("b") = 1 & run->ColumnIndex("zzz") = -1) & ok;
+		ok := Report("GetValues keeps every per-seed value",
+			Same(run->GetValues(0, "a"), [11.0, 12.0, 13.0]) & Same(run->GetValues(1, "a"), [21.0, 22.0, 23.0])
+			& Same(run->GetValues(0, "b"), [2.0, 5.0, 10.0]) & Same(run->GetValues(1, "b"), [3.0, 6.0, 11.0])) & ok;
+		sa := run->GetSummary(0, "a");
+		ok := Report("a at value 1: mean 12, std 1, min 11, max 13, n 3, interval from scipy",
+			sa->GetCount() = 3 & Close(sa->GetMean(), 12.0) & Close(sa->GetStd(), 1.0) & Close(sa->GetMin(), 11.0) & Close(sa->GetMax(), 13.0)
+			& Close(sa->GetCiLow(), 9.51586228824967) & Close(sa->GetCiHigh(), 14.48413771175033)) & ok;
+		sb := run->GetSummary(0, "b");
+		ok := Report("b at value 1", Close(sb->GetMean(), 5.666666666666667) & Close(sb->GetStd(), 4.041451884327381)
+			& Close(sb->GetCiLow(), -4.372856369415412) & Close(sb->GetCiHigh(), 15.706189702748745)) & ok;
+		ok := Report("b at value 2", Close(run->GetSummary(1, "b")->GetMean(), 6.666666666666667) & Close(run->GetSummary(1, "b")->GetCiHigh(), 16.706189702748745)) & ok;
+		ok := Report("every trial was timed: trial_ms is finite and not negative", Timed(run->GetValues(0, "trial_ms")) & Timed(run->GetValues(2, "trial_ms"))) & ok;
+		ok := Report("nothing failed", run->GetFailureCount() = 0 & run->GetFailures()->Size() = 0 & <>run->IsFailed(0, 0)) & ok;
+
+		table := run->ToTable();
+		ok := Report("ToTable: a row per value, mean and std per cell",
+			table->Size() = 3 & table->HasStds() & Close(table->Get(2, 0), 32.0) & Close(table->GetStd(2, 0), 1.0) & Close(table->Get(0, 1), 5.666666666666667)) & ok;
+		ok := Report("ToTable names the fixed setting and the seeds in the footnote",
+			table->GetFootnote()->Has("fixed=yes") & table->GetFootnote()->Has("repeats=3 seeds (1, 2, 3)")) & ok;
+		summary := run->ToSummaryTable();
+		ok := Report("ToSummaryTable: a row per value and metric, columns mean std min max n ci_low ci_high",
+			summary->Size() = 9 & summary->GetColumnNames()->Size() = 7 & summary->GetRowName(4)->Equals("2 | b")
+			& Close(summary->GetColumn("ci_low")[0], 9.51586228824967) & summary->GetColumn("n")[0] = 3.0 & Close(summary->GetColumn("max")[6], 33.0)) & ok;
+		ok := Report("ToSummaryTable names the interval level", summary->GetFootnote()->Has("95% t interval")) & ok;
+		raw := run->ToRawTable();
+		ok := Report("ToRawTable: a row per value and seed with every metric",
+			raw->Size() = 9 & raw->GetRowName(5)->Equals("2 | 3") & raw->Get(5, 0) = 23.0 & raw->Get(5, 1) = 11.0 & raw->GetRowValue(5) = 2.0) & ok;
+		direct := exp->RunMetrics(FixedTrial->New(0));
+		ok := Report("RunMetrics is the same table as Replicate(...)->ToTable()",
+			direct->Size() = 3 & direct->HasStds() & Close(direct->Get(0, 0), 12.0) & Close(direct->GetStd(0, 1), 4.041451884327381)
+			& direct->GetColumnNames()->Size() = 3 & direct->GetFootnote()->Equals(table->GetFootnote())) & ok;
+		ok := Report("the table writes JSON that Data.JSON parses", JsonOk(table->ToJson()) & JsonOk(summary->ToJson()) & JsonOk(raw->ToJson())) & ok;
+		ok := Report("the table charts", table->ToChart(["a"])->ToSvg()->Has("<svg ")) & ok;
+		ok := Report("the 99% level is used when asked for", Level99()) & ok;
+
+		# --- one seed: no deviation to report ---
+		one := Experiment->New("one seed", "v");
+		one->SetValues([1.0, 2.0]);
+		one->SetSeeds([7]);
+		one_run := one->Replicate(FixedTrial->New(0));
+		one_table := one_run->ToTable();
+		ok := Report("one seed: the table has means and no deviations", <>one_table->HasStds() & one_table->Get(1, 0) = 27.0) & ok;
+		ok := Report("one seed: the summary std and interval are NaN, rendered n/a",
+			IsNan(one_run->GetSummary(0, "a")->GetStd()) & one_run->ToSummaryTable()->ToText()->Has("n/a") & one_table->GetFootnote()->Has("single seed (7)")) & ok;
+		ok := Report("one seed: the summary JSON is valid and carries null", JsonOk(one_run->ToSummaryTable()->ToJson()) & one_run->ToSummaryTable()->ToJson()->Has("null")) & ok;
+
+		# --- failures are recorded and the run continues ---
+		flaky := Experiment->New("flaky", "v");
+		flaky->SetValues([1.0, 2.0, 3.0]);
+		flaky->SetSeeds([1, 2, 3]);
+		bad := flaky->Replicate(FixedTrial->New(1));
+		ok := Report("a Nil, an Error and a NaN: two trials failed, nine ran", bad->GetFailureCount() = 2 & bad->GetFailures()->Size() = 2) & ok;
+		ok := Report("the failure lines name the setting, the seed and the reason",
+			bad->GetFailures()[0]->Equals("2, seed 2: the trial returned Nil") & bad->GetFailures()[1]->Equals("3, seed 3: boom")) & ok;
+		ok := Report("IsFailed marks exactly the failed trials", bad->IsFailed(1, 1) & bad->IsFailed(2, 2) & <>bad->IsFailed(1, 0) & <>bad->IsFailed(0, 0)) & ok;
+		ok := Report("a failed trial's metrics are NaN, its time is still measured",
+			IsNan(bad->GetValues(1, "a")[1]) & IsNan(bad->GetValues(1, "b")[1]) & Timed(bad->GetValues(1, "trial_ms")) & bad->GetValues(1, "trial_ms")[1] >= 0.0) & ok;
+		a2 := bad->GetSummary(1, "a");
+		ok := Report("a at value 2 averages its two surviving seeds (scipy)",
+			a2->GetCount() = 2 & Close(a2->GetMean(), 22.0) & Close(a2->GetStd(), 1.4142135623730951) & Close(a2->GetCiLow(), 9.293795263825306) & Close(a2->GetCiHigh(), 34.7062047361747)) & ok;
+		b1 := bad->GetSummary(0, "b");
+		ok := Report("b at value 1 has one NaN metric: n = 2, mean of the other two (scipy)",
+			b1->GetCount() = 2 & Close(b1->GetMean(), 7.5) & Close(b1->GetStd(), 3.5355339059327378) & Close(b1->GetCiLow(), -24.265511840436734) & Close(b1->GetCiHigh(), 39.26551184043673)) & ok;
+		ok := Report("a at value 1 is unaffected by it", bad->GetSummary(0, "a")->GetCount() = 3 & Close(bad->GetSummary(0, "a")->GetMean(), 12.0)) & ok;
+		a3 := bad->GetSummary(2, "a");
+		ok := Report("a at value 3 (the trial that raised)", a3->GetCount() = 2 & Close(a3->GetMean(), 31.5) & Close(a3->GetCiHigh(), 37.85310236808735)) & ok;
+		ok := Report("the footnote counts the failures", bad->ToTable()->GetFootnote()->Has("2 of 9 trials failed")) & ok;
+		ok := Report("the failed table still renders and writes valid JSON", bad->ToTable()->ToText()->Has("trial_ms") & JsonOk(bad->ToTable()->ToJson()) & JsonOk(bad->ToRawTable()->ToJson())) & ok;
+		ok := Report("the raw table holds NaN for the failed trial, rendered n/a", IsNan(bad->ToRawTable()->Get(4, 0)) & bad->ToRawTable()->ToText()->Has("n/a")) & ok;
+
+		# every trial fails
+		dead := Experiment->New("dead", "v");
+		dead->SetValues([1.0, 2.0]);
+		dead->SetSeeds([1, 2]);
+		dead_run := dead->Replicate(AlwaysFails->New());
+		ok := Report("all trials failed: four failures, n = 0, mean NaN, the table renders",
+			dead_run->GetFailureCount() = 4 & dead_run->GetSummary(0, "a")->GetCount() = 0 & IsNan(dead_run->GetSummary(0, "a")->GetMean())
+			& dead_run->ToTable()->ToText()->Has("n/a") & JsonOk(dead_run->ToTable()->ToJson())) & ok;
+		f0 := dead_run->GetFailures()[0];
+		ok := Report("an Error subclass raised by the trial (a LabError) is caught too", f0->Has("nothing to see")) & ok;
+
+		# --- refusals: empty grid, zero seeds, a bad trial ---
+		ok := Report("no values set: refused", RefusesRun(1)) & ok;
+		ok := Report("an empty grid is refused", RefusesRun(2)) & ok;
+		ok := Report("zero seeds are refused", RefusesRun(3)) & ok;
+		ok := Report("a Nil trial is refused", RefusesRun(4)) & ok;
+		ok := Report("a trial with no columns is refused", RefusesRun(5)) & ok;
+		ok := Report("a duplicate column name is refused", RefusesRun(6)) & ok;
+		ok := Report("a column named trial_ms is refused", RefusesRun(7)) & ok;
+		ok := Report("an empty column name is refused", RefusesRun(8)) & ok;
+		ok := Report("a Run result of the wrong length is refused, not recorded as a failure", RefusesRun(9)) & ok;
+		ok := Report("a confidence level outside (0, 1) is refused", RefusesRun(10)) & ok;
+		ok := Report("GetValues for an unknown metric or row is refused", RefusesRun(11) & RefusesRun(12)) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Level99() ~ Bool {
+		e := Experiment->New("level", "v");
+		e->SetValues([1.0]);
+		e->SetSeeds([1, 2, 3]);
+		e->SetConfidence(0.99);
+		r := e->Replicate(FixedTrial->New(0));
+		s := r->GetSummary(0, "b");
+
+		return Close(s->GetCiLow(), -17.49130080214267) & Close(s->GetCiHigh(), 28.824634135476007) & Close(s->GetLevel(), 0.99);
+	}
+
+	function : RefusesRun(which : Int) ~ Bool {
+		refused := false;
+		try {
+			e := Experiment->New("r", "v");
+			select(which) {
+				label 1: { e->SetSeeds([1]); e->Replicate(FixedTrial->New(0)); }
+				label 2: { e->SetValues(Float->New[0]); }
+				label 3: { e->SetSeeds(Int->New[0]); }
+				label 4: { e->SetValues([1.0]); e->Replicate(Nil->As(MetricTrial)); }
+				label 5: { e->SetValues([1.0]); e->Replicate(BadColumns->New(0)); }
+				label 6: { e->SetValues([1.0]); e->Replicate(BadColumns->New(1)); }
+				label 7: { e->SetValues([1.0]); e->Replicate(BadColumns->New(2)); }
+				label 8: { e->SetValues([1.0]); e->Replicate(BadColumns->New(3)); }
+				label 9: { e->SetValues([1.0]); e->Replicate(BadColumns->New(4)); }
+				label 10: { e->SetConfidence(1.0); }
+				label 11: {
+					e->SetValues([1.0]);
+					e->Replicate(FixedTrial->New(0))->GetValues(0, "nope");
+				}
+				label 12: {
+					e->SetValues([1.0]);
+					e->Replicate(FixedTrial->New(0))->GetSummary(5, "a");
+				}
+			};
+		}
+		on(x : LabError) {
+			refused := true;
+		};
+
+		return refused;
+	}
+
+	function : Refuses(which : Int) ~ Bool {
+		refused := false;
+		try {
+			select(which) {
+				label 1: { SeedSummary->Of([1.0, 2.0], 1.5); }
+				label 2: { SeedSummary->Of([1.0, 2.0], 0.0); }
+				label 3: { SeedSummary->Of(Nil->As(Float[]), 0.95); }
+			};
+		}
+		on(x : LabError) {
+			refused := true;
+		};
+
+		return refused;
+	}
+
+	function : JsonOk(text : String) ~ Bool {
+		parser := JsonParser->New(text);
+
+		return parser->Parse() & <>text->Has("nan") & <>text->Has("inf");
+	}
+
+	function : Timed(v : Float[]) ~ Bool {
+		each(i : v) {
+			if(<>(v[i] >= 0.0 & v[i] < 1.0e9)) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Same(a : Float[], b : Float[]) ~ Bool {
+		if(a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(<>Close(a[i], b[i])) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : IsNan(v : Float) ~ Bool {
+		return v <> v;
+	}
+
+	function : Close(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.00000000001;
+	}
+
+	function : Rel(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.000000001 * b->Abs();
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}
+
+# a = 10 * value + seed, b = value + seed^2. mode 1 injects three failures:
+# b is NaN at (value 1, seed 1), the trial returns Nil at (2, 2) and raises at (3, 3).
+class FixedTrial implements MetricTrial {
+	@mode : Int;
+	@log : String;
+
+	New(mode : Int) {
+		@mode := mode;
+		@log := "";
+	}
+
+	method : public : GetLog() ~ String {
+		return @log;
+	}
+
+	method : public : GetColumns() ~ String[] {
+		return ["a", "b"];
+	}
+
+	method : public : Run(value : Float, name : String, seed : Int) ~ Float[] {
+		@log += "{$name}:{$seed} ";
+		a := value * 10.0 + seed->As(Float);
+		b := value + (seed * seed)->As(Float);
+		if(@mode = 1) {
+			if(value = 1.0 & seed = 1) {
+				b := Float->NaN();
+			};
+			if(value = 2.0 & seed = 2) {
+				return Nil;
+			};
+			if(value = 3.0 & seed = 3) {
+				Runtime->Raise(Error->New("boom"));
+			};
+		};
+
+		return [a, b];
+	}
+}
+
+class AlwaysFails implements MetricTrial {
+	New() {
+	}
+
+	method : public : GetColumns() ~ String[] {
+		return ["a"];
+	}
+
+	method : public : Run(value : Float, name : String, seed : Int) ~ Float[] {
+		Runtime->Raise(LabError->New("Experiment: nothing to see"));
+
+		return Nil;
+	}
+}
+
+# modes: 0 no columns, 1 duplicate, 2 trial_ms, 3 empty name, 4 Run returns the wrong length
+class BadColumns implements MetricTrial {
+	@mode : Int;
+
+	New(mode : Int) {
+		@mode := mode;
+	}
+
+	method : public : GetColumns() ~ String[] {
+		select(@mode) {
+			label 0: { return String->New[0]; }
+			label 1: { return ["x", "y", "x"]; }
+			label 2: { return ["x", "trial_ms"]; }
+			label 3: { return ["x", ""]; }
+			other: { return ["x", "y"]; }
+		};
+
+		return Nil;
+	}
+
+	method : public : Run(value : Float, name : String, seed : Int) ~ Float[] {
+		return [1.0];
+	}
+}
