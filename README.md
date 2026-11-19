@@ -29,7 +29,7 @@
 
 **Built for modern development:**
 - 🚀 **JIT-compiled** for performance (ARM64/AMD64)
-- 🤖 **AI-native**: OpenAI, Gemini, Ollama, ONNX, OpenCV — no third-party packages
+- 🤖 **AI-native**: OpenAI, Anthropic, Gemini, Ollama, ONNX, OpenCV — no third-party packages
 - 🌐 **Network-complete**: HTTP/1.1 · HTTP/2 · HTTP/3/QUIC · WebSocket · DTLS — all standard library
 - 💻 **Developer-friendly**: REPL shell, LSP plugins for VSCode/Sublime/Kate, DAP debugger
 - 🌍 **Cross-platform**: Linux, macOS, Windows (x64 + ARM64, including 64-bit Raspberry Pi)
@@ -486,6 +486,16 @@ More: [all the guides](docs/guides/README.md), the 32 numbered programs in [`pro
 
 Full details for every release are in the [CHANGELOG](CHANGELOG.md).
 
+### v2026.11.1
+  * **Compiler errors that say what is wrong** &mdash; the scanner gives each rejected token a concrete reason with a source excerpt and caret (bad escapes, unterminated strings reported at the opening quote, malformed numbers such as `1e3`, `0o9` and `1.2.3`); the parser says "Expected X, found Y" and names the opener of an unclosed `(`; the analyzer suggests "Did you mean ..." for an undefined variable, class or method and details call signatures and casts. Recovery after a lexical error no longer buries it under follow-on errors.
+  * **Large programs compile faster** &mdash; the optimizer's dead-store pass was quadratic, so a 100,000-statement program took 54 s to compile at `-opt s3` and now takes 5 s; 20,000 `select` labels went from 6 s to 0.6 s; and a program that uses the query library compiles in 0.7 s instead of 1.4 s because the intermediate instructions are freed in one pass.
+  * **Front-end fixes from negative testing** &mdash; `x.;` now reports `Expected a name after '.'` once, at the right place; a zero-width space inside a name is one error instead of two; and a NUL byte in a source file on Windows is reported instead of silently ending the source.
+  * **The loader checks the operand stack** &mdash; `obr` now refuses an `.obe` whose method pops an empty operand stack, joins two paths at different stack heights, uses a non-zero integer literal as an array or object, declares a parameter count out of range, or holds more than 1,000 operand words, and `ArrayIndex` checks an array has as many dimensions as it is indexed with. Fuzzing the loader found five crashes and a hang; the same 30,000 mutants now give none, no valid program is refused (684 regression and 613 example, deploy and test programs), and loading a 160 KB program takes about 3 ms longer. What is still unchecked (the words each trap pops, `Int` versus reference mixing) is listed in the [security model](docs/SECURITY_MODEL.md).
+  * **The loader is fuzzed in CI** &mdash; the `.obe` loader fuzz targets run every night for 30 minutes under ASan and UBSan, and for 5 minutes on every pull request as an advisory job that cannot block a merge.
+  * **Windows ARM64 deploy fix** &mdash; the deploy ships `libz.dll` and, when a vcpkg zlib 1.4 provides no `z.dll`, the same DLL under that name, so the OpenCV codecs load; it failed intermittently on runner images with zlib 1.4 and was checked on a Windows ARM64 machine.
+  * **Documentation for compiler, runtime and research readers** &mdash; a reading path from the docs index, a map of what is tested and how ([Testing and assurance](docs/TESTING_AND_ASSURANCE.md)), the fuzz report, the JIT READMEs fact-checked against the code (including the amd64 and arm64 pages), 123 files reviewed, a disclosure in the crypto README that its AES-256 mode uses an IV and no authentication, and corrected install and updater checks (`obr` has no version flag; use `obc -v`).
+  * **objeck.org** &mdash; a Playground pill in the header, fewer duplicate links, a click-to-play Internals video that makes no request to YouTube until played, security headers (with a report-only content security policy), and a daily visitor report from the access log with no cookies or scripts added to the site.
+
 ### v2026.11.0 ✅
   * **A web server that serves a site** &mdash; `StaticFiles` serves a folder with content types from a whitelist of extensions, `index.html` for a folder, ETags and conditional requests (304), gzip for text and `Range` for large files (206 and 416), and refuses dotfiles, non-ASCII names and folder listings. `programs/examples/site_server.obs` is a complete server in about 160 lines, and objeck.org now runs on it behind Caddy.
   * **Hostile clients are bounded** &mdash; the whole request has a deadline, so a client that trickles its headers cannot hold a connection open; a `..` path in any spelling answers 400; `Request.GetHeader` is case-insensitive; and one silent connection no longer blocks every TLS client, because `TCPSecureSocketServer->Accept` no longer does the handshake inside the accept call. `tools/security` is a black-box harness of 93 hostile requests, and it passes.
@@ -509,22 +519,6 @@ Full details for every release are in the [CHANGELOG](CHANGELOG.md).
   * **New docs** &mdash; the [architecture assessment](docs/ARCHITECTURE_ASSESSMENT_2026_11.md), the VM trust model (an `.obe` is native code), a [collections guide](docs/COLLECTIONS_GUIDE.md), [error conventions](docs/ERROR_CONVENTIONS.md) and [how to add an intrinsic](docs/ADDING_AN_INTRINSIC.md)
   * **Upgrading** &mdash; recompile your `.obe` files and rebuild your own `.obl` libraries: the file format changed, and a program or library built by an earlier version is refused with a message saying so
 
-### v2026.10.2
-  * **Query.Structured** &mdash; a columnar database in the standard library: SQL with joins, grouping, indexes and expressions; files, URLs, archive members and worksheets named in `FROM`; a crash-safe `.otab` file format; sources that read CSV, JSON, XML, text logs, filesystems, zip/tar, Excel, ODBC, ML results and image detections as tables ([design](docs/QUERY_DESIGN.md))
-  * **ML and NLP lab** &mdash; kernel and one-class SVMs, outlier detectors and an autoencoder, `System.ML.Lab` for experiments, result tables and charts, and BERT sentence embeddings over ONNX
-  * **Hugging Face models without Python** &mdash; `TextClassifier` runs a text classifier as `pipeline()` does, `HubClient` downloads models by name into a verified cache, `BpeTokenizer` matches RoBERTa's and GPT-2's tokenizer id for id, and `GetToFile` streams downloads of any size to disk
-  * **Security fix** &mdash; an HTTP redirect to another host no longer receives your `Authorization` header or cookies
-  * **Stability** &mdash; an object's `GetInstanceID()` survives the collector moving it, so `Hash` and `Map` keyed by objects keep their entries; TLS reads time out on a peer that goes quiet; a connection reset mid-reply is a failed request, not an empty success
-  * **Faster runtime** &mdash; a size-class allocator, a collection threshold that follows the live heap, an open-addressed `Hash`, an O(1) `Cache`, and unboxed `IntVector`/`IntMap`/`BitSet`
-  * **Calls nest 16,384 deep** (`--call-depth`), and a full stack is recoverable compiled or interpreted
-  * **Networking** &mdash; DTLS works for the first time, servers take IPv4 and IPv6 clients on every platform or bind one address, every socket failure says why, blocking I/O no longer stalls the collector, UTF-8 URLs, every HTTP status code
-  * **Non-ASCII text on Windows** &mdash; arguments, environment variables, paths, install directories and console output, in every tool
-  * **JIT fixes** &mdash; `Float->NaN()`/`Inf()` and two-dimensional array code are compiled instead of handed back to the interpreter, and a value is no longer lost at a loop's collection safepoint
-  * **Garbage collector fix** &mdash; a conditional's value (`c ? a : b`) survives another thread's collection; multithreaded programs could store a dangling reference; interpreted code no longer has an `Int` that equals a young object's address rewritten by a collection
-  * **Language server about 2&times; faster per edit** &mdash; each edit is analyzed once instead of twice
-  * **32 new examples** &mdash; numbered in learning order, each with its compile and run lines and the output it prints, written for people new to the language
-  * **Compiler and library fixes** &mdash; a quote inside `{$...}` is an error instead of a compiler hang; a bounded generic class returns its type argument and a literal in `{$...}` compiles; ambiguous names, numeric literals (`0o` is octal; `010` is an error), array literals; CSV, JSON (escapes are decoded on parse), regex, NLP, ML, Ollama, OpenAI, Gemini, SDL2 and ODBC, including a macOS driver manager that could load no driver
-  * **Upgrading** &mdash; rebuild your own `.obl` libraries and recompile `.obe` files; a v2026.10.1 `obu` in a non-ASCII install directory cannot update itself, so install by hand; `Directory->List` drops `.` and `..` on Windows; `CompressBr` is `CompressDeflate`; `Byte[]->ToHexString` is a digest; `Hash` iteration order changes; stop calling `JsonElement->Decode` on parsed text; `TF_IDF->New()` smooths and normalizes by default; XML `FindElements` `[n]` is the n-th match, not the first n; `Query` returns `Nil` for an unknown column in a select list or `ORDER BY`; the full list is in the [CHANGELOG](CHANGELOG.md#v2026102---2026-10-31)
 
 ## Downloads
 
@@ -697,6 +691,7 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
 **AI & Machine Learning** — [📖 AI Developer Guide](https://www.objeck.org/ai_guide.html) · [GitHub source](docs/AI.md) · [🤖 Getting Models](docs/MODELS.md)
 - [OpenAI](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/openai.obs) — chat, vision, realtime audio, image generation, embeddings, moderation, batch
 - [Gemini](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gemini.obs) — chat, vision, search grounding, files, context caching, batch embeddings
+- [Anthropic](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/anthropic.obs) — Claude chat with system prompts, tool use, streaming and structured output; tested against recorded responses and a local mock server, not the live API
 - [Ollama](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/ollama.obs) — local LLM chat, vision, and embeddings; recommended models: `llama3.2`, `phi3`, `llava` ([get models →](docs/MODELS.md#ollama-models))
 - [NLP](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/nlp.obs) — tokenization, TF-IDF, text similarity, sentiment analysis
 - [OpenCV](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/opencv.obs) — computer vision: detection, transforms, video

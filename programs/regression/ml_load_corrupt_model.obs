@@ -1,0 +1,143 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+A model file that exists but is not a model must make Load answer Nil, not end the program.
+
+Every Load(filename) handed the file's bytes to Deserializer->New, whose Byte->UncompressZlib
+ends the program on data that is not a zlib stream ("Invalid, truncated or oversized zlib
+data"): a truncated download, a file from another tool and a model written by an older
+format all landed there. Byte->TryUncompressZlib answers Nil for those, Deserializer->IsOk
+reports it, and each loader returns Nil on a false IsOk.
+~#
+use System.IO;
+use System.IO.Filesystem;
+use System.ML;
+
+class MlLoadCorruptModel {
+	@ok : static : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		@ok := true;
+
+		# the building blocks
+		garbage := "nope!!"->ToByteArray();
+		Check("TryUncompressZlib of garbage is Nil", Byte->TryUncompressZlib(garbage) = Nil);
+		Check("TryUncompressZlib of Nil is Nil", Byte->TryUncompressZlib(Nil) = Nil);
+		Check("TryUncompressZlib of no bytes is Nil", Byte->TryUncompressZlib(Byte->New[0]) = Nil);
+
+		packed := Byte->CompressZlib("a model"->ToByteArray());
+		Check("TryUncompressZlib round trips", Byte->TryUncompressZlib(packed)->Size() = 7);
+		half := Byte->New[packed->Size() / 2];
+		each(i : half) {
+			half[i] := packed[i];
+		};
+		Check("TryUncompressZlib of a truncated stream is Nil", Byte->TryUncompressZlib(half) = Nil);
+
+		bad := Deserializer->New(garbage);
+		Check("Deserializer->IsOk is false for garbage", <>bad->IsOk());
+		Check("a failed Deserializer reads 0", bad->ReadInt() = 0);
+		Check("a failed Deserializer reads 0.0", bad->ReadFloat() = 0.0);
+		Check("a failed Deserializer reads no array", bad->ReadFloatArray() = Nil);
+		Check("Deserializer->IsOk is false for Nil", <>Deserializer->New(Nil)->IsOk());
+
+		writer := Serializer->New();
+		writer->Write(42);
+		good := Deserializer->New(writer->Serialize());
+		Check("Deserializer->IsOk is true for a serialized stream", good->IsOk());
+		Check("a good Deserializer still reads its value", good->ReadInt() = 42);
+
+		# the six bytes from the report, and a real model cut in half, for each loader
+		WriteFile("bad_model.bin", "nope!!"->ToByteArray());
+		each(m : 15) {
+			name := Name(m);
+			Check("{$name} Load of a six-byte file is Nil", Load(m, "bad_model.bin") = Nil);
+		};
+
+		# a model that stored fine and loads back, then the same file cut in half
+		X := [[1.0, 1.0], [1.0, 2.0], [1.0, 3.0], [1.0, 4.0]];
+		y := [[2.0], [4.0], [6.0], [8.0]];
+		linear := LinearRegression->New();
+		linear->Fit(X, y, true);
+		Check("LinearRegression Store", linear->Store("linear_model.bin"));
+		Check("LinearRegression Load of its own file", LinearRegression->Load("linear_model.bin") <> Nil);
+		stored := FileReader->ReadBinaryFile("linear_model.bin");
+		cut := Byte->New[stored->Size() / 2];
+		each(i : cut) {
+			cut[i] := stored[i];
+		};
+		WriteFile("cut_model.bin", cut);
+		Check("LinearRegression Load of a half-written file is Nil", LinearRegression->Load("cut_model.bin") = Nil);
+
+		# a file that is zlib but not a model: reads give zeros, which the loaders reject
+		WriteFile("zeros_model.bin", Byte->CompressZlib(Byte->New[16]));
+		each(m : 15) {
+			name := Name(m);
+			Check("{$name} Load of a zlib file that is not a model is Nil", Load(m, "zeros_model.bin") = Nil);
+		};
+
+		each(f in ["bad_model.bin", "linear_model.bin", "cut_model.bin", "zeros_model.bin"]) {
+			File->Delete(f);
+		};
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : WriteFile(name : String, data : Byte[]) ~ Nil {
+		writer := FileWriter->New(name);
+		writer->WriteBuffer(0, data->Size(), data);
+		writer->Close();
+	}
+
+	function : Name(m : Int) ~ String {
+		select(m) {
+			label 0: { return "LinearRegression"; }
+			label 1: { return "RidgeRegression"; }
+			label 2: { return "ElasticNet"; }
+			label 3: { return "LogisticRegression"; }
+			label 4: { return "Perceptron"; }
+			label 5: { return "SVM"; }
+			label 6: { return "RandomForest"; }
+			label 7: { return "AdaBoost"; }
+			label 8: { return "RegressionTree"; }
+			label 9: { return "GradientBoostedTrees"; }
+			label 10: { return "DecisionTree"; }
+			label 11: { return "GaussianNaiveBayes"; }
+			label 12: { return "GaussianMixture"; }
+			label 13: { return "NeuralNetwork"; }
+			label 14: { return "PCA"; }
+			other: { return "?"; }
+		};
+	}
+
+	# the result of each model's Load, as a Base so one table covers all fifteen
+	function : Load(m : Int, filename : String) ~ Base {
+		select(m) {
+			label 0: { return LinearRegression->Load(filename); }
+			label 1: { return RidgeRegression->Load(filename); }
+			label 2: { return ElasticNet->Load(filename); }
+			label 3: { return LogisticRegression->Load(filename); }
+			label 4: { return Perceptron->Load(filename); }
+			label 5: { return SVM->Load(filename); }
+			label 6: { return RandomForest->Load(filename); }
+			label 7: { return AdaBoost->Load(filename); }
+			label 8: { return RegressionTree->Load(filename); }
+			label 9: { return GradientBoostedTrees->Load(filename); }
+			label 10: { return DecisionTree->Load(filename); }
+			label 11: { return GaussianNaiveBayes->Load(filename); }
+			label 12: { return GaussianMixture->Load(filename); }
+			label 13: { return NeuralNetwork->Load(filename); }
+			other: { return PCA->Load(filename); }
+		};
+	}
+
+	function : Check(text : String, passed : Bool) ~ Nil {
+		if(passed) {
+			"PASS: {$text}"->PrintLine();
+		}
+		else {
+			"FAIL: {$text}"->PrintLine();
+			@ok := false;
+		};
+	}
+}

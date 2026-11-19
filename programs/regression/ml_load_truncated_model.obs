@@ -1,0 +1,305 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+A model file that is valid zlib but short, or that claims more than it holds, makes Load
+answer Nil: no half-built model, and no allocation the file's own counts choose.
+
+ml_load_corrupt_model covers data that is not zlib. Here the zlib is sound and the
+plaintext inside it is not, which the loaders used to take for a model: a read past
+the end of a Deserializer answers 0, so a stream that stopped after a count produced a
+model of zeros, and a count of a billion went straight into Float->New and asked for
+8 GB. The Deserializer now clears IsOk() on the first read that finds the stream short,
+an array that declares more than the stream holds, or a value of another type; each
+loader checks IsOk() after its last read and bounds its counts by Holds().
+
+Every loader runs against three kinds of file: the real model cut at several points
+(each cut a proper prefix of what Store wrote), a stream with a huge count, and an
+empty and a one-byte file. The same real model, uncut, still loads: without that the
+cuts could pass because nothing loads.
+~#
+use Collection;
+use System.IO;
+use System.IO.Filesystem;
+use System.ML;
+
+class MlLoadTruncatedModel {
+	@ok : static : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		@ok := true;
+
+		Streams();
+		Models();
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	# the Deserializer on its own
+	function : Streams() ~ Nil {
+		# a float cut mid-value: the tag and four of the eight bytes
+		writer := Serializer->New();
+		writer->Write(1.5);
+		whole := Byte->TryUncompressZlib(writer->Serialize());
+		short := Deserializer->New(Zip(Prefix(whole, 12)));
+		Check("a stream cut mid-value is zlib, so IsOk starts true", short->IsOk());
+		Check("a float cut mid-value reads 0.0", short->ReadFloat() = 0.0);
+		Check("and IsOk is false afterwards", <>short->IsOk());
+
+		whole_stream := Deserializer->New(Zip(whole));
+		Check("the uncut float reads back", whole_stream->ReadFloat() = 1.5);
+		Check("and IsOk is still true", whole_stream->IsOk());
+		Check("a read at the end answers 0", whole_stream->ReadInt() = 0);
+		Check("and clears IsOk", <>whole_stream->IsOk());
+
+		# an Int read from a Float: the type is not what was asked for
+		mismatch := Deserializer->New(Zip(whole));
+		Check("an Int read from a Float answers 0", mismatch->ReadInt() = 0);
+		Check("and clears IsOk", <>mismatch->IsOk());
+
+		# a Float[] that declares 2 billion elements in a 33-byte stream
+		forged := Deserializer->New(Zip(ArrayHeader(-1494, 2000000000)));
+		Check("a forged huge Float[] reads as Nil, with no 16 GB allocation", forged->ReadFloatArray() = Nil);
+		Check("and clears IsOk", <>forged->IsOk());
+
+		# and the same for the other element types
+		Check("a forged huge Int[] reads as Nil", Deserializer->New(Zip(ArrayHeader(-1495, 2000000000)))->ReadIntArray() = Nil);
+		Check("a forged huge Byte[] reads as Nil", Deserializer->New(Zip(ArrayHeader(-1497, 2000000000)))->ReadByteArray() = Nil);
+
+		# a Float[] of 3 that really holds 3 still reads
+		real := Serializer->New();
+		real->Write([1.0, 2.0, 3.0]);
+		array := Deserializer->New(real->Serialize());
+		values := array->ReadFloatArray();
+		Check("a real Float[] still reads", values <> Nil & values->Size() = 3 & values[2] = 3.0 & array->IsOk());
+
+		# Holds
+		eight := Deserializer->New(Zip(Byte->New[80]));
+		Check("Holds(10) with 80 bytes left", eight->Holds(10));
+		Check("Holds(11) with 80 bytes left is false", <>eight->Holds(11));
+		Check("Holds(-1) is false", <>eight->Holds(-1));
+		Check("Holds(2, 5) with 80 bytes left", eight->Holds(2, 5));
+		Check("Holds(3, 5) with 80 bytes left is false", <>eight->Holds(3, 5));
+		Check("Holds(0, 5) is false", <>eight->Holds(0, 5));
+		Check("Holds does not overflow on 2^40 x 2^40", <>eight->Holds(1099511627776, 1099511627776));
+	}
+
+	function : Models() ~ Nil {
+		X := [[1.0, 1.0], [1.0, 2.0], [1.0, 3.0], [1.0, 4.0], [2.0, 1.0], [2.0, 5.0]];
+		reg := [[2.0], [4.0], [6.0], [8.0], [3.0], [9.0]];
+		cls := [[0.0], [0.0], [0.0], [1.0], [1.0], [1.0]];
+		bits := Bool->New[8, 3];
+		each(i : 8) {
+			bits[i, 0] := i % 2 = 0;
+			bits[i, 1] := (i / 2) % 2 = 0;
+			bits[i, 2] := i % 3 = 0;
+		};
+
+		each(m : 15) {
+			name := Name(m);
+			file := "trunc_model_{$m}.bin";
+
+			stored := StoreModel(m, X, reg, cls, bits, file);
+			Check("{$name} Store", stored);
+			if(<>stored) {
+				continue;
+			};
+
+			Check("{$name} Load of its own file", Load(m, file) <> Nil);
+
+			plain := Byte->TryUncompressZlib(FileReader->ReadBinaryFile(file));
+			size := plain->Size();
+			Check("{$name} plaintext is longer than the longest cut", size > 96);
+
+			# The Serializer's buffer has spare room at its end, which Store compresses with
+			# the rest, so the file's real end is not known; cuts well inside it are. A tagged
+			# value is a tag and a value, 16 bytes, so 16, 32, 48 and 64 stop after the
+			# first, second, third and fourth value (for most models the count is one of
+			# them), and 36 stops in the middle of the third.
+			cuts := [64, 48, 36, 32, 16, 1, size / 2, size / 4];
+			each(c : cuts) {
+				at := cuts[c];
+				if(at > 0 & at < size) {
+					Write(file, Zip(Prefix(plain, at)));
+					Check("{$name} Load of its plaintext cut at {$at} of {$size} is Nil", Load(m, file) = Nil);
+				};
+			};
+
+			# empty and one-byte files, which are not zlib
+			Write(file, Byte->New[0]);
+			Check("{$name} Load of an empty file is Nil", Load(m, file) = Nil);
+			Write(file, Byte->New[1]);
+			Check("{$name} Load of a one-byte file is Nil", Load(m, file) = Nil);
+
+			File->Delete(file);
+		};
+
+		# Counts that the file's own fields name, in a stream of a few bytes. Each stream
+		# writes what its loader reads before the count, with the types it reads them as,
+		# so the loader reaches the count and its bound is what refuses the file.
+		HugeLinear(0, "LinearRegression", 1000000000);
+		HugeRidge(1000000000);
+		HugeLogistic(1000000000);
+		HugePair(7, "AdaBoost, learners", 1000000000, 1);
+		HugePair(11, "GaussianNaiveBayes, classes x cols", 1000000, 1000000);
+		HugePair(12, "GaussianMixture, components x cols", 1000000, 1000000);
+		HugePair(13, "NeuralNetwork, height x width", 100000, 100000);
+		HugePair(14, "PCA, columns", 2, 1000000000);
+		HugePair(14, "PCA, a product that overflows", 1099511627776, 1099511627776);
+		File->Delete("huge_model.bin");
+	}
+
+	function : HugeLinear(m : Int, what : String, count : Int) ~ Nil {
+		writer := Serializer->New();
+		writer->Write(1);
+		writer->Write(count);
+		Write("huge_model.bin", writer->Serialize());
+		Check("{$what} Load of a stream with a count of {$count} is Nil", Load(m, "huge_model.bin") = Nil);
+	}
+
+	function : HugeRidge(count : Int) ~ Nil {
+		writer := Serializer->New();
+		writer->Write(0.1);
+		writer->Write(1);
+		writer->Write(count);
+		Write("huge_model.bin", writer->Serialize());
+		Check("RidgeRegression Load of a stream with a count of {$count} is Nil", Load(1, "huge_model.bin") = Nil);
+	}
+
+	function : HugeLogistic(count : Int) ~ Nil {
+		writer := Serializer->New();
+		writer->Write(0.1);
+		writer->Write(20);
+		writer->Write(0.0);
+		writer->Write(count);
+		Write("huge_model.bin", writer->Serialize());
+		Check("LogisticRegression Load of a stream with a count of {$count} is Nil", Load(3, "huge_model.bin") = Nil);
+	}
+
+	function : HugePair(m : Int, what : String, first : Int, second : Int) ~ Nil {
+		writer := Serializer->New();
+		writer->Write(first);
+		writer->Write(second);
+		Write("huge_model.bin", writer->Serialize());
+		Check("{$what}: Load of a stream with {$first} and {$second} is Nil", Load(m, "huge_model.bin") = Nil);
+	}
+
+	function : StoreModel(m : Int, X : Float[,], reg : Float[,], cls : Float[,], bits : Bool[,], file : String) ~ Bool {
+		select(m) {
+			label 0: { model := LinearRegression->New(); model->Fit(X, reg, true); return model->Store(file); }
+			label 1: { model := RidgeRegression->New(0.1); model->Fit(X, reg); return model->Store(file); }
+			label 2: { model := ElasticNet->New(0.1, 0.5); model->Fit(X, reg); return model->Store(file); }
+			label 3: { model := LogisticRegression->New(0.1, 20); model->Fit(X, cls); return model->Store(file); }
+			label 4: { model := Perceptron->New(0.1, 20); model->Fit(X, cls); return model->Store(file); }
+			label 5: { model := SVM->New(0.01, 0.1, 20); model->Fit(X, cls); return model->Store(file); }
+			label 6: { model := RandomForest->New(3); model->Fit(bits); return model->Store(file); }
+			label 7: { model := AdaBoost->New(3); model->Fit(bits); return model->Store(file); }
+			label 8: { model := RegressionTree->New(3, 1); model->Fit(X, reg); return model->Store(file); }
+			label 9: { model := GradientBoostedTrees->New(3, 0.3, 2, 1); model->Fit(X, reg); return model->Store(file); }
+			label 10: { model := DecisionTree->New(3, 1); model->Fit(bits); return model->Store(file); }
+			label 11: { model := GaussianNaiveBayes->New(); model->Fit(X, cls); return model->Store(file); }
+			label 12: { model := GaussianMixture->New(2, 1); model->Fit(X); return model->Store(file); }
+			label 13: {
+				inputs := Vector->New()<FloatMatrixRef>;
+				targets := Vector->New()<FloatMatrixRef>;
+				inputs->AddBack(FloatMatrixRef->New([[0.0], [1.0]]));
+				inputs->AddBack(FloatMatrixRef->New([[1.0], [0.0]]));
+				targets->AddBack(FloatMatrixRef->New([[0.99]]));
+				targets->AddBack(FloatMatrixRef->New([[0.01]]));
+				network := NeuralNetwork->Train(2, inputs, 2, 1, targets, 0.5, 10);
+				if(network = Nil) {
+					return false;
+				};
+
+				return network->Store(file);
+			}
+			other: { model := PCA->New(2); model->Fit(X); return model->Store(file); }
+		};
+	}
+
+	function : Name(m : Int) ~ String {
+		select(m) {
+			label 0: { return "LinearRegression"; }
+			label 1: { return "RidgeRegression"; }
+			label 2: { return "ElasticNet"; }
+			label 3: { return "LogisticRegression"; }
+			label 4: { return "Perceptron"; }
+			label 5: { return "SVM"; }
+			label 6: { return "RandomForest"; }
+			label 7: { return "AdaBoost"; }
+			label 8: { return "RegressionTree"; }
+			label 9: { return "GradientBoostedTrees"; }
+			label 10: { return "DecisionTree"; }
+			label 11: { return "GaussianNaiveBayes"; }
+			label 12: { return "GaussianMixture"; }
+			label 13: { return "NeuralNetwork"; }
+			other: { return "PCA"; }
+		};
+	}
+
+	function : Load(m : Int, filename : String) ~ Base {
+		select(m) {
+			label 0: { return LinearRegression->Load(filename); }
+			label 1: { return RidgeRegression->Load(filename); }
+			label 2: { return ElasticNet->Load(filename); }
+			label 3: { return LogisticRegression->Load(filename); }
+			label 4: { return Perceptron->Load(filename); }
+			label 5: { return SVM->Load(filename); }
+			label 6: { return RandomForest->Load(filename); }
+			label 7: { return AdaBoost->Load(filename); }
+			label 8: { return RegressionTree->Load(filename); }
+			label 9: { return GradientBoostedTrees->Load(filename); }
+			label 10: { return DecisionTree->Load(filename); }
+			label 11: { return GaussianNaiveBayes->Load(filename); }
+			label 12: { return GaussianMixture->Load(filename); }
+			label 13: { return NeuralNetwork->Load(filename); }
+			other: { return PCA->Load(filename); }
+		};
+	}
+
+	function : Prefix(bytes : Byte[], count : Int) ~ Byte[] {
+		out := Byte->New[count];
+		each(i : count) {
+			out[i] := bytes[i];
+		};
+
+		return out;
+	}
+
+	function : Zip(bytes : Byte[]) ~ Byte[] {
+		return Byte->CompressZlib(bytes);
+	}
+
+	# the bytes of an array header that declares count elements and holds none: the type
+	# tag, a non-Nil flag, then size, dimensions and the size of the last dimension
+	function : ArrayHeader(tag : Int, count : Int) ~ Byte[] {
+		ints := Int->ToBytes([tag]);
+		sizes := Int->ToBytes([count, 1, count]);
+		out := Byte->New[ints->Size() + 1 + sizes->Size()];
+		each(i : ints) {
+			out[i] := ints[i];
+		};
+		out[ints->Size()] := 1;
+		each(i : sizes) {
+			out[ints->Size() + 1 + i] := sizes[i];
+		};
+
+		return out;
+	}
+
+	function : Write(name : String, data : Byte[]) ~ Nil {
+		writer := FileWriter->New(name);
+		writer->WriteBuffer(0, data->Size(), data);
+		writer->Close();
+	}
+
+	function : Check(text : String, passed : Bool) ~ Nil {
+		if(passed) {
+			"PASS: {$text}"->PrintLine();
+		}
+		else {
+			"FAIL: {$text}"->PrintLine();
+			@ok := false;
+		};
+	}
+}
