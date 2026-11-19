@@ -47,11 +47,14 @@ is `lib/sdl/fonts/lato.ttf`; when it is absent the backend falls back to `String
    `TEXT` (with anchor, size, weight, rotation). Style is stroke, fill, width, opacity. Backends
    are dumb walkers over that list, and tests can assert on primitives without parsing SVG.
 4. **API in matplotlib's shape, Objeck's types.**
-   `fig := Figure->New(800, 480); ax := fig->Axes(); ax->Scatter(xs, ys); ax->SetTitle("..."); fig->Save("a.svg");`
-   `fig->Subplots(rows, cols)` returns the grid; every `Axes` method returns `Nil` and raises
-   `PlotError` on bad input (matching `LabError`): a mismatched length, a non-finite value, an empty
-   figure.
-5. **Determinism is a requirement, not a hope.** Coordinates are written with one decimal, with `-0.0`
+   `fig := Figure->New(800, 480); ax := fig->GetAxes(); ax->Scatter("name", xs, ys); ax->SetTitle("..."); fig->Save("a.svg");`
+   `fig->Subplots(rows, cols)` replaces the axes with a grid (it returns `Nil`); `fig->GetAxes(row, col)`
+   reaches one cell, and a cell with nothing in it is left blank. Every `Axes` method returns `Nil`
+   and raises `PlotError` on bad input (matching `LabError`): a mismatched length, a non-finite
+   value, a `Nil` category, `Hist` or `Bar` on a log y axis, an empty figure. The message says what
+   was wrong, and the tests compare it.
+5. **Determinism is a requirement, not a hope.** Coordinates are written with one decimal and always with a point (`Float->ToString` follows the C locale, so the writer
+   does not use it bare), with `-0.0`
    normalised; nothing depends on the clock, a locale, a font or a random seed. Text widths for
    layout (legend boxes, label placement) use a fixed width table, not font metrics, so the SVG is
    byte-identical everywhere. Each chart type gets a byte-for-byte golden, and every golden test

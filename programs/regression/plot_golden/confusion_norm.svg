@@ -8,11 +8,11 @@
 <text x="331.0" y="410.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">positive</text>
 <clipPath id="clip0"><rect x="64.0" y="32.0" width="356.0" height="360.0"/></clipPath>
 <g clip-path="url(#clip0)">
-<rect x="64.0" y="32.0" width="178.0" height="180.0" fill="#dae033" stroke="#ffffff" stroke-width="1.0" class="cell"/>
+<rect x="64.0" y="32.0" width="178.0" height="180.0" fill="#dfe131" stroke="#ffffff" stroke-width="1.0" class="cell"/>
 <text x="153.0" y="126.0" fill="#000000" font-size="12" text-anchor="middle" class="celltext">0.83</text>
-<rect x="242.0" y="32.0" width="178.0" height="180.0" fill="#421360" stroke="#ffffff" stroke-width="1.0" class="cell"/>
+<rect x="242.0" y="32.0" width="178.0" height="180.0" fill="#3d3f7e" stroke="#ffffff" stroke-width="1.0" class="cell"/>
 <text x="331.0" y="126.0" fill="#ffffff" font-size="12" text-anchor="middle" class="celltext">0.17</text>
-<rect x="64.0" y="212.0" width="178.0" height="180.0" fill="#440154" stroke="#ffffff" stroke-width="1.0" class="cell"/>
+<rect x="64.0" y="212.0" width="178.0" height="180.0" fill="#3f2f73" stroke="#ffffff" stroke-width="1.0" class="cell"/>
 <text x="153.0" y="306.0" fill="#ffffff" font-size="12" text-anchor="middle" class="celltext">0.12</text>
 <rect x="242.0" y="212.0" width="178.0" height="180.0" fill="#fde725" stroke="#ffffff" stroke-width="1.0" class="cell"/>
 <text x="331.0" y="306.0" fill="#000000" font-size="12" text-anchor="middle" class="celltext">0.88</text>
@@ -70,12 +70,14 @@
 <rect x="434.0" y="377.0" width="14.0" height="8.0" fill="#430b5b" class="colorbar"/>
 <rect x="434.0" y="384.5" width="14.0" height="8.0" fill="#440456" class="colorbar"/>
 <rect x="434.0" y="32.0" width="14.0" height="360.0" fill="none" stroke="#333333" stroke-width="1.0" class="colorbar"/>
-<line x1="448.0" y1="356.0" x2="452.0" y2="356.0" stroke="#333333" stroke-width="1.0" class="tick"/>
-<text x="456.0" y="360.0" fill="#333333" font-size="12" class="cbtick">0.2</text>
-<line x1="448.0" y1="260.0" x2="452.0" y2="260.0" stroke="#333333" stroke-width="1.0" class="tick"/>
-<text x="456.0" y="264.0" fill="#333333" font-size="12" class="cbtick">0.4</text>
-<line x1="448.0" y1="164.0" x2="452.0" y2="164.0" stroke="#333333" stroke-width="1.0" class="tick"/>
-<text x="456.0" y="168.0" fill="#333333" font-size="12" class="cbtick">0.6</text>
-<line x1="448.0" y1="68.0" x2="452.0" y2="68.0" stroke="#333333" stroke-width="1.0" class="tick"/>
-<text x="456.0" y="72.0" fill="#333333" font-size="12" class="cbtick">0.8</text>
+<line x1="448.0" y1="392.0" x2="452.0" y2="392.0" stroke="#333333" stroke-width="1.0" class="tick"/>
+<text x="456.0" y="396.0" fill="#333333" font-size="12" class="cbtick">0</text>
+<line x1="448.0" y1="309.7" x2="452.0" y2="309.7" stroke="#333333" stroke-width="1.0" class="tick"/>
+<text x="456.0" y="313.7" fill="#333333" font-size="12" class="cbtick">0.2</text>
+<line x1="448.0" y1="227.4" x2="452.0" y2="227.4" stroke="#333333" stroke-width="1.0" class="tick"/>
+<text x="456.0" y="231.4" fill="#333333" font-size="12" class="cbtick">0.4</text>
+<line x1="448.0" y1="145.1" x2="452.0" y2="145.1" stroke="#333333" stroke-width="1.0" class="tick"/>
+<text x="456.0" y="149.1" fill="#333333" font-size="12" class="cbtick">0.6</text>
+<line x1="448.0" y1="62.9" x2="452.0" y2="62.9" stroke="#333333" stroke-width="1.0" class="tick"/>
+<text x="456.0" y="66.9" fill="#333333" font-size="12" class="cbtick">0.8</text>
 </svg>

@@ -364,23 +364,24 @@ class PlotSvg {
 
 	function : Refusals() ~ Bool {
 		ok := true;
-		ok := Report("an empty axes is refused", Refuses(1)) & ok;
-		ok := Report("mismatched xs and ys are refused", Refuses(2)) & ok;
-		ok := Report("a NaN value is refused", Refuses(3)) & ok;
-		ok := Report("a log axis with a non-positive value is refused", Refuses(4)) & ok;
-		ok := Report("bars without categories are refused", Refuses(5)) & ok;
-		ok := Report("a color column of the wrong length is refused", Refuses(6)) & ok;
-		ok := Report("a tiny figure is refused", Refuses(7)) & ok;
-		ok := Report("an empty histogram is refused", Refuses(8)) & ok;
-		ok := Report("an inverted axis limit is refused", Refuses(9)) & ok;
-		ok := Report("a subplot outside the grid is refused", Refuses(10)) & ok;
-		ok := Report("an infinite value is refused", Refuses(11)) & ok;
+		ok := Report("an empty axes is refused", Refuses(1, "nothing to draw")) & ok;
+		ok := Report("mismatched xs and ys are refused", Refuses(2, "matching, non-empty")) & ok;
+		ok := Report("a NaN value is refused", Refuses(3, "NaN or infinite")) & ok;
+		ok := Report("a log axis with a non-positive value is refused", Refuses(4, "positive values")) & ok;
+		ok := Report("bars without categories are refused", Refuses(5, "call SetCategories")) & ok;
+		ok := Report("a color column of the wrong length is refused", Refuses(6, "one value per point")) & ok;
+		ok := Report("a tiny figure is refused", Refuses(7, "at least 200 x 150")) & ok;
+		ok := Report("an empty histogram is refused", Refuses(8, "at least one value")) & ok;
+		ok := Report("an inverted axis limit is refused", Refuses(9, "x range")) & ok;
+		ok := Report("a subplot outside the grid is refused", Refuses(10, "no subplot")) & ok;
+		ok := Report("an infinite value is refused", Refuses(11, "NaN or infinite")) & ok;
 
 		return ok;
 	}
 
-	function : Refuses(which : Int) ~ Bool {
-		refused := false;
+	# the case must raise a PlotError, and the message must say what was wrong
+	function : Refuses(which : Int, expected : String) ~ Bool {
+		message := "";
 		xs := [0.0, 1.0];
 		neg := -1.0;
 		not_a_number := Float->Sqrt(neg);
@@ -404,10 +405,15 @@ class PlotSvg {
 			};
 		}
 		on(e : PlotError) {
-			refused := true;
+			message := e->GetMessage();
 		};
 
-		return refused;
+		if(message->Has(expected)) {
+			return true;
+		};
+		"  case {$which}: expected a message with '{$expected}', got '{$message}'"->PrintLine();
+
+		return false;
 	}
 
 	function : Parse(svg : String) ~ XmlElement {
