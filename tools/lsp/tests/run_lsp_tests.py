@@ -1292,6 +1292,58 @@ def check_utf16_only_client(obr, server_obe, apis_json, bin_dir):
         c.close()
 
 
+def queued_batch(c, uri, attempt):
+    """One run of the queued-batch scenario of check_batching.
+
+    Opens a large file so the server is busy analyzing it, sends a request, its
+    cancel, a hover about `uri`, a request that names no document and an edit of `uri`
+    in ONE write, and reports how each was answered. `attempt` keeps the ids and the
+    edit's version unique across runs.
+    """
+    path = os.path.join(REPO_ROOT, "core", "compiler", "lib_src", "lang.obs")
+    with open(path, encoding="utf-8") as fh:
+        big = fh.read()
+    busy = path_to_uri(os.path.join(TESTS_DIR, "lsp_busy.obs"))
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": busy, "languageId": "objeck", "version": 1, "text": big}})
+    # let that analysis start, then send the four in one write so they are read
+    # while it runs
+    time.sleep(0.05)
+    cancel_id, stale_id, none_id = (f"cancel-me-{attempt}", f"stale-{attempt}", f"no-document-{attempt}")
+    queued = [
+        {"jsonrpc": "2.0", "id": cancel_id, "method": "textDocument/documentSymbol",
+         "params": {"textDocument": {"uri": uri}}},
+        {"jsonrpc": "2.0", "method": "$/cancelRequest", "params": {"id": cancel_id}},
+        {"jsonrpc": "2.0", "id": stale_id, "method": "textDocument/hover",
+         "params": {"textDocument": {"uri": uri}, "position": {"line": 3, "character": 6}}},
+        # names no document, so no edit can make it stale
+        {"jsonrpc": "2.0", "id": none_id, "method": "workspace/symbol",
+         "params": {"query": "Burst"}},
+        {"jsonrpc": "2.0", "method": "textDocument/didChange", "params": {
+            "textDocument": {"uri": uri, "version": 22 + attempt},
+            "contentChanges": [{"range": {"start": {"line": 0, "character": 0},
+                                          "end": {"line": 0, "character": 0}}, "text": "# edited\n"}]}},
+    ]
+    wire = b""
+    for m in queued:
+        head, body = frame(m)
+        wire += head + body
+    try:
+        c.sock.sendall(wire)
+    except OSError:
+        pass
+    cancelled = c.response_to(cancel_id, timeout=60)
+    stale = c.response_to(stale_id, timeout=60)
+    no_document = c.response_to(none_id, timeout=60)
+    c.notify("textDocument/didClose", {"textDocument": {"uri": busy}})
+    return {
+        "cancelled": (cancelled or {}).get("error", {}).get("code") == -32800,
+        "stale": (stale or {}).get("error", {}).get("code") == -32801,
+        "no_document": no_document is not None and "result" in no_document,
+        "cancelled_resp": cancelled, "stale_resp": stale, "no_document_resp": no_document,
+    }
+
+
 def check_batching(c):
     """A burst of edits costs one analysis, and queued work can be refused (#1217).
 
@@ -1340,52 +1392,29 @@ def check_batching(c):
                f"burst {got} vs fresh {want}")
     c.notify("textDocument/didClose", {"textDocument": {"uri": fresh}})
 
-    # Keep the server busy analyzing a 2.5k-line file, and meanwhile queue a
-    # request and its cancel, then a hover and an edit to the hover's document:
-    # all four are handled in one batch once the analysis ends.
-    path = os.path.join(REPO_ROOT, "core", "compiler", "lib_src", "json.obs")
-    with open(path, encoding="utf-8") as fh:
-        big = fh.read()
-    busy = path_to_uri(os.path.join(TESTS_DIR, "lsp_busy.obs"))
-    c.notify("textDocument/didOpen", {"textDocument": {
-        "uri": busy, "languageId": "objeck", "version": 1, "text": big}})
-    # let that analysis start (it takes a few hundred ms), then send the four in
-    # one write so they are read while it runs
-    time.sleep(0.05)
-    queued = [
-        {"jsonrpc": "2.0", "id": "cancel-me", "method": "textDocument/documentSymbol",
-         "params": {"textDocument": {"uri": uri}}},
-        {"jsonrpc": "2.0", "method": "$/cancelRequest", "params": {"id": "cancel-me"}},
-        {"jsonrpc": "2.0", "id": "stale", "method": "textDocument/hover",
-         "params": {"textDocument": {"uri": uri}, "position": {"line": 3, "character": 6}}},
-        # names no document, so no edit can make it stale
-        {"jsonrpc": "2.0", "id": "no-document", "method": "workspace/symbol",
-         "params": {"query": "Burst"}},
-        {"jsonrpc": "2.0", "method": "textDocument/didChange", "params": {
-            "textDocument": {"uri": uri, "version": 22},
-            "contentChanges": [{"range": {"start": {"line": 0, "character": 0},
-                                          "end": {"line": 0, "character": 0}}, "text": "# edited\n"}]}},
-    ]
-    wire = b""
-    for m in queued:
-        head, body = frame(m)
-        wire += head + body
-    try:
-        c.sock.sendall(wire)
-    except OSError:
-        pass
-    cancelled = c.response_to("cancel-me", timeout=60)
+    # Keep the server busy analyzing a large file, and meanwhile queue a request and
+    # its cancel, then a hover and an edit to the hover's document: all four are
+    # handled in one batch once the analysis ends. That only happens when the four
+    # arrive WHILE it runs. A first version used a 2.8k-line file and slept 50 ms,
+    # and on a fast runner the analysis finished before the messages were sent:
+    # the server then read them one by one, answered the hover normally (a correct
+    # reply) and the check failed. So the busy file is large enough that the
+    # analysis outlasts the send by a wide margin, and the scenario may be run again
+    # (three times at most, each with fresh ids) if a scheduling stall still splits
+    # the batch. It fails only when no run shows all three behaviours.
+    outcome = None
+    for attempt in range(3):
+        outcome = queued_batch(c, uri, attempt)
+        if outcome["cancelled"] and outcome["stale"] and outcome["no_document"]:
+            break
     log_result("a request cancelled while queued gets RequestCancelled",
-               (cancelled or {}).get("error", {}).get("code") == -32800, f"got: {cancelled}")
-    stale = c.response_to("stale", timeout=60)
+               outcome["cancelled"], f"got: {outcome['cancelled_resp']}")
     log_result("a request whose document then changed gets ContentModified",
-               (stale or {}).get("error", {}).get("code") == -32801, f"got: {stale}")
+               outcome["stale"], f"got: {outcome['stale_resp']}")
     # It inherited the hover's 'changed later' mark: a loop-body local that was
     # declared but not assigned keeps the previous pass's value.
-    no_document = c.response_to("no-document", timeout=60)
     log_result("a request that names no document is answered, not ContentModified",
-               no_document is not None and "result" in no_document, f"got: {no_document}")
-    c.notify("textDocument/didClose", {"textDocument": {"uri": busy}})
+               outcome["no_document"], f"got: {outcome['no_document_resp']}")
     c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
 
 

@@ -275,6 +275,23 @@ bundle System {
 		}
 
 		#~
+		Uncompresses a zlib byte stream without raising. Use it on data that did not come
+		from the program itself, a file or a download that may be damaged, truncated or not
+		zlib at all: UncompressZlib(input) ends the program for those.
+		@param input zlib bytes, may be Nil
+		@return uncompressed bytes, Nil if the input is Nil or not a whole zlib stream
+		```
+		raw := Byte->TryUncompressZlib(packed);
+		if(raw = Nil) {
+		  "not a zlib stream"->ErrorLine();
+		};
+		```
+		~#
+		function : TryUncompressZlib(input : Byte[]) ~ Byte[] {
+			UNCOMPRESS_ZLIB_TRY;
+		}
+
+		#~
 		Compresses a byte stream using gzip
 		@ignore-params
 		@return compressed bytes
@@ -10664,15 +10681,74 @@ bundle System.IO {
 	class Deserializer  {
 		@buffer : Byte[];
 		@pos : Int;
+		@is_ok : Bool;
 		
 		#~
-		Default constructor
+		Default constructor. Input that is Nil or not a whole zlib stream, as a
+		damaged or foreign file is, does not end the program: IsOk() is false and
+		every read answers its zero value (0, 0.0, false, Nil).
 		@param buffer input byte buffer to read from
 		~#
 		New(buffer : Byte[]) {
 			Parent();
-			@buffer := Byte->UncompressZlib(buffer);
+			@buffer := Byte->TryUncompressZlib(buffer);
+			@is_ok := @buffer <> Nil;
 			@pos := 0;
+		}
+
+		#~
+		Checks that the stream has been readable so far: false if the input was Nil,
+		damaged, truncated or not zlib data, and false from the first read that found the
+		stream too short, an array that declares more than the stream holds, or a value of
+		another type than the read asked for. Check it after the last read, as the reads
+		themselves answer their zero value.
+		@return false once any read has failed
+		~#
+		method : public : IsOk() ~ Bool {
+			return @is_ok;
+		}
+
+		#~
+		Whether count values of 8 bytes or more could still be read: the bound to apply
+		to a count read from the stream before allocating an array of that size, so a
+		file that claims a billion values does not get them.
+		@param count number of values
+		@return true if count is not negative and the bytes left could hold that many
+		~#
+		method : public : Holds(count : Int) ~ Bool {
+			if(count < 0) {
+				return false;
+			};
+
+			return count <= Remaining() / 8;
+		}
+
+		#~
+		Whether rows x cols values of 8 bytes or more could still be read, without
+		multiplying them (the product of two counts from a file can overflow).
+		@param rows number of rows
+		@param cols number of columns
+		@return true if both are positive and the bytes left could hold that many
+		~#
+		method : public : Holds(rows : Int, cols : Int) ~ Bool {
+			if(rows < 1 | cols < 1) {
+				return false;
+			};
+
+			return rows <= Remaining() / 8 / cols;
+		}
+
+		#~
+		Counts the bytes not yet read. A reader that follows a structure of unknown depth,
+		such as a tree, stops at 0 instead of reading zeros for ever.
+		@return bytes left in the stream
+		~#
+		method : public : Remaining() ~ Int {
+			if(@buffer = Nil) {
+				return 0;
+			};
+
+			return @buffer->Size() - @pos;
 		}
 
 		#~

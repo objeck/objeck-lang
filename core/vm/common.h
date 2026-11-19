@@ -2936,6 +2936,7 @@ class TrapProcessor {
   static bool DeserlFloatAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
   static bool CompressZlibBytes(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
   static bool CompressZlibArray(size_t* array, int level, size_t* &op_stack, size_t* &stack_pos);
+  static bool TryUncompressZlibBytes(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
   static bool UncompressZlibBytes(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
   static bool CompressGzipBytes(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool UncompressGzipBytes(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
@@ -3075,6 +3076,15 @@ class TrapProcessor {
   // serializes a byte
   // 
   static void SerializeByte(char value, size_t* inst, size_t* &op_stack, size_t* &stack_pos);
+
+  // 
+  // a read that finds the stream short, or an array that declares more than the
+  // stream holds, answers its zero value and clears the Deserializer's third field,
+  // @is_ok (buffer, position, is_ok), so IsOk() can tell a damaged stream from a real zero
+  // 
+  static void DeserializeFailed(size_t* inst) {
+    inst[2] = 0;
+  }
 
   // 
   // deserializes a byte

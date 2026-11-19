@@ -1603,12 +1603,19 @@ else if(args->Size() = 1) {
 			};
 
 			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 			weight_inputs_hidden := ReadMatrix(deserializer);
 			weight_outputs_hidden := ReadMatrix(deserializer);
 			bias_hidden := ReadMatrix(deserializer);
 			bias_output := ReadMatrix(deserializer);
 
 			if(weight_inputs_hidden = Nil | weight_outputs_hidden = Nil | bias_hidden = Nil | bias_output = Nil) {
+				return Nil;
+			};
+
+			if(<>deserializer->IsOk()) {
 				return Nil;
 			};
 
@@ -1661,7 +1668,7 @@ else if(args->Size() = 1) {
 		function : ReadMatrix(deserializer : System.IO.Deserializer) ~ Float[,] {
 			height := deserializer->ReadInt();
 			width := deserializer->ReadInt();
-			if(height < 1 | width < 1) {
+			if(<>deserializer->Holds(height, width)) {
 				return Nil;
 			};
 

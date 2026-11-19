@@ -1,0 +1,230 @@
+#~
+Retrieval over your own documents with a local vector index (System.ML.VectorSearch),
+no hosted vector store involved.
+
+Each sentence of a small corpus is turned into a vector, added to a VectorIndex under its
+own id, and a question is turned into a vector the same way and answered with the closest
+sentences. The index is then saved and loaded again to show the file round trip.
+
+Where the vectors come from is the only thing that changes:
+
+  * with --model and --vocab, a BERT-family sentence model exported to ONNX
+    (System.NLP.Onnx.BertEmbedder, mean pooling, e.g. all-MiniLM-L6-v2 exported with
+    `optimum-cli export onnx`; see core/lib/onnx/MODELS.md). The vectors are semantic:
+    "How do I get my money back?" finds the refund sentence though they share no word.
+  * without them, a hashed bag of words (4096 buckets, a crude plural fold, stop words
+    dropped). Nothing to download and it runs anywhere, but it only matches shared words,
+    so it shows the index and not the meaning.
+
+  compile: obc -src vector_search.obs -lib models,opencv,cipher,json,onnx,nlp,nlp_onnx,ml_vector,gen_collect
+  run:     obr vector_search.obe
+           obr vector_search.obe --query "how do I get a refund"
+           obr vector_search.obe --model model.onnx --vocab vocab.txt --query "my parcel never arrived"
+
+Options: --model, --vocab, --query TEXT (otherwise three built-in questions), --k N (3),
+--metric cosine|dot|l2 (cosine), --length L (BERT sequence length; 64).
+~#
+
+use System.ML.VectorSearch;
+use System.NLP.Onnx;
+use Collection;
+
+class VectorSearchExample {
+	function : Main(args : String[]) ~ Nil {
+		model := "";
+		vocab := "";
+		query := "";
+		k := 3;
+		length := 64;
+		metric := VectorMetric->COSINE;
+		i := 0;
+		while(i < args->Size()) {
+			if(args[i]->Equals("--model") & i + 1 < args->Size()) {
+				i += 1;
+				model := args[i];
+			}
+			else if(args[i]->Equals("--vocab") & i + 1 < args->Size()) {
+				i += 1;
+				vocab := args[i];
+			}
+			else if(args[i]->Equals("--query") & i + 1 < args->Size()) {
+				i += 1;
+				query := args[i];
+			}
+			else if(args[i]->Equals("--k") & i + 1 < args->Size()) {
+				i += 1;
+				k := args[i]->ToInt();
+			}
+			else if(args[i]->Equals("--length") & i + 1 < args->Size()) {
+				i += 1;
+				length := args[i]->ToInt();
+			}
+			else if(args[i]->Equals("--metric") & i + 1 < args->Size()) {
+				i += 1;
+				if(args[i]->Equals("dot")) {
+					metric := VectorMetric->DOT;
+				}
+				else if(args[i]->Equals("l2")) {
+					metric := VectorMetric->L2;
+				};
+			};
+			i += 1;
+		};
+
+		corpus := Corpus();
+		questions := [
+			"how do I get my money back",
+			"the package has not arrived",
+			"I forgot my password"];
+		if(query->Size() > 0) {
+			questions := [query];
+		};
+
+		embedder : BertEmbedder;
+		if(model->Size() > 0 & vocab->Size() > 0) {
+			embedder := BertEmbedder->New(model, vocab, length);
+			if(embedder->IsOpen() = false) {
+				"cannot open the model: {$embedder->GetError()}"->ErrorLine();
+				Runtime->Exit(1);
+			};
+			embedder->SetPooling(BertEmbedder->Pooling->MEAN);
+			"embedding with BERT ({$model})"->PrintLine();
+		}
+		else {
+			"embedding with a hashed bag of words (give --model and --vocab for BERT)"->PrintLine();
+		};
+
+		vectors := Embed(embedder, corpus);
+		if(vectors = Nil) {
+			"embedding failed"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		dim := vectors->Size()[1];
+		index := VectorIndex->New(dim, metric);
+		each(row : corpus) {
+			v := Float->New[dim];
+			each(j : dim) {
+				v[j] := vectors[row, j];
+			};
+			if(index->Add("{$row}", v) = false) {
+				"cannot add sentence {$row}: {$index->GetError()}"->ErrorLine();
+				Runtime->Exit(1);
+			};
+		};
+		"{$index->Size()} sentences indexed, {$dim} dimensions"->PrintLine();
+
+		# Search the index in memory, then save it, load it and ask again: same answers.
+		Ask(embedder, index, corpus, questions, k);
+
+		path := Runtime->GetTempDir() + "/vector_search_example.vix";
+		if(index->Store(path)) {
+			loaded := VectorIndex->Load(path);
+			if(loaded = Nil) {
+				"could not load {$path} again"->ErrorLine();
+				Runtime->Exit(1);
+			};
+			"\nsaved to {$path} and loaded again, {$loaded->Size()} sentences; asking the loaded index:"->PrintLine();
+			Ask(embedder, loaded, corpus, [questions[0]], k);
+		};
+
+		if(embedder <> Nil) {
+			embedder->Close();
+		};
+	}
+
+	function : Ask(embedder : BertEmbedder, index : VectorIndex, corpus : String[], questions : String[], k : Int) ~ Nil {
+		qv := Embed(embedder, questions);
+		dim := index->GetDimension();
+		each(qi : questions) {
+			q := Float->New[dim];
+			each(j : dim) {
+				q[j] := qv[qi, j];
+			};
+
+			"\nQ: {$questions[qi]}"->PrintLine();
+			hits := index->Search(q, k);
+			if(hits->Size() = 0) {
+				"   no answer ({$index->GetError()})"->PrintLine();
+			};
+			each(h : hits) {
+				hit := hits->Get(h);
+				row := hit->GetId()->ToInt();
+				text := corpus[row];
+				score := hit->GetScore();
+				"  {$score}  {$text}"->PrintLine();
+			};
+		};
+	}
+
+	function : Embed(embedder : BertEmbedder, texts : String[]) ~ Float[,] {
+		if(embedder <> Nil) {
+			return embedder->Embed(texts);
+		};
+
+		# hashed bag of words: a stand-in that needs no model
+		dim := 4096;
+		out := Float->New[texts->Size(), dim];
+		each(t : texts) {
+			words := Words(texts[t]);
+			each(w : words) {
+				word := words->Get(w);
+				h := 5381;
+				each(c : word->Size()) {
+					h := (h * 33 + word->Get(c)->As(Int)) % 2147483629;
+				};
+				# spread the low bits before taking the bucket
+				h := (h * 2654435761) % 2147483629;
+				out[t, (h / 7) % dim] += 1.0;
+			};
+		};
+
+		return out;
+	}
+
+	# lowercase words of 3 or more letters, a trailing "s" folded away
+	function : Words(text : String) ~ Vector<String> {
+		words := Vector->New()<String>;
+		current := "";
+		lower := text->ToLower();
+		each(i : lower->Size()) {
+			c := lower->Get(i);
+			if(c >= 'a' & c <= 'z') {
+				current += c;
+			}
+			else {
+				AddWord(words, current);
+				current := "";
+			};
+		};
+		AddWord(words, current);
+
+		return words;
+	}
+
+	function : AddWord(words : Vector<String>, word : String) ~ Nil {
+		if(word->Size() > 3 & word->Get(word->Size() - 1) = 's') {
+			word := word->SubString(word->Size() - 1);
+		};
+		stop := " the and you your has have not can are for with from how who what that this until any will when was been our its they ";
+		if(word->Size() >= 3 & stop->Has(" " + word + " ") = false) {
+			words->AddBack(word);
+		};
+	}
+
+	function : Corpus() ~ String[] {
+		return [
+			"You can request a refund within thirty days and the money is returned to your card.",
+			"Orders are shipped within two business days and a tracking number is emailed to you.",
+			"If your package is delayed or lost, contact support and we will send a replacement.",
+			"To reset your password, use the link on the sign-in page and check your email.",
+			"Two-factor authentication adds a second step when you sign in to your account.",
+			"We accept credit cards, bank transfers and several digital wallets.",
+			"The warranty covers manufacturing defects for two years from the delivery date.",
+			"You can change your delivery address until the order has been shipped.",
+			"Our support team answers questions by chat and email every day of the week.",
+			"Gift cards never expire and can be used on any order in the store.",
+			"Delete your account from the privacy settings and your data is removed.",
+			"Returned items must be unused and in their original packaging."];
+	}
+}
