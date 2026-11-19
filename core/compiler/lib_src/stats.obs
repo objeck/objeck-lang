@@ -1,0 +1,2062 @@
+#~~
+Objeck statistics library: distributions, t-tests, correlation and an OLS summary
+Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+
+#~
+Classical statistics for small analyses: descriptive statistics, the Student t, normal, chi-square and F distributions, t-tests with confidence intervals and effect sizes, Pearson correlation with a p-value, and an ordinary least squares fit with the full summary table (standard errors, t statistics, p values, confidence intervals, F test, R-squared, AIC and BIC). Compile with -lib stats,gen_collect; it needs nothing from System.ML.
+
+No call here ends the program on bad input. A function that returns a Float returns NaN, and a function that returns a result object returns one whose IsValid() is false and whose GetError() says why. Design and verification notes: docs/AI.md, "Statistics".
+~#
+bundle System.Stats {
+	#~
+	Special functions and probability distributions. Every function takes plain Floats and returns NaN for arguments outside its domain, so a bad value shows up as NaN and never ends the program.
+	~#
+	class Dist {
+		function : IsNaN(x : Float) ~ Bool {
+			return x <> x;
+		}
+
+		#~
+		Division that does not stop the program when the divisor is 0: a / 0 is +Inf or -Inf, and 0 / 0 is NaN.
+		@param a dividend
+		@param b divisor
+		@return the quotient
+		~#
+		function : Div(a : Float, b : Float) ~ Float {
+			if(b = 0.0) {
+				if(a > 0.0) {
+					return Float->Inf();
+				}
+				else if(a < 0.0) {
+					return Float->NegInf();
+				};
+
+				return Float->NaN();
+			};
+
+			return a / b;
+		}
+
+		#~
+		Natural log of the gamma function, for x above 0 (Lanczos approximation, about 15 digits).
+		@param x argument, above 0
+		@return log(gamma(x)), NaN when x is not above 0 or not finite
+		~#
+		function : LogGamma(x : Float) ~ Float {
+			if(IsNaN(x) | x <= 0.0 | x > 1.0e300) {
+				return Float->NaN();
+			};
+
+			if(x < 0.5) {
+				return Float->Log(Float->Pi() / Float->Sin(Float->Pi() * x)) - LogGamma(1.0 - x);
+			};
+
+			c := [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 0.0000099843695780195716, 0.00000015056327351493116];
+			z := x - 1.0;
+			a := c[0];
+			t := z + 7.5;
+			for(i := 1; i < 9; i += 1;) {
+				a += c[i] / (z + i->As(Float));
+			};
+
+			return 0.5 * Float->Log(2.0 * Float->Pi()) + (z + 0.5) * Float->Log(t) - t + Float->Log(a);
+		}
+
+		# Lentz continued fraction for the incomplete beta function
+		function : BetaCF(x : Float, a : Float, b : Float) ~ Float {
+			tiny := 1.0e-300;
+			qab := a + b;
+			qap := a + 1.0;
+			qam := a - 1.0;
+			c := 1.0;
+			d := 1.0 - qab * x / qap;
+			if(Float->Abs(d) < tiny) {
+				d := tiny;
+			};
+			d := 1.0 / d;
+			h := d;
+			m := 1;
+			done := false;
+			while(m <= 50000 & done = false) {
+				mf := m->As(Float);
+				m2 := 2.0 * mf;
+				aa := mf * (b - mf) * x / ((qam + m2) * (a + m2));
+				d := 1.0 + aa * d;
+				if(Float->Abs(d) < tiny) {
+					d := tiny;
+				};
+				c := 1.0 + aa / c;
+				if(Float->Abs(c) < tiny) {
+					c := tiny;
+				};
+				d := 1.0 / d;
+				h *= d * c;
+				aa := -(a + mf) * (qab + mf) * x / ((a + m2) * (qap + m2));
+				d := 1.0 + aa * d;
+				if(Float->Abs(d) < tiny) {
+					d := tiny;
+				};
+				c := 1.0 + aa / c;
+				if(Float->Abs(c) < tiny) {
+					c := tiny;
+				};
+				d := 1.0 / d;
+				del := d * c;
+				h *= del;
+				if(Float->Abs(del - 1.0) < 1.0e-15) {
+					done := true;
+				};
+				m += 1;
+			};
+
+			return h;
+		}
+
+		# I_x(a, b) given both x and y = 1 - x, so a caller that has y exactly keeps its precision
+		function : BetaIncXY(x : Float, y : Float, a : Float, b : Float) ~ Float {
+			if(x <= 0.0) {
+				return 0.0;
+			};
+			if(y <= 0.0) {
+				return 1.0;
+			};
+
+			bt := Float->Exp(LogGamma(a + b) - LogGamma(a) - LogGamma(b) + a * Float->Log(x) + b * Float->Log(y));
+			if(x < (a + 1.0) / (a + b + 2.0)) {
+				return bt * BetaCF(x, a, b) / a;
+			};
+
+			return 1.0 - bt * BetaCF(y, b, a) / b;
+		}
+
+		#~
+		The regularized incomplete beta function I_x(a, b).
+		@param x between 0 and 1
+		@param a shape, above 0
+		@param b shape, above 0
+		@return value between 0 and 1, NaN outside the domain
+		~#
+		function : BetaInc(x : Float, a : Float, b : Float) ~ Float {
+			if(IsNaN(x) | IsNaN(a) | IsNaN(b) | x < 0.0 | x > 1.0 | a <= 0.0 | b <= 0.0) {
+				return Float->NaN();
+			};
+
+			return BetaIncXY(x, 1.0 - x, a, b);
+		}
+
+		# regularized lower incomplete gamma P(a, x) and upper Q(a, x); returns [P, Q]
+		function : GammaPQ(a : Float, x : Float) ~ Float[] {
+			if(x <= 0.0) {
+				return [0.0, 1.0];
+			};
+
+			lg := LogGamma(a);
+			if(x < a + 1.0) {
+				ap := a;
+				sum := 1.0 / a;
+				del := sum;
+				n := 0;
+				while(n < 100000 & Float->Abs(del) > Float->Abs(sum) * 1.0e-16) {
+					ap += 1.0;
+					del *= x / ap;
+					sum += del;
+					n += 1;
+				};
+				p := sum * Float->Exp(-x + a * Float->Log(x) - lg);
+				return [p, 1.0 - p];
+			};
+
+			tiny := 1.0e-300;
+			b := x + 1.0 - a;
+			c := 1.0 / tiny;
+			d := 1.0 / b;
+			h := d;
+			i := 1;
+			done := false;
+			while(i < 100000 & done = false) {
+				an := -i->As(Float) * (i->As(Float) - a);
+				b += 2.0;
+				d := an * d + b;
+				if(Float->Abs(d) < tiny) {
+					d := tiny;
+				};
+				c := b + an / c;
+				if(Float->Abs(c) < tiny) {
+					c := tiny;
+				};
+				d := 1.0 / d;
+				del := d * c;
+				h *= del;
+				if(Float->Abs(del - 1.0) < 1.0e-16) {
+					done := true;
+				};
+				i += 1;
+			};
+			q := Float->Exp(-x + a * Float->Log(x) - lg) * h;
+			return [1.0 - q, q];
+		}
+
+		#~
+		The regularized lower incomplete gamma function P(a, x).
+		@param a shape, above 0
+		@param x argument, 0 or more
+		@return value between 0 and 1, NaN outside the domain
+		~#
+		function : GammaInc(a : Float, x : Float) ~ Float {
+			if(IsNaN(a) | IsNaN(x) | a <= 0.0 | x < 0.0) {
+				return Float->NaN();
+			};
+
+			return GammaPQ(a, x)[0];
+		}
+
+		#~
+		Two-sided p-value of a Student t statistic: P(|T| >= |t|).
+		@param t the statistic
+		@param df degrees of freedom, above 0
+		@return probability, NaN when t is NaN or df is not above 0
+		~#
+		function : StudentTwoSidedP(t : Float, df : Float) ~ Float {
+			if(IsNaN(t) | IsNaN(df) | df <= 0.0) {
+				return Float->NaN();
+			};
+			if(Float->Abs(t) > 1.0e150) {
+				return 0.0;
+			};
+
+			t2 := t * t;
+			return BetaIncXY(df / (df + t2), t2 / (df + t2), df / 2.0, 0.5);
+		}
+
+		#~
+		Cumulative distribution function of the Student t distribution.
+		@param t the statistic
+		@param df degrees of freedom, above 0
+		@return P(T <= t), NaN outside the domain
+		~#
+		function : StudentCdf(t : Float, df : Float) ~ Float {
+			p2 := StudentTwoSidedP(t, df);
+			if(IsNaN(p2)) {
+				return p2;
+			};
+			if(t >= 0.0) {
+				return 1.0 - p2 / 2.0;
+			};
+
+			return p2 / 2.0;
+		}
+
+		#~
+		Quantile (inverse CDF) of the Student t distribution, found by bisection to full double precision.
+		@param p probability, strictly between 0 and 1
+		@param df degrees of freedom, above 0
+		@return t with P(T <= t) = p, NaN outside the domain
+		~#
+		function : StudentQuantile(p : Float, df : Float) ~ Float {
+			if(IsNaN(p) | IsNaN(df) | p <= 0.0 | p >= 1.0 | df <= 0.0) {
+				return Float->NaN();
+			};
+			if(p = 0.5) {
+				return 0.0;
+			};
+
+			tail := p;
+			if(p > 0.5) {
+				tail := 1.0 - p;
+			};
+			# find t > 0 with P(T > t) = tail, i.e. two-sided p = 2 * tail
+			target := 2.0 * tail;
+			lo := 0.0;
+			hi := 1.0;
+			while(StudentTwoSidedP(hi, df) > target & hi < 1.0e150) {
+				lo := hi;
+				hi *= 2.0;
+			};
+			for(i := 0; i < 200; i += 1;) {
+				mid := (lo + hi) / 2.0;
+				if(StudentTwoSidedP(mid, df) > target) {
+					lo := mid;
+				}
+				else {
+					hi := mid;
+				};
+			};
+			t := (lo + hi) / 2.0;
+			if(p < 0.5) {
+				return -t;
+			};
+
+			return t;
+		}
+
+		#~
+		Cumulative distribution function of the standard normal distribution.
+		@param x the value
+		@return P(Z <= x), NaN when x is NaN
+		~#
+		function : NormalCdf(x : Float) ~ Float {
+			if(IsNaN(x)) {
+				return x;
+			};
+
+			# erfc(z) = Q(1/2, z^2) for z >= 0
+			z := Float->Abs(x) / Float->Sqrt(2.0);
+			half := GammaPQ(0.5, z * z)[1] / 2.0;
+			if(x >= 0.0) {
+				return 1.0 - half;
+			};
+
+			return half;
+		}
+
+		#~
+		Two-sided p-value of a standard normal statistic: P(|Z| >= |z|).
+		@param z the statistic
+		@return probability, NaN when z is NaN
+		~#
+		function : NormalTwoSidedP(z : Float) ~ Float {
+			if(IsNaN(z)) {
+				return z;
+			};
+
+			return GammaPQ(0.5, z * z / 2.0)[1];
+		}
+
+		#~
+		Quantile (inverse CDF) of the standard normal distribution.
+		@param p probability, strictly between 0 and 1
+		@return z with P(Z <= z) = p, NaN outside the domain
+		~#
+		function : NormalQuantile(p : Float) ~ Float {
+			if(IsNaN(p) | p <= 0.0 | p >= 1.0) {
+				return Float->NaN();
+			};
+			if(p = 0.5) {
+				return 0.0;
+			};
+
+			tail := p;
+			if(p > 0.5) {
+				tail := 1.0 - p;
+			};
+			lo := 0.0;
+			hi := 40.0;
+			for(i := 0; i < 200; i += 1;) {
+				mid := (lo + hi) / 2.0;
+				# upper tail beyond mid
+				if(NormalTwoSidedP(mid) / 2.0 > tail) {
+					lo := mid;
+				}
+				else {
+					hi := mid;
+				};
+			};
+			z := (lo + hi) / 2.0;
+			if(p < 0.5) {
+				return -z;
+			};
+
+			return z;
+		}
+
+		#~
+		Cumulative distribution function of the chi-square distribution.
+		@param x the value, 0 or more
+		@param df degrees of freedom, above 0
+		@return P(X <= x), NaN outside the domain
+		~#
+		function : ChiSquareCdf(x : Float, df : Float) ~ Float {
+			if(IsNaN(x) | IsNaN(df) | x < 0.0 | df <= 0.0) {
+				return Float->NaN();
+			};
+
+			return GammaPQ(df / 2.0, x / 2.0)[0];
+		}
+
+		#~
+		Upper tail of the chi-square distribution, P(X >= x); the p-value of a chi-square statistic.
+		@param x the statistic, 0 or more
+		@param df degrees of freedom, above 0
+		@return probability, NaN outside the domain
+		~#
+		function : ChiSquareSf(x : Float, df : Float) ~ Float {
+			if(IsNaN(x) | IsNaN(df) | x < 0.0 | df <= 0.0) {
+				return Float->NaN();
+			};
+
+			return GammaPQ(df / 2.0, x / 2.0)[1];
+		}
+
+		#~
+		Cumulative distribution function of the F distribution.
+		@param f the value, 0 or more
+		@param df1 numerator degrees of freedom, above 0
+		@param df2 denominator degrees of freedom, above 0
+		@return P(F <= f), NaN outside the domain
+		~#
+		function : FCdf(f : Float, df1 : Float, df2 : Float) ~ Float {
+			if(IsNaN(f) | IsNaN(df1) | IsNaN(df2) | f < 0.0 | df1 <= 0.0 | df2 <= 0.0) {
+				return Float->NaN();
+			};
+
+			u := df1 * f;
+			return BetaIncXY(u / (u + df2), df2 / (u + df2), df1 / 2.0, df2 / 2.0);
+		}
+
+		#~
+		Upper tail of the F distribution, P(F >= f); the p-value of an F statistic.
+		@param f the statistic, 0 or more
+		@param df1 numerator degrees of freedom, above 0
+		@param df2 denominator degrees of freedom, above 0
+		@return probability, NaN outside the domain
+		~#
+		function : FSf(f : Float, df1 : Float, df2 : Float) ~ Float {
+			if(IsNaN(f) | IsNaN(df1) | IsNaN(df2) | f < 0.0 | df1 <= 0.0 | df2 <= 0.0) {
+				return Float->NaN();
+			};
+			if(f > 1.0e150) {
+				return 0.0;
+			};
+
+			u := df1 * f;
+			return BetaIncXY(df2 / (u + df2), u / (u + df2), df2 / 2.0, df1 / 2.0);
+		}
+	}
+
+	#~
+	Descriptive statistics over a Float[]. Each function returns NaN when the array is Nil, too short for the statistic, or holds a NaN or infinity.
+	~#
+	class Stats {
+		function : Usable(x : Float[], min_size : Int) ~ Bool {
+			if(x = Nil | x->Size() < min_size) {
+				return false;
+			};
+
+			each(i : x) {
+				v := x[i];
+				if(v <> v | v - v <> 0.0) {
+					return false;
+				};
+			};
+
+			return true;
+		}
+
+		#~
+		Sum of the values.
+		@param x values
+		@return sum, NaN for Nil, empty or non-finite input
+		~#
+		function : Sum(x : Float[]) ~ Float {
+			if(<>Usable(x, 1)) {
+				return Float->NaN();
+			};
+
+			s := 0.0;
+			each(i : x) {
+				s += x[i];
+			};
+
+			return s;
+		}
+
+		#~
+		Arithmetic mean.
+		@param x values
+		@return mean, NaN for Nil, empty or non-finite input
+		~#
+		function : Mean(x : Float[]) ~ Float {
+			if(<>Usable(x, 1)) {
+				return Float->NaN();
+			};
+
+			# two passes: the second removes the rounding error of the first
+			m := Sum(x) / x->Size()->As(Float);
+			r := 0.0;
+			each(i : x) {
+				r += x[i] - m;
+			};
+
+			return m + r / x->Size()->As(Float);
+		}
+
+		#~
+		Sample variance (divides by n - 1).
+		@param x values, at least 2
+		@return variance, NaN for fewer than 2 values, Nil or non-finite input
+		~#
+		function : Variance(x : Float[]) ~ Float {
+			if(<>Usable(x, 2)) {
+				return Float->NaN();
+			};
+
+			m := Mean(x);
+			s := 0.0;
+			each(i : x) {
+				d := x[i] - m;
+				s += d * d;
+			};
+
+			return s / (x->Size() - 1)->As(Float);
+		}
+
+		#~
+		Population variance (divides by n).
+		@param x values, at least 1
+		@return variance, NaN for Nil, empty or non-finite input
+		~#
+		function : PopulationVariance(x : Float[]) ~ Float {
+			if(<>Usable(x, 1)) {
+				return Float->NaN();
+			};
+
+			m := Mean(x);
+			s := 0.0;
+			each(i : x) {
+				d := x[i] - m;
+				s += d * d;
+			};
+
+			return s / x->Size()->As(Float);
+		}
+
+		#~
+		Sample standard deviation (divides by n - 1).
+		@param x values, at least 2
+		@return standard deviation, NaN for bad input
+		~#
+		function : StdDev(x : Float[]) ~ Float {
+			return Float->Sqrt(Variance(x));
+		}
+
+		#~
+		Standard error of the mean: the sample standard deviation over the square root of n.
+		@param x values, at least 2
+		@return standard error, NaN for bad input
+		~#
+		function : StdError(x : Float[]) ~ Float {
+			if(<>Usable(x, 2)) {
+				return Float->NaN();
+			};
+
+			return StdDev(x) / Float->Sqrt(x->Size()->As(Float));
+		}
+
+		#~
+		Sample covariance of two arrays of the same length.
+		@param x first values, at least 2
+		@param y second values, same length as x
+		@return covariance, NaN for mismatched or bad input
+		~#
+		function : Covariance(x : Float[], y : Float[]) ~ Float {
+			if(<>Usable(x, 2) | <>Usable(y, 2) | x->Size() <> y->Size()) {
+				return Float->NaN();
+			};
+
+			mx := Mean(x);
+			my := Mean(y);
+			s := 0.0;
+			each(i : x) {
+				s += (x[i] - mx) * (y[i] - my);
+			};
+
+			return s / (x->Size() - 1)->As(Float);
+		}
+
+		#~
+		Median: the middle value, or the mean of the two middle values.
+		@param x values
+		@return median, NaN for Nil, empty or non-finite input
+		~#
+		function : Median(x : Float[]) ~ Float {
+			if(<>Usable(x, 1)) {
+				return Float->NaN();
+			};
+
+			n := x->Size();
+			s := Float->New[n];
+			each(i : n) {
+				s[i] := x[i];
+			};
+			# insertion sort on a copy; the caller's array is untouched
+			for(i := 1; i < n; i += 1;) {
+				v := s[i];
+				j := i - 1;
+				while(j >= 0 & s[j] > v) {
+					s[j + 1] := s[j];
+					j -= 1;
+				};
+				s[j + 1] := v;
+			};
+			if(n % 2 = 1) {
+				return s[n / 2];
+			};
+
+			return (s[n / 2 - 1] + s[n / 2]) / 2.0;
+		}
+	}
+
+	#~
+	The outcome of a t-test. A failed test (IsValid() false) has NaN in every number and GetError() set.
+
+	The mean difference is the first group minus the second (or the sample mean minus the hypothesised mean for a one-sample test, or the mean of the pairwise differences for a paired one). The confidence interval is for that difference.
+	~#
+	class TTestResult {
+		@mname : String;
+		@error : String;
+		@t : Float;
+		@df : Float;
+		@p : Float;
+		@diff : Float;
+		@se : Float;
+		@lo : Float;
+		@hi : Float;
+		@level : Float;
+		@d : Float;
+		@g : Float;
+		@n1 : Int;
+		@n2 : Int;
+		@m1 : Float;
+		@m2 : Float;
+
+		New(mname : String, error : String, t : Float, df : Float, p : Float, diff : Float, se : Float, lo : Float, hi : Float, level : Float, d : Float, g : Float, n1 : Int, n2 : Int, m1 : Float, m2 : Float) {
+			@mname := mname;
+			@error := error;
+			@t := t;
+			@df := df;
+			@p := p;
+			@diff := diff;
+			@se := se;
+			@lo := lo;
+			@hi := hi;
+			@level := level;
+			@d := d;
+			@g := g;
+			@n1 := n1;
+			@n2 := n2;
+			@m1 := m1;
+			@m2 := m2;
+		}
+
+		#~
+		Whether the test ran.
+		@return true if every number is meaningful
+		~#
+		method : public : IsValid() ~ Bool {
+			return @error->Size() = 0;
+		}
+
+		#~
+		Why the test did not run, or an empty string.
+		@return reason
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Name of the test.
+		@return name
+		~#
+		method : public : GetMethod() ~ String {
+			return @mname;
+		}
+
+		#~
+		The t statistic.
+		@return t, NaN when invalid
+		~#
+		method : public : GetT() ~ Float {
+			return @t;
+		}
+
+		#~
+		Degrees of freedom (fractional for the Welch test).
+		@return degrees of freedom
+		~#
+		method : public : GetDf() ~ Float {
+			return @df;
+		}
+
+		#~
+		Two-sided p-value.
+		@return p
+		~#
+		method : public : GetP() ~ Float {
+			return @p;
+		}
+
+		#~
+		Mean difference: first minus second.
+		@return difference
+		~#
+		method : public : GetMeanDiff() ~ Float {
+			return @diff;
+		}
+
+		#~
+		Standard error of the mean difference.
+		@return standard error
+		~#
+		method : public : GetStdError() ~ Float {
+			return @se;
+		}
+
+		#~
+		Lower end of the confidence interval for the difference.
+		@return lower bound
+		~#
+		method : public : GetCiLow() ~ Float {
+			return @lo;
+		}
+
+		#~
+		Upper end of the confidence interval for the difference.
+		@return upper bound
+		~#
+		method : public : GetCiHigh() ~ Float {
+			return @hi;
+		}
+
+		#~
+		Confidence level the interval was made at.
+		@return level, such as 0.95
+		~#
+		method : public : GetLevel() ~ Float {
+			return @level;
+		}
+
+		#~
+		Cohen's d: the mean difference over the pooled standard deviation (two-sample), or over the standard deviation of the sample (one-sample) or of the differences (paired).
+		@return d
+		~#
+		method : public : GetCohenD() ~ Float {
+			return @d;
+		}
+
+		#~
+		Hedges' g: Cohen's d with the small-sample correction 1 - 3 / (4 df - 1).
+		@return g
+		~#
+		method : public : GetHedgesG() ~ Float {
+			return @g;
+		}
+
+		#~
+		Size of the first sample (or the only one).
+		@return count
+		~#
+		method : public : GetN1() ~ Int {
+			return @n1;
+		}
+
+		#~
+		Size of the second sample, 0 for a one-sample test.
+		@return count
+		~#
+		method : public : GetN2() ~ Int {
+			return @n2;
+		}
+
+		#~
+		Mean of the first sample.
+		@return mean
+		~#
+		method : public : GetMean1() ~ Float {
+			return @m1;
+		}
+
+		#~
+		Mean of the second sample, or the hypothesised mean for a one-sample test.
+		@return mean
+		~#
+		method : public : GetMean2() ~ Float {
+			return @m2;
+		}
+
+		#~
+		Whether the p-value is below a significance level.
+		@param alpha level, such as 0.05
+		@return true if p < alpha (false when invalid)
+		~#
+		method : public : IsSignificant(alpha : Float) ~ Bool {
+			return IsValid() & @p < alpha;
+		}
+
+		method : public : ToString() ~ String {
+			if(<>IsValid()) {
+				return "{$@mname}: failed ({$@error})";
+			};
+
+			pct := @level * 100.0;
+			return "{$@mname}: t = {$Float->ToString(@t, 4)}, df = {$Float->ToString(@df, 2)}, p = {$StatsFormat->P(@p)}, mean diff = {$Float->ToString(@diff, 4)}, {$Float->ToString(pct, 1)}% CI [{$Float->ToString(@lo, 4)}, {$Float->ToString(@hi, 4)}], Cohen d = {$Float->ToString(@d, 4)}, Hedges g = {$Float->ToString(@g, 4)}";
+		}
+	}
+
+	#~
+	Number formatting shared by the summaries.
+	~#
+	class StatsFormat {
+		#~
+		Formats a p-value: fixed digits, or scientific below 0.0001 (when fixed digits would show 0).
+		@param p probability
+		@return text
+		~#
+		function : P(p : Float) ~ String {
+			if(p <> p) {
+				return "NaN";
+			};
+			if(p = 0.0) {
+				return "0";
+			};
+			if(p < 0.0001) {
+				e := Float->Floor(Float->Log10(p));
+				m := p / Float->Pow(10.0, e);
+				return "{$Float->ToString(m, 3)}e{$e->As(Int)}";
+			};
+
+			return Float->ToString(p, 4);
+		}
+	}
+
+	#~
+	t-tests. Every test takes an optional confidence level (default 0.95) for the interval on the mean difference. All return a TTestResult; none can end the program.
+
+	Failures (IsValid() false): Nil input, a sample too short (one-sample and paired need 2 values, two-sample needs 2 per group), unequal lengths for the paired test, NaN or infinity in the data, a level not strictly between 0 and 1, and zero variance (a standard error of 0 makes t undefined).
+
+```
+a := [4.1, 5.2, 6.3, 5.8, 4.9, 5.5];
+b := [6.0, 7.1, 6.8, 7.4, 6.5, 7.0];
+r := TTest->Welch(a, b);
+r->ToString()->PrintLine();
+if(r->IsValid() & r->GetP() < 0.05) {
+  "means differ, d = {$r->GetCohenD()}"->PrintLine();
+};
+```
+	~#
+	class TTest {
+		function : Fail(mname : String, msg : String) ~ TTestResult {
+			nan := Float->NaN();
+			return TTestResult->New(mname, msg, nan, nan, nan, nan, nan, nan, nan, nan, nan, nan, 0, 0, nan, nan);
+		}
+
+		function : Check(mname : String, x : Float[], min_size : Int, level : Float) ~ String {
+			if(x = Nil) {
+				return "sample is Nil";
+			};
+			if(x->Size() < min_size) {
+				return "need at least {$min_size} values per sample, got {$x->Size()}";
+			};
+			if(<>Stats->Usable(x, min_size)) {
+				return "sample has a NaN or infinite value";
+			};
+			if(level <> level | level <= 0.0 | level >= 1.0) {
+				return "confidence level must be strictly between 0 and 1";
+			};
+
+			return "";
+		}
+
+		# builds the result from the difference, its standard error and the degrees of freedom
+		function : Finish(mname : String, diff : Float, se : Float, df : Float, level : Float, sd : Float, dfd : Float, n1 : Int, n2 : Int, m1 : Float, m2 : Float) ~ TTestResult {
+			if(se <= 0.0 | sd <= 0.0 | se <> se | sd <> sd) {
+				return Fail(mname, "zero variance: the standard error is 0, so t is undefined");
+			};
+
+			t := diff / se;
+			p := Dist->StudentTwoSidedP(t, df);
+			crit := Dist->StudentQuantile(1.0 - (1.0 - level) / 2.0, df);
+			d := diff / sd;
+			g := d * (1.0 - 3.0 / (4.0 * dfd - 1.0));
+
+			return TTestResult->New(mname, "", t, df, p, diff, se, diff - crit * se, diff + crit * se, level, d, g, n1, n2, m1, m2);
+		}
+
+		#~
+		One-sample t-test of the mean of x against a hypothesised mean, at the 95% level.
+		@param x sample, at least 2 values
+		@param mu hypothesised mean
+		@return result; the difference is mean(x) - mu
+		~#
+		function : OneSample(x : Float[], mu : Float) ~ TTestResult {
+			return OneSample(x, mu, 0.95);
+		}
+
+		#~
+		One-sample t-test of the mean of x against a hypothesised mean.
+		@param x sample, at least 2 values
+		@param mu hypothesised mean
+		@param level confidence level of the interval, strictly between 0 and 1
+		@return result; the difference is mean(x) - mu
+		~#
+		function : OneSample(x : Float[], mu : Float, level : Float) ~ TTestResult {
+			name := "One-sample t-test";
+			msg := Check(name, x, 2, level);
+			if(msg->Size() > 0) {
+				return Fail(name, msg);
+			};
+			if(mu <> mu | mu - mu <> 0.0) {
+				return Fail(name, "hypothesised mean is NaN or infinite");
+			};
+
+			n := x->Size();
+			m := Stats->Mean(x);
+			sd := Stats->StdDev(x);
+			se := sd / Float->Sqrt(n->As(Float));
+			df := (n - 1)->As(Float);
+
+			return Finish(name, m - mu, se, df, level, sd, df, n, 0, m, mu);
+		}
+
+		#~
+		Student's two-sample t-test (equal variances assumed), at the 95% level.
+		@param x first sample, at least 2 values
+		@param y second sample, at least 2 values
+		@return result; the difference is mean(x) - mean(y)
+		~#
+		function : TwoSample(x : Float[], y : Float[]) ~ TTestResult {
+			return TwoSample(x, y, 0.95);
+		}
+
+		#~
+		Student's two-sample t-test (equal variances assumed, pooled variance, df = n1 + n2 - 2).
+		@param x first sample, at least 2 values
+		@param y second sample, at least 2 values
+		@param level confidence level of the interval, strictly between 0 and 1
+		@return result; the difference is mean(x) - mean(y)
+		~#
+		function : TwoSample(x : Float[], y : Float[], level : Float) ~ TTestResult {
+			name := "Student two-sample t-test";
+			msg := Check(name, x, 2, level);
+			if(msg->Size() = 0) {
+				msg := Check(name, y, 2, level);
+			};
+			if(msg->Size() > 0) {
+				return Fail(name, msg);
+			};
+
+			n1 := x->Size();
+			n2 := y->Size();
+			m1 := Stats->Mean(x);
+			m2 := Stats->Mean(y);
+			v1 := Stats->Variance(x);
+			v2 := Stats->Variance(y);
+			df := (n1 + n2 - 2)->As(Float);
+			sp2 := ((n1 - 1)->As(Float) * v1 + (n2 - 1)->As(Float) * v2) / df;
+			sp := Float->Sqrt(sp2);
+			se := sp * Float->Sqrt(1.0 / n1->As(Float) + 1.0 / n2->As(Float));
+
+			return Finish(name, m1 - m2, se, df, level, sp, df, n1, n2, m1, m2);
+		}
+
+		#~
+		Welch's t-test (unequal variances, Welch-Satterthwaite degrees of freedom), at the 95% level.
+		@param x first sample, at least 2 values
+		@param y second sample, at least 2 values
+		@return result; the difference is mean(x) - mean(y)
+		~#
+		function : Welch(x : Float[], y : Float[]) ~ TTestResult {
+			return Welch(x, y, 0.95);
+		}
+
+		#~
+		Welch's t-test (unequal variances). Cohen's d and Hedges' g use the pooled standard deviation, as for the Student test.
+		@param x first sample, at least 2 values
+		@param y second sample, at least 2 values
+		@param level confidence level of the interval, strictly between 0 and 1
+		@return result; the difference is mean(x) - mean(y)
+		~#
+		function : Welch(x : Float[], y : Float[], level : Float) ~ TTestResult {
+			name := "Welch t-test";
+			msg := Check(name, x, 2, level);
+			if(msg->Size() = 0) {
+				msg := Check(name, y, 2, level);
+			};
+			if(msg->Size() > 0) {
+				return Fail(name, msg);
+			};
+
+			n1 := x->Size();
+			n2 := y->Size();
+			m1 := Stats->Mean(x);
+			m2 := Stats->Mean(y);
+			v1 := Stats->Variance(x);
+			v2 := Stats->Variance(y);
+			a := v1 / n1->As(Float);
+			b := v2 / n2->As(Float);
+			se := Float->Sqrt(a + b);
+			dfp := (n1 + n2 - 2)->As(Float);
+			sp := Float->Sqrt(((n1 - 1)->As(Float) * v1 + (n2 - 1)->As(Float) * v2) / dfp);
+			if(a + b <= 0.0) {
+				return Fail(name, "zero variance: the standard error is 0, so t is undefined");
+			};
+			df := (a + b) * (a + b) / (a * a / (n1 - 1)->As(Float) + b * b / (n2 - 1)->As(Float));
+
+			return Finish(name, m1 - m2, se, df, level, sp, dfp, n1, n2, m1, m2);
+		}
+
+		#~
+		Paired t-test, at the 95% level.
+		@param x first measurements
+		@param y second measurements, same length as x, at least 2
+		@return result; the difference is mean(x - y)
+		~#
+		function : Paired(x : Float[], y : Float[]) ~ TTestResult {
+			return Paired(x, y, 0.95);
+		}
+
+		#~
+		Paired t-test: a one-sample test of the differences x - y against 0. Cohen's d is d_z, the mean difference over the standard deviation of the differences.
+		@param x first measurements
+		@param y second measurements, same length as x, at least 2
+		@param level confidence level of the interval, strictly between 0 and 1
+		@return result; the difference is mean(x - y)
+		~#
+		function : Paired(x : Float[], y : Float[], level : Float) ~ TTestResult {
+			name := "Paired t-test";
+			msg := Check(name, x, 2, level);
+			if(msg->Size() = 0) {
+				msg := Check(name, y, 2, level);
+			};
+			if(msg->Size() = 0 & x->Size() <> y->Size()) {
+				msg := "paired samples must have the same length, got {$x->Size()} and {$y->Size()}";
+			};
+			if(msg->Size() > 0) {
+				return Fail(name, msg);
+			};
+
+			n := x->Size();
+			diffs := Float->New[n];
+			each(i : n) {
+				diffs[i] := x[i] - y[i];
+			};
+			m := Stats->Mean(diffs);
+			sd := Stats->StdDev(diffs);
+			se := sd / Float->Sqrt(n->As(Float));
+			df := (n - 1)->As(Float);
+
+			return Finish(name, m, se, df, level, sd, df, n, n, Stats->Mean(x), Stats->Mean(y));
+		}
+	}
+
+	#~
+	The outcome of a correlation test. A failed one (IsValid() false) has NaN in every number.
+	~#
+	class CorrelationResult {
+		@error : String;
+		@r : Float;
+		@t : Float;
+		@df : Float;
+		@p : Float;
+		@lo : Float;
+		@hi : Float;
+		@level : Float;
+		@n : Int;
+
+		New(error : String, r : Float, t : Float, df : Float, p : Float, lo : Float, hi : Float, level : Float, n : Int) {
+			@error := error;
+			@r := r;
+			@t := t;
+			@df := df;
+			@p := p;
+			@lo := lo;
+			@hi := hi;
+			@level := level;
+			@n := n;
+		}
+
+		#~
+		Whether the test ran.
+		@return true if every number is meaningful
+		~#
+		method : public : IsValid() ~ Bool {
+			return @error->Size() = 0;
+		}
+
+		#~
+		Why the test did not run, or an empty string.
+		@return reason
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		The correlation coefficient, between -1 and 1.
+		@return r
+		~#
+		method : public : GetR() ~ Float {
+			return @r;
+		}
+
+		#~
+		The t statistic r * sqrt((n - 2) / (1 - r^2)).
+		@return t
+		~#
+		method : public : GetT() ~ Float {
+			return @t;
+		}
+
+		#~
+		Degrees of freedom, n - 2.
+		@return degrees of freedom
+		~#
+		method : public : GetDf() ~ Float {
+			return @df;
+		}
+
+		#~
+		Two-sided p-value for the null hypothesis of no correlation.
+		@return p
+		~#
+		method : public : GetP() ~ Float {
+			return @p;
+		}
+
+		#~
+		Lower end of the Fisher-z confidence interval for r (NaN when n is 3 or less).
+		@return lower bound
+		~#
+		method : public : GetCiLow() ~ Float {
+			return @lo;
+		}
+
+		#~
+		Upper end of the Fisher-z confidence interval for r (NaN when n is 3 or less).
+		@return upper bound
+		~#
+		method : public : GetCiHigh() ~ Float {
+			return @hi;
+		}
+
+		#~
+		Number of pairs.
+		@return count
+		~#
+		method : public : GetN() ~ Int {
+			return @n;
+		}
+
+		method : public : ToString() ~ String {
+			if(<>IsValid()) {
+				return "Pearson correlation: failed ({$@error})";
+			};
+
+			pct := @level * 100.0;
+			return "Pearson correlation: r = {$Float->ToString(@r, 4)}, n = {$@n}, t = {$Float->ToString(@t, 4)}, p = {$StatsFormat->P(@p)}, {$Float->ToString(pct, 1)}% CI [{$Float->ToString(@lo, 4)}, {$Float->ToString(@hi, 4)}]";
+		}
+	}
+
+	#~
+	Pearson correlation with a p-value and a confidence interval.
+
+	Failures (IsValid() false): Nil, unequal lengths, fewer than 3 pairs, NaN or infinity in the data, a level outside (0, 1), and zero variance in either array.
+	~#
+	class Correlation {
+		function : Fail(msg : String) ~ CorrelationResult {
+			nan := Float->NaN();
+			return CorrelationResult->New(msg, nan, nan, nan, nan, nan, nan, nan, 0);
+		}
+
+		#~
+		Pearson correlation at the 95% level.
+		@param x first values
+		@param y second values, same length
+		@return result
+		~#
+		function : Pearson(x : Float[], y : Float[]) ~ CorrelationResult {
+			return Pearson(x, y, 0.95);
+		}
+
+		#~
+		Pearson correlation. The p-value is the two-sided Student t test with n - 2 degrees of freedom; the interval is the Fisher z transform one.
+		@param x first values
+		@param y second values, same length
+		@param level confidence level of the interval, strictly between 0 and 1
+		@return result
+		~#
+		function : Pearson(x : Float[], y : Float[], level : Float) ~ CorrelationResult {
+			if(x = Nil | y = Nil) {
+				return Fail("an array is Nil");
+			};
+			if(x->Size() <> y->Size()) {
+				return Fail("arrays must have the same length, got {$x->Size()} and {$y->Size()}");
+			};
+			if(x->Size() < 3) {
+				return Fail("need at least 3 pairs, got {$x->Size()}");
+			};
+			if(<>Stats->Usable(x, 3) | <>Stats->Usable(y, 3)) {
+				return Fail("an array has a NaN or infinite value");
+			};
+			if(level <> level | level <= 0.0 | level >= 1.0) {
+				return Fail("confidence level must be strictly between 0 and 1");
+			};
+
+			n := x->Size();
+			mx := Stats->Mean(x);
+			my := Stats->Mean(y);
+			sxy := 0.0;
+			sxx := 0.0;
+			syy := 0.0;
+			each(i : n) {
+				dx := x[i] - mx;
+				dy := y[i] - my;
+				sxy += dx * dy;
+				sxx += dx * dx;
+				syy += dy * dy;
+			};
+			if(sxx <= 0.0 | syy <= 0.0) {
+				return Fail("zero variance: correlation is undefined");
+			};
+
+			r := sxy / Float->Sqrt(sxx * syy);
+			r := Float->Clamp(-1.0, r, 1.0);
+			df := (n - 2)->As(Float);
+			lo := Float->NaN();
+			hi := Float->NaN();
+			t := Float->Inf();
+			p := 0.0;
+			if(Float->Abs(r) < 1.0) {
+				t := r * Float->Sqrt(df / (1.0 - r * r));
+				p := Dist->StudentTwoSidedP(t, df);
+			}
+			else if(r < 0.0) {
+				t := Float->NegInf();
+			};
+			if(n > 3) {
+				if(Float->Abs(r) < 1.0) {
+					z := 0.5 * Float->Log((1.0 + r) / (1.0 - r));
+					half := Dist->NormalQuantile(1.0 - (1.0 - level) / 2.0) / Float->Sqrt((n - 3)->As(Float));
+					lo := Tanh(z - half);
+					hi := Tanh(z + half);
+				}
+				else {
+					lo := r;
+					hi := r;
+				};
+			};
+
+			return CorrelationResult->New("", r, t, df, p, lo, hi, level, n);
+		}
+
+		function : Tanh(z : Float) ~ Float {
+			e := Float->Exp(2.0 * z);
+			if(e > 1.0e300) {
+				return 1.0;
+			};
+
+			return (e - 1.0) / (e + 1.0);
+		}
+	}
+
+	#~
+	Builds design matrices for OLS: an intercept column, 0/1 dummy columns for a categorical variable, and column joining.
+	~#
+	class Design {
+		#~
+		Copies X with a leading column of ones.
+		@param X matrix, rows = samples
+		@return the new matrix, Nil for Nil input
+		~#
+		function : AddIntercept(X : Float[,]) ~ Float[,] {
+			if(X = Nil) {
+				return Nil;
+			};
+
+			dims := X->Size();
+			out := Float->New[dims[0], dims[1] + 1];
+			each(i : dims[0]) {
+				out[i, 0] := 1.0;
+				each(j : dims[1]) {
+					out[i, j + 1] := X[i, j];
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		A one-column matrix from an array.
+		@param v values
+		@return matrix with one column, Nil for Nil input
+		~#
+		function : Column(v : Float[]) ~ Float[,] {
+			if(v = Nil) {
+				return Nil;
+			};
+
+			out := Float->New[v->Size(), 1];
+			each(i : v) {
+				out[i, 0] := v[i];
+			};
+
+			return out;
+		}
+
+		#~
+		Joins two matrices with the same number of rows side by side.
+		@param a left matrix
+		@param b right matrix
+		@return the joined matrix, Nil when either is Nil or the row counts differ
+		~#
+		function : HStack(a : Float[,], b : Float[,]) ~ Float[,] {
+			if(a = Nil | b = Nil) {
+				return Nil;
+			};
+
+			ad := a->Size();
+			bd := b->Size();
+			if(ad[0] <> bd[0]) {
+				return Nil;
+			};
+
+			out := Float->New[ad[0], ad[1] + bd[1]];
+			each(i : ad[0]) {
+				each(j : ad[1]) {
+					out[i, j] := a[i, j];
+				};
+				each(j : bd[1]) {
+					out[i, ad[1] + j] := b[i, j];
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		The distinct values of a categorical variable, sorted.
+		@param values the variable, one entry per row
+		@return the levels, Nil for Nil input or a Nil entry
+		~#
+		function : Levels(values : String[]) ~ String[] {
+			if(values = Nil) {
+				return Nil;
+			};
+
+			seen := Vector->New()<String>;
+			each(i : values) {
+				if(values[i] = Nil) {
+					return Nil;
+				};
+				found := false;
+				each(j : seen) {
+					if(seen->Get(j)->Equals(values[i])) {
+						found := true;
+					};
+				};
+				if(found = false) {
+					seen->AddBack(values[i]);
+				};
+			};
+
+			out := String->New[seen->Size()];
+			each(i : out) {
+				out[i] := seen->Get(i);
+			};
+			for(i := 1; i < out->Size(); i += 1;) {
+				v := out[i];
+				j := i - 1;
+				while(j >= 0 & out[j]->Compare(v) > 0) {
+					out[j + 1] := out[j];
+					j -= 1;
+				};
+				out[j + 1] := v;
+			};
+
+			return out;
+		}
+
+		#~
+		0/1 columns for a categorical variable, one per level after the first (the first sorted level is the reference, so an intercept does not make the matrix singular).
+		@param values the variable, one entry per row
+		@return matrix with rows = values and one column per non-reference level, Nil for Nil input; a variable with one level gives a matrix with no columns, which is Nil
+		~#
+		function : Dummies(values : String[]) ~ Float[,] {
+			levels := Levels(values);
+			if(levels = Nil | levels->Size() < 2) {
+				return Nil;
+			};
+
+			return DummiesFor(values, levels);
+		}
+
+		#~
+		0/1 columns for the levels after the first of an explicit level list (which names the reference level first).
+		@param values the variable, one entry per row
+		@param levels levels in column order; levels[0] is the reference and gets no column
+		@return matrix with rows = values and levels - 1 columns, Nil for Nil or fewer than 2 levels
+		~#
+		function : DummiesFor(values : String[], levels : String[]) ~ Float[,] {
+			if(values = Nil | levels = Nil | levels->Size() < 2) {
+				return Nil;
+			};
+
+			nl := levels->Size() - 1;
+			out := Float->New[values->Size(), nl];
+			each(i : values) {
+				each(j : nl) {
+					if(values[i] <> Nil & values[i]->Equals(levels[j + 1])) {
+						out[i, j] := 1.0;
+					};
+				};
+			};
+
+			return out;
+		}
+	}
+
+	#~
+	An ordinary least squares fit with its summary statistics. A failed fit (IsValid() false) has Nil arrays and NaN numbers, and GetError() says why.
+
+	With an intercept, R-squared uses the centred total sum of squares and the F test is against the intercept-only model; without one they use the uncentred sum of squares, as statsmodels does. AIC and BIC come from the Gaussian log-likelihood and, like statsmodels, count df_model + 1 parameters (so the same number as the coefficient count when there is an intercept).
+	~#
+	class OLSResult {
+		@error : String;
+		@names : String[];
+		@has_const : Bool;
+		@n : Int;
+		@k : Int;
+		@beta : Float[];
+		@se : Float[];
+		@cov : Float[,];
+		@fitted : Float[];
+		@resid : Float[];
+		@ssr : Float;
+		@tss : Float;
+		@r2 : Float;
+		@adj_r2 : Float;
+		@sigma : Float;
+		@fstat : Float;
+		@fp : Float;
+		@llf : Float;
+		@aic : Float;
+		@bic : Float;
+		@df_resid : Float;
+		@df_model : Float;
+
+		New(error : String, names : String[], has_const : Bool, n : Int, beta : Float[], xtx_inv : Float[,], fitted : Float[], resid : Float[], tss : Float) {
+			nan := Float->NaN();
+			@error := error;
+			@names := names;
+			@has_const := has_const;
+			@n := n;
+			@beta := beta;
+			@fitted := fitted;
+			@resid := resid;
+			@tss := tss;
+			@ssr := nan;
+			@r2 := nan;
+			@adj_r2 := nan;
+			@sigma := nan;
+			@fstat := nan;
+			@fp := nan;
+			@llf := nan;
+			@aic := nan;
+			@bic := nan;
+			@df_resid := nan;
+			@df_model := nan;
+			@k := 0;
+			if(error->Size() = 0) {
+				@k := beta->Size();
+				nf := n->As(Float);
+				@ssr := 0.0;
+				each(i : n) {
+					@ssr += resid[i] * resid[i];
+				};
+				@df_resid := (n - @k)->As(Float);
+				@df_model := @k->As(Float);
+				cst := 0.0;
+				if(has_const) {
+					@df_model -= 1.0;
+					cst := 1.0;
+				};
+				@sigma := Float->Sqrt(@ssr / @df_resid);
+				s2 := @ssr / @df_resid;
+				@cov := Float->New[@k, @k];
+				@se := Float->New[@k];
+				each(i : @k) {
+					each(j : @k) {
+						@cov[i, j] := s2 * xtx_inv[i, j];
+					};
+					@se[i] := Float->Sqrt(@cov[i, i]);
+				};
+				if(tss > 0.0) {
+					@r2 := 1.0 - @ssr / tss;
+					@adj_r2 := 1.0 - (nf - cst) / @df_resid * (1.0 - @r2);
+				};
+				if(@df_model > 0.0 & @ssr > 0.0) {
+					@fstat := ((tss - @ssr) / @df_model) / (@ssr / @df_resid);
+					@fp := Dist->FSf(@fstat, @df_model, @df_resid);
+				};
+				@llf := -nf / 2.0 * Float->Log(2.0 * Float->Pi()) - nf / 2.0 * Float->Log(@ssr / nf) - nf / 2.0;
+				kp := @df_model + 1.0;
+				@aic := -2.0 * @llf + 2.0 * kp;
+				@bic := -2.0 * @llf + kp * Float->Log(nf);
+			};
+		}
+
+		#~
+		Whether the fit succeeded.
+		@return true if every number is meaningful
+		~#
+		method : public : IsValid() ~ Bool {
+			return @error->Size() = 0;
+		}
+
+		#~
+		Why the fit failed, or an empty string.
+		@return reason
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Column names, in coefficient order (the intercept is "const").
+		@return names, Nil when invalid
+		~#
+		method : public : GetNames() ~ String[] {
+			return @names;
+		}
+
+		#~
+		Coefficients, in column order.
+		@return coefficients, Nil when invalid
+		~#
+		method : public : GetCoefficients() ~ Float[] {
+			return @beta;
+		}
+
+		#~
+		Standard errors of the coefficients.
+		@return standard errors, Nil when invalid
+		~#
+		method : public : GetStdErrors() ~ Float[] {
+			return @se;
+		}
+
+		#~
+		t statistics of the coefficients (coefficient / standard error).
+		@return t statistics, Nil when invalid
+		~#
+		method : public : GetTStats() ~ Float[] {
+			if(<>IsValid()) {
+				return Nil;
+			};
+
+			out := Float->New[@k];
+			each(i : @k) {
+				out[i] := Dist->Div(@beta[i], @se[i]);
+			};
+
+			return out;
+		}
+
+		#~
+		Two-sided p-values of the coefficients, from the t distribution with GetDfResid() degrees of freedom.
+		@return p-values, Nil when invalid
+		~#
+		method : public : GetPValues() ~ Float[] {
+			if(<>IsValid()) {
+				return Nil;
+			};
+
+			out := Float->New[@k];
+			each(i : @k) {
+				out[i] := Dist->StudentTwoSidedP(Dist->Div(@beta[i], @se[i]), @df_resid);
+			};
+
+			return out;
+		}
+
+		#~
+		Confidence intervals of the coefficients.
+		@param level confidence level, strictly between 0 and 1
+		@return matrix with one row per coefficient: lower bound, upper bound; Nil when invalid or the level is out of range
+		~#
+		method : public : GetConfInt(level : Float) ~ Float[,] {
+			if(<>IsValid() | level <> level | level <= 0.0 | level >= 1.0) {
+				return Nil;
+			};
+
+			crit := Dist->StudentQuantile(1.0 - (1.0 - level) / 2.0, @df_resid);
+			out := Float->New[@k, 2];
+			each(i : @k) {
+				out[i, 0] := @beta[i] - crit * @se[i];
+				out[i, 1] := @beta[i] + crit * @se[i];
+			};
+
+			return out;
+		}
+
+		#~
+		Covariance matrix of the coefficients: sigma^2 (X'X)^-1.
+		@return matrix, Nil when invalid
+		~#
+		method : public : GetCovariance() ~ Float[,] {
+			return @cov;
+		}
+
+		#~
+		Fitted values.
+		@return fitted values, Nil when invalid
+		~#
+		method : public : GetFitted() ~ Float[] {
+			return @fitted;
+		}
+
+		#~
+		Residuals, y minus the fitted values.
+		@return residuals, Nil when invalid
+		~#
+		method : public : GetResiduals() ~ Float[] {
+			return @resid;
+		}
+
+		#~
+		Number of observations.
+		@return n, 0 when invalid
+		~#
+		method : public : GetNObs() ~ Int {
+			return @n;
+		}
+
+		#~
+		Number of coefficients, the intercept included.
+		@return count
+		~#
+		method : public : GetNParams() ~ Int {
+			return @k;
+		}
+
+		#~
+		Residual degrees of freedom, n - k.
+		@return degrees of freedom
+		~#
+		method : public : GetDfResid() ~ Float {
+			return @df_resid;
+		}
+
+		#~
+		Model degrees of freedom: k, less 1 with an intercept.
+		@return degrees of freedom
+		~#
+		method : public : GetDfModel() ~ Float {
+			return @df_model;
+		}
+
+		#~
+		Whether the fit has an intercept.
+		@return true if the first column is the intercept
+		~#
+		method : public : HasIntercept() ~ Bool {
+			return @has_const;
+		}
+
+		#~
+		Residual sum of squares.
+		@return sum of squared residuals
+		~#
+		method : public : GetSSR() ~ Float {
+			return @ssr;
+		}
+
+		#~
+		R-squared.
+		@return R-squared, NaN when y does not vary
+		~#
+		method : public : GetRSquared() ~ Float {
+			return @r2;
+		}
+
+		#~
+		Adjusted R-squared.
+		@return adjusted R-squared
+		~#
+		method : public : GetAdjustedRSquared() ~ Float {
+			return @adj_r2;
+		}
+
+		#~
+		Residual standard error: sqrt(SSR / (n - k)).
+		@return residual standard error
+		~#
+		method : public : GetResidualStdError() ~ Float {
+			return @sigma;
+		}
+
+		#~
+		F statistic of the whole model against the intercept-only (or empty) model.
+		@return F, NaN when the model has no predictors or the fit is exact
+		~#
+		method : public : GetFStat() ~ Float {
+			return @fstat;
+		}
+
+		#~
+		p-value of the F statistic.
+		@return p, NaN when F is NaN
+		~#
+		method : public : GetFPValue() ~ Float {
+			return @fp;
+		}
+
+		#~
+		Gaussian log-likelihood.
+		@return log-likelihood
+		~#
+		method : public : GetLogLikelihood() ~ Float {
+			return @llf;
+		}
+
+		#~
+		Akaike information criterion.
+		@return AIC
+		~#
+		method : public : GetAIC() ~ Float {
+			return @aic;
+		}
+
+		#~
+		Bayesian information criterion.
+		@return BIC
+		~#
+		method : public : GetBIC() ~ Float {
+			return @bic;
+		}
+
+		#~
+		Predicts from new rows. Give the same columns the fit was given: an intercept column is added here when the fit added one.
+		@param X feature rows
+		@return predictions, Nil when invalid, X is Nil or the column count is wrong
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[] {
+			if(<>IsValid() | X = Nil) {
+				return Nil;
+			};
+
+			dims := X->Size();
+			off := 0;
+			if(@has_const) {
+				off := 1;
+			};
+			if(dims[1] + off <> @k) {
+				return Nil;
+			};
+
+			out := Float->New[dims[0]];
+			each(i : dims[0]) {
+				v := 0.0;
+				if(@has_const) {
+					v := @beta[0];
+				};
+				each(j : dims[1]) {
+					v += @beta[j + off] * X[i, j];
+				};
+				out[i] := v;
+			};
+
+			return out;
+		}
+
+		#~
+		A statsmodels-style summary: the fit statistics, then one row per coefficient with its standard error, t, p and 95% interval.
+		@return the table
+		~#
+		method : public : ToString() ~ String {
+			if(<>IsValid()) {
+				return "OLS: failed ({$@error})";
+			};
+
+			rule := "=====================================================================================";
+			s := "                              OLS Regression Results\n";
+			s += rule;
+			s += "\n";
+			s += "No. Observations:   {$Pad(@n->As(Float), 0, 12)}    R-squared:          {$Pad(@r2, 4, 10)}\n";
+			s += "Df Residuals:       {$Pad(@df_resid, 0, 12)}    Adj. R-squared:     {$Pad(@adj_r2, 4, 10)}\n";
+			s += "Df Model:           {$Pad(@df_model, 0, 12)}    F-statistic:        {$Pad(@fstat, 4, 10)}\n";
+			s += "Resid. Std. Error:  {$Pad(@sigma, 4, 12)}    Prob (F-statistic): {$PadText(StatsFormat->P(@fp), 10)}\n";
+			s += "AIC:                {$Pad(@aic, 3, 12)}    BIC:                {$Pad(@bic, 3, 10)}\n";
+			s += rule;
+			s += "\n";
+			head := PadText("", 16) + PadText("coef", 12) + PadText("std err", 12) + PadText("t", 11) + PadText("P>|t|", 12) + PadText("[0.025", 12) + PadText("0.975]", 12);
+			s += head;
+			s += "
+";
+			s += rule;
+			s += "\n";
+			ci := GetConfInt(0.95);
+			each(i : @k) {
+				t := Dist->Div(@beta[i], @se[i]);
+				p := Dist->StudentTwoSidedP(t, @df_resid);
+				lbl := @names[i];
+				if(lbl->Size() > 15) {
+					lbl := lbl->SubString(15);
+				};
+				s += "{$PadRight(lbl, 16)}{$Pad(@beta[i], 4, 12)}{$Pad(@se[i], 4, 12)}{$Pad(t, 3, 11)}{$PadText(StatsFormat->P(p), 12)}{$Pad(ci[i, 0], 4, 12)}{$Pad(ci[i, 1], 4, 12)}\n";
+			};
+			s += rule;
+
+			return s;
+		}
+
+		function : Pad(v : Float, digits : Int, width : Int) ~ String {
+			return PadText(Float->ToString(v, digits), width);
+		}
+
+		function : PadText(text : String, width : Int) ~ String {
+			out := text;
+			while(out->Size() < width) {
+				out := " " + out;
+			};
+
+			return out;
+		}
+
+		function : PadRight(text : String, width : Int) ~ String {
+			out := text;
+			while(out->Size() < width) {
+				out += " ";
+			};
+
+			return out;
+		}
+	}
+
+	#~
+	Ordinary least squares by Householder QR (no normal equations, so near-collinear columns lose half as many digits).
+
+	Failures (IsValid() false on the result): Nil input, X and y with different row counts, no columns, fewer rows than columns plus one, NaN or infinity in the data, and rank-deficient columns (a constant column beside an intercept, a column that repeats another, or all the dummy columns of a variable beside an intercept).
+
+```
+X := [[1.0], [2.0], [3.0], [4.0], [5.0]];
+y := [2.1, 3.9, 6.2, 7.8, 10.1];
+fit := OLS->Fit(X, y, true);
+fit->ToString()->PrintLine();
+fit->GetPValues()[1]->PrintLine();
+```
+	~#
+	class OLS {
+		function : Fail(msg : String) ~ OLSResult {
+			return OLSResult->New(msg, Nil, false, 0, Nil, Nil, Nil, Nil, 0.0);
+		}
+
+		#~
+		Fits y on the columns of X, with names x1, x2, ...
+		@param X predictor matrix (rows = samples)
+		@param y response, one value per row
+		@param add_intercept true to add a leading column of ones, named "const"
+		@return the fit
+		~#
+		function : Fit(X : Float[,], y : Float[], add_intercept : Bool) ~ OLSResult {
+			return Fit(X, y, add_intercept, Nil);
+		}
+
+		#~
+		Fits y on the columns of X with named columns.
+		@param X predictor matrix (rows = samples)
+		@param y response, one value per row
+		@param add_intercept true to add a leading column of ones, named "const"
+		@param names one name per column of X (not for the intercept); Nil for x1, x2, ...
+		@return the fit
+		~#
+		function : Fit(X : Float[,], y : Float[], add_intercept : Bool, names : String[]) ~ OLSResult {
+			if(X = Nil | y = Nil) {
+				return Fail("X or y is Nil");
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			xcols := dims[1];
+			if(rows <> y->Size()) {
+				return Fail("X has {$rows} rows but y has {$y->Size()} values");
+			};
+			if(names <> Nil & names->Size() <> xcols) {
+				return Fail("names has {$names->Size()} entries but X has {$xcols} columns");
+			};
+
+			k := xcols;
+			if(add_intercept) {
+				k += 1;
+			};
+			if(k < 1) {
+				return Fail("no columns to fit");
+			};
+			if(rows <= k) {
+				return Fail("need more rows than columns: {$rows} rows, {$k} columns");
+			};
+			if(<>Stats->Usable(y, 1)) {
+				return Fail("y has a NaN or infinite value");
+			};
+
+			# the working design matrix A (n x k), kept intact in D for the residuals
+			D := Float->New[rows, k];
+			off := 0;
+			if(add_intercept) {
+				off := 1;
+			};
+			each(i : rows) {
+				if(add_intercept) {
+					D[i, 0] := 1.0;
+				};
+				each(j : xcols) {
+					v := X[i, j];
+					if(v <> v | v - v <> 0.0) {
+						return Fail("X has a NaN or infinite value at row {$i}, column {$j}");
+					};
+					D[i, j + off] := v;
+				};
+			};
+
+			col_norm := Float->New[k];
+			each(j : k) {
+				s := 0.0;
+				each(i : rows) {
+					s += D[i, j] * D[i, j];
+				};
+				col_norm[j] := Float->Sqrt(s);
+			};
+
+			A := Float->New[rows, k];
+			each(i : rows) {
+				each(j : k) {
+					A[i, j] := D[i, j];
+				};
+			};
+			qty := Float->New[rows];
+			each(i : rows) {
+				qty[i] := y[i];
+			};
+
+			# Householder QR; A ends with R in its upper triangle
+			each(j : k) {
+				norm := 0.0;
+				for(i := j; i < rows; i += 1;) {
+					norm += A[i, j] * A[i, j];
+				};
+				norm := Float->Sqrt(norm);
+				if(col_norm[j] <= 0.0 | norm <= 1.0e-10 * col_norm[j]) {
+					return Fail("the columns are linearly dependent (rank deficient), column {$j} adds nothing");
+				};
+
+				alpha := norm;
+				if(A[j, j] > 0.0) {
+					alpha := -norm;
+				};
+				v := Float->New[rows];
+				vnorm2 := 0.0;
+				for(i := j; i < rows; i += 1;) {
+					v[i] := A[i, j];
+				};
+				v[j] -= alpha;
+				for(i := j; i < rows; i += 1;) {
+					vnorm2 += v[i] * v[i];
+				};
+
+				if(vnorm2 > 0.0) {
+					for(c := j + 1; c < k; c += 1;) {
+						dot := 0.0;
+						for(i := j; i < rows; i += 1;) {
+							dot += v[i] * A[i, c];
+						};
+						f := 2.0 * dot / vnorm2;
+						for(i := j; i < rows; i += 1;) {
+							A[i, c] -= f * v[i];
+						};
+					};
+					dot := 0.0;
+					for(i := j; i < rows; i += 1;) {
+						dot += v[i] * qty[i];
+					};
+					f := 2.0 * dot / vnorm2;
+					for(i := j; i < rows; i += 1;) {
+						qty[i] -= f * v[i];
+					};
+				};
+				A[j, j] := alpha;
+				for(i := j + 1; i < rows; i += 1;) {
+					A[i, j] := 0.0;
+				};
+			};
+
+			# back substitution: R beta = (Q'y)[0..k)
+			beta := Float->New[k];
+			for(j := k - 1; j >= 0; j -= 1;) {
+				s := qty[j];
+				for(c := j + 1; c < k; c += 1;) {
+					s -= A[j, c] * beta[c];
+				};
+				beta[j] := s / A[j, j];
+			};
+
+			# R inverse (upper triangular), then (X'X)^-1 = Rinv Rinv'
+			rinv := Float->New[k, k];
+			for(j := 0; j < k; j += 1;) {
+				rinv[j, j] := 1.0 / A[j, j];
+				for(i := j - 1; i >= 0; i -= 1;) {
+					s := 0.0;
+					for(c := i + 1; c <= j; c += 1;) {
+						s += A[i, c] * rinv[c, j];
+					};
+					rinv[i, j] := -s / A[i, i];
+				};
+			};
+			xtx_inv := Float->New[k, k];
+			each(i : k) {
+				each(j : k) {
+					s := 0.0;
+					m := i;
+					if(j > i) {
+						m := j;
+					};
+					for(c := m; c < k; c += 1;) {
+						s += rinv[i, c] * rinv[j, c];
+					};
+					xtx_inv[i, j] := s;
+				};
+			};
+
+			fitted := Float->New[rows];
+			resid := Float->New[rows];
+			each(i : rows) {
+				v := 0.0;
+				each(j : k) {
+					v += D[i, j] * beta[j];
+				};
+				fitted[i] := v;
+				resid[i] := y[i] - v;
+			};
+
+			all_names := String->New[k];
+			if(add_intercept) {
+				all_names[0] := "const";
+			};
+			each(j : xcols) {
+				if(names <> Nil & names[j] <> Nil) {
+					all_names[j + off] := names[j];
+				}
+				else {
+					all_names[j + off] := "x{$(j + 1)}";
+				};
+			};
+
+			tss := 0.0;
+			if(add_intercept) {
+				ym := Stats->Mean(y);
+				each(i : rows) {
+					tss += (y[i] - ym) * (y[i] - ym);
+				};
+			}
+			else {
+				each(i : rows) {
+					tss += y[i] * y[i];
+				};
+			};
+
+			return OLSResult->New("", all_names, add_intercept, rows, beta, xtx_inv, fitted, resid, tss);
+		}
+	}
+}

@@ -45,6 +45,7 @@ All AI and ML capabilities are **standard library** — no third-party packages,
   - [Neural Network](#neural-network)
   - [Model Persistence](#model-persistence)
   - [Local vector search (System.ML.VectorSearch)](#local-vector-search-systemmlvectorsearch)
+  - [Statistics (System.Stats)](#statistics-systemstats)
   - [Plotting (System.Plot)](#plotting-systemplot)
     - [In a window, or as a PNG (System.Plot.SDL)](#in-a-window-or-as-a-png-systemplotsdl)
 - [Classic AI (System.AI)](#classic-ai-systemai)
@@ -1403,6 +1404,46 @@ The three metrics cost the same, and a four-accumulator unrolled inner loop was 
 
 A complete run (a small corpus, embedded either with a BERT model or, with nothing to download, a hashed bag of words, then queried, saved and loaded) is [`programs/examples/ml/vector_search.obs`](../programs/examples/ml/vector_search.obs). It is tested by `ml_vector_exact.obs` (against a brute-force reference, ties, `k` past the end, removals), `ml_vector_edges.obs` (value range, block boundaries, emptying an index, near-ties), `ml_vector_validation.obs` and `ml_vector_persist.obs` (round trip and corrupt files).
 
+### Statistics (System.Stats)
+
+Classical statistics for the analysis that comes before (or instead of) a model: descriptive statistics, t-tests with confidence intervals and effect sizes, Pearson correlation with a p-value, and an ordinary least squares fit with the full `statsmodels`-style summary. It is `stats.obl` (`-lib stats,gen_collect` or `-lib @ai`) and needs nothing from `System.ML`. No call ends the program on bad input: a `Float` function returns NaN, and a result object comes back with `IsValid()` false and `GetError()` saying why (Nil, a single value, zero variance, mismatched lengths, NaN or infinity, a confidence level outside (0, 1), a rank-deficient design).
+
+| Class | What it does |
+|---|---|
+| `Stats` | `Mean`, `Variance` (n - 1), `PopulationVariance`, `StdDev`, `StdError`, `Covariance`, `Median`, `Sum` |
+| `TTest` | `OneSample(x, mu)`, `TwoSample(x, y)` (Student, pooled variance), `Welch(x, y)`, `Paired(x, y)`; each takes an optional confidence level (default 0.95) and returns a `TTestResult` |
+| `TTestResult` | `GetT`, `GetDf`, `GetP` (two-sided), `GetMeanDiff`, `GetCiLow`, `GetCiHigh`, `GetCohenD`, `GetHedgesG`, `GetN1`, `GetN2`, `IsSignificant(alpha)`, `ToString` |
+| `Correlation` | `Pearson(x, y)` with a p-value (Student t, n - 2 df) and a Fisher-z interval, as a `CorrelationResult` |
+| `OLS` | `Fit(X, y, add_intercept)` and `Fit(X, y, add_intercept, names)` by Householder QR, as an `OLSResult` |
+| `OLSResult` | `GetCoefficients`, `GetStdErrors`, `GetTStats`, `GetPValues`, `GetConfInt(level)`, `GetRSquared`, `GetAdjustedRSquared`, `GetResidualStdError`, `GetFStat`, `GetFPValue`, `GetAIC`, `GetBIC`, `GetLogLikelihood`, `GetResiduals`, `GetFitted`, `GetCovariance`, `Predict(X)`, `ToString` (the summary table) |
+| `Design` | `AddIntercept`, `Column`, `HStack`, `Levels`, `Dummies` (0/1 columns, first sorted level is the reference) and `DummiesFor` (explicit level order) |
+| `Dist` | the building blocks: `StudentTwoSidedP`, `StudentCdf`, `StudentQuantile`, `NormalCdf`, `NormalQuantile`, `ChiSquareCdf`/`Sf`, `FCdf`/`Sf`, `BetaInc`, `GammaInc`, `LogGamma` |
+
+```ruby
+use System.Stats;
+
+genuine := [52.0, 61.5, 48.2, 70.1, 55.3, 49.9, 66.0, 58.4];
+fake := [40.2, 45.8, 52.1, 38.9, 47.5, 44.0, 50.3, 41.7];
+
+r := TTest->Welch(genuine, fake);          # unequal variances; the safer default
+r->ToString()->PrintLine();                # t, df, p, mean diff, 95% CI, Cohen d, Hedges g
+if(r->IsValid() & r->IsSignificant(0.05)) {
+  "difference {$r->GetMeanDiff()} (95% CI {$r->GetCiLow()} to {$r->GetCiHigh()}), g = {$r->GetHedgesG()}"->PrintLine();
+};
+
+# regression with a categorical predictor: 0/1 columns, an intercept, then the summary table
+X := Design->HStack(Design->Column(length), Design->Dummies(category));
+fit := OLS->Fit(X, rating, true, ["length", "kind_b", "kind_c"]);
+fit->ToString()->PrintLine();              # coef, std err, t, P>|t|, 95% CI, R-squared, F, AIC, BIC
+fit->GetPValues();                         # Float[], one per coefficient
+```
+
+Conventions worth knowing. The mean difference is the first group minus the second, and the confidence interval is for that difference (for a one-sample test, mean minus the hypothesised mean). Cohen's d divides by the pooled standard deviation (one-sample: the sample's; paired: that of the differences), and Hedges' g multiplies it by `1 - 3 / (4 df - 1)`; the Welch test reports the same pooled-sd d and g as the Student test. A regression with an intercept uses the centred total sum of squares and tests against the intercept-only model; without one it uses the uncentred sum and `df_model = k`, as `statsmodels` does, and AIC and BIC count `df_model + 1` parameters like `statsmodels`. Put every level of a categorical variable beside an intercept and the fit is refused as rank deficient (the dummy trap); `Design->Dummies` drops the first level for that reason.
+
+The p-values come from the regularized incomplete beta function (continued fraction, Lentz), so they stay accurate in the far tail (`p = 7e-18` is `7e-18`, not 0) and for large degrees of freedom. Every distribution function is tested against `scipy` at small and large df.
+
+A complete run -- the review-length t-test at n = 100, 500 and 2000 per group on synthetic data, then the same comparison as a regression -- is [`programs/examples/ml/fake_review_ttest.obs`](../programs/examples/ml/fake_review_ttest.obs).
+
 ### Plotting (System.Plot)
 
 A matplotlib-shaped plotting library (scatter, histogram, line, bars, heatmap, confusion matrix, box plot, ROC and precision-recall curves, annotations, subplots) that writes standalone SVG 1.1: no display, no native library, no script, no font file. It is `plot.obl` (`-lib plot,gen_collect` or `-lib @ai`) and needs nothing from `System.ML`, so a figure can come from any `Float[]`. A `Figure` holds one or more `Axes`; `fig->Save("a.svg")` writes the file and `fig->ToSvg()` returns the text. Every coordinate is written with one decimal and nothing depends on the clock, a locale or a font, so the same data gives the same bytes on every platform and a chart can be compared against a golden file in a test. `System.ML.Lab.Chart` (the line and bar writer behind `ResultTable->ToChart`) is unchanged and still the one-call API for experiment tables; `System.Plot` is the general one. Design: [`docs/PLOT_DESIGN.md`](PLOT_DESIGN.md).
@@ -1601,7 +1642,7 @@ obc -src program.obs -lib @ai -dest program.obe
 | `@web` | `net_h2`, `net_quic`, `web_server`, `json_rpc`, `net_server`, `net`, `json`, `cipher` | HTTP/2, HTTP/3, the embedded server, JSON-RPC |
 | `@data` | `xml`, `regex`, `csv`, `query`, `rss`, `misc`, `net`, `json`, `cipher` | parsing and querying structured data |
 | `@ml` | `gemini`, `openai`, `ollama`, `net_server`, `misc`, `net`, `json`, `cipher` | LLM clients: OpenAI, Gemini, Ollama |
-| `@ai` | `ai`, `ml`, `ml_lab`, `ml_vector`, `plot`, `nlp`, `csv`, `json` | local System.ML / System.ML.Lab / System.Plot / System.AI / System.NLP work |
+| `@ai` | `ai`, `ml`, `ml_lab`, `ml_vector`, `stats`, `plot`, `nlp`, `csv`, `json` | local System.ML / System.ML.Lab / System.Stats / System.Plot / System.AI / System.NLP work |
 | `@plot` | `plot`, `plot_sdl`, `sdl2` | charts in a window or as PNG (SVG alone needs only `plot`) |
 | `@vision` | `opencv`, `onnx`, `nlp_onnx`, `models`, `nlp`, `json`, `cipher` | OpenCV and ONNX inference, BERT text embeddings |
 | `@game` | `sdl2`, `sdl_game`, `sdl_gl`, `json`, `gen_collect` | SDL games, 2D and OpenGL |
@@ -1715,6 +1756,7 @@ The libraries in this guide are covered by the regression suite in `programs/reg
 | Area | Tests |
 |---|---|
 | `System.Plot`, `System.Plot.SDL` | `plot_svg.obs`, `plot_svg_more.obs` (with goldens in `plot_golden/`), `plot_view.obs`, `plot_sdl.obs` |
+| `System.Stats` | `stats_dist.obs`, `stats_ttest.obs`, `stats_corr_ols.obs`, `stats_degenerate.obs` (expected values from scipy / numpy, generated by `tools/stats/gen_stats_reference.py`) |
 | `System.ML.VectorSearch` | `ml_vector_exact.obs`, `ml_vector_edges.obs`, `ml_vector_validation.obs`, `ml_vector_persist.obs` |
 | `System.ML` | `ml_*.obs`, e.g. `ml_kernel_svm_reference.obs` and `ml_one_class_svm_reference.obs` (against an independent reference, generated by `tools/ml/svm_reference/gen_reference_test.py`), `ml_outlier_*.obs`, `ml_lab_*.obs` |
 | `System.AI` | `ai_search_test.obs`, `ai_game_test.obs`, `ai_optimize_test.obs`, `ai_rl_test.obs` |

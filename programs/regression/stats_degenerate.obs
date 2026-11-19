@@ -1,0 +1,146 @@
+# EXTRA_LIBS: stats,gen_collect
+#~
+System.Stats with bad input: Nil, a single value, zero variance, mismatched lengths, NaN and
+infinity, a level outside (0, 1), rank-deficient and under-determined OLS designs. Every call
+must return a failure value (an invalid result with a reason, or NaN) and never end the
+program; a good call afterwards must still work.
+~#
+use System.Stats;
+
+class StatsDegenerate {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		nan := Float->NaN();
+		inf := Float->Inf();
+		good1 := [1.0, 2.0, 3.0, 4.0, 5.5];
+		good2 := [2.0, 2.5, 4.5, 5.0, 7.0];
+		flat := [3.0, 3.0, 3.0, 3.0];
+
+		# descriptive statistics
+		ok := Report("Mean(Nil) is NaN", Stats->Mean(Nil) <> Stats->Mean(Nil)) & ok;
+		ok := Report("Mean of empty is NaN", Stats->Mean(Float->New[0]) <> Stats->Mean(Float->New[0])) & ok;
+		ok := Report("Mean with NaN is NaN", Stats->Mean([1.0, nan]) <> Stats->Mean([1.0, nan])) & ok;
+		ok := Report("Mean with Inf is NaN", Stats->Mean([1.0, inf]) <> Stats->Mean([1.0, inf])) & ok;
+		ok := Report("Variance of one value is NaN", Stats->Variance([4.0]) <> Stats->Variance([4.0])) & ok;
+		ok := Report("StdDev of one value is NaN", Stats->StdDev([4.0]) <> Stats->StdDev([4.0])) & ok;
+		ok := Report("StdError of Nil is NaN", Stats->StdError(Nil) <> Stats->StdError(Nil)) & ok;
+		ok := Report("Variance of constants is 0", Stats->Variance(flat) = 0.0) & ok;
+		ok := Report("Covariance of mismatched lengths is NaN", Stats->Covariance(good1, [1.0, 2.0]) <> Stats->Covariance(good1, [1.0, 2.0])) & ok;
+		ok := Report("Median of Nil is NaN", Stats->Median(Nil) <> Stats->Median(Nil)) & ok;
+		ok := Report("Median leaves its argument alone", Stats->Median([3.0, 1.0, 2.0]) = 2.0) & ok;
+
+		# t-tests
+		ok := Fails("one-sample Nil", TTest->OneSample(Nil, 0.0)) & ok;
+		ok := Fails("one-sample n = 1", TTest->OneSample([4.0], 0.0)) & ok;
+		ok := Fails("one-sample empty", TTest->OneSample(Float->New[0], 0.0)) & ok;
+		ok := Fails("one-sample zero variance", TTest->OneSample(flat, 1.0)) & ok;
+		ok := Fails("one-sample NaN data", TTest->OneSample([1.0, nan, 3.0], 0.0)) & ok;
+		ok := Fails("one-sample NaN mu", TTest->OneSample(good1, nan)) & ok;
+		ok := Fails("two-sample Nil first", TTest->TwoSample(Nil, good2)) & ok;
+		ok := Fails("two-sample Nil second", TTest->TwoSample(good1, Nil)) & ok;
+		ok := Fails("two-sample n = 1 in a group", TTest->TwoSample([1.0], good2)) & ok;
+		ok := Fails("two-sample both zero variance", TTest->TwoSample(flat, [5.0, 5.0, 5.0])) & ok;
+		ok := Fails("two-sample Inf", TTest->TwoSample([1.0, inf], good2)) & ok;
+		ok := Fails("welch n = 1", TTest->Welch(good1, [2.0])) & ok;
+		ok := Fails("welch both zero variance", TTest->Welch(flat, [5.0, 5.0])) & ok;
+		ok := Fails("welch Nil", TTest->Welch(Nil, Nil)) & ok;
+		ok := Fails("paired mismatched lengths", TTest->Paired(good1, [1.0, 2.0, 3.0])) & ok;
+		ok := Fails("paired Nil", TTest->Paired(good1, Nil)) & ok;
+		ok := Fails("paired identical samples (differences all 0)", TTest->Paired(good1, good1)) & ok;
+		ok := Fails("level 0", TTest->TwoSample(good1, good2, 0.0)) & ok;
+		ok := Fails("level 1", TTest->TwoSample(good1, good2, 1.0)) & ok;
+		ok := Fails("level above 1", TTest->Welch(good1, good2, 1.5)) & ok;
+		ok := Fails("level NaN", TTest->Paired(good1, good2, nan)) & ok;
+		r := TTest->OneSample([4.0], 0.0);
+		ok := Report("a failure says why", r->GetError()->Size() > 0 & r->IsValid() = false & r->ToString()->Has("failed")) & ok;
+		ok := Report("a failure has NaN numbers", r->GetP() <> r->GetP() & r->GetT() <> r->GetT()) & ok;
+		ok := Report("IsSignificant is false on a failure", r->IsSignificant(0.05) = false) & ok;
+		r := TTest->Welch(good1, good2);
+		ok := Report("a good call still works afterwards", r->IsValid() & r->GetP() > 0.0 & r->GetP() < 1.0 & r->ToString()->Has("Welch")) & ok;
+		ok := Report("two groups of 2 are enough", TTest->TwoSample([1.0, 2.0], [4.0, 6.0])->IsValid()) & ok;
+
+		# correlation
+		ok := FailsCorr("Nil", Correlation->Pearson(Nil, good2)) & ok;
+		ok := FailsCorr("mismatched lengths", Correlation->Pearson(good1, [1.0, 2.0, 3.0])) & ok;
+		ok := FailsCorr("two pairs", Correlation->Pearson([1.0, 2.0], [3.0, 4.0])) & ok;
+		ok := FailsCorr("zero variance x", Correlation->Pearson(flat, [1.0, 2.0, 3.0, 4.0])) & ok;
+		ok := FailsCorr("zero variance y", Correlation->Pearson([1.0, 2.0, 3.0, 4.0], flat)) & ok;
+		ok := FailsCorr("NaN", Correlation->Pearson([1.0, nan, 3.0], [1.0, 2.0, 3.0])) & ok;
+		ok := FailsCorr("level 1", Correlation->Pearson(good1, good2, 1.0)) & ok;
+		c := Correlation->Pearson([1.0, 2.0, 3.0, 4.0], [2.0, 4.0, 6.0, 8.0]);
+		ok := Report("perfect correlation: r = 1, p = 0, no crash", c->IsValid() & c->GetR() = 1.0 & c->GetP() = 0.0) & ok;
+		c := Correlation->Pearson([1.0, 2.0, 3.0, 4.0], [8.0, 6.0, 4.0, 2.0]);
+		ok := Report("perfect negative correlation: r = -1", c->IsValid() & c->GetR() = -1.0) & ok;
+		c := Correlation->Pearson([1.0, 2.0, 3.0], [1.0, 3.0, 2.0]);
+		ok := Report("n = 3 is valid, with no interval", c->IsValid() & c->GetCiLow() <> c->GetCiLow()) & ok;
+
+		# OLS
+		X := [[1.0], [2.0], [3.0], [4.0], [5.0]];
+		y := [2.0, 4.1, 5.9, 8.2, 9.9];
+		ok := FailsOls("Nil X", OLS->Fit(Nil, y, true)) & ok;
+		ok := FailsOls("Nil y", OLS->Fit(X, Nil, true)) & ok;
+		ok := FailsOls("row mismatch", OLS->Fit(X, [1.0, 2.0], true)) & ok;
+		ok := FailsOls("NaN in y", OLS->Fit(X, [1.0, 2.0, nan, 4.0, 5.0], true)) & ok;
+		ok := FailsOls("NaN in X", OLS->Fit(Design->Column([1.0, nan, 3.0, 4.0, 5.0]), y, true)) & ok;
+		ok := FailsOls("as many rows as columns", OLS->Fit([[1.0], [2.0]], [1.0, 2.0], true)) & ok;
+		ok := FailsOls("constant column beside the intercept", OLS->Fit([[1.0], [1.0], [1.0], [1.0], [1.0]], y, true)) & ok;
+		ok := FailsOls("a repeated column", OLS->Fit([[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [4.0, 4.0], [5.0, 5.0]], y, true)) & ok;
+		ok := FailsOls("a column of zeros", OLS->Fit([[0.0], [0.0], [0.0], [0.0], [0.0]], y, false)) & ok;
+		ok := FailsOls("wrong number of names", OLS->Fit(X, y, true, ["a", "b"])) & ok;
+		f := OLS->Fit(Nil, y, true);
+		ok := Report("a failed fit has Nil arrays, NaN numbers, a reason and a summary", f->GetCoefficients() = Nil & f->GetPValues() = Nil & f->GetConfInt(0.95) = Nil & f->GetRSquared() <> f->GetRSquared() & f->GetError()->Size() > 0 & f->ToString()->Has("failed") & f->Predict(X) = Nil) & ok;
+
+		# all dummy columns beside an intercept is the dummy trap
+		grp := ["a", "b", "c", "a", "b", "c", "a", "b"];
+		full := Design->DummiesFor(grp, ["x", "a", "b", "c"]);
+		ok := Report("DummiesFor builds a column per non-reference level", full <> Nil & full->Size()[1] = 3) & ok;
+		ok := FailsOls("dummy trap: every level plus the intercept", OLS->Fit(Design->HStack(Design->Column([1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0]), Design->HStack(Design->Column([0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0]), Design->Column([0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0]))), [1.0, 2.0, 3.0, 1.5, 2.5, 3.5, 0.5, 2.2], true)) & ok;
+		ok := Report("Dummies of Nil is Nil", Design->Dummies(Nil) = Nil) & ok;
+		ok := Report("Dummies of one level is Nil", Design->Dummies(["a", "a"]) = Nil) & ok;
+		ok := Report("Levels with a Nil entry is Nil", Design->Levels(["a", Nil]) = Nil) & ok;
+		ok := Report("AddIntercept(Nil) is Nil", Design->AddIntercept(Nil) = Nil) & ok;
+		ok := Report("HStack with unequal rows is Nil", Design->HStack([[1.0], [2.0]], [[1.0]]) = Nil) & ok;
+		ok := Report("Column(Nil) is Nil", Design->Column(Nil) = Nil) & ok;
+
+		# a perfect fit does not crash
+		pf := OLS->Fit([[1.0], [2.0], [3.0], [4.0]], [3.0, 5.0, 7.0, 9.0], true);
+		ok := Report("a perfect fit is valid with exact coefficients", pf->IsValid() & Float->Abs(pf->GetCoefficients()[1] - 2.0) < 1.0e-12 & Float->Abs(pf->GetCoefficients()[0] - 1.0) < 1.0e-12) & ok;
+		ok := Report("  and prints", pf->ToString()->Size() > 0) & ok;
+
+		# a good fit afterwards
+		g := OLS->Fit(X, y, true);
+		ok := Report("a good fit still works afterwards", g->IsValid() & g->GetRSquared() > 0.99) & ok;
+
+		# distribution functions never crash on odd values
+		ok := Report("t p-value at infinity is 0", Dist->StudentTwoSidedP(inf, 5.0) = 0.0) & ok;
+		ok := Report("F sf at infinity is 0", Dist->FSf(inf, 2.0, 5.0) = 0.0) & ok;
+		ok := Report("t p-value of NaN is NaN", Dist->StudentTwoSidedP(nan, 5.0) <> Dist->StudentTwoSidedP(nan, 5.0)) & ok;
+
+		if(ok = false) {
+			Runtime->Exit(1);
+		};
+		"stats_degenerate: ok"->PrintLine();
+	}
+
+	function : Fails(name : String, r : TTestResult) ~ Bool {
+		return Report("{$name}: invalid, with a reason and NaN p", r <> Nil & r->IsValid() = false & r->GetError()->Size() > 0 & r->GetP() <> r->GetP());
+	}
+
+	function : FailsCorr(name : String, r : CorrelationResult) ~ Bool {
+		return Report("correlation {$name}: invalid, with a reason and NaN r", r <> Nil & r->IsValid() = false & r->GetError()->Size() > 0 & r->GetR() <> r->GetR());
+	}
+
+	function : FailsOls(name : String, r : OLSResult) ~ Bool {
+		return Report("OLS {$name}: invalid, with a reason", r <> Nil & r->IsValid() = false & r->GetError()->Size() > 0);
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+		return passed;
+	}
+}
