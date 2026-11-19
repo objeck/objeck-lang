@@ -1,0 +1,105 @@
+#~
+Fake-review detection, statistical step: is the length of a review different between genuine
+and fake reviews, and how much does the answer change with the sample size?
+
+This is "Step 3" of a fake-review study (t-test of review length between two groups at
+n = 100, 500 and 2000 per group), run on SYNTHETIC data so it needs no dataset: review
+lengths (in words) are drawn from two normal distributions, genuine mean 55 (sd 28) and fake
+mean 48 (sd 24), from a fixed seed so every run prints the same table. Swap MakeGroup for a
+read of your own CSV (Data.CSV) to run it on real reviews.
+
+For each n it prints the Welch t-test and Student's t-test: t, degrees of freedom, p, the
+mean difference with its 95% confidence interval, and Cohen's d / Hedges' g. The point it
+shows: the effect size barely moves with n (it describes the data) while the p-value falls
+fast (it describes the evidence), so a "significant" result at n = 2000 can be a small
+effect. It ends with the same comparison as an OLS regression on a 0/1 column, whose
+slope, standard error and p-value are the t-test's.
+
+  compile: obc -src fake_review_ttest.obs -lib stats,gen_collect
+  run:     obr fake_review_ttest.obe
+           obr fake_review_ttest.obe --seed 7
+~#
+
+use System.Stats;
+
+class FakeReviewTTest {
+	@state : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		seed := 42;
+		i := 0;
+		while(i < args->Size()) {
+			if(args[i]->Equals("--seed") & i + 1 < args->Size()) {
+				seed := args[i + 1]->ToInt();
+				i += 1;
+			};
+			i += 1;
+		};
+
+		sizes := [100, 500, 2000];
+		each(s : sizes) {
+			n := sizes[s];
+			@state := seed + n;
+			genuine := MakeGroup(n, 55.0, 28.0);
+			fake := MakeGroup(n, 48.0, 24.0);
+
+			"n = {$n} per group  (mean length: genuine {$Float->ToString(Stats->Mean(genuine), 1)}, fake {$Float->ToString(Stats->Mean(fake), 1)})"->PrintLine();
+			"  {$TTest->Welch(genuine, fake)->ToString()}"->PrintLine();
+			"  {$TTest->TwoSample(genuine, fake)->ToString()}"->PrintLine();
+			"  Welch is the safer default: the two groups need not share a variance"->PrintLine();
+			""->PrintLine();
+		};
+
+		# the same comparison as a regression on a 0/1 "fake" column (n = 500 per group)
+		n := 500;
+		@state := seed + n;
+		genuine := MakeGroup(n, 55.0, 28.0);
+		fake := MakeGroup(n, 48.0, 24.0);
+		length := Float->New[2 * n];
+		kind := String->New[2 * n];
+		each(r : n) {
+			length[r] := genuine[r];
+			kind[r] := "genuine";
+			length[n + r] := fake[r];
+			kind[n + r] := "fake";
+		};
+		X := Design->Dummies(kind);
+		fit := OLS->Fit(X, length, true, ["genuine"]);
+		"OLS: length ~ genuine (fake is the reference level, so the coefficient is mean(genuine) - mean(fake))"->PrintLine();
+		fit->ToString()->PrintLine();
+	}
+
+	# Park-Miller generator, a uniform in (0, 1)
+	function : Uniform() ~ Float {
+		@state := (@state * 48271) % 2147483647;
+		if(@state <= 0) {
+			@state += 2147483646;
+		};
+
+		return @state->As(Float) / 2147483647.0;
+	}
+
+	# a normal draw: the sum of twelve uniforms, less 6, has mean 0 and variance 1
+	function : Normal() ~ Float {
+		sum := 0.0;
+		each(i : 12) {
+			sum += Uniform();
+		};
+
+		return sum - 6.0;
+	}
+
+	# review lengths in words: at least 5
+	function : MakeGroup(n : Int, mean : Float, sd : Float) ~ Float[] {
+		out := Float->New[n];
+		each(i : n) {
+			v := mean + sd * Normal();
+			if(v < 5.0) {
+				v := 5.0;
+			};
+			out[i] := v;
+		};
+
+		return out;
+	}
+}

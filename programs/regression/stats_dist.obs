@@ -1,0 +1,169 @@
+# EXTRA_LIBS: stats,gen_collect
+#~
+System.Stats distributions against scipy: Student t (p-value, CDF, quantile) at small and
+large degrees of freedom, normal, chi-square, F, the incomplete beta and log-gamma.
+Expected values were produced independently of System.Stats by tools/stats/gen_stats_reference.py
+(scipy.stats / scipy.special / numpy). Do not edit the numbers by hand: regenerate them.
+~#
+use System.Stats;
+
+class StatsDist {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		ok := Near("t p two-sided t=2.0 df=1", Dist->StudentTwoSidedP(2.0, 1.0), 0.2951672353008665, 1.0e-9) & ok;
+		ok := Near("t cdf t=2.0 df=1", Dist->StudentCdf(2.0, 1.0), 0.8524163823495667, 1.0e-9) & ok;
+		ok := Near("t p two-sided t=0.5 df=3", Dist->StudentTwoSidedP(0.5, 3.0), 0.651447964848151, 1.0e-9) & ok;
+		ok := Near("t cdf t=0.5 df=3", Dist->StudentCdf(0.5, 3.0), 0.6742760175759245, 1.0e-9) & ok;
+		ok := Near("t p two-sided t=-1.7 df=5", Dist->StudentTwoSidedP(-1.7, 5.0), 0.149876786848324, 1.0e-9) & ok;
+		ok := Near("t cdf t=-1.7 df=5", Dist->StudentCdf(-1.7, 5.0), 0.074938393424162, 1.0e-9) & ok;
+		ok := Near("t p two-sided t=2.5 df=10", Dist->StudentTwoSidedP(2.5, 10.0), 0.03144684423660882, 1.0e-9) & ok;
+		ok := Near("t cdf t=2.5 df=10", Dist->StudentCdf(2.5, 10.0), 0.9842765778816955, 1.0e-9) & ok;
+		ok := Near("t p two-sided t=3.0 df=30", Dist->StudentTwoSidedP(3.0, 30.0), 0.005389964065651945, 1.0e-9) & ok;
+		ok := Near("t cdf t=3.0 df=30", Dist->StudentCdf(3.0, 30.0), 0.9973050179671741, 1.0e-9) & ok;
+		ok := Near("t p two-sided t=1.96 df=1000", Dist->StudentTwoSidedP(1.96, 1000.0), 0.050273184955748736, 1.0e-9) & ok;
+		ok := Near("t cdf t=1.96 df=1000", Dist->StudentCdf(1.96, 1000.0), 0.9748634075221256, 1.0e-9) & ok;
+		ok := Near("t p two-sided t=4.5 df=4000", Dist->StudentTwoSidedP(4.5, 4000.0), 6.988466184980417e-6, 1.0e-9) & ok;
+		ok := Near("t cdf t=4.5 df=4000", Dist->StudentCdf(4.5, 4000.0), 0.9999965057669075, 1.0e-9) & ok;
+		ok := Near("t p two-sided t=10.0 df=3", Dist->StudentTwoSidedP(10.0, 3.0), 0.0021283990584141503, 1.0e-9) & ok;
+		ok := Near("t cdf t=10.0 df=3", Dist->StudentCdf(10.0, 3.0), 0.9989358004707929, 1.0e-9) & ok;
+		ok := Near("t p two-sided t=0.0 df=7", Dist->StudentTwoSidedP(0.0, 7.0), 1.0, 1.0e-9) & ok;
+		ok := Near("t cdf t=0.0 df=7", Dist->StudentCdf(0.0, 7.0), 0.5, 1.0e-9) & ok;
+		ok := Near("t p two-sided t=-8.0 df=2.5", Dist->StudentTwoSidedP(-8.0, 2.5), 0.007656644131043447, 1.0e-9) & ok;
+		ok := Near("t cdf t=-8.0 df=2.5", Dist->StudentCdf(-8.0, 2.5), 0.0038283220655217234, 1.0e-9) & ok;
+		ok := Near("t p two-sided t=1.2 df=0.5", Dist->StudentTwoSidedP(1.2, 0.5), 0.5592579261313645, 1.0e-9) & ok;
+		ok := Near("t cdf t=1.2 df=0.5", Dist->StudentCdf(1.2, 0.5), 0.7203710369343177, 1.0e-9) & ok;
+		ok := Near("t p two-sided t=40.0 df=12", Dist->StudentTwoSidedP(40.0, 12.0), 3.851229580772032e-14, 1.0e-9) & ok;
+		ok := Near("t cdf t=40.0 df=12", Dist->StudentCdf(40.0, 12.0), 0.9999999999999808, 1.0e-9) & ok;
+		ok := Near("t p two-sided t=0.01 df=50", Dist->StudentTwoSidedP(0.01, 50.0), 0.992061081367143, 1.0e-9) & ok;
+		ok := Near("t cdf t=0.01 df=50", Dist->StudentCdf(0.01, 50.0), 0.5039694593164286, 1.0e-9) & ok;
+		ok := Near("t quantile p=0.975 df=1", Dist->StudentQuantile(0.975, 1.0), 12.706204736174694, 1.0e-9) & ok;
+		ok := Near("t quantile p=0.975 df=2", Dist->StudentQuantile(0.975, 2.0), 4.302652729749462, 1.0e-9) & ok;
+		ok := Near("t quantile p=0.975 df=5", Dist->StudentQuantile(0.975, 5.0), 2.5705818356363146, 1.0e-9) & ok;
+		ok := Near("t quantile p=0.975 df=10", Dist->StudentQuantile(0.975, 10.0), 2.2281388519862744, 1.0e-9) & ok;
+		ok := Near("t quantile p=0.975 df=30", Dist->StudentQuantile(0.975, 30.0), 2.0422724563012378, 1.0e-9) & ok;
+		ok := Near("t quantile p=0.975 df=100", Dist->StudentQuantile(0.975, 100.0), 1.983971518523552, 1.0e-9) & ok;
+		ok := Near("t quantile p=0.975 df=4000", Dist->StudentQuantile(0.975, 4000.0), 1.960557228793733, 1.0e-9) & ok;
+		ok := Near("t quantile p=0.995 df=8", Dist->StudentQuantile(0.995, 8.0), 3.355387331333395, 1.0e-9) & ok;
+		ok := Near("t quantile p=0.9 df=3", Dist->StudentQuantile(0.9, 3.0), 1.637744353696209, 1.0e-9) & ok;
+		ok := Near("t quantile p=0.001 df=7", Dist->StudentQuantile(0.001, 7.0), -4.785289628638334, 1.0e-9) & ok;
+		ok := Near("t quantile p=0.999999 df=5", Dist->StudentQuantile(0.999999, 5.0), 24.771029720372493, 1.0e-9) & ok;
+		ok := Near("t quantile p=0.6 df=2.5", Dist->StudentQuantile(0.6, 2.5), 0.2814595127485477, 1.0e-9) & ok;
+		ok := Near("t quantile p=0.975 df=18.37", Dist->StudentQuantile(0.975, 18.37), 2.0978929672491073, 1.0e-9) & ok;
+		ok := Near("t quantile 0.5 is 0", Dist->StudentQuantile(0.5, 10.0), 0.0, 1.0e-12) & ok;
+		ok := Near("normal cdf -3.0", Dist->NormalCdf(-3.0), 0.0013498980316300933, 1.0e-9) & ok;
+		ok := Near("normal two-sided p -3.0", Dist->NormalTwoSidedP(-3.0), 0.0026997960632601866, 1.0e-9) & ok;
+		ok := Near("normal cdf -1.0", Dist->NormalCdf(-1.0), 0.15865525393145707, 1.0e-9) & ok;
+		ok := Near("normal two-sided p -1.0", Dist->NormalTwoSidedP(-1.0), 0.31731050786291415, 1.0e-9) & ok;
+		ok := Near("normal cdf 0.0", Dist->NormalCdf(0.0), 0.5, 1.0e-9) & ok;
+		ok := Near("normal two-sided p 0.0", Dist->NormalTwoSidedP(0.0), 1.0, 1.0e-9) & ok;
+		ok := Near("normal cdf 0.5", Dist->NormalCdf(0.5), 0.6914624612740131, 1.0e-9) & ok;
+		ok := Near("normal two-sided p 0.5", Dist->NormalTwoSidedP(0.5), 0.6170750774519738, 1.0e-9) & ok;
+		ok := Near("normal cdf 1.96", Dist->NormalCdf(1.96), 0.9750021048517795, 1.0e-9) & ok;
+		ok := Near("normal two-sided p 1.96", Dist->NormalTwoSidedP(1.96), 0.04999579029644087, 1.0e-9) & ok;
+		ok := Near("normal cdf 5.0", Dist->NormalCdf(5.0), 0.9999997133484281, 1.0e-9) & ok;
+		ok := Near("normal two-sided p 5.0", Dist->NormalTwoSidedP(5.0), 5.733031437583866e-7, 1.0e-9) & ok;
+		ok := Near("normal cdf -8.0", Dist->NormalCdf(-8.0), 6.22096057427174e-16, 1.0e-9) & ok;
+		ok := Near("normal two-sided p -8.0", Dist->NormalTwoSidedP(-8.0), 1.244192114854348e-15, 1.0e-9) & ok;
+		ok := Near("normal quantile 0.975", Dist->NormalQuantile(0.975), 1.959963984540054, 1.0e-9) & ok;
+		ok := Near("normal quantile 0.9", Dist->NormalQuantile(0.9), 1.2815515655446004, 1.0e-9) & ok;
+		ok := Near("normal quantile 0.5001", Dist->NormalQuantile(0.5001), 0.0002506628300880075, 1.0e-9) & ok;
+		ok := Near("normal quantile 1e-08", Dist->NormalQuantile(1.0e-8), -5.612001244174789, 1.0e-9) & ok;
+		ok := Near("normal quantile 0.3", Dist->NormalQuantile(0.3), -0.5244005127080409, 1.0e-9) & ok;
+		ok := Near("normal quantile 0.999", Dist->NormalQuantile(0.999), 3.090232306167813, 1.0e-9) & ok;
+		ok := Near("chi2 cdf x=3.84 df=1", Dist->ChiSquareCdf(3.84, 1.0), 0.9499564787512949, 1.0e-9) & ok;
+		ok := Near("chi2 sf x=3.84 df=1", Dist->ChiSquareSf(3.84, 1.0), 0.05004352124870519, 1.0e-9) & ok;
+		ok := Near("chi2 cdf x=10.0 df=5", Dist->ChiSquareCdf(10.0, 5.0), 0.9247647538534878, 1.0e-9) & ok;
+		ok := Near("chi2 sf x=10.0 df=5", Dist->ChiSquareSf(10.0, 5.0), 0.07523524614651217, 1.0e-9) & ok;
+		ok := Near("chi2 cdf x=50.0 df=20", Dist->ChiSquareCdf(50.0, 20.0), 0.9997785233617512, 1.0e-9) & ok;
+		ok := Near("chi2 sf x=50.0 df=20", Dist->ChiSquareSf(50.0, 20.0), 0.0002214766382487835, 1.0e-9) & ok;
+		ok := Near("chi2 cdf x=0.5 df=3", Dist->ChiSquareCdf(0.5, 3.0), 0.08110858834532418, 1.0e-9) & ok;
+		ok := Near("chi2 sf x=0.5 df=3", Dist->ChiSquareSf(0.5, 3.0), 0.9188914116546758, 1.0e-9) & ok;
+		ok := Near("chi2 cdf x=200.0 df=10", Dist->ChiSquareCdf(200.0, 10.0), 1.0, 1.0e-9) & ok;
+		ok := Near("chi2 sf x=200.0 df=10", Dist->ChiSquareSf(200.0, 10.0), 1.6139305336977317e-37, 1.0e-9) & ok;
+		ok := Near("chi2 cdf x=0.0 df=4", Dist->ChiSquareCdf(0.0, 4.0), 0.0, 1.0e-9) & ok;
+		ok := Near("chi2 sf x=0.0 df=4", Dist->ChiSquareSf(0.0, 4.0), 1.0, 1.0e-9) & ok;
+		ok := Near("F cdf f=4.0 d1=2 d2=30", Dist->FCdf(4.0, 2.0, 30.0), 0.9711553767043032, 1.0e-9) & ok;
+		ok := Near("F sf f=4.0 d1=2 d2=30", Dist->FSf(4.0, 2.0, 30.0), 0.02884462329569682, 1.0e-9) & ok;
+		ok := Near("F cdf f=1.5 d1=5 d2=100", Dist->FCdf(1.5, 5.0, 100.0), 0.8033938320280742, 1.0e-9) & ok;
+		ok := Near("F sf f=1.5 d1=5 d2=100", Dist->FSf(1.5, 5.0, 100.0), 0.19660616797192573, 1.0e-9) & ok;
+		ok := Near("F cdf f=20.0 d1=3 d2=10", Dist->FCdf(20.0, 3.0, 10.0), 0.9998488349734139, 1.0e-9) & ok;
+		ok := Near("F sf f=20.0 d1=3 d2=10", Dist->FSf(20.0, 3.0, 10.0), 0.00015116502658600833, 1.0e-9) & ok;
+		ok := Near("F cdf f=2.5 d1=1 d2=4000", Dist->FCdf(2.5, 1.0, 4000.0), 0.8860746388600254, 1.0e-9) & ok;
+		ok := Near("F sf f=2.5 d1=1 d2=4000", Dist->FSf(2.5, 1.0, 4000.0), 0.11392536113997473, 1.0e-9) & ok;
+		ok := Near("F cdf f=0.3 d1=4 d2=7", Dist->FCdf(0.3, 4.0, 7.0), 0.13083447988164013, 1.0e-9) & ok;
+		ok := Near("F sf f=0.3 d1=4 d2=7", Dist->FSf(0.3, 4.0, 7.0), 0.8691655201183598, 1.0e-9) & ok;
+		ok := Near("F cdf f=300.0 d1=6 d2=500", Dist->FCdf(300.0, 6.0, 500.0), 1.0, 1.0e-9) & ok;
+		ok := Near("F sf f=300.0 d1=6 d2=500", Dist->FSf(300.0, 6.0, 500.0), 3.9685963920108866e-162, 1.0e-9) & ok;
+		ok := Near("betainc x=0.3 a=2.0 b=5.0", Dist->BetaInc(0.3, 2.0, 5.0), 0.5798250000000003, 1.0e-9) & ok;
+		ok := Near("betainc x=0.9 a=0.5 b=0.5", Dist->BetaInc(0.9, 0.5, 0.5), 0.7951672353008665, 1.0e-9) & ok;
+		ok := Near("betainc x=0.5 a=100.0 b=100.0", Dist->BetaInc(0.5, 100.0, 100.0), 0.4999999999999993, 1.0e-9) & ok;
+		ok := Near("betainc x=0.01 a=1.5 b=300.0", Dist->BetaInc(0.01, 1.5, 300.0), 0.8900907391680489, 1.0e-9) & ok;
+		ok := Near("betainc x=0.999 a=2000.0 b=0.5", Dist->BetaInc(0.999, 2000.0, 0.5), 0.04545975843785473, 1.0e-9) & ok;
+		ok := Near("gammainc a=0.5 x=0.5", Dist->GammaInc(0.5, 0.5), 0.6826894921370859, 1.0e-9) & ok;
+		ok := Near("gammainc a=3.0 x=2.0", Dist->GammaInc(3.0, 2.0), 0.32332358381693654, 1.0e-9) & ok;
+		ok := Near("gammainc a=20.0 x=30.0", Dist->GammaInc(20.0, 30.0), 0.9781265315586091, 1.0e-9) & ok;
+		ok := Near("gammainc a=2.0 x=100.0", Dist->GammaInc(2.0, 100.0), 1.0, 1.0e-9) & ok;
+		ok := Near("lgamma 0.1", Dist->LogGamma(0.1), 2.252712651734206, 1.0e-12) & ok;
+		ok := Near("lgamma 0.5", Dist->LogGamma(0.5), 0.5723649429247, 1.0e-12) & ok;
+		ok := Near("lgamma 1.0", Dist->LogGamma(1.0), 0.0, 1.0e-12) & ok;
+		ok := Near("lgamma 2.5", Dist->LogGamma(2.5), 0.2846828704729192, 1.0e-12) & ok;
+		ok := Near("lgamma 10.0", Dist->LogGamma(10.0), 12.801827480081469, 1.0e-12) & ok;
+		ok := Near("lgamma 100.5", Dist->LogGamma(100.5), 361.43554046777757, 1.0e-12) & ok;
+		ok := Near("lgamma 1000.0", Dist->LogGamma(1000.0), 5905.220423209181, 1.0e-12) & ok;
+		ok := Near("lgamma 100000.0", Dist->LogGamma(100000.0), 1051287.7089736569, 1.0e-12) & ok;
+		ok := Near("hedges J df=2.0", Dist->HedgesJ(2.0), 0.5641895835477564, 1.0e-11) & ok;
+		ok := Near("hedges J df=3.0", Dist->HedgesJ(3.0), 0.7236012545582676, 1.0e-11) & ok;
+		ok := Near("hedges J df=5.0", Dist->HedgesJ(5.0), 0.8407486824596893, 1.0e-11) & ok;
+		ok := Near("hedges J df=10.0", Dist->HedgesJ(10.0), 0.922745608053087, 1.0e-11) & ok;
+		ok := Near("hedges J df=30.0", Dist->HedgesJ(30.0), 0.9747543782143993, 1.0e-11) & ok;
+		ok := Near("hedges J df=100.0", Dist->HedgesJ(100.0), 0.9924780549814028, 1.0e-11) & ok;
+		ok := Near("hedges J df=3998.0", Dist->HedgesJ(3998.0), 0.9998123925146647, 1.0e-11) & ok;
+		ok := Near("hedges J at df 1 is 0", Dist->HedgesJ(1.0), 0.0, 1.0e-12) & ok;
+		ok := Report("Dist->StudentTwoSidedP(1.0, 0.0) is NaN", Dist->StudentTwoSidedP(1.0, 0.0) <> Dist->StudentTwoSidedP(1.0, 0.0)) & ok;
+		ok := Report("Dist->StudentQuantile(0.0, 5.0) is NaN", Dist->StudentQuantile(0.0, 5.0) <> Dist->StudentQuantile(0.0, 5.0)) & ok;
+		ok := Report("Dist->StudentQuantile(1.0, 5.0) is NaN", Dist->StudentQuantile(1.0, 5.0) <> Dist->StudentQuantile(1.0, 5.0)) & ok;
+		ok := Report("Dist->NormalQuantile(1.5) is NaN", Dist->NormalQuantile(1.5) <> Dist->NormalQuantile(1.5)) & ok;
+		ok := Report("Dist->BetaInc(1.5, 1.0, 1.0) is NaN", Dist->BetaInc(1.5, 1.0, 1.0) <> Dist->BetaInc(1.5, 1.0, 1.0)) & ok;
+		ok := Report("Dist->FSf(-1.0, 2.0, 2.0) is NaN", Dist->FSf(-1.0, 2.0, 2.0) <> Dist->FSf(-1.0, 2.0, 2.0)) & ok;
+		ok := Report("Dist->ChiSquareCdf(1.0, -1.0) is NaN", Dist->ChiSquareCdf(1.0, -1.0) <> Dist->ChiSquareCdf(1.0, -1.0)) & ok;
+		ok := Report("Dist->LogGamma(-2.0) is NaN", Dist->LogGamma(-2.0) <> Dist->LogGamma(-2.0)) & ok;
+		ok := Report("Dist->StudentCdf(Float->NaN(), 5.0) is NaN", Dist->StudentCdf(Float->NaN(), 5.0) <> Dist->StudentCdf(Float->NaN(), 5.0)) & ok;
+
+		if(ok = false) {
+			Runtime->Exit(1);
+		};
+		"stats_dist: ok"->PrintLine();
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+		return passed;
+	}
+
+	# relative tolerance, with a floor so an expected 0 can be matched
+	function : Near(name : String, actual : Float, expected : Float, tol : Float) ~ Bool {
+		diff := Float->Abs(actual - expected);
+		limit := tol * Float->Abs(expected);
+		if(limit < 1.0e-14) {
+			limit := 1.0e-14;
+		};
+		good := diff <= limit;
+		if(good = false) {
+			"    {$name}: got {$actual}, expected {$expected}"->PrintLine();
+		};
+		return Report(name, good);
+	}
+
+	function : Seq(n : Int, a : Int, b : Int, m : Int, div : Float) ~ Float[] {
+		out := Float->New[n];
+		each(i : n) {
+			out[i] := ((i * a + b) % m)->As(Float) / div;
+		};
+		return out;
+	}
+}

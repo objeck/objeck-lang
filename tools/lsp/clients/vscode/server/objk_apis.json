@@ -19327,6 +19327,326 @@
 					"descriptions": ["**Writes a string response to the message body**\n\n```method : public : WriteBody(data:String) ~ Int```\n\n\n\ndata: String\n\nreturn: Int\n\n```\nresponse->SetContentType(\"text/html\");\nbytes_sent := response->WriteBody(\"<html><body>Hello</body></html>\");\nbytes_sent->PrintLine();  # number of bytes written\n```", "**Writes a byte array response to the message body**\n\n```method : public : WriteBody(data:Byte[]) ~ Int```\n\n\n\ndata: Byte[]\n\nreturn: Int\n\n```\nimg_bytes := System.IO.Filesystem.FileReader->ReadBinaryFile(\"logo.png\");\nresponse->SetContentType(\"image/png\");\nresponse->WriteBody(img_bytes);\n```"]
 				}
 			}
+		},
+		"System.Stats.Correlation": {
+			"description": "Pearson correlation with a p-value and a confidence interval.\n\nFailures (IsValid() false): Nil, unequal lengths, fewer than 3 pairs, NaN or infinity in the data, a level outside (0, 1), and zero variance in either array.",
+			"functions": {
+				"Pearson": {
+					"descriptions": ["**Pearson correlation at the 95% level.**\n\n```function : Pearson(x:Float[], y:Float[]) ~ CorrelationResult```\n\n\n\nx: Float[]\n\ny: Float[]\n\nreturn: CorrelationResult", "**Pearson correlation. The p-value is the two-sided Student t test with n - 2 degrees of freedom; the interval is the Fisher z transform one.**\n\n```function : Pearson(x:Float[], y:Float[], level:Float) ~ CorrelationResult```\n\n\n\nx: Float[]\n\ny: Float[]\n\nlevel: Float\n\nreturn: CorrelationResult"]
+				}
+			}
+		},
+		"System.Stats.CorrelationResult": {
+			"description": "The outcome of a correlation test. A failed one (IsValid() false) has NaN in every number.",
+			"functions": {
+				"GetCiHigh": {
+					"descriptions": ["**Upper end of the Fisher-z confidence interval for r (NaN when n is 3 or less).**\n\n```method : public : GetCiHigh() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetCiLow": {
+					"descriptions": ["**Lower end of the Fisher-z confidence interval for r (NaN when n is 3 or less).**\n\n```method : public : GetCiLow() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetDf": {
+					"descriptions": ["**Degrees of freedom, n - 2.**\n\n```method : public : GetDf() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the test did not run, or an empty string.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetN": {
+					"descriptions": ["**Number of pairs.**\n\n```method : public : GetN() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetP": {
+					"descriptions": ["**Two-sided p-value for the null hypothesis of no correlation.**\n\n```method : public : GetP() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetR": {
+					"descriptions": ["**The correlation coefficient, between -1 and 1.**\n\n```method : public : GetR() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetT": {
+					"descriptions": ["**The t statistic r * sqrt((n - 2) / (1 - r^2)).**\n\n```method : public : GetT() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"IsValid": {
+					"descriptions": ["**Whether the test ran.**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.Stats.Design": {
+			"description": "Builds design matrices for OLS: an intercept column, 0/1 dummy columns for a categorical variable, and column joining.",
+			"functions": {
+				"AddIntercept": {
+					"descriptions": ["**Copies X with a leading column of ones.**\n\n```function : AddIntercept(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]"]
+				},
+				"Column": {
+					"descriptions": ["**A one-column matrix from an array.**\n\n```function : Column(v:Float[]) ~ Float[,]```\n\n\n\nv: Float[]\n\nreturn: Float[,]"]
+				},
+				"Dummies": {
+					"descriptions": ["**0/1 columns for a categorical variable, one per level after the first (the first sorted level is the reference, so an intercept does not make the matrix singular).**\n\n```function : Dummies(values:String[]) ~ Float[,]```\n\n\n\nvalues: String[]\n\nreturn: Float[,]"]
+				},
+				"DummiesFor": {
+					"descriptions": ["**0/1 columns for the levels after the first of an explicit level list (which names the reference level first).**\n\n```function : DummiesFor(values:String[], levels:String[]) ~ Float[,]```\n\n\n\nvalues: String[]\n\nlevels: String[]\n\nreturn: Float[,]"]
+				},
+				"HStack": {
+					"descriptions": ["**Joins two matrices with the same number of rows side by side.**\n\n```function : HStack(a:Float[,], b:Float[,]) ~ Float[,]```\n\n\n\na: Float[,]\n\nb: Float[,]\n\nreturn: Float[,]"]
+				},
+				"Levels": {
+					"descriptions": ["**The distinct values of a categorical variable, sorted.**\n\n```function : Levels(values:String[]) ~ String[]```\n\n\n\nvalues: String[]\n\nreturn: String[]"]
+				}
+			}
+		},
+		"System.Stats.Dist": {
+			"description": "Special functions and probability distributions. Every function takes plain Floats and returns NaN for arguments outside its domain, so a bad value shows up as NaN and never ends the program.",
+			"functions": {
+				"BetaInc": {
+					"descriptions": ["**The regularized incomplete beta function I_x(a, b).**\n\n```function : BetaInc(x:Float, a:Float, b:Float) ~ Float```\n\n\n\nx: Float\n\na: Float\n\nb: Float\n\nreturn: Float"]
+				},
+				"ChiSquareCdf": {
+					"descriptions": ["**Cumulative distribution function of the chi-square distribution.**\n\n```function : ChiSquareCdf(x:Float, df:Float) ~ Float```\n\n\n\nx: Float\n\ndf: Float\n\nreturn: Float"]
+				},
+				"ChiSquareSf": {
+					"descriptions": ["**Upper tail of the chi-square distribution, P(X >= x); the p-value of a chi-square statistic.**\n\n```function : ChiSquareSf(x:Float, df:Float) ~ Float```\n\n\n\nx: Float\n\ndf: Float\n\nreturn: Float"]
+				},
+				"Div": {
+					"descriptions": ["**Division that does not stop the program when the divisor is 0: a / 0 is +Inf or -Inf, and 0 / 0 is NaN.**\n\n```function : Div(a:Float, b:Float) ~ Float```\n\n\n\na: Float\n\nb: Float\n\nreturn: Float"]
+				},
+				"FCdf": {
+					"descriptions": ["**Cumulative distribution function of the F distribution.**\n\n```function : FCdf(f:Float, df1:Float, df2:Float) ~ Float```\n\n\n\nf: Float\n\ndf1: Float\n\ndf2: Float\n\nreturn: Float"]
+				},
+				"FSf": {
+					"descriptions": ["**Upper tail of the F distribution, P(F >= f); the p-value of an F statistic.**\n\n```function : FSf(f:Float, df1:Float, df2:Float) ~ Float```\n\n\n\nf: Float\n\ndf1: Float\n\ndf2: Float\n\nreturn: Float"]
+				},
+				"GammaInc": {
+					"descriptions": ["**The regularized lower incomplete gamma function P(a, x).**\n\n```function : GammaInc(a:Float, x:Float) ~ Float```\n\n\n\na: Float\n\nx: Float\n\nreturn: Float"]
+				},
+				"HedgesJ": {
+					"descriptions": ["**Hedges' small-sample correction factor for Cohen's d, exactly: Gamma(df/2) / (sqrt(df/2) * Gamma((df-1)/2)). It is 0 at df = 1 (the limit), and close to 1 - 3 / (4 df - 1).**\n\n```function : HedgesJ(df:Float) ~ Float```\n\n\n\ndf: Float\n\nreturn: Float"]
+				},
+				"LogGamma": {
+					"descriptions": ["**Natural log of the gamma function, for x above 0 (Lanczos approximation, about 15 digits).**\n\n```function : LogGamma(x:Float) ~ Float```\n\n\n\nx: Float\n\nreturn: Float"]
+				},
+				"NormalCdf": {
+					"descriptions": ["**Cumulative distribution function of the standard normal distribution.**\n\n```function : NormalCdf(x:Float) ~ Float```\n\n\n\nx: Float\n\nreturn: Float"]
+				},
+				"NormalQuantile": {
+					"descriptions": ["**Quantile (inverse CDF) of the standard normal distribution.**\n\n```function : NormalQuantile(p:Float) ~ Float```\n\n\n\np: Float\n\nreturn: Float"]
+				},
+				"NormalTwoSidedP": {
+					"descriptions": ["**Two-sided p-value of a standard normal statistic: P(|Z| >= |z|).**\n\n```function : NormalTwoSidedP(z:Float) ~ Float```\n\n\n\nz: Float\n\nreturn: Float"]
+				},
+				"StudentCdf": {
+					"descriptions": ["**Cumulative distribution function of the Student t distribution.**\n\n```function : StudentCdf(t:Float, df:Float) ~ Float```\n\n\n\nt: Float\n\ndf: Float\n\nreturn: Float"]
+				},
+				"StudentQuantile": {
+					"descriptions": ["**Quantile (inverse CDF) of the Student t distribution, found by bisection to full double precision.**\n\n```function : StudentQuantile(p:Float, df:Float) ~ Float```\n\n\n\np: Float\n\ndf: Float\n\nreturn: Float"]
+				},
+				"StudentTwoSidedP": {
+					"descriptions": ["**Two-sided p-value of a Student t statistic: P(|T| >= |t|).**\n\n```function : StudentTwoSidedP(t:Float, df:Float) ~ Float```\n\n\n\nt: Float\n\ndf: Float\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.Stats.OLS": {
+			"description": "Ordinary least squares by Householder QR (no normal equations, so near-collinear columns lose half as many digits).\n\nFailures (IsValid() false on the result): Nil input, X and y with different row counts, no columns, fewer rows than columns plus one, NaN or infinity in the data, and rank-deficient columns (a constant column beside an intercept, a column that repeats another, or all the dummy columns of a variable beside an intercept).",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Fits y on the columns of X, with names x1, x2, ...**\n\n```function : Fit(X:Float[,], y:Float[], add_intercept:Bool) ~ OLSResult```\n\n\n\nX: Float[,]\n\ny: Float[]\n\nadd_intercept: Bool\n\nreturn: OLSResult", "**Fits y on the columns of X with named columns.**\n\n```function : Fit(X:Float[,], y:Float[], add_intercept:Bool, names:String[]) ~ OLSResult```\n\n\n\nX: Float[,]\n\ny: Float[]\n\nadd_intercept: Bool\n\nnames: String[]\n\nreturn: OLSResult"]
+				}
+			}
+		},
+		"System.Stats.OLSResult": {
+			"description": "An ordinary least squares fit with its summary statistics. A failed fit (IsValid() false) has Nil arrays and NaN numbers, and GetError() says why.\n\nWith an intercept, R-squared uses the centred total sum of squares and the F test is against the intercept-only model; without one they use the uncentred sum of squares, as statsmodels does. AIC and BIC come from the Gaussian log-likelihood and count one parameter per coefficient, as statsmodels does.",
+			"functions": {
+				"GetAIC": {
+					"descriptions": ["**Akaike information criterion.**\n\n```method : public : GetAIC() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetAdjustedRSquared": {
+					"descriptions": ["**Adjusted R-squared.**\n\n```method : public : GetAdjustedRSquared() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetBIC": {
+					"descriptions": ["**Bayesian information criterion.**\n\n```method : public : GetBIC() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetCoefficients": {
+					"descriptions": ["**Coefficients, in column order.**\n\n```method : public : GetCoefficients() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetConfInt": {
+					"descriptions": ["**Confidence intervals of the coefficients.**\n\n```method : public : GetConfInt(level:Float) ~ Float[,]```\n\n\n\nlevel: Float\n\nreturn: Float[,]"]
+				},
+				"GetCovariance": {
+					"descriptions": ["**Covariance matrix of the coefficients: sigma^2 (X'X)^-1.**\n\n```method : public : GetCovariance() ~ Float[,]```\n\n\n\nreturn: Float[,]"]
+				},
+				"GetDfModel": {
+					"descriptions": ["**Model degrees of freedom: k, less 1 with an intercept.**\n\n```method : public : GetDfModel() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetDfResid": {
+					"descriptions": ["**Residual degrees of freedom, n - k.**\n\n```method : public : GetDfResid() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the fit failed, or an empty string.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetFPValue": {
+					"descriptions": ["**p-value of the F statistic.**\n\n```method : public : GetFPValue() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetFStat": {
+					"descriptions": ["**F statistic of the whole model against the intercept-only (or empty) model.**\n\n```method : public : GetFStat() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetFitted": {
+					"descriptions": ["**Fitted values.**\n\n```method : public : GetFitted() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetLogLikelihood": {
+					"descriptions": ["**Gaussian log-likelihood.**\n\n```method : public : GetLogLikelihood() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetNObs": {
+					"descriptions": ["**Number of observations.**\n\n```method : public : GetNObs() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetNParams": {
+					"descriptions": ["**Number of coefficients, the intercept included.**\n\n```method : public : GetNParams() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetNames": {
+					"descriptions": ["**Column names, in coefficient order (the intercept is \"const\").**\n\n```method : public : GetNames() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetPValues": {
+					"descriptions": ["**Two-sided p-values of the coefficients, from the t distribution with GetDfResid() degrees of freedom.**\n\n```method : public : GetPValues() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetRSquared": {
+					"descriptions": ["**R-squared.**\n\n```method : public : GetRSquared() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetResidualStdError": {
+					"descriptions": ["**Residual standard error: sqrt(SSR / (n - k)).**\n\n```method : public : GetResidualStdError() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetResiduals": {
+					"descriptions": ["**Residuals, y minus the fitted values.**\n\n```method : public : GetResiduals() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetSSR": {
+					"descriptions": ["**Residual sum of squares.**\n\n```method : public : GetSSR() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetStdErrors": {
+					"descriptions": ["**Standard errors of the coefficients.**\n\n```method : public : GetStdErrors() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetTStats": {
+					"descriptions": ["**t statistics of the coefficients (coefficient / standard error).**\n\n```method : public : GetTStats() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"HasIntercept": {
+					"descriptions": ["**Whether the fit has an intercept.**\n\n```method : public : HasIntercept() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsValid": {
+					"descriptions": ["**Whether the fit succeeded.**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Predict": {
+					"descriptions": ["**Predicts from new rows. Give the same columns the fit was given: an intercept column is added here when the fit added one.**\n\n```method : public : Predict(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"ToString": {
+					"descriptions": ["**A statsmodels-style summary: the fit statistics, then one row per coefficient with its standard error, t, p and 95% interval.**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"System.Stats.Stats": {
+			"description": "Descriptive statistics over a Float[]. Each function returns NaN when the array is Nil, too short for the statistic, or holds a NaN or infinity.",
+			"functions": {
+				"Covariance": {
+					"descriptions": ["**Sample covariance of two arrays of the same length.**\n\n```function : Covariance(x:Float[], y:Float[]) ~ Float```\n\n\n\nx: Float[]\n\ny: Float[]\n\nreturn: Float"]
+				},
+				"Mean": {
+					"descriptions": ["**Arithmetic mean.**\n\n```function : Mean(x:Float[]) ~ Float```\n\n\n\nx: Float[]\n\nreturn: Float"]
+				},
+				"Median": {
+					"descriptions": ["**Median: the middle value, or the mean of the two middle values.**\n\n```function : Median(x:Float[]) ~ Float```\n\n\n\nx: Float[]\n\nreturn: Float"]
+				},
+				"PopulationVariance": {
+					"descriptions": ["**Population variance (divides by n).**\n\n```function : PopulationVariance(x:Float[]) ~ Float```\n\n\n\nx: Float[]\n\nreturn: Float"]
+				},
+				"StdDev": {
+					"descriptions": ["**Sample standard deviation (divides by n - 1).**\n\n```function : StdDev(x:Float[]) ~ Float```\n\n\n\nx: Float[]\n\nreturn: Float"]
+				},
+				"StdError": {
+					"descriptions": ["**Standard error of the mean: the sample standard deviation over the square root of n.**\n\n```function : StdError(x:Float[]) ~ Float```\n\n\n\nx: Float[]\n\nreturn: Float"]
+				},
+				"Sum": {
+					"descriptions": ["**Sum of the values.**\n\n```function : Sum(x:Float[]) ~ Float```\n\n\n\nx: Float[]\n\nreturn: Float"]
+				},
+				"Variance": {
+					"descriptions": ["**Sample variance (divides by n - 1).**\n\n```function : Variance(x:Float[]) ~ Float```\n\n\n\nx: Float[]\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.Stats.StatsFormat": {
+			"description": "Number formatting shared by the summaries.",
+			"functions": {
+				"P": {
+					"descriptions": ["**Formats a p-value: fixed digits, or scientific below 0.0001 (when fixed digits would show 0).**\n\n```function : P(p:Float) ~ String```\n\n\n\np: Float\n\nreturn: String"]
+				}
+			}
+		},
+		"System.Stats.TTest": {
+			"description": "t-tests. Every test takes an optional confidence level (default 0.95) for the interval on the mean difference. All return a TTestResult; none can end the program.\n\nFailures (IsValid() false): Nil input, a sample too short (one-sample and paired need 2 values, two-sample needs 2 per group), unequal lengths for the paired test, NaN or infinity in the data, a level not strictly between 0 and 1, and zero variance (a standard error of 0 makes t undefined).",
+			"functions": {
+				"OneSample": {
+					"descriptions": ["**One-sample t-test of the mean of x against a hypothesised mean, at the 95% level.**\n\n```function : OneSample(x:Float[], mu:Float) ~ TTestResult```\n\n\n\nx: Float[]\n\nmu: Float\n\nreturn: TTestResult", "**One-sample t-test of the mean of x against a hypothesised mean.**\n\n```function : OneSample(x:Float[], mu:Float, level:Float) ~ TTestResult```\n\n\n\nx: Float[]\n\nmu: Float\n\nlevel: Float\n\nreturn: TTestResult"]
+				},
+				"Paired": {
+					"descriptions": ["**Paired t-test, at the 95% level.**\n\n```function : Paired(x:Float[], y:Float[]) ~ TTestResult```\n\n\n\nx: Float[]\n\ny: Float[]\n\nreturn: TTestResult", "**Paired t-test: a one-sample test of the differences x - y against 0. Cohen's d is d_z, the mean difference over the standard deviation of the differences.**\n\n```function : Paired(x:Float[], y:Float[], level:Float) ~ TTestResult```\n\n\n\nx: Float[]\n\ny: Float[]\n\nlevel: Float\n\nreturn: TTestResult"]
+				},
+				"TwoSample": {
+					"descriptions": ["**Student's two-sample t-test (equal variances assumed), at the 95% level.**\n\n```function : TwoSample(x:Float[], y:Float[]) ~ TTestResult```\n\n\n\nx: Float[]\n\ny: Float[]\n\nreturn: TTestResult", "**Student's two-sample t-test (equal variances assumed, pooled variance, df = n1 + n2 - 2).**\n\n```function : TwoSample(x:Float[], y:Float[], level:Float) ~ TTestResult```\n\n\n\nx: Float[]\n\ny: Float[]\n\nlevel: Float\n\nreturn: TTestResult"]
+				},
+				"Welch": {
+					"descriptions": ["**Welch's t-test (unequal variances, Welch-Satterthwaite degrees of freedom), at the 95% level.**\n\n```function : Welch(x:Float[], y:Float[]) ~ TTestResult```\n\n\n\nx: Float[]\n\ny: Float[]\n\nreturn: TTestResult", "**Welch's t-test (unequal variances). Cohen's d and Hedges' g use the pooled standard deviation, as for the Student test.**\n\n```function : Welch(x:Float[], y:Float[], level:Float) ~ TTestResult```\n\n\n\nx: Float[]\n\ny: Float[]\n\nlevel: Float\n\nreturn: TTestResult"]
+				}
+			}
+		},
+		"System.Stats.TTestResult": {
+			"description": "The outcome of a t-test. A failed test (IsValid() false) has NaN in every number and GetError() set.\n\nThe mean difference is the first group minus the second (or the sample mean minus the hypothesised mean for a one-sample test, or the mean of the pairwise differences for a paired one). The confidence interval is for that difference.",
+			"functions": {
+				"GetCiHigh": {
+					"descriptions": ["**Upper end of the confidence interval for the difference.**\n\n```method : public : GetCiHigh() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetCiLow": {
+					"descriptions": ["**Lower end of the confidence interval for the difference.**\n\n```method : public : GetCiLow() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetCohenD": {
+					"descriptions": ["**Cohen's d: the mean difference over the pooled standard deviation (two-sample), or over the standard deviation of the sample (one-sample) or of the differences (paired).**\n\n```method : public : GetCohenD() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetDf": {
+					"descriptions": ["**Degrees of freedom (fractional for the Welch test).**\n\n```method : public : GetDf() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the test did not run, or an empty string.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetHedgesG": {
+					"descriptions": ["**Hedges' g: Cohen's d times the exact small-sample correction Gamma(df/2) / (sqrt(df/2) * Gamma((df-1)/2)) (see Dist->HedgesJ).**\n\n```method : public : GetHedgesG() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetLevel": {
+					"descriptions": ["**Confidence level the interval was made at.**\n\n```method : public : GetLevel() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMean1": {
+					"descriptions": ["**Mean of the first sample.**\n\n```method : public : GetMean1() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMean2": {
+					"descriptions": ["**Mean of the second sample, or the hypothesised mean for a one-sample test.**\n\n```method : public : GetMean2() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMeanDiff": {
+					"descriptions": ["**Mean difference: first minus second.**\n\n```method : public : GetMeanDiff() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMethod": {
+					"descriptions": ["**Name of the test.**\n\n```method : public : GetMethod() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetN1": {
+					"descriptions": ["**Size of the first sample (or the only one).**\n\n```method : public : GetN1() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetN2": {
+					"descriptions": ["**Size of the second sample, 0 for a one-sample test.**\n\n```method : public : GetN2() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetP": {
+					"descriptions": ["**Two-sided p-value.**\n\n```method : public : GetP() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetStdError": {
+					"descriptions": ["**Standard error of the mean difference.**\n\n```method : public : GetStdError() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetT": {
+					"descriptions": ["**The t statistic.**\n\n```method : public : GetT() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"IsSignificant": {
+					"descriptions": ["**Whether the p-value is below a significance level.**\n\n```method : public : IsSignificant(alpha:Float) ~ Bool```\n\n\n\nalpha: Float\n\nreturn: Bool"]
+				},
+				"IsValid": {
+					"descriptions": ["**Whether the test ran.**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
+				}
+			}
 		}
 	},
 	"class-bundle-names": {
@@ -22640,6 +22960,66 @@
 			{
 				"bundle": "API.Anthropic",
 				"file": ""
+			}
+		],
+		"Correlation": [
+			{
+				"bundle": "System.Stats",
+				"file": "stats.obl"
+			}
+		],
+		"CorrelationResult": [
+			{
+				"bundle": "System.Stats",
+				"file": "stats.obl"
+			}
+		],
+		"Design": [
+			{
+				"bundle": "System.Stats",
+				"file": "stats.obl"
+			}
+		],
+		"Dist": [
+			{
+				"bundle": "System.Stats",
+				"file": "stats.obl"
+			}
+		],
+		"OLS": [
+			{
+				"bundle": "System.Stats",
+				"file": "stats.obl"
+			}
+		],
+		"OLSResult": [
+			{
+				"bundle": "System.Stats",
+				"file": "stats.obl"
+			}
+		],
+		"Stats": [
+			{
+				"bundle": "System.Stats",
+				"file": "stats.obl"
+			}
+		],
+		"StatsFormat": [
+			{
+				"bundle": "System.Stats",
+				"file": "stats.obl"
+			}
+		],
+		"TTest": [
+			{
+				"bundle": "System.Stats",
+				"file": "stats.obl"
+			}
+		],
+		"TTestResult": [
+			{
+				"bundle": "System.Stats",
+				"file": "stats.obl"
 			}
 		]
 	},
