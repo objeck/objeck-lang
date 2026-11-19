@@ -866,6 +866,12 @@ each(s in stemmed) {
 	default IDF is smoothed as scikit-learn's is, ln((1 + N) / (1 + df)) + 1, and vectors are
 	scaled to unit length, so the cosine similarity of two of them is their dot product.
 
+	A term is a word, or, with a min_n/max_n range as scikit-learn's ngram_range, a run of
+	words joined by a space ("not very good"). Vocabulary, document frequencies, smoothed IDF
+	and unit-length vectors follow TfidfVectorizer; two differences: words come from
+	Tokenizer->WordTokenize (which keeps one-letter words) and the term frequency is a share of
+	the document's terms rather than a raw count, which unit length cancels.
+
 ```
 documents := ["The cat sat on the mat", "The dog sat on the log", "Cats and dogs are pets"];
 tfidf := System.NLP.TF_IDF->New(stem : true);
@@ -884,15 +890,25 @@ System.NLP.TextSimilarity->CosineSimilarity(a, b)->PrintLine();
 		@l2_normalize : Bool;
 		@remove_stopwords : Bool;
 		@stem : Bool;
+		@min_n : Int;
+		@max_n : Int;
+		@min_df : Int;
+		@max_features : Int;
+		@error : String;
 
 		#~
-		Constructor
+		Constructor. The last four parameters are optional and default to what this class always
+		did: single words, every word kept.
 		@param smooth_idf smooth IDF as ln((1 + N) / (1 + df)) + 1, so a word in every document still weighs 1; false gives the raw ln(N / df)
 		@param l2_normalize scale each vector to unit length
 		@param remove_stopwords drop common English stopwords before counting
 		@param stem count words by their Porter stem, so "cat" and "cats" share a column
+		@param min_n shortest term in words (1 = single words), as the first number of scikit-learn's ngram_range
+		@param max_n longest term in words, as the second number of ngram_range; (1, 2) is words and word pairs, (1, 3) adds triples
+		@param min_df keep only terms found in at least this many documents
+		@param max_features keep only this many terms, those most frequent across the corpus (ties go to the term seen first); 0 keeps all
 		~#
-		New(smooth_idf : Bool := true, l2_normalize : Bool := true, remove_stopwords : Bool := false, stem : Bool := false) {
+		New(smooth_idf : Bool := true, l2_normalize : Bool := true, remove_stopwords : Bool := false, stem : Bool := false, min_n : Int := 1, max_n : Int := 1, min_df : Int := 1, max_features : Int := 0) {
 			@vocabulary := Hash->New()<String, IntRef>;
 			@idf := Float->New[0];
 			@document_count := 0;
@@ -900,6 +916,57 @@ System.NLP.TextSimilarity->CosineSimilarity(a, b)->PrintLine();
 			@l2_normalize := l2_normalize;
 			@remove_stopwords := remove_stopwords;
 			@stem := stem;
+			@min_n := min_n;
+			@max_n := max_n;
+			@min_df := min_df;
+			@max_features := max_features;
+
+			if(min_n < 1) {
+				@error := "min_n must be at least 1";
+			}
+			else if(max_n < min_n) {
+				@error := "max_n must not be less than min_n";
+			}
+			else if(min_df < 1) {
+				@error := "min_df must be at least 1";
+			}
+			else if(max_features < 0) {
+				@error := "max_features must not be negative";
+			};
+		}
+
+		#~
+		Whether the settings given to the constructor make sense: an n-gram range of min_n >= 1
+		and max_n >= min_n, a min_df of at least 1 and a max_features of at least 0. An invalid
+		vectorizer fits an empty vocabulary and transforms to empty vectors; it does not crash.
+		@return true when Fit can build a vocabulary
+		~#
+		method : public : IsValid() ~ Bool {
+			return @error = Nil;
+		}
+
+		#~
+		Why the vectorizer is not valid.
+		@return the reason, or Nil when it is valid
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		The shortest term, in words.
+		@return min_n
+		~#
+		method : public : GetMinN() ~ Int {
+			return @min_n;
+		}
+
+		#~
+		The longest term, in words.
+		@return max_n
+		~#
+		method : public : GetMaxN() ~ Int {
+			return @max_n;
 		}
 
 		#~
@@ -911,6 +978,11 @@ docs := ["the cat sat on the mat", "the dog ran in the park", "cats and dogs are
 tfidf := TF_IDF->New();
 tfidf->Fit(docs);
 "Vocabulary size: {$tfidf->GetVocabularySize()}"->PrintLine();
+
+# words and word pairs, as scikit-learn's ngram_range=(1, 2)
+bigrams := TF_IDF->New(min_n : 1, max_n : 2);
+bigrams->Fit(docs);
+bigrams->GetVocabulary()->Has("the cat")->PrintLine();
 ```
 		~#
 		method : public : Fit(documents : String[]) ~ Nil {
@@ -919,32 +991,76 @@ tfidf->Fit(docs);
 			@idf := Float->New[0];
 			@document_count := 0;
 
-			if(documents = Nil | documents->Size() = 0) {
+			if(@error <> Nil | documents = Nil | documents->Size() = 0) {
 				return;
 			};
 
 			@document_count := documents->Size();
 
-			# vocabulary in first-seen order, and the number of documents holding each term
+			# terms in first-seen order, the number of documents holding each, and its total count
+			order := Vector->New()<String>;
 			doc_freq := Hash->New()<String, IntRef>;
+			total_freq := Hash->New()<String, IntRef>;
 			each(doc := documents) {
 				seen := Hash->New()<String, BoolRef>;
 				terms := Terms(doc);
 				each(term := terms) {
-					if(<>@vocabulary->Has(term)) {
-						@vocabulary->Insert(term, IntRef->New(@vocabulary->Size()));
+					count := doc_freq->Find(term);
+					if(count = Nil) {
+						order->AddBack(term);
+						doc_freq->Insert(term, IntRef->New(0));
+						total_freq->Insert(term, IntRef->New(0));
 					};
+
+					total := total_freq->Find(term);
+					total->Set(total->Get() + 1);
 
 					if(<>seen->Has(term)) {
 						seen->Insert(term, BoolRef->New(true));
 						count := doc_freq->Find(term);
-						if(count <> Nil) {
-							count->Set(count->Get() + 1);
-						}
-						else {
-							doc_freq->Insert(term, IntRef->New(1));
-						};
+						count->Set(count->Get() + 1);
 					};
+				};
+			};
+
+			# a term seen in too few documents is dropped, then only the most frequent are kept
+			candidates := Vector->New()<String>;
+			each(i : order) {
+				term := order->Get(i);
+				if(doc_freq->Find(term)->Get() >= @min_df) {
+					candidates->AddBack(term);
+				};
+			};
+
+			limited := @max_features > 0 & candidates->Size() > @max_features;
+			threshold := 0;
+			ties := 0;
+			if(limited) {
+				counts := IntVector->New();
+				each(i : candidates) {
+					counts->AddBack(total_freq->Find(candidates->Get(i))->Get());
+				};
+				counts->Sort();
+				threshold := counts->Get(counts->Size() - @max_features);
+
+				# of the terms exactly at the threshold, as many as still fit are taken
+				ties := @max_features;
+				each(i : candidates) {
+					if(total_freq->Find(candidates->Get(i))->Get() > threshold) {
+						ties -= 1;
+					};
+				};
+			};
+
+			each(i : candidates) {
+				term := candidates->Get(i);
+				freq := total_freq->Find(term)->Get();
+				if(<>limited | freq > threshold) {
+					@vocabulary->Insert(term, IntRef->New(@vocabulary->Size()));
+				}
+				else if(freq = threshold & ties > 0) {
+					ties -= 1;
+					@vocabulary->Insert(term, IntRef->New(@vocabulary->Size()));
 				};
 			};
 
@@ -1010,19 +1126,32 @@ vec := tfidf->Transform("the cat chased the dog");
 			return tfidf;
 		}
 
-		# a document's terms: lowercased words, optionally without stopwords and stemmed
+		# a document's terms: lowercased words, optionally without stopwords and stemmed, then the
+		# word n-grams of min_n to max_n words, shortest first, as scikit-learn orders them
 		method : Terms(document : String) ~ String[] {
 			tokens := Tokenizer->WordTokenize(document);
 			if(@remove_stopwords) {
 				tokens := TextPreprocessor->RemoveStopwords(tokens);
 			};
 
-			terms := String->New[tokens->Size()];
+			words := String->New[tokens->Size()];
 			each(i : tokens) {
-				terms[i] := @stem ? TextPreprocessor->Stem(tokens[i]) : tokens[i]->ToLower();
+				words[i] := @stem ? TextPreprocessor->Stem(tokens[i]) : tokens[i]->ToLower();
 			};
 
-			return terms;
+			if(@min_n = 1 & @max_n = 1) {
+				return words;
+			};
+
+			terms := Vector->New()<String>;
+			for(n := @min_n; n <= @max_n; n += 1;) {
+				grams := Tokenizer->WordNGrams(words, n);
+				each(g := grams) {
+					terms->AddBack(g);
+				};
+			};
+
+			return terms->ToArray();
 		}
 
 		#~
@@ -1066,6 +1195,499 @@ idx := tfidf->GetVocabulary()->Find("cat")->Get();
 			};
 
 			return copy;
+		}
+	}
+
+	#~
+	Counts misspelled words against a word list the program supplies, for the misspelling
+	feature of fake-review and fake-news detectors. No dictionary ships with Objeck: load a
+	newline-delimited list of words, one per line, such as a Linux /usr/share/dict/words, the
+	SCOWL / aspell word lists (http://wordlist.aspell.net) or the "words_alpha.txt" list of
+	English words; check the licence of the list you pick. Matching ignores case.
+
+	Words are found the way Tokenizer->WordTokenize finds them, so the same text gives the same
+	tokens as TextPreprocessor and TF_IDF. A token that holds a digit ("COVID-19", "3.14") is
+	never counted as misspelled, and a possessive ("dog's") is checked without its "'s".
+	The rate is the misspelled tokens over all tokens, digit tokens included.
+
+	A checker that is not loaded, and a Nil text, give -1 (count) or -1.0 (rate) rather than a
+	crash; an empty text has no tokens and gives 0 and 0.0.
+
+```
+checker := System.NLP.SpellChecker->New("words.txt");
+if(<>checker->IsLoaded()) {
+  checker->GetError()->PrintLine();
+  return;
+};
+"{$checker->CountMisspelled("teh cat sat on teh mat")} of 6"->PrintLine();
+"rate {$checker->MisspellingRate("teh cat sat on teh mat")}"->PrintLine();
+suggestions := checker->Suggest("teh", 2, 3);
+```
+	~#
+	class SpellChecker {
+		@words : Hash<String, BoolRef>;
+		@error : String;
+		@loaded : Bool;
+
+		#~
+		Constructor with an empty word list: add words with AddWord.
+		~#
+		New() {
+			@words := Hash->New()<String, BoolRef>;
+			@loaded := true;
+		}
+
+		#~
+		Constructor that loads a word list.
+		@param path newline-delimited word list; blank lines and lines starting with '#' are skipped
+		~#
+		New(path : String) {
+			@words := Hash->New()<String, BoolRef>;
+			Load(path);
+		}
+
+		#~
+		Adds the words of a file to the list, case folded.
+		@param path newline-delimited word list
+		@return the number of words read, or -1 when the file did not open (see GetError)
+		~#
+		method : public : Load(path : String) ~ Int {
+			if(path = Nil) {
+				@error := "no word list path";
+				@loaded := false;
+				return -1;
+			};
+
+			reader := System.IO.Filesystem.FileReader->New(path);
+			if(<>reader->IsOpen()) {
+				@error := "the word list '{$path}' did not open";
+				@loaded := false;
+				return -1;
+			};
+
+			added := 0;
+			line := reader->ReadLine();
+			while(line <> Nil) {
+				line := line->Trim();
+				if(<>line->IsEmpty() & line->Get(0) <> '#') {
+					@words->Insert(line->ToLower(), BoolRef->New(true));
+					added += 1;
+				};
+				line := reader->ReadLine();
+			};
+			reader->Close();
+
+			@error := Nil;
+			@loaded := added > 0;
+			if(added = 0) {
+				@error := "the word list '{$path}' holds no words";
+			};
+
+			return added;
+		}
+
+		#~
+		Adds one word to the list, e.g. a domain term.
+		@param word the word
+		~#
+		method : public : AddWord(word : String) ~ Nil {
+			if(word <> Nil & <>word->Trim()->IsEmpty()) {
+				@words->Insert(word->Trim()->ToLower(), BoolRef->New(true));
+				@loaded := true;
+				@error := Nil;
+			};
+		}
+
+		#~
+		Whether the list holds words, so counts mean something.
+		@return true when loaded
+		~#
+		method : public : IsLoaded() ~ Bool {
+			return @loaded & @words->Size() > 0;
+		}
+
+		#~
+		Why the list did not load.
+		@return the reason, or Nil
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		The number of distinct words in the list.
+		@return word count
+		~#
+		method : public : GetWordCount() ~ Int {
+			return @words->Size();
+		}
+
+		#~
+		Whether a word is in the list, ignoring case; a possessive ("dog's") passes when its
+		stem does.
+		@param word the word
+		@return true when the word is known
+		~#
+		method : public : Contains(word : String) ~ Bool {
+			if(word = Nil | word->IsEmpty()) {
+				return false;
+			};
+
+			lower := word->ToLower();
+			if(@words->Has(lower)) {
+				return true;
+			};
+
+			if(lower->Size() > 2 & lower->EndsWith("'s")) {
+				return @words->Has(lower->SubString(lower->Size() - 2));
+			};
+
+			return false;
+		}
+
+		# a token holding a digit is a number or a code, not a word to spell
+		function : private : HasDigit(token : String) ~ Bool {
+			each(i : token->Size()) {
+				if(Char->IsDigit(token->Get(i))) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		The misspelled tokens of a text, in order, case kept.
+		@param text the text
+		@return the tokens not in the list; Nil when the checker is not loaded or the text is Nil
+		~#
+		method : public : Misspelled(text : String) ~ String[] {
+			if(text = Nil | <>IsLoaded()) {
+				return Nil;
+			};
+
+			found := Vector->New()<String>;
+			tokens := Tokenizer->WordTokenize(text);
+			each(i : tokens) {
+				if(<>HasDigit(tokens[i]) & <>Contains(tokens[i])) {
+					found->AddBack(tokens[i]);
+				};
+			};
+
+			return found->ToArray();
+		}
+
+		#~
+		The number of misspelled tokens in a text.
+		@param text the text
+		@return the count; -1 when the checker is not loaded or the text is Nil
+		~#
+		method : public : CountMisspelled(text : String) ~ Int {
+			found := Misspelled(text);
+			if(found = Nil) {
+				return -1;
+			};
+
+			return found->Size();
+		}
+
+		#~
+		The number of tokens a text has, as the rate counts them.
+		@param text the text
+		@return the token count; -1 when the text is Nil
+		~#
+		function : TokenCount(text : String) ~ Int {
+			if(text = Nil) {
+				return -1;
+			};
+
+			return Tokenizer->WordTokenize(text)->Size();
+		}
+
+		#~
+		Misspelled tokens as a share of all tokens.
+		@param text the text
+		@return 0.0 to 1.0; 0.0 for a text with no tokens; -1.0 when the checker is not loaded or the text is Nil
+		~#
+		method : public : MisspellingRate(text : String) ~ Float {
+			found := Misspelled(text);
+			if(found = Nil) {
+				return -1.0;
+			};
+
+			total := TokenCount(text);
+			if(total = 0) {
+				return 0.0;
+			};
+
+			return found->Size()->As(Float) / total->As(Float);
+		}
+
+		#~
+		Words of the list within an edit distance (Levenshtein) of a word, nearest first and
+		alphabetical within a distance. The list is scanned whole, so this is for the few
+		misspellings a report shows, not for every token of a corpus.
+		@param word the word to correct
+		@param max_distance the largest edit distance accepted, at least 1
+		@param max_count the most suggestions to return, at least 1
+		@return the suggestions, empty when none; Nil when the checker is not loaded or the word is Nil
+		~#
+		method : public : Suggest(word : String, max_distance : Int, max_count : Int) ~ String[] {
+			if(word = Nil | <>IsLoaded()) {
+				return Nil;
+			};
+
+			if(max_distance < 1 | max_count < 1 | word->IsEmpty()) {
+				return String->New[0];
+			};
+
+			lower := word->ToLower();
+			names := Vector->New()<String>;
+			distances := IntVector->New();
+			keys := @words->GetKeys()<String>;
+			each(k : keys) {
+				candidate := keys->Get(k);
+				gap := candidate->Size() - lower->Size();
+				if(gap < 0) {
+					gap := -gap;
+				};
+
+				if(gap <= max_distance & <>candidate->Equals(lower)) {
+					d := TextSimilarity->LevenshteinDistance(lower, candidate);
+					if(d <= max_distance) {
+						names->AddBack(candidate);
+						distances->AddBack(d);
+					};
+				};
+			};
+
+			# the nearest max_count, by (distance, word), picked one at a time
+			count := names->Size();
+			if(count > max_count) {
+				count := max_count;
+			};
+
+			taken := Bool->New[names->Size()];
+			result := String->New[count];
+			each(i : count) {
+				best := -1;
+				each(j : names->Size()) {
+					if(<>taken[j]) {
+						if(best < 0 | distances->Get(j) < distances->Get(best) | (distances->Get(j) = distances->Get(best) & names->Get(j)->Compare(names->Get(best)) < 0)) {
+							best := j;
+						};
+					};
+				};
+				taken[best] := true;
+				result[i] := names->Get(best);
+			};
+
+			return result;
+		}
+	}
+
+	#~
+	Small stylometric features of a text, the kind fake-review and fake-news detectors add to
+	word counts: length, word length, vocabulary richness, punctuation, capitals and sentence
+	length. Plain text in, numbers out; no model.
+
+	Definitions (words are Tokenizer->WordTokenize tokens, sentences Tokenizer->SentenceTokenize):
+	characters is the text's length; tokens its word count; average word length the letters per
+	token; type-token ratio the distinct lowercased tokens over tokens; punctuation rate the ASCII
+	punctuation characters over characters; uppercase ratio the capital letters over letters;
+	sentences the sentence count; average sentence length the tokens per sentence. A text with
+	nothing to divide by gives 0.0. A Nil text gives -1 or -1.0 (Extract gives Nil).
+
+```
+text := "Great product! Works perfectly. HIGHLY recommended!!!";
+features := System.NLP.TextFeatures->Extract(text);
+names := System.NLP.TextFeatures->Names();
+each(i : names) {
+  "{$(names[i])}: {$(features[i])}"->PrintLine();
+};
+```
+	~#
+	class TextFeatures {
+		#~
+		The names of the values Extract returns, in order: characters, tokens, avg_word_length,
+		type_token_ratio, punctuation_rate, uppercase_ratio, sentences, avg_sentence_length.
+		@return the feature names
+		~#
+		function : Names() ~ String[] {
+			return ["characters", "tokens", "avg_word_length", "type_token_ratio", "punctuation_rate", "uppercase_ratio", "sentences", "avg_sentence_length"];
+		}
+
+		#~
+		All the features of a text, in the order of Names.
+		@param text the text
+		@return the feature values; Nil for a Nil text
+		~#
+		function : Extract(text : String) ~ Float[] {
+			if(text = Nil) {
+				return Nil;
+			};
+
+			return [CharacterCount(text)->As(Float), TokenCount(text)->As(Float), AverageWordLength(text),
+				TypeTokenRatio(text), PunctuationRate(text), UppercaseRatio(text), SentenceCount(text)->As(Float),
+				AverageSentenceLength(text)];
+		}
+
+		#~
+		The length of a text in characters.
+		@param text the text
+		@return the length; -1 for Nil
+		~#
+		function : CharacterCount(text : String) ~ Int {
+			if(text = Nil) {
+				return -1;
+			};
+
+			return text->Size();
+		}
+
+		#~
+		The number of word tokens in a text.
+		@param text the text
+		@return the count; -1 for Nil
+		~#
+		function : TokenCount(text : String) ~ Int {
+			if(text = Nil) {
+				return -1;
+			};
+
+			return Tokenizer->WordTokenize(text)->Size();
+		}
+
+		#~
+		The mean length of the word tokens in characters.
+		@param text the text
+		@return the mean; 0.0 with no tokens; -1.0 for Nil
+		~#
+		function : AverageWordLength(text : String) ~ Float {
+			if(text = Nil) {
+				return -1.0;
+			};
+
+			tokens := Tokenizer->WordTokenize(text);
+			if(tokens->Size() = 0) {
+				return 0.0;
+			};
+
+			total := 0;
+			each(i : tokens) {
+				total += tokens[i]->Size();
+			};
+
+			return total->As(Float) / tokens->Size()->As(Float);
+		}
+
+		#~
+		The distinct lowercased tokens over all tokens: 1.0 when no word repeats.
+		@param text the text
+		@return the ratio; 0.0 with no tokens; -1.0 for Nil
+		~#
+		function : TypeTokenRatio(text : String) ~ Float {
+			if(text = Nil) {
+				return -1.0;
+			};
+
+			tokens := Tokenizer->WordTokenize(text);
+			if(tokens->Size() = 0) {
+				return 0.0;
+			};
+
+			types := Hash->New()<String, BoolRef>;
+			each(i : tokens) {
+				types->Insert(tokens[i]->ToLower(), BoolRef->New(true));
+			};
+
+			return types->Size()->As(Float) / tokens->Size()->As(Float);
+		}
+
+		#~
+		The ASCII punctuation characters over all characters.
+		@param text the text
+		@return the rate; 0.0 for an empty text; -1.0 for Nil
+		~#
+		function : PunctuationRate(text : String) ~ Float {
+			if(text = Nil) {
+				return -1.0;
+			};
+
+			if(text->IsEmpty()) {
+				return 0.0;
+			};
+
+			count := 0;
+			each(i : text->Size()) {
+				c := text->Get(i)->As(Int);
+				if((c >= 33 & c <= 47) | (c >= 58 & c <= 64) | (c >= 91 & c <= 96) | (c >= 123 & c <= 126)) {
+					count += 1;
+				};
+			};
+
+			return count->As(Float) / text->Size()->As(Float);
+		}
+
+		#~
+		The capital letters over all letters.
+		@param text the text
+		@return the ratio; 0.0 with no letters; -1.0 for Nil
+		~#
+		function : UppercaseRatio(text : String) ~ Float {
+			if(text = Nil) {
+				return -1.0;
+			};
+
+			upper := 0;
+			letters := 0;
+			each(i : text->Size()) {
+				c := text->Get(i);
+				if(Char->IsUpper(c)) {
+					upper += 1;
+					letters += 1;
+				}
+				else if(Char->IsLower(c)) {
+					letters += 1;
+				};
+			};
+
+			if(letters = 0) {
+				return 0.0;
+			};
+
+			return upper->As(Float) / letters->As(Float);
+		}
+
+		#~
+		The number of sentences in a text.
+		@param text the text
+		@return the count; -1 for Nil
+		~#
+		function : SentenceCount(text : String) ~ Int {
+			if(text = Nil) {
+				return -1;
+			};
+
+			return Tokenizer->SentenceTokenize(text)->Size();
+		}
+
+		#~
+		The word tokens per sentence.
+		@param text the text
+		@return the mean; 0.0 with no sentences; -1.0 for Nil
+		~#
+		function : AverageSentenceLength(text : String) ~ Float {
+			if(text = Nil) {
+				return -1.0;
+			};
+
+			sentences := SentenceCount(text);
+			if(sentences = 0) {
+				return 0.0;
+			};
+
+			return TokenCount(text)->As(Float) / sentences->As(Float);
 		}
 	}
 

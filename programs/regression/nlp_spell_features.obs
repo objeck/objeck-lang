@@ -1,0 +1,169 @@
+# EXTRA_LIBS: nlp,gen_collect
+#~
+System.NLP SpellChecker and TextFeatures, with values worked out by hand.
+
+SpellChecker: a word list the test writes itself (nothing is bundled), counts and rate of
+misspelled tokens, case folding, digits and possessives, suggestions in (distance, alphabet)
+order, and the failure values: a missing file, an empty list, Nil and empty text.
+
+TextFeatures: fixed strings whose characters, tokens, word lengths, type-token ratio,
+punctuation, capitals and sentences are counted below by hand, and the degenerate inputs
+(empty text, no letters, Nil).
+~#
+use System.NLP, System.IO.Filesystem, Collection;
+
+class NlpSpellFeaturesTest {
+	@failures : static : Int;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			@failures += 1;
+			"FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return Float->Abs(a - b) < 0.000000001;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		Spelling();
+		Features();
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"All spell checker and text feature checks passed"->PrintLine();
+	}
+
+	function : Spelling() ~ Nil {
+		path := "nlp_spell_words.tmp";
+		writer := FileWriter->New(path);
+		writer->WriteString("# a tiny word list\nthe\ncat\nSat\non\nmat\ndog\nand\ngood\nset\nsit\n\n  product  \n");
+		writer->Close();
+
+		checker := SpellChecker->New(path);
+		File->Delete(path);
+		Check(checker->IsLoaded() & checker->GetError() = Nil, "the word list loads");
+		Check(checker->GetWordCount() = 11, "11 words: comments and blank lines skipped, spaces trimmed (got {$checker->GetWordCount()})");
+		Check(checker->Contains("CAT") & checker->Contains("sat") & <>checker->Contains("teh"), "lookups ignore case");
+
+		text := "The cat sat on teh mat and teh dog";
+		Check(SpellChecker->TokenCount(text) = 9, "9 tokens");
+		Check(checker->CountMisspelled(text) = 2, "'teh' twice is 2 misspellings");
+		Check(Near(checker->MisspellingRate(text), 2.0 / 9.0), "rate 2/9");
+		found := checker->Misspelled(text);
+		Check(found->Size() = 2 & found[0]->Equals("teh") & found[1]->Equals("teh"), "the misspelled tokens come back in order");
+		Check(checker->CountMisspelled("The CAT Sat on THE Mat") = 0 & Near(checker->MisspellingRate("The CAT Sat on THE Mat"), 0.0), "capitals are not misspellings");
+
+		# digits are never misspelled but still count as tokens; a possessive passes with its stem
+		mixed := "good dog 42 gud dog's";
+		Check(SpellChecker->TokenCount(mixed) = 5, "5 tokens with a number and a possessive");
+		Check(checker->CountMisspelled(mixed) = 1, "only 'gud' is wrong: numbers and dog's pass");
+		Check(Near(checker->MisspellingRate(mixed), 0.2), "rate 1/5");
+		Check(checker->CountMisspelled("COVID-19 3.14") = 0, "tokens that hold digits are skipped");
+
+		# suggestions: Levenshtein distance, nearest first, alphabetical within a distance
+		s := checker->Suggest("sot", 1, 5);
+		Check(s->Size() = 3 & s[0]->Equals("sat") & s[1]->Equals("set") & s[2]->Equals("sit"), "'sot' is 1 from sat, set, sit");
+		Check(checker->Suggest("sot", 1, 2)->Size() = 2, "max_count limits the suggestions");
+		s := checker->Suggest("catt", 1, 3);
+		Check(s->Size() = 1 & s[0]->Equals("cat"), "'catt' is 1 from 'cat' only");
+		s := checker->Suggest("mta", 2, 10);
+		Check(s->Size() > 0 & s[0]->Equals("mat"), "'mta' is 2 from 'mat', nearer than the rest (first is mat)");
+		Check(checker->Suggest("zzzzzz", 1, 5)->Size() = 0, "nothing within the distance gives an empty list");
+		s := checker->Suggest("cat", 1, 5);
+		Check(s->Size() = 2 & s[0]->Equals("mat") & s[1]->Equals("sat"), "a word is not its own suggestion: 'cat' is 1 from mat and sat");
+		Check(checker->Suggest("sot", 0, 5)->Size() = 0 & checker->Suggest("sot", 1, 0)->Size() = 0, "a distance or count below 1 gives an empty list");
+
+		# empty and Nil text
+		Check(checker->CountMisspelled("") = 0 & Near(checker->MisspellingRate(""), 0.0), "empty text: 0 and 0.0");
+		Check(checker->CountMisspelled("!!! ???") = 0 & Near(checker->MisspellingRate("!!! ???"), 0.0), "text with no words: 0 and 0.0");
+		Check(checker->CountMisspelled(Nil) = -1 & Near(checker->MisspellingRate(Nil), -1.0), "Nil text: -1 and -1.0");
+		Check(checker->Misspelled(Nil) = Nil & checker->Suggest(Nil, 1, 1) = Nil, "Nil gives Nil lists");
+
+		# failure values
+		missing := SpellChecker->New("no_such_word_list.tmp");
+		Check(<>missing->IsLoaded() & missing->GetError() <> Nil, "a missing file is not loaded, with a reason");
+		Check(missing->CountMisspelled("the cat") = -1 & Near(missing->MisspellingRate("the cat"), -1.0), "and counts -1, not 0");
+		Check(missing->Misspelled("the cat") = Nil & missing->Suggest("cat", 1, 1) = Nil, "and returns Nil lists");
+		Check(SpellChecker->New(Nil)->IsLoaded() = false, "a Nil path is not loaded");
+
+		empty_path := "nlp_spell_empty.tmp";
+		blank := FileWriter->New(empty_path);
+		blank->WriteString("# nothing but a comment\n\n");
+		blank->Close();
+		none := SpellChecker->New(empty_path);
+		File->Delete(empty_path);
+		Check(<>none->IsLoaded() & none->GetError() <> Nil, "a list with no words is not loaded");
+
+		# a list built in code
+		own := SpellChecker->New();
+		Check(<>own->IsLoaded(), "an empty checker is not loaded until it has words");
+		own->AddWord("Hello");
+		own->AddWord("world");
+		Check(own->IsLoaded() & own->CountMisspelled("hello wrold") = 1, "AddWord builds a list: 'wrold' is wrong");
+	}
+
+	function : Features() ~ Nil {
+		# "Hello, World! Hello again." = 26 characters, 4 tokens of 5 letters, 3 distinct
+		# lowercased (hello, world, again), 3 punctuation marks, 3 capitals in 20 letters,
+		# 2 sentences
+		text := "Hello, World! Hello again.";
+		Check(TextFeatures->CharacterCount(text) = 26, "characters: 26");
+		Check(TextFeatures->TokenCount(text) = 4, "tokens: 4");
+		Check(Near(TextFeatures->AverageWordLength(text), 5.0), "average word length: 20 / 4 = 5.0");
+		Check(Near(TextFeatures->TypeTokenRatio(text), 0.75), "type-token ratio: 3 / 4");
+		Check(Near(TextFeatures->PunctuationRate(text), 3.0 / 26.0), "punctuation rate: 3 / 26");
+		Check(Near(TextFeatures->UppercaseRatio(text), 3.0 / 20.0), "uppercase ratio: 3 / 20");
+		Check(TextFeatures->SentenceCount(text) = 2, "sentences: 2");
+		Check(Near(TextFeatures->AverageSentenceLength(text), 2.0), "average sentence length: 4 / 2");
+
+		f := TextFeatures->Extract(text);
+		names := TextFeatures->Names();
+		Check(f->Size() = 8 & names->Size() = 8, "Extract gives 8 values for 8 names");
+		Check(names[0]->Equals("characters") & names[7]->Equals("avg_sentence_length"), "names are in order");
+		Check(Near(f[0], 26.0) & Near(f[1], 4.0) & Near(f[2], 5.0) & Near(f[3], 0.75) & Near(f[4], 3.0 / 26.0) &
+			Near(f[5], 3.0 / 20.0) & Near(f[6], 2.0) & Near(f[7], 2.0), "Extract matches the single features, in order");
+
+		# "ALL CAPS": every letter is a capital; tokens of 3 and 4 letters, one sentence
+		caps := "ALL CAPS";
+		Check(Near(TextFeatures->UppercaseRatio(caps), 1.0), "all capitals: ratio 1.0");
+		Check(Near(TextFeatures->AverageWordLength(caps), 3.5), "ALL CAPS: (3 + 4) / 2 = 3.5");
+		Check(Near(TextFeatures->PunctuationRate(caps), 0.0) & Near(TextFeatures->TypeTokenRatio(caps), 1.0), "no punctuation, no repeated word");
+		Check(TextFeatures->SentenceCount(caps) = 1 & Near(TextFeatures->AverageSentenceLength(caps), 2.0), "one sentence of 2 tokens");
+
+		# a repeated word in different case counts once; digits are not letters
+		rep := "Go go GO 123";
+		Check(TextFeatures->TokenCount(rep) = 4 & Near(TextFeatures->TypeTokenRatio(rep), 0.5), "types: go, 123 over 4 tokens = 0.5");
+		Check(Near(TextFeatures->UppercaseRatio(rep), 3.0 / 6.0), "capitals: G, G, O of 6 letters; digits excluded");
+
+		# no words at all
+		marks := "!!! ???";
+		Check(TextFeatures->CharacterCount(marks) = 7 & TextFeatures->TokenCount(marks) = 0, "punctuation only: 7 characters, 0 tokens");
+		Check(Near(TextFeatures->PunctuationRate(marks), 6.0 / 7.0), "6 of 7 characters are punctuation");
+		Check(Near(TextFeatures->AverageWordLength(marks), 0.0) & Near(TextFeatures->TypeTokenRatio(marks), 0.0) &
+			Near(TextFeatures->UppercaseRatio(marks), 0.0) & Near(TextFeatures->AverageSentenceLength(marks), 0.0), "nothing to divide by gives 0.0");
+
+		# empty text
+		e := TextFeatures->Extract("");
+		allzero := e->Size() = 8;
+		each(i : e) {
+			if(<>Near(e[i], 0.0)) {
+				allzero := false;
+			};
+		};
+		Check(allzero, "empty text: every feature is 0");
+
+		# Nil
+		Check(TextFeatures->Extract(Nil) = Nil, "Extract(Nil) is Nil");
+		Check(TextFeatures->CharacterCount(Nil) = -1 & TextFeatures->TokenCount(Nil) = -1 & TextFeatures->SentenceCount(Nil) = -1, "Nil counts are -1");
+		Check(Near(TextFeatures->AverageWordLength(Nil), -1.0) & Near(TextFeatures->TypeTokenRatio(Nil), -1.0) & Near(TextFeatures->PunctuationRate(Nil), -1.0) &
+			Near(TextFeatures->UppercaseRatio(Nil), -1.0) & Near(TextFeatures->AverageSentenceLength(Nil), -1.0), "Nil ratios are -1.0");
+	}
+}
