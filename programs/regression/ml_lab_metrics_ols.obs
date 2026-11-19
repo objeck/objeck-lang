@@ -1,0 +1,219 @@
+# EXTRA_LIBS: ml,ml_lab,gen_collect,csv,json
+#~
+Experiment->RunMetrics on a regression: the proof that the metric sweep is not
+tied to binary classifiers. A LinearRegression (with intercept) on the first k of
+four features, scored by 5-fold cross-validation, for k = 1..4 and five seeds,
+with the held-out R-squared and RMSE as the metrics.
+
+The data and the folds are integer formulas (below), and every expected number
+below was computed independently: numpy least squares for the fits and scipy for
+the t quantile, mean, standard deviation and confidence interval, by
+ml_lab_golden/metrics_expected.py. Nothing here is compared with Objeck's own
+output from an earlier run.
+~#
+use System.ML;
+use System.ML.Lab;
+
+class MlLabMetricsOls {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		exp := Experiment->New("Linear regression: number of features", "n_features");
+		exp->SetValues([1.0, 2.0, 3.0, 4.0]);
+		exp->SetSeeds([1, 2, 3, 4, 5]);
+		exp->AddSetting("cv", "5-fold");
+		run := exp->Replicate(OlsTrial->New());
+
+		ok := Report("four settings, five seeds, three columns (the two metrics and trial_ms)",
+			run->GetRowCount() = 4 & run->GetSeeds()->Size() = 5 & run->GetColumns()->Size() = 3 & run->GetColumns()[2]->Equals("trial_ms")) & ok;
+		ok := Report("no trial failed", run->GetFailureCount() = 0) & ok;
+
+		r2 := [[0.6872373186415575, 0.7168853999760776, 0.7159821182465688, 0.727588255226751, 0.6768296170030264],
+			[0.877669057447142, 0.9025221899548068, 0.8969254100058215, 0.9076558168661973, 0.894398206968306],
+			[0.9618706725256082, 0.9646828924913693, 0.9576486170824549, 0.9654771013409945, 0.9609309424515079],
+			[0.9591253013607155, 0.9635772834015164, 0.9562630033356285, 0.9641367573712557, 0.9610505917160921]];
+		rmse := [[0.347783174130592, 0.3425731314833475, 0.33764626661619546, 0.3324425156570736, 0.34161467929356953],
+			[0.2093801793598063, 0.19953127657719172, 0.20670439233899524, 0.1970590128463662, 0.19530404897119608],
+			[0.12450721399780096, 0.12130243262147626, 0.1347015993257962, 0.12037296839116933, 0.11980888098871337],
+			[0.13182818071476904, 0.12288688933508005, 0.13694106073884874, 0.12305991145616176, 0.1196376312064811]];
+		# [mean, std, min, max, ci_low, ci_high] of the five R-squared values per k
+		stats := [[0.7049045418187962, 0.02168603637065656, 0.6768296170030264, 0.727588255226751, 0.6779777711936146, 0.7318313124439779],
+			[0.8958341362484548, 0.011376566421552348, 0.877669057447142, 0.9076558168661973, 0.8817082632996394, 0.9099600091972702],
+			[0.962122045178387, 0.0031347971888416584, 0.9576486170824549, 0.9654771013409945, 0.9582296803673319, 0.966014409989442],
+			[0.9608305874370415, 0.0032517043747686005, 0.9562630033356285, 0.9641367573712557, 0.9567930631820897, 0.9648681116919934]];
+
+		each(k : 4) {
+			tag := "setting {$k}";
+			ok := Report("{$tag}: per-seed R-squared matches numpy", Same(run->GetValues(k, "cv_r2"), Row(r2, k))) & ok;
+			ok := Report("{$tag}: per-seed RMSE matches numpy", Same(run->GetValues(k, "cv_rmse"), Row(rmse, k))) & ok;
+			s := run->GetSummary(k, "cv_r2");
+			want := Row(stats, k);
+			ok := Report("{$tag}: count, mean, std, min, max match scipy",
+				s->GetCount() = 5 & Close(s->GetMean(), want[0]) & Close(s->GetStd(), want[1]) & Close(s->GetMin(), want[2]) & Close(s->GetMax(), want[3])) & ok;
+			ok := Report("{$tag}: the 95% t interval of the mean matches scipy", Close(s->GetCiLow(), want[4]) & Close(s->GetCiHigh(), want[5])) & ok;
+			times := run->GetValues(k, "trial_ms");
+			ok := Report("{$tag}: every trial was timed", Positive(times)) & ok;
+		};
+
+		table := run->ToTable();
+		ok := Report("ToTable has a row per setting and the mean in each cell",
+			table->Size() = 4 & Close(table->Get(2, 0), stats[2, 0]) & Close(table->Get(2, 1), Mean(Row(rmse, 2))) & Close(table->GetStd(2, 0), stats[2, 1])) & ok;
+		ok := Report("RunMetrics returns the same table",
+			Close(exp->RunMetrics(OlsTrial->New())->Get(3, 0), stats[3, 0])) & ok;
+		ok := Report("more features fit better until the extra one only adds noise",
+			table->Get(0, 0) < table->Get(1, 0) & table->Get(1, 0) < table->Get(2, 0) & table->Get(3, 0) < table->Get(2, 0)) & ok;
+		ok := Report("the table renders and charts", table->ToText()->Has("n_features") & table->ToMarkdown()->Has("cv_r2")
+			& table->ToCsv()->Has("cv_rmse_std") & table->ToChart(["cv_r2"])->ToSvg()->Has("<svg")) & ok;
+
+		summary := run->ToSummaryTable();
+		ok := Report("the summary table has a row per setting and metric and its interval matches scipy",
+			summary->Size() = 12 & summary->GetRowName(0)->Equals("1 | cv_r2")
+			& Close(summary->GetColumn("ci_low")[6], stats[2, 4]) & Close(summary->GetColumn("ci_high")[6], stats[2, 5])
+			& summary->GetColumn("n")[6] = 5.0) & ok;
+		raw := run->ToRawTable();
+		ok := Report("the raw table keeps every seed", raw->Size() = 20 & raw->GetRowName(7)->Equals("2 | 3") & Close(raw->Get(7, 0), r2[1, 2])) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Row(m : Float[,], r : Int) ~ Float[] {
+		dims := m->Size();
+		out := Float->New[dims[1]];
+		each(c : out) {
+			out[c] := m[r, c];
+		};
+
+		return out;
+	}
+
+	function : Mean(v : Float[]) ~ Float {
+		sum := 0.0;
+		each(i : v) {
+			sum += v[i];
+		};
+
+		return sum / v->Size()->As(Float);
+	}
+
+	function : Positive(v : Float[]) ~ Bool {
+		each(i : v) {
+			if(<>(v[i] >= 0.0 & v[i] < 1.0e9)) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Same(a : Float[], b : Float[]) ~ Bool {
+		if(a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(<>Close(a[i], b[i])) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Close(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.0000001;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}
+
+# Held-out R-squared and RMSE, averaged over five folds, of a LinearRegression
+# with an intercept on the first k features. The fold of sample i for seed s is
+# ((i * m + 5 * s) % 60) // 12 with m = 7, 11, 13, 17, 19 for seeds 1..5.
+class OlsTrial implements MetricTrial {
+	@x : Float[,];
+	@y : Float[];
+
+	New() {
+		@x := Float->New[60, 4];
+		@y := Float->New[60];
+		each(i : 60) {
+			each(j : 4) {
+				@x[i, j] := ((i * (j + 3) * 17 + j * 31) % 97)->As(Float) / 97.0 - 0.5;
+			};
+			noise := (((i * 53 + 7) % 29)->As(Float) / 29.0 - 0.5) * 0.4;
+			@y[i] := 1.0 + 2.0 * @x[i, 0] - @x[i, 1] + 0.5 * @x[i, 2] + noise;
+		};
+	}
+
+	method : public : GetColumns() ~ String[] {
+		return ["cv_r2", "cv_rmse"];
+	}
+
+	method : public : Run(value : Float, name : String, seed : Int) ~ Float[] {
+		k := value->As(Int);
+		mults := [7, 11, 13, 17, 19];
+		mult := mults[seed - 1];
+		fold := Int->New[60];
+		each(i : 60) {
+			fold[i] := ((i * mult + 5 * seed) % 60) / 12;
+		};
+
+		r2_sum := 0.0;
+		rmse_sum := 0.0;
+		each(f : 5) {
+			tr_x := Float->New[48, k];
+			tr_y := Float->New[48, 1];
+			te_x := Float->New[12, k];
+			te_y := Float->New[12];
+			a := 0;
+			b := 0;
+			each(i : 60) {
+				if(fold[i] = f) {
+					each(j : k) {
+						te_x[b, j] := @x[i, j];
+					};
+					te_y[b] := @y[i];
+					b += 1;
+				}
+				else {
+					each(j : k) {
+						tr_x[a, j] := @x[i, j];
+					};
+					tr_y[a, 0] := @y[i];
+					a += 1;
+				};
+			};
+
+			model := LinearRegression->New();
+			if(<>model->Fit(tr_x, tr_y, true)) {
+				return Nil;
+			};
+			pred := model->Predict(te_x);
+
+			mean := 0.0;
+			each(i : 12) {
+				mean += te_y[i];
+			};
+			mean /= 12.0;
+			sse := 0.0;
+			sst := 0.0;
+			each(i : 12) {
+				sse += (te_y[i] - pred[i, 0]) * (te_y[i] - pred[i, 0]);
+				sst += (te_y[i] - mean) * (te_y[i] - mean);
+			};
+			r2_sum += 1.0 - sse / sst;
+			rmse_sum += Float->Sqrt(sse / 12.0);
+		};
+
+		return [r2_sum / 5.0, rmse_sum / 5.0];
+	}
+}

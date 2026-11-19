@@ -1427,6 +1427,42 @@ loss := Chart->LossCurve("Training loss", ["lr=0.1", "lr=0.01"], losses);  # row
 
 A cell, a deviation or a chart point that is NaN or infinite is a missing value, not a number: `System.Stats` returns NaN by design (a degenerate fit has no p-value), and it can flow straight into a `ResultTable`. `ToText` and `ToMarkdown` write `n/a`, `ToCsv` writes an empty field, `ToJson` writes `null` (so the document is valid JSON), and `FromCsv` and `FromJson` read an empty field or `null` back as NaN (an infinity does not come back: it becomes NaN). A `Chart` skips a point whose x or y is not finite, breaks the line there, and draws no error bar for a non-finite error; a series with no finite point draws nothing. Finite values are written exactly as before. `ResultTable->IsFinite(v)` is the test.
 
+#### Metric sweeps over any model (`MetricTrial`, `Experiment->RunMetrics`)
+
+`Experiment->Run` computes eight binary-classifier metrics. For anything else (an OLS and its R-squared and AIC, a CNN's validation accuracy, an LDA's coherence, a BERT head's AUC) write a `MetricTrial`: it names its columns and returns one number per column for a `(value, name, seed)`. The experiment runs every value of the swept parameter with every seed (one parameter at a time: one `Experiment` per parameter, the same seeds and the same split in each), times each trial, and keeps **every per-seed value**.
+
+```ruby
+use System.ML, System.ML.Lab;
+
+class RidgeTrial implements MetricTrial {
+  @split : DataSplit;
+  New(split : DataSplit) { @split := split; }
+  method : public : GetColumns() ~ String[] { return ["r2", "rmse"]; }
+  method : public : Run(value : Float, name : String, seed : Int) ~ Float[] {
+    model := RidgeRegression->New(value);                 # the swept parameter: alpha
+    if(<>model->Fit(train_x, train_y)) { return Nil; }    # Nil = this trial failed
+    # ... score on the held-out data ...
+    return [r_squared, rmse];                             # NaN in a slot = no value for that metric
+  }
+}
+
+exp := Experiment->New("Ridge: alpha", "alpha");
+exp->SetValues([0.01, 0.1, 1.0, 10.0]);
+exp->SetSeeds([1, 2, 3, 4, 5]);
+exp->AddSetting("cv", "5-fold");
+run := exp->Replicate(RidgeTrial->New(split));            # a MetricRun; exp->RunMetrics(trial) is run->ToTable()
+
+run->ToTable()->ToMarkdown()->PrintLine();                # mean ± std per metric, plus trial_ms
+run->ToSummaryTable()->Save("ridge_summary.csv");         # mean, std, min, max, n, ci_low, ci_high
+run->ToRawTable()->Save("ridge_raw.json");                # every seed's values, unaveraged
+s := run->GetSummary(2, "r2");                            # setting 2, metric r2
+"{$s->GetMean()} ({$s->GetCiLow()} to {$s->GetCiHigh()}), n={$s->GetCount()}"->PrintLine();
+paired := run->GetValues(2, "r2");                        # Float[] per seed, for a paired test
+run->ToTable()->ToChart(["r2"])->Save("ridge_r2.svg");
+```
+
+Per setting and metric `SeedSummary` gives the count of usable values, the mean, the sample standard deviation (n - 1), minimum, maximum and a Student t confidence interval for the mean (`exp->SetConfidence(0.99)`; the default is 0.95). It needs no other library: the t quantile is computed inside `ml_lab`. A value that is NaN or infinite is a missing value and is left out, and the count says how many were used. A trial that returns `Nil` or raises an `Error` is recorded in `run->GetFailures()` (and counted in the footnote), its metrics are missing for that seed, and the sweep continues. With one seed the deviation and interval are NaN (shown as `n/a`); zero seeds, an empty grid, a trial that names no columns (or `trial_ms`, which the experiment measures) and a trial whose array is not one value per column raise `LabError`. `Experiment->Run` and its eight metrics are unchanged. The regression port is [`ml_lab_metrics_ols.obs`](../programs/regression/ml_lab_metrics_ols.obs): a `LinearRegression` on one to four features, five-fold cross-validated, five seeds, checked against numpy and scipy ([`metrics_expected.py`](../programs/regression/ml_lab_golden/metrics_expected.py)). A trial must be a class: a function returning a `Float[]` cannot be passed as a lambda today.
+
 ---
 
 ### Local vector search (System.ML.VectorSearch)

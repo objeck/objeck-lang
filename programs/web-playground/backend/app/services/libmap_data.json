@@ -125,7 +125,7 @@
   "ml_lab": {
    "deps": ["gen_collect", "csv", "json", "ml"],
    "bundles": {
-    "System.ML.Lab": ["Chart", "ChartSeries", "DataSplit", "Experiment", "IndexSplit", "LabError", "Labels", "Partition", "Resample", "ResultTable", "Sample", "Stopwatch", "Trial", "TrialResult"]
+    "System.ML.Lab": ["Chart", "ChartSeries", "DataSplit", "Experiment", "IndexSplit", "LabError", "Labels", "MetricRun", "MetricTrial", "Partition", "Resample", "ResultTable", "Sample", "SeedSummary", "Stopwatch", "Trial", "TrialResult"]
    }
   },
   "ml_vector": {

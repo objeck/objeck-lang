@@ -2090,6 +2090,7 @@ table->ToMarkdown()->PrintLine();
 		@names : String[];
 		@seeds : Int[];
 		@settings : Vector<String>;
+		@confidence : Float;
 
 		#~
 		Constructor
@@ -2101,6 +2102,7 @@ table->ToMarkdown()->PrintLine();
 			@parameter := parameter;
 			@settings := Vector->New()<String>;
 			@seeds := Int->New[1];
+			@confidence := 0.95;
 		}
 
 		#~
@@ -2243,6 +2245,144 @@ table->ToMarkdown()->PrintLine();
 			return table;
 		}
 
+		#~
+		The confidence level of the interval RunMetrics and Replicate report for
+		the mean over the seeds. The default is 0.95.
+		@param level strictly between 0 and 1
+		~#
+		method : public : SetConfidence(level : Float) ~ Nil {
+			if(<>(level > 0.0 & level < 1.0)) {
+				Refuse("the confidence level must be strictly between 0 and 1");
+			};
+
+			@confidence := level;
+		}
+
+		#~
+		Runs a metric sweep and returns its mean over the seeds: one row per
+		value, one column per metric of the trial plus trial_ms (the wall-clock
+		time of each trial), mean and sample standard deviation per cell. Use
+		Replicate for the per-seed values, the minimum, maximum, count and
+		confidence interval. Run and its eight classifier metrics are
+		unchanged; this is the route for any other model or measure.
+
+		To change one parameter at a time, make one Experiment per parameter,
+		with the same seeds and a trial that builds the same split from the seed
+		(or captures one split), and AddSetting for the parameters held fixed.
+
+		A trial that returns Nil or raises an Error is recorded, not fatal: its
+		metrics are missing for that seed, the run continues, and the footnote
+		and MetricRun->GetFailures say so.
+		@param trial builds, fits and scores for one value and seed
+		@return the table; raises LabError when no values are set, the trial is Nil or names its columns badly, or Run returns an array of the wrong length
+		~#
+		method : public : RunMetrics(trial : MetricTrial) ~ ResultTable {
+			return Replicate(trial)->ToTable();
+		}
+
+		#~
+		Runs a metric sweep and keeps everything: every value of every metric
+		for every setting and seed (including trial_ms), and the reason for each
+		failed trial. The result renders three ResultTables (means, a summary
+		with min, max, n and a confidence interval, and the raw per-seed rows).
+		@param trial builds, fits and scores for one value and seed
+		@return the run; raises LabError as RunMetrics does
+		~#
+		method : public : Replicate(trial : MetricTrial) ~ MetricRun {
+			if(trial = Nil) {
+				Refuse("trial is Nil");
+			};
+			if(@values = Nil) {
+				Refuse("call SetValues before RunMetrics");
+			};
+
+			named := trial->GetColumns();
+			if(named = Nil | named->Size() = 0) {
+				Refuse("the trial names no columns");
+			};
+			cols := named->Size() + 1;
+			columns := String->New[cols];
+			each(c : named) {
+				if(named[c] = Nil | named[c]->Size() = 0) {
+					Refuse("a column needs a name");
+				};
+				if(named[c]->Equals("trial_ms")) {
+					Refuse("trial_ms is added by the experiment; name the column differently");
+				};
+				each(p : c) {
+					if(named[p]->Equals(named[c])) {
+						n := named[c];
+						Refuse("column '{$n}' is named twice");
+					};
+				};
+				columns[c] := named[c];
+			};
+			columns[cols - 1] := "trial_ms";
+
+			reps := @seeds->Size();
+			run := MetricRun->New(@title, @parameter, "", columns, @names, @values, @seeds, @confidence);
+			sw := Stopwatch->New();
+			out : Float[];
+			failure : String;
+			value : Float;
+			name : String;
+			seed : Int;
+
+			each(i : @values) {
+				value := @values[i];
+				name := @names[i];
+				each(s : reps) {
+					seed := @seeds[s];
+					out := Nil;
+					failure := "the trial returned Nil";
+					sw->Reset();
+					sw->Start();
+					# a trial that raises an Error has failed; it does not end the sweep
+					try {
+						out := trial->Run(value, name, seed);
+					}
+					on(e : Error) {
+						out := Nil;
+						failure := e->GetMessage();
+					};
+					ms := sw->Stop();
+
+					if(out <> Nil & out->Size() <> cols - 1) {
+						got := out->Size();
+						want := cols - 1;
+						Refuse("the trial returned {$got} values for {$want} columns for {$name} (seed {$seed})");
+					};
+					# a failed trial still has a time
+					run->Set(i, s, out, ms, failure);
+				};
+			};
+
+			run->SetFootnote(MetricFootnote(run));
+
+			return run;
+		}
+
+		method : MetricFootnote(run : MetricRun) ~ String {
+			out := Footnote();
+			if(@seeds->Size() <= 1) {
+				if(out->Size() > 0) {
+					out += "; ";
+				};
+				only := @seeds[0];
+				out += "single seed ({$only}), no deviation";
+			};
+			failed := run->GetFailureCount();
+			if(failed > 0) {
+				total := @values->Size() * @seeds->Size();
+				if(out->Size() > 0) {
+					out += "; ";
+				};
+				out += "{$failed} of {$total} trials failed and are left out of the means";
+			};
+
+			return out;
+		}
+
 		# [train_accuracy, test_accuracy, precision, recall, f1, fpr, false_negatives, fit_ms]
 		method : Measure(result : TrialResult, name : String, seed : Int) ~ Float[] {
 			train := Counts(result->GetTrainPredictions(), result->GetTrainLabels(), "training", name, seed);
@@ -2305,6 +2445,632 @@ table->ToMarkdown()->PrintLine();
 
 		function : Refuse(message : String) ~ Nil {
 			Runtime->Raise(LabError->New("Experiment: " + message));
+		}
+	}
+
+	#~
+	One trial of a metric sweep: given a parameter value and a seed, fit and
+	score anything (an OLS, a CNN, an LDA, a BERT head) and return one number
+	per named column. The columns belong to the trial, so a sweep is not tied
+	to the eight fixed metrics of a binary classifier. Experiment->RunMetrics
+	runs it over every value and every seed.
+
+	Return NaN for a metric the trial could not compute: it is left out of that
+	cell's mean and SeedSummary->GetCount says so. Return Nil, or raise an
+	Error, when the whole trial failed: the failure is recorded, the run
+	continues, and every metric of that trial is missing.
+
+	An interface rather than a function reference, as Trial is. Interfaces
+	cannot be generic and cannot extend one another, so this is one flat
+	interface: GetColumns names what Run returns, in order.
+
+```
+class RidgeTrial implements MetricTrial {
+  @split : DataSplit;
+  New(split : DataSplit) { @split := split; }
+  method : public : GetColumns() ~ String[] { return ["r2", "rmse"]; }
+  method : public : Run(value : Float, name : String, seed : Int) ~ Float[] {
+    model := RidgeRegression->New(value);
+    model->Fit(train_x, train_y);
+    return [r_squared, rmse];
+  }
+}
+```
+	~#
+	interface MetricTrial {
+		#~
+		The column names, fixed for the whole sweep: what Run returns, in
+		order. Names must be non-empty and distinct, and not "trial_ms", which
+		the experiment adds itself (the wall-clock time of each Run).
+		@return one name per metric
+		~#
+		method : virtual : public : GetColumns() ~ String[];
+
+		#~
+		Runs one trial.
+		@param value the swept parameter value
+		@param name the value display name
+		@param seed the repetition seed
+		@return one number per column, NaN for a metric that has no value; Nil when the trial failed
+		~#
+		method : virtual : public : Run(value : Float, name : String, seed : Int) ~ Float[];
+	}
+
+	#~
+	Summary statistics of one metric over the seeds of one setting: how many
+	values were usable, their mean, sample standard deviation (n - 1), minimum,
+	maximum and a Student t confidence interval for the mean. A value that is
+	NaN or infinite is a missing value and is left out; GetCount says how many
+	were used, so a mean of four seeds is never mistaken for one of five.
+
+	With no usable value everything but the count is NaN; with one, the
+	deviation and the interval are NaN (a spread needs two). The interval is
+	mean +/- t * std / sqrt(n), t the two-sided critical value of the t
+	distribution with n - 1 degrees of freedom (12.706 for n = 2 at 95%),
+	found here by inverting the tail of the t distribution, so ml_lab needs no
+	other library.
+
+```
+s := SeedSummary->Of([0.91, 0.93, 0.92, 0.95, 0.90], 0.95);
+"{$s->GetMean()} +/- {$s->GetStd()}, 95% CI [{$s->GetCiLow()}, {$s->GetCiHigh()}], n={$s->GetCount()}"->PrintLine();
+```
+	~#
+	class SeedSummary {
+		@count : Int;
+		@mean : Float;
+		@std : Float;
+		@min : Float;
+		@max : Float;
+		@ci_low : Float;
+		@ci_high : Float;
+		@level : Float;
+
+		#~
+		Summarizes values.
+		@param values one per seed; NaN and infinite values are skipped
+		@param level the confidence level of the interval, strictly between 0 and 1
+		@return the summary; raises LabError for a level outside (0, 1) or Nil values
+		~#
+		function : Of(values : Float[], level : Float) ~ SeedSummary {
+			if(values = Nil) {
+				Refuse("values is Nil");
+			};
+			if(<>(level > 0.0 & level < 1.0)) {
+				Refuse("the confidence level must be strictly between 0 and 1");
+			};
+
+			n := 0;
+			each(i : values) {
+				if(ResultTable->IsFinite(values[i])) {
+					n += 1;
+				};
+			};
+
+			nan := Float->NaN();
+			mean := nan;
+			std := nan;
+			lo := nan;
+			hi := nan;
+			ci_low := nan;
+			ci_high := nan;
+			if(n > 0) {
+				sum := 0.0;
+				each(i : values) {
+					if(ResultTable->IsFinite(values[i])) {
+						sum += values[i];
+						if(lo <> lo | values[i] < lo) {
+							lo := values[i];
+						};
+						if(hi <> hi | values[i] > hi) {
+							hi := values[i];
+						};
+					};
+				};
+				mean := sum / n->As(Float);
+			};
+			if(n > 1) {
+				ss := 0.0;
+				each(i : values) {
+					if(ResultTable->IsFinite(values[i])) {
+						ss += (values[i] - mean) * (values[i] - mean);
+					};
+				};
+				std := Float->Sqrt(ss / (n - 1)->As(Float));
+				half := TCritical(n - 1, level) * std / Float->Sqrt(n->As(Float));
+				ci_low := mean - half;
+				ci_high := mean + half;
+			};
+
+			return SeedSummary->New(n, mean, std, lo, hi, ci_low, ci_high, level);
+		}
+
+		New(count : Int, mean : Float, std : Float, min : Float, max : Float, ci_low : Float, ci_high : Float, level : Float) {
+			@count := count;
+			@mean := mean;
+			@std := std;
+			@min := min;
+			@max := max;
+			@ci_low := ci_low;
+			@ci_high := ci_high;
+			@level := level;
+		}
+
+		#~
+		How many values were used.
+		@return the count of finite values
+		~#
+		method : public : GetCount() ~ Int {
+			return @count;
+		}
+
+		#~
+		The mean.
+		@return the mean, NaN when there is no value
+		~#
+		method : public : GetMean() ~ Float {
+			return @mean;
+		}
+
+		#~
+		The sample standard deviation (divides by n - 1).
+		@return the deviation, NaN when there are fewer than two values
+		~#
+		method : public : GetStd() ~ Float {
+			return @std;
+		}
+
+		#~
+		The smallest value.
+		@return the minimum, NaN when there is no value
+		~#
+		method : public : GetMin() ~ Float {
+			return @min;
+		}
+
+		#~
+		The largest value.
+		@return the maximum, NaN when there is no value
+		~#
+		method : public : GetMax() ~ Float {
+			return @max;
+		}
+
+		#~
+		Lower end of the confidence interval for the mean.
+		@return the bound, NaN when there are fewer than two values
+		~#
+		method : public : GetCiLow() ~ Float {
+			return @ci_low;
+		}
+
+		#~
+		Upper end of the confidence interval for the mean.
+		@return the bound, NaN when there are fewer than two values
+		~#
+		method : public : GetCiHigh() ~ Float {
+			return @ci_high;
+		}
+
+		#~
+		The confidence level of the interval.
+		@return the level, for example 0.95
+		~#
+		method : public : GetLevel() ~ Float {
+			return @level;
+		}
+
+		#~
+		The two-sided critical value of the t distribution: the t for which the
+		probability of |T| > t is 1 - level.
+		@param df degrees of freedom, at least 1
+		@param level the confidence level, strictly between 0 and 1
+		@return the critical value, for example 12.7062 for (1, 0.95) and 2.2622 for (9, 0.95); NaN for an invalid argument
+		~#
+		function : TCritical(df : Int, level : Float) ~ Float {
+			if(df < 1 | <>(level > 0.0 & level < 1.0)) {
+				return Float->NaN();
+			};
+
+			target := 1.0 - level;
+			d := df->As(Float);
+			lo := 0.0;
+			hi := 1.0;
+			while(TwoSidedP(hi, d) > target & hi < 1.0e12) {
+				lo := hi;
+				hi *= 2.0;
+			};
+			for(i := 0; i < 200; i += 1;) {
+				mid := (lo + hi) / 2.0;
+				if(TwoSidedP(mid, d) > target) {
+					lo := mid;
+				}
+				else {
+					hi := mid;
+				};
+			};
+
+			return (lo + hi) / 2.0;
+		}
+
+		# P(|T| > t) for t >= 0: the regularized incomplete beta I(df / (df + t^2); df / 2, 1 / 2)
+		function : TwoSidedP(t : Float, df : Float) ~ Float {
+			return IncBeta(df / (df + t * t), df / 2.0, 0.5);
+		}
+
+		function : IncBeta(x : Float, a : Float, b : Float) ~ Float {
+			if(x <= 0.0) {
+				return 0.0;
+			};
+			if(x >= 1.0) {
+				return 1.0;
+			};
+
+			front := Float->Exp(LogGamma(a + b) - LogGamma(a) - LogGamma(b) + a * Float->Log(x) + b * Float->Log(1.0 - x));
+			if(x < (a + 1.0) / (a + b + 2.0)) {
+				return front * BetaFraction(a, b, x) / a;
+			};
+
+			return 1.0 - front * BetaFraction(b, a, 1.0 - x) / b;
+		}
+
+		# Lentz continued fraction for the incomplete beta function
+		function : BetaFraction(a : Float, b : Float, x : Float) ~ Float {
+			tiny := 1.0e-300;
+			qab := a + b;
+			qap := a + 1.0;
+			qam := a - 1.0;
+			c := 1.0;
+			d := 1.0 - qab * x / qap;
+			if(d->Abs() < tiny) {
+				d := tiny;
+			};
+			d := 1.0 / d;
+			h := d;
+			m : Float;
+			m2 : Float;
+			aa : Float;
+			del : Float;
+			for(i := 1; i <= 500; i += 1;) {
+				m := i->As(Float);
+				m2 := 2.0 * m;
+				aa := m * (b - m) * x / ((qam + m2) * (a + m2));
+				d := 1.0 + aa * d;
+				if(d->Abs() < tiny) {
+					d := tiny;
+				};
+				c := 1.0 + aa / c;
+				if(c->Abs() < tiny) {
+					c := tiny;
+				};
+				d := 1.0 / d;
+				h *= d * c;
+				aa := -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+				d := 1.0 + aa * d;
+				if(d->Abs() < tiny) {
+					d := tiny;
+				};
+				c := 1.0 + aa / c;
+				if(c->Abs() < tiny) {
+					c := tiny;
+				};
+				d := 1.0 / d;
+				del := d * c;
+				h *= del;
+				if((del - 1.0)->Abs() < 1.0e-15) {
+					break;
+				};
+			};
+
+			return h;
+		}
+
+		# Lanczos approximation (g = 7, 9 terms), relative error about 1e-15
+		function : LogGamma(z : Float) ~ Float {
+			coef := [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313,
+				-176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+			x := z - 1.0;
+			sum := coef[0];
+			for(i := 1; i < 9; i += 1;) {
+				sum += coef[i] / (x + i->As(Float));
+			};
+			t := x + 7.5;
+
+			return 0.5 * Float->Log(2.0 * Float->Pi()) + (x + 0.5) * Float->Log(t) - t + Float->Log(sum);
+		}
+
+		function : Refuse(message : String) ~ Nil {
+			Runtime->Raise(LabError->New("SeedSummary: " + message));
+		}
+	}
+
+	#~
+	Everything a metric sweep measured: for each setting (a row) and each seed,
+	every metric the MetricTrial returned plus trial_ms, the wall-clock time of
+	the trial, and for every failed trial the reason. Nothing is averaged away:
+	GetValues returns the per-seed values (for a paired test between two
+	settings), GetSummary the mean, deviation, minimum, maximum, count and
+	confidence interval, and three ResultTables render it:
+
+	- ToTable: one row per setting, one column per metric, mean and sample
+	  standard deviation (just the mean when there is a single seed)
+	- ToSummaryTable: one row per setting and metric, columns mean, std, min,
+	  max, n, ci_low, ci_high
+	- ToRawTable: one row per setting and seed, one column per metric
+
+	Each is a ResultTable, so ToText, ToMarkdown, ToCsv, ToJson, Save and
+	ToChart work, and a NaN cell (a failed trial, a one-seed deviation) renders
+	as n/a, an empty CSV field and a JSON null.
+	~#
+	class MetricRun {
+		@title : String;
+		@parameter : String;
+		@footnote : String;
+		@columns : String[];
+		@names : String[];
+		@values : Float[];
+		@seeds : Int[];
+		@level : Float;
+		@cells : Float[,,];
+		@failed : Bool[,];
+		@reasons : Vector<String>;
+
+		New(title : String, parameter : String, footnote : String, columns : String[], names : String[], values : Float[], seeds : Int[], level : Float) {
+			@title := title;
+			@parameter := parameter;
+			@footnote := footnote;
+			@columns := columns;
+			@names := names;
+			@values := values;
+			@seeds := seeds;
+			@level := level;
+			@cells := Float->New[names->Size(), seeds->Size(), columns->Size()];
+			@failed := Bool->New[names->Size(), seeds->Size()];
+			@reasons := Vector->New()<String>;
+		}
+
+		#~
+		Records one trial. Called by Experiment->Replicate.
+		@param row the setting index
+		@param seed_index the seed position
+		@param results one value per trial column, or Nil for a failed trial
+		@param ms the trial time, stored as trial_ms
+		@param failure why the trial failed, when results is Nil
+		~#
+		method : public : Set(row : Int, seed_index : Int, results : Float[], ms : Float, failure : String) ~ Nil {
+			last := @columns->Size() - 1;
+			each(c : last) {
+				@cells[row, seed_index, c] := (results = Nil) ? Float->NaN() : results[c];
+			};
+			@cells[row, seed_index, last] := ms;
+			if(results = Nil) {
+				@failed[row, seed_index] := true;
+				n := @names[row];
+				s := @seeds[seed_index];
+				@reasons->AddBack("{$n}, seed {$s}: {$failure}");
+			};
+		}
+
+		#~
+		Replaces the footnote of the tables. Called by Experiment->Replicate.
+		@param text the footnote
+		~#
+		method : public : SetFootnote(text : String) ~ Nil {
+			@footnote := text;
+		}
+
+		#~
+		The metric names in order, the trial's own followed by trial_ms.
+		@return one name per column
+		~#
+		method : public : GetColumns() ~ String[] {
+			return @columns;
+		}
+
+		#~
+		The index of a metric.
+		@param name the metric name
+		@return the index, -1 when there is no such metric
+		~#
+		method : public : ColumnIndex(name : String) ~ Int {
+			each(c : @columns) {
+				if(@columns[c]->Equals(name)) {
+					return c;
+				};
+			};
+
+			return -1;
+		}
+
+		#~
+		The number of settings.
+		@return the row count
+		~#
+		method : public : GetRowCount() ~ Int {
+			return @names->Size();
+		}
+
+		#~
+		The seeds, in the order they were run.
+		@return the seeds
+		~#
+		method : public : GetSeeds() ~ Int[] {
+			return @seeds;
+		}
+
+		#~
+		The per-seed values of one metric of one setting, in seed order, NaN
+		where the trial failed or had no value.
+		@param row the setting index
+		@param column the metric name
+		@return one value per seed; raises LabError for a row or metric that does not exist
+		~#
+		method : public : GetValues(row : Int, column : String) ~ Float[] {
+			c := Check(row, column);
+			out := Float->New[@seeds->Size()];
+			each(s : out) {
+				out[s] := @cells[row, s, c];
+			};
+
+			return out;
+		}
+
+		#~
+		The summary of one metric of one setting over its seeds.
+		@param row the setting index
+		@param column the metric name
+		@return the mean, deviation, minimum, maximum, count and interval; raises LabError for a row or metric that does not exist
+		~#
+		method : public : GetSummary(row : Int, column : String) ~ SeedSummary {
+			return SeedSummary->Of(GetValues(row, column), @level);
+		}
+
+		#~
+		The number of trials that failed (returned Nil or raised an Error).
+		@return the count
+		~#
+		method : public : GetFailureCount() ~ Int {
+			return @reasons->Size();
+		}
+
+		#~
+		One line per failed trial: the setting, the seed and the reason.
+		@return the descriptions, empty when nothing failed
+		~#
+		method : public : GetFailures() ~ String[] {
+			out := String->New[@reasons->Size()];
+			each(i : out) {
+				out[i] := @reasons->Get(i);
+			};
+
+			return out;
+		}
+
+		#~
+		Whether the trial of a setting and a seed failed.
+		@param row the setting index
+		@param seed_index the seed position in GetSeeds
+		@return true when it failed
+		~#
+		method : public : IsFailed(row : Int, seed_index : Int) ~ Bool {
+			if(row < 0 | row >= @names->Size() | seed_index < 0 | seed_index >= @seeds->Size()) {
+				Refuse("row {$row}, seed {$seed_index} is outside the run");
+			};
+
+			return @failed[row, seed_index];
+		}
+
+		#~
+		One row per setting, one column per metric: the mean over the seeds and,
+		with more than one seed, the sample standard deviation. The footnote
+		names the fixed settings, the seeds and any failures.
+		@return the table
+		~#
+		method : public : ToTable() ~ ResultTable {
+			table := ResultTable->New(@title, @parameter);
+			each(c : @columns) {
+				table->AddColumn(@columns[c], Precision(c));
+			};
+
+			cols := @columns->Size();
+			means := Float->New[cols];
+			stds := Float->New[cols];
+			summary : SeedSummary;
+			each(r : @names) {
+				each(c : cols) {
+					summary := GetSummary(r, @columns[c]);
+					means[c] := summary->GetMean();
+					stds[c] := summary->GetStd();
+				};
+				if(@seeds->Size() > 1) {
+					table->AddRow(@names[r], @values[r], means, stds);
+				}
+				else {
+					table->AddRow(@names[r], @values[r], means);
+				};
+			};
+			table->SetFootnote(@footnote);
+
+			return table;
+		}
+
+		#~
+		One row per setting and metric, named "setting | metric", with the
+		columns mean, std, min, max, n (usable values), ci_low and ci_high (the
+		confidence interval of the mean, at the experiment level).
+		@return the table
+		~#
+		method : public : ToSummaryTable() ~ ResultTable {
+			level := (@level * 100.0)->As(Int);
+			table := ResultTable->New(@title + " (summary)", @parameter);
+			table->AddColumn("mean");
+			table->AddColumn("std");
+			table->AddColumn("min");
+			table->AddColumn("max");
+			table->AddColumn("n", 0);
+			table->AddColumn("ci_low");
+			table->AddColumn("ci_high");
+
+			summary : SeedSummary;
+			each(r : @names) {
+				each(c : @columns) {
+					summary := GetSummary(r, @columns[c]);
+					table->AddRow(@names[r] + " | " + @columns[c], @values[r],
+						[summary->GetMean(), summary->GetStd(), summary->GetMin(), summary->GetMax(),
+						summary->GetCount()->As(Float), summary->GetCiLow(), summary->GetCiHigh()]);
+				};
+			};
+			table->SetFootnote(@footnote + "; ci_low and ci_high are the {$level}% t interval of the mean; n counts the seeds with a value");
+
+			return table;
+		}
+
+		#~
+		One row per setting and seed, named "setting | seed", one column per
+		metric: every value the sweep measured, unaveraged. A failed trial is a
+		row of NaN.
+		@return the table
+		~#
+		method : public : ToRawTable() ~ ResultTable {
+			table := ResultTable->New(@title + " (per seed)", @parameter);
+			each(c : @columns) {
+				table->AddColumn(@columns[c], Precision(c));
+			};
+
+			cols := @columns->Size();
+			row : Float[];
+			each(r : @names) {
+				each(s : @seeds) {
+					row := Float->New[cols];
+					each(c : cols) {
+						row[c] := @cells[r, s, c];
+					};
+					seed := @seeds[s];
+					table->AddRow(@names[r] + " | " + seed->ToString(), @values[r], row);
+				};
+			};
+			table->SetFootnote(@footnote);
+
+			return table;
+		}
+
+		method : Precision(c : Int) ~ Int {
+			return @columns[c]->Equals("trial_ms") ? 1 : 4;
+		}
+
+		method : Check(row : Int, column : String) ~ Int {
+			if(row < 0 | row >= @names->Size()) {
+				Refuse("row {$row} is outside the run");
+			};
+			c := ColumnIndex(column);
+			if(c < 0) {
+				Refuse("no metric named '{$column}'");
+			};
+
+			return c;
+		}
+
+		function : Refuse(message : String) ~ Nil {
+			Runtime->Raise(LabError->New("MetricRun: " + message));
 		}
 	}
 
