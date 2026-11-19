@@ -432,7 +432,24 @@ Model-&gt;Pull("phi3");
 </code></pre>
     <hr class="section-end">
     <h3 id="onnx-local-inference">ONNX Local Inference</h3>
-    <p>Run ML models locally using the ONNX Runtime. The Windows and macOS libraries are each built with one accelerator (DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS), with the CPU as the fallback. The Linux x64 and ARM64 libraries are CPU-only (each is linked with a vendored ONNX Runtime 1.19.0 CPU build). See <a href="doc_models.html#execution-providers">execution providers</a> for the <code>ep</code> setting.</p>
+    <p>Run ML models locally using the ONNX Runtime. The execution provider is a per-session choice (<code>ep</code>: <code>cpu</code>, <code>cuda</code>, <code>dml</code>, <code>qnn</code>, <code>vitisai</code>, <code>coreml</code>) among those the loaded ONNX Runtime carries. Without <code>ep</code> a session uses the build's default: DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS, and the CPU on Linux x64 and ARM64 (each linked with a vendored ONNX Runtime 1.19.0 CPU-only build). No release ships CUDA; with an ONNX Runtime you supply that carries it, <code>ep=cuda</code> runs on an NVIDIA GPU. See <a href="doc_models.html#execution-providers">execution providers</a> for the setting and <a href="https://github.com/objeck/objeck-lang/blob/master/core/lib/onnx/README.md" target="_blank">core/lib/onnx/README.md</a> for how to set CUDA up.</p>
+    <p>A provider the runtime does not carry is refused with an error that lists the ones it does, and the session does not open; it is never quietly run on the CPU. Ask first:</p>
+<pre class="line-numbers"><code class="language-cpp">use API.Onnx, Collection;
+
+each(provider in OnnxRuntime-&gt;GetProviders()) {       # what the runtime reports, e.g. CUDAExecutionProvider
+  provider-&gt;PrintLine();
+};
+OnnxRuntime-&gt;GetDefaultProvider()-&gt;PrintLine();       # "dml", "qnn", "coreml" or "cpu": what a session gets without ep
+
+config := Map-&gt;New()&lt;String, String&gt;;
+if(OnnxRuntime-&gt;HasProvider("cuda")) {
+  config-&gt;Insert("ep", "cuda");                       # other keys, such as "device_id", are provider options
+};
+session := YoloSession-&gt;New("yolo11n.onnx", config);
+if(&lt;&gt;session-&gt;IsOpen()) {
+  "session did not open, the reason was printed above"-&gt;PrintLine();
+};
+</code></pre>
     <p><strong>Compile:</strong> <code>obc -src your.obs -lib models,net,json,cipher,opencv,onnx</code></p>
     <h4 id="face-recognition">Face Recognition</h4>
     <p>Uses <a href="https://github.com/deepinsight/insightface" target="_blank">InsightFace buffalo_l</a>: SCRFD 10G-KPS detector + ArcFace R50 (512-dim embeddings).</p>
