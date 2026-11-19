@@ -1,0 +1,545 @@
+# EXTRA_LIBS: plot,ml,gen_collect,csv
+#~
+System.Plot, second set: heatmap, confusion matrix, box plot, ROC and precision-recall
+curves, text annotations and reference lines.
+
+Same four kinds of check as plot_svg.obs. Structure: cell counts, annotation text, one box
+and one median per box, outlier circles. Numbers: the box statistics against a hand-worked
+sample, the area under the ROC curve against Metrics->AucRoc. Geometry: every coordinate
+inside the viewport. Determinism: byte-for-byte goldens under plot_golden/, each with a
+control (one changed value must change the bytes).
+
+Run with --update from programs/regression to rewrite the goldens after a deliberate change.
+~#
+use Collection;
+use Data.XML;
+use System.IO.Filesystem;
+use System.ML;
+use System.Plot;
+
+class PlotSvgMore {
+	@update : static : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		@update := args->Size() > 0 & args[0]->Equals("--update");
+		ok := true;
+
+		ok := Heat() & ok;
+		ok := Confusion() & ok;
+		ok := Boxes() & ok;
+		ok := Roc() & ok;
+		ok := PrecisionRecall() & ok;
+		ok := Notes() & ok;
+		ok := Refusals() & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Grid() ~ Float[,] {
+		g := Float->New[3, 4];
+		each(r : 3) {
+			each(c : 4) {
+				g[r, c] := ((r * 5 + c * 3) % 7)->As(Float) * 0.5;
+			};
+		};
+
+		return g;
+	}
+
+	function : Heat() ~ Bool {
+		ok := true;
+
+		# a tiny negative value rounds to zero and must not print as -0.00
+		tiny := Float->New[1, 2];
+		tiny[0, 0] := -0.001;
+		tiny[0, 1] := 1.0;
+		neg := Figure->New(400, 300);
+		neg->GetAxes()->Heatmap(tiny, Nil->As(String[]), Nil->As(String[]), true, 2);
+		nroot := Parse(neg->ToSvg());
+		ok := Report("heatmap: a value that rounds to zero prints as 0.00, not -0.00", nroot <> Nil & Texts(nroot)->Has("|0.00|") & Texts(nroot)->Has("|-0.00|") = false) & ok;
+
+		g := Grid();
+		fig := Figure->New(640, 420);
+		ax := fig->GetAxes();
+		ax->SetTitle("Heat");
+		ax->Heatmap(g, ["low", "mid", "high"], ["w", "x", "y", "z"], true, 1);
+		svg := fig->ToSvg();
+
+		root := Parse(svg);
+		if(root <> Nil) {
+			ok := Report("heatmap: one cell per value (12)", CountClass(root, "rect", "cell") = 12) & ok;
+			ok := Report("heatmap: every cell is annotated", CountClass(root, "text", "celltext") = 12) & ok;
+			ok := Report("heatmap: a color bar", CountClass(root, "rect", "colorbar") = 49) & ok;
+			ok := Report("heatmap: the row and column labels are the ticks",
+				Texts(root)->Has("|low|") & Texts(root)->Has("|high|") & Texts(root)->Has("|w|") & Texts(root)->Has("|z|")) & ok;
+			ok := Report("heatmap: no grid lines", CountClass(root, "line", "grid") = 0) & ok;
+			ok := Report("heatmap: every coordinate lies inside the viewport", InsideViewport(root, 640.0, 420.0)) & ok;
+			# row 0 is the top row: its label sits above the last row's label
+			ok := Report("heatmap: row 0 is at the top", LabelY(root, "low") < LabelY(root, "high")) & ok;
+		}
+		else {
+			ok := false;
+		};
+		ok := Golden("heatmap matches plot_golden/heatmap.svg", svg, "plot_golden/heatmap.svg") & ok;
+
+		g[1, 2] := 9.0;
+		fig2 := Figure->New(640, 420);
+		fig2->GetAxes()->SetTitle("Heat");
+		fig2->GetAxes()->Heatmap(g, ["low", "mid", "high"], ["w", "x", "y", "z"], true, 1);
+		ok := Report("heatmap: control: a changed value changes the bytes", <>fig2->ToSvg()->Equals(svg)) & ok;
+
+		return ok;
+	}
+
+	function : Confusion() ~ Bool {
+		ok := true;
+		counts := Int->New[2, 2];
+		counts[0, 0] := 50;
+		counts[0, 1] := 10;
+		counts[1, 0] := 5;
+		counts[1, 1] := 35;
+
+		fig := Figure->New(520, 440);
+		fig->GetAxes()->SetTitle("Confusion");
+		fig->GetAxes()->ConfusionMatrix(counts, ["negative", "positive"], false);
+		svg := fig->ToSvg();
+		root := Parse(svg);
+		if(root <> Nil) {
+			ok := Report("confusion: four annotated cells with the counts",
+				CountClass(root, "text", "celltext") = 4 & Texts(root)->Has("|50|") & Texts(root)->Has("|10|") & Texts(root)->Has("|5|") & Texts(root)->Has("|35|")) & ok;
+			ok := Report("confusion: actual down the side, predicted along the bottom", Texts(root)->Has("|actual|") & Texts(root)->Has("|predicted|")) & ok;
+			ok := Report("confusion: every coordinate lies inside the viewport", InsideViewport(root, 520.0, 440.0)) & ok;
+		}
+		else {
+			ok := false;
+		};
+		ok := Golden("confusion matrix matches plot_golden/confusion.svg", svg, "plot_golden/confusion.svg") & ok;
+
+		# counts 50, 10, 5, 35 in drawing order: the scale runs from 0, so 5 is not the darkest color
+		fills := Vector->New()<String>;
+		CellFills(root, fills);
+		ok := Report("confusion: four cells, the largest at the top of the scale", fills->Size() = 4 & fills->Get(0)->Equals("#fde725")) & ok;
+		ok := Report("confusion: the smallest count (5) is not the darkest color, because the scale starts at 0", fills->Get(2)->Equals("#440154") = false) & ok;
+
+		norm := Figure->New(520, 440);
+		norm->GetAxes()->ConfusionMatrix(counts, ["negative", "positive"], true);
+		nsvg := norm->ToSvg();
+		nroot := Parse(nsvg);
+		ok := Report("confusion: normalized rows show fractions (50 / 60 = 0.83)", nroot <> Nil & Texts(nroot)->Has("|0.83|") & Texts(nroot)->Has("|0.17|")) & ok;
+		ok := Golden("normalized confusion matrix matches plot_golden/confusion_norm.svg", nsvg, "plot_golden/confusion_norm.svg") & ok;
+
+		counts[1, 1] := 36;
+		fig2 := Figure->New(520, 440);
+		fig2->GetAxes()->SetTitle("Confusion");
+		fig2->GetAxes()->ConfusionMatrix(counts, ["negative", "positive"], false);
+		ok := Report("confusion: control: a changed count changes the bytes", <>fig2->ToSvg()->Equals(svg)) & ok;
+
+		# the layout Metrics->ConfusionMatrix returns feeds straight in
+		predicted := [true, true, false, false, true];
+		actual := [true, false, false, true, true];
+		cm := Metrics->ConfusionMatrix(predicted, actual);
+		live := Figure->New(400, 360);
+		live->GetAxes()->ConfusionMatrix(cm, Nil->As(String[]), false);
+		lroot := Parse(live->ToSvg());
+		ok := Report("confusion: takes Metrics->ConfusionMatrix output directly (default labels 0 and 1)",
+			lroot <> Nil & CountClass(lroot, "text", "celltext") = 4 & Texts(lroot)->Has("|0|") & Texts(lroot)->Has("|1|")) & ok;
+
+		return ok;
+	}
+
+	function : CellFills(e : XmlElement, fills : Vector<String>) ~ Nil {
+		if(e->GetName() <> Nil & e->GetName()->Equals("rect") & Attr(e, "class")->Equals("cell")) {
+			fills->AddBack(Attr(e, "fill"));
+		};
+		each(i : e->Size()) {
+			CellFills(e->Get(i), fills);
+		};
+	}
+
+	function : Boxes() ~ Bool {
+		ok := true;
+
+		# the quartile method is linear interpolation between ranks: Q1 of 1 .. 4 is 1.75
+		quad := Figure->New(300, 300);
+		quad->GetAxes()->Box("q", [1.0, 2.0, 3.0, 4.0]);
+		qs := quad->GetAxes()->GetArtist(0)->GetStats();
+		ok := Report("box: quartiles of 1 .. 4 are 1.75, 2.5 and 3.25 (numpy's default method)", Near(qs[2], 1.75) & Near(qs[3], 2.5) & Near(qs[4], 3.25)) & ok;
+		# n = 10: q1 = 3.25, median = 5.5, q3 = 7.75, fences -3.5 and 14.5, so 30 is an outlier
+		a := [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 30.0];
+		b := [10.0, 12.0, 13.0, 15.0, 18.0];
+		c := [4.0, 4.0, 4.0, 4.0];
+
+		fig := Figure->New(640, 420);
+		ax := fig->GetAxes();
+		ax->SetTitle("Groups");
+		ax->SetYLabel("value");
+		ax->Box("a", a);
+		ax->Box("b", b);
+		ax->Box("c", c);
+		stats := ax->GetArtist(0)->GetStats();
+		ok := Report("box: quartiles by linear interpolation (3.25, 5.5, 7.75)",
+			Near(stats[2], 3.25) & Near(stats[3], 5.5) & Near(stats[4], 7.75)) & ok;
+		ok := Report("box: whiskers stop at the furthest values inside the fences (1 and 9)", Near(stats[1], 1.0) & Near(stats[5], 9.0)) & ok;
+		beyond := ax->GetArtist(0)->GetOutliers();
+		ok := Report("box: the value beyond the fence is the only outlier", beyond->Size() = 1 & Near(beyond[0], 30.0)) & ok;
+		cs := ax->GetArtist(2)->GetStats();
+		ok := Report("box: identical values collapse to a flat box", Near(cs[1], 4.0) & Near(cs[2], 4.0) & Near(cs[3], 4.0) & Near(cs[4], 4.0) & Near(cs[5], 4.0)) & ok;
+
+		svg := fig->ToSvg();
+		root := Parse(svg);
+		if(root <> Nil) {
+			ok := Report("box: one box and one median per group", CountClass(root, "rect", "box") = 3 & CountClass(root, "line", "median") = 3) & ok;
+			ok := Report("box: two whiskers and two caps per group", CountClass(root, "line", "whisker") = 6 & CountClass(root, "line", "cap") = 6) & ok;
+			ok := Report("box: one outlier circle", CountClass(root, "circle", "outlier") = 1) & ok;
+			ok := Report("box: the group names are the x ticks", Texts(root)->Has("|a|") & Texts(root)->Has("|b|") & Texts(root)->Has("|c|")) & ok;
+			ok := Report("box: every coordinate lies inside the viewport", InsideViewport(root, 640.0, 420.0)) & ok;
+		}
+		else {
+			ok := false;
+		};
+		ok := Golden("box plot matches plot_golden/box.svg", svg, "plot_golden/box.svg") & ok;
+
+		b[2] := 40.0;
+		fig2 := Figure->New(640, 420);
+		fig2->GetAxes()->SetTitle("Groups");
+		fig2->GetAxes()->SetYLabel("value");
+		fig2->GetAxes()->Box("a", a);
+		fig2->GetAxes()->Box("b", b);
+		fig2->GetAxes()->Box("c", c);
+		ok := Report("box: control: a changed value changes the bytes", <>fig2->ToSvg()->Equals(svg)) & ok;
+
+		return ok;
+	}
+
+	function : Roc() ~ Bool {
+		ok := true;
+		scores := [0.9, 0.8, 0.7, 0.6, 0.55, 0.54, 0.53, 0.52, 0.51, 0.1];
+		actuals := [true, true, false, true, false, false, true, false, true, false];
+		curve := Metrics->RocCurve(scores, actuals);
+		auc := Metrics->AucRoc(scores, actuals);
+		text := Float->ToString(auc, 2);
+
+		fig := Figure->New(560, 480);
+		ax := fig->GetAxes();
+		ax->SetTitle("ROC");
+		ax->RocCurve("model", curve);
+		svg := fig->ToSvg();
+
+		root := Parse(svg);
+		if(root <> Nil) {
+			legend := "|model (AUC = " + text + ")|";
+			ok := Report("roc: the legend carries the AUC that Metrics->AucRoc computes ({$text})", Texts(root)->Has(legend)) & ok;
+			ok := Report("roc: one curve and the dashed chance diagonal", CountClass(root, "polyline", "line") = 1 & CountClass(root, "line", "reference") = 1) & ok;
+			ok := Report("roc: axis titles default to the rates", Texts(root)->Has("|False positive rate|") & Texts(root)->Has("|True positive rate|")) & ok;
+			ok := Report("roc: the y axis has as many ticks as x (six, 0 .. 1 by 0.2)", CountClass(root, "text", "ytick") = 6 & CountClass(root, "text", "xtick") = 6) & ok;
+			ok := Report("roc: ticks every 0.2 from 0 to 1", Texts(root)->Has("|0|") & Texts(root)->Has("|1|") & Texts(root)->Has("|0.2|") & Texts(root)->Has("|0.8|")) & ok;
+			ok := Report("roc: every coordinate lies inside the viewport", InsideViewport(root, 560.0, 480.0)) & ok;
+		}
+		else {
+			ok := false;
+		};
+		ok := Golden("roc matches plot_golden/roc.svg", svg, "plot_golden/roc.svg") & ok;
+
+		# a perfect ranking has an area of exactly 1
+		perfect := Float->New[3, 3];
+		perfect[0, 0] := 1.0; perfect[0, 1] := 0.0; perfect[0, 2] := 0.0;
+		perfect[1, 0] := 0.5; perfect[1, 1] := 0.0; perfect[1, 2] := 1.0;
+		perfect[2, 0] := 0.0; perfect[2, 1] := 1.0; perfect[2, 2] := 1.0;
+		pf := Figure->New(400, 360);
+		pf->GetAxes()->RocCurve("", perfect);
+		proot := Parse(pf->ToSvg());
+		ok := Report("roc: a perfect curve reports AUC = 1.00 (no name, no parentheses)", proot <> Nil & Texts(proot)->Has("|AUC = 1.00|")) & ok;
+
+		scores[1] := 0.05;
+		curve2 := Metrics->RocCurve(scores, actuals);
+		fig2 := Figure->New(560, 480);
+		fig2->GetAxes()->SetTitle("ROC");
+		fig2->GetAxes()->RocCurve("model", curve2);
+		ok := Report("roc: control: a changed score changes the bytes", <>fig2->ToSvg()->Equals(svg)) & ok;
+
+		return ok;
+	}
+
+	function : PrecisionRecall() ~ Bool {
+		ok := true;
+		# [threshold, recall, precision] rows, the layout Metrics->PrCurve returns
+		pr := Float->New[4, 3];
+		pr[0, 0] := 0.9; pr[0, 1] := 0.25; pr[0, 2] := 1.0;
+		pr[1, 0] := 0.8; pr[1, 1] := 0.5; pr[1, 2] := 1.0;
+		pr[2, 0] := 0.6; pr[2, 1] := 0.75; pr[2, 2] := 0.75;
+		pr[3, 0] := 0.2; pr[3, 1] := 1.0; pr[3, 2] := 0.5;
+
+		fig := Figure->New(560, 480);
+		fig->GetAxes()->SetTitle("Precision-recall");
+		fig->GetAxes()->PrCurve("model", pr);
+		svg := fig->ToSvg();
+		root := Parse(svg);
+		if(root <> Nil) {
+			# average precision = 0.25*1 + 0.25*1 + 0.25*0.75 + 0.25*0.5 = 0.8125
+			ok := Report("pr: the legend carries the average precision (0.81)", Texts(root)->Has("|model (AP = 0.81)|")) & ok;
+			ok := Report("pr: axis titles are recall and precision", Texts(root)->Has("|Recall|") & Texts(root)->Has("|Precision|")) & ok;
+			ok := Report("pr: no chance diagonal", CountClass(root, "line", "reference") = 0) & ok;
+			ok := Report("pr: every coordinate lies inside the viewport", InsideViewport(root, 560.0, 480.0)) & ok;
+		}
+		else {
+			ok := false;
+		};
+		ok := Golden("pr matches plot_golden/pr.svg", svg, "plot_golden/pr.svg") & ok;
+
+		pr[2, 2] := 0.65;
+		fig2 := Figure->New(560, 480);
+		fig2->GetAxes()->SetTitle("Precision-recall");
+		fig2->GetAxes()->PrCurve("model", pr);
+		ok := Report("pr: control: a changed precision changes the bytes", <>fig2->ToSvg()->Equals(svg)) & ok;
+
+		return ok;
+	}
+
+	function : Notes() ~ Bool {
+		ok := true;
+		xs := [1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+		ys := [1.0, 3.0, 2.0, 5.0, 4.0, 6.0];
+		fig := Figure->New(640, 420);
+		ax := fig->GetAxes();
+		ax->SetTitle("Notes");
+		ax->SetXLim(0.0, 7.0);
+		ax->SetYLim(0.0, 7.0);
+		ax->Scatter("pts", xs, ys);
+		ax->Reference(0.0, 3.5, 7.0, 3.5);
+		ax->Text(1.2, 5.5, "a label");
+		ax->Annotate("peak", 6.0, 6.0, 4.2, 6.4);
+		ax->Text(50.0, 50.0, "off the plot");
+		svg := fig->ToSvg();
+
+		root := Parse(svg);
+		if(root <> Nil) {
+			ok := Report("notes: the text is drawn", Texts(root)->Has("|a label|") & Texts(root)->Has("|peak|")) & ok;
+			ok := Report("notes: text outside the plot area is not drawn", Texts(root)->Has("|off the plot|") = false) & ok;
+			ok := Report("notes: a reference line and an annotation line", CountClass(root, "line", "reference") = 1 & CountClass(root, "line", "annotation") = 1) & ok;
+			ok := Report("notes: the annotation circle", CountClass(root, "circle", "annotation") = 1) & ok;
+			ok := Report("notes: every coordinate lies inside the viewport", InsideViewport(root, 640.0, 420.0)) & ok;
+		}
+		else {
+			ok := false;
+		};
+		ok := Golden("notes match plot_golden/notes.svg", svg, "plot_golden/notes.svg") & ok;
+
+		fig2 := Figure->New(640, 420);
+		fig2->GetAxes()->SetTitle("Notes");
+		fig2->GetAxes()->SetXLim(0.0, 7.0);
+		fig2->GetAxes()->SetYLim(0.0, 7.0);
+		fig2->GetAxes()->Scatter("pts", xs, ys);
+		fig2->GetAxes()->Reference(0.0, 3.5, 7.0, 3.5);
+		fig2->GetAxes()->Text(1.2, 5.5, "a label");
+		fig2->GetAxes()->Annotate("peak", 6.0, 5.0, 4.2, 6.4);
+		fig2->GetAxes()->Text(50.0, 50.0, "off the plot");
+		ok := Report("notes: control: a moved annotation changes the bytes", <>fig2->ToSvg()->Equals(svg)) & ok;
+
+		return ok;
+	}
+
+	function : Refusals() ~ Bool {
+		ok := true;
+		ok := Report("a heatmap beside another plot is refused", Refuses(1, "axes of its own")) & ok;
+		ok := Report("heatmap labels of the wrong count are refused", Refuses(2, "one row label per row")) & ok;
+		ok := Report("a NaN heatmap cell is refused", Refuses(3, "NaN or infinite")) & ok;
+		ok := Report("a non-square confusion matrix is refused", Refuses(4, "square")) & ok;
+		ok := Report("a negative confusion count is refused", Refuses(5, "negative count")) & ok;
+		ok := Report("a Nil ROC curve (Metrics gave Nil) is refused", Refuses(6, "needs a curve")) & ok;
+		ok := Report("a ROC rate above 1 is refused", Refuses(7, "rates between 0 and 1")) & ok;
+		ok := Report("a box beside a scatter is refused", Refuses(8, "cannot share axes")) & ok;
+		ok := Report("an empty box is refused", Refuses(9, "at least one value")) & ok;
+		ok := Report("a ROC curve with a wrong column count is refused", Refuses(10, "at least two rows")) & ok;
+		ok := Report("a non-finite annotation position is refused", Refuses(11, "finite coordinates")) & ok;
+		ok := Report("a Nil heatmap label is refused", Refuses(12, "is Nil")) & ok;
+		ok := Report("a one-point curve (all scores tied) is refused with the reason", Refuses(13, "single point")) & ok;
+
+		return ok;
+	}
+
+	# the case must raise a PlotError, and the message must say what was wrong
+	function : Refuses(which : Int, expected : String) ~ Bool {
+		message := "";
+		neg := -1.0;
+		not_a_number := Float->Sqrt(neg);
+		g := Float->New[2, 2];
+		bad := Float->New[2, 3];
+		bad[1, 1] := 1.5;
+		pair := [1.0, 2.0];
+		no_names := Nil->As(String[]);
+		try {
+			fig := Figure->New(400, 300);
+			ax := fig->GetAxes();
+			select(which) {
+				label 1: { ax->Scatter("s", pair, pair); ax->Heatmap(g, no_names, no_names); }
+				label 2: { ax->Heatmap(g, ["a"], no_names); }
+				label 3: { g[0, 1] := not_a_number; ax->Heatmap(g, no_names, no_names); }
+				label 4: { ax->ConfusionMatrix(Int->New[2, 3], no_names, false); }
+				label 5: { c := Int->New[2, 2]; c[0, 0] := -1; ax->ConfusionMatrix(c, no_names, false); }
+				label 6: { ax->RocCurve("m", Nil->As(Float[,])); }
+				label 7: { ax->RocCurve("m", bad); }
+				label 8: { ax->Scatter("s", pair, pair); ax->Box("b", pair); }
+				label 9: { ax->Box("b", Float->New[0]); }
+				label 10: { ax->RocCurve("m", Float->New[3, 2]); }
+				label 11: { ax->Annotate("t", 1.0, 1.0, not_a_number, 1.0); }
+				label 12: { rows := String->New[2]; rows[0] := "a"; ax->Heatmap(g, rows, no_names); }
+				label 13: { one := Float->New[1, 3]; ax->PrCurve("m", one); }
+			};
+		}
+		on(e : PlotError) {
+			message := e->GetMessage();
+		};
+
+		if(message->Has(expected)) {
+			return true;
+		};
+		"  case {$which}: expected a message with '{$expected}', got '{$message}'"->PrintLine();
+
+		return false;
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.000000001;
+	}
+
+	# the baseline y of the tick label with this text, or -1
+	function : LabelY(e : XmlElement, text : String) ~ Float {
+		if(e->GetName() <> Nil & e->GetName()->Equals("text") & e->GetContent() <> Nil & e->GetContent()->Equals(text)) {
+			return Attr(e, "y")->ToFloat();
+		};
+		y : Float;
+		each(i : e->Size()) {
+			y := LabelY(e->Get(i), text);
+			if(y >= 0.0) {
+				return y;
+			};
+		};
+
+		return -1.0;
+	}
+
+	function : Parse(svg : String) ~ XmlElement {
+		parser := XmlParser->New(svg);
+		if(<>parser->Parse()) {
+			err := parser->GetError();
+			"  xml error: {$err}"->PrintLine();
+			return Nil;
+		};
+
+		return parser->GetRoot();
+	}
+
+	# decoded: the parser keeps attribute values encoded (a space is "&#x20;")
+	function : Attr(e : XmlElement, name : String) ~ String {
+		a := e->GetAttribute(name);
+		if(a = Nil) {
+			return "";
+		};
+
+		return a->GetDecodedValue();
+	}
+
+	function : CountClass(e : XmlElement, name : String, class_name : String) ~ Int {
+		n := 0;
+		if(e->GetName() <> Nil & e->GetName()->Equals(name) & Attr(e, "class")->Equals(class_name)) {
+			n += 1;
+		};
+		each(i : e->Size()) {
+			n += CountClass(e->Get(i), name, class_name);
+		};
+
+		return n;
+	}
+
+	# every text node's content, each wrapped in bars, so a label can be looked for
+	function : Texts(e : XmlElement) ~ String {
+		out := "";
+		if(e->GetName() <> Nil & (e->GetName()->Equals("text") | e->GetName()->Equals("title")) & e->GetContent() <> Nil) {
+			out += "|";
+			out += e->GetContent();
+			out += "|";
+		};
+		each(i : e->Size()) {
+			out += Texts(e->Get(i));
+		};
+
+		return out;
+	}
+
+	function : InsideViewport(e : XmlElement, w : Float, h : Float) ~ Bool {
+		ok := true;
+		name := e->GetName();
+		if(name <> Nil) {
+			if(name->Equals("circle")) {
+				ok := Within(Attr(e, "cx"), 0.0, w) & Within(Attr(e, "cy"), 0.0, h);
+			}
+			else if(name->Equals("rect")) {
+				ok := Within(Attr(e, "x"), 0.0, w) & Within(Attr(e, "y"), -1.0e9, 1.0e9) & Within(Attr(e, "width"), 0.0, 1.0e9);
+			}
+			else if(name->Equals("line")) {
+				ok := Within(Attr(e, "x1"), 0.0, w) & Within(Attr(e, "x2"), 0.0, w) &
+					Within(Attr(e, "y1"), 0.0, h) & Within(Attr(e, "y2"), 0.0, h);
+			}
+			else if(name->Equals("text")) {
+				ok := Within(Attr(e, "x"), 0.0, w) & Within(Attr(e, "y"), 0.0, h);
+			};
+			if(<>ok) {
+				"  outside the viewport: {$name}"->PrintLine();
+			};
+		};
+
+		each(i : e->Size()) {
+			if(<>InsideViewport(e->Get(i), w, h)) {
+				ok := false;
+			};
+		};
+
+		return ok;
+	}
+
+	function : Within(text : String, lo : Float, hi : Float) ~ Bool {
+		if(text = Nil | text->Size() = 0) {
+			return false;
+		};
+
+		v := text->ToFloat();
+		return v >= lo & v <= hi;
+	}
+
+	function : Golden(name : String, actual : String, path : String) ~ Bool {
+		if(@update) {
+			FileWriter->WriteFile(path, actual);
+			"UPDATED: {$path}"->PrintLine();
+			return true;
+		};
+
+		expected := FileReader->ReadFile(path);
+		if(expected = Nil) {
+			"FAIL: {$name} (golden file missing)"->PrintLine();
+			return false;
+		};
+
+		expected := expected->ReplaceAll("\r", "");
+		if(actual->Equals(expected)) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		"--- actual ---"->PrintLine();
+		actual->PrintLine();
+		return false;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}

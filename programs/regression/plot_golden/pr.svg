@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="560" height="480" viewBox="0 0 560 480" font-family="sans-serif" font-size="12">
+<title></title>
+<rect x="0.0" y="0.0" width="560.0" height="480.0" fill="#ffffff" class="background"/>
+<line x1="64.0" y1="424.3" x2="544.0" y2="424.3" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="428.3" fill="#333333" font-size="12" text-anchor="end" class="ytick">0</text>
+<line x1="64.0" y1="347.4" x2="544.0" y2="347.4" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="351.4" fill="#333333" font-size="12" text-anchor="end" class="ytick">0.2</text>
+<line x1="64.0" y1="270.5" x2="544.0" y2="270.5" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="274.5" fill="#333333" font-size="12" text-anchor="end" class="ytick">0.4</text>
+<line x1="64.0" y1="193.5" x2="544.0" y2="193.5" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="197.5" fill="#333333" font-size="12" text-anchor="end" class="ytick">0.6</text>
+<line x1="64.0" y1="116.6" x2="544.0" y2="116.6" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="120.6" fill="#333333" font-size="12" text-anchor="end" class="ytick">0.8</text>
+<line x1="64.0" y1="39.7" x2="544.0" y2="39.7" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="43.7" fill="#333333" font-size="12" text-anchor="end" class="ytick">1</text>
+<line x1="73.2" y1="32.0" x2="73.2" y2="432.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="73.2" y="450.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">0</text>
+<line x1="165.5" y1="32.0" x2="165.5" y2="432.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="165.5" y="450.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">0.2</text>
+<line x1="257.8" y1="32.0" x2="257.8" y2="432.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="257.8" y="450.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">0.4</text>
+<line x1="350.2" y1="32.0" x2="350.2" y2="432.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="350.2" y="450.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">0.6</text>
+<line x1="442.5" y1="32.0" x2="442.5" y2="432.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="442.5" y="450.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">0.8</text>
+<line x1="534.8" y1="32.0" x2="534.8" y2="432.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="534.8" y="450.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">1</text>
+<clipPath id="clip0"><rect x="64.0" y="32.0" width="480.0" height="400.0"/></clipPath>
+<g clip-path="url(#clip0)">
+<polyline points="188.6,39.7 304.0,39.7 419.4,135.8 534.8,232.0" fill="none" stroke="#1f77b4" stroke-width="2.0" class="line"/>
+</g>
+<line x1="64.0" y1="32.0" x2="64.0" y2="432.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<line x1="64.0" y1="432.0" x2="544.0" y2="432.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<text x="304.0" y="468.0" fill="#000000" font-size="13" text-anchor="middle" class="xlabel">Recall</text>
+<text x="18.0" y="232.0" fill="#000000" font-size="13" text-anchor="middle" transform="rotate(-90.0 18.0 232.0)" class="ylabel">Precision</text>
+<text x="304.0" y="22.0" fill="#000000" font-size="16" text-anchor="middle" font-weight="bold" class="title">Precision-recall</text>
+<rect x="72.0" y="394.0" width="160.4" height="30.0" fill="#ffffff" fill-opacity="0.85" stroke="#cccccc" stroke-width="1.0" class="legend"/>
+<rect x="80.0" y="400.0" width="12.0" height="12.0" fill="#1f77b4" class="legend"/>
+<text x="98.0" y="410.0" fill="#333333" font-size="12" class="legend">model (AP = 0.81)</text>
+</svg>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="640" height="420" viewBox="0 0 640 420" font-family="sans-serif" font-size="12">
+<title></title>
+<rect x="0.0" y="0.0" width="640.0" height="420.0" fill="#ffffff" class="background"/>
+<line x1="64.0" y1="372.0" x2="624.0" y2="372.0" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="376.0" fill="#333333" font-size="12" text-anchor="end" class="ytick">0</text>
+<line x1="64.0" y1="274.9" x2="624.0" y2="274.9" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="278.9" fill="#333333" font-size="12" text-anchor="end" class="ytick">2</text>
+<line x1="64.0" y1="177.7" x2="624.0" y2="177.7" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="181.7" fill="#333333" font-size="12" text-anchor="end" class="ytick">4</text>
+<line x1="64.0" y1="80.6" x2="624.0" y2="80.6" stroke="#dddddd" stroke-width="1.0" class="grid"/>
+<text x="56.0" y="84.6" fill="#333333" font-size="12" text-anchor="end" class="ytick">6</text>
+<line x1="64.0" y1="32.0" x2="64.0" y2="372.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="64.0" y="390.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">0</text>
+<line x1="224.0" y1="32.0" x2="224.0" y2="372.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="224.0" y="390.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">2</text>
+<line x1="384.0" y1="32.0" x2="384.0" y2="372.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="384.0" y="390.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">4</text>
+<line x1="544.0" y1="32.0" x2="544.0" y2="372.0" stroke="#eeeeee" stroke-width="1.0" class="grid"/>
+<text x="544.0" y="390.0" fill="#333333" font-size="12" text-anchor="middle" class="xtick">6</text>
+<clipPath id="clip0"><rect x="64.0" y="32.0" width="560.0" height="340.0"/></clipPath>
+<g clip-path="url(#clip0)">
+<circle cx="144.0" cy="323.4" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="224.0" cy="226.3" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="304.0" cy="274.9" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="384.0" cy="129.1" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="464.0" cy="177.7" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<circle cx="544.0" cy="80.6" r="3.5" fill="#1f77b4" fill-opacity="0.75" class="marker"/>
+<line x1="64.0" y1="202.0" x2="624.0" y2="202.0" stroke="#888888" stroke-width="1.5" stroke-dasharray="6 4" class="reference"/>
+</g>
+<text x="160.0" y="104.9" fill="#333333" font-size="12" class="note">a label</text>
+<line x1="432.8" y1="57.1" x2="544.0" y2="80.6" stroke="#555555" stroke-width="1.0" class="annotation"/>
+<circle cx="544.0" cy="80.6" r="4.0" fill="none" stroke="#333333" stroke-width="1.0" class="annotation"/>
+<text x="400.0" y="61.1" fill="#333333" font-size="12" class="note">peak</text>
+<line x1="64.0" y1="32.0" x2="64.0" y2="372.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<line x1="64.0" y1="372.0" x2="624.0" y2="372.0" stroke="#333333" stroke-width="1.5" class="axis"/>
+<text x="344.0" y="22.0" fill="#000000" font-size="16" text-anchor="middle" font-weight="bold" class="title">Notes</text>
+<rect x="556.4" y="36.0" width="59.6" height="30.0" fill="#ffffff" fill-opacity="0.85" stroke="#cccccc" stroke-width="1.0" class="legend"/>
+<rect x="564.4" y="42.0" width="12.0" height="12.0" fill="#1f77b4" class="legend"/>
+<text x="582.4" y="52.0" fill="#333333" font-size="12" class="legend">pts</text>
+</svg>
