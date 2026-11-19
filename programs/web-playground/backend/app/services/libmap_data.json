@@ -122,6 +122,12 @@
     "System.ML.Lab": ["Chart", "ChartSeries", "DataSplit", "Experiment", "IndexSplit", "LabError", "Labels", "Partition", "Resample", "ResultTable", "Sample", "Stopwatch", "Trial", "TrialResult"]
    }
   },
+  "ml_vector": {
+   "deps": ["gen_collect"],
+   "bundles": {
+    "System.ML.VectorSearch": ["VectorHit", "VectorIndex", "VectorMetric"]
+   }
+  },
   "models": {
    "deps": ["gen_collect"],
    "bundles": {
