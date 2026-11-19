@@ -357,9 +357,12 @@ ratios := pca->GetExplainedVarianceRatio();
 			};
 
 			deserializer := System.IO.Deserializer->New(data);
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 			num_components := deserializer->ReadInt();
 			cols := deserializer->ReadInt();
-			if(num_components < 1 | cols < 1) {
+			if(<>deserializer->Holds(num_components, cols)) {
 				return Nil;
 			};
 
@@ -381,6 +384,10 @@ ratios := pca->GetExplainedVarianceRatio();
 			};
 
 			total_variance := deserializer->ReadFloat();
+
+			if(<>deserializer->IsOk()) {
+				return Nil;
+			};
 
 			return PCA->New(num_components, mean, components, eigenvalues, total_variance);
 		}
