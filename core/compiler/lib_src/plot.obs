@@ -666,6 +666,25 @@ bundle System.Plot {
 		}
 
 		#~
+		A quantile by linear interpolation between the closest ranks, as numpy does by default.
+		@param sorted the data in ascending order, not empty
+		@param q the quantile from 0 to 1
+		@return the value
+		~#
+		function : Quantile(sorted : Float[], q : Float) ~ Float {
+			pos := q * (sorted->Size() - 1)->As(Float);
+			low := Float->Floor(pos)->As(Int);
+			high := Float->Ceil(pos)->As(Int);
+			if(low = high) {
+				return sorted[low];
+			};
+
+			f := pos - low->As(Float);
+
+			return sorted[low] + (sorted[high] - sorted[low]) * f;
+		}
+
+		#~
 		Equal-width bin edges.
 		@param lo lowest edge
 		@param hi highest edge, above lo
@@ -795,7 +814,22 @@ bundle System.Plot {
 				return ts;
 			};
 
-			return PlotMath->Ticks(@lo, @hi, @step);
+			first := Float->Ceil(@lo / @step - 0.000001) * @step;
+			count := ((@hi - first) / @step + 0.000001)->As(Int) + 1;
+			if(count < 1) {
+				count := 1;
+			};
+			if(count > 50) {
+				count := 50;
+			};
+
+			ts := Float->New[count];
+			each(i : ts) {
+				# snap, so 0.30000000000000004 prints as 0.3
+				ts[i] := Float->Round((first + i->As(Float) * @step) * 1.0e9) / 1.0e9;
+			};
+
+			return ts;
 		}
 
 		#~
@@ -844,7 +878,9 @@ bundle System.Plot {
 		LINE,
 		SCATTER,
 		BARS,
-		HIST
+		HIST,
+		BOX,
+		HEATMAP
 	}
 
 	#~
@@ -858,6 +894,52 @@ bundle System.Plot {
 		@colors : Float[];
 		@sizes : Float[];
 		@edges : Float[];
+		@rows : Int;
+		@cols : Int;
+		@row_names : String[];
+		@col_names : String[];
+		@annotate : Bool;
+		@decimals : Int;
+		@stats : Float[];
+		@outliers : Float[];
+
+		#~
+		Constructor for a heatmap.
+		@param name legend entry, or empty
+		@param values the cells, row by row
+		@param rows number of rows
+		@param cols number of columns
+		@param row_names one label per row, top to bottom
+		@param col_names one label per column
+		@param annotate true to print each value in its cell
+		@param decimals decimals in the printed values
+		~#
+		New(name : String, values : Float[], rows : Int, cols : Int, row_names : String[], col_names : String[], annotate : Bool, decimals : Int) {
+			@kind := ArtistKind->HEATMAP;
+			@name := name;
+			@ys := values;
+			@rows := rows;
+			@cols := cols;
+			@row_names := row_names;
+			@col_names := col_names;
+			@annotate := annotate;
+			@decimals := decimals;
+		}
+
+		#~
+		Constructor for a box plot.
+		@param name the category label under the box
+		@param values the data
+		@param stats [position, low whisker, first quartile, median, third quartile, high whisker]
+		@param outliers the values beyond the whiskers, possibly empty
+		~#
+		New(name : String, values : Float[], stats : Float[], outliers : Float[]) {
+			@kind := ArtistKind->BOX;
+			@name := name;
+			@ys := values;
+			@stats := stats;
+			@outliers := outliers;
+		}
 
 		#~
 		Constructor
@@ -934,6 +1016,159 @@ bundle System.Plot {
 		method : public : GetEdges() ~ Float[] {
 			return @edges;
 		}
+
+		#~
+		Rows of a heatmap.
+		@return the count, 0 for anything else
+		~#
+		method : public : GetRows() ~ Int {
+			return @rows;
+		}
+
+		#~
+		Columns of a heatmap.
+		@return the count, 0 for anything else
+		~#
+		method : public : GetCols() ~ Int {
+			return @cols;
+		}
+
+		#~
+		Row labels of a heatmap, top to bottom.
+		@return the labels, or Nil
+		~#
+		method : public : GetRowNames() ~ String[] {
+			return @row_names;
+		}
+
+		#~
+		Column labels of a heatmap.
+		@return the labels, or Nil
+		~#
+		method : public : GetColNames() ~ String[] {
+			return @col_names;
+		}
+
+		#~
+		Whether a heatmap prints its values.
+		@return true when annotated
+		~#
+		method : public : IsAnnotated() ~ Bool {
+			return @annotate;
+		}
+
+		#~
+		Decimals of the printed heatmap values.
+		@return the count
+		~#
+		method : public : GetDecimals() ~ Int {
+			return @decimals;
+		}
+
+		#~
+		Box plot statistics.
+		@return [position, low whisker, first quartile, median, third quartile, high whisker], or Nil
+		~#
+		method : public : GetStats() ~ Float[] {
+			return @stats;
+		}
+
+		#~
+		Box plot values beyond the whiskers.
+		@return the outliers, or Nil
+		~#
+		method : public : GetOutliers() ~ Float[] {
+			return @outliers;
+		}
+	}
+
+	#~
+	A reference line or text laid over an Axes, positioned in data coordinates.
+	~#
+	class PlotNote {
+		@is_line : Bool;
+		@x1 : Float;
+		@y1 : Float;
+		@x2 : Float;
+		@y2 : Float;
+		@text : String;
+		@arrow : Bool;
+
+		#~
+		Constructor
+		@param is_line true for a reference line from (x1, y1) to (x2, y2); false for text
+		@param x1 first x, or the point a text or annotation refers to
+		@param y1 first y
+		@param x2 second x, or where an annotation's text sits
+		@param y2 second y
+		@param text the string, or empty for a line
+		@param arrow true for an annotation: text at (x2, y2) with a line to the point (x1, y1)
+		~#
+		New(is_line : Bool, x1 : Float, y1 : Float, x2 : Float, y2 : Float, text : String, arrow : Bool) {
+			@is_line := is_line;
+			@x1 := x1;
+			@y1 := y1;
+			@x2 := x2;
+			@y2 := y2;
+			@text := text;
+			@arrow := arrow;
+		}
+
+		#~
+		Whether this is a reference line.
+		@return true for a line
+		~#
+		method : public : IsLine() ~ Bool {
+			return @is_line;
+		}
+
+		#~
+		First x.
+		@return x
+		~#
+		method : public : GetX1() ~ Float {
+			return @x1;
+		}
+
+		#~
+		First y.
+		@return y
+		~#
+		method : public : GetY1() ~ Float {
+			return @y1;
+		}
+
+		#~
+		Second x.
+		@return x
+		~#
+		method : public : GetX2() ~ Float {
+			return @x2;
+		}
+
+		#~
+		Second y.
+		@return y
+		~#
+		method : public : GetY2() ~ Float {
+			return @y2;
+		}
+
+		#~
+		The string.
+		@return the text, empty for a line
+		~#
+		method : public : GetText() ~ String {
+			return @text;
+		}
+
+		#~
+		Whether the text points at a position with a line.
+		@return true for an annotation
+		~#
+		method : public : HasArrow() ~ Bool {
+			return @arrow;
+		}
 	}
 
 	#~
@@ -962,6 +1197,8 @@ ax->SetLogX(true);
 		@y_max : Float;
 		@grid : Bool;
 		@legend : Bool;
+		@legend_loc : String;
+		@notes : Vector<PlotNote>;
 		@xa : PlotAxis;
 		@ya : PlotAxis;
 
@@ -973,8 +1210,10 @@ ax->SetLogX(true);
 			@x_label := "";
 			@y_label := "";
 			@artists := Vector->New()<Artist>;
+			@notes := Vector->New()<PlotNote>;
 			@grid := true;
 			@legend := true;
+			@legend_loc := "ur";
 		}
 
 		#~
@@ -1061,6 +1300,32 @@ ax->SetLogX(true);
 		~#
 		method : public : SetGrid(on : Bool) ~ Nil {
 			@grid := on;
+		}
+
+		#~
+		Puts the legend in a corner of the plot area.
+		@param corner "upper right" (the default), "upper left", "lower right" or "lower left"
+		~#
+		method : public : SetLegendCorner(corner : String) ~ Nil {
+			if(corner = Nil) {
+				Refuse("the legend corner must be upper right, upper left, lower right or lower left");
+			};
+
+			if(corner->Equals("upper right")) {
+				@legend_loc := "ur";
+			}
+			else if(corner->Equals("upper left")) {
+				@legend_loc := "ul";
+			}
+			else if(corner->Equals("lower right")) {
+				@legend_loc := "lr";
+			}
+			else if(corner->Equals("lower left")) {
+				@legend_loc := "ll";
+			}
+			else {
+				Refuse("the legend corner must be upper right, upper left, lower right or lower left");
+			};
 		}
 
 		#~
@@ -1209,6 +1474,478 @@ ax->SetLogX(true);
 		}
 
 		#~
+		Adds a heatmap: one colored cell per value, a color bar on the right, and the
+		row and column labels on the axes. Row 0 is at the top. A heatmap owns its axes:
+		it cannot be combined with other plots.
+		@param values the cells, rows x columns
+		@param row_names one label per row, or Nil for 0, 1, 2, ...
+		@param col_names one label per column, or Nil for 0, 1, 2, ...
+		~#
+		method : public : Heatmap(values : Float[,], row_names : String[], col_names : String[]) ~ Nil {
+			Heatmap(values, row_names, col_names, false, 2);
+		}
+
+		#~
+		Adds a heatmap, optionally printing each value in its cell.
+		@param values the cells, rows x columns
+		@param row_names one label per row, or Nil for 0, 1, 2, ...
+		@param col_names one label per column, or Nil for 0, 1, 2, ...
+		@param annotate true to print every value in its cell
+		@param decimals decimals in the printed values, 0 to 6
+		~#
+		method : public : Heatmap(values : Float[,], row_names : String[], col_names : String[], annotate : Bool, decimals : Int) ~ Nil {
+			if(values = Nil) {
+				Refuse("Heatmap needs values");
+			};
+			if(@artists->Size() > 0) {
+				Refuse("a heatmap needs axes of its own");
+			};
+			if(decimals < 0 | decimals > 6) {
+				Refuse("Heatmap decimals must be between 0 and 6");
+			};
+
+			dims := values->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows < 1 | cols < 1 | rows > 200 | cols > 200) {
+				Refuse("a heatmap is 1 to 200 rows and 1 to 200 columns");
+			};
+			if(row_names <> Nil & row_names->Size() <> rows) {
+				Refuse("Heatmap needs one row label per row");
+			};
+			if(col_names <> Nil & col_names->Size() <> cols) {
+				Refuse("Heatmap needs one column label per column");
+			};
+
+			flat := Float->New[rows * cols];
+			v : Float;
+			each(r : rows) {
+				each(c : cols) {
+					v := values[r, c];
+					if(PlotMath->IsFinite(v) = false) {
+						Refuse("Heatmap has a NaN or infinite value at row {$r}, column {$c}");
+					};
+					flat[r * cols + c] := v;
+				};
+			};
+
+			rn := row_names;
+			if(rn = Nil) {
+				rn := Indexes(rows);
+			};
+			cn := col_names;
+			if(cn = Nil) {
+				cn := Indexes(cols);
+			};
+
+			@artists->AddBack(Artist->New("", flat, rows, cols, rn, cn, annotate, decimals));
+		}
+
+		#~
+		Adds a confusion matrix: a heatmap whose cells are annotated, with the actual
+		class down the side and the predicted class along the bottom.
+		@param counts rows are the actual classes, columns the predicted ones, as Metrics->ConfusionMatrix returns for two classes ([[TN, FP], [FN, TP]])
+		@param classes one name per class, or Nil for 0, 1, 2, ...
+		@param normalize true to show each row as fractions of its total
+		~#
+		method : public : ConfusionMatrix(counts : Int[,], classes : String[], normalize : Bool) ~ Nil {
+			if(counts = Nil) {
+				Refuse("ConfusionMatrix needs counts");
+			};
+
+			dims := counts->Size();
+			n := dims[0];
+			if(n < 1 | dims[1] <> n) {
+				Refuse("a confusion matrix is square");
+			};
+
+			values := Float->New[n, n];
+			total : Float;
+			c : Int;
+			each(r : n) {
+				total := 0.0;
+				each(k : n) {
+					c := counts[r, k];
+					if(c < 0) {
+						Refuse("a confusion matrix cannot hold a negative count");
+					};
+					total += c->As(Float);
+				};
+				each(k : n) {
+					c := counts[r, k];
+					if(normalize) {
+						values[r, k] := 0.0;
+						if(total > 0.0) {
+							values[r, k] := c->As(Float) / total;
+						};
+					}
+					else {
+						values[r, k] := c->As(Float);
+					};
+				};
+			};
+
+			decimals := 0;
+			if(normalize) {
+				decimals := 2;
+			};
+			Heatmap(values, classes, classes, true, decimals);
+
+			if(@x_label->Size() = 0) {
+				@x_label := "predicted";
+			};
+			if(@y_label->Size() = 0) {
+				@y_label := "actual";
+			};
+		}
+
+		#~
+		Adds a box plot box: the median, the quartiles, whiskers to the furthest values
+		within 1.5 times the interquartile range, and the values beyond as circles. Each
+		call adds one box, left to right, labelled under the axis.
+		@param name label under the box
+		@param values the data
+		~#
+		method : public : Box(name : String, values : Float[]) ~ Nil {
+			if(values = Nil | values->Size() = 0) {
+				Refuse("Box needs at least one value");
+			};
+			if(@artists->Size() > 0 & HasKind(ArtistKind->BOX) = false) {
+				Refuse("box plots cannot share axes with other plots");
+			};
+			CheckColumn("Box values", values, values->Size());
+
+			sorted := Float->Sort(values);
+			q1 := PlotMath->Quantile(sorted, 0.25);
+			med := PlotMath->Quantile(sorted, 0.5);
+			q3 := PlotMath->Quantile(sorted, 0.75);
+			reach := 1.5 * (q3 - q1);
+			low_fence := q1 - reach;
+			high_fence := q3 + reach;
+
+			low_whisker := q1;
+			high_whisker := q3;
+			outliers := 0;
+			each(i : sorted) {
+				if(sorted[i] >= low_fence & sorted[i] <= high_fence) {
+					if(sorted[i] < low_whisker) {
+						low_whisker := sorted[i];
+					};
+					if(sorted[i] > high_whisker) {
+						high_whisker := sorted[i];
+					};
+				}
+				else {
+					outliers += 1;
+				};
+			};
+
+			beyond := Float->New[outliers];
+			slot := 0;
+			each(i : sorted) {
+				if(sorted[i] < low_fence | sorted[i] > high_fence) {
+					beyond[slot] := sorted[i];
+					slot += 1;
+				};
+			};
+
+			stats := Float->New[6];
+			stats[0] := BoxNames()->Size()->As(Float);
+			stats[1] := low_whisker;
+			stats[2] := q1;
+			stats[3] := med;
+			stats[4] := q3;
+			stats[5] := high_whisker;
+
+			@artists->AddBack(Artist->New(Name(name), values, stats, beyond));
+		}
+
+		#~
+		Adds a dashed reference line between two points in data coordinates, such as the
+		diagonal of a ROC plot or a threshold. It is not in the legend.
+		@param x1 start x
+		@param y1 start y
+		@param x2 end x
+		@param y2 end y
+		~#
+		method : public : Reference(x1 : Float, y1 : Float, x2 : Float, y2 : Float) ~ Nil {
+			if(PlotMath->IsFinite(x1) = false | PlotMath->IsFinite(y1) = false | PlotMath->IsFinite(x2) = false | PlotMath->IsFinite(y2) = false) {
+				Refuse("Reference needs finite coordinates");
+			};
+
+			@notes->AddBack(PlotNote->New(true, x1, y1, x2, y2, "", false));
+		}
+
+		#~
+		Writes text at a position in data coordinates; text outside the plot area is not drawn.
+		@param x x of the text's left end
+		@param y y of the text's baseline
+		@param text the string
+		~#
+		method : public : Text(x : Float, y : Float, text : String) ~ Nil {
+			if(PlotMath->IsFinite(x) = false | PlotMath->IsFinite(y) = false) {
+				Refuse("Text needs finite coordinates");
+			};
+
+			@notes->AddBack(PlotNote->New(false, x, y, x, y, Name(text), false));
+		}
+
+		#~
+		Points at a position with a text and a line: a circle at (x, y), the text at (text_x, text_y).
+		@param text the string
+		@param x x of the point
+		@param y y of the point
+		@param text_x x of the text's left end
+		@param text_y y of the text's baseline
+		~#
+		method : public : Annotate(text : String, x : Float, y : Float, text_x : Float, text_y : Float) ~ Nil {
+			if(PlotMath->IsFinite(x) = false | PlotMath->IsFinite(y) = false | PlotMath->IsFinite(text_x) = false | PlotMath->IsFinite(text_y) = false) {
+				Refuse("Annotate needs finite coordinates");
+			};
+
+			@notes->AddBack(PlotNote->New(false, x, y, text_x, text_y, Name(text), true));
+		}
+
+		#~
+		Adds a ROC curve with the chance diagonal, both axes 0 to 1, and the area under
+		the curve (trapezoid rule) in the legend.
+		@param name legend entry, or empty
+		@param curve [threshold, false-positive rate, true-positive rate] rows, as Metrics->RocCurve returns
+		~#
+		method : public : RocCurve(name : String, curve : Float[,]) ~ Nil {
+			xy := CurveColumns("RocCurve", curve, 1, 2);
+			n := xy->Size() / 2;
+			xs := Float->New[n];
+			ys := Float->New[n];
+			area := 0.0;
+			each(i : n) {
+				xs[i] := xy[i];
+				ys[i] := xy[n + i];
+				if(i > 0) {
+					area += (xs[i] - xs[i - 1]) * (ys[i] + ys[i - 1]) / 2.0;
+				};
+			};
+
+			Plot(CurveName(name, "AUC", area), xs, ys);
+			Reference(0.0, 0.0, 1.0, 1.0);
+			if(@legend_loc->Equals("ur")) {
+				@legend_loc := "lr";
+			};
+			UnitAxes("False positive rate", "True positive rate");
+		}
+
+		#~
+		Adds a precision-recall curve with its average precision in the legend and both
+		axes 0 to 1.
+		@param name legend entry, or empty
+		@param curve [threshold, recall, precision] rows, as Metrics->PrCurve returns
+		~#
+		method : public : PrCurve(name : String, curve : Float[,]) ~ Nil {
+			xy := CurveColumns("PrCurve", curve, 1, 2);
+			n := xy->Size() / 2;
+			xs := Float->New[n];
+			ys := Float->New[n];
+			average := 0.0;
+			previous := 0.0;
+			each(i : n) {
+				xs[i] := xy[i];
+				ys[i] := xy[n + i];
+				average += (xs[i] - previous) * ys[i];
+				previous := xs[i];
+			};
+
+			Plot(CurveName(name, "AP", average), xs, ys);
+			if(@legend_loc->Equals("ur")) {
+				@legend_loc := "ll";
+			};
+			UnitAxes("Recall", "Precision");
+		}
+
+		# the x column then the y column of a curve matrix, validated
+		method : CurveColumns(what : String, curve : Float[,], x_col : Int, y_col : Int) ~ Float[] {
+			if(curve = Nil) {
+				Refuse("{$what} needs a curve (the metric returned Nil: it needs both classes in the data)");
+			};
+
+			dims := curve->Size();
+			if(dims[0] < 2 | dims[1] <> 3) {
+				Refuse("{$what} needs at least two rows of [threshold, x, y]");
+			};
+
+			n := dims[0];
+			out := Float->New[n * 2];
+			x : Float;
+			y : Float;
+			each(i : n) {
+				x := curve[i, x_col];
+				y := curve[i, y_col];
+				if(PlotMath->IsFinite(x) = false | PlotMath->IsFinite(y) = false | x < 0.0 | x > 1.0 | y < 0.0 | y > 1.0) {
+					Refuse("{$what} rows must hold rates between 0 and 1, row {$i} does not");
+				};
+				out[i] := x;
+				out[n + i] := y;
+			};
+
+			return out;
+		}
+
+		method : CurveName(name : String, what : String, value : Float) ~ String {
+			score := Float->ToString(value, 2);
+			text := what + " = " + score;
+			if(name <> Nil & name->Size() > 0) {
+				text := name + " (" + text + ")";
+			};
+
+			return text;
+		}
+
+		# both axes 0 to 1 with a little room, unless the caller fixed them, and default titles
+		method : UnitAxes(x_title : String, y_title : String) ~ Nil {
+			if(@x_fixed = false) {
+				SetXLim(-0.02, 1.02);
+			};
+			if(@y_fixed = false) {
+				SetYLim(-0.02, 1.02);
+			};
+			if(@x_label->Size() = 0) {
+				@x_label := x_title;
+			};
+			if(@y_label->Size() = 0) {
+				@y_label := y_title;
+			};
+		}
+
+		method : Indexes(count : Int) ~ String[] {
+			names := String->New[count];
+			each(i : count) {
+				names[i] := "{$i}";
+			};
+
+			return names;
+		}
+
+		method : BoxNames() ~ String[] {
+			found := Vector->New()<String>;
+			each(i : @artists) {
+				if(@artists->Get(i)->GetKind() = ArtistKind->BOX) {
+					found->AddBack(@artists->Get(i)->GetName());
+				};
+			};
+
+			names := String->New[found->Size()];
+			each(i : names) {
+				names[i] := found->Get(i);
+			};
+
+			return names;
+		}
+
+		method : DrawBox(scene : PlotScene, a : Artist, index : Int, box_index : Int, px0 : Float, py0 : Float, px1 : Float, py1 : Float) ~ Nil {
+			stats := a->GetStats();
+			band := (px1 - px0) / BoxNames()->Size()->As(Float);
+			half := band * 0.25;
+			cx := PX(box_index->As(Float), px0, px1);
+			color := PlotMath->Color(box_index);
+
+			y_low := PY(stats[1], py0, py1);
+			y_q1 := PY(stats[2], py0, py1);
+			y_med := PY(stats[3], py0, py1);
+			y_q3 := PY(stats[4], py0, py1);
+			y_high := PY(stats[5], py0, py1);
+
+			scene->Line(cx, y_q1, cx, y_low, "#333333", 1.5, "", "whisker");
+			scene->Line(cx, y_q3, cx, y_high, "#333333", 1.5, "", "whisker");
+			scene->Line(cx - half * 0.5, y_low, cx + half * 0.5, y_low, "#333333", 1.5, "", "cap");
+			scene->Line(cx - half * 0.5, y_high, cx + half * 0.5, y_high, "#333333", 1.5, "", "cap");
+			scene->Rect(cx - half, y_q3, half * 2.0, y_q1 - y_q3, color, "#333333", 1.5, 0.6, "box");
+			scene->Line(cx - half, y_med, cx + half, y_med, "#111111", 2.5, "", "median");
+
+			beyond := a->GetOutliers();
+			each(i : beyond) {
+				scene->Circle(cx, PY(beyond[i], py0, py1), 3.0, "", "#333333", 1.0, "outlier");
+			};
+		}
+
+		method : DrawHeatmap(scene : PlotScene, a : Artist, px0 : Float, py0 : Float, px1 : Float, py1 : Float) ~ Nil {
+			values := a->GetYs();
+			rows := a->GetRows();
+			cols := a->GetCols();
+			cr := ColorRange();
+			cell_w := (px1 - px0) / cols->As(Float);
+			cell_h := (py1 - py0) / rows->As(Float);
+
+			size := 12;
+			if(cell_h < 18.0 | cell_w < 30.0) {
+				size := 9;
+			};
+
+			v : Float;
+			t : Float;
+			cx : Float;
+			cy : Float;
+			text_color : String;
+			text : String;
+			n : Int;
+			each(r : rows) {
+				each(c : cols) {
+					v := values[r * cols + c];
+					t := (v - cr[0]) / (cr[1] - cr[0]);
+					cx := px0 + c->As(Float) * cell_w;
+					cy := py0 + r->As(Float) * cell_h;
+					scene->Rect(cx, cy, cell_w, cell_h, PlotMath->Viridis(t), "#ffffff", 1.0, 1.0, "cell");
+					if(a->IsAnnotated()) {
+						text_color := "#000000";
+						if(t < 0.6) {
+							text_color := "#ffffff";
+						};
+						if(a->GetDecimals() = 0) {
+							n := Float->Round(v)->As(Int);
+							text := "{$n}";
+						}
+						else {
+							text := Float->ToString(v, a->GetDecimals());
+						};
+						scene->Text(cx + cell_w / 2.0, cy + cell_h / 2.0 + 4.0, text, TextAnchor->MIDDLE, size, false, text_color, 0.0, "celltext");
+					};
+				};
+			};
+		}
+
+		# reference lines go inside the clip, text and annotations outside it
+		method : DrawNotes(scene : PlotScene, lines : Bool, px0 : Float, py0 : Float, px1 : Float, py1 : Float) ~ Nil {
+			note : PlotNote;
+			sx : Float;
+			sy : Float;
+			tx : Float;
+			ty : Float;
+			lx : Float;
+			each(i : @notes) {
+				note := @notes->Get(i);
+				if(note->IsLine() & lines) {
+					scene->Line(PX(note->GetX1(), px0, px1), PY(note->GetY1(), py0, py1), PX(note->GetX2(), px0, px1), PY(note->GetY2(), py0, py1), "#888888", 1.5, "6 4", "reference");
+				}
+				else if(note->IsLine() = false & lines = false) {
+					sx := PX(note->GetX1(), px0, px1);
+					sy := PY(note->GetY1(), py0, py1);
+					tx := PX(note->GetX2(), px0, px1);
+					ty := PY(note->GetY2(), py0, py1);
+					if(tx >= px0 & tx <= px1 & ty >= py0 & ty <= py1) {
+						if(note->HasArrow()) {
+							# start the line past the end of the text, not through it
+							lx := tx + PlotMath->TextWidth(note->GetText(), 12) + 4.0;
+							if(lx > sx) {
+								lx := tx;
+							};
+							scene->Line(lx, ty - 4.0, sx, sy, "#555555", 1.0, "", "annotation");
+							scene->Circle(sx, sy, 4.0, "", "#333333", 1.0, "annotation");
+						};
+						scene->Text(tx, ty, note->GetText(), TextAnchor->START, 12, false, "#333333", 0.0, "note");
+					};
+				};
+			};
+		}
+
+		#~
 		One thing drawn on the axes.
 		@param index position from 0, in the order added
 		@return the artist
@@ -1258,6 +1995,10 @@ ax->SetLogX(true);
 				Refuse("nothing to draw: add a plot, scatter, histogram or bars first");
 			};
 
+			if(HasKind(ArtistKind->HEATMAP) & @artists->Size() > 1) {
+				Refuse("a heatmap cannot share axes with other plots");
+			};
+
 			Resolve();
 
 			bar_w := ColorbarWidth();
@@ -1278,6 +2019,7 @@ ax->SetLogX(true);
 				};
 			};
 			bar_index := 0;
+			box_index := 0;
 			a : Artist;
 			each(i : @artists) {
 				a := @artists->Get(i);
@@ -1291,22 +2033,44 @@ ax->SetLogX(true);
 					DrawBars(scene, a, i, bar_index, bar_series, px0, py0, px1, py1);
 					bar_index += 1;
 				}
-				else {
+					else if(a->GetKind() = ArtistKind->HIST) {
 					DrawHist(scene, a, i, px0, py0, px1, py1);
+				}
+				else if(a->GetKind() = ArtistKind->BOX) {
+					DrawBox(scene, a, i, box_index, px0, py0, px1, py1);
+					box_index += 1;
+				}
+				else {
+					DrawHeatmap(scene, a, px0, py0, px1, py1);
 				};
 			};
+			DrawNotes(scene, true, px0, py0, px1, py1);
 			scene->EndClip();
+			DrawNotes(scene, false, px0, py0, px1, py1);
 
 			DrawFrame(scene, x, y, width, height, px0, py0, px1, py1);
 			if(@legend) {
-				DrawLegend(scene, px1, py0);
+				DrawLegend(scene, px0, py0, px1, py1);
 			};
 			if(bar_w > 0.0) {
 				DrawColorbar(scene, px1 + 14.0, py0, py1);
 			};
 		}
 
+		method : HasKind(kind : ArtistKind) ~ Bool {
+			each(i : @artists) {
+				if(@artists->Get(i)->GetKind() = kind) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
 		method : ColorbarWidth() ~ Float {
+			if(HasKind(ArtistKind->HEATMAP)) {
+				return 84.0;
+			};
 			each(i : @artists) {
 				if(@artists->Get(i)->GetKind() = ArtistKind->SCATTER & @artists->Get(i)->GetColors() <> Nil) {
 					return 84.0;
@@ -1322,8 +2086,11 @@ ax->SetLogX(true);
 			first := true;
 			c : Float[];
 			each(i : @artists) {
-				if(@artists->Get(i)->GetKind() = ArtistKind->SCATTER) {
+				if(@artists->Get(i)->GetKind() = ArtistKind->SCATTER | @artists->Get(i)->GetKind() = ArtistKind->HEATMAP) {
 					c := @artists->Get(i)->GetColors();
+					if(@artists->Get(i)->GetKind() = ArtistKind->HEATMAP) {
+						c := @artists->Get(i)->GetYs();
+					};
 					if(c <> Nil) {
 						each(p : c) {
 							if(first | c[p] < r[0]) {
@@ -1352,6 +2119,16 @@ ax->SetLogX(true);
 		}
 
 		method : ResolveX() ~ PlotAxis {
+			each(i : @artists) {
+				if(@artists->Get(i)->GetKind() = ArtistKind->HEATMAP) {
+					cn := @artists->Get(i)->GetCols();
+					return PlotAxis->New(false, -0.5, cn->As(Float) - 0.5, 1.0, @artists->Get(i)->GetColNames());
+				};
+			};
+			if(HasKind(ArtistKind->BOX)) {
+				names := BoxNames();
+				return PlotAxis->New(false, -0.5, names->Size()->As(Float) - 0.5, 1.0, names);
+			};
 			if(@categories <> Nil) {
 				return PlotAxis->New(false, -0.5, @categories->Size()->As(Float) - 0.5, 1.0, @categories);
 			};
@@ -1391,6 +2168,19 @@ ax->SetLogX(true);
 		}
 
 		method : ResolveY() ~ PlotAxis {
+			each(i : @artists) {
+				if(@artists->Get(i)->GetKind() = ArtistKind->HEATMAP) {
+					# row 0 is at the top, so the axis runs bottom to top over the reversed names
+					rn := @artists->Get(i)->GetRowNames();
+					rev := String->New[rn->Size()];
+					last := rn->Size() - 1;
+					each(r : rn) {
+						rev[r] := rn[last - r];
+					};
+					return PlotAxis->New(false, -0.5, rn->Size()->As(Float) - 0.5, 1.0, rev);
+				};
+			};
+
 			lo := 0.0;
 			hi := 0.0;
 			first := true;
@@ -1427,6 +2217,13 @@ ax->SetLogX(true);
 						first := false;
 					};
 				};
+			};
+
+			if(HasKind(ArtistKind->BOX) & @y_fixed = false & @log_y = false) {
+				# room for the outlier circles at the extremes
+				pad := (hi - lo) * 0.04;
+				lo -= pad;
+				hi += pad;
 			};
 
 			return MakeAxis(@log_y, lo, hi, @y_fixed, 5, "y");
@@ -1478,7 +2275,7 @@ ax->SetLogX(true);
 			each(t : yt) {
 				sy := PY(yt[t], py0, py1);
 				if(sy >= py0 - 0.01 & sy <= py1 + 0.01) {
-					if(@grid) {
+					if(@grid & HasKind(ArtistKind->HEATMAP) = false) {
 						scene->Line(px0, sy, px1, sy, "#dddddd", 1.0, "", "grid");
 					};
 					scene->Text(px0 - 8.0, sy + 4.0, @ya->Label(yt[t]), TextAnchor->END, 12, false, "#333333", 0.0, "ytick");
@@ -1490,7 +2287,7 @@ ax->SetLogX(true);
 			each(t : xt) {
 				sx := PX(xt[t], px0, px1);
 				if(sx >= px0 - 0.01 & sx <= px1 + 0.01) {
-					if(@grid & @categories = Nil) {
+					if(@grid & @categories = Nil & HasKind(ArtistKind->HEATMAP) = false & HasKind(ArtistKind->BOX) = false) {
 						scene->Line(sx, py0, sx, py1, "#eeeeee", 1.0, "", "grid");
 					};
 					scene->Text(sx, py1 + 18.0, @xa->Label(xt[t]), TextAnchor->MIDDLE, 12, false, "#333333", 0.0, "xtick");
@@ -1624,11 +2421,11 @@ ax->SetLogX(true);
 			};
 		}
 
-		method : DrawLegend(scene : PlotScene, px1 : Float, py0 : Float) ~ Nil {
+		method : DrawLegend(scene : PlotScene, px0 : Float, py0 : Float, px1 : Float, py1 : Float) ~ Nil {
 			names := Vector->New()<String>;
 			colors := Vector->New()<String>;
 			each(i : @artists) {
-				if(@artists->Get(i)->GetName()->Size() > 0) {
+				if(@artists->Get(i)->GetName()->Size() > 0 & @artists->Get(i)->GetKind() <> ArtistKind->BOX & @artists->Get(i)->GetKind() <> ArtistKind->HEATMAP) {
 					names->AddBack(@artists->Get(i)->GetName());
 					colors->AddBack(PlotMath->Color(i));
 				};
@@ -1649,6 +2446,12 @@ ax->SetLogX(true);
 			box_h := 12.0 + names->Size()->As(Float) * 18.0;
 			bx := px1 - box_w - 8.0;
 			by := py0 + 4.0;
+			if(@legend_loc->Equals("ul") | @legend_loc->Equals("ll")) {
+				bx := px0 + 8.0;
+			};
+			if(@legend_loc->Equals("lr") | @legend_loc->Equals("ll")) {
+				by := py1 - box_h - 8.0;
+			};
 			scene->Rect(bx, by, box_w, box_h, "#ffffff", "#cccccc", 1.0, 0.85, "legend");
 			ly : Float;
 			each(i : names) {

@@ -16987,8 +16987,17 @@
 		"System.Plot.Artist": {
 			"description": "One drawn thing on an Axes: its kind, legend name and data. Axes builds these.",
 			"functions": {
+				"GetColNames": {
+					"descriptions": ["**Column labels of a heatmap.**\n\n```method : public : GetColNames() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
 				"GetColors": {
 					"descriptions": ["**Color-scale values.**\n\n```method : public : GetColors() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetCols": {
+					"descriptions": ["**Columns of a heatmap.**\n\n```method : public : GetCols() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetDecimals": {
+					"descriptions": ["**Decimals of the printed heatmap values.**\n\n```method : public : GetDecimals() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"GetEdges": {
 					"descriptions": ["**Histogram bin edges.**\n\n```method : public : GetEdges() ~ Float[]```\n\n\n\nreturn: Float[]"]
@@ -16999,8 +17008,20 @@
 				"GetName": {
 					"descriptions": ["**Legend entry.**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
 				},
+				"GetOutliers": {
+					"descriptions": ["**Box plot values beyond the whiskers.**\n\n```method : public : GetOutliers() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetRowNames": {
+					"descriptions": ["**Row labels of a heatmap, top to bottom.**\n\n```method : public : GetRowNames() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetRows": {
+					"descriptions": ["**Rows of a heatmap.**\n\n```method : public : GetRows() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetSizes": {
 					"descriptions": ["**Size values.**\n\n```method : public : GetSizes() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetStats": {
+					"descriptions": ["**Box plot statistics.**\n\n```method : public : GetStats() ~ Float[]```\n\n\n\nreturn: Float[]"]
 				},
 				"GetXs": {
 					"descriptions": ["**x values.**\n\n```method : public : GetXs() ~ Float[]```\n\n\n\nreturn: Float[]"]
@@ -17008,16 +17029,28 @@
 				"GetYs": {
 					"descriptions": ["**y values.**\n\n```method : public : GetYs() ~ Float[]```\n\n\n\nreturn: Float[]"]
 				},
+				"IsAnnotated": {
+					"descriptions": ["**Whether a heatmap prints its values.**\n\n```method : public : IsAnnotated() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"New": {
-					"descriptions": ["**Constructor**\n\n```New(kind:ArtistKind, name:String, xs:Float[], ys:Float[], colors:Float[], sizes:Float[], edges:Float[])```\n\n\n\nkind: ArtistKind\n\nname: String\n\nxs: Float[]\n\nys: Float[]\n\ncolors: Float[]\n\nsizes: Float[]\n\nedges: Float[]"]
+					"descriptions": ["**Constructor for a heatmap.**\n\n```New(name:String, values:Float[], rows:Int, cols:Int, row_names:String[], col_names:String[], annotate:Bool, decimals:Int)```\n\n\n\nname: String\n\nvalues: Float[]\n\nrows: Int\n\ncols: Int\n\nrow_names: String[]\n\ncol_names: String[]\n\nannotate: Bool\n\ndecimals: Int", "**Constructor for a box plot.**\n\n```New(name:String, values:Float[], stats:Float[], outliers:Float[])```\n\n\n\nname: String\n\nvalues: Float[]\n\nstats: Float[]\n\noutliers: Float[]", "**Constructor**\n\n```New(kind:ArtistKind, name:String, xs:Float[], ys:Float[], colors:Float[], sizes:Float[], edges:Float[])```\n\n\n\nkind: ArtistKind\n\nname: String\n\nxs: Float[]\n\nys: Float[]\n\ncolors: Float[]\n\nsizes: Float[]\n\nedges: Float[]"]
 				}
 			}
 		},
 		"System.Plot.Axes": {
 			"description": "A plot area with axes, a title, ticks, a legend and the things drawn in it.",
 			"functions": {
+				"Annotate": {
+					"descriptions": ["**Points at a position with a text and a line: a circle at (x, y), the text at (text_x, text_y).**\n\n```method : public : Annotate(text:String, x:Float, y:Float, text_x:Float, text_y:Float) ~ Nil```\n\n\n\ntext: String\n\nx: Float\n\ny: Float\n\ntext_x: Float\n\ntext_y: Float\n\nreturn: Nil"]
+				},
 				"Bar": {
 					"descriptions": ["**Adds a bar series over the categories: one bar per category, grouped with the other bar series. SetCategories must have been called.**\n\n```method : public : Bar(name:String, ys:Float[]) ~ Nil```\n\n\n\nname: String\n\nys: Float[]\n\nreturn: Nil"]
+				},
+				"Box": {
+					"descriptions": ["**Adds a box plot box: the median, the quartiles, whiskers to the furthest values within 1.5 times the interquartile range, and the values beyond as circles. Each call adds one box, left to right, labelled under the axis.**\n\n```method : public : Box(name:String, values:Float[]) ~ Nil```\n\n\n\nname: String\n\nvalues: Float[]\n\nreturn: Nil"]
+				},
+				"ConfusionMatrix": {
+					"descriptions": ["**Adds a confusion matrix: a heatmap whose cells are annotated, with the actual class down the side and the predicted class along the bottom.**\n\n```method : public : ConfusionMatrix(counts:Int[,], classes:String[], normalize:Bool) ~ Nil```\n\n\n\ncounts: Int[,]\n\nclasses: String[]\n\nnormalize: Bool\n\nreturn: Nil"]
 				},
 				"Draw": {
 					"descriptions": ["**Draws the axes into a scene, inside a rectangle of the canvas.**\n\n```method : public : Draw(scene:PlotScene, x:Float, y:Float, width:Float, height:Float) ~ Nil```\n\n\n\nscene: PlotScene\n\nx: Float\n\ny: Float\n\nwidth: Float\n\nheight: Float\n\nreturn: Nil"]
@@ -17034,6 +17067,9 @@
 				"GetYAxis": {
 					"descriptions": ["**The resolved y axis of the last Draw.**\n\n```method : public : GetYAxis() ~ PlotAxis```\n\n\n\nreturn: PlotAxis"]
 				},
+				"Heatmap": {
+					"descriptions": ["**Adds a heatmap: one colored cell per value, a color bar on the right, and the row and column labels on the axes. Row 0 is at the top. A heatmap owns its axes: it cannot be combined with other plots.**\n\n```method : public : Heatmap(values:Float[,], row_names:String[], col_names:String[]) ~ Nil```\n\n\n\nvalues: Float[,]\n\nrow_names: String[]\n\ncol_names: String[]\n\nreturn: Nil", "**Adds a heatmap, optionally printing each value in its cell.**\n\n```method : public : Heatmap(values:Float[,], row_names:String[], col_names:String[], annotate:Bool, decimals:Int) ~ Nil```\n\n\n\nvalues: Float[,]\n\nrow_names: String[]\n\ncol_names: String[]\n\nannotate: Bool\n\ndecimals: Int\n\nreturn: Nil"]
+				},
 				"Hist": {
 					"descriptions": ["**Adds a histogram with equal-width bins over the range of the data.**\n\n```method : public : Hist(name:String, values:Float[], bins:Int) ~ Nil```\n\n\n\nname: String\n\nvalues: Float[]\n\nbins: Int\n\nreturn: Nil", "**Adds a histogram, optionally normalised so its area is 1.**\n\n```method : public : Hist(name:String, values:Float[], bins:Int, density:Bool) ~ Nil```\n\n\n\nname: String\n\nvalues: Float[]\n\nbins: Int\n\ndensity: Bool\n\nreturn: Nil"]
 				},
@@ -17043,8 +17079,17 @@
 				"Plot": {
 					"descriptions": ["**Adds a line.**\n\n```method : public : Plot(name:String, xs:Float[], ys:Float[]) ~ Nil```\n\n\n\nname: String\n\nxs: Float[]\n\nys: Float[]\n\nreturn: Nil"]
 				},
+				"PrCurve": {
+					"descriptions": ["**Adds a precision-recall curve with its average precision in the legend and both axes 0 to 1.**\n\n```method : public : PrCurve(name:String, curve:Float[,]) ~ Nil```\n\n\n\nname: String\n\ncurve: Float[,]\n\nreturn: Nil"]
+				},
+				"Reference": {
+					"descriptions": ["**Adds a dashed reference line between two points in data coordinates, such as the diagonal of a ROC plot or a threshold. It is not in the legend.**\n\n```method : public : Reference(x1:Float, y1:Float, x2:Float, y2:Float) ~ Nil```\n\n\n\nx1: Float\n\ny1: Float\n\nx2: Float\n\ny2: Float\n\nreturn: Nil"]
+				},
 				"ResetLimits": {
 					"descriptions": ["**Returns both ranges to being derived from the data.**\n\n```method : public : ResetLimits() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"RocCurve": {
+					"descriptions": ["**Adds a ROC curve with the chance diagonal, both axes 0 to 1, and the area under the curve (trapezoid rule) in the legend.**\n\n```method : public : RocCurve(name:String, curve:Float[,]) ~ Nil```\n\n\n\nname: String\n\ncurve: Float[,]\n\nreturn: Nil"]
 				},
 				"Scatter": {
 					"descriptions": ["**Adds a scatter plot of one color.**\n\n```method : public : Scatter(name:String, xs:Float[], ys:Float[]) ~ Nil```\n\n\n\nname: String\n\nxs: Float[]\n\nys: Float[]\n\nreturn: Nil", "**Adds a scatter plot whose points can be colored and sized by further columns. A color column adds a color bar on the right of the plot.**\n\n```method : public : Scatter(name:String, xs:Float[], ys:Float[], colors:Float[], sizes:Float[]) ~ Nil```\n\n\n\nname: String\n\nxs: Float[]\n\nys: Float[]\n\ncolors: Float[]\n\nsizes: Float[]\n\nreturn: Nil"]
@@ -17057,6 +17102,9 @@
 				},
 				"SetLegend": {
 					"descriptions": ["**Turns the legend on or off (on by default; it lists the named things only).**\n\n```method : public : SetLegend(on:Bool) ~ Nil```\n\n\n\non: Bool\n\nreturn: Nil"]
+				},
+				"SetLegendCorner": {
+					"descriptions": ["**Puts the legend in a corner of the plot area.**\n\n```method : public : SetLegendCorner(corner:String) ~ Nil```\n\n\n\ncorner: String\n\nreturn: Nil"]
 				},
 				"SetLogX": {
 					"descriptions": ["**Draws x on a base-10 log scale; every x must then be positive.**\n\n```method : public : SetLogX(on:Bool) ~ Nil```\n\n\n\non: Bool\n\nreturn: Nil"]
@@ -17081,6 +17129,9 @@
 				},
 				"Size": {
 					"descriptions": ["**Things drawn so far.**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Text": {
+					"descriptions": ["**Writes text at a position in data coordinates; text outside the plot area is not drawn.**\n\n```method : public : Text(x:Float, y:Float, text:String) ~ Nil```\n\n\n\nx: Float\n\ny: Float\n\ntext: String\n\nreturn: Nil"]
 				}
 			}
 		},
@@ -17186,6 +17237,9 @@
 				"NiceStep": {
 					"descriptions": ["**A 1-2-5 tick step for a range.**\n\n```function : NiceStep(range:Float, target:Int) ~ Float```\n\n\n\nrange: Float\n\ntarget: Int\n\nreturn: Float"]
 				},
+				"Quantile": {
+					"descriptions": ["**A quantile by linear interpolation between the closest ranks, as numpy does by default.**\n\n```function : Quantile(sorted:Float[], q:Float) ~ Float```\n\n\n\nsorted: Float[]\n\nq: Float\n\nreturn: Float"]
+				},
 				"TextWidth": {
 					"descriptions": ["**A rough text width for layout, so legends and labels never depend on a font.**\n\n```function : TextWidth(text:String, size:Int) ~ Float```\n\n\n\ntext: String\n\nsize: Int\n\nreturn: Float"]
 				},
@@ -17194,6 +17248,35 @@
 				},
 				"Viridis": {
 					"descriptions": ["**A viridis-like sequential color map: dark purple, blue, teal, green, yellow.**\n\n```function : Viridis(t:Float) ~ String```\n\n\n\nt: Float\n\nreturn: String"]
+				}
+			}
+		},
+		"System.Plot.PlotNote": {
+			"description": "A reference line or text laid over an Axes, positioned in data coordinates.",
+			"functions": {
+				"GetText": {
+					"descriptions": ["**The string.**\n\n```method : public : GetText() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetX1": {
+					"descriptions": ["**First x.**\n\n```method : public : GetX1() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetX2": {
+					"descriptions": ["**Second x.**\n\n```method : public : GetX2() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetY1": {
+					"descriptions": ["**First y.**\n\n```method : public : GetY1() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetY2": {
+					"descriptions": ["**Second y.**\n\n```method : public : GetY2() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"HasArrow": {
+					"descriptions": ["**Whether the text points at a position with a line.**\n\n```method : public : HasArrow() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsLine": {
+					"descriptions": ["**Whether this is a reference line.**\n\n```method : public : IsLine() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(is_line:Bool, x1:Float, y1:Float, x2:Float, y2:Float, text:String, arrow:Bool)```\n\n\n\nis_line: Bool\n\nx1: Float\n\ny1: Float\n\nx2: Float\n\ny2: Float\n\ntext: String\n\narrow: Bool"]
 				}
 			}
 		},
@@ -21784,6 +21867,12 @@
 				"file": "plot.obl"
 			}
 		],
+		"PlotNote": [
+			{
+				"bundle": "System.Plot",
+				"file": "plot.obl"
+			}
+		],
 		"PlotPrimitive": [
 			{
 				"bundle": "System.Plot",
@@ -23950,7 +24039,9 @@
 				{ "name": "LINE", "value": "0", "description": "" },
 				{ "name": "SCATTER", "value": "1", "description": "" },
 				{ "name": "BARS", "value": "2", "description": "" },
-				{ "name": "HIST", "value": "3", "description": "" }
+				{ "name": "HIST", "value": "3", "description": "" },
+				{ "name": "BOX", "value": "4", "description": "" },
+				{ "name": "HEATMAP", "value": "5", "description": "" }
 			]
 		},
 		"System.Plot.PrimitiveKind": {

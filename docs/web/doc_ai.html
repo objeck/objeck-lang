@@ -992,7 +992,7 @@ loaded := VectorIndex-&gt;Load("docs.vix");       # Nil if the file is not a goo
     <p>The three metrics cost the same, and a four-accumulator unrolled inner loop was no faster: at 100,000 x 384 a search streams 307 MB, so it is limited by memory bandwidth (about 7 GB/s) and not by arithmetic. An approximate index (HNSW) was not built: 44 ms per query is fast enough for retrieval over a document collection of this size, and an approximate answer brings recall to measure, a second file format and a build step with it. If you need far more vectors or queries per second, the next step is HNSW or an inverted-file index, not a faster scan.</p>
     <p>A complete run (a small corpus, embedded either with a BERT model or, with nothing to download, a hashed bag of words, then queried, saved and loaded) is <a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/ml/vector_search.obs" target="_blank"><code>programs/examples/ml/vector_search.obs</code></a>. It is tested by <code>ml_vector_exact.obs</code> (against a brute-force reference, ties, <code>k</code> past the end, removals), <code>ml_vector_edges.obs</code> (value range, block boundaries, emptying an index, near-ties), <code>ml_vector_validation.obs</code> and <code>ml_vector_persist.obs</code> (round trip and corrupt files).</p>
     <h4 id="plotting-systemplot">Plotting (System.Plot)</h4>
-    <p>A matplotlib-shaped plotting library that writes standalone SVG 1.1: no display, no native library, no script, no font file. It is <code>plot.obl</code> (<code>-lib plot,gen_collect</code> or <code>-lib @ai</code>) and needs nothing from <code>System.ML</code>, so a figure can come from any <code>Float[]</code>. A <code>Figure</code> holds one or more <code>Axes</code>; <code>fig-&gt;Save("a.svg")</code> writes the file and <code>fig-&gt;ToSvg()</code> returns the text. Every coordinate is written with one decimal and nothing depends on the clock, a locale or a font, so the same data gives the same bytes on every platform and a chart can be compared against a golden file in a test. <code>System.ML.Lab.Chart</code> (the line and bar writer behind <code>ResultTable-&gt;ToChart</code>) is unchanged and still the one-call API for experiment tables; <code>System.Plot</code> is the general one. Design: <a href="https://github.com/objeck/objeck-lang/blob/master/docs/PLOT_DESIGN.md" target="_blank"><code>docs/PLOT_DESIGN.md</code></a>.</p>
+    <p>A matplotlib-shaped plotting library (scatter, histogram, line, bars, heatmap, confusion matrix, box plot, ROC and precision-recall curves, annotations, subplots) that writes standalone SVG 1.1: no display, no native library, no script, no font file. It is <code>plot.obl</code> (<code>-lib plot,gen_collect</code> or <code>-lib @ai</code>) and needs nothing from <code>System.ML</code>, so a figure can come from any <code>Float[]</code>. A <code>Figure</code> holds one or more <code>Axes</code>; <code>fig-&gt;Save("a.svg")</code> writes the file and <code>fig-&gt;ToSvg()</code> returns the text. Every coordinate is written with one decimal and nothing depends on the clock, a locale or a font, so the same data gives the same bytes on every platform and a chart can be compared against a golden file in a test. <code>System.ML.Lab.Chart</code> (the line and bar writer behind <code>ResultTable-&gt;ToChart</code>) is unchanged and still the one-call API for experiment tables; <code>System.Plot</code> is the general one. Design: <a href="https://github.com/objeck/objeck-lang/blob/master/docs/PLOT_DESIGN.md" target="_blank"><code>docs/PLOT_DESIGN.md</code></a>.</p>
 <pre class="line-numbers"><code class="language-cpp">use System.Plot;
 
 # a scatter plot, one series per class; the legend lists the named series
@@ -1018,6 +1018,28 @@ ax-&gt;Bar("2026", [4.0, 4.5, 6.0]);
 ax-&gt;SetLogX(true);
 ax-&gt;SetYLim(0.0, 1.0);
 
+# a heatmap with its values printed in the cells (row 0 is at the top); a color bar is added
+ax-&gt;Heatmap(values, ["low", "mid", "high"], ["w", "x", "y", "z"], true, 1);
+
+# a confusion matrix: Metrics-&gt;ConfusionMatrix feeds straight in; true shows fractions per row
+ax-&gt;ConfusionMatrix(Metrics-&gt;ConfusionMatrix(predictions, actuals), ["negative", "positive"], false);
+
+# a box plot: one Box call per group, left to right; the whiskers reach the furthest value
+# within 1.5 x the interquartile range and the rest are circles
+ax-&gt;Box("control", control_values);
+ax-&gt;Box("treated", treated_values);
+
+# ROC and precision-recall from the curve matrices System.ML returns; the legend carries
+# the area under the curve (trapezoid rule) or the average precision
+ax-&gt;RocCurve("model", Metrics-&gt;RocCurve(scores, actuals));     # [threshold, FPR, TPR] rows
+ax-&gt;PrCurve("model", Metrics-&gt;PrCurve(scores, actuals));       # [threshold, recall, precision] rows
+
+# text in data coordinates, text with a line pointing at a point, a dashed reference line
+ax-&gt;Text(1.2, 5.5, "a label");
+ax-&gt;Annotate("peak", 6.0, 6.0, 4.2, 6.4);                      # text at (4.2, 6.4) pointing at (6, 6)
+ax-&gt;Reference(0.0, 3.5, 7.0, 3.5);
+ax-&gt;SetLegendCorner("lower right");
+
 # several plots on one canvas: a rows x cols grid, left to right and top to bottom
 board := Figure-&gt;New(900, 640);
 board-&gt;SetTitle("Dashboard");
@@ -1027,7 +1049,7 @@ board-&gt;GetAxes(0, 1)-&gt;Hist("", residuals, 12);
 board-&gt;Save("dashboard.svg");
 </code></pre>
     <p>Bad input never produces a broken picture: a mismatched length, a NaN or infinite value, a non-positive value on a log axis, bars without categories or an empty axes raise <code>PlotError</code> (<code>try { } on(e : PlotError) { }</code>). A <code>Figure</code> draws into a <code>PlotScene</code>, an ordered list of pixel-space primitives (lines, polylines, polygons, rects, circles, text with an anchor), and <code>SvgWriter</code> turns that into text; <code>fig-&gt;ToScene()</code> is the hook a second backend would use. The library is allowed in the web playground, since SVG needs no display.</p>
-    <p>A complete run that writes four files is <a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/ml/plot_demo.obs" target="_blank"><code>programs/examples/ml/plot_demo.obs</code></a>. It is tested by <code>plot_svg.obs</code>, which checks structure (one circle per point, one bar per bin, a color bar only when points are colored), the histogram counts against hand-counted bins, the area of a density histogram, geometry (every coordinate inside the viewport) and a byte-for-byte golden per chart under <code>programs/regression/plot_golden/</code>; each golden has a control showing that one changed value changes the bytes.</p>
+    <p>A heatmap owns its axes and a box plot cannot share axes with other plots; both refuse otherwise. <code>RocCurve</code> and <code>PrCurve</code> take the matrix as it is, so <code>System.Plot</code> does not link <code>System.ML</code> (compile with <code>-lib ml,plot,gen_collect,csv</code> only when you call <code>Metrics</code>; <code>PrCurve</code> is in <code>System.ML</code> from the scores PR on). Two complete runs: <a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/ml/plot_demo.obs" target="_blank"><code>programs/examples/ml/plot_demo.obs</code></a> writes four files (scatter, colored scatter, histogram, a dashboard), and <a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/ml/plot_evaluation.obs" target="_blank"><code>programs/examples/ml/plot_evaluation.obs</code></a> writes the confusion matrix, the ROC curve and a three-panel classifier report. The tests are <code>plot_svg.obs</code> (scatter, histogram, line, bars, log axes, subplots) and <code>plot_svg_more.obs</code> (box statistics against a hand-worked sample, the legend's AUC against <code>Metrics-&gt;AucRoc</code>, annotation text, refusals). They check structure (one circle per point, one bar per bin, one box per group, a color bar only when points are colored), the histogram counts against hand-counted bins, the area of a density histogram, geometry (every coordinate inside the viewport) and a byte-for-byte golden per chart under <code>programs/regression/plot_golden/</code>; each golden has a control showing that one changed value changes the bytes.</p>
     <h3 id="classic-ai-systemai">Classic AI (System.AI)</h3>
     <p>Search, game playing, optimization and tabular reinforcement learning — <code>-lib ai</code> (or the <code>@ai</code> alias). All stochastic algorithms are seeded for reproducible runs.</p>
 <pre class="plain">obc -src program.obs -lib ai,gen_collect -dest program.obe</pre>
@@ -1218,7 +1240,7 @@ opencv_onnx/  demo_face.obs    demo_yolo.obs    demo_resnet.obs
       <tr><th>Area</th><th>Tests</th></tr>
      </thead>
      <tbody>
-      <tr><td data-label="Area"><code>System.Plot</code></td><td data-label="Tests"><code>plot_svg.obs</code> (with goldens in <code>plot_golden/</code>)</td></tr>
+      <tr><td data-label="Area"><code>System.Plot</code></td><td data-label="Tests"><code>plot_svg.obs</code>, <code>plot_svg_more.obs</code> (with goldens in <code>plot_golden/</code>)</td></tr>
       <tr><td data-label="Area"><code>System.ML.VectorSearch</code></td><td data-label="Tests"><code>ml_vector_exact.obs</code>, <code>ml_vector_edges.obs</code>, <code>ml_vector_validation.obs</code>, <code>ml_vector_persist.obs</code></td></tr>
       <tr><td data-label="Area"><code>System.ML</code></td><td data-label="Tests"><code>ml_*.obs</code>, e.g. <code>ml_kernel_svm_reference.obs</code> and <code>ml_one_class_svm_reference.obs</code> (against an independent reference, generated by <code>tools/ml/svm_reference/gen_reference_test.py</code>), <code>ml_outlier_*.obs</code>, <code>ml_lab_*.obs</code></td></tr>
       <tr><td data-label="Area"><code>System.AI</code></td><td data-label="Tests"><code>ai_search_test.obs</code>, <code>ai_game_test.obs</code>, <code>ai_optimize_test.obs</code>, <code>ai_rl_test.obs</code></td></tr>

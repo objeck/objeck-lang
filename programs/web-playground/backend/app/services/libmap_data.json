@@ -209,7 +209,7 @@
   "plot": {
    "deps": ["gen_collect"],
    "bundles": {
-    "System.Plot": ["Artist", "ArtistKind", "Axes", "Figure", "PlotAxis", "PlotError", "PlotMath", "PlotPrimitive", "PlotScene", "PrimitiveKind", "SvgWriter", "TextAnchor"]
+    "System.Plot": ["Artist", "ArtistKind", "Axes", "Figure", "PlotAxis", "PlotError", "PlotMath", "PlotNote", "PlotPrimitive", "PlotScene", "PrimitiveKind", "SvgWriter", "TextAnchor"]
    }
   },
   "query": {

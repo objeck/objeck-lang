@@ -72,10 +72,10 @@ is `lib/sdl/fonts/lato.ttf`; when it is absent the backend falls back to `String
 
 ## Slices (one PR each, off `origin/master`)
 
-1. **Core and first charts** (this PR): `PlotScene`, SVG backend, `Figure`/`Axes`, scatter (colour and
+1. **Core and first charts** (PR #1610): `PlotScene`, SVG backend, `Figure`/`Axes`, scatter (colour and
    size from further columns), histogram, line, grouped bars, log axes, subplots; every registration
    place. Goldens per type.
-2. **More charts**: heatmap and confusion matrix (annotated cells), box plot, text annotations, ROC
+2. **More charts** (stacked on #1610): heatmap and confusion matrix (annotated cells), box plot, text annotations, ROC
    and precision-recall helpers (`System.ML` PR #1607 adds the metrics; the helpers take the curve
    points as arrays, so they do not depend on it at link time).
 3. **SDL2 backend**: window with zoom/pan/hover, PNG export, headless test.

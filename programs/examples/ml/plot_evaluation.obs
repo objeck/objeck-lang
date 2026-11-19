@@ -1,0 +1,89 @@
+#~
+Evaluation plots for a classifier with System.Plot: the confusion matrix, the ROC curve and
+the precision-recall curve of a score, a box plot of the scores by class, and a figure that
+puts them side by side with a text annotation. Each is a standalone SVG.
+
+The scores are synthetic (two overlapping bell curves), so the example needs no data file:
+swap in the output of a System.ML model and nothing else changes.
+
+  compile: obc -src plot_evaluation.obs -lib ml,plot,gen_collect,csv
+  run:     obr plot_evaluation.obe     (writes evaluation.svg, roc.svg, confusion.svg)
+~#
+use System.ML;
+use System.Plot;
+
+class PlotEvaluation {
+	@seed : static : Int;
+
+	function : Next() ~ Float {
+		@seed := (@seed * 1103515245 + 12345) % 2147483648;
+		return @seed->As(Float) / 2147483648.0;
+	}
+
+	# roughly normal: the sum of 12 uniforms minus 6
+	function : Normal(mean : Float, spread : Float) ~ Float {
+		total := 0.0;
+		each(i : 12) {
+			total += Next();
+		};
+
+		return mean + (total - 6.0) * spread;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@seed := 11;
+		n := 300;
+		scores := Float->New[n];
+		actuals := Bool->New[n];
+		predictions := Bool->New[n];
+		negatives := Float->New[n / 2];
+		positives := Float->New[n / 2];
+		neg := 0;
+		pos := 0;
+		each(i : n) {
+			actuals[i] := i % 2 = 1;
+			if(actuals[i]) {
+				scores[i] := Normal(0.65, 0.18);
+				positives[pos] := scores[i];
+				pos += 1;
+			}
+			else {
+				scores[i] := Normal(0.40, 0.18);
+				negatives[neg] := scores[i];
+				neg += 1;
+			};
+			predictions[i] := scores[i] >= 0.5;
+		};
+
+		# the confusion matrix at a 0.5 threshold, normalized by row
+		cm := Metrics->ConfusionMatrix(predictions, actuals);
+		matrix := Figure->New(520, 440);
+		matrix->GetAxes()->SetTitle("Confusion matrix (threshold 0.5)");
+		matrix->GetAxes()->ConfusionMatrix(cm, ["negative", "positive"], false);
+		matrix->Save("confusion.svg")->PrintLine();
+
+		# the ROC curve; the legend carries the area under it
+		roc := Figure->New(560, 480);
+		roc->GetAxes()->SetTitle("ROC");
+		roc->GetAxes()->RocCurve("classifier", Metrics->RocCurve(scores, actuals));
+		roc->Save("roc.svg")->PrintLine();
+
+		# one figure: ROC, score distributions by class, and the matrix
+		board := Figure->New(1000, 420);
+		board->SetTitle("Classifier report");
+		board->Subplots(1, 3);
+
+		board->GetAxes(0, 0)->SetTitle("ROC");
+		board->GetAxes(0, 0)->RocCurve("", Metrics->RocCurve(scores, actuals));
+
+		board->GetAxes(0, 1)->SetTitle("Scores by class");
+		board->GetAxes(0, 1)->Box("negative", negatives);
+		board->GetAxes(0, 1)->Box("positive", positives);
+		board->GetAxes(0, 1)->Reference(-0.5, 0.5, 1.5, 0.5);
+		board->GetAxes(0, 1)->Text(-0.4, 0.52, "threshold");
+
+		board->GetAxes(0, 2)->SetTitle("Confusion");
+		board->GetAxes(0, 2)->ConfusionMatrix(cm, ["neg", "pos"], true);
+		board->Save("evaluation.svg")->PrintLine();
+	}
+}

@@ -1264,7 +1264,7 @@ A complete run (a small corpus, embedded either with a BERT model or, with nothi
 
 ### Plotting (System.Plot)
 
-A matplotlib-shaped plotting library that writes standalone SVG 1.1: no display, no native library, no script, no font file. It is `plot.obl` (`-lib plot,gen_collect` or `-lib @ai`) and needs nothing from `System.ML`, so a figure can come from any `Float[]`. A `Figure` holds one or more `Axes`; `fig->Save("a.svg")` writes the file and `fig->ToSvg()` returns the text. Every coordinate is written with one decimal and nothing depends on the clock, a locale or a font, so the same data gives the same bytes on every platform and a chart can be compared against a golden file in a test. `System.ML.Lab.Chart` (the line and bar writer behind `ResultTable->ToChart`) is unchanged and still the one-call API for experiment tables; `System.Plot` is the general one. Design: [`docs/PLOT_DESIGN.md`](PLOT_DESIGN.md).
+A matplotlib-shaped plotting library (scatter, histogram, line, bars, heatmap, confusion matrix, box plot, ROC and precision-recall curves, annotations, subplots) that writes standalone SVG 1.1: no display, no native library, no script, no font file. It is `plot.obl` (`-lib plot,gen_collect` or `-lib @ai`) and needs nothing from `System.ML`, so a figure can come from any `Float[]`. A `Figure` holds one or more `Axes`; `fig->Save("a.svg")` writes the file and `fig->ToSvg()` returns the text. Every coordinate is written with one decimal and nothing depends on the clock, a locale or a font, so the same data gives the same bytes on every platform and a chart can be compared against a golden file in a test. `System.ML.Lab.Chart` (the line and bar writer behind `ResultTable->ToChart`) is unchanged and still the one-call API for experiment tables; `System.Plot` is the general one. Design: [`docs/PLOT_DESIGN.md`](PLOT_DESIGN.md).
 
 ```ruby
 use System.Plot;
@@ -1292,6 +1292,28 @@ ax->Bar("2026", [4.0, 4.5, 6.0]);
 ax->SetLogX(true);
 ax->SetYLim(0.0, 1.0);
 
+# a heatmap with its values printed in the cells (row 0 is at the top); a color bar is added
+ax->Heatmap(values, ["low", "mid", "high"], ["w", "x", "y", "z"], true, 1);
+
+# a confusion matrix: Metrics->ConfusionMatrix feeds straight in; true shows fractions per row
+ax->ConfusionMatrix(Metrics->ConfusionMatrix(predictions, actuals), ["negative", "positive"], false);
+
+# a box plot: one Box call per group, left to right; the whiskers reach the furthest value
+# within 1.5 x the interquartile range and the rest are circles
+ax->Box("control", control_values);
+ax->Box("treated", treated_values);
+
+# ROC and precision-recall from the curve matrices System.ML returns; the legend carries
+# the area under the curve (trapezoid rule) or the average precision
+ax->RocCurve("model", Metrics->RocCurve(scores, actuals));     # [threshold, FPR, TPR] rows
+ax->PrCurve("model", Metrics->PrCurve(scores, actuals));       # [threshold, recall, precision] rows
+
+# text in data coordinates, text with a line pointing at a point, a dashed reference line
+ax->Text(1.2, 5.5, "a label");
+ax->Annotate("peak", 6.0, 6.0, 4.2, 6.4);                      # text at (4.2, 6.4) pointing at (6, 6)
+ax->Reference(0.0, 3.5, 7.0, 3.5);
+ax->SetLegendCorner("lower right");
+
 # several plots on one canvas: a rows x cols grid, left to right and top to bottom
 board := Figure->New(900, 640);
 board->SetTitle("Dashboard");
@@ -1303,7 +1325,7 @@ board->Save("dashboard.svg");
 
 Bad input never produces a broken picture: a mismatched length, a NaN or infinite value, a non-positive value on a log axis, bars without categories or an empty axes raise `PlotError` (`try { } on(e : PlotError) { }`). A `Figure` draws into a `PlotScene`, an ordered list of pixel-space primitives (lines, polylines, polygons, rects, circles, text with an anchor), and `SvgWriter` turns that into text; `fig->ToScene()` is the hook a second backend would use. The library is allowed in the web playground, since SVG needs no display.
 
-A complete run that writes four files is [`programs/examples/ml/plot_demo.obs`](../programs/examples/ml/plot_demo.obs). It is tested by `plot_svg.obs`, which checks structure (one circle per point, one bar per bin, a color bar only when points are colored), the histogram counts against hand-counted bins, the area of a density histogram, geometry (every coordinate inside the viewport) and a byte-for-byte golden per chart under `programs/regression/plot_golden/`; each golden has a control showing that one changed value changes the bytes.
+A heatmap owns its axes and a box plot cannot share axes with other plots; both refuse otherwise. `RocCurve` and `PrCurve` take the matrix as it is, so `System.Plot` does not link `System.ML` (compile with `-lib ml,plot,gen_collect,csv` only when you call `Metrics`; `PrCurve` is in `System.ML` from the scores PR on). Two complete runs: [`programs/examples/ml/plot_demo.obs`](../programs/examples/ml/plot_demo.obs) writes four files (scatter, colored scatter, histogram, a dashboard), and [`programs/examples/ml/plot_evaluation.obs`](../programs/examples/ml/plot_evaluation.obs) writes the confusion matrix, the ROC curve and a three-panel classifier report. The tests are `plot_svg.obs` (scatter, histogram, line, bars, log axes, subplots) and `plot_svg_more.obs` (box statistics against a hand-worked sample, the legend's AUC against `Metrics->AucRoc`, annotation text, refusals). They check structure (one circle per point, one bar per bin, one box per group, a color bar only when points are colored), the histogram counts against hand-counted bins, the area of a density histogram, geometry (every coordinate inside the viewport) and a byte-for-byte golden per chart under `programs/regression/plot_golden/`; each golden has a control showing that one changed value changes the bytes.
 
 ## Classic AI (System.AI)
 
@@ -1531,7 +1553,7 @@ The libraries in this guide are covered by the regression suite in `programs/reg
 
 | Area | Tests |
 |---|---|
-| `System.Plot` | `plot_svg.obs` (with goldens in `plot_golden/`) |
+| `System.Plot` | `plot_svg.obs`, `plot_svg_more.obs` (with goldens in `plot_golden/`) |
 | `System.ML.VectorSearch` | `ml_vector_exact.obs`, `ml_vector_edges.obs`, `ml_vector_validation.obs`, `ml_vector_persist.obs` |
 | `System.ML` | `ml_*.obs`, e.g. `ml_kernel_svm_reference.obs` and `ml_one_class_svm_reference.obs` (against an independent reference, generated by `tools/ml/svm_reference/gen_reference_test.py`), `ml_outlier_*.obs`, `ml_lab_*.obs` |
 | `System.AI` | `ai_search_test.obs`, `ai_game_test.obs`, `ai_optimize_test.obs`, `ai_rl_test.obs` |
