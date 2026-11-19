@@ -1,0 +1,216 @@
+#~
+# The ONNX execution provider is chosen per session with "ep", the runtime can
+# be asked what it carries, and a provider it does not carry is refused -- the
+# session does not open -- instead of quietly running on the CPU.
+#
+# EXTRA_LIBS: models,onnx,opencv,cipher,json
+#
+# Before this, the provider was fixed when libobjk_onnx was compiled: "ep" could
+# only name that provider or "cpu". Now the compiled one is just the default, and
+# "ep" picks among whatever the loaded ONNX Runtime was built with. The cases
+# that need a particular GPU cannot run on a CI runner (docs/ONNX_CUDA_PLAN.md
+# records the CUDA run on a real card), so this covers the half every platform
+# can: the names, the case folding, and above all the refusals. An absent
+# provider is only meaningful if the same model opens under ep=cpu, so each
+# refusal is paired with that control rather than leaning on a missing file.
+#
+# The model is the tiny BERT-shaped asset under data/bert, found relative to the
+# working directory, which every runner sets to this directory.
+~#
+
+use API.Onnx;
+use Collection;
+use System.IO.Filesystem;
+
+class OnnxProviderSelect {
+	@ok : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		t := OnnxProviderSelect->New();
+		t->Run();
+	}
+
+	New() {
+		@ok := true;
+	}
+
+	method : Report(name : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	method : LibraryPresent() ~ Bool {
+		dir := Runtime->GetProperty("lib_dir");
+		if(dir = Nil) {
+			return false;
+		};
+
+		base := "{$dir}native/libobjk_onnx";
+		return System.IO.Filesystem.File->Exists("{$base}.dll") |
+			System.IO.Filesystem.File->Exists("{$base}.so") |
+			System.IO.Filesystem.File->Exists("{$base}.dylib");
+	}
+
+	function : Model() ~ String {
+		return "data/bert/classifier/bert_one_label/model.onnx";
+	}
+
+	function : WithEp(ep : String) ~ Map<String, String> {
+		config := Map->New()<String, String>;
+		config->Insert("ep", ep);
+		return config;
+	}
+
+	# True when a session for the model opens under this "ep"
+	function : Opens(ep : String) ~ Bool {
+		session := Session->New(Model(), WithEp(ep));
+		opened := session <> Nil & session->IsOpen();
+		if(session <> Nil) {
+			session->Close();
+		};
+		return opened;
+	}
+
+	# True when a session opens with this one option set, any key, any value (Nil allowed)
+	function : OpensWith(key : String, value : String) ~ Bool {
+		config := Map->New()<String, String>;
+		config->Insert(key, value);
+		session := Session->New(Model(), config);
+		opened := session <> Nil & session->IsOpen();
+		if(session <> Nil) {
+			session->Close();
+		};
+		return opened;
+	}
+
+	method : Run() ~ Nil {
+		if(<>LibraryPresent()) {
+			"SKIP: libobjk_onnx is not deployed"->PrintLine();
+			return;
+		};
+
+		# The model is tracked in this tree, so its absence is a broken checkout, not a platform
+		# that cannot run the test: fail rather than pass by skipping.
+		if(<>File->Exists(Model())) {
+			Report("the tiny BERT model is present at {$Model()}", false);
+			Runtime->Exit(1);
+		};
+
+		Listing();
+		Selection();
+		Refusals();
+		MalformedOptions();
+		Positive();
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+
+		"reached the end without aborting"->PrintLine();
+	}
+
+	method : Listing() ~ Nil {
+		providers := OnnxRuntime->GetProviders();
+		Report("the runtime lists its providers", providers <> Nil & providers->Size() > 0);
+
+		has_cpu := false;
+		if(providers <> Nil) {
+			each(provider in providers) {
+				if(provider->Equals("CPUExecutionProvider")) {
+					has_cpu := true;
+				};
+			};
+		};
+		Report("and the CPU provider is among them", has_cpu);
+
+		Report("HasProvider knows cpu", OnnxRuntime->HasProvider("cpu"));
+		Report("case does not matter", OnnxRuntime->HasProvider("CPU"));
+		Report("ORT's own spelling is accepted", OnnxRuntime->HasProvider("CPUExecutionProvider"));
+		Report("an unknown name is not a provider", <>OnnxRuntime->HasProvider("no-such-provider"));
+		Report("a Nil name is not a provider (and does not fault)", <>OnnxRuntime->HasProvider(Nil));
+
+		default_ep := OnnxRuntime->GetDefaultProvider();
+		Report("the build names a default provider", default_ep <> Nil & default_ep->Size() > 0);
+		if(default_ep <> Nil) {
+			Report("and says it plainly: {$default_ep}", default_ep->Equals("cpu") |
+				default_ep->Equals("dml") | default_ep->Equals("cuda") | default_ep->Equals("qnn") |
+				default_ep->Equals("vitisai") | default_ep->Equals("coreml"));
+		};
+	}
+
+	# ep=cpu is available everywhere and must open, however the name is written
+	method : Selection() ~ Nil {
+		Report("ep=cpu opens a session", Opens("cpu"));
+		Report("ep=CPU does too", Opens("CPU"));
+		Report("so does ORT's spelling", Opens("CPUExecutionProvider"));
+	}
+
+	# Each refusal is judged against the ep=cpu control above: the same model, the
+	# same code, only the provider differs.
+	method : Refusals() ~ Nil {
+		Report("a name that is no provider is refused", <>Opens("no-such-provider"));
+
+		# Absent on every runtime this project ships, so the session must not open.
+		if(<>OnnxRuntime->HasProvider("vitisai")) {
+			Report("a provider the runtime lacks (vitisai) is refused", <>Opens("vitisai"));
+		}
+		else {
+			"SKIP: this runtime has vitisai"->PrintLine();
+		};
+
+		if(<>OnnxRuntime->HasProvider("cuda")) {
+			Report("a provider the runtime lacks (cuda) is refused, not run on the CPU", <>Opens("cuda"));
+		}
+		else {
+			"SKIP: this runtime has cuda"->PrintLine();
+		};
+
+		if(<>OnnxRuntime->HasProvider("dml")) {
+			Report("a provider the runtime lacks (dml) is refused", <>Opens("dml"));
+		}
+		else {
+			"SKIP: this runtime has dml"->PrintLine();
+		};
+
+		# The "ep" key is matched without regard to case. Spelled "EP" it used to travel to the
+		# provider as an ignored option and the session opened on the default one.
+		Report("the key EP selects like ep: a provider that is no provider is refused",
+			<>OpensWith("EP", "no-such-provider"));
+		Report("and Ep=cpu opens", OpensWith("Ep", "cpu"));
+
+		# The refusal did not poison the library: the control still opens.
+		Report("and ep=cpu still opens afterwards", Opens("cpu"));
+	}
+
+	# An option set with a Nil in it used to be dropped whole -- "ep" with it -- and the
+	# session opened on the default provider. It is now refused.
+	method : MalformedOptions() ~ Nil {
+		Report("a Nil value for ep is refused, not ignored", <>OpensWith("ep", Nil));
+	}
+
+	# The positive half: an explicit non-CPU provider opens when the runtime has it. Each case
+	# prints why it did not run. DirectML is deliberately not asserted: a CI runner has no
+	# display adapter, so a runtime that carries DirectML still cannot open a session, and
+	# that is not this code's failure. ep=dml therefore has no automated coverage on a
+	# runner without a GPU; it is exercised by hand (docs/ONNX_CUDA_PLAN.md).
+	method : Positive() ~ Nil {
+		if(OnnxRuntime->HasProvider("cuda")) {
+			Report("ep=cuda opens a session on this CUDA runtime", Opens("cuda"));
+		}
+		else {
+			"SKIP: ep=cuda is not asserted, this runtime has no CUDA provider"->PrintLine();
+		};
+
+		if(OnnxRuntime->HasProvider("dml")) {
+			"SKIP: ep=dml is not asserted, a CI runner has no display adapter"->PrintLine();
+		}
+		else {
+			"SKIP: ep=dml is not asserted, this runtime has no DirectML provider"->PrintLine();
+		};
+	}
+}

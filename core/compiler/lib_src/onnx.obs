@@ -24,11 +24,25 @@ bundle API.Onnx {
 	#~
 	ONNX runtime utilities for querying execution providers.
 
+	The execution provider is chosen per session: pass "ep" in the session's
+	config map -- "cpu", "cuda", "dml", "qnn", "vitisai" or "coreml". Without
+	"ep" a session gets the provider the library was built for
+	(GetDefaultProvider). A provider the loaded ONNX Runtime does not carry is
+	refused, with the list of those it does, and the session does not open; it
+	never silently runs on the CPU instead.
+
 	```
 	providers := OnnxRuntime->GetProviders();
 	each(p in providers) {
 	  p->PrintLine();
 	};
+
+	config := Map->New()<String, String>;
+	if(OnnxRuntime->HasProvider("cuda")) {
+	  config->Insert("ep", "cuda");
+	  config->Insert("device_id", "0");
+	};
+	session := YoloSession->New("yolo11n.onnx", config);
 	```
 	~#
 	class OnnxRuntime {
@@ -38,6 +52,8 @@ bundle API.Onnx {
 		# copy per call. Static because these are class-wide constants and a
 		# static function cannot read an instance field.
 		@fn_onnx_get_provider_names : static : String;
+		@fn_onnx_get_default_provider : static : String;
+		@fn_onnx_has_provider : static : String;
 		#~
 		Gets available ONNX execution providers (e.g., "DML", "CUDA", "CPU")
 		@return array of provider name strings
@@ -52,6 +68,41 @@ bundle API.Onnx {
 			holder := array_args[0]->As(StringArrayRef);
 			return holder->Get();
 		}
+
+		#~
+		Gets the provider a session uses when its config names no "ep"
+		(the provider the native library was built for)
+		@return short name: "cpu", "cuda", "dml", "qnn", "vitisai" or "coreml"
+		~#
+		function : GetDefaultProvider() ~ String {
+			array_args := Base->New[1];
+			array_args[0] := Nil;
+
+			if(@fn_onnx_get_default_provider = Nil) { @fn_onnx_get_default_provider := "onnx_get_default_provider"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_get_default_provider, array_args);
+
+			return array_args[0]->As(String);
+		}
+
+		#~
+		Whether the loaded ONNX Runtime carries an execution provider, so a program
+		can pick "ep" before creating a session. Takes the names "ep" takes
+		(case-insensitive); an unknown name is false. Present in the runtime does
+		not guarantee it can start: CUDA also needs the NVIDIA driver, CUDA and cuDNN.
+		@param name short provider name, e.g. "cuda", "dml", "cpu"
+		@return true if the runtime was built with the provider
+		~#
+		function : HasProvider(name : String) ~ Bool {
+			array_args := Base->New[2];
+			array_args[0] := IntRef->New();
+			array_args[1] := name;
+
+			if(@fn_onnx_has_provider = Nil) { @fn_onnx_has_provider := "onnx_has_provider"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_has_provider, array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get() <> 0;
+		}
 	}
 
 	#~
@@ -63,8 +114,10 @@ bundle API.Onnx {
 	labels := ["person", "bicycle", "car"];
 	session := YoloSession->New("yolo11n.onnx");
 	result := session->Inference(image_bytes, 640, 640, 0.5, labels);
-	each(cls in result->GetClassifications()) {
-	  "{cls->GetName()}: {cls->GetConfidence()}"->PrintLine();
+	if(result <> Nil) {   # Nil when the image or the session is bad
+	  each(cls in result->GetClassifications()) {
+	    "{cls->GetName()}: {cls->GetConfidence()}"->PrintLine();
+	  };
 	};
 	session->Close();
 	```
@@ -174,8 +227,10 @@ labels := ["person", "car", "dog"];
 session := YoloSession->New("yolo11n.onnx");
 image := FileReader->ReadBinaryFile("photo.jpg");
 result := session->Inference(image, 640, 640, 0.5, labels);
-each(cls in result->GetClassifications()) {
-  "{$cls->GetName()}: {$cls->GetConfidence()}"->PrintLine();
+if(result <> Nil) {   # Nil when the image or the session is bad
+  each(cls in result->GetClassifications()) {
+    "{$cls->GetName()}: {$cls->GetConfidence()}"->PrintLine();
+  };
 };
 session->Close();
 ```
@@ -451,7 +506,9 @@ each(cls in result->GetClassifications()) {
 	labels := ["tabby cat", "golden retriever", "sports car"];
 	session := ResNetSession->New("resnet50.onnx");
 	result := session->Inference(image_bytes, 224, 224, labels);
-	"Top: {result->GetName()} ({result->GetConfidence()})"->PrintLine();
+	if(result <> Nil) {   # Nil when the image or the session is bad
+	  "Top: {result->GetName()} ({result->GetConfidence()})"->PrintLine();
+	};
 	session->Close();
 	```
 	~#
@@ -559,7 +616,9 @@ labels := ["cat", "dog", "bird"];
 session := ResNetSession->New("resnet50.onnx");
 image := FileReader->ReadBinaryFile("animal.jpg");
 result := session->Inference(image, 224, 224, labels);
-"Top class: {$result->GetName()} ({$result->GetConfidence()})"->PrintLine();
+if(result <> Nil) {   # Nil when the image or the session is bad
+  "Top class: {$result->GetName()} ({$result->GetConfidence()})"->PrintLine();
+};
 session->Close();
 ```
 		~#
@@ -700,8 +759,10 @@ session->Close();
 	labels := ["background", "person", "bicycle", "car"];
 	session := DeepLabSession->New("deeplabv3.onnx");
 	result := session->Inference(image_bytes, labels);
-	each(cls in result->GetClassifications()) {
-	  "{cls->GetName()}: {cls->GetConfidence()}%"->PrintLine();
+	if(result <> Nil) {   # Nil when the image or the session is bad
+	  each(cls in result->GetClassifications()) {
+	    "{cls->GetName()}: {cls->GetConfidence()}%"->PrintLine();
+	  };
 	};
 	session->Close();
 	```
@@ -810,8 +871,10 @@ labels := ["background", "person", "car"];
 session := DeepLabSession->New("deeplabv3.onnx");
 image := FileReader->ReadBinaryFile("scene.jpg");
 result := session->Inference(image, labels);
-each(cls in result->GetClassifications()) {
-  "{$cls->GetName()}: {$cls->GetConfidence()}%"->PrintLine();
+if(result <> Nil) {   # Nil when the image or the session is bad
+  each(cls in result->GetClassifications()) {
+    "{$cls->GetName()}: {$cls->GetConfidence()}%"->PrintLine();
+  };
 };
 session->Close();
 ```
@@ -1037,9 +1100,11 @@ session->Close();
 	  "left_knee", "right_knee", "left_ankle", "right_ankle"];
 	session := OpenPoseSession->New("openpose.onnx");
 	result := session->Inference(image_bytes, labels);
-	each(kp in result->GetClassifications()) {
-	  if(kp->GetConfidence() > 0) {
-	    "{kp->GetName()}: [{kp->GetNormalizedX()}, {kp->GetNormalizedY()}]"->PrintLine();
+	if(result <> Nil) {   # Nil when the image or the session is bad
+	  each(kp in result->GetClassifications()) {
+	    if(kp->GetConfidence() > 0) {
+	      "{kp->GetName()}: [{kp->GetNormalizedX()}, {kp->GetNormalizedY()}]"->PrintLine();
+	    };
 	  };
 	};
 	session->Close();
@@ -1151,9 +1216,11 @@ labels := ["nose", "left_eye", "right_eye", "left_ear", "right_ear",
 session := OpenPoseSession->New("openpose.onnx");
 image := FileReader->ReadBinaryFile("person.jpg");
 result := session->Inference(image, labels);
-each(kp in result->GetClassifications()) {
-  if(kp->GetConfidence() > 0) {
-    "{$kp->GetName()}: ({$kp->GetNormalizedX()},{$kp->GetNormalizedY()})"->PrintLine();
+if(result <> Nil) {   # Nil when the image or the session is bad
+  each(kp in result->GetClassifications()) {
+    if(kp->GetConfidence() > 0) {
+      "{$kp->GetName()}: ({$kp->GetNormalizedX()},{$kp->GetNormalizedY()})"->PrintLine();
+    };
   };
 };
 session->Close();

@@ -152,11 +152,11 @@ Large DLLs are compressed as `.7z` archives. Extract to the application director
 
 ### Linux (CUDA)
 - Not shipped. The vendored runtime is CPU-only, so the Linux package is built with `eq/build.sh cpu`.
-- `eq/build.sh cuda` compiles the CUDA path, but it needs a CUDA-enabled ONNX Runtime linked in place of the vendored one, plus the CUDA toolkit and cuDNN. Against the vendored runtime, every session that does not ask for `ep=cpu` is refused, and the error lists the providers the runtime does have.
+- The provider is chosen per session (`ep=cuda`), so CUDA needs no special build of `libobjk_onnx`; it needs a CUDA-enabled ONNX Runtime, the NVIDIA driver, CUDA 12 and cuDNN 9. The shipped library is linked to the vendored 1.19.0 symbol version, so build one against your runtime: `ORT_ROOT=<dir holding libonnxruntime.so> ./build.sh cpu` (or `./build.sh cuda` to also make `cuda` the default provider), then put that directory on `LD_LIBRARY_PATH`. Against the vendored CPU-only runtime, `ep=cuda` is refused and the error lists the providers the runtime does have.
 
 ### macOS (CoreML)
 - `libonnxruntime.1.dylib` (ONNX Runtime 1.30.0) ships inside the macOS package, beside `libobjk_onnx.dylib`; nothing to install. Needs macOS 14 or later.
-- CoreML EP accelerates on Apple Neural Engine / GPU; falls back to CPU automatically.
+- CoreML EP accelerates on Apple Neural Engine / GPU. When no `ep` is given and CoreML cannot build the session, the library announces it and falls back to CPU; `ep=coreml` asked for CoreML by name and gets the error instead.
 
 ## Special Tokens (Phi-3 Family)
 

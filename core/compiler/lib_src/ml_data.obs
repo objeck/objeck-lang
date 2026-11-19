@@ -58,7 +58,7 @@ ratios := pca->GetExplainedVarianceRatio();
 		@return true if fitting succeeded
 		~#
 		method : public : Fit(X : Float[,]) ~ Bool {
-			if(X = Nil) {
+			if(<>InputCheck->Valid(X)) {
 				return false;
 			};
 
@@ -209,7 +209,10 @@ ratios := pca->GetExplainedVarianceRatio();
 		@return projected matrix (rows x num_components), or Nil if not fitted
 		~#
 		method : public : Transform(X : Float[,]) ~ Float[,] {
-			if(<>@is_fitted | X = Nil) {
+			if(<>@is_fitted) {
+				return Nil;
+			};
+			if(<>InputCheck->HasCols(X, @mean->Size())) {
 				return Nil;
 			};
 
@@ -237,7 +240,10 @@ ratios := pca->GetExplainedVarianceRatio();
 		@return reconstruction (rows x features), or Nil if not fitted
 		~#
 		method : public : InverseTransform(Z : Float[,]) ~ Float[,] {
-			if(<>@is_fitted | Z = Nil) {
+			if(<>@is_fitted) {
+				return Nil;
+			};
+			if(<>InputCheck->HasCols(Z, @num_components)) {
 				return Nil;
 			};
 
@@ -426,7 +432,7 @@ test_z := scaler->Transform(test);
 ```
 		~#
 		method : public : Fit(X : Float[,]) ~ Bool {
-			if(X = Nil) {
+			if(<>InputCheck->Valid(X)) {
 				return false;
 			};
 
@@ -478,7 +484,10 @@ if(test_z = Nil) {
 ```
 		~#
 		method : public : Transform(X : Float[,]) ~ Float[,] {
-			if(<>@fitted | X = Nil) {
+			if(<>@fitted) {
+				return Nil;
+			};
+			if(<>InputCheck->HasCols(X, @means->Size())) {
 				return Nil;
 			};
 
@@ -1463,7 +1472,7 @@ r := Metrics->RecallAtFpr(scores, actuals, 0.001);
 		@param scores one score per instance; higher means more positive
 		@param actuals true where the instance really is positive
 		@param max_fpr the false-positive rate that must not be exceeded
-		@return the threshold to classify at, or 0.0 on bad input
+		@return the threshold to classify at; 0.0 on bad input, which is also a real threshold of 0.0, so check that RecallAtFpr is not -1.0 first
 		~#
 		function : ThresholdAtFpr(scores : Float[], actuals : Bool[], max_fpr : Float) ~ Float {
 			points := OperatingPoints(scores, actuals);
