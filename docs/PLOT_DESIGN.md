@@ -42,8 +42,8 @@ is `lib/sdl/fonts/lato.ttf`; when it is absent the backend falls back to `String
    would have to add `-lib plot`: a breaking change for no user-visible gain. The "golden test
    first" requirement is already met by the five existing goldens, which keep running unchanged.
    `Chart` stays the supported one-call API for experiment tables; `System.Plot` is the general one.
-3. **A backend-neutral scene.** A `Figure` holds `Axes`; drawing an `Axes` produces a `Scene`, an ordered
-   list of `Primitive` records in pixel space: `LINE`, `POLYLINE`, `POLYGON`, `RECT`, `CIRCLE`,
+3. **A backend-neutral scene.** A `Figure` holds `Axes`; drawing an `Axes` produces a `PlotScene`, an ordered
+   list of `PlotPrimitive` records in pixel space: `LINE`, `POLYLINE`, `POLYGON`, `RECT`, `CIRCLE`,
    `TEXT` (with anchor, size, weight, rotation). Style is stroke, fill, width, opacity. Backends
    are dumb walkers over that list, and tests can assert on primitives without parsing SVG.
 4. **API in matplotlib's shape, Objeck's types.**
@@ -58,7 +58,7 @@ is `lib/sdl/fonts/lato.ttf`; when it is absent the backend falls back to `String
    is shown to fail on a changed input.
 6. **SDL2 is a separate library, `plot_sdl.obl`, bundle `System.Plot.SDL`** (needs `plot`, `sdl2`,
    `gen_collect`), blocked in the playground and absent from headless CI runs of the SVG tests.
-   It walks the same `Scene`. Interactivity does not scale pixels: zoom, pan and hover change the
+   It walks the same `PlotScene`. Interactivity does not scale pixels: zoom, pan and hover change the
    `Axes` view limits and rebuild the scene (a plain function of data and limits), so ticks and
    labels stay crisp; hover uses `Axes->PixelToData`. PNG export renders the scene on a software
    renderer over a surface and calls `Renderer->SavePNG`; it does not need a window, so it also
@@ -72,11 +72,12 @@ is `lib/sdl/fonts/lato.ttf`; when it is absent the backend falls back to `String
 
 ## Slices (one PR each, off `origin/master`)
 
-1. **Core and first charts**: `Scene`, SVG backend, `Figure`/`Axes`, scatter (colour and size from a
-   third column), histogram, line and bar; every registration place. Goldens per type.
-2. **More charts**: heatmap and confusion matrix (annotated cells), box plot, subplots on one
-   canvas, text annotations, ROC and precision-recall helpers (after `System.ML` PR #1607 lands;
-   the helpers take the curve points as arrays, so they do not depend on it at link time).
+1. **Core and first charts** (this PR): `PlotScene`, SVG backend, `Figure`/`Axes`, scatter (colour and
+   size from further columns), histogram, line, grouped bars, log axes, subplots; every registration
+   place. Goldens per type.
+2. **More charts**: heatmap and confusion matrix (annotated cells), box plot, text annotations, ROC
+   and precision-recall helpers (`System.ML` PR #1607 adds the metrics; the helpers take the curve
+   points as arrays, so they do not depend on it at link time).
 3. **SDL2 backend**: window with zoom/pan/hover, PNG export, headless test.
 
 ## Risks
