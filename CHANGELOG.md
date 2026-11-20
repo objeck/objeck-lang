@@ -2,6 +2,12 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [v2026.11.2] - unreleased
+
+### Added
+
+- **`System.ML.Report` for a study whose results arrive over time**: `ResultTables->FromCsv` (a safe loader: `Nil` plus `GetError()` where `ResultTable->FromCsv` raises), `CsvToCells` and `CsvColumnKinds` for any CSV, `Report->AddCsvTable`, `AddPlaceholderTable` (cells read `not run yet`), `AddFigureSlot`, `AddRunStatus` (expected files, present or not), and `AddResultTableChart` with a chart title and rows to leave out. The four-argument chart call is unchanged. `CsvTable`'s doc now says its header is row 0. Test `ml_report_csv_manifest.obs`
+
 ## [v2026.11.1] - 2026-11-20
 
 **A release about trust: the compiler says exactly what is wrong and compiles large programs faster, and the loader checks an .obe before running it, so a corrupt or crafted program is refused with a message instead of corrupting memory. It also adds a Claude client (`API.Anthropic`), a local vector index, SVG charts (`System.Plot`) and a per-session ONNX execution provider, and makes loading a corrupt ML model file return `Nil` instead of ending the program.**
