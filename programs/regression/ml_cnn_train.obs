@@ -66,7 +66,7 @@ class MlCnnTrain {
 		Report("the validation accuracy reaches 0.95 ({$history->GetValidationAccuracy(epochs - 1)})", history->GetValidationAccuracy(epochs - 1) >= 0.95);
 		test := trainer->Evaluate(splits[2]);
 		Report("test accuracy {$test->GetAccuracy()} >= 0.95, precision {$test->GetPrecision()}, recall {$test->GetRecall()}, F1 {$test->GetF1()}", test <> Nil & test->GetAccuracy() >= 0.95);
-		Report("{$history->GetTotalSeconds()} s of training for {$model->GetParameterCount()} parameters", model->GetParameterCount() = 318753);
+		Report("the model has {$model->GetParameterCount()} parameters (wall-clock time is not printed: it differs between runs)", model->GetParameterCount() = 318753);
 		model->Close();
 	}
 }

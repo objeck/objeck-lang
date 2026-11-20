@@ -661,6 +661,11 @@ if [%1] == [arm64] (
 	REM the vcpkg checkout baked into its image, hence a failure on only some runs.
 	if not exist ..\..\release\%TARGET%\bin\z.dll if exist ..\..\release\%TARGET%\bin\libz.dll copy /y ..\..\release\%TARGET%\bin\libz.dll ..\..\release\%TARGET%\bin\z.dll
 
+	REM And the mirror image: an older vcpkg image ships z.dll while the committed
+	REM OpenCV modules import libz.dll (the 2026-11-20 release dry run failed on
+	REM exactly that). Same DLL, same exports: provide whichever name is missing.
+	if not exist ..\..\release\%TARGET%\bin\libz.dll if exist ..\..\release\%TARGET%\bin\z.dll copy /y ..\..\release\%TARGET%\bin\z.dll ..\..\release\%TARGET%\bin\libz.dll
+
 	REM License texts: vcpkg's share\opencv4\copyright when this run built the
 	REM modules, otherwise the OpenCV 4.12.0 LICENSE committed beside the
 	REM committed modules. The codec ports' texts come from vcpkg, as their DLLs do.
