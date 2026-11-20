@@ -2,6 +2,12 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [v2026.11.2] - unreleased
+
+### Documentation
+
+- **Topic stability is a distribution, not one number**: `docs/AI.md` now explains how to read `TopicMetrics->Stability` (one seed pair is bimodal: about 1.0 when both runs reach the same optimum, 0.67 to 0.8 when one merged two topics) with a measured comparison against Gensim over 15 seed pairs; no code change
+
 ## [v2026.11.1] - 2026-11-20
 
 **A release about trust: the compiler says exactly what is wrong and compiles large programs faster, and the loader checks an .obe before running it, so a corrupt or crafted program is refused with a message instead of corrupting memory. It also adds a Claude client (`API.Anthropic`), a local vector index, SVG charts (`System.Plot`) and a per-session ONNX execution provider, and makes loading a corrupt ML model file return `Nil` instead of ending the program.**
