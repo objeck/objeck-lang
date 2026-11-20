@@ -47,6 +47,7 @@ All AI and ML capabilities are **standard library** — no third-party packages,
   - [Model Persistence](#model-persistence)
   - [Local vector search (System.ML.VectorSearch)](#local-vector-search-systemmlvectorsearch)
   - [Replicates and reports (System.ML.Report)](#replicates-and-reports-systemmlreport)
+  - [Face verification: FAR, FRR, EER and CLIP embeddings (System.ML.Verification, System.ML.Clip)](#face-verification-far-frr-eer-and-clip-embeddings-systemmlverification-systemmlclip)
   - [Convolutional networks (System.ML.Cnn)](#convolutional-networks-systemmlcnn)
   - [Statistics (System.Stats)](#statistics-systemstats)
   - [Plotting (System.Plot)](#plotting-systemplot)
@@ -1577,6 +1578,70 @@ Also `AddBullets`, `AddNumbered`, `AddChart` (a Lab `Chart`), `AddPageBreak`, `S
 The HTML (`ToHtml()`) is one file with its styles inline and no external request: a table of contents, inline SVG that scales to the page width, tables whose rows do not split across printed pages and whose header repeats, and a print stylesheet. Open it in a browser and choose Print, Save as PDF. `ToMarkdown()` writes CommonMark with pipe tables; `Save("report.md")` writes the SVG figures beside it (`report-figure-1.svg`).
 
 Word: Word opens an HTML file but does not draw its inline SVG reliably. For a `.docx`, print the HTML to PDF from a browser, or convert the Markdown with pandoc if you have it, or use PNG figures (`PlotPng->Save` from `System.Plot.SDL` needs the SDL2 natives; `AddFigureFile` embeds the result). This library was checked in Chromium-based Edge and by parsing, and not in Word. Example: `programs/examples/ml/study_report.obs`; tests `ml_report_replicates` (statistics against numpy, scipy and statsmodels), `ml_report_build` and `ml_report_golden`.
+### Face verification: FAR, FRR, EER and CLIP embeddings (System.ML.Verification, System.ML.Clip)
+
+Two libraries for a verification study such as "does a CLIP image embedding separate same-person pairs from different-person pairs on Labeled Faces in the Wild". `ml_verify.obl` (in `@ai`, needs only `gen_collect`, pure Objeck, so it runs in the web playground) holds the metrics. `ml_clip.obl` (in `@vision`; needs `onnx`, `opencv`, `models`, `ml_verify`) holds the CLIP image encoder and the pair reader. No call in either ends the program on bad input: a call that cannot do its job returns a failure value (`Nil`, `false`, or a result whose `IsValid()` is false) and `GetError()` says why, `""` when there is nothing to report. A scalar with no value is `NaN`.
+
+**Metrics.** A pair is accepted when its similarity score is greater than or equal to the threshold. FAR (false acceptance rate) is impostor pairs accepted over impostor pairs, FRR (false rejection rate) is genuine pairs rejected over genuine pairs, and the EER (equal error rate) is where the two are equal. `Verification->Evaluate(scores, same)` takes one score per pair (higher means more alike, finite) and a `Bool[]` that is true for a same pair, and returns a `VerificationResult`:
+
+```ruby
+use System.ML.Verification;
+
+r := Verification->Evaluate(scores, same);
+if(<>r->IsValid()) {
+  r->GetError()->ErrorLine();            # "no impostor (different) pair: FAR is undefined", "score 3 is not finite", ...
+  return;
+};
+"EER {$r->GetEer()} at threshold {$r->GetEerThreshold()}"->PrintLine();
+far := r->FarAt(0.65);                   # FAR, FRR and accuracy at any threshold
+frr := r->FrrAt(0.65);
+acc := r->AccuracyAt(0.65);
+best := r->GetBestAccuracyThreshold();   # the threshold with the best accuracy (ties: the lowest)
+frr_1 := r->GetFrrAtFar(0.01);           # FRR when FAR may not exceed 1%
+t_1 := r->GetThresholdAtFar(0.01);
+```
+
+The curve has one operating point per distinct score plus a last point at +Infinity that accepts nothing (FAR 0, FRR 1), thresholds ascending: `GetThresholds`, `GetFarCurve`, `GetFrrCurve`, or all three as rows with `GetCurve`. Scores that are equal share one point, so a tie is never split. The EER rule: `d = FAR - FRR` is 1 at the first point and -1 at the last and never increases; the EER is read at the first point where `d <= 0`. If `d` is exactly 0 the EER is that point's FAR and the threshold is its score; otherwise the two rates cross between two points and both the EER and the threshold are interpolated linearly along that segment (`lambda = d(j-1) / (d(j-1) - d(j))`), which is what interpolating the ROC polyline with scipy gives; when the crossing is after the highest score, the threshold reported is the highest score. `GetRocCurve` returns `[threshold, FAR, 1 - FRR]` rows in the layout `Metrics->RocCurve` returns, so `Axes->RocCurve("name", r->GetRocCurve())` from `System.Plot` draws it; `GetDetCurve` returns `[FAR, FRR]` rows for a DET plot (`Axes->SetLogX(true)` after dropping the rows where a rate is 0). `Verification->Far`, `Frr` and `Accuracy` give one number at one threshold in O(n) without building the curve, and `Verification->Check(scores, same)` returns the reason an input would be refused. `Similarity->Cosine(a, b)` and `Similarity->Normalize(v)` are the embedding helpers.
+
+**CLIP encoder.** `ClipEncoder` runs an exported CLIP image tower (input `pixel_values` `[N, 3, 224, 224]`, output the embedding `[N, D]`; export the Hugging Face model with `torch.onnx.export` of `CLIPModel.get_image_features`, the text tower is not needed):
+
+```ruby
+use System.ML.Clip;
+use System.ML.Verification;
+
+encoder := ClipEncoder->New("clip-vit-base-patch32-image.onnx");
+if(<>encoder->IsOpen()) {
+  encoder->GetError()->ErrorLine();
+  return;
+};
+pairs := FacePairs->ReadLfw("lfw_home/pairsDevTest.txt", "lfw_home/lfw_funneled");   # also pairs.txt, pairsDevTrain.txt, or ReadCsv
+scores := encoder->ScorePairs(pairs);                    # cosine per pair; each distinct image is embedded once
+r := Verification->Evaluate(scores, pairs->GetLabels());
+"EER {$r->GetEer()}"->PrintLine();
+```
+
+`Embed(path, normalize)`, `EmbedImage(image, normalize)` and `EmbedBatch(paths, normalize)` give raw or L2-normalised embeddings (the batch size is `SetBatchSize`, 16 by default). `ClipPreprocessor` is what CLIPImageProcessor does: resize the shortest side to 224 with a bicubic filter, centre-crop 224 x 224, RGB, scale to 0..1, normalise with the CLIP mean (0.48145466, 0.4578275, 0.40821073) and standard deviation (0.26862954, 0.26130258, 0.27577711), CHW. Its default resize, `ClipPreprocessor->Resize->PIL_BICUBIC`, is Pillow's bicubic written in Objeck, with Pillow's antialiasing (the filter support grows with the shrink factor), 22-bit fixed-point coefficients, 8-bit intermediate rounding and the order of the two passes Pillow chooses (that order is an empirical rule, fitted on 1,478 random sizes and not read from Pillow's source). `ClipPreprocessor->Resize->OPENCV_CUBIC` is `cv::resize` with `INTER_CUBIC` instead. A model that was exported with a different input size takes `ClipPreprocessor->New(size, mode)` and `ClipEncoder->New(path, config, pre)`.
+
+**Why Pillow's resize and not OpenCV's.** OpenCV's `INTER_CUBIC` does not antialias when it shrinks an image (it reads four pixels per output pixel, whatever the scale) and uses the kernel with `a = -0.75`; Pillow uses `a = -0.5` and widens the kernel by the shrink factor. On 12 test images (10 LFW faces, one 400 x 250 and one 180 x 320 image, so the aspect-ratio resize and the centre crop are exercised) the Objeck preprocessing with `PIL_BICUBIC` differs from `CLIPImageProcessor`'s `pixel_values` by at most 2.8e-7 (the reference is float32; the difference is float32 rounding), and with `OPENCV_CUBIC` by at most 0.26 in normalised units (about 18 grey levels, at one pixel); the embeddings differ from PyTorch's by at most 1.5e-5 (ViT-B/32), 1.1e-5 (ViT-B/16) and 4.8e-5 (ViT-L/14) with `PIL_BICUBIC`, and by up to 0.20, 0.28 and 0.38 with `OPENCV_CUBIC` (cosine to the PyTorch embedding at worst 0.9974, 0.9972 and 0.9945). The ONNX towers themselves agree with PyTorch to 1.1e-5, 1.1e-5 and 1.6e-5 on the same pixels. Two more differences from a Pillow pipeline: OpenCV decodes the image, so a JPEG decoder difference of a grey level is possible (none was seen on LFW), and it applies an EXIF orientation tag, which Pillow does not.
+
+**LFW results.** CLIP image encoders, cosine similarity of the L2-normalised embeddings, LFW funneled images, the standard pair lists. EER and the best accuracy are read from the whole curve; FRR@FAR is the false rejection rate at the highest threshold whose FAR is at most 1% or 0.1%. The first table is `pairs.txt`, 6,000 pairs (3,000 same, 3,000 different, 7,701 distinct images, 10 folds), the second `pairsDevTest.txt`, 1,000 pairs (500 and 500, 1,549 images). Times are the whole of `ScorePairs` (image decoding, the preprocessing in Objeck, the model on ONNX Runtime's CPU provider, restricted to 8 logical processors of a Ryzen 9 7950X3D); the preprocessing is about 15 ms per image, so the three models cost about the same.
+
+| model (6,000 pairs) | EER | EER threshold | best accuracy | FRR @ FAR 1% | FRR @ FAR 0.1% | seconds |
+|---|---|---|---|---|---|---|
+| ViT-B/32 (512) | 5.467% | 0.6862 | 94.633% | 18.533% | 40.633% | 115 |
+| ViT-B/16 (512) | 4.267% | 0.7163 | 95.767% | 13.000% | 31.100% | 121 |
+| ViT-L/14 (768) | 2.700% | 0.6571 | 97.350% | 7.033% | 25.933% | 143 |
+
+| model (1,000 pairs) | EER | EER threshold | best accuracy | FRR @ FAR 1% | FRR @ FAR 0.1% | seconds |
+|---|---|---|---|---|---|---|
+| ViT-B/32 | 4.800% | 0.6889 | 95.400% | 11.400% | 49.000% | 21 |
+| ViT-B/16 | 4.200% | 0.7126 | 95.900% | 10.400% | 54.800% | 23 |
+| ViT-L/14 | 2.800% | 0.6442 | 97.500% | 4.000% | 19.600% | 28 |
+
+These were checked twice from outside Objeck. The metrics: scikit-learn's `roc_curve` and the interpolation rule above, applied in Python to the scores Objeck wrote, give the same numbers to the digits shown (the regression test compares the library with the same independent code to 1e-12). The encoder: a pure-Python run (`CLIPImageProcessor` and the PyTorch `CLIPModel`, `tools/ml/clip_lfw_reference.py`) over the same pairs gives the same EER, EER threshold, best accuracy and FRR at FAR as Objeck's, to the digits shown, for all three models on the 1,000-pair list and for ViT-B/32 on the 6,000-pair list. Per pair, Objeck's cosine and PyTorch's differ by at most 2.1e-6 (B/32), 1.9e-6 (B/16) and 5.1e-6 (L/14) on the 1,000-pair list and 2.6e-6 (B/32) on the 6,000-pair list. The FRR at a very low FAR rests on a handful of impostor pairs (3 impostor pairs at FAR 0.1% of 3,000), so it moves a lot from one list or model to another; the EER is the steadier number.
+
+Example: [`programs/examples/ml/clip_face_verification.obs`](../programs/examples/ml/clip_face_verification.obs) (`obr clip_face_verification.obe MODELS PAIRS IMAGES_DIR [STEP [SCORES_CSV [ROC_SVG]]]`) prints the table above for one or several models, and writes the scores and a ROC figure; [`clip_embed_check.obs`](../programs/examples/ml/clip_embed_check.obs) is the preprocessing and embedding comparison against Python (`tools/ml/clip_reference.py`). Tests: `ml_verify_metrics` (14 score sets against scikit-learn and numpy, `ml_verify_golden/gen_expected.py`: ties, one score for every pair, perfect and inverted separation, tiny inputs, invalid input), `ml_clip_pairs` (the pair readers), `ml_clip_preprocess` (seven synthetic images against CLIPImageProcessor at 32 x 32) and `ml_clip_encoder` (a tiny ONNX tower, generated by `data/clip/gen_tiny_clip.py`, against onnxruntime; the last two skip when the ONNX or OpenCV native library is not deployed). What was not run: Linux, macOS and ARM64.
+
 ### Convolutional networks (System.ML.Cnn)
 
 Convolutional networks for image classification, on the CPU (and, optionally, on an NVIDIA GPU: see [the CUDA backend](#the-optional-cuda-backend) below): `Conv`, `MaxPool`, `ReLU`, `Flatten`, `Dense` and `Dropout` layers with forward and backward passes, the Adam and SGD optimizers, binary cross-entropy on logits, an image dataset with a seeded train / validation / test split and on-the-fly augmentation, and a training loop that records loss, accuracy and wall time for every epoch. The layers are native (`libobjk_ml`, plain C++ and Eigen, nothing platform-specific: no intrinsics, no OpenMP) and the library is `ml_cnn.obl`: `obc -lib ml_cnn,ml,ml_lab,opencv,csv,json,cipher,gen_collect` or `-lib @cnn,gen_collect`. It reads image files through `opencv`, scores with `System.ML.Metrics` and writes its history as a `System.ML.Lab.ResultTable`.
@@ -1990,9 +2055,9 @@ obc -src program.obs -lib @ai -dest program.obe
 | `@web` | `net_h2`, `net_quic`, `web_server`, `json_rpc`, `net_server`, `net`, `json`, `cipher` | HTTP/2, HTTP/3, the embedded server, JSON-RPC |
 | `@data` | `xml`, `regex`, `csv`, `query`, `rss`, `misc`, `net`, `json`, `cipher` | parsing and querying structured data |
 | `@ml` | `gemini`, `openai`, `ollama`, `net_server`, `misc`, `net`, `json`, `cipher` | LLM clients: OpenAI, Gemini, Ollama |
-| `@ai` | `ai`, `ml`, `ml_lab`, `ml_vector`, `stats`, `plot`, `nlp`, `nlp_topics`, `csv`, `json` | local System.ML / System.ML.Lab / System.Stats / System.Plot / System.AI / System.NLP / System.NLP.Topics work |
+| `@ai` | `ai`, `ml`, `ml_lab`, `ml_vector`, `ml_verify`, `stats`, `plot`, `nlp`, `nlp_topics`, `csv`, `json` | local System.ML / System.ML.Lab / System.Stats / System.Plot / System.AI / System.NLP / System.NLP.Topics work |
 | `@plot` | `plot`, `plot_sdl`, `sdl2` | charts in a window or as PNG (SVG alone needs only `plot`) |
-| `@vision` | `opencv`, `onnx`, `nlp_onnx`, `models`, `nlp`, `json`, `cipher` | OpenCV and ONNX inference, BERT text embeddings |
+| `@vision` | `opencv`, `onnx`, `nlp_onnx`, `ml_clip`, `ml_verify`, `models`, `nlp`, `json`, `cipher` | OpenCV and ONNX inference, BERT text embeddings, CLIP image embeddings and face verification |
 | `@cnn` | `ml_cnn`, `ml`, `ml_lab`, `opencv`, `csv`, `json`, `cipher` | `System.ML.Cnn` convolutional networks, image loading and history tables |
 | `@game` | `sdl2`, `sdl_game`, `sdl_gl`, `json`, `gen_collect` | SDL games, 2D and OpenGL |
 
@@ -2046,6 +2111,8 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 | BERT tokenization | `WordPieceTokenizer`, `ApiSequenceTokenizer` | `nlp` | None |
 | Sentence embeddings (BERT) | `BertEmbedder` | `nlp_onnx` + `models`, `onnx`, `nlp` | None |
 | Text classification (fine-tuned BERT) | `TextClassifier`, `Prediction` | `nlp_onnx` + `models`, `onnx`, `nlp` | None |
+| Image embeddings (CLIP) and LFW pair scoring | `ClipEncoder`, `ClipPreprocessor`, `FacePairs` | `ml_clip` + `onnx`, `opencv`, `models`, `ml_verify` | A CLIP image ONNX model |
+| FAR, FRR, EER, ROC and DET points for a verifier | `Verification`, `VerificationResult`, `Similarity` | `ml_verify` | None |
 | Hugging Face Hub downloads | `HubClient` | `ai_hub` + `net`, `json`, `cipher` | Network (cache works offline) |
 | Linear / regularized regression | `LinearRegression`, `RidgeRegression`, `LassoRegression`, `ElasticNet` | `ml` | None |
 | Linear classifiers | `LogisticRegression`, `SVM`, `Perceptron` | `ml` | None |
@@ -2109,6 +2176,7 @@ The libraries in this guide are covered by the regression suite in `programs/reg
 | `System.ML.Cnn` | `ml_cnn_gradcheck.obs` (finite differences, float64), `ml_cnn_parity.obs` (against PyTorch, data from `tools/ml/cnn_parity.py`), `ml_cnn_parity64.obs` (float64 engine against PyTorch float64 at 64 x 64, 20 Adam steps), `ml_cnn_edges.obs`, `ml_cnn_dataset.obs`, `ml_cnn_train.obs`, and for the optional GPU backend `ml_cnn_cuda.obs`, `ml_cnn_cuda_parity.obs` (both skip without a CUDA device) and `ml_cnn_cuda_fallback.obs` (runs only without one) |
 
 | `System.Stats` | `stats_dist.obs`, `stats_ttest.obs`, `stats_corr_ols.obs`, `stats_degenerate.obs` (expected values from scipy / numpy, generated by `tools/stats/gen_stats_reference.py`) |
+| `System.ML.Verification`, `System.ML.Clip` | `ml_verify_metrics.obs` (against scikit-learn and numpy, generated by `ml_verify_golden/gen_expected.py`), `ml_clip_pairs.obs`, `ml_clip_preprocess.obs`, `ml_clip_encoder.obs` (data from `data/clip/gen_tiny_clip.py`) |
 | `System.ML.VectorSearch` | `ml_vector_exact.obs`, `ml_vector_edges.obs`, `ml_vector_validation.obs`, `ml_vector_persist.obs` |
 | `System.ML` | `ml_*.obs`, e.g. `ml_kernel_svm_reference.obs` and `ml_one_class_svm_reference.obs` (against an independent reference, generated by `tools/ml/svm_reference/gen_reference_test.py`), `ml_outlier_*.obs`, `ml_lab_*.obs` |
 | `System.AI` | `ai_search_test.obs`, `ai_game_test.obs`, `ai_optimize_test.obs`, `ai_rl_test.obs` |

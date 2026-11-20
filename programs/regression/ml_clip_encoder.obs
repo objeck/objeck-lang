@@ -1,0 +1,240 @@
+# EXTRA_LIBS: ml_clip,ml_verify,opencv,onnx,models
+#~
+System.ML.Clip ClipEncoder end to end on a tiny ONNX "image tower", and the pair scoring that feeds
+System.ML.Verification.
+
+data/clip/gen_tiny_clip.py writes tiny_clip_image.onnx (32 x 32 input pixel_values, an 8 pixel average pool, a
+matrix multiply, output image_embeds [N, 8]), seven synthetic PNGs, the embeddings onnxruntime gives for the
+pixel_values that Hugging Face's CLIPImageProcessor makes from them (expected_embeddings.txt) and the cosine of
+each pair in pairs_tiny.csv (expected_scores.txt, numpy). The Objeck preprocessing plus the Objeck session must
+reproduce those to 1e-5, one image at a time, as a batch of seven, in batches of two, and through ScorePairs;
+the scores then go through Verification->Evaluate, which must accept them. Refusals (a missing model, a model of
+a different input size, a missing image, a closed model, a bad batch size) return Nil or false with a reason.
+
+Skips when libobjk_onnx or libobjk_opencv is not deployed. Run from programs/regression.
+~#
+use System.ML.Clip;
+use System.ML.Verification;
+use System.IO.Filesystem;
+use Collection;
+
+class MlClipEncoder {
+	@ok : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		t := MlClipEncoder->New();
+		t->Run();
+		if(<>t->IsOk()) {
+			"FAIL: ml_clip_encoder"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	New() {
+		@ok := true;
+	}
+
+	method : IsOk() ~ Bool {
+		return @ok;
+	}
+
+	method : Report(name : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	method : LibraryPresent(name : String) ~ Bool {
+		dir := Runtime->GetProperty("lib_dir");
+		if(dir = Nil) {
+			return false;
+		};
+
+		base := "{$dir}native/libobjk_{$name}";
+		return File->Exists("{$base}.dll") | File->Exists("{$base}.so") | File->Exists("{$base}.dylib");
+	}
+
+	method : Parse(text : String) ~ Float[] {
+		parts := text->Split(",");
+		out := Float->New[parts->Size()];
+		each(i : parts) {
+			out[i] := parts[i]->ToFloat();
+		};
+
+		return out;
+	}
+
+	method : MaxDiff(a : Float[], b : Float[]) ~ Float {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return 1.0e30;
+		};
+
+		worst := 0.0;
+		each(i : a) {
+			d := a[i] - b[i];
+			if(d < 0.0) {
+				d := -d;
+			};
+			if(d > worst) {
+				worst := d;
+			};
+		};
+
+		return worst;
+	}
+
+	method : Row(m : Float[,], r : Int) ~ Float[] {
+		dims := m->Size();
+		out := Float->New[dims[1]];
+		each(j : out) {
+			out[j] := m[r, j];
+		};
+
+		return out;
+	}
+
+	method : Run() ~ Nil {
+		if(<>LibraryPresent("onnx") | <>LibraryPresent("opencv")) {
+			"SKIP: libobjk_onnx or libobjk_opencv is not deployed"->PrintLine();
+			return;
+		};
+
+		text := FileReader->ReadFile("data/clip/expected_embeddings.txt");
+		if(text = Nil) {
+			Report("expected_embeddings.txt is readable (run from programs/regression)", false);
+			return;
+		};
+
+		names := Vector->New()<String>;
+		want := Vector->New()<FloatArrayRef>;
+		lines := text->ReplaceAll("\r", "")->Split("\n");
+		each(i : lines) {
+			if(lines[i]->Size() > 0) {
+				f := lines[i]->Split("|");
+				names->AddBack(f[0]);
+				want->AddBack(FloatArrayRef->New(Parse(f[1])));
+			};
+		};
+		n := names->Size();
+		paths := String->New[n];
+		each(i : n) {
+			name := names->Get(i);
+			paths[i] := "data/clip/img_{$name}.png";
+		};
+
+		pre := ClipPreprocessor->New(32, ClipPreprocessor->Resize->PIL_BICUBIC);
+		# the CPU provider, as the other ONNX tests use: another provider (CoreML, DirectML) may compute in half precision
+		cpu := Map->New()<String, String>;
+		cpu->Insert("ep", "cpu");
+		encoder := ClipEncoder->New("data/clip/tiny_clip_image.onnx", cpu, pre);
+		reason := encoder->GetError();
+		Report("the tiny model opens ({$reason})", encoder->IsOpen() & reason->Size() = 0);
+		if(<>encoder->IsOpen()) {
+			return;
+		};
+		Report("the embedding length is read from the model", encoder->GetDimension() = 8);
+		Report("the preprocessor is the one given", encoder->GetPreprocessor()->GetSize() = 32);
+
+		# one image at a time, raw
+		fine := true;
+		worst := 0.0;
+		each(i : n) {
+			e := encoder->Embed(paths[i], false);
+			d := MaxDiff(e, want->Get(i)->Get());
+			if(d > worst) {
+				worst := d;
+			};
+			if(d > 1.0e-5) {
+				fine := false;
+			};
+		};
+		Report("Embed matches onnxruntime on CLIPImageProcessor's pixels for {$n} images, max abs diff {$worst}", fine);
+
+		# normalised
+		unit := encoder->Embed(paths[0], true);
+		sum := 0.0;
+		each(j : unit) {
+			sum += unit[j] * unit[j];
+		};
+		Report("Embed with normalize gives a unit vector", sum > 0.9999999 & sum < 1.0000001);
+		raw := encoder->Embed(paths[0], false);
+		cos := Similarity->Cosine(raw, unit);
+		Report("and points the same way as the raw embedding", cos > 0.9999999);
+
+		# a batch of seven, and in batches of two
+		rows := encoder->EmbedBatch(paths, false);
+		fine := rows <> Nil;
+		if(fine) {
+			each(i : n) {
+				if(MaxDiff(Row(rows, i), want->Get(i)->Get()) > 1.0e-5) {
+					fine := false;
+				};
+			};
+		};
+		Report("EmbedBatch of {$n} matches", fine);
+		Report("SetBatchSize(2) is accepted", encoder->SetBatchSize(2));
+		rows := encoder->EmbedBatch(paths, false);
+		fine := rows <> Nil;
+		if(fine) {
+			each(i : n) {
+				if(MaxDiff(Row(rows, i), want->Get(i)->Get()) > 1.0e-5) {
+					fine := false;
+				};
+			};
+		};
+		Report("batches of two (the last holds one image) give the same embeddings", fine);
+
+		# a decoded image
+		image := API.OpenCV.Image->Load(paths[1]);
+		viaimage := encoder->EmbedImage(image, false);
+		Report("EmbedImage matches Embed of the same file", MaxDiff(viaimage, encoder->Embed(paths[1], false)) < 1.0e-12);
+
+		# pairs
+		pairs := FacePairs->ReadCsv("data/clip/pairs_tiny.csv", "data/clip");
+		scores := encoder->ScorePairs(pairs);
+		expected := FileReader->ReadFile("data/clip/expected_scores.txt");
+		want_scores := Parse(expected->ReplaceAll("\r", "")->Trim()->ReplaceAll("\n", ","));
+		d := MaxDiff(scores, want_scores);
+		Report("ScorePairs gives the numpy cosines for 10 pairs, max abs diff {$d}", d < 1.0e-5);
+		images := pairs->GetImages();
+		count := images->Size();
+		Report("the pairs use {$count} distinct images, each embedded once", count = 7);
+		same_image := scores[8];
+		Report("a pair of an image with itself scores 1", same_image > 0.9999999 & same_image < 1.0000001);
+
+		result := Verification->Evaluate(scores, pairs->GetLabels());
+		eer := result->GetEer();
+		Report("the scores go through Verification->Evaluate (EER {$eer})", result->IsValid() & eer >= 0.0 & eer <= 1.0);
+
+		# refusals
+		bad := ClipEncoder->New("data/clip/no_such_model.onnx");
+		Report("a missing model does not open and says so", <>bad->IsOpen() & bad->GetError()->Size() > 0);
+		no_rows := bad->EmbedBatch(paths, false);
+		Report("a model that is not open embeds nothing", no_rows = Nil & bad->GetError()->Size() > 0);
+		wrong := ClipEncoder->New("data/clip/tiny_clip_image.onnx", cpu, ClipPreprocessor->New());
+		Report("a preprocessor of another size than the model is refused", <>wrong->IsOpen() & wrong->GetError()->Size() > 0);
+		wrong->Close();
+
+		missing : String[];
+		missing := ["data/clip/img_wide.png", "data/clip/no_such_image.png"];
+		none := encoder->EmbedBatch(missing, false);
+		failure := encoder->GetError();
+		Report("a missing image fails the batch and names it ({$failure})", none = Nil & failure->Contains("no_such_image"));
+		no_list : String[];
+		Report("a Nil list is refused", encoder->EmbedBatch(no_list, false) = Nil);
+		Report("SetBatchSize(0) is refused", <>encoder->SetBatchSize(0));
+		bad_pairs := FacePairs->ReadCsv("data/clip/missing.csv", "");
+		Report("scoring an invalid pair list is refused", encoder->ScorePairs(bad_pairs) = Nil);
+
+		encoder->Close();
+		Report("Close makes IsOpen false", <>encoder->IsOpen());
+		encoder->Close();
+		Report("and a second Close is harmless", <>encoder->IsOpen());
+		Report("a closed encoder embeds nothing", encoder->Embed(paths[0], false) = Nil);
+		"ml_clip_encoder: done"->PrintLine();
+	}
+}

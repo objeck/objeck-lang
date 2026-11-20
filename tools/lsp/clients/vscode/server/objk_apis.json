@@ -17370,6 +17370,105 @@
 				}
 			}
 		},
+		"System.ML.Verification.Similarity": {
+			"description": "Similarity between two vectors, for embeddings. No call ends the program on bad input; each returns NaN or Nil.",
+			"functions": {
+				"Cosine": {
+					"descriptions": ["**Cosine similarity of two vectors, in -1 to 1.**\n\n```function : Cosine(a:Float[], b:Float[]) ~ Float```\n\n\n\na: Float[]\n\nb: Float[]\n\nreturn: Float"]
+				},
+				"Normalize": {
+					"descriptions": ["**A copy of a vector scaled to length 1, so the dot product of two of them is their cosine.**\n\n```function : Normalize(v:Float[]) ~ Float[]```\n\n\n\nv: Float[]\n\nreturn: Float[]"]
+				},
+				"NotFinite": {
+					"descriptions": ["**True for NaN, +Infinity and -Infinity.**\n\n```function : NotFinite(v:Float) ~ Bool```\n\n\n\nv: Float\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.ML.Verification.Verification": {
+			"description": "Verification metrics from scores and same / different labels. Every function is static; see the bundle description for the rules (accept when score >= threshold, FAR, FRR, the curve, the EER interpolation) and for how bad input is reported.",
+			"functions": {
+				"Accuracy": {
+					"descriptions": ["**The accuracy at one threshold: pairs decided correctly over all pairs.**\n\n```function : Accuracy(scores:Float[], genuine:Bool[], threshold:Float) ~ Float```\n\n\n\nscores: Float[]\n\ngenuine: Bool[]\n\nthreshold: Float\n\nreturn: Float"]
+				},
+				"Check": {
+					"descriptions": ["**Why a set of scores and labels cannot be evaluated.**\n\n```function : Check(scores:Float[], genuine:Bool[]) ~ String```\n\n\n\nscores: Float[]\n\ngenuine: Bool[]\n\nreturn: String"]
+				},
+				"Evaluate": {
+					"descriptions": ["**Evaluates a verifier: the full FAR / FRR curve, the EER and its threshold, from which accuracy, the best threshold and the ROC and DET point lists are read.**\n\n```function : Evaluate(scores:Float[], genuine:Bool[]) ~ VerificationResult```\n\n\n\nscores: Float[]\n\ngenuine: Bool[]\n\nreturn: VerificationResult\n\n```\nr := Verification->Evaluate(scores, same);\nif(r->IsValid()) {\n  \"EER {$r->GetEer()} at threshold {$r->GetEerThreshold()}\"->PrintLine();\n};\n```"]
+				},
+				"Far": {
+					"descriptions": ["**The false acceptance rate at one threshold: impostor pairs with a score at or above it, over all impostor pairs.**\n\n```function : Far(scores:Float[], genuine:Bool[], threshold:Float) ~ Float```\n\n\n\nscores: Float[]\n\ngenuine: Bool[]\n\nthreshold: Float\n\nreturn: Float"]
+				},
+				"Frr": {
+					"descriptions": ["**The false rejection rate at one threshold: genuine pairs with a score below it, over all genuine pairs.**\n\n```function : Frr(scores:Float[], genuine:Bool[], threshold:Float) ~ Float```\n\n\n\nscores: Float[]\n\ngenuine: Bool[]\n\nthreshold: Float\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.ML.Verification.VerificationResult": {
+			"description": "The result of Verification->Evaluate: the whole FAR / FRR curve and the numbers read from it. Immutable once built. See the bundle description for the threshold rule and the EER interpolation. Nothing here ends the program: on a failed evaluation IsValid() is false, GetError() says why and every number is NaN (arrays are Nil).",
+			"functions": {
+				"AccuracyAt": {
+					"descriptions": ["**The accuracy at a threshold: pairs decided correctly over all pairs.**\n\n```method : public : AccuracyAt(threshold:Float) ~ Float```\n\n\n\nthreshold: Float\n\nreturn: Float"]
+				},
+				"FarAt": {
+					"descriptions": ["**The false acceptance rate at a threshold (a pair is accepted when its score is greater than or equal to it), from the stored curve.**\n\n```method : public : FarAt(threshold:Float) ~ Float```\n\n\n\nthreshold: Float\n\nreturn: Float"]
+				},
+				"FrrAt": {
+					"descriptions": ["**The false rejection rate at a threshold, from the stored curve.**\n\n```method : public : FrrAt(threshold:Float) ~ Float```\n\n\n\nthreshold: Float\n\nreturn: Float"]
+				},
+				"GetBestAccuracy": {
+					"descriptions": ["**The best accuracy reached at any threshold (see GetBestAccuracyThreshold).**\n\n```method : public : GetBestAccuracy() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetBestAccuracyThreshold": {
+					"descriptions": ["**The threshold with the best accuracy among the observed scores and +Infinity (accept nothing). A tie goes to the lowest threshold.**\n\n```method : public : GetBestAccuracyThreshold() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetCurve": {
+					"descriptions": ["**The curve as one matrix, one row per operating point: [threshold, FAR, FRR], thresholds ascending. The last row has threshold +Infinity.**\n\n```method : public : GetCurve() ~ Float[,]```\n\n\n\nreturn: Float[,]"]
+				},
+				"GetDetCurve": {
+					"descriptions": ["**The DET curve as rows of [FAR, FRR], FAR ascending, for a plot of FRR against FAR (usually on logarithmic axes; drop the rows where a rate is 0 first).**\n\n```method : public : GetDetCurve() ~ Float[,]```\n\n\n\nreturn: Float[,]"]
+				},
+				"GetEer": {
+					"descriptions": ["**The equal error rate, in 0 to 1, interpolated as the bundle description states.**\n\n```method : public : GetEer() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetEerThreshold": {
+					"descriptions": ["**The threshold at which FAR and FRR are equal, interpolated as the bundle description states.**\n\n```method : public : GetEerThreshold() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the evaluation failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetFarCurve": {
+					"descriptions": ["**The false acceptance rate at every operating point, in the order of GetThresholds (never increasing, from 1 to 0).**\n\n```method : public : GetFarCurve() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetFrrAtFar": {
+					"descriptions": ["**The smallest FRR reachable while FAR stays at or under a budget.**\n\n```method : public : GetFrrAtFar(max_far:Float) ~ Float```\n\n\n\nmax_far: Float\n\nreturn: Float"]
+				},
+				"GetFrrCurve": {
+					"descriptions": ["**The false rejection rate at every operating point, in the order of GetThresholds (never decreasing, from 0 to 1).**\n\n```method : public : GetFrrCurve() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetGenuineCount": {
+					"descriptions": ["**How many genuine pairs were scored.**\n\n```method : public : GetGenuineCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetImpostorCount": {
+					"descriptions": ["**How many impostor pairs were scored.**\n\n```method : public : GetImpostorCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetRocCurve": {
+					"descriptions": ["**The ROC curve in the layout Metrics->RocCurve returns and Axes->RocCurve in System.Plot draws: rows of [threshold, FAR, 1 - FRR] with FAR ascending from 0 to 1, starting at the point that accepts nothing (its threshold is the highest score, so every value is finite).**\n\n```method : public : GetRocCurve() ~ Float[,]```\n\n\n\nreturn: Float[,]"]
+				},
+				"GetThresholdAtFar": {
+					"descriptions": ["**The lowest threshold whose FAR is at most a budget, which is the one with the smallest FRR under that budget (\"FRR at FAR = 0.1%\").**\n\n```method : public : GetThresholdAtFar(max_far:Float) ~ Float```\n\n\n\nmax_far: Float\n\nreturn: Float"]
+				},
+				"GetThresholds": {
+					"descriptions": ["**The threshold of every operating point, ascending. The last is +Infinity (accept nothing).**\n\n```method : public : GetThresholds() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"IsValid": {
+					"descriptions": ["**Whether the evaluation succeeded.**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Size": {
+					"descriptions": ["**The number of operating points: the distinct scores plus the final one at +Infinity.**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				}
+			}
+		},
 		"System.NLP.ApiSequenceTokenizer": {
 			"description": "A tokenizer for sequences of API calls, as malware-analysis datasets record them: CreateFileW,ReadFile,CloseHandle or the same separated by spaces or semicolons.\n\nFit builds a vocabulary from training data: [PAD]=0, [UNK]=1, [CLS]=2, [SEP]=3, then each API name by descending frequency, ties by name, so the same data always gives the same ids. Encode gives a TokenEncoding like WordPieceTokenizer's: [CLS], the first max_len - 2 calls, [SEP], then [PAD]. Names are case-sensitive unless asked otherwise.\n\nIts ids are for a model trained on them. A pretrained BERT knows only its own WordPiece vocabulary, so for BERT pass the calls as text instead: ToText normalises the separators and truncates by call count, and WordPieceTokenizer splits \"CreateFileW\" into its pieces.",
 			"functions": {
@@ -17890,6 +17989,114 @@
 				},
 				"SetMaxLength": {
 					"descriptions": ["**Sets the length, in tokens, a text is truncated to, e.g. the MAX_SEQ_LENGTH a model was fine-tuned with. A model with a fixed sequence axis keeps its own.**\n\n```method : public : SetMaxLength(max_len:Int) ~ Bool```\n\n\n\nmax_len: Int\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.ML.Clip.ClipEncoder": {
+			"description": "A CLIP image encoder: an exported ONNX image tower plus the preprocessing, giving one embedding per image. Not thread-safe. Close() releases the model.",
+			"functions": {
+				"Close": {
+					"descriptions": ["**Releases the model. Safe to call twice.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Embed": {
+					"descriptions": ["**Embeds one image file.**\n\n```method : public : Embed(path:String, normalize:Bool) ~ Float[]```\n\n\n\npath: String\n\nnormalize: Bool\n\nreturn: Float[]"]
+				},
+				"EmbedBatch": {
+					"descriptions": ["**Embeds image files, one row per file, in batches.**\n\n```method : public : EmbedBatch(paths:String[], normalize:Bool) ~ Float[,]```\n\n\n\npaths: String[]\n\nnormalize: Bool\n\nreturn: Float[,]"]
+				},
+				"EmbedImage": {
+					"descriptions": ["**Embeds one decoded image.**\n\n```method : public : EmbedImage(image:API.OpenCV.Image, normalize:Bool) ~ Float[]```\n\n\n\nimage: API.OpenCV.Image\n\nnormalize: Bool\n\nreturn: Float[]"]
+				},
+				"GetDimension": {
+					"descriptions": ["**The embedding length (512 for the two base models, 768 for ViT-L/14).**\n\n```method : public : GetDimension() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed or the model did not open.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetPreprocessor": {
+					"descriptions": ["**The preprocessing in use.**\n\n```method : public : GetPreprocessor() ~ ClipPreprocessor```\n\n\n\nreturn: ClipPreprocessor"]
+				},
+				"IsOpen": {
+					"descriptions": ["**Whether the model opened.**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Opens an image tower with the default preprocessing (224 pixels, Pillow bicubic).**\n\n```New(model_path:String)```\n\n\n\nmodel_path: String\n\n```\nencoder := ClipEncoder->New(\"clip-vit-base-patch32-image.onnx\");\r\nif(<>encoder->IsOpen()) {\r\n  encoder->GetError()->ErrorLine();\r\n};\n```", "**Opens an image tower with session options and a chosen preprocessor.**\n\n```New(model_path:String, config:Map&lt;String,String&gt;, pre:ClipPreprocessor)```\n\n\n\nmodel_path: String\n\nconfig: Map&lt;String,String&gt;\n\npre: ClipPreprocessor"]
+				},
+				"ScorePairs": {
+					"descriptions": ["**Scores every pair by the cosine similarity of the two images' embeddings. Each distinct image is embedded once, however many pairs use it.**\n\n```method : public : ScorePairs(pairs:FacePairs) ~ Float[]```\n\n\n\npairs: FacePairs\n\nreturn: Float[]"]
+				},
+				"SetBatchSize": {
+					"descriptions": ["**How many images go through the model in one run. Ignored when the model has a fixed batch size.**\n\n```method : public : SetBatchSize(n:Int) ~ Bool```\n\n\n\nn: Int\n\nreturn: Bool"]
+				},
+				"SetVerbose": {
+					"descriptions": ["**Prints a progress line to the standard error every so often while ScorePairs runs.**\n\n```method : public : SetVerbose(on:Bool) ~ Nil```\n\n\n\non: Bool\n\nreturn: Nil"]
+				}
+			}
+		},
+		"System.ML.Clip.ClipPreprocessor": {
+			"description": "Image preprocessing for a CLIP image encoder. Immutable after construction, so one instance can be shared.",
+			"functions": {
+				"GetLength": {
+					"descriptions": ["**The number of floats Process returns: 3 x size x size.**\n\n```method : public : GetLength() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetMode": {
+					"descriptions": ["**The resize method.**\n\n```method : public : GetMode() ~ ClipPreprocessor-&gt;Resize```\n\n\n\nreturn: ClipPreprocessor-&gt;Resize"]
+				},
+				"GetSize": {
+					"descriptions": ["**The side of the network input.**\n\n```method : public : GetSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**The CLIP preprocessing for ViT-B/32, ViT-B/16 and ViT-L/14: 224 pixels, Pillow bicubic.**\n\n```New()```\n\n", "**A preprocessor with a chosen size and resize method.**\n\n```New(size:Int, mode:ClipPreprocessor-&gt;Resize)```\n\n\n\nsize: Int\n\nmode: ClipPreprocessor-&gt;Resize"]
+				},
+				"Process": {
+					"descriptions": ["**Preprocesses a decoded image: resize the shortest side to the size, centre-crop, RGB, scale to 0..1, normalise.**\n\n```method : public : Process(image:API.OpenCV.Image) ~ Float[]```\n\n\n\nimage: API.OpenCV.Image\n\nreturn: Float[]"]
+				},
+				"ProcessFile": {
+					"descriptions": ["**Loads an image file and preprocesses it. OpenCV decodes it, so it reads what OpenCV reads (JPEG, PNG, BMP, TIFF, WebP) and applies an EXIF orientation tag, which Pillow-based code does not.**\n\n```method : public : ProcessFile(path:String) ~ Float[]```\n\n\n\npath: String\n\nreturn: Float[]"]
+				}
+			}
+		},
+		"System.ML.Clip.FacePairs": {
+			"description": "A list of image pairs, each marked as the same person or different people, as the Labeled Faces in the Wild benchmark ships them. Nothing here ends the program: a list that cannot be read has IsValid() false and GetError() says why.",
+			"functions": {
+				"GetError": {
+					"descriptions": ["**Why the list could not be read.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetFirst": {
+					"descriptions": ["**The first image of a pair.**\n\n```method : public : GetFirst(i:Int) ~ String```\n\n\n\ni: Int\n\nreturn: String"]
+				},
+				"GetFold": {
+					"descriptions": ["**The fold of a pair: 0 to 9 in pairs.txt, 0 elsewhere.**\n\n```method : public : GetFold(i:Int) ~ Int```\n\n\n\ni: Int\n\nreturn: Int"]
+				},
+				"GetImages": {
+					"descriptions": ["**The distinct image paths in the list, in order of first appearance.**\n\n```method : public : GetImages() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetLabels": {
+					"descriptions": ["**The labels, in pair order: what Verification->Evaluate takes with the scores.**\n\n```method : public : GetLabels() ~ Bool[]```\n\n\n\nreturn: Bool[]"]
+				},
+				"GetSecond": {
+					"descriptions": ["**The second image of a pair.**\n\n```method : public : GetSecond(i:Int) ~ String```\n\n\n\ni: Int\n\nreturn: String"]
+				},
+				"IsSame": {
+					"descriptions": ["**Whether a pair is the same person.**\n\n```method : public : IsSame(i:Int) ~ Bool```\n\n\n\ni: Int\n\nreturn: Bool"]
+				},
+				"IsValid": {
+					"descriptions": ["**Whether the list was read.**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"OfFold": {
+					"descriptions": ["**The pairs of some folds.**\n\n```method : public : OfFold(fold:Int) ~ FacePairs```\n\n\n\nfold: Int\n\nreturn: FacePairs"]
+				},
+				"ReadCsv": {
+					"descriptions": ["**Reads a plain pair list: one pair per line, \"image1,image2,label\", label 1 for the same person and 0 for different people. A line starting with # and blank lines are skipped. Paths are joined to images_dir (use \"\" for paths that are complete) and may not contain a comma.**\n\n```function : ReadCsv(csv_file:String, images_dir:String) ~ FacePairs```\n\n\n\ncsv_file: String\n\nimages_dir: String\n\nreturn: FacePairs"]
+				},
+				"ReadLfw": {
+					"descriptions": ["**Reads an LFW pair list: pairs.txt (10 folds of 300 same and 300 different pairs, the \"10_folds\" set of scikit-learn), pairsDevTrain.txt (2200 pairs) or pairsDevTest.txt (1000 pairs, scikit-learn's \"test\" set). The first line is a header and is skipped; a line of three tab-separated fields (name, image number, image number) is a same pair, a line of four (name, number, name, number) a different pair. The image of person Name and number N is images_dir/Name/Name_000N.jpg. The fold of a pair is its 600-line block in pairs.txt and 0 in the other two files.**\n\n```function : ReadLfw(pairs_file:String, images_dir:String) ~ FacePairs```\n\n\n\npairs_file: String\n\nimages_dir: String\n\nreturn: FacePairs\n\n```\npairs := FacePairs->ReadLfw(\"lfw_home/pairsDevTest.txt\", \"lfw_home/lfw_funneled\");\r\n\"{$pairs->Size()} pairs\"->PrintLine();\n```"]
+				},
+				"Size": {
+					"descriptions": ["**How many pairs.**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Stride": {
+					"descriptions": ["**Every step-th pair, starting with the first: a smaller list that keeps the order and so the mix of same and different pairs.**\n\n```method : public : Stride(step:Int) ~ FacePairs```\n\n\n\nstep: Int\n\nreturn: FacePairs"]
 				}
 			}
 		},
@@ -20706,6 +20913,18 @@
 				"file": ""
 			}
 		],
+		"ClipEncoder": [
+			{
+				"bundle": "System.ML.Clip",
+				"file": ""
+			}
+		],
+		"ClipPreprocessor": [
+			{
+				"bundle": "System.ML.Clip",
+				"file": ""
+			}
+		],
 		"Content": [
 			{
 				"bundle": "API.Google.Gemini",
@@ -20741,6 +20960,12 @@
 			},
 			{
 				"bundle": "API.OpenAI",
+				"file": ""
+			}
+		],
+		"FacePairs": [
+			{
+				"bundle": "System.ML.Clip",
 				"file": ""
 			}
 		],
@@ -20781,6 +21006,12 @@
 		"Part": [
 			{
 				"bundle": "API.Google.Gemini",
+				"file": ""
+			}
+		],
+		"Similarity": [
+			{
+				"bundle": "System.ML.Verification",
 				"file": ""
 			}
 		],
@@ -20879,6 +21110,18 @@
 		"ModelMetadata": [
 			{
 				"bundle": "API.Inference",
+				"file": ""
+			}
+		],
+		"Verification": [
+			{
+				"bundle": "System.ML.Verification",
+				"file": ""
+			}
+		],
+		"VerificationResult": [
+			{
+				"bundle": "System.ML.Verification",
 				"file": ""
 			}
 		],
@@ -26092,6 +26335,17 @@
 				{ "name": "SOFTMAX", "value": "0", "description": "Probabilities over the labels, summing to 1: single-label classification." },
 				{ "name": "SIGMOID", "value": "1", "description": "An independent probability per label: multi-label classification, or one label." },
 				{ "name": "NONE", "value": "2", "description": "The raw logits." }
+			]
+		},
+		"System.ML.Clip.ClipPreprocessor#Resize": {
+			"name": "Resize",
+			"bundle": "System.ML.Clip",
+			"class": "System.ML.Clip.ClipPreprocessor",
+			"kind": "enum",
+			"description": "How the shortest side is brought to the target size.",
+			"items": [
+				{ "name": "PIL_BICUBIC", "value": "0", "description": "Pillow's bicubic resize with antialiasing, in 8-bit fixed point as Pillow computes it: what CLIPImageProcessor does." },
+				{ "name": "OPENCV_CUBIC", "value": "1", "description": "OpenCV's INTER_CUBIC (Keys' kernel, a = -0.75, no antialiasing when shrinking). Differs from the reference by a few grey levels." }
 			]
 		},
 		"System.Plot.ArtistKind": {

@@ -1,0 +1,11 @@
+# image1,image2,label (1 = same person)
+img_wide.png,img_tall.png,0
+img_wide.png,img_exact.png,0
+img_exact.png,img_down.png,1
+img_down.png,img_up.png,0
+img_up.png,img_grey.png,0
+img_grey.png,img_rgba.png,1
+img_rgba.png,img_wide.png,0
+img_tall.png,img_down.png,1
+img_exact.png,img_exact.png,1
+img_up.png,img_tall.png,0

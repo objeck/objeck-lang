@@ -1,0 +1,87 @@
+# EXTRA_LIBS: ml_clip,ml_verify,opencv,onnx,models
+#~
+System.ML.Clip FacePairs: the LFW pair-list reader, the CSV reader and the list operations. Needs no model and no
+image, so it runs everywhere. Fixtures are under data/clip (pairs_lfw_tiny.txt is two folds of two same and two
+different pairs; pairs_lfw_bad.txt has a line of two fields). Run from programs/regression.
+~#
+use System.ML.Clip;
+
+class MlClipPairs {
+	@ok : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		t := MlClipPairs->New();
+		t->Run();
+		if(<>t->IsOk()) {
+			"FAIL: ml_clip_pairs"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"ml_clip_pairs: all checks passed"->PrintLine();
+	}
+
+	New() {
+		@ok := true;
+	}
+
+	method : IsOk() ~ Bool {
+		return @ok;
+	}
+
+	method : Report(name : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	method : Run() ~ Nil {
+		pairs := FacePairs->ReadLfw("data/clip/pairs_lfw_tiny.txt", "faces");
+		Report("an LFW pair list is read", pairs->IsValid() & pairs->GetError()->Size() = 0);
+		Report("it has 8 pairs", pairs->Size() = 8);
+		Report("a three-field line is a same pair, a four-field line a different pair",
+			pairs->IsSame(0) & pairs->IsSame(1) & <>pairs->IsSame(2) & <>pairs->IsSame(3) & pairs->IsSame(4) & <>pairs->IsSame(7));
+		Report("image 3 of Ada_Lovelace is faces/Ada_Lovelace/Ada_Lovelace_0003.jpg", pairs->GetSecond(0)->Equals("faces/Ada_Lovelace/Ada_Lovelace_0003.jpg"));
+		Report("image numbers pad to four digits and keep longer ones", pairs->GetSecond(1)->Equals("faces/Ada_Lovelace/Ada_Lovelace_0012.jpg"));
+		Report("a different pair names both people", pairs->GetFirst(3)->Equals("faces/Grace_Hopper/Grace_Hopper_0004.jpg") & pairs->GetSecond(3)->Equals("faces/Alan_Turing/Alan_Turing_0001.jpg"));
+		Report("folds are blocks of 2 x 2 pairs from the header", pairs->GetFold(0) = 0 & pairs->GetFold(3) = 0 & pairs->GetFold(4) = 1 & pairs->GetFold(7) = 1);
+
+		labels := pairs->GetLabels();
+		Report("GetLabels follows the pair order", labels->Size() = 8 & labels[0] & labels[1] & <>labels[2] & <>labels[3] & labels[4]);
+		images := pairs->GetImages();
+		count := images->Size();
+		Report("GetImages lists each distinct image once ({$count})", count = 9);
+
+		Report("out-of-range indexes answer Nil, false and -1", pairs->GetFirst(-1) = Nil & pairs->GetSecond(8) = Nil & <>pairs->IsSame(99) & pairs->GetFold(8) = -1);
+
+		every := pairs->Stride(3);
+		Report("Stride(3) keeps pairs 0, 3 and 6", every->Size() = 3 & every->IsSame(0) & <>every->IsSame(1) & every->GetFirst(2)->Equals(pairs->GetFirst(6)));
+		Report("Stride(1) is the whole list", pairs->Stride(1)->Size() = 8);
+		bad_step := pairs->Stride(0);
+		Report("Stride(0) is refused with a reason", <>bad_step->IsValid() & bad_step->GetError()->Size() > 0);
+		second := pairs->OfFold(1);
+		Report("OfFold(1) keeps the second four pairs", second->Size() = 4 & second->GetFold(0) = 1 & second->IsSame(0));
+		Report("OfFold of a fold that is not there is empty", pairs->OfFold(5)->Size() = 0);
+
+		bad := FacePairs->ReadLfw("data/clip/pairs_lfw_bad.txt", "faces");
+		reason := bad->GetError();
+		Report("a line with two fields is refused: {$reason}", <>bad->IsValid() & reason->Size() > 0);
+		missing := FacePairs->ReadLfw("data/clip/no_such_file.txt", "faces");
+		Report("a missing file is refused", <>missing->IsValid() & missing->GetError()->Size() > 0);
+		no_name : String;
+		nil_args := FacePairs->ReadLfw(no_name, no_name);
+		Report("Nil arguments are refused", <>nil_args->IsValid());
+
+		csv := FacePairs->ReadCsv("data/clip/pairs_tiny.csv", "data/clip");
+		Report("a CSV pair list is read", csv->IsValid() & csv->Size() = 10);
+		Report("the comment line is skipped and the directory is joined", csv->GetFirst(0)->Equals("data/clip/img_wide.png") & csv->GetSecond(0)->Equals("data/clip/img_tall.png"));
+		Report("labels 1 and 0 are same and different", <>csv->IsSame(0) & csv->IsSame(2) & csv->IsSame(5) & csv->IsSame(8) & <>csv->IsSame(9));
+		Report("a CSV list has one fold", csv->GetFold(9) = 0);
+		plain := FacePairs->ReadCsv("data/clip/pairs_tiny.csv", "");
+		Report("an empty directory leaves the paths as written", plain->GetFirst(0)->Equals("img_wide.png"));
+		not_csv := FacePairs->ReadCsv("data/clip/pairs_lfw_tiny.txt", "");
+		Report("a file that is not a CSV pair list is refused", <>not_csv->IsValid());
+	}
+}

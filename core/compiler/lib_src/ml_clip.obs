@@ -1,0 +1,1073 @@
+#~~
+# Objeck machine learning library: CLIP image embeddings and face-pair scoring
+# Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+use API.Models;
+use API.Onnx;
+use API.OpenCV;
+use System.ML.Verification;
+
+#~
+Image embeddings from an exported CLIP image encoder, and the plumbing to score face-verification pairs with them: the preprocessing CLIP was trained with, an encoder that runs an ONNX image tower, and a reader for LFW-style pair lists.
+
+ClipPreprocessor does what Hugging Face's CLIPImageProcessor does: resize the shortest side to 224 with a bicubic filter, centre-crop 224 x 224, read the pixels as RGB, scale to 0..1 and normalise with the CLIP mean (0.48145466, 0.4578275, 0.40821073) and standard deviation (0.26862954, 0.26130258, 0.27577711), as a float tensor in CHW order. The default resize reproduces Pillow's bicubic filter bit for bit (its antialiasing support scaling and its 8-bit fixed-point arithmetic, written in Objeck, so no native code is added). OpenCV's INTER_CUBIC does not antialias when it shrinks an image and uses a different kernel, so it gives pixels that differ by up to a few grey levels; it is available as a mode and measured against the default in docs/AI.md.
+
+ClipEncoder opens a CLIP image ONNX model (input pixel_values, output the embedding), embeds one image or a batch, and optionally L2-normalises. It scores pairs by cosine similarity, embedding every distinct image once. FacePairs reads the standard LFW pair lists (pairs.txt and friends) or a plain CSV.
+
+Models are exported from the Hugging Face checkpoints, for example with torch.onnx.export of CLIPModel.get_image_features; the text tower is not needed. Nothing here ends the program on bad input: a call that cannot do what it was asked returns Nil or false and the object keeps the reason, read with GetError(), which is "" when there is nothing to report. A model that fails to open is not an error at construction (see IsOpen). Not thread-safe: use one object per thread. Compile with -lib ml_clip,ml_verify,opencv,onnx,models,cipher,json,gen_collect.
+~#
+bundle System.ML.Clip {
+	#~
+	Image preprocessing for a CLIP image encoder. Immutable after construction, so one instance can be shared.
+	~#
+	class ClipPreprocessor {
+		@size : Int;
+		@mode : ClipPreprocessor->Resize;
+		@mean : Float[];
+		@std : Float[];
+
+		#~
+		How the shortest side is brought to the target size.
+		~#
+		enum Resize {
+			#~
+			Pillow's bicubic resize with antialiasing, in 8-bit fixed point as Pillow computes it: what CLIPImageProcessor does.
+			~#
+			PIL_BICUBIC,
+			#~
+			OpenCV's INTER_CUBIC (Keys' kernel, a = -0.75, no antialiasing when shrinking). Differs from the reference by a few grey levels.
+			~#
+			OPENCV_CUBIC
+		}
+
+		#~
+		The CLIP preprocessing for ViT-B/32, ViT-B/16 and ViT-L/14: 224 pixels, Pillow bicubic.
+		~#
+		New() {
+			Init(224, ClipPreprocessor->Resize->PIL_BICUBIC);
+		}
+
+		#~
+		A preprocessor with a chosen size and resize method.
+		@param size side of the square network input, 1 or more (224 for the three models above; 336 for ViT-L/14-336)
+		@param mode the resize method
+		~#
+		New(size : Int, mode : ClipPreprocessor->Resize) {
+			Init(size < 1 ? 224 : size, mode);
+		}
+
+		method : Init(size : Int, mode : ClipPreprocessor->Resize) ~ Nil {
+			@size := size;
+			@mode := mode;
+			@mean := [0.48145466, 0.4578275, 0.40821073];
+			@std := [0.26862954, 0.26130258, 0.27577711];
+		}
+
+		#~
+		The side of the network input.
+		@return pixels
+		~#
+		method : public : GetSize() ~ Int {
+			return @size;
+		}
+
+		#~
+		The number of floats Process returns: 3 x size x size.
+		@return the length
+		~#
+		method : public : GetLength() ~ Int {
+			return 3 * @size * @size;
+		}
+
+		#~
+		The resize method.
+		@return the method
+		~#
+		method : public : GetMode() ~ ClipPreprocessor->Resize {
+			return @mode;
+		}
+
+		#~
+		Loads an image file and preprocesses it. OpenCV decodes it, so it reads what OpenCV reads (JPEG, PNG, BMP, TIFF, WebP) and applies an EXIF orientation tag, which Pillow-based code does not.
+		@param path image file
+		@return size x size x 3 floats in CHW order, RGB, normalised; Nil when the file is missing or cannot be decoded
+		~#
+		method : public : ProcessFile(path : String) ~ Float[] {
+			if(path = Nil | <>System.IO.Filesystem.File->Exists(path)) {
+				return Nil;
+			};
+
+			image := API.OpenCV.Image->Load(path);
+			if(image = Nil | image->IsEmpty()) {
+				return Nil;
+			};
+
+			return Process(image);
+		}
+
+		#~
+		Preprocesses a decoded image: resize the shortest side to the size, centre-crop, RGB, scale to 0..1, normalise.
+		@param image the decoded image (1, 3 or 4 channels; OpenCV's BGR order, an alpha channel is dropped)
+		@return size x size x 3 floats in CHW order; Nil when the image is Nil or empty
+		~#
+		method : public : Process(image : API.OpenCV.Image) ~ Float[] {
+			if(image = Nil | image->IsEmpty()) {
+				return Nil;
+			};
+
+			w := image->Columns();
+			h := image->Rows();
+			bytes := image->Bytes();
+			if(w < 1 | h < 1 | bytes = Nil | bytes->Size() % (w * h) <> 0) {
+				return Nil;
+			};
+
+			channels := bytes->Size() / (w * h);
+			if(channels <> 1 & channels <> 3 & channels <> 4) {
+				return Nil;
+			};
+
+			# the new size: the shortest side becomes @size, the other keeps the aspect ratio (truncated, as transformers does)
+			new_w := @size;
+			new_h := @size;
+			if(w <= h) {
+				new_h := (@size * h) / w;
+			}
+			else {
+				new_w := (@size * w) / h;
+			};
+
+			rgb : Int[];
+			if(@mode = ClipPreprocessor->Resize->OPENCV_CUBIC) {
+				if(new_w <> w | new_h <> h) {
+					resized := image->Resize(API.OpenCV.Size->New(new_w, new_h), 0.0, 0.0, InterpolationFlags->INTER_CUBIC);
+					if(resized = Nil | resized->IsEmpty()) {
+						return Nil;
+					};
+					bytes := resized->Bytes();
+					if(bytes = Nil | bytes->Size() <> new_w * new_h * channels) {
+						return Nil;
+					};
+				};
+				rgb := ToRgb(bytes, new_w * new_h, channels);
+			}
+			else {
+				rgb := ToRgb(bytes, w * h, channels);
+				rgb := PilResize(rgb, w, h, new_w, new_h);
+			};
+
+			return CropAndNormalize(rgb, new_w, new_h);
+		}
+
+		# interleaved RGB ints, from OpenCV's BGR, BGRA or grey bytes
+		method : ToRgb(bytes : Byte[], pixels : Int, channels : Int) ~ Int[] {
+			rgb := Int->New[pixels * 3];
+			for(i := 0; i < pixels; i += 1;) {
+				if(channels = 1) {
+					g := bytes[i]->As(Int);
+					rgb[i * 3] := g;
+					rgb[i * 3 + 1] := g;
+					rgb[i * 3 + 2] := g;
+				}
+				else {
+					at := i * channels;
+					rgb[i * 3] := bytes[at + 2]->As(Int);
+					rgb[i * 3 + 1] := bytes[at + 1]->As(Int);
+					rgb[i * 3 + 2] := bytes[at]->As(Int);
+				};
+			};
+
+			return rgb;
+		}
+
+		method : CropAndNormalize(rgb : Int[], w : Int, h : Int) ~ Float[] {
+			top := (h - @size) / 2;
+			left := (w - @size) / 2;
+			plane := @size * @size;
+			out := Float->New[3 * plane];
+			for(y := 0; y < @size; y += 1;) {
+				for(x := 0; x < @size; x += 1;) {
+					at := ((top + y) * w + left + x) * 3;
+					for(c := 0; c < 3; c += 1;) {
+						out[c * plane + y * @size + x] := (rgb[at + c]->As(Float) / 255.0 - @mean[c]) / @std[c];
+					};
+				};
+			};
+
+			return out;
+		}
+
+		# Pillow's Image.resize(BICUBIC) for an 8-bit RGB image: a horizontal and a vertical pass, each a convolution with a
+		# bicubic kernel (a = -0.5) whose support grows with the shrink factor, in 22-bit fixed point with a rounded shift.
+		# Pillow 13 picks the order of the two passes, and the 8-bit intermediate rounds, so the order shows in the pixels. The
+		# rule below was fitted on Pillow's behaviour and agrees with it on 1,478 random sizes (and on a grid of sizes); it is
+		# not taken from Pillow's source.
+		method : PilResize(src : Int[], w : Int, h : Int, out_w : Int, out_h : Int) ~ Int[] {
+			if(out_w = w & out_h = h) {
+				return src;
+			};
+			if(out_h = h) {
+				return Horizontal(src, w, h, out_w);
+			};
+			if(out_w = w) {
+				return Vertical(src, w, h, out_h);
+			};
+
+			# dx and dy are the size changes in pixels; both growing: horizontal first; otherwise vertical first when twice the
+			# horizontal change is above the vertical change (a shrink in y much larger than in x goes second, and so on)
+			dx := out_w - w;
+			dy := out_h - h;
+			vertical_first := 2 * dx > dy & <>(dx > 0 & dy > 0);
+			if(vertical_first) {
+				return Horizontal(Vertical(src, w, h, out_h), w, out_h, out_w);
+			};
+
+			return Vertical(Horizontal(src, w, h, out_w), out_w, h, out_h);
+		}
+
+		method : Horizontal(src : Int[], w : Int, h : Int, out_w : Int) ~ Int[] {
+			coeffs := Coefficients(w, out_w);
+			ksize := coeffs[2, 0];
+			next := Int->New[out_w * h * 3];
+			for(y := 0; y < h; y += 1;) {
+				for(xx := 0; xx < out_w; xx += 1;) {
+					xmin := coeffs[1, xx * 2];
+					count := coeffs[1, xx * 2 + 1];
+					for(c := 0; c < 3; c += 1;) {
+						ss := 2097152;
+						for(x := 0; x < count; x += 1;) {
+							ss += src[(y * w + xmin + x) * 3 + c] * coeffs[0, xx * ksize + x];
+						};
+						next[(y * out_w + xx) * 3 + c] := Clip8(ss);
+					};
+				};
+			};
+
+			return next;
+		}
+
+		method : Vertical(src : Int[], w : Int, h : Int, out_h : Int) ~ Int[] {
+			coeffs := Coefficients(h, out_h);
+			ksize := coeffs[2, 0];
+			next := Int->New[w * out_h * 3];
+			for(yy := 0; yy < out_h; yy += 1;) {
+				ymin := coeffs[1, yy * 2];
+				count := coeffs[1, yy * 2 + 1];
+				for(x := 0; x < w; x += 1;) {
+					for(c := 0; c < 3; c += 1;) {
+						ss := 2097152;
+						for(y := 0; y < count; y += 1;) {
+							ss += src[((ymin + y) * w + x) * 3 + c] * coeffs[0, yy * ksize + y];
+						};
+						next[(yy * w + x) * 3 + c] := Clip8(ss);
+					};
+				};
+			};
+
+			return next;
+		}
+
+		# fixed-point sum to a pixel: shift right 22 bits (an arithmetic shift, so a negative sum is below 0) and clamp to 0..255
+		method : Clip8(ss : Int) ~ Int {
+			if(ss < 0) {
+				return 0;
+			};
+
+			v := ss / 4194304;
+			return v > 255 ? 255 : v;
+		}
+
+		# Pillow's precompute_coeffs + normalize_coeffs_8bpc for a bicubic resize of in_size to out_size pixels:
+		# rows: 0 coefficients (out_size x ksize), 1 bounds (xmin, count per output pixel), 2 [ksize]
+		method : Coefficients(in_size : Int, out_size : Int) ~ Int[,] {
+			scale := in_size->As(Float) / out_size->As(Float);
+			filter_scale := scale < 1.0 ? 1.0 : scale;
+			support := 2.0 * filter_scale;
+			whole := support->As(Int);
+			if(whole->As(Float) < support) {
+				whole += 1;
+			};
+			ksize := whole * 2 + 1;
+
+			# Int[,] cannot be ragged, so the three arrays are packed in one matrix of width max(out_size * ksize, out_size * 2, 1)
+			width := out_size * ksize;
+			result := Int->New[3, width];
+			result[2, 0] := ksize;
+
+			for(xx := 0; xx < out_size; xx += 1;) {
+				center := (xx->As(Float) + 0.5) * scale;
+				inv := 1.0 / filter_scale;
+				xmin := (center - support + 0.5)->As(Int);
+				if(xmin < 0) {
+					xmin := 0;
+				};
+				xmax := (center + support + 0.5)->As(Int);
+				if(xmax > in_size) {
+					xmax := in_size;
+				};
+				xmax -= xmin;
+
+				weights := Float->New[ksize];
+				total := 0.0;
+				for(x := 0; x < xmax; x += 1;) {
+					wt := Bicubic((x->As(Float) + xmin->As(Float) - center + 0.5) * inv);
+					weights[x] := wt;
+					total += wt;
+				};
+				for(x := 0; x < xmax; x += 1;) {
+					if(total <> 0.0) {
+						weights[x] := weights[x] / total;
+					};
+					v := weights[x];
+					if(v < 0.0) {
+						result[0, xx * ksize + x] := (-0.5 + v * 4194304.0)->As(Int);
+					}
+					else {
+						result[0, xx * ksize + x] := (0.5 + v * 4194304.0)->As(Int);
+					};
+				};
+
+				result[1, xx * 2] := xmin;
+				result[1, xx * 2 + 1] := xmax;
+			};
+
+			return result;
+		}
+
+		# Pillow's bicubic filter, a = -0.5
+		method : Bicubic(x : Float) ~ Float {
+			if(x < 0.0) {
+				x := -x;
+			};
+
+			if(x < 1.0) {
+				return ((1.5 * x - 2.5) * x) * x + 1.0;
+			};
+			if(x < 2.0) {
+				return (((x - 5.0) * x + 8.0) * x - 4.0) * -0.5;
+			};
+
+			return 0.0;
+		}
+	}
+
+	#~
+	A list of image pairs, each marked as the same person or different people, as the Labeled Faces in the Wild benchmark ships them.
+	Nothing here ends the program: a list that cannot be read has IsValid() false and GetError() says why.
+	~#
+	class FacePairs {
+		@first : Vector<String>;
+		@second : Vector<String>;
+		@same : Vector<IntRef>;
+		@fold : Vector<IntRef>;
+		@error : String;
+
+		New() {
+			@first := Vector->New()<String>;
+			@second := Vector->New()<String>;
+			@same := Vector->New()<IntRef>;
+			@fold := Vector->New()<IntRef>;
+			@error := "";
+		}
+
+		#~
+		Reads an LFW pair list: pairs.txt (10 folds of 300 same and 300 different pairs, the "10_folds" set of scikit-learn), pairsDevTrain.txt (2200 pairs) or pairsDevTest.txt (1000 pairs, scikit-learn's "test" set). The first line is a header and is skipped; a line of three tab-separated fields (name, image number, image number) is a same pair, a line of four (name, number, name, number) a different pair. The image of person Name and number N is images_dir/Name/Name_000N.jpg. The fold of a pair is its 600-line block in pairs.txt and 0 in the other two files.
+		@param pairs_file the pair list
+		@param images_dir the directory with one folder per person (lfw_funneled or lfw)
+		@return the pairs; check IsValid()
+
+```
+pairs := FacePairs->ReadLfw("lfw_home/pairsDevTest.txt", "lfw_home/lfw_funneled");
+"{$pairs->Size()} pairs"->PrintLine();
+```
+		~#
+		function : ReadLfw(pairs_file : String, images_dir : String) ~ FacePairs {
+			pairs := FacePairs->New();
+			if(pairs_file = Nil | images_dir = Nil) {
+				pairs->Fail("the pair file and the image directory must not be Nil");
+				return pairs;
+			};
+
+			text := System.IO.Filesystem.FileReader->ReadFile(pairs_file);
+			if(text = Nil) {
+				pairs->Fail("cannot read the pair file '{$pairs_file}'");
+				return pairs;
+			};
+
+			lines := text->ReplaceAll("\r", "")->Split("\n");
+			block := 0;
+			if(lines->Size() > 0) {
+				header := lines[0]->Split("\t");
+				if(header->Size() = 2) {
+					# "10<TAB>300": folds and pairs per fold per kind
+					block := header[1]->ToInt() * 2;
+				};
+			};
+
+			count := 0;
+			for(i := 1; i < lines->Size(); i += 1;) {
+				if(lines[i]->Size() > 0) {
+					f := lines[i]->Split("\t");
+					fold := block > 0 ? count / block : 0;
+					if(f->Size() = 3) {
+						pairs->Add(ImagePath(images_dir, f[0], f[1]), ImagePath(images_dir, f[0], f[2]), true, fold);
+					}
+					else if(f->Size() = 4) {
+						pairs->Add(ImagePath(images_dir, f[0], f[1]), ImagePath(images_dir, f[2], f[3]), false, fold);
+					}
+					else {
+						line := i + 1;
+						fields := f->Size();
+						pairs->Fail("line {$line} of '{$pairs_file}' has {$fields} fields, not 3 or 4");
+						return pairs;
+					};
+					count += 1;
+				};
+			};
+
+			if(pairs->Size() = 0) {
+				pairs->Fail("no pairs in '{$pairs_file}'");
+			};
+
+			return pairs;
+		}
+
+		function : ImagePath(dir : String, name : String, number : String) ~ String {
+			index := number->ToInt();
+			padded := index->ToString();
+			while(padded->Size() < 4) {
+				padded := "0{$padded}";
+			};
+
+			return "{$dir}/{$name}/{$name}_{$padded}.jpg";
+		}
+
+		#~
+		Reads a plain pair list: one pair per line, "image1,image2,label", label 1 for the same person and 0 for different people. A line starting with # and blank lines are skipped. Paths are joined to images_dir (use "" for paths that are complete) and may not contain a comma.
+		@param csv_file the pair list
+		@param images_dir the directory the image paths are relative to, or ""
+		@return the pairs; check IsValid()
+		~#
+		function : ReadCsv(csv_file : String, images_dir : String) ~ FacePairs {
+			pairs := FacePairs->New();
+			text := System.IO.Filesystem.FileReader->ReadFile(csv_file);
+			if(text = Nil) {
+				pairs->Fail("cannot read the pair file '{$csv_file}'");
+				return pairs;
+			};
+
+			dir := images_dir = Nil ? "" : images_dir;
+			lines := text->ReplaceAll("\r", "")->Split("\n");
+			each(i : lines) {
+				line := lines[i];
+				if(line->Size() > 0 & <>line->StartsWith('#')) {
+					f := line->Split(",");
+					if(f->Size() <> 3 | (<>f[2]->Equals("0") & <>f[2]->Equals("1"))) {
+						number := i + 1;
+						pairs->Fail("line {$number} of '{$csv_file}' is not 'image1,image2,0|1'");
+						return pairs;
+					};
+					first := f[0];
+					second := f[1];
+					if(dir->Size() > 0) {
+						first := "{$dir}/{$first}";
+						second := "{$dir}/{$second}";
+					};
+					pairs->Add(first, second, f[2]->Equals("1"), 0);
+				};
+			};
+
+			if(pairs->Size() = 0) {
+				pairs->Fail("no pairs in '{$csv_file}'");
+			};
+
+			return pairs;
+		}
+
+		method : Add(first : String, second : String, same : Bool, fold : Int) ~ Nil {
+			@first->AddBack(first);
+			@second->AddBack(second);
+			@same->AddBack(IntRef->New(same ? 1 : 0));
+			@fold->AddBack(IntRef->New(fold));
+		}
+
+		method : Fail(reason : String) ~ Nil {
+			@error := reason;
+		}
+
+		#~
+		Whether the list was read.
+		@return true when it holds pairs
+		~#
+		method : public : IsValid() ~ Bool {
+			return @error->Size() = 0;
+		}
+
+		#~
+		Why the list could not be read.
+		@return the reason, or "" when it was read
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		How many pairs.
+		@return the count
+		~#
+		method : public : Size() ~ Int {
+			return @same->Size();
+		}
+
+		#~
+		The first image of a pair.
+		@param i pair index
+		@return the path, or Nil when the index is out of range
+		~#
+		method : public : GetFirst(i : Int) ~ String {
+			if(i < 0 | i >= Size()) {
+				return Nil;
+			};
+
+			return @first->Get(i);
+		}
+
+		#~
+		The second image of a pair.
+		@param i pair index
+		@return the path, or Nil when the index is out of range
+		~#
+		method : public : GetSecond(i : Int) ~ String {
+			if(i < 0 | i >= Size()) {
+				return Nil;
+			};
+
+			return @second->Get(i);
+		}
+
+		#~
+		Whether a pair is the same person.
+		@param i pair index
+		@return true for a same pair (false for a different pair or an index out of range)
+		~#
+		method : public : IsSame(i : Int) ~ Bool {
+			if(i < 0 | i >= Size()) {
+				return false;
+			};
+
+			return @same->Get(i)->Get() = 1;
+		}
+
+		#~
+		The fold of a pair: 0 to 9 in pairs.txt, 0 elsewhere.
+		@param i pair index
+		@return the fold, or -1 when the index is out of range
+		~#
+		method : public : GetFold(i : Int) ~ Int {
+			if(i < 0 | i >= Size()) {
+				return -1;
+			};
+
+			return @fold->Get(i)->Get();
+		}
+
+		#~
+		The labels, in pair order: what Verification->Evaluate takes with the scores.
+		@return true for a same pair
+		~#
+		method : public : GetLabels() ~ Bool[] {
+			labels := Bool->New[Size()];
+			each(i : labels) {
+				labels[i] := @same->Get(i)->Get() = 1;
+			};
+
+			return labels;
+		}
+
+		#~
+		Every step-th pair, starting with the first: a smaller list that keeps the order and so the mix of same and different pairs.
+		@param step 1 or more
+		@return the smaller list (an invalid one when the step is below 1)
+		~#
+		method : public : Stride(step : Int) ~ FacePairs {
+			out := FacePairs->New();
+			if(step < 1) {
+				out->Fail("the step must be 1 or more");
+				return out;
+			};
+
+			for(i := 0; i < Size(); i += step;) {
+				out->Add(@first->Get(i), @second->Get(i), @same->Get(i)->Get() = 1, @fold->Get(i)->Get());
+			};
+
+			return out;
+		}
+
+		#~
+		The pairs of some folds.
+		@param fold the fold to keep
+		@return the pairs of that fold
+		~#
+		method : public : OfFold(fold : Int) ~ FacePairs {
+			out := FacePairs->New();
+			each(i : Size()) {
+				if(@fold->Get(i)->Get() = fold) {
+					out->Add(@first->Get(i), @second->Get(i), @same->Get(i)->Get() = 1, fold);
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		The distinct image paths in the list, in order of first appearance.
+		@return the paths
+		~#
+		method : public : GetImages() ~ String[] {
+			seen := Set->New()<String>;
+			images := Vector->New()<String>;
+			each(i : Size()) {
+				a := @first->Get(i);
+				if(<>seen->Has(a)) {
+					seen->Insert(a);
+					images->AddBack(a);
+				};
+				b := @second->Get(i);
+				if(<>seen->Has(b)) {
+					seen->Insert(b);
+					images->AddBack(b);
+				};
+			};
+
+			return images->ToArray();
+		}
+	}
+
+	#~
+	A CLIP image encoder: an exported ONNX image tower plus the preprocessing, giving one embedding per image.
+	Not thread-safe. Close() releases the model.
+	~#
+	class ClipEncoder {
+		@session : Session;
+		@pre : ClipPreprocessor;
+		@input_name : String;
+		@output_name : String;
+		@dimension : Int;
+		@batch_size : Int;
+		@fixed_batch : Int;
+		@error : String;
+		@verbose : Bool;
+
+		#~
+		Opens an image tower with the default preprocessing (224 pixels, Pillow bicubic).
+		@param model_path the ONNX model (input pixel_values [N, 3, 224, 224], output the embedding [N, D])
+
+```
+encoder := ClipEncoder->New("clip-vit-base-patch32-image.onnx");
+if(<>encoder->IsOpen()) {
+  encoder->GetError()->ErrorLine();
+};
+```
+		~#
+		New(model_path : String) {
+			Open(model_path, Nil, ClipPreprocessor->New());
+		}
+
+		#~
+		Opens an image tower with session options and a chosen preprocessor.
+		@param model_path the ONNX model
+		@param config session options for API.Onnx.Session (for example ep = cpu), or Nil
+		@param pre the preprocessing; its size must be the model's input size
+		~#
+		New(model_path : String, config : Map<String, String>, pre : ClipPreprocessor) {
+			Open(model_path, config, pre);
+		}
+
+		method : Open(model_path : String, config : Map<String, String>, pre : ClipPreprocessor) ~ Nil {
+			@error := "";
+			@pre := pre;
+			@dimension := -1;
+			@batch_size := 16;
+			@fixed_batch := -1;
+			@verbose := false;
+			@input_name := "pixel_values";
+			@output_name := "";
+
+			if(model_path = Nil | pre = Nil) {
+				@error := "the model path and the preprocessor must not be Nil";
+				return;
+			};
+			if(<>System.IO.Filesystem.File->Exists(model_path)) {
+				@error := "the model '{$model_path}' does not exist";
+				return;
+			};
+
+			if(config = Nil) {
+				@session := Session->New(model_path);
+				if(<>@session->IsOpen()) {
+					# the build's own provider can fail where the CPU would not
+					cpu := Map->New()<String, String>;
+					cpu->Insert("ep", "cpu");
+					@session := Session->New(model_path, cpu);
+				};
+			}
+			else {
+				@session := Session->New(model_path, config);
+			};
+
+			if(<>@session->IsOpen()) {
+				@error := "the model '{$model_path}' did not open";
+				return;
+			};
+
+			info := @session->GetModelInfo();
+			if(info = Nil) {
+				@error := "the model '{$model_path}' reported no signature";
+				Close();
+				return;
+			};
+
+			inputs := info->GetInputs();
+			if(inputs->Size() <> 1) {
+				count := inputs->Size();
+				@error := "an image tower takes one input, this model takes {$count}";
+				Close();
+				return;
+			};
+			spec := inputs->Get(0);
+			@input_name := spec->GetName();
+			shape := spec->GetShape();
+			if(shape->Size() <> 4 | shape[1] <> 3) {
+				name := @input_name;
+				text := spec->ToString();
+				@error := "input '{$name}' is not [N, 3, H, W]: {$text}";
+				Close();
+				return;
+			};
+			if(shape[2] > 0 & shape[2] <> pre->GetSize()) {
+				size := shape[2];
+				made := pre->GetSize();
+				@error := "the model takes {$size} pixel images, the preprocessor makes {$made}";
+				Close();
+				return;
+			};
+			if(shape[0] > 0) {
+				@fixed_batch := shape[0];
+				@batch_size := shape[0];
+			};
+
+			outputs := info->GetOutputs();
+			if(outputs->Size() < 1) {
+				@error := "the model has no output";
+				Close();
+				return;
+			};
+			out_spec := outputs->Get(0);
+			@output_name := out_spec->GetName();
+			out_shape := out_spec->GetShape();
+			if(out_shape->Size() = 2 & out_shape[1] > 0) {
+				@dimension := out_shape[1];
+			};
+		}
+
+		#~
+		Whether the model opened.
+		@return true when images can be embedded
+		~#
+		method : public : IsOpen() ~ Bool {
+			return @session <> Nil & @session->IsOpen();
+		}
+
+		#~
+		Releases the model. Safe to call twice.
+		~#
+		method : public : Close() ~ Nil {
+			if(@session <> Nil) {
+				@session->Close();
+			};
+		}
+
+		#~
+		Why the last call failed or the model did not open.
+		@return the reason, or "" when there is nothing to report
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		The embedding length (512 for the two base models, 768 for ViT-L/14).
+		@return the length, or -1 when the model does not declare it and nothing has been embedded yet
+		~#
+		method : public : GetDimension() ~ Int {
+			return @dimension;
+		}
+
+		#~
+		The preprocessing in use.
+		@return the preprocessor
+		~#
+		method : public : GetPreprocessor() ~ ClipPreprocessor {
+			return @pre;
+		}
+
+		#~
+		How many images go through the model in one run. Ignored when the model has a fixed batch size.
+		@param n 1 or more
+		@return false (and the setting is unchanged) when n is below 1
+		~#
+		method : public : SetBatchSize(n : Int) ~ Bool {
+			if(n < 1) {
+				@error := "the batch size must be 1 or more";
+				return false;
+			};
+
+			if(@fixed_batch < 0) {
+				@batch_size := n;
+			};
+
+			return true;
+		}
+
+		#~
+		Prints a progress line to the standard error every so often while ScorePairs runs.
+		@param on true to print
+		~#
+		method : public : SetVerbose(on : Bool) ~ Nil {
+			@verbose := on;
+		}
+
+		#~
+		Embeds one image file.
+		@param path the image file
+		@param normalize true to scale the embedding to length 1
+		@return the embedding, or Nil (read GetError())
+		~#
+		method : public : Embed(path : String, normalize : Bool) ~ Float[] {
+			rows := EmbedBatch([path], normalize);
+			if(rows = Nil) {
+				return Nil;
+			};
+
+			dims := rows->Size();
+			out := Float->New[dims[1]];
+			each(j : out) {
+				out[j] := rows[0, j];
+			};
+
+			return out;
+		}
+
+		#~
+		Embeds one decoded image.
+		@param image the decoded image
+		@param normalize true to scale the embedding to length 1
+		@return the embedding, or Nil (read GetError())
+		~#
+		method : public : EmbedImage(image : API.OpenCV.Image, normalize : Bool) ~ Float[] {
+			if(<>IsOpen()) {
+				@error := "the model is not open";
+				return Nil;
+			};
+
+			pixels := @pre->Process(image);
+			if(pixels = Nil) {
+				@error := "the image is Nil, empty or has an unsupported layout";
+				return Nil;
+			};
+
+			rows := Run(pixels, 1, normalize);
+			if(rows = Nil) {
+				return Nil;
+			};
+
+			dims := rows->Size();
+			out := Float->New[dims[1]];
+			each(j : out) {
+				out[j] := rows[0, j];
+			};
+
+			return out;
+		}
+
+		#~
+		Embeds image files, one row per file, in batches.
+		@param paths the image files
+		@param normalize true to scale each embedding to length 1
+		@return a (paths x dimension) matrix, or Nil when any image cannot be read or the run fails (GetError() names the image)
+		~#
+		method : public : EmbedBatch(paths : String[], normalize : Bool) ~ Float[,] {
+			if(<>IsOpen()) {
+				@error := "the model is not open";
+				return Nil;
+			};
+			if(paths = Nil | paths->Size() = 0) {
+				@error := "no images";
+				return Nil;
+			};
+
+			total := paths->Size();
+			result : Float[,];
+			per := @pre->GetLength();
+			start := 0;
+			while(start < total) {
+				count := total - start;
+				if(count > @batch_size) {
+					count := @batch_size;
+				};
+
+				pixels := Float->New[count * per];
+				for(b := 0; b < count; b += 1;) {
+					one := @pre->ProcessFile(paths[start + b]);
+					if(one = Nil) {
+						name := paths[start + b];
+						@error := "cannot read or decode the image '{$name}'";
+						return Nil;
+					};
+					offset := b * per;
+					for(i := 0; i < per; i += 1;) {
+						pixels[offset + i] := one[i];
+					};
+				};
+
+				rows := Run(pixels, count, normalize);
+				if(rows = Nil) {
+					return Nil;
+				};
+
+				dims := rows->Size();
+				if(result = Nil) {
+					result := Float->New[total, dims[1]];
+				};
+				for(b := 0; b < count; b += 1;) {
+					for(j := 0; j < dims[1]; j += 1;) {
+						result[start + b, j] := rows[b, j];
+					};
+				};
+
+				start += count;
+			};
+
+			return result;
+		}
+
+		# one model run over count preprocessed images laid end to end
+		method : Run(pixels : Float[], count : Int, normalize : Bool) ~ Float[,] {
+			side := @pre->GetSize();
+			inputs := Vector->New()<Tensor>;
+			inputs->AddBack(Tensor->New(@input_name, [count, 3, side, side], pixels));
+			outputs := @session->Run(inputs, [@output_name]);
+			if(outputs = Nil | outputs->Size() = 0) {
+				reason := EndPoint->GetLastError();
+				@error := "the model run failed: {$reason}";
+				return Nil;
+			};
+
+			tensor := outputs->Get(0);
+			shape := tensor->GetShape();
+			values := tensor->GetFloats();
+			if(values = Nil) {
+				values := tensor->AsFloats();
+			};
+			if(shape->Size() <> 2 | shape[0] <> count | values = Nil) {
+				text := tensor->ToString();
+				@error := "the model returned {$text}, not [{$count}, dimension]";
+				return Nil;
+			};
+
+			dim := shape[1];
+			@dimension := dim;
+			rows := Float->New[count, dim];
+			for(b := 0; b < count; b += 1;) {
+				norm := 1.0;
+				if(normalize) {
+					sum := 0.0;
+					for(j := 0; j < dim; j += 1;) {
+						sum += values[b * dim + j] * values[b * dim + j];
+					};
+					if(sum > 0.0) {
+						norm := sum->Sqrt();
+					};
+				};
+				for(j := 0; j < dim; j += 1;) {
+					rows[b, j] := values[b * dim + j] / norm;
+				};
+			};
+
+			return rows;
+		}
+
+		#~
+		Scores every pair by the cosine similarity of the two images' embeddings. Each distinct image is embedded once, however many pairs use it.
+		@param pairs the pairs
+		@return one cosine per pair in pair order, which is what Verification->Evaluate takes with FacePairs->GetLabels; Nil when an image cannot be read or the run fails (GetError() says which)
+		~#
+		method : public : ScorePairs(pairs : FacePairs) ~ Float[] {
+			if(pairs = Nil | <>pairs->IsValid() | pairs->Size() = 0) {
+				@error := "the pair list is Nil, empty or invalid";
+				return Nil;
+			};
+
+			images := pairs->GetImages();
+			index := Map->New()<String, IntRef>;
+			each(i : images) {
+				index->Insert(images[i], IntRef->New(i));
+			};
+
+			embeddings := Float->New[images->Size(), 1];
+			total := images->Size();
+			start := 0;
+			chunk := @batch_size * 8;
+			while(start < total) {
+				count := total - start;
+				if(count > chunk) {
+					count := chunk;
+				};
+
+				names := String->New[count];
+				each(i : count) {
+					names[i] := images[start + i];
+				};
+
+				rows := EmbedBatch(names, true);
+				if(rows = Nil) {
+					return Nil;
+				};
+
+				dims := rows->Size();
+				if(start = 0) {
+					embeddings := Float->New[total, dims[1]];
+				};
+				for(b := 0; b < count; b += 1;) {
+					for(j := 0; j < dims[1]; j += 1;) {
+						embeddings[start + b, j] := rows[b, j];
+					};
+				};
+
+				start += count;
+				if(@verbose) {
+					"embedded {$start} of {$total} images"->ErrorLine();
+				};
+			};
+
+			scores := Float->New[pairs->Size()];
+			edims := embeddings->Size();
+			dim := edims[1];
+			each(p : scores) {
+				a := index->Find(pairs->GetFirst(p))->Get();
+				b := index->Find(pairs->GetSecond(p))->Get();
+				va := Float->New[dim];
+				vb := Float->New[dim];
+				for(j := 0; j < dim; j += 1;) {
+					va[j] := embeddings[a, j];
+					vb[j] := embeddings[b, j];
+				};
+				scores[p] := Similarity->Cosine(va, vb);
+			};
+
+			return scores;
+		}
+	}
+}

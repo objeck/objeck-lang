@@ -79,9 +79,9 @@ eight libraries that group lists.
 | `@web` | `net_h2`, `net_quic`, `web_server`, `json_rpc`, `net_server`, `net`, `json`, `cipher` | HTTP/2, HTTP/3, the embedded server, JSON-RPC |
 | `@data` | `xml`, `regex`, `csv`, `query`, `rss`, `misc`, `net`, `json`, `cipher` | parsing and querying structured data |
 | `@ml` | `gemini`, `openai`, `ollama`, `net_server`, `misc`, `net`, `json`, `cipher` | hosted-model API clients |
-| `@ai` | `ai`, `ml`, `ml_lab`, `ml_vector`, `ml_report`, `stats`, `plot`, `nlp`, `nlp_topics`, `csv`, `json` | local `System.ML` / `System.ML.Lab` / `System.ML.VectorSearch` / `System.ML.Report` / `System.Stats` / `System.Plot` / `System.AI` / `System.NLP` / `System.NLP.Topics` |
+| `@ai` | `ai`, `ml`, `ml_lab`, `ml_vector`, `ml_report`, `ml_verify`, `stats`, `plot`, `nlp`, `nlp_topics`, `csv`, `json` | local `System.ML` / `System.ML.Lab` / `System.ML.VectorSearch` / `System.ML.Report` / `System.ML.Verification` / `System.Stats` / `System.Plot` / `System.AI` / `System.NLP` / `System.NLP.Topics` |
 | `@plot` | `plot`, `plot_sdl`, `sdl2` | `System.Plot` charts in an SDL2 window or as PNG (SVG alone needs only `plot`) |
-| `@vision` | `opencv`, `onnx`, `nlp_onnx`, `models`, `nlp`, `json`, `cipher` | OpenCV and ONNX inference, BERT text embeddings |
+| `@vision` | `opencv`, `onnx`, `nlp_onnx`, `ml_clip`, `ml_verify`, `models`, `nlp`, `json`, `cipher` | OpenCV and ONNX inference, BERT text embeddings, CLIP image embeddings and face verification |
 | `@cnn` | `ml_cnn`, `ml`, `ml_lab`, `opencv`, `csv`, `json`, `cipher` | `System.ML.Cnn` convolutional networks with image loading and history tables |
 | `@game` | `sdl2`, `sdl_game`, `sdl_gl`, `json`, `gen_collect` | SDL2, the 2D game and 3D OpenGL frameworks |
 
