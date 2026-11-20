@@ -61,6 +61,7 @@
     <div id="toc_container" class="plain">
      <h4>Contents</h4>
      <ul>
+      <li><a href="#v2026112---unreleased">[v2026.11.2] - unreleased</a></li>
       <li><a href="#v2026111---2026-11-20">[v2026.11.1] - 2026-11-20</a></li>
       <li><a href="#v2026110---2026-11-08">[v2026.11.0] - 2026-11-08</a></li>
       <li><a href="#v2026103---2026-11-03">[v2026.10.3] - 2026-11-03</a></li>
@@ -98,6 +99,11 @@
      </ul>
     </div>
 
+    <h3 id="v2026112---unreleased">[v2026.11.2] - unreleased</h3>
+    <h4 id="added">Added</h4>
+    <ul>
+     <li><strong><code>System.ML.Report</code> for a study whose results arrive over time</strong>: <code>ResultTables-&gt;FromCsv</code> (a safe loader: <code>Nil</code> plus <code>GetError()</code> where <code>ResultTable-&gt;FromCsv</code> raises), <code>CsvToCells</code> and <code>CsvColumnKinds</code> for any CSV, <code>Report-&gt;AddCsvTable</code>, <code>AddPlaceholderTable</code> (cells read <code>not run yet</code>), <code>AddFigureSlot</code>, <code>AddRunStatus</code> (expected files, present or not), and <code>AddResultTableChart</code> with a chart title and rows to leave out. The four-argument chart call is unchanged. <code>CsvTable</code>'s doc now says its header is row 0. Test <code>ml_report_csv_manifest.obs</code></li>
+    </ul>
     <h3 id="v2026111---2026-11-20">[v2026.11.1] - 2026-11-20</h3>
     <p><strong>A release about trust: the compiler says exactly what is wrong and compiles large programs faster, and the loader checks an .obe before running it, so a corrupt or crafted program is refused with a message instead of corrupting memory. It also adds a Claude client (<code>API.Anthropic</code>), a local vector index, SVG charts (<code>System.Plot</code>) and a per-session ONNX execution provider, and makes loading a corrupt ML model file return <code>Nil</code> instead of ending the program.</strong></p>
     <h4 id="compiler">Compiler</h4>
@@ -1424,7 +1430,7 @@
      <li>Crypto: Fixed AES-256 CBC padding and key derivation</li>
     </ul>
     <h3 id="v202570---2025-07-01-">[v2025.7.0] - 2025-07-01 ✅</h3>
-    <h4 id="added">Added</h4>
+    <h4 id="added-1">Added</h4>
     <ul>
      <li><code>Hash-&gt;Dict(..)</code> method to collections</li>
      <li><code>Map-&gt;Dict(..)</code> method to collections</li>
