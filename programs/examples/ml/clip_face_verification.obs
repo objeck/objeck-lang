@@ -1,0 +1,132 @@
+#~
+Face verification on Labeled Faces in the Wild with CLIP image embeddings: embed both images of every pair, score the
+pair by cosine similarity, and report the false acceptance rate (FAR), false rejection rate (FRR) and equal error rate
+(EER) with System.ML.Verification, one row per model.
+
+The pair list is one of the LFW files (pairs.txt: 6000 pairs in 10 folds; pairsDevTest.txt: 1000 pairs; pairsDevTrain.txt:
+2200 pairs) or, with a .csv name, lines of "image1,image2,1|0". The models are CLIP image towers exported to ONNX (the
+input is pixel_values, the output the embedding), for example clip-vit-base-patch32-image.onnx. Every distinct image
+is embedded once, however many pairs use it.
+
+  obc -src clip_face_verification.obs -lib ml_clip,ml_verify,plot,opencv,onnx,models,cipher,json,gen_collect,collect -dest clip_face_verification.obe
+  obr clip_face_verification.obe MODELS PAIRS IMAGES_DIR [STEP [SCORES_CSV [ROC_SVG]]]
+
+  MODELS      one .onnx file, or several separated by commas
+  PAIRS       pairs.txt, pairsDevTest.txt, pairsDevTrain.txt or a .csv pair list
+  IMAGES_DIR  the folder with one directory per person (lfw_funneled)
+  STEP        use every STEP-th pair (default 1: all of them)
+  SCORES_CSV  write "pair,score,label" for the last model
+  ROC_SVG     write the ROC curve of the last model
+
+No call into System.ML.Verification or System.ML.Clip ends the program on bad input: this program reads GetError() and
+exits with a message and status 1.
+~#
+use System.ML.Clip;
+use System.ML.Verification;
+use System.Plot;
+use System.IO.Filesystem;
+use Collection;
+
+class ClipFaceVerification {
+	function : Pct(v : Float) ~ String {
+		return Float->ToString(v * 100.0, 3);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() < 3) {
+			"usage: clip_face_verification MODELS PAIRS IMAGES_DIR [STEP [SCORES_CSV [ROC_SVG]]]"->ErrorLine();
+			Runtime->Exit(2);
+		};
+
+		models := args[0]->Split(",");
+		pairs := Nil->As(FacePairs);
+		if(args[1]->EndsWith(".csv")) {
+			pairs := FacePairs->ReadCsv(args[1], args[2]);
+		}
+		else {
+			pairs := FacePairs->ReadLfw(args[1], args[2]);
+		};
+		if(<>pairs->IsValid()) {
+			pairs->GetError()->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		step := args->Size() > 3 ? args[3]->ToInt() : 1;
+		pairs := pairs->Stride(step);
+		if(<>pairs->IsValid()) {
+			pairs->GetError()->ErrorLine();
+			Runtime->Exit(1);
+		};
+		labels := pairs->GetLabels();
+		pair_count := pairs->Size();
+		unique := pairs->GetImages();
+		image_count := unique->Size();
+		"{$pair_count} pairs, {$image_count} distinct images"->PrintLine();
+		"model                        dim   genuine impostor   EER %   EER thr   best acc %  FRR@FAR=1 %  FRR@FAR=0.1 %   seconds"->PrintLine();
+
+		last_scores : Float[];
+		last_result : VerificationResult;
+		each(m : models) {
+			encoder := ClipEncoder->New(models[m]);
+			if(<>encoder->IsOpen()) {
+				encoder->GetError()->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			timer := System.Time.Timer->New();
+			timer->Start();
+			scores := encoder->ScorePairs(pairs);
+			timer->End();
+			if(scores = Nil) {
+				encoder->GetError()->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			result := Verification->Evaluate(scores, labels);
+			if(<>result->IsValid()) {
+				result->GetError()->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			name := models[m];
+			start := 0;
+			each(i : name) {
+				if(name->Get(i) = '/' | name->Get(i) = 92->As(Char)) {
+					start := i + 1;
+				};
+			};
+			short := name->SubString(start, name->Size() - start);
+			seconds := Float->ToString(timer->GetElapsedTime(), 1);
+			dim := encoder->GetDimension();
+			genuine := result->GetGenuineCount();
+			impostor := result->GetImpostorCount();
+			thr := Float->ToString(result->GetEerThreshold(), 4);
+			best := Pct(result->GetBestAccuracy());
+			frr1 := Pct(result->GetFrrAtFar(0.01));
+			frr01 := Pct(result->GetFrrAtFar(0.001));
+			eer := Pct(result->GetEer());
+			"{$short}  {$dim}  {$genuine}  {$impostor}  {$eer}  {$thr}  {$best}  {$frr1}  {$frr01}  {$seconds}"->PrintLine();
+
+			last_scores := scores;
+			last_result := result;
+			encoder->Close();
+		};
+
+		if(args->Size() > 4 & args[4]->Size() > 0) {
+			out := "pair,score,label\n";
+			each(i : last_scores) {
+				flag := labels[i] ? 1 : 0;
+				score := Float->ToShortString(last_scores[i]);
+				out += "{$i},{$score},{$flag}\n";
+			};
+			FileWriter->WriteFile(args[4], out);
+		};
+
+		if(args->Size() > 5 & args[5]->Size() > 0) {
+			figure := Figure->New(560, 480);
+			figure->GetAxes()->SetTitle("LFW pairs: ROC");
+			figure->GetAxes()->RocCurve("CLIP", last_result->GetRocCurve());
+			figure->Save(args[5])->PrintLine();
+		};
+	}
+}

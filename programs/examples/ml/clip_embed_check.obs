@@ -1,0 +1,107 @@
+#~
+Checks System.ML.Clip against a Python reference (tools/ml/clip_reference.py make writes it).
+
+For every image in the list it preprocesses with the Objeck code, compares the pixels with what Hugging Face's
+CLIPImageProcessor produced (WORKDIR/pix_<i>.f64, float64), embeds the images with the exported ONNX tower and writes
+the embeddings to WORKDIR/obj_<name>_<mode>.txt for the comparison step of the same script.
+
+  obc -src clip_embed_check.obs -lib ml_clip,ml_verify,opencv,onnx,models,cipher,json,gen_collect,collect -dest clip_embed_check.obe
+  obr clip_embed_check.obe MODEL.onnx WORKDIR NAME MODE
+  # MODE is pil (the default, Pillow's bicubic) or opencv (INTER_CUBIC)
+~#
+use System.ML.Clip;
+use System.IO.Filesystem;
+
+class ClipEmbedCheck {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() < 4) {
+			"usage: clip_embed_check MODEL.onnx WORKDIR NAME pil|opencv"->ErrorLine();
+			Runtime->Exit(2);
+		};
+
+		model := args[0];
+		work := args[1];
+		name := args[2];
+		mode := ClipPreprocessor->Resize->PIL_BICUBIC;
+		if(args[3]->Equals("opencv")) {
+			mode := ClipPreprocessor->Resize->OPENCV_CUBIC;
+		};
+
+		list := FileReader->ReadFile("{$work}/list.txt");
+		if(list = Nil) {
+			"no list.txt in {$work}"->ErrorLine();
+			Runtime->Exit(2);
+		};
+		paths := list->ReplaceAll("\r", "")->Trim()->Split("\n");
+
+		pre := ClipPreprocessor->New(224, mode);
+		worst := 0.0;
+		each(i : paths) {
+			pixels := pre->ProcessFile(paths[i]);
+			if(pixels = Nil) {
+				bad := paths[i];
+				"cannot preprocess {$bad}"->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			ref_bytes := FileReader->ReadBinaryFile("{$work}/pix_{$i}.f64");
+			if(ref_bytes <> Nil) {
+				ref := Byte->ToFloats(ref_bytes);
+				diff := 0.0;
+				each(j : ref) {
+					d := pixels[j] - ref[j];
+					if(d < 0.0) {
+						d := -d;
+					};
+					if(d > diff) {
+						diff := d;
+					};
+				};
+				if(diff > worst) {
+					worst := diff;
+				};
+				text := Float->ToShortString(diff);
+				"image {$i}: max abs pixel_values difference {$text} (one grey level is about 0.0156)"->PrintLine();
+			};
+		};
+		count := paths->Size();
+		text := Float->ToShortString(worst);
+		"worst pixel_values difference over {$count} images: {$text}"->PrintLine();
+
+		encoder := ClipEncoder->New(model, Nil, pre);
+		if(<>encoder->IsOpen()) {
+			encoder->GetError()->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		timer := System.Time.Timer->New();
+		timer->Start();
+		rows := encoder->EmbedBatch(paths, false);
+		timer->End();
+		if(rows = Nil) {
+			encoder->GetError()->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		dims := rows->Size();
+		n := dims[0];
+		width := dims[1];
+		out := "";
+		each(i : n) {
+			line := "";
+			each(j : width) {
+				if(j > 0) {
+					line += " ";
+				};
+				line += Float->ToShortString(rows[i, j]);
+			};
+			out += line;
+			out += "\n";
+		};
+		suffix := args[3]->Equals("opencv") ? "opencv" : "pil";
+		FileWriter->WriteFile("{$work}/obj_{$name}_{$suffix}.txt", out);
+		seconds := timer->GetElapsedTime();
+		"{$name} ({$suffix}): {$n} images x {$width} in {$seconds} s"->PrintLine();
+		encoder->Close();
+	}
+}

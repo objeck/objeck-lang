@@ -1137,6 +1137,7 @@ jobs:
             ../../../compiler/lib_src/ml_lab.obs \
             ../../../compiler/lib_src/ml_vector.obs \
             ../../../compiler/lib_src/ml_report.obs \
+            ../../../compiler/lib_src/ml_verify.obs \
             ../../../compiler/lib_src/ml_cnn.obs \
             ../../../compiler/lib_src/nlp_topics_text.obs \
             ../../../compiler/lib_src/nlp_topics_lda.obs \
@@ -1160,6 +1161,7 @@ jobs:
             ../../../compiler/lib_src/inference.obs \
             ../../../compiler/lib_src/nlp.obs \
             ../../../compiler/lib_src/nlp_onnx.obs \
+            ../../../compiler/lib_src/ml_clip.obs \
             ../../../compiler/lib_src/ai_hub.obs \
             ../../../compiler/lib_src/lame.obs 2>&1 | tee code_doc.log
           # A doc comment the parser rejects drops its member from the API reference with

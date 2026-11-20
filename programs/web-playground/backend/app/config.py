@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     # image (docker/build-sandbox.sh copies it).
     allowed_libs: set[str] = {
         "gen_collect", "json", "xml", "regex", "cipher", "csv",
-        "query", "query_ml", "ml", "ml_lab", "ml_vector", "ml_report", "stats", "plot", "nlp", "nlp_topics", "ai", "math", "misc", "diags",
+        "query", "query_ml", "ml", "ml_lab", "ml_vector", "ml_report", "ml_verify", "stats", "plot", "nlp", "nlp_topics", "ai", "math", "misc", "diags",
         "concurrent",
     }
 
@@ -74,7 +74,7 @@ class Settings(BaseSettings):
         "net_h2", "net_quic", "net_server", "web_server", "odbc", "query_odbc",
         "query_server", "query_vision", "sdl2", "sdl_game", "sdl_gl", "plot_sdl", "lame",
         "json_rpc", "json_stream", "rss", "gemini", "ollama", "openai", "anthropic",
-        "inference", "models", "onnx", "opencv", "nlp_onnx", "ai_hub", "ml_cnn",
+        "inference", "models", "onnx", "opencv", "nlp_onnx", "ai_hub", "ml_cnn", "ml_clip",
     }
 
     model_config = {"env_prefix": "PLAYGROUND_"}

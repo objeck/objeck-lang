@@ -1,0 +1,744 @@
+#~~
+# Objeck machine learning library: verification metrics (FAR, FRR, EER)
+# Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+
+#~
+Verification metrics for a system that decides whether two things match: a face or voice verifier, a signature checker, a duplicate detector. The input is one similarity score per pair (higher means more alike) and a label per pair, true when the two really are the same (a genuine pair) and false when they are not (an impostor pair).
+
+A pair is accepted when its score is greater than or equal to the threshold. Three rates describe a threshold:
+- FAR, the false acceptance rate: impostor pairs accepted, divided by impostor pairs.
+- FRR, the false rejection rate: genuine pairs rejected, divided by genuine pairs.
+- accuracy: pairs decided correctly, divided by all pairs.
+Raising the threshold lowers FAR and raises FRR. The equal error rate (EER) is the value where the two are equal.
+
+The curve. Verification->Evaluate sorts the distinct scores v0 < v1 < ... < v(k-1) and reports one operating point per threshold v(j), then a last point at +Infinity that accepts nothing (FAR 0, FRR 1). The first point (threshold v0) accepts everything (FAR 1, FRR 0). So there are k + 1 points, thresholds ascending, FAR never increasing and FRR never decreasing. Pairs that share a score share a point, so a tie is never split.
+
+The EER and its interpolation rule. Let d(j) = FAR(j) - FRR(j); d is 1 at the first point and -1 at the last, and never increases. The EER is read at the first point j with d(j) <= 0. When d(j) is 0 the EER is FAR(j) and the threshold is v(j). Otherwise the two rates cross between point j-1 and point j, and both the EER and the threshold are linearly interpolated along that segment at lambda = d(j-1) / (d(j-1) - d(j)): EER = FAR(j-1) + lambda * (FAR(j) - FAR(j-1)), threshold = v(j-1) + lambda * (v(j) - v(j-1)). When the crossing lies after the highest score (the segment ends at +Infinity) the threshold reported is the highest score, and the EER is still interpolated. The same rule is what scipy's interp1d over a ROC curve gives, which is how the regression test checks it.
+
+No call here ends the program on bad input. Evaluate returns a result whose IsValid() is false and whose GetError() says why (a size mismatch, an empty input, a NaN or infinite score, no genuine pair or no impostor pair); every number in it is then NaN. The single-number functions return NaN for the same input; call Verification->Check to read the reason. GetError() is "" when there is nothing to report. Needs only gen_collect: compile with -lib ml_verify,gen_collect.
+~#
+bundle System.ML.Verification {
+	#~
+	Similarity between two vectors, for embeddings.
+	No call ends the program on bad input; each returns NaN or Nil.
+	~#
+	class Similarity {
+		#~
+		Cosine similarity of two vectors, in -1 to 1.
+		@param a first vector
+		@param b second vector
+		@return the cosine, or NaN when a vector is Nil or empty, the lengths differ, a value is not finite or a vector has no length (all zeros)
+		~#
+		function : Cosine(a : Float[], b : Float[]) ~ Float {
+			if(a = Nil | b = Nil | a->Size() = 0 | a->Size() <> b->Size()) {
+				return Float->NaN();
+			};
+
+			dot := 0.0;
+			na := 0.0;
+			nb := 0.0;
+			each(i : a) {
+				x := a[i];
+				y := b[i];
+				if(NotFinite(x) | NotFinite(y)) {
+					return Float->NaN();
+				};
+				dot += x * y;
+				na += x * x;
+				nb += y * y;
+			};
+
+			if(na <= 0.0 | nb <= 0.0) {
+				return Float->NaN();
+			};
+
+			c := dot / (na * nb)->Sqrt();
+			if(c > 1.0) {
+				return 1.0;
+			};
+			if(c < -1.0) {
+				return -1.0;
+			};
+
+			return c;
+		}
+
+		#~
+		A copy of a vector scaled to length 1, so the dot product of two of them is their cosine.
+		@param v the vector
+		@return the unit vector, or Nil when the vector is Nil, empty, not finite or all zeros
+		~#
+		function : Normalize(v : Float[]) ~ Float[] {
+			if(v = Nil | v->Size() = 0) {
+				return Nil;
+			};
+
+			sum := 0.0;
+			each(i : v) {
+				if(NotFinite(v[i])) {
+					return Nil;
+				};
+				sum += v[i] * v[i];
+			};
+
+			if(sum <= 0.0) {
+				return Nil;
+			};
+
+			norm := sum->Sqrt();
+			out := Float->New[v->Size()];
+			each(i : v) {
+				out[i] := v[i] / norm;
+			};
+
+			return out;
+		}
+
+		#~
+		True for NaN, +Infinity and -Infinity.
+		@param v the number
+		@return true when the number is not finite
+		~#
+		function : NotFinite(v : Float) ~ Bool {
+			return v <> v | v = Float->Inf() | v = Float->NegInf();
+		}
+	}
+
+	#~
+	The result of Verification->Evaluate: the whole FAR / FRR curve and the numbers read from it.
+	Immutable once built. See the bundle description for the threshold rule and the EER interpolation. Nothing here ends the program: on a failed evaluation IsValid() is false, GetError() says why and every number is NaN (arrays are Nil).
+	~#
+	class VerificationResult {
+		@error : String;
+		@genuine : Int;
+		@impostor : Int;
+		# distinct scores ascending, and for index 0..k the genuine / impostor pairs scoring below that point; index k is the +Infinity point
+		@values : Float[];
+		@gen_below : Int[];
+		@imp_below : Int[];
+		@eer : Float;
+		@eer_threshold : Float;
+
+		New(error : String) {
+			@error := error;
+			@genuine := 0;
+			@impostor := 0;
+			@eer := Float->NaN();
+			@eer_threshold := Float->NaN();
+		}
+
+		New(values : Float[], gen_below : Int[], imp_below : Int[], genuine : Int, impostor : Int) {
+			@error := "";
+			@values := values;
+			@gen_below := gen_below;
+			@imp_below := imp_below;
+			@genuine := genuine;
+			@impostor := impostor;
+			@eer := Float->NaN();
+			@eer_threshold := Float->NaN();
+			FindEer();
+		}
+
+		method : FindEer() ~ Nil {
+			k := @values->Size();
+			prev_d := 0.0;
+			for(j := 0; j < k + 1; j += 1;) {
+				d := GetFar(j) - GetFrr(j);
+				if(d <= 0.0) {
+					if(d = 0.0) {
+						@eer := GetFar(j);
+						@eer_threshold := j < k ? @values[j] : @values[k - 1];
+					}
+					else {
+						lambda := prev_d / (prev_d - d);
+						far0 := GetFar(j - 1);
+						@eer := far0 + lambda * (GetFar(j) - far0);
+						if(j < k) {
+							@eer_threshold := @values[j - 1] + lambda * (@values[j] - @values[j - 1]);
+						}
+						else {
+							@eer_threshold := @values[k - 1];
+						};
+					};
+					return;
+				};
+				prev_d := d;
+			};
+		}
+
+		# FAR and FRR of the operating point with index j (0 to k)
+		method : GetFar(j : Int) ~ Float {
+			return (@impostor - @imp_below[j])->As(Float) / @impostor->As(Float);
+		}
+
+		method : GetFrr(j : Int) ~ Float {
+			return @gen_below[j]->As(Float) / @genuine->As(Float);
+		}
+
+		#~
+		Whether the evaluation succeeded.
+		@return true when the curve and the EER are usable
+		~#
+		method : public : IsValid() ~ Bool {
+			return @error->Size() = 0;
+		}
+
+		#~
+		Why the evaluation failed.
+		@return the reason, or "" when it succeeded
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		The equal error rate, in 0 to 1, interpolated as the bundle description states.
+		@return the EER, or NaN when the evaluation failed
+		~#
+		method : public : GetEer() ~ Float {
+			return @eer;
+		}
+
+		#~
+		The threshold at which FAR and FRR are equal, interpolated as the bundle description states.
+		@return the EER threshold, or NaN when the evaluation failed
+		~#
+		method : public : GetEerThreshold() ~ Float {
+			return @eer_threshold;
+		}
+
+		#~
+		How many genuine pairs were scored.
+		@return the count (0 when the evaluation failed)
+		~#
+		method : public : GetGenuineCount() ~ Int {
+			return @genuine;
+		}
+
+		#~
+		How many impostor pairs were scored.
+		@return the count (0 when the evaluation failed)
+		~#
+		method : public : GetImpostorCount() ~ Int {
+			return @impostor;
+		}
+
+		#~
+		The number of operating points: the distinct scores plus the final one at +Infinity.
+		@return the count (0 when the evaluation failed)
+		~#
+		method : public : Size() ~ Int {
+			if(@values = Nil) {
+				return 0;
+			};
+
+			return @values->Size() + 1;
+		}
+
+		#~
+		The threshold of every operating point, ascending. The last is +Infinity (accept nothing).
+		@return the thresholds, or Nil when the evaluation failed
+		~#
+		method : public : GetThresholds() ~ Float[] {
+			if(@values = Nil) {
+				return Nil;
+			};
+
+			k := @values->Size();
+			out := Float->New[k + 1];
+			each(j : k) {
+				out[j] := @values[j];
+			};
+			out[k] := Float->Inf();
+
+			return out;
+		}
+
+		#~
+		The false acceptance rate at every operating point, in the order of GetThresholds (never increasing, from 1 to 0).
+		@return the FAR values, or Nil when the evaluation failed
+		~#
+		method : public : GetFarCurve() ~ Float[] {
+			if(@values = Nil) {
+				return Nil;
+			};
+
+			n := @values->Size() + 1;
+			out := Float->New[n];
+			each(j : n) {
+				out[j] := GetFar(j);
+			};
+
+			return out;
+		}
+
+		#~
+		The false rejection rate at every operating point, in the order of GetThresholds (never decreasing, from 0 to 1).
+		@return the FRR values, or Nil when the evaluation failed
+		~#
+		method : public : GetFrrCurve() ~ Float[] {
+			if(@values = Nil) {
+				return Nil;
+			};
+
+			n := @values->Size() + 1;
+			out := Float->New[n];
+			each(j : n) {
+				out[j] := GetFrr(j);
+			};
+
+			return out;
+		}
+
+		#~
+		The curve as one matrix, one row per operating point: [threshold, FAR, FRR], thresholds ascending. The last row has threshold +Infinity.
+		@return a (points x 3) matrix, or Nil when the evaluation failed
+		~#
+		method : public : GetCurve() ~ Float[,] {
+			if(@values = Nil) {
+				return Nil;
+			};
+
+			k := @values->Size();
+			out := Float->New[k + 1, 3];
+			for(j := 0; j < k + 1; j += 1;) {
+				out[j, 0] := j < k ? @values[j] : Float->Inf();
+				out[j, 1] := GetFar(j);
+				out[j, 2] := GetFrr(j);
+			};
+
+			return out;
+		}
+
+		#~
+		The ROC curve in the layout Metrics->RocCurve returns and Axes->RocCurve in System.Plot draws: rows of [threshold, FAR, 1 - FRR] with FAR ascending from 0 to 1, starting at the point that accepts nothing (its threshold is the highest score, so every value is finite).
+		@return a (points x 3) matrix, or Nil when the evaluation failed
+		~#
+		method : public : GetRocCurve() ~ Float[,] {
+			if(@values = Nil) {
+				return Nil;
+			};
+
+			k := @values->Size();
+			out := Float->New[k + 1, 3];
+			for(i := 0; i < k + 1; i += 1;) {
+				j := k - i;
+				out[i, 0] := j < k ? @values[j] : @values[k - 1];
+				out[i, 1] := GetFar(j);
+				out[i, 2] := 1.0 - GetFrr(j);
+			};
+
+			return out;
+		}
+
+		#~
+		The DET curve as rows of [FAR, FRR], FAR ascending, for a plot of FRR against FAR (usually on logarithmic axes; drop the rows where a rate is 0 first).
+		@return a (points x 2) matrix, or Nil when the evaluation failed
+		~#
+		method : public : GetDetCurve() ~ Float[,] {
+			if(@values = Nil) {
+				return Nil;
+			};
+
+			k := @values->Size();
+			out := Float->New[k + 1, 2];
+			for(i := 0; i < k + 1; i += 1;) {
+				j := k - i;
+				out[i, 0] := GetFar(j);
+				out[i, 1] := GetFrr(j);
+			};
+
+			return out;
+		}
+
+		#~
+		The false acceptance rate at a threshold (a pair is accepted when its score is greater than or equal to it), from the stored curve.
+		@param threshold the threshold
+		@return FAR in 0 to 1, or NaN when the evaluation failed or the threshold is NaN
+		~#
+		method : public : FarAt(threshold : Float) ~ Float {
+			j := PointAt(threshold);
+			if(j < 0) {
+				return Float->NaN();
+			};
+
+			return GetFar(j);
+		}
+
+		#~
+		The false rejection rate at a threshold, from the stored curve.
+		@param threshold the threshold
+		@return FRR in 0 to 1, or NaN when the evaluation failed or the threshold is NaN
+		~#
+		method : public : FrrAt(threshold : Float) ~ Float {
+			j := PointAt(threshold);
+			if(j < 0) {
+				return Float->NaN();
+			};
+
+			return GetFrr(j);
+		}
+
+		#~
+		The accuracy at a threshold: pairs decided correctly over all pairs.
+		@param threshold the threshold
+		@return accuracy in 0 to 1, or NaN when the evaluation failed or the threshold is NaN
+		~#
+		method : public : AccuracyAt(threshold : Float) ~ Float {
+			j := PointAt(threshold);
+			if(j < 0) {
+				return Float->NaN();
+			};
+
+			return AccuracyOfPoint(j);
+		}
+
+		method : AccuracyOfPoint(j : Int) ~ Float {
+			correct := (@genuine - @gen_below[j]) + @imp_below[j];
+			return correct->As(Float) / (@genuine + @impostor)->As(Float);
+		}
+
+		# the index of the first operating point whose score is >= threshold (k, the +Infinity point, when none), or -1
+		method : PointAt(threshold : Float) ~ Int {
+			if(@values = Nil | threshold <> threshold) {
+				return -1;
+			};
+
+			lo := 0;
+			hi := @values->Size();
+			while(lo < hi) {
+				mid := (lo + hi) / 2;
+				if(@values[mid] >= threshold) {
+					hi := mid;
+				}
+				else {
+					lo := mid + 1;
+				};
+			};
+
+			return lo;
+		}
+
+		#~
+		The threshold with the best accuracy among the observed scores and +Infinity (accept nothing). A tie goes to the lowest threshold.
+		@return the threshold, or NaN when the evaluation failed
+		~#
+		method : public : GetBestAccuracyThreshold() ~ Float {
+			j := BestPoint();
+			if(j < 0) {
+				return Float->NaN();
+			};
+
+			return j < @values->Size() ? @values[j] : Float->Inf();
+		}
+
+		#~
+		The best accuracy reached at any threshold (see GetBestAccuracyThreshold).
+		@return accuracy in 0 to 1, or NaN when the evaluation failed
+		~#
+		method : public : GetBestAccuracy() ~ Float {
+			j := BestPoint();
+			if(j < 0) {
+				return Float->NaN();
+			};
+
+			return AccuracyOfPoint(j);
+		}
+
+		method : BestPoint() ~ Int {
+			if(@values = Nil) {
+				return -1;
+			};
+
+			best := 0;
+			best_correct := -1;
+			for(j := 0; j < @values->Size() + 1; j += 1;) {
+				correct := (@genuine - @gen_below[j]) + @imp_below[j];
+				if(correct > best_correct) {
+					best_correct := correct;
+					best := j;
+				};
+			};
+
+			return best;
+		}
+
+		#~
+		The lowest threshold whose FAR is at most a budget, which is the one with the smallest FRR under that budget ("FRR at FAR = 0.1%").
+		@param max_far the false acceptance budget, in 0 to 1
+		@return the threshold (+Infinity when only rejecting everything fits), or NaN when the evaluation failed or the budget is not in 0 to 1
+		~#
+		method : public : GetThresholdAtFar(max_far : Float) ~ Float {
+			j := PointAtFar(max_far);
+			if(j < 0) {
+				return Float->NaN();
+			};
+
+			return j < @values->Size() ? @values[j] : Float->Inf();
+		}
+
+		#~
+		The smallest FRR reachable while FAR stays at or under a budget.
+		@param max_far the false acceptance budget, in 0 to 1
+		@return FRR in 0 to 1, or NaN when the evaluation failed or the budget is not in 0 to 1
+		~#
+		method : public : GetFrrAtFar(max_far : Float) ~ Float {
+			j := PointAtFar(max_far);
+			if(j < 0) {
+				return Float->NaN();
+			};
+
+			return GetFrr(j);
+		}
+
+		method : PointAtFar(max_far : Float) ~ Int {
+			if(@values = Nil | max_far <> max_far | max_far < 0.0 | max_far > 1.0) {
+				return -1;
+			};
+
+			for(j := 0; j < @values->Size() + 1; j += 1;) {
+				if(GetFar(j) <= max_far) {
+					return j;
+				};
+			};
+
+			return -1;
+		}
+	}
+
+	#~
+	Verification metrics from scores and same / different labels. Every function is static; see the bundle description for the rules (accept when score >= threshold, FAR, FRR, the curve, the EER interpolation) and for how bad input is reported.
+	~#
+	class Verification {
+		#~
+		Why a set of scores and labels cannot be evaluated.
+		@param scores one similarity score per pair, higher meaning more alike
+		@param genuine one label per pair: true for a same pair, false for a different pair
+		@return "" when the input is usable, otherwise the reason
+		~#
+		function : Check(scores : Float[], genuine : Bool[]) ~ String {
+			if(scores = Nil | genuine = Nil) {
+				return "scores and labels must not be Nil";
+			};
+
+			n := scores->Size();
+			if(n = 0) {
+				return "no pairs to evaluate";
+			};
+
+			labels := genuine->Size();
+			if(labels <> n) {
+				return "{$n} scores but {$labels} labels";
+			};
+
+			pos := 0;
+			each(i : n) {
+				if(Similarity->NotFinite(scores[i])) {
+					return "score {$i} is not finite";
+				};
+				if(genuine[i]) {
+					pos += 1;
+				};
+			};
+
+			if(pos = 0) {
+				return "no genuine (same) pair: FRR is undefined";
+			};
+			if(pos = n) {
+				return "no impostor (different) pair: FAR is undefined";
+			};
+
+			return "";
+		}
+
+		#~
+		Evaluates a verifier: the full FAR / FRR curve, the EER and its threshold, from which accuracy, the best threshold and the ROC and DET point lists are read.
+		@param scores one similarity score per pair, higher meaning more alike; must be finite
+		@param genuine one label per pair: true for a same pair, false for a different pair; both kinds must occur
+		@return a result; check IsValid() (when false GetError() says why)
+
+```
+r := Verification->Evaluate(scores, same);
+if(r->IsValid()) {
+  "EER {$r->GetEer()} at threshold {$r->GetEerThreshold()}"->PrintLine();
+};
+```
+		~#
+		function : Evaluate(scores : Float[], genuine : Bool[]) ~ VerificationResult {
+			error := Check(scores, genuine);
+			if(error->Size() > 0) {
+				return VerificationResult->New(error);
+			};
+
+			n := scores->Size();
+			order := SortAscending(scores);
+
+			distinct := 0;
+			each(i : n) {
+				if(i = 0 | scores[order[i]] <> scores[order[i - 1]]) {
+					distinct += 1;
+				};
+			};
+
+			values := Float->New[distinct];
+			gen_below := Int->New[distinct + 1];
+			imp_below := Int->New[distinct + 1];
+			gen := 0;
+			imp := 0;
+			point := 0;
+			each(i : n) {
+				s := scores[order[i]];
+				if(i = 0 | s <> scores[order[i - 1]]) {
+					values[point] := s;
+					gen_below[point] := gen;
+					imp_below[point] := imp;
+					point += 1;
+				};
+				if(genuine[order[i]]) {
+					gen += 1;
+				}
+				else {
+					imp += 1;
+				};
+			};
+			gen_below[distinct] := gen;
+			imp_below[distinct] := imp;
+
+			return VerificationResult->New(values, gen_below, imp_below, gen, imp);
+		}
+
+		#~
+		The false acceptance rate at one threshold: impostor pairs with a score at or above it, over all impostor pairs.
+		@param scores one similarity score per pair
+		@param genuine true for a same pair
+		@param threshold the threshold
+		@return FAR in 0 to 1, or NaN on invalid input (see Check) or a NaN threshold
+		~#
+		function : Far(scores : Float[], genuine : Bool[], threshold : Float) ~ Float {
+			counts := Count(scores, genuine, threshold);
+			if(counts = Nil) {
+				return Float->NaN();
+			};
+
+			return counts[1]->As(Float) / (counts[1] + counts[3])->As(Float);
+		}
+
+		#~
+		The false rejection rate at one threshold: genuine pairs with a score below it, over all genuine pairs.
+		@param scores one similarity score per pair
+		@param genuine true for a same pair
+		@param threshold the threshold
+		@return FRR in 0 to 1, or NaN on invalid input (see Check) or a NaN threshold
+		~#
+		function : Frr(scores : Float[], genuine : Bool[], threshold : Float) ~ Float {
+			counts := Count(scores, genuine, threshold);
+			if(counts = Nil) {
+				return Float->NaN();
+			};
+
+			return counts[2]->As(Float) / (counts[0] + counts[2])->As(Float);
+		}
+
+		#~
+		The accuracy at one threshold: pairs decided correctly over all pairs.
+		@param scores one similarity score per pair
+		@param genuine true for a same pair
+		@param threshold the threshold
+		@return accuracy in 0 to 1, or NaN on invalid input (see Check) or a NaN threshold
+		~#
+		function : Accuracy(scores : Float[], genuine : Bool[], threshold : Float) ~ Float {
+			counts := Count(scores, genuine, threshold);
+			if(counts = Nil) {
+				return Float->NaN();
+			};
+
+			return (counts[0] + counts[3])->As(Float) / scores->Size()->As(Float);
+		}
+
+		# [true accepts, false accepts, false rejects, true rejects], or Nil
+		function : Count(scores : Float[], genuine : Bool[], threshold : Float) ~ Int[] {
+			if(threshold <> threshold | Check(scores, genuine)->Size() > 0) {
+				return Nil;
+			};
+
+			counts := Int->New[4];
+			each(i : scores) {
+				accepted := scores[i] >= threshold;
+				if(genuine[i]) {
+					if(accepted) {
+						counts[0] += 1;
+					}
+					else {
+						counts[2] += 1;
+					};
+				}
+				else {
+					if(accepted) {
+						counts[1] += 1;
+					}
+					else {
+						counts[3] += 1;
+					};
+				};
+			};
+
+			return counts;
+		}
+
+		# indexes that order the scores ascending; a stable merge sort, so the cost stays n log n on the thousands of pairs of a real benchmark
+		function : SortAscending(scores : Float[]) ~ Int[] {
+			n := scores->Size();
+			idx := Int->New[n];
+			each(i : n) {
+				idx[i] := i;
+			};
+
+			buffer := Int->New[n];
+			MergeRange(scores, idx, buffer, 0, n - 1);
+
+			return idx;
+		}
+
+		function : MergeRange(scores : Float[], idx : Int[], buffer : Int[], lo : Int, hi : Int) ~ Nil {
+			if(lo >= hi) {
+				return;
+			};
+
+			mid := (lo + hi) / 2;
+			MergeRange(scores, idx, buffer, lo, mid);
+			MergeRange(scores, idx, buffer, mid + 1, hi);
+
+			i := lo;
+			j := mid + 1;
+			p := lo;
+			while(i <= mid & j <= hi) {
+				if(scores[idx[j]] < scores[idx[i]]) {
+					buffer[p] := idx[j];
+					j += 1;
+				}
+				else {
+					buffer[p] := idx[i];
+					i += 1;
+				};
+				p += 1;
+			};
+			while(i <= mid) {
+				buffer[p] := idx[i];
+				i += 1;
+				p += 1;
+			};
+			while(j <= hi) {
+				buffer[p] := idx[j];
+				j += 1;
+				p += 1;
+			};
+
+			for(q := lo; q <= hi; q += 1;) {
+				idx[q] := buffer[q];
+			};
+		}
+	}
+}

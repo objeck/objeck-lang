@@ -87,6 +87,7 @@ if %ERRORLEVEL% NEQ 0 (
 	%LIB_SRC%\ml_lab.obs ^
 	%LIB_SRC%\ml_vector.obs ^
 	%LIB_SRC%\ml_report.obs ^
+	%LIB_SRC%\ml_verify.obs ^
 	%LIB_SRC%\ml_cnn.obs ^
 	%LIB_SRC%\nlp_topics_text.obs ^
 	%LIB_SRC%\nlp_topics_lda.obs ^
@@ -101,6 +102,7 @@ if %ERRORLEVEL% NEQ 0 (
 	%LIB_SRC%\ai_rl.obs ^
 	%LIB_SRC%\nlp.obs ^
 	%LIB_SRC%\nlp_onnx.obs ^
+	%LIB_SRC%\ml_clip.obs ^
 	%LIB_SRC%\ai_hub.obs ^
 	%LIB_SRC%\openai.obs ^
 	%LIB_SRC%\gemini.obs ^

@@ -1,0 +1,143 @@
+# EXTRA_LIBS: ml_clip,ml_verify,opencv,onnx,models
+#~
+System.ML.Clip ClipPreprocessor against Hugging Face's CLIPImageProcessor (Pillow).
+
+data/clip/gen_tiny_clip.py makes seven small synthetic PNGs (landscape, tall, exactly the target size, a
+downscale, an upscale, greyscale, RGBA) and runs CLIPImageProcessor on them at 32 x 32 (shortest_edge 32, crop 32);
+expected_pixels.txt holds its pixel_values. The Objeck preprocessor, in its default Pillow-bicubic mode, must
+agree to 1e-6 (the reference is float32, ours float64, so the difference is rounding). The OpenCV mode is checked
+for shape and for being close to, but not the same as, the reference: OpenCV's INTER_CUBIC does not antialias.
+Also: Nil, a missing file and an undecodable file return Nil.
+
+Skips when libobjk_opencv is not deployed. Run from programs/regression.
+~#
+use System.ML.Clip;
+use System.IO.Filesystem;
+use Collection;
+
+class MlClipPreprocess {
+	@ok : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		t := MlClipPreprocess->New();
+		t->Run();
+		if(<>t->IsOk()) {
+			"FAIL: ml_clip_preprocess"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	New() {
+		@ok := true;
+	}
+
+	method : IsOk() ~ Bool {
+		return @ok;
+	}
+
+	method : Report(name : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	method : LibraryPresent(name : String) ~ Bool {
+		dir := Runtime->GetProperty("lib_dir");
+		if(dir = Nil) {
+			return false;
+		};
+
+		base := "{$dir}native/libobjk_{$name}";
+		return File->Exists("{$base}.dll") | File->Exists("{$base}.so") | File->Exists("{$base}.dylib");
+	}
+
+	method : Parse(text : String) ~ Float[] {
+		parts := text->Split(",");
+		out := Float->New[parts->Size()];
+		each(i : parts) {
+			out[i] := parts[i]->ToFloat();
+		};
+
+		return out;
+	}
+
+	method : MaxDiff(a : Float[], b : Float[]) ~ Float {
+		worst := 0.0;
+		each(i : a) {
+			d := a[i] - b[i];
+			if(d < 0.0) {
+				d := -d;
+			};
+			if(d > worst) {
+				worst := d;
+			};
+		};
+
+		return worst;
+	}
+
+	method : Run() ~ Nil {
+		if(<>LibraryPresent("opencv")) {
+			"SKIP: libobjk_opencv is not deployed"->PrintLine();
+			return;
+		};
+
+		text := FileReader->ReadFile("data/clip/expected_pixels.txt");
+		if(text = Nil) {
+			Report("expected_pixels.txt is readable (run from programs/regression)", false);
+			return;
+		};
+
+		pil := ClipPreprocessor->New(32, ClipPreprocessor->Resize->PIL_BICUBIC);
+		cv := ClipPreprocessor->New(32, ClipPreprocessor->Resize->OPENCV_CUBIC);
+		Report("the preprocessor reports its size and length", pil->GetSize() = 32 & pil->GetLength() = 3 * 32 * 32);
+		Report("the default constructor is 224 pixels, Pillow bicubic", ClipPreprocessor->New()->GetSize() = 224 & ClipPreprocessor->New()->GetMode() = ClipPreprocessor->Resize->PIL_BICUBIC);
+
+		lines := text->ReplaceAll("\r", "")->Split("\n");
+		each(i : lines) {
+			if(lines[i]->Size() > 0) {
+				f := lines[i]->Split("|");
+				name := f[0];
+				want := Parse(f[1]);
+				path := "data/clip/img_{$name}.png";
+
+				got := pil->ProcessFile(path);
+				if(got = Nil | got->Size() <> want->Size()) {
+					Report("{$name}: Pillow mode makes 3 x 32 x 32 values", false);
+				}
+				else {
+					d := MaxDiff(got, want);
+					Report("{$name}: Pillow mode matches CLIPImageProcessor, max abs diff {$d}", d < 1.0e-6);
+				};
+
+				alt := cv->ProcessFile(path);
+				if(alt = Nil | alt->Size() <> want->Size()) {
+					Report("{$name}: OpenCV mode makes 3 x 32 x 32 values", false);
+				}
+				else {
+					d := MaxDiff(alt, want);
+					# these are noise images, the worst case: OpenCV's INTER_CUBIC does not antialias, so a downscale of
+					# noise differs by many grey levels (one level is about 0.015 after normalising)
+					Report("{$name}: OpenCV mode has the same shape and is not wildly off (max abs diff {$d})", d < 5.0);
+					if(name->Equals("down")) {
+						Report("down: OpenCV mode is NOT the Pillow result, which is why Pillow mode is the default", d > 0.05);
+					};
+				};
+			};
+		};
+
+		no_path : String;
+		Report("Nil path gives Nil", pil->ProcessFile(no_path) = Nil);
+		Report("a missing file gives Nil", pil->ProcessFile("data/clip/no_such_image.png") = Nil);
+		not_image := pil->ProcessFile("data/clip/pairs_tiny.csv");
+		Report("a file that is not an image gives Nil", not_image = Nil);
+		no_image : API.OpenCV.Image;
+		Report("a Nil image gives Nil", pil->Process(no_image) = Nil);
+		Report("a size below 1 falls back to 224", ClipPreprocessor->New(0, ClipPreprocessor->Resize->PIL_BICUBIC)->GetSize() = 224);
+		"ml_clip_preprocess: done"->PrintLine();
+	}
+}

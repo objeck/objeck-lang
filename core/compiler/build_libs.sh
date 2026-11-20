@@ -34,6 +34,8 @@ $OBC -src lib_src/ml_lab.obs -lib gen_collect,csv,json,ml -tar lib -opt s3 -dest
 $OBC -src lib_src/ml_vector.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ml_vector.obl
 # Replicate statistics and the HTML/Markdown report builder. Needs ml_lab (ResultTable), stats and plot
 $OBC -src lib_src/ml_report.obs -lib gen_collect,csv,json,ml,ml_lab,stats,plot -tar lib -opt s3 -dest ../lib/ml_report.obl
+# Verification metrics (FAR, FRR, EER, ROC/DET points) and cosine similarity. Needs only gen_collect, so it links no vision library
+$OBC -src lib_src/ml_verify.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ml_verify.obl
 # Convolutional networks (the layers are native, in libobjk_ml). Reads images through opencv, scores with ml, writes history tables with ml_lab
 $OBC -src lib_src/ml_cnn.obs -lib gen_collect,csv,json,cipher,ml,ml_lab,opencv -tar lib -opt s3 -dest ../lib/ml_cnn.obl
 # Plotting: scatter, histogram, line and bar charts as SVG. Needs only gen_collect, no display, no SDL
@@ -47,6 +49,8 @@ $OBC -src lib_src/nlp.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/nlp.obl
 # Text embeddings from BERT-family ONNX models. A library of its own, after both nlp
 # and onnx, so neither of them has to link the other.
 $OBC -src lib_src/nlp_onnx.obs -lib gen_collect,models,opencv,cipher,json,onnx,nlp -tar lib -opt s3 -dest ../lib/nlp_onnx.obl
+# CLIP image embeddings and LFW pair scoring from an exported ONNX image tower. After onnx, opencv and ml_verify
+$OBC -src lib_src/ml_clip.obs -lib gen_collect,models,opencv,cipher,json,onnx,ml_verify -tar lib -opt s3 -dest ../lib/ml_clip.obl
 $OBC -src lib_src/net_common.obs,lib_src/net.obs,lib_src/net_secure.obs -tar lib -lib gen_collect,cipher -opt s3 -dest ../lib/net.obl
 $OBC -src lib_src/net_h2.obs -tar lib -lib net,gen_collect,cipher -opt s3 -dest ../lib/net_h2.obl
 $OBC -src lib_src/net_quic.obs -tar lib -lib net,gen_collect,cipher -opt s3 -dest ../lib/net_quic.obl

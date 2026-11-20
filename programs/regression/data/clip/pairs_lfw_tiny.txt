@@ -1,0 +1,9 @@
+2	2
+Ada_Lovelace	1	3
+Ada_Lovelace	2	12
+Ada_Lovelace	1	Alan_Turing	2
+Grace_Hopper	4	Alan_Turing	1
+Alan_Turing	1	2
+Grace_Hopper	1	2
+Ada_Lovelace	3	Grace_Hopper	4
+Alan_Turing	2	Ada_Lovelace	1

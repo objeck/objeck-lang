@@ -1,0 +1,287 @@
+# EXTRA_LIBS: ml_verify,gen_collect
+#~
+System.ML.Verification against independent numbers.
+
+cases.txt holds 14 sets of scores and same / different labels (continuous scores, heavy ties, one score for
+every pair, perfect and inverted separation, two and three pairs, ties across the classes, negative scores,
+crossings on the last segment, and three that cannot be evaluated). expected.txt holds what
+ml_verify_golden/gen_expected.py computed for each with scikit-learn's roc_curve, numpy counting and scipy's
+interp1d / brentq, never with this library: the whole FAR / FRR curve, the EER and its threshold, FAR, FRR
+and accuracy at probe thresholds, the best accuracy and its threshold, the FRR at FAR budgets, and the ROC
+curve. Every number must agree to 1e-12. Also checked here: the invalid-input rules (a NaN or infinite score,
+a size mismatch, Nil, empty, one class missing) return a failure value and never end the program, and the
+cosine helper. Run from programs/regression (the golden files are read by relative path).
+~#
+use System.IO.Filesystem;
+use System.ML.Verification;
+use Collection;
+
+class MlVerifyMetrics {
+	@ok : Bool;
+	@tol : Float;
+
+	function : Main(args : String[]) ~ Nil {
+		t := MlVerifyMetrics->New();
+		t->Run();
+		if(<>t->IsOk()) {
+			"FAIL: ml_verify_metrics"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"ml_verify_metrics: all checks passed"->PrintLine();
+	}
+
+	New() {
+		@ok := true;
+		@tol := 1.0e-12;
+	}
+
+	method : IsOk() ~ Bool {
+		return @ok;
+	}
+
+	method : Report(name : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	method : IsNaN(v : Float) ~ Bool {
+		return v <> v;
+	}
+
+	method : Near(a : Float, b : Float) ~ Bool {
+		if(a = Float->Inf() | b = Float->Inf()) {
+			return a = b;
+		};
+		if(a <> a | b <> b) {
+			return false;
+		};
+		d := a - b;
+		return d < @tol & d > -@tol;
+	}
+
+	method : Parse(text : String) ~ Float[] {
+		parts := text->Split(",");
+		out := Float->New[parts->Size()];
+		each(i : parts) {
+			p := parts[i];
+			if(p->Equals("inf")) {
+				out[i] := Float->Inf();
+			}
+			else {
+				out[i] := p->ToFloat();
+			};
+		};
+
+		return out;
+	}
+
+	method : SameArray(name : String, got : Float[], want : Float[]) ~ Nil {
+		if(got = Nil | got->Size() <> want->Size()) {
+			Report("{$name}: length", false);
+			return;
+		};
+
+		worst := 0.0;
+		bad := -1;
+		each(i : want) {
+			if(<>Near(got[i], want[i])) {
+				bad := i;
+			};
+			if(got[i] <> Float->Inf() & want[i] <> Float->Inf()) {
+				d := got[i] - want[i];
+				if(d < 0.0) {
+					d := -d;
+				};
+				if(d > worst) {
+					worst := d;
+				};
+			};
+		};
+
+		count := want->Size();
+		Report("{$name}: {$count} values, max abs diff {$worst}", bad < 0);
+	}
+
+	method : Run() ~ Nil {
+		cases_text := FileReader->ReadFile("ml_verify_golden/cases.txt");
+		expected_text := FileReader->ReadFile("ml_verify_golden/expected.txt");
+		if(cases_text = Nil | expected_text = Nil) {
+			Report("golden files are readable (run from programs/regression)", false);
+			return;
+		};
+
+		# name -> key -> values
+		want := Map->New()<String, Map<String, String>>;
+		lines := expected_text->Split("\n");
+		each(i : lines) {
+			line := lines[i];
+			if(line->Size() > 0) {
+				f := line->Split("|");
+				if(<>want->Has(f[0])) {
+					want->Insert(f[0], Map->New()<String, String>);
+				};
+				want->Find(f[0])->Insert(f[1], f[2]);
+			};
+		};
+
+		cases := cases_text->Split("\n");
+		each(i : cases) {
+			line := cases[i];
+			if(line->Size() > 0) {
+				f := line->Split("|");
+				scores := Parse(f[1]);
+				labels := Parse(f[2]);
+				same := Bool->New[labels->Size()];
+				each(j : labels) {
+					same[j] := labels[j] > 0.5;
+				};
+				Case(f[0], scores, same, want->Find(f[0]));
+			};
+		};
+
+		Invalid();
+		Cosine();
+	}
+
+	method : Case(name : String, scores : Float[], same : Bool[], w : Map<String, String>) ~ Nil {
+		result := Verification->Evaluate(scores, same);
+		if(w->Find("valid")->Equals("0")) {
+			reason := result->GetError();
+			Report("{$name}: refused (IsValid false)", <>result->IsValid());
+			Report("{$name}: GetError says why ({$reason})", reason->Size() > 0);
+			Report("{$name}: numbers are NaN", IsNaN(result->GetEer()) & result->GetCurve() = Nil);
+			Report("{$name}: Check agrees", Verification->Check(scores, same)->Equals(reason));
+			Report("{$name}: FAR is NaN", IsNaN(Verification->Far(scores, same, 0.5)));
+			return;
+		};
+
+		Report("{$name}: IsValid, GetError is empty", result->IsValid() & result->GetError()->Size() = 0);
+		SameArray("{$name}: thresholds", result->GetThresholds(), Parse(w->Find("curve_thr")));
+		SameArray("{$name}: FAR curve", result->GetFarCurve(), Parse(w->Find("curve_far")));
+		SameArray("{$name}: FRR curve", result->GetFrrCurve(), Parse(w->Find("curve_frr")));
+
+		eer := result->GetEer();
+		Report("{$name}: EER {$eer}", Near(eer, Parse(w->Find("eer"))[0]));
+		eer_t := result->GetEerThreshold();
+		Report("{$name}: EER threshold {$eer_t}", Near(eer_t, Parse(w->Find("eer_thr"))[0]));
+		best := result->GetBestAccuracy();
+		Report("{$name}: best accuracy {$best}", Near(best, Parse(w->Find("best_acc"))[0]));
+		Report("{$name}: best accuracy threshold", Near(result->GetBestAccuracyThreshold(), Parse(w->Find("best_thr"))[0]));
+
+		# the curve matrix is the three arrays side by side
+		curve := result->GetCurve();
+		dims := curve->Size();
+		thr := result->GetThresholds();
+		far := result->GetFarCurve();
+		frr := result->GetFrrCurve();
+		same_curve := dims[0] = result->Size() & dims[1] = 3;
+		if(same_curve) {
+			each(j : dims[0]) {
+				if(<>Near(curve[j, 0], thr[j]) | <>Near(curve[j, 1], far[j]) | <>Near(curve[j, 2], frr[j])) {
+					same_curve := false;
+				};
+			};
+		};
+		Report("{$name}: GetCurve rows are [threshold, FAR, FRR]", same_curve);
+
+		# probes, through the stored curve AND through the one-shot functions that never build it
+		pt := Parse(w->Find("probe_thr"));
+		pf := Parse(w->Find("probe_far"));
+		pr := Parse(w->Find("probe_frr"));
+		pa := Parse(w->Find("probe_acc"));
+		fine := true;
+		each(j : pt) {
+			if(<>Near(result->FarAt(pt[j]), pf[j]) | <>Near(result->FrrAt(pt[j]), pr[j]) | <>Near(result->AccuracyAt(pt[j]), pa[j])) {
+				fine := false;
+			};
+			if(<>Near(Verification->Far(scores, same, pt[j]), pf[j]) | <>Near(Verification->Frr(scores, same, pt[j]), pr[j]) | <>Near(Verification->Accuracy(scores, same, pt[j]), pa[j])) {
+				fine := false;
+			};
+		};
+		probes := pt->Size();
+		Report("{$name}: FAR, FRR, accuracy at {$probes} thresholds (curve and one-shot)", fine);
+
+		budgets := Parse(w->Find("budgets"));
+		bt := Parse(w->Find("budget_thr"));
+		bf := Parse(w->Find("budget_frr"));
+		fine := true;
+		each(j : budgets) {
+			if(<>Near(result->GetThresholdAtFar(budgets[j]), bt[j]) | <>Near(result->GetFrrAtFar(budgets[j]), bf[j])) {
+				fine := false;
+			};
+		};
+		Report("{$name}: FRR at FAR budgets", fine);
+
+		# ROC: sklearn's own fpr and tpr; DET is FAR against FRR
+		roc := result->GetRocCurve();
+		rt := Parse(w->Find("roc_thr"));
+		rf := Parse(w->Find("roc_far"));
+		rp := Parse(w->Find("roc_tpr"));
+		rd := roc->Size();
+		fine := rd[0] = rt->Size() & rd[1] = 3;
+		det := result->GetDetCurve();
+		if(fine) {
+			each(j : rd[0]) {
+				if(<>Near(roc[j, 0], rt[j]) | <>Near(roc[j, 1], rf[j]) | <>Near(roc[j, 2], rp[j])) {
+					fine := false;
+				};
+				if(<>Near(det[j, 0], rf[j]) | <>Near(det[j, 1], 1.0 - rp[j])) {
+					fine := false;
+				};
+			};
+		};
+		Report("{$name}: ROC rows match scikit-learn, DET is [FAR, FRR]", fine);
+
+		Report("{$name}: class counts", result->GetGenuineCount() + result->GetImpostorCount() = scores->Size());
+	}
+
+	method : Invalid() ~ Nil {
+		nan := Float->NaN();
+		good := [0.9, 0.1, 0.8, 0.2];
+		same := [true, false, true, false];
+		no_floats : Float[];
+		no_bools : Bool[];
+
+		r := Verification->Evaluate([0.9, nan, 0.8, 0.2], same);
+		Report("a NaN score is refused", <>r->IsValid() & r->GetError()->Size() > 0);
+		r := Verification->Evaluate([0.9, Float->Inf(), 0.8, 0.2], same);
+		Report("an infinite score is refused", <>r->IsValid());
+		r := Verification->Evaluate(good, [true, false]);
+		reason := r->GetError();
+		Report("a size mismatch is refused: {$reason}", <>r->IsValid());
+		r := Verification->Evaluate(no_floats, same);
+		Report("Nil scores are refused", <>r->IsValid());
+		r := Verification->Evaluate(good, no_bools);
+		Report("Nil labels are refused", <>r->IsValid());
+		r := Verification->Evaluate(Float->New[0], Bool->New[0]);
+		Report("empty input is refused", <>r->IsValid());
+		Report("a refused result has no arrays", r->GetThresholds() = Nil & r->GetFarCurve() = Nil & r->GetRocCurve() = Nil & r->GetDetCurve() = Nil & r->Size() = 0);
+		Report("a refused result answers NaN", IsNaN(r->FarAt(0.5)) & IsNaN(r->GetBestAccuracy()) & IsNaN(r->GetThresholdAtFar(0.1)));
+
+		ok := Verification->Evaluate(good, same);
+		Report("a NaN threshold gives NaN", IsNaN(ok->FarAt(nan)) & IsNaN(Verification->Accuracy(good, same, nan)));
+		Report("a FAR budget outside 0..1 gives NaN", IsNaN(ok->GetFrrAtFar(1.5)) & IsNaN(ok->GetFrrAtFar(-0.1)));
+		Report("Check is empty for good input", Verification->Check(good, same)->Size() = 0);
+		Report("Far with Nil scores is NaN", IsNaN(Verification->Far(no_floats, same, 0.5)));
+	}
+
+	method : Cosine() ~ Nil {
+		no_floats : Float[];
+		nan := Float->NaN();
+		Report("cosine of equal vectors is 1", Near(Similarity->Cosine([1.0, 2.0, 3.0], [2.0, 4.0, 6.0]), 1.0));
+		Report("cosine of orthogonal vectors is 0", Near(Similarity->Cosine([1.0, 0.0], [0.0, 5.0]), 0.0));
+		Report("cosine of opposite vectors is -1", Near(Similarity->Cosine([1.0, 1.0], [-2.0, -2.0]), -1.0));
+		Report("cosine of (1,2,3) and (3,2,1) is 5/7", Near(Similarity->Cosine([1.0, 2.0, 3.0], [3.0, 2.0, 1.0]), 10.0 / 14.0));
+		Report("cosine: a zero vector, a length mismatch and Nil are NaN",
+			IsNaN(Similarity->Cosine([0.0, 0.0], [1.0, 1.0])) & IsNaN(Similarity->Cosine([1.0], [1.0, 2.0])) & IsNaN(Similarity->Cosine(no_floats, [1.0])));
+		Report("cosine: a NaN value is NaN", IsNaN(Similarity->Cosine([1.0, nan], [1.0, 1.0])));
+		n := Similarity->Normalize([3.0, 4.0]);
+		Report("Normalize gives a unit vector", Near(n[0], 0.6) & Near(n[1], 0.8));
+		Report("Normalize of zeros or Nil is Nil", Similarity->Normalize([0.0, 0.0]) = Nil & Similarity->Normalize(no_floats) = Nil);
+	}
+}
