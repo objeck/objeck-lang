@@ -82,6 +82,7 @@ eight libraries that group lists.
 | `@ai` | `ai`, `ml`, `ml_lab`, `ml_vector`, `stats`, `plot`, `nlp`, `nlp_topics`, `csv`, `json` | local `System.ML` / `System.ML.Lab` / `System.ML.VectorSearch` / `System.Stats` / `System.Plot` / `System.AI` / `System.NLP` / `System.NLP.Topics` |
 | `@plot` | `plot`, `plot_sdl`, `sdl2` | `System.Plot` charts in an SDL2 window or as PNG (SVG alone needs only `plot`) |
 | `@vision` | `opencv`, `onnx`, `nlp_onnx`, `models`, `nlp`, `json`, `cipher` | OpenCV and ONNX inference, BERT text embeddings |
+| `@cnn` | `ml_cnn`, `ml`, `ml_lab`, `opencv`, `csv`, `json`, `cipher` | `System.ML.Cnn` convolutional networks with image loading and history tables |
 | `@game` | `sdl2`, `sdl_game`, `sdl_gl`, `json`, `gen_collect` | SDL2, the 2D game and 3D OpenGL frameworks |
 
 Groups and explicit names mix in any order, for either `--target`: `-lib @ai,json` and
