@@ -1,0 +1,92 @@
+#~
+A miniature assignment hand-in built with System.ML.Report from SYNTHETIC results: five seeds
+for each of three tree depths, summarised as mean +/- standard deviation and a t interval, a
+paired comparison of two depths, an OLS fit, a chart, and the sections an assignment has
+(Chapter, Exercise, Experiment). It writes report.html (one self-contained file: open it in a
+browser and choose Print, Save as PDF) and report.md (with its figures as report-figure-N.svg).
+
+The accuracies are made up from an integer formula, so the report is the same on every run; a
+real study fills the Replicates from its own runs (the Lab's Experiment, or any loop over seeds).
+programs/regression/ml_report_golden.obs builds this same report and compares it to the files
+under programs/regression/ml_report_golden/, so keep the two in step.
+
+  compile: obc -src study_report.obs -lib ml_report,ml_lab,ml,stats,plot,csv,json,gen_collect
+  run:     obr study_report.obe
+~#
+use System.ML.Report;
+use System.ML.Lab;
+use System.Stats;
+
+class StudyReport {
+	# a made-up accuracy: a base level per depth plus a small seed-dependent wobble
+	function : Accuracy(depth : Int, seed : Int) ~ Float {
+		base := 0.70;
+		if(depth = 4) {
+			base := 0.78;
+		}
+		else if(depth = 8) {
+			base := 0.81;
+		};
+		wobble := ((seed * (depth + 2) + depth) % 7 - 3)->As(Float) / 200.0;
+
+		return base + wobble;
+	}
+
+	function : Build() ~ Report {
+		depths := [2, 4, 8];
+		rep := Replicates->New();
+		each(d : depths) {
+			each(seed : 5) {
+				acc := Accuracy(depths[d], seed);
+				rep->AddRun("depth {$depths[d]}", seed, ["test_accuracy", "f1"], [acc, acc - 0.04]);
+			};
+		};
+
+		report := Report->New("Assignment 3: tree depth and generalisation");
+		report->SetAuthor("Example Student (synthetic results)");
+		report->SetDate("2026-11-19");
+
+		report->AddSection(1, "Chapter 3", "Decision trees");
+		report->AddParagraph("This hand-in shows the layout of a report built from code. Every number below is made up from a formula; a real study would fill the replicates from its own runs.\n\nEach setting was run with 5 seeds. Tables give the mean and the sample standard deviation over the seeds.");
+
+		report->AddSection(2, "Exercise 1", "Accuracy by tree depth");
+		means := ResultTables->MeansFromReplicates(rep, "Mean over 5 seeds", "depth");
+		report->AddTable("Test accuracy and F1 by depth", means);
+		summary := rep->ToResultTable("test_accuracy", "Test accuracy with a 95% interval", "depth");
+		report->AddTable("Test accuracy: mean, deviation and 95% t interval", summary);
+		report->AddResultTableChart("Mean test accuracy by depth", summary, ["mean"], "bar");
+
+		report->AddSection(2, "Exercise 2", "Is depth 8 better than depth 2?");
+		report->AddParagraph("The same five seeds were used for both settings, so the comparison is paired by seed.");
+		compare := ResultTables->FromComparison(rep, "depth 8", "depth 2", "Depth 8 against depth 2, paired by seed");
+		report->AddTable("Paired comparison, depth 8 minus depth 2", compare);
+		test := rep->Paired("depth 8", "depth 2", "test_accuracy");
+		report->AddCode(test->ToString());
+		report->AddNote("Five seeds give a wide interval; treat the p-value as a rough guide, not a verdict.");
+
+		report->AddSection(1, "Chapter 4", "Regression");
+		report->AddSection(2, "Experiment 1", "Accuracy against label noise");
+		report->AddParagraph("Accuracy fell as label noise rose. A least-squares line through the five noise levels:");
+		x := Float->New[5, 1];
+		y := Float->New[5];
+		each(i : 5) {
+			x[i, 0] := i->As(Float) * 0.05;
+			y[i] := 0.82 - 0.9 * x[i, 0] + ((i * 3) % 5 - 2)->As(Float) / 200.0;
+		};
+		fit := OLS->Fit(x, y, true, ["noise"]);
+		report->AddTable("OLS of accuracy on label noise", ResultTables->FromOls(fit, "Accuracy ~ noise"));
+		report->AddBullets(["the intercept is the accuracy without noise", "the slope is the accuracy lost per unit of noise"]);
+
+		return report;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		report := StudyReport->Build();
+		if(report->Save("report.html") & report->Save("report.md")) {
+			"wrote report.html and report.md"->PrintLine();
+		}
+		else {
+			"could not write the report: {$report->GetError()}"->ErrorLine();
+		};
+	}
+}

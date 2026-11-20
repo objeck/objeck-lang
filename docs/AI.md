@@ -46,6 +46,7 @@ All AI and ML capabilities are **standard library** — no third-party packages,
   - [Neural Network](#neural-network)
   - [Model Persistence](#model-persistence)
   - [Local vector search (System.ML.VectorSearch)](#local-vector-search-systemmlvectorsearch)
+  - [Replicates and reports (System.ML.Report)](#replicates-and-reports-systemmlreport)
   - [Convolutional networks (System.ML.Cnn)](#convolutional-networks-systemmlcnn)
   - [Statistics (System.Stats)](#statistics-systemstats)
   - [Plotting (System.Plot)](#plotting-systemplot)
@@ -1526,6 +1527,56 @@ The three metrics cost the same, and a four-accumulator unrolled inner loop was 
 
 A complete run (a small corpus, embedded either with a BERT model or, with nothing to download, a hashed bag of words, then queried, saved and loaded) is [`programs/examples/ml/vector_search.obs`](../programs/examples/ml/vector_search.obs). It is tested by `ml_vector_exact.obs` (against a brute-force reference, ties, `k` past the end, removals), `ml_vector_edges.obs` (value range, block boundaries, emptying an index, near-ties), `ml_vector_validation.obs` and `ml_vector_persist.obs` (round trip and corrupt files).
 
+### Replicates and reports (System.ML.Report)
+
+`ml_report.obl` (`-lib @ai`, or `ml_report,ml_lab,ml,stats,plot,csv,json,gen_collect`) turns a study into a hand-in: a single document with numbered sections, results tables, figures, code and notes, that opens in a browser and prints to PDF. It is pure Objeck, so it runs in the web playground. No call ends the program on bad input: a call that cannot do its job returns `false` (or `Nil`) and `GetError()` says why, `""` when there is nothing to report. Output is deterministic (nothing reads a clock), so a test can compare exact strings.
+
+`Replicates` collects the value of each metric per seed and per setting (group). A statistic leaves out a value that is not finite (NaN, an infinity, or the marker given to `SetMissing`, for the `-1.0` that `Metrics->AucRoc` returns) and `GetMissing` counts them; a statistic that needs more values than there are is NaN, so one seed has a mean and an undefined standard deviation.
+
+```ruby
+use System.ML.Report;
+use System.ML.Lab;
+use System.Stats;
+
+rep := Replicates->New();                         # 95% level; SetConfidence(0.99) changes it
+each(seed : 5) {
+  rep->AddRun("depth 2", seed, ["test_accuracy", "f1"], [acc2[seed], f12[seed]]);
+  rep->AddRun("depth 8", seed, ["test_accuracy", "f1"], [acc8[seed], f18[seed]]);
+};
+rep->GetMean("depth 2", "test_accuracy")->PrintLine();
+rep->GetStd("depth 2", "test_accuracy")->PrintLine();        # sample (n - 1) standard deviation
+rep->GetCiLow("depth 2", "test_accuracy")->PrintLine();      # t interval of the mean, n - 1 df
+t := rep->Paired("depth 8", "depth 2", "test_accuracy");     # a TTestResult, paired by seed
+"{$t->GetT()} {$t->GetP()} {$t->GetCohenD()}"->PrintLine();
+```
+
+Seeds pair the settings, not their position: add them in any order. `Paired` uses the seeds both settings share (`GetPairedCount`), `Welch` does not need shared seeds. Also `GetCount`, `GetStdError`, `GetMin`, `GetMax`, `GetCiHigh`, `GetValues` and `GetSeeds`. A repeated seed under the same setting and metric is refused.
+
+`ResultTables` converts to and from a `System.ML.Lab` `ResultTable` (the Lab library is not changed): `FromReplicates(rep, metric, title, parameter)` (a row per setting: `mean`, `std`, `ci_low`, `ci_high`, `n`, `missing`), `MeansFromReplicates` (a column per metric, `mean ± std`), `FromComparison` (a row per metric: both means, the difference, its interval, t, df, p, Cohen's d, pairs), `FromOls`, `FromTTests`, and `ToCells` / `FromCells` for a grid of text.
+
+`Report` builds the document:
+
+```ruby
+report := Report->New("Assignment 3");
+report->SetAuthor("A. Student");
+report->SetDate("2026-11-19");                    # text you choose: the library never reads the clock
+report->AddSection(1, "Chapter 4", "Clustering");            # a label, or AddSection(1, "heading") for "1", "1.1", ...
+report->AddSection(2, "Experiment 1", "Choosing k");         # shown as "Chapter 4 / Experiment 1"
+report->AddParagraph("Five seeds per setting.");
+report->AddTable("Accuracy by depth", ResultTables->MeansFromReplicates(rep, "Means", "depth"));
+report->AddResultTableChart("Mean accuracy", summary, ["mean"], "bar");   # System.Plot, embedded
+report->AddFigure("A scatter plot", fig);                     # a System.Plot Figure, or SVG text
+report->AddFigureFile("A PNG", "plot.png");                   # embedded as a base64 data URI
+report->AddCode("obc -src study.obs ...");
+report->AddNote("Synthetic data.");
+report->Save("report.html");                                  # or report.md
+```
+
+Also `AddBullets`, `AddNumbered`, `AddChart` (a Lab `Chart`), `AddPageBreak`, `SetContents(false)` and `SetPaper("A4")` or `"Letter"`. Tables and figures are numbered and captioned automatically, and a table's cells are spelled as `ResultTable->ToMarkdown()` spells them (the column's decimals, `mean ± std`, NaN as `n/a`). Text is plain text: `<`, `&`, quotes, backticks, pipes, asterisks and a line that starts like Markdown are escaped in both formats, so cell text cannot inject markup; an SVG with a script, an event handler or a `javascript:` link is refused.
+
+The HTML (`ToHtml()`) is one file with its styles inline and no external request: a table of contents, inline SVG that scales to the page width, tables whose rows do not split across printed pages and whose header repeats, and a print stylesheet. Open it in a browser and choose Print, Save as PDF. `ToMarkdown()` writes CommonMark with pipe tables; `Save("report.md")` writes the SVG figures beside it (`report-figure-1.svg`).
+
+Word: Word opens an HTML file but does not draw its inline SVG reliably. For a `.docx`, print the HTML to PDF from a browser, or convert the Markdown with pandoc if you have it, or use PNG figures (`PlotPng->Save` from `System.Plot.SDL` needs the SDL2 natives; `AddFigureFile` embeds the result). This library was checked in Chromium-based Edge and by parsing, and not in Word. Example: `programs/examples/ml/study_report.obs`; tests `ml_report_replicates` (statistics against numpy, scipy and statsmodels), `ml_report_build` and `ml_report_golden`.
 ### Convolutional networks (System.ML.Cnn)
 
 Convolutional networks for image classification, on the CPU (and, optionally, on an NVIDIA GPU: see [the CUDA backend](#the-optional-cuda-backend) below): `Conv`, `MaxPool`, `ReLU`, `Flatten`, `Dense` and `Dropout` layers with forward and backward passes, the Adam and SGD optimizers, binary cross-entropy on logits, an image dataset with a seeded train / validation / test split and on-the-fly augmentation, and a training loop that records loss, accuracy and wall time for every epoch. The layers are native (`libobjk_ml`, plain C++ and Eigen, nothing platform-specific: no intrinsics, no OpenMP) and the library is `ml_cnn.obl`: `obc -lib ml_cnn,ml,ml_lab,opencv,csv,json,cipher,gen_collect` or `-lib @cnn,gen_collect`. It reads image files through `opencv`, scores with `System.ML.Metrics` and writes its history as a `System.ML.Lab.ResultTable`.

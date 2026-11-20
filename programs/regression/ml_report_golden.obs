@@ -1,0 +1,125 @@
+# EXTRA_LIBS: ml_report,ml_lab,ml,stats,plot,csv,json,gen_collect
+#~
+System.ML.Report golden files: the miniature assignment of programs/examples/ml/study_report.obs
+(synthetic results, 5 seeds; keep the two in step) builds the same HTML and Markdown, byte for
+byte, as the files under ml_report_golden/. A change to the layout, the numbers or the escaping
+is a deliberate golden update: run with --update from programs/regression, then read the diff and
+open report.html in a browser. A golden that could not fail proves nothing, so a control changes
+one seed's value and must produce different bytes.
+~#
+use System.ML.Report;
+use System.ML.Lab;
+use System.Stats;
+
+class MlReportGolden {
+	# a made-up accuracy: a base level per depth plus a small seed-dependent wobble
+	function : Accuracy(depth : Int, seed : Int) ~ Float {
+		base := 0.70;
+		if(depth = 4) {
+			base := 0.78;
+		}
+		else if(depth = 8) {
+			base := 0.81;
+		};
+		wobble := ((seed * (depth + 2) + depth) % 7 - 3)->As(Float) / 200.0;
+
+		return base + wobble;
+	}
+
+	function : Build() ~ Report {
+		depths := [2, 4, 8];
+		rep := Replicates->New();
+		each(d : depths) {
+			each(seed : 5) {
+				acc := Accuracy(depths[d], seed);
+				rep->AddRun("depth {$depths[d]}", seed, ["test_accuracy", "f1"], [acc, acc - 0.04]);
+			};
+		};
+
+		report := Report->New("Assignment 3: tree depth and generalisation");
+		report->SetAuthor("Example Student (synthetic results)");
+		report->SetDate("2026-11-19");
+
+		report->AddSection(1, "Chapter 3", "Decision trees");
+		report->AddParagraph("This hand-in shows the layout of a report built from code. Every number below is made up from a formula; a real study would fill the replicates from its own runs.\n\nEach setting was run with 5 seeds. Tables give the mean and the sample standard deviation over the seeds.");
+
+		report->AddSection(2, "Exercise 1", "Accuracy by tree depth");
+		means := ResultTables->MeansFromReplicates(rep, "Mean over 5 seeds", "depth");
+		report->AddTable("Test accuracy and F1 by depth", means);
+		summary := rep->ToResultTable("test_accuracy", "Test accuracy with a 95% interval", "depth");
+		report->AddTable("Test accuracy: mean, deviation and 95% t interval", summary);
+		report->AddResultTableChart("Mean test accuracy by depth", summary, ["mean"], "bar");
+
+		report->AddSection(2, "Exercise 2", "Is depth 8 better than depth 2?");
+		report->AddParagraph("The same five seeds were used for both settings, so the comparison is paired by seed.");
+		compare := ResultTables->FromComparison(rep, "depth 8", "depth 2", "Depth 8 against depth 2, paired by seed");
+		report->AddTable("Paired comparison, depth 8 minus depth 2", compare);
+		test := rep->Paired("depth 8", "depth 2", "test_accuracy");
+		report->AddCode(test->ToString());
+		report->AddNote("Five seeds give a wide interval; treat the p-value as a rough guide, not a verdict.");
+
+		report->AddSection(1, "Chapter 4", "Regression");
+		report->AddSection(2, "Experiment 1", "Accuracy against label noise");
+		report->AddParagraph("Accuracy fell as label noise rose. A least-squares line through the five noise levels:");
+		x := Float->New[5, 1];
+		y := Float->New[5];
+		each(i : 5) {
+			x[i, 0] := i->As(Float) * 0.05;
+			y[i] := 0.82 - 0.9 * x[i, 0] + ((i * 3) % 5 - 2)->As(Float) / 200.0;
+		};
+		fit := OLS->Fit(x, y, true, ["noise"]);
+		report->AddTable("OLS of accuracy on label noise", ResultTables->FromOls(fit, "Accuracy ~ noise"));
+		report->AddBullets(["the intercept is the accuracy without noise", "the slope is the accuracy lost per unit of noise"]);
+
+		return report;
+	}
+
+	function : Golden(name : String, actual : String, path : String, update : Bool) ~ Bool {
+		if(update) {
+			System.IO.Filesystem.FileWriter->WriteFile(path, actual);
+			"UPDATED: {$path}"->PrintLine();
+			return true;
+		};
+		expected := System.IO.Filesystem.FileReader->ReadFile(path);
+		if(expected = Nil) {
+			"FAIL: {$name} (golden file missing)"->PrintLine();
+			return false;
+		};
+		expected := expected->ReplaceAll("", "");
+		if(actual->Equals(expected)) {
+			return true;
+		};
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		update := args->Size() > 0 & args[0]->Equals("--update");
+		ok := true;
+		report := Build();
+		ok := Golden("HTML matches ml_report_golden/report.html", report->ToHtml(), "ml_report_golden/report.html", update) & ok;
+		ok := Golden("Markdown matches ml_report_golden/report.md.golden", report->ToMarkdown(), "ml_report_golden/report.md.golden", update) & ok;
+		ok := Golden("Markdown with a stem matches ml_report_golden/report_stem.md.golden", report->ToMarkdown("hw"), "ml_report_golden/report_stem.md.golden", update) & ok;
+
+		# control: a changed value must change the bytes
+		first := Replicates->New();
+		first->Add("a", "m", 0, 0.5);
+		first->Add("a", "m", 1, 0.6);
+		changed := Replicates->New();
+		changed->Add("a", "m", 0, 0.5);
+		changed->Add("a", "m", 1, 0.7);
+		r1 := Report->New("c");
+		r1->AddTable("t", first->ToResultTable("m", "t", "g"));
+		r2 := Report->New("c");
+		r2->AddTable("t", changed->ToResultTable("m", "t", "g"));
+		if(r1->ToHtml()->Equals(r2->ToHtml())) {
+			"FAIL: control: a changed value gave the same HTML"->PrintLine();
+			ok := false;
+		};
+
+		if(ok = false) {
+			Runtime->Exit(1);
+		};
+		"ml_report_golden: ok"->PrintLine();
+	}
+}

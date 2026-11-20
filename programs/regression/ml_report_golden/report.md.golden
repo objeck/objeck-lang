@@ -1,0 +1,103 @@
+# Assignment 3: tree depth and generalisation
+
+Example Student (synthetic results)
+
+2026-11-19
+
+## Contents
+
+- [Chapter 3: Decision trees](#sec-1)
+  - [Chapter 3 / Exercise 1: Accuracy by tree depth](#sec-2)
+  - [Chapter 3 / Exercise 2: Is depth 8 better than depth 2?](#sec-3)
+- [Chapter 4: Regression](#sec-4)
+  - [Chapter 4 / Experiment 1: Accuracy against label noise](#sec-5)
+
+<a id="sec-1"></a>
+
+## Chapter 3: Decision trees
+
+This hand-in shows the layout of a report built from code. Every number below is made up from a formula; a real study would fill the replicates from its own runs.
+
+Each setting was run with 5 seeds. Tables give the mean and the sample standard deviation over the seeds.
+
+<a id="sec-2"></a>
+
+### Chapter 3 / Exercise 1: Accuracy by tree depth
+
+<a id="tbl-1"></a>
+
+**Table 1.** Test accuracy and F1 by depth
+
+| depth | test_accuracy | f1 |
+| :--- | ---: | ---: |
+| depth 2 | 0.7000 ± 0.0112 | 0.6600 ± 0.0112 |
+| depth 4 | 0.7750 ± 0.0079 | 0.7350 ± 0.0079 |
+| depth 8 | 0.8090 ± 0.0119 | 0.7690 ± 0.0119 |
+
+*mean ± sample standard deviation over the usable seeds*
+
+<a id="tbl-2"></a>
+
+**Table 2.** Test accuracy: mean, deviation and 95% t interval
+
+| depth | mean | std | ci_low | ci_high | n | missing |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: |
+| depth 2 | 0.7000 | 0.0112 | 0.6861 | 0.7139 | 5 | 0 |
+| depth 4 | 0.7750 | 0.0079 | 0.7652 | 0.7848 | 5 | 0 |
+| depth 8 | 0.8090 | 0.0119 | 0.7942 | 0.8238 | 5 | 0 |
+
+*test_accuracy: mean, sample standard deviation and 95% t interval over the usable seeds; n counts them*
+
+<a id="fig-1"></a>
+
+![Figure 1. Mean test accuracy by depth](figure-1.svg)
+
+**Figure 1.** Mean test accuracy by depth
+
+<a id="sec-3"></a>
+
+### Chapter 3 / Exercise 2: Is depth 8 better than depth 2?
+
+The same five seeds were used for both settings, so the comparison is paired by seed.
+
+<a id="tbl-3"></a>
+
+**Table 3.** Paired comparison, depth 8 minus depth 2
+
+| metric | mean_a | mean_b | mean_diff | ci_low | ci_high | t | df | p_value | cohen_d | n_pairs |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| test_accuracy | 0.8090 | 0.7000 | 0.1090 | 0.0929 | 0.1251 | 18.8323 | 4.00 | 0.0000 | 8.4221 | 5 |
+| f1 | 0.7690 | 0.6600 | 0.1090 | 0.0929 | 0.1251 | 18.8323 | 4.00 | 0.0000 | 8.4221 | 5 |
+
+*a = depth 8, b = depth 2; paired t-test over shared seeds, 95% interval of the mean difference a - b*
+
+```
+Paired t-test: t = 18.8323, df = 4.00, p = 4.682e-5, mean diff = 0.1090, 95.0% CI [0.0929, 0.1251], Cohen d = 8.4221, Hedges g = 6.7198
+```
+
+> **Note.** Five seeds give a wide interval; treat the p-value as a rough guide, not a verdict.
+
+<a id="sec-4"></a>
+
+## Chapter 4: Regression
+
+<a id="sec-5"></a>
+
+### Chapter 4 / Experiment 1: Accuracy against label noise
+
+Accuracy fell as label noise rose. A least-squares line through the five noise levels:
+
+<a id="tbl-4"></a>
+
+**Table 4.** OLS of accuracy on label noise
+
+| term | coef | std_err | t | p_value | ci_low | ci_high |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: |
+| const | 0.8150 | 0.0061 | 133.0889 | 0.0000 | 0.7955 | 0.8345 |
+| noise | -0.8500 | 0.0500 | -17.0000 | 0.0004 | -1.0091 | -0.6909 |
+
+*n = 5; R\^2 = 0.9897; adjusted R\^2 = 0.9863; F = 289.000, p = 0.0004; 95% intervals*
+
+- the intercept is the accuracy without noise
+- the slope is the accuracy lost per unit of noise
+
