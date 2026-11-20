@@ -2699,6 +2699,26 @@
 				}
 			}
 		},
+		"API.OpenCV.ImageBatch": {
+			"description": "Decodes a list of image files on several native threads. Every image is loaded as BGR 8-bit (like Image->Load) and resized to size x size when it is not already (like Image->Resize with the default linear interpolation), so the bytes of an image are the same as Image->Load, Resize and Bytes give for it, at any thread count. The decoding runs on worker threads that never touch VM memory: Start returns at once, so a batch can be decoded while the program does other work, and Wait blocks until it is done.",
+			"functions": {
+				"Close": {
+					"descriptions": ["**Frees the batch (waiting for it first if it is still decoding). Safe to call twice.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Count": {
+					"descriptions": ["**The number of images in the batch.**\n\n```method : public : Count() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Get": {
+					"descriptions": ["**The pixels of one image, BGR, size x size x 3 bytes. Call Wait first.**\n\n```method : public : Get(index:Int) ~ Byte[]```\n\n\n\nindex: Int\n\nreturn: Byte[]"]
+				},
+				"Start": {
+					"descriptions": ["**Starts decoding image files.**\n\n```function : Start(paths:String[], size:Int, threads:Int) ~ ImageBatch```\n\n\n\npaths: String[]\n\nsize: Int\n\nthreads: Int\n\nreturn: ImageBatch"]
+				},
+				"Wait": {
+					"descriptions": ["**Blocks until every image is decoded.**\n\n```method : public : Wait() ~ Int```\n\n\n\nreturn: Int"]
+				}
+			}
+		},
 		"API.OpenCV.Point": {
 			"description": "OpenCV point",
 			"functions": {
@@ -11819,6 +11839,20 @@
 				}
 			}
 		},
+		"System.ML.Cnn.PendingImages": {
+			"description": "The images of one batch, being decoded in the background by ImageDataset->Begin (or ImageSubset->Begin). Get waits for the decoding the first time it is called. Close it when done: an unclosed batch holds its decoded pixels until the process ends.",
+			"functions": {
+				"Close": {
+					"descriptions": ["**Frees the decoded pixels (waiting for the decoding to end first). Safe to call twice.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Count": {
+					"descriptions": ["**The number of images.**\n\n```method : public : Count() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Get": {
+					"descriptions": ["**The decoded pixels of the image at a position of this batch (size x size x channels bytes), the cached or in-memory pixels if it had them.**\n\n```method : public : Get(position:Int) ~ Byte[]```\n\n\n\nposition: Int\n\nreturn: Byte[]"]
+				}
+			}
+		},
 		"System.NLP.SpellChecker": {
 			"description": "Counts misspelled words against a word list the program supplies, for the misspelling feature of fake-review and fake-news detectors. No dictionary ships with Objeck: load a newline-delimited list of words, one per line, such as a Linux /usr/share/dict/words, the SCOWL / aspell word lists (http://wordlist.aspell.net) or the \"words_alpha.txt\" list of English words; check the licence of the list you pick. Matching ignores case.\n\nWords are found the way Tokenizer->WordTokenize finds them, so the same text gives the same tokens as TextPreprocessor and TF_IDF. A token that holds a digit (\"COVID-19\", \"3.14\") is never counted as misspelled, and a possessive (\"dog's\") is checked without its \"'s\". The rate is the misspelled tokens over all tokens, digit tokens included.\n\nA checker that is not loaded, and a Nil text, give -1 (count) or -1.0 (rate) rather than a crash; an empty text has no tokens and gives 0 and 0.0.",
 			"functions": {
@@ -16341,8 +16375,14 @@
 				"GetError": {
 					"descriptions": ["**Why the last call refused.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
 				},
+				"GetPrefetch": {
+					"descriptions": ["**Is loading overlapped with training?**\n\n```method : public : GetPrefetch() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"New": {
 					"descriptions": ["**Creates a trainer.**\n\n```New(model:CnnModel, train:ImageSubset, validation:ImageSubset, batch_size:Int, seed:Int)```\n\n\n\nmodel: CnnModel\n\ntrain: ImageSubset\n\nvalidation: ImageSubset\n\nbatch_size: Int\n\nseed: Int"]
+				},
+				"SetPrefetch": {
+					"descriptions": ["**Decode the next batch of images while the current one trains (default on). The images, the training order and the results are the same either way; only the wall time changes. It helps when images are decoded from files and are not cached, and does nothing for images held in memory. The decoding runs on the threads of ImageDataset->SetThreads.**\n\n```method : public : SetPrefetch(prefetch:Bool) ~ Nil```\n\n\n\nprefetch: Bool\n\nreturn: Nil"]
 				},
 				"SetVerbose": {
 					"descriptions": ["**Print one line per epoch while training.**\n\n```method : public : SetVerbose(verbose:Bool) ~ Nil```\n\n\n\nverbose: Bool\n\nreturn: Nil"]
@@ -16364,6 +16404,9 @@
 				"All": {
 					"descriptions": ["**All the images as one subset.**\n\n```method : public : All(augment:Bool) ~ ImageSubset```\n\n\n\naugment: Bool\n\nreturn: ImageSubset"]
 				},
+				"Begin": {
+					"descriptions": ["**Starts decoding the images with these dataset indexes on the decoding threads and returns at once. Images held in memory (added as pixels, or already cached) need no decoding. Read the images with PendingImages->Get, which waits for them.**\n\n```method : public : Begin(indexes:Int[]) ~ PendingImages```\n\n\n\nindexes: Int[]\n\nreturn: PendingImages"]
+				},
 				"Check": {
 					"descriptions": ["**Decodes every image once and reports how many failed.**\n\n```method : public : Check() ~ Int```\n\n\n\nreturn: Int"]
 				},
@@ -16382,11 +16425,17 @@
 				"GetSize": {
 					"descriptions": ["**The image side length.**\n\n```method : public : GetSize() ~ Int```\n\n\n\nreturn: Int"]
 				},
+				"GetThreads": {
+					"descriptions": ["**The decoding thread count.**\n\n```method : public : GetThreads() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"New": {
 					"descriptions": ["**Creates an empty dataset.**\n\n```New(size:Int, channels:Int)```\n\n\n\nsize: Int\n\nchannels: Int"]
 				},
 				"SetCache": {
 					"descriptions": ["**Keep decoded images in memory after the first load (fast epochs, but size x size x 3 bytes per image). Off by default.**\n\n```method : public : SetCache(cache:Bool) ~ Nil```\n\n\n\ncache: Bool\n\nreturn: Nil"]
+				},
+				"SetThreads": {
+					"descriptions": ["**How many threads decode and resize image files for a batch (default 4). Several images of a batch are decoded at once; the pixels, the training order and the results do not depend on the count, only the time does. 1 decodes one image at a time, as before. This is separate from CnnRuntime->SetThreads, which sets the threads of the layers.**\n\n```method : public : SetThreads(threads:Int) ~ Nil```\n\n\n\nthreads: Int\n\nreturn: Nil"]
 				},
 				"Split": {
 					"descriptions": ["**Deals the images into training, validation and test subsets by a seeded shuffle. The training subset is the one that is augmented, once SetAugmentation is called on it.**\n\n```method : public : Split(train_fraction:Float, validation_fraction:Float, seed:Int) ~ ImageSubset[]```\n\n\n\ntrain_fraction: Float\n\nvalidation_fraction: Float\n\nseed: Int\n\nreturn: ImageSubset[]"]
@@ -16399,6 +16448,9 @@
 		"System.ML.Cnn.ImageSubset": {
 			"description": "A list of images of an ImageDataset, in a fixed order, that CnnTrainer batches over. Only a subset made for training augments; Augmentation is applied on the fly while a batch is staged and never changes the stored images.",
 			"functions": {
+				"Begin": {
+					"descriptions": ["**Starts decoding the images at positions order[start .. start + count) of this subset in the background (see ImageDataset->SetThreads) and returns at once.**\n\n```method : public : Begin(order:Int[], start:Int, count:Int) ~ PendingImages```\n\n\n\norder: Int[]\n\nstart: Int\n\ncount: Int\n\nreturn: PendingImages"]
+				},
 				"Count": {
 					"descriptions": ["**The number of images.**\n\n```method : public : Count() ~ Int```\n\n\n\nreturn: Int"]
 				},
@@ -16425,6 +16477,9 @@
 				},
 				"Stage": {
 					"descriptions": ["**Stages the image at a position into a slot of the model's batch.**\n\n```method : public : Stage(model:CnnModel, position:Int, slot:Int, total:Int, key:Int) ~ Bool```\n\n\n\nmodel: CnnModel\n\nposition: Int\n\nslot: Int\n\ntotal: Int\n\nkey: Int\n\nreturn: Bool"]
+				},
+				"StageFrom": {
+					"descriptions": ["**Stages image j of a pending batch (made by Begin) into slot j of the model's batch: the same as Stage for the position it was begun with.**\n\n```method : public : StageFrom(model:CnnModel, pending:PendingImages, j:Int, total:Int, key:Int) ~ Bool```\n\n\n\nmodel: CnnModel\n\npending: PendingImages\n\nj: Int\n\ntotal: Int\n\nkey: Int\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -20987,6 +21042,12 @@
 				"file": ""
 			}
 		],
+		"ImageBatch": [
+			{
+				"bundle": "API.OpenCV",
+				"file": ""
+			}
+		],
 		"Model": [
 			{
 				"bundle": "API.Google.Gemini",
@@ -21006,6 +21067,12 @@
 		"Part": [
 			{
 				"bundle": "API.Google.Gemini",
+				"file": ""
+			}
+		],
+		"PendingImages": [
+			{
+				"bundle": "System.ML.Cnn",
 				"file": ""
 			}
 		],
