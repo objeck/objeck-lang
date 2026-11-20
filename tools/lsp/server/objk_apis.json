@@ -11875,8 +11875,20 @@
 				"Extract": {
 					"descriptions": ["**All the features of a text, in the order of Names.**\n\n```function : Extract(text:String) ~ Float[]```\n\n\n\ntext: String\n\nreturn: Float[]"]
 				},
+				"ExtractAll": {
+					"descriptions": ["**All the features of many texts, a row each: the matrix a classifier takes.**\n\n```function : ExtractAll(texts:Vector&lt;String&gt;) ~ Float[,]```\n\n\n\ntexts: Vector&lt;String&gt;\n\nreturn: Float[,]\n\n```\nX := TextFeatures->ExtractAll(reviews);\n```", "**All the features of many texts, a row each, from an array.**\n\n```function : ExtractAll(texts:String[]) ~ Float[,]```\n\n\n\ntexts: String[]\n\nreturn: Float[,]"]
+				},
+				"ExtractAllWith": {
+					"descriptions": ["**ExtractWith for many texts, a row each.**\n\n```function : ExtractAllWith(checker:SpellChecker, texts:Vector&lt;String&gt;) ~ Float[,]```\n\n\n\nchecker: SpellChecker\n\ntexts: Vector&lt;String&gt;\n\nreturn: Float[,]", "**ExtractWith for many texts, from an array.**\n\n```function : ExtractAllWith(checker:SpellChecker, texts:String[]) ~ Float[,]```\n\n\n\nchecker: SpellChecker\n\ntexts: String[]\n\nreturn: Float[,]"]
+				},
+				"ExtractWith": {
+					"descriptions": ["**The eight features of Extract followed by the count and the rate of misspelled tokens from a SpellChecker: the feature vector of a fake-review study in one call. Extract is unchanged.**\n\n```function : ExtractWith(checker:SpellChecker, text:String) ~ Float[]```\n\n\n\nchecker: SpellChecker\n\ntext: String\n\nreturn: Float[]\n\n```\nchecker := SpellChecker->New(\"words.txt\");\nf := TextFeatures->ExtractWith(checker, \"teh product is gud\");\n```"]
+				},
 				"Names": {
 					"descriptions": ["**The names of the values Extract returns, in order: characters, tokens, avg_word_length, type_token_ratio, punctuation_rate, uppercase_ratio, sentences, avg_sentence_length.**\n\n```function : Names() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"NamesWith": {
+					"descriptions": ["**The names of the values ExtractWith returns: the eight of Names, then misspelled_count and misspelling_rate.**\n\n```function : NamesWith() ~ String[]```\n\n\n\nreturn: String[]"]
 				},
 				"PunctuationRate": {
 					"descriptions": ["**The ASCII punctuation characters over all characters.**\n\n```function : PunctuationRate(text:String) ~ Float```\n\n\n\ntext: String\n\nreturn: Float"]
@@ -16102,6 +16114,334 @@
 				}
 			}
 		},
+		"System.ML.Cnn.Augmentation": {
+			"description": "The random changes applied to a TRAINING image as it is loaded: a horizontal flip, a rotation by a small random angle (bilinear, zeros outside) and a brightness factor (the pixels are multiplied and clipped to 0 .. 1). Each fires with its own probability. Whether it fires, and its value, depend only on the seed and the image's position in the epoch, so a run repeats exactly.",
+			"functions": {
+				"IsEnabled": {
+					"descriptions": ["**Is any augmentation switched on?**\n\n```method : public : IsEnabled() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Creates a configuration that changes nothing.**\n\n```New()```\n\n"]
+				},
+				"SetBrightness": {
+					"descriptions": ["**Brightness: the pixels are multiplied by a factor drawn uniformly from min_factor .. max_factor, then clipped to 0 .. 1.**\n\n```method : public : SetBrightness(probability:Float, min_factor:Float, max_factor:Float) ~ Nil```\n\n\n\nprobability: Float\n\nmin_factor: Float\n\nmax_factor: Float\n\nreturn: Nil"]
+				},
+				"SetFlip": {
+					"descriptions": ["**Horizontal flip.**\n\n```method : public : SetFlip(probability:Float) ~ Nil```\n\n\n\nprobability: Float\n\nreturn: Nil"]
+				},
+				"SetRotation": {
+					"descriptions": ["**Rotation about the centre by an angle drawn uniformly from -max_degrees .. max_degrees.**\n\n```method : public : SetRotation(probability:Float, max_degrees:Float) ~ Nil```\n\n\n\nprobability: Float\n\nmax_degrees: Float\n\nreturn: Nil"]
+				},
+				"SetSeed": {
+					"descriptions": ["**The seed of the random draws.**\n\n```method : public : SetSeed(seed:Int) ~ Nil```\n\n\n\nseed: Int\n\nreturn: Nil"]
+				}
+			}
+		},
+		"System.ML.Cnn.CnnEvaluation": {
+			"description": "The result of CnnTrainer.Evaluate on a subset, with class 1 as the positive class. Precision, recall and F1 are System.ML.Metrics, and the confusion matrix is its layout: [actual, predicted] with [0, 0] true negatives, [0, 1] false positives, [1, 0] false negatives and [1, 1] true positives.",
+			"functions": {
+				"GetActuals": {
+					"descriptions": ["**The true class of each scored image (true for class 1), in subset order.**\n\n```method : public : GetActuals() ~ Bool[]```\n\n\n\nreturn: Bool[]"]
+				},
+				"GetScores": {
+					"descriptions": ["**The probability of class 1 for each scored image, in subset order: what Metrics->AucRoc, Metrics->RocCurve and Axes->RocCurve take with GetActuals.**\n\n```method : public : GetScores() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"ToResultTable": {
+					"descriptions": ["**The metrics as a one-row System.ML.Lab ResultTable (columns loss, accuracy, precision, recall, f1, n), for the Lab text, Markdown, CSV and JSON output.**\n\n```method : public : ToResultTable(title:String) ~ ResultTable```\n\n\n\ntitle: String\n\nreturn: ResultTable"]
+				}
+			}
+		},
+		"System.ML.Cnn.CnnModel": {
+			"description": "A convolutional network for binary classification: a stack of layers, in NCHW float32, ending in one logit per image, trained with binary cross-entropy on logits and the Adam or SGD optimizer. Build it with the Add methods, then Compile.\n\nLayers: Conv (stride, VALID or SAME padding, bias; im2col and a matrix multiply), MaxPool, ReLU, Flatten, Dense and Dropout (inverted: the survivors are scaled by 1 / (1 - rate) in training, and evaluation is the identity). The last layer must give one value per image, so a model ends in AddDense(1). Predict returns sigmoid of that logit, the probability of class 1.\n\nImages are Float[] of whole images laid end to end, each channels x height x width (planes, not interleaved) with values in 0 .. 1; labels are 0.0 or 1.0. Nothing here ends the program on bad input: a method answers false, -1.0 or Nil (or 0 for a count), and GetError() says why.\n\nA model holds native memory, so call Close() when done with it (it is safe to call twice, and IsOpen() says whether the model is still alive). Not thread-safe: one thread at a time per model; the layers use the process-wide pool of CnnRuntime, whose thread count also decides whether a run repeats bit for bit.",
+			"functions": {
+				"AddConv": {
+					"descriptions": ["**Adds a 2D convolution (cross-correlation) with a square kernel and a bias per filter.**\n\n```method : public : AddConv(filters:Int, kernel:Int, stride:Int, padding:Padding) ~ Bool```\n\n\n\nfilters: Int\n\nkernel: Int\n\nstride: Int\n\npadding: Padding\n\nreturn: Bool", "**Adds a convolution with stride 1 and no padding.**\n\n```method : public : AddConv(filters:Int, kernel:Int) ~ Bool```\n\n\n\nfilters: Int\n\nkernel: Int\n\nreturn: Bool"]
+				},
+				"AddDense": {
+					"descriptions": ["**Adds a fully connected layer. Any input shape is read as one flat vector per image.**\n\n```method : public : AddDense(units:Int) ~ Bool```\n\n\n\nunits: Int\n\nreturn: Bool"]
+				},
+				"AddDropout": {
+					"descriptions": ["**Adds inverted dropout. Its masks come from the model seed, so training repeats exactly.**\n\n```method : public : AddDropout(rate:Float) ~ Bool```\n\n\n\nrate: Float\n\nreturn: Bool"]
+				},
+				"AddFlatten": {
+					"descriptions": ["**Adds a flatten layer: channels x height x width become one vector per image.**\n\n```method : public : AddFlatten() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"AddMaxPool": {
+					"descriptions": ["**Adds max pooling over size x size windows that step by the window size.**\n\n```method : public : AddMaxPool(size:Int) ~ Bool```\n\n\n\nsize: Int\n\nreturn: Bool", "**Adds max pooling.**\n\n```method : public : AddMaxPool(size:Int, stride:Int) ~ Bool```\n\n\n\nsize: Int\n\nstride: Int\n\nreturn: Bool"]
+				},
+				"AddReLU": {
+					"descriptions": ["**Adds a ReLU activation.**\n\n```method : public : AddReLU() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Baseline": {
+					"descriptions": ["**The baseline of the deepfake-detection study, compiled and ready to train: conv_blocks blocks of Conv(3x3, VALID) + ReLU + MaxPool(2) with 16, 32, 64, ... filters, then Flatten, Dense(dense_units) + ReLU, Dropout and Dense(1), trained with Adam. At 224 x 224 with three blocks and 128 dense units it has 5,561,633 parameters.**\n\n```function : Baseline(image_size:Int, conv_blocks:Int, dropout:Float, dense_units:Int, learning_rate:Float, seed:Int) ~ CnnModel```\n\n\n\nimage_size: Int\n\nconv_blocks: Int\n\ndropout: Float\n\ndense_units: Int\n\nlearning_rate: Float\n\nseed: Int\n\nreturn: CnnModel"]
+				},
+				"Close": {
+					"descriptions": ["**Releases the native model. The object is not usable afterwards; every method answers as for an invalid model.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Compile": {
+					"descriptions": ["**Initializes the weights from the seed and sets the Adam optimizer (beta1 0.9, beta2 0.999, epsilon 1e-8, as in PyTorch and Keras).**\n\n```method : public : Compile(learning_rate:Float) ~ Bool```\n\n\n\nlearning_rate: Float\n\nreturn: Bool"]
+				},
+				"CompileAdam": {
+					"descriptions": ["**Compiles with Adam and the given moment decays.**\n\n```method : public : CompileAdam(learning_rate:Float, beta1:Float, beta2:Float, epsilon:Float) ~ Bool```\n\n\n\nlearning_rate: Float\n\nbeta1: Float\n\nbeta2: Float\n\nepsilon: Float\n\nreturn: Bool"]
+				},
+				"CompileSgd": {
+					"descriptions": ["**Compiles with stochastic gradient descent.**\n\n```method : public : CompileSgd(learning_rate:Float, momentum:Float) ~ Bool```\n\n\n\nlearning_rate: Float\n\nmomentum: Float\n\nreturn: Bool"]
+				},
+				"EvaluateBatch": {
+					"descriptions": ["**The mean loss of a batch in evaluation mode, without changing the model.**\n\n```method : public : EvaluateBatch(images:Float[], labels:Float[]) ~ Float```\n\n\n\nimages: Float[]\n\nlabels: Float[]\n\nreturn: Float"]
+				},
+				"EvaluateStaged": {
+					"descriptions": ["**EvaluateBatch on the staged images.**\n\n```method : public : EvaluateStaged(labels:Float[]) ~ Float```\n\n\n\nlabels: Float[]\n\nreturn: Float"]
+				},
+				"GetActivation": {
+					"descriptions": ["**The output of a layer for the last forward pass over the whole batch.**\n\n```method : public : GetActivation(layer:Int) ~ Float[]```\n\n\n\nlayer: Int\n\nreturn: Float[]"]
+				},
+				"GetChannels": {
+					"descriptions": ["**Gets the input channels.**\n\n```method : public : GetChannels() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetCorrect": {
+					"descriptions": ["**How many images of the last TrainBatch, EvaluateBatch, TrainStaged or EvaluateStaged call were classified correctly at the 0.5 threshold.**\n\n```method : public : GetCorrect() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call answered false, -1.0 or Nil.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetGradients": {
+					"descriptions": ["**The gradient of the last Gradients, GradientsTraining, GradientsWithInput or training call, in the layout of GetWeights.**\n\n```method : public : GetGradients() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetHeight": {
+					"descriptions": ["**Gets the input height.**\n\n```method : public : GetHeight() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetInputGradient": {
+					"descriptions": ["**The gradient of the loss with respect to the input pixels, after GradientsWithInput.**\n\n```method : public : GetInputGradient() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetParameterCount": {
+					"descriptions": ["**The number of trainable parameters: for a convolution filters x (channels x k x k) + filters, for a dense layer units x inputs + units.**\n\n```method : public : GetParameterCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetSummary": {
+					"descriptions": ["**A listing of the layers with output shapes and parameter counts.**\n\n```method : public : GetSummary() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetWeights": {
+					"descriptions": ["**Every trainable value in one array, layer by layer, each layer's weights then its biases. A convolution's weights are filters x channels x kh x kw and a dense layer's are units x inputs, both row-major (the layouts of PyTorch).**\n\n```method : public : GetWeights() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetWidth": {
+					"descriptions": ["**Gets the input width.**\n\n```method : public : GetWidth() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Gradients": {
+					"descriptions": ["**Forward and backward pass without the update, in evaluation mode; GetGradients then returns the parameter gradients. Used to check backpropagation.**\n\n```method : public : Gradients(images:Float[], labels:Float[]) ~ Float```\n\n\n\nimages: Float[]\n\nlabels: Float[]\n\nreturn: Float"]
+				},
+				"GradientsTraining": {
+					"descriptions": ["**Forward and backward pass without the update, in training mode (dropout on, drawing the next masks); see ResetDropout.**\n\n```method : public : GradientsTraining(images:Float[], labels:Float[]) ~ Float```\n\n\n\nimages: Float[]\n\nlabels: Float[]\n\nreturn: Float"]
+				},
+				"GradientsWithInput": {
+					"descriptions": ["**Like Gradients, in evaluation mode, and also keeps the gradient of the loss with respect to the input pixels for GetInputGradient.**\n\n```method : public : GradientsWithInput(images:Float[], labels:Float[]) ~ Float```\n\n\n\nimages: Float[]\n\nlabels: Float[]\n\nreturn: Float"]
+				},
+				"IsCompiled": {
+					"descriptions": ["**Is the model compiled?**\n\n```method : public : IsCompiled() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsOpen": {
+					"descriptions": ["**Is the native model alive: created and not yet closed? The word BertEmbedder and Session use; the same as IsValid.**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsValid": {
+					"descriptions": ["**Is the model usable (was the native model created)?**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Load": {
+					"descriptions": ["**Reads weights back into this model, which must be compiled and have the same architecture and scalar type as the one that wrote the file. A file from another architecture, a truncated file or a file that is not a weights file is refused and leaves the model unchanged.**\n\n```method : public : Load(path:String) ~ Bool```\n\n\n\npath: String\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Creates an empty float32 model.**\n\n```New(channels:Int, height:Int, width:Int, seed:Int)```\n\n\n\nchannels: Int\n\nheight: Int\n\nwidth: Int\n\nseed: Int"]
+				},
+				"NewReference": {
+					"descriptions": ["**Creates an empty float64 model. It is the same code in double precision, slower, meant for checking gradients: in float32 a central difference cannot resolve a gradient better than about 1e-3, in float64 it agrees with backpropagation to about 1e-8.**\n\n```function : NewReference(channels:Int, height:Int, width:Int, seed:Int) ~ CnnModel```\n\n\n\nchannels: Int\n\nheight: Int\n\nwidth: Int\n\nseed: Int\n\nreturn: CnnModel"]
+				},
+				"Predict": {
+					"descriptions": ["**The probability of class 1 for each image of a batch (sigmoid of the logit). Dropout is off unless SetTraining(true) was called.**\n\n```method : public : Predict(images:Float[]) ~ Float[]```\n\n\n\nimages: Float[]\n\nreturn: Float[]"]
+				},
+				"PredictLogits": {
+					"descriptions": ["**The raw logit for each image of a batch.**\n\n```method : public : PredictLogits(images:Float[]) ~ Float[]```\n\n\n\nimages: Float[]\n\nreturn: Float[]"]
+				},
+				"PredictStaged": {
+					"descriptions": ["**Predicts the staged images.**\n\n```method : public : PredictStaged(count:Int, logits:Bool) ~ Float[]```\n\n\n\ncount: Int\n\nlogits: Bool\n\nreturn: Float[]"]
+				},
+				"ResetDropout": {
+					"descriptions": ["**Restarts the dropout masks, so the next forward pass draws the same masks as the first one did. Gradient checks need this to evaluate one loss twice with one mask.**\n\n```method : public : ResetDropout() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Save": {
+					"descriptions": ["**Writes the weights to a file: a header with the architecture's signature, then every value exactly as it is held, so Load gives back bit-identical weights. The optimizer's moments are not saved.**\n\n```method : public : Save(path:String) ~ Bool```\n\n\n\npath: String\n\nreturn: Bool"]
+				},
+				"SetInitializer": {
+					"descriptions": ["**Chooses how the weights start. Call it before Compile; it has no effect afterwards.**\n\n```method : public : SetInitializer(init:Initializer) ~ Nil```\n\n\n\ninit: Initializer\n\nreturn: Nil"]
+				},
+				"SetLearningRate": {
+					"descriptions": ["**Changes the learning rate of the optimizer, keeping its moments.**\n\n```method : public : SetLearningRate(learning_rate:Float) ~ Bool```\n\n\n\nlearning_rate: Float\n\nreturn: Bool"]
+				},
+				"SetTraining": {
+					"descriptions": ["**Switches the mode Predict and the staged predictions run in. In training mode dropout is active; in evaluation mode (the default) it is the identity. TrainBatch and TrainStaged always train, and EvaluateBatch always evaluates.**\n\n```method : public : SetTraining(training:Bool) ~ Bool```\n\n\n\ntraining: Bool\n\nreturn: Bool"]
+				},
+				"SetWeights": {
+					"descriptions": ["**Replaces every trainable value; the array must have the layout and length GetWeights returns.**\n\n```method : public : SetWeights(weights:Float[]) ~ Bool```\n\n\n\nweights: Float[]\n\nreturn: Bool"]
+				},
+				"StageImage": {
+					"descriptions": ["**Decodes one 8-bit image into slot `slot` of the staging batch: BGR (as OpenCV holds it) to RGB, scaled to 0 .. 1, and augmented if the configuration says so. Staging avoids building a Float[] of the whole batch in Objeck. Stage `total` images into slots 0 .. total - 1, then call TrainStaged, EvaluateStaged or PredictStaged.**\n\n```method : public : StageImage(pixels:Byte[], rows:Int, cols:Int, slot:Int, total:Int, aug:Augmentation, key:Int) ~ Bool```\n\n\n\npixels: Byte[]\n\nrows: Int\n\ncols: Int\n\nslot: Int\n\ntotal: Int\n\naug: Augmentation\n\nkey: Int\n\nreturn: Bool"]
+				},
+				"TrainBatch": {
+					"descriptions": ["**One optimizer step on a batch: forward pass in training mode (dropout on), loss, backward pass, update.**\n\n```method : public : TrainBatch(images:Float[], labels:Float[]) ~ Float```\n\n\n\nimages: Float[]\n\nlabels: Float[]\n\nreturn: Float"]
+				},
+				"TrainStaged": {
+					"descriptions": ["**TrainBatch on the staged images.**\n\n```method : public : TrainStaged(labels:Float[]) ~ Float```\n\n\n\nlabels: Float[]\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.ML.Cnn.CnnRuntime": {
+			"description": "Process-wide settings of the native layers and a seeded shuffle.",
+			"functions": {
+				"GetThreads": {
+					"descriptions": ["**The number of threads the layers use.**\n\n```function : GetThreads() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Permutation": {
+					"descriptions": ["**A seeded shuffle of 0 .. n - 1 (Fisher-Yates), the same on every platform.**\n\n```function : Permutation(n:Int, seed:Int) ~ Int[]```\n\n\n\nn: Int\n\nseed: Int\n\nreturn: Int[]"]
+				},
+				"SetThreads": {
+					"descriptions": ["**Sets how many threads the layers use (the batch is spread over them, one sample per task). The setting is process-wide: every model, on every Objeck thread, shares the one pool. The default is the number of hardware threads, at most 8, which differs between machines; a run repeats bit for bit only at a fixed thread count, so set it (to 1 or any fixed number) for a result that must be the same on another machine.**\n\n```function : SetThreads(count:Int) ~ Int```\n\n\n\ncount: Int\n\nreturn: Int"]
+				}
+			}
+		},
+		"System.ML.Cnn.CnnTrainer": {
+			"description": "The training loop. Fit shuffles the training subset every epoch (seeded), trains on mini-batches (the last one may be smaller), then evaluates the validation subset, and records the metrics of every epoch in a TrainingHistory. Evaluate scores a subset (the test set) after training.",
+			"functions": {
+				"Evaluate": {
+					"descriptions": ["**Scores a subset in evaluation mode (no dropout, no augmentation): loss, accuracy, precision, recall, F1 and the confusion matrix, with class 1 positive and a 0.5 threshold.**\n\n```method : public : Evaluate(subset:ImageSubset) ~ CnnEvaluation```\n\n\n\nsubset: ImageSubset\n\nreturn: CnnEvaluation"]
+				},
+				"Fit": {
+					"descriptions": ["**Trains for a number of epochs.**\n\n```method : public : Fit(epochs:Int) ~ TrainingHistory```\n\n\n\nepochs: Int\n\nreturn: TrainingHistory"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call refused.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Creates a trainer.**\n\n```New(model:CnnModel, train:ImageSubset, validation:ImageSubset, batch_size:Int, seed:Int)```\n\n\n\nmodel: CnnModel\n\ntrain: ImageSubset\n\nvalidation: ImageSubset\n\nbatch_size: Int\n\nseed: Int"]
+				},
+				"SetVerbose": {
+					"descriptions": ["**Print one line per epoch while training.**\n\n```method : public : SetVerbose(verbose:Bool) ~ Nil```\n\n\n\nverbose: Bool\n\nreturn: Nil"]
+				}
+			}
+		},
+		"System.ML.Cnn.ImageDataset": {
+			"description": "A set of labelled images for CnnTrainer: file paths (decoded and resized when a batch needs them) or in-memory pixels, each with a class label of 0 or 1. Every image is resized to size x size. A bad file is reported by Load and counted, never fatal.\n\nSplit(train, validation, seed) deals the images into three ImageSubsets by a seeded shuffle, so the same seed gives the same split on every platform, and the remainder is the test set. Only the training subset is augmented. When the data is already split into folders, make one dataset per folder and use All.",
+			"functions": {
+				"AddDirectory": {
+					"descriptions": ["**Adds every .jpg, .jpeg, .png and .bmp file of a folder (not its subfolders), in name order so the same folder always gives the same indexes.**\n\n```method : public : AddDirectory(directory:String, cls:Int) ~ Int```\n\n\n\ndirectory: String\n\ncls: Int\n\nreturn: Int"]
+				},
+				"AddFile": {
+					"descriptions": ["**Adds an image file. It is decoded on use, so a missing or bad file shows up as a refused batch, or earlier with Check.**\n\n```method : public : AddFile(path:String, cls:Int) ~ Bool```\n\n\n\npath: String\n\ncls: Int\n\nreturn: Bool"]
+				},
+				"AddPixels": {
+					"descriptions": ["**Adds an image held in memory.**\n\n```method : public : AddPixels(pixels:Byte[], cls:Int) ~ Bool```\n\n\n\npixels: Byte[]\n\ncls: Int\n\nreturn: Bool"]
+				},
+				"All": {
+					"descriptions": ["**All the images as one subset.**\n\n```method : public : All(augment:Bool) ~ ImageSubset```\n\n\n\naugment: Bool\n\nreturn: ImageSubset"]
+				},
+				"Check": {
+					"descriptions": ["**Decodes every image once and reports how many failed.**\n\n```method : public : Check() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Count": {
+					"descriptions": ["**The number of images.**\n\n```method : public : Count() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call refused.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetLabel": {
+					"descriptions": ["**The class label of an image.**\n\n```method : public : GetLabel(index:Int) ~ Int```\n\n\n\nindex: Int\n\nreturn: Int"]
+				},
+				"GetPath": {
+					"descriptions": ["**The file path an image was added from.**\n\n```method : public : GetPath(index:Int) ~ String```\n\n\n\nindex: Int\n\nreturn: String"]
+				},
+				"GetSize": {
+					"descriptions": ["**The image side length.**\n\n```method : public : GetSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**Creates an empty dataset.**\n\n```New(size:Int, channels:Int)```\n\n\n\nsize: Int\n\nchannels: Int"]
+				},
+				"SetCache": {
+					"descriptions": ["**Keep decoded images in memory after the first load (fast epochs, but size x size x 3 bytes per image). Off by default.**\n\n```method : public : SetCache(cache:Bool) ~ Nil```\n\n\n\ncache: Bool\n\nreturn: Nil"]
+				},
+				"Split": {
+					"descriptions": ["**Deals the images into training, validation and test subsets by a seeded shuffle. The training subset is the one that is augmented, once SetAugmentation is called on it.**\n\n```method : public : Split(train_fraction:Float, validation_fraction:Float, seed:Int) ~ ImageSubset[]```\n\n\n\ntrain_fraction: Float\n\nvalidation_fraction: Float\n\nseed: Int\n\nreturn: ImageSubset[]"]
+				},
+				"Synthetic": {
+					"descriptions": ["**A procedurally generated two-class set for demos and tests, with no files. Every image is a random-orientation, random-phase sine texture plus noise on a coloured background: class 0 has a low spatial frequency (1 to 3 cycles across the image), class 1 a high one (6 to 10 cycles), so a convolutional network learns to tell them apart in seconds. The images alternate class 0, 1, 0, 1, ..., and the same seed gives the same images on every platform (it uses an integer generator, not the VM's random numbers).**\n\n```function : Synthetic(size:Int, per_class:Int, seed:Int) ~ ImageDataset```\n\n\n\nsize: Int\n\nper_class: Int\n\nseed: Int\n\nreturn: ImageDataset"]
+				}
+			}
+		},
+		"System.ML.Cnn.ImageSubset": {
+			"description": "A list of images of an ImageDataset, in a fixed order, that CnnTrainer batches over. Only a subset made for training augments; Augmentation is applied on the fly while a batch is staged and never changes the stored images.",
+			"functions": {
+				"Count": {
+					"descriptions": ["**The number of images.**\n\n```method : public : Count() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"CountPositives": {
+					"descriptions": ["**Counts the images of class 1.**\n\n```method : public : CountPositives() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetAugmentation": {
+					"descriptions": ["**Gets the augmentation.**\n\n```method : public : GetAugmentation() ~ Augmentation```\n\n\n\nreturn: Augmentation"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last Stage call refused.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetIndex": {
+					"descriptions": ["**The index in the dataset of the image at a position.**\n\n```method : public : GetIndex(position:Int) ~ Int```\n\n\n\nposition: Int\n\nreturn: Int"]
+				},
+				"GetLabel": {
+					"descriptions": ["**The class label of the image at a position.**\n\n```method : public : GetLabel(position:Int) ~ Int```\n\n\n\nposition: Int\n\nreturn: Int"]
+				},
+				"IsAugmented": {
+					"descriptions": ["**Is this subset augmented?**\n\n```method : public : IsAugmented() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"SetAugmentation": {
+					"descriptions": ["**Sets the augmentation used when this subset is a training subset (it is ignored for subsets made with augment = false).**\n\n```method : public : SetAugmentation(aug:Augmentation) ~ Nil```\n\n\n\naug: Augmentation\n\nreturn: Nil"]
+				},
+				"Stage": {
+					"descriptions": ["**Stages the image at a position into a slot of the model's batch.**\n\n```method : public : Stage(model:CnnModel, position:Int, slot:Int, total:Int, key:Int) ~ Bool```\n\n\n\nmodel: CnnModel\n\nposition: Int\n\nslot: Int\n\ntotal: Int\n\nkey: Int\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.ML.Cnn.TrainingHistory": {
+			"description": "What a CnnTrainer.Fit recorded, one value per finished epoch: loss and accuracy on the training batches (as Keras reports them: running means over the epoch, in training mode, so dropout and augmentation are on and the weights change during the epoch), loss and accuracy on the validation subset (evaluation mode, after the epoch) and the wall time of the epoch.",
+			"functions": {
+				"GetEpochSeconds": {
+					"descriptions": ["**Wall-clock seconds an epoch took, training and validation together.**\n\n```method : public : GetEpochSeconds(epoch:Int) ~ Float```\n\n\n\nepoch: Int\n\nreturn: Float"]
+				},
+				"GetEpochs": {
+					"descriptions": ["**The number of finished epochs.**\n\n```method : public : GetEpochs() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Why training stopped early, empty if it ran to the end.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTotalSeconds": {
+					"descriptions": ["**Total wall-clock seconds of all epochs.**\n\n```method : public : GetTotalSeconds() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetTrainAccuracy": {
+					"descriptions": ["**Training accuracy of an epoch, 0.0 to 1.0.**\n\n```method : public : GetTrainAccuracy(epoch:Int) ~ Float```\n\n\n\nepoch: Int\n\nreturn: Float"]
+				},
+				"GetTrainLoss": {
+					"descriptions": ["**Mean training loss of an epoch.**\n\n```method : public : GetTrainLoss(epoch:Int) ~ Float```\n\n\n\nepoch: Int\n\nreturn: Float"]
+				},
+				"GetValidationAccuracy": {
+					"descriptions": ["**Validation accuracy after an epoch, 0.0 to 1.0.**\n\n```method : public : GetValidationAccuracy(epoch:Int) ~ Float```\n\n\n\nepoch: Int\n\nreturn: Float"]
+				},
+				"GetValidationLoss": {
+					"descriptions": ["**Validation loss after an epoch.**\n\n```method : public : GetValidationLoss(epoch:Int) ~ Float```\n\n\n\nepoch: Int\n\nreturn: Float"]
+				},
+				"SaveCsv": {
+					"descriptions": ["**Writes the CSV to a file.**\n\n```method : public : SaveCsv(path:String) ~ Bool```\n\n\n\npath: String\n\nreturn: Bool"]
+				},
+				"ToCsv": {
+					"descriptions": ["**The history as CSV text with a header row: epoch, train_loss, train_accuracy, val_loss, val_accuracy, epoch_seconds (the names of the System.ML.Lab Experiment tables).**\n\n```method : public : ToCsv() ~ String```\n\n\n\nreturn: String"]
+				},
+				"ToResultTable": {
+					"descriptions": ["**The history as a System.ML.Lab ResultTable, one row per epoch, for the Lab's text, Markdown, CSV, JSON and chart output.**\n\n```method : public : ToResultTable(title:String) ~ ResultTable```\n\n\n\ntitle: String\n\nreturn: ResultTable"]
+				}
+			}
+		},
 		"System.ML.Lab.Chart": {
 			"description": "A chart written as standalone SVG 1.1: a line chart (x numeric, linear or log, or categorical) with markers and error bars, or a grouped bar chart, with a title, axis titles, a 1-2-5 tick grid and a legend. No script, no external font, no dependency: it opens in a browser, pastes into Word, and converts with any SVG tool. Coordinates are written with one decimal, so the same data gives the same bytes on every platform.",
 			"functions": {
@@ -17160,14 +17500,23 @@
 		"System.NLP.TF_IDF": {
 			"description": "Term Frequency-Inverse Document Frequency (TF-IDF) vectorizer for document analysis. By default IDF is smoothed as scikit-learn's is, ln((1 + N) / (1 + df)) + 1, and vectors are scaled to unit length, so the cosine similarity of two of them is their dot product.\n\nA term is a word, or, with a min_n/max_n range as scikit-learn's ngram_range, a run of words joined by a space (\"not very good\"). Vocabulary, document frequencies, smoothed IDF and unit-length vectors follow TfidfVectorizer; two differences: words come from Tokenizer->WordTokenize (which keeps one-letter words) and the term frequency is a share of the document's terms rather than a raw count, which unit length cancels.",
 			"functions": {
+				"EstimateDenseBytes": {
+					"descriptions": ["**The memory a dense TransformAll of some documents needs: 8 bytes times the vocabulary times the documents. Ask before transforming a large corpus.**\n\n```method : public : EstimateDenseBytes(documents:Int) ~ Int```\n\n\n\ndocuments: Int\n\nreturn: Int"]
+				},
 				"Fit": {
-					"descriptions": ["**Fits the TF-IDF model on a corpus of documents, replacing any earlier fit**\n\n```method : public : Fit(documents:String[]) ~ Nil```\n\n\n\ndocuments: String[]\n\nreturn: Nil\n\n```\ndocs := [\"the cat sat on the mat\", \"the dog ran in the park\", \"cats and dogs are pets\"];\ntfidf := TF_IDF->New();\ntfidf->Fit(docs);\n\"Vocabulary size: {$tfidf->GetVocabularySize()}\"->PrintLine();\n\n# words and word pairs, as scikit-learn's ngram_range=(1, 2)\nbigrams := TF_IDF->New(min_n : 1, max_n : 2);\nbigrams->Fit(docs);\nbigrams->GetVocabulary()->Has(\"the cat\")->PrintLine();\n```"]
+					"descriptions": ["**Fits the TF-IDF model on a corpus of documents, replacing any earlier fit**\n\n```method : public : Fit(documents:String[]) ~ Bool```\n\n\n\ndocuments: String[]\n\nreturn: Bool\n\n```\ndocs := [\"the cat sat on the mat\", \"the dog ran in the park\", \"cats and dogs are pets\"];\ntfidf := TF_IDF->New();\nif(<>tfidf->Fit(docs)) {\n  tfidf->GetError()->PrintLine();\n};\n\"Vocabulary size: {$tfidf->GetVocabularySize()}\"->PrintLine();\n\n# words and word pairs, as scikit-learn's ngram_range=(1, 2)\nbigrams := TF_IDF->New(min_n : 1, max_n : 2);\nbigrams->Fit(docs);\nbigrams->GetVocabulary()->Has(\"the cat\")->PrintLine();\n```"]
+				},
+				"FitTransform": {
+					"descriptions": ["**Fits on a corpus and transforms the same corpus: one row per document.**\n\n```method : public : FitTransform(documents:String[]) ~ Float[,]```\n\n\n\ndocuments: String[]\n\nreturn: Float[,]\n\n```\nX := TF_IDF->New(min_n : 1, max_n : 2, min_df : 2)->FitTransform(texts);\n```"]
 				},
 				"GetError": {
-					"descriptions": ["**Why the vectorizer is not valid.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+					"descriptions": ["**Why the vectorizer is not valid, or why the last Fit or TransformAll failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetIdf": {
 					"descriptions": ["**Gets the inverse document frequency of each vocabulary word, indexed as the vocabulary is**\n\n```method : public : GetIdf() ~ Float[]```\n\n\n\nreturn: Float[]\n\n```\nidf := tfidf->GetIdf();\nidx := tfidf->GetVocabulary()->Find(\"cat\")->Get();\n\"IDF of cat: {$(idf[idx])}\"->PrintLine();\n```"]
+				},
+				"GetMaxDenseBytes": {
+					"descriptions": ["**The dense-matrix limit of TransformAll.**\n\n```method : public : GetMaxDenseBytes() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"GetMaxN": {
 					"descriptions": ["**The longest term, in words.**\n\n```method : public : GetMaxN() ~ Int```\n\n\n\nreturn: Int"]
@@ -17181,14 +17530,23 @@
 				"GetVocabularySize": {
 					"descriptions": ["**Gets the size of the vocabulary**\n\n```method : public : GetVocabularySize() ~ Int```\n\n\n\nreturn: Int"]
 				},
+				"IsFitted": {
+					"descriptions": ["**Whether the last Fit built a vocabulary.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"IsValid": {
-					"descriptions": ["**Whether the settings given to the constructor make sense: an n-gram range of min_n >= 1 and max_n >= min_n, a min_df of at least 1 and a max_features of at least 0. An invalid vectorizer fits an empty vocabulary and transforms to empty vectors; it does not crash.**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
+					"descriptions": ["**Whether the settings given to the constructor make sense: an n-gram range of min_n >= 1 and max_n >= min_n, a min_df of at least 1 and a max_features of at least 0. An invalid vectorizer does not crash and does not fit quietly: Fit returns false, GetError says why, the vocabulary stays empty and Transform gives empty vectors.**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
 					"descriptions": ["**Constructor. The last four parameters are optional and default to what this class always did: single words, every word kept.**\n\n```New(smooth_idf:Bool, l2_normalize:Bool, remove_stopwords:Bool, stem:Bool, min_n:Int, max_n:Int, min_df:Int, max_features:Int)```\n\n\n\nsmooth_idf: Bool\n\nl2_normalize: Bool\n\nremove_stopwords: Bool\n\nstem: Bool\n\nmin_n: Int\n\nmax_n: Int\n\nmin_df: Int\n\nmax_features: Int"]
 				},
+				"SetMaxDenseBytes": {
+					"descriptions": ["**Sets the largest dense matrix TransformAll will build.**\n\n```method : public : SetMaxDenseBytes(bytes:Int) ~ Bool```\n\n\n\nbytes: Int\n\nreturn: Bool"]
+				},
 				"Transform": {
 					"descriptions": ["**Transforms a document into a TF-IDF vector, one entry per vocabulary word; words the fit did not see are ignored**\n\n```method : public : Transform(document:String) ~ Float[]```\n\n\n\ndocument: String\n\nreturn: Float[]\n\n```\nvec := tfidf->Transform(\"the cat chased the dog\");\n\"Vector length: {$vec->Size()}\"->PrintLine();\n```"]
+				},
+				"TransformAll": {
+					"descriptions": ["**Transforms documents into one matrix, a row per document, so no study writes the loop. The matrix is dense: 8 bytes times the vocabulary times the documents (20,000 terms for 40,000 documents is 6.4 GB). Past the limit (SetMaxDenseBytes, 2 GiB by default) this returns Nil rather than exhausting memory; set max_features or min_df, or transform in batches.**\n\n```method : public : TransformAll(documents:String[]) ~ Float[,]```\n\n\n\ndocuments: String[]\n\nreturn: Float[,]"]
 				}
 			}
 		},
@@ -23030,6 +23388,54 @@
 				"file": ""
 			}
 		],
+		"Augmentation": [
+			{
+				"bundle": "System.ML.Cnn",
+				"file": ""
+			}
+		],
+		"CnnEvaluation": [
+			{
+				"bundle": "System.ML.Cnn",
+				"file": ""
+			}
+		],
+		"CnnModel": [
+			{
+				"bundle": "System.ML.Cnn",
+				"file": ""
+			}
+		],
+		"CnnRuntime": [
+			{
+				"bundle": "System.ML.Cnn",
+				"file": ""
+			}
+		],
+		"CnnTrainer": [
+			{
+				"bundle": "System.ML.Cnn",
+				"file": ""
+			}
+		],
+		"ImageDataset": [
+			{
+				"bundle": "System.ML.Cnn",
+				"file": ""
+			}
+		],
+		"ImageSubset": [
+			{
+				"bundle": "System.ML.Cnn",
+				"file": ""
+			}
+		],
+		"TrainingHistory": [
+			{
+				"bundle": "System.ML.Cnn",
+				"file": ""
+			}
+		],
 		"Chart": [
 			{
 				"bundle": "System.ML.Lab",
@@ -25604,6 +26010,28 @@
 				{ "name": "MAX", "value": "0", "description": "" },
 				{ "name": "MEAN", "value": "1", "description": "" },
 				{ "name": "RMS", "value": "2", "description": "" }
+			]
+		},
+		"System.ML.Cnn.Initializer": {
+			"name": "Initializer",
+			"bundle": "System.ML.Cnn",
+			"class": "",
+			"kind": "enum",
+			"description": "How the weights of a Conv and Dense layer start out. GLOROT is Glorot (Xavier) uniform, the default of Keras: limit sqrt(6 / (fan_in + fan_out)). KAIMING is He uniform, limit sqrt(6 / fan_in), for ReLU networks. Biases always start at zero. The draws come from the model's seed, so the same seed gives the same weights on every platform.",
+			"items": [
+				{ "name": "GLOROT", "value": "0", "description": "" },
+				{ "name": "KAIMING", "value": "1", "description": "" }
+			]
+		},
+		"System.ML.Cnn.Padding": {
+			"name": "Padding",
+			"bundle": "System.ML.Cnn",
+			"class": "",
+			"kind": "enum",
+			"description": "How a convolution treats the image border. VALID uses no padding, so the output is smaller than the input; SAME pads so that, with a stride of 1, the output is as large as the input.",
+			"items": [
+				{ "name": "VALID", "value": "0", "description": "" },
+				{ "name": "SAME", "value": "1", "description": "" }
 			]
 		},
 		"System.ML.VectorSearch.VectorMetric": {

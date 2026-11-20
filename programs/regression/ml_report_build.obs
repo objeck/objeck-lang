@@ -257,14 +257,14 @@ class MlReportBuild {
 		ok := Report("ToCells: shape", cells <> Nil & Dim(cells, 0) = 3 & Dim(cells, 1) = 3) & ok;
 		ok := Same("ToCells: heading", cells[0, 0] + "/" + cells[0, 1] + "/" + cells[0, 2], "depth/acc/fit_ms") & ok;
 		ok := Same("ToCells: row 1", cells[1, 0] + "/" + cells[1, 1] + "/" + cells[1, 2], "2/0.8123 ± 0.0123/12.3 ± 1.5") & ok;
-		ok := Same("ToCells: NaN is n/a", cells[2, 0] + "/" + cells[2, 1] + "/" + cells[2, 2], "4/n/a ± n/a/7.0 ± 0.2") & ok;
+		ok := Same("ToCells: NaN is n/a", cells[2, 0] + "/" + cells[2, 1] + "/" + cells[2, 2], "4/n/a/7.0 ± 0.2") & ok;
 		ok := Report("ToCells(Nil) is Nil with a reason", ResultTables->ToCells(Nil) = Nil & ResultTables->GetError()->Size() > 0) & ok;
 		rt := Report->New();
 		ok := Report("AddTable(ResultTable) accepted", rt->AddTable("", table)) & ok;
 		tmd := rt->ToMarkdown();
 		ok := Has("md: caption defaults to the title", tmd, "**Table 1.** Sweep\n") & ok;
 		ok := Has("md: ResultTable row", tmd, "| 2 | 0.8123 ± 0.0123 | 12.3 ± 1.5 |\n") & ok;
-		ok := Has("md: ResultTable NaN", tmd, "| 4 | n/a ± n/a | 7.0 ± 0.2 |\n") & ok;
+		ok := Has("md: ResultTable NaN", tmd, "| 4 | n/a | 7.0 ± 0.2 |\n") & ok;
 		ok := Has("md: footnote", tmd, "*seed \\| 1..5*\n") & ok;
 		ok := Has("md: numeric alignment of a ResultTable", tmd, "| :--- | ---: | ---: |\n") & ok;
 		ok := Lacks("md: no nan spelling", tmd, "nan") & ok;

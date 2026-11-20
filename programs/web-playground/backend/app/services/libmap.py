@@ -72,6 +72,7 @@ for _libs, _reason in (
     (("openai", "gemini", "ollama", "anthropic", "inference"), "it needs network access to a hosted model"),
     (("models", "onnx", "opencv", "query_vision"), "it needs model files and native vision libraries"),
     (("nlp_onnx",), "it needs a model file and the ONNX runtime"),
+    (("ml_cnn",), "it reads image files through OpenCV and trains on many threads"),
     (("odbc", "query_odbc"), "it needs a database driver and network access"),
     (("sdl2", "sdl_game", "sdl_gl", "plot_sdl", "lame"), "it needs a display or audio device"),
     (("json_stream",), "it streams from files"),

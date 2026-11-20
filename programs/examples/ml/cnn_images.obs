@@ -1,0 +1,207 @@
+#~
+Trains and scores the baseline convolutional network (System.ML.Cnn) on image folders, with the
+settings of the deepfake-detection study as options: the number of convolution blocks, dropout,
+learning rate, image size, batch size, epochs and augmentation.
+
+Two layouts are read.
+
+  --data ROOT      ROOT/train/<real>, ROOT/train/<fake>, ROOT/valid/... and ROOT/test/..., the layout of
+                   the "140k Real and Fake Faces" and "Real vs Fake" datasets (the class folders are
+                   named by --real and --fake, "real" and "fake" by default).
+  --real DIR --fake DIR
+                   one folder per class, split 70 / 15 / 15 by a seeded shuffle (--seed).
+
+The images are .jpg, .jpeg, .png or .bmp files, resized to --size x --size. Class 1 (the positive class
+of precision and recall) is the fake class. --limit N keeps the first N files of each class folder of
+each split, for a quick trial of a large dataset.
+
+It prints the parameter count, one line per epoch (training and validation loss and accuracy and the
+wall time) and the test accuracy, precision, recall and F1, and writes the per-epoch history to
+<--out>_history.csv and the weights to <--out>_model.bin.
+
+  compile: obc -src cnn_images.obs -lib ml_cnn,ml,ml_lab,opencv,csv,json,cipher,gen_collect
+  run:     obr cnn_images.obe --data real_vs_fake --size 224 --epochs 10 --batch 64
+           obr cnn_images.obe --real faces/real --fake faces/fake --size 64 --blocks 2 --dropout 0.3 --lr 0.001
+
+Options: --size N (224), --blocks N (3), --dropout X (0.1), --lr X (0.0001), --batch N (64), --epochs N (10),
+--dense N (128), --augment (flip 0.5, rotation up to 10 degrees 0.3, brightness 0.8 to 1.2 at 0.3, on the
+training images only), --cache (keep decoded images in memory: fast epochs, size x size x 3 bytes per
+image), --threads N (8: a fixed count, because a run repeats bit for bit only at one thread count), --seed N (42), --limit N, --out PREFIX (cnn_run).
+~#
+
+use System.ML.Cnn;
+
+class CnnImages {
+	function : Main(args : String[]) ~ Nil {
+		data_root := "";
+		real_dir := "";
+		fake_dir := "";
+		real_name := "real";
+		fake_name := "fake";
+		out := "cnn_run";
+		size := 224;
+		blocks := 3;
+		dense := 128;
+		dropout := 0.1;
+		lr := 0.0001;
+		batch := 64;
+		epochs := 10;
+		seed := 42;
+		limit := 0;
+		threads := 8;
+		augment := false;
+		cache := false;
+
+		i := 0;
+		while(i < args->Size()) {
+			name := args[i];
+			has_value := i + 1 < args->Size();
+			if(name->Equals("--augment")) { augment := true; i += 1; }
+			else if(name->Equals("--cache")) { cache := true; i += 1; }
+			else if(has_value = false) { Usage("missing a value after {$name}"); return; }
+			else {
+				value := args[i + 1];
+				if(name->Equals("--data")) { data_root := value; }
+				else if(name->Equals("--real")) { real_dir := value; }
+				else if(name->Equals("--fake")) { fake_dir := value; }
+				else if(name->Equals("--size")) { size := value->ToInt(); }
+				else if(name->Equals("--blocks")) { blocks := value->ToInt(); }
+				else if(name->Equals("--dense")) { dense := value->ToInt(); }
+				else if(name->Equals("--dropout")) { dropout := value->ToFloat(); }
+				else if(name->Equals("--lr")) { lr := value->ToFloat(); }
+				else if(name->Equals("--batch")) { batch := value->ToInt(); }
+				else if(name->Equals("--epochs")) { epochs := value->ToInt(); }
+				else if(name->Equals("--seed")) { seed := value->ToInt(); }
+				else if(name->Equals("--limit")) { limit := value->ToInt(); }
+				else if(name->Equals("--threads")) { threads := value->ToInt(); }
+				else if(name->Equals("--out")) { out := value; }
+				else if(name->Equals("--real-name")) { real_name := value; }
+				else if(name->Equals("--fake-name")) { fake_name := value; }
+				else { Usage("unknown option {$name}"); return; };
+				i += 2;
+			};
+		};
+
+		if(threads > 0) {
+			CnnRuntime->SetThreads(threads);
+		};
+
+		train : ImageSubset := Nil;
+		validation : ImageSubset := Nil;
+		test : ImageSubset := Nil;
+		if(data_root->Size() > 0) {
+			train_set := Folder("{$data_root}/train", real_name, fake_name, size, limit, cache);
+			valid_set := Folder("{$data_root}/valid", real_name, fake_name, size, limit, cache);
+			test_set := Folder("{$data_root}/test", real_name, fake_name, size, limit, cache);
+			if(train_set = Nil | valid_set = Nil | test_set = Nil) {
+				Runtime->Exit(1);
+			};
+			train := train_set->All(true);
+			validation := valid_set->All(false);
+			test := test_set->All(false);
+		}
+		else if(real_dir->Size() > 0 & fake_dir->Size() > 0) {
+			set := ImageDataset->New(size, 3);
+			set->SetCache(cache);
+			if(Add(set, real_dir, 0, limit) = 0 | Add(set, fake_dir, 1, limit) = 0) {
+				Runtime->Exit(1);
+			};
+			splits := set->Split(0.7, 0.15, seed);
+			if(splits = Nil) {
+				"cannot split: {$set->GetError()}"->PrintLine();
+				Runtime->Exit(1);
+			};
+			train := splits[0];
+			validation := splits[1];
+			test := splits[2];
+		}
+		else {
+			Usage("give --data ROOT, or --real DIR and --fake DIR");
+			return;
+		};
+
+		if(augment) {
+			aug := Augmentation->New();
+			aug->SetSeed(seed);
+			aug->SetFlip(0.5);
+			aug->SetRotation(0.3, 10.0);
+			aug->SetBrightness(0.3, 0.8, 1.2);
+			train->SetAugmentation(aug);
+		};
+		"train {$train->Count()} ({$train->CountPositives()} fake)  validation {$validation->Count()}  test {$test->Count()}  augmentation {$train->IsAugmented()}"->PrintLine();
+
+		model := CnnModel->Baseline(size, blocks, dropout, dense, lr, seed);
+		if(model = Nil) {
+			"a {$blocks}-block network does not fit {$size} x {$size} images (try fewer --blocks or a larger --size)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"parameters: {$model->GetParameterCount()}  threads: {$CnnRuntime->GetThreads()}"->PrintLine();
+
+		trainer := CnnTrainer->New(model, train, validation, batch, seed);
+		trainer->SetVerbose(true);
+		history := trainer->Fit(epochs);
+		if(history = Nil) {
+			"cannot train: {$trainer->GetError()}"->PrintLine();
+			Runtime->Exit(1);
+		};
+		if(history->GetError()->Size() > 0) {
+			"training stopped after {$history->GetEpochs()} epochs: {$history->GetError()}"->PrintLine();
+		};
+		history->SaveCsv("{$out}_history.csv");
+		"training time: {$history->GetTotalSeconds()} s"->PrintLine();
+
+		result := trainer->Evaluate(test);
+		if(result = Nil) {
+			"cannot score the test set: {$trainer->GetError()}"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"test: {$result->ToString()}"->PrintLine();
+		confusion := result->GetConfusion();
+		"confusion [actual, predicted]: TN {$confusion[0, 0]}  FP {$confusion[0, 1]}  FN {$confusion[1, 0]}  TP {$confusion[1, 1]}"->PrintLine();
+		model->Save("{$out}_model.bin");
+		model->Close();
+	}
+
+	# the images of ROOT/<real_name> (class 0) and ROOT/<fake_name> (class 1)
+	function : Folder(root : String, real_name : String, fake_name : String, size : Int, limit : Int, cache : Bool) ~ ImageDataset {
+		set := ImageDataset->New(size, 3);
+		set->SetCache(cache);
+		if(Add(set, "{$root}/{$real_name}", 0, limit) = 0 | Add(set, "{$root}/{$fake_name}", 1, limit) = 0) {
+			return Nil;
+		};
+
+		return set;
+	}
+
+	function : Add(set : ImageDataset, folder : String, cls : Int, limit : Int) ~ Int {
+		if(limit > 0) {
+			# a trial run: only the first `limit` files, in name order
+			full := ImageDataset->New(set->GetSize(), 3);
+			count := full->AddDirectory(folder, cls);
+			added := 0;
+			each(i : count) {
+				if(added < limit) {
+					set->AddFile(full->GetPath(i), cls);
+					added += 1;
+				};
+			};
+			if(added = 0) {
+				"no images in {$folder}"->PrintLine();
+			};
+			return added;
+		};
+
+		added := set->AddDirectory(folder, cls);
+		if(added = 0) {
+			"no images in {$folder}"->PrintLine();
+		};
+
+		return added;
+	}
+
+	function : Usage(why : String) ~ Nil {
+		"{$why}"->PrintLine();
+		"usage: obr cnn_images.obe (--data ROOT | --real DIR --fake DIR) [--size N] [--blocks N] [--dropout X] [--lr X]"->PrintLine();
+		"       [--batch N] [--epochs N] [--dense N] [--augment] [--cache] [--threads N] [--seed N] [--limit N] [--out PREFIX]"->PrintLine();
+	}
+}

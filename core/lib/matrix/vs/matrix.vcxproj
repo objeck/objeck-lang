@@ -31,6 +31,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\matrix.h" />
+    <ClInclude Include="..\cnn.h" />
+    <ClInclude Include="..\cnn_api.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{202D9657-DFF5-45E9-A8E5-9968EEB1DB86}</ProjectGuid>

@@ -48,6 +48,7 @@
 
 typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor> ObjkMatrix;
 
+void objk_cnn_shutdown(); // cnn_api.h
 static Eigen::MatrixXd PtrToMatrix(size_t* matrix_data_ptr);
 static size_t* MatrixToPtr(Eigen::MatrixXd& matrix, size_t* matrix_data_ptr, VMContext& context);
 
@@ -68,6 +69,7 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void unload_lib() {
+    objk_cnn_shutdown();
   }
 
   //
@@ -576,3 +578,9 @@ size_t* MatrixToPtr(Eigen::MatrixXd& matrix, size_t* matrix_data_ptr, VMContext&
 
   return result_obj;
 }
+
+//
+// Convolutional neural network layers (System.ML.Cnn). Header-only, so the
+// library's existing build files compile it without new entries.
+//
+#include "cnn_api.h"

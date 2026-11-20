@@ -47,6 +47,7 @@ All AI and ML capabilities are **standard library** — no third-party packages,
   - [Model Persistence](#model-persistence)
   - [Local vector search (System.ML.VectorSearch)](#local-vector-search-systemmlvectorsearch)
   - [Replicates and reports (System.ML.Report)](#replicates-and-reports-systemmlreport)
+  - [Convolutional networks (System.ML.Cnn)](#convolutional-networks-systemmlcnn)
   - [Statistics (System.Stats)](#statistics-systemstats)
   - [Plotting (System.Plot)](#plotting-systemplot)
     - [In a window, or as a PNG (System.Plot.SDL)](#in-a-window-or-as-a-png-systemplotsdl)
@@ -1008,15 +1009,24 @@ detection. All are in `nlp.obl`; none needs a model.
 as scikit-learn's `TfidfVectorizer(ngram_range=(1, 2))` does; `(1, 3)` adds triples and
 `(2, 2)` is pairs only. Smoothed IDF and unit-length vectors follow scikit-learn (the
 regression test compares every IDF and vector entry with it). `min_df` drops terms found in
-fewer documents and `max_features` keeps the most frequent ones. An invalid setting
-(`min_n` below 1, `max_n` below `min_n`) does not crash: `IsValid()` is false, `GetError()`
-says why, and the vectorizer fits an empty vocabulary. Existing calls such as
-`TF_IDF->New(stem : true)` are unchanged.
+fewer documents and `max_features` keeps the most frequent ones. `Fit` returns `true` when it
+built a vocabulary. An invalid setting (`min_n` below 1, `max_n` below `min_n`), a Nil or empty
+corpus, or a corpus with no term left returns `false`: `IsValid()` is false for a bad setting
+and `GetError()` says why (it is `""`, never Nil, when there is nothing to report). Existing
+calls such as `TF_IDF->New(stem : true)` and a statement `tfidf->Fit(docs);` still compile.
+
+`TransformAll(texts)` and `FitTransform(texts)` give a `Float[,]`, a row per text, ready for a
+classifier, so no study writes the loop. The matrix is dense: 8 bytes times the vocabulary times
+the documents (40,000 documents at 20,000 terms is 6.4 GB). `EstimateDenseBytes(documents)`
+tells you before you ask, and `TransformAll` returns Nil with a reason rather than allocate
+more than `GetMaxDenseBytes()` (2 GiB; `SetMaxDenseBytes` changes it). Limit the vocabulary
+with `max_features` and `min_df`.
 
 ```ruby
 tfidf := TF_IDF->New(min_n : 1, max_n : 2, min_df : 2);
-tfidf->Fit(training_texts);
-x := tfidf->Transform("not worth the money");   # words and "not worth", "worth the", ...
+X_train := tfidf->FitTransform(training_texts);   # Nil, with tfidf->GetError(), when Fit fails
+X_test  := tfidf->TransformAll(test_texts);       # the test texts use the training vocabulary
+bytes   := tfidf->EstimateDenseBytes(100000);
 ```
 
 **Misspelling rate.** `SpellChecker` counts the tokens a word list does not know. No
@@ -1028,7 +1038,7 @@ over all tokens. `Suggest` returns words within a Levenshtein distance, nearest 
 with no words and a Nil text give -1 instead of failing.
 
 ```ruby
-checker := SpellChecker->New("words.txt");
+checker := SpellChecker->New("words.txt");   # checker->GetError() is "" when fine
 if(checker->IsLoaded()) {
     n    := checker->CountMisspelled("teh product is gud");
     rate := checker->MisspellingRate("teh product is gud");
@@ -1040,10 +1050,17 @@ if(checker->IsLoaded()) {
 `TextFeatures->Names()`): characters, tokens, average word length, type-token ratio,
 punctuation rate, uppercase ratio, sentence count and average sentence length. Each is also
 a function (`TokenCount`, `TypeTokenRatio`, ...). Empty text gives zeros and Nil gives
-Nil / -1.
+Nil / -1. `ExtractAll(texts)` takes a `Vector<String>` or `String[]` and gives a `Float[,]`, a
+row per text.
+
+For a fake-review study, `ExtractWith(checker, text)` returns the eight features followed by
+`misspelled_count` and `misspelling_rate` from a loaded `SpellChecker` (`NamesWith()` names
+the ten; `ExtractAllWith` gives the matrix). `Extract` is unchanged. A Nil text, or a checker
+that is not loaded, returns Nil, never a -1 entry that would enter a regression as data.
 
 ```ruby
 f := TextFeatures->Extract("Great product! Works perfectly. HIGHLY recommended!!!");
+X := TextFeatures->ExtractAllWith(checker, reviews);   # [reviews, 10]
 ```
 
 ### BERT tokens and sentence embeddings
@@ -1560,6 +1577,111 @@ Also `AddBullets`, `AddNumbered`, `AddChart` (a Lab `Chart`), `AddPageBreak`, `S
 The HTML (`ToHtml()`) is one file with its styles inline and no external request: a table of contents, inline SVG that scales to the page width, tables whose rows do not split across printed pages and whose header repeats, and a print stylesheet. Open it in a browser and choose Print, Save as PDF. `ToMarkdown()` writes CommonMark with pipe tables; `Save("report.md")` writes the SVG figures beside it (`report-figure-1.svg`).
 
 Word: Word opens an HTML file but does not draw its inline SVG reliably. For a `.docx`, print the HTML to PDF from a browser, or convert the Markdown with pandoc if you have it, or use PNG figures (`PlotPng->Save` from `System.Plot.SDL` needs the SDL2 natives; `AddFigureFile` embeds the result). This library was checked in Chromium-based Edge and by parsing, and not in Word. Example: `programs/examples/ml/study_report.obs`; tests `ml_report_replicates` (statistics against numpy, scipy and statsmodels), `ml_report_build` and `ml_report_golden`.
+### Convolutional networks (System.ML.Cnn)
+
+Convolutional networks for image classification, on the CPU: `Conv`, `MaxPool`, `ReLU`, `Flatten`, `Dense` and `Dropout` layers with forward and backward passes, the Adam and SGD optimizers, binary cross-entropy on logits, an image dataset with a seeded train / validation / test split and on-the-fly augmentation, and a training loop that records loss, accuracy and wall time for every epoch. The layers are native (`libobjk_ml`, plain C++ and Eigen, nothing platform-specific: no intrinsics, no OpenMP) and the library is `ml_cnn.obl`: `obc -lib ml_cnn,ml,ml_lab,opencv,csv,json,cipher,gen_collect` or `-lib @cnn,gen_collect`. It reads image files through `opencv`, scores with `System.ML.Metrics` and writes its history as a `System.ML.Lab.ResultTable`.
+
+```ruby
+use System.ML.Cnn;
+
+data := ImageDataset->New(224, 3);              # every image is resized to 224 x 224
+data->AddDirectory("real", 0);                  # class 0
+data->AddDirectory("fake", 1);                  # class 1
+splits := data->Split(0.7, 0.15, 42);           # train, validation, test: seeded, repeatable
+aug := Augmentation->New();
+aug->SetFlip(0.5);                              # half the training images are mirrored
+aug->SetRotation(0.3, 10.0);                    # 30% are turned by up to +-10 degrees
+aug->SetBrightness(0.3, 0.8, 1.2);              # 30% are scaled by 0.8 .. 1.2
+splits[0]->SetAugmentation(aug);                # augments the training subset only
+
+# the study's baseline: three Conv 3x3 + ReLU + MaxPool blocks (16, 32, 64 filters),
+# Dense 128, dropout 0.1, Adam at 1e-4; 5,561,633 parameters at 224 x 224
+model := CnnModel->Baseline(224, 3, 0.1, 128, 0.0001, 42);
+
+trainer := CnnTrainer->New(model, splits[0], splits[1], 64, 42);   # batch size 64
+trainer->SetVerbose(true);
+history := trainer->Fit(10);                    # per epoch: train/validation loss and accuracy, seconds
+history->SaveCsv("history.csv");
+test := trainer->Evaluate(splits[2]);           # accuracy, precision, recall, F1, confusion matrix
+test->ToString()->PrintLine();
+model->Save("model.bin");
+```
+
+A different architecture is built layer by layer (each `Add` answers `false` and `GetError()` says why if the layer does not fit):
+
+```ruby
+model := CnnModel->New(3, 64, 64, 42);          # channels, height, width, seed
+model->AddConv(32, 3, 1, Padding->SAME);        # filters, kernel, stride, padding
+model->AddReLU();
+model->AddMaxPool(2);
+model->AddFlatten();
+model->AddDense(64);
+model->AddDropout(0.3);
+model->AddDense(1);                             # the last layer is one logit per image
+model->Compile(0.001);                          # Adam; CompileSgd(lr, momentum) for SGD
+loss := model->TrainBatch(images, labels);      # Float[] of whole images (NCHW) and 0.0 / 1.0 labels
+probabilities := model->Predict(images);        # sigmoid of the logit: P(class 1)
+```
+
+**What it is, exactly.**
+
+| | |
+|---|---|
+| Layout | NCHW, `float32`; a batch is `Float[]` of whole images, each channels x height x width (planes, not interleaved), values 0 to 1. Weights are `[filters][channels][kh][kw]` for a convolution and `[units][inputs]` for a dense layer, the layouts of PyTorch |
+| `Conv` | cross-correlation, square kernel, stride, bias; `VALID` (no padding) or `SAME` (output `ceil(size / stride)`, an even kernel's extra pixel at the bottom/right, as TensorFlow does). im2col and one matrix multiply per image, the column buffer reused |
+| `MaxPool` | square window, stride defaults to the window, no padding, floor; a tie goes to the first maximum in scan order |
+| `Dropout` | inverted: survivors are scaled by `1 / (1 - rate)` in training, evaluation is the identity. The mask is a function of the model seed, the forward-pass counter and the element index, so a run repeats and `ResetDropout()` replays a mask |
+| Loss | binary cross-entropy on the logit, `max(z, 0) - z y + log(1 + e^-|z|)`, stable for logits of any size (a logit of 30,000 gives 30,000 or 0, not NaN) |
+| Optimizers | Adam as `torch.optim.Adam` (bias-corrected moments, `eps` outside the square root), and SGD with optional momentum |
+| Initial weights | Glorot (Xavier) uniform, limit `sqrt(6 / (fan_in + fan_out))`, the Keras default; `SetInitializer(Initializer->KAIMING)` for He uniform, limit `sqrt(6 / fan_in)`. Biases start at 0. Drawn from the model seed with a portable generator, so a seed gives the same weights on every platform |
+| Threads | the batch is spread over a thread pool, default the hardware threads, at most 8 (`CnnRuntime->SetThreads(n)`). Work is split statically, so a run repeats bit for bit at a given thread count; different counts agree to rounding. The setting is process-wide (all models share one pool), and the default is the machine's hardware threads, so call `CnnRuntime->SetThreads(n)` with a fixed `n` when a result must be the same on another machine (the examples use 8) |
+| Save / Load | weights only, in a small binary file with a digest of the architecture; `Load` is bit-exact and refuses a file from another architecture, a truncated file or a foreign one, leaving the model unchanged |
+| Scope | binary classification (one logit per image), CPU. Layers are an interface over contiguous NCHW tensors (`core/lib/matrix/cnn.h`) so a CUDA backend can implement the same `Forward` / `Backward` |
+
+Nothing here ends the program on bad input: an empty batch, a Nil array, a wrong size, a model that is not compiled or a layer that does not fit answers `false`, `-1.0`, `0` or `Nil`, and `GetError()` gives the reason. A model holds native memory, so call `Close()` when done (twice is harmless; `IsOpen()` says whether the model is alive). `GetError()` returns `""`, never `Nil`, when nothing went wrong. A model is not thread-safe: one thread at a time.
+
+**Images.** `ImageDataset` holds file paths (decoded and resized when a batch needs them, or kept with `SetCache(true)`) and in-memory pixels. `AddDirectory` takes the `.jpg`, `.jpeg`, `.png` and `.bmp` files of a folder in name order, so the same folder always gives the same indexes; `Check()` decodes every file once and counts the ones that fail. `Split(train, validation, seed)` deals three `ImageSubset`s by a seeded shuffle (the rest is the test set); when the data is already in folders, make one dataset per folder and use `All(augment)`. Augmentation (`Augmentation`: flip, rotation by a random angle with bilinear interpolation, brightness factor) is applied as an image is staged for a batch and only on a subset made for training; whether each fires, and its value, is a function of the seed and the image's position in the epoch, so training repeats exactly. `ImageDataset->Synthetic(size, per_class, seed)` makes a procedural two-class set (low against high spatial frequency) for demos and tests with no files.
+
+**Metrics.** `CnnTrainer->Fit(epochs)` returns a `TrainingHistory`: per epoch the training loss and accuracy (running means over the epoch's batches in training mode, as Keras reports them), the validation loss and accuracy (evaluation mode, after the epoch) and the wall time; `ToCsv()`, `SaveCsv(path)` and `ToResultTable(title)` write it out, with the column names of the `System.ML.Lab` experiment tables (`train_loss`, `train_accuracy`, `val_loss`, `val_accuracy`, `epoch_seconds`). `Evaluate(subset)` returns a `CnnEvaluation` with loss, accuracy, precision, recall, F1 (`System.ML.Metrics`, class 1 positive, threshold 0.5) the confusion matrix, `GetScores()` (the class-1 probability of each image) with `GetActuals()` for `Metrics->AucRoc` and ROC curves, and `ToResultTable(title)`. `GetParameterCount()` gives the parameter count: for a convolution `filters x (channels x k x k) + filters`, for a dense layer `units x inputs + units`. For the baseline at 224 x 224 that is 448 + 4,640 + 18,496 for the three convolutions, a flatten of 26 x 26 x 64 = 43,264 values, 128 x 43,264 + 128 = 5,537,920 for the hidden dense layer and 129 for the output: **5,561,633**. The baseline takes `CnnModel->Baseline(image_size, conv_blocks, dropout, dense_units, learning_rate, seed)`, so the experiments of the study (2, 3 or 4 blocks; dropout 0, 0.1, 0.3, 0.5; image size 64, 128, 224; learning rate 1e-3, 1e-4, 1e-5) are one-argument changes.
+
+**Complete runs.** [`programs/examples/ml/cnn_synthetic.obs`](../programs/examples/ml/cnn_synthetic.obs) trains the baseline on a generated 64 x 64 set in seconds, with no data. [`programs/examples/ml/cnn_images.obs`](../programs/examples/ml/cnn_images.obs) reads image folders (`--data ROOT` for the `train/`, `valid/`, `test/` layout of the 140k Real and Fake Faces dataset, or `--real DIR --fake DIR` for a seeded split) and takes the study's settings as options: `--blocks`, `--dropout`, `--lr`, `--size`, `--batch`, `--epochs` and `--augment`. It prints the parameter count, one line per epoch and the test metrics, and writes the history to a CSV file.
+
+**How it was checked.** Five regression tests (`ml_cnn_*.obs`) and a PyTorch reference.
+
+*Gradients.* `ml_cnn_gradcheck.obs` compares backpropagation with central finite differences for every layer type, alone and stacked, and for a three-block network. It runs on the float64 build of the same code (`CnnModel->NewReference`), because float32 differences cannot resolve a gradient better than about 1e-3: with a step of 1e-5 a correct backward pass agrees to better than 1e-7. Measured over about 2,400 parameters and 3,100 input pixels, with the error defined as `|analytic - numeric| / max(|analytic| + |numeric|, 1e-4)`, the worst was 9.1e-8 for a parameter and 5.7e-8 for an input pixel, against a bound of 1e-6. Dropout is checked in training mode with the mask replayed.
+
+*PyTorch parity.* `tools/ml/cnn_parity.py` (PyTorch, CPU, float32) draws weights, inputs and labels from a fixed seed, runs forward and backward, and writes text files (`programs/regression/data/cnn_parity/`, about 2.4 MB). `ml_cnn_parity.obs` loads the same weights and compares the loss, the logits, every parameter gradient, the gradient with respect to the input and the output of each layer. Each difference is `max |ours - torch| / max |torch|` over the tensor:
+
+| Case | Parameters | loss | logits | parameter gradients | input gradient | layer outputs |
+|---|---|---|---|---|---|---|
+| Conv 3x3 valid | 157 | 1.1e-7 | 3.8e-7 | 2.4e-7 | 2.3e-7 | 3.8e-7 |
+| Conv 3x3 same | 175 | 1.0e-7 | 1.2e-7 | 3.2e-7 | 2.0e-7 | 2.3e-7 |
+| Conv 4x4 same (even kernel) | 95 | 0.4e-7 | 1.2e-7 | 1.9e-7 | 2.1e-7 | 1.2e-7 |
+| Conv 5x5 stride 2 | 265 | 0.6e-7 | 8.3e-7 | 5.0e-7 | 1.4e-7 | 8.3e-7 |
+| Conv 1x1 | 97 | 0.5e-7 | 1.0e-7 | 2.8e-7 | 1.4e-7 | 1.0e-7 |
+| Conv + ReLU | 79 | 0.3e-7 | 1.2e-7 | 1.5e-7 | 0.9e-7 | 1.6e-7 |
+| MaxPool 2, odd input | 39 | 0.4e-7 | 2.0e-7 | 1.8e-7 | 1.5e-7 | 2.0e-7 |
+| MaxPool 3, stride 2 | 25 | 0.8e-7 | 0.0e-7 | 0.8e-7 | 0.5e-7 | 0.0e-7 |
+| Dense + ReLU | 251 | 0.1e-7 | 0.0e-7 | 1.3e-7 | 1.5e-7 | 0.0e-7 |
+| Dropout (evaluation mode) | 109 | 0.0e-7 | 0.7e-7 | 2.9e-7 | 2.0e-7 | 0.7e-7 |
+| **Baseline at 32 x 32** | 56,609 | 0.1e-7 | 3.8e-7 | 8.3e-7 | 1.4e-7 | 7.5e-7 |
+
+Both sides are float32 but sum in different orders, which costs a few units of 1.2e-7 per accumulation (up to 2,304 products here), so the differences are a few ulps. The test allows 2e-5 per layer and 5e-5 for the whole network. Dropout is compared in evaluation mode only, since PyTorch's random numbers are not ours; its mask, scaling and backward are checked by the gradient check and by exact-value tests (`ml_cnn_edges.obs`).
+
+*Training curve.* `train_baseline32` starts PyTorch and `ml_cnn` from the same weights, feeds both the same batches in the same order and takes 20 Adam steps (learning rate 1e-3). The loss falls from 0.721750 to 0.156777 in both; the worst per-step difference is 3.8e-7 (relative), and the weights after the 20 steps differ by 2.0e-5 relative to their scale (Adam divides by `sqrt(v)`, so entries with a tiny gradient move by more than the gradient difference). The test allows 1e-4 for the loss and 1e-3 for the weights. At 64 x 64 and above a float32 curve is not a fair comparison, because Adam amplifies rounding: in an experiment with identical weights and batches, PyTorch float32 differed from PyTorch float64 by 5e-4 after 20 steps at 64 x 64 and by 6% at 128 x 128, while this engine's float32 run differed from float64 by 4e-3 and 2e-4 respectively, and this engine's float64 build matched PyTorch float64 to 4e-16. So `ml_cnn_parity64.obs` compares the float64 build against PyTorch float64 (any wrong formula shows), with a loose bound for float32.
+
+*Edge cases.* `ml_cnn_edges.obs`: parameter counts against the closed form (including the 5,561,633 above and variants at 64, 96, 128 and 224 pixels, 2 to 4 blocks, `SAME` padding), odd sizes, 1 and 3 channels, a batch of 1, loss values worked out by hand, dropout (same seed same masks, scaling, rate, identity in evaluation, replay), max-pool ties, one SGD step and the first Adam step, initializer limits, bit-exact `Save` / `Load`, and a list of bad inputs that must answer a failure value. `ml_cnn_dataset.obs`: the dataset, split, staging and augmentation (a flip mirrors, brightness multiplies, a rotation fills the corners with zeros, each fires at about its probability and repeats for a seed and key), BMP files, a corrupt file, and the trainer's history and metrics. `ml_cnn_train.obs`: the baseline on the synthetic set reaches at least 95% on the validation and the test sets (it reaches 100%).
+
+**Speed.** `TrainBatch` (forward, backward and an Adam step) on a batch of 64 images, 3 blocks, Dense 128, 8 threads, Ryzen 9 7950X3D, Windows, MSVC `/O2` without `/arch` (SSE2: the release binaries must run on any x64 CPU), measured from Objeck over 3 to 5 batches after a warm-up:
+
+| Image size | Parameters | 1 thread | 8 threads | Forward only, 8 threads |
+|---|---|---|---|---|
+| 64 x 64 | 318,753 | 0.136 s / batch (469 images/s) | 0.027 s (2,385 images/s) | 0.011 s (5,979 images/s) |
+| 224 x 224 | 5,561,633 | 2.12 s (30 images/s) | 0.447 s (143 images/s) | 0.182 s (352 images/s) |
+
+At 143 images/s an epoch of 100,000 images at 224 x 224 takes about 11.7 minutes of training, plus about a minute to validate 20,000 images; ten epochs are about 2.1 hours. At 64 x 64 an epoch of 100,000 images is 42 seconds. The same code compiled with `/arch:AVX2` ran 1.7 times faster on one thread and about 1.3 times faster on eight (a standalone harness, not a shipped option), so the convolutions are limited by memory traffic (im2col, ReLU and pooling over tensors of tens of megabytes) as much as by arithmetic; a CUDA backend is the way to a large step.
+
+**Platforms.** Built and tested on Windows x64 (MSVC). The sources also compile cleanly with `g++ 13 -std=c++17 -O3 -Wall -Wextra` on Ubuntu 24.04 (WSL2), where a standalone harness gives the same losses to six digits as the Windows build (0.686856 at 64 x 64, 0.698541 at 224 x 224) and a gradient error of 2e-8. Linux and macOS (x64, arm64) and Windows arm64 were not built or run as part of this work; the code is standard C++14 with Eigen and `std::thread` and is built by the existing `libobjk_ml` project files and scripts, which is what CI exercises.
 
 ### Statistics (System.Stats)
 
@@ -1809,6 +1931,7 @@ obc -src program.obs -lib @ai -dest program.obe
 | `@ai` | `ai`, `ml`, `ml_lab`, `ml_vector`, `stats`, `plot`, `nlp`, `nlp_topics`, `csv`, `json` | local System.ML / System.ML.Lab / System.Stats / System.Plot / System.AI / System.NLP / System.NLP.Topics work |
 | `@plot` | `plot`, `plot_sdl`, `sdl2` | charts in a window or as PNG (SVG alone needs only `plot`) |
 | `@vision` | `opencv`, `onnx`, `nlp_onnx`, `models`, `nlp`, `json`, `cipher` | OpenCV and ONNX inference, BERT text embeddings |
+| `@cnn` | `ml_cnn`, `ml`, `ml_lab`, `opencv`, `csv`, `json`, `cipher` | `System.ML.Cnn` convolutional networks, image loading and history tables |
 | `@game` | `sdl2`, `sdl_game`, `sdl_gl`, `json`, `gen_collect` | SDL games, 2D and OpenGL |
 
 Aliases and explicit names mix in any order, for either `--target` (`-lib @ai,json` and `-lib json,@ai` are the same). Groups are user-editable: add a section to `configobjk.ini` and reference it as `@yourname`.
@@ -1921,6 +2044,8 @@ The libraries in this guide are covered by the regression suite in `programs/reg
 | Area | Tests |
 |---|---|
 | `System.Plot`, `System.Plot.SDL` | `plot_svg.obs`, `plot_svg_more.obs` (with goldens in `plot_golden/`), `plot_view.obs`, `plot_sdl.obs` |
+| `System.ML.Cnn` | `ml_cnn_gradcheck.obs` (finite differences, float64), `ml_cnn_parity.obs` (against PyTorch, data from `tools/ml/cnn_parity.py`), `ml_cnn_parity64.obs` (float64 engine against PyTorch float64 at 64 x 64, 20 Adam steps), `ml_cnn_edges.obs`, `ml_cnn_dataset.obs`, `ml_cnn_train.obs` |
+
 | `System.Stats` | `stats_dist.obs`, `stats_ttest.obs`, `stats_corr_ols.obs`, `stats_degenerate.obs` (expected values from scipy / numpy, generated by `tools/stats/gen_stats_reference.py`) |
 | `System.ML.VectorSearch` | `ml_vector_exact.obs`, `ml_vector_edges.obs`, `ml_vector_validation.obs`, `ml_vector_persist.obs` |
 | `System.ML` | `ml_*.obs`, e.g. `ml_kernel_svm_reference.obs` and `ml_one_class_svm_reference.obs` (against an independent reference, generated by `tools/ml/svm_reference/gen_reference_test.py`), `ml_outlier_*.obs`, `ml_lab_*.obs` |

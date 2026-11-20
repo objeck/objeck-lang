@@ -1,0 +1,72 @@
+# EXTRA_LIBS: ml_cnn,ml,ml_lab,opencv,csv,gen_collect
+#~
+System.ML.Cnn learns: the baseline architecture (three Conv 3x3 + ReLU + MaxPool blocks with 16, 32
+and 64 filters, Dense 128, dropout 0.1, Adam at 1e-4, batch 32) trained for 10 epochs on the
+synthetic 64 x 64 texture set of programs/examples/ml/cnn_synthetic.obs (200 images of each class,
+a seeded 70 / 15 / 15 split, the training set augmented) must reach at least 95% accuracy on the
+held-out test set and on the validation set, with the loss falling, at a fixed seed.
+
+The two classes differ only in spatial frequency (1 to 3 cycles across the image against 6 to 10),
+so chance is 50% and the task needs the convolutions: a model that has learned nothing scores 0.5.
+A second run with the learning rate 1e-3 and a third with augmentation switched off check that the
+result does not depend on one setting.
+~#
+
+use System.ML.Cnn;
+
+class MlCnnTrain {
+	@fail : static : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		@fail := false;
+		Run("baseline (lr 1e-4, augmented)", 0.0001, true, 10);
+		Run("lr 1e-3, augmented", 0.001, true, 6);
+		Run("lr 1e-3, no augmentation", 0.001, false, 6);
+
+		if(@fail) {
+			Runtime->Exit(1);
+		};
+		"ml_cnn_train: ok"->PrintLine();
+	}
+
+	function : Report(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@fail := true;
+		};
+	}
+
+	function : Run(name : String, lr : Float, augment : Bool, epochs : Int) ~ Nil {
+		"{$name}"->PrintLine();
+		data := ImageDataset->Synthetic(64, 200, 42);
+		splits := data->Split(0.7, 0.15, 42);
+		if(augment) {
+			aug := Augmentation->New();
+			aug->SetSeed(42);
+			aug->SetFlip(0.5);
+			aug->SetRotation(0.3, 10.0);
+			aug->SetBrightness(0.3, 0.8, 1.2);
+			splits[0]->SetAugmentation(aug);
+		};
+
+		model := CnnModel->Baseline(64, 3, 0.1, 128, lr, 42);
+		trainer := CnnTrainer->New(model, splits[0], splits[1], 32, 42);
+		history := trainer->Fit(epochs);
+		Report("training ran {$epochs} epochs", history <> Nil & history->GetEpochs() = epochs & history->GetError()->Size() = 0);
+		if(history = Nil | history->GetEpochs() <> epochs) {
+			return;
+		};
+
+		first := history->GetTrainLoss(0);
+		last := history->GetTrainLoss(epochs - 1);
+		Report("the training loss falls ({$first} -> {$last})", last < first * 0.8);
+		Report("the validation accuracy reaches 0.95 ({$history->GetValidationAccuracy(epochs - 1)})", history->GetValidationAccuracy(epochs - 1) >= 0.95);
+		test := trainer->Evaluate(splits[2]);
+		Report("test accuracy {$test->GetAccuracy()} >= 0.95, precision {$test->GetPrecision()}, recall {$test->GetRecall()}, F1 {$test->GetF1()}", test <> Nil & test->GetAccuracy() >= 0.95);
+		Report("{$history->GetTotalSeconds()} s of training for {$model->GetParameterCount()} parameters", model->GetParameterCount() = 318753);
+		model->Close();
+	}
+}

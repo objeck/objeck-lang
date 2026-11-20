@@ -895,6 +895,9 @@ System.NLP.TextSimilarity->CosineSimilarity(a, b)->PrintLine();
 		@min_df : Int;
 		@max_features : Int;
 		@error : String;
+		@fit_error : String;
+		@fitted : Bool;
+		@max_dense_bytes : Int;
 
 		#~
 		Constructor. The last four parameters are optional and default to what this class always
@@ -920,6 +923,7 @@ System.NLP.TextSimilarity->CosineSimilarity(a, b)->PrintLine();
 			@max_n := max_n;
 			@min_df := min_df;
 			@max_features := max_features;
+			@max_dense_bytes := 2147483648;
 
 			if(min_n < 1) {
 				@error := "min_n must be at least 1";
@@ -938,7 +942,8 @@ System.NLP.TextSimilarity->CosineSimilarity(a, b)->PrintLine();
 		#~
 		Whether the settings given to the constructor make sense: an n-gram range of min_n >= 1
 		and max_n >= min_n, a min_df of at least 1 and a max_features of at least 0. An invalid
-		vectorizer fits an empty vocabulary and transforms to empty vectors; it does not crash.
+		vectorizer does not crash and does not fit quietly: Fit returns false, GetError says why,
+		the vocabulary stays empty and Transform gives empty vectors.
 		@return true when Fit can build a vocabulary
 		~#
 		method : public : IsValid() ~ Bool {
@@ -946,11 +951,26 @@ System.NLP.TextSimilarity->CosineSimilarity(a, b)->PrintLine();
 		}
 
 		#~
-		Why the vectorizer is not valid.
-		@return the reason, or Nil when it is valid
+		Why the vectorizer is not valid, or why the last Fit or TransformAll failed.
+		@return the reason; "" when there is nothing to report (never Nil)
 		~#
 		method : public : GetError() ~ String {
-			return @error;
+			if(@error <> Nil) {
+				return @error;
+			};
+			if(@fit_error <> Nil) {
+				return @fit_error;
+			};
+
+			return "";
+		}
+
+		#~
+		Whether the last Fit built a vocabulary.
+		@return true when Transform has terms to work with
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @fitted;
 		}
 
 		#~
@@ -972,11 +992,14 @@ System.NLP.TextSimilarity->CosineSimilarity(a, b)->PrintLine();
 		#~
 		Fits the TF-IDF model on a corpus of documents, replacing any earlier fit
 		@param documents array of document strings
+		@return true when a vocabulary was built; false (see GetError) for an invalid setting, a Nil or empty corpus, or a corpus with no term left after min_df and stopwords. A statement call `tfidf->Fit(docs);` still compiles
 
 ```
 docs := ["the cat sat on the mat", "the dog ran in the park", "cats and dogs are pets"];
 tfidf := TF_IDF->New();
-tfidf->Fit(docs);
+if(<>tfidf->Fit(docs)) {
+  tfidf->GetError()->PrintLine();
+};
 "Vocabulary size: {$tfidf->GetVocabularySize()}"->PrintLine();
 
 # words and word pairs, as scikit-learn's ngram_range=(1, 2)
@@ -985,14 +1008,20 @@ bigrams->Fit(docs);
 bigrams->GetVocabulary()->Has("the cat")->PrintLine();
 ```
 		~#
-		method : public : Fit(documents : String[]) ~ Nil {
+		method : public : Fit(documents : String[]) ~ Bool {
 			# each Fit starts from nothing: a refit must not keep the last corpus's words
 			@vocabulary := Hash->New()<String, IntRef>;
 			@idf := Float->New[0];
 			@document_count := 0;
+			@fitted := false;
+			@fit_error := Nil;
 
-			if(@error <> Nil | documents = Nil | documents->Size() = 0) {
-				return;
+			if(@error <> Nil) {
+				return false;
+			};
+			if(documents = Nil | documents->Size() = 0) {
+				@fit_error := "no documents to fit";
+				return false;
 			};
 
 			@document_count := documents->Size();
@@ -1076,6 +1105,109 @@ bigrams->GetVocabulary()->Has("the cat")->PrintLine();
 					@idf[@vocabulary->Find(key)->Get()] := Float->Log(n / df);
 				};
 			};
+
+			if(@vocabulary->Size() = 0) {
+				@fit_error := "no term is left: the documents have no words, or min_df is above every term's document count";
+				return false;
+			};
+
+			@fitted := true;
+			return true;
+		}
+
+		#~
+		Fits on a corpus and transforms the same corpus: one row per document.
+		@param documents the documents
+		@return [documents, vocabulary size], or Nil when Fit fails or the matrix would exceed the dense limit (see GetError, EstimateDenseBytes)
+
+```
+X := TF_IDF->New(min_n : 1, max_n : 2, min_df : 2)->FitTransform(texts);
+```
+		~#
+		method : public : FitTransform(documents : String[]) ~ Float[,] {
+			if(<>Fit(documents)) {
+				return Nil;
+			};
+
+			return TransformAll(documents);
+		}
+
+		#~
+		Transforms documents into one matrix, a row per document, so no study writes the loop.
+		The matrix is dense: 8 bytes times the vocabulary times the documents (20,000 terms for
+		40,000 documents is 6.4 GB). Past the limit (SetMaxDenseBytes, 2 GiB by default) this
+		returns Nil rather than exhausting memory; set max_features or min_df, or transform in
+		batches.
+		@param documents the documents
+		@return [documents, vocabulary size]; Nil when not fitted, documents or an entry is Nil, or the size exceeds the limit (see GetError)
+		~#
+		method : public : TransformAll(documents : String[]) ~ Float[,] {
+			@fit_error := Nil;
+			if(<>@fitted) {
+				@fit_error := "the vectorizer is not fitted";
+				return Nil;
+			};
+			if(documents = Nil) {
+				@fit_error := "no documents";
+				return Nil;
+			};
+
+			bytes := EstimateDenseBytes(documents->Size());
+			if(bytes > @max_dense_bytes) {
+				@fit_error := "a dense matrix of {$documents->Size()} documents x {$@vocabulary->Size()} terms is {$bytes} bytes, over the limit of {$@max_dense_bytes}; raise it with SetMaxDenseBytes, or use max_features / min_df";
+				return Nil;
+			};
+
+			width := @vocabulary->Size();
+			out := Float->New[documents->Size(), width];
+			each(r : documents) {
+				if(documents[r] = Nil) {
+					@fit_error := "document {$r} is Nil";
+					return Nil;
+				};
+
+				row := Transform(documents[r]);
+				each(c : width) {
+					out[r, c] := row[c];
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		The memory a dense TransformAll of some documents needs: 8 bytes times the vocabulary
+		times the documents. Ask before transforming a large corpus.
+		@param documents how many documents
+		@return the estimate in bytes; 0 when not fitted
+		~#
+		method : public : EstimateDenseBytes(documents : Int) ~ Int {
+			if(documents < 0) {
+				return 0;
+			};
+
+			return 8 * @vocabulary->Size() * documents;
+		}
+
+		#~
+		Sets the largest dense matrix TransformAll will build.
+		@param bytes the limit in bytes, at least 1
+		@return false (limit unchanged) for a value below 1
+		~#
+		method : public : SetMaxDenseBytes(bytes : Int) ~ Bool {
+			if(bytes < 1) {
+				return false;
+			};
+			@max_dense_bytes := bytes;
+			return true;
+		}
+
+		#~
+		The dense-matrix limit of TransformAll.
+		@return bytes
+		~#
+		method : public : GetMaxDenseBytes() ~ Int {
+			return @max_dense_bytes;
 		}
 
 		#~
@@ -1308,9 +1440,13 @@ suggestions := checker->Suggest("teh", 2, 3);
 
 		#~
 		Why the list did not load.
-		@return the reason, or Nil
+		@return the reason; "" when there is nothing to report (never Nil)
 		~#
 		method : public : GetError() ~ String {
+			if(@error = Nil) {
+				return "";
+			};
+
 			return @error;
 		}
 
@@ -1530,6 +1666,136 @@ each(i : names) {
 			return [CharacterCount(text)->As(Float), TokenCount(text)->As(Float), AverageWordLength(text),
 				TypeTokenRatio(text), PunctuationRate(text), UppercaseRatio(text), SentenceCount(text)->As(Float),
 				AverageSentenceLength(text)];
+		}
+
+		#~
+		All the features of many texts, a row each: the matrix a classifier takes.
+		@param texts the texts
+		@return [texts, 8]; Nil when texts or an entry is Nil
+
+```
+X := TextFeatures->ExtractAll(reviews);
+```
+		~#
+		function : ExtractAll(texts : Vector<String>) ~ Float[,] {
+			if(texts = Nil) {
+				return Nil;
+			};
+
+			return Rows(texts->ToArray(), Nil, 8);
+		}
+
+		#~
+		All the features of many texts, a row each, from an array.
+		@param texts the texts
+		@return [texts, 8]; Nil when texts or an entry is Nil
+		~#
+		function : ExtractAll(texts : String[]) ~ Float[,] {
+			return Rows(texts, Nil, 8);
+		}
+
+		#~
+		The names of the values ExtractWith returns: the eight of Names, then misspelled_count
+		and misspelling_rate.
+		@return ten feature names
+		~#
+		function : NamesWith() ~ String[] {
+			names := Names();
+			out := String->New[10];
+			each(i : names) {
+				out[i] := names[i];
+			};
+			out[8] := "misspelled_count";
+			out[9] := "misspelling_rate";
+
+			return out;
+		}
+
+		#~
+		The eight features of Extract followed by the count and the rate of misspelled tokens
+		from a SpellChecker: the feature vector of a fake-review study in one call. Extract is
+		unchanged.
+		@param checker a loaded SpellChecker
+		@param text the text
+		@return ten values in the order of NamesWith; Nil for a Nil text, a Nil checker or one that is not loaded, never a -1 entry
+
+```
+checker := SpellChecker->New("words.txt");
+f := TextFeatures->ExtractWith(checker, "teh product is gud");
+```
+		~#
+		function : ExtractWith(checker : SpellChecker, text : String) ~ Float[] {
+			if(checker = Nil | <>checker->IsLoaded()) {
+				return Nil;
+			};
+
+			base := Extract(text);
+			if(base = Nil) {
+				return Nil;
+			};
+
+			out := Float->New[10];
+			each(i : base) {
+				out[i] := base[i];
+			};
+			out[8] := checker->CountMisspelled(text)->As(Float);
+			out[9] := checker->MisspellingRate(text);
+
+			return out;
+		}
+
+		#~
+		ExtractWith for many texts, a row each.
+		@param checker a loaded SpellChecker
+		@param texts the texts
+		@return [texts, 10]; Nil when the checker is not loaded, texts or an entry is Nil
+		~#
+		function : ExtractAllWith(checker : SpellChecker, texts : Vector<String>) ~ Float[,] {
+			if(checker = Nil | <>checker->IsLoaded() | texts = Nil) {
+				return Nil;
+			};
+
+			return Rows(texts->ToArray(), checker, 10);
+		}
+
+		#~
+		ExtractWith for many texts, from an array.
+		@param checker a loaded SpellChecker
+		@param texts the texts
+		@return [texts, 10]; Nil when the checker is not loaded, texts or an entry is Nil
+		~#
+		function : ExtractAllWith(checker : SpellChecker, texts : String[]) ~ Float[,] {
+			if(checker = Nil | <>checker->IsLoaded()) {
+				return Nil;
+			};
+
+			return Rows(texts, checker, 10);
+		}
+
+		function : private : Rows(texts : String[], checker : SpellChecker, width : Int) ~ Float[,] {
+			if(texts = Nil) {
+				return Nil;
+			};
+
+			out := Float->New[texts->Size(), width];
+			each(r : texts) {
+				row : Float[];
+				if(checker = Nil) {
+					row := Extract(texts[r]);
+				}
+				else {
+					row := ExtractWith(checker, texts[r]);
+				};
+				if(row = Nil) {
+					return Nil;
+				};
+
+				each(c : width) {
+					out[r, c] := row[c];
+				};
+			};
+
+			return out;
 		}
 
 		#~
