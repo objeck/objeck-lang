@@ -158,6 +158,19 @@ class AnthropicParseTest {
     request := plain->BuildRequest(Nil, false);
     Check("no system prompt unless set", <>request->Has("system"));
     Check("default max_tokens", request->Get("max_tokens")->GetInt() = 4096);
+    Check("no sampling settings unless set", <>request->Has("temperature") & <>request->Has("top_p") & <>request->Has("top_k"));
+
+    sampled := Chat->New("m", "k");
+    sampled->SetTemperature(0.0)->SetTopP(0.9)->SetTopK(40)->AddMessage("user", "hi");
+    request := sampled->BuildRequest(Nil, false);
+    Check("temperature 0 is sent", request->Has("temperature") & request->Get("temperature")->GetFloat() = 0.0);
+    Check("top_p is sent", request->Has("top_p") & request->Get("top_p")->GetFloat() = 0.9);
+    Check("top_k is sent", request->Has("top_k") & request->Get("top_k")->GetInt() = 40);
+
+    thinking := Chat->New("m", "k");
+    thinking->SetTemperature(0.5)->SetTopP(0.9)->SetTopK(40)->SetMaxTokens(4000)->SetThinking(2000)->AddMessage("user", "hi");
+    request := thinking->BuildRequest(Nil, false);
+    Check("thinking leaves the sampling settings out", <>request->Has("temperature") & <>request->Has("top_p") & <>request->Has("top_k"));
   }
 
   function : TestToolResults() ~ Nil {

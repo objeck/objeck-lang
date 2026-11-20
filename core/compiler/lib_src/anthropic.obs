@@ -838,6 +838,10 @@ chat->Send("And at sunset?")->PrintLine();
 		@max_tokens : Int;
 		@temperature : Float;
 		@has_temperature : Bool;
+		@top_p : Float;
+		@has_top_p : Bool;
+		@top_k : Int;
+		@has_top_k : Bool;
 		@thinking_budget : Int;
 		@stream_added : Bool;
 		@messages : Vector<JsonElement>;
@@ -854,6 +858,8 @@ chat->Send("And at sunset?")->PrintLine();
 			@key := key;
 			@max_tokens := 4096;
 			@has_temperature := false;
+			@has_top_p := false;
+			@has_top_k := false;
 			@thinking_budget := 0;
 			@stream_added := false;
 			@messages := Vector->New()<JsonElement>;
@@ -891,8 +897,32 @@ chat->Send("And at sunset?")->PrintLine();
 		}
 
 		#~
+		Sets nucleus sampling: only the smallest set of tokens whose probability adds up to top_p is
+		considered. Unset by default, so the API's default applies. Some models refuse a request
+		that sets both the temperature and top_p; change one of them, not both.
+		@param top_p threshold between 0 and 1
+		@return self for chaining
+		~#
+		method : public : SetTopP(top_p : Float) ~ Chat {
+			@top_p := top_p;
+			@has_top_p := true;
+			return @self;
+		}
+
+		#~
+		Sets top-k sampling: only the k most likely tokens are considered. Unset by default.
+		@param top_k number of tokens, at least 1
+		@return self for chaining
+		~#
+		method : public : SetTopK(top_k : Int) ~ Chat {
+			@top_k := top_k;
+			@has_top_k := true;
+			return @self;
+		}
+
+		#~
 		Turns extended thinking on. The API needs a budget of at least 1024 tokens and a max_tokens above it,
-		so call SetMaxTokens too. While it is on, the temperature is not sent (the API rejects both together),
+		so call SetMaxTokens too. While it is on, the temperature, top_p and top_k are not sent (the API rejects both together),
 		and SendJson leaves thinking off for its one request because a forced tool is rejected with it.
 		@param budget_tokens tokens the model may think with, 0 to turn thinking off
 		@return self for chaining
@@ -1005,6 +1035,12 @@ chat->Send("And at sunset?")->PrintLine();
 			};
 			if(@has_temperature & (@thinking_budget <= 0 | tool_choice <> Nil)) {
 				request->Insert("temperature", @temperature);
+			};
+			if(@has_top_p & (@thinking_budget <= 0 | tool_choice <> Nil)) {
+				request->Insert("top_p", @top_p);
+			};
+			if(@has_top_k & (@thinking_budget <= 0 | tool_choice <> Nil)) {
+				request->Insert("top_k", @top_k);
 			};
 			if(@thinking_budget > 0 & tool_choice = Nil) {
 				thinking := JsonElement->New(JsonElement->JsonType->OBJECT);
