@@ -46,6 +46,8 @@ bundle System.ML.Cnn {
 	class CnnRuntime {
 		@fn_ml_cnn_threads : static : String;
 		@fn_ml_cnn_permutation : static : String;
+		@fn_ml_cnn_cuda : static : String;
+		@fn_ml_cnn_cuda_text : static : String;
 
 		#~
 		Sets how many threads the layers use (the batch is spread over them, one sample per task). The setting is process-wide: every model, on every Objeck thread, shares the one pool. The default is the number of hardware threads, at most 8, which differs between machines; a run repeats bit for bit only at a fixed thread count, so set it (to 1 or any fixed number) for a result that must be the same on another machine.
@@ -78,6 +80,77 @@ bundle System.ML.Cnn {
 			Proxy->GetDllProxy()->CallFunction(@fn_ml_cnn_threads, array_args);
 
 			return array_args[0]->As(IntRef)->Get();
+		}
+
+		function : CudaInfo(what : Int, index : Int) ~ Int {
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(what);
+			array_args[2] := IntRef->New(index);
+			if(@fn_ml_cnn_cuda = Nil) { @fn_ml_cnn_cuda := "ml_cnn_cuda"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_ml_cnn_cuda, array_args);
+
+			return array_args[0]->As(IntRef)->Get();
+		}
+
+		function : CudaText(what : Int, index : Int) ~ String {
+			array_args := Base->New[3];
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(what);
+			array_args[2] := IntRef->New(index);
+			if(@fn_ml_cnn_cuda_text = Nil) { @fn_ml_cnn_cuda_text := "ml_cnn_cuda_text"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_ml_cnn_cuda_text, array_args);
+			text := array_args[0]->As(String);
+
+			return text = Nil ? "" : text;
+		}
+
+		#~
+		How many CUDA devices the optional GPU library found. The library (libobjk_ml_cuda, built apart from Objeck, see docs/AI.md) is loaded on the first call; without it, or without an NVIDIA GPU and driver, the answer is 0 and CudaStatus() says why.
+		@return the device count, 0 when CUDA is unavailable
+		~#
+		function : CudaDeviceCount() ~ Int {
+			return CudaInfo(0, 0);
+		}
+
+		#~
+		Is there a CUDA device a model can run on?
+		@return true if so
+		~#
+		function : HasCuda() ~ Bool {
+			return CudaDeviceCount() > 0;
+		}
+
+		#~
+		Why CUDA cannot be used.
+		@return the reason, or an empty string when a CUDA device is available
+		~#
+		function : CudaStatus() ~ String {
+			return CudaText(0, 0);
+		}
+
+		#~
+		The devices a model can be placed on, as the names SetDevice takes: "cpu", then "cuda:0", "cuda:1" ... with the GPU's name and memory.
+		@return the descriptions, "cpu" first
+		~#
+		function : GetDevices() ~ String[] {
+			count := CudaDeviceCount();
+			devices := String->New[count + 1];
+			devices[0] := "cpu";
+			for(i := 0; i < count; i += 1;) {
+				devices[i + 1] := "cuda:{$i} {$CudaText(1, i)} ({$CudaInfo(1, i)} MB, compute capability {$CudaInfo(3, i)}.{$CudaInfo(4, i)})";
+			};
+
+			return devices;
+		}
+
+		#~
+		The memory that is free on a CUDA device right now.
+		@param index device number
+		@return free megabytes, 0 when there is no such device
+		~#
+		function : CudaFreeMemory(index : Int) ~ Int {
+			return CudaInfo(2, index);
 		}
 
 		#~
@@ -221,6 +294,7 @@ probabilities := model->Predict(images);
 		@fn_ml_cnn_vector : static : String;
 		@fn_ml_cnn_set_weights : static : String;
 		@fn_ml_cnn_file : static : String;
+		@fn_ml_cnn_device : static : String;
 		@fn_ml_cnn_stage : static : String;
 		@fn_ml_cnn_staged : static : String;
 		@fn_ml_cnn_staged_predict : static : String;
@@ -914,6 +988,81 @@ probabilities := model->Predict(images);
 			Proxy->GetDllProxy()->CallFunction(@fn_ml_cnn_staged_predict, array_args);
 
 			return array_args[0]->As(FloatArrayRef)->Get();
+		}
+
+		#~
+		Chooses where the model runs: "cpu" (the default) or "cuda" / "cuda:N", the GPU backend. Call it before training, or at any time: the weights move with the model (the Adam moments start again from zero). The two devices share the weights file format, so a model saved on one loads on the other. A refusal (no GPU, no CUDA library, out of GPU memory) answers false, says why in GetError() and leaves the model where it was.
+		@param device "cpu", "cuda" or "cuda:N"
+		@return true if the model now runs on that device
+		~#
+		method : public : SetDevice(device : String) ~ Bool {
+			return SetDevice(device, false);
+		}
+
+		#~
+		Chooses where the model runs, optionally with TF32 (the GPU's Tensor Cores, about 10 bits of mantissa in the matrix multiplies: faster, results a few 1e-4 from the exact FP32 of the default). Ignored on the CPU.
+		@param device "cpu", "cuda" or "cuda:N"
+		@param tf32 true to allow TF32 on the GPU
+		@return true if the model now runs on that device
+		~#
+		method : public : SetDevice(device : String, tf32 : Bool) ~ Bool {
+			if(@handle = 0 | device = Nil) {
+				return false;
+			};
+
+			kind := 0;
+			index := 0;
+			name := device->ToLower();
+			if(name->Equals("cpu")) {
+				kind := 0;
+			}
+			else if(name->Equals("cuda")) {
+				kind := 1;
+			}
+			else if(name->StartsWith("cuda:") & name->Size() > 5) {
+				kind := 1;
+				digits := name->SubString(5, name->Size() - 5);
+				each(i : digits) {
+					if(<>Char->IsDigit(digits->Get(i))) {
+						kind := 2;
+					};
+				};
+				index := digits->ToInt();
+			}
+			else {
+				kind := 2;
+			};
+
+			array_args := Base->New[5];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@handle);
+			array_args[2] := IntRef->New(kind);
+			array_args[3] := IntRef->New(index);
+			array_args[4] := IntRef->New(tf32 ? 1 : 0);
+			if(@fn_ml_cnn_device = Nil) { @fn_ml_cnn_device := "ml_cnn_device"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_ml_cnn_device, array_args);
+
+			return array_args[0]->As(IntRef)->Get() <> 0;
+		}
+
+		#~
+		Where the model runs.
+		@return "cpu" or "cuda:N", "cpu" for a model that is not valid
+		~#
+		method : public : GetDevice() ~ String {
+			if(Info(4) = 0) {
+				return "cpu";
+			};
+
+			return "cuda:{$Info(5)}";
+		}
+
+		#~
+		The GPU memory this model holds (parameters, optimizer state, and the activation buffers of the largest batch it has seen). Grows with the batch size; all of it is given back by Close().
+		@return bytes, 0 on the CPU
+		~#
+		method : public : GetDeviceMemory() ~ Int {
+			return Info(6);
 		}
 
 		#~

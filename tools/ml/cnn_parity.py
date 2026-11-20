@@ -13,6 +13,14 @@ numbers are deterministic):
 
     python tools/ml/cnn_parity.py [--out DIR]
 
+With --device cuda the same cases are computed by PyTorch ON THE GPU (a CUDA build of
+PyTorch, TF32 switched off so it is full FP32, deterministic algorithms), to check the
+optional CUDA backend of System.ML.Cnn against PyTorch-on-GPU. Write them to a scratch
+directory, not over the committed CPU files, and point ml_cnn_cuda_parity.obs at it:
+
+    python tools/ml/cnn_parity.py --device cuda --out /tmp/cnn_parity_cuda
+    obr ml_cnn_cuda_parity.obe /tmp/cnn_parity_cuda
+
 Case file format, text, one number per line after each header:
 
     arch <C> <H> <W> | conv F K S valid|same | relu | maxpool K S | flatten | dense U | dropout R
@@ -47,8 +55,13 @@ import torch
 import torch.nn as nn
 
 
+SIGNIFICANT = False
+
+
 def fmt(v):
-    return np.format_float_positional(float(v), precision=9, unique=False, trim="-", fractional=True)
+    # 9 places after the point, the format of the committed files. --large uses 9 significant digits instead:
+    # at 224 x 224 a gradient entry is about 1e-6, which 9 places would round to a relative error of 1e-3
+    return np.format_float_positional(float(v), precision=9, unique=False, trim="-", fractional=not SIGNIFICANT)
 
 
 def text_roundtrip(a):
@@ -157,19 +170,24 @@ def draw_weights(model, rng):
     return np.concatenate(chunks)
 
 
+DEVICE = "cpu"
+DTYPE = torch.float32
+
+
 def forward_backward(model, x, y, keep):
+    model.to(DEVICE, DTYPE)
     model.eval()
-    xt = torch.from_numpy(x).clone().requires_grad_(True)
+    xt = torch.from_numpy(x).clone().to(DEVICE, DTYPE).requires_grad_(True)
     acts = {}
     for i, m in enumerate(model):
         if i in keep:
-            m.register_forward_hook(lambda mod, inp, out, i=i: acts.__setitem__(i, out.detach().numpy().copy()))
+            m.register_forward_hook(lambda mod, inp, out, i=i: acts.__setitem__(i, out.detach().cpu().numpy().copy()))
     logits = model(xt).reshape(-1)
-    loss = nn.functional.binary_cross_entropy_with_logits(logits, torch.from_numpy(y))
+    loss = nn.functional.binary_cross_entropy_with_logits(logits, torch.from_numpy(y).to(DEVICE, DTYPE))
     model.zero_grad()
     loss.backward()
-    grad = np.concatenate([p.grad.detach().numpy().ravel() for p in params_of(model)])
-    return loss.item(), logits.detach().numpy(), grad, xt.grad.numpy(), acts
+    grad = np.concatenate([p.grad.detach().cpu().numpy().ravel() for p in params_of(model)])
+    return loss.item(), logits.detach().cpu().numpy(), grad, xt.grad.cpu().numpy(), acts
 
 
 def make_case(name, arch, c, h, w, batch, seed, keep=None, drop_hooks=False):
@@ -206,18 +224,19 @@ def make_train_case(name, arch, c, h, w, batch, nbatches, steps, lr, seed):
     xs = text_roundtrip(np.clip(xs.astype(np.float64) + shift[:, :, None, None, None], 0.0, 1.0))
     ys = text_roundtrip((shift > 0).astype(np.float32))
     set_weights(model, w0)
+    model.to(DEVICE, DTYPE)
     model.train()
     opt = torch.optim.Adam(model.parameters(), lr=lr)
     losses = []
     for step in range(steps):
-        xb = torch.from_numpy(xs[step % nbatches])
-        yb = torch.from_numpy(ys[step % nbatches])
+        xb = torch.from_numpy(xs[step % nbatches]).to(DEVICE, DTYPE)
+        yb = torch.from_numpy(ys[step % nbatches]).to(DEVICE, DTYPE)
         opt.zero_grad()
         loss = nn.functional.binary_cross_entropy_with_logits(model(xb).reshape(-1), yb)
         loss.backward()
         opt.step()
         losses.append(loss.item())
-    wfinal = np.concatenate([p.detach().numpy().ravel() for p in params_of(model)])
+    wfinal = np.concatenate([p.detach().cpu().numpy().ravel() for p in params_of(model)])
     case.lines.append("train %d %d %d %s" % (steps, nbatches, batch, fmt(lr)))
     case.tensor("w0", w0)
     case.tensor("xs", xs)
@@ -242,7 +261,29 @@ def main():
     default_out = os.path.normpath(os.path.join(here, "..", "..", "programs", "regression", "data", "cnn_parity"))
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=default_out)
+    ap.add_argument("--device", default="cpu", choices=["cpu", "cuda"])
+    ap.add_argument("--float64", action="store_true",
+                    help="compute the reference in double precision (the same float32 inputs): the 'exact' answer, "
+                         "to measure how far each float32 implementation is from the truth, not from another float32 one")
+    ap.add_argument("--large", action="store_true",
+                    help="also write the baseline at 64 x 64 and 224 x 224 and a 20-step Adam run at 64 x 64 "
+                         "(megabytes: for a scratch directory, never the committed fixtures)")
     args = ap.parse_args()
+    global DEVICE, DTYPE, SIGNIFICANT
+    DEVICE = args.device
+    DTYPE = torch.float64 if args.float64 else torch.float32
+    SIGNIFICANT = args.large or args.float64
+    if DEVICE == "cuda":
+        if not torch.cuda.is_available():
+            sys.exit("this PyTorch has no CUDA device")
+        os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+        # full FP32: no TF32 Tensor Cores in the matrix multiplies or in cuDNN
+        torch.backends.cuda.matmul.allow_tf32 = False
+        torch.backends.cudnn.allow_tf32 = False
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
+    if DEVICE == "cuda" and os.path.abspath(args.out) == os.path.abspath(default_out):
+        sys.exit("--device cuda must not overwrite the committed CPU fixtures: give --out a scratch directory")
     os.makedirs(args.out, exist_ok=True)
     torch.set_num_threads(1)
     torch.use_deterministic_algorithms(True)
@@ -262,6 +303,16 @@ def main():
         make_case("baseline32", baseline(32), 3, 32, 32, 2, 21, keep=[2, 5, 8, 11, 13]),
         make_train_case("train_baseline32", baseline(32, dense=32, dropout=0.0), 3, 32, 32, 2, 3, 20, 1e-3, 22),
     ]
+    if args.float64 and os.path.abspath(args.out) == os.path.abspath(default_out):
+        sys.exit("--float64 must not overwrite the committed fixtures: give --out a scratch directory")
+    if args.large:
+        if os.path.abspath(args.out) == os.path.abspath(default_out):
+            sys.exit("--large must not write into the committed fixtures: give --out a scratch directory")
+        cases += [
+            make_case("baseline64", baseline(64), 3, 64, 64, 4, 31, keep=[2, 5, 8, 11, 13]),
+            make_case("baseline224", baseline(224, dense=16), 3, 224, 224, 2, 32, keep=[2, 5, 8, 11, 13]),
+            make_train_case("train_baseline64", baseline(64, dropout=0.0), 3, 64, 64, 8, 3, 20, 1e-3, 33),
+        ]
     total = 0
     for case, params in cases:
         path = case.write(args.out)
@@ -269,7 +320,7 @@ def main():
         total += size
         print("%-18s params %6d  %8d bytes" % (case.name, params, size))
     print("total %d bytes" % total)
-    print("torch", torch.__version__, "numpy", np.__version__)
+    print("torch", torch.__version__, "numpy", np.__version__, "device", DEVICE, "dtype", DTYPE)
 
 
 if __name__ == "__main__":

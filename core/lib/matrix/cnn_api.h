@@ -44,13 +44,173 @@
 #define __OBJK_CNN_API_H__
 
 #include "cnn.h"
+#include "cuda/objk_ml_cuda.h"
 #include <map>
 #include <memory>
 #include <mutex>
+#ifndef _WIN32
+#include <dlfcn.h>
+#endif
 
 namespace objk_cnn_api {
 
 using namespace objk_cnn;
+
+//
+// The optional GPU backend. libobjk_ml does not link CUDA: the first time a "cuda" device is asked
+// for, the library libobjk_ml_cuda (built apart from core/lib/matrix/cuda, not shipped) is loaded
+// with LoadLibrary / dlopen and its entry points are looked up by name. When it, or a GPU, is not
+// there the caller gets a failure value and a reason, and the model stays on the CPU.
+//
+struct CudaLib {
+  bool loaded;
+  void* module;
+#define OBJK_CUDA_DECLARE(ret, name, args) ret (*name) args;
+  OBJK_CUDA_FUNCTIONS(OBJK_CUDA_DECLARE)
+#undef OBJK_CUDA_DECLARE
+  CudaLib() : loaded(false), module(nullptr) {}
+};
+
+static CudaLib g_cuda;
+static std::mutex g_cuda_mutex;
+static bool g_cuda_down = false;  // the library is shutting down: nothing may call into the GPU library any more
+
+static std::string EnvVar(const char* name) {
+#ifdef _WIN32
+  char buffer[4096];
+  const DWORD n = GetEnvironmentVariableA(name, buffer, (DWORD)sizeof(buffer));
+  return n > 0 && n < sizeof(buffer) ? std::string(buffer, n) : std::string();
+#else
+  const char* value = getenv(name);
+  return value ? std::string(value) : std::string();
+#endif
+}
+
+static void* CudaOpen(const std::string& path) {
+#ifdef _WIN32
+  const std::wstring wide(path.begin(), path.end());
+  if(GetFileAttributesW(wide.c_str()) == INVALID_FILE_ATTRIBUTES) {
+    return nullptr;
+  }
+  // the CUDA runtime DLLs (cublas64_*.dll) live in the toolkit's bin folder, which need not be on PATH
+  static bool dirs_added = false;
+  if(!dirs_added) {
+    dirs_added = true;
+    const std::string base = EnvVar("CUDA_PATH");
+    if(!base.empty()) {
+      const char* sub[] = { "\\bin\\x64", "\\bin" };
+      for(int i = 0; i < 2; ++i) {
+        const std::string dir = base + sub[i];
+        const std::wstring wdir(dir.begin(), dir.end());
+        AddDllDirectory(wdir.c_str());
+      }
+    }
+  }
+  HMODULE module = LoadLibraryExW(wide.c_str(), nullptr, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_USER_DIRS);
+  if(!module) {
+    module = LoadLibraryW(wide.c_str());  // the legacy search order, which includes PATH
+  }
+  return (void*)module;
+#else
+  return dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
+#endif
+}
+
+// the directory libobjk_ml itself was loaded from, with a trailing separator
+static std::string OwnDirectory() {
+#ifdef _WIN32
+  HMODULE self = nullptr;
+  if(GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCWSTR)&OwnDirectory, &self)) {
+    wchar_t buffer[4096];
+    const DWORD n = GetModuleFileNameW(self, buffer, 4096);
+    if(n > 0 && n < 4096) {
+      std::wstring path(buffer, n);
+      const size_t slash = path.find_last_of(L"\\/");
+      std::string narrow;
+      for(size_t i = 0; slash != std::wstring::npos && i <= slash; ++i) {
+        narrow += path[i] < 128 ? (char)path[i] : '?';
+      }
+      return narrow;
+    }
+  }
+#else
+  Dl_info info;
+  if(dladdr((void*)&OwnDirectory, &info) && info.dli_fname) {
+    const std::string path(info.dli_fname);
+    const size_t slash = path.find_last_of('/');
+    if(slash != std::string::npos) {
+      return path.substr(0, slash + 1);
+    }
+  }
+#endif
+  return std::string();
+}
+
+// loads the GPU library once; on failure says why. Caller holds g_cuda_mutex.
+static bool CudaLoad(std::string& why) {
+  if(g_cuda.loaded) {
+    return true;
+  }
+#ifdef _WIN32
+  const char* name = "libobjk_ml_cuda.dll";
+#elif defined(__APPLE__)
+  const char* name = "libobjk_ml_cuda.dylib";
+#else
+  const char* name = "libobjk_ml_cuda.so";
+#endif
+  std::vector<std::string> candidates;
+  const std::string env = EnvVar("OBJK_CUDA_LIB");
+  if(!env.empty()) {
+    candidates.push_back(env);
+  }
+  candidates.push_back(OwnDirectory() + name);
+#ifndef _WIN32
+  candidates.push_back(name);  // the loader's own search path
+#endif
+  void* module = nullptr;
+  for(size_t i = 0; !module && i < candidates.size(); ++i) {
+    module = CudaOpen(candidates[i]);
+  }
+  if(!module) {
+    why = std::string("the CUDA library ") + name + " was not found or could not be loaded (it is built apart from Objeck, see docs/AI.md; "
+          "set OBJK_CUDA_LIB to its path, and make sure the CUDA runtime libraries can be found)";
+    return false;
+  }
+  CudaLib lib;
+  lib.module = module;
+  bool ok = true;
+#ifdef _WIN32
+#define OBJK_CUDA_LOOKUP(ret, fn, args) lib.fn = (ret (*) args)GetProcAddress((HMODULE)module, #fn); ok = ok && lib.fn != nullptr;
+#else
+#define OBJK_CUDA_LOOKUP(ret, fn, args) lib.fn = (ret (*) args)dlsym(module, #fn); ok = ok && lib.fn != nullptr;
+#endif
+  OBJK_CUDA_FUNCTIONS(OBJK_CUDA_LOOKUP)
+#undef OBJK_CUDA_LOOKUP
+  if(!ok || lib.objk_cuda_abi() != OBJK_CUDA_ABI) {
+    why = "the CUDA library is not the version this libobjk_ml expects; rebuild it from core/lib/matrix/cuda";
+    // left loaded: unloading a half-initialised CUDA library is not worth the risk
+    return false;
+  }
+  lib.loaded = true;
+  g_cuda = lib;
+  return true;
+}
+
+// the loaded library, or null with the reason
+static const CudaLib* CudaGet(std::string& why) {
+  std::lock_guard<std::mutex> lock(g_cuda_mutex);
+  if(g_cuda_down) {
+    why = "the library is shutting down";
+    return nullptr;
+  }
+  return CudaLoad(why) ? &g_cuda : nullptr;
+}
+
+struct LayerSpec {
+  int kind, a, b, c, d;
+  double rate;
+  unsigned long long seed;
+};
 
 class ModelBase {
  public:
@@ -87,12 +247,35 @@ class ModelBase {
   virtual int LastCorrect() = 0;
   virtual bool Compiled() = 0;
   virtual bool IsDouble() = 0;
+  // the device the model runs on: 0 = CPU (always possible), 1 = CUDA (needs the optional GPU library)
+  virtual bool SetDevice(int kind, int index, bool tf32) {
+    (void)index; (void)tf32;
+    return kind == 0;
+  }
+  virtual int Device() { return 0; }
+  virtual int DeviceIndex() { return 0; }
+  virtual size_t DeviceBytes() { return 0; }
+  virtual void Shutdown() {}
 };
 
 template<class T>
 class ModelImpl : public ModelBase {
   Sequential<T> net_;
   std::vector<T> x_, y_;
+
+  // the optional GPU session (float models only). While it exists the weights live on the GPU and the
+  // CPU copy in net_ is only a shadow: it holds the architecture, the initial weights, and the weights
+  // as of the last time they were fetched (host_stale_ says the GPU has moved on).
+  const CudaLib* cuda_;
+  void* gpu_;
+  int gpu_index_;
+  bool tf32_, host_stale_;
+  int gpu_correct_;
+  uint64_t seed_;
+  std::vector<LayerSpec> specs_;
+  bool have_compile_;
+  int c_opt_, c_init_;
+  double c_lr_, c_b1_, c_b2_, c_eps_, c_mom_;
 
   void Convert(const double* src, size_t count, std::vector<T>& dst) {
     if(dst.size() < count) {
@@ -123,26 +306,204 @@ class ModelImpl : public ModelBase {
     return ok;
   }
 
- public:
-  ModelImpl(const Shape& in, uint64_t seed) : net_(in, seed) { input = in; }
-  bool AddConv(int f, int k, int s, bool same) { return Check(net_.AddConv(f, k, s, same)); }
-  bool AddMaxPool(int size, int stride) { return Check(net_.AddMaxPool(size, stride)); }
-  bool AddReLU() { return Check(net_.AddReLU()); }
-  bool AddFlatten() { return Check(net_.AddFlatten()); }
-  bool AddDense(int units) { return Check(net_.AddDense(units)); }
-  bool AddDropout(double rate) { return Check(net_.AddDropout(rate)); }
-  bool Compile(int opt, double lr, double b1, double b2, double eps, double momentum, int init) {
-    return Check(net_.Compile(opt, lr, b1, b2, eps, momentum, init));
+  static double SigmoidD(double z) {
+    if(z >= 0.0) {
+      return 1.0 / (1.0 + std::exp(-z));
+    }
+    const double e = std::exp(z);
+    return e / (1.0 + e);
   }
-  void SetLearningRate(double lr) { net_.SetLearningRate(lr); }
+
+  //
+  // GPU session
+  //
+  bool GpuFail() {
+    error = std::string("CUDA: ") + (gpu_ ? cuda_->objk_cuda_net_error(gpu_) : cuda_->objk_cuda_last_error());
+    return false;
+  }
+
+  void GpuDestroy() {
+    if(gpu_ && cuda_) {
+      std::lock_guard<std::mutex> lock(g_cuda_mutex);
+      if(!g_cuda_down) {
+        cuda_->objk_cuda_net_destroy(gpu_);
+      }
+    }
+    gpu_ = nullptr;
+    host_stale_ = false;
+  }
+
+  // the weights on the GPU, as float, into the CPU shadow
+  bool SyncToHost() {
+    if(!gpu_ || !host_stale_ || !net_.Compiled()) {
+      return true;
+    }
+    const size_t count = net_.ParamCount();
+    std::vector<float> w(count);
+    if(!cuda_->objk_cuda_net_get_params(gpu_, w.data(), count)) {
+      return GpuFail();
+    }
+    std::vector<double> d(count);
+    for(size_t i = 0; i < count; ++i) {
+      d[i] = (double)w[i];
+    }
+    if(!net_.SetWeights(d.data(), count)) {
+      error = net_.Error();
+      return false;
+    }
+    host_stale_ = false;
+    return true;
+  }
+
+  // the CPU shadow's weights to the GPU
+  bool UploadWeights() {
+    if(!gpu_ || !net_.Compiled()) {
+      return true;
+    }
+    std::vector<double> d;
+    net_.GetWeights(d);
+    std::vector<float> w(d.size());
+    for(size_t i = 0; i < d.size(); ++i) {
+      w[i] = (float)d[i];
+    }
+    if(!cuda_->objk_cuda_net_set_params(gpu_, w.data(), w.size())) {
+      return GpuFail();
+    }
+    host_stale_ = false;
+    return true;
+  }
+
+  bool GpuCompile() {
+    if(!cuda_->objk_cuda_net_compile(gpu_, c_opt_, c_lr_, c_b1_, c_b2_, c_eps_, c_mom_)) {
+      return GpuFail();
+    }
+    return UploadWeights();
+  }
+
+  // adds one layer to the CPU model and the GPU one; they validate alike, so a GPU refusal is a bug or
+  // a device fault, and it drops the model back to the CPU rather than let the two disagree
+  bool AddLayer(bool cpu_ok, const LayerSpec& spec) {
+    if(!Check(cpu_ok)) {
+      return false;
+    }
+    specs_.push_back(spec);
+    if(gpu_ && !cuda_->objk_cuda_net_add(gpu_, spec.kind, spec.a, spec.b, spec.c, spec.d, spec.rate, spec.seed)) {
+      GpuFail();
+      GpuDestroy();
+      error += " (the model is back on the CPU)";
+      return false;
+    }
+    return true;
+  }
+
+  // a float pointer to the batch the GPU reads; only reached for float models
+  static const float* AsFloat(const T* p) { return reinterpret_cast<const float*>(p); }
+
+  // runs one pass on the GPU; the loss, or -1.0 with the reason in `error`
+  double GpuRun(int mode, const T* x, const T* y, int n, bool training, bool input_grad, std::vector<float>* logits) {
+    double loss = 0.0;
+    int correct = 0;
+    if(logits) {
+      logits->resize((size_t)n);
+    }
+    if(!cuda_->objk_cuda_net_run(gpu_, mode, AsFloat(x), AsFloat(y), n, training ? 1 : 0, input_grad ? 1 : 0, &loss, &correct,
+                                 logits ? logits->data() : nullptr)) {
+      GpuFail();
+      return -1.0;
+    }
+    if(mode == 0) {
+      host_stale_ = true;
+    }
+    if(mode != 3) {
+      gpu_correct_ = correct;
+    }
+    return loss;
+  }
+
+  bool GpuPredict(const T* x, int n, bool logits, std::vector<double>& out) {
+    std::vector<float> z;
+    if(GpuRun(3, x, nullptr, n, net_.Training(), false, &z) < 0.0) {
+      return false;
+    }
+    out.resize((size_t)n);
+    for(int i = 0; i < n; ++i) {
+      out[(size_t)i] = logits ? (double)z[(size_t)i] : SigmoidD((double)z[(size_t)i]);
+    }
+    return true;
+  }
+
+ public:
+  ModelImpl(const Shape& in, uint64_t seed) : net_(in, seed), cuda_(nullptr), gpu_(nullptr), gpu_index_(0), tf32_(false), host_stale_(false),
+    gpu_correct_(0), seed_(seed), have_compile_(false), c_opt_(0), c_init_(0), c_lr_(0), c_b1_(0), c_b2_(0), c_eps_(0), c_mom_(0) {
+    input = in;
+  }
+
+  ~ModelImpl() { GpuDestroy(); }
+
+  bool AddConv(int f, int k, int s, bool same) {
+    LayerSpec spec = { 0, f, k, s, same ? 1 : 0, 0.0, 0 };
+    return AddLayer(net_.AddConv(f, k, s, same), spec);
+  }
+  bool AddMaxPool(int size, int stride) {
+    LayerSpec spec = { 1, size, stride, 0, 0, 0.0, 0 };
+    return AddLayer(net_.AddMaxPool(size, stride), spec);
+  }
+  bool AddReLU() {
+    LayerSpec spec = { 2, 0, 0, 0, 0, 0.0, 0 };
+    return AddLayer(net_.AddReLU(), spec);
+  }
+  bool AddFlatten() {
+    LayerSpec spec = { 3, 0, 0, 0, 0, 0.0, 0 };
+    return AddLayer(net_.AddFlatten(), spec);
+  }
+  bool AddDense(int units) {
+    LayerSpec spec = { 4, units, 0, 0, 0, 0.0, 0 };
+    return AddLayer(net_.AddDense(units), spec);
+  }
+  bool AddDropout(double rate) {
+    // the same stream the CPU layer draws: Sequential::AddDropout derives it from the model seed and the layer's index
+    const unsigned long long layer_seed = Mix64(seed_ ^ (0xD20D0000ULL + net_.Layers()));
+    LayerSpec spec = { 5, 0, 0, 0, 0, rate, layer_seed };
+    return AddLayer(net_.AddDropout(rate), spec);
+  }
+  bool Compile(int opt, double lr, double b1, double b2, double eps, double momentum, int init) {
+    if(!Check(net_.Compile(opt, lr, b1, b2, eps, momentum, init))) {
+      return false;
+    }
+    have_compile_ = true;
+    c_opt_ = opt; c_init_ = init; c_lr_ = lr; c_b1_ = b1; c_b2_ = b2; c_eps_ = eps; c_mom_ = momentum;
+    if(gpu_ && !GpuCompile()) {
+      GpuDestroy();
+      error += " (the model is back on the CPU)";
+      return false;
+    }
+    return true;
+  }
+  void SetLearningRate(double lr) {
+    net_.SetLearningRate(lr);
+    if(lr > 0.0) {
+      c_lr_ = lr;
+      if(gpu_) {
+        cuda_->objk_cuda_net_set_lr(gpu_, lr);
+      }
+    }
+  }
   void SetTraining(bool t) { net_.SetTraining(t); }
-  void ResetRng() { net_.ResetRng(); }
+  void ResetRng() {
+    net_.ResetRng();
+    if(gpu_) {
+      cuda_->objk_cuda_net_reset_rng(gpu_);
+    }
+  }
   size_t ParamCount() { return net_.ParamCount(); }
   std::string Summary() { return net_.Summary(); }
 
   double Train(const double* x, const double* y, int n) {
     if(!Prepare(x, y, n)) {
       return -1.0;
+    }
+    if(gpu_) {
+      return GpuRun(0, x_.data(), y_.data(), n, true, false, nullptr);
     }
     const double loss = net_.TrainBatch(x_.data(), y_.data(), n);
     if(loss < 0.0) {
@@ -155,6 +516,9 @@ class ModelImpl : public ModelBase {
     if(!Prepare(x, y, n)) {
       return -1.0;
     }
+    if(gpu_) {
+      return GpuRun(1, x_.data(), y_.data(), n, false, false, nullptr);
+    }
     const double loss = net_.EvalBatch(x_.data(), y_.data(), n);
     if(loss < 0.0) {
       error = net_.Error();
@@ -165,6 +529,9 @@ class ModelImpl : public ModelBase {
   double Gradients(const double* x, const double* y, int n, bool training, bool input_grad) {
     if(!Prepare(x, y, n)) {
       return -1.0;
+    }
+    if(gpu_) {
+      return GpuRun(2, x_.data(), y_.data(), n, training, input_grad, nullptr);
     }
     const double loss = net_.ComputeGradients(x_.data(), y_.data(), n, training, input_grad);
     if(loss < 0.0) {
@@ -180,6 +547,9 @@ class ModelImpl : public ModelBase {
     }
     if(!Prepare(x, nullptr, n)) {
       return false;
+    }
+    if(gpu_) {
+      return GpuPredict(x_.data(), n, logits, out);
     }
     const T* z = net_.Forward(x_.data(), n, net_.Training());
     out.resize(n);
@@ -228,6 +598,9 @@ class ModelImpl : public ModelBase {
       return -1.0;
     }
     Convert(y, (size_t)n, y_);
+    if(gpu_) {
+      return GpuRun(0, net_.StagingData(), y_.data(), n, true, false, nullptr);
+    }
     const double loss = net_.TrainBatch(net_.StagingData(), y_.data(), n);
     if(loss < 0.0) {
       error = net_.Error();
@@ -241,6 +614,9 @@ class ModelImpl : public ModelBase {
       return -1.0;
     }
     Convert(y, (size_t)n, y_);
+    if(gpu_) {
+      return GpuRun(1, net_.StagingData(), y_.data(), n, false, false, nullptr);
+    }
     const double loss = net_.EvalBatch(net_.StagingData(), y_.data(), n);
     if(loss < 0.0) {
       error = net_.Error();
@@ -252,6 +628,9 @@ class ModelImpl : public ModelBase {
     if(!net_.Compiled() || n < 1 || n != net_.StagingCount()) {
       error = "no staged images, or a count that does not match them";
       return false;
+    }
+    if(gpu_) {
+      return GpuPredict(net_.StagingData(), n, logits, out);
     }
     const T* z = net_.Forward(net_.StagingData(), n, net_.Training());
     out.resize(n);
@@ -265,16 +644,156 @@ class ModelImpl : public ModelBase {
     return true;
   }
 
-  bool GetWeights(std::vector<double>& out) { return net_.GetWeights(out); }
-  bool SetWeights(const double* in, size_t count) { return Check(net_.SetWeights(in, count)); }
-  bool GetGrads(std::vector<double>& out) { return net_.GetGrads(out); }
-  bool Activation(int layer, std::vector<double>& out) { return net_.Activation(layer, out); }
-  bool InputGrad(std::vector<double>& out) { return net_.InputGrad(out); }
-  bool Save(FILE* file, const std::string& name) { return Check(net_.Save(file, name)); }
-  bool Load(FILE* file, const std::string& name) { return Check(net_.Load(file, name)); }
-  int LastCorrect() { return net_.LastCorrect(); }
+  bool GetWeights(std::vector<double>& out) {
+    if(!SyncToHost()) {
+      return false;
+    }
+    return net_.GetWeights(out);
+  }
+
+  bool SetWeights(const double* in, size_t count) {
+    if(!Check(net_.SetWeights(in, count))) {
+      return false;
+    }
+    return !gpu_ || UploadWeights();
+  }
+
+  bool GetGrads(std::vector<double>& out) {
+    if(!gpu_) {
+      return net_.GetGrads(out);
+    }
+    const size_t count = net_.ParamCount();
+    std::vector<float> g(count);
+    if(!cuda_->objk_cuda_net_get_grads(gpu_, g.data(), count)) {
+      return GpuFail();
+    }
+    out.assign(g.begin(), g.end());
+    return true;
+  }
+
+  bool Activation(int layer, std::vector<double>& out) {
+    if(!gpu_) {
+      return net_.Activation(layer, out);
+    }
+    const size_t count = cuda_->objk_cuda_net_activation_size(gpu_, layer);
+    if(count == 0) {
+      return false;
+    }
+    std::vector<float> a(count);
+    if(!cuda_->objk_cuda_net_get_activation(gpu_, layer, a.data(), count)) {
+      return GpuFail();
+    }
+    out.assign(a.begin(), a.end());
+    return true;
+  }
+
+  bool InputGrad(std::vector<double>& out) {
+    if(!gpu_) {
+      return net_.InputGrad(out);
+    }
+    const size_t count = cuda_->objk_cuda_net_input_grad_size(gpu_);
+    if(count == 0) {
+      return false;
+    }
+    std::vector<float> g(count);
+    if(!cuda_->objk_cuda_net_get_input_grad(gpu_, g.data(), count)) {
+      return GpuFail();
+    }
+    out.assign(g.begin(), g.end());
+    return true;
+  }
+
+  // a weights file is the same bytes whichever device wrote it, so a GPU model's file loads on the CPU and back
+  bool Save(FILE* file, const std::string& name) {
+    if(!SyncToHost()) {
+      if(file) { std::fclose(file); }
+      return false;
+    }
+    return Check(net_.Save(file, name));
+  }
+
+  bool Load(FILE* file, const std::string& name) {
+    if(!Check(net_.Load(file, name))) {
+      return false;
+    }
+    return !gpu_ || UploadWeights();
+  }
+
+  int LastCorrect() { return gpu_ ? gpu_correct_ : net_.LastCorrect(); }
   bool Compiled() { return net_.Compiled(); }
   bool IsDouble() { return sizeof(T) == sizeof(double); }
+
+  // 0 = cpu, 1 = cuda. Moving a trained model keeps its weights (not the Adam moments: they restart from zero).
+  bool SetDevice(int kind, int index, bool tf32) {
+    if(kind == 0) {
+      if(gpu_ && !SyncToHost()) {
+        return false;
+      }
+      GpuDestroy();
+      return true;
+    }
+    if(sizeof(T) != sizeof(float)) {
+      error = "the float64 reference model runs on the CPU only";
+      return false;
+    }
+    if(gpu_ && gpu_index_ == index && tf32_ == tf32) {
+      return true;
+    }
+    std::string why;
+    const CudaLib* lib = CudaGet(why);
+    if(!lib) {
+      error = why;
+      return false;
+    }
+    const int count = lib->objk_cuda_device_count();
+    if(count < 1 || index < 0 || index >= count) {
+      error = count < 1 ? std::string("no CUDA device: ") + lib->objk_cuda_last_error() : "no CUDA device " + std::to_string(index);
+      return false;
+    }
+    if(gpu_ && !SyncToHost()) {
+      return false;
+    }
+    void* net = lib->objk_cuda_net_create(index, input.c, input.h, input.w, tf32 ? 1 : 0);
+    if(!net) {
+      error = std::string("CUDA: ") + lib->objk_cuda_last_error();
+      return false;
+    }
+    // the new session must be complete before the old one goes
+    const CudaLib* old_lib = cuda_;
+    void* old_gpu = gpu_;
+    cuda_ = lib;
+    gpu_ = net;
+    bool ok = true;
+    for(size_t i = 0; ok && i < specs_.size(); ++i) {
+      const LayerSpec& s = specs_[i];
+      ok = lib->objk_cuda_net_add(net, s.kind, s.a, s.b, s.c, s.d, s.rate, s.seed) != 0;
+    }
+    ok = ok && (!have_compile_ || GpuCompile());
+    if(!ok) {
+      GpuFail();
+      const std::string reason = error;
+      lib->objk_cuda_net_destroy(net);
+      cuda_ = old_lib;
+      gpu_ = old_gpu;
+      error = reason;
+      return false;
+    }
+    if(old_gpu && old_lib) {
+      std::lock_guard<std::mutex> lock(g_cuda_mutex);
+      if(!g_cuda_down) {
+        old_lib->objk_cuda_net_destroy(old_gpu);
+      }
+    }
+    gpu_index_ = index;
+    tf32_ = tf32;
+    host_stale_ = false;
+    return true;
+  }
+  int Device() { return gpu_ ? 1 : 0; }
+  int DeviceIndex() { return gpu_ ? gpu_index_ : 0; }
+  size_t DeviceBytes() { return gpu_ ? cuda_->objk_cuda_net_device_bytes(gpu_) : 0; }
+  // called when the library unloads: the GPU session has to go while its library is still there
+  void Shutdown() { GpuDestroy(); }
 };
 
 static std::mutex g_mutex;
@@ -349,9 +868,22 @@ static void Nothing(VMContext& context) {
 
 }  // namespace objk_cnn_api
 
-// called from unload_lib (matrix.cpp): stops the worker threads before the library is unmapped
+// called from unload_lib (matrix.cpp): stops the worker threads before the library is unmapped, and
+// gives back the GPU memory of any model that was not closed, while the GPU library is still loaded
 void objk_cnn_shutdown() {
   objk_cnn::Pool::Instance().Shutdown();
+  std::vector<std::shared_ptr<objk_cnn_api::ModelBase>> models;
+  {
+    std::lock_guard<std::mutex> lock(objk_cnn_api::g_mutex);
+    for(std::map<size_t, std::shared_ptr<objk_cnn_api::ModelBase>>::iterator it = objk_cnn_api::g_models.begin(); it != objk_cnn_api::g_models.end(); ++it) {
+      models.push_back(it->second);
+    }
+  }
+  for(size_t i = 0; i < models.size(); ++i) {
+    models[i]->Shutdown();
+  }
+  std::lock_guard<std::mutex> lock(objk_cnn_api::g_cuda_mutex);
+  objk_cnn_api::g_cuda_down = true;
 }
 
 #ifdef _WIN32
@@ -495,9 +1027,92 @@ OBJK_CNN_EXPORT void ml_cnn_info(VMContext& context) {
   case 1: value = m->Compiled() ? 1 : 0; break;
   case 2: value = (size_t)m->LastCorrect(); break;
   case 3: value = m->IsDouble() ? 1 : 0; break;
+  case 4: value = (size_t)m->Device(); break;
+  case 5: value = (size_t)m->DeviceIndex(); break;
+  case 6: value = m->DeviceBytes(); break;
   default: break;
   }
   APITools_SetIntValue(context, 0, value);
+}
+
+// ml_cnn_device(ret Int ok; id, kind, index, tf32)  kind: 0 cpu, 1 cuda. A refusal leaves the model where it was.
+OBJK_CNN_EXPORT void ml_cnn_device(VMContext& context) {
+  const size_t id = APITools_GetIntValue(context, 1);
+  const int kind = IntArg(context, 2), index = IntArg(context, 3);
+  const bool tf32 = APITools_GetIntValue(context, 4) != 0;
+  APITools_SetIntValue(context, 0, 0);
+  std::shared_ptr<ModelBase> m = Find(id);
+  if(!m) {
+    g_global_error = "unknown or released model";
+    return;
+  }
+  if(kind != 0 && kind != 1) {
+    m->error = "unknown device, use cpu, cuda or cuda:N";
+    return;
+  }
+  bool ok = false;
+  try {
+    APITools_Parked parked(context);
+    ok = m->SetDevice(kind, index, tf32);
+  } catch(...) {
+    m->error = "out of memory";
+  }
+  APITools_SetIntValue(context, 0, ok ? 1 : 0);
+}
+
+// ml_cnn_cuda(ret Int; what, index)  what: 0 device count (0 when the GPU library or a GPU is missing), 1 total MB,
+// 2 free MB, 3 compute capability major, 4 minor
+OBJK_CNN_EXPORT void ml_cnn_cuda(VMContext& context) {
+  const int what = IntArg(context, 1), index = IntArg(context, 2);
+  APITools_SetIntValue(context, 0, 0);
+  std::string why;
+  const CudaLib* lib = CudaGet(why);
+  if(!lib) {
+    return;
+  }
+  const int count = lib->objk_cuda_device_count();
+  if(what == 0) {
+    APITools_SetIntValue(context, 0, count < 0 ? 0 : (size_t)count);
+    return;
+  }
+  size_t total = 0, free_b = 0;
+  int major = 0, minor = 0;
+  if(index < 0 || index >= count || !lib->objk_cuda_device_info(index, nullptr, 0, &total, &free_b, &major, &minor)) {
+    return;
+  }
+  size_t value = 0;
+  switch(what) {
+  case 1: value = total / 1048576; break;
+  case 2: value = free_b / 1048576; break;
+  case 3: value = (size_t)major; break;
+  case 4: value = (size_t)minor; break;
+  default: break;
+  }
+  APITools_SetIntValue(context, 0, value);
+}
+
+// ml_cnn_cuda_text(ret String; what, index)  what: 0 why CUDA is unavailable (empty when it works), 1 device name
+OBJK_CNN_EXPORT void ml_cnn_cuda_text(VMContext& context) {
+  const int what = IntArg(context, 1), index = IntArg(context, 2);
+  std::string text;
+  std::string why;
+  const CudaLib* lib = CudaGet(why);
+  if(what == 0) {
+    if(!lib) {
+      text = why;
+    } else if(lib->objk_cuda_device_count() < 1) {
+      text = lib->objk_cuda_last_error();
+      if(text.empty()) {
+        text = "no CUDA device";
+      }
+    }
+  } else if(lib && index >= 0 && index < lib->objk_cuda_device_count()) {
+    char name[256] = { 0 };
+    if(lib->objk_cuda_device_info(index, name, (int)sizeof(name), nullptr, nullptr, nullptr, nullptr)) {
+      text = name;
+    }
+  }
+  APITools_SetStringValue(context, 0, BytesToUnicode(text));
 }
 
 // ml_cnn_text(ret String; id, what)  what: 0 last error, 1 summary

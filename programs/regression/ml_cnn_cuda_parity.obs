@@ -1,0 +1,327 @@
+# EXTRA_LIBS: ml_cnn,ml,ml_lab,opencv,csv,gen_collect
+#~
+System.ML.Cnn on the GPU (the optional CUDA backend) against PyTorch and against the CPU engine.
+
+The cases are the ones of ml_cnn_parity.obs (data/cnn_parity/*.txt, written by tools/ml/cnn_parity.py from
+PyTorch, float32): each layer type alone, and the baseline network at 32 x 32. For every case the same
+architecture is built twice, once left on the CPU and once moved to the GPU with SetDevice("cuda"), both are
+given the same weights and inputs, and each is compared with PyTorch and with each other on: the loss, the
+logits, every parameter gradient, the gradient with respect to the input, and the output of each layer the case
+lists. train_baseline32 then runs 20 Adam steps on the identical batches in the identical order on both devices
+and compares the loss of every step with PyTorch's and with the CPU engine's, and the final weights.
+
+An optional first argument names another directory of case files; tools/ml/cnn_parity.py --device cuda writes
+fixtures computed by PyTorch ON THE GPU, so the same test then checks the GPU path against PyTorch-on-GPU. A second
+argument, "large", adds the baseline at 64 x 64 and 224 x 224 and a 20-step Adam run at 64 x 64 (written by
+cnn_parity.py --large; megabytes, so never committed), with a tolerance of 2e-4 for sums of up to 43,264 products.
+
+Tolerances. Each comparison is max |a - b| divided by max |b| over the tensor, so it is relative to the tensor's
+scale. All three sides are float32 and sum in different orders (cuBLAS, Eigen, PyTorch), a few ulps (6e-8 each)
+per accumulation of up to 2304 products, and the GPU compiles a multiply and an add into one fused operation
+that the CPU does not. The GPU against PyTorch and the CPU engine is allowed 2e-5 for one layer and 5e-5 for the
+network (the CPU engine has the same allowances against PyTorch; what was measured is printed to stderr and in
+docs/AI.md). The training loss curve is allowed 1e-4 per step and the final weights 1e-3: Adam divides by
+sqrt(v), so an entry whose gradient is tiny moves by more than the gradient difference, and the error of one
+step is the input of the next. In the longer 64 x 64 run (large) that amplification is larger, so the allowance
+against PyTorch is 1e-3 per step and 1e-2 for the weights, and against the CPU engine 2e-2 and 0.15: there the
+CPU engine itself is that far from PyTorch (its figures are printed beside the GPU's), the GPU is closer to
+PyTorch than the CPU is.
+
+The test prints SKIP and exits 0 when there is no CUDA library or device, so it is inert on CI.
+~#
+
+use System.ML.Cnn;
+use System.IO.Filesystem;
+use Collection;
+
+class MlCnnCudaParity {
+	@fail : static : Bool;
+	@dir : static : String;
+
+	function : Main(args : String[]) ~ Nil {
+		if(<>CnnRuntime->HasCuda()) {
+			"SKIP: no CUDA device ({$CnnRuntime->CudaStatus()})"->PrintLine();
+			return;
+		};
+
+		@dir := args->Size() > 0 ? args[0] : "data/cnn_parity";
+		if(args->Size() > 2) {
+			"  (CPU engine threads: {$CnnRuntime->SetThreads(args[2]->ToInt())})"->ErrorLine();
+		};
+		names := ["conv3_valid", "conv3_same", "conv4_same_even", "conv5_stride2", "conv1x1", "relu",
+			"maxpool2_odd", "maxpool3_stride2", "dense_stack", "dropout_eval", "baseline32"];
+		tols := [2.0e-5, 2.0e-5, 2.0e-5, 2.0e-5, 2.0e-5, 2.0e-5, 2.0e-5, 2.0e-5, 2.0e-5, 2.0e-5, 5.0e-5];
+		@fail := false;
+		each(i : names) {
+			Forward(names[i], tols[i]);
+		};
+		Train("train_baseline32", 1.0e-4, 1.0e-3, 1.0e-4, 1.0e-3);
+		if(args->Size() > 1 & args[1]->Equals("large")) {
+			Forward("baseline64", 2.0e-4);
+			Forward("baseline224", 2.0e-4);
+			Train("train_baseline64", 1.0e-3, 1.0e-2, 2.0e-2, 1.5e-1);
+		};
+
+		if(@fail) {
+			Runtime->Exit(1);
+		};
+		"ml_cnn_cuda_parity: ok"->PrintLine();
+	}
+
+	function : Report(name : String, ok : Bool) ~ Nil {
+		if(ok = false) {
+			"FAIL: {$name}"->PrintLine();
+			@fail := true;
+		};
+	}
+
+	# max |a - b| / max |b|, or 9.0 for arrays that are missing or differ in length
+	function : Diff(a : Float[], b : Float[]) ~ Float {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return 9.0;
+		};
+
+		scale := 0.0;
+		worst := 0.0;
+		each(i : b) {
+			scale := Float->Max(scale, Float->Abs(b[i]));
+			worst := Float->Max(worst, Float->Abs(a[i] - b[i]));
+		};
+
+		return worst / Float->Max(scale, 1.0e-12);
+	}
+
+	function : Load(name : String, tensors : Hash<String, FloatArrayRef>, header : String[]) ~ Bool {
+		path := "{$@dir}/{$name}.txt";
+		if(<>File->Exists(path)) {
+			"FAIL: {$path} is missing"->PrintLine();
+			return false;
+		};
+
+		lines := FileReader->ReadFile(path)->Split("\n");
+		header[0] := lines[0];
+		header[1] := "";
+		i := 1;
+		while(i < lines->Size()) {
+			parts := lines[i]->SplitWhitespace();
+			if(parts->Size() = 5 & parts[0]->Equals("train")) {
+				header[1] := lines[i];
+				i += 1;
+			}
+			else if(parts->Size() = 3 & parts[0]->Equals("tensor")) {
+				count := parts[2]->ToInt();
+				values := Float->New[count];
+				each(k : count) {
+					values[k] := lines[i + 1 + k]->ToFloat();
+				};
+				tensors->Insert(parts[1], FloatArrayRef->New(values));
+				i += count + 1;
+			}
+			else {
+				i += 1;
+			};
+		};
+
+		return true;
+	}
+
+	# "arch C H W | conv F K S valid | relu | ..." -> a compiled model with those layers, on the CPU
+	function : Build(arch : String, lr : Float) ~ CnnModel {
+		parts := arch->Split("|");
+		dims := parts[0]->SplitWhitespace();
+		model := CnnModel->New(dims[1]->ToInt(), dims[2]->ToInt(), dims[3]->ToInt(), 1);
+		ok := true;
+		for(i := 1; i < parts->Size(); i += 1;) {
+			t := parts[i]->SplitWhitespace();
+			kind := t[0];
+			if(kind->Equals("conv")) {
+				padding := t[4]->Equals("same") ? Padding->SAME : Padding->VALID;
+				ok := ok & model->AddConv(t[1]->ToInt(), t[2]->ToInt(), t[3]->ToInt(), padding);
+			}
+			else if(kind->Equals("relu")) {
+				ok := ok & model->AddReLU();
+			}
+			else if(kind->Equals("maxpool")) {
+				ok := ok & model->AddMaxPool(t[1]->ToInt(), t[2]->ToInt());
+			}
+			else if(kind->Equals("flatten")) {
+				ok := ok & model->AddFlatten();
+			}
+			else if(kind->Equals("dense")) {
+				ok := ok & model->AddDense(t[1]->ToInt());
+			}
+			else if(kind->Equals("dropout")) {
+				ok := ok & model->AddDropout(t[1]->ToFloat());
+			}
+			else {
+				ok := false;
+			};
+		};
+		ok := ok & model->Compile(lr);
+		if(ok = false) {
+			"FAIL: cannot build '{$arch}': {$model->GetError()}"->PrintLine();
+			return Nil;
+		};
+
+		return model;
+	}
+
+	# one pass of a model: [0] loss, then the tensors in the order below
+	function : Run(model : CnnModel, x : Float[], y : Float[], layers : Int) ~ Hash<String, FloatArrayRef> {
+		out := Hash->New()<String, FloatArrayRef>;
+		loss := model->GradientsWithInput(x, y);
+		out->Insert("loss", FloatArrayRef->New([loss]));
+		out->Insert("grad", FloatArrayRef->New(model->GetGradients()));
+		out->Insert("ginput", FloatArrayRef->New(model->GetInputGradient()));
+		for(i := 0; i < layers; i += 1;) {
+			act := model->GetActivation(i);
+			if(act <> Nil) {
+				out->Insert("act{$i}", FloatArrayRef->New(act));
+			};
+		};
+		out->Insert("logits", FloatArrayRef->New(model->PredictLogits(x)));
+
+		return out;
+	}
+
+	# worst relative difference between two result sets over the five tensor kinds; [loss, logits, grad, ginput, act]
+	function : Compare(a : Hash<String, FloatArrayRef>, b : Hash<String, FloatArrayRef>) ~ Float[] {
+		d := Float->New[5];
+		d[0] := Float->Abs(a->Find("loss")->Get()[0] - b->Find("loss")->Get()[0]) / Float->Max(Float->Abs(b->Find("loss")->Get()[0]), 1.0e-12);
+		d[1] := Diff(a->Find("logits")->Get(), b->Find("logits")->Get());
+		d[2] := Diff(a->Find("grad")->Get(), b->Find("grad")->Get());
+		d[3] := Diff(a->Find("ginput")->Get(), b->Find("ginput")->Get());
+		for(i := 0; i < 32; i += 1;) {
+			ra := a->Find("act{$i}");
+			rb := b->Find("act{$i}");
+			if(ra <> Nil & rb <> Nil) {
+				d[4] := Float->Max(d[4], Diff(ra->Get(), rb->Get()));
+			};
+		};
+
+		return d;
+	}
+
+	function : Forward(name : String, tol : Float) ~ Nil {
+		tensors := Hash->New()<String, FloatArrayRef>;
+		header := String->New[2];
+		if(<>Load(name, tensors, header)) {
+			@fail := true;
+			return;
+		};
+
+		cpu := Build(header[0], 0.001);
+		gpu := Build(header[0], 0.001);
+		if(cpu = Nil | gpu = Nil) {
+			@fail := true;
+			return;
+		};
+		Report(name + ": moved to the GPU", gpu->SetDevice("cuda"));
+		Report(name + ": device name", gpu->GetDevice()->Equals("cuda:0") & cpu->GetDevice()->Equals("cpu"));
+
+		w := tensors->Find("weights")->Get();
+		Report(name + ": weights fit (cpu)", cpu->SetWeights(w));
+		Report(name + ": weights fit (gpu)", gpu->SetWeights(w));
+		x := tensors->Find("x")->Get();
+		y := tensors->Find("y")->Get();
+		layers := 32;
+
+		# the reference, as the CPU test sees it
+		ref := Hash->New()<String, FloatArrayRef>;
+		ref->Insert("loss", tensors->Find("loss"));
+		ref->Insert("logits", tensors->Find("logits"));
+		ref->Insert("grad", tensors->Find("grad"));
+		ref->Insert("ginput", tensors->Find("ginput"));
+		for(i := 0; i < 32; i += 1;) {
+			act := tensors->Find("act{$i}");
+			if(act <> Nil) {
+				ref->Insert("act{$i}", act);
+			};
+		};
+
+		on_gpu := Run(gpu, x, y, layers);
+		on_cpu := Run(cpu, x, y, layers);
+		vs_torch := Compare(on_gpu, ref);
+		vs_cpu := Compare(on_gpu, on_cpu);
+		cpu_torch := Compare(on_cpu, ref);
+		"  {$name}: {$gpu->GetParameterCount()} params, relative differences in units of 1e-7 (loss, logits, gradients, input gradient, layer outputs)"->ErrorLine();
+		"    gpu vs torch: {$(vs_torch[0] * 1.0e7)} {$(vs_torch[1] * 1.0e7)} {$(vs_torch[2] * 1.0e7)} {$(vs_torch[3] * 1.0e7)} {$(vs_torch[4] * 1.0e7)}"->ErrorLine();
+		"    gpu vs cpu:   {$(vs_cpu[0] * 1.0e7)} {$(vs_cpu[1] * 1.0e7)} {$(vs_cpu[2] * 1.0e7)} {$(vs_cpu[3] * 1.0e7)} {$(vs_cpu[4] * 1.0e7)}"->ErrorLine();
+		"    cpu vs torch: {$(cpu_torch[0] * 1.0e7)} {$(cpu_torch[1] * 1.0e7)} {$(cpu_torch[2] * 1.0e7)} {$(cpu_torch[3] * 1.0e7)} {$(cpu_torch[4] * 1.0e7)}"->ErrorLine();
+		kinds := ["loss", "logits", "parameter gradients", "input gradient", "layer outputs"];
+		each(k : kinds) {
+			Report(name + " gpu vs torch: " + kinds[k], vs_torch[k] < tol);
+			Report(name + " gpu vs cpu: " + kinds[k], vs_cpu[k] < tol);
+		};
+		gpu->Close();
+		cpu->Close();
+	}
+
+	function : Batch(xs : Float[], ys : Float[], b : Int, batch : Int, per_image : Int, x : Float[], y : Float[]) ~ Nil {
+		each(k : x) {
+			x[k] := xs[b * batch * per_image + k];
+		};
+		each(k : y) {
+			y[k] := ys[b * batch + k];
+		};
+	}
+
+	function : Train(name : String, loss_tol : Float, weight_tol : Float, cpu_loss_tol : Float, cpu_weight_tol : Float) ~ Nil {
+		tensors := Hash->New()<String, FloatArrayRef>;
+		header := String->New[2];
+		if(<>Load(name, tensors, header)) {
+			@fail := true;
+			return;
+		};
+
+		spec := header[1]->SplitWhitespace();
+		steps := spec[1]->ToInt();
+		nbatches := spec[2]->ToInt();
+		batch := spec[3]->ToInt();
+		lr := spec[4]->ToFloat();
+		cpu := Build(header[0], lr);
+		gpu := Build(header[0], lr);
+		if(cpu = Nil | gpu = Nil) {
+			@fail := true;
+			return;
+		};
+		Report(name + ": moved to the GPU", gpu->SetDevice("cuda"));
+		w0 := tensors->Find("w0")->Get();
+		Report(name + ": weights fit (cpu)", cpu->SetWeights(w0));
+		Report(name + ": weights fit (gpu)", gpu->SetWeights(w0));
+
+		xs := tensors->Find("xs")->Get();
+		ys := tensors->Find("ys")->Get();
+		expected := tensors->Find("losses")->Get();
+		per_image := xs->Size() / (nbatches * batch);
+		worst_torch := 0.0;
+		worst_cpu := 0.0;
+		cpu_vs_torch := 0.0;
+		gpu_losses := Float->New[steps];
+		for(s := 0; s < steps; s += 1;) {
+			x := Float->New[batch * per_image];
+			y := Float->New[batch];
+			Batch(xs, ys, s % nbatches, batch, per_image, x, y);
+			gpu_losses[s] := gpu->TrainBatch(x, y);
+			cpu_loss := cpu->TrainBatch(x, y);
+			cpu_vs_torch := Float->Max(cpu_vs_torch, Float->Abs(cpu_loss - expected[s]) / Float->Max(Float->Abs(expected[s]), 1.0e-12));
+			worst_torch := Float->Max(worst_torch, Float->Abs(gpu_losses[s] - expected[s]) / Float->Max(Float->Abs(expected[s]), 1.0e-12));
+			worst_cpu := Float->Max(worst_cpu, Float->Abs(gpu_losses[s] - cpu_loss) / Float->Max(Float->Abs(cpu_loss), 1.0e-12));
+		};
+
+		wfinal := tensors->Find("wfinal")->Get();
+		weights_torch := Diff(gpu->GetWeights(), wfinal);
+		weights_cpu := Diff(gpu->GetWeights(), cpu->GetWeights());
+		cpu_weights_torch := Diff(cpu->GetWeights(), wfinal);
+		"  {$name}: {$steps} Adam steps, loss {$expected[0]} -> {$expected[steps - 1]} (torch), {$gpu_losses[0]} -> {$gpu_losses[steps - 1]} (gpu)"->ErrorLine();
+		"  {$name}: worst relative loss difference per step: gpu vs torch {$(worst_torch * 1.0e7)}e-7, gpu vs cpu {$(worst_cpu * 1.0e7)}e-7; final weights: gpu vs torch {$(weights_torch * 1.0e7)}e-7, gpu vs cpu {$(weights_cpu * 1.0e7)}e-7"->ErrorLine();
+		"  {$name}: for reference the CPU engine vs torch: loss {$(cpu_vs_torch * 1.0e7)}e-7 per step, final weights {$(cpu_weights_torch * 1.0e7)}e-7"->ErrorLine();
+		Report(name + ": the loss fell", expected[steps - 1] < expected[0] & gpu_losses[steps - 1] < gpu_losses[0]);
+		Report(name + ": loss curve vs torch", worst_torch < loss_tol);
+		Report(name + ": loss curve vs cpu", worst_cpu < cpu_loss_tol);
+		Report(name + ": final weights vs torch", weights_torch < weight_tol);
+		Report(name + ": final weights vs cpu", weights_cpu < cpu_weight_tol);
+		gpu->Close();
+		cpu->Close();
+	}
+}

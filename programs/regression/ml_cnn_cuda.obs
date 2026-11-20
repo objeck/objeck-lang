@@ -1,0 +1,764 @@
+# EXTRA_LIBS: ml_cnn,ml,ml_lab,opencv,csv,gen_collect
+#~
+System.ML.Cnn on the GPU, the optional CUDA backend: unit tests.
+
+Every test here compares the GPU model with a CPU twin built the same way (same architecture, same seed, so the
+same initial weights) and checks the two agree within float32 summation noise; the layer-by-layer agreement with
+PyTorch is ml_cnn_cuda_parity.obs. What is covered:
+
+  * device query and selection: the device list, SetDevice to the GPU and back, unknown and absent devices refused
+    with a reason and the model left where it was;
+  * memory: creating, training and closing a model over and over, and moving one back to the CPU, gives the GPU
+    memory back;
+  * shapes: odd and non-square images, 1 and 3 (and 2) channels, a 1 x 1 image, a kernel as large as the image,
+    stride 3, 'same' padding with an even kernel, overlapping pooling windows, a batch of 1;
+  * dropout: the same seed gives the same masks on two GPU models and on the CPU model, a different seed another
+    mask, ResetDropout replays them, and the rate is the requested one;
+  * training: 20 Adam steps on identical weights and batches follow the CPU loss curve step by step, and a longer
+    run through CnnTrainer reaches the CPU's accuracy;
+  * Save and Load round trips between the CPU and the GPU in both directions;
+  * error paths: a batch too large for the GPU answers -1.0 with a reason and leaves the model usable; bad
+    arguments are refused as on the CPU; a closed model refuses a device;
+  * several models alive in one process, trained in turn, each equal to its CPU twin.
+
+Timings, differences and memory figures go to stderr; stdout is the same on every run. The test prints SKIP and
+exits 0 when there is no CUDA library or device, so it is inert on CI (ml_cnn_cuda_fallback.obs covers what a
+machine without a GPU must do).
+~#
+
+use System.ML.Cnn;
+use System.IO.Filesystem;
+use Collection;
+
+class MlCnnCuda {
+	@fail : static : Bool;
+	@state : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		if(<>CnnRuntime->HasCuda()) {
+			"SKIP: no CUDA device ({$CnnRuntime->CudaStatus()})"->PrintLine();
+			return;
+		};
+
+		@fail := false;
+		@state := 12345;
+		Devices();
+		Shapes();
+		Dropout();
+		Training();
+		Determinism();
+		SaveLoad();
+		MultipleModels();
+		Memory();
+		Errors();
+		Longer();
+
+		if(@fail) {
+			Runtime->Exit(1);
+		};
+		"ml_cnn_cuda: ok"->PrintLine();
+	}
+
+	# stdout carries only the fixed text of a check, so it is the same on every machine and run; what was measured, the
+	# part of the name from " (" on, goes to stderr
+	function : Report(name : String, ok : Bool) ~ Nil {
+		fixed := name;
+		at := name->Find(" (");
+		if(at > 0) {
+			fixed := name->SubString(at);
+			"      {$name}"->ErrorLine();
+		};
+		if(ok) {
+			"  ok: {$fixed}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$fixed}"->PrintLine();
+			"  FAIL: {$name}"->ErrorLine();
+			@fail := true;
+		};
+	}
+
+	function : Rand() ~ Float {
+		@state := (@state * 1103515245 + 12345) % 2147483648;
+		return @state->As(Float) / 2147483648.0;
+	}
+
+	function : Randoms(n : Int) ~ Float[] {
+		values := Float->New[n];
+		each(i : n) {
+			values[i] := Rand();
+		};
+
+		return values;
+	}
+
+	function : Labels(n : Int) ~ Float[] {
+		values := Float->New[n];
+		each(i : n) {
+			values[i] := Rand() > 0.5 ? 1.0 : 0.0;
+		};
+
+		return values;
+	}
+
+	function : Same(a : Float[], b : Float[]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	# max |a - b| / max |b|, or 9.0 for missing arrays or different lengths
+	function : Diff(a : Float[], b : Float[]) ~ Float {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return 9.0;
+		};
+
+		scale := 0.0;
+		worst := 0.0;
+		each(i : b) {
+			scale := Float->Max(scale, Float->Abs(b[i]));
+			worst := Float->Max(worst, Float->Abs(a[i] - b[i]));
+		};
+
+		return worst / Float->Max(scale, 1.0e-12);
+	}
+
+	function : ErrorOf(m : CnnModel) ~ String {
+		return m->GetError();
+	}
+
+	#
+	# devices
+	#
+	function : Devices() ~ Nil {
+		"devices"->PrintLine();
+		devices := CnnRuntime->GetDevices();
+		Report("the device list starts with cpu and lists the GPU", devices->Size() >= 2 & devices[0]->Equals("cpu") & devices[1]->StartsWith("cuda:0 "));
+		devices[1]->ErrorLine();
+		Report("CudaFreeMemory answers a positive size", CnnRuntime->CudaFreeMemory(0) > 0);
+		Report("a device that does not exist has no memory to report", CnnRuntime->CudaFreeMemory(99) = 0);
+		Report("CudaStatus is empty when CUDA works", CnnRuntime->CudaStatus()->Size() = 0);
+
+		m := CnnModel->Baseline(32, 2, 0.1, 16, 0.001, 3);
+		Report("a new model is on the CPU", m->GetDevice()->Equals("cpu") & m->GetDeviceMemory() = 0);
+		Report("it moves to the GPU", m->SetDevice("cuda") & m->GetDevice()->Equals("cuda:0") & m->GetDeviceMemory() > 0);
+		Report("moving to the same device again is fine", m->SetDevice("CUDA:0") & m->GetDevice()->Equals("cuda:0"));
+		Report("it moves back", m->SetDevice("cpu") & m->GetDevice()->Equals("cpu") & m->GetDeviceMemory() = 0);
+
+		before := m->GetWeights();
+		Report("an unknown device is refused", m->SetDevice("tpu") = false & m->GetError()->Size() > 0);
+		Report("   with a reason that names the choices ({$m->GetError()})", m->GetError()->Find("cuda") >= 0);
+		Report("a malformed index is refused", m->SetDevice("cuda:x") = false & m->SetDevice("cuda:") = false & m->SetDevice("cuda:-1") = false);
+		Report("a device number that does not exist is refused", m->SetDevice("cuda:99") = false & m->GetError()->Find("99") >= 0);
+		Report("Nil is refused", m->SetDevice(Nil) = false);
+		Report("a refusal leaves the model on the CPU, weights intact", m->GetDevice()->Equals("cpu") & Same(before, m->GetWeights()));
+		x := Randoms(2 * 3 * 32 * 32);
+		y := Labels(2);
+		Report("   and it still trains", m->TrainBatch(x, y) > 0.0);
+
+		Report("a GPU model keeps its weights when it goes back", Moved(m));
+		m->Close();
+		Report("a closed model refuses a device", m->SetDevice("cuda") = false);
+
+		# a float64 reference model has no GPU twin
+		r := CnnModel->NewReference(1, 4, 4, 1);
+		Report("the float64 reference model stays on the CPU", r->SetDevice("cuda") = false & r->SetDevice("cpu"));
+		r->Close();
+	}
+
+	function : Moved(m : CnnModel) ~ Bool {
+		x := Randoms(2 * 3 * 32 * 32);
+		y := Labels(2);
+		if(<>m->SetDevice("cuda")) {
+			return false;
+		};
+		each(s : 3) {
+			m->TrainBatch(x, y);
+		};
+		gpu_w := m->GetWeights();
+		p_gpu := m->Predict(x);
+		if(<>m->SetDevice("cpu")) {
+			return false;
+		};
+		p_cpu := m->Predict(x);
+
+		return Same(gpu_w, m->GetWeights()) & Diff(p_gpu, p_cpu) < 1.0e-5;
+	}
+
+	#
+	# shapes: GPU against a CPU twin
+	#
+	function : Build(spec : Int, seed : Int) ~ CnnModel {
+		m : CnnModel;
+		ok := true;
+		if(spec = 0) {
+			m := CnnModel->New(1, 7, 9, seed);
+			ok := m->AddConv(4, 3, 1, Padding->SAME) & m->AddReLU() & m->AddMaxPool(2) & m->AddFlatten() & m->AddDense(1);
+		}
+		else if(spec = 1) {
+			m := CnnModel->New(3, 8, 5, seed);
+			ok := m->AddConv(3, 3, 2, Padding->SAME) & m->AddReLU() & m->AddConv(2, 2, 1, Padding->VALID) & m->AddFlatten() & m->AddDense(4) & m->AddReLU() & m->AddDense(1);
+		}
+		else if(spec = 2) {
+			m := CnnModel->New(1, 1, 1, seed);
+			ok := m->AddFlatten() & m->AddDense(1);
+		}
+		else if(spec = 3) {
+			m := CnnModel->New(3, 5, 5, seed);
+			ok := m->AddConv(2, 5, 1, Padding->VALID) & m->AddFlatten() & m->AddDense(1);
+		}
+		else if(spec = 4) {
+			m := CnnModel->New(3, 9, 11, seed);
+			ok := m->AddConv(5, 4, 3, Padding->SAME) & m->AddMaxPool(3, 2) & m->AddReLU() & m->AddFlatten() & m->AddDense(3) & m->AddDropout(0.0) & m->AddDense(1);
+		}
+		else if(spec = 5) {
+			m := CnnModel->New(2, 6, 6, seed);
+			ok := m->AddConv(3, 1, 1, Padding->VALID) & m->AddReLU() & m->AddFlatten() & m->AddDense(1);
+		}
+		else if(spec = 6) {
+			m := CnnModel->New(1, 13, 13, seed);
+			ok := m->AddConv(2, 3, 1, Padding->SAME) & m->AddMaxPool(3, 1) & m->AddFlatten() & m->AddDense(1);
+		}
+		else {
+			m := CnnModel->New(3, 17, 16, seed);
+			ok := m->AddConv(6, 3, 1, Padding->VALID) & m->AddReLU() & m->AddMaxPool(2) & m->AddConv(4, 3, 2, Padding->SAME) & m->AddReLU() & m->AddFlatten() & m->AddDense(8) & m->AddReLU() & m->AddDense(1);
+		};
+		ok := ok & m->Compile(0.001);
+		if(ok = false) {
+			"  FAIL: cannot build spec {$spec}: {$m->GetError()}"->PrintLine();
+			@fail := true;
+		};
+
+		return m;
+	}
+
+	function : Shapes() ~ Nil {
+		"shapes and batch sizes (gpu against a cpu twin)"->PrintLine();
+		batches := [1, 3, 6];
+		worst := 0.0;
+		for(spec := 0; spec < 8; spec += 1;) {
+			cpu := Build(spec, 7 + spec);
+			gpu := Build(spec, 7 + spec);
+			Report("shape {$spec}: moved to the GPU", gpu->SetDevice("cuda"));
+			Report("shape {$spec}: same initial weights, bit for bit", Same(cpu->GetWeights(), gpu->GetWeights()));
+			per := cpu->GetChannels() * cpu->GetHeight() * cpu->GetWidth();
+			bad := 0.0;
+			each(b : batches) {
+				n := batches[b];
+				x := Randoms(n * per);
+				y := Labels(n);
+				lc := cpu->GradientsWithInput(x, y);
+				lg := gpu->GradientsWithInput(x, y);
+				d := Float->Max(Float->Abs(lc - lg) / Float->Max(Float->Abs(lc), 1.0e-12), Diff(gpu->GetGradients(), cpu->GetGradients()));
+				d := Float->Max(d, Diff(gpu->GetInputGradient(), cpu->GetInputGradient()));
+				d := Float->Max(d, Diff(gpu->PredictLogits(x), cpu->PredictLogits(x)));
+				d := Float->Max(d, Diff(gpu->Predict(x), cpu->Predict(x)));
+				bad := Float->Max(bad, d);
+			};
+			worst := Float->Max(worst, bad);
+			Report("shape {$spec}: batches of 1, 3 and 6 agree with the CPU (worst {$(bad * 1.0e7)}e-7)", bad < 2.0e-5);
+			gpu->Close();
+			cpu->Close();
+		};
+		"  shapes: worst relative difference {$(worst * 1.0e7)}e-7"->ErrorLine();
+
+		# the staged-image path and its labels work on the GPU
+		gpu := Build(0, 11);
+		gpu->SetDevice("cuda");
+		pixels := Byte->New[7 * 9];
+		each(i : pixels) {
+			pixels[i] := (i * 3 % 256)->As(Byte);
+		};
+		cfg := Augmentation->New();
+		Report("a staged image trains on the GPU", gpu->StageImage(pixels, 7, 9, 0, 2, cfg, 0) & gpu->StageImage(pixels, 7, 9, 1, 2, cfg, 1) & gpu->TrainStaged([1.0, 0.0]) > 0.0);
+		Report("   and predicts", gpu->PredictStaged(2, false)->Size() = 2);
+		gpu->Close();
+	}
+
+	#
+	# dropout
+	#
+	function : DropModel(seed : Int, rate : Float) ~ CnnModel {
+		m := CnnModel->New(1, 6, 6, seed);
+		ok := m->AddFlatten() & m->AddDense(64) & m->AddReLU() & m->AddDropout(rate) & m->AddDense(1) & m->Compile(0.001);
+		if(ok = false) {
+			"  FAIL: cannot build the dropout model"->PrintLine();
+			@fail := true;
+		};
+		m->SetTraining(true);
+
+		return m;
+	}
+
+	function : Dropout() ~ Nil {
+		"dropout"->PrintLine();
+		x := Randoms(8 * 36);
+		a := DropModel(5, 0.5);
+		b := DropModel(5, 0.5);
+		cpu := DropModel(5, 0.5);
+		c := DropModel(6, 0.5);
+		Report("dropout models moved to the GPU", a->SetDevice("cuda") & b->SetDevice("cuda") & c->SetDevice("cuda"));
+
+		a1 := a->PredictLogits(x);
+		a1_mask := a->GetActivation(3);
+		b1 := b->PredictLogits(x);
+		c1 := c->PredictLogits(x);
+		cpu1 := cpu->PredictLogits(x);
+		cpu1_mask := cpu->GetActivation(3);
+		Report("the same seed gives the same logits on two GPU models, bit for bit", Same(a1, b1));
+		Report("another seed gives another mask", Same(a1, c1) = false);
+		Report("the GPU mask is the CPU's, element for element", MaskSame(a1_mask, cpu1_mask));
+		Report("the logits follow (relative {$(Diff(a1, cpu1) * 1.0e7)}e-7)", Diff(a1, cpu1) < 2.0e-5);
+
+		pre := a->GetActivation(2);
+		killed := 0;
+		live := 0;
+		scaled := true;
+		each(i : pre) {
+			if(pre[i] > 0.0) {
+				live += 1;
+				if(a1_mask[i] = 0.0) {
+					killed += 1;
+				}
+				else if(Float->Abs(a1_mask[i] - pre[i] * 2.0) > 1.0e-6) {
+					scaled := false;
+				};
+			}
+			else if(a1_mask[i] <> 0.0) {
+				scaled := false;
+			};
+		};
+		fraction := killed->As(Float) / live->As(Float);
+		"  dropout rate 0.5 killed {$killed} of {$live} live activations ({$fraction})"->ErrorLine();
+		Report("about half of the activations are dropped", fraction > 0.4 & fraction < 0.6);
+		Report("the survivors are scaled by 1 / (1 - rate)", scaled);
+
+		a2 := a->PredictLogits(x);
+		cpu2 := cpu->PredictLogits(x);
+		Report("the next pass draws a new mask", Same(a1, a2) = false);
+		Report("   which is again the CPU's ({$(Diff(a2, cpu2) * 1.0e7)}e-7)", Diff(a2, cpu2) < 2.0e-5);
+		a->ResetDropout();
+		Report("ResetDropout replays the first mask", Same(a->PredictLogits(x), a1));
+
+		a->SetTraining(false);
+		e1 := a->PredictLogits(x);
+		Report("evaluation is the identity, repeatable", Same(e1, a->PredictLogits(x)) & Same(a->GetActivation(2), a->GetActivation(3)));
+
+		# a rate of 0 draws nothing; a high rate keeps few
+		z := DropModel(5, 0.0);
+		z->SetDevice("cuda");
+		z->PredictLogits(x);
+		Report("a rate of 0 keeps everything", Same(z->GetActivation(2), z->GetActivation(3)));
+		hi := DropModel(5, 0.9);
+		hi->SetDevice("cuda");
+		hi->PredictLogits(x);
+		hp := hi->GetActivation(2);
+		hm := hi->GetActivation(3);
+		hk := 0;
+		hl := 0;
+		each(i : hp) {
+			if(hp[i] > 0.0) {
+				hl += 1;
+				if(hm[i] <> 0.0) {
+					hk += 1;
+				};
+			};
+		};
+		hf := hk->As(Float) / hl->As(Float);
+		Report("a rate of 0.9 keeps about a tenth ({$hf})", hf > 0.05 & hf < 0.17);
+
+		# training with dropout: the gradients flow through the same mask on both devices
+		a->SetTraining(true);
+		a->ResetDropout();
+		cpu->ResetDropout();
+		y := Labels(8);
+		la := a->GradientsTraining(x, y);
+		lc := cpu->GradientsTraining(x, y);
+		Report("training-mode gradients through dropout agree ({$(Diff(a->GetGradients(), cpu->GetGradients()) * 1.0e7)}e-7)", Diff(a->GetGradients(), cpu->GetGradients()) < 2.0e-5 & Float->Abs(la - lc) < 1.0e-5);
+
+		a->Close();
+		b->Close();
+		c->Close();
+		cpu->Close();
+		z->Close();
+		hi->Close();
+	}
+
+	# the pattern of dropped (zero) entries of two activations is the same
+	function : MaskSame(a : Float[], b : Float[]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if((a[i] = 0.0) <> (b[i] = 0.0)) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	#
+	# training
+	#
+	function : Training() ~ Nil {
+		"training: gpu against cpu"->PrintLine();
+		steps := 20;
+		batch := 8;
+		cpu := CnnModel->Baseline(32, 3, 0.1, 32, 0.001, 5);
+		gpu := CnnModel->Baseline(32, 3, 0.1, 32, 0.001, 5);
+		Report("moved to the GPU", gpu->SetDevice("cuda"));
+		Report("identical initial weights", Same(cpu->GetWeights(), gpu->GetWeights()));
+		per := 3 * 32 * 32;
+		worst := 0.0;
+		worst_step := 0;
+		first := 0.0;
+		last := 0.0;
+		for(s := 0; s < steps; s += 1;) {
+			x := Randoms(batch * per);
+			y := Labels(batch);
+			# a rule the net can learn: the label shifts the image's brightness. Values are not clamped to 0 .. 1: a
+			# saturated region is many windows that are equal in exact arithmetic and unequal by rounding, and which
+			# one a max pool picks would then depend on the summation order, which is not what is under test
+			each(k : batch) {
+				shift := y[k] > 0.5 ? 0.15 : -0.15;
+				for(j := 0; j < per; j += 1;) {
+					x[k * per + j] += shift;
+				};
+			};
+			lc := cpu->TrainBatch(x, y);
+			lg := gpu->TrainBatch(x, y);
+			d := Float->Abs(lc - lg) / Float->Max(Float->Abs(lc), 1.0e-12);
+			if(d > worst) {
+				worst := d;
+				worst_step := s;
+			};
+			if(s = 0) {
+				first := lg;
+			};
+			last := lg;
+		};
+		"  {$steps} Adam steps: loss {$first} -> {$last}, worst relative difference per step {$(worst * 1.0e7)}e-7 at step {$worst_step}, weights {$(Diff(gpu->GetWeights(), cpu->GetWeights()) * 1.0e7)}e-7"->ErrorLine();
+		Report("the loss falls", last < first);
+		Report("the loss curve follows the CPU's step by step", worst < 1.0e-4);
+		Report("the weights follow", Diff(gpu->GetWeights(), cpu->GetWeights()) < 1.0e-3);
+		Report("the correct count is reported", gpu->GetCorrect() >= 0 & gpu->GetCorrect() <= batch);
+
+		# a learning-rate change takes effect on the GPU as on the CPU
+		x := Randoms(batch * per);
+		y := Labels(batch);
+		cpu->SetLearningRate(0.01);
+		gpu->SetLearningRate(0.01);
+		lc := cpu->TrainBatch(x, y);
+		lg := gpu->TrainBatch(x, y);
+		lc2 := cpu->TrainBatch(x, y);
+		lg2 := gpu->TrainBatch(x, y);
+		Report("SetLearningRate reaches the GPU", Float->Abs(lc - lg) / lc < 1.0e-4 & Float->Abs(lc2 - lg2) / lc2 < 1.0e-4);
+		Report("EvaluateBatch agrees", Float->Abs(cpu->EvaluateBatch(x, y) - gpu->EvaluateBatch(x, y)) < 1.0e-4);
+
+		# SGD with momentum
+		sc := CnnModel->New(1, 6, 6, 9);
+		sg := CnnModel->New(1, 6, 6, 9);
+		pair := [sc, sg];
+		each(k : pair) {
+			pair[k]->AddConv(2, 3, 1, Padding->VALID);
+			pair[k]->AddReLU();
+			pair[k]->AddFlatten();
+			pair[k]->AddDense(1);
+			pair[k]->CompileSgd(0.05, 0.9);
+		};
+		sg->SetDevice("cuda");
+		sx := Randoms(4 * 36);
+		sy := Labels(4);
+		sw := 0.0;
+		each(s : 10) {
+			a := sc->TrainBatch(sx, sy);
+			b := sg->TrainBatch(sx, sy);
+			sw := Float->Max(sw, Float->Abs(a - b) / a);
+		};
+		Report("SGD with momentum follows the CPU ({$(sw * 1.0e7)}e-7)", sw < 1.0e-4);
+		sc->Close();
+		sg->Close();
+		cpu->Close();
+		gpu->Close();
+	}
+
+	#
+	# the GPU repeats itself: no atomics, fixed summation orders
+	#
+	function : Determinism() ~ Nil {
+		"determinism"->PrintLine();
+		a := Build(7, 3);
+		b := Build(7, 3);
+		a->SetDevice("cuda");
+		b->SetDevice("cuda");
+		per := a->GetChannels() * a->GetHeight() * a->GetWidth();
+		same := true;
+		each(s : 8) {
+			x := Randoms(5 * per);
+			y := Labels(5);
+			same := same & a->TrainBatch(x, y) = b->TrainBatch(x, y);
+		};
+		Report("two GPU models trained on the same batches have identical losses and weights, bit for bit", same & Same(a->GetWeights(), b->GetWeights()));
+		a->Close();
+		b->Close();
+	}
+
+	#
+	# save and load across devices
+	#
+	function : SaveLoad() ~ Nil {
+		"save and load between devices"->PrintLine();
+		path := "ml_cnn_cuda_weights.bin";
+		path2 := "ml_cnn_cuda_weights2.bin";
+		x := Randoms(4 * 3 * 32 * 32);
+		y := Labels(4);
+
+		gpu := CnnModel->Baseline(32, 2, 0.0, 16, 0.001, 21);
+		Report("moved to the GPU", gpu->SetDevice("cuda"));
+		each(s : 4) {
+			gpu->TrainBatch(x, y);
+		};
+		Report("a GPU model saves", gpu->Save(path) & File->Exists(path));
+
+		cpu := CnnModel->Baseline(32, 2, 0.0, 16, 0.001, 99);
+		Report("a CPU model with another seed starts elsewhere", Diff(cpu->GetWeights(), gpu->GetWeights()) > 0.01);
+		Report("the GPU model's file loads on the CPU", cpu->Load(path));
+		Report("the weights are bit-identical", Same(cpu->GetWeights(), gpu->GetWeights()));
+		pd := Diff(cpu->Predict(x), gpu->Predict(x));
+		Report("and the predictions agree ({$(pd * 1.0e7)}e-7)", pd < 1.0e-5);
+
+		# the other way: train on the CPU, load into a GPU model
+		each(s : 3) {
+			cpu->TrainBatch(x, y);
+		};
+		Report("a CPU model saves", cpu->Save(path2));
+		Report("a GPU model loads it", gpu->Load(path2));
+		Report("its weights are the CPU's, bit for bit", Same(gpu->GetWeights(), cpu->GetWeights()));
+		pd := Diff(gpu->Predict(x), cpu->Predict(x));
+		Report("and it predicts as the CPU does ({$(pd * 1.0e7)}e-7)", pd < 1.0e-5);
+
+		# a model moved to the GPU after Load, and weights set by hand
+		fresh := CnnModel->Baseline(32, 2, 0.0, 16, 0.001, 4);
+		Report("Load then SetDevice", fresh->Load(path2) & fresh->SetDevice("cuda") & Same(fresh->GetWeights(), cpu->GetWeights()));
+		Report("   predicts as the CPU does", Diff(fresh->Predict(x), cpu->Predict(x)) < 1.0e-5);
+		w := cpu->GetWeights();
+		w[0] := 0.75;
+		Report("SetWeights on a GPU model reaches the GPU", fresh->SetWeights(w) & Same(fresh->GetWeights(), w) & Diff(fresh->Predict(x), cpu->Predict(x)) > 1.0e-6);
+
+		# a GPU model is refused a file of another architecture, and keeps its weights
+		stranger := CnnModel->New(3, 32, 32, 1);
+		stranger->AddFlatten();
+		stranger->AddDense(1);
+		stranger->Compile(0.001);
+		stranger->SetDevice("cuda");
+		before := stranger->GetWeights();
+		Report("a file of another architecture is refused by a GPU model", stranger->Load(path) = false & Same(before, stranger->GetWeights()));
+
+		fresh->Close();
+		stranger->Close();
+		gpu->Close();
+		cpu->Close();
+		File->Delete(path);
+		File->Delete(path2);
+	}
+
+	#
+	# several models at once
+	#
+	function : MultipleModels() ~ Nil {
+		"several models in one process"->PrintLine();
+		specs := [0, 1, 4, 7];
+		cpus := CnnModel->New[specs->Size()];
+		gpus := CnnModel->New[specs->Size()];
+		each(i : specs) {
+			cpus[i] := Build(specs[i], 40 + i);
+			gpus[i] := Build(specs[i], 40 + i);
+		};
+		moved := true;
+		each(i : gpus) {
+			moved := moved & gpus[i]->SetDevice("cuda");
+		};
+		Report("{$specs->Size()} models live on the GPU together", moved);
+		worst := 0.0;
+		for(round := 0; round < 6; round += 1;) {
+			each(i : specs) {
+				per := cpus[i]->GetChannels() * cpus[i]->GetHeight() * cpus[i]->GetWidth();
+				n := 2 + (round + i) % 3;
+				x := Randoms(n * per);
+				y := Labels(n);
+				a := cpus[i]->TrainBatch(x, y);
+				b := gpus[i]->TrainBatch(x, y);
+				worst := Float->Max(worst, Float->Abs(a - b) / Float->Max(a, 1.0e-12));
+			};
+		};
+		"  interleaved training of {$specs->Size()} models, worst relative loss difference {$(worst * 1.0e7)}e-7"->ErrorLine();
+		Report("each follows its own CPU twin when trained in turn", worst < 1.0e-4);
+		independent := true;
+		each(i : specs) {
+			independent := independent & Diff(gpus[i]->GetWeights(), cpus[i]->GetWeights()) < 1.0e-3;
+		};
+		Report("their weights stayed apart and agree with the twins", independent);
+		Report("they hold separate GPU memory", gpus[0]->GetDeviceMemory() > 0 & gpus[1]->GetDeviceMemory() > 0 & gpus[0]->GetDeviceMemory() <> gpus[3]->GetDeviceMemory());
+		# closing one leaves the others working
+		gpus[1]->Close();
+		x := Randoms(2 * cpus[2]->GetChannels() * cpus[2]->GetHeight() * cpus[2]->GetWidth());
+		Report("closing one leaves the others working", gpus[2]->TrainBatch(x, Labels(2)) > 0.0);
+		each(i : specs) {
+			gpus[i]->Close();
+			cpus[i]->Close();
+		};
+	}
+
+	#
+	# memory
+	#
+	function : Cycle(size : Int) ~ Int {
+		m := CnnModel->Baseline(size, 3, 0.1, 128, 0.001, 1);
+		m->SetDevice("cuda");
+		n := 32;
+		m->TrainBatch(Randoms(n * 3 * size * size), Labels(n));
+		used := m->GetDeviceMemory();
+		m->Close();
+
+		return used;
+	}
+
+	function : Memory() ~ Nil {
+		"memory"->PrintLine();
+		Cycle(64);
+		before := CnnRuntime->CudaFreeMemory(0);
+		peak := 0;
+		bytes := 0;
+		for(i := 0; i < 8; i += 1;) {
+			m := CnnModel->Baseline(64, 3, 0.1, 128, 0.001, 1);
+			m->SetDevice("cuda");
+			m->TrainBatch(Randoms(32 * 3 * 64 * 64), Labels(32));
+			peak := Int->Max(peak, before - CnnRuntime->CudaFreeMemory(0));
+			bytes := m->GetDeviceMemory();
+			m->Close();
+		};
+		after := CnnRuntime->CudaFreeMemory(0);
+		"  free GPU memory: {$before} MB before, {$after} MB after 8 create/train/close cycles; peak use {$peak} MB, the model reported {$(bytes / 1048576)} MB"->ErrorLine();
+		Report("a model really holds GPU memory while it is open", peak >= 20 & bytes > 20000000);
+		Report("closing gives it all back (within 128 MB of noise from other processes)", after >= before - 128);
+
+		# moving a model back to the CPU frees it too
+		m := CnnModel->Baseline(64, 3, 0.1, 128, 0.001, 1);
+		m->SetDevice("cuda");
+		m->TrainBatch(Randoms(32 * 3 * 64 * 64), Labels(32));
+		held := before - CnnRuntime->CudaFreeMemory(0);
+		m->SetDevice("cpu");
+		freed := CnnRuntime->CudaFreeMemory(0);
+		"  a model held {$held} MB; after SetDevice(cpu) free memory is {$freed} MB (it was {$before} MB)"->ErrorLine();
+		Report("SetDevice(cpu) releases the GPU memory", held >= 20 & freed >= before - 128);
+		Report("   and the model still works on the CPU", m->TrainBatch(Randoms(4 * 3 * 64 * 64), Labels(4)) > 0.0);
+		m->Close();
+
+		# a model that is never closed is released when the library unloads: that happens at exit and is checked by the process ending cleanly
+		leak := CnnModel->Baseline(32, 2, 0.1, 16, 0.001, 1);
+		Report("(a model left open is cleaned up at exit)", leak->SetDevice("cuda"));
+	}
+
+	#
+	# error paths
+	#
+	function : Errors() ~ Nil {
+		"error paths"->PrintLine();
+		# per image: a 512-filter 'same' convolution at 64 x 64 twice, about 150 MB of activations, gradients and columns
+		big := CnnModel->New(3, 64, 64, 2);
+		ok := big->AddConv(512, 3, 1, Padding->SAME) & big->AddReLU() & big->AddConv(512, 3, 1, Padding->SAME) & big->AddReLU() & big->AddMaxPool(8) & big->AddFlatten() & big->AddDense(1) & big->Compile(0.001);
+		Report("the big model builds", ok & big->SetDevice("cuda"));
+		free_before := CnnRuntime->CudaFreeMemory(0);
+		n := 400;
+		x := Randoms(n * 3 * 64 * 64);
+		y := Labels(n);
+		loss := big->TrainBatch(x, y);
+		Report("a batch too large for the GPU answers -1.0", loss = -1.0);
+		Report("   with a reason ({$big->GetError()})", big->GetError()->Find("out of GPU memory") >= 0);
+		Report("   and takes nothing with it ({$free_before} MB free before, {$CnnRuntime->CudaFreeMemory(0)} after)", CnnRuntime->CudaFreeMemory(0) >= free_before - 128);
+		Report("the same for prediction and evaluation", big->Predict(x) = Nil & big->EvaluateBatch(x, y) = -1.0);
+		small := 2;
+		Report("a batch that fits still trains afterwards", big->TrainBatch(Randoms(small * 3 * 64 * 64), Labels(small)) > 0.0);
+		Report("   and predicts", big->Predict(Randoms(small * 3 * 64 * 64))->Size() = small);
+		big->Close();
+
+		# arguments are refused as on the CPU
+		m := Build(0, 1);
+		m->SetDevice("cuda");
+		per := 63;
+		Report("an empty batch is refused", m->TrainBatch(Float->New[0], Float->New[0]) = -1.0);
+		Report("images that are not whole are refused", m->TrainBatch(Float->New[per + 5], [1.0]) = -1.0 & m->GetError()->Size() > 0);
+		Report("labels that do not match are refused", m->TrainBatch(Randoms(2 * per), [1.0]) = -1.0);
+		Report("Nil images are refused", m->TrainBatch(Nil, [1.0]) = -1.0 & m->Predict(Nil) = Nil);
+		Report("the model still works", m->TrainBatch(Randoms(2 * per), Labels(2)) > 0.0);
+		uncompiled := CnnModel->New(1, 7, 9, 1);
+		uncompiled->AddFlatten();
+		uncompiled->AddDense(1);
+		Report("an uncompiled model can move and is then refused a batch, not crashed", uncompiled->SetDevice("cuda") & uncompiled->TrainBatch(Randoms(63), [1.0]) = -1.0 & uncompiled->Compile(0.001) & uncompiled->TrainBatch(Randoms(63), [1.0]) > 0.0);
+		Report("a layer cannot be added after Compile, on either device", uncompiled->AddDense(1) = false);
+		uncompiled->Close();
+		m->Close();
+	}
+
+	#
+	# a longer run through the trainer
+	#
+	function : Fit(device : String, epochs : Int, accuracy : Float[], loss : Float[]) ~ Float {
+		data := ImageDataset->Synthetic(64, 200, 42);
+		splits := data->Split(0.7, 0.15, 42);
+		aug := Augmentation->New();
+		aug->SetSeed(42);
+		aug->SetFlip(0.5);
+		aug->SetRotation(0.3, 10.0);
+		aug->SetBrightness(0.3, 0.8, 1.2);
+		splits[0]->SetAugmentation(aug);
+		model := CnnModel->Baseline(64, 3, 0.1, 128, 0.001, 42);
+		if(<>model->SetDevice(device)) {
+			"  FAIL: cannot use {$device}: {$model->GetError()}"->PrintLine();
+			@fail := true;
+			return -1.0;
+		};
+
+		trainer := CnnTrainer->New(model, splits[0], splits[1], 16, 42);
+		history := trainer->Fit(epochs);
+		if(history = Nil | history->GetEpochs() <> epochs) {
+			"  FAIL: {$device} training stopped: {$trainer->GetError()}"->PrintLine();
+			@fail := true;
+			return -1.0;
+		};
+		test := trainer->Evaluate(splits[2]);
+		accuracy[0] := history->GetValidationAccuracy(epochs - 1);
+		accuracy[1] := test->GetAccuracy();
+		loss[0] := history->GetTrainLoss(0);
+		loss[1] := history->GetTrainLoss(epochs - 1);
+		seconds := history->GetTotalSeconds();
+		model->Close();
+
+		return seconds;
+	}
+
+	function : Longer() ~ Nil {
+		"a longer run: CnnTrainer on the synthetic texture set, 20 epochs of 18 steps"->PrintLine();
+		epochs := 20;
+		cpu_acc := Float->New[2];
+		cpu_loss := Float->New[2];
+		gpu_acc := Float->New[2];
+		gpu_loss := Float->New[2];
+		cpu_s := Fit("cpu", epochs, cpu_acc, cpu_loss);
+		gpu_s := Fit("cuda", epochs, gpu_acc, gpu_loss);
+		"  cpu: validation {$cpu_acc[0]}, test {$cpu_acc[1]}, loss {$cpu_loss[0]} -> {$cpu_loss[1]}, {$cpu_s} s"->ErrorLine();
+		"  gpu: validation {$gpu_acc[0]}, test {$gpu_acc[1]}, loss {$gpu_loss[0]} -> {$gpu_loss[1]}, {$gpu_s} s"->ErrorLine();
+		Report("the GPU trains: the loss falls", gpu_loss[1] < gpu_loss[0] * 0.5);
+		Report("the GPU reaches 95% on validation and test", gpu_acc[0] >= 0.95 & gpu_acc[1] >= 0.95);
+		Report("its accuracy is the CPU's to within 5 points", Float->Abs(gpu_acc[1] - cpu_acc[1]) <= 0.05 & Float->Abs(gpu_acc[0] - cpu_acc[0]) <= 0.05);
+		Report("its final training loss is within a factor of 2 of the CPU's", gpu_loss[1] < cpu_loss[1] * 2.0 + 0.02 & cpu_loss[1] < gpu_loss[1] * 2.0 + 0.02);
+	}
+}

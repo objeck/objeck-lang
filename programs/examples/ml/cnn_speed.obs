@@ -1,0 +1,133 @@
+#~
+How fast the baseline convolutional network (System.ML.Cnn) trains and predicts, in images per second, on the CPU
+and on the optional CUDA backend.
+
+For each image size it builds the baseline (three Conv 3x3 + ReLU + MaxPool blocks with 16, 32 and 64 filters, Dense 128,
+dropout 0.1, Dense 1; 5,561,633 parameters at 224 x 224), moves it to the device, and times three things at the given batch size
+on random images, after two warm-up steps:
+
+  train   TrainBatch with a Float[] batch: native conversion of the doubles, forward, backward, Adam step
+  predict Predict with a Float[] batch: forward only
+  staged  StageImage for each image of the batch (8-bit pixels to the float tensor, what CnnTrainer does after it has
+          decoded a file) followed by TrainStaged: the throughput the trainer can reach if decoding and augmenting are free
+
+The decoding and augmentation of real image files stay on the CPU either way (OpenCV), so a whole epoch is bounded by
+them as well; cnn_images.obs --cache keeps the decoded images in memory.
+
+  compile: obc -src cnn_speed.obs -lib ml_cnn,ml,ml_lab,opencv,csv,json,cipher,gen_collect
+  run:     obr cnn_speed.obe --device cuda --sizes 64,128,224 --batch 64 --steps 20
+           obr cnn_speed.obe --device cpu --sizes 64 --batch 64 --steps 5
+
+Options: --device cpu|cuda|cuda:N (cpu), --sizes A,B,C (64,128,224), --batch N (64), --steps N (10), --tf32 (GPU only: let the
+matrix multiplies use TF32 Tensor Cores; off by default, results then differ by a few 1e-4).
+~#
+
+use System.ML.Cnn;
+use System.Time;
+
+class CnnSpeed {
+	@state : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		device := "cpu";
+		sizes := "64,128,224";
+		batch := 64;
+		steps := 10;
+		tf32 := false;
+		i := 0;
+		while(i < args->Size()) {
+			if(args[i]->Equals("--tf32")) {
+				tf32 := true;
+				i += 1;
+			}
+			else if(i + 1 >= args->Size()) {
+				"missing a value after {$args[i]}"->PrintLine();
+				Runtime->Exit(1);
+			}
+			else {
+				if(args[i]->Equals("--device")) { device := args[i + 1]; }
+				else if(args[i]->Equals("--sizes")) { sizes := args[i + 1]; }
+				else if(args[i]->Equals("--batch")) { batch := args[i + 1]->ToInt(); }
+				else if(args[i]->Equals("--steps")) { steps := args[i + 1]->ToInt(); }
+				else {
+					"unknown option {$args[i]}"->PrintLine();
+					Runtime->Exit(1);
+				};
+				i += 2;
+			};
+		};
+
+		@state := 99;
+		parts := sizes->Split(",");
+		"device {$device}{$(tf32 ? \" (TF32)\" : \"\")}, batch {$batch}, {$steps} timed steps"->PrintLine();
+		each(p : parts) {
+			Measure(device, tf32, parts[p]->ToInt(), batch, steps);
+		};
+	}
+
+	function : Rand() ~ Float {
+		@state := (@state * 1103515245 + 12345) % 2147483648;
+		return @state->As(Float) / 2147483648.0;
+	}
+
+	function : Measure(device : String, tf32 : Bool, size : Int, batch : Int, steps : Int) ~ Nil {
+		model := CnnModel->Baseline(size, 3, 0.1, 128, 0.0001, 42);
+		if(model = Nil) {
+			"{$size}: the network does not fit"->PrintLine();
+			return;
+		};
+		if(<>model->SetDevice(device, tf32)) {
+			"{$size}: cannot use {$device}: {$model->GetError()}"->PrintLine();
+			model->Close();
+			return;
+		};
+
+		per := 3 * size * size;
+		x := Float->New[batch * per];
+		y := Float->New[batch];
+		each(k : x) {
+			x[k] := Rand();
+		};
+		each(k : y) {
+			y[k] := k % 2;
+		};
+		pixels := Byte->New[per];
+		each(k : pixels) {
+			pixels[k] := (k * 31 % 256)->As(Byte);
+		};
+		none := Augmentation->New();
+
+		each(w : 2) {
+			model->TrainBatch(x, y);
+		};
+		timer := Timer->New();
+		timer->Start();
+		each(s : steps) {
+			model->TrainBatch(x, y);
+		};
+		timer->End();
+		train_s := timer->GetElapsedTime();
+
+		model->Predict(x);
+		timer->Start();
+		each(s : steps) {
+			model->Predict(x);
+		};
+		timer->End();
+		predict_s := timer->GetElapsedTime();
+
+		timer->Start();
+		each(s : steps) {
+			each(j : batch) {
+				model->StageImage(pixels, size, size, j, batch, none, s * batch + j);
+			};
+			model->TrainStaged(y);
+		};
+		timer->End();
+		staged_s := timer->GetElapsedTime();
+
+		images := (steps * batch)->As(Float);
+		"{$size} x {$size}: {$model->GetParameterCount()} parameters, train {$(images / train_s)} images/s ({$(train_s / steps->As(Float) * 1000.0)} ms/step), predict {$(images / predict_s)} images/s, staged train {$(images / staged_s)} images/s, GPU memory {$(model->GetDeviceMemory() / 1048576)} MB"->PrintLine();
+		model->Close();
+	}
+}

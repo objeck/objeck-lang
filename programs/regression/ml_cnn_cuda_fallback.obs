@@ -1,0 +1,88 @@
+# EXTRA_LIBS: ml_cnn,ml,ml_lab,opencv,csv,gen_collect
+#~
+System.ML.Cnn without a GPU: what a machine that has no CUDA library, no NVIDIA driver or no GPU must see.
+
+The CUDA backend is optional and not shipped, so most installations have none. Asking for it must be a
+failure value with a reason and never a crash, the device list must say "cpu" only, and a model that was
+refused a GPU must train on the CPU exactly as one that never asked. This test is the other half of
+ml_cnn_cuda.obs: it runs wherever CUDA is NOT available (CI), and prints SKIP where it is, because there the
+fallback is not exercised. To run it on a GPU machine, run it from a tree without libobjk_ml_cuda.
+~#
+
+use System.ML.Cnn;
+
+class MlCnnCudaFallback {
+	@fail : static : Bool;
+	@state : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		if(CnnRuntime->HasCuda()) {
+			"SKIP: a CUDA device is present, so the fallback is not exercised (see ml_cnn_cuda.obs)"->PrintLine();
+			return;
+		};
+
+		@fail := false;
+		@state := 777;
+		Report("no CUDA device is counted", CnnRuntime->CudaDeviceCount() = 0 & CnnRuntime->HasCuda() = false);
+		Report("a reason is given ({$CnnRuntime->CudaStatus()})", CnnRuntime->CudaStatus()->Size() > 0);
+		devices := CnnRuntime->GetDevices();
+		Report("the device list is just the CPU", devices->Size() = 1 & devices[0]->Equals("cpu"));
+		Report("there is no GPU memory to report", CnnRuntime->CudaFreeMemory(0) = 0);
+
+		a := CnnModel->Baseline(32, 2, 0.1, 16, 0.001, 8);
+		b := CnnModel->Baseline(32, 2, 0.1, 16, 0.001, 8);
+		Report("a new model is on the CPU", a->GetDevice()->Equals("cpu") & a->GetDeviceMemory() = 0);
+		Report("asking for the GPU is refused", a->SetDevice("cuda") = false);
+		Report("   with a reason ({$a->GetError()})", a->GetError()->Size() > 0);
+		Report("a numbered GPU is refused too", a->SetDevice("cuda:1") = false & a->SetDevice("cuda:0", true) = false);
+		Report("an unknown device is refused", a->SetDevice("tpu") = false);
+		Report("the model is still on the CPU", a->GetDevice()->Equals("cpu") & a->IsValid());
+		Report("choosing the CPU always works", a->SetDevice("cpu") & a->SetDevice("CPU") & a->GetDevice()->Equals("cpu"));
+
+		x := Randoms(4 * 3 * 32 * 32);
+		y := [1.0, 0.0, 1.0, 0.0];
+		same := true;
+		each(s : 3) {
+			same := same & a->TrainBatch(x, y) = b->TrainBatch(x, y);
+		};
+		Report("a model refused the GPU trains exactly as one that never asked", same);
+		Report("   and predicts the same", a->Predict(x)->Size() = 4 & a->Predict(x)[0] = b->Predict(x)[0]);
+		a->Close();
+		b->Close();
+		Report("a closed model refuses a device", a->SetDevice("cpu") = false);
+
+		if(@fail) {
+			Runtime->Exit(1);
+		};
+		"ml_cnn_cuda_fallback: ok"->PrintLine();
+	}
+
+	# stdout carries only the fixed text of a check, so it is the same on every machine and run; what was measured, the
+	# part of the name from " (" on, goes to stderr
+	function : Report(name : String, ok : Bool) ~ Nil {
+		fixed := name;
+		at := name->Find(" (");
+		if(at > 0) {
+			fixed := name->SubString(at);
+			"      {$name}"->ErrorLine();
+		};
+		if(ok) {
+			"  ok: {$fixed}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$fixed}"->PrintLine();
+			"  FAIL: {$name}"->ErrorLine();
+			@fail := true;
+		};
+	}
+
+	function : Randoms(n : Int) ~ Float[] {
+		values := Float->New[n];
+		each(i : n) {
+			@state := (@state * 1103515245 + 12345) % 2147483648;
+			values[i] := @state->As(Float) / 2147483648.0;
+		};
+
+		return values;
+	}
+}
