@@ -1637,6 +1637,118 @@ cropped->Save("cropped.jpg");
 	}
 
 	#~
+	Decodes a list of image files on several native threads. Every image is loaded as BGR 8-bit (like Image->Load) and resized to size x size when it is not already (like Image->Resize with the default linear interpolation), so the bytes of an image are the same as Image->Load, Resize and Bytes give for it, at any thread count. The decoding runs on worker threads that never touch VM memory: Start returns at once, so a batch can be decoded while the program does other work, and Wait blocks until it is done.
+
+```
+batch := ImageBatch->Start(["a.jpg", "b.jpg", "c.jpg"], 224, 4);
+if(batch <> Nil & batch->Wait() = 0) {
+  pixels := batch->Get(0);  # 224 x 224 x 3 bytes
+};
+batch->Close();
+```
+	~#
+	class ImageBatch {
+		@fn_opencv_batch_start : static : String;
+		@fn_opencv_batch_wait : static : String;
+		@fn_opencv_batch_get : static : String;
+		@fn_opencv_batch_free : static : String;
+		@id : Int;
+		@count : Int;
+
+		New(id : Int, count : Int) {
+			@id := id;
+			@count := count;
+		}
+
+		#~
+		Starts decoding image files.
+		@param paths image files, 1 or more
+		@param size every image is resized to size x size
+		@param threads worker threads, 1 to 64 (never more than the number of images)
+		@return the running batch, or Nil if refused (no paths, a Nil path, a size out of range)
+		~#
+		function : Start(paths : String[], size : Int, threads : Int) ~ ImageBatch {
+			if(paths = Nil | paths->Size() < 1) {
+				return Nil;
+			};
+
+			array_args := Base->New[4];
+			array_args[0] := IntRef->New();
+			array_args[1] := StringArrayRef->New(paths);
+			array_args[2] := IntRef->New(size);
+			array_args[3] := IntRef->New(threads);
+			if(@fn_opencv_batch_start = Nil) { @fn_opencv_batch_start := "opencv_batch_start"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_batch_start, array_args);
+
+			id := array_args[0]->As(IntRef)->Get();
+			if(id = 0) {
+				return Nil;
+			};
+
+			return ImageBatch->New(id, paths->Size());
+		}
+
+		#~
+		The number of images in the batch.
+		@return count
+		~#
+		method : public : Count() ~ Int {
+			return @count;
+		}
+
+		#~
+		Blocks until every image is decoded.
+		@return how many images could not be decoded (0 when all were), -1 if the batch was closed
+		~#
+		method : public : Wait() ~ Int {
+			if(@id = 0) {
+				return -1;
+			};
+
+			array_args := Base->New[2];
+			array_args[0] := IntRef->New(-1);
+			array_args[1] := IntRef->New(@id);
+			if(@fn_opencv_batch_wait = Nil) { @fn_opencv_batch_wait := "opencv_batch_wait"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_batch_wait, array_args);
+
+			return array_args[0]->As(IntRef)->Get();
+		}
+
+		#~
+		The pixels of one image, BGR, size x size x 3 bytes. Call Wait first.
+		@param index image index
+		@return a copy of the pixels, or Nil if that image could not be decoded or the batch is not finished
+		~#
+		method : public : Get(index : Int) ~ Byte[] {
+			if(@id = 0 | index < 0 | index >= @count) {
+				return Nil;
+			};
+
+			array_args := Base->New[3];
+			array_args[0] := ByteArrayRef->New();
+			array_args[1] := IntRef->New(@id);
+			array_args[2] := IntRef->New(index);
+			if(@fn_opencv_batch_get = Nil) { @fn_opencv_batch_get := "opencv_batch_get"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_batch_get, array_args);
+
+			return array_args[0]->As(ByteArrayRef)->Get();
+		}
+
+		#~
+		Frees the batch (waiting for it first if it is still decoding). Safe to call twice.
+		~#
+		method : public : Close() ~ Nil {
+			if(@id <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntRef->New(@id);
+				if(@fn_opencv_batch_free = Nil) { @fn_opencv_batch_free := "opencv_batch_free"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_opencv_batch_free, array_args);
+				@id := 0;
+			};
+		}
+	}
+
+	#~
 	OpenCV morphological operation types
 	~#
 	consts MorphTypes {

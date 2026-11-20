@@ -4,6 +4,92 @@
 namespace fs = std::filesystem;
 #endif
 
+#include <atomic>
+#include <map>
+#include <mutex>
+#include <thread>
+
+// Batch image loading: decodes and resizes a list of image files on several threads
+// into one native buffer. Used by System.ML.Cnn.ImageDataset. The bytes of image i are
+// exactly what Image->Load(path), Resize(Size(size, size)) and Bytes() give (BGR,
+// size x size x 3), whatever the thread count, because every image is decoded on its
+// own with the same calls. The workers touch no VM memory, so a batch can be decoded
+// while the VM thread does something else (start now, wait later).
+struct BatchJob {
+   std::vector<std::string> paths;
+   int size;
+   std::vector<unsigned char> pixels; // paths.size() x size x size x 3
+   std::vector<unsigned char> ok;
+   std::atomic<size_t> next;
+   std::vector<std::thread> workers;
+   size_t failed;
+   bool joined;
+   BatchJob() : size(0), next(0), failed(0), joined(false) {}
+};
+
+static std::mutex batch_mutex;
+static std::map<size_t, BatchJob*> batch_jobs;
+static size_t batch_next_id = 1;
+
+static void batch_decode_one(BatchJob* job, size_t i) {
+   try {
+      cv::Mat image = cv::imread(job->paths[i], cv::IMREAD_COLOR);
+      if(image.empty()) {
+         return;
+      }
+      if(image.rows != job->size || image.cols != job->size) {
+         cv::resize(image, image, cv::Size(job->size, job->size), 0.0, 0.0, cv::INTER_LINEAR);
+         if(image.empty()) {
+            return;
+         }
+      }
+      const size_t plane = (size_t)job->size * job->size;
+      if(image.type() != CV_8UC3 || image.total() != plane) {
+         return;
+      }
+      if(!image.isContinuous()) {
+         image = image.clone();
+      }
+      memcpy(&job->pixels[i * plane * 3], image.data, plane * 3);
+      job->ok[i] = 1;
+   }
+   catch(...) {
+      job->ok[i] = 0;
+   }
+}
+
+static void batch_worker(BatchJob* job) {
+   for(;;) {
+      const size_t i = job->next.fetch_add(1);
+      if(i >= job->paths.size()) {
+         return;
+      }
+      batch_decode_one(job, i);
+   }
+}
+
+static void batch_join(BatchJob* job) {
+   if(!job->joined) {
+      for(size_t t = 0; t < job->workers.size(); ++t) {
+         job->workers[t].join();
+      }
+      job->workers.clear();
+      job->failed = 0;
+      for(size_t i = 0; i < job->ok.size(); ++i) {
+         if(!job->ok[i]) {
+            job->failed++;
+         }
+      }
+      job->joined = true;
+   }
+}
+
+static BatchJob* batch_find(size_t id) {
+   std::lock_guard<std::mutex> lock(batch_mutex);
+   std::map<size_t, BatchJob*>::iterator found = batch_jobs.find(id);
+   return found == batch_jobs.end() ? nullptr : found->second;
+}
+
 extern "C" {
    // initialize library
 #ifdef _WIN32
@@ -18,6 +104,13 @@ extern "C" {
    __declspec(dllexport)
 #endif
    void unload_lib() {
+      // a batch still decoding must finish before the library goes
+      std::lock_guard<std::mutex> lock(batch_mutex);
+      for(std::map<size_t, BatchJob*>::iterator it = batch_jobs.begin(); it != batch_jobs.end(); ++it) {
+         batch_join(it->second);
+         delete it->second;
+      }
+      batch_jobs.clear();
    }
 
    // Get video property
@@ -219,6 +312,140 @@ extern "C" {
       }
       if(capture->isOpened()) {
          APITools_SetIntValue(context, 0, (size_t)capture);
+      }
+   }
+
+   // Starts decoding image files on `threads` worker threads (1 .. 64).
+   // opencv_batch_start(ret Int id; String[] paths, Int size, Int threads); id 0 if refused
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_batch_start(VMContext& context) {
+      APITools_SetIntValue(context, 0, 0);
+
+      size_t* array = APITools_GetArrayAddress(APITools_GetObjectValue(context, 1));
+      const long size = (long)APITools_GetIntValue(context, 2);
+      long threads = (long)APITools_GetIntValue(context, 3);
+      if(!array || size < 1 || size > 16384) {
+         return;
+      }
+
+      const size_t count = APITools_GetArraySize(array);
+      if(count < 1) {
+         return;
+      }
+
+      BatchJob* job = nullptr;
+      try {
+         job = new BatchJob();
+         job->size = (int)size;
+         for(size_t i = 0; i < count; ++i) {
+            const wchar_t* path = APITools_GetStringValue(array, i);
+            if(!path) {
+               delete job;
+               return;
+            }
+            job->paths.push_back(UnicodeToBytes(path));
+         }
+         job->pixels.assign(count * (size_t)size * size * 3, 0);
+         job->ok.assign(count, 0);
+
+         if(threads < 1) {
+            threads = 1;
+         }
+         if(threads > 64) {
+            threads = 64;
+         }
+         if((size_t)threads > count) {
+            threads = (long)count;
+         }
+         for(long t = 0; t < threads; ++t) {
+            job->workers.push_back(std::thread(batch_worker, job));
+         }
+      }
+      catch(...) {
+         if(job) {
+            // a thread that did start must finish before the job goes
+            job->next = job->paths.size();
+            for(size_t t = 0; t < job->workers.size(); ++t) {
+               job->workers[t].join();
+            }
+            delete job;
+         }
+         return;
+      }
+
+      std::lock_guard<std::mutex> lock(batch_mutex);
+      const size_t id = batch_next_id++;
+      batch_jobs[id] = job;
+      APITools_SetIntValue(context, 0, id);
+   }
+
+   // Waits for a batch to finish: how many images could not be decoded, -1 for no such batch.
+   // opencv_batch_wait(ret Int failed; Int id)
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_batch_wait(VMContext& context) {
+      const size_t id = APITools_GetIntValue(context, 1);
+      BatchJob* job = batch_find(id);
+      if(!job) {
+         APITools_SetIntValue(context, 0, (size_t)-1);
+         return;
+      }
+
+      {
+         APITools_Parked parked(context);
+         batch_join(job);
+      }
+      APITools_SetIntValue(context, 0, job->failed);
+   }
+
+   // The pixels of image `index` of a finished batch (BGR, size x size x 3), Nil if it failed.
+   // opencv_batch_get(ret Byte[]; Int id, Int index)
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_batch_get(VMContext& context) {
+      const size_t id = APITools_GetIntValue(context, 1);
+      const size_t index = APITools_GetIntValue(context, 2);
+      BatchJob* job = batch_find(id);
+      if(!job || !job->joined || index >= job->paths.size() || !job->ok[index]) {
+         return;
+      }
+
+      const size_t bytes = (size_t)job->size * job->size * 3;
+      size_t* array = APITools_MakeByteArray(context, bytes);
+      memcpy((unsigned char*)(array + 3), &job->pixels[index * bytes], bytes);
+      size_t* holder = APITools_GetObjectValue(context, 0);
+      if(holder) {
+         holder[0] = (size_t)array;
+         APITools_SetObjectValue(context, 0, holder);
+      }
+   }
+
+   // Waits for the batch if need be and frees it.
+   // opencv_batch_free(Int id)
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_batch_free(VMContext& context) {
+      const size_t id = APITools_GetIntValue(context, 0);
+      BatchJob* job = nullptr;
+      {
+         std::lock_guard<std::mutex> lock(batch_mutex);
+         std::map<size_t, BatchJob*>::iterator found = batch_jobs.find(id);
+         if(found != batch_jobs.end()) {
+            job = found->second;
+            batch_jobs.erase(found);
+         }
+      }
+      if(job) {
+         {
+            APITools_Parked parked(context);
+            batch_join(job);
+         }
+         delete job;
       }
    }
 
