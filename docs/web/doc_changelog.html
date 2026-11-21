@@ -107,6 +107,7 @@
     <h4 id="added">Added</h4>
     <ul>
      <li><strong><code>ResultTable</code> number formats</strong> (<code>System.ML.Lab</code>): per-column <code>"sci"</code> (1.23e-05), <code>"p"</code> (<code>&lt;0.0001</code> for a tiny p-value) and <code>"int"</code> (a count as <code>176</code>) beside the default fixed decimals, with <code>AddIntegerColumn</code>, <code>AddPValueColumn</code>, <code>AddScientificColumn</code>, <code>GetColumnPrecision</code>, <code>GetColumnFormat</code> and <code>FormatValue</code>. Existing tables render byte for byte as before; <code>ToCsv</code> writes a tiny value of a <code>"sci"</code>/<code>"p"</code> column in exponent form so it is not rounded to 0. Test <code>ml_lab_result_table_formats.obs</code></li>
+     <li><strong><code>System.ML.Report</code> for a study whose results arrive over time</strong>: <code>ResultTables-&gt;FromCsv</code> (a safe loader: <code>Nil</code> plus <code>GetError()</code> where <code>ResultTable-&gt;FromCsv</code> raises), <code>CsvToCells</code> and <code>CsvColumnKinds</code> for any CSV, <code>Report-&gt;AddCsvTable</code>, <code>AddPlaceholderTable</code> (cells read <code>not run yet</code>), <code>AddFigureSlot</code>, <code>AddRunStatus</code> (expected files, present or not), and <code>AddResultTableChart</code> with a chart title and rows to leave out. The four-argument chart call is unchanged. <code>CsvTable</code>'s doc now says its header is row 0. Test <code>ml_report_csv_manifest.obs</code></li>
     </ul>
     <h4 id="documentation">Documentation</h4>
     <ul>

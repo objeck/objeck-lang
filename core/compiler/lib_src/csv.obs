@@ -566,7 +566,7 @@ Console->PrintLine(col->Median());
 	}
 	
 	#~
-	CSV table
+	CSV table. The first record is the header and it is also row 0: Size() counts it (a header and two records is 3), Get(0) is the header record, the data records are Get(1) upward, and GetHeaders() returns the same row 0. So a loop from 0 visits the header first; start at 1 for the data. A table is "parsed" only when it has a header and at least one more record and every record has as many fields as the header: an empty text, a header with no records and a record with too few or too many fields give IsParsed() false, Size() 0 and the reason in GetError() (Get and GetHeaders then return Nil).
 
 ```
 csv := CsvTable->New(FileReader->ReadFile("data.csv"));

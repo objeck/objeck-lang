@@ -1559,6 +1559,8 @@ Seeds pair the settings, not their position: add them in any order. `Paired` use
 
 `ResultTables` converts to and from a `System.ML.Lab` `ResultTable` (the Lab library is not changed): `FromReplicates(rep, metric, title, parameter)` (a row per setting: `mean`, `std`, `ci_low`, `ci_high`, `n`, `missing`), `MeansFromReplicates` (a column per metric, `mean ± std`), `FromComparison` (a row per metric: both means, the difference, its interval, t, df, p, Cohen's d, pairs), `FromOls`, `FromTTests`, and `ToCells` / `FromCells` for a grid of text.
 
+`ResultTables->FromCsv(text)` reads a CSV written by `ResultTable->ToCsv` and, unlike `ResultTable->FromCsv`, which raises a `LabError`, returns `Nil` with the reason in `GetError()` for text that is empty, not CSV, or not in that layout (heading `<parameter>,<parameter>_value,...`, optional `<column>_std` columns, unique column names). `ResultTables->CsvToCells(text)` turns any CSV into a grid of text (heading row first) for `AddTable`, again `Nil` with a reason on failure, and `ResultTables->CsvColumnKinds(grid)` says per column whether it is `"integer"`, `"number"`, `"text"` or `"empty"`. Note that `CsvTable` counts its header as row 0 (`Size()` is records plus one; data starts at `Get(1)`), and a CSV with no records or a ragged record is not parsed at all.
+
 `Report` builds the document:
 
 ```ruby
@@ -1576,6 +1578,8 @@ report->AddCode("obc -src study.obs ...");
 report->AddNote("Synthetic data.");
 report->Save("report.html");                                  # or report.md
 ```
+
+`AddCsvTable(caption, csvText)` adds a table from CSV text: a Lab-layout CSV becomes a formatted `ResultTable` table, any other CSV a grid, and text that is not CSV is refused. For a study whose results arrive over time, `AddPlaceholderTable(caption, parameter, columns, rows)` adds a table whose cells all read `not run yet`, `AddFigureSlot(caption, "results/fig1")` adds `fig1.svg` (or `.png`) if it exists and otherwise a note that says which file to drop in (`GetError()` is `""` for a file that is merely absent, and says why for one that was refused), and `AddRunStatus(caption, files)` adds a table of expected files with `present` or `not run yet` and returns how many exist. `AddResultTableChart(caption, table, columns, kind, title, skipRows)` also sets the title drawn in the chart (`""` uses the table's title; the caption is the figure's caption below it) and leaves out the rows whose names you list, so a total row or a row with no value yet neither draws nor makes the chart refuse a value that is not finite.
 
 Also `AddBullets`, `AddNumbered`, `AddChart` (a Lab `Chart`), `AddPageBreak`, `SetContents(false)` and `SetPaper("A4")` or `"Letter"`. Tables and figures are numbered and captioned automatically, and a table's cells are spelled as `ResultTable->ToMarkdown()` spells them (the column's decimals, `mean ± std`, NaN as `n/a`). Text is plain text: `<`, `&`, quotes, backticks, pipes, asterisks and a line that starts like Markdown are escaped in both formats, so cell text cannot inject markup; an SVG with a script, an event handler or a `javascript:` link is refused.
 

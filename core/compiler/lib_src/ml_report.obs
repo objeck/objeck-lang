@@ -7,6 +7,7 @@ use Collection;
 use System.Stats;
 use System.ML.Lab;
 use System.Plot;
+use Data.CSV;
 
 #~
 What a student needs to turn a study into a hand-in: Replicates collects the value of each metric per seed and per setting and reports the count, mean, sample standard deviation, range and a t confidence interval, with a paired comparison of two settings; ResultTables converts between a System.ML.Lab ResultTable and the other results (replicates, an OLS fit, t-tests, a grid of strings); Report builds one document with numbered sections, tables, figures, code and notes, written as Markdown or as one self-contained HTML file with a print stylesheet that prints cleanly to PDF from a browser.
@@ -995,6 +996,149 @@ rep->GetCiHigh("depth 4", "test_accuracy")->PrintLine();
 			return @error;
 		}
 
+		#~
+		A System.ML.Lab ResultTable from CSV text written by ResultTable->ToCsv, without ending the program: ResultTable->FromCsv raises a LabError for text that is not in that layout, this returns Nil and GetError() says why. The layout is a heading of the parameter name, "<parameter>_value", the columns and, optionally, a "<column>_std" for each; the title and footnote are not in a CSV and come back empty, and so do the number formats.
+		@param text CSV text
+		@return the table, Nil with the reason in GetError() for Nil or empty text, CSV that does not parse, or a heading that is not that layout
+		~#
+		function : FromCsv(text : String) ~ ResultTable {
+			@error := "";
+			if(text = Nil | text->Trim()->Size() = 0) {
+				Fail("the CSV text is empty");
+				return Nil;
+			};
+
+			csv := CsvTable->New(text);
+			if(<>csv->IsParsed()) {
+				reason := csv->GetError();
+				Fail("the text is not valid CSV: {$reason}");
+				return Nil;
+			};
+
+			header := csv->GetHeaders();
+			width := header->Size();
+			if(width < 2 | <>header->Get(1)->Equals(header->Get(0) + "_value")) {
+				Fail("the heading is not <parameter>,<parameter>_value,... (not a ResultTable CSV)");
+				return Nil;
+			};
+
+			metrics := 0;
+			for(c := 2; c < width; c += 1;) {
+				if(<>header->Get(c)->EndsWith("_std")) {
+					metrics += 1;
+				};
+			};
+			if(width <> 2 + metrics & width <> 2 + 2 * metrics) {
+				Fail("the deviation columns do not match the value columns");
+				return Nil;
+			};
+
+			seen := Hash->New()<String, IntRef>;
+			for(c := 0; c < metrics; c += 1;) {
+				name := header->Get(2 + c);
+				if(name->Size() = 0) {
+					Fail("column {$c} has no name");
+					return Nil;
+				};
+				if(seen->Find(name) <> Nil) {
+					Fail("column '{$name}' appears twice");
+					return Nil;
+				};
+				seen->Insert(name, IntRef->New(c));
+			};
+
+			return ResultTable->FromCsv(text);
+		}
+
+		#~
+		Any CSV text as a grid of text for Report->AddTable: row 0 is the heading, each further row is a record. Use it for a CSV that System.ML.Lab did not write.
+		@param text CSV text with a heading row and at least one record
+		@return the grid, Nil with the reason in GetError() for Nil text or CSV that does not parse (an empty text, no records, a record with the wrong number of fields)
+		~#
+		function : CsvToCells(text : String) ~ String[,] {
+			@error := "";
+			if(text = Nil | text->Trim()->Size() = 0) {
+				Fail("the CSV text is empty");
+				return Nil;
+			};
+
+			sheet := CsvTable->New(text);
+			if(<>sheet->IsParsed()) {
+				reason := sheet->GetError();
+				Fail("the text is not valid CSV: {$reason}");
+				return Nil;
+			};
+
+			rows := sheet->Size();
+			cols := sheet->GetHeaders()->Size();
+			grid := String->New[rows, cols];
+			row : CsvRow;
+			for(r := 0; r < rows; r += 1;) {
+				row := sheet->Get(r);
+				each(c : cols) {
+					grid[r, c] := c < row->Size() ? row->Get(c) : "";
+				};
+			};
+
+			return grid;
+		}
+
+		#~
+		The kind of each column of a grid (row 0 is the heading): "integer" when every non-empty cell is a whole number, "number" when every one is a number, "empty" when there is none, else "text". A cell that is empty or "n/a" is skipped.
+		@param cells the grid, for example from CsvToCells
+		@return one kind per column, Nil for a Nil or empty grid
+		~#
+		function : CsvColumnKinds(cells : String[,]) ~ String[] {
+			if(cells = Nil) {
+				return Nil;
+			};
+
+			dims := cells->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows < 1 | cols < 1) {
+				return Nil;
+			};
+
+			kinds := String->New[cols];
+			each(c : cols) {
+				seen := 0;
+				whole := true;
+				numeric := true;
+				for(r := 1; r < rows; r += 1;) {
+					text := cells[r, c];
+					if(text <> Nil) {
+						trimmed := text->Trim();
+						if(trimmed->Size() > 0 & <>trimmed->Equals("n/a")) {
+							seen += 1;
+							if(<>ReportText->IsNumber(trimmed)) {
+								numeric := false;
+								whole := false;
+							}
+							else if(trimmed->Has('.') | trimmed->Has('e') | trimmed->Has('E')) {
+								whole := false;
+							};
+						};
+					};
+				};
+
+				if(seen = 0) {
+					kinds[c] := "empty";
+				}
+				else if(whole) {
+					kinds[c] := "integer";
+				}
+				else if(numeric) {
+					kinds[c] := "number";
+				}
+				else {
+					kinds[c] := "text";
+				};
+			};
+
+			return kinds;
+		}
+
 		function : RowValue(name : String, index : Int) ~ Float {
 			if(ReportText->IsNumber(name)) {
 				return name->Trim()->ToFloat();
@@ -1770,6 +1914,129 @@ report->Save("report.html");
 			return AddGrid(caption, cells, true);
 		}
 
+		#~
+		Adds a table from CSV text. CSV written by ResultTable->ToCsv becomes a formatted ResultTable table (as AddTable with a ResultTable); any other CSV is shown as a grid of text, its heading row first. Nothing here ends the program: text that is not CSV is refused.
+		@param caption the caption
+		@param csv CSV text with a heading row and at least one record
+		@return false for Nil or empty text, CSV that does not parse, or a heading with no column
+		~#
+		method : public : AddCsvTable(caption : String, csv : String) ~ Bool {
+			@error := "";
+			table := ResultTables->FromCsv(csv);
+			if(table <> Nil) {
+				return AddTable(caption, table);
+			};
+
+			grid := ResultTables->CsvToCells(csv);
+			if(grid = Nil) {
+				return Refuse(ResultTables->GetError());
+			};
+
+			return AddTable(caption, grid);
+		}
+
+		#~
+		Adds a table whose every cell reads "not run yet", for a result that has not been produced: the row names down the left, the column names across the top, so the report has its final shape before the experiments run.
+		@param caption the caption
+		@param parameter the heading of the row-name column
+		@param columns the column names, at least one
+		@param rows the row names
+		@return false for no columns or a Nil argument
+		~#
+		method : public : AddPlaceholderTable(caption : String, parameter : String, columns : String[], rows : String[]) ~ Bool {
+			@error := "";
+			if(columns = Nil | columns->Size() = 0) {
+				return Refuse("a placeholder table needs at least one column");
+			};
+			if(rows = Nil) {
+				return Refuse("the row names are Nil");
+			};
+
+			grid := String->New[rows->Size() + 1, columns->Size() + 1];
+			grid[0, 0] := parameter = Nil ? "" : parameter;
+			each(c : columns) {
+				grid[0, c + 1] := columns[c];
+			};
+			each(r : rows) {
+				grid[r + 1, 0] := rows[r];
+				each(c : columns) {
+					grid[r + 1, c + 1] := "not run yet";
+				};
+			};
+
+			return AddGrid(caption, grid, false);
+		}
+
+		#~
+		Adds the figure in <stem>.svg (or, if there is none, <stem>.png), or, when neither file exists, a note that says the figure has not been produced yet and which file to drop in. A figure file that exists but is refused (a script in the SVG, a bad PNG) adds a note with the reason instead.
+		@param caption the caption
+		@param stem the path without its extension
+		@return true when the figure was added; false when it is not there yet (GetError() is "") or was refused (GetError() says why)
+		~#
+		method : public : AddFigureSlot(caption : String, stem : String) ~ Bool {
+			@error := "";
+			if(stem = Nil | stem->Size() = 0) {
+				return Refuse("the figure path is empty");
+			};
+
+			svg := stem + ".svg";
+			png := stem + ".png";
+			path := "";
+			if(System.IO.Filesystem.File->Exists(svg)) {
+				path := svg;
+			}
+			else if(System.IO.Filesystem.File->Exists(png)) {
+				path := png;
+			};
+
+			if(path->Size() = 0) {
+				AddNote("Figure slot, not run yet: {$caption}. Drop {$svg} (or {$png}) and rebuild.");
+				return false;
+			};
+
+			if(AddFigureFile(caption, path)) {
+				return true;
+			};
+
+			reason := @error;
+			AddNote("Figure {$path} was refused: {$reason}");
+			@error := reason;
+
+			return false;
+		}
+
+		#~
+		Adds a table of expected result files and whether each exists ("present" or "not run yet"): the run status of a study at a glance, the same list every time the report is built.
+		@param caption the caption
+		@param paths the expected files, listed in this order
+		@return how many exist, -1 for a Nil or empty list
+		~#
+		method : public : AddRunStatus(caption : String, paths : String[]) ~ Int {
+			@error := "";
+			if(paths = Nil | paths->Size() = 0) {
+				Refuse("the list of expected files is empty");
+				return -1;
+			};
+
+			grid := String->New[paths->Size() + 1, 2];
+			grid[0, 0] := "file";
+			grid[0, 1] := "status";
+			present := 0;
+			each(i : paths) {
+				grid[i + 1, 0] := paths[i];
+				if(paths[i] <> Nil & System.IO.Filesystem.File->Exists(paths[i])) {
+					grid[i + 1, 1] := "present";
+					present += 1;
+				}
+				else {
+					grid[i + 1, 1] := "not run yet";
+				};
+			};
+			AddGrid(caption, grid, false);
+
+			return present;
+		}
+
 		method : AddGrid(caption : String, cells : String[,], copy : Bool) ~ Bool {
 			if(cells = Nil) {
 				return Refuse("the table is Nil");
@@ -1947,6 +2214,20 @@ report->Save("report.html");
 		@return false for a Nil or empty table, an unknown column or kind, or a value that is not finite
 		~#
 		method : public : AddResultTableChart(caption : String, table : ResultTable, columns : String[], kind : String) ~ Bool {
+			return AddResultTableChart(caption, table, columns, kind, "", Nil);
+		}
+
+		#~
+		As AddResultTableChart, with the chart's own title and a way to leave rows out: the title is drawn above the plot (the caption is the figure's caption below it), and a row whose name is in skip_rows (a total row, a baseline, a row that has no value yet) is not drawn and is not checked for a finite value.
+		@param caption the caption
+		@param table the table
+		@param columns the columns to draw; Nil or empty draws all of them
+		@param kind "bar" or "line"
+		@param title the title drawn in the chart; Nil or "" uses the table's title
+		@param skip_rows row names to leave out; Nil leaves none out
+		@return false for a Nil table, no row left to draw, an unknown column or kind, or a drawn value that is not finite
+		~#
+		method : public : AddResultTableChart(caption : String, table : ResultTable, columns : String[], kind : String, title : String, skip_rows : String[]) ~ Bool {
 			@error := "";
 			if(table = Nil) {
 				return Refuse("the table is Nil");
@@ -1954,9 +2235,30 @@ report->Save("report.html");
 			if(kind = Nil | (<>kind->Equals("bar") & <>kind->Equals("line"))) {
 				return Refuse("the chart kind is bar or line");
 			};
-			rows := table->Size();
-			if(rows = 0) {
+			total := table->Size();
+			if(total = 0) {
 				return Refuse("the table has no rows");
+			};
+
+			# the rows to draw
+			keep := Vector->New()<IntRef>;
+			each(r : total) {
+				skipped := false;
+				if(skip_rows <> Nil) {
+					name := table->GetRowName(r);
+					each(k : skip_rows) {
+						if(skip_rows[k] <> Nil & skip_rows[k]->Equals(name)) {
+							skipped := true;
+						};
+					};
+				};
+				if(<>skipped) {
+					keep->AddBack(IntRef->New(r));
+				};
+			};
+			rows := keep->Size();
+			if(rows = 0) {
+				return Refuse("every row of the table is left out of the chart");
 			};
 
 			names := columns;
@@ -1971,27 +2273,43 @@ report->Save("report.html");
 				if(table->ColumnIndex(names[c]) < 0) {
 					return Refuse("the table has no column '{$names[c]}'");
 				};
-				values := table->GetColumn(names[c]);
-				each(r : values) {
+				all := table->GetColumn(names[c]);
+				values := Float->New[rows];
+				each(r : rows) {
+					values[r] := all[keep->Get(r)->Get()];
 					if(ReportText->NotFinite(values[r])) {
-						return Refuse("column '{$names[c]}' has a value that is not finite (row {$r})");
+						row := keep->Get(r)->Get();
+						return Refuse("column '{$names[c]}' has a value that is not finite (row {$row})");
 					};
 				};
 				series->AddBack(FloatArrayRef->New(values));
 			};
 
+			row_names := String->New[rows];
+			xs := Float->New[rows];
+			all_names := table->GetRowNames();
+			all_xs := table->GetRowValues();
+			each(r : rows) {
+				row_names[r] := all_names[keep->Get(r)->Get()];
+				xs[r] := all_xs[keep->Get(r)->Get()];
+			};
+
+			heading := title;
+			if(heading = Nil | heading->Size() = 0) {
+				heading := table->GetTitle();
+			};
+
 			figure := Figure->New(760, 420);
 			axes := figure->GetAxes();
-			axes->SetTitle(table->GetTitle());
+			axes->SetTitle(heading);
 			axes->SetXLabel(table->GetParameter());
 			if(kind->Equals("bar")) {
-				axes->SetCategories(table->GetRowNames());
+				axes->SetCategories(row_names);
 				each(c : names) {
 					axes->Bar(names[c], series->Get(c)->Get());
 				};
 			}
 			else {
-				xs := table->GetRowValues();
 				distinct := true;
 				each(r : rows) {
 					if(ReportText->NotFinite(xs[r]) | (r > 0 & xs[r] <= xs[r - 1])) {
