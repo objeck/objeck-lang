@@ -102,6 +102,7 @@
     <h3 id="v2026112---unreleased">[v2026.11.2] - unreleased</h3>
     <h4 id="fixed">Fixed</h4>
     <ul>
+     <li><strong>A long linked chain of objects crashed the VM</strong>: a <code>List</code>, <code>Queue</code>, <code>CompareList</code> or linked <code>Stack</code> of about 500,000 or more nodes exited with code 127, with and without the JIT, because marking recursed once per node and overflowed the collector thread's native stack. Marking now moves objects onto a per-thread work stack once it is 256 levels deep (minor and major collections, every root thread, no new stop-the-world entry point); a 2-million-node chain passes, and <code>binarytrees</code> is unchanged (4.8 to 5.9 s before and after). Regression test: <code>gc_deep_chain</code></li>
      <li><strong>OpenAI output cap was sent under the wrong name</strong>: <code>Response-&gt;Respond(...)</code> wrote <code>max_tokens</code> to the Responses endpoint, whose field is <code>max_output_tokens</code>, so the cap was never applied. <code>Completion-&gt;Complete(...)</code> now sends <code>max_completion_tokens</code> (<code>max_tokens</code> is deprecated for Chat Completions and rejected by reasoning models). New offline request builders <code>Response-&gt;BuildRespondRequest</code> and <code>Completion-&gt;BuildCompleteRequest</code>; test <code>openai_request_test.obs</code></li>
     </ul>
     <h4 id="added">Added</h4>

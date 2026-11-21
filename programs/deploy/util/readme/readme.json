@@ -1,15 +1,26 @@
 {
 	"version": {
-		"string": "2026.11.1",
+		"string": "2026.11.2",
 		"year": 2026
 	},
-	"title": "v2026.11.1",
+	"title": "v2026.11.2",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
 		"markdown_out": "readme.md"
 	},
 	"features": [
+		{
+			"version": "v2026.11.2",
+			"items": [
+				"A long linked chain of objects (a List, Queue or CompareList of about 500,000 nodes or more) no longer crashes the VM: marking is bounded with a per-thread work stack instead of recursing once per node.",
+				"Sorting already-ordered data is much faster (500,000 sorted elements: about 500 ms to 80 ms) and String->Append copies long strings in one block (1,000-character pieces: 1,660 ms to 292 ms).",
+				"System.ML.Cnn loads images faster: a batch is decoded on several native threads and the next batch is prefetched.",
+				"System.ML.Lab ResultTable has scientific, p-value and integer number formats, and System.ML.Report has a safe CSV loader, CSV tables, placeholders, figure slots and a run-status table.",
+				"The OpenAI client sends the output cap under the right field name for the Responses and Chat Completions APIs.",
+				"Release tooling: the site deploy script targets the new server, installers are signed in one pass, and tools/cicd/release_finish.sh runs everything after the tag."
+			]
+		},
 		{
 			"version": "v2026.11.1",
 			"items": [
