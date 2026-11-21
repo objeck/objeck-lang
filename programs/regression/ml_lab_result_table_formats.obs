@@ -1,0 +1,118 @@
+# EXTRA_LIBS: ml,ml_lab,gen_collect,csv,json
+#~
+System.ML.Lab.ResultTable number formats: scientific notation, a "<0.0001" form
+for tiny p-values, and whole-number columns, plus the precision and format
+getters. The scientific expected strings come from Python's '%.*e' (the values
+are built as mantissa / power-of-ten so both languages hold the same double);
+nothing here changes how a default "fixed" column is written, which the
+ml_lab_result_table goldens pin byte for byte.
+~#
+use Data.JSON;
+use System.ML.Lab;
+
+class MlLabResultTableFormats {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		# --- scientific notation against Python's %e ---
+		ok := Report("sci 1.234e-05", ResultTable->FormatValue(1.2345 / 100000.0, 3, "sci")->Equals("1.234e-05")) & ok;
+		ok := Report("sci 9.99e-05", ResultTable->FormatValue(9.995 / 100000.0, 2, "sci")->Equals("9.99e-05")) & ok;
+		ok := Report("sci 5.00e-01", ResultTable->FormatValue(0.5 * 1.0, 2, "sci")->Equals("5.00e-01")) & ok;
+		ok := Report("sci 1.2e+05", ResultTable->FormatValue(1.23456789 * 100000.0, 1, "sci")->Equals("1.2e+05")) & ok;
+		ok := Report("sci -1.20e-04", ResultTable->FormatValue(-1.2 / 10000.0, 2, "sci")->Equals("-1.20e-04")) & ok;
+		ok := Report("sci 1.00e-30", ResultTable->FormatValue(1.0 / 1000000000000000000000000000000.0, 2, "sci")->Equals("1.00e-30")) & ok;
+		ok := Report("sci 7e+00", ResultTable->FormatValue(7.0 * 1.0, 0, "sci")->Equals("7e+00")) & ok;
+		ok := Report("sci 1.000e+22", ResultTable->FormatValue(1.0 * 10000000000000000000000.0, 3, "sci")->Equals("1.000e+22")) & ok;
+		ok := Report("sci 0.00e+00", ResultTable->FormatValue(0.0 * 1.0, 2, "sci")->Equals("0.00e+00")) & ok;
+		ok := Report("sci 5.4321e+10", ResultTable->FormatValue(5.4321 * 10000000000.0, 4, "sci")->Equals("5.4321e+10")) & ok;
+		ok := Report("sci 1.000e+01", ResultTable->FormatValue(9.9996 * 1.0, 3, "sci")->Equals("1.000e+01")) & ok;
+		ok := Report("sci 3.14159e-09", ResultTable->FormatValue(3.14159 / 1000000000.0, 5, "sci")->Equals("3.14159e-09")) & ok;
+		ok := Report("sci 9e-02", ResultTable->FormatValue(8.5 / 100.0, 0, "sci")->Equals("9e-02")) & ok;
+		ok := Report("sci 1.000e-07", ResultTable->FormatValue(9.9999999 / 100000000.0, 3, "sci")->Equals("1.000e-07")) & ok;
+		ok := Report("sci 2e+03", ResultTable->FormatValue(2.5 * 1000.0, 0, "sci")->Equals("2e+03")) & ok;
+
+		# --- p-values: fixed, "<" below the precision ---
+		ok := Report("p: zero is <0.0001", ResultTable->FormatValue(0.0, 4, "p")->Equals("<0.0001")) & ok;
+		ok := Report("p: 5e-5 is <0.0001", ResultTable->FormatValue(5.0 / 100000.0, 4, "p")->Equals("<0.0001")) & ok;
+		ok := Report("p: just below the limit", ResultTable->FormatValue(9.9 / 100000.0, 4, "p")->Equals("<0.0001")) & ok;
+		ok := Report("p: the limit itself is written", ResultTable->FormatValue(1.0 / 10000.0, 4, "p")->Equals("0.0001")) & ok;
+		ok := Report("p: an ordinary value", ResultTable->FormatValue(0.0471, 4, "p")->Equals("0.0471")) & ok;
+		ok := Report("p: one", ResultTable->FormatValue(1.0, 4, "p")->Equals("1.0000")) & ok;
+		ok := Report("p: three decimals", ResultTable->FormatValue(0.0004, 3, "p")->Equals("<0.001")) & ok;
+		ok := Report("p: a negative number is not a p-value, written fixed", ResultTable->FormatValue(-0.5, 4, "p")->Equals("-0.5000")) & ok;
+		ok := Report("p: NaN is n/a", ResultTable->FormatValue(Float->NaN(), 4, "p")->Equals("n/a")) & ok;
+
+		# --- whole numbers ---
+		ok := Report("int: 176.0 is 176", ResultTable->FormatValue(176.0, 4, "int")->Equals("176")) & ok;
+		ok := Report("int: rounds", ResultTable->FormatValue(175.6, 2, "int")->Equals("176")) & ok;
+		ok := Report("int: negative", ResultTable->FormatValue(-3.0, 0, "int")->Equals("-3")) & ok;
+
+		# --- fixed is the old behaviour ---
+		ok := Report("fixed: 4 decimals", ResultTable->FormatValue(0.5, 4, "fixed")->Equals("0.5000")) & ok;
+		ok := Report("fixed: an unknown name is fixed", ResultTable->FormatValue(0.5, 1, "bogus")->Equals("0.5")) & ok;
+
+		# --- a table with all four kinds ---
+		t := ResultTable->New("Welch tests", "variable");
+		t->AddColumn("t");
+		t->AddPValueColumn("p");
+		t->AddIntegerColumn("n");
+		t->AddScientificColumn("effect", 2);
+		t->AddColumn("plain", 2, "fixed");
+		ok := Report("GetColumnPrecision reads each column", t->GetColumnPrecision("t") = 4 & t->GetColumnPrecision("p") = 4 & t->GetColumnPrecision("n") = 0 & t->GetColumnPrecision("effect") = 2 & t->GetColumnPrecision("plain") = 2) & ok;
+		ok := Report("GetColumnPrecision of a stranger is -1", t->GetColumnPrecision("nope") = -1) & ok;
+		ok := Report("GetColumnFormat reads each column", t->GetColumnFormat("t")->Equals("fixed") & t->GetColumnFormat("p")->Equals("p") & t->GetColumnFormat("n")->Equals("int") & t->GetColumnFormat("effect")->Equals("sci")) & ok;
+		ok := Report("GetColumnFormat of a stranger is empty", t->GetColumnFormat("nope")->Size() = 0) & ok;
+
+		row := Float->New[5];
+		row[0] := 12.3456; row[1] := 0.00000000123; row[2] := 176.0; row[3] := 0.000123456; row[4] := 2.0;
+		t->AddRow("word_count", 0.0, row);
+		row2 := Float->New[5];
+		row2[0] := -0.2; row2[1] := 0.5; row2[2] := 24.0; row2[3] := 15000.0; row2[4] := 0.125;
+		t->AddRow("rating", 1.0, row2);
+
+		md := t->ToMarkdown();
+		ok := Report("markdown shows <0.0001 and a whole count", md->Has("| word_count | 12.3456 | <0.0001 | 176 | 1.23e-04 | 2.00 |")) & ok;
+		ok := Report("markdown shows an ordinary p and 1.50e+04", md->Has("| rating | -0.2000 | 0.5000 | 24 | 1.50e+04 | 0.12 |")) & ok;
+		txt := t->ToText();
+		ok := Report("text shows the same cells", txt->Has("<0.0001") & txt->Has("1.23e-04") & txt->Has("176")) & ok;
+		csv := t->ToCsv();
+		ok := Report("CSV keeps a tiny p-value in exponent form, other columns as before", csv->Has("word_count,0,12.3456,1.23e-09,176,0.000123456,2")) & ok;
+
+		back_csv := ResultTable->FromCsv(csv);
+		ok := Report("FromCsv reads the exponent form back", back_csv->Get(0, 1) > 0.0000000012 & back_csv->Get(0, 1) < 0.0000000013 & back_csv->Get(0, 0) = 12.3456) & ok;
+
+		# --- deviations use the column's format ---
+		d := ResultTable->New("", "x");
+		d->AddPValueColumn("p");
+		d->AddRow("a", 1.0, [0.00002], [0.00001]);
+		ok := Report("a deviation is written in the column's format", d->ToMarkdown()->Has("<0.0001 ± <0.0001")) & ok;
+
+		# --- JSON keeps the formats; a table with none writes no 'formats' key ---
+		json := t->ToJson();
+		back := ResultTable->FromJson(json);
+		ok := Report("JSON round trip keeps formats and precision", back->GetColumnFormat("p")->Equals("p") & back->GetColumnFormat("effect")->Equals("sci") & back->GetColumnFormat("n")->Equals("int") & back->GetColumnPrecision("effect") = 2) & ok;
+		ok := Report("a round-tripped table renders the same", back->ToMarkdown()->Equals(md)) & ok;
+		plain := ResultTable->New("", "x");
+		plain->AddColumn("v", 3);
+		plain->AddRow("a", 1.0, [0.5]);
+		ok := Report("a fixed-only table writes no formats key (existing JSON is unchanged)", <>plain->ToJson()->Has("formats")) & ok;
+		ok := Report("a fixed-only table renders as before", plain->ToMarkdown()->Has("| a | 0.500 |")) & ok;
+
+		if(<>ok) {
+			"FAIL: ml_lab_result_table_formats"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: ml_lab_result_table_formats"->PrintLine();
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}
