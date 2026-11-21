@@ -13,8 +13,10 @@
 # ONE implementation, called BOTH from release-publish.yml and by hand. The
 # previous arrangement had the rsync written inline in the workflow and nothing
 # equivalent for a maintainer, and it had never worked: it targeted
-# /var/www/objeck.org/api/latest/, a VPS layout, while objeck.org is GoDaddy
-# shared hosting serving ~/public_html. With the secrets unset the step was
+# /var/www/objeck.org/api/latest/, a VPS layout, while objeck.org was then GoDaddy
+# shared hosting serving ~/public_html. (objeck.org has since moved to the
+# DigitalOcean droplet; the same ~/public_html layout now belongs to the
+# 'objeckorg' user there, and the DNS name still reaches it.) With the secrets unset the step was
 # skipped, so the wrong path was never exercised -- v2026.8.4 published with the
 # site still serving v2026.8.3 docs while the pipeline reported the deploy
 # green. A single script means a path fix cannot land in one caller and not the
@@ -22,7 +24,7 @@
 #
 #   deploy_website.sh [--source <dir|zip>] [--site-source <dir>]
 #                     [--api-only | --site-only]
-#                     [--user U] [--host H] [--key K]
+#                     [--user U] [--host H] [--key K] [--site-url URL]
 #                     [--version V] [--dry-run] [--no-verify]
 #
 # With no mode flag it does both halves, so one call leaves nothing stale.
@@ -50,9 +52,12 @@ SOURCE=""
 SITE_SOURCE=""
 DO_API=1
 DO_SITE=1
-USER_NAME="${OBJECK_ORG_USER:-objecklang}"
+USER_NAME="${OBJECK_ORG_USER:-objeckorg}"
 HOST="${OBJECK_ORG_HOST:-objeck.org}"
-KEY=""
+# The URL a reader uses, kept apart from the ssh host so --host can name the droplet
+# (playground.objeck.org) while the live-site check still reads objeck.org.
+SITE_URL="${OBJECK_ORG_URL:-https://www.objeck.org}"
+KEY="${OBJECK_ORG_KEY:-}"
 VERSION=""
 DRY_RUN=0
 VERIFY=1
@@ -83,10 +88,11 @@ while [ $# -gt 0 ]; do
     --user)        USER_NAME="$2"; shift 2 ;;
     --host)        HOST="$2"; shift 2 ;;
     --key)         KEY="$2"; shift 2 ;;
+    --site-url)    SITE_URL="$2"; shift 2 ;;
     --version)     VERSION="$2"; shift 2 ;;
     --dry-run)     DRY_RUN=1; shift ;;
     --no-verify)   VERIFY=0; shift ;;
-    -h|--help)     sed -n '3,41p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    -h|--help)     sed -n '3,45p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *)            echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -110,6 +116,7 @@ note "version: $VERSION"
 SSH_OPTS="-o BatchMode=yes -o ConnectTimeout=20 -T -o LogLevel=ERROR"
 [ -n "$KEY" ] && SSH_OPTS="$SSH_OPTS -i $KEY"
 TARGET="$USER_NAME@$HOST"
+SITE_URL="${SITE_URL%/}"
 
 command -v tar >/dev/null || die "tar is required"
 command -v sha256sum >/dev/null || die "sha256sum is required"
@@ -123,6 +130,41 @@ cleanup() {
   rm -f "$WORKERR"
 }
 trap cleanup EXIT
+
+# remote_dir_check <dir under the remote home>: succeeds when the directory is
+# there. ssh's own stderr is KEPT and shown, and the two ways this can fail are
+# told apart: exit 255 is ssh itself failing (host key, key not authorised, port
+# closed or banned), exit 1 is the remote `test -d` saying the directory is
+# missing. The first version of this script printed "does not exist (or SSH
+# failed)" for both and discarded the reason, which cost an hour of guessing on
+# 2026-11-21 (WSL had never trusted the host; BatchMode cannot ask).
+remote_dir_check() {
+  ssh $SSH_OPTS "$TARGET" "test -d ~/$1" 2>"$WORKERR"
+  rc=$?
+  [ "$rc" = 0 ] && return 0
+  if [ "$rc" = 255 ]; then
+    echo "ERROR: ssh to $TARGET failed:" >&2
+    sed 's/^/  ssh: /' "$WORKERR" >&2
+    if grep -qi 'host identification has changed\|host key for .* has changed' "$WORKERR"; then
+      echo "  The key saved for $HOST differs from the one the server presents. After a move to a new" >&2
+      echo "  server that is expected. Check the fingerprint shown above against the server's own" >&2
+      echo "  (ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub); if it matches, drop the old entry:" >&2
+      echo "    ssh-keygen -R $HOST" >&2
+    elif grep -qi 'host key verification failed\|authenticity' "$WORKERR"; then
+      echo "  This machine has not trusted the host yet. Run once, check the fingerprint against" >&2
+      echo "  the server's own (ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub), then answer yes:" >&2
+      echo "    ssh ${KEY:+-i $KEY }$TARGET true" >&2
+    elif grep -qi 'permission denied' "$WORKERR"; then
+      echo "  The key is not authorised for $USER_NAME. Pass --key, or add its public key to" >&2
+      echo "  ~$USER_NAME/.ssh/authorized_keys on the server." >&2
+    elif grep -qi 'refused\|timed out' "$WORKERR"; then
+      echo "  Port 22 is not answering this machine. If it worked before, fail2ban may have banned" >&2
+      echo "  your address: on the server run  fail2ban-client status sshd  and  unbanip <ip>." >&2
+    fi
+    die "cannot reach $TARGET"
+  fi
+  die "$TARGET:~/$1 does not exist -- not creating it from here"
+}
 
 # ======================================================== the site's pages ===
 if [ "$DO_SITE" = 1 ]; then
@@ -155,8 +197,7 @@ if [ "$DO_SITE" = 1 ]; then
   [ -n "$SITE_FILES" ] || die "no files found under $SITE_SOURCE"
   note "files:   $(printf '%s\n' "$SITE_FILES" | grep -c .)"
 
-  ssh $SSH_OPTS "$TARGET" "test -d ~/$SITE_REMOTE" 2>/dev/null || \
-    die "$TARGET:~/$SITE_REMOTE does not exist (or SSH failed) -- not creating it from here"
+  remote_dir_check "$SITE_REMOTE"
 
   # What is live, so only what differs travels and the output says what changed
   # rather than "deployed" every time. A path absent remotely hashes to nothing
@@ -245,15 +286,15 @@ SITE_LIST
   # What a reader gets, cache and all. The upload exiting 0 is not the site
   # serving the new page.
   if [ "$VERIFY" = 1 ] && [ "$DRY_RUN" = 0 ] && command -v curl >/dev/null; then
-    live_btn="$(curl -fsSL --max-time 30 "https://www.$HOST/readme.html" 2>/dev/null \
+    live_btn="$(curl -fsSL --max-time 30 "$SITE_URL/readme.html" 2>/dev/null \
                 | grep -oE 'Download v[0-9.]+' | head -1)"
     if [ -z "$live_btn" ]; then
-      echo "WARNING: could not read a Download button from https://www.$HOST/readme.html" >&2
+      echo "WARNING: could not read a Download button from $SITE_URL/readme.html" >&2
       echo "  The upload reported success; confirm by hand before announcing it." >&2
     elif [ "$live_btn" != "Download v$VERSION" ]; then
-      die "https://www.$HOST/readme.html still offers '$live_btn', expected 'Download v$VERSION'"
+      die "$SITE_URL/readme.html still offers '$live_btn', expected 'Download v$VERSION'"
     else
-      note "live:    https://www.$HOST/readme.html offers $live_btn"
+      note "live:    $SITE_URL/readme.html offers $live_btn"
     fi
   fi
 fi
@@ -266,7 +307,7 @@ if [ "$DO_API" = 0 ]; then
   if [ "$DRY_RUN" = 1 ]; then
     echo "DRY RUN -- validated and reachable, nothing written (v$VERSION)"
   else
-    echo "site pages deployed to https://www.$HOST/ (v$VERSION)"
+    echo "site pages deployed to $SITE_URL/ (v$VERSION)"
   fi
   exit 0
 fi
@@ -350,8 +391,7 @@ fi
 # a deploy creates a plausible-looking tree somewhere nobody serves -- the
 # failure this script was written to end. The directory is created once, by
 # hand, deliberately.
-ssh $SSH_OPTS "$TARGET" "test -d ~/$REMOTE_PARENT/$REMOTE_NAME" 2>/dev/null || \
-  die "$TARGET:~/$REMOTE_PARENT/$REMOTE_NAME does not exist (or SSH failed) -- not creating it from here"
+remote_dir_check "$REMOTE_PARENT/$REMOTE_NAME"
 note "remote:  $TARGET:~/$REMOTE_PARENT/$REMOTE_NAME"
 
 if [ "$DRY_RUN" = 1 ]; then
@@ -387,7 +427,7 @@ tar -czf - -C "$PAGES_DIR" . | \
 # "the upload exited 0" is not "the site serves the new docs". Check over
 # HTTPS, which is what a reader gets, including any caching in front.
 if [ "$VERIFY" = 1 ] && command -v curl >/dev/null; then
-  base="https://www.$HOST/api/$REMOTE_NAME"
+  base="$SITE_URL/api/$REMOTE_NAME"
   page="$(basename "$SAMPLE")"
   live="$(curl -fsSL --max-time 30 "$base/$page" 2>/dev/null \
           | grep -ohE 'class="version">v[0-9.]+' | head -1 | sed 's/.*>v//')"
@@ -402,4 +442,4 @@ if [ "$VERIFY" = 1 ] && command -v curl >/dev/null; then
 fi
 
 echo
-echo "published $PAGES pages to https://www.$HOST/api/$REMOTE_NAME/ (v$VERSION)"
+echo "published $PAGES pages to $SITE_URL/api/$REMOTE_NAME/ (v$VERSION)"
