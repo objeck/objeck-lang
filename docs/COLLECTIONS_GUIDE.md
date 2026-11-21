@@ -21,6 +21,7 @@ drifted); nothing here changes the API. Compile with
 | Several values per key, keys unordered | `MultiHash` | a `Hash` of `Vector`s |
 | Both ends O(1) plus index access (FIFO queue, sliding window) | `Deque` | ring buffer; `AddFront`/`RemoveFront` are O(1), unlike `Vector` |
 | Count occurrences of keys (word counts, histograms) | `MultiSet` | `Hash` of counts; `Count`, `MostCommon(n)` |
+| Group items into disjoint sets, connected components | `UnionFind` | int ids; near-constant `Union`/`Find` |
 | Two related values with no class of their own | `Collection.Tuple.Pair` | immutable, any types |
 | A pair that can sit in a sorted collection, or that you must change | `Collection.Pair` | first element must be `Compare` |
 
@@ -154,6 +155,15 @@ takes one occurrence away (`false` if absent), `RemoveAll(k)` returns how many i
 keys, `GetKeys()` the keys (unordered) and `MostCommon(n)` the top `n` keys by count.
 Costs are those of `Hash` (O(1) expected), `MostCommon` is O(k log k) in the distinct keys. It
 is called `MultiSet` rather than `Counter` because `System.Concurrency.Counter` already exists in `lang`.
+
+### `UnionFind`
+
+Disjoint sets over the ids `0..n-1` (not generic: the elements are ints, map your own keys to ids
+with a `Hash`). `Union` is by size and `Find` halves paths, so both are near-constant amortised.
+`Union(a, b)` returns `true` only if it merged two sets; `Connected`, `SizeOf` and `Find` treat an
+out-of-range id as absent (`false`, `0`, `-1`). `Count()` is the number of sets, `Size()` the
+number of elements, and `Add()` appends a new singleton and returns its id. Typical use:
+connected components, Kruskal's minimum spanning tree, grouping equivalent items.
 
 ### The two `Pair` classes
 

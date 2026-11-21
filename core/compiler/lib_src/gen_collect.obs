@@ -11707,4 +11707,166 @@ s->MostCommon(2)->Get(0)->PrintLine(); # b
 			return keys;
 		}
 	}
+
+	#~
+	Union-find (disjoint set) over the integers 0..n-1, with union by size and path halving: Find and Union run in near-constant (inverse Ackermann) amortised time.
+	~#
+	class UnionFind {
+		@parent : Int[];
+		@sizes : Int[];
+		@count : Int;
+		@n : Int;
+
+		#~
+		Creates n singleton sets, one per element
+		@param n number of elements (ids 0 to n-1)
+
+```
+uf := Collection.UnionFind->New(5);
+uf->Union(0, 1); uf->Union(3, 4);
+uf->Count()->PrintLine(); # 3
+```
+		~#
+		New(n : Int) {
+			if(n < 1) {
+				n := 1;
+			};
+
+			@parent := Int->New[n];
+			@sizes := Int->New[n];
+			for(i := 0; i < n; i += 1;) {
+				@parent[i] := i;
+				@sizes[i] := 1;
+			};
+			@n := n;
+			@count := n;
+		}
+
+		#~
+		Finds the representative of the set holding an element
+		@param x element id
+		@return representative id, or -1 for an id out of range
+
+```
+uf := Collection.UnionFind->New(3);
+uf->Union(0, 2);
+(uf->Find(0) = uf->Find(2))->PrintLine(); # true
+```
+		~#
+		method : public : Find(x : Int) ~ Int {
+			if(x < 0 | x >= @n) {
+				return -1;
+			};
+
+			while(@parent[x] <> x) {
+				# path halving
+				@parent[x] := @parent[@parent[x]];
+				x := @parent[x];
+			};
+
+			return x;
+		}
+
+		#~
+		Merges the sets holding two elements
+		@param a first element id
+		@param b second element id
+		@return true if two sets were merged, false if already together or an id is out of range
+
+```
+uf := Collection.UnionFind->New(3);
+uf->Union(0, 1)->PrintLine(); # true
+uf->Union(0, 1)->PrintLine(); # false
+```
+		~#
+		method : public : Union(a : Int, b : Int) ~ Bool {
+			ra := Find(a);
+			rb := Find(b);
+			if(ra < 0 | rb < 0 | ra = rb) {
+				return false;
+			};
+
+			if(@sizes[ra] < @sizes[rb]) {
+				temp := ra;
+				ra := rb;
+				rb := temp;
+			};
+
+			@parent[rb] := ra;
+			@sizes[ra] := @sizes[ra] + @sizes[rb];
+			@count -= 1;
+
+			return true;
+		}
+
+		#~
+		Checks whether two elements are in the same set
+		@param a first element id
+		@param b second element id
+		@return true if connected (false for an id out of range)
+		~#
+		method : public : Connected(a : Int, b : Int) ~ Bool {
+			ra := Find(a);
+			return ra > -1 & ra = Find(b);
+		}
+
+		#~
+		Gets the size of the set holding an element
+		@param x element id
+		@return number of elements in the set, 0 for an id out of range
+		~#
+		method : public : SizeOf(x : Int) ~ Int {
+			root := Find(x);
+			if(root < 0) {
+				return 0;
+			};
+
+			return @sizes[root];
+		}
+
+		#~
+		Gets the number of disjoint sets
+		@return set count
+		~#
+		method : public : Count() ~ Int {
+			return @count;
+		}
+
+		#~
+		Gets the number of elements
+		@return element count
+		~#
+		method : public : Size() ~ Int {
+			return @n;
+		}
+
+		#~
+		Adds a new element in its own set
+		@return the new element's id
+
+```
+uf := Collection.UnionFind->New(2);
+uf->Add()->PrintLine(); # 2
+```
+		~#
+		method : public : Add() ~ Int {
+			if(@n = @parent->Size()) {
+				capacity := @n * 2;
+				parent : Int[] := Int->New[capacity];
+				sizes : Int[] := Int->New[capacity];
+				Runtime->Copy(parent, 0, @parent, 0, @n);
+				Runtime->Copy(sizes, 0, @sizes, 0, @n);
+				@parent := parent;
+				@sizes := sizes;
+			};
+
+			id := @n;
+			@parent[id] := id;
+			@sizes[id] := 1;
+			@n += 1;
+			@count += 1;
+
+			return id;
+		}
+	}
 }

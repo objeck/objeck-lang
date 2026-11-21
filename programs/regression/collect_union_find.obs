@@ -1,0 +1,75 @@
+use Collection;
+
+class CollectUnionFindTest {
+	@pass : static : Bool;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			@pass := false;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"Testing UnionFind..."->PrintLine();
+		@pass := true;
+
+		uf := UnionFind->New(6);
+		Check(uf->Size() = 6 & uf->Count() = 6 & uf->SizeOf(2) = 1, "singletons");
+		Check(uf->Find(3) = 3 & uf->Find(-1) = -1 & uf->Find(6) = -1, "Find and range");
+		Check(uf->Union(0, 1) & uf->Union(2, 3) & uf->Union(1, 3), "Union merges");
+		Check(<>uf->Union(0, 2) & <>uf->Union(0, 9) & <>uf->Union(-1, 0), "Union no-ops");
+		Check(uf->Count() = 3 & uf->SizeOf(0) = 4 & uf->SizeOf(3) = 4 & uf->SizeOf(5) = 1 & uf->SizeOf(7) = 0, "counts and sizes");
+		Check(uf->Connected(0, 3) & <>uf->Connected(0, 4) & <>uf->Connected(0, 99) & uf->Connected(4, 4), "Connected");
+
+		# Add grows past the initial capacity
+		a := uf->Add();
+		Check(a = 6 & uf->Size() = 7 & uf->Count() = 4 & uf->Connected(6, 6) & <>uf->Connected(6, 0), "Add");
+		for(i := 0; i < 100; i += 1;) { uf->Add(); };
+		Check(uf->Size() = 107 & uf->Union(6, 106) & uf->Connected(6, 106) & uf->SizeOf(106) = 2, "growth");
+
+		# a long chain stays correct (path halving) and agrees with a naive labelling
+		n := 5000;
+		big := UnionFind->New(n);
+		grp := Int->New[n];
+		for(i := 0; i < n; i += 1;) { grp[i] := i; };
+		seed := 4242;
+		for(k := 0; k < 4000; k += 1;) {
+			seed := (seed * 1103515245 + 12345) and 2147483647;
+			x := (seed / 3) % n;
+			seed := (seed * 1103515245 + 12345) and 2147483647;
+			y := (seed / 3) % n;
+			big->Union(x, y);
+			lx := grp[x]; ly := grp[y];
+			if(lx <> ly) {
+				for(i := 0; i < n; i += 1;) { if(grp[i] = ly) { grp[i] := lx; }; };
+			};
+		};
+		ok := true;
+		sets := 0;
+		for(i := 0; i < n; i += 1;) {
+			if(grp[i] = i) { sets += 1; };
+		};
+		for(k := 0; k < 3000; k += 1;) {
+			seed := (seed * 1103515245 + 12345) and 2147483647;
+			x := (seed / 3) % n;
+			seed := (seed * 1103515245 + 12345) and 2147483647;
+			y := (seed / 3) % n;
+			if(big->Connected(x, y) <> (grp[x] = grp[y])) { ok := false; };
+		};
+		Check(ok, "matches naive labelling");
+		Check(big->Count() = sets, "set count matches naive");
+
+		chain := UnionFind->New(100000);
+		for(i := 1; i < 100000; i += 1;) { chain->Union(i - 1, i); };
+		Check(chain->Count() = 1 & chain->SizeOf(0) = 100000 & chain->Connected(0, 99999), "100k chain");
+
+		if(@pass) {
+			"PASS: UnionFind"->PrintLine();
+		}
+		else {
+			"FAIL: UnionFind"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
