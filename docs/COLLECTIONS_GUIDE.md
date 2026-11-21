@@ -23,6 +23,7 @@ drifted); nothing here changes the API. Compile with
 | Count occurrences of keys (word counts, histograms) | `MultiSet` | `Hash` of counts; `Count`, `MostCommon(n)` |
 | Group items into disjoint sets, connected components | `UnionFind` | int ids; near-constant `Union`/`Find` |
 | Strings by prefix (autocomplete, dictionary) | `Trie` | `WithPrefix` returns sorted matches |
+| Key to value, iterated in insertion order | `OrderedHash` | `Hash` + linked entries; O(1) expected |
 | Two related values with no class of their own | `Collection.Tuple.Pair` | immutable, any types |
 | A pair that can sit in a sorted collection, or that you must change | `Collection.Pair` | first element must be `Compare` |
 
@@ -174,6 +175,15 @@ absent string; `Has(s)` tests a whole string and `HasPrefix(p)` any string start
 everything), which is the point of a trie: autocomplete without scanning the set. Each node keeps
 its children in a `Map`, so a step costs O(log branching); `Remove` prunes nodes only that string
 used. Characters are compared by their code, as in the string itself.
+
+### `OrderedHash<K, V>`
+
+A `Hash` plus a doubly linked list of entries, so `Insert`, `Find`, `Has` and `Remove` are O(1)
+expected and `GetKeys()`, `GetValues()` and `Each` walk the entries in the order the keys first
+arrived. Updating an existing key keeps its place; removing and re-inserting moves it to the
+end. `FirstKey()`, `LastKey()` and `RemoveFirst()` expose the oldest and newest entries, which is
+enough for a first-in first-out cache (for least-recently-used eviction use `Cache`). `Find` of an
+absent key returns `Nil`. Costs one extra node per entry compared with a plain `Hash`.
 
 ### The two `Pair` classes
 

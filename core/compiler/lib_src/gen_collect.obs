@@ -12122,4 +12122,272 @@ t->WithPrefix("ca")->Get(0)->PrintLine(); # car
 			};
 		}
 	}
+
+	#~
+	Insertion-ordered hash: key to value with O(1) expected Insert, Find, Has and Remove, and iteration in the order keys were first inserted. Updating an existing key keeps its position. A Hash is unordered and a Map is sorted by key; use this when the order of arrival matters.
+	~#
+	class OrderedHash<K : Compare, V> {
+		@index : Hash<K, OrderedHashNode<K, V>>;
+		@head : OrderedHashNode<K, V>;
+		@tail : OrderedHashNode<K, V>;
+
+		#~
+		Default constructor
+
+```
+h := Collection.OrderedHash->New()<String, IntRef>;
+h->Insert("b", IntRef->New(2)); h->Insert("a", IntRef->New(1));
+h->GetKeys()->Get(0)->PrintLine(); # b
+```
+		~#
+		New() {
+			@index := Hash->New()<K, OrderedHashNode<K, V>>;
+		}
+
+		#~
+		Inserts a key or updates its value; a new key goes last, an existing key keeps its place
+		@param key key
+		@param value value
+
+```
+h := Collection.OrderedHash->New()<String, IntRef>;
+h->Insert("a", IntRef->New(1));
+h->Insert("a", IntRef->New(5));
+h->Find("a")->Get()->PrintLine(); # 5
+h->Size()->PrintLine();           # 1
+```
+		~#
+		method : public : Insert(key : K, value : V) ~ Nil {
+			node := @index->Find(key);
+			if(node <> Nil) {
+				node->SetValue(value);
+				return;
+			};
+
+			node := OrderedHashNode->New(key, value)<K, V>;
+			if(@tail = Nil) {
+				@head := node;
+			}
+			else {
+				@tail->SetNext(node);
+				node->SetPrevious(@tail);
+			};
+			@tail := node;
+			@index->Insert(key, node);
+		}
+
+		#~
+		Finds the value for a key
+		@param key key
+		@return value, or Nil if absent
+		~#
+		method : public : Find(key : K) ~ V {
+			node := @index->Find(key);
+			if(node = Nil) {
+				return Nil;
+			};
+
+			return node->GetValue();
+		}
+
+		#~
+		Checks whether a key is present
+		@param key key
+		@return true if present
+		~#
+		method : public : Has(key : K) ~ Bool {
+			return @index->Has(key);
+		}
+
+		#~
+		Removes a key
+		@param key key
+		@return true if it was present
+
+```
+h := Collection.OrderedHash->New()<String, IntRef>;
+h->Insert("a", IntRef->New(1));
+h->Remove("a")->PrintLine(); # true
+```
+		~#
+		method : public : Remove(key : K) ~ Bool {
+			node := @index->Find(key);
+			if(node = Nil) {
+				return false;
+			};
+
+			previous := node->GetPrevious();
+			next := node->GetNext();
+			if(previous = Nil) {
+				@head := next;
+			}
+			else {
+				previous->SetNext(next);
+			};
+			if(next = Nil) {
+				@tail := previous;
+			}
+			else {
+				next->SetPrevious(previous);
+			};
+			@index->Remove(key);
+
+			return true;
+		}
+
+		#~
+		Gets the oldest key (the first one inserted that is still present)
+		@return key, or Nil if empty
+		~#
+		method : public : FirstKey() ~ K {
+			if(@head = Nil) {
+				return Nil;
+			};
+
+			return @head->GetKey();
+		}
+
+		#~
+		Gets the newest key
+		@return key, or Nil if empty
+		~#
+		method : public : LastKey() ~ K {
+			if(@tail = Nil) {
+				return Nil;
+			};
+
+			return @tail->GetKey();
+		}
+
+		#~
+		Removes the oldest key, as a first-in first-out cache or queue-with-lookup would
+		@return the removed key, or Nil if empty
+		~#
+		method : public : RemoveFirst() ~ K {
+			if(@head = Nil) {
+				return Nil;
+			};
+
+			key := @head->GetKey();
+			Remove(key);
+
+			return key;
+		}
+
+		#~
+		Gets the keys in insertion order
+		@return vector of keys
+		~#
+		method : public : GetKeys() ~ Vector<K> {
+			keys := Vector->New()<K>;
+			node := @head;
+			while(node <> Nil) {
+				keys->AddBack(node->GetKey());
+				node := node->GetNext();
+			};
+
+			return keys;
+		}
+
+		#~
+		Gets the values in insertion order of their keys
+		@return vector of values
+		~#
+		method : public : GetValues() ~ Vector<V> {
+			values := Vector->New()<V>;
+			node := @head;
+			while(node <> Nil) {
+				values->AddBack(node->GetValue());
+				node := node->GetNext();
+			};
+
+			return values;
+		}
+
+		#~
+		Calls a function for every entry in insertion order
+		@param f function taking the key and value
+		@return this hash
+
+```
+h := Collection.OrderedHash->New()<String, IntRef>;
+h->Insert("a", IntRef->New(1));
+h->Each(\(k, v) => k->PrintLine());
+```
+		~#
+		method : public : Each(f : (K, V) ~ Nil) ~ OrderedHash<K, V> {
+			node := @head;
+			while(node <> Nil) {
+				f(node->GetKey(), node->GetValue());
+				node := node->GetNext();
+			};
+
+			return @self;
+		}
+
+		#~
+		Gets the number of entries
+		@return size
+		~#
+		method : public : Size() ~ Int {
+			return @index->Size();
+		}
+
+		#~
+		Checks for no entries
+		@return true if empty
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @index->Size() = 0;
+		}
+
+		#~
+		Removes every entry
+		~#
+		method : public : Empty() ~ Nil {
+			@index->Empty();
+			@head := Nil;
+			@tail := Nil;
+		}
+	}
+
+	class : private : OrderedHashNode<K : Compare, V> {
+		@key : K;
+		@value : V;
+		@previous : OrderedHashNode<K, V>;
+		@next : OrderedHashNode<K, V>;
+
+		New(key : K, value : V) {
+			@key := key;
+			@value := value;
+		}
+
+		method : public : GetKey() ~ K {
+			return @key;
+		}
+
+		method : public : GetValue() ~ V {
+			return @value;
+		}
+
+		method : public : SetValue(value : V) ~ Nil {
+			@value := value;
+		}
+
+		method : public : GetPrevious() ~ OrderedHashNode<K, V> {
+			return @previous;
+		}
+
+		method : public : SetPrevious(previous : OrderedHashNode<K, V>) ~ Nil {
+			@previous := previous;
+		}
+
+		method : public : GetNext() ~ OrderedHashNode<K, V> {
+			return @next;
+		}
+
+		method : public : SetNext(next : OrderedHashNode<K, V>) ~ Nil {
+			@next := next;
+		}
+	}
 }

@@ -1,0 +1,92 @@
+use Collection;
+
+class CollectOrderedHashTest {
+	@pass : static : Bool;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			@pass := false;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Join(keys : Vector<String>) ~ String {
+		out := "";
+		for(i := 0; i < keys->Size(); i += 1;) {
+			out->Append(keys->Get(i));
+		};
+
+		return out;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"Testing OrderedHash..."->PrintLine();
+		@pass := true;
+
+		h := OrderedHash->New()<String, IntRef>;
+		Check(h->IsEmpty() & h->Size() = 0 & h->FirstKey() = Nil & h->LastKey() = Nil & h->RemoveFirst() = Nil, "new hash empty");
+		h->Insert("c", IntRef->New(3)); h->Insert("a", IntRef->New(1)); h->Insert("b", IntRef->New(2));
+		Check(Join(h->GetKeys())->Equals("cab") & h->Size() = 3, "insertion order, not sorted");
+		Check(h->FirstKey()->Equals("c") & h->LastKey()->Equals("b"), "First/Last");
+		Check(h->Find("a")->Get() = 1 & h->Find("zz") = Nil & h->Has("b") & <>h->Has("zz"), "Find/Has");
+
+		h->Insert("c", IntRef->New(30));
+		Check(Join(h->GetKeys())->Equals("cab") & h->Find("c")->Get() = 30 & h->Size() = 3, "update keeps position");
+
+		Check(h->Remove("a") & <>h->Remove("a") & Join(h->GetKeys())->Equals("cb") & h->Size() = 2, "remove middle");
+		Check(h->Remove("c") & h->FirstKey()->Equals("b") & h->LastKey()->Equals("b"), "remove head");
+		h->Insert("d", IntRef->New(4)); h->Insert("a", IntRef->New(5));
+		Check(Join(h->GetKeys())->Equals("bda"), "re-inserted key goes last");
+		Check(h->Remove("a") & h->LastKey()->Equals("d"), "remove tail");
+		Check(h->RemoveFirst()->Equals("b") & h->RemoveFirst()->Equals("d") & h->RemoveFirst() = Nil & h->IsEmpty(), "RemoveFirst drains in order");
+
+		h->Insert("x", IntRef->New(1)); h->Insert("y", IntRef->New(2));
+		vals := h->GetValues();
+		Check(vals->Size() = 2 & vals->Get(0)->Get() = 1 & vals->Get(1)->Get() = 2, "GetValues order");
+		seen := Vector->New()<String>;
+		h->Each(\(k, v) => seen->AddBack(k));
+		Check(Join(seen)->Equals("xy"), "Each order");
+		h->Empty();
+		Check(h->IsEmpty() & h->FirstKey() = Nil & <>h->Has("x"), "Empty");
+		h->Insert("q", IntRef->New(9));
+		Check(Join(h->GetKeys())->Equals("q"), "usable after Empty");
+
+		# model check: ordering after random inserts and removes
+		big := OrderedHash->New()<IntRef, IntRef>;
+		model := Vector->New()<IntRef>;
+		seed := 777;
+		ok := true;
+		for(i := 0; i < 4000; i += 1;) {
+			seed := (seed * 1103515245 + 12345) and 2147483647;
+			key := (seed / 7) % 300;
+			seed := (seed * 1103515245 + 12345) and 2147483647;
+			if((seed / 7) % 3 = 0) {
+				removed := big->Remove(IntRef->New(key));
+				at := -1;
+				for(j := 0; j < model->Size(); j += 1;) { if(model->Get(j)->Get() = key) { at := j; }; };
+				if(removed <> (at > -1)) { ok := false; };
+				if(at > -1) { model->Remove(at); };
+			}
+			else {
+				at := -1;
+				for(j := 0; j < model->Size(); j += 1;) { if(model->Get(j)->Get() = key) { at := j; }; };
+				if(at < 0) { model->AddBack(IntRef->New(key)); };
+				big->Insert(IntRef->New(key), IntRef->New(i));
+			};
+		};
+		keys := big->GetKeys();
+		ok := ok & keys->Size() = model->Size() & big->Size() = model->Size();
+		for(j := 0; ok & j < keys->Size(); j += 1;) {
+			if(keys->Get(j)->Get() <> model->Get(j)->Get()) { ok := false; };
+		};
+		Check(ok, "random operations keep insertion order");
+
+		if(@pass) {
+			"PASS: OrderedHash"->PrintLine();
+		}
+		else {
+			"FAIL: OrderedHash"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
