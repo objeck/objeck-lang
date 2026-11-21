@@ -104,6 +104,10 @@
     <ul>
      <li><strong>OpenAI output cap was sent under the wrong name</strong>: <code>Response-&gt;Respond(...)</code> wrote <code>max_tokens</code> to the Responses endpoint, whose field is <code>max_output_tokens</code>, so the cap was never applied. <code>Completion-&gt;Complete(...)</code> now sends <code>max_completion_tokens</code> (<code>max_tokens</code> is deprecated for Chat Completions and rejected by reasoning models). New offline request builders <code>Response-&gt;BuildRespondRequest</code> and <code>Completion-&gt;BuildCompleteRequest</code>; test <code>openai_request_test.obs</code></li>
     </ul>
+    <h4 id="added">Added</h4>
+    <ul>
+     <li><strong><code>ResultTable</code> number formats</strong> (<code>System.ML.Lab</code>): per-column <code>"sci"</code> (1.23e-05), <code>"p"</code> (<code>&lt;0.0001</code> for a tiny p-value) and <code>"int"</code> (a count as <code>176</code>) beside the default fixed decimals, with <code>AddIntegerColumn</code>, <code>AddPValueColumn</code>, <code>AddScientificColumn</code>, <code>GetColumnPrecision</code>, <code>GetColumnFormat</code> and <code>FormatValue</code>. Existing tables render byte for byte as before; <code>ToCsv</code> writes a tiny value of a <code>"sci"</code>/<code>"p"</code> column in exponent form so it is not rounded to 0. Test <code>ml_lab_result_table_formats.obs</code></li>
+    </ul>
     <h4 id="machine-learning">Machine learning</h4>
     <ul>
      <li><strong>Faster image loading for <code>System.ML.Cnn</code></strong>: <code>ImageDataset</code> decoded and resized one file at a time on the calling thread (140,000 256 x 256 JPEGs: 320 s, 437 images/s; without the cache about 230 s per epoch, six times the GPU training time). It now decodes a batch on several native threads (<code>opencv_batch_start</code> / <code>wait</code> / <code>get</code> / <code>free</code> in <code>libobjk_opencv</code>, the Objeck class <code>API.OpenCV.ImageBatch</code>) bounded by <code>ImageDataset-&gt;SetThreads(n)</code> (default 4, 1 to 64), and <code>CnnTrainer</code> decodes the next batch while the current one trains (<code>SetPrefetch</code>, on by default). The bytes of every image, the training order and the results do not change with either: they are bit-identical to the one-image-at-a-time path (new test <code>ml_cnn_loader</code>). <code>Check()</code> is parallel too. New public pieces: <code>ImageDataset-&gt;Begin</code>, <code>ImageSubset-&gt;Begin</code> and <code>StageFrom</code>, <code>PendingImages</code>. Measured: decoding 10,000 faces JPEGs went from 1,107 images/s to 1,253 / 2,432 / 3,817 / 5,236 at 1 / 2 / 4 / 8 threads, and a 20,000-image epoch on the RTX 4090 from 30 to 34 s to 9.1 s with prefetch (details in the CNN section of <code>docs/AI.md</code>). Linux, macOS and ARM64 were not built or run</li>
@@ -1434,7 +1438,7 @@
      <li>Crypto: Fixed AES-256 CBC padding and key derivation</li>
     </ul>
     <h3 id="v202570---2025-07-01-">[v2025.7.0] - 2025-07-01 ✅</h3>
-    <h4 id="added">Added</h4>
+    <h4 id="added-1">Added</h4>
     <ul>
      <li><code>Hash-&gt;Dict(..)</code> method to collections</li>
      <li><code>Map-&gt;Dict(..)</code> method to collections</li>
