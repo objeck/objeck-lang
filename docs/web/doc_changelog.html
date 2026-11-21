@@ -100,6 +100,10 @@
     </div>
 
     <h3 id="v2026112---unreleased">[v2026.11.2] - unreleased</h3>
+    <h4 id="fixed">Fixed</h4>
+    <ul>
+     <li><strong>OpenAI output cap was sent under the wrong name</strong>: <code>Response-&gt;Respond(...)</code> wrote <code>max_tokens</code> to the Responses endpoint, whose field is <code>max_output_tokens</code>, so the cap was never applied. <code>Completion-&gt;Complete(...)</code> now sends <code>max_completion_tokens</code> (<code>max_tokens</code> is deprecated for Chat Completions and rejected by reasoning models). New offline request builders <code>Response-&gt;BuildRespondRequest</code> and <code>Completion-&gt;BuildCompleteRequest</code>; test <code>openai_request_test.obs</code></li>
+    </ul>
     <h4 id="documentation">Documentation</h4>
     <ul>
      <li><strong>Topic stability is a distribution, not one number</strong>: <code>docs/AI.md</code> now explains how to read <code>TopicMetrics-&gt;Stability</code> (one seed pair is bimodal: about 1.0 when both runs reach the same optimum, 0.67 to 0.8 when one merged two topics) with a measured comparison against Gensim over 15 seed pairs; no code change</li>
@@ -1442,7 +1446,7 @@
      <li>Updated logos and branding</li>
      <li>Improved visual design</li>
     </ul>
-    <h4 id="fixed">Fixed</h4>
+    <h4 id="fixed-1">Fixed</h4>
     <ul>
      <li>Various bug fixes and stability improvements</li>
     </ul>

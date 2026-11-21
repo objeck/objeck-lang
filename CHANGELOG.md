@@ -4,6 +4,10 @@ All notable changes to Objeck will be documented in this file.
 
 ## [v2026.11.2] - unreleased
 
+### Fixed
+
+- **OpenAI output cap was sent under the wrong name**: `Response->Respond(...)` wrote `max_tokens` to the Responses endpoint, whose field is `max_output_tokens`, so the cap was never applied. `Completion->Complete(...)` now sends `max_completion_tokens` (`max_tokens` is deprecated for Chat Completions and rejected by reasoning models). New offline request builders `Response->BuildRespondRequest` and `Completion->BuildCompleteRequest`; test `openai_request_test.obs`
+
 ### Documentation
 
 - **Topic stability is a distribution, not one number**: `docs/AI.md` now explains how to read `TopicMetrics->Stability` (one seed pair is bimodal: about 1.0 when both runs reach the same optimum, 0.67 to 0.8 when one merged two topics) with a measured comparison against Gensim over 15 seed pairs; no code change
