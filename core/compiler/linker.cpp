@@ -579,6 +579,19 @@ LibraryEnum* Linker::SearchEnumLibraries(const std::wstring& name, const std::ve
 // more useful message, and since #1010 it names which side is stale.
 std::vector<std::wstring> Linker::LibrariesDefining(const std::wstring& cls_name)
 {
+  return UnlinkedLibrariesWhere([&cls_name](Library& probe) { return probe.GetClass(cls_name) != nullptr; });
+}
+
+// The same probe for a bundle: 'use Query.Structured;' with query.obl missing from -lib is
+// the commonest mistake, and the undefined-bundle error used to leave the library unnamed.
+std::vector<std::wstring> Linker::LibrariesDefiningBundle(const std::wstring& bundle_name)
+{
+  return UnlinkedLibrariesWhere([&bundle_name](Library& probe) { return probe.HasBundleName(bundle_name); });
+}
+
+// The libraries in the library path that were not linked and that 'defines' accepts.
+std::vector<std::wstring> Linker::UnlinkedLibrariesWhere(const std::function<bool(Library&)>& defines)
+{
   std::vector<std::wstring> hits;
 
   const std::wstring lib_path = GetLibraryPath();
@@ -596,7 +609,7 @@ std::vector<std::wstring> Linker::LibrariesDefining(const std::wstring& cls_name
 
     Library probe(file_path);
     probe.Load();
-    if(probe.GetClass(cls_name)) {
+    if(defines(probe)) {
       hits.push_back(name.substr(0, name.size() - 4));
     }
   }

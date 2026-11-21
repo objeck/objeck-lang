@@ -330,6 +330,9 @@ sh core/release/verify_example_assets.sh core/release/deploy/examples || exit 1
 
 cd core/release
 
+# keep an installed language server (~/.objeck-lsp) in step with this build; a no-op where there is none
+bash ../../tools/lsp/scripts/refresh_local_lsp.sh "$(pwd)/deploy" || true
+
 # deploy
 if [ ! -z "$2" ] && [ "$2" = "deploy" ]; then
 	ui_step "package tarball"
