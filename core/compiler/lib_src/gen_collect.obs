@@ -770,6 +770,10 @@ heap->Top()->PrintLine(); # 2
 ```
 		~#
 		method : public : Insert(value : H) ~ Nil {
+			if(value = Nil) {
+				return;
+			};
+
 			if(@length >= @heap->Size() - 1) {
 				@heap := Resize();
 			};
@@ -3808,6 +3812,10 @@ list->Has(IntRef->New(99))->PrintLine(); # false
 ```
 		~#
 		method : public : Has(value : H) ~ Bool {
+			if(value = Nil) {
+				return false;
+			};
+
 			start := @head;
 			end := @tail;
 
@@ -3845,6 +3853,10 @@ found->PrintLine(); # 2
 ```
 		~#
 		method : public : Find(value : H) ~ H {
+			if(value = Nil) {
+				return Nil;
+			};
+
 			@cursor := @head;
 			while(@cursor <> Nil) {
 				if(value->Compare(@cursor->Get()) = 0) {
@@ -6624,6 +6636,10 @@ v->Find(IntRef->New(99))->PrintLine();  # -1
 ```
 		~#
 		method : public : Find(value : H) ~ Int {
+			if(value = Nil) {
+				return -1;
+			};
+
          for(i := 0; i < @size; i += 1;) {
             if(@values[i]->Compare(value) = 0) {
                return i;
@@ -6646,6 +6662,10 @@ v->BinarySearch(IntRef->New(3))->PrintLine(); # 1
 ```
 		~#
 		method : public : native : BinarySearch(value : H) ~ Int {
+			if(value = Nil) {
+				return -1;
+			};
+
 			low := 0;
 			high := @size - 1;
 
@@ -6680,6 +6700,10 @@ v->Has(IntRef->New(99))->PrintLine(); # false
 ```
 		~#
 		method : public : Has(value : H) ~ Bool {
+			if(value = Nil) {
+				return false;
+			};
+
 			for(i : Int := 0; i < @size; i += 1;) {
 				if(@values[i]->Compare(value) = 0) {
 					return true;
@@ -7054,6 +7078,10 @@ map->Find("e")->PrintLine();    # (Nil)
 ```
 		~#
 		method : public : Find(key : K) ~ V {
+			if(key = Nil) {
+				return Nil;
+			};
+
 			node := @root;
 			while(node <> Nil) {
 				cmp := key->Compare(node->GetKey());
@@ -7084,6 +7112,10 @@ map->Has("dog")->PrintLine(); # false
 ```
 		~#
 		method : public : Has(key : K) ~ Bool {
+			if(key = Nil) {
+				return false;
+			};
+
 			node := @root;
 			while(node <> Nil) {
 				cmp := key->Compare(node->GetKey());
@@ -7360,6 +7392,10 @@ map->Has("tmp")->PrintLine();     # false
 ```
 		~#
 		method : public : Remove(key : K) ~ Bool {
+			if(key = Nil) {
+				return false;
+			};
+
 			if(@root = Nil) {
 				return false;
 			};

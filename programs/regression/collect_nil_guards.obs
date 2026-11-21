@@ -1,0 +1,56 @@
+use Collection;
+
+# Looking up a Nil key or value in a non-empty collection used to abort the program with
+# "Attempting to dereference a 'Nil' memory instance"; it now reports "not found".
+class CollectNilGuardsTest {
+	@pass : static : Bool;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			@pass := false;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"Testing Nil guards..."->PrintLine();
+		@pass := true;
+		nil : IntRef := Nil;
+
+		m := Map->New()<IntRef, IntRef>;
+		m->Insert(IntRef->New(1), IntRef->New(10));
+		Check(m->Find(nil) = Nil & <>m->Has(nil) & <>m->Remove(nil) & m->Size() = 1, "Map Nil key");
+		m->Insert(nil, IntRef->New(5));
+		Check(m->Size() = 1, "Map ignores a Nil insert");
+
+		s := Set->New()<IntRef>;
+		s->Insert(IntRef->New(1));
+		Check(<>s->Has(nil) & <>s->Remove(nil) & s->Size() = 1, "Set Nil value");
+
+		c := CompareVector->New()<IntRef>;
+		c->AddBack(IntRef->New(3)); c->AddBack(IntRef->New(4));
+		Check(c->Find(nil) = -1 & <>c->Has(nil) & c->BinarySearch(nil) = -1, "CompareVector Nil value");
+
+		l := CompareList->New()<IntRef>;
+		l->AddBack(IntRef->New(3));
+		Check(l->Find(nil) = Nil & <>l->Has(nil), "CompareList Nil value");
+
+		h := Heap->New(Heap->Order->MIN)<IntRef>;
+		h->Insert(IntRef->New(2));
+		h->Insert(nil);
+		h->Insert(IntRef->New(1));
+		Check(h->Size() = 2 & h->Top()->Get() = 1, "Heap drops a Nil insert");
+
+		hh := Hash->New()<IntRef, IntRef>;
+		hh->Insert(IntRef->New(1), IntRef->New(1));
+		Check(hh->Find(nil) = Nil & <>hh->Has(nil) & <>hh->Remove(nil), "Hash Nil key");
+
+		if(@pass) {
+			"PASS: Nil guards"->PrintLine();
+		}
+		else {
+			"FAIL: Nil guards"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
