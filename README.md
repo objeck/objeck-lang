@@ -13,7 +13,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://scan.coverity.com/projects/10314/badge.svg" alt="Coverity Scan Build Status"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.11.0-blue" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.11.1-blue" alt="Latest Release"></a>
 </p>
 
 <p align="center">
@@ -46,12 +46,12 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Ubuntu 24.04: one package, system libraries included (-arm64 for ARM)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.11.0/objeck-ubuntu24.04-x64_2026.11.0.deb
-sudo apt install ./objeck-ubuntu24.04-x64_2026.11.0.deb
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.11.1/objeck-ubuntu24.04-x64_2026.11.1.deb
+sudo apt install ./objeck-ubuntu24.04-x64_2026.11.1.deb
 
 # Other Linux (see Platform support below), or macOS: the archive
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.11.0/objeck-linux-x64_2026.11.0.tgz
-tar xzf objeck-linux-x64_2026.11.0.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.11.1/objeck-linux-x64_2026.11.1.tgz
+tar xzf objeck-linux-x64_2026.11.1.tgz
 # Linux only: install the system libraries the toolchain links against
 # (mbedTLS, readline, SDL2/GL, OpenCV, unixODBC, LAME) --
 # obr does not start without them. --check reports without installing.
@@ -489,13 +489,13 @@ Monte Carlo takes 2 of 10 stones
 
 </details>
 
-More: [all the guides](docs/guides/README.md), the 32 numbered programs in [`programs/deploy`](programs/deploy/README.md) that ship with every release, and [what is new in v2026.11.0](#whats-new).
+More: [all the guides](docs/guides/README.md), the 32 numbered programs in [`programs/deploy`](programs/deploy/README.md) that ship with every release, and [what is new in v2026.11.1](#whats-new).
 
 ## What's New
 
 Full details for every release are in the [CHANGELOG](CHANGELOG.md).
 
-### v2026.11.1
+### v2026.11.1 ✅
   * **Compiler errors that say what is wrong** &mdash; the scanner gives each rejected token a concrete reason with a source excerpt and caret (bad escapes, unterminated strings reported at the opening quote, malformed numbers such as `1e3`, `0o9` and `1.2.3`); the parser says "Expected X, found Y" and names the opener of an unclosed `(`; the analyzer suggests "Did you mean ..." for an undefined variable, class or method and details call signatures and casts. Recovery after a lexical error no longer buries it under follow-on errors.
   * **Large programs compile faster** &mdash; the optimizer's dead-store pass was quadratic, so a 100,000-statement program took 54 s to compile at `-opt s3` and now takes 5 s; 20,000 `select` labels went from 6 s to 0.6 s; and a program that uses the query library compiles in 0.7 s instead of 1.4 s because the intermediate instructions are freed in one pass.
   * **Front-end fixes from negative testing** &mdash; `x.;` now reports `Expected a name after '.'` once, at the right place; a zero-width space inside a name is one error instead of two; and a NUL byte in a source file on Windows is reported instead of silently ending the source.
@@ -520,7 +520,7 @@ Full details for every release are in the [CHANGELOG](CHANGELOG.md).
   * **objeck.org** &mdash; a Playground pill in the header, fewer duplicate links, a click-to-play Internals video that makes no request to YouTube until played, security headers (with a report-only content security policy), and a daily visitor report from the access log with no cookies or scripts added to the site.
   * **Tooling** &mdash; `tools/release-stats/snapshot_traffic.py` keeps the repository traffic GitHub drops after 14 days, in a private folder and never in the repository; a flaky language-server test (the queued-batch ContentModified check) is fixed. The README gains a Platform support section: the Linux release needs glibc 2.38 or newer, with workarounds for older distributions.
 
-### v2026.11.0 ✅
+### v2026.11.0
   * **A web server that serves a site** &mdash; `StaticFiles` serves a folder with content types from a whitelist of extensions, `index.html` for a folder, ETags and conditional requests (304), gzip for text and `Range` for large files (206 and 416), and refuses dotfiles, non-ASCII names and folder listings. `programs/examples/site_server.obs` is a complete server in about 160 lines, and objeck.org now runs on it behind Caddy.
   * **Hostile clients are bounded** &mdash; the whole request has a deadline, so a client that trickles its headers cannot hold a connection open; a `..` path in any spelling answers 400; `Request.GetHeader` is case-insensitive; and one silent connection no longer blocks every TLS client, because `TCPSecureSocketServer->Accept` no longer does the handshake inside the accept call. `tools/security` is a black-box harness of 93 hostile requests, and it passes.
   * **A long-running server no longer leaks a thread per connection** &mdash; connection threads were never joined and the plain-HTTP path started a second, unjoined thread, about 11 KB and four memory mappings per connection, until the OS mapping limit after roughly 16,000 connections. The handler now runs in the connection's thread and a reaper joins the finished ones.
@@ -546,7 +546,7 @@ Full details for every release are in the [CHANGELOG](CHANGELOG.md).
 
 ## Downloads
 
-**Latest Release:** [v2026.11.0](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.11.1](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|
