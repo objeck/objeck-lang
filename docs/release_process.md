@@ -206,6 +206,16 @@ Or use the GitHub Actions UI:
 
 These happen after `release-publish.yml` goes green. `tools/cicd/post_release.sh <VERSION>` checks the outcome of each (assets, binaries in every archive, signatures, `SHA256SUMS`, the release body, the playground, the site). Without `--sign`, `--body`, `--playground` or `--site` it changes nothing, except that it regenerates and re-uploads a `SHA256SUMS` that no longer matches the published files -- and then requests a re-signing, because regenerating the manifest invalidates its signature and `obu` refuses a manifest it cannot verify.
 
+### 0. One command for everything after the tag
+
+On the Windows release machine, from Git Bash, right after `git push origin v<VERSION>`:
+
+```bash
+tools/cicd/release_finish.sh <VERSION> --body release-notes.md
+```
+
+It waits for the build and the packages, signs the installers, deploys the playground and the site engine, runs every release gate, flips the README and objeck.org markers in a PR (merged only when its checks are all green), uploads the site pages and API docs, and re-runs the gates. `--dry-run` reports what each step would do without changing anything; `--from N` resumes at a step. The numbered sections below describe the pieces it runs.
+
 ### 1. Sign the Windows installers
 
 The certificate is on a SafeNet eToken, so CI cannot sign. On the Windows release machine, with the token plugged in:
@@ -215,6 +225,8 @@ tools/cicd/post_release.sh <VERSION> --sign --body <release-notes.md>
 ```
 
 `--sign` runs `tools/cicd/sign_release.cmd`, which downloads the published MSIs, signs them in a single `signtool` run (one token password prompt; `focus_token_logon.ps1` raises the "Token Logon" window if it opens out of sight) and verifies them, uploads them back and regenerates `SHA256SUMS` (signing changes the bytes); the token asks for its password. Regenerating the manifest invalidates `SHA256SUMS.minisig`, so it also triggers `resign-manifest.yml` and fails if that run does not succeed -- since #723 phase 3 a manifest whose signature does not verify is one `obu update` refuses outright. `post_release.sh` then re-checks the signatures, the manifest against the published files, and the signature against the published manifest. Details: [SIGNING.md](../SIGNING.md).
+
+**Unattended signing.** To sign without anyone at the keyboard, save the token password once with `powershell -File tools\cicd	oken_pin.ps1 -Set` (it is typed hidden, or imported once from a text file you made with `-Import <file> -DeleteSource`, which overwrites and deletes the plain text; keep that file out of synced folders such as Dropbox, because a synced copy outlives the delete; it is stored encrypted for your Windows account on that machine, in `%USERPROFILE%\.objeck	oken_pin.dpapi`; check it with `sign_with_saved_pin.ps1 -Dir <folder> -WhatIf`). While that file exists `sign_release.cmd` uses it and never shows the prompt, after checking each installer against `SHA256SUMS`. `tools\cicduto_sign.ps1` does the whole job for the latest release when it is ready, and `auto_sign.ps1 -Install` runs it every 30 minutes. Two safety rules are deliberate: a signing failure is never retried (a wrong password locks a SafeNet token), and any process running as you on that machine can use the saved password while the token is plugged in, so unplug the token when you are not releasing if that matters. `token_pin.ps1 -Remove` returns to the interactive prompt. Log: `%USERPROFILE%\.objeckuto_sign.log`.
 
 ### 2. Deploy the playground
 

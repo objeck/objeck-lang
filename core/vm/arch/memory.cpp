@@ -2946,6 +2946,54 @@ void MemoryManager::JitWriteBarrier(size_t* target_obj)
 
 // ---- End Generational GC ----
 
+// Bounded-recursion marking. A long chain of objects (a linked list of a million
+// nodes) made CheckObject -> CheckMemory -> CheckObject recurse until the collector
+// thread's native stack overflowed. Past MARK_RECURSION_LIMIT the already-marked
+// object is parked on a per-thread work stack and drained by the outermost call, so
+// shallow graphs pay one counter increment and deep ones use heap, not stack.
+static const int MARK_RECURSION_LIMIT = 256;
+struct PendingMark { size_t* mem; StackClass* cls; };  // cls == nullptr: reference array
+static thread_local int mark_recursion = 0;
+static thread_local std::vector<PendingMark> mark_pending;
+
+void MemoryManager::MarkChildrenNow(size_t* mem, StackClass* cls)
+{
+  if(cls) {
+    CheckMemory(mem, cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations(), 1);
+  }
+  else {
+    const size_t size = mem[0];
+    const size_t dim = mem[1];
+    size_t* objects = (size_t*)(mem + 2 + dim);
+    for(size_t i = 0; i < size; ++i) {
+      CheckObject((size_t*)objects[i], false, 2);
+    }
+  }
+}
+
+void MemoryManager::MarkChildren(size_t* mem, StackClass* cls)
+{
+  if(mark_recursion >= MARK_RECURSION_LIMIT) {
+    mark_pending.push_back({mem, cls});
+    return;
+  }
+
+  ++mark_recursion;
+  MarkChildrenNow(mem, cls);
+  --mark_recursion;
+
+  // only the outermost call drains
+  if(mark_recursion == 0 && !mark_pending.empty()) {
+    ++mark_recursion;
+    while(!mark_pending.empty()) {
+      const PendingMark item = mark_pending.back();
+      mark_pending.pop_back();
+      MarkChildrenNow(item.mem, item.cls);
+    }
+    --mark_recursion;
+  }
+}
+
 void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
 {
 #ifndef _GC_SERIAL
@@ -2990,7 +3038,7 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
 
       // mark data
       if(MarkMemory(mem)) {
-        CheckMemory(mem, cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations(), depth);
+        MarkChildren(mem, cls);
       }
     } 
     else {
@@ -3019,13 +3067,7 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
         // only an array that holds references: not an Int[] the program
         // allocated (GC roots phase 6), nor a Byte, Char or Float array
         if(ArrayElementsAreRoots(mem[TYPE])) {
-            size_t* array = mem;
-            const size_t size = array[0];
-            const size_t dim = array[1];
-            size_t* objects = (size_t*)(array + 2 + dim);
-            for(size_t i = 0; i < size; ++i) {
-              CheckObject((size_t*)objects[i], false, 2);
-            }
+          MarkChildren(mem, nullptr);
         }
       }
     }

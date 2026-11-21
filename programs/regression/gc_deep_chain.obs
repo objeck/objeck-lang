@@ -1,0 +1,68 @@
+#~
+# A very long chain of objects must not overflow the collector's native stack
+#
+# CheckObject -> CheckMemory -> CheckObject marked recursively, so a linked chain of
+# roughly 500,000 nodes or more (List->AddFront, Queue->AddBack, a hand-built linked list)
+# overflowed the marking thread's stack and the VM died silently with exit code 127,
+# interpreted and compiled. Marking now parks objects past a recursion limit on a
+# per-thread work stack. This builds a 2,000,000-node singly linked chain and a
+# doubly linked List, forces collections while they are live, and checks the contents.
+~#
+
+use Collection;
+
+class Node {
+	@value : Int;
+	@next : Node;
+
+	New(value : Int, next : Node) {
+		@value := value;
+		@next := next;
+	}
+
+	method : public : GetValue() ~ Int {
+		return @value;
+	}
+
+	method : public : GetNext() ~ Node {
+		return @next;
+	}
+}
+
+class DeepChain {
+	function : Main(args : String[]) ~ Nil {
+		count := 2000000;
+
+		head : Node;
+		for(i := 0; i < count; i += 1;) {
+			head := Node->New(i, head);
+		};
+
+		list := List->New()<IntRef>;
+		for(i := 0; i < count; i += 1;) {
+			list->AddFront(IntRef->New(i));
+		};
+
+		# churn so major and minor collections run while the chains are live
+		junk := 0;
+		for(i := 0; i < 3000000; i += 1;) {
+			junk += IntRef->New(i)->Get() % 3;
+		};
+
+		sum := 0;
+		n := 0;
+		node := head;
+		while(node <> Nil) {
+			sum += node->GetValue();
+			n += 1;
+			node := node->GetNext();
+		};
+
+		expected := (count - 1) * count / 2;
+		if(n <> count | sum <> expected | list->Size() <> count) {
+			"FAIL: chain n={$n}, sum={$sum}, list={$list->Size()}"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: deep object chains survive collection"->PrintLine();
+	}
+}

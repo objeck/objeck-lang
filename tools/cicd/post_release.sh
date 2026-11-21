@@ -191,11 +191,13 @@ if [ ! -f "$WORK/SHA256SUMS.minisig" ]; then
   bad "no SHA256SUMS.minisig published -- obu refuses an unsigned manifest, so no obu can install $TAG"
 else
   SIG_OBU=""
+  # OBJECK_OBU: an obu to verify with, for a checkout that has no built deploy tree (release_finish.sh uses a clean one)
+  if [ -n "${OBJECK_OBU:-}" ] && [ -f "$OBJECK_OBU" ]; then SIG_OBU="$OBJECK_OBU"; fi
   for cand in "core/release/deploy-x64/bin/obu.exe" "core/release/deploy-x64/bin/obu" \
               "core/release/deploy/bin/obu.exe" "core/release/deploy/bin/obu"; do
     # -f only: Git Bash reports the extensionless name as present when just
     # obu.exe exists, and the name is handed to a program that opens it.
-    if [ -f "$cand" ]; then SIG_OBU="$cand"; break; fi
+    if [ -z "$SIG_OBU" ] && [ -f "$cand" ]; then SIG_OBU="$cand"; break; fi
   done
   if [ -n "$SIG_OBU" ]; then
     # 'verify' checks the signature before it reads a line of the manifest, so
@@ -280,8 +282,13 @@ grep -q ']()' "$WORK/body.md" && bad "body has empty-href links: $(grep -c ']()'
 echo
 echo "[6] playground"
 if [ "$DO_PLAYGROUND" -eq 1 ]; then
-  HOST="${PLAYGROUND_HOST:-playground.objeck.org}"
-  ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 "root@$HOST" \
+  # Default to the ssh ALIAS "playground" (HostName playground.objeck.org, User root, and the key):
+  # root@playground.objeck.org does not match that Host block, so ssh offered no key and the
+  # deploy failed with "Permission denied (publickey)" at v2026.11.2. A value with an @ is
+  # used as given; any other host name still gets root@.
+  HOST="${PLAYGROUND_HOST:-playground}"
+  case "$HOST" in *@*|playground) TARGET="$HOST" ;; *) TARGET="root@$HOST" ;; esac
+  ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 "$TARGET" \
       "bash /opt/playground/repo/programs/web-playground/deploy/update.sh $VERSION" 2>&1 \
       | tail -8 | sed 's/^/  /'
 fi

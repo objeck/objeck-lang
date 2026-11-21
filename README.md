@@ -13,7 +13,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://scan.coverity.com/projects/10314/badge.svg" alt="Coverity Scan Build Status"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.11.1-blue" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.11.2-blue" alt="Latest Release"></a>
 </p>
 
 <p align="center">
@@ -46,12 +46,12 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Ubuntu 24.04: one package, system libraries included (-arm64 for ARM)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.11.1/objeck-ubuntu24.04-x64_2026.11.1.deb
-sudo apt install ./objeck-ubuntu24.04-x64_2026.11.1.deb
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.11.2/objeck-ubuntu24.04-x64_2026.11.2.deb
+sudo apt install ./objeck-ubuntu24.04-x64_2026.11.2.deb
 
 # Other Linux (see Platform support below), or macOS: the archive
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.11.1/objeck-linux-x64_2026.11.1.tgz
-tar xzf objeck-linux-x64_2026.11.1.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.11.2/objeck-linux-x64_2026.11.2.tgz
+tar xzf objeck-linux-x64_2026.11.2.tgz
 # Linux only: install the system libraries the toolchain links against
 # (mbedTLS, readline, SDL2/GL, OpenCV, unixODBC, LAME) --
 # obr does not start without them. --check reports without installing.
@@ -489,13 +489,22 @@ Monte Carlo takes 2 of 10 stones
 
 </details>
 
-More: [all the guides](docs/guides/README.md), the 32 numbered programs in [`programs/deploy`](programs/deploy/README.md) that ship with every release, and [what is new in v2026.11.1](#whats-new).
+More: [all the guides](docs/guides/README.md), the 32 numbered programs in [`programs/deploy`](programs/deploy/README.md) that ship with every release, and [what is new in v2026.11.2](#whats-new).
 
 ## What's New
 
 Full details for every release are in the [CHANGELOG](CHANGELOG.md).
 
-### v2026.11.1 ✅
+### v2026.11.2 ✅
+  * **A long linked chain no longer crashes the VM** &mdash; a `List`, `Queue`, `CompareList` or linked `Stack` of about 500,000 or more nodes exited with code 127, because marking recursed once per node and overflowed the collector thread's native stack; marking now uses a bounded per-thread work stack, and a 2-million-node chain passes with and without the JIT (`binarytrees` is unchanged)
+  * **Sorting and strings are faster** &mdash; the `Vector` and `CompareVector` merge sorts skip a merge when the halves are already in order (500,000 sorted elements: about 500 ms to 80 ms, random input unchanged, still stable), and `String->Append(String)` copies strings of 32 or more characters in one block (1,000-character pieces: 1,660 ms to 292 ms)
+  * **Faster image loading for convolutional networks** &mdash; `System.ML.Cnn` decodes a batch of images on several native threads and prefetches the next one, so training no longer waits on the JPEG decoder (decoding 10,000 face images: 1,107 images/s on one thread, 5,236 on eight; a 20,000-image epoch on an RTX 4090: about 30 to 34 s, now 9.1 s), with bit-identical results
+  * **Result tables for a study that arrives over time** &mdash; `ResultTable` has scientific, p-value (`<0.0001`) and integer number formats, and `System.ML.Report` has a safe CSV loader, CSV tables, placeholders that read `not run yet`, figure slots and a run-status table
+  * **OpenAI output cap** &mdash; the Responses API now gets `max_output_tokens` and Chat Completions `max_completion_tokens`; before, the cap was sent under a name the endpoint ignored
+  * **One command finishes a release** &mdash; `tools/cicd/release_finish.sh` waits for the build, signs the installers (unattended from a DPAPI-protected password file, or at one prompt), deploys the playground and the site, and runs the release gates; the site deploy script targets the new server
+  * **Topic stability is a distribution** &mdash; `docs/AI.md` explains how to read `TopicMetrics->Stability` (about 1.0 when two seeds find the same optimum, 0.67 to 0.8 when one merged two topics), measured against Gensim over 15 seed pairs
+
+### v2026.11.1
   * **Compiler errors that say what is wrong** &mdash; the scanner gives each rejected token a concrete reason with a source excerpt and caret (bad escapes, unterminated strings reported at the opening quote, malformed numbers such as `1e3`, `0o9` and `1.2.3`); the parser says "Expected X, found Y" and names the opener of an unclosed `(`; the analyzer suggests "Did you mean ..." for an undefined variable, class or method and details call signatures and casts. Recovery after a lexical error no longer buries it under follow-on errors.
   * **Large programs compile faster** &mdash; the optimizer's dead-store pass was quadratic, so a 100,000-statement program took 54 s to compile at `-opt s3` and now takes 5 s; 20,000 `select` labels went from 6 s to 0.6 s; and a program that uses the query library compiles in 0.7 s instead of 1.4 s because the intermediate instructions are freed in one pass.
   * **Front-end fixes from negative testing** &mdash; `x.;` now reports `Expected a name after '.'` once, at the right place; a zero-width space inside a name is one error instead of two; and a NUL byte in a source file on Windows is reported instead of silently ending the source.
@@ -528,25 +537,9 @@ Full details for every release are in the [CHANGELOG](CHANGELOG.md).
   * **Checked, not assumed** &mdash; a six-hour release soak runs the site server under load beside the regression suite, the GC stress tests and the fuzzers on Linux and Windows and fails at resource limits; it found both leaks above. Thread stacks are overflow-checked (Coverity CID 1685914), two Coverity batches are fixed, and the release is verified on all five platforms by one script at one commit.
   * **A new look for objeck.org** &mdash; a teal-black page under a slow aurora, a hamburger menu on the left with the logo centered, a Powered by Objeck badge, and the performance figures re-measured on this version.
 
-### v2026.10.3
-  * **Garbage collector roots, finished** &mdash; compiled code now tells the collector exactly which stack slots hold references (typed slots on x64 and ARM64), and an `Int[]` has its own heap tag, so an `Int` or an `Int[]` element that happens to equal an object's address is never rewritten by a collection, interpreted or compiled ([design](docs/GC_ROOTS_DESIGN.md))
-  * **A hardened loader** &mdash; a fuzz target on `Loader::Load` (hundreds of millions of executions) fixed a crash on a repeated class or method id, allocations of up to 16 GB from a corrupt count, an abort on a bad method signature, a silent exit on an unknown opcode and a read past the end of a short `.obe`; a verifier now checks jump targets, local and trap ids and class, method and field ids before anything runs ([trust model](docs/SECURITY_MODEL.md))
-  * **Errors no longer end the host** &mdash; a fatal compiler error and a failed library load are returned instead of calling `exit(1)`, so the language server stays up, and parser and analyzer diagnostics share one record
-  * **Debugger** &mdash; output stays whole, messages are ordered, unknown requests are refused, you can pause, breakpoints keep their file and have their own ids, and a breakpoint-heavy run costs about 100&times; less in the hook (25 s to 0.25 s on four threads)
-  * **Native library ABI is versioned** &mdash; `VMContext` carries an ABI version and its own size, so a library can tell it was built for a different VM; an unresolved call target and an exception on a worker thread are reported, not crashes
-  * **`HttpClient` reuses connections** &mdash; plain-HTTP connections wait in a pool when the server allows it and a `GET` or `DELETE` to the same host reuses one, so a program making many requests no longer runs Windows out of ports; `HttpClient->CloseIdleConnections()` closes the waiting ones ([guide](docs/guides/http.md))
-  * **Library fixes** &mdash; a failed request, an empty reply or a missing file in the OpenAI, Gemini, misc, net, JSON, XML, RegEx, RSS and JSON-RPC libraries no longer dereferences `Nil`; `RegEx` repeat counts are bounded (`a{99999999999}` no longer fills the heap); sorting a vector of `Collection.Pair` works ([guide](docs/guides/data_and_text.md))
-  * **Language server** &mdash; edits analyze faster (a hover after an edit in a small workspace: 165 ms to 53 ms on Windows) and a library that fails to load no longer takes the server down ([guide](docs/guides/language_server.md))
-  * **Checkers example** &mdash; an SDL2 game with ten AI levels built on `System.AI`, a self-play learner and generated music ([`programs/examples/checkers`](programs/examples/checkers/), [guide](docs/guides/ai.md))
-  * **Tested more deeply** &mdash; the nightly hardening run is scheduled, a local script runs the cloud checks on your own machine first, and four intermittently failing tests were traced to their causes and fixed (three TLS tests whose certificates were valid only from the second they were made, and a JSON-RPC test that picked a port still held by an earlier connection)
-  * **Getting-started guides** &mdash; [Query.Structured](docs/guides/query.md), [HTTP](docs/guides/http.md), [JSON, XML and RegEx](docs/guides/data_and_text.md), [collections](docs/guides/collections.md), [game AI](docs/guides/ai.md) and [editor setup](docs/guides/language_server.md), each with a program that was compiled and run, plus [what is new in 10.3](docs/guides/whats_new_10_3.md)
-  * **New docs** &mdash; the [architecture assessment](docs/ARCHITECTURE_ASSESSMENT_2026_11.md), the VM trust model (an `.obe` is native code), a [collections guide](docs/COLLECTIONS_GUIDE.md), [error conventions](docs/ERROR_CONVENTIONS.md) and [how to add an intrinsic](docs/ADDING_AN_INTRINSIC.md)
-  * **Upgrading** &mdash; recompile your `.obe` files and rebuild your own `.obl` libraries: the file format changed, and a program or library built by an earlier version is refused with a message saying so
-
-
 ## Downloads
 
-**Latest Release:** [v2026.11.1](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.11.2](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|

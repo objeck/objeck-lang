@@ -2,10 +2,11 @@
 
 All notable changes to Objeck will be documented in this file.
 
-## [v2026.11.2] - unreleased
+## [v2026.11.2] - 2026-11-21
 
 ### Fixed
 
+- **A long linked chain of objects crashed the VM**: a `List`, `Queue`, `CompareList` or linked `Stack` of about 500,000 or more nodes exited with code 127, with and without the JIT, because marking recursed once per node and overflowed the collector thread's native stack. Marking now moves objects onto a per-thread work stack once it is 256 levels deep (minor and major collections, every root thread, no new stop-the-world entry point); a 2-million-node chain passes, and `binarytrees` is unchanged (4.8 to 5.9 s before and after). Regression test: `gc_deep_chain`
 - **OpenAI output cap was sent under the wrong name**: `Response->Respond(...)` wrote `max_tokens` to the Responses endpoint, whose field is `max_output_tokens`, so the cap was never applied. `Completion->Complete(...)` now sends `max_completion_tokens` (`max_tokens` is deprecated for Chat Completions and rejected by reasoning models). New offline request builders `Response->BuildRespondRequest` and `Completion->BuildCompleteRequest`; test `openai_request_test.obs`
 
 ### Added
@@ -22,6 +23,8 @@ All notable changes to Objeck will be documented in this file.
 
 - **The site deploy script knows the new server**: `core/release/deploy_website.sh` still defaulted to the retired shared-hosting account (`objecklang`) and built its live-site check from `www.<ssh host>`, so a deploy to the droplet by its own name could not verify itself. The default user is now `objeckorg`, the public URL is a separate setting (`--site-url`, `OBJECK_ORG_URL`, default `https://www.objeck.org`), the key can come from `OBJECK_ORG_KEY`, and a failed SSH connection now prints ssh's own reason with a specific hint (a saved host key that changed with the move, a key the account does not accept, a closed port or a fail2ban ban) instead of "does not exist (or SSH failed)" for every cause.
 - **Signing asks for the token password once, and shows where**: `tools/cicd/sign_release.cmd` signs every installer in one `signtool` run, so the SafeNet token prompts once per release instead of once per MSI, and starts `tools/cicd/focus_token_logon.ps1`, which raises the "Token Logon" window that used to open out of sight. The helper only raises the window; it never reads or types the password.
+- **Unattended signing from a protected password file**: `tools/cicd/token_pin.ps1 -Set` stores the SafeNet token password once, encrypted with Windows DPAPI for your account on that machine (a copy of the file is unreadable anywhere else; a plain-text file is not supported on purpose). `sign_release.cmd` then signs with `signtool` and no prompt (`tools/cicd/sign_with_saved_pin.ps1`, using the container syntax `/csp ... /k "[{{password}}]=container"` and the public certificate as a file), after checking every installer against the CI-built `SHA256SUMS`. A signing failure writes `signing_failed.txt` and is never retried automatically, because a wrong password locks the token. `tools/cicd/auto_sign.ps1` looks at the latest release and signs it when it is ready (both installers, the `.deb` packages up or 45 minutes passed, the tag an ancestor of master, no earlier failure); `-Install` registers it as a scheduled task every 30 minutes. With no saved password file everything behaves exactly as before.
+- **The whole post-tag release is one command**: `tools/cicd/release_finish.sh <VERSION>` waits for the build and the packages, signs (unattended with the saved password), deploys the playground and the site engine, runs the release gates, flips the README and objeck.org markers in a PR it merges only when green (`tools/cicd/flip_markers.py`, which reproduces the v2026.11.1 flip byte for byte and refuses rather than skipping a marker that moved), uploads the site pages and API docs from a clean checkout of master, and re-checks everything. `--dry-run` and `--from N` supported. `post_release.sh` takes `OBJECK_OBU` for a checkout with no built deploy tree.
 
 ### Documentation
 

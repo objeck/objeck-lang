@@ -1,3 +1,16 @@
+v2026.11.2 (November 21, 2026)
+===
+A release about speed and one crash: a long linked list no longer overflows the collector, already-sorted data sorts in a sixth of the time, long strings append in one block, and image loading for convolutional networks is several times faster, plus result-table formats for ML studies and a one-command release process.
+
+v2026.11.2
+- A long linked chain no longer crashes the VM -- a List, Queue, CompareList or linked Stack of about 500,000 or more nodes exited with code 127, because marking recursed once per node and overflowed the collector thread's native stack; marking now uses a bounded per-thread work stack, and a 2-million-node chain passes with and without the JIT (binarytrees is unchanged)
+- Sorting and strings are faster -- the Vector and CompareVector merge sorts skip a merge when the halves are already in order (500,000 sorted elements: about 500 ms to 80 ms, random input unchanged, still stable), and String->Append(String) copies strings of 32 or more characters in one block (1,000-character pieces: 1,660 ms to 292 ms)
+- Faster image loading for convolutional networks -- System.ML.Cnn decodes a batch of images on several native threads and prefetches the next one, so training no longer waits on the JPEG decoder (decoding 10,000 face images: 1,107 images/s on one thread, 5,236 on eight; a 20,000-image epoch on an RTX 4090: about 30 to 34 s, now 9.1 s), with bit-identical results
+- Result tables for a study that arrives over time -- ResultTable has scientific, p-value (<0.0001) and integer number formats, and System.ML.Report has a safe CSV loader, CSV tables, placeholders that read not run yet, figure slots and a run-status table
+- OpenAI output cap -- the Responses API now gets max_output_tokens and Chat Completions max_completion_tokens; before, the cap was sent under a name the endpoint ignored
+- One command finishes a release -- tools/cicd/release_finish.sh waits for the build, signs the installers (unattended from a DPAPI-protected password file, or at one prompt), deploys the playground and the site, and runs the release gates; the site deploy script targets the new server
+- Topic stability is a distribution -- docs/AI.md explains how to read TopicMetrics->Stability (about 1.0 when two seeds find the same optimum, 0.67 to 0.8 when one merged two topics), measured against Gensim over 15 seed pairs
+
 v2026.11.1 (November 20, 2026)
 ===
 A release about trust: the compiler says exactly what is wrong and compiles large programs faster, and the loader checks an .obe before running it, so a corrupt or crafted program is refused with a message instead of corrupting memory. It also adds a Claude client (API.Anthropic), a local vector index, SVG charts (System.Plot) and a per-session ONNX execution provider, and makes loading a corrupt ML model file return Nil instead of ending the program.

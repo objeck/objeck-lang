@@ -64,12 +64,14 @@ echo Downloaded files:
 dir /b %STAGING%\*.msi
 echo.
 
-REM Sign ALL the MSIs in ONE signtool run, so the SafeNet token asks for its password once
-REM per release rather than once per installer. (Each separate run re-opened the prompt: the
-REM v2026.11.1 signing needed the PIN typed twice.)
-REM
-REM The "Token Logon" prompt is a signtool window that can open behind everything. The helper
-REM below raises it. It never reads or types the PIN: you do that.
+REM How to sign. If tools\cicd\token_pin.ps1 -Set was run, the token password is read from its
+REM DPAPI-protected file and signing needs no one at the keyboard (sign_with_saved_pin.ps1 also checks the
+REM installers against the CI-built SHA256SUMS first). Otherwise fall back to the interactive prompt.
+if exist "%USERPROFILE%\.objeck\token_pin.dpapi" goto sign_saved_pin
+
+REM ---- interactive: ALL the MSIs in ONE signtool run, so the token asks for its password once per release.
+REM The "Token Logon" prompt is a signtool window that can open behind everything; the helper raises it.
+REM It never reads or types the password: you do that.
 set MSIS=
 for %%f in (%STAGING%\*.msi) do set MSIS=!MSIS! "%%f"
 start "" /b powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0focus_token_logon.ps1"
@@ -84,7 +86,24 @@ if errorlevel 1 (
     exit /b 1
 )
 echo.
+goto verify_signatures
 
+:sign_saved_pin
+echo Using the saved token password (tools\cicd\token_pin.ps1); no prompt.
+%GH% release download v%VERSION% --pattern SHA256SUMS --dir %STAGING%
+if errorlevel 1 (
+    echo ERROR: could not download SHA256SUMS to check the installers against; not signing unattended.
+    exit /b 1
+)
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0sign_with_saved_pin.ps1" -Dir "%STAGING%" -ManifestFile "%STAGING%\SHA256SUMS"
+if errorlevel 1 (
+    echo.
+    echo ERROR: unattended signing did not complete. The message above says why.
+    exit /b 1
+)
+echo.
+
+:verify_signatures
 REM Verify every signature
 for %%f in (%STAGING%\*.msi) do (
     echo Verifying signature on %%~nxf...
