@@ -619,20 +619,30 @@ resp->GetText()->PrintLine();
 		}
 
 		#~
-		Model response for the given query
-		@param model ID of the model to use
-		@param messages list of messages comprising the conversation
-		@param max_tokens maximum number of completion tokens returned by the API
-		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
-		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
-		@param reasoning_effort model's reasoning reasoning_effort 
-		@param verbosity verbosity of response
-		@param schema output schema
-		@param tools list of tools
-		@param token API token
-		@return completion response
+		Sets the Responses API output cap ('max_output_tokens'); a negative value omits it.
 		~#
-		function : Respond(model : String, messages : Vector<Pair<String, String>>, max_tokens : Int, temperature : Float, top_p : Float, reasoning_effort : ReasoningEffort, verbosity : Verbosity, schema : ParameterType, tools : Vector<Tool>, token : String) ~ Response {
+		function : SetMaxOutputTokens(request_json : JsonElement, max_tokens : Int) ~ Nil {
+			if(max_tokens > -1) {
+				request_json->Insert("max_output_tokens", max_tokens);
+			};
+		}
+
+		#~
+		Builds the JSON body POSTed to the Responses endpoint. The output cap is sent as
+		'max_output_tokens' (the Responses API field; 'max_tokens' is the Chat Completions
+		name and is not accepted here). Public so the request can be checked offline.
+		@param model ID of the model to use
+		@param messages role and text pairs
+		@param max_tokens cap on generated tokens including reasoning tokens, -1 to omit
+		@param temperature sampling temperature, negative to omit
+		@param top_p nucleus sampling threshold, negative to omit
+		@param reasoning_effort reasoning effort
+		@param verbosity verbosity of response
+		@param schema output schema or Nil
+		@param tools list of tools or Nil
+		@return request body
+		~#
+		function : BuildRespondRequest(model : String, messages : Vector<Pair<String, String>>, max_tokens : Int, temperature : Float, top_p : Float, reasoning_effort : ReasoningEffort, verbosity : Verbosity, schema : ParameterType, tools : Vector<Tool>) ~ JsonElement {
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
 
@@ -646,9 +656,7 @@ resp->GetText()->PrintLine();
 				completion_json->Insert("tools", tools_json);
 			};
 
-			if(max_tokens > -1) {
-				completion_json->Insert("max_tokens", max_tokens);
-			};
+			SetMaxOutputTokens(completion_json, max_tokens);
 
 			if(temperature >= 0.0) {
 				completion_json->Insert("temperature", temperature);
@@ -717,6 +725,25 @@ resp->GetText()->PrintLine();
 				completion_json->Insert("text", text_json);
 			};
 
+			return completion_json;
+		}
+
+		#~
+		Model response for the given query
+		@param model ID of the model to use
+		@param messages list of messages comprising the conversation
+		@param max_tokens maximum number of completion tokens returned by the API
+		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
+		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
+		@param reasoning_effort model's reasoning reasoning_effort 
+		@param verbosity verbosity of response
+		@param schema output schema
+		@param tools list of tools
+		@param token API token
+		@return completion response
+		~#
+		function : Respond(model : String, messages : Vector<Pair<String, String>>, max_tokens : Int, temperature : Float, top_p : Float, reasoning_effort : ReasoningEffort, verbosity : Verbosity, schema : ParameterType, tools : Vector<Tool>, token : String) ~ Response {
+			completion_json := BuildRespondRequest(model, messages, max_tokens, temperature, top_p, reasoning_effort, verbosity, schema, tools);
 			data := completion_json->ToFormattedString()->ToByteArray();
 			if(IsDebug()) {
 				data->ToString()->PrintLine();
@@ -838,9 +865,7 @@ resp->GetText()->PrintLine();
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
 
-			if(max_tokens > -1) {
-				completion_json->Insert("max_tokens", max_tokens);
-			};
+			SetMaxOutputTokens(completion_json, max_tokens);
 
 			if(temperature >= 0.0) {
 				completion_json->Insert("temperature", temperature);
@@ -1039,9 +1064,7 @@ resp->GetText()->PrintLine();
 				completion_json->Insert("tools", tools_json);
 			};
 
-			if(max_tokens > -1) {
-				completion_json->Insert("max_tokens", max_tokens);
-			};
+			SetMaxOutputTokens(completion_json, max_tokens);
 
 			if(temperature >= 0.0) {
 				completion_json->Insert("temperature", temperature);
@@ -1509,22 +1532,30 @@ choice->GetMessage()->GetSecond()->PrintLine();
 		}
 
 		#~
-		Model response for the given query
-		@param model ID of the model to use
-		@param messages list of messages comprising the conversation
-		@param max_tokens maximum number of completion tokens returned by the API
-		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
-		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
-		@param token API token
-		@return completion response
+		Sets the chat completions output cap ('max_completion_tokens'); a negative value omits it.
 		~#
-		function : Complete(model : String, messages : Vector<Pair<String, String>>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
+		function : SetMaxCompletionTokens(request_json : JsonElement, max_tokens : Int) ~ Nil {
+			if(max_tokens > -1) {
+				request_json->Insert("max_completion_tokens", max_tokens);
+			};
+		}
+
+		#~
+		Builds the JSON body POSTed to the chat completions endpoint. The output cap is sent
+		as 'max_completion_tokens': 'max_tokens' is deprecated there and is rejected by
+		reasoning (o-series) models. Public so the request can be checked offline.
+		@param model ID of the model to use
+		@param messages role and text pairs
+		@param max_tokens cap on generated tokens, -1 to omit
+		@param temperature sampling temperature, negative to omit
+		@param top_p nucleus sampling threshold, negative to omit
+		@return request body
+		~#
+		function : BuildCompleteRequest(model : String, messages : Vector<Pair<String, String>>, max_tokens : Int, temperature : Float, top_p : Float) ~ JsonElement {
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
 
-			if(max_tokens > -1) {
-				completion_json->Insert("max_tokens", max_tokens);
-			};
+			SetMaxCompletionTokens(completion_json, max_tokens);
 
 			if(temperature >= 0.0) {
 				completion_json->Insert("temperature", temperature);
@@ -1542,6 +1573,21 @@ choice->GetMessage()->GetSecond()->PrintLine();
 				messages_json->Add(message_json);
 			};
 			completion_json->Insert("messages", messages_json);
+			return completion_json;
+		}
+
+		#~
+		Model response for the given query
+		@param model ID of the model to use
+		@param messages list of messages comprising the conversation
+		@param max_tokens maximum number of completion tokens returned by the API
+		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
+		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
+		@param token API token
+		@return completion response
+		~#
+		function : Complete(model : String, messages : Vector<Pair<String, String>>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
+			completion_json := BuildCompleteRequest(model, messages, max_tokens, temperature, top_p);
 
 			data := completion_json->ToString()->ToByteArray();
 			if(IsDebug()) {
@@ -1638,9 +1684,7 @@ choice->GetMessage()->GetSecond()->PrintLine();
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
 
-			if(max_tokens > -1) {
-				completion_json->Insert("max_tokens", max_tokens);
-			};
+			SetMaxCompletionTokens(completion_json, max_tokens);
 
 			if(temperature >= 0.0) {
 				completion_json->Insert("temperature", temperature);

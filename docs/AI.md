@@ -128,6 +128,8 @@ response := Response->Respond("o3-mini",
 response->GetText()->PrintLine();
 ```
 
+**Output cap.** The `max_tokens` argument of `Response->Respond(...)` limits the generated tokens (reasoning tokens included) and is sent as the Responses API field `max_output_tokens`; `-1` sends no cap. `Completion->Complete(...)` (Chat Completions) sends it as `max_completion_tokens`, because `max_tokens` is deprecated there and reasoning models reject it. `Response->BuildRespondRequest(...)` and `Completion->BuildCompleteRequest(...)` return the request body as a `JsonElement` without any network call.
+
 ---
 
 ### Vision
