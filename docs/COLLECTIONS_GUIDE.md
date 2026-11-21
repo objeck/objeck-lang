@@ -58,7 +58,7 @@ move the cursor to that end first, so they disturb an iteration in progress that
 
 ### `Vector<H>` (gen_collect.obs:5118)
 
-A growable array. It grows by half again (at least four slots) when full, so `AddBack` is
+A growable array. It doubles (at least four slots) when full, so `AddBack` is
 amortised O(1).
 
 | Operation | Cost |

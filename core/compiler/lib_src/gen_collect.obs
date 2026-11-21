@@ -5180,7 +5180,8 @@ copy->Get(0)->PrintLine(); # x
 
 		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
-				grow := @size >> 1;
+				# double: fewer large copies, and fewer big old-generation arrays
+				grow := @size;
 				if(grow < 4) {
 					grow := 4;
 				};
@@ -6143,7 +6144,8 @@ v->ToString()->PrintLine(); # [1,2]
 
 		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
-				grow := @size >> 1;
+				# double: fewer large copies, and fewer big old-generation arrays
+				grow := @size;
 				if(grow < 4) {
 					grow := 4;
 				};
