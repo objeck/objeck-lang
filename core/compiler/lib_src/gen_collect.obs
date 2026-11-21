@@ -2760,7 +2760,7 @@ stack->Size()->PrintLine(); # prints 2
 ```
 	~#
 	class Stack<H> {
-		@head : ListNode<H>;
+		@values : H[];
 		@size : Int;
 
 		#~
@@ -2774,6 +2774,8 @@ stack->Pop()->PrintLine(); # b
 ```
 		~#
 		New() {
+			@values := H->New[16];
+			@size := 0;
 		}
 
 		#~
@@ -2790,15 +2792,11 @@ arr[0]->PrintLine(); # y (top element)
 		~#
 		method : native : public : ToArray() ~ H[] {
 			array := H->New[@size];
-			
-			i := 0;
-			node := @head;
-			while(node <> Nil) {
-				array[i] := node->Get();
-				node := node->GetNext();
-				i += 1;
+			# top of the stack first
+			for(i := 0; i < @size; i += 1;) {
+				array[i] := @values[@size - 1 - i];
 			};
-			
+
 			return array;
 		}
 
@@ -2814,15 +2812,13 @@ stack->Top()->PrintLine(); # 20
 ```
 		~#
 		method : public : Push(value : H) ~ Nil {
-			if(@head = Nil) {
-				@head := ListNode->New(value)<H>;
-			}
-			else {
-				next := ListNode->New(value)<H>;
-				next->SetNext(@head);
-				@head := next;
+			if(@size = @values->Size()) {
+				bigger : H[] := H->New[@size * 2];
+				Runtime->Copy(bigger, 0, @values, 0, @size);
+				@values := bigger;
 			};
 
+			@values[@size] := value;
 			@size += 1;
 		}
 
@@ -2841,15 +2837,12 @@ stack->Pop(2)->PrintLine(); # 2 (value after skipping 2 items)
 		~#
 		method : native : public : Pop(n : Int) ~ H {
 			value : H := Nil;
-
-			if(n > 0) {
-				count := 0;
-				while(@head <> Nil & count < n) {
-					value := @head->Get();
-					@head := @head->GetNext();
-					@size -= 1;
-					count += 1;
-				};
+			count := 0;
+			while(@size > 0 & count < n) {
+				@size -= 1;
+				value := @values[@size];
+				@values[@size] := Nil;
+				count += 1;
 			};
 
 			return value;
@@ -2868,13 +2861,13 @@ stack->Size()->PrintLine(); # 1
 ```
 		~#
 		method : public : Pop() ~ H {
-			value : H;
-
-			if(@head <> Nil) {
-				value := @head->Get();
-				@head := @head->GetNext();
-				@size -= 1;
+			if(@size = 0) {
+				return Nil;
 			};
+
+			@size -= 1;
+			value := @values[@size];
+			@values[@size] := Nil;
 
 			return value;
 		}
@@ -2891,13 +2884,11 @@ stack->Size()->PrintLine(); # 1 (Top does not remove)
 ```
 		~#
 		method : public : Top() ~ H {
-			value : H;
-
-			if(@head <> Nil) {
-				value := @head->Get();
+			if(@size = 0) {
+				return Nil;
 			};
 
-			return value;
+			return @values[@size - 1];
 		}
 
 		#~
@@ -2914,19 +2905,15 @@ stack->ToString()->PrintLine(); # [2,1]
 		~#
 		method : public : ToString() ~ String {
 			buffer := "[";
-
-			node := @head;
-			while(node <> Nil) {
-				value := node->Get();
+			for(i := @size - 1; i > -1; i -= 1;) {
+				value := @values[i];
 				if(value->TypeOf(Stringify)) {
 					buffer->Append(value->As(System.Stringify)->ToString());
 				}
 				else {
 					buffer->Append(value->GetInstanceID()->ToHexString());
 				};
-
-				node := node->GetNext();
-				if(node <> Nil) {
+				if(i > 0) {
 					buffer->Append(',');
 				};
 			};
@@ -2947,7 +2934,7 @@ stack->IsEmpty()->PrintLine(); # false
 ```
 		~#
 		method : public : IsEmpty() ~ Bool {
-			return @head = Nil;
+			return @size = 0;
 		}
 
 		#~
@@ -2961,7 +2948,8 @@ stack->IsEmpty()->PrintLine(); # true
 ```
 		~#
 		method : public : Empty() ~ Nil {
-			@head := Nil;
+			@values := H->New[16];
+			@size := 0;
 		}
 
 		#~
