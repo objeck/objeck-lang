@@ -5818,12 +5818,25 @@ v->Get(0)->PrintLine(); # fig
 ```
 		~#
 		method : public : Sort(compare : (H, H) ~ Int) ~ Nil {
-			if(@size < 2) {
+			MergeSorter->New()<H>->Sort(@values, @size, compare);
+		}
+	}
+
+	#~
+	Stable merge sort over an object array with a comparator, shared by Vector and CompareVector.
+	Ranges under 16 values use insertion sort; halves that are already in order are not merged.
+	~#
+	class : private : MergeSorter<H> {
+		New() {
+		}
+
+		method : public : Sort(a : H[], size : Int, compare : (H, H) ~ Int) ~ Nil {
+			if(size < 2) {
 				return;
 			};
 
-			b : H[] := H->New[@size];
-			SortWith(0, @size - 1, @values, b, compare);
+			b : H[] := H->New[size];
+			SortWith(0, size - 1, a, b, compare);
 		}
 
 		method : SortWith(low : Int, hi : Int, a : H[], b : H[], compare : (H, H) ~ Int) ~ Nil {
@@ -6354,68 +6367,9 @@ v->Get(0)->PrintLine(); # fig
 ```
 		~#
 		method : public : Sort(compare : (H, H) ~ Int) ~ Nil {
-			if(@size < 2) {
-				return;
-			};
-
-			b : H[] := H->New[@size];
-			SortWith(0, @size - 1, @values, b, compare);
+			MergeSorter->New()<H>->Sort(@values, @size, compare);
 		}
 
-		method : SortWith(low : Int, hi : Int, a : H[], b : H[], compare : (H, H) ~ Int) ~ Nil {
-			if(low < hi) {
-				if(hi - low < 16) {
-					for(i := low + 1; i <= hi; i += 1;) {
-						value := a[i];
-						j := i - 1;
-						while(j >= low & compare(a[j], value) > 0) {
-							a[j + 1] := a[j];
-							j -= 1;
-						};
-						a[j + 1] := value;
-					};
-					return;
-				};
-
-				mid := (low + hi) >> 1;
-				SortWith(low, mid, a, b, compare);
-				SortWith(mid + 1, hi, a, b, compare);
-				# already in order (sorted or nearly sorted input): nothing to merge
-				if(compare(a[mid], a[mid + 1]) > 0) {
-					MergeWith(low, mid, hi, a, b, compare);
-				};
-			};
-		}
-
-		method : MergeWith(low : Int, mid : Int, hi : Int, a : H[], b : H[], compare : (H, H) ~ Int) ~ Nil {
-			for(i := low; i <= hi; i += 1;) {
-				b[i] := a[i];
-			};
-
-			i := low;
-			j := mid + 1;
-			k := low;
-			while(i <= mid & j <= hi) {
-				# <= keeps equal values in their original order
-				if(compare(b[i], b[j]) <= 0) {
-					a[k] := b[i];
-					i += 1;
-				}
-				else {
-					a[k] := b[j];
-					j += 1;
-				};
-				k += 1;
-			};
-
-			# the rest of the second half is already in place
-			while(i <= mid) {
-				a[k] := b[i];
-				k += 1;
-				i += 1;
-			};
-		}
-		
 		method : MergeSort(low : Int, hi : Int, a : H[], b : H[]) ~ Nil {
 			if(low < hi) {
 				if(hi - low < 16) {
