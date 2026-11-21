@@ -26,6 +26,7 @@ drifted); nothing here changes the API. Compile with
 | Key to value, iterated in insertion order | `OrderedHash` | `Hash` + linked entries; O(1) expected |
 | A one-to-one table you look up both ways (id and name) | `BiMap` | two `Hash` tables kept in step |
 | A priority queue whose priorities change (Dijkstra, A*) | `PriorityMap` | indexed min-heap with decrease-key; O(log n) |
+| Running sums that change (point update, prefix/range sum) | `FenwickTree` | O(log n) both ways |
 | Two related values with no class of their own | `Collection.Tuple.Pair` | immutable, any types |
 | A pair that can sit in a sorted collection, or that you must change | `Collection.Pair` | first element must be `Compare` |
 
@@ -203,6 +204,14 @@ key with the smallest priority, `Remove(k)` takes a key out of the middle. Push,
 updates are O(log n); `Has`, `Priority`, `Peek` are O(1) expected. This is what Dijkstra and A*
 need and what `Heap` cannot do (`Heap` holds duplicates and has no update). An absent key's
 `Priority` is `0.0`, so test with `Has` first.
+
+### `FenwickTree`
+
+A binary indexed tree over `Int` slots (0-based). `Add(i, delta)` is a point update, `Sum(i)` the
+prefix sum up to and including `i`, `RangeSum(lo, hi)` an inclusive range, all O(log n) in n+1
+`Int`s of memory. `Get(i)` and `Set(i, v)` are built from those. Use it for running totals that
+change (rankings, histograms, "how many items below x") where re-summing a `Vector` would be O(n).
+Out-of-range updates return `false`; out-of-range queries clamp or return 0.
 
 ### The two `Pair` classes
 

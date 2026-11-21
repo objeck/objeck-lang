@@ -1,0 +1,58 @@
+use Collection;
+
+class CollectFenwickTest {
+	@pass : static : Bool;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			@pass := false;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"Testing FenwickTree..."->PrintLine();
+		@pass := true;
+
+		f := FenwickTree->New(8);
+		Check(f->Size() = 8 & f->Sum(7) = 0 & f->Get(3) = 0, "starts at zero");
+		Check(f->Add(0, 5) & f->Add(3, 7) & f->Add(7, -2) & <>f->Add(8, 1) & <>f->Add(-1, 1), "Add and range");
+		Check(f->Sum(0) = 5 & f->Sum(2) = 5 & f->Sum(3) = 12 & f->Sum(7) = 10 & f->Sum(99) = 10 & f->Sum(-1) = 0, "prefix sums");
+		Check(f->RangeSum(1, 3) = 7 & f->RangeSum(0, 7) = 10 & f->RangeSum(4, 6) = 0 & f->RangeSum(5, 2) = 0 & f->RangeSum(-4, 0) = 5, "range sums");
+		Check(f->Get(3) = 7 & f->Get(7) = -2 & f->Get(8) = 0, "Get");
+		Check(f->Set(3, 1) & f->Get(3) = 1 & f->Sum(7) = 4 & <>f->Set(9, 1), "Set");
+
+		# against a naive array over many random updates and queries
+		n := 1000;
+		big := FenwickTree->New(n);
+		naive := Int->New[n];
+		seed := 555;
+		ok := true;
+		for(i := 0; i < 5000; i += 1;) {
+			seed := (seed * 1103515245 + 12345) and 2147483647;
+			idx := (seed / 5) % n;
+			seed := (seed * 1103515245 + 12345) and 2147483647;
+			delta := ((seed / 5) % 201) - 100;
+			big->Add(idx, delta);
+			naive[idx] := naive[idx] + delta;
+			if(i % 7 = 0) {
+				seed := (seed * 1103515245 + 12345) and 2147483647;
+				lo := (seed / 5) % n;
+				seed := (seed * 1103515245 + 12345) and 2147483647;
+				hi := lo + (seed / 5) % (n - lo);
+				expect := 0;
+				for(j := lo; j <= hi; j += 1;) { expect += naive[j]; };
+				if(big->RangeSum(lo, hi) <> expect) { ok := false; };
+			};
+		};
+		Check(ok, "matches naive sums");
+
+		if(@pass) {
+			"PASS: FenwickTree"->PrintLine();
+		}
+		else {
+			"FAIL: FenwickTree"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

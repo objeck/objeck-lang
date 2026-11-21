@@ -12821,4 +12821,140 @@ q->Pop()->PrintLine(); # a
 			};
 		}
 	}
+
+	#~
+	Fenwick tree (binary indexed tree) of Int values: point updates and prefix or range sums, both O(log n), in n slots of memory. Indexes are 0-based.
+	~#
+	class FenwickTree {
+		@tree : Int[];
+		@n : Int;
+
+		#~
+		Creates a tree of n zeros
+		@param n number of slots (at least 1)
+
+```
+f := Collection.FenwickTree->New(5);
+f->Add(1, 10); f->Add(3, 5);
+f->Sum(3)->PrintLine(); # 15
+```
+		~#
+		New(n : Int) {
+			if(n < 1) {
+				n := 1;
+			};
+
+			@n := n;
+			@tree := Int->New[n + 1];
+		}
+
+		#~
+		Adds to one slot
+		@param index slot (0 to Size()-1)
+		@param delta amount to add
+		@return true if added, false for an index out of range
+
+```
+f := Collection.FenwickTree->New(4);
+f->Add(0, 3)->PrintLine(); # true
+```
+		~#
+		method : public : Add(index : Int, delta : Int) ~ Bool {
+			if(index < 0 | index >= @n) {
+				return false;
+			};
+
+			i := index + 1;
+			while(i <= @n) {
+				@tree[i] := @tree[i] + delta;
+				i += i and -i;
+			};
+
+			return true;
+		}
+
+		#~
+		Sums the slots from 0 up to and including an index
+		@param index last slot (values past the end are clamped, below 0 gives 0)
+		@return sum
+
+```
+f := Collection.FenwickTree->New(4);
+f->Add(0, 1); f->Add(2, 4);
+f->Sum(2)->PrintLine(); # 5
+```
+		~#
+		method : public : Sum(index : Int) ~ Int {
+			if(index >= @n) {
+				index := @n - 1;
+			};
+
+			total := 0;
+			i := index + 1;
+			while(i > 0) {
+				total += @tree[i];
+				i -= i and -i;
+			};
+
+			return total;
+		}
+
+		#~
+		Sums an inclusive range of slots
+		@param lo first slot
+		@param hi last slot
+		@return sum, 0 if the range is empty
+
+```
+f := Collection.FenwickTree->New(5);
+f->Add(1, 2); f->Add(2, 3); f->Add(4, 9);
+f->RangeSum(1, 2)->PrintLine(); # 5
+```
+		~#
+		method : public : RangeSum(lo : Int, hi : Int) ~ Int {
+			if(lo < 0) {
+				lo := 0;
+			};
+			if(hi < lo) {
+				return 0;
+			};
+
+			return Sum(hi) - Sum(lo - 1);
+		}
+
+		#~
+		Gets the value of one slot
+		@param index slot
+		@return value, 0 for an index out of range
+		~#
+		method : public : Get(index : Int) ~ Int {
+			if(index < 0 | index >= @n) {
+				return 0;
+			};
+
+			return RangeSum(index, index);
+		}
+
+		#~
+		Sets one slot to a value
+		@param index slot
+		@param value new value
+		@return true if set, false for an index out of range
+		~#
+		method : public : Set(index : Int, value : Int) ~ Bool {
+			if(index < 0 | index >= @n) {
+				return false;
+			};
+
+			return Add(index, value - Get(index));
+		}
+
+		#~
+		Gets the number of slots
+		@return size
+		~#
+		method : public : Size() ~ Int {
+			return @n;
+		}
+	}
 }
