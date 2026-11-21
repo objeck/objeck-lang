@@ -22,6 +22,7 @@ drifted); nothing here changes the API. Compile with
 | Both ends O(1) plus index access (FIFO queue, sliding window) | `Deque` | ring buffer; `AddFront`/`RemoveFront` are O(1), unlike `Vector` |
 | Count occurrences of keys (word counts, histograms) | `MultiSet` | `Hash` of counts; `Count`, `MostCommon(n)` |
 | Group items into disjoint sets, connected components | `UnionFind` | int ids; near-constant `Union`/`Find` |
+| Strings by prefix (autocomplete, dictionary) | `Trie` | `WithPrefix` returns sorted matches |
 | Two related values with no class of their own | `Collection.Tuple.Pair` | immutable, any types |
 | A pair that can sit in a sorted collection, or that you must change | `Collection.Pair` | first element must be `Compare` |
 
@@ -164,6 +165,15 @@ with a `Hash`). `Union` is by size and `Find` halves paths, so both are near-con
 out-of-range id as absent (`false`, `0`, `-1`). `Count()` is the number of sets, `Size()` the
 number of elements, and `Add()` appends a new singleton and returns its id. Typical use:
 connected components, Kruskal's minimum spanning tree, grouping equivalent items.
+
+### `Trie`
+
+A prefix tree holding a set of strings. `Add(s)` and `Remove(s)` return `false` for a duplicate or
+absent string; `Has(s)` tests a whole string and `HasPrefix(p)` any string starting with `p`.
+`WithPrefix(p)` returns the matches as a sorted `Vector<String>` (an empty prefix lists
+everything), which is the point of a trie: autocomplete without scanning the set. Each node keeps
+its children in a `Map`, so a step costs O(log branching); `Remove` prunes nodes only that string
+used. Characters are compared by their code, as in the string itself.
 
 ### The two `Pair` classes
 

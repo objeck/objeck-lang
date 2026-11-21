@@ -11869,4 +11869,257 @@ uf->Add()->PrintLine(); # 2
 			return id;
 		}
 	}
+
+	#~
+	Trie (prefix tree) holding a set of strings. Add, Has, HasPrefix and Remove cost O(length of the string) times the log of the branching at each node; WithPrefix lists matches in sorted order. Characters are compared as the string's own character values.
+	~#
+	class Trie {
+		@root : TrieNode;
+		@size : Int;
+
+		#~
+		Default constructor
+
+```
+t := Collection.Trie->New();
+t->Add("car"); t->Add("cat");
+t->Size()->PrintLine(); # 2
+```
+		~#
+		New() {
+			@root := TrieNode->New();
+			@size := 0;
+		}
+
+		#~
+		Adds a string
+		@param word string to add
+		@return true if added, false if it was already present or is Nil
+
+```
+t := Collection.Trie->New();
+t->Add("car")->PrintLine(); # true
+t->Add("car")->PrintLine(); # false
+```
+		~#
+		method : public : Add(word : String) ~ Bool {
+			if(word = Nil) {
+				return false;
+			};
+
+			node := @root;
+			chars := word->ToCharArray();
+			for(i := 0; i < chars->Size(); i += 1;) {
+				node := node->Child(chars[i], true);
+			};
+
+			if(node->IsEnd()) {
+				return false;
+			};
+
+			node->SetEnd(true);
+			@size += 1;
+
+			return true;
+		}
+
+		#~
+		Checks whether a whole string was added
+		@param word string to look for
+		@return true if present
+
+```
+t := Collection.Trie->New();
+t->Add("car");
+t->Has("car")->PrintLine(); # true
+t->Has("ca")->PrintLine();  # false
+```
+		~#
+		method : public : Has(word : String) ~ Bool {
+			node := Walk(word);
+			return node <> Nil & node->IsEnd();
+		}
+
+		#~
+		Checks whether any added string starts with a prefix
+		@param prefix prefix to look for (an empty prefix matches if the trie is not empty)
+		@return true if some string starts with it
+
+```
+t := Collection.Trie->New();
+t->Add("car");
+t->HasPrefix("ca")->PrintLine(); # true
+```
+		~#
+		method : public : HasPrefix(prefix : String) ~ Bool {
+			node := Walk(prefix);
+			if(node = Nil) {
+				return false;
+			};
+
+			return node->IsEnd() | node->ChildCount() > 0;
+		}
+
+		#~
+		Removes a string, freeing the nodes only it used
+		@param word string to remove
+		@return true if it was present
+
+```
+t := Collection.Trie->New();
+t->Add("car"); t->Add("cart");
+t->Remove("cart")->PrintLine(); # true
+t->Has("car")->PrintLine();     # true
+```
+		~#
+		method : public : Remove(word : String) ~ Bool {
+			if(word = Nil) {
+				return false;
+			};
+
+			chars := word->ToCharArray();
+			path := Vector->New()<TrieNode>;
+			node := @root;
+			path->AddBack(node);
+			for(i := 0; i < chars->Size(); i += 1;) {
+				node := node->Child(chars[i], false);
+				if(node = Nil) {
+					return false;
+				};
+				path->AddBack(node);
+			};
+
+			if(<>node->IsEnd()) {
+				return false;
+			};
+
+			node->SetEnd(false);
+			@size -= 1;
+
+			# prune nodes that no longer lead to a string
+			for(i := chars->Size(); i > 0; i -= 1;) {
+				current := path->Get(i);
+				if(current->IsEnd() | current->ChildCount() > 0) {
+					break;
+				};
+				path->Get(i - 1)->RemoveChild(chars[i - 1]);
+			};
+
+			return true;
+		}
+
+		#~
+		Lists the added strings that start with a prefix
+		@param prefix prefix to match (an empty prefix lists everything)
+		@return matching strings in sorted order, empty if none
+
+```
+t := Collection.Trie->New();
+t->Add("cat"); t->Add("car"); t->Add("dog");
+t->WithPrefix("ca")->Get(0)->PrintLine(); # car
+```
+		~#
+		method : public : WithPrefix(prefix : String) ~ Vector<String> {
+			found := Vector->New()<String>;
+			node := Walk(prefix);
+			if(node <> Nil) {
+				node->Collect(prefix, found);
+			};
+
+			return found;
+		}
+
+		#~
+		Gets the number of strings
+		@return size
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+
+		#~
+		Checks for no strings
+		@return true if empty
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @size = 0;
+		}
+
+		#~
+		Removes every string
+		~#
+		method : public : Empty() ~ Nil {
+			@root := TrieNode->New();
+			@size := 0;
+		}
+
+		method : Walk(text : String) ~ TrieNode {
+			if(text = Nil) {
+				return Nil;
+			};
+
+			node := @root;
+			chars := text->ToCharArray();
+			for(i := 0; i < chars->Size(); i += 1;) {
+				node := node->Child(chars[i], false);
+				if(node = Nil) {
+					return Nil;
+				};
+			};
+
+			return node;
+		}
+	}
+
+	class : private : TrieNode {
+		@children : Map<IntRef, TrieNode>;
+		@end : Bool;
+
+		New() {
+			@children := Map->New()<IntRef, TrieNode>;
+			@end := false;
+		}
+
+		method : public : Child(c : Char, create : Bool) ~ TrieNode {
+			key := IntRef->New(c->As(Int));
+			child := @children->Find(key);
+			if(child = Nil & create) {
+				child := TrieNode->New();
+				@children->Insert(key, child);
+			};
+
+			return child;
+		}
+
+		method : public : RemoveChild(c : Char) ~ Nil {
+			@children->Remove(IntRef->New(c->As(Int)));
+		}
+
+		method : public : ChildCount() ~ Int {
+			return @children->Size();
+		}
+
+		method : public : IsEnd() ~ Bool {
+			return @end;
+		}
+
+		method : public : SetEnd(end : Bool) ~ Nil {
+			@end := end;
+		}
+
+		# appends every string at or below this node, in sorted order
+		method : public : Collect(prefix : String, found : Vector<String>) ~ Nil {
+			if(@end) {
+				found->AddBack(prefix);
+			};
+
+			keys := @children->GetKeys();
+			for(i := 0; i < keys->Size(); i += 1;) {
+				key := keys->Get(i);
+				next := String->New(prefix);
+				next->Append(key->Get()->As(Char));
+				@children->Find(key)->Collect(next, found);
+			};
+		}
+	}
 }

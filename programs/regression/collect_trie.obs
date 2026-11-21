@@ -1,0 +1,74 @@
+use Collection;
+
+class CollectTrieTest {
+	@pass : static : Bool;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			@pass := false;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"Testing Trie..."->PrintLine();
+		@pass := true;
+
+		t := Trie->New();
+		Check(t->IsEmpty() & t->Size() = 0 & <>t->Has("a") & <>t->HasPrefix("a"), "new trie empty");
+		Check(t->Add("car") & t->Add("cart") & t->Add("cat") & t->Add("dog") & t->Add("do"), "Add");
+		Check(<>t->Add("car") & <>t->Add(Nil), "duplicate and Nil");
+		Check(t->Size() = 5, "size");
+		Check(t->Has("car") & t->Has("cart") & t->Has("do") & <>t->Has("ca") & <>t->Has("cars") & <>t->Has("") & <>t->Has(Nil), "Has");
+		Check(t->HasPrefix("ca") & t->HasPrefix("car") & t->HasPrefix("d") & t->HasPrefix("") & <>t->HasPrefix("x") & <>t->HasPrefix("cars"), "HasPrefix");
+
+		w := t->WithPrefix("ca");
+		Check(w->Size() = 3 & w->Get(0)->Equals("car") & w->Get(1)->Equals("cart") & w->Get(2)->Equals("cat"), "WithPrefix sorted");
+		all := t->WithPrefix("");
+		Check(all->Size() = 5 & all->Get(0)->Equals("car") & all->Get(4)->Equals("dog"), "WithPrefix empty lists all");
+		Check(t->WithPrefix("zz")->Size() = 0, "WithPrefix no match");
+
+		Check(t->Remove("cart") & <>t->Remove("cart") & t->Has("car") & t->Size() = 4, "Remove leaf keeps parent word");
+		Check(t->Remove("car") & <>t->HasPrefix("car") & t->HasPrefix("ca") & t->Has("cat"), "Remove prunes dead nodes only");
+		Check(t->Remove("do") & t->Has("dog") & <>t->Has("do") & <>t->Remove("d") & <>t->Remove("ca"), "Remove inner word");
+		Check(t->Remove("cat") & t->Remove("dog") & t->IsEmpty() & <>t->HasPrefix("c") & <>t->HasPrefix("d"), "removing everything prunes everything");
+
+		# model check against a HashSet over generated words
+		model := HashSet->New()<String>;
+		big := Trie->New();
+		seed := 31337;
+		ok := true;
+		for(i := 0; i < 3000; i += 1;) {
+			seed := (seed * 1103515245 + 12345) and 2147483647;
+			len := 1 + (seed / 5) % 4;
+			word := "";
+			for(j := 0; j < len; j += 1;) {
+				seed := (seed * 1103515245 + 12345) and 2147483647;
+				word->Append(('a' + ((seed / 9) % 4))->As(Char));
+			};
+			seed := (seed * 1103515245 + 12345) and 2147483647;
+			if((seed / 11) % 3 = 0) {
+				if(big->Remove(word) <> model->Remove(word)) { ok := false; };
+			}
+			else {
+				if(big->Add(word) <> model->Add(word)) { ok := false; };
+			};
+		};
+		Check(ok & big->Size() = model->Size(), "random add/remove agrees with HashSet");
+		listed := big->WithPrefix("");
+		Check(listed->Size() = model->Size(), "listing size");
+		sorted := true;
+		for(i := 1; i < listed->Size(); i += 1;) {
+			if(listed->Get(i - 1)->Compare(listed->Get(i)) >= 0) { sorted := false; };
+		};
+		Check(sorted, "listing sorted and unique");
+
+		if(@pass) {
+			"PASS: Trie"->PrintLine();
+		}
+		else {
+			"FAIL: Trie"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
