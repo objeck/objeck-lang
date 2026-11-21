@@ -104,6 +104,10 @@
     <ul>
      <li><strong>OpenAI output cap was sent under the wrong name</strong>: <code>Response-&gt;Respond(...)</code> wrote <code>max_tokens</code> to the Responses endpoint, whose field is <code>max_output_tokens</code>, so the cap was never applied. <code>Completion-&gt;Complete(...)</code> now sends <code>max_completion_tokens</code> (<code>max_tokens</code> is deprecated for Chat Completions and rejected by reasoning models). New offline request builders <code>Response-&gt;BuildRespondRequest</code> and <code>Completion-&gt;BuildCompleteRequest</code>; test <code>openai_request_test.obs</code></li>
     </ul>
+    <h4 id="added">Added</h4>
+    <ul>
+     <li><strong><code>ResultTable</code> number formats</strong> (<code>System.ML.Lab</code>): per-column <code>"sci"</code> (1.23e-05), <code>"p"</code> (<code>&lt;0.0001</code> for a tiny p-value) and <code>"int"</code> (a count as <code>176</code>) beside the default fixed decimals, with <code>AddIntegerColumn</code>, <code>AddPValueColumn</code>, <code>AddScientificColumn</code>, <code>GetColumnPrecision</code>, <code>GetColumnFormat</code> and <code>FormatValue</code>. Existing tables render byte for byte as before; <code>ToCsv</code> writes a tiny value of a <code>"sci"</code>/<code>"p"</code> column in exponent form so it is not rounded to 0. Test <code>ml_lab_result_table_formats.obs</code></li>
+    </ul>
     <h4 id="documentation">Documentation</h4>
     <ul>
      <li><strong>Topic stability is a distribution, not one number</strong>: <code>docs/AI.md</code> now explains how to read <code>TopicMetrics-&gt;Stability</code> (one seed pair is bimodal: about 1.0 when both runs reach the same optimum, 0.67 to 0.8 when one merged two topics) with a measured comparison against Gensim over 15 seed pairs; no code change</li>
@@ -1434,7 +1438,7 @@
      <li>Crypto: Fixed AES-256 CBC padding and key derivation</li>
     </ul>
     <h3 id="v202570---2025-07-01-">[v2025.7.0] - 2025-07-01 ✅</h3>
-    <h4 id="added">Added</h4>
+    <h4 id="added-1">Added</h4>
     <ul>
      <li><code>Hash-&gt;Dict(..)</code> method to collections</li>
      <li><code>Map-&gt;Dict(..)</code> method to collections</li>

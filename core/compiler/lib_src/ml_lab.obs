@@ -1194,6 +1194,7 @@ t->Save("rf_trees.csv");
 		@footnote : String;
 		@columns : Vector<String>;
 		@precision : Vector<IntRef>;
+		@formats : Vector<String>;
 		@row_names : Vector<String>;
 		@row_values : Vector<FloatRef>;
 		@cells : Vector<FloatArrayRef>;
@@ -1211,6 +1212,7 @@ t->Save("rf_trees.csv");
 			@footnote := "";
 			@columns := Vector->New()<String>;
 			@precision := Vector->New()<IntRef>;
+			@formats := Vector->New()<String>;
 			@row_names := Vector->New()<String>;
 			@row_values := Vector->New()<FloatRef>;
 			@cells := Vector->New()<FloatArrayRef>;
@@ -1233,6 +1235,28 @@ t->Save("rf_trees.csv");
 		@param precision decimals when rendered as text or Markdown
 		~#
 		method : public : AddColumn(name : String, precision : Int) ~ Nil {
+			AddColumn(name, precision, "fixed");
+		}
+
+		#~
+		Adds a numeric column with a number format. The format changes only how
+		ToText and ToMarkdown spell a cell; CSV and JSON values are unchanged.
+		"fixed" is the default (precision decimals); "sci" is scientific
+		notation with precision decimals in the mantissa (1.23e-05); "p" is
+		fixed, but a value from 0 up to 10^-precision is written "<0.0001"
+		(precision 4), so a tiny p-value does not read as 0.0000; "int" rounds to
+		a whole number and writes no decimals (a count), whatever the precision.
+		ToCsv writes a "sci" or "p" column's value below 1e-4 in exponent form with
+		its full digits (1.23e-12) instead of the 10 decimals that would write a
+		tiny p-value as 0; FromCsv reads it back. ToJson keeps its 10 decimals.
+		@param name column heading
+		@param precision decimals (mantissa decimals for "sci", the "<" threshold for "p")
+		@param format "fixed", "sci", "p" or "int"; raises LabError for another name
+		~#
+		method : public : AddColumn(name : String, precision : Int, format : String) ~ Nil {
+			if(format = Nil | <>IsFormat(format)) {
+				Refuse("unknown number format '{$format}': use fixed, sci, p or int");
+			};
 			if(name = Nil | name->Size() = 0) {
 				Refuse("a column needs a name");
 			};
@@ -1245,6 +1269,32 @@ t->Save("rf_trees.csv");
 
 			@columns->AddBack(name);
 			@precision->AddBack(IntRef->New(precision < 0 ? 0 : precision));
+			@formats->AddBack(format);
+		}
+
+		#~
+		Adds a column of whole numbers (counts), written without decimals.
+		@param name column heading
+		~#
+		method : public : AddIntegerColumn(name : String) ~ Nil {
+			AddColumn(name, 0, "int");
+		}
+
+		#~
+		Adds a column of p-values: 4 decimals, and "<0.0001" below that.
+		@param name column heading
+		~#
+		method : public : AddPValueColumn(name : String) ~ Nil {
+			AddColumn(name, 4, "p");
+		}
+
+		#~
+		Adds a column in scientific notation.
+		@param name column heading
+		@param precision decimals of the mantissa
+		~#
+		method : public : AddScientificColumn(name : String, precision : Int) ~ Nil {
+			AddColumn(name, precision, "sci");
 		}
 
 		#~
@@ -1337,6 +1387,34 @@ t->Save("rf_trees.csv");
 			};
 
 			return out;
+		}
+
+		#~
+		The decimals a column is rendered with.
+		@param name column heading
+		@return the precision (see AddColumn), -1 for an unknown column
+		~#
+		method : public : GetColumnPrecision(name : String) ~ Int {
+			c := ColumnIndex(name);
+			if(c < 0) {
+				return -1;
+			};
+
+			return @precision->Get(c)->Get();
+		}
+
+		#~
+		The number format of a column.
+		@param name column heading
+		@return "fixed", "sci", "p" or "int"; "" for an unknown column
+		~#
+		method : public : GetColumnFormat(name : String) ~ String {
+			c := ColumnIndex(name);
+			if(c < 0) {
+				return "";
+			};
+
+			return @formats->Get(c);
 		}
 
 		#~
@@ -1630,7 +1708,7 @@ t->Save("rf_trees.csv");
 				fields[0] := @row_names->Get(r);
 				fields[1] := CsvNumber(@row_values->Get(r)->Get());
 				each(c : cols) {
-					fields[2 + c] := CsvNumber(@cells->Get(r)->Get()[c]);
+					fields[2 + c] := CsvCell(@cells->Get(r)->Get()[c], @formats->Get(c));
 					if(@has_stds) {
 						fields[2 + cols + c] := CsvNumber(@stds->Get(r)->Get()[c]);
 					};
@@ -1663,6 +1741,19 @@ t->Save("rf_trees.csv");
 			};
 			root->Insert("columns", columns);
 			root->Insert("precision", precision);
+			custom := false;
+			each(c : @formats) {
+				if(<>@formats->Get(c)->Equals("fixed")) {
+					custom := true;
+				};
+			};
+			if(custom) {
+				formats := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(c : @formats) {
+					formats->Add(@formats->Get(c));
+				};
+				root->Insert("formats", formats);
+			};
 
 			rows := JsonElement->New(JsonElement->JsonType->ARRAY);
 			row : JsonElement;
@@ -1779,8 +1870,15 @@ t->Save("rf_trees.csv");
 
 			columns := root->Get("columns");
 			precision := root->Get("precision");
+			formats : JsonElement;
+			if(root->Has("formats")) {
+				formats := root->Get("formats");
+			};
 			each(c : columns->Size()) {
-				if(precision <> Nil & precision->Has(c)) {
+				if(precision <> Nil & precision->Has(c) & formats <> Nil & formats->Has(c) & IsFormat(formats->Get(c)->GetString())) {
+					result->AddColumn(columns->Get(c)->GetString(), precision->Get(c)->GetInt(), formats->Get(c)->GetString());
+				}
+				else if(precision <> Nil & precision->Has(c)) {
 					result->AddColumn(columns->Get(c)->GetString(), precision->Get(c)->GetInt());
 				}
 				else {
@@ -1953,6 +2051,132 @@ t->Save("rf_trees.csv");
 			return text;
 		}
 
+		function : IsFormat(format : String) ~ Bool {
+			return format->Equals("fixed") | format->Equals("sci") | format->Equals("p") | format->Equals("int");
+		}
+
+		#~
+		A number as ToText and ToMarkdown spell it in a column of the given format
+		(see AddColumn). A value that is not finite is "n/a".
+		@param value the number
+		@param precision decimals
+		@param format "fixed", "sci", "p" or "int"; anything else is "fixed"
+		@return the text
+		~#
+		function : FormatValue(value : Float, precision : Int, format : String) ~ String {
+			if(<>IsFinite(value)) {
+				return "n/a";
+			};
+
+			p := precision < 0 ? 0 : precision;
+			if(format = Nil | format->Equals("fixed")) {
+				return Float->ToString(value, p);
+			};
+
+			if(format->Equals("int")) {
+				return Float->ToString(value, 0);
+			};
+
+			if(format->Equals("p")) {
+				limit := 1.0;
+				each(i : p) {
+					limit := limit / 10.0;
+				};
+				if(value >= 0.0 & value < limit) {
+					if(p < 1) {
+						return "<1";
+					};
+
+					out := "<0.";
+					zeros := p - 1;
+					each(i : zeros) {
+						out += "0";
+					};
+
+					return out + "1";
+				};
+
+				return Float->ToString(value, p);
+			};
+
+			if(format->Equals("sci")) {
+				return Scientific(value, p);
+			};
+
+			return Float->ToString(value, p);
+		}
+
+		# 1.23e-05: the mantissa has p decimals, the exponent a sign and at least two digits. The digits come
+		# from a fixed-point rendering of the value (correctly rounded at the same decimal place), not from a
+		# division by a power of ten, so a value like 0.085 rounds as its exact binary value does.
+		function : Scientific(value : Float, p : Int) ~ String {
+			sign := "";
+			a := value;
+			if(a < 0.0) {
+				sign := "-";
+				a := 0.0 - a;
+			};
+
+			e := 0;
+			digits := String->New();
+			if(a = 0.0) {
+				wanted := p + 1;
+				each(i : wanted) {
+					digits->Append('0');
+				};
+			}
+			else {
+				e := Float->Floor(Float->Log10(a))->As(Int);
+				dec := p - e;
+				k := e - p;
+				text := "";
+				if(dec >= 0 & dec <= 60) {
+					text := Float->ToString(a, dec);
+				}
+				else if(k > 0 & k <= 22) {
+					text := Float->ToString(a / Float->Pow(10.0, k->As(Float)), 0);
+				}
+				else {
+					m := a / Float->Pow(10.0, (e / 2)->As(Float)) / Float->Pow(10.0, (e - e / 2)->As(Float));
+					text := Float->ToString(m, p);
+					# the mantissa m is near 1 to 10, so the exponent is already in e
+				};
+
+				leading := true;
+				each(i : text->Size()) {
+					c := text->Get(i);
+					if(c <> '.') {
+						# a leading zero is not a significant digit
+						if(<>(leading & c = '0')) {
+							leading := false;
+							digits->Append(c);
+						};
+					};
+				};
+
+				# a rounding carry (9.9996 -> 10.000) or a log10 that came out one low adds a digit
+				extra := digits->Size() - (p + 1);
+				if(extra > 0) {
+					e += extra;
+					digits := digits->SubString(0, p + 1);
+				};
+			};
+
+			mantissa := digits->SubString(0, 1);
+			if(p > 0) {
+				mantissa += ".";
+				mantissa += digits->SubString(1, p);
+			};
+
+			mag := e < 0 ? 0 - e : e;
+			exponent := mag->ToString();
+			if(exponent->Size() < 2) {
+				exponent := "0" + exponent;
+			};
+
+			return sign + mantissa + "e" + (e < 0 ? "-" : "+") + exponent;
+		}
+
 		method : FormatCell(r : Int, c : Int, plus_minus : String) ~ String {
 			p := @precision->Get(c)->Get();
 			value := @cells->Get(r)->Get()[c];
@@ -1961,13 +2185,14 @@ t->Save("rf_trees.csv");
 				return "n/a";
 			};
 
-			text := Float->ToString(value, p);
+			format := @formats->Get(c);
+			text := FormatValue(value, p, format);
 			if(@has_stds) {
 				text += " ";
 				text += plus_minus;
 				text += " ";
 				spread := @stds->Get(r)->Get()[c];
-				text += IsFinite(spread) ? Float->ToString(spread, p) : "n/a";
+				text += IsFinite(spread) ? FormatValue(spread, p, format) : "n/a";
 			};
 
 			return text;
@@ -1992,6 +2217,29 @@ t->Save("rf_trees.csv");
 		~#
 		function : IsFinite(value : Float) ~ Bool {
 			return value = value & value <> Float->Inf() & value <> Float->NegInf();
+		}
+
+		# a "sci" or "p" column keeps a value below 1e-4 in exponent form with its full digits ("1.23e-12"):
+		# the 10 decimals of FormatNumber would write a p-value like that as 0. Other columns are unchanged.
+		function : CsvCell(value : Float, format : String) ~ String {
+			if(IsFinite(value) & value <> 0.0 & (format->Equals("sci") | format->Equals("p"))) {
+				if(value < 0.0001 & value > -0.0001) {
+					text := Scientific(value, 15);
+					cut := text->Find("e");
+					mantissa := text->SubString(0, cut);
+					last := mantissa->Size() - 1;
+					while(last > 0 & mantissa->Get(last) = '0') {
+						last -= 1;
+					};
+					if(mantissa->Get(last) = '.') {
+						last -= 1;
+					};
+
+					return mantissa->SubString(0, last + 1) + text->SubString(cut, text->Size() - cut);
+				};
+			};
+
+			return CsvNumber(value);
 		}
 
 		function : CsvNumber(value : Float) ~ String {
