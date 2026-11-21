@@ -124,6 +124,7 @@ response := Response-&gt;Respond("o3-mini",
     Nil, token);
 response-&gt;GetText()-&gt;PrintLine();
 </code></pre>
+    <p><strong>Output cap.</strong> The <code>max_tokens</code> argument of <code>Response-&gt;Respond(...)</code> limits the generated tokens (reasoning tokens included) and is sent as the Responses API field <code>max_output_tokens</code>; <code>-1</code> sends no cap. <code>Completion-&gt;Complete(...)</code> (Chat Completions) sends it as <code>max_completion_tokens</code>, because <code>max_tokens</code> is deprecated there and reasoning models reject it. <code>Response-&gt;BuildRespondRequest(...)</code> and <code>Completion-&gt;BuildCompleteRequest(...)</code> return the request body as a <code>JsonElement</code> without any network call.</p>
     <hr class="section-end">
     <h4 id="vision">Vision</h4>
 <pre class="line-numbers"><code class="language-cpp">use API.OpenAI, API.OpenAI.Responses, System.IO.Filesystem, Collection;

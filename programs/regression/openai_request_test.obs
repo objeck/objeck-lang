@@ -1,0 +1,68 @@
+# EXTRA_LIBS: openai,json,net,net_server,cipher,misc
+#~
+API.OpenAI request bodies, built offline (no key, no network).
+
+Defect this guards: Responses.Response->Respond wrote 'max_tokens', which is the
+Chat Completions name; the Responses API field is 'max_output_tokens'. Chat
+Completions has deprecated 'max_tokens' in favour of 'max_completion_tokens'
+(and reasoning models reject 'max_tokens'), so Complete sends that instead.
+~#
+
+use Collection, API.OpenAI.Responses, API.OpenAI.Chat, Data.JSON;
+
+class OpenAIRequestTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Same(a : String, b : String) ~ Bool {
+    return a <> Nil & a->Equals(b);
+  }
+
+  function : Messages() ~ Vector<Pair<String, String>> {
+    messages := Vector->New()<Pair<String, String>>;
+    messages->AddBack(Pair->New("user", "hi")<String, String>);
+    return messages;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+
+    "Responses request"->PrintLine();
+    req := Response->BuildRespondRequest("gpt-5", Messages(), 256, 0.5, 0.9, ReasoningEffort->LOW, Verbosity->NA, Nil, Nil);
+    Check("model", Same(req->Get("model")->GetString(), "gpt-5"));
+    Check("max_output_tokens is sent", req->Has("max_output_tokens") & req->Get("max_output_tokens")->GetInt() = 256);
+    Check("max_tokens is not sent", <>req->Has("max_tokens"));
+    Check("max_completion_tokens is not sent", <>req->Has("max_completion_tokens"));
+    Check("input", req->Get("input")->Size() = 1 & Same(req->Get("input")->Get(0)->Get("content")->GetString(), "hi"));
+    Check("reasoning effort", Same(req->Get("reasoning")->Get("effort")->GetString(), "low"));
+    Check("temperature and top_p", req->Has("temperature") & req->Has("top_p"));
+
+    req := Response->BuildRespondRequest("gpt-5", Messages(), -1, -1.0, -1.0, ReasoningEffort->NA, Verbosity->NA, Nil, Nil);
+    Check("no cap unless set", <>req->Has("max_output_tokens") & <>req->Has("max_tokens"));
+    Check("no sampling unless set", <>req->Has("temperature") & <>req->Has("top_p") & <>req->Has("reasoning"));
+
+    "Chat Completions request"->PrintLine();
+    req := Completion->BuildCompleteRequest("gpt-4o", Messages(), 128, 0.2, 1.0);
+    Check("max_completion_tokens is sent", req->Has("max_completion_tokens") & req->Get("max_completion_tokens")->GetInt() = 128);
+    Check("deprecated max_tokens is not sent", <>req->Has("max_tokens"));
+    Check("max_output_tokens is not sent", <>req->Has("max_output_tokens"));
+    Check("messages", req->Get("messages")->Size() = 1);
+    req := Completion->BuildCompleteRequest("gpt-4o", Messages(), -1, -1.0, -1.0);
+    Check("no cap unless set", <>req->Has("max_completion_tokens") & <>req->Has("max_tokens"));
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: OpenAI request bodies"->PrintLine();
+  }
+}

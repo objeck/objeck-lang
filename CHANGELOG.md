@@ -4,6 +4,10 @@ All notable changes to Objeck will be documented in this file.
 
 ## [v2026.11.2] - unreleased
 
+### Fixed
+
+- **OpenAI output cap was sent under the wrong name**: `Response->Respond(...)` wrote `max_tokens` to the Responses endpoint, whose field is `max_output_tokens`, so the cap was never applied. `Completion->Complete(...)` now sends `max_completion_tokens` (`max_tokens` is deprecated for Chat Completions and rejected by reasoning models). New offline request builders `Response->BuildRespondRequest` and `Completion->BuildCompleteRequest`; test `openai_request_test.obs`
+
 ### Machine learning
 
 - **Faster image loading for `System.ML.Cnn`**: `ImageDataset` decoded and resized one file at a time on the calling thread (140,000 256 x 256 JPEGs: 320 s, 437 images/s; without the cache about 230 s per epoch, six times the GPU training time). It now decodes a batch on several native threads (`opencv_batch_start` / `wait` / `get` / `free` in `libobjk_opencv`, the Objeck class `API.OpenCV.ImageBatch`) bounded by `ImageDataset->SetThreads(n)` (default 4, 1 to 64), and `CnnTrainer` decodes the next batch while the current one trains (`SetPrefetch`, on by default). The bytes of every image, the training order and the results do not change with either: they are bit-identical to the one-image-at-a-time path (new test `ml_cnn_loader`). `Check()` is parallel too. New public pieces: `ImageDataset->Begin`, `ImageSubset->Begin` and `StageFrom`, `PendingImages`. Measured: decoding 10,000 faces JPEGs went from 1,107 images/s to 1,253 / 2,432 / 3,817 / 5,236 at 1 / 2 / 4 / 8 threads, and a 20,000-image epoch on the RTX 4090 from 30 to 34 s to 9.1 s with prefetch (details in the CNN section of `docs/AI.md`). Linux, macOS and ARM64 were not built or run

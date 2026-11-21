@@ -131,7 +131,7 @@
   "ml_cnn": {
    "deps": ["gen_collect", "csv", "json", "cipher", "ml", "ml_lab", "opencv"],
    "bundles": {
-    "System.ML.Cnn": ["Augmentation", "CnnEvaluation", "CnnModel", "CnnRuntime", "CnnTrainer", "ImageDataset", "ImageSubset", "Initializer", "Padding", "TrainingHistory"]
+    "System.ML.Cnn": ["Augmentation", "CnnEvaluation", "CnnModel", "CnnRuntime", "CnnTrainer", "ImageDataset", "ImageSubset", "Initializer", "Padding", "PendingImages", "TrainingHistory"]
    }
   },
   "ml_lab": {
@@ -239,7 +239,7 @@
   "opencv": {
    "deps": ["cipher", "json"],
    "bundles": {
-    "API.OpenCV": ["ColorConversionCodes", "ContourApproximationModes", "Font", "Image", "InterpolationFlags", "LineType", "MorphShapes", "MorphTypes", "Point", "Rect", "RetrievalModes", "Scalar", "Size", "ThresholdTypes", "VideoCapture", "VideoWriter"]
+    "API.OpenCV": ["ColorConversionCodes", "ContourApproximationModes", "Font", "Image", "ImageBatch", "InterpolationFlags", "LineType", "MorphShapes", "MorphTypes", "Point", "Rect", "RetrievalModes", "Scalar", "Size", "ThresholdTypes", "VideoCapture", "VideoWriter"]
    }
   },
   "plot": {
