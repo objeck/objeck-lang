@@ -20,6 +20,7 @@ drifted); nothing here changes the API. Compile with
 | Several values per key, keys sorted | `MultiMap` | a `Map` of `Vector`s |
 | Several values per key, keys unordered | `MultiHash` | a `Hash` of `Vector`s |
 | Both ends O(1) plus index access (FIFO queue, sliding window) | `Deque` | ring buffer; `AddFront`/`RemoveFront` are O(1), unlike `Vector` |
+| Count occurrences of keys (word counts, histograms) | `MultiSet` | `Hash` of counts; `Count`, `MostCommon(n)` |
 | Two related values with no class of their own | `Collection.Tuple.Pair` | immutable, any types |
 | A pair that can sit in a sorted collection, or that you must change | `Collection.Pair` | first element must be `Compare` |
 
@@ -144,6 +145,15 @@ and `Size()` are all O(1) (the buffer doubles when full, so adds are amortised O
 reads return `Nil`. `ToArray()` copies front to back. Use it for a FIFO queue or a sliding
 window that also needs index access; a plain `List` is as fast for pure FIFO use but has no
 `Get(i)`, and `Vector->Remove(0)` is O(n).
+
+### `MultiSet<K>`
+
+A counter over a `Hash<K, IntRef>`. `Add(k)` and `AddMany(k, n)` return the new count, `Remove(k)`
+takes one occurrence away (`false` if absent), `RemoveAll(k)` returns how many it dropped,
+`Count(k)` is 0 for an absent key. `Size()` is the total with repeats, `Distinct()` the number of
+keys, `GetKeys()` the keys (unordered) and `MostCommon(n)` the top `n` keys by count.
+Costs are those of `Hash` (O(1) expected), `MostCommon` is O(k log k) in the distinct keys. It
+is called `MultiSet` rather than `Counter` because `System.Concurrency.Counter` already exists in `lang`.
 
 ### The two `Pair` classes
 

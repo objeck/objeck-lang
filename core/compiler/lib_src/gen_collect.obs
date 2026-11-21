@@ -11494,4 +11494,217 @@ d->ToArray()[0]->PrintLine(); # a
 			@head := 0;
 		}
 	}
+
+	#~
+	Multiset (bag, counter): counts how many times each key was added. Backed by a Hash, so Add, Remove and Count are O(1) expected. Keys with a count of zero are not kept.
+	~#
+	class MultiSet<K : Compare> {
+		@counts : Hash<K, IntRef>;
+		@total : Int;
+
+		#~
+		Default constructor
+
+```
+words := Collection.MultiSet->New()<String>;
+words->Add("a"); words->Add("b"); words->Add("a");
+words->Count("a")->PrintLine(); # 2
+```
+		~#
+		New() {
+			@counts := Hash->New()<K, IntRef>;
+			@total := 0;
+		}
+
+		#~
+		Adds one occurrence of a key
+		@param key key to count
+		@return the key's new count
+
+```
+s := Collection.MultiSet->New()<String>;
+s->Add("x")->PrintLine(); # 1
+s->Add("x")->PrintLine(); # 2
+```
+		~#
+		method : public : Add(key : K) ~ Int {
+			return AddMany(key, 1);
+		}
+
+		#~
+		Adds several occurrences of a key
+		@param key key to count
+		@param n occurrences to add (values below 1 change nothing)
+		@return the key's new count
+
+```
+s := Collection.MultiSet->New()<String>;
+s->AddMany("x", 5)->PrintLine(); # 5
+```
+		~#
+		method : public : AddMany(key : K, n : Int) ~ Int {
+			entry := @counts->Find(key);
+			if(n < 1) {
+				if(entry = Nil) {
+					return 0;
+				};
+
+				return entry->Get();
+			};
+
+			@total += n;
+			if(entry = Nil) {
+				@counts->Insert(key, IntRef->New(n));
+				return n;
+			};
+
+			entry->Set(entry->Get() + n);
+			return entry->Get();
+		}
+
+		#~
+		Removes one occurrence of a key
+		@param key key to remove
+		@return true if an occurrence was removed, false if the key was not present
+
+```
+s := Collection.MultiSet->New()<String>;
+s->Add("x"); s->Add("x");
+s->Remove("x")->PrintLine(); # true
+s->Count("x")->PrintLine();  # 1
+```
+		~#
+		method : public : Remove(key : K) ~ Bool {
+			entry := @counts->Find(key);
+			if(entry = Nil) {
+				return false;
+			};
+
+			@total -= 1;
+			if(entry->Get() <= 1) {
+				@counts->Remove(key);
+			}
+			else {
+				entry->Set(entry->Get() - 1);
+			};
+
+			return true;
+		}
+
+		#~
+		Removes every occurrence of a key
+		@param key key to remove
+		@return how many occurrences were removed
+
+```
+s := Collection.MultiSet->New()<String>;
+s->AddMany("x", 3);
+s->RemoveAll("x")->PrintLine(); # 3
+```
+		~#
+		method : public : RemoveAll(key : K) ~ Int {
+			entry := @counts->Find(key);
+			if(entry = Nil) {
+				return 0;
+			};
+
+			count := entry->Get();
+			@total -= count;
+			@counts->Remove(key);
+
+			return count;
+		}
+
+		#~
+		Gets the number of occurrences of a key
+		@param key key to look up
+		@return count, 0 if absent
+
+```
+s := Collection.MultiSet->New()<String>;
+s->Add("x");
+s->Count("x")->PrintLine(); # 1
+s->Count("y")->PrintLine(); # 0
+```
+		~#
+		method : public : Count(key : K) ~ Int {
+			entry := @counts->Find(key);
+			if(entry = Nil) {
+				return 0;
+			};
+
+			return entry->Get();
+		}
+
+		#~
+		Checks whether a key has at least one occurrence
+		@param key key to look up
+		@return true if present
+		~#
+		method : public : Has(key : K) ~ Bool {
+			return @counts->Has(key);
+		}
+
+		#~
+		Gets the total number of occurrences, counting repeats
+		@return total count
+		~#
+		method : public : Size() ~ Int {
+			return @total;
+		}
+
+		#~
+		Gets the number of distinct keys
+		@return distinct count
+		~#
+		method : public : Distinct() ~ Int {
+			return @counts->Size();
+		}
+
+		#~
+		Checks for no occurrences
+		@return true if empty
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @total = 0;
+		}
+
+		#~
+		Removes everything
+		~#
+		method : public : Empty() ~ Nil {
+			@counts->Empty();
+			@total := 0;
+		}
+
+		#~
+		Gets the distinct keys, order unspecified
+		@return vector of keys
+		~#
+		method : public : GetKeys() ~ Vector<K> {
+			return @counts->GetKeys();
+		}
+
+		#~
+		Gets the keys with the highest counts
+		@param n how many keys to return at most
+		@return keys, highest count first (ties in unspecified order)
+
+```
+s := Collection.MultiSet->New()<String>;
+s->AddMany("a", 1); s->AddMany("b", 5); s->AddMany("c", 3);
+s->MostCommon(2)->Get(0)->PrintLine(); # b
+```
+		~#
+		method : public : MostCommon(n : Int) ~ Vector<K> {
+			counts := @counts;
+			keys := counts->GetKeys();
+			keys->Sort(\(a, b) => counts->Find(b)->Get() - counts->Find(a)->Get());
+			if(n < keys->Size()) {
+				return keys->Limit(n);
+			};
+
+			return keys;
+		}
+	}
 }
