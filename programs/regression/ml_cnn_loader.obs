@@ -1,0 +1,339 @@
+# EXTRA_LIBS: ml_cnn,ml,ml_lab,opencv,csv,gen_collect
+#~
+System.ML.Cnn image loading: the decoding worker threads and the prefetch of the next batch.
+
+  * the pixels of an image file are the same bytes whatever the thread count (1, 2, 4, 8), in any batch
+    order, and the same as the one-image-at-a-time GetPixels gives, for files that are already the
+    model's size and for files that are resized;
+  * a cached image is served from memory with the same bytes, and a corrupt file is Nil without
+    spoiling the rest of its batch;
+  * a seeded Fit and an Evaluate over image files give bit-identical losses, accuracies and scores with
+    one decoding thread and no prefetch, and with several threads and prefetch, with augmentation on
+    and a batch size that leaves a short last batch;
+  * a broken file in a later batch stops Fit with a reason and does not leave it hung.
+
+The images are 24-bit BMPs written here, small, so this runs in a second or two.
+~#
+
+use System.ML;
+use System.ML.Cnn;
+use System.IO.Filesystem;
+
+class MlCnnLoader {
+	@fail : static : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		@fail := false;
+		dir := "ml_cnn_loader_tmp";
+		if(Directory->Exists(dir) = false) {
+			Directory->Create(dir);
+		};
+
+		count := 30;
+		Report("{$count} test images written", WriteImages(dir, count));
+		Pixels(dir, count);
+		Cache(dir, count);
+		Broken(dir, count);
+		Training(dir, count);
+		BrokenFit(dir, count);
+
+		each(i : count) {
+			File->Delete(Path(dir, i));
+		};
+		File->Delete("{$dir}/zz_broken.bmp");
+		Directory->Delete(dir);
+
+		if(@fail) {
+			Runtime->Exit(1);
+		};
+		"ml_cnn_loader: ok"->PrintLine();
+	}
+
+	function : Report(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@fail := true;
+		};
+	}
+
+	function : Path(dir : String, i : Int) ~ String {
+		return "{$dir}/img_{$(100 + i)}.bmp";
+	}
+
+	function : SameBytes(a : Byte[], b : Byte[]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Put32(bytes : Byte[], at : Int, value : Int) ~ Nil {
+		bytes[at] := (value % 256)->As(Byte);
+		bytes[at + 1] := ((value / 256) % 256)->As(Byte);
+		bytes[at + 2] := ((value / 65536) % 256)->As(Byte);
+		bytes[at + 3] := ((value / 16777216) % 256)->As(Byte);
+	}
+
+	# a 24-bit BMP whose pixels vary with the position, the colour and the image number, so a resize
+	# or a mixed-up image shows
+	function : WriteBmp(path : String, width : Int, height : Int, n : Int, cls : Int) ~ Bool {
+		row := width * 3;
+		pad := (4 - row % 4) % 4;
+		size := 54 + (row + pad) * height;
+		bytes := Byte->New[size];
+		bytes[0] := 'B'->As(Byte);
+		bytes[1] := 'M'->As(Byte);
+		Put32(bytes, 2, size);
+		Put32(bytes, 10, 54);
+		Put32(bytes, 14, 40);
+		Put32(bytes, 18, width);
+		Put32(bytes, 22, height);
+		bytes[26] := 1->As(Byte);
+		bytes[28] := 24->As(Byte);
+		Put32(bytes, 34, (row + pad) * height);
+		each(y : height) {
+			each(x : width) {
+				at := 54 + y * (row + pad) + x * 3;
+				freq := cls = 0 ? 1 : 4;
+				bytes[at] := ((x * 9 * freq + y * 5 + n * 29) % 256)->As(Byte);
+				bytes[at + 1] := ((x * 3 + y * 11 * freq + n * 53) % 256)->As(Byte);
+				bytes[at + 2] := (((x + y) * 7 + n * 71) % 256)->As(Byte);
+			};
+		};
+
+		return FileWriter->WriteFile(path, bytes);
+	}
+
+	# every third image is bigger than the model's 16 x 16, so a resize is part of the comparison
+	function : WriteImages(dir : String, count : Int) ~ Bool {
+		ok := true;
+		each(i : count) {
+			if(i % 3 = 2) {
+				ok := WriteBmp(Path(dir, i), 23, 19, i, i % 2) & ok;
+			}
+			else {
+				ok := WriteBmp(Path(dir, i), 16, 16, i, i % 2) & ok;
+			};
+		};
+
+		return ok;
+	}
+
+	function : Load(dir : String, count : Int, threads : Int, extra : String) ~ ImageDataset {
+		data := ImageDataset->New(16, 3);
+		data->SetThreads(threads);
+		each(i : count) {
+			data->AddFile(Path(dir, i), i % 2);
+		};
+		if(extra->Size() > 0) {
+			data->AddFile(extra, 0);
+		};
+
+		return data;
+	}
+
+	function : Pixels(dir : String, count : Int) ~ Nil {
+		"pixels"->PrintLine();
+		reference := Load(dir, count, 1, "");
+		Report("GetThreads reads back what SetThreads set, clamped to 1 .. 64", reference->GetThreads() = 1 & Load(dir, 1, 0, "")->GetThreads() = 1 & Load(dir, 1, 500, "")->GetThreads() = 64 & ImageDataset->New(8, 3)->GetThreads() = 4);
+
+		# a shuffled order, so slot j is not image j
+		indexes := Int->New[count];
+		each(j : count) {
+			indexes[j] := (j * 7 + 3) % count;
+		};
+
+		each(t : 4) {
+			threads := 1;
+			if(t = 1) { threads := 2; };
+			if(t = 2) { threads := 4; };
+			if(t = 3) { threads := 8; };
+			data := Load(dir, count, threads, "");
+			pending := data->Begin(indexes);
+			same := pending <> Nil & pending->Count() = count;
+			if(pending <> Nil) {
+				each(j : count) {
+					same := same & SameBytes(pending->Get(j), reference->GetPixels(indexes[j]));
+				};
+				pending->Close();
+				pending->Close();
+			};
+			Report("{$threads} threads: {$count} images, the same bytes as GetPixels, resized ones included", same);
+		};
+
+		shape := reference->GetPixels(2);
+		Report("a 23 x 19 file is resized to 16 x 16 x 3 = 768 bytes", shape <> Nil & shape->Size() = 768);
+
+		sub := Load(dir, count, 4, "")->All(false);
+		order := Int->New[count];
+		each(j : count) {
+			order[j] := count - 1 - j;
+		};
+		pending := sub->Begin(order, 5, 10);
+		ok := pending <> Nil & pending->Count() = 10;
+		if(pending <> Nil) {
+			each(j : 10) {
+				ok := ok & SameBytes(pending->Get(j), reference->GetPixels(order[5 + j]));
+			};
+			pending->Close();
+		};
+		Report("a subset batch order[5 .. 15) decodes the images at those positions", ok);
+		Report("a bad range or position is Nil, not a crash", sub->Begin(order, 25, 10) = Nil & sub->Begin(order, -1, 3) = Nil & sub->Begin(Nil, 0, 3) = Nil);
+		bad := Int->New[2];
+		bad[0] := 1;
+		bad[1] := count;
+		Report("a dataset index out of range is Nil", Load(dir, count, 4, "")->Begin(bad) = Nil);
+		Report("Check finds every file good with 4 threads", Load(dir, count, 4, "")->Check() = 0);
+	}
+
+	function : Cache(dir : String, count : Int) ~ Nil {
+		"cache"->PrintLine();
+		reference := Load(dir, count, 1, "");
+		reference->SetCache(true);
+		reference->Check();
+		data := Load(dir, count, 4, "");
+		data->SetCache(true);
+		indexes := Int->New[count];
+		each(j : count) {
+			indexes[j] := j;
+		};
+
+		first := data->Begin(indexes);
+		ok := first <> Nil;
+		each(j : count) {
+			ok := ok & SameBytes(first->Get(j), reference->GetPixels(j));
+		};
+		first->Close();
+		Report("the first pass decodes and matches", ok);
+
+		# now every image is held: delete the files, a second pass must not need them
+		each(i : count) {
+			File->Delete(Path(dir, i));
+		};
+		second := data->Begin(indexes);
+		ok := second <> Nil;
+		each(j : count) {
+			ok := ok & SameBytes(second->Get(j), reference->GetPixels(j));
+		};
+		second->Close();
+		Report("the second pass is served from the cache (the files are gone)", ok);
+		WriteImages(dir, count);
+	}
+
+	function : Broken(dir : String, count : Int) ~ Nil {
+		"broken file"->PrintLine();
+		broken := "{$dir}/zz_broken.bmp";
+		FileWriter->WriteFile(broken, "this is not a bitmap");
+		reference := Load(dir, count, 1, "");
+		data := Load(dir, count, 4, broken);
+		Report("Check counts the one broken file", data->Check() = 1);
+
+		total := count + 1;
+		indexes := Int->New[total];
+		each(j : total) {
+			indexes[j] := j;
+		};
+		pending := data->Begin(indexes);
+		ok := pending <> Nil;
+		each(j : count) {
+			ok := ok & SameBytes(pending->Get(j), reference->GetPixels(j));
+		};
+		Report("the good images of a batch with a broken one still decode", ok);
+		Report("the broken one is Nil, with a reason ({$data->GetError()})", pending->Get(count) = Nil & data->GetError()->Size() > 0);
+		pending->Close();
+	}
+
+	function : Fit(dir : String, count : Int, threads : Int, prefetch : Bool) ~ Float[] {
+		data := Load(dir, count, threads, "");
+		splits := data->Split(0.6, 0.2, 9);
+		aug := Augmentation->New();
+		aug->SetFlip(0.5);
+		aug->SetBrightness(0.5, 0.8, 1.2);
+		splits[0]->SetAugmentation(aug);
+
+		model := CnnModel->Baseline(16, 2, 0.1, 16, 0.001, 21);
+		trainer := CnnTrainer->New(model, splits[0], splits[1], 7, 21);
+		trainer->SetPrefetch(prefetch);
+		history := trainer->Fit(2);
+		e := trainer->Evaluate(splits[2]);
+		model->Close();
+		if(history = Nil | history->GetEpochs() <> 2 | e = Nil) {
+			return Nil;
+		};
+
+		# the epochs' losses and accuracies, then every test score
+		scores := e->GetScores();
+		out := Float->New[8 + scores->Size()];
+		each(k : 2) {
+			out[k * 4] := history->GetTrainLoss(k);
+			out[k * 4 + 1] := history->GetTrainAccuracy(k);
+			out[k * 4 + 2] := history->GetValidationLoss(k);
+			out[k * 4 + 3] := history->GetValidationAccuracy(k);
+		};
+		each(k : scores->Size()) {
+			out[8 + k] := scores[k];
+		};
+
+		return out;
+	}
+
+	function : Identical(a : Float[], b : Float[]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Training(dir : String, count : Int) ~ Nil {
+		"training"->PrintLine();
+		CnnRuntime->SetThreads(2);
+		old := Fit(dir, count, 1, false);
+		Report("the baseline run trained 2 epochs and scored the test images", old <> Nil & old->Size() > 8);
+		Report("   and repeats", Identical(old, Fit(dir, count, 1, false)));
+		Report("1 thread with prefetch is bit-identical to 1 thread without", Identical(old, Fit(dir, count, 1, true)));
+		Report("4 threads, no prefetch: bit-identical", Identical(old, Fit(dir, count, 4, false)));
+		Report("4 threads with prefetch: bit-identical", Identical(old, Fit(dir, count, 4, true)));
+		Report("8 threads with prefetch: bit-identical", Identical(old, Fit(dir, count, 8, true)));
+		fresh := CnnTrainer->New(CnnModel->Baseline(16, 2, 0.1, 16, 0.001, 21), Load(dir, count, 4, "")->All(false), Nil, 7, 21);
+		Report("prefetch is on by default and SetPrefetch reads back", fresh->GetPrefetch() & SetOff(fresh)->GetPrefetch() = false);
+	}
+
+	function : SetOff(trainer : CnnTrainer) ~ CnnTrainer {
+		trainer->SetPrefetch(false);
+		return trainer;
+	}
+
+	function : BrokenFit(dir : String, count : Int) ~ Nil {
+		"a broken file in a later batch"->PrintLine();
+		broken := "{$dir}/zz_broken.bmp";
+		FileWriter->WriteFile(broken, "this is not a bitmap");
+		data := Load(dir, count, 4, broken);
+		everything := data->All(false);
+		model := CnnModel->Baseline(16, 2, 0.1, 16, 0.001, 21);
+		each(t : 2) {
+			trainer := CnnTrainer->New(model, everything, Nil, 4, 21);
+			trainer->SetPrefetch(t = 0);
+			history := trainer->Fit(2);
+			Report("Fit (prefetch {$(t = 0)}) stops with a reason ({$history->GetError()}) and does not hang", history <> Nil & history->GetError()->Size() > 0);
+			Report("Evaluate (prefetch {$(t = 0)}) answers Nil with a reason", trainer->Evaluate(everything) = Nil & trainer->GetError()->Size() > 0);
+		};
+		model->Close();
+	}
+}

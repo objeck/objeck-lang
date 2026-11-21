@@ -17,6 +17,10 @@ All notable changes to Objeck will be documented in this file.
 
 - **Topic stability is a distribution, not one number**: `docs/AI.md` now explains how to read `TopicMetrics->Stability` (one seed pair is bimodal: about 1.0 when both runs reach the same optimum, 0.67 to 0.8 when one merged two topics) with a measured comparison against Gensim over 15 seed pairs; no code change
 
+### Machine learning
+
+- **Faster image loading for `System.ML.Cnn`**: `ImageDataset` decoded and resized one file at a time on the calling thread (140,000 256 x 256 JPEGs: 320 s, 437 images/s; without the cache about 230 s per epoch, six times the GPU training time). It now decodes a batch on several native threads (`opencv_batch_start` / `wait` / `get` / `free` in `libobjk_opencv`, the Objeck class `API.OpenCV.ImageBatch`) bounded by `ImageDataset->SetThreads(n)` (default 4, 1 to 64), and `CnnTrainer` decodes the next batch while the current one trains (`SetPrefetch`, on by default). The bytes of every image, the training order and the results do not change with either: they are bit-identical to the one-image-at-a-time path (new test `ml_cnn_loader`). `Check()` is parallel too. New public pieces: `ImageDataset->Begin`, `ImageSubset->Begin` and `StageFrom`, `PendingImages`. Measured: decoding 10,000 faces JPEGs went from 1,107 images/s to 1,253 / 2,432 / 3,817 / 5,236 at 1 / 2 / 4 / 8 threads, and a 20,000-image epoch on the RTX 4090 from 30 to 34 s to 9.1 s with prefetch (details in the CNN section of `docs/AI.md`). Linux, macOS and ARM64 were not built or run
+
 ## [v2026.11.1] - 2026-11-20
 
 **A release about trust: the compiler says exactly what is wrong and compiles large programs faster, and the loader checks an .obe before running it, so a corrupt or crafted program is refused with a message instead of corrupting memory. It also adds a Claude client (`API.Anthropic`), a local vector index, SVG charts (`System.Plot`) and a per-session ONNX execution provider, and makes loading a corrupt ML model file return `Nil` instead of ending the program.**

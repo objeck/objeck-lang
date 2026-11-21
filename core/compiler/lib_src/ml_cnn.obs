@@ -1102,6 +1102,7 @@ train->SetAugmentation(aug);
 		@pixels : Vector<ByteArrayRef>;
 		@labels : Vector<IntRef>;
 		@cache : Bool;
+		@threads : Int;
 		@error : String;
 
 		#~
@@ -1116,6 +1117,7 @@ train->SetAugmentation(aug);
 			@pixels := Vector->New()<ByteArrayRef>;
 			@labels := Vector->New()<IntRef>;
 			@cache := false;
+			@threads := 4;
 			@error := "";
 		}
 
@@ -1190,6 +1192,28 @@ train->SetAugmentation(aug);
 		~#
 		method : public : SetCache(cache : Bool) ~ Nil {
 			@cache := cache;
+		}
+
+		#~
+		How many threads decode and resize image files for a batch (default 4). Several images of a batch are decoded at once; the pixels, the training order and the results do not depend on the count, only the time does. 1 decodes one image at a time, as before. This is separate from CnnRuntime->SetThreads, which sets the threads of the layers.
+		@param threads 1 to 64
+		~#
+		method : public : SetThreads(threads : Int) ~ Nil {
+			if(threads < 1) {
+				threads := 1;
+			};
+			if(threads > 64) {
+				threads := 64;
+			};
+			@threads := threads;
+		}
+
+		#~
+		The decoding thread count.
+		@return threads
+		~#
+		method : public : GetThreads() ~ Int {
+			return @threads;
 		}
 
 		#~
@@ -1373,14 +1397,81 @@ train->SetAugmentation(aug);
 		}
 
 		#~
+		Starts decoding the images with these dataset indexes on the decoding threads and returns at once. Images held in memory (added as pixels, or already cached) need no decoding. Read the images with PendingImages->Get, which waits for them.
+		@param indexes dataset indexes, in the order Get will be asked for them
+		@return the pending images, or Nil for an index out of range
+		~#
+		method : public : Begin(indexes : Int[]) ~ PendingImages {
+			if(indexes = Nil) {
+				return Nil;
+			};
+
+			slots := Int->New[indexes->Size()];
+			wanted := Vector->New()<String>;
+			each(i : indexes) {
+				index := indexes[i];
+				if(index < 0 | index >= @labels->Size()) {
+					@error := "no image {$index}";
+					return Nil;
+				};
+
+				slots[i] := -1;
+				if(@pixels->Get(index)->Get() = Nil) {
+					slots[i] := wanted->Size();
+					wanted->AddBack(@paths->Get(index));
+				};
+			};
+
+			batch : API.OpenCV.ImageBatch := Nil;
+			if(wanted->Size() > 0) {
+				paths := wanted->ToArray();
+				batch := API.OpenCV.ImageBatch->Start(paths, @size, @threads);
+				if(batch = Nil) {
+					@error := "cannot start decoding {$paths->Size()} images";
+					return Nil;
+				};
+			};
+
+			return PendingImages->New(@self, indexes, slots, batch);
+		}
+
+		# called by PendingImages once its decoding finished: remembers an image if caching
+		method : public : Remember(index : Int, pixels : Byte[]) ~ Nil {
+			if(@cache) {
+				@pixels->Get(index)->Set(pixels);
+			};
+		}
+
+		method : public : Fail(message : String) ~ Nil {
+			@error := message;
+		}
+
+		#~
 		Decodes every image once and reports how many failed.
 		@return the number of images that cannot be decoded
 		~#
 		method : public : Check() ~ Int {
 			bad := 0;
-			each(i : @labels) {
-				if(GetPixels(i) = Nil) {
-					bad += 1;
+			count := @labels->Size();
+			chunk := 256;
+			for(start := 0; start < count; start += chunk;) {
+				length := Int->Min(chunk, count - start);
+				indexes := Int->New[length];
+				each(j : length) {
+					indexes[j] := start + j;
+				};
+
+				pending := Begin(indexes);
+				if(pending = Nil) {
+					bad += length;
+				}
+				else {
+					each(j : length) {
+						if(pending->Get(j) = Nil) {
+							bad += 1;
+						};
+					};
+					pending->Close();
 				};
 			};
 
@@ -1450,6 +1541,80 @@ train->SetAugmentation(aug);
 			splits[1] := ImageSubset->New(@self, valid, false);
 			splits[2] := ImageSubset->New(@self, test, false);
 			return splits;
+		}
+	}
+
+	#~
+	The images of one batch, being decoded in the background by ImageDataset->Begin (or ImageSubset->Begin). Get waits for the decoding the first time it is called. Close it when done: an unclosed batch holds its decoded pixels until the process ends.
+	~#
+	class PendingImages {
+		@data : ImageDataset;
+		@indexes : Int[];
+		@slots : Int[];
+		@batch : API.OpenCV.ImageBatch;
+		@waited : Bool;
+		@failed : Int;
+
+		New(data : ImageDataset, indexes : Int[], slots : Int[], batch : API.OpenCV.ImageBatch) {
+			@data := data;
+			@indexes := indexes;
+			@slots := slots;
+			@batch := batch;
+			@waited := false;
+			@failed := 0;
+		}
+
+		#~
+		The number of images.
+		@return count
+		~#
+		method : public : Count() ~ Int {
+			return @indexes->Size();
+		}
+
+		#~
+		The decoded pixels of the image at a position of this batch (size x size x channels bytes), the cached or in-memory pixels if it had them.
+		@param position position in this batch, 0 .. Count - 1
+		@return the pixels, or Nil if the image cannot be decoded (the dataset's GetError says which)
+		~#
+		method : public : Get(position : Int) ~ Byte[] {
+			if(position < 0 | position >= @indexes->Size()) {
+				return Nil;
+			};
+
+			index := @indexes[position];
+			slot := @slots[position];
+			if(slot < 0) {
+				return @data->GetPixels(index);
+			};
+
+			if(@batch = Nil) {
+				return Nil;
+			};
+
+			if(<>@waited) {
+				@failed := @batch->Wait();
+				@waited := true;
+			};
+
+			pixels := @batch->Get(slot);
+			if(pixels = Nil) {
+				@data->Fail("cannot decode {$@data->GetPath(index)}");
+				return Nil;
+			};
+			@data->Remember(index, pixels);
+
+			return pixels;
+		}
+
+		#~
+		Frees the decoded pixels (waiting for the decoding to end first). Safe to call twice.
+		~#
+		method : public : Close() ~ Nil {
+			if(@batch <> Nil) {
+				@batch->Close();
+				@batch := Nil;
+			};
 		}
 	}
 
@@ -1569,6 +1734,67 @@ train->SetAugmentation(aug);
 			size := @data->GetSize();
 			aug : Augmentation := @augment ? @aug : Nil;
 			if(model->StageImage(pixels, size, size, slot, total, aug, key) = false) {
+				@error := model->GetError();
+				return false;
+			};
+
+			return true;
+		}
+
+		#~
+		Starts decoding the images at positions order[start .. start + count) of this subset in the background (see ImageDataset->SetThreads) and returns at once.
+		@param order positions in this subset
+		@param start first entry of order
+		@param count how many
+		@return the pending images, Nil if the range or an index is invalid
+		~#
+		method : public : Begin(order : Int[], start : Int, count : Int) ~ PendingImages {
+			if(order = Nil | start < 0 | count < 1 | start + count > order->Size()) {
+				@error := "a bad batch range";
+				return Nil;
+			};
+
+			indexes := Int->New[count];
+			each(j : count) {
+				position := order[start + j];
+				if(position < 0 | position >= @indexes->Size()) {
+					@error := "no position {$position}";
+					return Nil;
+				};
+				indexes[j] := @indexes[position];
+			};
+
+			pending := @data->Begin(indexes);
+			if(pending = Nil) {
+				@error := @data->GetError();
+			};
+
+			return pending;
+		}
+
+		#~
+		Stages image j of a pending batch (made by Begin) into slot j of the model's batch: the same as Stage for the position it was begun with.
+		@param model the model
+		@param pending the pending batch
+		@param j position in the pending batch, also the slot
+		@param total images in the batch
+		@param key varies the random draws, e.g. epoch * count + position
+		@return true if staged
+		~#
+		method : public : StageFrom(model : CnnModel, pending : PendingImages, j : Int, total : Int, key : Int) ~ Bool {
+			if(model = Nil | pending = Nil) {
+				return false;
+			};
+
+			pixels := pending->Get(j);
+			if(pixels = Nil) {
+				@error := @data->GetError();
+				return false;
+			};
+
+			size := @data->GetSize();
+			aug : Augmentation := @augment ? @aug : Nil;
+			if(model->StageImage(pixels, size, size, j, total, aug, key) = false) {
 				@error := model->GetError();
 				return false;
 			};
@@ -1838,6 +2064,7 @@ test_result->GetAccuracy()->PrintLine();
 		@batch : Int;
 		@seed : Int;
 		@verbose : Bool;
+		@prefetch : Bool;
 		@error : String;
 
 		#~
@@ -1855,7 +2082,24 @@ test_result->GetAccuracy()->PrintLine();
 			@batch := batch_size;
 			@seed := seed;
 			@verbose := false;
+			@prefetch := true;
 			@error := "";
+		}
+
+		#~
+		Decode the next batch of images while the current one trains (default on). The images, the training order and the results are the same either way; only the wall time changes. It helps when images are decoded from files and are not cached, and does nothing for images held in memory. The decoding runs on the threads of ImageDataset->SetThreads.
+		@param prefetch true to overlap loading with training
+		~#
+		method : public : SetPrefetch(prefetch : Bool) ~ Nil {
+			@prefetch := prefetch;
+		}
+
+		#~
+		Is loading overlapped with training?
+		@return true if prefetching
+		~#
+		method : public : GetPrefetch() ~ Bool {
+			return @prefetch;
 		}
 
 		#~
@@ -1874,19 +2118,32 @@ test_result->GetAccuracy()->PrintLine();
 			return @error;
 		}
 
-		# stages images order[start .. start + count) of a subset into the model; the labels, or Nil if an image fails
-		method : Load(subset : ImageSubset, order : Int[], start : Int, count : Int, key_base : Int) ~ Float[] {
+		# stages the pending images of order[start .. start + count) of a subset into the model, then frees them; the labels, or Nil if an image fails
+		method : Load(subset : ImageSubset, pending : PendingImages, order : Int[], start : Int, count : Int, key_base : Int) ~ Float[] {
 			labels := Float->New[count];
 			each(j : count) {
 				position := order[start + j];
-				if(<>subset->Stage(@model, position, j, count, key_base + position)) {
+				if(<>subset->StageFrom(@model, pending, j, count, key_base + position)) {
 					@error := "image {$subset->GetIndex(position)} could not be loaded: {$subset->GetError()}";
+					pending->Close();
 					return Nil;
 				};
 				labels[j] := subset->GetLabel(position)->As(Float);
 			};
+			pending->Close();
 
 			return labels;
+		}
+
+		# begins the batch at `start` of a subset, or Nil (with the reason in @error) if it cannot be
+		method : Begin(subset : ImageSubset, order : Int[], start : Int) ~ PendingImages {
+			count := Int->Min(@batch, order->Size() - start);
+			pending := subset->Begin(order, start, count);
+			if(pending = Nil) {
+				@error := "images could not be loaded: {$subset->GetError()}";
+			};
+
+			return pending;
 		}
 
 		#~
@@ -1908,16 +2165,34 @@ test_result->GetAccuracy()->PrintLine();
 				order := CnnRuntime->Permutation(n, @seed + epoch);
 				loss_sum := 0.0;
 				correct := 0;
+				pending : PendingImages := Nil;
 				for(start := 0; start < n; start += @batch;) {
 					count := Int->Min(@batch, n - start);
-					labels := Load(@train, order, start, count, epoch * n);
+					if(pending = Nil) {
+						pending := Begin(@train, order, start);
+						if(pending = Nil) {
+							history->SetError(@error);
+							return history;
+						};
+					};
+
+					labels := Load(@train, pending, order, start, count, epoch * n);
+					pending := Nil;
 					if(labels = Nil) {
 						history->SetError(@error);
 						return history;
 					};
 
+					# decode the next batch while this one trains
+					if(@prefetch & start + @batch < n) {
+						pending := Begin(@train, order, start + @batch);
+					};
+
 					loss := @model->TrainStaged(labels);
 					if(loss < 0.0) {
+						if(pending <> Nil) {
+							pending->Close();
+						};
 						history->SetError(@model->GetError());
 						return history;
 					};
@@ -1970,15 +2245,31 @@ test_result->GetAccuracy()->PrintLine();
 			actuals := Bool->New[n];
 			scores := Float->New[n];
 			loss_sum := 0.0;
+			pending : PendingImages := Nil;
 			for(start := 0; start < n; start += @batch;) {
 				count := Int->Min(@batch, n - start);
-				labels := Load(subset, order, start, count, 0);
+				if(pending = Nil) {
+					pending := Begin(subset, order, start);
+					if(pending = Nil) {
+						return Nil;
+					};
+				};
+
+				labels := Load(subset, pending, order, start, count, 0);
+				pending := Nil;
 				if(labels = Nil) {
 					return Nil;
 				};
 
+				if(@prefetch & start + @batch < n) {
+					pending := Begin(subset, order, start + @batch);
+				};
+
 				logits := @model->PredictStaged(count, true);
 				if(logits = Nil) {
+					if(pending <> Nil) {
+						pending->Close();
+					};
 					@error := @model->GetError();
 					return Nil;
 				};
