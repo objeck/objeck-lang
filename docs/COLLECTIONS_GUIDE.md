@@ -65,7 +65,7 @@ amortised O(1).
 | `FindFirst(f)`, `FindIndex(f)`, `Any`, `All`, `Count`, `Filter`, `Map`, `Reduce` | O(n) |
 | `Sort(compare)` | O(n log n), stable (merge sort) |
 
-There is no `AddFront` (`Insert(0, v)` works but is O(n)); use a `List` or a `Deque` if you
+There is no `AddFront` (`Insert(0, v)` works but is O(n)); use a `List` if you
 need one. `Reserve(n)` avoids regrowth when the size is known.
 
 ### `List<H>` (gen_collect.obs:4355)
