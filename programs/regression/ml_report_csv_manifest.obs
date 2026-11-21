@@ -1,0 +1,142 @@
+# EXTRA_LIBS: ml_report,ml_lab,ml,stats,plot,csv,json,gen_collect
+#~
+System.ML.Report: reading a CSV without ending the program, and the pieces a study
+report needs before every experiment has run.
+
+ResultTables->FromCsv, CsvToCells and CsvColumnKinds read CSV text and answer Nil with
+GetError() for text that is not what was asked (ResultTable->FromCsv raises a LabError for
+those). Report->AddCsvTable picks the Lab layout or a plain grid. AddPlaceholderTable,
+AddFigureSlot and AddRunStatus draw the report's final shape with "not run yet" cells, a
+figure slot and a table of expected files. AddResultTableChart takes a chart title and a
+list of row names to leave out (a total row, a row with no value yet); the four-argument
+form behaves as before. Expected strings are written out by hand from the documented rules.
+~#
+use System.ML.Report;
+use System.ML.Lab;
+use System.Plot;
+use System.IO.Filesystem;
+
+class MlReportCsvManifest {
+	function : Check(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		# ---- ResultTables->FromCsv: a Lab table comes back, anything else is Nil with a reason
+		lab := ResultTable->New("T", "depth");
+		lab->AddColumn("acc");
+		lab->AddColumn("n", 0);
+		lab->AddRow("2", 2.0, [0.7, 12.0]);
+		lab->AddRow("4", 4.0, [0.8, 15.0]);
+		good := ResultTables->FromCsv(lab->ToCsv());
+		ok := Check("a Lab CSV reads back", good <> Nil & good->Size() = 2 & good->Get(1, 0) = 0.8 & good->Get(0, 1) = 12.0) & ok;
+		ok := Check("a success clears the error", ResultTables->GetError()->Size() = 0) & ok;
+
+		with_std := ResultTable->New("S", "k");
+		with_std->AddColumn("m");
+		with_std->AddRow("a", 1.0, [0.5], [0.1]);
+		back := ResultTables->FromCsv(with_std->ToCsv());
+		ok := Check("a CSV with deviations reads back", back <> Nil & back->HasStds() & back->GetStd(0, 0) = 0.1) & ok;
+
+		ok := Check("a Nil text is refused", ResultTables->FromCsv(Nil) = Nil & ResultTables->GetError()->Has("empty")) & ok;
+		ok := Check("an empty text is refused", ResultTables->FromCsv("  \n") = Nil) & ok;
+		ok := Check("a generic CSV is refused, not raised", ResultTables->FromCsv("name,age\nAlice,30\nBob,25\n") = Nil & ResultTables->GetError()->Has("not a ResultTable CSV")) & ok;
+		ok := Check("a header-only CSV is refused", ResultTables->FromCsv("a,a_value,x\n") = Nil) & ok;
+		ok := Check("a ragged CSV is refused with the row", ResultTables->FromCsv("a,a_value,x\n1,1,2\n3,3\n") = Nil & ResultTables->GetError()->Has("not valid CSV")) & ok;
+		ok := Check("a repeated column is refused", ResultTables->FromCsv("a,a_value,x,x\n1,1,2,3\n") = Nil & ResultTables->GetError()->Has("twice")) & ok;
+		ok := Check("an unmatched deviation column is refused", ResultTables->FromCsv("a,a_value,x,y,x_std\n1,1,2,3,4\n") = Nil & ResultTables->GetError()->Has("deviation")) & ok;
+		ok := Check("one column is refused", ResultTables->FromCsv("a\n1\n") = Nil) & ok;
+
+		# ---- CsvToCells and CsvColumnKinds
+		grid := ResultTables->CsvToCells("name,age,score,note\nAlice,30,1.5,\"a, b\"\nBob,25,n/a,x\n");
+		ok := Check("the grid has the header and both records", grid <> Nil & grid->Size()[0] = 3 & grid->Size()[1] = 4) & ok;
+		ok := Check("the heading is row 0", grid[0, 0]->Equals("name") & grid[0, 3]->Equals("note")) & ok;
+		ok := Check("a quoted comma stays in its cell", grid[1, 3]->Equals("a, b") & grid[2, 1]->Equals("25")) & ok;
+		kinds := ResultTables->CsvColumnKinds(grid);
+		ok := Check("column kinds", kinds[0]->Equals("text") & kinds[1]->Equals("integer") & kinds[2]->Equals("number") & kinds[3]->Equals("text")) & ok;
+		ok := Check("an empty column is empty", ResultTables->CsvColumnKinds(ResultTables->CsvToCells("a,b\n1,\n2,\n"))[1]->Equals("empty")) & ok;
+		ok := Check("CsvToCells refuses a ragged CSV", ResultTables->CsvToCells("a,b\n1\n") = Nil & ResultTables->GetError()->Size() > 0) & ok;
+		ok := Check("CsvToCells refuses a Nil text", ResultTables->CsvToCells(Nil) = Nil) & ok;
+		ok := Check("CsvColumnKinds of Nil is Nil", ResultTables->CsvColumnKinds(Nil) = Nil) & ok;
+
+		# ---- Report->AddCsvTable
+		r := Report->New();
+		ok := Check("a Lab CSV is a table", r->AddCsvTable("Lab", lab->ToCsv())) & ok;
+		ok := Check("a generic CSV is a table", r->AddCsvTable("Plain", "name,age\nAlice,30\nBob,25\n")) & ok;
+		ok := Check("two tables", r->GetTableCount() = 2) & ok;
+		md := r->ToMarkdown();
+		ok := Check("the Lab table is formatted to 4 decimals", md->Has("0.8000")) & ok;
+		ok := Check("the generic table shows its heading and cells", md->Has("| name | age |") & md->Has("Alice")) & ok;
+		bad := Report->New();
+		ok := Check("a ragged CSV is refused", <>bad->AddCsvTable("x", "a,b\n1\n") & bad->GetError()->Size() > 0) & ok;
+		ok := Check("a Nil CSV is refused", <>bad->AddCsvTable("x", Nil)) & ok;
+		ok := Check("a refused CSV adds no table", bad->GetTableCount() = 0) & ok;
+
+		# ---- placeholder table, figure slot, run status
+		p := Report->New();
+		ok := Check("a placeholder table", p->AddPlaceholderTable("Not yet", "setting", ["acc", "f1"], ["a", "b"])) & ok;
+		pm := p->ToMarkdown();
+		ok := Check("every cell says not run yet", pm->Has("| a | not run yet | not run yet |") & pm->Has("| setting | acc | f1 |")) & ok;
+		ok := Check("it is a numbered table", p->GetTableCount() = 1) & ok;
+		ok := Check("no columns is refused", <>p->AddPlaceholderTable("x", "k", Nil, ["a"]) & <>p->AddPlaceholderTable("x", "k", String->New[0], ["a"])) & ok;
+
+		fig := Figure->New(300, 200);
+		fig->GetAxes()->Plot("y", [0.0, 1.0, 2.0], [0.0, 1.0, 4.0]);
+		FileWriter->WriteFile("ml_report_csv_slot.svg", fig->ToSvg());
+		FileWriter->WriteFile("ml_report_csv_evil.svg", "<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>");
+		s := Report->New();
+		ok := Check("a missing figure is not an error", <>s->AddFigureSlot("Curve", "ml_report_csv_missing") & s->GetError()->Size() = 0) & ok;
+		ok := Check("a missing figure leaves a note, not a figure", s->GetFigureCount() = 0 & s->ToMarkdown()->Has("Figure slot, not run yet: Curve") & s->ToMarkdown()->Has("ml_report_csv_missing.svg")) & ok;
+		ok := Check("an existing figure is added", s->AddFigureSlot("Real", "ml_report_csv_slot") & s->GetFigureCount() = 1) & ok;
+		ok := Check("a refused figure leaves a note and says why", <>s->AddFigureSlot("Evil", "ml_report_csv_evil") & s->GetError()->Size() > 0 & s->ToMarkdown()->Has("was refused") & s->GetFigureCount() = 1) & ok;
+		ok := Check("an empty stem is refused", <>s->AddFigureSlot("x", "") & <>s->AddFigureSlot("x", Nil)) & ok;
+
+		m := Report->New();
+		count := m->AddRunStatus("Expected files", ["ml_report_csv_slot.svg", "ml_report_csv_missing.csv", "ml_report_csv_evil.svg"]);
+		ok := Check("two of three files exist", count = 2) & ok;
+		mm := m->ToMarkdown();
+		ok := Check("the status table lists them in order", mm->Has("| ml_report_csv_slot.svg | present |") & mm->Has("| ml_report_csv_missing.csv | not run yet |")) & ok;
+		ok := Check("an empty list is refused", m->AddRunStatus("x", Nil) = -1 & m->AddRunStatus("x", String->New[0]) = -1) & ok;
+		File->Delete("ml_report_csv_slot.svg");
+		File->Delete("ml_report_csv_evil.svg");
+
+		# ---- chart title and skipped rows
+		t := ResultTable->New("Table title", "k");
+		t->AddColumn("v");
+		t->AddRow("a", 1.0, [0.5]);
+		t->AddRow("b", 2.0, [0.75]);
+		t->AddRow("total", 3.0, [Float->NaN()]);
+		plain := Report->New();
+		ok := Check("a NaN row still refuses the four-argument chart", <>plain->AddResultTableChart("c", t, ["v"], "bar") & plain->GetError()->Has("not finite")) & ok;
+		ok := Check("skipping the NaN row draws the chart", plain->AddResultTableChart("c", t, ["v"], "bar", "My own title", ["total"])) & ok;
+		html := plain->ToHtml();
+		ok := Check("the chart carries the given title", html->Has("My own title")) & ok;
+		ok := Check("the skipped row is not a category", <>html->Has(">total<")) & ok;
+		ok := Check("an empty title falls back to the table's", plain->AddResultTableChart("c2", t, ["v"], "line", "", ["total"]) & plain->ToHtml()->Has("Table title")) & ok;
+		ok := Check("leaving every row out is refused", <>plain->AddResultTableChart("c3", t, ["v"], "bar", "", ["a", "b", "total"])) & ok;
+		ok := Check("a Nil skip list leaves nothing out", <>plain->AddResultTableChart("c4", t, ["v"], "bar", "t", Nil)) & ok;
+
+		good_table := ResultTable->New("G", "k");
+		good_table->AddColumn("v");
+		good_table->AddRow("a", 1.0, [0.5]);
+		good_table->AddRow("b", 2.0, [0.75]);
+		a4 := Report->New();
+		a6 := Report->New();
+		a4->AddResultTableChart("c", good_table, ["v"], "bar");
+		a6->AddResultTableChart("c", good_table, ["v"], "bar", "", Nil);
+		ok := Check("the four-argument chart is the same figure as before", a4->ToHtml()->Equals(a6->ToHtml())) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+
+		"ml_report_csv_manifest: ok"->PrintLine();
+	}
+}

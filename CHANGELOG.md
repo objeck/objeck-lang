@@ -11,6 +11,7 @@ All notable changes to Objeck will be documented in this file.
 ### Added
 
 - **`ResultTable` number formats** (`System.ML.Lab`): per-column `"sci"` (1.23e-05), `"p"` (`<0.0001` for a tiny p-value) and `"int"` (a count as `176`) beside the default fixed decimals, with `AddIntegerColumn`, `AddPValueColumn`, `AddScientificColumn`, `GetColumnPrecision`, `GetColumnFormat` and `FormatValue`. Existing tables render byte for byte as before; `ToCsv` writes a tiny value of a `"sci"`/`"p"` column in exponent form so it is not rounded to 0. Test `ml_lab_result_table_formats.obs`
+- **`System.ML.Report` for a study whose results arrive over time**: `ResultTables->FromCsv` (a safe loader: `Nil` plus `GetError()` where `ResultTable->FromCsv` raises), `CsvToCells` and `CsvColumnKinds` for any CSV, `Report->AddCsvTable`, `AddPlaceholderTable` (cells read `not run yet`), `AddFigureSlot`, `AddRunStatus` (expected files, present or not), and `AddResultTableChart` with a chart title and rows to leave out. The four-argument chart call is unchanged. `CsvTable`'s doc now says its header is row 0. Test `ml_report_csv_manifest.obs`
 
 ### Documentation
 
