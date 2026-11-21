@@ -104,6 +104,10 @@
     <ul>
      <li><strong>OpenAI output cap was sent under the wrong name</strong>: <code>Response-&gt;Respond(...)</code> wrote <code>max_tokens</code> to the Responses endpoint, whose field is <code>max_output_tokens</code>, so the cap was never applied. <code>Completion-&gt;Complete(...)</code> now sends <code>max_completion_tokens</code> (<code>max_tokens</code> is deprecated for Chat Completions and rejected by reasoning models). New offline request builders <code>Response-&gt;BuildRespondRequest</code> and <code>Completion-&gt;BuildCompleteRequest</code>; test <code>openai_request_test.obs</code></li>
     </ul>
+    <h4 id="added">Added</h4>
+    <ul>
+     <li><strong><code>ResultTable</code> number formats</strong> (<code>System.ML.Lab</code>): per-column <code>"sci"</code> (1.23e-05), <code>"p"</code> (<code>&lt;0.0001</code> for a tiny p-value) and <code>"int"</code> (a count as <code>176</code>) beside the default fixed decimals, with <code>AddIntegerColumn</code>, <code>AddPValueColumn</code>, <code>AddScientificColumn</code>, <code>GetColumnPrecision</code>, <code>GetColumnFormat</code> and <code>FormatValue</code>. Existing tables render byte for byte as before; <code>ToCsv</code> writes a tiny value of a <code>"sci"</code>/<code>"p"</code> column in exponent form so it is not rounded to 0. Test <code>ml_lab_result_table_formats.obs</code></li>
+    </ul>
     <h3 id="v2026111---2026-11-20">[v2026.11.1] - 2026-11-20</h3>
     <p><strong>A release about trust: the compiler says exactly what is wrong and compiles large programs faster, and the loader checks an .obe before running it, so a corrupt or crafted program is refused with a message instead of corrupting memory. It also adds a Claude client (<code>API.Anthropic</code>), a local vector index, SVG charts (<code>System.Plot</code>) and a per-session ONNX execution provider, and makes loading a corrupt ML model file return <code>Nil</code> instead of ending the program.</strong></p>
     <h4 id="compiler">Compiler</h4>
@@ -1430,7 +1434,7 @@
      <li>Crypto: Fixed AES-256 CBC padding and key derivation</li>
     </ul>
     <h3 id="v202570---2025-07-01-">[v2025.7.0] - 2025-07-01 ✅</h3>
-    <h4 id="added">Added</h4>
+    <h4 id="added-1">Added</h4>
     <ul>
      <li><code>Hash-&gt;Dict(..)</code> method to collections</li>
      <li><code>Map-&gt;Dict(..)</code> method to collections</li>

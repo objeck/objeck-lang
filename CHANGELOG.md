@@ -8,6 +8,10 @@ All notable changes to Objeck will be documented in this file.
 
 - **OpenAI output cap was sent under the wrong name**: `Response->Respond(...)` wrote `max_tokens` to the Responses endpoint, whose field is `max_output_tokens`, so the cap was never applied. `Completion->Complete(...)` now sends `max_completion_tokens` (`max_tokens` is deprecated for Chat Completions and rejected by reasoning models). New offline request builders `Response->BuildRespondRequest` and `Completion->BuildCompleteRequest`; test `openai_request_test.obs`
 
+### Added
+
+- **`ResultTable` number formats** (`System.ML.Lab`): per-column `"sci"` (1.23e-05), `"p"` (`<0.0001` for a tiny p-value) and `"int"` (a count as `176`) beside the default fixed decimals, with `AddIntegerColumn`, `AddPValueColumn`, `AddScientificColumn`, `GetColumnPrecision`, `GetColumnFormat` and `FormatValue`. Existing tables render byte for byte as before; `ToCsv` writes a tiny value of a `"sci"`/`"p"` column in exponent form so it is not rounded to 0. Test `ml_lab_result_table_formats.obs`
+
 ## [v2026.11.1] - 2026-11-20
 
 **A release about trust: the compiler says exactly what is wrong and compiles large programs faster, and the loader checks an .obe before running it, so a corrupt or crafted program is refused with a message instead of corrupting memory. It also adds a Claude client (`API.Anthropic`), a local vector index, SVG charts (`System.Plot`) and a per-session ONNX execution provider, and makes loading a corrupt ML model file return `Nil` instead of ending the program.**
