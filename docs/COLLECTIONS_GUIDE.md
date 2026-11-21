@@ -25,6 +25,7 @@ drifted); nothing here changes the API. Compile with
 | Strings by prefix (autocomplete, dictionary) | `Trie` | `WithPrefix` returns sorted matches |
 | Key to value, iterated in insertion order | `OrderedHash` | `Hash` + linked entries; O(1) expected |
 | A one-to-one table you look up both ways (id and name) | `BiMap` | two `Hash` tables kept in step |
+| A priority queue whose priorities change (Dijkstra, A*) | `PriorityMap` | indexed min-heap with decrease-key; O(log n) |
 | Two related values with no class of their own | `Collection.Tuple.Pair` | immutable, any types |
 | A pair that can sit in a sorted collection, or that you must change | `Collection.Pair` | first element must be `Compare` |
 
@@ -193,6 +194,15 @@ Both sides must be `Compare` and non-`Nil`. It is one-to-one: `Insert(k, v)` fir
 that already uses `k` or `v`, so `Size()` never exceeds the number of distinct keys or of distinct
 values. `RemoveKey` and `RemoveValue` take out the whole pair. Use it for id-to-name tables, enum
 codecs and any "look it up either way" index.
+
+### `PriorityMap<T>`
+
+A min-priority queue where each key appears once and its `Float` priority can change. `Push(k, p)`
+adds the key or, if it is present, updates it (decrease-key or increase-key); `Pop()` returns the
+key with the smallest priority, `Remove(k)` takes a key out of the middle. Push, Pop, Remove and
+updates are O(log n); `Has`, `Priority`, `Peek` are O(1) expected. This is what Dijkstra and A*
+need and what `Heap` cannot do (`Heap` holds duplicates and has no update). An absent key's
+`Priority` is `0.0`, so test with `Has` first.
 
 ### The two `Pair` classes
 

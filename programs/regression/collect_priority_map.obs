@@ -1,0 +1,78 @@
+use Collection;
+
+class CollectPriorityMapTest {
+	@pass : static : Bool;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			@pass := false;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"Testing PriorityMap..."->PrintLine();
+		@pass := true;
+
+		q := PriorityMap->New()<String>;
+		Check(q->IsEmpty() & q->Pop() = Nil & q->Peek() = Nil & <>q->Has("a") & <>q->Remove("a") & q->Priority("a") = 0.0, "empty");
+		q->Push("c", 3.0); q->Push("a", 1.0); q->Push("b", 2.0); q->Push(Nil, 0.0);
+		Check(q->Size() = 3 & q->Peek()->Equals("a") & q->PeekPriority() = 1.0 & q->Has("b") & q->Priority("c") = 3.0, "push/peek");
+
+		q->Push("c", 0.5);   # decrease-key to the front
+		Check(q->Size() = 3 & q->Peek()->Equals("c") & q->Priority("c") = 0.5, "decrease-key");
+		q->Push("c", 10.0);  # increase-key to the back
+		Check(q->Size() = 3 & q->Peek()->Equals("a") & q->Priority("c") = 10.0, "increase-key");
+
+		Check(q->Remove("b") & <>q->Has("b") & q->Size() = 2, "Remove middle");
+		Check(q->Pop()->Equals("a") & q->Pop()->Equals("c") & q->Pop() = Nil & q->IsEmpty(), "Pop order");
+
+		# 3000 random pushes/updates/removes drained in order, against a naive model
+		big := PriorityMap->New()<IntRef>;
+		model := Float->New[400];
+		present := Bool->New[400];
+		seed := 2024;
+		for(i := 0; i < 3000; i += 1;) {
+			seed := (seed * 1103515245 + 12345) and 2147483647;
+			key := (seed / 5) % 400;
+			seed := (seed * 1103515245 + 12345) and 2147483647;
+			prio := ((seed / 5) % 10000)->As(Float);
+			seed := (seed * 1103515245 + 12345) and 2147483647;
+			if((seed / 5) % 5 = 0) {
+				big->Remove(IntRef->New(key));
+				present[key] := false;
+			}
+			else {
+				big->Push(IntRef->New(key), prio);
+				present[key] := true;
+				model[key] := prio;
+			};
+		};
+		count := 0;
+		for(i := 0; i < 400; i += 1;) { if(present[i]) { count += 1; }; };
+		ok := big->Size() = count;
+		last := -1.0;
+		popped := 0;
+		while(<>big->IsEmpty()) {
+			prio := big->PeekPriority();
+			key := big->Pop()->Get();
+			if(<>present[key] | model[key] <> prio | prio < last) { ok := false; };
+			present[key] := false;
+			last := prio;
+			popped += 1;
+		};
+		Check(ok & popped = count, "random ops drain in priority order");
+
+		q->Push("x", 1.0);
+		q->Empty();
+		Check(q->IsEmpty() & <>q->Has("x"), "Empty");
+
+		if(@pass) {
+			"PASS: PriorityMap"->PrintLine();
+		}
+		else {
+			"FAIL: PriorityMap"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

@@ -12574,4 +12574,251 @@ m->Size()->PrintLine();         # 1
 			return @backward->GetKeys();
 		}
 	}
+
+	#~
+	Indexed min-priority queue: each key is held once with a Float priority that can be lowered or raised later (decrease-key), which the plain Heap cannot do. Push of a present key updates it. Push, Pop, Remove and priority updates are O(log n); Has, Priority and Peek are O(1) expected. The smallest priority comes out first.
+	~#
+	class PriorityMap<T : Compare> {
+		@keys : T[];
+		@prios : Float[];
+		@pos : Hash<T, IntRef>;
+		@size : Int;
+
+		#~
+		Default constructor
+
+```
+q := Collection.PriorityMap->New()<String>;
+q->Push("far", 9.0); q->Push("near", 1.0);
+q->Pop()->PrintLine(); # near
+```
+		~#
+		New() {
+			@keys := T->New[16];
+			@prios := Float->New[16];
+			@pos := Hash->New()<T, IntRef>;
+			@size := 0;
+		}
+
+		#~
+		Adds a key, or changes its priority if it is already present
+		@param key key (Nil is ignored)
+		@param priority priority, smaller comes out first
+
+```
+q := Collection.PriorityMap->New()<String>;
+q->Push("a", 5.0);
+q->Push("a", 2.0); # decrease-key
+q->Priority("a")->PrintLine(); # 2
+```
+		~#
+		method : public : Push(key : T, priority : Float) ~ Nil {
+			if(key = Nil) {
+				return;
+			};
+
+			entry := @pos->Find(key);
+			if(entry <> Nil) {
+				i := entry->Get();
+				old := @prios[i];
+				@prios[i] := priority;
+				if(priority < old) {
+					SiftUp(i);
+				}
+				else {
+					SiftDown(i);
+				};
+				return;
+			};
+
+			if(@size = @keys->Size()) {
+				capacity := @size * 2;
+				keys : T[] := T->New[capacity];
+				prios : Float[] := Float->New[capacity];
+				Runtime->Copy(keys, 0, @keys, 0, @size);
+				Runtime->Copy(prios, 0, @prios, 0, @size);
+				@keys := keys;
+				@prios := prios;
+			};
+
+			@keys[@size] := key;
+			@prios[@size] := priority;
+			@pos->Insert(key, IntRef->New(@size));
+			@size += 1;
+			SiftUp(@size - 1);
+		}
+
+		#~
+		Removes and returns the key with the smallest priority
+		@return key, or Nil if empty
+
+```
+q := Collection.PriorityMap->New()<String>;
+q->Push("b", 2.0); q->Push("a", 1.0);
+q->Pop()->PrintLine(); # a
+```
+		~#
+		method : public : Pop() ~ T {
+			if(@size = 0) {
+				return Nil;
+			};
+
+			key := @keys[0];
+			RemoveAt(0);
+
+			return key;
+		}
+
+		#~
+		Gets the key with the smallest priority without removing it
+		@return key, or Nil if empty
+		~#
+		method : public : Peek() ~ T {
+			if(@size = 0) {
+				return Nil;
+			};
+
+			return @keys[0];
+		}
+
+		#~
+		Gets the smallest priority
+		@return priority, 0.0 if empty
+		~#
+		method : public : PeekPriority() ~ Float {
+			if(@size = 0) {
+				return 0.0;
+			};
+
+			return @prios[0];
+		}
+
+		#~
+		Gets the priority of a key
+		@param key key
+		@return priority, 0.0 if the key is absent (use Has to tell)
+		~#
+		method : public : Priority(key : T) ~ Float {
+			entry := @pos->Find(key);
+			if(entry = Nil) {
+				return 0.0;
+			};
+
+			return @prios[entry->Get()];
+		}
+
+		#~
+		Checks whether a key is present
+		@param key key
+		@return true if present
+		~#
+		method : public : Has(key : T) ~ Bool {
+			return key <> Nil & @pos->Has(key);
+		}
+
+		#~
+		Removes a key wherever it is in the queue
+		@param key key
+		@return true if it was present
+		~#
+		method : public : Remove(key : T) ~ Bool {
+			if(key = Nil) {
+				return false;
+			};
+
+			entry := @pos->Find(key);
+			if(entry = Nil) {
+				return false;
+			};
+
+			RemoveAt(entry->Get());
+			return true;
+		}
+
+		#~
+		Gets the number of keys
+		@return size
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+
+		#~
+		Checks for no keys
+		@return true if empty
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @size = 0;
+		}
+
+		#~
+		Removes every key
+		~#
+		method : public : Empty() ~ Nil {
+			@keys := T->New[16];
+			@prios := Float->New[16];
+			@pos->Empty();
+			@size := 0;
+		}
+
+		method : RemoveAt(i : Int) ~ Nil {
+			last := @size - 1;
+			@pos->Remove(@keys[i]);
+			if(i <> last) {
+				@keys[i] := @keys[last];
+				@prios[i] := @prios[last];
+				@pos->Find(@keys[i])->Set(i);
+			};
+			@keys[last] := Nil;
+			@size -= 1;
+
+			if(i < @size) {
+				SiftUp(i);
+				SiftDown(@pos->Find(@keys[i])->Get());
+			};
+		}
+
+		method : Swap(a : Int, b : Int) ~ Nil {
+			key := @keys[a];
+			@keys[a] := @keys[b];
+			@keys[b] := key;
+			priority := @prios[a];
+			@prios[a] := @prios[b];
+			@prios[b] := priority;
+			@pos->Find(@keys[a])->Set(a);
+			@pos->Find(@keys[b])->Set(b);
+		}
+
+		method : SiftUp(i : Int) ~ Nil {
+			while(i > 0) {
+				parent := (i - 1) >> 1;
+				if(@prios[i] < @prios[parent]) {
+					Swap(i, parent);
+					i := parent;
+				}
+				else {
+					return;
+				};
+			};
+		}
+
+		method : SiftDown(i : Int) ~ Nil {
+			while(true) {
+				smallest := i;
+				left := 2 * i + 1;
+				right := left + 1;
+				if(left < @size & @prios[left] < @prios[smallest]) {
+					smallest := left;
+				};
+				if(right < @size & @prios[right] < @prios[smallest]) {
+					smallest := right;
+				};
+				if(smallest = i) {
+					return;
+				};
+				Swap(i, smallest);
+				i := smallest;
+			};
+		}
+	}
 }
