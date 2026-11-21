@@ -19,6 +19,7 @@ drifted); nothing here changes the API. Compile with
 | Unique values, order does not matter | `HashSet` (or `SetHash`) | `Hash` underneath, O(1) expected |
 | Several values per key, keys sorted | `MultiMap` | a `Map` of `Vector`s |
 | Several values per key, keys unordered | `MultiHash` | a `Hash` of `Vector`s |
+| Both ends O(1) plus index access (FIFO queue, sliding window) | `Deque` | ring buffer; `AddFront`/`RemoveFront` are O(1), unlike `Vector` |
 | Two related values with no class of their own | `Collection.Tuple.Pair` | immutable, any types |
 | A pair that can sit in a sorted collection, or that you must change | `Collection.Pair` | first element must be `Compare` |
 
@@ -135,6 +136,14 @@ creating it on the first value. Costs are those of the underlying map plus an O(
   Edits to it are edits to the multi-map.
 - `Remove(k)` drops the key and all its values. There is no call that removes one value.
 - `Size()` counts distinct keys; `TotalSize()` counts values and walks every key, O(keys).
+
+### `Deque<H>`
+
+A ring buffer. `AddFront`, `AddBack`, `RemoveFront`, `RemoveBack`, `Front`, `Back`, `Get(i)`, `Set(v, i)`
+and `Size()` are all O(1) (the buffer doubles when full, so adds are amortised O(1)). Empty
+reads return `Nil`. `ToArray()` copies front to back. Use it for a FIFO queue or a sliding
+window that also needs index access; a plain `List` is as fast for pure FIFO use but has no
+`Get(i)`, and `Vector->Remove(0)` is O(n).
 
 ### The two `Pair` classes
 

@@ -11240,4 +11240,258 @@ bits->ToString()->PrintLine(); # {1,5}
 			return buffer;
 		}
 	}
+
+	#~
+	Double-ended queue backed by a ring buffer: O(1) amortised at both ends and O(1) index access. Unlike List there is no cursor; unlike Vector, AddFront and RemoveFront are O(1).
+	~#
+	class Deque<H> {
+		@values : H[];
+		@head : Int;
+		@size : Int;
+
+		#~
+		Default constructor
+
+```
+d := Collection.Deque->New()<String>;
+d->AddBack("b");
+d->AddFront("a");
+d->Size()->PrintLine(); # 2
+```
+		~#
+		New() {
+			@values := H->New[16];
+			@head := 0;
+			@size := 0;
+		}
+
+		#~
+		Adds a value to the front
+		@param value value to add
+
+```
+d := Collection.Deque->New()<String>;
+d->AddBack("b"); d->AddFront("a");
+d->Front()->PrintLine(); # a
+```
+		~#
+		method : public : AddFront(value : H) ~ Nil {
+			Grow();
+			@head -= 1;
+			if(@head < 0) {
+				@head := @values->Size() - 1;
+			};
+			@values[@head] := value;
+			@size += 1;
+		}
+
+		#~
+		Adds a value to the back
+		@param value value to add
+
+```
+d := Collection.Deque->New()<String>;
+d->AddBack("a"); d->AddBack("b");
+d->Back()->PrintLine(); # b
+```
+		~#
+		method : public : AddBack(value : H) ~ Nil {
+			Grow();
+			@values[Wrap(@head + @size)] := value;
+			@size += 1;
+		}
+
+		#~
+		Removes the front value
+		@return the value, or Nil if empty
+
+```
+d := Collection.Deque->New()<String>;
+d->AddBack("a"); d->AddBack("b");
+d->RemoveFront()->PrintLine(); # a
+```
+		~#
+		method : public : RemoveFront() ~ H {
+			if(@size = 0) {
+				return Nil;
+			};
+
+			value := @values[@head];
+			@values[@head] := Nil;
+			@head += 1;
+			if(@head = @values->Size()) {
+				@head := 0;
+			};
+			@size -= 1;
+
+			return value;
+		}
+
+		#~
+		Removes the back value
+		@return the value, or Nil if empty
+
+```
+d := Collection.Deque->New()<String>;
+d->AddBack("a"); d->AddBack("b");
+d->RemoveBack()->PrintLine(); # b
+```
+		~#
+		method : public : RemoveBack() ~ H {
+			if(@size = 0) {
+				return Nil;
+			};
+
+			@size -= 1;
+			index := Wrap(@head + @size);
+			value := @values[index];
+			@values[index] := Nil;
+
+			return value;
+		}
+
+		#~
+		Gets the front value without removing it
+		@return the value, or Nil if empty
+
+```
+d := Collection.Deque->New()<String>;
+d->AddBack("a");
+d->Front()->PrintLine(); # a
+```
+		~#
+		method : public : Front() ~ H {
+			if(@size = 0) {
+				return Nil;
+			};
+
+			return @values[@head];
+		}
+
+		#~
+		Gets the back value without removing it
+		@return the value, or Nil if empty
+
+```
+d := Collection.Deque->New()<String>;
+d->AddBack("a"); d->AddBack("b");
+d->Back()->PrintLine(); # b
+```
+		~#
+		method : public : Back() ~ H {
+			if(@size = 0) {
+				return Nil;
+			};
+
+			return @values[Wrap(@head + @size - 1)];
+		}
+
+		#~
+		Gets a value by position, 0 being the front
+		@param index position
+		@return the value, or Nil for a bad index
+
+```
+d := Collection.Deque->New()<String>;
+d->AddBack("a"); d->AddBack("b");
+d->Get(1)->PrintLine(); # b
+```
+		~#
+		method : public : Get(index : Int) ~ H {
+			if(index < 0 | index >= @size) {
+				return Nil;
+			};
+
+			return @values[Wrap(@head + index)];
+		}
+
+		#~
+		Replaces a value by position
+		@param value new value
+		@param index position
+		@return true if set, false for a bad index
+
+```
+d := Collection.Deque->New()<String>;
+d->AddBack("a");
+d->Set("z", 0)->PrintLine(); # true
+```
+		~#
+		method : public : Set(value : H, index : Int) ~ Bool {
+			if(index < 0 | index >= @size) {
+				return false;
+			};
+
+			@values[Wrap(@head + index)] := value;
+			return true;
+		}
+
+		#~
+		Gets the number of values
+		@return size
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+
+		#~
+		Checks for no values
+		@return true if empty
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @size = 0;
+		}
+
+		#~
+		Removes all values
+		~#
+		method : public : Empty() ~ Nil {
+			@values := H->New[16];
+			@head := 0;
+			@size := 0;
+		}
+
+		#~
+		Copies the values, front first, into an array
+		@return array of Size() values
+
+```
+d := Collection.Deque->New()<String>;
+d->AddBack("b"); d->AddFront("a");
+d->ToArray()[0]->PrintLine(); # a
+```
+		~#
+		method : public : ToArray() ~ H[] {
+			array := H->New[@size];
+			for(i := 0; i < @size; i += 1;) {
+				array[i] := @values[Wrap(@head + i)];
+			};
+
+			return array;
+		}
+
+		method : Wrap(index : Int) ~ Int {
+			capacity := @values->Size();
+			if(index >= capacity) {
+				return index - capacity;
+			};
+
+			return index;
+		}
+
+		# doubles the ring when full, unrolling it so the front sits at 0
+		method : Grow() ~ Nil {
+			capacity := @values->Size();
+			if(@size < capacity) {
+				return;
+			};
+
+			bigger : H[] := H->New[capacity * 2];
+			for(i := 0; i < @size; i += 1;) {
+				bigger[i] := @values[Wrap(@head + i)];
+			};
+			@values := bigger;
+			@head := 0;
+		}
+	}
 }

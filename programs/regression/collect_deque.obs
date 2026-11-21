@@ -1,0 +1,78 @@
+use Collection;
+
+class CollectDequeTest {
+	@pass : static : Bool;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			@pass := false;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"Testing Deque..."->PrintLine();
+		@pass := true;
+
+		d := Deque->New()<IntRef>;
+		Check(d->IsEmpty() & d->Size() = 0, "new deque empty");
+		Check(d->Front() = Nil & d->Back() = Nil & d->RemoveFront() = Nil & d->RemoveBack() = Nil, "empty returns Nil");
+
+		d->AddBack(IntRef->New(2)); d->AddBack(IntRef->New(3));
+		d->AddFront(IntRef->New(1)); d->AddFront(IntRef->New(0));
+		Check(d->Size() = 4 & d->Front()->Get() = 0 & d->Back()->Get() = 3, "both ends");
+		Check(d->Get(0)->Get() = 0 & d->Get(3)->Get() = 3 & d->Get(4) = Nil & d->Get(-1) = Nil, "Get");
+		Check(d->Set(IntRef->New(9), 1) & d->Get(1)->Get() = 9 & <>d->Set(IntRef->New(1), 4), "Set");
+		Check(d->RemoveFront()->Get() = 0 & d->RemoveBack()->Get() = 3 & d->Size() = 2, "Remove ends");
+
+		# wrap around and grow while the head is mid-ring
+		d->Empty();
+		for(i := 0; i < 10; i += 1;) { d->AddBack(IntRef->New(i)); };
+		for(i := 0; i < 8; i += 1;) { d->RemoveFront(); };
+		for(i := 10; i < 60; i += 1;) { d->AddBack(IntRef->New(i)); };
+		for(i := 1; i <= 40; i += 1;) { d->AddFront(IntRef->New(-i)); };
+		ok := d->Size() = 92;
+		a := d->ToArray();
+		expect := -40;
+		for(i := 0; i < a->Size(); i += 1;) {
+			if(expect = 0) { expect := 8; };
+			if(a[i]->Get() <> expect) { ok := false; };
+			expect += 1;
+		};
+		Check(ok & a->Size() = 92, "order after wrap and growth");
+
+		# mixed operations against a Vector as the model
+		m := Vector->New()<IntRef>;
+		q := Deque->New()<IntRef>;
+		seed := 99;
+		for(i := 0; i < 5000; i += 1;) {
+			seed := (seed * 1103515245 + 12345) and 2147483647;
+			op := (seed / 7) % 4;
+			if(op = 0) {
+				m->AddBack(IntRef->New(i)); q->AddBack(IntRef->New(i));
+			}
+			else if(op = 1) {
+				m->Insert(0, IntRef->New(i)); q->AddFront(IntRef->New(i));
+			}
+			else if(op = 2 & m->Size() > 0) {
+				m->Remove(0); q->RemoveFront();
+			}
+			else if(m->Size() > 0) {
+				m->RemoveBack(); q->RemoveBack();
+			};
+		};
+		same := m->Size() = q->Size();
+		for(i := 0; same & i < m->Size(); i += 1;) {
+			if(m->Get(i)->Get() <> q->Get(i)->Get()) { same := false; };
+		};
+		Check(same, "matches Vector model over 5000 random ops");
+
+		if(@pass) {
+			"PASS: Deque"->PrintLine();
+		}
+		else {
+			"FAIL: Deque"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
