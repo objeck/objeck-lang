@@ -5521,6 +5521,88 @@ v->Size()->PrintLine(); # 2
 		}
 
 		#~
+		Inserts a value at an index, shifting the values at and after it up by one
+		@param index position to insert at (0 to Size(); Size() appends)
+		@param value value to insert
+		@return true if inserted, false if the index is out of range
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("a"); v->AddBack("c");
+v->Insert(1, "b")->PrintLine(); # true
+v->Size()->PrintLine();           # 3
+```
+		~#
+		method : public : Insert(index : Int, value : H) ~ Bool {
+			if(index < 0 | index > @size) {
+				return false;
+			};
+
+			Expand();
+			for(i := @size; i > index; i -= 1;) {
+				@values[i] := @values[i - 1];
+			};
+			@values[index] := value;
+			@size += 1;
+
+			return true;
+		}
+
+		#~
+		Copies a range into a new vector
+		@param lo first index (inclusive, clamped to 0)
+		@param hi last index (exclusive, clamped to Size())
+		@return new vector holding the range, empty if the range is empty
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("a"); v->AddBack("b"); v->AddBack("c");
+v->Slice(1, 3)->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : Slice(lo : Int, hi : Int) ~ Vector<H> {
+			if(lo < 0) {
+				lo := 0;
+			};
+			if(hi > @size) {
+				hi := @size;
+			};
+
+			slice := Vector->New()<H>;
+			if(hi > lo) {
+				slice->Reserve(hi - lo);
+				for(i := lo; i < hi; i += 1;) {
+					slice->AddBack(@values[i]);
+				};
+			};
+
+			return slice;
+		}
+
+		#~
+		Appends every value of another vector (the values are shared, not copied)
+		@param that vector to append, may be this vector
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("a");
+v->AddAll(v);
+v->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : AddAll(that : Vector<H>) ~ Nil {
+			if(that = Nil) {
+				return;
+			};
+
+			count := that->Size();
+			Reserve(@size + count);
+			for(i := 0; i < count; i += 1;) {
+				AddBack(that->Get(i));
+			};
+		}
+
+		#~
 		Removes the last value
 		@return value
 
@@ -6165,6 +6247,112 @@ v->Size()->PrintLine(); # 2
 			Expand();
 			@values[@size] := value;
 			@size += 1;
+		}
+
+		#~
+		Inserts a value at an index, shifting the values at and after it up by one
+		@param index position to insert at (0 to Size(); Size() appends)
+		@param value value to insert
+		@return true if inserted, false if the index is out of range
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(3));
+v->Insert(1, IntRef->New(2))->PrintLine(); # true
+v->Size()->PrintLine();           # 3
+```
+		~#
+		method : public : Insert(index : Int, value : H) ~ Bool {
+			if(index < 0 | index > @size) {
+				return false;
+			};
+
+			Expand();
+			for(i := @size; i > index; i -= 1;) {
+				@values[i] := @values[i - 1];
+			};
+			@values[index] := value;
+			@size += 1;
+
+			return true;
+		}
+
+		#~
+		Copies a range into a new vector
+		@param lo first index (inclusive, clamped to 0)
+		@param hi last index (exclusive, clamped to Size())
+		@return new vector holding the range, empty if the range is empty
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2)); v->AddBack(IntRef->New(3));
+v->Slice(1, 3)->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : Slice(lo : Int, hi : Int) ~ CompareVector<H> {
+			if(lo < 0) {
+				lo := 0;
+			};
+			if(hi > @size) {
+				hi := @size;
+			};
+
+			slice := CompareVector->New()<H>;
+			if(hi > lo) {
+				slice->Reserve(hi - lo);
+				for(i := lo; i < hi; i += 1;) {
+					slice->AddBack(@values[i]);
+				};
+			};
+
+			return slice;
+		}
+
+		#~
+		Appends every value of another vector (the values are shared, not copied)
+		@param that vector to append, may be this vector
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1));
+v->AddAll(v);
+v->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : AddAll(that : CompareVector<H>) ~ Nil {
+			if(that = Nil) {
+				return;
+			};
+
+			count := that->Size();
+			Reserve(@size + count);
+			for(i := 0; i < count; i += 1;) {
+				AddBack(that->Get(i));
+			};
+		}
+
+		#~
+		Swaps two values
+		@param a first index
+		@param b second index
+		@return true if values were swapped
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2));
+v->Swap(0, 1)->PrintLine(); # true
+```
+		~#
+		method : public : Swap(a : Int, b : Int) ~ Bool {
+			if(a < 0 | b < 0 | a >= @size | b >= @size) {
+				return false;
+			};
+
+			temp := @values[a];
+			@values[a] := @values[b];
+			@values[b] := temp;
+
+			return true;
 		}
 
 		#~

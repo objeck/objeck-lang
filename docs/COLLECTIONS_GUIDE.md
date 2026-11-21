@@ -60,12 +60,13 @@ amortised O(1).
 |---|---|
 | `Get(i)`, `Set(v, i)`, `First()`, `Last()`, `Size()` | O(1); `Get` returns `Nil` and `Set` returns `false` for a bad index |
 | `AddBack(v)`, `RemoveBack()` | O(1) amortised |
-| `Remove(i)` | O(n): later elements are shifted down |
+| `Remove(i)`, `Insert(i, v)` | O(n): later elements are shifted down / up; `Insert` returns `Bool` (index 0..`Size()`) |
+| `Slice(lo, hi)`, `AddAll(other)`, `Swap(a, b)` | O(hi-lo) / O(other) / O(1); `CompareVector` has the same three plus `Find`/`Has` |
 | `FindFirst(f)`, `FindIndex(f)`, `Any`, `All`, `Count`, `Filter`, `Map`, `Reduce` | O(n) |
 | `Sort(compare)` | O(n log n), stable (merge sort) |
 
-There is no insert-at-index and no `AddFront`; use a `List`, or build a new `Vector`, if you
-need either. `Reserve(n)` avoids regrowth when the size is known.
+There is no `AddFront` (`Insert(0, v)` works but is O(n)); use a `List` or a `Deque` if you
+need one. `Reserve(n)` avoids regrowth when the size is known.
 
 ### `List<H>` (gen_collect.obs:4355)
 

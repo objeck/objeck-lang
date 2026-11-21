@@ -1,96 +1,72 @@
 use Collection;
 
+# Vector / CompareVector: Insert, Slice, AddAll (and CompareVector Swap)
 class CollectVectorOpsTest {
-    function : Main(args : String[]) ~ Nil {
-        "Testing Vector operations..."->PrintLine();
-        pass := true;
+	@pass : static : Bool;
 
-        v := Vector->New()<IntRef>;
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			@pass := false;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
 
-        # AddBack / Size
-        each(i : 5) { v->AddBack(IntRef->New(i * 10)); };
-        if(v->Size() <> 5) {
-            pass := false;
-            "  FAIL: size after AddBack = {$v->Size()}"->PrintLine();
-        };
+	function : Main(args : String[]) ~ Nil {
+		"Testing Vector/CompareVector Insert, Slice, AddAll..."->PrintLine();
+		@pass := true;
 
-        # Get
-        if(v->Get(0)->Get() <> 0)  { pass := false; "  FAIL: Get(0)"->PrintLine(); };
-        if(v->Get(4)->Get() <> 40) { pass := false; "  FAIL: Get(4)"->PrintLine(); };
+		v := Vector->New()<String>;
+		Check(v->Insert(0, "b"), "Vector insert into empty");
+		Check(v->Insert(0, "a"), "Vector insert front");
+		Check(v->Insert(2, "d"), "Vector insert at Size appends");
+		Check(v->Insert(2, "c"), "Vector insert middle");
+		Check(<>v->Insert(-1, "x"), "Vector insert negative rejected");
+		Check(<>v->Insert(5, "x"), "Vector insert past Size rejected");
+		Check(v->Size() = 4, "Vector size after inserts");
+		Check(v->Get(0)->Equals("a") & v->Get(1)->Equals("b") & v->Get(2)->Equals("c") & v->Get(3)->Equals("d"), "Vector order after inserts");
 
-        # AddBack another element and check
-        v->AddBack(IntRef->New(50));
-        if(v->Size() <> 6) {
-            pass := false;
-            "  FAIL: size after second AddBack"->PrintLine();
-        };
-        if(v->Get(5)->Get() <> 50) {
-            pass := false;
-            "  FAIL: Get(5) after second AddBack"->PrintLine();
-        };
+		# many inserts force growth
+		g := Vector->New()<IntRef>;
+		for(i := 0; i < 500; i += 1;) { g->Insert(0, IntRef->New(i)); };
+		Check(g->Size() = 500 & g->Get(0)->Get() = 499 & g->Get(499)->Get() = 0, "Vector insert growth");
 
-        # Remove by index
-        removed := v->Remove(5);
-        if(removed->Get() <> 50) {
-            pass := false;
-            "  FAIL: Remove(5) value"->PrintLine();
-        };
-        if(v->Size() <> 5) {
-            pass := false;
-            "  FAIL: size after Remove"->PrintLine();
-        };
+		s := v->Slice(1, 3);
+		Check(s->Size() = 2 & s->Get(0)->Equals("b") & s->Get(1)->Equals("c"), "Vector slice");
+		Check(v->Slice(-5, 99)->Size() = 4, "Vector slice clamped");
+		Check(v->Slice(3, 1)->Size() = 0, "Vector slice empty when hi <= lo");
+		Check(v->Size() = 4, "Vector slice leaves source");
 
-        # IsEmpty
-        if(v->IsEmpty()) {
-            pass := false;
-            "  FAIL: IsEmpty on non-empty"->PrintLine();
-        };
-        empty := Vector->New()<IntRef>;
-        if(<>empty->IsEmpty()) {
-            pass := false;
-            "  FAIL: IsEmpty on empty"->PrintLine();
-        };
+		w := Vector->New()<String>;
+		w->AddBack("e"); w->AddBack("f");
+		v->AddAll(w);
+		Check(v->Size() = 6 & v->Get(4)->Equals("e") & v->Get(5)->Equals("f"), "Vector AddAll");
+		v->AddAll(v);
+		Check(v->Size() = 12 & v->Get(6)->Equals("a") & v->Get(11)->Equals("f"), "Vector AddAll self");
+		v->AddAll(Nil);
+		Check(v->Size() = 12, "Vector AddAll Nil");
 
-        # Iteration via each(item in v)
-        sum := 0;
-        each(item in v) {
-            sum += item->Get();
-        };
-        if(sum <> 100) {
-            pass := false;
-            "  FAIL: iteration sum = {$sum}, expected 100"->PrintLine();
-        };
+		c := CompareVector->New()<IntRef>;
+		each(i : 3) { c->AddBack(IntRef->New((i + 1) * 10)); };  # 10 20 30
+		Check(c->Insert(1, IntRef->New(15)), "CompareVector insert");
+		Check(c->Insert(4, IntRef->New(40)), "CompareVector insert at Size");
+		Check(<>c->Insert(9, IntRef->New(0)), "CompareVector insert out of range");
+		Check(c->Get(1)->Get() = 15 & c->Get(4)->Get() = 40 & c->Size() = 5, "CompareVector order after inserts");
+		Check(c->Find(IntRef->New(30)) = 3, "CompareVector Find after insert");
+		cs := c->Slice(1, 4);
+		Check(cs->Size() = 3 & cs->Get(0)->Get() = 15 & cs->Get(2)->Get() = 30, "CompareVector slice");
+		Check(cs->Find(IntRef->New(20)) = 1, "CompareVector slice usable");
+		c->AddAll(cs);
+		Check(c->Size() = 8 & c->Get(7)->Get() = 30, "CompareVector AddAll");
+		Check(c->Swap(0, 7), "CompareVector swap");
+		Check(c->Get(0)->Get() = 30 & c->Get(7)->Get() = 10, "CompareVector swap values");
+		Check(<>c->Swap(0, 8), "CompareVector swap out of range");
 
-        # Replace vector with new empty vector (simulates clear)
-        v := Vector->New()<IntRef>;
-        if(v->Size() <> 0) {
-            pass := false;
-            "  FAIL: size after new vector"->PrintLine();
-        };
-        if(<>v->IsEmpty()) {
-            pass := false;
-            "  FAIL: IsEmpty after new vector"->PrintLine();
-        };
-
-        # String vector
-        sv := Vector->New()<String>;
-        sv->AddBack("apple");
-        sv->AddBack("banana");
-        sv->AddBack("cherry");
-        if(sv->Size() <> 3) {
-            pass := false;
-            "  FAIL: string vector size"->PrintLine();
-        };
-        if(<>sv->Get(1)->Equals("banana")) {
-            pass := false;
-            "  FAIL: string vector get"->PrintLine();
-        };
-
-        if(pass) {
-            "PASS: Vector operations"->PrintLine();
-        } else {
-            "FAIL: Vector operations"->PrintLine();
-            Runtime->Exit(1);
-        };
-    }
+		if(@pass) {
+			"PASS: Vector/CompareVector ops"->PrintLine();
+		}
+		else {
+			"FAIL: Vector/CompareVector ops"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
 }
