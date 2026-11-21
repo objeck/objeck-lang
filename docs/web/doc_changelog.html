@@ -109,6 +109,11 @@
      <li><strong><code>ResultTable</code> number formats</strong> (<code>System.ML.Lab</code>): per-column <code>"sci"</code> (1.23e-05), <code>"p"</code> (<code>&lt;0.0001</code> for a tiny p-value) and <code>"int"</code> (a count as <code>176</code>) beside the default fixed decimals, with <code>AddIntegerColumn</code>, <code>AddPValueColumn</code>, <code>AddScientificColumn</code>, <code>GetColumnPrecision</code>, <code>GetColumnFormat</code> and <code>FormatValue</code>. Existing tables render byte for byte as before; <code>ToCsv</code> writes a tiny value of a <code>"sci"</code>/<code>"p"</code> column in exponent form so it is not rounded to 0. Test <code>ml_lab_result_table_formats.obs</code></li>
      <li><strong><code>System.ML.Report</code> for a study whose results arrive over time</strong>: <code>ResultTables-&gt;FromCsv</code> (a safe loader: <code>Nil</code> plus <code>GetError()</code> where <code>ResultTable-&gt;FromCsv</code> raises), <code>CsvToCells</code> and <code>CsvColumnKinds</code> for any CSV, <code>Report-&gt;AddCsvTable</code>, <code>AddPlaceholderTable</code> (cells read <code>not run yet</code>), <code>AddFigureSlot</code>, <code>AddRunStatus</code> (expected files, present or not), and <code>AddResultTableChart</code> with a chart title and rows to leave out. The four-argument chart call is unchanged. <code>CsvTable</code>'s doc now says its header is row 0. Test <code>ml_report_csv_manifest.obs</code></li>
     </ul>
+    <h4 id="performance">Performance</h4>
+    <ul>
+     <li><strong>Sorting already-ordered data is much faster</strong>: the <code>Vector</code>, <code>CompareVector</code> and comparator merge sorts skip a merge when the two halves are already in order, so <code>Sort()</code> on sorted input of 500,000 elements fell from about 500 ms to 80 ms; random input is unchanged and the sort is still stable</li>
+     <li><strong><code>String-&gt;Append(String)</code> copies long strings in one block</strong>: strings of 32 or more characters no longer cost a method call per character (200,000 appends of 100 characters: 169 ms to 73 ms; of 1,000 characters: 1,660 ms to 292 ms); short strings keep the old loop, which is faster for them</li>
+    </ul>
     <h4 id="release-tooling">Release tooling</h4>
     <ul>
      <li><strong>The site deploy script knows the new server</strong>: <code>core/release/deploy_website.sh</code> still defaulted to the retired shared-hosting account (<code>objecklang</code>) and built its live-site check from <code>www.&lt;ssh host&gt;</code>, so a deploy to the droplet by its own name could not verify itself. The default user is now <code>objeckorg</code>, the public URL is a separate setting (<code>--site-url</code>, <code>OBJECK_ORG_URL</code>, default <code>https://www.objeck.org</code>), the key can come from <code>OBJECK_ORG_KEY</code>, and a failed SSH connection now prints ssh's own reason with a specific hint (a saved host key that changed with the move, a key the account does not accept, a closed port or a fail2ban ban) instead of "does not exist (or SSH failed)" for every cause.</li>
@@ -647,7 +652,7 @@
      <li><strong>A thread join could wait on a handle that was never a thread</strong> (<a href="https://github.com/objeck/objeck-lang/issues/874" target="_blank">#874</a>): <code>Join</code> copied the <code>Thread</code> object's address into a local, parked the thread so collections could proceed, and only then read the handle out of it. A minor collection in that window promoted the object and reset the nursery, the local then named whatever reused that memory, and <code>pthread_join</code> was handed a small integer: "&gt;&gt;&gt; Unable to join thread! &lt;&lt;&lt;", <code>ESRCH</code>, once in a few hundred runs of <code>gc_mt_small_nursery_stress</code> on macOS arm64 CI. The handle is now read before parking, in the interpreter and the JIT. A forced-window probe that failed 24 of 24 runs before the fix failed 0 of 24 after</li>
      <li><strong>A closure's captured values could be freed while still reachable</strong> (<a href="https://github.com/objeck/objeck-lang/issues/881" target="_blank">#881</a>): a typed function-reference root traced a closure's captures only when its own mark set the capture block's mark bit. A conservative scan of a stale stack word could mark the same block first without tracing it, and the JIT-roots scan runs on its own thread beside the interpreter-frame walk, so when it won the race a capture reachable only through the block was swept. Exactly one typed walker now traces each block per collection, whoever marked it. The heap verifier found it on linux-arm64, whose JIT scans the words below the frame; forcing the conservative scan first reproduced it on every run before the fix and on none after</li>
     </ul>
-    <h4 id="performance">Performance</h4>
+    <h4 id="performance-1">Performance</h4>
     <ul>
      <li><strong><code>Data.CSV</code> medians sort a <code>Float[]</code> in place</strong> (<a href="https://github.com/objeck/objeck-lang/pull/892" target="_blank">#892</a>): <code>CsvRow-&gt;Median</code> and <code>CsvColumn-&gt;Median</code> boxed every value into a <code>FloatRef</code> and sorted a <code>CompareVector</code>; they now copy into a <code>Float[]</code> and sort it with <code>ArraySort</code>. 50 medians of a 20,000-value column went from 1.48-1.90 s to 0.13-0.29 s on Windows x64, with the same result every run. <code>csv_median.obs</code> is the first test to cover either method</li>
     </ul>
@@ -921,7 +926,7 @@
      <li><strong>The doc parser was reading prose as code</strong>: the word "bundle" in a comment or string literal re-filed every class after it under a bundle named for the next word. Five files hard-code the library list and had drifted apart &amp;mdash; one short two libraries while still naming a deleted third, so the counts matched and nothing looked wrong; a CI check now set-diffs all five against the sources</li>
      <li><strong>Game.OpenGL defects found by review rather than by use</strong>: props parented into a hierarchy were culled and sorted in local rather than world space, the instanced shader never wrote <code>world_position</code>, textures rendered upside down, the projection went stale on resize, an accidentally-public API surface was narrowed, and <code>run_gl</code> never passed <code>gl_model</code> its model file</li>
     </ul>
-    <h4 id="performance-1">Performance</h4>
+    <h4 id="performance-2">Performance</h4>
     <ul>
      <li><strong>Native call names are no longer allocated on every call</strong>: a string literal allocates on each evaluation, and the literal naming the native function was 92% of a call's cost &amp;mdash; 1655ns to 130ns. Guarded by <code>tools/cicd/hoist_native_names.py --check</code> so it cannot drift back</li>
      <li><strong>Resolved native entry points are cached, on every platform</strong>: every <code>EXT_LIB_FUNC_CALL</code> converted the function's name from wide to narrow and then asked the loader for its address &amp;mdash; <code>GetProcAddress</code> walking a DLL's export table, <code>dlsym</code> walking the module's symbol hash &amp;mdash; on every call, for a name that never changes. Measured at 110ns per call, 69 in the lookup and 39 in the conversion feeding it, or about 5.5% of a native call. The cache is thread-local rather than shared behind a lock, since an uncontended mutex would hand back a useful fraction of what it saves; invalidation is a generation counter, so a library unloaded and another loaded at the same address cannot be called through a stale pointer</li>
@@ -962,7 +967,7 @@
      <li><strong>Unvalidated <code>/proc</code> arithmetic</strong>: <code>GetProcessResidentBytes</code> computed <code>pages * sysconf(_SC_PAGESIZE)</code> from an <code>fscanf</code> of <code>/proc/self/statm</code> &amp;mdash; a negative page count casts to a huge <code>size_t</code>, the multiply can wrap, and <code>sysconf</code> returns <code>-1</code> on error, which casts to <code>SIZE_MAX</code>. All three are checked, and the failure path leaves <code>rss</code> at <code>0</code> exactly as it already did</li>
      <li><strong>Malformed terminal escape sequences</strong>: bytes outside the ECMA-48 parameter ranges could be stored as negative characters before being fed to <code>atoi</code>; they are now rejected the same way a short read already was</li>
     </ul>
-    <h4 id="performance-2">Performance</h4>
+    <h4 id="performance-3">Performance</h4>
     <ul>
      <li><strong>Move instead of copy in the REPL and compiler entry points</strong>: clears eight <code>COPY_INSTEAD_OF_MOVE</code> findings. Stated honestly &amp;mdash; these run once at startup on short strings, so the runtime saving is nil; the value is a clean baseline so a real defect in these files stands out in the next report. Each move was checked for a later use rather than applied mechanically: <code>compiler/posix_main.cpp</code>'s <code>usage</code> <strong>does</strong> appear 22 lines later, in the mutually exclusive <code>else</code> branch, and a mechanical application of the checker's advice would have needed exactly that check to be safe</li>
     </ul>
@@ -1055,7 +1060,7 @@
      <li><strong>Multi-lambda closure heap corruption</strong>: closures sharing a scope corrupted each other's captured state because captures were keyed by outer-scope ids; captures now use closure-local ids.</li>
      <li><strong>Compiler</strong>: re-analyzed and repeated <code>FuncRef</code> direct calls, and functional-call result chaining in expression context, are now handled correctly. Closure-captured variables no longer raise a spurious "unreferenced variable" warning.</li>
     </ul>
-    <h4 id="performance-3">Performance</h4>
+    <h4 id="performance-4">Performance</h4>
     <ul>
      <li><strong>SDL2 2D rendering</strong>: <code>Renderer</code> draws pool the boxing buffer and cache the proxy/method names, reducing per-call overhead.</li>
     </ul>
@@ -1065,7 +1070,7 @@
      <li>Synced the Linux/Windows standard-library lists and rebuilt all <code>.obl</code> libraries against the new toolchain version (VER_NUM 202663).</li>
     </ul>
     <h3 id="v202662---2026-06-19">[v2026.6.2] - 2026-06-19</h3>
-    <h4 id="performance-4">Performance</h4>
+    <h4 id="performance-5">Performance</h4>
     <ul>
      <li><strong>GC safepoint poll made nearly free in JIT'd loops</strong>: the cooperative stop-the-world safepoint (added in v2026.6.1) emitted an unconditional <code>call MemoryManager::SafePoint</code> at every JIT label, which regressed label-dense integer loops. The poll is now (1) an inline flag test that calls into the collector only when a collection is actually active, (2) reads <code>&amp;stw_active</code> from a callee-saved register cached at the prologue (R12 on AMD64, X19 on ARM64), and (3) emitted only at true loop back-edges rather than every label. Net: <code>fannkuchredux</code> dropped roughly in half (~59s → ~31s in the Docker harness), recovering the full regression on both AMD64 and ARM64. Validated against the GC/JIT and multithreaded stop-the-world stress suites.</li>
      <li><strong>Auto-JIT for <code>DYN_MTHD_CALL</code> (closure / function-reference calls)</strong> on AMD64 and ARM64: closure-heavy and function-reference kernels now JIT-compile once warm instead of staying in the interpreter. <code>spectralnorm</code> (input 5500) goes from 43s interpreted to 3.5s with <code>OBJECK_JIT_THRESHOLD=1</code>, and at n=2000 reaches 0.46s — matching the hand-<code>native</code> kernel (0.40s). The remaining lever is auto-JIT threshold/warmup tuning, not coverage.</li>
@@ -1122,7 +1127,7 @@
      <li><strong>Debugger</strong>: locals and fields appearing after a <code>Float</code> field/local showed wrong values. CLI conditional breakpoints (<code>b file:line if &lt;expr&gt;</code>) never parsed — the scanner downgraded the <code>if</code> keyword to an identifier, so every conditional breakpoint failed with "Expected statement end". In DAP, variables in single-slot methods (e.g. a one-parameter recursive method) were all reported as <code>&lt;out of scope&gt;</code> because the bounds check divided a slot count by <code>sizeof(size_t)</code>. The <code>MemoryManager</code> is now idempotent on teardown and re-initializes on reload, so the debugger can re-run a program in-process (DAP restart) without a double-free.</li>
      <li><strong>macOS / launcher</strong>: portable application bundles failed when launched from outside their own directory; a stale <code>Objeck.app</code> bundle version was corrected.</li>
     </ul>
-    <h4 id="performance-5">Performance</h4>
+    <h4 id="performance-6">Performance</h4>
     <ul>
      <li><strong>ONNX on macOS</strong>: compiled CoreML models are persisted across runs (~35× faster warm start), and <code>Ort::TypeInfo</code> is kept alive while reading tensor type/shape.</li>
     </ul>
@@ -1160,7 +1165,7 @@
     <ul>
      <li><strong>Data.XML conveniences</strong> (additive; raw <code>SetContent</code>/<code>GetContent</code>/<code>GetValue</code> contract unchanged): <code>XmlElement-&gt;EncodeText</code> escapes exactly the five markup characters while leaving whitespace readable; <code>SetEncodedContent</code> produces well-formed output; <code>GetDecodedContent</code> and <code>XmlAttribute-&gt;GetDecodedValue</code> return entity-decoded text</li>
     </ul>
-    <h4 id="performance-6">Performance</h4>
+    <h4 id="performance-7">Performance</h4>
     <ul>
      <li>Auto-JIT now compiles methods containing <code>MTHD_CALL</code> after 10 invocations (5–15% speedup across benchmarks)</li>
      <li>Interpreter fast-path extended with 15 additional inline opcodes (comparisons, bitwise, shifts, logical)</li>
@@ -1207,7 +1212,7 @@
      <li>Replaced <code>calloc</code> with <code>malloc</code> in <code>CompressZlib</code>/<code>UncompressZlib</code> — removes wasteful zero-initialisation of buffers that are immediately overwritten by the codec</li>
      <li><strong>Backward-compatible</strong>: files in the old raw-zlib format (CMF byte <code>0x78</code>) are automatically detected and continue to load without recompilation</li>
     </ul>
-    <h4 id="performance-7">Performance</h4>
+    <h4 id="performance-8">Performance</h4>
     <ul>
      <li><code>bench_spectralnorm_native</code>: rewrote <code>MultiplyAv</code>/<code>MultiplyAtv</code> with an incremental floating-point denominator, eliminating <code>I2F</code> conversions from the inner loop (2000×2000×40 iterations). Only two integer-to-float conversions now occur per outer row instead of per element.</li>
     </ul>
@@ -1306,7 +1311,7 @@
      <li>Hardened JSON, JSON stream, and XML parsers against malformed input</li>
      <li>Hardened HTTPS client against null ReadLine on connection failures</li>
     </ul>
-    <h4 id="performance-8">Performance</h4>
+    <h4 id="performance-9">Performance</h4>
     <ul>
      <li><strong>Link-time optimization</strong>: Added <code>-flto=auto</code> across all GCC Makefiles (AMD64 and ARM64)</li>
      <li><strong>ARM64 native CPU tuning</strong>: <code>-mcpu=native</code> auto-detects RPi5 (Cortex-A76) and Jetson Orin (Cortex-A78AE)</li>

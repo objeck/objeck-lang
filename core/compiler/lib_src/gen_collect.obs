@@ -5844,7 +5844,10 @@ v->Get(0)->PrintLine(); # fig
 				mid := (low + hi) >> 1;
 				SortWith(low, mid, a, b, compare);
 				SortWith(mid + 1, hi, a, b, compare);
-				MergeWith(low, mid, hi, a, b, compare);
+				# already in order (sorted or nearly sorted input): nothing to merge
+				if(compare(a[mid], a[mid + 1]) > 0) {
+					MergeWith(low, mid, hi, a, b, compare);
+				};
 			};
 		}
 
@@ -6377,7 +6380,10 @@ v->Get(0)->PrintLine(); # fig
 				mid := (low + hi) >> 1;
 				SortWith(low, mid, a, b, compare);
 				SortWith(mid + 1, hi, a, b, compare);
-				MergeWith(low, mid, hi, a, b, compare);
+				# already in order (sorted or nearly sorted input): nothing to merge
+				if(compare(a[mid], a[mid + 1]) > 0) {
+					MergeWith(low, mid, hi, a, b, compare);
+				};
 			};
 		}
 
@@ -6420,7 +6426,10 @@ v->Get(0)->PrintLine(); # fig
 				mid := (low + hi) >> 1;
 				MergeSort(low, mid, a, b);
 				MergeSort(mid + 1, hi, a, b);
-				Merge(low, mid, hi, a, b);
+				# already in order (sorted or nearly sorted input): nothing to merge
+				if(a[mid]->Compare(a[mid + 1]) > 0) {
+					Merge(low, mid, hi, a, b);
+				};
 			};	
 		}
 
