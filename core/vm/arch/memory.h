@@ -671,6 +671,8 @@ class MemoryManager {
   
   static void CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_size, const long depth);
   static void CheckObject(size_t* mem, bool is_obj, const long depth);
+  static void MarkChildren(size_t* mem, StackClass* cls);
+  static void MarkChildrenNow(size_t* mem, StackClass* cls);
   // marks what an untyped frame word (a JIT temporary, the and/or slot) names, if it is a heap address
   static void CheckUntypedSlot(size_t* slot);
   
