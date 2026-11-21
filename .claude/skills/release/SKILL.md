@@ -609,6 +609,16 @@ MSIs and regenerates `SHA256SUMS` itself, stopping with an error if it cannot;
 `post_release.sh` then re-proves the manifest against every published asset (gate 4)
 and runs the other gates, which the bare .cmd does not.
 
+**One command after the tag push does all of steps 9 to 12 and the site:**
+
+```bash
+tools/cicd/release_finish.sh <VERSION> --body /tmp/release_body.md
+```
+
+It works from a throwaway checkout of origin/master and stops at the first problem, printing the step to resume from (`--from N`; `--dry-run` reports without changing anything). (1) waits for the release build, the publish and the `.deb`/`.msi` packages; (2) runs `post_release.sh --sign --playground --site` and the gates; (3) flips the README and objeck.org markers with `tools/cicd/flip_markers.py` in a PR it merges only when every check is green; (4) uploads the site pages and API docs with `deploy_website.sh`; (5) re-runs the gates read only now that the site names the release. Signing is unattended when `tools/cicd/token_pin.ps1` has saved the token password, attended otherwise. Needs an `obu` or `minisign` for the manifest-signature gate (it finds the primary checkout's `obu` or `OBJECK_OBU`).
+
+The pieces below are what that script runs.
+
 Everything after `release-publish.yml` goes green is a single pipeline, and it runs as
 one script. It used to be four prose sections here, which meant the commands were
 retyped by hand every release -- and re-broken the same ways every release.
@@ -629,9 +639,7 @@ Exit 0 only when all seven gates pass. Read-only unless you pass the flags.
 | 6 playground | `/api/health` reports the tag -- **and `/api/run` reports it too**; health is a label `git pull` moves on its own, so it flipped to v2026.9.0 over a 2026.8.4 engine | the version is a tracked constant the deploy does not auto-bump |
 | 7 site | with `--site`: the release's linux-x64 toolchain replaces the one serving objeck.org (`/opt/objeck-site/deploy` on the droplet, kept as `deploy.prev`, `site_server` recompiled from the TAG, service restarted, rolled back if it does not answer). Always: the LIVE site's `readme.html` names the release, `api/latest` is stamped with it, and (with `--site`) the engine on the box executes it | objeck.org is served by Objeck (`programs/examples/site_server.obs`, `core/release/objeck-org-site.service`); a release that updates the pages but not the engine leaves the site running an old build, and one that uploads pages without reading them back is the v2026.8.4 shape |
 
-`--sign` needs the SafeNet eToken plugged in and prompts for its password (once per MSI
-unless single-logon is on). Signing cannot happen in CI -- the key is non-exportable and a
-hosted runner has no USB port -- so this is a required human step, not optional polish.
+`--sign` needs the SafeNet eToken plugged in. With a saved token password (`tools/cicd/token_pin.ps1 -Set`, DPAPI-protected) it signs with no prompt; without one it prompts once for all MSIs and raises the Token Logon window (`focus_token_logon.ps1`). Signing cannot happen in CI -- the key is non-exportable and a hosted runner has no USB port -- so it always runs on the release machine, attended or unattended. A signing failure is never retried automatically: a wrong password locks the token.
 Write the body to a file first (step 9 above) and pass it with `--body`.
 
 **If the script reports a failure, read it before believing it.** Three of today's
@@ -682,8 +690,8 @@ At every stage, **fail fast** and report exactly which step failed with the raw 
   wrong. The certificate lives on a SafeNet eToken: the private key is non-exportable and a hosted
   runner has no USB port, so CI signing is **impossible, not merely unconfigured**. Believing
   otherwise is exactly why every Windows MSI from v2026.4.0 through v2026.8.1 shipped unsigned
-  while `signtool` ran and failed on every artifact. `post_release.sh --sign` is a required human
-  step. Do not add signing to any workflow.
+  while `signtool` ran and failed on every artifact. `post_release.sh --sign` is a LOCAL step on the
+  release machine (attended, or unattended with the saved password file). Do not add signing to any workflow.
 - **Does not generate API docs locally** — but the committed `docs/api.zip` is an INPUT, not only
   an output. Only `windows-x64` regenerates its own docs; `deploy_posix.sh`,
   `deploy_macos_arm64.sh` and `deploy_windows.cmd`'s ARM64 branch all unzip the committed file

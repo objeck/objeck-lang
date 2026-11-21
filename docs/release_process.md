@@ -206,6 +206,16 @@ Or use the GitHub Actions UI:
 
 These happen after `release-publish.yml` goes green. `tools/cicd/post_release.sh <VERSION>` checks the outcome of each (assets, binaries in every archive, signatures, `SHA256SUMS`, the release body, the playground, the site). Without `--sign`, `--body`, `--playground` or `--site` it changes nothing, except that it regenerates and re-uploads a `SHA256SUMS` that no longer matches the published files -- and then requests a re-signing, because regenerating the manifest invalidates its signature and `obu` refuses a manifest it cannot verify.
 
+### 0. One command for everything after the tag
+
+On the Windows release machine, from Git Bash, right after `git push origin v<VERSION>`:
+
+```bash
+tools/cicd/release_finish.sh <VERSION> --body release-notes.md
+```
+
+It waits for the build and the packages, signs the installers, deploys the playground and the site engine, runs every release gate, flips the README and objeck.org markers in a PR (merged only when its checks are all green), uploads the site pages and API docs, and re-runs the gates. `--dry-run` reports what each step would do without changing anything; `--from N` resumes at a step. The numbered sections below describe the pieces it runs.
+
 ### 1. Sign the Windows installers
 
 The certificate is on a SafeNet eToken, so CI cannot sign. On the Windows release machine, with the token plugged in:
