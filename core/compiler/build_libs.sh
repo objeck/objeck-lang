@@ -32,8 +32,6 @@ $OBC -src lib_src/ml_core.obs,lib_src/ml_linear.obs,lib_src/ml_tree.obs,lib_src/
 $OBC -src lib_src/ml_lab.obs -lib gen_collect,csv,json,ml -tar lib -opt s3 -dest ../lib/ml_lab.obl
 # Local vector index (exact cosine / dot / L2 search). Needs only gen_collect, so it is built apart from ml.obl
 $OBC -src lib_src/ml_vector.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ml_vector.obl
-# Replicate statistics and the HTML/Markdown report builder. Needs ml_lab (ResultTable), stats and plot
-$OBC -src lib_src/ml_report.obs -lib gen_collect,csv,json,ml,ml_lab,stats,plot -tar lib -opt s3 -dest ../lib/ml_report.obl
 # Verification metrics (FAR, FRR, EER, ROC/DET points) and cosine similarity. Needs only gen_collect, so it links no vision library
 $OBC -src lib_src/ml_verify.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ml_verify.obl
 # Convolutional networks (the layers are native, in libobjk_ml). Reads images through opencv, scores with ml, writes history tables with ml_lab
@@ -42,6 +40,9 @@ $OBC -src lib_src/ml_cnn.obs -lib gen_collect,csv,json,cipher,ml,ml_lab,opencv -
 $OBC -src lib_src/plot.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/plot.obl
 # Statistics: t-tests, correlation, OLS summary. Needs only gen_collect, so it is built apart from ml.obl
 $OBC -src lib_src/stats.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/stats.obl
+# ml_report needs ml_lab, stats and plot, so it is built AFTER them (it used to come first, and a version bump failed: the committed stats/plot were still the previous toolchain version)
+# Replicate statistics and the HTML/Markdown report builder. Needs ml_lab (ResultTable), stats and plot
+$OBC -src lib_src/ml_report.obs -lib gen_collect,csv,json,ml,ml_lab,stats,plot -tar lib -opt s3 -dest ../lib/ml_report.obl
 # Topic modeling: BSON reader, dictionary, LDA, coherence and an SVG topic report. After json and plot, which it links
 $OBC -src lib_src/nlp_topics_text.obs,lib_src/nlp_topics_lda.obs,lib_src/nlp_topics_metrics.obs,lib_src/nlp_topics_viz.obs -lib gen_collect,json,plot -tar lib -opt s3 -dest ../lib/nlp_topics.obl
 $OBC -src lib_src/ai_search.obs,lib_src/ai_game.obs,lib_src/ai_optimize.obs,lib_src/ai_rl.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ai.obl

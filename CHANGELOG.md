@@ -6,6 +6,7 @@ All notable changes to Objeck will be documented in this file.
 
 ### Fixed
 
+- **A long linked chain of objects crashed the VM**: a `List`, `Queue`, `CompareList` or linked `Stack` of about 500,000 or more nodes exited with code 127, with and without the JIT, because marking recursed once per node and overflowed the collector thread's native stack. Marking now moves objects onto a per-thread work stack once it is 256 levels deep (minor and major collections, every root thread, no new stop-the-world entry point); a 2-million-node chain passes, and `binarytrees` is unchanged (4.8 to 5.9 s before and after). Regression test: `gc_deep_chain`
 - **OpenAI output cap was sent under the wrong name**: `Response->Respond(...)` wrote `max_tokens` to the Responses endpoint, whose field is `max_output_tokens`, so the cap was never applied. `Completion->Complete(...)` now sends `max_completion_tokens` (`max_tokens` is deprecated for Chat Completions and rejected by reasoning models). New offline request builders `Response->BuildRespondRequest` and `Completion->BuildCompleteRequest`; test `openai_request_test.obs`
 
 ### Added
