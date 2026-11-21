@@ -1,0 +1,47 @@
+use Collection;
+
+class CollectBiMapTest {
+	@pass : static : Bool;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			@pass := false;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"Testing BiMap..."->PrintLine();
+		@pass := true;
+
+		m := BiMap->New()<String, IntRef>;
+		Check(m->IsEmpty() & m->FindValue("a") = Nil & m->FindKey(IntRef->New(1)) = Nil, "empty lookups");
+		Check(m->Insert("a", IntRef->New(1)) & m->Insert("b", IntRef->New(2)), "Insert");
+		Check(m->Size() = 2 & m->FindValue("a")->Get() = 1 & m->FindKey(IntRef->New(2))->Equals("b"), "both directions");
+		Check(m->HasKey("a") & m->HasValue(IntRef->New(2)) & <>m->HasKey("z") & <>m->HasValue(IntRef->New(9)), "Has");
+
+		# same key, new value: the old value is released
+		m->Insert("a", IntRef->New(10));
+		Check(m->Size() = 2 & m->FindValue("a")->Get() = 10 & <>m->HasValue(IntRef->New(1)) & m->FindKey(IntRef->New(10))->Equals("a"), "re-key replaces value");
+		# same value, new key: the old key is released
+		m->Insert("c", IntRef->New(10));
+		Check(m->Size() = 2 & <>m->HasKey("a") & m->FindKey(IntRef->New(10))->Equals("c") & m->FindValue("c")->Get() = 10, "re-value replaces key");
+
+		Check(<>m->Insert(Nil, IntRef->New(5)) & <>m->Insert("n", Nil) & m->Size() = 2, "Nil rejected");
+		Check(m->RemoveKey("c") & <>m->RemoveKey("c") & <>m->HasValue(IntRef->New(10)) & m->Size() = 1, "RemoveKey");
+		Check(m->RemoveValue(IntRef->New(2)) & <>m->RemoveValue(IntRef->New(2)) & m->IsEmpty(), "RemoveValue");
+
+		for(i := 0; i < 500; i += 1;) { m->Insert("k{$i}", IntRef->New(i)); };
+		Check(m->Size() = 500 & m->GetKeys()->Size() = 500 & m->GetValues()->Size() = 500 & m->FindKey(IntRef->New(321))->Equals("k321"), "many pairs");
+		m->Empty();
+		Check(m->IsEmpty() & m->FindValue("k1") = Nil, "Empty");
+
+		if(@pass) {
+			"PASS: BiMap"->PrintLine();
+		}
+		else {
+			"FAIL: BiMap"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

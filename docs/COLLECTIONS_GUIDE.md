@@ -24,6 +24,7 @@ drifted); nothing here changes the API. Compile with
 | Group items into disjoint sets, connected components | `UnionFind` | int ids; near-constant `Union`/`Find` |
 | Strings by prefix (autocomplete, dictionary) | `Trie` | `WithPrefix` returns sorted matches |
 | Key to value, iterated in insertion order | `OrderedHash` | `Hash` + linked entries; O(1) expected |
+| A one-to-one table you look up both ways (id and name) | `BiMap` | two `Hash` tables kept in step |
 | Two related values with no class of their own | `Collection.Tuple.Pair` | immutable, any types |
 | A pair that can sit in a sorted collection, or that you must change | `Collection.Pair` | first element must be `Compare` |
 
@@ -184,6 +185,14 @@ arrived. Updating an existing key keeps its place; removing and re-inserting mov
 end. `FirstKey()`, `LastKey()` and `RemoveFirst()` expose the oldest and newest entries, which is
 enough for a first-in first-out cache (for least-recently-used eviction use `Cache`). `Find` of an
 absent key returns `Nil`. Costs one extra node per entry compared with a plain `Hash`.
+
+### `BiMap<A, B>`
+
+Two `Hash` tables kept in step, so `FindValue(key)` and `FindKey(value)` are both O(1) expected.
+Both sides must be `Compare` and non-`Nil`. It is one-to-one: `Insert(k, v)` first drops any pair
+that already uses `k` or `v`, so `Size()` never exceeds the number of distinct keys or of distinct
+values. `RemoveKey` and `RemoveValue` take out the whole pair. Use it for id-to-name tables, enum
+codecs and any "look it up either way" index.
 
 ### The two `Pair` classes
 

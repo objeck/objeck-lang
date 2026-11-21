@@ -12416,4 +12416,162 @@ h->Each(\(k, v) => k->PrintLine());
 			@next := next;
 		}
 	}
+
+	#~
+	Bidirectional map: every key has exactly one value and every value exactly one key, so lookups work in both directions in O(1) expected. Inserting a key or a value that is already present replaces the old pairing. Built from two Hash tables.
+	~#
+	class BiMap<A : Compare, B : Compare> {
+		@forward : Hash<A, B>;
+		@backward : Hash<B, A>;
+
+		#~
+		Default constructor
+
+```
+m := Collection.BiMap->New()<String, IntRef>;
+m->Insert("one", IntRef->New(1));
+m->FindKey(IntRef->New(1))->PrintLine(); # one
+```
+		~#
+		New() {
+			@forward := Hash->New()<A, B>;
+			@backward := Hash->New()<B, A>;
+		}
+
+		#~
+		Pairs a key with a value, first dropping any existing pair that uses that key or that value
+		@param key key
+		@param value value
+		@return true if stored, false if either is Nil
+
+```
+m := Collection.BiMap->New()<String, IntRef>;
+m->Insert("a", IntRef->New(1));
+m->Insert("b", IntRef->New(1)); # replaces ("a", 1)
+m->Size()->PrintLine();         # 1
+```
+		~#
+		method : public : Insert(key : A, value : B) ~ Bool {
+			if(key = Nil | value = Nil) {
+				return false;
+			};
+
+			RemoveKey(key);
+			RemoveValue(value);
+			@forward->Insert(key, value);
+			@backward->Insert(value, key);
+
+			return true;
+		}
+
+		#~
+		Finds the value paired with a key
+		@param key key
+		@return value, or Nil if absent
+		~#
+		method : public : FindValue(key : A) ~ B {
+			return @forward->Find(key);
+		}
+
+		#~
+		Finds the key paired with a value
+		@param value value
+		@return key, or Nil if absent
+		~#
+		method : public : FindKey(value : B) ~ A {
+			return @backward->Find(value);
+		}
+
+		#~
+		Checks whether a key is present
+		@param key key
+		@return true if present
+		~#
+		method : public : HasKey(key : A) ~ Bool {
+			return @forward->Has(key);
+		}
+
+		#~
+		Checks whether a value is present
+		@param value value
+		@return true if present
+		~#
+		method : public : HasValue(value : B) ~ Bool {
+			return @backward->Has(value);
+		}
+
+		#~
+		Removes the pair holding a key
+		@param key key
+		@return true if a pair was removed
+		~#
+		method : public : RemoveKey(key : A) ~ Bool {
+			value := @forward->Find(key);
+			if(value = Nil) {
+				return false;
+			};
+
+			@forward->Remove(key);
+			@backward->Remove(value);
+
+			return true;
+		}
+
+		#~
+		Removes the pair holding a value
+		@param value value
+		@return true if a pair was removed
+		~#
+		method : public : RemoveValue(value : B) ~ Bool {
+			key := @backward->Find(value);
+			if(key = Nil) {
+				return false;
+			};
+
+			@backward->Remove(value);
+			@forward->Remove(key);
+
+			return true;
+		}
+
+		#~
+		Gets the number of pairs
+		@return size
+		~#
+		method : public : Size() ~ Int {
+			return @forward->Size();
+		}
+
+		#~
+		Checks for no pairs
+		@return true if empty
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @forward->Size() = 0;
+		}
+
+		#~
+		Removes every pair
+		~#
+		method : public : Empty() ~ Nil {
+			@forward->Empty();
+			@backward->Empty();
+		}
+
+		#~
+		Gets the keys, order unspecified
+		@return vector of keys
+		~#
+		method : public : GetKeys() ~ Vector<A> {
+			return @forward->GetKeys();
+		}
+
+		#~
+		Gets the values, order unspecified
+		@return vector of values
+		~#
+		method : public : GetValues() ~ Vector<B> {
+			return @backward->GetKeys();
+		}
+	}
 }
