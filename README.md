@@ -13,7 +13,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://scan.coverity.com/projects/10314/badge.svg" alt="Coverity Scan Build Status"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.11.1-blue" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.11.2-blue" alt="Latest Release"></a>
 </p>
 
 <p align="center">
@@ -46,12 +46,12 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Ubuntu 24.04: one package, system libraries included (-arm64 for ARM)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.11.1/objeck-ubuntu24.04-x64_2026.11.1.deb
-sudo apt install ./objeck-ubuntu24.04-x64_2026.11.1.deb
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.11.2/objeck-ubuntu24.04-x64_2026.11.2.deb
+sudo apt install ./objeck-ubuntu24.04-x64_2026.11.2.deb
 
 # Other Linux (see Platform support below), or macOS: the archive
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.11.1/objeck-linux-x64_2026.11.1.tgz
-tar xzf objeck-linux-x64_2026.11.1.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.11.2/objeck-linux-x64_2026.11.2.tgz
+tar xzf objeck-linux-x64_2026.11.2.tgz
 # Linux only: install the system libraries the toolchain links against
 # (mbedTLS, readline, SDL2/GL, OpenCV, unixODBC, LAME) --
 # obr does not start without them. --check reports without installing.
@@ -489,13 +489,13 @@ Monte Carlo takes 2 of 10 stones
 
 </details>
 
-More: [all the guides](docs/guides/README.md), the 32 numbered programs in [`programs/deploy`](programs/deploy/README.md) that ship with every release, and [what is new in v2026.11.1](#whats-new).
+More: [all the guides](docs/guides/README.md), the 32 numbered programs in [`programs/deploy`](programs/deploy/README.md) that ship with every release, and [what is new in v2026.11.2](#whats-new).
 
 ## What's New
 
 Full details for every release are in the [CHANGELOG](CHANGELOG.md).
 
-### v2026.11.2
+### v2026.11.2 ✅
   * **A long linked chain no longer crashes the VM** &mdash; a `List`, `Queue`, `CompareList` or linked `Stack` of about 500,000 or more nodes exited with code 127, because marking recursed once per node and overflowed the collector thread's native stack; marking now uses a bounded per-thread work stack, and a 2-million-node chain passes with and without the JIT (`binarytrees` is unchanged)
   * **Sorting and strings are faster** &mdash; the `Vector` and `CompareVector` merge sorts skip a merge when the halves are already in order (500,000 sorted elements: about 500 ms to 80 ms, random input unchanged, still stable), and `String->Append(String)` copies strings of 32 or more characters in one block (1,000-character pieces: 1,660 ms to 292 ms)
   * **Faster image loading for convolutional networks** &mdash; `System.ML.Cnn` decodes a batch of images on several native threads and prefetches the next one, so training no longer waits on the JPEG decoder (decoding 10,000 face images: 1,107 images/s on one thread, 5,236 on eight; a 20,000-image epoch on an RTX 4090: about 30 to 34 s, now 9.1 s), with bit-identical results
@@ -504,7 +504,7 @@ Full details for every release are in the [CHANGELOG](CHANGELOG.md).
   * **One command finishes a release** &mdash; `tools/cicd/release_finish.sh` waits for the build, signs the installers (unattended from a DPAPI-protected password file, or at one prompt), deploys the playground and the site, and runs the release gates; the site deploy script targets the new server
   * **Topic stability is a distribution** &mdash; `docs/AI.md` explains how to read `TopicMetrics->Stability` (about 1.0 when two seeds find the same optimum, 0.67 to 0.8 when one merged two topics), measured against Gensim over 15 seed pairs
 
-### v2026.11.1 ✅
+### v2026.11.1
   * **Compiler errors that say what is wrong** &mdash; the scanner gives each rejected token a concrete reason with a source excerpt and caret (bad escapes, unterminated strings reported at the opening quote, malformed numbers such as `1e3`, `0o9` and `1.2.3`); the parser says "Expected X, found Y" and names the opener of an unclosed `(`; the analyzer suggests "Did you mean ..." for an undefined variable, class or method and details call signatures and casts. Recovery after a lexical error no longer buries it under follow-on errors.
   * **Large programs compile faster** &mdash; the optimizer's dead-store pass was quadratic, so a 100,000-statement program took 54 s to compile at `-opt s3` and now takes 5 s; 20,000 `select` labels went from 6 s to 0.6 s; and a program that uses the query library compiles in 0.7 s instead of 1.4 s because the intermediate instructions are freed in one pass.
   * **Front-end fixes from negative testing** &mdash; `x.;` now reports `Expected a name after '.'` once, at the right place; a zero-width space inside a name is one error instead of two; and a NUL byte in a source file on Windows is reported instead of silently ending the source.
@@ -539,7 +539,7 @@ Full details for every release are in the [CHANGELOG](CHANGELOG.md).
 
 ## Downloads
 
-**Latest Release:** [v2026.11.1](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.11.2](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|
