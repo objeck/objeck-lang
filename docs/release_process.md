@@ -214,7 +214,7 @@ The certificate is on a SafeNet eToken, so CI cannot sign. On the Windows releas
 tools/cicd/post_release.sh <VERSION> --sign --body <release-notes.md>
 ```
 
-`--sign` runs `tools/cicd/sign_release.cmd`, which downloads the published MSIs, signs and verifies them, uploads them back and regenerates `SHA256SUMS` (signing changes the bytes); the token asks for its password. Regenerating the manifest invalidates `SHA256SUMS.minisig`, so it also triggers `resign-manifest.yml` and fails if that run does not succeed -- since #723 phase 3 a manifest whose signature does not verify is one `obu update` refuses outright. `post_release.sh` then re-checks the signatures, the manifest against the published files, and the signature against the published manifest. Details: [SIGNING.md](../SIGNING.md).
+`--sign` runs `tools/cicd/sign_release.cmd`, which downloads the published MSIs, signs them in a single `signtool` run (one token password prompt; `focus_token_logon.ps1` raises the "Token Logon" window if it opens out of sight) and verifies them, uploads them back and regenerates `SHA256SUMS` (signing changes the bytes); the token asks for its password. Regenerating the manifest invalidates `SHA256SUMS.minisig`, so it also triggers `resign-manifest.yml` and fails if that run does not succeed -- since #723 phase 3 a manifest whose signature does not verify is one `obu update` refuses outright. `post_release.sh` then re-checks the signatures, the manifest against the published files, and the signature against the published manifest. Details: [SIGNING.md](../SIGNING.md).
 
 ### 2. Deploy the playground
 
@@ -227,6 +227,8 @@ The tag build commits the generated docs to master as `docs/api.zip` (it is also
 ### 4. Update the Objeck-served site
 
 objeck.org is served by Objeck itself: `programs/examples/site_server.obs` runs under `core/release/objeck-org-site.service` on the droplet (127.0.0.1:8081), with Caddy (`core/release/objeck-org.Caddyfile`) terminating TLS in front of it. A release therefore updates the site twice. The pages and `api/latest/` are uploaded by `release-publish.yml` through `core/release/deploy_website.sh` (step 3 above); the engine that serves them is the toolchain in `/opt/objeck-site/deploy`, which `post_release.sh <VERSION> --site` replaces with the release's own `objeck-linux-x64_<VERSION>.tgz` (the old tree stays as `deploy.prev`, `site_server` is recompiled from the tag, the service is restarted and rolled back if it does not answer). The same gate then reads the live site back: `readme.html` names the release, `api/latest` is stamped with it, and the engine on the box executes it. `SITE_HOST` (default `playground`, an ssh alias for root on the droplet) and `SITE_URL` (default `https://www.objeck.org`) override the target.
+
+`deploy_website.sh` defaults to the user `objeckorg`, reads the live site at `https://www.objeck.org` (override with `--site-url`), and takes the key from `--key` or `OBJECK_ORG_KEY`. Run it with `--dry-run` first: it reaches the server and writes nothing. If it cannot connect it prints ssh's reason and what to do; a machine that talked to the old host keeps a stale key for the name (`ssh-keygen -R objeck.org` after checking the fingerprint against the server's `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`).
 
 After the DNS cutover the CI deploy secrets must point at the droplet: `OBJECK_ORG_USER=objeckorg` (the key authorized for that user); the host name `objeck.org` then resolves to the droplet by itself.
 

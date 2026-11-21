@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 
 REM ============================================
 REM Sign Windows MSI Release Artifacts
@@ -64,21 +64,29 @@ echo Downloaded files:
 dir /b %STAGING%\*.msi
 echo.
 
-REM Sign each MSI
-for %%f in (%STAGING%\*.msi) do (
-    echo Signing %%~nxf...
-    echo Please enter your SafeNet token password when prompted.
+REM Sign ALL the MSIs in ONE signtool run, so the SafeNet token asks for its password once
+REM per release rather than once per installer. (Each separate run re-opened the prompt: the
+REM v2026.11.1 signing needed the PIN typed twice.)
+REM
+REM The "Token Logon" prompt is a signtool window that can open behind everything. The helper
+REM below raises it. It never reads or types the PIN: you do that.
+set MSIS=
+for %%f in (%STAGING%\*.msi) do set MSIS=!MSIS! "%%f"
+start "" /b powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0focus_token_logon.ps1"
+echo Signing all installers in one run.
+echo Enter your SafeNet token password in the "Token Logon" window (it is brought to the front).
+echo.
+%SIGNTOOL% sign /tr %TIMESTAMP% /td SHA256 /fd SHA256 /sha1 %THUMBPRINT% !MSIS!
+if errorlevel 1 (
     echo.
-    %SIGNTOOL% sign /tr %TIMESTAMP% /td SHA256 /fd SHA256 /sha1 %THUMBPRINT% "%%f"
-    if errorlevel 1 (
-        echo.
-        echo ERROR: Failed to sign %%~nxf
-        echo Make sure your SafeNet eToken USB is plugged in.
-        exit /b 1
-    )
-    echo.
+    echo ERROR: Failed to sign the installers
+    echo Make sure your SafeNet eToken USB is plugged in and the password was accepted.
+    exit /b 1
+)
+echo.
 
-    REM Verify signature
+REM Verify every signature
+for %%f in (%STAGING%\*.msi) do (
     echo Verifying signature on %%~nxf...
     %SIGNTOOL% verify /pa "%%f"
     if errorlevel 1 (
