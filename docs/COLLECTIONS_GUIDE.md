@@ -58,6 +58,20 @@ cannot tell you "nothing there" from "a `Nil` was stored there"; use `Size()` or
 move the cursor to that end first, so they disturb an iteration in progress that uses
 `Next()`/`Get()` on the same list (use `ForwardIterator()` for a traversal that must survive).
 
+## Nil and changing a collection while you walk it
+
+- A `Nil` **key or value** is ignored by `Hash`, `HashSet`, `Set`, `Map`, `MultiHash`, `Heap` and
+  `BiMap` inserts, and looking one up reports "not found" (`Nil`, `false` or `-1`). A `Vector`
+  stores a `Nil` element, and sorting a `CompareVector` or `CompareList` that holds one is not
+  defined.
+- `Each`, `Filter` and the iterators read the collection as it is. Adding or removing entries
+  from inside the callback, or while an iterator is live, is **not supported**: the result is
+  unspecified (a skipped or repeated entry, or a stale count). Collect the changes and apply them
+  afterwards, or iterate over `GetKeys()`/`ToArray()`, which are copies.
+- `Hash` is open-addressed with the hash stored beside each key and grows at 70% load, so an
+  insert that triggers growth is O(n) once and O(1) otherwise; `Reserve` (vectors) and
+  `SetCapacity`/`Resize` (`Hash`) avoid that when the size is known.
+
 ## The classes
 
 ### `Vector<H>` (gen_collect.obs:5118)
