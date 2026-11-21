@@ -27,6 +27,7 @@ drifted); nothing here changes the API. Compile with
 | A one-to-one table you look up both ways (id and name) | `BiMap` | two `Hash` tables kept in step |
 | A priority queue whose priorities change (Dijkstra, A*) | `PriorityMap` | indexed min-heap with decrease-key; O(log n) |
 | Running sums that change (point update, prefix/range sum) | `FenwickTree` | O(log n) both ways |
+| A cheap "definitely not seen" pre-check in front of something costly | `BloomFilter` | bit set; no false negatives, ~1% false positives at 10 bits/key |
 | Two related values with no class of their own | `Collection.Tuple.Pair` | immutable, any types |
 | A pair that can sit in a sorted collection, or that you must change | `Collection.Pair` | first element must be `Compare` |
 
@@ -212,6 +213,15 @@ prefix sum up to and including `i`, `RangeSum(lo, hi)` an inclusive range, all O
 `Int`s of memory. `Get(i)` and `Set(i, v)` are built from those. Use it for running totals that
 change (rankings, histograms, "how many items below x") where re-summing a `Vector` would be O(n).
 Out-of-range updates return `false`; out-of-range queries clamp or return 0.
+
+### `BloomFilter<T>`
+
+A probabilistic set on a `BitSet`. `Add(k)` sets `k` bits chosen from the key's `HashID`;
+`MightContain(k)` is `false` only if the key was never added (no false negatives) and `true`
+for added keys and for a small fraction of others. `New(expected, bits_per_key)` sizes it: 10 bits
+per key is about 1% false positives, 15 about 0.1%. Keys cannot be removed (use `Empty()` to
+start over). Use it as a cheap pre-check in front of something expensive: a disk or network
+lookup, a large `Hash`, a de-duplication pass.
 
 ### The two `Pair` classes
 

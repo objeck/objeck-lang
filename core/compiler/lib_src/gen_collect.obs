@@ -12957,4 +12957,120 @@ f->RangeSum(1, 2)->PrintLine(); # 5
 			return @n;
 		}
 	}
+
+	#~
+	Bloom filter: a compact set that can say "definitely not present" or "probably present". Add and MightContain are O(k) bit operations; memory is a fixed number of bits per expected key. There are no false negatives; the false positive rate is about 1% at 10 bits per key and 0.1% at 15. Keys cannot be removed.
+	~#
+	class BloomFilter<T : Compare> {
+		@bits : BitSet;
+		@m : Int;
+		@k : Int;
+		@count : Int;
+
+		#~
+		Creates a filter
+		@param expected number of keys you expect to add (at least 1)
+		@param bits_per_key bits of memory per expected key, 10 gives about 1% false positives
+
+```
+b := Collection.BloomFilter->New(1000, 10)<String>;
+b->Add("apple");
+b->MightContain("apple")->PrintLine(); # true
+```
+		~#
+		New(expected : Int, bits_per_key : Int) {
+			if(expected < 1) {
+				expected := 1;
+			};
+			if(bits_per_key < 2) {
+				bits_per_key := 2;
+			};
+
+			@m := expected * bits_per_key;
+			@k := bits_per_key * 7 / 10;
+			if(@k < 1) {
+				@k := 1;
+			};
+			@bits := BitSet->New(@m);
+			@count := 0;
+		}
+
+		#~
+		Adds a key
+		@param key key (Nil is ignored)
+
+```
+b := Collection.BloomFilter->New(100, 10)<String>;
+b->Add("x");
+b->Count()->PrintLine(); # 1
+```
+		~#
+		method : public : Add(key : T) ~ Nil {
+			if(key = Nil) {
+				return;
+			};
+
+			h1 := key->HashID() * -7046029254386353131;
+			h2 := (h1 >> 17) or 1;
+			for(i := 0; i < @k; i += 1;) {
+				@bits->Set(Slot(h1, h2, i));
+			};
+			@count += 1;
+		}
+
+		#~
+		Tests a key
+		@param key key
+		@return false if the key was definitely never added, true if it probably was
+
+```
+b := Collection.BloomFilter->New(100, 10)<String>;
+b->Add("x");
+b->MightContain("y")->PrintLine(); # almost certainly false
+```
+		~#
+		method : public : MightContain(key : T) ~ Bool {
+			if(key = Nil) {
+				return false;
+			};
+
+			h1 := key->HashID() * -7046029254386353131;
+			h2 := (h1 >> 17) or 1;
+			for(i := 0; i < @k; i += 1;) {
+				if(<>@bits->Get(Slot(h1, h2, i))) {
+					return false;
+				};
+			};
+
+			return true;
+		}
+
+		#~
+		Gets the number of Add calls (repeats count)
+		@return count
+		~#
+		method : public : Count() ~ Int {
+			return @count;
+		}
+
+		#~
+		Gets the number of bits in the filter
+		@return bits
+		~#
+		method : public : Bits() ~ Int {
+			return @m;
+		}
+
+		#~
+		Removes every key
+		~#
+		method : public : Empty() ~ Nil {
+			@bits := BitSet->New(@m);
+			@count := 0;
+		}
+
+		method : Slot(h1 : Int, h2 : Int, i : Int) ~ Int {
+			return ((h1 + i * h2) and 9223372036854775807) % @m;
+		}
+	}
 }
