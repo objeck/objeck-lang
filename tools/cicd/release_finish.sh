@@ -64,6 +64,17 @@ cleanup() { git -C "$MAIN" worktree remove --force "$WT" >/dev/null 2>&1 || rm -
 trap cleanup EXIT
 refresh() { git -C "$MAIN" fetch -q origin "+refs/heads/*:refs/remotes/origin/*" 2>/dev/null; git -C "$WT" checkout -q --detach "$REF"; }
 
+
+# An obu (or minisign) is needed to check SHA256SUMS.minisig. A clean checkout has no built deploy tree, so look in
+# the primary checkout's, or take OBJECK_OBU from the environment.
+if [ -z "${OBJECK_OBU:-}" ]; then
+  PRIMARY="$(git -C "$MAIN" worktree list --porcelain | sed -n 's/^worktree //p' | head -1)"
+  for c in "$PRIMARY/core/release/deploy-x64/bin/obu.exe" "$PRIMARY/core/release/deploy/bin/obu"; do
+    [ -f "$c" ] && { OBJECK_OBU="$c"; break; }
+  done
+fi
+export OBJECK_OBU
+
 git -C "$MAIN" rev-parse -q --verify "refs/tags/$TAG" >/dev/null || die "tag $TAG does not exist locally or on origin: push it first"
 note "release $TAG, master $(git -C "$WT" rev-parse --short HEAD), $([ $DRY = 1 ] && echo DRY RUN || echo live)"
 
@@ -108,14 +119,14 @@ if [ "$FROM" -le 2 ]; then
   if [ "$DRY" = 1 ]; then
     note "would run: post_release.sh $VERSION $([ $SIGN = 1 ] && echo --sign) --playground --site ${BODY:+--body $BODY}"
     if [ -f "$USERPROFILE/.objeck/token_pin.dpapi" ]; then note "signing mode: UNATTENDED (saved password file present)"; else note "signing mode: ATTENDED (no saved password file: the Token Logon window will ask)"; fi
-    note "read-only gates now:"; bash "$WT/tools/cicd/post_release.sh" "$VERSION" 2>&1 | sed 's/^/     /' | tail -25
+    note "read-only gates now:"; ( cd "$WT" && bash tools/cicd/post_release.sh "$VERSION" ) 2>&1 | sed 's/^/     /' | tail -25
   else
     if [ $SIGN = 1 ]; then
       if [ -f "$USERPROFILE/.objeck/token_pin.dpapi" ]; then note "signing UNATTENDED with the saved password file"; else note "signing ATTENDED: the Token Logon window will come to the front; type the password there"; fi
     fi
     LOG="$WT/post_release.log"
     ARGS=(--playground --site); [ $SIGN = 1 ] && ARGS=(--sign "${ARGS[@]}"); [ -n "$BODY" ] && ARGS+=(--body "$BODY")
-    bash "$WT/tools/cicd/post_release.sh" "$VERSION" "${ARGS[@]}" 2>&1 | tee "$LOG"
+    ( cd "$WT" && bash tools/cicd/post_release.sh "$VERSION" "${ARGS[@]}" ) 2>&1 | tee "$LOG"
     # The site-page gates cannot pass yet: markers and pages are steps 3 and 4. Anything else failing is real.
     REAL="$(grep -E '^\s*FAIL:' "$LOG" | grep -v -i -E 'readme\.html|api/latest|download v|site page' || true)"
     [ -z "$REAL" ] || die "post_release.sh reported failures other than the not-yet-updated site pages:
@@ -169,13 +180,13 @@ if [ "$FROM" -le 4 ]; then
   KEY="${OBJECK_ORG_KEY:-$HOME/.ssh/google_compute_engine}"
   KEYARG=(); [ -f "$KEY" ] && KEYARG=(--key "$KEY")
   DRYARG=(); [ "$DRY" = 1 ] && DRYARG=(--dry-run)
-  bash "$WT/core/release/deploy_website.sh" --source "$WT/docs/api.zip" --version "$VERSION" "${KEYARG[@]}" "${DRYARG[@]}" || die "the site upload refused (its message above says why)"
+  bash "$WT/core/release/deploy_website.sh" --source "$WT/docs/api.zip" --version "$VERSION" --host "${OBJECK_ORG_HOST:-playground.objeck.org}" "${KEYARG[@]}" "${DRYARG[@]}" || die "the site upload refused (its message above says why)"
 fi
 
 # ============================================================================================ 5. verify
 if [ "$FROM" -le 5 ]; then
   STEP=5; say "5/5 final gates (read only)"
-  bash "$WT/tools/cicd/post_release.sh" "$VERSION" || die "a gate failed: the release is NOT fully done"
+  ( cd "$WT" && bash tools/cicd/post_release.sh "$VERSION" ) || die "a gate failed: the release is NOT fully done"
 fi
 
 echo

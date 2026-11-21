@@ -191,11 +191,13 @@ if [ ! -f "$WORK/SHA256SUMS.minisig" ]; then
   bad "no SHA256SUMS.minisig published -- obu refuses an unsigned manifest, so no obu can install $TAG"
 else
   SIG_OBU=""
+  # OBJECK_OBU: an obu to verify with, for a checkout that has no built deploy tree (release_finish.sh uses a clean one)
+  if [ -n "${OBJECK_OBU:-}" ] && [ -f "$OBJECK_OBU" ]; then SIG_OBU="$OBJECK_OBU"; fi
   for cand in "core/release/deploy-x64/bin/obu.exe" "core/release/deploy-x64/bin/obu" \
               "core/release/deploy/bin/obu.exe" "core/release/deploy/bin/obu"; do
     # -f only: Git Bash reports the extensionless name as present when just
     # obu.exe exists, and the name is handed to a program that opens it.
-    if [ -f "$cand" ]; then SIG_OBU="$cand"; break; fi
+    if [ -z "$SIG_OBU" ] && [ -f "$cand" ]; then SIG_OBU="$cand"; break; fi
   done
   if [ -n "$SIG_OBU" ]; then
     # 'verify' checks the signature before it reads a line of the manifest, so
