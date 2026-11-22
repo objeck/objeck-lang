@@ -5,6 +5,7 @@
 ~~#
 
 use Collection;
+use System.Concurrency;
 
 #~
 Regular expression matching and replacement. RegEx compiles a pattern once and supports full match, substring search, numbered capture groups, and global replacement. Link with -lib regex.
@@ -73,14 +74,15 @@ each(i : found) {
 		# compiled NFA program (parallel simulation)
 		@program : Vector<Instruction>;
 
-		# matching state
-		@is_exact : Bool;
+		# matching state. A RegEx can be shared by threads: parsing and compiling finish in New and
+		# the program is never changed after that, the NFA keeps its scratch in locals, and the DFA
+		# tables and the capture scratch below are only touched with @lock held.
+		@lock : ThreadMutex;
 
 		# lazily built DFA over the NFA program: finds where the longest match ends with one table
 		# lookup per character. A DFA state is the set of NFA instructions that are alive; its
 		# transitions are filled in the first time a character needs them and then cached. Programs
-		# with \b or \B, and ones that need more than DFA_MAX_STATES states, use the NFA instead.
-		# Not thread-safe: the tables are shared by every match on this RegEx.
+		# with \b or \B, and ones that need more than 1024 states, use the NFA instead.
 		@dfa_mode : Int;          # 0 not built yet, 1 on, 2 off
 		@has_end_anchor : Bool;
 		@dfa_states : Int;        # state ids are 1..@dfa_states, 0 means "not computed yet"
@@ -130,6 +132,7 @@ if(re->IsOk()) {
 			@expressions := Vector->New()<Expression>;
 			@program := Vector->New()<Instruction>;
 			@group_count := 0;
+			@lock := ThreadMutex->New("regex");
 
 			# a Nil pattern is not a pattern: not OK, and it matches nothing
 			if(stream_in = Nil) {
@@ -178,7 +181,8 @@ if(re->MatchExact("2025-06-15")) {
 				return false;
 			};
 
-			return Longest(stream_in, stream_in->ToCharArray(), 0) > -1 & @is_exact;
+			# the longest match from 0 ends at the end of the input
+			return Longest(stream_in, stream_in->ToCharArray(), 0) = stream_in->Size();
 		}
 
 		#~
@@ -723,7 +727,6 @@ result->PrintLine();
 				};
 			};
 
-			@is_exact := best = input_size;
 			return best;
 		}
 
@@ -732,7 +735,20 @@ result->PrintLine();
 		# without a match attempt. Position 0 is never skipped, and nothing is skipped when the
 		# pattern can match the empty string.
 		method : private : SkipDead(chars : Char[], left : Int, input_size : Int) ~ Int {
-			if(@dfa_mode <> 1 | left = 0) {
+			if(left = 0) {
+				return left;
+			};
+
+			skipped := left;
+			critical(@lock) {
+				skipped := SkipDeadLocked(chars, left, input_size);
+			};
+			return skipped;
+		}
+
+		# SkipDead with the lock held
+		method : private : SkipDeadLocked(chars : Char[], left : Int, input_size : Int) ~ Int {
+			if(@dfa_mode <> 1) {
 				return left;
 			};
 
@@ -764,15 +780,20 @@ result->PrintLine();
 				return -1;
 			};
 
-			if(@dfa_mode = 0) {
-				DfaInit();
+			# the DFA tables are shared and grow as new states are found, so one thread at a time uses them
+			end := -2;
+			critical(@lock) {
+				if(@dfa_mode = 0) {
+					DfaInit();
+				};
+
+				if(@dfa_mode = 1) {
+					end := DfaLongest(chars, offset, stream_in->Size());
+				};
 			};
 
-			if(@dfa_mode = 1) {
-				end := DfaLongest(chars, offset, stream_in->Size());
-				if(end > -2) {
-					return end;
-				};
+			if(end > -2) {
+				return end;
 			};
 
 			return Evaluate(stream_in, offset);
@@ -1146,8 +1167,6 @@ result->PrintLine();
 				return -1;
 			};
 
-			@is_exact := false;
-
 			prog_size := @program->Size();
 			visited := Int->New[prog_size];
 			cur  := Int->New[prog_size];
@@ -1193,7 +1212,6 @@ result->PrintLine();
 			};
 
 			if(match_end > -1) {
-				@is_exact := match_end = input_size;
 				return match_end;
 			};
 
@@ -1263,6 +1281,15 @@ result->PrintLine();
 		# Re-runs the NFA over a known match [left, right) tracking capture positions. Only used when the
 		# pattern has groups, so the plain Evaluate() path stays allocation-free.
 		method : private : Captures(stream_in : String, left : Int, right : Int) ~ Int[] {
+			found : Int[] := Nil;
+			critical(@lock) {
+				found := CapturesLocked(stream_in, left, right);
+			};
+			return found;
+		}
+
+		# Captures with the lock held, which the shared scratch arrays need
+		method : private : CapturesLocked(stream_in : String, left : Int, right : Int) ~ Int[] {
 			ncap := (@group_count + 1) * 2;
 			prog_size := @program->Size();
 			input_size := stream_in->Size();
