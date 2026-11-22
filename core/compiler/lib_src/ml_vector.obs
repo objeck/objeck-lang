@@ -4,6 +4,7 @@
 ~~#
 
 use Collection;
+use System.Concurrency;
 
 #~
 A local vector index for retrieval: store embedding vectors under string ids and ask for the nearest ones. Search is exact (a scan of every vector) for cosine similarity, dot product and Euclidean distance. Compile with -lib ml_vector,gen_collect; it needs nothing from System.ML. Design and measurements: docs/AI.md, "Local vector search".
@@ -76,6 +77,230 @@ bundle System.ML.VectorSearch {
 	}
 
 	#~
+	One scan of a run of rows [lo, hi) for a query: the best `want` rows so far in a heap, worst at the root. A search is one scan on the calling thread, or several on their own threads whose heaps are then merged with Offer, so a parallel search ranks rows exactly as a serial one does.
+	~#
+	class : private : VectorScan from Thread {
+		@blocks : Vector<VectorBlock>;
+		@rows : Int;
+		@dim : Int;
+		@metric : Int;
+		@query : Float[];
+		@q_scale : Float;
+		@want : Int;
+		@lo : Int;
+		@hi : Int;
+		@keys : Float[];
+		@slots : Int[];
+		@size : Int;
+		@worst : Float;
+
+		New(blocks : Vector<VectorBlock>, rows : Int, dim : Int, metric : Int, query : Float[], q_scale : Float, want : Int, lo : Int, hi : Int) {
+			Parent("vector-scan");
+			@blocks := blocks;
+			@rows := rows;
+			@dim := dim;
+			@metric := metric;
+			@query := query;
+			@q_scale := q_scale;
+			@want := want;
+			@lo := lo;
+			@hi := hi;
+			# higher-is-better keys (the negated squared distance for L2)
+			@keys := Float->New[want];
+			@slots := Int->New[want];
+			@size := 0;
+			@worst := 0.0;
+		}
+
+		method : public : GetSize() ~ Int {
+			return @size;
+		}
+
+		method : public : GetKey(i : Int) ~ Float {
+			return @keys[i];
+		}
+
+		method : public : GetSlot(i : Int) ~ Int {
+			return @slots[i];
+		}
+
+		method : public : Run(param : System.Base) ~ Nil {
+			if(@lo >= @hi) {
+				return;
+			};
+
+			dim := @dim;
+			rows := @rows;
+			metric := @metric;
+			query := @query;
+			q_scale := @q_scale;
+			first_block := @lo / rows;
+			last_block := (@hi - 1) / rows;
+			for(b := first_block; b <= last_block; b += 1;) {
+				block := @blocks->Get(b);
+				data := block->GetData();
+				inv_norms := block->GetInvNorms();
+				r_lo := 0;
+				if(b * rows < @lo) {
+					r_lo := @lo - b * rows;
+				};
+				r_hi := rows;
+				if((b + 1) * rows > @hi) {
+					r_hi := @hi - b * rows;
+				};
+
+				for(r := r_lo; r < r_hi; r += 1;) {
+					base := r * dim;
+					acc := 0.0;
+					key := 0.0;
+					if(metric = 2) {
+						d := 0.0;
+						for(j := 0; j < dim; j += 1;) {
+							d := data[base + j] - query[j];
+							acc += d * d;
+						};
+						key := -acc;
+					}
+					else {
+						for(j := 0; j < dim; j += 1;) {
+							acc += data[base + j] * query[j];
+						};
+						key := acc;
+						if(metric = 0) {
+							key := acc * inv_norms[r] * q_scale;
+							# rounding can leave a cosine a hair outside [-1, 1]
+							if(key > 1.0) {
+								key := 1.0;
+							}
+							else if(key < -1.0) {
+								key := -1.0;
+							};
+						};
+					};
+
+					if(@size < @want | key >= @worst) {
+						Offer(key, b * rows + r);
+					};
+				};
+			};
+		}
+
+		# adds a row if it ranks among the best so far
+		method : public : Offer(key : Float, slot : Int) ~ Nil {
+			if(@size < @want) {
+				@keys[@size] := key;
+				@slots[@size] := slot;
+				@size += 1;
+				SiftUp(@size - 1);
+				if(@size = @want) {
+					@worst := @keys[0];
+				};
+			}
+			else if(key >= @worst) {
+				if(key > @worst | Worse(@keys[0], @slots[0], key, slot)) {
+					@keys[0] := key;
+					@slots[0] := slot;
+					SiftDown(@size, 0);
+					@worst := @keys[0];
+				};
+			};
+		}
+
+		# the heap emptied worst first into an answer, closest first
+		method : public : Drain() ~ VectorHit[] {
+			ordered := VectorHit->New[@size];
+			for(i := @size - 1; i >= 0; i -= 1;) {
+				slot := @slots[0];
+				ordered[i] := VectorHit->New(IdOf(slot), Report(@keys[0]));
+				@size -= 1;
+				@keys[0] := @keys[@size];
+				@slots[0] := @slots[@size];
+				SiftDown(@size, 0);
+			};
+
+			return ordered;
+		}
+
+		# the score a caller sees for an internal key
+		method : Report(key : Float) ~ Float {
+			if(@metric = 2) {
+				return Float->Sqrt(-key);
+			};
+
+			return key;
+		}
+
+		method : IdOf(slot : Int) ~ String {
+			return @blocks->Get(slot / @rows)->GetIds()[slot % @rows];
+		}
+
+		# whether row a ranks below row b: a lower key, or an equal key and a larger id
+		method : Worse(key_a : Float, slot_a : Int, key_b : Float, slot_b : Int) ~ Bool {
+			if(key_a < key_b) {
+				return true;
+			};
+
+			if(key_a > key_b) {
+				return false;
+			};
+
+			return IdOf(slot_a)->Compare(IdOf(slot_b)) > 0;
+		}
+
+		method : SiftUp(pos : Int) ~ Nil {
+			key := @keys[pos];
+			slot := @slots[pos];
+			while(pos > 0) {
+				parent := (pos - 1) / 2;
+				if(Worse(key, slot, @keys[parent], @slots[parent])) {
+					@keys[pos] := @keys[parent];
+					@slots[pos] := @slots[parent];
+					pos := parent;
+				}
+				else {
+					break;
+				};
+			};
+
+			@keys[pos] := key;
+			@slots[pos] := slot;
+		}
+
+		method : SiftDown(size : Int, pos : Int) ~ Nil {
+			if(size < 2) {
+				return;
+			};
+
+			key := @keys[pos];
+			slot := @slots[pos];
+			done := false;
+			while(done = false) {
+				child := 2 * pos + 1;
+				if(child >= size) {
+					done := true;
+				}
+				else {
+					if(child + 1 < size & Worse(@keys[child + 1], @slots[child + 1], @keys[child], @slots[child])) {
+						child += 1;
+					};
+
+					if(Worse(@keys[child], @slots[child], key, slot)) {
+						@keys[pos] := @keys[child];
+						@slots[pos] := @slots[child];
+						pos := child;
+					}
+					else {
+						done := true;
+					};
+				};
+			};
+
+			@keys[pos] := key;
+			@slots[pos] := slot;
+		}
+	}
+
+	#~
 	An exact nearest-neighbour index over Float vectors of one fixed dimension, each stored under a unique String id.
 
 	No call here ends the program on bad input. Add, Remove and Store return false, Search returns an empty vector and Get returns Nil, and GetError() on that index says why. Load is a function with no index to ask, so it returns Nil and gives no reason. An index made with a dimension below 1 is not valid (IsValid() is false) and refuses everything.
@@ -103,6 +328,7 @@ index->Store("pets.vix");
 		@count : Int;
 		@slots : Hash<String, IntRef>;
 		@error : String;
+		@threads : Int;
 
 		# the largest dimension accepted: a guard against a typo or a damaged file
 		consts Limits {
@@ -116,6 +342,7 @@ index->Store("pets.vix");
 		~#
 		New(dim : Int, metric : VectorMetric) {
 			@error := "";
+			@threads := 1;
 			@count := 0;
 			@dim := 0;
 			@metric := Code(metric);
@@ -385,6 +612,28 @@ index->Store("pets.vix");
 		}
 
 		#~
+		Sets how many threads a search may use. A search over a large index (about 8 MB of vectors or more) is split into that many parts, each scanned on its own thread, and their best results merged; the answer, ties included, is the same as a single-threaded search. Smaller indexes are always searched on the calling thread. The default is 1.
+		@param threads number of threads, 1 to 64 (values outside that range are clamped)
+		~#
+		method : public : SetThreads(threads : Int) ~ Nil {
+			if(threads < 1) {
+				threads := 1;
+			};
+			if(threads > 64) {
+				threads := 64;
+			};
+			@threads := threads;
+		}
+
+		#~
+		Gets how many threads a search may use.
+		@return thread count
+		~#
+		method : public : GetThreads() ~ Int {
+			return @threads;
+		}
+
+		#~
 		The k closest vectors to a query, closest first. Fewer than k come back when the index holds fewer, and none when the query is refused (Nil, the wrong length, a NaN, an infinite or out-of-range value, k below 1) or the index is empty; GetError() says which. COSINE scores a vector or query of length zero as 0.
 		@param query vector of exactly the index's dimension
 		@param k how many results to return
@@ -436,102 +685,55 @@ index->Store("pets.vix");
 				};
 			};
 
-			# a heap of the best `want` rows so far, worst at the root; keys are
-			# higher-is-better (the negated squared distance for L2)
-			heap_keys := Float->New[want];
-			heap_slots := Int->New[want];
-			size := 0;
-			worst := 0.0;
+			# one scan over every row, or several on their own threads when the index is large enough
+			# for the threads to pay for themselves (about 8 MB); each keeps its own best `want`
+			parts := 1;
+			if(@threads > 1 & n * @dim >= 1000000 & n >= @threads * 2) {
+				parts := @threads;
+			};
 
-			dim := @dim;
-			rows := @rows;
-			metric := @metric;
-			block_count := @blocks->Size();
-			each(b : block_count) {
-				block := @blocks->Get(b);
-				data := block->GetData();
-				inv_norms := block->GetInvNorms();
-				in_block := n - b * rows;
-				if(in_block > rows) {
-					in_block := rows;
+			scans := Vector->New()<VectorScan>;
+			per := (n + parts - 1) / parts;
+			each(p : parts) {
+				lo := p * per;
+				hi := lo + per;
+				if(hi > n) {
+					hi := n;
+				};
+				if(lo < hi) {
+					scans->AddBack(VectorScan->New(@blocks, @rows, @dim, @metric, query, q_scale, want, lo, hi));
+				};
+			};
+
+			final : VectorScan := Nil;
+			if(scans->Size() = 1) {
+				final := scans->Get(0);
+				final->Run(Nil);
+			}
+			else {
+				each(i : scans) {
+					scans->Get(i)->Execute(Nil);
+				};
+				each(i : scans) {
+					scans->Get(i)->Join();
 				};
 
-				each(r : in_block) {
-					base := r * dim;
-					acc := 0.0;
-					key := 0.0;
-					if(metric = 2) {
-						d := 0.0;
-						for(j := 0; j < dim; j += 1;) {
-							d := data[base + j] - query[j];
-							acc += d * d;
-						};
-						key := -acc;
-					}
-					else {
-						for(j := 0; j < dim; j += 1;) {
-							acc += data[base + j] * query[j];
-						};
-						key := acc;
-						if(metric = 0) {
-							key := acc * inv_norms[r] * q_scale;
-							# rounding can leave a cosine a hair outside [-1, 1]
-							if(key > 1.0) {
-								key := 1.0;
-							}
-							else if(key < -1.0) {
-								key := -1.0;
-							};
-						};
-					};
-
-					if(size < want) {
-						slot := b * rows + r;
-						heap_keys[size] := key;
-						heap_slots[size] := slot;
-						size += 1;
-						SiftUp(heap_keys, heap_slots, size - 1);
-						if(size = want) {
-							worst := heap_keys[0];
-						};
-					}
-					else if(key >= worst) {
-						slot := b * rows + r;
-						if(key > worst | Worse(heap_keys[0], heap_slots[0], key, slot)) {
-							heap_keys[0] := key;
-							heap_slots[0] := slot;
-							SiftDown(heap_keys, heap_slots, size, 0);
-							worst := heap_keys[0];
-						};
+				# the best `want` of the parts' best: the same order a single scan would give
+				final := VectorScan->New(@blocks, @rows, @dim, @metric, query, q_scale, want, 0, 0);
+				each(i : scans) {
+					part := scans->Get(i);
+					for(j := 0; j < part->GetSize(); j += 1;) {
+						final->Offer(part->GetKey(j), part->GetSlot(j));
 					};
 				};
 			};
 
-			# empty the heap worst first, filling the answer from the back
-			ordered := VectorHit->New[size];
-			for(i := size - 1; i >= 0; i -= 1;) {
-				slot := heap_slots[0];
-				ordered[i] := VectorHit->New(IdOf(slot), Report(heap_keys[0]));
-				size -= 1;
-				heap_keys[0] := heap_keys[size];
-				heap_slots[0] := heap_slots[size];
-				SiftDown(heap_keys, heap_slots, size, 0);
-			};
-
+			ordered := final->Drain();
 			each(i : ordered) {
 				hits->AddBack(ordered[i]);
 			};
 
 			return hits;
-		}
-
-		# the score a caller sees for an internal key
-		method : Report(key : Float) ~ Float {
-			if(@metric = 2) {
-				return Float->Sqrt(-key);
-			};
-
-			return key;
 		}
 
 		# a copy of the vector in a slot
@@ -545,71 +747,6 @@ index->Store("pets.vix");
 
 		method : IdOf(slot : Int) ~ String {
 			return @blocks->Get(slot / @rows)->GetIds()[slot % @rows];
-		}
-
-		# whether row a ranks below row b: a lower key, or an equal key and a larger id
-		method : Worse(key_a : Float, slot_a : Int, key_b : Float, slot_b : Int) ~ Bool {
-			if(key_a < key_b) {
-				return true;
-			};
-
-			if(key_a > key_b) {
-				return false;
-			};
-
-			return IdOf(slot_a)->Compare(IdOf(slot_b)) > 0;
-		}
-
-		method : SiftUp(keys : Float[], slots : Int[], pos : Int) ~ Nil {
-			key := keys[pos];
-			slot := slots[pos];
-			while(pos > 0) {
-				parent := (pos - 1) / 2;
-				if(Worse(key, slot, keys[parent], slots[parent])) {
-					keys[pos] := keys[parent];
-					slots[pos] := slots[parent];
-					pos := parent;
-				}
-				else {
-					break;
-				};
-			};
-
-			keys[pos] := key;
-			slots[pos] := slot;
-		}
-
-		method : SiftDown(keys : Float[], slots : Int[], size : Int, pos : Int) ~ Nil {
-			if(size < 2) {
-				return;
-			};
-
-			key := keys[pos];
-			slot := slots[pos];
-			done := false;
-			while(done = false) {
-				child := 2 * pos + 1;
-				if(child >= size) {
-					done := true;
-				}
-				else {
-					if(child + 1 < size & Worse(keys[child + 1], slots[child + 1], keys[child], slots[child])) {
-						child += 1;
-					};
-
-					if(Worse(keys[child], slots[child], key, slot)) {
-						keys[pos] := keys[child];
-						slots[pos] := slots[child];
-						pos := child;
-					}
-					else {
-						done := true;
-					};
-				};
-			};
-
-			keys[pos] := key;
-			slots[pos] := slot;
 		}
 
 		#~
