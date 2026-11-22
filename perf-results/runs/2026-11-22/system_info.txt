@@ -1,0 +1,5 @@
+date: 2026-11-22 19:43 UTC
+cpu: AMD Ryzen 9 7950X3D 16-Core Processor
+cores: 32 logical
+ram: 62Gi
+os: Ubuntu 24.04.5 LTS
