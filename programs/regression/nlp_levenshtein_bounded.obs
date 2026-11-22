@@ -1,0 +1,135 @@
+# EXTRA_LIBS: nlp,gen_collect
+#~
+System.NLP TextSimilarity->LevenshteinDistance: the two-row version must equal the textbook full
+matrix, and the bounded form (a ceiling on the distance, a band around the diagonal) must give the
+exact distance when it is at most the ceiling and the ceiling plus one otherwise. Checked against a
+full-matrix reference written here on random strings of a small alphabet (so many are close), for
+every ceiling from 0 to 6, plus Nil and empty strings, a negative ceiling, the textbook examples,
+NormalizedEditDistance, and SpellChecker suggestions, which now use the bounded form.
+~#
+use System.NLP;
+use Collection;
+
+class NlpLevenshteinBounded {
+	@ok : Int;
+	@bad : Int;
+
+	New() {
+		@ok := 0;
+		@bad := 0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		t := NlpLevenshteinBounded->New();
+		t->Run();
+	}
+
+	method : Check(what : String, cond : Bool) ~ Nil {
+		if(cond) {
+			@ok += 1;
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@bad += 1;
+		};
+	}
+
+	function : Reference(a : String, b : String) ~ Int {
+		la := a->Size();
+		lb := b->Size();
+		dp := Int->New[la + 1, lb + 1];
+		for(i := 0; i <= la; i += 1;) { dp[i, 0] := i; };
+		for(j := 0; j <= lb; j += 1;) { dp[0, j] := j; };
+		for(i := 1; i <= la; i += 1;) {
+			for(j := 1; j <= lb; j += 1;) {
+				cost := 1;
+				if(a->Get(i - 1) = b->Get(j - 1)) { cost := 0; };
+				best := dp[i - 1, j] + 1;
+				if(dp[i, j - 1] + 1 < best) { best := dp[i, j - 1] + 1; };
+				if(dp[i - 1, j - 1] + cost < best) { best := dp[i - 1, j - 1] + cost; };
+				dp[i, j] := best;
+			};
+		};
+		return dp[la, lb];
+	}
+
+	function : RandomString(state : IntRef, alphabet : String, max_len : Int) ~ String {
+		state->Set((state->Get() * 1103515245 + 12345) and 2147483647);
+		len := (state->Get() / 65536) % (max_len + 1);
+		s := "";
+		each(i : len) {
+			state->Set((state->Get() * 1103515245 + 12345) and 2147483647);
+			s += alphabet->Get((state->Get() / 65536) % alphabet->Size())->ToString();
+		};
+		return s;
+	}
+
+	method : Run() ~ Nil {
+		Check("kitten sitting", TextSimilarity->LevenshteinDistance("kitten", "sitting") = 3);
+		Check("flaw lawn", TextSimilarity->LevenshteinDistance("flaw", "lawn") = 2);
+		Check("equal", TextSimilarity->LevenshteinDistance("same", "same") = 0);
+		Check("Nil and empty", TextSimilarity->LevenshteinDistance(Nil, "abc") = 3 & TextSimilarity->LevenshteinDistance("abc", Nil) = 3 & TextSimilarity->LevenshteinDistance(Nil, Nil) = 0);
+		Check("bounded Nil and empty", TextSimilarity->LevenshteinDistance(Nil, "abc", 5) = 3 & TextSimilarity->LevenshteinDistance("", "", 0) = 0);
+		Check("bounded within", TextSimilarity->LevenshteinDistance("kitten", "sitting", 3) = 3);
+		Check("bounded over", TextSimilarity->LevenshteinDistance("kitten", "sitting", 2) = 3);
+		Check("bounded far", TextSimilarity->LevenshteinDistance("abcdefgh", "zzzzzzzz", 2) = 3);
+		Check("length gap alone", TextSimilarity->LevenshteinDistance("a", "abcdef", 3) = 4);
+		Check("negative ceiling is 0", TextSimilarity->LevenshteinDistance("a", "b", -4) = 1 & TextSimilarity->LevenshteinDistance("a", "a", -4) = 0);
+
+		state := IntRef->New(2024);
+		unbounded_bad := 0;
+		bounded_bad := 0;
+		first := "";
+		each(n : 1500) {
+			a := RandomString(state, "abc", 11);
+			b := RandomString(state, "abc", 11);
+			want := Reference(a, b);
+			if(TextSimilarity->LevenshteinDistance(a, b) <> want) {
+				unbounded_bad += 1;
+			};
+
+			each(m : 7) {
+				got := TextSimilarity->LevenshteinDistance(a, b, m);
+				expect := want;
+				if(want > m) {
+					expect := m + 1;
+				};
+				if(got <> expect) {
+					bounded_bad += 1;
+					if(bounded_bad = 1) {
+						first := "'{$a}' '{$b}' max {$m}: got {$got}, want {$expect}";
+					};
+				};
+			};
+		};
+		Check("1500 random pairs equal the full matrix ({$unbounded_bad} wrong)", unbounded_bad = 0);
+		Check("1500 random pairs x ceilings 0..6 ({$bounded_bad} wrong) {$first}", bounded_bad = 0);
+
+		# longer strings, so the band is narrower than the strings
+		long_bad := 0;
+		each(n : 200) {
+			a := RandomString(state, "abcd", 40);
+			b := RandomString(state, "abcd", 40);
+			want := Reference(a, b);
+			ceilings := [1, 3, 8, 20];
+			each(c : 4) {
+				m := ceilings[c];
+				expect := want;
+				if(want > m) { expect := m + 1; };
+				if(TextSimilarity->LevenshteinDistance(a, b, m) <> expect) {
+					long_bad += 1;
+				};
+			};
+		};
+		Check("200 longer pairs ({$long_bad} wrong)", long_bad = 0);
+
+		nd := TextSimilarity->NormalizedEditDistance("kitten", "sitting");
+		Check("normalized 3/7", nd > 0.4285 & nd < 0.4286);
+
+		if(@bad > 0) {
+			"FAIL: nlp_levenshtein_bounded, {$@bad} failed, {$@ok} passed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: nlp_levenshtein_bounded ({$@ok} checks)"->PrintLine();
+	}
+}

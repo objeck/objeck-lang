@@ -1589,7 +1589,7 @@ suggestions := checker->Suggest("teh", 2, 3);
 				};
 
 				if(gap <= max_distance & <>candidate->Equals(lower)) {
-					d := TextSimilarity->LevenshteinDistance(lower, candidate);
+					d := TextSimilarity->LevenshteinDistance(lower, candidate, max_distance);
 					if(d <= max_distance) {
 						names->AddBack(candidate);
 						distances->AddBack(d);
@@ -2099,42 +2099,171 @@ dist := TextSimilarity->LevenshteinDistance("kitten", "sitting");
 				return len1;
 			};
 
-			# Create DP matrix
-			dp := Int->New[len1 + 1, len2 + 1];
-
-			# Initialize first row and column
-			rows := len1 + 1;
-			each(i : rows) {
-				dp[i, 0] := i;
+			# two rows of the matrix are all a cell ever needs
+			a := str1->ToCharArray();
+			b := str2->ToCharArray();
+			prev := Int->New[len2 + 1];
+			curr := Int->New[len2 + 1];
+			for(j := 0; j <= len2; j += 1;) {
+				prev[j] := j;
 			};
 
-			cols := len2 + 1;
-			each(j : cols) {
-				dp[0, j] := j;
-			};
-
-			# Fill DP matrix
 			for(i := 1; i <= len1; i += 1;) {
+				curr[0] := i;
+				ca := a[i - 1];
 				for(j := 1; j <= len2; j += 1;) {
-					cost := str1->Get(i - 1) = str2->Get(j - 1) ? 0 : 1;
-
-					min_val := dp[i - 1, j] + 1; # Deletion
-
-					temp := dp[i, j - 1] + 1; # Insertion
-					if(temp < min_val) {
-						min_val := temp;
+					cost := 1;
+					if(ca = b[j - 1]) {
+						cost := 0;
 					};
 
-					temp := dp[i - 1, j - 1] + cost; # Substitution
-					if(temp < min_val) {
-						min_val := temp;
+					best := prev[j - 1] + cost;
+					temp := prev[j] + 1;
+					if(temp < best) {
+						best := temp;
 					};
+					temp := curr[j - 1] + 1;
+					if(temp < best) {
+						best := temp;
+					};
+					curr[j] := best;
+				};
 
-					dp[i, j] := min_val;
+				swap := prev;
+				prev := curr;
+				curr := swap;
+			};
+
+			return prev[len2];
+		}
+
+		#~
+		Edit distance with a ceiling, for comparing one string with many. Only the cells within max_distance of the diagonal are computed and the work stops as soon as a whole row is past the ceiling, so a far-off pair costs a few cells.
+		@param str1 first string
+		@param str2 second string
+		@param max_distance the largest distance that matters, 0 or more (a negative value is read as 0)
+		@return the edit distance if it is at most max_distance, otherwise max_distance + 1
+
+```
+if(TextSimilarity->LevenshteinDistance("opentelemetry", "opentelemetri", 2) <= 2) {
+  "close"->PrintLine();
+};
+```
+		~#
+		function : LevenshteinDistance(str1 : String, str2 : String, max_distance : Int) ~ Int {
+			if(str1 = Nil) {
+				str1 := "";
+			};
+
+			if(str2 = Nil) {
+				str2 := "";
+			};
+
+			if(max_distance < 0) {
+				max_distance := 0;
+			};
+
+			over := max_distance + 1;
+			len1 := str1->Size();
+			len2 := str2->Size();
+			gap := len1 - len2;
+			if(gap < 0) {
+				gap := -gap;
+			};
+
+			# the length difference alone is a lower bound
+			if(gap > max_distance) {
+				return over;
+			};
+
+			if(len1 = 0) {
+				return len2;
+			};
+
+			if(len2 = 0) {
+				return len1;
+			};
+
+			a := str1->ToCharArray();
+			b := str2->ToCharArray();
+			prev := Int->New[len2 + 1];
+			curr := Int->New[len2 + 1];
+			for(j := 0; j <= len2; j += 1;) {
+				if(j <= max_distance) {
+					prev[j] := j;
+				}
+				else {
+					prev[j] := over;
 				};
 			};
 
-			return dp[len1, len2];
+			for(i := 1; i <= len1; i += 1;) {
+				lo := i - max_distance;
+				if(lo < 1) {
+					lo := 1;
+				};
+				hi := i + max_distance;
+				if(hi > len2) {
+					hi := len2;
+				};
+
+				# the cell left of the band, then the band; the cell right of it is set after
+				if(lo = 1) {
+					if(i <= max_distance) {
+						curr[0] := i;
+					}
+					else {
+						curr[0] := over;
+					};
+				}
+				else {
+					curr[lo - 1] := over;
+				};
+
+				row_min := over;
+				ca := a[i - 1];
+				for(j := lo; j <= hi; j += 1;) {
+					cost := 1;
+					if(ca = b[j - 1]) {
+						cost := 0;
+					};
+
+					best := prev[j - 1] + cost;
+					temp := prev[j] + 1;
+					if(temp < best) {
+						best := temp;
+					};
+					temp := curr[j - 1] + 1;
+					if(temp < best) {
+						best := temp;
+					};
+					if(best > over) {
+						best := over;
+					};
+					curr[j] := best;
+					if(best < row_min) {
+						row_min := best;
+					};
+				};
+
+				if(hi < len2) {
+					curr[hi + 1] := over;
+				};
+
+				if(row_min > max_distance) {
+					return over;
+				};
+
+				swap := prev;
+				prev := curr;
+				curr := swap;
+			};
+
+			result := prev[len2];
+			if(result > over) {
+				result := over;
+			};
+			return result;
 		}
 
 		#~

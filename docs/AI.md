@@ -1037,7 +1037,7 @@ dictionary ships with Objeck: load a newline-delimited list yourself, for exampl
 `/usr/share/dict/words` on Linux, the SCOWL / aspell lists (http://wordlist.aspell.net) or
 `words_alpha.txt`, and check its licence. Tokens are `Tokenizer->WordTokenize`'s, matching is
 case-insensitive, tokens with digits are never misspelled, and the rate is misspelled tokens
-over all tokens. `Suggest` returns words within a Levenshtein distance, nearest first. A checker
+over all tokens. `Suggest` returns words within a Levenshtein distance, nearest first. `TextSimilarity->LevenshteinDistance(a, b, max_distance)` is the same distance with a ceiling: it returns the exact distance when that is at most `max_distance` and `max_distance + 1` otherwise, and only computes the cells near the diagonal, so comparing one string with many far-off ones is cheap (`Suggest` uses it). A checker
 with no words and a Nil text give -1 instead of failing.
 
 ```ruby

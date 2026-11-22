@@ -1,0 +1,162 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+System.ML KNearestNeighbors->Query keeps the best k rows in a heap instead of sorting every row.
+Its answer must be what a full sort gives: the same rows, the same distances, closest first, and
+equal distances in row order. Checked against a reference written here (every row's distance,
+sorted by distance then row) on integer-valued data, where equal distances are common, for k = 1,
+a middle k, k = n, k larger than n and k = 0, and on random float data; plus a query of another
+length (every distance 0.0, as before), a Nil query and Classify.
+~#
+use System.ML;
+use Collection;
+
+class MlKnnExact {
+	@ok : Int;
+	@bad : Int;
+
+	New() {
+		@ok := 0;
+		@bad := 0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		t := MlKnnExact->New();
+		t->Run();
+	}
+
+	method : Check(what : String, cond : Bool) ~ Nil {
+		if(cond) {
+			@ok += 1;
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@bad += 1;
+		};
+	}
+
+	# distances to every row, then the k smallest by (distance, row): rows[] and dists[]
+	function : Reference(data : Float[,], q : Float[], k : Int, rows : Int[], dists : Float[]) ~ Int {
+		dims := data->Size();
+		n := dims[0];
+		d := dims[1];
+		dist := Float->New[n];
+		each(i : n) {
+			acc := 0.0;
+			each(j : d) {
+				diff := q[j] - data[i, j];
+				acc += diff * diff;
+			};
+			dist[i] := acc->Sqrt();
+		};
+
+		want := k;
+		if(want > n) {
+			want := n;
+		};
+
+		used := Bool->New[n];
+		each(r : want) {
+			best := -1;
+			each(i : n) {
+				if(<>used[i] & (best < 0 | dist[i] < dist[best])) {
+					best := i;
+				};
+			};
+			used[best] := true;
+			rows[r] := best;
+			dists[r] := dist[best];
+		};
+
+		return want;
+	}
+
+	method : Compare(name : String, data : Float[,], labels : String[], q : Float[], k : Int) ~ Nil {
+		knn := KNearestNeighbors->New(data, labels);
+		got := knn->Query(k, q);
+		dims := data->Size();
+		rows := Int->New[dims[0]];
+		dists := Float->New[dims[0]];
+		want := Reference(data, q, k, rows, dists);
+		if(got->Size() <> want) {
+			Check("{$name} k={$k}: {$got->Size()} results, want {$want}", false);
+			return;
+		};
+
+		same := true;
+		each(i : want) {
+			if(got[i]->GetRow() <> rows[i] | got[i]->GetDistance() <> dists[i]) {
+				same := false;
+			};
+			if(got[i]->GetCategory() = Nil | <>got[i]->GetCategory()->Equals(labels[rows[i]])) {
+				same := false;
+			};
+		};
+		Check("{$name} k={$k} equals a full sort", same);
+	}
+
+	method : Run() ~ Nil {
+		# integer grid: many rows are exactly as far as others
+		n := 600;
+		d := 3;
+		grid := Float->New[n, d];
+		labels := String->New[n];
+		state := 99;
+		each(i : n) {
+			each(j : d) {
+				state := (state * 1103515245 + 12345) and 2147483647;
+				grid[i, j] := ((state / 65536) % 7)->As(Float);
+			};
+			labels[i] := "c{$(i % 5)}";
+		};
+		q := [3.0, 3.0, 3.0];
+		ks := [1, 2, 5, 37, 600, 601, 5000];
+		each(ki : 7) {
+			Compare("grid", grid, labels, q, ks[ki]);
+		};
+
+		# random floats
+		m := 2000;
+		e := 8;
+		pts := Float->New[m, e];
+		names := String->New[m];
+		each(i : m) {
+			each(j : e) {
+				state := (state * 1103515245 + 12345) and 2147483647;
+				pts[i, j] := state->As(Float) / 2147483648.0;
+			};
+			names[i] := "p{$i}";
+		};
+		fq := Float->New[e];
+		each(j : e) { fq[j] := 0.5; };
+		Compare("floats", pts, names, fq, 1);
+		Compare("floats", pts, names, fq, 10);
+		Compare("floats", pts, names, fq, 250);
+
+		# k of 0 and below, a Nil query
+		knn := KNearestNeighbors->New(grid, labels);
+		Check("k = 0 gives none", knn->Query(0, q)->Size() = 0);
+		Check("k < 0 gives none", knn->Query(-3, q)->Size() = 0);
+		Check("Nil query gives none", knn->Query(3, Nil)->Size() = 0);
+
+		# a query of another length: every distance is 0.0 and the first k rows come back
+		short := knn->Query(4, [1.0, 2.0]);
+		Check("short query: 4 results", short->Size() = 4);
+		if(short->Size() = 4) {
+			Check("short query: distance 0.0", short[0]->GetDistance() = 0.0 & short[3]->GetDistance() = 0.0);
+			Check("short query: rows 0..3 in order", short[0]->GetRow() = 0 & short[1]->GetRow() = 1 & short[3]->GetRow() = 3);
+		};
+
+		# Classify still votes over the nearest k
+		line := Float->New[5, 1];
+		each(i : 5) { line[i, 0] := i->As(Float); };
+		two := KNearestNeighbors->New(line, ["a", "a", "a", "b", "b"]);
+		Check("classify near 0", two->Classify(3, [0.2])->Equals("a"));
+		Check("classify near 4", two->Classify(3, [3.9])->Equals("b"));
+
+		if(@bad > 0) {
+			"FAIL: ml_knn_exact, {$@bad} failed, {$@ok} passed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: ml_knn_exact ({$@ok} checks)"->PrintLine();
+	}
+}

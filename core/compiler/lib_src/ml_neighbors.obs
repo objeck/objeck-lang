@@ -295,33 +295,141 @@ knn->Classify(3, [57.0, 170.0])->PrintLine();
 			return best_label;
 		}
 
+		# The k rows closest to the query, closest first, ties in row order. One pass keeping the best
+		# k in a heap (worst at the root) of squared distances, so only k results are ever built, and
+		# a row is dropped as soon as its running sum passes the k-th best. Distances and order are
+		# the ones a full sort of every row gives.
 		method : native : Query(query : Float[], k : Int) ~ KNeighbor[] {
+			if(@matrix = Nil | query = Nil | k < 1) {
+				return KNeighbor->New[0];
+			};
+
 			dims := @matrix->Size();
 			rows := dims[0];
 			cols := dims[1];
+			if(k > rows) {
+				k := rows;
+			};
+			if(k < 1) {
+				return KNeighbor->New[0];
+			};
 
-			distances := Collection.CompareVector->New()<KNeighbor>;
-			row := Float->New[cols];	
-			each(i : rows) {
-				each(j : cols) {
-					row[j] := @matrix[i,j];
+			# a query of another length has distance 0.0 to every row, as EuclideanDistance reports
+			same_length := query->Size() = cols;
+
+			keys := Float->New[k];
+			slots := Int->New[k];
+			size := 0;
+			worst := 0.0;
+			for(i := 0; i < rows; i += 1;) {
+				acc := 0.0;
+				if(same_length) {
+					j := 0;
+					while(j < cols) {
+						diff := query[j] - @matrix[i, j];
+						acc += diff * diff;
+						if(size = k & acc > worst) {
+							# already worse than the k-th best: stop adding
+							j := cols;
+						};
+						j += 1;
+					};
 				};
-				dist := EuclideanDistance(row, query);
-				distances->AddBack(KNeighbor->New(dist, i, @labels[i]));
+
+				if(size < k) {
+					keys[size] := acc;
+					slots[size] := i;
+					size += 1;
+					KnnUp(keys, slots, size - 1);
+					if(size = k) {
+						worst := keys[0];
+					};
+				}
+				else if(acc < worst) {
+					# rows come in ascending order, so an equal distance ranks below the ones held
+					keys[0] := acc;
+					slots[0] := i;
+					KnnDown(keys, slots, size, 0);
+					worst := keys[0];
+				};
 			};
 
-			# Ascending by distance: nearest neighbors first
-			distances->Sort();
-			if(k > distances->Size()) {
-				k := distances->Size();
-			};
-
-			results := KNeighbor->New[k];
-			each(i : k) {
-				results[i] := distances->Get(i);
+			results := KNeighbor->New[size];
+			for(n := size - 1; n >= 0; n -= 1;) {
+				row := slots[0];
+				cat : String := Nil;
+				if(@labels <> Nil & row < @labels->Size()) {
+					cat := @labels[row];
+				};
+				results[n] := KNeighbor->New(keys[0]->Sqrt(), row, cat);
+				size -= 1;
+				keys[0] := keys[size];
+				slots[0] := slots[size];
+				KnnDown(keys, slots, size, 0);
 			};
 
 			return results;
+		}
+
+		# whether entry a ranks below entry b: a larger distance, or an equal one and a larger row
+		method : KnnWorse(key_a : Float, row_a : Int, key_b : Float, row_b : Int) ~ Bool {
+			if(key_a > key_b) {
+				return true;
+			};
+			if(key_a < key_b) {
+				return false;
+			};
+			return row_a > row_b;
+		}
+
+		method : KnnUp(keys : Float[], slots : Int[], pos : Int) ~ Nil {
+			key := keys[pos];
+			row := slots[pos];
+			while(pos > 0) {
+				parent := (pos - 1) / 2;
+				if(KnnWorse(key, row, keys[parent], slots[parent])) {
+					keys[pos] := keys[parent];
+					slots[pos] := slots[parent];
+					pos := parent;
+				}
+				else {
+					break;
+				};
+			};
+			keys[pos] := key;
+			slots[pos] := row;
+		}
+
+		method : KnnDown(keys : Float[], slots : Int[], size : Int, pos : Int) ~ Nil {
+			if(size < 2) {
+				return;
+			};
+
+			key := keys[pos];
+			row := slots[pos];
+			done := false;
+			while(done = false) {
+				child := 2 * pos + 1;
+				if(child >= size) {
+					done := true;
+				}
+				else {
+					if(child + 1 < size & KnnWorse(keys[child + 1], slots[child + 1], keys[child], slots[child])) {
+						child += 1;
+					};
+
+					if(KnnWorse(keys[child], slots[child], key, row)) {
+						keys[pos] := keys[child];
+						slots[pos] := slots[child];
+						pos := child;
+					}
+					else {
+						done := true;
+					};
+				};
+			};
+			keys[pos] := key;
+			slots[pos] := row;
 		}
 
 		method : native : EuclideanDistance(a : Float[], b : Float[]) ~ Float {
