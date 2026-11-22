@@ -54,7 +54,7 @@ Not CPU time, not user time, no warm-up run discarded. Java's 0.31 s for binaryt
 
 - One machine, one container configuration, three runs per cell. A 6-17% shift of the whole table between two passes on the same host (below) is larger than most differences the tables are used to argue, so rows within about 10% of each other should be read as ties.
 - Five of the six Objeck CLBG programs (all but `spectralnorm`) mark hot methods `native`, an opt-in with no counterpart in the peer programs (`grep native programs/tests/clbg/*.obs`); the comparison is between each language's idiomatic or annotated version, not between compilers given identical source.
-- Six CLBG programs and twelve optimizer-targeted micro-benchmarks written by the project. No string, I/O, regex, collection-library, multi-threaded or start-up-latency workload is measured, and none of the numbers says anything about compile time.
+- Six CLBG programs and twelve optimizer-targeted micro-benchmarks written by the project. These tables measure no string, I/O, regex, collection-library, multi-threaded or start-up-latency workload (a first set of library timings is under Library workloads below), and none of the numbers says anything about compile time.
 - Peak RSS is recorded for Objeck only, so no statement about a peer's memory in this page rests on a measurement.
 - The claim that Docker slows Objeck's interpreter-bound rows by 30-50% against a native build is quoted from earlier notes; the repository holds no same-OS native-versus-Docker pairing that supports it. For statistically controlled comparisons (ABAB interleaving, 15 runs, p-values) see [perf-results/baseline-2026.10.0/README.md](../perf-results/baseline-2026.10.0/README.md), which is Apple M4 Max and compares two Objeck builds, not languages.
 
@@ -177,6 +177,41 @@ comparing one build against another but must never be read as an interpreter
 measurement.
 
 The June column's environment (host, harness, run count) is not recorded on this page beyond its date and version; treat June-to-now ratios as order-of-magnitude, not as controlled comparisons. The v2026.9.1 column is the 2026-09-12 Docker run at `f6b3b09046`. Times are `/usr/bin/time` wall seconds with 0.01 s resolution, which is why the 0.01 s rows cannot be told apart and why a "+14%" on a 0.38 s row is a 0.04 s difference. "Peak RSS" is the maximum resident set of the `obr` process in the current run.
+
+### Library workloads
+
+Timings of library code rather than compiler or VM patterns. Measured 2026-11-22 on the Ryzen 9 7950X3D (Windows, JIT on, libraries built with `-opt s3`, the v2026.11.2 compiler), **one run per cell** and not interleaved, so a difference under about 10% is not a result. The programs were scratch benchmarks, not files in this repository; the data are generated from a fixed integer generator, so they can be rewritten. "Before" is the library as released in v2026.11.2, "after" is v2026.11.3.
+
+**Regular expressions** (`Query.RegEx`, `Find` over 680,000 characters of text):
+
+| Pattern | Before (s) | After (s) |
+|---|---:|---:|
+| `[a-z]+-[0-9]+\.[0-9]` (class first, 8,000 matches) | 0.546 | 0.043 |
+| `[a-z]+@[a-z]+` (no match) | 0.510 | 0.043 |
+| `(foo\|bar\|crossenv\|numpy)-?[0-9]*` (32,000 matches) | 0.988 | 0.090 |
+| twelve alternatives under `*`, then `z` | 1.463 | 0.060 |
+| `[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+` | 0.296 | 0.011 |
+| `\w+` (128,000 matches) | 0.423 | 0.093 |
+| `ReplaceAll` of `[a-z]+-[a-z]+` | 0.451 | 0.062 |
+
+**Exact vector search** (`VectorIndex`, 100,000 vectors of 128 values, L2, top 10, 500 queries, one query at a time):
+
+| Threads (`SetThreads`) | 1 | 2 | 4 | 8 | 16 | 32 |
+|---|---:|---:|---:|---:|---:|---:|
+| Queries/s | 66 | 81 | 132 | 229 | 315 | 298 |
+
+For comparison, numpy (BLAS) on the same shape does 517 queries/s one at a time and 840 batched. Searching with 32 threads on a plain scan that is spread over queries (not inside one query) reaches 789 queries/s, so thread start-up per query is part of the gap. An inverted-file (IVF) index prototype on this data, which has uniform noise in every dimension and is the worst case for it, reached recall@10 of 0.93 only after scanning a quarter of the lists, at 85 queries/s; no approximate index is shipped.
+
+**Nearest neighbors and edit distance:**
+
+| Workload | Before | After |
+|---|---:|---:|
+| `KNearestNeighbors->Query`, 50,000 x 16, k = 5, 200 queries | 15.06 s | 0.057 s |
+| `LevenshteinDistance`, 20,000 pairs of 38 characters | 0.683 s | 0.118 s |
+
+**Measured and already fast** (1,005,000 characters of text; a 789 KB JSON file): `Find` of 15,000 occurrences 7 ms, `ReplaceAll` 12 ms, `Split` into 165,001 parts 70 ms, `ToLower` plus `ToUpper` 6 ms, 20,000 `s += ...` 35 ms (20,000 `Append` calls 74 ms), `JsonParser` parse 34 ms, `ToString` of the parsed document 131 ms, DBSCAN on 4,000 points of 8 values 0.20 s, a Gaussian mixture over 5,000 points of 4 values 0.05 s.
+
+**Not measured:** `query.obs`, `net_server`, ODBC, the tree and SVM learners, matrix multiplication in pure Objeck, and any ARM64 or Linux result.
 
 ### Running Benchmarks
 

@@ -115,7 +115,7 @@ docker run --rm -e BENCH_RUNS=3 -v "$(pwd)/perf-results/docker-results:/results"
     <ul>
      <li>One machine, one container configuration, three runs per cell. A 6-17% shift of the whole table between two passes on the same host (below) is larger than most differences the tables are used to argue, so rows within about 10% of each other should be read as ties.</li>
      <li>Five of the six Objeck CLBG programs (all but <code>spectralnorm</code>) mark hot methods <code>native</code>, an opt-in with no counterpart in the peer programs (<code>grep native programs/tests/clbg/*.obs</code>); the comparison is between each language's idiomatic or annotated version, not between compilers given identical source.</li>
-     <li>Six CLBG programs and twelve optimizer-targeted micro-benchmarks written by the project. No string, I/O, regex, collection-library, multi-threaded or start-up-latency workload is measured, and none of the numbers says anything about compile time.</li>
+     <li>Six CLBG programs and twelve optimizer-targeted micro-benchmarks written by the project. These tables measure no string, I/O, regex, collection-library, multi-threaded or start-up-latency workload (a first set of library timings is under Library workloads below), and none of the numbers says anything about compile time.</li>
      <li>Peak RSS is recorded for Objeck only, so no statement about a peer's memory in this page rests on a measurement.</li>
      <li>The claim that Docker slows Objeck's interpreter-bound rows by 30-50% against a native build is quoted from earlier notes; the repository holds no same-OS native-versus-Docker pairing that supports it. For statistically controlled comparisons (ABAB interleaving, 15 runs, p-values) see <a href="https://github.com/objeck/objeck-lang/blob/master/perf-results/baseline-2026.10.0/README.md" target="_blank">perf-results/baseline-2026.10.0/README.md</a>, which is Apple M4 Max and compares two Objeck builds, not languages.</li>
     </ul>
@@ -225,6 +225,45 @@ docker run --rm -e BENCH_RUNS=3 -v "$(pwd)/perf-results/docker-results:/results"
     </table>
     <p>The two fastest rows (<code>bench_cse</code>, <code>bench_loop_invariant</code>) now sit at 0.01 s, close enough to the harness's resolution that their ratios should be read as "too fast to distinguish" rather than as precise multiples. <code>bench_spectralnorm_native</code> is the control: it is hand-<code>native</code>, so it was already compiled before this work and read 0.38 s in September. It reads <strong>0.42 s</strong> now, which is the clearest sign that this pass ran about 10% slow on the host rather than that the engine changed: the other rows moved by a similar fraction. A control that moves is what makes the other rows credible. Because its kernel is <code>native</code>-annotated it is <em>always</em> compiled and never runs through the interpreter, so it is valid for comparing one build against another but must never be read as an interpreter measurement.</p>
     <p>The June column's environment (host, harness, run count) is not recorded on this page beyond its date and version; treat June-to-now ratios as order-of-magnitude, not as controlled comparisons. The v2026.9.1 column is the 2026-09-12 Docker run at <code>f6b3b09046</code>. Times are <code>/usr/bin/time</code> wall seconds with 0.01 s resolution, which is why the 0.01 s rows cannot be told apart and why a "+14%" on a 0.38 s row is a 0.04 s difference. "Peak RSS" is the maximum resident set of the <code>obr</code> process in the current run.</p>
+    <h4 id="library-workloads">Library workloads</h4>
+    <p>Timings of library code rather than compiler or VM patterns. Measured 2026-11-22 on the Ryzen 9 7950X3D (Windows, JIT on, libraries built with <code>-opt s3</code>, the v2026.11.2 compiler), <strong>one run per cell</strong> and not interleaved, so a difference under about 10% is not a result. The programs were scratch benchmarks, not files in this repository; the data are generated from a fixed integer generator, so they can be rewritten. "Before" is the library as released in v2026.11.2, "after" is v2026.11.3.</p>
+    <p><strong>Regular expressions</strong> (<code>Query.RegEx</code>, <code>Find</code> over 680,000 characters of text):</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Pattern</th><th>Before (s)</th><th>After (s)</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Pattern"><code>[a-z]+-[0-9]+\.[0-9]</code> (class first, 8,000 matches)</td><td data-label="Before (s)">0.546</td><td data-label="After (s)">0.043</td></tr>
+      <tr><td data-label="Pattern"><code>[a-z]+@[a-z]+</code> (no match)</td><td data-label="Before (s)">0.510</td><td data-label="After (s)">0.043</td></tr>
+      <tr><td data-label="Pattern"><code>(foo|bar|crossenv|numpy)-?[0-9]*</code> (32,000 matches)</td><td data-label="Before (s)">0.988</td><td data-label="After (s)">0.090</td></tr>
+      <tr><td data-label="Pattern">twelve alternatives under <code>*</code>, then <code>z</code></td><td data-label="Before (s)">1.463</td><td data-label="After (s)">0.060</td></tr>
+      <tr><td data-label="Pattern"><code>[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+</code></td><td data-label="Before (s)">0.296</td><td data-label="After (s)">0.011</td></tr>
+      <tr><td data-label="Pattern"><code>\w+</code> (128,000 matches)</td><td data-label="Before (s)">0.423</td><td data-label="After (s)">0.093</td></tr>
+      <tr><td data-label="Pattern"><code>ReplaceAll</code> of <code>[a-z]+-[a-z]+</code></td><td data-label="Before (s)">0.451</td><td data-label="After (s)">0.062</td></tr>
+     </tbody>
+    </table>
+    <p><strong>Exact vector search</strong> (<code>VectorIndex</code>, 100,000 vectors of 128 values, L2, top 10, 500 queries, one query at a time):</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Threads (<code>SetThreads</code>)</th><th>1</th><th>2</th><th>4</th><th>8</th><th>16</th><th>32</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Threads (SetThreads)">Queries/s</td><td data-label="1">66</td><td data-label="2">81</td><td data-label="4">132</td><td data-label="8">229</td><td data-label="16">315</td><td data-label="32">298</td></tr>
+     </tbody>
+    </table>
+    <p>For comparison, numpy (BLAS) on the same shape does 517 queries/s one at a time and 840 batched. Searching with 32 threads on a plain scan that is spread over queries (not inside one query) reaches 789 queries/s, so thread start-up per query is part of the gap. An inverted-file (IVF) index prototype on this data, which has uniform noise in every dimension and is the worst case for it, reached recall@10 of 0.93 only after scanning a quarter of the lists, at 85 queries/s; no approximate index is shipped.</p>
+    <p><strong>Nearest neighbors and edit distance:</strong></p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Workload</th><th>Before</th><th>After</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Workload"><code>KNearestNeighbors-&gt;Query</code>, 50,000 x 16, k = 5, 200 queries</td><td data-label="Before">15.06 s</td><td data-label="After">0.057 s</td></tr>
+      <tr><td data-label="Workload"><code>LevenshteinDistance</code>, 20,000 pairs of 38 characters</td><td data-label="Before">0.683 s</td><td data-label="After">0.118 s</td></tr>
+     </tbody>
+    </table>
+    <p><strong>Measured and already fast</strong> (1,005,000 characters of text; a 789 KB JSON file): <code>Find</code> of 15,000 occurrences 7 ms, <code>ReplaceAll</code> 12 ms, <code>Split</code> into 165,001 parts 70 ms, <code>ToLower</code> plus <code>ToUpper</code> 6 ms, 20,000 <code>s += ...</code> 35 ms (20,000 <code>Append</code> calls 74 ms), <code>JsonParser</code> parse 34 ms, <code>ToString</code> of the parsed document 131 ms, DBSCAN on 4,000 points of 8 values 0.20 s, a Gaussian mixture over 5,000 points of 4 values 0.05 s.</p>
+    <p><strong>Not measured:</strong> <code>query.obs</code>, <code>net_server</code>, ODBC, the tree and SVM learners, matrix multiplication in pure Objeck, and any ARM64 or Linux result.</p>
     <h4 id="running-benchmarks">Running Benchmarks</h4>
 <pre class="cmd"># Docker (recommended for reproducible results)
 docker build -t objeck-bench -f perf-results/docker/Dockerfile .

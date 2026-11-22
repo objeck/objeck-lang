@@ -2,6 +2,38 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [v2026.11.3] - 2026-11-22
+
+### Performance
+
+- **`RegEx` uses a lazily built DFA**: the end of the longest match is found with one table lookup per character, transitions are filled in the first time a character needs them and then cached, and search methods skip start positions where nothing can begin a match. 680 KB of text: class-first search 0.546 s to 0.043 s, an alternation with a group 0.988 s to 0.090 s, twelve alternatives under a star 1.463 s to 0.060 s, `ReplaceAll` 0.451 s to 0.062 s. Patterns with `\b` or `\B`, or needing more than 1,024 states, use the NFA as before; the capture pass is unchanged and now reuses its scratch arrays between matches. 8,160 pattern and input cases give identical `Find`, `FindFirst`, `Match`, `MatchExact`, `ReplaceAll` and `ReplaceFirst` results from the DFA and the NFA.
+- **`VectorIndex->SetThreads(n)`**: a search over an index of about 8 MB or more is split into n parts, each scanned on its own thread, and merged in the order a single scan uses, so ids, scores and tie order are identical. 100,000 x 128, L2, top 10: 66, 81, 132, 229 and 315 queries/s at 1, 2, 4, 8 and 16 threads. The default is 1 thread.
+- **`KNearestNeighbors->Query` makes one pass**: it keeps the best k squared distances in a heap and drops a row once its running sum passes the k-th best, instead of copying every row, building a `KNeighbor` per row and sorting all of them. 50,000 x 16, k = 5, 200 queries: 15.06 s to 0.057 s. Distances and order (ties in row order) are unchanged.
+- **`TextSimilarity->LevenshteinDistance` keeps two rows**: 20,000 pairs of 38 characters 0.683 s to 0.118 s.
+
+### Fixed
+
+- **`{n}` in a regular expression meant `{n,}`**: `a{2}` matched `aaa`. It is now exactly n. This is in the released v2026.11.2 `regex.obl`.
+- **`RegEx->ReplaceAll` matched against already-replaced text**: a replacement could create or remove a `\b`, so `\bx` on `xx` with `-` gave `--` instead of `-x`. It now builds the result in one pass over the original input.
+- **`^a`, `^a+`, `^a$`, `^$` and `a|$` were rejected** as "stray token" or a missing operand; the anchor was only applied when a second operand followed.
+- **Unknown escapes in a pattern were silently literal**: `\1` (a backreference) matched the character `1`. Unknown letter or digit escapes and a trailing backslash are now an error (`IsOk()` is false); escaped punctuation such as `\-` and `\/` is still literal.
+- **`KNearestNeighbors->Query` with a k below 1, a Nil query or a Nil matrix** ended with an allocation error; it now returns no neighbors.
+
+### Added
+
+- **`VectorIndex->SetThreads(n)` and `GetThreads()`** (see Performance).
+- **`TextSimilarity->LevenshteinDistance(a, b, max_distance)`**: the exact distance when it is at most `max_distance`, otherwise `max_distance + 1`; only the cells near the diagonal are computed and the work stops when a whole row is past the ceiling. `SpellChecker->Suggest` uses it.
+- **A `RegEx` can be shared by threads**: the DFA tables and the capture scratch are used under a lock, and `MatchExact` no longer keeps its answer in a field.
+- **`{n,}` in a regular expression** (n or more).
+
+### Documentation
+
+- **`docs/performance.md` has a Library workloads section**: regex, vector search, nearest-neighbor, edit-distance, string and JSON timings, with what was not measured. The data and text guide lists the RegEx behaviours above, and `docs/AI.md` documents `SetThreads` and the bounded edit distance.
+
+### Tests
+
+- New regression tests: `regex_lazy_dfa`, `regex_replace_escapes`, `regex_threads`, `ml_vector_parallel`, `ml_knn_exact` and `nlp_levenshtein_bounded`.
+
 ## [v2026.11.2] - 2026-11-21
 
 ### Fixed

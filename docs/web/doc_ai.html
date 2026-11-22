@@ -985,6 +985,7 @@ seconds := forest-&gt;GetFitSeconds();
 tree := KDTree-&gt;New(matrix);
 nearest := tree-&gt;Nearest(3, [57.0, 170.0]);   # row indexes, closest first
 </code></pre>
+    <p><code>KNearestNeighbors-&gt;Query(k, query)</code> scans the rows once and keeps the best k in a heap, closest first, ties in row order. Over 50,000 rows of 16 values, 200 queries with k = 5 take 0.057 s (about 3,500 queries/s; it took 15 s before v2026.11.3). A k below 1, a <code>Nil</code> query or a <code>Nil</code> matrix returns no neighbors. <code>KDTree</code> is the index to use when the data has few dimensions and many queries.</p>
     <h4 id="clustering--decomposition">Clustering &amp; Decomposition</h4>
 <pre class="line-numbers"><code class="language-cpp"># DBSCAN discovers the cluster count and labels outliers -1
 scanner := DBSCAN-&gt;New(0.8, 3);        # eps, min points
