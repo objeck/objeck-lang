@@ -13,7 +13,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://scan.coverity.com/projects/10314/badge.svg" alt="Coverity Scan Build Status"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.11.2-blue" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.11.3-blue" alt="Latest Release"></a>
 </p>
 
 <p align="center">
@@ -46,12 +46,12 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Ubuntu 24.04: one package, system libraries included (-arm64 for ARM)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.11.2/objeck-ubuntu24.04-x64_2026.11.2.deb
-sudo apt install ./objeck-ubuntu24.04-x64_2026.11.2.deb
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.11.3/objeck-ubuntu24.04-x64_2026.11.3.deb
+sudo apt install ./objeck-ubuntu24.04-x64_2026.11.3.deb
 
 # Other Linux (see Platform support below), or macOS: the archive
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.11.2/objeck-linux-x64_2026.11.2.tgz
-tar xzf objeck-linux-x64_2026.11.2.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.11.3/objeck-linux-x64_2026.11.3.tgz
+tar xzf objeck-linux-x64_2026.11.3.tgz
 # Linux only: install the system libraries the toolchain links against
 # (mbedTLS, readline, SDL2/GL, OpenCV, unixODBC, LAME) --
 # obr does not start without them. --check reports without installing.
@@ -489,20 +489,20 @@ Monte Carlo takes 2 of 10 stones
 
 </details>
 
-More: [all the guides](docs/guides/README.md), the 32 numbered programs in [`programs/deploy`](programs/deploy/README.md) that ship with every release, and [what is new in v2026.11.2](#whats-new).
+More: [all the guides](docs/guides/README.md), the 32 numbered programs in [`programs/deploy`](programs/deploy/README.md) that ship with every release, and [what is new in v2026.11.3](#whats-new).
 
 ## What's New
 
 Full details for every release are in the [CHANGELOG](CHANGELOG.md).
 
-### v2026.11.3
+### v2026.11.3 ✅
   * **Regular expressions are 4 to 19 times faster** &mdash; `RegEx` finds where the longest match ends with a lazily built DFA, one table lookup per character, and skips start positions that cannot begin a match. On 680 KB of text a class-first search went from 0.55 s to 0.043 s and an alternation with a group from 0.99 s to 0.09 s. Patterns with `\b` or `\B`, or that need more than 1,024 states, run on the NFA as before; capture groups are unchanged. A `RegEx` can now be shared by threads (matching on one instance is serialized).
   * **RegEx bugs fixed** &mdash; `{n}` was read as `{n,}`, so `a{2}` matched `aaa`; it now means exactly n, and `{n,}` is accepted. `ReplaceAll` matched against text it had already rewritten (`\bx` on `xx` with `-` gave `--`); it now works in one pass over the original. `^a`, `^a+`, `^a$` and `^$` were rejected; they compile. Unknown letter or digit escapes, including the backreference `\1`, were silently read as the literal character; they and a trailing backslash are now an error.
   * **Parallel vector search** &mdash; `VectorIndex->SetThreads(n)` splits a search over a large index into n parts on their own threads and merges them in the same order a single scan uses, so ids, scores and ties are identical. 100,000 vectors of 128 values, L2, top 10: 66 queries/s on one thread, 315 on sixteen.
   * **Nearest neighbors and edit distance** &mdash; `KNearestNeighbors->Query` keeps the best k in a heap in one pass instead of building and sorting an object per row: 200 queries over 50,000 rows of 16 values took 15.1 s and now take 0.057 s (13 to 3,506 queries/s). A k below 1 or a Nil query returns no neighbors instead of ending with an allocation error. `TextSimilarity->LevenshteinDistance` keeps two rows instead of the full matrix (20,000 pairs: 0.68 s to 0.12 s), and a new `LevenshteinDistance(a, b, max_distance)` stops at a ceiling; `SpellChecker->Suggest` uses it.
   * **Library workloads are measured** &mdash; `docs/performance.md` has a new Library workloads section with the regex, vector search, nearest-neighbor, edit-distance, string and JSON timings behind these numbers, and what it did not measure.
 
-### v2026.11.2 ✅
+### v2026.11.2
   * **A long linked chain no longer crashes the VM** &mdash; a `List`, `Queue`, `CompareList` or linked `Stack` of about 500,000 or more nodes exited with code 127, because marking recursed once per node and overflowed the collector thread's native stack; marking now uses a bounded per-thread work stack, and a 2-million-node chain passes with and without the JIT (`binarytrees` is unchanged)
   * **Sorting and strings are faster** &mdash; the `Vector` and `CompareVector` merge sorts skip a merge when the halves are already in order (500,000 sorted elements: about 500 ms to 80 ms, random input unchanged, still stable), and `String->Append(String)` copies strings of 32 or more characters in one block (1,000-character pieces: 1,660 ms to 292 ms)
   * **Faster image loading for convolutional networks** &mdash; `System.ML.Cnn` decodes a batch of images on several native threads and prefetches the next one, so training no longer waits on the JPEG decoder (decoding 10,000 face images: 1,107 images/s on one thread, 5,236 on eight; a 20,000-image epoch on an RTX 4090: about 30 to 34 s, now 9.1 s), with bit-identical results
@@ -538,7 +538,7 @@ Full details for every release are in the [CHANGELOG](CHANGELOG.md).
 
 ## Downloads
 
-**Latest Release:** [v2026.11.2](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.11.3](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|
