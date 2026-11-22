@@ -1,0 +1,202 @@
+# EXTRA_LIBS: ml_vector,gen_collect
+#~
+System.ML.VectorSearch VectorIndex->SetThreads: a search split over several threads must return
+exactly what a single-threaded one does, ids, scores and order, for cosine, dot and L2, on an index
+large enough (about 8 MB) for the split to happen, with copies of vectors under different ids so
+ties are decided by id, for k = 1, a middle k and k larger than a part, after Remove, and when
+several threads search the same index at once. The threads setting is clamped to 1..64.
+~#
+use System.ML.VectorSearch;
+use System.Concurrency;
+use Collection;
+
+class Searcher from Thread {
+	@index : VectorIndex;
+	@queries : Float[];
+	@dim : Int;
+	@want : String[];
+	@bad : Int;
+
+	New(index : VectorIndex, queries : Float[], dim : Int, want : String[]) {
+		Parent("searcher");
+		@index := index;
+		@queries := queries;
+		@dim := dim;
+		@want := want;
+		@bad := 0;
+	}
+
+	method : public : GetBad() ~ Int {
+		return @bad;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		each(round : 6) {
+			each(q : 4) {
+				got := MlVectorParallel->Describe(@index->Search(MlVectorParallel->Row(@queries, q, @dim), 10));
+				if(<>got->Equals(@want[q])) {
+					@bad += 1;
+				};
+			};
+		};
+	}
+}
+
+class MlVectorParallel {
+	@ok : Int;
+	@bad : Int;
+
+	New() {
+		@ok := 0;
+		@bad := 0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		t := MlVectorParallel->New();
+		t->Run();
+	}
+
+	function : Row(flat : Float[], i : Int, dim : Int) ~ Float[] {
+		v := Float->New[dim];
+		Float->Copy(v, 0, flat, i * dim, dim);
+		return v;
+	}
+
+	function : Describe(hits : Vector<VectorHit>) ~ String {
+		out := "";
+		each(i : hits) {
+			out += "{$hits->Get(i)->GetId()}={$hits->Get(i)->GetScore()};";
+		};
+		return out;
+	}
+
+	method : Check(what : String, cond : Bool) ~ Nil {
+		if(cond) {
+			@ok += 1;
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@bad += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		dim := 64;
+		n := 20000;
+
+		# integer-valued coordinates make equal scores common, so ties decide many placements
+		state := 12345;
+		vecs := Float->New[n * dim];
+		each(i : n) {
+			if(i % 50 = 49) {
+				# an exact copy of the previous vector under a new id
+				each(j : dim) { vecs[i * dim + j] := vecs[(i - 1) * dim + j]; };
+			}
+			else {
+				each(j : dim) {
+					state := (state * 1103515245 + 12345) and 2147483647;
+					vecs[i * dim + j] := ((state / 65536) % 9 - 4)->As(Float);
+				};
+			};
+		};
+
+		queries := Float->New[8 * dim];
+		total := 8 * dim;
+		each(i : total) {
+			state := (state * 1103515245 + 12345) and 2147483647;
+			queries[i] := ((state / 65536) % 9 - 4)->As(Float);
+		};
+
+		metrics := [VectorMetric->COSINE, VectorMetric->DOT, VectorMetric->L2];
+		names := ["cosine", "dot", "l2"];
+		each(m : 3) {
+			index := VectorIndex->New(dim, metrics[m]);
+			each(i : n) {
+				index->Add("id{$i}", Row(vecs, i, dim));
+			};
+
+			ks := [1, 10, 300];
+			each(ki : 3) {
+				k := ks[ki];
+				index->SetThreads(1);
+				want := Vector->New()<String>;
+				each(q : 8) {
+					want->AddBack(Describe(index->Search(Row(queries, q, dim), k)));
+				};
+
+				threads := [2, 3, 7, 16];
+				each(ti : 4) {
+					index->SetThreads(threads[ti]);
+					same := true;
+					each(q : 8) {
+						if(<>Describe(index->Search(Row(queries, q, dim), k))->Equals(want->Get(q))) {
+							same := false;
+						};
+					};
+					Check("{$names[m]} k={$k} threads={$threads[ti]} equals one thread", same);
+				};
+			};
+
+			# after Remove (which moves the last row into the hole)
+			index->SetThreads(1);
+			each(i : 400) {
+				index->Remove("id{$(i * 37 % n)}");
+			};
+			want := Vector->New()<String>;
+			each(q : 8) {
+				want->AddBack(Describe(index->Search(Row(queries, q, dim), 10)));
+			};
+			index->SetThreads(8);
+			same := true;
+			each(q : 8) {
+				if(<>Describe(index->Search(Row(queries, q, dim), 10))->Equals(want->Get(q))) {
+					same := false;
+				};
+			};
+			Check("{$names[m]} after Remove, 8 threads equals one thread", same);
+		};
+
+		# several threads searching one index at the same time
+		index := VectorIndex->New(dim, VectorMetric->L2);
+		each(i : n) {
+			index->Add("id{$i}", Row(vecs, i, dim));
+		};
+		index->SetThreads(1);
+		want := String->New[4];
+		each(q : 4) {
+			want[q] := Describe(index->Search(Row(queries, q, dim), 10));
+		};
+		index->SetThreads(4);
+		searchers := Vector->New()<Searcher>;
+		each(i : 4) {
+			searchers->AddBack(Searcher->New(index, queries, dim, want));
+		};
+		each(i : searchers) { searchers->Get(i)->Execute(Nil); };
+		each(i : searchers) { searchers->Get(i)->Join(); };
+		wrong := 0;
+		each(i : searchers) { wrong += searchers->Get(i)->GetBad(); };
+		Check("4 threads searching one index at once, each split 4 ways ({$wrong} wrong)", wrong = 0);
+
+		# the setting is clamped
+		index->SetThreads(0);
+		Check("0 threads clamps to 1", index->GetThreads() = 1);
+		index->SetThreads(1000);
+		Check("1000 threads clamps to 64", index->GetThreads() = 64);
+		index->SetThreads(-5);
+		Check("-5 threads clamps to 1", index->GetThreads() = 1);
+
+		# a small index is searched on the calling thread whatever the setting
+		small := VectorIndex->New(3, VectorMetric->L2);
+		small->Add("a", [1.0, 0.0, 0.0]);
+		small->Add("b", [0.0, 1.0, 0.0]);
+		small->SetThreads(32);
+		hits := small->Search([1.0, 0.1, 0.0], 5);
+		Check("small index with 32 threads", hits->Size() = 2 & hits->Get(0)->GetId()->Equals("a"));
+
+		if(@bad > 0) {
+			"FAIL: ml_vector_parallel, {$@bad} failed, {$@ok} passed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: ml_vector_parallel ({$@ok} checks)"->PrintLine();
+	}
+}
