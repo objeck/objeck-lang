@@ -2,7 +2,7 @@
 
 All notable changes to Objeck will be documented in this file.
 
-## [v2026.11.2] - unreleased
+## [v2026.11.2] - 2026-11-21
 
 ### Fixed
 

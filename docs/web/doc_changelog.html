@@ -61,7 +61,7 @@
     <div id="toc_container" class="plain">
      <h4>Contents</h4>
      <ul>
-      <li><a href="#v2026112---unreleased">[v2026.11.2] - unreleased</a></li>
+      <li><a href="#v2026112---2026-11-21">[v2026.11.2] - 2026-11-21</a></li>
       <li><a href="#v2026111---2026-11-20">[v2026.11.1] - 2026-11-20</a></li>
       <li><a href="#v2026110---2026-11-08">[v2026.11.0] - 2026-11-08</a></li>
       <li><a href="#v2026103---2026-11-03">[v2026.10.3] - 2026-11-03</a></li>
@@ -99,7 +99,7 @@
      </ul>
     </div>
 
-    <h3 id="v2026112---unreleased">[v2026.11.2] - unreleased</h3>
+    <h3 id="v2026112---2026-11-21">[v2026.11.2] - 2026-11-21</h3>
     <h4 id="fixed">Fixed</h4>
     <ul>
      <li><strong>A long linked chain of objects crashed the VM</strong>: a <code>List</code>, <code>Queue</code>, <code>CompareList</code> or linked <code>Stack</code> of about 500,000 or more nodes exited with code 127, with and without the JIT, because marking recursed once per node and overflowed the collector thread's native stack. Marking now moves objects onto a per-thread work stack once it is 256 levels deep (minor and major collections, every root thread, no new stop-the-world entry point); a 2-million-node chain passes, and <code>binarytrees</code> is unchanged (4.8 to 5.9 s before and after). Regression test: <code>gc_deep_chain</code></li>
