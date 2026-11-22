@@ -1,0 +1,113 @@
+# EXTRA_LIBS: regex
+#
+# Query.RegEx shared by several threads: one RegEx per pattern, used at the same time by every
+# thread for Find with groups, MatchExact and ReplaceAll. The lazily built DFA grows as new inputs
+# reach new states, so this is where an unguarded table would corrupt or crash.
+use Query.RegEx;
+use Collection;
+use System.Concurrency;
+
+class RegexWorker from Thread {
+	@id : Int;
+	@rounds : Int;
+	@pairs : RegEx;
+	@exact : RegEx;
+	@repl : RegEx;
+	@bad : Int;
+	@first : String;
+
+	New(id : Int, rounds : Int, pairs : RegEx, exact : RegEx, repl : RegEx) {
+		Parent("regex-worker");
+		@id := id;
+		@rounds := rounds;
+		@pairs := pairs;
+		@exact := exact;
+		@repl := repl;
+		@bad := 0;
+		@first := "";
+	}
+
+	method : public : GetBad() ~ Int {
+		return @bad;
+	}
+
+	method : public : GetFirst() ~ String {
+		return @first;
+	}
+
+	method : Record(what : String) ~ Nil {
+		if(@bad = 0) {
+			@first := what;
+		};
+		@bad += 1;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		for(k := 0; k < @rounds; k += 1;) {
+			# groups: "pk<id>-<k>" inside other text, found by the shared Find
+			text := "xx pk{$@id}-{$k} yy zz{$k}-{$@id} end";
+			found := @pairs->Find(text)<Result>;
+			if(found->Size() <> 2) {
+				Record("round {$k}: {$found->Size()} pair matches");
+			}
+			else {
+				g1 := found->Get(0)->GetGroup(1);
+				g2 := found->Get(0)->GetGroup(2);
+				want1 := "pk{$@id}";
+				want2 := "{$k}";
+				if(g1 = Nil | <>g1->Equals(want1) | g2 = Nil | <>g2->Equals(want2)) {
+					Record("round {$k}: groups '{$g1}' '{$g2}', want '{$want1}' '{$want2}'");
+				};
+			};
+
+			good := "abc{$(10 + k % 90)}";
+			if(<>@exact->MatchExact(good)) {
+				Record("round {$k}: '{$good}' should match");
+			};
+			if(@exact->MatchExact("abd{$(10 + k % 90)}")) {
+				Record("round {$k}: abd should not match");
+			};
+
+			replaced := @repl->ReplaceAll("banana{$@id}{$k}", "-");
+			want := "b-n-n-{$@id}{$k}";
+			if(replaced = Nil | <>replaced->Equals(want)) {
+				Record("round {$k}: replace gave '{$replaced}', want '{$want}'");
+			};
+		};
+	}
+}
+
+class RegexThreads {
+	function : Main(args : String[]) ~ Nil {
+		pairs := RegEx->New("(\\w+)-([0-9]+)");
+		exact := RegEx->New("[a-c]+[0-9]{2}");
+		repl := RegEx->New("a");
+
+		workers := Vector->New()<RegexWorker>;
+		each(i : 8) {
+			w := RegexWorker->New(i, 400, pairs, exact, repl);
+			workers->AddBack(w);
+		};
+		each(i : workers) {
+			workers->Get(i)->Execute(Nil);
+		};
+		each(i : workers) {
+			workers->Get(i)->Join();
+		};
+
+		bad := 0;
+		each(i : workers) {
+			w := workers->Get(i);
+			if(w->GetBad() > 0) {
+				"worker {$i}: {$w->GetBad()} bad, first: {$w->GetFirst()}"->PrintLine();
+				bad += w->GetBad();
+			};
+		};
+
+		if(bad > 0) {
+			"FAIL: regex_threads, {$bad} wrong results"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: regex_threads (8 threads x 400 rounds)"->PrintLine();
+	}
+}
