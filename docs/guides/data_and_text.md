@@ -275,11 +275,19 @@ fresh request id each call and rejects a reply that echoes another id, and a JSO
 without `params` (allowed by the specification) reaches the handler as an empty object instead
 of ending the server.
 
+## RegEx behaviour worth knowing
+
+- **How it matches.** A match is the leftmost-longest one. The end of a match is found with a lazily built DFA (one table lookup per character), and capture groups are then recovered from the matched text. Patterns that use `\b` or `\B`, or that need more than 1,024 DFA states, run on an NFA instead; the answers are the same, only slower. See `docs/performance.md`, "Library workloads".
+- **Repeats.** `{n}` is exactly n, `{n,m}` is a range and `{n,}` is n or more; a count is at most 1000. (Before v2026.11.3, `{n}` was read as `{n,}`, so `a{2}` matched `aaa`.)
+- **Escapes.** `\d \w \s \D \W \S \b \B \n \r \t` and escaped punctuation (`\- \/ \" \.`) work. A backslash before any other letter or digit, including a backreference such as `\1`, makes the pattern invalid (`IsOk()` is false) instead of silently matching that character, and so does a trailing backslash.
+- **Anchors.** `^a`, `^a+`, `^a$` and `^$` are valid. `ReplaceAll` and `ReplaceFirst` match against the original text, so a replacement never changes where a later match can start (a `\b` next to replaced text is judged on the input, not on the output).
+- **Threads.** One `RegEx` can be shared by several threads; matching on one instance is serialized, so threads that need to match in parallel should each build their own.
+
 ## How to check
 
 The behaviours in the second program are covered by `programs/regression/library_nil_input_test.obs`
 (Nil text and partial documents in JSON, XML and RegEx), `regex_repeat_bounds.obs` (the repeat
-count and `{2,1}` rules), `json_rpc_client_id.obs` and `json_rpc_nil_handling.obs` (the JSON-RPC
+count and `{2,1}` rules), `regex_lazy_dfa.obs`, `regex_replace_escapes.obs` and `regex_threads.obs` (the notes above), `json_rpc_client_id.obs` and `json_rpc_nil_handling.obs` (the JSON-RPC
 changes). Compile either program on this page with the line shown under it and compare the
 output; the output blocks were not re-run for this review.
 

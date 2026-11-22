@@ -62,6 +62,7 @@
      <ul>
       <li><a href="#the-basics">The basics</a></li>
       <li><a href="#when-the-input-is-wrong">When the input is wrong</a></li>
+      <li><a href="#regex-behaviour-worth-knowing">RegEx behaviour worth knowing</a></li>
       <li><a href="#how-to-check">How to check</a></li>
       <li><a href="#where-next">Where next</a></li>
      </ul>
@@ -288,8 +289,16 @@ finding in Nil text gives Nil: true</pre>
      <li><strong>Nil text.</strong> <code>MatchExact</code>, <code>Match</code>, <code>Find</code>, <code>FindFirst</code>, <code>ReplaceFirst</code> and <code>ReplaceAll</code> on a <code>Nil</code> string match nothing (<code>FindFirst</code> and the replace methods return <code>Nil</code>). A <code>Nil</code> replacement is the empty string.</li>
     </ul>
     <p>Two more 10.3 fixes in the same family, for programs that use them: the JSON-RPC client sends a fresh request id each call and rejects a reply that echoes another id, and a JSON-RPC request without <code>params</code> (allowed by the specification) reaches the handler as an empty object instead of ending the server.</p>
+    <h3 id="regex-behaviour-worth-knowing">RegEx behaviour worth knowing</h3>
+    <ul>
+     <li><strong>How it matches.</strong> A match is the leftmost-longest one. The end of a match is found with a lazily built DFA (one table lookup per character), and capture groups are then recovered from the matched text. Patterns that use <code>\b</code> or <code>\B</code>, or that need more than 1,024 DFA states, run on an NFA instead; the answers are the same, only slower. See <code>docs/performance.md</code>, "Library workloads".</li>
+     <li><strong>Repeats.</strong> <code>{n}</code> is exactly n, <code>{n,m}</code> is a range and <code>{n,}</code> is n or more; a count is at most 1000. (Before v2026.11.3, <code>{n}</code> was read as <code>{n,}</code>, so <code>a{2}</code> matched <code>aaa</code>.)</li>
+     <li><strong>Escapes.</strong> <code>\d \w \s \D \W \S \b \B \n \r \t</code> and escaped punctuation (<code>\- \/ \" \.</code>) work. A backslash before any other letter or digit, including a backreference such as <code>\1</code>, makes the pattern invalid (<code>IsOk()</code> is false) instead of silently matching that character, and so does a trailing backslash.</li>
+     <li><strong>Anchors.</strong> <code>^a</code>, <code>^a+</code>, <code>^a$</code> and <code>^$</code> are valid. <code>ReplaceAll</code> and <code>ReplaceFirst</code> match against the original text, so a replacement never changes where a later match can start (a <code>\b</code> next to replaced text is judged on the input, not on the output).</li>
+     <li><strong>Threads.</strong> One <code>RegEx</code> can be shared by several threads; matching on one instance is serialized, so threads that need to match in parallel should each build their own.</li>
+    </ul>
     <h3 id="how-to-check">How to check</h3>
-    <p>The behaviours in the second program are covered by <code>programs/regression/library_nil_input_test.obs</code> (Nil text and partial documents in JSON, XML and RegEx), <code>regex_repeat_bounds.obs</code> (the repeat count and <code>{2,1}</code> rules), <code>json_rpc_client_id.obs</code> and <code>json_rpc_nil_handling.obs</code> (the JSON-RPC changes). Compile either program on this page with the line shown under it and compare the output; the output blocks were not re-run for this review.</p>
+    <p>The behaviours in the second program are covered by <code>programs/regression/library_nil_input_test.obs</code> (Nil text and partial documents in JSON, XML and RegEx), <code>regex_repeat_bounds.obs</code> (the repeat count and <code>{2,1}</code> rules), <code>regex_lazy_dfa.obs</code>, <code>regex_replace_escapes.obs</code> and <code>regex_threads.obs</code> (the notes above), <code>json_rpc_client_id.obs</code> and <code>json_rpc_nil_handling.obs</code> (the JSON-RPC changes). Compile either program on this page with the line shown under it and compare the output; the output blocks were not re-run for this review.</p>
     <h3 id="where-next">Where next</h3>
     <ul>
      <li><a href="guide_http.html">HTTP client and web server</a>: fetch the JSON you just learned to parse.</li>

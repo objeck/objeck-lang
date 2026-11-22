@@ -61,6 +61,7 @@
     <div id="toc_container" class="plain">
      <h4>Contents</h4>
      <ul>
+      <li><a href="#v2026113---2026-11-22">[v2026.11.3] - 2026-11-22</a></li>
       <li><a href="#v2026112---2026-11-21">[v2026.11.2] - 2026-11-21</a></li>
       <li><a href="#v2026111---2026-11-20">[v2026.11.1] - 2026-11-20</a></li>
       <li><a href="#v2026110---2026-11-08">[v2026.11.0] - 2026-11-08</a></li>
@@ -99,18 +100,49 @@
      </ul>
     </div>
 
-    <h3 id="v2026112---2026-11-21">[v2026.11.2] - 2026-11-21</h3>
+    <h3 id="v2026113---2026-11-22">[v2026.11.3] - 2026-11-22</h3>
+    <h4 id="performance">Performance</h4>
+    <ul>
+     <li><strong><code>RegEx</code> uses a lazily built DFA</strong>: the end of the longest match is found with one table lookup per character, transitions are filled in the first time a character needs them and then cached, and search methods skip start positions where nothing can begin a match. 680 KB of text: class-first search 0.546 s to 0.043 s, an alternation with a group 0.988 s to 0.090 s, twelve alternatives under a star 1.463 s to 0.060 s, <code>ReplaceAll</code> 0.451 s to 0.062 s. Patterns with <code>\b</code> or <code>\B</code>, or needing more than 1,024 states, use the NFA as before; the capture pass is unchanged and now reuses its scratch arrays between matches. 8,160 pattern and input cases give identical <code>Find</code>, <code>FindFirst</code>, <code>Match</code>, <code>MatchExact</code>, <code>ReplaceAll</code> and <code>ReplaceFirst</code> results from the DFA and the NFA.</li>
+     <li><strong><code>VectorIndex-&gt;SetThreads(n)</code></strong>: a search over an index of about 8 MB or more is split into n parts, each scanned on its own thread, and merged in the order a single scan uses, so ids, scores and tie order are identical. 100,000 x 128, L2, top 10: 66, 81, 132, 229 and 315 queries/s at 1, 2, 4, 8 and 16 threads. The default is 1 thread.</li>
+     <li><strong><code>KNearestNeighbors-&gt;Query</code> makes one pass</strong>: it keeps the best k squared distances in a heap and drops a row once its running sum passes the k-th best, instead of copying every row, building a <code>KNeighbor</code> per row and sorting all of them. 50,000 x 16, k = 5, 200 queries: 15.06 s to 0.057 s. Distances and order (ties in row order) are unchanged.</li>
+     <li><strong><code>TextSimilarity-&gt;LevenshteinDistance</code> keeps two rows</strong>: 20,000 pairs of 38 characters 0.683 s to 0.118 s.</li>
+    </ul>
     <h4 id="fixed">Fixed</h4>
+    <ul>
+     <li><strong><code>{n}</code> in a regular expression meant <code>{n,}</code></strong>: <code>a{2}</code> matched <code>aaa</code>. It is now exactly n. This is in the released v2026.11.2 <code>regex.obl</code>.</li>
+     <li><strong><code>RegEx-&gt;ReplaceAll</code> matched against already-replaced text</strong>: a replacement could create or remove a <code>\b</code>, so <code>\bx</code> on <code>xx</code> with <code>-</code> gave <code>--</code> instead of <code>-x</code>. It now builds the result in one pass over the original input.</li>
+     <li><strong><code>^a</code>, <code>^a+</code>, <code>^a$</code>, <code>^$</code> and <code>a|$</code> were rejected</strong> as "stray token" or a missing operand; the anchor was only applied when a second operand followed.</li>
+     <li><strong>Unknown escapes in a pattern were silently literal</strong>: <code>\1</code> (a backreference) matched the character <code>1</code>. Unknown letter or digit escapes and a trailing backslash are now an error (<code>IsOk()</code> is false); escaped punctuation such as <code>\-</code> and <code>\/</code> is still literal.</li>
+     <li><strong><code>KNearestNeighbors-&gt;Query</code> with a k below 1, a Nil query or a Nil matrix</strong> ended with an allocation error; it now returns no neighbors.</li>
+    </ul>
+    <h4 id="added">Added</h4>
+    <ul>
+     <li><strong><code>VectorIndex-&gt;SetThreads(n)</code> and <code>GetThreads()</code></strong> (see Performance).</li>
+     <li><strong><code>TextSimilarity-&gt;LevenshteinDistance(a, b, max_distance)</code></strong>: the exact distance when it is at most <code>max_distance</code>, otherwise <code>max_distance + 1</code>; only the cells near the diagonal are computed and the work stops when a whole row is past the ceiling. <code>SpellChecker-&gt;Suggest</code> uses it.</li>
+     <li><strong>A <code>RegEx</code> can be shared by threads</strong>: the DFA tables and the capture scratch are used under a lock, and <code>MatchExact</code> no longer keeps its answer in a field.</li>
+     <li><strong><code>{n,}</code> in a regular expression</strong> (n or more).</li>
+    </ul>
+    <h4 id="documentation">Documentation</h4>
+    <ul>
+     <li><strong><code>docs/performance.md</code> has a Library workloads section</strong>: regex, vector search, nearest-neighbor, edit-distance, string and JSON timings, with what was not measured. The data and text guide lists the RegEx behaviours above, and <code>docs/AI.md</code> documents <code>SetThreads</code> and the bounded edit distance.</li>
+    </ul>
+    <h4 id="tests">Tests</h4>
+    <ul>
+     <li>New regression tests: <code>regex_lazy_dfa</code>, <code>regex_replace_escapes</code>, <code>regex_threads</code>, <code>ml_vector_parallel</code>, <code>ml_knn_exact</code> and <code>nlp_levenshtein_bounded</code>.</li>
+    </ul>
+    <h3 id="v2026112---2026-11-21">[v2026.11.2] - 2026-11-21</h3>
+    <h4 id="fixed-1">Fixed</h4>
     <ul>
      <li><strong>A long linked chain of objects crashed the VM</strong>: a <code>List</code>, <code>Queue</code>, <code>CompareList</code> or linked <code>Stack</code> of about 500,000 or more nodes exited with code 127, with and without the JIT, because marking recursed once per node and overflowed the collector thread's native stack. Marking now moves objects onto a per-thread work stack once it is 256 levels deep (minor and major collections, every root thread, no new stop-the-world entry point); a 2-million-node chain passes, and <code>binarytrees</code> is unchanged (4.8 to 5.9 s before and after). Regression test: <code>gc_deep_chain</code></li>
      <li><strong>OpenAI output cap was sent under the wrong name</strong>: <code>Response-&gt;Respond(...)</code> wrote <code>max_tokens</code> to the Responses endpoint, whose field is <code>max_output_tokens</code>, so the cap was never applied. <code>Completion-&gt;Complete(...)</code> now sends <code>max_completion_tokens</code> (<code>max_tokens</code> is deprecated for Chat Completions and rejected by reasoning models). New offline request builders <code>Response-&gt;BuildRespondRequest</code> and <code>Completion-&gt;BuildCompleteRequest</code>; test <code>openai_request_test.obs</code></li>
     </ul>
-    <h4 id="added">Added</h4>
+    <h4 id="added-1">Added</h4>
     <ul>
      <li><strong><code>ResultTable</code> number formats</strong> (<code>System.ML.Lab</code>): per-column <code>"sci"</code> (1.23e-05), <code>"p"</code> (<code>&lt;0.0001</code> for a tiny p-value) and <code>"int"</code> (a count as <code>176</code>) beside the default fixed decimals, with <code>AddIntegerColumn</code>, <code>AddPValueColumn</code>, <code>AddScientificColumn</code>, <code>GetColumnPrecision</code>, <code>GetColumnFormat</code> and <code>FormatValue</code>. Existing tables render byte for byte as before; <code>ToCsv</code> writes a tiny value of a <code>"sci"</code>/<code>"p"</code> column in exponent form so it is not rounded to 0. Test <code>ml_lab_result_table_formats.obs</code></li>
      <li><strong><code>System.ML.Report</code> for a study whose results arrive over time</strong>: <code>ResultTables-&gt;FromCsv</code> (a safe loader: <code>Nil</code> plus <code>GetError()</code> where <code>ResultTable-&gt;FromCsv</code> raises), <code>CsvToCells</code> and <code>CsvColumnKinds</code> for any CSV, <code>Report-&gt;AddCsvTable</code>, <code>AddPlaceholderTable</code> (cells read <code>not run yet</code>), <code>AddFigureSlot</code>, <code>AddRunStatus</code> (expected files, present or not), and <code>AddResultTableChart</code> with a chart title and rows to leave out. The four-argument chart call is unchanged. <code>CsvTable</code>'s doc now says its header is row 0. Test <code>ml_report_csv_manifest.obs</code></li>
     </ul>
-    <h4 id="performance">Performance</h4>
+    <h4 id="performance-1">Performance</h4>
     <ul>
      <li><strong>Sorting already-ordered data is much faster</strong>: the <code>Vector</code>, <code>CompareVector</code> and comparator merge sorts skip a merge when the two halves are already in order, so <code>Sort()</code> on sorted input of 500,000 elements fell from about 500 ms to 80 ms; random input is unchanged and the sort is still stable</li>
      <li><strong><code>String-&gt;Append(String)</code> copies long strings in one block</strong>: strings of 32 or more characters no longer cost a method call per character (200,000 appends of 100 characters: 169 ms to 73 ms; of 1,000 characters: 1,660 ms to 292 ms); short strings keep the old loop, which is faster for them</li>
@@ -122,7 +154,7 @@
      <li><strong>Unattended signing from a protected password file</strong>: <code>tools/cicd/token_pin.ps1 -Set</code> stores the SafeNet token password once, encrypted with Windows DPAPI for your account on that machine (a copy of the file is unreadable anywhere else; a plain-text file is not supported on purpose). <code>sign_release.cmd</code> then signs with <code>signtool</code> and no prompt (<code>tools/cicd/sign_with_saved_pin.ps1</code>, using the container syntax <code>/csp ... /k "[{{password}}]=container"</code> and the public certificate as a file), after checking every installer against the CI-built <code>SHA256SUMS</code>. A signing failure writes <code>signing_failed.txt</code> and is never retried automatically, because a wrong password locks the token. <code>tools/cicd/auto_sign.ps1</code> looks at the latest release and signs it when it is ready (both installers, the <code>.deb</code> packages up or 45 minutes passed, the tag an ancestor of master, no earlier failure); <code>-Install</code> registers it as a scheduled task every 30 minutes. With no saved password file everything behaves exactly as before.</li>
      <li><strong>The whole post-tag release is one command</strong>: <code>tools/cicd/release_finish.sh &lt;VERSION&gt;</code> waits for the build and the packages, signs (unattended with the saved password), deploys the playground and the site engine, runs the release gates, flips the README and objeck.org markers in a PR it merges only when green (<code>tools/cicd/flip_markers.py</code>, which reproduces the v2026.11.1 flip byte for byte and refuses rather than skipping a marker that moved), uploads the site pages and API docs from a clean checkout of master, and re-checks everything. <code>--dry-run</code> and <code>--from N</code> supported. <code>post_release.sh</code> takes <code>OBJECK_OBU</code> for a checkout with no built deploy tree.</li>
     </ul>
-    <h4 id="documentation">Documentation</h4>
+    <h4 id="documentation-1">Documentation</h4>
     <ul>
      <li><strong>Topic stability is a distribution, not one number</strong>: <code>docs/AI.md</code> now explains how to read <code>TopicMetrics-&gt;Stability</code> (one seed pair is bimodal: about 1.0 when both runs reach the same optimum, 0.67 to 0.8 when one merged two topics) with a measured comparison against Gensim over 15 seed pairs; no code change</li>
     </ul>
@@ -168,7 +200,7 @@
      <li><strong>GC marking threads return</strong> (<a href="https://github.com/objeck/objeck-lang/pull/1623" target="_blank">#1623</a>): <code>CheckStack</code>, <code>CheckJitRoots</code> and <code>CheckPdaRoots</code> ended with <code>pthread_exit(nullptr)</code> before <code>return 0</code>. <code>pthread_exit</code> unwinds through libgcc, and in a Linux build that links libgcc statically (to run on older distributions) the unwinder aborts, so every program that triggered a collection exited 134 (117 of 169 failures in a Debian 12 container with binaries built on AlmaLinux 8). They now return; a build that links libgcc dynamically behaves as before</li>
      <li><strong>Windows ARM64 deploy fix</strong> (<a href="https://github.com/objeck/objeck-lang/pull/1601" target="_blank">#1601</a>): vcpkg's zlib 1.4 names its DLL <code>libz.dll</code>, so the ARM64 deploy copied neither name and the native-library check failed (<code>opencv_core4.dll imports missing z.dll</code>) on runner images that carried it. <code>deploy_windows.cmd</code> now copies <code>libz.dll</code> and, when no <code>z.dll</code> came with the port, ships the same DLL under that name. Verified on a Windows ARM64 machine with a scratch vcpkg on zlib 1.4</li>
     </ul>
-    <h4 id="documentation-1">Documentation</h4>
+    <h4 id="documentation-2">Documentation</h4>
     <ul>
      <li><strong>Documentation for compiler, runtime and research readers</strong> (<a href="https://github.com/objeck/objeck-lang/pull/1599" target="_blank">#1599</a>, <a href="https://github.com/objeck/objeck-lang/pull/1600" target="_blank">#1600</a>, <a href="https://github.com/objeck/objeck-lang/pull/1602" target="_blank">#1602</a>): <code>docs/README.md</code> has a reading path for compiler, runtime and research readers; <code>docs/TESTING_AND_ASSURANCE.md</code> maps each kind of test to what it can and cannot find; <code>docs/NEGATIVE_AND_FUZZ_TESTING_2026_11.md</code> is the fuzz report with replay commands; the JIT READMEs (<code>core/vm/arch/jit</code>, <code>amd64</code>, <code>arm64</code>) were fact-checked against the code; 123 documents were reviewed by area; the crypto README states that its AES-256 mode uses an IV and no authentication; the LSP install guide and the updater design no longer name <code>obr --version</code>, which does not exist (<code>obc -v</code> is the check)</li>
      <li><strong>Platform support in the README</strong> (<a href="https://github.com/objeck/objeck-lang/pull/1613" target="_blank">#1613</a>): a section after Quick Start says that the Linux release is built on Ubuntu 24.04 and needs glibc 2.38 or newer, so Debian 12 and Ubuntu 22.04 cannot install it, and gives the workarounds (an Ubuntu 24.04 container, or <code>core/release/deploy_posix.sh</code>); a portable Linux build is planned, not shipped</li>
@@ -593,7 +625,7 @@
      <li><strong>The Coverity scan scripts refuse a capture that would be reported as falsely clean</strong> (<a href="https://github.com/objeck/objeck-lang/pull/905" target="_blank">#905</a>): <code>cov_scan.cmd</code> had not got past its version step since the day it was committed. Ten literal form-feed bytes sat where <code>\f</code> belonged, so every <code>findstr</code> path named a file that does not exist; <code>cmd /c</code> quote-stripping inside <code>FOR /F</code> then broke the version extraction and the unit count, and a count stuck at 0 means "empty capture, refuse", so every good capture would have been rejected. A crashed upload read as success, because <code>if errorlevel 1</code> does not see a negative exit status. Both scripts now compare each step's status with 0, and <code>COVERITY_DRY_RUN=1</code> stops after the capture, so it can be checked before a scan is spent on it</li>
      <li><strong>Build junk and per-user IDE files removed from the repository</strong> (<a href="https://github.com/objeck/objeck-lang/pull/898" target="_blank">#898</a>): 31 committed files and about 132k lines -- MSBuild logs and <code>.recipe</code> intermediates, three <code>obc -asm</code> dumps, Xcode UI state -- with <code>.gitignore</code> rules so they do not come back. The four <code>.vcxproj.user</code> files that hold debugger settings and the two Xcode breakpoint lists are kept on purpose. In a Windows checkout the untracked build output drops from about 230 files to 4; nothing that builds or ships changed</li>
     </ul>
-    <h4 id="documentation-2">Documentation</h4>
+    <h4 id="documentation-3">Documentation</h4>
     <ul>
      <li><strong>About 40 stale documents brought in line with the code</strong> (<a href="https://github.com/objeck/objeck-lang/pull/902" target="_blank">#902</a>): every changed claim was checked against the source, the workflows or the live site, and the code examples were compile-checked. <code>SIGNING.md</code> and <code>release_process.md</code> describe the eToken flow rather than the retired CI signing; <code>CI_CD.md</code> has the real build matrix; <code>architecture.md</code> §10 describes what exists, including that there are no exceptions and that <code>Try()</code>/<code>?-&gt;</code> recovery goes through a 16-deep handler stack; and the ONNX execution providers are documented as they ship, per platform. The pass also turned up <a href="https://github.com/objeck/objeck-lang/issues/899" target="_blank">#899</a>: a library built with <code>-tar lib</code> stops optimizing after dead-block elimination</li>
      <li><strong>The website's AI guide runs</strong> (<a href="https://github.com/objeck/objeck-lang/pull/904" target="_blank">#904</a>): none of its nine machine-learning examples worked. All nine now compile with <code>-lib ml,gen_collect,csv</code> -- <code>-lib ml</code> alone cannot resolve <code>Data.CSV.CsvTable</code> -- and run to exit 0 both under the JIT and with <code>--jit=off</code>, with the expected-output comments matching what they print. Eight raw generics written unescaped (<code>Pair-&gt;New(...)&lt;String, String&gt;</code>) were being read as unknown tags and dropped by browsers. The page is hand-uploaded to objeck.org, so it needs one upload. Three of the library bugs fixed in this release were found while writing it</li>
@@ -653,7 +685,7 @@
      <li><strong>A thread join could wait on a handle that was never a thread</strong> (<a href="https://github.com/objeck/objeck-lang/issues/874" target="_blank">#874</a>): <code>Join</code> copied the <code>Thread</code> object's address into a local, parked the thread so collections could proceed, and only then read the handle out of it. A minor collection in that window promoted the object and reset the nursery, the local then named whatever reused that memory, and <code>pthread_join</code> was handed a small integer: "&gt;&gt;&gt; Unable to join thread! &lt;&lt;&lt;", <code>ESRCH</code>, once in a few hundred runs of <code>gc_mt_small_nursery_stress</code> on macOS arm64 CI. The handle is now read before parking, in the interpreter and the JIT. A forced-window probe that failed 24 of 24 runs before the fix failed 0 of 24 after</li>
      <li><strong>A closure's captured values could be freed while still reachable</strong> (<a href="https://github.com/objeck/objeck-lang/issues/881" target="_blank">#881</a>): a typed function-reference root traced a closure's captures only when its own mark set the capture block's mark bit. A conservative scan of a stale stack word could mark the same block first without tracing it, and the JIT-roots scan runs on its own thread beside the interpreter-frame walk, so when it won the race a capture reachable only through the block was swept. Exactly one typed walker now traces each block per collection, whoever marked it. The heap verifier found it on linux-arm64, whose JIT scans the words below the frame; forcing the conservative scan first reproduced it on every run before the fix and on none after</li>
     </ul>
-    <h4 id="performance-1">Performance</h4>
+    <h4 id="performance-2">Performance</h4>
     <ul>
      <li><strong><code>Data.CSV</code> medians sort a <code>Float[]</code> in place</strong> (<a href="https://github.com/objeck/objeck-lang/pull/892" target="_blank">#892</a>): <code>CsvRow-&gt;Median</code> and <code>CsvColumn-&gt;Median</code> boxed every value into a <code>FloatRef</code> and sorted a <code>CompareVector</code>; they now copy into a <code>Float[]</code> and sort it with <code>ArraySort</code>. 50 medians of a 20,000-value column went from 1.48-1.90 s to 0.13-0.29 s on Windows x64, with the same result every run. <code>csv_median.obs</code> is the first test to cover either method</li>
     </ul>
@@ -677,7 +709,7 @@
      <li><strong>The heap verifier no longer reports a dead closure as a lost capture</strong> (<a href="https://github.com/objeck/objeck-lang/issues/880" target="_blank">#880</a>): its B3 check assumed every surviving closure capture block was live, and reported one that still named a nursery object as a promoted capture left unforwarded. On linux-arm64 about 2% of verified runs of <code>closure_block_body</code> tripped it, and the cores showed a garbage block kept alive only by a stale JIT stack word, whose capture had been correctly freed. The capture's old header now decides: a forwarding address is still a violation, anything else is a warning. Reintroducing the original fixup bug still produces B3 violations in every affected configuration</li>
      <li><strong>The rule behind 37 allocation sites is written down</strong>: allocating can run a collection, which moves young objects and resets the nursery, so a GC pointer held in a C++ local goes stale across it. Nearly every trap allocates with collection disabled while such a pointer is live; <code>memory.h</code> now says so next to the allocators, and the one trap that did not, <code>LoadMultiArySize</code>, follows it. An audit of all 21 park and safepoint sites found them already safe</li>
     </ul>
-    <h4 id="documentation-3">Documentation</h4>
+    <h4 id="documentation-4">Documentation</h4>
     <ul>
      <li>An Integer Arithmetic section: wrapping <code>+ - *</code>, shift counts taken modulo 64, truncating <code>/</code> and <code>%</code> with <code>INT64_MIN / -1 = INT64_MIN</code>, and a zero divisor as the only trap</li>
      <li>What a lambda can capture: that captures are copied when the lambda is created, that objects are therefore shared by reference, that a lambda may call methods on captured objects and call captured functions, and that <code>self</code>, <code>@field</code> and receiver-less instance calls are not available in lambda bodies yet</li>
@@ -730,7 +762,7 @@
      <li><strong>Deploy script presentation</strong> (<a href="https://github.com/objeck/objeck-lang/pull/801" target="_blank">#801</a>): <code>ui.sh</code>, <code>ui.cmd</code> and <code>ui.ps1</code> give <code>deploy_posix.sh</code> and <code>deploy_windows.cmd</code> a banner, live stage progress and quiet tool output, with the tail of the log shown for a failed stage and <code>-v</code>/<code>VERBOSE=1</code> to stream everything. The live line reads correctly in VS Code and Windows Terminal -- one solid bar coloured by finished stages and a stage count, where a block-and-shade bar looked full at 6% and a percentage sat still through the multi-minute solution rebuild -- and falls back to ASCII in a plain console; its activity text names the project being built instead of MSVC's chatter</li>
      <li><strong>Generated-template guard</strong> (<a href="https://github.com/objeck/objeck-lang/pull/802" target="_blank">#802</a>): the <code>search_index.json</code> validation had been added only to <code>core/release/code_doc64.cmd</code>, which <code>update_version.ps1</code> regenerates from <code>code_doc64.in</code> on every Windows deploy, so it never ran. It is ported into the template, and <code>tools/cicd/check_version_templates.py</code> fails CI when a generated file and its template disagree</li>
     </ul>
-    <h4 id="documentation-4">Documentation</h4>
+    <h4 id="documentation-5">Documentation</h4>
     <ul>
      <li>The definitive v2026.9.1 benchmark run, with <code>fasta</code> measured for the first time (<a href="https://github.com/objeck/objeck-lang/pull/800" target="_blank">#800</a>)</li>
      <li><code>docs/ML_TABULAR_GAPS.md</code>: what a tabular classification study needs from <code>System.ML</code> (<a href="https://github.com/objeck/objeck-lang/pull/798" target="_blank">#798</a>)</li>
@@ -870,7 +902,7 @@
      <li>The interpreter/JIT equivalence fixture gains probes for <code>Size()</code> in a loop condition and body, a multi-dimensional <code>Size()</code>, and constant divisors of every shape (small, negative, above 32 bits, composite)</li>
      <li><strong><code>--jit=off</code> / <code>--jit=&lt;calls&gt;</code> and <code>--lib-path=&lt;dir&gt;</code></strong> — the JIT tunables existed only as environment variables documented in a comment inside <code>jit_common.h</code>, so "does it still happen with the JIT off?" could not be asked without reading source. The environment forms remain as the legacy path. Both platform mains carried their own copy of the option parsing and usage text, and they had drifted: a <code>g</code> suffix on <code>--gc-threshold</code> multiplied by 2⁴⁰ (a terabyte, not a gigabyte); <code>--objeck-stdio</code> accepted any value while acting only on <code>binary</code>, so <code>--objeck-stdio=1</code> silently did nothing; POSIX did not parse the flag and passed it through to the program as an argument; and the Windows flag path discarded <code>SetStdIo</code>'s result, so <code>binary</code> switched the console and then told <code>Execute</code> it had not. One parser and one usage string now serve every platform, every flag states its valid values, and a value outside them is refused with the expectation named. <code>run_vm_flag_tests.py</code> gates it in CI, including the first automated check that the interpreter and the JIT print byte-identical output</li>
     </ul>
-    <h4 id="documentation-5">Documentation</h4>
+    <h4 id="documentation-6">Documentation</h4>
     <ul>
      <li>Sourceforge mirrors the GitHub release through a webhook and is not a manual upload; objeck.org has no versioned <code>/api/v&lt;VERSION&gt;/</code> directories, so <code>latest</code> is the only served path. Both were documented the other way round, in the pre-flight gate's to-do text and in the publish workflow's failure message</li>
      <li><strong>The shipped examples folder is curated and indexed</strong> (<a href="https://github.com/objeck/objeck-lang/pull/751" target="_blank">#751</a> and the follow-up) — <code>welcome.obs</code> is an executable index that needs no libraries or display and prints, for every example, what it shows and the exact <code>-lib</code> list that compiles it (all verified by compiling them); a scratch hello-world, a JIT bug reproduction and a 4,092-line duplicate of the 2D game no longer ship; <code>tools/cicd/check_examples_index.py</code> fails CI if an example ships unindexed or the index names a missing file. Two leftovers fixed after: the OpenGL shooting gallery moves to the <code>opengl</code> folder with the other OpenGL examples as <code>gl_fps.obs</code>, and the second file numbered 19 is now <code>loops_27.obs</code></li>
@@ -927,7 +959,7 @@
      <li><strong>The doc parser was reading prose as code</strong>: the word "bundle" in a comment or string literal re-filed every class after it under a bundle named for the next word. Five files hard-code the library list and had drifted apart &amp;mdash; one short two libraries while still naming a deleted third, so the counts matched and nothing looked wrong; a CI check now set-diffs all five against the sources</li>
      <li><strong>Game.OpenGL defects found by review rather than by use</strong>: props parented into a hierarchy were culled and sorted in local rather than world space, the instanced shader never wrote <code>world_position</code>, textures rendered upside down, the projection went stale on resize, an accidentally-public API surface was narrowed, and <code>run_gl</code> never passed <code>gl_model</code> its model file</li>
     </ul>
-    <h4 id="performance-2">Performance</h4>
+    <h4 id="performance-3">Performance</h4>
     <ul>
      <li><strong>Native call names are no longer allocated on every call</strong>: a string literal allocates on each evaluation, and the literal naming the native function was 92% of a call's cost &amp;mdash; 1655ns to 130ns. Guarded by <code>tools/cicd/hoist_native_names.py --check</code> so it cannot drift back</li>
      <li><strong>Resolved native entry points are cached, on every platform</strong>: every <code>EXT_LIB_FUNC_CALL</code> converted the function's name from wide to narrow and then asked the loader for its address &amp;mdash; <code>GetProcAddress</code> walking a DLL's export table, <code>dlsym</code> walking the module's symbol hash &amp;mdash; on every call, for a name that never changes. Measured at 110ns per call, 69 in the lookup and 39 in the conversion feeding it, or about 5.5% of a native call. The cache is thread-local rather than shared behind a lock, since an uncontended mutex would hand back a useful fraction of what it saves; invalidation is a generation counter, so a library unloaded and another loaded at the same address cannot be called through a stale pointer</li>
@@ -968,7 +1000,7 @@
      <li><strong>Unvalidated <code>/proc</code> arithmetic</strong>: <code>GetProcessResidentBytes</code> computed <code>pages * sysconf(_SC_PAGESIZE)</code> from an <code>fscanf</code> of <code>/proc/self/statm</code> &amp;mdash; a negative page count casts to a huge <code>size_t</code>, the multiply can wrap, and <code>sysconf</code> returns <code>-1</code> on error, which casts to <code>SIZE_MAX</code>. All three are checked, and the failure path leaves <code>rss</code> at <code>0</code> exactly as it already did</li>
      <li><strong>Malformed terminal escape sequences</strong>: bytes outside the ECMA-48 parameter ranges could be stored as negative characters before being fed to <code>atoi</code>; they are now rejected the same way a short read already was</li>
     </ul>
-    <h4 id="performance-3">Performance</h4>
+    <h4 id="performance-4">Performance</h4>
     <ul>
      <li><strong>Move instead of copy in the REPL and compiler entry points</strong>: clears eight <code>COPY_INSTEAD_OF_MOVE</code> findings. Stated honestly &amp;mdash; these run once at startup on short strings, so the runtime saving is nil; the value is a clean baseline so a real defect in these files stands out in the next report. Each move was checked for a later use rather than applied mechanically: <code>compiler/posix_main.cpp</code>'s <code>usage</code> <strong>does</strong> appear 22 lines later, in the mutually exclusive <code>else</code> branch, and a mechanical application of the checker's advice would have needed exactly that check to be safe</li>
     </ul>
@@ -1061,7 +1093,7 @@
      <li><strong>Multi-lambda closure heap corruption</strong>: closures sharing a scope corrupted each other's captured state because captures were keyed by outer-scope ids; captures now use closure-local ids.</li>
      <li><strong>Compiler</strong>: re-analyzed and repeated <code>FuncRef</code> direct calls, and functional-call result chaining in expression context, are now handled correctly. Closure-captured variables no longer raise a spurious "unreferenced variable" warning.</li>
     </ul>
-    <h4 id="performance-4">Performance</h4>
+    <h4 id="performance-5">Performance</h4>
     <ul>
      <li><strong>SDL2 2D rendering</strong>: <code>Renderer</code> draws pool the boxing buffer and cache the proxy/method names, reducing per-call overhead.</li>
     </ul>
@@ -1071,7 +1103,7 @@
      <li>Synced the Linux/Windows standard-library lists and rebuilt all <code>.obl</code> libraries against the new toolchain version (VER_NUM 202663).</li>
     </ul>
     <h3 id="v202662---2026-06-19">[v2026.6.2] - 2026-06-19</h3>
-    <h4 id="performance-5">Performance</h4>
+    <h4 id="performance-6">Performance</h4>
     <ul>
      <li><strong>GC safepoint poll made nearly free in JIT'd loops</strong>: the cooperative stop-the-world safepoint (added in v2026.6.1) emitted an unconditional <code>call MemoryManager::SafePoint</code> at every JIT label, which regressed label-dense integer loops. The poll is now (1) an inline flag test that calls into the collector only when a collection is actually active, (2) reads <code>&amp;stw_active</code> from a callee-saved register cached at the prologue (R12 on AMD64, X19 on ARM64), and (3) emitted only at true loop back-edges rather than every label. Net: <code>fannkuchredux</code> dropped roughly in half (~59s → ~31s in the Docker harness), recovering the full regression on both AMD64 and ARM64. Validated against the GC/JIT and multithreaded stop-the-world stress suites.</li>
      <li><strong>Auto-JIT for <code>DYN_MTHD_CALL</code> (closure / function-reference calls)</strong> on AMD64 and ARM64: closure-heavy and function-reference kernels now JIT-compile once warm instead of staying in the interpreter. <code>spectralnorm</code> (input 5500) goes from 43s interpreted to 3.5s with <code>OBJECK_JIT_THRESHOLD=1</code>, and at n=2000 reaches 0.46s — matching the hand-<code>native</code> kernel (0.40s). The remaining lever is auto-JIT threshold/warmup tuning, not coverage.</li>
@@ -1128,7 +1160,7 @@
      <li><strong>Debugger</strong>: locals and fields appearing after a <code>Float</code> field/local showed wrong values. CLI conditional breakpoints (<code>b file:line if &lt;expr&gt;</code>) never parsed — the scanner downgraded the <code>if</code> keyword to an identifier, so every conditional breakpoint failed with "Expected statement end". In DAP, variables in single-slot methods (e.g. a one-parameter recursive method) were all reported as <code>&lt;out of scope&gt;</code> because the bounds check divided a slot count by <code>sizeof(size_t)</code>. The <code>MemoryManager</code> is now idempotent on teardown and re-initializes on reload, so the debugger can re-run a program in-process (DAP restart) without a double-free.</li>
      <li><strong>macOS / launcher</strong>: portable application bundles failed when launched from outside their own directory; a stale <code>Objeck.app</code> bundle version was corrected.</li>
     </ul>
-    <h4 id="performance-6">Performance</h4>
+    <h4 id="performance-7">Performance</h4>
     <ul>
      <li><strong>ONNX on macOS</strong>: compiled CoreML models are persisted across runs (~35× faster warm start), and <code>Ort::TypeInfo</code> is kept alive while reading tensor type/shape.</li>
     </ul>
@@ -1166,7 +1198,7 @@
     <ul>
      <li><strong>Data.XML conveniences</strong> (additive; raw <code>SetContent</code>/<code>GetContent</code>/<code>GetValue</code> contract unchanged): <code>XmlElement-&gt;EncodeText</code> escapes exactly the five markup characters while leaving whitespace readable; <code>SetEncodedContent</code> produces well-formed output; <code>GetDecodedContent</code> and <code>XmlAttribute-&gt;GetDecodedValue</code> return entity-decoded text</li>
     </ul>
-    <h4 id="performance-7">Performance</h4>
+    <h4 id="performance-8">Performance</h4>
     <ul>
      <li>Auto-JIT now compiles methods containing <code>MTHD_CALL</code> after 10 invocations (5–15% speedup across benchmarks)</li>
      <li>Interpreter fast-path extended with 15 additional inline opcodes (comparisons, bitwise, shifts, logical)</li>
@@ -1213,7 +1245,7 @@
      <li>Replaced <code>calloc</code> with <code>malloc</code> in <code>CompressZlib</code>/<code>UncompressZlib</code> — removes wasteful zero-initialisation of buffers that are immediately overwritten by the codec</li>
      <li><strong>Backward-compatible</strong>: files in the old raw-zlib format (CMF byte <code>0x78</code>) are automatically detected and continue to load without recompilation</li>
     </ul>
-    <h4 id="performance-8">Performance</h4>
+    <h4 id="performance-9">Performance</h4>
     <ul>
      <li><code>bench_spectralnorm_native</code>: rewrote <code>MultiplyAv</code>/<code>MultiplyAtv</code> with an incremental floating-point denominator, eliminating <code>I2F</code> conversions from the inner loop (2000×2000×40 iterations). Only two integer-to-float conversions now occur per outer row instead of per element.</li>
     </ul>
@@ -1312,7 +1344,7 @@
      <li>Hardened JSON, JSON stream, and XML parsers against malformed input</li>
      <li>Hardened HTTPS client against null ReadLine on connection failures</li>
     </ul>
-    <h4 id="performance-9">Performance</h4>
+    <h4 id="performance-10">Performance</h4>
     <ul>
      <li><strong>Link-time optimization</strong>: Added <code>-flto=auto</code> across all GCC Makefiles (AMD64 and ARM64)</li>
      <li><strong>ARM64 native CPU tuning</strong>: <code>-mcpu=native</code> auto-detects RPi5 (Cortex-A76) and Jetson Orin (Cortex-A78AE)</li>
@@ -1456,7 +1488,7 @@
      <li>Crypto: Fixed AES-256 CBC padding and key derivation</li>
     </ul>
     <h3 id="v202570---2025-07-01-">[v2025.7.0] - 2025-07-01 ✅</h3>
-    <h4 id="added-1">Added</h4>
+    <h4 id="added-2">Added</h4>
     <ul>
      <li><code>Hash-&gt;Dict(..)</code> method to collections</li>
      <li><code>Map-&gt;Dict(..)</code> method to collections</li>
@@ -1468,7 +1500,7 @@
      <li>Updated logos and branding</li>
      <li>Improved visual design</li>
     </ul>
-    <h4 id="fixed-1">Fixed</h4>
+    <h4 id="fixed-2">Fixed</h4>
     <ul>
      <li>Various bug fixes and stability improvements</li>
     </ul>

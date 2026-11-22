@@ -1,3 +1,14 @@
+v2026.11.3 (November 22, 2026)
+===
+A release about library speed: regular expressions 4 to 19 times faster with five bugs fixed (including a{2} matching aaa), vector search that uses several threads, and nearest-neighbor and edit-distance code that is 5 to 260 times faster.
+
+v2026.11.3
+- Regular expressions are 4 to 19 times faster -- RegEx finds where the longest match ends with a lazily built DFA, one table lookup per character, and skips start positions that cannot begin a match. On 680 KB of text a class-first search went from 0.55 s to 0.043 s and an alternation with a group from 0.99 s to 0.09 s. Patterns with \b or \B, or that need more than 1,024 states, run on the NFA as before; capture groups are unchanged. A RegEx can now be shared by threads (matching on one instance is serialized).
+- RegEx bugs fixed -- {n} was read as {n,}, so a{2} matched aaa; it now means exactly n, and {n,} is accepted. ReplaceAll matched against text it had already rewritten (\bx on xx with - gave --); it now works in one pass over the original. ^a, ^a+, ^a$ and ^$ were rejected; they compile. Unknown letter or digit escapes, including the backreference \1, were silently read as the literal character; they and a trailing backslash are now an error.
+- Parallel vector search -- VectorIndex->SetThreads(n) splits a search over a large index into n parts on their own threads and merges them in the same order a single scan uses, so ids, scores and ties are identical. 100,000 vectors of 128 values, L2, top 10: 66 queries/s on one thread, 315 on sixteen.
+- Nearest neighbors and edit distance -- KNearestNeighbors->Query keeps the best k in a heap in one pass instead of building and sorting an object per row: 200 queries over 50,000 rows of 16 values took 15.1 s and now take 0.057 s (13 to 3,506 queries/s). A k below 1 or a Nil query returns no neighbors instead of ending with an allocation error. TextSimilarity->LevenshteinDistance keeps two rows instead of the full matrix (20,000 pairs: 0.68 s to 0.12 s), and a new LevenshteinDistance(a, b, max_distance) stops at a ceiling; SpellChecker->Suggest uses it.
+- Library workloads are measured -- docs/performance.md has a new Library workloads section with the regex, vector search, nearest-neighbor, edit-distance, string and JSON timings behind these numbers, and what it did not measure.
+
 v2026.11.2 (November 21, 2026)
 ===
 A release about speed and one crash: a long linked list no longer overflows the collector, already-sorted data sorts in a sixth of the time, long strings append in one block, and image loading for convolutional networks is several times faster, plus result-table formats for ML studies and a one-command release process.
