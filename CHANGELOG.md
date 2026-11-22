@@ -10,6 +10,7 @@ All notable changes to Objeck will be documented in this file.
 - **`VectorIndex->SetThreads(n)`**: a search over an index of about 8 MB or more is split into n parts, each scanned on its own thread, and merged in the order a single scan uses, so ids, scores and tie order are identical. 100,000 x 128, L2, top 10: 66, 81, 132, 229 and 315 queries/s at 1, 2, 4, 8 and 16 threads. The default is 1 thread.
 - **`KNearestNeighbors->Query` makes one pass**: it keeps the best k squared distances in a heap and drops a row once its running sum passes the k-th best, instead of copying every row, building a `KNeighbor` per row and sorting all of them. 50,000 x 16, k = 5, 200 queries: 15.06 s to 0.057 s. Distances and order (ties in row order) are unchanged.
 - **`TextSimilarity->LevenshteinDistance` keeps two rows**: 20,000 pairs of 38 characters 0.683 s to 0.118 s.
+- **`Vector` and `CompareVector` grow by doubling, and their comparator sorts share one merge sort**: appends no longer copy the whole array each time the capacity is reached.
 
 ### Fixed
 
@@ -18,9 +19,12 @@ All notable changes to Objeck will be documented in this file.
 - **`^a`, `^a+`, `^a$`, `^$` and `a|$` were rejected** as "stray token" or a missing operand; the anchor was only applied when a second operand followed.
 - **Unknown escapes in a pattern were silently literal**: `\1` (a backreference) matched the character `1`. Unknown letter or digit escapes and a trailing backslash are now an error (`IsOk()` is false); escaped punctuation such as `\-` and `\/` is still literal.
 - **`KNearestNeighbors->Query` with a k below 1, a Nil query or a Nil matrix** ended with an allocation error; it now returns no neighbors.
+- **`Stack` crashed near 500,000 entries and reported a stale `Size()` after `Empty()`**: it is now array-backed.
+- **A `Nil` key or value lookup in the collections ended the program**: it now reports not-found.
 
 ### Added
 
+- **Nine collection types** in `gen_collect`: `Deque` (ring buffer, O(1) at both ends), `MultiSet`, `UnionFind`, `Trie`, `OrderedHash`, `BiMap`, `PriorityMap` (an indexed priority queue with decrease-key), `FenwickTree` (prefix and range sums) and `BloomFilter`. `Vector` and `CompareVector` gain `Insert`, `Slice` and `AddAll`, and `CompareVector` gains `Swap`.
 - **`VectorIndex->SetThreads(n)` and `GetThreads()`** (see Performance).
 - **`TextSimilarity->LevenshteinDistance(a, b, max_distance)`**: the exact distance when it is at most `max_distance`, otherwise `max_distance + 1`; only the cells near the diagonal are computed and the work stops when a whole row is past the ceiling. `SpellChecker->Suggest` uses it.
 - **A `RegEx` can be shared by threads**: the DFA tables and the capture scratch are used under a lock, and `MatchExact` no longer keeps its answer in a field.
@@ -32,7 +36,7 @@ All notable changes to Objeck will be documented in this file.
 
 ### Tests
 
-- New regression tests: `regex_lazy_dfa`, `regex_replace_escapes`, `regex_threads`, `ml_vector_parallel`, `ml_knn_exact` and `nlp_levenshtein_bounded`.
+- New regression tests: `regex_lazy_dfa`, `regex_replace_escapes`, `regex_threads`, `ml_vector_parallel`, `ml_knn_exact` and `nlp_levenshtein_bounded`, and thirteen `collect_*` tests for the collections above (`collect_deque`, `collect_multiset`, `collect_union_find`, `collect_trie`, `collect_ordered_hash`, `collect_bimap`, `collect_priority_map`, `collect_fenwick`, `collect_bloom`, `collect_vector_ops`, `collect_sort_stable`, `collect_nil_guards`, `collect_stack_deep`).
 
 ## [v2026.11.2] - 2026-11-21
 
