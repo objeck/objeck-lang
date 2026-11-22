@@ -346,20 +346,38 @@ result->PrintLine();
 				replace := "";
 			};
 
+			# one pass over the ORIGINAL input: matching never sees text already replaced, so \b and
+			# friends cannot be changed by a replacement, and the work is linear in the output size
+			out : String := Nil;
+			last := 0;
 			left := 0;
-			while(left < stream_in->Size()) {
+			input_size := stream_in->Size();
+			while(left < input_size) {
 				right := Evaluate(stream_in, left);
 				if(right > -1 & left <> right) {
-					result := stream_in->SubString(left);
-					result->Append(replace);
-					result->Append(stream_in->SubString(right, stream_in->Size() - right));
-					stream_in := result;
-					left += replace->Size() - 1;
+					if(out = Nil) {
+						out := stream_in->SubString(left);
+					}
+					else if(left > last) {
+						out->Append(stream_in->SubString(last, left - last));
+					};
+					out->Append(replace);
+					last := right;
+					left := right;
+				}
+				else {
+					left += 1;
 				};
-				left += 1;
 			};
 
-			return stream_in;
+			if(out = Nil) {
+				return stream_in;
+			};
+
+			if(last < input_size) {
+				out->Append(stream_in->SubString(last, input_size - last));
+			};
+			return out;
 		}
 
 		# ---------- parallel NFA simulation ----------
@@ -962,6 +980,11 @@ result->PrintLine();
 				@starts_anchor := false;
 			};
 
+			# a '^' read by the previous call anchors the operand parsed by this one, so '^a', '^a+'
+			# and '^a$' work with a single operand, not only when another operand follows
+			pending_anchor := @starts_anchor;
+			before := @expressions->Size();
+
 			Value();
 			if(@error <> Nil) {
 				return;
@@ -1007,8 +1030,14 @@ result->PrintLine();
 					NextToken();
 				}
 				else {
-					@error := "missing left-hand side operand";
-					return;
+					# '$' with nothing before it, as in '^$' or '(a|$)', anchors an empty match
+					ends := Expression->New(Expression->Type->ENDS_ANCHOR, Expression->New(Vector->New()<Expression>));
+					if(@starts_anchor) {
+						ends := Expression->New(Expression->Type->STARTS_ANCHOR, ends);
+						@starts_anchor := false;
+					};
+					@expressions->AddBack(ends);
+					NextToken();
 				};
 			}
 			else if(@token = '{') {
@@ -1061,6 +1090,12 @@ result->PrintLine();
 					@error := "missing left-hand side operand";
 					return;
 				};
+			};
+
+			if(pending_anchor & @starts_anchor & @expressions->Size() > before) {
+				anchored := @expressions->RemoveBack();
+				@expressions->AddBack(Expression->New(Expression->Type->STARTS_ANCHOR, anchored));
+				@starts_anchor := false;
 			};
 		}
 
@@ -1326,6 +1361,21 @@ result->PrintLine();
 				label '\\': {
 					@expressions->AddBack(Expression->New('\\'));
 					NextToken();
+				}
+
+				other: {
+					# escaped punctuation is itself (\- \/ \" \: ...); an unknown letter or digit
+					# escape such as the backreference \1 is an error, never a silent literal
+					if(@token = '\0') {
+						@error := "pattern ends with a backslash";
+					}
+					else if(@token->IsChar() | @token->IsDigit()) {
+						@error := "unsupported escape sequence";
+					}
+					else {
+						@expressions->AddBack(Expression->New(@token));
+						NextToken();
+					};
 				}
 			};
 		}

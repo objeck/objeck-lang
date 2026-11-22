@@ -1,0 +1,97 @@
+# EXTRA_LIBS: regex
+#
+# Query.RegEx: ReplaceAll matches against the ORIGINAL input (a replacement can
+# not create or remove a \b), empty replacement and no-match cases, escaped
+# punctuation, unknown letter/digit escapes (and the backreference \1) rejected,
+# a trailing backslash rejected, and '$' with nothing before it ('^$').
+use Query.RegEx;
+
+class RegexReplaceEscapes {
+	@ok : Int;
+	@bad : Int;
+
+	New() {
+		@ok := 0;
+		@bad := 0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		t := RegexReplaceEscapes->New();
+		t->Run();
+	}
+
+	method : Run() ~ Nil {
+		Replace();
+		Escapes();
+		EmptyAnchor();
+
+		if(@bad > 0) {
+			"FAIL: regex_replace_escapes, {$@bad} failed, {$@ok} passed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: regex_replace_escapes ({$@ok} checks)"->PrintLine();
+	}
+
+	method : Same(what : String, got : String, want : String) ~ Nil {
+		if(got = Nil | <>got->Equals(want)) {
+			"FAIL: {$what}: got '{$got}', want '{$want}'"->PrintLine();
+			@bad += 1;
+		}
+		else {
+			@ok += 1;
+		};
+	}
+
+	method : Check(what : String, cond : Bool) ~ Nil {
+		if(cond) {
+			@ok += 1;
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@bad += 1;
+		};
+	}
+
+	method : Replace() ~ Nil {
+		# the replacement '-' would otherwise create a boundary before the second x
+		Same("boundary stable", RegEx->New("\\bx")->ReplaceAll("xx", "-"), "-x");
+		Same("digits", RegEx->New("\\d+")->ReplaceAll("a1b22c333", "#"), "a#b#c#");
+		Same("longer replacement", RegEx->New("o")->ReplaceAll("foo boo", "00"), "f0000 b0000");
+		Same("empty replacement", RegEx->New("[aeiou]")->ReplaceAll("education", ""), "dctn");
+		Same("no match", RegEx->New("z")->ReplaceAll("abc", "-"), "abc");
+		Same("match at ends", RegEx->New("a")->ReplaceAll("abca", "X"), "XbcX");
+		Same("whole input", RegEx->New("abc")->ReplaceAll("abc", "Z"), "Z");
+		Same("anchored", RegEx->New("^a")->ReplaceAll("aaa", "b"), "baa");
+		Same("replacement holds the pattern", RegEx->New("a")->ReplaceAll("aa", "aa"), "aaaa");
+		Same("first", RegEx->New("\\d+")->ReplaceFirst("a1b22", "#"), "a#b22");
+
+		# a long input must not be quadratic
+		s := "";
+		each(i : 20000) { s += "ab "; };
+		out := RegEx->New("a")->ReplaceAll(s, "xy");
+		Check("long input size", out->Size() = 20000 * 4);
+	}
+
+	method : Escapes() ~ Nil {
+		Check("escaped hyphen", RegEx->New("a\\-b")->MatchExact("a-b"));
+		Check("escaped slash", RegEx->New("a\\/b")->MatchExact("a/b"));
+		Check("escaped quote", RegEx->New("\\\"x\\\"")->MatchExact("\"x\""));
+		Check("escaped dot", RegEx->New("a\\.b")->MatchExact("a.b"));
+		Check("escaped dot is not any", <>RegEx->New("a\\.b")->MatchExact("axb"));
+		Check("backreference rejected", <>RegEx->New("(a)\\1")->IsOk());
+		Check("unknown letter escape rejected", <>RegEx->New("\\q")->IsOk());
+		Check("trailing backslash rejected", <>RegEx->New("a\\")->IsOk());
+		Check("known escapes still ok", RegEx->New("\\d\\w\\s\\b\\t")->IsOk());
+	}
+
+	method : EmptyAnchor() ~ Nil {
+		re := RegEx->New("^$");
+		Check("^$ compiles", re->IsOk());
+		Check("^$ matches empty", re->MatchExact(""));
+		Check("^$ rejects text", <>re->MatchExact("a"));
+		Check("^$ FindFirst on empty", re->FindFirst("") <> Nil);
+		Check("^$ FindFirst on text", re->FindFirst("a") = Nil);
+		Check("a|$ compiles", RegEx->New("a|$")->IsOk());
+		Check("x$ unchanged", RegEx->New("x$")->MatchExact("x"));
+	}
+}
