@@ -19,6 +19,15 @@ drifted); nothing here changes the API. Compile with
 | Unique values, order does not matter | `HashSet` (or `SetHash`) | `Hash` underneath, O(1) expected |
 | Several values per key, keys sorted | `MultiMap` | a `Map` of `Vector`s |
 | Several values per key, keys unordered | `MultiHash` | a `Hash` of `Vector`s |
+| Both ends O(1) plus index access (FIFO queue, sliding window) | `Deque` | ring buffer; `AddFront`/`RemoveFront` are O(1), unlike `Vector` |
+| Count occurrences of keys (word counts, histograms) | `MultiSet` | `Hash` of counts; `Count`, `MostCommon(n)` |
+| Group items into disjoint sets, connected components | `UnionFind` | int ids; near-constant `Union`/`Find` |
+| Strings by prefix (autocomplete, dictionary) | `Trie` | `WithPrefix` returns sorted matches |
+| Key to value, iterated in insertion order | `OrderedHash` | `Hash` + linked entries; O(1) expected |
+| A one-to-one table you look up both ways (id and name) | `BiMap` | two `Hash` tables kept in step |
+| A priority queue whose priorities change (Dijkstra, A*) | `PriorityMap` | indexed min-heap with decrease-key; O(log n) |
+| Running sums that change (point update, prefix/range sum) | `FenwickTree` | O(log n) both ways |
+| A cheap "definitely not seen" pre-check in front of something costly | `BloomFilter` | bit set; no false negatives, ~1% false positives at 10 bits/key |
 | Two related values with no class of their own | `Collection.Tuple.Pair` | immutable, any types |
 | A pair that can sit in a sorted collection, or that you must change | `Collection.Pair` | first element must be `Compare` |
 
@@ -49,23 +58,38 @@ cannot tell you "nothing there" from "a `Nil` was stored there"; use `Size()` or
 move the cursor to that end first, so they disturb an iteration in progress that uses
 `Next()`/`Get()` on the same list (use `ForwardIterator()` for a traversal that must survive).
 
+## Nil and changing a collection while you walk it
+
+- A `Nil` **key or value** is ignored by `Hash`, `HashSet`, `Set`, `Map`, `MultiHash`, `Heap` and
+  `BiMap` inserts, and looking one up reports "not found" (`Nil`, `false` or `-1`). A `Vector`
+  stores a `Nil` element, and sorting a `CompareVector` or `CompareList` that holds one is not
+  defined.
+- `Each`, `Filter` and the iterators read the collection as it is. Adding or removing entries
+  from inside the callback, or while an iterator is live, is **not supported**: the result is
+  unspecified (a skipped or repeated entry, or a stale count). Collect the changes and apply them
+  afterwards, or iterate over `GetKeys()`/`ToArray()`, which are copies.
+- `Hash` is open-addressed with the hash stored beside each key and grows at 70% load, so an
+  insert that triggers growth is O(n) once and O(1) otherwise; `Reserve` (vectors) and
+  `SetCapacity`/`Resize` (`Hash`) avoid that when the size is known.
+
 ## The classes
 
 ### `Vector<H>` (gen_collect.obs:5118)
 
-A growable array. It grows by half again (at least four slots) when full, so `AddBack` is
+A growable array. It doubles (at least four slots) when full, so `AddBack` is
 amortised O(1).
 
 | Operation | Cost |
 |---|---|
 | `Get(i)`, `Set(v, i)`, `First()`, `Last()`, `Size()` | O(1); `Get` returns `Nil` and `Set` returns `false` for a bad index |
 | `AddBack(v)`, `RemoveBack()` | O(1) amortised |
-| `Remove(i)` | O(n): later elements are shifted down |
+| `Remove(i)`, `Insert(i, v)` | O(n): later elements are shifted down / up; `Insert` returns `Bool` (index 0..`Size()`) |
+| `Slice(lo, hi)`, `AddAll(other)`, `Swap(a, b)` | O(hi-lo) / O(other) / O(1); `CompareVector` has the same three plus `Find`/`Has` |
 | `FindFirst(f)`, `FindIndex(f)`, `Any`, `All`, `Count`, `Filter`, `Map`, `Reduce` | O(n) |
 | `Sort(compare)` | O(n log n), stable (merge sort) |
 
-There is no insert-at-index and no `AddFront`; use a `List`, or build a new `Vector`, if you
-need either. `Reserve(n)` avoids regrowth when the size is known.
+There is no `AddFront` (`Insert(0, v)` works but is O(n)); use a `List` if you
+need one. `Reserve(n)` avoids regrowth when the size is known.
 
 ### `List<H>` (gen_collect.obs:4355)
 
@@ -134,6 +158,84 @@ creating it on the first value. Costs are those of the underlying map plus an O(
   Edits to it are edits to the multi-map.
 - `Remove(k)` drops the key and all its values. There is no call that removes one value.
 - `Size()` counts distinct keys; `TotalSize()` counts values and walks every key, O(keys).
+
+### `Deque<H>`
+
+A ring buffer. `AddFront`, `AddBack`, `RemoveFront`, `RemoveBack`, `Front`, `Back`, `Get(i)`, `Set(v, i)`
+and `Size()` are all O(1) (the buffer doubles when full, so adds are amortised O(1)). Empty
+reads return `Nil`. `ToArray()` copies front to back. Use it for a FIFO queue or a sliding
+window that also needs index access; a plain `List` is as fast for pure FIFO use but has no
+`Get(i)`, and `Vector->Remove(0)` is O(n).
+
+### `MultiSet<K>`
+
+A counter over a `Hash<K, IntRef>`. `Add(k)` and `AddMany(k, n)` return the new count, `Remove(k)`
+takes one occurrence away (`false` if absent), `RemoveAll(k)` returns how many it dropped,
+`Count(k)` is 0 for an absent key. `Size()` is the total with repeats, `Distinct()` the number of
+keys, `GetKeys()` the keys (unordered) and `MostCommon(n)` the top `n` keys by count.
+Costs are those of `Hash` (O(1) expected), `MostCommon` is O(k log k) in the distinct keys. It
+is called `MultiSet` rather than `Counter` because `System.Concurrency.Counter` already exists in `lang`.
+
+### `UnionFind`
+
+Disjoint sets over the ids `0..n-1` (not generic: the elements are ints, map your own keys to ids
+with a `Hash`). `Union` is by size and `Find` halves paths, so both are near-constant amortised.
+`Union(a, b)` returns `true` only if it merged two sets; `Connected`, `SizeOf` and `Find` treat an
+out-of-range id as absent (`false`, `0`, `-1`). `Count()` is the number of sets, `Size()` the
+number of elements, and `Add()` appends a new singleton and returns its id. Typical use:
+connected components, Kruskal's minimum spanning tree, grouping equivalent items.
+
+### `Trie`
+
+A prefix tree holding a set of strings. `Add(s)` and `Remove(s)` return `false` for a duplicate or
+absent string; `Has(s)` tests a whole string and `HasPrefix(p)` any string starting with `p`.
+`WithPrefix(p)` returns the matches as a sorted `Vector<String>` (an empty prefix lists
+everything), which is the point of a trie: autocomplete without scanning the set. Each node keeps
+its children in a `Map`, so a step costs O(log branching); `Remove` prunes nodes only that string
+used. Characters are compared by their code, as in the string itself.
+
+### `OrderedHash<K, V>`
+
+A `Hash` plus a doubly linked list of entries, so `Insert`, `Find`, `Has` and `Remove` are O(1)
+expected and `GetKeys()`, `GetValues()` and `Each` walk the entries in the order the keys first
+arrived. Updating an existing key keeps its place; removing and re-inserting moves it to the
+end. `FirstKey()`, `LastKey()` and `RemoveFirst()` expose the oldest and newest entries, which is
+enough for a first-in first-out cache (for least-recently-used eviction use `Cache`). `Find` of an
+absent key returns `Nil`. Costs one extra node per entry compared with a plain `Hash`.
+
+### `BiMap<A, B>`
+
+Two `Hash` tables kept in step, so `FindValue(key)` and `FindKey(value)` are both O(1) expected.
+Both sides must be `Compare` and non-`Nil`. It is one-to-one: `Insert(k, v)` first drops any pair
+that already uses `k` or `v`, so `Size()` never exceeds the number of distinct keys or of distinct
+values. `RemoveKey` and `RemoveValue` take out the whole pair. Use it for id-to-name tables, enum
+codecs and any "look it up either way" index.
+
+### `PriorityMap<T>`
+
+A min-priority queue where each key appears once and its `Float` priority can change. `Push(k, p)`
+adds the key or, if it is present, updates it (decrease-key or increase-key); `Pop()` returns the
+key with the smallest priority, `Remove(k)` takes a key out of the middle. Push, Pop, Remove and
+updates are O(log n); `Has`, `Priority`, `Peek` are O(1) expected. This is what Dijkstra and A*
+need and what `Heap` cannot do (`Heap` holds duplicates and has no update). An absent key's
+`Priority` is `0.0`, so test with `Has` first.
+
+### `FenwickTree`
+
+A binary indexed tree over `Int` slots (0-based). `Add(i, delta)` is a point update, `Sum(i)` the
+prefix sum up to and including `i`, `RangeSum(lo, hi)` an inclusive range, all O(log n) in n+1
+`Int`s of memory. `Get(i)` and `Set(i, v)` are built from those. Use it for running totals that
+change (rankings, histograms, "how many items below x") where re-summing a `Vector` would be O(n).
+Out-of-range updates return `false`; out-of-range queries clamp or return 0.
+
+### `BloomFilter<T>`
+
+A probabilistic set on a `BitSet`. `Add(k)` sets `k` bits chosen from the key's `HashID`;
+`MightContain(k)` is `false` only if the key was never added (no false negatives) and `true`
+for added keys and for a small fraction of others. `New(expected, bits_per_key)` sizes it: 10 bits
+per key is about 1% false positives, 15 about 0.1%. Keys cannot be removed (use `Empty()` to
+start over). Use it as a cheap pre-check in front of something expensive: a disk or network
+lookup, a large `Hash`, a de-duplication pass.
 
 ### The two `Pair` classes
 

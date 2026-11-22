@@ -770,6 +770,10 @@ heap->Top()->PrintLine(); # 2
 ```
 		~#
 		method : public : Insert(value : H) ~ Nil {
+			if(value = Nil) {
+				return;
+			};
+
 			if(@length >= @heap->Size() - 1) {
 				@heap := Resize();
 			};
@@ -2760,7 +2764,7 @@ stack->Size()->PrintLine(); # prints 2
 ```
 	~#
 	class Stack<H> {
-		@head : ListNode<H>;
+		@values : H[];
 		@size : Int;
 
 		#~
@@ -2774,6 +2778,8 @@ stack->Pop()->PrintLine(); # b
 ```
 		~#
 		New() {
+			@values := H->New[16];
+			@size := 0;
 		}
 
 		#~
@@ -2790,15 +2796,11 @@ arr[0]->PrintLine(); # y (top element)
 		~#
 		method : native : public : ToArray() ~ H[] {
 			array := H->New[@size];
-			
-			i := 0;
-			node := @head;
-			while(node <> Nil) {
-				array[i] := node->Get();
-				node := node->GetNext();
-				i += 1;
+			# top of the stack first
+			for(i := 0; i < @size; i += 1;) {
+				array[i] := @values[@size - 1 - i];
 			};
-			
+
 			return array;
 		}
 
@@ -2814,15 +2816,13 @@ stack->Top()->PrintLine(); # 20
 ```
 		~#
 		method : public : Push(value : H) ~ Nil {
-			if(@head = Nil) {
-				@head := ListNode->New(value)<H>;
-			}
-			else {
-				next := ListNode->New(value)<H>;
-				next->SetNext(@head);
-				@head := next;
+			if(@size = @values->Size()) {
+				bigger : H[] := H->New[@size * 2];
+				Runtime->Copy(bigger, 0, @values, 0, @size);
+				@values := bigger;
 			};
 
+			@values[@size] := value;
 			@size += 1;
 		}
 
@@ -2841,15 +2841,12 @@ stack->Pop(2)->PrintLine(); # 2 (value after skipping 2 items)
 		~#
 		method : native : public : Pop(n : Int) ~ H {
 			value : H := Nil;
-
-			if(n > 0) {
-				count := 0;
-				while(@head <> Nil & count < n) {
-					value := @head->Get();
-					@head := @head->GetNext();
-					@size -= 1;
-					count += 1;
-				};
+			count := 0;
+			while(@size > 0 & count < n) {
+				@size -= 1;
+				value := @values[@size];
+				@values[@size] := Nil;
+				count += 1;
 			};
 
 			return value;
@@ -2868,13 +2865,13 @@ stack->Size()->PrintLine(); # 1
 ```
 		~#
 		method : public : Pop() ~ H {
-			value : H;
-
-			if(@head <> Nil) {
-				value := @head->Get();
-				@head := @head->GetNext();
-				@size -= 1;
+			if(@size = 0) {
+				return Nil;
 			};
+
+			@size -= 1;
+			value := @values[@size];
+			@values[@size] := Nil;
 
 			return value;
 		}
@@ -2891,13 +2888,11 @@ stack->Size()->PrintLine(); # 1 (Top does not remove)
 ```
 		~#
 		method : public : Top() ~ H {
-			value : H;
-
-			if(@head <> Nil) {
-				value := @head->Get();
+			if(@size = 0) {
+				return Nil;
 			};
 
-			return value;
+			return @values[@size - 1];
 		}
 
 		#~
@@ -2914,19 +2909,15 @@ stack->ToString()->PrintLine(); # [2,1]
 		~#
 		method : public : ToString() ~ String {
 			buffer := "[";
-
-			node := @head;
-			while(node <> Nil) {
-				value := node->Get();
+			for(i := @size - 1; i > -1; i -= 1;) {
+				value := @values[i];
 				if(value->TypeOf(Stringify)) {
 					buffer->Append(value->As(System.Stringify)->ToString());
 				}
 				else {
 					buffer->Append(value->GetInstanceID()->ToHexString());
 				};
-
-				node := node->GetNext();
-				if(node <> Nil) {
+				if(i > 0) {
 					buffer->Append(',');
 				};
 			};
@@ -2947,7 +2938,7 @@ stack->IsEmpty()->PrintLine(); # false
 ```
 		~#
 		method : public : IsEmpty() ~ Bool {
-			return @head = Nil;
+			return @size = 0;
 		}
 
 		#~
@@ -2961,7 +2952,8 @@ stack->IsEmpty()->PrintLine(); # true
 ```
 		~#
 		method : public : Empty() ~ Nil {
-			@head := Nil;
+			@values := H->New[16];
+			@size := 0;
 		}
 
 		#~
@@ -3820,6 +3812,10 @@ list->Has(IntRef->New(99))->PrintLine(); # false
 ```
 		~#
 		method : public : Has(value : H) ~ Bool {
+			if(value = Nil) {
+				return false;
+			};
+
 			start := @head;
 			end := @tail;
 
@@ -3857,6 +3853,10 @@ found->PrintLine(); # 2
 ```
 		~#
 		method : public : Find(value : H) ~ H {
+			if(value = Nil) {
+				return Nil;
+			};
+
 			@cursor := @head;
 			while(@cursor <> Nil) {
 				if(value->Compare(@cursor->Get()) = 0) {
@@ -5180,7 +5180,8 @@ copy->Get(0)->PrintLine(); # x
 
 		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
-				grow := @size >> 1;
+				# double: fewer large copies, and fewer big old-generation arrays
+				grow := @size;
 				if(grow < 4) {
 					grow := 4;
 				};
@@ -5521,6 +5522,88 @@ v->Size()->PrintLine(); # 2
 		}
 
 		#~
+		Inserts a value at an index, shifting the values at and after it up by one
+		@param index position to insert at (0 to Size(); Size() appends)
+		@param value value to insert
+		@return true if inserted, false if the index is out of range
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("a"); v->AddBack("c");
+v->Insert(1, "b")->PrintLine(); # true
+v->Size()->PrintLine();           # 3
+```
+		~#
+		method : public : Insert(index : Int, value : H) ~ Bool {
+			if(index < 0 | index > @size) {
+				return false;
+			};
+
+			Expand();
+			for(i := @size; i > index; i -= 1;) {
+				@values[i] := @values[i - 1];
+			};
+			@values[index] := value;
+			@size += 1;
+
+			return true;
+		}
+
+		#~
+		Copies a range into a new vector
+		@param lo first index (inclusive, clamped to 0)
+		@param hi last index (exclusive, clamped to Size())
+		@return new vector holding the range, empty if the range is empty
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("a"); v->AddBack("b"); v->AddBack("c");
+v->Slice(1, 3)->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : Slice(lo : Int, hi : Int) ~ Vector<H> {
+			if(lo < 0) {
+				lo := 0;
+			};
+			if(hi > @size) {
+				hi := @size;
+			};
+
+			slice := Vector->New()<H>;
+			if(hi > lo) {
+				slice->Reserve(hi - lo);
+				for(i := lo; i < hi; i += 1;) {
+					slice->AddBack(@values[i]);
+				};
+			};
+
+			return slice;
+		}
+
+		#~
+		Appends every value of another vector (the values are shared, not copied)
+		@param that vector to append, may be this vector
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("a");
+v->AddAll(v);
+v->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : AddAll(that : Vector<H>) ~ Nil {
+			if(that = Nil) {
+				return;
+			};
+
+			count := that->Size();
+			Reserve(@size + count);
+			for(i := 0; i < count; i += 1;) {
+				AddBack(that->Get(i));
+			};
+		}
+
+		#~
 		Removes the last value
 		@return value
 
@@ -5818,12 +5901,25 @@ v->Get(0)->PrintLine(); # fig
 ```
 		~#
 		method : public : Sort(compare : (H, H) ~ Int) ~ Nil {
-			if(@size < 2) {
+			MergeSorter->New()<H>->Sort(@values, @size, compare);
+		}
+	}
+
+	#~
+	Stable merge sort over an object array with a comparator, shared by Vector and CompareVector.
+	Ranges under 16 values use insertion sort; halves that are already in order are not merged.
+	~#
+	class : private : MergeSorter<H> {
+		New() {
+		}
+
+		method : public : Sort(a : H[], size : Int, compare : (H, H) ~ Int) ~ Nil {
+			if(size < 2) {
 				return;
 			};
 
-			b : H[] := H->New[@size];
-			SortWith(0, @size - 1, @values, b, compare);
+			b : H[] := H->New[size];
+			SortWith(0, size - 1, a, b, compare);
 		}
 
 		method : SortWith(low : Int, hi : Int, a : H[], b : H[], compare : (H, H) ~ Int) ~ Nil {
@@ -6048,7 +6144,8 @@ v->ToString()->PrintLine(); # [1,2]
 
 		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
-				grow := @size >> 1;
+				# double: fewer large copies, and fewer big old-generation arrays
+				grow := @size;
 				if(grow < 4) {
 					grow := 4;
 				};
@@ -6152,6 +6249,112 @@ v->Size()->PrintLine(); # 2
 			Expand();
 			@values[@size] := value;
 			@size += 1;
+		}
+
+		#~
+		Inserts a value at an index, shifting the values at and after it up by one
+		@param index position to insert at (0 to Size(); Size() appends)
+		@param value value to insert
+		@return true if inserted, false if the index is out of range
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(3));
+v->Insert(1, IntRef->New(2))->PrintLine(); # true
+v->Size()->PrintLine();           # 3
+```
+		~#
+		method : public : Insert(index : Int, value : H) ~ Bool {
+			if(index < 0 | index > @size) {
+				return false;
+			};
+
+			Expand();
+			for(i := @size; i > index; i -= 1;) {
+				@values[i] := @values[i - 1];
+			};
+			@values[index] := value;
+			@size += 1;
+
+			return true;
+		}
+
+		#~
+		Copies a range into a new vector
+		@param lo first index (inclusive, clamped to 0)
+		@param hi last index (exclusive, clamped to Size())
+		@return new vector holding the range, empty if the range is empty
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2)); v->AddBack(IntRef->New(3));
+v->Slice(1, 3)->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : Slice(lo : Int, hi : Int) ~ CompareVector<H> {
+			if(lo < 0) {
+				lo := 0;
+			};
+			if(hi > @size) {
+				hi := @size;
+			};
+
+			slice := CompareVector->New()<H>;
+			if(hi > lo) {
+				slice->Reserve(hi - lo);
+				for(i := lo; i < hi; i += 1;) {
+					slice->AddBack(@values[i]);
+				};
+			};
+
+			return slice;
+		}
+
+		#~
+		Appends every value of another vector (the values are shared, not copied)
+		@param that vector to append, may be this vector
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1));
+v->AddAll(v);
+v->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : AddAll(that : CompareVector<H>) ~ Nil {
+			if(that = Nil) {
+				return;
+			};
+
+			count := that->Size();
+			Reserve(@size + count);
+			for(i := 0; i < count; i += 1;) {
+				AddBack(that->Get(i));
+			};
+		}
+
+		#~
+		Swaps two values
+		@param a first index
+		@param b second index
+		@return true if values were swapped
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2));
+v->Swap(0, 1)->PrintLine(); # true
+```
+		~#
+		method : public : Swap(a : Int, b : Int) ~ Bool {
+			if(a < 0 | b < 0 | a >= @size | b >= @size) {
+				return false;
+			};
+
+			temp := @values[a];
+			@values[a] := @values[b];
+			@values[b] := temp;
+
+			return true;
 		}
 
 		#~
@@ -6354,68 +6557,9 @@ v->Get(0)->PrintLine(); # fig
 ```
 		~#
 		method : public : Sort(compare : (H, H) ~ Int) ~ Nil {
-			if(@size < 2) {
-				return;
-			};
-
-			b : H[] := H->New[@size];
-			SortWith(0, @size - 1, @values, b, compare);
+			MergeSorter->New()<H>->Sort(@values, @size, compare);
 		}
 
-		method : SortWith(low : Int, hi : Int, a : H[], b : H[], compare : (H, H) ~ Int) ~ Nil {
-			if(low < hi) {
-				if(hi - low < 16) {
-					for(i := low + 1; i <= hi; i += 1;) {
-						value := a[i];
-						j := i - 1;
-						while(j >= low & compare(a[j], value) > 0) {
-							a[j + 1] := a[j];
-							j -= 1;
-						};
-						a[j + 1] := value;
-					};
-					return;
-				};
-
-				mid := (low + hi) >> 1;
-				SortWith(low, mid, a, b, compare);
-				SortWith(mid + 1, hi, a, b, compare);
-				# already in order (sorted or nearly sorted input): nothing to merge
-				if(compare(a[mid], a[mid + 1]) > 0) {
-					MergeWith(low, mid, hi, a, b, compare);
-				};
-			};
-		}
-
-		method : MergeWith(low : Int, mid : Int, hi : Int, a : H[], b : H[], compare : (H, H) ~ Int) ~ Nil {
-			for(i := low; i <= hi; i += 1;) {
-				b[i] := a[i];
-			};
-
-			i := low;
-			j := mid + 1;
-			k := low;
-			while(i <= mid & j <= hi) {
-				# <= keeps equal values in their original order
-				if(compare(b[i], b[j]) <= 0) {
-					a[k] := b[i];
-					i += 1;
-				}
-				else {
-					a[k] := b[j];
-					j += 1;
-				};
-				k += 1;
-			};
-
-			# the rest of the second half is already in place
-			while(i <= mid) {
-				a[k] := b[i];
-				k += 1;
-				i += 1;
-			};
-		}
-		
 		method : MergeSort(low : Int, hi : Int, a : H[], b : H[]) ~ Nil {
 			if(low < hi) {
 				if(hi - low < 16) {
@@ -6492,6 +6636,10 @@ v->Find(IntRef->New(99))->PrintLine();  # -1
 ```
 		~#
 		method : public : Find(value : H) ~ Int {
+			if(value = Nil) {
+				return -1;
+			};
+
          for(i := 0; i < @size; i += 1;) {
             if(@values[i]->Compare(value) = 0) {
                return i;
@@ -6514,6 +6662,10 @@ v->BinarySearch(IntRef->New(3))->PrintLine(); # 1
 ```
 		~#
 		method : public : native : BinarySearch(value : H) ~ Int {
+			if(value = Nil) {
+				return -1;
+			};
+
 			low := 0;
 			high := @size - 1;
 
@@ -6548,6 +6700,10 @@ v->Has(IntRef->New(99))->PrintLine(); # false
 ```
 		~#
 		method : public : Has(value : H) ~ Bool {
+			if(value = Nil) {
+				return false;
+			};
+
 			for(i : Int := 0; i < @size; i += 1;) {
 				if(@values[i]->Compare(value) = 0) {
 					return true;
@@ -6922,6 +7078,10 @@ map->Find("e")->PrintLine();    # (Nil)
 ```
 		~#
 		method : public : Find(key : K) ~ V {
+			if(key = Nil) {
+				return Nil;
+			};
+
 			node := @root;
 			while(node <> Nil) {
 				cmp := key->Compare(node->GetKey());
@@ -6952,6 +7112,10 @@ map->Has("dog")->PrintLine(); # false
 ```
 		~#
 		method : public : Has(key : K) ~ Bool {
+			if(key = Nil) {
+				return false;
+			};
+
 			node := @root;
 			while(node <> Nil) {
 				cmp := key->Compare(node->GetKey());
@@ -7228,6 +7392,10 @@ map->Has("tmp")->PrintLine();     # false
 ```
 		~#
 		method : public : Remove(key : K) ~ Bool {
+			if(key = Nil) {
+				return false;
+			};
+
 			if(@root = Nil) {
 				return false;
 			};
@@ -11096,6 +11264,1813 @@ bits->ToString()->PrintLine(); # {1,5}
 			};
 			buffer->Append('}');
 			return buffer;
+		}
+	}
+
+	#~
+	Double-ended queue backed by a ring buffer: O(1) amortised at both ends and O(1) index access. Unlike List there is no cursor; unlike Vector, AddFront and RemoveFront are O(1).
+	~#
+	class Deque<H> {
+		@values : H[];
+		@head : Int;
+		@size : Int;
+
+		#~
+		Default constructor
+
+```
+d := Collection.Deque->New()<String>;
+d->AddBack("b");
+d->AddFront("a");
+d->Size()->PrintLine(); # 2
+```
+		~#
+		New() {
+			@values := H->New[16];
+			@head := 0;
+			@size := 0;
+		}
+
+		#~
+		Adds a value to the front
+		@param value value to add
+
+```
+d := Collection.Deque->New()<String>;
+d->AddBack("b"); d->AddFront("a");
+d->Front()->PrintLine(); # a
+```
+		~#
+		method : public : AddFront(value : H) ~ Nil {
+			Grow();
+			@head -= 1;
+			if(@head < 0) {
+				@head := @values->Size() - 1;
+			};
+			@values[@head] := value;
+			@size += 1;
+		}
+
+		#~
+		Adds a value to the back
+		@param value value to add
+
+```
+d := Collection.Deque->New()<String>;
+d->AddBack("a"); d->AddBack("b");
+d->Back()->PrintLine(); # b
+```
+		~#
+		method : public : AddBack(value : H) ~ Nil {
+			Grow();
+			@values[Wrap(@head + @size)] := value;
+			@size += 1;
+		}
+
+		#~
+		Removes the front value
+		@return the value, or Nil if empty
+
+```
+d := Collection.Deque->New()<String>;
+d->AddBack("a"); d->AddBack("b");
+d->RemoveFront()->PrintLine(); # a
+```
+		~#
+		method : public : RemoveFront() ~ H {
+			if(@size = 0) {
+				return Nil;
+			};
+
+			value := @values[@head];
+			@values[@head] := Nil;
+			@head += 1;
+			if(@head = @values->Size()) {
+				@head := 0;
+			};
+			@size -= 1;
+
+			return value;
+		}
+
+		#~
+		Removes the back value
+		@return the value, or Nil if empty
+
+```
+d := Collection.Deque->New()<String>;
+d->AddBack("a"); d->AddBack("b");
+d->RemoveBack()->PrintLine(); # b
+```
+		~#
+		method : public : RemoveBack() ~ H {
+			if(@size = 0) {
+				return Nil;
+			};
+
+			@size -= 1;
+			index := Wrap(@head + @size);
+			value := @values[index];
+			@values[index] := Nil;
+
+			return value;
+		}
+
+		#~
+		Gets the front value without removing it
+		@return the value, or Nil if empty
+
+```
+d := Collection.Deque->New()<String>;
+d->AddBack("a");
+d->Front()->PrintLine(); # a
+```
+		~#
+		method : public : Front() ~ H {
+			if(@size = 0) {
+				return Nil;
+			};
+
+			return @values[@head];
+		}
+
+		#~
+		Gets the back value without removing it
+		@return the value, or Nil if empty
+
+```
+d := Collection.Deque->New()<String>;
+d->AddBack("a"); d->AddBack("b");
+d->Back()->PrintLine(); # b
+```
+		~#
+		method : public : Back() ~ H {
+			if(@size = 0) {
+				return Nil;
+			};
+
+			return @values[Wrap(@head + @size - 1)];
+		}
+
+		#~
+		Gets a value by position, 0 being the front
+		@param index position
+		@return the value, or Nil for a bad index
+
+```
+d := Collection.Deque->New()<String>;
+d->AddBack("a"); d->AddBack("b");
+d->Get(1)->PrintLine(); # b
+```
+		~#
+		method : public : Get(index : Int) ~ H {
+			if(index < 0 | index >= @size) {
+				return Nil;
+			};
+
+			return @values[Wrap(@head + index)];
+		}
+
+		#~
+		Replaces a value by position
+		@param value new value
+		@param index position
+		@return true if set, false for a bad index
+
+```
+d := Collection.Deque->New()<String>;
+d->AddBack("a");
+d->Set("z", 0)->PrintLine(); # true
+```
+		~#
+		method : public : Set(value : H, index : Int) ~ Bool {
+			if(index < 0 | index >= @size) {
+				return false;
+			};
+
+			@values[Wrap(@head + index)] := value;
+			return true;
+		}
+
+		#~
+		Gets the number of values
+		@return size
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+
+		#~
+		Checks for no values
+		@return true if empty
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @size = 0;
+		}
+
+		#~
+		Removes all values
+		~#
+		method : public : Empty() ~ Nil {
+			@values := H->New[16];
+			@head := 0;
+			@size := 0;
+		}
+
+		#~
+		Copies the values, front first, into an array
+		@return array of Size() values
+
+```
+d := Collection.Deque->New()<String>;
+d->AddBack("b"); d->AddFront("a");
+d->ToArray()[0]->PrintLine(); # a
+```
+		~#
+		method : public : ToArray() ~ H[] {
+			array := H->New[@size];
+			for(i := 0; i < @size; i += 1;) {
+				array[i] := @values[Wrap(@head + i)];
+			};
+
+			return array;
+		}
+
+		method : Wrap(index : Int) ~ Int {
+			capacity := @values->Size();
+			if(index >= capacity) {
+				return index - capacity;
+			};
+
+			return index;
+		}
+
+		# doubles the ring when full, unrolling it so the front sits at 0
+		method : Grow() ~ Nil {
+			capacity := @values->Size();
+			if(@size < capacity) {
+				return;
+			};
+
+			bigger : H[] := H->New[capacity * 2];
+			for(i := 0; i < @size; i += 1;) {
+				bigger[i] := @values[Wrap(@head + i)];
+			};
+			@values := bigger;
+			@head := 0;
+		}
+	}
+
+	#~
+	Multiset (bag, counter): counts how many times each key was added. Backed by a Hash, so Add, Remove and Count are O(1) expected. Keys with a count of zero are not kept.
+	~#
+	class MultiSet<K : Compare> {
+		@counts : Hash<K, IntRef>;
+		@total : Int;
+
+		#~
+		Default constructor
+
+```
+words := Collection.MultiSet->New()<String>;
+words->Add("a"); words->Add("b"); words->Add("a");
+words->Count("a")->PrintLine(); # 2
+```
+		~#
+		New() {
+			@counts := Hash->New()<K, IntRef>;
+			@total := 0;
+		}
+
+		#~
+		Adds one occurrence of a key
+		@param key key to count
+		@return the key's new count
+
+```
+s := Collection.MultiSet->New()<String>;
+s->Add("x")->PrintLine(); # 1
+s->Add("x")->PrintLine(); # 2
+```
+		~#
+		method : public : Add(key : K) ~ Int {
+			return AddMany(key, 1);
+		}
+
+		#~
+		Adds several occurrences of a key
+		@param key key to count
+		@param n occurrences to add (values below 1 change nothing)
+		@return the key's new count
+
+```
+s := Collection.MultiSet->New()<String>;
+s->AddMany("x", 5)->PrintLine(); # 5
+```
+		~#
+		method : public : AddMany(key : K, n : Int) ~ Int {
+			entry := @counts->Find(key);
+			if(n < 1) {
+				if(entry = Nil) {
+					return 0;
+				};
+
+				return entry->Get();
+			};
+
+			@total += n;
+			if(entry = Nil) {
+				@counts->Insert(key, IntRef->New(n));
+				return n;
+			};
+
+			entry->Set(entry->Get() + n);
+			return entry->Get();
+		}
+
+		#~
+		Removes one occurrence of a key
+		@param key key to remove
+		@return true if an occurrence was removed, false if the key was not present
+
+```
+s := Collection.MultiSet->New()<String>;
+s->Add("x"); s->Add("x");
+s->Remove("x")->PrintLine(); # true
+s->Count("x")->PrintLine();  # 1
+```
+		~#
+		method : public : Remove(key : K) ~ Bool {
+			entry := @counts->Find(key);
+			if(entry = Nil) {
+				return false;
+			};
+
+			@total -= 1;
+			if(entry->Get() <= 1) {
+				@counts->Remove(key);
+			}
+			else {
+				entry->Set(entry->Get() - 1);
+			};
+
+			return true;
+		}
+
+		#~
+		Removes every occurrence of a key
+		@param key key to remove
+		@return how many occurrences were removed
+
+```
+s := Collection.MultiSet->New()<String>;
+s->AddMany("x", 3);
+s->RemoveAll("x")->PrintLine(); # 3
+```
+		~#
+		method : public : RemoveAll(key : K) ~ Int {
+			entry := @counts->Find(key);
+			if(entry = Nil) {
+				return 0;
+			};
+
+			count := entry->Get();
+			@total -= count;
+			@counts->Remove(key);
+
+			return count;
+		}
+
+		#~
+		Gets the number of occurrences of a key
+		@param key key to look up
+		@return count, 0 if absent
+
+```
+s := Collection.MultiSet->New()<String>;
+s->Add("x");
+s->Count("x")->PrintLine(); # 1
+s->Count("y")->PrintLine(); # 0
+```
+		~#
+		method : public : Count(key : K) ~ Int {
+			entry := @counts->Find(key);
+			if(entry = Nil) {
+				return 0;
+			};
+
+			return entry->Get();
+		}
+
+		#~
+		Checks whether a key has at least one occurrence
+		@param key key to look up
+		@return true if present
+		~#
+		method : public : Has(key : K) ~ Bool {
+			return @counts->Has(key);
+		}
+
+		#~
+		Gets the total number of occurrences, counting repeats
+		@return total count
+		~#
+		method : public : Size() ~ Int {
+			return @total;
+		}
+
+		#~
+		Gets the number of distinct keys
+		@return distinct count
+		~#
+		method : public : Distinct() ~ Int {
+			return @counts->Size();
+		}
+
+		#~
+		Checks for no occurrences
+		@return true if empty
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @total = 0;
+		}
+
+		#~
+		Removes everything
+		~#
+		method : public : Empty() ~ Nil {
+			@counts->Empty();
+			@total := 0;
+		}
+
+		#~
+		Gets the distinct keys, order unspecified
+		@return vector of keys
+		~#
+		method : public : GetKeys() ~ Vector<K> {
+			return @counts->GetKeys();
+		}
+
+		#~
+		Gets the keys with the highest counts
+		@param n how many keys to return at most
+		@return keys, highest count first (ties in unspecified order)
+
+```
+s := Collection.MultiSet->New()<String>;
+s->AddMany("a", 1); s->AddMany("b", 5); s->AddMany("c", 3);
+s->MostCommon(2)->Get(0)->PrintLine(); # b
+```
+		~#
+		method : public : MostCommon(n : Int) ~ Vector<K> {
+			counts := @counts;
+			keys := counts->GetKeys();
+			keys->Sort(\(a, b) => counts->Find(b)->Get() - counts->Find(a)->Get());
+			if(n < keys->Size()) {
+				return keys->Limit(n);
+			};
+
+			return keys;
+		}
+	}
+
+	#~
+	Union-find (disjoint set) over the integers 0..n-1, with union by size and path halving: Find and Union run in near-constant (inverse Ackermann) amortised time.
+	~#
+	class UnionFind {
+		@parent : Int[];
+		@sizes : Int[];
+		@count : Int;
+		@n : Int;
+
+		#~
+		Creates n singleton sets, one per element
+		@param n number of elements (ids 0 to n-1)
+
+```
+uf := Collection.UnionFind->New(5);
+uf->Union(0, 1); uf->Union(3, 4);
+uf->Count()->PrintLine(); # 3
+```
+		~#
+		New(n : Int) {
+			if(n < 1) {
+				n := 1;
+			};
+
+			@parent := Int->New[n];
+			@sizes := Int->New[n];
+			for(i := 0; i < n; i += 1;) {
+				@parent[i] := i;
+				@sizes[i] := 1;
+			};
+			@n := n;
+			@count := n;
+		}
+
+		#~
+		Finds the representative of the set holding an element
+		@param x element id
+		@return representative id, or -1 for an id out of range
+
+```
+uf := Collection.UnionFind->New(3);
+uf->Union(0, 2);
+(uf->Find(0) = uf->Find(2))->PrintLine(); # true
+```
+		~#
+		method : public : Find(x : Int) ~ Int {
+			if(x < 0 | x >= @n) {
+				return -1;
+			};
+
+			while(@parent[x] <> x) {
+				# path halving
+				@parent[x] := @parent[@parent[x]];
+				x := @parent[x];
+			};
+
+			return x;
+		}
+
+		#~
+		Merges the sets holding two elements
+		@param a first element id
+		@param b second element id
+		@return true if two sets were merged, false if already together or an id is out of range
+
+```
+uf := Collection.UnionFind->New(3);
+uf->Union(0, 1)->PrintLine(); # true
+uf->Union(0, 1)->PrintLine(); # false
+```
+		~#
+		method : public : Union(a : Int, b : Int) ~ Bool {
+			ra := Find(a);
+			rb := Find(b);
+			if(ra < 0 | rb < 0 | ra = rb) {
+				return false;
+			};
+
+			if(@sizes[ra] < @sizes[rb]) {
+				temp := ra;
+				ra := rb;
+				rb := temp;
+			};
+
+			@parent[rb] := ra;
+			@sizes[ra] := @sizes[ra] + @sizes[rb];
+			@count -= 1;
+
+			return true;
+		}
+
+		#~
+		Checks whether two elements are in the same set
+		@param a first element id
+		@param b second element id
+		@return true if connected (false for an id out of range)
+		~#
+		method : public : Connected(a : Int, b : Int) ~ Bool {
+			ra := Find(a);
+			return ra > -1 & ra = Find(b);
+		}
+
+		#~
+		Gets the size of the set holding an element
+		@param x element id
+		@return number of elements in the set, 0 for an id out of range
+		~#
+		method : public : SizeOf(x : Int) ~ Int {
+			root := Find(x);
+			if(root < 0) {
+				return 0;
+			};
+
+			return @sizes[root];
+		}
+
+		#~
+		Gets the number of disjoint sets
+		@return set count
+		~#
+		method : public : Count() ~ Int {
+			return @count;
+		}
+
+		#~
+		Gets the number of elements
+		@return element count
+		~#
+		method : public : Size() ~ Int {
+			return @n;
+		}
+
+		#~
+		Adds a new element in its own set
+		@return the new element's id
+
+```
+uf := Collection.UnionFind->New(2);
+uf->Add()->PrintLine(); # 2
+```
+		~#
+		method : public : Add() ~ Int {
+			if(@n = @parent->Size()) {
+				capacity := @n * 2;
+				parent : Int[] := Int->New[capacity];
+				sizes : Int[] := Int->New[capacity];
+				Runtime->Copy(parent, 0, @parent, 0, @n);
+				Runtime->Copy(sizes, 0, @sizes, 0, @n);
+				@parent := parent;
+				@sizes := sizes;
+			};
+
+			id := @n;
+			@parent[id] := id;
+			@sizes[id] := 1;
+			@n += 1;
+			@count += 1;
+
+			return id;
+		}
+	}
+
+	#~
+	Trie (prefix tree) holding a set of strings. Add, Has, HasPrefix and Remove cost O(length of the string) times the log of the branching at each node; WithPrefix lists matches in sorted order. Characters are compared as the string's own character values.
+	~#
+	class Trie {
+		@root : TrieNode;
+		@size : Int;
+
+		#~
+		Default constructor
+
+```
+t := Collection.Trie->New();
+t->Add("car"); t->Add("cat");
+t->Size()->PrintLine(); # 2
+```
+		~#
+		New() {
+			@root := TrieNode->New();
+			@size := 0;
+		}
+
+		#~
+		Adds a string
+		@param word string to add
+		@return true if added, false if it was already present or is Nil
+
+```
+t := Collection.Trie->New();
+t->Add("car")->PrintLine(); # true
+t->Add("car")->PrintLine(); # false
+```
+		~#
+		method : public : Add(word : String) ~ Bool {
+			if(word = Nil) {
+				return false;
+			};
+
+			node := @root;
+			chars := word->ToCharArray();
+			for(i := 0; i < chars->Size(); i += 1;) {
+				node := node->Child(chars[i], true);
+			};
+
+			if(node->IsEnd()) {
+				return false;
+			};
+
+			node->SetEnd(true);
+			@size += 1;
+
+			return true;
+		}
+
+		#~
+		Checks whether a whole string was added
+		@param word string to look for
+		@return true if present
+
+```
+t := Collection.Trie->New();
+t->Add("car");
+t->Has("car")->PrintLine(); # true
+t->Has("ca")->PrintLine();  # false
+```
+		~#
+		method : public : Has(word : String) ~ Bool {
+			node := Walk(word);
+			return node <> Nil & node->IsEnd();
+		}
+
+		#~
+		Checks whether any added string starts with a prefix
+		@param prefix prefix to look for (an empty prefix matches if the trie is not empty)
+		@return true if some string starts with it
+
+```
+t := Collection.Trie->New();
+t->Add("car");
+t->HasPrefix("ca")->PrintLine(); # true
+```
+		~#
+		method : public : HasPrefix(prefix : String) ~ Bool {
+			node := Walk(prefix);
+			if(node = Nil) {
+				return false;
+			};
+
+			return node->IsEnd() | node->ChildCount() > 0;
+		}
+
+		#~
+		Removes a string, freeing the nodes only it used
+		@param word string to remove
+		@return true if it was present
+
+```
+t := Collection.Trie->New();
+t->Add("car"); t->Add("cart");
+t->Remove("cart")->PrintLine(); # true
+t->Has("car")->PrintLine();     # true
+```
+		~#
+		method : public : Remove(word : String) ~ Bool {
+			if(word = Nil) {
+				return false;
+			};
+
+			chars := word->ToCharArray();
+			path := Vector->New()<TrieNode>;
+			node := @root;
+			path->AddBack(node);
+			for(i := 0; i < chars->Size(); i += 1;) {
+				node := node->Child(chars[i], false);
+				if(node = Nil) {
+					return false;
+				};
+				path->AddBack(node);
+			};
+
+			if(<>node->IsEnd()) {
+				return false;
+			};
+
+			node->SetEnd(false);
+			@size -= 1;
+
+			# prune nodes that no longer lead to a string
+			for(i := chars->Size(); i > 0; i -= 1;) {
+				current := path->Get(i);
+				if(current->IsEnd() | current->ChildCount() > 0) {
+					break;
+				};
+				path->Get(i - 1)->RemoveChild(chars[i - 1]);
+			};
+
+			return true;
+		}
+
+		#~
+		Lists the added strings that start with a prefix
+		@param prefix prefix to match (an empty prefix lists everything)
+		@return matching strings in sorted order, empty if none
+
+```
+t := Collection.Trie->New();
+t->Add("cat"); t->Add("car"); t->Add("dog");
+t->WithPrefix("ca")->Get(0)->PrintLine(); # car
+```
+		~#
+		method : public : WithPrefix(prefix : String) ~ Vector<String> {
+			found := Vector->New()<String>;
+			node := Walk(prefix);
+			if(node <> Nil) {
+				node->Collect(prefix, found);
+			};
+
+			return found;
+		}
+
+		#~
+		Gets the number of strings
+		@return size
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+
+		#~
+		Checks for no strings
+		@return true if empty
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @size = 0;
+		}
+
+		#~
+		Removes every string
+		~#
+		method : public : Empty() ~ Nil {
+			@root := TrieNode->New();
+			@size := 0;
+		}
+
+		method : Walk(text : String) ~ TrieNode {
+			if(text = Nil) {
+				return Nil;
+			};
+
+			node := @root;
+			chars := text->ToCharArray();
+			for(i := 0; i < chars->Size(); i += 1;) {
+				node := node->Child(chars[i], false);
+				if(node = Nil) {
+					return Nil;
+				};
+			};
+
+			return node;
+		}
+	}
+
+	class : private : TrieNode {
+		@children : Map<IntRef, TrieNode>;
+		@end : Bool;
+
+		New() {
+			@children := Map->New()<IntRef, TrieNode>;
+			@end := false;
+		}
+
+		method : public : Child(c : Char, create : Bool) ~ TrieNode {
+			key := IntRef->New(c->As(Int));
+			child := @children->Find(key);
+			if(child = Nil & create) {
+				child := TrieNode->New();
+				@children->Insert(key, child);
+			};
+
+			return child;
+		}
+
+		method : public : RemoveChild(c : Char) ~ Nil {
+			@children->Remove(IntRef->New(c->As(Int)));
+		}
+
+		method : public : ChildCount() ~ Int {
+			return @children->Size();
+		}
+
+		method : public : IsEnd() ~ Bool {
+			return @end;
+		}
+
+		method : public : SetEnd(end : Bool) ~ Nil {
+			@end := end;
+		}
+
+		# appends every string at or below this node, in sorted order
+		method : public : Collect(prefix : String, found : Vector<String>) ~ Nil {
+			if(@end) {
+				found->AddBack(prefix);
+			};
+
+			keys := @children->GetKeys();
+			for(i := 0; i < keys->Size(); i += 1;) {
+				key := keys->Get(i);
+				next := String->New(prefix);
+				next->Append(key->Get()->As(Char));
+				@children->Find(key)->Collect(next, found);
+			};
+		}
+	}
+
+	#~
+	Insertion-ordered hash: key to value with O(1) expected Insert, Find, Has and Remove, and iteration in the order keys were first inserted. Updating an existing key keeps its position. A Hash is unordered and a Map is sorted by key; use this when the order of arrival matters.
+	~#
+	class OrderedHash<K : Compare, V> {
+		@index : Hash<K, OrderedHashNode<K, V>>;
+		@head : OrderedHashNode<K, V>;
+		@tail : OrderedHashNode<K, V>;
+
+		#~
+		Default constructor
+
+```
+h := Collection.OrderedHash->New()<String, IntRef>;
+h->Insert("b", IntRef->New(2)); h->Insert("a", IntRef->New(1));
+h->GetKeys()->Get(0)->PrintLine(); # b
+```
+		~#
+		New() {
+			@index := Hash->New()<K, OrderedHashNode<K, V>>;
+		}
+
+		#~
+		Inserts a key or updates its value; a new key goes last, an existing key keeps its place
+		@param key key
+		@param value value
+
+```
+h := Collection.OrderedHash->New()<String, IntRef>;
+h->Insert("a", IntRef->New(1));
+h->Insert("a", IntRef->New(5));
+h->Find("a")->Get()->PrintLine(); # 5
+h->Size()->PrintLine();           # 1
+```
+		~#
+		method : public : Insert(key : K, value : V) ~ Nil {
+			node := @index->Find(key);
+			if(node <> Nil) {
+				node->SetValue(value);
+				return;
+			};
+
+			node := OrderedHashNode->New(key, value)<K, V>;
+			if(@tail = Nil) {
+				@head := node;
+			}
+			else {
+				@tail->SetNext(node);
+				node->SetPrevious(@tail);
+			};
+			@tail := node;
+			@index->Insert(key, node);
+		}
+
+		#~
+		Finds the value for a key
+		@param key key
+		@return value, or Nil if absent
+		~#
+		method : public : Find(key : K) ~ V {
+			node := @index->Find(key);
+			if(node = Nil) {
+				return Nil;
+			};
+
+			return node->GetValue();
+		}
+
+		#~
+		Checks whether a key is present
+		@param key key
+		@return true if present
+		~#
+		method : public : Has(key : K) ~ Bool {
+			return @index->Has(key);
+		}
+
+		#~
+		Removes a key
+		@param key key
+		@return true if it was present
+
+```
+h := Collection.OrderedHash->New()<String, IntRef>;
+h->Insert("a", IntRef->New(1));
+h->Remove("a")->PrintLine(); # true
+```
+		~#
+		method : public : Remove(key : K) ~ Bool {
+			node := @index->Find(key);
+			if(node = Nil) {
+				return false;
+			};
+
+			previous := node->GetPrevious();
+			next := node->GetNext();
+			if(previous = Nil) {
+				@head := next;
+			}
+			else {
+				previous->SetNext(next);
+			};
+			if(next = Nil) {
+				@tail := previous;
+			}
+			else {
+				next->SetPrevious(previous);
+			};
+			@index->Remove(key);
+
+			return true;
+		}
+
+		#~
+		Gets the oldest key (the first one inserted that is still present)
+		@return key, or Nil if empty
+		~#
+		method : public : FirstKey() ~ K {
+			if(@head = Nil) {
+				return Nil;
+			};
+
+			return @head->GetKey();
+		}
+
+		#~
+		Gets the newest key
+		@return key, or Nil if empty
+		~#
+		method : public : LastKey() ~ K {
+			if(@tail = Nil) {
+				return Nil;
+			};
+
+			return @tail->GetKey();
+		}
+
+		#~
+		Removes the oldest key, as a first-in first-out cache or queue-with-lookup would
+		@return the removed key, or Nil if empty
+		~#
+		method : public : RemoveFirst() ~ K {
+			if(@head = Nil) {
+				return Nil;
+			};
+
+			key := @head->GetKey();
+			Remove(key);
+
+			return key;
+		}
+
+		#~
+		Gets the keys in insertion order
+		@return vector of keys
+		~#
+		method : public : GetKeys() ~ Vector<K> {
+			keys := Vector->New()<K>;
+			node := @head;
+			while(node <> Nil) {
+				keys->AddBack(node->GetKey());
+				node := node->GetNext();
+			};
+
+			return keys;
+		}
+
+		#~
+		Gets the values in insertion order of their keys
+		@return vector of values
+		~#
+		method : public : GetValues() ~ Vector<V> {
+			values := Vector->New()<V>;
+			node := @head;
+			while(node <> Nil) {
+				values->AddBack(node->GetValue());
+				node := node->GetNext();
+			};
+
+			return values;
+		}
+
+		#~
+		Calls a function for every entry in insertion order
+		@param f function taking the key and value
+		@return this hash
+
+```
+h := Collection.OrderedHash->New()<String, IntRef>;
+h->Insert("a", IntRef->New(1));
+h->Each(\(k, v) => k->PrintLine());
+```
+		~#
+		method : public : Each(f : (K, V) ~ Nil) ~ OrderedHash<K, V> {
+			node := @head;
+			while(node <> Nil) {
+				f(node->GetKey(), node->GetValue());
+				node := node->GetNext();
+			};
+
+			return @self;
+		}
+
+		#~
+		Gets the number of entries
+		@return size
+		~#
+		method : public : Size() ~ Int {
+			return @index->Size();
+		}
+
+		#~
+		Checks for no entries
+		@return true if empty
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @index->Size() = 0;
+		}
+
+		#~
+		Removes every entry
+		~#
+		method : public : Empty() ~ Nil {
+			@index->Empty();
+			@head := Nil;
+			@tail := Nil;
+		}
+	}
+
+	class : private : OrderedHashNode<K : Compare, V> {
+		@key : K;
+		@value : V;
+		@previous : OrderedHashNode<K, V>;
+		@next : OrderedHashNode<K, V>;
+
+		New(key : K, value : V) {
+			@key := key;
+			@value := value;
+		}
+
+		method : public : GetKey() ~ K {
+			return @key;
+		}
+
+		method : public : GetValue() ~ V {
+			return @value;
+		}
+
+		method : public : SetValue(value : V) ~ Nil {
+			@value := value;
+		}
+
+		method : public : GetPrevious() ~ OrderedHashNode<K, V> {
+			return @previous;
+		}
+
+		method : public : SetPrevious(previous : OrderedHashNode<K, V>) ~ Nil {
+			@previous := previous;
+		}
+
+		method : public : GetNext() ~ OrderedHashNode<K, V> {
+			return @next;
+		}
+
+		method : public : SetNext(next : OrderedHashNode<K, V>) ~ Nil {
+			@next := next;
+		}
+	}
+
+	#~
+	Bidirectional map: every key has exactly one value and every value exactly one key, so lookups work in both directions in O(1) expected. Inserting a key or a value that is already present replaces the old pairing. Built from two Hash tables.
+	~#
+	class BiMap<A : Compare, B : Compare> {
+		@forward : Hash<A, B>;
+		@backward : Hash<B, A>;
+
+		#~
+		Default constructor
+
+```
+m := Collection.BiMap->New()<String, IntRef>;
+m->Insert("one", IntRef->New(1));
+m->FindKey(IntRef->New(1))->PrintLine(); # one
+```
+		~#
+		New() {
+			@forward := Hash->New()<A, B>;
+			@backward := Hash->New()<B, A>;
+		}
+
+		#~
+		Pairs a key with a value, first dropping any existing pair that uses that key or that value
+		@param key key
+		@param value value
+		@return true if stored, false if either is Nil
+
+```
+m := Collection.BiMap->New()<String, IntRef>;
+m->Insert("a", IntRef->New(1));
+m->Insert("b", IntRef->New(1)); # replaces ("a", 1)
+m->Size()->PrintLine();         # 1
+```
+		~#
+		method : public : Insert(key : A, value : B) ~ Bool {
+			if(key = Nil | value = Nil) {
+				return false;
+			};
+
+			RemoveKey(key);
+			RemoveValue(value);
+			@forward->Insert(key, value);
+			@backward->Insert(value, key);
+
+			return true;
+		}
+
+		#~
+		Finds the value paired with a key
+		@param key key
+		@return value, or Nil if absent
+		~#
+		method : public : FindValue(key : A) ~ B {
+			return @forward->Find(key);
+		}
+
+		#~
+		Finds the key paired with a value
+		@param value value
+		@return key, or Nil if absent
+		~#
+		method : public : FindKey(value : B) ~ A {
+			return @backward->Find(value);
+		}
+
+		#~
+		Checks whether a key is present
+		@param key key
+		@return true if present
+		~#
+		method : public : HasKey(key : A) ~ Bool {
+			return @forward->Has(key);
+		}
+
+		#~
+		Checks whether a value is present
+		@param value value
+		@return true if present
+		~#
+		method : public : HasValue(value : B) ~ Bool {
+			return @backward->Has(value);
+		}
+
+		#~
+		Removes the pair holding a key
+		@param key key
+		@return true if a pair was removed
+		~#
+		method : public : RemoveKey(key : A) ~ Bool {
+			value := @forward->Find(key);
+			if(value = Nil) {
+				return false;
+			};
+
+			@forward->Remove(key);
+			@backward->Remove(value);
+
+			return true;
+		}
+
+		#~
+		Removes the pair holding a value
+		@param value value
+		@return true if a pair was removed
+		~#
+		method : public : RemoveValue(value : B) ~ Bool {
+			key := @backward->Find(value);
+			if(key = Nil) {
+				return false;
+			};
+
+			@backward->Remove(value);
+			@forward->Remove(key);
+
+			return true;
+		}
+
+		#~
+		Gets the number of pairs
+		@return size
+		~#
+		method : public : Size() ~ Int {
+			return @forward->Size();
+		}
+
+		#~
+		Checks for no pairs
+		@return true if empty
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @forward->Size() = 0;
+		}
+
+		#~
+		Removes every pair
+		~#
+		method : public : Empty() ~ Nil {
+			@forward->Empty();
+			@backward->Empty();
+		}
+
+		#~
+		Gets the keys, order unspecified
+		@return vector of keys
+		~#
+		method : public : GetKeys() ~ Vector<A> {
+			return @forward->GetKeys();
+		}
+
+		#~
+		Gets the values, order unspecified
+		@return vector of values
+		~#
+		method : public : GetValues() ~ Vector<B> {
+			return @backward->GetKeys();
+		}
+	}
+
+	#~
+	Indexed min-priority queue: each key is held once with a Float priority that can be lowered or raised later (decrease-key), which the plain Heap cannot do. Push of a present key updates it. Push, Pop, Remove and priority updates are O(log n); Has, Priority and Peek are O(1) expected. The smallest priority comes out first.
+	~#
+	class PriorityMap<T : Compare> {
+		@keys : T[];
+		@prios : Float[];
+		@pos : Hash<T, IntRef>;
+		@size : Int;
+
+		#~
+		Default constructor
+
+```
+q := Collection.PriorityMap->New()<String>;
+q->Push("far", 9.0); q->Push("near", 1.0);
+q->Pop()->PrintLine(); # near
+```
+		~#
+		New() {
+			@keys := T->New[16];
+			@prios := Float->New[16];
+			@pos := Hash->New()<T, IntRef>;
+			@size := 0;
+		}
+
+		#~
+		Adds a key, or changes its priority if it is already present
+		@param key key (Nil is ignored)
+		@param priority priority, smaller comes out first
+
+```
+q := Collection.PriorityMap->New()<String>;
+q->Push("a", 5.0);
+q->Push("a", 2.0); # decrease-key
+q->Priority("a")->PrintLine(); # 2
+```
+		~#
+		method : public : Push(key : T, priority : Float) ~ Nil {
+			if(key = Nil) {
+				return;
+			};
+
+			entry := @pos->Find(key);
+			if(entry <> Nil) {
+				i := entry->Get();
+				old := @prios[i];
+				@prios[i] := priority;
+				if(priority < old) {
+					SiftUp(i);
+				}
+				else {
+					SiftDown(i);
+				};
+				return;
+			};
+
+			if(@size = @keys->Size()) {
+				capacity := @size * 2;
+				keys : T[] := T->New[capacity];
+				prios : Float[] := Float->New[capacity];
+				Runtime->Copy(keys, 0, @keys, 0, @size);
+				Runtime->Copy(prios, 0, @prios, 0, @size);
+				@keys := keys;
+				@prios := prios;
+			};
+
+			@keys[@size] := key;
+			@prios[@size] := priority;
+			@pos->Insert(key, IntRef->New(@size));
+			@size += 1;
+			SiftUp(@size - 1);
+		}
+
+		#~
+		Removes and returns the key with the smallest priority
+		@return key, or Nil if empty
+
+```
+q := Collection.PriorityMap->New()<String>;
+q->Push("b", 2.0); q->Push("a", 1.0);
+q->Pop()->PrintLine(); # a
+```
+		~#
+		method : public : Pop() ~ T {
+			if(@size = 0) {
+				return Nil;
+			};
+
+			key := @keys[0];
+			RemoveAt(0);
+
+			return key;
+		}
+
+		#~
+		Gets the key with the smallest priority without removing it
+		@return key, or Nil if empty
+		~#
+		method : public : Peek() ~ T {
+			if(@size = 0) {
+				return Nil;
+			};
+
+			return @keys[0];
+		}
+
+		#~
+		Gets the smallest priority
+		@return priority, 0.0 if empty
+		~#
+		method : public : PeekPriority() ~ Float {
+			if(@size = 0) {
+				return 0.0;
+			};
+
+			return @prios[0];
+		}
+
+		#~
+		Gets the priority of a key
+		@param key key
+		@return priority, 0.0 if the key is absent (use Has to tell)
+		~#
+		method : public : Priority(key : T) ~ Float {
+			entry := @pos->Find(key);
+			if(entry = Nil) {
+				return 0.0;
+			};
+
+			return @prios[entry->Get()];
+		}
+
+		#~
+		Checks whether a key is present
+		@param key key
+		@return true if present
+		~#
+		method : public : Has(key : T) ~ Bool {
+			return key <> Nil & @pos->Has(key);
+		}
+
+		#~
+		Removes a key wherever it is in the queue
+		@param key key
+		@return true if it was present
+		~#
+		method : public : Remove(key : T) ~ Bool {
+			if(key = Nil) {
+				return false;
+			};
+
+			entry := @pos->Find(key);
+			if(entry = Nil) {
+				return false;
+			};
+
+			RemoveAt(entry->Get());
+			return true;
+		}
+
+		#~
+		Gets the number of keys
+		@return size
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+
+		#~
+		Checks for no keys
+		@return true if empty
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @size = 0;
+		}
+
+		#~
+		Removes every key
+		~#
+		method : public : Empty() ~ Nil {
+			@keys := T->New[16];
+			@prios := Float->New[16];
+			@pos->Empty();
+			@size := 0;
+		}
+
+		method : RemoveAt(i : Int) ~ Nil {
+			last := @size - 1;
+			@pos->Remove(@keys[i]);
+			if(i <> last) {
+				@keys[i] := @keys[last];
+				@prios[i] := @prios[last];
+				@pos->Find(@keys[i])->Set(i);
+			};
+			@keys[last] := Nil;
+			@size -= 1;
+
+			if(i < @size) {
+				SiftUp(i);
+				SiftDown(@pos->Find(@keys[i])->Get());
+			};
+		}
+
+		method : Swap(a : Int, b : Int) ~ Nil {
+			key := @keys[a];
+			@keys[a] := @keys[b];
+			@keys[b] := key;
+			priority := @prios[a];
+			@prios[a] := @prios[b];
+			@prios[b] := priority;
+			@pos->Find(@keys[a])->Set(a);
+			@pos->Find(@keys[b])->Set(b);
+		}
+
+		method : SiftUp(i : Int) ~ Nil {
+			while(i > 0) {
+				parent := (i - 1) >> 1;
+				if(@prios[i] < @prios[parent]) {
+					Swap(i, parent);
+					i := parent;
+				}
+				else {
+					return;
+				};
+			};
+		}
+
+		method : SiftDown(i : Int) ~ Nil {
+			while(true) {
+				smallest := i;
+				left := 2 * i + 1;
+				right := left + 1;
+				if(left < @size & @prios[left] < @prios[smallest]) {
+					smallest := left;
+				};
+				if(right < @size & @prios[right] < @prios[smallest]) {
+					smallest := right;
+				};
+				if(smallest = i) {
+					return;
+				};
+				Swap(i, smallest);
+				i := smallest;
+			};
+		}
+	}
+
+	#~
+	Fenwick tree (binary indexed tree) of Int values: point updates and prefix or range sums, both O(log n), in n slots of memory. Indexes are 0-based.
+	~#
+	class FenwickTree {
+		@tree : Int[];
+		@n : Int;
+
+		#~
+		Creates a tree of n zeros
+		@param n number of slots (at least 1)
+
+```
+f := Collection.FenwickTree->New(5);
+f->Add(1, 10); f->Add(3, 5);
+f->Sum(3)->PrintLine(); # 15
+```
+		~#
+		New(n : Int) {
+			if(n < 1) {
+				n := 1;
+			};
+
+			@n := n;
+			@tree := Int->New[n + 1];
+		}
+
+		#~
+		Adds to one slot
+		@param index slot (0 to Size()-1)
+		@param delta amount to add
+		@return true if added, false for an index out of range
+
+```
+f := Collection.FenwickTree->New(4);
+f->Add(0, 3)->PrintLine(); # true
+```
+		~#
+		method : public : Add(index : Int, delta : Int) ~ Bool {
+			if(index < 0 | index >= @n) {
+				return false;
+			};
+
+			i := index + 1;
+			while(i <= @n) {
+				@tree[i] := @tree[i] + delta;
+				i += i and -i;
+			};
+
+			return true;
+		}
+
+		#~
+		Sums the slots from 0 up to and including an index
+		@param index last slot (values past the end are clamped, below 0 gives 0)
+		@return sum
+
+```
+f := Collection.FenwickTree->New(4);
+f->Add(0, 1); f->Add(2, 4);
+f->Sum(2)->PrintLine(); # 5
+```
+		~#
+		method : public : Sum(index : Int) ~ Int {
+			if(index >= @n) {
+				index := @n - 1;
+			};
+
+			total := 0;
+			i := index + 1;
+			while(i > 0) {
+				total += @tree[i];
+				i -= i and -i;
+			};
+
+			return total;
+		}
+
+		#~
+		Sums an inclusive range of slots
+		@param lo first slot
+		@param hi last slot
+		@return sum, 0 if the range is empty
+
+```
+f := Collection.FenwickTree->New(5);
+f->Add(1, 2); f->Add(2, 3); f->Add(4, 9);
+f->RangeSum(1, 2)->PrintLine(); # 5
+```
+		~#
+		method : public : RangeSum(lo : Int, hi : Int) ~ Int {
+			if(lo < 0) {
+				lo := 0;
+			};
+			if(hi < lo) {
+				return 0;
+			};
+
+			return Sum(hi) - Sum(lo - 1);
+		}
+
+		#~
+		Gets the value of one slot
+		@param index slot
+		@return value, 0 for an index out of range
+		~#
+		method : public : Get(index : Int) ~ Int {
+			if(index < 0 | index >= @n) {
+				return 0;
+			};
+
+			return RangeSum(index, index);
+		}
+
+		#~
+		Sets one slot to a value
+		@param index slot
+		@param value new value
+		@return true if set, false for an index out of range
+		~#
+		method : public : Set(index : Int, value : Int) ~ Bool {
+			if(index < 0 | index >= @n) {
+				return false;
+			};
+
+			return Add(index, value - Get(index));
+		}
+
+		#~
+		Gets the number of slots
+		@return size
+		~#
+		method : public : Size() ~ Int {
+			return @n;
+		}
+	}
+
+	#~
+	Bloom filter: a compact set that can say "definitely not present" or "probably present". Add and MightContain are O(k) bit operations; memory is a fixed number of bits per expected key. There are no false negatives; the false positive rate is about 1% at 10 bits per key and 0.1% at 15. Keys cannot be removed.
+	~#
+	class BloomFilter<T : Compare> {
+		@bits : BitSet;
+		@m : Int;
+		@k : Int;
+		@count : Int;
+
+		#~
+		Creates a filter
+		@param expected number of keys you expect to add (at least 1)
+		@param bits_per_key bits of memory per expected key, 10 gives about 1% false positives
+
+```
+b := Collection.BloomFilter->New(1000, 10)<String>;
+b->Add("apple");
+b->MightContain("apple")->PrintLine(); # true
+```
+		~#
+		New(expected : Int, bits_per_key : Int) {
+			if(expected < 1) {
+				expected := 1;
+			};
+			if(bits_per_key < 2) {
+				bits_per_key := 2;
+			};
+
+			@m := expected * bits_per_key;
+			@k := bits_per_key * 7 / 10;
+			if(@k < 1) {
+				@k := 1;
+			};
+			@bits := BitSet->New(@m);
+			@count := 0;
+		}
+
+		#~
+		Adds a key
+		@param key key (Nil is ignored)
+
+```
+b := Collection.BloomFilter->New(100, 10)<String>;
+b->Add("x");
+b->Count()->PrintLine(); # 1
+```
+		~#
+		method : public : Add(key : T) ~ Nil {
+			if(key = Nil) {
+				return;
+			};
+
+			h1 := key->HashID() * -7046029254386353131;
+			h2 := (h1 >> 17) or 1;
+			for(i := 0; i < @k; i += 1;) {
+				@bits->Set(Slot(h1, h2, i));
+			};
+			@count += 1;
+		}
+
+		#~
+		Tests a key
+		@param key key
+		@return false if the key was definitely never added, true if it probably was
+
+```
+b := Collection.BloomFilter->New(100, 10)<String>;
+b->Add("x");
+b->MightContain("y")->PrintLine(); # almost certainly false
+```
+		~#
+		method : public : MightContain(key : T) ~ Bool {
+			if(key = Nil) {
+				return false;
+			};
+
+			h1 := key->HashID() * -7046029254386353131;
+			h2 := (h1 >> 17) or 1;
+			for(i := 0; i < @k; i += 1;) {
+				if(<>@bits->Get(Slot(h1, h2, i))) {
+					return false;
+				};
+			};
+
+			return true;
+		}
+
+		#~
+		Gets the number of Add calls (repeats count)
+		@return count
+		~#
+		method : public : Count() ~ Int {
+			return @count;
+		}
+
+		#~
+		Gets the number of bits in the filter
+		@return bits
+		~#
+		method : public : Bits() ~ Int {
+			return @m;
+		}
+
+		#~
+		Removes every key
+		~#
+		method : public : Empty() ~ Nil {
+			@bits := BitSet->New(@m);
+			@count := 0;
+		}
+
+		method : Slot(h1 : Int, h2 : Int, i : Int) ~ Int {
+			return ((h1 + i * h2) and 9223372036854775807) % @m;
 		}
 	}
 }

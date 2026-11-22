@@ -1,0 +1,53 @@
+use Collection;
+
+# Stack is array backed: a very deep stack used to be a chain of nodes that overflowed the
+# collector's mark recursion (crash at ~500k entries), and Empty() left Size() stale.
+class CollectStackDeepTest {
+	@pass : static : Bool;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			@pass := false;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"Testing Stack depth and Empty..."->PrintLine();
+		@pass := true;
+
+		s := Stack->New()<IntRef>;
+		n := 1000000;
+		for(i := 0; i < n; i += 1;) { s->Push(IntRef->New(i)); };
+		Check(s->Size() = n & s->Top()->Get() = n - 1, "1M deep push");
+		ok := true;
+		for(i := n - 1; i > -1; i -= 1;) {
+			if(s->Pop()->Get() <> i) { ok := false; };
+		};
+		Check(ok & s->IsEmpty() & s->Size() = 0 & s->Pop() = Nil & s->Top() = Nil, "1M deep pop order");
+
+		s->Push(IntRef->New(1)); s->Push(IntRef->New(2)); s->Push(IntRef->New(3));
+		a := s->ToArray();
+		Check(a->Size() = 3 & a[0]->Get() = 3 & a[2]->Get() = 1, "ToArray top first");
+		Check(s->Pop(2)->Get() = 2 & s->Size() = 1 & s->Top()->Get() = 1, "Pop(n)");
+		Check(s->Pop(5)->Get() = 1 & s->IsEmpty() & s->Pop(0) = Nil, "Pop(n) beyond size");
+
+		s->Push(IntRef->New(7));
+		s->Empty();
+		Check(s->Size() = 0 & s->IsEmpty() & s->Top() = Nil, "Empty resets Size");
+		s->Push(IntRef->New(8));
+		Check(s->Size() = 1 & s->Top()->Get() = 8, "usable after Empty");
+
+		t := Stack->New()<String>;
+		t->Push("a"); t->Push("b");
+		Check(t->ToString()->Equals("[b,a]"), "ToString top first");
+
+		if(@pass) {
+			"PASS: Stack depth and Empty"->PrintLine();
+		}
+		else {
+			"FAIL: Stack depth and Empty"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

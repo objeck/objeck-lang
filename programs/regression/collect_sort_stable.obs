@@ -1,0 +1,64 @@
+use Collection;
+
+# Vector and CompareVector comparator sorts share one merge sort: check order and
+# stability around the insertion-sort cutoff (16) and on presorted / reversed input.
+class CollectSortStableTest {
+	function : Main(args : String[]) ~ Nil {
+		"Testing shared comparator sort..."->PrintLine();
+		pass := true;
+		sizes := [0, 1, 2, 3, 15, 16, 17, 31, 32, 33, 100, 1000, 5000];
+		each(s : sizes) {
+			n := sizes[s];
+			each(mode : 3) {
+				v := Vector->New()<IntRef>;
+				c := CompareVector->New()<IntRef>;
+				seed := 7 + n;
+				for(i := 0; i < n; i += 1;) {
+					key := 0;
+					if(mode = 0) {
+						seed := (seed * 1103515245 + 12345) and 2147483647;
+						key := seed % 10;
+					}
+					else if(mode = 1) {
+						key := i / 4;
+					}
+					else {
+						key := (n - i) / 4;
+					};
+					# value = key * 100000 + original position
+					v->AddBack(IntRef->New(key * 100000 + i));
+					c->AddBack(IntRef->New(key * 100000 + i));
+				};
+				v->Sort(\(a, b) => (a->Get() / 100000) - (b->Get() / 100000));
+				c->Sort(\(a, b) => (a->Get() / 100000) - (b->Get() / 100000));
+				if(v->Size() <> n | c->Size() <> n) {
+					pass := false;
+					"  FAIL: size changed n={$n}"->PrintLine();
+				};
+				for(i := 1; i < n; i += 1;) {
+					pv := v->Get(i - 1)->Get(); cv := v->Get(i)->Get();
+					# stable: keys ascending, equal keys keep the original (low) position order
+					if(pv / 100000 > cv / 100000 | (pv / 100000 = cv / 100000 & pv % 100000 > cv % 100000)) {
+						pass := false;
+						"  FAIL: Vector n={$n} mode={$mode} at {$i}"->PrintLine();
+						break;
+					};
+					pc := c->Get(i - 1)->Get(); cc := c->Get(i)->Get();
+					if(pc / 100000 > cc / 100000 | (pc / 100000 = cc / 100000 & pc % 100000 > cc % 100000)) {
+						pass := false;
+						"  FAIL: CompareVector n={$n} mode={$mode} at {$i}"->PrintLine();
+						break;
+					};
+				};
+			};
+		};
+
+		if(pass) {
+			"PASS: shared comparator sort"->PrintLine();
+		}
+		else {
+			"FAIL: shared comparator sort"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

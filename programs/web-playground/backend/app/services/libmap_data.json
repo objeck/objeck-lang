@@ -55,7 +55,7 @@
   "gen_collect": {
    "deps": [],
    "bundles": {
-    "Collection": ["BackwardIterator", "BitSet", "Cache", "CompareBackwardIterator", "CompareForwardIterator", "CompareList", "CompareVector", "FloatVector", "ForwardIterator", "Hash", "HashSet", "Heap", "IntMap", "IntSet", "IntVector", "List", "Map", "MultiHash", "MultiMap", "Pair", "Queue", "Set", "SetHash", "Stack", "Vector"],
+    "Collection": ["BackwardIterator", "BiMap", "BitSet", "BloomFilter", "Cache", "CompareBackwardIterator", "CompareForwardIterator", "CompareList", "CompareVector", "Deque", "FenwickTree", "FloatVector", "ForwardIterator", "Hash", "HashSet", "Heap", "IntMap", "IntSet", "IntVector", "List", "Map", "MultiHash", "MultiMap", "MultiSet", "OrderedHash", "Pair", "PriorityMap", "Queue", "Set", "SetHash", "Stack", "Trie", "UnionFind", "Vector"],
     "Collection.Tuple": ["Pair", "Quartet", "Quintet", "Triplet"]
    }
   },

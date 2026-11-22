@@ -1,0 +1,51 @@
+use Collection;
+
+class CollectMultiSetTest {
+	@pass : static : Bool;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			@pass := false;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"Testing MultiSet..."->PrintLine();
+		@pass := true;
+
+		s := MultiSet->New()<String>;
+		Check(s->IsEmpty() & s->Size() = 0 & s->Distinct() = 0 & s->Count("a") = 0 & <>s->Has("a"), "new multiset empty");
+		Check(s->Add("a") = 1 & s->Add("a") = 2 & s->Add("b") = 1, "Add returns the new count");
+		Check(s->Size() = 3 & s->Distinct() = 2 & s->Count("a") = 2 & s->Has("b"), "counts");
+		Check(s->AddMany("c", 5) = 5 & s->AddMany("c", 0) = 5 & s->AddMany("c", -3) = 5 & s->AddMany("zz", 0) = 0, "AddMany");
+		Check(s->Size() = 8 & s->Distinct() = 3 & <>s->Has("zz"), "AddMany totals, zero adds nothing");
+
+		Check(s->Remove("a") & s->Count("a") = 1 & s->Remove("a") & <>s->Has("a") & <>s->Remove("a"), "Remove one at a time");
+		Check(s->Size() = 6 & s->Distinct() = 2, "totals after Remove");
+		Check(s->RemoveAll("c") = 5 & s->RemoveAll("c") = 0 & s->Size() = 1, "RemoveAll");
+
+		s->Empty();
+		Check(s->IsEmpty() & s->Distinct() = 0, "Empty");
+
+		s->AddMany("a", 1); s->AddMany("b", 5); s->AddMany("c", 3); s->AddMany("d", 4);
+		top := s->MostCommon(2);
+		Check(top->Size() = 2 & top->Get(0)->Equals("b") & top->Get(1)->Equals("d"), "MostCommon(2)");
+		Check(s->MostCommon(10)->Size() = 4 & s->MostCommon(10)->Get(3)->Equals("a"), "MostCommon beyond size");
+		Check(s->GetKeys()->Size() = 4, "GetKeys");
+
+		# counting words
+		words := "the cat and the hat and the bat"->Split(" ");
+		w := MultiSet->New()<String>;
+		each(i : words) { w->Add(words[i]); };
+		Check(w->Count("the") = 3 & w->Count("and") = 2 & w->Size() = 8 & w->MostCommon(1)->Get(0)->Equals("the"), "word count");
+
+		if(@pass) {
+			"PASS: MultiSet"->PrintLine();
+		}
+		else {
+			"FAIL: MultiSet"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

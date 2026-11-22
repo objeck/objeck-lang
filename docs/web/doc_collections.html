@@ -63,6 +63,7 @@
      <ul>
       <li><a href="#at-a-glance">At a glance</a></li>
       <li><a href="#what-remove-returns">What <code>Remove</code> returns</a></li>
+      <li><a href="#nil-and-changing-a-collection-while-you-walk-it">Nil and changing a collection while you walk it</a></li>
       <li><a href="#the-classes">The classes</a></li>
       <li><a href="#recipes">Recipes</a></li>
       <li><a href="#how-to-check">How to check</a></li>
@@ -83,6 +84,15 @@
       <tr><td data-label="Need">Unique values, order does not matter</td><td data-label="Use"><code>HashSet</code> (or <code>SetHash</code>)</td><td data-label="Why"><code>Hash</code> underneath, O(1) expected</td></tr>
       <tr><td data-label="Need">Several values per key, keys sorted</td><td data-label="Use"><code>MultiMap</code></td><td data-label="Why">a <code>Map</code> of <code>Vector</code>s</td></tr>
       <tr><td data-label="Need">Several values per key, keys unordered</td><td data-label="Use"><code>MultiHash</code></td><td data-label="Why">a <code>Hash</code> of <code>Vector</code>s</td></tr>
+      <tr><td data-label="Need">Both ends O(1) plus index access (FIFO queue, sliding window)</td><td data-label="Use"><code>Deque</code></td><td data-label="Why">ring buffer; <code>AddFront</code>/<code>RemoveFront</code> are O(1), unlike <code>Vector</code></td></tr>
+      <tr><td data-label="Need">Count occurrences of keys (word counts, histograms)</td><td data-label="Use"><code>MultiSet</code></td><td data-label="Why"><code>Hash</code> of counts; <code>Count</code>, <code>MostCommon(n)</code></td></tr>
+      <tr><td data-label="Need">Group items into disjoint sets, connected components</td><td data-label="Use"><code>UnionFind</code></td><td data-label="Why">int ids; near-constant <code>Union</code>/<code>Find</code></td></tr>
+      <tr><td data-label="Need">Strings by prefix (autocomplete, dictionary)</td><td data-label="Use"><code>Trie</code></td><td data-label="Why"><code>WithPrefix</code> returns sorted matches</td></tr>
+      <tr><td data-label="Need">Key to value, iterated in insertion order</td><td data-label="Use"><code>OrderedHash</code></td><td data-label="Why"><code>Hash</code> + linked entries; O(1) expected</td></tr>
+      <tr><td data-label="Need">A one-to-one table you look up both ways (id and name)</td><td data-label="Use"><code>BiMap</code></td><td data-label="Why">two <code>Hash</code> tables kept in step</td></tr>
+      <tr><td data-label="Need">A priority queue whose priorities change (Dijkstra, A*)</td><td data-label="Use"><code>PriorityMap</code></td><td data-label="Why">indexed min-heap with decrease-key; O(log n)</td></tr>
+      <tr><td data-label="Need">Running sums that change (point update, prefix/range sum)</td><td data-label="Use"><code>FenwickTree</code></td><td data-label="Why">O(log n) both ways</td></tr>
+      <tr><td data-label="Need">A cheap "definitely not seen" pre-check in front of something costly</td><td data-label="Use"><code>BloomFilter</code></td><td data-label="Why">bit set; no false negatives, ~1% false positives at 10 bits/key</td></tr>
       <tr><td data-label="Need">Two related values with no class of their own</td><td data-label="Use"><code>Collection.Tuple.Pair</code></td><td data-label="Why">immutable, any types</td></tr>
       <tr><td data-label="Need">A pair that can sit in a sorted collection, or that you must change</td><td data-label="Use"><code>Collection.Pair</code></td><td data-label="Why">first element must be <code>Compare</code></td></tr>
      </tbody>
@@ -105,9 +115,15 @@
      </tbody>
     </table>
     <p>Two consequences. A <code>Vector</code> hands you back what it removed, so <code>Remove</code> on a <code>Vector&lt;IntRef&gt;</code> cannot tell you "nothing there" from "a <code>Nil</code> was stored there"; use <code>Size()</code> or <code>Get</code> first when <code>Nil</code> is a legal element. And a <code>List</code> removes at its <em>cursor</em>: <code>RemoveFront</code> and <code>RemoveBack</code> move the cursor to that end first, so they disturb an iteration in progress that uses <code>Next()</code>/<code>Get()</code> on the same list (use <code>ForwardIterator()</code> for a traversal that must survive).</p>
+    <h3 id="nil-and-changing-a-collection-while-you-walk-it">Nil and changing a collection while you walk it</h3>
+    <ul>
+     <li>A <code>Nil</code> <strong>key or value</strong> is ignored by <code>Hash</code>, <code>HashSet</code>, <code>Set</code>, <code>Map</code>, <code>MultiHash</code>, <code>Heap</code> and <code>BiMap</code> inserts, and looking one up reports "not found" (<code>Nil</code>, <code>false</code> or <code>-1</code>). A <code>Vector</code> stores a <code>Nil</code> element, and sorting a <code>CompareVector</code> or <code>CompareList</code> that holds one is not defined.</li>
+     <li><code>Each</code>, <code>Filter</code> and the iterators read the collection as it is. Adding or removing entries from inside the callback, or while an iterator is live, is <strong>not supported</strong>: the result is unspecified (a skipped or repeated entry, or a stale count). Collect the changes and apply them afterwards, or iterate over <code>GetKeys()</code>/<code>ToArray()</code>, which are copies.</li>
+     <li><code>Hash</code> is open-addressed with the hash stored beside each key and grows at 70% load, so an insert that triggers growth is O(n) once and O(1) otherwise; <code>Reserve</code> (vectors) and <code>SetCapacity</code>/<code>Resize</code> (<code>Hash</code>) avoid that when the size is known.</li>
+    </ul>
     <h3 id="the-classes">The classes</h3>
     <h4 id="vector-gen_collectobs5118"><code>Vector&lt;H&gt;</code> (gen_collect.obs:5118)</h4>
-    <p>A growable array. It grows by half again (at least four slots) when full, so <code>AddBack</code> is amortised O(1).</p>
+    <p>A growable array. It doubles (at least four slots) when full, so <code>AddBack</code> is amortised O(1).</p>
     <table class="ref-table">
      <thead>
       <tr><th>Operation</th><th>Cost</th></tr>
@@ -115,12 +131,13 @@
      <tbody>
       <tr><td data-label="Operation"><code>Get(i)</code>, <code>Set(v, i)</code>, <code>First()</code>, <code>Last()</code>, <code>Size()</code></td><td data-label="Cost">O(1); <code>Get</code> returns <code>Nil</code> and <code>Set</code> returns <code>false</code> for a bad index</td></tr>
       <tr><td data-label="Operation"><code>AddBack(v)</code>, <code>RemoveBack()</code></td><td data-label="Cost">O(1) amortised</td></tr>
-      <tr><td data-label="Operation"><code>Remove(i)</code></td><td data-label="Cost">O(n): later elements are shifted down</td></tr>
+      <tr><td data-label="Operation"><code>Remove(i)</code>, <code>Insert(i, v)</code></td><td data-label="Cost">O(n): later elements are shifted down / up; <code>Insert</code> returns <code>Bool</code> (index 0..<code>Size()</code>)</td></tr>
+      <tr><td data-label="Operation"><code>Slice(lo, hi)</code>, <code>AddAll(other)</code>, <code>Swap(a, b)</code></td><td data-label="Cost">O(hi-lo) / O(other) / O(1); <code>CompareVector</code> has the same three plus <code>Find</code>/<code>Has</code></td></tr>
       <tr><td data-label="Operation"><code>FindFirst(f)</code>, <code>FindIndex(f)</code>, <code>Any</code>, <code>All</code>, <code>Count</code>, <code>Filter</code>, <code>Map</code>, <code>Reduce</code></td><td data-label="Cost">O(n)</td></tr>
       <tr><td data-label="Operation"><code>Sort(compare)</code></td><td data-label="Cost">O(n log n), stable (merge sort)</td></tr>
      </tbody>
     </table>
-    <p>There is no insert-at-index and no <code>AddFront</code>; use a <code>List</code>, or build a new <code>Vector</code>, if you need either. <code>Reserve(n)</code> avoids regrowth when the size is known.</p>
+    <p>There is no <code>AddFront</code> (<code>Insert(0, v)</code> works but is O(n)); use a <code>List</code> if you need one. <code>Reserve(n)</code> avoids regrowth when the size is known.</p>
     <h4 id="list-gen_collectobs4355"><code>List&lt;H&gt;</code> (gen_collect.obs:4355)</h4>
     <p>A doubly linked list with one built-in cursor (<code>Rewind</code>, <code>Forward</code>, <code>Next</code>, <code>Previous</code>, <code>More</code>, <code>Get</code>, <code>Set</code>) and independent <code>ForwardIterator()</code>/<code>BackwardIterator()</code> objects.</p>
     <table class="ref-table">
@@ -169,6 +186,24 @@
      <li><code>Remove(k)</code> drops the key and all its values. There is no call that removes one value.</li>
      <li><code>Size()</code> counts distinct keys; <code>TotalSize()</code> counts values and walks every key, O(keys).</li>
     </ul>
+    <h4 id="deque"><code>Deque&lt;H&gt;</code></h4>
+    <p>A ring buffer. <code>AddFront</code>, <code>AddBack</code>, <code>RemoveFront</code>, <code>RemoveBack</code>, <code>Front</code>, <code>Back</code>, <code>Get(i)</code>, <code>Set(v, i)</code> and <code>Size()</code> are all O(1) (the buffer doubles when full, so adds are amortised O(1)). Empty reads return <code>Nil</code>. <code>ToArray()</code> copies front to back. Use it for a FIFO queue or a sliding window that also needs index access; a plain <code>List</code> is as fast for pure FIFO use but has no <code>Get(i)</code>, and <code>Vector-&gt;Remove(0)</code> is O(n).</p>
+    <h4 id="multiset"><code>MultiSet&lt;K&gt;</code></h4>
+    <p>A counter over a <code>Hash&lt;K, IntRef&gt;</code>. <code>Add(k)</code> and <code>AddMany(k, n)</code> return the new count, <code>Remove(k)</code> takes one occurrence away (<code>false</code> if absent), <code>RemoveAll(k)</code> returns how many it dropped, <code>Count(k)</code> is 0 for an absent key. <code>Size()</code> is the total with repeats, <code>Distinct()</code> the number of keys, <code>GetKeys()</code> the keys (unordered) and <code>MostCommon(n)</code> the top <code>n</code> keys by count. Costs are those of <code>Hash</code> (O(1) expected), <code>MostCommon</code> is O(k log k) in the distinct keys. It is called <code>MultiSet</code> rather than <code>Counter</code> because <code>System.Concurrency.Counter</code> already exists in <code>lang</code>.</p>
+    <h4 id="unionfind"><code>UnionFind</code></h4>
+    <p>Disjoint sets over the ids <code>0..n-1</code> (not generic: the elements are ints, map your own keys to ids with a <code>Hash</code>). <code>Union</code> is by size and <code>Find</code> halves paths, so both are near-constant amortised. <code>Union(a, b)</code> returns <code>true</code> only if it merged two sets; <code>Connected</code>, <code>SizeOf</code> and <code>Find</code> treat an out-of-range id as absent (<code>false</code>, <code>0</code>, <code>-1</code>). <code>Count()</code> is the number of sets, <code>Size()</code> the number of elements, and <code>Add()</code> appends a new singleton and returns its id. Typical use: connected components, Kruskal's minimum spanning tree, grouping equivalent items.</p>
+    <h4 id="trie"><code>Trie</code></h4>
+    <p>A prefix tree holding a set of strings. <code>Add(s)</code> and <code>Remove(s)</code> return <code>false</code> for a duplicate or absent string; <code>Has(s)</code> tests a whole string and <code>HasPrefix(p)</code> any string starting with <code>p</code>. <code>WithPrefix(p)</code> returns the matches as a sorted <code>Vector&lt;String&gt;</code> (an empty prefix lists everything), which is the point of a trie: autocomplete without scanning the set. Each node keeps its children in a <code>Map</code>, so a step costs O(log branching); <code>Remove</code> prunes nodes only that string used. Characters are compared by their code, as in the string itself.</p>
+    <h4 id="orderedhash"><code>OrderedHash&lt;K, V&gt;</code></h4>
+    <p>A <code>Hash</code> plus a doubly linked list of entries, so <code>Insert</code>, <code>Find</code>, <code>Has</code> and <code>Remove</code> are O(1) expected and <code>GetKeys()</code>, <code>GetValues()</code> and <code>Each</code> walk the entries in the order the keys first arrived. Updating an existing key keeps its place; removing and re-inserting moves it to the end. <code>FirstKey()</code>, <code>LastKey()</code> and <code>RemoveFirst()</code> expose the oldest and newest entries, which is enough for a first-in first-out cache (for least-recently-used eviction use <code>Cache</code>). <code>Find</code> of an absent key returns <code>Nil</code>. Costs one extra node per entry compared with a plain <code>Hash</code>.</p>
+    <h4 id="bimap"><code>BiMap&lt;A, B&gt;</code></h4>
+    <p>Two <code>Hash</code> tables kept in step, so <code>FindValue(key)</code> and <code>FindKey(value)</code> are both O(1) expected. Both sides must be <code>Compare</code> and non-<code>Nil</code>. It is one-to-one: <code>Insert(k, v)</code> first drops any pair that already uses <code>k</code> or <code>v</code>, so <code>Size()</code> never exceeds the number of distinct keys or of distinct values. <code>RemoveKey</code> and <code>RemoveValue</code> take out the whole pair. Use it for id-to-name tables, enum codecs and any "look it up either way" index.</p>
+    <h4 id="prioritymap"><code>PriorityMap&lt;T&gt;</code></h4>
+    <p>A min-priority queue where each key appears once and its <code>Float</code> priority can change. <code>Push(k, p)</code> adds the key or, if it is present, updates it (decrease-key or increase-key); <code>Pop()</code> returns the key with the smallest priority, <code>Remove(k)</code> takes a key out of the middle. Push, Pop, Remove and updates are O(log n); <code>Has</code>, <code>Priority</code>, <code>Peek</code> are O(1) expected. This is what Dijkstra and A* need and what <code>Heap</code> cannot do (<code>Heap</code> holds duplicates and has no update). An absent key's <code>Priority</code> is <code>0.0</code>, so test with <code>Has</code> first.</p>
+    <h4 id="fenwicktree"><code>FenwickTree</code></h4>
+    <p>A binary indexed tree over <code>Int</code> slots (0-based). <code>Add(i, delta)</code> is a point update, <code>Sum(i)</code> the prefix sum up to and including <code>i</code>, <code>RangeSum(lo, hi)</code> an inclusive range, all O(log n) in n+1 <code>Int</code>s of memory. <code>Get(i)</code> and <code>Set(i, v)</code> are built from those. Use it for running totals that change (rankings, histograms, "how many items below x") where re-summing a <code>Vector</code> would be O(n). Out-of-range updates return <code>false</code>; out-of-range queries clamp or return 0.</p>
+    <h4 id="bloomfilter"><code>BloomFilter&lt;T&gt;</code></h4>
+    <p>A probabilistic set on a <code>BitSet</code>. <code>Add(k)</code> sets <code>k</code> bits chosen from the key's <code>HashID</code>; <code>MightContain(k)</code> is <code>false</code> only if the key was never added (no false negatives) and <code>true</code> for added keys and for a small fraction of others. <code>New(expected, bits_per_key)</code> sizes it: 10 bits per key is about 1% false positives, 15 about 0.1%. Keys cannot be removed (use <code>Empty()</code> to start over). Use it as a cheap pre-check in front of something expensive: a disk or network lookup, a large <code>Hash</code>, a de-duplication pass.</p>
     <h4 id="the-two-pair-classes">The two <code>Pair</code> classes</h4>
     <p>They share a name in different bundles, which is easy to mix up.</p>
     <table class="ref-table">

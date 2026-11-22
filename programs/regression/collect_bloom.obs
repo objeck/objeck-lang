@@ -1,0 +1,53 @@
+use Collection;
+
+class CollectBloomTest {
+	@pass : static : Bool;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			@pass := false;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"Testing BloomFilter..."->PrintLine();
+		@pass := true;
+
+		b := BloomFilter->New(1000, 10)<String>;
+		Check(b->Count() = 0 & b->Bits() = 10000 & <>b->MightContain("a") & <>b->MightContain(Nil), "empty filter");
+		b->Add("apple"); b->Add(Nil);
+		Check(b->Count() = 1 & b->MightContain("apple"), "added key found");
+
+		# no false negatives, and a low false positive rate
+		for(i := 0; i < 1000; i += 1;) { b->Add("key-{$i}"); };
+		missing := 0;
+		for(i := 0; i < 1000; i += 1;) { if(<>b->MightContain("key-{$i}")) { missing += 1; }; };
+		Check(missing = 0, "no false negatives");
+		false_hits := 0;
+		for(i := 0; i < 5000; i += 1;) { if(b->MightContain("absent-{$i}")) { false_hits += 1; }; };
+		"  false positives: {$false_hits} / 5000 (10 bits per key)"->PrintLine();
+		Check(false_hits < 250, "false positive rate under 5%");
+
+		ints := BloomFilter->New(500, 12)<IntRef>;
+		for(i := 0; i < 500; i += 1;) { ints->Add(IntRef->New(i * 3)); };
+		ok := true;
+		for(i := 0; i < 500; i += 1;) { if(<>ints->MightContain(IntRef->New(i * 3))) { ok := false; }; };
+		Check(ok, "IntRef keys have no false negatives");
+
+		b->Empty();
+		Check(b->Count() = 0 & <>b->MightContain("apple"), "Empty");
+
+		tiny := BloomFilter->New(0, 0)<String>;
+		tiny->Add("z");
+		Check(tiny->MightContain("z"), "degenerate sizes are clamped");
+
+		if(@pass) {
+			"PASS: BloomFilter"->PrintLine();
+		}
+		else {
+			"FAIL: BloomFilter"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
