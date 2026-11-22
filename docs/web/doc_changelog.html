@@ -107,6 +107,7 @@
      <li><strong><code>VectorIndex-&gt;SetThreads(n)</code></strong>: a search over an index of about 8 MB or more is split into n parts, each scanned on its own thread, and merged in the order a single scan uses, so ids, scores and tie order are identical. 100,000 x 128, L2, top 10: 66, 81, 132, 229 and 315 queries/s at 1, 2, 4, 8 and 16 threads. The default is 1 thread.</li>
      <li><strong><code>KNearestNeighbors-&gt;Query</code> makes one pass</strong>: it keeps the best k squared distances in a heap and drops a row once its running sum passes the k-th best, instead of copying every row, building a <code>KNeighbor</code> per row and sorting all of them. 50,000 x 16, k = 5, 200 queries: 15.06 s to 0.057 s. Distances and order (ties in row order) are unchanged.</li>
      <li><strong><code>TextSimilarity-&gt;LevenshteinDistance</code> keeps two rows</strong>: 20,000 pairs of 38 characters 0.683 s to 0.118 s.</li>
+     <li><strong><code>Vector</code> and <code>CompareVector</code> grow by doubling, and their comparator sorts share one merge sort</strong>: appends no longer copy the whole array each time the capacity is reached.</li>
     </ul>
     <h4 id="fixed">Fixed</h4>
     <ul>
@@ -115,9 +116,12 @@
      <li><strong><code>^a</code>, <code>^a+</code>, <code>^a$</code>, <code>^$</code> and <code>a|$</code> were rejected</strong> as "stray token" or a missing operand; the anchor was only applied when a second operand followed.</li>
      <li><strong>Unknown escapes in a pattern were silently literal</strong>: <code>\1</code> (a backreference) matched the character <code>1</code>. Unknown letter or digit escapes and a trailing backslash are now an error (<code>IsOk()</code> is false); escaped punctuation such as <code>\-</code> and <code>\/</code> is still literal.</li>
      <li><strong><code>KNearestNeighbors-&gt;Query</code> with a k below 1, a Nil query or a Nil matrix</strong> ended with an allocation error; it now returns no neighbors.</li>
+     <li><strong><code>Stack</code> crashed near 500,000 entries and reported a stale <code>Size()</code> after <code>Empty()</code></strong>: it is now array-backed.</li>
+     <li><strong>A <code>Nil</code> key or value lookup in the collections ended the program</strong>: it now reports not-found.</li>
     </ul>
     <h4 id="added">Added</h4>
     <ul>
+     <li><strong>Nine collection types</strong> in <code>gen_collect</code>: <code>Deque</code> (ring buffer, O(1) at both ends), <code>MultiSet</code>, <code>UnionFind</code>, <code>Trie</code>, <code>OrderedHash</code>, <code>BiMap</code>, <code>PriorityMap</code> (an indexed priority queue with decrease-key), <code>FenwickTree</code> (prefix and range sums) and <code>BloomFilter</code>. <code>Vector</code> and <code>CompareVector</code> gain <code>Insert</code>, <code>Slice</code> and <code>AddAll</code>, and <code>CompareVector</code> gains <code>Swap</code>.</li>
      <li><strong><code>VectorIndex-&gt;SetThreads(n)</code> and <code>GetThreads()</code></strong> (see Performance).</li>
      <li><strong><code>TextSimilarity-&gt;LevenshteinDistance(a, b, max_distance)</code></strong>: the exact distance when it is at most <code>max_distance</code>, otherwise <code>max_distance + 1</code>; only the cells near the diagonal are computed and the work stops when a whole row is past the ceiling. <code>SpellChecker-&gt;Suggest</code> uses it.</li>
      <li><strong>A <code>RegEx</code> can be shared by threads</strong>: the DFA tables and the capture scratch are used under a lock, and <code>MatchExact</code> no longer keeps its answer in a field.</li>
@@ -129,7 +133,7 @@
     </ul>
     <h4 id="tests">Tests</h4>
     <ul>
-     <li>New regression tests: <code>regex_lazy_dfa</code>, <code>regex_replace_escapes</code>, <code>regex_threads</code>, <code>ml_vector_parallel</code>, <code>ml_knn_exact</code> and <code>nlp_levenshtein_bounded</code>.</li>
+     <li>New regression tests: <code>regex_lazy_dfa</code>, <code>regex_replace_escapes</code>, <code>regex_threads</code>, <code>ml_vector_parallel</code>, <code>ml_knn_exact</code> and <code>nlp_levenshtein_bounded</code>, and thirteen <code>collect_*</code> tests for the collections above (<code>collect_deque</code>, <code>collect_multiset</code>, <code>collect_union_find</code>, <code>collect_trie</code>, <code>collect_ordered_hash</code>, <code>collect_bimap</code>, <code>collect_priority_map</code>, <code>collect_fenwick</code>, <code>collect_bloom</code>, <code>collect_vector_ops</code>, <code>collect_sort_stable</code>, <code>collect_nil_guards</code>, <code>collect_stack_deep</code>).</li>
     </ul>
     <h3 id="v2026112---2026-11-21">[v2026.11.2] - 2026-11-21</h3>
     <h4 id="fixed-1">Fixed</h4>

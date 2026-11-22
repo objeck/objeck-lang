@@ -13,10 +13,11 @@
 		{
 			"version": "v2026.11.3",
 			"items": [
-				"Regular expressions are 4 to 19 times faster: a lazily built DFA finds where the longest match ends (patterns with \\b or \\B, or that need more than 1,024 states, use the NFA as before), and one RegEx can be shared by threads.",
+				"Regular expressions are 4.5 to 27 times faster: a lazily built DFA finds where the longest match ends (patterns with \\b or \\B, or that need more than 1,024 states, use the NFA as before), and one RegEx can be shared by threads.",
 				"RegEx fixes: {n} now means exactly n (it was read as {n,}, so a{2} matched aaa) and {n,} is accepted; ReplaceAll no longer matches against text it has already replaced; ^a, ^a+, ^a$ and ^$ compile; an unknown escape such as the backreference \\1 and a trailing backslash are an error instead of a silent literal.",
 				"VectorIndex->SetThreads(n) splits a search over a large index across threads with identical results (100,000 x 128 vectors: 66 queries/s on one thread, 315 on sixteen).",
 				"KNearestNeighbors->Query keeps the best k in a heap in one pass (50,000 rows, 200 queries: 15 s to 0.06 s), and TextSimilarity->LevenshteinDistance is 5.8 times faster with a new bounded form LevenshteinDistance(a, b, max_distance) that SpellChecker->Suggest uses.",
+				"Nine new collection types and sturdier collections: Deque, MultiSet, UnionFind, Trie, OrderedHash, BiMap, PriorityMap (with decrease-key), FenwickTree and BloomFilter join the collections library, with one shared merge sort for Vector and CompareVector, Vector insert, slice and add-all, doubling growth, and a Stack that no longer crashes near 500,000 entries. A Nil key or value lookup now reports not-found instead of ending the program. Thirteen new regression tests cover them.",
 				"docs/performance.md has a Library workloads section with the timings behind these numbers and what was not measured."
 			]
 		},
