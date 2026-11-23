@@ -88,7 +88,7 @@ Classic [Computer Language Benchmarks Game](https://benchmarksgame-team.pages.de
 
 ## Cross-Language Comparison
 
-All five languages measured in **one Docker run on identical inputs** (`perf-results/docker/Dockerfile`), so these times are directly comparable to each other. Median of 3 runs.
+All five languages measured in **one Docker run on identical inputs** (the mandelbrot and fasta rows were timed in a later pass, described below the table) (`perf-results/docker/Dockerfile`), so these times are directly comparable to each other. Median of 3 runs.
 
 | | |
 |---|---|
@@ -107,11 +107,17 @@ All five languages measured in **one Docker run on identical inputs** (`perf-res
 | **binarytrees** | 17 | 2.03s | 3.55s | 3.46s | 3.53s | **0.24s** | Java |
 | **spectralnorm** | 5500 | 2.91s | 126.57s | 85.13s | **1.12s** | 1.18s | LuaJIT |
 | **fannkuchredux** | 12 | 33.24s | 422.92s | 1148.69s | 116.46s | **20.50s** | Java |
+| **mandelbrot** | 4000 | 0.98s (3 threads) / 1.90s (1 thread) | 33.20s | 34.58s | 0.73s | **0.70s** | Java |
+| **fasta** | 25M | 6.77s | 31.31s | 31.65s | 6.89s | **3.48s** | Java |
+
+**mandelbrot and fasta were added on 2026-11-22.** They were timed in a separate pass from the four rows above, on the same image and host: Objeck alone first, then Python, Ruby, LuaJIT and Java together in four containers at once, each single-threaded on its own core. Run that way the peers' times may carry a few percent of shared-host noise; the gaps below are far larger. Every peer program was checked against Objeck's output before timing: fasta is byte-identical across all five languages at n=1000, and for mandelbrot the four peers match each other byte for byte and Objeck's digits match theirs at n=64, 200 and 203. Objeck's shipped `mandelbrot.obs` runs **three threads** and prints each byte as decimal text through a per-byte `Print`, where the peers are single-threaded and write the packed PBM in bulk, so the row gives both Objeck figures: a one-thread build (the same source with `Thread->New[1]`, made for this table) is the like-for-like one. Fasta is single-threaded in every language. Peak RSS was not measured for these two rows.
 
 ### Reading the table
 
-- **Java (HotSpot) wins three of four in this run, and LuaJIT takes spectralnorm.** LuaJIT is 5% ahead there (1.12s vs 1.18s); on 2026-11-07 Java led it by 0.02s and in September LuaJIT led by 0.06s, so that row is a tie that flips between runs, not a change. A mature tiered JIT with escape analysis and a generational GC is the bar a younger JIT is measured against.
-- **Objeck beats Python and Ruby on all four:** nbody **17.7x** / **25.0x**, spectralnorm **43.5x** / **29.3x**, fannkuchredux **12.7x** / **34.6x**, binarytrees **1.7x** / **1.7x**. These ratios are 5–15% higher than on 2026-11-07 because Objeck's own times are lower in this pass (see above); Python's and Ruby's own times also moved, CPython nbody 148.57s → 144.46s and Ruby nbody 213.96s → 203.60s, which is more evidence of run-to-run drift on this host.
+- **Java (HotSpot) wins five of six in this run, and LuaJIT takes spectralnorm.** LuaJIT is 5% ahead there (1.12s vs 1.18s); on 2026-11-07 Java led it by 0.02s and in September LuaJIT led by 0.06s, so that row is a tie that flips between runs, not a change. A mature tiered JIT with escape analysis and a generational GC is the bar a younger JIT is measured against.
+- **Objeck beats Python and Ruby on all six:** nbody **17.7x** / **25.0x**, spectralnorm **43.5x** / **29.3x**, fannkuchredux **12.7x** / **34.6x**, binarytrees **1.7x** / **1.7x**. These ratios are 5–15% higher than on 2026-11-07 because Objeck's own times are lower in this pass (see above); Python's and Ruby's own times also moved, CPython nbody 148.57s → 144.46s and Ruby nbody 213.96s → 203.60s, which is more evidence of run-to-run drift on this host.
+- **mandelbrot: Objeck is 34x / 35x faster than CPython / Ruby on three threads and 17x / 18x on one, but LuaJIT and Java beat it.** Objeck 0.98s (three threads; runs read 1.78, 0.70 and 0.98s, so the median sits in a spread) and 1.90s on one thread, against LuaJIT 0.73s and Java 0.70s on one thread each. On one thread that is LuaJIT 2.6x and Java 2.7x faster; Objeck's three-thread run only just trails them. Part of Objeck's time is its output path (per-byte `Print` of decimal text), which the peers do not pay.
+- **fasta: Objeck ties LuaJIT, is 4.6x / 4.7x faster than CPython / Ruby, and Java is 1.9x faster than Objeck.** 6.77s against LuaJIT 6.89s (Objeck 2% ahead, inside the run-to-run spread), Python 31.31s, Ruby 31.65s, Java 3.48s. This is the same program shape on every side: the same random generator, linear cumulative selection and 60-column lines.
 - **Objeck beats LuaJIT on fannkuchredux** (33.24s vs 116.46s, **3.5x faster**) — the integer-array permutation/flip pattern is a poor fit for LuaJIT's tracing JIT and suits a method JIT well. September measured 3.6x and June 3.8x.
 - **binarytrees is not Objeck's weak spot on time.** It leads CPython (1.7x), Ruby (1.7x) and LuaJIT (1.7x). Java is still **8.5x** faster (0.24s vs 2.03s), and Objeck's **177 MB** peak RSS against 8-10 MB on its own other CLBG rows is where its remaining gap lives (peers' peak RSS is not recorded by the harness, so no peer figure is claimed). Allocation throughput stays the clearest improvement target (P1), argued on memory rather than wall clock.
 - **spectralnorm's warmup story is over.** June's 44.86s at the default threshold is now 2.91s here (2.72s in September), better than the 3.3s June reached by forcing compilation. The v2026.9.1 calling convention removed the warmup gap rather than narrowing it, so there is no threshold left to tune.
