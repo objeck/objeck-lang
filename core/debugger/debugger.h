@@ -629,6 +629,10 @@ namespace Runtime {
     // whichever thread gets there first. The request stays pending until a thread
     // claims it or CancelPause withdraws it.
     void RequestPause();
+    // Ask every VM thread to stop executing (disconnect / terminate / restart).
+    // Works on a RUNNING program, which never reaches the 'resume after a stop'
+    // branch of ProcessInstruction, and from any thread: the halt flag is atomic.
+    void RequestHaltAll();
     void CancelPause();
 
     // parse a condition expression string (for DAP conditional breakpoints)

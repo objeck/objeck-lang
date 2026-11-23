@@ -2403,6 +2403,11 @@ void Runtime::Debugger::RequestPause()
   SetWork(WORK_PAUSE, true);
 }
 
+void Runtime::Debugger::RequestHaltAll()
+{
+  Runtime::StackInterpreter::HaltAllExcept(nullptr);
+}
+
 void Runtime::Debugger::CancelPause()
 {
   pause_requested = false;

@@ -11,6 +11,8 @@
 ***************************************************************************/
 
 #include "dap.h"
+#include <chrono>
+#include <cstdlib>
 
 #ifdef _WIN32
 #include <io.h>
@@ -831,6 +833,7 @@ void DapAdapter::HandleConfigurationDone(int request_seq, const json& args)
   // member so Run() can join it on shutdown — detaching would let the
   // VM race the C runtime teardown and access-violate.
   if(debugger && is_launched) {
+    vm_running = true;
     vm_thread = std::thread([this]() {
       // Re-run on restart from this same thread. The current run is halted
       // cleanly (RequestHalt via the disconnect path), so a fresh DapRun
@@ -858,6 +861,7 @@ void DapAdapter::HandleConfigurationDone(int request_seq, const json& args)
       if(!disconnect_requested) {
         OnTerminated();
       }
+      vm_running = false;
     });
   }
 }
@@ -1783,6 +1787,38 @@ void DapAdapter::HandlePause(int request_seq, const json& args)
   SendResponse(request_seq, "pause");
 }
 
+void DapAdapter::HaltProgramAndWatch()
+{
+  // A stopped program is released by resume_requested; a RUNNING one never looks
+  // at it (with no breakpoint the debugger hook returns on its fast path), so
+  // halt every VM thread directly.
+  if(debugger) {
+    debugger->RequestHaltAll();
+  }
+
+  if(!vm_running) {
+    return;
+  }
+
+  // A thread asleep or blocked in a syscall (Sleep, Accept, a read) never sees
+  // the halt, and Run() would then wait in vm_thread.join() until the editor
+  // killed obd. Give the program two seconds to unwind, then end the process.
+  std::thread([this]() {
+    for(int i = 0; i < 40 && vm_running; i++) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+    if(vm_running) {
+      std::cout.flush();
+      std::wcout.flush();
+      fflush(stdout);
+      fflush(stderr);
+      // let the output reader threads forward what the program last printed
+      std::this_thread::sleep_for(std::chrono::milliseconds(200));
+      _exit(0);
+    }
+  }).detach();
+}
+
 void DapAdapter::HandleDisconnect(int request_seq, const json& args)
 {
   disconnect_requested = true;
@@ -1795,6 +1831,7 @@ void DapAdapter::HandleDisconnect(int request_seq, const json& args)
     is_stopped = false;
     cv.notify_all();
   }
+  HaltProgramAndWatch();
 
   SendResponse(request_seq, "disconnect");
 }
@@ -2083,6 +2120,7 @@ void DapAdapter::HandleTerminate(int request_seq, const json& args)
     ClearVarHandles();
     cv.notify_all();
   }
+  HaltProgramAndWatch();
 
   SendEvent("terminated");
 }
@@ -2337,6 +2375,9 @@ void DapAdapter::HandleRestart(int request_seq, const json& args)
     is_stopped = false;
     is_terminated = false;
     cv.notify_all();
+  }
+  if(debugger) {
+    debugger->RequestHaltAll();
   }
 
   SendResponse(request_seq, "restart");
