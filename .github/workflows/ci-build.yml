@@ -1146,6 +1146,26 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_obe_version_mismatch.py "%BIN%"
 
+    # A build of several files reports each file's errors together, in the order the
+    # files were given, rather than interleaved by line number.
+    - name: obc reports a multi-file build's errors file by file (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_multifile_diagnostics.py "$BIN"
+
+    - name: obc reports a multi-file build's errors file by file (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_multifile_diagnostics.py "%BIN%"
+
     # Named arguments reach a library method through the parameter names its .obl
     # records; skipping a middle default goes through the method's mask forwarder,
     # which only a library build generates. No shipped library has a method that
