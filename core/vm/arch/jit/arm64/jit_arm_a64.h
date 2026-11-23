@@ -392,6 +392,45 @@ namespace Runtime {
     // labels need a GC safepoint poll — if/else merge labels are skipped.
     unordered_set<long> safepoint_lbl_indices;
 
+    // F3 (docs/JIT_LOOP_LOCALS_DESIGN.md, phase 4c): the hottest integer locals
+    // of each loop live in the callee-saved X20-X27 for the loop's extent. A
+    // region is a maximal loop [header, end] (header = the back-edge target, the
+    // instruction the poll is emitted at; end = the last back-edge). slots are
+    // frame offsets (operand3), one per register; loop_offset is where a jump
+    // from inside the loop lands, past the entry loads.
+    struct PinRegion {
+      long header;
+      long end;
+      long loop_offset;
+      std::vector<long> slots;
+      std::vector<long> fslots;   // frame offsets of the pinned Float locals, one per D12-D15
+    };
+    static const int PIN_REG_COUNT = 8;
+    static const int PIN_FREG_COUNT = 4;
+    std::vector<PinRegion> pin_regions;
+    int active_pin_region;                 // region being emitted, -1 outside any
+    int pin_count;                         // registers some region pins: the prologue saves X20..X20+pin_count-1
+    bool pins_float;                       // some region pins Floats: D12-D15 are out of the pool and the D8-D15 save stays
+    long pin_save_base;                    // frame offset of the first save slot; slot i is at pin_save_base - 8 * i
+    std::unordered_map<StackInstr*, long> instr_index_of;
+    std::unordered_map<long, long> pin_exit_stub_offsets;   // a jump's code index -> its exit stub's offset
+
+    static Register PinRegister(int i) {
+      return (Register)(X20 + i);
+    }
+    static Register PinFloatRegister(int i) {
+      return (Register)(D12 + i);   // callee-saved: the prologue's D8-D15 save covers them
+    }
+    bool PinnedFloatSlot(long offset, int& reg_index);
+    void PlanPinRegions();
+    int PinRegionStartingAt(long header_index);
+    int PinRegionContaining(long instr_idx);
+    bool PinnedSlot(long offset, int& reg_index);
+    void EmitPinEntry(int region);
+    void EmitPinWriteBack(int region);
+    void EmitPinExitStubs();
+    void EmitPinSave(bool store);
+
     // GC roots phase 4 (docs/GC_ROOTS_DESIGN.md): the method's reference map
     // (ref_map.h), built once per compile, types each value the working
     // stack holds at a spill site, and the value goes to a TMP_VAL_* slot
