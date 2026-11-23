@@ -32,6 +32,8 @@
 #include "memory.h"
 #include <iomanip>
 #include <chrono>
+#include <algorithm>
+#include <time.h>
 
 // OBJECK_GC_TRACE=1: name every JIT frame the collector scans and print each
 // declared slot's type and value first, so a crash in the root scan says which
@@ -141,6 +143,7 @@ std::atomic<size_t> MemoryManager::gc_promoted_last(0);
 std::atomic<size_t> MemoryManager::gc_promoted_total(0);
 std::atomic<size_t> MemoryManager::gc_promoted_bytes_total(0);
 bool MemoryManager::gc_stats_enabled = false;
+static void WatchCurrentThread();   // defined with the stop-the-world watchdog below
 uint32_t* MemoryManager::gc_pause_samples = nullptr;
 size_t MemoryManager::gc_pause_sample_count = 0;
 #ifdef _WIN32
@@ -310,6 +313,27 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   parked_count.store(0, std::memory_order_relaxed);
   stw_active.store(false, std::memory_order_relaxed);
 
+  // OBJECK_STW_WATCHDOG_MS: off unless set to a positive number of milliseconds
+  {
+    long ms = 0;
+#ifdef _WIN32
+    char value[16];
+    size_t len = 0;
+    if(!getenv_s(&len, value, sizeof(value), "OBJECK_STW_WATCHDOG_MS") && len > 0) {
+      ms = atol(value);
+    }
+#else
+    const char* value = getenv("OBJECK_STW_WATCHDOG_MS");
+    if(value) {
+      ms = atol(value);
+    }
+#endif
+    stw_watchdog_ms = ms > 0 ? ms : 0;
+    if(stw_watchdog_ms > 0) {
+      WatchCurrentThread();   // the main thread is mutator #1 and never calls RegisterMutator
+    }
+  }
+
   // OBJECK_GC_STATS=1: summary line on stderr at exit. atexit covers a return
   // from main and Runtime->Exit alike. Registered once: the debugger initializes
   // again on every restart.
@@ -392,6 +416,161 @@ void MemoryManager::PrintGcStats()
 
 // --- Cooperative stop-the-world ----------------------------------------------
 
+long MemoryManager::stw_watchdog_ms = 0;
+
+// Per-thread record kept only while the watchdog is on: which registered mutators have
+// not parked. Guarded by stw_lock, like the counts it explains. 'parked' counts nested
+// SafePoint / BeginBlocking sections; the owning thread is the only writer.
+struct MutatorInfo {
+  uintptr_t thread_id;
+  std::atomic<int> parked;
+};
+static std::vector<MutatorInfo*> watched_mutators;
+static thread_local MutatorInfo* tls_mutator = nullptr;
+
+uintptr_t MemoryManager::CurrentThreadId()
+{
+#ifdef _WIN32
+  return (uintptr_t)GetCurrentThreadId();
+#else
+  return (uintptr_t)pthread_self();
+#endif
+}
+
+// Called with stw_lock held (or before any other thread exists)
+static void WatchCurrentThread()
+{
+  if(!tls_mutator) {
+    tls_mutator = new MutatorInfo;
+    tls_mutator->thread_id = MemoryManager::CurrentThreadId();
+    tls_mutator->parked.store(0, std::memory_order_relaxed);
+    watched_mutators.push_back(tls_mutator);
+  }
+}
+
+static void NoteParked(int delta)
+{
+  if(tls_mutator) {
+    tls_mutator->parked.fetch_add(delta, std::memory_order_release);
+  }
+}
+
+// The collector's wait for every other mutator to park. With the watchdog off this is
+// the plain wait loop that was here before. With it on, the same loop wakes at least
+// every few milliseconds to compare the elapsed time with the limit.
+void MemoryManager::WaitForMutatorsToPark()
+{
+  if(stw_watchdog_ms <= 0) {
+    while(parked_count.load(std::memory_order_acquire) <
+          mutator_count.load(std::memory_order_acquire) - 1) {
+      SLEEP_CONDITION(&stw_cv, &stw_lock);
+    }
+    return;
+  }
+
+  const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+  bool reported = false;
+  while(parked_count.load(std::memory_order_acquire) <
+        mutator_count.load(std::memory_order_acquire) - 1) {
+    const long slice_ms = stw_watchdog_ms < 50 ? stw_watchdog_ms : 50;
+#ifdef _WIN32
+    SleepConditionVariableCS(&stw_cv, &stw_lock, (DWORD)slice_ms);
+#else
+    struct timespec until;
+    clock_gettime(CLOCK_REALTIME, &until);
+    until.tv_sec += slice_ms / 1000;
+    until.tv_nsec += (slice_ms % 1000) * 1000000L;
+    if(until.tv_nsec >= 1000000000L) {
+      until.tv_sec++;
+      until.tv_nsec -= 1000000000L;
+    }
+    pthread_cond_timedwait(&stw_cv, &stw_lock, &until);
+#endif
+    if(!reported) {
+      const long waited_ms = (long)std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - start).count();
+      if(waited_ms >= stw_watchdog_ms &&
+         parked_count.load(std::memory_order_acquire) < mutator_count.load(std::memory_order_acquire) - 1) {
+        reported = true;
+        static std::atomic<bool> reported_once(false);
+        if(!reported_once.exchange(true)) {
+          ReportUnparkedMutators(waited_ms);
+        }
+      }
+    }
+  }
+}
+
+// Diagnostic only; the caller keeps waiting. Runs with stw_lock held. The frames it
+// reads belong to threads that are still running, so a value may be a moment stale,
+// and a thread that returns from its entry method as this prints can show no frame.
+void MemoryManager::ReportUnparkedMutators(long waited_ms)
+{
+  const uintptr_t self = CurrentThreadId();
+  fwprintf(stderr, L"[stw-watchdog] a collection has waited %ld ms for other threads to park "
+           L"(parked=%ld, mutators=%ld including the collector)\n",
+           waited_ms, parked_count.load(), mutator_count.load());
+
+  // the monitor list is guarded by pda_monitor_lock; do not block on it, since the
+  // stuck thread is the one most likely to be holding something
+  bool have_monitors;
+#ifdef _WIN32
+  have_monitors = TryEnterCriticalSection(&pda_monitor_lock) != 0;
+#else
+  have_monitors = pthread_mutex_trylock(&pda_monitor_lock) == 0;
+#endif
+
+  size_t reported = 0;
+  for(size_t i = 0; i < watched_mutators.size(); ++i) {
+    MutatorInfo* info = watched_mutators[i];
+    if(info->thread_id == self || info->parked.load(std::memory_order_acquire) > 0) {
+      continue;
+    }
+    reported++;
+    fwprintf(stderr, L"[stw-watchdog]   thread 0x%llx has not parked\n", (unsigned long long)info->thread_id);
+    if(!have_monitors) {
+      fwprintf(stderr, L"[stw-watchdog]     (frame list busy, no location)\n");
+      continue;
+    }
+    bool located = false;
+    for(std::unordered_set<StackFrameMonitor*>::iterator it = pda_monitors.begin(); it != pda_monitors.end(); ++it) {
+      StackFrameMonitor* monitor = *it;
+      if(monitor->thread_id != info->thread_id || !monitor->cur_frame || !monitor->call_stack_pos) {
+        continue;
+      }
+      StackFrame* frame = *(monitor->cur_frame);
+      if(!frame || !frame->method) {
+        continue;
+      }
+      located = true;
+      fwprintf(stderr, L"[stw-watchdog]     in %ls: ip=%ld cur_ip=%ld %ls, call depth %ld\n",
+               frame->method->GetName().c_str(), frame->ip, frame->jit_mem ? 0L : frame->cur_ip,
+               frame->jit_mem ? L"(compiled frame, ip not tracked)" : L"(interpreted)", *(monitor->call_stack_pos));
+      // its callers, innermost first (the top frame is often the native call itself)
+      long depth = *(monitor->call_stack_pos);
+      for(long level = 0; level < 8 && depth > 0 && monitor->call_stack; ++level) {
+        StackFrame* caller = monitor->call_stack[--depth];
+        if(caller && caller->method) {
+          fwprintf(stderr, L"[stw-watchdog]       called from %ls\n", caller->method->GetName().c_str());
+        }
+      }
+    }
+    if(!located) {
+      fwprintf(stderr, L"[stw-watchdog]     (no frame published yet, or the thread is exiting)\n");
+    }
+  }
+  if(have_monitors) {
+#ifdef _WIN32
+    LeaveCriticalSection(&pda_monitor_lock);
+#else
+    pthread_mutex_unlock(&pda_monitor_lock);
+#endif
+  }
+  fwprintf(stderr, L"[stw-watchdog] %zu thread(s) not parked. A native call that blocks must bracket the "
+           L"wait with MemoryManager::BeginBlocking/EndBlocking. Still waiting.\n", reported);
+  fflush(stderr);
+}
+
 void MemoryManager::RegisterMutator()
 {
   // Join the mutator set under stw_lock, waiting out a collection already in
@@ -411,6 +590,9 @@ void MemoryManager::RegisterMutator()
     SLEEP_CONDITION(&stw_cv, &stw_lock);
   }
   mutator_count.fetch_add(1, std::memory_order_acq_rel);
+  if(stw_watchdog_ms > 0) {
+    WatchCurrentThread();
+  }
   MUTEX_UNLOCK(&stw_lock);
 }
 
@@ -421,6 +603,11 @@ void MemoryManager::UnregisterMutator()
   // wake-up cannot be the pre-decrement one.
   MUTEX_LOCK(&stw_lock);
   mutator_count.fetch_sub(1, std::memory_order_acq_rel);
+  if(tls_mutator) {
+    watched_mutators.erase(std::remove(watched_mutators.begin(), watched_mutators.end(), tls_mutator), watched_mutators.end());
+    delete tls_mutator;
+    tls_mutator = nullptr;
+  }
   WAKE_ALL_CONDITION(&stw_cv);   // collector may now have all-but-self parked
   MUTEX_UNLOCK(&stw_lock);
 }
@@ -434,11 +621,17 @@ void MemoryManager::SafePoint()
   }
   MUTEX_LOCK(&stw_lock);
   parked_count.fetch_add(1, std::memory_order_acq_rel);
+  if(stw_watchdog_ms > 0) {
+    NoteParked(1);
+  }
   WAKE_ALL_CONDITION(&stw_cv);   // tell the collector we've parked
   while(stw_active.load(std::memory_order_acquire)) {
     SLEEP_CONDITION(&stw_cv, &stw_lock);
   }
   parked_count.fetch_sub(1, std::memory_order_acq_rel);
+  if(stw_watchdog_ms > 0) {
+    NoteParked(-1);
+  }
   MUTEX_UNLOCK(&stw_lock);
 }
 
@@ -448,6 +641,9 @@ void MemoryManager::BeginBlocking()
 {
   MUTEX_LOCK(&stw_lock);
   parked_count.fetch_add(1, std::memory_order_acq_rel);
+  if(stw_watchdog_ms > 0) {
+    NoteParked(1);
+  }
   WAKE_ALL_CONDITION(&stw_cv);
   MUTEX_UNLOCK(&stw_lock);
 }
@@ -465,6 +661,9 @@ void MemoryManager::EndBlocking()
     SLEEP_CONDITION(&stw_cv, &stw_lock);
   }
   parked_count.fetch_sub(1, std::memory_order_acq_rel);
+  if(stw_watchdog_ms > 0) {
+    NoteParked(-1);
+  }
   MUTEX_UNLOCK(&stw_lock);
 }
 
@@ -1149,10 +1348,7 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, size_t stack_pos)
   // whose root is in a running thread's registers / mid-opcode C-locals.
   MUTEX_LOCK(&stw_lock);
   stw_active.store(true, std::memory_order_release);
-  while(parked_count.load(std::memory_order_acquire) <
-        mutator_count.load(std::memory_order_acquire) - 1) {
-    SLEEP_CONDITION(&stw_cv, &stw_lock);
-  }
+  WaitForMutatorsToPark();
   MUTEX_UNLOCK(&stw_lock);
 #endif
 
@@ -2882,10 +3078,7 @@ void MemoryManager::CollectMinor(size_t* op_stack, size_t stack_pos)
   // or bump-allocate into the nursery being recycled. Mirrors CollectAllMemory.
   MUTEX_LOCK(&stw_lock);
   stw_active.store(true, std::memory_order_release);
-  while(parked_count.load(std::memory_order_acquire) <
-        mutator_count.load(std::memory_order_acquire) - 1) {
-    SLEEP_CONDITION(&stw_cv, &stw_lock);
-  }
+  WaitForMutatorsToPark();
   MUTEX_UNLOCK(&stw_lock);
 #endif
 
