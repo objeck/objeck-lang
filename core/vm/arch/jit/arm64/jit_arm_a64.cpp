@@ -6826,6 +6826,7 @@ bool JitArm64::Compile(StackMethod* cm)
     skip_jump = false;
     direct_callee = nullptr;
     fp_callee_saved_used = false;
+    fp_callee_used_mask = 0;
     fp_save_indices.clear();
     fp_restore_indices.clear();
     virtual_site = nullptr;
@@ -6996,6 +6997,11 @@ bool JitArm64::Compile(StackMethod* cm)
       }
       fp_pool_size = aval_fregs.size();
       fp_callee_saved_used = true;
+      for(const PinRegion& region : pin_regions) {
+        for(size_t k = 0; k < region.fslots.size(); ++k) {
+          fp_callee_used_mask |= 1u << (PinFloatRegister((int)k) - D8);
+        }
+      }
     }
 
     // The frame above the locals (JIT_CALLING_CONVENTION_DESIGN.md section 12):
@@ -7127,7 +7133,23 @@ bool JitArm64::Compile(StackMethod* cm)
         code[(size_t)restore_index] = 0x14000008;
       }
     }
-    
+    else if(fp_callee_saved_used && fp_callee_used_mask != 0xFFu) {
+      // Some of D8-D15 are used: keep those saves and restores, turn the others
+      // into nops. Every call pays for each store and load that stays, and a
+      // method that pins one float (or takes one pool register) used to pay
+      // for all eight.
+      for(int i = 0; i < JitFrameLayout::SAVE_AREA_WORDS; ++i) {
+        if((fp_callee_used_mask & (1u << i)) == 0) {
+          for(const long save_index : fp_save_indices) {
+            code[(size_t)(save_index + i)] = 0xD503201F;       // nop
+          }
+          for(const long restore_index : fp_restore_indices) {
+            code[(size_t)(restore_index + i)] = 0xD503201F;
+          }
+        }
+      }
+    }
+
     // update jump addresses
     unordered_map<long, StackInstr*>::iterator jmp_iter;
     for(jmp_iter = jump_table.begin(); jmp_iter != jump_table.end(); ++jmp_iter) {
