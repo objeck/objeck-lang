@@ -111,7 +111,7 @@ Writing the table from the code, and running the checker, turned up:
 * **A real bug.** `Library::LoadStatements` (the `.obl` reader) reads each instruction's line number *before* its
   type byte, but `Write` writes the type, then the line. A library built with `obc -tar lib -debug` links without
   complaint into scrambled code, and the program is refused at load (`the method can run past its last
-  instruction`). Listed in the script's `KNOWN` with its fix.
+  instruction`). Fixed separately by PR #1724; until it merges the script lists it in `KNOWN`.
 * **Drift that is harmless today, now stated.** `TRY_START` is missing from the inliner's label scan and shift:
   its handler label is always also defined by an `LBL` (which the scan includes), and `CanInlineMethod` refuses a
   callee holding a `TRY_START`, so the shift never sees one. The checker accepts that because *both* facts hold,
@@ -128,8 +128,12 @@ Writing the table from the code, and running the checker, turned up:
 The table was derived from the code, then the build was proven unchanged: a clean rebuild of `obc` and `obr`
 with the header in every translation unit; all 52 libraries rebuilt with `build_libs.sh` are byte-identical to the
 committed `.obl` files; and every program in `programs/regression` compiled with the old and the new `obc` at
-`-opt s0`, `s1`, `s2`, `s3` and with `-debug` gives byte-identical `.obe` files. Linux x86-64 only; Windows, macOS
-and ARM64 are verified by CI.
+`-opt s0`, `s1`, `s2`, `s3` (771 programs; the other 117 are the negative tests and the ones that need a
+library the check did not link, and they fail identically) gives byte-identical `.obe` files. With `-debug` all
+but one are identical: `core_string_interp_literal.obs` is not deterministic under `-debug` even from one
+compiler (three runs, three different files), so it cannot be compared. The suite itself, run with the old and
+the new toolchain, passes the same 823 tests and fails the same 50 (those that need native libraries the
+container did not build). Linux x86-64 only; Windows, macOS and ARM64 are verified by CI.
 
 ## Phase 2
 

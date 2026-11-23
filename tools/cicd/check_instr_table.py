@@ -67,7 +67,8 @@ KNOWN = {
         "Library::LoadStatements reads the line number before the type byte, but "
         "IntermediateInstruction::Write writes the type, then the line. A library built "
         "with -debug links into scrambled code (the program is refused at load: 'the "
-        "method can run past its last instruction'). The fix is to read the type first."),
+        "method can run past its last instruction'). Fixed by PR #1724 (read the type first); "
+        "remove this entry once that has merged."),
 }
 
 # Rows whose reader-side rule is waived, and why. Same discipline as KNOWN: the
