@@ -4,7 +4,9 @@
 OBJECK_DEPS ?= $(HOME)/objeck-deps/linux-$(shell uname -m)
 QUIC_LIBS=$(OBJECK_DEPS)/lib/libnghttp2.a $(OBJECK_DEPS)/lib/libngtcp2_crypto_boringssl.a $(OBJECK_DEPS)/lib/libngtcp2.a $(OBJECK_DEPS)/lib/libnghttp3.a $(OBJECK_DEPS)/lib/libssl.a $(OBJECK_DEPS)/lib/libcrypto.a
 
-ARGS=-O3 -flto=auto -Wall -pthread -D_X64 -D_OBJECK_NATIVE_LIB_PATH -DOBJECK_HAS_NGHTTP2 -DOBJECK_HAS_NGTCP2 -I$(OBJECK_DEPS)/include -std=c++20 -mavx2 -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast -Wno-unused-result -MMD -MP
+# EXTRA_FLAGS=-DOBJECK_INSTR_PROFILE builds the opcode-frequency profile (core/vm/instr_profile.h)
+EXTRA_FLAGS ?=
+ARGS=$(EXTRA_FLAGS) -O3 -flto=auto -Wall -pthread -D_X64 -D_OBJECK_NATIVE_LIB_PATH -DOBJECK_HAS_NGHTTP2 -DOBJECK_HAS_NGTCP2 -I$(OBJECK_DEPS)/include -std=c++20 -mavx2 -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast -Wno-unused-result -MMD -MP
 
 SRC=common.o dispatch.o interpreter.o loader.o vm.o posix_main.o 
 OBJ_LIBS=jit_amd_lp64.a memory.a

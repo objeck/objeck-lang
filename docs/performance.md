@@ -233,6 +233,29 @@ bash perf-results/run_benchmarks.sh <deploy_dir> <output_dir> [num_runs]
 
 `run_benchmarks.sh` takes a deploy tree (`<deploy_dir>/bin/obc` and `obr`), runs the six CLBG programs and the twelve micro-benchmarks `num_runs` times each (default 10, not 3), and writes `<output_dir>/results.csv` (`benchmark,run,time_seconds,peak_rss_kb`). It times with GNU `/usr/bin/time -f "%e %M"`, so it runs on Linux and WSL only; for macOS and Windows, and for statistical comparison of two builds (interleaved runs, warm-ups discarded, p-values), use `perf-results/objeck_bench.py` (see [perf-results/baseline-2026.10.0/README.md](../perf-results/baseline-2026.10.0/README.md)). The cross-language comparison needs the Docker image above, or `perf-results/cross-lang/run_native.sh` for the CI-scaled Java and LuaJIT subset ([PERF_GATE.md](../perf-results/PERF_GATE.md)). Do not time anything on a machine that is busy with a build or a test run: this page's own notes show a pass taken that way drifting by 6-17%.
 
+### Profiling the interpreter's instruction mix
+
+The VM is a stack machine, so which instruction sequences deserve a fused instruction should come from what programs execute. An `obr` built with `-DOBJECK_INSTR_PROFILE` (Linux: `make EXTRA_FLAGS=-DOBJECK_INSTR_PROFILE` in `core/vm`; see `core/vm/instr_profile.h`) counts every instruction the interpreter dispatches, and every pair and triple that ran one after another in the same method. A normal build is untouched.
+
+```bash
+OBJECK_INSTR_PROFILE_OUT=prof_%p.txt obr --jit=off program.obe    # %p becomes the process id
+cat prof_*.txt > all.txt                                           # profiles add up
+python tools/perf/instr_profile_report.py all.txt --top 20         # names come from core/shared/instrs.h
+```
+
+Compiled code is not counted, so run with `--jit=off`. First measurement, 2026-11-23, the v2026.11.3 sources plus the profiler, Linux:
+
+| Workload | Dispatches | Top opcodes (share of all dispatches) |
+|---|---:|---|
+| The six CLBG programs, small inputs | 1.50 billion | `LOAD_LOCL_INT_VAR` 24.5%, `LOAD_FLOAT_VAR` 11.4%, `STOR_LOCL_INT_VAR` 7.3%, `LOAD_INT_LIT` 5.7%, `JMP` 5.5%, `MUL_FLOAT` 4.7% |
+| The 808 regression programs, `OBJECK_JIT_DISABLE=1` | 150.1 billion | `LOAD_LOCL_INT_VAR` 27.4%, `JMP` 9.5%, `STOR_LOCL_INT_VAR` 8.7%, `LOAD_INT_LIT` 8.5%, `ADD_INT` 6.1%, `LOAD_INST_MEM` 5.5%, `LBL` 4.3% |
+
+- **Ten opcodes are about three quarters or more of what runs** (79.7% across the regression programs, 74.4% across the benchmarks), and 92 to 95% of dispatches are the second or later instruction of an adjacent run, so there is a lot to fuse.
+- **`LBL` is a marker, not work, and it is dispatched like an instruction**: 4.3% of the regression programs' dispatches and 3.5% of the benchmarks'. Making jumps land past labels when a method is loaded removes it with no change to the instruction set or the file format.
+- **The commonest triples each cover about 3% of all dispatches** in the regression programs: `LOAD_LOCL_INT_VAR LES_INT JMP` (3.5%, the loop test), `LOAD_LOCL_INT_VAR ADD_INT STOR_LOCL_INT_VAR` (3.1%) and `LOAD_INT_LIT LOAD_LOCL_INT_VAR ADD_INT` (3.1%), which together are `i += k`, `LBL LOAD_INT_LIT LOAD_LOCL_INT_VAR` (3.0%) and `ADD_INT STOR_LOCL_INT_VAR JMP` (2.9%), the loop's increment and back-edge. They overlap, so the shares do not add. A fused instruction saves all but one dispatch of its sequence.
+- **The ceiling is modest.** My estimate from these figures is that dropping `LBL` (4.3%) and fusing the loop test and the `i += k` increment (about 2% each) could remove on the order of a tenth of the dispatches; that is a ceiling on the saving if dispatch cost were the only cost, not a prediction, and no fused instruction has been built or timed. The interpreter's 8x to 31x deficit against compiled code is mostly the price of each dispatch, not the number of them.
+- **The regression programs are test code**: loop-heavy, with little of the string and library work a real program does, so treat their shares as one workload, not as typical.
+
 ---
 
 ## Optimization History

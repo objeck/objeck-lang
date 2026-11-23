@@ -278,6 +278,28 @@ docker run --rm -v "$(pwd)/perf-results/docker-results:/results" objeck-bench
 # Linux/WSL (using deploy directory)
 bash perf-results/run_benchmarks.sh &lt;deploy_dir&gt; &lt;output_dir&gt; [num_runs]</pre>
     <p><code>run_benchmarks.sh</code> takes a deploy tree (<code>&lt;deploy_dir&gt;/bin/obc</code> and <code>obr</code>), runs the six CLBG programs and the twelve micro-benchmarks <code>num_runs</code> times each (default 10, not 3), and writes <code>&lt;output_dir&gt;/results.csv</code> (<code>benchmark,run,time_seconds,peak_rss_kb</code>). It times with GNU <code>/usr/bin/time -f "%e %M"</code>, so it runs on Linux and WSL only; for macOS and Windows, and for statistical comparison of two builds (interleaved runs, warm-ups discarded, p-values), use <code>perf-results/objeck_bench.py</code> (see <a href="https://github.com/objeck/objeck-lang/blob/master/perf-results/baseline-2026.10.0/README.md" target="_blank">perf-results/baseline-2026.10.0/README.md</a>). The cross-language comparison needs the Docker image above, or <code>perf-results/cross-lang/run_native.sh</code> for the CI-scaled Java and LuaJIT subset (<a href="https://github.com/objeck/objeck-lang/blob/master/perf-results/PERF_GATE.md" target="_blank">PERF_GATE.md</a>). Do not time anything on a machine that is busy with a build or a test run: this page's own notes show a pass taken that way drifting by 6-17%.</p>
+    <h4 id="profiling-the-interpreters-instruction-mix">Profiling the interpreter's instruction mix</h4>
+    <p>The VM is a stack machine, so which instruction sequences deserve a fused instruction should come from what programs execute. An <code>obr</code> built with <code>-DOBJECK_INSTR_PROFILE</code> (Linux: <code>make EXTRA_FLAGS=-DOBJECK_INSTR_PROFILE</code> in <code>core/vm</code>; see <code>core/vm/instr_profile.h</code>) counts every instruction the interpreter dispatches, and every pair and triple that ran one after another in the same method. A normal build is untouched.</p>
+<pre class="cmd">OBJECK_INSTR_PROFILE_OUT=prof_%p.txt obr --jit=off program.obe    # %p becomes the process id
+cat prof_*.txt &gt; all.txt                                           # profiles add up
+python tools/perf/instr_profile_report.py all.txt --top 20         # names come from core/shared/instrs.h</pre>
+    <p>Compiled code is not counted, so run with <code>--jit=off</code>. First measurement, 2026-11-23, the v2026.11.3 sources plus the profiler, Linux:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Workload</th><th>Dispatches</th><th>Top opcodes (share of all dispatches)</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Workload">The six CLBG programs, small inputs</td><td data-label="Dispatches">1.50 billion</td><td data-label="Top opcodes (share of all dispatches)"><code>LOAD_LOCL_INT_VAR</code> 24.5%, <code>LOAD_FLOAT_VAR</code> 11.4%, <code>STOR_LOCL_INT_VAR</code> 7.3%, <code>LOAD_INT_LIT</code> 5.7%, <code>JMP</code> 5.5%, <code>MUL_FLOAT</code> 4.7%</td></tr>
+      <tr><td data-label="Workload">The 808 regression programs, <code>OBJECK_JIT_DISABLE=1</code></td><td data-label="Dispatches">150.1 billion</td><td data-label="Top opcodes (share of all dispatches)"><code>LOAD_LOCL_INT_VAR</code> 27.4%, <code>JMP</code> 9.5%, <code>STOR_LOCL_INT_VAR</code> 8.7%, <code>LOAD_INT_LIT</code> 8.5%, <code>ADD_INT</code> 6.1%, <code>LOAD_INST_MEM</code> 5.5%, <code>LBL</code> 4.3%</td></tr>
+     </tbody>
+    </table>
+    <ul>
+     <li><strong>Ten opcodes are about three quarters or more of what runs</strong> (79.7% across the regression programs, 74.4% across the benchmarks), and 92 to 95% of dispatches are the second or later instruction of an adjacent run, so there is a lot to fuse.</li>
+     <li><strong><code>LBL</code> is a marker, not work, and it is dispatched like an instruction</strong>: 4.3% of the regression programs' dispatches and 3.5% of the benchmarks'. Making jumps land past labels when a method is loaded removes it with no change to the instruction set or the file format.</li>
+     <li><strong>The commonest triples each cover about 3% of all dispatches</strong> in the regression programs: <code>LOAD_LOCL_INT_VAR LES_INT JMP</code> (3.5%, the loop test), <code>LOAD_LOCL_INT_VAR ADD_INT STOR_LOCL_INT_VAR</code> (3.1%) and <code>LOAD_INT_LIT LOAD_LOCL_INT_VAR ADD_INT</code> (3.1%), which together are <code>i += k</code>, <code>LBL LOAD_INT_LIT LOAD_LOCL_INT_VAR</code> (3.0%) and <code>ADD_INT STOR_LOCL_INT_VAR JMP</code> (2.9%), the loop's increment and back-edge. They overlap, so the shares do not add. A fused instruction saves all but one dispatch of its sequence.</li>
+     <li><strong>The ceiling is modest.</strong> My estimate from these figures is that dropping <code>LBL</code> (4.3%) and fusing the loop test and the <code>i += k</code> increment (about 2% each) could remove on the order of a tenth of the dispatches; that is a ceiling on the saving if dispatch cost were the only cost, not a prediction, and no fused instruction has been built or timed. The interpreter's 8x to 31x deficit against compiled code is mostly the price of each dispatch, not the number of them.</li>
+     <li><strong>The regression programs are test code</strong>: loop-heavy, with little of the string and library work a real program does, so treat their shares as one workload, not as typical.</li>
+    </ul>
     <hr class="section-end">
     <h3 id="optimization-history">Optimization History</h3>
     <table class="ref-table">
