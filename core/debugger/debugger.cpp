@@ -3102,6 +3102,106 @@ int Runtime::Debugger::NearestExecutableLine(const std::wstring& file_name, int 
   return best;
 }
 
+bool Runtime::Debugger::HasDebugInfo() {
+  StackProgram* prog = DbgProgram(cur_program, loader);
+  if(!prog) {
+    return false;
+  }
+  StackClass** classes = prog->GetClasses();
+  const long class_num = prog->GetClassNumber();
+  for(long i = 0; i < class_num; ++i) {
+    if(classes[i]->IsDebug()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static std::string NoCodeReason(bool has_debug_info) {
+  return has_debug_info ? "There is no executable code in this file"
+                        : "The program was not compiled with -debug, so it has no line information";
+}
+
+int Runtime::Debugger::ResolveBreakLine(const std::wstring& file_name, int line, std::string& why) {
+  const std::set<int> executable = GetExecutableLines(file_name);
+  if(executable.empty()) {
+    why = NoCodeReason(HasDebugInfo());
+    return 0;
+  }
+  const std::set<int>::const_iterator next = executable.lower_bound(line);
+  if(next == executable.end()) {
+    why = "There is no executable code at or after this line";
+    return 0;
+  }
+  return *next;
+}
+
+std::vector<Runtime::Debugger::BreakResolution> Runtime::Debugger::ResolveLoadedBreaks() {
+  std::vector<BreakResolution> changed;
+  std::lock_guard<std::recursive_mutex> guard(state_lock);
+  const bool has_debug = HasDebugInfo();
+  std::map<std::wstring, std::set<int> > lines_by_file;
+
+  for(std::list<UserBreak*>::iterator iter = breaks.begin(); iter != breaks.end(); ) {
+    UserBreak* user_break = *iter;
+    std::map<std::wstring, std::set<int> >::iterator found = lines_by_file.find(user_break->file_name);
+    if(found == lines_by_file.end()) {
+      found = lines_by_file.insert(std::make_pair(user_break->file_name, GetExecutableLines(user_break->file_name))).first;
+    }
+    const std::set<int>& executable = found->second;
+
+    if(executable.count(user_break->line_num)) {
+      ++iter;
+      continue;
+    }
+
+    BreakResolution result;
+    result.id = user_break->id;
+    result.line = user_break->line_num;
+    result.verified = false;
+
+    const std::set<int>::const_iterator next = executable.lower_bound(user_break->line_num);
+    if(executable.empty()) {
+      result.message = NoCodeReason(has_debug);
+    }
+    else if(next == executable.end()) {
+      result.message = "There is no executable code at or after this line";
+    }
+    else {
+      bool taken = false;
+      for(std::list<UserBreak*>::iterator other = breaks.begin(); other != breaks.end(); ++other) {
+        if(*other != user_break && (*other)->line_num == *next && (*other)->full_path == user_break->full_path &&
+           (*other)->file_name == user_break->file_name) {
+          taken = true;
+          break;
+        }
+      }
+      if(taken) {
+        result.message = "A breakpoint is already set on the next executable line";
+      }
+      else {
+        user_break->line_num = *next;
+        result.line = *next;
+        result.verified = true;
+        result.message = "Moved to the next line with executable code";
+      }
+    }
+
+    changed.push_back(result);
+    if(result.verified) {
+      ++iter;
+    }
+    else {
+      // it can never fire; leaving it would also keep the hook off its fast path
+      delete user_break;
+      iter = breaks.erase(iter);
+    }
+  }
+
+  SyncBreakWork();
+  return changed;
+}
+
 bool Runtime::Debugger::MethodEntryLocation(const std::wstring& cls_name, const std::wstring& mthd_name, std::wstring& out_file, int& out_line) {
   StackProgram* prog = DbgProgram(cur_program, loader);
   if(!prog) {
@@ -4036,6 +4136,7 @@ void Runtime::Debugger::ClearProgram(bool clear_loader) {
   cur_frame = nullptr;
   cur_method = nullptr;
   cur_program = nullptr;
+  program_ready = false;
   is_error = false;
   ref_mem = nullptr;
   ref_klass = nullptr;
@@ -4093,6 +4194,14 @@ void Runtime::Debugger::DapRun() {
     cur_program = loader->GetProgram();
     // resolve any function breakpoints queued before load
     ResolvePendingMethodBreaks();
+
+    // Breakpoints set before the program existed were reported verified on
+    // trust. Now that its lines are known, move or drop the ones that cannot
+    // fire, and say so when the program carries no line information at all.
+    program_ready = true;
+    if(dap_adapter) {
+      dap_adapter->OnProgramLoaded(HasDebugInfo(), ResolveLoadedBreaks());
+    }
 
     stack_pos = new size_t;
     (*stack_pos) = 0;

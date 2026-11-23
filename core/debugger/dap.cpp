@@ -759,6 +759,18 @@ void DapAdapter::HandleSetBreakpoints(int request_seq, const json& args)
         }
       }
 
+      // With the program loaded the line can be checked: bind to the next line
+      // that carries an instruction, or refuse. Before load (the usual order:
+      // breakpoints arrive ahead of configurationDone) nothing can be known and
+      // OnProgramLoaded corrects the breakpoint afterwards.
+      int bind_line = line;
+      if(condition_ok && debugger->ProgramReady()) {
+        bind_line = debugger->ResolveBreakLine(wfile_name, line, failure);
+        if(bind_line <= 0) {
+          condition_ok = false;
+        }
+      }
+
       if(condition_ok) {
         // DAP leaves the hitCondition syntax open; VS Code's own UI produces a
         // bare count meaning "stop on the Nth hit", which is our ignore_count + 1.
@@ -776,9 +788,12 @@ void DapAdapter::HandleSetBreakpoints(int request_seq, const json& args)
         }
 
         // a logpoint logs and carries on instead of stopping
-        const std::map<int, int>::const_iterator prior = prior_ids.find(line);
-        id = debugger->AddSourceBreak(line, wfile_name, path_key, condition, BytesToUnicode(log_message_str), hits,
+        const std::map<int, int>::const_iterator prior = prior_ids.find(bind_line);
+        id = debugger->AddSourceBreak(bind_line, wfile_name, path_key, condition, BytesToUnicode(log_message_str), hits,
                                       prior == prior_ids.end() ? 0 : prior->second);
+        if(id > 0) {
+          line = bind_line;
+        }
       }
     }
     const bool added = id > 0;
@@ -2408,6 +2423,30 @@ void DapAdapter::OnStopped(const std::string& reason, int line, const std::wstri
   // Block the VM thread until DAP sends continue/step
   std::unique_lock<std::mutex> lock(mtx);
   cv.wait(lock, [this]() { return resume_requested || disconnect_requested; });
+}
+
+void DapAdapter::OnProgramLoaded(bool has_debug_info, const std::vector<Debugger::BreakResolution>& changed)
+{
+  if(!has_debug_info) {
+    json body;
+    body["category"] = "console";
+    body["output"] = "warning: the program was not compiled with -debug, so it has no line information: "
+                     "breakpoints cannot bind and stepping will not work. Recompile with obc -debug.\n";
+    SendEvent("output", body);
+  }
+
+  for(const Debugger::BreakResolution& result : changed) {
+    json bp;
+    bp["id"] = result.id;
+    bp["line"] = result.line;
+    bp["verified"] = result.verified;
+    bp["message"] = result.message;
+
+    json body;
+    body["reason"] = "changed";
+    body["breakpoint"] = bp;
+    SendEvent("breakpoint", body);
+  }
 }
 
 void DapAdapter::OnTerminated()
