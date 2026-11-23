@@ -12,12 +12,13 @@ section 6 records what was built and measured.
 | 4a, F6: `EmitBranch`, conditions branch directly | implemented (compiler; both backends benefit) | `a8ad2c0d27`, 2026-09-09 |
 | 4b, F3 on AMD64: up to three `Int`/`Char` locals per loop in `R13`-`R15` | implemented | `e7778fd996`, 2026-09-09 |
 | 4d, `Float` locals in `XMM6`-`XMM9` | implemented on **Windows x64** (callee-saved) and **Linux x64** (saved around each call, section 5b) | `21c9d3019c`, 2026-09-09; Linux 2026-11-23 |
-| 4c, F3 on ARM64 (`X20`-`X27`) | **not implemented**: `jit_arm_a64.cpp` has no pin planner, entry or write-back stubs | -- |
-| `D8`-`D15` float pins on ARM64; `RSI`/`RDI` as extra Windows pins; `HasAndOr` only for value-context connectives | **not implemented** (the compiler still sets the flag for any and/or connective, a ternary, a `select` or a lambda: `context.cpp`) | -- |
+| 4c, F3 on ARM64: up to eight `Int`/`Char` locals per loop in `X20`-`X27`, up to four `Float` locals in `D12`-`D15` | implemented (2026-11-23, `05ee7014b2`); correctness checked under qemu and by the ARM64 CI legs; timed on one Apple M4 Max (section 5c) | `05ee7014b2` |
+| `RSI`/`RDI` as extra Windows pins; `HasAndOr` only for value-context connectives | **not implemented** (the compiler still sets the flag for any and/or connective, a ternary, a `select` or a lambda: `context.cpp`) | -- |
 
-So loop pinning exists on the AMD64 backend alone. On ARM64 a loop local is still loaded from
-and stored to its frame slot at every use; the ARM64 numbers elsewhere in these documents are
-measured without pinning. Sections 1 to 5 are the design as written before the change and
+Loop pinning exists on both backends. On ARM64 (4c) the planner, entry loads, exit stubs and
+write-backs mirror the AMD64 ones; the callee-saved registers are saved in frame slots below
+X19's and restored in every epilogue, and the ARM64 numbers elsewhere in these documents were
+measured before it existed. Sections 1 to 5 are the design as written before the change and
 use the present tense of a plan; section 6 and the table above are the record. The AMD64
 knobs for bisecting a pinning bug are `OBJECK_JIT_PIN_MAX=<n>` (cap per loop, `0` turns
 pinning off; it caps floats too when set) and `OBJECK_JIT_PIN_SKIP=<substring>` (leave
@@ -286,6 +287,31 @@ allocation, an early exit and a call in an inner loop, plus a float-only loop pa
 while another thread forces collections), which fails when `call_reg` omits the reload (checked), and
 by the regression suite in both default and `OBJECK_JIT_THRESHOLD=1` modes with failures identical to
 the build before.
+
+## 5c. Phase 4c measured on Apple Silicon, 2026-11-23
+
+One Apple M4 Max (macOS 26.6.2) on AC power, `-opt s3`, commit `565464fa80` (which contains `05ee7014b2`).
+The same binary runs both arms: `OBJECK_JIT_PIN_MAX=0` turns loop pinning off, unset leaves it on. Three runs
+per arm, alternating, wall seconds, median shown. Stdout was identical between the arms for every program
+(compared by SHA-1), every run exited 0, and peak memory matched.
+
+| program | argument | pinning off | pinning on | on / off |
+|---|---|---|---|---|
+| mandelbrot | 4000 | 2.17 | 1.55 | 0.714 |
+| nbody | 50000000 | 5.68 | 4.72 | 0.831 |
+| spectralnorm | 5500 | 2.42 | 2.10 | 0.868 |
+| fannkuchredux | 12 | 38.23 | 34.83 | 0.911 |
+| binarytrees | 17 | 1.84 | 1.83 | 0.995 |
+| fasta | 25000000 | 11.52 | 12.03 | 1.044 |
+
+On four programs the off and on runs do not overlap, so those gains are real for this machine. binarytrees
+(allocation-bound) is flat. fasta is about 4% slower with pinning on: the ranges overlap slightly (off
+11.38-11.74 s, on 11.64-12.27 s) but all three on runs sit at or above the off median, so treat it as a likely
+small regression, not noise. Not diagnosed. A plausible cause, not tested: a method that pins saves and
+restores up to eight callee-saved registers on every call, which a short loop in a frequently called method
+does not repay. A macOS background process was using about 60% of a core when the run started, which was not
+confirmed to persist. One machine and three runs per arm: this is a measurement, not a benchmark suite. The
+Windows ARM64 and Linux ARM64 legs are not timed.
 
 ## 6. Outcome
 

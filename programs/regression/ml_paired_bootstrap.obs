@@ -1,0 +1,103 @@
+# EXTRA_LIBS: ml,csv,gen_collect
+use System.ML;
+
+#~
+Metrics->PairedBootstrapDifference: the interval of B minus A for two detectors
+scored on the same instances, each at a threshold frozen beforehand.
+
+The point estimate has to equal the difference of the two AtThreshold results
+(the interval is built around it), the resampling is repeatable from a seed, two
+identical detectors give an interval of exactly zero, a detector that is clearly
+better has an interval above zero and the swapped pair one below, and bad input
+is Nil. Exits 1 on a failure.
+~#
+class MlPairedBootstrap {
+	@fails : static : Int;
+
+	function : Expect(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			"FAIL: {$what}"->PrintLine();
+			@fails += 1;
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@fails := 0;
+		n := 2000;
+		actuals := Bool->New[n];
+		weak := Float->New[n];
+		strong := Float->New[n];
+		noisy := Float->New[n];
+		for(i := 0; i < n; i += 1;) {
+			# a fixed pseudo-uniform value in [0, 1)
+			u := ((i * 7919) % 1000)->As(Float) / 1000.0;
+			actuals[i] := i % 5 = 0;
+			if(actuals[i]) {
+				weak[i] := u;                  # flagged at 0.5 when u >= 0.5: about half
+				strong[i] := 0.5 + 0.5 * u;    # always flagged
+				noisy[i] := u;
+			}
+			else {
+				weak[i] := u * 0.4;            # never flagged
+				strong[i] := u * 0.4;
+				noisy[i] := u;                 # flagged about half the time
+			};
+		};
+
+		# the point estimate is the difference of the two operating points
+		weak_at := Metrics->AtThreshold(weak, actuals, 0.5);
+		strong_at := Metrics->AtThreshold(strong, actuals, 0.5);
+		expected := strong_at->GetRecall() - weak_at->GetRecall();
+		better := Metrics->PairedBootstrapDifference(weak, 0.5, strong, 0.5, actuals, false, 500, 42);
+		Expect(better <> Nil, "an interval for a clearly better detector");
+		if(better <> Nil) {
+			Expect(better->GetPoint() = expected, "the point is recall(B) - recall(A): {$better->GetPoint()} vs {$expected}");
+			Expect(better->GetLow() > 0.0, "a clearly better detector has an interval above zero (low {$better->GetLow()})");
+			Expect(better->GetLow() <= better->GetPoint() & better->GetPoint() <= better->GetHigh(), "the point lies inside the interval");
+			Expect(better->GetUsableReps() = 500, "every resample is usable here ({$better->GetUsableReps()})");
+		};
+
+		# swapped: the same size, the opposite sign
+		worse := Metrics->PairedBootstrapDifference(strong, 0.5, weak, 0.5, actuals, false, 500, 42);
+		Expect(worse <> Nil & worse->GetHigh() < 0.0, "the swapped pair has an interval below zero");
+
+		# identical detectors differ by exactly nothing, on every resample
+		same := Metrics->PairedBootstrapDifference(weak, 0.5, weak, 0.5, actuals, false, 200, 7);
+		Expect(same <> Nil & same->GetPoint() = 0.0 & same->GetLow() = 0.0 & same->GetHigh() = 0.0, "identical detectors give a zero interval");
+
+		# the same seed repeats, a different seed is a different resampling
+		again := Metrics->PairedBootstrapDifference(weak, 0.5, strong, 0.5, actuals, false, 500, 42);
+		Expect(again <> Nil & better <> Nil & again->GetLow() = better->GetLow() & again->GetHigh() = better->GetHigh(), "the same seed gives the same interval");
+		reseeded := Metrics->PairedBootstrapDifference(weak, 0.5, strong, 0.5, actuals, false, 500, 43);
+		Expect(reseeded <> Nil & better <> Nil & (reseeded->GetLow() <> better->GetLow() | reseeded->GetHigh() <> better->GetHigh()), "another seed gives another resampling");
+
+		# false-positive rates: noisy flags about half the negatives, weak none
+		fpr_expected := Metrics->AtThreshold(noisy, actuals, 0.5)->GetFpr() - weak_at->GetFpr();
+		fpr := Metrics->PairedBootstrapDifference(weak, 0.5, noisy, 0.5, actuals, true, 500, 42);
+		Expect(fpr <> Nil, "an interval for the false-positive rate difference");
+		if(fpr <> Nil) {
+			Expect(fpr->GetPoint() = fpr_expected, "the point is fpr(B) - fpr(A): {$fpr->GetPoint()} vs {$fpr_expected}");
+			Expect(fpr->GetLow() > 0.0, "a noisier detector has a false-positive interval above zero");
+		};
+
+		# different thresholds per detector are used as given
+		raised := Metrics->PairedBootstrapDifference(weak, 0.5, weak, 0.25, actuals, false, 200, 5);
+		weak_low := Metrics->AtThreshold(weak, actuals, 0.25);
+		Expect(raised <> Nil & raised->GetPoint() = weak_low->GetRecall() - weak_at->GetRecall(), "each detector's own threshold is applied");
+
+		# bad input
+		Expect(Metrics->PairedBootstrapDifference(Nil, 0.5, strong, 0.5, actuals, false, 100, 1) = Nil, "Nil scores");
+		Expect(Metrics->PairedBootstrapDifference(weak, 0.5, strong, 0.5, Nil, false, 100, 1) = Nil, "Nil labels");
+		short := Float->New[n - 1];
+		Expect(Metrics->PairedBootstrapDifference(weak, 0.5, short, 0.5, actuals, false, 100, 1) = Nil, "scores of different lengths");
+		Expect(Metrics->PairedBootstrapDifference(weak, 0.5, strong, 0.5, actuals, false, 1, 1) = Nil, "fewer than two resamples");
+		Expect(Metrics->PairedBootstrapDifference(weak, 0.5, strong, 0.5, actuals, false, 100, 1, 1.5) = Nil, "an interval level above one");
+		no_positives := Bool->New[n];
+		Expect(Metrics->PairedBootstrapDifference(weak, 0.5, strong, 0.5, no_positives, false, 100, 1) = Nil, "recall with no positive instance");
+
+		if(@fails > 0) {
+			Runtime->Exit(1);
+		};
+		"PASS: the paired bootstrap interval of a recall or false-positive-rate difference"->PrintLine();
+	}
+}

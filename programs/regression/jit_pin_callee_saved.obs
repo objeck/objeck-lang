@@ -1,0 +1,199 @@
+#~
+Pinned integer loop locals survive calls, early exits, recursion and a safepoint park.
+
+The JIT keeps a loop's hottest integer locals in callee-saved registers (R13-R15
+on AMD64, X20-X27 on ARM64: three registers there, eight here). A callee that
+pins the same registers has to save and restore them in its own frame, an
+early exit has to hand the values on, and a loop parked at its safepoint has to
+come back with every value intact.
+
+Each check runs the same arithmetic twice: once on locals, which the JIT pins,
+and once on instance fields, which it cannot, in the same order of operations,
+so the two agree exactly. The first loop carries nine live integers, more than
+either backend has registers, so some stay in their frame slots. Exits 1 on a
+failure.
+~#
+use System.Concurrency;
+
+class Ref {
+  @a : Int; @b : Int; @c : Int; @d : Int; @e : Int; @f : Int; @g : Int; @h : Int; @k : Int;
+
+  New() {
+  }
+
+  # a callee with a loop of its own: it pins registers and must give them back
+  function : Inner(n : Int) ~ Int {
+    p := 0; q := 1; s := 0;
+    for(j := 0; j < n; j += 1;) {
+      p += j; q += p % 3; s += q;
+    };
+    return s;
+  }
+
+  method : public : Step(i : Int) ~ Nil {
+    @a += i; @b += 2; @c += @a % 7; @d += @b % 5; @e += i * 3;
+    @f += @d - @c; @g += @e % 11; @h += @g + 1; @k += @h % 13 + Inner(4);
+  }
+
+  method : public : Sum() ~ Int {
+    return @a + @b + @c + @d + @e + @f + @g + @h + @k;
+  }
+}
+
+class Worker from Thread {
+  @done : Bool;
+  @rounds : Int;
+
+  New(rounds : Int) {
+    Parent("alloc-worker");
+    @rounds := rounds;
+    @done := false;
+  }
+
+  method : public : IsDone() ~ Bool {
+    return @done;
+  }
+
+  method : public : Run(param : Base) ~ Nil {
+    keep : Int[];
+    each(i : @rounds) {
+      keep := Int->New[512];
+      keep[0] := i;
+    };
+    @done := true;
+  }
+}
+
+class JitPinCalleeSaved {
+  @fails : static : Int;
+
+  function : Main(args : String[]) ~ Nil {
+    @fails := 0;
+
+    # the reference: fields, never pinned
+    ref := Ref->New();
+    each(i : 3000) {
+      ref->Step(i);
+    };
+    expect := ref->Sum();
+
+    # nine live integers across a call with a loop of its own, enough rounds to
+    # compile either way
+    each(r : 12) {
+      got := Many(3000);
+      Expect(got = expect, "nine pinned integers across a pinning callee agree with fields (round {$r}: {$got} vs {$expect})");
+    };
+
+    # an early return from inside the loop, against the same loop without the exit
+    early := EarlyExit(1000);
+    Expect(early = 499500, "an early exit hands the pinned integers on ({$early})");
+    nested := NestedBreak(60);
+    nestedRef := NestedBreakRef(60);
+    Expect(nested = nestedRef, "a break out of an inner loop keeps the outer loop's integers ({$nested} vs {$nestedRef})");
+
+    # recursion: every frame saves and restores the registers its loop pins
+    deep := Recurse(40);
+    deepRef := RecurseRef(40);
+    Expect(deep = deepRef, "recursion with a pinned loop in every frame ({$deep} vs {$deepRef})");
+
+    # an integer-only loop on this thread while another thread forces collections
+    spinRef := Spin(2000000);
+    worker := Worker->New(600000);
+    worker->Execute(Nil);
+    spins := 0;
+    bad := 0;
+    while(<>worker->IsDone()) {
+      if(Spin(2000000) <> spinRef) {
+        bad += 1;
+      };
+      spins += 1;
+    };
+    worker->Join();
+    Expect(bad = 0, "an integer loop parked at its safepoint keeps its integers ({$bad} of {$spins} spins differed)");
+    Expect(spins > 0, "the integer loop ran while the allocator did");
+
+    if(@fails > 0) {
+      Runtime->Exit(1);
+    };
+    "PASS: pinned integers survive calls, early exits, recursion and safepoint parks"->PrintLine();
+  }
+
+  function : Expect(ok : Bool, what : String) ~ Nil {
+    if(<>ok) {
+      "FAIL: {$what}"->PrintLine();
+      @fails += 1;
+    };
+  }
+
+  function : native : Many(n : Int) ~ Int {
+    a := 0; b := 0; c := 0; d := 0; e := 0; f := 0; g := 0; h := 0; k := 0;
+    for(i := 0; i < n; i += 1;) {
+      a += i; b += 2; c += a % 7; d += b % 5; e += i * 3;
+      f += d - c; g += e % 11; h += g + 1; k += h % 13 + Ref->Inner(4);
+    };
+    return a + b + c + d + e + f + g + h + k;
+  }
+
+  function : native : EarlyExit(n : Int) ~ Int {
+    total := 0; step := 0; seen := 0;
+    for(i := 0; i < n * 2; i += 1;) {
+      total += i; step += 1; seen += step % 2;
+      if(i = n - 1) {
+        return total;
+      };
+    };
+    return -1;
+  }
+
+  function : native : NestedBreak(n : Int) ~ Int {
+    total := 0; hits := 0; last := 0;
+    for(i := 0; i < n; i += 1;) {
+      for(j := 0; j < n; j += 1;) {
+        if(j > i) { break; };
+        total += j; hits += 1; last := j;
+      };
+    };
+    return total * 1000 + hits + last;
+  }
+
+  function : NestedBreakRef(n : Int) ~ Int {
+    total := 0; hits := 0; last := 0;
+    for(i := 0; i < n; i += 1;) {
+      for(j := 0; j < n; j += 1;) {
+        if(j > i) { break; };
+        total += j; hits += 1; last := j;
+      };
+    };
+    return total * 1000 + hits + last;
+  }
+
+  function : native : Recurse(depth : Int) ~ Int {
+    if(depth = 0) { return 1; };
+    acc := 0; mix := depth; run := 0;
+    for(i := 0; i < 40; i += 1;) {
+      acc += i; mix += acc % 5; run += mix;
+    };
+    return acc + mix % 3 + run % 11 + Recurse(depth - 1) + depth;
+  }
+
+  function : RecurseRef(depth : Int) ~ Int {
+    if(depth = 0) { return 1; };
+    acc := 0; mix := depth; run := 0;
+    for(i := 0; i < 40; i += 1;) {
+      acc += i; mix += acc % 5; run += mix;
+    };
+    return acc + mix % 3 + run % 11 + RecurseRef(depth - 1) + depth;
+  }
+
+  # integer-only: the sole call in the loop is the safepoint poll's slow path
+  function : native : Spin(n : Int) ~ Int {
+    a := 1; b := 2; c := 3; d := 4;
+    for(i := 0; i < n; i += 1;) {
+      a := (a * 31 + b) % 1000003;
+      b := (b * 17 + c) % 1000003;
+      c := (c * 13 + d) % 1000003;
+      d := (d * 7 + a) % 1000003;
+    };
+    return a + b + c + d;
+  }
+}

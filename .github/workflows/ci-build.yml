@@ -1150,6 +1150,10 @@ jobs:
     # compiler error and must stop the build, not be read through a dangling iterator.
     # The label pass has a test hook (OBJECK_TEST_LABEL_FAULT) that simulates both.
     - name: obc refuses a lost or duplicated jump label (POSIX)
+
+    # With OBJECK_LIB_PATH unset the library directory is resolved against the executable,
+    # not the working directory.
+    - name: obc and obr find their libraries from another working directory (POSIX)
       if: runner.os != 'Windows'
       working-directory: ./programs/regression
       run: |
@@ -1159,6 +1163,10 @@ jobs:
         python3 check_label_fatal.py "$BIN"
 
     - name: obc refuses a lost or duplicated jump label (Windows)
+
+        python3 check_lib_path_anchor.py "$BIN"
+
+    - name: obc and obr find their libraries from another working directory (Windows)
       if: runner.os == 'Windows'
       working-directory: ./programs/regression
       shell: cmd
@@ -1166,6 +1174,8 @@ jobs:
         set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_label_fatal.py "%BIN%"
+
+        python check_lib_path_anchor.py "%BIN%"
 
     # Named arguments reach a library method through the parameter names its .obl
     # records; skipping a middle default goes through the method's mask forwarder,

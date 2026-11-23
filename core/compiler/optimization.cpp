@@ -2834,6 +2834,44 @@ IntermediateBlock* ItermediateOptimizer::LICM(IntermediateBlock* input)
             }
           }
 
+          // The store moves in front of the loop, so it must be unobservable
+          // anywhere it did not run before. Hoisting is only sound when the
+          // statement ran on every iteration that reaches it and no read can
+          // tell that it now also runs first, or runs with zero iterations:
+          //  - no read of the slot at all outside the loop (a zero-iteration loop
+          //    would leave the old value; the hoisted store changes it),
+          //  - no read of the slot in the loop before the store (the first
+          //    iteration, and every one after it, read the previous value),
+          //  - no jump earlier in the body that skips the store (an `if` around
+          //    it, a `continue` before it): the store ran only sometimes.
+          // A jump out of the loop (the exit test) is fine: it ends the loop.
+          if(can_hoist) {
+            auto reads_slot = [&](size_t k) {
+              const InstructionType rt = instrs[k]->GetType();
+              return instrs[k]->GetOperand2() == LOCL && instrs[k]->GetOperand() == instr->GetOperand() &&
+                     (rt == LOAD_INT_VAR || rt == LOAD_FLOAT_VAR || rt == LOAD_FUNC_VAR);
+            };
+            for(size_t k = 0; k < instrs.size() && can_hoist; ++k) {
+              if(k >= lo && k < i) {
+                if(reads_slot(k)) {
+                  can_hoist = false;
+                }
+                else if(instrs[k]->GetType() == JMP) {
+                  auto target = lbl_pos.find((int)instrs[k]->GetOperand());
+                  if(target == lbl_pos.end() || (target->second > i && target->second <= hi)) {
+                    can_hoist = false;
+                  }
+                }
+                else if(instrs[k]->GetType() == JMP_TABLE || instrs[k]->GetType() == TRY_START) {
+                  can_hoist = false;
+                }
+              }
+              else if((k < lo || k > hi) && reads_slot(k)) {
+                can_hoist = false;
+              }
+            }
+          }
+
           if(can_hoist) {
             auto& pre = insert_before[lo];
             for(size_t idx : stmt_idx) {
