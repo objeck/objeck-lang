@@ -111,6 +111,7 @@ The generational collector (nursery plus old generation, write barrier, minor an
 | `--gc-threshold=<size>` | old-generation collection threshold (`64k` forces frequent major collections) | same |
 | `OBJECK_GC_STATS=1` | prints a collection summary (counts, pauses, promoted bytes, peak RSS) on exit | [memory.cpp](../core/vm/arch/memory.cpp) |
 | `OBJECK_GC_TRACE` | collection trace | same |
+| `OBJECK_STW_WATCHDOG_MS=<n>` | a collection that has waited more than `n` ms for other threads to park prints, once, which threads have not (thread id, innermost method, instruction pointer, callers) and keeps waiting. A native call that blocks without `BeginBlocking`/`EndBlocking` otherwise hangs the VM with no output. Off by default and free when off. `runtime.test.stall_ms` (needs `OBJECK_GC_TEST_HOOKS=1`) is the fixture's stand-in for such a call | [memory.cpp](../core/vm/arch/memory.cpp), `stw_watchdog.obs` |
 | `OBJECK_GC_TEST_HOOKS=1` | enables `Runtime->TestAddressOf(o)` so a test can hold an object's address as an `Int` across a collection | [common.cpp](../core/vm/common.cpp) |
 | `OBJECK_JIT_THRESHOLD=N`, `OBJECK_JIT_DISABLE=1`, `--jit=off\|1`, `OBJECK_JIT_REPORT=1` | JIT call-count threshold (default 10), JIT off, force compilation, and a per-method compile report used by the fuzzer and the flag tests | [jit_common.h](../core/vm/arch/jit/jit_common.h) |
 

@@ -98,6 +98,8 @@ struct StackFrameMonitor {
   // operand stack tracking for young-gen fixup across threads
   size_t* op_stack;
   size_t* stack_pos;
+  // the thread that owns this monitor (MemoryManager::CurrentThreadId)
+  uintptr_t thread_id;
 };
 
 // holders
@@ -210,6 +212,16 @@ class MemoryManager {
   static pthread_mutex_t stw_lock;
   static pthread_cond_t stw_cv;
 #endif
+
+  // OBJECK_STW_WATCHDOG_MS=<n> (0/unset = off): a collector that has waited more than
+  // n ms for the other mutators to park reports, once per process, which threads have
+  // not and where they are, then keeps waiting. A native call that blocks without
+  // BeginBlocking/EndBlocking otherwise hangs the VM with no output. Read once by
+  // Initialize; the off path is the original wait loop.
+  static long stw_watchdog_ms;
+  // Wait, with stw_lock held, until every other mutator has parked.
+  static void WaitForMutatorsToPark();
+  static void ReportUnparkedMutators(long waited_ms);
 
 #ifdef _WIN32
   static CRITICAL_SECTION jit_frame_lock;
@@ -556,6 +568,9 @@ class MemoryManager {
   static void RegisterMutator();    // a thread begins executing bytecode
   static void UnregisterMutator();  // a thread finishes executing bytecode
   static void SafePoint();          // poll: park if a collection is in progress
+  // An id for the calling thread, recorded in its StackFrameMonitor so the stop-the-world
+  // watchdog can pair a registered mutator with its frames.
+  static uintptr_t CurrentThreadId();
   // Address of the stop-the-world flag, for the JIT's inline safepoint fast path:
   // the JIT loads this flag and skips the SafePoint() call when no collection is
   // active, so a hot JITed loop pays only a load+test+branch per poll, not a call.
