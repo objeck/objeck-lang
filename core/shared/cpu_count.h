@@ -75,12 +75,24 @@ inline unsigned Compute() {
   if(hw == 0) {
     hw = 1;
   }
-  if(const char* env = std::getenv("OBJECK_CPU_COUNT")) {
+  // OBJECK_CPU_COUNT (MSVC deprecates getenv, and its warnings are errors here)
+#ifdef _WIN32
+  char env[32] = {0};
+  const DWORD env_len = GetEnvironmentVariableA("OBJECK_CPU_COUNT", env, (DWORD)sizeof(env));
+  if(env_len > 0 && env_len < sizeof(env)) {
     const long n = std::atol(env);
     if(n >= 1) {
       return (unsigned)n;
     }
   }
+#else
+  if(const char* value = std::getenv("OBJECK_CPU_COUNT")) {
+    const long n = std::atol(value);
+    if(n >= 1) {
+      return (unsigned)n;
+    }
+  }
+#endif
   unsigned usable = hw;
 #ifdef __linux__
   cpu_set_t set;
