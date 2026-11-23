@@ -135,6 +135,9 @@ namespace Runtime {
     // cause access violations as the C runtime tears down state the VM
     // is still using).
     std::thread vm_thread;
+    // True while the VM worker thread is inside its run loop. The halt watchdog
+    // reads it to tell a program that unwound from one that is stuck.
+    std::atomic<bool> vm_running{false};
 
     // Serializes SendMessage across the main DAP thread and the two
     // output reader threads (otherwise their headers/bodies interleave
@@ -144,6 +147,10 @@ namespace Runtime {
     void RedirectProgramStdio();
     void StartOutputReaders();
     void DrainProgramOutput();
+    // After disconnect / terminate: halt every VM thread, and if the worker has
+    // not unwound within a couple of seconds (a thread blocked in a syscall
+    // cannot see a halt), flush what was printed and end the process.
+    void HaltProgramAndWatch();
     void OutputReaderLoop(int fd, const std::string& category);
 
     // JSON-RPC transport
