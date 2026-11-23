@@ -1149,6 +1149,10 @@ jobs:
     # The library reader checks every read against the end of the inflated file; a damaged
     # .obl must end in an error message, never an out-of-bounds read or a crash.
     - name: obc refuses a truncated or corrupt library with a clear message (POSIX)
+
+    # With OBJECK_LIB_PATH unset the library directory is resolved against the executable,
+    # not the working directory.
+    - name: obc and obr find their libraries from another working directory (POSIX)
       if: runner.os != 'Windows'
       working-directory: ./programs/regression
       run: |
@@ -1158,6 +1162,10 @@ jobs:
         python3 check_obl_truncated.py "$BIN"
 
     - name: obc refuses a truncated or corrupt library with a clear message (Windows)
+
+        python3 check_lib_path_anchor.py "$BIN"
+
+    - name: obc and obr find their libraries from another working directory (Windows)
       if: runner.os == 'Windows'
       working-directory: ./programs/regression
       shell: cmd
@@ -1165,6 +1173,8 @@ jobs:
         set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_obl_truncated.py "%BIN%"
+
+        python check_lib_path_anchor.py "%BIN%"
 
     # Named arguments reach a library method through the parameter names its .obl
     # records; skipping a middle default goes through the method's mask forwarder,

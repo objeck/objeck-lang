@@ -1,4 +1,5 @@
 #include "common.h"
+#include "../../../shared/cpu_count.h"
 
 #ifdef _WIN32
 namespace fs = std::filesystem;
@@ -364,7 +365,7 @@ extern "C" {
          if(tuning == "dml") {
             session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
             session_options.DisableMemPattern();
-            session_options.SetIntraOpNumThreads(std::thread::hardware_concurrency());
+            session_options.SetIntraOpNumThreads((int)UsableCpuCount());
          }
          else if(tuning == "cuda") {
             session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
