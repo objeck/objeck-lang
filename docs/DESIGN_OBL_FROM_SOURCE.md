@@ -129,8 +129,11 @@ by `tools/cicd/obl_from_source.sh`:
    `check_obl_versions.py` on the rebuilt files, and upload them as the `obl-from-source` artifact: what a
    `libs` job would hand to the other legs.
 
-Result of the run on this PR: see the PR description (the numbers are written there after the run, not
-asserted here).
+Result (run 45223275631, ubuntu-24.04, 2026-11-23): all 52 libraries rebuilt from nothing in about 2 minutes;
+**all 52, `lang.obl` included, are byte-identical to the committed files**; `deploy_posix.sh x64` and the
+regression suite pass (877 passed, 10 skipped, 0 failed; the skips are the ODBC and GL tests, whose data
+source and context the prototype does not configure); `check_obl_versions.py` accepts the rebuilt set.
+So on Linux the committed copies are pure derivatives of the source.
 
 What the prototype does **not** prove: a Windows or ARM64 leg consuming the artifact (needs the `needs:`
 edges and a download step in `ci-build.yml`/`release-build.yml`); that a CI-built `lang.obl` is accepted by a
