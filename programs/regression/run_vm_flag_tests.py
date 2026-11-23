@@ -2527,6 +2527,8 @@ def check_vm_exit_flush(obc, obr, env, bin_dir):
     for jit in ("--jit=off", "--jit=1"):
         for mode, what, status_ok, message in cases:
             rc, out, err = run([obr, jit, dest, mode], env=hooks_env, cwd=SCRIPT_DIR, timeout=120)
+            # Windows writes a newline as CR LF (3000 lines make 3000 extra bytes): compare the text
+            out = out.replace(b"\r\n", b"\n")
             check(f"vm exit {jit}, {what}: every byte printed before it is delivered",
                   out.startswith(expected) and b"FAIL" not in out,
                   f"rc={rc} got {len(out)} of {len(expected)} bytes, ends {out[-60:]!r} err={err[-200:]!r}")
