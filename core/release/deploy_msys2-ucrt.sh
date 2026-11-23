@@ -190,7 +190,7 @@ cp docs/readme.html core/release/deploy-msys2-ucrt
 cp docs/style/readme.css core/release/deploy-msys2-ucrt/doc
 
 cp LICENSE core/release/deploy-msys2-ucrt
-unzip docs/api.zip -d core/release/deploy-msys2-ucrt/doc
+sh core/release/include_api_docs.sh core/release/deploy-msys2-ucrt/doc || exit 1
 
 ui_step "examples"
 # copy examples
