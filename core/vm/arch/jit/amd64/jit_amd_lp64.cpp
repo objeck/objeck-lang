@@ -7164,6 +7164,13 @@ void JitAmd64::cvt_reg_xreg(Register src, Register dest) {
   std::wcout << L"  " << (++instr_count) << L": [cvtsi2sd %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << std::endl;
 #endif
+  // cvtsi2sd writes only the low double and keeps the register's upper half, so
+  // the CPU makes it wait for whatever last wrote the register. In a loop that
+  // is the previous iteration's running sum, and every conversion then queues
+  // behind it: the same loop with `v[j] / (n)->As(Float)` ran 4.1 s against 2.0 s
+  // for the equivalent `1.0 / n * v[j]`, whose register had a short history.
+  // Zeroing the register first (what C compilers emit) breaks the dependency.
+  pxor_xreg_xreg(dest, dest);
   // encode
   AddMachineCode(0xf2);
   AddMachineCode(ROB(dest, src));
@@ -7188,6 +7195,7 @@ void JitAmd64::cvt_mem_xreg(long offset, Register src, Register dest) {
   std::wcout << L"  " << (++instr_count) << L": [cvtsi2sd " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << std::endl;
 #endif
+  pxor_xreg_xreg(dest, dest);   // break the false dependency on dest, as in cvt_reg_xreg
   // encode
   AddMachineCode(0xf2);
   AddMachineCode(RXB(dest, src));
