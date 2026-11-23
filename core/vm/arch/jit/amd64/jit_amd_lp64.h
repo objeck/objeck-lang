@@ -362,7 +362,7 @@ namespace Runtime {
     std::vector<PinRegion> pin_regions;
     int active_pin_region;         // region whose instructions are being emitted, -1 outside any
     bool method_pins;              // some region pins: the prologue saves the pinning registers
-    bool method_pins_float;        // some region pins floats: the prologue saves XMM6-XMM9 (Windows)
+    bool method_pins_float;        // some region pins floats: the prologue saves XMM6-XMM9 (Windows; SysV saves around each call instead)
     // Calling-convention phase 2 (docs/JIT_CALLING_CONVENTION_DESIGN.md): the
     // prologue saves XMM10-XMM15 and the epilogue restores them, 96 bytes and
     // twelve movdqu per call, for the pool GetXmmRegister hands out. A method
@@ -402,7 +402,11 @@ namespace Runtime {
       return regs[i];
     }
     // phase 4d: XMM6-XMM9 are callee-saved on Windows and outside the pool
-    // (which hands out XMM10-XMM15), so a Float loop local can live there
+    // (which hands out XMM10-XMM15), so a Float loop local can live there. Under
+    // SysV the same four serve, with call_reg saving them around each call.
+    // (Eight, adding XMM2-XMM5, was measured on Linux: mandelbrot 4% faster, but
+    // nbody 4% slower, whose loop calls Sqrt and pays two more stores and loads
+    // per pin on every call. Four it stays.)
     static const int PIN_FREG_COUNT = 4;
     static Register PinFloatRegister(int i) {
       static const Register regs[PIN_FREG_COUNT] = { XMM6, XMM7, XMM8, XMM9 };
@@ -420,6 +424,8 @@ namespace Runtime {
     bool PinnedFloatSlot(long offset, int& reg_index);
     void EmitPinEntry(int region);
     void EmitPinWriteBack(int region);
+    void EmitPinFloatWriteBack(int region);   // SysV: pinned floats to their slots before a call
+    void EmitPinFloatReload(int region);      // SysV: and back into XMM6-XMM9 after it
     void EmitPinExitStubs();
 
     // local variable register cache: keeps registers live after store

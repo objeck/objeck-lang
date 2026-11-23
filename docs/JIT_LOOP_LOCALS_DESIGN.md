@@ -11,7 +11,7 @@ section 6 records what was built and measured.
 |---|---|---|
 | 4a, F6: `EmitBranch`, conditions branch directly | implemented (compiler; both backends benefit) | `a8ad2c0d27`, 2026-09-09 |
 | 4b, F3 on AMD64: up to three `Int`/`Char` locals per loop in `R13`-`R15` | implemented | `e7778fd996`, 2026-09-09 |
-| 4d, `Float` locals in `XMM6`-`XMM9` | implemented on **Windows x64 only** | `21c9d3019c`, 2026-09-09 |
+| 4d, `Float` locals in `XMM6`-`XMM9` | implemented on **Windows x64** (callee-saved) and **Linux x64** (saved around each call, section 5b) | `21c9d3019c`, 2026-09-09; Linux 2026-11-23 |
 | 4c, F3 on ARM64 (`X20`-`X27`) | **not implemented**: `jit_arm_a64.cpp` has no pin planner, entry or write-back stubs | -- |
 | `D8`-`D15` float pins on ARM64; `RSI`/`RDI` as extra Windows pins; `HasAndOr` only for value-context connectives | **not implemented** (the compiler still sets the flag for any and/or connective, a ternary, a `select` or a lambda: `context.cpp`) | -- |
 
@@ -192,9 +192,9 @@ locals in [header,end]`), and `_DEBUG_JIT` listings show the entry loads and exi
 ### 3.3 What is not done here
 
 - Floats in `XMM6`-`XMM9` on Windows (callee-saved there, unused by the allocator) and in
-  `D8`-`D15` on ARM64 (already saved by the prologue). On Linux/macOS x64 every XMM register is
-  caller-saved, so floats there would need spill code around calls -- the reason the integer design
-  insists on callee-saved registers.
+  `D8`-`D15` on ARM64 (already saved by the prologue). On Linux x64 every XMM register is
+  caller-saved, so floats there need spill code around calls -- the reason the integer design
+  insists on callee-saved registers. (Done for Linux x64 in section 5b; ARM64 is still open.)
 - `RSI`/`RDI` as two more pinning registers on Windows (callee-saved there, caller-saved on SysV).
 - Keeping a local pinned across a region boundary, or pinning in straight-line code.
 
@@ -230,8 +230,8 @@ slot list per region and its own register set. What differs, and why:
 
 - **Registers and platform.** Windows x64 makes `XMM6`-`XMM15` callee-saved; the pool hands out
   `XMM10`-`XMM15`, so `XMM6`-`XMM9` were free and survive every call out of JIT code by ABI --
-  the same safety argument as `R13`-`R15`. On Linux and macOS every XMM is caller-saved: a call
-  inside the loop would clobber the pin, so the float budget is zero there and nothing changes.
+  the same safety argument as `R13`-`R15`. On Linux every XMM is caller-saved: a call inside the
+  loop would clobber the pin, so the float budget was zero there until section 5b.
   ARM64's `D8`-`D15` are callee-saved and remain the open follow-up.
 - **Candidates.** `LOAD/STOR/COPY_FLOAT_VAR` with `LOCL` context whose declared type is
   `FLOAT_PARM`, weighted by nesting depth like the integers, top four per region (the
@@ -255,6 +255,37 @@ only, unchanged. Verified by six fixture probes (`FloatPins`: accumulators, a fl
 through a nested loop, ints and floats pinned together, seven floats for four registers, a
 `break` out of the loop, calls and an allocation inside the loop) byte-identical between the
 interpreter and the JIT, and the regression suite in both modes.
+
+## 5b. Phase 4d on Linux x64: pins saved around each call, 2026-11-23
+
+The planner set the float budget to zero under SysV, so a Linux loop held every float in a stack
+slot. Disassembling single-thread `mandelbrot` (`OBJECK_JIT_DUMP`) showed the cost: 58 instructions
+per iteration, 17 of them float loads and stores, against 17 instructions and no memory traffic for
+LuaJIT, and 1.87 s against Windows's 1.27 s for the same program with the four pins.
+
+The same `XMM6`-`XMM9` serve on Linux. They are outside the allocator's pool and no call the JIT
+makes passes a float in them (math calls use `XMM0` and `XMM1`), so the only hazard is the callee
+using them. `call_reg`, the one place every call out of JIT code is emitted, now stores the active
+region's pinned floats to their frame slots before the call and reloads them after
+(`EmitPinFloatWriteBack`, `EmitPinFloatReload`). That covers the loop-header safepoint's slow-path
+call, math calls, virtual and bound calls, allocation and every runtime helper alike, with no
+instruction-by-instruction audit of which ones clobber what, and is a plain store and load pair per
+pin: no flags, no general registers, the call's setup undisturbed. The integer pins need nothing
+(`R13`-`R15` are callee-saved). The prologue and epilogue saves stay Windows-only: nothing on Linux
+is obliged to preserve an XMM register for its caller.
+
+Measured on the 7950X3D in the benchmark image, medians of three, against the build before: single
+thread `mandelbrot` 1.87 s to 1.25 s; `nbody` 7.97 s to 5.53 s; `spectralnorm`, `binarytrees`,
+`fasta` and `fannkuchredux` unchanged within noise. Eight pins (adding `XMM2`-`XMM5`, free on SysV)
+were tried: `mandelbrot` 4% faster again, `nbody` 4% slower than four, because its loop calls `Sqrt`
+and the write-back and reload double. Four it stays.
+
+Verified by `programs/regression/jit_float_pin_calls.obs` (locals against fields in the same order
+of operations across a method call, `Float->Sin`, `Float->Pow` with two float arguments, a string
+allocation, an early exit and a call in an inner loop, plus a float-only loop parked at its safepoint
+while another thread forces collections), which fails when `call_reg` omits the reload (checked), and
+by the regression suite in both default and `OBJECK_JIT_THRESHOLD=1` modes with failures identical to
+the build before.
 
 ## 6. Outcome
 
