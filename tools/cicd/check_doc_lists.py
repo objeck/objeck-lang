@@ -28,7 +28,7 @@ import sys
 # lib_src paths in the library-BUILD steps, which inflates the list and hides a
 # genuine omission in the doc step.
 TARGETS = [
-    (".github/workflows/release-build.yml", r"obr code_doc\.obe"),
+    ("tools/cicd/gen_api_docs.sh", r"obr code_doc\.obe"),
     (".github/workflows/ci-build.yml", r"obr code_doc\.obe"),
     ("core/release/code_doc64.in", r"code_doc\.obe .*templates"),
     ("tools/lsp/server/doc_json/gen_json.cmd", r"doc_json\.obe templates"),

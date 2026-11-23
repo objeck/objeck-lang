@@ -522,7 +522,7 @@ Return the shapes of C4: `String[]` texts and `Bool[]` labels from a `CsvTable` 
 
 ### A library (registration)
 
-What the open pull requests touched, as the checklist: the source in `core/compiler/lib_src/`, a line in `core/compiler/build_libs.sh`, the five hard-coded lists that `tools/cicd/check_doc_lists.py` keeps in agreement (`release-build.yml`, `ci-build.yml`, `core/release/code_doc64.in` and `.cmd`, `tools/lsp/server/doc_json/gen_json.cmd` and `.sh`), the alias in `core/lib/configobjk.ini` (closed under dependencies), `core/lib/README.md`, the tracked `core/lib/<name>.obl`, the API index `tools/lsp/server/objk_apis.json` and its VS Code copy, the playground map (`programs/web-playground/backend/app/services/libmap.py` and `libmap_data.json`, `config.py`, `docker/build-sandbox.sh`), the `docs/AI.md` section and the regenerated `docs/web/doc_ai.html`.
+What the open pull requests touched, as the checklist: the source in `core/compiler/lib_src/`, a line in `core/compiler/build_libs.sh`, the five hard-coded lists that `tools/cicd/check_doc_lists.py` keeps in agreement (`tools/cicd/gen_api_docs.sh`, `ci-build.yml`, `core/release/code_doc64.in` and `.cmd`, `tools/lsp/server/doc_json/gen_json.cmd` and `.sh`), the alias in `core/lib/configobjk.ini` (closed under dependencies), `core/lib/README.md`, the tracked `core/lib/<name>.obl`, the API index `tools/lsp/server/objk_apis.json` and its VS Code copy, the playground map (`programs/web-playground/backend/app/services/libmap.py` and `libmap_data.json`, `config.py`, `docker/build-sandbox.sh`), the `docs/AI.md` section and the regenerated `docs/web/doc_ai.html`.
 
 ## Short names
 
