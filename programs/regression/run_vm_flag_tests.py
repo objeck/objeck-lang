@@ -715,6 +715,8 @@ def main():
 
     check_gc_roots_audit(obc, obr, env, bin_dir)
 
+    check_stw_watchdog(obc, obr, env, bin_dir)
+
     check_int_not_relocated(obc, obr, env, bin_dir)
 
     check_entry_zeroes_spill_slots(obc, obr, env, bin_dir)
@@ -1914,6 +1916,12 @@ def verifier_cases(image):
     cases = []
     _, at = first(lambda o, a, c, k: o == op["JMP"])[:2]
     cases.append(("a jump target outside its method", "jump target outside the method", put(image, at, "<i", 1000000)))
+    # a jump operand is the index just past its LBL (StackInstr::JumpTargetIndex); the
+    # interpreter, the AMD64 JIT and the ARM64 JIT agree on it only while that holds
+    _, at, code, _ = first(lambda o, a, c, k: o == op["JMP"])
+    past_no_label = next(i for i in range(1, len(code)) if code[i - 1][0] != op["LBL"])
+    cases.append(("a jump that lands just past no label", "jump target is not just past a label",
+                  put(image, at, "<i", past_no_label)))
     _, at = first(lambda o, a, c, k: o == op["STOR_INT_VAR"] and operand(a, 1) == locl)[:2]
     cases.append(("a local beyond its frame", "local variable id beyond the frame", put(image, at, "<i", 100000)))
     _, at = first(lambda o, a, c, k: o == op["MTHD_CALL"])[:2]
@@ -2492,6 +2500,55 @@ def verify_section(obc, obr, env, bin_dir):
     check("OBJECK_GC_VERIFY=sometimes is refused with a message naming what was expected",
           rc != 0 and b"expected a positive collection period or 'checkmark'" in err,
           f"rc={rc} stderr={err.decode(errors='replace')[-200:]!r}")
+
+
+def compile_fixture(obc, name, env, bin_dir):
+    # compile programs/regression/<name>.obs next to itself; the .obe path, or None
+    src = os.path.join(SCRIPT_DIR, name + ".obs")
+    dest = os.path.join(SCRIPT_DIR, name + ".obe")
+    rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+    check(f"{name} compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+    return dest if rc == 0 and os.path.exists(dest) else None
+
+
+def check_stw_watchdog(obc, obr, env, bin_dir):
+    # ---- the stop-the-world watchdog (OBJECK_STW_WATCHDOG_MS) -----------------------
+    # stw_watchdog.obs stalls a worker in a call that never parks (a hook that needs
+    # OBJECK_GC_TEST_HOOKS=1) while main forces a collection, so the collector waits
+    # about 1.5 s. A watchdog set to 150 ms must say so on stderr, once, naming the
+    # worker's method, and the program must still finish. Without the variable the same
+    # run prints nothing extra: the wait is the one it always was.
+    dest = compile_fixture(obc, "stw_watchdog", env, bin_dir)
+    if not dest:
+        return
+    hooks_env = dict(env)
+    hooks_env["OBJECK_GC_TEST_HOOKS"] = "1"
+    hooks_env.pop("OBJECK_STW_WATCHDOG_MS", None)
+    watch_env = dict(hooks_env)
+    watch_env["OBJECK_STW_WATCHDOG_MS"] = "150"
+    for jit in ("--jit=off", "--jit=1"):
+        rc, out, err = run([obr, jit, "--nursery=256k", dest], env=watch_env, cwd=SCRIPT_DIR, timeout=120)
+        text = err.decode(errors="replace")
+        check(f"stw watchdog {jit}: the program still finishes", rc == 0 and b"PASS: stw_watchdog" in out,
+              f"rc={rc} out={out[-200:]!r} err={text[-300:]!r}")
+        check(f"stw watchdog {jit}: the stalled wait is reported", "[stw-watchdog] a collection has waited" in text,
+              f"stderr={text[-400:]!r}")
+        check(f"stw watchdog {jit}: the report names the thread that has not parked and its method",
+              text.count("has not parked") == 1 and "StallWorker" in text, f"stderr={text[-400:]!r}")
+        check(f"stw watchdog {jit}: the report is made once and the wait goes on",
+              text.count("[stw-watchdog] a collection has waited") == 1 and "Still waiting" in text,
+              f"stderr={text[-400:]!r}")
+    rc, out, err = run([obr, "--jit=off", "--nursery=256k", dest], env=hooks_env, cwd=SCRIPT_DIR, timeout=120)
+    check("stw watchdog off by default: same program, same output, nothing on stderr",
+          rc == 0 and b"PASS: stw_watchdog" in out and b"[stw-watchdog]" not in err,
+          f"rc={rc} out={out[-200:]!r} err={err[-300:]!r}")
+    quiet_env = dict(env)
+    quiet_env.pop("OBJECK_GC_TEST_HOOKS", None)
+    quiet_env["OBJECK_STW_WATCHDOG_MS"] = "150"
+    rc, out, err = run([obr, "--jit=off", "--nursery=256k", dest], env=quiet_env, cwd=SCRIPT_DIR, timeout=120)
+    check("stw watchdog on, no stall: nothing is reported",
+          rc == 0 and b"PASS: stw_watchdog" in out and b"[stw-watchdog]" not in err,
+          f"rc={rc} out={out[-200:]!r} err={err[-300:]!r}")
 
 
 def finish():

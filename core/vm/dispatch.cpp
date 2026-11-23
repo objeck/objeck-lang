@@ -646,10 +646,10 @@ static DispatchResult Handle_JMP(DispatchContext& ctx) {
   std::wcout << L"stack oper: JMP; call_pos=" << (*ctx.call_stack_pos) << std::endl;
 #endif
   if(ctx.instr->GetOperand2() < 0) {
-    *ctx.ip = ctx.instr->GetOperand();
+    *ctx.ip = ctx.instr->JumpTargetIndex();
   }
   else if((INT64_VALUE)ctx.interp->PopInt(ctx.op_stack, ctx.stack_pos) == ctx.instr->GetOperand2()) {
-    *ctx.ip = ctx.instr->GetOperand();
+    *ctx.ip = ctx.instr->JumpTargetIndex();
   }
   return DispatchResult::CONTINUE;
 }
@@ -929,7 +929,7 @@ static DispatchResult Handle_TRY_START(DispatchContext& ctx) {
 #ifdef _DEBUG
   std::wcout << L"stack oper: TRY_START; call_pos=" << (*ctx.call_stack_pos) << std::endl;
 #endif
-  long handler_ip = ctx.instr->GetOperand();
+  long handler_ip = ctx.instr->JumpTargetIndex();
   ctx.interp->PushTryHandler(handler_ip, *ctx.stack_pos, *ctx.call_stack_pos);
   return DispatchResult::CONTINUE;
 }
@@ -952,11 +952,11 @@ static DispatchResult Handle_JMP_TABLE(DispatchContext& ctx) {
   const INT64_VALUE value = ctx.interp->PopInt(ctx.op_stack, ctx.stack_pos);
   const INT64_VALUE base = (INT64_VALUE)ctx.instr->GetOperand();
   const INT64_VALUE range = (INT64_VALUE)ctx.instr->GetOperand2();
-  const long default_ip = ctx.instr->GetOperand3();
+  const long default_ip = ctx.instr->JumpDefaultTargetIndex();
   const INT64_VALUE index = value - base;
   if(index >= 0 && index < range) {
     // *ctx.ip already points past JMP_TABLE header; slots start there
-    *ctx.ip = ctx.instrs[*ctx.ip + (long)index].GetOperand();
+    *ctx.ip = ctx.instrs[*ctx.ip + (long)index].JumpTargetIndex();
   } else {
     *ctx.ip = default_ip;
   }
