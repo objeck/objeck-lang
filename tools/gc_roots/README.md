@@ -96,6 +96,18 @@ to localize.
 A configuration the generator cannot compile is reported as a setup problem (exit 2): that is
 a generator bug, not a VM finding.
 
+## Measured (2026-11-23, linux-x64 build of master `565464fa80`)
+
+- 30 seeds in `--mode ci` take 23 s with `-j 4` (32-thread machine; the CI runners are slower).
+- 40 seeds under `--jit=1`: 36,493 spill sites in generated methods, 13,784 typed value (`val`),
+  2,865 typed reference (`ref`), 14,305 and/or (`andor`), 0 `unknown`, 0 `mismatch`
+  (`OBJECK_JIT_REPORT=1`). The generated shapes never reach the map's fallback paths.
+- A fault-injection control: a throwaway `obr` that skips the relocation of the AMD64 `TMP_REF_*`
+  slots in `FixupRoots` (one line, `core/vm/arch/memory.cpp`) is caught on 15 of the first 30 `--mode ci`
+  seeds (wrong digests, `gc-verify` B3 violations, SIGSEGV), none on the unmodified VM. A run
+  that cannot fail would prove nothing.
+- Clean runs on the unmodified VM: see the pull request that added this tool for the seed ranges.
+
 ## Where it runs
 
 - CI: `.github/workflows/ci-build.yml`, step "GC root coverage (advisory)", 30 seeds, next to
@@ -107,7 +119,8 @@ a generator bug, not a VM finding.
 ## Not covered
 
 Windows and macOS behave as their CI legs show; this was developed against Linux AMD64 and
-spot-checked on ARM64 under emulation. Only `Float` locals and function-reference params of
+run on Linux ARM64 under qemu (an unoptimized `-O1` build without the HTTP/2 and HTTP/3 libraries,
+100 seeds in `--mode full`). Only `Float` locals and function-reference params of
 the shapes above exist; no generics, no `Byte`/`Char`/`Bool` locals as roots, no
 native-library callbacks (the bridge is covered by `gc_roots_jit_bridge.obs`). The oracle is
 agreement with an uncollected run, so a bug that gives the same wrong answer everywhere is

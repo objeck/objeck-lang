@@ -37,6 +37,7 @@ import sys
 
 REPS = 14                 # calls of each scenario from Main: crosses the default JIT threshold (10)
 MAX_DEPTH = 2             # loop / if nesting
+LOCAL_BUDGET = 26         # names a scenario may mint before it stops declaring (obc's local space is 768 bytes)
 U = "RcU->"               # the helper class's prefix, as written in generated code
 
 REF_KINDS = "SABTOFG"
@@ -74,6 +75,7 @@ class Gen:
         self.rng = random.Random(seed)
         self.scale = scale
         self.uid = 0
+        self.nloc = 0            # names minted in the scenario being written: about its local slots
         self.helpers = {}        # signature -> (name, text)
         self.features = set()
         self.churn_unit = self.rng.choice([6, 10, 16, 24])
@@ -84,6 +86,7 @@ class Gen:
     # ---- small random helpers ------------------------------------------------
     def u(self, p):
         self.uid += 1
+        self.nloc += 1
         return "%s%d" % (p, self.uid)
 
     def chance(self, pct):
@@ -530,10 +533,12 @@ class Gen:
         base = len(env)
         L = []
         for _ in range(max(1, int(count * self.scale))):
-            opts = [(10, self.stmt_decl), (6, self.stmt_churn), (12, self.stmt_mutate), (12, self.stmt_pending),
-                    (6, self.stmt_expr_pending), (5, self.stmt_call), (4, self.stmt_use_closure),
-                    (3, self.stmt_ternary), (4, self.stmt_try), (3, self.stmt_address)]
-            if depth < MAX_DEPTH:
+            opts = [(6, self.stmt_churn), (12, self.stmt_mutate), (12, self.stmt_pending),
+                    (6, self.stmt_expr_pending), (5, self.stmt_call), (4, self.stmt_use_closure)]
+            if self.nloc < LOCAL_BUDGET:
+                # a method has 768 bytes of locals; stop declaring before obc says so
+                opts += [(10, self.stmt_decl), (3, self.stmt_ternary), (4, self.stmt_try), (3, self.stmt_address)]
+            if depth < MAX_DEPTH and self.nloc < LOCAL_BUDGET:
                 opts += [(8, lambda e, c: self.stmt_loop(e, c, depth)), (5, lambda e, c: self.stmt_if(e, c, depth)),
                          (3, lambda e, c: self.stmt_select(e, c, depth))]
             if depth >= 1:
@@ -563,6 +568,7 @@ class Gen:
 
     # ---- scenarios ----------------------------------------------------------------------
     def scenario_static(self, idx):
+        self.nloc = 0
         env = []
         body = ["d := n;"] + self.seed_env(env)
         body += self.block(env, {}, 0, self.rng.randrange(6, 13))
@@ -573,6 +579,7 @@ class Gen:
     def scenario_instance(self, idx):
         """References are fields: self is a root, and every store is through the write barrier."""
         self.feat("instance_fields")
+        self.nloc = 0
         fields = []
         nf = self.rng.randrange(3, 6)
         kinds = [self.pick([k for k in FIELD_KINDS if k in REF_KINDS]) for _ in range(nf)] + ["I", "D"]
@@ -600,6 +607,7 @@ class Gen:
     def scenario_thread(self, idx, worker_scenarios):
         """Live references in the spawning thread while workers run generated scenarios."""
         self.feat("threads")
+        self.nloc = 0
         env = []
         body = ["d := n;"] + self.seed_env(env)
         body += self.block(env, {"noexit": True}, 1, self.rng.randrange(2, 5))
