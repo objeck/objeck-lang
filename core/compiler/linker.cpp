@@ -1526,11 +1526,14 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
 
   const unsigned long num_instrs = ReadUnsigned();
   for(unsigned long i = 0; i < num_instrs; ++i) {
+    // the writer's order (IntermediateInstruction::Write), and the .obe loader's:
+    // the type byte, then the line number. Reading the line first scrambled every
+    // instruction of a library built with -debug.
+    const int type = ReadByte();
     if(is_debug) {
       line_num = ReadInt();
-    }    
+    }
 
-    const int type = ReadByte();
     switch(type) {
     case LOAD_INT_LIT:
       emit(line_num, LOAD_INT_LIT, ReadInt64());
