@@ -137,6 +137,8 @@ NBODY_N=50000000
 BINARYTREES_N=17
 SPECTRALNORM_N=5500
 FANNKUCH_N=12
+MANDELBROT_N=4000
+FASTA_N=25000000
 
 run_lang_bench() {
     local lang=$1
@@ -163,29 +165,37 @@ run_lang_bench "python3" "nbody"         "python3 $CROSS/nbody.py $NBODY_N"     
 run_lang_bench "python3" "binarytrees"   "python3 $CROSS/binarytrees.py $BINARYTREES_N"  "$CROSS_CSV"
 run_lang_bench "python3" "spectralnorm"  "python3 $CROSS/spectralnorm.py $SPECTRALNORM_N" "$CROSS_CSV"
 run_lang_bench "python3" "fannkuchredux" "python3 $CROSS/fannkuchredux.py $FANNKUCH_N"   "$CROSS_CSV"
+run_lang_bench "python3" "mandelbrot"    "python3 $CROSS/mandelbrot.py $MANDELBROT_N" "$CROSS_CSV"
+run_lang_bench "python3" "fasta"         "python3 $CROSS/fasta.py $FASTA_N"           "$CROSS_CSV"
 
 # Ruby
 run_lang_bench "ruby" "nbody"         "ruby $CROSS/nbody.rb $NBODY_N"             "$CROSS_CSV"
 run_lang_bench "ruby" "binarytrees"   "ruby $CROSS/binarytrees.rb $BINARYTREES_N"  "$CROSS_CSV"
 run_lang_bench "ruby" "spectralnorm"  "ruby $CROSS/spectralnorm.rb $SPECTRALNORM_N" "$CROSS_CSV"
 run_lang_bench "ruby" "fannkuchredux" "ruby $CROSS/fannkuchredux.rb $FANNKUCH_N"   "$CROSS_CSV"
+run_lang_bench "ruby" "mandelbrot"    "ruby $CROSS/mandelbrot.rb $MANDELBROT_N" "$CROSS_CSV"
+run_lang_bench "ruby" "fasta"         "ruby $CROSS/fasta.rb $FASTA_N"           "$CROSS_CSV"
 
 # LuaJIT
 run_lang_bench "luajit" "nbody"         "luajit $CROSS/nbody.lua $NBODY_N"             "$CROSS_CSV"
 run_lang_bench "luajit" "binarytrees"   "luajit $CROSS/binarytrees.lua $BINARYTREES_N"  "$CROSS_CSV"
 run_lang_bench "luajit" "spectralnorm"  "luajit $CROSS/spectralnorm.lua $SPECTRALNORM_N" "$CROSS_CSV"
 run_lang_bench "luajit" "fannkuchredux" "luajit $CROSS/fannkuchredux.lua $FANNKUCH_N"   "$CROSS_CSV"
+run_lang_bench "luajit" "mandelbrot"    "luajit $CROSS/mandelbrot.lua $MANDELBROT_N" "$CROSS_CSV"
+run_lang_bench "luajit" "fasta"         "luajit $CROSS/fasta.lua $FASTA_N"           "$CROSS_CSV"
 
 # Java (HotSpot) — compile once, then time the timed runs (excludes javac, like the others)
 JAVA_OUT=/tmp/bench-java
 mkdir -p "$JAVA_OUT"
 echo ">>> Compiling Java benchmarks (javac)"
 javac -d "$JAVA_OUT" "$CROSS"/nbody.java "$CROSS"/binarytrees.java \
-    "$CROSS"/spectralnorm.java "$CROSS"/fannkuchredux.java 2>/dev/null
+    "$CROSS"/spectralnorm.java "$CROSS"/fannkuchredux.java \n    "$CROSS"/mandelbrot.java "$CROSS"/fasta.java 2>/dev/null
 run_lang_bench "java" "nbody"         "java -cp $JAVA_OUT nbody $NBODY_N"               "$CROSS_CSV"
 run_lang_bench "java" "binarytrees"   "java -cp $JAVA_OUT binarytrees $BINARYTREES_N"   "$CROSS_CSV"
 run_lang_bench "java" "spectralnorm"  "java -cp $JAVA_OUT spectralnorm $SPECTRALNORM_N"  "$CROSS_CSV"
 run_lang_bench "java" "fannkuchredux" "java -cp $JAVA_OUT fannkuchredux $FANNKUCH_N"     "$CROSS_CSV"
+run_lang_bench "java" "mandelbrot"    "java -cp $JAVA_OUT mandelbrot $MANDELBROT_N" "$CROSS_CSV"
+run_lang_bench "java" "fasta"         "java -cp $JAVA_OUT fasta $FASTA_N"           "$CROSS_CSV"
 
 echo ""
 
