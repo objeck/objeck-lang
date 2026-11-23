@@ -147,8 +147,10 @@ static bool read_string_array(VMContext& context, size_t index, std::vector<std:
 static std::string qnn_cache_dir() {
    std::string base;
 #ifdef _WIN32
-   const char* local = getenv("LOCALAPPDATA");
-   if(local && *local) {
+   // getenv_s: the Windows ARM64 project does not suppress C4996, an error in this build
+   char local[1024] = {0};
+   size_t local_len = 0;
+   if(getenv_s(&local_len, local, sizeof(local), "LOCALAPPDATA") == 0 && local_len > 1) {
       base = std::string(local) + "/objeck-onnx/qnn_cache";
    }
 #elif defined(__APPLE__)
