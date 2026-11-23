@@ -1,3 +1,4 @@
+# EXTRA_LIBS: ml,csv,gen_collect
 use System.ML;
 
 #~
