@@ -475,21 +475,24 @@ void JitAmd64::ProcessIntCallParameter() {
 #ifdef _DEBUG_JIT
   std::wcout << L"INT_CALL: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
-  // the value the callee left: count -= 1, then op_stack[count] in one load
-  RegisterHolder* stack_pos_holder = GetRegister();
-  move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
-  dec_mem(0, stack_pos_holder->GetRegister());
+  // the value the callee left: count -= 1, then op_stack[count]. One register
+  // carries it all -- the count's address, the count, the slot's address and
+  // the value -- where this took two, and a trap whose arguments were pending
+  // in seven of the pool's eight registers (a 7-string array literal's
+  // NEW_OBJ_INST) had only one left (ProcessReturn has the same shape).
+  RegisterHolder* holder = GetRegister();
+  const Register r = holder->GetRegister();
+  move_mem_reg(STACK_POS, RBP, r);
+  dec_mem(0, r);
 #ifdef _WIN64
-  move_mem_reg32(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
+  move_mem_reg32(0, r, r);
 #else
-  move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
+  move_mem_reg(0, r, r);
 #endif
-  RegisterHolder* op_stack_holder = GetRegister();
-  move_mem_reg(OP_STACK, RBP, op_stack_holder->GetRegister());
-  move_base_index_reg(0, op_stack_holder->GetRegister(), stack_pos_holder->GetRegister(), sizeof(size_t), op_stack_holder->GetRegister());
-  working_stack.push_front(new RegInstr(op_stack_holder));
-
-  ReleaseRegister(stack_pos_holder);
+  shl_imm_reg(3, r);
+  add_mem_reg(OP_STACK, RBP, r);
+  move_mem_reg(0, r, r);
+  working_stack.push_front(new RegInstr(holder));
 }
 
 void JitAmd64::ProcessFunctionCallParameter() {
@@ -531,13 +534,12 @@ void JitAmd64::ProcessFloatCallParameter() {
 #else
   move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
 #endif
-  RegisterHolder* op_stack_holder = GetRegister();
-  move_mem_reg(OP_STACK, RBP, op_stack_holder->GetRegister());
+  shl_imm_reg(3, stack_pos_holder->GetRegister());
+  add_mem_reg(OP_STACK, RBP, stack_pos_holder->GetRegister());
   RegisterHolder* dest_holder = GetXmmRegister();
-  move_base_index_xreg(0, op_stack_holder->GetRegister(), stack_pos_holder->GetRegister(), sizeof(size_t), dest_holder->GetRegister());
+  move_mem_xreg(0, stack_pos_holder->GetRegister(), dest_holder->GetRegister());
   working_stack.push_front(new RegInstr(dest_holder));
 
-  ReleaseRegister(op_stack_holder);
   ReleaseRegister(stack_pos_holder);
 }
 
@@ -3254,19 +3256,24 @@ void JitAmd64::ProcessReturn(long params) {
     // top = &op_stack[count]; every value goes at a growing displacement from
     // it and the count is bumped once at the end. Each value used to reload
     // the count pointer, store, increment the count and advance the base.
-    RegisterHolder* op_stack_holder = GetRegister();
-    move_mem_reg(OP_STACK, RBP, op_stack_holder->GetRegister());
-    RegisterHolder* stack_pos_holder = GetRegister();
-    move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
+    //
+    // One register does it: top = [[STACK_POS]] * 8 + [OP_STACK]. This used to
+    // hold three at once (the base, the count's address and the top), and a call
+    // whose arguments already sat in six of the pool's eight registers -- an
+    // array literal of eight strings, say -- could not get them: the whole
+    // method went back to the interpreter ("no free integer register ... at
+    // TRAP_RTRN", the most common reason in the regression suite). The count's
+    // address is loaded again at the end, into the register `top` gives back.
     RegisterHolder* top_holder = GetRegister();
-#ifdef _WIN64
-    move_mem_reg32(0, stack_pos_holder->GetRegister(), top_holder->GetRegister());
-#else
-    move_mem_reg(0, stack_pos_holder->GetRegister(), top_holder->GetRegister());
-#endif
-    lea_base_index_reg(0, op_stack_holder->GetRegister(), top_holder->GetRegister(), sizeof(size_t), top_holder->GetRegister());
-    ReleaseRegister(op_stack_holder);
     const Register top = top_holder->GetRegister();
+    move_mem_reg(STACK_POS, RBP, top);
+#ifdef _WIN64
+    move_mem_reg32(0, top, top);
+#else
+    move_mem_reg(0, top, top);
+#endif
+    shl_imm_reg(3, top);
+    add_mem_reg(OP_STACK, RBP, top);
 
     long non_params;
     if(params < 0) {
@@ -3330,11 +3337,13 @@ void JitAmd64::ProcessReturn(long params) {
         }
       }
     }
-    if(disp > 0) {
-      add_imm_mem(disp / (long)sizeof(size_t), 0, stack_pos_holder->GetRegister());
-    }
     ReleaseRegister(top_holder);
-    ReleaseRegister(stack_pos_holder);
+    if(disp > 0) {
+      RegisterHolder* stack_pos_holder = GetRegister();
+      move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
+      add_imm_mem(disp / (long)sizeof(size_t), 0, stack_pos_holder->GetRegister());
+      ReleaseRegister(stack_pos_holder);
+    }
 
     // clean up working stack
     if(params < 0) {

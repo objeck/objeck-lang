@@ -1,0 +1,116 @@
+#~
+Calls whose arguments already fill most of the register pool still compile.
+
+A call into the VM (a trap, here the one that builds an array from its elements)
+hands its arguments over on the operand stack, and the JIT needed three registers
+beside the arguments to find the top of that stack, then two more to read the
+result back. An array literal of five to eight strings holds every element in a
+register until the array is built, so the three were not there: "compile failed
+... no free integer register" at the trap, the whole method went back to the
+interpreter, and it was the most common reason a method stayed interpreted in the
+regression suite. One register does the job in each place now (ProcessReturn,
+ProcessIntCallParameter, ProcessFloatCallParameter).
+
+Literals of five and six strings must compile on AMD64; seven and eight still
+run out of the pool at the object creations that precede the trap and stay
+interpreted, which is correct and slower. Every result below is checked, so the
+test holds whichever engine runs each method.
+
+run_vm_flag_tests.py section 32 requires, under --jit=1 with OBJECK_JIT_REPORT=1,
+that L5 and L6 report "compiled" (AMD64) and that stdout is byte for byte what
+--jit=off prints. Exits 1 on a failure.
+~#
+class JitTrapRegisterPressure {
+  @fails : static : Int;
+
+  function : Main(args : String[]) ~ Nil {
+    @fails := 0;
+    total := 0;
+    each(r : 40) {
+      i := r % 8;
+      Expect(L4(r % 4)->Equals(Expected4(r % 4)), "L4 element {$r}");
+      Expect(L5(r % 5)->Equals(Expected5(r % 5)), "L5 element {$r}");
+      Expect(L6(r % 6)->Equals(Expected6(r % 6)), "L6 element {$r}");
+      Expect(L7(r % 7)->Equals(Expected7(r % 7)), "L7 element {$r}");
+      Expect(L8(i)->Equals(Expected8(i)), "L8 element {$r}");
+      total += L5(r % 5)->Size() + L6(r % 6)->Size() + L7(r % 7)->Size();
+    };
+    Expect(total = 351, "the element lengths sum to 351 (got {$total})");
+    Expect(Floats(6) = 7.5 & Floats(0) = 1.5, "a float literal reads back");
+    Expect(Mixed(3, "xy") = 34, "arguments and a literal together");
+
+    if(@fails > 0) {
+      Runtime->Exit(1);
+    };
+    "PASS: array literals compile and read back with most of the register pool in use"->PrintLine();
+  }
+
+  function : Expect(ok : Bool, what : String) ~ Nil {
+    if(<>ok) {
+      "FAIL: {$what}"->PrintLine();
+      @fails += 1;
+    };
+  }
+
+  function : L4(i : Int) ~ String {
+    a := ["aa", "bbb", "cccc", "ddddd"];
+    return a[i];
+  }
+
+  function : L5(i : Int) ~ String {
+    a := ["aa", "bbb", "cccc", "ddddd", "e"];
+    return a[i];
+  }
+
+  function : L6(i : Int) ~ String {
+    a := ["aa", "bbb", "cccc", "ddddd", "e", "ff"];
+    return a[i];
+  }
+
+  function : L7(i : Int) ~ String {
+    a := ["aa", "bbb", "cccc", "ddddd", "e", "ff", "ggg"];
+    return a[i];
+  }
+
+  function : L8(i : Int) ~ String {
+    a := ["aa", "bbb", "cccc", "ddddd", "e", "ff", "ggg", "hhhh"];
+    return a[i];
+  }
+
+  function : Floats(i : Int) ~ Float {
+    f := [1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5];
+    return f[i];
+  }
+
+  function : Mixed(n : Int, s : String) ~ Int {
+    a := ["one", "three", "five", "seven", "nine"];
+    return a[n % 5]->Size() * (s->Size() + n) + 12 - n;
+  }
+
+  function : Expected4(i : Int) ~ String {
+    if(i = 0) { return "aa"; };
+    if(i = 1) { return "bbb"; };
+    if(i = 2) { return "cccc"; };
+    return "ddddd";
+  }
+
+  function : Expected5(i : Int) ~ String {
+    if(i = 4) { return "e"; };
+    return Expected4(i);
+  }
+
+  function : Expected6(i : Int) ~ String {
+    if(i = 5) { return "ff"; };
+    return Expected5(i);
+  }
+
+  function : Expected7(i : Int) ~ String {
+    if(i = 6) { return "ggg"; };
+    return Expected6(i);
+  }
+
+  function : Expected8(i : Int) ~ String {
+    if(i = 7) { return "hhhh"; };
+    return Expected7(i);
+  }
+}
