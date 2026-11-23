@@ -1634,17 +1634,19 @@ void JitAmd64::PlanPinRegions() {
   if(pin_max == 0) {
     return;
   }
-#ifdef _WIN64
-  // phase 4d: Float locals pin in XMM6-XMM9, callee-saved on Windows. The full
+  // phase 4d: Float locals pin in XMM6-XMM9, outside the allocator's pool and
+  // never an argument register of any call the JIT makes (floats go in XMM0 and
+  // XMM1). They are callee-saved on Windows, so a call leaves them alone. Every
+  // XMM is caller-saved under SysV, so there call_reg stores the loop's pinned
+  // floats to their frame slots before each call and reloads them after
+  // (EmitPinFloatWriteBack / EmitPinFloatReload). Before that existed, a POSIX
+  // loop held its floats in stack slots: Linux mandelbrot ran 58 instructions
+  // per iteration to LuaJIT's 17, 17 of them float loads and stores. The full
   // register set by default; OBJECK_JIT_PIN_MAX caps floats too when it is set.
   int pin_fmax = PIN_FREG_COUNT;
   if(!env_max.empty()) {
     pin_fmax = std::min(pin_fmax, pin_max);
   }
-#else
-  // every XMM is caller-saved on POSIX: a call inside the loop would clobber a pin
-  const int pin_fmax = 0;
-#endif
   // maximal regions: sort the loops by header and merge overlapping and nested ones
   std::vector<std::pair<long, long> > spans;
   for(const LoopInfo& loop : detected_loops) {
@@ -1870,6 +1872,24 @@ void JitAmd64::EmitPinWriteBack(int region) {
   }
   for(size_t i = 0; i < pin.fslots.size(); ++i) {
     move_xreg_mem(PinFloatRegister((int)i), pin.fslots[i], RBP);
+  }
+}
+
+// SysV only: around a call inside a pinned loop, the pinned floats go to their
+// frame slots before it and come back after it, because the callee may use any
+// XMM register. Plain stores and loads (no flags, no GPRs), so a call's setup
+// is undisturbed. The integer pins need nothing: R13-R15 are callee-saved.
+void JitAmd64::EmitPinFloatWriteBack(int region) {
+  const PinRegion& pin = pin_regions[region];
+  for(size_t i = 0; i < pin.fslots.size(); ++i) {
+    move_xreg_mem(PinFloatRegister((int)i), pin.fslots[i], RBP);
+  }
+}
+
+void JitAmd64::EmitPinFloatReload(int region) {
+  const PinRegion& pin = pin_regions[region];
+  for(size_t i = 0; i < pin.fslots.size(); ++i) {
+    move_mem_xreg(pin.fslots[i], RBP, PinFloatRegister((int)i));
   }
 }
 
@@ -7004,11 +7024,24 @@ void JitAmd64::pop_reg(Register reg) {
 }
 
 void JitAmd64::call_reg(Register reg) {
-  AddMachineCode(B(reg));  
+#ifndef _WIN64
+  // SysV: the callee may clobber the XMM registers that hold this loop's
+  // pinned floats (see PlanPinRegions)
+  const bool keep_pins = active_pin_region >= 0 && !pin_regions[active_pin_region].fslots.empty();
+  if(keep_pins) {
+    EmitPinFloatWriteBack(active_pin_region);
+  }
+#endif
+  AddMachineCode(B(reg));
   AddMachineCode(0xff);
   unsigned char code = 0xd0;
   RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
+#ifndef _WIN64
+  if(keep_pins) {
+    EmitPinFloatReload(active_pin_region);
+  }
+#endif
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [call %" << GetRegisterName(reg)
         << L"]" << std::endl;
