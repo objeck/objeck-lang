@@ -84,7 +84,15 @@
 
 // Young generation bump allocator sizing
 #define YOUNG_REGION_SIZE  (128 * 1024 * 1024)  // 128MB young region
-#define DIRTY_LIST_MAX     65536               // max dirty old-gen objects tracked
+// Max dirty old-gen objects tracked. Past this the write barrier stops recording and the
+// next minor collection scans the whole old generation instead, a path a normal program
+// seldom reaches. -DOBJECK_DIRTY_LIST_MAX=64 builds a VM that reaches it constantly, to
+// test it (programs/regression/dirty_list_overflow.sh). The default is unchanged.
+#ifdef OBJECK_DIRTY_LIST_MAX
+#define DIRTY_LIST_MAX     OBJECK_DIRTY_LIST_MAX
+#else
+#define DIRTY_LIST_MAX     65536
+#endif
 
 // Peak resident set size (peak working set on Windows) of this process in bytes,
 // 0 if unavailable. Defined in common.cpp beside the current-RSS reader.
