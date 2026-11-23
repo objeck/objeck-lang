@@ -39,6 +39,10 @@
 
 using namespace backend;
 
+namespace backend {
+  class Cfg;
+}
+
 #define LOCL_INLINE_MEM_MAX 256
 #define JUMP_OFF_INC 257
 
@@ -146,6 +150,7 @@ class ItermediateOptimizer {
 
   // loop-invariant code motion
   IntermediateBlock* LICM(IntermediateBlock* input);
+  bool HoistFromLoop(const Cfg& cfg, size_t loop_index, std::vector<IntermediateInstruction*>& instrs);
 
   bool CanInlineMethod(IntermediateMethod* mthd_called, std::set<IntermediateMethod*> &inlined_mthds, std::set<int> &lbl_jmp_offsets);
   

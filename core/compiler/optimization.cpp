@@ -2649,30 +2649,125 @@ std::vector<IntermediateBlock*> ItermediateOptimizer::TailCallOpt(std::vector<In
 //
 // ------------------- Loop-Invariant Code Motion (LICM) -------------------
 //
-IntermediateBlock* ItermediateOptimizer::LICM(IntermediateBlock* input)
-{
-  // RunPass deletes the input block after we return — never return input or delete it.
-  std::vector<IntermediateInstruction*> instrs = input->GetInstructions();
+// Built on the control-flow graph (cfg.h). A loop is a natural loop: a back edge to a
+// block that dominates its source, so a `while`, a `for`, a `do`/`while` (whose back
+// edge is a conditional jump) and a tail-call loop are all found the same way, and so
+// is a loop with a `continue` (two back edges to one header). Code moves to the loop's
+// preheader: the one block outside the loop that enters it.
+//
+// What moves, and when. A statement `t := <expr>` (a store to a local from a stack-
+// balanced expression of local loads, literals and arithmetic that cannot trap) moves
+// to the preheader when, in the unoptimized program:
+//   1. nothing in the loop changes what it reads: each local it loads is not written in
+//      the loop, or is written only by a statement that has already moved;
+//   2. it is the only store to `t` in the loop;
+//   3. `t` is not live at the loop's header -- no path from the header reads `t` before
+//      the loop's own store writes it. That one test carries the rest of the usual
+//      conditions (the statement's block dominates every use of `t` in the loop and every
+//      exit where `t` is read afterwards, so a zero-trip loop, a store behind an `if` or a
+//      `continue`, and a read before the store all keep `t` live and keep the store put);
+//   4. no exception handler that a trap in or just before the loop can reach reads `t`
+//      (a handler's reads count through the whole try region, so a loop inside a region
+//      also keeps `t` live); and
+//   5. it cannot trap or touch anything but locals, so running it where the loop might
+//      not have is unobservable. Division is excluded for that reason (#1178).
+// The pair `LOAD arr; LOAD_ARY_SIZE` of an array the loop never reassigns is replaced by
+// a cached length. A null array traps there, so the pair only moves when it is at the top
+// of the loop's header, ahead of anything the loop could do first: the trap then happens
+// at the same point of the program, just before the first test instead of in it.
+//
+namespace {
+  // an instruction that reads and writes nothing but the operand stack and local slots and
+  // cannot trap: the only kind a statement may hold to move
+  bool HoistableStackOp(InstructionType t, int& pops)
+  {
+    switch(t) {
+    case ADD_INT:      case SUB_INT:      case MUL_INT:
+    case BIT_AND_INT:  case BIT_OR_INT:   case BIT_XOR_INT:
+    case SHL_INT:      case SHR_INT:
+    case EQL_INT:      case NEQL_INT:     case LES_INT:      case GTR_INT:
+    case LES_EQL_INT:  case GTR_EQL_INT:
+    case AND_INT:      case OR_INT:
+    case ADD_FLOAT:    case SUB_FLOAT:    case MUL_FLOAT:
+    case EQL_FLOAT:    case NEQL_FLOAT:   case LES_FLOAT:    case GTR_FLOAT:
+    case LES_EQL_FLOAT: case GTR_EQL_FLOAT:
+      pops = 2;
+      return true;
 
-  // build label-id → position map for back-edge detection
-  std::unordered_map<int, size_t> lbl_pos;
-  for(size_t i = 0; i < instrs.size(); ++i) {
-    if(instrs[i]->GetType() == LBL) {
-      lbl_pos[(int)instrs[i]->GetOperand()] = i;
+    case I2F:    case F2I:
+    case BIT_NOT_INT:
+      pops = 1;
+      return true;
+
+    default:
+      return false;
     }
   }
 
-  // find natural loop back-edges: unconditional JMP targeting an earlier label
-  struct Loop { size_t header; size_t backedge; };
-  std::vector<Loop> loops;
-  for(size_t i = 0; i < instrs.size(); ++i) {
-    if(instrs[i]->GetType() == JMP && instrs[i]->GetOperand2() < 0) {
-      auto it = lbl_pos.find((int)instrs[i]->GetOperand());
-      if(it != lbl_pos.end() && it->second < i) {
-        loops.push_back({it->second, i});
+  // an instruction that can run ahead of a null-array trap without anyone noticing
+  bool QuietBeforeTrap(IntermediateInstruction* instr)
+  {
+    int pops = 0;
+    switch(instr->GetType()) {
+    case LBL:
+    case LOAD_INT_LIT:
+    case LOAD_CHAR_LIT:
+    case LOAD_FLOAT_LIT:
+      return true;
+
+    case LOAD_INT_VAR:
+    case LOAD_FLOAT_VAR:
+      return instr->GetOperand2() == LOCL;
+
+    default:
+      return HoistableStackOp(instr->GetType(), pops);
+    }
+  }
+}
+
+bool ItermediateOptimizer::HoistFromLoop(const Cfg& cfg, size_t loop_index, std::vector<IntermediateInstruction*>& instrs)
+{
+  const Cfg::Loop& loop = cfg.Loops()[loop_index];
+  if(loop.preheader < 0) {
+    return false;
+  }
+  const std::vector<Cfg::Block>& blocks = cfg.Blocks();
+  const Cfg::Block& header = blocks[loop.header];
+
+  // how often each local is written in the loop
+  std::map<long, int> defs;
+  for(int b : loop.blocks) {
+    for(size_t k = blocks[b].first; k <= blocks[b].last; ++k) {
+      const Cfg::SlotUse use = Cfg::SlotUseOf(instrs[k]);
+      if(use.write_a >= 0) {
+        defs[use.write_a]++;
+      }
+      if(use.write_b >= 0) {
+        defs[use.write_b]++;
       }
     }
   }
+
+  // the handlers a trap around the loop can reach, outside it: a store hoisted ahead of the
+  // loop must not be visible to them
+  std::vector<int> outside_handlers = blocks[loop.preheader].handlers;
+  for(const Cfg::Exit& e : loop.exits) {
+    if(e.is_handler) {
+      outside_handlers.push_back(e.to);
+    }
+  }
+  auto read_by_handler = [&](long slot) {
+    for(int h : outside_handlers) {
+      if(cfg.LiveIn(h, slot)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  std::vector<bool> removed(instrs.size(), false);
+  std::map<size_t, IntermediateInstruction*> replaced; // an instruction swapped for another
+  std::vector<IntermediateInstruction*> hoisted;
 
   // allocate a fresh LOCL int slot and update method metadata; -1 when the
   // slot would take the method past LOCAL_SIZE, the local space an
@@ -2688,264 +2783,166 @@ IntermediateBlock* ItermediateOptimizer::LICM(IntermediateBlock* input)
     return slot;
   };
 
-  std::set<size_t> skip_pos;
-  std::map<size_t, std::vector<IntermediateInstruction*>> insert_before;
-
-  for(auto& loop : loops) {
-    const size_t lo = loop.header;
-    const size_t hi = loop.backedge;
-
-    // collect write counts for every LOCL slot written inside this loop
-    std::map<int, int> store_counts;
-    for(size_t i = lo; i <= hi; ++i) {
-      if(skip_pos.count(i)) continue;
-      auto* instr = instrs[i];
-      if(instr->GetOperand2() == LOCL) {
-        switch(instr->GetType()) {
-        case STOR_INT_VAR: case STOR_FLOAT_VAR: case STOR_FUNC_VAR:
-          store_counts[static_cast<int>(instr->GetOperand())]++;
-          break;
-        default:
+  // === Pattern 1: LOAD_INT_VAR arr LOCL + LOAD_ARY_SIZE ===
+  // The length of an array the loop never reassigns, read at the top of the header.
+  std::map<long, int> arr_to_tmp;
+  for(size_t k = header.first; k <= header.last; ++k) {
+    IntermediateInstruction* instr = instrs[k];
+    if(instr->GetType() == LOAD_INT_VAR && instr->GetOperand2() == LOCL && k + 1 <= header.last &&
+       instrs[k + 1]->GetType() == LOAD_ARY_SIZE) {
+      const long arr = instr->GetOperand();
+      if(defs.count(arr)) {
+        break; // this array changes in the loop: its length read stays, and may be the first trap
+      }
+      if(!arr_to_tmp.count(arr)) {
+        const int tmp = alloc_int_slot();
+        if(tmp < 0) {
           break;
         }
+        arr_to_tmp[arr] = tmp;
+        hoisted.push_back(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, arr, LOCL));
+        hoisted.push_back(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_ARY_SIZE));
+        hoisted.push_back(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, tmp, LOCL));
       }
+      ++k; // the length read moves, in order, so what follows it is still ahead of any trap
+      continue;
     }
-
-    // collect LOCL slots written anywhere OUTSIDE this loop in the same block
-    std::set<int> outside_store_slots;
-    for(size_t i = 0; i < instrs.size(); ++i) {
-      if(i >= lo && i <= hi) continue;
-      if(skip_pos.count(i)) continue;
-      auto* instr = instrs[i];
-      if(instr->GetOperand2() == LOCL) {
-        switch(instr->GetType()) {
-        case STOR_INT_VAR: case STOR_FLOAT_VAR: case STOR_FUNC_VAR:
-          outside_store_slots.insert(static_cast<int>(instr->GetOperand()));
-          break;
-        default:
-          break;
-        }
-      }
+    if(!QuietBeforeTrap(instr)) {
+      break;
     }
-
-    // === Pattern 1: LOAD_INT_VAR arr LOCL + LOAD_ARY_SIZE ===
-    // Hoist array-size reads when the array variable is loop-invariant.
-    std::map<int, int> arr_to_tmp; // arr_slot → tmp_slot (reuse per unique arr)
-    for(size_t i = lo; i + 1 <= hi; ++i) {
-      if(skip_pos.count(i) || skip_pos.count(i + 1)) continue;
-      auto* instr = instrs[i];
-      auto* next  = instrs[i + 1];
-
-      if(instr->GetType() == LOAD_INT_VAR && instr->GetOperand2() == LOCL &&
-         next->GetType()  == LOAD_ARY_SIZE &&
-         !store_counts.count(static_cast<int>(instr->GetOperand()))) {
-        const int arr_slot = static_cast<int>(instr->GetOperand());
-
-        int tmp_slot;
-        auto existing = arr_to_tmp.find(arr_slot);
-        if(existing != arr_to_tmp.end()) {
-          tmp_slot = existing->second;
-        }
-        else {
-          tmp_slot = alloc_int_slot();
-          if(tmp_slot < 0) {
-            continue; // no room for the cached size: leave the pair in the loop
-          }
-          arr_to_tmp[arr_slot] = tmp_slot;
-          // emit: LOAD arr, LOAD_ARY_SIZE, STOR tmp — before the loop header
-          auto& pre = insert_before[lo];
-          pre.push_back(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR,  arr_slot, LOCL));
-          pre.push_back(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_ARY_SIZE));
-          pre.push_back(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR,  tmp_slot, LOCL));
-        }
-
-        // replace the in-loop pair with a single load from the cached slot
-        skip_pos.insert(i);
-        skip_pos.insert(i + 1);
-        insert_before[i].push_back(
-          IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, tmp_slot, LOCL));
-        ++i; // skip LOAD_ARY_SIZE
-      }
-    }
-
-    // === Pattern 2: Loop-invariant arithmetic statements ===
-    // Detect stack-balanced pure-LOCL arithmetic ending in STOR_*_VAR.
-    int stack_depth = 0;
-    std::vector<size_t> stmt_idx;
-    bool stmt_safe = true;
-    std::set<int> stmt_loads; // LOCL slots read in this statement
-
-    auto reset_stmt = [&](size_t /* next */) {
-      stack_depth = 0;
-      stmt_idx.clear();
-      stmt_safe = true;
-      stmt_loads.clear();
-    };
-
-    for(size_t i = lo; i <= hi; ++i) {
-      if(skip_pos.count(i)) { reset_stmt(i + 1); continue; }
-      auto* instr = instrs[i];
-      InstructionType t = instr->GetType();
-
-      switch(t) {
-      case LOAD_INT_LIT:
-      case LOAD_CHAR_LIT:
-        stack_depth++;
-        stmt_idx.push_back(i);
-        break;
-
-      case LOAD_FLOAT_LIT:
-        stack_depth++;
-        stmt_idx.push_back(i);
-        break;
-
-      case LOAD_INT_VAR:
-        if(instr->GetOperand2() != LOCL) { stmt_safe = false; }
-        else { stmt_loads.insert(static_cast<int>(instr->GetOperand())); }
-        stack_depth++;
-        stmt_idx.push_back(i);
-        break;
-
-      case LOAD_FLOAT_VAR:
-        if(instr->GetOperand2() != LOCL) { stmt_safe = false; }
-        else { stmt_loads.insert(static_cast<int>(instr->GetOperand())); }
-        stack_depth++;
-        stmt_idx.push_back(i);
-        break;
-
-      // binary ops (pop 2, push 1)
-      case ADD_INT:      case SUB_INT:      case MUL_INT:
-      case BIT_AND_INT:  case BIT_OR_INT:   case BIT_XOR_INT:
-      case SHL_INT:      case SHR_INT:
-      case EQL_INT:      case NEQL_INT:     case LES_INT:      case GTR_INT:
-      case LES_EQL_INT:  case GTR_EQL_INT:
-      case AND_INT:      case OR_INT:
-        if(stack_depth < 2) { reset_stmt(i + 1); break; }
-        stack_depth--;
-        stmt_idx.push_back(i);
-        break;
-
-      // DIV_INT / MOD_INT can TRAP (divide by zero). Track the stack like other
-      // binary ops but mark the statement unsafe so it is never hoisted out of a
-      // loop that may execute zero times — doing so would turn a never-evaluated
-      // division into an always-evaluated div-by-zero. Float division traps
-      // the same way -- it does not yield inf -- so it is unsafe too (#1178).
-      case DIV_INT:      case MOD_INT:      case DIV_FLOAT:
-        if(stack_depth < 2) { reset_stmt(i + 1); break; }
-        stack_depth--;
-        stmt_idx.push_back(i);
-        stmt_safe = false;
-        break;
-
-      case ADD_FLOAT:    case SUB_FLOAT:    case MUL_FLOAT:
-      case EQL_FLOAT:    case NEQL_FLOAT:   case LES_FLOAT:    case GTR_FLOAT:
-      case LES_EQL_FLOAT: case GTR_EQL_FLOAT:
-        if(stack_depth < 2) { reset_stmt(i + 1); break; }
-        stack_depth--;
-        stmt_idx.push_back(i);
-        break;
-
-      // conversion / unary ops (pop 1, push 1)
-      case I2F:    case F2I:
-      case BIT_NOT_INT:
-        if(stack_depth < 1) { reset_stmt(i + 1); break; }
-        stmt_idx.push_back(i);
-        break;
-
-      // statement end: STOR with depth 1 → LOCL slot
-      case STOR_INT_VAR:
-      case STOR_FLOAT_VAR: {
-        if(instr->GetOperand2() == LOCL && stack_depth == 1 &&
-           stmt_safe && !stmt_idx.empty()) {
-          const int stor_slot = static_cast<int>(instr->GetOperand());
-
-          bool can_hoist =
-            store_counts.count(stor_slot) && store_counts[stor_slot] == 1 &&
-            !outside_store_slots.count(stor_slot);
-
-          if(can_hoist) {
-            for(int s : stmt_loads) {
-              if(store_counts.count(s) && store_counts[s] > 0) {
-                can_hoist = false;
-                break;
-              }
-            }
-          }
-
-          // The store moves in front of the loop, so it must be unobservable
-          // anywhere it did not run before. Hoisting is only sound when the
-          // statement ran on every iteration that reaches it and no read can
-          // tell that it now also runs first, or runs with zero iterations:
-          //  - no read of the slot at all outside the loop (a zero-iteration loop
-          //    would leave the old value; the hoisted store changes it),
-          //  - no read of the slot in the loop before the store (the first
-          //    iteration, and every one after it, read the previous value),
-          //  - no jump earlier in the body that skips the store (an `if` around
-          //    it, a `continue` before it): the store ran only sometimes.
-          // A jump out of the loop (the exit test) is fine: it ends the loop.
-          if(can_hoist) {
-            auto reads_slot = [&](size_t k) {
-              const InstructionType rt = instrs[k]->GetType();
-              return instrs[k]->GetOperand2() == LOCL && instrs[k]->GetOperand() == instr->GetOperand() &&
-                     (rt == LOAD_INT_VAR || rt == LOAD_FLOAT_VAR || rt == LOAD_FUNC_VAR);
-            };
-            for(size_t k = 0; k < instrs.size() && can_hoist; ++k) {
-              if(k >= lo && k < i) {
-                if(reads_slot(k)) {
-                  can_hoist = false;
-                }
-                else if(instrs[k]->GetType() == JMP) {
-                  auto target = lbl_pos.find((int)instrs[k]->GetOperand());
-                  if(target == lbl_pos.end() || (target->second > i && target->second <= hi)) {
-                    can_hoist = false;
-                  }
-                }
-                else if(instrs[k]->GetType() == JMP_TABLE || instrs[k]->GetType() == TRY_START) {
-                  can_hoist = false;
-                }
-              }
-              else if((k < lo || k > hi) && reads_slot(k)) {
-                can_hoist = false;
-              }
-            }
-          }
-
-          if(can_hoist) {
-            auto& pre = insert_before[lo];
-            for(size_t idx : stmt_idx) {
-              pre.push_back(instrs[idx]);
-              skip_pos.insert(idx);
-            }
-            pre.push_back(instr);
-            skip_pos.insert(i);
+  }
+  if(!arr_to_tmp.empty()) {
+    // every read of a cached length in the loop becomes a load of the cache
+    for(int b : loop.blocks) {
+      for(size_t k = blocks[b].first; k + 1 <= blocks[b].last; ++k) {
+        IntermediateInstruction* instr = instrs[k];
+        if(instr->GetType() == LOAD_INT_VAR && instr->GetOperand2() == LOCL && instrs[k + 1]->GetType() == LOAD_ARY_SIZE) {
+          auto it = arr_to_tmp.find(instr->GetOperand());
+          if(it != arr_to_tmp.end()) {
+            replaced[k] = IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, it->second, LOCL);
+            removed[k + 1] = true;
+            ++k;
           }
         }
-        reset_stmt(i + 1);
-        break;
-      }
-
-      default:
-        reset_stmt(i + 1);
-        break;
       }
     }
   }
 
-  // build output block: inject hoisted instructions, omit hoisted originals
-  // always return a new block — RunPass owns and deletes the input
-  IntermediateBlock* licm_output = new IntermediateBlock;
-  for(size_t i = 0; i < instrs.size(); ++i) {
-    auto it = insert_before.find(i);
-    if(it != insert_before.end()) {
-      for(auto* h : it->second) {
-        licm_output->AddInstruction(h);
+  // === Pattern 2: loop-invariant statements ===
+  std::set<long> moved_slots; // the slots whose only store in the loop has moved
+  for(int b : loop.blocks) {
+    int depth = 0;
+    size_t start = 0;
+    std::set<long> loads;
+    bool open = false;
+    auto reset = [&]() {
+      depth = 0;
+      loads.clear();
+      open = false;
+    };
+
+    for(size_t k = blocks[b].first; k <= blocks[b].last; ++k) {
+      IntermediateInstruction* instr = instrs[k];
+      const InstructionType t = instr->GetType();
+      int pops = 0;
+
+      if(removed[k] || replaced.count(k)) {
+        reset();
+        continue;
+      }
+
+      if(t == LOAD_INT_LIT || t == LOAD_CHAR_LIT || t == LOAD_FLOAT_LIT) {
+        if(!open) { open = true; start = k; }
+        ++depth;
+      }
+      else if((t == LOAD_INT_VAR || t == LOAD_FLOAT_VAR) && instr->GetOperand2() == LOCL) {
+        if(!open) { open = true; start = k; }
+        loads.insert(instr->GetOperand());
+        ++depth;
+      }
+      else if(open && HoistableStackOp(t, pops)) {
+        if(depth < pops) {
+          reset();
+          continue;
+        }
+        depth -= pops - 1;
+      }
+      else if((t == STOR_INT_VAR || t == STOR_FLOAT_VAR) && instr->GetOperand2() == LOCL && open && depth == 1) {
+        const long slot = instr->GetOperand();
+        bool ok = defs[slot] == 1 && !cfg.LiveIn(loop.header, slot) && !read_by_handler(slot);
+        for(auto it = loads.begin(); ok && it != loads.end(); ++it) {
+          ok = !defs.count(*it) || moved_slots.count(*it);
+        }
+        if(ok) {
+          for(size_t j = start; j <= k; ++j) {
+            hoisted.push_back(instrs[j]);
+            removed[j] = true;
+          }
+          moved_slots.insert(slot);
+        }
+        reset();
+      }
+      else {
+        reset();
       }
     }
-    if(!skip_pos.count(i)) {
-      licm_output->AddInstruction(instrs[i]);
+  }
+
+  if(hoisted.empty()) {
+    return false;
+  }
+
+  std::vector<IntermediateInstruction*> result;
+  result.reserve(instrs.size() + hoisted.size());
+  for(size_t k = 0; k < instrs.size(); ++k) {
+    if(k == loop.preheader_at) {
+      result.insert(result.end(), hoisted.begin(), hoisted.end());
     }
+    if(removed[k]) {
+      continue;
+    }
+    auto swap = replaced.find(k);
+    result.push_back(swap != replaced.end() ? swap->second : instrs[k]);
+  }
+  instrs = std::move(result);
+  return true;
+}
+
+IntermediateBlock* ItermediateOptimizer::LICM(IntermediateBlock* input)
+{
+  // RunPass deletes the input block after we return — never return input or delete it.
+  std::vector<IntermediateInstruction*> instrs = input->GetInstructions();
+
+  // One loop at a time, innermost first. A move changes the list, so the graph is built
+  // again before the next loop: a statement that moved out of an inner loop now sits in
+  // the outer loop's body and may move again.
+  std::set<long> tried;
+  for(int round = 0; round < 512; ++round) {
+    Cfg cfg(instrs);
+    if(!cfg.WellFormed() || cfg.Loops().empty()) {
+      break;
+    }
+    cfg.ComputeLiveness();
+
+    bool changed = false;
+    for(size_t i = 0; i < cfg.Loops().size() && !changed; ++i) {
+      IntermediateInstruction* head = instrs[cfg.Blocks()[cfg.Loops()[i].header].first];
+      if(head->GetType() != LBL || !tried.insert(head->GetOperand()).second) {
+        continue;
+      }
+      changed = HoistFromLoop(cfg, i, instrs);
+    }
+
+    if(!changed) {
+      break;
+    }
+  }
+
+  // always return a new block — RunPass owns and deletes the input
+  IntermediateBlock* licm_output = new IntermediateBlock;
+  for(IntermediateInstruction* instr : instrs) {
+    licm_output->AddInstruction(instr);
   }
 
   return licm_output;
 }
-
