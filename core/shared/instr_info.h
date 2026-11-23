@@ -334,6 +334,12 @@ namespace instructions {
 
     constexpr size_t kInstrCount = sizeof(kInstrInfo) / sizeof(kInstrInfo[0]);
 
+    // The two checks below loop inside a constexpr function, which needs C++14. The native
+    // libraries include this header from projects that build at C++11 (the Linux build scripts
+    // of core/lib/crypto and others), where a loop in a constexpr body is an error. The VM and
+    // the compiler build at C++17 or later and always run the checks, so a missing row still
+    // fails the build there; the libraries just skip the assertions.
+#if (__cplusplus >= 201402L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 201402L)
     // Exactly one row per enumerator, in enum order: a new opcode needs its row
     // here, in the same place, or this file does not compile.
     constexpr bool TableMatchesEnum() {
@@ -349,7 +355,9 @@ namespace instructions {
                   "instr_info.h: one row per InstructionType enumerator (a row is missing or extra)");
     static_assert(TableMatchesEnum(),
                   "instr_info.h: the rows must be in the order of the InstructionType enumerators");
+#endif
 
+#if (__cplusplus >= 201402L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 201402L)
     // Rules that hold for every row, so a new row cannot contradict itself.
     constexpr bool RowsAreConsistent() {
       for(size_t i = 0; i < kInstrCount; ++i) {
@@ -379,6 +387,7 @@ namespace instructions {
     }
 
     static_assert(RowsAreConsistent(), "instr_info.h: a row contradicts the rules in RowsAreConsistent");
+#endif
 
     inline constexpr const InstrInfo& Info(InstructionType type) {
       return kInstrInfo[static_cast<size_t>(type)];
