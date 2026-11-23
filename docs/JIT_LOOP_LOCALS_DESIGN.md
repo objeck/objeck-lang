@@ -12,12 +12,13 @@ section 6 records what was built and measured.
 | 4a, F6: `EmitBranch`, conditions branch directly | implemented (compiler; both backends benefit) | `a8ad2c0d27`, 2026-09-09 |
 | 4b, F3 on AMD64: up to three `Int`/`Char` locals per loop in `R13`-`R15` | implemented | `e7778fd996`, 2026-09-09 |
 | 4d, `Float` locals in `XMM6`-`XMM9` | implemented on **Windows x64** (callee-saved) and **Linux x64** (saved around each call, section 5b) | `21c9d3019c`, 2026-09-09; Linux 2026-11-23 |
-| 4c, F3 on ARM64 (`X20`-`X27`) | **not implemented**: `jit_arm_a64.cpp` has no pin planner, entry or write-back stubs | -- |
-| `D8`-`D15` float pins on ARM64; `RSI`/`RDI` as extra Windows pins; `HasAndOr` only for value-context connectives | **not implemented** (the compiler still sets the flag for any and/or connective, a ternary, a `select` or a lambda: `context.cpp`) | -- |
+| 4c, F3 on ARM64: up to eight `Int`/`Char` locals per loop in `X20`-`X27`, up to four `Float` locals in `D12`-`D15` | implemented (2026-11-23); checked for correctness under qemu, **not yet timed on ARM64 hardware** | this change |
+| `RSI`/`RDI` as extra Windows pins; `HasAndOr` only for value-context connectives | **not implemented** (the compiler still sets the flag for any and/or connective, a ternary, a `select` or a lambda: `context.cpp`) | -- |
 
-So loop pinning exists on the AMD64 backend alone. On ARM64 a loop local is still loaded from
-and stored to its frame slot at every use; the ARM64 numbers elsewhere in these documents are
-measured without pinning. Sections 1 to 5 are the design as written before the change and
+Loop pinning exists on both backends. On ARM64 (4c) the planner, entry loads, exit stubs and
+write-backs mirror the AMD64 ones; the callee-saved registers are saved in frame slots below
+X19's and restored in every epilogue, and the ARM64 numbers elsewhere in these documents were
+measured before it existed. Sections 1 to 5 are the design as written before the change and
 use the present tense of a plan; section 6 and the table above are the record. The AMD64
 knobs for bisecting a pinning bug are `OBJECK_JIT_PIN_MAX=<n>` (cap per loop, `0` turns
 pinning off; it caps floats too when set) and `OBJECK_JIT_PIN_SKIP=<substring>` (leave

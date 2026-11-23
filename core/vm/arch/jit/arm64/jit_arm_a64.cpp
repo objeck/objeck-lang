@@ -39,6 +39,9 @@
 
 using namespace Runtime;
 
+// defined below, next to Compile(); PlanPinRegions reports pinned loops through it
+static bool JitReportEnabled();
+
 PageManager* JitArm64::page_manager;
 
 void JitArm64::Initialize(StackProgram* p) {
@@ -103,6 +106,25 @@ void JitArm64::EmitFrameEntry(bool bridge) {
   const long stw_save_off = frame_size - (long)sizeof(size_t);
   move_reg_mem(X19, stw_save_off, SP);                              // str x19, [sp, #stw_save_off]
   move_imm_reg((size_t)MemoryManager::StwActiveAddr(), X19);         // X19 = &stw_active
+
+  // F3: save the callee-saved registers loop locals are pinned in (the same
+  // slots are reloaded in every epilogue)
+  EmitPinSave(true);
+}
+
+// X20..X20+pin_count-1 to or from their frame slots, below X19's. Callee-saved,
+// so nothing between the prologue and an epilogue needs to preserve them: every
+// callback, native call and safepoint park returns them as it found them, and a
+// compiled callee that pins saves and restores them in its own frame.
+void JitArm64::EmitPinSave(bool store) {
+  for(int i = 0; i < pin_count; ++i) {
+    if(store) {
+      move_reg_mem(PinRegister(i), pin_save_base - (long)sizeof(size_t) * i, SP);
+    }
+    else {
+      move_mem_reg(pin_save_base - (long)sizeof(size_t) * i, SP, PinRegister(i));
+    }
+  }
 }
 
 // Callee-saved D8-D15, which the pool hands out after D0-D7 (GetFpRegister).
@@ -292,6 +314,7 @@ void JitArm64::Epilog() {
   // first teardown instruction). Done before `add sp` so the offset is still valid.
   const long stw_save_off = frame_size - (long)sizeof(size_t);
   move_mem_reg(stw_save_off, SP, X19);                             // ldr x19, [sp, #stw_save_off]
+  EmitPinSave(false);                                              // X20.. the loops pinned locals in
   // Restore callee-saved D8-D15. Every RTRN emits its own epilogue, so every
   // restore block is recorded; Compile() patches each one, with the
   // prologue's save, into a branch over itself when the method never took
@@ -556,6 +579,14 @@ void JitArm64::ProcessInstructions() {
     instr->SetOffset(code_index);
     // the reference map's index for every spill this instruction emits
     ref_map_ip = instr_index - 1;
+    // F3: a pinned loop's header loads its locals into X20.. . The fall-through
+    // path and jumps from outside land on the instruction's offset, before the
+    // loads; jumps from inside the loop land on loop_offset, past them and on
+    // the safepoint poll, so every iteration polls.
+    const int pin_region = PinRegionStartingAt(instr_index - 1);
+    if(pin_region >= 0) {
+      EmitPinEntry(pin_region);
+    }
     // GC safepoint at loop headers only: a label's target is the head of a loop
     // iff some jump to it is backward, and every cyclic path contains a
     // back-edge, so polling these alone reaches every JITed loop (else the
@@ -1280,6 +1311,12 @@ void JitArm64::ProcessInstructions() {
     }
       break;
     }
+    // F3: leaving a pinned loop by fall-through (a conditional back-edge not
+    // taken): the locals go back to their slots
+    if(active_pin_region >= 0 && instr_index - 1 == pin_regions[active_pin_region].end) {
+      EmitPinWriteBack(active_pin_region);
+      active_pin_region = -1;
+    }
   }
 }
 
@@ -1353,6 +1390,22 @@ void JitArm64::ProcessLoad(StackInstr* instr) {
     }
     else {
       long offset = instr->GetOperand3();
+      // F3: a pinned loop local lives in its register; read it into a fresh pool
+      // register (consumers write their operands in place, so the pin itself is
+      // never handed out), never as a deferred MEM_INT
+      int pin_reg;
+      if(instr->GetType() == LOAD_FLOAT_VAR && PinnedFloatSlot(offset, pin_reg)) {
+        RegisterHolder* fholder = GetFpRegister();
+        fmov_freg_freg(PinFloatRegister(pin_reg), fholder->GetRegister());
+        working_stack.push_front(new RegInstr(fholder));
+        return;
+      }
+      if(instr->GetType() != LOAD_FLOAT_VAR && PinnedSlot(offset, pin_reg)) {
+        RegisterHolder* holder = GetRegister();
+        move_reg_reg(PinRegister(pin_reg), holder->GetRegister());
+        working_stack.push_front(new RegInstr(holder));
+        return;
+      }
       // check local register cache for int locals
       auto reg_it = local_reg_cache.find(offset);
       if(reg_it != local_reg_cache.end()) {
@@ -1969,6 +2022,56 @@ void JitArm64::ProcessStore(StackInstr* instr) {
   // instance/method memory
   if(is_local) {
     dest = SP;
+    // F3: a pinned loop local's register is the local; nothing reaches its frame
+    // slot until the loop is left (exit stubs and the fall-through write-back).
+    // A deferred MEM_INT never names a pinned slot: loads of pinned slots always
+    // produce REG_INT.
+    int pin_freg;
+    if(instr->GetType() == STOR_FLOAT_VAR && PinnedFloatSlot(instr->GetOperand3(), pin_freg)) {
+      RegInstr* value = working_stack.front();
+      working_stack.pop_front();
+      const Register fpin = PinFloatRegister(pin_freg);
+      switch(value->GetType()) {
+      case IMM_FLOAT:
+        move_imm_freg(value, fpin);
+        break;
+      case MEM_FLOAT:
+        move_mem_freg((long)value->GetOperand(), SP, fpin);
+        break;
+      case REG_FLOAT:
+        fmov_freg_freg(value->GetRegister()->GetRegister(), fpin);
+        ReleaseFpRegister(value->GetRegister());
+        break;
+      default:
+        CompileFailed(L"a store to a pinned Float local of an unexpected kind");
+        break;
+      }
+      delete value;
+      return;
+    }
+    int pin_reg;
+    if(!is_func_var && PinnedSlot(instr->GetOperand3(), pin_reg)) {
+      RegInstr* value = working_stack.front();
+      working_stack.pop_front();
+      const Register pin = PinRegister(pin_reg);
+      switch(value->GetType()) {
+      case IMM_INT:
+        move_imm_reg(value->GetOperand(), pin);
+        break;
+      case MEM_INT:
+        move_mem_reg((long)value->GetOperand(), SP, pin);
+        break;
+      case REG_INT:
+        move_reg_reg(value->GetRegister()->GetRegister(), pin);
+        ReleaseRegister(value->GetRegister());
+        break;
+      default:
+        CompileFailed(L"a store to a pinned loop local of an unexpected kind");
+        break;
+      }
+      delete value;
+      return;
+    }
     // invalidate cache for this offset (value is being overwritten)
     if(!is_func_var) {
       auto reg_it = local_reg_cache.find(instr->GetOperand3());
@@ -2139,6 +2242,48 @@ void JitArm64::ProcessCopy(StackInstr* instr) {
   // instance/method memory
   if(instr->GetOperand2() == LOCL) {
     dest = SP;
+    // F3: copy into a pinned loop local's register; the value stays on the
+    // working stack as it is
+    int pin_freg;
+    if(instr->GetType() == COPY_FLOAT_VAR && PinnedFloatSlot(instr->GetOperand3(), pin_freg)) {
+      RegInstr* value = working_stack.front();
+      const Register fpin = PinFloatRegister(pin_freg);
+      switch(value->GetType()) {
+      case IMM_FLOAT:
+        move_imm_freg(value, fpin);
+        break;
+      case MEM_FLOAT:
+        move_mem_freg((long)value->GetOperand(), SP, fpin);
+        break;
+      case REG_FLOAT:
+        fmov_freg_freg(value->GetRegister()->GetRegister(), fpin);
+        break;
+      default:
+        CompileFailed(L"a copy to a pinned Float local of an unexpected kind");
+        break;
+      }
+      return;
+    }
+    int pin_reg;
+    if(PinnedSlot(instr->GetOperand3(), pin_reg)) {
+      RegInstr* value = working_stack.front();
+      const Register pin = PinRegister(pin_reg);
+      switch(value->GetType()) {
+      case IMM_INT:
+        move_imm_reg(value->GetOperand(), pin);
+        break;
+      case MEM_INT:
+        move_mem_reg((long)value->GetOperand(), SP, pin);
+        break;
+      case REG_INT:
+        move_reg_reg(value->GetRegister()->GetRegister(), pin);
+        break;
+      default:
+        CompileFailed(L"a copy to a pinned loop local of an unexpected kind");
+        break;
+      }
+      return;
+    }
     // invalidate cache for this offset (value is being modified)
     auto reg_it = local_reg_cache.find(instr->GetOperand3());
     if(reg_it != local_reg_cache.end()) {
@@ -2934,6 +3079,295 @@ void JitArm64::store_long_zero(long offset, Register base) {
   }
   else {
     str_xzr_mem(offset, base);
+  }
+}
+
+/**
+ * F3: choose, per loop, the integer locals that live in X20.. for the loop's
+ * extent (docs/JIT_LOOP_LOCALS_DESIGN.md, section 3; the AMD64 backend's
+ * PlanPinRegions is the reference). Runs after ProcessIndices, so the slots are
+ * known, and before the frame is sized, which reserves the save slots.
+ * A JMP operand is its target's instruction index + 1 on this backend, so a
+ * target index is operand - 1 throughout.
+ */
+void JitArm64::PlanPinRegions() {
+  pin_regions.clear();
+  pin_count = 0;
+  pins_float = false;
+  active_pin_region = -1;
+  const long count = method->GetInstructionCount();
+  instr_index_of.clear();
+  std::vector<std::pair<long, long> > spans;   // (header, back-edge) of every loop
+  for(long i = 0; i < count; ++i) {
+    StackInstr* instr = method->GetInstruction(i);
+    instr_index_of[instr] = i;
+    if(instr->GetType() == JMP && instr->GetOperand() - 1 < i) {
+      spans.push_back(std::make_pair(instr->GetOperand() - 1, i));
+    }
+  }
+  if(spans.empty()) {
+    return;
+  }
+  // diagnostics: OBJECK_JIT_PIN_MAX=<n> caps the pinned locals per loop (0 turns
+  // pinning off); OBJECK_JIT_PIN_SKIP=<substring> leaves matching methods alone
+  int pin_max = PIN_REG_COUNT;
+  std::string env_max;
+  if(JitEnvFlag("OBJECK_JIT_PIN_MAX", &env_max)) {
+    pin_max = atoi(env_max.c_str());
+    if(pin_max < 0) pin_max = 0;
+    if(pin_max > PIN_REG_COUNT) pin_max = PIN_REG_COUNT;
+  }
+  std::string skip;
+  if(JitEnvFlag("OBJECK_JIT_PIN_SKIP", &skip) && !skip.empty()) {
+    const std::wstring name = method->GetName();
+    if(name.find(std::wstring(skip.begin(), skip.end())) != std::wstring::npos) {
+      pin_max = 0;
+    }
+  }
+  if(pin_max == 0) {
+    return;
+  }
+  // Float locals pin in D12-D15, callee-saved (the prologue's D8-D15 save
+  // covers them), so a call inside the loop leaves them as they were. The full
+  // set by default; OBJECK_JIT_PIN_MAX caps floats too when it is set.
+  int pin_fmax = PIN_FREG_COUNT;
+  if(!env_max.empty()) {
+    pin_fmax = std::min(pin_fmax, pin_max);
+  }
+  // maximal regions: sort the loops by header and merge overlapping and nested ones
+  std::vector<std::pair<long, long> > sorted_spans(spans);
+  std::sort(sorted_spans.begin(), sorted_spans.end());
+  std::vector<std::pair<long, long> > regions;
+  for(const auto& span : sorted_spans) {
+    if(!regions.empty() && span.first <= regions.back().second) {
+      regions.back().second = std::max(regions.back().second, span.second);
+    }
+    else {
+      regions.push_back(span);
+    }
+  }
+  // slot id -> declared type. The and/or temp (slot 0 when HasAndOr) has no
+  // declaration and is left alone; FUNC_PARM takes two slots.
+  std::unordered_map<long, ParamType> id_types;
+  {
+    long id = method->HasAndOr() ? 1 : 0;
+    StackDclr** dclrs = method->GetDeclarations();
+    const long num_dclrs = method->GetNumberDeclarations();
+    for(long j = 0; j < num_dclrs; ++j) {
+      id_types[id] = dclrs[j]->type;
+      id += (dclrs[j]->type == FUNC_PARM) ? 2 : 1;
+    }
+  }
+  for(const auto& region : regions) {
+    const long header = region.first;
+    const long end = region.second;
+    // eligible only if no jump from outside lands inside (other than on the
+    // header) and no jump from inside leaves backwards past the header
+    bool eligible = true;
+    for(long i = 0; i < count && eligible; ++i) {
+      StackInstr* instr = method->GetInstruction(i);
+      std::vector<long> targets;
+      if(instr->GetType() == JMP) {
+        targets.push_back(instr->GetOperand() - 1);
+      }
+      else if(instr->GetType() == JMP_TABLE) {
+        // a select's table is a bundle of edges, the default plus one per slot.
+        // Only a JMP gets a write-back stub on the way out of a region, so none
+        // of a table's edges may cross the region's boundary or land on its header.
+        targets.push_back(instr->GetOperand3() - 1);
+        for(long s = 1; s <= instr->GetOperand2() && i + s < count; ++s) {
+          targets.push_back(method->GetInstruction(i + s)->GetOperand() - 1);
+        }
+      }
+      else {
+        continue;
+      }
+      const bool src_in = (i >= header && i <= end);
+      for(const long target : targets) {
+        const bool dst_in = (target > header && target <= end);
+        const bool table = (instr->GetType() == JMP_TABLE);
+        if((!src_in && dst_in) || (src_in && target < header) ||
+           (src_in && !dst_in && table) || (src_in && table && target == header)) {
+          eligible = false;
+          break;
+        }
+      }
+    }
+    if(!eligible) {
+      continue;
+    }
+    // accesses per candidate slot, an access in a nested loop weighted by depth
+    std::unordered_map<long, long> weights;
+    std::unordered_map<long, long> fweights;   // Float candidates
+    std::unordered_map<long, long> slot_ids;
+    for(long i = header; i <= end; ++i) {
+      StackInstr* instr = method->GetInstruction(i);
+      const InstructionType type = instr->GetType();
+      const bool int_access = (type == LOAD_LOCL_INT_VAR || type == STOR_LOCL_INT_VAR || type == COPY_LOCL_INT_VAR);
+      const bool float_access = (type == LOAD_FLOAT_VAR || type == STOR_FLOAT_VAR || type == COPY_FLOAT_VAR);
+      if((!int_access && !float_access) || instr->GetOperand2() != LOCL) {
+        continue;
+      }
+      auto declared = id_types.find(instr->GetOperand());
+      if(declared == id_types.end()) {
+        continue;
+      }
+      if(int_access && declared->second != INT_PARM && declared->second != CHAR_PARM) {
+        continue;
+      }
+      if(float_access && (pin_fmax == 0 || declared->second != FLOAT_PARM)) {
+        continue;
+      }
+      long depth = 0;
+      for(const auto& span : spans) {
+        if(i >= span.first && i <= span.second) {
+          ++depth;
+        }
+      }
+      (float_access ? fweights : weights)[instr->GetOperand3()] += (1L << std::min(depth * 2, 12L));
+      slot_ids[instr->GetOperand3()] = instr->GetOperand();
+    }
+    if(weights.empty() && fweights.empty()) {
+      continue;
+    }
+    std::vector<std::pair<long, long> > ranked;   // (-weight, slot): heaviest first, ties by slot
+    for(const auto& weight : weights) {
+      ranked.push_back(std::make_pair(-weight.second, weight.first));
+    }
+    std::sort(ranked.begin(), ranked.end());
+    std::vector<std::pair<long, long> > franked;
+    for(const auto& weight : fweights) {
+      franked.push_back(std::make_pair(-weight.second, weight.first));
+    }
+    std::sort(franked.begin(), franked.end());
+    PinRegion pin;
+    pin.header = header;
+    pin.end = end;
+    pin.loop_offset = -1;
+    for(size_t k = 0; k < ranked.size() && (int)pin.slots.size() < pin_max; ++k) {
+      pin.slots.push_back(ranked[k].second);
+    }
+    for(size_t k = 0; k < franked.size() && (int)pin.fslots.size() < pin_fmax; ++k) {
+      pin.fslots.push_back(franked[k].second);
+    }
+    pin_regions.push_back(pin);
+    pin_count = std::max(pin_count, (int)pin.slots.size());
+    if(!pin.fslots.empty()) {
+      pins_float = true;
+    }
+    if(JitReportEnabled()) {
+      std::wcerr << L"[jit] " << method->GetName() << L": pinned " << pin.slots.size()
+                 << L" local(s) in loop [" << header << L"," << end << L"], slot id(s)";
+      for(size_t k = 0; k < pin.slots.size(); ++k) {
+        std::wcerr << L" " << slot_ids[pin.slots[k]];
+      }
+      if(!pin.fslots.empty()) {
+        std::wcerr << L"; " << pin.fslots.size() << L" float(s), slot id(s)";
+        for(size_t k = 0; k < pin.fslots.size(); ++k) {
+          std::wcerr << L" " << slot_ids[pin.fslots[k]];
+        }
+      }
+      std::wcerr << std::endl;
+    }
+  }
+}
+
+int JitArm64::PinRegionStartingAt(long header_index) {
+  for(size_t r = 0; r < pin_regions.size(); ++r) {
+    if(pin_regions[r].header == header_index) {
+      return (int)r;
+    }
+  }
+  return -1;
+}
+
+int JitArm64::PinRegionContaining(long instr_idx) {
+  for(size_t r = 0; r < pin_regions.size(); ++r) {
+    if(instr_idx >= pin_regions[r].header && instr_idx <= pin_regions[r].end) {
+      return (int)r;
+    }
+  }
+  return -1;
+}
+
+bool JitArm64::PinnedSlot(long offset, int& reg_index) {
+  if(active_pin_region < 0) {
+    return false;
+  }
+  const std::vector<long>& slots = pin_regions[active_pin_region].slots;
+  for(size_t i = 0; i < slots.size(); ++i) {
+    if(slots[i] == offset) {
+      reg_index = (int)i;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool JitArm64::PinnedFloatSlot(long offset, int& reg_index) {
+  if(active_pin_region < 0) {
+    return false;
+  }
+  const std::vector<long>& fslots = pin_regions[active_pin_region].fslots;
+  for(size_t i = 0; i < fslots.size(); ++i) {
+    if(fslots[i] == offset) {
+      reg_index = (int)i;
+      return true;
+    }
+  }
+  return false;
+}
+
+// entry loads; interior jumps to the header land on loop_offset, past them
+void JitArm64::EmitPinEntry(int region) {
+  PinRegion& pin = pin_regions[region];
+  for(size_t i = 0; i < pin.slots.size(); ++i) {
+    move_mem_reg(pin.slots[i], SP, PinRegister((int)i));
+  }
+  for(size_t i = 0; i < pin.fslots.size(); ++i) {
+    move_mem_freg(pin.fslots[i], SP, PinFloatRegister((int)i));
+  }
+  pin.loop_offset = code_index;
+  active_pin_region = region;
+}
+
+void JitArm64::EmitPinWriteBack(int region) {
+  const PinRegion& pin = pin_regions[region];
+  for(size_t i = 0; i < pin.slots.size(); ++i) {
+    move_reg_mem(PinRegister((int)i), pin.slots[i], SP);
+  }
+  for(size_t i = 0; i < pin.fslots.size(); ++i) {
+    move_freg_mem(PinFloatRegister((int)i), pin.fslots[i], SP);
+  }
+}
+
+// one stub per jump that leaves a pinned loop: store the locals, then branch to
+// the real target. Emitted after the body; reached only by those jumps.
+void JitArm64::EmitPinExitStubs() {
+  pin_exit_stub_offsets.clear();
+  if(pin_regions.empty()) {
+    return;
+  }
+  for(const auto& entry : jump_table) {
+    StackInstr* jump = entry.second;
+    auto src_index = instr_index_of.find(jump);
+    if(src_index == instr_index_of.end()) {
+      continue;
+    }
+    const int region = PinRegionContaining(src_index->second);
+    if(region < 0) {
+      continue;
+    }
+    const PinRegion& pin = pin_regions[region];
+    const long target = jump->GetOperand() - 1;
+    if(target >= pin.header && target <= pin.end) {
+      continue;
+    }
+    pin_exit_stub_offsets[entry.first] = code_index;
+    EmitPinWriteBack(region);
+    const long dest_offset = method->GetInstruction(target)->GetOffset();
+    const long rel = dest_offset - code_index;
+    AddMachineCode(B_INSTR | (uint32_t)(rel & 0x03FFFFFF));
   }
 }
 
@@ -6399,6 +6833,13 @@ bool JitArm64::Compile(StackMethod* cm)
     call_return_type = NIL_TYPE;
     native_result_taken = false;
     frame_size = rec_base = out_base = 0;
+    pin_regions.clear();
+    instr_index_of.clear();
+    pin_exit_stub_offsets.clear();
+    active_pin_region = -1;
+    pin_count = 0;
+    pins_float = false;
+    pin_save_base = 0;
     native_entry_offset = -1;
     method = cm;
     // Initialize CBZ/CBNZ optimization tracking
@@ -6537,6 +6978,26 @@ bool JitArm64::Compile(StackMethod* cm)
     // process offsets
     ProcessIndices();
 
+    // F3: the loops' pinned locals (needs the slots ProcessIndices just assigned)
+    // and, below, the save slots they cost in the frame
+    PlanPinRegions();
+    if(pins_float) {
+      // D12-D15 hold pinned Floats for the method: out of the pool, and the
+      // D8-D15 save (which covers them) stays
+      for(size_t k = 0; k < aval_fregs.size(); ) {
+        const Register r = aval_fregs[k]->GetRegister();
+        if(r >= PinFloatRegister(0) && r < PinFloatRegister(PIN_FREG_COUNT)) {
+          delete aval_fregs[k];
+          aval_fregs.erase(aval_fregs.begin() + k);
+        }
+        else {
+          ++k;
+        }
+      }
+      fp_pool_size = aval_fregs.size();
+      fp_callee_saved_used = true;
+    }
+
     // The frame above the locals (JIT_CALLING_CONVENTION_DESIGN.md section 12):
     // the frame record block a native entry builds, then the outgoing area for
     // the method's native call sites, sized for the widest (its arguments, the
@@ -6572,7 +7033,14 @@ bool JitArm64::Compile(StackMethod* cm)
     // it keeps the size a multiple of 16. The frame used to add RED_ZONE (256
     // bytes) here instead: slack above the outgoing area that nothing
     // addressed, 256 of a small method's 600 bytes.
-    frame_size = out_base + out_bytes + 2 * (long)sizeof(size_t);
+    // The pinned loops' callee-saved registers are saved just below it, one word
+    // each (X20 first, nearest X19's slot); the total stays a multiple of 16.
+    long top_words = 1 + pin_count;
+    if(top_words % 2 != 0) {
+      ++top_words;
+    }
+    frame_size = out_base + out_bytes + top_words * (long)sizeof(size_t);
+    pin_save_base = frame_size - 2 * (long)sizeof(size_t);
     // every slot is addressed with a scaled 12-bit immediate from SP
     if(frame_size > 32000) {
       if(JitReportEnabled()) {
@@ -6641,6 +7109,10 @@ bool JitArm64::Compile(StackMethod* cm)
       Epilog();
     }
 
+    // F3: a jump that leaves a pinned loop goes through a stub that stores the
+    // pinned locals first; the stubs sit after the method body
+    EmitPinExitStubs();
+
     // phase 2: a method that never took D8-D15 need not save and restore
     // them. The save block and every restore block (one per RTRN) become a
     // branch over their own eight words; nothing jumps into either.
@@ -6662,7 +7134,22 @@ bool JitArm64::Compile(StackMethod* cm)
       StackInstr* instr = jmp_iter->second;
       const long src_offset = jmp_iter->first - 1;
       const long dest_index = instr->GetOperand() - 1;
-      const long dest_offset = method->GetInstruction(dest_index)->GetOffset();
+      long dest_offset = method->GetInstruction(dest_index)->GetOffset();
+      // F3: an exit jump lands on its stub; a jump from inside a pinned loop to
+      // the loop's header skips the entry loads
+      auto stub = pin_exit_stub_offsets.find(jmp_iter->first);
+      if(stub != pin_exit_stub_offsets.end()) {
+        dest_offset = stub->second;
+      }
+      else if(!pin_regions.empty()) {
+        auto src_index = instr_index_of.find(instr);
+        if(src_index != instr_index_of.end()) {
+          const int region = PinRegionContaining(src_index->second);
+          if(region >= 0 && dest_index == pin_regions[region].header) {
+            dest_offset = pin_regions[region].loop_offset;
+          }
+        }
+      }
       const long offset = dest_offset - src_offset;
       
       // unconditional jump
