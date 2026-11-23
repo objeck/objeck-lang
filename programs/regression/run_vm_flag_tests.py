@@ -707,6 +707,8 @@ def main():
 
     check_trap_register_pressure(obc, obr, env, bin_dir)
 
+    check_cpu_count_affinity(obc, obr, env, bin_dir)
+
     check_jit_off_interprets_native(obc, obr, env, bin_dir)
 
     check_compiler_fatal(obc, obr, env, bin_dir)
@@ -1583,6 +1585,38 @@ def check_trap_register_pressure(obc, obr, env, bin_dir):
             line = f"[jit] JitTrapRegisterPressure:{method}: compiled"
             report = [l for l in text.splitlines() if f"JitTrapRegisterPressure:{method}:" in l]
             check(f"JitTrapRegisterPressure:{method} is compiled", line in text, f"report={report!r}")
+
+
+def check_cpu_count_affinity(obc, obr, env, bin_dir):
+    # ---- runtime.cpu.count follows the CPUs the process may use ---------------------
+    src = os.path.join(SCRIPT_DIR, "cpu_count_affinity.obs")
+    dest = os.path.join(SCRIPT_DIR, "cpu_count_affinity.obe")
+    rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+    check("cpu_count_affinity compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+    if rc != 0:
+        return
+
+    def cpus(extra_env=None, prefix=None):
+        run_env = dict(env)
+        run_env.pop("OBJECK_CPU_COUNT", None)
+        run_env.update(extra_env or {})
+        rc, out, err = run((prefix or []) + [obr, dest], env=run_env, cwd=bin_dir, timeout=120)
+        match = re.search(rb"cpus=(\d+)", out)
+        return (int(match.group(1)) if rc == 0 and match else None), out
+
+    machine = os.cpu_count() or 1
+    plain, out = cpus()
+    check("runtime.cpu.count is between 1 and the machine's CPUs", plain is not None and 1 <= plain <= machine,
+          f"got {plain} of {machine}: {out[-200:]!r}")
+    forced, out = cpus({"OBJECK_CPU_COUNT": "3"})
+    check("OBJECK_CPU_COUNT=3 sets runtime.cpu.count to 3", forced == 3, f"got {forced}: {out[-200:]!r}")
+    # the affinity mask is what a Slurm cpuset or taskset narrows
+    if sys.platform.startswith("linux") and shutil.which("taskset"):
+        one, out = cpus(prefix=["taskset", "-c", "0"])
+        check("one CPU in the affinity mask gives runtime.cpu.count 1", one == 1, f"got {one}: {out[-200:]!r}")
+        if machine >= 3:
+            two, out = cpus(prefix=["taskset", "-c", "0,1"])
+            check("two CPUs in the affinity mask give runtime.cpu.count 2", two == 2, f"got {two}: {out[-200:]!r}")
 
 
 def check_jit_off_interprets_native(obc, obr, env, bin_dir):

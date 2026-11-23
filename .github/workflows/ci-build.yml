@@ -1149,6 +1149,10 @@ jobs:
     # A function value packs the class and method ids into 16-bit fields. A method id >=
     # 32768 used to sign-extend into the class and tag bits; ids past 65535 now fail the build.
     - name: a function reference to a high method id works; past 65535 is refused (POSIX)
+
+    # With OBJECK_LIB_PATH unset the library directory is resolved against the executable,
+    # not the working directory.
+    - name: obc and obr find their libraries from another working directory (POSIX)
       if: runner.os != 'Windows'
       working-directory: ./programs/regression
       run: |
@@ -1158,6 +1162,10 @@ jobs:
         python3 check_funcref_range.py "$BIN"
 
     - name: a function reference to a high method id works; past 65535 is refused (Windows)
+
+        python3 check_lib_path_anchor.py "$BIN"
+
+    - name: obc and obr find their libraries from another working directory (Windows)
       if: runner.os == 'Windows'
       working-directory: ./programs/regression
       shell: cmd
@@ -1165,6 +1173,8 @@ jobs:
         set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_funcref_range.py "%BIN%"
+
+        python check_lib_path_anchor.py "%BIN%"
 
     # Named arguments reach a library method through the parameter names its .obl
     # records; skipping a middle default goes through the method's mask forwarder,

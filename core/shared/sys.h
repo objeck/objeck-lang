@@ -39,6 +39,13 @@
 
 #if !defined(_WIN32)
 #include <dirent.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <limits.h>
+#include <stdlib.h>
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#endif
 #endif
 
 #include <math.h>
@@ -978,6 +985,74 @@ inline bool HasCommandLineArgumentWithAliases(
   return false;
 }
 
+/**
+ * The library directory that sits beside the running executable's directory
+ * (<exe dir>/../lib/), or empty when the executable cannot be located or that
+ * directory does not exist. Resolved once and cached: the answer cannot change
+ * while the process runs, and it must not depend on the working directory,
+ * which is whatever the caller happened to be in when it started the tool.
+ * No std::filesystem: native libraries include this header and several build
+ * below C++17.
+ */
+inline const std::wstring& ExecutableLibraryPath() {
+  static const std::wstring cached = []() -> std::wstring {
+    std::wstring exe_dir;
+#if defined(_WIN32)
+    wchar_t buffer[MAX_PATH];
+    const DWORD len = GetModuleFileNameW(nullptr, buffer, MAX_PATH);
+    if(len == 0 || len >= MAX_PATH) {
+      return std::wstring();
+    }
+    exe_dir.assign(buffer, len);
+    const wchar_t separator = L'\\';
+#else
+    char buffer[4096];
+    buffer[0] = '\0';
+#if defined(__APPLE__)
+    uint32_t size = sizeof(buffer);
+    char raw_path[4096];
+    if(_NSGetExecutablePath(raw_path, &size) != 0 || !realpath(raw_path, buffer)) {
+      return std::wstring();
+    }
+#else
+    const ssize_t len = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
+    if(len <= 0) {
+      return std::wstring();
+    }
+    buffer[len] = '\0';
+#endif
+    exe_dir = BytesToUnicode(std::string(buffer));
+    const wchar_t separator = L'/';
+#endif
+
+    // <install>/bin/obr -> <install>/bin -> <install>/lib/
+    size_t sep = exe_dir.find_last_of(separator);
+    if(sep == std::wstring::npos) {
+      return std::wstring();
+    }
+    exe_dir.resize(sep);
+    sep = exe_dir.find_last_of(separator);
+    if(sep == std::wstring::npos || sep == 0) {
+      return std::wstring();
+    }
+    const std::wstring lib_dir = exe_dir.substr(0, sep + 1) + L"lib";
+#if defined(_WIN32)
+    const DWORD attrs = GetFileAttributesW(lib_dir.c_str());
+    if(attrs == INVALID_FILE_ATTRIBUTES || !(attrs & FILE_ATTRIBUTE_DIRECTORY)) {
+      return std::wstring();
+    }
+#else
+    struct stat info;
+    if(stat(UnicodeToBytes(lib_dir).c_str(), &info) != 0 || !S_ISDIR(info.st_mode)) {
+      return std::wstring();
+    }
+#endif
+    return lib_dir + separator;
+  }();
+
+  return cached;
+}
+
 inline std::wstring GetLibraryPath() {
   std::wstring path;
 
@@ -1006,11 +1081,17 @@ inline std::wstring GetLibraryPath() {
 #endif
   }
   else {
+    // no OBJECK_LIB_PATH: the install the running executable belongs to, so a tool
+    // started from another directory still finds its libraries. Only when that
+    // cannot be resolved does the old working-directory-relative guess apply.
+    path = ExecutableLibraryPath();
+    if(path.empty()) {
 #ifdef _WIN32
-    path += L"..\\lib\\";
+      path += L"..\\lib\\";
 #else
-    path += L"../lib/";
+      path += L"../lib/";
 #endif
+    }
   }
 
   return path;

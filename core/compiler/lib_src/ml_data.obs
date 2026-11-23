@@ -1858,6 +1858,142 @@ r := Metrics->RecallAtFpr(scores, actuals, 0.001);
 		}
 
 		#~
+		A paired bootstrap interval for how much better one detector is than another
+		at thresholds that were chosen beforehand.
+
+		Bootstrap resamples one detector's scores and recomputes a metric that may
+		itself pick a threshold. This answers the comparison question instead: the two
+		detectors scored the SAME instances, each has a threshold frozen before the
+		test set was looked at (for example by ThresholdAtFpr on out-of-fold scores),
+		and the question is whether detector B's recall is really higher than
+		detector A's. Each resample draws instances once and applies both detectors
+		to that one draw, so the noise the two share cancels in the difference and the
+		interval is the interval of the difference, not two intervals to compare by eye.
+
+		The statistic is B minus A. An instance is flagged when its score is >= the
+		detector's threshold, as in AtThreshold. A resample with no positive instance
+		(recall) or no negative instance (false-positive rate) has no value and is
+		left out; the usable count says how many survived.
+		@param scores_a detector A's score per instance
+		@param threshold_a detector A's frozen threshold
+		@param scores_b detector B's score per instance, for the same instances in the same order
+		@param threshold_b detector B's frozen threshold
+		@param actuals true where the instance really is positive
+		@param use_fpr true to compare false-positive rates, false to compare recall
+		@param reps how many resamples to draw
+		@param seed seeds the resampling, so a run can be repeated
+		@param level the interval width, e.g. 0.95
+		@return the interval of (B - A), or Nil on bad input or fewer than two usable resamples
+		~#
+		function : PairedBootstrapDifference(scores_a : Float[], threshold_a : Float, scores_b : Float[], threshold_b : Float, actuals : Bool[], use_fpr : Bool, reps : Int, seed : Int, level : Float) ~ ConfInterval {
+			if(scores_a = Nil | scores_b = Nil | actuals = Nil) {
+				return Nil;
+			};
+			n := actuals->Size();
+			if(n = 0 | scores_a->Size() <> n | scores_b->Size() <> n) {
+				return Nil;
+			};
+			if(reps < 2 | level <= 0.0 | level >= 1.0) {
+				return Nil;
+			};
+
+			point := PairedDifference(scores_a, threshold_a, scores_b, threshold_b, actuals, use_fpr, Nil);
+			draws := Float->New[reps];
+			picks := Int->New[n];
+			rnd := Random->New(seed);
+			usable := 0;
+			value : Float;
+
+			each(r : reps) {
+				each(i : n) {
+					picks[i] := rnd->NextInt(n);
+				};
+				value := PairedDifference(scores_a, threshold_a, scores_b, threshold_b, actuals, use_fpr, picks);
+				# the rates are never negative, so a difference below -1.0 is the "no value" marker
+				if(value >= -1.0) {
+					draws[usable] := value;
+					usable += 1;
+				};
+			};
+
+			if(usable < 2 | point < -1.0) {
+				return Nil;
+			};
+
+			kept := Float->New[usable];
+			each(i : usable) {
+				kept[i] := draws[i];
+			};
+
+			tail := (1.0 - level) / 2.0;
+			return ConfInterval->New(point, Percentile(kept, tail), Percentile(kept, 1.0 - tail), level, reps, usable);
+		}
+
+		#~
+		The same at the conventional 95% level.
+		@param scores_a detector A's score per instance
+		@param threshold_a detector A's frozen threshold
+		@param scores_b detector B's score per instance, for the same instances in the same order
+		@param threshold_b detector B's frozen threshold
+		@param actuals true where the instance really is positive
+		@param use_fpr true to compare false-positive rates, false to compare recall
+		@param reps how many resamples to draw
+		@param seed seeds the resampling
+		@return the interval of (B - A), or Nil on bad input
+		~#
+		function : PairedBootstrapDifference(scores_a : Float[], threshold_a : Float, scores_b : Float[], threshold_b : Float, actuals : Bool[], use_fpr : Bool, reps : Int, seed : Int) ~ ConfInterval {
+			return PairedBootstrapDifference(scores_a, threshold_a, scores_b, threshold_b, actuals, use_fpr, reps, seed, 0.95);
+		}
+
+		# rate(B) - rate(A) over the picked rows (all rows when picks is Nil); -2.0 when the
+		# class the rate divides by is absent
+		function : PairedDifference(scores_a : Float[], threshold_a : Float, scores_b : Float[], threshold_b : Float, actuals : Bool[], use_fpr : Bool, picks : Int[]) ~ Float {
+			count := actuals->Size();
+			if(picks <> Nil) {
+				count := picks->Size();
+			};
+			pos := 0;
+			neg := 0;
+			hit_a := 0;
+			hit_b := 0;
+			row : Int;
+			# recall counts flags among the positives, the false-positive rate among the negatives
+			wanted := true;
+			if(use_fpr) {
+				wanted := false;
+			};
+			each(k : count) {
+				row := k;
+				if(picks <> Nil) {
+					row := picks[k];
+				};
+				if(actuals[row] = wanted) {
+					if(use_fpr) {
+						neg += 1;
+					}
+					else {
+						pos += 1;
+					};
+					if(scores_a[row] >= threshold_a) {
+						hit_a += 1;
+					};
+					if(scores_b[row] >= threshold_b) {
+						hit_b += 1;
+					};
+				};
+			};
+
+			total := pos;
+			if(use_fpr) {
+				total := neg;
+			};
+			if(total = 0) {
+				return -2.0;
+			};
+			return (hit_b - hit_a)->As(Float) / total->As(Float);
+		}
+
+		#~
 		Precision an operating point would show at an assumed base rate.
 
 		A detection rate and a false-alarm rate are properties of the detector. The
