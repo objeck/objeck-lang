@@ -32,6 +32,8 @@
 #pragma once
 
 #include "common.h"
+#include <exception>
+#include <string>
 
 // pre-header offset for Objeck arrays
 #define ARRAY_HEADER_OFFSET 3
@@ -838,3 +840,63 @@ inline void APITools_CallMethod(VMContext &context, size_t * instance, const int
   assert(*context.stack_pos == 0);
 #endif
 }
+
+//
+// Exception guard for native entry points.
+//
+// An entry point is `extern "C"`: a C++ exception that leaves one (a std::bad_alloc,
+// an Ort::Exception, a cv::Exception, ...) crosses a frame with no unwind
+// information on some platforms and is undefined behaviour on all of them -- in
+// practice it terminates the whole VM. Wrap the body so the exception is caught at
+// the boundary, recorded, and the entry returns normally:
+//
+//   void my_lib_entry(VMContext& context) {
+//     const bool ok = NATIVE_GUARD(context, {
+//       ... body, may throw; commas are fine ...
+//       APITools_SetIntValue(context, 0, result);
+//     });
+//     if(!ok) {
+//       APITools_SetIntValue(context, 0, 0);   // the entry's failure value
+//     }
+//   }
+//
+// The guard changes nothing on the non-error path. It does not decide the entry's
+// failure return value -- that stays the entry's choice -- it only guarantees the
+// exception stops here. The message is kept per thread, per library image, and is
+// read with APITools_GetLastError.
+//
+inline std::wstring& APITools_LastErrorSlot() {
+  static thread_local std::wstring last_error;
+  return last_error;
+}
+
+// Records a native error message for the calling thread
+inline void APITools_SetLastError(const std::wstring& message) {
+  APITools_LastErrorSlot() = message;
+}
+
+// Returns the last recorded native error for the calling thread, or an empty string
+inline const std::wstring& APITools_GetLastError() {
+  return APITools_LastErrorSlot();
+}
+
+// Runs body; returns true on success, or false after recording the exception
+template<typename Body>
+inline bool APITools_Guard(VMContext& context, Body body) {
+  (void)context;
+  try {
+    APITools_LastErrorSlot().clear();
+    body();
+    return true;
+  }
+  catch(const std::exception& e) {
+    const std::string what = e.what();
+    APITools_SetLastError(std::wstring(what.begin(), what.end()));
+  }
+  catch(...) {
+    APITools_SetLastError(L"unknown native exception");
+  }
+  return false;
+}
+
+#define NATIVE_GUARD(context, ...) APITools_Guard((context), [&]() __VA_ARGS__)
