@@ -522,10 +522,10 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
 
     case JMP:
       if(instr->GetOperand2() < 0) {
-        ip = instr->GetOperand();
+        ip = instr->JumpTargetIndex();
       }
       else if((INT64_VALUE)op_stack[--(*stack_pos)] == instr->GetOperand2()) {
-        ip = instr->GetOperand();
+        ip = instr->JumpTargetIndex();
       }
       continue;
 
