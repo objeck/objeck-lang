@@ -1280,6 +1280,15 @@ detector->Fit(Xs_normal);
 anomaly := detector->PredictScore(Xs_test);   # -decision: higher = stranger
 flags := detector->IsOutlier(Xs_test);        # Bool[]; Predict gives +1/-1
 
+# comparing two detectors at thresholds fixed beforehand: threshold from out-of-fold
+# scores, applied unchanged to the test set, then a PAIRED bootstrap of the difference
+cut_a := Metrics->ThresholdAtFpr(oof_a, oof_labels, 0.01);
+cut_b := Metrics->ThresholdAtFpr(oof_b, oof_labels, 0.01);
+gain := Metrics->PairedBootstrapDifference(test_a, cut_a, test_b, cut_b, test_labels, false, 1000, 42);
+# gain->GetPoint() is recall(B) - recall(A); GetLow()/GetHigh() its 95% interval. Both
+# detectors are applied to the same resampled rows, so shared noise cancels. true as the
+# sixth argument compares false-positive rates instead. Nil on bad input.
+
 # multiclass Gaussian naive Bayes over integer labels 0..C-1
 gnb := GaussianNaiveBayes->New();
 gnb->Fit(X, y);
