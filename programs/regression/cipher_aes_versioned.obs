@@ -1,0 +1,213 @@
+# EXTRA_LIBS: cipher
+#~
+# Cipher.Encrypt/Decrypt->AES256 versioned format: AES-256-GCM with a PBKDF2
+# derived key, random salt and nonce. These checks fail on the old format
+# (fixed salt, password used directly as the CBC key, no authentication).
+#
+# The legacy fixtures below were produced by the previous release's
+# Cipher.Encrypt->AES256 and must keep decrypting (decrypt-only support).
+~#
+class CipherAesVersioned {
+	@failures : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		RoundTrips();
+		LongPasswords();
+		FreshRandomness();
+		Tampering();
+		WrongPassword();
+		Truncation();
+		LegacyCompat();
+
+		if(@failures = 0) {
+			"All tests passed"->PrintLine();
+		}
+		else {
+			"{$@failures} test(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Same(a : Byte[], b : Byte[]) ~ Bool {
+		if(a = Nil | b = Nil) {
+			return false;
+		};
+		if(a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	function : RoundTrip(desc : String, key : Byte[], plain : Byte[]) ~ Nil {
+		enc := Cipher.Encrypt->AES256(key, plain);
+		dec := Nil->As(Byte[]);
+		if(enc <> Nil) {
+			dec := Cipher.Decrypt->AES256(key, enc);
+		};
+		Check("round-trip {$desc}", enc <> Nil & Same(dec, plain));
+	}
+
+	function : RoundTrips() ~ Nil {
+		key := "correct horse battery"->ToByteArray();
+
+		empty := Byte->New[0];
+		RoundTrip("empty", key, empty);
+		RoundTrip("one byte", key, "x"->ToByteArray());
+		RoundTrip("short text", key, "Hello, World!"->ToByteArray());
+		RoundTrip("block size (16)", key, "0123456789abcdef"->ToByteArray());
+
+		big := Byte->New[100003];
+		each(i : big) {
+			big[i] := ((i * 7 + 3) % 251)->As(Byte);
+		};
+		RoundTrip("long binary 100003 bytes", key, big);
+
+		bin := Byte->New[256];
+		each(i : bin) {
+			bin[i] := i->As(Byte);
+		};
+		RoundTrip("all byte values", key, bin);
+
+		RoundTrip("empty password", Byte->New[0], "data"->ToByteArray());
+	}
+
+	function : LongPasswords() ~ Nil {
+		# several blocks: a wrong IV alone only damages block one, so the old CBC
+		# format returned garbage for a wrong tail instead of failing
+		plain := "secret payload secret payload secret payload secret payload"->ToByteArray();
+
+		# identical first 32 bytes, different tails: the old code truncated
+		# both to the same key
+		k1 := "0123456789abcdef0123456789abcdef-tail-one"->ToByteArray();
+		k2 := "0123456789abcdef0123456789abcdef-tail-two"->ToByteArray();
+		RoundTrip("password over 32 bytes", k1, plain);
+
+		enc := Cipher.Encrypt->AES256(k1, plain);
+		Check("tail of a long password is significant", enc <> Nil & Cipher.Decrypt->AES256(k2, enc) = Nil);
+
+		# a password that is the other's prefix padded with zeros must not match
+		k3 := Byte->New[40];
+		each(i : k3) {
+			k3[i] := 65->As(Byte);
+		};
+		k4 := Byte->New[32];
+		each(i : k4) {
+			k4[i] := 65->As(Byte);
+		};
+		enc := Cipher.Encrypt->AES256(k3, plain);
+		Check("40-byte password rejects its 32-byte prefix", enc <> Nil & Cipher.Decrypt->AES256(k4, enc) = Nil);
+	}
+
+	function : FreshRandomness() ~ Nil {
+		key := "same-password"->ToByteArray();
+		plain := "same plaintext"->ToByteArray();
+		a := Cipher.Encrypt->AES256(key, plain);
+		b := Cipher.Encrypt->AES256(key, plain);
+		Check("two encryptions of one plaintext differ", a <> Nil & b <> Nil & <>Same(a, b));
+		Check("both still decrypt", Same(Cipher.Decrypt->AES256(key, a), plain) & Same(Cipher.Decrypt->AES256(key, b), plain));
+		# magic header and AES-GCM overhead (37 header + 16 tag)
+		Check("versioned header", a <> Nil & a->Size() = 37 + plain->Size() + 16 & a[0] = 'O' & a[1] = 'B' & a[2] = 'K' & a[3] = 'C');
+	}
+
+	function : Flip(src : Byte[], pos : Int) ~ Byte[] {
+		copy := Byte->New[src->Size()];
+		each(i : src) {
+			copy[i] := src[i];
+		};
+		copy[pos] := ((src[pos]->As(Int) + 1) % 256)->As(Byte);
+		return copy;
+	}
+
+	function : Tampering() ~ Nil {
+		key := "tamper-test-password"->ToByteArray();
+		plain := "attack at dawn, bring snacks"->ToByteArray();
+		enc := Cipher.Encrypt->AES256(key, plain);
+		Check("encrypt for tamper test", enc <> Nil);
+		if(enc = Nil) {
+			return;
+		};
+
+		# every region: version, iterations, salt, nonce, ciphertext, tag
+		positions := [4, 5, 8, 9, 30, 37, enc->Size() - 17, enc->Size() - 1];
+		each(i : positions) {
+			p := positions[i];
+			if(p < enc->Size()) {
+				bad := Flip(enc, p);
+				Check("flipped byte {$p} is rejected", Cipher.Decrypt->AES256(key, bad) = Nil);
+			}
+			else {
+				Check("flipped byte {$p} is rejected (ciphertext too short)", false);
+			};
+		};
+	}
+
+	function : WrongPassword() ~ Nil {
+		enc := Cipher.Encrypt->AES256("right"->ToByteArray(), "payload"->ToByteArray());
+		Check("wrong password fails", enc <> Nil & Cipher.Decrypt->AES256("wrong"->ToByteArray(), enc) = Nil);
+		Check("close password fails", enc <> Nil & Cipher.Decrypt->AES256("righT"->ToByteArray(), enc) = Nil);
+	}
+
+	function : Truncation() ~ Nil {
+		key := "trunc"->ToByteArray();
+		enc := Cipher.Encrypt->AES256(key, "some data to cut short"->ToByteArray());
+		Check("encrypt for truncation test", enc <> Nil);
+		if(enc = Nil) {
+			return;
+		};
+
+		cut := Byte->New[enc->Size() - 1];
+		each(i : cut) {
+			cut[i] := enc[i];
+		};
+		Check("truncated by one byte fails", Cipher.Decrypt->AES256(key, cut) = Nil);
+
+		hdr := Byte->New[20];
+		each(i : hdr) {
+			hdr[i] := enc[i];
+		};
+		Check("header-only fragment fails", Cipher.Decrypt->AES256(key, hdr) = Nil);
+	}
+
+	function : FromHex(s : String) ~ Byte[] {
+		out := Byte->New[s->Size() / 2];
+		each(i : out) {
+			hi := Nibble(s->Get(i * 2));
+			lo := Nibble(s->Get(i * 2 + 1));
+			out[i] := (hi * 16 + lo)->As(Byte);
+		};
+		return out;
+	}
+
+	function : Nibble(c : Char) ~ Int {
+		if(c <= '9') {
+			return c - '0';
+		};
+		return c - 'a' + 10;
+	}
+
+	# produced by the previous release (AES-256-CBC, fixed salt)
+	function : LegacyCompat() ~ Nil {
+		legacy_short := FromHex("7d29d453702c153a248b213093181b78");
+		dec := Cipher.Decrypt->AES256("legacy-fixture-pw"->ToByteArray(), legacy_short);
+		Check("legacy ciphertext (short) still decrypts", Same(dec, "Hello, legacy!"->ToByteArray()));
+
+		legacy_long := FromHex("32ad73ab2d3c338e35af3af2764f0662cca78e8b355d87f4cce032f135262b24da80fd22c19e8397ceaec1869d25b0339149c08541e5f91233e4b4d87690ec60");
+		dec := Cipher.Decrypt->AES256("0123456789abcdef0123456789abcdefTAIL"->ToByteArray(), legacy_long);
+		Check("legacy ciphertext (48+ bytes, 36-byte password) still decrypts", Same(dec, "The quick brown fox jumps over the lazy dog, twice over."->ToByteArray()));
+	}
+}
