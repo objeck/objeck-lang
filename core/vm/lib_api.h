@@ -65,6 +65,30 @@ typedef void(*APITools_Blocking_Ptr) ();
 #define APITOOLS_ABI_VERSION ((size_t)1)
 
 //
+// Optional ABI declaration. A library may export
+//
+//   extern "C" void objk_lib_abi(size_t* abi_version, int* toolchain_version);
+//
+// to say which VMContext version (APITOOLS_ABI_VERSION) and which toolchain
+// (VER_NUM from shared/version.h) it was built against. The VM calls it right
+// after loading the library, before load_lib, and refuses the library with a
+// message naming both sides when it needs a newer VMContext than the VM provides
+// or comes from another toolchain version. A library that does not export it
+// loads as before. OBJK_DECLARE_LIB_ABI(VER_NUM) writes the export; put it once
+// at file scope in a library that includes version.h.
+//
+#ifdef _WIN32
+#define OBJK_LIB_ABI_EXPORT __declspec(dllexport)
+#else
+#define OBJK_LIB_ABI_EXPORT __attribute__((visibility("default")))
+#endif
+#define OBJK_DECLARE_LIB_ABI(toolchain) \
+  extern "C" OBJK_LIB_ABI_EXPORT void objk_lib_abi(size_t* abi_version, int* toolchain_version) { \
+    *abi_version = APITOOLS_ABI_VERSION; \
+    *toolchain_version = (toolchain); \
+  }
+
+//
 // API calling context
 //
 struct VMContext {
