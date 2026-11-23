@@ -1914,6 +1914,8 @@ class StackProgram {
 #endif
 
   static bool AddSignalHandler(long key, StackMethod* mthd);
+  // the handler registered for a VM signal id, or nullptr; safe beside AddSignalHandler
+  static StackMethod* FindSignalHandler(long key);
   StackMethod* GetSignalHandler(long key);
 
   static void InitializeProprieties();
