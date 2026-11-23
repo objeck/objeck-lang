@@ -724,6 +724,59 @@ namespace backend {
     return live;
   }
 
+
+  std::vector<bool> Cfg::DeadLocalStores() const
+  {
+    std::vector<bool> dead(instrs.size(), false);
+    if(!has_liveness || !well_formed) {
+      return dead;
+    }
+    for(const Block& b : blocks) {
+      if(!b.reachable) {
+        continue;
+      }
+      std::vector<uint64_t> live(live_out.begin() + b.id * slot_words, live_out.begin() + (b.id + 1) * slot_words);
+      std::vector<uint64_t> handler(slot_words, 0);
+      for(int h : b.handlers) {
+        for(size_t w = 0; w < slot_words; ++w) {
+          handler[w] |= live_in[static_cast<size_t>(h) * slot_words + w];
+        }
+      }
+      auto test = [&](const std::vector<uint64_t>& v, long slot) {
+        return ((v[static_cast<size_t>(slot) / 64] >> (static_cast<size_t>(slot) % 64)) & 1) != 0;
+      };
+      for(size_t k = b.last + 1; k-- > b.first; ) {
+        const SlotUse u = SlotUseOf(instrs[k]);
+        const InstructionType t = instrs[k]->GetType();
+        if((t == STOR_INT_VAR || t == STOR_FLOAT_VAR || t == STOR_FUNC_VAR) && u.write_a >= 0) {
+          bool any = test(live, u.write_a) || test(handler, u.write_a);
+          if(u.write_b >= 0) {
+            any = any || test(live, u.write_b) || test(handler, u.write_b);
+          }
+          dead[k] = !any;
+        }
+        const long writes[2] = { u.write_a, u.write_b };
+        for(long w : writes) {
+          if(w >= 0) {
+            live[static_cast<size_t>(w) / 64] &= ~(uint64_t(1) << (static_cast<size_t>(w) % 64));
+          }
+        }
+        const long reads[2] = { u.read_a, u.read_b };
+        for(long r : reads) {
+          if(r >= 0) {
+            live[static_cast<size_t>(r) / 64] |= (uint64_t(1) << (static_cast<size_t>(r) % 64));
+          }
+        }
+        if(u.reads_all) {
+          for(size_t w = 0; w < slot_words; ++w) {
+            live[w] = ~uint64_t(0);
+          }
+        }
+      }
+    }
+    return dead;
+  }
+
   // ------------------- checks -------------------
 
   bool Cfg::Verify(std::string* why) const

@@ -1532,6 +1532,22 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
     }
   }
 
+  // The scan above forgets everything at a label or jump. The graph knows more: a store is
+  // also dead when no path from it reads the slot before another store (a read after the
+  // join, in a loop or in a handler keeps it), including a slot nothing reads again.
+  {
+    Cfg cfg(input_instrs);
+    if(cfg.WellFormed()) {
+      cfg.ComputeLiveness();
+      const std::vector<bool> graph_dead = cfg.DeadLocalStores();
+      for(size_t i = start_pos; i < instr_count; ++i) {
+        if(graph_dead[i]) {
+          is_dead[i] = 1;
+        }
+      }
+    }
+  }
+
   // the instructions to drop, marked as they are found (a range per dead store)
   std::vector<char> drop(instr_count, 0);
 
