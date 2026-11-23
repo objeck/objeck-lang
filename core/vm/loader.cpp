@@ -88,20 +88,12 @@ void Loader::LoadImage()
   const int magic_num = static_cast<int>(ReadInt());
   switch(magic_num) {
   case MAGIC_NUM_LIB:
-  case MAGIC_NUM_LIB_UNQUALIFIED_ENUMS:
-  case MAGIC_NUM_LIB_NO_GENERIC_MARKS:
-  case MAGIC_NUM_LIB_NO_PARAM_NAMES:
     error << L"Cannot run '" << filename << L"': it is a library (.obl), not a program (.obe)." << std::endl
                << L"\tLink it into a program with 'obc -lib' and run that program's .obe." << std::endl;
     LoadFailed();
 
   case MAGIC_NUM_EXE:
     break;
-
-  case MAGIC_NUM_EXE_UNTYPED_INT_ARRAYS:
-    error << L"Cannot run '" << filename << L"': it was compiled before an Int[] and an object array were allocated with distinct opcodes," << std::endl
-          << L"\tso this runtime would read its object arrays as Int[]. Recompile its source with this toolchain's obc." << std::endl;
-    LoadFailed();
 
   default:
     error << L"Unknown file type for '" << filename << L"'." << std::endl;
