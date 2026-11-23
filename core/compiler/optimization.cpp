@@ -30,8 +30,64 @@
  ***************************************************************************/
 
 #include "optimization.h"
+#include "cfg.h"
 #include <functional>
+#include <iostream>
 #include <unordered_map>
+
+namespace {
+  // OBJECK_CFG_VERIFY=1 makes the optimizer build the control-flow graph of every method it
+  // sees, before and after its passes, and check the graph's invariants (see Cfg::Verify). It
+  // is how the library sources and the test programs are checked: compile them with it set and
+  // read the summary on stderr.
+  struct CfgVerifyStats {
+    size_t methods = 0;
+    size_t blocks = 0;
+    size_t loops = 0;
+    size_t irreducible = 0;
+    size_t not_well_formed = 0;
+    size_t failures = 0;
+    bool enabled = false;
+
+    ~CfgVerifyStats() {
+      if(enabled) {
+        std::wcerr << L"cfg-verify: methods=" << methods << " blocks=" << blocks << " loops=" << loops
+                  << " irreducible_edges=" << irreducible << " not_well_formed=" << not_well_formed
+                  << " failures=" << failures << std::endl;
+      }
+    }
+  };
+
+  CfgVerifyStats cfg_verify_stats;
+
+  void VerifyMethodCfg(IntermediateMethod* method, const std::vector<IntermediateBlock*>& blocks, const char* stage)
+  {
+    if(!cfg_verify_stats.enabled) {
+      return;
+    }
+    for(IntermediateBlock* block : blocks) {
+      const std::vector<IntermediateInstruction*> instrs = block->GetInstructions();
+      Cfg cfg(instrs);
+      ++cfg_verify_stats.methods;
+      if(!cfg.WellFormed()) {
+        ++cfg_verify_stats.not_well_formed;
+        std::wcerr << L"cfg-verify: not well formed (" << stage << L") " << method->GetName().c_str() << L": ";
+        std::wcerr << std::wstring(cfg.Problem().begin(), cfg.Problem().end()) << std::endl;
+        continue;
+      }
+      cfg_verify_stats.blocks += cfg.Size();
+      cfg_verify_stats.loops += cfg.Loops().size();
+      cfg_verify_stats.irreducible += cfg.IrreducibleEdges();
+      cfg.ComputeLiveness();
+      std::string why;
+      if(!cfg.Verify(&why)) {
+        ++cfg_verify_stats.failures;
+        std::wcerr << L"cfg-verify: FAIL (" << stage << L") " << method->GetName().c_str() << L": ";
+        std::wcerr << std::wstring(why.begin(), why.end()) << std::endl;
+      }
+    }
+  }
+}
 #include <tuple>
 
 using namespace backend;
@@ -64,6 +120,7 @@ ItermediateOptimizer::ItermediateOptimizer(IntermediateProgram* p, int u, std::w
   }
 
   jump_inline_offset = 0;
+  cfg_verify_stats.enabled = Cfg::VerifyRequested();
 }
 
 void ItermediateOptimizer::Optimize()
@@ -82,9 +139,11 @@ void ItermediateOptimizer::Optimize()
 #ifdef _DEBUG
       GetLogger() << L"Optimizing method, pass 1: name='" << current_method->GetName() << "'" << std::endl;
 #endif
+      VerifyMethodCfg(current_method, current_method->GetBlocks(), "emitted");
       current_method->SetBlocks(OptimizeMethod(current_method->GetBlocks()));
+      VerifyMethodCfg(current_method, current_method->GetBlocks(), "optimized");
     }
-    
+
     if(!is_lib) {
       for(size_t j = 0; j < methods.size(); ++j) {
         current_method = methods[j];

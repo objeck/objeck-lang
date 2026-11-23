@@ -11,6 +11,7 @@
 		ED5393FD261368B70085A5F8 /* context.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED5393E8261368B60085A5F8 /* context.cpp */; };
 		ED5393FE261368B70085A5F8 /* intermediate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED5393E9261368B60085A5F8 /* intermediate.cpp */; };
 		ED5393FF261368B70085A5F8 /* optimization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED5393EA261368B60085A5F8 /* optimization.cpp */; };
+		CFC0A10000000000000000A1 /* cfg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CFC0A10000000000000000A2 /* cfg.cpp */; };
 		ED539400261368B70085A5F8 /* emit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED5393EE261368B60085A5F8 /* emit.cpp */; };
 		ED539401261368B70085A5F8 /* parser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED5393F0261368B70085A5F8 /* parser.cpp */; };
 		ED539402261368B70085A5F8 /* tree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED5393F2261368B70085A5F8 /* tree.cpp */; };
@@ -40,11 +41,13 @@
 		ED5393E8261368B60085A5F8 /* context.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = context.cpp; path = ../context.cpp; sourceTree = "<group>"; };
 		ED5393E9261368B60085A5F8 /* intermediate.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = intermediate.cpp; path = ../intermediate.cpp; sourceTree = "<group>"; };
 		ED5393EA261368B60085A5F8 /* optimization.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = optimization.cpp; path = ../optimization.cpp; sourceTree = "<group>"; };
+		CFC0A10000000000000000A2 /* cfg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = cfg.cpp; path = ../cfg.cpp; sourceTree = "<group>"; };
 		ED5393EB261368B60085A5F8 /* compiler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = compiler.h; path = ../compiler.h; sourceTree = "<group>"; };
 		ED5393EC261368B60085A5F8 /* linker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = linker.h; path = ../linker.h; sourceTree = "<group>"; };
 		ED5393ED261368B60085A5F8 /* parser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = parser.h; path = ../parser.h; sourceTree = "<group>"; };
 		ED5393EE261368B60085A5F8 /* emit.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = emit.cpp; path = ../emit.cpp; sourceTree = "<group>"; };
 		ED5393EF261368B60085A5F8 /* optimization.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = optimization.h; path = ../optimization.h; sourceTree = "<group>"; };
+		CFC0A10000000000000000A3 /* cfg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = cfg.h; path = ../cfg.h; sourceTree = "<group>"; };
 		ED5393F0261368B70085A5F8 /* parser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = parser.cpp; path = ../parser.cpp; sourceTree = "<group>"; };
 		ED5393F2261368B70085A5F8 /* tree.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = tree.cpp; path = ../tree.cpp; sourceTree = "<group>"; };
 		ED5393F3261368B70085A5F8 /* context.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = context.h; path = ../context.h; sourceTree = "<group>"; };
@@ -113,7 +116,9 @@
 				ED5393F9261368B70085A5F8 /* linker.cpp */,
 				ED5393EC261368B60085A5F8 /* linker.h */,
 				ED5393EA261368B60085A5F8 /* optimization.cpp */,
+				CFC0A10000000000000000A2 /* cfg.cpp */,
 				ED5393EF261368B60085A5F8 /* optimization.h */,
+				CFC0A10000000000000000A3 /* cfg.h */,
 				ED5393F0261368B70085A5F8 /* parser.cpp */,
 				ED5393ED261368B60085A5F8 /* parser.h */,
 				ED5393FA261368B70085A5F8 /* posix_main.cpp */,
@@ -189,6 +194,7 @@
 				ED539405261368B70085A5F8 /* linker.cpp in Sources */,
 				ED539403261368B70085A5F8 /* compiler.cpp in Sources */,
 				ED5393FF261368B70085A5F8 /* optimization.cpp in Sources */,
+				CFC0A10000000000000000A1 /* cfg.cpp in Sources */,
 				ED53940E261368F20085A5F8 /* logger.cpp in Sources */,
 				ED5393FC261368B70085A5F8 /* scanner.cpp in Sources */,
 				ED5393FE261368B70085A5F8 /* intermediate.cpp in Sources */,
