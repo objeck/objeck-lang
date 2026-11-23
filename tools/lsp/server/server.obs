@@ -10,6 +10,13 @@ bundle LSP {
 		@port : Int;
 		@is_debug : Bool;
 
+		# Connections served at once in TCP mode. An editor opens one per window; a
+		# client past this is closed at once instead of costing the server another
+		# thread, and the analysis state each connection holds.
+		consts Limits {
+			MAX_CONNECTIONS := 8
+		}
+
 		#
 		# obr objeck_lsp.obe <objk_apis.json> (stdio | --stdio | pipe | <port>) [debug]
 		#
@@ -82,11 +89,44 @@ bundle LSP {
 						
 			# use sockets
 			if(@port > -1) {
-				server := TCPSocketServer->New(@port);
+				# Loopback only: the server reads and analyses whatever path a client names,
+				# so a socket on every interface would offer that to the network. It
+				# bound them all before. An editor client connects to 127.0.0.1.
+				server := TCPSocketServer->New("127.0.0.1", @port);
 				if(server->Listen(5)) {
+					services := Vector->New()<LintService>;
 					while(true) {
-						LintService->New(Nil, server->Accept(), @is_debug)->Execute(Nil);
+						client := server->Accept();
+
+						# forget the connections that have ended, then count the rest
+						live := Vector->New()<LintService>;
+						each(i : services) {
+							if(<>services->Get(i)->IsFinished()) {
+								live->AddBack(services->Get(i));
+							};
+						};
+						services := live;
+
+						if(client = Nil) {
+							continue;
+						};
+
+						if(services->Size() >= LintServer->Limits->MAX_CONNECTIONS->As(Int)) {
+							System.IO.Filesystem.Logger->Instance()->Error("*** Refused a connection: {$services->Size()} are open ***");
+							client->Close();
+						}
+						else {
+							service := LintService->New(Nil, client, @is_debug);
+							services->AddBack(service);
+							service->Execute(Nil);
+						};
 					};
+				}
+				else {
+					error := server->GetLastError();
+					"Unable to listen on 127.0.0.1:{$@port}: {$error}"->ErrorLine();
+					System.IO.Filesystem.Logger->Instance()->Error("*** Unable to listen on 127.0.0.1:{$@port}: {$error} ***");
+					Runtime->Exit(1);
 				};
 			}
 			# use std pipes
@@ -117,6 +157,11 @@ bundle LSP {
 
 		New(pipe : Pipe, socket : TCPSocket, is_debug : Bool) {
 			Parent(pipe, socket, is_debug);
+		}
+
+		# Kept in step with core/shared/version.h by a gating test (run_lsp_tests.py).
+		function : ServerVersion() ~ String {
+			return "2026.11.3";
 		}
 
 		#
@@ -677,10 +722,13 @@ bundle LSP {
 			# Process workspace folders whenever the client sends them. Gating on
 			# capabilities/workspace/configuration broke Sublime, which supports
 			# folders without advertising the (unrelated) configuration capability.
-			workspace_folders := params->FindElements("workspaceFolders");
-			if(workspace_folders <> Nil) {
+			workspace_folders := FindJson(params, "workspaceFolders");
+			if(workspace_folders <> Nil & workspace_folders->GetType() = JsonElement->JsonType->ARRAY) {
 				each(i : workspace_folders) {
 					workspace_folder := workspace_folders->Get(i);
+					if(workspace_folder = Nil | workspace_folder->GetType() <> JsonElement->JsonType->OBJECT) {
+						continue;
+					};
 
 					folder_name_obj := workspace_folder->Get("name");
 					folder_uri_obj := workspace_folder->Get("uri");
@@ -722,7 +770,7 @@ bundle LSP {
 			# Kept in step with core/shared/version.h by a gating test
 			# (run_lsp_tests.py), because the note that used to sit here asking
 			# for a manual bump was ignored through two releases.
-			serverInfo->Insert("version", "2026.11.3");
+			serverInfo->Insert("version", LintService->ServerVersion());
 
 			capabilities := response->AddChild("capabilities");
 
@@ -1053,8 +1101,40 @@ bundle LSP {
 		#
 		# Notifications
 		#
+		#
+		# Three things have to agree: this server, the Objeck runtime that is running
+		# it, and the API index it answers from. Nothing compared them, so a server
+		# left behind by an upgrade (or an index from another release) just gave
+		# wrong answers with no sign of why. The libraries are checked by the runtime
+		# itself when it loads them.
+		#
+		method : CheckVersions() ~ Nil {
+			runtime := Runtime->GetVersion();
+			server := LintService->ServerVersion();
+			if(runtime <> Nil & <>runtime->Trim()->Equals(server)) {
+				Warn("The Objeck language server is version {$server} but the running Objeck is {$runtime}. Update the extension or the Objeck install so they match.");
+			};
+
+			docs_error := AstProxy->GetDocsError();
+			if(docs_error <> Nil) {
+				ShowMessage(1, "{$docs_error}. Completion and hover run without API documentation.");
+				return;
+			};
+
+			docs := AstProxy->GetDocsVersion();
+			if(docs <> Nil & <>docs->Equals(server)) {
+				Warn("The API index is for Objeck {$docs} but the language server is {$server}; completion and hover documentation may be out of date.");
+			};
+		}
+
+		method : Warn(message : String) ~ Nil {
+			System.IO.Filesystem.Logger->Instance()->Error("*** {$message} ***");
+			ShowMessage(2, message);
+		}
+
 		method : NotifyInitialized(params : JsonElement) ~ Nil {
 			@is_initialized := true;
+			CheckVersions();
 			RequestProgressToken();
 
 			if(@can_register_watchers) {
@@ -1155,7 +1235,10 @@ bundle LSP {
 
 		method : NotifyDidChangeWorkspace(params : JsonElement) ~ Nil {
 			changed := false;
-			added := params->FindElements("event/added");
+			added := FindJson(params, "event/added");
+			if(added = Nil) {
+				added := JsonElement->New(JsonElement->JsonType->ARRAY);
+			};
 			each(i : added) {
 				folder := added->Get(i);
 				
@@ -1174,7 +1257,10 @@ bundle LSP {
 				changed := true;
 			};
 
-			removed := params->FindElements("event/removed");
+			removed := FindJson(params, "event/removed");
+			if(removed = Nil) {
+				removed := JsonElement->New(JsonElement->JsonType->ARRAY);
+			};
 			each(i : removed) {
 				folder := removed->Get(i);
 				
