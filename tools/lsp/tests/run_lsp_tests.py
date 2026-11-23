@@ -2514,6 +2514,402 @@ def check_pipe_transport(obr, server_obe, apis_json, bin_dir):
         proc.kill()
 
 
+class RawConn:
+    """A bare TCP connection to a running server: the bytes go out exactly as
+    given, so a frame can be as wrong as a test needs."""
+
+    def __init__(self, port, host="127.0.0.1", timeout=5):
+        self.sock = socket.create_connection((host, port), timeout)
+        self.sock.settimeout(1.0)
+        self.buf = b""
+
+    def send(self, data):
+        try:
+            self.sock.sendall(data)
+        except OSError:
+            pass
+
+    def send_msg(self, obj):
+        head, body = frame(obj)
+        self.send(head + body)
+
+    def read_msg(self, timeout=15):
+        """One framed message, or None on timeout or close."""
+        end = time.time() + timeout
+        while time.time() < end:
+            if b"\r\n\r\n" in self.buf:
+                head, rest = self.buf.split(b"\r\n\r\n", 1)
+                n = int(head.split(b"Content-Length: ")[1].split(b"\r\n")[0])
+                if len(rest) >= n:
+                    self.buf = rest[n:]
+                    return json.loads(rest[:n])
+            try:
+                chunk = self.sock.recv(65536)
+            except socket.timeout:
+                continue
+            except OSError:
+                return None
+            if not chunk:
+                return None
+            self.buf += chunk
+        return None
+
+    def ends(self, timeout=15):
+        """(closed, received): did the server close this connection, and did it
+        send anything first."""
+        end = time.time() + timeout
+        got = self.buf
+        while time.time() < end:
+            try:
+                chunk = self.sock.recv(65536)
+            except socket.timeout:
+                continue
+            except OSError:
+                return True, got
+            if not chunk:
+                return True, got
+            got += chunk
+        return False, got
+
+    def close(self):
+        try:
+            self.sock.close()
+        except OSError:
+            pass
+
+
+def server_alive(c, label):
+    """The server still answers on its first connection. A request before
+    'initialize' is answered ServerNotInitialized, which is all this needs; a
+    server that halted answers nothing."""
+    if c.proc.poll() is not None:
+        log_result(label, False, f"the server process exited ({c.proc.returncode})")
+        return False
+    resp = c.request("workspace/symbol", {"query": "x"}, timeout=15)
+    log_result(label, resp is not None, "no answer: the server is gone")
+    return resp is not None
+
+
+def check_framing(obr, server_obe, apis_json, bin_dir):
+    """Content-Length comes from the peer. A bad one must end THAT connection,
+    not halt the VM (which takes every connection and the editor's features)."""
+    c = LspClient(obr, server_obe, apis_json, bin_dir)
+    try:
+        bad = [("negative", b"-5"), ("not a number", b"abc"), ("a fraction", b"2.5"),
+               ("empty", b""), ("beyond any allocation", b"99999999999999"),
+               ("one over the 64 MB cap", b"67108865")]
+        for name, value in bad:
+            raw = RawConn(c.port)
+            raw.send(b"Content-Length: " + value + b"\r\n\r\n")
+            closed, _ = raw.ends(timeout=15)
+            log_result(f"a Content-Length that is {name} ends that connection", closed,
+                       "the connection stayed open")
+            raw.close()
+            if not server_alive(c, f"and the server carries on after a Content-Length that is {name}"):
+                # carry on with a fresh server so every case is judged alone
+                c.close()
+                c = LspClient(obr, server_obe, apis_json, bin_dir)
+
+        # a body cut short is a closed stream, not a message
+        raw = RawConn(c.port)
+        raw.send(b"Content-Length: 100\r\n\r\n" + b'{"jsonrpc": "2.0", ')
+        raw.sock.shutdown(socket.SHUT_WR)
+        closed, received = raw.ends(timeout=15)
+        log_result("a body that ends early closes the connection without an answer",
+                   closed and not received, f"closed={closed} received={received[:80]!r}")
+        raw.close()
+        if not server_alive(c, "and the server carries on after a truncated body"):
+            c.close()
+            c = LspClient(obr, server_obe, apis_json, bin_dir)
+
+        # the largest legal frame still works: 1 MB of padding in a valid request
+        raw = RawConn(c.port)
+        raw.send_msg({"jsonrpc": "2.0", "id": 5, "method": "workspace/symbol",
+                      "params": {"query": "x" * (1 << 20)}})
+        answer = raw.read_msg(timeout=30)
+        log_result("a large well-formed message is still read whole",
+                   (answer or {}).get("id") == 5, f"got: {str(answer)[:100]}")
+        raw.close()
+    finally:
+        c.close()
+
+
+# every request the server answers with a field it reads unchecked
+REQUESTS_NEEDING_PARAMS = [
+    "textDocument/completion", "textDocument/hover", "textDocument/definition",
+    "textDocument/declaration", "textDocument/references", "textDocument/typeDefinition",
+    "textDocument/implementation", "textDocument/signatureHelp",
+    "textDocument/prepareRename", "textDocument/documentHighlight",
+    "textDocument/prepareCallHierarchy", "textDocument/prepareTypeHierarchy",
+    "textDocument/rename", "callHierarchy/incomingCalls", "callHierarchy/outgoingCalls",
+    "typeHierarchy/supertypes", "typeHierarchy/subtypes", "textDocument/formatting",
+    "textDocument/rangeFormatting", "textDocument/codeAction", "textDocument/inlayHint",
+    "textDocument/semanticTokens/range", "textDocument/selectionRange",
+    "textDocument/semanticTokens/full", "textDocument/semanticTokens/full/delta",
+    "textDocument/foldingRange", "textDocument/documentSymbol",
+    "textDocument/documentLink", "textDocument/codeLens", "workspace/symbol",
+]
+
+NOTIFICATIONS_NEEDING_PARAMS = [
+    "textDocument/didOpen", "textDocument/didChange", "textDocument/didSave",
+    "textDocument/didClose", "workspace/didChangeWatchedFiles",
+    "workspace/didChangeWorkspaceFolders", "$/cancelRequest",
+]
+
+
+def check_invalid_params(obr, server_obe, apis_json, bin_dir):
+    """A request without the fields a handler reads is answered InvalidParams.
+    Objeck cannot catch a nil dereference, so before this the handler halted the
+    VM and the editor lost every language feature until it restarted the server."""
+    c = LspClient(obr, server_obe, apis_json, bin_dir)
+    try:
+        init = c.request("initialize", {"processId": os.getpid(), "rootUri": None,
+                                        "capabilities": {}}, timeout=90)
+        if not (init or {}).get("result"):
+            log_result("initialize before the params checks", False, f"got: {init}")
+            return
+        c.notify("initialized", {})
+
+        # 1. no usable params at all, for every request that reads some
+        refused = []
+        for method in REQUESTS_NEEDING_PARAMS:
+            if c.proc.poll() is not None:
+                refused.append(f"{method}: the server process died")
+                break
+            resp = c.request(method, {}, timeout=20)
+            code = ((resp or {}).get("error") or {}).get("code")
+            if code != -32602:
+                refused.append(f"{method}: {resp}")
+                if resp is None:
+                    break
+        log_result(f"all {len(REQUESTS_NEEDING_PARAMS)} requests answer InvalidParams when their fields are missing",
+                   not refused, "; ".join(refused[:3]))
+        if not server_alive(c, "the server is alive after empty params to every request"):
+            return
+
+        # 2. the error names the field, which is what makes it fixable
+        resp = c.request("textDocument/hover", {"textDocument": {"uri": "file:///x.obs"}})
+        err = (resp or {}).get("error") or {}
+        log_result("the error names the missing field",
+                   err.get("code") == -32602 and "position/line" in err.get("message", ""),
+                   f"got: {resp}")
+
+        # 3. no 'params' member at all, and a params that is not an object
+        c.send_raw(json.dumps({"jsonrpc": "2.0", "id": "np", "method": "textDocument/hover"}).encode())
+        resp = c.response_to("np", timeout=20)
+        log_result("a request with no params member is refused, not dereferenced",
+                   ((resp or {}).get("error") or {}).get("code") == -32602, f"got: {resp}")
+        c.send_raw(json.dumps({"jsonrpc": "2.0", "id": "ar", "method": "textDocument/hover",
+                               "params": [1, 2]}).encode())
+        resp = c.response_to("ar", timeout=20)
+        log_result("and so is one whose params is an array",
+                   ((resp or {}).get("error") or {}).get("code") == -32602, f"got: {resp}")
+
+        # 4. a field of the wrong kind
+        uri = "file:///x.obs"
+        mistyped = [
+            ("textDocument/hover", {"textDocument": {"uri": uri}, "position": "here"}),
+            ("textDocument/hover", {"textDocument": {"uri": uri}, "position": {"line": "1", "character": 2}}),
+            ("textDocument/hover", {"textDocument": uri, "position": {"line": 1, "character": 2}}),
+            ("textDocument/completion", {"textDocument": {"uri": 7}, "position": {"line": 1, "character": 2}}),
+            ("textDocument/formatting", {"textDocument": {"uri": uri}, "options": {"tabSize": 4, "insertSpaces": "yes"}}),
+            ("textDocument/codeAction", {"textDocument": {"uri": uri},
+                                         "range": {"start": {"line": 0, "character": 0}},
+                                         "context": {"diagnostics": "none"}}),
+            ("textDocument/codeAction", {"textDocument": {"uri": uri},
+                                         "range": {"start": {"line": 0, "character": 0}},
+                                         "context": {"diagnostics": [{"message": "m"}]}}),
+            ("textDocument/selectionRange", {"textDocument": {"uri": uri}, "positions": [{"line": 1}]}),
+            ("callHierarchy/incomingCalls", {"item": 5}),
+            ("workspace/symbol", {"query": 5}),
+        ]
+        wrong = []
+        for method, params in mistyped:
+            resp = c.request(method, params, timeout=20)
+            if ((resp or {}).get("error") or {}).get("code") != -32602:
+                wrong.append(f"{method} {json.dumps(params)[:60]}: {resp}")
+                if resp is None:
+                    break
+        log_result("a field of the wrong kind is InvalidParams too", not wrong, "; ".join(wrong[:2]))
+        if not server_alive(c, "the server is alive after mistyped params"):
+            return
+
+        # 5. notifications have no reply to carry an error: dropped, never fatal
+        for method in NOTIFICATIONS_NEEDING_PARAMS:
+            c.notify(method, {})
+            c.notify(method, {"textDocument": 3, "event": "x", "changes": [{}], "contentChanges": [{}]})
+        c.send_raw(json.dumps({"jsonrpc": "2.0", "method": "textDocument/didOpen"}).encode())
+        c.drain(1.0)
+        server_alive(c, "the server is alive after notifications with missing or mistyped params")
+
+        # 6. and a valid request is still answered, so the checks refuse nothing real
+        resp = c.request("workspace/symbol", {"query": "Hash"}, timeout=30)
+        log_result("a well-formed request is still answered with a result",
+                   resp is not None and "result" in resp, f"got: {resp}")
+    finally:
+        c.close()
+
+
+def shown_messages(c):
+    return [n.get("params", {}) for n in c.notifications if n.get("method") == "window/showMessage"]
+
+
+def start_session(obr, server_obe, apis_json, bin_dir):
+    """A connected, initialized client; the caller closes it."""
+    c = LspClient(obr, server_obe, apis_json, bin_dir)
+    init = c.request("initialize", {"processId": os.getpid(), "rootUri": None,
+                                    "capabilities": {}}, timeout=90)
+    ok = bool((init or {}).get("result"))
+    c.notify("initialized", {})
+    c.drain(2.0)
+    return c, ok
+
+
+def check_docs_and_versions(obr, server_obe, apis_json, bin_dir):
+    """The API index and the version handshake. A missing or unreadable index used
+    to crash the server or end it with a line on stderr; neither told the user
+    anything, and nothing compared the three versions that have to agree."""
+    work = tempfile.mkdtemp(prefix="lsp-docs-")
+    try:
+        with open(apis_json, encoding="utf-8") as f:
+            real = f.read()
+
+        cases = [
+            ("missing", os.path.join(work, "absent.json"), None, "not found"),
+            ("empty", os.path.join(work, "empty.json"), "", "empty"),
+            ("not JSON", os.path.join(work, "garbage.json"), "{not json at all", "not valid JSON"),
+            ("lacking its sections", os.path.join(work, "bare.json"), '{"version": "1"}', "no class-details"),
+        ]
+        for name, path, content, expect in cases:
+            if content is not None:
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(content)
+            try:
+                c, ok = start_session(obr, server_obe, path, bin_dir)
+            except RuntimeError as e:
+                log_result(f"a {name} API index leaves the server running", False, str(e))
+                continue
+            try:
+                log_result(f"a {name} API index leaves the server running", ok, "initialize failed")
+                msgs = shown_messages(c)
+                log_result(f"and tells the user, as an error ({name})",
+                           any(m.get("type") == 1 and expect in m.get("message", "") for m in msgs),
+                           f"got: {msgs}")
+                resp = c.request("workspace/symbol", {"query": "x"}, timeout=30)
+                log_result(f"and still answers requests ({name})", resp is not None and "result" in resp,
+                           f"got: {resp}")
+            finally:
+                c.close()
+
+        # a matching index is silent: no false alarm
+        c, ok = start_session(obr, server_obe, apis_json, bin_dir)
+        try:
+            log_result("the bundled index and a matching runtime show no message",
+                       ok and not shown_messages(c), f"got: {shown_messages(c)}")
+        finally:
+            c.close()
+
+        # an index generated for another release is reported
+        stale = os.path.join(work, "stale.json")
+        with open(stale, "w", encoding="utf-8") as f:
+            f.write(re.sub(r'"version":\s*"[^"]*"', '"version": "1999.1.1"', real, count=1))
+        c, ok = start_session(obr, server_obe, stale, bin_dir)
+        try:
+            msgs = shown_messages(c)
+            log_result("an index for another release is reported as a warning",
+                       any(m.get("type") == 2 and "1999.1.1" in m.get("message", "") for m in msgs),
+                       f"got: {msgs}")
+        finally:
+            c.close()
+
+        # an index that predates the version stamp is not an error
+        old = os.path.join(work, "unstamped.json")
+        with open(old, "w", encoding="utf-8") as f:
+            f.write(re.sub(r'"version":\s*"[^"]*",\s*', "", real, count=1))
+        c, ok = start_session(obr, server_obe, old, bin_dir)
+        try:
+            log_result("an index with no version stamp is accepted silently",
+                       ok and not shown_messages(c), f"got: {shown_messages(c)}")
+        finally:
+            c.close()
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def local_address():
+    """An address of this machine that is not loopback, or None."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("192.0.2.1", 9))
+        ip = s.getsockname()[0]
+        return None if ip.startswith("127.") or ip == "0.0.0.0" else ip
+    except OSError:
+        return None
+    finally:
+        s.close()
+
+
+def check_tcp_limits(obr, server_obe, apis_json, bin_dir):
+    """TCP mode: loopback only, and a bounded number of connections."""
+    c = LspClient(obr, server_obe, apis_json, bin_dir)
+    try:
+        ip = local_address()
+        if ip is None:
+            print("  [SKIP] no non-loopback address on this machine: loopback-only bind not checked")
+        else:
+            try:
+                s = socket.create_connection((ip, c.port), 3)
+                s.close()
+                reachable = True
+            except OSError:
+                reachable = False
+            log_result(f"the server is not reachable on {ip}, only on loopback", not reachable,
+                       "a connection to the machine's own address was accepted")
+
+        ping = {"jsonrpc": "2.0", "id": 1, "method": "workspace/symbol", "params": {"query": "x"}}
+        limit = 8  # LintServer MAX_CONNECTIONS; the first is the client above
+        held = []
+        try:
+            answered = 0
+            for _ in range(limit - 1):
+                raw = RawConn(c.port)
+                raw.send_msg(ping)
+                held.append(raw)
+                if (raw.read_msg(timeout=20) or {}).get("id") == 1:
+                    answered += 1
+            log_result(f"{limit} concurrent connections are served", answered == limit - 1,
+                       f"{answered} of {limit - 1} extra connections answered")
+
+            over = RawConn(c.port)
+            over.send_msg(ping)
+            closed, received = over.ends(timeout=15)
+            log_result("the next one is closed without being served", closed and not received,
+                       f"closed={closed} received={received[:60]!r}")
+            over.close()
+
+            # a connection that ends frees its place
+            held.pop().close()
+            time.sleep(2)
+            again = RawConn(c.port)
+            again.send_msg(ping)
+            answer = again.read_msg(timeout=20)
+            log_result("and a place is free again once a connection has ended",
+                       (answer or {}).get("id") == 1, f"got: {answer}")
+            again.close()
+        finally:
+            for raw in held:
+                raw.close()
+    finally:
+        c.close()
+
+
+def check_hardening(obr, server_obe, apis_json, bin_dir):
+    check_framing(obr, server_obe, apis_json, bin_dir)
+    check_invalid_params(obr, server_obe, apis_json, bin_dir)
+    check_docs_and_versions(obr, server_obe, apis_json, bin_dir)
+    check_tcp_limits(obr, server_obe, apis_json, bin_dir)
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
@@ -2534,6 +2930,12 @@ def main():
             print(f"Error: missing {p}")
             print("Build the server first: tools/lsp/server/build_server.sh")
             return 1
+
+    if os.environ.get("LSP_TEST_ONLY") == "hardening":
+        print("Objeck LSP hardening tests only")
+        check_hardening(obr, server_obe, apis_json, bin_dir)
+        print(f"\n  Results: {PASS} passed, {FAIL} failed")
+        return 1 if FAIL else 0
 
     probe_obs = os.path.join(TESTS_DIR, "lsp_probe.obs")
     with open(probe_obs, encoding="utf-8") as f:
@@ -2594,6 +2996,21 @@ def main():
         log_result("serverInfo version matches core/shared/version.h",
                    expected is not None and info.get("version") == expected,
                    f"server said {info.get('version')!r}, version.h says {expected!r}")
+
+        # The API index carries the release it was generated for (doc_json.obs
+        # writes it; gen_json.sh takes the version), and the server warns the editor
+        # when it differs. A stale stamp would warn every user, so it is gated the
+        # same way as serverInfo above.
+        try:
+            with open(apis_json, encoding="utf-8") as fh:
+                stamp = json.load(fh).get("version")
+        except (OSError, ValueError):
+            stamp = None
+        log_result("objk_apis.json carries the current version stamp",
+                   expected is not None and stamp == expected,
+                   f"index says {stamp!r}, version.h says {expected!r} "
+                   "(regenerate with tools/lsp/server/doc_json/gen_json.sh <version>, "
+                   "or edit the top-level \"version\" in both objk_apis.json copies)")
 
         # codeActionProvider must name its kinds, otherwise clients cannot
         # filter them or route "Organize Imports" to the server.
@@ -3157,6 +3574,7 @@ def main():
         c.close()
 
     check_jsonrpc_conformance(obr, server_obe, apis_json, bin_dir)
+    check_hardening(obr, server_obe, apis_json, bin_dir)
     check_multi_root(obr, server_obe, apis_json, bin_dir)
     check_program_reuse(obr, server_obe, apis_json, bin_dir)
     check_other_folder_kept(obr, server_obe, apis_json, bin_dir)
