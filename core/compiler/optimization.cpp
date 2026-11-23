@@ -72,7 +72,11 @@ void ItermediateOptimizer::Optimize()
   GetLogger() << L"\n--------- Optimizing Code ---------" << std::endl;
 #endif
 
-  // classes...
+  // Pass 1 runs over EVERY method before pass 2 inlines anything. Interleaving them
+  // per class meant a callee in a later class was inlined before its own cleanup,
+  // dead-code, constant-propagation and tail-call work had run, while a callee in an
+  // earlier class was inlined already optimized: the emitted bytecode depended on
+  // class / link order. Inlining from fully optimized callees makes it order independent.
   std::vector<IntermediateClass*> klasses = program->GetClasses();
   for(size_t i = 0; i < klasses.size(); ++i) {
     // methods...
@@ -84,8 +88,11 @@ void ItermediateOptimizer::Optimize()
 #endif
       current_method->SetBlocks(OptimizeMethod(current_method->GetBlocks()));
     }
-    
-    if(!is_lib) {
+  }
+
+  if(!is_lib) {
+    for(size_t i = 0; i < klasses.size(); ++i) {
+      std::vector<IntermediateMethod*> methods = klasses[i]->GetMethods();
       for(size_t j = 0; j < methods.size(); ++j) {
         current_method = methods[j];
 #ifdef _DEBUG
