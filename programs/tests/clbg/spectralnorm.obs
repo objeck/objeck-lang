@@ -1,5 +1,8 @@
 ﻿bundle Default {
 	class SpectralNorm {
+		# The two products below accumulate in a local, as the other languages' programs on
+		# this page do. Until 2026-11 they did `Av[i] += ...`, a read and a write of the
+		# array element on every inner iteration; see docs/performance.md, spectralnorm.
 		function : Main(args : String[]) ~ Nil {
 			n := 5500;
          if (args->Size() > 0) {
@@ -41,16 +44,18 @@
 		# multiply vector v by matrix A */
 		function : MultiplyAv(n : Int, v : Float[], Av : Float[]) ~ Nil {
 			for(i:=0; i<n; i+=1;){
-				Av[i] := 0;
-				for (j:=0; j<n; j+=1;) { Av[i] += A(i,j)*v[j]; };
+				sum := 0.0;
+				for (j:=0; j<n; j+=1;) { sum += A(i,j)*v[j]; };
+				Av[i] := sum;
 			};
 		}
 	
 		# multiply vector v by matrix A transposed */
 		function : MultiplyAtv(n : Int, v : Float[], Atv : Float[]) ~ Nil {
 			for(i:=0;i<n;i+=1;){
-				Atv[i] := 0;
-				for(j:=0; j<n; j+=1;) { Atv[i] += A(j,i)*v[j]; };
+				sum := 0.0;
+				for(j:=0; j<n; j+=1;) { sum += A(j,i)*v[j]; };
+				Atv[i] := sum;
 			};
 		}
 	
