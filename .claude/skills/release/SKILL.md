@@ -169,9 +169,6 @@ git add core/shared/version.h core/release/update_version.ps1 \
         programs/deploy/util/readme/readme.json \
         programs/web-playground/backend/app/config.py \
         README.md \
-        core/compiler/vs/objeck.rc core/vm/vs/objeck.rc \
-        core/debugger/vs/objeck.rc core/repl/vs/objeck.rc \
-        core/utils/launcher/vs/builder/objeck.rc \
         core/lib/*.obl docs/api.zip
 git commit -m "Bump version to $VERSION
 

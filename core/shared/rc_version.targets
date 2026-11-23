@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Generates the version-stamped objeck.rc beside the importing project from its
+  objeck.in template, using VERSION_STRING in core/shared/version.h.
+
+  objeck.rc is a gitignored build output. Import this file AFTER
+  Microsoft.Cpp.targets in every project that has <ResourceCompile Include="objeck.rc" />.
+  The script only rewrites the .rc when its content changes, so an incremental
+  build does not recompile the resources.
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Target Name="GenerateVersionedRc" BeforeTargets="ResourceCompile">
+    <Exec Command="powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)gen_rc.ps1&quot; -Template &quot;$(MSBuildProjectDirectory)\objeck.in&quot; -Output &quot;$(MSBuildProjectDirectory)\objeck.rc&quot; -VersionHeader &quot;$(MSBuildThisFileDirectory)version.h&quot;"
+          StandardOutputImportance="low" />
+  </Target>
+</Project>

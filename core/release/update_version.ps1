@@ -55,22 +55,15 @@ $plist = $plist -replace '(Copyright \(c\) 2007-)\d{4}', ('${1}' + $year_end)
 [System.IO.File]::WriteAllText($info_plist, $plist, (New-Object System.Text.UTF8Encoding $false))
 
 
-# update window resource files
-(Get-Content ..\compiler\vs\objeck.in) | ForEach-Object { $_ -replace "@VERSION@", $version } | ForEach-Object { $_ -replace "@YEAR_END@", $year_end } | ForEach-Object { $_ -replace "@VERSION_WINDOWS@", $version_windows } | Set-Content ..\compiler\vs\objeck.rc
-(Get-Content ..\vm\vs\objeck.in) | ForEach-Object { $_ -replace "@VERSION@", $version } | ForEach-Object { $_ -replace "@YEAR_END@", $year_end } | ForEach-Object { $_ -replace "@VERSION_WINDOWS@", $version_windows } | Set-Content ..\vm\vs\objeck.rc
-(Get-Content ..\debugger\vs\objeck.in) | ForEach-Object { $_ -replace "@VERSION@", $version } | ForEach-Object { $_ -replace "@YEAR_END@", $year_end } | ForEach-Object { $_ -replace "@VERSION_WINDOWS@", $version_windows } | Set-Content ..\debugger\vs\objeck.rc
-(Get-Content ..\repl\vs\objeck.in) | ForEach-Object { $_ -replace "@VERSION@", $version } | ForEach-Object { $_ -replace "@YEAR_END@", $year_end } | ForEach-Object { $_ -replace "@VERSION_WINDOWS@", $version_windows } | Set-Content ..\repl\vs\objeck.rc
-(Get-Content ..\utils\launcher\vs\builder\objeck.in) | ForEach-Object { $_ -replace "@VERSION@", $version } | ForEach-Object { $_ -replace "@YEAR_END@", $year_end } | ForEach-Object { $_ -replace "@VERSION_WINDOWS@", $version_windows } | Set-Content ..\utils\launcher\vs\builder\objeck.rc
+# The five Windows objeck.rc resource files are no longer generated here: they
+# are gitignored build outputs, rendered from their objeck.in templates by the
+# GenerateVersionedRc target (core/shared/rc_version.targets) whenever a project
+# that compiles one is built, using VERSION_STRING in the version.h written above.
 
 
 # every file stamped above is declared LF; see ConvertTo-LfEol
 @(
   "..\shared\version.h",
   "..\..\programs\deploy\util\readme\readme.json",
-  $package_json,
-  "..\compiler\vs\objeck.rc",
-  "..\vm\vs\objeck.rc",
-  "..\debugger\vs\objeck.rc",
-  "..\repl\vs\objeck.rc",
-  "..\utils\launcher\vs\builder\objeck.rc"
+  $package_json
 ) | ForEach-Object { ConvertTo-LfEol $_ }
