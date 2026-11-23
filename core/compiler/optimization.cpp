@@ -1341,7 +1341,13 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
   std::unordered_map<int, int> lbl_offsets;
   // test hook (programs/regression/check_label_fatal.py): source cannot produce a lost or
   // doubled label, so this simulates a bug in label generation to exercise the checks below
-  const char* label_fault = getenv("OBJECK_TEST_LABEL_FAULT");
+  const char* label_fault = nullptr;
+#ifdef _WIN32
+  char label_fault_buf[16] = {0};   // MSVC rejects getenv (C4996, an error in this build)
+  { size_t len = 0; if(getenv_s(&len, label_fault_buf, sizeof(label_fault_buf), "OBJECK_TEST_LABEL_FAULT") == 0 && len > 1) { label_fault = label_fault_buf; } }
+#else
+  label_fault = getenv("OBJECK_TEST_LABEL_FAULT");
+#endif
   bool label_fault_done = false;
   for(size_t i = 0; i < input_instrs.size(); ++i) {
     IntermediateInstruction* instr = input_instrs[i];
